@@ -1,0 +1,493 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm660-moto-common.dtsi"
+#include "msm-pm660a.dtsi"
+#include "sdm660-external-codec.dtsi"
+#include "sdm660-camera-sensor-mot-beckham.dtsi"
+#include "sdm660-beckham-pinctrl.dtsi"
+#include "sdm660-beckham-audio.dtsi"
+#include "dsi-panel-mot-smd-601-1080p-cmd.dtsi"
+
+/ {
+	model = "beckham";
+	compatible = "qcom,sdm636-beckham", "qcom,sdm636-moto",
+			"qcom,sdm636";
+	aliases {
+		/delete-property/ i2c3;
+	};
+};
+
+&i2c_2 { /* BLSP1 CAP SENSOR */
+	status = "okay";
+	cypress_capsensor@1D {
+		compatible = "cypress,sf3155";
+		label = "MotorolaCapSense";
+		reg = <0x1D>;
+		vdd-supply = <&pm660_l14>;
+		vddio-supply = <&pm660_l14>;
+		avdd-supply = <&pm660_l14>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <52 0x2008>;
+		silicon_id = <0x0BB11477>;
+		block_size = <64>;
+		num_of_blocks = <256>;
+		secure_bytes = <32>;
+		pinctrl-names = "default";
+		gpios = <&tlmm 56 0>, /* RESET */
+		      <&tlmm 47 0>, /* programming SCLK */
+		      <&tlmm 63 0>, /* programming SDAT */
+		      <&tlmm 52 0x2008>;
+		use-raw-gpio-rw = <1>;
+		gpio_base_addr = <0x03000004>;
+		gpio_base_size = <0x00a00000>;
+		gpio_clk_group = <0x00100000>;
+		gpio_dat_group = <0x00900000>;
+		cyttsp,sar-status-reg = <0x50>;
+		cyttsp,standby-reg = <0x51>;
+		cyttsp,bootloader-addr = <0x02>;
+		cyttsp,key-num = <4>;
+		cyttsp,key-codes = <4>;
+	};
+
+	pcal_pin:gpio@20 {
+		compatible = "pcal,pcal-pin";
+		status = "ok";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		#address-cells = <1>;
+		pcal,pin-num = <16>;
+		pcal,reset-gpio = <&tlmm 34 1>;
+		};
+
+	pcal_pin_2:gpio@21 {
+		compatible = "pcal,pcal-pin";
+		status = "ok";
+		reg = <0x21>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		#address-cells = <1>;
+		pcal,pin-num = <16>;
+		pcal,reset-gpio = <&tlmm 34 1>;
+		};
+
+	drv2624@5a {
+		status = "ok";
+		compatible = "ti,drv2624";
+		reg = <0x5A>;
+		/* voltage = *_voltage x 22 mV */
+		/* 2V for now */
+		ti,rated_voltage = /bits/ 8 <0x57>;
+		ti,overdrive_voltage = /bits/ 8 <0x8D>;
+		ti,rated_voltage_reduced = /bits/ 8 <0x1A>;
+		ti,overdrive_voltage_reduced = /bits/ 8 <0x1C>;
+		/* LRA period = lra_freq x 24.39 us */
+		/* 175 Hz for now */
+		ti,lra_freq = /bits/ 8 <0xAF>;
+		ti,lra_drive;
+		ti,auto_cal;
+		ti,auto_cal_time = /bits/ 8 <0x01>;
+		/* sample time 200us  */
+		ti,sample_time = /bits/ 8 <0x04>;
+		ti,nrst-gpio = <&pcal_pin 10 0>;
+		ti,nvctrl-gpio = <&tlmm 57 0>;
+		ti,npwr-gpio = <&pm660l_gpios 5 0>;
+		};
+
+	analogix_anx7805@72 {
+		compatible = "analogix,anx7805";
+		status = "ok";
+		reg = <0x72>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <9 0>;  /*cbl-det-gpio is interrupt pin*/
+		analogix,reset-gpio = <&pcal_pin_2 14 0x00>;
+		analogix,irq-gpio = <&tlmm 45 0x00>;
+		analogix,p-dwn-gpio = <&pcal_pin_2 6 0>;//<&tlmm 55 0x0>;
+		analogix,cbl-det-gpio = <&tlmm 44 0x0>;
+		analogix,i2c-pull-up = <1>;
+		vdd-1p0-supply = <&pm660_s5>;
+		avdd-3p3-supply = <&pm660_l18>;
+		avdd-1p8-supply = <&pm660_l13>;
+		analogix,vdd10-name = "vdd-1p0";
+		analogix,avdd33-name = "avdd-3p3";
+		analogix,vdd18-name = "avdd-1p8";
+
+		pinctrl-names = "anx_default", "anx_sleep";
+		pinctrl-0 = <&anx_cbl_det_active
+				&anx_irq_active>;
+		pinctrl-1 = <&anx_cbl_det_active
+				&anx_irq_active>;
+	};
+
+};
+
+&i2c_4 {
+	status = "okay";
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <67 0>;
+		gpios = <&tlmm 67 0>, /* IRQ */
+			<&tlmm 66 0>; /* RESET */
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_suspend &touch_int_suspend>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod";
+		config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
+	};
+};
+
+&i2c_6 {
+	/delete-node/ nq@28;
+	nq@28 {
+		compatible = "qcom,nq-nci";
+		reg = <0x28>;
+		qcom,nq-irq = <&tlmm 40 0x00>;
+		qcom,nq-ven = <&tlmm 35 0x00>;
+		qcom,nq-firm = <&tlmm 61 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend>;
+	};
+};
+
+&pm660_haptics { /* Vibrator */
+	status = "disabled";
+};
+
+&soc{
+	/delete-node/ i2c@c177000;
+
+	qcom,qbt1000 {
+		status = "disabled";
+	};
+
+	fpc_fpc1020{
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+	};
+
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "beckham";
+	};
+
+	apba_ctrl {
+		gpios = <&pm660l_gpios 4 0>,      /* APBA_1P1_EN, output-low */
+			<&pcal_pin_2 12 0>,     /* APBA_BOOTRET, output-low */
+			<&pcal_pin_2 9 0>,     /* APBA_RESET_N, output-low */
+			<&tlmm 49 1>,      /* APBA_INT_N, in */
+			<&pcal_pin_2 13 0>,     /* APBA_WAKE, output-low */
+			<&pcal_pin_2 8 0>;      /* APBA_SFLASH_EN, output-low */
+		mmi,gpio-labels = "gpio_apba_1p1_en",
+				  "gpio_apba_bootret",
+				  "gpio_apba_rst_n",
+				  "gpio_apba_int_n",
+				  "gpio_apba_wake",
+				  "gpio_apba_sflash_en";
+		mmi,int-index = <3>;
+		mmi,enable-preclk-seq = <5 0 0>, <2 0 0>, <4 1 0>, <0 1 0>,
+				 <1 0 0>;
+		mmi,enable-postclk-seq = <2 1 0>;
+		mmi,disable-seq = <1 0 0>, <2 0 1>, <4 0 0>, <0 0 0>;
+		mmi,wake-assert-seq = <4 0 0>;
+		mmi,wake-deassert-seq = <4 1 0>;
+		mmi,flash-start-seq = <5 1 0>, <0 1 11>;
+		mmi,flash-end-seq = <0 0 0>, <5 0 0>;
+	};
+
+	mods_v4l2_hal {
+		compatible = "mmi,mods-v4l2_hal";
+	};
+
+	gpio_keys {
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+	};
+};
+
+&usb3{
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
+
+&red_led {
+	linux,name = "charging";
+	/delete-property/ linux,default-trigger;
+};
+
+&sdhc_2 {
+	cd-gpios = <&tlmm 54 0x1>;
+};
+
+&pmx_mdss {
+	mipi_err_pin_active: mipi_err_pin_active {
+		mux {
+			pins = "gpio60";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio60";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-up; /* pull up */
+			input-enable;
+		};
+	};
+
+	mipi_err_pin_suspend: mipi_err_pin_suspend {
+		mux {
+			pins = "gpio60";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio60";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-up; /* pull up */
+			input-enable;
+		};
+	};
+};
+
+&pm660_l11 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	regulator-boot-on;
+};
+
+&pm660l_l6 {
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+	regulator-boot-on;
+};
+
+&pm660a_oledb {
+	qcom,oledb-default-voltage-mv = <7600>;
+};
+
+&mdss_dsi {
+	hw-config = "dual_dsi";
+
+	qcom,mdss-fb-map-prim = <&mdss_fb0>;
+	qcom,mdss-fb-map-sec = <&mdss_fb4>;
+};
+
+&mot_smd_601_1080p_cmd_v0 {
+	qcom,bklt-dcs-2bytes-enabled;
+	qcom,mdss-dsi-bl-min-level = <3>;
+	qcom,mdss-dsi-bl-max-level = <1023>;
+
+	qcom,panel-supply-entries {
+			qcom,panel-supply-entry@4 {
+				reg = <4>;
+				qcom,supply-name = "oled_disp";
+				qcom,supply-min-voltage = <5000000>;
+				qcom,supply-max-voltage = <8100000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+	};
+};
+
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active &mipi_err_pin_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend &mipi_err_pin_suspend>;
+
+	qcom,dsi-pref-prim-pan = <&mot_smd_601_1080p_cmd_v0>;
+	vci_disp-supply = <&pm660l_l6>;
+	vio_disp-supply = <&pm660_l11>;
+	elvdd_disp-supply = <&lab_regulator>;
+	elvss_disp-supply = <&ibb_regulator>;
+	oled_disp-supply = <&pm660a_oledb>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+
+	/delete-property/  qcom,mdss-fb-map;
+};
+
+&mdss_dsi1 {
+	status = "okay";
+	qcom,dsi-pref-prim-pan = <&mot_dba_panel>;
+	qcom,pluggable;
+	qcom,bridge-index = <0>;
+	apba_cdsi-supply = <&pm660_s5>;
+	qcom,msm_ext_disp = <&msm_ext_disp>;
+
+	/delete-property/  qcom,mdss-fb-map;
+};
+
+&mdss_dsi1_pll {
+	/delete-property/ qcom,dsi-pll-ssc-en;
+	/delete-property/ qcom,dsi-pll-ssc-mode;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+
+	mot_dba_panel: qcom,mdss_dsi_mot_dba_panel{
+		#include "dsi-panel-mot-mod-fwvga-video-common.dtsi"
+	};
+
+	mdss_fb4: qcom,mdss_fb_secondary {
+		cell-index = <4>;
+		compatible = "qcom,mdss-fb";
+	};
+};
+
+&mot_dba_panel {
+	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
+	qcom,bridge-name = "mot_dba";
+
+	/* These power supplies are for DBA panel */
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "apba_cdsi";
+			qcom,supply-min-voltage = <1200000>;
+			qcom,supply-max-voltage = <1300000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
+};
+
+&mdss_dp_ctrl {
+	status = "disabled";
+};
+
+&usb3{
+	mmi,ext-typec-switch;
+};
+
+&pm660_gpios {
+	/* GPIO 3 mod_spi_mphy_aprx1_sel*/
+	gpio@c200 {
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "okay";
+	};
+
+	/* GPIO 11 mod_ss_mphy_i2s_en*/
+	gpio@ca00 {
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "okay";
+	};
+
+	/* GPIO 12 mod_mux_sel1*/
+	gpio@cb00 {
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "okay";
+	};
+
+	/* GPIO 13 mod_mux_sel2*/
+	gpio@cc00 {
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pm660l_gpios {
+	gpio@c300 { /* GPIO4 */
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+
+	gpio@c400 { /* GPIO5 */
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+
+	gpio@c700 { /* GPIO8*/
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+};
+
+&pm660_gpios {
+	/* GPIO 3 (MODS SPI-I2C SELECT PIN) */
+	gpio@c200 {
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+};
+
+/delete-node/ &green_led;
+/delete-node/ &blue_led;
