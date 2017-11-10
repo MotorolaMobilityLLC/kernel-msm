@@ -71,7 +71,7 @@ extern uint8_t ito_get_result_status(void);
 #endif
 
 #ifdef HX_TP_PROC_DIAG
-	#define HIMAX_PROC_DIAG_FILE	"diag"
+	#define HIMAX_PROC_DIAG_FILE	"himax_diag"
 	struct proc_dir_entry *himax_proc_diag_file = NULL;
 	#define HIMAX_PROC_DIAG_ARR_FILE	"diag_arr"
 	struct proc_dir_entry *himax_proc_diag_arrange_file = NULL;
@@ -172,7 +172,7 @@ extern uint8_t ito_get_result_status(void);
 #endif
 
 #ifdef HX_TP_PROC_SELF_TEST
-	#define HIMAX_PROC_SELF_TEST_FILE	"self_test"
+	#define HIMAX_PROC_SELF_TEST_FILE	"himax_self_test"
 	struct proc_dir_entry *himax_proc_self_test_file = NULL;
 	uint32_t **raw_data_array;
 	uint8_t X_NUM = 0, Y_NUM = 0;
