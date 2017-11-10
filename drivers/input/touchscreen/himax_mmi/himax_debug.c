@@ -51,6 +51,7 @@ int g_max_mutual = 0;
 int g_min_mutual = 255;
 int g_max_self = 0;
 int g_min_self = 255;
+int g_self_test_c[8] = {0};
 
 #if defined(HX_TP_PROC_SELF_TEST) || defined(CONFIG_TOUCHSCREEN_HIMAX_ITO_TEST)
 int g_self_test_entered = 0;
@@ -1292,7 +1293,7 @@ void himax_ts_diag_func(void)
 	int i=0, j=0;
   unsigned int index = 0;
   int total_size = ic_data->HX_TX_NUM * ic_data->HX_RX_NUM * 2;
-	uint8_t  info_data[total_size];
+	uint8_t  *info_data;
 	int16_t *mutual_data;
 	int16_t *mutual_data_new;
 	int16_t *mutual_data_old;
@@ -1305,6 +1306,7 @@ void himax_ts_diag_func(void)
 	mutual_data = NULL;
 	mutual_data_new = NULL;
 	mutual_data_old = NULL;
+	info_data = kzalloc(sizeof(uint8_t)*total_size, GFP_KERNEL);
 	memset(write_buf, '\0', sizeof(write_buf));
 
 	dsram_type = g_diag_command/10;
@@ -1413,6 +1415,7 @@ void himax_ts_diag_func(void)
 			queue_delayed_work(private_ts->himax_diag_wq, &private_ts->himax_diag_delay_wrok, 1/10*HZ);
 		}
 	}
+	kfree(info_data);
 }
 
 static ssize_t himax_diag_write(struct file *filp, const char __user *buff, size_t len, loff_t *data)
@@ -2665,10 +2668,65 @@ static ssize_t himax_chip_self_test_store(struct device *dev,struct device_attri
 }
 */
 
+static ssize_t himax_self_test_write(struct file *file, const char *buff,
+	size_t len, loff_t *pos)
+{
+	char buf_tmp[6], length = 0;
+	unsigned long result    = 0;
+	uint8_t loop_i          = 0;
+	uint8_t loop_j          = 0;
+	uint16_t base           = 5;
+	uint8_t outData[5];
+	char buf[80] = {0};
+	int self_test_c[128] = {0};
+	if (len >= 80) {
+		I("%s: no command exceeds 80 chars.\n", __func__);
+		return -EFAULT;
+	}
+	if (copy_from_user(buf, buff, len)) {
+		return -EFAULT;
+	}
+	memset(buf_tmp, 0x0, sizeof(buf_tmp));
+	memset(outData, 0x0, sizeof(outData));
+	I("himax_self_test_write=%s \n", buf);
+	if (buf[0] == 'w' && buf[1] == ':') {
+		if (buf[2] == 'x') {
+			memcpy(buf_tmp, buf + 3, 2);
+		if (!kstrtoul(buf_tmp, 16, &result))
+			base = 5;
+			self_test_c[0] = result;
+			I("self_test_c[0]: %x\n", self_test_c[0]);
+			for (loop_i = 0; loop_i < 128; loop_i++) {
+				if (buf[base] == '\n') {
+					if (buf[0] == 'w') {
+						for (loop_j = 0; loop_j < 8; loop_j++)
+							g_self_test_c[loop_j] = self_test_c[loop_j];
+						I("g_self_test_c[0]: %x, %d\n", g_self_test_c[0], length);
+					}
+					I("\n");
+					return len;
+				}
+				if (buf[base + 1] == 'x') {
+					buf_tmp[4] = '\n';
+					buf_tmp[5] = '\0';
+					memcpy(buf_tmp, buf + base + 2, 2);
+					if (!kstrtoul(buf_tmp, 16, &result)) {
+						self_test_c[loop_i+1] = result;
+					I("self_test_c[%d]: %x\n", (loop_i+1), self_test_c[loop_i+1]);
+					}
+					length++;
+				}
+				base += 4;
+			}
+		}
+	}
+	return len;
+}
 static struct file_operations himax_proc_self_test_ops =
 {
 	.owner = THIS_MODULE,
 	.read = himax_self_test_read,
+	.write = himax_self_test_write,
 };
 #endif
 
@@ -3032,8 +3090,8 @@ int himax_touch_proc_init(void)
 #endif
 
 #ifdef HX_TP_PROC_DIAG
-	himax_proc_diag_file = proc_create(HIMAX_PROC_DIAG_FILE, (S_IWUSR|S_IRUGO),
-		himax_touch_proc_dir, &himax_proc_diag_ops);
+	himax_proc_diag_file = proc_create(HIMAX_PROC_DIAG_FILE, 0666,
+		NULL, &himax_proc_diag_ops);
 	if(himax_proc_diag_file == NULL)
 	{
 		E(" %s: proc diag file create failed!\n", __func__);
@@ -3095,8 +3153,8 @@ int himax_touch_proc_init(void)
 #endif
 
 #ifdef HX_TP_PROC_SELF_TEST
-	himax_proc_self_test_file = proc_create(HIMAX_PROC_SELF_TEST_FILE, (S_IRUGO),
-		himax_touch_proc_dir, &himax_proc_self_test_ops);
+	himax_proc_self_test_file = proc_create(HIMAX_PROC_SELF_TEST_FILE, 0666,
+		NULL, &himax_proc_self_test_ops);
 	if(himax_proc_self_test_file == NULL)
 	{
 		E(" %s: proc self_test file create failed!\n", __func__);
@@ -3178,7 +3236,7 @@ int himax_touch_proc_init(void)
 	fail_13:
 #endif
 #ifdef HX_TP_PROC_SELF_TEST
-	remove_proc_entry( HIMAX_PROC_SELF_TEST_FILE, himax_touch_proc_dir );
+	remove_proc_entry(HIMAX_PROC_SELF_TEST_FILE, NULL);
 	fail_11:
 #endif
 #ifdef HX_TP_PROC_FLASH_DUMP
@@ -3198,7 +3256,7 @@ int himax_touch_proc_init(void)
 	fail_8:
 #endif
 #ifdef HX_TP_PROC_DIAG
-	remove_proc_entry( HIMAX_PROC_DIAG_FILE, himax_touch_proc_dir );
+	remove_proc_entry(HIMAX_PROC_DIAG_FILE, NULL);
 	fail_7:
 	remove_proc_entry( HIMAX_PROC_DIAG_ARR_FILE, himax_touch_proc_dir );
 	fail_7_1:
@@ -3233,7 +3291,7 @@ void himax_touch_proc_deinit(void)
 	remove_proc_entry( HIMAX_PROC_HSEN_FILE, himax_touch_proc_dir );
 #endif
 #ifdef HX_TP_PROC_SELF_TEST
-	remove_proc_entry(HIMAX_PROC_SELF_TEST_FILE, himax_touch_proc_dir);
+	remove_proc_entry(HIMAX_PROC_SELF_TEST_FILE, NULL);
 #endif
 #ifdef HX_TP_PROC_FLASH_DUMP
 	remove_proc_entry(HIMAX_PROC_FLASH_DUMP_FILE, himax_touch_proc_dir);
@@ -3247,7 +3305,7 @@ void himax_touch_proc_deinit(void)
 	remove_proc_entry(HIMAX_PROC_REGISTER_FILE, himax_touch_proc_dir);
 #endif
 #ifdef HX_TP_PROC_DIAG
-	remove_proc_entry(HIMAX_PROC_DIAG_FILE, himax_touch_proc_dir);
+	remove_proc_entry(HIMAX_PROC_DIAG_FILE, NULL);
 #endif
 #ifdef HX_TP_PROC_RESET
 	remove_proc_entry( HIMAX_PROC_RESET_FILE, himax_touch_proc_dir );
