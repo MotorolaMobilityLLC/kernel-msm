@@ -396,9 +396,9 @@
 		vdd-switch-supply = <&pm660l_l3>;
 		mmi,vdd-voltage-level = <3300000 3300000>;
 
-		gpios = <&pm660_gpios 12 0>, /*MOD_MPHY_EN, output hgih*/
-			<&pm660_gpios 13 0>,  /* MOD_MPHY_SEL0, output high */
-			<&pm660_gpios 11 0>;           /* MOD_MPHY_SEL1, output high */
+		gpios = <&pm660_gpios 11 0>, /*MOD_MPHY_EN, output hgih*/
+			<&pm660_gpios 12 0>,  /* MOD_MPHY_SEL0, output high */
+			<&pm660_gpios 13 0>;           /* MOD_MPHY_SEL1, output high */
 		mmi,mods-switch-gpio-labels = "MOD_MPHY_EN",
 						"MOD_MPHY_SEL0",
 						"MOD_MPHY_SEL1";
