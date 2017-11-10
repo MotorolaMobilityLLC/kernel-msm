@@ -16,6 +16,7 @@
 #include "himax_ic.h"
 
 extern int i2c_error_count;
+extern int g_self_test_c[8];
 extern void himax_rst_gpio_set(int pinnum, uint8_t value);
 
 extern unsigned long	FW_VER_MAJ_FLASH_ADDR;
@@ -646,8 +647,8 @@ int himax_chip_self_test(struct i2c_client *client)
 
 	//Set criteria 0x10007F1C [0,1]=aa/up,down=, [2-3]=key/up,down, [4-5]=avg/up,down
 	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x7F; tmp_addr[0] = 0x1C;
-	tmp_data[3] = 0x0A; tmp_data[2] = 0x5A; tmp_data[1] = 0x0A; tmp_data[0] = 0x5A;
-	tmp_data[7] = 0x00; tmp_data[6] = 0x00; tmp_data[5] = 0x00; tmp_data[4] = 0x32;
+	tmp_data[3] = g_self_test_c[3]; tmp_data[2] = g_self_test_c[2]; tmp_data[1] = g_self_test_c[1]; tmp_data[0] = g_self_test_c[0];;
+	tmp_data[7] = g_self_test_c[7]; tmp_data[6] = g_self_test_c[6]; tmp_data[5] = g_self_test_c[5]; tmp_data[4] = g_self_test_c[4];
 	himax_flash_write_burst_lenth(client, tmp_addr, tmp_data, 8);
 
 	// 0x10007294 -> 0x0000190  //SET IIR_MAX FRAMES
@@ -2292,10 +2293,11 @@ void himax_get_DSRAM_data(struct i2c_client *client, uint8_t *info_data)
 	int mutual_data_size = x_num * y_num * 2;
 	int total_read_times = 0;
 	int address = 0;
-	uint8_t  temp_info_data[total_size + 8]; //max mkey size = 8
+	uint8_t  *temp_info_data;
 	uint16_t check_sum_cal = 0;
 	int fw_run_flag = -1;
 	//uint16_t temp_check_sum_cal = 0;
+	temp_info_data = kzalloc(sizeof(uint8_t)*(total_size + 8), GFP_KERNEL);
 
 	/*1. Read number of MKey R100070E8H to determin data size*/
 	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x70; tmp_addr[0] = 0xE8;
@@ -2313,6 +2315,7 @@ void himax_get_DSRAM_data(struct i2c_client *client, uint8_t *info_data)
 	if(fw_run_flag < 0)
 	{
 		I("%s Data NOT ready => bypass \n", __func__);
+		kfree(temp_info_data);
 		return;
 	}
 
@@ -2371,6 +2374,7 @@ void himax_get_DSRAM_data(struct i2c_client *client, uint8_t *info_data)
 	if (check_sum_cal % 0x10000 != 0)
 	{
 		I("%s check_sum_cal fail=%2X \n", __func__, check_sum_cal);
+		kfree(temp_info_data);
 		return;
 	}
 	else
@@ -2378,6 +2382,7 @@ void himax_get_DSRAM_data(struct i2c_client *client, uint8_t *info_data)
 		memcpy(info_data, &temp_info_data[4], mutual_data_size * sizeof(uint8_t));
 		//I("%s checksum PASS \n", __func__);
 	}
+	kfree(temp_info_data);
 
 }
 
