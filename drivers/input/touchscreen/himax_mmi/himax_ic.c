@@ -149,7 +149,7 @@ int himax_ic_esd_recovery(int hx_esd_event,int hx_zero_event,int length)
 		goto checksum_fail;
 	} else if (hx_zero_event == length) {
 		g_zero_event_count++;
-		I("[HIMAX TP MSG]: ESD event ALL Zero is %d times.\n", g_zero_event_count);
+	I("[HIMAX TP MSG]: ALL Zero event is %d times.\n", g_zero_event_count);
 		goto err_workqueue_out;
 	}
 /*
@@ -739,19 +739,47 @@ void himax_set_HSEN_enable(struct i2c_client *client, uint8_t HSEN_enable, bool 
 	//Not implement in 5442
 	uint8_t tmp_addr[4];
 	uint8_t tmp_data[4];
+	uint8_t back_data[4];
 	uint8_t retry_cnt = 0;
 
+	himax_sense_off(client);
 	do
 	{
-		himax_burst_enable(client, 0);
-		tmp_addr[3] = 0x90; tmp_addr[2] = 0x08; tmp_addr[1] = 0x80; tmp_addr[0] = 0x50;
-		tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = HSEN_enable;
-		himax_flash_write_burst(client, tmp_addr, tmp_data);
+		if (HSEN_enable) {
+			tmp_addr[3] = 0x10;
+			tmp_addr[2] = 0x00;
+			tmp_addr[1] = 0x7F;
+			tmp_addr[0] = 0x14;
+			tmp_data[3] = 0xA5;
+			tmp_data[2] = 0x5A;
+			tmp_data[1] = 0xA5;
+			tmp_data[0] = 0x5A;
+			himax_flash_write_burst(client, tmp_addr, tmp_data);
+			back_data[3] = 0XA5;
+			back_data[2] = 0X5A;
+			back_data[1] = 0XA5;
+			back_data[0] = 0X5A;
+		} else {
+			tmp_addr[3] = 0x10;
+			tmp_addr[2] = 0x00;
+			tmp_addr[1] = 0x7F;
+			tmp_addr[0] = 0x14;
+			tmp_data[3] = 0x00;
+			tmp_data[2] = 0x00;
+			tmp_data[1] = 0x00;
+			tmp_data[0] = 0x00;
+			himax_flash_write_burst(client, tmp_addr, tmp_data);
+			back_data[3] = 0X00;
+			back_data[2] = 0X00;
+			back_data[1] = 0X00;
+			back_data[0] = 0x00;
+		}
 
 		himax_register_read(client, tmp_addr, 4, tmp_data, false);
 		retry_cnt++;
-	}while (tmp_data[0] != HSEN_enable && retry_cnt < HIMAX_REG_RETRY_TIMES);
+	} while ((tmp_data[3] != back_data[3] || tmp_data[2] != back_data[2] || tmp_data[1] != back_data[1]  || tmp_data[0] != back_data[0]) && retry_cnt < HIMAX_REG_RETRY_TIMES);
 
+	himax_sense_on(client, 0);
 }
 
 int himax_palm_detect(uint8_t *buf)
@@ -769,6 +797,7 @@ void himax_set_SMWP_enable(struct i2c_client *client, uint8_t SMWP_enable, bool 
 	uint8_t back_data[4];
 	uint8_t retry_cnt = 0;
 
+	himax_sense_off(client);
 		//Enable:0x10007F10 = 0xA55AA55A
 	do
 	{
@@ -785,25 +814,30 @@ void himax_set_SMWP_enable(struct i2c_client *client, uint8_t SMWP_enable, bool 
 		else
 		{
 			tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x7F; tmp_addr[0] = 0x10;
-			tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = SMWP_enable;
+			tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = 0x00;
 			himax_flash_write_burst(client, tmp_addr, tmp_data);
 			back_data[3] = 0X00;
 			back_data[2] = 0X00;
 			back_data[1] = 0X00;
-			back_data[0] = SMWP_enable;
+			back_data[0] = 0x00;
 		}
 		himax_register_read(client, tmp_addr, 4, tmp_data, false);
 		I("%s: set_SMWP_enable tmp_data[0]=%d,tmp_data[1]=%d, tmp_data[2]=%d, tmp_data[3]=%d,  SMWP_enable=%d, retry_cnt=%d \n", __func__, tmp_data[0],tmp_data[1],tmp_data[2],tmp_data[3],SMWP_enable,retry_cnt);
 		retry_cnt++;
 	}while((tmp_data[3] != back_data[3] || tmp_data[2] != back_data[2] || tmp_data[1] != back_data[1]  || tmp_data[0] != back_data[0] ) && retry_cnt < HIMAX_REG_RETRY_TIMES);
 
+	himax_sense_on(client, 0);
 }
 
 void himax_usb_detect_set(struct i2c_client *client,uint8_t *cable_config)
 {
 	uint8_t tmp_addr[4];
 	uint8_t tmp_data[4];
+	uint8_t back_data[4];
+	uint8_t retry_cnt = 0;
 
+	himax_sense_off(client);
+	do {
 	if (cable_config[1] == 0x01) {
 		tmp_addr[3] = 0x10;
 		tmp_addr[2] = 0x00;
@@ -814,8 +848,11 @@ void himax_usb_detect_set(struct i2c_client *client,uint8_t *cable_config)
 		tmp_data[1] = 0xA5;
 		tmp_data[0] = 0x5A;
 		himax_flash_write_burst(client, tmp_addr, tmp_data);
-		I("%s: USB detect status IN!\n", __func__);
-	} else if (cable_config[1] == 0x00) {
+		back_data[3] = 0XA5;
+		back_data[2] = 0X5A;
+		back_data[1] = 0XA5;
+		back_data[0] = 0X5A;
+	} else {
 		tmp_addr[3] = 0x10;
 		tmp_addr[2] = 0x00;
 		tmp_addr[1] = 0x7F;
@@ -825,10 +862,15 @@ void himax_usb_detect_set(struct i2c_client *client,uint8_t *cable_config)
 		tmp_data[1] = 0x77;
 		tmp_data[0] = 0x88;
 		himax_flash_write_burst(client, tmp_addr, tmp_data);
-		I("%s: USB detect status OUT!\n", __func__);
-	} else {
-		E("%s: USB detect FAIL ,read wrong value = 0x%02X!\n", __func__, cable_config[1]);
+		back_data[3] = 0X77;
+		back_data[2] = 0X88;
+		back_data[1] = 0X77;
+		back_data[0] = 0x88;
 	}
+	himax_register_read(client, tmp_addr, 4, tmp_data, false);
+	retry_cnt++;
+	} while ((tmp_data[3] != back_data[3] || tmp_data[2] != back_data[2] || tmp_data[1] != back_data[1]  || tmp_data[0] != back_data[0]) && retry_cnt < HIMAX_REG_RETRY_TIMES);
+	himax_sense_on(client, 0);
 }
 
 void himax_burst_enable(struct i2c_client *client, uint8_t auto_add_4_byte)
@@ -1928,6 +1970,12 @@ int fts_ctpm_fw_upgrade_with_sys_fs_64k(struct i2c_client *client, unsigned char
 	{
 		burnFW_success = 0;
 	}
+	tmp_addr[3] = 0x80; tmp_addr[2] = 0x02; tmp_addr[1] = 0x04; tmp_addr[0] = 0xB4;
+	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = 0x00;
+	himax_register_write(client, tmp_addr, 4, tmp_data, false);
+	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x07; tmp_addr[0] = 0xFC;
+	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = 0x00;
+	himax_register_write(client, tmp_addr, 4, tmp_data, false);
 	//System reset
 	tmp_addr[3] = 0x90; tmp_addr[2] = 0x00; tmp_addr[1] = 0x00; tmp_addr[0] = 0x18;
 	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = 0x55;
@@ -2246,8 +2294,17 @@ bool himax_ic_package_check(struct i2c_client *client)
 
 void himax_power_on_init(struct i2c_client *client)
 {
+	uint8_t tmp_addr[4];
+	uint8_t tmp_data[4];
 	I("%s:\n", __func__);
 	himax_touch_information(client);
+	himax_sense_off(client);
+	tmp_addr[3] = 0x80; tmp_addr[2] = 0x02; tmp_addr[1] = 0x04; tmp_addr[0] = 0xB4;
+	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = 0x00;
+	himax_register_write(client, tmp_addr, 4, tmp_data, false);
+	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x07; tmp_addr[0] = 0xFC;
+	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = 0x00;
+	himax_register_write(client, tmp_addr, 4, tmp_data, false);
 	himax_sense_on(client, 0x01);
 }
 
@@ -2505,16 +2562,23 @@ uint8_t himax_read_DD_status(uint8_t *cmd_set, uint8_t *tmp_data)
 
 int himax_read_FW_status(uint8_t *state_addr, uint8_t *tmp_addr)
 {
-	//0x10007F44
-	tmp_addr[3] = 0x10;
-	tmp_addr[2] = 0x00;
-	tmp_addr[1] = 0x7F;
-	tmp_addr[0] = 0x44;
-	//0x900000F8
-	state_addr[3] = 0x90;
-	state_addr[2] = 0x00;
-	state_addr[1] = 0x00;
-	state_addr[0] = 0xF8;
+	uint8_t req_size = 0;
+	uint8_t status_addr[4] = {0x44, 0x7F, 0x00, 0x10};
+	uint8_t cmd_addr[4] = {0xF8, 0x00, 0x00, 0x90};
+
+	if (state_addr[0] == 0x01) {
+		state_addr[1] = 0x04;
+		state_addr[2] = status_addr[0]; state_addr[3] = status_addr[1]; state_addr[4] = status_addr[2]; state_addr[5] = status_addr[3];
+		req_size = 0x04;
+		himax_sense_off(private_ts->client);
+		himax_register_read(private_ts->client, status_addr, req_size, tmp_addr, false);
+		himax_sense_on(private_ts->client, 1);
+	} else if (state_addr[0] == 0x02) {
+		state_addr[1] = 0x30;
+		state_addr[2] = cmd_addr[0]; state_addr[3] = cmd_addr[1]; state_addr[4] = cmd_addr[2]; state_addr[5] = cmd_addr[3];
+		req_size = 0x30;
+		himax_register_read(private_ts->client, cmd_addr, req_size, tmp_addr, false);
+	}
 
 	return NO_ERR;
 
