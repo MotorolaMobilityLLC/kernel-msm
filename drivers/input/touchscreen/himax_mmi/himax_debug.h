@@ -134,7 +134,7 @@ extern uint8_t ito_get_result_status(void);
 	int handshaking_result = 0;
 	unsigned char debug_level_cmd = 0;
 	unsigned char upgrade_fw[128*1024];
-	uint8_t cmd_set[4];
+	uint8_t cmd_set[8];
 	uint8_t mutual_set_flag = 0;
 #endif
 
