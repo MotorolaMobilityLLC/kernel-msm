@@ -530,6 +530,8 @@ struct smb_charger {
 	bool			suspended;
 	int			aicl_threshold_mv;
 	int			hc_aicl_threshold_mv;
+
+	bool			single_path_usbin_switch;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
