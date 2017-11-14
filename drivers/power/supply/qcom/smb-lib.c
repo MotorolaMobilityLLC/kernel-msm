@@ -424,6 +424,28 @@ int smblib_set_charge_param(struct smb_charger *chg,
 	return rc;
 }
 
+static int mmi_set_usb_en_polarity(struct smb_charger *chip,
+			enum usb_en_pol pol)
+{
+	int rc = 0;
+	static int pre_pol = -1;
+
+	if (pre_pol == pol) {
+		pr_info("PMI: %s same pol(%d) ignore!\n", __func__, pol);
+		return 0;
+	}
+	pre_pol = pol;
+
+	rc = smblib_masked_write(chip, MISC_BUCKBOOST_CFG,
+				USB_EN_POLARITY,
+				pol ? USB_EN_POLARITY:0);
+	if (rc < 0)
+		smblib_err(chip, "%s Couldn't set 0x%x rc=%d\n",
+				__func__, MISC_BUCKBOOST_CFG, rc);
+
+	return rc;
+}
+
 int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 {
 	int rc = 0;
