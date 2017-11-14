@@ -3543,7 +3543,7 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 
 	reinit_completion(&pd->is_ready);
 	pd->send_request = true;
-	kick_sm(pd, 0);
+	kick_sm(pd, usb_compliance_mode ? SENDER_RESPONSE_TIME : 0);
 
 	/* wait for operation to complete */
 	if (!wait_for_completion_timeout(&pd->is_ready,
