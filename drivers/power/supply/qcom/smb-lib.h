@@ -296,6 +296,11 @@ enum turbo_ebsrc {
 	TURBO_EBSRC_VALID,
 };
 
+enum usb_en_pol {
+	USB_EN_ACTIVE_HIGH = 0,
+	USB_EN_ACTIVE_LOW,
+};
+
 struct mmi_params {
 	bool			factory_mode;
 	int			demo_mode;
