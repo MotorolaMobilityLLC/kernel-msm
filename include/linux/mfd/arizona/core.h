@@ -192,6 +192,9 @@ struct arizona {
 
 	struct mutex rate_lock;
 	struct mutex dspclk_ena_lock;
+
+	struct mutex slim_tx_lock;
+	struct mutex slim_rx_lock;
 };
 
 int arizona_clk32k_enable(struct arizona *arizona);
