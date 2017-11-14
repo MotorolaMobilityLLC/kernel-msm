@@ -88,9 +88,6 @@
 #define arizona_aif_dbg(_dai, fmt, ...) \
 	dev_dbg(_dai->dev, "AIF%d: " fmt, _dai->id, ##__VA_ARGS__)
 
-static struct mutex slim_tx_lock;
-static struct mutex slim_rx_lock;
-
 static struct slim_device *slim_audio_dev;
 static u8 slim_logic_addr;
 
@@ -3217,10 +3214,15 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 	u16 *handles, *group;
 	int chcnt;
 
+	if (!slim_audio_dev) {
+		dev_err(arizona->dev, "slimbus device unavailable.\n");
+		return -EINVAL;
+	}
+
 	switch (w->shift) {
 	case ARIZONA_SLIMTX1_ENA_SHIFT:
 		dev_dbg(codec->dev, "TX1\n");
-		mutex_lock(&slim_tx_lock);
+		mutex_lock(&arizona->slim_tx_lock);
 		porth = tx_porth1;
 		handles = tx_handles1;
 		group = &tx_group1;
@@ -3228,7 +3230,7 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		break;
 	case ARIZONA_SLIMTX5_ENA_SHIFT:
 		dev_dbg(codec->dev, "TX2\n");
-		mutex_lock(&slim_tx_lock);
+		mutex_lock(&arizona->slim_tx_lock);
 		porth = tx_porth2;
 		handles = tx_handles2;
 		group = &tx_group2;
@@ -3236,7 +3238,7 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		break;
 	case ARIZONA_SLIMTX7_ENA_SHIFT:
 		dev_dbg(codec->dev, "TX3\n");
-		mutex_lock(&slim_tx_lock);
+		mutex_lock(&arizona->slim_tx_lock);
 		porth = tx_porth3;
 		handles = tx_handles3;
 		group = &tx_group3;
@@ -3260,7 +3262,7 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		ret = slim_define_ch(slim_audio_dev, &prop, handles, chcnt,
 				     true, group);
 		if (ret != 0) {
-			mutex_unlock(&slim_tx_lock);
+			mutex_unlock(&arizona->slim_tx_lock);
 			dev_err(arizona->dev, "slim_define_ch() failed: %d\n",
 				ret);
 			return ret;
@@ -3270,7 +3272,7 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 			ret = slim_connect_src(slim_audio_dev, porth[i],
 					       handles[i]);
 			if (ret != 0) {
-				mutex_unlock(&slim_tx_lock);
+				mutex_unlock(&arizona->slim_tx_lock);
 				dev_err(arizona->dev, "src connect fail %d: %d\n",
 					i, ret);
 				return ret;
@@ -3279,7 +3281,7 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 
 		ret = slim_control_ch(slim_audio_dev, *group,
 					SLIM_CH_ACTIVATE, true);
-		mutex_unlock(&slim_tx_lock);
+		mutex_unlock(&arizona->slim_tx_lock);
 		if (ret != 0) {
 			dev_err(arizona->dev, "Failed to activate: %d\n", ret);
 			return ret;
@@ -3294,7 +3296,7 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		if (ret != 0)
 			dev_err(arizona->dev, "Failed to remove tx: %d\n", ret);
 
-		mutex_unlock(&slim_tx_lock);
+		mutex_unlock(&arizona->slim_tx_lock);
 		break;
 	}
 	return 0;
@@ -3315,11 +3317,16 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	int chcnt;
 	u32 rx_sampleszbits = 16, rx_samplerate = 48000;
 
+	if (!slim_audio_dev) {
+		dev_err(arizona->dev, "slimbus device unavailable.\n");
+		return -EINVAL;
+	}
+
 	/* BODGE: should do this per port */
 	switch (w->shift) {
 	case ARIZONA_SLIMRX1_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX1\n");
-		mutex_lock(&slim_rx_lock);
+		mutex_lock(&arizona->slim_rx_lock);
 		porth = rx_porth1;
 		handles = rx_handles1;
 		group = &rx_group1;
@@ -3329,7 +3336,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		break;
 	case ARIZONA_SLIMRX3_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX1M\n");
-		mutex_lock(&slim_rx_lock);
+		mutex_lock(&arizona->slim_rx_lock);
 		porth = rx_porth1m;
 		handles = rx_handles1;
 		group = &rx_group1;
@@ -3337,7 +3344,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		break;
 	case ARIZONA_SLIMRX5_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX2\n");
-		mutex_lock(&slim_rx_lock);
+		mutex_lock(&arizona->slim_rx_lock);
 		porth = rx_porth2;
 		handles = rx_handles2;
 		group = &rx_group2;
@@ -3347,7 +3354,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		break;
 	case ARIZONA_SLIMRX7_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX3\n");
-		mutex_lock(&slim_rx_lock);
+		mutex_lock(&arizona->slim_rx_lock);
 		porth = rx_porth3;
 		handles = rx_handles3;
 		group = &rx_group3;
@@ -3372,7 +3379,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		ret = slim_define_ch(slim_audio_dev, &prop, handles, chcnt,
 				     true, group);
 		if (ret != 0) {
-			mutex_unlock(&slim_rx_lock);
+			mutex_unlock(&arizona->slim_rx_lock);
 			dev_err(arizona->dev, "slim_define_ch() failed: %d\n",
 				ret);
 			return ret;
@@ -3382,7 +3389,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 			ret = slim_connect_sink(slim_audio_dev, &porth[i], 1,
 						handles[i]);
 			if (ret != 0) {
-				mutex_unlock(&slim_rx_lock);
+				mutex_unlock(&arizona->slim_rx_lock);
 				dev_err(arizona->dev, "sink connect fail %d: %d\n",
 					i, ret);
 				return ret;
@@ -3391,7 +3398,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 
 		ret = slim_control_ch(slim_audio_dev, *group,
 					SLIM_CH_ACTIVATE, true);
-		mutex_unlock(&slim_rx_lock);
+		mutex_unlock(&arizona->slim_rx_lock);
 		if (ret != 0) {
 			dev_err(arizona->dev, "Failed to activate: %d\n", ret);
 			return ret;
@@ -3403,7 +3410,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		dev_dbg(arizona->dev, "Stop slimbus Rx %x\n", *group);
 		ret = slim_control_ch(slim_audio_dev, *group,
 					SLIM_CH_REMOVE, true);
-		mutex_unlock(&slim_rx_lock);
+		mutex_unlock(&arizona->slim_rx_lock);
 		if (ret != 0)
 			dev_err(arizona->dev, "Failed to remove rx: %d\n", ret);
 
@@ -3425,6 +3432,12 @@ static int arizona_get_channel_map(struct snd_soc_dai *dai,
 dev_dbg(arizona->dev, "************\n");
 dev_dbg(arizona->dev, "%s!!!!!\n", __func__);
 dev_dbg(arizona->dev, "************\n");
+
+	if (!slim_audio_dev) {
+		dev_err(arizona->dev, "slimbus device unavailable.\n");
+		return -EINVAL;
+	}
+
 	if (slim_logic_addr == 0)
 		arizona_slim_get_la(slim_audio_dev, &laddr);
 	else
@@ -6222,8 +6235,6 @@ static int arizona_slim_audio_probe(struct slim_device *slim)
 	dev_crit(&slim->dev, "Probed\n");
 
 	slim_audio_dev = slim;
-	mutex_init(&slim_tx_lock);
-	mutex_init(&slim_rx_lock);
 
 	return 0;
 }
