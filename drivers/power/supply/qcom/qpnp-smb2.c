@@ -554,7 +554,9 @@ static int smb2_usb_set_prop(struct power_supply *psy,
 		rc = smblib_set_prop_pr_swap_in_progress(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_PD_VOLTAGE_MAX:
+#ifdef QCOM_BASE
 		rc = smblib_set_prop_pd_voltage_max(chg, val);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_PD_VOLTAGE_MIN:
 		rc = smblib_set_prop_pd_voltage_min(chg, val);
