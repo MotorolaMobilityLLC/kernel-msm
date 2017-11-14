@@ -4459,8 +4459,10 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	chg->otg_attempts = 0;
 	chg->pulse_cnt = 0;
 	chg->usb_icl_delta_ua = 0;
+#ifdef QCOM_BASE
 	chg->voltage_min_uv = MICRO_5V;
 	chg->voltage_max_uv = MICRO_5V;
+#endif
 	chg->pd_active = 0;
 	chg->pd_hard_reset = 0;
 	chg->pd_contract_uv = 0;
