@@ -471,6 +471,15 @@ int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 		}
 	}
 
+	if ((chg->single_path_usbin_switch) && (suspend)) {
+		if (chg->mmi.ebchg_state == EB_SINK) {
+			pr_info("PMI: %s usb suspend when eb sink, toggle usb_en pol\n", __func__);
+			mmi_set_usb_en_polarity(chg, USB_EN_ACTIVE_HIGH);
+		} else {
+			mmi_set_usb_en_polarity(chg, USB_EN_ACTIVE_LOW);
+		}
+	}
+
 	return rc;
 }
 
@@ -6348,8 +6357,11 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		vote(chip->dc_suspend_votable, EB_VOTER,
 		     true, 1);
 
-		if (gpio_is_valid(chip->mmi.ebchg_gpio.gpio))
+		if (gpio_is_valid(chip->mmi.ebchg_gpio.gpio)) {
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+			if (chip->single_path_usbin_switch)
+				mmi_set_usb_en_polarity(chip, USB_EN_ACTIVE_LOW);
+		}
 		chip->mmi.cl_ebsrc = 0;
 
 		ret.intval = MICRO_9V;
@@ -6422,6 +6434,15 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			vote(chip->dc_suspend_votable, EB_VOTER,
 			     true, 1);
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 1);
+			if (chip->single_path_usbin_switch) {
+				int suspend;
+				smblib_get_usb_suspend(chip, &suspend);
+				if (suspend) {
+					pr_info("PMI: %s usb suspend when eb sink, set usb_en pol\n",
+						__func__);
+					mmi_set_usb_en_polarity(chip, USB_EN_ACTIVE_HIGH);
+				}
+			}
 		}
 		break;
 	case EB_SRC:
@@ -6464,6 +6485,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			vote(chip->dc_suspend_votable, EB_VOTER,
 			     false, 1);
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+			if (chip->single_path_usbin_switch)
+				mmi_set_usb_en_polarity(chip, USB_EN_ACTIVE_LOW);
 
 			ret.intval = MICRO_9V;
 			rc = smblib_set_prop_pd_voltage_max(chip, &ret);
@@ -6481,6 +6504,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		if (!rc) {
 			chip->mmi.ebchg_state = state;
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+			if (chip->single_path_usbin_switch)
+				mmi_set_usb_en_polarity(chip, USB_EN_ACTIVE_LOW);
 			vote(chip->usb_icl_votable, EB_VOTER,
 			     false, 0);
 			vote(chip->dc_suspend_votable, EB_VOTER,
@@ -8304,6 +8329,9 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	if (rc)
 		chg->mmi.vfloat_comp_mv = 0;
 	chg->mmi.vfloat_comp_mv /= 1000;
+
+	chg->single_path_usbin_switch =
+		of_property_read_bool(node, "qcom,use-single-path-usbin-switch");
 
 	return rc;
 }
