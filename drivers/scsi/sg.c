@@ -434,6 +434,9 @@ sg_read(struct file *filp, char __user *buf, size_t count, loff_t * ppos)
 	struct sg_header *old_hdr = NULL;
 	int retval = 0;
 
+	if (unlikely(segment_eq(get_fs(), KERNEL_DS)))
+		return -EINVAL;
+
 	/*
 	 * This could cause a response to be stranded. Close the associated
 	 * file descriptor to free up any resources being held.
