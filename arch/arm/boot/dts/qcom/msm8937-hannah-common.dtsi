@@ -285,7 +285,7 @@
 	qcom,temp-slightly-cool-current-ma = <900>;
 	qcom,slightly-cool-temp-c = <15>;
 	qcom,enable-charging-limit;
-	qcom,upper-limit-capacity = <80>;
+	qcom,upper-limit-capacity = <70>;
 	qcom,lower-limit-capacity = <60>;
 };
 
