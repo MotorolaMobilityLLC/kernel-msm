@@ -389,6 +389,7 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 #if ENABLE_TRANSLATED_SINGLE_CLICK
 			/* Click event */
 			send_key_event(etspi, KEYEVENT_CLICK, KEYEVENT_CLICK_ACTION);
+			send_key_event(etspi, KEYEVENT_OFF, KEYEVENT_OFF_ACTION);
 #endif
 
 #endif	/* end of ENABLE_DOUBLE_CLICK */
@@ -409,6 +410,8 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 			g_KeyEventRaised = true;
 #if ENABLE_SWIPE_UP_DOWN
 			send_key_event(etspi, KEYEVENT_UP, KEYEVENT_UP_ACTION);
+			send_key_event(etspi, KEYEVENT_OFF, KEYEVENT_OFF_ACTION);
+
 #endif
 		}
 		break;
@@ -419,6 +422,8 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 			g_KeyEventRaised = true;
 #if ENABLE_SWIPE_UP_DOWN
 			send_key_event(etspi, KEYEVENT_DOWN, KEYEVENT_DOWN_ACTION);
+			send_key_event(etspi, KEYEVENT_OFF, KEYEVENT_OFF_ACTION);
+
 #endif
 		}
 
@@ -430,6 +435,7 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 		if (g_KeyEventRaised == false) {
 			g_KeyEventRaised = true;
 			send_key_event(etspi, KEYEVENT_RIGHT, KEYEVENT_RIGHT_ACTION);
+			send_key_event(etspi, KEYEVENT_OFF, KEYEVENT_OFF_ACTION);
 		}
 		#endif
 
@@ -441,6 +447,8 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 		if (g_KeyEventRaised == false) {
 			g_KeyEventRaised = true;
 			send_key_event(etspi, KEYEVENT_LEFT, KEYEVENT_LEFT_ACTION);
+			send_key_event(etspi, KEYEVENT_OFF, KEYEVENT_OFF_ACTION);
+
 		}
 		#endif
 
