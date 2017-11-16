@@ -203,7 +203,7 @@
 		compatible = "goodix,gt9xx-mmi";
 		reg = <0x5d>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <67 0x2008>;
+		interrupts = <67 0x00>;
 		vdd_ana-supply = <&pm660l_l3>;
 		goodix,rst-gpio = <&tlmm 66 0x00>;
 		goodix,irq-gpio = <&tlmm 67 0x00>;
