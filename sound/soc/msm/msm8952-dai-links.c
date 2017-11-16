@@ -477,20 +477,6 @@ static struct snd_soc_dai_link msm8952_marley_l34_dai_link[] = {
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 		.params = &cs35l34_params,
-	},
-	{
-		.name = "MARLEY-PDM",
-		.stream_name = "MARLEY-PDM Playback",
-		.cpu_name = "marley-codec",
-		.cpu_dai_name = "marley-pdm",
-		.codec_name = "cs35l35.2-0040",
-		.codec_dai_name = "cs35l35-pdm",
-		.dai_fmt = SND_SOC_DAIFMT_PDM | SND_SOC_DAIFMT_NB_NF |
-			SND_SOC_DAIFMT_CBS_CFS,
-		.no_pcm = 1,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		.params = &cs35l35_pdm_params,
 	}
 };
 
