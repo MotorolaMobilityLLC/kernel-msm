@@ -65,6 +65,7 @@ qcom,mdss-dsi-te-pin-select = <1>;
 qcom,mdss-dsi-te-dcs-command = <1>;
 qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
+qcom,mdss-dsi-post-init-delay = <1>;
 
 qcom,partial-update-enabled;
 qcom,panel-roi-alignment = <1440 16 1440 16 0 0>;
