@@ -288,13 +288,13 @@ int gtp_irq_control_enable(struct goodix_ts_data *ts, bool enable)
 			return retval;
 
 		/* You can select */
-		/* IRQ_TYPE_EDGE_RISING, */
-		/* IRQ_TYPE_EDGE_FALLING, */
-		/* IRQ_TYPE_LEVEL_LOW, */
-		/* IRQ_TYPE_LEVEL_HIGH */
+		/* IRQF_TRIGGER_RISING, */
+		/* IRQF_TRIGGER_FALLING, */
+		/* IRQF_TRIGGER_LOW, */
+		/* IRQF_TRIGGER_HIGH */
 		retval = request_threaded_irq(ts->client->irq, NULL,
 				goodix_ts_irq_handler,
-				IRQ_TYPE_LEVEL_LOW | IRQF_ONESHOT,
+				IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 				ts->client->name,
 				ts);
 
