@@ -322,7 +322,7 @@
 };
 
 &pmi_haptic {
-	qcom,vmax-mv = <2400>;
+	qcom,vmax-mv = <2600>;
 	/delete-property/ qcom,en-brake; /* disable internal reverse braking */
 	/delete-property/ qcom,brake-pattern; /* disable brake pattern */
 };
