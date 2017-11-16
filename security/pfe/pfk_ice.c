@@ -71,6 +71,27 @@ enum {
 };
 
 static bool pfk_key_set_using_hwkm;
+static void qti_pfk_ice_stat_failure(char *type, uint32_t id, int32_t err)
+{
+	static uint32_t set_key_failure, invalidate_key_failure;
+
+	if (err == 0)
+		return;
+
+	if (id == TZ_ES_CONFIG_SET_ICE_KEY_CE_TYPE_ID)
+		set_key_failure++;
+	else if (id == TZ_ES_INVALIDATE_ICE_KEY_CE_TYPE_ID)
+		invalidate_key_failure++;
+	else {
+		pr_warn("%s: unsupported id %d\n", __func__, id);
+		return;
+	}
+	pr_warn("%s: failed to call scm %d (%d %d)\n",
+			__func__, id, set_key_failure, invalidate_key_failure);
+	if (err != -EBUSY || !strcmp(type, (char *)PFK_SDCC))
+		BUG();
+	BUG_ON((invalidate_key_failure + set_key_failure) > 10);
+}
 
 static int set_key(uint32_t index, const uint8_t *key, const uint8_t *salt,
 		unsigned int data_unit, struct ice_device *ice_dev)
@@ -112,6 +133,7 @@ static int set_key(uint32_t index, const uint8_t *key, const uint8_t *salt,
 	if (ret)
 		pr_err("%s:SCM call Error: 0x%x\n", __func__, ret);
 
+	qti_pfk_ice_stat_failure(ice_dev->ice_instance_type, smc_id, ret);
 	qtee_shmbridge_free_shm(&shm);
 	return ret;
 }
@@ -137,6 +159,7 @@ static int clear_key(uint32_t index, struct ice_device *ice_dev)
 	ret = scm_call2_noretry(smc_id, &desc);
 	if (ret)
 		pr_err("%s:SCM call Error: 0x%x\n", __func__, ret);
+	qti_pfk_ice_stat_failure(ice_dev->ice_instance_type, smc_id, ret);
 	return ret;
 }
 
