@@ -258,22 +258,21 @@
 };
 
 &pmi8950_charger {
-	qcom,fastchg-current-ma = <2800>;
-	qcom,chg-thermal-mitigation = <2800>, <2300>,<1800>, <1500>,
-					<1000>,<700>, <400>;
+	qcom,fastchg-current-ma = <1850>;
+	qcom,chg-thermal-mitigation = <1850>, <1600>, <1200>, <1000>,
+					<700>, <400>;
 	/delete-property/ qcom,dc-thermal-mitigation;
-	qcom,parallel-charge-current-map = <2800 2800 0>,
-					<2300 2300 0>,
-					<1800 1800 0>,
-					<1500 1500 0>,
+	qcom,parallel-charge-current-map = <1850 1850 0>,
+					<1600 1600 0>,
+					<1200 1200 0>,
 					<1000 1000 0>,
 					<700 700 0>,
 					<400 400 0>;
 	qcom,stepchg-voltage-mv = <4200>;
-	qcom,stepchg-current-ma = <2000>;
-	qcom,stepchg-taper-ma = <1800>;
+	qcom,stepchg-current-ma = <1850>;
+	qcom,stepchg-taper-ma = <1500>;
 	qcom,stepchg-iterm-ma = <125>;
-	qcom,enable-hvdcp-9v;
+	/delete-property/ qcom,enable-hvdcp-9v;
 	qcom,weak-charger-check-enable;
 	qcom,temp-warm-current-ma = <1500>;
 	qcom,temp-cool-current-ma = <700>;
