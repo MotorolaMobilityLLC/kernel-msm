@@ -129,6 +129,10 @@
 			cirrus,irq-output-enable = <0x01>;
 			cirrus,irq-src-select = <0x01>;
 		};
+		cirrus,asp-tx-config {
+			cirrus,tx1-config = /bits/ 8 <0x00 0x18>;
+			cirrus,tx2-config = /bits/ 8 <0x01 0x19>;
+		};
 	};
 };
 
