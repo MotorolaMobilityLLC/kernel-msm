@@ -262,24 +262,6 @@ bool cs35l36_readable_reg(struct device *dev, unsigned int reg)
 	case CS35L36_PAC_INT5_CTRL:
 	case CS35L36_PAC_INT6_CTRL:
 	case CS35L36_PAC_INT7_CTRL:
-	case 0x00007064:
-	case 0x00007850:
-	case 0x00007854:
-	case 0x00007858:
-	case 0x0000785C:
-	case 0x00007860:
-	case 0x00007864:
-	case 0x00007868:
-	case 0x00007848:
-	case 0x00002088:
-	case 0x00003014:
-	case 0x00003854:
-	case 0x00003008:
-	case 0x00007418:
-	case 0x00002D10:
-	case 0x0000410C:
-	case 0x00006E08:
-	case 0x00006454:
 		return true;
 	default:
 		if (reg >= CS35L36_PAC_PMEM_WORD0 &&
