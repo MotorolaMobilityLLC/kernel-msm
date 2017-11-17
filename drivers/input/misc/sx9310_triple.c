@@ -26,6 +26,10 @@
 #include <linux/sensors.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/consumer.h>
+#include <linux/notifier.h>
+#include <linux/usb.h>
+#include <linux/power_supply.h>
+
 /* main struct, interrupt,init,pointers */
 #include <linux/input/sx9310_triple.h>
 
@@ -1001,6 +1005,77 @@ static ssize_t reg_dump_store(struct class *class,
 
 static CLASS_ATTR(reg, 0660, reg_dump_show, reg_dump_store);
 
+static void ps_notify_callback_work(struct work_struct *work)
+{
+	psx93XX_t this = container_of(work, sx93XX_t, ps_notify_work);
+	psx9310_t pDevice = NULL;
+	struct input_dev *input_top = NULL;
+	struct input_dev *input_bottom = NULL;
+	int ret = 0;
+
+	pDevice = this->pDevice;
+	input_top = pDevice->pbuttonInformation->input_top;
+	input_bottom = pDevice->pbuttonInformation->input_bottom;
+
+	LOG_INFO("Usb insert,going to force calibrate\n");
+	ret = write_register(this, SX9310_IRQSTAT_REG, 0xff);
+	if (ret < 0)
+		LOG_ERR(" Usb insert,calibrate cap sensor failed\n");
+
+	input_report_abs(input_top, ABS_DISTANCE, 0);
+	input_sync(input_top);
+	input_report_abs(input_bottom, ABS_DISTANCE, 0);
+	input_sync(input_bottom);
+}
+
+static int ps_get_state(struct power_supply *psy, bool *present)
+{
+	union power_supply_propval pval = { 0 };
+	int retval;
+
+	retval = power_supply_get_property(psy, POWER_SUPPLY_PROP_PRESENT,
+			&pval);
+	if (retval) {
+		LOG_ERR("%s psy get property failed\n", psy->name);
+		return retval;
+	}
+	*present = (pval.intval) ? true : false;
+	LOG_INFO("%s is %s\n", psy->name,
+			(*present) ? "present" : "not present");
+	return 0;
+}
+
+static int ps_notify_callback(struct notifier_block *self,
+		unsigned long event, void *p)
+{
+	psx93XX_t this = container_of(self, sx93XX_t, ps_notif);
+	struct power_supply *psy = p;
+	bool present;
+	int retval;
+
+	if ((event == PSY_EVENT_PROP_ADDED || event == PSY_EVENT_PROP_CHANGED)
+			&& psy && psy->get_property && psy->name &&
+			!strncmp(psy->name, "usb", sizeof("usb"))) {
+		LOG_INFO("ps notification: event = %lu\n", event);
+		retval = ps_get_state(psy, &present);
+		if (retval) {
+			LOG_ERR("psy get property failed\n");
+			return retval;
+		}
+
+		if (event == PSY_EVENT_PROP_CHANGED) {
+			if (this->ps_is_present == present) {
+				LOG_INFO("ps present state not change\n");
+				return 0;
+			}
+		}
+		this->ps_is_present = present;
+		schedule_work(&this->ps_notify_work);
+	}
+
+	return 0;
+}
+
 static struct class capsense_class = {
 	.name			= "capsense",
 	.owner			= THIS_MODULE,
@@ -1022,6 +1097,7 @@ static int sx9310_probe(struct i2c_client *client,
 	int ret;
 	struct input_dev *input_top = NULL;
 	struct input_dev *input_bottom = NULL;
+	struct power_supply *psy = NULL;
 
 	LOG_INFO("sx9310_probe()\n");
 
@@ -1227,9 +1303,32 @@ static int sx9310_probe(struct i2c_client *client,
 		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
 		mEnabled = 0;
 
+		INIT_WORK(&this->ps_notify_work, ps_notify_callback_work);
+		this->ps_notif.notifier_call = ps_notify_callback;
+		ret = power_supply_reg_notifier(&this->ps_notif);
+		if (ret) {
+			LOG_ERR(
+				"Unable to register ps_notifier: %d\n", ret);
+			goto free_ps_notifier;
+		}
+
+		psy = power_supply_get_by_name("usb");
+		if (psy) {
+			ret = ps_get_state(psy, &this->ps_is_present);
+			if (ret) {
+				LOG_ERR(
+					"psy get property failed rc=%d\n",
+					ret);
+				goto free_ps_notifier;
+			}
+		}
+
 		return  0;
 	}
 	return -ENOMEM;
+
+free_ps_notifier:
+	power_supply_unreg_notifier(&this->ps_notif);
 
 err_svdd_error:
 	LOG_ERR("%s svdd defer.\n", __func__);
