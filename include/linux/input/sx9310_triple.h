@@ -377,6 +377,11 @@ struct sx93XX {
 	 * or does not work properly */
 	u8 useIrqTimer;
 	u8 read_reg;
+
+	struct work_struct ps_notify_work;
+	struct notifier_block ps_notif;
+	bool ps_is_present;
+
 	/* Function Pointers */
 	int (*init)(psx93XX_t this);
 	/* since we are trying to avoid knowing registers, create a pointer to a
