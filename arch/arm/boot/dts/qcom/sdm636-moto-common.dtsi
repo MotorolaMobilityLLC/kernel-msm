@@ -1,0 +1,44 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm636-mtp.dtsi"
+#include "sdm660-moto-pinctrl.dtsi"
+
+&pm660_charger {
+	qcom,fcc-max-ua = <3000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,iterm-ma = <141>;
+	qcom,thermal-mitigation = <3000>,
+				   <2500>,
+				   <1500>,
+				   <900>,
+				   <600>,
+				   <300>;
+	qcom,mmi-temp-zones = <0 4200 562 0>,
+				<10 0 562 562>,
+				<15 0 1124 1124>,
+				<45 4200 3000 2000>,
+				<60 4200 2000 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <70>;
+	qcom,lower-limit-capacity = <60>;
+	qcom,hvdcp-force-5v;
+	qcom,typec-debounce;
+	qcom,usbpd-phandle = <&pm660_pdphy>;
+	qcom,source-current-ma = <900>;
+};
+
+&pm660_pdphy {
+	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
+	qcom,source-current = <900>;
+};
