@@ -1,0 +1,50 @@
+
+qcom,hg30-scud {
+	serialnum = "SB18C21114";
+	/* #3196921_Moto_HG30cos_3000mAh_averaged_MasterSlave_Nov14th2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "HG30-SCUD-3000mah";
+	qcom,chg-rslow-comp-c1 = <4715374>;
+	qcom,chg-rslow-comp-c2 = <9972817>;
+	qcom,chg-rs-to-rslow = <1331386>;
+	qcom,chg-rslow-comp-thr = <0xC3>;
+	qcom,checksum = <0x2C51>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 EC 83 32 7D
+		 42 81 64 77
+		 4F 83 29 63
+		 E5 79 D9 85
+		 18 82 C1 9A
+		 1F BE 91 CB
+		 5A 0E F5 83
+		 00 7D F5 80
+		 97 76 5A 83
+		 06 5B EF 81
+		 6B 8E 5D 82
+		 E6 98 C4 B7
+		 24 C8 52 10
+		 BA 0B 23 59
+		 14 70 B2 FD
+		 42 44 DC 44
+		 C6 42 00 00
+		 0A 4C DF 3A
+		 FE 2A 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 27 71 1B 70
+		 EE 74 71 83
+		 FA 76 37 6B
+		 E3 6F 71 72
+		 8F 74 F5 62
+		 D4 62 06 A8
+		 26 F2 62 F8
+		 64 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
