@@ -48,6 +48,10 @@
 		status = "disabled";
 };
 
+&sdhc_2 {
+	cd-gpios = <&tlmm 54 0x1>
+};
+
 &i2c_3 {
 	/delete-node/ focaltech_ts@38;
 	sw49106@28 {
