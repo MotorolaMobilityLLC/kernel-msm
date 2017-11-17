@@ -315,7 +315,7 @@
 };
 &soc{
 	qcom,msm-thermal {
-		qcom,config-info = "ejeter";
+		qcom,config-info = "jeterl";
 	};
 };
 
