@@ -295,7 +295,7 @@ static void __fixup_perms_recursive(struct dentry *dentry, struct limit_search *
 	info = SDCARDFS_I(dentry->d_inode);
 
 	if (needs_fixup(info->data->perm)) {
-		list_for_each_entry(child, &dentry->d_subdirs, d_u.d_child) {
+		list_for_each_entry(child, &dentry->d_subdirs, d_child) {
 			spin_lock_nested(&child->d_lock, depth + 1);
 			if (!(limit->flags & BY_NAME) || qstr_case_eq(&child->d_name, &limit->name)) {
 				if (child->d_inode) {
@@ -308,7 +308,7 @@ static void __fixup_perms_recursive(struct dentry *dentry, struct limit_search *
 			spin_unlock(&child->d_lock);
 		}
 	} else if (descendant_may_need_fixup(info->data, limit)) {
-		list_for_each_entry(child, &dentry->d_subdirs, d_u.d_child) {
+		list_for_each_entry(child, &dentry->d_subdirs, d_child) {
 			__fixup_perms_recursive(child, limit, depth + 1);
 		}
 	}
