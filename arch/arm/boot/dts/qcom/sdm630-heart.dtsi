@@ -49,7 +49,7 @@
 };
 
 &sdhc_2 {
-	cd-gpios = <&tlmm 54 0x1>
+	cd-gpios = <&tlmm 54 0x1>;
 };
 
 &i2c_3 {
