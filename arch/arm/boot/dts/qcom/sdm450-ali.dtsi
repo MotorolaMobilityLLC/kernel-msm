@@ -151,19 +151,6 @@
 			pinctrl-0 = <&fusb302_int_default>;
 			pinctrl-1 = <&fusb302_int_active>;
 		};
-
-		tps61280@75 {
-			compatible = "ti,tps61280";
-			status = "okay";
-			reg = <0x75>;
-			ti,config = <0x0D>;
-			ti,vout-floor = <0x0D>;
-			ti,vout-roof = <0x19>;
-			ti,ilim = <0x0F>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&tps61280_en_default>;
-
-		};
 	};
 
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
