@@ -157,6 +157,7 @@
 		ti,ilim = <0x0F>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tps61280_en_default>;
+		status = "disabled";
 	};
 };
 
