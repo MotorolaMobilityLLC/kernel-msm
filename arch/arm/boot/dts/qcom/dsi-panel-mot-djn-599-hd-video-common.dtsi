@@ -31,14 +31,13 @@ qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-reset-sequence = <1 1>, <0 10>, <1 50>;
 qcom,mdss-dsi-dis-reset-sequence = <1 10>, <0 0>;
 
-qcom,mdss-dsi-on-command = [
-	39 00 00 00 00 00 03 51 0C F4
+qcom,mdss-dsi-on-command = [05 01 00 00 78 00 01 11
+	05 01 00 00 14 00 01 29
+	39 01 00 00 00 00 03 51 0C F4
 	39 01 00 00 00 00 04 B9 83 10 2B
 	39 01 00 00 00 00 05 C9 04 07 D0 00
-	15 00 00 00 00 00 02 53 24
-	15 00 00 00 00 00 02 55 01
-	05 01 00 00 78 00 01 11
-	05 01 00 00 14 00 01 29];		/* Display on */
+	15 01 00 00 00 00 02 55 01
+	15 01 00 00 00 00 02 53 24];		/* Display on */
 
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 14 00 01 28
