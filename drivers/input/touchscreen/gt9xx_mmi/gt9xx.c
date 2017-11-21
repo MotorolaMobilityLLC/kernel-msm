@@ -1809,6 +1809,7 @@ static s8 gtp_request_io_port(struct goodix_ts_data *ts)
 		dev_err(&ts->client->dev, "Failed to request GPIO:%d, ERRNO:%d",
 				(s32)ts->pdata->irq_gpio, ret);
 		ret = -ENODEV;
+		goto request_int_failed;
 	} else {
 		GTP_GPIO_AS_INT(ts->pdata->irq_gpio);
 		ts->client->irq = gpio_to_irq(ts->pdata->irq_gpio);
@@ -1819,17 +1820,18 @@ static s8 gtp_request_io_port(struct goodix_ts_data *ts)
 		dev_err(&ts->client->dev, "Failed to request GPIO:%d, ERRNO:%d",
 				(s32)ts->pdata->rst_gpio, ret);
 		ret = -ENODEV;
+		goto request_rst_failed;
 	}
 
 	GTP_GPIO_AS_INPUT(ts->pdata->rst_gpio);
 
 	gtp_reset_guitar(ts->client, 20);
 
-	if (ret < 0) {
-		GTP_GPIO_FREE(ts->pdata->rst_gpio);
-		GTP_GPIO_FREE(ts->pdata->irq_gpio);
-	}
+	return ret;
 
+request_rst_failed:
+	GTP_GPIO_FREE(ts->pdata->irq_gpio);
+request_int_failed:
 	return ret;
 }
 
