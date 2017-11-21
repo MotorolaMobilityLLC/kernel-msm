@@ -123,6 +123,7 @@ static bool get_dload_mode(void)
 	return dload_mode_enabled;
 }
 
+#if 0
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -147,6 +148,7 @@ static void enable_emergency_dload_mode(void)
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -288,8 +290,10 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+#if 0
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#endif
 		} else if (!strncmp(cmd, "post-wdt", 8)) {
 			/* set  flag in PMIC to nofity BL post watchdog reboot */
 			qpnp_pon_store_extra_reset_info(RESET_EXTRA_POST_REBOOT_MASK,
