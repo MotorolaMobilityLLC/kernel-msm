@@ -24,7 +24,10 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb \
 	sdm630-payton-p2a.dtb \
 	sdm630-payton-p2b.dtb \
 	sdm630-evert-evt1.dtb \
-	sdm630-evert-dvt1a.dtb
+	sdm630-evert-dvt1a.dtb \
+	sdm630-evert-dvt1b.dtb \
+	sdm630-evert-dvt2.dtb \
+	sdm630-evert-pvt1.dtb
 
 ifeq ($(CONFIG_HEART_DTB),y)
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-heart-p0a.dtb
