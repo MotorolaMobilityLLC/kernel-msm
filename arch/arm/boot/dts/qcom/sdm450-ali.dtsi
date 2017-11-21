@@ -820,6 +820,9 @@
 &soc {
 	usb_otg_switch: usb-otg-switch {
 		vin-supply = <&smbcharger_charger_otg>;
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ qcom,otg-fault-gpio;
 		/delete-property/ gpio;
 	};
 };
