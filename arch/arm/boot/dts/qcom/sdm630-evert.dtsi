@@ -176,8 +176,8 @@
 		focaltech,family-id = <0x54>;
 		focaltech,reset-gpio = <&tlmm 66 0x00>;
 		focaltech,irq-gpio = <&tlmm 67 0x2008>;
-		focaltech,display-coords = <0 0 1080 2160>;
-		focaltech,panel-coords = <0 0 1080 2160>;
+		focaltech,display-coords = <0 0 1079 2159>;
+		focaltech,panel-coords = <0 0 1079 2159>;
 		focaltech,i2c-pull-up;
 		focaltech,group-id = <1>;
 		focaltech,hard-reset-delay-ms = <20>;
@@ -195,7 +195,7 @@
 		config_modifier-fps {
 			enable-notification;
 			fps-active {
-				touch-clip-area = <300 1870 800 1919 1>;
+				touch-clip-area = <260 2110 830 2159 1>;
 			};
 		};
 	};
