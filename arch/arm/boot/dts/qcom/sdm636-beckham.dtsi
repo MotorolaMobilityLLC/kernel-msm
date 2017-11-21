@@ -490,5 +490,9 @@
 	};
 };
 
+&pm660_charger {
+	qcom,use-single-path-usbin-switch;
+};
+
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
