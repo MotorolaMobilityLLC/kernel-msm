@@ -209,7 +209,7 @@
 			0 0 0 0
 			0 0 0 0
 		>;
-		cirrus,out-mono = <0 0 0 0 0 0>;
+		cirrus,out-mono = <0 1 0 0 0 0>;
 
 		cirrus,accdet {
 			#address-cells = <1>;
