@@ -2125,8 +2125,12 @@ static int smbchg_battchg_en(struct smbchg_chip *chip, bool enable,
 	mutex_lock(&chip->battchg_disabled_lock);
 	if (!enable)
 		battchg_disabled = chip->battchg_disabled | reason;
-	else
+	else {
 		battchg_disabled = chip->battchg_disabled & (~reason);
+		if (chip->otg_enabled)
+			*changed = false;
+		goto out;
+	}
 
 	/* avoid unnecessary spmi interactions if nothing changed */
 	if (!!battchg_disabled == !!chip->battchg_disabled) {
@@ -2146,8 +2150,10 @@ static int smbchg_battchg_en(struct smbchg_chip *chip, bool enable,
 	SMB_DBG(chip, "batt charging %s, battchg_disabled = %02x\n",
 			battchg_disabled == 0 ? "enabled" : "disabled",
 			battchg_disabled);
-out:
+
 	chip->battchg_disabled = battchg_disabled;
+
+out:
 	mutex_unlock(&chip->battchg_disabled_lock);
 	return rc;
 }
@@ -10188,6 +10194,9 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 			smbchg_set_parallel_vfloat(chip,
 						   chip->vfloat_parallel_mv);
 	}
+
+	if (chip->stepchg_state == STEP_NONE)
+		return;
 
 	if (chip->ext_high_temp ||
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) ||
