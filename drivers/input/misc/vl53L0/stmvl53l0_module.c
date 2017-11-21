@@ -1674,6 +1674,11 @@ static ssize_t stmvl53l0_store_offset(struct device *dev,
 			s_nump++;
 		}
 	}
+	if (data->enable_ps_sensor == 1) {
+		data->enable_ps_sensor = 0;
+		/* to stop */
+		stmvl53l0_stop(data);
+	}
 	mutex_unlock(&data->work_mutex);
 	return count;
 }
