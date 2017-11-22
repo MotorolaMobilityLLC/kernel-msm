@@ -1219,12 +1219,13 @@ skip_cudev_init:
 						     "%s%d", rmnet_dev_names[i],
 						     n);
 			if (IS_ERR(dev->devicep)) {
+				long status = PTR_ERR(dev->devicep);
 				pr_err("%s: device_create() returned %ld\n",
-					__func__, PTR_ERR(dev->devicep));
+					__func__, status);
 				cdev_del(&dev->cdev);
 				free_rmnet_ctrl_udev(dev->cudev);
 				kfree(dev);
-				return PTR_ERR(dev->devicep);
+				return status;
 			}
 
 			/*create /sys/class/hsicctl/hsicctlx/modem_wait*/
