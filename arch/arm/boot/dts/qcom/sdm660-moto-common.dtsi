@@ -33,7 +33,8 @@
 
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
+		df-serialnum = "SB18C20118";
+		#include "batterydata-js40-scud-pm660.dtsi"
 	};
 
 	reserved-memory {
