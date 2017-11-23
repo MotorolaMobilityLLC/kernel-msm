@@ -455,6 +455,7 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <70>;
 	qcom,lower-limit-capacity = <60>;
+	qcom,auto-voltage-comp-mv = <75>;
 };
 
 &pmi8950_fg {
