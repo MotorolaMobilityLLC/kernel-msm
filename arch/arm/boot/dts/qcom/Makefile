@@ -31,6 +31,7 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb \
 
 ifeq ($(CONFIG_HEART_DTB),y)
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-heart-p0a.dtb
+dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-p0a.dtb
 endif #CONFIG_HEART_DTB
 
 else
