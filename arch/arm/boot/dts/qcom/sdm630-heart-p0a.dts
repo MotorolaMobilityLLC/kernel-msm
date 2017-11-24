@@ -17,5 +17,5 @@
 #include "sdm630-heart.dtsi"
 
 / {
-	qcom,board-id = <0x4B 0x80A0>;
+	qcom,board-id = <0x4B 0xA100>;
 };
