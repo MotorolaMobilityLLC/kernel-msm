@@ -16,7 +16,7 @@
 	/delete-node/ pmx_motosh_in;
 	/delete-node/ factory_default;
 	/delete-node/ hub_reset_n_default;
-
+	/delete-node/ fps;
 
 
 
@@ -58,7 +58,7 @@
 				pins = "gpio8";
 				drive-strength = <2>; /* 2 MA */
 				bias-pull-up; /* pull up */
-				output-high;
+				output-low;
 			};
 		};
 

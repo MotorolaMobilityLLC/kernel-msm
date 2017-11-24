@@ -125,8 +125,8 @@
 	};
 
 	fpc_fpc1020{
-		pinctrl-0 = <&rst_active &int_active>;
-		pinctrl-1 = <&rst_suspend &int_suspend>;
+		pinctrl-0 = <&int_active &rst_active >;
+		pinctrl-1 = <&int_suspend &rst_suspend>;
 	};
 };
 

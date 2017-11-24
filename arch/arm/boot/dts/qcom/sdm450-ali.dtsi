@@ -454,8 +454,8 @@
 		rst = <&tlmm 8 0>;
 
 		pinctrl-names = "default", "suspend";
-		pinctrl-0 = <&rst_active &int_active &ldo_en_active>;
-		pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend>;
+		pinctrl-0 = <&ldo_en_active &int_active &rst_active>;
+		pinctrl-1 = <&ldo_en_suspend &int_suspend &rst_suspend>;
 	};
 
 	qcom,msm-thermal {
