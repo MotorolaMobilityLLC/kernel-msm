@@ -147,6 +147,7 @@ struct f2fs_dir_entry *find_target_dentry(struct f2fs_filename *fname,
 #endif
 		if (de_name.len == name->len &&
 				!memcmp(de_name.name, name->name, name->len)) {
+			goto found;
 		} else if (flags & LOOKUP_NOCASE && de_name.len == name->len &&
 			!strncasecmp(de_name.name, name->name, name->len)) {
 			goto found;
