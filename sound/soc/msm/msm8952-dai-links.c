@@ -2143,22 +2143,22 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 				__func__);
 			ret = of_property_read_string(dev->of_node,
 				"qcom,dba_cpu_dai_name", &dba_cpu_dai_name);
-			if (ret == 0) {
-				if (of_property_read_bool(dev->of_node, "qcom,ali-audio")) {
+			if (of_property_read_bool(dev->of_node, "qcom,ali-audio")) {
+				if (ret == 0)
 					msm8952_ali_hdmi_dba_dai_link[0].cpu_dai_name =
 						dba_cpu_dai_name;
-					memcpy(msm8952_dai_links + len4,
-					       msm8952_ali_hdmi_dba_dai_link,
-					       sizeof(msm8952_ali_hdmi_dba_dai_link));
-					len4 += ARRAY_SIZE(msm8952_ali_hdmi_dba_dai_link);
-				} else {
+				memcpy(msm8952_dai_links + len4,
+						msm8952_ali_hdmi_dba_dai_link,
+						sizeof(msm8952_ali_hdmi_dba_dai_link));
+				len4 += ARRAY_SIZE(msm8952_ali_hdmi_dba_dai_link);
+			} else { /* albus */
+				if (ret == 0)
 					msm8952_albus_hdmi_dba_dai_link[0].cpu_dai_name =
 						dba_cpu_dai_name;
-					memcpy(msm8952_dai_links + len4,
-					       msm8952_albus_hdmi_dba_dai_link,
-					       sizeof(msm8952_albus_hdmi_dba_dai_link));
-					len4 += ARRAY_SIZE(msm8952_albus_hdmi_dba_dai_link);
-				}
+				memcpy(msm8952_dai_links + len4,
+						msm8952_albus_hdmi_dba_dai_link,
+						sizeof(msm8952_albus_hdmi_dba_dai_link));
+				len4 += ARRAY_SIZE(msm8952_albus_hdmi_dba_dai_link);
 			}
 		}
 	} else {
