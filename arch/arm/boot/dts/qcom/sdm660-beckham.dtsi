@@ -200,6 +200,27 @@
 		qcom,config-info = "beckham";
 	};
 
+	qcom,sensor-information {
+		sensor_information24: qcom,sensor-information-24 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information25: qcom,sensor-information-25 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "back_temp";
+			qcom,scaling-factor = <1000>;
+		};
+	};
+
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
+
 	apba_ctrl {
 		gpios = <&pm660l_gpios 4 0>,      /* APBA_1P1_EN, output-low */
 			<&pcal_pin_2 12 0>,     /* APBA_BOOTRET, output-low */
