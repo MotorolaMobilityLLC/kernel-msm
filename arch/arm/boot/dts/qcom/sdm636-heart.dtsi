@@ -19,13 +19,13 @@
 / {
 	model = "heart";
 	compatible = "qcom,sdm636-heart", "qcom,sdm636-moto", "qcom,sdm636";
+};
 
-	firmware: firmware {
-		android {
-			compatible = "android,firmware";
-			fstab {
-				compatible = "android,fstab";
-				/delete-node/ vendor;
+&firmware {
+	android {
+		fstab {
+			vendor {
+				fsmgr_flags = "wait,slotselect,verify";
 			};
 		};
 	};
