@@ -24,6 +24,23 @@ struct madera_gpio {
 	struct gpio_chip gpio_chip;
 };
 
+static int mmi_is_factory_mode(void)
+{
+	static int is_factory_mode = -1;
+
+	struct device_node *np = of_find_node_by_path("/chosen");
+
+	if (is_factory_mode != -1)
+		return is_factory_mode;
+
+	if (np)
+		is_factory_mode = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return is_factory_mode;
+}
+
 static inline struct madera_gpio *to_madera_gpio(struct gpio_chip *chip)
 {
 	return container_of(chip, struct madera_gpio, gpio_chip);
@@ -92,6 +109,53 @@ static void madera_gpio_set(struct gpio_chip *chip, unsigned int offset,
 			   MADERA_GP1_LVL_MASK, value);
 }
 
+static int madera_gpio_direction_in_factorymode(struct gpio_chip *chip,
+					unsigned int offset)
+{
+	struct madera_gpio *madera_gpio = to_madera_gpio(chip);
+	struct madera *madera = madera_gpio->madera;
+	int ret;
+
+	ret = regmap_update_bits(madera->regmap,
+				  MADERA_GPIO1_CTRL_1 + (2 * offset),
+				  MADERA_GP1_FN_MASK,
+				  MADERA_GP1_FN_GPIO);
+	if (ret) {
+		pr_err("%s regmap_update_bits error %d\n", __func__, ret);
+		return ret;
+	}
+
+	return regmap_update_bits(madera->regmap,
+				  MADERA_GPIO1_CTRL_2 + (2 * offset),
+				  MADERA_GP1_DIR_MASK, MADERA_GP1_DIR);
+}
+
+static int madera_gpio_direction_out_factorymode(struct gpio_chip *chip,
+				     unsigned int offset, int value)
+{
+	struct madera_gpio *madera_gpio = to_madera_gpio(chip);
+	struct madera *madera = madera_gpio->madera;
+	int ret;
+
+	if (value)
+		value = MADERA_GP1_LVL;
+
+	ret = regmap_update_bits(madera->regmap,
+				 MADERA_GPIO1_CTRL_2 + (2 * offset),
+				 MADERA_GP1_DIR_MASK, 0);
+	if (ret < 0) {
+		pr_err("%s regmap_update_bits error %d\n", __func__, ret);
+		return ret;
+	}
+
+	value |= MADERA_GP1_FN_GPIO;
+
+	return regmap_update_bits(madera->regmap,
+				  MADERA_GPIO1_CTRL_1 + (2 * offset),
+				  (MADERA_GP1_LVL_MASK | MADERA_GP1_FN_MASK),
+				  value);
+}
+
 static struct gpio_chip template_chip = {
 	.label			= "madera",
 	.owner			= THIS_MODULE,
@@ -113,6 +177,13 @@ static int madera_gpio_probe(struct platform_device *pdev)
 				   GFP_KERNEL);
 	if (!madera_gpio)
 		return -ENOMEM;
+
+	if (mmi_is_factory_mode() == 1) {
+		pr_info("%s fset gpiochip function to the factorymode ones\n",
+			__func__);
+		template_chip.direction_input = madera_gpio_direction_in_factorymode;
+		template_chip.direction_output = madera_gpio_direction_out_factorymode;
+	}
 
 	madera_gpio->madera = madera;
 	madera_gpio->gpio_chip = template_chip;
