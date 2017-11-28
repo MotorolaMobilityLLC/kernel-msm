@@ -20,7 +20,7 @@
 
 	cs35l36_irq_default: cs35l36_irq_default {
 		config {
-			pins = "gpio58";
+			pins = "gpio46";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
@@ -90,6 +90,10 @@
 			"IN1BR", "MICBIAS1A",
 			"IN1BR", "MICBIAS1B";
 	};
+
+	mods_codec_shim {
+		compatible = "mmi,mods-codec-shim";
+	};
 };
 
 &slim_aud {
@@ -108,7 +112,7 @@
 		compatible = "cirrus,cs35l36";
 		reg = <0x40>;
 		reset-gpios = <&pcal_pin 9 0>;
-		irq-gpios = <&tlmm 58 0>;
+		irq-gpios = <&tlmm 46 0>;
 		interrupt-parent = <&tlmm>;
 		VA-supply = <&dummy_vreg>;
 		VP-supply = <&dummy_vreg>;
