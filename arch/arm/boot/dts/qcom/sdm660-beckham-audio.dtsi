@@ -224,6 +224,7 @@
 			acc@1 {
 				reg = <1>;
 
+				cirrus,micd-force-micbias;
 				cirrus,micd-detect-debounce-ms = <600>;
 				cirrus,micd-bias-start-time = <8>;
 				cirrus,micd-rate = <6>;
