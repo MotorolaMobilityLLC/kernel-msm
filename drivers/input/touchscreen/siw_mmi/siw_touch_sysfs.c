@@ -270,7 +270,7 @@ static ssize_t _store_lpwg_data(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int reply = 0;
 
-	if (kstrtoint(buf, 10, &reply) <= 0) {
+	if (kstrtoint(buf, 10, &reply) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -361,7 +361,7 @@ static ssize_t _store_mfts_state(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -392,7 +392,7 @@ static ssize_t _store_mfts_lpwg(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -426,7 +426,7 @@ static ssize_t _store_lockscreen_state(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -464,7 +464,7 @@ static ssize_t _store_ime_state(struct device *dev,
 	int value = 0;
 	int ret = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		goto out;
 	}
@@ -514,7 +514,7 @@ static ssize_t _store_quick_cover_state(struct device *dev,
 	int value = 0;
 	struct siw_ts *ts = to_touch_core(dev);
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -556,7 +556,7 @@ static ssize_t _store_sp_link_touch_off(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -598,7 +598,7 @@ static ssize_t _store_irq_state(struct device *dev,
 	struct siw_ts *ts = chip->ts;
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -646,7 +646,7 @@ static ssize_t _store_debug_tool_state(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int data = 0;
 
-	if (kstrtoint(buf, 10, &data) <= 0) {
+	if (kstrtoint(buf, 10, &data) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -690,7 +690,7 @@ static ssize_t _store_debug_option_state(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int new_mask = 0;
 
-	if (kstrtoint(buf, 10, &new_mask) <= 0) {
+	if (kstrtoint(buf, 10, &new_mask) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -729,7 +729,7 @@ static ssize_t _store_incoming_call_state(struct device *dev,
 	int value = 0;
 	int ret = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -833,7 +833,7 @@ static ssize_t _store_onhand(struct device *dev,
 	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -1028,7 +1028,7 @@ static ssize_t _store_init_late(struct device *dev,
 {
 	int value = 0;
 
-	if (kstrtoint(buf, 16, &value) <= 0) {
+	if (kstrtoint(buf, 16, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -1104,7 +1104,7 @@ static ssize_t _store_dbg_mon(struct device *dev,
 		return count;
 	}
 
-	if (kstrtoint(buf, 10, &pause) <= 0) {
+	if (kstrtoint(buf, 10, &pause) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -1178,7 +1178,7 @@ static ssize_t __store_g_state(struct device *dev,
 {
 	int value = 0;
 
-	if (kstrtoint(buf, 16, &value) <= 0) {
+	if (kstrtoint(buf, 16, &value) < 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return -EINVAL;
 	}
