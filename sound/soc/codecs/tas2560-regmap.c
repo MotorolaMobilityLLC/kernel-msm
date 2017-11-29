@@ -519,6 +519,17 @@ static int tas2560_i2c_probe(struct i2c_client *client,
 		}
 	}
 
+	if (gpio_is_valid(pTAS2560->mnSwitchGPIO)) {
+		nResult = gpio_request(pTAS2560->mnSwitchGPIO, "TAS2560_EAR_SWITH");
+		if (nResult) {
+			dev_err(pTAS2560->dev, "%s: Failed to request gpio %d\n", __func__,
+				pTAS2560->mnSwitchGPIO);
+			nResult = -EINVAL;
+			goto free_gpio;
+		}
+		gpio_direction_output(pTAS2560->mnSwitchGPIO, 0);
+	}
+
 	if (gpio_is_valid(pTAS2560->mnIRQGPIO)) {
 		nResult = gpio_request(pTAS2560->mnIRQGPIO, "TAS2560-IRQ");
 		if (nResult < 0) {
@@ -580,6 +591,8 @@ free_gpio:
 			gpio_free(pTAS2560->mnResetGPIO);
 		if (gpio_is_valid(pTAS2560->mnIRQGPIO))
 			gpio_free(pTAS2560->mnIRQGPIO);
+		if (gpio_is_valid(pTAS2560->mnSwitchGPIO))
+			gpio_free(pTAS2560->mnSwitchGPIO);
 	}
 
 end:
@@ -606,6 +619,8 @@ static int tas2560_i2c_remove(struct i2c_client *client)
 		gpio_free(pTAS2560->mnResetGPIO);
 	if (gpio_is_valid(pTAS2560->mnIRQGPIO))
 		gpio_free(pTAS2560->mnIRQGPIO);
+	if (gpio_is_valid(pTAS2560->mnSwitchGPIO))
+		gpio_free(pTAS2560->mnSwitchGPIO);
 
 	return 0;
 }
