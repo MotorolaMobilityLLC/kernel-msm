@@ -157,3 +157,12 @@
 	};
 };
 
+&soc{
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+};
