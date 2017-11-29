@@ -88,6 +88,7 @@
 };
 
 &i2c_3 {
+	status = "okay";
 	sw49106@28 {
 #include <dt-bindings/gpio/gpio.h>
 		compatible = "siw,sw49106";
