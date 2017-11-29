@@ -124,6 +124,7 @@
 			reg = <0x4c>;
 			ti,reset-gpio = <&tlmm 89 0>;
 			ti,irq-gpio = <&tlmm 90 0>;
+			ti,ear-switch-gpio = <&tlmm 116 0>;
 			ti,pll = <0>; /* refer to tas2560.h for more details */
 			ti,asi-format = <0>; /* 0, i2S; 1, DSP;  */
 			ti,load = <1>; /* 0, 8Ohm; 1, 6Ohm; 2, 4Ohm */
