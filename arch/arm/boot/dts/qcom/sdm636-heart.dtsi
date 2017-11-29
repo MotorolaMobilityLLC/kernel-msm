@@ -83,6 +83,10 @@
 		status = "disabled";
 };
 
+&sdhc_2 {
+	cd-gpios = <&tlmm 54 0x1>;
+};
+
 &i2c_3 {
 	sw49106@28 {
 #include <dt-bindings/gpio/gpio.h>
