@@ -355,6 +355,46 @@ static int tas2560_power_ctrl_put(struct snd_kcontrol *pKcontrol,
 	return 0;
 }
 
+static int tas2560_ear_switch_get(struct snd_kcontrol *pKcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+#ifdef KCONTROL_CODEC
+	struct snd_soc_codec *pCodec = snd_soc_kcontrol_codec(pKcontrol);
+#else
+	struct snd_soc_codec *pCodec = snd_kcontrol_chip(pKcontrol);
+#endif
+	struct tas2560_priv *pTAS2560 = snd_soc_codec_get_drvdata(pCodec);
+
+	ucontrol->value.integer.value[0] = pTAS2560->enablePmicEarPath;
+	dev_dbg(pCodec->dev, "%s: ear_switch_get = %d\n", __func__, (int)(pTAS2560->enablePmicEarPath));
+
+	return 0;
+}
+
+static int tas2560_ear_switch_set(struct snd_kcontrol *pKcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+#ifdef KCONTROL_CODEC
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
+#else
+	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
+#endif
+	struct tas2560_priv *pTAS2560 = snd_soc_codec_get_drvdata(codec);
+
+	dev_dbg(codec->dev, "%s: ucontrol->value.integer.value[0] = %ld\n", __func__, ucontrol->value.integer.value[0]);
+
+	 pTAS2560->enablePmicEarPath = (ucontrol->value.integer.value[0] ? true : false);
+
+	if (!gpio_is_valid(pTAS2560->mnSwitchGPIO)) {
+		dev_dbg(codec->dev, "%s: Invalid gpio: %d\n", __func__, pTAS2560->mnSwitchGPIO);
+		return false;
+	}
+
+	gpio_set_value_cansleep(pTAS2560->mnSwitchGPIO,  pTAS2560->enablePmicEarPath);
+
+	return 0;
+}
+
 static const char *load_text[] = {"8_Ohm", "6_Ohm", "4_Ohm"};
 
 static const struct soc_enum load_enum[] = {
@@ -365,6 +405,11 @@ static const char *Sampling_Rate_text[] = {"48_khz", "44.1_khz", "16_khz", "8_kh
 
 static const struct soc_enum Sampling_Rate_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(Sampling_Rate_text), Sampling_Rate_text),
+};
+
+static const char * const tas2560_ear_switch_ctrl_text[] = {"DISABLE", "ENABLE"};
+static const struct soc_enum tas2560_ear_switch_ctl_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tas2560_ear_switch_ctrl_text), tas2560_ear_switch_ctrl_text),
 };
 
 /*
@@ -381,6 +426,7 @@ static const struct snd_kcontrol_new tas2560_snd_controls[] = {
 			tas2560_get_Sampling_Rate, tas2560_set_Sampling_Rate),
 	SOC_SINGLE_EXT("TAS2560 PowerCtrl", SND_SOC_NOPM, 0, 0x0001, 0,
 			tas2560_power_ctrl_get, tas2560_power_ctrl_put),
+	SOC_ENUM_EXT("TAS2560 EAR Switch", tas2560_ear_switch_ctl_enum[0], tas2560_ear_switch_get, tas2560_ear_switch_set),
 };
 
 static struct snd_soc_codec_driver soc_codec_driver_tas2560 = {
