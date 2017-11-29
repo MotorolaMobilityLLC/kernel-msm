@@ -516,7 +516,7 @@ static ssize_t _store_tci_debug(struct device *dev,
 		return count;
 	}
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_hal_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -545,7 +545,7 @@ static ssize_t _store_lcd_mode(struct device *dev,
 	struct siw_ts *ts = chip->ts;
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_hal_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -599,7 +599,7 @@ static ssize_t _store_swipe_debug(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int value = 0;
 
-	if (kstrtoint(buf, 10, &value) <= 0) {
+	if (kstrtoint(buf, 10, &value) < 0) {
 		siw_hal_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -660,7 +660,7 @@ static ssize_t _store_reset_ctrl(struct device *dev,
 {
 	int value = 0;
 
-	if (kstrtoint(buf, 16, &value) <= 0) {
+	if (kstrtoint(buf, 16, &value) < 0) {
 		siw_hal_sysfs_err_invalid_param(dev);
 		return count;
 	}
