@@ -182,6 +182,8 @@ struct tas2560_priv {
 	int mnASIFormat;
 	int mnResetGPIO;
 	int mnIRQGPIO;
+	int mnSwitchGPIO;
+	bool enablePmicEarPath;
 	int mnIRQ;
 	bool mbIRQEnable;
 	int mnSamplingRate;
