@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +31,7 @@
 #define WAN_IOCTL_QUERY_TETHER_STATS     6
 #define WAN_IOCTL_RESET_TETHER_STATS     7
 #define WAN_IOCTL_QUERY_DL_FILTER_STATS  8
+#define WAN_IOCTL_QUERY_TETHER_STATS_ALL 9
 
 /* User space may not have this defined. */
 #ifndef IFNAMSIZ
@@ -81,6 +82,16 @@ struct wan_ioctl_query_tether_stats {
 	uint64_t ipv6_tx_bytes;
 	uint64_t ipv6_rx_packets;
 	uint64_t ipv6_rx_bytes;
+};
+
+struct wan_ioctl_query_tether_stats_all {
+	/* Name of the upstream interface */
+	char upstreamIface[IFNAMSIZ];
+	/* enum of tether interface */
+	enum ipacm_client_enum ipa_client;
+	uint8_t reset_stats;
+	uint64_t tx_bytes;
+	uint64_t rx_bytes;
 };
 
 struct wan_ioctl_reset_tether_stats {
@@ -134,5 +145,9 @@ struct wan_ioctl_query_dl_filter_stats {
 #define WAN_IOC_QUERY_DL_FILTER_STATS _IOWR(WAN_IOC_MAGIC, \
 		WAN_IOCTL_QUERY_DL_FILTER_STATS, \
 		struct wan_ioctl_query_dl_filter_stats *)
+
+#define WAN_IOC_QUERY_TETHER_STATS_ALL _IOWR(WAN_IOC_MAGIC, \
+		WAN_IOCTL_QUERY_TETHER_STATS_ALL, \
+		struct wan_ioctl_query_tether_stats_all *)
 
 #endif /* _RMNET_IPA_FD_IOCTL_H */
