@@ -695,6 +695,14 @@ int tas2560_parse_dt(struct device *dev, struct tas2560_priv *pTAS2560)
 		dev_dbg(pTAS2560->dev, "ti,irq-gpio=%d", pTAS2560->mnIRQGPIO);
 	}
 
+	pTAS2560->mnSwitchGPIO = of_get_named_gpio(np, "ti,ear-switch-gpio", 0);
+	if (!gpio_is_valid(pTAS2560->mnSwitchGPIO)) {
+		dev_err(pTAS2560->dev, "Looking up %s property in node %s failed %d\n",
+			 "ti,ear-switch-gpio", np->full_name, pTAS2560->mnSwitchGPIO);
+	} else {
+		dev_err(pTAS2560->dev,  "ti,ear-switch-gpio=%d", pTAS2560->mnSwitchGPIO);
+	}
+
 	rc = of_property_read_u32(np, "ti,ppg", &pTAS2560->mnPPG);
 	if (rc) {
 		dev_err(pTAS2560->dev, "Looking up %s property in node %s failed %d\n",
