@@ -113,7 +113,8 @@ static ssize_t ufs_qcom_dbg_testbus_cfg_write(struct file *file,
 	unsigned long flags;
 	struct ufs_hba *hba = host->hba;
 
-	cnt = simple_write_to_buffer(configuration, TESTBUS_CFG_BUFF_LINE_SIZE,
+	cnt = simple_write_to_buffer(configuration,
+		TESTBUS_CFG_BUFF_LINE_SIZE - 1,
 		&buff_pos, ubuf, cnt);
 	if (cnt < 0) {
 		dev_err(host->hba->dev, "%s: failed to read user data\n",
