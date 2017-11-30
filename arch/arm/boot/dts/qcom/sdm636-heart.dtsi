@@ -121,6 +121,39 @@
 	};
 };
 
+&i2c_2 { /* cypress capsensor */
+	status = "okay";
+	cypress_capsensor@1D {
+		compatible = "cypress,sf3155";
+		label = "MotorolaCapSense";
+		reg = <0x1D>;
+		vdd-supply = <&pm660l_l3>;
+		vddio-supply = <&pm660l_l3>;
+		avdd-supply = <&pm660l_l3>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <75 0x2008>;
+		silicon_id = <0x0BB11477>;
+		block_size = <64>;
+		num_of_blocks = <256>;
+		secure_bytes = <32>;
+		pinctrl-names = "default";
+		gpios = <&tlmm 20 0>, /* RESET */
+			<&tlmm 8 0>, /* programming SCLK */
+			<&tlmm 9 0>, /* programming SDAT */
+			<&tlmm 75 0x2008>;
+		use-raw-gpio-rw = <1>;
+		gpio_base_addr = <0x03000004>;
+		gpio_base_size = <0x00a00000>;
+		gpio_clk_group = <0x00900000>;
+		gpio_dat_group = <0x00900000>;
+		cyttsp,sar-status-reg = <0x50>;
+		cyttsp,standby-reg = <0x51>;
+		cyttsp,bootloader-addr = <0x02>;
+		cyttsp,key-num = <4>;
+		cyttsp,key-codes = <4>;
+	};
+};
+
 &i2c_6 { /* BLSP1 QUP6 (NFC) */
 	status = "okay";
 	nq@28 {
