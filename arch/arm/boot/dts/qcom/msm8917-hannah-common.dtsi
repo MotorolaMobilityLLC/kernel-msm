@@ -322,13 +322,13 @@
 };
 
 &pmi8950_charger {
-	qcom,fastchg-current-ma = <2800>;
-	qcom,chg-thermal-mitigation = <2800>, <2300>,<1800>, <1500>, <1000>,
+	qcom,fastchg-current-ma = <3000>;
+	qcom,chg-thermal-mitigation = <3000>, <2500>,<2000>, <1500>, <1000>,
 					<700>, <400>;
 	/delete-property/ qcom,dc-thermal-mitigation;
-	qcom,parallel-charge-current-map = <2800 2800 0>,
-					<2300 2300 0>,
-					<1800 1800 0>,
+	qcom,parallel-charge-current-map = <3000 3000 0>,
+					<2500 2500 0>,
+					<2000 2000 0>,
 					<1500 1500 0>,
 					<1000 1000 0>,
 					<700 700 0>,
