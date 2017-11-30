@@ -195,8 +195,8 @@ static int32_t PS_Config_Lmt_FW_Rawdata_N[40 * 40] = {
 #endif /* #if TOUCH_KEY_NUM > 0 */
 };
 
-static int32_t PS_Config_Lmt_FW_CC_P = 150;
-static int32_t PS_Config_Lmt_FW_CC_N = 100;
+static int32_t PS_Config_Lmt_FW_CC_P = 130;
+static int32_t PS_Config_Lmt_FW_CC_N = 80;
 static int32_t PS_Config_Lmt_Key_FW_CC_P = 38;
 static int32_t PS_Config_Lmt_Key_FW_CC_N = 9;
 static int32_t PS_Config_Lmt_FW_CC_I_P = 25;
