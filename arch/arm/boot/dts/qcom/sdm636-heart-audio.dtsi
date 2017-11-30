@@ -1,0 +1,439 @@
+/* Copyright (c) 2017, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm {
+	cs35l36_reset_default: cs35l36_reset_default {
+		config {
+			pins = "gpio63";
+			output-low;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+	cs35l36_irq_default: cs35l36_irq_default {
+		config {
+			pins = "gpio76";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	moon_irq_default: moon_irq_default {
+		config {
+			pins = "gpio21";
+			drive-strength = <2>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+	moon_reset_default: moon_reset_default {
+		config {
+			pins = "gpio55";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	usb_aud_sw_sel: usb_aud_sw_sel {
+		config {
+			pins = "gpio80";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+};
+
+&soc {
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+			status = "disabled";
+		};
+
+		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
+			status = "disabled";
+		};
+
+		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+			status = "disabled";
+		};
+
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
+			status = "disabled";
+		};
+
+		dai_mi2s6: qcom,msm-dai-q6-mi2s-senary {
+			status = "disabled";
+		};
+
+		dai_int_mi2s0: qcom,msm-dai-q6-int-mi2s0 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s1: qcom,msm-dai-q6-int-mi2s1 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s2: qcom,msm-dai-q6-int-mi2s2 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s3: qcom,msm-dai-q6-int-mi2s3 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s4: qcom,msm-dai-q6-int-mi2s4 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s5: qcom,msm-dai-q6-int-mi2s5 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s6: qcom,msm-dai-q6-int-mi2s6 {
+			status = "disabled";
+		};
+	};
+
+	qcom,msm-dai-tdm-pri-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-pri-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-sec-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-sec-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-tert-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-tert-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-quat-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-quat-tx {
+		status = "disabled";
+	};
+
+	ospl {
+		compatible = "mmi,ospl2xx";
+		status = "ok";
+		mmi,ospl-afe-port-id = <16384 16387>;
+		mmi,ospl-left-feedback;
+		mmi,ospl-passive-f0;
+	};
+
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+
+	/delete-node/ qcom,wcd-dsp-mgr;
+	/delete-node/ qcom,wcd-dsp-glink;
+	/delete-node/ sound-9335;
+	/delete-node/ sound-tavil;
+
+	sound-madera {
+		status = "ok";
+		compatible = "qcom,sdm660-asoc-snd-madera";
+		qcom,model = "sdm660-madera-snd-card";
+		qcom,msm-mclk-freq = <9600000>;
+		qcom,ext-disp-audio-rx;
+		qcom,wcn-btfm;
+
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>,
+				<&pcm_noirq>, <&cs47l90>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+				"msm-pcm-dsp.2", "msm-voip-dsp",
+				"msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless",
+				"msm-pcm-afe", "msm-lsm-client",
+				"msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp", "msm-pcm-dsp-noirq",
+				"cs47l90-codec";
+		asoc-cpu = <&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>,
+				<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
+				<&afe_proxy_tx>, <&incall_record_rx>,
+				<&incall_record_tx>, <&incall_music_rx>,
+				<&incall_music_2_rx>, <&sb_5_rx>,
+				<&usb_audio_rx>, <&usb_audio_tx>, <&sb_6_rx>,
+				<&sb_7_rx>, <&sb_7_tx>, <&sb_8_tx>,
+				<&dai_pri_tdm_rx_0>, <&dai_pri_tdm_tx_0>,
+				<&dai_sec_tdm_rx_0>, <&dai_sec_tdm_tx_0>,
+				<&dai_tert_tdm_rx_0>, <&dai_tert_tdm_tx_0>,
+				<&dai_quat_tdm_rx_0>, <&dai_quat_tdm_tx_0>;
+		asoc-cpu-names = "msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
+				"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
+				"msm-dai-q6-dev.16396", "msm-dai-q6-dev.16398",
+				"msm-dai-q6-dev.16399", "msm-dai-q6-dev.16401",
+				"msm-dai-q6-tdm.36864", "msm-dai-q6-tdm.36865",
+				"msm-dai-q6-tdm.36880", "msm-dai-q6-tdm.36881",
+				"msm-dai-q6-tdm.36896", "msm-dai-q6-tdm.36897",
+				"msm-dai-q6-tdm.36912", "msm-dai-q6-tdm.36913";
+		asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
+		asoc-codec-names = "msm-stub-codec.1",
+				"msm-ext-disp-audio-codec-rx";
+		qcom,audio-routing =
+			"IN2AL", "MICBIAS2A",
+			"IN1AL", "MICBIAS2B",
+			"IN2R",  "MICBIAS2C",
+			"IN1AR", "MICBIAS2D",
+			"IN1BR", "MICBIAS1A",
+			"IN1BR", "MICBIAS1B";
+	};
+};
+
+&slim_aud {
+	/delete-node/ tasha_codec;
+	/delete-node/ tavil_codec;
+	madera-codec {
+		compatible = "cirrus,madera-slim-audio";
+		elemental-addr = [00 00 64 63 FA 01];
+	};
+};
+
+&i2c_2 {
+	status = "ok";
+	cs35l36@40 {
+		status = "ok";
+		compatible = "cirrus,cs35l36";
+		reg = <0x40>;
+		reset-gpios = <&tlmm 63 0>;
+		irq-gpios = <&tlmm 76 0>;
+		interrupt-parent = <&tlmm>;
+		VA-supply = <&dummy_vreg>;
+		VP-supply = <&dummy_vreg>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l36_irq_default &cs35l36_reset_default>;
+
+		cirrus,left-channel-amp;
+		cirrus,boost-ind-nanohenry = <1000>; /* 1uH */
+		cirrus,boost-ctl-millivolt = <10000>;
+		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,amp-gain-zc;
+		cirrus,ldm-mode-select = <0x01>;
+		cirrus,pdm-ldm-exit;
+		cirrus,pdm-ldm-enter;
+		cirrus,weak-fet-delay = <0x04>;
+		cirrus,weak-fet-thld = <0x01>;
+		cirrus,temp-warn-threshold = <0x01>;
+
+		cirrus,irq-config {
+			cirrus,irq-drive-select = <0x01>;
+			cirrus,irq-polarity = <0x01>;
+			cirrus,irq-gpio-select = <0x01>;
+			cirrus,irq-output-enable = <0x01>;
+			cirrus,irq-src-select = <0x01>;
+		};
+		cirrus,asp-tx-config {
+			cirrus,tx1-config = /bits/ 8 <0x00 0x18>;
+			cirrus,tx2-config = /bits/ 8 <0x01 0x19>;
+		};
+	};
+};
+
+&spi_7 {
+	status = "ok";
+	cs47l90: cs47l90@0 {
+		compatible = "cirrus,cs47l90";
+		spi-max-frequency = <26000000>;
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <21 0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		reset-gpios = <&tlmm 55 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&moon_irq_default &moon_reset_default>;
+
+		AVDD-supply = <&pm660_l13>;
+		DBVDD1-supply = <&pm660_l13>;
+		DBVDD2-supply = <&pm660_l13>;
+		CPVDD-supply = <&pm660_l13>;
+		CPVDD1-supply = <&pm660_l13>;
+		CPVDD2-supply = <&pm660_l14>;
+		DCVDD-supply = <&pm660_l13>;
+		SPKVDD-supply = <&dummy_vreg>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		cirrus,gpio-defaults = <
+			0x00002000 0x0000f000 /* CDC_DEBUG / GPIO1 */
+			0x00002000 0x0000f000 /* ADSP_WAKE / GPIO2 */
+			0x00000040 0x00000000 /* SB_MCLK / GPIO3 */
+			0xffffffff 0xffffffff /* GPIO4 */
+			0xffffffff 0xffffffff /* USBC-HS / GPIO5 */
+			0xffffffff 0xffffffff /* USBC-HS / GPIO6 */
+			0xffffffff 0xffffffff /* GPIO7 */
+			0xffffffff 0xffffffff /* GPIO8 */
+			0xffffffff 0xffffffff /* GPIO9 */
+			0xffffffff 0xffffffff /* GPIO10 */
+			0xffffffff 0xffffffff /* GPIO11 */
+			0xffffffff 0xffffffff /* GPIO12 */
+			0xffffffff 0xffffffff /* GPIO13 */
+			0xffffffff 0xffffffff /* GPIO14 */
+			0x00002000 0x0000f000 /* AIF1TXDAT / GPIO15 */
+			0x00002000 0x0000f000 /* AIF1BCLK / GPIO16 */
+			0x00002000 0x0000f000 /* AIF1RXDAT / GPIO17 */
+			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO18 */
+			0x00002000 0x0000f000 /* AIF2TXDAT / GPIO19 */
+			0x00002000 0x0000f000 /* AIF2BCLK / GPIO20 */
+			0x00002000 0x0000f000 /* AIF2RXDAT / GPIO21 */
+			0x00002000 0x0000f000 /* AIF2LRCLK / GPIO22 */
+			0xffffffff 0xffffffff /* GPIO23 */
+			0xffffffff 0xffffffff /* GPIO24 */
+			0xffffffff 0xffffffff /* GPIO25 */
+			0xffffffff 0xffffffff /* GPIO26 */
+			0xffffffff 0xffffffff /* GPIO27 */
+			0xffffffff 0xffffffff /* GPIO28 */
+			0xffffffff 0xffffffff /* GPIO29 */
+			0xffffffff 0xffffffff /* GPIO30 */
+			0xffffffff 0xffffffff /* GPIO31 */
+			0xffffffff 0xffffffff /* GPIO32 */
+			0xffffffff 0xffffffff /* GPIO33 */
+			0xffffffff 0xffffffff /* GPIO34 */
+			0xffffffff 0xffffffff /* GPIO35 */
+			0xffffffff 0xffffffff /* GPIO36 */
+			0x00002000 0x0000f000 /* PDM_CLK / GPIO37 */
+			0x00002000 0x0000f000 /* PDM_DAT / GPIO38 */
+		>;
+
+		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
+		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
+		cirrus,inmode = <
+			0 0 0 0
+			0 0 0 0
+		>;
+		cirrus,out-mono = <0 1 0 0 0 0>;
+
+		cirrus,accdet {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			acc@1 {
+				reg = <1>;
+
+				/delete-property/ cirrus,jd-check-jd2;
+				cirrus,micd-force-micbias;
+				cirrus,micd-detect-debounce-ms = <600>;
+				cirrus,micd-bias-start-time = <8>;
+				cirrus,micd-rate = <6>;
+				cirrus,micd-dbtime = <0x1>;
+				cirrus,micd-ranges = <
+					70 0xE2		/* KEY_MEDIA */
+					180 0x246	/* KEY_VOICECOMMAND */
+					290 0x73	/* KEY_VOLUMEUP */
+					680 0x72	/* KEY_VOLUMEDOWN */
+				>;
+				cirrus,micd-configs = <
+					0 1 0 0 1
+					1 0 1 1 0
+				>;
+				cirrus,micd-pol-gpios = <&cs47l90 4 0>,
+							<&cs47l90 5 0>;
+			};
+		};
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@0ffe00 {
+				reg = <0x0ffe00>;
+				firmware {
+					ultrasound {
+						wlf,wmfw-file = "ultrasound";
+						wlf,bin-file = "ultrasound";
+						wlf,compr-caps = <1 1 4 1 96000>;
+					};
+				};
+			};
+			adsp@17fe00 {
+				reg = <0x17fe00>;
+				firmware {
+					frontend {
+						wlf,wmfw-file = "aov-frontend";
+						wlf,bin-file = "aov-vrgain";
+						wlf,compr-caps = <1 1 4 1 96000>;
+					};
+				};
+			};
+			adsp@1ffe00 {
+				reg = <0x1ffe00>;
+				firmware {
+					aov {
+						wlf,wmfw-file = "aov-control";
+						wlf,bin-file = "aov-model";
+						wlf,compr-caps = <1 1 4 1 96000>;
+					};
+				};
+			};
+		};
+	};
+};
+
+&pm660_gpios {
+	/* GPIO 13 for USB_AUD_DET_N */
+	gpio@cc00 {
+		qcom,mode = <1>;				/* Output */
+		qcom,pull = <0>;				/* Pull up */
+		qcom,vin-sel = <0>; 			/* VIN1 GPIO_LV */
+		qcom,src-sel = <0>; 			/* GPIO */
+		qcom,invert = <0>;				/* Invert */
+		qcom,master-en = <1>;			/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pm660_pdphy {
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb_aud_sw_sel>;
+
+	gpios = <&pm660_gpios 13 0>,  /* USB_AUD_DET_N, output-high */
+		<&tlmm 80 0>; /* USB_AUD_SW_SEL, output-low */
+
+	gpio-labels = "gpio_usb_aud_det_n",
+		"gpio_aud_sw_sel";
+};
