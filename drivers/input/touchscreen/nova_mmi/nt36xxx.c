@@ -930,9 +930,6 @@ static void nvt_esd_check_func(struct work_struct *work)
 {
 	unsigned int timer = jiffies_to_msecs(jiffies - irq_timer);
 
-	printk("debug_esd_check = %d (retry %d/%d)\n", esd_check, esd_retry, esd_retry_max);
-
-	NVT_ERR("esd_check = %d (retry %d/%d)\n", esd_check, esd_retry, esd_retry_max);
 
 	if (esd_retry >= esd_retry_max)
 		nvt_esd_check_enable(false);
