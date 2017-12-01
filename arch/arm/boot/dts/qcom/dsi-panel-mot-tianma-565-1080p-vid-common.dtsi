@@ -42,12 +42,6 @@ qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 03 FF 19 11
 	15 01 00 00 00 00 02 00 B0
 	39 01 00 00 00 00 05 B3 04 38 08 70
-	15 01 00 00 00 00 02 00 80
-	15 01 00 00 00 00 02 C9 4F
-	15 01 00 00 00 00 02 00 80
-	39 01 00 00 00 00 0D CA F0 D9 C8 BA AF A6 9E 98 92 8D 88 84
-	15 01 00 00 00 00 02 00 90
-	39 01 00 00 00 00 0A CA FD FF 88 FC FF CC FA FF 66
 	15 01 00 00 00 00 02 00 00
 	39 01 00 00 00 00 04 FF FF FF FF
 	15 00 00 00 00 00 02 35 00	 /*TE on*/
@@ -58,7 +52,7 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 0a 00 02 29 00];	/* display on delay 20ms*/
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 32 00 01 28		/* display_off  delay 50ms*/
-	05 01 00 00 14 00 01 10];	/* enter sleep mode delay 20ms*/
+	05 01 00 00 46 00 01 10];	/* enter sleep mode delay 20ms*/
 
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
