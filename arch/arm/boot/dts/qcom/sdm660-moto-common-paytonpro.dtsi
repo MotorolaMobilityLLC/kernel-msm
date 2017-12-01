@@ -1,0 +1,358 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm660-pinctrl.dtsi"
+#include "sdm660-moto-pinctrl.dtsi"
+#include "sdm660-moto-audio.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
+#include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
+#include "sdm660-moto-fps.dtsi"
+#include "carrier-channel-ids.dtsi"
+#include <moto-mem-reserve.h>
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+
+/ {
+	utags {
+		compatible = "mmi,utags";
+		mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
+		mmi,backup-utags = "/dev/block/bootdevice/by-name/utagsBackup";
+	};
+
+	hw {
+		compatible = "mmi,utags";
+		mmi,dir-name = "hw";
+		mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+	};
+
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
+	};
+
+	reserved-memory {
+		ramoops_mem: ramoops_mem_region {
+			no-map;
+			reg = <0x0 0xaf000000 0x0 0x80000>;
+			label = "ramoops_mem";
+		};
+
+		tzlog_bck_mem: tzlog_bck_region {
+			no-map;
+			reg = <0x0 TZLOG_BCK_BASE_8998
+				0x0 TZLOG_BCK_SIZE>;
+			label = "tzlog_bck_mem";
+		};
+
+		wdog_cpuctx_mem: wdog_cpuctx_region {
+			no-map;
+			reg = <0x0 WDOG_CPUCTX_BASE_8998
+				0x0 WDOG_CPUCTX_SIZE_8998>;
+			label = "wdog_cpuctx_mem";
+		};
+	};
+};
+
+&uartblsp1dm1 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_active>;
+};
+
+&ufsphy1 {
+	vdda-phy-supply = <&pm660l_l1>;
+	vdda-pll-supply = <&pm660_l10>;
+	vddp-ref-clk-supply = <&pm660_l1>;
+	vdda-phy-max-microamp = <51400>;
+	vdda-pll-max-microamp = <14200>;
+	vddp-ref-clk-max-microamp = <100>;
+	vddp-ref-clk-always-on;
+	status = "ok";
+};
+
+&ufs1 {
+	vdd-hba-supply = <&gdsc_ufs>;
+	vdd-hba-fixed-regulator;
+	vcc-supply = <&pm660l_l4>;
+	vccq2-supply = <&pm660_l8>;
+	vcc-max-microamp = <500000>;
+	vccq2-max-microamp = <600000>;
+	status = "ok";
+};
+
+&pm660_gpios {
+	/* GPIO 4 (NFC_CLK_REQ) */
+	gpio@c300 {
+		qcom,mode = <0>;
+		qcom,vin-sel = <1>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+};
+
+&i2c_6 { /* BLSP1 QUP6 (NFC) */
+	status = "okay";
+	nq@28 {
+		compatible = "qcom,nq-nci";
+		reg = <0x28>;
+		qcom,nq-irq = <&tlmm 28 0x00>;
+		qcom,nq-ven = <&tlmm 29 0x00>;
+		qcom,nq-firm = <&tlmm 30 0x00>;
+		qcom,nq-clkreq = <&pm660_gpios 4 0x00>;
+		qcom,nq-esepwr = <&tlmm 31 0x00>;
+		interrupt-parent = <&tlmm>;
+		qcom,clk-src = "BBCLK3";
+		interrupts = <28 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend>;
+		clocks = <&clock_rpmcc RPM_LN_BB_CLK3_PIN>;
+		clock-names = "ref_clk";
+	};
+};
+
+&i2c_3 { /* BLSP1 QUP3 */
+	status = "okay";
+	focaltech_ts@38 {
+		compatible = "focaltech,mmi";
+		reg = <0x38>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <67 0x2002>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&ts_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		focaltech,name = "ft8716";
+		focaltech,family-id = <0x87>;
+		focaltech,reset-gpio = <&tlmm 66 0x00>;
+		focaltech,irq-gpio = <&tlmm 67 0x2008>;
+		focaltech,display-coords = <0 0 1080 1920>;
+		focaltech,panel-coords = <0 0 1080 1920>;
+		focaltech,i2c-pull-up;
+		focaltech,group-id = <1>;
+		focaltech,hard-reset-delay-ms = <20>;
+		focaltech,soft-reset-delay-ms = <200>;
+		focaltech,num-max-touches = <10>;
+		focaltech,fw-delay-aa-ms = <2>;
+		focaltech,fw-delay-55-ms = <2>;
+		focaltech,fw-upgrade-id1 = <0x87>;
+		focaltech,fw-upgrade-id2 = <0xA6>;
+		focaltech,fw-delay-readid-ms = <20>;
+		focaltech,fw-delay-era-flsh-ms = <2000>;
+		focaltech,resume-in-workqueue;
+		focaltech,ignore-id-check;
+		config_modifier-names = "fps";
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <300 1870 800 1919 1>;
+			};
+		};
+	};
+};
+
+&sdhc_1 {
+	/* device core power supply */
+	vdd-supply = <&pm660l_l4>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <200 570000>;
+
+	/* device communication power supply */
+	vdd-io-supply = <&pm660_l8>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-lpm-sup;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <200 325000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on &sdc1_rclk_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
+
+	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 192000000
+								384000000>;
+
+	qcom,nonremovable;
+	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
+
+	status = "ok";
+};
+
+&sdhc_2 {
+	/* device core power supply */
+	vdd-supply = <&pm660l_l5>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <15000 800000>;
+
+	/* device communication power supply */
+	vdd-io-supply = <&pm660l_l2>;
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <200 22000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+
+	#address-cells = <0>;
+	interrupt-parent = <&sdhc_2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 0 125 0
+			1 &intc 0 0 221 0
+			2 &tlmm 54 0>;
+	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+	cd-gpios = <&tlmm 54 0x0>;
+
+	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000
+								200000000>;
+	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
+
+	status = "ok";
+};
+
+&soc {
+	qcom,msm-ssc-sensors {
+		compatible = "qcom,msm-ssc-sensors";
+	};
+
+	wdog: qcom,wdt@17817000 {
+		qcom,bark-time = <22000>;
+	};
+
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		console-size = <0x0 0x40000>;
+		record-size = <0x0 0x3f800>;
+		ramoops-annotate-size = <0x0 0x800>;
+
+		memory-region = <&ramoops_mem>;
+	};
+
+	wdog: qcom,wdt@17817000 {
+		qcom,bark-time = <22000>;
+		linux,contiguous-region = <&wdog_cpuctx_mem>;
+	};
+
+	qcom_tzlog: tz-log@146bf720 {
+		status = "okay";
+		linux,contiguous-region = <&tzlog_bck_mem>;
+	};
+
+	qcom,sensor-information {
+		sensor_information22: qcom,sensor-information-22 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "chg_therm";
+		};
+		sensor_information23: qcom,sensor-information-23 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "pcm_therm";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information24: qcom,sensor-information-24 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "battery";
+			qcom,alias-name  = "batt_therm";
+			qcom,scaling-factor = <1000>;
+		};
+	};
+
+	rradc_typec_temp: typec-temp-sensor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&pm660_rradc 2>;
+		io-channel-names = "sensor-channel";
+	};
+
+	thermal-zones {
+		pcm_therm {
+			polling-delay = <100>; /* milliseconds */
+			polling-delay-passive = <100>; /* milliseconds */
+			thermal-sensors = <&rradc_typec_temp>;
+		};
+	};
+};
+
+&mem_client_3_size {
+	qcom,peripheral-size = <0x500000>;
+};
+
+&pm660_vadc {
+	chan@4e {
+		label = "chg_therm";
+		reg = <0x4e>;
+		qcom,decimation = <2>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pm660_adc_tm {
+	chan@4e {
+		label = "chg_therm";
+		reg = <0x4e>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,btm-channel-number = <0x70>;
+		qcom,thermal-node;
+	};
+};
+
+&pm660_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-force-load-profile = <1>;
+	qcom,fg-cutoff-voltage = <3200>;
+	qcom,fg-empty-voltage = <3000>;
+	qcom,fg-chg-term-current = <100>;
+	qcom,fg-sys-term-current = <(-200)>;
+	qcom,fg-delta-soc-thr = <1>;
+	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+};
+
+&pm660_charger {
+	qcom,fcc-max-ua = <3000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,iterm-ma = <141>;
+	qcom,thermal-mitigation = <3000>,
+				   <2500>,
+				   <1500>,
+				   <900>,
+				   <600>,
+				   <300>;
+	qcom,mmi-temp-zones = <0 4200 562 0>,
+				<10 0 562 562>,
+				<15 0 1124 1124>,
+				<45 4200 3000 2000>,
+				<60 4200 2000 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
+	qcom,hvdcp-force-5v;
+	qcom,typec-debounce;
+	qcom,usbpd-phandle = <&pm660_pdphy>;
+	qcom,source-current-ma = <900>;
+	qcom,aicl-threshold-mv = <4600>;
+	qcom,hc-aicl-threshold-mv = <4200>;
+};
+
+&pm660_pdphy {
+	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
+	qcom,source-current = <900>;
+};
