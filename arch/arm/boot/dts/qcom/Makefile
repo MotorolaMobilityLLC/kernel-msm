@@ -35,6 +35,8 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-heart-p0a.dtb
 dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-p0a.dtb
 endif #CONFIG_HEART_DTB
 
+dtb-$(CONFIG_ARCH_SDM660) += sdm660-paytonpro-p0a.dtb
+
 else
 # Only include QC architecture specific DTBs
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
