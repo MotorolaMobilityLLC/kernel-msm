@@ -1,0 +1,137 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm660-moto-common-paytonpro.dtsi"
+#include "sdm660-external-codec.dtsi"
+#include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
+#include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
+#include "sdm660-camera-sensor-mot-paytonpro.dtsi"
+/ {
+	model = "paytonpro";
+	compatible = "qcom,sdm660-paytonpro", "qcom,sdm660-moto", "qcom,sdm660";
+};
+
+&firmware {
+	android {
+		compatible = "android,firmware";
+		fstab {
+			compatible = "android,fstab";
+			/delete-node/ vendor;
+		};
+	};
+};
+
+&i2c_2 { /* BLSP1 CAP SENSOR */
+	status = "okay";
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		cap_vdd-supply = <&pm660l_l8>;
+		cap_svdd-supply = <&pm660_l13>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <75 0x2008>;
+		gpios = <&tlmm 75 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		reg_array_len = <4>;
+		reg_array_val = <0x10 0x54 0x15 0xC3 0x18 0x5E 0x19 0x2E>;
+	};
+};
+
+&i2c_3 {
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <67 0>;
+		gpios = <&tlmm 67 0>; /* IRQ */
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_int_suspend>;
+		pinctrl-1 = <&touch_int_active>;
+		config_modifier-names = "aod";
+		config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <300 1870 800 1919 1>;
+			};
+		};
+	};
+};
+
+&pm660_haptics { /* Vibrator */
+	qcom,actuator-type = "erm";
+	qcom,vmax-mv = <2400>;
+	qcom,ilim-ma = <220>;
+
+	/delete-property/ qcom,lra-high-z;
+	/delete-property/ qcom,lra-auto-res-mode;
+	/delete-property/ qcom,lra-res-cal-period;
+};
+
+&soc{
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+	qcom,msm-thermal {
+		qcom,config-info = "payton";
+	};
+};
+
+&red_led {
+	linux,name = "charging";
+	/delete-property/ linux,default-trigger;
+};
+
+/delete-node/ &green_led;
+/delete-node/ &blue_led;
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_520_1080p_vid_v0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+};
+
+&pm660l_wled {
+	qcom,ovp-mv = <18100>;
+	qcom,led-strings-list = [00 01 02];
+	qcom,en-cabc;
+};
+
+&mot_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SNN5995";
+
+	#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
+	#include "fg-gen3-batterydata-hx40scud-3000mah.dtsi"
+};
