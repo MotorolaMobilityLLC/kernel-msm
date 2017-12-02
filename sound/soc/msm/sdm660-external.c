@@ -1967,6 +1967,10 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"Slim2 Capture", NULL, "MCLK"},
 
 	{"AIF1 Playback", NULL, "AMP Capture"},
+#ifdef CONFIG_MODS_USE_EXTCODEC_MI2S
+	{"AIF2 Playback", NULL, "Mods Dai Capture"},
+	{"Mods Dai Playback", NULL, "AIF2 Capture"},
+#endif
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
 };
