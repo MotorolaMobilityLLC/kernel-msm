@@ -1057,6 +1057,12 @@ config SND_SOC_MSM_HDMI_CODEC_RX
 config SND_SOC_FSA8500
 	tristate
 
+config MODS_USE_EXTCODEC_MI2S
+	bool "MODS_USE_EXTCODEC_MI2S support"
+	default n
+	help
+	  Say Y if mods audio signals connect to external codec directly
+
 source "sound/soc/codecs/sdm660_cdc/Kconfig"
 source "sound/soc/codecs/msm_sdw/Kconfig"
 
