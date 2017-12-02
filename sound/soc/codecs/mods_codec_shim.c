@@ -182,6 +182,10 @@ static const struct snd_soc_dapm_widget mods_dai_dapm_widgets[] = {
 static const struct snd_soc_dapm_route mods_codec_dapm_routes[] = {
 	{"MODS_DAI_RX", NULL, "Mods Dai Playback"},
 	{"Mods Dai Capture", NULL, "MODS_DAI_TX"},
+#ifdef CONFIG_MODS_USE_EXTCODEC_MI2S
+	{"MODS_DAI_RX Playback", NULL, "MODS_DAI_RX"},
+	{"MODS_DAI_TX", NULL, "MODS_DAI_TX Capture"},
+#endif
 };
 
 static int mods_codec_shim_probe(struct snd_soc_codec *codec)
