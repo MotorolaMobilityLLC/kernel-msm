@@ -2,7 +2,7 @@
  * drivers/gpu/ion/ion_priv.h
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, 2018 The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -117,6 +117,7 @@ int ion_heap_allow_heap_secure(enum ion_heap_type type);
 
 int ion_heap_allow_handle_secure(enum ion_heap_type type);
 
+int get_secure_vmid(unsigned long flags);
 /**
  * ion_create_chunked_sg_table - helper function to create sg table
  * with specified chunk size
