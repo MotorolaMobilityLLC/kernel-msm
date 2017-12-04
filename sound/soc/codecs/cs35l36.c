@@ -836,6 +836,11 @@ static int cs35l36_codec_probe(struct snd_soc_codec *codec)
 					CS35L36_AMP_ZC_MASK,
 					CS35L36_AMP_ZC_MASK);
 
+	if (cs35l36->pdata.amp_pcm_inv)
+		regmap_update_bits(cs35l36->regmap, CS35L36_AMP_DIG_VOL_CTRL,
+					CS35L36_AMP_PCM_INV_MASK,
+					CS35L36_AMP_PCM_INV_MASK);
+
 	if (cs35l36->pdata.ldm_mode_sel)
 		regmap_update_bits(cs35l36->regmap, CS35L36_NG_CFG,
 					CS35L36_NG_AMP_EN_MASK,
@@ -855,6 +860,14 @@ static int cs35l36_codec_probe(struct snd_soc_codec *codec)
 		regmap_update_bits(cs35l36->regmap, CS35L36_DAC_MSM_CFG,
 					CS35L36_PDM_LDM_EXIT_MASK,
 					CS35L36_PDM_LDM_EXIT_MASK);
+
+	if (cs35l36->pdata.imon_pol_inv)
+		regmap_update_bits(cs35l36->regmap, CS35L36_VI_SPKMON_FILT,
+					CS35L36_IMON_POL_MASK, 0);
+
+	if (cs35l36->pdata.vmon_pol_inv)
+		regmap_update_bits(cs35l36->regmap, CS35L36_VI_SPKMON_FILT,
+					CS35L36_VMON_POL_MASK, 0);
 
 	if (cs35l36->pdata.bst_vctl)
 		regmap_update_bits(cs35l36->regmap, CS35L36_BSTCVRT_VCTRL1,
@@ -1095,6 +1108,9 @@ static int cs35l36_handle_of_data(struct i2c_client *i2c_client,
 	pdata->amp_gain_zc = of_property_read_bool(np,
 					"cirrus,amp-gain-zc");
 
+	pdata->amp_pcm_inv = of_property_read_bool(np,
+					"cirrus,amp-pcm-inv");
+
 	ret = of_property_read_u32(np, "cirrus,ldm-mode-select", &val);
 	if (!ret)
 		pdata->ldm_mode_sel = val;
@@ -1104,6 +1120,12 @@ static int cs35l36_handle_of_data(struct i2c_client *i2c_client,
 
 	pdata->pdm_ldm_enter = of_property_read_bool(np,
 					"cirrus,pdm-ldm-enter");
+
+	pdata->imon_pol_inv = of_property_read_bool(np,
+					"cirrus,imon-pol-inv");
+
+	pdata->vmon_pol_inv = of_property_read_bool(np,
+					"cirrus,vmon-pol-inv");
 
 	if (of_property_read_u32(np, "cirrus,temp-warn-threshold", &val) >= 0)
 		pdata->temp_warn_thld = val | CS35L36_VALID_PDATA;
