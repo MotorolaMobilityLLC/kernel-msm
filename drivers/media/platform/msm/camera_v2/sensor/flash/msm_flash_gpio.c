@@ -28,7 +28,7 @@ static struct v4l2_file_operations msm_flash_v4l2_subdev_fops;
 static DEFINE_MUTEX(flash_lock);
 
 static const struct of_device_id msm_flash_dt_match[] = {
-	{.compatible = "qcom,camera-led-flash", .data = NULL},
+	{.compatible = "qcom,camera-gpio-flash", .data = NULL},
 	{}
 };
 static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
@@ -712,7 +712,7 @@ MODULE_DEVICE_TABLE(of, msm_flash_dt_match);
 static struct platform_driver msm_flash_platform_driver = {
 	.probe = msm_flash_platform_probe,
 	.driver = {
-		.name = "qcom,camera-led-flash",
+		.name = "qcom,camera-gpio-flash",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_flash_dt_match,
 	},
