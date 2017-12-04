@@ -40,23 +40,23 @@ qcom,mdss-dsi-on-command = [
 	39 01 00 00 05 00 03 E4 01 01
 	39 01 00 00 0A 00 03 E6 00 08
 	39 01 00 00 0A 00 20 E5 00 00 02 03 05 00 00 00 00 00 00 01 05 1E 17 0D AE 0C 20 02 04 02 08 02 07 06 00 05 06 02 01
-	39 01 00 00 00 00 04 C9 03 00 14		/*	CABC PWM =20K */
 	15 00 00 00 00 00 02 35 00		/*TE on*/
 	39 00 00 00 00 00 03 51 0C CC	 /*12bit PWM*/
 	15 00 00 00 00 00 02 53 2C		/*Dimming on*/
 	15 00 00 00 05 00 02 55 01		/*UI mode*/
-	39 00 00 00 00 00 0A CA 24 24 23 22 22 22 22 22 22
+	39 01 00 00 00 00 0A CA 23 23 23 23 23 23 22 20 20
 	05 01 00 00 0a 00 02 11 00		/*sleep in delay 130ms*/
 	05 01 00 00 5a 00 02 29 00];	/* display on delay 20ms*/
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 32 00 01 28		/* display_off  delay 50ms*/
-	05 01 00 00 14 00 01 10];	/* enter sleep mode delay 20ms*/
+	05 01 00 00 32 00 01 10];	/* enter sleep mode delay 50ms*/
 
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
-qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 05 00 02 55 01
+				 39 01 00 00 00 00 0A CA 23 23 23 23 23 23 22 20 20];
 qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
