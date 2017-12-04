@@ -28,8 +28,11 @@ struct cs35l36_platform_data {
 	bool dcm_mode;
 	int ldm_mode_sel;
 	bool amp_gain_zc;
+	bool amp_pcm_inv;
 	bool pdm_ldm_exit;
 	bool pdm_ldm_enter;
+	bool imon_pol_inv;
+	bool vmon_pol_inv;
 	int boost_ind;
 	int bst_vctl;
 	int bst_vctl_sel;
