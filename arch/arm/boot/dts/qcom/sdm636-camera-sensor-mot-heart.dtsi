@@ -48,6 +48,124 @@
 		qcom,cam-vreg-op-mode = <80000>;
 	};
 
+	eeprom0: qcom,eeprom@0 {
+		cell-index = <0>;
+		compatible = "qcom,eeprom";
+		reg = <0x0>;
+		cam_vio-supply = <&pm660_l11>;
+		cam_vaf-supply = <&pm660l_l3>;
+		cam_vdig-supply = <&pm660_s5>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vaf", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1780000 2800000 1350000>;
+		qcom,cam-vreg-max-voltage = <1950000 2800000 1350000>;
+		qcom,cam-vreg-op-mode = <105000 80000 105000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_active
+				 &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk0_suspend
+				 &cam_sensor_rear_suspend>;
+		gpios = <&tlmm 32 0>,
+			<&tlmm 46 0>,
+			<&pm660l_gpios 4 0>,
+			<&tlmm 51 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-vana = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					"CAM_RESET0",
+					"CAM_VDIG0",
+					"CAM_VANA0";
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_mmss MCLK0_CLK_SRC>,
+				<&clock_mmss MMSS_CAMSS_MCLK0_CLK>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	eeprom1: qcom,eeprom@1 {
+		cell-index = <1>;
+		compatible = "qcom,eeprom";
+		reg = <0x1>;
+		cam_vio-supply = <&pm660_l11>;
+		cam_vdig-supply = <&pm660_s5>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1780000 1350000>;
+		qcom,cam-vreg-max-voltage = <1950000 1350000>;
+		qcom,cam-vreg-op-mode = <105000 105000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk3_active
+				 &cam_sensor_rear2_active>;
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
+				 &cam_sensor_rear2_suspend>;
+		gpios = <&tlmm 35 0>,
+			<&tlmm 47 0>,
+			<&pm660l_gpios 3 0>,
+			<&tlmm 49 0>,
+			<&tlmm 44 0>,
+			<&tlmm 45 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-vana = <3>;
+		qcom,gpio-custom1 = <4>;
+		qcom,gpio-custom2 = <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+					  "CAM_RESET1",
+					  "CAM_VDIG1",
+					  "CAM_VANA1",
+					  "CAM_CUSTOM1",
+					  "CAM_CUSTOM2";
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_mmss MCLK3_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK3_CLK>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	eeprom2: qcom,eeprom@2 {
+		cell-index = <2>;
+		compatible = "qcom,eeprom";
+		reg = <0x02>;
+		cam_vio-supply = <&pm660_l11>;
+		cam_vdig-supply = <&pm660_s5>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1780000 1350000>;
+		qcom,cam-vreg-max-voltage = <1950000 1350000>;
+		qcom,cam-vreg-op-mode = <105000 105000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active
+				 &cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend
+				 &cam_sensor_front_suspend>;
+		gpios = <&tlmm 33 0>,
+			<&tlmm 52 0>,
+			<&pm660l_gpios 8 0>,
+			<&tlmm 51 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-vana = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					"CAM_RESET2",
+					"CAM_VDIG2",
+					"CAM_VANA2";
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_mmss MCLK1_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK1_CLK>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
 	qcom,camera@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
@@ -57,6 +175,7 @@
 		qcom,mount-angle = <90>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash0>;
+		qcom,eeprom-src = <&eeprom0>;
 		cam_vio-supply = <&pm660_l11>;
 		cam_vaf-supply = <&pm660l_l3>;
 		cam_vdig-supply = <&pm660_s5>;
@@ -101,6 +220,7 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
 		qcom,led-flash-src = <&led_flash0>;
+		qcom,eeprom-src = <&eeprom1>;
 		cam_vio-supply = <&pm660_l11>;
 		cam_vdig-supply = <&pm660_s5>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
@@ -148,6 +268,7 @@
 		reg = <0x02>;
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
+		qcom,eeprom-src = <&eeprom2>;
 		qcom,mount-angle = <270>;
 		cam_vio-supply = <&pm660_l11>;
 		cam_vdig-supply = <&pm660_s5>;
