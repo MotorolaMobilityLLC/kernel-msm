@@ -463,10 +463,6 @@
 	};
 
 	/delete-node/ hdmi_dba;
-	hdmi_dba: qcom,msm-hdmi-dba-codec-rx {
-		compatible = "qcom,msm-hdmi-dba-codec-rx";
-		qcom,dba-bridge-chip = "anx7805";
-	};
 
 	sound {
 		status = "ok";
@@ -474,7 +470,6 @@
 		qcom,model = "msm8952-marley-card";
 
 		qcom,l35_cpu_dai_name = "marley-aif1";
-		qcom,dba_cpu_dai_name = "marley-aif1";
 
 		/* qcom,marley-mclk-clk-freq = <9600000>; */
 		asoc-platform = <&pcm0>, <&pcm1>,
@@ -523,15 +518,14 @@
 
 		qcom,albus-audio;
 		qcom,ali-audio;
-		qcom,hdmi-dba-codec-rx;
-		asoc-codec = <&stub_codec>, <&hdmi_dba>;
-		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
+		/delete-property/ qcom,hdmi-dba-codec-rx;
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
 		cs47l35,dapm-routing =
 			"IN1AL", "MICBIAS2A",
 			"IN2R", "MICBIAS2B",
 			"IN2L", "MICBIAS2A",
-			"IN1BR", "MICBIAS1B",
-			"MYDP", "HDMI DBA Playback";
+			"IN1BR", "MICBIAS1B";
 	};
 
 	ospl {
