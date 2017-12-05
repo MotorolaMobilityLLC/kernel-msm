@@ -819,6 +819,10 @@
 		/delete-property/ qcom,otg-fault-gpio;
 		/delete-property/ gpio;
 	};
+
+	usb3: ssusb@7000000{
+		mmi,dcp-max-current = <2000>;
+	};
 };
 
 &pmi8950_charger {
