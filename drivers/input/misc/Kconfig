@@ -794,6 +794,12 @@ config STMVL53L0
 	help
 	laser sensor driver.
 
+config STMVL53L0_2017
+	tristate "STMVL53L0_2017 support"
+	default n
+	help
+	 laser sensor driver.
+
 config SENSORS_FPC_1020
 	tristate "fpc fingerprint sensor"
 	default n
