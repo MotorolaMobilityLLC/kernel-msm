@@ -109,6 +109,26 @@ static void madera_gpio_set(struct gpio_chip *chip, unsigned int offset,
 			   MADERA_GP1_LVL_MASK, value);
 }
 
+static int madera_gpio_get_factorymode(struct gpio_chip *chip, unsigned int offset)
+{
+	struct madera_gpio *madera_gpio = to_madera_gpio(chip);
+	struct madera *madera = madera_gpio->madera;
+	unsigned int val;
+	int ret;
+	unsigned int reg, bit;
+
+	reg = MADERA_IRQ1_RAW_STATUS_17 + offset / 16;
+	ret = regmap_read(madera->regmap, reg, &val);
+	if (ret < 0)
+		return ret;
+
+	bit = offset % 16;
+	if (val & BIT(bit))
+		return 1;
+	else
+		return 0;
+}
+
 static int madera_gpio_direction_in_factorymode(struct gpio_chip *chip,
 					unsigned int offset)
 {
@@ -181,6 +201,7 @@ static int madera_gpio_probe(struct platform_device *pdev)
 	if (mmi_is_factory_mode() == 1) {
 		pr_info("%s fset gpiochip function to the factorymode ones\n",
 			__func__);
+		template_chip.get = madera_gpio_get_factorymode;
 		template_chip.direction_input = madera_gpio_direction_in_factorymode;
 		template_chip.direction_output = madera_gpio_direction_out_factorymode;
 	}
