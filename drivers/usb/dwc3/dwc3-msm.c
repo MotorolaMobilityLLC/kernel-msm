@@ -3905,6 +3905,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 				&mdwc->qos_latency))
 		mdwc->qos_latency = -1;
 
+	if (of_property_read_u32(node, "mmi,dcp-max-current",
+				&dcp_max_current))
+		dev_info(&pdev->dev,
+			"unable to read dcp-max-current, using define value\n");
+
 	dwc3_set_notifier(&dwc3_msm_notify_event);
 
 	/* Assumes dwc3 is the only DT child of dwc3-msm */
