@@ -57,7 +57,7 @@
 			config {
 				pins = "gpio8";
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-up; /* pull up */
+				bias-pull-down; /* pull down */
 				output-low;
 			};
 		};
@@ -72,7 +72,7 @@
 			config {
 				pins = "gpio8";
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-up; /* pull up */
+				bias-pull-down; /* pull down */
 				output-high;
 			};
 		};
