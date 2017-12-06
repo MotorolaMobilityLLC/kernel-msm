@@ -8037,7 +8037,7 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 		return;
 	}
 
-	if (!of_gpio_count(node)) {
+	if (of_gpio_count(node) <= 0) {
 		SMB_ERR(chip, "No GPIOS defined.\n");
 		return;
 	}
@@ -8046,6 +8046,11 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 	chip->ebchg_gpio.flags = flags;
 	of_property_read_string_index(node, "gpio-names", 0,
 				      &chip->ebchg_gpio.label);
+
+	if (!gpio_is_valid(chip->ebchg_gpio.gpio)) {
+		SMB_ERR(chip, "eb GPIO is invalid\n");
+		return;
+	}
 
 	rc = gpio_request_one(chip->ebchg_gpio.gpio,
 			      chip->ebchg_gpio.flags,
@@ -8072,6 +8077,11 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 	chip->warn_gpio.flags = flags;
 	of_property_read_string_index(node, "gpio-names", 1,
 				      &chip->warn_gpio.label);
+
+	if (!gpio_is_valid(chip->warn_gpio.gpio)) {
+		SMB_ERR(chip, "warn GPIO is invalid\n");
+		return;
+	}
 
 	rc = gpio_request_one(chip->warn_gpio.gpio,
 			      chip->warn_gpio.flags,
@@ -8100,6 +8110,11 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 	chip->togl_rst_gpio.flags = flags;
 	of_property_read_string_index(node, "gpio-names", 2,
 				      &chip->togl_rst_gpio.label);
+
+	if (!gpio_is_valid(chip->togl_rst_gpio.gpio)) {
+		SMB_ERR(chip, "togl_rst GPIO is invalid\n");
+		return;
+	}
 
 	rc = gpio_request_one(chip->togl_rst_gpio.gpio,
 			      chip->togl_rst_gpio.flags,
