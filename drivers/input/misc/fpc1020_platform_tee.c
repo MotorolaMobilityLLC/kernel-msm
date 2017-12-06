@@ -230,6 +230,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 			&fpc1020->rst_gpio);
 	if (rc)
 		goto exit;
+	usleep_range(200, 210);
 	gpio_direction_output(fpc1020->rst_gpio, 1);
 
 	wake_lock_init(&fpc1020->wlock, WAKE_LOCK_SUSPEND, "fpc1020");
