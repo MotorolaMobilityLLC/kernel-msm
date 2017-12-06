@@ -317,7 +317,7 @@ static int __put_v4l2_format32(struct v4l2_format __user *kp, struct v4l2_format
 static int put_v4l2_format32(struct v4l2_format __user *kp, struct v4l2_format32 __user *up)
 {
 	if (!access_ok(VERIFY_WRITE, up, sizeof(struct v4l2_format32)) ||
-		convert_in_user(kp->type, &up->type))
+		convert_in_user(&kp->type, &up->type))
 		return -EFAULT;
 	return __put_v4l2_format32(kp, up);
 }
@@ -995,7 +995,6 @@ static long do_video_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 	int compatible_arg = 1;
 	long err = 0;
 
-	memset(&karg, 0, sizeof(karg));
 	/* First, convert the command. */
 	switch (cmd) {
 	case VIDIOC_G_FMT32: cmd = VIDIOC_G_FMT; break;
