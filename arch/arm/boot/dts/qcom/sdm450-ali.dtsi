@@ -814,13 +814,13 @@
 &soc {
 	usb_otg_switch: usb-otg-switch {
 		vin-supply = <&smbcharger_charger_otg>;
-		/delete-property/ pinctrl-names;
-		/delete-property/ pinctrl-0;
-		/delete-property/ qcom,otg-fault-gpio;
 		/delete-property/ gpio;
 	};
 
 	usb3: ssusb@7000000{
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ qcom,otg-fault-gpio;
 		mmi,dcp-max-current = <2000>;
 	};
 };
@@ -830,10 +830,7 @@
 	/delete-property/ pinctrl-0;
 	/delete-property/ gpios;
 	/delete-property/ gpio-names;
-	gpios = <&pmi8950_gpios 2 0x0>, /* GPIOF_OUT_INIT_LOW */
-		<&pm8953_gpios 5 0x1>; /* GPIOF_IN */
-	gpio-names = "eb_vbus_en",
-		     "factory_warn";
+
 	qcom,max-usbin-current-ma = <3000>;
 	qcom,step-chg-steps = <4200 3000 2000>,
 				<4400 2000 1600>;
