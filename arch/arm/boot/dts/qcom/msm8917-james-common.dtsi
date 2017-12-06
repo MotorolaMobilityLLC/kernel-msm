@@ -272,8 +272,8 @@
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_release>;
-		focaltech,name = "ft5336";
-		focaltech,family-id = <0x36>;
+		focaltech,name = "ft5436";
+		focaltech,family-id = <0x54>;
 		focaltech,reset-gpio = <&tlmm 64 0x0>;
 		focaltech,irq-gpio = <&tlmm 65 0x1>;
 		focaltech,display-coords = <0 0 720 1280>;
@@ -318,6 +318,7 @@
 		goodix,display-coords = <0 0 720 1400>;
 		goodix,rst-gpio = <&tlmm 64 0x00>;
 		goodix,irq-gpio = <&tlmm 65 0x2008>;
+		goodix,create-wr-node;
 	};
 
 };
