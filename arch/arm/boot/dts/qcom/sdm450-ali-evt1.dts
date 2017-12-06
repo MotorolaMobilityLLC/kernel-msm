@@ -26,7 +26,7 @@
 
 &soc {
 	fpc_fpc1020{
-		pinctrl-0 = <&int_active &rst_active >;
+		pinctrl-0 = <&int_active &rst_active>;
 		pinctrl-1 = <&int_suspend &rst_suspend>;
 	};
 };
