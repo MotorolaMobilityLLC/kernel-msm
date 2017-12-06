@@ -107,8 +107,8 @@ qcom,panel-supply-entries {
 	qcom,panel-supply-entry@0 {
 		reg = <0>;
 		qcom,supply-name = "vio_disp";
-		qcom,supply-min-voltage = <1800000>;
-		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-min-voltage = <1850000>;
+		qcom,supply-max-voltage = <1850000>;
 		qcom,supply-enable-load = <300000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
