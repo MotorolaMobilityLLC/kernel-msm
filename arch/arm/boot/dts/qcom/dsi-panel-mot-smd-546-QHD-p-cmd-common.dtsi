@@ -125,12 +125,6 @@ qcom,mdss-dsi-acl-on-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-acl-off-command-state = "dsi_hs_mode";
 
-qcom,mdss-dsi-panel-hdr-enabled;
-qcom,mdss-dsi-panel-hdr-color-primaries = <14500 15500 32000
-	17000 15500 30000 8000 3000>;
-qcom,mdss-dsi-panel-peak-brightness = <4200000>;
-qcom,mdss-dsi-panel-blackness-level = <3230>;
-
 qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 qcom,mdss-dsi-panel-status-read-length = <1>;
