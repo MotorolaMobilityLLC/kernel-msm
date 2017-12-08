@@ -380,6 +380,7 @@ struct smb_charger {
 	struct smb_iio		iio;
 	int			*debug_mask;
 	int			*try_sink_enabled;
+	int			*audio_headset_drp_wait_ms;
 	enum smb_mode		mode;
 	struct smb_chg_freq	chg_freq;
 	int			smb_version;
@@ -489,6 +490,7 @@ struct smb_charger {
 	u8			float_cfg;
 	bool			use_extcon;
 	bool			otg_present;
+	bool			is_audio_adapter;
 
 	/* workaround flag */
 	u32			wa_flags;
