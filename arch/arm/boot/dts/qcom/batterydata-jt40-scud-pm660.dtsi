@@ -1,0 +1,73 @@
+
+qcom,jt40-scud-pm660 {
+	serialnum = "SB18C20874";
+	qcom, = <24>;
+	/* #3211440_Lenovo_JT40scud_3200mAh_averaged_MasterSlave_Dec6th2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <3200>;
+	qcom,batt-id-kohm = <237>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "JT40-SCUD-3200mah";
+	qcom,checksum = <0xF0C7>;
+	qcom,gui-version = "PM660GUI - 0.0.0.44";
+	qcom,profile-revision = /bits/ 8 <0x01>;
+	qcom,fg-profile-data = [
+		 12 1F 8F FC
+		 B6 03 02 F4
+		 E7 1C B3 FB
+		 EF 0D 60 0A
+		 D8 17 EA 23
+		 31 44 89 5A
+		 74 00 00 00
+		 10 00 00 00
+		 00 00 E8 C4
+		 F7 CD A0 CA
+		 25 00 08 00
+		 F4 D2 EB E5
+		 68 05 78 01
+		 CE E2 5C 13
+		 AA F5 45 2B
+		 27 06 09 20
+		 27 00 14 00
+		 B0 1F AE 05
+		 55 0A 05 FD
+		 C4 1C F2 02
+		 00 0C 2A 12
+		 8C 18 CE 23
+		 EB 4D 28 5B
+		 6A 00 00 00
+		 0E 00 00 00
+		 00 00 45 D5
+		 03 CA 93 CA
+		 1A 00 00 00
+		 6E E3 EB E5
+		 37 FC F7 00
+		 13 07 7E 02
+		 A7 03 64 23
+		 C6 33 CC FF
+		 07 10 00 00
+		 BD 0C 66 46
+		 1A 00 40 00
+		 8F 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
