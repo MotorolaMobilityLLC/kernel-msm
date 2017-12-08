@@ -298,6 +298,7 @@
 				cirrus,micd-bias-start-time = <8>;
 				cirrus,micd-rate = <6>;
 				cirrus,jd-check-jd2;
+				cirrus,report-to-input;
 				cirrus,micd-dbtime = <0x1>;
 				cirrus,micd-ranges = <
 					100 226  /* HEADSETHOOK  */
