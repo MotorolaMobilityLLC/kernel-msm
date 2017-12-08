@@ -4246,6 +4246,7 @@ static int typec_try_sink(struct smb_charger *chg)
 	u8 stat;
 	int exit_mode = ATTACHED_SRC, rc;
 	int typec_mode;
+	int count;
 
 	if (!(*chg->try_sink_enabled))
 		return ATTACHED_SRC;
@@ -4321,6 +4322,7 @@ static int typec_try_sink(struct smb_charger *chg)
 	 * while other side is Rp, wait for VBUS from it; exit if other side
 	 * removes Rp
 	 */
+	count = 0;
 	do {
 		rc = smblib_read(chg, TYPE_C_STATUS_4_REG, &stat);
 		if (rc < 0) {
@@ -4336,6 +4338,13 @@ static int typec_try_sink(struct smb_charger *chg)
 		if (vbus_detected && debounce_done) {
 			exit_mode = ATTACHED_SINK;
 			goto try_sink_exit;
+		}
+
+		/* vbus no-show, the other side in bad state */
+		if (count++ > 2000) {
+			exit_mode = ERR_VBUS_TIMEOUT;
+			pr_err("laochai tmrout\n");
+			goto excep_exit;
 		}
 
 		/*
@@ -4392,6 +4401,34 @@ try_sink_exit:
 	chg->try_sink_active = false;
 
 	return exit_mode;
+
+excep_exit:
+	/*
+	 * Force source mode, hopefully to bring the other side out of
+	 * bad state
+	 */
+	val.intval = POWER_SUPPLY_TYPEC_PR_SOURCE;
+	rc = smblib_set_prop_typec_power_role(chg, &val);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't set UFP mode rc=%d\n", rc);
+
+	/* revert Tccdebounce time back to ~120ms */
+	rc = smblib_masked_write(chg, MISC_CFG_REG, TCC_DEBOUNCE_20MS_BIT, 0);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't set MISC_CFG_REG rc=%d\n", rc);
+
+	/* wait within DRP cycle */
+	msleep(60);
+
+	/* release forcing of SRC/SNK mode */
+	val.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
+	rc = smblib_set_prop_typec_power_role(chg, &val);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't set DFP mode rc=%d\n", rc);
+
+	chg->try_sink_active = false;
+
+	return exit_mode;
 }
 
 static void typec_sink_insertion(struct smb_charger *chg)
@@ -4400,6 +4437,9 @@ static void typec_sink_insertion(struct smb_charger *chg)
 	int typec_mode;
 
 	exit_mode = typec_try_sink(chg);
+
+	if (exit_mode == ERR_VBUS_TIMEOUT)
+		return;
 
 	if (exit_mode != ATTACHED_SRC) {
 		smblib_usb_typec_change(chg);
