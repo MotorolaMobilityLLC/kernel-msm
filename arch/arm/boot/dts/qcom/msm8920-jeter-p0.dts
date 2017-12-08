@@ -18,3 +18,9 @@
 / {
 	qcom,board-id = <0x43 0x8000>;
 };
+
+&soc {
+    sound {
+	qcom,model = "msm8952-jeter-p0";
+    };
+};
