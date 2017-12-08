@@ -150,6 +150,7 @@ enum try_sink_exit_mode {
 	ATTACHED_SRC = 0,
 	ATTACHED_SINK,
 	UNATTACHED_SINK,
+	ERR_VBUS_TIMEOUT,
 };
 
 struct smb_irq_info {
