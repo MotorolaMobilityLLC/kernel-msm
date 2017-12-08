@@ -329,6 +329,7 @@
 		df-serialnum = "SB18C20873";
 
 		#include "batterydata-jt40-atl-pm660.dtsi"
+		#include "batterydata-jt40-scud-pm660.dtsi"
 	};
 };
 
