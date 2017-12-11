@@ -3123,12 +3123,6 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 
 		arizona_extcon_report(info, BIT_NO_HEADSET);
 
-		if (arizona->pdata.headphone_crosstalk_improve) {
-			regmap_update_bits(arizona->regmap,
-				ARIZONA_ACCESSORY_DETECT_MODE_1,
-				ARIZONA_ACCDET_SRC,
-				info->micd_modes[info->micd_mode].src);
-		}
 		regmap_update_bits(arizona->regmap, reg, mask, mask);
 
 		arizona_set_headphone_imp(info, ARIZONA_HP_Z_OPEN);
@@ -3138,6 +3132,13 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		arizona_set_magic_bit(info, false);
 		if (arizona->pdata.jd2_irq && info->jd2_is_running)
 			info->jd2_is_running = JD2_NONE;
+	}
+
+	if (arizona->pdata.headphone_crosstalk_improve) {
+		regmap_update_bits(arizona->regmap,
+			ARIZONA_ACCESSORY_DETECT_MODE_1,
+			ARIZONA_ACCDET_SRC,
+			info->micd_modes[info->micd_mode].src);
 	}
 
 out:
