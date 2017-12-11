@@ -803,6 +803,7 @@
 	regulator-min-microvolt = <2850000>;
 	regulator-max-microvolt = <2850000>;
 	qcom,init-voltage = <2850000>;
+	regulator-always-on;
 };
 
 &pmi_haptic{
