@@ -86,6 +86,8 @@
 #define QPNP_PON_S3_DBC_CTL(pon)		((pon)->base + 0x75)
 #define QPNP_PON_SMPL_CTL(pon)			((pon)->base + 0x7F)
 #define QPNP_PON_TRIGGER_EN(pon)		((pon)->base + 0x80)
+#define QPNP_PON_PERPH_RB_SPARE(pon)		((pon)->base + 0x8C)
+#define QPNP_PON_DVDD_RB_SPARE(pon)		((pon)->base + 0x8D)
 #define QPNP_PON_XVDD_RB_SPARE(pon)		((pon)->base + 0x8E)
 #define QPNP_PON_SOFT_RB_SPARE(pon)		((pon)->base + 0x8F)
 #define QPNP_PON_SEC_ACCESS(pon)		((pon)->base + 0xD0)
@@ -380,6 +382,50 @@ int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
 	return rc;
 }
 EXPORT_SYMBOL(qpnp_pon_set_restart_reason);
+
+/**
+ * qpnp_pon_store_extra_reset_info - Store extra reset info in PMIC register.
+ *
+ * Returns = 0 if PMIC feature is not available or store restart reason
+ * successfully.
+ * Returns > 0 for errors
+ *
+ * This function is used to store extra reset info in PMIC spare register
+ * which can be preserved during reset.
+ */
+int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
+{
+	int rc = 0;
+	struct qpnp_pon *pon = sys_reset_dev;
+
+	if (!pon)
+		return 0;
+
+	if (mask & 0xFF) {
+		rc = qpnp_pon_masked_write(pon, QPNP_PON_DVDD_RB_SPARE(pon),
+					   (mask & 0xFF), (val & 0xFF));
+		if (rc) {
+			dev_err(pon->dev,
+				"Failed to store extra reset info to 0x%x\n",
+				QPNP_PON_DVDD_RB_SPARE(pon));
+			return rc;
+		}
+	}
+
+	if (mask & 0xFF00) {
+		rc = qpnp_pon_masked_write(pon, QPNP_PON_XVDD_RB_SPARE(pon),
+				((mask >> 8) & 0xFF), ((val >> 8) & 0xFF));
+		if (rc) {
+			dev_err(pon->dev,
+				"Failed to store extra reset info to 0x%x\n",
+				QPNP_PON_XVDD_RB_SPARE(pon));
+			return rc;
+		}
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(qpnp_pon_store_extra_reset_info);
 
 /*
  * qpnp_pon_check_hard_reset_stored() - Checks if the PMIC need to
