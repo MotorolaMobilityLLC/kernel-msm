@@ -107,3 +107,7 @@
 	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
 	qcom,source-current = <900>;
 };
+
+&sdhc_2 {
+       qcom,cd-wakeup;
+};
