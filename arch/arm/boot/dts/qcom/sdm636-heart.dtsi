@@ -119,6 +119,7 @@
 
 &i2c_2 { /* cypress capsensor */
 	status = "okay";
+	/delete-node/ smb1351-charger@1d;
 	cypress_capsensor@1D {
 		compatible = "cypress,sf3155";
 		label = "MotorolaCapSense";
