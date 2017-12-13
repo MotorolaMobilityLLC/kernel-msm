@@ -108,7 +108,7 @@
 #undef __SIW_SUPPORT_ABT
 #endif
 #ifdef __SIW_SUPPORT_PRD
-#undef __SIW_SUPPORT_PRD
+#define __SIW_SUPPORT_PRD_SET_SD_ONLY
 #endif
 #define __SIW_CONFIG_SYSTEM_PM
 #define __SIW_CONFIG_PROX_ON_SUSPEND
