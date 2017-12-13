@@ -18,7 +18,7 @@ qcom,mdss-dsi-panel-framerate = <60>;
 qcom,mdss-dsi-virtual-channel-id = <0>;
 qcom,mdss-dsi-stream = <0>;
 qcom,mdss-dsi-panel-width = <1080>;
-qcom,mdss-dsi-panel-height = <2160>;
+qcom,mdss-dsi-panel-height = <2252>;
 //qcom,mdss-pan-physical-width-dimension = <64>;
 //qcom,mdss-pan-physical-height-dimension = <115>;
 
@@ -27,7 +27,7 @@ qcom,mdss-dsi-h-front-porch = <8>;
 qcom,mdss-dsi-h-back-porch = <8>;
 qcom,mdss-dsi-h-pulse-width = <4>;
 qcom,mdss-dsi-h-sync-skew = <0>;
-qcom,mdss-dsi-v-back-porch = <192>;
+qcom,mdss-dsi-v-back-porch = <100>;
 qcom,mdss-dsi-v-front-porch = <145>;
 qcom,mdss-dsi-v-pulse-width = <1>;
 qcom,mdss-dsi-h-left-border = <0>;
@@ -40,18 +40,18 @@ qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
 	05 01 00 00 00 00 01 35
 	15 01 00 00 00 00 02 36 00
-	15 01 00 00 00 00 02 51 FF
-	15 01 00 00 00 00 02 53 24
+	15 01 00 00 00 00 02 51 CC
+	15 01 00 00 00 00 02 53 2C
 	15 01 00 00 00 00 02 55 80
 	39 01 00 00 00 00 02 B0 AC
 	39 01 00 00 00 00 06 B1 46 00 80 14 85
 	39 01 00 00 00 00 08 B3 05 08 14 00 1C 00 02
 	39 01 00 00 00 00 10 B4 83 08 00 04 04 04 04 00 00 00 00 00 00 00 00
-	39 01 00 00 00 00 13 B5 03 10 0B 02 27 00 00 00 00 04 00
+	39 01 00 00 00 00 13 B5 03 0A 0B 02 28 00 00 00 00 04 00
 		24 00 10 10 10 10 00
-	39 01 00 00 00 00 0a B6 00 72 39 13 08 D0 00 60 46
-	39 01 00 00 00 00 05 B7 00 50 37 04
-	39 01 00 00 00 00 0c B8 70 38 14 F0 08 04 00 01 0A A0 00
+	39 01 00 00 00 00 0a B6 00 72 39 13 08 67 00 60 46
+	39 01 00 00 00 00 05 B7 00 40 65 04
+	39 01 00 00 00 00 0c B8 70 66 14 F0 08 04 00 01 0A A0 00
 	39 01 00 00 00 00 06 C0 8A 8F 18 C1 12
 	39 01 00 00 00 00 07 C1 01 00 30 C2 C7 0F
 	39 01 00 00 00 00 03 C2 2A 00
@@ -69,10 +69,10 @@ qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 10 D3 09 15 1C 24 30 3E 46 51 50 45 34 22 0E 01 83
 	39 01 00 00 00 00 10 D4 10 1B 22 2A 35 42 4A 53 4D 44 34 23 10 03 81
 	39 01 00 00 00 00 10 D5 09 15 1C 25 31 3F 47 52 4F 45 34 22 0E 01 83
-	39 01 00 00 00 00 0d E5 24 23 11 10 00 0A 08 06 04 11 0E 23
-	39 01 00 00 00 00 0d E6 24 23 11 10 01 0B 09 07 05 11 0E 23
-	39 01 00 00 00 00 07 E7 15 16 17 18 19 1A
-	39 01 00 00 00 00 07 E8 1B 1C 1D 1E 1F 20
+	39 01 00 00 00 00 0d E5 24 23 0A 08 06 04 0E 0D 0C 11 00 23
+	39 01 00 00 00 00 0d E6 24 23 0B 09 07 05 0E 0D 0C 11 01 23
+	39 01 00 00 00 00 07 E7 19 1A 17 18 15 16
+	39 01 00 00 00 00 07 E8 1F 20 1D 1E 1B 1C
 	39 01 00 00 00 00 05 ED 00 01 53 0C
 	39 01 00 00 00 00 03 F0 82 00
 	39 01 00 00 00 00 05 F2 01 00 17 00
