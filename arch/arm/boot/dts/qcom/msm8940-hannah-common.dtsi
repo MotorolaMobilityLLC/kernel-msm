@@ -12,6 +12,7 @@
 #include "msm8937-hannah-pinctrl.dtsi"
 #include "dsi-panel-mot-tianma-599-hd-video.dtsi"
 #include "dsi-panel-mot-djn-599-hd-video.dtsi"
+#include "dsi-panel-mot-djn-600-hd-video.dtsi"
 
 &firmware {
 	android {
