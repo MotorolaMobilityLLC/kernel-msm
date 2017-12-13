@@ -4,6 +4,7 @@
 
 siwtch-y := siw_touch.o
 siwtch-y += siw_touch_hal.o siw_touch_hal_sysfs.o
+siwtch-y += siw_touch_hal_prd.o
 siwtch-y += siw_touch_bus.o
 siwtch-y += siw_touch_bus_i2c.o siw_touch_bus_spi.o
 siwtch-y += siw_touch_of.o
