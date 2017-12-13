@@ -12,6 +12,7 @@
 #include "dsi-panel-mot-tianma-571-720p-video.dtsi"
 #include "dsi-panel-mot-djn-599-hd-video.dtsi"
 #include "dsi-panel-mot-tianma-599-hd-video.dtsi"
+#include "dsi-panel-mot-djn-600-hd-video.dtsi"
 #include "msm8917-moto-common-fps.dtsi"
 
 / {
