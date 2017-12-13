@@ -255,10 +255,30 @@
 			qcom,sensor-name = "chg_therm";
 		};
 		sensor_information23: qcom,sensor-information-23 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "pcm_therm";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information24: qcom,sensor-information-24 {
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "battery";
 			qcom,alias-name  = "batt_therm";
 			qcom,scaling-factor = <1000>;
+		};
+	};
+
+	rradc_typec_temp: typec-temp-sensor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&pm660_rradc 2>;
+		io-channel-names = "sensor-channel";
+	};
+
+	thermal-zones {
+		pcm_therm {
+			polling-delay = <100>; /* milliseconds */
+			polling-delay-passive = <100>; /* milliseconds */
+			thermal-sensors = <&rradc_typec_temp>;
 		};
 	};
 
