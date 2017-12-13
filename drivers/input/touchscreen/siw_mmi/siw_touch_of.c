@@ -157,60 +157,6 @@ out:
 #define siw_touch_parse_dts_watch(_ts)	({	int _r = 0;	_r; })
 #endif	/* __SIW_SUPPORT_WATCH */
 
-#if defined(__SIW_SUPPORT_PRD)
-/*
- * weak(dummy) function for PRD control
- * These are deactivated by enabling __SIW_SUPPORT_PRD
- * and the actual functions can be found in siw_touch_hal_prd.c
- */
-int __weak siw_hal_set_prd_file(struct device *dev, const char *path,
-	int idx)
-{
-	t_dev_warn(dev, "PRD disabled\n");
-	return 0;
-}
-
-static int siw_touch_parse_dts_prd(struct siw_ts *ts)
-{
-	struct device *dev = ts->dev;
-	struct device_node *np = dev->of_node;
-	int ret = 0;
-
-	ret = siw_touch_of_string(dev, np, "prd_in_file",
-		&ts->prd_in_file_path);
-	if (!ret)
-		siw_hal_set_prd_file(dev, ts->prd_in_file_path, 0);
-	ret = siw_touch_of_string(dev, np, "prd_in_file_m",
-		&ts->prd_in_file_m_path);
-	if (!ret)
-		siw_hal_set_prd_file(dev, ts->prd_in_file_m_path, 1);
-	ret = siw_touch_of_string(dev, np, "prd_out_file",
-		&ts->prd_out_file_path);
-	if (!ret)
-		siw_hal_set_prd_file(dev, ts->prd_out_file_path, 2);
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_aat",
-		&ts->prd_out_file_mo_aat_path);
-	if (!ret)
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_aat_path, 3);
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfo",
-		&ts->prd_out_file_mo_mfo_path);
-	if (!ret)
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfo_path, 4);
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfl",
-		&ts->prd_out_file_mo_mfl_path);
-	if (!ret)
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfl_path, 5);
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mcv",
-		&ts->prd_out_file_mo_mcv_path);
-	if (!ret)
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mcv_path, 6);
-
-	return 0;
-}
-#else	/* __SIW_SUPPORT_PRD */
-#define siw_touch_parse_dts_prd(_ts)	({	int _r = 0;	_r; })
-#endif	/* __SIW_SUPPORT_PRD */
-
 static int siw_touch_do_parse_dts(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
@@ -347,8 +293,6 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	}
 
 	siw_touch_parse_dts_watch(ts);
-
-	siw_touch_parse_dts_prd(ts);
 
 	t_dev_info(dev,   "caps max_x           = %d\n", caps->max_x);
 	t_dev_info(dev,   "caps max_y           = %d\n", caps->max_y);
