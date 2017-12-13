@@ -134,6 +134,7 @@ bool cs35l36_readable_reg(struct device *dev, unsigned int reg)
 	case CS35L36_HW_REV:
 	case CS35L36_TESTKEY_CTRL:
 	case CS35L36_USERKEY_CTL:
+	case CS35L36_OTP_MEM30:
 	case CS35L36_OTP_CTRL1:
 	case CS35L36_OTP_CTRL2:
 	case CS35L36_OTP_CTRL3:
@@ -176,6 +177,8 @@ bool cs35l36_readable_reg(struct device *dev, unsigned int reg)
 	case CS35L36_BSTCVRT_DCM_CTRL:
 	case CS35L36_BSTCVRT_DCM_MODE_FORCE:
 	case CS35L36_BSTCVRT_OVERVOLT_CTRL:
+	case CS35L36_BST_TST_MANUAL:
+	case CS35L36_BST_ANA2_TEST:
 	case CS35L36_VPI_LIMIT_MODE:
 	case CS35L36_VPI_LIMIT_MINMAX:
 	case CS35L36_VPI_VP_THLD:
