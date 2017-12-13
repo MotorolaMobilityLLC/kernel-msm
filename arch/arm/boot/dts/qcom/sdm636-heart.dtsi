@@ -17,6 +17,7 @@
 #include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
 #include "sdm660-external-codec.dtsi"
 #include "sdm636-heart-audio.dtsi"
+#include "sdm636-heart-pinctrl.dtsi"
 
 / {
 	model = "heart";
@@ -134,6 +135,7 @@
 		num_of_blocks = <256>;
 		secure_bytes = <32>;
 		pinctrl-names = "default";
+		pinctrl-0 = <&cypress_reset_default &cypress_irq_default>;
 		gpios = <&tlmm 20 0>, /* RESET */
 			<&tlmm 8 0>, /* programming SCLK */
 			<&tlmm 9 0>, /* programming SDAT */
