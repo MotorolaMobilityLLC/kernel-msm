@@ -40,4 +40,6 @@ void tas2560_enable(struct tas2560_priv *pTAS2560, bool bEnable);
 int tas2560_load_default(struct tas2560_priv *pTAS2560);
 int tas2560_load_platdata(struct tas2560_priv *pTAS2560);
 int tas2560_LoadConfig(struct tas2560_priv *pTAS2560, bool bPowerOn);
+int tas2560_get_PPG(struct tas2560_priv *pTAS2560);
+int tas2560_set_PPG(struct tas2560_priv *pTAS2560, int ppgvolume);
 #endif /* _TAS2560_CORE_H */
