@@ -19,16 +19,21 @@ Optional properties:
   output control. Forces the LRCLK to continue to drive even
   if no ASP_TXn channels are enabled.
 
-  - cirrus,right-channel-amp : Boolean to determine which channel
-  the amplifier is to receive the audio data on. If present the
-  amplifier receives data on the right channel of I2S data.
-  If not present the amplifier receives data on the left
-  channel of I2S data
+  - cirrus,multi-amp-mode : Boolean to determine if there are more than
+  one amplifier in the system. If more than one it is best to Hi-Z the ASP
+  port to prevent bus contention on the output signal
 
   - cirrus,boost-ctl-millivolt : Boost Voltage Value.  Configures the boost
   converter's output voltage in mV. The range is from 2550mV to 10000mV with
   increments of 50mV.
   (Default) VP
+
+  - cirrus,boost-ctl-select : Boost conerter control source selection.
+  Selects the source of the BST_CTL target VBST voltage for the boost
+  converter to generate.
+  0x00 - Control Port Value
+  0x01 - Class H Tracking (Default)
+  0x10 - MultiDevice Sync Value
 
   - cirrus,boost-peak-milliamp : Boost-converter peak current limit in mA.
   Configures the peak current by monitoring the current through the boost FET.
