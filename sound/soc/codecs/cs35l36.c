@@ -1548,7 +1548,7 @@ static int cs35l36_i2c_probe(struct i2c_client *i2c_client,
 	if (cs35l36->reset_gpio)
 		gpiod_set_value_cansleep(cs35l36->reset_gpio, 1);
 
-	usleep_range(2000, 2100);
+	msleep(300);
 
 	/* initialize codec */
 	ret = regmap_read(cs35l36->regmap, CS35L36_SW_RESET, &reg_id);
