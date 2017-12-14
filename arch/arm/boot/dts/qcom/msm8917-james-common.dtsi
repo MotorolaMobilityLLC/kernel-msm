@@ -229,7 +229,7 @@
 			ti,pll = <0>; /* refer to tas2560.h for more details */
 			ti,asi-format = <0>; /* 0, i2S; 1, DSP;  */
 			ti,load = <1>; /* 0, 8Ohm; 1, 6Ohm; 2, 4Ohm */
-			ti,ppg = <0>; /* 0, 0dB default; 1， enable -2dB */
+			ti,ppg = <110>; /*attenuation,0(-110db)~110(0db) */
 			status = "ok";
 	};
 	sx9310@28 {
