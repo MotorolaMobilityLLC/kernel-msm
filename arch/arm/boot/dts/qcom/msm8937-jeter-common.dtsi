@@ -323,6 +323,7 @@
 	qcom,thermal-coefficients =  /bits/ 16 <0xDA86 0xF050 0x083C>;
 	qcom,irq-volt-empty-mv = <3200>;
 	qcom,fg-cutoff-voltage-mv = <3400>;
+	qcom,fg-iterm-ma = <300>;
 };
 
 &mot_batterydata {
