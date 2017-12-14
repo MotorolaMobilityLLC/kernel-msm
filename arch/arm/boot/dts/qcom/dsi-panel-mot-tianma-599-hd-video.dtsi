@@ -14,4 +14,31 @@
 	mot_tianma_599_hd_vid_v0: qcom,mdss_dsi_mot_tianma_599_hd_video_v0 {
 		#include "dsi-panel-mot-tianma-599-hd-video-common.dtsi"
 	};
+	mot_tianma_599_hd_ex_vid_v0: qcom,mdss_dsi_mot_tianma_599_hd_ex_video_v0 {
+		#include "dsi-panel-mot-tianma-599-hd-video-common.dtsi"
+	};
+};
+
+&mot_tianma_599_hd_vid_v0 {
+	qcom,mdss-dsi-h-front-porch = <364>;
+	qcom,mdss-dsi-h-back-porch = <40>;
+	qcom,mdss-dsi-h-pulse-width = <20>;
+	qcom,mdss-dsi-v-back-porch = <8>;
+	qcom,mdss-dsi-v-front-porch = <10>;
+	qcom,mdss-dsi-v-pulse-width = <2>;
+	qcom,mdss-dsi-panel-timings = [A9 26 18 00 4E 52 1C 2A 1D 03 04 00];
+	qcom,mdss-dsi-t-clk-post = <0x04>;
+	qcom,mdss-dsi-t-clk-pre = <0x21>;
+};
+
+&mot_tianma_599_hd_ex_vid_v0 {
+	qcom,mdss-dsi-h-front-porch = <312>;
+	qcom,mdss-dsi-h-back-porch = <24>;
+	qcom,mdss-dsi-h-pulse-width = <20>;
+	qcom,mdss-dsi-v-back-porch = <8>;
+	qcom,mdss-dsi-v-front-porch = <10>;
+	qcom,mdss-dsi-v-pulse-width = <2>;
+	qcom,mdss-dsi-panel-timings = [9B 22 18 00 4A 4E 1C 26 1B 03 04 00];
+	qcom,mdss-dsi-t-clk-post = <0x04>;
+	qcom,mdss-dsi-t-clk-pre = <0x1f>;
 };
