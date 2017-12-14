@@ -1945,7 +1945,7 @@ static int smbchg_charging_en(struct smbchg_chip *chip, bool en)
 		&& (chip->is_factory_image))
 		en = 0;
 
-	if (en && chip->otg_enabled) {
+	if (en && chip->otg_enabled && (chip->ebchg_state != EB_SRC)) {
 		mask |= OTG_EN;
 		chip->otg_enabled = false;
 		smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, false);
