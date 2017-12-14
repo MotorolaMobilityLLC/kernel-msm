@@ -395,6 +395,42 @@ static int tas2560_ear_switch_set(struct snd_kcontrol *pKcontrol,
 	return 0;
 }
 
+
+static int tas2560_ppg_ctrl_get(struct snd_kcontrol *pKcontrol,
+				struct snd_ctl_elem_value *pValue)
+{
+#ifdef KCONTROL_CODEC
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
+#else
+	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
+#endif
+	struct tas2560_priv *pTAS2560 = snd_soc_codec_get_drvdata(codec);
+
+	pValue->value.integer.value[0] = tas2560_get_PPG(pTAS2560);
+	dev_dbg(codec->dev, "tas2560_ppg_ctrl_get = 0x%x\n",
+					pTAS2560->mnPPG);
+
+	return 0;
+}
+
+static int tas2560_ppg_ctrl_put(struct snd_kcontrol *pKcontrol,
+				struct snd_ctl_elem_value *pValue)
+{
+#ifdef KCONTROL_CODEC
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
+#else
+	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
+#endif
+	struct tas2560_priv *pTAS2560 = snd_soc_codec_get_drvdata(codec);
+	int mnPPG = pValue->value.integer.value[0];
+
+	mutex_lock(&pTAS2560->codec_lock);
+	tas2560_set_PPG(pTAS2560, mnPPG);
+	mutex_unlock(&pTAS2560->codec_lock);
+
+	return 0;
+}
+
 static const char *load_text[] = {"8_Ohm", "6_Ohm", "4_Ohm"};
 
 static const struct soc_enum load_enum[] = {
@@ -427,6 +463,8 @@ static const struct snd_kcontrol_new tas2560_snd_controls[] = {
 	SOC_SINGLE_EXT("TAS2560 PowerCtrl", SND_SOC_NOPM, 0, 0x0001, 0,
 			tas2560_power_ctrl_get, tas2560_power_ctrl_put),
 	SOC_ENUM_EXT("TAS2560 EAR Switch", tas2560_ear_switch_ctl_enum[0], tas2560_ear_switch_get, tas2560_ear_switch_set),
+	SOC_SINGLE_EXT("TAS2560 PPG", SND_SOC_NOPM, 0, 0x006E, 0,
+			tas2560_ppg_ctrl_get, tas2560_ppg_ctrl_put),
 };
 
 static struct snd_soc_codec_driver soc_codec_driver_tas2560 = {
