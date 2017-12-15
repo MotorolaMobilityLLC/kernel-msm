@@ -31,8 +31,10 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb \
 	sdm630-evert-pvt1.dtb
 
 ifeq ($(CONFIG_HEART_DTB),y)
-dtb-$(CONFIG_ARCH_SDM630) += sdm630-heart-p0a.dtb
-dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-p0a.dtb
+dtb-$(CONFIG_ARCH_SDM630) += sdm630-heart-evb.dtb
+dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-evb.dtb
+dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-evt1.dtb
+dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-evt2.dtb
 endif #CONFIG_HEART_DTB
 
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-paytonpro-p0a.dtb
