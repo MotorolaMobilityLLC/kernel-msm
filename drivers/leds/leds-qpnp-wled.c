@@ -1010,42 +1010,11 @@ static irqreturn_t qpnp_wled_sc_irq(int irq, void *_wled)
 	return IRQ_HANDLED;
 }
 
-static int qpnp_wled_is_sink_match(struct qpnp_wled *wled, u8 *sink_cfg)
-{
-	int rc, i, temp;
-	u8 reg;
-
-	rc = qpnp_wled_read_reg(wled, &reg,
-			QPNP_WLED_CURR_SINK_REG(wled->sink_base));
-	if (rc < 0)
-		return rc;
-
-	for (i = 0; i < wled->num_strings; i++) {
-		temp = wled->strings[i] + QPNP_WLED_CURR_SINK_SHIFT;
-		*sink_cfg |= (1 << temp);
-	}
-
-	return (reg == *sink_cfg);
-}
-
-static int qpnp_wled_control_sink(struct qpnp_wled *wled, u8 val, bool enable)
-{
-	int rc;
-	u8 data;
-
-	data = (enable == true) ? val : 0;
-
-	rc = qpnp_wled_masked_write_reg(wled, val, &data,
-			QPNP_WLED_CURR_SINK_REG(wled->sink_base));
-	return rc;
-}
-
 /* Configure WLED registers */
 static int qpnp_wled_config(struct qpnp_wled *wled)
 {
 	int rc, i, temp;
-	u8 reg, sink_cfg, val = 0;
-	bool sink_match;
+	u8 reg = 0;
 
 	/* Configure display type */
 	rc = qpnp_wled_set_disp(wled, wled->ctrl_base);
@@ -1302,20 +1271,10 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 	if (rc)
 		return rc;
 
-	rc = qpnp_wled_is_sink_match(wled, &sink_cfg);
-	if (rc < 0)
-		return rc;
-
-	sink_match = rc;
-
-	val = sink_cfg;
-	if (sink_match != true) {
-		/* overwrite the SINKS configuration */
-		rc = qpnp_wled_write_reg(wled, &val,
-				QPNP_WLED_CURR_SINK_REG(wled->sink_base));
-		if (rc < 0)
-			return rc;
-	}
+	/* disable all current sinks and enable selected strings */
+	reg = 0x00;
+	rc = qpnp_wled_write_reg(wled, &reg,
+			QPNP_WLED_CURR_SINK_REG(wled->sink_base));
 
 	for (i = 0; i < wled->num_strings; i++) {
 		if (wled->strings[i] >= QPNP_WLED_MAX_STRINGS) {
@@ -1323,38 +1282,25 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 			return -EINVAL;
 		}
 
-		val = wled->strings[i] + QPNP_WLED_CURR_SINK_SHIFT;
-
-			/* MODULATOR */
+		/* MODULATOR */
 		rc = qpnp_wled_read_reg(wled, &reg,
 				QPNP_WLED_MOD_EN_REG(wled->sink_base,
-					wled->strings[i]));
+						wled->strings[i]));
 		if (rc < 0)
 			return rc;
-
-		temp = (QPNP_WLED_MOD_EN << QPNP_WLED_MOD_EN_SHFT);
+		reg &= QPNP_WLED_MOD_EN_MASK;
+		reg |= (QPNP_WLED_MOD_EN << QPNP_WLED_MOD_EN_SHFT);
 
 		if (wled->dim_mode == QPNP_WLED_DIM_HYBRID)
-			temp &= QPNP_WLED_GATE_DRV_MASK;
+			reg &= QPNP_WLED_GATE_DRV_MASK;
 		else
-			temp |= ~QPNP_WLED_GATE_DRV_MASK;
+			reg |= ~QPNP_WLED_GATE_DRV_MASK;
 
-		if (reg != temp) {
-			/*
-			 * Disable the string before configuring corsponding
-			 * sink regisetrs
-			 */
-			rc = qpnp_wled_control_sink(wled, BIT(val), false);
-			if (rc < 0)
-				return rc;
-
-			reg = temp;
-			rc = qpnp_wled_write_reg(wled, &reg,
-					QPNP_WLED_MOD_EN_REG(wled->sink_base,
-							wled->strings[i]));
-			if (rc)
-				return rc;
-		}
+		rc = qpnp_wled_write_reg(wled, &reg,
+				QPNP_WLED_MOD_EN_REG(wled->sink_base,
+						wled->strings[i]));
+		if (rc)
+			return rc;
 
 		/* SYNC DELAY */
 		if (wled->sync_dly_us > QPNP_WLED_SYNC_DLY_MAX_US)
@@ -1365,25 +1311,14 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 						wled->strings[i]));
 		if (rc < 0)
 			return rc;
-
+		reg &= QPNP_WLED_SYNC_DLY_MASK;
 		temp = wled->sync_dly_us / QPNP_WLED_SYNC_DLY_STEP_US;
-		if ((reg & ~QPNP_WLED_SYNC_DLY_MASK) != temp) {
-			/*
-			 * Disable the string before configuring corsponding
-			 * sink regisetrs
-			 */
-			rc = qpnp_wled_control_sink(wled, BIT(val), false);
-			if (rc < 0)
-				return rc;
-
-			reg &= QPNP_WLED_SYNC_DLY_MASK;
-			reg |= temp;
-			rc = qpnp_wled_write_reg(wled, &reg,
-					QPNP_WLED_SYNC_DLY_REG(wled->sink_base,
-							wled->strings[i]));
-			if (rc)
-				return rc;
-		}
+		reg |= temp;
+		rc = qpnp_wled_write_reg(wled, &reg,
+				QPNP_WLED_SYNC_DLY_REG(wled->sink_base,
+						wled->strings[i]));
+		if (rc)
+			return rc;
 
 		/* FULL SCALE CURRENT */
 		if (wled->fs_curr_ua > QPNP_WLED_FS_CURR_MAX_UA)
@@ -1394,25 +1329,14 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 						wled->strings[i]));
 		if (rc < 0)
 			return rc;
-
+		reg &= QPNP_WLED_FS_CURR_MASK;
 		temp = wled->fs_curr_ua / QPNP_WLED_FS_CURR_STEP_UA;
-		if ((reg & ~QPNP_WLED_FS_CURR_MASK) != temp) {
-			/*
-			 * Disable the string before configuring corsponding
-			 * sink regisetrs
-			 */
-			rc = qpnp_wled_control_sink(wled, BIT(val), false);
-			if (rc < 0)
-				return rc;
-
-			reg &= QPNP_WLED_FS_CURR_MASK;
-			reg |= temp;
-			rc = qpnp_wled_write_reg(wled, &reg,
-					QPNP_WLED_FS_CURR_REG(wled->sink_base,
-							wled->strings[i]));
-			if (rc)
-				return rc;
-		}
+		reg |= temp;
+		rc = qpnp_wled_write_reg(wled, &reg,
+				QPNP_WLED_FS_CURR_REG(wled->sink_base,
+						wled->strings[i]));
+		if (rc)
+			return rc;
 
 		/* CABC */
 		rc = qpnp_wled_read_reg(wled, &reg,
@@ -1420,7 +1344,6 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 						wled->strings[i]));
 		if (rc < 0)
 			return rc;
-
 		reg &= QPNP_WLED_CABC_MASK;
 		reg |= (wled->en_cabc << QPNP_WLED_CABC_SHIFT);
 		rc = qpnp_wled_write_reg(wled, &reg,
@@ -1429,9 +1352,16 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 		if (rc)
 			return rc;
 
-		/* Enable the string */
-		rc = qpnp_wled_control_sink(wled, BIT(val), true);
+		/* Enable CURRENT SINK */
+		rc = qpnp_wled_read_reg(wled, &reg,
+				QPNP_WLED_CURR_SINK_REG(wled->sink_base));
 		if (rc < 0)
+			return rc;
+		temp = wled->strings[i] + QPNP_WLED_CURR_SINK_SHIFT;
+		reg |= (1 << temp);
+		rc = qpnp_wled_write_reg(wled, &reg,
+				QPNP_WLED_CURR_SINK_REG(wled->sink_base));
+		if (rc)
 			return rc;
 	}
 
