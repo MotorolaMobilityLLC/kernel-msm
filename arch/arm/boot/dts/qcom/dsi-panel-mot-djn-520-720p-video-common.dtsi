@@ -28,34 +28,16 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 
-qcom,mdss-dsi-reset-sequence = <0 5>, <1 5>, <0 10>, <1 80>;
+qcom,mdss-dsi-reset-sequence = <1 5>, <0 5>, <1 10>;
 qcom,mdss-dsi-dis-reset-sequence = <1 10>, <0 0>;
 
-qcom,mdss-dsi-on-command = [39 01 00 00 00 00 04 B9 FF 83 94
-	39 01 00 00 00 00 0B B1 48 0B 6B 09 33 54 71 71 2C 43
-	39 01 00 00 00 00 07 BA 63 03 68 6B B2 C0
-	39 01 00 00 00 00 07 B2 00 80 64 0C 06 2F
-	39 01 00 00 00 00 17 B4 21 7F 21 7F 21 7F 01 0C 84 75 00 3F 21 7F 21 7F 21 7F 01 0C 84 3F
-	39 01 00 00 00 00 22 D3 00 00 00 00 00 00 08 08 32 10 05 00 05 32 13 C1 00 01 32 10 08 00 00 37 03 07 07 37 05 05 37 0C 40
-	39 01 00 00 00 00 2D D5 18 18 18 18 22 23 20 21 04 05 06 07 00 01 02 03 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 19 19 19 19
-	39 01 00 00 00 00 2D D6 18 18 19 19 21 20 23 22 03 02 01 00 07 06 05 04 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 18 19 19 18 18
-	39 01 00 00 00 00 3B E0 00 04 0c 12 14 18 1B 19 33 42 54 54 5B 71 79 7B 89 8C 88 97 A8 53 53 58 5D 62 6B 78 7F 00 04 0c 12 14 18 1B 19 33 42 54 54 5B 71 79 7B 89 8C 88 97 A8 53 53 58 5D 62 6B 78 7F
-	39 01 00 00 00 00 02 BD 01
-	39 01 00 00 00 00 02 BD 00
-	39 01 00 00 00 00 02 BD 00
-	39 01 00 00 00 00 02 CC 07
-	39 01 00 00 00 00 03 C0 1F 73
-	39 01 00 00 00 00 03 B6 90 90
-	39 01 00 00 00 00 02 D4 02
-	39 01 00 00 00 00 02 C6 EF
-	// CABC PWM 20KHz
-	39 01 00 00 00 00 02 51 FF
+qcom,mdss-dsi-on-command = [05 01 00 00 78 00 02 11 00
+	39 01 00 00 00 00 04 B9 FF 83 94
 	39 01 00 00 00 00 0A C9 13 00 14 1E 31 1E 00 91 00
 	39 01 00 00 00 00 02 53 2C
-	39 01 00 00 00 00 02 55 11
-
-	05 01 00 00 78 00 02 11 00
-	05 01 00 00 0A 00 02 29 00];		/* Display on */
+	39 01 00 00 00 00 02 55 01
+	39 01 00 00 00 00 02 51 E0
+	05 01 00 00 14 00 02 29 00];		/* Display on */
 
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 14 00 01 28
@@ -70,9 +52,9 @@ qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
+qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 02 51 FF];
 qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 0C F4];
+qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 02 51 E0];
 qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
@@ -88,7 +70,6 @@ qcom,mdss-dsi-lane-0-state;
 qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
-qcom,suspend-ulps-enabled;
 
 qcom,mdss-dsi-panel-timings = [94 20 14 00 46 48 1a 24 18 03 04 00];
 qcom,mdss-dsi-t-clk-post = <0x04>;
@@ -99,11 +80,16 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
 qcom,cont-splash-enabled;
-//qcom,esd-check-enabled;
+qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 01 D9
+					06 01 00 01 05 00 01 09];
+qcom,mdss-dsi-panel-status-read-length = <4 4>;
+qcom,mdss-dsi-panel-status-valid-params = <1 3>;
 qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-panel-status-value = <0x9C>;
+qcom,mdss-dsi-panel-status-value =
+				<0x80 0x80 0x73 0x04 >,
+				<0x80 0x80 0x73 0x04 >;
 qcom,mdss-dsi-no-panel-on-read-support;
 
 qcom,panel-supply-entries {
