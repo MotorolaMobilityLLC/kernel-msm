@@ -1897,7 +1897,7 @@ static s8 gtp_request_input_dev(struct goodix_ts_data *ts)
 		| BIT_MASK(EV_ABS);
 	if (ts->pdata->ics_slot_report) {
 		/*  in case of "out of memory" */
-		input_mt_init_slots(ts->input_dev, 16, 0);
+		input_mt_init_slots(ts->input_dev, 10, 0);
 	} else {
 		ts->input_dev->keybit[BIT_WORD(BTN_TOUCH)] =
 						BIT_MASK(BTN_TOUCH);
