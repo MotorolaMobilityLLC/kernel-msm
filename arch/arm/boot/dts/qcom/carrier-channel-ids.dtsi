@@ -222,8 +222,8 @@
 		"retth",	/* 205 */
 		"retru",	/* 206 */
 		"trueth",	/* 207 */
-		"undefined",	/* 208 */
-		"undefined",	/* 209 */
+		"smarthk",	/* 208 */
+		"mobilpk",	/* 209 */
 		"undefined",	/* 210 */
 		"undefined",	/* 211 */
 		"undefined",	/* 212 */
