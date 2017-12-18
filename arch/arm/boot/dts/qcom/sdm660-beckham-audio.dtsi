@@ -37,7 +37,7 @@
 
 	gpio_usb_aud_det_n: gpio_usb_aud_det_n {
 		config {
-			pins = "gpio74";
+			pins = "gpio92";
 			bias-pull-down;
 			drive-strength = <2>;
 		};
@@ -290,7 +290,7 @@
 	pinctrl-name = "default";
 	pinctrl-0 = <&usb_aud_sw_sel>;
 
-	gpios = <&tlmm 74 0>,  /* USB_AUD_DET_N, output-high */
+	gpios = <&tlmm 92 0>,  /* USB_AUD_DET_N, output-high */
 		<&tlmm 41 0>;  /* USB_AUD_SW_SEL, output-low */
 
 	gpio-labels = "gpio_usb_aud_det_n",
