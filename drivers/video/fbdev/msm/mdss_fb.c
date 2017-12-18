@@ -2020,6 +2020,25 @@ static void mdss_fb_scale_bl(struct msm_fb_data_type *mfd, u32 *bl_lvl)
 	(*bl_lvl) = temp;
 }
 
+static void mdss_fb_set_backlight_dimming(struct msm_fb_data_type *mfd,
+	u32 bkl_lvl)
+{
+	struct mdss_panel_data *pdata;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if (bkl_lvl > mfd->panel_info->bl_max * 100 / 255) {
+		bkl_lvl = mfd->panel_info->bl_max * 100 / 255;
+		pdata->set_backlight(pdata, bkl_lvl);
+		msleep(35);
+	}
+	while (bkl_lvl > mfd->panel_info->bl_max * 5 / 255) {
+		bkl_lvl = bkl_lvl / 2;
+		pdata->set_backlight(pdata, bkl_lvl);
+		msleep(35);
+	}
+}
+
 /* must call this function from within mfd->bl_lock */
 void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 {
@@ -2067,7 +2086,8 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 					!strcmp(task->comm, "init")) {
 					pr_warn("bkl_lvl = %d,task->comm = %s\n",
 						bkl_lvl, task->comm);
-					pdata->set_dcs_backlight(pdata, 0);
+					mdss_fb_set_backlight_dimming(mfd,
+						mfd->bl_level);
 				}
 			}
 			pr_debug("backlight sent to panel :%d\n", temp);
