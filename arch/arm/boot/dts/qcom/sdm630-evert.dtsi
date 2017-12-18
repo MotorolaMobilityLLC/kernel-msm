@@ -238,6 +238,13 @@
 			05 01 01 0A 78 19 28 00 23 00 00
 			00 00 00 00 00 00 00 00 00 00 00
 			00 00 00 00 00 00 36 01];
+		config_modifier-names = "fps";
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <260 2110 830 2159 1>;
+			};
+		};
 	};
 };
 
