@@ -298,7 +298,7 @@
 			<&tlmm 28 0>,          /* gpio_muc_spi_mosi, output-low */
 			<&tlmm 29 1>,          /* gpio_muc_spi_miso, input */
 			<&lpi_tlmm 27 2>,        /* gpio_muc_bplus_iset, output-high */
-			<0>,                  /* gpio_muc_bplus_discharg, cs */
+			<&pcal_pin_2 7 2>,     /* gpio_muc_bplus_discharg, cs */
 			<&tlmm 76 1>,  /* gpio_muc_bplus_fault_n, input */
 			<&tlmm 31 1>,          /* gpio_muc_clk, input */
 			<&pm660_gpios 3 0>;          /* spi-i2c select pin */
