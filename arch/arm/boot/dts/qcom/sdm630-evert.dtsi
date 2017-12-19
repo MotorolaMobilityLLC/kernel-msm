@@ -136,8 +136,6 @@
 
 &pm660l_l3 {
 	qcom,init-ldo-mode = <1>;
-	regulator-boot-on;
-	regulator-always-on;
 };
 
 &soc {
@@ -169,9 +167,10 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <67 0x2002>;
 		vdd-supply = <&pm660l_l3>;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
-		pinctrl-0 = <&ts_active>;
-		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-names = "default", "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&ts_reset_default>;
+		pinctrl-1 = <&ts_active>;
+		pinctrl-2 = <&ts_int_suspend &ts_reset_suspend>;
 		focaltech,name = "ft5x46";
 		focaltech,family-id = <0x54>;
 		focaltech,reset-gpio = <&tlmm 66 0x00>;
