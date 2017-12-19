@@ -48,4 +48,18 @@
 			output-high;
 		};
 	};
+
+	ts_reset_default: ts_reset_default {
+		mux {
+			pins = "gpio66";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio66";
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
 };
