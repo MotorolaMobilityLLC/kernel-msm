@@ -29,6 +29,7 @@ static uint32_t tx_port_id = TAS2560_ALGO_TX_PORT_ID;
 static uint32_t rx_port_id = TAS2560_ALGO_RX_PORT_ID;
 /*Not much significance and can be removed in future*/
 static uint8_t calib_status;
+static int32_t force_algo_disable;
 
 /*Pointer to hold the data recieved from DSP
 * TODO:Decide wether it needs memory or pointer is sufficient
@@ -407,6 +408,13 @@ static int tas2560_algo_set_cal(struct snd_kcontrol *kcontrol,
 	u8 *ptr = buff;
 	u8 re_count = 0, i = 0;
 
+	/*If algo is forced to be disable, we do nothing here*/
+	if (force_algo_disable) {
+		pr_err("TAS2560_ALGO,%s,the algo is force disabled,%d\n",
+			__func__, force_algo_disable);
+		return ret;
+	}
+
 	/*Count is ignored as it is mono*/
 	pr_err("TAS2560_ALGO:%s [0] = %ld [1] = %ld\n", __func__, ucontrol->value.integer.value[0], ucontrol->value.integer.value[1]);
 	re_count = ucontrol->value.integer.value[0];
@@ -486,6 +494,13 @@ static int tas2560_algo_set_ff_module (struct snd_kcontrol *kcontrol,
 
 	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
 	pr_err("TAS2560_ALGO:%s Sending Rx-Enable data %d", __func__, ((int32_t *)buff)[0]);
+
+	if ((force_algo_disable) && (((int32_t *)buff)[0])) {
+		pr_err("TAS2560_ALGO:%s,try to enable ff while force disabled",
+			__func__);
+		return ret;
+	}
+
 	paramid = AFE_PARAM_ID_TAS2560_ALGO_RX_ENABLE;
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_SET_PARAM, sizeof(u32));
 
@@ -527,6 +542,13 @@ static int tas2560_algo_set_fb_module (struct snd_kcontrol *kcontrol,
 	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
 
 	pr_err("TAS2560_ALGO:%s Sending Tx-Enable data %d", __func__, ((int32_t *)buff)[0]);
+
+	if ((force_algo_disable) && (((int32_t *)buff)[0])) {
+		pr_err("TAS2560_ALGO:%s,try to enable fb while force disabled",
+			__func__);
+		return ret;
+	}
+
 	paramid = AFE_PARAM_ID_TAS2560_ALGO_TX_ENABLE;
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_SET_PARAM, sizeof(u32));
 
@@ -578,6 +600,37 @@ static int tas2560_algo_set_profile (struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+/*Control:10 Command to disable TAS2560 ALGO to be enabled by audio hal,
+used only for factory mode*/
+static const char * const tas2560_algo_disable_text[] = {
+	"FALSE",
+	"TRUE"
+};
+
+static const struct soc_enum tas2560_algo_disable_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tas2560_algo_disable_text),
+		tas2560_algo_disable_text)
+};
+
+
+static int tas2560_algo_get_disable(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = force_algo_disable;
+	pr_err("TAS2560_ALGO:%s force_algo_disable=%d",
+		__func__, force_algo_disable);
+	return 0;
+}
+
+static int tas2560_algo_set_disable(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	force_algo_disable = ucontrol->value.integer.value[0];
+	pr_err("TAS2560_ALGO:%s force_algo_disable=%d",
+		__func__, force_algo_disable);
+	return 0;
+}
+
 
 
 const struct snd_kcontrol_new tas2560_algo_filter_mixer_controls[] = {
@@ -589,7 +642,10 @@ const struct snd_kcontrol_new tas2560_algo_filter_mixer_controls[] = {
 	SOC_ENUM_EXT("TAS2560_ALGO_STATUS", tas2560_algo_enum[0], tas2560_algo_get_status, tas2560_algo_set_status),
 	SOC_ENUM_EXT("TAS2560_ALGO_FF_MODULE", tas2560_algo_ff_module_enum[0], tas2560_algo_get_ff_module, tas2560_algo_set_ff_module),
 	SOC_ENUM_EXT("TAS2560_ALGO_FB_MODULE", tas2560_algo_fb_module_enum[0], tas2560_algo_get_fb_module, tas2560_algo_set_fb_module),
-	SOC_ENUM_EXT("TAS2560_ALGO_PROFILE", tas2560_algo_profile_enum[0], tas2560_algo_get_profile, tas2560_algo_set_profile)
+	SOC_ENUM_EXT("TAS2560_ALGO_PROFILE", tas2560_algo_profile_enum[0],
+		tas2560_algo_get_profile, tas2560_algo_set_profile),
+	SOC_ENUM_EXT("TAS2560_ALGO_DISABLE", tas2560_algo_disable_enum[0],
+		tas2560_algo_get_disable, tas2560_algo_set_disable)
 };
 
 /*
