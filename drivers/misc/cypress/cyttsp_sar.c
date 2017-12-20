@@ -969,6 +969,80 @@ static ssize_t cycapsense_reset_store(struct class *class,
 	return count;
 }
 
+static ssize_t cycapsense_set_threshold_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct cyttsp_sar_data *data = pcyttsp_sar_ptr;
+	int i, ret;
+	u32 threshold_array_len = 0;
+	u32 *threshold_array_data;
+	struct device_node *np = data->client->dev.of_node;
+
+	if (!count)
+		return -EINVAL;
+
+	LOG_INFO("start set threshold, sku = %s\n", buf);
+
+	ret = of_property_read_u32(np, "threshold_reg_array_len",
+					&threshold_array_len);
+	if (ret < 0) {
+		LOG_INFO("data_array_len read error");
+	}
+
+	threshold_array_data = kmalloc(threshold_array_len * 2 * sizeof(u32),
+					GFP_KERNEL);
+
+	if (!strncmp(buf, "NA", 2)) {
+		ret = of_property_read_u32_array(np, "na_threshold_array_val",
+				threshold_array_data,
+				threshold_array_len * 2);
+		if (ret < 0)
+			LOG_INFO("data_array_val read error");
+	} else if (!strncmp(buf, "EMEA", 4)) {
+		ret = of_property_read_u32_array(np, "emea_threshold_array_val",
+				threshold_array_data,
+				threshold_array_len * 2);
+		if (ret < 0)
+			LOG_INFO("data_array_val read error");
+	} else if (!strncmp(buf, "APAC", 4)) {
+		ret = of_property_read_u32_array(np, "apac_threshold_array_val",
+				threshold_array_data,
+				threshold_array_len * 2);
+		if (ret < 0)
+			LOG_INFO("data_array_val read error");
+	} else if (!strncmp(buf, "LATAM", 5)) {
+		ret = of_property_read_u32_array(np,
+				"latam_threshold_array_val",
+				threshold_array_data,
+				threshold_array_len * 2);
+		if (ret < 0)
+			LOG_INFO("data_array_val read error");
+	} else if (!strncmp(buf, "PRC", 3)) {
+		ret = of_property_read_u32_array(np, "prc_threshold_array_val",
+				threshold_array_data,
+				threshold_array_len * 2);
+		if (ret < 0) {
+			LOG_INFO("data_array_val read error");
+		}
+	} else
+		LOG_INFO("radio is not expected, radio = %s", buf);
+
+	for (i = 0; i < threshold_array_len; i++) {
+		LOG_INFO("Going to Write Reg: 0x%x Value: 0x%x\n",
+				threshold_array_data[i*2],
+				threshold_array_data[i*2 + 1]);
+
+		ret = cyttsp_write_reg(data, threshold_array_data[i*2],
+					threshold_array_data[i*2 + 1]);
+		if (ret < 0)
+			LOG_INFO("reg write failed");
+	}
+
+
+	return count;
+}
+
 static ssize_t cycapsense_enable_show(struct class *class,
 		struct class_attribute *attr,
 		char *buf)
@@ -1152,6 +1226,7 @@ static ssize_t cycapsense_fw_download_status_show(struct class *class,
 }
 
 static CLASS_ATTR(fw_update, 0660, cycapsense_fw_show, cycapsense_fw_store);
+static CLASS_ATTR(set_threshold, 0660, NULL, cycapsense_set_threshold_store);
 static CLASS_ATTR(reset, 0660, NULL, cycapsense_reset_store);
 static CLASS_ATTR(enable, 0660, cycapsense_enable_show, cycapsense_enable_store);
 static CLASS_ATTR(reg, 0660, cycapsense_reg_show, cycapsense_reg_store);
@@ -1368,6 +1443,13 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 	if (error < 0) {
 		dev_err(&client->dev,
 				"Create reg file failed (%d)\n", error);
+		return error;
+	}
+
+	error = class_create_file(&capsense_class, &class_attr_set_threshold);
+	if (error < 0) {
+		dev_err(&client->dev,
+				"Create set_threshold file failed (%d)\n", error);
 		return error;
 	}
 
