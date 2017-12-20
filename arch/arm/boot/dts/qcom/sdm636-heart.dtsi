@@ -19,6 +19,7 @@
 #include "sdm660-external-codec.dtsi"
 #include "sdm636-heart-audio.dtsi"
 #include "sdm636-heart-pinctrl.dtsi"
+#include "sdm636-heart-fps.dtsi"
 
 / {
 	model = "heart";
