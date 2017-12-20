@@ -670,7 +670,7 @@
 				<45 4250 3000 2000>,
 				<60 4200 2000 0>;
 	qcom,enable-charging-limit;
-	qcom,upper-limit-capacity = <70>;
+	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
 	qcom,vfloat-comp-uv = <20000>;
 	qcom,hvdcp-force-5v;
