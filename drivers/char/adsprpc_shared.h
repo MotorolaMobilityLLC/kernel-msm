@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015,2017 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -93,7 +93,7 @@ do {\
 
 struct remote_buf64 {
 	uint64_t pv;
-	int64_t len;
+	uint64_t len;
 };
 
 union remote_arg64 {
@@ -126,25 +126,25 @@ struct fastrpc_ioctl_invoke_fd {
 
 struct fastrpc_ioctl_init {
 	uint32_t flags;		/* one of FASTRPC_INIT_* macros */
-	uintptr_t __user file;	/* pointer to elf file */
-	int32_t filelen;	/* elf file length */
+	uintptr_t file;		/* pointer to elf file */
+	uint32_t filelen;	/* elf file length */
 	int32_t filefd;		/* ION fd for the file */
-	uintptr_t __user mem;	/* mem for the PD */
-	int32_t memlen;		/* mem length */
+	uintptr_t mem;		/* mem for the PD */
+	uint32_t memlen;	/* mem length */
 	int32_t memfd;		/* ION fd for the mem */
 };
 
 struct fastrpc_ioctl_munmap {
 	uintptr_t vaddrout;	/* address to unmap */
-	ssize_t size;		/* size */
+	size_t size;		/* size */
 };
 
 
 struct fastrpc_ioctl_mmap {
 	int fd;				/* ion fd */
 	uint32_t flags;			/* flags for dsp to map with */
-	uintptr_t __user *vaddrin;	/* optional virtual address */
-	ssize_t size;			/* size */
+	uintptr_t vaddrin;		/* optional virtual address */
+	size_t size;			/* size */
 	uintptr_t vaddrout;		/* dsps virtual address */
 };
 
@@ -183,14 +183,15 @@ struct smq_invoke_rsp {
 static inline struct smq_invoke_buf *smq_invoke_buf_start(remote_arg64_t *pra,
 							uint32_t sc)
 {
-	int len = REMOTE_SCALARS_LENGTH(sc);
+	unsigned int len = REMOTE_SCALARS_LENGTH(sc);
+
 	return (struct smq_invoke_buf *)(&pra[len]);
 }
 
 static inline struct smq_phy_page *smq_phy_page_start(uint32_t sc,
 						struct smq_invoke_buf *buf)
 {
-	int nTotal = REMOTE_SCALARS_INBUFS(sc) + REMOTE_SCALARS_OUTBUFS(sc);
+	uint32_t nTotal = REMOTE_SCALARS_INBUFS(sc)+REMOTE_SCALARS_OUTBUFS(sc);
 	return (struct smq_phy_page *)(&buf[nTotal]);
 }
 
