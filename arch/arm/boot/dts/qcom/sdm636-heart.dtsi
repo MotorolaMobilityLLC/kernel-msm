@@ -15,6 +15,7 @@
 #include "sdm636-camera-sensor-mot-heart.dtsi"
 #include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
 #include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm660-external-codec.dtsi"
 #include "sdm636-heart-audio.dtsi"
 #include "sdm636-heart-pinctrl.dtsi"
