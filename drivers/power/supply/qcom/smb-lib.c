@@ -7672,6 +7672,26 @@ static DEVICE_ATTR(factory_image_mode, 0644,
 		factory_image_mode_show,
 		factory_image_mode_store);
 
+static ssize_t factory_charge_upper_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = mmi_chip->mmi.upper_limit_capacity;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(factory_charge_upper, 0444,
+		factory_charge_upper_show,
+		NULL);
+
 static ssize_t force_demo_mode_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
@@ -8547,6 +8567,11 @@ void mmi_init(struct smb_charger *chg)
 				&dev_attr_factory_image_mode);
 	if (rc)
 		smblib_err(chg, "couldn't create factory_image_mode\n");
+
+	rc = device_create_file(chg->dev,
+				&dev_attr_factory_charge_upper);
+	if (rc)
+		smblib_err(chg, "couldn't create factory_charge_upper\n");
 
 	if (chg->mmi.factory_mode) {
 		mmi_chip = chg;
