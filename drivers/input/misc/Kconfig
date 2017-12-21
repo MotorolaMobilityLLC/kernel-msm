@@ -844,6 +844,14 @@ config INPUT_SX9310_TRIPLE
 	  Say Y to enable the SAR detection application, if N here not to use the
 	  this SAR sensor.
 
+config INPUT_ABOV
+	tristate "ABOV_SAR_sensor"
+	depends on I2C
+	default n
+	help
+	  Say Y to enable the SAR detection application, if N here not to use the
+	  this SAR sensor
+
 source "drivers/input/misc/ots_pat9125/Kconfig"
 
 config SENSORS_LTR553
