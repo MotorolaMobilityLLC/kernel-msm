@@ -312,7 +312,6 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 		0x00003000,
 		0x0000C000  };
 
-	dev_info(&data->client->dev, "cypress irq handler!\n");
 
 	if (data->enable) {
 		ret = cyttsp_i2c_read_block(&data->client->dev, CYTTSP_REG_INTERRUPT_PEDNING, 3, &temp[0]);
