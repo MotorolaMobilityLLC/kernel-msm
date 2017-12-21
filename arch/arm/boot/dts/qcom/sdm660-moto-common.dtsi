@@ -419,7 +419,7 @@
 
 	mods_camera_ext {
 		compatible = "mmi,mods-camera-ext";
-		/*camera_ext_cdsi-supply = <&pm8953_l23>;*/
+		camera_ext_cdsi-supply = <&pm660_s5>;
 	};
 
 	mod_uart: mod_uart {
