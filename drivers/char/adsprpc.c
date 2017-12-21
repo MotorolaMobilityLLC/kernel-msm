@@ -1704,6 +1704,10 @@ static long fastrpc_device_ioctl(struct file *file, unsigned int ioctl_num,
 						sizeof(p.init)));
 		if (err)
 			goto bail;
+		VERIFY(err, p.init.filelen >= 0 &&
+			p.init.memlen >= 0);
+		if (err)
+			goto bail;
 		VERIFY(err, 0 == fastrpc_init_process(fl, &p.init));
 		if (err)
 			goto bail;
