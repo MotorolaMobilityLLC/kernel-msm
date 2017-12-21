@@ -111,3 +111,4 @@ obj-$(CONFIG_SENSORS_AKM09911)		+= akm09911.o
 obj-$(CONFIG_EPL8802_ALSPS)  += epl8802_alsps.o
 obj-$(CONFIG_INPUT_MXG3300)  += mxg3300.o
 obj-$(CONFIG_LTR559)			+= ltr559.o
+obj-$(CONFIG_INPUT_ABOV)		+= abov_sar.o
