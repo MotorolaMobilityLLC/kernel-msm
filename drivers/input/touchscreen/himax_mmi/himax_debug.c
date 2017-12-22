@@ -3543,7 +3543,7 @@ static ssize_t himax_ic_ver_show(struct device *dev,
 	size_t count = 0;
 	ts_data = private_ts;
 
-	count += snprintf(buf, BUF_LEN, "[Vendor]dijing,[FW]%04x,[IC]hx83102b\n", ic_data->vendor_config_ver);
+	count += snprintf(buf, BUF_LEN, "[FW]%04x,[IC]hx83102b\n", ic_data->vendor_config_ver);
 
 	return count;
 }

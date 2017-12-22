@@ -1596,7 +1596,7 @@ static int32_t nvt_ts_resume(struct device *dev)
 		return 0;
 	}
 
-	msleep(20);
+	msleep(10);
 
 	mutex_lock(&ts->lock);
 
