@@ -943,7 +943,7 @@ static DEVICE_ATTR(poweron, 0444, nvt_poweron_show, NULL);
 static ssize_t nvt_ic_ver_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "[Vendor]Tianma,[FW]%02x,[IC]NT36525\n",
+	return scnprintf(buf, PAGE_SIZE, "[FW]%02x,[IC]NT36525\n",
 		ts->fw_ver);
 }
 
