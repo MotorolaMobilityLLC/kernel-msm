@@ -297,7 +297,7 @@ int gtp_irq_control_enable(struct goodix_ts_data *ts, bool enable)
 		   IRQ_TYPE_LEVEL_HIGH */
 		retval = request_threaded_irq(ts->client->irq, NULL,
 				goodix_ts_irq_handler,
-				IRQ_TYPE_LEVEL_LOW | IRQF_ONESHOT,
+				IRQ_TYPE_EDGE_RISING | IRQF_ONESHOT,
 				ts->client->name,
 				ts);
 
