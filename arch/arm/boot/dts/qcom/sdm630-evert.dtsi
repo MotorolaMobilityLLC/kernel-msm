@@ -358,6 +358,7 @@
 			acc@1 {
 				/delete-property/ cirrus,jd-check-jd2;
 				/delete-property/ cirrus,micd-clamp-mode;
+				cirrus,init-mic-delay-ms = <200>;
 			};
 		};
 	};
