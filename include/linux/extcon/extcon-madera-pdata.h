@@ -93,6 +93,8 @@ struct madera_accdet_pdata {
 	/** Extra debounce timeout during initial mic detect (milliseconds) */
 	int micd_detect_debounce_ms;
 
+	int init_mic_delay_ms;
+
 	/** Extra software debounces during button detection */
 	int micd_manual_debounce;
 
