@@ -319,6 +319,7 @@
 		goodix,rst-gpio = <&tlmm 64 0x00>;
 		goodix,irq-gpio = <&tlmm 65 0x2008>;
 		goodix,create-wr-node;
+		goodix,wakeup-with-reset;
 		goodix,driver-send-cfg;
 		goodix,cfg-group1 = [
 			42 D0 02 00 05 0A 3C 00 11 CF
