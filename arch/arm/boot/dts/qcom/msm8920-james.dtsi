@@ -55,6 +55,11 @@
 		};
 	};
 };
+&soc{
+	qcom,msm-thermal {
+		qcom,config-info = "james";
+	};
+};
 &i2c_5 {
 	tps61280@75 {
 		compatible = "ti,tps61280";
