@@ -885,6 +885,14 @@ config JAMES_DTB
           Only include James specific DTBs to limit the number that
           get built during kernel compilation.
 
+config NORA_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Nora DTBs"
+	help
+	  Only include James specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config JETER_DTB
 	depends on ARCH_MSM
 	default n
