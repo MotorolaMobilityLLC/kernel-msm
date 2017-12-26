@@ -96,7 +96,7 @@ static int cyttsp_write_reg(struct cyttsp_sar_data *data,
 
 	ret = i2c_master_send(client, buffer, sizeof(buffer));
 	if (ret != sizeof(buffer)) {
-		dev_err(&data->client->dev, "Failed to write reg!\n");
+		dev_err(&data->client->dev, "Failed to write %x reg!\n", buffer[0]);
 		return ret;
 	}
 
@@ -330,6 +330,7 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 				sar_state = (sensor_status & channel_status_mask[i]) >> (i * 2);
 
 				if (sar_state < CYTTSP_SAR_STATE_ERROR) {
+					/*LOG_INFO("update channel%d status : %x\n", i, sar_state);*/
 					input_report_abs(data->input_dev[i], ABS_DISTANCE, sar_state);
 					input_sync(data->input_dev[i]);
 				} else {
@@ -746,6 +747,11 @@ int __cycapsense_fw_update(struct cycapsense_ctrl_data *data)
 		fw_dl_status = 0;
 	}
 
+	error = cyttsp_write_reg(pcyttsp_sar_ptr, CYTTSP_SAR_OP_MODE, 0x01);
+	if (error < 0)
+		LOG_INFO("reg write failed\n");
+	pcyttsp_sar_ptr->enable = false;
+
 fw_upd_end:
 	if (inf->data != NULL) {
 		kfree(inf->data);
@@ -934,22 +940,30 @@ static ssize_t cycapsense_fw_store(struct class *class,
 	return count;
 }
 
-static ssize_t cycapsense_reset_show(struct class *class,
-		struct class_attribute *attr,
-		char *buf)
-{
-	return snprintf(buf, 8, "%d\n", programming_done);
-}
-
 static ssize_t cycapsense_reset_store(struct class *class,
 		struct class_attribute *attr,
 		const char *buf, size_t count)
 {
+	struct cyttsp_sar_data *data = pcyttsp_sar_ptr;
+	struct cyttsp_sar_platform_data *pdata = data->pdata;
+	struct input_dev *input;
+	int i, ret;
+
 	if (!count)
 		return -EINVAL;
 
-	if (!strncmp(buf, "reset", 5) || !strncmp(buf, "1", 1))
-		cycapsense_reset();
+	if (!strncmp(buf, "reset", 5) || !strncmp(buf, "1", 1)) {
+		LOG_INFO("Going to refresh baseline\n");
+		ret = cyttsp_write_reg(data, CYTTSP_SAR_REFRESH_BASELINE, 0x01);
+		if (ret < 0)
+			LOG_INFO("reg write failed\n");
+
+		for (i = 0; i < pdata->nsars; i++) {
+			input = data->input_dev[i];
+			input_report_abs(input, ABS_DISTANCE, 0);
+			input_sync(input);
+		}
+	}
 
 	return count;
 }
@@ -1137,7 +1151,7 @@ static ssize_t cycapsense_fw_download_status_show(struct class *class,
 }
 
 static CLASS_ATTR(fw_update, 0660, cycapsense_fw_show, cycapsense_fw_store);
-static CLASS_ATTR(reset, 0660, cycapsense_reset_show, cycapsense_reset_store);
+static CLASS_ATTR(reset, 0660, NULL, cycapsense_reset_store);
 static CLASS_ATTR(enable, 0660, cycapsense_enable_show, cycapsense_enable_store);
 static CLASS_ATTR(reg, 0660, cycapsense_reg_show, cycapsense_reg_store);
 static CLASS_ATTR(debug, 0660, NULL, cycapsense_debug_store);
@@ -1409,11 +1423,6 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 	ctrl_data->hssp_d.inf.fw_name[0] = 0;
 
 	schedule_work(&ctrl_data->work);
-
-	error = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x01);
-	if (error < 0)
-		LOG_INFO("reg write failed\n");
-	data->enable = false;
 
 	return 0;
 
