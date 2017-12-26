@@ -39,15 +39,19 @@ qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 04 B9 FF 83 99
-	39 01 00 00 00 00 04 C9 03 00 14
 	39 01 00 00 00 00 03 51 0C CC
 	15 01 00 00 00 00 02 53 2C
-	15 01 00 00 00 00 02 55 01
-	05 01 00 00 5A 00 01 11
-	05 01 00 00 0A 00 01 29];	/* display on */
+	15 01 00 00 05 00 02 55 01
+	39 01 00 00 00 00 0A CA 23 23 23 23 23 23 22 20 20
+	05 01 00 00 78 00 01 11
+	39 01 00 00 00 00 09 C9 03 00 14 1E B1 1E 00 91
+	05 01 00 00 01 00 01 29];	/* display on */
 qcom,mdss-dsi-off-command = [
-	05 01 00 00 30 00 01 28		/* display_off */
-	05 01 00 00 05 00 01 10];	/* enter sleep mode */
+	39 01 00 00 00 00 04 B9 FF 83 99
+	15 01 00 00 00 00 02 B1 00
+	05 01 00 00 00 00 01 28		/* display_off */
+	05 01 00 00 3C 00 01 10	/* enter sleep mode */
+	05 01 00 00 00 00 01 4F];
 
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
