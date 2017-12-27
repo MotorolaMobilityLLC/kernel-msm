@@ -231,7 +231,7 @@
 	/delete-node/ tavil_codec;
 	madera-codec {
 		compatible = "cirrus,madera-slim-audio";
-		elemental-addr = [00 00 64 63 FA 01];
+		elemental-addr = [00 00 60 63 FA 01];
 	};
 };
 
@@ -305,7 +305,7 @@
 		cirrus,gpio-defaults = <
 			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
 			0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
-			0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
+			0xffffffff 0xffffffff /* AIF3RXDAT / GPIO3  */
 			0xffffffff 0xffffffff /* AIF3LRCLK / GPIO4  */
 			0x00002000 0x0000f000 /* GPIO5 */
 			0x00002000 0x0000f000 /* GPIO6 */
@@ -314,8 +314,8 @@
 			0x00002000 0x0000f000 /* AIF1BCLK  / GPIO9  */
 			0x00002000 0x0000f000 /* AIF1TXDAT / GPIO10 */
 			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
-			0x00002000 0x0000f000 /* AIF2TXDAT / GPIO12 */
-			0x00002000 0x0000f000 /* AIF2BCLK  / GPIO13 */
+			0xffffffff 0xffffffff /* AIF2TXDAT / GPIO12 */
+			0xffffffff 0xffffffff /* AIF2BCLK  / GPIO13 */
 			0xffffffff 0xffffffff /* AIF2RXDAT / GPIO14 */
 			0xffffffff 0xffffffff /* AIF2LRCLK / GPIO15 */
 			0xffffffff 0xffffffff /* MIF1SCLK  / GPIO16 */
@@ -347,8 +347,8 @@
 					680 0x72	/* KEY_VOLUMEDOWN */
 				>;
 				cirrus,micd-configs = <
-					0 1 0 0 1
-					1 0 1 1 0
+					0 1 1 0 0
+					1 0 2 1 0
 				>;
 				cirrus,micd-pol-gpios = <&cs47l35 6 0>,
 							<&cs47l35 15 0>;
