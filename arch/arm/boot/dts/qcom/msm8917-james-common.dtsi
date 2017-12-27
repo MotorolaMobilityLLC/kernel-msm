@@ -248,7 +248,7 @@
 		cap,raw_data_channel = <0x01>;
 		cap,scan_period = <0x02>;
 		reg_array_len = <2>;
-		reg_array_val = <0x18 0x6a 0x19 0xab>;
+		reg_array_val = <0x18 0x5a 0x19 0x93>;
 	};
 
 	/delete-node/ adv7533@39;
