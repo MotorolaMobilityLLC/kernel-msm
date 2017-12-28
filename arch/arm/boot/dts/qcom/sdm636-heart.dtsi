@@ -194,3 +194,19 @@
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
 
+&pm660_haptics { /* Vibrator */
+	qcom,actuator-type = "lra";
+	qcom,vmax-mv = <1800>;
+	qcom,ilim-ma = <90>;
+	qcom,wave-play-rate-us = <4880>;
+	qcom,brake-pattern = [03 03 00 00];
+	qcom,play-mode = "direct";
+	qcom,wave-shape = "sine";
+	qcom,lra-auto-res-mode="none";
+
+	qcom,lra-high-z="none";
+	qcom,lra-res-cal-period = <4>;
+	qcom,correct-lra-drive-freq;
+	qcom,misc-trim-error-rc19p2-clk-reg-present;
+};
+
