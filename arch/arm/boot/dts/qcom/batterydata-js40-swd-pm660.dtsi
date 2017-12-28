@@ -1,0 +1,73 @@
+
+qcom,js40-swd-pm660 {
+	serialnum = "SB18C20117";
+	qcom, = <24>;
+	/* #3242600_Lenovo_JS40atl_3000mAh_averaged_MasterSlave_Dec26th2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <243>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "JS40-SWD-3000mah";
+	qcom,checksum = <0x6C8D>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,profile-revision = /bits/ 8 <0x01>;
+	qcom,fg-profile-data = [
+		 AB 1F AA 05
+		 42 0A AA 06
+		 F8 1C 3D FB
+		 C9 04 B4 03
+		 DD 17 EF 23
+		 29 44 8F 5A
+		 83 00 00 00
+		 10 00 00 00
+		 00 00 76 9A
+		 A3 CC B7 BA
+		 27 00 08 00
+		 27 C3 9A E4
+		 97 06 BA 00
+		 9F 05 45 0A
+		 53 06 3B 32
+		 16 06 09 20
+		 27 00 14 00
+		 CD 1F 8F 05
+		 6B 0A DD FC
+		 DC 1C B8 02
+		 63 0C EB 0B
+		 8C 18 DE 23
+		 E0 4D 39 5B
+		 6D 00 00 00
+		 0E 00 00 00
+		 00 00 D8 D5
+		 27 C3 62 C2
+		 20 00 00 00
+		 4E EB 9A E4
+		 07 07 61 EB
+		 6D E5 DC 02
+		 18 0A 2C 22
+		 C3 33 CC FF
+		 07 10 00 00
+		 C2 0B 66 46
+		 20 00 40 00
+		 70 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
