@@ -35,7 +35,7 @@
 #include <linux/usb.h>
 #include <linux/power_supply.h>
 
-#define CYTTSP_DEBUG 1
+#define CYTTSP_DEBUG 0
 #define LOG_TAG "cyttsp "
 #if CYTTSP_DEBUG
 #define LOG_INFO(fmt, args...)    pr_info(LOG_TAG fmt, ##args)
@@ -312,7 +312,7 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 		0x00003000,
 		0x0000C000  };
 
-	dev_info(&data->client->dev, "cypress irq handler!\n");
+	LOG_INFO(&data->client->dev, "cypress irq handler!\n");
 
 	if (data->enable) {
 		ret = cyttsp_i2c_read_block(&data->client->dev, CYTTSP_REG_INTERRUPT_PEDNING, 3, &temp[0]);
@@ -367,7 +367,7 @@ static void hw_init(void)
 				pdata->pi2c_reg[i].reg, pdata->pi2c_reg[i].val);
 		ret = cyttsp_write_reg(data, pdata->pi2c_reg[i].reg, pdata->pi2c_reg[i].val);
 		if (ret < 0)
-			LOG_INFO("reg write failed\n");
+			dev_err(&data->client->dev, "reg write failed\n");
 		i++;
 	}
 
@@ -750,7 +750,7 @@ int __cycapsense_fw_update(struct cycapsense_ctrl_data *data)
 
 	error = cyttsp_write_reg(pcyttsp_sar_ptr, CYTTSP_SAR_OP_MODE, 0x01);
 	if (error < 0)
-		LOG_INFO("reg write failed\n");
+		dev_err(data->dev, "reg write failed\n");
 	pcyttsp_sar_ptr->enable = false;
 
 fw_upd_end:
@@ -791,7 +791,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev, unsigned 
 		LOG_INFO("disable cap sensor\n");
 		ret = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x01);
 		if (ret < 0)
-			LOG_INFO("reg write failed\n");
+			dev_err(&data->client->dev, "reg write failed\n");
 
 		for (i = 0; i < pdata->nsars; i++) {
 			input = data->input_dev[i];
@@ -800,7 +800,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev, unsigned 
 		}
 		data->enable = false;
 	} else {
-		LOG_INFO("unknown enable symbol\n");
+		dev_err(&data->client->dev, "unknown enable symbol\n");
 	}
 
 	return 0;
@@ -957,7 +957,7 @@ static ssize_t cycapsense_reset_store(struct class *class,
 		LOG_INFO("Going to refresh baseline\n");
 		ret = cyttsp_write_reg(data, CYTTSP_SAR_REFRESH_BASELINE, 0x01);
 		if (ret < 0)
-			LOG_INFO("reg write failed\n");
+			dev_err(&data->client->dev, "reg write failed\n");
 
 		for (i = 0; i < pdata->nsars; i++) {
 			input = data->input_dev[i];
@@ -987,7 +987,7 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 	ret = of_property_read_u32(np, "threshold_reg_array_len",
 					&threshold_array_len);
 	if (ret < 0) {
-		LOG_INFO("data_array_len read error");
+		dev_err(&data->client->dev, "data_array_len read error");
 	}
 
 	threshold_array_data = kmalloc(threshold_array_len * 2 * sizeof(u32),
@@ -998,35 +998,35 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "EMEA", 4)) {
 		ret = of_property_read_u32_array(np, "emea_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "APAC", 4)) {
 		ret = of_property_read_u32_array(np, "apac_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "LATAM", 5)) {
 		ret = of_property_read_u32_array(np,
 				"latam_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "PRC", 3)) {
 		ret = of_property_read_u32_array(np, "prc_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0) {
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 		}
 	} else
-		LOG_INFO("radio is not expected, radio = %s", buf);
+		dev_err(&data->client->dev, "radio is not expected, radio = %s", buf);
 
 	for (i = 0; i < threshold_array_len; i++) {
 		LOG_INFO("Going to Write Reg: 0x%x Value: 0x%x\n",
@@ -1036,7 +1036,7 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 		ret = cyttsp_write_reg(data, threshold_array_data[i*2],
 					threshold_array_data[i*2 + 1]);
 		if (ret < 0)
-			LOG_INFO("reg write failed");
+			dev_err(&data->client->dev, "reg write failed");
 	}
 
 
@@ -1075,7 +1075,7 @@ static ssize_t cycapsense_enable_store(struct class *class,
 		LOG_INFO("disable cap sensor\n");
 		ret = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x01);
 		if (ret < 0)
-			LOG_INFO("reg write failed\n");
+			dev_err(&data->client->dev, "reg write failed\n");
 
 		for (i = 0; i < pdata->nsars; i++) {
 			input = data->input_dev[i];
@@ -1084,7 +1084,7 @@ static ssize_t cycapsense_enable_store(struct class *class,
 		}
 		data->enable = false;
 	} else {
-		LOG_INFO("unknown enable symbol\n");
+		dev_err(&data->client->dev, "unknown enable symbol\n");
 	}
 
 	return count;
@@ -1117,7 +1117,7 @@ static ssize_t cycapsense_reg_store(struct class *class,
 	if (sscanf(buf, "%x,%x", &reg, &val) == 2) {
 		ret = cyttsp_write_reg(data, *((u8 *)&reg), *((u8 *)&val));
 		if (ret < 0)
-			LOG_INFO("reg write failed\n");
+			dev_err(&data->client->dev, "reg write failed\n");
 	}
 
 	return count;
@@ -1244,7 +1244,7 @@ static void ps_notify_callback_work(struct work_struct *work)
 	LOG_INFO("Going to force calibrate\n");
 	ret = cyttsp_write_reg(data, CYTTSP_SAR_REFRESH_BASELINE, 0x0f);
 	if (ret < 0)
-		LOG_INFO("reg write failed\n");
+		dev_err(&data->client->dev, "reg write failed\n");
 
 	for (i = 0; i < pdata->nsars; i++) {
 		input = data->input_dev[i];
@@ -1404,7 +1404,7 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 
 		error = sensors_classdev_register(&data->input_dev[i]->dev, &sensors_capsensor_cdev[i]);
 		if (error < 0)
-			LOG_INFO("create %d cap sensor_class  file failed (%d)\n", i, error);
+			dev_err(&client->dev, "create %d cap sensor_class  file failed (%d)\n", i, error);
 
 	}
 
