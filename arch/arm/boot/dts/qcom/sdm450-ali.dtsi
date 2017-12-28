@@ -275,9 +275,15 @@
 			focaltech,fw-delay-era-flsh-ms = <2000>;
 			focaltech,resume-in-workqueue;
 			focaltech,ignore-id-check;
-			config_modifier-names = "charger";
+			config_modifier-names = "charger", "fps";
 			config_modifier-charger {
 				enable-notification;
+			};
+			config_modifier-fps {
+				enable-notification;
+				fps-active {
+					touch-clip-area = <260 2110 830 2159 1>;
+				};
 			};
 		};
 	};
