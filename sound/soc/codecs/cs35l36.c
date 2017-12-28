@@ -810,6 +810,7 @@ static int cs35l36_codec_probe(struct snd_soc_codec *codec)
 {
 	struct cs35l36_private *cs35l36 = snd_soc_codec_get_drvdata(codec);
 	struct asp_tx_cfg *asp_config = &cs35l36->pdata.asp_tx_config;
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 	int ret = 0;
 
 	if (cs35l36->pdata.sclk_frc)
@@ -988,6 +989,14 @@ static int cs35l36_codec_probe(struct snd_soc_codec *codec)
 		}
 	}
 
+	snd_soc_dapm_ignore_suspend(dapm, "SDIN");
+	snd_soc_dapm_ignore_suspend(dapm, "SDOUT");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK");
+	snd_soc_dapm_ignore_suspend(dapm, "VP");
+	snd_soc_dapm_ignore_suspend(dapm, "VBST");
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Enable");
+	snd_soc_dapm_ignore_suspend(dapm, "VSENSE");
+	snd_soc_dapm_ignore_suspend(dapm, "Main AMP");
 
 	return 0;
 }
