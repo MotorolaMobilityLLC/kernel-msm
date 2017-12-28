@@ -879,6 +879,23 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.ignore_suspend = 1,
 		.params = &cs35l35_pdm_params,
 	}
+#elif defined(CONFIG_SND_SOC_CS47L35) && defined(CONFIG_SND_SOC_CS35L36)
+	{ /* codec to amp link */
+		.name = "MADERA-AMP",
+		.stream_name = "MADERA-AMP Playback",
+		.cpu_name = "cs47l35-codec",
+		.cpu_dai_name = "cs47l35-aif1",
+		.codec_name = "cs35l36.2-0040",
+		.codec_dai_name = "cs35l36-pcm",
+		.init = cs35l35_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &cs35l35_params,
+	},
+
 #else
 	{ /* codec to amp link */
 		.name = "MADERA-AMP",
