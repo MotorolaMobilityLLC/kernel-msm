@@ -987,7 +987,7 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 	ret = of_property_read_u32(np, "threshold_reg_array_len",
 					&threshold_array_len);
 	if (ret < 0) {
-		LOG_INFO("data_array_len read error");
+		dev_err(&data->client->dev, "data_array_len read error");
 	}
 
 	threshold_array_data = kmalloc(threshold_array_len * 2 * sizeof(u32),
@@ -998,35 +998,35 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "EMEA", 4)) {
 		ret = of_property_read_u32_array(np, "emea_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "APAC", 4)) {
 		ret = of_property_read_u32_array(np, "apac_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "LATAM", 5)) {
 		ret = of_property_read_u32_array(np,
 				"latam_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 	} else if (!strncmp(buf, "PRC", 3)) {
 		ret = of_property_read_u32_array(np, "prc_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0) {
-			LOG_INFO("data_array_val read error");
+			dev_err(&data->client->dev, "data_array_val read error");
 		}
 	} else
-		LOG_INFO("radio is not expected, radio = %s", buf);
+		dev_err(&data->client->dev, "radio is not expected, radio = %s", buf);
 
 	for (i = 0; i < threshold_array_len; i++) {
 		LOG_INFO("Going to Write Reg: 0x%x Value: 0x%x\n",
@@ -1036,7 +1036,7 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 		ret = cyttsp_write_reg(data, threshold_array_data[i*2],
 					threshold_array_data[i*2 + 1]);
 		if (ret < 0)
-			LOG_INFO("reg write failed");
+			dev_err(&data->client->dev, "reg write failed");
 	}
 
 
