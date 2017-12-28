@@ -8,7 +8,7 @@ qcom,jt40-atl-pm660  {
 	qcom,nom-batt-capacity-mah = <3010>;
 	qcom,batt-id-kohm = <237>;
 	qcom,battery-beta = <3435>;
-	qcom,battery-type = "JT40-ATL-3000mah";
+	qcom,battery-type = "JT40-ATL-3200mah";
 	qcom,checksum = <0x32EB>;
 	qcom,gui-version = "PM660GUI - 0.0.0.44";
 	qcom,profile-revision = /bits/ 8 <0x01>;
