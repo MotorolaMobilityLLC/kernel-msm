@@ -6851,6 +6851,7 @@ done:
 			restore_cycle_counter(chip);
 	}
 
+	chip->soc_empty = false;
 	chip->first_profile_loaded = true;
 	chip->profile_loaded = true;
 	chip->soc_reporting_ready = true;
