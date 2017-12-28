@@ -37,3 +37,24 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;
 };
+
+&tlmm {
+	gpio_usb_aud_det_n: gpio_usb_aud_det_n {
+		config {
+			pins = "gpio74";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+};
+
+&pm660_pdphy {
+	pinctrl-name = "default";
+	pinctrl-0 = <&usb_aud_sw_sel>;
+
+	gpios = <&tlmm 74 0>,  /* USB_AUD_DET_N, output-high */
+		<&tlmm 41 0>;  /* USB_AUD_SW_SEL, output-low */
+
+	gpio-labels = "gpio_usb_aud_det_n",
+		"gpio_aud_sw_sel";
+};
