@@ -491,7 +491,7 @@ int32_t nvt_check_fw_reset_state(RST_COMPLETE_STATE check_reset_state)
 		buf[1] = 0x00;
 		CTP_I2C_READ(ts->client, I2C_FW_Address, buf, 6);
 
-		if ((buf[1] >= check_reset_state) && (buf[1] < 0xFF)) {
+		if ((buf[1] >= check_reset_state) && (buf[1] <= RESET_STATE_MAX)) {
 			ret = 0;
 			break;
 		}
@@ -577,16 +577,19 @@ info_retry:
 		ts->fw_ver = 0;
 		ts->x_num = 18;
 		ts->y_num = 32;
-		ts->abs_x_max = 1080;
-		ts->abs_y_max = 1920;
-		ts->max_button_num = 0;
+		ts->abs_x_max = TOUCH_DEFAULT_MAX_WIDTH;
+		ts->abs_y_max = TOUCH_DEFAULT_MAX_HEIGHT;
+		ts->max_button_num = TOUCH_KEY_NUM;
 
 		if(retry_count < 3) {
 			retry_count++;
 			NVT_ERR("retry_count=%d\n", retry_count);
 			goto info_retry;
 		} else {
-			NVT_ERR("Set default fw_ver=0, x_num=18, y_num=32, abs_x_max=1080, abs_y_max=1920, max_button_num=0!\n");
+			NVT_ERR("Set default fw_ver=%d, x_num=%d, y_num=%d, \
+					abs_x_max=%d, abs_y_max=%d, max_button_num=%d!\n",
+					ts->fw_ver, ts->x_num, ts->y_num,
+					ts->abs_x_max, ts->abs_y_max, ts->max_button_num);
 			ret = -1;
 		}
 	} else {
