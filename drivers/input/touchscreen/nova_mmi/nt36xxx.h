@@ -55,6 +55,8 @@
 
 
 //---Touch info.---
+#define TOUCH_DEFAULT_MAX_WIDTH 1080
+#define TOUCH_DEFAULT_MAX_HEIGHT 1920
 #define TOUCH_MAX_FINGER_NUM 10
 #define TOUCH_KEY_NUM 0
 #if TOUCH_KEY_NUM > 0
@@ -157,7 +159,8 @@ typedef enum {
 	RESET_STATE_INIT = 0xA0,// IC reset
 	RESET_STATE_REK,		// ReK baseline
 	RESET_STATE_REK_FINISH,	// baseline is ready
-	RESET_STATE_NORMAL_RUN	// normal run
+	RESET_STATE_NORMAL_RUN,
+	RESET_STATE_MAX  = 0xAF
 } RST_COMPLETE_STATE;
 
 typedef enum {
