@@ -54,9 +54,9 @@ struct navi_cmd_struct cmd_list;
  *               Don't care properties.
  */
 
-#define ENABLE_SWIPE_UP_DOWN	ENABLE
-#define ENABLE_SWIPE_LEFT_RIGHT	ENABLE
-#define ENABLE_FINGER_DOWN_UP	ENABLE
+#define ENABLE_SWIPE_UP_DOWN	DISABLE
+#define ENABLE_SWIPE_LEFT_RIGHT	DISABLE
+#define ENABLE_FINGER_DOWN_UP	DISABLE
 #define KEY_FPS_DOWN   614
 #define KEY_FPS_UP     615
 #define KEY_FPS_TAP    616
@@ -65,6 +65,7 @@ struct navi_cmd_struct cmd_list;
 #define KEY_FPS_YMINUS 619
 #define KEY_FPS_XPLUS  620
 #define KEY_FPS_XMINUS 621
+#define KEY_FPS_DOUBLE_TAP 622
 
 
 /*
@@ -144,8 +145,8 @@ unsigned int prev_keycode = 0;
  *     ENABLE/DISABLE : enable/disable long-touch event.
  */
 #define ENABLE_TRANSLATED_SINGLE_CLICK	ENABLE
-#define ENABLE_TRANSLATED_DOUBLE_CLICK	DISABLE
-#define ENABLE_TRANSLATED_LONG_TOUCH	ENABLE
+#define ENABLE_TRANSLATED_DOUBLE_CLICK	ENABLE
+#define ENABLE_TRANSLATED_LONG_TOUCH	DISABLE
 
 
 /*
@@ -175,10 +176,13 @@ unsigned int prev_keycode = 0;
  *   KEY_PRESS_RELEASE : Combined action of press-then-release
  */
 #define LONGTOUCH_INTERVAL          400
-#define DOUBLECLICK_INTERVAL        500
+#define SINGLECLICK_INTERVAL        150
+#define DOUBLECLICK_INTERVAL        150
+
+
 #define	KEYEVENT_CLICK              KEY_FPS_TAP /* 0x232 */
 #define	KEYEVENT_CLICK_ACTION       KEY_PRESS_RELEASE
-#define	KEYEVENT_DOUBLECLICK        KEY_DELETE
+#define	KEYEVENT_DOUBLECLICK        KEY_FPS_DOUBLE_TAP
 #define	KEYEVENT_DOUBLECLICK_ACTION KEY_PRESS_RELEASE
 #define	KEYEVENT_LONGTOUCH          KEY_FPS_HOLD /* 0x233 */
 #define	KEYEVENT_LONGTOUCH_ACTION   KEY_PRESS_RELEASE
@@ -276,11 +280,14 @@ enum navi_event {
 	NAVI_EVENT_RIGHT,
 	NAVI_EVENT_LEFT
 };
-
+#if ENABLE_TRANSLATED_LONG_TOUCH
 static struct timer_list long_touch_timer;
-
+#endif
 static bool g_KeyEventRaised = true;
 static unsigned long g_DoubleClickJiffies;
+static unsigned long g_SingleClickJiffies;
+static unsigned int g_SingleClick;
+
 
 
 /* Set event bits according to what events we would generate */
@@ -353,13 +360,19 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 	case NAVI_EVENT_CANCEL:
 		g_KeyEventRaised = true;
 		g_DoubleClickJiffies = 0;
+		g_SingleClickJiffies = 0;
+		g_SingleClick = 0;
 #if ENABLE_TRANSLATED_LONG_TOUCH
 		del_timer(&long_touch_timer);
 #endif
 		break;
 
-	case NAVI_EVENT_ON:
+	case NAVI_EVENT_ON: /* finger down */
 		g_KeyEventRaised = false;
+#if ENABLE_TRANSLATED_SINGLE_CLICK
+		g_SingleClickJiffies = jiffies;
+#endif
+
 #if ENABLE_FINGER_DOWN_UP
 		send_key_event(etspi, KEYEVENT_ON, KEYEVENT_ON_ACTION);
 #endif
@@ -369,30 +382,39 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 #endif
 		break;
 
-	case NAVI_EVENT_OFF:
+	case NAVI_EVENT_OFF: /* finger up */
 		if (g_KeyEventRaised == false) {
 			g_KeyEventRaised = true;
-#if ENABLE_TRANSLATED_DOUBLE_CLICK
-			if ((jiffies - g_DoubleClickJiffies) < (HZ * DOUBLECLICK_INTERVAL / 1000)) {
-				/* Double click event */
-				send_key_event(etspi, KEYEVENT_DOUBLECLICK, KEYEVENT_DOUBLECLICK_ACTION);
-				g_DoubleClickJiffies = 0;
-			} else {
+			pr_info("Egis : g_SingleClick %u tap interval =%u double tap interval = %u time= %u",
+				g_SingleClick, jiffies_to_msecs(jiffies - g_SingleClickJiffies),
+				jiffies_to_msecs(jiffies - g_DoubleClickJiffies), jiffies_to_msecs(jiffies));
 #if ENABLE_TRANSLATED_SINGLE_CLICK
+			if ((jiffies - g_SingleClickJiffies) < (HZ * SINGLECLICK_INTERVAL / 1000)) {
 				/* Click event */
 				send_key_event(etspi, KEYEVENT_CLICK, KEYEVENT_CLICK_ACTION);
-#endif
-				g_DoubleClickJiffies = jiffies;
+				g_SingleClick++;
+				if (g_SingleClick == 1) {
+					g_DoubleClickJiffies = jiffies;
+				}
 			}
-#else
+#endif
+#if ENABLE_TRANSLATED_DOUBLE_CLICK
+			if (g_SingleClick >= 2) {
+				if ((jiffies - g_DoubleClickJiffies) < (HZ * (SINGLECLICK_INTERVAL+DOUBLECLICK_INTERVAL) / 1000)) {
+					/* Double click event */
+					send_key_event(etspi, KEYEVENT_DOUBLECLICK, KEYEVENT_DOUBLECLICK_ACTION);
+					g_SingleClick = 0;
+				} else {
+					g_SingleClick = 1;
+					g_DoubleClickJiffies = jiffies;
+				}
 
-#if ENABLE_TRANSLATED_SINGLE_CLICK
-			/* Click event */
-			send_key_event(etspi, KEYEVENT_CLICK, KEYEVENT_CLICK_ACTION);
+			}
+#endif
+
+#if ENABLE_FINGER_DOWN_UP
 			send_key_event(etspi, KEYEVENT_OFF, KEYEVENT_OFF_ACTION);
 #endif
-
-#endif	/* end of ENABLE_DOUBLE_CLICK */
 		}
 #if ENABLE_FINGER_DOWN_UP
 		else	{
@@ -686,6 +708,8 @@ void uinput_egis_init(struct etspi_data *etspi)
 		input_free_device(etspi->input_dev);
 		etspi->input_dev = NULL;
 	}
+	g_DoubleClickJiffies = 0;
+	g_SingleClickJiffies = 0;
 }
 
 void uinput_egis_destroy(struct etspi_data *etspi)
