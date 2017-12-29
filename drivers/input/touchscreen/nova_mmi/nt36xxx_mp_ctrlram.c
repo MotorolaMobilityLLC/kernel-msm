@@ -83,12 +83,16 @@ static int32_t *RawData_FW_CC_I = NULL;
 static int32_t *RawData_FW_CC_Q = NULL;
 
 static struct proc_dir_entry *NVT_proc_selftest_entry = NULL;
+#if NVT_TOUCH_MP_LENOVO
+static struct proc_dir_entry *NVT_proc_selftest_read_data;
+#endif
 static int8_t nvt_mp_test_result_printed = 0;
 
 extern void nvt_change_mode(uint8_t mode);
 extern uint8_t nvt_get_fw_pipe(void);
 extern void nvt_read_mdata(uint32_t xdata_addr, uint32_t xdata_btn_addr);
 extern void nvt_get_mdata(int32_t *buf, uint8_t *m_x_num, uint8_t *m_y_num);
+extern int32_t nvt_read_mass_data(uint32_t xdata_addr, uint8_t *temp_buf, uint32_t len);
 
 /*******************************************************
 Description:
@@ -1561,6 +1565,132 @@ static const struct file_operations nvt_selftest_fops = {
 	.release = seq_release,
 };
 
+#if NVT_TOUCH_MP_LENOVO
+/*******************************************************
+Description:
+	Novatek touchscreen /proc/NVTflash read function.
+
+return:
+	Executive outcomes. 2---succeed. -5,-14---failed.
+*******************************************************/
+static ssize_t nvt_data_read(struct file *file, char __user *buff, size_t count, loff_t *offp)
+{
+	uint8_t *str;
+	int32_t ret = -1;
+	int32_t retries = 0;
+	int8_t i2c_wr = 0;
+	uint8_t i2c_addr = 0;
+	uint32_t data_len = 0;
+
+	NVT_LOG("++\n");
+
+	if (count > (X_Channel * (Y_Channel + 4) * 2 + 7)) {
+		NVT_ERR("error count=%zu\n", count);
+		return -EFAULT;
+	}
+
+	str = kmalloc(X_Channel * (Y_Channel + 4) * 2 + 7, GFP_KERNEL);
+	if (str == NULL) {
+		NVT_ERR("failed to allocated memory for input data\n");
+		return -ENOMEM;
+	}
+
+	if (copy_from_user(str, buff, count)) {
+		NVT_ERR("copy from user error\n");
+		return -EFAULT;
+	}
+
+#if NVT_TOUCH_ESD_PROTECT
+	nvt_esd_check_enable(false);
+#endif
+
+	i2c_wr = str[0] >> 7;
+	i2c_addr = str[0] & 0x7F;
+	data_len = (int32_t)((str[1] << 8) + str[2]);
+
+	if (i2c_wr == 0) {
+		return -ENOTSUPP;
+	} else if (i2c_wr == 1) {
+		while (retries < 20) {
+			ret = nvt_read_mass_data(i2c_addr, str, data_len);
+			if (ret == data_len)
+				break;
+			else
+				NVT_ERR("error, retries=%d, ret=%d, data_len=%d\n", retries, ret, data_len);
+
+			retries++;
+		}
+
+		if (retries < 20) {
+			ret = copy_to_user(buff, str, data_len);
+			if (ret) {
+				NVT_ERR("error, copy_to_user, ret=%d, data_len=%d\n", ret, data_len);
+				return -EFAULT;
+			}
+		}
+
+		if (unlikely(retries == 20)) {
+			NVT_ERR("error, ret = %d\n", ret);
+			return -EIO;
+		}
+	} else {
+		NVT_ERR("Call error, str[0]=%d\n", str[0]);
+		return -EFAULT;
+	}
+
+	kfree(str);
+	NVT_LOG("--\n");
+	return ret;
+}
+
+/*******************************************************
+Description:
+	Novatek touchscreen /proc/NVTflash open function.
+
+return:
+	Executive outcomes. 0---succeed. -12---failed.
+*******************************************************/
+static int32_t nvt_data_open(struct inode *inode, struct file *file)
+{
+	struct nvt_flash_data *dev;
+
+	dev = kmalloc(sizeof(struct nvt_flash_data), GFP_KERNEL);
+	if (dev == NULL) {
+		NVT_ERR("Failed to allocate memory for nvt flash data\n");
+		return -ENOMEM;
+	}
+
+	rwlock_init(&dev->lock);
+	file->private_data = dev;
+
+	return 0;
+}
+
+/*******************************************************
+Description:
+	Novatek touchscreen /proc/NVTflash close function.
+
+return:
+	Executive outcomes. 0---succeed.
+*******************************************************/
+static int32_t nvt_data_close(struct inode *inode, struct file *file)
+{
+	struct nvt_flash_data *dev = file->private_data;
+
+	if (dev)
+		kfree(dev);
+
+	return 0;
+}
+
+static const struct file_operations nvt_read_data_fops = {
+	.owner = THIS_MODULE,
+	.open = nvt_data_open,
+	.release = nvt_data_close,
+	.read = nvt_data_read,
+};
+#endif
+
 #ifdef CONFIG_OF
 /*******************************************************
 Description:
@@ -1578,6 +1708,7 @@ void nvt_mp_parse_ain(struct device_node *np, const char *name, uint8_t *array, 
 
 	data = of_find_property(np, name, &len);
 	len /= sizeof(u32);
+
 	if ((!data) || (!len) || (len != size)) {
 		NVT_ERR("error find %s. len=%d\n", name, len);
 	} else {
@@ -1795,17 +1926,18 @@ return:
 *******************************************************/
 int32_t nvt_mp_proc_init(void)
 {
+	int32_t ret = 0;
 	struct device_node *np = ts->client->dev.of_node;
 	unsigned char mpcriteria[32] = {0};	//novatek-mp-criteria-default
 
 	NVT_proc_selftest_entry = proc_create("nvt_selftest", 0444, NULL, &nvt_selftest_fops);
 	if (NVT_proc_selftest_entry == NULL) {
 		NVT_ERR("create /proc/nvt_selftest Failed!\n");
-		return -1;
+		ret = -1;
 	} else {
 		if(nvt_mp_buffer_init()) {
 			NVT_ERR("Allocate mp memory failed\n");
-			return -1;
+			ret = -1;
 		}
 		else {
 #ifdef CONFIG_OF
@@ -1828,8 +1960,20 @@ int32_t nvt_mp_proc_init(void)
 #endif
 			NVT_LOG("create /proc/nvt_selftest Succeeded!\n");
 		}
-		return 0;
+		ret = 0;
 	}
+#if NVT_TOUCH_MP_LENOVO
+	if (ret == 0) {
+		NVT_proc_selftest_read_data = proc_create("nvt_read_data", 0444, NULL, &nvt_read_data_fops);
+		if (NVT_proc_selftest_read_data == NULL) {
+			NVT_ERR("create /proc/nvt_read_data Failed!\n");
+			ret = -1;
+		} else {
+			NVT_LOG("create /proc/nvt_read_data Succeeded!\n");
+		}
+	}
+#endif
+	return ret;
 }
 
 #endif /* #if NVT_TOUCH_MP */
