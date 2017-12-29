@@ -37,11 +37,12 @@
 #define HANDSHAKING_HOST_READY 0xBB
 
 #define XDATA_SECTOR_SIZE   256
+#define XDATA_BUF_SIZE    2048
 
-static uint8_t xdata_tmp[2048] = {0};
-static int32_t xdata[2048] = {0};
-static int32_t xdata_i[2048] = {0};
-static int32_t xdata_q[2048] = {0};
+static uint8_t xdata_tmp[XDATA_BUF_SIZE] = {0};
+static int32_t xdata[XDATA_BUF_SIZE] = {0};
+static int32_t xdata_i[XDATA_BUF_SIZE] = {0};
+static int32_t xdata_q[XDATA_BUF_SIZE] = {0};
 
 static struct proc_dir_entry *NVT_proc_fw_version_entry;
 static struct proc_dir_entry *NVT_proc_baseline_entry;
@@ -103,6 +104,74 @@ uint8_t nvt_get_fw_pipe(void)
 	//NVT_LOG("FW pipe=%d, buf[1]=0x%02X\n", (buf[1]&0x01), buf[1]);
 
 	return (buf[1] & 0x01);
+}
+
+/*******************************************************
+Description:
+	Novatek touchscreen read mass data function.
+
+return:
+	n.a.
+*******************************************************/
+int32_t nvt_read_mass_data(uint8_t i2c_addr, uint8_t *temp_buf, uint32_t count)
+{
+	int32_t i = 0;
+	int32_t j = 0;
+	int32_t k = 0;
+	uint8_t i2c_buf[I2C_TANSFER_LENGTH + 1] = {0};
+	uint32_t xdata_addr = 0;
+	uint32_t head_addr = 0;
+	int32_t dummy_len = 0;
+	int32_t data_len = 0;
+	int32_t residual_len = 0;
+
+	xdata_addr = (temp_buf[3] << 24) + (temp_buf[4] << 16) + (temp_buf[5] << 8) + temp_buf[6];
+	head_addr = xdata_addr - (xdata_addr % XDATA_SECTOR_SIZE);
+	dummy_len = xdata_addr - head_addr;
+	data_len = (int32_t)((temp_buf[1] << 8) + temp_buf[2]);
+	residual_len = (head_addr + dummy_len + data_len) % XDATA_SECTOR_SIZE;
+
+	if (data_len > XDATA_BUF_SIZE)
+		return -EINVAL;
+
+	for (i = 0; i < ((dummy_len + data_len) / XDATA_SECTOR_SIZE); i++) {
+		i2c_buf[0] = 0xFF;
+		i2c_buf[1] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 16) & 0xFF;
+		i2c_buf[2] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 8) & 0xFF;
+		CTP_I2C_WRITE(ts->client, (uint16_t)i2c_addr, i2c_buf, 3);
+		for (j = 0; j < (XDATA_SECTOR_SIZE / I2C_TANSFER_LENGTH); j++) {
+			i2c_buf[0] = I2C_TANSFER_LENGTH * j;
+			CTP_I2C_READ(ts->client, (uint16_t)i2c_addr, i2c_buf, I2C_TANSFER_LENGTH + 1);
+			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
+				xdata_tmp[XDATA_SECTOR_SIZE * i + I2C_TANSFER_LENGTH * j + k] = i2c_buf[k + 1];
+			}
+		}
+	}
+
+	if (residual_len != 0) {
+		i2c_buf[0] = 0xFF;
+		i2c_buf[1] = ((xdata_addr + data_len - residual_len) >> 16) & 0xFF;
+		i2c_buf[2] = ((xdata_addr + data_len - residual_len) >> 8) & 0xFF;
+		CTP_I2C_WRITE(ts->client, (uint16_t)i2c_addr, i2c_buf, 3);
+		for (j = 0; j < (residual_len / I2C_TANSFER_LENGTH + 1); j++) {
+			i2c_buf[0] = I2C_TANSFER_LENGTH * j;
+			CTP_I2C_READ(ts->client, (uint16_t)i2c_addr, i2c_buf, I2C_TANSFER_LENGTH + 1);
+			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
+				xdata_tmp[(dummy_len + data_len - residual_len) + I2C_TANSFER_LENGTH * j + k] = i2c_buf[k + 1];
+			}
+		}
+	}
+
+	i2c_buf[0] = 0xFF;
+	i2c_buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
+	i2c_buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
+	CTP_I2C_WRITE(ts->client, (uint16_t)i2c_addr, i2c_buf, 3);
+
+	for (i = 0; i < data_len; i++) {
+		*(temp_buf + i) = xdata_tmp[dummy_len + i];
+	}
+
+	return  data_len;
 }
 
 /*******************************************************
