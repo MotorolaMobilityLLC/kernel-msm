@@ -2614,10 +2614,12 @@ static int msm_hs_startup(struct uart_port *uport)
 	msm_hs_resource_vote(msm_uport);
 
 	if (is_use_low_power_wakeup(msm_uport)) {
+		irq_set_status_flags(msm_uport->wakeup.irq, IRQ_DISABLE_UNLAZY);
 		ret = request_irq(msm_uport->wakeup.irq, msm_hs_wakeup_isr,
 					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 					"msm_hs_wakeup", msm_uport);
 		if (unlikely(ret)) {
+			irq_clear_status_flags(msm_uport->wakeup.irq, IRQ_DISABLE_UNLAZY);
 			MSM_HS_ERR("%s():Err getting uart wakeup_irq %d\n",
 				  __func__, ret);
 			goto unvote_exit;
@@ -3665,6 +3667,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	/* Free the interrupt */
 	free_irq(uport->irq, msm_uport);
 	if (is_use_low_power_wakeup(msm_uport)) {
+		irq_clear_status_flags(msm_uport->wakeup.irq, IRQ_DISABLE_UNLAZY);
 		free_irq(msm_uport->wakeup.irq, msm_uport);
 		MSM_HS_DBG("%s(): wakeup irq freed", __func__);
 	}
