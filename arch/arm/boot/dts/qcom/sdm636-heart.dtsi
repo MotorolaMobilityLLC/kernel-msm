@@ -119,6 +119,12 @@
 	};
 };
 
+&pm660l_gpios {
+	gpio@c600 {
+		qcom,vin-sel = <1>;
+	};
+};
+
 &i2c_2 { /* cypress capsensor */
 	status = "okay";
 	/delete-node/ smb1351-charger@1d;
