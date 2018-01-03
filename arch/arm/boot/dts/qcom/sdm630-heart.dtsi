@@ -224,6 +224,34 @@
 			bias-disable;
 		};
 	};
+
+	wls_otg_dis: wls_otg_dis {
+		mux {
+			pins = "gpio61";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio61";
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+		};
+	};
+
+	wls_otg_en: wls_otg_en {
+		mux {
+			pins = "gpio61";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio61";
+			drive-strength = <2>;
+			output-high;
+			bias-disable;
+		};
+	};
 };
 
 &i2c_4 {
@@ -244,4 +272,28 @@
 		idt,chg-limit-soc = <95>;
 		idt,chg-idle-cl = <50>;
 	};
+};
+
+&pm660_charger {
+	qcom,inner-wls-name = "idt_wireless";
+	qcom,inner-wls-used;
+	qcom,dc-icl-ua = <1100000>;
+	gpios = <&tlmm 61 0x1>; /* OTG EN*/
+	gpio-names = "wls_otg_en";
+	pinctrl-names = "wls_otg_en","wls_otg_dis";
+	pinctrl-0 = <&wls_otg_en>;
+	pinctrl-1 = <&wls_otg_dis>;
+
+	io-channels = <&pm660_rradc 8>,
+		      <&pm660_rradc 10>,
+		      <&pm660_rradc 3>,
+		      <&pm660_rradc 4>,
+		      <&pm660_rradc 5>,
+		      <&pm660_rradc 6>;
+	io-channel-names = "charger_temp",
+			   "charger_temp_max",
+			   "usbin_i",
+			   "usbin_v",
+			   "dcin_i",
+			   "dcin_v";
 };
