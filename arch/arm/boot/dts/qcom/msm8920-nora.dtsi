@@ -1,0 +1,183 @@
+/* Copyright (c) 2017, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8920-moto-common.dtsi"
+#include "msm8917-jeter-common.dtsi"
+#include "msm8917-camera-sensor-mot-jeterl.dtsi"
+
+ / {
+	model = "nora";
+	compatible = "qcom,msm8920-nora", "qcom,msm8920-moto",
+			"qcom,msm8920";
+
+};
+
+&pmi8950_charger {
+	qcom,fastchg-current-ma = <2800>;
+	qcom,chg-thermal-mitigation = <2800>, <2300>,<1800>, <1500>,
+					<1000>,<700>, <400>;
+	/delete-property/ qcom,dc-thermal-mitigation;
+	qcom,parallel-charge-current-map = <2800 2800 0>,
+					<2300 2300 0>,
+					<1800 1800 0>,
+					<1500 1500 0>,
+					<1000 1000 0>,
+					<700 700 0>,
+					<400 400 0>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <2000>;
+	qcom,stepchg-taper-ma = <1800>;
+	qcom,stepchg-iterm-ma = <125>;
+	qcom,enable-hvdcp-9v;
+	qcom,weak-charger-check-enable;
+	qcom,temp-warm-current-ma = <1500>;
+	qcom,temp-cool-current-ma = <700>;
+	qcom,temp-slightly-cool-current-ma = <700>;
+	qcom,slightly-cool-temp-c = <15>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <70>;
+	qcom,lower-limit-capacity = <60>;
+};
+
+&soc{
+	qcom,msm-thermal {
+		qcom,config-info = "nora";
+	};
+};
+
+&et320 {
+	egistec,gpio_ldo1p8_en = <&tlmm 124 0x0>;
+};
+
+&ldo_en_active {
+	mux {
+		pins = "gpio124";
+	};
+	config {
+		pins = "gpio124";
+	};
+};
+
+&ldo_en_suspend {
+	mux {
+		pins = "gpio124";
+	};
+	config {
+		pins = "gpio124";
+	};
+};
+
+&soc {
+	sound {
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		qcom,msm-micbias1-ext-cap;
+		/delete-property/ qcom,msm-micbias2-ext-cap;
+		qcom,msm-gpios =
+			"pri_i2s",
+			"quin_i2s";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act";
+		pinctrl-0 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus
+			&quin_mi2s_sus &pri_tlmm_ws_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act
+			&quin_mi2s_sus &pri_tlmm_ws_sus>;
+		pinctrl-2 = <&cdc_pdm_lines_sus
+			&cdc_pdm_lines_2_sus
+			&quin_mi2s_act &pri_tlmm_ws_act>;
+		pinctrl-3 = <&cdc_pdm_lines_act
+			&cdc_pdm_lines_2_act
+			&quin_mi2s_act &pri_tlmm_ws_act>;
+		/delete-property/ pinctrl-4;
+		/delete-property/ pinctrl-5;
+		/delete-property/ pinctrl-6;
+		/delete-property/ pinctrl-7;
+	};
+	ti,tas2560-algo {
+		compatible = "ti,tas2560-algo";
+		ti,tas2560-port-id = <0x1016>, <0x1017>;
+	};
+};
+&tlmm{
+	quin-mi2s-lines {
+		quin_mi2s_act: quin_mi2s_act {
+			mux {
+				pins = "gpio85", "gpio86", "gpio88";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio85", "gpio86", "gpio88";
+				drive-strength = <8>;
+			};
+		};
+		quin_mi2s_sus: quin_mi2s_sus {
+			mux {
+				pins = "gpio85", "gpio86", "gpio88";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio85", "gpio86", "gpio88";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+	tps61280_en_default: tps61280_en_default {
+		mux {
+			pins = "gpio95";
+		};
+		config {
+			pins = "gpio95";
+			drive_strength = <8>;
+			output-high;
+		};
+	};
+};
+&i2c_2 {
+	tas2560@4c {
+			compatible = "ti,tas2560";
+			reg = <0x4c>;
+			ti,reset-gpio = <&tlmm 89 0>;
+			ti,irq-gpio = <&tlmm 90 0>;
+			ti,ear-switch-gpio = <&tlmm 116 0>;
+			ti,pll = <0>; /* refer to tas2560.h for more details */
+			ti,asi-format = <0>; /* 0, i2S; 1, DSP;  */
+			ti,load = <1>; /* 0, 8Ohm; 1, 6Ohm; 2, 4Ohm */
+			ti,ppg = <110>; /*attenuation,0(-110db)~110(0db) */
+			status = "ok";
+	};
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		status = "okay";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
+};
+
+&sar_sx9310 {
+	reg_array_len = <2>;
+	reg_array_val = <0x18 0x49 0x19 0x49>;
+};
