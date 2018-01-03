@@ -275,6 +275,8 @@
 			focaltech,fw-delay-era-flsh-ms = <2000>;
 			focaltech,resume-in-workqueue;
 			focaltech,ignore-id-check;
+			focaltech,vendor_ids = <0x01 0x02 0x04>;
+			focaltech,vendor_names ="ofilm", "toptouch", "biel";
 			config_modifier-names = "charger", "fps";
 			config_modifier-charger {
 				enable-notification;
