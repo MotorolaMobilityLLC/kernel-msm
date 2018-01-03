@@ -374,7 +374,12 @@ struct mmi_params {
 	int			typec_debounce_cnt;
 	int			typec_debounce_pre_cnt;
 	int			typec_delay_cnt;
-
+	const char		*inner_wls_name;
+	bool			inner_wls_used;
+	int			inner_wls_vmax;
+	int			inner_wls_imax;
+	struct gpio		wls_otg_gpio;
+	struct pinctrl		*wls_otg_pinctrl;
 };
 
 struct smb_charger {
@@ -551,6 +556,8 @@ int smblib_set_charge_param(struct smb_charger *chg,
 			    struct smb_chg_param *param, int val_u);
 int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend);
 int smblib_set_dc_suspend(struct smb_charger *chg, bool suspend);
+
+int smblib_inner_wls_power_change(struct smb_charger *chg);
 
 int smblib_mapping_soc_from_field_value(struct smb_chg_param *param,
 					     int val_u, u8 *val_raw);
