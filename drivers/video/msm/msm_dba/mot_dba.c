@@ -370,7 +370,8 @@ struct tz_jslr_rsp_s {
 static int mot_dba_config_gpio_mode (int mode)
 {
 	int ret = 0;
-	size_t res, cmd_len, rsp_len;
+	ssize_t res;
+	size_t cmd_len, rsp_len;
 	struct qseecom_handle *qseecom_handle = NULL;
 	struct tz_jslr_req_s *cmd;
 	struct tz_jslr_rsp_s *rsp;
