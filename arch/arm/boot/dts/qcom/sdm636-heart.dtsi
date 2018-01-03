@@ -78,9 +78,9 @@
 };
 
 &pm660l_wled {
-	qcom,led-strings-list = [00 01];
+	qcom,ovp-mv = <18100>;
+	qcom,led-strings-list = [00 01 02];
 	qcom,en-cabc;
-	/delete-property/ qcom,auto-calibration-enable;
 };
 
 &mdss_dp_ctrl{
