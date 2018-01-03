@@ -161,4 +161,5 @@ void __new_context(struct mm_struct *mm)
 /* Errata workaround post TTBRx_EL1 update. */
 asmlinkage void post_ttbr_update_workaround(void)
 {
+	arm64_apply_bp_hardening();
 }

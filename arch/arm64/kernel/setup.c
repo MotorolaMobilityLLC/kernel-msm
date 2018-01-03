@@ -208,6 +208,22 @@ static void __init smp_build_mpidr_hash(void)
 }
 #endif
 
+#ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
+#include <asm/mmu_context.h>
+
+DEFINE_PER_CPU_READ_MOSTLY(struct bp_hardening_data, bp_hardening_data);
+
+static void __maybe_unused __install_bp_hardening_cb(bp_hardening_cb_t fn)
+{
+	__this_cpu_write(bp_hardening_data.fn, fn);
+}
+
+static void __maybe_unused install_bp_hardening_cb(bp_hardening_cb_t fn)
+{
+	__install_bp_hardening_cb(fn);
+}
+#endif	/* CONFIG_HARDEN_BRANCH_PREDICTOR */
+
 void __init setup_cpu_features(void)
 {
 	u64 features, block;

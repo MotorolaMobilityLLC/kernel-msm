@@ -452,11 +452,13 @@ el0_ia:
 	 * Instruction abort handling
 	 */
 	mrs	x0, far_el1
-	// enable interrupts before calling the main handler
-	enable_dbg_and_irq
+	enable_dbg
+#ifdef CONFIG_TRACE_IRQFLAGS
+	bl	trace_hardirqs_off
+#endif
 	orr	x1, x25, #1 << 24		// use reserved ISS bit for instruction aborts
 	mov	x2, sp
-	b	do_mem_abort
+	b	do_el0_ia_bp_hardening
 el0_fpsimd_acc:
 	/*
 	 * Floating Point or Advanced SIMD access
