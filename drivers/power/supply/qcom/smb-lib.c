@@ -1110,6 +1110,36 @@ int smblib_get_icl_current(struct smb_charger *chg, int *icl_ua)
 	return 0;
 }
 
+int smblib_inner_wls_power_change(struct smb_charger *chg)
+{
+	int rc = 0;
+	union power_supply_propval prop = {0,};
+
+	if (!chg->mmi.inner_wls_used || !chg->mmi.wls_psy)
+		return 0;
+
+	rc = power_supply_get_property(chg->mmi.wls_psy,
+			POWER_SUPPLY_PROP_VOLTAGE_MAX, &prop);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't read volt max prop, rc=%d\n", rc);
+
+	chg->mmi.inner_wls_vmax = prop.intval / 1000;
+
+	prop.intval = 0;
+	rc = power_supply_get_property(chg->mmi.wls_psy,
+			POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't read current max prop, rc=%d\n", rc);
+
+	chg->mmi.inner_wls_imax = prop.intval / 1000;
+
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
+
+	return rc;
+}
+
 /*********************
  * VOTABLE CALLBACKS *
  *********************/
@@ -1602,6 +1632,58 @@ out:
 	return rc;
 }
 
+static int _smblib_inner_wls_otg_enable(struct smb_charger *chg)
+{
+	int rc = 0;
+	union power_supply_propval prop = {0,};
+	struct power_supply *inner_wls_psy =
+		power_supply_get_by_name((char *)chg->mmi.inner_wls_name);
+
+	if (!inner_wls_psy)
+		return 0;
+
+	rc = power_supply_set_property(inner_wls_psy,
+				POWER_SUPPLY_PROP_CHARGING_ENABLED, &prop);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't disable wls charging, rc=%d\n", rc);
+		return rc;
+	}
+
+	chg->mmi.wls_otg_pinctrl = pinctrl_get_select(chg->dev, "wls_otg_en");
+	if (!chg->mmi.wls_otg_pinctrl) {
+		smblib_err(chg, "Couldn't set pinctrl wls_otg_en\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int _smblib_inner_wls_otg_disable(struct smb_charger *chg)
+{
+	int rc = 0;
+	union power_supply_propval prop = {1,};
+	struct power_supply *inner_wls_psy =
+		power_supply_get_by_name((char *)chg->mmi.inner_wls_name);
+
+	if (!inner_wls_psy)
+		return 0;
+
+	chg->mmi.wls_otg_pinctrl = pinctrl_get_select(chg->dev, "wls_otg_dis");
+	if (!chg->mmi.wls_otg_pinctrl) {
+		smblib_err(chg, "Couldn't set pinctrl wls_otg_dis\n");
+		return -EINVAL;
+	}
+
+	rc = power_supply_set_property(inner_wls_psy,
+				POWER_SUPPLY_PROP_CHARGING_ENABLED, &prop);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't enable wls charging, rc=%d\n", rc);
+		return rc;
+	}
+
+	return 0;
+}
+
 static int _smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 {
 	struct smb_charger *chg = rdev_get_drvdata(rdev);
@@ -1644,16 +1726,28 @@ int smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 	if (!chg->usb_icl_votable) {
 		chg->usb_icl_votable = find_votable("USB_ICL");
 
-		if (!chg->usb_icl_votable)
-			return -EINVAL;
+		if (!chg->usb_icl_votable) {
+			rc = -EINVAL;
+			goto unlock;
+		}
 	}
+
+	if (chg->mmi.inner_wls_used && chg->mmi.wls_otg_pinctrl) {
+		rc = _smblib_inner_wls_otg_enable(chg);
+		if (rc)
+			goto unlock;
+	}
+
 	vote(chg->usb_icl_votable, USBIN_USBIN_BOOST_VOTER, true, 0);
 
 	rc = _smblib_vbus_regulator_enable(rdev);
 	if (rc >= 0)
 		chg->otg_en = true;
-	else
+	else {
+		if (chg->mmi.inner_wls_used && chg->mmi.wls_otg_pinctrl)
+			_smblib_inner_wls_otg_disable(chg);
 		vote(chg->usb_icl_votable, USBIN_USBIN_BOOST_VOTER, false, 0);
+	}
 
 unlock:
 	mutex_unlock(&chg->otg_oc_lock);
@@ -1709,6 +1803,10 @@ int smblib_vbus_regulator_disable(struct regulator_dev *rdev)
 
 	if (chg->usb_icl_votable)
 		vote(chg->usb_icl_votable, USBIN_USBIN_BOOST_VOTER, false, 0);
+
+	if (chg->mmi.inner_wls_used && chg->mmi.wls_otg_pinctrl)
+		rc = _smblib_inner_wls_otg_disable(chg);
+
 unlock:
 	mutex_unlock(&chg->otg_oc_lock);
 	return rc;
@@ -6667,7 +6765,10 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 			else
 				mmi->charger_rate =
 					POWER_SUPPLY_CHARGE_RATE_NORMAL;
-		} else if (is_wls_present(chip))
+		} else if (is_wls_present(chip) &&
+			   mmi->inner_wls_vmax > (MICRO_5V / 1000))
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		else if (is_wls_present(chip))
 			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
 		else
 			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
@@ -6868,13 +6969,17 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	if (pwr_ext == POWER_SUPPLY_PTP_EXT_SUPPORTED) {
 		mmi->usbeb_present = is_usbeb_present(chip);
 		mmi->wls_present = is_wls_present(chip);
+	} else if (mmi->inner_wls_used) {
+		mmi->usbeb_present = false;
+		mmi->wls_present = is_wls_present(chip);
 	} else {
 		mmi->usbeb_present = false;
 		mmi->wls_present = false;
 	}
 	/* Hold Wakelock if External Battery has External Power */
-	if ((mmi->wls_present || mmi->usbeb_present) &&
-	    (mmi->ebchg_state == EB_SRC))
+	if (((mmi->wls_present || mmi->usbeb_present) &&
+	    (mmi->ebchg_state == EB_SRC)) ||
+	    (mmi->wls_present && mmi->inner_wls_used))
 		vote(chip->awake_votable, WIRELESS_VOTER, true, 0);
 	else
 		vote(chip->awake_votable, WIRELESS_VOTER, false, 0);
@@ -7143,6 +7248,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	else
 		target_dc = mmi->dc_ebmax_current_ma;
 
+	if (mmi->inner_wls_used && mmi->wls_psy)
+		target_dc = mmi->inner_wls_imax;
+
 	mmi_find_temp_zone(chip, batt_temp);
 	zone = &mmi->temp_zones[mmi->pres_temp_zone];
 
@@ -7167,7 +7275,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	if (mmi->charging_limit_modes == CHARGING_LIMIT_RUN)
 		pr_warn("Factory Mode/Image so Limiting Charging!!!\n");
 
-	if (!charger_present && (mmi->ebchg_state != EB_SRC)) {
+	if (!charger_present &&
+	    (mmi->ebchg_state != EB_SRC) &&
+	    !(mmi->inner_wls_used && mmi->wls_present)) {
 		mmi->pres_chrg_step = STEP_NONE;
 	} else if ((mmi->pres_temp_zone == ZONE_HOT) ||
 		   (mmi->pres_temp_zone == ZONE_COLD) ||
@@ -8203,6 +8313,7 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 	chg->mmi.ebchg_gpio.gpio = -EINVAL;
 	chg->mmi.warn_gpio.gpio = -EINVAL;
 	chg->mmi.togl_rst_gpio.gpio = -EINVAL;
+	chg->mmi.wls_otg_gpio.gpio = -EINVAL;
 
 	if (!node) {
 		smblib_err(chg, "gpio dtree info. missing\n");
@@ -8211,6 +8322,54 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 
 	if (of_gpio_count(node) < 0) {
 		smblib_err(chg, "No GPIOS defined.\n");
+		return;
+	}
+
+	if (chg->mmi.inner_wls_used) {
+		chg->mmi.wls_otg_pinctrl =
+			pinctrl_get_select(chg->dev, "wls_otg_dis");
+		if (!chg->mmi.wls_otg_pinctrl) {
+			smblib_err(chg, "Couldn't set pinctrl wls_otg_dis\n");
+			return;
+		}
+
+		chg->mmi.wls_otg_gpio.gpio = of_get_gpio_flags(node, 0, &flags);
+		chg->mmi.wls_otg_gpio.flags = flags;
+		of_property_read_string_index(node, "gpio-names", 0,
+					      &chg->mmi.wls_otg_gpio.label);
+
+		if (!gpio_is_valid(chg->mmi.wls_otg_gpio.gpio)) {
+			dev_err(chg->dev, "get gpio wls otg error rc=%d\n",
+						chg->mmi.wls_otg_gpio.gpio);
+			return;
+		}
+
+		rc = gpio_request_one(chg->mmi.wls_otg_gpio.gpio,
+				      chg->mmi.wls_otg_gpio.flags,
+				      chg->mmi.wls_otg_gpio.label);
+		if (rc) {
+			smblib_err(chg, "failed to request wls otg GPIO\n");
+			return;
+		}
+
+		rc = gpio_export(chg->mmi.wls_otg_gpio.gpio, 1);
+		if (rc) {
+			smblib_err(chg,
+				   "Failed to export wls otg GPIO %s: %d\n",
+				   chg->mmi.wls_otg_gpio.label,
+				   chg->mmi.wls_otg_gpio.gpio);
+			return;
+		}
+
+		rc = gpio_export_link(chg->dev, chg->mmi.wls_otg_gpio.label,
+				      chg->mmi.wls_otg_gpio.gpio);
+		if (rc) {
+			smblib_err(chg,
+				   "Failed to wls otg gpio link GPIO %s: %d\n",
+				   chg->mmi.wls_otg_gpio.label,
+				   chg->mmi.wls_otg_gpio.gpio);
+			return;
+		}
 		return;
 	}
 
@@ -8465,6 +8624,13 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	chg->single_path_usbin_switch =
 		of_property_read_bool(node, "qcom,use-single-path-usbin-switch");
 
+	rc = of_property_read_string_index(chg->dev->of_node,
+					"qcom,inner-wls-name", 0,
+					&chg->mmi.inner_wls_name);
+	if (rc < 0)
+		chg->mmi.inner_wls_name = "idt_wireless";
+	chg->mmi.inner_wls_used = of_property_read_bool(node,
+					"qcom,inner-wls-used");
 	return rc;
 }
 
