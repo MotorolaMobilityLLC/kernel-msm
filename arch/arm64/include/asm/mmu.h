@@ -16,6 +16,11 @@
 #ifndef __ASM_MMU_H
 #define __ASM_MMU_H
 
+#include <linux/smp.h>
+
+#include <asm/cpufeature.h>
+#include <asm/percpu.h>
+
 typedef struct {
 	unsigned int id;
 	raw_spinlock_t id_lock;
@@ -29,6 +34,38 @@ typedef struct {
 
 #define INIT_MM_CONTEXT(name)	\
 	.context.id_lock    = __RAW_SPIN_LOCK_UNLOCKED(name.context.id_lock),
+
+typedef void (*bp_hardening_cb_t)(void);
+
+struct bp_hardening_data {
+	bp_hardening_cb_t	fn;
+};
+
+#ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
+
+DECLARE_PER_CPU_READ_MOSTLY(struct bp_hardening_data, bp_hardening_data);
+
+static inline struct bp_hardening_data *arm64_get_bp_hardening_data(void)
+{
+	return this_cpu_ptr(&bp_hardening_data);
+}
+
+static inline void arm64_apply_bp_hardening(void)
+{
+	struct bp_hardening_data *d;
+
+	d = arm64_get_bp_hardening_data();
+	if (d->fn)
+		d->fn();
+}
+#else
+static inline struct bp_hardening_data *arm64_get_bp_hardening_data(void)
+{
+	return NULL;
+}
+
+static inline void arm64_apply_bp_hardening(void)	{ }
+#endif	/* CONFIG_HARDEN_BRANCH_PREDICTOR */
 
 extern void paging_init(void);
 extern void setup_mm_for_reboot(void);
