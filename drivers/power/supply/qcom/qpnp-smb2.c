@@ -989,6 +989,13 @@ static int mmi_wls_get_property(struct power_supply *psy,
 	struct smb_charger *chip = power_supply_get_drvdata(psy);
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+	struct power_supply *inner_wls_psy =
+		power_supply_get_by_name((char *)chip->mmi.inner_wls_name);
+
+	if (chip->mmi.inner_wls_used && inner_wls_psy) {
+		rc = power_supply_get_property(inner_wls_psy, prop, val);
+		return rc;
+	}
 
 	if (eb_pwr_psy) {
 		rc = power_supply_get_property(eb_pwr_psy,
@@ -1040,6 +1047,17 @@ static int mmi_wls_is_writeable(struct power_supply *psy,
 				enum power_supply_property prop)
 {
 	int rc;
+	struct smb_charger *chip = power_supply_get_drvdata(psy);
+	struct power_supply *inner_wls_psy =
+		power_supply_get_by_name((char *)chip->mmi.inner_wls_name);
+
+	if (chip->mmi.inner_wls_used && inner_wls_psy) {
+		if (!inner_wls_psy->desc->property_is_writeable)
+			return 0;
+		rc = inner_wls_psy->desc->property_is_writeable(inner_wls_psy,
+						prop);
+		return rc;
+	}
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
@@ -1059,6 +1077,13 @@ static int mmi_wls_set_property(struct power_supply *psy,
 {
 	int rc = 0;
 	struct smb_charger *chip = power_supply_get_drvdata(psy);
+	struct power_supply *inner_wls_psy =
+		power_supply_get_by_name((char *)chip->mmi.inner_wls_name);
+
+	if (chip->mmi.inner_wls_used && inner_wls_psy) {
+		rc = power_supply_set_property(inner_wls_psy, prop, val);
+		return rc;
+	}
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
@@ -1074,6 +1099,13 @@ static int mmi_wls_set_property(struct power_supply *psy,
 	return rc;
 }
 
+static void smb2_wls_external_power_changed(struct power_supply *psy)
+{
+	struct smb2 *chip = power_supply_get_drvdata(psy);
+
+	if (chip->chg.mmi.inner_wls_used)
+		smblib_inner_wls_power_change(&chip->chg);
+}
 
 static const struct power_supply_desc wls_psy_desc = {
 	.name = "wireless",
@@ -1083,6 +1115,7 @@ static const struct power_supply_desc wls_psy_desc = {
 	.get_property = mmi_wls_get_property,
 	.set_property = mmi_wls_set_property,
 	.property_is_writeable = mmi_wls_is_writeable,
+	.external_power_changed = smb2_wls_external_power_changed,
 };
 
 static int smb2_init_wls_psy(struct smb2 *chip)
@@ -2304,6 +2337,18 @@ static int smb2_init_hw(struct smb2 *chip)
 			return rc;
 		}
 	}
+
+	if (chg->mmi.inner_wls_used) {
+		rc = smblib_write(chg, DCIN_ADAPTER_ALLOW_CFG_REG,
+				USBIN_ADAPTER_ALLOW_5V_TO_9V);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't configure dcin range, rc=%d\n",
+				rc);
+			return rc;
+		}
+	}
+
 	return rc;
 }
 
