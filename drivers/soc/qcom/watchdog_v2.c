@@ -745,6 +745,7 @@ void msm_trigger_wdog_bite(void)
 	while (1)
 		udelay(1);
 }
+EXPORT_SYMBOL(msm_trigger_wdog_bite);
 
 static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 {
