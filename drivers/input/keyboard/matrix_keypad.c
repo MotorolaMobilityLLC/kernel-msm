@@ -142,6 +142,10 @@ static void matrix_keypad_scan(struct work_struct *work)
 		if (new_state[col])
 			count_state++;
 		activate_col(pdata, col, false);
+		for (row = 0; row < pdata->num_row_gpios; row++) {
+			gpio_direction_output(pdata->row_gpios[row], 0);
+			gpio_direction_input(pdata->row_gpios[row]);
+		}
 	}
 
 	if (count_state == 5)
