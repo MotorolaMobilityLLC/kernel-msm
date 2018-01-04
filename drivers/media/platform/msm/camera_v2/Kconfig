@@ -282,3 +282,15 @@ config QPNP_FLASH_STROBE_OVERRIDE
 	---help---
 	    Enables support for flash HW strobe override
 	    based on sensor configuration.
+
+config MOT_CAMERA_ALT_CLOCKS
+	bool "Enable MOT_CAMERA_ALT_CLOCKS"
+	default n
+	---help---
+		Enables support for alt mclk.
+
+config MOT_CAMERA_ALT_MIPI_TERMINAL_ENABLE
+	bool "Enable MOT_CAMERA_ALT_MIPI_TERMINAL_ENABLE"
+	---help---
+		Enable support for the MIPI signal for
+		Terminal_Enable timing.
