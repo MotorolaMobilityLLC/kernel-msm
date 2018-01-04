@@ -197,9 +197,9 @@
 
 &pm660_haptics { /* Vibrator */
 	qcom,actuator-type = "lra";
-	qcom,vmax-mv = <1800>;
+	qcom,vmax-mv = <3000>;
 	qcom,ilim-ma = <90>;
-	qcom,wave-play-rate-us = <4880>;
+	qcom,wave-play-rate-us = <5420>;
 	qcom,brake-pattern = [03 03 00 00];
 	qcom,play-mode = "direct";
 	qcom,wave-shape = "sine";
