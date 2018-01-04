@@ -39,7 +39,7 @@
 #define S_BODY   2
 
 #define SX9310_DEBUG 1
-#define LOG_TAG "SX9310"
+#define LOG_TAG "SX9310 "
 
 #if SX9310_DEBUG
 #define LOG_INFO(fmt, args...)    pr_info(LOG_TAG fmt, ##args)
@@ -727,7 +727,7 @@ static ssize_t capsense_enable_store(struct class *class,
 	if (!count || (this == NULL))
 		return -EINVAL;
 
-	if (!strncmp(buf, "1", 1)) {
+	if ((!strncmp(buf, "1", 1)) && (mEnabled == 0)) {
 		LOG_INFO("enable cap sensor\n");
 		initialize(this);
 
@@ -736,7 +736,7 @@ static ssize_t capsense_enable_store(struct class *class,
 		input_report_abs(input_bottom, ABS_DISTANCE, 0);
 		input_sync(input_bottom);
 		mEnabled = 1;
-	} else if (!strncmp(buf, "0", 1)) {
+	} else if ((!strncmp(buf, "0", 1)) && (mEnabled == 1)) {
 		LOG_INFO("disable cap sensor\n");
 
 		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
@@ -767,7 +767,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 	input_top = pDevice->pbuttonInformation->input_top;
 	input_bottom = pDevice->pbuttonInformation->input_bottom;
 
-	if (enable == 1) {
+	if ((enable == 1) && (mEnabled == 0)) {
 		LOG_INFO("enable cap sensor\n");
 		initialize(this);
 
@@ -776,7 +776,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 		input_report_abs(input_bottom, ABS_DISTANCE, 0);
 		input_sync(input_bottom);
 		mEnabled = 1;
-	} else if (enable == 0) {
+	} else if ((enable == 0) && (mEnabled == 1)) {
 		LOG_INFO("disable cap sensor\n");
 
 		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
