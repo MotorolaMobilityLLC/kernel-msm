@@ -314,7 +314,6 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 		0x00003000,
 		0x0000C000  };
 
-
 	if (data->enable) {
 		ret = cyttsp_i2c_read_block(&data->client->dev, CYTTSP_REG_INTERRUPT_PEDNING, 3, &temp[0]);
 		if (ret < 0) {
@@ -1026,8 +1025,22 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 		if (ret < 0) {
 			LOG_ERR("data_array_val read error");
 		}
-	} else
+	} else if (!strncmp(buf, "BRAZIL", 6)) {
+		ret = of_property_read_u32_array(np, "brazil_threshold_array_val",
+				threshold_array_data,
+				threshold_array_len * 2);
+		if (ret < 0) {
+			LOG_ERR("data_array_val read error");
+		}
+	} else {
+		ret = of_property_read_u32_array(np, "default_threshold_array_val",
+				threshold_array_data,
+				threshold_array_len * 2);
+		if (ret < 0) {
+			LOG_ERR("data_array_val read error");
+		}
 		LOG_ERR("radio is not expected, radio = %s", buf);
+	}
 
 	for (i = 0; i < threshold_array_len; i++) {
 		LOG_INFO("Going to Write Reg: 0x%x Value: 0x%x\n",
