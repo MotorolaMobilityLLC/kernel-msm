@@ -264,13 +264,11 @@
 };
 
 &pm660_haptics {
-	/delete-property/ qcom,correct-lra-drive-freq;
 	qcom,wave-shape = "sine";
-	qcom,vmax-mv = <2500>;
+	qcom,vmax-mv = <2545>;
 	qcom,ilim-ma = <100>;
 	qcom,wave-play-rate-us = <4255>;
 	qcom,brake-pattern = [03 03 00 00];
-	qcom,lra-auto-res-mode = "none";
 };
 
 &soc{
