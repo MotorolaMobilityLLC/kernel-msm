@@ -2052,6 +2052,9 @@ static int qpnp_hap_set(struct qpnp_hap *hap, bool on)
 	} else if (hap->play_mode == QPNP_HAP_BUFFER ||
 			hap->play_mode == QPNP_HAP_DIRECT) {
 		if (on) {
+			if (hap->module_en == on )
+				return 0;
+
 			rc = qpnp_hap_auto_res_enable(hap, 0);
 			if (rc < 0)
 				return rc;
