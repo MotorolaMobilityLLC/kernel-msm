@@ -365,6 +365,7 @@ dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-evt1.dtb
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt1a.dtb
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt1b.dtb
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt2.dtb
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-pvt1.dtb
 endif
 
 ifeq ($(CONFIG_SANDERS_DTB),y)
