@@ -314,7 +314,7 @@
 };
 &soc{
 	qcom,msm-thermal {
-		qcom,config-info = "hannah";
+		qcom,config-info = "ahannah";
 	};
 };
 &mot_batterydata {
