@@ -260,7 +260,17 @@ static long msm_tof_subdev_ioctl(struct v4l2_subdev *sd,
 
 static int32_t msm_tof_power(struct v4l2_subdev *sd, int on)
 {
-	vl53l0_dbgmsg("TOF power called\n");
+	struct cci_data *cci_data_t = v4l2_get_subdevdata(sd);
+	struct platform_device *pdev = cci_data_t->pdev;
+	struct stmvl53l0_data *data = dev_get_drvdata(&pdev->dev);
+
+	vl53l0_dbgmsg("TOF power called %d\n", on);
+
+	if (data->enable_ps_sensor == 1) {
+		data->enable_ps_sensor = 0;
+		/* to stop */
+		stmvl53l0_power_down_cci(data->client_object);
+	}
 	return 0;
 }
 
