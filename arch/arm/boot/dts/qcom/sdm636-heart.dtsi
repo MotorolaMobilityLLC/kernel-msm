@@ -133,9 +133,9 @@
 		compatible = "cypress,sf3155";
 		label = "MotorolaCapSense";
 		reg = <0x1D>;
-		vdd-supply = <&pm660l_l3>;
-		vddio-supply = <&pm660l_l3>;
-		avdd-supply = <&pm660l_l3>;
+		vdd-supply = <&pm660_l13>;
+		vddio-supply = <&pm660_l13>;
+		avdd-supply = <&pm660_l13>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <75 0x2008>;
 		silicon_id = <0x0BB11477>;
