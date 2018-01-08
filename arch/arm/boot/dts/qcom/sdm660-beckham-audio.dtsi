@@ -112,7 +112,7 @@
 		compatible = "cirrus,cs35l36";
 		reg = <0x40>;
 		reset-gpios = <&pcal_pin 9 0>;
-		irq-gpios = <&tlmm 46 0>;
+		interrupts = <46 0>;
 		interrupt-parent = <&tlmm>;
 		VA-supply = <&dummy_vreg>;
 		VP-supply = <&dummy_vreg>;
@@ -138,10 +138,6 @@
 			cirrus,irq-gpio-select = <0x01>;
 			cirrus,irq-output-enable = <0x01>;
 			cirrus,irq-src-select = <0x01>;
-		};
-		cirrus,asp-tx-config {
-			cirrus,tx1-config = /bits/ 8 <0x00 0x18>;
-			cirrus,tx2-config = /bits/ 8 <0x01 0x19>;
 		};
 	};
 };
