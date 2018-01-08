@@ -229,7 +229,8 @@
 				reg = <1>;
 
 				cirrus,micd-force-micbias;
-				cirrus,micd-detect-debounce-ms = <600>;
+				cirrus,micd-detect-debounce-ms = <300>;
+				cirrus,jd-wake-time= <3000>;
 				cirrus,micd-bias-start-time = <8>;
 				cirrus,micd-rate = <6>;
 				cirrus,disable-jd2-on-lineout;
