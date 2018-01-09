@@ -205,8 +205,8 @@
 			0xffffffff 0xffffffff /* GPIO34 */
 			0xffffffff 0xffffffff /* GPIO35 */
 			0xffffffff 0xffffffff /* GPIO36 */
-			0x00002000 0x0000f000 /* PDM_CLK / GPIO37 */
-			0x00002000 0x0000f000 /* PDM_DAT / GPIO38 */
+			0xffffffff 0x00000000 /* PDM_CLK / GPIO37 */
+			0xffffffff 0x00000000 /* PDM_DAT / GPIO38 */
 		>;
 
 		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
