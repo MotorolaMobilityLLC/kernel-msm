@@ -12,7 +12,8 @@ dtb-$(CONFIG_ARCH_MSM8998) += msm8998-saratoga-p1.dtb \
 	msm8998-nash-dvt1.dtb \
 	msm8998-nash-dvt1b.dtb \
 	msm8998-nash-dvt2.dtb \
-	msm8998-nash-dvt2b.dtb
+	msm8998-nash-dvt2b.dtb \
+	msm8998-loki-evt1.dtb
 
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-payton-p0a.dtb \
 	sdm660-beckham-evt1.dtb \
