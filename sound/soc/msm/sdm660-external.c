@@ -1982,7 +1982,7 @@ static const struct snd_soc_dapm_widget msm_madera_dapm_widgets[] = {
 
 int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int ret;
+	int ret, i;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 
@@ -2048,6 +2048,13 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
+	/* Toggle PDM_CLK GPIO */
+	for (i = 0; i < 5; i++) {
+		snd_soc_write(codec, MADERA_GPIO37_CTRL_1, 0xA001);
+		usleep_range(1000, 1100);
+		snd_soc_write(codec, MADERA_GPIO37_CTRL_1, 0x2001);
+		usleep_range(1000, 1100);
+	}
 	/* Ensures that GPIO3 is set to an output clock. */
 #ifdef SND_SOC_CS47L35
 	snd_soc_write(codec, 0x1704, 0);
