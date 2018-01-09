@@ -45,6 +45,8 @@
 #define MADERA_MICD_CLAMP_MODE_JD1L_JD2H 0x9
 #define MADERA_MICD_CLAMP_MODE_JD1H_JD2H 0xb
 
+#define MADERA_JD2_IRQ_CLAMP_MODE 	0x0
+
 #define MADERA_MICD_WRONG_POLARITY	30
 
 #define MADERA_HPDET_LINEOUT		500000 /* 5,000 ohms */
@@ -53,6 +55,7 @@
 
 #define MADERA_HPDET_DEBOUNCE_MS	500
 #define MADERA_DEFAULT_MICD_TIMEOUT_MS	2000
+#define MADERA_MAX_HPDET_RETRY		2
 
 #define MADERA_MICROPHONE_MIN_OHM	1258
 #define MADERA_MICROPHONE_MAX_OHM	30000
@@ -75,6 +78,14 @@ struct madera_micd_bias {
 struct madera_hpdet_trims {
 	int off_x4;
 	int grad_x4;
+};
+
+enum jd2_state {
+	JD2_NONE,
+	JD2_TIMER1,
+	JD2_TIMER2,
+	JD2_DETECTED,
+	JD2_REMOVING,
 };
 
 struct madera_extcon_info {
@@ -106,11 +117,14 @@ struct madera_extcon_info {
 
 	struct completion manual_mic_completion;
 
+	struct delayed_work hpdet_work;
 	struct delayed_work micd_detect_work;
 
 	bool have_mic;
 	bool detecting;
 	int jack_flips;
+	int jd2_is_running;
+	int hpdet_retried;
 
 	bool jd2_is_off;
 	ktime_t jd2_ticks;
@@ -120,6 +134,7 @@ struct madera_extcon_info {
 	const struct madera_jd_state *old_state;
 	struct delayed_work state_timeout_work;
 	struct delayed_work jd2detect_work;
+	struct delayed_work alt_jd2detect_work;
 	struct wakeup_source detection_wake_lock;
 
 	struct madera_micd_bias micd_bias;
@@ -583,6 +598,17 @@ static void madera_jds_timeout_work(struct work_struct *work)
 	mutex_unlock(&info->lock);
 }
 
+static irqreturn_t madera_jackdet(int irq, void *data);
+
+static void madera_alt_jd2detect_work(struct work_struct *work)
+{
+	struct madera_extcon_info *info =
+		container_of(work, struct madera_extcon_info,
+			     alt_jd2detect_work.work);
+
+	madera_jackdet(0, (void *)info);
+}
+
 static void madera_extcon_hp_clamp(struct madera_extcon_info *info,
 				   bool clamp)
 {
@@ -694,6 +720,16 @@ static const char *madera_ext_get_micbias_src(struct madera_extcon_info *info)
 
 	switch (madera->type) {
 	case CS47L35:
+		switch (bias) {
+		case 1:
+		case 2:
+			return "MICBIAS1";
+		case 3:
+			return "MICBIAS2";
+		default:
+			return "MICVDD";
+		}
+		break;
 	case CS47L85:
 	case WM1840:
 		return NULL;
@@ -1513,6 +1549,9 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 {
 	unsigned int clamp_ctrl_val;
 
+	struct madera *madera = info->madera;
+	int debounce = 0;
+
 	dev_dbg(info->madera->dev, "Reading HPDET %d\n", val);
 
 	if (val < 0)
@@ -1521,11 +1560,54 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 	madera_set_headphone_imp(info, val);
 
 	if (info->have_mic) {
+		if (info->jd2_is_running)
+			info->jd2_is_running = JD2_DETECTED;
 		madera_extcon_report(info, BIT_HEADSET);
 		madera_jds_set_state(info, &madera_micd_button);
 	} else {
-		madera_extcon_report(info, madera_is_lineout(info) ?
-				     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
+		if (info->pdata->jd_alt_jd2) {
+			switch (info->jd2_is_running) {
+			case JD2_NONE:
+				/*
+				 * Only schedule recheck if a detection state
+				 * was not reported yet to do avoid recurrence.
+				 * For JD2 case this done by checking
+				 * jd2_running state.
+				 */
+				if (switch_get_state(&info->edev))
+					break;
+				if (madera_is_lineout(info) &&
+				    (info->hpdet_retried < MADERA_MAX_HPDET_RETRY)) {
+					debounce = MADERA_HPDET_DEBOUNCE_MS;
+					info->hpdet_retried++;
+				} else {
+					debounce = MADERA_DEFAULT_MICD_TIMEOUT_MS;
+					info->hpdet_retried = 0;
+				}
+				break;
+			case JD2_TIMER2:
+				debounce = MADERA_DEFAULT_MICD_TIMEOUT_MS;
+				info->hpdet_retried = 0;
+				break;
+			default:
+				info->jd2_is_running = JD2_DETECTED;
+				info->hpdet_retried = 0;
+			}
+		}
+
+		if (debounce) {
+			dev_dbg(madera->dev,
+				"repeat detection in %d msec\n",
+				debounce);
+			schedule_delayed_work(&info->alt_jd2detect_work,
+					      msecs_to_jiffies(debounce));
+			info->last_jackdet = -1;
+		}
+
+		if (!info->hpdet_retried)
+			madera_extcon_report(info, madera_is_lineout(info) ?
+							     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
+
 		/* disable JD2 to workaround for error lineout pull out in Payton,
 		   JD2 detect pin voltage greater than 0.9v easily when play msusic over lineout.
 		   this meet pull out condition
@@ -1603,6 +1685,9 @@ EXPORT_SYMBOL_GPL(madera_micd_start);
 void madera_micd_stop(struct madera_extcon_info *info)
 {
 	struct madera *madera = info->madera;
+	const char *src_widget = madera_ext_get_micbias_src(info);
+	struct snd_soc_dapm_context *dapm = madera->dapm;
+	int ret;
 
 	regmap_update_bits(madera->regmap, MADERA_MIC_DETECT_1_CONTROL_1,
 			   MADERA_MICD_ENA, 0);
@@ -1622,11 +1707,22 @@ void madera_micd_stop(struct madera_extcon_info *info)
 		break;
 	}
 
-	regulator_disable(info->micvdd);
+	/* Keep Mic bias supply on */
+	if (info->pdata->jd_alt_jd2) {
+		ret = snd_soc_dapm_enable_pin(dapm, src_widget);
+		if (ret != 0)
+			dev_warn(madera->dev, "Failed to enable %s: %d\n",
+				 src_widget, ret);
+		snd_soc_dapm_sync(dapm);
+	} else {
+		regulator_disable(info->micvdd);
+	}
 
-	dev_dbg(madera->dev, "Enabling MICD_OVD\n");
-	regmap_update_bits(madera->regmap, MADERA_MICD_CLAMP_CONTROL,
+	if (!info->pdata->jd_alt_jd2) {
+		dev_dbg(madera->dev, "Enabling MICD_OVD\n");
+		regmap_update_bits(madera->regmap, MADERA_MICD_CLAMP_CONTROL,
 			   MADERA_MICD_CLAMP_OVD_MASK, MADERA_MICD_CLAMP_OVD);
+	}
 
 	pm_runtime_mark_last_busy(info->dev);
 	pm_runtime_put_autosuspend(info->dev);
@@ -1716,6 +1812,8 @@ int madera_micd_button_reading(struct madera_extcon_info *info, int val)
 	if (val < 0)
 		return val;
 
+	if (info->jd2_is_running == JD2_REMOVING)
+		return -EPERM;
 	val = HOHM_TO_OHM(val);
 
 	ret = madera_micd_button_debounce(info, val);
@@ -1770,7 +1868,12 @@ int madera_micd_mic_reading(struct madera_extcon_info *info, int val)
 	if (val > MADERA_MICROPHONE_MAX_OHM) {
 		dev_warn(madera->dev, "Detected open circuit\n");
 		info->have_mic = info->pdata->micd_open_circuit_declare;
-		goto done;
+		if (!info->pdata->jd_alt_jd2)
+			goto done;
+		else {
+			madera_extcon_disable_micbias(info);
+			return -EAGAIN;
+		}
 	}
 
 	/* If we got a high impedence we should have a headset, report it. */
@@ -1809,6 +1912,17 @@ int madera_micd_mic_reading(struct madera_extcon_info *info, int val)
 
 done:
 	pm_runtime_mark_last_busy(info->dev);
+
+	/*
+	 * Mic is not detected and the switch state already set to a value
+	 * during first detection run. Skip HP detection in this case and
+	 * rerun if a mic was found
+	 */
+	if (info->pdata->jd_alt_jd2 && !info->have_mic && switch_get_state(&info->edev)) {
+		dev_dbg(madera->dev, "Skip HPDET\n");
+		madera_jds_set_state(info, NULL);
+		return 0;
+	}
 
 	if (info->pdata->hpdet_channel)
 		ret = madera_jds_set_state(info, &madera_hpdet_right);
@@ -1857,7 +1971,7 @@ static int madera_jack_present(struct madera_extcon_info *info,
 				unsigned int *jack_val)
 {
 	struct madera *madera = info->madera;
-	unsigned int present, val;
+	unsigned int present, val, bias_state;
 	int ret;
 
 	ret = regmap_read(madera->regmap, MADERA_IRQ1_RAW_STATUS_7, &val);
@@ -1886,6 +2000,43 @@ static int madera_jack_present(struct madera_extcon_info *info,
 		} else if (info->pdata->jd_invert) {
 			val &= MADERA_JD1_FALL_STS1_MASK;
 			present = MADERA_JD1_FALL_STS1;
+		} else if (info->pdata->jd_alt_jd2 && info->jd2_is_running) {
+		/*
+		 * if JD2 detection enabled and JD2 irq processing started
+		 * check JD2 irq state or saved state
+		 */
+			val &= MADERA_JD2_RISE_STS1_MASK;
+			present = MADERA_JD2_RISE_STS1;
+
+			switch (info->jd2_is_running) {
+			case JD2_TIMER2:
+			case JD2_DETECTED:
+				/*
+				 * If MICBIAS1a/b is enabled than JD2 IRQ
+				 * state isn`t valid
+				 * Use saved JD2 state to set present flag
+				 */
+				ret = regmap_read(madera->regmap,
+						  MADERA_MIC_BIAS_CTRL_5,
+						  &bias_state);
+				if (ret != 0) {
+					dev_err(madera->dev,
+						"Failed to read mic bias state: %d\n",
+						ret);
+					return ret;
+				}
+
+				if (bias_state & (MADERA_MICB1A_ENA|MADERA_MICB1B_ENA)) {
+					if (jack_val)
+						*jack_val = 0x4;
+					return 1;
+				}
+				break;
+			case JD2_REMOVING:
+				if (jack_val)
+					*jack_val = 0x0;
+				return 0;
+			}
 		} else {
 			val &= MADERA_JD1_RISE_STS1_MASK;
 			present = MADERA_JD1_RISE_STS1;
@@ -1919,6 +2070,8 @@ static irqreturn_t madera_hpdet_handler(int irq, void *data)
 	case MADERA_ACCDET_MODE_HPL:
 	case MADERA_ACCDET_MODE_HPR:
 	case MADERA_ACCDET_MODE_HPM:
+		if (info->pdata->jd_alt_jd2 && info->jd2_is_running)
+			break;
 		/* Fall through to spurious if no jack present */
 		if (madera_jack_present(info, NULL) > 0)
 			break;
@@ -1971,6 +2124,9 @@ static void madera_micd_handler(struct work_struct *work)
 		goto spurious;
 	}
 
+	if (info->jd2_is_running == JD2_REMOVING)
+		goto spurious;
+
 	if (madera_jack_present(info, NULL) <= 0)
 		goto spurious;
 
@@ -1990,6 +2146,16 @@ static void madera_micd_handler(struct work_struct *work)
 		goto out;
 
 	dev_info(madera->dev, "Mic impedance %d ohms\n", ret);
+
+	/* if Mic is detected and impeadence is too high it must be removal */
+	if (info->have_mic && info->pdata->jd_alt_jd2 &&
+	    (ret >  MADERA_MICROPHONE_MAX_OHM)) {
+		dev_dbg(madera->dev, "Schedule removal check\n");
+		info->jd2_is_running = JD2_REMOVING;
+		schedule_delayed_work(&info->alt_jd2detect_work,
+					      msecs_to_jiffies(1000));
+		goto spurious;
+	}
 
 	madera_jds_reading(info, OHM_TO_HOHM(ret));
 
@@ -2094,6 +2260,15 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 
 	cancelled_state = madera_jds_cancel_timeout(info);
 
+	if (info->pdata->jd_alt_jd2)
+		cancel_delayed_work(&info->alt_jd2detect_work);
+
+	if (irq)
+		info->jd2_is_running = JD2_NONE;
+
+	dev_dbg(madera->dev, "JD1 IRQ irq %d, state %d\n",
+			irq, info->jd2_is_running);
+
 	pm_runtime_get_sync(info->dev);
 
 	mutex_lock(&info->lock);
@@ -2103,6 +2278,7 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 	if (present < 0) {
 		mutex_unlock(&info->lock);
 		pm_runtime_put_autosuspend(info->dev);
+		info->jd2_is_running = JD2_NONE;
 		return IRQ_NONE;
 	}
 
@@ -2117,7 +2293,7 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 
 	mask = MADERA_MICD_CLAMP_DB | MADERA_JD1_DB;
 
-	if (info->pdata->jd_use_jd2 || info->pdata->jd_check_jd2)
+	if (info->pdata->jd_use_jd2 || info->pdata->jd_check_jd2 || info->pdata->jd_alt_jd2)
 		mask |= MADERA_JD2_DB;
 
 	if (present) {
@@ -2144,10 +2320,17 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 
 		regmap_update_bits(madera->regmap, MADERA_INTERRUPT_DEBOUNCE_7,
 				   mask, 0);
+		if (info->pdata->jd_alt_jd2 && info->jd2_is_running) {
+			if (info->jd2_is_running == JD2_TIMER2)
+				info->jd2_is_running = JD2_DETECTED;
+			else
+				info->jd2_is_running = JD2_TIMER2;
+		}
 	} else {
 		dev_dbg(madera->dev, "Detected jack removal\n");
 
 		info->have_mic = false;
+		info->hpdet_retried = 0;
 		info->micd_res_old = 0;
 		info->micd_debounce = 0;
 		info->micd_count = 0;
@@ -2166,6 +2349,10 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 		madera_set_headphone_imp(info, MADERA_HP_Z_OPEN);
 
 		madera_extcon_notify_micd(info, false, 0);
+
+		if (info->pdata->jd_alt_jd2 && info->jd2_is_running)
+			info->jd2_is_running = JD2_NONE;
+
 		/* restore to JD2 enable state */
 		if (madera_disable_jd2_on_lineout(info)) {
 			regmap_update_bits(info->madera->regmap, MADERA_JACK_DETECT_ANALOGUE,
@@ -2222,26 +2409,54 @@ static irqreturn_t madera_jd2detect(int irq, void *data)
 	struct madera *madera = info->madera;
 	ktime_t ticks = ktime_get();
 
-	dev_dbg(madera->dev, "JD2 IRQ, state %d, ticks: %u ctr %d\n",
-			info->last_jackdet, (unsigned int)ktime_to_ms(ticks),
-			info->jd2_counter);
+	if (info->pdata->jd_alt_jd2) {
+		pm_runtime_get_sync(info->dev);
 
-	/* Ignore IRQs caused by JD2 enabling in work */
-	if (info->jd2_is_off &&
-	    (ktime_to_ms(ktime_sub(ticks, info->jd2_ticks)) < 20) &&
-		(info->jd2_counter < 5)) {
-		info->jd2_counter++;
-		goto out;
+		dev_dbg(madera->dev, "JD2 IRQ, state %d last %d\n",
+			info->jd2_is_running, info->last_jackdet);
+
+		mutex_lock(&info->lock);
+
+		switch (info->jd2_is_running) {
+		case JD2_DETECTED:
+			schedule_delayed_work(&info->alt_jd2detect_work,
+					      msecs_to_jiffies(1000));
+			break;
+		case JD2_REMOVING:
+		case JD2_TIMER2:
+			break;
+		default:
+			/* Ignore if detected by JD1 */
+			if (!info->last_jackdet) {
+				schedule_delayed_work(&info->alt_jd2detect_work,
+						      msecs_to_jiffies(2000));
+				info->jd2_is_running = JD2_TIMER1;
+			}
 		}
 
-	/* Disable JD2 IRQ and schedule 2 sec delayed detection work */
-	regmap_update_bits(info->madera->regmap,
-						MADERA_JACK_DETECT_ANALOGUE,
-						MADERA_JD2_ENA, 0);
+		mutex_unlock(&info->lock);
+	} else {
+		dev_dbg(madera->dev, "JD2 IRQ, state %d, ticks: %u ctr %d\n",
+				info->last_jackdet, (unsigned int)ktime_to_ms(ticks),
+				info->jd2_counter);
 
-	info->jd2_is_off = true;
-	schedule_delayed_work(&info->jd2detect_work,
-					      msecs_to_jiffies(2000));
+		/* Ignore IRQs caused by JD2 enabling in work */
+		if (info->jd2_is_off &&
+		    (ktime_to_ms(ktime_sub(ticks, info->jd2_ticks)) < 20) &&
+			(info->jd2_counter < 5)) {
+			info->jd2_counter++;
+			goto out;
+			}
+
+		/* Disable JD2 IRQ and schedule 2 sec delayed detection work */
+		regmap_update_bits(info->madera->regmap,
+							MADERA_JACK_DETECT_ANALOGUE,
+							MADERA_JD2_ENA, 0);
+
+		info->jd2_is_off = true;
+		schedule_delayed_work(&info->jd2detect_work,
+						      msecs_to_jiffies(2000));
+	}
 out:
 	info->jd2_ticks = ticks;
 	return IRQ_HANDLED;
@@ -2515,6 +2730,8 @@ static void madera_extcon_of_process(struct madera *madera,
 
 	pdata->jd_use_jd2 = of_property_read_bool(node, "cirrus,jd-use-jd2");
 
+	pdata->jd_alt_jd2 = of_property_read_bool(node, "cirrus,jd-alt-jd2");
+
 	pdata->jd_check_jd2 =
 		of_property_read_bool(node, "cirrus,jd-check-jd2");
 
@@ -2755,6 +2972,10 @@ static void madera_extcon_set_micd_clamp_mode(struct madera_extcon_info *info)
 			clamp_ctrl_val = MADERA_MICD_CLAMP_MODE_JD1L;
 	}
 
+	if (info->pdata->jd_alt_jd2) {
+			clamp_ctrl_val = MADERA_JD2_IRQ_CLAMP_MODE;
+	}
+
 	regmap_update_bits(info->madera->regmap,
 			   MADERA_MICD_CLAMP_CONTROL,
 			   MADERA_MICD_CLAMP_MODE_MASK,
@@ -2883,6 +3104,7 @@ static int madera_extcon_probe(struct platform_device *pdev)
 	struct madera *madera = dev_get_drvdata(pdev->dev.parent);
 	struct madera_accdet_pdata *pdata = &madera->pdata.accdet[0];
 	struct madera_extcon_info *info;
+	const char *src_widget;
 	unsigned int debounce_val, analog_val;
 	int jack_irq_fall, jack_irq_rise;
 	int ret, mode, i;
@@ -2954,6 +3176,7 @@ static int madera_extcon_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&info->micd_detect_work, madera_micd_handler);
 	INIT_DELAYED_WORK(&info->state_timeout_work, madera_jds_timeout_work);
 	INIT_DELAYED_WORK(&info->jd2detect_work, madera_jd2detect_work);
+	INIT_DELAYED_WORK(&info->alt_jd2detect_work, madera_alt_jd2detect_work);
 	platform_set_drvdata(pdev, info);
 	madera->extcon_info = info;
 
@@ -3173,7 +3396,7 @@ static int madera_extcon_probe(struct platform_device *pdev)
 		goto err_micdet;
 	}
 
-	if (info->pdata->jd_check_jd2) {
+	if (info->pdata->jd_check_jd2 || info->pdata->jd_alt_jd2) {
 		ret = madera_request_irq(madera, MADERA_IRQ_JD2_FALL,
 				  "JACKDET2 fall", madera_jd2detect, info);
 		if (ret != 0) {
@@ -3206,7 +3429,7 @@ static int madera_extcon_probe(struct platform_device *pdev)
 	}
 
 
-	if (info->pdata->jd_use_jd2 || info->pdata->jd_check_jd2) {
+	if (info->pdata->jd_use_jd2 || info->pdata->jd_check_jd2 || info->pdata->jd_alt_jd2) {
 		debounce_val = MADERA_JD1_DB | MADERA_JD2_DB;
 		analog_val = MADERA_JD1_ENA | MADERA_JD2_ENA;
 	} else {
@@ -3223,6 +3446,51 @@ static int madera_extcon_probe(struct platform_device *pdev)
 	if (ret)
 		dev_warn(madera->dev,
 			"Failed to set MICVDD to bypass: %d\n", ret);
+
+	/*
+	 * Initial setting for a special case when JD2 pin tied to MICDET1.
+	 * disable Mic detect CLAMP,
+	 * enable MICD BIAS1,
+	 * set micbias 1A and 1B to float when disabled.
+	 */
+	if (info->pdata->jd_alt_jd2) {
+		ret = regulator_enable(info->micvdd);
+		if (ret != 0) {
+			dev_err(madera->dev, "Failed to enable MICVDD: %d\n",
+				ret);
+		}
+
+		regmap_update_bits(madera->regmap,
+				   MADERA_MICD_CLAMP_CONTROL,
+				   MADERA_MICD_CLAMP_OVD_MASK, 0);
+
+		src_widget = madera_ext_get_micbias_src(info);
+
+		ret = snd_soc_dapm_force_enable_pin(madera->dapm, src_widget);
+		if (ret != 0)
+			dev_warn(madera->dev, "Failed to enable %s: %d\n",
+				 src_widget, ret);
+		snd_soc_dapm_sync(madera->dapm);
+		if (!strcmp(src_widget, "MICBIAS2"))
+			regmap_update_bits(madera->regmap,
+					   MADERA_MIC_BIAS_CTRL_5,
+					   MADERA_MICB2A_DISCH_MASK|
+					   MADERA_MICB2B_DISCH_MASK, 0x0);
+		else
+			regmap_update_bits(madera->regmap,
+					   MADERA_MIC_BIAS_CTRL_5,
+					   MADERA_MICB1A_DISCH_MASK|
+					   MADERA_MICB1B_DISCH_MASK, 0x0);
+		/*
+		 * It takes some time to settle JD2 signal level.
+		 * Delay detection for 5 sec
+		 */
+
+		cancel_delayed_work_sync(&info->alt_jd2detect_work);
+		info->jd2_is_running = JD2_TIMER1;
+		schedule_delayed_work(&info->alt_jd2detect_work,
+				      msecs_to_jiffies(5000));
+	}
 
 	pm_runtime_put(&pdev->dev);
 
@@ -3278,6 +3546,14 @@ static int madera_extcon_remove(struct platform_device *pdev)
 	} else {
 		jack_irq_rise = MADERA_IRQ_JD1_RISE;
 		jack_irq_fall = MADERA_IRQ_JD1_FALL;
+	}
+
+	if (info->pdata->jd_alt_jd2) {
+		madera_set_irq_wake(madera, MADERA_IRQ_JD2_RISE, 0);
+		madera_set_irq_wake(madera, MADERA_IRQ_JD2_FALL, 0);
+		madera_free_irq(madera, MADERA_IRQ_JD2_RISE, info);
+		madera_free_irq(madera, MADERA_IRQ_JD2_FALL, info);
+		cancel_delayed_work_sync(&info->alt_jd2detect_work);
 	}
 
 	madera_set_irq_wake(madera, jack_irq_rise, 0);
