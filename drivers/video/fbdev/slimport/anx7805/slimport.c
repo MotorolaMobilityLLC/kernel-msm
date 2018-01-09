@@ -260,6 +260,24 @@ static const struct file_operations anx7805_reg_dump_fops = {
 	.release = seq_release,
 };
 
+static ssize_t tx_system_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int link_status = get_tx_system_state();
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", link_status);
+}
+
+static DEVICE_ATTR(sys_status, S_IRUGO, tx_system_status_show, NULL);
+
+static struct attribute *slimport_attrs[] = {
+	&dev_attr_sys_status.attr,
+	NULL,
+};
+
+static struct attribute_group slimport_attr_group = {
+	.attrs = slimport_attrs,
+};
+
 static int create_debugfs_interfaces(struct anx7805_data *anx7805)
 {
 	int rc = 0;
@@ -1467,6 +1485,10 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		goto err7;
 	}
 #endif
+
+	ret = sysfs_create_group(&client->dev.kobj, &slimport_attr_group);
+	if (ret < 0)
+		pr_err("sysfs group creation failed, ret = %d\n", ret);
 
 	ret = create_debugfs_interfaces(anx7805);
 	if (ret < 0) {

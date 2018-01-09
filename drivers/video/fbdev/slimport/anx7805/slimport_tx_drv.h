@@ -385,6 +385,7 @@ void sp_tx_send_3d_vsi_packet_to_7730(BYTE video_format);
 
 #endif
 
+int get_tx_system_state(void);
 void SP_TX_Initialization(struct VideoFormat* pInputFormat);
 void SP_TX_BIST_Format_Config(unsigned int sp_tx_bist_select_number);
 void SP_TX_BIST_Format_Resolution(unsigned int sp_tx_bist_select_number);
