@@ -1178,12 +1178,12 @@ static int __rb_allocate_pages(long nr_pages, struct list_head *pages, int cpu)
 	for (i = 0; i < nr_pages; i++) {
 		struct page *page;
 		/*
-		 * __GFP_NORETRY flag makes sure that the allocation fails
+		 * __GFP_REPEAT flag makes sure that the allocation fails
 		 * gracefully without invoking oom-killer and the system is
 		 * not destabilized.
 		 */
 		bpage = kzalloc_node(ALIGN(sizeof(*bpage), cache_line_size()),
-				    GFP_KERNEL | __GFP_NORETRY,
+				    GFP_KERNEL | __GFP_REPEAT,
 				    cpu_to_node(cpu));
 		if (!bpage)
 			goto free_pages;
@@ -1191,7 +1191,7 @@ static int __rb_allocate_pages(long nr_pages, struct list_head *pages, int cpu)
 		list_add(&bpage->list, pages);
 
 		page = alloc_pages_node(cpu_to_node(cpu),
-					GFP_KERNEL | __GFP_NORETRY, 0);
+					GFP_KERNEL | __GFP_REPEAT, 0);
 		if (!page)
 			goto free_pages;
 		bpage->page = page_address(page);
