@@ -150,6 +150,13 @@ void confirm_loop_print_msg(void)
 }
 #endif
 
+int get_tx_system_state(void)
+{
+	pr_info("sp_tx_LT_state is %d\n", sp_tx_system_state);
+
+	return sp_tx_system_state;
+}
+
 void SP_TX_Initialization(struct VideoFormat* pInputFormat)
 {
 	BYTE c;
