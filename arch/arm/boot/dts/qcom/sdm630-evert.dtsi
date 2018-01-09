@@ -358,6 +358,7 @@
 				/delete-property/ cirrus,micd-clamp-mode;
 				cirrus,init-mic-delay-ms = <200>;
 				cirrus,micd-manual-debounce = <3>;
+				cirrus,jd-alt-jd2;
 			};
 		};
 	};
