@@ -48,6 +48,12 @@ Child node optional properties:
 
   - cirrus,jd-use-jd2 : Use JD2 input with JD1 for dual jack detection.
 
+  - cirrus,jd-alt-jd2 : Use JD1 as primary irq source and JD2 as backup
+    for jack detection. The option can not be combined with jd-use-jd2.
+
+  - cirrus,jd-wake-time : Specifies a length of time that a wake lock will be
+    held for during jack detection operations.
+
   - cirrus,gpsw : Settings for the general purpose switches, set as per the
     SWn_MODE bits in the GP Switch 1 register.
     First cell is the value for the SW1_MODE
