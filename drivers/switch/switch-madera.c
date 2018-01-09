@@ -86,6 +86,7 @@ enum jd2_state {
 	JD2_TIMER2,
 	JD2_DETECTED,
 	JD2_REMOVING,
+	JD2_DTV_ANTENNA,
 };
 
 struct madera_extcon_info {
@@ -121,6 +122,7 @@ struct madera_extcon_info {
 	struct delayed_work micd_detect_work;
 
 	bool have_mic;
+	bool open_circuit;
 	bool detecting;
 	int jack_flips;
 	int jd2_is_running;
@@ -1576,10 +1578,14 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 				 */
 				if (switch_get_state(&info->edev))
 					break;
-				if (madera_is_lineout(info) &&
-				    (info->hpdet_retried < MADERA_MAX_HPDET_RETRY)) {
-					debounce = MADERA_HPDET_DEBOUNCE_MS;
-					info->hpdet_retried++;
+				if (madera_is_lineout(info)) {
+					if (info->hpdet_retried <
+						MADERA_MAX_HPDET_RETRY) {
+						debounce =
+						    MADERA_HPDET_DEBOUNCE_MS;
+						info->hpdet_retried++;
+					} else
+						info->hpdet_retried = 0;
 				} else {
 					debounce = MADERA_DEFAULT_MICD_TIMEOUT_MS;
 					info->hpdet_retried = 0;
@@ -1604,9 +1610,19 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 			info->last_jackdet = -1;
 		}
 
-		if (!info->hpdet_retried)
-			madera_extcon_report(info, madera_is_lineout(info) ?
-							     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
+		if (!info->hpdet_retried) {
+			if (madera_is_lineout(info) && info->open_circuit) {
+				info->jd2_is_running = JD2_DTV_ANTENNA;
+				madera_extcon_report(info, BIT_NO_HEADSET);
+				dev_info(madera->dev,
+					 "DTV Antenna was detected\n");
+			} else {
+				madera_extcon_report(info,
+						     madera_is_lineout(info) ?
+						     BIT_LINEOUT :
+						     BIT_HEADSET_NO_MIC);
+			}
+		}
 
 		/* disable JD2 to workaround for error lineout pull out in Payton,
 		   JD2 detect pin voltage greater than 0.9v easily when play msusic over lineout.
@@ -1864,10 +1880,12 @@ int madera_micd_mic_reading(struct madera_extcon_info *info, int val)
 
 	val = HOHM_TO_OHM(val);
 
+	info->open_circuit = false;
 	/* Due to jack detect this should never happen */
 	if (val > MADERA_MICROPHONE_MAX_OHM) {
 		dev_warn(madera->dev, "Detected open circuit\n");
 		info->have_mic = info->pdata->micd_open_circuit_declare;
+		info->open_circuit = true;
 		if (!info->pdata->jd_alt_jd2)
 			goto done;
 		else {
@@ -1919,6 +1937,7 @@ done:
 	 * rerun if a mic was found
 	 */
 	if (info->pdata->jd_alt_jd2 && !info->have_mic && switch_get_state(&info->edev)) {
+		info->jd2_is_running = JD2_DETECTED;
 		dev_dbg(madera->dev, "Skip HPDET\n");
 		madera_jds_set_state(info, NULL);
 		return 0;
@@ -2424,6 +2443,19 @@ static irqreturn_t madera_jd2detect(int irq, void *data)
 			break;
 		case JD2_REMOVING:
 		case JD2_TIMER2:
+			break;
+		case JD2_DTV_ANTENNA:
+			schedule_delayed_work(&info->jd2detect_work,
+					      msecs_to_jiffies(2000));
+			info->jd2_is_running = JD2_TIMER1;
+			break;
+		case JD2_NONE:
+			if (info->last_jackdet && !info->have_mic &&
+			    !info->detecting) {
+				schedule_delayed_work(&info->alt_jd2detect_work,
+						      msecs_to_jiffies(1000));
+				info->jd2_is_running = JD2_TIMER1;
+			}
 			break;
 		default:
 			/* Ignore if detected by JD1 */
