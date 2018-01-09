@@ -1,0 +1,71 @@
+
+qcom,jw50-lg-pmi8998 {
+	serialnum = "SNN6987"; /* Not correct for Now */
+	qcom, = <24>;
+	/* #Moto_test_2000mAh_averaged_MasterSlave_Dec20th2017*/
+	qcom,max-voltage-uv = <4350000>;
+	qcom,nom-batt-capacity-mah = <2000>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "JW50-LG-2000mah";
+	qcom,checksum = <0xE1AF>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.58";
+	qcom,fg-profile-data = [
+		 04 1F 4E 06
+		 80 03 7A F4
+		 BF 1B 25 0A
+		 3B 15 BE 12
+		 A0 17 1A 22
+		 BF 3D 79 43
+		 69 00 00 00
+		 1B 00 00 00
+		 00 00 20 C2
+		 D4 B4 0C C3
+		 30 00 08 00
+		 D3 EA DD F5
+		 00 06 47 F3
+		 3E 00 11 0A
+		 62 F5 BA 1B
+		 52 06 09 20
+		 27 00 14 00
+		 4E 1F 79 FC
+		 A1 03 FD FD
+		 D1 1B C2 0A
+		 ED 1D 39 1A
+		 E5 17 0E 2A
+		 8F 4D 10 62
+		 5C 00 00 00
+		 0C 00 00 00
+		 00 00 DA C4
+		 A3 BB 6E CD
+		 22 00 00 00
+		 DF F2 DD F5
+		 B0 06 3F E3
+		 2E F3 13 0A
+		 56 F2 3D 22
+		 B3 33 CC FF
+		 07 10 00 00
+		 FE 07 99 45
+		 22 00 40 00
+		 09 02 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
