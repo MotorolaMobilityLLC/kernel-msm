@@ -395,6 +395,20 @@ void msm_set_restart_mode(int mode)
 }
 EXPORT_SYMBOL(msm_set_restart_mode);
 
+#define DEBUG_SYS_RESETART_WARM 1
+#define DEBUG_SYS_RESETART_PANIC 2
+static int debug_sys_restart_mode;
+static int __init set_sys_restart_mode(char *str)
+{
+	if (!strcmp(str, "warm"))
+		debug_sys_restart_mode = DEBUG_SYS_RESETART_WARM;
+	else if (!strcmp(str, "panic"))
+		debug_sys_restart_mode = DEBUG_SYS_RESETART_PANIC;
+	pr_info("sys_restart_mode is set to %d\n", debug_sys_restart_mode);
+	return 1;
+}
+
+__setup("sys_restart_mode=", set_sys_restart_mode);
 
 static void msm_restart_prepare(const char *cmd)
 {
@@ -404,6 +418,11 @@ static void msm_restart_prepare(const char *cmd)
 	 * Write download mode flags if restart_mode says so
 	 * Kill download mode if master-kill switch is set
 	 */
+
+	if (debug_sys_restart_mode == DEBUG_SYS_RESETART_PANIC) {
+		in_panic = 1;
+		pr_info("force system enter into ramdump for debug\n");
+	}
 
 	if (cmd != NULL && !strcmp(cmd, "qcom_dload"))
 		restart_mode = RESTART_DLOAD;
@@ -501,6 +520,11 @@ static void msm_restart_prepare(const char *cmd)
 			RESET_EXTRA_PANIC_REASON);
 	} else {
 		__raw_writel(0x77665501, restart_reason);
+	}
+
+	if (debug_sys_restart_mode == DEBUG_SYS_RESETART_WARM) {
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+		pr_info("set system warmreset mode for debug\n");
 	}
 
 	/*outer_flush_all is not supported by 64bit kernel*/
