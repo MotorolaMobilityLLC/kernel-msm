@@ -772,6 +772,16 @@ static ssize_t extusb_state_show(struct device *dev,
 			if (mdwc->ext_state.type == USB_EXT_REMOTE_HOST)
 				type = "HOST";
 		}
+	} else if (mdwc->mod_enabled) {
+		connected = "CONNECTED";
+
+		if (mdwc->mod_proto == MODUSB_DUAL) {
+			proto = "DUAL SPEED USB";
+		} else if (mdwc->mod_proto == MODUSB_SUPER) {
+			proto = "USB3.1";
+		} else if (mdwc->mod_proto == MODUSB_HIGH) {
+			proto = "USB2.0";
+		}
 	}
 
 	return scnprintf(buf, PAGE_SIZE,
