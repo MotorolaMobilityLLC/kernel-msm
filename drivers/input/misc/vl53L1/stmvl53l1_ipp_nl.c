@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -368,7 +368,7 @@ int stmvl53l1_ipp_init(void)
 }
 
 
-void __exit stmvl53l1_ipp_exit(void)
+void stmvl53l1_ipp_exit(void)
 {
 	if (nl_sk != NULL) {
 		vl53l1_dbgmsg("releasing netlink socket");

@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -786,6 +787,7 @@ typedef struct {
 
 
 
+	VL53L1_optical_centre_t              fmt_optical_centre;
 	VL53L1_cal_peak_rate_map_t           fmt_peak_rate_map;
 	VL53L1_additional_offset_cal_data_t  fmt_add_offset_data;
 	VL53L1_decoded_nvm_fmt_range_data_t  fmt_range_data[VL53L1_NVM_MAX_FMT_RANGE_DATA];
