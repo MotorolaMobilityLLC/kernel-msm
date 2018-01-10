@@ -72,4 +72,46 @@ struct stmvl53l1_register_flexi {
 
 #define VL53L1_IOCTL_REGISTER   _IOWR('p', 0x0c, struct stmvl53l1_register)
 
+struct stmvl53l1_data_with_additional {
+	VL53L1_MultiRangingData_t data;
+	VL53L1_AdditionalData_t additional_data;
+};
+
+/**
+ * Get multi object/zone ranging data with additional data for debug
+ *
+ * this call is non blocking and will return what available internally
+ * in all case (veen error)
+ *
+ * @param [out] multi zone range @ref VL53L1_MultiRangingData_t always update
+ * but -EFAULT error case
+ *
+ * @return 0 on success else o, error check errno
+ * @li -EFAULT fault in cpy to f/m user out range data not copyed
+ * @li -ENOEXEC active mode is not mutli-zone
+ * @li -ENODEV device is not ranging or device has been removed.
+ * as in that case MZ data may not be fully valid
+ */
+#define VL53L1_IOCTL_MZ_DATA_ADDITIONAL\
+			_IOR('p', 0x15, struct stmvl53l1_data_with_additional)
+
+/**
+ * Get multi object/zone ranging data
+ *
+ * this call is equivalent to VL53L1_IOCTL_MZ_DATA_ADDITIONAL but will block
+ * until new data are available since previous call.
+ *
+ * @param [out] multi zone range @ref VL53L1_MultiRangingData_t always update
+ * but -EFAULT error case
+ *
+ * @return 0 on success else o, error check errno
+ * @li -EFAULT fault in cpy to f/m user out range data not copyed
+ * @li -ENOEXEC active mode is not mutli-zone
+ * @li -ENODEV device is not ranging or device has been removed.
+ * @li -ERESTARTSYS interrupt while sleeping.
+ * as in that case MZ data may not be fully valid
+ */
+#define VL53L1_IOCTL_MZ_DATA_ADDITIONAL_BLOCKING\
+			_IOR('p', 0x16, struct stmvl53l1_data_with_additional)
+
 #endif

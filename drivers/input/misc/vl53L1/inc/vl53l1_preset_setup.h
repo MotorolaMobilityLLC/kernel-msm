@@ -1,10 +1,8 @@
-
 /*
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+* Copyright (c) 2017, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed,
-* either 'STMicroelectronics
-* Proprietary license'
+* This file is part of VL53L1 Core and is dual licensed, either
+* 'STMicroelectronics Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
 ********************************************************************************
@@ -14,7 +12,7 @@
 ********************************************************************************
 *
 * License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
+*  terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
 * Reproduction and Communication of this document is strictly prohibited unless
@@ -25,7 +23,7 @@
 *
 * Alternatively, VL53L1 Core may be distributed under the terms of
 * 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
+*  provisions apply instead of the ones
 * mentioned above :
 *
 ********************************************************************************
@@ -62,148 +60,35 @@
 *
 */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#ifndef _VL53L1_DMAX_STRUCTS_H_
-#define _VL53L1_DMAX_STRUCTS_H_
-
-#include "vl53l1_types.h"
+#ifndef _VL53L1_PRESET_SETUP_H_
+#define _VL53L1_PRESET_SETUP_H_
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-
-#define VL53L1_MAX_AMBIENT_DMAX_VALUES        5
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
-
-
-
-
-	uint16_t  ref__actual_effective_spads;
-
-
-	uint16_t  ref__peak_signal_count_rate_mcps;
-
-
-	uint16_t  ref__distance_mm;
-
-
-	uint16_t   ref_reflectance_pc;
-
-
-
-
-
-
-	uint16_t   coverglass_transmission;
-
-
-
-} VL53L1_dmax_calibration_data_t ;
-
-
-
-
-
-
-
-
-
-
-typedef struct {
-
-
-
-
-	uint8_t   signal_thresh_sigma;
-
-
-	uint8_t   ambient_thresh_sigma;
-
-
-	int32_t   min_ambient_thresh_events;
-
-
-	int32_t   signal_total_events_limit;
-
-
-
-	uint16_t  target_reflectance_for_dmax_calc[VL53L1_MAX_AMBIENT_DMAX_VALUES];
-
-
-	uint16_t  max_effective_spads;
-
-
-
-
-
-
-	uint16_t  dss_config__target_total_rate_mcps;
-
-
-	uint8_t   dss_config__aperture_attenuation;
-
-
-
-} VL53L1_hist_gen3_dmax_config_t;
-
+/* indexes for the bare driver tuning setting API function */
+enum VL53L1_Tuning_t {
+	VL53L1_TUNING_VERSION = 0,
+	VL53L1_TUNING_PROXY_MIN,
+	VL53L1_TUNING_SINGLE_TARGET_XTALK_TARGET_DISTANCE_MM,
+	VL53L1_TUNING_SINGLE_TARGET_XTALK_SAMPLE_NUMBER,
+	VL53L1_TUNING_MIN_AMBIENT_DMAX_VALID,
+	VL53L1_TUNING_MAX_SIMPLE_OFFSET_CALIBRATION_RANGES,
+
+	VL53L1_TUNING_MAX_TUNABLE_KEY
+};
+
+/* default values for the tuning settings parameters */
+#define TUNING_VERSION	0x0002
+
+/* the following table should actually be defined as static and shall be part
+ * of the VL53L1_StaticInit() function code
+ */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
-
+#endif /* _VL53L1_PRESET_SETUP_H_ */

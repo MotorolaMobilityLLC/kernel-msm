@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -131,25 +132,6 @@ VL53L1_Error VL53L1_get_version(
 
 
 
-
-
-
-
-VL53L1_Error VL53L1_is_fpga_system(
-	VL53L1_DEV        Dev,
-	uint8_t          *pfpga_system);
-
-
-
-
-
-
-
-
-
-
-
-
 VL53L1_Error VL53L1_get_device_firmware_version(
 	VL53L1_DEV         Dev,
 	uint16_t          *pfw_version);
@@ -247,6 +229,25 @@ VL53L1_Error VL53L1_set_part_to_part_data(
 VL53L1_Error VL53L1_get_part_to_part_data(
 	VL53L1_DEV                            Dev,
 	VL53L1_calibration_data_t            *pcal_data);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_tuning_debug_data(
+	VL53L1_DEV                            Dev,
+	VL53L1_tuning_parameters_t            *ptun_data);
 
 
 
@@ -642,6 +643,31 @@ VL53L1_Error VL53L1_set_preset_mode(
 	uint32_t                     range_config_timeout_us,
 	uint32_t                     inter_measurement_period_ms);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_preset_mode_timing_cfg(
+	VL53L1_DEV                   Dev,
+	VL53L1_DevicePresetModes     device_preset_mode,
+	uint16_t                    *pdss_config__target_total_rate_mcps,
+	uint32_t                    *pphasecal_config_timeout_us,
+	uint32_t                    *pmm_config_timeout_us,
+	uint32_t                    *prange_config_timeout_us);
 
 
 
@@ -1386,9 +1412,12 @@ VL53L1_Error VL53L1_get_lite_min_count_rate(
 
 
 
+
 VL53L1_Error VL53L1_set_lite_min_count_rate(
 	VL53L1_DEV                          Dev,
 	uint16_t                            lite_mincountrate);
+
+
 
 
 
@@ -1434,6 +1463,7 @@ VL53L1_Error VL53L1_get_lite_sigma_threshold(
 VL53L1_Error VL53L1_set_lite_sigma_threshold(
 	VL53L1_DEV                          Dev,
 	uint16_t                            lite_sigma);
+
 
 
 
@@ -1569,6 +1599,318 @@ VL53L1_Error VL53L1_set_dmax_reflectance_values(
 VL53L1_Error VL53L1_get_dmax_reflectance_values(
 	VL53L1_DEV                          Dev,
 	VL53L1_dmax_reflectance_array_t    *pdmax_reflectances);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_vhv_config(
+	VL53L1_DEV                   Dev,
+	uint8_t                      vhv_init_en,
+	uint8_t                      vhv_init_value);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_vhv_config(
+	VL53L1_DEV                   Dev,
+	uint8_t                     *pvhv_init_en,
+	uint8_t                     *pvhv_init_value);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_vhv_loopbound(
+	VL53L1_DEV                   Dev,
+	uint8_t                      vhv_loopbound);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_vhv_loopbound(
+	VL53L1_DEV                   Dev,
+	uint8_t                     *pvhv_loopbound);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_tuning_parm(
+	VL53L1_DEV                     Dev,
+	VL53L1_TuningParms             tuning_parm_key,
+	int32_t                       *ptuning_parm_value);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_tuning_parm(
+	VL53L1_DEV                     Dev,
+	VL53L1_TuningParms             tuning_parm_key,
+	int32_t                        tuning_parm_value);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_enable(
+	VL53L1_DEV                     Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_disable(
+	VL53L1_DEV                     Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_apply_enable(
+	VL53L1_DEV                          Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_apply_disable(
+	VL53L1_DEV                          Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_single_apply_enable(
+	VL53L1_DEV                          Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_single_apply_disable(
+	VL53L1_DEV                          Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_set_scalers(
+	VL53L1_DEV	Dev,
+	int16_t		x_scaler_in,
+	int16_t		y_scaler_in,
+	uint8_t		user_scaler_set_in
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_current_xtalk_settings(
+	VL53L1_DEV                          Dev,
+	VL53L1_xtalk_calibration_results_t *pxtalk
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_current_xtalk_settings(
+	VL53L1_DEV                          Dev,
+	VL53L1_xtalk_calibration_results_t *pxtalk
+	);
 
 #ifdef __cplusplus
 }
