@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -104,6 +105,7 @@
 #include "vl53l1_zone_presets.h"
 #include "vl53l1_core.h"
 #include "vl53l1_api_preset_modes.h"
+#include "vl53l1_tuning_parm_defaults.h"
 
 
 #define LOG_FUNCTION_START(fmt, ...) \
@@ -137,12 +139,17 @@ VL53L1_Error VL53L1_init_refspadchar_config_struct(
 
 
 	pdata->device_test_mode =
-			VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_WITH_PRE_VHV;
-	pdata->VL53L1_PRM_00007              = 0x0B;
-	pdata->timeout_us                = 1000;
-	pdata->target_count_rate_mcps    = 0x0A00;
-	pdata->min_count_rate_limit_mcps = 0x0500;
-	pdata->max_count_rate_limit_mcps = 0x1400;
+			VL53L1_TUNINGPARM_REFSPADCHAR_DEVICE_TEST_MODE_DEFAULT;
+	pdata->VL53L1_PRM_00008              =
+			VL53L1_TUNINGPARM_REFSPADCHAR_VCSEL_PERIOD_DEFAULT;
+	pdata->timeout_us                =
+			VL53L1_TUNINGPARM_REFSPADCHAR_PHASECAL_TIMEOUT_US_DEFAULT;
+	pdata->target_count_rate_mcps    =
+			VL53L1_TUNINGPARM_REFSPADCHAR_TARGET_COUNT_RATE_MCPS_DEFAULT;
+	pdata->min_count_rate_limit_mcps =
+			VL53L1_TUNINGPARM_REFSPADCHAR_MIN_COUNTRATE_LIMIT_MCPS_DEFAULT;
+	pdata->max_count_rate_limit_mcps =
+			VL53L1_TUNINGPARM_REFSPADCHAR_MAX_COUNTRATE_LIMIT_MCPS_DEFAULT;
 
 	LOG_FUNCTION_END(status);
 
@@ -173,15 +180,17 @@ VL53L1_Error VL53L1_init_ssc_config_struct(
 
 
 
-	pdata->VL53L1_PRM_00007 = 0x12;
+	pdata->VL53L1_PRM_00008 =
+			VL53L1_TUNINGPARM_SPADMAP_VCSEL_PERIOD_DEFAULT;
 
 
 
-	pdata->vcsel_start  = 0x0F;
+	pdata->vcsel_start  =
+			VL53L1_TUNINGPARM_SPADMAP_VCSEL_START_DEFAULT;
 
 
 
-	pdata->vcsel_start  = 0x02;
+	pdata->vcsel_width  = 0x02;
 
 
 
@@ -192,7 +201,8 @@ VL53L1_Error VL53L1_init_ssc_config_struct(
 
 
 
-	pdata->rate_limit_mcps = 0x000C;
+	pdata->rate_limit_mcps =
+			VL53L1_TUNINGPARM_SPADMAP_RATE_LIMIT_MCPS_DEFAULT;
 
 	LOG_FUNCTION_END(status);
 
@@ -239,21 +249,22 @@ VL53L1_Error VL53L1_init_xtalk_config_struct(
 
 
 	pdata->nvm_default__crosstalk_compensation_plane_offset_kcps      =
-		pnvm->algo__crosstalk_compensation_plane_offset_kcps;
+		(uint32_t)pnvm->algo__crosstalk_compensation_plane_offset_kcps;
 	pdata->nvm_default__crosstalk_compensation_x_plane_gradient_kcps  =
 		pnvm->algo__crosstalk_compensation_x_plane_gradient_kcps;
 	pdata->nvm_default__crosstalk_compensation_y_plane_gradient_kcps  =
 		pnvm->algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 	pdata->histogram_mode_crosstalk_margin_kcps                =
-			0x00;
+			VL53L1_TUNINGPARM_HIST_XTALK_MARGIN_KCPS_DEFAULT;
 	pdata->lite_mode_crosstalk_margin_kcps                     =
-			0x00;
+			VL53L1_TUNINGPARM_LITE_XTALK_MARGIN_KCPS_DEFAULT;
 
 
 
 
-	pdata->crosstalk_range_ignore_threshold_mult = 64;
+	pdata->crosstalk_range_ignore_threshold_mult =
+			VL53L1_TUNINGPARM_LITE_RIT_MULT_DEFAULT;
 
 	if ((pdata->algo__crosstalk_compensation_plane_offset_kcps == 0x00)
 		&& (pdata->algo__crosstalk_compensation_x_plane_gradient_kcps == 0x00)
@@ -281,14 +292,162 @@ VL53L1_Error VL53L1_init_xtalk_config_struct(
 
 
 
-
-
-	pdata->algo__crosstalk_detect_min_valid_range_mm  =    -50;
-	pdata->algo__crosstalk_detect_max_valid_range_mm  =     50;
-	pdata->algo__crosstalk_detect_max_valid_rate_kcps = 0xC800;
+	pdata->algo__crosstalk_detect_min_valid_range_mm  =
+		VL53L1_TUNINGPARM_XTALK_DETECT_MIN_VALID_RANGE_MM_DEFAULT;
+	pdata->algo__crosstalk_detect_max_valid_range_mm  =
+		VL53L1_TUNINGPARM_XTALK_DETECT_MAX_VALID_RANGE_MM_DEFAULT;
+	pdata->algo__crosstalk_detect_max_valid_rate_kcps =
+		VL53L1_TUNINGPARM_XTALK_DETECT_MAX_VALID_RATE_KCPS_DEFAULT;
 	pdata->algo__crosstalk_detect_max_sigma_mm        =
-			VL53L1_XTALK_EXTRACT_MAX_SIGMA_MM;
+			VL53L1_TUNINGPARM_XTALK_DETECT_MAX_SIGMA_MM_DEFAULT;
 
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_init_xtalk_extract_config_struct(
+	VL53L1_xtalkextract_config_t   *pdata)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	pdata->dss_config__target_total_rate_mcps          =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_DSS_RATE_MCPS_DEFAULT;
+
+
+	pdata->mm_config_timeout_us                        =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_DSS_TIMEOUT_US_DEFAULT;
+
+
+	pdata->num_of_samples                              =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_NUM_OF_SAMPLES_DEFAULT;
+
+	pdata->phasecal_config_timeout_us                  =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_PHASECAL_TIMEOUT_US_DEFAULT;
+
+
+	pdata->range_config_timeout_us                     =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_BIN_TIMEOUT_US_DEFAULT;
+
+
+
+
+
+
+	pdata->algo__crosstalk_extract_min_valid_range_mm  =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_MIN_FILTER_THRESH_MM_DEFAULT;
+	pdata->algo__crosstalk_extract_max_valid_range_mm  =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_MAX_FILTER_THRESH_MM_DEFAULT;
+	pdata->algo__crosstalk_extract_max_valid_rate_kcps =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_MAX_VALID_RATE_KCPS_DEFAULT;
+	pdata->algo__crosstalk_extract_max_sigma_mm        =
+			VL53L1_TUNINGPARM_XTALK_EXTRACT_SIGMA_THRESHOLD_MM_DEFAULT;
+
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_init_offset_cal_config_struct(
+	VL53L1_offsetcal_config_t   *pdata)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	pdata->dss_config__target_total_rate_mcps          =
+			VL53L1_TUNINGPARM_OFFSET_CAL_DSS_RATE_MCPS_DEFAULT;
+
+
+	pdata->phasecal_config_timeout_us                  =
+			VL53L1_TUNINGPARM_OFFSET_CAL_PHASECAL_TIMEOUT_US_DEFAULT;
+
+
+	pdata->range_config_timeout_us                     =
+			VL53L1_TUNINGPARM_OFFSET_CAL_RANGE_TIMEOUT_US_DEFAULT;
+
+
+	pdata->mm_config_timeout_us                        =
+			VL53L1_TUNINGPARM_OFFSET_CAL_MM_TIMEOUT_US_DEFAULT;
+
+
+
+
+
+
+	pdata->pre_num_of_samples                          =
+			VL53L1_TUNINGPARM_OFFSET_CAL_PRE_SAMPLES_DEFAULT;
+	pdata->mm1_num_of_samples                          =
+			VL53L1_TUNINGPARM_OFFSET_CAL_MM1_SAMPLES_DEFAULT;
+	pdata->mm2_num_of_samples                          =
+			VL53L1_TUNINGPARM_OFFSET_CAL_MM2_SAMPLES_DEFAULT;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_init_zone_cal_config_struct(
+	VL53L1_zonecal_config_t   *pdata)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	pdata->dss_config__target_total_rate_mcps          =
+			VL53L1_TUNINGPARM_ZONE_CAL_DSS_RATE_MCPS_DEFAULT;
+
+
+	pdata->phasecal_config_timeout_us                  =
+			VL53L1_TUNINGPARM_ZONE_CAL_PHASECAL_TIMEOUT_US_DEFAULT;
+
+
+	pdata->range_config_timeout_us                     =
+			VL53L1_TUNINGPARM_ZONE_CAL_RANGE_TIMEOUT_US_DEFAULT;
+
+
+	pdata->mm_config_timeout_us                        =
+			VL53L1_TUNINGPARM_ZONE_CAL_DSS_TIMEOUT_US_DEFAULT;
+
+
+
+
+
+
+	pdata->phasecal_num_of_samples                     =
+			VL53L1_TUNINGPARM_ZONE_CAL_PHASECAL_NUM_SAMPLES_DEFAULT;
+	pdata->zone_num_of_samples                         =
+			VL53L1_TUNINGPARM_ZONE_CAL_ZONE_NUM_SAMPLES_DEFAULT;
 
 	LOG_FUNCTION_END(status);
 
@@ -305,6 +464,7 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
+
 	VL53L1_Error  status = VL53L1_ERROR_NONE;
 
 	LOG_FUNCTION_START("");
@@ -312,39 +472,59 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
+
+
 	pdata->hist_algo_select =
-		VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN4;
+			VL53L1_TUNINGPARM_HIST_ALGO_SELECT_DEFAULT;
+
+
+
 
 	pdata->hist_target_order =
-			VL53L1_HIST_TARGET_ORDER__INCREASING_DISTANCE;
+			VL53L1_TUNINGPARM_HIST_TARGET_ORDER_DEFAULT;
 
 
 
 
-	pdata->filter_woi0                   =   1;
+	pdata->filter_woi0                   =
+			VL53L1_TUNINGPARM_HIST_FILTER_WOI_0_DEFAULT;
 
-	pdata->filter_woi1                   =   2;
+	pdata->filter_woi1                   =
+			VL53L1_TUNINGPARM_HIST_FILTER_WOI_1_DEFAULT;
+
+
 
 
 	pdata->hist_amb_est_method =
-		VL53L1_HIST_AMB_EST_METHOD__AMBIENT_BINS;
-	pdata->ambient_thresh_sigma0         =  80;
+			VL53L1_TUNINGPARM_HIST_AMB_EST_METHOD_DEFAULT;
 
-	pdata->ambient_thresh_sigma1         = 112;
+	pdata->ambient_thresh_sigma0         =
+			VL53L1_TUNINGPARM_HIST_AMB_THRESH_SIGMA_0_DEFAULT;
 
-	pdata->min_ambient_thresh_events     =  16;
-
-
-	pdata->noise_threshold               =  50;
-
-
-	pdata->signal_total_events_limit     = 100;
-
-	pdata->sigma_estimator__sigma_ref_mm =   1;
+	pdata->ambient_thresh_sigma1         =
+			VL53L1_TUNINGPARM_HIST_AMB_THRESH_SIGMA_1_DEFAULT;
 
 
 
 
+	pdata->ambient_thresh_events_scaler     =
+			VL53L1_TUNINGPARM_HIST_AMB_EVENTS_SCALER_DEFAULT;
+
+
+
+	pdata->min_ambient_thresh_events     =
+			VL53L1_TUNINGPARM_HIST_MIN_AMB_THRESH_EVENTS_DEFAULT;
+
+
+	pdata->noise_threshold               =
+			VL53L1_TUNINGPARM_HIST_NOISE_THRESHOLD_DEFAULT;
+
+
+	pdata->signal_total_events_limit     =
+			VL53L1_TUNINGPARM_HIST_SIGNAL_TOTAL_EVENTS_LIMIT_DEFAULT;
+
+	pdata->sigma_estimator__sigma_ref_mm =
+			VL53L1_TUNINGPARM_HIST_SIGMA_EST_REF_MM_DEFAULT;
 
 
 
@@ -355,12 +535,18 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
-	pdata->sigma_thresh                  = 160;
+
+
+
+
+	pdata->sigma_thresh                  =
+			VL53L1_TUNINGPARM_HIST_SIGMA_THRESH_MM_DEFAULT;
 
 	pdata->range_offset_mm            =      0;
 
 
-	pdata->gain_factor                = 0x0800;
+	pdata->gain_factor                =
+			VL53L1_TUNINGPARM_HIST_GAIN_FACTOR_DEFAULT;
 
 
 
@@ -387,7 +573,8 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
-	pdata->algo__consistency_check__phase_tolerance = 8;
+	pdata->algo__consistency_check__phase_tolerance =
+			VL53L1_TUNINGPARM_CONSISTENCY_HIST_PHASE_TOLERANCE_DEFAULT;
 
 
 
@@ -395,7 +582,22 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
-	pdata->algo__consistency_check__event_sigma    = 112;
+
+
+	pdata->algo__consistency_check__event_sigma =
+			VL53L1_TUNINGPARM_CONSISTENCY_HIST_EVENT_SIGMA_DEFAULT;
+
+
+
+	pdata->algo__consistency_check__event_min_spad_count =
+			VL53L1_TUNINGPARM_CONSISTENCY_HIST_EVENT_SIGMA_MIN_SPAD_LIMIT_DEFAULT;
+
+
+
+
+
+	pdata->algo__consistency_check__min_max_tolerance =
+			VL53L1_TUNINGPARM_CONSISTENCY_HIST_MIN_MAX_TOLERANCE_MM_DEFAULT;
 
 
 
@@ -407,11 +609,43 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
-	pdata->algo__crosstalk_detect_min_valid_range_mm  =    -50;
-	pdata->algo__crosstalk_detect_max_valid_range_mm  =     50;
-	pdata->algo__crosstalk_detect_max_valid_rate_kcps = 0xC800;
+
+
+
+
+	pdata->algo__crosstalk_detect_min_valid_range_mm  =
+			VL53L1_TUNINGPARM_XTALK_DETECT_MIN_VALID_RANGE_MM_DEFAULT;
+	pdata->algo__crosstalk_detect_max_valid_range_mm  =
+			VL53L1_TUNINGPARM_XTALK_DETECT_MAX_VALID_RANGE_MM_DEFAULT;
+	pdata->algo__crosstalk_detect_max_valid_rate_kcps =
+			VL53L1_TUNINGPARM_XTALK_DETECT_MAX_VALID_RATE_KCPS_DEFAULT;
 	pdata->algo__crosstalk_detect_max_sigma_mm        =
-			VL53L1_XTALK_EXTRACT_MAX_SIGMA_MM;
+			VL53L1_TUNINGPARM_XTALK_DETECT_MAX_SIGMA_MM_DEFAULT;
+
+
+
+
+
+
+
+
+
+
+
+
+
+	pdata->algo__crosstalk_detect_event_sigma       =
+			VL53L1_TUNINGPARM_XTALK_DETECT_EVENT_SIGMA_DEFAULT;
+
+
+
+
+
+	pdata->algo__crosstalk_detect_min_max_tolerance   =
+			VL53L1_TUNINGPARM_XTALK_DETECT_MIN_MAX_TOLERANCE_DEFAULT;
+
+
+
 
 	LOG_FUNCTION_END(status);
 
@@ -447,15 +681,158 @@ VL53L1_Error VL53L1_init_dmax_calibration_data_struct(
 
 
 
-
-
-
-
-	pdata->ref_reflectance_pc                  = 0x000F;
+	pdata->ref_reflectance_pc                  = 0x0014;
 
 
 
 	pdata->coverglass_transmission             = 0x0100;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_init_tuning_parm_storage_struct(
+	VL53L1_tuning_parm_storage_t   *pdata)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+
+
+
+
+	pdata->tp_tuning_parm_version              =
+			VL53L1_TUNINGPARM_VERSION_DEFAULT;
+	pdata->tp_tuning_parm_key_table_version    =
+			VL53L1_TUNINGPARM_KEY_TABLE_VERSION_DEFAULT;
+	pdata->tp_tuning_parm_lld_version          =
+			VL53L1_TUNINGPARM_LLD_VERSION_DEFAULT;
+	pdata->tp_init_phase_rtn_lite_long         =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_RTN_LITE_LONG_RANGE_DEFAULT;
+	pdata->tp_init_phase_rtn_lite_med          =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_RTN_LITE_MED_RANGE_DEFAULT;
+	pdata->tp_init_phase_rtn_lite_short        =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_RTN_LITE_SHORT_RANGE_DEFAULT;
+	pdata->tp_init_phase_ref_lite_long         =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_REF_LITE_LONG_RANGE_DEFAULT;
+	pdata->tp_init_phase_ref_lite_med          =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_REF_LITE_MED_RANGE_DEFAULT;
+	pdata->tp_init_phase_ref_lite_short        =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_REF_LITE_SHORT_RANGE_DEFAULT;
+	pdata->tp_init_phase_rtn_hist_long         =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_RTN_HISTO_LONG_RANGE_DEFAULT;
+	pdata->tp_init_phase_rtn_hist_med          =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_RTN_HISTO_MED_RANGE_DEFAULT;
+	pdata->tp_init_phase_rtn_hist_short        =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_RTN_HISTO_SHORT_RANGE_DEFAULT;
+	pdata->tp_init_phase_ref_hist_long         =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_REF_HISTO_LONG_RANGE_DEFAULT;
+	pdata->tp_init_phase_ref_hist_med          =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_REF_HISTO_MED_RANGE_DEFAULT;
+	pdata->tp_init_phase_ref_hist_short        =
+			VL53L1_TUNINGPARM_INITIAL_PHASE_REF_HISTO_SHORT_RANGE_DEFAULT;
+	pdata->tp_consistency_lite_phase_tolerance =
+			VL53L1_TUNINGPARM_CONSISTENCY_LITE_PHASE_TOLERANCE_DEFAULT;
+	pdata->tp_phasecal_target                  =
+			VL53L1_TUNINGPARM_PHASECAL_TARGET_DEFAULT;
+	pdata->tp_cal_repeat_rate                  =
+			VL53L1_TUNINGPARM_LITE_CAL_REPEAT_RATE_DEFAULT;
+	pdata->tp_lite_min_clip                    =
+			VL53L1_TUNINGPARM_LITE_MIN_CLIP_MM_DEFAULT;
+	pdata->tp_lite_long_sigma_thresh_mm        =
+			VL53L1_TUNINGPARM_LITE_LONG_SIGMA_THRESH_MM_DEFAULT;
+	pdata->tp_lite_med_sigma_thresh_mm         =
+			VL53L1_TUNINGPARM_LITE_MED_SIGMA_THRESH_MM_DEFAULT;
+	pdata->tp_lite_short_sigma_thresh_mm       =
+			VL53L1_TUNINGPARM_LITE_SHORT_SIGMA_THRESH_MM_DEFAULT;
+	pdata->tp_lite_long_min_count_rate_rtn_mcps  =
+			VL53L1_TUNINGPARM_LITE_LONG_MIN_COUNT_RATE_RTN_MCPS_DEFAULT;
+	pdata->tp_lite_med_min_count_rate_rtn_mcps   =
+			VL53L1_TUNINGPARM_LITE_MED_MIN_COUNT_RATE_RTN_MCPS_DEFAULT;
+	pdata->tp_lite_short_min_count_rate_rtn_mcps =
+			VL53L1_TUNINGPARM_LITE_SHORT_MIN_COUNT_RATE_RTN_MCPS_DEFAULT;
+	pdata->tp_lite_sigma_est_pulse_width_ns      =
+			VL53L1_TUNINGPARM_LITE_SIGMA_EST_PULSE_WIDTH_DEFAULT;
+	pdata->tp_lite_sigma_est_amb_width_ns        =
+			VL53L1_TUNINGPARM_LITE_SIGMA_EST_AMB_WIDTH_NS_DEFAULT;
+	pdata->tp_lite_sigma_ref_mm                  =
+			VL53L1_TUNINGPARM_LITE_SIGMA_REF_MM_DEFAULT;
+	pdata->tp_lite_seed_cfg                      =
+			VL53L1_TUNINGPARM_LITE_SEED_CONFIG_DEFAULT;
+	pdata->tp_timed_seed_cfg                     =
+			VL53L1_TUNINGPARM_TIMED_SEED_CONFIG_DEFAULT;
+	pdata->tp_lite_quantifier                    =
+			VL53L1_TUNINGPARM_LITE_QUANTIFIER_DEFAULT;
+	pdata->tp_lite_first_order_select            =
+			VL53L1_TUNINGPARM_LITE_FIRST_ORDER_SELECT_DEFAULT;
+
+
+
+
+
+
+	pdata->tp_dss_target_lite_mcps               =
+			VL53L1_TUNINGPARM_LITE_DSS_CONFIG_TARGET_TOTAL_RATE_MCPS_DEFAULT;
+	pdata->tp_dss_target_histo_mcps              =
+			VL53L1_TUNINGPARM_RANGING_DSS_CONFIG_TARGET_TOTAL_RATE_MCPS_DEFAULT;
+	pdata->tp_dss_target_histo_mz_mcps           =
+			VL53L1_TUNINGPARM_MZ_DSS_CONFIG_TARGET_TOTAL_RATE_MCPS_DEFAULT;
+	pdata->tp_dss_target_timed_mcps              =
+			VL53L1_TUNINGPARM_TIMED_DSS_CONFIG_TARGET_TOTAL_RATE_MCPS_DEFAULT;
+	pdata->tp_phasecal_timeout_lite_us           =
+			VL53L1_TUNINGPARM_LITE_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_phasecal_timeout_hist_long_us      =
+			VL53L1_TUNINGPARM_RANGING_LONG_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_phasecal_timeout_hist_med_us       =
+			VL53L1_TUNINGPARM_RANGING_MED_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_phasecal_timeout_hist_short_us     =
+			VL53L1_TUNINGPARM_RANGING_SHORT_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_phasecal_timeout_mz_long_us        =
+			VL53L1_TUNINGPARM_MZ_LONG_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_phasecal_timeout_mz_med_us         =
+			VL53L1_TUNINGPARM_MZ_MED_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_phasecal_timeout_mz_short_us       =
+			VL53L1_TUNINGPARM_MZ_SHORT_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_phasecal_timeout_timed_us          =
+			VL53L1_TUNINGPARM_TIMED_PHASECAL_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_mm_timeout_lite_us                 =
+			VL53L1_TUNINGPARM_LITE_MM_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_mm_timeout_histo_us                =
+			VL53L1_TUNINGPARM_RANGING_MM_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_mm_timeout_mz_us                   =
+			VL53L1_TUNINGPARM_MZ_MM_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_mm_timeout_timed_us                =
+			VL53L1_TUNINGPARM_TIMED_MM_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_range_timeout_lite_us              =
+			VL53L1_TUNINGPARM_LITE_RANGE_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_range_timeout_histo_us             =
+			VL53L1_TUNINGPARM_RANGING_RANGE_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_range_timeout_mz_us                =
+			VL53L1_TUNINGPARM_MZ_RANGE_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_range_timeout_timed_us             =
+			VL53L1_TUNINGPARM_TIMED_RANGE_CONFIG_TIMEOUT_US_DEFAULT;
+
+
+
+
+	pdata->tp_mm_timeout_lpa_us =
+			VL53L1_TUNINGPARM_LOWPOWERAUTO_MM_CONFIG_TIMEOUT_US_DEFAULT;
+	pdata->tp_range_timeout_lpa_us =
+			VL53L1_TUNINGPARM_LOWPOWERAUTO_RANGE_CONFIG_TIMEOUT_US_DEFAULT;
+
+	pdata->tp_dss_target_very_short_mcps =
+			VL53L1_TUNINGPARM_VERY_SHORT_DSS_RATE_MCPS_DEFAULT;
 
 	LOG_FUNCTION_END(status);
 
@@ -480,10 +857,12 @@ VL53L1_Error VL53L1_init_hist_gen3_dmax_config_struct(
 	pdata->dss_config__target_total_rate_mcps  = 0x1400;
 	pdata->dss_config__aperture_attenuation    = 0x38;
 
-	pdata->signal_thresh_sigma                 = 0x20;
+	pdata->signal_thresh_sigma                 =
+			VL53L1_TUNINGPARM_DMAX_CFG_SIGNAL_THRESH_SIGMA_DEFAULT;
 	pdata->ambient_thresh_sigma                = 0x70;
 	pdata->min_ambient_thresh_events           = 16;
-	pdata->estimated_spad_yield                = 85;
+	pdata->signal_total_events_limit           = 100;
+	pdata->max_effective_spads                 = 0xFFFF;
 
 
 
@@ -495,11 +874,16 @@ VL53L1_Error VL53L1_init_hist_gen3_dmax_config_struct(
 
 
 
-	pdata->target_reflectance_for_dmax_calc[0] =  15;
-	pdata->target_reflectance_for_dmax_calc[1] =  52;
-	pdata->target_reflectance_for_dmax_calc[2] = 200;
-	pdata->target_reflectance_for_dmax_calc[3] = 364;
-	pdata->target_reflectance_for_dmax_calc[4] = 400;
+	pdata->target_reflectance_for_dmax_calc[0] =
+			VL53L1_TUNINGPARM_DMAX_CFG_REFLECTANCE_ARRAY_0_DEFAULT;
+	pdata->target_reflectance_for_dmax_calc[1] =
+			VL53L1_TUNINGPARM_DMAX_CFG_REFLECTANCE_ARRAY_1_DEFAULT;
+	pdata->target_reflectance_for_dmax_calc[2] =
+			VL53L1_TUNINGPARM_DMAX_CFG_REFLECTANCE_ARRAY_2_DEFAULT;
+	pdata->target_reflectance_for_dmax_calc[3] =
+			VL53L1_TUNINGPARM_DMAX_CFG_REFLECTANCE_ARRAY_3_DEFAULT;
+	pdata->target_reflectance_for_dmax_calc[4] =
+			VL53L1_TUNINGPARM_DMAX_CFG_REFLECTANCE_ARRAY_4_DEFAULT;
 
 	LOG_FUNCTION_END(status);
 
@@ -514,6 +898,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -572,9 +957,12 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 	pstatic->ana_config__vcsel_pulse_width_offset             = 0x08;
 	pstatic->ana_config__fast_osc__config_ctrl                = 0x00;
 
-	pstatic->sigma_estimator__effective_pulse_width_ns        = 0x08;
-	pstatic->sigma_estimator__effective_ambient_width_ns      = 0x10;
-	pstatic->sigma_estimator__sigma_ref_mm                    = 0x01;
+	pstatic->sigma_estimator__effective_pulse_width_ns        =
+			ptuning_parms->tp_lite_sigma_est_pulse_width_ns;
+	pstatic->sigma_estimator__effective_ambient_width_ns      =
+			ptuning_parms->tp_lite_sigma_est_amb_width_ns;
+	pstatic->sigma_estimator__sigma_ref_mm                    =
+			ptuning_parms->tp_lite_sigma_ref_mm;
 
 
 	pstatic->algo__crosstalk_compensation_valid_height_mm     = 0x01;
@@ -586,14 +974,16 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 
 
 	pstatic->algo__range_ignore_valid_height_mm               = 0xff;
-	pstatic->algo__range_min_clip                             = 0x00;
+	pstatic->algo__range_min_clip                             =
+			ptuning_parms->tp_lite_min_clip;
 
 
 
 
 
 
-	pstatic->algo__consistency_check__tolerance               = 0x02;
+	pstatic->algo__consistency_check__tolerance               =
+			ptuning_parms->tp_consistency_lite_phase_tolerance;
 	pstatic->spare_host_config__static_config_spare_2         = 0x00;
 	pstatic->sd_config__reset_stages_msb                      = 0x00;
 	pstatic->sd_config__reset_stages_lsb                      = 0x00;
@@ -611,14 +1001,16 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 
 
 
-	pgeneral->cal_config__repeat_rate                         =    0;
+	pgeneral->cal_config__repeat_rate                         =
+			ptuning_parms->tp_cal_repeat_rate;
 	pgeneral->global_config__vcsel_width                      = 0x02;
 
 
 	pgeneral->phasecal_config__timeout_macrop                 = 0x0D;
 
 
-	pgeneral->phasecal_config__target                         = 0x21;
+	pgeneral->phasecal_config__target                         =
+			ptuning_parms->tp_phasecal_target;
 	pgeneral->phasecal_config__override                       = 0x00;
 	pgeneral->dss_config__roi_mode_control =
 			VL53L1_DEVICEDSSMODE__TARGET_RATE;
@@ -645,17 +1037,23 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 
 
 
+
+
 	ptiming->mm_config__timeout_macrop_a_hi                   = 0x00;
-	ptiming->mm_config__timeout_macrop_a_lo                   = 0x06;
+	ptiming->mm_config__timeout_macrop_a_lo                   = 0x1a;
 	ptiming->mm_config__timeout_macrop_b_hi                   = 0x00;
-	ptiming->mm_config__timeout_macrop_b_lo                   = 0x06;
-	ptiming->range_config__timeout_macrop_a_hi                = 0x02;
-	ptiming->range_config__timeout_macrop_a_lo                = 0x85;
+	ptiming->mm_config__timeout_macrop_b_lo                   = 0x20;
+
+
+	ptiming->range_config__timeout_macrop_a_hi                = 0x01;
+	ptiming->range_config__timeout_macrop_a_lo                = 0xCC;
 
 
 	ptiming->range_config__vcsel_period_a                     = 0x0B;
+
+
 	ptiming->range_config__timeout_macrop_b_hi                = 0x01;
-	ptiming->range_config__timeout_macrop_b_lo                = 0x92;
+	ptiming->range_config__timeout_macrop_b_lo                = 0xF5;
 
 
 	ptiming->range_config__vcsel_period_b                     = 0x09;
@@ -666,14 +1064,16 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 
 
 
-	ptiming->range_config__sigma_thresh                       = 0x003C;
+	ptiming->range_config__sigma_thresh                       =
+			ptuning_parms->tp_lite_med_sigma_thresh_mm;
 
 
 
 
 
 
-	ptiming->range_config__min_count_rate_rtn_limit_mcps      = 0x0080;
+	ptiming->range_config__min_count_rate_rtn_limit_mcps      =
+			ptuning_parms->tp_lite_med_min_count_rate_rtn_mcps;
 
 
 
@@ -767,15 +1167,19 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 	pdynamic->system__thresh_low                               = 0x0000;
 	pdynamic->system__enable_xtalk_per_quadrant                = 0x00;
 	pdynamic->system__seed_config =
-			VL53L1_SYSTEM__SEED_CONFIG__EVEN_UPDATE_ONLY;
+			ptuning_parms->tp_lite_seed_cfg;
+
 
 
 	pdynamic->sd_config__woi_sd0                               = 0x0B;
 
 
 	pdynamic->sd_config__woi_sd1                               = 0x09;
-	pdynamic->sd_config__initial_phase_sd0                     = 0x0A;
-	pdynamic->sd_config__initial_phase_sd1                     = 0x0A;
+
+	pdynamic->sd_config__initial_phase_sd0                     =
+			ptuning_parms->tp_init_phase_rtn_lite_med;
+	pdynamic->sd_config__initial_phase_sd1                     =
+			ptuning_parms->tp_init_phase_ref_lite_med;;
 
 	pdynamic->system__grouped_parameter_hold_1                 = 0x01;
 
@@ -806,8 +1210,10 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 
 
 
-	pdynamic->sd_config__first_order_select = 0x00;
-	pdynamic->sd_config__quantifier         = 0x02;
+	pdynamic->sd_config__first_order_select =
+			ptuning_parms->tp_lite_first_order_select;
+	pdynamic->sd_config__quantifier         =
+			ptuning_parms->tp_lite_quantifier;
 
 
 
@@ -857,6 +1263,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_short_range(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -886,6 +1293,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_short_range(
 		ptiming,
 		pdynamic,
 		psystem,
+		ptuning_parms,
 		pzone_cfg);
 
 
@@ -906,8 +1314,10 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_short_range(
 
 		ptiming->range_config__vcsel_period_a                = 0x07;
 		ptiming->range_config__vcsel_period_b                = 0x05;
-		ptiming->range_config__sigma_thresh                  = 0x0050;
-		ptiming->range_config__min_count_rate_rtn_limit_mcps = 0x0020;
+		ptiming->range_config__sigma_thresh                  =
+				ptuning_parms->tp_lite_short_sigma_thresh_mm;
+		ptiming->range_config__min_count_rate_rtn_limit_mcps =
+				ptuning_parms->tp_lite_short_min_count_rate_rtn_mcps;
 		ptiming->range_config__valid_phase_low               = 0x08;
 		ptiming->range_config__valid_phase_high              = 0x38;
 
@@ -919,8 +1329,10 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_short_range(
 
 		pdynamic->sd_config__woi_sd0                         = 0x07;
 		pdynamic->sd_config__woi_sd1                         = 0x05;
-		pdynamic->sd_config__initial_phase_sd0               = 0x06;
-		pdynamic->sd_config__initial_phase_sd1               = 0x06;
+		pdynamic->sd_config__initial_phase_sd0               =
+				ptuning_parms->tp_init_phase_rtn_lite_short;
+		pdynamic->sd_config__initial_phase_sd1               =
+				ptuning_parms->tp_init_phase_ref_lite_short;
 	}
 
 	LOG_FUNCTION_END(status);
@@ -936,6 +1348,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_long_range(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -965,6 +1378,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_long_range(
 		ptiming,
 		pdynamic,
 		psystem,
+		ptuning_parms,
 		pzone_cfg);
 
 
@@ -985,8 +1399,10 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_long_range(
 
 		ptiming->range_config__vcsel_period_a                = 0x0F;
 		ptiming->range_config__vcsel_period_b                = 0x0D;
-		ptiming->range_config__sigma_thresh                  = 0x0050;
-		ptiming->range_config__min_count_rate_rtn_limit_mcps = 0x0020;
+		ptiming->range_config__sigma_thresh                  =
+				ptuning_parms->tp_lite_long_sigma_thresh_mm;
+		ptiming->range_config__min_count_rate_rtn_limit_mcps =
+				ptuning_parms->tp_lite_long_min_count_rate_rtn_mcps;
 		ptiming->range_config__valid_phase_low               = 0x08;
 		ptiming->range_config__valid_phase_high              = 0xB8;
 
@@ -998,8 +1414,10 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_long_range(
 
 		pdynamic->sd_config__woi_sd0                         = 0x0F;
 		pdynamic->sd_config__woi_sd1                         = 0x0D;
-		pdynamic->sd_config__initial_phase_sd0               = 0x0E;
-		pdynamic->sd_config__initial_phase_sd1               = 0x0E;
+		pdynamic->sd_config__initial_phase_sd0               =
+				ptuning_parms->tp_init_phase_rtn_lite_long;
+		pdynamic->sd_config__initial_phase_sd1               =
+				ptuning_parms->tp_init_phase_ref_lite_long;
 	}
 
 	LOG_FUNCTION_END(status);
@@ -1015,6 +1433,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_mm1_cal(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -1043,6 +1462,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_mm1_cal(
 		ptiming,
 		pdynamic,
 		psystem,
+		ptuning_parms,
 		pzone_cfg);
 
 
@@ -1074,6 +1494,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_mm2_cal(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -1102,6 +1523,7 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging_mm2_cal(
 		ptiming,
 		pdynamic,
 		psystem,
+		ptuning_parms,
 		pzone_cfg);
 
 
@@ -1134,6 +1556,7 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -1164,6 +1587,7 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging(
 					ptiming,
 					pdynamic,
 					psystem,
+					ptuning_parms,
 					pzone_cfg);
 
 
@@ -1180,11 +1604,19 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging(
 
 
 
+		ptiming->range_config__timeout_macrop_a_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_a_lo                = 0xB1;
+
+
+		ptiming->range_config__timeout_macrop_b_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_b_lo                = 0xD4;
+
+
 
 
 		ptiming->system__intermeasurement_period = 0x00000600;
 		pdynamic->system__seed_config =
-				VL53L1_SYSTEM__SEED_CONFIG__STANDARD;
+				ptuning_parms->tp_timed_seed_cfg;
 
 
 
@@ -1210,6 +1642,7 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging_short_range(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -1240,6 +1673,7 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging_short_range(
 					ptiming,
 					pdynamic,
 					psystem,
+					ptuning_parms,
 					pzone_cfg);
 
 
@@ -1258,9 +1692,18 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging_short_range(
 
 
 
+
+
+		ptiming->range_config__timeout_macrop_a_hi                = 0x01;
+		ptiming->range_config__timeout_macrop_a_lo                = 0x84;
+
+
+		ptiming->range_config__timeout_macrop_b_hi                = 0x01;
+		ptiming->range_config__timeout_macrop_b_lo                = 0xB1;
+
 		ptiming->system__intermeasurement_period = 0x00000600;
 		pdynamic->system__seed_config =
-				VL53L1_SYSTEM__SEED_CONFIG__STANDARD;
+				ptuning_parms->tp_timed_seed_cfg;
 
 
 
@@ -1286,6 +1729,7 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging_long_range(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -1316,6 +1760,7 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging_long_range(
 					ptiming,
 					pdynamic,
 					psystem,
+					ptuning_parms,
 					pzone_cfg);
 
 
@@ -1334,9 +1779,18 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging_long_range(
 
 
 
+
+
+		ptiming->range_config__timeout_macrop_a_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_a_lo                = 0x97;
+
+
+		ptiming->range_config__timeout_macrop_b_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_b_lo                = 0xB1;
+
 		ptiming->system__intermeasurement_period = 0x00000600;
 		pdynamic->system__seed_config =
-				VL53L1_SYSTEM__SEED_CONFIG__STANDARD;
+				ptuning_parms->tp_timed_seed_cfg;
 
 
 
@@ -1354,6 +1808,191 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging_long_range(
 	return status;
 }
 
+
+
+VL53L1_Error VL53L1_preset_mode_low_power_auto_ranging(
+
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
+	VL53L1_zone_config_t      *pzone_cfg,
+	VL53L1_low_power_auto_data_t *plpadata)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_timed_ranging(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					ptuning_parms,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+		status = VL53L1_config_low_power_auto_mode(
+				pgeneral,
+				pdynamic,
+				plpadata
+				);
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_preset_mode_low_power_auto_short_ranging(
+
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
+	VL53L1_zone_config_t      *pzone_cfg,
+	VL53L1_low_power_auto_data_t *plpadata)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_timed_ranging_short_range(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					ptuning_parms,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+		status = VL53L1_config_low_power_auto_mode(
+				pgeneral,
+				pdynamic,
+				plpadata
+				);
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_preset_mode_low_power_auto_long_ranging(
+
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
+	VL53L1_zone_config_t      *pzone_cfg,
+	VL53L1_low_power_auto_data_t *plpadata)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_timed_ranging_long_range(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					ptuning_parms,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+		status = VL53L1_config_low_power_auto_mode(
+				pgeneral,
+				pdynamic,
+				plpadata
+				);
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+
+
 VL53L1_Error VL53L1_preset_mode_singleshot_ranging(
 
 	VL53L1_static_config_t    *pstatic,
@@ -1362,6 +2001,7 @@ VL53L1_Error VL53L1_preset_mode_singleshot_ranging(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -1390,6 +2030,7 @@ VL53L1_Error VL53L1_preset_mode_singleshot_ranging(
 		ptiming,
 		pdynamic,
 		psystem,
+		ptuning_parms,
 		pzone_cfg);
 
 
@@ -1407,8 +2048,17 @@ VL53L1_Error VL53L1_preset_mode_singleshot_ranging(
 
 
 
+
+
+		ptiming->range_config__timeout_macrop_a_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_a_lo                = 0xB1;
+
+
+		ptiming->range_config__timeout_macrop_b_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_b_lo                = 0xD4;
+
 		pdynamic->system__seed_config =
-				VL53L1_SYSTEM__SEED_CONFIG__STANDARD;
+				ptuning_parms->tp_timed_seed_cfg;
 
 
 
@@ -1435,6 +2085,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -1464,6 +2115,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -1540,6 +2192,30 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging(
 
 
 
+		ptiming->mm_config__timeout_macrop_a_hi                   = 0x00;
+		ptiming->mm_config__timeout_macrop_a_lo                   = 0x20;
+		ptiming->mm_config__timeout_macrop_b_hi                   = 0x00;
+		ptiming->mm_config__timeout_macrop_b_lo                   = 0x1A;
+
+
+
+		ptiming->range_config__timeout_macrop_a_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_a_lo                = 0x28;
+
+
+
+		ptiming->range_config__timeout_macrop_b_hi                = 0x00;
+		ptiming->range_config__timeout_macrop_b_lo                = 0x21;
+
+
+
+		pgeneral->phasecal_config__timeout_macrop                 = 0xF5;
+
+
+
+
+
+
 
 
 		phistpostprocess->valid_phase_low  = 0x08;
@@ -1555,16 +2231,6 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging(
 				ptiming,
 				pdynamic);
 
-
-
-
-
-
-
-
-
-
-		pgeneral->phasecal_config__timeout_macrop               = 0x40;
 
 
 
@@ -1604,6 +2270,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_with_mm1(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -1634,6 +2301,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_with_mm1(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -1728,6 +2396,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_with_mm2(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -1758,6 +2427,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_with_mm2(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -1791,6 +2461,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_mm1_cal(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -1821,6 +2492,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_mm1_cal(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -1901,6 +2573,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_mm2_cal(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -1931,6 +2604,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_mm2_cal(
 				ptiming,
 				pdynamic,
 				psystem,
+				ptuning_parms,
 				pzone_cfg);
 
 	if (status == VL53L1_ERROR_NONE) {
@@ -1962,6 +2636,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_short_timing(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -1994,6 +2669,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_short_timing(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2103,6 +2779,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2133,6 +2810,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2225,15 +2903,18 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range(
 
 
 
-		pgeneral->phasecal_config__timeout_macrop         = 0x42;
+
+		pgeneral->phasecal_config__timeout_macrop         = 0xF5;
 
 
 
 
 		pdynamic->sd_config__woi_sd0                      = 0x09;
 		pdynamic->sd_config__woi_sd1                      = 0x0B;
-		pdynamic->sd_config__initial_phase_sd0            = 0x09;
-		pdynamic->sd_config__initial_phase_sd1            = 0x09;
+		pdynamic->sd_config__initial_phase_sd0            =
+				ptuning_parms->tp_init_phase_rtn_hist_long;
+		pdynamic->sd_config__initial_phase_sd1            =
+				ptuning_parms->tp_init_phase_ref_hist_long;
 
 
 
@@ -2276,6 +2957,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range_mm1(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2308,6 +2990,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range_mm1(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2381,6 +3064,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range_mm2(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t      *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2411,6 +3095,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range_mm2(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2445,6 +3130,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2475,6 +3161,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2508,7 +3195,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range(
 
 
 		VL53L1_init_histogram_multizone_config_structure(
-				7, 0, 1, 2, 3, 4,
+				7, 0, 1, 1, 2, 2,
 				0, 1, 2, 1, 2, 3,
 				&(pzone_cfg->multizone_hist_cfg));
 
@@ -2536,9 +3223,9 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range(
 
 
 		ptiming->mm_config__timeout_macrop_a_hi           = 0x00;
-		ptiming->mm_config__timeout_macrop_a_lo           = 0x37;
+		ptiming->mm_config__timeout_macrop_a_lo           = 0x36;
 		ptiming->mm_config__timeout_macrop_b_hi           = 0x00;
-		ptiming->mm_config__timeout_macrop_b_lo           = 0x29;
+		ptiming->mm_config__timeout_macrop_b_lo           = 0x28;
 
 
 
@@ -2565,15 +3252,18 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range(
 
 
 
-		pgeneral->phasecal_config__timeout_macrop         = 0x6D;
+
+		pgeneral->phasecal_config__timeout_macrop         = 0xF5;
 
 
 
 
 		pdynamic->sd_config__woi_sd0                      = 0x05;
 		pdynamic->sd_config__woi_sd1                      = 0x07;
-		pdynamic->sd_config__initial_phase_sd0            = 0x05;
-		pdynamic->sd_config__initial_phase_sd1            = 0x05;
+		pdynamic->sd_config__initial_phase_sd0            =
+			ptuning_parms->tp_init_phase_rtn_hist_med;
+		pdynamic->sd_config__initial_phase_sd1            =
+			ptuning_parms->tp_init_phase_ref_hist_med;
 
 
 
@@ -2616,6 +3306,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range_mm1(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2648,6 +3339,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range_mm1(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2716,6 +3408,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range_mm2(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2746,6 +3439,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range_mm2(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2779,6 +3473,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2809,6 +3504,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -2899,16 +3595,18 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range(
 
 
 
-		pgeneral->phasecal_config__timeout_macrop         = 0xA4;
+
+		pgeneral->phasecal_config__timeout_macrop         = 0xF5;
 
 
 
 
 		pdynamic->sd_config__woi_sd0                      = 0x03;
 		pdynamic->sd_config__woi_sd1                      = 0x05;
-		pdynamic->sd_config__initial_phase_sd0            = 0x03;
-		pdynamic->sd_config__initial_phase_sd1            = 0x03;
-
+		pdynamic->sd_config__initial_phase_sd0            =
+			ptuning_parms->tp_init_phase_rtn_hist_short;
+		pdynamic->sd_config__initial_phase_sd1            =
+			ptuning_parms->tp_init_phase_ref_hist_short;
 
 
 
@@ -2945,6 +3643,144 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range(
 }
 
 
+
+
+VL53L1_Error VL53L1_preset_mode_special_histogram_short_range(
+	VL53L1_hist_post_process_config_t  *phistpostprocess,
+	VL53L1_static_config_t             *pstatic,
+	VL53L1_histogram_config_t          *phistogram,
+	VL53L1_general_config_t            *pgeneral,
+	VL53L1_timing_config_t             *ptiming,
+	VL53L1_dynamic_config_t            *pdynamic,
+	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
+	VL53L1_zone_config_t               *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status =
+		VL53L1_preset_mode_histogram_short_range(
+			phistpostprocess,
+			pstatic,
+			phistogram,
+			pgeneral,
+			ptiming,
+			pdynamic,
+			psystem,
+			ptuning_parms,
+			pzone_cfg);
+
+
+
+
+
+
+
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+
+
+
+
+
+		VL53L1_init_histogram_config_structure(
+				7, 7, 0, 0, 1, 1,
+				0, 0, 0, 1, 1, 1,
+				phistogram);
+
+
+
+
+
+
+		VL53L1_init_histogram_multizone_config_structure(
+				7, 7, 0, 0, 1, 1,
+				0, 0, 0, 1, 1, 1,
+				&(pzone_cfg->multizone_hist_cfg));
+
+
+
+
+		VL53L1_copy_hist_cfg_to_static_cfg(
+				phistogram,
+				pstatic,
+				pgeneral,
+				ptiming,
+				pdynamic);
+
+
+
+
+
+
+		ptiming->range_config__vcsel_period_a             = 0x02;
+		ptiming->range_config__vcsel_period_b             = 0x03;
+
+
+
+
+		pgeneral->cal_config__vcsel_start                 = 0x00;
+
+
+
+
+
+		pgeneral->phasecal_config__target		= 0x31;
+
+
+
+
+		pdynamic->sd_config__woi_sd0                      = 0x02;
+		pdynamic->sd_config__woi_sd1                      = 0x03;
+		pdynamic->sd_config__initial_phase_sd0            =
+			ptuning_parms->tp_init_phase_rtn_hist_short;
+		pdynamic->sd_config__initial_phase_sd1            =
+			ptuning_parms->tp_init_phase_ref_hist_short;
+
+
+
+
+
+
+
+
+		phistpostprocess->valid_phase_low  = 0x10;
+		phistpostprocess->valid_phase_high = 0x18;
+
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+
+
 VL53L1_Error VL53L1_preset_mode_histogram_short_range_mm1(
 	VL53L1_hist_post_process_config_t  *phistpostprocess,
 	VL53L1_static_config_t             *pstatic,
@@ -2953,6 +3789,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range_mm1(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -2985,6 +3822,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range_mm1(
 				ptiming,
 				pdynamic,
 				psystem,
+				ptuning_parms,
 				pzone_cfg);
 
 
@@ -3018,7 +3856,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range_mm1(
 
 
 		VL53L1_init_histogram_multizone_config_structure(
-				  7,   0, 1, 1, 1, 1,
+				  7,   7, 0, 1, 1, 1,
 				8+0, 8+1, 1, 1, 2, 2,
 				&(pzone_cfg->multizone_hist_cfg));
 
@@ -3059,6 +3897,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range_mm2(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3089,6 +3928,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range_mm2(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -3123,6 +3963,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_characterisation(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3149,6 +3990,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_characterisation(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -3187,6 +4029,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_planar(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3217,6 +4060,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_planar(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -3233,20 +4077,6 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_planar(
 			VL53L1_zone_preset_xtalk_planar(
 				pgeneral,
 				pzone_cfg);
-
-
-
-
-
-
-
-
-
-
-		ptiming->range_config__sigma_thresh                  = 0x0000;
-
-
-		ptiming->range_config__min_count_rate_rtn_limit_mcps = 0x0000;
 
 
 
@@ -3322,6 +4152,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm1(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3352,21 +4183,9 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm1(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
-
-
-
-
-
-
-
-
-
-	ptiming->range_config__sigma_thresh                  = 0x0000;
-
-
-	ptiming->range_config__min_count_rate_rtn_limit_mcps = 0x0000;
 
 
 
@@ -3457,7 +4276,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm1(
 
 
 
-		pgeneral->phasecal_config__timeout_macrop         = 0x42;
+		pgeneral->phasecal_config__timeout_macrop         = 0xF5;
 
 
 
@@ -3465,7 +4284,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm1(
 		pdynamic->sd_config__woi_sd0                      = 0x09;
 		pdynamic->sd_config__woi_sd1                      = 0x09;
 		pdynamic->sd_config__initial_phase_sd0            = 0x09;
-		pdynamic->sd_config__initial_phase_sd1            = 0x09;
+		pdynamic->sd_config__initial_phase_sd1            = 0x06;
 
 		pdynamic->system__sequence_config = \
 				VL53L1_SEQUENCE_VHV_EN | \
@@ -3499,6 +4318,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm2(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3529,6 +4349,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm2(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -3558,6 +4379,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3588,6 +4410,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -3646,6 +4469,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone_short_range(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3676,6 +4500,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone_short_range(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -3739,6 +4564,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone_long_range(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -3769,6 +4595,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone_long_range(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -3832,6 +4659,7 @@ VL53L1_Error VL53L1_preset_mode_olt(
 	VL53L1_timing_config_t    *ptiming,
 	VL53L1_dynamic_config_t   *pdynamic,
 	VL53L1_system_control_t   *psystem,
+	VL53L1_tuning_parm_storage_t *ptuning_parms,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
 
@@ -3856,6 +4684,7 @@ VL53L1_Error VL53L1_preset_mode_olt(
 					ptiming,
 					pdynamic,
 					psystem,
+					ptuning_parms,
 					pzone_cfg);
 
 
@@ -4022,6 +4851,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_ref(
 	VL53L1_timing_config_t             *ptiming,
 	VL53L1_dynamic_config_t            *pdynamic,
 	VL53L1_system_control_t            *psystem,
+	VL53L1_tuning_parm_storage_t       *ptuning_parms,
 	VL53L1_zone_config_t               *pzone_cfg)
 {
 
@@ -4052,6 +4882,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_ref(
 			ptiming,
 			pdynamic,
 			psystem,
+			ptuning_parms,
 			pzone_cfg);
 
 
@@ -4062,7 +4893,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_ref(
 
 
 
-		phistogram->histogram_config__spad_array_selection = 0x00;
+		phistogram->histogram_config__spad_array_selection = 0x01;
 
 
 

@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -3218,6 +3219,9 @@ extern "C"
 
 
 
+
+#define VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_INDEX     0x00B8
+#define VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE      4
 
 #define VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX  0x015C
 #define VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE   56
