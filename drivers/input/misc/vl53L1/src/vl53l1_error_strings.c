@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -110,10 +111,16 @@
 
 
 VL53L1_Error VL53L1_get_pal_error_string(
+#ifndef VL53L1_USE_EMPTY_STRING
 	VL53L1_Error   PalErrorCode,
+#endif
 	char          *pPalErrorString)
 {
 	VL53L1_Error Status = VL53L1_ERROR_NONE;
+
+#ifdef VL53L1_USE_EMPTY_STRING
+	SUPPRESS_UNUSED_WARNING(PalErrorCode);
+#endif
 
 	LOG_FUNCTION_START("");
 
