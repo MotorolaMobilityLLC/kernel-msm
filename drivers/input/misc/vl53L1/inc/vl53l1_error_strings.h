@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -175,7 +176,7 @@ VL53L1_Error VL53L1_get_pal_error_string(
 	#define  VL53L1_STRING_ERROR_XTALK_EXTRACTION_NO_SAMPLES_FAIL \
 			"No Xtalk using full array - Xtalk Extract Fail"
 	#define  VL53L1_STRING_ERROR_XTALK_EXTRACTION_SIGMA_LIMIT_FAIL \
-			"Xtalk does not meet required VL53L1_PRM_00012 limit - Xtalk Extract Fail"
+			"Xtalk does not meet required VL53L1_PRM_00010 limit - Xtalk Extract Fail"
 
 	#define  VL53L1_STRING_ERROR_OFFSET_CAL_NO_SAMPLE_FAIL \
 		"Offset Cal - one of more stages with no valid samples - fatal"
@@ -203,7 +204,7 @@ VL53L1_Error VL53L1_get_pal_error_string(
 	#define  VL53L1_STRING_WARNING_ZONE_CAL_MISSING_SAMPLES \
 		"Zone Cal - One or more zone with less than requested valid samples"
 	#define  VL53L1_STRING_WARNING_ZONE_CAL_SIGMA_TOO_HIGH \
-		"Zone Cal - One of more zones the VL53L1_PRM_00012 estimate too high"
+		"Zone Cal - One of more zones the VL53L1_PRM_00010 estimate too high"
 	#define  VL53L1_STRING_WARNING_ZONE_CAL_RATE_TOO_HIGH \
 		"Zone Cal - One of more zones with rate too high - in pile up"
 
