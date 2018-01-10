@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -69,7 +69,7 @@
  */
 /* define CFG_STMVL53L1_HAVE_REGULATOR */
 
-#define DRIVER_VERSION		"8.0.0_b4.1._1268"
+#define DRIVER_VERSION		"12.13.0"
 
 /** @ingroup vl53l1_config
  * @{
@@ -78,10 +78,12 @@
  * Configure max number of device the driver can support
  */
 #define STMVL53L1_CFG_MAX_DEV	2
+/** @} */ /* ingroup vl53l1_config */
+
 /** @ingroup vl53l1_mod_dbg
  * @{
  */
-#if 1
+#if 0
 #define DEBUG	1
 #endif
 #if 0
@@ -185,7 +187,7 @@ struct stmvl53l1_data {
 
 	VL53L1_DevData_t stdev;	/*!<embed ST VL53L0 Dev data as "stdev" */
 
-	void *client_object;	/*!< cci or i2c moduel i/f speficic ptr  */
+	void *client_object;	/*!< cci or i2c model i/f specific ptr  */
 	bool is_device_remove;	/*!< true when device has been remove */
 
 	struct mutex work_mutex; /*!< main dev mutex/lock */;
@@ -199,6 +201,8 @@ struct stmvl53l1_data {
 	struct miscdevice miscdev;
 	/* first irq has no valid data, so avoid to update data on first one */
 	int is_first_irq;
+	/* set when first start has be done */
+	int is_first_start_done;
 
 	/* control data */
 	int poll_mode;	/*!< use poll even if interrupt line present*/
@@ -219,6 +223,16 @@ struct stmvl53l1_data {
 	int sar_mode; /*!< is sar mode enable/disabled */
 	int cam_mode; /*!< is camera mode enable/disabled */
 	VL53L1_Error last_error;/*!< last device internal error */
+	int offset_correction_mode;/*!< offset correction mode to apply */
+	FixPoint1616_t dmax_reflectance;/*!< reflectance use for dmax calc */
+	int dmax_mode;		/*!< Dmax mode of the device */
+	int smudge_correction_mode; /*!< smudge mode */
+
+	/* Read only values */
+	FixPoint1616_t optical_offset_x;
+	FixPoint1616_t optical_offset_y;
+	bool is_xtalk_value_changed; /*!< xtalk values has been updated */
+
 	/* PS parameters */
 
 	/* Calibration parameters */
@@ -238,8 +252,10 @@ struct stmvl53l1_data {
 		uint32_t	err_tot; /* from start */
 		struct timeval start_tv;
 		struct timeval comp_tv;
+		VL53L1_RangingMeasurementData_t single_range_data;
 		VL53L1_MultiRangingData_t multi_range_data;
 		VL53L1_MultiRangingData_t tmp_range_data;
+		VL53L1_AdditionalData_t additional_data;
 		/* non mode 1 for data agregation */
 	} meas;
 
@@ -266,6 +282,12 @@ struct stmvl53l1_data {
 	/* Recent interrupt status */
 	/* roi */
 	VL53L1_RoiConfig_t roi_cfg;
+
+	/* use for zone calibration / roi mismatch detection */
+	uint32_t current_roi_id;
+
+	/* Embed here since it's too huge for kernek stack */
+	struct stmvl53l1_ioctl_zone_calibration_data_t calib;
 
 	/* autonomous config */
 	uint32_t auto_pollingTimeInMs;
@@ -359,7 +381,7 @@ int stmvl53l1_ipp_init(void);
  * Module exit for netlink
  * @return 0 on success
  */
-void __exit stmvl53l1_ipp_exit(void);
+void stmvl53l1_ipp_exit(void);
 
 /**
  * enable and start ipp exhange
