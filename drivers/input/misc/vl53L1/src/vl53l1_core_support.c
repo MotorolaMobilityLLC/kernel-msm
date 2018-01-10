@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -230,7 +231,7 @@ uint32_t  VL53L1_duration_maths(
 
 
 uint32_t VL53L1_events_per_spad_maths(
-	int32_t   VL53L1_PRM_00009,
+	int32_t   VL53L1_PRM_00012,
 	uint16_t  num_spads,
 	uint32_t  duration)
 {
@@ -254,7 +255,7 @@ uint32_t VL53L1_events_per_spad_maths(
 
 
 
-	uint64_t dividend = ((uint64_t)VL53L1_PRM_00009
+	uint64_t dividend = ((uint64_t)VL53L1_PRM_00012
 			* 1000 * 256);
 
 	total_hist_counts = do_division_u(dividend, (uint64_t)num_spads);
@@ -329,21 +330,21 @@ void  VL53L1_hist_calc_zero_distance_phase(
 
 
 	uint32_t  period        = 0;
-	uint32_t  VL53L1_PRM_00013         = 0;
+	uint32_t  VL53L1_PRM_00016         = 0;
 
 	LOG_FUNCTION_START("");
 
 	period = 2048 *
-		(uint32_t)VL53L1_decode_vcsel_period(pdata->VL53L1_PRM_00007);
+		(uint32_t)VL53L1_decode_vcsel_period(pdata->VL53L1_PRM_00008);
 
-	VL53L1_PRM_00013  = period;
-	VL53L1_PRM_00013 += (uint32_t)pdata->phasecal_result__reference_phase;
-	VL53L1_PRM_00013 += (2048 * (uint32_t)pdata->phasecal_result__vcsel_start);
-	VL53L1_PRM_00013 -= (2048 * (uint32_t)pdata->cal_config__vcsel_start);
+	VL53L1_PRM_00016  = period;
+	VL53L1_PRM_00016 += (uint32_t)pdata->phasecal_result__reference_phase;
+	VL53L1_PRM_00016 += (2048 * (uint32_t)pdata->phasecal_result__vcsel_start);
+	VL53L1_PRM_00016 -= (2048 * (uint32_t)pdata->cal_config__vcsel_start);
 
-	VL53L1_PRM_00013  = VL53L1_PRM_00013 % period;
+	VL53L1_PRM_00016  = VL53L1_PRM_00016 % period;
 
-	pdata->zero_distance_phase = (uint16_t)VL53L1_PRM_00013;
+	pdata->zero_distance_phase = (uint16_t)VL53L1_PRM_00016;
 
 	LOG_FUNCTION_END(0);
 }
@@ -363,7 +364,7 @@ void  VL53L1_hist_estimate_ambient_from_thresholded_bins(
 
 
 	uint8_t  bin                      = 0;
-	int32_t  VL53L1_PRM_00029 = 0;
+	int32_t  VL53L1_PRM_00031 = 0;
 
 	LOG_FUNCTION_START("");
 
@@ -380,11 +381,11 @@ void  VL53L1_hist_estimate_ambient_from_thresholded_bins(
 
 
 
-	VL53L1_PRM_00029  = (int32_t)VL53L1_isqrt((uint32_t)pdata->min_bin_value);
-	VL53L1_PRM_00029 *= ambient_threshold_sigma;
-	VL53L1_PRM_00029 += 0x07;
-	VL53L1_PRM_00029  = VL53L1_PRM_00029 >> 4;
-	VL53L1_PRM_00029 += pdata->min_bin_value;
+	VL53L1_PRM_00031  = (int32_t)VL53L1_isqrt((uint32_t)pdata->min_bin_value);
+	VL53L1_PRM_00031 *= ambient_threshold_sigma;
+	VL53L1_PRM_00031 += 0x07;
+	VL53L1_PRM_00031  = VL53L1_PRM_00031 >> 4;
+	VL53L1_PRM_00031 += pdata->min_bin_value;
 
 
 
@@ -394,8 +395,8 @@ void  VL53L1_hist_estimate_ambient_from_thresholded_bins(
 	pdata->number_of_ambient_samples = 0;
 	pdata->ambient_events_sum        = 0;
 
-	for (bin = 0 ; bin < pdata->VL53L1_PRM_00017 ; bin++) {
-		if (pdata->bin_data[bin] < VL53L1_PRM_00029) {
+	for (bin = 0 ; bin < pdata->VL53L1_PRM_00021 ; bin++) {
+		if (pdata->bin_data[bin] < VL53L1_PRM_00031) {
 			pdata->ambient_events_sum += pdata->bin_data[bin];
 			pdata->number_of_ambient_samples++;
 		}
@@ -407,9 +408,9 @@ void  VL53L1_hist_estimate_ambient_from_thresholded_bins(
 
 
 	if (pdata->number_of_ambient_samples > 0) {
-		pdata->VL53L1_PRM_00026 = pdata->ambient_events_sum;
-		pdata->VL53L1_PRM_00026 += ((int32_t)pdata->number_of_ambient_samples/2);
-		pdata->VL53L1_PRM_00026 /= (int32_t)pdata->number_of_ambient_samples;
+		pdata->VL53L1_PRM_00028 = pdata->ambient_events_sum;
+		pdata->VL53L1_PRM_00028 += ((int32_t)pdata->number_of_ambient_samples/2);
+		pdata->VL53L1_PRM_00028 /= (int32_t)pdata->number_of_ambient_samples;
 	}
 
 	LOG_FUNCTION_END(0);
@@ -460,15 +461,15 @@ void  VL53L1_hist_remove_ambient_bins(
 
 
 		for (bin = pdata->number_of_ambient_bins ;
-				bin < pdata->VL53L1_PRM_00016 ; bin++) {
+				bin < pdata->VL53L1_PRM_00020 ; bin++) {
 			pdata->bin_data[bin-pdata->number_of_ambient_bins] =
 				pdata->bin_data[bin];
 		}
 
 
 
-		pdata->VL53L1_PRM_00017 =
-				pdata->VL53L1_PRM_00017 -
+		pdata->VL53L1_PRM_00021 =
+				pdata->VL53L1_PRM_00021 -
 				pdata->number_of_ambient_bins;
 		pdata->number_of_ambient_bins = 0;
 	}
@@ -522,7 +523,7 @@ uint32_t VL53L1_calc_pll_period_mm(
 
 
 uint16_t VL53L1_rate_maths(
-	int32_t   VL53L1_PRM_00006,
+	int32_t   VL53L1_PRM_00007,
 	uint32_t  time_us)
 {
 
@@ -547,10 +548,10 @@ uint16_t VL53L1_rate_maths(
 
 
 
-	if (VL53L1_PRM_00006 > VL53L1_SPAD_TOTAL_COUNT_MAX) {
+	if (VL53L1_PRM_00007 > VL53L1_SPAD_TOTAL_COUNT_MAX) {
 		tmp_int = VL53L1_SPAD_TOTAL_COUNT_MAX;
-	} else if (VL53L1_PRM_00006 > 0) {
-		tmp_int = (uint32_t)VL53L1_PRM_00006;
+	} else if (VL53L1_PRM_00007 > 0) {
+		tmp_int = (uint32_t)VL53L1_PRM_00007;
 	}
 
 
@@ -559,7 +560,7 @@ uint16_t VL53L1_rate_maths(
 
 
 
-	if (VL53L1_PRM_00006 > VL53L1_SPAD_TOTAL_COUNT_RES_THRES) {
+	if (VL53L1_PRM_00007 > VL53L1_SPAD_TOTAL_COUNT_RES_THRES) {
 		frac_bits = 3;
 	} else {
 		frac_bits = 7;
@@ -579,7 +580,7 @@ uint16_t VL53L1_rate_maths(
 
 
 
-	if (VL53L1_PRM_00006 > VL53L1_SPAD_TOTAL_COUNT_RES_THRES) {
+	if (VL53L1_PRM_00007 > VL53L1_SPAD_TOTAL_COUNT_RES_THRES) {
 		tmp_int = tmp_int << 4;
 	}
 
@@ -642,8 +643,9 @@ uint16_t VL53L1_rate_per_spad_maths(
 
 int32_t VL53L1_range_maths(
 	uint16_t  fast_osc_frequency,
-	uint16_t  VL53L1_PRM_00013,
+	uint16_t  VL53L1_PRM_00016,
 	uint16_t  zero_distance_phase,
+	uint8_t   fractional_bits,
 	int32_t   gain_factor,
 	int32_t   range_offset_mm)
 {
@@ -671,7 +673,7 @@ int32_t VL53L1_range_maths(
 
 
 
-	tmp_long_int = (int64_t)VL53L1_PRM_00013 - (int64_t)zero_distance_phase;
+	tmp_long_int = (int64_t)VL53L1_PRM_00016 - (int64_t)zero_distance_phase;
 
 
 
@@ -722,7 +724,10 @@ int32_t VL53L1_range_maths(
 
 
 
-	range_mm = range_mm / (0x01 << 2);
+	if (fractional_bits == 0)
+		range_mm = range_mm / (0x01 << 2);
+	else if (fractional_bits == 1)
+		range_mm = range_mm / (0x01 << 1);
 
 	return range_mm;
 }
@@ -736,11 +741,11 @@ uint8_t VL53L1_decode_vcsel_period(uint8_t vcsel_period_reg)
 
 
 
-	uint8_t VL53L1_PRM_00028 = 0;
+	uint8_t VL53L1_PRM_00030 = 0;
 
-	VL53L1_PRM_00028 = (vcsel_period_reg + 1) << 1;
+	VL53L1_PRM_00030 = (vcsel_period_reg + 1) << 1;
 
-	return VL53L1_PRM_00028;
+	return VL53L1_PRM_00030;
 }
 
 
@@ -756,10 +761,10 @@ void VL53L1_copy_xtalk_bin_data_to_histogram_data_struct(
 
 	phist->cal_config__vcsel_start =
 			pxtalk->cal_config__vcsel_start;
-	phist->VL53L1_PRM_00018 =
-			pxtalk->VL53L1_PRM_00018;
-	phist->VL53L1_PRM_00015 =
-			pxtalk->VL53L1_PRM_00015;
+	phist->VL53L1_PRM_00022 =
+			pxtalk->VL53L1_PRM_00022;
+	phist->VL53L1_PRM_00019 =
+			pxtalk->VL53L1_PRM_00019;
 
 	phist->phasecal_result__reference_phase   =
 			pxtalk->phasecal_result__reference_phase;
@@ -772,14 +777,14 @@ void VL53L1_copy_xtalk_bin_data_to_histogram_data_struct(
 			pxtalk->zero_distance_phase;
 
 	phist->zone_id      = pxtalk->zone_id;
-	phist->VL53L1_PRM_00016  = pxtalk->VL53L1_PRM_00016;
+	phist->VL53L1_PRM_00020  = pxtalk->VL53L1_PRM_00020;
 	phist->time_stamp   = pxtalk->time_stamp;
 }
 
 
 void VL53L1_init_histogram_bin_data_struct(
 	int32_t                      bin_value,
-	uint16_t                     VL53L1_PRM_00017,
+	uint16_t                     VL53L1_PRM_00021,
 	VL53L1_histogram_bin_data_t *pdata)
 {
 
@@ -796,9 +801,9 @@ void VL53L1_init_histogram_bin_data_struct(
 	pdata->zone_id                   = 0;
 	pdata->time_stamp                = 0;
 
-	pdata->VL53L1_PRM_00015                 = 0;
-	pdata->VL53L1_PRM_00016               = VL53L1_HISTOGRAM_BUFFER_SIZE;
-	pdata->VL53L1_PRM_00017            = (uint8_t)VL53L1_PRM_00017;
+	pdata->VL53L1_PRM_00019                 = 0;
+	pdata->VL53L1_PRM_00020               = VL53L1_HISTOGRAM_BUFFER_SIZE;
+	pdata->VL53L1_PRM_00021            = (uint8_t)VL53L1_PRM_00021;
 	pdata->number_of_ambient_bins    = 0;
 
 	pdata->result__interrupt_status           = 0;
@@ -812,8 +817,8 @@ void VL53L1_init_histogram_bin_data_struct(
 	pdata->cal_config__vcsel_start            = 0;
 
 	pdata->vcsel_width                        = 0;
-	pdata->VL53L1_PRM_00007                       = 0;
-	pdata->VL53L1_PRM_00018                = 0;
+	pdata->VL53L1_PRM_00008                       = 0;
+	pdata->VL53L1_PRM_00022                = 0;
 	pdata->total_periods_elapsed              = 0;
 
 	pdata->min_bin_value                      = 0;
@@ -822,7 +827,7 @@ void VL53L1_init_histogram_bin_data_struct(
 	pdata->zero_distance_phase                = 0;
 	pdata->number_of_ambient_samples          = 0;
 	pdata->ambient_events_sum                 = 0;
-	pdata->VL53L1_PRM_00026             = 0;
+	pdata->VL53L1_PRM_00028             = 0;
 
 	for (i = 0 ; i < VL53L1_MAX_BIN_SEQUENCE_LENGTH ; i++) {
 		pdata->bin_seq[i] = (uint8_t)i;
@@ -832,7 +837,7 @@ void VL53L1_init_histogram_bin_data_struct(
 	}
 
 	for (i = 0 ; i < VL53L1_HISTOGRAM_BUFFER_SIZE ; i++) {
-		if (i < VL53L1_PRM_00017) {
+		if (i < VL53L1_PRM_00021) {
 			pdata->bin_data[i] = bin_value;
 		} else {
 			pdata->bin_data[i] = 0;
@@ -875,7 +880,7 @@ void  VL53L1_hist_find_min_max_bin_values(
 
 	LOG_FUNCTION_START("");
 
-	for (bin = 0 ; bin < pdata->VL53L1_PRM_00017 ; bin++) {
+	for (bin = 0 ; bin < pdata->VL53L1_PRM_00021 ; bin++) {
 
 		if (bin == 0 || pdata->min_bin_value >= pdata->bin_data[bin]) {
 			pdata->min_bin_value = pdata->bin_data[bin];
@@ -917,10 +922,10 @@ void  VL53L1_hist_estimate_ambient_from_ambient_bins(
 			pdata->ambient_events_sum += pdata->bin_data[bin];
 		}
 
-		pdata->VL53L1_PRM_00026 = pdata->ambient_events_sum;
-		pdata->VL53L1_PRM_00026 +=
+		pdata->VL53L1_PRM_00028 = pdata->ambient_events_sum;
+		pdata->VL53L1_PRM_00028 +=
 				((int32_t)pdata->number_of_ambient_bins / 2);
-		pdata->VL53L1_PRM_00026 /=
+		pdata->VL53L1_PRM_00028 /=
 			(int32_t)pdata->number_of_ambient_bins;
 
 	}
