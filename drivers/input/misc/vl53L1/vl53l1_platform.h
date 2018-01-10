@@ -33,9 +33,6 @@
 #ifndef _VL53L1_PLATFORM_H_
 #define _VL53L1_PLATFORM_H_
 
-/*#define VL53L1_LOG_ENABLE 1 */
-
-
 #include "vl53l1_ll_def.h"
 #include "vl53l1_platform_log.h"
 

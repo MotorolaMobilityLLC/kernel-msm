@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -86,6 +86,8 @@ enum __stmv53l1_parameter_name_e {
 	 * @li 2 @a VL53L1_PRESETMODE_MULTIZONES_SCANNING multiple zone
 	 * @li 3 @a VL53L1_PRESETMODE_AUTONOMOUS autonomous mode
 	 * @li 4 @a VL53L1_PRESETMODE_LITE_RANGING low mips ranging mode
+	 * @li 8 @a VL53L1_PRESETMODE_LOWPOWER_AUTONOMOUS low power autonomous
+	 * mode
 	 *
 	 * @warning mode can only be set while not ranging
 	 */
@@ -99,9 +101,6 @@ enum __stmv53l1_parameter_name_e {
 	VL53L1_TIMINGBUDGET_PAR = 11,
 	/*!< VL53L1_TIMINGBUDGET_PAR
 	* @ref stmvl53l1_parameter.value field is timing budget in micro second
-	*
-	* @note the value cannot be set while ranging will set ebusy errno,
-	* value set is absorbed at next range start @ref VL53L1_IOCTL_START
 	*/
 
 	VL53L1_DISTANCEMODE_PAR = 12,
@@ -110,8 +109,6 @@ enum __stmv53l1_parameter_name_e {
 	 * @li 1 @a VL53L1_DISTANCEMODE_SHORT
 	 * @li 2 @a VL53L1_DISTANCEMODE_MEDIUM
 	 * @li 3 @a VL53L1_DISTANCEMODE_LONG
-	 * @li 4 @a VL53L1_DISTANCEMODE_AUTO_LITE
-	 * @li 5 @a VL53L1_DISTANCEMODE_AUTO
 	 *
 	 * @warning distance mode can only be set while not ranging
 	 */
@@ -140,14 +137,82 @@ enum __stmv53l1_parameter_name_e {
 	 * error. It's valid only after an ioctl/sysfs return an -EIO error.
 	 */
 
-	VL53L1_CAMERAMODE_PAR = 16,
+	VL53L1_OFFSETCORRECTIONMODE_PAR = 16,
+	/*!< VL53L1_OFFSETCORRECTIONMODE_PAR
+	 * This parameter will define which mode to use for the offset
+	 * correction.
+	 * valid force device on value :
+	 * @li 1 @a VL53L1_OFFSETCORRECTIONMODE_STANDARD
+	 * @li 2 @a VL53L1_OFFSETCORRECTIONMODE_PERZONE
+	 *
+	 * @warning offset correction mode can only be set while not ranging
+	 */
+
+	VL53L1_OPTICALCENTER_PAR = 17,
+	/*!< VL53L1_OPTICALCENTER_PAR
+	 * This is a read only parameter. It will return optical center issued
+	 * from the nvm set at FTM stage. value will contain X position of
+	 * center. value2 will contain Y position of center.
+	 * Return values have FixPoint1616_t type.
+	 */
+
+	VL53L1_DMAXREFLECTANCE_PAR = 18,
+	/*!< VL53L1_DMAXREFLECTANCE_PAR
+	 * This parameter will define target reflectance @ 940nm used to
+	 * calculate the ambient DMAX. Parameter is of type FixPoint1616_t.
+	 *
+	 * @warning dmax reflectance can only be be set while not ranging
+	 */
+
+	VL53L1_DMAXMODE_PAR = 19,
+	/*!< VL53L1_DMAXMODE_PAR
+	 * This parameter will select Dmax mode.
+	 * valid Dmax mode value :
+	 * @li 1 @a VL53L1_DMAXMODE_FMT_CAL_DATA
+	 * @li 2 @a VL53L1_DMAXMODE_CUSTCAL_DATA
+	 * @li 3 @a VL53L1_DMAXMODE_PER_ZONE_CAL_DATA
+	 *
+	 * @warning Dmax mode can only be set while not ranging
+	 */
+
+	VL53L1_TUNING_PAR = 20,
+	/*!< VL53L1_DMAXMODE_PAR
+	 * This parameter is a write only parameter. It will allow to provide
+	 * low level layer with a configuration parameter.
+	 * value will be use as a key parameter.
+	 * value2 will be use as value parameter.
+	 *
+	 * @warning those configuration parameter settings are only allowed
+	 * before device is start once.
+	 */
+
+	VL53L1_SMUDGECORRECTIONMODE_PAR = 21,
+	/*!< VL53L1_SMUDGECORRECTIONMODE_PAR
+	 * This parameter will control if smudge correction is enable and how
+	 * crosstalk values are updated.
+	 * @li 0 @a VL53L1_SMUDGE_CORRECTION_NONE
+	 * @li 1 @a VL53L1_SMUDGE_CORRECTION_CONTINUOUS
+	 * @li 2 @a VL53L1_SMUDGE_CORRECTION_SINGLE
+	 * @li 3 @a VL53L1_SMUDGE_CORRECTION_DEBUG
+	 */
+
+	VL53L1_ISXTALKVALUECHANGED_PAR = 22,
+	/*!< VL53L1_ISXTALKCHANGED_PAR
+	 * This is a read only parameter. It will return if Xtalk value has
+	 * been updated while ranging. This parameter is reset each time device
+	 * start to range.
+	 * @li 0 Xtalk values has not been changed.
+	 * @li 1 Xtalk values has been changed.
+	 */
+
+	VL53L1_CAMERAMODE_PAR = 23,
 	/*!< VL53L1_CAMERAMODE_PAR
 	* valid camera mode value :
 	* @li 0 device is out of camera mode.
 	* @li 1 device is in camera mode.
 	*/
 
-	VL53L1_HWREV_PAR = 17,
+	VL53L1_HWREV_PAR = 24,
 	/*!< VL53L1_HWREV_PAR
 	* This is a read only parameter. It will return HW revision number
 	*/
@@ -237,6 +302,28 @@ struct stmvl53l1_ioctl_calibration_data_t {
 	 */
 };
 
+/**
+ * Opaque structure use to hold content of zone offset calibration result.
+ */
+#define stmvl531_zone_calibration_data_t \
+	struct _stmvl531_zone_calibration_data_t
+
+struct _stmvl531_zone_calibration_data_t {
+	uint32_t id;
+	VL53L1_ZoneCalibrationData_t data;
+};
+
+/**
+ * parameter structure use in @ref VL53L1_IOCTL_ZONE_CALIBRATION_DATA
+ */
+struct stmvl53l1_ioctl_zone_calibration_data_t {
+	int32_t is_read;	/*!< [in] 1: Get 0: Set*/
+	stmvl531_zone_calibration_data_t data;
+	/*!< [in/out] data to set /get. Caller
+	 * should consider this structure as an opaque one
+	 */
+};
+
 /** Select reference spad calibration in @ref VL53L1_IOCTL_PERFORM_CALIBRATION.
  *
  * param1, param2 and param3 not use
@@ -250,10 +337,36 @@ struct stmvl53l1_ioctl_calibration_data_t {
 #define VL53L1_CALIBRATION_CROSSTALK		1
 
 /** Select offset calibration  @ref VL53L1_IOCTL_PERFORM_CALIBRATION.
- * param1 is target distance in mm. param2 and
- * param3 not use.
+ * param1 is offset calibration mode. Parameter is either:
+ *        - VL53L1_OFFSETCALIBRATIONMODE_STANDARD
+ *        - VL53L1_OFFSETCALIBRATIONMODE_PRERANGE_ONLY
+ *        - VL53L1_OFFSETCALIBRATIONMODE_MULTI_ZONE (deprecated)
+ * param2 is target distance in mm.
+ * param3 is target reflectance in percent. Parameter is of type FixPoint1616_t.
+ *
+ * Note that VL53L1_OFFSETCALIBRATIONMODE_MULTI_ZONE usage is deprecated. Per
+ * zone offset calibration should use VL53L1_CALIBRATION_OFFSET_PER_ZONE
+ * instead.
  */
 #define VL53L1_CALIBRATION_OFFSET		2
+
+/** Select offset calibration per zone @ref VL53L1_IOCTL_PERFORM_CALIBRATION.
+ * param1 is offset calibration mode. Parameter is:
+ *        - VL53L1_OFFSETCALIBRATIONMODE_MULTI_ZONE
+ * param2 is target distance in mm.
+ * param3 is target reflectance in percent. Parameter is of type FixPoint1616_t.
+ *
+ * Note that region of interest should be defined by a prior call to
+ * VL53L1_IOCTL_ROI before calling VL53L1_IOCTL_PERFORM_CALIBRATION /
+ * VL53L1_CALIBRATION_OFFSET combinaison.
+ */
+#define VL53L1_CALIBRATION_OFFSET_PER_ZONE	3
+
+/** Select simple offset calibration @ref VL53L1_IOCTL_PERFORM_CALIBRATION.
+ * param1 is target distance in mm.
+ * param2 and param3 are not used
+ */
+#define VL53L1_CALIBRATION_OFFSET_SIMPLE	4
 
 /**
  * parameter structure use in @ref VL53L1_IOCTL_PERFORM_CALIBRATION
@@ -264,6 +377,8 @@ struct stmvl53l1_ioctl_perform_calibration_t {
 	 * @li @ref VL53L1_CALIBRATION_REF_SPAD
 	 * @li @ref VL53L1_CALIBRATION_CROSSTALK
 	 * @li @ref VL53L1_CALIBRATION_OFFSET
+	 * @li @ref VL53L1_CALIBRATION_OFFSET_SIMPLE
+	 * @li @ref VL53L1_CALIBRATION_OFFSET_PER_ZONE
 	 */
 	uint32_t param1;
 	/*!< [in] first param. Usage depends on calibration_type */
@@ -299,14 +414,15 @@ struct stmvl53l1_autonomous_config_t {
  * @return :
  *	@li 0 on success
  *	@li -EBUSY if already started
- *	@li other any possible over "st bare driver error code"
- *	    (shall be positive)
+ *	@li -ENXIO failed to change i2c address change after reset release
+ *	@li -EIO. Read last_error to get device error code
+ *	@li -ENODEV. Device has been removed.
  *
  * example user land  :
  @code
  int smtvl53l1_start(int fd){error
 	int rc;
-	rc = ioctl(fd, VL53L1_IOCTL_START, NULL);
+	rc= ioctl(fd, VL53L1_IOCTL_START,NULL);
 	if( rc ){
 		if( errno == EBUSY){
 			//the device is already started
@@ -324,12 +440,6 @@ struct stmvl53l1_autonomous_config_t {
 
 #define VL53L1_IOCTL_START			_IO('p', 0x01)
 
-/* Alias for VL53L1_IOCTL_START. Still present for legacy support but usage is
- * deprecated. Consider using VL53L1_IOCTL_START instead. May be removed without
- * further notice.
- */
-#define VL53L1_IOCTL_INIT			VL53L1_IOCTL_START
-
 /**
  * stop ranging (no argument)
 
@@ -339,7 +449,8 @@ struct stmvl53l1_autonomous_config_t {
  * @return
  * @li 0 on success
  * @li -EBUSY if it was already
- * @li other specific error code shall be >0
+ * @li -EIO. Read last_error to get device error code
+ * @li -ENODEV. Device has been removed.
  *
  * c example userland :
  @code
@@ -369,6 +480,7 @@ int smtvl53l1_stop(int fd){
  *
  * @return 0 on success else o, error check errno
  * @li -EFAULT fault in cpy to f/m user out range data not copied
+ * @li -ENODEV. Device has been removed.
  *
  * @warning this ioctl will not wait for a new range sample acquisition
  * it will return what available at time it get called . Hence same data maybe
@@ -388,6 +500,9 @@ int smtvl53l1_stop(int fd){
  *
  * for get if ioctl fail do not check for out params it is not valid
  * for set theirs not copy back only see ioctl status, errno to get error case
+ *
+ * @return 0 on success else o, error check errno
+ * @li -ENODEV. Device has been removed.
  *
  * @note a set parameter may not be absorbed straight aways !
  */
@@ -437,7 +552,7 @@ int smtvl53l1_stop(int fd){
  * @return 0 on success else o, error check errno
  * @li -EFAULT fault in cpy to f/m user out range data not copyed
  * @li -ENOEXEC active mode is not mutli-zone
- * @li -ENODEV device is not ranging
+ * @li -ENODEV device is not ranging or device has been removed.
  * as in that case MZ data may not be fully valid
  */
 #define VL53L1_IOCTL_MZ_DATA\
@@ -454,7 +569,7 @@ int smtvl53l1_stop(int fd){
  *
  * @return 0 on success else o, error check errno
  * @li -EFAULT fault in cpy to f/m user out range data not copied
- * @li -ENODEV device is not ranging.
+ * @li -ENODEV device is not ranging or device has been removed.
  * @li -ERESTARTSYS interrupt while sleeping.
  */
 #define VL53L1_IOCTL_GETDATAS_BLOCKING\
@@ -472,7 +587,7 @@ int smtvl53l1_stop(int fd){
  * @return 0 on success else o, error check errno
  * @li -EFAULT fault in cpy to f/m user out range data not copyed
  * @li -ENOEXEC active mode is not mutli-zone
- * @li -ENODEV device is not ranging.
+ * @li -ENODEV device is not ranging or device has been removed.
  * @li -ERESTARTSYS interrupt while sleeping.
  * as in that case MZ data may not be fully valid
  */
@@ -490,12 +605,39 @@ int smtvl53l1_stop(int fd){
  * @ref stmvl53l1_ioctl_calibration_data_t. Caller should consider it as an
  * opaque structure.
  *
+ * use this after either VL53L1_CALIBRATION_REF_SPAD,
+ * VL53L1_CALIBRATION_CROSSTALK or VL53L1_CALIBRATION_OFFSET.
+ *
  * @return 0 on success else o, error check errno
  * @li -EFAULT fault in cpy to f/m user out range data not copied
  * @li -EBUSY when trying to set calibration data while ranging
+ * @li -EIO. Read last_error to get device error code
+ * @li -ENODEV. Device has been removed.
  */
 #define VL53L1_IOCTL_CALIBRATION_DATA\
 	_IOWR('p', 0x12, struct stmvl53l1_ioctl_calibration_data_t)
+
+/**
+ * Get / set zone calibration data
+ *
+ * this call allow client to either read zone calibration data after calibration
+ * has been performed to store them in the host filesystem or push zone
+ * calibration data before ranging at each start-up.
+ *
+ * use this after VL53L1_CALIBRATION_OFFSET_PER_ZONE calibration.
+ *
+ * @param [in/out] data struct ptr of type
+ * @ref stmvl53l1_ioctl_zone_calibration_data_t. Caller should consider it as an
+ * opaque structure.
+ *
+ * @return 0 on success else o, error check errno
+ * @li -EFAULT fault in cpy to f/m user out range data not copied
+ * @li -EBUSY when trying to set calibration data while ranging
+ * @li -EIO. Read last_error to get device error code
+ * @li -ENODEV. Device has been removed.
+ */
+#define VL53L1_IOCTL_ZONE_CALIBRATION_DATA\
+	_IOWR('p', 0x12, struct stmvl53l1_ioctl_zone_calibration_data_t)
 
 /**
  * perform calibration squence according to calibration_type
@@ -509,6 +651,8 @@ int smtvl53l1_stop(int fd){
  * @return 0 on success else o, error check errno
  * @li -EFAULT fault in cpy to f/m user out range data not copied
  * @li -EBUSY when trying to perform calibration data while ranging
+ * @li -EIO. Read last_error to get device error code
+ * @li -ENODEV. Device has been removed.
  */
 #define VL53L1_IOCTL_PERFORM_CALIBRATION\
 	_IOW('p', 0x13, struct stmvl53l1_ioctl_perform_calibration_t)
@@ -527,6 +671,7 @@ int smtvl53l1_stop(int fd){
  * @return 0 on success , see errno for error detail
  * @li -EFAULT failed to copy from/to configuration.
  * @li -EBUSY when trying to change configuration while ranging.
+ * @li -ENODEV. Device has been removed.
  */
 #define VL53L1_IOCTL_AUTONOMOUS_CONFIG\
 	_IOWR('p', 0x14, struct stmvl53l1_autonomous_config_t)

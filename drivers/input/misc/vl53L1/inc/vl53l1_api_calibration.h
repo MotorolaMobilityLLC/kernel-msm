@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -288,18 +289,8 @@ VL53L1_Error VL53L1_run_spad_rate_map(
 
 
 
-
-
-
-
-
 VL53L1_Error   VL53L1_run_xtalk_extraction(
 	VL53L1_DEV	                        Dev,
-	uint16_t                            dss_config__target_total_rate_mcps,
-	uint32_t                            phasecal_config_timeout_us,
-	uint32_t                            mm_config_timeout_us,
-	uint32_t                            range_config_timeout_us,
-	uint8_t                             num_of_samples,
 	VL53L1_Error                       *pcal_status);
 
 
@@ -478,25 +469,40 @@ VL53L1_Error VL53L1_get_and_avg_all_xtalk_samples(
 
 
 
-
-
-
-
-
-
 VL53L1_Error   VL53L1_run_offset_calibration(
 	VL53L1_DEV	                  Dev,
-	uint16_t                      dss_config__target_total_rate_mcps,
-	uint32_t                      phasecal_config_timeout_us,
-	uint32_t                      range_config_timeout_us,
-	uint8_t                       pre_num_of_samples,
-	uint8_t                       mm1_num_of_samples,
-	uint8_t                       mm2_num_of_samples,
 	int16_t                       cal_distance_mm,
 	uint16_t                      cal_reflectance_pc,
 	VL53L1_Error                 *pcal_status);
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error   VL53L1_run_phasecal_average(
+	VL53L1_DEV	            Dev,
+	uint8_t                 measurement_mode,
+	uint8_t                 phasecal_result__vcsel_start,
+	uint16_t                phasecal_num_of_samples,
+	VL53L1_range_results_t *prange_results,
+	uint16_t               *pphasecal_result__reference_phase,
+	uint16_t               *pzero_distance_phase);
 
 
 
@@ -550,11 +556,6 @@ VL53L1_Error VL53L1_run_zone_calibration(
 	VL53L1_DevicePresetModes      device_preset_mode,
 	VL53L1_DeviceZonePreset       zone_preset,
 	VL53L1_zone_config_t         *pzone_cfg,
-	uint16_t                      dss_config__target_total_rate_mcps,
-	uint32_t                      phasecal_config_timeout_us,
-	uint32_t                      mm_config_timeout_us,
-	uint32_t                      range_config_timeout_us,
-	uint16_t                      num_of_samples,
 	int16_t                       cal_distance_mm,
 	uint16_t                      cal_reflectance_pc,
 	VL53L1_Error                 *pcal_status);
