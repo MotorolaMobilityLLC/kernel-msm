@@ -623,7 +623,16 @@ static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
+#ifdef CONFIG_SND_SOC_CS35L36
+	snd_soc_dapm_ignore_suspend(dapm, "SDIN");
+	snd_soc_dapm_ignore_suspend(dapm, "SDOUT");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK");
+	snd_soc_dapm_ignore_suspend(dapm, "VP");
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Enable");
+	snd_soc_dapm_ignore_suspend(dapm, "VSENSE");
+	snd_soc_dapm_ignore_suspend(dapm, "Main AMP");
 	snd_soc_dapm_sync(dapm);
+#endif
 	return 0;
 }
 
