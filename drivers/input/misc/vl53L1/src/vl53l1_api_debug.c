@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -196,6 +197,58 @@ VL53L1_Error VL53L1_get_histogram_debug_data(
 
 	return status;
 }
+
+
+
+
+
+VL53L1_Error VL53L1_get_additional_data(
+	VL53L1_DEV                       Dev,
+	VL53L1_additional_data_t        *pdata)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	pdata->preset_mode             = pdev->preset_mode;
+	pdata->zone_preset             = pdev->zone_preset;
+	pdata->measurement_mode        = pdev->measurement_mode;
+	pdata->offset_calibration_mode = pdev->offset_calibration_mode;
+	pdata->offset_correction_mode  = pdev->offset_correction_mode;
+	pdata->dmax_mode               = pdev->dmax_mode;
+
+	pdata->phasecal_config_timeout_us  = pdev->phasecal_config_timeout_us;
+	pdata->mm_config_timeout_us        = pdev->mm_config_timeout_us;
+	pdata->range_config_timeout_us     = pdev->range_config_timeout_us;
+	pdata->inter_measurement_period_ms = pdev->inter_measurement_period_ms;
+	pdata->dss_config__target_total_rate_mcps =
+			pdev->dss_config__target_total_rate_mcps;
+
+
+
+
+	status =
+		VL53L1_get_histogram_debug_data(
+			Dev,
+			&(pdata->VL53L1_PRM_00009));
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+
 
 
 VL53L1_Error VL53L1_get_xtalk_debug_data(
@@ -988,22 +1041,22 @@ void VL53L1_print_histogram_bin_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00015",
-		pdata->VL53L1_PRM_00015);
+		"VL53L1_PRM_00019",
+		pdata->VL53L1_PRM_00019);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00016",
-		pdata->VL53L1_PRM_00016);
+		"VL53L1_PRM_00020",
+		pdata->VL53L1_PRM_00020);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00017",
-		pdata->VL53L1_PRM_00017);
+		"VL53L1_PRM_00021",
+		pdata->VL53L1_PRM_00021);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
@@ -1030,7 +1083,7 @@ void VL53L1_print_histogram_bin_data(
 			pdata->bin_rep[i]);
 	}
 
-	for (i = 0 ; i < pdata->VL53L1_PRM_00017 ; i++) {
+	for (i = 0 ; i < pdata->VL53L1_PRM_00021 ; i++) {
 		sprintf(ppre_text, "%sbin_data[%u]", pprefix, i);
 		trace_print(
 			VL53L1_TRACE_LEVEL_INFO,
@@ -1124,11 +1177,11 @@ void VL53L1_print_histogram_bin_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00007",
-		pdata->VL53L1_PRM_00007);
+		"VL53L1_PRM_00008",
+		pdata->VL53L1_PRM_00008);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00018,
+		(int32_t)pdata->VL53L1_PRM_00022,
 		12,
 		VL53L1_MAX_STRING_LENGTH,
 		fp_text);
@@ -1137,7 +1190,7 @@ void VL53L1_print_histogram_bin_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00018",
+		"VL53L1_PRM_00022",
 		fp_text);
 
 	trace_print(
@@ -1206,8 +1259,8 @@ void VL53L1_print_histogram_bin_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %d\n",
 		pprefix,
-		"VL53L1_PRM_00026",
-		pdata->VL53L1_PRM_00026);
+		"VL53L1_PRM_00028",
+		pdata->VL53L1_PRM_00028);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
@@ -1245,24 +1298,24 @@ void VL53L1_print_xtalk_histogram_shape_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00015",
-		pdata->VL53L1_PRM_00015);
+		"VL53L1_PRM_00019",
+		pdata->VL53L1_PRM_00019);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00016",
-		pdata->VL53L1_PRM_00016);
+		"VL53L1_PRM_00020",
+		pdata->VL53L1_PRM_00020);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00017",
-		pdata->VL53L1_PRM_00017);
+		"VL53L1_PRM_00021",
+		pdata->VL53L1_PRM_00021);
 
-	for (i = 0 ; i < pdata->VL53L1_PRM_00017 ; i++) {
+	for (i = 0 ; i < pdata->VL53L1_PRM_00021 ; i++) {
 
 		sprintf(ppre_text, "%sbin_data[%u]", pprefix, i);
 
@@ -1320,7 +1373,7 @@ void VL53L1_print_xtalk_histogram_shape_data(
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00018,
+		(int32_t)pdata->VL53L1_PRM_00022,
 		12,
 		VL53L1_MAX_STRING_LENGTH,
 		fp_text);
@@ -1329,7 +1382,7 @@ void VL53L1_print_xtalk_histogram_shape_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00018",
+		"VL53L1_PRM_00022",
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
@@ -1406,15 +1459,8 @@ void VL53L1_print_range_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00010",
-		pdata->VL53L1_PRM_00010);
-
-	trace_print(
-		VL53L1_TRACE_LEVEL_INFO,
-		"%s%s = %u\n",
-		pprefix,
-		"VL53L1_PRM_00015",
-		pdata->VL53L1_PRM_00015);
+		"VL53L1_PRM_00014",
+		pdata->VL53L1_PRM_00014);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
@@ -1427,22 +1473,29 @@ void VL53L1_print_range_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00020",
-		pdata->VL53L1_PRM_00020);
+		"VL53L1_PRM_00023",
+		pdata->VL53L1_PRM_00023);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00011",
-		pdata->VL53L1_PRM_00011);
+		"VL53L1_PRM_00024",
+		pdata->VL53L1_PRM_00024);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00021",
-		pdata->VL53L1_PRM_00021);
+		"VL53L1_PRM_00015",
+		pdata->VL53L1_PRM_00015);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"VL53L1_PRM_00025",
+		pdata->VL53L1_PRM_00025);
 
 	VL53L1_signed_fixed_point_sprintf(
 		(int32_t)pdata->width,
@@ -1459,8 +1512,8 @@ void VL53L1_print_range_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00027",
-		pdata->VL53L1_PRM_00027);
+		"VL53L1_PRM_00029",
+		pdata->VL53L1_PRM_00029);
 
 
 
@@ -1494,7 +1547,7 @@ void VL53L1_print_range_data(
 
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00003,
+		(int32_t)pdata->VL53L1_PRM_00004,
 		8, VL53L1_MAX_STRING_LENGTH, fp_text);
 
 	trace_print(
@@ -1529,22 +1582,22 @@ void VL53L1_print_range_data(
 			VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %d\n",
 		pprefix,
-			"VL53L1_PRM_00023",
-			pdata->VL53L1_PRM_00023);
+			"VL53L1_PRM_00017",
+			pdata->VL53L1_PRM_00017);
 
 	trace_print(
 			VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %d\n",
 		pprefix,
-			"VL53L1_PRM_00022",
-			pdata->VL53L1_PRM_00022);
+			"VL53L1_PRM_00018",
+			pdata->VL53L1_PRM_00018);
 
 	trace_print(
 			VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %d\n",
 		pprefix,
-			"VL53L1_PRM_00009",
-			pdata->VL53L1_PRM_00009);
+			"VL53L1_PRM_00012",
+			pdata->VL53L1_PRM_00012);
 
 
 
@@ -1594,64 +1647,64 @@ void VL53L1_print_range_data(
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00008,
+		(int32_t)pdata->VL53L1_PRM_00011,
 		11, VL53L1_MAX_STRING_LENGTH, fp_text);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00008",
+		"VL53L1_PRM_00011",
 		fp_text);
 
 
 
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00004,
+		(int32_t)pdata->VL53L1_PRM_00003,
 		 2,	VL53L1_MAX_STRING_LENGTH, fp_text);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00004",
+		"VL53L1_PRM_00003",
 		fp_text);
 
 
 
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00024,
+		(int32_t)pdata->VL53L1_PRM_00026,
 		11,	VL53L1_MAX_STRING_LENGTH, fp_text);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00024",
+		"VL53L1_PRM_00026",
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00014,
+		(int32_t)pdata->VL53L1_PRM_00013,
 		11,	VL53L1_MAX_STRING_LENGTH, fp_text);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00014",
+		"VL53L1_PRM_00013",
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00025,
+		(int32_t)pdata->VL53L1_PRM_00027,
 		11,	VL53L1_MAX_STRING_LENGTH, fp_text);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00025",
+		"VL53L1_PRM_00027",
 		fp_text);
 
 
@@ -1740,8 +1793,15 @@ void VL53L1_print_range_results(
 			VL53L1_TRACE_LEVEL_INFO,
 			"%s = %u\n",
 			ppre_text,
-			pdata->ambient_dmax_mm[i]);
+			pdata->VL53L1_PRM_00006[i]);
 	}
+
+	trace_print(
+			VL53L1_TRACE_LEVEL_INFO,
+			"%s%s = %u\n",
+			pprefix,
+			"device_status",
+			pdata->device_status);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
@@ -1770,6 +1830,11 @@ void VL53L1_print_range_results(
 			&pdata->VL53L1_PRM_00005[i],
 			ppre_text, trace_flags);
 	}
+
+	sprintf(ppre_text, "%sxmonitor.", pprefix);
+	VL53L1_print_range_data(
+		&pdata->xmonitor,
+		ppre_text, trace_flags);
 }
 
 
@@ -1920,7 +1985,7 @@ void VL53L1_print_offset_range_data(
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00004,
+		(int32_t)pdata->VL53L1_PRM_00003,
 		2,
 		VL53L1_MAX_STRING_LENGTH,
 		fp_text);
@@ -1929,7 +1994,7 @@ void VL53L1_print_offset_range_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00004",
+		"VL53L1_PRM_00003",
 		fp_text);
 
 	trace_print(
@@ -2034,6 +2099,113 @@ void VL53L1_print_cal_peak_rate_map(
 			i++;
 		}
 	}
+}
+
+void VL53L1_print_additional_data(
+	VL53L1_additional_data_t *pdata,
+	char                     *pprefix,
+	uint32_t                 trace_flags)
+{
+
+
+
+
+
+
+	char  fp_text[VL53L1_MAX_STRING_LENGTH];
+	char  pre_text[VL53L1_MAX_STRING_LENGTH];
+	char *ppre_text = &(pre_text[0]);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"preset_mode",
+		pdata->preset_mode);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"zone_preset",
+		pdata->zone_preset);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"measurement_mode",
+		pdata->measurement_mode);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"offset_calibration_mode",
+		pdata->offset_calibration_mode);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"offset_correction_mode",
+		pdata->offset_correction_mode);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"dmax_mode",
+		pdata->dmax_mode);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"phasecal_config_timeout_us",
+		pdata->phasecal_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"mm_config_timeout_us",
+		pdata->mm_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"range_config_timeout_us",
+		pdata->range_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"inter_measurement_period_ms",
+		pdata->inter_measurement_period_ms);
+
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->dss_config__target_total_rate_mcps,
+		7,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"dss_config__target_total_rate_mcps",
+		fp_text);
+
+	sprintf(ppre_text, "%s VL53L1_PRM_00009.", pprefix);
+		VL53L1_print_histogram_bin_data(
+			&pdata->VL53L1_PRM_00009,
+			ppre_text, trace_flags);
+
+
 }
 
 
@@ -2189,7 +2361,7 @@ void VL53L1_print_zone_calibration_data(
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00014,
+		(int32_t)pdata->VL53L1_PRM_00013,
 		11,
 		VL53L1_MAX_STRING_LENGTH,
 		fp_text);
@@ -2198,11 +2370,11 @@ void VL53L1_print_zone_calibration_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00014",
+		"VL53L1_PRM_00013",
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
-		(int32_t)pdata->VL53L1_PRM_00004,
+		(int32_t)pdata->VL53L1_PRM_00003,
 		2,
 		VL53L1_MAX_STRING_LENGTH,
 		fp_text);
@@ -2211,7 +2383,7 @@ void VL53L1_print_zone_calibration_data(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %s\n",
 		pprefix,
-		"VL53L1_PRM_00004",
+		"VL53L1_PRM_00003",
 		fp_text);
 
 	VL53L1_signed_fixed_point_sprintf(
@@ -2426,14 +2598,14 @@ void VL53L1_print_xtalk_range_results(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00010",
+		"VL53L1_PRM_00014",
 		pdata->central_histogram__window_start);
 
 	trace_print(
 		VL53L1_TRACE_LEVEL_INFO,
 		"%s%s = %u\n",
 		pprefix,
-		"VL53L1_PRM_00011",
+		"VL53L1_PRM_00015",
 		pdata->central_histogram__window_end);
 
 	pbin_data = &(pdata->histogram_avg_1[0]);
@@ -2711,7 +2883,7 @@ void VL53L1_print_xtalk_config(
 
 	VL53L1_signed_fixed_point_sprintf(
 		(int32_t)pdata->algo__crosstalk_detect_max_valid_rate_kcps,
-		9,
+		7,
 		VL53L1_MAX_STRING_LENGTH,
 		fp_text);
 
@@ -2734,6 +2906,226 @@ void VL53L1_print_xtalk_config(
 		pprefix,
 		"algo__crosstalk_detect_max_sigma_mm",
 		fp_text);
+
+}
+
+
+void VL53L1_print_xtalk_extract_config(
+	VL53L1_xtalkextract_config_t *pdata,
+	char                         *pprefix,
+	uint32_t                      trace_flags)
+{
+
+
+
+
+
+	char  fp_text[VL53L1_MAX_STRING_LENGTH];
+
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->dss_config__target_total_rate_mcps,
+		7,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"dss_config__target_total_rate_mcps",
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"mm_config_timeout_us",
+		pdata->mm_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"range_config_timeout_us",
+		pdata->range_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"num_of_samples",
+		pdata->num_of_samples);
+
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"algo__crosstalk_extract_max_valid_range_mm",
+		pdata->algo__crosstalk_extract_max_valid_range_mm);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"algo__crosstalk_extract_min_valid_range_mm",
+		pdata->algo__crosstalk_extract_min_valid_range_mm);
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->algo__crosstalk_extract_max_valid_rate_kcps,
+		9,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"algo__crosstalk_extract_max_valid_rate_kcps",
+		fp_text);
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->algo__crosstalk_extract_max_sigma_mm,
+		2,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"algo__crosstalk_extract_max_sigma_mm",
+		fp_text);
+
+}
+
+
+void VL53L1_print_zone_cal_config(
+	VL53L1_zonecal_config_t *pdata,
+	char                    *pprefix,
+	uint32_t                 trace_flags)
+{
+
+
+
+
+
+	char  fp_text[VL53L1_MAX_STRING_LENGTH];
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->dss_config__target_total_rate_mcps,
+		7,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"dss_config__target_total_rate_mcps",
+		fp_text);
+
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"mm_config_timeout_us",
+		pdata->mm_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"range_config_timeout_us",
+		pdata->range_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"phasecal_config_timeout_us",
+		pdata->phasecal_config_timeout_us);
+
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"phasecal_num_of_samples",
+		pdata->phasecal_num_of_samples);
+
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"zone_num_of_samples",
+		pdata->zone_num_of_samples);
+
+}
+
+void VL53L1_print_offset_cal_config(
+	VL53L1_offsetcal_config_t *pdata,
+	char                      *pprefix,
+	uint32_t                   trace_flags)
+{
+
+
+
+
+
+	char  fp_text[VL53L1_MAX_STRING_LENGTH];
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->dss_config__target_total_rate_mcps,
+		7,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"dss_config__target_total_rate_mcps",
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"phasecal_config_timeout_us",
+		pdata->phasecal_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"range_config_timeout_us",
+		pdata->range_config_timeout_us);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"pre_num_of_samples",
+		pdata->pre_num_of_samples);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"mm1_num_of_samples",
+		pdata->mm1_num_of_samples);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %u\n",
+		pprefix,
+		"mm2_num_of_samples",
+		pdata->mm2_num_of_samples);
+
 
 }
 
@@ -2857,9 +3249,9 @@ void VL53L1_print_calibration_data(
 		&(pdata->add_off_cal_data),
 		ppre_text, trace_flags);
 
-	sprintf(ppre_text, "%smm_roi.", pprefix);
-	VL53L1_print_user_zone(
-		&(pdata->mm_roi),
+	sprintf(ppre_text, "%soptical_centre.", pprefix);
+	VL53L1_print_optical_centre(
+		&(pdata->optical_centre),
 		ppre_text, trace_flags);
 
 	sprintf(ppre_text, "%sxtalkhisto.", pprefix);
@@ -2900,6 +3292,11 @@ void VL53L1_print_xtalk_debug_data(
 	sprintf(ppre_text, "%sxtalk_cfg.", pprefix);
 	VL53L1_print_xtalk_config(
 		&(pdata->xtalk_cfg),
+		ppre_text, trace_flags);
+
+	sprintf(ppre_text, "%sxtalk_extract_cfg.", pprefix);
+	VL53L1_print_xtalk_extract_config(
+		&(pdata->xtalk_extract_cfg),
 		ppre_text, trace_flags);
 
 	sprintf(ppre_text, "%shist_data.", pprefix);
@@ -2996,6 +3393,46 @@ void VL53L1_print_zone_config(
 			ppre_text,
 			trace_flags);
 	}
+}
+
+
+void VL53L1_print_optical_centre(
+	VL53L1_optical_centre_t  *pdata,
+	char                     *pprefix,
+	uint32_t                  trace_flags)
+{
+
+
+
+
+
+	char  fp_text[VL53L1_MAX_STRING_LENGTH];
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->x_centre,
+		4,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"x_centre",
+		fp_text);
+
+	VL53L1_signed_fixed_point_sprintf(
+		(int32_t)pdata->y_centre,
+		4,
+		VL53L1_MAX_STRING_LENGTH,
+		fp_text);
+
+	trace_print(
+		VL53L1_TRACE_LEVEL_INFO,
+		"%s%s = %s\n",
+		pprefix,
+		"y_centre",
+		fp_text);
 }
 
 
