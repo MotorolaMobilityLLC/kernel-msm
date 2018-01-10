@@ -1,27 +1,26 @@
-st,stmvl53l1 laser  driver
+StMicroelectronis vl53l1
 
-Required properties:
+Requires properties:
+- compatible: must be "st,stmvl53l1".
+- reg: I2C address of the chip.
+- xsdn-gpio: gpio number connected to vl53l1 reset pin.
 
- - compatible		: Should be "st,stmvl53l1".
+Optional properties:
+- intr-gpio: gpio number connected to vl53l1 irq pin.
+- vdd: a phandle for the regulator supplying power for vl53l1.
+- pwren-gpio: gpio number use to control vl53l1 power.
 
-Optional properites:
+Example:
+	&i2c1 {
+		/* ... */
 
+		stmvl53l1: stmvl53l1@29 {
+			compatible = "st,stmvl53l1";
+			reg = <0x29>;
+			xsdn-gpio = <19>;
+			pwren-gpio = <12>;
+			intr-gpio = <16>;
+		};
 
- Example:
-	stmvl53l1@29 {
-		status = "ok";
-		compatible = "st,stmvl53l1";
-		reg = <0x29>;
-		/* L22 is always on for now */
-		/* vdd-supply = <&pm8998_l22>; */
-		gpios = <&pm8998_gpios 15 0>, <&tlmm 79 0>;
-		qcom,gpio-reset = <0>;
-		qcom,gpio-req-tbl-num = <0 1>;
-		qcom,gpio-req-tbl-flags = <0 1>;
-		qcom,gpio-req-tbl-label ="TOF_XSHUTDOWN","TOF_INT";
-		pinctrl-names = "laser_default", "laser_suspend";
-		pinctrl-0 = <&laser_active >;
-		pinctrl-1 = <&laser_suspend >;
-		st,sensorthreshold = <60 65>;
-		st,xtalkval = <19>;
+		/* ... */
 	};
