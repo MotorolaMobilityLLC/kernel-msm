@@ -1,34 +1,5 @@
-
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed,
-* either 'STMicroelectronics
-* Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
-********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
-********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
-********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
-********************************************************************************
 *
 * License terms: BSD 3-clause "New" or "Revised" License.
 *
@@ -56,79 +27,16 @@
 * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
-********************************************************************************
-*
 */
 
+/*
+* THIS IS A GENERATED FILE
+*/
 
+#ifndef STMVL53L1_TUNINGS_H
+#define STMVL53L1_TUNINGS_H
 
+static const int tunings[][2] = {
+};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#ifndef _VL53L1_SILICON_CORE_H_
-#define _VL53L1_SILICON_CORE_H_
-
-#include "vl53l1_platform.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-VL53L1_Error VL53L1_is_firmware_ready_silicon(
-	VL53L1_DEV      Dev,
-	uint8_t        *pready);
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
-
+#endif /* STMVL53L1_TUNINGS_H */

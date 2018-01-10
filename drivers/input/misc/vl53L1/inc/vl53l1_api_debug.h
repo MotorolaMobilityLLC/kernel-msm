@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -154,10 +155,32 @@ VL53L1_Error VL53L1_get_nvm_debug_data(
 
 
 
-
 VL53L1_Error VL53L1_get_histogram_debug_data(
 	VL53L1_DEV                   Dev,
 	VL53L1_histogram_bin_data_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_additional_data(
+	VL53L1_DEV                Dev,
+	VL53L1_additional_data_t *pdata);
+
+
+
 
 
 
@@ -408,6 +431,21 @@ void VL53L1_print_additional_offset_cal_data(
 
 
 
+void VL53L1_print_additional_data(
+	VL53L1_additional_data_t *pdata,
+	char                     *pprefix,
+	uint32_t                 trace_flags);
+
+
+
+
+
+
+
+
+
+
+
 
 void VL53L1_print_gain_calibration_data(
 	VL53L1_gain_calibration_data_t *pdata,
@@ -522,6 +560,51 @@ void VL53L1_print_xtalk_config(
 
 
 
+void VL53L1_print_xtalk_extract_config(
+	VL53L1_xtalkextract_config_t *pdata,
+	char                         *pprefix,
+	uint32_t                      trace_flags);
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_print_zone_cal_config(
+	VL53L1_zonecal_config_t *pdata,
+	char                    *pprefix,
+	uint32_t                 trace_flags);
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_print_offset_cal_config(
+	VL53L1_offsetcal_config_t *pdata,
+	char                      *pprefix,
+	uint32_t                   trace_flags);
+
+
+
+
+
+
+
+
+
+
+
 
 void VL53L1_print_dmax_calibration_data(
 	VL53L1_dmax_calibration_data_t *pdata,
@@ -574,6 +657,22 @@ void VL53L1_print_offset_debug_data(
 	VL53L1_offset_debug_data_t *pdata,
 	char                       *pprefix,
 	uint32_t                    trace_flags);
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_print_optical_centre(
+	VL53L1_optical_centre_t   *pdata,
+	char                      *pprefix,
+	uint32_t                   trace_flags);
 
 
 

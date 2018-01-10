@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -127,12 +128,12 @@ extern "C" {
 #define VL53L1_LL_API_IMPLEMENTATION_VER_MINOR       1
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         16
+#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         43
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION  11634
+#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION   12193
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.16.11634"
+#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.43.12193"
 
 
 
@@ -145,7 +146,17 @@ extern "C" {
 
 
 
-#define VL53L1_LL_CALIBRATION_DATA_STRUCT_VERSION  0xECAB0101
+#define VL53L1_LL_CALIBRATION_DATA_STRUCT_VERSION       0xECAB0102
+
+
+
+
+
+
+#define VL53L1_LL_ZONE_CALIBRATION_DATA_STRUCT_VERSION  0xECAE0101
+
+
+
 
 
 
@@ -227,7 +238,7 @@ typedef struct {
 
 	uint8_t    device_test_mode;
 
-	uint8_t    VL53L1_PRM_00007;
+	uint8_t    VL53L1_PRM_00008;
 
 	uint32_t   timeout_us;
 
@@ -248,6 +259,119 @@ typedef struct {
 
 
 
+typedef struct {
+
+	uint16_t  dss_config__target_total_rate_mcps;
+
+
+	uint32_t  phasecal_config_timeout_us;
+
+
+	uint32_t  mm_config_timeout_us;
+
+
+	uint32_t  range_config_timeout_us;
+
+
+	uint8_t   num_of_samples;
+
+
+	int16_t   algo__crosstalk_extract_min_valid_range_mm;
+
+
+	int16_t   algo__crosstalk_extract_max_valid_range_mm;
+
+
+	uint16_t  algo__crosstalk_extract_max_valid_rate_kcps;
+
+
+
+	uint16_t  algo__crosstalk_extract_max_sigma_mm;
+
+
+
+
+
+} VL53L1_xtalkextract_config_t;
+
+
+
+
+
+
+typedef struct {
+
+	uint16_t  dss_config__target_total_rate_mcps;
+
+
+
+	uint32_t  phasecal_config_timeout_us;
+
+
+
+	uint32_t  range_config_timeout_us;
+
+
+
+	uint32_t  mm_config_timeout_us;
+
+
+
+
+	uint8_t   pre_num_of_samples;
+
+
+
+	uint8_t   mm1_num_of_samples;
+
+
+
+	uint8_t   mm2_num_of_samples;
+
+
+
+
+} VL53L1_offsetcal_config_t;
+
+
+
+
+
+
+typedef struct {
+
+	uint16_t   dss_config__target_total_rate_mcps;
+
+
+
+	uint32_t   phasecal_config_timeout_us;
+
+
+
+	uint32_t   mm_config_timeout_us;
+
+
+
+	uint32_t   range_config_timeout_us;
+
+
+
+	uint16_t   phasecal_num_of_samples;
+
+
+
+	uint16_t   zone_num_of_samples;
+
+
+
+
+} VL53L1_zonecal_config_t;
+
+
+
+
+
+
 
 typedef struct {
 
@@ -256,7 +380,7 @@ typedef struct {
 
 
 
-	uint8_t    VL53L1_PRM_00007;
+	uint8_t    VL53L1_PRM_00008;
 
 
 	uint8_t    vcsel_start;
@@ -284,7 +408,7 @@ typedef struct {
 typedef struct {
 
 
-	uint16_t  algo__crosstalk_compensation_plane_offset_kcps;
+	uint32_t  algo__crosstalk_compensation_plane_offset_kcps;
 
 
 	int16_t   algo__crosstalk_compensation_x_plane_gradient_kcps;
@@ -293,7 +417,7 @@ typedef struct {
 	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 
-	uint16_t  nvm_default__crosstalk_compensation_plane_offset_kcps;
+	uint32_t  nvm_default__crosstalk_compensation_plane_offset_kcps;
 
 
 	int16_t   nvm_default__crosstalk_compensation_x_plane_gradient_kcps;
@@ -343,7 +467,296 @@ typedef struct {
 
 
 
+
 } VL53L1_xtalk_config_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+	uint16_t  tp_tuning_parm_version;
+
+
+
+	uint16_t  tp_tuning_parm_key_table_version;
+
+
+
+
+	uint16_t  tp_tuning_parm_lld_version;
+
+
+
+
+	uint8_t   tp_init_phase_rtn_lite_long;
+
+
+
+
+	uint8_t   tp_init_phase_rtn_lite_med;
+
+
+
+
+	uint8_t   tp_init_phase_rtn_lite_short;
+
+
+
+
+	uint8_t   tp_init_phase_ref_lite_long;
+
+
+
+
+	uint8_t   tp_init_phase_ref_lite_med;
+
+
+
+
+	uint8_t   tp_init_phase_ref_lite_short;
+
+
+
+
+
+	uint8_t   tp_init_phase_rtn_hist_long;
+
+
+
+
+	uint8_t   tp_init_phase_rtn_hist_med;
+
+
+
+
+	uint8_t   tp_init_phase_rtn_hist_short;
+
+
+
+
+	uint8_t   tp_init_phase_ref_hist_long;
+
+
+
+
+	uint8_t   tp_init_phase_ref_hist_med;
+
+
+
+
+	uint8_t   tp_init_phase_ref_hist_short;
+
+
+
+
+
+	uint8_t   tp_consistency_lite_phase_tolerance;
+
+
+
+
+	uint8_t   tp_phasecal_target;
+
+
+
+
+	uint16_t  tp_cal_repeat_rate;
+
+
+
+
+	uint8_t   tp_lite_min_clip;
+
+
+
+
+
+	uint16_t  tp_lite_long_sigma_thresh_mm;
+
+
+
+
+	uint16_t  tp_lite_med_sigma_thresh_mm;
+
+
+
+
+	uint16_t  tp_lite_short_sigma_thresh_mm;
+
+
+
+
+
+	uint16_t  tp_lite_long_min_count_rate_rtn_mcps;
+
+
+
+
+	uint16_t  tp_lite_med_min_count_rate_rtn_mcps;
+
+
+
+
+	uint16_t  tp_lite_short_min_count_rate_rtn_mcps;
+
+
+
+
+
+	uint8_t   tp_lite_sigma_est_pulse_width_ns;
+
+
+
+	uint8_t   tp_lite_sigma_est_amb_width_ns;
+
+
+
+	uint8_t   tp_lite_sigma_ref_mm;
+
+
+
+	uint8_t   tp_lite_seed_cfg;
+
+
+
+	uint8_t   tp_timed_seed_cfg;
+
+
+
+
+	uint8_t   tp_lite_quantifier;
+
+
+
+	uint8_t   tp_lite_first_order_select;
+
+
+
+
+	uint16_t  tp_dss_target_lite_mcps;
+
+
+
+	uint16_t  tp_dss_target_histo_mcps;
+
+
+
+	uint16_t  tp_dss_target_histo_mz_mcps;
+
+
+
+	uint16_t  tp_dss_target_timed_mcps;
+
+
+
+	uint16_t  tp_dss_target_very_short_mcps;
+
+
+
+
+	uint32_t  tp_phasecal_timeout_lite_us;
+
+
+
+	uint32_t  tp_phasecal_timeout_hist_long_us;
+
+
+
+	uint32_t  tp_phasecal_timeout_hist_med_us;
+
+
+
+	uint32_t  tp_phasecal_timeout_hist_short_us;
+
+
+
+
+	uint32_t  tp_phasecal_timeout_mz_long_us;
+
+
+
+	uint32_t  tp_phasecal_timeout_mz_med_us;
+
+
+
+	uint32_t  tp_phasecal_timeout_mz_short_us;
+
+
+
+	uint32_t  tp_phasecal_timeout_timed_us;
+
+
+
+
+	uint32_t  tp_mm_timeout_lite_us;
+
+
+
+	uint32_t  tp_mm_timeout_histo_us;
+
+
+
+	uint32_t  tp_mm_timeout_mz_us;
+
+
+
+	uint32_t  tp_mm_timeout_timed_us;
+
+
+
+	uint32_t  tp_mm_timeout_lpa_us;
+
+
+
+
+	uint32_t  tp_range_timeout_lite_us;
+
+
+
+	uint32_t  tp_range_timeout_histo_us;
+
+
+
+	uint32_t  tp_range_timeout_mz_us;
+
+
+
+	uint32_t  tp_range_timeout_timed_us;
+
+
+
+	uint32_t  tp_range_timeout_lpa_us;
+
+
+
+
+} VL53L1_tuning_parm_storage_t;
+
+
+
+
+
+
+
+
+typedef struct {
+
+	uint8_t   x_centre;
+
+	uint8_t   y_centre;
+
+
+} VL53L1_optical_centre_t;
 
 
 
@@ -465,6 +878,296 @@ typedef struct {
 
 
 
+
+
+
+
+typedef struct {
+
+
+
+
+
+
+	uint8_t		vhv_loop_bound;
+
+
+
+	uint8_t		is_low_power_auto_mode;
+
+
+
+
+	uint8_t		low_power_auto_range_count;
+
+
+
+	uint8_t		saved_interrupt_config;
+
+
+
+	uint8_t		saved_vhv_init;
+
+
+
+	uint8_t		saved_vhv_timeout;
+
+
+
+	uint8_t		first_run_phasecal_result;
+
+
+
+	uint32_t	dss__total_rate_per_spad_mcps;
+
+
+
+	uint16_t	dss__required_spads;
+
+} VL53L1_low_power_auto_data_t;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+	uint8_t	smudge_corr_enabled;
+
+
+
+	uint8_t	smudge_corr_apply_enabled;
+
+
+
+	uint8_t	smudge_corr_single_apply;
+
+
+
+
+
+
+	uint16_t	smudge_margin;
+
+
+
+	uint32_t	noise_margin;
+
+
+
+
+	uint32_t	user_xtalk_offset_limit;
+
+
+
+
+	uint8_t	user_xtalk_offset_limit_hi;
+
+
+
+
+	uint32_t	sample_limit;
+
+
+
+
+	uint32_t	single_xtalk_delta;
+
+
+
+
+	uint32_t	averaged_xtalk_delta;
+
+
+
+
+	uint32_t	smudge_corr_clip_limit;
+
+
+
+
+	uint32_t	smudge_corr_ambient_threshold;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t	scaler_calc_method;
+
+
+
+
+
+
+	int16_t	x_gradient_scaler;
+
+
+
+
+
+
+	int16_t	y_gradient_scaler;
+
+
+
+
+
+
+	uint8_t	user_scaler_set;
+
+
+
+
+	uint32_t nodetect_ambient_threshold;
+
+
+
+
+	uint32_t nodetect_sample_limit;
+
+
+
+
+	uint32_t nodetect_xtalk_offset;
+
+
+
+
+	uint16_t nodetect_min_range_mm;
+
+
+} VL53L1_smudge_corrector_config_t;
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+	uint32_t	current_samples;
+
+
+
+	uint32_t	required_samples;
+
+
+
+	uint64_t	accumulator;
+
+
+
+	uint32_t	nodetect_counter;
+
+} VL53L1_smudge_corrector_internals_t;
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+
+
+
+
+
+	uint8_t	smudge_corr_valid;
+
+
+
+	uint8_t	smudge_corr_clipped;
+
+
+
+
+
+
+
+
+	uint8_t	single_xtalk_delta_flag;
+
+
+
+
+
+
+
+
+	uint8_t	averaged_xtalk_delta_flag;
+
+
+
+	uint8_t	sample_limit_exceeded_flag;
+
+
+
+
+
+
+	uint8_t gradient_zero_flag;
+
+
+
+	uint8_t new_xtalk_applied_flag;
+
+
+
+	uint32_t  algo__crosstalk_compensation_plane_offset_kcps;
+
+
+
+	int16_t   algo__crosstalk_compensation_x_plane_gradient_kcps;
+
+
+
+	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+} VL53L1_smudge_corrector_data_t;
+
+
+
+
+
+
+
+
+
+
+
 typedef struct {
 
 
@@ -476,29 +1179,29 @@ typedef struct {
 	uint32_t time_stamp;
 
 
-	uint8_t  VL53L1_PRM_00010;
-
-
-	uint8_t  VL53L1_PRM_00015;
+	uint8_t  VL53L1_PRM_00014;
 
 
 	uint8_t  VL53L1_PRM_00019;
 
 
-	uint8_t  VL53L1_PRM_00020;
+	uint8_t  VL53L1_PRM_00023;
 
 
-	uint8_t  VL53L1_PRM_00011;
+	uint8_t  VL53L1_PRM_00024;
 
 
-	uint8_t  VL53L1_PRM_00021;
+	uint8_t  VL53L1_PRM_00015;
+
+
+	uint8_t  VL53L1_PRM_00025;
 
 
 
 	uint16_t   width;
 
 
-	uint8_t    VL53L1_PRM_00027;
+	uint8_t    VL53L1_PRM_00029;
 
 
 
@@ -509,7 +1212,7 @@ typedef struct {
 	uint16_t   zero_distance_phase;
 
 
-	uint16_t   VL53L1_PRM_00003;
+	uint16_t   VL53L1_PRM_00004;
 
 
 
@@ -529,14 +1232,14 @@ typedef struct {
 
 
 
-	uint32_t   VL53L1_PRM_00023;
+	uint32_t   VL53L1_PRM_00017;
 
 
-	uint32_t   VL53L1_PRM_00022;
+	uint32_t   VL53L1_PRM_00018;
 
 
 
-	int32_t    VL53L1_PRM_00009;
+	int32_t    VL53L1_PRM_00012;
 
 
 
@@ -556,28 +1259,28 @@ typedef struct {
 	uint16_t    total_rate_per_spad_mcps;
 
 
-	uint32_t    VL53L1_PRM_00008;
+	uint32_t    VL53L1_PRM_00011;
 
 
 
 
 
 
-	uint16_t   VL53L1_PRM_00004;
+	uint16_t   VL53L1_PRM_00003;
 
 
 
 
 
 
-	uint16_t   VL53L1_PRM_00024;
+	uint16_t   VL53L1_PRM_00026;
 
 
 
-	uint16_t   VL53L1_PRM_00014;
+	uint16_t   VL53L1_PRM_00013;
 
 
-	uint16_t   VL53L1_PRM_00025;
+	uint16_t   VL53L1_PRM_00027;
 
 
 
@@ -634,12 +1337,16 @@ typedef struct {
 
 
 
-	int16_t                ambient_dmax_mm[VL53L1_MAX_AMBIENT_DMAX_VALUES];
+	int16_t                VL53L1_PRM_00006[VL53L1_MAX_AMBIENT_DMAX_VALUES];
 
 
 
 
 	int16_t                wrap_dmax_mm;
+
+
+
+	uint8_t                device_status;
 
 
 
@@ -651,6 +1358,12 @@ typedef struct {
 
 
 	VL53L1_range_data_t    VL53L1_PRM_00005[VL53L1_MAX_RANGE_RESULTS];
+
+
+	VL53L1_range_data_t    xmonitor;
+
+
+	VL53L1_smudge_corrector_data_t smudge_corrector_data;
 
 
 
@@ -691,6 +1404,15 @@ typedef struct {
 
 
 	uint32_t   sigma_mm_avg;
+
+
+	uint32_t   median_phase_sum;
+
+
+
+
+	uint32_t   median_phase_avg;
+
 
 
 
@@ -819,7 +1541,7 @@ typedef struct {
 	uint32_t   peak_rate_mcps;
 
 
-	uint32_t   VL53L1_PRM_00004;
+	uint32_t   VL53L1_PRM_00003;
 
 
 	int32_t    median_range_mm;
@@ -905,16 +1627,22 @@ typedef struct {
 
 
 
+
+
+
 typedef struct {
 
-	uint32_t   VL53L1_PRM_00023;
+	uint32_t   VL53L1_PRM_00017;
 
 
-	uint32_t   VL53L1_PRM_00022;
+	uint32_t   VL53L1_PRM_00018;
 
 
 
-	uint16_t   VL53L1_PRM_00014;
+	uint16_t   VL53L1_PRM_00013;
+
+
+	uint8_t    range_status;
 
 
 
@@ -943,7 +1671,6 @@ typedef struct {
 	uint8_t                stream_count;
 
 
-
 	uint8_t                max_objects;
 
 
@@ -955,7 +1682,14 @@ typedef struct {
 
 
 
+	VL53L1_object_data_t   xmonitor;
+
+
+
 } VL53L1_zone_objects_t;
+
+
+
 
 
 
@@ -1003,7 +1737,7 @@ typedef struct {
 	uint16_t result__dss_actual_effective_spads;
 
 
-	uint8_t  VL53L1_PRM_00007;
+	uint8_t  VL53L1_PRM_00008;
 
 
 	uint32_t total_periods_elapsed;
@@ -1059,10 +1793,10 @@ typedef struct {
 	uint32_t   peak_rate_mcps;
 
 
-	uint32_t   VL53L1_PRM_00014;
+	uint32_t   VL53L1_PRM_00013;
 
 
-	uint32_t   VL53L1_PRM_00004;
+	uint32_t   VL53L1_PRM_00003;
 
 
 
@@ -1083,7 +1817,13 @@ typedef struct {
 
 
 
+
+
+
 typedef struct {
+
+	uint32_t                         struct_version;
+
 
 	VL53L1_DevicePresetModes         preset_mode;
 
@@ -1118,6 +1858,8 @@ typedef struct {
 
 
 } VL53L1_zone_calibration_results_t;
+
+
 
 
 
@@ -1224,7 +1966,7 @@ typedef struct {
 
 typedef struct {
 
-	uint16_t  algo__crosstalk_compensation_plane_offset_kcps;
+	uint32_t  algo__crosstalk_compensation_plane_offset_kcps;
 
 
 	int16_t   algo__crosstalk_compensation_x_plane_gradient_kcps;
@@ -1358,6 +2100,10 @@ typedef struct {
 	uint32_t  inter_measurement_period_ms;
 
 
+	uint16_t  dss_config__target_total_rate_mcps;
+
+
+
 	uint32_t  fw_ready_poll_duration_ms;
 
 
@@ -1365,9 +2111,6 @@ typedef struct {
 
 
 	uint8_t   debug_mode;
-
-
-	uint8_t  fpga_system;
 
 
 
@@ -1392,7 +2135,12 @@ typedef struct {
 	VL53L1_dmax_calibration_data_t      cust_dmax_cal;
 	VL53L1_gain_calibration_data_t      gain_cal;
 	VL53L1_user_zone_t                  mm_roi;
+	VL53L1_optical_centre_t             optical_centre;
 	VL53L1_zone_config_t                zone_cfg;
+
+
+
+	VL53L1_tuning_parm_storage_t        tuning_parms;
 
 
 
@@ -1404,7 +2152,10 @@ typedef struct {
 	VL53L1_ssc_config_t                 ssc_cfg;
 	VL53L1_hist_post_process_config_t   histpostprocess;
 	VL53L1_hist_gen3_dmax_config_t      dmax_cfg;
+	VL53L1_xtalkextract_config_t        xtalk_extract_cfg;
 	VL53L1_xtalk_config_t               xtalk_cfg;
+	VL53L1_offsetcal_config_t           offsetcal_cfg;
+	VL53L1_zonecal_config_t             zonecal_cfg;
 
 
 
@@ -1437,6 +2188,21 @@ typedef struct {
 
 	VL53L1_core_results_t               core_results;
 	VL53L1_debug_results_t              dbg_results;
+
+	VL53L1_smudge_corrector_config_t	smudge_correct_config;
+
+
+	VL53L1_smudge_corrector_internals_t smudge_corrector_internals;
+
+
+
+
+
+
+
+	VL53L1_low_power_auto_data_t		low_power_auto_data;
+
+
 
 #ifdef PAL_EXTENDED
 
@@ -1493,7 +2259,7 @@ typedef struct {
 	VL53L1_dmax_calibration_data_t       fmt_dmax_cal;
 	VL53L1_dmax_calibration_data_t       cust_dmax_cal;
 	VL53L1_additional_offset_cal_data_t  add_off_cal_data;
-	VL53L1_user_zone_t                   mm_roi;
+	VL53L1_optical_centre_t              optical_centre;
 	VL53L1_xtalk_histogram_data_t        xtalkhisto;
 	VL53L1_gain_calibration_data_t       gain_cal;
 	VL53L1_cal_peak_rate_map_t           cal_peak_rate_map;
@@ -1512,6 +2278,7 @@ typedef struct {
 typedef struct {
 
 	VL53L1_customer_nvm_managed_t        customer;
+	VL53L1_xtalkextract_config_t         xtalk_extract_cfg;
 	VL53L1_xtalk_config_t                xtalk_cfg;
 	VL53L1_histogram_bin_data_t          hist_data;
 	VL53L1_xtalk_histogram_data_t        xtalk_shapes;
@@ -1547,6 +2314,159 @@ typedef struct {
 
 
 
+typedef struct {
+	uint16_t        vl53l1_tuningparm_version;
+	uint16_t        vl53l1_tuningparm_key_table_version;
+	uint16_t        vl53l1_tuningparm_lld_version;
+	uint8_t        vl53l1_tuningparm_hist_algo_select;
+	uint8_t        vl53l1_tuningparm_hist_target_order;
+	uint8_t        vl53l1_tuningparm_hist_filter_woi_0;
+	uint8_t        vl53l1_tuningparm_hist_filter_woi_1;
+	uint8_t        vl53l1_tuningparm_hist_amb_est_method;
+	uint8_t        vl53l1_tuningparm_hist_amb_thresh_sigma_0;
+	uint8_t        vl53l1_tuningparm_hist_amb_thresh_sigma_1;
+	int32_t        vl53l1_tuningparm_hist_min_amb_thresh_events;
+	uint16_t        vl53l1_tuningparm_hist_amb_events_scaler;
+	uint16_t        vl53l1_tuningparm_hist_noise_threshold;
+	int32_t        vl53l1_tuningparm_hist_signal_total_events_limit;
+	uint8_t        vl53l1_tuningparm_hist_sigma_est_ref_mm;
+	uint16_t        vl53l1_tuningparm_hist_sigma_thresh_mm;
+	uint16_t        vl53l1_tuningparm_hist_gain_factor;
+	uint8_t        vl53l1_tuningparm_consistency_hist_phase_tolerance;
+	uint16_t        vl53l1_tuningparm_consistency_hist_min_max_tolerance_mm;
+	uint8_t        vl53l1_tuningparm_consistency_hist_event_sigma;
+	uint16_t        vl53l1_tuningparm_consistency_hist_event_sigma_min_spad_limit;
+	uint8_t        vl53l1_tuningparm_initial_phase_rtn_histo_long_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_rtn_histo_med_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_rtn_histo_short_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_ref_histo_long_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_ref_histo_med_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_ref_histo_short_range;
+	int16_t        vl53l1_tuningparm_xtalk_detect_min_valid_range_mm;
+	int16_t        vl53l1_tuningparm_xtalk_detect_max_valid_range_mm;
+	uint16_t        vl53l1_tuningparm_xtalk_detect_max_sigma_mm;
+	uint16_t        vl53l1_tuningparm_xtalk_detect_min_max_tolerance;
+	uint16_t        vl53l1_tuningparm_xtalk_detect_max_valid_rate_kcps;
+	uint8_t        vl53l1_tuningparm_xtalk_detect_event_sigma;
+	int16_t        vl53l1_tuningparm_hist_xtalk_margin_kcps;
+	uint8_t        vl53l1_tuningparm_consistency_lite_phase_tolerance;
+	uint8_t        vl53l1_tuningparm_phasecal_target;
+	uint16_t        vl53l1_tuningparm_lite_cal_repeat_rate;
+	uint16_t        vl53l1_tuningparm_lite_ranging_gain_factor;
+	uint8_t        vl53l1_tuningparm_lite_min_clip_mm;
+	uint16_t        vl53l1_tuningparm_lite_long_sigma_thresh_mm;
+	uint16_t        vl53l1_tuningparm_lite_med_sigma_thresh_mm;
+	uint16_t        vl53l1_tuningparm_lite_short_sigma_thresh_mm;
+	uint16_t        vl53l1_tuningparm_lite_long_min_count_rate_rtn_mcps;
+	uint16_t        vl53l1_tuningparm_lite_med_min_count_rate_rtn_mcps;
+	uint16_t        vl53l1_tuningparm_lite_short_min_count_rate_rtn_mcps;
+	uint8_t        vl53l1_tuningparm_lite_sigma_est_pulse_width;
+	uint8_t        vl53l1_tuningparm_lite_sigma_est_amb_width_ns;
+	uint8_t        vl53l1_tuningparm_lite_sigma_ref_mm;
+	uint8_t        vl53l1_tuningparm_lite_rit_mult;
+	uint8_t        vl53l1_tuningparm_lite_seed_config;
+	uint8_t        vl53l1_tuningparm_lite_quantifier;
+	uint8_t        vl53l1_tuningparm_lite_first_order_select;
+	int16_t        vl53l1_tuningparm_lite_xtalk_margin_kcps;
+	uint8_t        vl53l1_tuningparm_initial_phase_rtn_lite_long_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_rtn_lite_med_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_rtn_lite_short_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_ref_lite_long_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_ref_lite_med_range;
+	uint8_t        vl53l1_tuningparm_initial_phase_ref_lite_short_range;
+	uint8_t        vl53l1_tuningparm_timed_seed_config;
+	uint8_t        vl53l1_tuningparm_dmax_cfg_signal_thresh_sigma;
+	uint16_t        vl53l1_tuningparm_dmax_cfg_reflectance_array_0;
+	uint16_t        vl53l1_tuningparm_dmax_cfg_reflectance_array_1;
+	uint16_t        vl53l1_tuningparm_dmax_cfg_reflectance_array_2;
+	uint16_t        vl53l1_tuningparm_dmax_cfg_reflectance_array_3;
+	uint16_t        vl53l1_tuningparm_dmax_cfg_reflectance_array_4;
+	uint8_t        vl53l1_tuningparm_vhv_loopbound;
+	uint8_t        vl53l1_tuningparm_refspadchar_device_test_mode;
+	uint8_t        vl53l1_tuningparm_refspadchar_vcsel_period;
+	uint32_t        vl53l1_tuningparm_refspadchar_phasecal_timeout_us;
+	uint16_t        vl53l1_tuningparm_refspadchar_target_count_rate_mcps;
+	uint16_t        vl53l1_tuningparm_refspadchar_min_countrate_limit_mcps;
+	uint16_t        vl53l1_tuningparm_refspadchar_max_countrate_limit_mcps;
+	uint8_t        vl53l1_tuningparm_xtalk_extract_num_of_samples;
+	int16_t        vl53l1_tuningparm_xtalk_extract_min_filter_thresh_mm;
+	int16_t        vl53l1_tuningparm_xtalk_extract_max_filter_thresh_mm;
+	uint16_t        vl53l1_tuningparm_xtalk_extract_dss_rate_mcps;
+	uint32_t        vl53l1_tuningparm_xtalk_extract_phasecal_timeout_us;
+	uint16_t        vl53l1_tuningparm_xtalk_extract_max_valid_rate_kcps;
+	uint16_t        vl53l1_tuningparm_xtalk_extract_sigma_threshold_mm;
+	uint32_t        vl53l1_tuningparm_xtalk_extract_dss_timeout_us;
+	uint32_t        vl53l1_tuningparm_xtalk_extract_bin_timeout_us;
+	uint16_t        vl53l1_tuningparm_offset_cal_dss_rate_mcps;
+	uint32_t        vl53l1_tuningparm_offset_cal_phasecal_timeout_us;
+	uint32_t        vl53l1_tuningparm_offset_cal_mm_timeout_us;
+	uint32_t        vl53l1_tuningparm_offset_cal_range_timeout_us;
+	uint8_t        vl53l1_tuningparm_offset_cal_pre_samples;
+	uint8_t        vl53l1_tuningparm_offset_cal_mm1_samples;
+	uint8_t        vl53l1_tuningparm_offset_cal_mm2_samples;
+	uint16_t        vl53l1_tuningparm_zone_cal_dss_rate_mcps;
+	uint32_t        vl53l1_tuningparm_zone_cal_phasecal_timeout_us;
+	uint32_t        vl53l1_tuningparm_zone_cal_dss_timeout_us;
+	uint16_t        vl53l1_tuningparm_zone_cal_phasecal_num_samples;
+	uint32_t        vl53l1_tuningparm_zone_cal_range_timeout_us;
+	uint16_t        vl53l1_tuningparm_zone_cal_zone_num_samples;
+	uint8_t        vl53l1_tuningparm_spadmap_vcsel_period;
+	uint8_t        vl53l1_tuningparm_spadmap_vcsel_start;
+	uint16_t        vl53l1_tuningparm_spadmap_rate_limit_mcps;
+	uint16_t        vl53l1_tuningparm_lite_dss_config_target_total_rate_mcps;
+	uint16_t        vl53l1_tuningparm_ranging_dss_config_target_total_rate_mcps;
+	uint16_t        vl53l1_tuningparm_mz_dss_config_target_total_rate_mcps;
+	uint16_t        vl53l1_tuningparm_timed_dss_config_target_total_rate_mcps;
+	uint32_t        vl53l1_tuningparm_lite_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_ranging_long_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_ranging_med_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_ranging_short_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_mz_long_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_mz_med_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_mz_short_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_timed_phasecal_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_lite_mm_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_ranging_mm_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_mz_mm_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_timed_mm_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_lite_range_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_ranging_range_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_mz_range_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_timed_range_config_timeout_us;
+	uint16_t        vl53l1_tuningparm_dynxtalk_smudge_margin;
+	uint32_t        vl53l1_tuningparm_dynxtalk_noise_margin;
+	uint32_t        vl53l1_tuningparm_dynxtalk_xtalk_offset_limit;
+	uint8_t        vl53l1_tuningparm_dynxtalk_xtalk_offset_limit_hi;
+	uint32_t        vl53l1_tuningparm_dynxtalk_sample_limit;
+	uint32_t        vl53l1_tuningparm_dynxtalk_single_xtalk_delta;
+	uint32_t        vl53l1_tuningparm_dynxtalk_averaged_xtalk_delta;
+	uint32_t        vl53l1_tuningparm_dynxtalk_clip_limit;
+	uint8_t        vl53l1_tuningparm_dynxtalk_scaler_calc_method;
+	int16_t        vl53l1_tuningparm_dynxtalk_xgradient_scaler;
+	int16_t        vl53l1_tuningparm_dynxtalk_ygradient_scaler;
+	uint8_t        vl53l1_tuningparm_dynxtalk_user_scaler_set;
+	uint8_t        vl53l1_tuningparm_dynxtalk_smudge_cor_single_apply;
+	uint32_t        vl53l1_tuningparm_dynxtalk_xtalk_amb_threshold;
+	uint32_t        vl53l1_tuningparm_dynxtalk_nodetect_amb_threshold_kcps;
+	uint32_t        vl53l1_tuningparm_dynxtalk_nodetect_sample_limit;
+	uint32_t        vl53l1_tuningparm_dynxtalk_nodetect_xtalk_offset_kcps;
+	uint16_t        vl53l1_tuningparm_dynxtalk_nodetect_min_range_mm;
+	uint8_t        vl53l1_tuningparm_lowpowerauto_vhv_loop_bound;
+	uint32_t        vl53l1_tuningparm_lowpowerauto_mm_config_timeout_us;
+	uint32_t        vl53l1_tuningparm_lowpowerauto_range_config_timeout_us;
+	uint16_t        vl53l1_tuningparm_very_short_dss_rate_mcps;
+} VL53L1_tuning_parameters_t;
+
+
+
+
+
+
+
+
+
+
+
 
 typedef struct {
 
@@ -1572,7 +2492,7 @@ typedef struct {
 	uint8_t    spad_type;
 
 
-	uint16_t   VL53L1_PRM_00016;
+	uint16_t   VL53L1_PRM_00020;
 
 
 	uint16_t   rate_data[VL53L1_NO_OF_SPAD_ENABLES];
@@ -1589,6 +2509,66 @@ typedef struct {
 
 
 } VL53L1_spad_rate_data_t;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+	VL53L1_DevicePresetModes        preset_mode;
+
+
+	VL53L1_DeviceZonePreset         zone_preset;
+
+
+	VL53L1_DeviceMeasurementModes   measurement_mode;
+
+
+	VL53L1_OffsetCalibrationMode    offset_calibration_mode;
+
+
+	VL53L1_OffsetCorrectionMode     offset_correction_mode;
+
+
+	VL53L1_DeviceDmaxMode           dmax_mode;
+
+
+
+	uint32_t  phasecal_config_timeout_us;
+
+
+	uint32_t  mm_config_timeout_us;
+
+
+	uint32_t  range_config_timeout_us;
+
+
+	uint32_t  inter_measurement_period_ms;
+
+
+	uint16_t  dss_config__target_total_rate_mcps;
+
+
+
+	VL53L1_histogram_bin_data_t    VL53L1_PRM_00009;
+
+
+
+} VL53L1_additional_data_t;
+
+
+
+
 
 
 
