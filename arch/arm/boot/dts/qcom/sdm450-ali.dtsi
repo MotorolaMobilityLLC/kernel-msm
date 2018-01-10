@@ -623,6 +623,10 @@
 			<111>,
 			<126>;
 	};
+
+	qcom,vidc@1d00000 {
+		qcom,never-unload-fw;
+	};
 };
 
 &pm8953_l2 {
