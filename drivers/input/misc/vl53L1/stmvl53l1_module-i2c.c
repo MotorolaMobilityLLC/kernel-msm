@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -90,12 +90,6 @@
  */
 static DEFINE_MUTEX(dev_addr_change_mutex);
 
-struct vl53l1_pinctrl_info {
-	struct pinctrl *pinctrl;
-	struct pinctrl_state *gpio_state_active;
-	struct pinctrl_state *gpio_state_suspend;
-} g_pinctrl_info;
-
 /**
  * i2c client assigned to our driver
  *
@@ -163,6 +157,12 @@ MODULE_PARM_DESC(intr_gpio_nb, "select gpio numer to use for vl53l1 interrupt");
 #	define modi2c_dbg(...)	(void)0
 #endif
 
+struct vl53l1_pinctrl_info {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *gpio_state_active;
+	struct pinctrl_state *gpio_state_suspend;
+} g_pinctrl_info;
+
 static int insert_device(void)
 {
 	int ret = 0;
@@ -172,13 +172,19 @@ static int insert_device(void)
 		.addr = STMVL53L1_SLAVE_ADDR,
 	};
 
+	memset(&info, 0, sizeof(info));
+	strcpy(info.type, "stmvl53l1");
+	info.addr = STMVL53L1_SLAVE_ADDR;
 	adapter = i2c_get_adapter(adapter_nb);
-	if (!adapter)
+	if (!adapter) {
 		ret = -EINVAL;
+		goto done;
+	}
 	stm_test_i2c_client = i2c_new_device(adapter, &info);
 	if (!stm_test_i2c_client)
 		ret = -EINVAL;
 
+done:
 	return ret;
 }
 
@@ -379,7 +385,7 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 		i2c_data->intr_gpio = intr_gpio_nb;
 	} else if (dev->of_node) {
 		/* power : either vdd or pwren_gpio. try reulator first */
-		i2c_data->vdd = regulator_get_optional(dev, "vdd-vl53l1");
+		i2c_data->vdd = regulator_get(dev, "vdd-vl53l1");
 		if (IS_ERR(i2c_data->vdd) || i2c_data->vdd == NULL) {
 			i2c_data->vdd = NULL;
 			/* try gpio */
@@ -409,8 +415,9 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 		if (rc) {
 			vl53l1_wanrmsg("Unable to find xsdn-gpio %d %d",
 				rc, i2c_data->xsdn_gpio);
-        	if (of_gpio_count(dev->of_node) >= 2)
-            	i2c_data->xsdn_gpio = of_get_gpio(dev->of_node, 0);
+			if (of_gpio_count(dev->of_node) >= 2)
+				i2c_data->xsdn_gpio = of_get_gpio(dev->of_node,
+					0);
 			else
 				i2c_data->xsdn_gpio = -1;
 		}
@@ -419,9 +426,9 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 		if (rc) {
 			vl53l1_wanrmsg("Unable to find intr-gpio %d %d",
 				rc, i2c_data->intr_gpio);
-
 			if (of_gpio_count(dev->of_node) >= 2)
-				i2c_data->intr_gpio = of_get_gpio(dev->of_node, 1);
+				i2c_data->intr_gpio = of_get_gpio(dev->of_node,
+					1);
 			else
 				i2c_data->intr_gpio = -1;
 		}
@@ -525,6 +532,7 @@ static int stmvl53l1_probe(struct i2c_client *client,
 	vl53l1_dbgmsg("End\n");
 
 	kref_init(&i2c_data->ref);
+
 	return rc;
 
 release_gpios:
@@ -673,6 +681,7 @@ static int handle_i2c_address_device_change_lock(struct i2c_data *data)
 
 	return rc;
 }
+
 /* reset release will also handle device address change. It will avoid state
  * where multiple stm53l1 are bring out of reset at the same time with the
  * same boot address.
@@ -716,7 +725,6 @@ int stmvl53l1_reset_release_i2c(void *i2c_object)
 	vl53l1_dbgmsg("Enter\n");
 
 	rc = release_reset(data);
-
 	pinctrl_select_state(g_pinctrl_info.pinctrl,
 		g_pinctrl_info.gpio_state_active);
 	if (rc)
@@ -774,6 +782,9 @@ int stmvl53l1_init_i2c(void)
 
 	if (!ret && force_device)
 		ret = insert_device();
+
+	if (ret)
+		i2c_del_driver(&stmvl53l1_driver);
 
 	vl53l1_dbgmsg("End with rc:%d\n", ret);
 
@@ -882,6 +893,7 @@ void stmvl53l1_put(void *object)
 	kref_put(&data->ref, memory_release);
 	vl53l1_dbgmsg("End\n");
 }
+
 void __exit stmvl53l1_exit_i2c(void *i2c_object)
 {
 	vl53l1_dbgmsg("Enter\n");
