@@ -56,7 +56,7 @@
 		"openla",	/* 39 */
 		"opencl",	/* 40 */
 		"openmx",	/* 41 */
-		"undefined",	/* 42 */
+		"altmx",	/* 42 */
 		"undefined",	/* 43 */
 		"undefined",	/* 44 */
 		"undefined",	/* 45 */
