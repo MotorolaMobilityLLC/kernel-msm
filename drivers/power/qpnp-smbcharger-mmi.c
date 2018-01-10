@@ -9434,6 +9434,28 @@ static int create_debugfs_entries(struct smbchg_chip *chip)
 }
 
 #define CHG_SHOW_MAX_SIZE 50
+
+static ssize_t factory_charge_upper_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = the_chip->upper_limit_capacity;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+
+}
+
+static DEVICE_ATTR(factory_charge_upper, 0444,
+		factory_charge_upper_show,
+		NULL);
+
 static ssize_t force_demo_mode_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
@@ -12088,6 +12110,13 @@ static int smbchg_probe(struct spmi_device *spmi)
 				&dev_attr_factory_image_mode);
 	if (rc) {
 		SMB_ERR(chip, "couldn't create factory_image_mode\n");
+		goto unregister_dc_psy;
+	}
+
+	rc = device_create_file(chip->dev,
+				&dev_attr_factory_charge_upper);
+	if (rc) {
+		SMB_ERR(chip, "couldn't create factory_charge_upper\n");
 		goto unregister_dc_psy;
 	}
 
