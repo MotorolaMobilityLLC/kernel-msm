@@ -207,12 +207,6 @@ static int cs35l36_main_amp_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		if (!cs35l36->pdata.extern_boost)
-			regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL2,
-						CS35L36_BST_EN_MASK,
-						CS35L36_BST_EN <<
-						CS35L36_BST_EN_SHIFT);
-
 		regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL1,
 					CS35L36_GLOBAL_EN_MASK,
 					1 << CS35L36_GLOBAL_EN_SHIFT);
@@ -267,12 +261,6 @@ static int cs35l36_main_amp_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(cs35l36->regmap, CS35L36_AMP_OUT_MUTE,
 					CS35L36_AMP_MUTE_MASK,
 					1 << CS35L36_AMP_MUTE_SHIFT);
-
-		if (!cs35l36->pdata.extern_boost)
-			regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL2,
-						CS35L36_BST_EN_MASK,
-						CS35L36_BST_DIS_VP <<
-						CS35L36_BST_EN_SHIFT);
 
 		regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL1,
 					CS35L36_GLOBAL_EN_MASK,
@@ -1569,7 +1557,7 @@ static int cs35l36_i2c_probe(struct i2c_client *i2c_client,
 	if (cs35l36->reset_gpio)
 		gpiod_set_value_cansleep(cs35l36->reset_gpio, 1);
 
-	msleep(300);
+	usleep_range(2000, 2100);
 
 	/* initialize codec */
 	ret = regmap_read(cs35l36->regmap, CS35L36_SW_RESET, &reg_id);
