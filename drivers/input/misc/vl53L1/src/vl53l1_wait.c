@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -101,7 +102,6 @@
 #include "vl53l1_ll_device.h"
 #include "vl53l1_platform.h"
 #include "vl53l1_core.h"
-#include "vl53l1_fpga_core.h"
 #include "vl53l1_silicon_core.h"
 #include "vl53l1_wait.h"
 #include "vl53l1_register_settings.h"
@@ -395,21 +395,14 @@ VL53L1_Error VL53L1_is_firmware_ready(
 
 
 
-
-
 	VL53L1_Error status = VL53L1_ERROR_NONE;
 	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
 
 	LOG_FUNCTION_START("");
 
-	if (pdev->fpga_system > 0)
-		status = VL53L1_is_firmware_ready_fpga(
-						Dev,
-						pready);
-	else
-		status = VL53L1_is_firmware_ready_silicon(
-						Dev,
-						pready);
+	status = VL53L1_is_firmware_ready_silicon(
+				Dev,
+				pready);
 
 	pdev->fw_ready = *pready;
 

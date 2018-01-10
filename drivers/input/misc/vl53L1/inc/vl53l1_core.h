@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -221,6 +222,17 @@ void V53L1_init_zone_results_structure(
 
 
 
+void V53L1_init_zone_dss_configs(
+	VL53L1_DEV              Dev);
+
+
+
+
+
+
+
+
+
 
 
 
@@ -354,7 +366,7 @@ void VL53L1_init_histogram_multizone_config_structure(
 
 void VL53L1_init_xtalk_bin_data_struct(
 	uint32_t                        bin_value,
-	uint16_t                        VL53L1_PRM_00017,
+	uint16_t                        VL53L1_PRM_00021,
 	VL53L1_xtalk_histogram_shape_t *pdata);
 
 
@@ -687,7 +699,7 @@ VL53L1_Error VL53L1_force_shadow_stream_count_to_zero(
 
 uint32_t VL53L1_calc_macro_period_us(
 	uint16_t fast_osc_frequency,
-	uint8_t  VL53L1_PRM_00007);
+	uint8_t  VL53L1_PRM_00008);
 
 
 
@@ -707,7 +719,7 @@ uint32_t VL53L1_calc_macro_period_us(
 
 
 uint16_t VL53L1_calc_range_ignore_threshold(
-	uint16_t central_rate,
+	uint32_t central_rate,
 	int16_t  x_gradient,
 	int16_t  y_gradient,
 	uint8_t  rate_mult);
@@ -840,7 +852,7 @@ VL53L1_Error  VL53L1_calc_timeout_register_values(
 
 
 uint8_t VL53L1_encode_vcsel_period(
-	uint8_t VL53L1_PRM_00028);
+	uint8_t VL53L1_PRM_00030);
 
 
 
@@ -931,10 +943,10 @@ void  VL53L1_hist_get_bin_sequence_config(
 
 
 
+
 VL53L1_Error  VL53L1_hist_phase_consistency_check(
 	VL53L1_DEV                   Dev,
 	VL53L1_zone_hist_info_t     *phist_prev,
-	VL53L1_histogram_bin_data_t *phist_curr,
 	VL53L1_zone_objects_t       *prange_prev,
 	VL53L1_range_results_t      *prange_curr);
 
@@ -965,17 +977,87 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 
 
 
+
 VL53L1_Error  VL53L1_hist_events_consistency_check(
-	VL53L1_DEV                   Dev,
-	uint8_t                      VL53L1_PRM_00001,
-	uint8_t                      p,
+	uint8_t                      event_sigma,
+	uint16_t                     min_effective_spad_count,
 	VL53L1_zone_hist_info_t     *phist_prev,
-	VL53L1_histogram_bin_data_t *phist_curr,
-	VL53L1_zone_objects_t       *prange_prev,
-	VL53L1_range_results_t      *prange_curr,
+	VL53L1_object_data_t        *prange_prev,
+	VL53L1_range_data_t         *prange_curr,
 	int32_t                     *pevents_tolerance,
 	int32_t                     *pevents_delta,
 	VL53L1_DeviceError          *prange_status);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error  VL53L1_hist_merged_pulse_check(
+	int16_t                      min_max_tolerance_mm,
+	VL53L1_range_data_t         *pdata,
+	VL53L1_DeviceError          *prange_status);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error  VL53L1_hist_xmonitor_consistency_check(
+	VL53L1_DEV                   Dev,
+	VL53L1_zone_hist_info_t     *phist_prev,
+	VL53L1_zone_objects_t       *prange_prev,
+	VL53L1_range_data_t         *prange_curr);
+
+
+
+
 
 
 
@@ -1141,6 +1223,27 @@ void VL53L1_decode_zone_limits(
 uint8_t VL53L1_is_aperture_location(
 	uint8_t   row,
 	uint8_t   col);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_calc_max_effective_spads(
+	uint8_t     encoded_zone_centre,
+	uint8_t     encoded_zone_size,
+	uint8_t    *pgood_spads,
+	uint16_t    aperture_attenuation,
+	uint16_t   *pmax_effective_spads);
 
 
 
@@ -1499,10 +1602,206 @@ VL53L1_Error VL53L1_get_spad_rate_data(
 
 
 
-uint16_t VL53L1_calc_crosstalk_plane_offset_with_margin(
-		uint16_t     plane_offset_kcps,
+uint32_t VL53L1_calc_crosstalk_plane_offset_with_margin(
+		uint32_t     plane_offset_kcps,
 		int16_t      margin_offset_kcps);
 
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_low_power_auto_data_init(
+	VL53L1_DEV                     Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_low_power_auto_data_stop_range(
+	VL53L1_DEV                     Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_calc_required_samples(
+	VL53L1_DEV                     Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_calc_new_xtalk(
+	VL53L1_DEV                     		Dev,
+	uint32_t				xtalk_offset_out,
+	VL53L1_smudge_corrector_config_t 	*pconfig,
+	VL53L1_smudge_corrector_data_t 		*pout,
+	uint8_t					add_smudge,
+	uint8_t					soft_update
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_corrector(
+	VL53L1_DEV                     Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_data_init(
+	VL53L1_DEV                     Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_dynamic_xtalk_correction_output_init(
+	VL53L1_LLDriverResults_t *pres
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_xtalk_cal_data_init(
+	VL53L1_DEV                          Dev
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_config_low_power_auto_mode(
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_low_power_auto_data_t *plpadata
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_low_power_auto_setup_manual_calibration(
+	VL53L1_DEV        Dev);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_low_power_auto_update_DSS(
+	VL53L1_DEV        Dev);
 
 #ifdef __cplusplus
 }

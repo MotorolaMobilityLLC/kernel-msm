@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* This file is part of VL53L1 Core and is dual licensed,
+* either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -868,6 +869,16 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 	if (status == VL53L1_ERROR_NONE)
 		status =
+			VL53L1_nvm_decode_optical_centre(
+				buf_size,
+				pbuffer + VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_INDEX,
+				&(pdata->fmt_optical_centre));
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
 			VL53L1_nvm_decode_cal_peak_rate_map(
 				buf_size,
 				pbuffer + VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX,
@@ -919,6 +930,35 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 	return status;
 
+}
+
+
+VL53L1_Error VL53L1_nvm_decode_optical_centre(
+	uint16_t                    buf_size,
+	uint8_t                    *pbuffer,
+	VL53L1_optical_centre_t    *pdata)
+{
+
+	VL53L1_Error status   = VL53L1_ERROR_NONE;
+
+	uint16_t  tmp = 0;
+
+	if (VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE > buf_size)
+		return VL53L1_ERROR_BUFFER_TOO_SMALL;
+
+
+
+
+
+	tmp  = 0x0100;
+	tmp -= (uint16_t)*(pbuffer + 2);
+	if (tmp > 0x0FF)
+		tmp = 0;
+
+	pdata->x_centre = (uint8_t)tmp;
+	pdata->y_centre = *(pbuffer + 3);
+
+	return status;
 }
 
 
@@ -1295,23 +1335,23 @@ VL53L1_Error VL53L1_nvm_decode_ews_info(
 			0x000000FF,
 			0,
 			0);
-	pdata->nvm__ews__lot[6] =
+	pdata->nvm__ews__lot[0] =
 		(char)VL53L1_i2c_decode_with_mask(
 			1,
 			pbuffer + VL53L1_NVM__EWS__LOT__BYTE_0,
 			0x000000FC,
 			2,
 			32);
-	pdata->nvm__ews__lot[5] =
+	pdata->nvm__ews__lot[1] =
 		(char)VL53L1_i2c_decode_with_mask(
-			1,
+			2,
 			pbuffer + VL53L1_NVM__EWS__LOT__BYTE_1 - 1,
 			0x000003F0,
 			4,
 			32);
-	pdata->nvm__ews__lot[4] =
+	pdata->nvm__ews__lot[2] =
 		(char)VL53L1_i2c_decode_with_mask(
-			1,
+			2,
 			pbuffer + VL53L1_NVM__EWS__LOT__BYTE_2 - 1,
 			0x00000FC0,
 			6,
@@ -1323,23 +1363,23 @@ VL53L1_Error VL53L1_nvm_decode_ews_info(
 			0x0000003F,
 			0,
 			32);
-	pdata->nvm__ews__lot[2] =
+	pdata->nvm__ews__lot[4] =
 		(char)VL53L1_i2c_decode_with_mask(
 			1,
 			pbuffer + VL53L1_NVM__EWS__LOT__BYTE_3,
 			0x000000FC,
 			2,
 			32);
-	pdata->nvm__ews__lot[1] =
+	pdata->nvm__ews__lot[5] =
 		(char)VL53L1_i2c_decode_with_mask(
-			1,
+			2,
 			pbuffer + VL53L1_NVM__EWS__LOT__BYTE_4 - 1,
 			0x000003F0,
 			4,
 			32);
-	pdata->nvm__ews__lot[0] =
+	pdata->nvm__ews__lot[6] =
 		(char)VL53L1_i2c_decode_with_mask(
-			1,
+			2,
 			pbuffer + VL53L1_NVM__EWS__LOT__BYTE_5 - 1,
 			0x00000FC0,
 			6,
@@ -1492,6 +1532,50 @@ VL53L1_Error VL53L1_read_nvm(
 
 	return status;
 
+}
+
+
+VL53L1_Error VL53L1_read_nvm_optical_centre(
+	VL53L1_DEV                        Dev,
+	VL53L1_optical_centre_t          *pcentre)
+{
+
+
+
+
+
+
+	VL53L1_Error status = VL53L1_ERROR_NONE;
+
+
+
+	uint8_t nvm_data[2*VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE];
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status =
+		VL53L1_read_nvm_raw_data(
+			Dev,
+			(uint8_t)(VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_INDEX >> 2),
+			(uint8_t)(VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE >> 2),
+			nvm_data);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_nvm_decode_optical_centre(
+				VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE,
+				nvm_data,
+				pcentre);
+
+	LOG_FUNCTION_END(status);
+
+	return status;
 }
 
 
