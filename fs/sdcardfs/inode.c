@@ -834,6 +834,96 @@ out:
 	return err;
 }
 
+#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
+void sdcardfs_update_relatime_flag(struct file *lower_file,
+	struct inode *lower_inode, uid_t writer_uid)
+{
+	char xattr_val[64];
+	const char *dir_name[2];
+	char *xexcept = NULL, *xpath;
+	int xlen, i, depth = 0;
+	struct dentry *dentry, *parent, *child = NULL;
+	const char *xattr_name = "user.relatime";
+	bool p_atime_update = false;
+	struct timespec now;
+	appid_t app_id = uid_is_app(writer_uid) ?
+		writer_uid % AID_USER_OFFSET : 0;
+
+	/*do nothing if enabling full standard atime */
+	if (!(lower_inode->i_flags & S_NOATIME))
+		return;
+
+	dentry = lower_file->f_path.dentry;
+	if (IS_ERR_OR_NULL(dentry) || S_ISDIR(d_inode(dentry)->i_mode))
+		return;
+
+	while (app_id) {
+		parent = dget_parent(dentry);
+		xlen = vfs_getxattr(parent, xattr_name, (void *)xattr_val,
+			sizeof(xattr_val));
+		if (xlen > 0 && xattr_val[0] != '0') {
+			dput(parent);
+			xattr_val[xlen] = 0;
+			for (i = 0; i < xlen; i++) {
+				if (xattr_val[i] != ':')
+					continue;
+				xattr_val[i] = 0;
+				xexcept = &xattr_val[i + 1];
+				break;
+			}
+			xpath = i ? &xattr_val[0] : NULL;
+			if (!xexcept || !xpath) {
+				depth = -1;
+				break;
+			}
+
+			if (app_id == get_appid(xexcept))
+				break;
+
+			dir_name[0] = dentry->d_name.name;
+			if (child)
+				dir_name[1] = child->d_name.name;
+			depth = wildcard_path_match(xpath, dir_name,
+				child ? 2 : 1);
+			if (depth > 0)
+				p_atime_update = true;
+			break;
+		} else if (IS_ROOT(parent)) {
+			dput(parent);
+			break;
+		}
+		child = dentry;
+		dentry = parent;
+		dput(parent);
+	}
+
+	if (depth > 2 || depth < 0)
+		pr_warn("sdcardfs: %lu %s: invalid format\n",
+			d_inode(parent)->i_ino, xattr_name);
+
+	if (!p_atime_update)
+		return;
+
+	spin_lock(&lower_inode->i_lock);
+	now = current_fs_time(lower_inode->i_sb);
+	/* update atime if seeing younger mtime(ctime) or atime gap > 1 day */
+	if ((timespec_compare(&lower_inode->i_mtime,
+		&lower_inode->i_atime) >= 0) ||
+		(timespec_compare(&lower_inode->i_ctime,
+		&lower_inode->i_atime) >= 0) ||
+		((long)(now.tv_sec - lower_inode->i_atime.tv_sec)
+		>= 24*60*60)) {
+		pr_debug("sdcardfs: %lu update partial atime\n",
+			lower_inode->i_ino);
+		lower_inode->i_atime = current_fs_time(lower_inode->i_sb);
+		spin_unlock(&lower_inode->i_lock);
+		mark_inode_dirty_sync(lower_inode);
+		return;
+	}
+	spin_unlock(&lower_inode->i_lock);
+}
+#endif
+
 const struct inode_operations sdcardfs_symlink_iops = {
 	.permission2	= sdcardfs_permission,
 	.setattr2	= sdcardfs_setattr,
