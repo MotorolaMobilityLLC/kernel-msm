@@ -223,6 +223,7 @@
 		vdd_ana-supply = <&pm660l_l3>;
 		goodix,rst-gpio = <&tlmm 66 0x00>;
 		goodix,irq-gpio = <&tlmm 67 0x00>;
+		goodix,name = "gt9xx";
 		goodix,ics-slot-report;
 		goodix,driver-send-cfg;
 		goodix,create-wr-node;
