@@ -28,7 +28,7 @@
 
 #define QCT
 
-#define HIMAX_I2C_RETRY_TIMES 10
+#define HIMAX_I2C_RETRY_TIMES 2
 
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_DEBUG)
 #define D(x...) printk("[HXTP] " x)
