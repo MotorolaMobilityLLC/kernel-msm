@@ -40,6 +40,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 
+#include <linux/power_supply.h>
 #if defined(CONFIG_HQ_DEV_INFO)
 #include <linux/dev_info.h>
 #endif
@@ -63,6 +64,8 @@ uint8_t esd_check = false;
 uint8_t esd_retry = 0;
 uint8_t esd_retry_max = 5;
 #endif
+bool usb_state = false;
+uint8_t is_resumed = 1;
 
 #if NVT_TOUCH_EXT_PROC
 extern int32_t nvt_extra_proc_init(void);
@@ -80,6 +83,7 @@ extern int32_t nvt_mp_proc_init(void);
 struct nvt_ts_data *ts;
 
 static struct workqueue_struct *nvt_wq;
+static struct workqueue_struct *usb_wq;
 
 #if BOOT_UPDATE_FIRMWARE
 static struct workqueue_struct *nvt_fwu_wq;
@@ -88,6 +92,8 @@ extern void Boot_Update_Firmware(struct work_struct *work);
 
 #if defined(CONFIG_FB)
 static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data);
+static int power_notifier_callback(struct notifier_block *self, unsigned long event, void *data);
+void nvt_usb_plugin_setting(uint8_t plugin);
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 static void nvt_ts_early_suspend(struct early_suspend *h);
 static void nvt_ts_late_resume(struct early_suspend *h);
@@ -1118,6 +1124,16 @@ static irqreturn_t nvt_ts_irq_handler(int32_t irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static void usb_ts_work_func(struct work_struct *work)
+{
+	if (is_resumed == 1) {
+		NVT_LOG("[usb]usb_state = %d\n", usb_state);
+		nvt_usb_plugin_setting(usb_state);
+	} else {
+		NVT_LOG("[sxh_usb]suspend state run no  usb cmd workqueue");
+	}
+}
+
 /*******************************************************
 Description:
 	Novatek touchscreen check chip version trim function.
@@ -1277,6 +1293,13 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	}
 	INIT_WORK(&ts->nvt_work, nvt_ts_work_func);
 
+	usb_wq = create_workqueue("usb_wq");
+	if (!usb_wq) {
+		NVT_ERR("usb_wq create workqueue failed\n");
+		ret = -ENOMEM;
+		goto err_create_nvt_wq_failed;
+	}
+	INIT_WORK(&ts->usb_work, usb_ts_work_func);
 
 	//---allocate input device---
 	ts->input_dev = input_allocate_device();
@@ -1424,6 +1447,12 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 		NVT_ERR("register fb_notifier failed. ret=%d\n", ret);
 		goto err_register_fb_notif_failed;
 	}
+	ts->power_notif.notifier_call = power_notifier_callback;
+	ret = power_supply_reg_notifier(&ts->power_notif);
+	if (ret) {
+		NVT_ERR("register power_notifier failed. ret=%d\n", ret);
+		goto err_register_fb_notif_failed;
+	}
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	ts->early_suspend.suspend = nvt_ts_early_suspend;
@@ -1483,6 +1512,8 @@ static int32_t nvt_ts_remove(struct i2c_client *client)
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&ts->fb_notif))
 		NVT_ERR("Error occurred while unregistering fb_notifier.\n");
+	power_supply_unreg_notifier(&ts->power_notif);
+
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	unregister_early_suspend(&ts->early_suspend);
 #endif
@@ -1517,6 +1548,7 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	uint32_t i = 0;
 #endif
 
+	is_resumed = 0;
 	if (!bTouchIsAwake) {
 		NVT_LOG("Touch is already suspend\n");
 		return 0;
@@ -1625,6 +1657,7 @@ static int32_t nvt_ts_resume(struct device *dev)
 #endif
 
 	mutex_unlock(&ts->lock);
+	is_resumed = 1;
 
 	NVT_LOG("end\n");
 
@@ -1650,11 +1683,102 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		if (*blank == FB_BLANK_UNBLANK ||
 		(*blank == FB_BLANK_NORMAL && 0 == bTouchIsAwake)) {
 			nvt_ts_resume(&ts->client->dev);
+			queue_work(usb_wq, &ts->usb_work);
 		}
 	}
 
 	return 0;
 }
+
+void nvt_usb_plugin_setting(uint8_t plugin)
+{
+	uint8_t buf[10] = {0};
+	uint32_t retry = 0;
+	uint32_t ret = 0;
+
+	mutex_lock(&ts->lock);
+	NVT_LOG("plugin = %d\n", plugin);
+	if (plugin) {
+		buf[0] = EVENT_MAP_HOST_CMD;
+		buf[1] = EVENTBUFFER_STATUS_AC;
+	} else {
+		buf[0] = EVENT_MAP_HOST_CMD;
+		buf[1] = EVENTBUFFER_STATUS_OFF;
+	}
+
+	ret = CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
+	if (ret < 0)
+		NVT_ERR("set plugin (%d) failed:%d\n", plugin, ret);
+
+	while (1) {
+		msleep(18); /*wait for 1 frame (~16.66ms)*/
+		buf[0] = EVENT_MAP_HOST_CMD;
+		buf[1] = 0xFF;
+		CTP_I2C_READ(ts->client, I2C_FW_Address, buf, 2);
+
+		if (buf[1] == 0x00) {
+			ret = 0;
+			break;
+		}
+
+		retry++;
+		if (unlikely(retry > 5)) {
+			NVT_ERR("error, retry=%d, buf[1]=0x%02X\n", retry, buf[1]);
+			ret = -1;
+			break;
+		}
+	}
+
+	mutex_unlock(&ts->lock);
+	return;
+}
+
+static int ps_get_state(struct power_supply *psy, bool *present)
+{
+	union power_supply_propval pval = { 0 };
+	int retval;
+
+	retval = power_supply_get_property(psy, POWER_SUPPLY_PROP_PRESENT, &pval);
+	if (retval) {
+		NVT_LOG("[usb]%s psy get property failed\n", psy->name);
+		return retval;
+	}
+
+	*present = (pval.intval) ? true : false;
+	NVT_LOG("[usb]%s is %s\n", psy->name, (*present) ? "present" : "not present");
+	return 0;
+}
+
+static int power_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+{
+	struct power_supply *psy = data;
+	bool present;
+	int retval;
+
+	if ((event == PSY_EVENT_PROP_ADDED || event == PSY_EVENT_PROP_CHANGED)
+		&& psy && psy->get_property && psy->name &&
+		!strncmp(psy->name, "usb", sizeof("usb"))) {
+		NVT_LOG("[usb]ps notification: event = %lu\n", event);
+
+		retval = ps_get_state(psy, &present);
+		if (retval) {
+			NVT_LOG("[usb]psy get property failed\n");
+			return retval;
+		}
+
+		if (event == PSY_EVENT_PROP_CHANGED) {
+			if (usb_state == present) {
+				NVT_LOG("[usb]ps present state not change\n");
+				return 0;
+			}
+		}
+		usb_state = present;
+		queue_work(usb_wq, &ts->usb_work);
+	}
+
+	return 0;
+}
+
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 /*******************************************************
 Description:
