@@ -580,7 +580,8 @@ ipa_insert_failed:
 	list_del(&entry->link);
 	htbl->proc_ctx_cnt--;
 bad_len:
-	hdr_entry->ref_cnt--;
+	if (add_ref_hdr)
+		hdr_entry->ref_cnt--;
 	entry->cookie = 0;
 	kmem_cache_free(ipa_ctx->hdr_proc_ctx_cache, entry);
 	return -EPERM;
