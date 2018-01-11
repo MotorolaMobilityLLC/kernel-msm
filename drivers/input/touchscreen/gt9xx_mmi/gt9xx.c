@@ -1642,15 +1642,8 @@ static ssize_t gtp_productinfo_show(struct device *dev,
 {
 	struct goodix_ts_data *data = dev_get_drvdata(dev);
 
-	if (data->product_id[3] == 0x00) {
-		return scnprintf(buf, PAGE_SIZE, "GT%c%c%c\n",
-				data->product_id[0], data->product_id[1],
-				data->product_id[2]);
-	} else {
-		return scnprintf(buf, PAGE_SIZE, "GT%c%c%c%c\n",
-			data->product_id[0], data->product_id[1],
-			data->product_id[2], data->product_id[3]);
-	}
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+		data->pdata->name);
 }
 
 static DEVICE_ATTR(productinfo, S_IRUGO,
@@ -1661,6 +1654,11 @@ static ssize_t gtp_buildid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_data *data = dev_get_drvdata(dev);
+
+	if (data->client->addr == 0x14) {
+		data->version_info = 0x1001;
+		dev_err(dev, "FW broken, updated by force\n");
+	}
 
 	return scnprintf(buf, PAGE_SIZE, "%04x\n",
 			data->version_info);
@@ -1840,6 +1838,17 @@ static s8 gtp_i2c_test(struct i2c_client *client)
 
 	GTP_DEBUG_FUNC();
 
+	while (retry++ < 5) {
+		ret = gtp_i2c_read(client, test, 3);
+		if (ret > 0)
+			return ret;
+
+		dev_err(&client->dev, "GTP i2c test failed time %d.", retry);
+		usleep_range(10000, 11000); /* 10 ms */
+	}
+
+	client->addr = 0x14;
+	ret = 0;
 	while (retry++ < 5) {
 		ret = gtp_i2c_read(client, test, 3);
 		if (ret > 0)
@@ -2236,6 +2245,9 @@ static int gtp_parse_dt(struct device *dev,
 		dev_err(dev, "Failed to parse goodix,display-coords.");
 		return rc;
 	}
+
+	pdata->name = "gt9xx";
+	rc = of_property_read_string(np, "goodix,name", &pdata->name);
 
 	pdata->force_update = of_property_read_bool(np,
 			"goodix,force-update");
