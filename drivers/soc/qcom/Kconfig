@@ -832,6 +832,14 @@ config HEART_DTB
 	  Only include Heart specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config CHEF_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Chef DTBs"
+	help
+	  Only include Chef specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config MSM_MPM_OF
        bool "Modem Power Manager"
        depends on OF
