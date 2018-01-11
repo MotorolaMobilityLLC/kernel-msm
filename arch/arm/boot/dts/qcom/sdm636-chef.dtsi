@@ -1,0 +1,174 @@
+/* Copyright (c) 2018, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm636-moto-common.dtsi"
+#include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
+#include "sdm660-external-codec.dtsi"
+
+/ {
+	model = "chef";
+	compatible = "qcom,sdm636-chef", "qcom,sdm636-moto", "qcom,sdm636";
+};
+
+&firmware {
+	android {
+		fstab {
+			vendor {
+				fsmgr_flags = "wait,slotselect,verify";
+			};
+		};
+	};
+};
+
+&soc{
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+
+	ssphy: ssphy@c010000 {
+		status = "disabled";
+	};
+
+	usb_nop_phy: usb_nop_phy {
+		compatible = "usb-nop-xceiv";
+	};
+};
+
+&usb3 {
+	dwc3@a800000 {
+		usb-phy = <&qusb_phy0>, <&usb_nop_phy>;
+		maximum-speed = "high-speed";
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_520_1080p_vid_v0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+};
+
+&pm660l_wled {
+	qcom,led-strings-list = [00 01];
+	qcom,en-cabc;
+	/delete-property/ qcom,auto-calibration-enable;
+};
+
+&mdss_dp_ctrl{
+		status = "disabled";
+};
+
+&i2c_3 { /* BLSP1 QUP3 */
+	status = "okay";
+	focaltech_ts@38 {
+		compatible = "focaltech,mmi";
+		reg = <0x38>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <67 0x2002>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&ts_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		focaltech,name = "ft8716";
+		focaltech,family-id = <0x87>;
+		focaltech,reset-gpio = <&tlmm 66 0x00>;
+		focaltech,irq-gpio = <&tlmm 67 0x2008>;
+		focaltech,display-coords = <0 0 1080 2246>;
+		focaltech,panel-coords = <0 0 1080 2246>;
+		focaltech,i2c-pull-up;
+		focaltech,group-id = <1>;
+		focaltech,hard-reset-delay-ms = <20>;
+		focaltech,soft-reset-delay-ms = <200>;
+		focaltech,num-max-touches = <10>;
+		focaltech,fw-delay-aa-ms = <2>;
+		focaltech,fw-delay-55-ms = <2>;
+		focaltech,fw-upgrade-id1 = <0x87>;
+		focaltech,fw-upgrade-id2 = <0xA6>;
+		focaltech,fw-delay-readid-ms = <20>;
+		focaltech,fw-delay-era-flsh-ms = <2000>;
+		focaltech,resume-in-workqueue;
+		focaltech,ignore-id-check;
+		config_modifier-names = "fps";
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <300 1870 800 1919 1>;
+			};
+		};
+	};
+};
+
+
+&i2c_2 { /* capsensor */
+	status = "okay";
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		cap_vdd-supply = <&pm660l_l8>;
+		cap_svdd-supply = <&pm660_l13>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <75 0x2008>;
+		gpios = <&tlmm 75 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		reg_array_len = <6>;
+		reg_array_val = <0x10 0x24 0x12 0x0B 0x13 0x03
+			0x15 0xCA 0x19 0x20 0x30 0x02>;
+	};
+
+	/delete-node/ smb1351-charger@1d;
+};
+
+&i2c_6 { /* BLSP1 QUP6 (NFC) */
+	status = "okay";
+	nq@28 {
+		compatible = "qcom,nq-nci";
+		reg = <0x28>;
+		qcom,nq-irq = <&tlmm 28 0x00>;
+		qcom,nq-ven = <&tlmm 29 0x00>;
+		qcom,nq-firm = <&tlmm 30 0x00>;
+		qcom,nq-clkreq = <&pm660_gpios 4 0x00>;
+		qcom,nq-esepwr = <&tlmm 31 0x00>;
+		interrupt-parent = <&tlmm>;
+		qcom,clk-src = "BBCLK3";
+		interrupts = <28 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend>;
+		clocks = <&clock_rpmcc RPM_LN_BB_CLK3_PIN>;
+		clock-names = "ref_clk";
+	};
+};
+
+&pm660_gpios {
+	gpio@c200 {
+		status = "disabled";
+	};
+	gpio@ca00 {
+		status = "disabled";
+	};
+};
+
