@@ -236,7 +236,8 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	struct dentry *parent = dget_parent(dentry);
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 	const struct cred *saved_cred = NULL;
-#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
+#if defined(CONFIG_SDCARD_FS_DIR_WRITER) || \
+	defined(CONFIG_SDCARD_FS_PARTIAL_RELATIME)
 	uid_t writer_uid = current_fsuid().val;
 	struct sdcardfs_inode_data *pd = SDCARDFS_I(d_inode(parent))->data;
 #endif
@@ -290,6 +291,13 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	if (!err && pd->perm < PERM_ANDROID)
 		sdcardfs_update_relatime_flag(lower_file,
 			sdcardfs_lower_inode(inode), writer_uid);
+#endif
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
+	/* update xattr for writing operation under non "Android" folders */
+	if (!err && (lower_file->f_flags & O_ACCMODE) &&
+		pd->perm < PERM_ANDROID)
+		sdcardfs_update_xattr_dirwriter(lower_file->f_path.dentry,
+			writer_uid);
 #endif
 
 out_revert_cred:
