@@ -150,6 +150,10 @@ extern struct inode *sdcardfs_iget(struct super_block *sb,
 				 struct inode *lower_inode, userid_t id);
 extern int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 			    struct path *lower_path, userid_t id);
+#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
+extern void sdcardfs_update_relatime_flag(struct file *lower_file,
+	struct inode *lower_inode, uid_t writer_uid);
+#endif
 
 /* file private data */
 struct sdcardfs_file_info {
@@ -482,6 +486,37 @@ static inline void sdcardfs_put_real_lower(const struct dentry *dent,
 	else
 		sdcardfs_put_lower_path(dent, real_lower);
 }
+
+#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
+static inline int wildcard_path_match(char *wildcard_name,
+	const char **dir_name, int name_count) {
+	int i, len = strlen(wildcard_name), depth = 0;
+	const char *dname;
+	char *wname;
+
+	for (i = 0; i < len; i++) {
+		if (wildcard_name[i] == '/')
+			continue;
+		depth++;
+		if (i == 0)
+			return -EINVAL;
+		if (name_count < depth)
+			return 0;
+
+		dname = dir_name[depth - 1];
+		wname = &wildcard_name[i];
+		while (wildcard_name[i] != '/' && i < len)
+			i++;
+		wildcard_name[i] = 0;
+		if (!strncmp(wname, "%s", 2) ||
+			(strlen(wname) == strlen(dname) &&
+			 !strncmp(wname, dname, strlen(dname))))
+			continue;
+		return 0;
+	}
+	return depth;
+}
+#endif
 
 extern struct mutex sdcardfs_super_list_lock;
 extern struct list_head sdcardfs_super_list;
