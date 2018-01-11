@@ -2243,7 +2243,7 @@ bool himax_ic_package_check(struct i2c_client *client)
 	uint8_t ret_data = 0x00;
 	int i = 0;
 
-	for (i = 0; i < 5; i++)
+	for (i = 0; i < 2; i++)
 	{
 		tmp_addr[3] = 0x90; tmp_addr[2] = 0x00; tmp_addr[1] = 0x00; tmp_addr[0] = 0xD0;
 		himax_register_read(client, tmp_addr, 4, tmp_data, false);
