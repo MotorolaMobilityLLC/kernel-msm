@@ -20,6 +20,7 @@
 
 #include "sdcardfs.h"
 #include "linux/ctype.h"
+#include <linux/xattr.h>
 
 /*
  * returns: -ERRNO if error (returned to user)
