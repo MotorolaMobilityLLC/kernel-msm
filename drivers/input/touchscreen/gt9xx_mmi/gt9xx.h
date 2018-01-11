@@ -84,6 +84,7 @@ struct goodix_exp_fn_ctrl {
 };
 
 struct goodix_ts_platform_data {
+	const char *name;
 	int irq_gpio;
 	int rst_gpio;
 	u32 rst_gpio_flags;
