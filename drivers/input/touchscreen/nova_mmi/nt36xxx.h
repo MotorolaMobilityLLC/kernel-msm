@@ -80,6 +80,8 @@ extern const uint16_t gesture_key_array[];
 /* ---ESD Protect.--- */
 #define NVT_TOUCH_ESD_PROTECT 1
 #define NVT_TOUCH_ESD_CHECK_PERIOD 2000	/* ms */
+#define EVENTBUFFER_STATUS_OFF  (0x51)
+#define EVENTBUFFER_STATUS_AC   (0x53)
 
 struct nvt_ts_mem_map {
 	uint32_t EVENT_BUF_ADDR;
@@ -111,11 +113,13 @@ struct nvt_ts_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
 	struct work_struct nvt_work;
+	struct work_struct usb_work;
 	struct delayed_work nvt_fwu_work;
 	uint16_t addr;
 	int8_t phys[32];
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
+	struct notifier_block power_notif;
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	struct early_suspend early_suspend;
 #endif
