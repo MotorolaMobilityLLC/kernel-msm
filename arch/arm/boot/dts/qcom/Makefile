@@ -38,6 +38,11 @@ dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-evt1.dtb
 dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-evt2.dtb
 endif #CONFIG_HEART_DTB
 
+
+ifeq ($(CONFIG_CHEF_DTB),y)
+dtb-$(CONFIG_ARCH_SDM636) += sdm636-chef-evt.dtb
+endif
+
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-paytonpro-p0a.dtb
 
 else
