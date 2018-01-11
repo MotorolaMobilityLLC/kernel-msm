@@ -11,3 +11,14 @@ config SDCARD_FS_FADV_NOACTIVE
 	default y
 	help
 	  Sdcardfs supports fadvise noactive mode.
+
+config SDCARD_FS_PARTIAL_RELATIME
+	bool "sdcardfs partial relatime update support"
+	depends on SDCARD_FS
+	default n
+	help
+	  Support updating relative access time for specific path instead of
+	  whole mount partition. Extended attribute "user.relatime" is
+	  introduced to toggle this update. As long as relatime of top parent
+	  directory is enabled, all of sub-directories and files's relatime
+	  would be updated whatever their xattr is set.
