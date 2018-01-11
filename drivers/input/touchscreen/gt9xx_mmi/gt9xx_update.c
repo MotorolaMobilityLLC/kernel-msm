@@ -2263,6 +2263,7 @@ s32 gup_update_proc(void *dir)
 	}
 
 update_fail:
+	ts->client->addr = 0x5d;
 	dev_dbg(&ts->client->dev, "[update_proc]leave update mode.");
 	gup_leave_update_mode(i2c_connect_client);
 
