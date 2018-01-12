@@ -80,6 +80,7 @@
 /*Special parameter ranges from 3810 to 3899 (these are handled in capiv2 framework and doesnt reach core algorithm)*/
 #define TAS2560_ALGO_GET_F0			3810	/*Read F0*/
 #define TAS2560_ALGO_GET_Q			3811	/*Read Q*/
+#define TAS2560_ALGO_GET_TV			3812   /* Tv */
 #define TAS2560_ALGO_GET_RDC			3813	/*Read Rdc*/
 #define TAS2560_ALGO_CALIB_START_RDC		3814	/*Start Command for Calibration*/
 #define TAS2560_ALGO_CALIB_STOP_RDC		3815	/*Stop Command for Calibration*/
