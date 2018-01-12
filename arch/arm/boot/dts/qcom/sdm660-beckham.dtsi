@@ -191,10 +191,10 @@
 
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
-		tlmm-tz = <0>,
-			<1>,
-			<2>,
-			<3>;
+		tlmm-tz = <8>,
+			<9>,
+			<10>,
+			<11>;
 	};
 
 	qcom,msm-thermal {
