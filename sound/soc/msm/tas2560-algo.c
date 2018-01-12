@@ -631,13 +631,27 @@ static int tas2560_algo_set_disable(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tas2560_algo_get_tv (struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int32_t ret = 0;
+	uint32_t paramid = 0, moduleid = AFE_TAS2560_ALGO_MODULE_RX;
+	u8 buff[56] = {0}, *ptr = buff;
 
+	paramid = TAS2560_ALGO_CALC_PIDX(paramid, TAS2560_ALGO_GET_TV, 1, SLAVE1);
+	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
+	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
+
+	pr_err("TAS2560_ALGO:%s TV 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	return ret;
+}
 
 const struct snd_kcontrol_new tas2560_algo_filter_mixer_controls[] = {
 	SOC_ENUM_EXT("TAS2560_ALGO_CALIB", tas2560_algo_calib_enum[0], tas2560_algo_calib_get, tas2560_algo_calib_set),
 	SOC_SINGLE_EXT("TAS2560_ALGO_GET_RE", SND_SOC_NOPM, 0, 0x7FFFFFFF, 0, tas2560_algo_get_re, NULL),
 	SOC_SINGLE_EXT("TAS2560_ALGO_GET_F0", SND_SOC_NOPM, 0, 0x7FFFFFFF, 0, tas2560_algo_get_f0, NULL),
 	SOC_SINGLE_EXT("TAS2560_ALGO_GET_Q", SND_SOC_NOPM, 0, 0x7FFFFFFF, 0, tas2560_algo_get_q, NULL),
+	SOC_SINGLE_EXT("TAS2560_ALGO_GET_TV", SND_SOC_NOPM, 0, 0x7FFFFFFF, 0, tas2560_algo_get_tv, NULL),
 	SOC_SINGLE_MULTI_EXT("TAS2560_ALGO_CMD_SEND_CAL", SND_SOC_NOPM, 0, 0x7FFFFFFF, 0, 5, NULL, tas2560_algo_set_cal),
 	SOC_ENUM_EXT("TAS2560_ALGO_STATUS", tas2560_algo_enum[0], tas2560_algo_get_status, tas2560_algo_set_status),
 	SOC_ENUM_EXT("TAS2560_ALGO_FF_MODULE", tas2560_algo_ff_module_enum[0], tas2560_algo_get_ff_module, tas2560_algo_set_ff_module),
