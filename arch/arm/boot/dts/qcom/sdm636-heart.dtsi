@@ -310,8 +310,8 @@
 		config {
 			pins = "gpio61";
 			drive-strength = <2>;
+			output-low;
 			bias-disable;
-			input-enable;
 		};
 	};
 
