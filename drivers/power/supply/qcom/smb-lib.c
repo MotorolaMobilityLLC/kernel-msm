@@ -8156,6 +8156,63 @@ static DEVICE_ATTR(force_chg_iusb, 0664,
 		force_chg_iusb_show,
 		force_chg_iusb_store);
 
+static ssize_t force_chg_idc_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long dc_curr;
+
+	r = kstrtoul(buf, 0, &dc_curr);
+	if (r) {
+		smblib_err(mmi_chip, "Invalid idc value = %lu\n", dc_curr);
+		return -EINVAL;
+	}
+
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
+		return -ENODEV;
+	}
+	dc_curr *= 1000; /* Convert to uA */
+	r = smblib_set_charge_param(mmi_chip, &mmi_chip->param.dc_icl, dc_curr);
+	if (r < 0) {
+		smblib_err(mmi_chip,
+			   "Factory Couldn't set dc icl = %d rc=%d\n",
+			   (int)dc_curr, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_idc_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int r;
+
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
+		r = -ENODEV;
+		goto end;
+	}
+
+	r = smblib_get_charge_param(mmi_chip, &mmi_chip->param.dc_icl, &state);
+	if (r < 0) {
+		smblib_err(mmi_chip,
+			   "Factory Couldn't get dc_icl rc=%d\n", (int)r);
+		return r;
+	}
+	state /= 1000; /* Convert to mA */
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_idc, 0664,
+		force_chg_idc_show,
+		force_chg_idc_store);
+
 #define PRE_CHARGE_CONV_MV 25
 #define PRE_CHARGE_MAX 0x3F
 static ssize_t force_chg_itrick_store(struct device *dev,
@@ -8777,6 +8834,12 @@ void mmi_init(struct smb_charger *chg)
 		}
 
 		rc = device_create_file(chg->dev,
+					&dev_attr_force_chg_idc);
+		if (rc) {
+			smblib_err(chg, "couldn't create force_chg_idc\n");
+		}
+
+		rc = device_create_file(chg->dev,
 					&dev_attr_force_chg_itrick);
 		if (rc) {
 			smblib_err(chg, "couldn't create force_chg_itrick\n");
@@ -8836,6 +8899,8 @@ void mmi_deinit(struct smb_charger *chg)
 				   &dev_attr_force_chg_ibatt);
 		device_remove_file(chg->dev,
 				   &dev_attr_force_chg_iusb);
+		device_remove_file(chg->dev,
+				   &dev_attr_force_chg_idc);
 		device_remove_file(chg->dev,
 				   &dev_attr_force_chg_itrick);
 	}
