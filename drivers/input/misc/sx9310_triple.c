@@ -30,6 +30,10 @@
 #include <linux/usb.h>
 #include <linux/power_supply.h>
 
+#if defined(CONFIG_FB)
+#include <linux/fb.h>
+#endif
+
 /* main struct, interrupt,init,pointers */
 #include <linux/input/sx9310_triple.h>
 
@@ -488,7 +492,8 @@ static void touchProcess(psx93XX_t this)
 					last_val = 2;
 				} else if ((i & pCurrentButton->mask) ==
 					   (pCurrentButton->mask & 0x0f)) {
-					LOG_INFO("CS %d still in PROX State.\n",
+					if (sx9310_debug_enable)
+						LOG_INFO("CS %d still in PROX State.\n",
 							counter);
 				} else{
 					if (sx9310_debug_enable)
@@ -511,7 +516,8 @@ static void touchProcess(psx93XX_t this)
 			case S_BODY: /* Button is being in 0mm! */
 				if ((i & pCurrentButton->mask) ==
 							 pCurrentButton->mask) {
-					LOG_INFO("CS %d still in BODY State.\n",
+					if (sx9310_debug_enable)
+						LOG_INFO("CS %d still in BODY State.\n",
 							counter);
 				} else if ((i & pCurrentButton->mask) ==
 					   (pCurrentButton->mask & 0x0f)) {
@@ -1076,6 +1082,49 @@ static int ps_notify_callback(struct notifier_block *self,
 	return 0;
 }
 
+#if defined(CONFIG_FB)
+static void fb_notify_resume_work(struct work_struct *work)
+{
+	psx93XX_t this = container_of(work, sx93XX_t, fb_notify_work);
+	psx9310_t pDevice = NULL;
+	struct input_dev *input_top = NULL;
+	struct input_dev *input_bottom = NULL;
+	int ret = 0;
+
+	pDevice = this->pDevice;
+	input_top = pDevice->pbuttonInformation->input_top;
+	input_bottom = pDevice->pbuttonInformation->input_bottom;
+
+	if (sx9310_debug_enable)
+		LOG_INFO("Lcd suspend/resume event,going to force reset\n");
+	ret = write_register(this, SX9310_IRQSTAT_REG, 0xff);
+	if (ret < 0)
+		LOG_ERR(" Lcd suspend/resume,reset cap sensor failed\n");
+}
+
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	psx93XX_t this = container_of(self, sx93XX_t, fb_notif);
+
+	if ((event == FB_EVENT_BLANK) &&
+		evdata && evdata->data) {
+		blank = evdata->data;
+		if ((*blank == FB_BLANK_POWERDOWN)
+			|| (*blank == FB_BLANK_UNBLANK)) {
+			if (sx9310_debug_enable)
+				LOG_INFO("fb event = %lu blank = %d\n",
+				 event, *blank);
+			schedule_work(&this->fb_notify_work);
+		}
+	}
+
+	return 0;
+}
+#endif
+
 static struct class capsense_class = {
 	.name			= "capsense",
 	.owner			= THIS_MODULE,
@@ -1323,12 +1372,26 @@ static int sx9310_probe(struct i2c_client *client,
 			}
 		}
 
-		return  0;
+#if defined(CONFIG_FB)
+		INIT_WORK(&this->fb_notify_work, fb_notify_resume_work);
+		this->fb_notif.notifier_call = fb_notifier_callback;
+		ret = fb_register_client(&this->fb_notif);
+		if (ret) {
+			LOG_ERR("Unable to register fb_notifier: %d\n", ret);
+			goto free_fb_notifier;
+		}
+#endif
+		return 0;
 	}
 	return -ENOMEM;
 
-free_ps_notifier:
+free_fb_notifier:
 	power_supply_unreg_notifier(&this->ps_notif);
+
+free_ps_notifier:
+	LOG_ERR("%s free ps notifier:.\n", __func__);
+	regulator_disable(pplatData->cap_svdd);
+	regulator_put(pplatData->cap_svdd);
 
 err_svdd_error:
 	LOG_ERR("%s svdd defer.\n", __func__);
@@ -1357,6 +1420,11 @@ static int sx9310_remove(struct i2c_client *client)
 
 	pDevice = this->pDevice;
 	if (this && pDevice) {
+#if defined(CONFIG_FB)
+		fb_unregister_client(&this->fb_notif);
+#endif
+		power_supply_unreg_notifier(&this->ps_notif);
+
 #ifdef USE_SENSORS_CLASS
 		sensors_classdev_unregister(&sensors_capsensor_top_cdev);
 		sensors_classdev_unregister(&sensors_capsensor_bottom_cdev);
