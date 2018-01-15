@@ -24,6 +24,12 @@
 	interrupt-parent = <&intc>;
 };
 
+&soc {
+	qcom,msm-thermal {
+		qcom,config-info = "ali2";
+	};
+};
+
 &clock_gcc_gfx {
 	compatible = "qcom,gcc-gfx-sdm450";
 	qcom,gfxfreq-corner =
