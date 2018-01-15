@@ -68,6 +68,7 @@ struct anx7805_data {
 	int gpio_reset;
 	int gpio_int;
 	int gpio_cbl_det;
+	int gpio_vdd_1p0_en;
 	const char *vdd10_name;
 	const char *vdd18_name;
 	const char *avdd33_name;
@@ -407,12 +408,18 @@ static int anx7805_vdd_1p0_power(struct anx7805_data *chip, int on)
 			pr_err("vdd_reg enable failed (%d)\n", ret);
 			goto err_reg;
 		}
+
+		if (gpio_is_valid(chip->gpio_vdd_1p0_en))
+			gpio_direction_output(chip->gpio_vdd_1p0_en, 1);
 	} else {
 		ret = regulator_disable(chip->vdd_reg);
 		if (ret) {
 			pr_err("vdd_reg disable failed (%d)\n", ret);
 			goto err_reg;
 		}
+
+		if (gpio_is_valid(chip->gpio_vdd_1p0_en))
+			gpio_direction_output(chip->gpio_vdd_1p0_en, 0);
 	}
 
 	on_state = on;
@@ -1193,6 +1200,15 @@ static int anx7805_parse_dt(struct device_node *node,
 		pr_err("failed to get analogix,cbl-det-gpio.\n");
 		ret = anx7805->gpio_cbl_det;
 		goto out;
+	}
+
+	anx7805->gpio_vdd_1p0_en =
+	    of_get_named_gpio(node, "analogix,vdd-1p0-enable-gpio", 0);
+	if (!gpio_is_valid(anx7805->gpio_vdd_1p0_en)) {
+		pr_err("%s there is no analogix,vdd-1p0-enable-gpio.\n", __func__);
+	} else {
+		pr_info("%s using gpio %d to control,vdd-1p0.\n",
+			__func__, anx7805->gpio_vdd_1p0_en);
 	}
 
 	ret = of_property_read_string(node, "analogix,vdd10-name",
