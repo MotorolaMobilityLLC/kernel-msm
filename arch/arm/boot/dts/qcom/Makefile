@@ -316,14 +316,6 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-sim.dtb \
 	msm8953-pmi8937-ext-codec-mtp.dtb
 endif # CONFIG_MMI_DEVICE_DTBS
 
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-rcm.dtb \
-	sdm450-cdp.dtb \
-	sdm450-mtp.dtb \
-	sdm450-qrd.dtb \
-	sdm450-pmi8940-mtp.dtb \
-	sdm450-pmi8937-mtp.dtb \
-	sdm450-iot-mtp.dtb
-
 ifeq ($(CONFIG_ADDISON_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-addison-p1.dtb \
 	msm8953-addison-p2a.dtb \
@@ -360,7 +352,6 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-johnson-p0.dtb \
 endif
 
 ifeq ($(CONFIG_ALI_DTB),y)
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-evb1.dtb
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-evt1.dtb
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt1a.dtb
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt1b.dtb
