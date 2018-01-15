@@ -90,23 +90,29 @@
 			qcom,sensor-name = "chg_therm";
 		};
 		sensor_information23: qcom,sensor-information-23 {
-			qcom,sensor-type =  "adc";
+			qcom,sensor-type = "adc";
 			qcom,sensor-name = "pcm_therm";
 			qcom,scaling-factor = <1000>;
 		};
 		sensor_information24: qcom,sensor-information-24 {
 			qcom,sensor-type = "adc";
-			qcom,sensor-name = "front_temp";
+			qcom,sensor-name = "bms";
+			qcom,alias-name  = "batt_therm";
 			qcom,scaling-factor = <1000>;
 		};
 		sensor_information25: qcom,sensor-information-25 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information26: qcom,sensor-information-26 {
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "back_temp";
 			qcom,scaling-factor = <1000>;
 		};
 	};
 
-	rradc_skin_temp: typec-temp-sensor {
+	rradc_skin_temp: skin-temp-sensor {
 		compatible = "generic-adc-thermal";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pm660_rradc 2>;
