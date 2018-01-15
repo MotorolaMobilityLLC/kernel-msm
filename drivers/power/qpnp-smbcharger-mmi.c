@@ -8116,6 +8116,11 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 		return;
 	}
 
+	if (!gpio_is_valid(chip->togl_rst_gpio.gpio)) {
+		SMB_ERR(chip, "togl_rst GPIO is invalid\n");
+		return;
+	}
+
 	rc = gpio_request_one(chip->togl_rst_gpio.gpio,
 			      chip->togl_rst_gpio.flags,
 			      chip->togl_rst_gpio.label);
