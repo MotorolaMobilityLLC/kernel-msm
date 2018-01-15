@@ -500,8 +500,10 @@ static void wm_adsp_buf_flash(struct list_head *list, void *dest)
 #define WM_ADSP_FW_TRACE    8
 #define WM_ADSP_FW_SPK_PROT 9
 #define WM_ADSP_FW_MISC     10
+#define WM_ADSP_FW_AOU      11
+#define WM_ADSP_FW_AOU_CONCURR     12
 
-#define WM_ADSP_NUM_FW      11
+#define WM_ADSP_NUM_FW      13
 
 static const char *wm_adsp_fw_text[WM_ADSP_NUM_FW] = {
 	[WM_ADSP_FW_MBC_VSS] =  "MBC/VSS",
@@ -515,6 +517,8 @@ static const char *wm_adsp_fw_text[WM_ADSP_NUM_FW] = {
 	[WM_ADSP_FW_TRACE] =    "Dbg Trace",
 	[WM_ADSP_FW_SPK_PROT] = "Protection",
 	[WM_ADSP_FW_MISC] =     "Misc",
+	[WM_ADSP_FW_AOU] =     "AoU",
+	[WM_ADSP_FW_AOU_CONCURR] = "AoU Audio",
 };
 
 struct wm_adsp_system_config_xm_hdr {
@@ -682,7 +686,9 @@ static struct wm_adsp_fw_defs wm_adsp_fw[WM_ADSP_NUM_FW] = {
 		.caps = trace_caps,
 	},
 	[WM_ADSP_FW_SPK_PROT] = { .file = "spk-prot" },
-	[WM_ADSP_FW_MISC] =     { .file = "misc" },
+	[WM_ADSP_FW_MISC] = { .file = "misc" },
+	[WM_ADSP_FW_AOU] = { .file = "aou-ultrasound" },
+	[WM_ADSP_FW_AOU_CONCURR] = { .file = "aou-concurrent" },
 };
 
 struct wm_coeff_ctl_ops {
@@ -922,8 +928,10 @@ static int wm_adsp_fw_put(struct snd_kcontrol *kcontrol,
 	if (ucontrol->value.enumerated.item[0] == dsp[e->shift_l].fw)
 		return 0;
 
-	if (ucontrol->value.enumerated.item[0] >= WM_ADSP_NUM_FW)
+	if (ucontrol->value.enumerated.item[0] >= WM_ADSP_NUM_FW) {
+		adsp_dbg(dsp, "Firmware error 1\n");
 		return -EINVAL;
+	}
 
 	mutex_lock(&dsp[e->shift_l].pwr_lock);
 
@@ -2027,6 +2035,7 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.wmfw", dsp->part,
 			 dsp->num, dsp->firmwares[dsp->fw].file);
 	file[PAGE_SIZE - 1] = '\0';
+
 	mutex_lock(dsp->fw_lock);
 	ret = request_firmware(&firmware, file, dsp->dev);
 	mutex_unlock(dsp->fw_lock);
