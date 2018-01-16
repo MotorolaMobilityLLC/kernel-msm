@@ -24,7 +24,7 @@ int msm_proxy_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				    struct snd_pcm_hw_params *params);
 int msm_audrx_init(struct snd_soc_pcm_runtime *rtd);
-int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd);
+int msm_madera_init(struct snd_soc_pcm_runtime *rtd);
 int msm_snd_cpe_hw_params(struct snd_pcm_substream *substream,
 			  struct snd_pcm_hw_params *params);
 struct snd_soc_card *populate_snd_card_dailinks(struct device *dev,
