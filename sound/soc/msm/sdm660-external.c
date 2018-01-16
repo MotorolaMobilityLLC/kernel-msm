@@ -1980,7 +1980,7 @@ static const struct snd_soc_dapm_widget msm_madera_dapm_widgets[] = {
 		msm_ext_mclk_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 };
 
-int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
+int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret, i;
 	struct snd_soc_codec *codec = rtd->codec;
@@ -2047,7 +2047,7 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to add audio routes %d\n", ret);
 		return ret;
 	}
-
+#ifdef CONFIG_SND_SOC_CS47L90
 	/* Toggle PDM_CLK GPIO */
 	for (i = 0; i < 5; i++) {
 		snd_soc_write(codec, MADERA_GPIO37_CTRL_1, 0xA001);
@@ -2055,6 +2055,15 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_write(codec, MADERA_GPIO37_CTRL_1, 0x2001);
 		usleep_range(1000, 1100);
 	}
+#else
+	for (i = 0; i < 5; i++) {
+		snd_soc_write(codec, MADERA_GPIO6_CTRL_1, 0xA001);
+		usleep_range(1000, 1100);
+		snd_soc_write(codec, MADERA_GPIO6_CTRL_1, 0x2001);
+		usleep_range(1000, 1100);
+	}
+#endif
+
 	/* Ensures that GPIO3 is set to an output clock. */
 #ifdef SND_SOC_CS47L35
 	snd_soc_write(codec, 0x1704, 0);
@@ -2125,7 +2134,7 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	codec_reg_done = true;
 	return 0;
 }
-EXPORT_SYMBOL(msm_cs47l35_init);
+EXPORT_SYMBOL(msm_madera_init);
 
 
 /**

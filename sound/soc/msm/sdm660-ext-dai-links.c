@@ -689,7 +689,7 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
-		.init = &msm_cs47l35_init,
+		.init = &msm_madera_init,
 		.be_hw_params_fixup = msm_ext_be_hw_params_fixup,
 		/* this dainlink has playback support */
 		.ignore_pmdown_time = 1,
