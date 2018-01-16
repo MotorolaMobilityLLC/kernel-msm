@@ -149,10 +149,9 @@
 };
 
 &usb3{
-	/delete-property/ mmi,mods-support;
 	/delete-property/ mod-usb-hub;
-	mmi,mod-hs-switch = <0>;
 };
+
 &pm8998_gpios {
 	gpio@c100 { /* PM8998_GPIO2 */
 		status = "disabled";
