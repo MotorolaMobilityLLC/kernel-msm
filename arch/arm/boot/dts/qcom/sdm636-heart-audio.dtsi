@@ -301,20 +301,20 @@
 		cirrus,gpio-defaults = <
 			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
 			0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
-			0xffffffff 0xffffffff /* AIF3RXDAT / GPIO3  */
-			0xffffffff 0xffffffff /* AIF3LRCLK / GPIO4  */
-			0x00002000 0x0000f000 /* GPIO5 */
-			0x00002000 0x0000f000 /* GPIO6 */
+			0xffffffff 0xffffffff /* GPIO3 */
+			0xffffffff 0xffffffff /* GPIO4 */
+			0xffffffff 0x00000000 /* GPIO5 */
+			0xffffffff 0x00000000 /* GPIO6 */
 			0xffffffff 0xffffffff /* MIF1SDA   / GPIO7  */
 			0x00002000 0x0000f000 /* AIF1RXDAT / GPIO8  */
 			0x00002000 0x0000f000 /* AIF1BCLK  / GPIO9  */
 			0x00002000 0x0000f000 /* AIF1TXDAT / GPIO10 */
 			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
-			0xffffffff 0xffffffff /* AIF2TXDAT / GPIO12 */
-			0xffffffff 0xffffffff /* AIF2BCLK  / GPIO13 */
-			0xffffffff 0xffffffff /* AIF2RXDAT / GPIO14 */
-			0xffffffff 0xffffffff /* AIF2LRCLK / GPIO15 */
-			0xffffffff 0xffffffff /* MIF1SCLK  / GPIO16 */
+			0xffffffff 0xffffffff /* GPIO12 */
+			0xffffffff 0xffffffff /* GPIO13 */
+			0xffffffff 0xffffffff /* GPIO14 */
+			0xffffffff 0xffffffff /* GPIO15 */
+			0xffffffff 0xffffffff /* GPIO16 */
 			>;
 
 		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
