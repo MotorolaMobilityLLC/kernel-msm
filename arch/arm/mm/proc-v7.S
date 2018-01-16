@@ -182,6 +182,21 @@ ENTRY(cpu_ca9mp_do_resume)
 ENDPROC(cpu_ca9mp_do_resume)
 #endif
 
+ /*
+  * Cortex-A57, A72 that require an icache invalidation on switch_mm
+  */
+	globl_equ	cpu_ca57_proc_init,		cpu_v7_proc_init
+	globl_equ	cpu_ca57_proc_fin,		cpu_v7_proc_fin
+	globl_equ	cpu_ca57_reset,			cpu_v7_reset
+	globl_equ	cpu_ca57_do_idle,		cpu_v7_do_idle
+	globl_equ	cpu_ca57_dcache_clean_area,	cpu_v7_dcache_clean_area
+	globl_equ	cpu_ca57_set_pte_ext,		cpu_v7_set_pte_ext
+	globl_equ	cpu_ca57_suspend_size,		cpu_v7_suspend_size
+#ifdef CONFIG_ARM_CPU_SUSPEND
+	globl_equ	cpu_ca57_do_suspend,		cpu_v7_do_suspend
+	globl_equ	cpu_ca57_do_resume,		cpu_v7_do_resume
+#endif
+
 #ifdef CONFIG_CPU_PJ4B
 	globl_equ	cpu_pj4b_switch_mm,     cpu_v7_switch_mm
 	globl_equ	cpu_pj4b_set_pte_ext,	cpu_v7_set_pte_ext
@@ -225,6 +240,8 @@ __v7_ca9mp_setup:
 __v7_ca7mp_setup:
 __v7_ca15mp_setup:
 __v7_ca53mp_setup:
+__v7_ca57mp_setup:
+__v7_ca72mp_setup:
 	mov	r10, #0
 1:
 #ifdef CONFIG_SMP
@@ -440,6 +457,7 @@ __v7_setup_stack:
 	@ define struct processor (see <asm/proc-fns.h> and proc-macros.S)
 	define_processor_functions v7, dabort=v7_early_abort, pabort=v7_pabort, suspend=1
 	define_processor_functions ca9mp, dabort=v7_early_abort, pabort=v7_pabort, suspend=1
+	define_processor_functions ca57, dabort=v7_early_abort, pabort=v7_pabort, suspend=1
 #ifdef CONFIG_CPU_PJ4B
 	define_processor_functions pj4b, dabort=v7_early_abort, pabort=v7_pabort, suspend=1
 #endif
@@ -553,6 +571,26 @@ __v7_ca53mp_proc_info:
 	.long	0xff0ffff0
 	__v7_proc __v7_ca53mp_setup
 	.size	__v7_ca53mp_proc_info, . - __v7_ca53mp_proc_info
+
+	/*
+	 * ARM Ltd. Cortex A57 processor.
+	 */
+	.type	__v7_ca57mp_proc_info, #object
+__v7_ca57mp_proc_info:
+	.long	0x410fd070
+	.long	0xff0ffff0
+	__v7_proc __v7_ca57mp_setup, proc_fns = ca57_processor_functions
+	.size	__v7_ca57mp_proc_info, . - __v7_ca57mp_proc_info
+
+	/*
+	 * ARM Ltd. Cortex A72 processor.
+	 */
+	.type	__v7_ca72mp_proc_info, #object
+__v7_ca72mp_proc_info:
+	.long	0x410fd080
+	.long	0xff0ffff0
+	__v7_proc __v7_ca72mp_setup, proc_fns = ca57_processor_functions
+	.size	__v7_ca72mp_proc_info, . - __v7_ca72mp_proc_info
 
 	/*
 	 * Match any ARMv7 processor core.

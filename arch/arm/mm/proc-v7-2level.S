@@ -36,7 +36,13 @@
  *
  *	It is assumed that:
  *	- we are not using split page tables
+ *	Branch Predictor buffer invalidation in Cortex-A57, A72
+ *	is done by making SMC call into TZ
  */
+ENTRY(cpu_ca57_switch_mm)
+#ifdef CONFIG_MMU
+	bl	apply_bp_hardening
+#endif
 ENTRY(cpu_v7_switch_mm)
 #ifdef CONFIG_MMU
 	mov	r2, #0
@@ -61,6 +67,7 @@ ENTRY(cpu_v7_switch_mm)
 #endif
 	mov	pc, lr
 ENDPROC(cpu_v7_switch_mm)
+ENDPROC(cpu_ca57_switch_mm)
 
 /*
  *	cpu_v7_set_pte_ext(ptep, pte)
