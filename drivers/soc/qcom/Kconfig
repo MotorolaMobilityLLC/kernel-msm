@@ -848,6 +848,22 @@ config FLAY_DTB
 	  Only include Flay specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config EVERT_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Evert DTBs"
+	help
+	  Only include Evert specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+config BECKHAM_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Beckham DTBs"
+	help
+	  Only include Beckham specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config MSM_MPM_OF
        bool "Modem Power Manager"
        depends on OF
