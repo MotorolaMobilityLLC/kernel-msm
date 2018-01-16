@@ -1395,6 +1395,22 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 
 	mutex_init(&anx7805->lock);
 	init_completion(&init_aux_ch_completion);
+
+	ret = anx7805_avdd_3p3_power(anx7805, true);
+	if (ret)
+		goto err2;
+
+	ret = anx7805_vdd_1p8_power(anx7805, true);
+	if (ret)
+		goto err3;
+
+	ret = anx7805_vdd_1p0_power(anx7805, false);
+	if (ret)
+		goto err4;
+
+	anx7805->sp_tx_power_state = 0;
+	mutex_init(&anx7805->sp_tx_power_lock);
+
 	ret = anx7805_init_gpio(anx7805);
 	if (ret) {
 		pr_err("failed to initialize gpio\n");
@@ -1416,21 +1432,6 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		ret = -ENOMEM;
 		goto err1;
 	}
-
-	ret = anx7805_avdd_3p3_power(anx7805, true);
-	if (ret)
-		goto err2;
-
-	ret = anx7805_vdd_1p8_power(anx7805, true);
-	if (ret)
-		goto err3;
-
-	ret = anx7805_vdd_1p0_power(anx7805, false);
-	if (ret)
-		goto err4;
-	
-	anx7805->sp_tx_power_state = 0;
-	mutex_init(&anx7805->sp_tx_power_lock);
 
 	ret = anx7805_system_init();
 	if (ret) {
