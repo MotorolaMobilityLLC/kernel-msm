@@ -21,6 +21,8 @@
 #include <asm/smp_plat.h>
 #include <asm/thread_notify.h>
 #include <asm/tlbflush.h>
+#include <uapi/linux/psci.h>
+#include <asm/opcodes-sec.h>
 
 /*
  * On ARMv6, we have the following structure in the Context ID:
@@ -261,4 +263,29 @@ void check_and_switch_context(struct mm_struct *mm, struct task_struct *tsk)
 
 switch_mm_fastpath:
 	cpu_switch_mm(mm->pgd, mm);
+}
+
+static noinline int bp_hardening(u32 _function_id, u32 _arg0,
+				  u32 _arg1, u32 _arg2)
+{
+	register u32 function_id asm("r0") = _function_id;
+	register u32 arg0 asm("r1") = _arg0;
+	register u32 arg1 asm("r2") = _arg1;
+	register u32 arg2 asm("r3") = _arg2;
+
+	asm volatile(
+			__asmeq("%0", "r0")
+			__asmeq("%1", "r1")
+			__asmeq("%2", "r2")
+			__asmeq("%3", "r3")
+			__SMC(0)
+		: "+r" (function_id)
+		: "r" (arg0), "r" (arg1), "r" (arg2));
+
+	return function_id;
+}
+
+asmlinkage void apply_bp_hardening(void)
+{
+	bp_hardening(PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0);
 }
