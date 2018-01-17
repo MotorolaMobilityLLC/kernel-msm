@@ -356,6 +356,28 @@
 	};
 };
 
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		df-serialnum = "SNN5995";
+
+		#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
+		#include "fg-gen3-batterydata-hx40scud-3000mah.dtsi"
+	};
+};
+
+&pm660_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-force-load-profile = <1>;
+	qcom,fg-cutoff-voltage = <3200>;
+	qcom,fg-empty-voltage = <3000>;
+	qcom,fg-chg-term-current = <100>;
+	qcom,fg-sys-term-current = <(-200)>;
+	qcom,fg-delta-soc-thr = <1>;
+	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+	qcom,battery-thermal-coefficients = [9d 50 ff];
+};
+
 &pm660_charger {
 	qcom,inner-wls-name = "idt_wireless";
 	qcom,inner-wls-used;
@@ -365,6 +387,11 @@
 	pinctrl-names = "wls_otg_en","wls_otg_dis";
 	pinctrl-0 = <&wls_otg_en>;
 	pinctrl-1 = <&wls_otg_dis>;
+	qcom,mmi-temp-zones = <0 4200 586 0>,
+				<10 4200 879 586>,
+				<15 0 1465 1465>,
+				<45 4200 3000 2000>,
+				<60 4100 1465  0>;
 
 	io-channels = <&pm660_rradc 8>,
 		      <&pm660_rradc 10>,
