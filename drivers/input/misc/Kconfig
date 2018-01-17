@@ -858,7 +858,12 @@ config SENSORS_FPC_1020
 	help
 	  Say Y here if you wish to include support for finger print sensor.
 	  If unsure, say N.
-
+config INPUT_EGISTEC_FPS
+	tristate "Egistec FPS fingerprint sensor"
+	default n
+	help
+	 Say Y here if you wish to include support for EGIS finger print sensor.
+	 If unsure, say N.
 config STMVL53L1
 	tristate "STMVL53L1 support"
 	help
