@@ -1,0 +1,28 @@
+
+Egis Technology Inc fingerprint  driver
+et320 is a fps sensor in front of the phone, it connects to mainboard via SPI.
+et516 is a fps sensor on the back of the phone, it connects to mainboard via SPI.
+Required properties:
+- compatible: Should be "egistec,et516" or "egistec,et320"
+- gpio_irq :  GPIO used for interrupt
+- gpio_rst:   GPIO used for ets sensor reset
+- gpio_ldo1p8_en : GPIO used to enable vdd 1.8v
+- gpio_ldo3p3_en : GPIO used to enable vcc 3.3v
+- pinctrl-names,pinctrl-0: the pincontrol setting to configure muxing properly
+			for pins that connect to ets fps sensor.
+
+Example:
+	ets_fps: ets_fps{
+		compatible = "egistec,et320","egistec,et516";
+		status = "ok";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <128 0x0>;
+		egistec,gpio_irq    = <&tlmm 128 0x1>;
+		egistec,gpio_rst    = <&tlmm 127 0x2>;
+		egistec,gpio_ldo1p8_en = <&tlmm 132 0x0>;
+		egistec,gpio_ldo3p3_en = <&tlmm 133 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&rst_active &int_active &ldo_en_active &ldo3_en_active>;
+		pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend &ldo3_en_suspend>;
+	};
