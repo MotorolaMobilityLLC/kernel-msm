@@ -83,4 +83,5 @@ obj-$(CONFIG_INPUT_SX9310)              += sx9310.o
 obj-$(CONFIG_INPUT_PIXART_OTS_PAT9125_SWITCH)	+= ots_pat9125/
 obj-$(CONFIG_INPUT_STMVL53L0)                 += vl53L0/
 obj-$(CONFIG_SENSORS_FPC_1020)          += fpc1020_tee.o
+obj-$(CONFIG_INPUT_EGISTEC_FPS)         += ets_fps.o ets_navi_input.o
 obj-$(CONFIG_STMVL53L1)	+= vl53L1/
