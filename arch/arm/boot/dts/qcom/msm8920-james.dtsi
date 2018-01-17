@@ -73,3 +73,8 @@
 		pinctrl-0 = <&tps61280_en_default>;
 	};
 };
+
+&sar_sx9310 {
+	reg_array_len = <4>;
+	reg_array_val = <0x15 0xc3 0x17 0x4e 0x18 0x42 0x19 0x83>;
+};
