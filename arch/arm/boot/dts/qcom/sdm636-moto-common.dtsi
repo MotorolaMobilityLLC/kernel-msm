@@ -78,6 +78,26 @@
 	};
 };
 
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		df-serialnum = "SNN5995";
+
+		#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
+		#include "fg-gen3-batterydata-hx40scud-3000mah.dtsi"
+	};
+};
+&pm660_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-force-load-profile = <1>;
+	qcom,fg-cutoff-voltage = <3200>;
+	qcom,fg-empty-voltage = <3000>;
+	qcom,fg-chg-term-current = <100>;
+	qcom,fg-sys-term-current = <(-200)>;
+	qcom,fg-delta-soc-thr = <1>;
+	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+};
+
 &pm660_charger {
 	qcom,fcc-max-ua = <3000000>;
 	qcom,fv-max-uv = <4400000>;
