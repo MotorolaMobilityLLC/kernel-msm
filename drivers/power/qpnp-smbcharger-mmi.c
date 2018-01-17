@@ -232,6 +232,7 @@ struct smbchg_chip {
 	bool				force_aicl_rerun;
 	bool				enable_hvdcp_9v;
 	bool				prop_flash_active;
+	bool				pd_charger_force_5v;
 	u32				wa_flags;
 	u8				original_usbin_allowance;
 	struct parallel_usb_cfg		parallel;
@@ -6478,7 +6479,11 @@ static void usb_insertion_work(struct work_struct *work)
 
 	smbchg_get_extbat_in_vl(chip);
 
-	usbc_volt = USBC_9V_MODE;
+	if (chip->pd_charger_force_5v)
+		usbc_volt = USBC_5V_MODE;
+	else
+		usbc_volt = USBC_9V_MODE;
+
 	if ((chip->ebchg_state == EB_SINK) && chip->vi_ebsrc &&
 	    (chip->vi_ebsrc < USBC_9V_MODE))
 		usbc_volt = USBC_5V_MODE;
@@ -8398,6 +8403,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"mmi,fake-factory-type");
 	chip->prop_flash_active = of_property_read_bool(node,
 					"qcom,prop-flash-active");
+	chip->pd_charger_force_5v = of_property_read_bool(node,
+					"qcom,pd-charger-force-5v");
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
 		"qcom,bmd-pin-src", &bpd);

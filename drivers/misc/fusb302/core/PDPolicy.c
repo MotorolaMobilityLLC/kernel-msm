@@ -171,8 +171,8 @@ void InitializePDPolicyVariables(void)
 	SwapSourceStartTimer = 0;
 
 #ifdef FSC_HAVE_SNK
-	/* Maximum voltage that the sink will request (9V)*/
-	SinkRequestMaxVoltage = 180;
+	/* Maximum voltage that the sink will request (5V)*/
+	SinkRequestMaxVoltage = 100;
 	/* Maximum power the sink will request first(0.5W*60)*/
 	SinkRequestMaxPower = 60000;
 	SinkRequestOpPower = 60000;
