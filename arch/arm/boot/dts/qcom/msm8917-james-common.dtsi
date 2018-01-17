@@ -232,7 +232,7 @@
 			ti,ppg = <110>; /*attenuation,0(-110db)~110(0db) */
 			status = "ok";
 	};
-	sx9310@28 {
+	sar_sx9310:sx9310@28 {
 		compatible = "semtech,sx9310";
 		reg = <0x28>;
 		pinctrl-names = "default";
@@ -247,8 +247,8 @@
 		cap,use_channel_bottom = <0x02>;
 		cap,raw_data_channel = <0x01>;
 		cap,scan_period = <0x02>;
-		reg_array_len = <2>;
-		reg_array_val = <0x18 0x5a 0x19 0x93>;
+		reg_array_len = <4>;
+		reg_array_val = <0x15 0xc1 0x17 0x4e 0x18 0x42 0x19 0x73>;
 	};
 
 	/delete-node/ adv7533@39;
