@@ -874,6 +874,7 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
+	qcom,pd-charger-force-5v;
 
 	smbcharger_charger_otg: qcom,smbcharger-boost-otg {
 		status = "okay";
