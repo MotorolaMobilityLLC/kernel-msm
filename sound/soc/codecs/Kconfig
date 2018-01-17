@@ -707,6 +707,22 @@ config SND_SOC_TAS2552
 	tristate "Texas Instruments TAS2552 Mono Audio amplifier"
 	depends on I2C
 
+config SND_SOC_TAS2560
+	tristate "Texas Instruments TAS2560 SmartAmp"
+	depends on I2C
+
+config TAS2560_REGMAP
+	bool "Use of RegMap API"
+	depends on SND_SOC_TAS2560
+
+config TAS2560_CODEC
+	bool "Codec Driver support"
+	depends on SND_SOC_TAS2560
+
+config TAS2560_MISC
+	bool "Misc Driver support"
+	depends on SND_SOC_TAS2560
+
 config SND_SOC_TAS5086
 	tristate "Texas Instruments TAS5086 speaker amplifier"
 	depends on I2C
