@@ -45,6 +45,7 @@
 		/delete-property/ qcom,cdc-us-euro-gpios;
 		qcom,msm-micbias1-ext-cap;
 		/delete-property/ qcom,msm-micbias2-ext-cap;
+		qcom,msm-hs-insert-debounce = <9>;
 		qcom,msm-hs-micbias-type = "external";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
