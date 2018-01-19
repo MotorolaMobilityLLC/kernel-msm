@@ -2141,6 +2141,9 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 
 	/* Insertion debounce set to 96ms */
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 6);
+	/* configure insertion debounce according to the setting in dts's sound node */
+	if (mbhc->insert_debounce >= 0 && mbhc->insert_debounce <= 0xF)
+		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, mbhc->insert_debounce);
 	/* Button Debounce set to 16ms */
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_DBNC, 2);
 
@@ -2384,6 +2387,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	struct snd_soc_card *card = codec->component.card;
 	const char *hph_switch = "qcom,msm-mbhc-hphl-swh";
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
+	const char *insert_debounce = "qcom,msm-hs-insert-debounce";
 
 	pr_debug("%s: enter\n", __func__);
 
@@ -2400,6 +2404,15 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 			"%s: missing %s in dt node\n", __func__, gnd_switch);
 		goto err;
 	}
+
+	ret = of_property_read_u32(card->dev->of_node, insert_debounce, &mbhc->insert_debounce);
+	if (ret) {
+		dev_err(card->dev,
+			"%s: missing %s in dt node\n", __func__, insert_debounce);
+		mbhc->insert_debounce = -1;
+	}
+	if (mbhc->insert_debounce > 0xF)
+		mbhc->insert_debounce = 0xF;
 
 	mbhc->in_swch_irq_handler = false;
 	mbhc->current_plug = MBHC_PLUG_TYPE_NONE;
