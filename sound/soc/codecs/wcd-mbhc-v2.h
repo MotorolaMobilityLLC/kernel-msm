@@ -384,6 +384,7 @@ struct wcd_mbhc {
 	bool in_swch_irq_handler;
 	bool hphl_swh; /*track HPHL switch NC / NO */
 	bool gnd_swh; /*track GND switch NC / NO */
+	u32 insert_debounce; /* debounce time when inserting headset */
 	u8 micbias1_cap_mode; /* track ext cap setting */
 	u8 micbias2_cap_mode; /* track ext cap setting */
 	bool hs_detect_work_stop;
