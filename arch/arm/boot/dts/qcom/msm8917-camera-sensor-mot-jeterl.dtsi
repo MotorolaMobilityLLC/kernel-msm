@@ -42,8 +42,8 @@
 		cam_vio-supply = <&pm8917_l6>;
 		cam_vana-supply = <&pm8917_l22>;
 		qcom,cam-vreg-name = "cam_vdig","cam_vio","cam_vana";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
@@ -73,8 +73,8 @@
 		cam_vio-supply = <&pm8917_l6>;
 		cam_vana-supply = <&pm8917_l22>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -105,8 +105,8 @@
 		cam_vio-supply = <&pm8917_l6>;
 		cam_vana-supply = <&pm8917_l22>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -137,8 +137,8 @@
 		cam_vio-supply = <&pm8917_l6>;
 		cam_vana-supply = <&pm8917_l22>;
 		qcom,cam-vreg-name = "cam_vdig","cam_vio","cam_vana";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
@@ -175,8 +175,8 @@
 		cam_vana-supply = <&pm8917_l22>;
 		cam_vaf-supply = <&pm8917_l17>;
 		qcom,cam-vreg-name = "cam_vdig","cam_vio","cam_vana","cam_vaf";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000 2850000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000 2850000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000 2850000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000 2850000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000 100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
@@ -213,8 +213,8 @@
 		cam_vio-supply = <&pm8917_l6>;
 		cam_vana-supply = <&pm8917_l22>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -252,8 +252,8 @@
 		cam_vio-supply = <&pm8917_l6>;
 		cam_vana-supply = <&pm8917_l22>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -293,8 +293,8 @@
 		cam_vana-supply = <&pm8917_l22>;
 		cam_vaf-supply = <&pm8917_l17>;
 		qcom,cam-vreg-name = "cam_vdig","cam_vio","cam_vana","cam_vaf";
-		qcom,cam-vreg-min-voltage = <1200000 0 2800000 2850000>;
-		qcom,cam-vreg-max-voltage = <1200000 0 2800000 2850000>;
+		qcom,cam-vreg-min-voltage = <1200000 0 2900000 2850000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 2900000 2850000>;
 		qcom,cam-vreg-op-mode = <105000 0 80000 100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
@@ -541,9 +541,9 @@
 	rpm-regulator-ldoa22 {
 		status = "okay";
 		pm8917_l22: regulator-l22 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			qcom,init-voltage = <2800000>;
+			regulator-min-microvolt = <2900000>;
+			regulator-max-microvolt = <2900000>;
+			qcom,init-voltage = <2900000>;
 			status = "okay";
 		};
 	};
