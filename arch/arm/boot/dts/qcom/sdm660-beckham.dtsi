@@ -17,6 +17,7 @@
 #include "sdm660-beckham-pinctrl.dtsi"
 #include "sdm660-beckham-audio.dtsi"
 #include "dsi-panel-mot-smd-601-1080p-cmd.dtsi"
+#include "dsi-panel-mot-tianma-601-1080p-cmd.dtsi"
 
 / {
 	model = "beckham";
@@ -327,6 +328,23 @@
 };
 
 &mot_smd_601_1080p_cmd_v0 {
+	qcom,bklt-dcs-2bytes-enabled;
+	qcom,mdss-dsi-bl-min-level = <3>;
+	qcom,mdss-dsi-bl-max-level = <1023>;
+
+	qcom,panel-supply-entries {
+			qcom,panel-supply-entry@4 {
+				reg = <4>;
+				qcom,supply-name = "oled_disp";
+				qcom,supply-min-voltage = <5000000>;
+				qcom,supply-max-voltage = <8100000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+	};
+};
+
+&mot_tianma_601_1080p_cmd_v0 {
 	qcom,bklt-dcs-2bytes-enabled;
 	qcom,mdss-dsi-bl-min-level = <3>;
 	qcom,mdss-dsi-bl-max-level = <1023>;
