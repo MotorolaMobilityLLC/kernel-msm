@@ -28,4 +28,9 @@ static inline bool cpu_have_feature(unsigned int num)
 
 void __init setup_cpu_features(void);
 
+#ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
+extern bool sys_psci_bp_hardening_initialised;
+extern void enable_psci_bp_hardening(void *data);
+#endif
+
 #endif
