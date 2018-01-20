@@ -159,6 +159,11 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	if (cpu_ops[cpu]->cpu_postboot)
 		cpu_ops[cpu]->cpu_postboot();
 
+#ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
+	if (sys_psci_bp_hardening_initialised)
+		enable_psci_bp_hardening(NULL);
+#endif
+
 	/*
 	 * Enable GIC and timers.
 	 */
