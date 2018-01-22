@@ -387,6 +387,21 @@ void siw_touch_free_uevent(void *ts_data)
 }
 #endif	/* __SIW_SUPPORT_UEVENT */
 
+/* Initialize multi-touch slot */
+static int siw_input_mt_init_slots(struct siw_ts *ts, struct input_dev *input)
+{
+	struct touch_device_caps *caps = &ts->caps;
+	int ret = 0;
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 7, 0))
+	ret = input_mt_init_slots(input, caps->max_id);
+#else
+	ret = input_mt_init_slots(input, caps->max_id, caps->mt_slots_flags);
+#endif
+
+	return ret;
+}
+
 #define SIW_TOUCH_PHYS_NAME_SIZE	128
 
 int siw_touch_init_input(void *ts_data)
@@ -447,7 +462,9 @@ int siw_touch_init_input(void *ts_data)
 	set_bit(EV_KEY, input->evbit);
 	set_bit(BTN_TOUCH, input->keybit);
 	set_bit(BTN_TOOL_FINGER, input->keybit);
+#if defined(INPUT_PROP_DIRECT)
 	set_bit(INPUT_PROP_DIRECT, input->propbit);
+#endif
 	input_set_abs_params(input, ABS_MT_POSITION_X, 0,
 				caps->max_x, 0, 0);
 	input_set_abs_params(input, ABS_MT_POSITION_Y, 0,
@@ -461,12 +478,7 @@ int siw_touch_init_input(void *ts_data)
 	input_set_abs_params(input, ABS_MT_ORIENTATION, 0,
 				caps->max_orientation, 0, 0);
 
-	/* Initialize multi-touch slot */
-#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 6, 0))
-	ret = input_mt_init_slots(input, caps->max_id);
-#else
-	ret = input_mt_init_slots(input, caps->max_id, 0);
-#endif
+	ret = siw_input_mt_init_slots(ts, input);
 	if (ret < 0) {
 		t_dev_err(dev, "failed to initialize input device, %d\n", ret);
 		goto out_slot;
@@ -481,15 +493,16 @@ int siw_touch_init_input(void *ts_data)
 	input_set_drvdata(input, ts);
 	ts->input = input;
 
-	t_dev_info(&input->dev, "input device[%s] registered (%d, %d, %d, %d, %d, %d, %d)\n",
-			input->phys,
+	t_dev_info(&input->dev, "input device[%s] registered\n", input->phys);
+	t_dev_info(&input->dev, "input caps : %d, %d, %d, %d, %d, %d, %d, 0x%X\n",
 			caps->max_x,
 			caps->max_y,
 			caps->max_pressure,
 			caps->max_width,
 			caps->max_width,
 			caps->max_orientation,
-			caps->max_id);
+			caps->max_id,
+			caps->mt_slots_flags);
 
 	return 0;
 
