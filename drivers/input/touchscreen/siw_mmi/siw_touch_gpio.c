@@ -42,17 +42,17 @@
 #include "siw_touch_sys.h"
 
 static int siw_touch_gpio_do_init(struct device *dev,
-				  int pin, const char *name)
+					int pin, const char *name)
 {
 	int ret = 0;
 
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "gpio_request: pin %d, name %s\n",
-			       pin, name);
+			pin, name);
 		ret = gpio_request(pin, name);
 		if (ret) {
 			t_dev_err(dev, "gpio_request[%s] failed, %d",
-				  name, ret);
+				name, ret);
 		}
 	}
 
@@ -75,8 +75,7 @@ static void siw_touch_gpio_do_dir_input(struct device *dev, int pin)
 	}
 }
 
-static void siw_touch_gpio_do_dir_output(struct device *dev,
-		int pin, int value)
+static void siw_touch_gpio_do_dir_output(struct device *dev, int pin, int value)
 {
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "set pin(%d) output mode(%d)", pin, value);
