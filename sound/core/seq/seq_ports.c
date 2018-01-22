@@ -131,7 +131,7 @@ struct snd_seq_client_port *snd_seq_create_port(struct snd_seq_client *client,
 	unsigned long flags;
 	struct snd_seq_client_port *new_port, *p;
 	int num = -1;
-	
+
 	/* sanity check */
 	if (snd_BUG_ON(!client))
 		return NULL;
@@ -168,7 +168,7 @@ struct snd_seq_client_port *snd_seq_create_port(struct snd_seq_client *client,
 	list_add_tail(&new_port->list, &p->list);
 	client->num_ports++;
 	new_port->addr.port = num;	/* store the port number in the port */
-	sprintf(new_port->name, "port-%d", num);
+	snprintf(new_port->name, sizeof(new_port->name), "port-%d", num);
 	write_unlock_irqrestore(&client->ports_lock, flags);
 	mutex_unlock(&client->ports_mutex);
 
