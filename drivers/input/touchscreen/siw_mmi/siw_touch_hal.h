@@ -261,6 +261,7 @@ struct siw_hal_fw_info {
 	u32 conf_idx_addr;
 	u32 conf_dn_addr;
 	u32 boot_code_addr;
+	int conf_skip;
 };
 
 static inline void siw_hal_fw_set_chip_id(struct siw_hal_fw_info *fw,
@@ -447,33 +448,39 @@ struct siw_hal_reg_log {
 };
 
 struct siw_touch_chip_opt {
-	u32 f_info_more: 1;
-	u32 f_ver_ext: 1;
-	u32 f_attn_opt: 1;
-	u32 f_glove_en: 1;
-	u32 f_grab_en: 1;
-	u32 f_dbg_report: 1;
-	u32 f_u2_blank_chg: 1;
-	u32 f_rsvd00: 1;
-	u32 f_rsvd01: 8;
-	u32 f_rsvd02: 8;
-	u32 f_rsvd03: 8;
+	u32 f_info_more:1;
+	u32 f_ver_ext:1;
+	u32 f_attn_opt:1;
+	u32 f_glove_en:1;
+	u32 f_grab_en:1;
+	u32 f_dbg_report:1;
+	u32 f_u2_blank_chg:1;
+	u32 f_rsvd00:1;
 	/* */
-	u32 t_boot_mode: 4;
-	u32 t_sts_mask: 4;
-	u32 t_chk_mode: 4;
-	u32 t_sw_rst: 4;
-	u32 t_clock: 4;
-	u32 t_chk_mipi: 4;
-	u32 t_chk_frame: 4;
-	u32 t_chk_tci_debug: 4;
+	u32 f_flex_report:1;
+	u32 f_rsvd01:7;
 	/* */
-	u32 t_chk_sys_error: 4;
-	u32 t_chk_sys_fault: 4;
-	u32 t_chk_fault: 4;
-	u32 rsvd21: 4;
-	u32 rsvd22: 8;
-	u32 rsvd23: 8;
+	u32 f_no_disp_sts:1;
+	u32 f_no_sram_ctl:1;
+	u32 f_rsvd02:6;
+	/* */
+	u32 f_rsvd03:8;
+	/* */
+	u32 t_boot_mode:4;
+	u32 t_sts_mask:4;
+	u32 t_chk_mode:4;
+	u32 t_sw_rst:4;
+	u32 t_clock:4;
+	u32 t_chk_mipi:4;
+	u32 t_chk_frame:4;
+	u32 t_chk_tci_debug:4;
+	/* */
+	u32 t_chk_sys_error:4;
+	u32 t_chk_sys_fault:4;
+	u32 t_chk_fault:4;
+	u32 rsvd21:4;
+	u32 rsvd22:8;
+	u32 rsvd23:8;
 };
 
 enum {
@@ -529,6 +536,9 @@ struct siw_touch_chip {
 	struct siw_hal_status_mask_bit status_mask_bit;
 	struct siw_hal_status_filter *status_filter;
 	/* */
+	int mode_allowed_partial;
+	int mode_allowed_qcover;
+	int drv_reset_low;
 	int drv_delay;
 	int drv_opt_delay;
 	u8 prev_lcd_mode;
@@ -607,11 +617,21 @@ static inline struct siw_touch_chip *to_touch_chip_from_kobj
 			struct siw_touch_chip, kobj);
 }
 
+enum {
+	ADDR_SKIP_MASK  = 0xFFFF,
+};
+
 extern int siw_hal_read_value(struct device *dev, u32 addr, u32 *value);
 extern int siw_hal_write_value(struct device *dev, u32 addr, u32 value);
 extern int siw_hal_reg_read(struct device *dev, u32 addr, void *data,
 				int size);
 extern int siw_hal_reg_write(struct device *dev, u32 addr, void *data,
+				int size);
+extern int siw_hal_read_value_chk(struct device *dev, u32 addr, u32 *value);
+extern int siw_hal_write_value_chk(struct device *dev, u32 addr, u32 value);
+extern int siw_hal_reg_read_chk(struct device *dev, u32 addr, void *data,
+				int size);
+extern int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data,
 				int size);
 extern void siw_hal_xfer_init(struct device *dev, void *xfer_data);
 extern int siw_hal_xfer_msg(struct device *dev,
@@ -624,10 +644,6 @@ extern void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf,
 extern int siw_hal_ic_test_unit(struct device *dev, u32 data);
 
 extern struct siw_touch_operations *siw_hal_get_default_ops(int opt);
-
-#if defined(__SIW_SUPPORT_ABT)
-extern void siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts);
-#endif
 
 #endif	/* __SIW_TOUCH_HAL_H */
 
