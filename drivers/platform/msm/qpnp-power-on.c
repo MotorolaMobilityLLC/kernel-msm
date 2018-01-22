@@ -565,7 +565,7 @@ int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 
 	if (mask & 0xFF) {
 
-		shipmode_info_reg = QPNP_PON_EXTRA_RESET_INFO_1(pon->base);
+		shipmode_info_reg = QPNP_PON_EXTRA_RESET_INFO_2(pon->base);
 
 		rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
 					     shipmode_info_reg, &value, 1);
@@ -574,7 +574,7 @@ int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 				"Unable to check shipmode status, rc(%d)\n",
 				rc);
 		}
-		pr_err("Current shipmode info1 is 0x%x = 0x%x\n",
+		pr_err("Current shipmode info is 0x%x = 0x%x\n",
 		       shipmode_info_reg, value);
 
 		rc = qpnp_pon_masked_write(pon, shipmode_info_reg,
@@ -584,7 +584,7 @@ int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 			    shipmode_info_reg);
 			return rc;
 		}
-		pr_err("Write shipmode info1 to 0x%x with 0x%x\n",
+		pr_err("Write shipmode info to 0x%x with 0x%x\n",
 		       shipmode_info_reg, val);
 	}
 
