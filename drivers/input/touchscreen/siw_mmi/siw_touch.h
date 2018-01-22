@@ -372,6 +372,8 @@ struct touch_device_caps {
 	u32 max_width;
 	u32 max_orientation;
 	u32 max_id;
+	int mt_slots_flags;
+	/* */
 	u32 hw_reset_delay;
 	u32 sw_reset_delay;
 };
@@ -484,6 +486,7 @@ struct siw_touch_operations {
 	int (*tc_con)(struct device *dev,	u32 code, void *param);
 	int (*tc_driving)(struct device *dev, int mode);
 	int (*chk_status)(struct device *dev);
+	int (*irq_dbg_handler)(struct device *dev);
 	int (*irq_handler)(struct device *dev);
 	int (*irq_abs)(struct device *dev);
 	int (*irq_lpwg)(struct device *dev);
@@ -691,6 +694,13 @@ struct siw_touch_pdata {
 	void *font_bin;
 
 	int senseless_margin;
+
+	/*
+	 * Auto-execution for ts->init_late_work
+	 * 0: disabled, non-zero: auto execution time delay(msec)
+	 * To ts->init_late_time
+	 */
+	int init_late_time;
 };
 
 struct siw_touch_chip_data {
@@ -949,6 +959,7 @@ struct siw_ts {
 	char *ext_watch_name;
 	int max_finger;
 	int chip_type;
+	u32 mode_allowed;
 
 	int irq;
 	unsigned long irqflags;
@@ -1107,6 +1118,13 @@ struct siw_ts {
 	/* */
 	int (*init_late)(void *data);
 	int init_late_done;
+	/*
+	 * Auto-execution for ts->init_late_work
+	 * 0: disabled, non-zero: auto execution time delay(msec)
+	 * From pdata->init_late_time
+	 */
+	int init_late_time;
+	struct delayed_work init_late_work;
 };
 
 enum {
@@ -1308,14 +1326,14 @@ static inline u32 touch_chip_type(struct siw_ts *ts)
 
 static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode)
 {
-	return pdata_mode_allowed(ts->pdata, mode);
+	return (ts->mode_allowed & BIT(mode));
 }
 
 static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode)
 {
 	int ret;
 
-	ret = !pdata_mode_allowed(ts->pdata, mode);
+	ret = !touch_mode_allowed(ts, mode);
 	if (ret)
 		t_dev_warn(ts->dev, "target mode(%d) not supported\n", mode);
 
@@ -1437,6 +1455,8 @@ static inline void touch_set_caps(struct siw_ts *ts,
 	caps->max_width = caps_src->max_width;
 	caps->max_orientation = caps_src->max_orientation;
 	caps->max_id = caps_src->max_id;
+	caps->mt_slots_flags = caps_src->mt_slots_flags;
+
 	caps->hw_reset_delay = caps_src->hw_reset_delay;
 	caps->sw_reset_delay = caps_src->sw_reset_delay;
 }
@@ -1522,7 +1542,7 @@ static inline void siw_ops_restore_irq_handler(struct siw_ts *ts)
 }
 
 
-#define siw_ops_is_null(_ts, _ops)	(_ts->ops->_ops == NULL)
+#define siw_ops_is_null(_ts, _ops)	(!!(_ts->ops->_ops == NULL))
 
 #define siw_ops_xxx(_ops, _ret, _ts, args...)	\
 ({	int _r = 0;	\
@@ -1613,7 +1633,7 @@ static inline void *touch_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 
 static inline void touch_kfree(struct device *dev, void *p)
 {
-	return devm_kfree(dev, p);
+	devm_kfree(dev, p);
 }
 
 static inline void *touch_getname(void)
@@ -1691,6 +1711,9 @@ extern int siw_touch_get(struct device *dev, u32 cmd, void *buf);
 
 extern void siw_touch_suspend_call(struct device *dev);
 extern void siw_touch_resume_call(struct device *dev);
+
+extern void siw_touch_suspend_bus(struct device *dev);
+extern void siw_touch_resume_bus(struct device *dev);
 
 extern void siw_touch_change_sensitivity(struct siw_ts *ts,
 						int target);
@@ -1818,25 +1841,24 @@ do {	\
 #endif	/* MODULE */
 
 #define siw_chip_module_init(_name, _data, _desc, _author)	\
-	static int __init chip_##_name##_driver_init(void)\
+	static int __init siw_touch_driver_init(void)\
 	{	\
-		touch_msleep(200);	\
 		t_pr_info("%s: %s driver init - %s\n",	\
 			_data.pdata->drv_name, _name, SIW_DRV_VERSION);	\
 		return siw_touch_bus_add_driver(&_data);	\
 	}	\
-	static void __exit chip_##_name##_driver_exit(void)	\
+	static void __exit siw_touch_driver_exit(void)	\
 	{	\
 		(void)siw_touch_bus_del_driver(&_data);\
 		t_pr_info("%s: %s driver exit - %s\n",	\
 			_data.pdata->drv_name, _name, SIW_DRV_VERSION);	\
 	}	\
-	module_init(chip_##_name##_driver_init);	\
-	module_exit(chip_##_name##_driver_exit);	\
+	module_init(siw_touch_driver_init);	\
+	module_exit(siw_touch_driver_exit);	\
 	MODULE_AUTHOR(_author);	\
 	MODULE_DESCRIPTION(_desc);	\
 	MODULE_VERSION(SIW_DRV_VERSION);	\
-	MODULE_LICENSE("GPL")
+	MODULE_LICENSE("GPL");
 
 #endif /* __SIW_TOUCH_H */
 

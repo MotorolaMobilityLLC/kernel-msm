@@ -203,8 +203,8 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
-				 reg->spr_boot_status,
-				 &bootmode);
+				reg->spr_boot_status,
+				&bootmode);
 	if (ret < 0)
 		return (ssize_t)ret;
 
@@ -236,6 +236,8 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 			     fw->product_id);
 
 	switch (chip->opt.t_boot_mode) {
+	case 2:
+		/* fall through */
 	case 1:
 		boot_chk_offset = 0;
 		break;
@@ -264,7 +266,6 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 }
 
 #define REG_BURST_MAX			512
-#define REG_BURST_LOG_BUF_SZ	(1<<10)
 #define REG_BURST_COL_PWR		4
 
 static int __show_reg_ctrl_log_history(struct device *dev, char *buf)
@@ -338,27 +339,16 @@ static void __store_reg_ctrl_log_add(struct device *dev,
 }
 
 static inline void __store_reg_ctrl_rd_burst_log(struct device *dev,
-		u8 *row_buf, u8 *log_buf, int log_buf_sz, int row, int col)
+		u8 *row_buf, int row, int col)
 {
-	int log_size = 0;
-	int i;
-
-	if (!col)
-		return;
-
-	for (i = 0; i < col ; i++) {
-		log_size += snprintf(log_buf + log_size, log_buf_sz - log_size,
-				     "%02X ", *row_buf++);
-	}
-	t_dev_info(dev, "rd: [%3Xh] %s\n", row, log_buf);
+	if (col)
+		t_dev_info(dev, "rd: [%3Xh] %*ph\n", row, col, row_buf);
 }
 
 static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr,
 	int size)
 {
 	u8 *rd_buf, *row_buf;
-	u8 *log_buf;
-	int log_buf_sz = REG_BURST_LOG_BUF_SZ;
 	int col_power = REG_BURST_COL_PWR;
 	int col_width = (1 << col_power);
 	int row_curr, col_curr;
@@ -366,12 +356,11 @@ static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr,
 
 	size = min(size, REG_BURST_MAX);
 
-	rd_buf = (u8 *)kzalloc(size + log_buf_sz, GFP_KERNEL);
+	rd_buf = kzalloc(size, GFP_KERNEL);
 	if (rd_buf == NULL) {
 		t_dev_err(dev, "failed to allocate rd_buf\n");
 		return -ENOMEM;
 	}
-	log_buf = rd_buf + size;
 
 	ret = siw_hal_reg_read(dev, addr, rd_buf, size);
 	if (ret < 0)
@@ -384,8 +373,7 @@ static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr,
 	while (size) {
 		col_curr = min(col_width, size);
 
-		__store_reg_ctrl_rd_burst_log(dev, row_buf, log_buf,
-					      log_buf_sz, row_curr, col_curr);
+		__store_reg_ctrl_rd_burst_log(dev, row_buf, row_curr, col_curr);
 
 		row_buf += col_curr;
 		row_curr += col_curr;
@@ -963,7 +951,7 @@ static int __siw_hal_sysfs_add_abt(struct device *dev, int on_off)
 	ret = siw_ops_abt_sysfs(ts, on_off);
 	if ((on_off == DRIVER_INIT) && (ret < 0)) {
 		t_dev_err(dev, "%s abt sysfs register failed\n",
-			  touch_chip_name(ts));
+			touch_chip_name(ts));
 	}
 
 	return ret;
@@ -978,7 +966,7 @@ static int __siw_hal_sysfs_add_prd(struct device *dev, int on_off)
 	ret = siw_ops_prd_sysfs(ts, on_off);
 	if ((on_off == DRIVER_INIT) && (ret < 0)) {
 		t_dev_err(dev, "%s prd sysfs register failed\n",
-			  touch_chip_name(ts));
+			touch_chip_name(ts));
 	}
 
 	return ret;
@@ -993,7 +981,7 @@ static int __siw_hal_sysfs_add_watch(struct device *dev, int on_off)
 	ret = siw_ops_watch_sysfs(ts, on_off);
 	if ((on_off == DRIVER_INIT) && (ret < 0)) {
 		t_dev_err(dev, "%s watch sysfs register failed\n",
-			  touch_chip_name(ts));
+			touch_chip_name(ts));
 	}
 
 	return ret;
@@ -1041,7 +1029,7 @@ static int siw_hal_create_sysfs(struct device *dev)
 	ret = sysfs_create_group(kobj, &siw_hal_attribute_group);
 	if (ret < 0) {
 		t_dev_err(dev, "%s sysfs register failed\n",
-			  touch_chip_name(ts));
+				touch_chip_name(ts));
 		goto out;
 	}
 
@@ -1050,7 +1038,7 @@ static int siw_hal_create_sysfs(struct device *dev)
 		goto out_add;
 
 	t_dev_dbg_base(dev, "%s sysfs registered\n",
-		       touch_chip_name(ts));
+			touch_chip_name(ts));
 
 	return 0;
 
@@ -1072,7 +1060,7 @@ static void siw_hal_remove_sysfs(struct device *dev)
 	sysfs_remove_group(&ts->kobj, &siw_hal_attribute_group);
 
 	t_dev_dbg_base(dev, "%s sysfs unregistered\n",
-		       touch_chip_name(ts));
+			touch_chip_name(ts));
 }
 
 int siw_hal_sysfs(struct device *dev, int on_off)
