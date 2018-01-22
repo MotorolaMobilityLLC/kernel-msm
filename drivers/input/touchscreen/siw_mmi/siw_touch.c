@@ -114,6 +114,21 @@ module_param_named(lpwg_sensor, t_lpwg_sensor, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 module_param_named(lpwg_qcover, t_lpwg_qcover, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 
+static void siw_config_status(struct device *dev)
+{
+#if defined(__SIW_CONFIG_FB)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_FB\n");
+#endif
+
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_SYSTEM_PM\n");
+#endif
+
+#if defined(__SIW_CONFIG_FASTBOOT)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_FASTBOOT\n");
+#endif
+}
+
 static int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 {
 	struct device *dev = ts->dev;
@@ -170,7 +185,10 @@ int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 	struct device *dev = ts->dev;
 	int max_finger = 0;
 	int type = 0;
+	u32 mode_allowed = 0;
 	int ret = 0;
+
+	siw_config_status(dev);
 
 	max_finger = pdata_max_finger(pdata);
 	if ((max_finger < 0) || (max_finger > MAX_FINGER)) {
@@ -186,6 +204,17 @@ int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 
 	ts->chip_type = type;
 	t_dev_info(dev, "chip type  : 0x%04X\n", type);
+
+	mode_allowed = pdata->mode_allowed;
+	if (!mode_allowed)
+		return -EFAULT;
+
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+	mode_allowed &= ~(LCD_MODE_BIT_U0|LCD_MODE_BIT_U3_PARTIAL);
+	mode_allowed &= ~(LCD_MODE_BIT_U2|LCD_MODE_BIT_U2_UNBLANK);
+#endif	/* __SIW_CONFIG_SYSTEM_PM */
+	ts->mode_allowed = mode_allowed;
+	t_dev_info(dev, "mode bit   : 0x%08X\n", mode_allowed);
 
 	ret = siw_setup_names(ts, pdata);
 	if (ret < 0)
@@ -387,27 +416,37 @@ static void siw_touch_resume(struct device *dev)
 		mod_delayed_work(ts->wq, &ts->init_work, 0);
 }
 
-/**
- * siw_touch_suspend_call() - Helper function for touch suspend
- * @dev: device to use
- *
- */
 void siw_touch_suspend_call(struct device *dev)
 {
-#if !defined(__SIW_CONFIG_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
 	siw_touch_suspend(dev);
+}
+
+void siw_touch_resume_call(struct device *dev)
+{
+	siw_touch_resume(dev);
+}
+
+#if !defined(__SIW_CONFIG_EARLYSUSPEND) &&	\
+	!defined(__SIW_CONFIG_FB)
+#define __SIW_CONFIG_PM_BUS
+#endif
+
+void siw_touch_suspend_bus(struct device *dev)
+{
+#if defined(__SIW_CONFIG_PM_BUS)
+	siw_touch_suspend(dev);
+#else
+	t_dev_info(dev, "touch_suspend_bus(noop)\n");
 #endif
 }
 
-/**
- * siw_touch_resume_call() - Helper function for touch resume
- * @dev: device to use
- *
- */
-void siw_touch_resume_call(struct device *dev)
+
+void siw_touch_resume_bus(struct device *dev)
 {
-#if !defined(__SIW_CONFIG_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
+#if defined(__SIW_CONFIG_PM_BUS)
 	siw_touch_resume(dev);
+#else
+	t_dev_info(dev, "touch_resume_bus(noop)\n");
 #endif
 }
 
@@ -758,12 +797,11 @@ static void siw_touch_init_work_func(struct work_struct *work)
 	t_dev_dbg_base(dev, "init work done\n");
 }
 
-static void siw_touch_upgrade_work_func(struct work_struct *work)
+static int siw_touch_upgrade_work(struct siw_ts *ts)
 {
-	struct siw_ts *ts =
-			container_of(to_delayed_work(work),
-						struct siw_ts, upgrade_work);
 	struct device *dev = ts->dev;
+	int core_state = atomic_read(&ts->state.core);
+	int irq_state = atomic_read(&ts->state.irq_enable);
 	int ret = 0;
 
 	t_dev_info(dev, "FW upgrade work func\n");
@@ -781,6 +819,15 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	ts->force_fwup = FORCE_FWUP_CLEAR;
 	ts->test_fwpath[0] = '\0';
 
+	/* upgrade not granted */
+	if (ret == EACCES) {
+		atomic_set(&ts->state.core, core_state);
+		if (irq_state)
+			siw_touch_irq_control(dev, INTERRUPT_ENABLE);
+
+		return 0;	/* skip reset */
+	}
+
 	if (ret < 0) {
 		if (ret == -EPERM)
 			t_dev_err(dev, "FW upgrade skipped\n");
@@ -788,7 +835,17 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 			t_dev_err(dev, "FW upgrade halted, %d\n", ret);
 	}
 
-	siw_ops_reset(ts, HW_RESET_ASYNC);
+	return 1;		/* do reset */
+}
+
+static void siw_touch_upgrade_work_func(struct work_struct *work)
+{
+	struct siw_ts *ts =
+			container_of(to_delayed_work(work),
+						struct siw_ts, upgrade_work);
+
+	if (siw_touch_upgrade_work(ts))
+		siw_ops_reset(ts, HW_RESET_ASYNC);
 }
 
 static void siw_touch_fb_work_func(struct work_struct *work)
@@ -1279,6 +1336,11 @@ static irqreturn_t __used siw_touch_irq_thread(int irq, void *dev_id)
 	if (t_dbg_flag & DBG_FLAG_SKIP_IRQ)
 		goto out;
 
+	if (ts->ops->irq_dbg_handler) {
+		ret = ts->ops->irq_dbg_handler(dev);
+		goto out;
+	}
+
 	mutex_lock(&ts->lock);
 	ret = _siw_touch_do_irq_thread(ts);
 	mutex_unlock(&ts->lock);
@@ -1480,9 +1542,6 @@ static int __siw_touch_probe_init(void *data)
 	if (ts->is_charger)
 		goto skip_charger;
 
-	siw_ops_power(ts, POWER_OFF);
-	siw_ops_power(ts, POWER_ON);
-
 #if defined(__SIW_TEST_IRQ_OFF)
 	ts->irq = 0;
 #else	/* __SIW_TEST_IRQ_OFF */
@@ -1508,9 +1567,7 @@ static int __siw_touch_probe_init(void *data)
 		goto out_init_thread;
 	}
 
-	t_dev_dbg_base(dev, "hw_reset_delay : %d ms\n",
-		ts->caps.hw_reset_delay);
-	siw_touch_qd_init_work_hw(ts);
+	siw_touch_qd_init_work_now(ts);
 
 skip_charger:
 	ts->init_late_done = 1;
@@ -1521,8 +1578,6 @@ out_init_thread:
 	siw_touch_free_irq(ts);
 
 out_request_irq:
-	siw_ops_power(ts, POWER_OFF);
-
 	siw_touch_free_pm(ts);
 
 out_init_pm:
@@ -1551,8 +1606,6 @@ static void __siw_touch_probe_free(void *data)
 	siw_touch_free_thread(ts);
 
 	siw_touch_free_irq(ts);
-
-	siw_ops_power(ts, POWER_OFF);
 
 skip_charger:
 	siw_touch_free_pm(ts);
@@ -1583,8 +1636,62 @@ static void siw_touch_probe_free(void *data)
 	mutex_unlock(&ts->probe_lock);
 }
 
+enum {
+	INIT_LATE_SIG_WQ	= 0x5A5A,
+	INIT_LATE_SIG_DONE	= 0xAA55,
+};
+
+static void siw_touch_init_late_work_func(struct work_struct *work)
+{
+	struct siw_ts *ts =
+			container_of(to_delayed_work(work),
+						struct siw_ts, init_late_work);
+	int ret = 0;
+
+	mutex_lock(&ts->lock);
+
+	if (ts->init_late == NULL)
+		goto out;
+
+	ret = siw_touch_init_late(ts, INIT_LATE_SIG_WQ);
+	t_dev_info(ts->dev, "init_late_work done, %d\n", ret);
+
+out:
+	mutex_unlock(&ts->lock);
+}
+
+static int siw_touch_init_late_work_trigger(struct siw_ts *ts)
+{
+	int init_late_time = 0;
+
+	if (t_dbg_flag & DBG_FLAG_SKIP_INIT_LATE_WORK)
+		ts->init_late_time = 0;
+
+	if (t_dbg_flag & DBG_FLAG_TEST_INIT_LATE_WORK)
+		ts->init_late_time = 5000;
+
+	init_late_time = ts->init_late_time;
+
+	if (!init_late_time)
+		return 0;
+
+	INIT_DELAYED_WORK(&ts->init_late_work, siw_touch_init_late_work_func);
+
+	queue_delayed_work(ts->wq,
+		&ts->init_late_work,
+		msecs_to_jiffies(init_late_time));
+
+	t_dev_info(ts->dev,
+		"init_late_work triggered, %d msec\n",
+		init_late_time);
+
+	return 0;
+}
+
 static int siw_touch_probe_post(struct siw_ts *ts)
 {
+	ts->init_late_time = ts->pdata->init_late_time;
+
 	if (t_dbg_flag & DBG_FLAG_SKIP_INIT_LATE)
 		ts->flags &= ~TOUCH_USE_PROBE_INIT_LATE;
 	if (t_dbg_flag & DBG_FLAG_TEST_INIT_LATE)
@@ -1597,16 +1704,27 @@ static int siw_touch_probe_post(struct siw_ts *ts)
 		 * shall be controlled by MIPI via notifier
 		 */
 		ts->init_late = siw_touch_probe_init;
+
+		siw_touch_init_late_work_trigger(ts);
 		return 0;
 	}
 
 	ts->init_late = NULL;
+
+	touch_msleep(200);
 
 	return siw_touch_probe_init(ts);
 }
 
 static void siw_touch_remove_post(struct siw_ts *ts)
 {
+	if (ts->init_late) {
+		if (ts->init_late_time) {
+			t_dev_info(ts->dev, "init_late_work canceled\n");
+			cancel_delayed_work_sync(&ts->init_late_work);
+		}
+	}
+
 	siw_touch_probe_free(ts);
 }
 
@@ -1690,7 +1808,7 @@ int siw_touch_init_late(struct siw_ts *ts, int value)
 	if (ts->init_late == NULL)
 		goto out;
 
-	t_dev_info(dev, "trigger init_late\n");
+	t_dev_info(dev, "trigger init_late(%Xh)\n", value);
 
 	ret = ts->init_late(ts);
 	if (ret < 0) {
@@ -1699,11 +1817,11 @@ int siw_touch_init_late(struct siw_ts *ts, int value)
 		goto out;
 	}
 
-	t_dev_info(dev, "init_late done\n");
+	t_dev_info(dev, "init_late done(%Xh)\n", value);
 
 	ts->init_late = NULL;
 
-	value = 0xAA55;
+	value = INIT_LATE_SIG_DONE;
 	siw_touch_atomic_notifier_call(
 		LCD_EVENT_TOUCH_INIT_LATE,
 		&value);
