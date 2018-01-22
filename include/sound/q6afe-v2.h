@@ -464,4 +464,9 @@ int ospl2xx_afe_set_callback(int32_t (*ospl2xx_callback_func)
 				(struct apr_client_data *data));
 int ospl2xx_afe_apr_send_pkt(void *data, int index);
 #endif
+#ifdef CONFIG_SND_SOC_TAS2560
+int tas2560_algo_afe_set_callback(int32_t (*tas2560_algo_callback_func)
+				(struct apr_client_data *data));
+int tas2560_algo_afe_apr_send_pkt(void *data, int index);
+#endif
 #endif /* __Q6AFE_V2_H__ */
