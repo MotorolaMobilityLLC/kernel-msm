@@ -52,7 +52,7 @@
 
 
 static void siw_touch_i2c_err_dump(struct i2c_client *client,
-					struct i2c_msg *msgs, int num)
+						struct i2c_msg *msgs, int num)
 {
 	struct i2c_msg *msg = msgs;
 	int i;
@@ -60,10 +60,10 @@ static void siw_touch_i2c_err_dump(struct i2c_client *client,
 	t_dev_err(&client->dev, "i2c transfer err : ");
 	for (i = 0; i < num; i++) {
 		t_dev_err(&client->dev,
-			" - msgs[%d] : client 0x%04X, flags 0x%04X, len %d\n",
-			i, msg->addr, msg->flags, msg->len);
+				" - msgs[%d] : client 0x%04X, flags 0x%04X, len %d\n",
+				i, msg->addr, msg->flags, msg->len);
 		siw_touch_bus_err_dump_data(&client->dev,
-			msg->buf, msg->len, i, "msgs");
+					msg->buf, msg->len, i, "msgs");
 		msg++;
 	}
 }
@@ -74,7 +74,7 @@ static int siw_touch_i2c_init(struct device *dev)
 }
 
 static int siw_touch_do_i2c_read(struct i2c_client *client,
-					struct touch_bus_msg *msg)
+						struct touch_bus_msg *msg)
 {
 	struct i2c_msg msgs[] = {
 		{
@@ -332,7 +332,7 @@ static const struct dev_pm_ops siw_touch_i2c_pm_ops = {
 	.suspend		= siw_touch_i2c_pm_suspend,
 	.resume			= siw_touch_i2c_pm_resume,
 #if defined(__SIW_CONFIG_FASTBOOT)
-	.freezer		= siw_touch_i2c_pm_freeze,
+	.freeze			= siw_touch_i2c_pm_freeze,
 	.thaw			= siw_touch_i2c_pm_thaw,
 	.poweroff		= siw_touch_i2c_pm_freeze,
 	.restore		= siw_touch_i2c_pm_thaw,
