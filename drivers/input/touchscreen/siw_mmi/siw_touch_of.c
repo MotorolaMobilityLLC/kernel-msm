@@ -176,7 +176,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		return -ENOENT;
 	}
 
-	t_dev_dbg_of(dev, "start dts parsing\n");
+	t_dev_info(dev, "start dts parsing\n");
 
 	chip_flags = siw_touch_of_int(dev, np, "chip_flags");
 	p_flags = pdata_flags(ts->pdata);
@@ -186,6 +186,10 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		ts->flags = chip_flags & 0xFFFF;
 		ts->flags |= p_flags & (0xFFFFUL << 16);
 	}
+
+	if (ts->flags & TOUCH_SKIP_RESET_PIN)
+		t_dev_info(dev, "reset pin ignored\n");
+
 	if (chip_flags >= 0) {
 		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)\n",
 			   ts->flags, p_flags, chip_flags);
@@ -242,6 +246,10 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	caps->max_width = siw_touch_of_u32(dev, np, "max_width");
 	caps->max_orientation = siw_touch_of_u32(dev, np, "max_orientation");
 	caps->max_id = siw_touch_of_u32(dev, np, "max_id");
+	tmp = siw_touch_of_int(dev, np, "mt_slots_flags");
+	if (tmp >= 0)
+		caps->mt_slots_flags = tmp;
+
 	caps->hw_reset_delay = siw_touch_of_u32(dev, np, "hw_reset_delay");
 	caps->sw_reset_delay = siw_touch_of_u32(dev, np, "sw_reset_delay");
 
@@ -294,21 +302,6 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 
 	siw_touch_parse_dts_watch(ts);
 
-	t_dev_info(dev,   "caps max_x           = %d\n", caps->max_x);
-	t_dev_info(dev,   "caps max_y           = %d\n", caps->max_y);
-	t_dev_dbg_of(dev, "caps max_pressure    = %d\n", caps->max_pressure);
-	t_dev_dbg_of(dev, "caps max_width       = %d\n", caps->max_width);
-	t_dev_dbg_of(dev, "caps max_orientation = %d\n", caps->max_orientation);
-	t_dev_dbg_of(dev, "caps max_id          = %d\n", caps->max_id);
-	t_dev_dbg_of(dev, "caps hw_reset_delay  = %d\n", caps->hw_reset_delay);
-	t_dev_dbg_of(dev, "caps sw_reset_delay  = %d\n", caps->sw_reset_delay);
-	t_dev_dbg_of(dev, "role use_lpwg        = %d\n", role->use_lpwg);
-	t_dev_dbg_of(dev, "role use_lpwg_test   = %d\n", role->use_lpwg_test);
-	t_dev_dbg_of(dev, "role use_firmware    = %d\n", role->use_firmware);
-	t_dev_dbg_of(dev, "role use_fw_upgrade  = %d\n", role->use_fw_upgrade);
-
-	t_dev_dbg_of(dev, "dts parsing done\n");
-
 	return 0;
 }
 
@@ -342,6 +335,10 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 	ts->irqflags = pdata_irqflags(ts->pdata);
 
 	ts->flags = pdata_flags(ts->pdata);
+
+	if (ts->flags & TOUCH_SKIP_RESET_PIN)
+		t_dev_info(dev, "reset pin ignored\n");
+
 	t_dev_info(dev, "flags = 0x%08X", ts->flags);
 
 	touch_set_pins(ts, &ts->pdata->pins);
@@ -389,12 +386,35 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 
 int siw_touch_parse_data(struct siw_ts *ts)
 {
+	struct device *dev = ts->dev;
+	struct touch_device_caps *caps = &ts->caps;
+	struct touch_operation_role *role = &ts->role;
 	int ret = 0;
 
 	ret = siw_touch_parse_dts(ts);
-	if (ret)
-		t_dev_err(ts->dev, "!! DTS parsing failed !!\n");
+	if (ret) {
+		t_dev_err(dev, "!! DTS parsing failed !!\n");
+		goto out;
+	}
 
+	t_dev_info(dev, "[caps summary]\n");
+	t_dev_info(dev, " max_x           = %d\n", caps->max_x);
+	t_dev_info(dev, " max_y           = %d\n", caps->max_y);
+	t_dev_info(dev, " max_pressure    = %d\n", caps->max_pressure);
+	t_dev_info(dev, " max_width       = %d\n", caps->max_width);
+	t_dev_info(dev, " max_orientation = %d\n", caps->max_orientation);
+	t_dev_info(dev, " max_id          = %d\n", caps->max_id);
+	t_dev_info(dev, " mt_slots_flags  = 0x%X\n", caps->mt_slots_flags);
+	t_dev_info(dev, " hw_reset_delay  = %d ms\n", caps->hw_reset_delay);
+	t_dev_info(dev, " sw_reset_delay  = %d ms\n", caps->sw_reset_delay);
+
+	t_dev_info(dev, "[role summary]\n");
+	t_dev_info(dev, " use_lpwg        = %d\n", role->use_lpwg);
+	t_dev_info(dev, " use_lpwg_test   = %d\n", role->use_lpwg_test);
+	t_dev_info(dev, " use_firmware    = %d\n", role->use_firmware);
+	t_dev_info(dev, " use_fw_upgrade  = %d\n", role->use_fw_upgrade);
+
+out:
 	return ret;
 }
 
