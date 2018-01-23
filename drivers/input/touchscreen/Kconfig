@@ -1260,5 +1260,5 @@ config TOUCHSCREEN_ST
 
 source "drivers/input/touchscreen/st/Kconfig"
 source "drivers/input/touchscreen/gt9xx_mmi/Kconfig"
-
+source "drivers/input/touchscreen/nova_mmi/Kconfig"
 endif
