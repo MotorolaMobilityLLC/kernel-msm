@@ -12,7 +12,8 @@
 
 #include "sdm636-moto-common.dtsi"
 #include "sdm636-egis-fps.dtsi"
-#include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
+#include "dsi-panel-mot-tianma-ft-618-fhd-vid.dtsi"
+#include "dsi-panel-mot-tianma-nt-618-fhd-vid.dtsi"
 #include "sdm660-external-codec.dtsi"
 
 / {
@@ -64,7 +65,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tianma_520_1080p_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_ft_618_fhd_vid_v0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
