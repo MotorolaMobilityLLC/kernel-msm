@@ -620,6 +620,8 @@ static int sdcardfs_permission(struct vfsmount *mnt, struct inode *inode, int ma
 	uid_t inode_userid;
 #endif
 
+	if (IS_ERR(mnt))
+		return PTR_ERR(mnt);
 	if (!top)
 		return -EINVAL;
 
