@@ -242,6 +242,12 @@ static void msm_isp_unprepare_v4l2_buf(
 	else
 		iommu_hdl = buf_mgr->sec_iommu_hdl;
 
+	if (buf_info->num_planes > VIDEO_MAX_PLANES) {
+		pr_err("%s: Invalid num_planes %d \n",
+			__func__, buf_info->num_planes);
+		return;
+	}
+
 	for (i = 0; i < buf_info->num_planes; i++) {
 		mapped_info = &buf_info->mapped_info[i];
 		if (mapped_info != NULL)
@@ -325,6 +331,12 @@ static int msm_isp_buf_prepare(struct msm_isp_buf_mgr *buf_mgr,
 		info->handle, info->buf_idx);
 	if (!buf_info) {
 		pr_err("Invalid buffer prepare\n");
+		return rc;
+	}
+
+	if (buf_info->num_planes > VIDEO_MAX_PLANES) {
+		pr_err("%s: Invalid num_planes %d \n",
+			__func__, buf_info->num_planes);
 		return rc;
 	}
 
