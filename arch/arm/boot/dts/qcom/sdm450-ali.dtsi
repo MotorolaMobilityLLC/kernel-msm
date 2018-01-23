@@ -612,6 +612,9 @@
 					0x14 0x9C
 					0x9F 0x1C
 					0x00 0x18>;
+		/*Make sure QUSB PHY is into proper state to
+		  avoid interfering USB charger detection*/
+		mmi,enable-high-z-state;
 	};
 
 	qcom,tz_gpio {
