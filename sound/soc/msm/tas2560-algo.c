@@ -11,7 +11,7 @@
  */
 
 #ifdef CONFIG_SND_SOC_TAS2560
-#define DEBUG
+/* #define DEBUG */
 
 #include <linux/platform_device.h>
 #include <linux/module.h>
@@ -214,12 +214,12 @@ static int tas2560_algo_get_set(u8 *user_data, uint32_t param_id, uint32_t modul
 
 	switch (get_set) {
 	case TAS2560_ALGO_SET_PARAM:
-		pr_err("TAS2560_ALGO:%s set param\n", __func__);
+		pr_debug("TAS2560_ALGO:%s set param\n", __func__);
 		ret = tas2560_algo_afe_set_param(param_id, module_id,
 			(struct afe_tas2560_algo_set_config_t *)user_data);
 		break;
 	case TAS2560_ALGO_GET_PARAM:
-		pr_err("TAS2560_ALGO:%s get param\n", __func__);
+		pr_debug("TAS2560_ALGO:%s get param\n", __func__);
 		tas2560_algo_payload = NULL;
 		tas2560_algo_afe_set_callback(tas2560_algo_afe_callback);
 		ret = tas2560_algo_afe_get_param(param_id, module_id);
@@ -265,7 +265,7 @@ static int tas2560_algo_calib_get (struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
 	ucontrol->value.enumerated.item[0] = calib_status;
-	pr_err("TAS2560_ALGO:%s data %d\n", __func__, calib_status);
+	pr_debug("TAS2560_ALGO:%s data %d\n", __func__, calib_status);
 	return 0;
 }
 
@@ -320,7 +320,7 @@ static int tas2560_algo_get_re (struct snd_kcontrol *kcontrol,
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
 	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
 
-	pr_err("TAS2560_ALGO:%s Rdc 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	pr_debug("TAS2560_ALGO:%s Rdc 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
 	return ret;
 }
 
@@ -337,7 +337,7 @@ static int tas2560_algo_get_f0 (struct snd_kcontrol *kcontrol,
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
 	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
 
-	pr_err("TAS2560_ALGO:%s F0 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	pr_debug("TAS2560_ALGO:%s F0 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
 	return ret;
 }
 
@@ -354,7 +354,7 @@ static int tas2560_algo_get_q (struct snd_kcontrol *kcontrol,
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
 	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
 
-	pr_err("TAS2560_ALGO:%s Q 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	pr_debug("TAS2560_ALGO:%s Q 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
 	return ret;
 }
 
@@ -379,7 +379,7 @@ static int tas2560_algo_get_status (struct snd_kcontrol *kcontrol,
 	paramid = TAS2560_ALGO_CALC_PIDX(paramid, TAS2560_ALGO_CFG_ENABLE, 1, SLAVE1);
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
 	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
-	pr_err("TAS2560_ALGO:%s status data %d", __func__, ((int32_t *)buff)[0]);
+	pr_debug("TAS2560_ALGO:%s status data %d", __func__, ((int32_t *)buff)[0]);
 	return ret;
 }
 
@@ -416,17 +416,17 @@ static int tas2560_algo_set_cal(struct snd_kcontrol *kcontrol,
 	}
 
 	/*Count is ignored as it is mono*/
-	pr_err("TAS2560_ALGO:%s [0] = %ld [1] = %ld\n", __func__, ucontrol->value.integer.value[0], ucontrol->value.integer.value[1]);
+	pr_debug("TAS2560_ALGO:%s [0] = %ld [1] = %ld\n", __func__, ucontrol->value.integer.value[0], ucontrol->value.integer.value[1]);
 	re_count = ucontrol->value.integer.value[0];
 
 	/*Sending TX parameters*/
 	/*TODO:Values of left-I,right-V or left-V,right-I can be made generic by reading from dts file*/
-	pr_err("TAS2560_ALGO:%s Sending Tx-FB info", __func__);
+	pr_debug("TAS2560_ALGO:%s Sending Tx-FB info", __func__);
 	ret = afe_spk_prot_feed_back_cfg(tx_port_id, rx_port_id,
 		1, 0, 1);
 
 	if (!ret) {
-		pr_err("TAS2560_ALGO:%s Sending Tx-Enable ", __func__);
+		pr_debug("TAS2560_ALGO:%s Sending Tx-Enable ", __func__);
 		paramid = AFE_PARAM_ID_TAS2560_ALGO_TX_ENABLE;
 		((int32_t *)buff)[0] = 1;
 		ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_SET_PARAM, sizeof(u32));
@@ -435,18 +435,18 @@ static int tas2560_algo_set_cal(struct snd_kcontrol *kcontrol,
 
 	/*Sending RX parameters*/
 	moduleid = AFE_TAS2560_ALGO_MODULE_RX;
-	pr_err("TAS2560_ALGO:%s Sending Rx-Enable data", __func__);
+	pr_debug("TAS2560_ALGO:%s Sending Rx-Enable data", __func__);
 	paramid = AFE_PARAM_ID_TAS2560_ALGO_RX_ENABLE;
 	((int32_t *)buff)[0] = 1;
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_SET_PARAM, sizeof(u32));
 
 	if (!ret) {
-		pr_err("TAS2560_ALGO:%s Sending Rx-Cfg", __func__);
+		pr_debug("TAS2560_ALGO:%s Sending Rx-Cfg", __func__);
 		paramid = AFE_PARAM_ID_TAS2560_ALGO_RX_CFG;
 		((int32_t *)buff)[0] = 1;
 		afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_SET_PARAM, sizeof(u32));
 
-		pr_err("TAS2560_ALGO:%s Sending Rdc", __func__);
+		pr_debug("TAS2560_ALGO:%s Sending Rdc", __func__);
 		/*TODO:Note multi channel send Rdc is not verified*/
 		for (i = 0; i < re_count; i++) {
 			paramid = TAS2560_ALGO_CALC_PIDX(0, TAS2560_ALGO_CFG_SET_RE, 1, GET_SLAVE(i+1));
@@ -480,7 +480,7 @@ static int tas2560_algo_get_ff_module (struct snd_kcontrol *kcontrol,
 	paramid = AFE_PARAM_ID_TAS2560_ALGO_RX_ENABLE;
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
 	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
-	pr_err("TAS2560_ALGO:%s Recieving Rx-Enable data %d", __func__, ((int32_t *)buff)[0]);
+	pr_debug("TAS2560_ALGO:%s Recieving Rx-Enable data %d", __func__, ((int32_t *)buff)[0]);
 	return ret;
 }
 
@@ -493,7 +493,7 @@ static int tas2560_algo_set_ff_module (struct snd_kcontrol *kcontrol,
 	u8 *ptr = buff;
 
 	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
-	pr_err("TAS2560_ALGO:%s Sending Rx-Enable data %d", __func__, ((int32_t *)buff)[0]);
+	pr_debug("TAS2560_ALGO:%s Sending Rx-Enable data %d", __func__, ((int32_t *)buff)[0]);
 
 	if ((force_algo_disable) && (((int32_t *)buff)[0])) {
 		pr_err("TAS2560_ALGO:%s,try to enable ff while force disabled",
@@ -528,7 +528,7 @@ static int tas2560_algo_get_fb_module (struct snd_kcontrol *kcontrol,
 	paramid = AFE_PARAM_ID_TAS2560_ALGO_TX_ENABLE;
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
 	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
-	pr_err("TAS2560_ALGO:%s Recieving Tx-Enable data %d", __func__, ((int32_t *)buff)[0]);
+	pr_debug("TAS2560_ALGO:%s Recieving Tx-Enable data %d", __func__, ((int32_t *)buff)[0]);
 	return ret;
 }
 
@@ -541,7 +541,7 @@ static int tas2560_algo_set_fb_module (struct snd_kcontrol *kcontrol,
 	u8 *ptr = buff;
 	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
 
-	pr_err("TAS2560_ALGO:%s Sending Tx-Enable data %d", __func__, ((int32_t *)buff)[0]);
+	pr_debug("TAS2560_ALGO:%s Sending Tx-Enable data %d", __func__, ((int32_t *)buff)[0]);
 
 	if ((force_algo_disable) && (((int32_t *)buff)[0])) {
 		pr_err("TAS2560_ALGO:%s,try to enable fb while force disabled",
@@ -617,7 +617,7 @@ static int tas2560_algo_get_disable(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	ucontrol->value.integer.value[0] = force_algo_disable;
-	pr_err("TAS2560_ALGO:%s force_algo_disable=%d",
+	pr_debug("TAS2560_ALGO:%s force_algo_disable=%d",
 		__func__, force_algo_disable);
 	return 0;
 }
@@ -642,7 +642,7 @@ static int tas2560_algo_get_tv (struct snd_kcontrol *kcontrol,
 	ret = afe_tas2560_algo_ctrl(ptr, paramid, moduleid, TAS2560_ALGO_GET_PARAM, sizeof(u32));
 	ucontrol->value.integer.value[0] = ((int32_t *)buff)[0];
 
-	pr_err("TAS2560_ALGO:%s TV 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
+	pr_debug("TAS2560_ALGO:%s TV 0x%x\n", __func__, (unsigned int)ucontrol->value.integer.value[0]);
 	return ret;
 }
 
