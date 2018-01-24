@@ -861,6 +861,10 @@
 		/delete-property/ qcom,otg-fault-gpio;
 		mmi,dcp-max-current = <2000>;
 	};
+
+	qcom,bcl {
+		qcom,bcl-charger-mitigate-enable;
+	};
 };
 
 &pmi8950_charger {
