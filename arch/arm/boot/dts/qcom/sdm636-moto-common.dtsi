@@ -78,6 +78,14 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pm660l@2 {
+		qcom,power-on@800 {
+			qcom,shipmode;
+		};
+	};
+};
+
 &pm660_charger {
 	qcom,fcc-max-ua = <3000000>;
 	qcom,fv-max-uv = <4400000>;
