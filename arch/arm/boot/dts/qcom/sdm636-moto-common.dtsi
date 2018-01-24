@@ -78,6 +78,14 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pm660l@2 {
+		qcom,power-on@800 {
+			qcom,shipmode;
+		};
+	};
+};
+
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
