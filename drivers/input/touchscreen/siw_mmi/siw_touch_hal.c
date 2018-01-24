@@ -3782,8 +3782,7 @@ static int siw_hal_fw_get_file(const struct firmware **fw_p,
 	}
 	chip->fw_abs_path = abs_path;
 
-	strlcpy(fwpath, src_path, src_len);
-	fwpath[src_len] = 0;
+	strlcpy(fwpath, src_path, src_len + 1);
 
 	t_dev_info(dev, "target fw: %s (%s)\n",
 		fwpath,
