@@ -1345,16 +1345,6 @@ static int cs35l36_irq_gpio_config(struct cs35l36_private *cs35l36)
 	return irq_polarity;
 }
 
-static const struct reg_sequence cs35l36_fixbst_patch[] = {
-	{ CS35L36_TESTKEY_CTRL,		CS35L36_TEST_UNLOCK1 },
-	{ CS35L36_TESTKEY_CTRL,		CS35L36_TEST_UNLOCK2 },
-	{ 0x00003830,			0x00000110 },
-	{ 0x0000394C,			0x028664B7 },
-	{ 0x00003804,			0x00000005 },
-	{ CS35L36_TESTKEY_CTRL,		CS35L36_TEST_LOCK1 },
-	{ CS35L36_TESTKEY_CTRL,		CS35L36_TEST_LOCK2 },
-};
-
 static const struct reg_sequence cs35l36_pac_int_patch[] = {
 	{ CS35L36_TESTKEY_CTRL,		CS35L36_TEST_UNLOCK1 },
 	{ CS35L36_TESTKEY_CTRL,		CS35L36_TEST_UNLOCK2 },
@@ -1545,13 +1535,6 @@ static int cs35l36_i2c_probe(struct i2c_client *i2c_client,
 		cs35l36->chip_version = CS35L36_12V_L37;
 	else
 		cs35l36->chip_version = CS35L36_10V_L36;
-
-	ret = regmap_register_patch(cs35l36->regmap, cs35l36_fixbst_patch,
-					ARRAY_SIZE(cs35l36_fixbst_patch));
-	if (ret < 0) {
-		dev_err(dev, "Failed to apply fix boost patch %d\n", ret);
-		goto err;
-	}
 
 	if (pdata->irq_config.is_present)
 		irq_pol = cs35l36_irq_gpio_config(cs35l36);
