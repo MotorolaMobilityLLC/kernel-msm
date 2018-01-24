@@ -3619,18 +3619,18 @@ restore_aif:
 	return ret;
 }
 
-static const char * const madera_dai_clk_str(int clk_id)
+static int madera_is_syncclk(int clk_id)
 {
 	switch (clk_id) {
 	case MADERA_CLK_SYSCLK:
 	case MADERA_CLK_SYSCLK_2:
 	case MADERA_CLK_SYSCLK_3:
-		return "SYSCLK";
+		return 1;
 	case MADERA_CLK_ASYNCCLK:
 	case MADERA_CLK_ASYNCCLK_2:
-		return "ASYNCCLK";
+		return 0;
 	default:
-		return "Unknown clock";
+		return -EINVAL;
 	}
 }
 
@@ -3642,19 +3642,15 @@ static int madera_dai_set_sysclk(struct snd_soc_dai *dai,
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct madera_dai_priv *dai_priv = &priv->dai[dai->id - 1];
 	struct snd_soc_dapm_route routes[2];
+	int is_sync;
 
-	switch (clk_id) {
-	case MADERA_CLK_SYSCLK:
-	case MADERA_CLK_SYSCLK_2:
-	case MADERA_CLK_SYSCLK_3:
-	case MADERA_CLK_ASYNCCLK:
-	case MADERA_CLK_ASYNCCLK_2:
-		break;
-	default:
-		return -EINVAL;
+	is_sync = madera_is_syncclk(clk_id);
+	if (is_sync < 0) {
+		dev_err(codec->dev, "Illegal DAI clock id %d\n", clk_id);
+		return is_sync;
 	}
 
-	if (clk_id == dai_priv->clk)
+	if (is_sync == madera_is_syncclk(dai_priv->clk))
 		return 0;
 
 	if (dai->active) {
@@ -3663,39 +3659,28 @@ static int madera_dai_set_sysclk(struct snd_soc_dai *dai,
 		return -EBUSY;
 	}
 
-	dev_dbg(codec->dev, "Setting AIF%d to %s\n", dai->id + 1,
-		madera_dai_clk_str(clk_id));
+	dev_dbg(codec->dev, "Setting AIF%d to %s\n", dai->id,
+		is_sync ? "SYSCLK" : "ASYNCCLK");
 
+	/*
+	 * A connection to SYSCLK is always required, we only add and remove
+	 * a connection to ASYNCCLK
+	 */
 	memset(&routes, 0, sizeof(routes));
 	routes[0].sink = dai->driver->capture.stream_name;
 	routes[1].sink = dai->driver->playback.stream_name;
+	routes[0].source = "ASYNCCLK";
+	routes[1].source = "ASYNCCLK";
 
-	switch (clk_id) {
-	case MADERA_CLK_SYSCLK:
-	case MADERA_CLK_SYSCLK_2:
-	case MADERA_CLK_SYSCLK_3:
-		routes[0].source = madera_dai_clk_str(dai_priv->clk);
-		routes[1].source = madera_dai_clk_str(dai_priv->clk);
+	if (is_sync)
 		snd_soc_dapm_del_routes(dapm, routes, ARRAY_SIZE(routes));
-		break;
-	default:
-		break;
-	}
-
-	switch (clk_id) {
-	case MADERA_CLK_ASYNCCLK:
-	case MADERA_CLK_ASYNCCLK_2:
-		routes[0].source = madera_dai_clk_str(clk_id);
-		routes[1].source = madera_dai_clk_str(clk_id);
+	else
 		snd_soc_dapm_add_routes(dapm, routes, ARRAY_SIZE(routes));
-		break;
-	default:
-		break;
-	}
 
 	dai_priv->clk = clk_id;
 
 	return snd_soc_dapm_sync(dapm);
+
 }
 
 static int madera_set_tristate(struct snd_soc_dai *dai, int tristate)
