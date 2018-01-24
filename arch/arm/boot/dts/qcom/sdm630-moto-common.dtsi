@@ -236,6 +236,13 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pm660l@2 {
+		qcom,power-on@800 {
+			qcom,shipmode;
+		};
+	};
+};
 
 &pm660_fg {
 	qcom,battery-data = <&mot_batterydata>;
