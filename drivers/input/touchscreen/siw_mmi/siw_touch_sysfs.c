@@ -1244,6 +1244,103 @@ static ssize_t _store_grab_state(struct device *dev,
 	return (ssize_t)count;
 }
 
+static ssize_t _store_doreflash(struct device *dev,
+			      const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int core_state = atomic_read(&ts->state.core);
+	int irq_state = atomic_read(&ts->state.irq_enable);
+	int ret = 0;
+
+	if (sscanf(buf, "%255s", ts->test_fwpath) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	ts->force_fwup |= FORCE_FWUP_SYS_STORE;
+
+	t_dev_info(dev, "FW upgrade func\n");
+
+	atomic_set(&ts->state.core, CORE_UPGRADE);
+	ts->role.use_fw_upgrade = 0;
+
+	mutex_lock(&ts->lock);
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	ret = siw_ops_upgrade(ts);
+	mutex_unlock(&ts->lock);
+
+	if (ret < 0) {
+		if (ret == -EPERM)
+			t_dev_err(dev, "FW upgrade skipped\n");
+		else
+			t_dev_err(dev, "FW upgrade halted, %d\n", ret);
+	}
+
+	/* init force_upgrade */
+	ts->force_fwup = FORCE_FWUP_CLEAR;
+	ts->test_fwpath[0] = '\0';
+	atomic_set(&ts->state.core, core_state);
+	if (irq_state)
+		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
+
+	return count;
+}
+
+static ssize_t _show_poweron(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int val;
+
+	val = (atomic_read(&ts->state.pm) >= DEV_PM_SUSPEND) ? 0 : 1;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t _show_flashprog(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int val;
+
+	val = (atomic_read(&ts->state.core) == CORE_UPGRADE) ? 1 : 0;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t _show_productinfo(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", touch_chip_name(ts));
+}
+
+static ssize_t _show_buildid(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%04x-%02x%02x\n",
+		chip->fw.v.version.build,
+		chip->fw.v.version.major,
+		chip->fw.v.version.minor);
+}
+
+static ssize_t _store_forcereflash(struct device *dev,
+				 const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	unsigned int input;
+
+	if (kstrtouint(buf, 10, &input) != 1)
+		return -EINVAL;
+
+	if (input)
+		ts->force_fwup |= FORCE_FWUP_ON;
+	else
+		ts->force_fwup = FORCE_FWUP_CLEAR;
+
+	return count;
+}
+
 ssize_t __weak show_sys_con(struct device *dev, char *buf)
 {
 	return 0;
@@ -1359,6 +1456,24 @@ static SIW_TOUCH_ATTR(grab_status,
 static SIW_TOUCH_ATTR(sys_con,
 		      show_sys_con,
 		      store_sys_con);
+static SIW_TOUCH_ATTR(doreflash,
+		      NULL,
+		      _store_doreflash);
+static SIW_TOUCH_ATTR(poweron,
+		      _show_poweron,
+		      NULL);
+static SIW_TOUCH_ATTR(flashprog,
+		      _show_flashprog,
+		      NULL);
+static SIW_TOUCH_ATTR(productinfo,
+		      _show_productinfo,
+		      NULL);
+static SIW_TOUCH_ATTR(buildid,
+		      _show_buildid,
+		      NULL);
+static SIW_TOUCH_ATTR(forcereflash,
+		      NULL,
+		      _store_forcereflash);
 
 
 static struct attribute *siw_touch_attribute_list[] = {
@@ -1411,6 +1526,12 @@ static struct attribute *siw_touch_attribute_list_normal[] = {
 	&_SIW_TOUCH_ATTR_T(glove_status).attr,
 	&_SIW_TOUCH_ATTR_T(grab_status).attr,
 	&_SIW_TOUCH_ATTR_T(sys_con).attr,
+	&_SIW_TOUCH_ATTR_T(doreflash).attr,
+	&_SIW_TOUCH_ATTR_T(poweron).attr,
+	&_SIW_TOUCH_ATTR_T(flashprog).attr,
+	&_SIW_TOUCH_ATTR_T(productinfo).attr,
+	&_SIW_TOUCH_ATTR_T(buildid).attr,
+	&_SIW_TOUCH_ATTR_T(forcereflash).attr,
 	NULL,
 };
 
