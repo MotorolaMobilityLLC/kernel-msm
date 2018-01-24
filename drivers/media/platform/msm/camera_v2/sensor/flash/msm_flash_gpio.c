@@ -280,7 +280,7 @@ static int32_t msm_flash_low(
 		gpio_set_value(
 		power_info->gpio_conf->gpio_num_info->gpio_num[0],
 		GPIO_OUT_HIGH);
-		for (i = 0 ; i <= 14 ; i++) {
+		for (i = 0 ; i <= 9 ; i++) {
 			gpio_set_value(
 			power_info->gpio_conf->gpio_num_info->gpio_num[0],
 			GPIO_OUT_LOW);
@@ -320,7 +320,7 @@ static int32_t msm_flash_high(
 		gpio_set_value(
 		power_info->gpio_conf->gpio_num_info->gpio_num[0],
 		GPIO_OUT_HIGH);
-		for (i = 0 ; i <= 10 ; i++) {
+		for (i = 0 ; i <= 1 ; i++) {
 			gpio_set_value(
 			power_info->gpio_conf->gpio_num_info->gpio_num[0],
 			GPIO_OUT_LOW);
