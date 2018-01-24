@@ -592,6 +592,33 @@ int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 }
 EXPORT_SYMBOL(qpnp_pon_store_shipmode_info);
 
+bool qpnp_pon_check_shipmode_info(void)
+{
+	int rc = 0;
+	u16 shipmode_info_reg;
+	u8 value;
+	struct qpnp_pon *pon = shipmode_dev;
+
+	if (!pon)
+		return false;
+
+	shipmode_info_reg = QPNP_PON_EXTRA_RESET_INFO_2(pon->base);
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				     shipmode_info_reg, &value, 1);
+	if (rc) {
+		dev_err(&pon->spmi->dev,
+			"Unable to check shipmode status, rc(%d)\n",
+			rc);
+		return false;
+	}
+	pr_info("Current shipmode info is 0x%x = 0x%x\n",
+	       shipmode_info_reg, value);
+
+	return ((value & RESET_SHIPMODE_INFO_SHPMOD_REASON) != 0);
+}
+EXPORT_SYMBOL(qpnp_pon_check_shipmode_info);
+
 static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 		enum pon_power_off_type type)
 {
