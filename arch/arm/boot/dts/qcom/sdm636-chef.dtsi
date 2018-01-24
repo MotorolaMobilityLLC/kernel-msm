@@ -16,6 +16,7 @@
 #include "dsi-panel-mot-tianma-nt-618-fhd-vid.dtsi"
 #include "sdm660-internal-codec.dtsi"
 #include "sdm636-chef-audio.dtsi"
+#include "sdm636-camera-sensor-mot-chef.dtsi"
 
 / {
 	model = "chef";
