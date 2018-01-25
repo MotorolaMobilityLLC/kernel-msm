@@ -422,7 +422,7 @@ int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 
 	if (mask & 0xFF) {
 
-		shipmode_info_reg = QPNP_PON_DVDD_RB_SPARE(pon);
+		shipmode_info_reg = QPNP_PON_XVDD_RB_SPARE(pon);
 
 		rc = regmap_read(pon->regmap, shipmode_info_reg, &value);
 		if (rc) {
