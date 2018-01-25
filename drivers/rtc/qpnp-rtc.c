@@ -487,6 +487,8 @@ static int qpnp_rtc_probe(struct platform_device *pdev)
 	struct qpnp_rtc *rtc_dd;
 	unsigned int base;
 	struct device_node *child;
+	u8 value[4] = {0};
+	u8 reg;
 
 	rtc_dd = devm_kzalloc(&pdev->dev, sizeof(*rtc_dd), GFP_KERNEL);
 	if (rtc_dd == NULL)
@@ -611,6 +613,27 @@ static int qpnp_rtc_probe(struct platform_device *pdev)
 
 	/* Init power_on_alarm after adding rtc device */
 	power_on_alarm_init();
+
+	/* disable rtc alarm set by shipmode if exists */
+	if (qpnp_pon_check_shipmode_info()) {
+		dev_warn(&pdev->dev, "Disable Shipmode alarm\n");
+		/* Disable RTC alarms */
+		reg = rtc_dd->alarm_ctrl_reg1;
+		reg &= ~BIT_RTC_ALARM_ENABLE;
+		rc = qpnp_write_wrapper(rtc_dd, &reg,
+			rtc_dd->alarm_base + REG_OFFSET_ALARM_CTRL1, 1);
+		if (rc)
+			dev_err(rtc_dd->rtc_dev, "SPMI write ctrl failed\n");
+		else
+			rtc_dd->alarm_ctrl_reg1 = reg;
+		/* Clear Alarm register */
+		rc = qpnp_write_wrapper(rtc_dd, value,
+			rtc_dd->alarm_base + REG_OFFSET_ALARM_RW,
+			NUM_8_BIT_RTC_REGS);
+		if (rc)
+			dev_err(rtc_dd->rtc_dev, "SPMI write alarm_rw failed\n");
+	}
+
 	qpnp_pon_store_shipmode_info(RESET_SHIPMODE_INFO_SHPMOD_REASON |
 				     RESET_SHIPMODE_INFO_ARMED_REASON, 0);
 
@@ -655,7 +678,11 @@ static inline int qpnp_rtc_is_rtc_alarm_enabled(struct qpnp_rtc *rtc_dd)
 	return (rtc_dd->alarm_ctrl_reg1 & BIT_RTC_ALARM_ENABLE) ? 1 : 0;
 }
 
-#define SHIPMODE_DELAY_SECS 2592000
+/* Module parameter to control shipmode delay in sec */
+static unsigned int shipmode_delay = 2592000;
+module_param(shipmode_delay, uint, 0644);
+MODULE_PARM_DESC(shipmode_delay, "shipmode delay time in second");
+EXPORT_SYMBOL(shipmode_delay);
 static void qpnp_rtc_shutdown(struct platform_device *pdev)
 {
 	u8 value[4] = {0};
@@ -710,6 +737,12 @@ fail_alarm_disable:
 		return;
 	}
 
+	if (qpnp_pon_store_shipmode_info(RESET_SHIPMODE_INFO_SHPMOD_REASON,
+					RESET_SHIPMODE_INFO_SHPMOD_REASON)) {
+		dev_warn(&pdev->dev, "Failed to set pon Shipmode\n");
+		return;
+	}
+
 	rc = qpnp_rtc_read_time(&pdev->dev, &rtc_tm);
 	if (rc) {
 		dev_err(&pdev->dev, "Unable to read RTC time for Shipmode\n");
@@ -718,12 +751,10 @@ fail_alarm_disable:
 
 	rtc_tm_to_time(&rtc_tm, &secs_rtc);
 	dev_warn(&pdev->dev, "Shipmode current time %ld secs\n", secs_rtc);
-	secs_rtc += SHIPMODE_DELAY_SECS;
+	secs_rtc += shipmode_delay;
 	shipmode_alarm.enabled = 1;
 	rtc_time_to_tm(secs_rtc, &shipmode_alarm.time);
 	dev_warn(&pdev->dev, "Setup Shipmode trigger %ld secs\n", secs_rtc);
-	qpnp_pon_store_shipmode_info(RESET_SHIPMODE_INFO_SHPMOD_REASON,
-				     RESET_SHIPMODE_INFO_SHPMOD_REASON);
 	qpnp_rtc_set_alarm(&pdev->dev, &shipmode_alarm);
 }
 
