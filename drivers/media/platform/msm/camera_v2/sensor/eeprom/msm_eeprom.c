@@ -367,7 +367,8 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 					eeprom_map->mem_settings[i].reg_addr,
 					eeprom_map->mem_settings[i].reg_data,
 					eeprom_map->mem_settings[i].data_type);
-				msleep(eeprom_map->mem_settings[i].delay);
+				if (eeprom_map->mem_settings[i].delay > 0)
+					msleep(eeprom_map->mem_settings[i].delay);
 				if (rc < 0) {
 					pr_err("%s: page write failed\n",
 						__func__);
@@ -402,7 +403,8 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 					eeprom_map->mem_settings[i].reg_addr,
 					memptr,
 					eeprom_map->mem_settings[i].reg_data);
-				msleep(eeprom_map->mem_settings[i].delay);
+				if (eeprom_map->mem_settings[i].delay > 0)
+					msleep(eeprom_map->mem_settings[i].delay);
 				if (rc < 0) {
 					pr_err("%s: read failed\n",
 						__func__);
@@ -425,7 +427,8 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 						__func__);
 					goto clean_up;
 					}
-				msleep(eeprom_map->mem_settings[i].delay);
+				if (eeprom_map->mem_settings[i].delay > 0)
+					msleep(eeprom_map->mem_settings[i].delay);
 				memptr++;
 				}
 			}
