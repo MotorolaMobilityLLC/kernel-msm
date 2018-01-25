@@ -2047,6 +2047,7 @@ int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to add audio routes %d\n", ret);
 		return ret;
 	}
+	i = 0; /* to kill a warning */
 #ifdef CONFIG_SND_SOC_CS47L90
 	/* Toggle PDM_CLK GPIO */
 	for (i = 0; i < 5; i++) {
@@ -2055,7 +2056,9 @@ int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_write(codec, MADERA_GPIO37_CTRL_1, 0x2001);
 		usleep_range(1000, 1100);
 	}
-#else
+#endif
+
+#ifndef CONFIG_SND_SOC_AOU_USE_PDM
 	for (i = 0; i < 5; i++) {
 		snd_soc_write(codec, MADERA_GPIO6_CTRL_1, 0xA001);
 		usleep_range(1000, 1100);
