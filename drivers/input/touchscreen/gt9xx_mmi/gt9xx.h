@@ -254,8 +254,8 @@ extern u16 total_len;
 	#define GTP_MAX_WIDTH    480
 	#define GTP_INT_TRIGGER  0            /* 0: Rising 1: Falling */
 #else
-	#define GTP_MAX_HEIGHT   4096
-	#define GTP_MAX_WIDTH    4096
+	#define GTP_MAX_HEIGHT   2159
+	#define GTP_MAX_WIDTH    1079
 	#define GTP_INT_TRIGGER  1
 #endif
 #define GTP_MAX_TOUCH         10
