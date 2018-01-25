@@ -87,6 +87,7 @@ int qpnp_pon_set_restart_reason(enum pon_restart_reason reason);
 bool qpnp_pon_check_hard_reset_stored(void);
 int qpnp_pon_store_extra_reset_info(u16 mask, u16 val);
 int qpnp_pon_store_shipmode_info(u16 mask, u16 val);
+bool qpnp_pon_check_shipmode_info(void);
 #else
 static int qpnp_pon_system_pwr_off(enum pon_power_off_type type)
 {
@@ -117,6 +118,10 @@ static inline int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
 static inline int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 {
 	return -ENODEV;
+}
+static inline bool qpnp_pon_check_shipmode_info(void)
+{
+	return false;
 }
 #endif
 
