@@ -1,5 +1,12 @@
 menu "MSM SoC Audio support"
 
+config SND_SOC_AOU_USE_PDM
+	tristate "Cirrus Logic PDM"
+	help
+	 To add support for SoC audio on MSM/APQ.
+	 This will enable all the platform specific
+	 aou use pdm to work.
+
 config SND_SOC_MSM_HOSTLESS_PCM
 	tristate
 
@@ -282,6 +289,7 @@ config SND_SOC_MSM8998
 config SND_SOC_660
 	tristate "SoC Machine driver for SDM660 boards"
 	depends on ARCH_SDM660
+	select SND_SOC_AOU_USE_PDM
 	select SND_SOC_INT_CODEC
 	select SND_SOC_EXT_CODEC
 	select MMI_PP_AFX
