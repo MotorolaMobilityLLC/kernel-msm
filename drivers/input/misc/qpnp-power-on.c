@@ -448,6 +448,32 @@ int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 }
 EXPORT_SYMBOL(qpnp_pon_store_shipmode_info);
 
+bool qpnp_pon_check_shipmode_info(void)
+{
+	int rc = 0;
+	u16 shipmode_info_reg;
+	unsigned int value;
+	struct qpnp_pon *pon = shipmode_dev;
+
+	if (!pon)
+		return false;
+
+	shipmode_info_reg = QPNP_PON_XVDD_RB_SPARE(pon);
+
+	rc = regmap_read(pon->regmap, shipmode_info_reg, &value);
+	if (rc) {
+		dev_err(&pon->pdev->dev,
+			"Unable to check shipmode status, rc(%d)\n",
+			rc);
+		return false;
+	}
+	pr_info("Current shipmode info is 0x%x = 0x%x\n",
+		shipmode_info_reg, value);
+
+	return ((value & RESET_SHIPMODE_INFO_SHPMOD_REASON) != 0);
+}
+EXPORT_SYMBOL(qpnp_pon_check_shipmode_info);
+
 /*
  * qpnp_pon_check_hard_reset_stored - Checks if the PMIC need to
  * store hard reset reason.
