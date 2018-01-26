@@ -49,6 +49,10 @@
 	usb_nop_phy: usb_nop_phy {
 		compatible = "usb-nop-xceiv";
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "chef";
+	};
 };
 
 &usb3 {
@@ -165,3 +169,27 @@
 	};
 };
 
+&pm660_charger {
+	qcom,iterm-ma = <155>;
+	qcom,thermal-mitigation = <3000>,
+				  <2500>,
+				  <2000>,
+				  <1500>,
+				  <1200>,
+				  <900>,
+				  <700>,
+				  <600>;
+	qcom,mmi-temp-zones = <0 4200 620 0>,
+				<10 4200 1550 620>,
+				<15 0 1550 1550>,
+				<45 4200 3000 2000>,
+				<60 4200 1550 0>;
+};
+
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+
+		#include "batterydata-jk50-atl-5000mah.dtsi"
+	};
+};
