@@ -657,6 +657,14 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pmi8950@2 {
+		qcom,power-on@800 {
+			qcom,shipmode;
+		};
+	};
+};
+
 &pmi8950_vadc {
 	chan@10 {
 		label = "host_det";
