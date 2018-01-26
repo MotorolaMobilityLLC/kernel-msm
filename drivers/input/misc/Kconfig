@@ -868,4 +868,13 @@ config STMVL53L1
 	tristate "STMVL53L1 support"
 	help
 	  Say Y here if you wish to include support for laser sensor driver.
+
+config INPUT_SX9310_TRIPLE
+	tristate "SX9310_SAR_sensor use triple channels"
+	depends on I2C
+	default n
+	help
+	  Say Y to enable the SAR detection application, if N here not to use the
+	  this SAR sensor.
+
 endif
