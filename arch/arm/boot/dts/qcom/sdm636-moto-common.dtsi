@@ -52,8 +52,45 @@
 };
 
 &soc {
+	qcom,msm-ssc-sensors {
+		compatible = "qcom,msm-ssc-sensors";
+	};
+
 	wdog: qcom,wdt@17817000 {
 		qcom,bark-time = <22000>;
+	};
+
+	qcom,sensor-information {
+		sensor_information22: qcom,sensor-information-22 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "chg_therm";
+		};
+		sensor_information23: qcom,sensor-information-23 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "pcm_therm";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information24: qcom,sensor-information-24 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "battery";
+			qcom,alias-name  = "batt_therm";
+			qcom,scaling-factor = <1000>;
+		};
+	};
+
+	rradc_typec_temp: typec-temp-sensor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&pm660_rradc 2>;
+		io-channel-names = "sensor-channel";
+	};
+
+	thermal-zones {
+		pcm_therm {
+			polling-delay = <100>; /* milliseconds */
+			polling-delay-passive = <100>; /* milliseconds */
+			thermal-sensors = <&rradc_typec_temp>;
+		};
 	};
 
 	ramoops {
@@ -75,6 +112,32 @@
 	qcom_tzlog: tz-log@146bf720 {
 		status = "okay";
 		linux,contiguous-region = <&tzlog_bck_mem>;
+	};
+};
+
+&pm660_vadc {
+	chan@4e {
+		label = "chg_therm";
+		reg = <0x4e>;
+		qcom,decimation = <2>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pm660_adc_tm {
+	chan@4e {
+		label = "chg_therm";
+		reg = <0x4e>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,btm-channel-number = <0x70>;
+		qcom,thermal-node;
 	};
 };
 
