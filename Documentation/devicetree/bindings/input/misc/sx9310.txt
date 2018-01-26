@@ -1,0 +1,65 @@
+sx9310 cap touch sensor from semtech
+
+It is a i2c slave device
+two specific properties for driver init registers's value
+
+a).CONFIG_INPUT_SX9310 corresponding driver sx9310.c,
+sx9310.c is a single channel driver.
+
+Required properties:
+ - cap,use_channel	:cap channel has selected,CS0=0x01,CS1=0x02,CS2=0x04,COMB=0x08
+ - cap,scan_period	:scan period
+ - reg_array_len	:num of registers need to be set
+ - reg_array_val	:registers's val, format is <reg addr, reg val ...>
+
+Example:
+
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		cap_svdd-supply = <&pm8953_l6>;
+		cap_vdd-supply = <&pm8953_l22>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <46 0x2008>;
+		gpios = <&tlmm 46 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		cap,use_channel = <0x04>;
+		cap,scan_period = <0x01>;
+		reg_array_len = <5>;
+		reg_array_val = <0x12 0x0B 0x13 0x05 0x15 0xC2
+				0x18 0x5E 0x10 0x51>;
+	};
+
+b).CONFIG_INPUT_SX9310_TRIPLE corresponding driver sx9310_triple.c,
+sx9310_triple.c is a triple channel driver.
+
+Required properties:
+ - cap,use_channel      :cap channel has selected,CS0=0x01,CS1=0x02,CS2=0x04,COMB=0x08
+ - cap,scan_period      :scan period
+ - cap,use_channel_top  : cap channel has selected,CS0=0x01,CS1=0x02,CS2=0x04
+ - cap,use_channel_bottom : cap channel has selected,CS0=0x01,CS1=0x02,CS2=0x04
+ - cap,raw_data_channel : the current selection channel is used,
+                          read the raw datas are this channel's value
+ - reg_array_len        :num of registers need to be set
+ - reg_array_val        :registers's val, format is <reg addr, reg val ...>
+
+
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		cap_vdd-supply = <&pm660l_l3>;
+		cap_svdd-supply = <&pm660_l14>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <75 0x2008>;
+		gpios = <&tlmm 75 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		cap,use_channel = <0x0f>;
+		cap,use_channel_top = <0x00>;
+		cap,use_channel_bottom = <0x02>;
+		cap,raw_data_channel = <0x01>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <2>;
+		reg_array_val = <0x18 0x8a 0x19 0xf7>;
+	};
