@@ -1611,7 +1611,8 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 		}
 
 		if (!info->hpdet_retried) {
-			if (madera_is_lineout(info) && info->open_circuit) {
+			if (madera_is_lineout(info) && info->open_circuit &&
+				info->pdata->jd_alt_jd2) {
 				info->jd2_is_running = JD2_DTV_ANTENNA;
 				madera_extcon_report(info, BIT_NO_HEADSET);
 				dev_info(madera->dev,
