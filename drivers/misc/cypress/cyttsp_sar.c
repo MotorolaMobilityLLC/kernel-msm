@@ -1585,6 +1585,35 @@ static void cyttsp_sar_shutdown(struct i2c_client *client)
 	disable_irq(client->irq);
 }
 
+static int cypress_i2c_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct cyttsp_sar_data *data = i2c_get_clientdata(client);
+	const struct cyttsp_sar_platform_data *pdata = data->pdata;
+
+	disable_irq(gpio_to_irq(pdata->irq_gpio));
+	dev_dbg(&client->dev, "cypress i2c suspend\n");
+
+	return 0;
+}
+
+static int cypress_i2c_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct cyttsp_sar_data *data = i2c_get_clientdata(client);
+	const struct cyttsp_sar_platform_data *pdata = data->pdata;
+
+	enable_irq(gpio_to_irq(pdata->irq_gpio));
+	dev_dbg(&client->dev, "cypress i2c resume\n");
+
+	return 0;
+}
+
+static const struct dev_pm_ops cypress_i2c_pm_ops = {
+	.suspend	= cypress_i2c_suspend,
+	.resume		= cypress_i2c_resume,
+};
+
 static const struct i2c_device_id cyt_id[] = {
 	{"cyttsp_streetfighter", 0},
 	{ },
@@ -1603,6 +1632,7 @@ static struct i2c_driver cyttsp_sar_driver = {
 	.driver = {
 		.name	= "cyttsp_streetfighter",
 		.owner	= THIS_MODULE,
+		.pm		= &cypress_i2c_pm_ops,
 		.of_match_table = cyttsp_match_table,
 	},
 	.probe		= cyttsp_sar_probe,
