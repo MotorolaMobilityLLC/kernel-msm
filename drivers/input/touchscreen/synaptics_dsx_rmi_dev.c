@@ -505,6 +505,12 @@ static int rmidev_release(struct inode *inp, struct file *filp)
 
 	mutex_lock(&(dev_data->file_mutex));
 
+	if (dev_data->tmpbuf_size != 0) {
+		kfree(dev_data->tmpbuf);
+		dev_data->tmpbuf = NULL;
+		dev_data->tmpbuf_size = 0;
+	}
+
 	dev_data->ref_count--;
 	if (dev_data->ref_count < 0)
 		dev_data->ref_count = 0;
