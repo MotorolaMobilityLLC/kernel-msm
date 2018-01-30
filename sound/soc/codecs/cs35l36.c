@@ -814,10 +814,10 @@ static struct snd_soc_dai_driver cs35l36_dai[] = {
 static int cs35l36_boost_inductor(struct cs35l36_private *cs35l36, int inductor)
 {
 	regmap_update_bits(cs35l36->regmap, CS35L36_BSTCVRT_COEFF,
-					CS35L36_BSTCVRT_K1_MASK, 0x24);
+					CS35L36_BSTCVRT_K1_MASK, 0x3C);
 	regmap_update_bits(cs35l36->regmap, CS35L36_BSTCVRT_COEFF,
 					CS35L36_BSTCVRT_K2_MASK,
-					0x24 << CS35L36_BSTCVRT_K2_SHIFT);
+					0x3C << CS35L36_BSTCVRT_K2_SHIFT);
 	regmap_update_bits(cs35l36->regmap, CS35L36_BSTCVRT_SW_FREQ,
 				   CS35L36_BSTCVRT_CCMFREQ_MASK, 0x00);
 
