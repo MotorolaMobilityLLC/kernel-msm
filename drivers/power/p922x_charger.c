@@ -211,6 +211,7 @@ struct p922x_charger {
 	struct device		*dev;
 	struct regmap		*regmap;
 
+	bool			rx_chip_det;
 	bool			tx_auth_enabled;
 	u32			chg_efficiency;
 	u32			chg_limit_soc;
@@ -1023,7 +1024,8 @@ static int p922x_hw_init(struct p922x_charger *chip)
 				"Couldn't get/set %s pinctrl state rc=%ld\n",
 				chip->pinctrl_name,
 				PTR_ERR(chip->pinctrl_irq));
-			return PTR_ERR(chip->pinctrl_irq);
+			rc = PTR_ERR(chip->pinctrl_irq);
+			goto disable_vreg;
 		}
 	}
 
@@ -1031,8 +1033,30 @@ static int p922x_hw_init(struct p922x_charger *chip)
 						chip->irq_gpio.label);
 	if (rc) {
 		p922x_err(chip, "Failed to request wls_int GPIO rc=%d\n", rc);
-		return rc;
+		goto disable_vreg;
 	}
+
+	if (chip->rx_chip_det) {
+		u8 data;
+		bool rx_present = gpio_get_value(chip->irq_gpio.gpio);
+
+		if (!rx_present) {
+			rc = p922x_read_reg(chip, 0x5870, &data);
+			rx_present = rc < 0 ? false : true;
+		}
+		p922x_dbg(chip, PR_MOTO, "RX chip is %s\n",
+			rx_present ? "present" : "absent");
+
+		if (!rx_present) {
+			rc = -ENODEV;
+			gpio_free(chip->irq_gpio.gpio);
+			goto disable_vreg;
+		}
+		return 0;
+	}
+
+disable_vreg:
+	regulator_disable(chip->vdd_i2c_vreg);
 
 	return rc;
 }
@@ -1573,6 +1597,9 @@ static int p922x_parse_dt(struct p922x_charger *chip)
 
 	chip->pinctrl_name = of_get_property(chip->dev->of_node,
 						"pinctrl-names", NULL);
+
+	chip->rx_chip_det = of_property_read_bool(node,
+					"idt,rx-chip-det");
 
 	return 0;
 }
