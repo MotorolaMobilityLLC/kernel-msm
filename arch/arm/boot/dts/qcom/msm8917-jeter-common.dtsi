@@ -13,6 +13,7 @@
 #include "dsi-panel-mot-tianma-570-hd-video.dtsi"
 #include "dsi-panel-mot-djn-570-hd-video.dtsi"
 #include "dsi-panel-mot-djn-571-hd-video.dtsi"
+#include "dsi-panel-mot-wistron-570-hd-video.dtsi"
 / {
 	aliases {
 		/delete-property/ i2c4;
