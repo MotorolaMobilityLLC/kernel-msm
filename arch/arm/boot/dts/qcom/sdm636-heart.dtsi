@@ -349,6 +349,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&p922x_irq_enable>;
 
+		idt,rx-chip-det;
 		idt,tx-auth-enabled;
 		idt,chg-efficiency = <70>;
 		idt,chg-limit-soc = <95>;
