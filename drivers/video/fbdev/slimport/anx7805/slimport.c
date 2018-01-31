@@ -428,7 +428,7 @@ static int anx7805_vdd_1p0_power(struct anx7805_data *chip, int on)
 		}
 
 		if (gpio_is_valid(chip->gpio_vdd_1p0_en))
-			gpio_direction_output(chip->gpio_vdd_1p0_en, 1);
+			gpio_set_value(chip->gpio_vdd_1p0_en, 1);
 	} else {
 		ret = regulator_disable(chip->vdd_reg);
 		if (ret) {
@@ -437,7 +437,7 @@ static int anx7805_vdd_1p0_power(struct anx7805_data *chip, int on)
 		}
 
 		if (gpio_is_valid(chip->gpio_vdd_1p0_en))
-			gpio_direction_output(chip->gpio_vdd_1p0_en, 0);
+			gpio_set_value(chip->gpio_vdd_1p0_en, 0);
 	}
 
 	on_state = on;
@@ -1225,8 +1225,9 @@ static int anx7805_parse_dt(struct device_node *node,
 	if (!gpio_is_valid(anx7805->gpio_vdd_1p0_en)) {
 		pr_err("%s there is no analogix,vdd-1p0-enable-gpio.\n", __func__);
 	} else {
-		pr_info("%s using gpio %d to control,vdd-1p0.\n",
+		pr_info("%s using gpio %d to control,vdd-1p0. Set 0 as default\n",
 			__func__, anx7805->gpio_vdd_1p0_en);
+		gpio_direction_output(anx7805->gpio_vdd_1p0_en, 0);
 	}
 
 	ret = of_property_read_string(node, "analogix,vdd10-name",
