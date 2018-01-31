@@ -853,6 +853,14 @@ config CHEF_DTB
 	  Only include Chef specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config FLAY_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Flay DTBs"
+	help
+	  Only include Flay specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config MSM_MPM_OF
        bool "Modem Power Manager"
        depends on OF
