@@ -61,7 +61,6 @@ static int pcal6416_reg_read(struct pcal6416_data *data, unsigned char reg)
 	int ret;
 
 	ret = regmap_read(data->mpRegmap, reg, &val);
-
 	if (ret < 0) {
 		dev_err(data->dev,
 			"%s reg=0x%x error %d\n", __func__, reg, ret);
@@ -94,6 +93,11 @@ static int pcal6416_reg_read_one_io(struct pcal6416_data *data,
 	int io = FIND_IO_BIT(offset);
 
 	reg_val = pcal6416_reg_read(data, reg);
+	if (reg_val < 0) {
+		dev_err(data->dev, "%s reg read error %d\n",
+			__func__, reg_val);
+		return reg_val;
+	}
 
 	return !!(reg_val & BIT_MASK(io));
 }
@@ -107,6 +111,11 @@ static int pcal6416_reg_write_one_io(struct pcal6416_data *data,
 
 	value = !!value;
 	reg_val = pcal6416_reg_read(data, reg);
+	if (reg_val < 0) {
+		dev_err(data->dev, "%s reg read error %d\n", __func__, reg_val);
+		return reg_val;
+	}
+
 	reg_val = (reg_val & ~(BIT_MASK(io))) | (value << io);
 
 	return pcal6416_reg_write(data, reg, reg_val);
