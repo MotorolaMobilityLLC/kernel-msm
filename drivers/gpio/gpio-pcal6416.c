@@ -165,12 +165,12 @@ static int pcal6416_pin_direction_output(struct gpio_chip *gpio_chip,
 
 	struct pcal6416_data *data = dev_get_drvdata(gpio_chip->dev);
 
-	rc = pcal6416_reg_write_one_io(data, PCAL6416_REG_CONFIG, offset, GPIO_OUT);
-
-	if (!rc)
-		data->all_gpio_config[offset] = GPIO_OUT;
 	if (val >= 0)
 		pcal6416_pin_set(gpio_chip, offset, val);
+
+	rc = pcal6416_reg_write_one_io(data, PCAL6416_REG_CONFIG, offset, GPIO_OUT);
+	if (!rc)
+		data->all_gpio_config[offset] = GPIO_OUT;
 
 	return rc;
 }
