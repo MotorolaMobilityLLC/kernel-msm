@@ -32,6 +32,7 @@
 #define USB_DIAG_DISCONNECT	1
 #define USB_DIAG_WRITE_DONE	2
 #define USB_DIAG_READ_DONE	3
+#define USB_DIAG_WRITE_DONE_SYNC 4
 
 struct diag_request {
 	char *buf;
