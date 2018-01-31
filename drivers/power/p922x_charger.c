@@ -822,6 +822,7 @@ static void p922x_handle_wls_insertion(struct p922x_charger *chip)
 	chip->tx_connected = true;
 	chip->rx_vout_max = MAX_VOUT_MV_DEFAULT;
 	chip->rx_iout_max = 0;
+	chip->ldo_enabled = true;
 
 	power_supply_changed(chip->wls_psy);
 	cancel_delayed_work(&chip->heartbeat_work);
