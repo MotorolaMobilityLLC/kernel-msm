@@ -398,6 +398,7 @@
 			wlf,headphone-crosstalk-improve;
 			wlf,micd-rate = <6>;
 			wlf,micd-detect-debounce = <300>;
+			wlf,micd-manual-debounce = <3>;
 			wlf,inmode = <0 2 0>;
 			wlf,micd-ranges = <
 				 100 226 /* HEADSETHOOK  */
