@@ -1,0 +1,72 @@
+
+qcom,jx40atl_3010mah {
+	serialnum = "SB18C26504";
+	qcom, = <24>;
+	/* #3301688_Lenovo_JX40atl_3010mAh_averaged_MasterSlave_Jan29th2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3010>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3435>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,battery-type = "JX40-ATL-3010mah";
+	qcom,checksum = <0x06FB>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 F5 1E 5D 06
+		 C0 03 D1 FD
+		 E6 1C EF 01
+		 BD 0D A7 0A
+		 F0 17 D8 23
+		 43 44 7C 5A
+		 6E 00 00 00
+		 10 00 00 00
+		 00 00 92 BC
+		 64 C4 02 00
+		 1E 00 08 00
+		 26 E2 7A ED
+		 0A F4 2D F2
+		 23 05 BA 0A
+		 EA CD E4 32
+		 18 06 09 20
+		 27 00 14 00
+		 9C 1F BA 05
+		 62 0A 61 06
+		 BB 1C 27 03
+		 CA 15 72 12
+		 7B 18 F9 23
+		 BF 4D 8B 5B
+		 66 00 00 00
+		 0D 00 00 00
+		 00 00 05 CC
+		 F2 C2 27 C3
+		 19 00 00 00
+		 FB EB 7A ED
+		 9D F5 47 00
+		 89 EA F4 03
+		 A6 00 46 1A
+		 A7 33 CC FF
+		 07 10 00 00
+		 B2 0B 66 46
+		 19 00 40 00
+		 B0 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
