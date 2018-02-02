@@ -1261,6 +1261,13 @@ config TOUCHSCREEN_NT36xxx
 
          To compile this driver as a module, choose M here: the
          module will be called nvt.
+
+config TOUCHSCREEN_ILITEK
+	bool "Mster touchpanel MSG2856A"
+	depends on I2C
+	help
+	Say Y here if you have a MSG2856A touchscreen.
+
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 source "drivers/input/touchscreen/focaltech_touch/Kconfig"
 
