@@ -2345,8 +2345,15 @@ static int smb2_init_hw(struct smb2 *chip)
 				USBIN_ADAPTER_ALLOW_5V_TO_9V);
 		if (rc < 0) {
 			dev_err(chg->dev,
-				"Couldn't configure dcin range, rc=%d\n",
-				rc);
+				"Couldn't configure dcin range, rc=%d\n", rc);
+			return rc;
+		}
+
+		rc = smblib_masked_write(chg, DCIN_AICL_OPTIONS_CFG_REG,
+			DCIN_AICL_START_AT_MAX_BIT, 0);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't configure dcin AICL, rc=%d\n", rc);
 			return rc;
 		}
 	}
