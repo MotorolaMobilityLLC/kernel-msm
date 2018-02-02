@@ -479,11 +479,19 @@ static int rmidev_release(struct inode *inp, struct file *filp)
 {
 	struct rmidev_data *dev_data =
 			container_of(inp->i_cdev, struct rmidev_data, main_dev);
+	struct temp_buffer *tb;
 
 	if (!dev_data)
 		return -EACCES;
 
 	mutex_lock(&(dev_data->file_mutex));
+
+	tb = &dev_data->data_buf;
+	if (tb->buf_size != 0) {
+	  kfree(tb->buf);
+	  tb->buf = NULL;
+	  tb->buf_size = 0;
+	}
 
 	dev_data->ref_count--;
 	if (dev_data->ref_count < 0)
