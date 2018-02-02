@@ -293,9 +293,21 @@ static int cyttsp_sar_parse_dt(struct device *dev,
 }
 #endif
 
-static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
+static irqreturn_t cyttsp_sar_eint_func(int irq, void *dev_id)
 {
 	struct cyttsp_sar_data *data = dev_id;
+	struct cyttsp_sar_platform_data *pdata = data->pdata;
+
+	disable_irq_nosync(gpio_to_irq(pdata->irq_gpio));
+	wake_lock_timeout(&data->cap_lock, msecs_to_jiffies(100));
+	schedule_delayed_work(&data->eint_work, 0);
+
+	return IRQ_HANDLED;
+}
+
+static void cyttsp_sar_eint_work(struct work_struct *work)
+{
+	struct cyttsp_sar_data *data = pcyttsp_sar_ptr;
 	struct cyttsp_sar_platform_data *pdata = data->pdata;
 	u8 temp[3];
 	u32 sar_state = 0;
@@ -318,7 +330,7 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 		ret = cyttsp_i2c_read_block(&data->client->dev, CYTTSP_REG_INTERRUPT_PEDNING, 3, &temp[0]);
 		if (ret < 0) {
 			dev_err(&data->client->dev, "Failed to read interrupt pending regsiter!\n");
-			return IRQ_NONE;
+			return;
 		}
 
 		sensor_status = ((unsigned long)temp[1] +  (unsigned long)(temp[2] << 8));
@@ -344,7 +356,7 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 
 	data->sensorStatus = sensor_status;
 
-	return IRQ_HANDLED;
+	enable_irq(gpio_to_irq(pdata->irq_gpio));
 }
 
 /**
@@ -1408,15 +1420,18 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 
 	}
 
-	error = request_threaded_irq(gpio_to_irq(client->irq), NULL, cyttsp_sar_interrupt,
-			IRQF_TRIGGER_FALLING | IRQF_ONESHOT, client->dev.driver->name, data);
-
+	error = request_irq(gpio_to_irq(client->irq), cyttsp_sar_eint_func,
+			IRQF_TRIGGER_FALLING, client->dev.driver->name, data);
 
 	dev_err(&client->dev, "registering irq %d\n", gpio_to_irq(client->irq));
 	if (error) {
 		dev_err(&client->dev, "Error %d registering irq %d\n", error, gpio_to_irq(client->irq));
 		goto err_irq_gpio_req;
 	}
+
+	INIT_DELAYED_WORK(&data->eint_work, cyttsp_sar_eint_work);
+
+	wake_lock_init(&data->cap_lock, WAKE_LOCK_SUSPEND, "capsense wakelock");
 
 	error = class_register(&capsense_class);
 	if (error < 0) {
@@ -1526,6 +1541,7 @@ static int cyttsp_sar_remove(struct i2c_client *client)
 	int i;
 
 	free_irq(client->irq, data);
+	wake_lock_destroy(&data->cap_lock);
 	for (i = 0; i < 4; i++) {
 		input_unregister_device(data->input_dev[i]);
 	}
