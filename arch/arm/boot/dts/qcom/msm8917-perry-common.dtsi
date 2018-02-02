@@ -11,8 +11,7 @@
  */
 
 #include "msm8917-camera-sensor-mot-perry.dtsi"
-#include "dsi-panel-mot-tianma-499-720p-video.dtsi"
-#include "dsi-panel-mot-ofilm-499-720p-video.dtsi"
+#include "dsi-panel-mot-txd-550-hd-video.dtsi"
 
 &soc {
 	vdda_touch_vreg: vdda_touch_vreg {
@@ -202,7 +201,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tianma_499_720p_vid_v1>;
+	qcom,dsi-pref-prim-pan = <&mipi_mot_video_txd_hd_550>;
 	vddio_disp-supply = <&pm8917_l6>;
 	vsp_disp-supply = <&lab_regulator>;
 	vsn_disp-supply = <&ibb_regulator>;
