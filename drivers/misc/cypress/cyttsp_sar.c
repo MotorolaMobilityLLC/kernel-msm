@@ -1059,34 +1059,14 @@ static ssize_t cycapsense_set_threshold_store(struct class *class,
 				threshold_array_len * 2);
 		if (ret < 0)
 			dev_err(&data->client->dev, "data_array_val read error");
-	} else if (!strncmp(buf, "EMEA", 4)) {
-		ret = of_property_read_u32_array(np, "emea_threshold_array_val",
+	} else {
+		dev_err(&data->client->dev, "radio is not NA, radio = %s", buf);
+		ret = of_property_read_u32_array(np, "default_threshold_array_val",
 				threshold_array_data,
 				threshold_array_len * 2);
 		if (ret < 0)
 			dev_err(&data->client->dev, "data_array_val read error");
-	} else if (!strncmp(buf, "APAC", 4)) {
-		ret = of_property_read_u32_array(np, "apac_threshold_array_val",
-				threshold_array_data,
-				threshold_array_len * 2);
-		if (ret < 0)
-			dev_err(&data->client->dev, "data_array_val read error");
-	} else if (!strncmp(buf, "LATAM", 5)) {
-		ret = of_property_read_u32_array(np,
-				"latam_threshold_array_val",
-				threshold_array_data,
-				threshold_array_len * 2);
-		if (ret < 0)
-			dev_err(&data->client->dev, "data_array_val read error");
-	} else if (!strncmp(buf, "PRC", 3)) {
-		ret = of_property_read_u32_array(np, "prc_threshold_array_val",
-				threshold_array_data,
-				threshold_array_len * 2);
-		if (ret < 0) {
-			dev_err(&data->client->dev, "data_array_val read error");
-		}
-	} else
-		dev_err(&data->client->dev, "radio is not expected, radio = %s", buf);
+	}
 
 	for (i = 0; i < threshold_array_len; i++) {
 		LOG_INFO("Going to Write Reg: 0x%x Value: 0x%x\n",
