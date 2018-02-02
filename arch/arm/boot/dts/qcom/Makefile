@@ -380,6 +380,10 @@ ifeq ($(CONFIG_NORA_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8917) += msm8917-nora-p0.dtb
 endif
 
+ifeq ($(CONFIG_PETTYL_DTB),y)
+dtb-$(CONFIG_ARCH_MSM8917) += msm8917-pettyl-p0.dtb
+endif
+
 ifeq ($(CONFIG_OWENS_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8920) += msm8920-owens-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8920) += msm8920-owens-p1.dtb
