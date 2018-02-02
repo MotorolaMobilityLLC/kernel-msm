@@ -16,6 +16,7 @@
 #define _CYTTSP_SAR_H_
 
 #include <linux/types.h>
+#include <linux/wakelock.h>
 
 #define CYTTSP_SAR_CHANNEL_ENABLE		0x06
 #define CYTTSP_SAR_FORCE_CALIBRATE		0x07
@@ -93,6 +94,8 @@ struct cyttsp_sar_data {
 	struct regulator *regulator_avdd;
 	struct regulator *regulator_vddio;
 	struct input_dev *input_dev[4];
+	struct delayed_work  eint_work;
+	struct wake_lock cap_lock;
 	bool dbgdump;
 	unsigned long sensorStatus;
 	bool enable;
