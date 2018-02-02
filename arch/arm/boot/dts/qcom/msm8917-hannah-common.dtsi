@@ -352,7 +352,7 @@
 
 &pmi8950_fg {
 	qcom,ext-sense-type; /* External Sense Resistor */
-	qcom,thermal-coefficients =  /bits/ 16 <0x2d87 0x9151 0x7d3c>;
+	/delete-property/ qcom,thermal-coefficients;
 	qcom,irq-volt-empty-mv = <3200>;
 	qcom,fg-cutoff-voltage-mv = <3400>;
 };
@@ -379,8 +379,9 @@
 };
 
 &mot_batterydata {
-	df-serialnum = "SNN5989A";
+	qcom,batt-id-range-pct = <15>;
 	#include "batterydata-he50-atl-pmi8937.dtsi"
+	#include "batterydata-he50-cos-pmi8937.dtsi"
 };
 
 &pmi_haptic {
