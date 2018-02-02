@@ -7027,7 +7027,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
 		charger_present = 1;
 
-	if (vbus_present || mmi->wls_present || !mmi->usbeb_present)
+	if (mmi->wls_present && mmi->inner_wls_used)
+		smblib_enable_dc_aicl(chip, true);
+	else if (vbus_present || mmi->wls_present || !mmi->usbeb_present)
 		smblib_enable_dc_aicl(chip, false);
 	else if (mmi->usbeb_present && !prev_usbeb_pres)
 		smblib_enable_dc_aicl(chip, true);
