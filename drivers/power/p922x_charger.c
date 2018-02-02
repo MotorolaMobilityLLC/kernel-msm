@@ -49,6 +49,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/power_supply.h>
+#include <linux/firmware.h>
 
 #define CHIP_ID_REG		0x0000
 #define HW_VER_REG		0x0002
@@ -142,6 +143,8 @@
 #define MAX_IOUT_MA_FAST 1100
 
 #define WLS_SHOW_MAX_SIZE 32
+#define CHIP_ID_ADDR0 0x5870
+#define CHIP_ID_ADDR1 0x5874
 
 #define p922x_err(chip, fmt, ...)		\
 	pr_err("%s: %s: " fmt, chip->name,	\
@@ -156,6 +159,80 @@
 			pr_debug("%s: %s: " fmt, chip->name,	\
 				__func__, ##__VA_ARGS__);	\
 	} while (0)
+
+static char otp_bootloader[] = {
+	0x00, 0x04, 0x00, 0x20, 0x35, 0x01, 0x00, 0x00,
+	0x41, 0x00, 0x00, 0x00, 0x41, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x41, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x41, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0xFE, 0xE7, 0x00, 0x00, 0x80, 0x00, 0x00, 0xE0,
+	0x00, 0xBF, 0x40, 0x1E, 0xFC, 0xD2, 0x70, 0x47,
+	0x00, 0xB5, 0x60, 0x4A, 0x60, 0x4B, 0x01, 0x70,
+	0x01, 0x20, 0xFF, 0xF7, 0xF3, 0xFF, 0x52, 0x1E,
+	0x02, 0xD0, 0x18, 0x8B, 0x00, 0x06, 0xF7, 0xD4,
+	0x00, 0xBD, 0xF7, 0xB5, 0x05, 0x46, 0x5B, 0x48,
+	0x81, 0xB0, 0x00, 0x21, 0x94, 0x46, 0x81, 0x81,
+	0x57, 0x48, 0x31, 0x21, 0x01, 0x80, 0x04, 0x21,
+	0x81, 0x80, 0x06, 0x21, 0x01, 0x82, 0x28, 0x20,
+	0xFF, 0xF7, 0xDC, 0xFF, 0x00, 0x24, 0x0D, 0xE0,
+	0x02, 0x99, 0x28, 0x5D, 0x09, 0x5D, 0x02, 0x46,
+	0x8A, 0x43, 0x01, 0xD0, 0x10, 0x20, 0x3F, 0xE0,
+	0x81, 0x43, 0x02, 0xD0, 0x28, 0x19, 0xFF, 0xF7,
+	0xD3, 0xFF, 0x64, 0x1C, 0x64, 0x45, 0xEF, 0xD3,
+	0x49, 0x48, 0x36, 0x21, 0x01, 0x82, 0x00, 0x24,
+	0x2F, 0xE0, 0x02, 0x98, 0x00, 0x27, 0x06, 0x5D,
+	0x28, 0x19, 0x00, 0x90, 0x44, 0x4A, 0x08, 0x20,
+	0x90, 0x80, 0x02, 0x20, 0xFF, 0xF7, 0xBA, 0xFF,
+	0x28, 0x5D, 0x33, 0x46, 0x83, 0x43, 0x16, 0xD0,
+	0x3F, 0x49, 0x04, 0x20, 0x88, 0x80, 0x02, 0x20,
+	0xFF, 0xF7, 0xB0, 0xFF, 0x19, 0x46, 0x00, 0x98,
+	0xFF, 0xF7, 0xB2, 0xFF, 0x3A, 0x49, 0x0F, 0x20,
+	0x88, 0x80, 0x02, 0x20, 0xFF, 0xF7, 0xA6, 0xFF,
+	0x28, 0x5D, 0xB0, 0x42, 0x03, 0xD0, 0x7F, 0x1C,
+	0x0A, 0x2F, 0xDF, 0xD3, 0x01, 0xE0, 0x0A, 0x2F,
+	0x06, 0xD3, 0x35, 0x48, 0x29, 0x19, 0x41, 0x80,
+	0x29, 0x5D, 0xC1, 0x80, 0x04, 0x20, 0x03, 0xE0,
+	0x64, 0x1C, 0x64, 0x45, 0xCD, 0xD3, 0x02, 0x20,
+	0x2D, 0x49, 0x11, 0x22, 0x0A, 0x80, 0x04, 0x22,
+	0x8A, 0x80, 0x2C, 0x49, 0xFF, 0x22, 0x8A, 0x81,
+	0x04, 0xB0, 0xF0, 0xBD, 0x2C, 0x49, 0x2B, 0x48,
+	0x08, 0x60, 0x2C, 0x48, 0x00, 0x23, 0x83, 0x81,
+	0x2A, 0x49, 0x20, 0x39, 0x8B, 0x83, 0x03, 0x80,
+	0x24, 0x48, 0x5A, 0x21, 0x40, 0x38, 0x01, 0x80,
+	0x81, 0x15, 0x81, 0x80, 0x0B, 0x21, 0x01, 0x81,
+	0x25, 0x49, 0x81, 0x81, 0x14, 0x20, 0xFF, 0xF7,
+	0x71, 0xFF, 0x24, 0x4A, 0x01, 0x20, 0x10, 0x80,
+	0x02, 0x20, 0xFF, 0xF7, 0x6B, 0xFF, 0x8D, 0x20,
+	0x10, 0x80, 0x93, 0x80, 0xFF, 0x20, 0x90, 0x82,
+	0x03, 0x20, 0x00, 0x02, 0x10, 0x82, 0xFC, 0x20,
+	0x90, 0x83, 0x1C, 0x49, 0x95, 0x20, 0x20, 0x31,
+	0x08, 0x80, 0x15, 0x4D, 0x2B, 0x80, 0x28, 0x88,
+	0x2C, 0x46, 0x01, 0x28, 0xFB, 0xD1, 0x61, 0x88,
+	0x80, 0x03, 0xA2, 0x88, 0x08, 0x18, 0x51, 0x18,
+	0x8B, 0xB2, 0x00, 0x21, 0x04, 0xE0, 0x0E, 0x19,
+	0x36, 0x7A, 0xF3, 0x18, 0x9B, 0xB2, 0x49, 0x1C,
+	0x8A, 0x42, 0xF8, 0xD8, 0xE1, 0x88, 0x99, 0x42,
+	0x01, 0xD0, 0x08, 0x20, 0x08, 0xE0, 0x00, 0x2A,
+	0x05, 0xD0, 0x07, 0x49, 0x08, 0x31, 0xFF, 0xF7,
+	0x50, 0xFF, 0x20, 0x80, 0xDF, 0xE7, 0x02, 0x20,
+	0x28, 0x80, 0xDC, 0xE7, 0x10, 0x27, 0x00, 0x00,
+	0x00, 0x5C, 0x00, 0x40, 0x40, 0x30, 0x00, 0x40,
+	0x00, 0x04, 0x00, 0x20, 0xFF, 0x0F, 0x00, 0x00,
+	0x80, 0xE1, 0x00, 0xE0, 0x20, 0x6C, 0x00, 0x40,
+	0x04, 0x1D, 0x00, 0x00, 0x00, 0x64, 0x00, 0x40,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+enum {
+	PROGRAM_FW_NONE,
+	PROGRAM_FW_PENDING,
+	PROGRAM_FW_SUCCESS,
+	PROGRAM_FW_FAIL,
+};
 
 enum print_reason {
 	PR_INTERRUPT    = BIT(0),
@@ -255,6 +332,10 @@ struct p922x_charger {
 	struct power_supply	*main_psy;
 	struct power_supply     *wls_psy;
 	struct power_supply_desc	wls_psy_d;
+
+	const char		*fw_name;
+	bool			program_fw_enabled;
+	int			program_fw_stat;
 };
 
 static const char * const type_text[] = {
@@ -528,6 +609,28 @@ static int p922x_get_rx_ocl(struct p922x_charger *chip)
 	}
 
 	return (ma & 0xf) * 100 + 100;
+}
+
+static int p922x_get_rx_chip_id(struct p922x_charger *chip, u16 *id)
+{
+	int rc;
+	u8 data;
+
+	rc = p922x_read_reg(chip, CHIP_ID_ADDR0, &data);
+	if (rc < 0) {
+		p922x_err(chip, "Read CHIP_ID_ADDR0 failed, rc=%d\n", rc);
+		return rc;
+	}
+	*id = data << 8;
+
+	rc = p922x_read_reg(chip, CHIP_ID_ADDR1, &data);
+	if (rc < 0) {
+		p922x_err(chip, "Read CHIP_ID_ADDR1 failed, rc=%d\n", rc);
+		return rc;
+	}
+	*id = *id | data;
+
+	return rc;
 }
 
 static int p922x_get_tx_vin(struct p922x_charger *chip)
@@ -1038,11 +1141,11 @@ static int p922x_hw_init(struct p922x_charger *chip)
 	}
 
 	if (chip->rx_chip_det) {
-		u8 data;
+		u16 chip_id;
 		bool rx_present = gpio_get_value(chip->irq_gpio.gpio);
 
 		if (!rx_present) {
-			rc = p922x_read_reg(chip, 0x5870, &data);
+			rc = p922x_get_rx_chip_id(chip, &chip_id);
 			rx_present = rc < 0 ? false : true;
 		}
 		p922x_dbg(chip, PR_MOTO, "RX chip is %s\n",
@@ -1058,6 +1161,282 @@ static int p922x_hw_init(struct p922x_charger *chip)
 
 disable_vreg:
 	regulator_disable(chip->vdd_i2c_vreg);
+
+	return rc;
+}
+
+#define WLS_LOG_BUF_SIZE 128
+static int p922x_program_otp_bootloader(struct p922x_charger *chip)
+{
+	int i;
+	int rc = 0;
+	u32 offset;
+	char log_buf[WLS_LOG_BUF_SIZE] = {0};
+
+	/*
+	 * Transfer 9220 boot loader code "OTPBootloader" to 9220 SRAM
+	 * - Setup 9220 registers before transferring the boot loader code
+	 * - Transfer the boot loader code to 9220 SRAM
+	 * - Reset 9220 => 9220 M0 runs the boot loader
+	 */
+	rc = p922x_write_reg(chip, 0x3000, 0x5a);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to write 0x3000(5a), rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = p922x_write_reg(chip, 0x3040, 0x10);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to write 0x3040(10), rc=%d\n", rc);
+		return rc;
+	}
+
+	/* Write OTP bootloader data */
+	for (i = 0; i < sizeof(otp_bootloader); i++) {
+		rc = p922x_write_reg(chip, 0x1c00 + i, otp_bootloader[i]);
+		if (rc < 0) {
+			p922x_err(chip, "Failed to program OTP bootloader\n");
+			return rc;
+		}
+
+		if (i % 16) {
+			offset += scnprintf(log_buf + offset,
+				WLS_LOG_BUF_SIZE,
+				"0x%02x, ", otp_bootloader[i]);
+			if (i == (sizeof(otp_bootloader) - 1))
+				p922x_dbg(chip, PR_MOTO, "%s\n", log_buf);
+		} else {
+			p922x_dbg(chip, PR_MOTO, "%s\n", log_buf);
+			memset(log_buf, '\0', WLS_LOG_BUF_SIZE);
+			offset = scnprintf(log_buf,
+				WLS_LOG_BUF_SIZE,
+				"BL@0x%04x: 0x%02x, ", i, otp_bootloader[i]);
+		}
+	}
+
+	rc = p922x_write_reg(chip, 0x3048, 0x80);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to write 0x3048(80), rc=%d\n", rc);
+		return rc;
+	}
+
+	/* ignoreNAK */
+	rc = p922x_write_reg(chip, 0x3040, 0x80);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to write 0x3040(80), rc=%d\n", rc);
+		return rc;
+	}
+	msleep(100);
+
+	return rc;
+}
+
+#define FW_OTP_CHECK_ST_RETRY_CNT 5
+#define FW_OTP_PACK_HEADER_LEN 8
+#define FW_OTP_PACK_DATA_LEN 128
+#define FW_OTP_PACK_SIZE (FW_OTP_PACK_HEADER_LEN + FW_OTP_PACK_DATA_LEN)
+static int p922x_program_otp_package(struct p922x_charger *chip,
+			const u8 *src, u16 addr, u32 len)
+{
+	int i;
+	int rc;
+	u32 offset;
+	u16 check_sum = addr;
+	int retry_cnt = 0;
+	char buf[FW_OTP_PACK_SIZE];
+	char log_buf[WLS_LOG_BUF_SIZE] = {0};
+
+	memset(buf, 0, FW_OTP_PACK_SIZE);
+
+	/*(1) Copy the 128 bytes of the OTP image data to the packet data buffer
+	 *    Array.Copy(srcData, i + srcOffs, sBuf, 8, 128);
+	 *    Copy 128 bytes from srcData (starting at i+srcOffs)
+	 *    to sBuf (starting at 8)
+	 *	srcData     --- source array
+	 *	i + srcOffs     --- start index in source array
+	 *	sBuf         --- destination array
+	 *	8         --- start index in destination array
+	 *	128         --- elements to copy
+	 */
+	memcpy(buf + FW_OTP_PACK_HEADER_LEN, src, len);
+
+	for (i = len - 1; i >= 0; i--) {
+		if (buf[i + FW_OTP_PACK_HEADER_LEN] != 0)
+			break;
+		len--;
+	}
+	/* skip programming if nothing to program*/
+	if (len == 0)
+		return 0;
+
+	/*
+	 *(2) Calculate the packet checksum of the 128-byte data,
+	 *	StartAddr, and CodeLength
+	 */
+	for (; i >= 0; i--)
+		check_sum += buf[i + FW_OTP_PACK_HEADER_LEN];
+	check_sum += len;
+
+	/*(3) Fill up StartAddr, CodeLength, CheckSum of the current packet.*/
+	memcpy(buf + 2, &addr, 2);
+	memcpy(buf + 4, &len, 2);
+	memcpy(buf + 6, &check_sum, 2);
+
+	/* Send the current packet to 9220 SRAM via I2C
+	 * read status is guaranteed to be != 1 at this point
+	 */
+	for (i = 0; i < (len + FW_OTP_PACK_HEADER_LEN); i++) {
+		rc = p922x_write_reg(chip, 0x400 + i, buf[i]);
+		if (rc < 0) {
+			p922x_err(chip, "ERROR: on writing to OTP buffer\n");
+			return rc;
+		}
+
+		if (i < FW_OTP_PACK_HEADER_LEN)
+			continue;
+
+		if ((i - FW_OTP_PACK_HEADER_LEN) % 16) {
+			offset += scnprintf(log_buf + offset,
+				WLS_LOG_BUF_SIZE, "0x%02x, ", buf[i]);
+			if (i == (len + FW_OTP_PACK_HEADER_LEN - 1))
+				p922x_dbg(chip, PR_MOTO, "%s\n", log_buf);
+		} else {
+			p922x_dbg(chip, PR_MOTO, "%s\n", log_buf);
+			memset(log_buf, '\0', WLS_LOG_BUF_SIZE);
+			offset = scnprintf(log_buf, WLS_LOG_BUF_SIZE,
+				"OTP@0x%04x(CS-%04x): 0x%02x, ",
+				addr + (i - FW_OTP_PACK_HEADER_LEN),
+				check_sum, buf[i]);
+		}
+	}
+
+	/* Write 1 to the Status in the SRAM. This informs the 9220 to
+	 * start programming the new packet
+	 * from SRAM to OTP memory
+	 */
+	rc = p922x_write_reg(chip, 0x400, 1);
+	if (rc < 0) {
+		p922x_err(chip, "ERROR: on OTP buffer validation\n");
+		return rc;
+	}
+
+	/* Wait for 9220 bootloader to complete programming the current
+	 * packet image data from SRAM to the OTP.
+	 * The boot loader will update the Status in the SRAM as follows:
+	 * Status:
+	 * "0" - reset value (from AP)
+	 * "1" - buffer validated / busy (from AP)
+	 * "2" - finish "OK" (from the boot loader)
+	 * "4" - programming error (from the boot loader)
+	 * "8" - wrong check sum (from the boot loader)
+	 * "16"- programming not possible (try to write "0" to bit location
+	 * already programmed to "1")
+	 *       (from the boot loader)
+	 * DateTime startT = DateTime.Now;
+	 */
+	do {
+		msleep(100);
+		p922x_read_reg(chip, 0x400, buf);
+		if (retry_cnt++ > FW_OTP_CHECK_ST_RETRY_CNT)
+			break;
+	} while (buf[0] == 1);
+
+	if (buf[0] != 2) {
+		p922x_err(chip,
+			"ERROR: Programming OTP buffer status:%02x at:%d\n",
+			buf[0], addr);
+		return -EAGAIN;
+	}
+
+	return 0;
+}
+
+static int p922x_program_otp(struct p922x_charger *chip,
+		u16 destAddr, const u8 *src, u32 size)
+{
+	int i;
+	int rc;
+
+	/* Program OTP image data to 9220 OTP memory */
+	for (i = destAddr; i < destAddr + size; i += FW_OTP_PACK_DATA_LEN) {
+		int len = FW_OTP_PACK_DATA_LEN;
+
+		if ((destAddr + size) < (i + FW_OTP_PACK_DATA_LEN))
+			len = destAddr + size - i;
+		rc = p922x_program_otp_package(chip, src, i, len);
+		if (rc < 0) {
+			p922x_err(chip, "Program otp failed at 0x%04x\n", i);
+			return rc;
+		}
+		src += FW_OTP_PACK_DATA_LEN;
+	}
+
+	/*
+	 * Need to reset or power cycle 9220 to run the OTP code
+	*/
+	rc = p922x_write_reg(chip, 0x3000, 0x5a);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to write 0x3000(5a), rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = p922x_write_reg(chip, 0x3048, 0x00);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to write 0x3048(00), rc=%d\n", rc);
+		return rc;
+	}
+
+	return rc;
+}
+
+static int p922x_program_fw(struct p922x_charger *chip)
+{
+	int rc;
+	u16 chip_id;
+	const struct firmware *fw = NULL;
+
+	if (chip->program_fw_stat == PROGRAM_FW_PENDING) {
+		p922x_err(chip, "Programming FW is ongoing\n");
+		return -EBUSY;
+	}
+	chip->program_fw_stat = PROGRAM_FW_PENDING;
+
+	rc = request_firmware(&fw, chip->fw_name, NULL);
+	if (rc < 0) {
+		p922x_err(chip, "Request firmware (%s) failed, rc=%d\n",
+			chip->fw_name, rc);
+		chip->program_fw_stat = PROGRAM_FW_FAIL;
+		return rc;
+	}
+
+	rc = p922x_get_rx_chip_id(chip, &chip_id);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to get RX CHIP ID, rc=%d\n", rc);
+		chip->program_fw_stat = PROGRAM_FW_FAIL;
+		goto release_fw;
+	}
+	p922x_dbg(chip, PR_MOTO, "RX chip ID is 0x%04x\n", chip_id);
+
+	rc = p922x_program_otp_bootloader(chip);
+	if (rc < 0) {
+		p922x_err(chip, "Programming OTP bootloader failed, rc=%d\n",
+			rc);
+		chip->program_fw_stat = PROGRAM_FW_FAIL;
+		goto release_fw;
+	}
+
+	rc = p922x_program_otp(chip, 0x0000, fw->data, fw->size);
+	if (rc < 0) {
+		p922x_err(chip, "Programming OTP failed, rc=%d\n", rc);
+		chip->program_fw_stat = PROGRAM_FW_FAIL;
+		goto release_fw;
+	}
+
+	chip->program_fw_stat = PROGRAM_FW_SUCCESS;
+	p922x_dbg(chip, PR_MOTO, "Programming FW success\n");
+
+release_fw:
+	release_firmware(fw);
 
 	return rc;
 }
@@ -1185,6 +1564,11 @@ static irqreturn_t p922x_irq_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+	if (chip->program_fw_stat == PROGRAM_FW_PENDING) {
+		p922x_err(chip, "Skip irq for FW programming\n");
+		return IRQ_HANDLED;
+	}
+
 	if (!chip->rx_ready) {
 		rc = p922x_prepare_rx(chip);
 		if (!rc)
@@ -1207,6 +1591,55 @@ static irqreturn_t p922x_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static ssize_t fw_ver_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int rc;
+	u8 ver[4];
+	struct p922x_charger *chip = dev_get_drvdata(dev);
+
+	rc = p922x_read_buffer(chip, E2PROM_FW_VER_REG, ver, 4);
+	if (rc < 0)
+		return rc;
+
+	return scnprintf(buf, WLS_SHOW_MAX_SIZE, "%02d.%02d.%02d.%02d\n",
+					ver[3], ver[2], ver[1], ver[0]);
+}
+static DEVICE_ATTR(fw_ver, S_IRUGO, fw_ver_show, NULL);
+
+static ssize_t program_fw_stat_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct p922x_charger *chip = dev_get_drvdata(dev);
+
+	return scnprintf(buf, WLS_SHOW_MAX_SIZE, "%d\n", chip->program_fw_stat);
+}
+static DEVICE_ATTR(program_fw_stat, S_IRUGO, program_fw_stat_show, NULL);
+
+static ssize_t program_fw_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int rc;
+	unsigned long r;
+	unsigned long flash;
+	struct p922x_charger *chip = dev_get_drvdata(dev);
+
+	r = kstrtoul(buf, 0, &flash);
+	if (r) {
+		p922x_err(chip, "Invalid flash value = %ld\n", flash);
+		return -EINVAL;
+	}
+
+	if (flash) {
+		rc = p922x_program_fw(chip);
+		if (rc < 0)
+			return rc;
+	}
+	return r ? r : count;
+}
+static DEVICE_ATTR(program_fw, S_IWUSR, NULL, program_fw_store);
+
 static ssize_t chip_id_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1214,13 +1647,13 @@ static ssize_t chip_id_show(struct device *dev,
 	u16 chip_id;
 	struct p922x_charger *chip = dev_get_drvdata(dev);
 
-	rc = p922x_read_buffer(chip, CHIP_ID_REG, (u8 *)&chip_id, 2);
+	rc = p922x_get_rx_chip_id(chip, &chip_id);
 	if (rc < 0)
 		return rc;
 
 	return scnprintf(buf, WLS_SHOW_MAX_SIZE, "0x%04x\n", chip_id);
 }
-static DEVICE_ATTR(chip_id, 0644, chip_id_show, NULL);
+static DEVICE_ATTR(chip_id, S_IRUGO, chip_id_show, NULL);
 
 static ssize_t fastchg_volt_store(struct device *dev,
 		struct device_attribute *attr,
@@ -1534,6 +1967,20 @@ static void create_sysfs_entries(struct p922x_charger *chip)
 	rc = device_create_file(chip->dev, &dev_attr_tx_icl);
 	if (rc)
 		p922x_err(chip, "Couldn't create tx_icl\n");
+
+	if (chip->program_fw_enabled) {
+		rc = device_create_file(chip->dev, &dev_attr_fw_ver);
+		if (rc)
+			p922x_err(chip, "Couldn't create fw_ver\n");
+
+		rc = device_create_file(chip->dev, &dev_attr_program_fw_stat);
+		if (rc)
+			p922x_err(chip, "Couldn't create program_fw_stat\n");
+
+		rc = device_create_file(chip->dev, &dev_attr_program_fw);
+		if (rc)
+			p922x_err(chip, "Couldn't create program_fw\n");
+	}
 }
 
 static void remove_sysfs_entries(struct p922x_charger *chip)
@@ -1546,6 +1993,11 @@ static void remove_sysfs_entries(struct p922x_charger *chip)
 	device_remove_file(chip->dev, &dev_attr_tx_type);
 	device_remove_file(chip->dev, &dev_attr_tx_vin);
 	device_remove_file(chip->dev, &dev_attr_tx_icl);
+	if (chip->program_fw_enabled) {
+		device_remove_file(chip->dev, &dev_attr_fw_ver);
+		device_remove_file(chip->dev, &dev_attr_program_fw_stat);
+		device_remove_file(chip->dev, &dev_attr_program_fw);
+	}
 }
 
 static int p922x_parse_dt(struct p922x_charger *chip)
@@ -1601,6 +2053,14 @@ static int p922x_parse_dt(struct p922x_charger *chip)
 
 	chip->rx_chip_det = of_property_read_bool(node,
 					"idt,rx-chip-det");
+
+	chip->program_fw_enabled = of_property_read_bool(node,
+					"idt,program-fw-enabled");
+
+	chip->fw_name = of_get_property(chip->dev->of_node,
+						"fw-name", NULL);
+	if (!chip->fw_name)
+		chip->fw_name = "p922x_otp.fw";
 
 	return 0;
 }
