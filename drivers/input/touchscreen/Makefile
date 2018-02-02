@@ -102,3 +102,4 @@ obj-$(CONFIG_TOUCHSCREEN_ATMEL_MXT_MMI)	+= atmel_mxt_ts_mmi.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_CTRL_ACCESS_BLK) += synaptics_dsx_control_access_block.o
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_I2C) 	+= himax_mmi/
 obj-$(CONFIG_TOUCHSCREEN_NT36xxx)		+= nova_mmi/
+obj-$(CONFIG_TOUCHSCREEN_ILITEK)	+= mstar/
