@@ -351,6 +351,7 @@
 
 		idt,rx-chip-det;
 		idt,tx-auth-enabled;
+		idt,program-fw-enabled;
 		idt,chg-efficiency = <70>;
 		idt,chg-limit-soc = <95>;
 		idt,chg-idle-cl = <50>;
