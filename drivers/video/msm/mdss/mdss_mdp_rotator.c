@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, 2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,6 +43,7 @@ struct mdss_mdp_rot_pipe {
 struct mdss_mdp_rot_session_mgr {
 	struct list_head queue;
 	struct mutex session_lock;
+	struct mutex req_lock;
 	int session_id;
 	int session_count;
 
@@ -77,6 +78,7 @@ int mdss_mdp_rot_mgr_init(void)
 
 	mutex_init(&rot_mgr->session_lock);
 	mutex_init(&rot_mgr->pipe_lock);
+	mutex_init(&rot_mgr->req_lock);
 	INIT_LIST_HEAD(&rot_mgr->queue);
 	rot_mgr->rot_work_queue = alloc_workqueue("rot_commit_workq",
 			WQ_UNBOUND | WQ_HIGHPRI | WQ_MEM_RECLAIM,
@@ -1023,9 +1025,11 @@ int mdss_mdp_rotator_play(struct msm_fb_data_type *mfd,
 	u32 flgs;
 	struct mdss_mdp_data src_buf;
 
+	mutex_lock(&rot_mgr->req_lock);
 	rot = mdss_mdp_rot_mgr_get_session(req->id);
 	if (!rot) {
 		pr_err("invalid session id=%x\n", req->id);
+		mutex_unlock(&rot_mgr->req_lock);
 		return -ENOENT;
 	}
 
@@ -1076,6 +1080,7 @@ int mdss_mdp_rotator_play(struct msm_fb_data_type *mfd,
 
 dst_buf_fail:
 	mutex_unlock(&rot->lock);
+	mutex_unlock(&rot_mgr->req_lock);
 	mdss_iommu_ctrl(0);
 	return ret;
 }
@@ -1085,9 +1090,11 @@ int mdss_mdp_rotator_unset(int ndx)
 	struct mdss_mdp_rotator_session *rot;
 	int ret = 0;
 
+	mutex_lock(&rot_mgr->req_lock);
 	rot = mdss_mdp_rot_mgr_get_session(ndx);
 	if (rot)
 		ret = mdss_mdp_rotator_release(rot);
+	mutex_unlock(&rot_mgr->req_lock);
 
 	return ret;
 }
