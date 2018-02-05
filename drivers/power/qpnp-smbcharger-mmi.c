@@ -11214,8 +11214,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			    taper_ma)
 				batt_ma -= STEPCHG_CURR_ADJ;
 
-			if ((batt_ma <= taper_ma) &&
-			    (chip->allowed_fastchg_current_ma >= taper_ma))
+			if (batt_ma <= min(taper_ma,
+					chip->allowed_fastchg_current_ma))
 				if (chip->stepchg_state_holdoff >= 2) {
 					change_state = true;
 					chip->stepchg_state_holdoff = 0;
