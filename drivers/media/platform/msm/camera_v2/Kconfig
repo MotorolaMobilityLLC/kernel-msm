@@ -253,3 +253,9 @@ config MSM_SEC_CCI_DEBUG
 	---help---
 	  Enables simulation of secure camera for Secure CCI Realy
 	  debugging.
+
+config MSM_CAMERA_VENDOR_WENTAI
+	bool "enable wentai camera features"
+	---help---
+		enable wentai camera features:
+		1. disable userspace probe function
