@@ -12,6 +12,7 @@
 #define DEBUG
 #define DRIVER_NAME "sx9310"
 #define USE_SENSORS_CLASS
+#define USE_KERNEL_SUSPEND
 
 #define MAX_WRITE_ARRAY_SIZE 32
 #include <linux/module.h>
@@ -1461,7 +1462,7 @@ static int sx9310_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	psx93XX_t this = i2c_get_clientdata(client);
 
-	sx93XX_sar_suspend(this);
+	sx93XX_suspend(this);
 	return 0;
 }
 /***** Kernel Resume *****/
@@ -1469,7 +1470,7 @@ static int sx9310_resume(struct i2c_client *client)
 {
 	psx93XX_t this = i2c_get_clientdata(client);
 
-	sx93XX_sar_resume(this);
+	sx93XX_resume(this);
 	return 0;
 }
 /*====================================================*/
@@ -1683,27 +1684,17 @@ static void sx93XX_worker_func(struct work_struct *work)
 }
 #endif
 
-void sx93XX_sar_suspend(psx93XX_t this)
+void sx93XX_suspend(psx93XX_t this)
 {
 	if (this) {
+		LOG_INFO("sx9310 suspend: disable irq!\n");
 		disable_irq(this->irq);
-		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
-		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
 	}
 }
-void sx93XX_sar_resume(psx93XX_t this)
+void sx93XX_resume(psx93XX_t this)
 {
 	if (this) {
-#ifdef USE_THREADED_IRQ
-		mutex_lock(&this->mutex);
-		/* Just in case need to reset any uncaught interrupts */
-		sx93XX_process_interrupt(this, 0);
-		mutex_unlock(&this->mutex);
-#else
-		sx93XX_schedule_work(this, 0);
-#endif
-		if (this->init)
-			this->init(this);
+		LOG_INFO("sx9310 resume: enable irq!\n");
 		enable_irq(this->irq);
 	}
 }
