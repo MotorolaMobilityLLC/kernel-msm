@@ -187,8 +187,8 @@ struct actuator_data {
 	enum work_mode meWorkMode;
 	unsigned char mnRatedVoltage;
 	unsigned char mnOverDriveClampVoltage;
-	unsigned char mnRatedVoltageReduced;
-	unsigned char mnOverDriveClampVoltageReduced;
+	unsigned char mnRTPINPUTReduced;
+	unsigned char mnRTPINPUT;
 	unsigned char mnLRAFreq;
 	unsigned char mnSampleTime;
 	unsigned char mnDriveTime;
