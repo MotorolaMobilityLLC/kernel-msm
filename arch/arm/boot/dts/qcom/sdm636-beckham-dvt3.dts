@@ -33,3 +33,8 @@
 			};
 	};
 };
+
+&anx_slimport {
+	analogix,p-dwn-gpio = <&tlmm 55 0>;
+	analogix,vdd-1p0-enable-gpio = <&tlmm 80 0x0>;
+};
