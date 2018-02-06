@@ -89,10 +89,10 @@
 		reg = <0x5A>;
 		/* voltage = *_voltage x 22 mV */
 		/* 1.8V for now */
-		ti,rated_voltage = /bits/ 8 <0x49>;
+		ti,rated_voltage = /bits/ 8 <0x54>;
 		ti,overdrive_voltage = /bits/ 8 <0x9a>;
-		ti,rated_voltage_reduced = /bits/ 8 <0x25>;
-		ti,overdrive_voltage_reduced = /bits/ 8 <0x9a>;
+		ti,rtp_input = /bits/ 8 <0x7f>;
+		ti,rtp_input_reduced = /bits/ 8 <0x51>;
 		/* LRA period = lra_freq x 24.39 us */
 		/* 205 Hz for now */
 		ti,lra_freq = /bits/ 8 <0xCD>;
