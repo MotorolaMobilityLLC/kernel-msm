@@ -2219,9 +2219,9 @@ int stmvl53l0_livechecking(struct stmvl53l0_data *data)
 	if (data->enable_ps_sensor == 1 && SAR_MODE == data->w_mode) {
 		VL53L0_RdByte(vl53l0_dev,
 			VL53L0_REG_IDENTIFICATION_MODEL_ID, &id);
-		vl53l0_errmsg("read MODLE_ID: 0x%x\n", id);
+		vl53l0_dbgmsg("read MODLE_ID: 0x%x\n", id);
 		if (id == 0xee)
-			vl53l0_errmsg("STM VL53L0 still alive\n");
+			vl53l0_dbgmsg("STM VL53L0 still alive\n");
 		else {
 			vl53l0_errmsg("STM VL53L0 looks dead\n");
 			do_gettimeofday(&tv);
