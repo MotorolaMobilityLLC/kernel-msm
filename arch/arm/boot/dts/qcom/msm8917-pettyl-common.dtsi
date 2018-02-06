@@ -250,6 +250,25 @@
 		reg_array_val = <0x15 0xc1 0x17 0x4e 0x18 0x42 0x19 0x73>;
 	};
 
+	abova96t316@20 {
+		label = "AbovCapSense";
+		compatible = "abov,abov_sar";
+		reg = <0x20>;
+		cap_vdd-supply = <&vdd_sar_vreg>;
+		cap_svdd-supply = <&pm8917_l5>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <31 0x2008>;
+		gpios = <&tlmm 31 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_int_default>;
+		cap,use_channel = <0x0f>;
+		cap,use_channel_top = <0x01>;
+		cap,use_channel_bottom = <0x00>;
+		cap,raw_data_channel = <0x01>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <2>;
+		reg_array_val = <0x18 0x5a 0x19 0x93>;
+	};
 	/delete-node/ adv7533@39;
 	/delete-node/ pericom-type-c@1d;
 };
