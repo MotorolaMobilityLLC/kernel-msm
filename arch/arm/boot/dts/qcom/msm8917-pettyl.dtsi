@@ -12,7 +12,7 @@
 
 #include "msm8917-moto-common.dtsi"
 #include "msm8917-pettyl-common.dtsi"
-//#include "msm8917-camera-sensor-mot-james.dtsi"
+#include "msm8917-camera-sensor-mot-pettyl.dtsi"
 
 / {
 	model = "pettyl";
