@@ -12,7 +12,6 @@
  * GNU General Public License for more details.
  *
  */
-#define DEBUG
 #include <linux/fs.h>
 #include <linux/mutex.h>
 #include <linux/wait.h>

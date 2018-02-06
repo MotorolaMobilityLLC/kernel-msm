@@ -10,7 +10,6 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/module.h>
