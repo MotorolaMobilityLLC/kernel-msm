@@ -31,6 +31,24 @@
 #include <linux/power_supply.h>
 #include <linux/input/abov_sar.h> /* main struct, interrupt,init,pointers */
 
+#define BOOT_UPDATE_ABOV_FIRMWARE 1
+
+#include <asm/segment.h>
+#include <asm/uaccess.h>
+#include <asm/atomic.h>
+#include <linux/async.h>
+#include <linux/firmware.h>
+#define SLEEP(x)	mdelay(x)
+
+#define C_I2C_FIFO_SIZE 8
+
+#define I2C_MASK_FLAG	(0x00ff)
+
+static u8 checksum_h;
+static u8 checksum_h_bin;
+static u8 checksum_l;
+static u8 checksum_l_bin;
+static char _Buffer[128];
 
 #define IDLE 0
 #define ACTIVE 1
@@ -47,6 +65,7 @@
 #endif
 
 #define LOG_DBG(fmt, args...)	pr_info(LOG_TAG fmt, ##args)
+#define LOG_ERR(fmt, args...)   pr_err(LOG_TAG fmt, ##args)
 
 static int last_val;
 static int mEnabled;
@@ -553,6 +572,12 @@ static void abov_platform_data_of_init(struct i2c_client *client,
 	pplatData->i2c_reg_num = ARRAY_SIZE(abov_i2c_reg_setup);
 
 	pplatData->pbuttonInformation = &smtcButtonInformation;
+
+	ret = of_property_read_string(np, "label", &pplatData->fw_name);
+	if (ret < 0) {
+		LOG_DBG("firmware name read error!\n");
+		return;
+	}
 }
 
 static ssize_t capsense_reset_show(struct class *class,
@@ -854,6 +879,506 @@ static int ps_notify_callback(struct notifier_block *self,
 	return 0;
 }
 
+static char *toString(u8 *buffer, int len)
+{
+	int i = 0;
+	int h = 0;
+	int l = 0;
+
+	if (buffer == 0 || len < 1)
+		_Buffer[0] = 0x00;
+	else
+		for (i = 0; i < len && i < 40; i++) {
+			h = (buffer[i] & 0xf0) >> 4;
+			l = buffer[i] & 0x0f;
+			_Buffer[i * 3 + 0] = h < 10 ? '0' + h : 'A' + (h - 10);
+			_Buffer[i * 3 + 1] = l < 10 ? '0' + l : 'A' + (l - 10);
+			_Buffer[i * 3 + 2] = ' ';
+			_Buffer[i * 3 + 3] = 0x00;
+		}
+
+	return _Buffer;
+}
+
+static int _i2c_adapter_block_write(struct i2c_client *client, u8 *data, u8 len, int outData)
+{
+	u8 buffer[C_I2C_FIFO_SIZE];
+	u8 left = len;
+	u8 offset = 0;
+	u8 retry = 0;
+
+	struct i2c_msg msg = {
+		.addr = client->addr & I2C_MASK_FLAG,
+		.flags = 0,
+		.buf = buffer,
+	};
+
+	if (data == NULL || len < 1) {
+		LOG_ERR("Invalid : data is null or len=%d\n", len);
+		return -EINVAL;
+	}
+
+	while (left > 0) {
+		retry = 0;
+		if (left >= C_I2C_FIFO_SIZE) {
+			msg.buf = &data[offset];
+			msg.len = C_I2C_FIFO_SIZE;
+			left -= C_I2C_FIFO_SIZE;
+			offset += C_I2C_FIFO_SIZE;
+		} else {
+			msg.buf = &data[offset];
+			msg.len = left;
+			left = 0;
+		}
+
+		while (i2c_transfer(client->adapter, &msg, 1) != 1) {
+			retry++;
+			if (retry > 10) {
+				if (outData)
+					LOG_ERR("OUT : fail - addr:%#x len:%d data:%s\n", client->addr, msg.len, toString(msg.buf, msg.len));
+				else
+					LOG_ERR("OUT : fail - addr:%#x len:%d \n", client->addr, msg.len);
+				return -EIO;
+			}
+		}
+	}
+	return 0;
+}
+
+static int i2c_adapter_block_write_nodatalog(struct i2c_client *client, u8 *data, u8 len)
+{
+	return _i2c_adapter_block_write(client, data, len, 0);
+}
+
+static int abov_tk_check_busy(struct i2c_client *client)
+{
+	int ret, count = 0;
+	unsigned char val = 0x00;
+
+	do {
+		ret = i2c_master_recv(client, &val, sizeof(val));
+		if (val & 0x01) {
+			count++;
+			if (count > 1000) {
+				LOG_INFO("%s: val = 0x%x\r\n", __func__, val);
+				return ret;
+			}
+		} else {
+			break;
+		}
+	} while (1);
+
+	return ret;
+}
+
+static int abov_tk_fw_write(struct i2c_client *client, unsigned char *addrH,
+						unsigned char *addrL, unsigned char *val)
+{
+	int length = 36, ret = 0;
+	unsigned char buf[40] = {0, };
+
+	buf[0] = 0xAC;
+	buf[1] = 0x7A;
+	memcpy(&buf[2], addrH, 1);
+	memcpy(&buf[3], addrL, 1);
+	memcpy(&buf[4], val, 32);
+	ret = i2c_adapter_block_write_nodatalog(client, buf, length);
+	if (ret < 0) {
+		LOG_ERR("Firmware write fail ...\n");
+		return ret;
+	}
+
+	SLEEP(3);
+	abov_tk_check_busy(client);
+
+	return 0;
+}
+
+static int abov_tk_reset_for_bootmode(struct i2c_client *client)
+{
+	int ret, retry_count = 10;
+	unsigned char buf[16] = {0, };
+
+retry:
+	buf[0] = 0xF0;
+	buf[1] = 0xAA;
+	ret = i2c_master_send(client, buf, 2);
+	if (ret < 0) {
+		LOG_INFO("write fail(retry:%d)\n", retry_count);
+		if (retry_count-- > 0) {
+			goto retry;
+		}
+		return -EIO;
+	} else {
+		LOG_INFO("success reset & boot mode\n");
+		return 0;
+	}
+}
+
+static int i2c_adapter_read_raw(struct i2c_client *client, u8 *data, u8 len)
+{
+	struct i2c_msg msg;
+	int ret;
+	int retry = 3;
+
+	msg.addr = client->addr;
+	msg.flags = 1;
+	msg.len = len;
+	msg.buf = data;
+	while (retry--) {
+		ret = i2c_transfer(client->adapter, &msg, 1);
+		if (ret == 1) {
+			break;
+		}
+
+		if (ret < 0) {
+			LOG_ERR("%s fail(data read)(%d)\n", __func__, retry);
+			SLEEP(10);
+		}
+	}
+
+	if (retry) {
+		LOG_INFO("TRAN : succ - addr:%#x ... len:%d data:%s\n", client->addr, msg.len, toString(msg.buf, msg.len));
+		return 0;
+	} else {
+		LOG_INFO("TRAN : fail - addr:%#x len:%d \n", client->addr, msg.len);
+		return -EIO;
+	}
+}
+
+static int abov_tk_fw_mode_enter(struct i2c_client *client)
+{
+	int ret = 0;
+	unsigned char buf[40] = {0, };
+
+	buf[0] = 0xAC;
+	buf[1] = 0x5B;
+	ret = i2c_master_send(client, buf, 2);
+	if (ret != 2) {
+		LOG_ERR("SEND : fail - addr:%#x data:%#x %#x... ret:%d\n", client->addr, buf[0], buf[1], ret);
+		return -EIO;
+	}
+	LOG_INFO("SEND : succ - addr:%#x data:%#x %#x... ret:%d\n", client->addr, buf[0], buf[1], ret);
+	SLEEP(5);
+
+	ret = i2c_adapter_read_raw(client, buf, 1);
+	if (ret < 0) {
+		LOG_ERR("Enter fw mode fail ...\n");
+		return -EIO;
+	}
+
+	LOG_INFO("succ ... data:%#x\n", buf[0]);
+
+	return 0;
+}
+
+static int abov_tk_fw_mode_exit(struct i2c_client *client)
+{
+	int ret = 0;
+	unsigned char buf[40] = {0, };
+
+	buf[0] = 0xAC;
+	buf[1] = 0xE1;
+	ret = i2c_master_send(client, buf, 2);
+	if (ret != 2) {
+		LOG_ERR("SEND : fail - addr:%#x data:%#x %#x ... ret:%d\n", client->addr, buf[0], buf[1], ret);
+		return -EIO;
+	}
+	LOG_INFO("SEND : succ - addr:%#x data:%#x %#x ... ret:%d\n", client->addr, buf[0], buf[1], ret);
+
+	return 0;
+}
+
+static int abov_tk_flash_erase(struct i2c_client *client)
+{
+	int ret = 0;
+	unsigned char buf[16] = {0, };
+
+	buf[0] = 0xAC;
+#ifdef ABOV_POWER_CONFIG
+	buf[1] = 0x2D;
+#else
+	buf[1] = 0x2E;
+#endif
+
+	ret = i2c_master_send(client, buf, 2);
+	if (ret != 2) {
+		LOG_ERR("SEND : fail - addr:%#x data:%#x %#x ... ret:%d\n", client->addr, buf[0], buf[1], ret);
+		return -EIO;
+	}
+
+	LOG_INFO("SEND : succ - addr:%#x data:%#x %#x ... ret:%d\n", client->addr, buf[0], buf[1], ret);
+
+	return 0;
+}
+
+static int abov_tk_i2c_read_checksum(struct i2c_client *client)
+{
+	unsigned char checksum[6] = {0, };
+	unsigned char buf[16] = {0, };
+	int ret;
+
+	checksum_h = 0;
+	checksum_l = 0;
+
+#ifdef ABOV_POWER_CONFIG
+	buf[0] = 0xAC;
+	buf[1] = 0x9E;
+	buf[2] = 0x10;
+	buf[3] = 0x00;
+	buf[4] = 0x3F;
+	buf[5] = 0xFF;
+	ret = i2c_master_send(client, buf, 6);
+#else
+	buf[0] = 0xAC;
+	buf[1] = 0x9E;
+	buf[2] = 0x00;
+	buf[3] = 0x00;
+	buf[4] = checksum_h_bin;
+	buf[5] = checksum_l_bin;
+	ret = i2c_master_send(client, buf, 6);
+#endif
+	if (ret != 6) {
+		LOG_ERR("SEND : fail - addr:%#x len:%d data:%s ... ret:%d\n", client->addr, 6, toString(buf, 6), ret);
+		return -EIO;
+	}
+	SLEEP(5);
+
+	buf[0] = 0x00;
+	ret = i2c_master_send(client, buf, 1);
+	if (ret != 1) {
+		LOG_ERR("SEND : fail - addr:%#x data:%#x ... ret:%d\n", client->addr, buf[0], ret);
+		return -EIO;
+	}
+	SLEEP(5);
+
+	ret = i2c_adapter_read_raw(client, checksum, 6);
+	if (ret < 0) {
+		LOG_ERR("Read raw fail ... \n");
+		return -EIO;
+	}
+
+	checksum_h = checksum[4];
+	checksum_l = checksum[5];
+
+	return 0;
+}
+
+static int _abov_fw_update(struct i2c_client *client, const u8 *image, u32 size)
+{
+	int ret, ii = 0;
+	int count;
+	unsigned short address;
+	unsigned char addrH, addrL;
+	unsigned char data[32] = {0, };
+
+	LOG_INFO("%s: call in\r\n", __func__);
+
+	if (abov_tk_reset_for_bootmode(client) < 0) {
+		LOG_ERR("don't reset(enter boot mode)!");
+		return -EIO;
+	}
+
+	SLEEP(45);
+
+	for (ii = 0; ii < 10; ii++) {
+		if (abov_tk_fw_mode_enter(client) < 0) {
+			LOG_ERR("don't enter the download mode! %d", ii);
+			SLEEP(40);
+			continue;
+		}
+		break;
+	}
+
+	if (10 <= ii) {
+		return -EAGAIN;
+	}
+
+	if (abov_tk_flash_erase(client) < 0) {
+		LOG_ERR("don't erase flash data!");
+		return -EIO;
+	}
+
+	SLEEP(1400);
+
+	address = 0x800;
+	count = size / 32;
+
+	for (ii = 0; ii < count; ii++) {
+		/* first 32byte is header */
+		addrH = (unsigned char)((address >> 8) & 0xFF);
+		addrL = (unsigned char)(address & 0xFF);
+		memcpy(data, &image[ii * 32], 32);
+		ret = abov_tk_fw_write(client, &addrH, &addrL, data);
+		if (ret < 0) {
+			LOG_INFO("fw_write.. ii = 0x%x err\r\n", ii);
+			return ret;
+		}
+
+		address += 0x20;
+		memset(data, 0, 32);
+	}
+
+	ret = abov_tk_i2c_read_checksum(client);
+	ret = abov_tk_fw_mode_exit(client);
+	if ((checksum_h == checksum_h_bin) && (checksum_l == checksum_l_bin)) {
+		LOG_INFO("checksum successful. checksum_h:%x=%x && checksum_l:%x=%x\n",
+			checksum_h, checksum_h_bin, checksum_l, checksum_l_bin);
+	} else {
+		LOG_INFO("checksum error. checksum_h:%x=%x && checksum_l:%x=%x\n",
+			checksum_h, checksum_h_bin, checksum_l, checksum_l_bin);
+		ret = -1;
+	}
+	SLEEP(100);
+
+	return ret;
+}
+
+static int abov_fw_update(bool force)
+{
+	int update_loop;
+	pabovXX_t this = abov_sar_ptr;
+	struct i2c_client *client = this->bus;
+	int rc;
+	bool fw_upgrade = false;
+	u8 fw_version = 0, fw_file_version = 0;
+	u8 fw_modelno = 0, fw_file_modeno = 0;
+	const struct firmware *fw = NULL;
+	char fw_name[32] = {0};
+
+	strlcpy(fw_name, this->board->fw_name, NAME_MAX);
+	strlcat(fw_name, ".BIN", NAME_MAX);
+	rc = request_firmware(&fw, fw_name, this->pdev);
+	if (rc < 0) {
+		LOG_INFO("Request firmware failed - %s (%d)\n",
+				this->board->fw_name, rc);
+		return rc;
+	}
+	read_register(this, ABOV_VERSION_REG, &fw_version);
+	read_register(this, ABOV_MODELNO_REG, &fw_modelno);
+
+	fw_file_modeno = fw->data[1];
+	fw_file_version = fw->data[5];
+	checksum_h_bin = fw->data[8];
+	checksum_l_bin = fw->data[9];
+
+	if ((force) || (fw_version < fw_file_version) || (fw_modelno != fw_file_modeno))
+		fw_upgrade = true;
+	else {
+		LOG_INFO("Exiting fw upgrade...\n");
+		fw_upgrade = false;
+		rc = -EIO;
+		goto rel_fw;
+	}
+
+	if (fw_upgrade) {
+		for (update_loop = 0; update_loop < 10; update_loop++) {
+			rc = _abov_fw_update(client, &fw->data[32], fw->size-32);
+			if (rc < 0)
+				LOG_INFO("retry : %d times!\n", update_loop);
+			else
+				break;
+			SLEEP(400);
+		}
+		if (update_loop >= 10)
+			rc = -EIO;
+	}
+
+rel_fw:
+	release_firmware(fw);
+	return rc;
+}
+
+static ssize_t capsense_fw_ver_show(struct class *class,
+		struct class_attribute *attr,
+		char *buf)
+{
+	u8 fw_version = 0;
+	pabovXX_t this = abov_sar_ptr;
+
+	read_register(this, ABOV_VERSION_REG, &fw_version);
+	return snprintf(buf, 16, "0x%x\n", fw_version);
+}
+
+static ssize_t capsense_update_fw_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	pabovXX_t this = abov_sar_ptr;
+	unsigned long val;
+	int rc;
+
+	if (count > 2)
+		return -EINVAL;
+
+	rc = kstrtoul(buf, 10, &val);
+	if (rc != 0)
+		return rc;
+
+	this->irq_disabled = 1;
+	disable_irq(this->irq);
+
+	mutex_lock(&this->mutex);
+	if (!this->loading_fw  && val) {
+		this->loading_fw = true;
+		abov_fw_update(false);
+		this->loading_fw = false;
+	}
+	mutex_unlock(&this->mutex);
+
+	enable_irq(this->irq);
+	this->irq_disabled = 0;
+
+	return count;
+}
+static CLASS_ATTR(update_fw, 0660, capsense_fw_ver_show, capsense_update_fw_store);
+
+static ssize_t capsense_force_update_fw_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	pabovXX_t this = abov_sar_ptr;
+	unsigned long val;
+	int rc;
+
+	if (count > 2)
+		return -EINVAL;
+
+	rc = kstrtoul(buf, 10, &val);
+	if (rc != 0)
+		return rc;
+
+	this->irq_disabled = 1;
+	disable_irq(this->irq);
+
+	mutex_lock(&this->mutex);
+	if (!this->loading_fw  && val) {
+		this->loading_fw = true;
+		abov_fw_update(true);
+		this->loading_fw = false;
+	}
+	mutex_unlock(&this->mutex);
+
+	enable_irq(this->irq);
+	this->irq_disabled = 0;
+
+	return count;
+}
+static CLASS_ATTR(force_update_fw, 0660, capsense_fw_ver_show, capsense_force_update_fw_store);
+
+static void capsense_update_work(struct work_struct *work)
+{
+	pabovXX_t this = container_of(work, abovXX_t, fw_update_work);
+
+	LOG_INFO("%s: start update firmware\n", __func__);
+	mutex_lock(&this->mutex);
+	this->loading_fw = true;
+	abov_fw_update(false);
+	this->loading_fw = false;
+	mutex_unlock(&this->mutex);
+	LOG_INFO("%s: update firmware end\n", __func__);
+}
+
 /**
  * fn static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
  * brief Probe function
@@ -959,7 +1484,7 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			pDevice->pbuttonInformation->input_top = input_top;
 			input_top->name = "ABOV Cap Touch top";
 			if (input_register_device(input_top)) {
-				printk("add top cap touch unsuccess\n");
+				LOG_INFO("add top cap touch unsuccess\n");
 				return -ENOMEM;
 			}
 			/* Create the input device */
@@ -974,7 +1499,7 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			/* save the input pointer and finish initialization */
 			input_bottom->name = "ABOV Cap Touch bottom";
 			if (input_register_device(input_bottom)) {
-				printk("add bottom cap touch unsuccess\n");
+				LOG_INFO("add bottom cap touch unsuccess\n");
 				return -ENOMEM;
 			}
 		}
@@ -1000,6 +1525,18 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		ret = class_create_file(&capsense_class, &class_attr_reg);
 		if (ret < 0) {
 			LOG_DBG("Create reg file failed (%d)\n", ret);
+			return ret;
+		}
+
+		ret = class_create_file(&capsense_class, &class_attr_update_fw);
+		if (ret < 0) {
+			LOG_DBG("Create update_fw file failed (%d)\n", ret);
+			return ret;
+		}
+
+		ret = class_create_file(&capsense_class, &class_attr_force_update_fw);
+		if (ret < 0) {
+			LOG_DBG("Create update_fw file failed (%d)\n", ret);
 			return ret;
 		}
 #ifdef USE_SENSORS_CLASS
@@ -1078,6 +1615,10 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 				goto free_ps_notifier;
 			}
 		}
+
+		this->loading_fw = false;
+		INIT_WORK(&this->fw_update_work, capsense_update_work);
+		schedule_work(&this->fw_update_work);
 
 		return  0;
 	}
