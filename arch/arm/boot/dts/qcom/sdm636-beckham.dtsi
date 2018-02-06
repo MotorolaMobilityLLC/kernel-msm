@@ -107,7 +107,7 @@
 		ti,npwr-gpio = <&pm660l_gpios 5 0>;
 		};
 
-	analogix_anx7805@72 {
+	anx_slimport:analogix_anx7805@72 {
 		compatible = "analogix,anx7805";
 		status = "ok";
 		reg = <0x72>;
