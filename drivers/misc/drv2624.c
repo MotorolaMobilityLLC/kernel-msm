@@ -140,18 +140,15 @@ drv2624_change_voltage(struct drv2624_data *ctrl, enum work_mode mode)
 		if (mode == REDUCED) {
 			/*write reduced strength voltages*/
 			drv2624_reg_write(ctrl,
-				DRV2624_REG_RATED_VOLTAGE,
-				actuator.mnRatedVoltageReduced);
-			drv2624_reg_write(ctrl,
-				DRV2624_REG_OVERDRIVE_CLAMP,
-				actuator.mnOverDriveClampVoltageReduced);
+				DRV2624_REG_RTP_INPUT,
+				actuator.mnRTPINPUTReduced);
 			pDrv2624Platdata->msActuator.meWorkMode = REDUCED;
 			dev_dbg(ctrl->dev, "%s, reduced voltage!\n", __func__);
 		} else {
 			/*back to default voltages from device tree*/
 			drv2624_reg_write(ctrl,
-				DRV2624_REG_RATED_VOLTAGE,
-				actuator.mnRatedVoltage);
+				DRV2624_REG_RTP_INPUT,
+				actuator.mnRTPINPUT);
 			drv2624_reg_write(ctrl,
 				DRV2624_REG_OVERDRIVE_CLAMP,
 				actuator.mnOverDriveClampVoltage);
@@ -1028,6 +1025,15 @@ static void dev_init_platform_data(struct drv2624_data *ctrl)
 		dev_err(ctrl->dev,
 			"%s, ERROR OverDriveVol ZERO\n", __func__);
 	}
+
+	if (actuator.mnRTPINPUT != 0) {
+		drv2624_reg_write(ctrl,
+				  DRV2624_REG_RTP_INPUT,
+				  actuator.mnRTPINPUT);
+	} else {
+		dev_err(ctrl->dev, "%s,ERROR RTP INPUT\n", __func__);
+	}
+
 	actuator.meWorkMode = NORMAL;
 	/*update sample_time*/
 	drv2624_reg_write(ctrl, DRV2624_REG_SAMPLE_TIME, actuator.mnSampleTime);
@@ -1103,8 +1109,7 @@ static struct regmap_config drv2624_i2c_regmap = {
 
 static inline bool drv2624_reduced_pwr_on(struct drv2624_platform_data *pdata)
 {
-	return (pdata->msActuator.mnRatedVoltageReduced != 0) &&
-		(pdata->msActuator.mnOverDriveClampVoltageReduced != 0) &&
+	return (pdata->msActuator.mnRTPINPUTReduced != 0) &&
 		gpio_is_valid(pdata->mnGpioVCTRL);
 }
 
@@ -1146,6 +1151,7 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 			__func__);
 		return NULL;
 	}
+
 	rc = of_property_read_u8(np, "ti,overdrive_voltage",
 		&pdata->msActuator.mnOverDriveClampVoltage);
 	if (rc) {
@@ -1154,16 +1160,16 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 		return NULL;
 	}
 
-	rc = of_property_read_u8(np, "ti,rated_voltage_reduced",
-		&pdata->msActuator.mnRatedVoltageReduced);
+	rc = of_property_read_u8(np, "ti,rtp_input",
+		&pdata->msActuator.mnRTPINPUT);
 	if (rc && gpio_is_valid(pdata->mnGpioVCTRL))
-		dev_warn(&client->dev, "%s: rated voltage reduced read failed\n",
+		dev_warn(&client->dev, "%s:rtp input read failed\n",
 			__func__);
 
-	rc = of_property_read_u8(np, "ti,overdrive_voltage_reduced",
-		&pdata->msActuator.mnOverDriveClampVoltageReduced);
+	rc = of_property_read_u8(np, "ti,rtp_input_reduced",
+		&pdata->msActuator.mnRTPINPUTReduced);
 	if (rc && gpio_is_valid(pdata->mnGpioVCTRL))
-		dev_warn(&client->dev, "%s: overdrive voltage reduced read failed\n",
+		dev_warn(&client->dev, "%s:rtp input reduced read failed\n",
 			__func__);
 
 	rc = of_property_read_u8(np, "ti,drive_time",
