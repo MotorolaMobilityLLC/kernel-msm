@@ -70,6 +70,7 @@ static char _Buffer[128];
 static int last_val;
 static int mEnabled;
 static int programming_done;
+static int fw_dl_status;
 pabovXX_t abov_sar_ptr;
 
 /**
@@ -1239,7 +1240,7 @@ static int abov_fw_update(bool force)
 	int update_loop;
 	pabovXX_t this = abov_sar_ptr;
 	struct i2c_client *client = this->bus;
-	int rc;
+	int rc = 0;
 	bool fw_upgrade = false;
 	u8 fw_version = 0, fw_file_version = 0;
 	u8 fw_modelno = 0, fw_file_modeno = 0;
@@ -1267,11 +1268,12 @@ static int abov_fw_update(bool force)
 	else {
 		LOG_INFO("Exiting fw upgrade...\n");
 		fw_upgrade = false;
-		rc = -EIO;
+		fw_dl_status = 0;
 		goto rel_fw;
 	}
 
 	if (fw_upgrade) {
+		fw_dl_status = 2;
 		for (update_loop = 0; update_loop < 10; update_loop++) {
 			rc = _abov_fw_update(client, &fw->data[32], fw->size-32);
 			if (rc < 0)
@@ -1280,8 +1282,11 @@ static int abov_fw_update(bool force)
 				break;
 			SLEEP(400);
 		}
-		if (update_loop >= 10)
+		if (update_loop >= 10) {
+			fw_dl_status = 1;
 			rc = -EIO;
+		}
+		fw_dl_status = 0;
 	}
 
 rel_fw:
@@ -1365,6 +1370,14 @@ static ssize_t capsense_force_update_fw_store(struct class *class,
 	return count;
 }
 static CLASS_ATTR(force_update_fw, 0660, capsense_fw_ver_show, capsense_force_update_fw_store);
+
+static ssize_t capsense_fw_download_status_show(struct class *class,
+		struct class_attribute *attr,
+		char *buf)
+{
+	return snprintf(buf, 8, "%d", fw_dl_status);
+}
+static CLASS_ATTR(fw_download_status, 0660, capsense_fw_download_status_show, NULL);
 
 static void capsense_update_work(struct work_struct *work)
 {
@@ -1539,6 +1552,12 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			LOG_DBG("Create update_fw file failed (%d)\n", ret);
 			return ret;
 		}
+
+		ret = class_create_file(&capsense_class, &class_attr_fw_download_status);
+		if (ret < 0) {
+			LOG_DBG("Create fw dl status file failed (%d)\n", ret);
+			return ret;
+		}
 #ifdef USE_SENSORS_CLASS
 		sensors_capsensor_top_cdev.sensors_enable = capsensor_set_enable;
 		sensors_capsensor_top_cdev.sensors_poll_delay = NULL;
@@ -1617,6 +1636,7 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		}
 
 		this->loading_fw = false;
+		fw_dl_status = 1;
 		INIT_WORK(&this->fw_update_work, capsense_update_work);
 		schedule_work(&this->fw_update_work);
 
