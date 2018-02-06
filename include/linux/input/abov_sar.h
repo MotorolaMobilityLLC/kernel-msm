@@ -13,6 +13,8 @@
 /*
  *  I2C Registers
  */
+#define ABOV_VERSION_REG		0x01
+#define ABOV_MODELNO_REG		0x02
 #define ABOV_ABOV_WHOAMI_REG		0x03
 #define ABOV_IRQSTAT_REG			0x04
 #define ABOV_SOFTRESET_REG  		0x06
@@ -26,6 +28,7 @@
 
 /* enable body stat */
 #define ABOV_TCHCMPSTAT_TCHSTAT1_FLAG   0x0C
+
 /* enable body stat */
 #define ABOV_TCHCMPSTAT_TCHSTAT0_FLAG   0x03
 
@@ -106,6 +109,7 @@ struct abov_platform_data {
 	int cap_channel_top;
 	int cap_channel_bottom;
 	pbuttonInformation_t pbuttonInformation;
+	const char *fw_name;
 
 	int (*get_is_nirq_low)(unsigned irq_gpio);
 	int (*init_platform_hw)(void);
@@ -199,6 +203,9 @@ struct abovXX {
 	struct work_struct ps_notify_work;
 	struct notifier_block ps_notif;
 	bool ps_is_present;
+	bool loading_fw;
+
+	struct work_struct fw_update_work;
 
 	/* Function Pointers */
 	int (*init)(pabovXX_t this);
