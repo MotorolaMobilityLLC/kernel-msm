@@ -257,6 +257,8 @@ void tas2560_enableIRQ(struct tas2560_priv *pTAS2560, bool enable)
 
 		if (gpio_is_valid(pTAS2560->mnIRQGPIO))
 			enable_irq(pTAS2560->mnIRQ);
+		else
+			return;
 
 		schedule_delayed_work(&pTAS2560->irq_work, msecs_to_jiffies(10));
 		pTAS2560->mbIRQEnable = true;
@@ -266,6 +268,8 @@ void tas2560_enableIRQ(struct tas2560_priv *pTAS2560, bool enable)
 
 		if (gpio_is_valid(pTAS2560->mnIRQGPIO))
 			disable_irq_nosync(pTAS2560->mnIRQ);
+		else
+			return;
 		pTAS2560->mbIRQEnable = false;
 	}
 }
