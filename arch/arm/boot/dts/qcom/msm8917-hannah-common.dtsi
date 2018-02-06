@@ -326,7 +326,7 @@
 &pmi8950_charger {
 	qcom,fastchg-current-ma = <3000>;
 	qcom,chg-thermal-mitigation = <3000>, <2500>,<2000>, <1500>, <1000>,
-					<700>, <400>;
+					<700>, <600>;
 	/delete-property/ qcom,dc-thermal-mitigation;
 	qcom,parallel-charge-current-map = <3000 3000 0>,
 					<2500 2500 0>,
@@ -334,7 +334,7 @@
 					<1500 1500 0>,
 					<1000 1000 0>,
 					<700 700 0>,
-					<400 400 0>;
+					<600 600 0>;
 	qcom,stepchg-voltage-mv = <4200>;
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1800>;
