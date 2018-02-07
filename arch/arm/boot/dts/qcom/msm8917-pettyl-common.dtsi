@@ -462,8 +462,8 @@
 };
 
 &pmi_haptic {
-	qcom,vmax-mv = <3200>;
-	/delete-property/ qcom,en-brake; /* disable internal reverse braking */
-	/delete-property/ qcom,brake-pattern; /* disable brake pattern */
+	qcom,vmax-mv = <1800>;
+	qcom,actuator-type = "lra";
+	qcom,wave-play-rate-us = <4166> ;
 };
 
