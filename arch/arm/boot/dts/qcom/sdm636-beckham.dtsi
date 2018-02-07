@@ -530,6 +530,10 @@
 	};
 };
 
+&pm660_bcl {
+	qcom,bcl-charger-mitigate-enable;
+};
+
 &pm660_charger {
 	qcom,use-single-path-usbin-switch;
 };
