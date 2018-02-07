@@ -1,0 +1,41 @@
+Mstar series touch controller implementation
+
+Required properties:
+
+ - compatible		: Should be "mstar,msg2856a", compatible with the of_match_table defined in driver.
+ - reg			: I2C slave address of the device.
+ - interrupt-parent	: Parent of interrupt.
+ - interrupts		: Configuration of touch panel controller interrupt
+				GPIO.
+ - touch,irq-gpio	: Interrupt gpio which is to provide interrupts to
+				host, same as "interrupts" node.
+ - touch,rst-gpio	: Reset gpio to control the reset of chip.
+
+Optional properties:
+
+ - vdd-supply		: Power supply needed to power up the device, when use
+				external regulator, do not add this property.
+ - vcc_i2c-supply	: Power source required to power up i2c bus.
+				Mstar series can provide 1.8V from internal
+				LDO, add this properties base on hardware
+				design.
+
+Optional properties inside config_modifier-modname child node:
+ - enable-notification		: modifier has a switch notifier
+ - patch-data			: modifier specific touch IC registers values
+ - touch-clip-area		: modifier specific touch events clipping
+
+Example:
+&i2c_3 {
+	status = "ok";
+	/* clock-frequency = <400000>; */
+		msg2856a@26 {
+			compatible = "mstar,msg2856a";
+			reg = <0x26>;
+			vdd-supply = <&pm8917_l10>;
+			vcc_i2c-supply = <&pm8917_l5>;
+			touch,reset-gpio = <&tlmm 64 0x00>;
+			touch,irq-gpio = <&tlmm 65 0x00>;
+		};
+};
+
