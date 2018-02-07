@@ -11,8 +11,8 @@
  */
 
 compatible = "qcom,mdss-dsi-panel";
-qcom,mdss-dsi-panel-name = "mipi_mot_vid_tianma_nt_fhd_618";
-qcom,mdss-dsi-panel-supplier = "tianma";
+qcom,mdss-dsi-panel-name = "mipi_mot_vid_csot_nt_fhd_618";
+qcom,mdss-dsi-panel-supplier = "csot";
 qcom,mdss-dsi-panel-type = "dsi_video_mode";
 qcom,mdss-dsi-panel-framerate = <60>;
 qcom,mdss-dsi-virtual-channel-id = <0>;
@@ -43,13 +43,13 @@ qcom,mdss-dsi-on-command = [
 	15 01 00 00 00 00 02 FB 01
 	15 01 00 00 00 00 02 51 CC
 	15 01 00 00 00 00 02 53 2C
-	15 01 00 00 00 00 02 55 01
+	15 01 00 00 00 00 02 55 02
 	15 01 00 00 00 00 02 FF 23
 	15 01 00 00 00 00 02 FB 01
 	15 01 00 00 00 00 02 07 60
 	15 01 00 00 00 00 02 08 01
 	15 01 00 00 00 00 02 09 80
-//ESD nice cmds from FAE
+	//ESD nice cmds from FAE
 	15 01 00 00 00 00 02 FF 10
 	15 01 00 00 00 00 02 B0 01
 	15 01 00 00 00 00 02 FF 25
@@ -62,7 +62,7 @@ qcom,mdss-dsi-on-command = [
 	15 01 00 00 00 00 02 FB 01
 	15 01 00 00 00 00 02 24 21
 	15 01 00 00 00 00 02 2A 10
-	15 01 00 00 00 00 02 FF 10];/* display on */
+	15 01 00 00 00 00 02 FF 10];	/* display on */
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 23 00 01 28		/* display_off */
 	05 01 00 00 78 00 01 10];	/* enter sleep mode */
