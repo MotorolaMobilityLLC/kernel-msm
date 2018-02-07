@@ -869,7 +869,7 @@
 		reg = <0x1fe5040 0x28>;
 	};
 
-	qcom,bcl {
+	pm660_bcl: qcom,bcl {
 		compatible = "qcom,bcl";
 		qcom,bcl-enable;
 		qcom,bcl-framework-interface;
