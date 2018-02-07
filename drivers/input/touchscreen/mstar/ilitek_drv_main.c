@@ -2914,7 +2914,6 @@ void drv_finger_touch_pressed(s32 n_x, s32 n_y, s32 nPressure, s32 n_id)
     input_mt_report_slot_state(g_input_device, MT_TOOL_FINGER, true);
     input_report_abs(g_input_device, ABS_MT_POSITION_X, n_x);
     input_report_abs(g_input_device, ABS_MT_POSITION_Y, n_y);
-    input_report_abs(g_input_device, ABS_MT_PRESSURE, nPressure);
 
     DBG(&g_i2c_client->dev, "n_id=%d, n_x=%d, n_y=%d\n", n_id, n_x, n_y);
     /*TODO : add for debug */
@@ -2930,7 +2929,6 @@ void drv_finger_touch_pressed(s32 n_x, s32 n_y, s32 nPressure, s32 n_id)
     input_report_abs(g_input_device, ABS_MT_WIDTH_MAJOR, 1);
     input_report_abs(g_input_device, ABS_MT_POSITION_X, n_x);
     input_report_abs(g_input_device, ABS_MT_POSITION_Y, n_y);
-    input_report_abs(g_input_device, ABS_MT_PRESSURE, nPressure);
 
     input_mt_sync(g_input_device);
 #endif /*CONFIG_ENABLE_TYPE_B_PROTOCOL */
@@ -11196,7 +11194,6 @@ s32 drv_input_device_initialize(struct i2c_client *pClient)
                          TOUCH_SCREEN_X_MAX, 0, 0);
     input_set_abs_params(g_input_device, ABS_MT_POSITION_Y, TOUCH_SCREEN_Y_MIN,
                          TOUCH_SCREEN_Y_MAX, 0, 0);
-    input_set_abs_params(g_input_device, ABS_MT_PRESSURE, 0, 255, 0, 0);
 
 #ifdef CONFIG_ENABLE_TYPE_B_PROTOCOL
     if (g_chip_type == CHIP_TYPE_MSG22XX) {
@@ -11284,7 +11281,6 @@ s32 drv_input_device_initialize(struct i2c_client *pClient)
         || g_chip_type == CHIP_TYPE_ILI2120 || g_chip_type == CHIP_TYPE_ILI2121) {
         input_set_abs_params(g_input_device, ABS_MT_TRACKING_ID, 0, (MUTUAL_MAX_TOUCH_NUM - 1), 0, 0);   /*ABS_MT_TRACKING_ID is used for MSG28xx/MSG58xxA/ILI21xx only */
     }
-    input_set_abs_params(g_input_device, ABS_MT_PRESSURE, 0, 255, 0, 0);
 
 #ifdef CONFIG_ENABLE_TYPE_B_PROTOCOL
         if (g_chip_type == CHIP_TYPE_MSG22XX) {
