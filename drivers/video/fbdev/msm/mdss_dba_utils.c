@@ -96,7 +96,7 @@ static void mdss_dba_utils_notify_display(
 
 	if (udata->ext_audio_data.intf_ops.hpd) {
 		u32 flags = 0;
-		flags |= MSM_EXT_DISP_HPD_VIDEO;
+		flags |= MSM_EXT_DISP_HPD_ASYNC_VIDEO;
 		if (!hdmi_edid_is_dvi_mode(udata->edid_data))
 			flags |= MSM_EXT_DISP_HPD_AUDIO;
 		udata->ext_audio_data.intf_ops.hpd(udata->ext_pdev,
