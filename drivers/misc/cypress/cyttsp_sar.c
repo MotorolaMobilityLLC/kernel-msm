@@ -60,6 +60,11 @@ static int cyttsp_i2c_read_block(struct device *dev, u8 addr,
 	ret = i2c_master_send(client, &addr, 1);
 	if (ret != 1) {
 		dev_err(dev, "Failed to read block!\n");
+		gpio_direction_output(ctrl_data->hssp_d.rst_gpio, 0);
+		dev_err(dev, "direction out, value = 0\n");
+		mdelay(10);
+		gpio_set_value(ctrl_data->hssp_d.rst_gpio, 1);
+		dev_err(dev, "direction out, value = 1\n");
 		return -EIO;
 	}
 
@@ -97,6 +102,12 @@ static int cyttsp_write_reg(struct cyttsp_sar_data *data,
 	ret = i2c_master_send(client, buffer, sizeof(buffer));
 	if (ret != sizeof(buffer)) {
 		dev_err(&data->client->dev, "Failed to write %x reg!\n", buffer[0]);
+		gpio_direction_output(ctrl_data->hssp_d.rst_gpio, 0);
+		dev_err(&data->client->dev, "direction out, value = 0\n");
+		mdelay(10);
+		gpio_set_value(ctrl_data->hssp_d.rst_gpio, 1);
+		dev_err(&data->client->dev, "direction out, value = 1\n");
+
 		return ret;
 	}
 
