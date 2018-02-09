@@ -3,7 +3,7 @@
 #
 config TOUCHSCREEN_NT36xxx
 	bool "Novatek NT36xxx"
-	default y
+	default n
 	help
 	  Say Y here if you have a Novatek NT36xxx touchscreen connected
 	  to your system.
