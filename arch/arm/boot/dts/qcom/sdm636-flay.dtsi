@@ -119,6 +119,13 @@
 			};
 		};
 	};
+	novatech@62{
+		compatible = "novatek,NVT-ts";
+		reg = <0x62>;
+		interrupt-parent = <&tlmm>;
+		novatek,irq-gpio = <&tlmm 67 0x2001>;
+		novatek,reset-gpio = <&tlmm 66 0x00>;
+	};
 };
 
 
