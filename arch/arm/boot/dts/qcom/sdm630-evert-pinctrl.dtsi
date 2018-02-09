@@ -12,7 +12,6 @@
 
 &tlmm {
 	/delete-node/ tlmm_gpio_key;
-	/delete-node/ i2c_2;
 
 	dtv_output_default: dtv-output {
 		mux {
@@ -64,31 +63,4 @@
 		};
 	};
 
-	i2c_2 {
-		i2c_2_active: i2c_2_active {
-			mux {
-				pins = "gpio6", "gpio7";
-				function = "blsp_i2c2";
-			};
-
-			config {
-				pins = "gpio6", "gpio7";
-				drive-strength = <4>;
-				bias-disable;
-			};
-		};
-
-		i2c_2_sleep: i2c_2_sleep {
-			mux {
-				pins = "gpio6", "gpio7";
-				function = "blsp_i2c2";
-			};
-
-			config {
-				pins = "gpio6", "gpio7";
-				drive-strength = <4>;
-				bias-pull-up;
-			};
-		};
-	};
 };
