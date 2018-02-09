@@ -46,6 +46,30 @@
 	usb_nop_phy: usb_nop_phy {
 		compatible = "usb-nop-xceiv";
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "flay";
+	};
+
+	qcom,sensor-information {
+		sensor_information25: qcom,sensor-information-25 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information26: qcom,sensor-information-26 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "back_temp";
+			qcom,scaling-factor = <1000>;
+		};
+	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
 };
 
 &usb3 {
@@ -81,6 +105,72 @@
 &mdss_dp_ctrl{
 		status = "disabled";
 };
+
+&tlmm {
+	p922x_irq_enable: p922x_irq_enable {
+		mux {
+			pins = "gpio40";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio40";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	wls_otg_dis: wls_otg_dis {
+		mux {
+			pins = "gpio61";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio61";
+			drive-strength = <2>;
+			output-low;
+			bias-disable;
+		};
+	};
+
+	wls_otg_en: wls_otg_en {
+		mux {
+			pins = "gpio61";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio61";
+			drive-strength = <2>;
+			output-high;
+			bias-disable;
+		};
+	};
+};
+
+&i2c_2 {
+	status = "okay";
+	p922x_wls_i2c@61 {
+		compatible = "idt,p922x-charger";
+		reg = <0x61>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0x1>;
+		gpios = <&tlmm 40 0x1>; /* IRQ */
+		gpio-names = "idt_p922x_irq";
+		vdd-i2c-supply = <&pm660_l13>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&p922x_irq_enable>;
+
+		idt,rx-chip-det;
+		idt,tx-auth-enabled;
+		idt,chg-efficiency = <70>;
+		idt,chg-limit-soc = <95>;
+		idt,chg-idle-cl = <50>;
+	};
+};
+
+
 
 &i2c_3 { /* BLSP1 QUP3 */
 	status = "okay";
@@ -162,11 +252,34 @@
 	};
 };
 
+&pm660_charger {
+	qcom,iterm-ma = <155>;
+	qcom,thermal-mitigation = <3000>,
+				<2500>,
+				<2000>,
+				<1500>,
+				<1200>,
+				<900>,
+				<700>,
+				<600>;
+	qcom,mmi-temp-zones = <0 4200 620 0>,
+				<10 4200 1550 620>,
+				<15 0 1550 1550>,
+				<45 4200 3000 2000>,
+				<60 4200 1550 0>;
+};
+
 /{
 	mot_batterydata: qcom,battery-data {
-		qcom,batt-id-range-pct = <15>;
-		#include "batterydata-jk50-atl-5000mah.dtsi"
+		df-serialnum = "SB18C20873";
+		#include "batterydata-jt40-atl-pm660.dtsi"
 	};
 };
 
+&pm660_haptics { /* Vibrator */
+	qcom,actuator-type = "lra";
+	qcom,vmax-mv = <3000>;
+	qcom,ilim-ma = <800>;
+	qcom,wave-play-rate-us = <4166>;
+};
 
