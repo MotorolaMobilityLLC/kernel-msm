@@ -16,6 +16,7 @@
 #define _CYTTSP_SAR_H_
 
 #include <linux/types.h>
+#include <linux/mutex.h>
 #include <linux/wakelock.h>
 
 #define CYTTSP_SAR_CHANNEL_ENABLE		0x06
@@ -113,6 +114,7 @@ struct cyttsp_sar_platform_data {
 	unsigned long irqflags;
 	const char *input_name;
 	int i2c_reg_num;
+	struct mutex i2c_mutex;
 	struct cyttsp_reg_data *pi2c_reg;
 	int nsars;
 	int *key_code;
