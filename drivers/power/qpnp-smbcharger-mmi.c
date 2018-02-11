@@ -11595,12 +11595,12 @@ static int smbchg_reboot(struct notifier_block *nb,
 {
 	struct smbchg_chip *chip =
 			container_of(nb, struct smbchg_chip, smb_reboot);
-	int rc, i;
+	int rc = 0, i = 0;
 	int usbc_volt_mv;
 	char eb_able;
 	int soc_max = 99;
 
-	SMB_DBG(chip, "SMB Reboot\n");
+	SMB_ERR(chip, "SMB Reboot\n");
 	if (!chip) {
 		SMB_WARN(chip, "called before chip valid!\n");
 		return NOTIFY_DONE;
@@ -11615,42 +11615,54 @@ static int smbchg_reboot(struct notifier_block *nb,
 	atomic_set(&chip->hb_ready, 0);
 	cancel_delayed_work_sync(&chip->heartbeat_work);
 
-	if (chip->factory_mode) {
-		switch (event) {
-		case SYS_POWER_OFF:
+	switch (event) {
+	case SYS_POWER_OFF:
+
+		/* Disable Charging */
+		smbchg_charging_en(chip, 0);
+
+		/* Suspend USB and DC */
+		smbchg_usb_suspend(chip, true);
+		smbchg_dc_suspend(chip, true);
+
+		if (chip->usb_psy && chip->usb_present) {
+			SMB_DBG(chip, "setting usb psy dp=r dm=r\n");
+			power_supply_set_dp_dm(chip->usb_psy,
+					POWER_SUPPLY_DP_DM_DPR_DMR);
+		}
+
+		rc = smbchg_sec_masked_write(chip,
+			chip->usb_chgpth_base + CHGPTH_CFG,
+			HVDCP_EN_BIT, 0);
+		if (rc < 0) {
+			SMB_ERR(chip, "Couldn't disable HVDCP rc=%d\n", rc);
+			return rc;
+		}
+
+		if (chip->factory_mode) {
 			/* Disable Factory Kill */
 			factory_kill_disable = true;
-			/* Disable Charging */
-			smbchg_charging_en(chip, 0);
-
-			/* Suspend USB and DC */
-			smbchg_usb_suspend(chip, true);
-			smbchg_dc_suspend(chip, true);
-
-			if (chip->usb_psy && chip->usb_present) {
-				SMB_DBG(chip, "setting usb psy dp=r dm=r\n");
-				power_supply_set_dp_dm(chip->usb_psy,
-						POWER_SUPPLY_DP_DM_DPR_DMR);
-			}
 
 			while (is_usb_present(chip))
 				msleep(100);
-			SMB_WARN(chip, "VBUS UV wait 1 sec!\n");
+			SMB_ERR(chip, "VBUS UV wait 1 sec! SYS_POWER_OFF\n");
 			/* Delay 1 sec to allow more VBUS decay */
 			msleep(1000);
-			break;
-		default:
-			break;
 		}
-	} else if ((get_prop_batt_capacity(chip) >= soc_max)  ||
-		   (get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY) <= 0)) {
+		break;
+	default:
+		break;
+	}
+
+	if ((get_prop_batt_capacity(chip) >= soc_max)  ||
+	   (get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY) <= 0)) {
 		/* Turn off any Ext batt charging */
-		SMB_WARN(chip, "Attempt to Shutdown EB!\n");
+		SMB_ERR(chip, "Attempt to Shutdown EB!\n");
 		smbchg_set_extbat_state(chip, EB_OFF, false);
 		gpio_set_value(chip->ebchg_gpio.gpio, 0);
 		gpio_free(chip->ebchg_gpio.gpio);
 	} else if ((chip->ebchg_state == EB_OFF) && !chip->usb_present) {
-		SMB_WARN(chip, "Attempt to Turn EB ON!\n");
+		SMB_ERR(chip, "Attempt to Turn EB ON!\n");
 		smbchg_set_extbat_state(chip, EB_SRC, false);
 	}
 
