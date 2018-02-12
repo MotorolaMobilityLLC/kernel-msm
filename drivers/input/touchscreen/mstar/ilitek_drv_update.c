@@ -48,11 +48,11 @@
  */
 #ifdef CONFIG_ENABLE_CHIP_TYPE_MSG22XX
 #include "msg22xx_xxxx_update_bin.h"    /*for MSG22xx */
-#include "msg22xx_yyyy_update_bin.h"
+/*#include "msg22xx_yyyy_update_bin.h"*/
 
-static sw_id_data_t g_sw_id_data[] = {
+sw_id_data_t g_sw_id_data[] = {
     {MSG22XX_SW_ID_XXXX, msg22xx_xxxx_update_bin},
-    {MSG22XX_SW_ID_YYYY, msg22xx_yyyy_update_bin},
+    /*{MSG22XX_SW_ID_YYYY, msg22xx_yyyy_update_bin},*/
 };
 #endif /*CONFIG_ENABLE_CHIP_TYPE_MSG22XX */
 
@@ -82,6 +82,7 @@ static u8 g_one_dimen_fw_data[MSG28XX_FIRMWARE_WHOLE_SIZE * 1024] = { 0 }; /*for
 
 static u8 g_fw_data_buf[MSG28XX_FIRMWARE_WHOLE_SIZE * 1024] = { 0 };  /*for update firmware(MSG22xx/MSG28xx/MSG58xxa) from SD card */
 
+static u16 g_firmware_minor;
 static u32 g_n_ilitek_ap_start_addr = 0;
 static u32 g_n_ilitek_ap_end_addr = 0;
 static u32 g_n_ilitek_ap_check_sum = 0;
@@ -97,6 +98,7 @@ extern u32 slave_i2c_id_db_bus;
 extern u32 slave_i2c_id_dw_i2c;
 
 extern u8 is_force_to_update_firmware_enabled;
+extern u8 g_system_update;
 
 extern struct mutex g_mutex;
 
@@ -768,6 +770,7 @@ static u16 drv_msg22xx_get_sw_id(enum emem_type_e eEmemType)
 {
     u16 n_ret_val = 0;
     u16 nReg_data1 = 0;
+    u16 nReg_data2 = 0;
 
     DBG(&g_i2c_client->dev, "*** %s() eEmemType = %d ***\n", __func__,
         eEmemType);
@@ -819,10 +822,12 @@ static u16 drv_msg22xx_get_sw_id(enum emem_type_e eEmemType)
     reg_set_l_byte_value(0x160E, 0x01);
 
     nReg_data1 = reg_get16_bit_value(0x1604);
-/*nReg_data2 = reg_get16_bit_value(0x1606);*/
+    nReg_data2 = reg_get16_bit_value(0x1606);
 
     n_ret_val = ((nReg_data1 >> 8) & 0xFF) << 8;
     n_ret_val |= (nReg_data1 & 0xFF);
+    g_firmware_minor = ((nReg_data2 >> 8) & 0xFF) << 8;
+    g_firmware_minor |= (nReg_data2 & 0xFF);
 
     /*Clear burst mode */
 /*reg_set_16bit_value(0x160C, reg_get16_bit_value(0x160C) & (~0x01));*/
@@ -2337,6 +2342,7 @@ s32 drv_update_firmware_by_sd_card(const char *p_file_path)
     loff_t pos;
     u16 eSwId = 0x0000;
     u16 eVendorId = 0x0000;
+    u16 minor = 0x0000;
 
     DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
 
@@ -2379,6 +2385,7 @@ s32 drv_update_firmware_by_sd_card(const char *p_file_path)
 
     if (g_chip_type == CHIP_TYPE_MSG22XX) {
         eVendorId = g_fw_data[47][1013] << 8 | g_fw_data[47][1012];
+		minor = g_fw_data[47][1015] << 8 | g_fw_data[47][1014];
         eSwId = drv_msg22xx_get_sw_id(EMEM_MAIN);
     } else if (g_chip_type == CHIP_TYPE_MSG28XX ||
                g_chip_type == CHIP_TYPE_MSG58XXA ||
@@ -2394,8 +2401,10 @@ s32 drv_update_firmware_by_sd_card(const char *p_file_path)
         is_force_to_update_firmware_enabled);
 
     if ((eSwId == eVendorId) || (is_force_to_update_firmware_enabled)) {
+		if ((!g_system_update) || ((g_system_update && (minor > g_firmware_minor))) || (is_force_to_update_firmware_enabled)) {
         if ((g_chip_type == CHIP_TYPE_MSG22XX && fsize == 49664 /* 48.5KB */ )) {
             n_ret_val = drv_update_firmware_cash(g_fw_data, EMEM_ALL);
+			g_system_update = 0;
         } else
             if ((g_chip_type == CHIP_TYPE_MSG28XX ||
                  g_chip_type == CHIP_TYPE_MSG58XXA ||
@@ -2403,6 +2412,7 @@ s32 drv_update_firmware_by_sd_card(const char *p_file_path)
                  g_chip_type == CHIP_TYPE_ILI2118A) &&
                 fsize == 133120 /* 130KB */ ) {
             n_ret_val = drv_update_firmware_cash(g_fw_data, EMEM_MAIN);   /*For MSG28xx sine mode requirement, update main block only, do not update info block. */
+			g_system_update = 0;
         } else {
             drv_touch_device_hw_reset();
 
@@ -2411,6 +2421,9 @@ s32 drv_update_firmware_by_sd_card(const char *p_file_path)
                 fsize);
             n_ret_val = -1;
         }
+		} else {
+			DBG(&g_i2c_client->dev, "do not need update\n");
+		}
     } else {
         drv_touch_device_hw_reset();
 
@@ -3218,7 +3231,7 @@ static void drv_msg22xx_check_frimware_update_by_sw_id(void)
     u8 nIsSwIdValid = 0;
     u8 nFinalIndex = 0;
     u8 *pVersion = NULL;
-    msg22xx_sw_id_e eSwId = MSG22XX_SW_ID_UNDEFINED;
+    u16 eSwId = MSG22XX_SW_ID_UNDEFINED;
 
     DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
     DBG(&g_i2c_client->dev, "*** g_msg22xx_chip_revision = 0x%x ***\n",
