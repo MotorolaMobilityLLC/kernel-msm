@@ -466,109 +466,6 @@ static int cs35l36_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	return 0;
 }
 
-struct cs35l36_global_fs_config {
-	int rate;
-	int fs_cfg;
-};
-
-static struct cs35l36_global_fs_config cs35l36_fs_rates[] = {
-	{12000, 0x01},
-	{24000, 0x02},
-	{48000, 0x03},
-	{96000, 0x04},
-	{192000, 0x05},
-	{384000, 0x06},
-	{11025, 0x09},
-	{22050, 0x0A},
-	{44100, 0x0B},
-	{88200, 0x0C},
-	{176400, 0x0D},
-	{8000, 0x11},
-	{16000, 0x12},
-	{32000, 0x13},
-};
-
-static int cs35l36_pcm_hw_params(struct snd_pcm_substream *substream,
-				 struct snd_pcm_hw_params *params,
-				 struct snd_soc_dai *dai)
-{
-	struct cs35l36_private *cs35l36 = snd_soc_codec_get_drvdata(dai->codec);
-	int i;
-	unsigned int global_fs = params_rate(params);
-	unsigned int asp_width;
-
-	for (i = 0; i < ARRAY_SIZE(cs35l36_fs_rates); i++) {
-		if (global_fs == cs35l36_fs_rates[i].rate)
-			regmap_update_bits(cs35l36->regmap,
-					CS35L36_GLOBAL_CLK_CTRL,
-					CS35L36_GLOBAL_FS_MASK,
-					cs35l36_fs_rates[i].fs_cfg <<
-					CS35L36_GLOBAL_FS_SHIFT);
-	}
-
-	switch (params_width(params)) {
-	case 16:
-		asp_width = CS35L36_ASP_WIDTH_16;
-		break;
-	case 24:
-		asp_width = CS35L36_ASP_WIDTH_24;
-		break;
-	case 32:
-		asp_width = CS35L36_ASP_WIDTH_32;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		regmap_update_bits(cs35l36->regmap, CS35L36_ASP_FRAME_CTRL,
-				CS35L36_ASP_RX_WIDTH_MASK,
-				asp_width << CS35L36_ASP_RX_WIDTH_SHIFT);
-	} else {
-		regmap_update_bits(cs35l36->regmap, CS35L36_ASP_FRAME_CTRL,
-				CS35L36_ASP_TX_WIDTH_MASK,
-				asp_width << CS35L36_ASP_TX_WIDTH_SHIFT);
-	}
-
-	return 0;
-}
-
-static int cs35l36_dai_set_sysclk(struct snd_soc_dai *dai,
-				int clk_id, unsigned int freq, int dir)
-{
-	struct snd_soc_codec *codec = dai->codec;
-	struct cs35l36_private *cs35l36 = snd_soc_codec_get_drvdata(codec);
-	int fs1_val = 0;
-	int fs2_val = 0;
-
-	/* Need the SCLK Frequency regardless of sysclk source */
-	cs35l36->sclk = freq;
-
-	if (cs35l36->sclk > 6000000) {
-		fs1_val = 3 * 4 + 4;
-		fs2_val = 8 * 4 + 4;
-	}
-
-	if (cs35l36->sclk <= 6000000) {
-		fs1_val = 3 * ((24000000 + cs35l36->sclk - 1) / cs35l36->sclk) + 4;
-		fs2_val = 5 * ((24000000 + cs35l36->sclk - 1) / cs35l36->sclk) + 4;
-	}
-	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
-			CS35L36_TEST_UNLOCK1);
-	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
-			CS35L36_TEST_UNLOCK2);
-	regmap_update_bits(cs35l36->regmap, CS35L36_TST_FS_MON0,
-		CS35L36_FS1_WINDOW_MASK, fs1_val);
-	regmap_update_bits(cs35l36->regmap, CS35L36_TST_FS_MON0,
-		CS35L36_FS2_WINDOW_MASK, fs2_val <<
-		CS35L36_FS2_WINDOW_SHIFT);
-	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
-			CS35L36_TEST_LOCK1);
-	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
-			CS35L36_TEST_LOCK2);
-	return 0;
-}
-
 static int cs35l36_get_clk_config(struct cs35l36_private *cs35l36, int freq)
 {
 	int i;
@@ -580,60 +477,8 @@ static int cs35l36_get_clk_config(struct cs35l36_private *cs35l36, int freq)
 			return i;
 		}
 	}
-
 	return -EINVAL;
 }
-
-static const unsigned int cs35l36_src_rates[] = {
-	8000, 12000, 11025, 16000, 22050, 24000, 32000,
-	44100, 48000, 88200, 96000, 176400, 192000, 384000
-};
-
-static const struct snd_pcm_hw_constraint_list cs35l36_constraints = {
-	.count  = ARRAY_SIZE(cs35l36_src_rates),
-	.list   = cs35l36_src_rates,
-};
-
-static int cs35l36_pcm_startup(struct snd_pcm_substream *substream,
-			       struct snd_soc_dai *dai)
-{
-	if (!substream->runtime)
-		return 0;
-
-	snd_pcm_hw_constraint_list(substream->runtime, 0,
-				SNDRV_PCM_HW_PARAM_RATE, &cs35l36_constraints);
-	return 0;
-}
-
-static const struct snd_soc_dai_ops cs35l36_ops = {
-	.startup = cs35l36_pcm_startup,
-	.set_fmt = cs35l36_set_dai_fmt,
-	.hw_params = cs35l36_pcm_hw_params,
-	.set_sysclk = cs35l36_dai_set_sysclk,
-};
-
-static struct snd_soc_dai_driver cs35l36_dai[] = {
-	{
-		.name = "cs35l36-pcm",
-		.id = 0,
-		.playback = {
-			.stream_name = "AMP Playback",
-			.channels_min = 1,
-			.channels_max = 8,
-			.rates = SNDRV_PCM_RATE_KNOT,
-			.formats = CS35L36_RX_FORMATS,
-		},
-		.capture = {
-			.stream_name = "AMP Capture",
-			.channels_min = 1,
-			.channels_max = 8,
-			.rates = SNDRV_PCM_RATE_KNOT,
-			.formats = CS35L36_TX_FORMATS,
-		},
-		.ops = &cs35l36_ops,
-		.symmetric_rates = 1,
-	},
-};
 
 static int cs35l36_codec_set_sysclk(struct snd_soc_codec *codec,
 				int clk_id, int source, unsigned int freq,
@@ -644,6 +489,8 @@ static int cs35l36_codec_set_sysclk(struct snd_soc_codec *codec,
 	cs35l36->extclk_freq = freq;
 
 	cs35l36->prev_clksrc = cs35l36->clksrc;
+
+	dev_dbg(cs35l36->dev, "Set CODEC sysclk to %d\n", freq);
 
 	switch (clk_id) {
 	case 0:
@@ -753,6 +600,184 @@ static int cs35l36_codec_set_sysclk(struct snd_soc_codec *codec,
 
 	return 0;
 }
+
+static int cs35l36_dai_set_sysclk(struct snd_soc_dai *dai,
+				int clk_id, unsigned int freq, int dir)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct cs35l36_private *cs35l36 = snd_soc_codec_get_drvdata(codec);
+	int fs1_val = 0;
+	int fs2_val = 0;
+
+	/* Need the SCLK Frequency regardless of sysclk source */
+	cs35l36->sclk = freq;
+
+	dev_dbg(cs35l36->dev, "Set DAI sysclk %d\n", freq);
+	if (cs35l36->sclk > 6000000) {
+		fs1_val = 3 * 4 + 4;
+		fs2_val = 8 * 4 + 4;
+	}
+
+	if (cs35l36->sclk <= 6000000) {
+		fs1_val = 3 * ((24000000 + cs35l36->sclk - 1) / cs35l36->sclk) + 4;
+		fs2_val = 5 * ((24000000 + cs35l36->sclk - 1) / cs35l36->sclk) + 4;
+	}
+	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
+			CS35L36_TEST_UNLOCK1);
+	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
+			CS35L36_TEST_UNLOCK2);
+	regmap_update_bits(cs35l36->regmap, CS35L36_TST_FS_MON0,
+		CS35L36_FS1_WINDOW_MASK, fs1_val);
+	regmap_update_bits(cs35l36->regmap, CS35L36_TST_FS_MON0,
+		CS35L36_FS2_WINDOW_MASK, fs2_val <<
+		CS35L36_FS2_WINDOW_SHIFT);
+	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
+			CS35L36_TEST_LOCK1);
+	regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
+			CS35L36_TEST_LOCK2);
+	return 0;
+}
+
+struct cs35l36_global_fs_config {
+	int rate;
+	int fs_cfg;
+};
+
+static const struct cs35l36_global_fs_config cs35l36_fs_rates[] = {
+	{12000, 0x01},
+	{24000, 0x02},
+	{48000, 0x03},
+	{96000, 0x04},
+	{192000, 0x05},
+	{384000, 0x06},
+	{11025, 0x09},
+	{22050, 0x0A},
+	{44100, 0x0B},
+	{88200, 0x0C},
+	{176400, 0x0D},
+	{8000, 0x11},
+	{16000, 0x12},
+	{32000, 0x13},
+};
+
+static int cs35l36_pcm_hw_params(struct snd_pcm_substream *substream,
+				 struct snd_pcm_hw_params *params,
+				 struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct cs35l36_private *cs35l36 = snd_soc_codec_get_drvdata(codec);
+	int i, ret = 0;
+	unsigned int global_fs = params_rate(params);
+	unsigned int asp_width;
+	int sclk_rate = params_rate(params) * params_width(params)
+			* params_channels(params);
+
+	if ((cs35l36->clksrc == CS35L36_PLLSRC_SCLK) &&
+		(cs35l36->sclk != sclk_rate)) {
+		dev_dbg(cs35l36->dev, "Reset sclk rate to %d from %d\n",
+			sclk_rate, cs35l36->sclk);
+		dev_dbg(cs35l36->dev, "rate %d width %d channels %d\n", params_rate(params),
+			params_width(params), params_channels(params));
+		ret = cs35l36_codec_set_sysclk(codec, CS35L36_PLLSRC_SCLK, 0,
+			sclk_rate, 0);
+		if (ret != 0) {
+			dev_err(cs35l36->dev, "Can't set codec sysclk %d\n", ret);
+			return ret;
+		}
+		ret = cs35l36_dai_set_sysclk(dai,
+				CS35L36_PLLSRC_SCLK, sclk_rate, 0);
+		if (ret != 0) {
+			dev_err(cs35l36->dev, "Can't set dai sysclk %d\n", ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(cs35l36_fs_rates); i++) {
+		if (global_fs == cs35l36_fs_rates[i].rate)
+			regmap_update_bits(cs35l36->regmap,
+					CS35L36_GLOBAL_CLK_CTRL,
+					CS35L36_GLOBAL_FS_MASK,
+					cs35l36_fs_rates[i].fs_cfg <<
+					CS35L36_GLOBAL_FS_SHIFT);
+	}
+
+	switch (params_width(params)) {
+	case 16:
+		asp_width = CS35L36_ASP_WIDTH_16;
+		break;
+	case 24:
+		asp_width = CS35L36_ASP_WIDTH_24;
+		break;
+	case 32:
+		asp_width = CS35L36_ASP_WIDTH_32;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		regmap_update_bits(cs35l36->regmap, CS35L36_ASP_FRAME_CTRL,
+				CS35L36_ASP_RX_WIDTH_MASK,
+				asp_width << CS35L36_ASP_RX_WIDTH_SHIFT);
+	} else {
+		regmap_update_bits(cs35l36->regmap, CS35L36_ASP_FRAME_CTRL,
+				CS35L36_ASP_TX_WIDTH_MASK,
+				asp_width << CS35L36_ASP_TX_WIDTH_SHIFT);
+	}
+
+	return ret;
+}
+
+static const unsigned int cs35l36_src_rates[] = {
+	8000, 12000, 11025, 16000, 22050, 24000, 32000,
+	44100, 48000, 88200, 96000, 176400, 192000, 384000
+};
+
+static const struct snd_pcm_hw_constraint_list cs35l36_constraints = {
+	.count  = ARRAY_SIZE(cs35l36_src_rates),
+	.list   = cs35l36_src_rates,
+};
+
+static int cs35l36_pcm_startup(struct snd_pcm_substream *substream,
+			       struct snd_soc_dai *dai)
+{
+	if (!substream->runtime)
+		return 0;
+
+	snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE, &cs35l36_constraints);
+	return 0;
+}
+
+static const struct snd_soc_dai_ops cs35l36_ops = {
+	.startup = cs35l36_pcm_startup,
+	.set_fmt = cs35l36_set_dai_fmt,
+	.hw_params = cs35l36_pcm_hw_params,
+	.set_sysclk = cs35l36_dai_set_sysclk,
+};
+
+static struct snd_soc_dai_driver cs35l36_dai[] = {
+	{
+		.name = "cs35l36-pcm",
+		.id = 0,
+		.playback = {
+			.stream_name = "AMP Playback",
+			.channels_min = 1,
+			.channels_max = 8,
+			.rates = SNDRV_PCM_RATE_KNOT,
+			.formats = CS35L36_RX_FORMATS,
+		},
+		.capture = {
+			.stream_name = "AMP Capture",
+			.channels_min = 1,
+			.channels_max = 8,
+			.rates = SNDRV_PCM_RATE_KNOT,
+			.formats = CS35L36_TX_FORMATS,
+		},
+		.ops = &cs35l36_ops,
+		.symmetric_rates = 1,
+	},
+};
 
 static int cs35l36_boost_inductor(struct cs35l36_private *cs35l36, int inductor)
 {
