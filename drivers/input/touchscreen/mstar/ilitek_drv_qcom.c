@@ -170,6 +170,6 @@ static void __exit touch_driver_exit(void)
     i2c_del_driver(&touch_device_driver);
 }
 
-module_init(touch_driver_init);
+device_initcall_sync(touch_driver_init);
 module_exit(touch_driver_exit);
 MODULE_LICENSE("GPL");
