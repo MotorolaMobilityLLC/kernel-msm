@@ -212,6 +212,14 @@ static u8 g_is_first_touch_key_pressed[MUTUAL_MAX_TOUCH_NUM] = { 0 };
 static u8 g_ndebug_log_times_stamp = 0;
 static u8 g_read_trim_data[3] = { 0 };
 
+#define SYSFS_AUTHORITY (0644)
+#define TS_DEV_MINOR_BASE 128
+#define TS_DEV_MINOR_MAX 32
+#define MS_INPUT_MAJOR 26
+static struct class *g_firmware_class;
+static struct device *g_firmware_cmd_dev;
+u8 g_system_update = 0;
+#define MSG_TP_IC_TYPE "msg20xx"
 /*---------------------------------------------------------------------------*/
 
 static struct proc_dir_entry *g_proc_class_entry = NULL;
@@ -875,6 +883,7 @@ u8 g_is_update_firmware = 0x00;
 u8 g_msg22xx_chip_revision = 0x00;
 u8 g_is_disable_finger_touch = 0;
 
+u8 g_is_suspend = 0x00;
 bool g_gesture_state = false;
 
 /*=============================================================*/
@@ -885,6 +894,8 @@ bool g_gesture_state = false;
 
 static s32 drv_create_procfs_dir_entry(void);
 static void drv_remove_procfs_dir_entry(void);
+static s32 drv_create_system_dir_entry(void);
+static void drv_remove_system_dir_entry(void);
 static s32 drv_self_parse_packet(u8 *p_packet, u16 n_length,
                                struct self_touch_info_t *p_info);
 static s32 drv_mutual_parse_packet(u8 *p_packet, u16 n_length,
@@ -4089,7 +4100,7 @@ s32 drv_check_update_firmware_by_sd_card(const char *p_file_path)
             "This chip type (0x%x) does not support update firmware by sd card\n",
             g_chip_type);
     }
-
+    drv_touch_device_hw_reset();
     return n_ret_val;
 }
 
@@ -10380,6 +10391,7 @@ s32 drv_touch_device_initialize(void)
 
     drv_create_procfs_dir_entry(); /*Create procfs directory entry */
 
+    drv_create_system_dir_entry();
     /*Create ILITEK Node */
 
 #ifdef CONFIG_ENABLE_JNI_INTERFACE
@@ -11329,18 +11341,23 @@ s32 drv_touch_device_requestGPIO(struct i2c_client *pClient)
     if (n_ret_val < 0) {
         DBG_INFO(&g_i2c_client->dev, "*** Failed to request GPIO %d, error %d ***\n",
             ms_ts_msg_ic_gpio_rst, n_ret_val);
+		goto exit;
     }
 
     n_ret_val = gpio_request(ms_ts_msg_ic_gpio_int, "C_TP_INT");
     if (n_ret_val < 0) {
         DBG_INFO(&g_i2c_client->dev, "*** Failed to request GPIO %d, error %d ***\n",
             ms_ts_msg_ic_gpio_int, n_ret_val);
+		goto free_gpio_rst;
     }
 
     gpio_direction_input(ms_ts_msg_ic_gpio_int);
 #endif /*ALLWINNER_PLATFORM */
 #endif /*CONFIG_TOUCH_DRIVER_ON_SPRD_PLATFORM || CONFIG_TOUCH_DRIVER_ON_QCOM_PLATFORM */
 
+free_gpio_rst:
+    gpio_free(ms_ts_msg_ic_gpio_rst);
+exit:
     return n_ret_val;
 }
 
@@ -11582,6 +11599,7 @@ s32 drv_touch_device_remove(struct i2c_client *pClient)
 
     drv_remove_procfs_dir_entry();
 
+    drv_remove_system_dir_entry();
 #ifdef CONFIG_ENABLE_JNI_INTERFACE
     drv_jni_delete_msg_tool_mem();
 #endif /*CONFIG_ENABLE_JNI_INTERFACE */
@@ -15800,6 +15818,223 @@ static s32 drv_create_procfs_dir_entry(void)
     return n_ret_val;
 }
 
+static ssize_t drv_build_id_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
+{
+	DBG(&g_i2c_client->dev, "*** %s() _gFwVersion = %s ***\n", __func__, g_fw_version);
+
+	return scnprintf(pBuf, PAGE_SIZE, "%s\n", g_fw_version);
+}
+/*
+static ssize_t drv_build_id_store(struct device *pDevice, struct device_attribute *pAttr, const char *pBuf, size_t nSize)
+{
+    u16 n_major = 0, n_minor = 0;
+
+    drv_get_customer_firmware_version(&n_major, &n_minor, &g_fw_version);
+
+	DBG(&g_i2c_client->dev, "*** %s() _gFwVersion = %s ***\n", __func__, g_fw_version);
+
+    return nSize;
+}*/
+static DEVICE_ATTR(buildid, 0444, drv_build_id_show, NULL);
+
+static ssize_t drv_dore_flash_store(struct device *pDevice, struct device_attribute *pAttr, const char *pBuf, size_t nSize)
+{
+	char *p_valid = NULL;
+	char *p_tmp_file_path = NULL;
+	char sz_file_path[100] = { 0 };
+	char *p_str = NULL;
+
+	DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
+	DBG(&g_i2c_client->dev, "pBuf = %s\n", pBuf);
+	memset(g_debug_buf, 0, 1024);
+	memcpy(g_debug_buf, pBuf, nSize - 1);
+
+	p_str = g_debug_buf;
+	if (p_str != NULL) {
+		p_valid = strnstr(p_str, ".bin", sizeof(g_debug_buf));
+
+		if (p_valid) {
+			p_tmp_file_path = strsep((char **)&p_str, ".");
+
+			DBG(&g_i2c_client->dev, "p_tmp_file_path = %s\n", p_tmp_file_path);
+
+			strlcat(sz_file_path, p_tmp_file_path, sizeof(sz_file_path));
+			strlcat(sz_file_path, ".bin", sizeof(sz_file_path));
+
+			DBG(&g_i2c_client->dev, "sz_file_path = %s\n", sz_file_path);
+
+			if (!g_is_suspend) {
+				is_force_to_update_firmware_enabled = 0;
+				g_system_update = 1;
+				if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
+					DBG(&g_i2c_client->dev, "Update FAILED\n");
+				} else {
+					DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+				}
+			} else {
+				DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
+			}
+		} else {
+			DBG(&g_i2c_client->dev, "The file type of the update firmware bin file is not a .bin file.\n");
+		}
+	} else {
+		DBG(&g_i2c_client->dev, "The file path of the update firmware bin file is NULL.\n");
+	}
+
+	return nSize;
+}
+static DEVICE_ATTR(doreflash, 0220, NULL, drv_dore_flash_store);
+
+static ssize_t drv_flash_prog_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
+{
+	DBG(&g_i2c_client->dev, "*** %s() g_is_update_firmware = %d ***\n", __func__, g_is_update_firmware);
+
+	return scnprintf(pBuf, PAGE_SIZE, "%d\n", g_is_update_firmware);
+}
+
+static DEVICE_ATTR(flashprog, 0444, drv_flash_prog_show, NULL);
+
+static ssize_t drv_force_reflash_store(struct device *pDevice, struct device_attribute *pAttr, const char *pBuf, size_t nSize)
+{
+	char *p_valid = NULL;
+	char *p_tmp_file_path = NULL;
+	char sz_file_path[100] = { 0 };
+	char *p_str = NULL;
+
+	DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
+	DBG(&g_i2c_client->dev, "pBuf = %s\n", pBuf);
+	memset(g_debug_buf, 0, 1024);
+	memcpy(g_debug_buf, pBuf, nSize - 1);
+	p_str = g_debug_buf;
+
+	if (p_str != NULL) {
+		p_valid = strnstr(p_str, ".bin", sizeof(g_debug_buf));
+
+		if (p_valid) {
+			p_tmp_file_path = strsep((char **)&p_str, ".");
+
+			DBG(&g_i2c_client->dev, "p_tmp_file_path = %s\n", p_tmp_file_path);
+
+			strlcat(sz_file_path, p_tmp_file_path, sizeof(sz_file_path));
+			strlcat(sz_file_path, ".bin", sizeof(sz_file_path));
+
+			DBG(&g_i2c_client->dev, "sz_file_path = %s\n", sz_file_path);
+
+			if (!g_is_suspend) {
+				is_force_to_update_firmware_enabled = 1;
+				g_system_update = 1;
+				if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
+					DBG(&g_i2c_client->dev, "Update FAILED\n");
+				} else {
+					DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+				}
+			} else {
+				DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
+			}
+		} else {
+			DBG(&g_i2c_client->dev, "The file type of the update firmware bin file is not a .bin file.\n");
+		}
+	} else {
+		DBG(&g_i2c_client->dev, "The file path of the update firmware bin file is NULL.\n");
+	}
+
+	return nSize;
+}
+static DEVICE_ATTR(forcereflash, 0220, NULL, drv_force_reflash_store);
+
+static ssize_t drv_product_info_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
+{
+	DBG(&g_i2c_client->dev, "*** %s() productinfo = %s ***\n", __func__, MSG_TP_IC_TYPE);
+
+	return scnprintf(pBuf, PAGE_SIZE, "%s\n", MSG_TP_IC_TYPE);
+}
+
+static DEVICE_ATTR(productinfo, 0444, drv_product_info_show, NULL);
+
+static ssize_t drv_power_on_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
+{
+	DBG(&g_i2c_client->dev, "*** %s() g_is_suspend = %d ***\n", __func__, g_is_suspend);
+
+	return snprintf(pBuf, PAGE_SIZE, "%d\n", g_is_suspend);
+}
+
+static DEVICE_ATTR(poweron, 0444, drv_power_on_show, NULL);
+
+static s32 drv_create_system_dir_entry(void)
+{
+	s32 n_ret_val = 0;
+	static int minor;
+	dev_t devno;
+
+	minor = input_get_new_minor(g_i2c_client->addr, 1, false);
+	if (minor < 0) {
+		minor = input_get_new_minor(TS_DEV_MINOR_BASE, TS_DEV_MINOR_MAX, true);
+		DBG(&g_i2c_client->dev, "assigned minor %d\n", minor);
+	}
+	/* set sysfs for firmware */
+	g_firmware_class = class_create(THIS_MODULE, "touchscreen");
+	if (IS_ERR(g_firmware_class)) {
+		n_ret_val = PTR_ERR(g_firmware_class);
+		g_firmware_class = NULL;
+		DBG(&g_i2c_client->dev, "Failed to create class(firmware)!\n");
+		return n_ret_val;
+	}
+	n_ret_val = alloc_chrdev_region(&devno, 0, 1, MSG_TP_IC_TYPE);
+	if (n_ret_val) {
+		DBG(&g_i2c_client->dev, "can't allocate chrdev\n");
+		return n_ret_val;
+	} else {
+		DBG(&g_i2c_client->dev, "register chrdev(%d, %d)\n", MAJOR(devno), MINOR(devno));
+		g_firmware_cmd_dev = device_create(g_firmware_class, NULL, devno, NULL, MSG_TP_IC_TYPE);
+		if (IS_ERR(g_firmware_cmd_dev)) {
+			n_ret_val = PTR_ERR(g_firmware_cmd_dev);
+			g_firmware_cmd_dev = NULL;
+			DBG(&g_i2c_client->dev, "Failed to create device(g_firmware_cmd_dev)!\n");
+		}
+
+		if (device_create_file(&g_i2c_client->dev, &dev_attr_buildid) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_buildid.attr.name);
+		}
+		if (device_create_file(&g_i2c_client->dev, &dev_attr_doreflash) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_doreflash.attr.name);
+		}
+		if (device_create_file(&g_i2c_client->dev, &dev_attr_flashprog) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_flashprog.attr.name);
+		}
+		if (device_create_file(&g_i2c_client->dev, &dev_attr_forcereflash) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_forcereflash.attr.name);
+		}
+		if (device_create_file(&g_i2c_client->dev, &dev_attr_productinfo) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_productinfo.attr.name);
+		}
+		if (device_create_file(&g_i2c_client->dev, &dev_attr_poweron) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_poweron.attr.name);
+		}
+    }
+    return n_ret_val;
+}
+static void drv_remove_system_dir_entry(void)
+{
+    DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
+	if (g_firmware_class)
+		class_unregister(g_firmware_class);
+
+    device_unregister(g_firmware_cmd_dev);
+
+    device_remove_file(&g_i2c_client->dev, &dev_attr_buildid);
+
+    device_remove_file(&g_i2c_client->dev, &dev_attr_doreflash);
+
+    device_remove_file(&g_i2c_client->dev, &dev_attr_flashprog);
+
+    device_remove_file(&g_i2c_client->dev, &dev_attr_forcereflash);
+
+    device_remove_file(&g_i2c_client->dev, &dev_attr_productinfo);
+
+    device_remove_file(&g_i2c_client->dev, &dev_attr_poweron);
+
+}
+
 #ifdef CONFIG_ENABLE_NOTIFIER_FB
 int ms_drvInterface_touch_device_fb_notifier_callback(struct notifier_block *pSelf,
                                                 unsigned long nEvent,
@@ -15817,7 +16052,7 @@ int ms_drvInterface_touch_device_fb_notifier_callback(struct notifier_block *pSe
         if ((*p_blank == FB_BLANK_UNBLANK || *p_blank == FB_BLANK_NORMAL)
             && nEvent == FB_EARLY_EVENT_BLANK) {
             dev_info(&g_i2c_client->dev, "*** %s() TP Resume ***\n", __func__);
-
+	     g_is_suspend = 0;
             if (g_is_update_firmware != 0) {  /*Check whether update frimware is finished */
                 DBG(&g_i2c_client->dev,
                     "Not allow to power on/off touch ic while update firmware.\n");
@@ -15920,7 +16155,7 @@ int ms_drvInterface_touch_device_fb_notifier_callback(struct notifier_block *pSe
 #endif /*CONFIG_ENABLE_ESD_PROTECTION */
         } else if (*p_blank == FB_BLANK_POWERDOWN && nEvent == FB_EVENT_BLANK) {
             dev_info(&g_i2c_client->dev, "*** %s() TP Suspend ***\n", __func__);
-
+	     g_is_suspend = 1;
 #ifdef CONFIG_ENABLE_CHARGER_DETECTION
             g_is_enable_charger_plugin_out_check = 0;
             cancel_delayed_work_sync(&g_charger_plug_in_out_check_work);
@@ -16198,7 +16433,10 @@ s32 /*__devinit*/ ms_drv_interface_touch_device_probe(struct i2c_client *pClient
 
     drv_mutex_variable_initialize();
 
-    drv_touch_device_requestGPIO(pClient);
+    n_ret_val = drv_touch_device_requestGPIO(pClient);
+    if (n_ret_val < 0) {
+		return n_ret_val;
+    }
 
 #ifdef CONFIG_ENABLE_REGULATOR_POWER_ON
     drv_touch_device_regulator_power_on(true);
@@ -16236,7 +16474,7 @@ s32 /*__devinit*/ ms_drv_interface_touch_device_probe(struct i2c_client *pClient
     }
 #ifdef CONFIG_UPDATE_FIRMWARE_BY_SW_ID
     DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
-    drv_check_firmware_update_by_swId();
+    drv_check_firmware_update_by_sw_id();
 #endif /*CONFIG_UPDATE_FIRMWARE_BY_SW_ID */
 
 #ifdef CONFIG_ENABLE_CHARGER_DETECTION
