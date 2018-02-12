@@ -1,0 +1,58 @@
+/* Copyright (c) 2016, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	mot_txd_534_qhd_vid_v0: qcom,mdss_dsi_mot_txd_534_qhd_video_v0 {
+		#include "dsi-panel-mot-txd-534-qhd-video-common.dtsi"
+	};
+	mot_txd_534_qhd_vid_v1: qcom,mdss_dsi_mot_txd_534_qhd_video_v1 {
+		#include "dsi-panel-mot-txd-534-qhd-video-common.dtsi"
+	};
+};
+
+&mot_txd_534_qhd_vid_v0 {
+	/delete-property/ qcom,mdss-dsi-on-command;
+	qcom,mdss-dsi-on-command = [05 01 00 00 78 00 02 11 00
+			39 01 00 00 00 00 06 FF 77 01 00 00 10
+			39 01 00 00 00 00 03 C0 77 00
+			39 01 00 00 00 00 03 C1 09 02
+			39 01 00 00 00 00 03 C2 07 03
+			39 01 00 00 00 00 11 B0 00 02 0C 0F 16 09 05 09 09 1A 07 14 0F 0D 10 18
+			39 01 00 00 00 00 11 B1 00 00 05 0F 12 09 05 09 08 1B 07 15 10 0D 10 18
+			39 01 00 00 00 00 06 FF 77 01 00 00 11
+			39 01 00 00 00 00 02 B0 4D
+			39 01 00 00 00 00 02 B1 38
+			39 01 00 00 00 00 02 B2 07
+			39 01 00 00 00 00 02 B3 80
+			39 01 00 00 00 00 02 B5 47
+			39 01 00 00 00 00 02 B7 85
+			39 01 00 00 00 00 02 B8 10
+			39 01 00 00 00 00 02 C1 78
+			39 01 00 00 00 00 02 C2 78
+			39 01 00 00 64 00 02 D0 88
+			39 01 00 00 00 00 04 E0 00 00 02
+			39 01 00 00 00 00 0C E1 02 91 00 00 01 91 00 00 00 60 60
+			39 01 00 00 00 00 0E E2 30 30 40 40 C9 91 00 00 C8 91 00 00 00
+			39 01 00 00 00 00 05 E3 00 00 33 33
+			39 01 00 00 00 00 03 E4 44 44
+			39 01 00 00 00 00 11 E5 06 CA 4B 91 08 CC 4B 91 0A CE 4B 91 0C D0 4B 91
+			39 01 00 00 00 00 05 E6 00 00 33 33
+			39 01 00 00 00 00 03 E7 44 44
+			39 01 00 00 00 00 11 E8 05 C9 4B 91 07 CB 4B 91 09 CD 4B 91 0B CF 4B 91
+			39 01 00 00 00 00 08 EB 02 01 E4 E4 88 00 00
+			39 01 00 00 00 00 11 ED FA B0 2F F4 65 7F FF FF FF FF F7 56 4F F2 0B AF
+			39 01 00 00 00 00 06 FF 77 01 00 00 00
+			39 00 00 00 00 00 02 51 C0
+			39 00 00 00 00 00 02 53 2C
+			39 00 00 00 00 00 02 55 01
+			05 01 00 00 0A 00 02 29 00];
+};
