@@ -619,6 +619,23 @@ static const struct snd_soc_pcm_stream cs35l35_params = {
 	.channels_max = 2,
 };
 
+static const struct snd_soc_pcm_stream cs35l36_params[] = {
+	{
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,  /* 2 channels for 1.536MHz SCLK */
+	},
+	{
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 96000,
+		.rate_max = 96000,
+		.channels_min = 2,
+		.channels_max = 2, /* 2 channels for 3.072MHz SCLK */
+	},
+};
+
 static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret;
@@ -968,7 +985,8 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.no_pcm = 1,
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
-		.params = &cs35l35_params,
+		.params = &cs35l36_params[0],
+		.num_params = ARRAY_SIZE(cs35l36_params),
 	},
 #ifdef CONFIG_MODS_USE_EXTCODEC_MI2S
 	{ /* codec to mods */
