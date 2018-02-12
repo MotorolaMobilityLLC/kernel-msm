@@ -95,7 +95,7 @@
 /* TOUCH DEVICE DRIVER RELEASE VERSION                                      */
 /*--------------------------------------------------------------------------*/
 
-#define DEVICE_DRIVER_RELEASE_VERSION   ("7.0.6.0")
+#define DEVICE_DRIVER_RELEASE_VERSION   ("7.0.6.3")
 
 /*--------------------------------------------------------------------------*/
 /* COMPILE OPTION DEFINITION                                                */
@@ -329,7 +329,7 @@
  * dimensional array format, it does not support two dimensional array format.
  * By default, this compile option is enabled.
  */
-#define CONFIG_UPDATE_FIRMWARE_BY_TWO_DIMENSIONAL_ARRAY
+/*#define CONFIG_UPDATE_FIRMWARE_BY_TWO_DIMENSIONAL_ARRAY*/
 
 #endif /*CONFIG_UPDATE_FIRMWARE_BY_SW_ID*/
 /*-----------#endif CONFIG_UPDATE_FIRMWARE_BY_SW_ID-----------*/
@@ -460,7 +460,7 @@
  * rate less than 400KHz for MSG22XX.
  * By default, this compile option is disabled.
  */
-/*#define CONFIG_ENABLE_UPDATE_FIRMWARE_WITH_SUPPORT_I2C_SPEED_400K*/
+#define CONFIG_ENABLE_UPDATE_FIRMWARE_WITH_SUPPORT_I2C_SPEED_400K
 
 
 #ifdef CONFIG_ENABLE_UPDATE_FIRMWARE_WITH_SUPPORT_I2C_SPEED_400K
@@ -1275,7 +1275,7 @@ struct mutual_firmware_info_t {
 };
 
 #ifdef CONFIG_UPDATE_FIRMWARE_BY_SW_ID
-struct sw_id_data {
+typedef struct sw_id_data {
     u16 n_swId;
 
 #ifdef CONFIG_UPDATE_FIRMWARE_BY_TWO_DIMENSIONAL_ARRAY
@@ -1294,8 +1294,8 @@ struct sw_id_data {
  * Please modify the SW ID of the below enum value depends on the TP vendor
  * that you are using.
  */
-enum {
-    MSG22XX_SW_ID_XXXX = 0x0001,
+typedef enum {
+    MSG22XX_SW_ID_XXXX = 0x0010,
     MSG22XX_SW_ID_YYYY = 0x0002,
     MSG22XX_SW_ID_UNDEFINED = 0xFFFF
 } msg22xx_sw_id_e;
@@ -1308,7 +1308,7 @@ enum {
  * Please modify the SW ID of the below enum value depends on the TP vendor
  * that you are using.
  */
-enum {
+typedef enum {
     MSG28XX_SW_ID_XXXX = 0x0001,
     MSG28XX_SW_ID_YYYY = 0x0002,
     MSG28XX_SW_ID_UNDEFINED = 0xFFFF
@@ -1354,7 +1354,7 @@ extern u32 g_is_in_mp_test;
 #endif /*CONFIG_ENABLE_ITO_MP_TEST */
 
 #ifdef CONFIG_UPDATE_FIRMWARE_BY_SW_ID
-extern void drv_check_firmware_update_by_swId(void);
+extern void drv_check_firmware_update_by_sw_id(void);
 #endif /*CONFIG_UPDATE_FIRMWARE_BY_SW_ID */
 extern void drv_msg_28xx_set_protect_bit(void);
 extern void drv_msg28xx_erase_emem(enum emem_type_e eEmemType);
