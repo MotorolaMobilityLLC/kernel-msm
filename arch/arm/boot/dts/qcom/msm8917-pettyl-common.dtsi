@@ -9,7 +9,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include "dsi-panel-mot-txd-550-hd-video.dtsi"
+#include "dsi-panel-mot-txd-534-qhd-video.dtsi"
+#include "dsi-panel-mot-hlt-534-qhd-video.dtsi"
 #include "msm8917-moto-common-fps.dtsi"
 
 / {
@@ -350,7 +351,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_txd_550_hd_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_txd_534_qhd_vid_v0>;
 	vddio_disp-supply = <&pm8917_l6>;
 	vio_disp-supply = <&pm8917_l17>;
 	vsp_disp-supply = <&lab_regulator>;
@@ -376,6 +377,7 @@
 &wled {
 	qcom,fs-curr-ua = <25000>;
 	qcom,cons-sync-write-delay-us = <1000>;
+	qcom,en-cabc;
 };
 
 &spmi_bus {
