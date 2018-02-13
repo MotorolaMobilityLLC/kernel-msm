@@ -89,8 +89,8 @@
 		reg = <0x5A>;
 		/* voltage = *_voltage x 22 mV */
 		/* 1.8V for now */
-		ti,rated_voltage = /bits/ 8 <0x54>;
-		ti,overdrive_voltage = /bits/ 8 <0x9a>;
+		ti,rated_voltage = /bits/ 8 <0x53>;
+		ti,overdrive_voltage = /bits/ 8 <0xd4>;
 		ti,rtp_input = /bits/ 8 <0x7f>;
 		ti,rtp_input_reduced = /bits/ 8 <0x51>;
 		/* LRA period = lra_freq x 24.39 us */
@@ -100,8 +100,8 @@
 		ti,auto_cal;
 		ti,auto_cal_time = /bits/ 8 <0x02>;
 		/* sample time 300us  */
-		ti,sample_time = /bits/ 8 <0x1D>;
-		ti,drive_time = /bits/ 8 <0x10>;
+		ti,sample_time = /bits/ 8 <0xc>;
+		ti,drive_time = /bits/ 8 <0x13>;
 		ti,nrst-gpio = <&pcal_pin 10 0>;
 		ti,nvctrl-gpio = <&tlmm 57 0>;
 		ti,npwr-gpio = <&pm660l_gpios 5 0>;
