@@ -14,6 +14,7 @@
 #include "dsi-panel-mot-tianma-ft-618-fhd-vid.dtsi"
 #include "dsi-panel-mot-tianma-nt-619-fhd-vid.dtsi"
 #include "sdm660-internal-codec.dtsi"
+#include "sdm636-egis-fps.dtsi"
 
 / {
 	model = "flay";
@@ -70,6 +71,59 @@
 					"back_temp";
 		status = "ok";
 	};
+	/* delete conflict unused gpio64 source for fps */
+
+	gpio_keys {
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+		/delete-node/ camera_focus;
+		/delete-node/ camera_snapshot ;
+	};
+	/delete-node/ apba_ctrl;
+};
+
+&tlmm {
+	/delete-node/ tlmm_gpio_key;
+};
+
+&ets_ldo1p8_en_active {
+	/* LDO_EN */
+	mux {
+		pins = "gpio64";
+		function = "gpio";
+	};
+
+	config {
+		pins = "gpio64";
+		drive-strength = <16>;
+		bias-pull-up; /* pull up */
+		output-high;
+	};
+};
+
+&ets_ldo1p8_en_suspend{
+	/* LDO_EN */
+	mux {
+		pins = "gpio64";
+		function = "gpio";
+	};
+
+	config {
+		pins = "gpio64";
+		drive-strength = <16>;
+		bias-pull-up; /* pull up */
+		output-high;
+	};
+};
+&pm660l_l6 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	regulator-boot-on;
+	regulator-always-on;
+};
+&ets_fps {
+	egistec,gpio_ldo1p8_en = <&tlmm 64 0x0>;
 };
 
 &usb3 {
