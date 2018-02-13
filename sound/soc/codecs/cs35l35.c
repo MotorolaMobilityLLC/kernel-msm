@@ -1157,29 +1157,40 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 {
 	struct cs35l35_private *cs35l35 = data;
 	struct i2c_client *i2c_client = cs35l35->i2c_client;
-	unsigned int sticky[4];
+	unsigned char sticky[4];
+	unsigned char masks[4];
 	unsigned int current1;
 
 	/* ack the irq by reading all status registers */
 	if (regmap_bulk_read(cs35l35->regmap, CS35L35_INT_STATUS_1,
 				sticky, ARRAY_SIZE(sticky)) < 0) {
-		dev_err(&i2c_client->dev, "Read IRQ status error");
+		dev_err(&i2c_client->dev, "Read IRQ status error\n");
+		return IRQ_NONE;
+	}
+
+	if (regmap_bulk_read(cs35l35->regmap, CS35L35_INT_MASK_1,
+				masks, ARRAY_SIZE(masks)) < 0) {
+		dev_err(&i2c_client->dev, "Read IRQ mask error\n");
 		return IRQ_NONE;
 	}
 
 	/* Check to see if unmasked bits are active */
-	if (!(sticky[0] & ~CS35L35_INT_MASK_1) &&
-	    !(sticky[1] & ~CS35L35_INT_MASK_2) &&
-	    !(sticky[2] & ~CS35L35_INT_MASK_3) &&
-	    !(sticky[3] & ~CS35L35_INT_MASK_4))
+	if (!(sticky[0] & ~masks[0]) && !(sticky[1] & ~masks[1]) &&
+		!(sticky[2] & ~masks[2]) && !(sticky[3] & ~masks[3])) {
 		return IRQ_NONE;
+	}
+
+	dev_err(&i2c_client->dev, "mask0-1-2-3:   %02X %02X %02X %02X\n",
+			masks[0], masks[1], masks[2], masks[3]);
+	dev_err(&i2c_client->dev, "sticky0-1-2-3: %02X %02X %02X %02X\n",
+			sticky[0], sticky[1], sticky[2], sticky[3]);
 
 	if (sticky[1] & CS35L35_PDN_DONE)
 		complete(&cs35l35->pdn_done);
 
 	/* read the current values */
 	if (regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_1, &current1)) {
-		dev_err(&i2c_client->dev, "Read current IRQ status error");
+		dev_err(&i2c_client->dev, "Read current IRQ status error\n");
 		return IRQ_NONE;
 	}
 	/* handle the interrupts */
