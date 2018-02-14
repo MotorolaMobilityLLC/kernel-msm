@@ -382,6 +382,7 @@
 	qcom,batt-id-range-pct = <15>;
 	#include "batterydata-he50-atl-pmi8937.dtsi"
 	#include "batterydata-he50-cos-pmi8937.dtsi"
+	#include "batterydata-he50-cos-pmi8937-r1.dtsi"
 };
 
 &pmi_haptic {
