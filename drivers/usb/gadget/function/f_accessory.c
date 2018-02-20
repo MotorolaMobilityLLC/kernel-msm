@@ -610,8 +610,11 @@ retry_rx_alloc:
 		if (!req) {
 			if (acc_rx_req_len <= BULK_BUFFER_SIZE)
 				goto fail;
-		for (i = 0; i < RX_REQ_MAX; i++)
-			acc_request_free(dev->rx_req[i], dev->ep_out);
+			for (i = 0; i < RX_REQ_MAX; i++) {
+				acc_request_free(dev->rx_req[i],
+						dev->ep_out);
+				dev->rx_req[i] = NULL;
+			}
 			acc_rx_req_len /= 2;
 			goto retry_rx_alloc;
 		}
@@ -625,8 +628,10 @@ fail:
 	pr_err("acc_bind() could not allocate requests\n");
 	while ((req = req_get(dev, &dev->tx_idle)))
 		acc_request_free(req, dev->ep_in);
-	for (i = 0; i < RX_REQ_MAX; i++)
+	for (i = 0; i < RX_REQ_MAX; i++) {
 		acc_request_free(dev->rx_req[i], dev->ep_out);
+		dev->rx_req[i] = NULL;
+	}
 	return -1;
 }
 
