@@ -171,12 +171,6 @@ static int cs35l36_main_amp_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		if (!cs35l36->pdata.extern_boost)
-			regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL2,
-						CS35L36_BST_EN_MASK,
-						CS35L36_BST_EN <<
-						CS35L36_BST_EN_SHIFT);
-
 		regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL1,
 					CS35L36_GLOBAL_EN_MASK,
 					1 << CS35L36_GLOBAL_EN_SHIFT);
@@ -201,12 +195,6 @@ static int cs35l36_main_amp_event(struct snd_soc_dapm_widget *w,
 					CS35L36_AMP_MUTE_MASK,
 					1 << CS35L36_AMP_MUTE_SHIFT);
 
-		if (!cs35l36->pdata.extern_boost)
-			regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL2,
-						CS35L36_BST_EN_MASK,
-						CS35L36_BST_DIS_VP <<
-						CS35L36_BST_EN_SHIFT);
-
 		regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL1,
 					CS35L36_GLOBAL_EN_MASK,
 					0 << CS35L36_GLOBAL_EN_SHIFT);
@@ -218,6 +206,32 @@ static int cs35l36_main_amp_event(struct snd_soc_dapm_widget *w,
 	return ret;
 }
 
+static int cs35l36_boost_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct cs35l36_private *cs35l36 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		if (!cs35l36->pdata.extern_boost)
+			regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL2,
+						CS35L36_BST_EN_MASK,
+						CS35L36_BST_EN <<
+						CS35L36_BST_EN_SHIFT);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		if (!cs35l36->pdata.extern_boost)
+			regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL2,
+						CS35L36_BST_EN_MASK,
+						CS35L36_BST_DIS_VP <<
+						CS35L36_BST_EN_SHIFT);
+		break;
+	default:
+		dev_dbg(codec->dev, "Invalid event = 0x%x\n", event);
+	}
+	return 0;
+}
 static const char * const cs35l36_chan_text[] = {
 	"RX1",
 	"RX2",
@@ -228,6 +242,18 @@ static SOC_ENUM_SINGLE_DECL(chansel_enum, CS35L36_ASP_RX1_SLOT, 0,
 
 static const struct snd_kcontrol_new cs35l36_chan_mux[] = {
 	SOC_DAPM_ENUM("Input Mux", chansel_enum),
+};
+
+static const char * const cs35l36_boost_text[] = {
+	"On",
+	"Off",
+};
+
+static SOC_ENUM_SINGLE_DECL(boost_enum, SND_SOC_NOPM, 0,
+		cs35l36_boost_text);
+
+static const struct snd_kcontrol_new cs35l36_boost_mux[] = {
+	SOC_DAPM_ENUM("Boost Enable", boost_enum),
 };
 
 static const struct snd_kcontrol_new amp_enable_ctrl =
@@ -307,6 +333,10 @@ static const struct snd_soc_dapm_widget cs35l36_dapm_widgets[] = {
 
 	SND_SOC_DAPM_OUTPUT("SPK"),
 	SND_SOC_DAPM_SWITCH("AMP Enable", SND_SOC_NOPM, 0, 1, &amp_enable_ctrl),
+	SND_SOC_DAPM_MIXER("CLASS H", CS35L36_PWR_CTRL3, 4, 0, NULL, 0),
+	SND_SOC_DAPM_MUX_E("BOOST Mux", SND_SOC_NOPM, 0, 0, cs35l36_boost_mux,
+		cs35l36_boost_event, SND_SOC_DAPM_POST_PMD |
+				SND_SOC_DAPM_POST_PMU),
 
 	SND_SOC_DAPM_AIF_OUT("ASPTX1", NULL, 0, CS35L36_ASP_RX_TX_EN, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("ASPTX2", NULL, 1, CS35L36_ASP_RX_TX_EN, 1, 0),
@@ -326,7 +356,6 @@ static const struct snd_soc_dapm_widget cs35l36_dapm_widgets[] = {
 	SND_SOC_DAPM_ADC("IMON ADC", NULL, CS35L36_PWR_CTRL2, 13, 0),
 	SND_SOC_DAPM_ADC("VPMON ADC", NULL, CS35L36_PWR_CTRL2, 8, 0),
 	SND_SOC_DAPM_ADC("VBSTMON ADC", NULL, CS35L36_PWR_CTRL2, 9, 0),
-	SND_SOC_DAPM_ADC("CLASS H", NULL, CS35L36_PWR_CTRL3, 4, 0),
 
 	SND_SOC_DAPM_INPUT("VP"),
 	SND_SOC_DAPM_INPUT("VBST"),
@@ -388,7 +417,9 @@ static const struct snd_soc_dapm_route cs35l36_audio_map[] = {
 	{"SDIN", NULL, "AMP Enable"},
 	{"Channel Mux", "RX1", "SDIN"},
 	{"Channel Mux", "RX2", "SDIN"},
-	{"CLASS H", NULL, "SDIN"},
+	{"BOOST Mux", "On", "SDIN"},
+	{"CLASS H", NULL, "BOOST Mux"},
+	{"Main AMP", NULL, "SDIN"},
 	{"Main AMP", NULL, "CLASS H"},
 	{"SPK", NULL, "Main AMP"},
 };
