@@ -949,14 +949,14 @@ static int cs35l36_codec_probe(struct snd_soc_codec *codec)
 		regmap_update_bits(cs35l36->regmap, CS35L36_DTEMP_WARN_THLD,
 					CS35L36_TEMP_THLD_MASK,
 					cs35l36->pdata.temp_warn_thld);
-/*
- * Rev B0 has 2 versions
- * L36 is 10V
- * L37 is 12V
- * If L36 we need to clamp some values for safety
- * after probe has setup dt values. We want to make
- * sure we dont miss any values set in probe
- */
+	/*
+	 * Rev B0 has 2 versions
+	 * L36 is 10V
+	 * L37 is 12V
+	 * If L36 we need to clamp some values for safety
+	 * after probe has setup dt values. We want to make
+	 * sure we dont miss any values set in probe
+	 */
 	if (cs35l36->chip_version == CS35L36_10V_L36) {
 		regmap_update_bits(cs35l36->regmap,
 				CS35L36_BSTCVRT_OVERVOLT_CTRL,
@@ -989,6 +989,16 @@ static int cs35l36_codec_probe(struct snd_soc_codec *codec)
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Enable");
 	snd_soc_dapm_ignore_suspend(dapm, "VSENSE");
 	snd_soc_dapm_ignore_suspend(dapm, "Main AMP");
+
+	/*
+	 * RevA and B require the disabling of
+	 * SYNC_GLOBAL_OVR when GLOBAL_EN = 0.
+	 * Just turn it off from default
+	 */
+	regmap_update_bits(cs35l36->regmap, CS35L36_CTRL_OVRRIDE,
+				CS35L36_SYNC_GLOBAL_OVR_MASK,
+				0 << CS35L36_SYNC_GLOBAL_OVR_SHIFT);
+
 
 	return 0;
 }
