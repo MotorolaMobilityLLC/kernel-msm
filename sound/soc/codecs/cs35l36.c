@@ -312,7 +312,7 @@ static SOC_VALUE_ENUM_SINGLE_DECL(asp_tx5_src_enum,
 				asp_tx_src_values);
 
 static const struct snd_kcontrol_new asp_tx5_src =
-	SOC_DAPM_ENUM("ASPTX6SRC", asp_tx5_src_enum);
+	SOC_DAPM_ENUM("ASPTX5SRC", asp_tx5_src_enum);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(asp_tx6_src_enum,
 				CS35L36_ASP_TX6_SEL, 0,
