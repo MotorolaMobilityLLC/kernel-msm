@@ -178,7 +178,13 @@ static DEVICE_ATTR(__attr, 0644, show_list_##__attr, store_list_##__attr)
 static unsigned int bytes_to_mbps(long long bytes, unsigned int us)
 {
 	bytes *= USEC_PER_SEC;
-	do_div(bytes, us);
+	if (us != 0)
+		do_div(bytes, us);
+	else {
+		printk("WARNING: Divisor is ZERO at %s:%d %s()\n",\
+		__FILE__, __LINE__, __FUNCTION__);
+		dump_stack();
+	}
 	bytes = DIV_ROUND_UP_ULL(bytes, SZ_1M);
 	return bytes;
 }
