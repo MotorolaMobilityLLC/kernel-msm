@@ -1168,7 +1168,7 @@ static int cs35l36_handle_of_data(struct i2c_client *i2c_client,
 
 	ret = of_property_read_u32(np, "cirrus,boost-ctl-millivolt", &val);
 	if (ret >= 0) {
-		if (val < 2550 || val > 10000) {
+		if (val < 2550 || val > 12000) {
 			dev_err(&i2c_client->dev,
 				"Invalid Boost Voltage %d mV\n", val);
 			return -EINVAL;
