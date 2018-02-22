@@ -31,6 +31,9 @@ static DEFINE_MUTEX(modbus_ext_mutex);
 /*mods swich cross bar's select states normally less than 4*/
 #define MODBUS_MAX_PROTOCOLS		4
 
+/*convert between state enum and bitmask*/
+#define MODBUS_PROTO_MASK(bit) (1 << bit)
+
 /*need to be adjusted by enum modbus_ext_protocol(modbus_ext.h)*/
 const static char *protocol_list[] = {
 							"usbss",
@@ -57,10 +60,19 @@ struct modbus_data {
 
 struct modbus_data *modbus_dd;
 
-static int modbus_set_switch_state(int state, struct modbus_data *data)
+static int modbus_set_switch_state(struct modbus_data *data)
 {
+	int state = MODBUS_PROTO_INVALID; /*why don't we have hi-Z anymore?*/
 	int i, index;
 	int count;
+
+	if (data->state & MODBUS_PROTO_MASK(MODBUS_PROTO_MPHY)) {
+		state = MODBUS_PROTO_MPHY;
+	} else if (data->state & MODBUS_PROTO_MASK(MODBUS_PROTO_USB_SS)) {
+		state = MODBUS_PROTO_USB_SS;
+	} else if (data->state & MODBUS_PROTO_MASK(MODBUS_PROTO_I2S)) {
+		state = MODBUS_PROTO_I2S;
+	}
 
 	if (state >= MODBUS_PROTO_INVALID) {
 		pr_err("%s Invalid switch state: %d\n", __func__, state);
@@ -104,7 +116,12 @@ void modbus_ext_set_state(const struct modbus_ext_status *status)
 
 	mutex_lock(&modbus_ext_mutex);
 
-	modbus_set_switch_state(status->proto, modbus_dd);
+	if (status->active)
+		modbus_dd->state |= MODBUS_PROTO_MASK(status->proto);
+	else
+		modbus_dd->state &= ~MODBUS_PROTO_MASK(status->proto);
+
+	modbus_set_switch_state(modbus_dd);
 
 	mutex_unlock(&modbus_ext_mutex);
 }
@@ -281,6 +298,7 @@ static int modbus_probe(struct platform_device *pdev)
 		return ret;
 
 	data->dev = &pdev->dev;
+	data->state = 0; /*really want MODBUS_PROTO_HIGH_Z??*/
 	platform_set_drvdata(pdev, data);
 	modbus_dd = data;
 
@@ -312,7 +330,7 @@ static int modbus_probe(struct platform_device *pdev)
 	}
 
 	/* Configure to HighZ initially */
-	/* modbus_set_switch_state(MODBUS_STATE_HIGH_Z, data->dev); */
+	/* modbus_set_switch_state(modbus_dd); */
 
 	return 0;
 }
