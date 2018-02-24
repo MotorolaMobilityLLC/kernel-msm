@@ -30,6 +30,12 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
 
+#ifdef CONFIG_MSM_CAMERA_VENDOR_WENTAI
+extern int main_module_id;
+extern int sub_module_id;
+extern int aux_module_id;
+#endif
+
 static int msm_sensor_platform_remove(struct platform_device *pdev)
 {
 	struct msm_sensor_ctrl_t  *s_ctrl;
@@ -873,6 +879,49 @@ int32_t msm_sensor_driver_probe(void *setting,
 		rc = -EINVAL;
 		goto free_slave_info;
 	}
+
+#ifdef CONFIG_MSM_CAMERA_VENDOR_WENTAI
+	if (!strcmp(slave_info->sensor_name, "ov12a10_qtech")) {
+		if (sub_module_id != 0x0B) {
+			pr_err("failed: main_module_id %d, sensor is not %s",
+			       main_module_id, slave_info->sensor_name);
+			rc = -EINVAL;
+			goto free_slave_info;
+		}
+	} else if (!strcmp(slave_info->sensor_name, "ov12a10_sunny")) {
+		if (sub_module_id != 0x01) {
+			pr_err("failed: main_module_id %d, sensor is not %s",
+			       main_module_id, slave_info->sensor_name);
+			rc = -EINVAL;
+			goto free_slave_info;
+		}
+	} else if (!strcmp(slave_info->sensor_name, "ov16b10_qtech")) {
+#ifdef WEN_DEBUG
+		if (main_module_id != 0x0B && main_module_id != 0x01) {
+			pr_err("failed: main_module_id %d, sensor is not %s",
+			main_module_id, slave_info->sensor_name);
+			rc = -EINVAL;
+			goto free_slave_info;
+		}
+#endif
+	} else if (!strcmp(slave_info->sensor_name, "ov5675_qtech")) {
+#ifdef WEN_DEBUG
+		if (aux_module_id != 0x0B) {
+			pr_err("failed: main_module_id %d, sensor is not %s",
+			main_module_id, slave_info->sensor_name);
+			rc = -EINVAL;
+			goto free_slave_info;
+		}
+#endif
+	} else {
+		pr_err("sensor name is %s, is nothing to do",
+		       slave_info->sensor_name);
+		rc = -EINVAL;
+		goto free_slave_info;
+	}
+	pr_err("%s:%d camera sensor probe %s",
+	       __func__, __LINE__, slave_info->sensor_name);
+#endif
 
 	/* Extract s_ctrl from camera id */
 	s_ctrl = g_sctrl[slave_info->camera_id];

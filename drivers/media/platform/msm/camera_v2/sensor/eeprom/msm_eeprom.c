@@ -26,6 +26,13 @@ DEFINE_MSM_MUTEX(msm_eeprom_mutex);
 static struct v4l2_file_operations msm_eeprom_v4l2_subdev_fops;
 #endif
 
+#ifdef CONFIG_MSM_CAMERA_VENDOR_WENTAI
+static int module_id;
+int main_module_id; /*main camera*/
+int sub_module_id;  /*front camera*/
+int aux_module_id;  /*aux camera*/
+#endif
+
 /**
   * msm_get_read_mem_size - Get the total size for allocation
   * @eeprom_map_array:	mem map
@@ -965,7 +972,7 @@ static int msm_eeprom_get_dt_data(struct msm_eeprom_ctrl_t *e_ctrl)
 		of_node = e_ctrl->pdev->dev.of_node;
 
 	if (!of_node) {
-		pr_err("%s: %d of_node is NULL\n", __func__ , __LINE__);
+		pr_err("%s: %d of_node is NULL\n", __func__, __LINE__);
 		return -ENOMEM;
 	}
 	rc = msm_camera_get_dt_vreg_data(of_node, &power_info->cam_vreg,
@@ -1518,9 +1525,9 @@ static int msm_eeprom_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 		rc = eeprom_config_read_cal_data32(e_ctrl, argp);
 		break;
 	case CFG_EEPROM_INIT:
- #ifdef CONFIG_MSM_CAMERA_VENDOR_WENTAI
-                pr_err("CONFIG_MSM_CAMERA_VENDOR_WENTAI is set");
- #else
+#ifdef CONFIG_MSM_CAMERA_VENDOR_WENTAI
+		pr_err("CONFIG_MSM_CAMERA_VENDOR_WENTAI is set");
+#else
 		if (e_ctrl->userspace_probe == 0) {
 			pr_err("%s:%d Eeprom already probed at kernel boot",
 				__func__, __LINE__);
@@ -1731,6 +1738,87 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 		for (j = 0; j < e_ctrl->cal_data.num_data; j++)
 			CDBG("memory_data[%d] = 0x%X\n", j,
 				e_ctrl->cal_data.mapdata[j]);
+
+#ifdef CONFIG_MSM_CAMERA_VENDOR_WENTAI
+		if (!strcmp(eb_info->eeprom_name, "ov12a10_qtech")) {
+			CDBG("match id for %s\n", eb_info->eeprom_name);
+			if (e_ctrl->cal_data.mapdata[0] == 0x55)
+				module_id = e_ctrl->cal_data.mapdata[1] & 0x1f;
+			else
+				module_id = 0;
+			CDBG("match id for %s module_id=%d\n",
+			     eb_info->eeprom_name, module_id);
+			if (module_id == 0x0B) {
+				CDBG("match id for %s success\n",
+				     eb_info->eeprom_name);
+				sub_module_id = module_id;
+			} else {
+				pr_err("%s match id for %s failed\n",
+				       __func__, eb_info->eeprom_name);
+				goto power_down;
+			}
+		} else if (!strcmp(eb_info->eeprom_name, "ov12a10_sunny")) {
+			CDBG("match id for %s\n", eb_info->eeprom_name);
+			if (e_ctrl->cal_data.mapdata[0] == 0x55)
+				module_id = e_ctrl->cal_data.mapdata[1] & 0x1f;
+			else
+				module_id = 0;
+			CDBG("match id for %s module_id=%d\n",
+			     eb_info->eeprom_name, module_id);
+			if (module_id == 0x01) {
+				CDBG("match id for %s success\n",
+				     eb_info->eeprom_name);
+				sub_module_id = module_id;
+			} else {
+				pr_err("%s match id for %s failed\n",
+				       __func__, eb_info->eeprom_name);
+				goto power_down;
+			}
+		} else if (!strcmp(eb_info->eeprom_name, "ov16b10_qtech")) {
+			CDBG("match id for %s\n", eb_info->eeprom_name);
+			if (e_ctrl->cal_data.mapdata[0] == 0x55)
+				module_id = e_ctrl->cal_data.mapdata[1] & 0x1f;
+			else
+				module_id = 0;
+			CDBG("match id for %s module_id=%d\n",
+			     eb_info->eeprom_name, module_id);
+			if (module_id == 0x0B || module_id == 0x01) {
+				CDBG("match id for %s success\n",
+				     eb_info->eeprom_name);
+				main_module_id = module_id;
+			} else {
+				pr_err("%s match id for %s failed\n",
+				       __func__, eb_info->eeprom_name);
+				goto power_down;
+			}
+		} else if (!strcmp(eb_info->eeprom_name, "ov5675_qtech")) {
+			CDBG("match id for %s\n", eb_info->eeprom_name);
+			if (e_ctrl->cal_data.mapdata[0x10] == 0x55)
+				module_id =
+					e_ctrl->cal_data.mapdata[0x11] & 0x1f;
+			else if (e_ctrl->cal_data.mapdata[8] == 0x55)
+				module_id = e_ctrl->cal_data.mapdata[9] & 0x1f;
+			else if (e_ctrl->cal_data.mapdata[0] == 0x55)
+				module_id = e_ctrl->cal_data.mapdata[1] & 0x1f;
+			else
+				module_id = 0;
+			CDBG("match id for %s module_id=%d\n",
+			     eb_info->eeprom_name, module_id);
+			if (module_id == 0x0B) {
+				CDBG("match id for %s success\n",
+				     eb_info->eeprom_name);
+				aux_module_id = module_id;
+			} else {
+				pr_err("%s match id for %s failed\n",
+				       __func__, eb_info->eeprom_name);
+				goto power_down;
+			}
+		} else {
+			pr_err("%s eeprom name match failed:%s\n",
+			       __func__, eb_info->eeprom_name);
+			goto power_down;
+		}
+#endif
 
 		e_ctrl->is_supported |= msm_eeprom_match_crc(&e_ctrl->cal_data);
 
