@@ -15,23 +15,9 @@
 
 #include "sdm636.dtsi"
 #include "sdm636-beckham.dtsi"
-#include "dsi-panel-mot-smd-549-1080p-alb-cmd.dtsi"
 
 / {
 	qcom,board-id = <0x49 0xB2B0>, <0x4A 0xB2B0>;
-};
-
-&mot_smd_549_1080p_alb_cmd_v0 {
-	qcom,panel-supply-entries {
-			qcom,panel-supply-entry@4 {
-				reg = <4>;
-				qcom,supply-name = "oled_disp";
-				qcom,supply-min-voltage = <5000000>;
-				qcom,supply-max-voltage = <8100000>;
-				qcom,supply-enable-load = <100000>;
-				qcom,supply-disable-load = <100>;
-			};
-	};
 };
 
 &anx_slimport {
