@@ -14,6 +14,7 @@
 #include "dsi-panel-mot-tianma-ft-618-fhd-vid.dtsi"
 #include "dsi-panel-mot-tianma-nt-619-fhd-vid.dtsi"
 #include "sdm660-internal-codec.dtsi"
+#include "sdm636-chef-audio.dtsi"
 #include "sdm636-egis-fps.dtsi"
 
 / {
