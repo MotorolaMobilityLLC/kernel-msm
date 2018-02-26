@@ -204,7 +204,7 @@
 	};
 };
 
-&i2c_2 {
+&i2c_6 {
 	status = "okay";
 	p922x_wls_i2c@61 {
 		compatible = "idt,p922x-charger";
@@ -217,15 +217,43 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&p922x_irq_enable>;
 
-		idt,rx-chip-det;
+		/*idt,rx-chip-det;*/
 		idt,tx-auth-enabled;
+		idt,program-fw-enabled;
 		idt,chg-efficiency = <70>;
 		idt,chg-limit-soc = <95>;
 		idt,chg-idle-cl = <50>;
 	};
 };
 
+&pm660_charger {
+        qcom,inner-wls-name = "idt_wireless";
+        qcom,inner-wls-used;
+        qcom,dc-icl-ua = <1100000>;
+        gpios = <&tlmm 61 0x1>; /* OTG EN*/
+        gpio-names = "wls_otg_en";
+        pinctrl-names = "wls_otg_en","wls_otg_dis";
+        pinctrl-0 = <&wls_otg_en>;
+        pinctrl-1 = <&wls_otg_dis>;
+        qcom,mmi-temp-zones = <0 4200 586 0>,
+                                <10 4200 879 586>,
+                                <15 0 1465 1465>,
+                                <45 4200 3000 2000>,
+                                <60 4100 1465  0>;
 
+        io-channels = <&pm660_rradc 8>,
+                      <&pm660_rradc 10>,
+                      <&pm660_rradc 3>,
+                      <&pm660_rradc 4>,
+                      <&pm660_rradc 5>,
+                      <&pm660_rradc 6>;
+        io-channel-names = "charger_temp",
+                           "charger_temp_max",
+                           "usbin_i",
+                           "usbin_v",
+                           "dcin_i",
+                           "dcin_v";
+};
 
 &i2c_3 { /* BLSP1 QUP3 */
 	status = "okay";
