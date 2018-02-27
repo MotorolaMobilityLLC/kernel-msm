@@ -562,10 +562,5 @@
 	qcom,use-single-path-usbin-switch;
 };
 
-&pm660_fg {
-	qcom,fg-esr-tight-lt-filter-micro-pct = <2000>;
-	qcom,fg-esr-broad-lt-filter-micro-pct = <3000>;
-};
-
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
