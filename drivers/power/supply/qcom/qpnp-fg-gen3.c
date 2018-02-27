@@ -4599,6 +4599,20 @@ static int fg_hw_init(struct fg_chip *chip)
 		}
 	}
 
+	/*
+	*set ibat_cutoff from 500ma to 200ma
+	*val = ibat_cutoff / 0.00012207
+	*100mA: val = 0.1/0.00012207 = 0x333
+	*200mA: val = 0.2/0.00012207 = 0x666
+	*300mA: val = 0.3/0.00012207 = 0x999
+	*400mA: val = 0.4/0.00012207 = 0xCCC
+	*/
+	buf[0] = 0x66;
+	buf[1] = 0x6;
+	rc = fg_sram_write(chip, 4, 0, buf, 2, FG_IMA_DEFAULT);
+	if (rc < 0)
+		pr_err("Error in configuring Sram, rc=%d\n", rc);
+
 	return 0;
 }
 
