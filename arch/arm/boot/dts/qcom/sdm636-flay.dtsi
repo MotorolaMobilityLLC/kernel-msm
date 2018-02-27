@@ -322,10 +322,6 @@
 	/delete-node/ smb1351-charger@1d;
 };
 
-&i2c_6 { /* BLSP1 QUP6 (NFC) */
-    status = "okay";
-};
-
 &pm660_gpios {
 	gpio@c200 {
 		status = "disabled";
