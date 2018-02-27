@@ -281,10 +281,12 @@
 		qcom,vdd-voltage-level = <0 925000 925000>;
 		qcom,tune2-efuse-bit-pos = <25>;
 		qcom,tune2-efuse-num-bits = <4>;
+		qcom,tune2-efuse-correction = <(-5)>;
+		qcom,tune2-efuse-correction-host = <(-3)>;
 		qcom,qusb-phy-init-seq = <0xf8 0x80
-					0xa3 0x84
-					0x83 0x88
-					0xc5 0x8c
+					0x80 0x84
+					0x81 0x88
+					0xcf 0x8c
 					0x30 0x08
 					0x79 0x0c
 					0x21 0x10
