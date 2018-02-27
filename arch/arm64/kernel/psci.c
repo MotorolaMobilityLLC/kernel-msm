@@ -113,6 +113,16 @@ static noinline int __invoke_psci_fn_smc(u64 function_id, u64 arg0, u64 arg1,
 	return function_id;
 }
 
+#ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
+noinline int psci_apply_bp_hardening(void)
+{
+	int err;
+
+	err = __invoke_psci_fn_smc(PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0);
+	return err;
+}
+#endif /* CONFIG_HARDEN_BRANCH_PREDICTOR */
+
 static int psci_get_version(void)
 {
 	int err;
