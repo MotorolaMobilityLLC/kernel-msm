@@ -323,7 +323,7 @@
 };
 
 &i2c_6 { /* BLSP1 QUP6 (NFC) */
-    status = "disabled";
+    status = "okay";
 };
 
 &pm660_gpios {
