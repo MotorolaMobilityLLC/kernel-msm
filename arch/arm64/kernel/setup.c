@@ -227,16 +227,17 @@ static void __maybe_unused install_bp_hardening_cb(bp_hardening_cb_t fn)
 	__install_bp_hardening_cb(fn);
 }
 
-#include <linux/psci.h>
-
-void enable_psci_bp_hardening(void *data) {
-	if (psci_ops.get_version) {
-		switch(read_cpuid_part_number()) {
-		case ARM_CPU_PART_CORTEX_A57:
-		case ARM_CPU_PART_CORTEX_A72:
+void enable_psci_bp_hardening(void *data)
+{
+	switch(read_cpuid_part_number()) {
+	case ARM_CPU_PART_CORTEX_A57:
+	case ARM_CPU_PART_CORTEX_A72:
+		if (psci_ops.get_version)
 			install_bp_hardening_cb(
-				  (bp_hardening_cb_t)psci_ops.get_version);
-		}
+				(bp_hardening_cb_t)psci_ops.get_version);
+		else
+			install_bp_hardening_cb(
+				(bp_hardening_cb_t)psci_apply_bp_hardening);
 	}
 }
 #endif	/* CONFIG_HARDEN_BRANCH_PREDICTOR */

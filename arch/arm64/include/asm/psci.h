@@ -35,5 +35,8 @@ struct psci_operations {
 };
 
 extern struct psci_operations psci_ops;
+#ifdef CONFIG_HARDEN_BRANCH_PREDICTOR
+int psci_apply_bp_hardening(void);
+#endif /* CONFIG_HARDEN_BRANCH_PREDICTOR */
 
 #endif /* __ASM_PSCI_H */
