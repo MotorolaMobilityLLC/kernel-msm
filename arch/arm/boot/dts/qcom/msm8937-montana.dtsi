@@ -297,11 +297,6 @@
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
 		label = "nfc_irq";
-
-		nfc_irq_default: default {
-			bias-pull-down;
-			drive-strength = <2>;
-		};
 	};
 
 	pmx_nfc_pwr {
@@ -322,12 +317,6 @@
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "nfc_firm";
-
-		nfc_firm_default: default {
-			bias-pull-down;
-			output-low;
-			drive-strength = <2>;
-		};
 	};
 
 	cs35l35_reset_default: cs35l35_default{
