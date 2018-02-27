@@ -78,7 +78,7 @@
 		/delete-property/ pinctrl-0;
 		/delete-property/ pinctrl-1;
 		/delete-node/ camera_focus;
-		/delete-node/ camera_snapshot ;
+		/delete-node/ camera_snapshot;
 	};
 	/delete-node/ apba_ctrl;
 };
