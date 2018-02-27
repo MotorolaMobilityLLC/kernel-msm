@@ -74,6 +74,17 @@
 					"back_temp";
 		status = "ok";
 	};
+	gpio_keys {
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+		/delete-node/ camera_focus;
+		/delete-node/ camera_snapshot;
+	};
+	/delete-node/ apba_ctrl;
+};
+
+&tlmm {
+	/delete-node/ tlmm_gpio_key;
 };
 
 &usb3 {
