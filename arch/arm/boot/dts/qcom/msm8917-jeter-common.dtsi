@@ -339,6 +339,8 @@
 	qcom,irq-volt-empty-mv = <3200>;
 	qcom,fg-cutoff-voltage-mv = <3400>;
 	qcom,fg-iterm-ma = <300>;
+	qcom,cl-vbat-est-thr-uv = <300000>;
+	qcom,fg-force-restart-enable;
 };
 
 &mot_batterydata {
