@@ -334,6 +334,7 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&dtv_output_default &dtv_input_default>;
 			bbm-xtal-freq = <26000>;
+			dbt-charger-mitigate-enable;
 		};
 	};
 };
