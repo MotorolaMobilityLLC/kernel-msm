@@ -869,6 +869,11 @@ static int uas_switch_interface(struct usb_device *udev,
 			alt->desc.bAlternateSetting);
 }
 
+
+
+static int disable_streaming;
+module_param(disable_streaming, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(disable_streaming, "Disable USB3 streaming");
 static int uas_configure_endpoints(struct uas_dev_info *devinfo)
 {
 	struct usb_host_endpoint *eps[4] = { };
@@ -888,7 +893,7 @@ static int uas_configure_endpoints(struct uas_dev_info *devinfo)
 	devinfo->data_out_pipe = usb_sndbulkpipe(udev,
 					    usb_endpoint_num(&eps[3]->desc));
 
-	if (udev->speed < USB_SPEED_SUPER) {
+	if (disable_streaming || udev->speed < USB_SPEED_SUPER) {
 		devinfo->qdepth = 32;
 		devinfo->use_streams = 0;
 	} else {
