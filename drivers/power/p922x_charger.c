@@ -25,7 +25,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+#include <linux/string.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
 #include <linux/stat.h>
@@ -86,6 +86,7 @@
 #define BC_DATA_4_REG		0x005c
 #define BC_DATA_5_REG		0x005d
 #define OVP_CFG_REG		0x0062
+#define FOD_CFG_REG		0x0068
 #define FASTCHG_V_REG		0x0078
 
 #define ST_ID_AUTH_SUCCESS	BIT(13)
@@ -145,6 +146,8 @@
 #define WLS_SHOW_MAX_SIZE 32
 #define CHIP_ID_ADDR0 0x5870
 #define CHIP_ID_ADDR1 0x5874
+#define FOD_ARRAY_LEN 12
+
 
 #define p922x_err(chip, fmt, ...)		\
 	pr_err("%s: %s: " fmt, chip->name,	\
@@ -336,6 +339,10 @@ struct p922x_charger {
 	const char		*fw_name;
 	bool			program_fw_enabled;
 	int			program_fw_stat;
+	u8			fod_array_5v[FOD_ARRAY_LEN];
+	u8			fod_array_9v[FOD_ARRAY_LEN];
+	u32			fod_array_5v_len;
+	u32			fod_array_9v_len;
 };
 
 static const char * const type_text[] = {
@@ -539,6 +546,12 @@ static int p922x_set_fastchg_voltage(struct p922x_charger *chip, u16 mv)
 	}
 	chip->rx_vout_max = mv;
 	p922x_dbg(chip, PR_MISC, "Set fast charging voltage: %dmV\n", mv);
+
+	if (chip->fod_array_9v_len == FOD_ARRAY_LEN &&
+		mv == MAX_VOUT_MV_FAST) {
+		p922x_write_buffer(chip, FOD_CFG_REG,
+				chip->fod_array_9v, FOD_ARRAY_LEN);
+	}
 
 	return rc;
 }
@@ -1452,6 +1465,11 @@ static int p922x_prepare_rx(struct p922x_charger *chip)
 		return rc;
 	}
 
+	if (chip->fod_array_5v_len == FOD_ARRAY_LEN) {
+		p922x_write_buffer(chip, FOD_CFG_REG,
+				chip->fod_array_5v, FOD_ARRAY_LEN);
+	}
+
 	return 0;
 }
 
@@ -1678,6 +1696,106 @@ static ssize_t fastchg_volt_store(struct device *dev,
 	return r ? r : count;
 }
 static DEVICE_ATTR(fastchg_volt, S_IWUSR, NULL, fastchg_volt_store);
+
+static ssize_t fod_5v_configure_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int i = 0, ret = 0, sum = 0;
+	char *buffer;
+	unsigned int temp;
+	u8 fod_array_temp[FOD_ARRAY_LEN];
+	struct p922x_charger *chip = dev_get_drvdata(dev);
+
+	buffer = (char *)buf;
+
+	for (i = 0; i < FOD_ARRAY_LEN; i++) {
+		ret = sscanf((const char *)buffer, "0x%x,%s", &temp, buffer);
+		fod_array_temp[i] = temp;
+		sum++;
+		if (ret != 2)
+			break;
+	}
+
+	if (sum == FOD_ARRAY_LEN) {
+		memcpy(chip->fod_array_5v, fod_array_temp,
+						sizeof(fod_array_temp));
+		chip->fod_array_5v_len = FOD_ARRAY_LEN;
+		p922x_write_buffer(chip, FOD_CFG_REG,
+				chip->fod_array_5v, FOD_ARRAY_LEN);
+	}
+
+	return count;
+}
+
+static ssize_t fod_5v_configure_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int count = 0, i = 0;
+	struct p922x_charger *chip = dev_get_drvdata(dev);
+
+	for (i = 0; i < FOD_ARRAY_LEN; i++) {
+		count += scnprintf(buf+count, WLS_SHOW_MAX_SIZE,
+				"0x%02x ", chip->fod_array_5v[i]);
+		if (i == FOD_ARRAY_LEN - 1)
+			count += scnprintf(buf+count, WLS_SHOW_MAX_SIZE, "\n");
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(fod_5v_configure, 0644,
+			fod_5v_configure_show, fod_5v_configure_store);
+
+static ssize_t fod_9v_configure_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int i = 0, ret = 0, sum = 0;
+	char *buffer;
+	unsigned int temp;
+	u8 fod_array_temp[FOD_ARRAY_LEN];
+	struct p922x_charger *chip = dev_get_drvdata(dev);
+
+	buffer = (char *)buf;
+
+	for (i = 0; i < FOD_ARRAY_LEN; i++) {
+		ret = sscanf((const char *)buffer, "0x%x,%s", &temp, buffer);
+		fod_array_temp[i] = temp;
+		sum++;
+		if (ret != 2)
+			break;
+	}
+
+	if (sum == FOD_ARRAY_LEN) {
+		memcpy(chip->fod_array_9v, fod_array_temp,
+					sizeof(fod_array_temp));
+		chip->fod_array_9v_len = FOD_ARRAY_LEN;
+		p922x_write_buffer(chip, FOD_CFG_REG,
+				chip->fod_array_9v, FOD_ARRAY_LEN);
+	}
+
+	return count;
+}
+
+static ssize_t fod_9v_configure_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int count = 0, i = 0;
+	struct p922x_charger *chip = dev_get_drvdata(dev);
+
+	for (i = 0; i < FOD_ARRAY_LEN; i++) {
+		count += scnprintf(buf+count, WLS_SHOW_MAX_SIZE,
+				"0x%02x ", chip->fod_array_9v[i]);
+		if (i == FOD_ARRAY_LEN - 1)
+			count += scnprintf(buf+count, WLS_SHOW_MAX_SIZE, "\n");
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(fod_9v_configure, 0644,
+			fod_9v_configure_show, fod_9v_configure_store);
 
 static ssize_t rx_vout_store(struct device *dev,
 		struct device_attribute *attr,
@@ -1936,6 +2054,14 @@ static void create_sysfs_entries(struct p922x_charger *chip)
 {
 	int rc;
 
+	rc = device_create_file(chip->dev, &dev_attr_fod_5v_configure);
+	if (rc)
+		p922x_err(chip, "Couldn't create fod_5v_configure\n");
+
+	rc = device_create_file(chip->dev, &dev_attr_fod_9v_configure);
+	if (rc)
+		p922x_err(chip, "Couldn't create fod_9v_configure\n");
+
 	rc = device_create_file(chip->dev, &dev_attr_chip_id);
 	if (rc)
 		p922x_err(chip, "Couldn't create chip_id\n");
@@ -1993,6 +2119,8 @@ static void remove_sysfs_entries(struct p922x_charger *chip)
 	device_remove_file(chip->dev, &dev_attr_tx_type);
 	device_remove_file(chip->dev, &dev_attr_tx_vin);
 	device_remove_file(chip->dev, &dev_attr_tx_icl);
+	device_remove_file(chip->dev, &dev_attr_fod_5v_configure);
+	device_remove_file(chip->dev, &dev_attr_fod_9v_configure);
 	if (chip->program_fw_enabled) {
 		device_remove_file(chip->dev, &dev_attr_fw_ver);
 		device_remove_file(chip->dev, &dev_attr_program_fw_stat);
@@ -2062,6 +2190,20 @@ static int p922x_parse_dt(struct p922x_charger *chip)
 	if (!chip->fw_name)
 		chip->fw_name = "p922x_otp.fw";
 
+	chip->fod_array_5v_len =
+		of_property_count_u8_elems(node,
+					"fod-array-5v-val");
+
+	chip->fod_array_9v_len =
+		of_property_count_u8_elems(node,
+					"fod-array-9v-val");
+
+	of_property_read_u8_array(chip->dev->of_node, "fod-array-5v-val",
+					chip->fod_array_5v,
+					chip->fod_array_5v_len);
+	of_property_read_u8_array(chip->dev->of_node, "fod-array-9v-val",
+					chip->fod_array_9v,
+					chip->fod_array_9v_len);
 	return 0;
 }
 
