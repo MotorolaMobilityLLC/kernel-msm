@@ -259,3 +259,7 @@ config MSM_CAMERA_VENDOR_WENTAI
 	---help---
 		enable wentai camera features:
 		1. disable userspace probe function
+config MSM_CAMERA_VENDOR_BST_FACTORY
+        bool "enable bst camera factory build"
+        ---help---
+                enable bst factory build.
