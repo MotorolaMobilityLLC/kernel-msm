@@ -12,12 +12,8 @@
 
 /dts-v1/;
 
-#include "msm8998-nash.dtsi"
+#include "msm8998-messi.dtsi"
 
 / {
-	model = "Messi";
-	compatible = "qcom,msm8998-messi", "qcom,msm8998-moto",
-			"qcom,msm8998";
-
 	qcom,board-id = <0x48 0xA100>;
 };
