@@ -682,7 +682,6 @@
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
 	qcom,vfloat-comp-uv = <20000>;
-	qcom,hvdcp-force-5v;
 	qcom,usbpd-phandle = <&pm660_pdphy>;
 };
 
@@ -705,7 +704,9 @@
 };
 
 &pm660_pdphy {
-	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
+	qcom,source-current = <900>;
+	qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
+				<9000 2000>; /* 9V @ 2A */
 };
 
 &pm660_charger {
