@@ -449,3 +449,34 @@ file_upgrade_rel_fw:
 	return i_ret;
 }
 
+int fts_5x46_ctpm_get_vendor_id_flash(struct i2c_client *client)
+{
+	int i_ret = 0, vendor_id;
+	u8 vendorid[2] = {0};
+	u8 auc_i2c_write_buf[10];
+	u8 i = 0;
+
+	for (i = 0; i < FTS_UPGRADE_LOOP; i++) {
+		auc_i2c_write_buf[0] = 0x03;
+		auc_i2c_write_buf[1] = 0x00;
+
+		auc_i2c_write_buf[2] = (u8)((CONFIG_VENDOR_ID_ADDR - 1) >> 8);
+		auc_i2c_write_buf[3] = (u8)(CONFIG_VENDOR_ID_ADDR - 1);
+		i_ret = fts_i2c_read(client, auc_i2c_write_buf, 4, vendorid, 2);
+		if (i_ret < 0) {
+			FTS_ERROR("[ft5x46] read flash i_ret = %d\n", i_ret);
+			continue;
+		}
+		break;
+	}
+
+	FTS_INFO("[ft5x46] vendor id read from flash rom: 0x%x\n", vendorid[1]);
+	vendor_id = vendorid[1];
+	if (i >= FTS_UPGRADE_LOOP) {
+		FTS_ERROR("[ft5x46] read vendor id failed\n");
+		return -EIO;
+	}
+
+	return vendor_id;
+}
+

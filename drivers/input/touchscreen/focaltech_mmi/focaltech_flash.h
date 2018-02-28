@@ -8,6 +8,8 @@
 extern int fts_ctpm_auto_upgrade(struct i2c_client *client,
 				const char *fw_name,
 				const struct ft_ts_platform_data *pdata);
+extern int fts_flash_read_vendor_id(struct i2c_client *client,
+				const struct ft_ts_platform_data *pdata);
 
 int fts_ctpm_i2c_hid2std(struct i2c_client *client);
 #endif

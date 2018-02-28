@@ -177,6 +177,7 @@ extern void ft8716_set_chip_id(struct ft_chip_t **curr);
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
 extern void ft5x46_set_upgrade_function(struct fts_upgrade_fun **curr);
 extern void ft5x46_set_chip_id(struct ft_chip_t **curr);
+extern int fts_5x46_ctpm_get_vendor_id_flash(struct i2c_client *client);
 #endif
 
 #endif

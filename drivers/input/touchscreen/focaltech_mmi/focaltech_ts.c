@@ -805,22 +805,41 @@ static void ft_irq_enable(struct ft_ts_data *data)
 	}
 }
 
-static const char *ft_find_vendor_name(
-	const struct ft_ts_platform_data *pdata, u8 id)
+static const char *ft_matching_vendor_name(struct ft_ts_data *data, u8 id)
 {
 	int i;
 
-	if (pdata->num_vendor_ids == 0)
-		return NULL;
-
-	for (i = 0; i < pdata->num_vendor_ids; i++)
-		if (id == pdata->vendor_ids[i]) {
+	for (i = 0; i < data->pdata->num_vendor_ids; i++)
+		if (id == data->pdata->vendor_ids[i]) {
 			pr_info("vendor id 0x%02x panel supplier is %s\n",
-				id, pdata->vendor_names[i]);
-			return pdata->vendor_names[i];
+				id, data->pdata->vendor_names[i]);
+			return data->pdata->vendor_names[i];
 		}
 
 	return NULL;
+}
+
+static const char *ft_find_vendor_name(
+	struct ft_ts_data *data, u8 id)
+{
+	struct i2c_client *client = data->client;
+	int flash_id;
+	const char *panel_supplier = NULL;
+
+	if (data->pdata->num_vendor_ids == 0)
+		return NULL;
+
+	panel_supplier = ft_matching_vendor_name(data, id);
+	if (!panel_supplier) {
+		/* The corresponding vendor name could not be found */
+		/* probably because of the failure of firmware upgrade */
+		flash_id = fts_flash_read_vendor_id(client, data->pdata);
+		if (flash_id > 0) {
+			/* Look for the matching vendor name again */
+			panel_supplier = ft_matching_vendor_name(data, flash_id);
+		}
+	}
+	return panel_supplier;
 }
 
 static void ft_update_fw_vendor_id(struct ft_ts_data *data)
@@ -833,7 +852,7 @@ static void ft_update_fw_vendor_id(struct ft_ts_data *data)
 	err = ft_i2c_read(client, &reg_addr, 1, &data->fw_vendor_id, 1);
 	if (err < 0)
 		dev_err(&client->dev, "fw vendor id read failed");
-	data->panel_supplier = ft_find_vendor_name(data->pdata,
+	data->panel_supplier = ft_find_vendor_name(data,
 		data->fw_vendor_id);
 }
 

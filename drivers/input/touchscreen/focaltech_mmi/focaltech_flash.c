@@ -416,3 +416,111 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 	return i_ret;
 }
 
+/************************************************************************
+* Name: fts_fwupg_reset_in_boot
+* Brief: RST CMD(07), reset to romboot(bootloader) in boot environment
+* Input:
+* Output:
+* Return: return 0 if success, otherwise return error code
+***********************************************************************/
+static int fts_fwupg_reset_in_boot(struct i2c_client *client)
+{
+	int ret = 0;
+	u8 cmd = FTS_REG_RESET_FW;
+
+	FTS_DEBUG("reset in boot environment");
+	ret = fts_i2c_write(client, &cmd, 1);
+	if (ret < 0) {
+		FTS_ERROR("pram/rom/bootloader reset cmd write fail");
+		return ret;
+	}
+	msleep(80);
+
+	return 0;
+}
+
+static bool fts_ctpm_check_run_state_common(struct i2c_client *client,
+				int rstate)
+{
+	int i = 0;
+	enum FW_STATUS cstate = FTS_RUN_IN_ERROR;
+
+	for (i = 0; i < FTS_UPGRADE_LOOP; i++) {
+		cstate = fts_ctpm_get_pram_or_rom_id(client);
+		FTS_DEBUG("[VENDORID] run state = %d\n", cstate);
+
+		if (cstate == rstate)
+			return true;
+		msleep(20);
+	}
+
+	return false;
+}
+
+/************************************************************************
+ * Name: fts_flash_read_vendor_id
+ * Brief:
+ * Input:
+ * Output:
+ * Return: vendor id read from flash if sucess, otherwise return error code
+ ***********************************************************************/
+int fts_flash_read_vendor_id(struct i2c_client *client,
+				const struct ft_ts_platform_data *pdata)
+{
+	int ret = 0, vendor_id = 0;
+	bool inrom = false;
+
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716_MMI
+	if (pdata->family_id == FT8716_ID)
+		ft8716_set_chip_id(&fts_chip_type_curr);
+#endif
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
+	if (pdata->family_id == FT5X46_ID)
+		ft5x46_set_chip_id(&fts_chip_type_curr);
+#endif
+	FTS_DEBUG("Family ID: 0x%02x", pdata->family_id);
+	/* No chip type is found, return error */
+	if (fts_chip_type_curr == NULL) {
+		FTS_ERROR("Family ID(0x%02x) not support\n",
+			pdata->family_id);
+		return -EINVAL;
+	}
+
+	fts_ctpm_i2c_hid2std(client);
+
+	FTS_DEBUG("send 0xAA and 0x55 to FW, reset to boot environment");
+
+	fts_i2c_write_reg(client, FTS_RST_CMD_REG1, FTS_UPGRADE_AA);
+	msleep(20);
+	fts_i2c_write_reg(client, FTS_RST_CMD_REG1, FTS_UPGRADE_55);
+	msleep(200);
+
+	inrom = fts_ctpm_check_run_state_common(client, FTS_RUN_IN_BOOTLOADER);
+	if (!inrom) {
+		FTS_ERROR("[VENDORID] not run in bootloader\n");
+		return -EIO;
+	}
+
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
+	 ret = fts_5x46_ctpm_get_vendor_id_flash(client);
+#endif
+
+	/* TODO: Add the function here to get the vendor id from
+	 * flash for 8716 or other chipsets if needed. */
+
+	if (ret < 0) {
+		FTS_ERROR("read flash fail");
+		goto read_flash_err;
+	} else {
+		vendor_id = ret;
+	}
+
+read_flash_err:
+	/* reset to normal boot */
+	ret = fts_fwupg_reset_in_boot(client);
+	if (ret < 0)
+		FTS_ERROR("reset to normal boot fail");
+
+	return (vendor_id > 0) ? vendor_id : ret;
+}
+
