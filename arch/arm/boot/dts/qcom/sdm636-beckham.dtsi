@@ -204,12 +204,12 @@
 	};
 
 	qcom,sensor-information {
-		sensor_information24: qcom,sensor-information-24 {
+		sensor_information25: qcom,sensor-information-25 {
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "front_temp";
 			qcom,scaling-factor = <1000>;
 		};
-		sensor_information25: qcom,sensor-information-25 {
+		sensor_information26: qcom,sensor-information-26 {
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "back_temp";
 			qcom,scaling-factor = <1000>;
