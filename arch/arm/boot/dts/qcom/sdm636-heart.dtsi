@@ -355,6 +355,10 @@
 		idt,chg-efficiency = <70>;
 		idt,chg-limit-soc = <95>;
 		idt,chg-idle-cl = <50>;
+		fod-array-5v-val = [ac 24 88 32 7c 46
+			a2 f7 88 3e 91 2b];
+		fod-array-9v-val = [ac 24 88 32 7c 46
+			a2 f7 88 3e 91 2b];
 	};
 };
 
