@@ -853,6 +853,14 @@ config ALI_DTB
 	  Only include Ali specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config DEEN_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Deen DTBs"
+	help
+	  Only include Deen specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config CEDRIC_DTB
 	depends on ARCH_MSM
 	default n
