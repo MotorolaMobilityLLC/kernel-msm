@@ -16,6 +16,7 @@
 #include "sdm660-internal-codec.dtsi"
 #include "sdm636-flay-audio.dtsi"
 #include "sdm636-egis-fps.dtsi"
+#include "sdm636-camera-sensor-mot-flay.dtsi"
 
 / {
 	model = "flay";
