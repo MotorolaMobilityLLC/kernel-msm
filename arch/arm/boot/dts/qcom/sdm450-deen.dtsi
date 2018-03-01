@@ -37,6 +37,14 @@
 };
 
 &soc {
+	spi_6: spi@7af6000 { /* BLSP2 QUP2 */
+		status = "disabled";
+	};
+
+	i2c_4: i2c@78b8000 {
+		status = "disabled";
+		/delete-node/ motosh@43;
+	};
 
 };
 
