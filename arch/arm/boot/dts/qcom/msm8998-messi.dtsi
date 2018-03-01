@@ -190,3 +190,44 @@
 &mdss_fb0 {
 	qcom,mdss-fb-rot-180;
 };
+
+&red_led {
+	linux,name = "charging";
+	/delete-property/ linux,default-trigger;
+	qcom,ramp-step-ms = <100>;
+	qcom,start-idx = <0>;
+	qcom,idx-len = <42>;
+	qcom,duty-pcts =
+		[00 05 0a 0f 14 19 1e 23 28 2d 32 37 3c 41 46 4b 50 55 5a 5f 64
+		64 5f 5a 55 50 4b 46 41 3c 37 32 2d 28 23 1e 19 14 0f 0a 05 00];
+	qcom,use-blink;
+};
+
+/delete-node/ &green_led;
+/delete-node/ &blue_led;
+
+&mot_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SB18C20118";
+	#include "batterydata-js40-scud-pm660.dtsi"
+	#include "batterydata-js40-swd-pm660.dtsi"
+};
+
+&pmi8998_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-cutoff-voltage = <3200>;
+	qcom,fg-empty-voltage = <3000>;
+	qcom,fg-chg-term-current = <100>;
+	qcom,fg-sys-term-current = <(-200)>;
+	qcom,battery-thermal-coefficients = [9d 50 ff];
+};
+
+&pmi8998_charger {
+	qcom,iterm-ma = <146>;
+	qcom,mmi-temp-zones = <0 4400 529 0>,
+				<10 4200 1323 529>,
+				<15 0 1323 1323>,
+				<45 4250 3000 2000>,
+				<60 4200 2000 0>;
+};
+
