@@ -728,6 +728,8 @@ fail_alarm_disable:
 
 	if ((power_on_alarm_empty() != 1) ||
 		qpnp_rtc_is_rtc_alarm_enabled(rtc_dd)) {
+		qpnp_pon_store_shipmode_info(RESET_SHIPMODE_INFO_SHPMOD_REASON |
+					RESET_SHIPMODE_INFO_ARMED_REASON, 0);
 		dev_warn(&spmi->dev, "Queue not empty unable to setup Shipmode\n");
 		return;
 	}
