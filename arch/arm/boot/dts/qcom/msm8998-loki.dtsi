@@ -12,6 +12,8 @@
 
 #include "msm8998-v2.dtsi"
 #include "msm8998-moto-common.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-p-cmd.dtsi"
 
 / {
 	model = "Loki";
@@ -351,4 +353,8 @@
 	qcom,source-current = <900>;
 	qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
 				 <9000 2000>; /* 9V @ 2A */
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v0>;
 };
