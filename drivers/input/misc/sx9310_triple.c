@@ -1101,10 +1101,6 @@ static int sx9310_probe(struct i2c_client *client,
 
 	LOG_INFO("sx9310_probe()\n");
 
-	/* detect if sx9310 exist or not */
-	if (sx9310_detect(client) == 0)
-		return -ENODEV;
-
 	pplatData = kzalloc(sizeof(pplatData), GFP_KERNEL);
 	sx9310_platform_data_of_init(client, pplatData);
 	client->dev.platform_data = pplatData;
@@ -1114,9 +1110,50 @@ static int sx9310_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
+	pplatData->cap_vdd = regulator_get(&client->dev, "cap_vdd");
+	if (IS_ERR(pplatData->cap_vdd)) {
+		if (PTR_ERR(pplatData->cap_vdd) == -EPROBE_DEFER) {
+			ret = PTR_ERR(pplatData->cap_vdd);
+			LOG_ERR("%s: Failed to get regulator\n", __func__);
+			goto err_vdd_defer;
+		}
+	} else {
+		int error = regulator_enable(pplatData->cap_vdd);
+		if (error) {
+			LOG_ERR("%s: Error %d enable regulator\n",
+				__func__, error);
+			goto err_vdd_enable;
+		}
+		pplatData->cap_vdd_en = true;
+		LOG_INFO("cap_vdd regulator is %s\n",
+				regulator_is_enabled(pplatData->cap_vdd) ?
+				"on" : "off");
+	}
+
+	pplatData->cap_svdd = regulator_get(&client->dev, "cap_svdd");
+	if (!IS_ERR(pplatData->cap_svdd)) {
+		ret = regulator_enable(pplatData->cap_svdd);
+		if (ret) {
+			LOG_ERR("Failed to enable cap_svdd\n");
+			goto err_svdd_enable;
+		}
+		pplatData->cap_svdd_en = true;
+		LOG_INFO("cap_svdd regulator is %s\n",
+				regulator_is_enabled(pplatData->cap_svdd) ?
+				"on" : "off");
+	} else {
+		ret = PTR_ERR(pplatData->cap_svdd);
+		if (ret == -EPROBE_DEFER)
+			goto err_svdd_defer;
+	}
+
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_SMBUS_READ_WORD_DATA))
 		return -EIO;
+
+	/* detect if sx9310 exist or not */
+	if (sx9310_detect(client) == 0)
+		return -ENODEV;
 
 	/* create memory for main struct */
 	this = kzalloc(sizeof(sx93XX_t), GFP_KERNEL);
@@ -1257,46 +1294,6 @@ static int sx9310_probe(struct i2c_client *client,
 				 failed (%d)\n", ret);
 #endif
 
-		pplatData->cap_vdd = regulator_get(&client->dev, "cap_vdd");
-		if (IS_ERR(pplatData->cap_vdd)) {
-			if (PTR_ERR(pplatData->cap_vdd) == -EPROBE_DEFER) {
-				ret = PTR_ERR(pplatData->cap_vdd);
-				goto err_vdd_defer;
-			}
-			LOG_ERR("%s: Failed to get regulator\n",
-					__func__);
-		} else {
-			int error = regulator_enable(pplatData->cap_vdd);
-
-			if (error) {
-				regulator_put(pplatData->cap_vdd);
-				LOG_ERR("%s: Error %d enable regulator\n",
-						__func__, error);
-				return error;
-			}
-			pplatData->cap_vdd_en = true;
-			LOG_INFO("cap_vdd regulator is %s\n",
-				regulator_is_enabled(pplatData->cap_vdd) ?
-				"on" : "off");
-		}
-
-		pplatData->cap_svdd = regulator_get(&client->dev, "cap_svdd");
-		if (!IS_ERR(pplatData->cap_svdd)) {
-			ret = regulator_enable(pplatData->cap_svdd);
-			if (ret) {
-				regulator_put(pplatData->cap_svdd);
-				LOG_ERR("Failed to enable cap_svdd\n");
-				goto err_svdd_error;
-			}
-			pplatData->cap_svdd_en = true;
-			LOG_INFO("cap_svdd regulator is %s\n",
-				regulator_is_enabled(pplatData->cap_svdd) ?
-				"on" : "off");
-		} else {
-			ret = PTR_ERR(pplatData->cap_vdd);
-			if (ret == -EPROBE_DEFER)
-				goto err_svdd_error;
-		}
 		sx93XX_sar_init(this);
 
 		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
@@ -1309,7 +1306,7 @@ static int sx9310_probe(struct i2c_client *client,
 		if (ret) {
 			LOG_ERR(
 				"Unable to register ps_notifier: %d\n", ret);
-			goto free_ps_notifier;
+			goto err_ps_notifier;
 		}
 
 		psy = power_supply_get_by_name("usb");
@@ -1330,15 +1327,24 @@ static int sx9310_probe(struct i2c_client *client,
 free_ps_notifier:
 	power_supply_unreg_notifier(&this->ps_notif);
 
-err_svdd_error:
-	LOG_ERR("%s svdd defer.\n", __func__);
-	regulator_disable(pplatData->cap_vdd);
-	regulator_put(pplatData->cap_vdd);
-
-err_vdd_defer:
+err_ps_notifier:
 	LOG_ERR("%s input free device.\n", __func__);
 	input_free_device(input_top);
 	input_free_device(input_bottom);
+
+	regulator_disable(pplatData->cap_svdd);
+
+err_svdd_enable:
+	regulator_put(pplatData->cap_svdd);
+
+err_svdd_defer:
+	regulator_disable(pplatData->cap_vdd);
+
+err_vdd_enable:
+	regulator_put(pplatData->cap_vdd);
+
+err_vdd_defer:
+	kfree(pplatData);
 
 	return ret;
 }
