@@ -130,6 +130,7 @@ MODULE_ALIAS("ext2");
 #endif
 
 
+#if !defined(CONFIG_EXT3_FS) && !defined(CONFIG_EXT3_FS_MODULE) && defined(CONFIG_EXT4_USE_FOR_EXT3)
 static struct file_system_type ext3_fs_type = {
 	.owner		= THIS_MODULE,
 	.name		= "ext3",
@@ -140,6 +141,9 @@ static struct file_system_type ext3_fs_type = {
 MODULE_ALIAS_FS("ext3");
 MODULE_ALIAS("ext3");
 #define IS_EXT3_SB(sb) ((sb)->s_bdev->bd_holder == &ext3_fs_type)
+#else
+#define IS_EXT3_SB(sb) (0)
+#endif
 
 /*
  * This works like sb_bread() except it uses ERR_PTR for error
@@ -5993,6 +5997,7 @@ static inline void unregister_as_ext2(void) { }
 static inline int ext2_feature_set_ok(struct super_block *sb) { return 0; }
 #endif
 
+#if !defined(CONFIG_EXT3_FS) && !defined(CONFIG_EXT3_FS_MODULE) && defined(CONFIG_EXT4_USE_FOR_EXT3)
 static inline void register_as_ext3(void)
 {
 	int err = register_filesystem(&ext3_fs_type);
@@ -6005,7 +6010,6 @@ static inline void unregister_as_ext3(void)
 {
 	unregister_filesystem(&ext3_fs_type);
 }
-
 static inline int ext3_feature_set_ok(struct super_block *sb)
 {
 	if (ext4_has_unknown_ext3_incompat_features(sb))
@@ -6019,6 +6023,11 @@ static inline int ext3_feature_set_ok(struct super_block *sb)
 	return 1;
 }
 
+#else
+static inline void register_as_ext3(void) { }
+static inline void unregister_as_ext3(void) { }
+static inline int ext3_feature_set_ok(struct super_block *sb) { return 0; }
+#endif
 static struct file_system_type ext4_fs_type = {
 	.owner		= THIS_MODULE,
 	.name		= "ext4",
