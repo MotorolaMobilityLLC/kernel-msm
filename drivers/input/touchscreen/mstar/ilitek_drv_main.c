@@ -3914,7 +3914,7 @@ void drv_get_customer_firmware_version(u16 *pMajor, u16 *pMinor, u8 **ppVersion)
     } else {
         DBG(&g_i2c_client->dev, "*** Minor = %d ***\n", *pMinor);
     }
-    sprintf(*ppVersion, "%05d.%05d", *pMajor, *pMinor);
+    snprintf(*ppVersion, 8, "%02d-%04d", *pMajor, *pMinor);
 }
 
 void drv_get_platform_firmware_version(u8 **ppVersion)
@@ -15955,10 +15955,33 @@ static ssize_t drv_power_on_show(struct device *pDevice, struct device_attribute
 {
 	DBG(&g_i2c_client->dev, "*** %s() g_is_suspend = %d ***\n", __func__, g_is_suspend);
 
-	return snprintf(pBuf, PAGE_SIZE, "%d\n", g_is_suspend);
+	return snprintf(pBuf, PAGE_SIZE, "%d\n", g_is_suspend == 0);
 }
 
 static DEVICE_ATTR(poweron, 0444, drv_power_on_show, NULL);
+
+static ssize_t drv_path_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
+{
+	ssize_t blen;
+	const char *path;
+
+	path = kobject_get_path(&g_i2c_client->dev.kobj, GFP_KERNEL);
+	blen = scnprintf(pBuf, PAGE_SIZE, "%s", path ? path : "na");
+	kfree(path);
+
+	return blen;
+}
+
+static DEVICE_ATTR(path, 0444, drv_path_show, NULL);
+
+static ssize_t drv_vendor_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
+{
+	DBG(&g_i2c_client->dev, "*** %s() vendor = %s ***\n", __func__, "mstar");
+
+	return scnprintf(pBuf, PAGE_SIZE, "%s\n", "mstar");
+}
+
+static DEVICE_ATTR(vendor, 0444, drv_vendor_show, NULL);
 
 static s32 drv_create_system_dir_entry(void)
 {
@@ -16010,6 +16033,14 @@ static s32 drv_create_system_dir_entry(void)
 		if (device_create_file(&g_i2c_client->dev, &dev_attr_poweron) < 0) {
 			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_poweron.attr.name);
 		}
+
+		if (device_create_file(g_firmware_cmd_dev, &dev_attr_path) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_path.attr.name);
+		}
+
+		if (device_create_file(g_firmware_cmd_dev, &dev_attr_vendor) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_vendor.attr.name);
+		}
     }
     return n_ret_val;
 }
@@ -16032,6 +16063,10 @@ static void drv_remove_system_dir_entry(void)
     device_remove_file(&g_i2c_client->dev, &dev_attr_productinfo);
 
     device_remove_file(&g_i2c_client->dev, &dev_attr_poweron);
+
+    device_remove_file(g_firmware_cmd_dev, &dev_attr_path);
+
+    device_remove_file(g_firmware_cmd_dev, &dev_attr_vendor);
 
 }
 
