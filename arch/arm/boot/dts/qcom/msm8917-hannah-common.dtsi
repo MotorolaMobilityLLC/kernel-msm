@@ -355,6 +355,8 @@
 	/delete-property/ qcom,thermal-coefficients;
 	qcom,irq-volt-empty-mv = <3200>;
 	qcom,fg-cutoff-voltage-mv = <3400>;
+	qcom,cl-vbat-est-thr-uv = <300000>;
+	qcom,fg-force-restart-enable;
 };
 
 &pm8937_vadc {
