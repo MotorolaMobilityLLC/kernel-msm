@@ -185,6 +185,24 @@
 	qcom,source-current-ma = <900>;
 };
 
+&rpm_bus {
+	rpm-regulator-ldoa16 {
+		compatible = "qcom,rpm-smd-regulator-resource";
+		qcom,resource-name = "ldoa";
+		qcom,resource-id = <16>;
+		qcom,regulator-type = <0>;
+		status = "okay";
+		pm660_l16: regulator-l16 {
+			compatible = "qcom,rpm-smd-regulator";
+			regulator-name = "pm660_l16";
+			qcom,set = <3>;
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <3000000>;
+			status = "okay";
+		};
+	};
+};
+
 &pm660_pdphy {
 	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
 	qcom,source-current = <900>;
