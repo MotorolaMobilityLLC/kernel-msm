@@ -11,6 +11,9 @@
  */
 
 #include "msm8998-moto-common.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-p-cmd.dtsi"
+
 / {
 	model = "Saratoga";
 	compatible = "qcom,msm8998-saratoga", "qcom,msm8998-moto",
@@ -427,4 +430,8 @@
 
 	/* For reworked boards fly-wired to DISP_BL_RST_N */
 	cd-gpios = <&tlmm 94 0x1>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v0>;
 };
