@@ -18,8 +18,6 @@
 #include "msm8998-camera-sensor-mot.dtsi"
 #include "carrier-channel-ids.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
-#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
-#include "dsi-panel-mot-smd-546-QHD-p-cmd.dtsi"
 #include <moto-mem-reserve.h>
 
 / {
