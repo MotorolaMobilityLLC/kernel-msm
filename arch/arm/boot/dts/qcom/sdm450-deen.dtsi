@@ -12,7 +12,7 @@
 
 #include "msm8953-moto-common.dtsi"
 #include "dsi-panel-mot-boe-565-1080p-vid.dtsi"
-#include "dsi-panel-mot-tianma-565-1080p-vid.dtsi"
+#include "dsi-panel-mot-nova-586-hd-vid.dtsi"
 #include "sdm450-deen-pinctrl.dtsi"
 
  / {
