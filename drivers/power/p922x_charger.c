@@ -104,6 +104,8 @@
 #define ST_OVER_VOLT		BIT(1)
 #define ST_OVER_CURR		BIT(0)
 
+#define CMD_1_RX_RESET		BIT(0)
+
 #define CMD_2_FAST_CHG		BIT(7)
 #define CMD_2_SWITCH_RAM	BIT(6)
 #define CMD_2_CLR_IRQ		BIT(5)
@@ -301,6 +303,7 @@ struct p922x_charger {
 	struct pinctrl		*pinctrl_irq;
 	const char		*pinctrl_name;
 
+	u32			fw_version;
 	u16			irq_en;
 	u16			irq_stat;
 	u16			stat;
@@ -988,8 +991,16 @@ static void p922x_tx_auth_done_work(struct work_struct *work)
 		 */
 		switch (chip->tx_auth_st) {
 		case TX_AUTH_STAT_NONE:
-			p922x_dbg(chip, PR_MOTO, "No authen is received\n");
-			chip->tx_auth_st = TX_AUTH_STAT_DEV_PASSED;
+			if (chip->fw_version >= 0x8000206) {
+				p922x_write_reg(chip, CMD_1_REG,
+						CMD_1_RX_RESET);
+				p922x_dbg(chip, PR_MOTO,
+						"Reset RX for rebooting\n");
+			} else {
+				chip->tx_auth_st = TX_AUTH_STAT_DEV_PASSED;
+				p922x_dbg(chip, PR_MOTO,
+						"No authen is received\n");
+			}
 			break;
 		case TX_AUTH_STAT_ID_PASSED:
 			p922x_write_reg(chip, CMD_2_REG, CMD_2_SEND_AUTH);
@@ -1458,6 +1469,13 @@ static int p922x_prepare_rx(struct p922x_charger *chip)
 {
 	int rc;
 
+	rc = p922x_read_buffer(chip, E2PROM_FW_VER_REG,
+				(u8 *)&chip->fw_version, 4);
+	if (rc < 0) {
+		p922x_err(chip, "Failed to read fw version, rc=%d\n", rc);
+		return rc;
+	}
+
 	chip->irq_en = 0x3FFF;
 	rc = p922x_write_buffer(chip, IRQ_ENABLE_REG, (u8 *)&chip->irq_en, 2);
 	if (rc < 0) {
@@ -1612,16 +1630,13 @@ static irqreturn_t p922x_irq_handler(int irq, void *dev_id)
 static ssize_t fw_ver_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	int rc;
-	u8 ver[4];
 	struct p922x_charger *chip = dev_get_drvdata(dev);
 
-	rc = p922x_read_buffer(chip, E2PROM_FW_VER_REG, ver, 4);
-	if (rc < 0)
-		return rc;
-
 	return scnprintf(buf, WLS_SHOW_MAX_SIZE, "%02d.%02d.%02d.%02d\n",
-					ver[3], ver[2], ver[1], ver[0]);
+					(chip->fw_version >> 24) & 0xFF,
+					(chip->fw_version >> 16) & 0xFF,
+					(chip->fw_version >> 8) & 0xFF,
+					chip->fw_version & 0xFF);
 }
 static DEVICE_ATTR(fw_ver, S_IRUGO, fw_ver_show, NULL);
 
