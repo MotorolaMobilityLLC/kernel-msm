@@ -11,6 +11,8 @@
  */
 
 #include "msm8998-moto-common.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-p-cmd.dtsi"
 
 / {
 	model = "Nash";
@@ -181,4 +183,8 @@
 
 &mdss_fb0 {
 	qcom,mdss-fb-rot-180;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v0>;
 };
