@@ -19,6 +19,8 @@
 
 #include "msm8998-v2.dtsi"
 #include "msm8998-moto-common.dtsi"
+#include "dsi-panel-mot-smd-601-1080p-messie-cmd.dtsi"
+#include "dsi-panel-mot-tianma-601-1080p-messie-cmd.dtsi"
 
 / {
 	model = "Messi";
@@ -187,10 +189,6 @@
 	};
 };
 
-&mdss_fb0 {
-	qcom,mdss-fb-rot-180;
-};
-
 &red_led {
 	linux,name = "charging";
 	/delete-property/ linux,default-trigger;
@@ -229,5 +227,9 @@
 				<15 0 1323 1323>,
 				<45 4250 3000 2000>,
 				<60 4200 2000 0>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_601_1080p_cmd_v0>;
 };
 
