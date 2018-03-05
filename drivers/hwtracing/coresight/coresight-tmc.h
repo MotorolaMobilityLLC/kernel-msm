@@ -268,6 +268,7 @@ struct tmc_drvdata {
 	struct idr		idr;
 	struct mutex		idr_mutex;
 	struct etr_buf		*perf_buf;
+	bool			force_reg_dump;
 };
 
 struct etr_buf_operations {
