@@ -2182,7 +2182,7 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 				module_id = 0;
 			CDBG("match id for %s module_id=%d\n",
 			     eb_info->eeprom_name, module_id);
-			if (module_id == 0x0B) {
+			if (module_id == 0x0B || module_id == 0x01) {
 				CDBG("match id for %s success\n",
 				     eb_info->eeprom_name);
 				aux_module_id = module_id;
