@@ -208,6 +208,24 @@
 	cd-gpios = <&tlmm 133 0x0>;
 };
 
+&soc {
+	usb_otg_switch: usb-otg-switch {
+		vin-supply = <&smbcharger_charger_otg>;
+		/delete-property/ gpio;
+	};
+
+	usb3: ssusb@7000000{
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ qcom,otg-fault-gpio;
+		mmi,dcp-max-current = <2000>;
+	};
+
+	qcom,bcl {
+		qcom,bcl-charger-mitigate-enable;
+	};
+};
+
 &pmi8950_charger {
 	/delete-property/ pinctrl-names;
 	/delete-property/ pinctrl-0;
