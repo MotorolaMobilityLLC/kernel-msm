@@ -279,3 +279,10 @@
 	qcom,cl-vbat-est-thr-uv = <300000>;
 	qcom,fg-force-restart-enable;
 };
+
+&pmi_haptic {
+	qcom,lra-auto-res-mode="qwd";
+	qcom,lra-res-cal-period = <0>;
+	qcom,wave-play-rate-us = <4878>;
+	qcom,vmax-mv = <1850>;
+};
