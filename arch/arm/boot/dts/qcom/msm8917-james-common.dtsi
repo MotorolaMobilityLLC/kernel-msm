@@ -430,6 +430,11 @@
 	qcom,fs-curr-ua = <25000>;
 	qcom,cons-sync-write-delay-us = <1000>;
 	qcom,en-cabc;
+	reg = <0xd800 0x100>,
+		<0xd900 0x100>;
+	reg-names = "qpnp-wled-ctrl-base",
+			"qpnp-wled-sink-base";
+	qcom,en-phase-stag;
 };
 
 &spmi_bus {
