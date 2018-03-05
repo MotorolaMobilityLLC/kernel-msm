@@ -23,7 +23,9 @@ dtb-$(CONFIG_ARCH_SDM660) += sdm660-beckham-evt1.dtb \
 	sdm636-beckham-dvt1a.dtb \
 	sdm636-beckham-dvt1b.dtb \
 	sdm636-beckham-dvt2a.dtb \
-	sdm636-beckham-dvt2b.dtb
+	sdm636-beckham-dvt2b.dtb \
+	sdm636-beckham-dvt3.dtb \
+	sdm636-beckham-pvt.dtb
 endif
 
 ifeq ($(CONFIG_PAYTON_DTB),y)
