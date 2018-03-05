@@ -204,3 +204,6 @@
 	qcom,qpnp-ibb-discharge-resistor = <32>;
 };
 
+&sdhc_2 {
+	cd-gpios = <&tlmm 133 0x0>;
+};
