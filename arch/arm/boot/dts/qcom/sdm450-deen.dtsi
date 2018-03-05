@@ -36,6 +36,18 @@
 	};
 };
 
+&i2c_3 {
+	status = "ok";
+	/delete-node/ synaptics_dsx_i2c@20;
+	novatek@62 {
+		compatible = "novatek,NVT-ts";
+		reg = <0x62>;
+		status = "ok";
+		novatek,reset-gpio = <&tlmm 64 0x00>;
+		novatek,irq-gpio = <&tlmm 65 0x2001>;
+	};
+};
+
 &soc {
 
 	muc: muc {
