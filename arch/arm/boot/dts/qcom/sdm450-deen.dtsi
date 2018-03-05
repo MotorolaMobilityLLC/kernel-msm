@@ -207,3 +207,45 @@
 &sdhc_2 {
 	cd-gpios = <&tlmm 133 0x0>;
 };
+
+&pmi8950_charger {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ gpios;
+	/delete-property/ gpio-names;
+
+	qcom,max-usbin-current-ma = <3000>;
+	qcom,step-chg-steps = <4200 3000 2000>,
+				<4400 2000 1600>;
+	qcom,auto-voltage-comp-mv = <150>;
+	qcom,prop-flash-active;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
+	qcom,pd-charger-force-5v;
+	qcom,stepchg-iterm-ma = <146>;
+
+	smbcharger_charger_otg: qcom,smbcharger-boost-otg {
+		status = "okay";
+		regulator-name = "smbcharger_charger_otg";
+	};
+};
+
+/{
+	/delete-node/ qcom,battery-data;
+	mot_batterydata: qcom,battery-data {
+		df-serialnum = "SB18C15119";
+		#include "batterydata-hg30-atl-ali.dtsi"
+		#include "batterydata-hg30-scud.dtsi"
+	};
+};
+
+&pmi8950_fg {
+	/delete-property/ qcom,battery-data;
+	qcom,thermal-coefficients =  /bits/ 16 <0xB785 0xB249 0x7135>;
+	qcom,irq-volt-empty-mv = <3000>;
+	qcom,fg-cutoff-voltage-mv = <3200>;
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,cl-vbat-est-thr-uv = <300000>;
+	qcom,fg-force-restart-enable;
+};
