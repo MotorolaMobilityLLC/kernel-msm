@@ -69,6 +69,42 @@
 		qcom,clock-rates = <24000000 0>;
 	};
 
+	eeprom1: qcom,eeprom@1 {
+		cell-index = <1>;
+		compatible = "qcom,eeprom";
+		reg = <0x01>;
+		cam_vdig-supply = <&pm8917_l23>;
+		cam_vio-supply = <&pm8917_l6>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
+		qcom,cam-vreg-min-voltage = <1200000 1800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000>;
+		qcom,cam-vreg-op-mode = <200000 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_default
+				&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk1_sleep
+				&cam_sensor_front_sleep>;
+		gpios = <&tlmm 28 0>,
+			<&tlmm 40 0>,
+			<&tlmm 38 0>,
+			<&tlmm 39 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-standby = <2>;
+		qcom,gpio-vana = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+			"CAM_RESET1",
+			"CAM_STANDBY1",
+			"CAM_AVDD1";
+		qcom,cci-master = <0>;
+		clocks = <&clock_gcc clk_mclk2_clk_src>,
+			<&clock_gcc clk_gcc_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;  ///TODO: 26MHZ for densense later
+	};
+
 	eeprom2: qcom,eeprom@2 {
 		cell-index = <2>;
 		compatible = "qcom,eeprom";
@@ -153,6 +189,7 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
+		qcom,eeprom-src = <&eeprom1>;
 		qcom,led-flash-src = <&led_flash0>;
 		cam_vdig-supply = <&pm8917_l23>;
 		cam_vio-supply = <&pm8917_l6>;
