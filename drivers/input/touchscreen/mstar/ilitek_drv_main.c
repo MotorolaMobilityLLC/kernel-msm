@@ -16046,11 +16046,19 @@ static s32 drv_create_system_dir_entry(void)
 }
 static void drv_remove_system_dir_entry(void)
 {
-    DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
+	DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
+
+	if (g_firmware_cmd_dev)
+	{
+		device_remove_file(g_firmware_cmd_dev, &dev_attr_path);
+
+		device_remove_file(g_firmware_cmd_dev, &dev_attr_vendor);
+
+		device_unregister(g_firmware_cmd_dev);
+	}
+
 	if (g_firmware_class)
 		class_unregister(g_firmware_class);
-
-    device_unregister(g_firmware_cmd_dev);
 
     device_remove_file(&g_i2c_client->dev, &dev_attr_buildid);
 
@@ -16063,10 +16071,6 @@ static void drv_remove_system_dir_entry(void)
     device_remove_file(&g_i2c_client->dev, &dev_attr_productinfo);
 
     device_remove_file(&g_i2c_client->dev, &dev_attr_poweron);
-
-    device_remove_file(g_firmware_cmd_dev, &dev_attr_path);
-
-    device_remove_file(g_firmware_cmd_dev, &dev_attr_vendor);
 
 }
 
