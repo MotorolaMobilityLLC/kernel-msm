@@ -106,6 +106,10 @@
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
 		/delete-node/ fusb302@22;
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "deen";
+	};
 };
 
 &wled {
