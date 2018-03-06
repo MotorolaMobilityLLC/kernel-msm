@@ -504,8 +504,8 @@
 	};
 };
 &mot_batterydata {
-	df-serialnum = "SNN5976A";
-	#include "batterydata-gk40-atl.dtsi"
+	qcom,batt-id-range-pct = <15>;
+	#include "batterydata-je30-atl.dtsi"
 };
 
 &pmi_haptic {
