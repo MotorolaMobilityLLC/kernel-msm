@@ -60,4 +60,22 @@
 			};
 		};
 	};
+
+	abov_int_pin {
+		/* qcom,pins = <&gp 48>;*/
+		pins = "gpio86";
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "abov_int_pin";
+
+		abov_int_default: int_default {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		abov_int_sleep: int_sleep {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
 };
