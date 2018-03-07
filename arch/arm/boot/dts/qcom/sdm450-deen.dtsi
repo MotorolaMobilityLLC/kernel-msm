@@ -14,6 +14,7 @@
 #include "dsi-panel-mot-boe-565-1080p-vid.dtsi"
 #include "dsi-panel-mot-nova-586-hd-vid.dtsi"
 #include "sdm450-deen-pinctrl.dtsi"
+#include "sdm450-camera-sensor-mot-deen.dtsi"
 
  / {
 	model = "deen";
@@ -127,6 +128,7 @@
 	qcom,msm-thermal {
 		qcom,config-info = "deen";
 	};
+	/delete-node/ hd3ss460;
 };
 
 &wled {
