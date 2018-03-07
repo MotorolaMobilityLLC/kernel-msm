@@ -11,7 +11,7 @@
  */
 
 #include "msm8953-moto-common.dtsi"
-#include "dsi-panel-mot-boe-565-1080p-vid.dtsi"
+#include "dsi-panel-mot-tianma-586-720p-vid.dtsi"
 #include "dsi-panel-mot-nova-586-hd-vid.dtsi"
 #include "sdm450-deen-pinctrl.dtsi"
 #include "sdm450-camera-sensor-mot-deen.dtsi"
@@ -265,7 +265,7 @@
 	pinctrl-0 = <&mdss_dsi_active>;
 	pinctrl-1 = <&mdss_dsi_suspend>;
 
-	qcom,dsi-pref-prim-pan = <&mot_boe_565_1080p_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_586_720p_vid_v0>;
 
 	/delete-property/ vdd-supply;
 	vddio_disp-supply = <&pm8953_l6>;
