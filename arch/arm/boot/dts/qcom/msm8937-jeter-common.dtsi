@@ -140,6 +140,7 @@
 	sar_abov:abov@20 {
 		compatible = "abov,abov_sar";
 		reg = <0x20>;
+		label = "AbovCapSense";
 		cap_vdd-supply = <&pm8937_l10>;
 		cap_svdd-supply = <&pm8937_l5>;
 		interrupt-parent = <&tlmm>;
