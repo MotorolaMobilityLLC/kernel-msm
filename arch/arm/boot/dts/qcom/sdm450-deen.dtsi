@@ -93,11 +93,32 @@
 	spi_6: spi@7af6000 { /* BLSP2 QUP2 */
 		status = "disabled";
 	};
+	spi_8: spi@7af8000 { /* BLSP2 QUP3 */
+		status = "disabled";
+		/delete-node/ fpc_fpc1020@0;
+	};
 
 	i2c_4: i2c@78b8000 {
 		status = "disabled";
 		/delete-node/ motosh@43;
 	};
+	et320: et320{
+		compatible = "egistec,et320";
+		status = "ok";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <48 0x0>;
+		egistec,gpio_irq    = <&tlmm 48 0x0>;
+		egistec,gpio_rst    = <&tlmm 8 0x0>;
+		egistec,gpio_ldo1p8_en = <&tlmm 36 0x0>;
+		egistec,gpio_ldo3p3_en = <&tlmm 12 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 =
+		<&rst_active &int_active &ldo_en_active &ldo3_en_active>;
+		pinctrl-1 =
+		<&rst_suspend &int_suspend &ldo_en_suspend &ldo3_en_suspend>;
+	};
+
 
 	fsusb42 {
 		status = "disabled";
