@@ -12,6 +12,7 @@
 #define DEBUG
 #define DRIVER_NAME "abov_sar"
 #define USE_SENSORS_CLASS
+#define USE_KERNEL_SUSPEND
 
 #define MAX_WRITE_ARRAY_SIZE 32
 #include <linux/module.h>
@@ -1299,7 +1300,7 @@ static ssize_t capsense_fw_ver_show(struct class *class,
 
 	read_register(this, ABOV_VERSION_REG, &fw_version);
 
-	return snprintf(buf, 16, "0x%x\n", fw_version);
+	return snprintf(buf, 16, "ABOV:0x%x\n", fw_version);
 }
 
 static ssize_t capsense_update_fw_store(struct class *class,
@@ -1691,7 +1692,7 @@ static int abov_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	pabovXX_t this = i2c_get_clientdata(client);
 
-	abovXX_sar_suspend(this);
+	abovXX_suspend(this);
 	return 0;
 }
 /***** Kernel Resume *****/
@@ -1699,7 +1700,7 @@ static int abov_resume(struct i2c_client *client)
 {
 	pabovXX_t this = i2c_get_clientdata(client);
 
-	abovXX_sar_resume(this);
+	abovXX_resume(this);
 	return 0;
 }
 /*====================================================*/
@@ -1882,26 +1883,17 @@ static void abovXX_worker_func(struct work_struct *work)
 }
 #endif
 
-void abovXX_sar_suspend(pabovXX_t this)
+void abovXX_suspend(pabovXX_t this)
 {
 	if (this) {
+		LOG_INFO("ABOV suspend: disable irq!\n");
 		disable_irq(this->irq);
-		write_register(this, ABOV_CTRL_MODE_RET, 0x02);
 	}
 }
-void abovXX_sar_resume(pabovXX_t this)
+void abovXX_resume(pabovXX_t this)
 {
 	if (this) {
-#ifdef USE_THREADED_IRQ
-		mutex_lock(&this->mutex);
-		/* Just in case need to reset any uncaught interrupts */
-		abovXX_process_interrupt(this, 0);
-		mutex_unlock(&this->mutex);
-#else
-		abovXX_schedule_work(this, 0);
-#endif
-		if (this->init)
-			this->init(this);
+		LOG_INFO("ABOV resume: enable irq!\n");
 		enable_irq(this->irq);
 	}
 }
