@@ -435,6 +435,11 @@
 	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
 	qcom,bridge-name = "mot_dba";
 
+	qcom,mdss-dsi-lane-0-state;
+	qcom,mdss-dsi-lane-1-state;
+	qcom,mdss-dsi-lane-2-state;
+	qcom,mdss-dsi-lane-3-state;
+
 	/* These power supplies are for DBA panel */
 	qcom,panel-supply-entries {
 		#address-cells = <1>;
