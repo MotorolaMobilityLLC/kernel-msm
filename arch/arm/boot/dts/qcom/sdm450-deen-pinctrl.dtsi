@@ -199,4 +199,35 @@
 			};
 		};
 	};
+
+	sec-tlmm-lines {
+		sec_tlmm_lines_act: sec_tlmm_lines_act {
+			mux {
+				pins = "gpio135", "gpio136",
+				"gpio137", "gpio138";
+				function = "sec_mi2s";
+			};
+
+			config {
+				pins = "gpio135", "gpio136",
+				"gpio137", "gpio138";
+				drive-strength = <8>;
+			};
+		};
+
+		sec_tlmm_lines_sus: sec_tlmm_lines_sus {
+			mux {
+				pins = "gpio135", "gpio136",
+				"gpio137", "gpio138";
+				function = "sec_mi2s";
+			};
+
+			config {
+				pins = "gpio135", "gpio136",
+				"gpio137", "gpio138";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
 };
