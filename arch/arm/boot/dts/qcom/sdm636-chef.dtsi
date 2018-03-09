@@ -239,4 +239,6 @@
 	qcom,vmax-mv = <2600>;
 	qcom,ilim-ma = <800>;
 	qcom,wave-play-rate-us = <4761>;
+	/delete-property/ qcom,correct-lra-drive-freq;
+	qcom,lra-hw-auto-resonance;
 };
