@@ -158,6 +158,7 @@
 		gpios = <&tlmm 32 0>,
 			<&tlmm 46 0>;
 		qcom,gpio-reset = <1>;
+		qcom,gpio-vaf = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0", "CAM_RESET0";
@@ -215,6 +216,7 @@
 		gpios = <&tlmm 33 0>,
 					<&tlmm 52 0>;
 		qcom,gpio-reset = <1>;
+		qcom,gpio-vaf = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2", "CAM_RESET2";
@@ -274,6 +276,7 @@
 		gpios = <&tlmm 33 0>,
 			<&tlmm 52 0>;
 		qcom,gpio-reset = <1>;
+		qcom,gpio-vaf = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
