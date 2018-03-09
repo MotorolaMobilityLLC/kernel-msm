@@ -50,6 +50,33 @@ qcom,mdss-dsi-off-command = [
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
+qcom,mdss-dsi-cabc-ui-command = [
+	39 01 00 00 00 00 03 50 5A 23
+	15 01 00 00 00 00 02 95 01
+	15 01 00 00 00 00 02 50 00];
+qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-mv-command = [
+	39 01 00 00 00 00 03 50 5A 23
+	15 01 00 00 00 00 02 95 03
+	15 01 00 00 00 00 02 50 00];
+qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-dis-command = [
+	39 01 00 00 00 00 03 50 5A 23
+	15 01 00 00 00 00 02 95 00
+	15 01 00 00 00 00 02 50 00];
+qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-on-command = [
+	39 01 00 00 00 00 03 50 5A 23
+	39 01 00 00 00 00 03 90 FF 0F
+	15 01 00 00 00 00 02 50 00];
+qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-off-command = [
+	39 01 00 00 00 00 03 50 5A 23
+	39 01 00 00 00 00 03 90 CC 0C
+	15 01 00 00 00 00 02 50 00];
+qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
+
 qcom,mdss-dsi-h-sync-pulse = <0>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
 qcom,mdss-dsi-bllp-eof-power-mode;
