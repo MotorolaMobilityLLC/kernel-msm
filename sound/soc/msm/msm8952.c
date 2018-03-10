@@ -392,6 +392,25 @@ static int msm_auxpcm_be_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+#ifdef CONFIG_SND_SOC_TFA9874
+static int msm_quat_mi2s_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+
+	struct snd_interval *channels = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s: Num of channels = %d Sample rate = %d\n", __func__,
+			msm_pri_mi2s_rx_ch, mi2s_rx_sample_rate);
+	rate->min = rate->max = SAMPLING_RATE_48KHZ;
+	channels->min = channels->max = 2;
+
+	return 0;
+}
+#endif
+
 static int msm_mi2s_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -425,7 +444,7 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-
+#ifndef CONFIG_SND_SOC_TFA9874
 static int msm_senary_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -439,7 +458,7 @@ static int msm_senary_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-
+#endif
 
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
@@ -499,6 +518,22 @@ static int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	rate->min = rate->max = 48000;
 	return 0;
 }
+
+#ifdef CONFIG_SND_SOC_TFA9874
+static int msm_quat_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params)
+{
+	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+			       SNDRV_PCM_FORMAT_S16_LE);
+	else
+		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+			       SNDRV_PCM_FORMAT_S16_LE);
+	return 0;
+}
+#endif
 
 static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params)
@@ -1818,11 +1853,19 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
+#ifdef CONFIG_SND_SOC_TFA9874
+static struct snd_soc_ops msm8952_quat_mi2s_be_ops = {
+	.startup = msm_quat_mi2s_snd_startup,
+	.hw_params = msm_quat_mi2s_snd_hw_params,
+	.shutdown = msm_quat_mi2s_snd_shutdown,
+};
+#else
 static struct snd_soc_ops msm8952_quat_mi2s_be_ops = {
 	.startup = msm_quat_mi2s_snd_startup,
 	.hw_params = msm_mi2s_snd_hw_params,
 	.shutdown = msm_quat_mi2s_snd_shutdown,
 };
+#endif
 
 static struct snd_soc_ops msm8952_quin_mi2s_be_ops = {
 	.startup = msm_quin_mi2s_snd_startup,
@@ -2328,6 +2371,24 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#ifdef CONFIG_SND_SOC_TFA9874
+	{ /* hw:x,26 */
+		.name = "QUAT_MI2S_TX Hostless",
+		.stream_name = "Quaternary MI2S_TX Hostless Capture",
+		.cpu_dai_name = "QUAT_MI2S_TX_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+#else
 	{/* hw:x,26 */
 		.name = LPASS_BE_SENARY_MI2S_TX,
 		.stream_name = "Senary_mi2s Capture",
@@ -2343,6 +2404,7 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.dpcm_capture = 1,
 		.ignore_pmdown_time = 1,
 	},
+#endif
 	{/* hw:x,27 */
 		.name = "MSM8X16 Compress3",
 		.stream_name = "Compress3",
@@ -2712,6 +2774,36 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.ops = &msm8952_quat_mi2s_be_ops,
 		.ignore_suspend = 1,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+	},
+#elif defined(CONFIG_SND_SOC_TFA9874)
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "tfa98xx-aif-2-34",
+		.codec_name = "tfa98xx.2-0034",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_quat_mi2s_rx_be_hw_params_fixup,
+		.ops = &msm8952_quat_mi2s_be_ops,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "tfa98xx-aif-2-34",
+		.codec_name = "tfa98xx.2-0034",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8952_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
 	},
 #else
 	{
