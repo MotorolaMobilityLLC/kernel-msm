@@ -3905,7 +3905,7 @@ void drv_get_customer_firmware_version(u16 *pMajor, u16 *pMinor, u8 **ppVersion)
         *pMinor = (sz_rx_data[3] << 8) + sz_rx_data[2];
     }
     if (*ppVersion == NULL)
-        *ppVersion = kzalloc(sizeof(u8) * 11, GFP_KERNEL);
+		*ppVersion = kzalloc(sizeof(u8) * 12, GFP_KERNEL);
 
     DBG(&g_i2c_client->dev, "*** Major = %d ***\n", *pMajor);
     if (g_fw_version_flag) {
@@ -3914,7 +3914,7 @@ void drv_get_customer_firmware_version(u16 *pMajor, u16 *pMinor, u8 **ppVersion)
     } else {
         DBG(&g_i2c_client->dev, "*** Minor = %d ***\n", *pMinor);
     }
-    snprintf(*ppVersion, 8, "%02d-%04d", *pMajor, *pMinor);
+    snprintf(*ppVersion, 12, "%05d.%05d", *pMajor, *pMinor);
 }
 
 void drv_get_platform_firmware_version(u8 **ppVersion)
@@ -15820,22 +15820,38 @@ static s32 drv_create_procfs_dir_entry(void)
 
 static ssize_t drv_build_id_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
 {
-	DBG(&g_i2c_client->dev, "*** %s() _gFwVersion = %s ***\n", __func__, g_fw_version);
+	u16 n_major = 0, n_minor = 0;
+	char version[8] = {0};
+	int retry = 0;
 
-	return scnprintf(pBuf, PAGE_SIZE, "%s\n", g_fw_version);
+	while ((n_major | n_minor) == 0 && retry++ < 3) {
+		drv_get_customer_firmware_version(&n_major, &n_minor, &g_fw_version);
+		snprintf(version, ARRAY_SIZE(version), "%02d-%04d", n_major, n_minor);
+	}
+	DBG(&g_i2c_client->dev, "*** %s() _gFwVersion = %s ***\n", __func__, version);
+
+	return scnprintf(pBuf, PAGE_SIZE, "%s\n", version);
 }
-/*
-static ssize_t drv_build_id_store(struct device *pDevice, struct device_attribute *pAttr, const char *pBuf, size_t nSize)
-{
-    u16 n_major = 0, n_minor = 0;
 
-    drv_get_customer_firmware_version(&n_major, &n_minor, &g_fw_version);
-
-	DBG(&g_i2c_client->dev, "*** %s() _gFwVersion = %s ***\n", __func__, g_fw_version);
-
-    return nSize;
-}*/
 static DEVICE_ATTR(buildid, 0444, drv_build_id_show, NULL);
+
+static ssize_t drv_reset_store(struct device *pDevice, struct device_attribute *pAttr,
+						const char *pBuf, size_t nSize)
+{
+	if ('1' != pBuf[0]) {
+		pr_err("Invaild argument for reset\n");
+		return -EINVAL;
+	}
+
+	drv_disable_finger_touch_report();
+	drv_touch_device_hw_reset();
+	msleep(50);
+	drv_enable_finger_touch_report();
+
+	return nSize;
+}
+
+static DEVICE_ATTR(reset, 0220, NULL, drv_reset_store);
 
 static ssize_t drv_dore_flash_store(struct device *pDevice, struct device_attribute *pAttr, const char *pBuf, size_t nSize)
 {
@@ -16034,6 +16050,10 @@ static s32 drv_create_system_dir_entry(void)
 			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_poweron.attr.name);
 		}
 
+		if (device_create_file(&g_i2c_client->dev, &dev_attr_reset) < 0) {
+			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_reset.attr.name);
+		}
+
 		if (device_create_file(g_firmware_cmd_dev, &dev_attr_path) < 0) {
 			DBG(&g_i2c_client->dev, "Failed to create device file(%s)!\n", dev_attr_path.attr.name);
 		}
@@ -16071,6 +16091,8 @@ static void drv_remove_system_dir_entry(void)
     device_remove_file(&g_i2c_client->dev, &dev_attr_productinfo);
 
     device_remove_file(&g_i2c_client->dev, &dev_attr_poweron);
+
+	device_remove_file(&g_i2c_client->dev, &dev_attr_reset);
 
 }
 
