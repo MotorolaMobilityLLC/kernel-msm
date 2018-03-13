@@ -208,9 +208,9 @@
 		qcom,torch-source = <&pmi8950_torch0 &pmi8950_torch1>;
 		qcom,switch-source = <&pmi8950_switch>;
 	};
-	led_flash1: qcom,camera-led-flash {
+	led_flash1: qcom,camera-gpio-flash {
 		cell-index = <1>;
-		compatible = "qcom,camera-led-flash";
+		compatible = "qcom,camera-gpio-flash";
 		qcom,flash-type = <1>;
 		qcom,flash-name = "led_flash1";
 		qcom,gpio-no-mux = <0>;
