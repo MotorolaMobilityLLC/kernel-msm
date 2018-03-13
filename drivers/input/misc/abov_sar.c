@@ -12,6 +12,7 @@
 #define DEBUG
 #define DRIVER_NAME "abov_sar"
 #define USE_SENSORS_CLASS
+#define USE_KERNEL_SUSPEND
 
 #define MAX_WRITE_ARRAY_SIZE 32
 #include <linux/module.h>
@@ -640,7 +641,7 @@ static ssize_t capsense_enable_store(struct class *class,
 	if (!count || (this == NULL))
 		return -EINVAL;
 
-	if (!strncmp(buf, "1", 1)) {
+	if ((!strncmp(buf, "1", 1)) && (mEnabled == 0)) {
 		LOG_DBG("enable cap sensor\n");
 		initialize(this);
 
@@ -649,7 +650,7 @@ static ssize_t capsense_enable_store(struct class *class,
 		input_report_abs(input_bottom, ABS_DISTANCE, 0);
 		input_sync(input_bottom);
 		mEnabled = 1;
-	} else if (!strncmp(buf, "0", 1)) {
+	} else if ((!strncmp(buf, "0", 1)) && (mEnabled == 1)) {
 		LOG_DBG("disable cap sensor\n");
 
 		write_register(this, ABOV_CTRL_MODE_RET, 0x02);
@@ -678,7 +679,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev, unsigned 
 	input_top = pDevice->pbuttonInformation->input_top;
 	input_bottom = pDevice->pbuttonInformation->input_bottom;
 
-	if (enable == 1) {
+	if ((enable == 1) && (mEnabled == 0)) {
 		LOG_DBG("enable cap sensor\n");
 		initialize(this);
 
@@ -687,7 +688,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev, unsigned 
 		input_report_abs(input_bottom, ABS_DISTANCE, 0);
 		input_sync(input_bottom);
 		mEnabled = 1;
-	} else if (enable == 0) {
+	} else if ((enable == 0) && (mEnabled == 1)) {
 		LOG_DBG("disable cap sensor\n");
 
 		write_register(this, ABOV_CTRL_MODE_RET, 0x02);
@@ -1709,7 +1710,7 @@ static int abov_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	pabovXX_t this = i2c_get_clientdata(client);
 
-	abovXX_sar_suspend(this);
+	abovXX_suspend(this);
 	return 0;
 }
 /***** Kernel Resume *****/
@@ -1717,7 +1718,7 @@ static int abov_resume(struct i2c_client *client)
 {
 	pabovXX_t this = i2c_get_clientdata(client);
 
-	abovXX_sar_resume(this);
+	abovXX_resume(this);
 	return 0;
 }
 /*====================================================*/
@@ -1900,26 +1901,17 @@ static void abovXX_worker_func(struct work_struct *work)
 }
 #endif
 
-void abovXX_sar_suspend(pabovXX_t this)
+void abovXX_suspend(pabovXX_t this)
 {
 	if (this) {
+		LOG_INFO("ABOV suspend: disable irq!\n");
 		disable_irq(this->irq);
-		write_register(this, ABOV_CTRL_MODE_RET, 0x02);
 	}
 }
-void abovXX_sar_resume(pabovXX_t this)
+void abovXX_resume(pabovXX_t this)
 {
 	if (this) {
-#ifdef USE_THREADED_IRQ
-		mutex_lock(&this->mutex);
-		/* Just in case need to reset any uncaught interrupts */
-		abovXX_process_interrupt(this, 0);
-		mutex_unlock(&this->mutex);
-#else
-		abovXX_schedule_work(this, 0);
-#endif
-		if (this->init)
-			this->init(this);
+		LOG_INFO("ABOV resume: enable irq!\n");
 		enable_irq(this->irq);
 	}
 }
