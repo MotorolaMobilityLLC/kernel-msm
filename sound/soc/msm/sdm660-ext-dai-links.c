@@ -942,7 +942,8 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.no_pcm = 1,
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
-		.params = &cs35l35_params,
+		.params = &cs35l36_params[0],
+		.num_params = ARRAY_SIZE(cs35l36_params),
 	},
 
 #else
