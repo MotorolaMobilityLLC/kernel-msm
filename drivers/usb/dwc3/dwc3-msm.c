@@ -522,6 +522,8 @@ static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
 		return;
 
 	mdwc->ext_enabled = enable;
+	if (mdwc->hs_phy)
+		mdwc->hs_phy->mods_usb_enabled = enable;
 
 	if (atomic_read(&dwc->in_lpm) && atomic_read(&mdwc->pm_suspended))
 		mdwc->resume_pending = true;
