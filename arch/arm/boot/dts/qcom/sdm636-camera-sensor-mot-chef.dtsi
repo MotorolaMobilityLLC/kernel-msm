@@ -277,6 +277,7 @@
 			<&tlmm 52 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vaf = <0>;
+		qcom,gpio-vana = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
