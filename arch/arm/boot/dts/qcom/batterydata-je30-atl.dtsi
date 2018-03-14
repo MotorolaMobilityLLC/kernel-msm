@@ -1,48 +1,59 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 
 qcom,je30-atl {
-	/* #JE40atl_2120mAh_averaged_MasterSlave_Mar5th2018*/
+	/* #3340287_Wingtech_JE40atl_2120mAh_averaged_MasterSlave_Mar12th2018*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <2120>;
 	qcom,batt-id-kohm = <47>;
 	qcom,battery-beta = <3435>;
 	qcom,battery-type = "je30-atl_2120mah";
-	qcom,chg-rslow-comp-c1 = <3203377>;
-	qcom,chg-rslow-comp-c2 = <4322939>;
-	qcom,chg-rs-to-rslow = <1120938>;
-	qcom,chg-rslow-comp-thr = <0xA0>;
+	qcom,chg-rslow-comp-c1 = <3418355>;
+	qcom,chg-rslow-comp-c2 = <4985067>;
+	qcom,chg-rs-to-rslow = <1173953>;
+	qcom,chg-rslow-comp-thr = <0xA8>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
-	qcom,checksum = <0xD39C>;
+	qcom,checksum = <0x12A3>;
 	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
 	qcom,fg-profile-data = [
-		 0C 88 3D 7E
-		 A7 81 CE 77
-		 3E 83 74 72
-		 42 7E F5 7A
-		 E9 81 F2 9B
-		 88 BF DC D0
-		 89 10 02 88
-		 7A 7D 45 81
-		 6F 77 31 83
-		 BD 79 8C 87
-		 E8 83 24 82
-		 54 9B BF BF
-		 AA D1 70 0E
-		 08 08 3B 5B
-		 CE 6E 63 FE
-		 C8 44 42 44
-		 36 43 00 00
-		 1D 4C B5 3A
-		 1E 32 00 00
+		 01 88 CB 7D
+		 B2 81 11 7C
+		 3B 83 2F 73
+		 87 7F 53 80
+		 FC 81 31 9A
+		 CD BC 1A C9
+		 7F 14 03 88
+		 D3 7D DF 81
+		 67 7C 34 83
+		 D0 79 EB 87
+		 59 88 24 82
+		 A2 9B 2F C4
+		 57 D2 6C 0E
+		 52 08 3C 5B
+		 14 70 63 FE
+		 7A 3F C7 3D
+		 56 42 00 00
+		 54 4C EC 38
+		 FE 3A 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 DF 70 22 70
-		 CA 6B 1A 89
-		 98 74 2A 68
-		 A7 66 8D 73
-		 72 6E 60 60
-		 DD 6F 8C A0
-		 26 B6 68 40
-		 65 A0 71 0C
+		 9D 70 EC 6B
+		 BC 77 DA 83
+		 CD 74 E6 68
+		 30 6E C0 72
+		 23 6E 51 5B
+		 32 75 75 A9
+		 18 3C 69 92
+		 6C A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
 		 00 00 00 0C
