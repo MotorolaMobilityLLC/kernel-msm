@@ -698,8 +698,18 @@ static struct wm_adsp_fw_defs wm_adsp_fw[WM_ADSP_NUM_FW] = {
 	},
 	[WM_ADSP_FW_SPK_PROT] = { .file = "spk-prot" },
 	[WM_ADSP_FW_MISC] = { .file = "misc" },
-	[WM_ADSP_FW_AOU] = { .file = "aou-ultrasound" },
-	[WM_ADSP_FW_AOU_CONCURR] = { .file = "aou-concurrent" },
+	[WM_ADSP_FW_AOU] = {
+		.file = "aou-ultrasound",
+		.compr_direction = SND_COMPRESS_CAPTURE,
+		.num_caps = ARRAY_SIZE(trace_caps),
+		.caps = trace_caps,
+	},
+	[WM_ADSP_FW_AOU_CONCURR] = {
+		.file = "aou-concurrent",
+		.compr_direction = SND_COMPRESS_CAPTURE,
+		.num_caps = ARRAY_SIZE(trace_caps),
+		.caps = trace_caps,
+	},
 };
 
 struct wm_coeff_ctl_ops {
