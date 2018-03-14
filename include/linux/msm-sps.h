@@ -119,6 +119,8 @@
 #define SPS_BAM_CACHED_WP           (1UL << 10)
 /* Reset BAM with pipes connected */
 #define SPS_BAM_FORCE_RESET         (1UL << 11)
+/* BAM IRQ is enabled with IRQF_NO_SUSPEND added*/
+#define SPS_BAM_OPT_IRQ_NO_SUSPEND	(1UL << 12)
 
 /* BAM device management flags */
 
@@ -477,6 +479,7 @@ struct sps_bam_props {
 
 	bool constrained_logging;
 	u32 logging_number;
+
 };
 
 /**
