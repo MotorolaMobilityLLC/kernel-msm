@@ -26,6 +26,7 @@
 	aliases {
 		/delete-property/ i2c3;
 		uart1 = &blsp1_uart1_hs;
+		i2c8 = &mods_i2c;
 	};
 };
 
