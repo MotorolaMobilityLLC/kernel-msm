@@ -389,6 +389,7 @@ extern const struct soc_enum madera_input_rate[];
 extern const struct soc_enum madera_dfc_width[];
 extern const struct soc_enum madera_dfc_type[];
 extern const struct soc_enum madera_fx_rate;
+extern const struct soc_enum madera_noise_gen_rate;
 extern const struct soc_enum madera_spdif_rate;
 
 extern const struct soc_enum madera_in_vi_ramp;

@@ -2095,6 +2095,13 @@ const struct soc_enum madera_fx_rate =
 			      madera_rate_text, madera_rate_val);
 EXPORT_SYMBOL_GPL(madera_fx_rate);
 
+const struct soc_enum madera_noise_gen_rate =
+	SOC_VALUE_ENUM_SINGLE(MADERA_COMFORT_NOISE_GENERATOR,
+			      MADERA_NOISE_GEN_RATE_SHIFT, 0xf,
+			      MADERA_RATE_ENUM_SIZE,
+			      madera_rate_text, madera_rate_val);
+EXPORT_SYMBOL_GPL(madera_noise_gen_rate);
+
 const struct soc_enum madera_spdif_rate =
 	SOC_VALUE_ENUM_SINGLE(MADERA_SPD1_TX_CONTROL,
 			      MADERA_SPD1_RATE_SHIFT,
