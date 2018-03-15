@@ -121,6 +121,8 @@ struct msm_asoc_mach_data {
 
 int msm_common_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				  struct snd_pcm_hw_params *params);
+int msm_tert_mi2s_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				  struct snd_pcm_hw_params *params);
 int msm_aux_pcm_snd_startup(struct snd_pcm_substream *substream);
 void msm_aux_pcm_snd_shutdown(struct snd_pcm_substream *substream);
 int msm_mi2s_snd_startup(struct snd_pcm_substream *substream);
