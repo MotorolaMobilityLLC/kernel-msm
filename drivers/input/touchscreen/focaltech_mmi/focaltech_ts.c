@@ -3393,7 +3393,7 @@ static int ft_ts_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Input device registration failed\n");
 		goto input_register_device_err;
 	}
-#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 	fts_extra_init(client, input_dev, pdata);
 #endif
 	if (pdata->power_init) {
@@ -3801,7 +3801,7 @@ static int ft_ts_remove(struct i2c_client *client)
 	data->irq_enabled = false;
 
 	ft_gpio_configure(data, false);
-#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 	fts_extra_exit();
 #endif
 	if (data->ts_pinctrl) {
