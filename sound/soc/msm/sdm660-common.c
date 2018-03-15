@@ -2373,6 +2373,30 @@ int msm_common_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 EXPORT_SYMBOL(msm_common_be_hw_params_fixup);
 
 /**
+ * msm_tert_mi2s_params_fixup - Setting of tert_mi2s HDMI dai params.
+ *
+ * @rtd: runtime dailink instance
+ * @params: HW params of associated backend dailink.
+ *
+ * Returns 0 on success or -EINVAL on error.
+ */
+int msm_tert_mi2s_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				  struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = 2;
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+		       SNDRV_PCM_FORMAT_S24_LE);
+	return 0;
+}
+EXPORT_SYMBOL(msm_tert_mi2s_params_fixup);
+
+/**
  * msm_aux_pcm_snd_startup - startup ops of auxpcm.
  *
  * @substream: PCM stream pointer of associated backend dailink

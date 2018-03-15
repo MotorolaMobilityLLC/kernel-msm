@@ -2293,6 +2293,24 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 	},
 };
 
+static struct snd_soc_dai_link msm_hdmi_dba_dai_links[] = {
+	{
+		.name = LPASS_BE_TERT_MI2S_RX,
+		.stream_name = "Tertiary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-ext-disp-audio-codec-rx",
+		.codec_dai_name = "msm_hdmi_audio_codec_rx_dai",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+		.be_hw_params_fixup = msm_tert_mi2s_params_fixup,
+		.ops = &msm_mi2s_be_ops,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+};
+
 static struct snd_soc_dai_link msm_auxpcm_be_dai_links[] = {
 	/* Primary AUX PCM Backend DAI Links */
 	{
@@ -2497,7 +2515,8 @@ ARRAY_SIZE(msm_ext_common_be_dai) +
 ARRAY_SIZE(msm_ext_madera_be_dai) +
 ARRAY_SIZE(msm_mi2s_be_dai_links) +
 ARRAY_SIZE(msm_auxpcm_be_dai_links) +
-ARRAY_SIZE(msm_wcn_be_dai_links)];
+ARRAY_SIZE(msm_wcn_be_dai_links) +
+ARRAY_SIZE(msm_hdmi_dba_dai_links)];
 
 static struct snd_soc_dai_link msm_ext_tasha_dai_links[
 ARRAY_SIZE(msm_ext_common_fe_dai) +
@@ -2589,6 +2608,15 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev,
 				   msm_wcn_be_dai_links,
 				   sizeof(msm_wcn_be_dai_links));
 			len4 += ARRAY_SIZE(msm_wcn_be_dai_links);
+		}
+		if (of_property_read_bool(dev->of_node,
+					  "qcom,hdmi-dba-codec-rx")) {
+			dev_dbg(dev, "%s(): hdmi dba audio present\n",
+					__func__);
+			memcpy(msm_ext_madera_dai_links + len4,
+				   msm_hdmi_dba_dai_links,
+				   sizeof(msm_hdmi_dba_dai_links));
+			len4 += ARRAY_SIZE(msm_hdmi_dba_dai_links);
 		}
 		msm_ext_dai_links = msm_ext_madera_dai_links;
 	} else if (strnstr(card->name, "tasha", strlen(card->name))) {
