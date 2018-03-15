@@ -638,6 +638,7 @@ SOC_ENUM("Sample Rate 3", madera_sample_rate[1]),
 SOC_ENUM("ASYNC Sample Rate 2", madera_sample_rate[2]),
 
 MADERA_RATE_ENUM("FX Rate", madera_fx_rate),
+MADERA_RATE_ENUM("Noise Generator Rate", madera_noise_gen_rate),
 
 MADERA_RATE_ENUM("ISRC1 FSL", madera_isrc_fsl[0]),
 MADERA_RATE_ENUM("ISRC2 FSL", madera_isrc_fsl[1]),
