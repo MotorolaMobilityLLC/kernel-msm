@@ -553,7 +553,7 @@
 		compatible = "moto,muc_i2c";
 		reg = <0x42>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <26 0>;
+		interrupts = <42 0>;
 
 		mmi,intf-id = /bits/ 8 <3>;
 	};
