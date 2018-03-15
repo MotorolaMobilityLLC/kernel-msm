@@ -12,7 +12,7 @@ extern int fts_ctpm_auto_upgrade(struct i2c_client *client,
 
 int fts_ctpm_i2c_hid2std(struct i2c_client *client);
 
-#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 #include <linux/fs.h>
 #include <linux/vmalloc.h>
 #include <linux/uaccess.h>
@@ -219,6 +219,7 @@ int fts_fwupg_ecc_cal(struct i2c_client *client, u32 saddr, u32 len);
 int fts_flash_write_buf(struct i2c_client *client, u32 saddr, u8 *buf, u32 len, u32 delay);
 void fts_fwupg_auto_upgrade(struct fts_ts_data *ts_data);
 void fts_i2c_hid2std(struct i2c_client *client);
+int fts_ft8006m_pram_write_remap(struct i2c_client *client);
 int fts_ft8006u_pram_write_remap(struct i2c_client *client);
 int fts_pram_write_buf(struct i2c_client *client, u8 *buf, u32 len);
 int fts_pram_ecc_cal(struct i2c_client *client, u32 saddr, u32 len);
