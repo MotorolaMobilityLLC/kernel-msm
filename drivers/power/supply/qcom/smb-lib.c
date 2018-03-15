@@ -8500,15 +8500,16 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 	else
 		chg->mmi.warn_irq = gpio_to_irq(chg->mmi.warn_gpio.gpio);
 
-	if (!gpio_is_valid(chg->mmi.togl_rst_gpio.gpio)) {
-		dev_err(chg->dev, "get gpio tggl_rest rc=0x%x\n", chg->mmi.togl_rst_gpio.gpio);
-		return;
-	}
-
 	chg->mmi.togl_rst_gpio.gpio = of_get_gpio_flags(node, 2, &flags);
 	chg->mmi.togl_rst_gpio.flags = flags;
 	of_property_read_string_index(node, "gpio-names", 2,
 				      &chg->mmi.togl_rst_gpio.label);
+
+	if (!gpio_is_valid(chg->mmi.togl_rst_gpio.gpio)) {
+		dev_err(chg->dev, "get gpio tggl_rest rc=0x%x\n",
+				chg->mmi.togl_rst_gpio.gpio);
+		return;
+	}
 
 	rc = gpio_request_one(chg->mmi.togl_rst_gpio.gpio,
 			      chg->mmi.togl_rst_gpio.flags,
