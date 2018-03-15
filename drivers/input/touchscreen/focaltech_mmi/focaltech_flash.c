@@ -378,6 +378,11 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 		ft5x46_set_chip_id(&fts_chip_type_curr);
 	}
 #endif
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI
+	if (pdata->family_id == FT8006M_ID) {
+		return fts_fwupg_do_upgrade(fw_name);
+	}
+#endif
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
 	if (pdata->family_id == FT8006U_ID) {
 		return fts_fwupg_do_upgrade(fw_name);
@@ -422,9 +427,22 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 	return i_ret;
 }
 
-#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 struct fts_upgrade g_upgrade;
 struct fts_upgrade *fwupgrade;
+
+struct ft_chip_t ft8006_fct = {
+	.type = 0x07,
+	.chip_idh = 0x80,
+	.chip_idl = 0x06,
+	.rom_idh = 0x80,
+	.rom_idl = 0x06,
+	.pramboot_idh = 0x80,
+	.pramboot_idl = 0xC6,
+	.bootloader_idh = 0x80,
+	.bootloader_idl = 0xB6,
+	.chip_type = 0x80060807,
+};
 
 struct ft_chip_t ft8006u_fct = {
 	.type = 0x0B,
@@ -732,8 +750,19 @@ int fts_pram_write_init(struct i2c_client *client)
 	}
 
 	/* check the length of the pramboot */
-	if (upg->func->fts_8006u)
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) && defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
+	if (upg->func->paramcfg2off) {
+		ret = fts_ft8006m_pram_write_remap(client);
+	}
+	else {
 		ret = fts_ft8006u_pram_write_remap(client);
+	}
+#elif defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI)
+	ret = fts_ft8006m_pram_write_remap(client);
+#elif defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
+	ret = fts_ft8006u_pram_write_remap(client);
+#endif
+
 	if (ret < 0) {
 		FTS_ERROR("[UPGRADE]pram write fail, ret=%d\n", ret);
 		return ret;
@@ -1996,6 +2025,16 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 	fts_data->client = client;
 	fts_data->input_dev = input_dev;
 	fts_data->pdata = pdata;
+
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI
+	if (FT8006M_ID == type) {
+		FTS_AUTO_LIC_UPGRADE_EN = false;
+		fwupgrade->func = &upgrade_func_ft8006;
+		fts_data->ic_info.ids = ft8006_fct;
+		fts_data->ic_info.is_incell = true;
+		fts_data->ic_info.hid_supported = false;
+	}
+#endif
 
 	if (FT8006U_ID == type) {
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
