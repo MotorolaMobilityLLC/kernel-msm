@@ -354,13 +354,13 @@ dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-pvt2.dtb
 endif
 
 ifeq ($(CONFIG_DEEN_DTB),y)
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-deen-evt1.dtb
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-deen-evt2.dtb
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-deen-dvt1a.dtb
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-deen-dvt1b.dtb
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-deen-dvt2.dtb
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-deen-pvt1.dtb
-dtb-$(CONFIG_ARCH_SDM450) += sdm450-deen-pvt2.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-deen-evt1.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-deen-evt2.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-deen-dvt1a.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-deen-dvt1b.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-deen-dvt2.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-deen-pvt1.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-deen-pvt2.dtb
 endif
 
 ifeq ($(CONFIG_SANDERS_DTB),y)
