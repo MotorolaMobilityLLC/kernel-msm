@@ -25,6 +25,7 @@
 #define FT6X36_ID		0x36
 #define FT8716_ID		0x87
 #define FT5X46_ID		0x54
+#define FT8006U_ID		0xF0
 
 #define MAX_PANEL_SUPPLIERS	5
 
