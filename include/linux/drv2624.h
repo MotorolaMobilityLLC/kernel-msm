@@ -103,6 +103,8 @@
 #define	DRV2624_REG_CAL_BEMF		0x22
 
 #define	DRV2624_REG_LOOP_CONTROL	0x23
+
+#define	DRV2624_REG_RATED_VOLTAGE_CLAMP 0X24
 #define	BEMFGAIN_MASK				0x03
 
 #define	DRV2624_REG_DRIVE_TIME		0x27
@@ -187,6 +189,7 @@ struct actuator_data {
 	enum work_mode meWorkMode;
 	unsigned char mnRatedVoltage;
 	unsigned char mnOverDriveClampVoltage;
+	unsigned char mnRateVoltageClamp;
 	unsigned char mnRTPINPUTReduced;
 	unsigned char mnRTPINPUT;
 	unsigned char mnLRAFreq;
