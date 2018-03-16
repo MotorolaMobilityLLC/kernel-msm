@@ -213,6 +213,12 @@
 				&ter_mi2s_sd0_sleep>;
 		};
 	};
+
+	msm_ext_disp: qcom,msm_ext_disp {
+		ext_disp_audio_codec: qcom,msm-ext-disp-audio-codec-rx {
+			qcom,beckham_ext_disp;
+		};
+	};
 };
 
 &slim_aud {
