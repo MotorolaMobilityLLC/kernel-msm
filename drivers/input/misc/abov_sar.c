@@ -582,14 +582,14 @@ static void abov_platform_data_of_init(struct i2c_client *client,
 	}
 }
 
-static ssize_t capsense_reset_show(struct class *class,
+static ssize_t capsense_soft_reset_show(struct class *class,
 		struct class_attribute *attr,
 		char *buf)
 {
 	return snprintf(buf, 8, "%d\n", programming_done);
 }
 
-static ssize_t capsense_reset_store(struct class *class,
+static ssize_t capsense_soft_reset_store(struct class *class,
 		struct class_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -616,7 +616,39 @@ static ssize_t capsense_reset_store(struct class *class,
 	return count;
 }
 
-static CLASS_ATTR(reset, 0660, capsense_reset_show, capsense_reset_store);
+static CLASS_ATTR(soft_reset, 0660, capsense_soft_reset_show, capsense_soft_reset_store);
+
+static ssize_t capsense_reset_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	pabovXX_t this = abov_sar_ptr;
+	pabov_t pDevice = NULL;
+	struct input_dev *input_top = NULL;
+	struct input_dev *input_bottom = NULL;
+	int ret = 0;
+
+	pDevice = this->pDevice;
+	input_top = pDevice->pbuttonInformation->input_top;
+	input_bottom = pDevice->pbuttonInformation->input_bottom;
+
+	LOG_INFO("headset insert,going to force calibrate\n");
+	if (!count || (this == NULL))
+		return -EINVAL;
+
+	if (!strncmp(buf, "1", 1))
+		ret = write_register(this, ABOV_RECALI_REG, 0x01);
+	if (ret < 0)
+		LOG_DBG(" headset insert,calibrate cap sensor failed\n");
+
+	input_report_abs(input_top, ABS_DISTANCE, 0);
+	input_sync(input_top);
+	input_report_abs(input_bottom, ABS_DISTANCE, 0);
+	input_sync(input_bottom);
+	return count;
+}
+
+static CLASS_ATTR(reset, 0660, NULL, capsense_reset_store);
 
 static ssize_t capsense_enable_show(struct class *class,
 		struct class_attribute *attr,
@@ -1412,25 +1444,68 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	LOG_INFO("abov_probe()\n");
 
-	/* detect if abov exist or not */
-	if (abov_detect(client) == 0) {
-		return -ENODEV;
-	}
-
 	pplatData = kzalloc(sizeof(pplatData), GFP_KERNEL);
-	abov_platform_data_of_init(client, pplatData);
-	client->dev.platform_data = pplatData;
-
 	if (!pplatData) {
 		LOG_DBG("platform data is required!\n");
 		return -EINVAL;
 	}
 
-	if (!i2c_check_functionality(client->adapter,
-				I2C_FUNC_SMBUS_READ_WORD_DATA))
-		return -EIO;
+	pplatData->cap_vdd = regulator_get(&client->dev, "cap_vdd");
+	if (IS_ERR(pplatData->cap_vdd)) {
+		if (PTR_ERR(pplatData->cap_vdd) == -EPROBE_DEFER) {
+			ret = PTR_ERR(pplatData->cap_vdd);
+			goto err_vdd_defer;
+		}
+		LOG_INFO("%s: Failed to get regulator\n", __func__);
+	} else {
+		ret = regulator_enable(pplatData->cap_vdd);
 
-	this = kzalloc(sizeof(abovXX_t), GFP_KERNEL); /* create memory for main struct */
+		if (ret) {
+			regulator_put(pplatData->cap_vdd);
+			LOG_DBG("%s: Error %d enable regulator\n",
+					__func__, ret);
+			goto err_vdd_defer;
+		}
+		pplatData->cap_vdd_en = true;
+		LOG_INFO("cap_vdd regulator is %s\n",
+				regulator_is_enabled(pplatData->cap_vdd) ?
+				"on" : "off");
+	}
+
+	pplatData->cap_svdd = regulator_get(&client->dev, "cap_svdd");
+	if (!IS_ERR(pplatData->cap_svdd)) {
+		ret = regulator_enable(pplatData->cap_svdd);
+		if (ret) {
+			regulator_put(pplatData->cap_svdd);
+			LOG_INFO("Failed to enable cap_svdd\n");
+			goto err_svdd_error;
+		}
+		pplatData->cap_svdd_en = true;
+		LOG_INFO("cap_svdd regulator is %s\n",
+				regulator_is_enabled(pplatData->cap_svdd) ?
+				"on" : "off");
+	} else {
+		ret = PTR_ERR(pplatData->cap_vdd);
+		if (ret == -EPROBE_DEFER)
+			goto err_svdd_error;
+	}
+
+	/* detect if abov exist or not */
+	if (abov_detect(client) == 0) {
+		ret = -ENODEV;
+		goto err_svdd_error;
+	}
+
+	abov_platform_data_of_init(client, pplatData);
+	client->dev.platform_data = pplatData;
+
+	if (!i2c_check_functionality(client->adapter,
+				I2C_FUNC_SMBUS_READ_WORD_DATA)) {
+		ret = -EIO;
+		goto err_svdd_error;
+	}
+
+	this = kzalloc(sizeof(abovXX_t), GFP_KERNEL);
 	LOG_INFO("\t Initialized Main Memory: 0x%p\n", this);
 
 	if (this) {
@@ -1488,8 +1563,10 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 			/* Create the input device */
 			input_top = input_allocate_device();
-			if (!input_top)
-				return -ENOMEM;
+			if (!input_top) {
+				ret = -ENOMEM;
+				goto err_top_alloc;
+			}
 
 			/* Set all the keycodes */
 			__set_bit(EV_ABS, input_top->evbit);
@@ -1499,12 +1576,15 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			input_top->name = "ABOV Cap Touch top";
 			if (input_register_device(input_top)) {
 				LOG_INFO("add top cap touch unsuccess\n");
-				return -ENOMEM;
+				ret = -ENOMEM;
+				goto err_top_register;
 			}
 			/* Create the input device */
 			input_bottom = input_allocate_device();
-			if (!input_bottom)
-				return -ENOMEM;
+			if (!input_bottom) {
+				ret = -ENOMEM;
+				goto err_bottom_alloc;
+			}
 			/* Set all the keycodes */
 			__set_bit(EV_ABS, input_bottom->evbit);
 			input_set_abs_params(input_bottom, ABS_DISTANCE, -1, 100, 0, 0);
@@ -1514,103 +1594,78 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			input_bottom->name = "ABOV Cap Touch bottom";
 			if (input_register_device(input_bottom)) {
 				LOG_INFO("add bottom cap touch unsuccess\n");
-				return -ENOMEM;
+				ret = -ENOMEM;
+				goto err_bottom_register;
 			}
+		} else {
+			ret = -ENOMEM;
+			goto err_pDevice;
 		}
 
 		ret = class_register(&capsense_class);
 		if (ret < 0) {
 			LOG_DBG("Create fsys class failed (%d)\n", ret);
-			return ret;
+			goto err_class_register;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_reset);
 		if (ret < 0) {
 			LOG_DBG("Create reset file failed (%d)\n", ret);
-			return ret;
+			goto err_class_creat;
+		}
+
+		ret = class_create_file(&capsense_class, &class_attr_soft_reset);
+		if (ret < 0) {
+			LOG_DBG("Create soft reset file failed (%d)\n", ret);
+			goto err_class_creat;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_enable);
 		if (ret < 0) {
 			LOG_DBG("Create enable file failed (%d)\n", ret);
-			return ret;
+			goto err_class_creat;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_reg);
 		if (ret < 0) {
 			LOG_DBG("Create reg file failed (%d)\n", ret);
-			return ret;
+			goto err_class_creat;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_update_fw);
 		if (ret < 0) {
 			LOG_DBG("Create update_fw file failed (%d)\n", ret);
-			return ret;
+			goto err_class_creat;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_force_update_fw);
 		if (ret < 0) {
 			LOG_DBG("Create update_fw file failed (%d)\n", ret);
-			return ret;
+			goto err_class_creat;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_fw_download_status);
 		if (ret < 0) {
 			LOG_DBG("Create fw dl status file failed (%d)\n", ret);
-			return ret;
+			goto err_class_creat;
 		}
 #ifdef USE_SENSORS_CLASS
 		sensors_capsensor_top_cdev.sensors_enable = capsensor_set_enable;
 		sensors_capsensor_top_cdev.sensors_poll_delay = NULL;
 		ret = sensors_classdev_register(&input_top->dev, &sensors_capsensor_top_cdev);
-		if (ret < 0)
+		if (ret < 0) {
 			LOG_DBG("create top cap sensor_class  file failed (%d)\n", ret);
+			goto err_class_creat;
+		}
 		sensors_capsensor_bottom_cdev.sensors_enable = capsensor_set_enable;
 		sensors_capsensor_bottom_cdev.sensors_poll_delay = NULL;
 		ret = sensors_classdev_register(&input_bottom->dev, &sensors_capsensor_bottom_cdev);
-		if (ret < 0)
+		if (ret < 0) {
 			LOG_DBG("create bottom cap sensor_class file failed (%d)\n", ret);
+			goto err_bottom_classdev;
+		}
 #endif
 
-		pplatData->cap_vdd = regulator_get(&client->dev, "cap_vdd");
-		if (IS_ERR(pplatData->cap_vdd)) {
-			if (PTR_ERR(pplatData->cap_vdd) == -EPROBE_DEFER) {
-				ret = PTR_ERR(pplatData->cap_vdd);
-				goto err_vdd_defer;
-			}
-			LOG_INFO("%s: Failed to get regulator\n",
-					__func__);
-		} else {
-			int error = regulator_enable(pplatData->cap_vdd);
-			if (error) {
-				regulator_put(pplatData->cap_vdd);
-				LOG_DBG("%s: Error %d enable regulator\n",
-						__func__, error);
-				return error;
-			}
-			pplatData->cap_vdd_en = true;
-			LOG_INFO("cap_vdd regulator is %s\n",
-					regulator_is_enabled(pplatData->cap_vdd) ?
-					"on" : "off");
-		}
-
-		pplatData->cap_svdd = regulator_get(&client->dev, "cap_svdd");
-		if (!IS_ERR(pplatData->cap_svdd)) {
-			ret = regulator_enable(pplatData->cap_svdd);
-			if (ret) {
-				regulator_put(pplatData->cap_svdd);
-				LOG_INFO("Failed to enable cap_svdd\n");
-				goto err_svdd_error;
-			}
-			pplatData->cap_svdd_en = true;
-			LOG_INFO("cap_svdd regulator is %s\n",
-					regulator_is_enabled(pplatData->cap_svdd) ?
-					"on" : "off");
-		} else {
-			ret = PTR_ERR(pplatData->cap_vdd);
-			if (ret == -EPROBE_DEFER)
-				goto err_svdd_error;
-		}
 		abovXX_sar_init(this);
 
 		write_register(this, ABOV_CTRL_MODE_RET, 0x02);
@@ -1643,10 +1698,50 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 		return  0;
 	}
-	return -ENOMEM;
+	ret =  -ENOMEM;
+	goto err_this_device;
 
 free_ps_notifier:
+	LOG_DBG("%s unregister bottom classdev and ps_notif.\n", __func__);
 	power_supply_unreg_notifier(&this->ps_notif);
+	sensors_classdev_unregister(&sensors_capsensor_bottom_cdev);
+
+err_bottom_classdev:
+	LOG_DBG("%s unregister top classdev.\n", __func__);
+	sensors_classdev_unregister(&sensors_capsensor_top_cdev);
+
+err_class_creat:
+	LOG_DBG("%s unregister capsense class.\n", __func__);
+	class_unregister(&capsense_class);
+
+err_class_register:
+	LOG_DBG("%s unregister bottom device.\n", __func__);
+	input_unregister_device(input_bottom);
+
+err_bottom_register:
+	LOG_DBG("%s input free bottom device.\n", __func__);
+	input_free_device(input_bottom);
+
+err_bottom_alloc:
+	LOG_DBG("%s unregister top device.\n", __func__);
+	input_unregister_device(input_top);
+
+err_top_register:
+	LOG_DBG("%s input free top device.\n", __func__);
+	input_free_device(input_top);
+
+err_top_alloc:
+	LOG_DBG("%s input free pDevice.\n", __func__);
+	kfree(this->pDevice);
+
+err_pDevice:
+	LOG_DBG("%s free device this.\n", __func__);
+	kfree(this);
+
+err_this_device:
+	LOG_DBG("%s device this defer.\n", __func__);
+	regulator_disable(pplatData->cap_svdd);
+	regulator_put(pplatData->cap_svdd);
 
 err_svdd_error:
 	LOG_DBG("%s svdd defer.\n", __func__);
@@ -1654,9 +1749,8 @@ err_svdd_error:
 	regulator_put(pplatData->cap_vdd);
 
 err_vdd_defer:
-	LOG_DBG("%s input free device.\n", __func__);
-	input_free_device(input_top);
-	input_free_device(input_bottom);
+	LOG_DBG("%s free pplatData.\n", __func__);
+	kfree(pplatData);
 
 	return ret;
 }
