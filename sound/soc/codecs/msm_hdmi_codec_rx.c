@@ -37,6 +37,7 @@ struct msm_ext_disp_audio_codec_rx_data {
 	struct msm_ext_disp_audio_codec_ops ext_disp_ops;
 	int cable_status;
 };
+bool beckham_hw;
 
 static int msm_ext_disp_edid_ctl_info(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_info *uinfo)
@@ -269,19 +270,23 @@ static int msm_ext_disp_audio_codec_rx_dai_startup(
 		return -EINVAL;
 	}
 
-	codec_data->cable_status =
-		codec_data->ext_disp_ops.cable_status(
-		codec_data->ext_disp_core_pdev, 1);
-	if (IS_ERR_VALUE(codec_data->cable_status)) {
-		dev_err(dai->dev,
-			"%s() ext disp core is not ready (ret val = %d)\n",
-			__func__, codec_data->cable_status);
-		ret = codec_data->cable_status;
-	} else if (!codec_data->cable_status) {
-		dev_err(dai->dev,
-			"%s() ext disp cable is not connected (ret val = %d)\n",
-			__func__, codec_data->cable_status);
-		ret = -ENODEV;
+	if (beckham_hw) {
+		codec_data->cable_status = 1;
+	} else {
+		codec_data->cable_status =
+			codec_data->ext_disp_ops.cable_status(
+			codec_data->ext_disp_core_pdev, 1);
+		if (IS_ERR_VALUE(codec_data->cable_status)) {
+			dev_err(dai->dev,
+				"%s() ext disp core is not ready (ret val = %d)\n",
+				__func__, codec_data->cable_status);
+			ret = codec_data->cable_status;
+		} else if (!codec_data->cable_status) {
+			dev_err(dai->dev,
+				"%s() ext disp cable is not connected (ret val = %d)\n",
+				__func__, codec_data->cable_status);
+			ret = -ENODEV;
+		}
 	}
 
 	return ret;
@@ -308,16 +313,20 @@ static int msm_ext_disp_audio_codec_rx_dai_hw_params(
 		return -EINVAL;
 	}
 
-	if (IS_ERR_VALUE(codec_data->cable_status)) {
-		dev_err_ratelimited(dai->dev,
-			"%s() ext disp core is not ready (ret val = %d)\n",
-			__func__, codec_data->cable_status);
-		return codec_data->cable_status;
-	} else if (!codec_data->cable_status) {
-		dev_err_ratelimited(dai->dev,
-			"%s() ext disp cable is not connected (ret val = %d)\n",
-			__func__, codec_data->cable_status);
-		return -ENODEV;
+	if (beckham_hw) {
+		codec_data->cable_status = 1;
+	} else {
+		if (IS_ERR_VALUE(codec_data->cable_status)) {
+			dev_err_ratelimited(dai->dev,
+				"%s() ext disp core is not ready (ret val = %d)\n",
+				__func__, codec_data->cable_status);
+			return codec_data->cable_status;
+		} else if (!codec_data->cable_status) {
+			dev_err_ratelimited(dai->dev,
+				"%s() ext disp cable is not connected (ret val = %d)\n",
+				__func__, codec_data->cable_status);
+			return -ENODEV;
+		}
 	}
 
 	/*refer to HDMI spec CEA-861-E: Table 28 Audio InfoFrame Data Byte 4*/
@@ -433,6 +442,12 @@ static int msm_ext_disp_audio_codec_rx_probe(struct snd_soc_codec *codec)
 		kfree(codec_data);
 		return -ENODEV;
 	}
+
+	if (of_property_read_bool(codec->dev->of_node, "qcom,beckham_ext_disp"))
+		beckham_hw = true;
+	else
+		beckham_hw = false;
+	dev_dbg(codec->dev, "%s(): beckham_hw: %d\n", __func__, beckham_hw);
 
 	if (msm_ext_disp_register_audio_codec(codec_data->ext_disp_core_pdev,
 				&codec_data->ext_disp_ops)) {
