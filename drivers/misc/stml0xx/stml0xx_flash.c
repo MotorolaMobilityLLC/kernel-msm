@@ -386,6 +386,7 @@ ssize_t stml0xx_misc_write(struct file *file, const char __user *buff,
 	int err = 0;
 	int bad_byte_cnt = 0;
 	int fillers = 0;
+	char cmp_buff[STML0XX_MAX_FLASH_PACKET_LENGTH];
 
 	mutex_lock(&stml0xx_misc_data->lock);
 
@@ -527,19 +528,29 @@ RETRY_WRITE:
 			    (stml0xx_boot_readbuff, count + 1) < 0)
 				goto RETRY_READ;
 
+			/* copy from user */
+			if (copy_from_user(cmp_buff, buff,
+					count)) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Copy from user returned error");
+				err = -EINVAL;
+				goto EXIT;
+			}
+
 			/* Compare data */
 			for (index = 0; index < count; index++) {
 				if (stml0xx_boot_readbuff[index + 1]
-					!= buff[index]) {
+					!= cmp_buff[index]) {
 					dev_dbg(&stml0xx_misc_data->spi->dev,
 						"Error verifying write 0x%08x 0x%02x 0x%02x 0x%02x",
 						stml0xx_misc_data->current_addr,
 						index,
 						stml0xx_boot_readbuff[index+1],
-						buff[index]);
+						cmp_buff[index]);
 					bad_byte_cnt++;
 				}
 			}
+
 			err = 0;
 			if (!bad_byte_cnt)
 				dev_dbg(&stml0xx_misc_data->spi->dev,
