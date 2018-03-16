@@ -1543,7 +1543,7 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 	 *  - Stop control on TFA1 devices
 	 */
 
-	nr_controls = 2; /* Profile and stop control */
+	nr_controls = 4; /* Profile and stop control */
 
 	if (tfa98xx->flags & TFA98XX_FLAG_CALIBRATION_CTL)
 		nr_controls += 1; /* calibration */
