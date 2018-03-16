@@ -13,8 +13,8 @@
 #include "msm8953-moto-common.dtsi"
 #include "dsi-panel-mot-tianma-586-720p-vid.dtsi"
 #include "dsi-panel-mot-nova-586-hd-vid.dtsi"
-#include "sdm450-deen-pinctrl.dtsi"
-#include "sdm450-camera-sensor-mot-deen.dtsi"
+#include "msm8953-deen-pinctrl.dtsi"
+#include "msm8953-camera-sensor-mot-deen.dtsi"
 
  / {
 	model = "deen";
