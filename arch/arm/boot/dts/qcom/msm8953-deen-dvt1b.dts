@@ -13,13 +13,9 @@
 /dts-v1/;
 
 
-#include "sdm450-deen.dtsi"
+#include "msm8953-deen.dtsi"
 
 
 / {
-	qcom,board-id = <0x48 0xA200>;
-	compatible = "qcom,sdm450-deen", "qcom,sdm450-moto",
-			"qcom,sdm450";
-	qcom,msm-id = <338 0x0>;
-	interrupt-parent = <&intc>;
+	qcom,board-id = <0x47 0xB1B0>;
 };
