@@ -1034,6 +1034,12 @@ static void dev_init_platform_data(struct drv2624_data *ctrl)
 		dev_err(ctrl->dev, "%s,ERROR RTP INPUT\n", __func__);
 	}
 
+	if (actuator.mnRateVoltageClamp != 0) {
+		drv2624_reg_write(ctrl,
+				DRV2624_REG_RATED_VOLTAGE_CLAMP,
+				actuator.mnRateVoltageClamp);
+	}
+
 	actuator.meWorkMode = NORMAL;
 	/*update sample_time*/
 	drv2624_reg_write(ctrl, DRV2624_REG_SAMPLE_TIME, actuator.mnSampleTime);
@@ -1158,6 +1164,13 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 		dev_err(&client->dev, "%s: overdrive voltage read failed\n",
 			__func__);
 		return NULL;
+	}
+
+	rc = of_property_read_u8(np, "ti,rate_voltage_clamp",
+		&pdata->msActuator.mnRateVoltageClamp);
+	if (rc) {
+		dev_warn(&client->dev, "%s: rate_voltage_clamp read failed\n",
+			__func__);
 	}
 
 	rc = of_property_read_u8(np, "ti,rtp_input",
