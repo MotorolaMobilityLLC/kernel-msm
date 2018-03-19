@@ -1,12 +1,13 @@
 
-qcom,wingtech_jk50atl_5000mah_jan22nd2018 {
+qcom,jk50_atl_5000mah {
 	qcom, = <24>;
-	/* #3285716_Wingtech_JK50atl_5000mAh_averaged_MasterSlave_Jan22nd2018*/
+	/* #3285716_JK50atl_5000mAh_averaged_MasterSlave_Jan22nd2018*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <5000>;
 	qcom,fastchg-current-ma = <3000>; // Set max battery charged current to 3000mA
 	qcom,batt-id-kohm = <240>; // Default battery ID was 240k on main board
 	qcom,battery-beta = <3435>;
+	qcom,battery-thermal-coeff = [a1 50 ff];
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,battery-type = "JK50atl_4v4_5000mAh";
 	qcom,checksum = <0xF3FE>;
