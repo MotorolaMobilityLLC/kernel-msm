@@ -883,36 +883,44 @@ int32_t msm_sensor_driver_probe(void *setting,
 #ifdef CONFIG_MSM_CAMERA_VENDOR_WENTAI
 	if (!strcmp(slave_info->sensor_name, "ov12a10_qtech")) {
 		if (sub_module_id != 0x0B) {
-			pr_err("failed: main_module_id %d, sensor is not %s",
-			       main_module_id, slave_info->sensor_name);
+			pr_err("failed: sub_module_id %d, sensor is not %s",
+			       sub_module_id, slave_info->sensor_name);
 			rc = -EINVAL;
 			goto free_slave_info;
 		}
+		pr_err("matched: module_id=%d, sensor_name=%s",
+			sub_module_id, slave_info->sensor_name);
 	} else if (!strcmp(slave_info->sensor_name, "ov12a10_sunny")) {
 		if (sub_module_id != 0x01) {
-			pr_err("failed: main_module_id %d, sensor is not %s",
-			       main_module_id, slave_info->sensor_name);
+			pr_err("failed: sub_module_id %d, sensor is not %s",
+			       sub_module_id, slave_info->sensor_name);
 			rc = -EINVAL;
 			goto free_slave_info;
 		}
+		pr_err("matched: module_id=%d, sensor_name=%s",
+			sub_module_id, slave_info->sensor_name);
 	} else if (!strcmp(slave_info->sensor_name, "ov16b10_qtech")) {
 #ifdef WEN_DEBUG
 		if (main_module_id != 0x0B && main_module_id != 0x01) {
 			pr_err("failed: main_module_id %d, sensor is not %s",
-			main_module_id, slave_info->sensor_name);
+				main_module_id, slave_info->sensor_name);
 			rc = -EINVAL;
 			goto free_slave_info;
 		}
 #endif
+		pr_err("matched: module_id=%d, sensor_name=%s",
+			main_module_id, slave_info->sensor_name);
 	} else if (!strcmp(slave_info->sensor_name, "ov5675_qtech")) {
 #ifdef WEN_DEBUG
 		if (aux_module_id != 0x0B) {
-			pr_err("failed: main_module_id %d, sensor is not %s",
-			main_module_id, slave_info->sensor_name);
+			pr_err("failed: aux_module_id %d, sensor is not %s",
+				aux_module_id, slave_info->sensor_name);
 			rc = -EINVAL;
 			goto free_slave_info;
 		}
 #endif
+		pr_err("matched: module_id=%d, sensor_name=%s",
+			aux_module_id, slave_info->sensor_name);
 	} else {
 		pr_err("sensor name is %s, is nothing to do",
 		       slave_info->sensor_name);
