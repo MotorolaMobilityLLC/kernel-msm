@@ -13,6 +13,7 @@
 #include "msm8953-moto-common.dtsi"
 #include "dsi-panel-mot-boe-565-1080p-vid.dtsi"
 #include "dsi-panel-mot-tianma-565-1080p-vid.dtsi"
+#include "dsi-panel-mot-auo-565-1080p-vid.dtsi"
 #include "sdm450-ali-pinctrl.dtsi"
 #include "sdm450-camera-sensor-mot-ali.dtsi"
 
