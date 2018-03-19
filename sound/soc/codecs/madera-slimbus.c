@@ -52,18 +52,19 @@ static void madera_slim_fixup_prop(struct slim_ch *prop,
 
 #define TX_STREAM_1 128
 #define TX_STREAM_2 132
-#define TX_STREAM_3 131
+#define TX_STREAM_3 134
 
 #define RX_STREAM_1 144
 #define RX_STREAM_2 146
 #define RX_STREAM_3 148
 
 static u32 rx_porth1[2], rx_porth2[2], rx_porth3[2];
-static u32 tx_porth1[3], tx_porth2[2], tx_porth3[1];
+static u32 tx_porth1[4], tx_porth2[2], tx_porth3[1];
 static u16 rx_handles1[] = { RX_STREAM_1, RX_STREAM_1 + 1 };
 static u16 rx_handles2[] = { RX_STREAM_2, RX_STREAM_2 + 1 };
 static u16 rx_handles3[] = { RX_STREAM_3, RX_STREAM_3 + 1 };
-static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1, TX_STREAM_1 + 2};
+static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1,
+			     TX_STREAM_1 + 2, TX_STREAM_1 + 3 };
 static u16 tx_handles2[] = { TX_STREAM_2, TX_STREAM_2 + 1 };
 static u16 tx_handles3[] = { TX_STREAM_3 };
 static u16 rx_group1, rx_group2, rx_group3;
