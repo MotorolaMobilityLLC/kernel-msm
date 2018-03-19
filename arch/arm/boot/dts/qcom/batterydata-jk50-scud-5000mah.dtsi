@@ -1,0 +1,73 @@
+
+qcom,jk50_scud_5000mah {
+	qcom, = <24>;
+	/* #3324519_JK50cos_4850mAh_averaged_MasterSlave_Mar1st2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <4850>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,batt-id-kohm = <0>; // 0k down to GND
+	qcom,battery-beta = <3380>;
+	qcom,battery-thermal-coeff = [9d 50 ff]; // Beta 3380,80-vt310-138
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,battery-type = "JK50scud_4v4_5000mAh";
+	qcom,checksum = <0x40B8>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 F7 1F 48 05
+		 92 0A 57 06
+		 FF 1C 11 FB
+		 05 05 83 03
+		 1D 18 A6 23
+		 8C 44 3B 5A
+		 86 00 00 00
+		 10 00 00 00
+		 00 00 F7 CD
+		 F1 CD E8 CA
+		 1A 00 08 00
+		 44 DA 67 E5
+		 03 06 E3 FA
+		 5B F2 24 13
+		 C8 06 0C 32
+		 27 06 09 20
+		 27 00 14 00
+		 77 20 CA 04
+		 00 0B DD 05
+		 D5 1C BB 02
+		 88 0C A2 0B
+		 95 18 D0 23
+		 E8 4D 2D 5B
+		 75 00 00 00
+		 0E 00 00 00
+		 00 00 75 CC
+		 17 CA 08 B5
+		 14 00 00 00
+		 09 EA 67 E5
+		 BB FD 16 F3
+		 D9 F5 B7 02
+		 29 ED 8A 1B
+		 B1 33 CC FF
+		 07 10 00 00
+		 94 13 66 46
+		 14 00 40 00
+		 76 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
