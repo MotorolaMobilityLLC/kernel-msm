@@ -1126,6 +1126,35 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 		chip->bp.vbatt_full_mv = -EINVAL;
 	}
 
+	/*
+	 *parse thermal coefficience value from battery profile
+	 *for one project multi NTC
+	*/
+	if (of_property_count_elems_of_size(profile_node,
+		"qcom,battery-thermal-coeff",
+		sizeof(u8)) == BATT_THERM_NUM_COEFFS) {
+		rc = of_property_read_u8_array(profile_node,
+				"qcom,battery-thermal-coeff",
+				chip->dt.batt_therm_coeffs,
+				BATT_THERM_NUM_COEFFS);
+		if (rc < 0)
+			pr_warn("Error reading battery thermal coeff, rc:%d\n",
+				rc);
+		/*
+		 * configure battery thermal coefficients c1,c2,c3
+		 * if its value is not zero.
+		 */
+		if (chip->dt.batt_therm_coeffs[0] > 0) {
+			rc = fg_write(chip, BATT_INFO_THERM_C1(chip),
+				chip->dt.batt_therm_coeffs,
+				BATT_THERM_NUM_COEFFS);
+			if (rc < 0) {
+				pr_err("Error in writing battery thermal coeff, rc=%d\n",
+					rc);
+			}
+		}
+	}
+
 	data = of_get_property(profile_node, "qcom,fg-profile-data", &len);
 	if (!data) {
 		pr_err("No profile data available\n");
