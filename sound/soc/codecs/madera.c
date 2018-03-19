@@ -3648,15 +3648,16 @@ static int madera_dai_set_sysclk(struct snd_soc_dai *dai,
 		return is_sync;
 	}
 
-	if (is_sync == madera_is_syncclk(dai_priv->clk))
-		return 0;
-
 	if (dai->active) {
 		dev_err(codec->dev, "Can't change clock on active DAI %d\n",
 			dai->id);
 		return -EBUSY;
 	}
 
+	dai_priv->clk = clk_id;
+
+	if (is_sync == madera_is_syncclk(dai_priv->clk))
+		return 0;
 	dev_dbg(codec->dev, "Setting AIF%d to %s\n", dai->id,
 		is_sync ? "SYSCLK" : "ASYNCCLK");
 
@@ -3674,8 +3675,6 @@ static int madera_dai_set_sysclk(struct snd_soc_dai *dai,
 		snd_soc_dapm_del_routes(dapm, routes, ARRAY_SIZE(routes));
 	else
 		snd_soc_dapm_add_routes(dapm, routes, ARRAY_SIZE(routes));
-
-	dai_priv->clk = clk_id;
 
 	return snd_soc_dapm_sync(dapm);
 
