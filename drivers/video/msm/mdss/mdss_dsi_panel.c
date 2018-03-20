@@ -3259,6 +3259,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->mipi.force_clk_lane_hs = of_property_read_bool(np,
 		"qcom,mdss-dsi-force-clock-lane-hs");
 
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-bl-delay-ms", &tmp);
+	pinfo->mipi.panel_bl_delay = (!rc ? tmp : 0);
+
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
 	if (rc) {
 		pr_err("%s: failed to parse panel features\n", __func__);
