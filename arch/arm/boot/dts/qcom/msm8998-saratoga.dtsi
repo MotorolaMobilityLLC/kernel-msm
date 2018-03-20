@@ -380,7 +380,7 @@
 
 &soc {
 	sound {
-		cs47l35,micbias-routing =
+		qcom,audio-routing =
 			"IN1AL", "MICBIAS1A",
 			"IN2L",  "MICBIAS1B",
 			"IN2R",  "MICBIAS2B",
