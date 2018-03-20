@@ -51,7 +51,11 @@
 #define MSM_CSID_DRV_NAME                    "msm_csid"
 
 #define DBG_CSID                             0
+#ifdef CONFIG_MOT_CAMERA_SOF_DEBUG
+#define SHORT_PKT_CAPTURE                    1
+#else
 #define SHORT_PKT_CAPTURE                    0
+#endif
 #define SHORT_PKT_OFFSET                     0x200
 #define ENABLE_3P_BIT                        1
 #define SOF_DEBUG_ENABLE                     1
@@ -451,8 +455,13 @@ static irqreturn_t msm_csid_irq(int irq_num, void *data)
 	}
 	irq = msm_camera_io_r(csid_dev->base +
 		csid_dev->ctrl_reg->csid_reg.csid_irq_status_addr);
+#ifdef CONFIG_MOT_CAMERA_SOF_DEBUG
+	pr_err("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
+		 __func__, csid_dev->pdev->id, irq);
+#else
 	CDBG("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
 		 __func__, csid_dev->pdev->id, irq);
+#endif
 	if (irq & (0x1 <<
 		csid_dev->ctrl_reg->csid_reg.csid_rst_done_irq_bitshift))
 		complete(&csid_dev->reset_complete);
@@ -462,8 +471,13 @@ static irqreturn_t msm_csid_irq(int irq_num, void *data)
 			csid_reg.csid_captured_short_pkt_addr);
 		count = (short_dt >> 8) & 0xffff;
 		dt =  short_dt >> 24;
+#ifdef CONFIG_MOT_CAMERA_SOF_DEBUG
+		pr_err("CSID:: %s:%d core %d dt: 0x%x, count: %d\n",
+			__func__, __LINE__, csid_dev->pdev->id, dt, count);
+#else
 		CDBG("CSID:: %s:%d core %d dt: 0x%x, count: %d\n",
 			__func__, __LINE__, csid_dev->pdev->id, dt, count);
+#endif
 		msm_camera_io_w(0x101, csid_dev->base +
 		csid_dev->ctrl_reg->csid_reg.csid_rst_cmd_addr);
 	}
