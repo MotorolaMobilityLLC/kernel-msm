@@ -2273,6 +2273,10 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 			 * the backlight would remain 0 (0 is set in blank).
 			 * Hence resetting back to calibration mode value
 			 */
+
+			if(mfd->panel_info->mipi.panel_bl_delay > 0)
+				msleep(mfd->panel_info->mipi.panel_bl_delay);
+
 			if (IS_CALIB_MODE_BL(mfd))
 				mdss_fb_set_backlight(mfd, mfd->calib_mode_bl);
 			else if ((!mfd->panel_info->mipi.post_init_delay) &&
