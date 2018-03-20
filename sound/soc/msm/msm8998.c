@@ -769,8 +769,10 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
 
+#ifndef CONFIG_SND_SOC_CS47L90
 	{ "IN2L", NULL, "MICNRS" },
 	{ "IN2R", NULL, "MICNRS" },
+#endif
 };
 
 static int slim_get_sample_rate_val(int sample_rate)
@@ -3721,7 +3723,8 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec,
 		ret = tasha_cdc_mclk_enable(codec, enable, dapm);
 	else if (!strcmp(dev_name(codec->dev), "tavil_codec"))
 		ret = tavil_cdc_mclk_enable(codec, enable);
-	else if (!strcmp(dev_name(codec->dev), "cs47l35-codec"))
+	else if (!strcmp(dev_name(codec->dev), "cs47l35-codec") ||
+		!strcmp(dev_name(codec->dev), "cs47l90-codec"))
 		return 0;
 	else {
 		dev_err(codec->dev, "%s: unknown codec to enable ext clk\n",
@@ -3861,7 +3864,9 @@ static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
+#ifndef CONFIG_SND_SOC_CS47L90
 	SND_SOC_DAPM_REGULATOR_SUPPLY("MICNRS", 0, SND_SOC_DAPM_REGULATOR_BYPASS),
+#endif
 };
 
 static inline int param_is_mask(int p)
@@ -7244,14 +7249,19 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	},
 };
 
-static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
+static struct snd_soc_dai_link msm_madera_fe_dai_links[] = {
 	{
 		.name = LPASS_BE_SLIMBUS_4_TX,
 		.stream_name = "Slimbus4 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16393",
 		.platform_name = "msm-pcm-hostless",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ops = &msm_be_ops,
@@ -7264,8 +7274,13 @@ static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
 		.stream_name = "SLIMBUS_2 Hostless Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16388",
 		.platform_name = "msm-pcm-hostless",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm_slimbus_2_be_ops,
@@ -7276,8 +7291,13 @@ static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
 		.stream_name = "SLIMBUS_2 Hostless Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16389",
 		.platform_name = "msm-pcm-hostless",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm_slimbus_2_be_ops,
@@ -7298,6 +7318,58 @@ static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#if defined(CONFIG_SND_SOC_CS47L90)
+	{
+		.name = "CPU-DSP Voice Control",
+		.stream_name = "CPU-DSP Voice Control",
+		.cpu_dai_name = "cs47l90-cpu-voicectrl",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp-voicectrl",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP Trace",
+		.stream_name = "CPU-DSP Voice Trace",
+		.cpu_dai_name = "cs47l90-cpu-trace",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp-trace",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP2 Text",
+		.stream_name = "CPU-DSP2 Text",
+		.cpu_dai_name = "cs47l90-dsp2-cpu-txt",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp2-txt",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP3 Text",
+		.stream_name = "CPU-DSP3 Text",
+		.cpu_dai_name = "cs47l90-dsp3-cpu-txt",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp3-txt",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP1 Text",
+		.stream_name = "CPU-DSP1 Text",
+		.cpu_dai_name = "cs47l90-dsp1-cpu-txt",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp1-txt",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	}
+#else
 	{
 		.name = "CPU-DSP Voice Control",
 		.stream_name = "CPU-DSP Voice Control",
@@ -7348,6 +7420,7 @@ static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
 		.ignore_suspend = 1,
 		.dynamic = 0,
 	}
+#endif
 };
 
 static struct snd_soc_dai_link msm_tavil_fe_dai_links[] = {
@@ -7738,9 +7811,9 @@ static struct snd_soc_dai_link msm_common_be_dai_links[] = {
 	},
 };
 
-static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
+static int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int ret;
+	int ret, i;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 
@@ -7789,7 +7862,17 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to add audio routes %d\n", ret);
 		return ret;
 	}
-
+	/* fix ununsed variable warning */
+	i = 0;
+#ifdef CONFIG_SND_SOC_CS47L90
+	/* Toggle PDM_CLK GPIO */
+	for (i = 0; i < 5; i++) {
+		snd_soc_write(codec, MADERA_GPIO37_CTRL_1, 0xA001);
+		usleep_range(1000, 1100);
+		snd_soc_write(codec, MADERA_GPIO37_CTRL_1, 0x2001);
+		usleep_range(1000, 1100);
+	}
+#endif
 	/* Ensures that GPIO3 is set to an output clock. */
 	snd_soc_write(codec, 0x1704, 0);
 	snd_soc_write(codec, 0x1705, 0);
@@ -7809,18 +7892,20 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "IN1AR");
 	snd_soc_dapm_ignore_suspend(dapm, "IN1BL");
 	snd_soc_dapm_ignore_suspend(dapm, "IN1BR");
-	snd_soc_dapm_ignore_suspend(dapm, "IN2L");
-	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX1");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX2");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX1");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
+#ifndef CONFIG_SND_SOC_CS47L90
+	snd_soc_dapm_ignore_suspend(dapm, "IN2L");
+	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTL");
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTR");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTN");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTP");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKDATL");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKDATR");
+#endif
 	snd_soc_dapm_ignore_suspend(dapm, "DSP2 Virtual Output");
 	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Virtual Output");
 	snd_soc_dapm_ignore_suspend(dapm, "DSP Virtual Input");
@@ -7868,9 +7953,27 @@ static const struct snd_soc_pcm_stream cs35l35_params = {
 	.channels_max = 2,
 };
 
+static const struct snd_soc_pcm_stream cs35l36_params[] = {
+	{
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,  /* 2 channels for 1.536MHz SCLK */
+	},
+	{
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 96000,
+		.rate_max = 96000,
+		.channels_min = 2,
+		.channels_max = 2, /* 2 channels for 3.072MHz SCLK */
+	},
+};
+
 static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret;
+	int codec_clock = CS35L35_MCLK_RATE;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
@@ -7886,20 +7989,46 @@ static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to set SCLK %d\n", ret);
 		return ret;
 	}
-	ret = snd_soc_codec_set_sysclk(codec, 0, 0, CS35L35_MCLK_RATE, 0);
+#ifdef CONFIG_SND_SOC_CS35L36
+	codec_clock = CS35L35_SCLK_RATE;
+#endif
+	ret = snd_soc_codec_set_sysclk(codec, 0, 0, codec_clock, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set MCLK %d\n", ret);
 		return ret;
 	}
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
+#ifdef CONFIG_SND_SOC_CS35L36
+	snd_soc_dapm_ignore_suspend(dapm, "SDIN");
+	snd_soc_dapm_ignore_suspend(dapm, "SDOUT");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK");
+	snd_soc_dapm_ignore_suspend(dapm, "VP");
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Enable");
+	snd_soc_dapm_ignore_suspend(dapm, "VSENSE");
+	snd_soc_dapm_ignore_suspend(dapm, "Main AMP");
+#endif
 	snd_soc_dapm_sync(dapm);
 	return 0;
 }
 
-static struct snd_soc_dai_link msm_cs47l35_cs35l35_dai_links[] = {
+static struct snd_soc_dai_link msm_madera_amp_dai_links[] = {
 	{ /* codec to amp link */
 		.name = "MARLEY-AMP",
 		.stream_name = "MARLEY-AMP Playback",
+#if defined(CONFIG_SND_SOC_CS47L90) && defined(CONFIG_SND_SOC_CS35L36)
+		.cpu_name = "cs47l90-codec",
+		.cpu_dai_name = "cs47l90-aif1",
+		.codec_name = "cs35l36.7-0040",
+		.codec_dai_name = "cs35l36-pcm",
+		.init = cs35l35_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &cs35l36_params[0],
+		.num_params = ARRAY_SIZE(cs35l36_params),
+#else
 		.cpu_name = "cs47l35-codec",
 		.cpu_dai_name = "cs47l35-aif1",
 		.codec_name = "cs35l35.7-0041",
@@ -7911,6 +8040,7 @@ static struct snd_soc_dai_link msm_cs47l35_cs35l35_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 		.params = &cs35l35_params,
+#endif
 	}
 };
 
@@ -7922,14 +8052,21 @@ static const struct snd_soc_pcm_stream cs35l35_pdm_params = {
 	.channels_max = 2,
 };
 
-static struct snd_soc_dai_link msm_cs47l35_cs35l35_pdm_dai_links[] = {
+static struct snd_soc_dai_link msm_madera_amp_pdm_dai_links[] = {
 	{ /* codec to amp link */
 		.name = "MARLEY-PDM",
 		.stream_name = "MARLEY-PDM Playback",
+#if defined(CONFIG_SND_SOC_CS47L90) && defined(CONFIG_SND_SOC_CS35L36)
+		.cpu_name = "cs47l90-codec",
+		.cpu_dai_name = "cs47l90-pdm",
+		.codec_name = "snd-soc-dummy",
+		.codec_dai_name = "snd-soc-dummy-dai",
+#else
 		.cpu_name = "cs47l35-codec",
 		.cpu_dai_name = "cs47l35-pdm",
 		.codec_name = "cs35l35.7-0041",
 		.codec_dai_name = "cs35l35-pdm",
+#endif
 		.dai_fmt = SND_SOC_DAIFMT_PDM | SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
 		.no_pcm = 1,
@@ -7939,18 +8076,23 @@ static struct snd_soc_dai_link msm_cs47l35_cs35l35_pdm_dai_links[] = {
 	}
 };
 
-static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
+static struct snd_soc_dai_link msm_madera_be_dai_links[] = {
 	{
 		.name = LPASS_BE_SLIMBUS_0_RX,
 		.stream_name = "Slimbus Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16384",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
-		.init = &msm_cs47l35_init,
+		.init = &msm_madera_init,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		/* this dainlink has playback support */
 		.ignore_pmdown_time = 1,
@@ -7962,8 +8104,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16385",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
@@ -7976,8 +8123,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus1 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16386",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim2",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim2",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_RX,
@@ -7992,8 +8144,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus1 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16387",
 		.platform_name = "msm-pcm-hostless",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim2",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim2",
+#endif
 		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
@@ -8006,8 +8163,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus2 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16388",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_2_RX,
@@ -8021,8 +8183,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus3 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16390",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_RX,
@@ -8037,8 +8204,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus3 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16391",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_TX,
@@ -8051,8 +8223,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus4 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16392",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim1",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim1",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_RX,
@@ -8067,8 +8244,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus5 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16394",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim2",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim2",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_5_RX,
@@ -8083,8 +8265,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.stream_name = "Slimbus6 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16396",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_CS47L90)
+		.codec_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-slim2",
+#else
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim2",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_6_RX,
@@ -8603,11 +8790,11 @@ static struct snd_soc_dai_link msm_auxpcm_be_dai_links[] = {
 	},
 };
 
-static struct snd_soc_dai_link msm_cs47l35_dai_links[
-			 ARRAY_SIZE(msm_cs47l35_fe_dai_links) +
-			 ARRAY_SIZE(msm_cs47l35_be_dai_links) +
-			 ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links) +
-			 ARRAY_SIZE(msm_cs47l35_cs35l35_pdm_dai_links) +
+static struct snd_soc_dai_link msm_madera_dai_links[
+			 ARRAY_SIZE(msm_madera_fe_dai_links) +
+			 ARRAY_SIZE(msm_madera_be_dai_links) +
+			 ARRAY_SIZE(msm_madera_amp_dai_links) +
+			 ARRAY_SIZE(msm_madera_amp_pdm_dai_links) +
 			 ARRAY_SIZE(msm_common_misc_fe_dai_links) +
 			 ARRAY_SIZE(msm_common_dai_links) +
 			 ARRAY_SIZE(msm_common_be_dai_links) +
@@ -8711,8 +8898,8 @@ struct snd_soc_card snd_soc_card_tavil_msm = {
 	.late_probe	= msm_snd_card_tavil_late_probe,
 };
 
-struct snd_soc_card snd_soc_card_cs47l35_msm = {
-	.name		= "msm8998-cs47l35-snd-card",
+struct snd_soc_card snd_soc_card_madera_msm = {
+	.name		= "msm8998-madera-snd-card",
 };
 
 static int msm_populate_dai_link_component_of_node(
@@ -8953,8 +9140,8 @@ struct snd_soc_card snd_soc_card_stub_msm = {
 };
 
 static const struct of_device_id msm8998_asoc_machine_of_match[]  = {
-	{ .compatible = "qcom,msm8998-asoc-snd-cs47l35",
-	  .data = "cs47l35-codec"},
+	{ .compatible = "qcom,msm8998-asoc-snd-madera",
+	  .data = "madera-codec"},
 	{ .compatible = "qcom,msm8998-asoc-snd-tavil",
 	  .data = "tavil_codec"},
 	{ .compatible = "qcom,msm8998-asoc-snd-stub",
@@ -8977,42 +9164,42 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		return NULL;
 	}
 
-	if (!strcmp(match->data, "cs47l35-codec")) {
-		card = &snd_soc_card_cs47l35_msm;
-		len_1 = ARRAY_SIZE(msm_cs47l35_fe_dai_links);
-		len_2 = len_1 + ARRAY_SIZE(msm_cs47l35_be_dai_links);
-		len_3 = len_2 + ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links);
+	if (!strcmp(match->data, "madera-codec")) {
+		card = &snd_soc_card_madera_msm;
+		len_1 = ARRAY_SIZE(msm_madera_fe_dai_links);
+		len_2 = len_1 + ARRAY_SIZE(msm_madera_be_dai_links);
+		len_3 = len_2 + ARRAY_SIZE(msm_madera_amp_dai_links);
 		len_3a = len_3 + ARRAY_SIZE(msm_common_dai_links);
 		len_4 = len_3a + ARRAY_SIZE(msm_common_misc_fe_dai_links);
 		len_5 = len_4 + ARRAY_SIZE(msm_common_be_dai_links);
 		total_links = len_5 +
-				ARRAY_SIZE(msm_cs47l35_cs35l35_pdm_dai_links);
-		memcpy(msm_cs47l35_dai_links,
-		       msm_cs47l35_fe_dai_links,
-		       sizeof(msm_cs47l35_fe_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_1,
-		       msm_cs47l35_be_dai_links,
-		       sizeof(msm_cs47l35_be_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_2,
-		       msm_cs47l35_cs35l35_dai_links,
-		       sizeof(msm_cs47l35_cs35l35_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_3,
+				ARRAY_SIZE(msm_madera_amp_pdm_dai_links);
+		memcpy(msm_madera_dai_links,
+		       msm_madera_fe_dai_links,
+		       sizeof(msm_madera_fe_dai_links));
+		memcpy(msm_madera_dai_links + len_1,
+		       msm_madera_be_dai_links,
+		       sizeof(msm_madera_be_dai_links));
+		memcpy(msm_madera_dai_links + len_2,
+		       msm_madera_amp_dai_links,
+		       sizeof(msm_madera_amp_dai_links));
+		memcpy(msm_madera_dai_links + len_3,
 		       msm_common_dai_links,
 		       sizeof(msm_common_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_3a,
+		memcpy(msm_madera_dai_links + len_3a,
 		       msm_common_misc_fe_dai_links,
 		       sizeof(msm_common_misc_fe_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_4,
+		memcpy(msm_madera_dai_links + len_4,
 		       msm_common_be_dai_links,
 		       sizeof(msm_common_be_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_5,
-		       msm_cs47l35_cs35l35_pdm_dai_links,
-		       sizeof(msm_cs47l35_cs35l35_pdm_dai_links));
+		memcpy(msm_madera_dai_links + len_5,
+		       msm_madera_amp_pdm_dai_links,
+		       sizeof(msm_madera_amp_pdm_dai_links));
 
 		if (of_property_read_bool(dev->of_node, "qcom,wcn-btfm")) {
 			dev_dbg(dev, "%s(): WCN BTFM support present\n",
 				__func__);
-			memcpy(msm_cs47l35_dai_links + total_links,
+			memcpy(msm_madera_dai_links + total_links,
 			       msm_wcn_be_dai_links,
 			       sizeof(msm_wcn_be_dai_links));
 			total_links += ARRAY_SIZE(msm_wcn_be_dai_links);
@@ -9022,7 +9209,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 					  "qcom,ext-disp-audio-rx")) {
 			dev_dbg(dev, "%s(): External display audio support present\n",
 				__func__);
-			memcpy(msm_cs47l35_dai_links + total_links,
+			memcpy(msm_madera_dai_links + total_links,
 			ext_disp_be_dai_link,
 			sizeof(ext_disp_be_dai_link));
 			total_links += ARRAY_SIZE(ext_disp_be_dai_link);
@@ -9030,20 +9217,20 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 
 		if (of_property_read_bool(dev->of_node,
 					  "qcom,mi2s-audio-intf")) {
-			memcpy(msm_cs47l35_dai_links + total_links,
+			memcpy(msm_madera_dai_links + total_links,
 			       msm_mi2s_be_dai_links,
 			       sizeof(msm_mi2s_be_dai_links));
 			total_links += ARRAY_SIZE(msm_mi2s_be_dai_links);
 		}
 		if (of_property_read_bool(dev->of_node,
 					  "qcom,auxpcm-audio-intf")) {
-			memcpy(msm_cs47l35_dai_links + total_links,
+			memcpy(msm_madera_dai_links + total_links,
 			       msm_auxpcm_be_dai_links,
 			       sizeof(msm_auxpcm_be_dai_links));
 			total_links += ARRAY_SIZE(msm_auxpcm_be_dai_links);
 		}
 
-		dailink = msm_cs47l35_dai_links;
+		dailink = msm_madera_dai_links;
 	}  else if (!strcmp(match->data, "tavil_codec")) {
 		card = &snd_soc_card_tavil_msm;
 		len_1 = ARRAY_SIZE(msm_common_dai_links);
@@ -9465,14 +9652,12 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 			ret);
 		goto err;
 	}
-#ifndef CONFIG_SND_SOC_MADERA
 	ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
 	if (ret) {
 		dev_err(&pdev->dev, "parse audio routing failed, err:%d\n",
 			ret);
 		goto err;
 	}
-#endif
 
 	match = of_match_node(msm8998_asoc_machine_of_match,
 			pdev->dev.of_node);
@@ -9482,8 +9667,8 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	if (!strcmp(match->data, "cs47l35-codec")) {
-		mclk_freq_prop_name = "qcom,cs47l35-mclk-clk-freq";
+	if (!strcmp(match->data, "tasha_codec")) {
+		mclk_freq_prop_name = "qcom,tasha-mclk-clk-freq";
 	} else {
 		mclk_freq_prop_name = "qcom,tavil-mclk-clk-freq";
 	}
@@ -9509,14 +9694,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 #endif
 	spdev = pdev;
 
-#ifdef CONFIG_SND_SOC_CS47L35
-	ret = snd_soc_of_parse_audio_routing(card, "cs47l35,micbias-routing");
-	if (ret) {
-		dev_err(&pdev->dev, "parse micbias-routing failed, err:%d\n",
-			ret);
-		goto err;
-	}
-#endif
 #if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
 	aov_trigger_init();
 #endif
