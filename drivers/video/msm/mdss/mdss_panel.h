@@ -492,6 +492,9 @@ struct mipi_panel_info {
 	char lp11_init;
 	u32  init_delay;
 	u32  post_init_delay;
+
+	/*delay for panel bl on to avoid splash screen*/
+	u32 panel_bl_delay;
 };
 
 struct edp_panel_info {
