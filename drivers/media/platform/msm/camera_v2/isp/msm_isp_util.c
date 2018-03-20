@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -858,7 +858,9 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		break;
 	case VIDIOC_MSM_ISP_CFG_STREAM:
 		mutex_lock(&vfe_dev->core_mutex);
+		mutex_lock(&vfe_dev->buf_mgr->lock);
 		rc = msm_isp_cfg_axi_stream(vfe_dev, arg);
+		mutex_unlock(&vfe_dev->buf_mgr->lock);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_AXI_HALT:
@@ -868,6 +870,7 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		break;
 	case VIDIOC_MSM_ISP_AXI_RESET:
 		mutex_lock(&vfe_dev->core_mutex);
+		mutex_lock(&vfe_dev->buf_mgr->lock);
 		if (atomic_read(&vfe_dev->error_info.overflow_state)
 			!= HALT_ENFORCED) {
 			rc = msm_isp_stats_reset(vfe_dev);
@@ -878,10 +881,12 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 			pr_err_ratelimited("%s: no HW reset, halt enforced.\n",
 				__func__);
 		}
+		mutex_unlock(&vfe_dev->buf_mgr->lock);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_AXI_RESTART:
 		mutex_lock(&vfe_dev->core_mutex);
+		mutex_lock(&vfe_dev->buf_mgr->lock);
 		if (atomic_read(&vfe_dev->error_info.overflow_state)
 			!= HALT_ENFORCED) {
 			rc = msm_isp_stats_restart(vfe_dev);
@@ -892,6 +897,7 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 			pr_err_ratelimited("%s: no AXI restart, halt enforced.\n",
 				__func__);
 		}
+		mutex_unlock(&vfe_dev->buf_mgr->lock);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_INPUT_CFG:
@@ -957,7 +963,9 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		break;
 	case VIDIOC_MSM_ISP_CFG_STATS_STREAM:
 		mutex_lock(&vfe_dev->core_mutex);
+		mutex_lock(&vfe_dev->buf_mgr->lock);
 		rc = msm_isp_cfg_stats_stream(vfe_dev, arg);
+		mutex_lock(&vfe_dev->buf_mgr->lock);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_UPDATE_STATS_STREAM:
