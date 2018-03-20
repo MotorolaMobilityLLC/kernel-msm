@@ -865,7 +865,7 @@
 	/delete-node/ sound-tavil;
 	sound {
 		status = "ok";
-		compatible = "qcom,msm8998-asoc-snd-cs47l35";
+		compatible = "qcom,msm8998-asoc-snd-madera";
 		qcom,model = "msm8998-cs47l35-card";
 		qcom,ext-disp-audio-rx;
 		qcom,wcn-btfm;
@@ -931,7 +931,7 @@
 		asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
 		asoc-codec-names = "msm-stub-codec.1",
 				"msm-ext-disp-audio-codec-rx";
-		cs47l35,micbias-routing =
+		qcom,audio-routing =
 			"IN1AL", "MICBIAS2A",
 			"IN2L",  "MICBIAS2A",
 			"IN2L",  "GPSW",
