@@ -96,6 +96,8 @@
 			>;
 
 		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			adsp@0ffe00 {
 				reg = <0x0ffe00>;
 				firmware {
