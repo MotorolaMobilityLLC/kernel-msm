@@ -1180,17 +1180,11 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	dev_err(&i2c_client->dev, "mask0-1-2-3:   %02X %02X %02X %02X\n",
-			masks[0], masks[1], masks[2], masks[3]);
-	dev_err(&i2c_client->dev, "sticky0-1-2-3: %02X %02X %02X %02X\n",
-			sticky[0], sticky[1], sticky[2], sticky[3]);
-
 	if (sticky[1] & CS35L35_PDN_DONE)
 		complete(&cs35l35->pdn_done);
 
 	/* read the current values */
 	if (regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_1, &current1)) {
-		dev_err(&i2c_client->dev, "Read current IRQ status error\n");
 		return IRQ_NONE;
 	}
 	/* handle the interrupts */
