@@ -263,3 +263,9 @@ config MSM_CAMERA_VENDOR_BST_FACTORY
         bool "enable bst camera factory build"
         ---help---
                 enable bst factory build.
+
+config MOT_CAMERA_SOF_DEBUG
+	bool "Enable MOT_CAMERA_SOF_DEBUG"
+	default n
+	---help---
+		Enables support for sof debug.
