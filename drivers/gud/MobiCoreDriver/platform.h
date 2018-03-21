@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -81,12 +81,14 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 }
 
 /* Should be defined for all TZBSPv4 platform common flag */
-/* DHV but product is not 64bit */
-/*
 #ifndef CONFIG_TRUSTONIC_TEE_LPAE
 #define CONFIG_TRUSTONIC_TEE_LPAE
 #endif
-*/
+
+/*
+ * Do not start the TEE at driver init
+ */
+#define MC_DELAYED_TEE_START
 
 /*
  * Perform crypto clock enable/disable
@@ -106,11 +108,5 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 
 /* All TZBSPv4 targets are using AARCH32_FC flag */
 #define MC_AARCH32_FC
-
-/*
- * On Kernel >= 4.4 debugfs_create_bool API changed
- * and this flag should be defined
- * define DEBUGFS_CREATE_BOOL_TAKES_A_BOOL
- */
 
 #endif /* _MC_PLATFORM_H_ */

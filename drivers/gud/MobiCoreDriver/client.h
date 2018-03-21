@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2017 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -38,8 +38,7 @@ int client_open_session(struct tee_client *client, u32 *session_id,
 			struct mc_identity *identity, int client_fd);
 int client_open_trustlet(struct tee_client *client, u32 *session_id, u32 spid,
 			 uintptr_t trustlet, size_t trustlet_len,
-			 uintptr_t tci, size_t tci_len,
-			 int client_fd);
+			 uintptr_t tci, size_t tci_len, int client_fd);
 int client_add_session(struct tee_client *client,
 		       const struct tee_object *obj, uintptr_t tci, size_t len,
 		       u32 *p_sid, bool is_gp_uuid,

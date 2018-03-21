@@ -1,12 +1,10 @@
 #
 # Trustonic drivers configuration
 #
-# DHV ARM || ARM64 not working, so force TRUSTONIC_TEE_LPAE for 64bit usage
 config TRUSTONIC_TEE
     tristate "Trustonic TEE Driver"
-#    depends on ARM || ARM64
+    depends on ARM || ARM64
     default y
-#    default m
     ---help---
       Enable Trustonic TEE support
 
@@ -15,7 +13,6 @@ config TRUSTONIC_TEE_LPAE
     depends on TRUSTONIC_TEE
     default y if ARM64
     default n if ARM
-    default n
     ---help---
       Enable Trustonic TEE 64-bit physical addresses support
 

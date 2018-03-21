@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -21,7 +21,7 @@
 #include <linux/types.h>
 
 #ifndef __KERNEL__
-#define BIT(n)				(1 << n)
+#define BIT(n)				(1 << (n))
 #endif /* __KERNEL__ */
 
 #define MC_USER_DEVNODE			"mobicore-user"

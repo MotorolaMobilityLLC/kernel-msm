@@ -27,7 +27,6 @@ mcDrvModule-y := \
 
 # Release mode by default
 ccflags-y += -DNDEBUG
-#ccflags-y += -DDEBUG
 ccflags-y += -Wno-declaration-after-statement
 
 ccflags-$(CONFIG_TRUSTONIC_TEE_DEBUG) += -DDEBUG

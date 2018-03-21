@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -399,7 +399,7 @@ struct rsp_load_token {
 
 /** Structure of the MCP buffer */
 union mcp_message {
-	struct init_values	init_values;	/** Intialisation values */
+	struct init_values	init_values;	/** Initialisation values */
 	struct cmd_header	cmd_header;	/** Command header */
 	struct rsp_header	rsp_header;
 	struct cmd_open		cmd_open;	/** Load and open service */

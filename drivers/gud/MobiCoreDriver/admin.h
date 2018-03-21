@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2017 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -25,6 +25,7 @@ void mc_admin_exit(void);
 
 struct tee_object *tee_object_select(const struct mc_uuid_t *uuid);
 struct tee_object *tee_object_get(const struct mc_uuid_t *uuid, bool is_gp);
+struct tee_object *tee_object_copy(uintptr_t address, size_t length);
 struct tee_object *tee_object_read(u32 spid, uintptr_t address, size_t length);
 void tee_object_free(struct tee_object *object);
 

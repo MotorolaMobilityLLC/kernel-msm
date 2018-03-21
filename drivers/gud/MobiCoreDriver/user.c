@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -12,11 +12,12 @@
  * GNU General Public License for more details.
  */
 
-#include <asm/uaccess.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/export.h>
 #include <linux/fs.h>
+#include <linux/mm_types.h>	/* struct vm_area_struct */
+#include <linux/uaccess.h>
 
 #include "public/mc_user.h"
 
@@ -141,7 +142,7 @@ static long user_ioctl(struct file *file, unsigned int id, unsigned long arg)
 		ret = client_open_session(client, &session.sid, &session.uuid,
 					  session.tci, session.tcilen,
 					  session.is_gp_uuid,
-					  &session.identity, session.client_fd);
+					  &session.identity, -1);
 		if (ret)
 			break;
 
@@ -162,8 +163,7 @@ static long user_ioctl(struct file *file, unsigned int id, unsigned long arg)
 
 		ret = client_open_trustlet(client, &trustlet.sid, trustlet.spid,
 					   trustlet.buffer, trustlet.tlen,
-					   trustlet.tci, trustlet.tcilen,
-					   trustlet.client_fd);
+					   trustlet.tci, trustlet.tcilen, -1);
 		if (ret)
 			break;
 
@@ -205,8 +205,7 @@ static long user_ioctl(struct file *file, unsigned int id, unsigned long arg)
 			break;
 		}
 
-		ret = client_map_session_wsms(client, map.sid, &map.buf,
-					      map.client_fd);
+		ret = client_map_session_wsms(client, map.sid, &map.buf, -1);
 		if (ret)
 			break;
 
@@ -290,8 +289,7 @@ static long user_ioctl(struct file *file, unsigned int id, unsigned long arg)
 
 		ret = client_gp_register_shared_mem(client,
 						    &shared_mem.memref,
-						    &shared_mem.ret,
-						    shared_mem.client_fd);
+						    &shared_mem.ret, -1);
 
 		if (copy_to_user(uarg, &shared_mem, sizeof(shared_mem))) {
 			ret = -EFAULT;
@@ -321,8 +319,7 @@ static long user_ioctl(struct file *file, unsigned int id, unsigned long arg)
 		ret = client_gp_open_session(client, &session.session_id,
 					     &session.uuid, &session.operation,
 					     &session.identity,
-					     &session.ret,
-					     session.client_fd);
+					     &session.ret, -1);
 
 		if (copy_to_user(uarg, &session, sizeof(session))) {
 			ret = -EFAULT;
@@ -352,8 +349,7 @@ static long user_ioctl(struct file *file, unsigned int id, unsigned long arg)
 		ret = client_gp_invoke_command(client, command.session_id,
 					       command.command_id,
 					       &command.operation,
-					       &command.ret,
-					       command.client_fd);
+					       &command.ret, -1);
 
 		if (copy_to_user(uarg, &command, sizeof(command))) {
 			ret = -EFAULT;
