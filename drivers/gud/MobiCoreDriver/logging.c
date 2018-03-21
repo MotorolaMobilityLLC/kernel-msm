@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -17,8 +17,8 @@
 #include <linux/slab.h>
 #include <linux/device.h>
 #include <linux/debugfs.h>
+#include <linux/version.h>
 
-#include "platform.h"	/* DEBUGFS_CREATE_BOOL_TAKES_A_BOOL */
 #include "main.h"
 #include "fastcall.h"
 #include "logging.h"
@@ -72,7 +72,7 @@ static struct logging_ctx {
 	u16	prev_source;		/* Previous Log source */
 	char	line[LOG_LINE_SIZE + 1];/* Log Line buffer */
 	u32	line_len;		/* Log Line buffer current length */
-#ifndef DEBUGFS_CREATE_BOOL_TAKES_A_BOOL
+#if KERNEL_VERSION(4, 4, 0) > LINUX_VERSION_CODE
 	u32	enabled;		/* Log can be disabled via debugfs */
 #else
 	bool	enabled;		/* Log can be disabled via debugfs */
@@ -111,8 +111,7 @@ static inline void log_char(char ch, u16 source)
 		return;
 	}
 
-	if ((log_ctx.line_len >= LOG_LINE_SIZE) ||
-	    (source != log_ctx.prev_source))
+	if (log_ctx.line_len >= LOG_LINE_SIZE || source != log_ctx.prev_source)
 		log_eol(source);
 
 	log_ctx.line[log_ctx.line_len++] = ch;
@@ -197,7 +196,7 @@ static void log_worker(struct work_struct *work)
 void mc_logging_run(void)
 {
 	if (log_ctx.enabled && !log_ctx.dead &&
-	    (log_ctx.trace_buf->head != log_ctx.tail))
+	    log_ctx.trace_buf->head != log_ctx.tail)
 		schedule_work(&log_ctx.work);
 }
 

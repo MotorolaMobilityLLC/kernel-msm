@@ -29,8 +29,8 @@
 int mc_fc_init(uintptr_t base_pa, ptrdiff_t off, size_t q_len, size_t buf_len);
 int mc_fc_info(u32 ext_info_id, u32 *state, u32 *ext_info);
 int mc_fc_mem_trace(phys_addr_t buffer, u32 size);
-int mc_fc_nsiq(void);
-int mc_fc_yield(void);
+int mc_fc_nsiq(u32 sid, u32 payload);
+int mc_fc_yield(u32 timeslice);
 
 int mc_fastcall_init(void);
 void mc_fastcall_exit(void);
