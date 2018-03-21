@@ -19,6 +19,7 @@
 
 #include "msm8998-v2.dtsi"
 #include "msm8998-moto-common.dtsi"
+#include "msm8998-camera-sensor-mot-messi.dtsi"
 #include "dsi-panel-mot-smd-601-1080p-messie-cmd.dtsi"
 #include "dsi-panel-mot-tianma-601-1080p-messie-cmd.dtsi"
 #include "msm8998-messi-audio.dtsi"
