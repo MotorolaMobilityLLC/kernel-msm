@@ -15,7 +15,6 @@
 #include "msm8998-moto-pinctrl.dtsi"
 #include "msm8998-mdss.dtsi"
 #include "msm8998-moto-fps.dtsi"
-#include "msm8998-camera-sensor-mot.dtsi"
 #include "carrier-channel-ids.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include <moto-mem-reserve.h>

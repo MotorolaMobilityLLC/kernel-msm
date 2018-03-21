@@ -11,6 +11,7 @@
  */
 
 #include "msm8998-moto-common.dtsi"
+#include "msm8998-camera-sensor-mot.dtsi"
 #include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
 #include "dsi-panel-mot-smd-546-QHD-p-cmd.dtsi"
 

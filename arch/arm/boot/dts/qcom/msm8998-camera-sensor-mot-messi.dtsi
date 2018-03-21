@@ -1,0 +1,266 @@
+/*
+ * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	rgb_mono_vana: gpio-regulator@22 {
+		compatible = "regulator-fixed";
+		regulator-name = "rgb_mono_vana";
+		gpio = <&tlmm 22 0>;
+		enable-active-high;
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+	};
+
+	rgb_mono_vdig: gpio-regulator@24 {
+		compatible = "regulator-fixed";
+		regulator-name = "rgb_mono_vdig";
+		gpio = <&tlmm 24 0>;
+		enable-active-high;
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+	};
+
+	rgb_mono_reset: gpio-regulator@23 {
+		compatible = "regulator-fixed";
+		regulator-name = "rgb_mono_reset";
+		gpio = <&tlmm 23 0>;
+		enable-active-high;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+};
+
+&cci {
+	/* GT24C128B EEPROM for IMX386 RGB */
+	eeprom0: qcom,eeprom@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,eeprom";
+		qcom,cci-master = <0>;
+		cam_vio-supply = <&pm8998_lvs1>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <0>;
+		qcom,cam-vreg-max-voltage = <0>;
+		qcom,cam-vreg-op-mode = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend>;
+		gpios = <&tlmm 15 0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <1>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+				<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* GT24C128B EEPROM for IMX386 Mono */
+	eeprom2: qcom,eeprom@2 {
+		cell-index = <2>;
+		reg = <0x0>;
+		compatible = "qcom,eeprom";
+		qcom,cci-master = <0>;
+		cam_vio-supply = <&pm8998_lvs1>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <0>;
+		qcom,cam-vreg-max-voltage = <0>;
+		qcom,cam-vreg-op-mode = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend>;
+		gpios = <&tlmm 15 0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <1>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+				<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* IMX386 RGB Actuator */
+	actuator0: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+	};
+
+	/* IMX386 MONO Actuator */
+	actuator1: qcom,actuator@1 {
+		cell-index = <1>;
+		reg = <0x1>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <1>;
+	};
+
+	/* AW3643 Flash Driver */
+	led_flash0: qcom,camera-flash@c6 {
+		cell-index = <0xc6>;
+		compatible = "qcom,camera-flash";
+		label = "aw3643";
+		qcom,flash-name = "aw3643";
+		qcom,flash-type = <1>;
+		cam_vio-supply = <&pm8998_lvs1>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <0>;
+		qcom,cam-vreg-max-voltage = <0>;
+		qcom,cam-vreg-op-mode = <0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_flash_active>;
+		pinctrl-1 = <&cam_sensor_flash_suspend>;
+		gpios = <&tlmm 57 0>,
+			<&tlmm 94 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-custom1 = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 0>;
+		qcom,gpio-req-tbl-label = "FLASH_EN", "FLASH_CUSTOM1";
+		qcom,cci-master = <0>;
+	};
+
+	/* IMX386 RGB */
+	qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg = <0x0>;
+		qcom,csiphy-sd-index = <2>;
+		qcom,csid-sd-index = <2>;
+		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator0>;
+		qcom,eeprom-src = <&eeprom0>;
+		qcom,led-flash-src = <&led_flash0>;
+		cam_vio-supply = <&pm8998_lvs1>;
+		cam_vdig-supply = <&rgb_mono_vdig>;
+		cam_vana-supply = <&rgb_mono_vana>;
+		cam_v_custom1-supply = <&pm8998_s5>;
+		cam_v_custom2-supply = <&rgb_mono_reset>;
+		qcom,cam-vreg-name = "cam_vio",
+				"cam_vdig",
+				"cam_vana",
+				"cam_v_custom1",
+				"cam_v_custom2";
+		qcom,cam-vreg-min-voltage = <0 1200000 2800000 2040000 1800000>;
+		qcom,cam-vreg-max-voltage = <0 1200000 2800000 2040000 1800000>;
+		qcom,cam-vreg-op-mode = <0 0 0 105000 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active
+				 &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend
+				 &cam_sensor_rear_suspend>;
+		gpios = <&tlmm 15 0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <1>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+				<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* S5K4H7 */
+	qcom,camera@1 {
+		cell-index = <1>;
+		compatible = "qcom,camera";
+		reg = <0x1>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <270>;
+		cam_vio-supply = <&pm8998_lvs1>;
+		cam_vdig-supply = <&pm8998_l14>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <0 1256000>;
+		qcom,cam-vreg-max-voltage = <0 1256000>;
+		qcom,cam-vreg-op-mode = <0 100000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active
+			&cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend
+			&cam_sensor_front_suspend>;
+		gpios = <&tlmm 14 0>,
+			<&tlmm 16 0>,
+			<&tlmm 104 0>,
+			<&tlmm 128 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-standby = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+					  "CAM_RESET1",
+					  "CAM_VANA",
+					  "CAM_STANDBY";
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk1_clk_src>,
+			<&clock_mmss clk_mmss_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* IMX386 MONO */
+	qcom,camera@2 {
+		cell-index = <2>;
+		compatible = "qcom,camera";
+		reg = <0x02>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator1>;
+		qcom,eeprom-src = <&eeprom2>;
+		cam_vio-supply = <&pm8998_lvs1>;
+		cam_vdig-supply = <&rgb_mono_vdig>;
+		cam_vana-supply = <&rgb_mono_vana>;
+		cam_v_custom1-supply = <&pm8998_s5>;
+		cam_v_custom2-supply = <&rgb_mono_reset>;
+		qcom,cam-vreg-name = "cam_vio",
+				"cam_vdig",
+				"cam_vana",
+				"cam_v_custom1",
+				"cam_v_custom2";
+		qcom,cam-vreg-min-voltage = <0 1200000 2800000 2040000 1800000>;
+		qcom,cam-vreg-max-voltage = <0 1200000 2800000 2040000 1800000>;
+		qcom,cam-vreg-op-mode = <0 0 0 105000 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active
+				 &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend
+				 &cam_sensor_rear_suspend>;
+		gpios = <&tlmm 15 0>,
+			<&tlmm 128 0>;
+		qcom,gpio-standby = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					"CAM_STANDBY";
+		qcom,sensor-position = <0x100>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+				<&clock_mmss clk_mmss_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+};
