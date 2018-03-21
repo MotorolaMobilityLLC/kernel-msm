@@ -112,7 +112,7 @@
 	qcom,fg-empty-voltage = <3000>;
 	qcom,fg-chg-term-current = <100>;
 	qcom,fg-sys-term-current = <(-200)>;
-	qcom,battery-thermal-coefficients = [9d 50 ff];
+	qcom,battery-thermal-coefficients = [c0 50 ff];
 };
 
 &pmi8998_charger {
