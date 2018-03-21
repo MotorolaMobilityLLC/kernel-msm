@@ -137,6 +137,8 @@
 #define MC_FC_RET_ERR_INVALID			1
 /**< MobiCore has already been initialized. */
 #define MC_FC_RET_ERR_ALREADY_INITIALIZED	5
+/**< Call is not allowed. */
+#define TEE_FC_RET_ERR_NOABILITY            6
 /** @} */
 
 /** @name Init FastCall flags

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -82,8 +82,8 @@ static void iwp_notif_handler(u32 id, u32 payload)
 		mc_dev_devel("candidate->slot [%08x]",
 			     candidate->slot);
 		/* If id is SID_CANCEL_OPERATION, there is pseudo session */
-		if ((candidate->slot == payload) &&
-		    ((id != SID_CANCEL_OPERATION) || (candidate->sid == id))) {
+		if (candidate->slot == payload &&
+		    (id != SID_CANCEL_OPERATION || candidate->sid == id)) {
 			iwp_session = candidate;
 			break;
 		}
@@ -513,7 +513,7 @@ int iwp_open_session(
 	/* Temporary slot is not needed any more */
 	iws_slot_put(temp_slot);
 	/* Treat remote errors as errors, just use a specific errno */
-	if (!ret && (iws->status != TEEC_SUCCESS)) {
+	if (!ret && iws->status != TEEC_SUCCESS) {
 		gp_ret->origin = iws->return_origin;
 		gp_ret->value = iws->status;
 		ret = -ECHILD;
@@ -620,7 +620,7 @@ int iwp_invoke_command(
 	iwp_iws_set_refs(iws, maps);
 	ret = iwp_cmd(iwp_session, SID_INVOKE_COMMAND);
 	/* Treat remote errors as errors, just use a specific errno */
-	if (!ret && (iws->status != TEEC_SUCCESS))
+	if (!ret && iws->status != TEEC_SUCCESS)
 		ret = -ECHILD;
 
 	iwp_iws_to_operation(iws, operation);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -21,6 +21,7 @@
 #include <linux/kthread.h>
 #include <linux/pagemap.h>
 #include <linux/device.h>
+#include <linux/version.h>
 
 #include "public/mc_user.h"
 
@@ -70,6 +71,54 @@
  * this must be exactly one page, we can hold up to 512 entries.
  */
 #define L1_ENTRIES_MAX	512
+
+#if KERNEL_VERSION(4, 6, 0) > LINUX_VERSION_CODE
+static inline long gup_local(struct mm_struct *mm, uintptr_t start,
+			     unsigned long nr_pages, int write,
+			     struct page **pages)
+{
+	return get_user_pages(NULL, mm, start, nr_pages, write, 0, pages, NULL);
+}
+#elif KERNEL_VERSION(4, 9, 0) > LINUX_VERSION_CODE
+static inline long gup_local(struct mm_struct *mm, uintptr_t start,
+			     unsigned long nr_pages, int write,
+			     struct page **pages)
+{
+	unsigned int flags = 0;
+
+	if (write)
+		flags |= FOLL_WRITE;
+
+	return get_user_pages_remote(NULL, mm, start, nr_pages, write, 0, pages,
+				     NULL);
+}
+#elif KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
+static inline long gup_local(struct mm_struct *mm, uintptr_t start,
+			     unsigned long nr_pages, int write,
+			     struct page **pages)
+{
+	unsigned int flags = 0;
+
+	if (write)
+		flags |= FOLL_WRITE;
+
+	return get_user_pages_remote(NULL, mm, start, nr_pages, flags, pages,
+				     NULL);
+}
+#else
+static inline long gup_local(struct mm_struct *mm, uintptr_t start,
+			     unsigned long nr_pages, int write,
+			     struct page **pages)
+{
+	unsigned int flags = 0;
+
+	if (write)
+		flags |= FOLL_WRITE;
+
+	return get_user_pages_remote(NULL, mm, start, nr_pages, flags, pages,
+				     NULL, NULL);
+}
+#endif
 
 /*
  * Fake L1 MMU table.
@@ -164,32 +213,39 @@ static void mmu_release(struct tee_mmu *mmu)
 			break;
 
 		if (mmu->user) {
-			if (g_ctx.f_lpae) {
-				u64 *pte = l2_table->ptes_64;
-				int i;
+			u64 *pte64 = l2_table->ptes_64;
+			u32 *pte32 = l2_table->ptes_32;
+			pte_t pte;
+			int i;
 
-				for (i = 0; i < L2_ENTRIES_MAX; i++, pte++) {
-					/* Unused entries are 0 */
-					if (!*pte)
-						break;
-
-					/* pte_page() cannot return NULL */
-					page_cache_release(pte_page(*pte));
-					mmu->pages_locked--;
+			for (i = 0; i < L2_ENTRIES_MAX; i++) {
+#if (KERNEL_VERSION(4, 7, 0) > LINUX_VERSION_CODE) || defined(CONFIG_ARM)
+				{
+					if (g_ctx.f_lpae)
+						pte = *pte64++;
+					else
+						pte = *pte32++;
 				}
-			} else {
-				u32 *pte = l2_table->ptes_32;
-				int i;
 
-				for (i = 0; i < L2_ENTRIES_MAX; i++, pte++) {
-					/* Unused entries are 0 */
-					if (!*pte)
-						break;
-
-					/* pte_page() cannot return NULL */
-					page_cache_release(pte_page(*pte));
-					mmu->pages_locked--;
+				/* Unused entries are 0 */
+				if (!pte)
+					break;
+#else
+				{
+					if (g_ctx.f_lpae)
+						pte.pte = *pte64++;
+					else
+						pte.pte = *pte32++;
 				}
+
+				/* Unused entries are 0 */
+				if (!pte.pte)
+					break;
+#endif
+
+				/* pte_page() cannot return NULL */
+				put_page(pte_page(pte));
+				mmu->pages_locked--;
 			}
 		}
 
@@ -253,7 +309,7 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 	total_pages_nr = PAGE_ALIGN(mmu->offset + buf->len) / PAGE_SIZE;
 	if (g_ctx.f_mem_ext)
 		l1_entries_max = L1_ENTRIES_MAX;
-	 else
+	else
 		l1_entries_max = 1;
 
 	if (total_pages_nr > (l1_entries_max * L2_ENTRIES_MAX)) {
@@ -347,14 +403,11 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 
 			/* Buffer was allocated in user space */
 			down_read(&mm->mmap_sem);
-			gup_ret = get_user_pages(NULL, mm, (uintptr_t)reader,
-						 pages_nr, 1, 0, pages,
-						 NULL);
+			gup_ret = gup_local(mm, (uintptr_t)reader,
+					    pages_nr, 1, pages);
 			if ((gup_ret == -EFAULT) && !write) {
-				gup_ret = get_user_pages(
-						NULL, mm, (uintptr_t)reader,
-						pages_nr, 0, 0, pages,
-						NULL);
+				gup_ret = gup_local(mm, (uintptr_t)reader,
+						    pages_nr, 0, pages);
 			}
 			up_read(&mm->mmap_sem);
 			if (gup_ret < 0) {
@@ -504,8 +557,8 @@ void tee_mmu_buffer(const struct tee_mmu *mmu, struct mcp_buffer_map *map)
 int tee_mmu_debug_structs(struct kasnprintf_buf *buf, const struct tee_mmu *mmu)
 {
 	return kasnprintf(buf,
-			  "\t\t\tmmu %p: %s len %u off %u table %lx type L%d\n",
-			  mmu, mmu->user ? "user" : "kernel", mmu->length,
-			  mmu->offset, mmu_table_pointer(mmu),
+			  "\t\t\tmmu %pK: %s len %u off %u table %pK type L%d\n"
+			  , mmu, mmu->user ? "user" : "kernel", mmu->length,
+			  mmu->offset, (void *)mmu_table_pointer(mmu),
 			  mmu->l1_table.page ? 1 : 2);
 }

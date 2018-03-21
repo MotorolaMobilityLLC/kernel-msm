@@ -41,6 +41,8 @@ struct nq_session {
 	u64			cpu_clk;
 	/* This TA is of Global Platform type, set by upper layer */
 	bool			is_gp;
+	/* Notification counter */
+	u32			notif_count;
 };
 
 /* Initialisation/cleanup */
@@ -92,5 +94,7 @@ void nq_session_state_update(struct nq_session *session,
 const char *nq_session_state_string(struct nq_session *session);
 int nq_session_notify(struct nq_session *session, u32 id, u32 payload);
 bool nq_notifications_flush(void);
+
+void nq_retrieve_last(u32 *session_id, u32 *payload);
 
 #endif /* _MC_NQ_H_ */
