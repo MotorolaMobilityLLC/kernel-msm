@@ -92,8 +92,7 @@
 		qcom,cci-master = <1>;
 		qcom,num-blocks = <36>;
 
-		qcom,cmm-data-support = <1>;
-		qcom,cmm-data-compressed = <0>;
+		qcom,cmm-data-support;
 		qcom,cmm-data-offset = <10>;
 		qcom,cmm-data-size = <20>;
 
