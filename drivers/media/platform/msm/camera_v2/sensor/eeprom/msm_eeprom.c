@@ -1758,6 +1758,11 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 		goto board_free;
 
 	if (e_ctrl->userspace_probe == 0) {
+	#ifdef MULTI_CAMERA_DEEN
+		rc = msm_eeprom_cmm_dts(e_ctrl->eboard_info, of_node);
+		if (rc < 0)
+			CDBG("%s MM data miss:%d\n", __func__, __LINE__);
+	#endif
 		rc = of_property_read_u32(of_node, "qcom,slave-addr",
 			&temp);
 		if (rc < 0) {
