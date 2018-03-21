@@ -471,8 +471,8 @@ int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 		}
 	}
 
-	if ((chg->single_path_usbin_switch) && (suspend)) {
-		if (chg->mmi.ebchg_state == EB_SINK) {
+	if (chg->single_path_usbin_switch) {
+		if (suspend) {
 			pr_info("PMI: %s usb suspend when eb sink, toggle usb_en pol\n", __func__);
 			mmi_set_usb_en_polarity(chg, USB_EN_ACTIVE_HIGH);
 		} else {
@@ -5199,6 +5199,12 @@ static void smblib_pd_contract_work(struct work_struct *work)
 	if (chg->pd_contract_uv == -ENOTSUPP)
 		return;
 
+	if (chg->pd_contract_uv <= 0) {
+		schedule_delayed_work(&chg->pd_contract_work,
+				      msecs_to_jiffies(100));
+		return;
+	}
+
 	if (chg->pd_contract_uv >= MICRO_9V)
 		smblib_set_opt_freq_buck(chg, chg->chg_freq.freq_9V);
 	else
@@ -5212,9 +5218,6 @@ static void smblib_pd_contract_work(struct work_struct *work)
 	if (rc < 0)
 		smblib_err(chg, "Error setting %d uA rc=%d\n", max_ua, rc);
 
-	if (chg->pd_contract_uv <= 0)
-		schedule_delayed_work(&chg->pd_contract_work,
-				      msecs_to_jiffies(100));
 }
 
 static void smblib_uusb_otg_work(struct work_struct *work)
