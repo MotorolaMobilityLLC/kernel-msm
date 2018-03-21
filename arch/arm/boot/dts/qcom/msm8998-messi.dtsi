@@ -21,6 +21,7 @@
 #include "msm8998-moto-common.dtsi"
 #include "dsi-panel-mot-smd-601-1080p-messie-cmd.dtsi"
 #include "dsi-panel-mot-tianma-601-1080p-messie-cmd.dtsi"
+#include "msm8998-messi-audio.dtsi"
 
 / {
 	model = "Messi";
@@ -51,112 +52,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&tmp108_2_irq_default>;
 		label = "msm_tmp108";
-	};
-};
-
-&spi_10 { /* BLSP2 QUP4 */
-	status = "ok";
-	cs47l35: cs47l35@0 {
-		compatible = "cirrus,cs47l35";
-		spi-max-frequency = <26000000>;
-		reg = <0x0>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <54 0>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-		reset-gpios = <&tlmm 68 0>;
-		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
-		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
-		cirrus,micbias3 = <2600 1 1 1 1 1 1 0>;
-		cirrus,micbias4 = <2600 1 1 1 1 1 1 0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
-
-		AVDD-supply = <&pm8998_s4>;
-		DBVDD1-supply = <&pm8998_s4>;
-		DBVDD2-supply = <&pm8998_s4>;
-		CPVDD-supply = <&pm8998_s4>;
-		CPVDD1-supply = <&pm8998_s4>;
-		CPVDD2-supply = <&pm8998_s4>;
-		DCVDD-supply = <&pm8998_s4>;
-		SPKVDD-supply = <&dummy_vreg>;
-
-		gpio-controller;
-		#gpio-cells = <2>;
-
-		cirrus,gpio-defaults = <
-			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
-			0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
-			0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
-			0x00002000 0x0000f000 /* AIF3LRCLK / GPIO4  */
-			0x00002000 0x0000f000 /* SPKDAT / GPIO5  */
-			0x00002000 0x0000f000 /* SPKCLK / GPIO6  */
-			0x00002000 0x0000f000 /* MIF1SDA   / GPIO7  */
-			0x00002000 0x0000f000 /* AIF1RXDAT / GPIO8  */
-			0x00002000 0x0000f000 /* AIF1BCLK  / GPIO9  */
-			0x00002000 0x0000f000 /* AIF1TXDAT / GPIO10 */
-			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
-			0x00002000 0x0000f000 /* AIF2TXDAT / GPIO12 */
-			0x00002000 0x0000f000 /* AIF2BCLK  / GPIO13 */
-			0xffffffff 0xffffffff /* AIF2RXDAT / GPIO14 */
-			0xffffffff 0xffffffff /* AIF2LRCLK / GPIO15 */
-			0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
-			>;
-
-		adsps {
-			adsp@0ffe00 {
-				reg = <0x0ffe00>;
-				firmware {
-					ultrasound {
-						wlf,wmfw-file = "marley-dsp1-ultrasound.wmfw";
-						wlf,bin-file = "marley-dsp1-ultrasound.bin";
-					};
-				};
-			};
-			adsp@17fe00 {
-				reg = <0x17fe00>;
-				firmware {
-					frontend {
-						wlf,wmfw-file = "marley-dsp2-aov-frontend.wmfw";
-						wlf,bin-file = "marley-dsp2-aov-vrgain.bin";
-					};
-				};
-			};
-			adsp@1ffe00 {
-				reg = <0x1ffe00>;
-				firmware {
-					aov {
-						wlf,wmfw-file = "marley-dsp3-aov-control.wmfw";
-						wlf,bin-file = "marley-dsp3-aov-model.bin";
-					};
-				};
-			};
-		};
-		cirrus,accdet {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			acc@1 {
-				reg = <1>;
-
-				cirrus,micd-configs = <
-					0 0 1 1 0
-					1 0 2 0 0
-				>;
-				cirrus,micd-bias-start-time = <8>;
-				cirrus,micd-pol-gpios = <&cs47l35 13 0>,
-							<&cs47l35 14 0>;
-				cirrus,micd-rate = <6>;
-				cirrus,report-to-input;
-				cirrus,micd-detect-debounce-ms = <500>;
-				cirrus,micd-ranges = <
-					70 0xE2		/* <  70 Ohms - KEY_MEDIA */
-					180 0x246	/* < 180 Ohms - KEY_VOICECOMMAND */
-					290 0x73	/* < 290 Ohms - KEY_VOLUMEUP */
-					680 0x72	/* < 680 Ohms - KEY_VOLUMEDOWN */
-				>;
-			};
-		};
 	};
 };
 
@@ -232,4 +127,3 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_601_1080p_cmd_v0>;
 };
-

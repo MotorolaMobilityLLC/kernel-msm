@@ -1,0 +1,261 @@
+/* Copyright (c) 2018, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm {
+	cs35l36_reset_default: cs35l36_reset_default {
+		config {
+			pins = "gpio97";
+			output-low;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+	cs35l36_irq_default: cs35l36_irq_default {
+		config {
+			pins = "gpio127";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	moon_irq_default: moon_irq_default {
+		config {
+			pins = "gpio54";
+			drive-strength = <2>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	moon_reset_default: moon_reset_default {
+		config {
+			pins = "gpio64";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+};
+
+&soc {
+	/delete-node/msm_cdc_pinctrl@64;
+	sound {
+		compatible = "qcom,msm8998-asoc-snd-madera";
+		qcom,model = "msm8998-madera-card";
+
+		/delete-property/ asoc-platform;
+		/delete-property/ asoc-platform-names;
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>,
+				<&pcm_noirq>, <&cs47l90>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+				"msm-pcm-dsp.2", "msm-voip-dsp",
+				"msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless",
+				"msm-pcm-afe", "msm-lsm-client",
+				"msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp", "msm-pcm-dsp-noirq",
+				"cs47l90-codec";
+		qcom,audio-routing =
+				"IN2AL", "MICBIAS2A",
+				"IN1AL", "MICBIAS2B",
+				"IN2R",  "MICBIAS2C",
+				"IN1AR", "MICBIAS2D",
+				"IN1BR", "MICBIAS1A",
+				"IN1BR", "MICBIAS1B";
+	};
+};
+
+&slim_aud {
+	/delete-node/ cs47l35-codec;
+	cs47l90-codec {
+		compatible = "cirrus,madera-slim-audio";
+		elemental-addr = [00 00 64 63 FA 01];
+	};
+};
+
+&i2c_7 {
+	/delete-node/ cs35l35@41;
+	cs35l36@40 {
+		status = "ok";
+		compatible = "cirrus,cs35l36";
+		reg = <0x40>;
+		reset-gpios = <&tlmm 97 0>;
+		interrupts = <127 0>;
+		interrupt-parent = <&tlmm>;
+		VA-supply = <&dummy_vreg>;
+		VP-supply = <&dummy_vreg>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l36_irq_default &cs35l36_reset_default>;
+
+		cirrus,left-channel-amp;
+		cirrus,boost-ind-nanohenry = <1000>; /* 1uH */
+		cirrus,boost-ctl-millivolt = <10000>;
+		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,amp-gain-zc;
+		cirrus,ldm-mode-select = <0x01>;
+		cirrus,pdm-ldm-exit;
+		cirrus,pdm-ldm-enter;
+		cirrus,weak-fet-delay = <0x04>;
+		cirrus,weak-fet-thld = <0x01>;
+		cirrus,temp-warn-threshold = <0x01>;
+
+		cirrus,irq-config {
+			cirrus,irq-drive-select = <0x01>;
+			cirrus,irq-polarity = <0x01>;
+			cirrus,irq-gpio-select = <0x01>;
+			cirrus,irq-output-enable = <0x01>;
+			cirrus,irq-src-select = <0x01>;
+		};
+	};
+};
+
+&spi_10 {
+	status = "ok";
+	cs47l90: cs47l90@0 {
+		compatible = "cirrus,cs47l90";
+		spi-max-frequency = <26000000>;
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <54 0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		reset-gpios = <&tlmm 64 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&moon_irq_default &moon_reset_default>;
+
+		AVDD-supply = <&pm8998_s4>;
+		DBVDD1-supply = <&pm8998_s4>;
+		DBVDD2-supply = <&pm8998_s4>;
+		CPVDD-supply = <&pm8998_s4>;
+		CPVDD1-supply = <&pm8998_s4>;
+		CPVDD2-supply = <&pm8998_s4>;
+		DCVDD-supply = <&pm8998_s4>;
+		SPKVDD-supply = <&dummy_vreg>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		cirrus,gpio-defaults = <
+			0x00002000 0x0000f000 /* CDC_DEBUG / GPIO1 */
+			0x00002000 0x0000f000 /* ADSP_WAKE / GPIO2 */
+			0x00000040 0x00000000 /* SB_MCLK / GPIO3 */
+			0xffffffff 0xffffffff /* USBC-HS / GPIO4 */
+			0xffffffff 0xffffffff /* USBC-HS / GPIO5 */
+			0xffffffff 0xffffffff /* GPIO6 */
+			0xffffffff 0xffffffff /* GPIO7 */
+			0xffffffff 0xffffffff /* GPIO8 */
+			0xffffffff 0xffffffff /* GPIO9 */
+			0xffffffff 0xffffffff /* GPIO10 */
+			0xffffffff 0xffffffff /* GPIO11 */
+			0xffffffff 0xffffffff /* GPIO12 */
+			0xffffffff 0xffffffff /* GPIO13 */
+			0xffffffff 0xffffffff /* GPIO14 */
+			0x00002000 0x0000f000 /* AIF1TXDAT / GPIO15 */
+			0x00002000 0x0000f000 /* AIF1BCLK / GPIO16 */
+			0x00002000 0x0000f000 /* AIF1RXDAT / GPIO17 */
+			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO18 */
+			0x00002000 0x0000f000 /* AIF2TXDAT / GPIO19 */
+			0x00002000 0x0000f000 /* AIF2BCLK / GPIO20 */
+			0x00002000 0x0000f000 /* AIF2RXDAT / GPIO21 */
+			0x00002000 0x0000f000 /* AIF2LRCLK / GPIO22 */
+			0xffffffff 0xffffffff /* GPIO23 */
+			0xffffffff 0xffffffff /* GPIO24 */
+			0xffffffff 0xffffffff /* GPIO25 */
+			0xffffffff 0xffffffff /* GPIO26 */
+			0xffffffff 0xffffffff /* GPIO27 */
+			0xffffffff 0xffffffff /* GPIO28 */
+			0xffffffff 0xffffffff /* GPIO29 */
+			0xffffffff 0xffffffff /* GPIO30 */
+			0xffffffff 0xffffffff /* GPIO31 */
+			0xffffffff 0xffffffff /* GPIO32 */
+			0xffffffff 0xffffffff /* GPIO33 */
+			0xffffffff 0xffffffff /* GPIO34 */
+			0xffffffff 0xffffffff /* GPIO35 */
+			0xffffffff 0xffffffff /* GPIO36 */
+			0xffffffff 0x00000000 /* PDM_CLK / GPIO37 */
+			0xffffffff 0x00000000 /* PDM_DAT / GPIO38 */
+		>;
+
+		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
+		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
+		cirrus,inmode = <
+			0 0 0 0
+			0 0 0 0
+		>;
+		cirrus,out-mono = <0 0 0 0 0 0>;
+
+		cirrus,accdet {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			acc@1 {
+				reg = <1>;
+
+				cirrus,micd-force-micbias;
+				cirrus,micd-detect-debounce-ms = <300>;
+				cirrus,jd-wake-time= <3000>;
+				cirrus,micd-bias-start-time = <8>;
+				cirrus,micd-rate = <6>;
+				cirrus,disable-jd2-on-lineout;
+				cirrus,micd-dbtime = <0x1>;
+				cirrus,micd-ranges = <
+					70 0xE2		/* KEY_MEDIA */
+					180 0x246	/* KEY_VOICECOMMAND */
+					290 0x73	/* KEY_VOLUMEUP */
+					680 0x72	/* KEY_VOLUMEDOWN */
+				>;
+				cirrus,micd-configs = <
+					1 0 1 1 0
+					0 1 0 0 1
+				>;
+				cirrus,micd-pol-gpios = <&cs47l90 3 0>,
+							<&cs47l90 4 0>;
+			};
+		};
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@0ffe00 {
+				reg = <0x0ffe00>;
+				firmware {
+					ultrasound {
+						wlf,wmfw-file = "moon-dsp1-ultrasound.wmfw";
+						wlf,bin-file = "moon-dsp1-ultrasound.bin";
+					};
+				};
+			};
+			adsp@17fe00 {
+				reg = <0x17fe00>;
+				firmware {
+					frontend {
+						wlf,wmfw-file = "moon-dsp2-aov-frontend.wmfw";
+						wlf,bin-file = "moon-dsp2-aov-vrgain.bin";
+					};
+				};
+			};
+			adsp@1ffe00 {
+				reg = <0x1ffe00>;
+				firmware {
+					aov {
+						wlf,wmfw-file = "moon-dsp3-aov-control.wmfw";
+						wlf,bin-file = "moon-dsp3-aov-model.bin";
+					};
+				};
+			};
+		};
+	};
+};
+
