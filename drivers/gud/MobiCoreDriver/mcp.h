@@ -77,7 +77,7 @@ int mcp_close_session(struct mcp_session *session);
 void mcp_kill_session(struct mcp_session *session);
 int mcp_map(u32 session_id, struct mcp_buffer_map *map);
 int mcp_unmap(u32 session_id, const struct mcp_buffer_map *map);
-int mcp_notify(struct mcp_session *mcp_session);
+int mcp_notify(struct mcp_session *mcp_session, u32 payload);
 
 /* Initialisation/cleanup */
 int mcp_init(void);
