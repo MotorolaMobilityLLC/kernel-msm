@@ -659,8 +659,7 @@ static int cirrus_amp_dai_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
 	struct snd_soc_dai *amp_dai = rtd->codec_dai;
 
-	pr_debug("%s: codec dai name %s\n", __func__, amp_dai->name);
-	ret = snd_soc_dai_set_sysclk(aif1_dai, MADERA_CLK_SYSCLK, 0, 0);
+	ret = snd_soc_dai_set_sysclk(aif1_dai, MADERA_CLK_SYSCLK_3, 0, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
 		return ret;
