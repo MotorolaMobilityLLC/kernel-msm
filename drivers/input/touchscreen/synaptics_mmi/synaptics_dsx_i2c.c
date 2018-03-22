@@ -7204,7 +7204,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_free_gpio;
 	}
 
-	rmi4_data->regulator = regulator_get(&client->dev, "touch_vdd");
+	rmi4_data->regulator = regulator_get_optional(&client->dev, "touch_vdd");
 	if (IS_ERR(rmi4_data->regulator)) {
 		if (PTR_ERR(rmi4_data->regulator) == -EPROBE_DEFER) {
 			retval = PTR_ERR(rmi4_data->regulator);
