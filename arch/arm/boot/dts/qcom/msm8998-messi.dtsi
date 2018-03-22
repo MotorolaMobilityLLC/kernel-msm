@@ -99,6 +99,7 @@
 
 &tlmm {
 	/delete-node/ spi_1;  /* delete spi_1 node in tlmm */
+	/delete-node/ kungpow_default;
 
 	tmp108_2_irq {
 		tmp108_2_irq_default: default {
@@ -159,6 +160,8 @@
 };
 
 &pmi8998_charger {
+	pinctrl-0 = <&eb_vbus_conf>;
+	pinctrl-1 = <&eb_vbus_active>;
 	qcom,iterm-ma = <146>;
 	qcom,mmi-temp-zones = <0 4400 529 0>,
 				<10 4200 1323 529>,
