@@ -54,6 +54,36 @@
 		pinctrl-0 = <&tmp108_2_irq_default>;
 		label = "msm_tmp108";
 	};
+
+	cypress_capsensor@1D {
+		compatible = "cypress,sf3155";
+		label = "MotorolaCapSense";
+		reg = <0x1D>;
+		vdd-supply = <&pm8998_lvs2>;
+		vddio-supply = <&pm8998_lvs2>;
+		avdd-supply = <&pm8998_lvs2>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <63 0>;
+		silicon_id = <0x0BB11477>;
+		block_size = <64>;
+		num_of_blocks = <256>;
+		secure_bytes = <32>;
+		pinctrl-names = "default";
+		gpios = <&pmi8998_gpios 14 0x1>, /* RESET */
+		      <&tlmm 90 0>, /* programming SCLK */
+		      <&tlmm 94 0>, /* programming SDAT */
+		      <&tlmm 63 0>; /* sar int irq */
+		use-raw-gpio-rw = <1>;
+		gpio_base_addr = <0x03000004>;
+		gpio_base_size = <0x00e00000>;
+		gpio_clk_group = <0x00d00000>;
+		gpio_dat_group = <0x00d00000>;
+		cyttsp,sar-status-reg = <0x50>;
+		cyttsp,standby-reg = <0x51>;
+		cyttsp,bootloader-addr = <0x02>;
+		cyttsp,key-num = <4>;
+		cyttsp,key-codes = <4>;
+	};
 };
 
 &soc {
