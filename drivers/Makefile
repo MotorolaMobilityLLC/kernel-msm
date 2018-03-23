@@ -179,6 +179,3 @@ obj-$(CONFIG_ESOC)              += esoc/
 obj-$(CONFIG_FPGA)		+= fpga/
 obj-$(CONFIG_SENSORS_SSC)		+= sensors/
 obj-$(CONFIG_TEE)		+= tee/
-
-# <t-base drivers
-obj-$(CONFIG_TRUSTONIC_TEE)	+= gud/
