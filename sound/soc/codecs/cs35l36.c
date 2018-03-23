@@ -1272,6 +1272,8 @@ static int cs35l36_handle_of_data(struct i2c_client *i2c_client,
 
 static int cs35l36_pac(struct cs35l36_private *cs35l36)
 {
+	int ret, count;
+	unsigned int val;
 	if (cs35l36->rev_id == CS35L36_REV_B0) {
 		/*
 		 * Magic code for internal PAC
@@ -1280,11 +1282,11 @@ static int cs35l36_pac(struct cs35l36_private *cs35l36)
 				CS35L36_TEST_UNLOCK1);
 		regmap_write(cs35l36->regmap, CS35L36_TESTKEY_CTRL,
 				CS35L36_TEST_UNLOCK2);
-		mdelay(200);
+
+		usleep_range(9500, 10500);
+
 		regmap_write(cs35l36->regmap, CS35L36_INT4_MASK,
 				CS35L36_MCU_CONFIG_UNMASK);
-		regmap_write(cs35l36->regmap, CS35L36_PAD_INTERFACE,
-				CS35L36_GPIO_INT_SEL_MASK);
 
 		regmap_write(cs35l36->regmap, CS35L36_PAC_CTL1,
 				CS35L36_PAC_RESET);
@@ -1297,16 +1299,38 @@ static int cs35l36_pac(struct cs35l36_private *cs35l36)
 				CS35L36_PAC_MEM_ACCESS_CLR);
 		regmap_write(cs35l36->regmap, CS35L36_PAC_CTL1,
 				CS35L36_PAC_ENABLE_MASK);
-		mdelay(200);
+
+		usleep_range(9500, 10500);
+
+		ret = regmap_read(cs35l36->regmap, CS35L36_INT4_STATUS, &val);
+		if (ret < 0) {
+			dev_err(cs35l36->dev, "Failed to read int4_status %d\n",
+				ret);
+			return ret;
+		}
+
+		count = 0;
+		while (!(val & CS35L36_MCU_CONFIG_CLR)) {
+			usleep_range(100, 200);
+			count++;
+
+			ret = regmap_read(cs35l36->regmap, CS35L36_INT4_STATUS,
+					  &val);
+			if (ret < 0) {
+				dev_err(cs35l36->dev, "Failed to read int4_status %d\n",
+					ret);
+				return ret;
+			}
+
+			if (count >= 100)
+				return -EINVAL;
+		}
 
 		regmap_write(cs35l36->regmap, CS35L36_INT4_MASK,
 				CS35L36_MCU_CONFIG_MASK);
-		mdelay(200);
 
 		regmap_write(cs35l36->regmap, CS35L36_INT4_STATUS,
-				CS35L36_MUC_CONFIG_CLR);
-		regmap_write(cs35l36->regmap, CS35L36_PAD_INTERFACE,
-				CS35L36_GPIO_INT_SEL_UNMASK);
+				CS35L36_MCU_CONFIG_CLR);
 		regmap_update_bits(cs35l36->regmap, CS35L36_PAC_CTL1,
 					CS35L36_PAC_ENABLE_MASK, 0);
 
