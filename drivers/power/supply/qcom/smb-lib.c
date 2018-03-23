@@ -472,7 +472,7 @@ int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 	}
 
 	if (chg->single_path_usbin_switch) {
-		if (suspend) {
+		if (chg->mmi.ebchg_state == EB_SINK && suspend) {
 			pr_info("PMI: %s usb suspend when eb sink, toggle usb_en pol\n", __func__);
 			mmi_set_usb_en_polarity(chg, USB_EN_ACTIVE_HIGH);
 		} else {
