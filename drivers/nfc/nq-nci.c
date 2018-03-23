@@ -914,8 +914,10 @@ static int nqx_probe(struct i2c_client *client,
 	if (r) {
 		/* make sure NFCC is not enabled */
 		gpio_set_value(platform_data->en_gpio, 0);
-		/* We don't think there is hardware switch NFC OFF */
-		goto err_request_hw_check_failed;
+		/*
+		 * Not failing here. Probe will succeed and device created so that
+		 * NFC SW stack can run and try recover NFCC with firmware download
+		 */
 	}
 
 	/* Register reboot notifier here */
