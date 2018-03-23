@@ -2,6 +2,7 @@
 qcom,jk50_atl_5000mah {
 	qcom, = <24>;
 	/* #3285716_JK50atl_5000mAh_averaged_MasterSlave_Jan22nd2018*/
+	serialnum = "SB18C28957";
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <5000>;
 	qcom,fastchg-current-ma = <3000>; // Set max battery charged current to 3000mA
