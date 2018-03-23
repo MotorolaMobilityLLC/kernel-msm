@@ -1669,7 +1669,6 @@ static void cont_flush(void)
 		 */
 		log_store(cont.facility, cont.level, cont.flags | LOG_NOCONS,
 			  cont.ts_nsec, NULL, 0, cont.buf, cont.len, this_cpu);
-		cont.flags = flags;
 		cont.flushed = true;
 	} else {
 		/*
@@ -1751,7 +1750,7 @@ static size_t cont_print_text(char *text, size_t size)
 	return textlen;
 }
 
-static size_t log_output(int facility, int level, enum log_flags lflags, const char *dict, size_t dictlen, char *text, size_t text_len)
+static size_t log_output(int facility, int level, enum log_flags lflags, const char *dict, size_t dictlen, char *text, size_t text_len, u8 cpu)
 {
 	/*
 	 * If an earlier line was buffered, and we're a continuation
@@ -1777,7 +1776,7 @@ static size_t log_output(int facility, int level, enum log_flags lflags, const c
 	}
 
 	/* Store it in the record log */
-	return log_store(facility, level, lflags, 0, dict, dictlen, text, text_len);
+	return log_store(facility, level, lflags, 0, dict, dictlen, text, text_len, cpu);
 }
 
 asmlinkage int vprintk_emit(int facility, int level,
@@ -1849,7 +1848,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 				     "BAD LUCK: lost %d message(s) from NMI context!",
 				     nmi_message_lost);
 		printed_len += log_store(0, 2, LOG_PREFIX|LOG_NEWLINE, 0,
-					 NULL, 0, textbuf, text_len);
+					 NULL, 0, textbuf, text_len, this_cpu);
 	}
 
 	/*
