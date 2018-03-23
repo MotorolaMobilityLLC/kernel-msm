@@ -228,6 +228,7 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
+		df-serialnum = "SB18C28956";
 		#include "batterydata-jk50-atl-5000mah.dtsi"
 		#include "batterydata-jk50-scud-5000mah.dtsi"
 	};
