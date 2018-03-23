@@ -2,6 +2,7 @@
 qcom,jk50_scud_5000mah {
 	qcom, = <24>;
 	/* #3324519_JK50cos_4850mAh_averaged_MasterSlave_Mar1st2018*/
+	serialnum = "SB18C28956";
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <4850>;
 	qcom,fastchg-current-ma = <3000>;
