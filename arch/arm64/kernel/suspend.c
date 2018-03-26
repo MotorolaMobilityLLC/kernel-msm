@@ -122,12 +122,6 @@ int __cpu_suspend(unsigned long arg, int (*fn)(unsigned long))
 		flush_tlb_all();
 
 		/*
-		 * Restore per-cpu offset before any kernel
-		 * subsystem relying on it has a chance to run.
-		 */
-		set_my_cpu_offset(per_cpu_offset(smp_processor_id()));
-
-		/*
 		 * Restore HW breakpoint registers to sane values
 		 * before debug exceptions are possibly reenabled
 		 * through local_dbg_restore.
