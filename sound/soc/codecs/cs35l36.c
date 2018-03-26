@@ -465,11 +465,6 @@ static int cs35l36_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 		sclk_fmt = 0;
 		break;
 	case SND_SOC_DAIFMT_IB_NF:
-		/*
-		 * TDM 1.5 mode must invert bitclk
-		 */
-		if (asp_fmt == 0)
-			asp_fmt = 4;
 		lrclk_fmt = 0;
 		sclk_fmt = 1;
 		break;
