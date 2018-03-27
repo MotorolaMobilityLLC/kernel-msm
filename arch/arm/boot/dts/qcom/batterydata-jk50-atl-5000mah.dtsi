@@ -8,7 +8,7 @@ qcom,jk50_atl_5000mah {
 	qcom,fastchg-current-ma = <3000>; // Set max battery charged current to 3000mA
 	qcom,batt-id-kohm = <240>; // Default battery ID was 240k on main board
 	qcom,battery-beta = <3435>;
-	qcom,battery-thermal-coeff = [a1 50 ff];
+	qcom,battery-thermal-coeff = [8f 50 ff]; // B3200
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,battery-type = "JK50atl_4v4_5000mAh";
 	qcom,checksum = <0xF3FE>;
