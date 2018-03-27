@@ -8,7 +8,7 @@ qcom,jk50_scud_5000mah {
 	qcom,fastchg-current-ma = <3000>;
 	qcom,batt-id-kohm = <0>; // 0k down to GND
 	qcom,battery-beta = <3380>;
-	qcom,battery-thermal-coeff = [9d 50 ff]; // Beta 3380,80-vt310-138
+	qcom,battery-thermal-coeff = [8f 50 ff]; // Beta 3200,80-vt310-138
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,battery-type = "JK50scud_4v4_5000mAh";
 	qcom,checksum = <0x40B8>;
