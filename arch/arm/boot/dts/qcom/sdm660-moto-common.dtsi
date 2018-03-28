@@ -246,6 +246,14 @@
 };
 
 &soc {
+	vdd_otg_vreg: vdd_otg_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_otg";
+		gpio = <&pm660l_gpios 3 0>;
+		vin-supply = <&smb2_ext_vbus>;
+		enable-active-high;
+	};
+
 	qcom,msm-ssc-sensors {
 		compatible = "qcom,msm-ssc-sensors";
 	};
@@ -683,6 +691,11 @@
 	qcom,lower-limit-capacity = <60>;
 	qcom,vfloat-comp-uv = <20000>;
 	qcom,usbpd-phandle = <&pm660_pdphy>;
+	qcom,external-vconn;
+	qcom,external-vbus;
+	smb2_ext_vbus: qcom,smb2-ext-vbus {
+		regulator-name = "smb2-ext-vbus";
+	};
 };
 
 &rpm_bus {
@@ -704,6 +717,7 @@
 };
 
 &pm660_pdphy {
+	vbus-supply = <&vdd_otg_vreg>;
 	qcom,source-current = <900>;
 	qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
 				<9000 2000>; /* 9V @ 2A */
