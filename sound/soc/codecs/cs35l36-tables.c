@@ -281,6 +281,7 @@ bool cs35l36_volatile_reg(struct device *dev, unsigned int reg)
 	case CS35L36_DEVICE_ID:
 	case CS35L36_FAB_ID:
 	case CS35L36_REV_ID:
+	case CS35L36_PWR_CTRL1:
 	case CS35L36_INT1_STATUS:
 	case CS35L36_INT2_STATUS:
 	case CS35L36_INT3_STATUS:
