@@ -1514,5 +1514,6 @@ config CRYPTO_HASH_INFO
 
 source "drivers/crypto/Kconfig"
 source crypto/asymmetric_keys/Kconfig
+source certs/Kconfig
 
 endif	# if CRYPTO
