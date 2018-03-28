@@ -487,6 +487,17 @@
 };
 
 &pm660l_gpios {
+
+	gpio@c200 { /* GPIO3 */
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+
 	gpio@c300 { /* GPIO4 */
 		qcom,mode = <1>;                /* Output */
 		qcom,pull = <5>;                /* No Pull */
