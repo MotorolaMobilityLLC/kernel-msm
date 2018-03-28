@@ -831,6 +831,14 @@ config QMP_DEBUGFS_CLIENT
 	  This options enables a driver which allows clients to send messages
 	  to Alway On processor using QMP transport.
 
+config ALI_DTB
+       depends on ARCH_QCOM
+       default n
+       bool "ALI DTBs"
+       help
+         Only include Ali specific DTBs to limit the number that
+         get built during kernel compilation.
+
 source "drivers/soc/qcom/memshare/Kconfig"
 
 config MSM_REMOTEQDSS
