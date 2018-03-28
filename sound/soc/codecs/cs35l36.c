@@ -1397,6 +1397,8 @@ static void cs35l36_aou_low_power(struct cs35l36_private *cs35l36)
 			ARRAY_SIZE(cs35l36_aou_low_power_patch));
 
 	regmap_write(cs35l36->regmap, CS35L36_PAC_CTL3, 0);
+	regmap_write(cs35l36->regmap, CS35L36_PAC_CTL1,
+		CS35L36_PAC_ENABLE_MASK);
 }
 
 static int cs35l36_i2c_probe(struct i2c_client *i2c_client,
