@@ -572,7 +572,6 @@ dtb-$(CONFIG_ARCH_MSM8909) += sdw3100-msm8909w-wtp.dtb \
 
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-rcm.dtb \
 	sdm450-cdp.dtb \
-	sdm450-mtp.dtb \
 	sda450-cdp.dtb \
 	sda450-mtp.dtb \
 	sdm450-qrd.dtb \
@@ -584,6 +583,7 @@ dtb-$(CONFIG_ARCH_SDM450) += sdm450-rcm.dtb \
 	sdm450-pmi632-mtp-s3.dtb \
 	sda450-pmi632-cdp-s2.dtb \
 	sda450-pmi632-mtp-s3.dtb
+#	sdm450-mtp.dtb
 
 ifeq ($(CONFIG_ALI_DTB),y)
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-p0a.dtb
