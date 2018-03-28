@@ -585,6 +585,10 @@ dtb-$(CONFIG_ARCH_SDM450) += sdm450-rcm.dtb \
 	sda450-pmi632-cdp-s2.dtb \
 	sda450-pmi632-mtp-s3.dtb
 
+ifeq ($(CONFIG_ALI_DTB),y)
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-p0a.dtb
+endif
+
 dtb-$(CONFIG_ARCH_SDM632) += sdm632-rumi.dtb \
 	sdm632-cdp-s2.dtb \
 	sdm632-ext-codec-cdp-s3.dtb \
