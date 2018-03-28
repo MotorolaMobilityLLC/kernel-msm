@@ -30,7 +30,7 @@
 				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
 				type = "ext4";
 				mnt_flags = "ro,barrier=1,discard";
-				fsmgr_flags = "wait,slotselect"; /*MMI_STOPSHIP disable verity until A/B works*/
+				fsmgr_flags = "wait,slotselect,verify";
 				status = "ok";
 			};
 			system {
