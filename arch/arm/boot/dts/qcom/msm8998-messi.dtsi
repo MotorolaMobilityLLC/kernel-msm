@@ -146,8 +146,8 @@
 &mot_batterydata {
 	qcom,batt-id-range-pct = <15>;
 	df-serialnum = "SB18C20118";
-	#include "batterydata-js40-scud-pm660.dtsi"
-	#include "batterydata-js40-swd-pm660.dtsi"
+	#include "batterydata-js40-scud-pmi8998.dtsi"
+	#include "batterydata-js40-swd-pmi8998.dtsi"
 };
 
 &pmi8998_fg {
