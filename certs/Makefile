@@ -6,10 +6,10 @@ obj-$(CONFIG_SYSTEM_TRUSTED_KEYRING) += system_keyring.o system_certificates.o
 
 ifeq ($(CONFIG_SYSTEM_TRUSTED_KEYRING),y)
 
-$(eval $(call config_filename,SYSTEM_TRUSTED_KEYS))
-
 # GCC doesn't include .incbin files in -MD generated dependencies (PR#66871)
 $(obj)/system_certificates.o: $(obj)/x509_certificate_list
+
+SYSTEM_TRUSTED_KEYS := certs/mmi_verity_keys.pem
 
 # Cope with signing_key.x509 existing in $(srctree) not $(objtree)
 AFLAGS_system_certificates.o := -I$(srctree)
@@ -22,8 +22,8 @@ SYSTEM_TRUSTED_KEYS_SRCPREFIX := $(srctree)/certs/
 endif
 
 targets += x509_certificate_list
-$(obj)/x509_certificate_list: scripts/extract-cert $(SYSTEM_TRUSTED_KEYS_SRCPREFIX)$(SYSTEM_TRUSTED_KEYS_FILENAME) FORCE
-	$(call if_changed,extract_certs,$(SYSTEM_TRUSTED_KEYS_SRCPREFIX)$(CONFIG_SYSTEM_TRUSTED_KEYS))
+$(obj)/x509_certificate_list: scripts/extract-cert $(SYSTEM_TRUSTED_KEYS) FORCE
+	$(call if_changed,extract_certs,$(srctree)/$(CONFIG_SYSTEM_TRUSTED_KEYS))
 endif
 
 clean-files := x509_certificate_list .x509.list
