@@ -138,7 +138,6 @@
 		reg = <0x0>;
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
-		qcom,mount-angle = <90>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,eeprom-src = <&eeprom0>;
 		qcom,led-flash-src = <&led_flash0>;
@@ -182,7 +181,6 @@
 		reg = <0x1>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
-		qcom,mount-angle = <270>;
 		cam_vio-supply = <&pm8998_lvs1>;
 		cam_vdig-supply = <&pm8998_l14>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
@@ -225,7 +223,6 @@
 		reg = <0x02>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
-		qcom,mount-angle = <90>;
 		qcom,actuator-src = <&actuator1>;
 		qcom,eeprom-src = <&eeprom2>;
 		cam_vio-supply = <&pm8998_lvs1>;
