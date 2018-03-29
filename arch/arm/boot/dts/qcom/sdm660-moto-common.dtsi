@@ -691,6 +691,7 @@
 	qcom,lower-limit-capacity = <60>;
 	qcom,vfloat-comp-uv = <20000>;
 	qcom,usbpd-phandle = <&pm660_pdphy>;
+	qcom,typec-debounce;
 	qcom,external-vconn;
 	qcom,external-vbus;
 	smb2_ext_vbus: qcom,smb2-ext-vbus {
