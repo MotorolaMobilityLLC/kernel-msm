@@ -206,6 +206,11 @@ struct abovXX {
 
 	struct work_struct fw_update_work;
 
+#if defined(CONFIG_FB)
+	struct work_struct fb_notify_work;
+	struct notifier_block fb_notif;
+#endif
+
 	/* Function Pointers */
 	int (*init)(pabovXX_t this);
 	/* since we are trying to avoid knowing registers, create a pointer to a

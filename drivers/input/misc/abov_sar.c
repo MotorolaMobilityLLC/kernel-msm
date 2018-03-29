@@ -30,6 +30,11 @@
 #include <linux/notifier.h>
 #include <linux/usb.h>
 #include <linux/power_supply.h>
+
+#if defined(CONFIG_FB)
+#include <linux/fb.h>
+#endif
+
 #include <linux/input/abov_sar.h> /* main struct, interrupt,init,pointers */
 
 #define BOOT_UPDATE_ABOV_FIRMWARE 1
@@ -880,6 +885,46 @@ static int ps_notify_callback(struct notifier_block *self,
 	return 0;
 }
 
+#if defined(CONFIG_FB)
+static void fb_notify_resume_work(struct work_struct *work)
+{
+	pabovXX_t this = container_of(work, abovXX_t, fb_notify_work);
+	pabov_t pDevice = NULL;
+	struct input_dev *input_top = NULL;
+	struct input_dev *input_bottom = NULL;
+	int ret = 0;
+
+	pDevice = this->pDevice;
+	input_top = pDevice->pbuttonInformation->input_top;
+	input_bottom = pDevice->pbuttonInformation->input_bottom;
+
+	LOG_DBG("Lcd suspend/resume event,going to force calibrate\n");
+	ret = write_register(this, ABOV_RECALI_REG, 0x01);
+	if (ret < 0)
+		LOG_DBG(" Lcd suspend/resume,calibrate cap sensor failed\n");
+}
+
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	pabovXX_t this = container_of(self, abovXX_t, fb_notif);
+	if ((event == FB_EVENT_BLANK) &&
+		evdata && evdata->data) {
+		blank = evdata->data;
+		if ((*blank == FB_BLANK_POWERDOWN)
+			|| (*blank == FB_BLANK_UNBLANK)) {
+			LOG_DBG("fb notification: event = %lu blank = %d\n",
+				 event, *blank);
+			schedule_work(&this->fb_notify_work);
+		}
+	}
+
+	return 0;
+}
+#endif
+
 static char *toString(u8 *buffer, int len)
 {
 	int i = 0;
@@ -1623,12 +1668,27 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		INIT_WORK(&this->fw_update_work, capsense_update_work);
 		schedule_work(&this->fw_update_work);
 
+#if defined(CONFIG_FB)
+		INIT_WORK(&this->fb_notify_work, fb_notify_resume_work);
+		this->fb_notif.notifier_call = fb_notifier_callback;
+		ret = fb_register_client(&this->fb_notif);
+		if (ret) {
+			LOG_DBG("Unable to register fb_notifier: %d\n", ret);
+			goto free_fb_notifier;
+		}
+#endif
+
 		return  0;
 	}
 	return -ENOMEM;
 
-free_ps_notifier:
+free_fb_notifier:
 	power_supply_unreg_notifier(&this->ps_notif);
+
+free_ps_notifier:
+	LOG_DBG("%s free ps notifier:.\n", __func__);
+	regulator_disable(pplatData->cap_svdd);
+	regulator_put(pplatData->cap_svdd);
 
 err_svdd_error:
 	LOG_DBG("%s svdd defer.\n", __func__);
@@ -1654,6 +1714,11 @@ static int abov_remove(struct i2c_client *client)
 	pabov_platform_data_t pplatData = 0;
 	pabov_t pDevice = 0;
 	pabovXX_t this = i2c_get_clientdata(client);
+
+#if defined(CONFIG_FB)
+	fb_unregister_client(&this->fb_notif);
+#endif
+	power_supply_unreg_notifier(&this->ps_notif);
 
 	pDevice = this->pDevice;
 	if (this && pDevice) {
