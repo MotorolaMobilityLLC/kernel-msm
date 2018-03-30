@@ -43,6 +43,7 @@
 #ifdef CONFIG_ENABLE_CHIP_TYPE_MSG22XX
 /* The below .h file are included for MSG22xx */
 /*Modify.*/
+#if 0
 #include "msg22xx_open_test_RIU1_X.h"
 #include "msg22xx_open_test_RIU2_X.h"
 #include "msg22xx_open_test_RIU3_X.h"
@@ -50,20 +51,25 @@
 #include "msg22xx_open_test_RIU1_Y.h"
 #include "msg22xx_open_test_RIU2_Y.h"
 #include "msg22xx_open_test_RIU3_Y.h"
+#endif
 
 /*Modify.*/
+#if 0
 #include "msg22xx_short_test_RIU1_X.h"
 #include "msg22xx_short_test_RIU2_X.h"
 #include "msg22xx_short_test_RIU3_X.h"
+#endif
 #ifdef CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE
-#include "msg22xx_short_test_RIU4_X.h"
+/*#include "msg22xx_short_test_RIU4_X.h"*/
 #endif /*CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE */
 
+#if 0
 #include "msg22xx_short_test_RIU1_Y.h"
 #include "msg22xx_short_test_RIU2_Y.h"
 #include "msg22xx_short_test_RIU3_Y.h"
+#endif
 #ifdef CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE
-#include "msg22xx_short_test_RIU4_Y.h"
+/*#include "msg22xx_short_test_RIU4_Y.h"*/
 #endif /*CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE */
 #endif /*CONFIG_ENABLE_CHIP_TYPE_MSG22XX */
 
@@ -78,7 +84,7 @@
 /*=============================================================*/
 
 /*Modify.*/
-#define TP_TYPE_X    (2)
+#define TP_TYPE_X    (16)
 #define TP_TYPE_Y    (1)
 
 /*=============================================================*/
@@ -207,24 +213,17 @@ u16 g_msg28xx_mux_mem_20_3e_6_settings[16] = { 0 };
 
 static s32 g_mutual_ic_on_cell_open_test_result[2] = { 0 };
 static s32 g_mutual_ic_on_cell_open_test_result_data[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
-static s32 g_mutual_ic_on_cell_open_test_result_ratio_data[MUTUAL_IC_MAX_MUTUAL_NUM] =
-    { 0 };
-static s32 g_mutual_ic_on_cell_open_test_golden_channel[MUTUAL_IC_MAX_MUTUAL_NUM] =
-    { 0 };
-static s32 g_mutual_ic_on_cell_open_test_golden_channel_max[MUTUAL_IC_MAX_MUTUAL_NUM] =
-    { 0 };
-static s32 g_mutual_ic_on_cell_open_test_golden_channel_min[MUTUAL_IC_MAX_MUTUAL_NUM] =
-    { 0 };
+static s32 g_mutual_ic_on_cell_open_test_result_ratio_data[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
+static s32 g_mutual_ic_on_cell_open_test_golden_channel[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
+static s32 g_mutual_ic_on_cell_open_test_golden_channel_max[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
+static s32 g_mutual_ic_on_cell_open_test_golden_channel_min[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
 
 static u16 g_normal_test_fail_check_deltac[MUTUAL_IC_MAX_MUTUAL_NUM];
 static u16 g_normal_test_fail_check_ratio1000[MUTUAL_IC_MAX_MUTUAL_NUM];
 static s32 g_mutual_ic_on_cell_open_test_ratio1000[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
-static s32 g_mutual_ic_on_cell_open_test_ratio_border1000[MUTUAL_IC_MAX_MUTUAL_NUM] =
-    { 0 };
-static s32 g_mutual_ic_on_cell_open_test_ratio_move1000[MUTUAL_IC_MAX_MUTUAL_NUM] =
-    { 0 };
-static s32 g_mutual_ic_on_cell_open_test_ratio_border_move1000[MUTUAL_IC_MAX_MUTUAL_NUM]
-= { 0 };
+static s32 g_mutual_ic_on_cell_open_test_ratio_border1000[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
+static s32 g_mutual_ic_on_cell_open_test_ratio_move1000[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
+static s32 g_mutual_ic_on_cell_open_test_ratio_border_move1000[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
 static u16 g_normal_test_fail_check_deltac[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
 static u16 g_normal_test_fail_check_ratio[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
 static s32 g_mutual_ic_delta_c2[MUTUAL_IC_MAX_MUTUAL_NUM] = { 0 };
@@ -359,12 +358,12 @@ static u16 drv_mp_test_ito_test_msg22xx_get_data_out(s16 *p_raw_data, u16 nSubFr
     do {
         i++;
         nRegInt = reg_get16_bit_value(0x3D18); /*bank:intr_ctrl, addr:h000c */
-        DBG("*** nRegInt=  %x ***\n", nRegInt);
+		DBG(&g_i2c_client->dev, "*** nRegInt=  %x ***\n", nRegInt);
 
-        DBG("*** try count i=  %d ***\n", i);
+		DBG(&g_i2c_client->dev, "*** try count i=  %d ***\n", i);
 
         if (i > 20) {           /*sway 20151219 */
-            error_flag = 0;
+			/*error_flag = 0;*/
             return 0;
         }
     } while ((nRegInt & SELF_IC_FIQ_E_FRAME_READY_MASK) == 0x0000);
@@ -523,6 +522,13 @@ static void drv_mp_test_ito_test_msg22xx_register_reset(void)
 
     reg_set_16bit_value(0x128C, 0x0F); /*ADC afe gain correction bypass */
     reg_set_16Bit_value_off(0x1104, BIT12);
+
+    reg_mask_16bit_value(0x1104, 0x0FFF, 0x0770, ADDRESS_MODE_16BIT);
+    reg_mask_16bit_value(0x1105, 0x0FFF, 0x0770, ADDRESS_MODE_16BIT);
+
+    reg_set_16bit_value(0x115C, 0x0); /*clear sensor ov enable*/
+    reg_set_16bit_value(0x115D, 0x0); /*clear sensor ov enable*/
+    reg_set_16bit_value(0x115E, 0x0); /*clear sensor and gr ov enable*/
 }
 
 static void drv_mp_test_ito_test_msg22xx_register_reset_patch(void)
@@ -679,7 +685,7 @@ static void drv_mp_test_ito_open_test_msg22xx_first(u8 nItemId, s16 *p_raw_data,
     reg_set_16bit_value(0x1216, (nSubFrameNum - 1) << 1);  /*subframe numbers, 0:1subframe, 1:2subframe */
 
     if (nItemId == 40) {
-        if (1) {
+		if (0) {
             reg_set_16bit_value(0x1110, 0x0060);   /*2.4V -> 1.2V */
         } else {
             reg_set_16bit_value(0x1110, 0x0020);   /*3.0V -> 0.6V */
@@ -711,7 +717,7 @@ static void drv_mp_test_ito_open_test_msg22xx_first(u8 nItemId, s16 *p_raw_data,
     }
 }
 
-static void drv_mp_test_ito_open_test_msg22xx_first(u8 nItemId, s16 *p_raw_data,
+static void drv_mp_test_ito_short_test_msg22xx_first(u8 nItemId, s16 *p_raw_data,
                                                s8 *p_dataFlag)
 {
     u32 i, j;
@@ -980,10 +986,76 @@ static u16 drv_mp_test_ito_test_self_ic_get_tp_type(void)
     return nMajor;
 }
 
+static void drv_mp_test_find_border(u8 *va, u8 va_len, u8 *va_l, u8 *va_r, u8 *vab_l, u8 *vab_r)
+{
+	int i, j, min, frame_num = va_len;
+	int border_l[2] = {0}, border_r[2] = {0};
+	u8 tmp, *tmp_map = NULL;
+	u8 *half_l, *half_r;
+
+	tmp_map = kcalloc(frame_num, sizeof(u8), GFP_KERNEL);
+
+	for (i = 0; i < frame_num; i++)
+		tmp_map[i] = va[i];
+
+	/* Sort ascending */
+	for (i = 0; i < frame_num; i++) {
+		min = i;
+		for (j = i + 1; j < frame_num; j++) {
+			if (tmp_map[j] < tmp_map[min])
+				min = j;
+		}
+
+		tmp = tmp_map[i];
+		tmp_map[i] = tmp_map[min];
+		tmp_map[min] = tmp;
+	}
+
+	half_l = kcalloc(frame_num/2 - 2, sizeof(u8), GFP_KERNEL);
+	half_r = kcalloc(frame_num/2 - 2, sizeof(u8), GFP_KERNEL);
+
+	/* Order MAP data */
+	for (i = 0; i < frame_num; i++) {
+		if (i >= frame_num/2) {
+			if (i == frame_num/2)
+				border_r[0] = tmp_map[i];
+			else if (i == (frame_num - 1))
+				border_r[1] = tmp_map[i];
+			else
+				half_r[i - (frame_num/2) - 1] = tmp_map[i];
+		} else {
+			if (i == 0)
+				border_l[0] = tmp_map[i];
+			else if (i == (frame_num/2 - 1))
+				border_l[1] = tmp_map[i];
+			else
+				half_l[i - 1] = tmp_map[i];
+		}
+	}
+
+	/* Copy result */
+	for (i = 0; i < frame_num/2 - 2; i++) {
+		/*pr_info("half_l[%d] = %d, half_r[%d] = %d\n",i,half_l[i],i,half_r[i]);*/
+		va_l[i] = half_l[i];
+		va_r[i] = half_r[i];
+	}
+
+	for (i = 0; i < 2; i++) {
+		/*pr_info("border_l[%d] = %d, border_r[%d] = %d\n",i,border_l[i],i,border_r[i]);*/
+		vab_l[i] = border_l[i];
+		vab_r[i] = border_r[i];
+	}
+
+	kfree(tmp_map);
+	kfree(half_l);
+	kfree(half_r);
+}
+
 static u16 drv_mp_test_ito_test_self_ic_choose_tp_type(void)
 {
     u16 nTpType = 0;
     u32 i = 0;
+    char *str = NULL;
 
     DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
 
@@ -1052,99 +1124,84 @@ static u16 drv_mp_test_ito_test_self_ic_choose_tp_type(void)
 
     if (TP_TYPE_X == nTpType) { /*Modify. */
         if (g_chip_type == CHIP_TYPE_MSG22XX) {
-            g_msg22xx_open_riu1 = MSG22XX_open_1_X;
-            g_msg22xx_open_riu2 = MSG22XX_open_2_X;
-            g_msg22xx_open_riu3 = MSG22XX_open_3_X;
+			str = kcalloc(PARSER_MAX_KEY_VALUE_LEN, sizeof(char), GFP_KERNEL);
 
-            g_msg22xx_short_riu1 = MSG22XX_short_1_X;
-            g_msg22xx_short_riu2 = MSG22XX_short_2_X;
-            g_msg22xx_short_riu3 = MSG22XX_short_3_X;
+			/* Open Table 1 */
+			ms_get_ini_data("OPENTABLE_1", "RIU_TBL", str);
+			g_msg22xx_open_riu1 = ms_ini_split_int_array(str);
 
-            g_msg22xx_open_sub_frame_num1 = MSG22XX_NUM_OPEN_1_SENSOR_X;
-            g_msg22xx_open_sub_frame_num2 = MSG22XX_NUM_OPEN_2_SENSOR_X;
-            g_msg22xx_open_sub_frame_num3 = MSG22XX_NUM_OPEN_3_SENSOR_X;
-            g_msg22xx_short_sub_frame_num1 = MSG22XX_NUM_SHORT_1_SENSOR_X;
-            g_msg22xx_short_sub_frame_num2 = MSG22XX_NUM_SHORT_2_SENSOR_X;
-            g_msg22xx_short_sub_frame_num3 = MSG22XX_NUM_SHORT_3_SENSOR_X;
+			ms_get_ini_data("OPENTABLE_1", "SENSORS", str);
+			g_msg22xx_open_sub_frame_num1 = ms_atoi(str);
 
-#ifdef CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE
-            g_msg22xx_short_riu4 = MSG22XX_short_4_X;
-            g_msg22xx_short_sub_frame_num4 = MSG22XX_NUM_SHORT_4_SENSOR_X;
-#endif /*CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE */
+			ms_get_ini_data("OPENTABLE_1", "MAP", str);
+			g_self_ic_map1 = ms_ini_split_u8_array(str);
 
-            g_self_ic_map1 = MSG22XX_MAP1_X;
-            g_self_ic_map2 = MSG22XX_MAP2_X;
-            g_self_ic_map3 = MSG22XX_MAP3_X;
-            g_self_ic_map40_1 = MSG22XX_MAP40_1_X;
-            g_self_ic_map40_2 = MSG22XX_MAP40_2_X;
-            g_self_ic_map41_1 = MSG22XX_MAP41_1_X;
-            g_self_ic_map41_2 = MSG22XX_MAP41_2_X;
+			g_self_ic_map40_1 = kcalloc(g_msg22xx_open_sub_frame_num1/2 - 2, sizeof(u8), GFP_KERNEL);
+			g_self_ic_map40_3 = kcalloc(g_msg22xx_open_sub_frame_num1/2 - 2, sizeof(u8), GFP_KERNEL);
 
-            g_self_ic_short_map1 = MSG22XX_SHORT_MAP1_X;
-            g_self_ic_short_map2 = MSG22XX_SHORT_MAP2_X;
-            g_self_ic_short_map3 = MSG22XX_SHORT_MAP3_X;
+			g_self_ic_map40_2 = kcalloc(2, sizeof(u8), GFP_KERNEL);
+			g_self_ic_map40_4 = kcalloc(2, sizeof(u8), GFP_KERNEL);
 
-#ifdef CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE
-            g_self_ic_map40_3 = MSG22XX_MAP40_3_X;
-            g_self_ic_map40_4 = MSG22XX_MAP40_4_X;
-            g_self_ic_map41_3 = MSG22XX_MAP41_3_X;
-            g_self_ic_map41_4 = MSG22XX_MAP41_4_X;
+			drv_mp_test_find_border(g_self_ic_map1, g_msg22xx_open_sub_frame_num1, g_self_ic_map40_1, g_self_ic_map40_3, g_self_ic_map40_2, g_self_ic_map40_4);
 
-            g_self_ic_short_map4 = MSG22XX_SHORT_MAP4_X;
-#endif /*CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE */
+			/* Open Table 2 */
+			ms_get_ini_data("OPENTABLE_2", "RIU_TBL", str);
+			g_msg22xx_open_riu2 = ms_ini_split_int_array(str);
 
-            g_self_ici_to_test_key_num = MSG22XX_NUM_KEY_X;
-            g_self_ici_to_test_dummy_num = MSG22XX_NUM_DUMMY_X;
-            g_self_ici_to_triangle_num = MSG22XX_NUM_SENSOR_X;
-            g_self_ici_enable_2r = MSG22XX_ENABLE_2R_X;
-        }
-    } else if (TP_TYPE_Y == nTpType) {  /*Modify. */
-        if (g_chip_type == CHIP_TYPE_MSG22XX) {
-            g_msg22xx_open_riu1 = MSG22XX_open_1_Y;
-            g_msg22xx_open_riu2 = MSG22XX_open_2_Y;
-            g_msg22xx_open_riu3 = MSG22XX_open_3_Y;
+			ms_get_ini_data("OPENTABLE_2", "SENSORS", str);
+			g_msg22xx_open_sub_frame_num2 = ms_atoi(str);
 
-            g_msg22xx_short_riu1 = MSG22XX_short_1_Y;
-            g_msg22xx_short_riu2 = MSG22XX_short_2_Y;
-            g_msg22xx_short_riu3 = MSG22XX_short_3_Y;
+			ms_get_ini_data("OPENTABLE_2", "MAP", str);
+			g_self_ic_map2 = ms_ini_split_u8_array(str);
 
-            g_msg22xx_open_sub_frame_num1 = MSG22XX_NUM_OPEN_1_SENSOR_Y;
-            g_msg22xx_open_sub_frame_num2 = MSG22XX_NUM_OPEN_2_SENSOR_Y;
-            g_msg22xx_open_sub_frame_num3 = MSG22XX_NUM_OPEN_3_SENSOR_Y;
-            g_msg22xx_short_sub_frame_num1 = MSG22XX_NUM_SHORT_1_SENSOR_Y;
-            g_msg22xx_short_sub_frame_num2 = MSG22XX_NUM_SHORT_2_SENSOR_Y;
-            g_msg22xx_short_sub_frame_num3 = MSG22XX_NUM_SHORT_3_SENSOR_Y;
+			g_self_ic_map41_1 = kcalloc(g_msg22xx_open_sub_frame_num2/2 - 2, sizeof(u8), GFP_KERNEL);
+			g_self_ic_map41_3 = kcalloc(g_msg22xx_open_sub_frame_num2/2 - 2, sizeof(u8), GFP_KERNEL);
+
+			g_self_ic_map41_2 = kcalloc(2, sizeof(u8), GFP_KERNEL);
+			g_self_ic_map41_4 = kcalloc(2, sizeof(u8), GFP_KERNEL);
+
+			drv_mp_test_find_border(g_self_ic_map2, g_msg22xx_open_sub_frame_num2, g_self_ic_map41_1, g_self_ic_map41_3, g_self_ic_map41_2, g_self_ic_map41_4);
+
+			/* Short Table 1 */
+			ms_get_ini_data("SHOTTABLE_1", "RIU_TBL", str);
+			g_msg22xx_short_riu1 = ms_ini_split_int_array(str);
+
+			ms_get_ini_data("SHOTTABLE_1", "SENSORS", str);
+			g_msg22xx_short_sub_frame_num1 = ms_atoi(str);
+
+			ms_get_ini_data("SHOTTABLE_1", "MAP", str);
+			g_self_ic_short_map1 = ms_ini_split_u8_array(str);
+
+			/* Short Table 2 */
+			ms_get_ini_data("SHOTTABLE_2", "RIU_TBL", str);
+			g_msg22xx_short_riu2 = ms_ini_split_int_array(str);
+
+			ms_get_ini_data("SHOTTABLE_2", "SENSORS", str);
+			g_msg22xx_short_sub_frame_num2 = ms_atoi(str);
+
+			ms_get_ini_data("SHOTTABLE_2", "MAP", str);
+			g_self_ic_short_map2 = ms_ini_split_u8_array(str);
 
 #ifdef CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE
-            g_msg22xx_short_riu4 = MSG22XX_short_4_Y;
-            g_msg22xx_short_sub_frame_num4 = MSG22XX_NUM_SHORT_4_SENSOR_Y;
-#endif /*CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE */
+			/* Short Table 4 */
+			ms_get_ini_data("SHOTTABLE_4", "RIU_TBL", str);
+			g_msg22xx_short_riu4 = ms_ini_split_int_array(str);
 
-            g_self_ic_map1 = MSG22XX_MAP1_Y;
-            g_self_ic_map2 = MSG22XX_MAP2_Y;
-            g_self_ic_map3 = MSG22XX_MAP3_Y;
-            g_self_ic_map40_1 = MSG22XX_MAP40_1_Y;
-            g_self_ic_map40_2 = MSG22XX_MAP40_2_Y;
-            g_self_ic_map41_1 = MSG22XX_MAP41_1_Y;
-            g_self_ic_map41_2 = MSG22XX_MAP41_2_Y;
+			ms_get_ini_data("SHOTTABLE_4", "SENSORS", str);
+			g_msg22xx_short_sub_frame_num4 = ms_atoi(str);
 
-            g_self_ic_short_map1 = MSG22XX_SHORT_MAP1_Y;
-            g_self_ic_short_map2 = MSG22XX_SHORT_MAP2_Y;
-            g_self_ic_short_map3 = MSG22XX_SHORT_MAP3_Y;
+			ms_get_ini_data("SHOTTABLE_4", "MAP", str);
+			g_self_ic_short_map4 = ms_ini_split_u8_array(str);
+#endif
+			/*g_msg22xx_open_riu3 = MSG22XX_open_3_X;*/
+			/*g_msg22xx_short_riu3 = MSG22XX_short_3_X;*/
 
-#ifdef CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE
-            g_self_ic_map40_3 = MSG22XX_MAP40_3_Y;
-            g_self_ic_map40_4 = MSG22XX_MAP40_4_Y;
-            g_self_ic_map41_3 = MSG22XX_MAP41_3_Y;
-            g_self_ic_map41_4 = MSG22XX_MAP41_4_Y;
+			g_self_ici_to_test_key_num = MSG22XX_NUM_KEY_X;
+			g_self_ici_to_test_dummy_num = MSG22XX_NUM_DUMMY_X;
+			g_self_ici_to_triangle_num = MSG22XX_NUM_SENSOR_X;
+			g_self_ici_enable_2r = MSG22XX_ENABLE_2R_X;
 
-            g_self_ic_short_map4 = MSG22XX_SHORT_MAP4_Y;
-#endif /*CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE */
-
-            g_self_ici_to_test_key_num = MSG22XX_NUM_KEY_Y;
-            g_self_ici_to_test_dummy_num = MSG22XX_NUM_DUMMY_Y;
-            g_self_ici_to_triangle_num = MSG22XX_NUM_SENSOR_Y;
-            g_self_ici_enable_2r = MSG22XX_ENABLE_2R_Y;
+			kfree(str);
         }
     } else {
         nTpType = 0;
@@ -1357,6 +1414,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
 
     if (nItemId == 40) {
         for (i = 0; i < (g_self_ici_to_triangle_num / 4) - 2; i++) {
+			pr_info("g_self_ic_raw_data1[g_self_ic_map40_1] =%d, i=%d\n", g_self_ic_raw_data1[g_self_ic_map40_1[i]], i);
             if (g_self_ic_raw_data1[g_self_ic_map40_1[i]] > nTmpJgAvgThMax1 ||
                 g_self_ic_raw_data1[g_self_ic_map40_1[i]] < nTmpJgAvgThMin1) {
                 g_self_ic_test_fail_channel[g_test_fail_channel_count] =
@@ -1367,6 +1425,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
         }
 
         for (i = 0; i < 2; i++) {
+			pr_info("g_self_ic_raw_data1[g_self_ic_map40_2] = %d,i= %d\n", g_self_ic_raw_data1[g_self_ic_map40_2[i]], i);
             if (g_self_ic_raw_data1[g_self_ic_map40_2[i]] > nTmpJgAvgThMax2 ||
                 g_self_ic_raw_data1[g_self_ic_map40_2[i]] < nTmpJgAvgThMin2) {
                 g_self_ic_test_fail_channel[g_test_fail_channel_count] =
@@ -1377,6 +1436,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
         }
 
         for (i = 0; i < (g_self_ici_to_triangle_num / 4) - 2; i++) {
+			pr_info("g_self_ic_raw_data1[g_self_ic_map40_3] =%d,i=%d\n", g_self_ic_raw_data1[g_self_ic_map40_3[i]], i);
             if (g_self_ic_raw_data1[g_self_ic_map40_3[i]] > nTmpJgAvgThMax3 ||
                 g_self_ic_raw_data1[g_self_ic_map40_3[i]] < nTmpJgAvgThMin3) {
                 g_self_ic_test_fail_channel[g_test_fail_channel_count] =
@@ -1387,6 +1447,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
         }
 
         for (i = 0; i < 2; i++) {
+			pr_info("g_self_ic_raw_data1[g_self_ic_map40_4] =%d,i=%d\n", g_self_ic_raw_data1[g_self_ic_map40_4[i]], i);
             if (g_self_ic_raw_data1[g_self_ic_map40_4[i]] > nTmpJgAvgThMax4 ||
                 g_self_ic_raw_data1[g_self_ic_map40_4[i]] < nTmpJgAvgThMin4) {
                 g_self_ic_test_fail_channel[g_test_fail_channel_count] =
@@ -1396,6 +1457,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
             }
         }
     } else if (nItemId == 41) {
+		pr_info("g_self_ic_raw_data2[g_self_ic_map41_1] =%d,i=%d\n", g_self_ic_raw_data2[g_self_ic_map41_1[i]], i);
         for (i = 0; i < (g_self_ici_to_triangle_num / 4) - 2; i++) {
             if (g_self_ic_raw_data2[g_self_ic_map41_1[i]] > nTmpJgAvgThMax1 ||
                 g_self_ic_raw_data2[g_self_ic_map41_1[i]] < nTmpJgAvgThMin1) {
@@ -1407,6 +1469,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
         }
 
         for (i = 0; i < 2; i++) {
+			pr_info("g_self_ic_raw_data2[g_self_ic_map41_2] =%d,i=%d\n", g_self_ic_raw_data2[g_self_ic_map41_2[i]], i);
             if (g_self_ic_raw_data2[g_self_ic_map41_2[i]] > nTmpJgAvgThMax2 ||
                 g_self_ic_raw_data2[g_self_ic_map41_2[i]] < nTmpJgAvgThMin2) {
                 g_self_ic_test_fail_channel[g_test_fail_channel_count] =
@@ -1417,6 +1480,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
         }
 
         for (i = 0; i < (g_self_ici_to_triangle_num / 4) - 2; i++) {
+			pr_info("g_self_ic_raw_data2[g_self_ic_map41_3] =%d,i=%d\n", g_self_ic_raw_data2[g_self_ic_map41_3[i]], i);
             if (g_self_ic_raw_data2[g_self_ic_map41_3[i]] > nTmpJgAvgThMax3 ||
                 g_self_ic_raw_data2[g_self_ic_map41_3[i]] < nTmpJgAvgThMin3) {
                 g_self_ic_test_fail_channel[g_test_fail_channel_count] =
@@ -1427,6 +1491,7 @@ static ItoTest_result_e drv_mp_test_ito_open_test_selfIc_second2r(u8 nItemId)
         }
 
         for (i = 0; i < 2; i++) {
+			pr_info("g_self_ic_raw_data2[g_self_ic_map41_4] =%d,i=%d\n", g_self_ic_raw_data2[g_self_ic_map41_4[i]], i);
             if (g_self_ic_raw_data2[g_self_ic_map41_4[i]] > nTmpJgAvgThMax4 ||
                 g_self_ic_raw_data2[g_self_ic_map41_4[i]] < nTmpJgAvgThMin4) {
                 g_self_ic_test_fail_channel[g_test_fail_channel_count] =
@@ -1549,6 +1614,7 @@ static ItoTest_result_e drv_mp_test_self_ic_ito_open_test_entry(void)
 
     /*Stop cpu */
     reg_set_16bit_value(0x0FE6, 0x0001);   /*bank:mheg5, addr:h0073 */
+    reg_set_16bit_value(0x3C60, 0xAA55); /* bank:reg_PIU_MISC_0, addr:h0030 */
     mdelay(50);
 
     for (i = 0; i < SELF_IC_MAX_CHANNEL_NUM; i++) {
@@ -1641,6 +1707,7 @@ static ItoTest_result_e drv_mp_test_self_ic_ito_short_test_entry(void)
 
     /*Stop cpu */
     reg_set_16bit_value(0x0FE6, 0x0001);   /*bank:mheg5, addr:h0073 */
+    reg_set_16bit_value(0x3C60, 0xAA55); /* bank:reg_PIU_MISC_0, addr:h0030 */
     mdelay(50);
 
     for (i = 0; i < SELF_IC_MAX_CHANNEL_NUM; i++) {
@@ -1659,20 +1726,20 @@ static ItoTest_result_e drv_mp_test_self_ic_ito_short_test_entry(void)
 
     if (g_chip_type == CHIP_TYPE_MSG22XX) {
         if (g_self_ici_enable_2r) {
-            drv_mp_test_ito_open_test_msg22xx_first(0, g_self_ic_raw_data4,
+			drv_mp_test_ito_short_test_msg22xx_first(0, g_self_ic_raw_data4,
                                                g_self_ic_data_flag4);
             nRetVal2 = drv_mp_test_ito_short_test_selfIc_second(0);
         }
 
-        drv_mp_test_ito_open_test_msg22xx_first(1, g_self_ic_raw_data1,
+		drv_mp_test_ito_short_test_msg22xx_first(1, g_self_ic_raw_data1,
                                            g_self_ic_data_flag1);
         nRetVal3 = drv_mp_test_ito_short_test_selfIc_second(1);
 
-        drv_mp_test_ito_open_test_msg22xx_first(2, g_self_ic_raw_data2,
+		drv_mp_test_ito_short_test_msg22xx_first(2, g_self_ic_raw_data2,
                                            g_self_ic_data_flag2);
         nRetVal4 = drv_mp_test_ito_short_test_selfIc_second(2);
 
-        drv_mp_test_ito_open_test_msg22xx_first(3, g_self_ic_raw_data3,
+		drv_mp_test_ito_short_test_msg22xx_first(3, g_self_ic_raw_data3,
                                            g_self_ic_data_flag3);
         nRetVal5 = drv_mp_test_ito_short_test_selfIc_second(3);
     }
@@ -1741,52 +1808,6 @@ static void drv_mp_test_ito_open_test_msg28xx_set_mutual_csub_via_db_bus(s16 nCS
     }
 }
 
-/*
-static void drv_mp_test_ito_open_test_msg28xx_afe_gain_one(void)
-{
-    u8 nReg_data = 0;
-    u16 nAFECoef = 0;
-
-    DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
-
-    /*AFE gain = 1X
-reg_set_16bit_value(0x1318, 0x4440);
-reg_set_16bit_value(0x131A, 0x4444);
-reg_set_16bit_value(0x13D6, 0x2000);
-
-reg_set_16bit_value(0x2160, 0x0040);
-reg_set_16bit_value(0x2162, 0x0040);
-reg_set_16bit_value(0x2164, 0x0040);
-reg_set_16bit_value(0x2166, 0x0040);
-reg_set_16bit_value(0x2168, 0x0040);
-reg_set_16bit_value(0x216A, 0x0040);
-reg_set_16bit_value(0x216C, 0x0040);
-reg_set_16bit_value(0x216E, 0x0040);
-reg_set_16bit_value(0x2170, 0x0040);
-reg_set_16bit_value(0x2172, 0x0040);
-reg_set_16bit_value(0x2174, 0x0040);
-reg_set_16bit_value(0x2176, 0x0040);
-reg_set_16bit_value(0x2178, 0x0040);
-reg_set_16bit_value(0x217A, 0x1FFF);
-reg_set_16bit_value(0x217C, 0x1FFF);
-
-    /*reg_hvbuf_sel_gain 
-reg_set_16bit_value(0x1564, 0x0077);
-
-    /*all AFE cfb use defalt (50p) 
-reg_set_16bit_value(0x1508, 0x1FFF);   /*all AFE cfb: SW control */
-reg_set_16bit_value(0x1550, 0x0000);   /*all AFE cfb use defalt (50p) */
-
-    /*ADC: AFE Gain bypass 
-     * reg_set_16bit_value(0x1260, 0x1FFF);
-     * 
-     * /*AFE coef 
-     * nReg_data = reg_get_l_byte_value(0x101A);
-     * nAFECoef = (u16) (0x10000 / nReg_data);
-     * reg_set_16bit_value(0x13D6, nAFECoef);
-     * }
-     * 
-     */
 static void drv_mp_test_ito_open_test_msg28xx_afe_gain_one(void)
 {
     /*AFE gain = 1X */
@@ -1908,34 +1929,33 @@ static void drv_mp_test_ito_test_db_bus_read_dq_mem_start(void)
     iic_write_data(slave_i2c_id_db_bus, &nParCmdIicUse, 1);
 }
 
-/*
+#if 0
 static void drv_mp_test_ito_test_db_bus_read_dq_mem_startAddr24(void)
 {
     u8 nParCmdSelUseCfg = 0x7F;
-/*u8 nParCmdAdByteEn0 = 0x50;
-/*u8 nParCmdAdByteEn1 = 0x51;
+u8 nParCmdAdByteEn0 = 0x50;
+u8 nParCmdAdByteEn1 = 0x51;
 u8 nParCmdAdByteEn2 = 0x52;
-/*u8 nParCmdDaByteEn0 = 0x54;
+u8 nParCmdDaByteEn0 = 0x54;
 u8 nParCmdUSetSelB0 = 0x80;
 u8 nParCmdUSetSelB1 = 0x82;
 u8 nParCmdSetSelB2 = 0x85;
 u8 nParCmdIicUse = 0x35;
-    /*u8 nParCmdWr        = 0x10; 
+    u8 nParCmdWr        = 0x10;
 
 DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
 
 iic_write_data(slave_i2c_id_db_bus, &nParCmdSelUseCfg, 1);
-    /*iic_write_data(slave_i2c_id_db_bus, &nParCmdAdByteEn0, 1); 
-    /*iic_write_data(slave_i2c_id_db_bus, &nParCmdAdByteEn1, 1); 
+    iic_write_data(slave_i2c_id_db_bus, &nParCmdAdByteEn0, 1);
+    iic_write_data(slave_i2c_id_db_bus, &nParCmdAdByteEn1, 1);
 iic_write_data(slave_i2c_id_db_bus, &nParCmdAdByteEn2, 1);
-    /*iic_write_data(slave_i2c_id_db_bus, &nParCmdDaByteEn0, 1); 
+    iic_write_data(slave_i2c_id_db_bus, &nParCmdDaByteEn0, 1);
 iic_write_data(slave_i2c_id_db_bus, &nParCmdUSetSelB0, 1);
 iic_write_data(slave_i2c_id_db_bus, &nParCmdUSetSelB1, 1);
 iic_write_data(slave_i2c_id_db_bus, &nParCmdSetSelB2, 1);
 iic_write_data(slave_i2c_id_db_bus, &nParCmdIicUse, 1);
 }
-
-*/
+#endif
 
 static void drv_mp_test_ito_test_db_bus_read_dq_mem_end(void)
 {
@@ -2004,7 +2024,7 @@ static s32 drv_mp_test_ito_test_msg28xx_trigger_mutual_one_shot(s16 *p_result_da
     nAfeOpening = nReg_data & 0x0f;
 
     if (nSF == 0) {
-        return -1;
+		return -EFAULT;
     }
 
     nReg_data = reg_get_l_byte_value(0x100B);
@@ -2161,7 +2181,7 @@ static s32 drv_mp_test_ito_test_msg28xx_trigger_mutual_one_shot(s16 *p_result_da
     return 0;
 }
 
-static s32 drv_mp_test_ito_test_msg28xx_get_mutual_one_shot_raw_iir(s16 * n_result_data,
+static s32 drv_mp_test_ito_test_msg28xx_get_mutual_one_shot_raw_iir(s16 *n_result_data,
                                                           u16 *pSenNum,
                                                           u16 *pDrvNum)
 {
@@ -2188,7 +2208,7 @@ static s32 drv_mp_test_ito_test_msg28xx_get_deltac(s32 *pDeltaC)
         (p_raw_data, &nSenNumBak, &nDrvNumBak) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Open Test# GetMutualOneShotRawIIR failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     DBG(&g_i2c_client->dev,
@@ -2390,7 +2410,7 @@ static s32 drv_mp_test_ito_open_test_msg28xx_obtain_open_value_keys(s32 *pkeyarr
     if (drv_mp_test_ito_test_msg28xx_get_deltac(g_mutual_ic_delta_c) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Open Test# GetDeltaC failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     for (k = 0; k < g_msg28xx_key_num; k++) {
@@ -2433,7 +2453,7 @@ static s32 drv_mp_test_ito_test_msg28xx_check_switch_status(void)
         mdelay(20);
         nT++;
         if (nT > nTimeOut) {
-            return -1;
+			return -EFAULT;
         }
 
     } while (nReg_data != 0x7447);
@@ -2472,7 +2492,7 @@ static s32 drv_mp_test_ito_open_test_msg28xx_re_enter_mutual_mode(u16 nFMode)
     if (drv_mp_test_ito_test_msg28xx_check_switch_status() < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx MP Test# CheckSwitchStatus failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     /*Stop mcu */
@@ -2609,7 +2629,7 @@ s32 drv_mp_test_ito_open_test_msg28xx_on_cell_open_va_value(void)
     if (drv_mp_test_ito_test_msg28xx_get_deltac(g_mutual_ic_delta_c) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Open Test# GetDeltaC failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
     return 0;
 }
@@ -2628,7 +2648,7 @@ static s32 drv_mp_test_msg28xx_ito_open_test(void)
     if (drv_mp_test_ito_test_msg28xx_get_deltac(g_mutual_ic_delta_c) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Open Test# GetDeltaC failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     return 0;
@@ -2653,7 +2673,7 @@ static s32 drv_mp_test_ito_open_test_msg28xx_open_judge(u16 nItemID,
         /*deltaC_result[i] = deltaC[i]; */
         /*g_mutual_ic_result[i] = 1673 * nCSub - g_mutual_ic_delta_c[i] * 2 / (nDriOpening + 1);*/
         if (g_mutual_ic_delta_c[i] > 31000) {
-            return -1;
+			return -EFAULT;
         }
 
         g_mutual_ic_result[i] = 1673 * nCSub - g_mutual_ic_delta_c[i];
@@ -2774,8 +2794,7 @@ static s32 drv_mp_test_ito_open_test_msg28xx_on_cell_open_judge(u16 nItemID,
                                                        s8 pNormalTest_result[],
                                                        u16
                                                        pNormalTest_resultCheck[]
-                                                       /*, u16 nDriOpening */
-    )
+									/*, u16 nDriOpening */)
 {
     s32 n_ret_val = 0;
     u16 nCSub = g_msg28xx_csub_ref;
@@ -2817,7 +2836,7 @@ static s32 drv_mp_test_ito_open_test_msg28xx_on_cell_open_judge(u16 nItemID,
 
     for (i = 0; i < g_mutual_ic_sense_line_num * g_mutual_ic_drive_line_num; i++) {
         if (g_mutual_ic_delta_c[i] > 31000) {
-            return -1;
+			return -EFAULT;
         }
 
         if (g_mutual_ic_delta_c[i] != MSG28XX_UN_USE_SENSOR) {
@@ -3205,7 +3224,7 @@ static s32 drv_mp_test_msg28xx_ito_test_switch_fw_mode(u16 *pFMode)
     if (drv_mp_test_ito_test_msg28xx_check_switch_status() < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx MP Test# CheckSwitchStatus failed! Enter MP mode failed ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     if (g_msg28xx_pattern_type == 5) {
@@ -3226,7 +3245,7 @@ static s32 drv_mp_test_msg28xx_ito_test_switch_fw_mode(u16 *pFMode)
                 g_msg28xx_deep_stand_by = 0;
                 DBG(&g_i2c_client->dev,
                     "*** Msg28xx MP Test# Deep standby fail, fw not support DEEP STANDBY ***\n");
-                return -1;
+				return -EFAULT;
             }
         }
     } else {
@@ -3244,7 +3263,7 @@ static s32 drv_mp_test_msg28xx_ito_test_switch_fw_mode(u16 *pFMode)
                 g_msg28xx_deep_stand_by = -1;
                 DBG(&g_i2c_client->dev,
                     "*** Msg28xx MP Test# Deep standby fail, fw not support DEEP STANDBY ***\n");
-                return -1;
+				return -EFAULT;
             }
         }
     }
@@ -3282,13 +3301,13 @@ static s32 drv_mp_test_msg28xx_ito_test_switch_fw_mode(u16 *pFMode)
         break;
 
     default:
-        return -1;
+		return -EFAULT;
     }
 
     if (drv_mp_test_ito_test_msg28xx_check_switch_status() < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx MP Test# CheckSwitchStatus failed! Enter FW mode failed  ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     if (*pFMode == MUTUAL_SINE) {
@@ -3299,7 +3318,7 @@ static s32 drv_mp_test_msg28xx_ito_test_switch_fw_mode(u16 *pFMode)
             DBG(&g_i2c_client->dev,
                 "Fixed carrier failed, current frequency = %d khz, need fixed frequency = %d khz",
                 nFreq_data, g_msg28xx_fixed_carrier);
-            return -1;
+			return -EFAULT;
         }
     }
 
@@ -3622,7 +3641,7 @@ static s32 drv_mp_test_ito_open_test_msg228xx_get_value_r(s32 *pTarget)
         (p_raw_data, &nSenNumBak, &nDrvNumBak) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Short Test# GetMutualOneShotRawIIR failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     for (i = 0; i < 5; i++) {
@@ -3671,7 +3690,7 @@ int drv_mp_test_msg28xx_str_to_hex(char *hex_str)
         hex_tmp = drv_mp_test_msg28xx_ascii_to_hex(hex_str[i]);
 
         if (hex_tmp == -1) {
-            return -1;
+			return -EFAULT;
         }
 
         hex_val = (hex_val) * 16 + hex_tmp;
@@ -3991,7 +4010,7 @@ static s32 drv_mp_test_msg28xx_obtain_open_value_va_fw_v1007(void)
     if (drv_mp_test_ito_test_msg28xx_get_deltac(g_mutual_ic_delta_c) < 0) {
         DBG(&g_i2c_client->dev,
             "*** drv_mp_test_ito_test_msg28xx_get_deltac failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
     return 0;
 }
@@ -4008,7 +4027,7 @@ static s32 drv_mp_test_msg28xx_obtain_open_value_keys_fw_v1007(int *pkeyarray)
     if (drv_mp_test_ito_open_test_msg228xx_get_value_r(g_mutual_ic_delta_cva) < 0) {
         DBG(&g_i2c_client->dev,
             "*** drv_mp_test_ito_open_test_msg228xx_get_value_r failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     if (MAX(numKey, 3) > 3)
@@ -4040,13 +4059,13 @@ static s32 drv_mp_test_msg28xx_open_previous_fw_v1007(u16 nFMode)
         if (drv_mp_test_ito_open_test_msg28xx_obtain_open_value_keys(g_key_array) < 0) {
             DBG(&g_i2c_client->dev,
                 "*** drv_mp_test_ito_open_test_msg28xx_obtain_open_value_keys failed ***\n");
-            return -1;
+			return -EFAULT;
         }
 
         if (drv_mp_test_ito_open_test_msg28xx_re_enter_mutual_mode(nFMode)) {
             DBG(&g_i2c_client->dev,
                 "*** drv_mp_test_ito_open_test_msg28xx_re_enter_mutual_mode failed ***\n");
-            return -1;
+			return -EFAULT;
         }
 
         if (nFMode == MUTUAL_SINE)
@@ -4057,7 +4076,7 @@ static s32 drv_mp_test_msg28xx_open_previous_fw_v1007(u16 nFMode)
         if (drv_mp_test_ito_open_test_msg28xx_on_cell_open_va_value() < 0) {
             DBG(&g_i2c_client->dev,
                 "*** drv_mp_test_ito_open_test_msg28xx_on_cell_open_va_value failed ***\n");
-            return -1;
+			return -EFAULT;
         }
 
         for (k = 0; k < g_msg28xx_key_num; k++) {
@@ -4070,7 +4089,7 @@ static s32 drv_mp_test_msg28xx_open_previous_fw_v1007(u16 nFMode)
         if (drv_mp_test_ito_test_msg28xx_get_deltac(g_mutual_ic_delta_c) < 0) {
             DBG(&g_i2c_client->dev,
                 "*** Msg28xx Open Test# GetDeltaC failed! ***\n");
-            return -1;
+			return -EFAULT;
         }
     }
 
@@ -4107,7 +4126,7 @@ static s32 drv_mp_test_msg28xx_open_latter_fw_v1007(u16 nFMode)
         if (drv_mp_test_msg28xx_obtain_open_value_va_fw_v1007() < 0) {
             DBG(&g_i2c_client->dev,
                 "*** drv_mp_test_msg28xx_obtain_open_value_va_fw_v1007 failed ***\n");
-            return -1;
+			return -EFAULT;
         }
 
         if (nFMode == MUTUAL_SINE)
@@ -4118,13 +4137,13 @@ static s32 drv_mp_test_msg28xx_open_latter_fw_v1007(u16 nFMode)
         if (drv_mp_test_ito_open_test_msg28xx_re_enter_mutual_mode(fmodeKey) < 0) {
             DBG(&g_i2c_client->dev,
                 "*** drv_mp_test_ito_open_test_msg28xx_re_enter_mutual_mode failed ***\n");
-            return -1;
+			return -EFAULT;
         }
 
         if (drv_mp_test_msg28xx_obtain_open_value_keys_fw_v1007(g_key_array) < 0) {
             DBG(&g_i2c_client->dev,
                 "*** drv_mp_test_msg28xx_obtain_open_value_keys_fw_v1007 failed ***\n");
-            return -1;
+			return -EFAULT;
         }
 
         for (k = 0; k < numKey; k++) {
@@ -4138,7 +4157,7 @@ static s32 drv_mp_test_msg28xx_open_latter_fw_v1007(u16 nFMode)
         if (drv_mp_test_ito_test_msg28xx_get_deltac(g_mutual_ic_delta_c) < 0) {
             DBG(&g_i2c_client->dev,
                 "*** Msg28xx Open Test# GetDeltaC failed! ***\n");
-            return -1;
+			return -EFAULT;
         }
     }
 
@@ -4287,12 +4306,12 @@ _RETRY_OPEN:
             drv_mp_test_ito_open_test_msg28xx_on_cell_open_judge(0,
                                                         aOnCellNormalTest_result,
                                                         aOnCellNormalTest_resultCheck
-                                                        /*, nDrvOpening */ );
+							/*, nDrvOpening */);
     } else {
         n_ret_val =
             drv_mp_test_ito_open_test_msg28xx_open_judge(0, aNormalTest_result,
                                                   aNormalTest_resultCheck
-                                                  /*, nDrvOpening */ );
+							/*, nDrvOpening */);
     }
     DBG(&g_i2c_client->dev,
         "*** Msg28xx Open Test# OpenTestOpenJudge return value = %d ***\n",
@@ -4629,7 +4648,7 @@ static s32 drv_mp_test_msg28xx_ito_short_test(u8 nItemID)
     if (drv_mp_test_ito_open_test_msg228xx_get_value_r(g_mutual_ic_delta_c) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Short Test# GetValueR failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
     if (g_msg28xx_pattern_type == 5) {
         DBG(&g_i2c_client->dev,
@@ -4641,7 +4660,7 @@ static s32 drv_mp_test_msg28xx_ito_short_test(u8 nItemID)
         if (drv_mp_test_ito_open_test_msg228xx_get_value_r(g_mutual_ic_delta_c2) < 0) {
             DBG(&g_i2c_client->dev,
                 "*** Msg28xx Short Test# GetValueR failed! ***\n");
-            return -1;
+			return -EFAULT;
         }
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Ito Short Test# GetValueR 3.72v! ***\n");
@@ -4761,7 +4780,7 @@ static s32 drv_mp_test_ito_open_test_msg228xx_judge(u8 nItemID,
         } else {
             DBG(&g_i2c_client->dev,
                 "*** Msg28xx Short Test# TestPin_count = 0 ***\n");
-            return -1;
+			return -EFAULT;
         }
     }
 
@@ -4799,7 +4818,7 @@ static s32 drv_mp_test_ito_open_test_msg228xx_judge(u8 nItemID,
 static s32 drv_mp_test_ito_open_test_msg228xx_on_cell_judge(u8 nItemID,
                                                     /*s8 pNormalTest_result[][2], */
                                                     u16 pTestPinMap[][13],
-                                                    s8 * TestFail,
+								s8 *TestFail,
                                                     u16 *pTestPin_count)
 {
     s32 n_ret_val = 0;
@@ -4817,7 +4836,7 @@ static s32 drv_mp_test_ito_open_test_msg228xx_on_cell_judge(u8 nItemID,
         } else {
             DBG(&g_i2c_client->dev,
                 "*** Msg28xx Short Test# TestPin_count = 0 ***\n");
-            return -1;
+			return -EFAULT;
         }
     }
 
@@ -5113,7 +5132,7 @@ static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cellIc_pin_short(void)
     if (drv_mp_test_ito_open_test_msg228xx_get_value_r(g_mutual_ic_delta_c) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx IC Pin Short Test# GetValueR failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     DBG(&g_i2c_client->dev,
@@ -5128,7 +5147,7 @@ static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cellIc_pin_short(void)
     if (drv_mp_test_ito_open_test_msg228xx_get_value_r(g_mutual_ic_delta_c2) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Short Test# GetValueR failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     DBG(&g_i2c_client->dev,
@@ -5232,7 +5251,7 @@ static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cell_read_mapping(u16
 static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cell_short_test_judge(u16 nItemID,
                                                                u16 pTestPinMap[]
                                                                [13],
-                                                               s8 * TestFail)
+								s8 *TestFail)
 {
     int n_ret = 1, i, count_test_pin = 0, j;
     u16 GRPins[13] = { 0 }, GR_Id[13] = {
@@ -5326,7 +5345,7 @@ static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cell_short_test_judge(u16 nI
 }
 
 static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cell_result_prepare(s32 thrs,
-                                                              u16 * senseR)
+									u16 *senseR)
 {
     u16 count = 0, i, n_ret = 0;
 
@@ -5358,7 +5377,7 @@ static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cell_result_prepare(s32 thrs
 static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cellIc_pin_short_test_entry(void)
 {
     u16 nFwMode = MUTUAL_SINGLE_DRIVE;
-    s16 i = 0, j = 0, count_test_pin = 0;
+    s16 rc, i = 0, j = 0, count_test_pin = 0;
     u16 *pPad2Drive = NULL;
     u16 *pPad2Sense = NULL;
     u16 *pDriveR = NULL;
@@ -5387,7 +5406,8 @@ static s32 drv_mp_test_ic_pin_short_test_msg28xx_on_cellIc_pin_short_test_entry(
         DBG(&g_i2c_client->dev, "Choose Tp Type failed\n");
         drv_touch_device_hw_reset();
         drv_enable_finger_touch_report();
-        return -2;
+		rc = -2;
+		return rc;
     }
 
     pPad2Drive = kzalloc(sizeof(s16) * g_msg28xx_drive_num, GFP_KERNEL);
@@ -5532,7 +5552,7 @@ ITO_TEST_END:
 static s32 drv_mp_test_ito_open_test_msg228xx_on_cellI_to_short_test_entry(void)
 {
     u16 nFwMode = MUTUAL_SINGLE_DRIVE;
-    s16 i = 0, j = 0;
+    s16 rc, i = 0, j = 0;
     u16 *pPad2Drive = NULL;
     u16 *pPad2Sense = NULL;
     u16 *pDriveR = NULL;
@@ -5564,7 +5584,8 @@ static s32 drv_mp_test_ito_open_test_msg228xx_on_cellI_to_short_test_entry(void)
         DBG(&g_i2c_client->dev, "Choose Tp Type failed\n");
         drv_touch_device_hw_reset();
         drv_enable_finger_touch_report();
-        return -2;
+		rc = -2;
+		return rc;
     }
 
     pPad2Drive = kzalloc(sizeof(s16) * g_msg28xx_drive_num, GFP_KERNEL);
@@ -5683,8 +5704,7 @@ _RETRY_SHORT:
                                                                  (nTestItem -
                                                                   1) * 13],
                                                                 g_msg28xx_short_value,
-                                                                -g_msg28xx_short_value))
-                        {
+								-g_msg28xx_short_value)) {
                             g_ito_short_fail_channel[j] =
                                 (u32) aTestPinMap[nTestItem][i];
                             /*DEBUG("Ito Short senseR, count_test_pin = %d, normalTestFail_check[%d][%d] = %d, pShortFailChannel[%d] = %d, _gDeltaC[%d] = %d", count_test_pin, nTestItem, i, normalTestFail_check[nTestItem][i], j, ptMutualMpTest_result->pShortFailChannel[j], i + (nTestItem - 1) * 13, _gDeltaC[i + (nTestItem - 1) * 13]); */
@@ -5726,8 +5746,7 @@ _RETRY_SHORT:
                                                                  (nTestItem -
                                                                   1) * 13],
                                                                 g_msg28xx_short_value,
-                                                                -g_msg28xx_short_value))
-                        {
+								-g_msg28xx_short_value)) {
                             g_ito_short_fail_channel[g_mutual_ic_sense_line_num + j] =
                                 (u32) aTestPinMap[nTestItem][i];
 
@@ -5766,8 +5785,7 @@ _RETRY_SHORT:
                                                                  (nTestItem -
                                                                   1) * 13],
                                                                 g_msg28xx_short_value,
-                                                                -g_msg28xx_short_value))
-                        {
+								-g_msg28xx_short_value)) {
                             g_ito_short_fail_channel[g_mutual_ic_sense_line_num +
                                                   g_mutual_ic_drive_line_num + j] =
                                 (u32) aTestPinMap[nTestItem][i];
@@ -5809,7 +5827,7 @@ static s32 drv_mp_test_msg28xx_ito_short_test_entry(void)
 {
     u16 nFwMode = MUTUAL_SINGLE_DRIVE;
     /*ItoTest_result_e nRetVal1 = ITO_TEST_OK, nRetVal2 = ITO_TEST_OK, nRetVal3 = ITO_TEST_OK, nRetVal4 = ITO_TEST_OK, nRetVal5 = ITO_TEST_OK; */
-    s16 i = 0, j = 0;
+    s16 rc, i = 0, j = 0;
     /*u16 nTestPin_count = 0; */
     /*s32 nShortThreshold = 0; */
     u16 *pPad2Drive = NULL;
@@ -5845,7 +5863,8 @@ static s32 drv_mp_test_msg28xx_ito_short_test_entry(void)
         DBG(&g_i2c_client->dev, "Choose Tp Type failed\n");
         drv_touch_device_hw_reset();
         drv_enable_finger_touch_report();
-        return -2;
+		rc = -2;
+		return rc;
     }
 
     pPad2Drive = kzalloc(sizeof(s16) * g_msg28xx_drive_num, GFP_KERNEL);
@@ -6003,7 +6022,7 @@ static s32 drv_mp_test_ito_water_proof_test_msg28xx_trigger_water_proof_one_shot
     nAfeOpening = nReg_data & 0x0f;
 
     if (nSF == 0) {
-        return -1;
+		return -EFAULT;
     }
 
     nReg_data = reg_get_l_byte_value(0x100B);
@@ -6064,7 +6083,7 @@ static s32 drv_mp_test_ito_water_proof_test_msg28xx_trigger_water_proof_one_shot
                 (s16) (aShot_data[4 * i + 2] | aShot_data[4 * i + 3] << 8);
         }
     } else {
-        return -1;
+		return -EFAULT;
     }
 
     return 0;
@@ -6092,7 +6111,7 @@ static s32 drv_mp_test_ito_water_proof_test_msg28xx_get_deltac_wp(s32 *pTarget,
         (nRaw_dataWP, nDelay) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx Open Test# GetMutualOneShotRawIIR failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     for (i = 0; i < g_mutual_ic_water_proof_num; i++) {
@@ -6114,7 +6133,7 @@ static s32 drv_mp_test_msg28xx_ito_water_proof_test(u32 nDelay)
         (g_mutual_ic_deltac_water, -1, nDelay) < 0) {
         DBG(&g_i2c_client->dev,
             "*** Msg28xx WaterProof Test# GetDeltaCWP failed! ***\n");
-        return -1;
+		return -EFAULT;
     }
 
     drv_mp_test_mutual_ic_debug_show_array(g_mutual_ic_deltac_water, 12, -32, 10, 16);
@@ -6280,23 +6299,6 @@ static void drv_mp_test_mutual_ic_debug_show_array(void *p_buf, u16 nLen,
     DBG(&g_i2c_client->dev, "\n");
 }
 
-/*
-static void _DrvMpTestMutualICDebugShowS32Array(s32 *p_buf, u16 nRow, u16 nCol)
-{
-    int i, j;
-
-    for(j=0; j < nRow; j++)
-    {
-        for(i=0; i < nCol; i++)
-        {
-            DBG(&g_i2c_client->dev, "%4d ", p_buf[i * nRow + j]);
-        }
-        DBG(&g_i2c_client->dev, "\n");
-    }
-    DBG(&g_i2c_client->dev, "\n");
-}
-*/
-
 static s32 drv_mp_test_ito_water_proof_test(void)
 {
     s32 n_ret_val = -1;
@@ -6305,7 +6307,7 @@ static s32 drv_mp_test_ito_water_proof_test(void)
 
     if (g_chip_type == CHIP_TYPE_MSG28XX || g_chip_type == CHIP_TYPE_ILI2117A ||
         g_chip_type ==
-        CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */ ) {
+		CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */) {
         return drv_mp_test_msg28xx_ito_water_proof_test_entry();
     }
 
@@ -6314,6 +6316,90 @@ static s32 drv_mp_test_ito_water_proof_test(void)
 #endif /*CONFIG_ENABLE_CHIP_TYPE_MSG28XX */
 
 /*------------------------------------------------------------------------------//*/
+
+static void drv_mp_test_open_free(void)
+{
+	DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
+
+	if (g_msg22xx_open_riu1 != NULL) {
+		kfree(g_msg22xx_open_riu1);
+		g_msg22xx_open_riu1 = NULL;
+	}
+	if (g_self_ic_map1 != NULL) {
+		kfree(g_self_ic_map1);
+		g_self_ic_map1 = NULL;
+	}
+	if (g_self_ic_map40_1 != NULL) {
+		kfree(g_self_ic_map40_1);
+		g_self_ic_map40_1 = NULL;
+	}
+	if (g_self_ic_map40_2 != NULL) {
+		kfree(g_self_ic_map40_2);
+		g_self_ic_map40_2 = NULL;
+	}
+	if (g_self_ic_map40_3 != NULL) {
+		kfree(g_self_ic_map40_3);
+		g_self_ic_map40_3 = NULL;
+	}
+	if (g_self_ic_map40_4 != NULL) {
+		kfree(g_self_ic_map40_4);
+		g_self_ic_map40_4 = NULL;
+	}
+
+	if (g_msg22xx_open_riu2 != NULL) {
+		kfree(g_msg22xx_open_riu2);
+		g_msg22xx_open_riu2 = NULL;
+	}
+	if (g_self_ic_map2 != NULL) {
+		kfree(g_self_ic_map2);
+		g_self_ic_map2 = NULL;
+	}
+	if (g_self_ic_map41_1 != NULL) {
+		kfree(g_self_ic_map41_1);
+		g_self_ic_map41_1 = NULL;
+	}
+	if (g_self_ic_map41_2 != NULL) {
+		kfree(g_self_ic_map41_2);
+		g_self_ic_map41_2 = NULL;
+	}
+	if (g_self_ic_map41_3 != NULL) {
+		kfree(g_self_ic_map41_3);
+		g_self_ic_map41_3 = NULL;
+	}
+	if (g_self_ic_map41_4 != NULL) {
+		kfree(g_self_ic_map41_4);
+		g_self_ic_map41_4 = NULL;
+	}
+
+	if (g_msg22xx_short_riu1 != NULL) {
+		kfree(g_msg22xx_short_riu1);
+		g_msg22xx_short_riu1 = NULL;
+	}
+	if (g_self_ic_short_map1 != NULL) {
+		kfree(g_self_ic_short_map1);
+		g_self_ic_short_map1 = NULL;
+	}
+
+	if (g_msg22xx_short_riu2 != NULL) {
+		kfree(g_msg22xx_short_riu2);
+		g_msg22xx_short_riu2 = NULL;
+	}
+	if (g_self_ic_short_map2 != NULL) {
+		kfree(g_self_ic_short_map2);
+		g_self_ic_short_map2 = NULL;
+	}
+
+#ifdef CONFIG_ENABLE_MP_TEST_ITEM_FOR_2R_TRIANGLE
+	if (g_msg22xx_short_riu4 != NULL) {
+		kfree(g_msg22xx_short_riu4);
+		g_msg22xx_short_riu4 = NULL;
+	}
+	if (g_self_ic_short_map4 != NULL) {
+		kfree(g_self_ic_short_map4);
+		g_self_ic_short_map4 = NULL;
+	}
+#endif
+}
 
 static s32 drv_mp_test_ito_open_test(void)
 {
@@ -6329,7 +6415,7 @@ static s32 drv_mp_test_ito_open_test(void)
 #ifdef CONFIG_ENABLE_CHIP_TYPE_MSG28XX
     if (g_chip_type == CHIP_TYPE_MSG28XX || g_chip_type == CHIP_TYPE_ILI2117A ||
         g_chip_type ==
-        CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */ ) {
+		CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */) {
         n_ret_val = drv_mp_test_msg28xx_ito_open_test_entry();
     }
 #endif /*CONFIG_ENABLE_CHIP_TYPE_MSG28XX */
@@ -6351,7 +6437,7 @@ static s32 drv_mp_test_ito_short_test(void)
 #ifdef CONFIG_ENABLE_CHIP_TYPE_MSG28XX
     if (g_chip_type == CHIP_TYPE_MSG28XX || g_chip_type == CHIP_TYPE_ILI2117A ||
         g_chip_type ==
-        CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */ ) {
+		CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */) {
         if (!drv_mp_test_msg28xx_ito_test_choose_tp_type()) {
             DBG(&g_i2c_client->dev, "Choose Tp Type failed\n");
             n_ret_val = -1;
@@ -6404,6 +6490,8 @@ static void drv_mp_test_ito_test_do_work(struct work_struct *p_work)
 
     DBG(&g_i2c_client->dev, "*** ctp mp test result = %d ***\n", n_ret_val);
 
+    drv_mp_test_open_free();
+
     if (n_ret_val == ITO_TEST_OK) {   /*n_ret_val == 0 */
         g_ctp_mp_test_status = ITO_TEST_OK;
          /*PASS*/ mutex_lock(&g_mutex);
@@ -6423,7 +6511,7 @@ static void drv_mp_test_ito_test_do_work(struct work_struct *p_work)
                 ((g_chip_type == CHIP_TYPE_MSG28XX ||
                   g_chip_type == CHIP_TYPE_ILI2117A ||
                   g_chip_type ==
-                  CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */ )
+				CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */)
                  && (n_ret_val == -1))) {
                 g_ctp_mp_test_status = ITO_TEST_FAIL;
             } else
@@ -6433,7 +6521,7 @@ static void drv_mp_test_ito_test_do_work(struct work_struct *p_work)
                     ((g_chip_type == CHIP_TYPE_MSG28XX ||
                       g_chip_type == CHIP_TYPE_ILI2117A ||
                       g_chip_type == CHIP_TYPE_ILI2118A
-                      /* || g_chip_type == CHIP_TYPE_MSG58XXA */ ) &&
+					/* || g_chip_type == CHIP_TYPE_MSG58XXA */) &&
                      (n_ret_val == -2))) {
                 g_ctp_mp_test_status = ITO_TEST_GET_TP_TYPE_ERROR;
             } else {
@@ -6488,7 +6576,7 @@ void drv_mp_test_get_test_fail_channel(ito_test_mode_e e_ito_test_mode,
 #ifdef CONFIG_ENABLE_CHIP_TYPE_MSG28XX
     if (g_chip_type == CHIP_TYPE_MSG28XX || g_chip_type == CHIP_TYPE_ILI2117A ||
         g_chip_type ==
-        CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */ ) {
+		CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */) {
         for (i = 0; i < MUTUAL_IC_MAX_MUTUAL_NUM; i++) {
             pFailChannel[i] = g_mutual_ic_test_fail_channel[i];
         }
@@ -6659,7 +6747,7 @@ void drv_mp_test_get_test_data_log(ito_test_mode_e e_ito_test_mode, u8 *p_data_l
 #ifdef CONFIG_ENABLE_CHIP_TYPE_MSG28XX
     if (g_chip_type == CHIP_TYPE_MSG28XX || g_chip_type == CHIP_TYPE_ILI2117A ||
         g_chip_type ==
-        CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */ ) {
+		CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */) {
         u32 i, j, k;
 
         if (e_ito_test_mode == ITO_TEST_MODE_OPEN_TEST) {
@@ -6675,7 +6763,7 @@ void drv_mp_test_get_test_data_log(ito_test_mode_e e_ito_test_mode, u8 *p_data_l
                         p_data_log[k * 5] = 0;    /*+ : a positive number */
                     } else {
                         p_data_log[k * 5] = 1;
-                                           /*- : a negative number*/
+						/*- : a negative number*/
                     }
 
                     p_data_log[k * 5 + 1] =
@@ -6759,7 +6847,7 @@ void drv_mp_test_get_test_scope(test_scope_info_t *p_info)
 
     if (g_chip_type == CHIP_TYPE_MSG28XX || g_chip_type == CHIP_TYPE_ILI2117A ||
         g_chip_type ==
-        CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */ ) {
+		CHIP_TYPE_ILI2118A /* || g_chip_type == CHIP_TYPE_MSG58XXA */) {
         p_info->n_my = g_mutual_ic_drive_line_num;
         p_info->n_mx = g_mutual_ic_sense_line_num;
         p_info->n_key_num = g_msg28xx_key_num;
@@ -6770,454 +6858,6 @@ void drv_mp_test_get_test_scope(test_scope_info_t *p_info)
     }
 }
 
-void drv_mp_test_get_test_log_all(u8 *p_data_log, u32 *p_length)
-{
-    u16 i = 0;
-    u8 *pRowStr = "D", *pColStr = "S", *pPinStr = "P", *pItem = NULL;
-    u8 *pVersion = NULL;
-    u16 nMajor = 0, nMinor = 0;
-
-    DBG(&g_i2c_client->dev, "*** %s() ***\n", __func__);
-
-    if (g_msg28xx_pattern_type == 5) {
-        DBG(&g_i2c_client->dev, "g_msg28xx_pattern_type = 5\n");
-
-        if (g_is_in_mp_test != 0) {
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length,
-                                   "Test is still running!!!\n");
-        } else {
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length,
-                                   "Device Driver Version : %s\n",
-                                   DEVICE_DRIVER_RELEASE_VERSION);
-            drv_get_customer_firmware_version(&nMajor, &nMinor, &pVersion);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length,
-                                   "Main Block FW Version : %d.%03d\n", nMajor,
-                                   nMinor);
-            drv_get_customer_firmware_version_by_db_bus(EMEM_MAIN, &nMajor, &nMinor,
-                                                 &pVersion);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length,
-                                   "Main Block FW Version : %d.%03d\n", nMajor,
-                                   nMinor);
-            drv_get_customer_firmware_version_by_db_bus(EMEM_INFO, &nMajor, &nMinor,
-                                                 &pVersion);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length,
-                                   "Info Block FW Version : %d.%03d\n", nMajor,
-                                   nMinor);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length, "SupportIC : %d\n",
-                                   g_msg28xx_support_ic);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length, "DC_Range=%d\n",
-                                   g_msg28xx_dc_range);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length, "DC_Ratio_1000=%d\n",
-                                   g_msg28xx_dc_ratio_1000);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length,
-                                   "DC_Border_Ratio_1000=%d\n",
-                                   g_msg28xx_dc_border_ratio_1000);
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "Golden";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < g_msg28xx_drive_num; i++) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%5s%2d", pRowStr,
-                                       i + 1);
-            }
-
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            for (i = 0; i < g_msg28xx_sense_num * g_msg28xx_drive_num; i++) {
-                if ((i % g_msg28xx_drive_num) == 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pColStr,
-                                           (i / g_msg28xx_drive_num) + 1);
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_golden_channel
-                                           [i]);
-                } else if ((i % g_msg28xx_drive_num) ==
-                           (g_msg28xx_drive_num - 1)) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d\n",
-                                           g_mutual_ic_on_cell_open_test_golden_channel
-                                           [i]);
-                } else {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_golden_channel
-                                           [i]);
-                }
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "Golden_Max";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < g_msg28xx_drive_num; i++) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%5s%2d", pRowStr,
-                                       i + 1);
-            }
-
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            for (i = 0; i < g_msg28xx_sense_num * g_msg28xx_drive_num; i++) {
-                if ((i % g_msg28xx_drive_num) == 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pColStr,
-                                           (i / g_msg28xx_drive_num) + 1);
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_golden_channel_max
-                                           [i]);
-                } else if ((i % g_msg28xx_drive_num) ==
-                           (g_msg28xx_drive_num - 1)) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d\n",
-                                           g_mutual_ic_on_cell_open_test_golden_channel_max
-                                           [i]);
-                } else {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_golden_channel_max
-                                           [i]);
-                }
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "Golden_Min";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < g_msg28xx_drive_num; i++) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%5s%2d", pRowStr,
-                                       i + 1);
-            }
-
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            for (i = 0; i < g_msg28xx_sense_num * g_msg28xx_drive_num; i++) {
-                if ((i % g_msg28xx_drive_num) == 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pColStr,
-                                           (i / g_msg28xx_drive_num) + 1);
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_golden_channel_min
-                                           [i]);
-                } else if ((i % g_msg28xx_drive_num) ==
-                           (g_msg28xx_drive_num - 1)) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d\n",
-                                           g_mutual_ic_on_cell_open_test_golden_channel_min
-                                           [i]);
-                } else {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_golden_channel_min
-                                           [i]);
-                }
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "DeltaC";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < g_msg28xx_drive_num; i++) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%5s%2d", pRowStr,
-                                       i + 1);
-            }
-
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            for (i = 0; i < g_msg28xx_sense_num * g_msg28xx_drive_num; i++) {
-                if ((i % g_msg28xx_drive_num) == 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pColStr,
-                                           (i / g_msg28xx_drive_num) + 1);
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_result_data
-                                           [i]);
-                } else if ((i % g_msg28xx_drive_num) ==
-                           (g_msg28xx_drive_num - 1)) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d\n",
-                                           g_mutual_ic_on_cell_open_test_result_data
-                                           [i]);
-                } else {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_result_data
-                                           [i]);
-                }
-            }
-            if (g_mutual_ic_on_cell_open_test_result[0] == 0) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "DeltaC__result:PASS\n");
-            } else {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "DeltaC__result:FAIL\n");
-                pItem = "Fail Channel:  ";
-                *p_length = *p_length + sprintf(p_data_log + *p_length, "%s", pItem);
-                for (i = 0; i < g_msg28xx_sense_num * g_msg28xx_drive_num; i++) {
-                    if (g_normal_test_fail_check_deltac[i] == MSG28XX_PIN_NO_ERROR) {
-                        continue;
-                    }
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "D%d.S%d",
-                                           g_normal_test_fail_check_deltac[i] % 100,
-                                           g_normal_test_fail_check_deltac[i] /
-                                           100);
-                    *p_length = *p_length + sprintf(p_data_log + *p_length, "    ");
-                }
-                *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "Ratio";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < g_msg28xx_drive_num; i++) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%5s%2d", pRowStr,
-                                       i + 1);
-            }
-
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            for (i = 0; i < g_msg28xx_sense_num * g_msg28xx_drive_num; i++) {
-                if ((i % g_msg28xx_drive_num) == 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pColStr,
-                                           (i / g_msg28xx_drive_num) + 1);
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_result_ratio_data
-                                           [i]);
-                } else if ((i % g_msg28xx_drive_num) ==
-                           (g_msg28xx_drive_num - 1)) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d\n",
-                                           g_mutual_ic_on_cell_open_test_result_ratio_data
-                                           [i]);
-                } else {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_mutual_ic_on_cell_open_test_result_ratio_data
-                                           [i]);
-                }
-            }
-            if (g_mutual_ic_on_cell_open_test_result[1] == 0) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "Ratio__result:PASS\n");
-            } else {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "Ratio__result:FAIL\n");
-                pItem = "Fail Channel:  ";
-                *p_length = *p_length + sprintf(p_data_log + *p_length, "%s", pItem);
-                for (i = 0; i < g_msg28xx_sense_num * g_msg28xx_drive_num; i++) {
-                    if (g_normal_test_fail_check_ratio[i] == MSG28XX_PIN_NO_ERROR) {
-                        continue;
-                    }
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "D%d.S%d",
-                                           g_normal_test_fail_check_ratio[i] % 100,
-                                           g_normal_test_fail_check_ratio[i] / 100);
-                    *p_length = *p_length + sprintf(p_data_log + *p_length, "    ");
-                }
-                *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length, "ShortValue=%d\n",
-                                   g_msg28xx_short_value);
-            *p_length =
-                *p_length + sprintf(p_data_log + *p_length, "ICPinShort=%d\n",
-                                   g_msg28xx_ic_pin_short);
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "Pin Number";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < MUTUAL_IC_MAX_CHANNEL_NUM; i++) {
-                if (g_msg28xx_sense_pad_pin_mapping[i] != 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%5s%2d",
-                                           pPinStr,
-                                           g_msg28xx_sense_pad_pin_mapping[i]);
-                }
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "deltaR";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < MUTUAL_IC_MAX_CHANNEL_NUM; i++) {
-                if (g_msg28xx_sense_pad_pin_mapping[i] != 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%6dM",
-                                           g_ic_pin_short_sence_r[i]);
-                }
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "result_data";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < MUTUAL_IC_MAX_CHANNEL_NUM; i++) {
-                if (g_msg28xx_sense_pad_pin_mapping[i] != 0) {
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                           g_ic_pin_short_result_data[i]);
-                }
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            if (g_ic_pin_short_check_fail == 0) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "ICPin Short Test:PASS\n");
-            } else {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "ICPin Short Test:FAIL\n");
-                pItem = "Fail Channel:  ";
-                *p_length = *p_length + sprintf(p_data_log + *p_length, "%s", pItem);
-                for (i = 0; i < MUTUAL_IC_MAX_CHANNEL_NUM; i++) {
-                    if (g_ic_pin_short_fail_channel[i] != 0) {
-                        *p_length =
-                            *p_length + sprintf(p_data_log + *p_length, "P%d",
-                                               g_ic_pin_short_fail_channel[i]);
-                        *p_length =
-                            *p_length + sprintf(p_data_log + *p_length, "    ");
-                    }
-                }
-                *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "deltaR";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < 10; i++) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%7d", i + 1);
-            }
-
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            for (i = 0; i < g_msg28xx_sense_num; i++) {
-                if ((i % 10) == 0) {
-                    if (i != 0) {
-                        *p_length =
-                            *p_length + sprintf(p_data_log + *p_length, "\n");
-                    }
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pColStr, i);
-                }
-
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%6dM",
-                                       g_ito_short_r_data[i]);
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            for (i = 0; i < g_msg28xx_drive_num; i++) {
-                if ((i % 10) == 0) {
-                    if (i != 0) {
-                        *p_length =
-                            *p_length + sprintf(p_data_log + *p_length, "\n");
-                    }
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pRowStr, i);
-                }
-
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%6dM",
-                                       g_ito_short_r_data[i +
-                                                       g_msg28xx_sense_num]);
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            pItem = "result_data";
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "%10s", pItem);
-            for (i = 0; i < 10; i++) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%7d", i + 1);
-            }
-
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            for (i = 0; i < g_msg28xx_sense_num; i++) {
-                if ((i % 10) == 0) {
-                    if (i != 0) {
-                        *p_length =
-                            *p_length + sprintf(p_data_log + *p_length, "\n");
-                    }
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pColStr, i);
-                }
-
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                       g_ito_short_result_data[i]);
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-            for (i = 0; i < g_msg28xx_drive_num; i++) {
-                if ((i % 10) == 0) {
-                    if (i != 0) {
-                        *p_length =
-                            *p_length + sprintf(p_data_log + *p_length, "\n");
-                    }
-                    *p_length =
-                        *p_length + sprintf(p_data_log + *p_length, "%8s%2d",
-                                           pRowStr, i);
-                }
-
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length, "%7d",
-                                       g_ito_short_result_data[i +
-                                                            g_msg28xx_sense_num]);
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            if (g_ito_short_checK_fail == 0) {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "ITO Short Test:PASS\n");
-            } else {
-                *p_length =
-                    *p_length + sprintf(p_data_log + *p_length,
-                                       "ITO Short Test:FAIL\n");
-            }
-            *p_length = *p_length + sprintf(p_data_log + *p_length, "\n");
-
-            DBG(&g_i2c_client->dev, "***p_data_log: %d ***\n", p_data_log[0]);
-            DBG(&g_i2c_client->dev, "*** *p_length: %d ***\n", *p_length);
-        }
-    } else {
-        *p_length = *p_length + sprintf(p_data_log + *p_length, "No Logs!!!\n");
-    }
-}
 #endif /*CONFIG_ENABLE_CHIP_TYPE_MSG28XX */
 
 void drv_mp_test_schedule_mp_test_work(ito_test_mode_e e_ito_test_mode)
@@ -7227,6 +6867,15 @@ void drv_mp_test_schedule_mp_test_work(ito_test_mode_e e_ito_test_mode)
 
     if (g_is_in_mp_test == 0) {
         DBG(&g_i2c_client->dev, "ctp mp test start\n");
+
+    if (mp_parser(INI_FILE_NAME) != 0) {
+		DBG(&g_i2c_client->dev, "Failed to parse ini file, stop mp test\n");
+		g_ctp_mp_test_status = ITO_TEST_UNDEFINED_ERROR;
+		mutex_lock(&g_mutex);
+		g_is_in_mp_test = 0;
+		mutex_unlock(&g_mutex);
+		return;
+    }
 
 #ifdef CONFIG_ENABLE_CHIP_TYPE_MSG22XX
         if (g_chip_type == CHIP_TYPE_MSG22XX) {
