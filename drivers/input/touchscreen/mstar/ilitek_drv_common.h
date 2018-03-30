@@ -95,7 +95,7 @@
 /* TOUCH DEVICE DRIVER RELEASE VERSION                                      */
 /*--------------------------------------------------------------------------*/
 
-#define DEVICE_DRIVER_RELEASE_VERSION   ("7.0.6.3")
+#define DEVICE_DRIVER_RELEASE_VERSION   ("7.0.6.5")
 
 /*--------------------------------------------------------------------------*/
 /* COMPILE OPTION DEFINITION                                                */
@@ -287,7 +287,7 @@
  * The below compile option is used to enable phone level MP test handling.
  * By default, this compile option is disabled.
  */
-/*#define CONFIG_ENABLE_ITO_MP_TEST*/
+#define CONFIG_ENABLE_ITO_MP_TEST
 
 /*----------- #ifdef CONFIG_ENABLE_ITO_MP_TEST-----------*/
 #ifdef CONFIG_ENABLE_ITO_MP_TEST
@@ -1068,6 +1068,7 @@ extern struct ctp_config_info config_info;
  *for stored any kind firmware size of ILI21XX(256KB).
  */
 #define ILITEK_FIRMWARE_FILE_PATH_ON_SD_CARD    "/mnt/sdcard/ilictp_update.hex"
+#define INI_FILE_NAME                           "autosettings.ini"
 
 #define ILITEK_TOUCH_POINT      (0x80)
 #define ILITEK_TOUCH_KEY        (0xC0)
@@ -1171,30 +1172,30 @@ enum emem_type_e {
     EMEM_INFO
 };
 
-enum ito_test_mode_e {
+typedef enum ito_test_mode_e {
     ITO_TEST_MODE_OPEN_TEST = 1,
     ITO_TEST_MODE_SHORT_TEST = 2,
     ITO_TEST_MODE_WATERPROOF_TEST = 3
-};
+} ito_test_mode_e;
 
-enum ito_test_log_type_e {
+typedef enum ito_test_log_type_e {
     ITO_TEST_LOG_TYPE_GOLDEN_CHANNEL = 1,
     ITO_TEST_LOG_TYPE_RESULT = 2,
     ITO_TEST_LOG_TYPE_RATIO = 3
-};
+} ito_test_log_type_e;
 
-enum ItoTest_result_e {
+typedef enum ItoTest_result_e {
     ITO_TEST_OK = 0,
     ITO_TEST_FAIL,
     ITO_TEST_GET_TP_TYPE_ERROR,
     ITO_TEST_UNDEFINED_ERROR,
     ITO_TEST_UNDER_TESTING
-};
+} ItoTest_result_e;
 
-enum address_mode_e{
+typedef enum address_mode_e {
     ADDRESS_MODE_8BIT = 0,
     ADDRESS_MODE_16BIT = 1
-};
+} address_mode_e;
 
 enum ito_test_msg28xx_fw_mode_e {
     MUTUAL_MODE = 0x5705,
@@ -1233,7 +1234,7 @@ enum ito_test_sensor_pad_state_e {
 struct self_touch_point_t {
     u16 n_x;
     u16 n_y;
-} ;
+};
 
 struct self_touch_info_t {
     u8 n_touch_key_mode;
@@ -1412,11 +1413,12 @@ extern void reg_set_l_byte_value(u16 n_addr, u8 n_data);
 extern void reg_set_h_byte_value(u16 n_addr, u8 n_data);
 extern void reg_set_16bit_value_on(u16 n_addr, u16 n_data);
 extern void reg_set_16Bit_value_off(u16 n_addr, u16 n_data);
-extern u16 reg_get_16bit_value_by_address_mode(u16 n_addr, enum address_mode_e e_address_mode);
+extern u16 reg_get_16bit_value_by_address_mode(u16 n_addr,
+						address_mode_e e_address_mode);
 extern void reg_set_16bit_value_by_address_mode(u16 n_addr, u16 n_data,
-                                          enum address_mode_e e_address_mode);
+						address_mode_e e_address_mode);
 extern void reg_mask_16bit_value(u16 n_addr, u16 n_mask, u16 n_data,
-                              enum address_mode_e e_address_mode);
+						address_mode_e e_address_mode);
 extern s32 db_bus_enter_serial_debug_mode(void);
 extern void db_bus_exit_serial_debug_mode(void);
 extern void db_bus_iic_use_bus(void);
@@ -1473,5 +1475,31 @@ extern void ms_drv_interface_touch_device_suspend(struct early_suspend *pSuspend
 #endif /*CONFIG_ENABLE_NOTIFIER_FB*/
 extern void ms_drv_interface_touch_device_setIic_data_rate(struct i2c_client *pClient,
                                                     u32 nIic_dataRate);
+
+/*
+ * This parser accpets the size of 600*512 to store values from ini file.
+ * It would be doubled in kernel as key and value seprately.
+ * Strongly suggest that do not modify the size unless you know how much
+ * size of your kernel stack is.
+ */
+#define PARSER_MAX_CFG_BUF          1680
+#define PARSER_MAX_KEY_NUM          600
+
+#define PARSER_MAX_KEY_NAME_LEN     100
+#define PARSER_MAX_KEY_VALUE_LEN    2000
+
+#define  MSG22XX_NUM_SENSOR_X       40
+#define  MSG22XX_NUM_KEY_X          0
+#define  MSG22XX_NUM_DUMMY_X        0
+#define  MSG22XX_ENABLE_2R_X        1
+
+extern int mp_parser(char *path);
+extern int ms_get_ini_data(char *section, char *ItemName, char *returnValue);
+extern int ms_atoi(char *nptr);
+extern int ms_ini_split_u16_array(char *key, u16 *pBuf);
+extern unsigned int *ms_ini_split_int_array(char *key);
+extern u8 *ms_ini_split_u8_array(char *key);
+extern int ms_ini_2d_array(const char *pFile, char *pSection, u16 pArray[][2]);
+extern int ms_ini_split_golden(int *pBuf, int line);
 
 #endif /* __ILITEK_DRV_COMMON_H__ */
