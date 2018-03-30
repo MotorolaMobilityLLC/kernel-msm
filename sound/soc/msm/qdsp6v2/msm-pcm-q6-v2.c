@@ -188,6 +188,11 @@ static void event_handler(uint32_t opcode,
 		break;
 	case ASM_DATA_EVENT_READ_DONE_V2: {
 		pr_debug("ASM_DATA_EVENT_READ_DONE_V2\n");
+		if (token >= CAPTURE_MAX_NUM_PERIODS) {
+			pr_err("%s: token %u is out of range.\n",
+				__func__, token);
+			return;
+		}
 		pr_debug("token = 0x%08x\n", token);
 		prtd->in_frame_info[token].size = payload[4];
 		prtd->in_frame_info[token].offset = payload[5];
