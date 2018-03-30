@@ -6666,7 +6666,7 @@ static int fill_afe_apr_hdr(struct apr_hdr *apr_hdr, uint32_t port,
 
 int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead)
 {
-	int32_t result, port_id = AFE_PORT_ID_TERTIARY_MI2S_RX;
+	int32_t result, port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
 	uint32_t port_index = 0, opcode;
 	uint32_t apr_msg_size = 0;
 	uint32_t apr_msg[48];
@@ -6821,7 +6821,7 @@ err:
 int send_tfa_cal_in_band(void *buf, int cmd_size)
 {
 	union afe_spkr_prot_config afe_spk_config;
-	int32_t port_id = AFE_PORT_ID_TERTIARY_MI2S_RX;
+	int32_t port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
 
 	if (cmd_size > sizeof(afe_spk_config))
 		/*orignal return value:-1,but it is illegal return value*/
