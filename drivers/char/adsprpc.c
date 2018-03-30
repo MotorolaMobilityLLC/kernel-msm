@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -249,6 +249,7 @@ struct fastrpc_file {
 	int cid;
 	int ssrcount;
 	struct fastrpc_apps *apps;
+	struct mutex map_mutex;
 };
 
 static struct fastrpc_apps gfa;
@@ -1691,6 +1692,8 @@ static int fastrpc_internal_munmap(struct fastrpc_file *fl,
 {
 	int err = 0;
 	struct fastrpc_mmap *map = 0;
+
+	mutex_lock(&fl->map_mutex);
 	if (!fastrpc_mmap_remove(fl, ud->vaddrout, ud->size,
 				 &map)) {
 		VERIFY(err, !fastrpc_munmap_on_dsp(fl, map));
@@ -1701,6 +1704,7 @@ static int fastrpc_internal_munmap(struct fastrpc_file *fl,
 bail:
 	if (err && map)
 		fastrpc_mmap_add(map);
+	mutex_unlock(&fl->map_mutex);
 	return err;
 }
 
@@ -1710,10 +1714,12 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 
 	struct fastrpc_mmap *map = 0;
 	int err = 0;
+	mutex_lock(&fl->map_mutex);
 	if (!fastrpc_mmap_find(fl, ud->fd, (uintptr_t)ud->vaddrin, ud->size,
-			       ud->flags, &map))
+			       ud->flags, &map)) {
+		mutex_unlock(&fl->map_mutex);
 		return 0;
-
+	}
 	VERIFY(err, !fastrpc_mmap_create(fl, ud->fd, (uintptr_t)ud->vaddrin,
 					 ud->size, ud->flags, &map));
 	if (err)
@@ -1725,6 +1731,7 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
  bail:
 	if (err && map)
 		fastrpc_mmap_free(map);
+	mutex_unlock(&fl->map_mutex);
 	return err;
 }
 
@@ -1910,6 +1917,7 @@ static int fastrpc_device_release(struct inode *inode, struct file *file)
 		}
 		me->pending_free++;
 		mutex_unlock(&me->flfree_mutex);
+		mutex_destroy(&fl->map_mutex);
 		file->private_data = 0;
 	}
 bail:
@@ -2021,7 +2029,7 @@ static int fastrpc_device_open(struct inode *inode, struct file *filp)
 		return err;
 
 	filp->private_data = fl;
-
+	mutex_init(&fl->map_mutex);
 	mutex_lock(&me->smd_mutex);
 
 	context_list_ctor(&fl->clst);
