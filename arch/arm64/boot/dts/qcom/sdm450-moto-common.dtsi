@@ -16,6 +16,23 @@
 #include "msm8953-pmi8950.dtsi"
 #include "sdm450-moto-pinctrl.dtsi"
 
+/ {
+	reserved_memory{
+		ramoops_mem {
+			compatible = "ramoops";
+			no-map;
+			reg = <0x0 0xaf000000 0x0 0xc0000>;
+			console-size = <0x40000>;
+			pmsg-size = <0x40000>;
+			record-size = <0x3f800>;
+			ramoops-annotate-size = <0x800>;
+			};
+	};
+};
+
+
+
+
 &blsp1_uart0 {
 	status = "ok";
 	pinctrl-names = "default";
