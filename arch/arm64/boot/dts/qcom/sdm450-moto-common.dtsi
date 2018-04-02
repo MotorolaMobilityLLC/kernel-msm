@@ -17,7 +17,7 @@
 #include "sdm450-moto-pinctrl.dtsi"
 
 / {
-	reserved_memory{
+	reserved-memory{
 		ramoops_mem {
 			compatible = "ramoops";
 			no-map;
