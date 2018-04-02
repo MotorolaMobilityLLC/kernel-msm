@@ -27,10 +27,14 @@
 			record-size = <0x3f800>;
 			ramoops-annotate-size = <0x800>;
 			};
+
+	       tzlog_dump_mem: tzlog_dump_mem_region {
+			no-map;
+			reg = <0x0 0xaefd0000 0x0 0x30000>;
+		};
 	};
+
 };
-
-
 
 
 &blsp1_uart0 {
@@ -215,4 +219,10 @@
 			debounce-interval = <15>;
 		};
 	};
+
+	tzlog_dump {
+		compatible = "mmi,tzlog-dump";
+		memory-region = <&tzlog_dump_mem>;
+	};
+
 };
