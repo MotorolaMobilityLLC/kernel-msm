@@ -544,6 +544,11 @@
 	qcom,max-usbin-current-ma = <3000>;
 	qcom,step-chg-steps = <4200 3000 2000>,
 				<4400 2000 1600>;
+	qcom,mmi-temp-zones = <0 582 0>,
+				<10 1460 582>,
+				<15 1460 1460>,
+				<45 3000 2000>,
+				<60 1460 0>;
 	qcom,auto-voltage-comp-mv = <150>;
 	qcom,prop-flash-active;
 	qcom,enable-charging-limit;
