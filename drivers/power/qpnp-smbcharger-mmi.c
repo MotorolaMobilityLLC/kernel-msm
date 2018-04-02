@@ -114,6 +114,22 @@ static char *stepchg_str[] = {
 	[STEP_NONE]		= "NONE",
 };
 
+struct mmi_temp_zone {
+	int		temp_c;
+	int		fcc_max_ma;
+	int		fcc_norm_ma;
+};
+
+#define MAX_NUM_ZONES 10
+enum mmi_temp_zones_state {
+	ZONE_FIRST = 0,
+	/* states 0-9 are reserved for zones */
+	ZONE_LAST = MAX_NUM_ZONES + ZONE_FIRST - 1,
+	ZONE_COLD,
+	ZONE_HOT,
+	ZONE_NONE = 0xFF,
+};
+
 enum bsw_modes {
 	BSW_OFF,
 	BSW_RUN,
@@ -414,6 +430,11 @@ struct smbchg_chip {
 	int				update_eb_params;
 	struct stepchg_step		*stepchg_steps;
 	uint32_t			stepchg_num_steps;
+	uint32_t			temp_num_zones;
+	struct mmi_temp_zone		*mmi_temp_zones;
+	enum mmi_temp_zones_state	pres_temp_zone;
+	int				temp_zone_fcc_ma;
+	bool				update_temp_zone_fcc_ma;
 
 	int				bsw_curr_ma;
 	int                             max_bsw_current_ma;
@@ -2720,6 +2741,13 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 
 	current_max_ma = min(chip->allowed_fastchg_current_ma,
 			     chip->target_fastchg_current_ma);
+
+	SMB_DBG(chip, "temp_zone: thermal=%d,target=%d,temp_zone=%d\n",
+		chip->allowed_fastchg_current_ma,
+		chip->target_fastchg_current_ma,
+		chip->temp_zone_fcc_ma);
+	current_max_ma =
+		 min(chip->temp_zone_fcc_ma, current_max_ma);
 
 	smbchg_set_fastchg_current(chip, current_max_ma);
 	chip->usb_tl_current_ma =
@@ -5754,9 +5782,14 @@ static void set_max_allowed_current_ma(struct smbchg_chip *chip,
 
 	chip->target_fastchg_current_ma =
 		min(current_ma, chip->allowed_fastchg_current_ma);
-	SMB_DBG(chip, "requested=%d: allowed=%d: result=%d\n",
+
+	chip->target_fastchg_current_ma =
+		 min(chip->temp_zone_fcc_ma, chip->target_fastchg_current_ma);
+
+	SMB_DBG(chip, "requested=%d: allowed=%d: result=%d : temp=%d\n",
 	       current_ma, chip->allowed_fastchg_current_ma,
-	       chip->target_fastchg_current_ma);
+	       chip->target_fastchg_current_ma,
+	       chip->temp_zone_fcc_ma);
 }
 
 static int smbchg_trim_add_steps(struct smbchg_chip *chip,
@@ -8227,6 +8260,32 @@ static struct device_node *smb_get_serialnumber(struct smbchg_chip *chip,
 	return node;
 }
 
+static int parse_dt_temp_zones(const uint32_t *arr,
+				  struct mmi_temp_zone *zones,
+				  int count)
+{
+	uint32_t len = 0;
+	uint32_t volt;
+	uint32_t start_curr;
+	uint32_t end_curr;
+	int i;
+
+	if (!arr)
+		return 0;
+
+	for (i = 0; i < count*3; i += 3) {
+		volt = be32_to_cpu(arr[i]);
+		start_curr = be32_to_cpu(arr[i + 1]);
+		end_curr = be32_to_cpu(arr[i + 2]);
+		zones->temp_c = volt;
+		zones->fcc_max_ma = start_curr;
+		zones->fcc_norm_ma = end_curr;
+		len++;
+		zones++;
+	}
+	return len;
+}
+
 static int smb_parse_dt(struct smbchg_chip *chip)
 {
 	int rc = 0;
@@ -8567,6 +8626,64 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		set_target_bsw_current_ma(chip, chip->stepchg_steps[0].max_ma);
 
 	}
+
+	if (profile_node) {
+		dt_map = of_get_property(profile_node, "qcom,mmi-temp-zones",
+				&chip->temp_num_zones);
+		if ((!dt_map) || (chip->temp_num_zones <= 0)) {
+			SMB_ERR(chip,
+				"Could not read mmi-temp-zones  from battery dtsi\n");
+			dt_map = of_get_property(node, "qcom,mmi-temp-zones",
+				&chip->temp_num_zones);
+		}
+	} else {
+		dt_map = of_get_property(node, "qcom,mmi-temp-zones",
+				&chip->temp_num_zones);
+	}
+
+	if ((!dt_map) || (chip->temp_num_zones <= 0)) {
+		SMB_ERR(chip, "No temp zones defined\n");
+		chip->temp_num_zones = 0;
+	} else {
+		chip->temp_num_zones /= 3 * sizeof(uint32_t);
+		SMB_ERR(chip, "zones length=%d\n", chip->temp_num_zones);
+		if (chip->temp_num_zones > MAX_NUM_ZONES)
+			chip->temp_num_zones = MAX_NUM_ZONES;
+
+		chip->mmi_temp_zones =
+			devm_kzalloc(chip->dev,
+				     (sizeof(struct mmi_temp_zone) *
+				      chip->temp_num_zones),
+				     GFP_KERNEL);
+		if (chip->mmi_temp_zones == NULL) {
+			SMB_ERR(chip,
+			 "Failed to kzalloc memory for temp zones\n");
+			return -ENOMEM;
+		}
+
+		chip->temp_num_zones =
+			parse_dt_temp_zones(dt_map,
+					      chip->mmi_temp_zones,
+					      chip->temp_num_zones);
+
+		if (chip->temp_num_zones <= 0) {
+			SMB_ERR(chip,
+			"Couldn't read temp zones rc = %d\n", rc);
+			return rc;
+		}
+		SMB_ERR(chip, "num temp zones  entries=%d\n",
+			chip->temp_num_zones);
+		for (index = 0; index < chip->temp_num_zones; index++) {
+			SMB_ERR(chip,
+				"zone %d  temp = %d degC, max_ma = %d mA, normal_ma = %d mA\n",
+				index,
+				chip->mmi_temp_zones[index].temp_c,
+				chip->mmi_temp_zones[index].fcc_max_ma,
+				chip->mmi_temp_zones[index].fcc_norm_ma);
+		}
+		chip->pres_temp_zone = ZONE_NONE;
+	}
+	chip->temp_zone_fcc_ma =  chip->target_fastchg_current_ma;
 
 	dt_map = of_get_property(node, "qcom,chg-thermal-mitigation",
 				      &chip->chg_thermal_levels);
@@ -10129,6 +10246,144 @@ static int smbchg_check_temp_range(struct smbchg_chip *chip,
 
 	return 0;
 }
+#define MIN_TEMP_C -20
+#define MAX_TEMP_C 60
+#define HYSTERISIS_C 2
+static bool mmi_find_temp_zone(struct smbchg_chip *chip, int temp_c)
+{
+	int prev_zone, num_zones;
+	struct mmi_temp_zone *zones;
+	int hotter_t, hotter_fcc;
+	int colder_t, colder_fcc;
+	int i;
+	int max_temp;
+
+	if (!chip) {
+		SMB_ERR(chip, "called before chip valid!\n");
+		return false;
+	}
+
+	zones = chip->mmi_temp_zones;
+	num_zones = chip->temp_num_zones;
+	prev_zone = chip->pres_temp_zone;
+	max_temp = zones[num_zones - 1].temp_c;
+
+	if (prev_zone == ZONE_NONE) {
+		for (i = num_zones - 1; i >= 0; i--) {
+			if (temp_c >= zones[i].temp_c) {
+				if (i == num_zones - 1)
+					chip->pres_temp_zone = ZONE_HOT;
+				else
+					chip->pres_temp_zone = i + 1;
+				return true;
+			}
+		}
+		chip->pres_temp_zone = ZONE_COLD;
+		return true;
+	}
+
+	if (prev_zone == ZONE_COLD) {
+		if (temp_c >= MIN_TEMP_C + HYSTERISIS_C)
+			chip->pres_temp_zone = ZONE_FIRST;
+	} else if (prev_zone == ZONE_HOT) {
+		if (temp_c <=  max_temp - HYSTERISIS_C)
+			chip->pres_temp_zone = num_zones - 1;
+	} else {
+		if (prev_zone == ZONE_FIRST) {
+			hotter_fcc = zones[prev_zone + 1].fcc_max_ma;
+			colder_fcc = 0;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = MIN_TEMP_C;
+		} else if (prev_zone == num_zones - 1) {
+			hotter_fcc = 0;
+			colder_fcc = zones[prev_zone - 1].fcc_max_ma;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = zones[prev_zone - 1].temp_c;
+		} else {
+			hotter_fcc = zones[prev_zone + 1].fcc_max_ma;
+			colder_fcc = zones[prev_zone - 1].fcc_max_ma;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = zones[prev_zone - 1].temp_c;
+		}
+
+		if (zones[prev_zone].fcc_max_ma < hotter_fcc)
+			hotter_t += HYSTERISIS_C;
+
+		if (zones[prev_zone].fcc_max_ma < colder_fcc)
+			colder_t -= HYSTERISIS_C;
+
+		if (temp_c < MIN_TEMP_C)
+			chip->pres_temp_zone = ZONE_COLD;
+		else if (temp_c >= max_temp)
+			chip->pres_temp_zone = ZONE_HOT;
+		else  if (temp_c >= hotter_t)
+			chip->pres_temp_zone++;
+		else if (temp_c < colder_t)
+			chip->pres_temp_zone--;
+	}
+	SMB_DBG(chip,
+		 "temp_zone: pre zone =%d, now zone =%d,temp_c=%d,hotter_t=%d,colder_t=%d\n",
+		prev_zone, chip->pres_temp_zone, temp_c, hotter_t, colder_t);
+
+	if (prev_zone != chip->pres_temp_zone) {
+		chip->update_temp_zone_fcc_ma = true;
+		SMB_ERR(chip,
+		"temp_zone: Entered Temp Zone %d! pre zone =%d\n",
+			   chip->pres_temp_zone, prev_zone);
+		return true;
+	}
+
+	return false;
+}
+
+static void smbchg_check_zone_temp_state(struct smbchg_chip *chip,
+						int batt_temp,
+						int temp_state)
+{
+	int index;
+
+	if (temp_state == POWER_SUPPLY_HEALTH_COOL) {
+		chip->pres_temp_zone = ZONE_FIRST;
+		chip->temp_zone_fcc_ma =
+			chip->mmi_temp_zones[ZONE_FIRST].fcc_max_ma;
+	} else if (temp_state == POWER_SUPPLY_HEALTH_WARM) {
+		chip->pres_temp_zone = chip->temp_num_zones - 1;
+		chip->temp_zone_fcc_ma =
+			chip->mmi_temp_zones[chip->temp_num_zones-1].fcc_max_ma;
+	} else if (temp_state == POWER_SUPPLY_HEALTH_COLD) {
+		chip->pres_temp_zone = ZONE_COLD;
+		chip->temp_zone_fcc_ma =
+			chip->mmi_temp_zones[ZONE_FIRST].fcc_norm_ma;
+	} else if (temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) {
+		chip->pres_temp_zone = ZONE_HOT;
+		chip->temp_zone_fcc_ma =
+			chip->mmi_temp_zones[ZONE_FIRST].fcc_norm_ma;
+	} else if (temp_state == POWER_SUPPLY_HEALTH_GOOD)  {
+		mmi_find_temp_zone(chip, batt_temp);
+		if (chip->pres_temp_zone > ZONE_FIRST &&
+			chip->pres_temp_zone <  chip->temp_num_zones - 1) {
+			index = chip->pres_temp_zone;
+			if (STEP_START(chip->stepchg_state) == STEP_FIRST)
+				chip->temp_zone_fcc_ma =
+					chip->mmi_temp_zones[index].fcc_max_ma;
+			else
+				chip->temp_zone_fcc_ma =
+					chip->mmi_temp_zones[index].fcc_norm_ma;
+		}
+	}
+
+	if ((chip->stepchg_state >= STEP_FIRST) &&
+		(chip->stepchg_state <= STEP_LAST))
+		index = STEP_START(chip->stepchg_state);
+	else
+		index = STEP_END(chip->stepchg_num_steps);
+	set_max_allowed_current_ma(chip,
+		chip->stepchg_steps[index].max_ma);
+
+	SMB_WARN(chip, "temp_zone:temp= %s,zone=%d, zone_fcc=%d,stepchg=%d\n",
+		smb_health_text[temp_state], chip->pres_temp_zone,
+		chip->temp_zone_fcc_ma, chip->stepchg_state);
+}
 
 #define HYSTERISIS_DEGC 2
 static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
@@ -10208,6 +10463,10 @@ static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
 		SMB_ERR(chip, "Battery Temp State = %s\n",
 			smb_health_text[chip->temp_state]);
 	}
+
+	if (chip->temp_num_zones > 0)
+		smbchg_check_zone_temp_state(chip, batt_temp, temp_state);
+
 	mutex_unlock(&chip->check_temp_lock);
 
 	return;
@@ -11488,11 +11747,13 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	if ((prev_batt_health != chip->temp_state) ||
 	    (prev_ext_lvl != chip->ext_high_temp) ||
 	    (prev_step != chip->stepchg_state) ||
-	    (chip->update_allowed_fastchg_current_ma)) {
+	    (chip->update_allowed_fastchg_current_ma) ||
+	    (chip->update_temp_zone_fcc_ma)) {
 		smbchg_set_temp_chgpath(chip, prev_batt_health);
 		if (chip->usb_present) {
 			smbchg_parallel_usb_check_ok(chip);
 			chip->update_allowed_fastchg_current_ma = false;
+			chip->update_temp_zone_fcc_ma = false;
 		} else if (chip->dc_present) {
 			smbchg_set_fastchg_current(chip,
 					      chip->target_fastchg_current_ma);
