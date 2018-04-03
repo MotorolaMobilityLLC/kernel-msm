@@ -511,6 +511,7 @@ void msm_trigger_wdog_bite(void)
 		__raw_readl(wdog_data->base + WDT0_BARK_TIME),
 		__raw_readl(wdog_data->base + WDT0_BITE_TIME));
 }
+EXPORT_SYMBOL_GPL(msm_trigger_wdog_bite);
 
 static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 {
