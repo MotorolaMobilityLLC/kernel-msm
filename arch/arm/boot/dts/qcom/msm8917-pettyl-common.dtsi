@@ -527,5 +527,10 @@
 	qcom,wave-play-rate-us = <4255> ;
 	qcom,brake-pattern = [03 03 03 03];
 	qcom,wave-shape = "sine";
+	qcom,lra-auto-res-mode="qwd";
+	qcom,lra-high-z="opt1";
+	qcom,lra-res-cal-period = <4>;
+	qcom,correct-lra-drive-freq;
+	qcom,misc-trim-error-rc19p2-clk-reg-present;
 };
 
