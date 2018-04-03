@@ -1594,14 +1594,18 @@ static ssize_t gtp_productinfo_show(struct device *dev,
 {
 	struct goodix_ts_data *data = dev_get_drvdata(dev);
 
-	if (data->product_id[3] == 0x00) {
-		return scnprintf(buf, PAGE_SIZE, "GT%c%c%c\n",
-				data->product_id[0], data->product_id[1],
-				data->product_id[2]);
+	if (data->fw_error == 1) {
+		return scnprintf(buf, PAGE_SIZE, "GT917D");
 	} else {
-		return scnprintf(buf, PAGE_SIZE, "GT%c%c%c%c\n",
-			data->product_id[0], data->product_id[1],
-			data->product_id[2], data->product_id[3]);
+		if (data->product_id[3] == 0x00) {
+			return scnprintf(buf, PAGE_SIZE, "GT%c%c%c\n",
+					data->product_id[0], data->product_id[1],
+					data->product_id[2]);
+		} else {
+			return scnprintf(buf, PAGE_SIZE, "GT%c%c%c%c\n",
+				data->product_id[0], data->product_id[1],
+				data->product_id[2], data->product_id[3]);
+		}
 	}
 }
 
@@ -1613,9 +1617,14 @@ static ssize_t gtp_buildid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_data *data = dev_get_drvdata(dev);
+	u16 default_version = 0;
 
-	return scnprintf(buf, PAGE_SIZE, "%04x\n",
-			data->version_info);
+	if (data->fw_error == 1) {
+		return scnprintf(buf, PAGE_SIZE, "%04x\n", default_version);
+	} else {
+		return scnprintf(buf, PAGE_SIZE, "%04x\n",
+				data->version_info);
+	}
 }
 
 static DEVICE_ATTR(buildid, S_IRUGO,
