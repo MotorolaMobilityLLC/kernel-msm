@@ -896,6 +896,7 @@
 		df-serialnum = "SB18C15119";
 		#include "batterydata-hg30-atl-ali.dtsi"
 		#include "batterydata-hg30-scud.dtsi"
+		#include "batterydata-hg30-epcos.dtsi"
 	};
 };
 
