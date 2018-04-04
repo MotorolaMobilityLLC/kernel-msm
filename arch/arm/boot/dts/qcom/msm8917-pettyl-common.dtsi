@@ -171,6 +171,14 @@
 	};
 };
 
+&other_ext_mem {
+	reg = <0x0 0x84F00000 0x0 0x1900000>;
+};
+
+&qcom_seecom {
+	reg = <0x84F00000 0x1400000>;
+};
+
 &et320 {
 	status = "/chosen", "mmi,fps", "true";
 	interrupts = <128 0x0>;
