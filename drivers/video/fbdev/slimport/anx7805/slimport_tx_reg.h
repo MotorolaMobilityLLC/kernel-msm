@@ -111,9 +111,14 @@
 #define N_VID_1 0xC4
 #define N_VID_2 0xC5
 
+#define AUDIO_M_VID_0 0xD3
+#define AUDIO_M_VID_1 0xD4
+#define AUDIO_M_VID_2 0xD5
+#define AUDIO_N_VID_0 0xD6
+#define AUDIO_N_VID_1 0xD7
+#define AUDIO_N_VID_2 0xD8
 
-
-
+#define SP_AUDIO_TX_STATUS 0x3D
 
 #define SP_TX_SYS_CTRL1_REG           					0x80
 //#define SP_TX_SYS_CTRL1_PD_IO         					0x80    // bit position
