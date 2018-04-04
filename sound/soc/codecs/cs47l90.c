@@ -2482,6 +2482,25 @@ static struct snd_soc_dai_driver cs47l90_dai[] = {
 		.ops = &madera_slim_dai_ops,
 	},
 	{
+		.name = "cs47l90-slim3",
+		.id = 6,
+		.playback = {
+			.stream_name = "Slim3 Playback",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MADERA_RATES,
+			.formats = MADERA_FORMATS,
+		},
+		.capture = {
+			 .stream_name = "Slim3 Capture",
+			 .channels_min = 1,
+			 .channels_max = 2,
+			 .rates = MADERA_RATES,
+			 .formats = MADERA_FORMATS,
+		 },
+		.ops = &madera_slim_dai_ops,
+	},
+	{
 		.name = "cs47l90-pdm",
 		.id = 8,
 		.capture = {
