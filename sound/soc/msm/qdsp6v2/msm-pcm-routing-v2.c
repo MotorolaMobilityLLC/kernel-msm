@@ -3806,6 +3806,10 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		msm_route_ec_ref_rx = 22;
 		ec_ref_port_id = AFE_PORT_ID_INT3_MI2S_TX;
 		break;
+	case 23:
+		msm_route_ec_ref_rx = 23;
+		ec_ref_port_id = SLIMBUS_3_TX;
+		break;
 	default:
 		msm_route_ec_ref_rx = 0; /* NONE */
 		pr_err("%s EC ref rx %ld not valid\n",
@@ -3828,7 +3832,7 @@ static const char *const ec_ref_rx[] = { "None", "SLIM_RX", "I2S_RX",
 	"SLIM_5_RX", "SLIM_1_TX", "QUAT_TDM_TX_1",
 	"QUAT_TDM_RX_0", "QUAT_TDM_RX_1", "QUAT_TDM_RX_2", "SLIM_6_RX",
 	"TERT_MI2S_RX", "QUAT_MI2S_RX", "TERT_TDM_TX_0", "USB_AUDIO_RX",
-	"INT0_MI2S_RX", "INT4_MI2S_RX", "INT3_MI2S_TX"};
+	"INT0_MI2S_RX", "INT4_MI2S_RX", "INT3_MI2S_TX", "SLIM_3_TX"};
 
 static const struct soc_enum msm_route_ec_ref_rx_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ec_ref_rx), ec_ref_rx),
@@ -3955,6 +3959,9 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 	case EXT_EC_REF_SLIM_1_TX:
 		ext_ec_ref_port_id = SLIMBUS_1_TX;
 		break;
+	case EXT_EC_REF_SLIM_3_TX:
+		ext_ec_ref_port_id = SLIMBUS_3_TX;
+		break;
 	case EXT_EC_REF_NONE:
 	default:
 		ext_ec_ref_port_id = AFE_PORT_INVALID;
@@ -3978,7 +3985,7 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 static const char * const ext_ec_ref_rx[] = {"NONE", "PRI_MI2S_TX",
 					"SEC_MI2S_TX", "TERT_MI2S_TX",
 					"QUAT_MI2S_TX", "QUIN_MI2S_TX",
-					"SLIM_1_TX"};
+					"SLIM_1_TX", "SLIM_3_TX"};
 
 static const struct soc_enum msm_route_ext_ec_ref_rx_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_ec_ref_rx), ext_ec_ref_rx),
@@ -15023,6 +15030,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"VOC_EXT_EC MUX", "TERT_MI2S_TX" , "TERT_MI2S_TX"},
 	{"VOC_EXT_EC MUX", "QUAT_MI2S_TX" , "QUAT_MI2S_TX"},
 	{"VOC_EXT_EC MUX", "SLIM_1_TX" ,    "SLIMBUS_1_TX"},
+	{"VOC_EXT_EC MUX", "SLIM_3_TX" ,    "SLIMBUS_3_TX"},
 	{"CS-VOICE_UL1", NULL, "VOC_EXT_EC MUX"},
 	{"VOIP_UL", NULL, "VOC_EXT_EC MUX"},
 	{"VoLTE_UL", NULL, "VOC_EXT_EC MUX"},
@@ -15036,6 +15044,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"AUDIO_REF_EC_UL1 MUX", "TERT_MI2S_TX" , "TERT_MI2S_TX"},
 	{"AUDIO_REF_EC_UL1 MUX", "QUAT_MI2S_TX" , "QUAT_MI2S_TX"},
 	{"AUDIO_REF_EC_UL1 MUX", "SLIM_1_TX" , "SLIMBUS_1_TX"},
+	{"AUDIO_REF_EC_UL1 MUX", "SLIM_3_TX" , "SLIMBUS_3_TX"},
 	{"AUDIO_REF_EC_UL1 MUX", "QUAT_TDM_TX_1" , "QUAT_TDM_TX_1"},
 	{"AUDIO_REF_EC_UL1 MUX", "QUAT_TDM_RX_0" , "QUAT_TDM_RX_0"},
 	{"AUDIO_REF_EC_UL1 MUX", "QUAT_TDM_RX_1" , "QUAT_TDM_RX_1"},
