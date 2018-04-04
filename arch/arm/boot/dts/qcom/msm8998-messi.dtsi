@@ -105,6 +105,16 @@
 };
 
 &soc {
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <9>,
+			<58>,
+			<59>,
+			<60>,
+			<61>,
+			<123>;
+	};
+
 	alsa_to_h2w {
 	status = "disabled";
 	};
