@@ -120,6 +120,10 @@
 		ti,tas2560-port-id = <0x1016>, <0x1017>;
 	};
 
+	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
+		qcom,clk-freq-out = <100000>;
+	};
+
 	/delete-node/ fp_id;
 };
 
