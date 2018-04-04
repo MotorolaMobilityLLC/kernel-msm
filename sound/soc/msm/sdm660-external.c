@@ -167,6 +167,7 @@ static SOC_ENUM_SINGLE_EXT_DECL(slim_0_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_2_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_tx_chs, slim_tx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_1_tx_chs, slim_tx_ch_text);
+static SOC_ENUM_SINGLE_EXT_DECL(slim_3_tx_chs, slim_tx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_5_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_6_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(vi_feed_tx_chs, vi_feed_ch_text);
@@ -336,6 +337,8 @@ static int slim_get_port_idx(struct snd_kcontrol *kcontrol)
 		port_id = SLIM_TX_0;
 	else if (strnstr(kcontrol->id.name, "SLIM_1_TX", sizeof("SLIM_1_TX")))
 		port_id = SLIM_TX_1;
+	else if (strnstr(kcontrol->id.name, "SLIM_3_TX", sizeof("SLIM_3_TX")))
+		port_id = SLIM_TX_3;
 	else {
 		pr_err("%s: unsupported channel: %s",
 			__func__, kcontrol->id.name);
@@ -835,6 +838,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_slim_tx_ch_get, msm_slim_tx_ch_put),
 	SOC_ENUM_EXT("SLIM_1_TX Channels", slim_1_tx_chs,
 			msm_slim_tx_ch_get, msm_slim_tx_ch_put),
+	SOC_ENUM_EXT("SLIM_3_TX Channels", slim_3_tx_chs,
+			msm_slim_tx_ch_get, msm_slim_tx_ch_put),
 	SOC_ENUM_EXT("SLIM_5_RX Channels", slim_5_rx_chs,
 			msm_slim_rx_ch_get, msm_slim_rx_ch_put),
 	SOC_ENUM_EXT("SLIM_6_RX Channels", slim_6_rx_chs,
@@ -1031,14 +1036,23 @@ int msm_ext_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 }
 EXPORT_SYMBOL(msm_ext_be_hw_params_fixup);
 
+#ifdef CONFIG_SND_SOC_MADERA
+#ifdef CONFIG_SND_SOC_CS47L90
+#define CS47L90_SLIM_RX_MAX	8
+#define CS47L90_SLIM_TX_MAX	8
+static unsigned int msm_slim_rx_ch[CS47L90_SLIM_RX_MAX] = {144, 145, 146, 147,
+						148, 149, 150, 151};
+static unsigned int msm_slim_tx_ch[CS47L90_SLIM_TX_MAX] = {128, 129, 130, 131,
+						132, 133, 134, 135};
+#else
 #define CS47L35_SLIM_RX_MAX	6
 #define CS47L35_SLIM_TX_MAX	6
-
-
 static unsigned int msm_slim_rx_ch[CS47L35_SLIM_RX_MAX] = {144, 145, 146, 147,
 						148, 149};
 static unsigned int msm_slim_tx_ch[CS47L35_SLIM_TX_MAX] = {128, 129, 130, 131,
 						132, 133};
+#endif
+#endif
 
 /**
  * msm_snd_hw_params - hw params ops of backend dailink.
@@ -1080,6 +1094,10 @@ int msm_snd_hw_params(struct snd_pcm_substream *substream,
 			pr_debug("%s: rx_2_ch=%d\n", __func__,
 				 slim_rx_cfg[2].channels);
 			rx_ch_count = slim_rx_cfg[2].channels;
+		} else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_3_RX) {
+			pr_debug("%s: rx_3_ch=%d\n", __func__,
+				 slim_rx_cfg[3].channels);
+			rx_ch_count = slim_rx_cfg[3].channels;
 		} else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_6_RX) {
 			pr_debug("%s: rx_6_ch=%d\n", __func__,
 				  slim_rx_cfg[6].channels);
@@ -1124,9 +1142,12 @@ int msm_snd_hw_params(struct snd_pcm_substream *substream,
 		/* For <codec>_tx1 case */
 		if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_0_TX)
 			user_set_tx_ch = slim_tx_cfg[0].channels;
-		/* For <codec>_tx3 case */
+		/* For <codec>_tx2 case */
 		else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_1_TX)
 			user_set_tx_ch = slim_tx_cfg[1].channels;
+		/* For <codec>_tx3 case */
+		else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_3_TX)
+			user_set_tx_ch = slim_tx_cfg[3].channels;
 		else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_4_TX)
 			user_set_tx_ch = msm_vi_feed_tx_ch;
 		else
