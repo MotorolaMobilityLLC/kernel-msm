@@ -267,10 +267,19 @@ static ssize_t tx_system_status_show(struct device *dev, struct device_attribute
 	return snprintf(buf, PAGE_SIZE, "%d\n", link_status);
 }
 
+static ssize_t tx_audio_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int audio_status = get_tx_audio_state();
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", audio_status);
+}
+
 static DEVICE_ATTR(sys_status, S_IRUGO, tx_system_status_show, NULL);
+static DEVICE_ATTR(audio_status, S_IRUGO, tx_audio_status_show, NULL);
 
 static struct attribute *slimport_attrs[] = {
 	&dev_attr_sys_status.attr,
+	&dev_attr_audio_status.attr,
 	NULL,
 };
 
