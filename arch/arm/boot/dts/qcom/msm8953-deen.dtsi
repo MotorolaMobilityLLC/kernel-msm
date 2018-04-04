@@ -561,9 +561,8 @@
 /{
 	/delete-node/ qcom,battery-data;
 	mot_batterydata: qcom,battery-data {
-		df-serialnum = "SB18C15119";
-		#include "batterydata-hg30-atl-ali.dtsi"
-		#include "batterydata-hg30-scud.dtsi"
+		df-serialnum = "SB18C30735";
+		#include "batterydata-je40-scud.dtsi"
 	};
 };
 
