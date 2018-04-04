@@ -1,0 +1,51 @@
+
+qcom,je40-scud {
+	serialnum = "SB18C30735";
+	/* #3394015_Lenovo_JE40cos_3000mAh_averaged_MasterSlave_Apr3rd2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "JE40-SCUD-3000mah";
+	qcom,chg-rslow-comp-c1 = <4482208>;
+	qcom,chg-rslow-comp-c2 = <8740993>;
+	qcom,chg-rs-to-rslow = <1016230>;
+	qcom,chg-rslow-comp-thr = <0xBE>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,checksum = <0xBDE7>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 D8 83 0A 7C
+		 11 80 84 74
+		 3A 83 15 73
+		 67 7F 2C 80
+		 E9 81 10 A0
+		 EE BF 46 D1
+		 7D 10 E3 83
+		 36 7C 44 80
+		 1A 75 30 83
+		 22 7A 3B 8C
+		 96 88 1F 82
+		 FB 9B 88 C4
+		 20 D3 68 0D
+		 E2 0B 0D 5B
+		 14 70 B2 FD
+		 71 28 79 45
+		 29 29 00 00
+		 69 4C AF 40
+		 97 38 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 B5 70 CF 6A
+		 4C 8D D2 75
+		 2F 7D 9A 72
+		 0C 74 1E 78
+		 E8 76 C6 6B
+		 4C 66 3B 99
+		 37 98 5B CC
+		 5C A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
