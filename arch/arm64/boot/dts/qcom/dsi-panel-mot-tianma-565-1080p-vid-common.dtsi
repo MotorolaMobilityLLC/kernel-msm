@@ -1,0 +1,142 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+compatible = "qcom,mdss-dsi-panel";
+qcom,mdss-dsi-panel-name = "mipi_mot_vid_tianma_1080p_565";
+qcom,mdss-dsi-panel-supplier = "tianma";
+qcom,mdss-dsi-panel-type = "dsi_video_mode";
+qcom,mdss-dsi-panel-framerate = <60>;
+qcom,mdss-dsi-virtual-channel-id = <0>;
+qcom,mdss-dsi-stream = <0>;
+qcom,mdss-dsi-panel-width = <1080>;
+qcom,mdss-dsi-panel-height = <2160>;
+qcom,mdss-pan-physical-width-dimension = <64>;
+qcom,mdss-pan-physical-height-dimension = <128>;
+qcom,mdss-dsi-h-front-porch = <53>;
+qcom,mdss-dsi-h-back-porch = <53>;
+qcom,mdss-dsi-h-pulse-width = <4>;
+qcom,mdss-dsi-h-sync-skew = <0>;
+qcom,mdss-dsi-v-back-porch = <11>;
+qcom,mdss-dsi-v-front-porch = <14>;
+qcom,mdss-dsi-v-pulse-width = <1>;
+qcom,mdss-dsi-h-left-border = <0>;
+qcom,mdss-dsi-h-right-border = <0>;
+qcom,mdss-dsi-v-top-border = <0>;
+qcom,mdss-dsi-v-bottom-border = <0>;
+qcom,mdss-dsi-bpp = <24>;
+qcom,mdss-dsi-underflow-color = <0xff>;
+qcom,mdss-dsi-border-color = <0>;
+qcom,mdss-dsi-on-command = [
+	15 01 00 00 00 00 02 00 00
+	39 01 00 00 00 00 04 FF 19 11 01
+	15 01 00 00 00 00 02 00 80
+	39 01 00 00 00 00 03 FF 19 11
+	15 01 00 00 00 00 02 00 B0
+	39 01 00 00 00 00 05 B3 04 38 08 70
+	15 01 00 00 00 00 02 00 00
+	39 01 00 00 00 00 04 FF FF FF FF
+	15 00 00 00 00 00 02 35 00	 /*TE on*/
+	39 00 00 00 00 00 03 51 CC 08	 /*12bit PWM*/
+	15 00 00 00 00 00 02 53 2C		/*Dimming on*/
+	15 00 00 00 00 00 02 55 01		/*UI mode*/
+	05 01 00 00 78 00 02 11 00		/*sleep in delay 130ms*/
+	05 01 00 00 0a 00 02 29 00];	/* display on delay 20ms*/
+qcom,mdss-dsi-off-command = [
+	05 01 00 00 32 00 01 28		/* display_off  delay 50ms*/
+	05 01 00 00 46 00 01 10];	/* enter sleep mode delay 20ms*/
+
+
+qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 FF 08];
+qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 CC 08];
+qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
+
+qcom,mdss-dsi-h-sync-pulse = <0>;
+qcom,mdss-dsi-traffic-mode = "burst_mode";
+qcom,mdss-dsi-bllp-eof-power-mode;
+qcom,mdss-dsi-bllp-power-mode;
+qcom,mdss-dsi-lane-0-state;
+qcom,mdss-dsi-lane-1-state;
+qcom,mdss-dsi-lane-2-state;
+qcom,mdss-dsi-lane-3-state;
+/* todo: calculate dsi timming with qcom doc again */
+qcom,mdss-dsi-panel-timings-phy-v2 =
+	[24 1F 08 09 05 03 04 A0
+	 24 1F 08 09 05 03 04 A0
+	 24 1F 08 09 05 03 04 A0
+	 24 1F 08 09 05 03 04 A0
+	 24 1C 08 09 05 03 04 A0];
+qcom,mdss-dsi-panel-timings = [F2 3A 28 00 6C 70 2C 3E 2E 03 04 00];
+qcom,mdss-dsi-t-clk-post = <0x0E>;
+qcom,mdss-dsi-t-clk-pre = <0x31>;
+qcom,mdss-dsi-bl-min-level = <1>;
+qcom,mdss-dsi-bl-max-level = <4095>;
+qcom,mdss-dsi-dma-trigger = "trigger_sw";
+qcom,mdss-dsi-mdp-trigger = "none";
+qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+qcom,mdss-dsi-reset-sequence = <1 5>, <0 1>, <1 10>;
+qcom,mdss-dsi-lp11-init;
+qcom,mdss-dsi-tx-eot-append;
+qcom,mdss-dsi-init-delay-us = <50000>;
+
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08];
+qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+qcom,mdss-dsi-panel-status-value = <0x9c>;
+qcom,mdss-dsi-panel-status-read-length = <1>;
+qcom,mdss-dsi-panel-status-valid-params = <1>;
+
+qcom,panel-supply-entries {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	qcom,panel-supply-entry@0 {
+		reg = <1>;
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+	};
+
+	qcom,panel-supply-entry@1 {
+		reg = <2>;
+		qcom,supply-name = "vsp_disp";
+		qcom,supply-min-voltage = <5500000>;
+		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+	};
+
+	qcom,panel-supply-entry@2 {
+		reg = <3>;
+		qcom,supply-name = "vsn_disp";
+		qcom,supply-min-voltage = <5500000>;
+		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <5>;
+		qcom,supply-post-off-sleep = <1>;
+	};
+};
