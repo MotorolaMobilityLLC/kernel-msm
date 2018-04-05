@@ -1431,7 +1431,11 @@ static ssize_t ipa_read_nat4(struct file *file,
 	pr_err("Table Size:%d\n",
 				ipa_ctx->nat_mem.size_base_tables);
 
-	pr_err("Expansion Table Size:%d\n",
+	if (!ipa_ctx->nat_mem.size_expansion_tables)
+		pr_err("Expansion Table Size:%d\n",
+				ipa_ctx->nat_mem.size_expansion_tables);
+	else
+		pr_err("Expansion Table Size:%d\n",
 				ipa_ctx->nat_mem.size_expansion_tables-1);
 
 	if (!ipa_ctx->nat_mem.is_sys_mem)
@@ -1446,6 +1450,8 @@ static ssize_t ipa_read_nat4(struct file *file,
 
 			pr_err("\nBase Table:\n");
 		} else {
+			if (!ipa_ctx->nat_mem.size_expansion_tables)
+				continue;
 			tbl_size = ipa_ctx->nat_mem.size_expansion_tables-1;
 			base_tbl =
 			 (u32 *)ipa_ctx->nat_mem.ipv4_expansion_rules_addr;
@@ -1545,6 +1551,8 @@ static ssize_t ipa_read_nat4(struct file *file,
 
 			pr_err("\nIndex Table:\n");
 		} else {
+			if (!ipa_ctx->nat_mem.size_expansion_tables)
+				continue;
 			tbl_size = ipa_ctx->nat_mem.size_expansion_tables-1;
 			indx_tbl =
 			 (u32 *)ipa_ctx->nat_mem.index_table_expansion_addr;
