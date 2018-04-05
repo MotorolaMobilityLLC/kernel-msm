@@ -153,6 +153,7 @@ int ipp_in_process(struct ipp_work_t *pwork)
 	/* work id check already done */
 	data = stmvl53l1_dev_table[pwork->dev_id];
 	ipp_dbg("to lock ");
+	mutex_unlock(&ipp_mutex);
 	mutex_lock(&data->work_mutex);
 	if (data->ipp.buzy == IPP_STATE_PENDING) {
 		/* if  it was already handled ignore it */
@@ -172,6 +173,7 @@ int ipp_in_process(struct ipp_work_t *pwork)
 			pwork->xfer_id);
 done_lock:
 	mutex_unlock(&data->work_mutex);
+	mutex_lock(&ipp_mutex);
 
 	return 0;
 }
