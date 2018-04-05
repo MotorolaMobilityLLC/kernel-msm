@@ -630,10 +630,13 @@
 };
 
 &pmi_haptic {
-	qcom,lra-auto-res-mode="qwd";
+	qcom,lra-auto-res-mode="none";
 	qcom,lra-res-cal-period = <0>;
 	qcom,wave-play-rate-us = <4878>;
-	qcom,vmax-mv = <1850>;
+	qcom,vmax-mv = <2500>;
+	qcom,vmax-low-mv = <2500>;
+	qcom,ilim-ma = <100>;
+	qcom,brake-pattern = [03 03 00 00];
 };
 
 &pm8953_l10 {
