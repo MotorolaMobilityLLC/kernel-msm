@@ -206,7 +206,7 @@
 &pmi8998_charger {
 	pinctrl-0 = <&eb_vbus_conf>;
 	pinctrl-1 = <&eb_vbus_active>;
-	qcom,iterm-ma = <146>;
+	qcom,iterm-ma = <58>;
 	qcom,mmi-temp-zones = <0 4200 582 0>,
 				<10 4200 1455 582>,
 				<15 0 1455 1455>,
