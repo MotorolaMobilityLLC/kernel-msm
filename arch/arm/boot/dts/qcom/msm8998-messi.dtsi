@@ -185,6 +185,15 @@
 	qcom,fg-chg-term-current = <100>;
 	qcom,fg-sys-term-current = <(-200)>;
 	qcom,battery-thermal-coefficients = [c0 50 ff];
+	qcom,battery-thermal-high-lut = <550 0>,
+					<600 30>,
+					<650 70>,
+					<700 110>;
+	qcom,battery-thermal-low-lut = <(-90) 0>,
+					<(-120) (-30)>,
+					<(-150) (-60)>,
+					<(-180) (-90)>,
+					<(-210) (-190)>;
 };
 
 &pmi8998_charger {
