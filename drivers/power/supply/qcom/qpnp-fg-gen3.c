@@ -637,6 +637,58 @@ static int fg_get_jeita_threshold(struct fg_chip *chip,
 	return 0;
 }
 
+static int fg_get_rectified_battery_temp(struct fg_chip *chip, int temp)
+{
+	int i;
+	int size;
+	int offset = 0;
+	struct temp_map {
+		int temp;
+		int offset;
+	} *map_table;
+
+	if (temp > chip->dt.batt_therm_high_lut[0]) {
+		size = chip->dt.batt_therm_high_lut_len * sizeof(u32) /
+			sizeof(struct temp_map);
+		map_table = (struct temp_map *)chip->dt.batt_therm_high_lut;
+		for (i = 1; i < size; i++) {
+			if (temp <= map_table[i].temp)
+				break;
+		}
+		if (i >= size)/* not found */
+			offset = map_table[i - 1].offset;
+		else {
+			offset = (temp - map_table[i - 1].temp) * 100
+				/ (map_table[i].temp - map_table[i - 1].temp);
+			offset = offset *
+				(map_table[i].offset - map_table[i - 1].offset)
+				/ 100;
+			offset = map_table[i - 1].offset + offset;
+		}
+	} else if (temp < chip->dt.batt_therm_low_lut[0]) {
+		size = chip->dt.batt_therm_low_lut_len * sizeof(u32) /
+			sizeof(struct temp_map);
+		map_table = (struct temp_map *)chip->dt.batt_therm_low_lut;
+		for (i = 1; i < size; i++) {
+			if (temp >= map_table[i].temp)
+				break;
+		}
+		if (i >= size)/* not found */
+			offset = map_table[i - 1].offset;
+		else {
+			offset = (temp - map_table[i - 1].temp) * 100
+				/ (map_table[i].temp - map_table[i - 1].temp);
+			offset = offset *
+				(map_table[i].offset - map_table[i - 1].offset)
+				/ 100;
+			offset = map_table[i - 1].offset + offset;
+		}
+	}
+
+	pr_debug("batt temp: %d, offset: %d\n", temp, offset);
+	return temp + offset;
+}
+
 #define BATT_TEMP_NUMR		1
 #define BATT_TEMP_DENR		1
 static int fg_get_battery_temp(struct fg_chip *chip, int *val)
@@ -657,6 +709,10 @@ static int fg_get_battery_temp(struct fg_chip *chip, int *val)
 
 	/* Value is in Kelvin; Convert it to deciDegC */
 	temp = (temp - 273) * 10;
+
+	if (chip->dt.batt_therm_high_lut_len > 0 ||
+	    chip->dt.batt_therm_low_lut_len > 0)
+		temp = fg_get_rectified_battery_temp(chip, temp);
 	*val = temp;
 	return 0;
 }
@@ -5544,6 +5600,52 @@ static int fg_parse_dt(struct fg_chip *chip)
 		if (temp >= 60 || temp <= 240)
 			chip->dt.esr_meas_curr_ma = temp;
 	}
+
+	chip->dt.batt_therm_high_lut_len =
+		of_property_count_elems_of_size(node,
+		"qcom,battery-thermal-high-lut",
+		sizeof(u32));
+	if (chip->dt.batt_therm_high_lut_len > 0 &&
+	    chip->dt.batt_therm_high_lut_len % 2 == 0)
+		chip->dt.batt_therm_high_lut = devm_kzalloc(chip->dev,
+				chip->dt.batt_therm_high_lut_len * sizeof(u32),
+				GFP_KERNEL);
+	else
+		chip->dt.batt_therm_high_lut = NULL;
+	if (chip->dt.batt_therm_high_lut) {
+		rc = of_property_read_u32_array(node,
+				"qcom,battery-thermal-high-lut",
+				chip->dt.batt_therm_high_lut,
+				chip->dt.batt_therm_high_lut_len);
+		if (rc < 0) {
+			chip->dt.batt_therm_high_lut_len = -EINVAL;
+			pr_warn("Error reading high thermal lut, rc=%d\n", rc);
+		}
+	} else
+		chip->dt.batt_therm_high_lut_len = -EINVAL;
+
+	chip->dt.batt_therm_low_lut_len =
+		of_property_count_elems_of_size(node,
+		"qcom,battery-thermal-low-lut",
+		sizeof(u32));
+	if (chip->dt.batt_therm_low_lut_len > 0 &&
+	    chip->dt.batt_therm_low_lut_len % 2 == 0)
+		chip->dt.batt_therm_low_lut = devm_kzalloc(chip->dev,
+				chip->dt.batt_therm_low_lut_len * sizeof(u32),
+				GFP_KERNEL);
+	else
+		chip->dt.batt_therm_low_lut = NULL;
+	if (chip->dt.batt_therm_low_lut) {
+		rc = of_property_read_u32_array(node,
+				"qcom,battery-thermal-low-lut",
+				chip->dt.batt_therm_low_lut,
+				chip->dt.batt_therm_low_lut_len);
+		if (rc < 0) {
+			chip->dt.batt_therm_low_lut_len = -EINVAL;
+			pr_warn("Error reading low thermal lut, rc=%d\n", rc);
+		}
+	} else
+		chip->dt.batt_therm_low_lut_len = -EINVAL;
 
 	return 0;
 }
