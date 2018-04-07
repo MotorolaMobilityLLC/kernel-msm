@@ -192,3 +192,12 @@
 		regulator-always-on;
 	};
 };
+
+&pm8953_typec {
+	status = "disabled";
+};
+
+&qpnp_smbcharger {
+	/delete-property/ qcom,external-typec;
+	/delete-property/ qcom,typec-psy-name;
+};
