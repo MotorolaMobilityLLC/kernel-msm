@@ -649,8 +649,10 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
 
+#ifndef CONFIG_SND_SOC_CS47L90
 	{ "IN2L", NULL, "MICNRS" },
 	{ "IN2R", NULL, "MICNRS" },
+#endif
 };
 
 static int slim_get_sample_rate_val(int sample_rate)
@@ -3202,7 +3204,9 @@ static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
+#ifndef CONFIG_SND_SOC_CS47L90
 	SND_SOC_DAPM_REGULATOR_SUPPLY("MICNRS", 0, SND_SOC_DAPM_REGULATOR_BYPASS),
+#endif
 };
 
 static inline int param_is_mask(int p)
@@ -6345,9 +6349,9 @@ static int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX2");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX1");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
+#ifndef CONFIG_SND_SOC_CS47L90
 	snd_soc_dapm_ignore_suspend(dapm, "IN2L");
 	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
-#ifndef CONFIG_SND_SOC_CS47L90
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTL");
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTR");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTN");
