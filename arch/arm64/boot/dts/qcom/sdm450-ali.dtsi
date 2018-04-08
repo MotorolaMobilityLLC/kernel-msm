@@ -18,12 +18,16 @@
 #include "dsi-panel-mot-tianma-565-1080p-vid.dtsi"
 #include "dsi-panel-mot-auo-565-1080p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "sdm450-ali-audio.dtsi"
 
 /{
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "batterydata-itech-3000mah.dtsi"
 		#include "batterydata-ascent-3450mAh.dtsi"
+	};
+	aliases {
+		spi7 = &spi_7;
 	};
 };
 
