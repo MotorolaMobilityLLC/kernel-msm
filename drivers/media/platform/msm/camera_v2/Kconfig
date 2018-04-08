@@ -283,6 +283,12 @@ config QPNP_FLASH_STROBE_OVERRIDE
 	    Enables support for flash HW strobe override
 	    based on sensor configuration.
 
+config CAMERA_CLOCK_BOOTTIME
+	bool "Enable CAMERA_CLOCK_BOOTTIME"
+	default n
+	---help---
+		Enables support CLOCK_BOOTTIME.
+
 config MOT_CAMERA_ALT_CLOCKS
 	bool "Enable MOT_CAMERA_ALT_CLOCKS"
 	default n
