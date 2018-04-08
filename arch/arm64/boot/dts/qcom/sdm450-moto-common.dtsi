@@ -182,5 +182,13 @@
 		compatible = "mmi,tzlog-dump";
 		memory-region = <&tzlog_dump_mem>;
 	};
+};
 
+&soc{
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
 };
