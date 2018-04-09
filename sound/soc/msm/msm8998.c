@@ -772,6 +772,9 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 #ifndef CONFIG_SND_SOC_CS47L90
 	{ "IN2L", NULL, "MICNRS" },
 	{ "IN2R", NULL, "MICNRS" },
+#else
+	{ "IN2AL", NULL, "MICNRS" },
+	{ "IN2R", NULL, "MICNRS" },
 #endif
 };
 
@@ -3864,9 +3867,7 @@ static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
-#ifndef CONFIG_SND_SOC_CS47L90
 	SND_SOC_DAPM_REGULATOR_SUPPLY("MICNRS", 0, SND_SOC_DAPM_REGULATOR_BYPASS),
-#endif
 };
 
 static inline int param_is_mask(int p)
@@ -7905,6 +7906,9 @@ static int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTP");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKDATL");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKDATR");
+#else
+	snd_soc_dapm_ignore_suspend(dapm, "IN2AL");
+	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
 #endif
 	snd_soc_dapm_ignore_suspend(dapm, "DSP2 Virtual Output");
 	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Virtual Output");
