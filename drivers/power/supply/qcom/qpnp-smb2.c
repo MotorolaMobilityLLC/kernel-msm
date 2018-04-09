@@ -394,6 +394,9 @@ static enum power_supply_property smb2_usb_props[] = {
 	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
 };
 
+#define SDP_CURRENT_UA			500000
+#define DCP_CURRENT_UA			1500000
+
 static int smb2_usb_get_prop(struct power_supply *psy,
 		enum power_supply_property psp,
 		union power_supply_propval *val)
@@ -434,6 +437,19 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		rc = smblib_get_prop_input_current_settled(chg, val);
+		switch (chg->real_charger_type) {
+		case POWER_SUPPLY_TYPE_USB_CDP:
+		case POWER_SUPPLY_TYPE_USB_DCP:
+			val->intval = max(DCP_CURRENT_UA, val->intval);
+			break;
+		case POWER_SUPPLY_TYPE_USB_FLOAT:
+		case POWER_SUPPLY_TYPE_USB:
+			val->intval = min(SDP_CURRENT_UA, val->intval);
+			break;
+		default:
+			val->intval = 0;
+			break;
+		}
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = POWER_SUPPLY_TYPE_USB_PD;
