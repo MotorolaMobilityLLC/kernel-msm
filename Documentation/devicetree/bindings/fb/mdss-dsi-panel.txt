@@ -532,6 +532,7 @@ Optional properites:
 - qcom,mdss-dsi-post-init-delay:        Specifies required number of frames to wait so that panel can be functional
 					to show proper display.
 - qcom,mdss-panel-off-rst-disable:	Don't pull down reset pin when panel off.
+- qcom,mdss-panel-reg-read-lp-enable:	Use dsi_lp_mode when read reg.
 
 Additional properties added to the second level nodes that represent timings properties:
 - qcom,mdss-dsi-timing-default:		Property that specifies the current child as the default
