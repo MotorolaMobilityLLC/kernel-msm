@@ -392,6 +392,10 @@ static int tas2560_ear_switch_set(struct snd_kcontrol *pKcontrol,
 
 	gpio_set_value_cansleep(pTAS2560->mnSwitchGPIO,  pTAS2560->enablePmicEarPath);
 
+	if (gpio_is_valid(pTAS2560->mnSwitchGPIO2))
+		gpio_set_value_cansleep(pTAS2560->mnSwitchGPIO2,
+			pTAS2560->enablePmicEarPath);
+
 	return 0;
 }
 
