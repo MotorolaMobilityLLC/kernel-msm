@@ -1628,8 +1628,14 @@ static int cypress_i2c_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cyttsp_sar_data *data = i2c_get_clientdata(client);
 	const struct cyttsp_sar_platform_data *pdata = data->pdata;
+	int ret;
 
 	disable_irq(gpio_to_irq(pdata->irq_gpio));
+	ret = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x01);
+	if (ret < 0) {
+		dev_err(&data->client->dev, "disable failed\n");
+	}
+
 	dev_dbg(&client->dev, "cypress i2c suspend\n");
 
 	return 0;
@@ -1640,7 +1646,12 @@ static int cypress_i2c_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cyttsp_sar_data *data = i2c_get_clientdata(client);
 	const struct cyttsp_sar_platform_data *pdata = data->pdata;
+	int ret;
 
+	ret = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x00);
+	if (ret < 0) {
+		dev_err(&data->client->dev, "enable failed\n");
+	}
 	enable_irq(gpio_to_irq(pdata->irq_gpio));
 	dev_dbg(&client->dev, "cypress i2c resume\n");
 
