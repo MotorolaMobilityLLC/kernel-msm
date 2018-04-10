@@ -6169,6 +6169,26 @@ static int get_eb_pwr_prop(struct smb_charger *chip,
 	return eb_prop;
 }
 
+static int is_eb_present(struct smb_charger *chip)
+{
+	int ret;
+	struct power_supply *eb_batt_psy;
+
+	eb_batt_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_batt_psy_name);
+	if (!eb_batt_psy || !eb_batt_psy->desc ||
+	    !eb_batt_psy->desc->get_property) {
+		ret = false;
+	} else {
+		ret = true;
+		power_supply_put(eb_batt_psy);
+	}
+
+	pr_info("%s eb is present? %d\n", __func__, ret);
+
+	return ret;
+}
+
 static int get_eb_prop(struct smb_charger *chip,
 		       enum power_supply_property prop)
 {
@@ -7665,7 +7685,8 @@ static int smbchg_reboot(struct notifier_block *nb,
 			break;
 		}
 	} else if ((batt_soc >= soc_max)  ||
-		   (get_eb_prop(chg, POWER_SUPPLY_PROP_CAPACITY) <= 0)) {
+		   ((get_eb_prop(chg, POWER_SUPPLY_PROP_CAPACITY) <= 0) &&
+		   (is_eb_present(chg) == true))) {
 		/* Turn off any Ext batt charging */
 		smblib_err(chg, "Attempt to Shutdown EB!\n");
 		mmi_set_extbat_state(chg, EB_OFF, false);
