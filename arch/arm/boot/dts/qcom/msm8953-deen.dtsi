@@ -522,6 +522,11 @@
 	hw-config = "dual_dsi";
 };
 
+&pm8953_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active>;
