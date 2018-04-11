@@ -142,6 +142,13 @@
 			};
 		};
 	};
+	/* SPI_I2C_MPHY_SEL, RGB_MOD_SEL*/
+	muc_spi_i2c_switch: muc_spi_i2c_switch@0 {
+		config {
+			pins = "gpio40", "gpio100";
+			bias-disable;
+		};
+	};
 };
 
 &red_led {
@@ -209,4 +216,42 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_601_1080p_cmd_v0>;
+};
+
+&muc {
+		gpios = <&tlmm 36 1>,            /* gpio_muc_det_n, input */
+			<&tlmm 35 0>,            /* gpio_muc_bplus_en, output-low */
+			<&tlmm 26 1>,            /* gpio_muc_int_n, input */
+			<&tlmm 28 2>,            /* gpio_muc_wake_n, output-high */
+			<&tlmm 95 1>,            /* gpio_muc_rdy_n, input */
+			<&tlmm 143 0>,           /* gpio_muc_ff, output-low */
+			<&tlmm 49 0>,            /* gpio_muc_spi_mosi, output-low */
+			<&tlmm 50 1>,            /* gpio_muc_spi_miso, input */
+			<&pmi8998_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
+			<0>,                     /* gpio_muc_bplus_discharg, cs */
+			<&pmi8998_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
+			<&tlmm 52 1>,            /* gpio_muc_clk, input */
+			<&tlmm 40 0>,            /* gpio_muc_spi_i2c_sel, output-low */
+			<&tlmm 100 0>;            /* gpio_muc_rgb_mod_sel, output-low */
+
+		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+				"gpio_muc_bplus_en",
+				"gpio_muc_int_n",
+				"gpio_muc_wake_n",
+				"gpio_muc_rdy_n",
+				"gpio_muc_ff",
+				"gpio_muc_spi_mosi",
+				"gpio_muc_spi_miso",
+				"gpio_muc_bplus_iset",
+				"gpio_muc_bplus_discharg",
+				"gpio_muc_bplus_fault_n",
+				"gpio_muc_clk",
+				"gpio_muc_spi_i2c_sel",
+				"gpio_muc_rgb_mod_sel";
+
+		pinctrl-0 = <&muc_attach &muc_det &spi_9_sleep &muc_spi_ctrl &muc_spi_i2c_switch>;
+		pinctrl-1 = <&muc_attach &muc_det &spi_9_active &muc_spi_ctrl &muc_spi_i2c_switch>;
+		pinctrl-3 = <&muc_attach &muc_det &i2c_9_active &muc_spi_ctrl &muc_spi_i2c_switch>;
+		mmi,muc-ctrl-select-spi-seq = <12 0 100>, <13 0 100>;
+		mmi,muc-ctrl-select-i2c-seq = <12 1 100>, <13 1 100>;
 };
