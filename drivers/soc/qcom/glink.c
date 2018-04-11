@@ -4204,7 +4204,13 @@ static void glink_core_channel_cleanup(struct glink_core_xprt_ctx *xprt_ptr)
 	rwref_read_get(&xprt_ptr->xprt_state_lhb0);
 	ctx = get_first_ch_ctx(xprt_ptr);
 	while (ctx) {
-		rwref_write_get_atomic(&ctx->ch_state_lhb2, true);
+		spin_unlock_irqrestore(&xprt_ptr->xprt_ctx_lock_lhb1, flags);
+		spin_unlock_irqrestore(&dummy_xprt_ctx->xprt_ctx_lock_lhb1,
+								d_flags);
+		rwref_write_get(&ctx->ch_state_lhb2);
+		spin_lock_irqsave(&dummy_xprt_ctx->xprt_ctx_lock_lhb1, d_flags);
+		spin_lock_irqsave(&xprt_ptr->xprt_ctx_lock_lhb1, flags);
+
 		if (ctx->local_open_state == GLINK_CHANNEL_OPENED ||
 			ctx->local_open_state == GLINK_CHANNEL_OPENING) {
 			ctx->transport_ptr = dummy_xprt_ctx;
