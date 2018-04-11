@@ -944,6 +944,41 @@ static int cs35l36_codec_probe(struct snd_soc_codec *codec)
 		regmap_update_bits(cs35l36->regmap, CS35L36_DTEMP_WARN_THLD,
 					CS35L36_TEMP_THLD_MASK,
 					cs35l36->pdata.temp_warn_thld);
+
+	if (cs35l36->pdata.vpr_en)
+		regmap_update_bits(cs35l36->regmap, CS35L36_PWR_CTRL3,
+					CS35L36_VPBR_EN_MASK,
+					cs35l36->pdata.vpr_en << CS35L36_VPBR_EN_SHIFT);
+
+	if (0xFFFF != cs35l36->pdata.vpr_thrld)
+		regmap_update_bits(cs35l36->regmap, CS35L36_VPBR_CFG,
+					CS35L36_VPBR_THLD_MASK,
+					cs35l36->pdata.vpr_thrld << CS35L36_VPBR_THLD_SHIFT);
+
+	if (0xFFFF != cs35l36->pdata.vpr_atk_vol)
+		regmap_update_bits(cs35l36->regmap, CS35L36_VPBR_CFG,
+					CS35L36_VPBR_ATK_VOL_MASK,
+					cs35l36->pdata.vpr_atk_vol
+					<< CS35L36_VPBR_ATK_VOL_SHIFT);
+
+	if (0xFFFF != cs35l36->pdata.vpr_atk_rate)
+		regmap_update_bits(cs35l36->regmap, CS35L36_VPBR_CFG,
+					CS35L36_VPBR_ATK_RATE_MASK,
+					cs35l36->pdata.vpr_atk_rate
+					<< CS35L36_VPBR_ATK_RATE_SHIFT);
+
+	if (0xFFFF != cs35l36->pdata.vpr_wait)
+		regmap_update_bits(cs35l36->regmap, CS35L36_VPBR_CFG,
+					CS35L36_VPBR_WAIT_MASK,
+					cs35l36->pdata.vpr_wait
+					<< CS35L36_VPBR_WAIT_SHIFT);
+
+	if (0xFFFF != cs35l36->pdata.vpr_rel_rate)
+		regmap_update_bits(cs35l36->regmap, CS35L36_VPBR_CFG,
+					CS35L36_VPBR_REL_RATE_MASK,
+					cs35l36->pdata.vpr_rel_rate
+					<< CS35L36_VPBR_REL_RATE_SHIFT);
+
 	/*
 	 * Rev B0 has 2 versions
 	 * L36 is 10V
@@ -1268,6 +1303,60 @@ static int cs35l36_handle_of_data(struct i2c_client *i2c_client,
 		if (of_property_read_u32(irq_gpio, "cirrus,irq-src-select",
 					&val) >= 0)
 			irq_gpio_config->irq_src_sel = val;
+	}
+	pdata->vpr_thrld = 0xFFFF;
+	pdata->vpr_atk_vol = 0xFFFF;
+	pdata->vpr_atk_rate = 0xFFFF;
+	pdata->vpr_wait = 0xFFFF;
+	pdata->vpr_rel_rate = 0xFFFF;
+	ret = of_property_read_u32(np, "cirrus,vpr-en", &val);
+	if (ret >= 0) {
+		pdata->vpr_en = val;
+	}
+	ret = of_property_read_u32(np, "cirrus,vpr-thrld", &val);
+	if (ret >= 0) {
+		if (val < 0x2 || val > 0x1f) {
+			dev_err(&i2c_client->dev,
+				"Invalid VP Threshold Voltage %d mV\n", val);
+			return -EINVAL;
+		}
+		pdata->vpr_thrld = val;
+	}
+	ret = of_property_read_u32(np, "cirrus,vpr-atk-vol", &val);
+	if (ret >= 0) {
+		if (val < 0 || val > 7) {
+			dev_err(&i2c_client->dev,
+				"Invalid Brownout Attack Volume\n");
+			return -EINVAL;
+		}
+		pdata->vpr_atk_vol = val;
+	}
+	ret = of_property_read_u32(np, "cirrus,vpr-atk-rate", &val);
+	if (ret >= 0) {
+		if (val < 0 || val > 7) {
+			dev_err(&i2c_client->dev,
+				"Invalid Brownout Attack Rate\n");
+			return -EINVAL;
+		}
+		pdata->vpr_atk_rate = val;
+	}
+	ret = of_property_read_u32(np, "cirrus,vpr-wait", &val);
+	if (ret >= 0) {
+		if (val < 0 || val > 3) {
+			dev_err(&i2c_client->dev,
+				"Invalid Brownout Wait Time\n");
+			return -EINVAL;
+		}
+		pdata->vpr_wait = val;
+	}
+	ret = of_property_read_u32(np, "cirrus,vpr-rel-rate", &val);
+	if (ret >= 0) {
+		if (val < 0 || val > 7) {
+			dev_err(&i2c_client->dev,
+				"Invalid Brownout Release Rate\n");
+			return -EINVAL;
+		}
+		pdata->vpr_rel_rate = val;
 	}
 	of_node_put(irq_gpio);
 
