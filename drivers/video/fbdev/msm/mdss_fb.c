@@ -3980,8 +3980,11 @@ static void mdss_fb_var_to_panelinfo(struct fb_var_screeninfo *var,
 	 * DSI interface, then store the pixel clock value in
 	 * DSI specific variable.
 	 */
-	if (pinfo->is_dba_panel)
+	if (pinfo->is_dba_panel) {
 		pinfo->mipi.dsi_pclk_rate = pinfo->clk_rate;
+		pinfo->panel_max_fps = mdss_panel_get_framerate(pinfo);
+		pinfo->panel_max_vtotal = mdss_panel_get_vtotal(pinfo);
+	}
 
 	if (var->sync & FB_SYNC_HOR_HIGH_ACT)
 		pinfo->lcdc.h_polarity = 0;
