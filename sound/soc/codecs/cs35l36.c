@@ -1030,13 +1030,22 @@ static irqreturn_t cs35l36_irq(int irq, void *data)
 	struct cs35l36_private *cs35l36 = data;
 	unsigned int status[4];
 	unsigned int masks[4];
+	int ret = 0;
 
 	/* ack the irq by reading all status registers */
-	regmap_bulk_read(cs35l36->regmap, CS35L36_INT1_STATUS,
+	ret = regmap_bulk_read(cs35l36->regmap, CS35L36_INT1_STATUS,
 				status, ARRAY_SIZE(status));
+	if (ret < 0) {
+		dev_crit(cs35l36->dev, "IRQ status read error: %d\n", ret);
+		return IRQ_NONE;
+	}
 
-	regmap_bulk_read(cs35l36->regmap, CS35L36_INT1_MASK,
+	ret = regmap_bulk_read(cs35l36->regmap, CS35L36_INT1_MASK,
 				masks, ARRAY_SIZE(masks));
+	if (ret < 0) {
+		dev_crit(cs35l36->dev, "IRQ masks read error: %d\n", ret);
+		return IRQ_NONE;
+	}
 
 	/* Check to see if unmasked bits are active */
 	if (!(status[0] & ~masks[0]) && !(status[1] & ~masks[1]) &&
