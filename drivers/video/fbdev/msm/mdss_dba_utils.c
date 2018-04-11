@@ -784,6 +784,9 @@ int mdss_dba_utils_reconfigure_dsi(void *data, struct mdss_panel_info *pinfo)
 	pt.t_clk_post = dsi_config.t_clk_post;
 
 	pinfo->mipi.dsi_pclk_rate = pt.timing.clk_rate;
+	pinfo->panel_max_fps = mdss_panel_get_framerate(pinfo);
+	pinfo->panel_max_vtotal = mdss_panel_get_vtotal(pinfo);
+
 	do_div(pinfo->mipi.dsi_pclk_rate, dsi_config.bpp);
 
 	ret = mdss_dsi_panel_timing_switch(ctrl, &pt.timing);
