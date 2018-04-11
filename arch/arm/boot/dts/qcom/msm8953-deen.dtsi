@@ -616,6 +616,7 @@
 	mot_batterydata: qcom,battery-data {
 		df-serialnum = "SB18C30735";
 		#include "batterydata-je40-scud.dtsi"
+		#include "batterydata-je40-atl.dtsi"
 	};
 };
 
