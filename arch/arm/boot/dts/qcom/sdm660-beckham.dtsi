@@ -99,7 +99,7 @@
 		ti,lra_freq = /bits/ 8 <0xCD>;
 		ti,lra_drive;
 		ti,auto_cal;
-		ti,auto_cal_time = /bits/ 8 <0x02>;
+		ti,auto_cal_time = /bits/ 8 <0x01>;
 		/* sample time 300us  */
 		ti,sample_time = /bits/ 8 <0x1c>;
 		ti,drive_time = /bits/ 8 <0x13>;
