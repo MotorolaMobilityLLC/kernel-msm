@@ -11650,6 +11650,50 @@ static u32 drv_point_distance(u16 n_x, u16 n_y, u16 nPrevX, u16 nPrevY)
 }
 #endif /*CONFIG_ENABLE_TYPE_B_PROTOCOL */
 
+#define CONFIG_ENABLE_APK_PRINT_FW_LOG
+#ifdef CONFIG_ENABLE_APK_PRINT_FW_LOG
+int apk_printf(unsigned char *pPacket, u16 n_length)
+{
+	int i = 0, len = 0;
+	static int cnt;
+	static char fwLog[256] = {0};
+
+	if (pPacket[0] == 0x2C) {
+		if (pPacket[1] == 1) {
+			for (i = 0; i < (n_length-2); i++)
+				fwLog[i+cnt*(n_length-2)] = pPacket[2+i];
+
+			cnt = 0;
+			printk("APK_PRINT_FW_LOG:%s\n", fwLog);
+			if (g_touch_k_obj != NULL) {
+				char printLog[256] = {0};
+				char *pEnvp[3];
+
+				len = strlen(fwLog);
+				strlcat(printLog, "FWLOG=", sizeof(printLog));
+				for (i = 6; i < len+6; i++) {
+					printLog[i] = fwLog[i-6];
+					fwLog[i-6] = 0;
+				}
+
+				pEnvp[0] = "STATUS=GET_FW_LOG";
+				pEnvp[1] = printLog;
+				pEnvp[2] = NULL;
+
+				kobject_uevent_env(g_touch_k_obj, KOBJ_CHANGE, pEnvp);
+			}
+		} else {
+			for (i = 0; i < (n_length-2); i++)
+				fwLog[i+cnt*(n_length-2)] = pPacket[2+i];
+			cnt++;
+		}
+		return 0;
+	}
+
+	return -EFAULT;
+}
+#endif
+
 static s32 drv_self_parse_packet(u8 *p_packet, u16 n_length,
                                struct self_touch_info_t *p_info)
 {                               /*for MSG22xx */
@@ -11703,7 +11747,10 @@ static s32 drv_self_parse_packet(u8 *p_packet, u16 n_length,
         DBG(&g_i2c_client->dev, "g_interrupt_count = %d\n", g_interrupt_count);
     }
 #endif /*CONFIG_ENABLE_COUNT_REPORT_RATE */
-
+#ifdef CONFIG_ENABLE_APK_PRINT_FW_LOG
+	if (0 == apk_printf(p_packet, 8))
+		return -EFAULT;
+#endif
     if (is_firmware_data_log_enabled) {
         if (g_firmware_mode == firmware_mode_demo_mode) {
             nCheckSumIndex = 7;
