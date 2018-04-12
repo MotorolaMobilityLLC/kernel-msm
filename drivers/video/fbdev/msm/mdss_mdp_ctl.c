@@ -1290,10 +1290,11 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		if (mixer->type == MDSS_MDP_MIXER_TYPE_INTF) {
 			if (pinfo->type == MIPI_VIDEO_PANEL) {
 				fps = pinfo->panel_max_fps;
+				v_total = pinfo->panel_max_vtotal;
 			} else {
 				fps = mdss_panel_get_framerate(pinfo);
+				v_total = mdss_panel_get_vtotal(pinfo);
 			}
-			v_total = mdss_panel_get_vtotal(pinfo);
 			if (is_dest_scaling_enable(mixer))
 				h_total = get_ds_output_width(mixer);
 			else
