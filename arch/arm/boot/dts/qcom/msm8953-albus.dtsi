@@ -703,6 +703,7 @@
 		qcom,batt-id-range-pct = <100>;
 		df-serialnum = "SNN5983A";
 		#include "batterydata-hz40-lg.dtsi"
+		#include "batterydata-hz40-lg-v2.dtsi"
 		#include "batterydata-hz40-swd.dtsi"
 	};
 };
