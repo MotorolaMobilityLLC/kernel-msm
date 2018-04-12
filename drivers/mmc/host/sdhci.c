@@ -199,9 +199,10 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 	sdhci_dump_state(host);
 	pr_info(DRIVER_NAME ": ===========================================\n");
 
-        //MMI_SHOPSHIP for issue debug
+#ifdef SDHCI_DUMPREG_DEBUG_PANIC
 	if (mmc_card_mmc(host->mmc->card))
 		BUG_ON(true);
+#endif
 }
 
 /*****************************************************************************\
