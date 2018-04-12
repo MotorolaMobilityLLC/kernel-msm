@@ -188,7 +188,7 @@ static irqreturn_t ft5x06_ts_interrupt(int irq, void *data);
 
 #define FT_MAX_WR_BUF		10
 #define FT_MAX_RD_BUF		3
-#define FT_FW_PKT_LEN		128
+#define FT_FW_PKT_LEN		32
 #define FT_FW_PKT_META_LEN	6
 #define FT_FW_PKT_DLY_MS	20
 #define FT_FW_LAST_PKT		0x6ffa
@@ -2079,6 +2079,167 @@ static int ft5x06_fw_upgrade_start(struct i2c_client *client,
 	return 0;
 }
 
+#define FT6X36_UPGRADE
+
+#ifdef FT6X36_UPGRADE
+#define FTS_REG_UPGRADE2                            0xBC
+#define FTS_FLASH_STATUS_OK_FT6336GU                0xB002
+#define FTS_CMD_FLASH_STATUS                        0x6A
+#define FTS_CMD_FLASH_STATUS_LEN                    2
+#define FTS_RETRIES_WRITE                           100
+#define FTS_RETRIES_DELAY_WRITE                     1
+
+#define BYTE_OFF_0(x)           (u8)((x) & 0xFF)
+#define BYTE_OFF_8(x)           (u8)((x >> 8) & 0xFF)
+#define BYTE_OFF_16(x)          (u8)((x >> 16) & 0xFF)
+#define BYTE_OFF_24(x)          (u8)((x >> 24) & 0xFF)
+
+/************************************************************************
+* Name: fts_ft6336gu_upgrade
+* Brief:
+* Input:
+* Output:
+* Return: return 0 if success, otherwise return error code
+***********************************************************************/
+static int fts_ft6336gu_upgrade(struct i2c_client *client,
+			const u8 *data, u32 data_len)
+{
+	int ret = 0;
+	struct ft5x06_ts_data *ts_data = i2c_get_clientdata(client);
+	struct fw_upgrade_info info = ts_data->pdata->info;
+	u8 w_buf[FT_MAX_WR_BUF] = {0}, r_buf[FT_MAX_RD_BUF] = {0};
+	u8 pkt_buf[FT_FW_PKT_LEN + FT_FW_PKT_META_LEN];
+	int i, j;
+	u32 pkt_num, pkt_len;
+	u8 fw_ecc = 0;
+	u32 remainder = 0;
+	u32 addr = 0;
+	u32 offset = 0;
+	u32 start_addr = 0;
+	u8 cmd[4] = {0};
+	u8 val[FTS_CMD_FLASH_STATUS_LEN] = { 0 };
+	u16 read_status = 0;
+	u16 wr_ok = 0;
+
+	for (i = 0, j = 0; i < FT_UPGRADE_LOOP; i++) {
+		msleep(FT_EARSE_DLY_MS);
+		/* reset - write 0xaa and 0x55 to reset register */
+
+		ft5x0x_write_reg(client, FT_RST_CMD_REG2, FT_UPGRADE_AA);
+		msleep(info.delay_aa);
+
+		ft5x0x_write_reg(client, FT_RST_CMD_REG2, FT_UPGRADE_55);
+		if (i <= (FT_UPGRADE_LOOP / 2))
+			msleep(info.delay_55 + i * 3);
+		else
+			msleep(info.delay_55 - (i - (FT_UPGRADE_LOOP / 2)) * 2);
+
+		/* Enter upgrade mode */
+		w_buf[0] = FT_UPGRADE_55;
+		ft5x06_i2c_write(client, w_buf, 1);
+		usleep_range(FT_55_AA_DLY_NS, FT_55_AA_DLY_NS + 1);
+		w_buf[0] = FT_UPGRADE_AA;
+		ft5x06_i2c_write(client, w_buf, 1);
+
+		/* check READ_ID */
+		msleep(info.delay_readid);
+		w_buf[0] = FT_READ_ID_REG;
+		w_buf[1] = 0x00;
+		w_buf[2] = 0x00;
+		w_buf[3] = 0x00;
+
+		ft5x06_i2c_read(client, w_buf, 4, r_buf, 2);
+
+		if (r_buf[0] != info.upgrade_id_1
+			|| r_buf[1] != info.upgrade_id_2) {
+			dev_err(&client->dev, "Upgrade ID mismatch(%d), IC=0x%x 0x%x, info=0x%x 0x%x\n",
+				i, r_buf[0], r_buf[1],
+				info.upgrade_id_1, info.upgrade_id_2);
+		} else
+			break;
+	}
+
+	if (i >= FT_UPGRADE_LOOP) {
+		dev_err(&client->dev, "Abort upgrade\n");
+		return -EIO;
+	}
+
+	/* erase app and panel paramenter area */
+	w_buf[0] = FT_ERASE_APP_REG;
+	ft5x06_i2c_write(client, w_buf, 1);
+	msleep(info.delay_erase_flash);
+
+	pkt_num = data_len / FT_FW_PKT_LEN;
+	remainder = data_len % FT_FW_PKT_LEN;
+	if (remainder > 0)
+		pkt_num++;
+	pkt_len = FT_FW_PKT_LEN;
+	dev_err(&client->dev, "write fw,num:%d, remainder:%d", pkt_num, remainder);
+
+	pkt_buf[0] = FT_FW_START_REG;
+	for (i = 0; i < pkt_num; i++) {
+		offset = i * FT_FW_PKT_LEN;
+		addr = start_addr + offset;
+		pkt_buf[1] = BYTE_OFF_16(addr);
+		pkt_buf[2] = BYTE_OFF_8(addr);
+		pkt_buf[3] = BYTE_OFF_0(addr);
+
+		/* last packet */
+		if ((i == (pkt_num - 1)) && remainder)
+			pkt_len = remainder;
+
+		pkt_buf[4] = BYTE_OFF_8(pkt_len);
+		pkt_buf[5] = BYTE_OFF_0(pkt_len);
+
+		for (j = 0; j < pkt_len; j++) {
+			pkt_buf[FT_FW_PKT_META_LEN + j] = data[offset + j];
+			fw_ecc ^= pkt_buf[FT_FW_PKT_META_LEN + j];
+		}
+
+		ret = ft5x06_i2c_write(client, pkt_buf, pkt_len + FT_FW_PKT_META_LEN);
+		if (ret < 0) {
+			dev_err(&client->dev, "[UPGRADE]app write fail");
+			return ret;
+		}
+		mdelay(1);
+
+		/* read status */
+		wr_ok = FTS_FLASH_STATUS_OK_FT6336GU + i + 1;
+		for (j = 0; j < FTS_RETRIES_WRITE; j++) {
+			cmd[0] = FTS_CMD_FLASH_STATUS;
+			cmd[1] = 0x00;
+			cmd[2] = 0x00;
+			cmd[3] = 0x00;
+			ret = ft5x06_i2c_read(client, cmd , 4, val, FTS_CMD_FLASH_STATUS_LEN);
+			read_status = (((u16)val[0]) << 8) + val[1];
+
+			if (wr_ok == read_status) {
+			    break;
+			}
+			mdelay(FTS_RETRIES_DELAY_WRITE);
+		}
+	}
+
+	/* verify checksum */
+	w_buf[0] = FT_REG_ECC;
+	ft5x06_i2c_read(client, w_buf, 1, r_buf, 1);
+	if (r_buf[0] != fw_ecc) {
+		dev_err(&client->dev, "ECC error! dev_ecc=%02x fw_ecc=%02x\n",
+					r_buf[0], fw_ecc);
+		return -EIO;
+	}
+
+	/* reset */
+	w_buf[0] = FT_REG_RESET_FW;
+	ft5x06_i2c_write(client, w_buf, 1);
+	msleep(ts_data->pdata->soft_rst_dly);
+
+	dev_info(&client->dev, "Firmware upgrade successful\n");
+
+	return 0;
+}
+#endif
+
 static int ft5x06_fw_upgrade(struct device *dev, bool force)
 {
 	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
@@ -2135,7 +2296,11 @@ static int ft5x06_fw_upgrade(struct device *dev, bool force)
 
 	/* start firmware upgrade */
 	if (FT_FW_CHECK(fw, data)) {
-		rc = ft5x06_fw_upgrade_start(data->client, fw->data, fw->size);
+		if (data->family_id == FT6X36_ID)
+			rc = fts_ft6336gu_upgrade(data->client, fw->data, fw->size);
+		else
+			rc = ft5x06_fw_upgrade_start(data->client, fw->data, fw->size);
+
 		if (rc < 0)
 			dev_err(dev, "update failed (%d). try later...\n", rc);
 		else if (data->pdata->info.auto_cal)
@@ -3865,8 +4030,10 @@ power_off:
 	else
 		ft5x06_power_on(data, false);
 free_gpio:
-	if (gpio_is_valid(pdata->reset_gpio))
+	if (gpio_is_valid(pdata->reset_gpio)) {
+		gpio_set_value_cansleep(data->pdata->reset_gpio, 0);
 		gpio_free(pdata->reset_gpio);
+	}
 	if (gpio_is_valid(pdata->irq_gpio))
 		gpio_free(pdata->irq_gpio);
 err_gpio_req:
