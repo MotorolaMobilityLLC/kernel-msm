@@ -110,6 +110,12 @@
 		cirrus,weak-fet-delay = <0x04>;
 		cirrus,weak-fet-thld = <0x01>;
 		cirrus,temp-warn-threshold = <0x01>;
+		cirrus,vpr-en = <1>;
+		cirrus,vpr-thrld = <12>;
+		cirrus,vpr-atk-vol = <3>;
+		cirrus,vpr-atk-rate = <2>;
+		cirrus,vpr-wait = <0>;
+		cirrus,vpr-rel-rate = <3>;
 
 		cirrus,irq-config {
 			cirrus,irq-drive-select = <0x01>;
