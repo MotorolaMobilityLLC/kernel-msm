@@ -32,6 +32,12 @@
 /* enable body stat */
 #define ABOV_TCHCMPSTAT_TCHSTAT0_FLAG   0x03
 
+enum boot_mode {
+	NORMAL_MODE,
+	BOOTLOADER_MODE,
+	UNKONOW_MODE,
+};
+
 /**************************************
 * define platform data
 *
@@ -178,6 +184,11 @@ static struct sensors_classdev sensors_capsensor_bottom_cdev = {
 
 #define MAX_NUM_STATUS_BITS (8)
 
+struct fw_update {
+	struct work_struct worker;
+	bool force_update;
+};
+
 typedef struct abovXX abovXX_t, *pabovXX_t;
 struct abovXX {
 	struct device *pdev;
@@ -205,7 +216,7 @@ struct abovXX {
 	bool ps_is_present;
 	bool loading_fw;
 
-	struct work_struct fw_update_work;
+	struct fw_update fw_update_work;
 
 	/* Function Pointers */
 	int (*init)(pabovXX_t this);
@@ -222,5 +233,6 @@ void abovXX_suspend(pabovXX_t this);
 void abovXX_resume(pabovXX_t this);
 int abovXX_sar_init(pabovXX_t this);
 int abovXX_sar_remove(pabovXX_t this);
+static int abov_tk_fw_mode_enter(struct i2c_client *client);
 
 #endif
