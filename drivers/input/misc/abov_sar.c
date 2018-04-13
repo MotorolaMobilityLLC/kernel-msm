@@ -184,18 +184,20 @@ static int abov_detect(struct i2c_client *client)
 	if (client) {
 		for (i = 0; i < 3; i++) {
 			returnValue = i2c_smbus_read_byte_data(client, address);
-			LOG_INFO("abov read_register for %d time Addr: 0x%x Return: 0x%x\n",
-					i, address, returnValue);
-			if (returnValue >= 0) {
-				if (value == returnValue) {
-					LOG_INFO("abov detect success!\n");
-					return 1;
-				}
+			if (value == returnValue) {
+				LOG_INFO("abov detect success!\n");
+				return NORMAL_MODE;
 			}
+
+			if (abov_tk_fw_mode_enter(client) == 0) {
+				LOG_INFO("abov boot detect success!\n");
+				return BOOTLOADER_MODE;
+			}
+			SLEEP(100);
 		}
 	}
 	LOG_INFO("abov detect failed!!!\n");
-	return 0;
+	return UNKONOW_MODE;
 }
 
 /**
@@ -1288,8 +1290,11 @@ static int abov_fw_update(bool force)
 				this->board->fw_name, rc);
 		return rc;
 	}
-	read_register(this, ABOV_VERSION_REG, &fw_version);
-	read_register(this, ABOV_MODELNO_REG, &fw_modelno);
+
+	if (force == false) {
+		read_register(this, ABOV_VERSION_REG, &fw_version);
+		read_register(this, ABOV_MODELNO_REG, &fw_modelno);
+	}
 
 	fw_file_modeno = fw->data[1];
 	fw_file_version = fw->data[5];
@@ -1335,7 +1340,8 @@ static ssize_t capsense_fw_ver_show(struct class *class,
 	pabovXX_t this = abov_sar_ptr;
 
 	read_register(this, ABOV_VERSION_REG, &fw_version);
-	return snprintf(buf, 16, "0x%x\n", fw_version);
+
+	return snprintf(buf, 16, "ABOV:0x%x\n", fw_version);
 }
 
 static ssize_t capsense_update_fw_store(struct class *class,
@@ -1414,12 +1420,12 @@ static CLASS_ATTR(fw_download_status, 0660, capsense_fw_download_status_show, NU
 
 static void capsense_update_work(struct work_struct *work)
 {
-	pabovXX_t this = container_of(work, abovXX_t, fw_update_work);
+	pabovXX_t this = container_of(work, abovXX_t, fw_update_work.worker);
 
 	LOG_INFO("%s: start update firmware\n", __func__);
 	mutex_lock(&this->mutex);
 	this->loading_fw = true;
-	abov_fw_update(false);
+	abov_fw_update(this->fw_update_work.force_update);
 	this->loading_fw = false;
 	mutex_unlock(&this->mutex);
 	LOG_INFO("%s: update firmware end\n", __func__);
@@ -1438,6 +1444,7 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	pabov_t pDevice = 0;
 	pabov_platform_data_t pplatData = 0;
 	int ret;
+	bool isForceUpdate = false;
 	struct input_dev *input_top = NULL;
 	struct input_dev *input_bottom = NULL;
 	struct power_supply *psy = NULL;
@@ -1491,18 +1498,21 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	/* detect if abov exist or not */
-	if (abov_detect(client) == 0) {
+	ret = abov_detect(client);
+	if (ret == UNKONOW_MODE) {
 		ret = -ENODEV;
-		goto err_svdd_error;
+		goto err_this_device;
+	} else if (ret == BOOTLOADER_MODE) {
+		LOG_INFO("abov enter boot mode\n");
+		isForceUpdate = true;
 	}
-
 	abov_platform_data_of_init(client, pplatData);
 	client->dev.platform_data = pplatData;
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_SMBUS_READ_WORD_DATA)) {
 		ret = -EIO;
-		goto err_svdd_error;
+		goto err_this_device;
 	}
 
 	this = kzalloc(sizeof(abovXX_t), GFP_KERNEL);
@@ -1693,8 +1703,9 @@ static int abov_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 		this->loading_fw = false;
 		fw_dl_status = 1;
-		INIT_WORK(&this->fw_update_work, capsense_update_work);
-		schedule_work(&this->fw_update_work);
+		this->fw_update_work.force_update = isForceUpdate;
+		INIT_WORK(&this->fw_update_work.worker, capsense_update_work);
+		schedule_work(&this->fw_update_work.worker);
 
 		return  0;
 	}
