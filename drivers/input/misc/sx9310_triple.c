@@ -173,7 +173,8 @@ static int sx9310_detect(struct i2c_client *client)
 {
 	s32 returnValue = 0, i;
 	u8 address = SX9310_WHOAMI;
-	u8 value = 0x01;
+	u8 value_9310 = 0x01;
+	u8 value_9311 = 0x02;
 
 	if (client) {
 		for (i = 0; i < 3; i++) {
@@ -181,15 +182,14 @@ static int sx9310_detect(struct i2c_client *client)
 			LOG_INFO("sx9310 read_register for %d time Addr:\
 					0x%x Return: 0x%x\n",
 					i, address, returnValue);
-			if (returnValue >= 0) {
-				if (value == returnValue) {
-					LOG_INFO("sx9310 detect success!\n");
-					return 1;
-				}
+			if (value_9310 == returnValue ||
+					value_9311 == returnValue) {
+				LOG_INFO("sx9310 detect success !\n");
+				return 1;
 			}
 		}
 	}
-	LOG_ERR("sx9310 detect failed!!!\n");
+	LOG_ERR("sx9310 detect failed !!!\n");
 	return 0;
 }
 
