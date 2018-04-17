@@ -104,6 +104,24 @@
 		};
 	};
 
+	sx9310_irq_default {
+		/* qcom,pins = <&gp 48>;*/
+		pins = "gpio86";
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "sx9310_irq_default";
+
+		sx9310_int_default: int_default {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		sx9310_int_sleep: int_sleep {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	/delete-node/ fps;
 	fps: fps {
 		rst_active: rst_active {
