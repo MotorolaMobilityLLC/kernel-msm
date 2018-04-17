@@ -5058,8 +5058,8 @@ irqreturn_t smblib_handle_switcher_power_ok(int irq, void *data)
 	struct smb_charger *chg = irq_data->parent_data;
 	struct storm_watch *wdata = &irq_data->storm_data;
 	int pok_irq = chg->irq_info[SWITCH_POWER_OK_IRQ].irq;
-	int rc, usb_icl;
-	u8 stat;
+	int rc;
+	u8 stat, susp;
 
 	if (!(chg->wa_flags & BOOST_BACK_WA))
 		return IRQ_HANDLED;
@@ -5070,9 +5070,14 @@ irqreturn_t smblib_handle_switcher_power_ok(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
+	rc = smblib_read(chg, USBIN_CMD_IL_REG, &susp);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't read USBIN_CMD_IL rc=%d\n", rc);
+		return IRQ_HANDLED;
+	}
+
 	/* skip suspending input if its already suspended by some other voter */
-	usb_icl = get_effective_result(chg->usb_icl_votable);
-	if ((stat & USE_USBIN_BIT) && usb_icl >= 0 && usb_icl < USBIN_25MA)
+	if ((stat & USE_USBIN_BIT) && (susp & USBIN_SUSPEND_BIT))
 		return IRQ_HANDLED;
 
 	if (stat & USE_DCIN_BIT)
@@ -7118,11 +7123,17 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			smblib_err(chip,
 				   "Reverse Boosted: Clear, USB Suspend\n");
 			chip->reverse_boost = false;
-			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
-			     true, 0);
+			if (chip->mmi.factory_mode)
+				smblib_set_usb_suspend(chip, true);
+			else
+				vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+				     true, 0);
 			msleep(50);
-			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
-			     false, 0);
+			if (chip->mmi.factory_mode)
+				smblib_set_usb_suspend(chip, false);
+			else
+				vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+				     false, 0);
 			enable_irq(pok_irq);
 		} else {
 			smblib_err(chip,
