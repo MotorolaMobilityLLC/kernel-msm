@@ -87,6 +87,17 @@
 	};
 };
 
+&pm8953_gpios {
+	madera_mclk {
+		madera_mclk_default: madera_mclk_default{
+			pins = "gpio2"; /* GPIO 2 */
+			function = "dtest3";
+			output-low;
+			bias-disable; /* No Pull */
+		};
+	};
+};
+
 &i2c_2 {
 	/delete-node/ wsa881x-i2c-codec@f;
 	/delete-node/ wsa881x-i2c-codec@45;
@@ -195,10 +206,7 @@
 		qcom,audio-routing =
 			"IN1AL", "MICBIAS2A",
 			"IN2R", "MICBIAS2B",
-			"IN2L",  "MICBIAS2B",
-			"IN1AR", "MICBIAS2A",
-			"IN1AR", "GPSW",
-			"IN1BR", "MICBIAS1A",
+			"IN2L", "MICBIAS2A",
 			"IN1BR", "MICBIAS1B";
 	};
 
@@ -237,7 +245,7 @@
 			#interrupt-cells = <2>;
 			reset-gpios = <&tlmm 68 0>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&marley_irq_default &marley_reset_default>;
+			pinctrl-0 = <&marley_irq_default &marley_reset_default &madera_mclk_default>;
 
 			AVDD-supply = <&pm8953_l6>;
 			DBVDD1-supply = <&pm8953_l6>;
@@ -290,17 +298,16 @@
 					cirrus,micd-rate = <6>;
 					cirrus,micd-dbtime = <0x1>;
 					cirrus,micd-ranges = <
-						70 0xE2		/* KEY_MEDIA */
-						180 0x246	/* KEY_VOICECOMMAND */
-						290 0x73	/* KEY_VOLUMEUP */
-						680 0x72	/* KEY_VOLUMEDOWN */
+						 100 226 /* HEADSETHOOK  */
+						 150 582 /* VOICE_ASSIST */
+						 295 115 /* VOLUME_UP    */
+						1257 114 /* VOLUME_DOWN  */
 					>;
 					cirrus,micd-configs = <
-						0 1 1 0 0
-						1 0 2 1 0
+						0 1 2 0 0
 					>;
-					cirrus,micd-pol-gpios = <&cs47l35 6 0>,
-								<&cs47l35 15 0>;
+					cirrus,micd-clamp-mode = <0x4>;
+					cirrus,gpsw = <1 0>;
 				};
 			};
 
