@@ -1850,6 +1850,7 @@ static int fastrpc_file_free(struct fastrpc_file *fl)
 	if (fl->ssrcount == fl->apps->channel[cid].ssrcount)
 		kref_put_mutex(&fl->apps->channel[cid].kref,
 				fastrpc_channel_close, &fl->apps->smd_mutex);
+	mutex_destroy(&fl->map_mutex);
 	kfree(fl);
 	return 0;
 }
@@ -2003,7 +2004,6 @@ static int fastrpc_device_release(struct inode *inode, struct file *file)
 		}
 		me->pending_free++;
 		mutex_unlock(&me->flfree_mutex);
-		mutex_destroy(&fl->map_mutex);
 		file->private_data = NULL;
 	}
 bail:
