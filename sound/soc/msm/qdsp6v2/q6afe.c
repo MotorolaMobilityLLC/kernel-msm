@@ -37,6 +37,7 @@
 #ifdef CONFIG_SND_SOC_TFA9874
 #define AFE_PARAM_ID_TFADSP_RX_CFG 	(0x1000B921)
 #define AFE_MODULE_ID_TFADSP_RX		(0x1000B911)
+#define AFE_TFADSP_RX_SET_BYPASS	(0x1000B923)
 #endif
 
 #define WAKELOCK_TIMEOUT	5000
@@ -1093,6 +1094,7 @@ static int afe_spk_prot_prepare(int src_port, int dst_port, int param_id,
 		break;
 #ifdef CONFIG_SND_SOC_TFA9874
 	case AFE_PARAM_ID_TFADSP_RX_CFG:
+	case AFE_TFADSP_RX_SET_BYPASS:
 		config.pdata.module_id = AFE_MODULE_ID_TFADSP_RX;
 		break;
 #endif
@@ -6832,6 +6834,26 @@ int send_tfa_cal_in_band(void *buf, int cmd_size)
 			&afe_spk_config))
 			pr_err("%s: AFE_PARAM_ID_TFADSP_RX_CFG failed\n",
 				   __func__);
+	return 0;
+}
+
+int send_tfa_cal_set_bypass(void *buf, int cmd_size)
+{
+	union afe_spkr_prot_config afe_spk_config;
+	int32_t port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
+
+	if (cmd_size > sizeof(afe_spk_config))
+		return -EINVAL;
+
+	memcpy(&afe_spk_config, buf, cmd_size);
+
+	if (afe_spk_prot_prepare(port_id, 0,
+			AFE_TFADSP_RX_SET_BYPASS,
+			&afe_spk_config)) {
+			pr_err("%s: AFE_TFADSP_RX_SET_BYPASS failed\n",
+				   __func__);
+	}
+
 	return 0;
 }
 #endif /*CONFIG_SND_SOC_TFA9874*/
