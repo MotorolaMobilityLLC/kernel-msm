@@ -124,6 +124,42 @@ static const struct tfa98xx_rate rate_to_fssel[] = {
 	{ 48000, 8 },
 };
 
+static atomic_t g_bypass;
+extern int send_tfa_cal_set_bypass(void *buf, int cmd_size);
+
+/*************bypass control***************/
+static int tfa987x_algo_get_status(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	int32_t ret = 0;
+	ucontrol->value.integer.value[0] = atomic_read(&g_bypass);
+	return ret;
+}
+
+static int tfa987x_algo_set_status(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	int32_t ret = 0;
+	u8 buff[56] = {0}, *ptr = buff;
+	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
+	pr_err("%s:status data %d\n", __func__, ((int32_t *)buff)[0]);
+	atomic_set(&g_bypass, ((int32_t *)buff)[0]);
+	ret = send_tfa_cal_set_bypass(ptr, 4);
+	return ret;
+}
+
+static const char *tfa987x_algo_text[] = {
+	"DISABLE", "ENABLE"
+};
+
+static const struct soc_enum tfa987x_algo_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa987x_algo_text), tfa987x_algo_text)
+};
+
+const struct snd_kcontrol_new tfa987x_algo_filter_mixer_controls[] = {
+	SOC_ENUM_EXT("TFA987X_ALGO_STATUS", tfa987x_algo_enum[0], tfa987x_algo_get_status, tfa987x_algo_set_status)
+};
+
 static inline char *tfa_cont_profile_name(struct tfa98xx *tfa98xx, int prof_idx)
 {
 	if (tfa98xx->tfa->cnt == NULL)
@@ -1535,6 +1571,7 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 	int prof, nprof, mix_index = 0;
 	int  nr_controls = 0, id = 0;
 	char *name;
+	int ret = 0;
 	struct tfa98xx_baseprofile *bprofile;
 
 	/* Create the following controls:
@@ -1543,10 +1580,14 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 	 *  - Stop control on TFA1 devices
 	 */
 
-	nr_controls = 4; /* Profile and stop control */
+	nr_controls = 2; /* Profile and stop control */
 
 	if (tfa98xx->flags & TFA98XX_FLAG_CALIBRATION_CTL)
 		nr_controls += 1; /* calibration */
+
+#ifdef TFA9874_NONDSP_STEREO
+	nr_controls += 1;  /* for TFA_CHIP_SELECTOR */
+#endif
 
 	/* allocate the tfa98xx_controls base on the nr of profiles */
 	nprof = tfa_cnt_get_dev_nprof(tfa98xx->tfa);
@@ -1663,8 +1704,13 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
         mix_index++;
 #endif
 
-	return snd_soc_add_codec_controls(tfa98xx->codec,
+	ret = snd_soc_add_codec_controls(tfa98xx->codec,
 		tfa98xx_controls, mix_index);
+
+	ret = snd_soc_add_codec_controls(tfa98xx->codec,
+		tfa987x_algo_filter_mixer_controls, ARRAY_SIZE(tfa987x_algo_filter_mixer_controls));
+
+	return ret;
 }
 
 static void *tfa98xx_devm_kstrdup(struct device *dev, char *buf)
@@ -1702,10 +1748,8 @@ static int tfa98xx_append_i2c_address(struct device *dev,
 						dai_drv[i].capture.stream_name,
 						i2cbus, addr);
 			dai_drv[i].capture.stream_name = tfa98xx_devm_kstrdup(dev, buf);
-	printk("liqiang_debug:name=%s, playback_name=%s, capture_name=%s, num_dai=%d\n",dai_drv[i].name, 
-       dai_drv[i].playback.stream_name, dai_drv[i].capture.stream_name, num_dai);
 		}
-       
+
 	/* the idea behind this is convert:
 	 * SND_SOC_DAPM_AIF_IN("AIF IN", "AIF Playback", 0, SND_SOC_NOPM, 0, 0),
 	 * into:
@@ -2752,7 +2796,7 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 	struct tfa98xx *tfa98xx = snd_soc_codec_get_drvdata(codec);
 
 	dev_dbg(&tfa98xx->i2c->dev, "%s: state: %d\n", __func__, mute);
-
+	atomic_set(&g_bypass, 0);
 	if (no_start) {
 		pr_debug("no_start parameter set no tfa_dev_start or tfa_dev_stop, returning\n");
 		return 0;
@@ -2844,6 +2888,7 @@ static struct snd_soc_dai_driver tfa98xx_dai[] = {
 		.symmetric_rates = 1,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
 		.symmetric_channels = 1,
+		.symmetric_samplebits = 1,
 #endif
 	},
 };
@@ -3120,7 +3165,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 	unsigned int reg;
 	int ret;
 
-	pr_err("%s: addr=0x%x\n", __func__, i2c->addr);
+	pr_info("%s: addr=0x%x\n", __func__, i2c->addr);
 
 	if (!i2c_check_functionality(i2c->adapter, I2C_FUNC_I2C)) {
 		dev_err(&i2c->dev, "check_functionality failed\n");
