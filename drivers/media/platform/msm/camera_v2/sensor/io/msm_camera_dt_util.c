@@ -156,6 +156,7 @@ int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 			if (j == num_vreg)
 				power_setting[i].seq_val = INVALID_VREG;
 			break;
+
 		case CAM_V_CUSTOM2:
 			for (j = 0; j < num_vreg; j++) {
 				if (!strcmp(cam_vreg[j].reg_name,
