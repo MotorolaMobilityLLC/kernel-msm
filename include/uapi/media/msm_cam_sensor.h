@@ -366,6 +366,7 @@ enum msm_actuator_cfg_type_t {
 	CFG_ACTUATOR_POWERDOWN,
 	CFG_ACTUATOR_POWERUP,
 	CFG_ACTUATOR_INIT,
+	CFG_GET_POSITION,
 };
 
 struct msm_ois_opcode {
@@ -442,6 +443,15 @@ struct park_lens_data_t {
 	uint32_t max_step;
 };
 
+struct msm_actuator_get_pos_cfg_t {
+	uint16_t target_supported;
+	uint16_t target_reg;
+	uint16_t target_data_shift;
+	uint16_t actual_supported;
+	uint16_t actual_reg;
+	uint16_t actual_data_shift;
+};
+
 struct msm_actuator_params_t {
 	enum actuator_type act_type;
 	uint8_t reg_tbl_size;
@@ -454,6 +464,7 @@ struct msm_actuator_params_t {
 	struct msm_actuator_reg_params_t __user *reg_tbl_params;
 	struct reg_settings_t __user *init_settings;
 	struct park_lens_data_t park_lens;
+	struct msm_actuator_get_pos_cfg_t get_pos_cfg;
 };
 
 struct msm_actuator_set_info_t {
@@ -513,6 +524,13 @@ struct msm_actuator_set_position_t {
 	uint16_t delay[MAX_NUMBER_OF_STEPS];
 };
 
+struct msm_actuator_get_position_t {
+	uint16_t target_supported;
+	int32_t  target;
+	uint16_t actual_supported;
+	int32_t  actual;
+};
+
 struct msm_actuator_cfg_data {
 	int cfgtype;
 	uint8_t is_af_supported;
@@ -521,6 +539,7 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_info_t set_info;
 		struct msm_actuator_get_info_t get_info;
 		struct msm_actuator_set_position_t setpos;
+		struct msm_actuator_get_position_t getpos;
 		enum af_camera_name cam_name;
 	} cfg;
 };
