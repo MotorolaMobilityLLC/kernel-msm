@@ -1237,6 +1237,66 @@ static int32_t msm_actuator_set_position(
 	return rc;
 }
 
+static int32_t msm_actuator_get_position(
+	struct msm_actuator_ctrl_t *a_ctrl,
+	struct msm_actuator_get_position_t *get_pos)
+{
+	int32_t rc = 0;
+	CDBG("%s Enter %d\n", __func__, __LINE__);
+
+	if (!a_ctrl || !a_ctrl->i2c_client.i2c_func_tbl ||
+			!a_ctrl->i2c_client.i2c_func_tbl->i2c_read) {
+		pr_err("failed. NULL actuator pointers.");
+		return -EFAULT;
+	}
+
+	if (a_ctrl->actuator_state != ACT_OPS_ACTIVE) {
+		pr_err("failed. Invalid actuator state.");
+		return -EFAULT;
+	}
+
+	memset(get_pos, 0, sizeof(*get_pos));
+
+	if (a_ctrl->get_pos_cfg.target_supported) {
+		uint16_t data;
+		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+				&a_ctrl->i2c_client,
+				a_ctrl->get_pos_cfg.target_reg,
+				&data,
+				a_ctrl->i2c_data_type);
+		if (rc < 0) {
+			pr_err("failed. unable to get target position\n");
+			return -EFAULT;
+		}
+		data >>= a_ctrl->get_pos_cfg.target_data_shift;
+		get_pos->target = (int32_t)data;
+		get_pos->target_supported = 1;
+	}
+
+	if (a_ctrl->get_pos_cfg.actual_supported) {
+		uint16_t data;
+		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+				&a_ctrl->i2c_client,
+				a_ctrl->get_pos_cfg.actual_reg,
+				&data,
+				a_ctrl->i2c_data_type);
+		if (rc < 0) {
+			pr_err("failed. unable to get actual position\n");
+			return -EFAULT;
+		}
+		data >>= a_ctrl->get_pos_cfg.actual_data_shift;
+		get_pos->actual = (int32_t)data;
+		get_pos->actual_supported = 1;
+	}
+
+	CDBG("get pos: %d %d %d %d\n",
+			get_pos->target_supported, get_pos->target,
+			get_pos->actual_supported, get_pos->actual);
+
+	CDBG("%s exit %d\n", __func__, __LINE__);
+	return rc;
+}
+
 static int32_t msm_actuator_bivcm_set_position(
 	struct msm_actuator_ctrl_t *a_ctrl,
 	struct msm_actuator_set_position_t *set_pos)
@@ -1412,6 +1472,27 @@ static int32_t msm_actuator_set_param(struct msm_actuator_ctrl_t *a_ctrl,
 		rc = a_ctrl->func_tbl->
 			actuator_init_step_table(a_ctrl, set_info);
 
+	/* Get Position Config */
+	a_ctrl->get_pos_cfg.target_supported =
+		set_info->actuator_params.get_pos_cfg.target_supported;
+	a_ctrl->get_pos_cfg.target_reg =
+		set_info->actuator_params.get_pos_cfg.target_reg;
+	a_ctrl->get_pos_cfg.target_data_shift =
+		set_info->actuator_params.get_pos_cfg.target_data_shift;
+	a_ctrl->get_pos_cfg.actual_supported =
+		set_info->actuator_params.get_pos_cfg.actual_supported;
+	a_ctrl->get_pos_cfg.actual_reg =
+		set_info->actuator_params.get_pos_cfg.actual_reg;
+	a_ctrl->get_pos_cfg.actual_data_shift =
+		set_info->actuator_params.get_pos_cfg.actual_data_shift;
+	CDBG("get pos cfg: %d %d %d %d %d %d\n",
+			a_ctrl->get_pos_cfg.target_supported,
+			a_ctrl->get_pos_cfg.target_reg,
+			a_ctrl->get_pos_cfg.target_data_shift,
+			a_ctrl->get_pos_cfg.actual_supported,
+			a_ctrl->get_pos_cfg.actual_reg,
+			a_ctrl->get_pos_cfg.actual_data_shift);
+
 	a_ctrl->curr_step_pos = 0;
 	a_ctrl->curr_region_index = 0;
 	CDBG("Exit\n");
@@ -1506,6 +1587,12 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 				&cdata->cfg.setpos);
 		if (rc < 0)
 			pr_err("actuator_set_position failed %d\n", rc);
+		break;
+
+	case CFG_GET_POSITION:
+		rc = msm_actuator_get_position(a_ctrl, &cdata->cfg.getpos);
+		if (rc < 0)
+			pr_err("msm_actuator_get_position failed %d\n", rc);
 		break;
 
 	case CFG_ACTUATOR_POWERUP:
@@ -1715,6 +1802,9 @@ static long msm_actuator_subdev_do_ioctl(
 			actuator_data.cfg.set_info.actuator_params.park_lens =
 				u32->cfg.set_info.actuator_params.park_lens;
 
+			actuator_data.cfg.set_info.actuator_params.get_pos_cfg =
+				u32->cfg.set_info.actuator_params.get_pos_cfg;
+
 			parg = &actuator_data;
 			break;
 		case CFG_SET_DEFAULT_FOCUS:
@@ -1768,6 +1858,9 @@ static long msm_actuator_subdev_do_ioctl(
 		case CFG_MOVE_FOCUS:
 			u32->cfg.move.curr_lens_pos =
 				actuator_data.cfg.move.curr_lens_pos;
+			break;
+		case CFG_GET_POSITION:
+			u32->cfg.getpos = actuator_data.cfg.getpos;
 			break;
 		default:
 			break;
