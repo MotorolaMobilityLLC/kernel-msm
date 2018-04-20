@@ -98,6 +98,7 @@
 
 	/delete-node/ eldo2;
 	/delete-node/ uart@78b0000;
+	/delete-node/ uart@7aef000;
 	/delete-node/ i2c@7af5000;
 	/delete-node/ spi@78b7000;
 	/delete-node/ adv_vreg;
