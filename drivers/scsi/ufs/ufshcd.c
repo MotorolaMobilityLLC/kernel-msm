@@ -3117,7 +3117,6 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		clear_bit_unlock(tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
 		ufshcd_vops_pm_qos_req_end(hba, cmd->request, true);
-		pm_wakeup_event(hba->dev, 1000);
 
 		goto out;
 	}
@@ -10160,8 +10159,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 * ufshcd_probe_hba().
 	 */
 	ufshcd_set_ufs_dev_active(hba);
-
-	device_init_wakeup(hba->dev, true);
 
 	ufshcd_cmd_log_init(hba);
 
