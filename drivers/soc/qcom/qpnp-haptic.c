@@ -1899,7 +1899,8 @@ static int qpnp_hap_auto_res_enable(struct qpnp_hap *hap, int enable)
 		return 0;
 	}
 
-	if (!hap->correct_lra_drive_freq && !auto_res_mode_qwd) {
+	if (!hap->lra_hw_auto_resonance && !hap->correct_lra_drive_freq
+		&& !auto_res_mode_qwd) {
 		pr_debug("correct_lra_drive_freq: %d auto_res_mode_qwd: %d\n",
 			hap->correct_lra_drive_freq, auto_res_mode_qwd);
 		return 0;
@@ -2067,11 +2068,9 @@ static int qpnp_hap_set(struct qpnp_hap *hap, bool on)
 			if (rc < 0)
 				return rc;
 
-			if (hap->ares_cfg.auto_res_mode != QPNP_HAP_AUTO_RES_NONE) {
-			       rc = qpnp_hap_auto_res_enable(hap, 1);
-			       if (rc < 0)
-				      return rc;
-			}
+			rc = qpnp_hap_auto_res_enable(hap, 1);
+			if (rc < 0)
+				return rc;
 
 			if (is_sw_lra_auto_resonance_control(hap)) {
 				/*
@@ -2705,9 +2704,6 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 			if (hap->pmic_subtype == PM660_SUBTYPE) {
 				hap->ares_cfg.auto_res_mode =
 						QPNP_HAP_PM660_AUTO_RES_QWD;
-				if (strcmp(temp_str, "none") == 0)
-					hap->ares_cfg.auto_res_mode =
-						QPNP_HAP_AUTO_RES_NONE;
 				if (strcmp(temp_str, "zxd") == 0)
 					hap->ares_cfg.auto_res_mode =
 						QPNP_HAP_PM660_AUTO_RES_ZXD;
