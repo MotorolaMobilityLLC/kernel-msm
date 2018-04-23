@@ -1,0 +1,31 @@
+config FS_VERITY
+	tristate "FS Verity (File-based authentication)"
+	depends on BLOCK
+	select CRYPTO
+	select CRYPTO_CRC32
+	select CRYPTO_SHA256
+	select CRYPTO_HASH
+	help
+	  This option enables file-based verity feature.  The
+	  filesystem checks data blocks' authenticity when reading
+	  them from underlying disk, similar to how dm-verity does
+	  this when reading from a block device.
+
+	  If unsure, say N.
+
+config FS_VERITY_DEBUG
+	bool "FS Verity debugging"
+	depends on FS_VERITY
+	help
+	  Enable debugging messages related to fs-verity.
+
+	  Say N unless you are an fs-verity developer.
+
+config FS_VERITY_INTEGRITY_ONLY
+	bool "FS Verity integrity-only mode (EXPERIMENTAL)"
+	depends on FS_VERITY
+	help
+	  Enable experimental integrity-only mode for fs-verity.
+	  The on-disk format of such files is not stable.
+
+	  Say N unless you are an fs-verity developer.

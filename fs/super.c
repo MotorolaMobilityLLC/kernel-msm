@@ -215,7 +215,11 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
 	spin_lock_init(&s->s_inode_list_lock);
 	INIT_LIST_HEAD(&s->s_inodes_wb);
 	spin_lock_init(&s->s_inode_wblist_lock);
-
+#if IS_ENABLED(CONFIG_FS_VERITY)
+	/* TODO(mhalcrow): Not for upstream */
+	INIT_LIST_HEAD(&s->s_inodes_fsverity);
+	spin_lock_init(&s->s_inode_fsveritylist_lock);
+#endif
 	if (list_lru_init_memcg(&s->s_dentry_lru))
 		goto fail;
 	if (list_lru_init_memcg(&s->s_inode_lru))
@@ -400,6 +404,29 @@ bool trylock_super(struct super_block *sb)
 	return false;
 }
 
+/* TODO(mhalcrow): Not for upstream (fsverity list on the sb) */
+#if IS_ENABLED(CONFIG_FS_VERITY)
+static void fsverity_unmount_inodes(struct super_block *sb)
+{
+	struct inode *inode, *tmp;
+
+	/*
+	 * No need to take the spinlock; the filesystem is going away and can't
+	 * have any open files via which the list can be added to.  And iput()
+	 * can sleep, so it can't be called while holding a spinlock.
+	 */
+	list_for_each_entry_safe(inode, tmp, &sb->s_inodes_fsverity,
+				 i_fsverity_list) {
+		list_del_init(&inode->i_fsverity_list);
+		iput(inode);
+	}
+}
+#else
+static inline void fsverity_unmount_inodes(struct super_block *sb)
+{
+}
+#endif /* !CONFIG_FS_VERITY */
+
 /**
  *	generic_shutdown_super	-	common helper for ->kill_sb()
  *	@sb: superblock to kill
@@ -425,6 +452,7 @@ void generic_shutdown_super(struct super_block *sb)
 
 		fsnotify_unmount_inodes(sb);
 		cgroup_writeback_umount();
+		fsverity_unmount_inodes(sb);
 
 		evict_inodes(sb);
 

@@ -281,8 +281,17 @@ void drop_nlink(struct inode *inode)
 {
 	WARN_ON(inode->i_nlink == 0);
 	inode->__i_nlink--;
-	if (!inode->i_nlink)
+	if (!inode->i_nlink) {
 		atomic_long_inc(&inode->i_sb->s_remove_count);
+#if IS_ENABLED(CONFIG_FS_VERITY)
+		if (!list_empty(&inode->i_fsverity_list)) {
+			spin_lock(&inode->i_sb->s_inode_fsveritylist_lock);
+			list_del_init(&inode->i_fsverity_list);
+			spin_unlock(&inode->i_sb->s_inode_fsveritylist_lock);
+			iput(inode);
+		}
+#endif
+	}
 }
 EXPORT_SYMBOL(drop_nlink);
 
@@ -369,6 +378,9 @@ void inode_init_once(struct inode *inode)
 	INIT_LIST_HEAD(&inode->i_io_list);
 	INIT_LIST_HEAD(&inode->i_wb_list);
 	INIT_LIST_HEAD(&inode->i_lru);
+#if IS_ENABLED(CONFIG_FS_VERITY)
+	INIT_LIST_HEAD(&inode->i_fsverity_list);
+#endif
 	address_space_init_once(&inode->i_data);
 	i_size_ordered_init(inode);
 #ifdef CONFIG_FSNOTIFY
