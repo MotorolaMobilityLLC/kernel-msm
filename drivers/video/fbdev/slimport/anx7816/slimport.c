@@ -854,6 +854,32 @@ ssize_t sp_irq_enable_store(struct device *dev,
 }
 #endif
 
+static ssize_t tx_system_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int link_status = get_tx_system_state();
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", link_status);
+}
+
+static ssize_t tx_audio_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int audio_status = get_tx_audio_state();
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", audio_status);
+}
+
+static ssize_t tx_system_status_store(struct device *dev,	struct device_attribute *attr, const char *buf, size_t count)
+{
+	pr_warn("%s:  not implemented\n", __func__);
+	return 0;
+}
+
+static ssize_t tx_audio_status_store(struct device *dev,	struct device_attribute *attr, const char *buf, size_t count)
+{
+	pr_warn("%s:  not implemented\n", __func__);
+	return 0;
+}
+
 /* for debugging */
 static struct device_attribute slimport_device_attrs[] = {
 #ifdef SP_REGISTER_SET_TEST
@@ -889,6 +915,8 @@ static struct device_attribute slimport_device_attrs[] = {
 	__ATTR(irq_enable, S_IRUGO | S_IWUSR, sp_irq_enable_show,
 		sp_irq_enable_store),
 #endif
+	__ATTR(audio_status, S_IRUGO | S_IWUSR, tx_audio_status_show, tx_audio_status_store),
+	__ATTR(sys_status, S_IRUGO | S_IWUSR, tx_system_status_show, tx_system_status_store),
 
 };
 
@@ -1994,7 +2022,7 @@ static int anx7816_i2c_remove(struct i2c_client *client)
 
 	remove_debugfs_interfaces(anx7816);
 	remove_sysfs_interfaces(&client->dev);
-	pr_debug("anx7816_i2c_remove\n");
+	pr_info("anx7816_i2c_remove\n");
 	sp_tx_clean_state_machine();
 	destroy_workqueue(anx7816->workqueue);
 	sp_tx_hardware_powerdown();
