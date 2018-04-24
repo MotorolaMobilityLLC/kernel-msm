@@ -26,8 +26,6 @@
 #define LED_CFG_SHIFT   1
 #define LED_ON		0x03
 #define LED_OFF		0x00
-#define LED_BLINKING_PATTERN1		0x01
-#define LED_BLINKING_PATTERN2		0x02
 
 /**
  * @led_classdev - led class device
@@ -84,56 +82,6 @@ static enum led_brightness atc_led_get(struct led_classdev *led_cdev)
 {
 	return led_cdev->brightness;
 }
-
-static void atc_led_blink_set(struct led_classdev *led_cdev,
-		unsigned long blinking)
-{
-	u8 reg;
-
-	struct atc_led_data *led;
-
-	led = container_of(led_cdev, struct atc_led_data, cdev);
-
-	if (blinking == 0) {
-		reg = LED_OFF << LED_CFG_SHIFT;
-	} else {
-		if (blinking == 1)
-			reg = LED_BLINKING_PATTERN2 << LED_CFG_SHIFT;
-		else if (blinking == 2)
-			reg = LED_BLINKING_PATTERN1 << LED_CFG_SHIFT;
-		else
-			reg = LED_BLINKING_PATTERN2 << LED_CFG_SHIFT;
-	}
-
-	spmi_masked_write(led, led->addr, LED_CFG_MASK, reg);
-}
-
-static ssize_t atc_led_blink_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t len)
-{
-	unsigned long blinking;
-	ssize_t rc = -EINVAL;
-	struct led_classdev *cdev = dev_get_drvdata(dev);
-
-	rc = kstrtoul(buf, 10, &blinking);
-	if (rc)
-		return rc;
-
-	atc_led_blink_set(cdev, blinking);
-
-	return len;
-}
-
-static DEVICE_ATTR(blink, 0664, NULL, atc_led_blink_store);
-
-static struct attribute *led_blink_attributes[] = {
-	&dev_attr_blink.attr,
-	NULL,
-};
-
-static struct attribute_group atc_led_attr_group = {
-	.attrs = led_blink_attributes
-};
 
 static int atc_leds_probe(struct spmi_device *spmi)
 {
@@ -194,13 +142,6 @@ static int atc_leds_probe(struct spmi_device *spmi)
 	if (rc) {
 		dev_err(&spmi->dev, "unable to ATC led rc=%d\n", rc);
 		return -ENODEV;
-	}
-
-	rc = sysfs_create_group(&led->cdev.dev->kobj,
-			&atc_led_attr_group);
-	if (rc) {
-		dev_err(&spmi->dev, "led sysfs rc: %d\n", rc);
-		return rc;
 	}
 
 	dev_set_drvdata(&spmi->dev, led);
