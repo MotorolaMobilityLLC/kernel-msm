@@ -290,3 +290,10 @@
 	qcom,init-voltage = <2850000>;
 	regulator-always-on;
 };
+
+&pmi_haptic{
+	qcom,wave-shape = "sine";
+	qcom,vmax-mv = <2500>;
+	qcom,wave-play-rate-us = <4255>;
+	qcom,brake-pattern = <0x3 0x3 0x3 0x3>;
+};
