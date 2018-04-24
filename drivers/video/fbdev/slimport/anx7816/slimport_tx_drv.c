@@ -2690,6 +2690,60 @@ void QC20_process(void)
 }
 #endif
 /******************End Audio process********************/
+
+
+
+int get_tx_system_state(void)
+{
+	pr_info("sp_tx_LT_state is %d\n", sp_tx_system_state);
+
+	return sp_tx_system_state;
+}
+
+int get_tx_audio_state(void)
+{
+	unchar c;
+	unchar audio_status;
+	long int audio_M_val, audio_N_val;
+
+	sp_read_reg(SP_TX_PORT0_ADDR, AUDIO_M_VID_2, &c);
+	audio_M_val = c * 0x10000;
+	sp_read_reg(SP_TX_PORT0_ADDR, AUDIO_M_VID_1, &c);
+	audio_M_val = audio_M_val + c * 0x100;
+	sp_read_reg(SP_TX_PORT0_ADDR, AUDIO_M_VID_0, &c);
+	audio_M_val = audio_M_val + c;
+
+	sp_read_reg(SP_TX_PORT0_ADDR, AUDIO_N_VID_2, &c);
+	audio_N_val = c * 0x10000;
+	sp_read_reg(SP_TX_PORT0_ADDR, AUDIO_N_VID_1, &c);
+	audio_N_val = audio_N_val + c * 0x100;
+	sp_read_reg(SP_TX_PORT0_ADDR, AUDIO_N_VID_0, &c);
+	audio_N_val = audio_N_val + c;
+
+	pr_info("%s: Audio M = %lu, N = %lu\n", __func__, audio_M_val, audio_N_val);
+
+	sp_read_reg(SP_TX_PORT2_ADDR, SP_AUDIO_TX_STATUS, &c);
+	audio_status = c;
+	pr_info("%s: Audio Status = 0x%02x\n", __func__, (unsigned int)audio_status);
+	
+//Fixme: these register of anx7816 represent audio status, not sure the acture value.
+//Not necessary for anx7816 to check audio status in assemble line
+#if 0 
+	if ((audio_M_val == 0x05D6 || audio_M_val == 0x05D7)
+	  && (audio_status == 0x45 || audio_status == 0x46)
+	  && audio_N_val == 0x8000) {
+		pr_info("%s: audio status return 1\n", __func__);
+		return 1;
+	} else {
+		pr_info("%s: audio status return 0\n", __func__);
+		return 0;
+	}
+#else
+	return 1;
+#endif
+}
+
+
 void slimport_initialization(void)
 {
 	#ifdef ENABLE_READ_EDID
