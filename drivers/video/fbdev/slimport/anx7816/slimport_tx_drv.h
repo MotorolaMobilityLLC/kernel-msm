@@ -26,6 +26,12 @@
 //#define CEC_PHYCISAL_ADDRESS_INSERT
 //#define CEC_DBG_MSG_ENABLED
 
+#define SP_TX_PORT0_ADDR 0x70
+#define SP_TX_PORT1_ADDR 0x74
+#define SP_TX_PORT2_ADDR 0x72
+#define MIPI_RX_PORT1_ADDR 0x7A
+
+
 #ifdef DEMO_4K_2K
 #define FW_VERSION 0xA4
 #else
@@ -289,6 +295,9 @@ void edid_read(unchar offset, unchar *pblock_buf);
 bool sp_tx_edid_read(unchar *pBuf);
 void check_edid_data(unchar *pblock_buf);
 #endif
+
+int get_tx_system_state(void);
+int get_tx_audio_state(void);
 
 bool slimport_chip_detect(void);
 void slimport_chip_initial(void);
