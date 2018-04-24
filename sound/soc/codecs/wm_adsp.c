@@ -1178,8 +1178,10 @@ static int wm_adsp_create_control(struct wm_adsp *dsp,
 
 	list_for_each_entry(ctl, &dsp->ctl_list, list) {
 		if (!strcmp(ctl->name, name)) {
-			if (!ctl->enabled)
+			if (!ctl->enabled) {
 				ctl->enabled = 1;
+				ctl->set = 0;
+			}
 			return 0;
 		}
 	}
