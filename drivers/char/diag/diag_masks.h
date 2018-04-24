@@ -174,7 +174,8 @@ int diag_event_mask_copy(struct diag_mask_info *dest,
 void diag_log_mask_free(struct diag_mask_info *mask_info);
 void diag_msg_mask_free(struct diag_mask_info *mask_info);
 void diag_event_mask_free(struct diag_mask_info *mask_info);
-int diag_process_apps_masks(unsigned char *buf, int len, int pid);
+int diag_process_apps_masks(unsigned char *buf, int len,
+			    struct diag_md_session_t *info);
 void diag_send_updates_peripheral(uint8_t peripheral);
 
 extern int diag_create_msg_mask_table_entry(struct diag_msg_mask_t *msg_mask,
