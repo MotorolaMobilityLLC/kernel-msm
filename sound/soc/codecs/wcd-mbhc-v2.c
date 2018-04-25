@@ -649,7 +649,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 
 		mbhc->hph_type = WCD_MBHC_HPH_NONE;
 		mbhc->zl = mbhc->zr = 0;
-		pr_debug("%s: Reporting removal %d(%x)\n", __func__,
+		pr_info("%s: Reporting removal %d(%x)\n", __func__,
 			 jack_type, mbhc->hph_status);
 		wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
 				mbhc->hph_status, WCD_MBHC_JACK_MASK);
@@ -763,8 +763,9 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 
 		mbhc->hph_status |= jack_type;
 
-		pr_debug("%s: Reporting insertion %d(%x)\n", __func__,
-			 jack_type, mbhc->hph_status);
+		pr_info("%s: Reporting insertion %d(%x),zl %d ohm,zr %d ohm\n",
+			__func__, jack_type, mbhc->hph_status,
+			mbhc->zl, mbhc->zr);
 		wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
 				    (mbhc->hph_status | SND_JACK_MECHANICAL),
 				    WCD_MBHC_JACK_MASK);
@@ -1705,7 +1706,7 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 	int r = IRQ_HANDLED;
 	struct wcd_mbhc *mbhc = data;
 
-	pr_debug("%s: enter\n", __func__);
+	pr_info("%s: enter\n", __func__);
 	if (unlikely((mbhc->mbhc_cb->lock_sleep(mbhc, true)) == false)) {
 		pr_warn("%s: failed to hold suspend\n", __func__);
 		r = IRQ_NONE;
@@ -2077,8 +2078,8 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 	if (mbhc->buttons_pressed & WCD_MBHC_JACK_BUTTON_MASK) {
 		ret = wcd_cancel_btn_work(mbhc);
 		if (ret == 0) {
-			pr_debug("%s: Reporting long button release event\n",
-				 __func__);
+			pr_info("%s: Reporting long button release event,buttons_pressed,%x\n",
+				 __func__, mbhc->buttons_pressed);
 			wcd_mbhc_jack_report(mbhc, &mbhc->button_jack,
 					0, mbhc->buttons_pressed);
 		} else {
@@ -2086,14 +2087,14 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 				pr_debug("%s: Switch irq kicked in, ignore\n",
 					__func__);
 			} else {
-				pr_debug("%s: Reporting btn press\n",
+				pr_info("%s: Reporting btn press\n",
 					 __func__);
 				wcd_mbhc_jack_report(mbhc,
 						     &mbhc->button_jack,
 						     mbhc->buttons_pressed,
 						     mbhc->buttons_pressed);
-				pr_debug("%s: Reporting btn release\n",
-					 __func__);
+				pr_info("%s: Reporting btn release,buttons_pressed,%x\n",
+					 __func__, mbhc->buttons_pressed);
 				wcd_mbhc_jack_report(mbhc,
 						&mbhc->button_jack,
 						0, mbhc->buttons_pressed);
