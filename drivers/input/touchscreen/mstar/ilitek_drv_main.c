@@ -15875,16 +15875,23 @@ static s32 drv_create_procfs_dir_entry(void)
     return n_ret_val;
 }
 
+#define USHORT_MAX  ((unsigned short)(~0U))
 static ssize_t drv_build_id_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
 {
 	u16 n_major = 0, n_minor = 0;
 	char version[8] = {0};
 	int retry = 0;
 
-	while ((n_major | n_minor) == 0 && retry++ < 3) {
+	while ((n_major | n_minor) == 0 && retry++ < 3)
 		drv_get_customer_firmware_version(&n_major, &n_minor, &g_fw_version);
-		snprintf(version, ARRAY_SIZE(version), "%02d-%04d", n_major, n_minor);
+
+	if (n_major == USHORT_MAX || n_minor == USHORT_MAX) {
+		n_major = 0;
+		n_minor = 0;
+		snprintf(g_fw_version, 12, "%05d.%05d", 0, 0);
 	}
+
+	snprintf(version, ARRAY_SIZE(version), "%02d-%04d", n_major, n_minor);
 	DBG(&g_i2c_client->dev, "*** %s() _gFwVersion = %s ***\n", __func__, version);
 
 	return scnprintf(pBuf, PAGE_SIZE, "%s\n", version);
@@ -15927,6 +15934,7 @@ static ssize_t drv_dore_flash_store(struct device *pDevice, struct device_attrib
 		p_valid = strnstr(p_str, ".bin", sizeof(g_debug_buf));
 
 		if (p_valid) {
+			int retry = 0;
 			p_tmp_file_path = strsep((char **)&p_str, ".");
 
 			DBG(&g_i2c_client->dev, "p_tmp_file_path = %s\n", p_tmp_file_path);
@@ -15936,16 +15944,32 @@ static ssize_t drv_dore_flash_store(struct device *pDevice, struct device_attrib
 
 			DBG(&g_i2c_client->dev, "sz_file_path = %s\n", sz_file_path);
 
-			if (!g_is_suspend) {
-				is_force_to_update_firmware_enabled = 0;
-				g_system_update = 1;
-				if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
-					DBG(&g_i2c_client->dev, "Update FAILED\n");
+			while (retry < 3) {
+				unsigned short ver_major, ver_minor;
+
+				retry++;
+				if (!g_is_suspend) {
+					if (retry == 1)
+						is_force_to_update_firmware_enabled = 0;
+
+					g_system_update = 1;
+
+					if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
+						DBG(&g_i2c_client->dev, "Update FAILED\n");
+					} else {
+						DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+					}
 				} else {
-					DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+					DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
 				}
-			} else {
-				DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
+
+				drv_get_customer_firmware_version(&ver_major, &ver_minor, &g_fw_version);
+
+				if (ver_major != USHORT_MAX && ver_minor != USHORT_MAX)
+					break;
+
+				is_force_to_update_firmware_enabled = 1;
+				pr_err("ILITEK: update firmware fail and retry %d times", retry);
 			}
 		} else {
 			DBG(&g_i2c_client->dev, "The file type of the update firmware bin file is not a .bin file.\n");
@@ -15984,6 +16008,7 @@ static ssize_t drv_force_reflash_store(struct device *pDevice, struct device_att
 		p_valid = strnstr(p_str, ".bin", sizeof(g_debug_buf));
 
 		if (p_valid) {
+			int retry = 0;
 			p_tmp_file_path = strsep((char **)&p_str, ".");
 
 			DBG(&g_i2c_client->dev, "p_tmp_file_path = %s\n", p_tmp_file_path);
@@ -15993,16 +16018,29 @@ static ssize_t drv_force_reflash_store(struct device *pDevice, struct device_att
 
 			DBG(&g_i2c_client->dev, "sz_file_path = %s\n", sz_file_path);
 
-			if (!g_is_suspend) {
-				is_force_to_update_firmware_enabled = 1;
-				g_system_update = 1;
-				if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
-					DBG(&g_i2c_client->dev, "Update FAILED\n");
+			while (retry < 3) {
+				unsigned short ver_major, ver_minor;
+
+				retry++;
+				if (!g_is_suspend) {
+					is_force_to_update_firmware_enabled = 1;
+					g_system_update = 1;
+
+					if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
+						DBG(&g_i2c_client->dev, "Update FAILED\n");
+					} else {
+						DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+					}
 				} else {
-					DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+					DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
 				}
-			} else {
-				DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
+
+				drv_get_customer_firmware_version(&ver_major, &ver_minor, &g_fw_version);
+
+				if (ver_major != USHORT_MAX && ver_minor != USHORT_MAX)
+					break;
+
+				pr_err("ILITEK: update firmware fail and retry %d times", retry);
 			}
 		} else {
 			DBG(&g_i2c_client->dev, "The file type of the update firmware bin file is not a .bin file.\n");
