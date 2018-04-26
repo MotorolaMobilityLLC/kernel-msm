@@ -46,6 +46,18 @@ qcom,mdss-dsi-off-command = [
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
+
 qcom,mdss-dsi-h-sync-pulse = <0>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
 qcom,mdss-dsi-bllp-eof-power-mode;
@@ -96,8 +108,8 @@ qcom,panel-supply-entries {
 	qcom,panel-supply-entry@1 {
 		reg = <2>;
 		qcom,supply-name = "vsp_disp";
-		qcom,supply-min-voltage = <5500000>;
-		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-min-voltage = <6000000>;
+		qcom,supply-max-voltage = <6000000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
 	};
@@ -105,8 +117,8 @@ qcom,panel-supply-entries {
 	qcom,panel-supply-entry@2 {
 		reg = <3>;
 		qcom,supply-name = "vsn_disp";
-		qcom,supply-min-voltage = <5500000>;
-		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-min-voltage = <6000000>;
+		qcom,supply-max-voltage = <6000000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-post-on-sleep = <10>;
