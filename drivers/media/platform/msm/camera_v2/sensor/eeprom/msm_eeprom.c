@@ -51,12 +51,19 @@ static int bst_eeprom_read_dualcam_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 	int rc;
 	uint8_t *tmp_ptr = NULL;
 	uint8_t *ptr_dest = NULL;
+	int ret = 0;
+	uint16_t csp_reg_val;
+	uint16_t csp_config_addr =  0x8000;
 
-	if (cdata->cfg.bst_read_data.num_bytes <= 0) {
-		pr_err("Invalid size = %d\n",
-		cdata->cfg.bst_read_data.num_bytes);
+	ret = e_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+			&e_ctrl->i2c_client, csp_config_addr, &csp_reg_val,
+			MSM_CAMERA_I2C_BYTE_DATA);
+	pr_err(" %s: read otp:csp_reg_val %d\n", __func__,
+				csp_reg_val);
+
+	if (cdata->cfg.bst_read_data.num_bytes <= 0)
 		return -EFAULT;
-	}
+
 	tmp_ptr = kmalloc(cdata->cfg.bst_read_data.num_bytes, GFP_KERNEL);
 	if (!tmp_ptr)
 		return -EFAULT;
@@ -69,6 +76,9 @@ static int bst_eeprom_read_dualcam_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 		kfree(tmp_ptr);
 		return -EINVAL;
 	}
+	CDBG("%s:william read_eeprom offset_addr %x, read num bytes %d\n", __func__,
+			cdata->cfg.bst_read_data.offset_addr,
+			cdata->cfg.bst_read_data.num_bytes);
 	ptr_dest = cdata->cfg.bst_read_data.dbuffer;
 	if (cdata->cfg.bst_read_data.num_bytes) {
 			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
@@ -83,9 +93,8 @@ static int bst_eeprom_read_dualcam_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 			}
 	}
 
-
 	if (copy_to_user(ptr_dest, tmp_ptr,
-		cdata->cfg.bst_read_data.num_bytes)) {
+			cdata->cfg.bst_read_data.num_bytes)) {
 		kfree(tmp_ptr);
 		pr_err("copy to user failed\n");
 		return -EFAULT;
@@ -99,37 +108,38 @@ static int bst_eeprom_write_dualcam_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 	int rc = 0;
 	uint8_t *tmp_ptr = NULL;
 	uint8_t *ptr_dest = NULL;
-	int last_write =
-		cdata->cfg.bst_write_data.offset_addr % GT24C64_PAGE_SIZE;
+
 
 	int i4RetValue = 0;
 	int i4ResidueDataLength;
 	u32 u4IncOffset = 0;
 	u32 u4CurrentOffset;
 	u8 *pBuff;
+	u8 extra_len = 0;
 
 	if (cdata->cfg.bst_write_data.num_bytes <= 0) {
 		pr_err("Invalid size = %d\n",
 			cdata->cfg.bst_write_data.num_bytes);
 		return -EFAULT;
 	}
-	tmp_ptr =
-		kmalloc(cdata->cfg.bst_write_data.num_bytes + GT24C64_PAGE_SIZE,
-		 GFP_KERNEL);
+
+	tmp_ptr = kmalloc(cdata->cfg.bst_write_data.num_bytes + GT24C64_PAGE_SIZE, GFP_KERNEL);
+	pr_err("%s:%d] chenhongbin no mem\n", __func__, __LINE__);
 	if (!tmp_ptr)
 		return -EFAULT;
 
+/* check range */
 	if (cdata->cfg.bst_write_data.num_bytes >
 		e_ctrl->cal_data.num_data) {
-			CDBG("%s: Invalid size. exp %u, req %u\n", __func__,
-				e_ctrl->cal_data.num_data,
+			pr_err("%s: Invalid size. exp %u, req %u\n", __func__,
+						e_ctrl->cal_data.num_data,
 				cdata->cfg.bst_write_data.num_bytes);
 			kfree(tmp_ptr);
 			return -EINVAL;
 	}
-	CDBG("%s: read_eeprom offset_addr %x, read num bytes %d\n", __func__,
-	cdata->cfg.bst_write_data.offset_addr,
-	cdata->cfg.bst_write_data.num_bytes);
+	pr_err("%s: read_eeprom offset_addr %x, read num bytes %d\n", __func__,
+		cdata->cfg.bst_write_data.offset_addr,
+		cdata->cfg.bst_write_data.num_bytes);
 	ptr_dest = cdata->cfg.bst_write_data.dbuffer;
 
 	if (copy_from_user((u8 *) tmp_ptr, (u8 *) ptr_dest,
@@ -141,16 +151,48 @@ static int bst_eeprom_write_dualcam_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 	i4ResidueDataLength = (int)cdata->cfg.bst_write_data.num_bytes;
 	u4CurrentOffset = cdata->cfg.bst_write_data.offset_addr;
 	pBuff = tmp_ptr;
-	CDBG("iWriteData u4CurrentOffset is %d(0x%x) i4ResidueDataLength %d\n",
+	pr_err("iWriteData u4CurrentOffset is %d(0x%x) i4ResidueDataLength %d\n",
 			u4CurrentOffset, u4CurrentOffset, i4ResidueDataLength);
+
+
+/*write data with less than a page*/
+	extra_len = GT24C64_PAGE_SIZE - u4CurrentOffset % GT24C64_PAGE_SIZE;
+	if (extra_len != GT24C64_PAGE_SIZE) {
+			pr_err("chb_extra 0x%x", extra_len);
+			i4RetValue =
+				e_ctrl->i2c_client.i2c_func_tbl->i2c_write_seq(
+				&e_ctrl->i2c_client,
+				u4CurrentOffset, pBuff, extra_len);
+			if (i4RetValue < 0) {
+				pr_err("I2C iWriteData failed!u4CurOffset 0x%x",
+					u4CurrentOffset);
+				kfree(tmp_ptr);
+				return i4RetValue;
+			}
+	i4ResidueDataLength -= extra_len;
+	u4CurrentOffset += extra_len;
+	cdata->cfg.bst_write_data.offset_addr = u4CurrentOffset;
+	pBuff += extra_len;
+		msleep(otp_w_sleep);
+	}
+
+/*end*/
+
+
 	do {
 		if (i4ResidueDataLength >= GT24C64_PAGE_SIZE) {
 				i4RetValue =
 				e_ctrl->i2c_client.i2c_func_tbl->i2c_write_seq(
 					&e_ctrl->i2c_client,
-					u4CurrentOffset, pBuff, GT24C64_PAGE_SIZE);
-			if (i4RetValue != 0)
+					u4CurrentOffset, pBuff,
+					GT24C64_PAGE_SIZE);
+
+			if (i4RetValue < 0) {
+					pr_err("I2C iWriteData failed!u4CurOffset 0x%x ret %d",
+					u4CurrentOffset, i4RetValue);
+					kfree(tmp_ptr);
 					return i4RetValue;
+			}
 
 			u4IncOffset += GT24C64_PAGE_SIZE;
 			i4ResidueDataLength -= GT24C64_PAGE_SIZE;
@@ -163,9 +205,12 @@ static int bst_eeprom_write_dualcam_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 			e_ctrl->i2c_client.i2c_func_tbl->i2c_write_seq(
 			&e_ctrl->i2c_client,
 			u4CurrentOffset, pBuff, i4ResidueDataLength);
-			if (i4RetValue != 0)
+			if (i4RetValue < 0) {
+				pr_err(" I2C iWriteData failed!!i4RetValue %d",
+						i4RetValue);
+				kfree(tmp_ptr);
 				return i4RetValue;
-
+			}
 			u4IncOffset += GT24C64_PAGE_SIZE;
 			i4ResidueDataLength -= GT24C64_PAGE_SIZE;
 			u4CurrentOffset =
@@ -173,19 +218,14 @@ static int bst_eeprom_write_dualcam_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 			pBuff += GT24C64_PAGE_SIZE;
 		}
 	} while (i4ResidueDataLength > 0);
-
-	u4CurrentOffset -= last_write;
-	pBuff -= last_write;
-	e_ctrl->i2c_client.i2c_func_tbl->i2c_write_seq(
-			&e_ctrl->i2c_client,
-			u4CurrentOffset, pBuff, GT24C64_PAGE_SIZE);
 	msleep(otp_w_sleep);
-	msleep(otp_w_sleep);
+	pr_err("i4ResidueDataLength %d,u4CurrentOffset %d",
+		i4ResidueDataLength, u4CurrentOffset);
 	kfree(tmp_ptr);
+	msleep(otp_w_sleep);
 	return rc;
 }
 #endif
-
 static int msm_get_read_mem_size
 	(struct msm_eeprom_memory_map_array *eeprom_map_array) {
 	int size = 0, i, j;
