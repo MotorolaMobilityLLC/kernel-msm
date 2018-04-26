@@ -460,7 +460,7 @@ static void stmvl53l0_DebugTimeDuration(struct timeval *pstart_tv,
 }
 #endif
 
-static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
+static uint8_t stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 {
 	uint8_t revision = 0;
 	VL53L0_DEV vl53l0_dev = data;
@@ -636,6 +636,8 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 		/*cut 1.0*/
 		vl53l0_errmsg("API cut 1.0 NOT SUPPORTED\n");
 	}
+
+	return revision;
 
 }
 
@@ -2034,7 +2036,8 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	uint8_t isApertureSpads;
 	uint8_t VhvSettings;
 	uint8_t PhaseCal;
-
+	uint8_t revision = 1;
+	uint8_t retry = 2;
 
 	vl53l0_dbgmsg("Enter\n");
 
@@ -2042,13 +2045,22 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	data->comms_type      = 1;
 	data->comms_speed_khz = 400;
 
-
-
 	/* Setup API functions based on revision */
-	stmvl53l0_setupAPIFunctions(data);
+	do {
+		retry--;
+		revision = stmvl53l0_setupAPIFunctions(data);
+		if ((revision == 1) || (retry == 0)) {
+			break;
+		} else {
+			vl53l0_dbgmsg("retry to stmvl53l0_setupAPIFunctions\n");
+			msleep(20);
+		}
+	} while (retry > 0);
+
+	if (revision == 0)
+		return VL53L0_ERROR_CONTROL_INTERFACE;
 
 	/* Perform Ref and RefSpad calibrations and save the values */
-
 
 	if (data->reset) {
 		pr_err("Call of VL53L0_DataInit\n");
