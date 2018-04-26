@@ -1131,6 +1131,70 @@ static irqreturn_t nvt_ts_irq_handler(int32_t irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+
+/*******************************************************
+Description:
+	Novatek touchscreen check and stop crc reboot loop.
+
+return:
+	n.a.
+*******************************************************/
+void nvt_stop_crc_reboot(void)
+{
+	uint8_t buf[8] = {0};
+	int32_t retry = 0;
+
+	buf[0] = 0xFF;
+	buf[1] = 0x01;
+	buf[2] = 0xF6;
+	CTP_I2C_WRITE(ts->client, I2C_BLDR_Address, buf, 3);
+
+	buf[0] = 0x4E;
+	CTP_I2C_READ(ts->client, I2C_BLDR_Address, buf, 4);
+
+	if (((buf[1] == 0xFC) && (buf[2] == 0xFC) && (buf[3] == 0xFC)) ||
+		((buf[1] == 0xFF) && (buf[2] == 0xFF) && (buf[3] == 0xFF))) {
+
+		/* IC is in CRC fail reboot loop, needs to be stopped! */
+		for (retry = 5; retry > 0; retry--) {
+
+			buf[0] = 0x00;
+			buf[1] = 0xA5;
+			CTP_I2C_WRITE(ts->client, I2C_HW_Address, buf, 2);
+
+			buf[0] = 0x00;
+			buf[1] = 0xA5;
+			CTP_I2C_WRITE(ts->client, I2C_HW_Address, buf, 2);
+			msleep(1);
+
+			buf[0] = 0xFF;
+			buf[1] = 0x03;
+			buf[2] = 0xF1;
+			CTP_I2C_WRITE(ts->client, I2C_BLDR_Address, buf, 3);
+
+			buf[0] = 0x35;
+			buf[1] = 0xA5;
+			CTP_I2C_WRITE(ts->client, I2C_BLDR_Address, buf, 2);
+
+			buf[0] = 0xFF;
+			buf[1] = 0x03;
+			buf[2] = 0xF1;
+			CTP_I2C_WRITE(ts->client, I2C_BLDR_Address, buf, 3);
+
+			buf[0] = 0x35;
+			buf[1] = 0x00;
+			CTP_I2C_READ(ts->client, I2C_BLDR_Address, buf, 2);
+
+			if (buf[1] == 0xA5)
+				break;
+		}
+		if (retry == 0)
+			NVT_ERR("CRC auto reboot is not able to be stopped! buf[1]=0x%02X\n", buf[1]);
+	}
+
+	return;
+}
+
 /*******************************************************
 Description:
 	Novatek touchscreen check chip version trim function.
@@ -1147,8 +1211,10 @@ static int8_t nvt_ts_check_chip_ver_trim(void)
 	int32_t found_nvt_chip = 0;
 	int32_t ret = -1;
 
+	nvt_bootloader_reset();
+
 	for (retry = 5; retry > 0; retry--) {
-		nvt_bootloader_reset();
+
 		nvt_sw_reset_idle();
 
 		buf[0] = 0x00;
@@ -1209,6 +1275,10 @@ static int8_t nvt_ts_check_chip_ver_trim(void)
 			}
 		}
 
+		if (((buf[1] == 0xFC) && (buf[2] == 0xFC) && (buf[3] == 0xFC)) ||
+			((buf[1] == 0xFF) && (buf[2] == 0xFF) && (buf[3] == 0xFF))) {
+			nvt_stop_crc_reboot();
+		}
 		msleep(10);
 	}
 
