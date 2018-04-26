@@ -125,7 +125,9 @@ static const struct tfa98xx_rate rate_to_fssel[] = {
 };
 
 static atomic_t g_bypass;
+static atomic_t g_Tx_enable;
 extern int send_tfa_cal_set_bypass(void *buf, int cmd_size);
+extern int send_tfa_cal_set_tx_enable(void *buf, int cmd_size);
 
 /*************bypass control***************/
 static int tfa987x_algo_get_status(struct snd_kcontrol *kcontrol,
@@ -148,7 +150,31 @@ static int tfa987x_algo_set_status(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+static int tfa987x_algo_set_tx_enable(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	int32_t ret = 0;
+	u8 buff[56] = {0}, *ptr = buff;
+	((int32_t *)buff)[0] = ucontrol->value.integer.value[0];
+	pr_err("%s:set_tx_enable %d\n", __func__, ((int32_t *)buff)[0]);
+	atomic_set(&g_Tx_enable, ((int32_t *)buff)[0]);
+	ret = send_tfa_cal_set_tx_enable(ptr, 4);
+	return ret;
+}
+
+static int tfa987x_algo_get_tx_status(struct snd_kcontrol *kcontrol,
+					   struct snd_ctl_elem_value *ucontrol)
+{
+	int32_t ret = 0;
+	ucontrol->value.integer.value[0] = atomic_read(&g_Tx_enable);
+	return ret;
+}
+
 static const char *tfa987x_algo_text[] = {
+	"DISABLE", "ENABLE"
+};
+
+static const char *tfa987x_tx_text[] = {
 	"DISABLE", "ENABLE"
 };
 
@@ -156,8 +182,13 @@ static const struct soc_enum tfa987x_algo_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa987x_algo_text), tfa987x_algo_text)
 };
 
+static const struct soc_enum tfa987x_tx_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa987x_tx_text), tfa987x_tx_text)
+};
+
 const struct snd_kcontrol_new tfa987x_algo_filter_mixer_controls[] = {
-	SOC_ENUM_EXT("TFA987X_ALGO_STATUS", tfa987x_algo_enum[0], tfa987x_algo_get_status, tfa987x_algo_set_status)
+	SOC_ENUM_EXT("TFA987X_ALGO_STATUS", tfa987x_algo_enum[0], tfa987x_algo_get_status, tfa987x_algo_set_status),
+	SOC_ENUM_EXT("TFA987X_TX_ENABLE", tfa987x_tx_enum[0], tfa987x_algo_get_tx_status, tfa987x_algo_set_tx_enable)
 };
 
 static inline char *tfa_cont_profile_name(struct tfa98xx *tfa98xx, int prof_idx)
@@ -2797,6 +2828,8 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 
 	dev_dbg(&tfa98xx->i2c->dev, "%s: state: %d\n", __func__, mute);
 	atomic_set(&g_bypass, 0);
+	atomic_set(&g_Tx_enable, 0);
+
 	if (no_start) {
 		pr_debug("no_start parameter set no tfa_dev_start or tfa_dev_stop, returning\n");
 		return 0;
