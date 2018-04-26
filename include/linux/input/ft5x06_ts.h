@@ -18,6 +18,8 @@
 #ifndef __LINUX_FT5X06_TS_H__
 #define __LINUX_FT5X06_TS_H__
 
+#define FTS_MAX_KEYS    4
+
 #define FT5X06_ID		0x55
 #define FT5X16_ID		0x0A
 #define FT5X36_ID		0x14
@@ -77,6 +79,12 @@ struct ft5x06_ts_platform_data {
 	u32 num_vendor_ids;
 	u32 vendor_ids[MAX_PANEL_SUPPLIERS];
 	const char *vendor_names[MAX_PANEL_SUPPLIERS];
+	bool have_key;
+	u32 key_number;
+	u32 keys[FTS_MAX_KEYS];
+	u32 key_y_coord;
+	u32 key_x_coords[FTS_MAX_KEYS];
+	u32 max_touch_number;
 };
 
 extern int FPS_register_notifier(struct notifier_block *nb,
