@@ -37,7 +37,11 @@
 #ifdef CONFIG_SND_SOC_TFA9874
 #define AFE_PARAM_ID_TFADSP_RX_CFG 	(0x1000B921)
 #define AFE_MODULE_ID_TFADSP_RX		(0x1000B911)
+#define AFE_MODULE_ID_TFADSP_TX		(0x1000B912)
+#define AFE_PARAM_ID_TFADSP_TX_SET_ENABLE		(0x1000B920)
 #define AFE_TFADSP_RX_SET_BYPASS	(0x1000B923)
+#define AFE_PORT_ID_TFADSP_RX	(AFE_PORT_ID_QUATERNARY_MI2S_RX)
+#define AFE_PORT_ID_TFADSP_TX	(AFE_PORT_ID_QUATERNARY_MI2S_TX)
 #endif
 
 #define WAKELOCK_TIMEOUT	5000
@@ -1096,6 +1100,9 @@ static int afe_spk_prot_prepare(int src_port, int dst_port, int param_id,
 	case AFE_PARAM_ID_TFADSP_RX_CFG:
 	case AFE_TFADSP_RX_SET_BYPASS:
 		config.pdata.module_id = AFE_MODULE_ID_TFADSP_RX;
+		break;
+	case AFE_PARAM_ID_TFADSP_TX_SET_ENABLE:
+		config.pdata.module_id = AFE_MODULE_ID_TFADSP_TX;
 		break;
 #endif
 	default:
@@ -6668,7 +6675,7 @@ static int fill_afe_apr_hdr(struct apr_hdr *apr_hdr, uint32_t port,
 
 int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead)
 {
-	int32_t result, port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
+	int32_t result, port_id = AFE_PORT_ID_TFADSP_RX;
 	uint32_t port_index = 0, opcode;
 	uint32_t apr_msg_size = 0;
 	uint32_t apr_msg[48];
@@ -6823,7 +6830,7 @@ err:
 int send_tfa_cal_in_band(void *buf, int cmd_size)
 {
 	union afe_spkr_prot_config afe_spk_config;
-	int32_t port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
+	int32_t port_id = AFE_PORT_ID_TFADSP_RX;
 
 	if (cmd_size > sizeof(afe_spk_config))
 		/*orignal return value:-1,but it is illegal return value*/
@@ -6840,7 +6847,7 @@ int send_tfa_cal_in_band(void *buf, int cmd_size)
 int send_tfa_cal_set_bypass(void *buf, int cmd_size)
 {
 	union afe_spkr_prot_config afe_spk_config;
-	int32_t port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
+	int32_t port_id = AFE_PORT_ID_TFADSP_RX;
 
 	if (cmd_size > sizeof(afe_spk_config))
 		return -EINVAL;
@@ -6851,6 +6858,25 @@ int send_tfa_cal_set_bypass(void *buf, int cmd_size)
 			AFE_TFADSP_RX_SET_BYPASS,
 			&afe_spk_config)) {
 			pr_err("%s: AFE_TFADSP_RX_SET_BYPASS failed\n",
+				   __func__);
+	}
+	return 0;
+}
+
+int send_tfa_cal_set_tx_enable(void *buf, int cmd_size)
+{
+	union afe_spkr_prot_config afe_spk_config;
+	int32_t port_id = AFE_PORT_ID_TFADSP_TX;
+
+	if (cmd_size > sizeof(afe_spk_config))
+		return -EINVAL;
+
+	memcpy(&afe_spk_config, buf, cmd_size);
+
+	if (afe_spk_prot_prepare(port_id, 0,
+			AFE_PARAM_ID_TFADSP_TX_SET_ENABLE,
+			&afe_spk_config)) {
+		pr_err("%s: AFE_PARAM_ID_TFADSP_TX_SET_ENABLE failed\n",
 				   __func__);
 	}
 
