@@ -1117,7 +1117,7 @@ void sp_tx_hardware_poweron(void)
 	struct anx7816_platform_data *pdata = anx7816_client->dev.platform_data;
 #endif
 
-	pr_debug("%s %s: anx7816 power on\n", LOG_TAG, __func__);
+	pr_info("%s %s: anx7816 power on\n", LOG_TAG, __func__);
 
 	mutex_lock(&pdata->sp_tx_power_lock);
 
@@ -1200,7 +1200,7 @@ void sp_tx_hardware_powerdown(void)
 #else
 	struct anx7816_platform_data *pdata = anx7816_client->dev.platform_data;
 #endif
-	pr_debug("%s %s: anx7816 power down\n", LOG_TAG, __func__);
+	pr_info("%s %s: anx7816 power down\n", LOG_TAG, __func__);
 
 	mutex_lock(&pdata->sp_tx_power_lock);
 
@@ -1217,13 +1217,17 @@ void sp_tx_hardware_powerdown(void)
 	anx7816_clk_stop(pdata);
 	usleep_range(2000, 2001);
 
+	regulator_disable(pdata->dvdd_10);
+	
+	usleep_range(2000, 2001);
+
 	/* pdata->check_slimport_connection = false;
 	 * TODO where does this go?
 	 */
 	if (gpio_is_valid(pdata->gpio_p_dwn))
 		gpio_set_value(pdata->gpio_p_dwn, 1);
+	usleep_range(1000, 1001);
 
-	regulator_disable(pdata->dvdd_10);
 	rc = anx7816_pinctrl_rst_set_state(false);
 	if (rc < 0)
 		pr_err("%s %s: fail to set_state for reset. ret=%d\n",
