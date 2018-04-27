@@ -223,8 +223,8 @@
 					680 0x72	/* KEY_VOLUMEDOWN */
 				>;
 				cirrus,micd-configs = <
-					1 0 1 1 0
 					0 1 0 0 1
+					1 0 1 1 0
 				>;
 				cirrus,micd-pol-gpios = <&cs47l90 3 0>,
 							<&cs47l90 4 0>;
