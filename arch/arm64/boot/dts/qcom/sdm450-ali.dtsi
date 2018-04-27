@@ -28,6 +28,7 @@
 	};
 	aliases {
 		spi7 = &spi_7;
+		/delete-property/ spi3;
 	};
 };
 
@@ -289,6 +290,19 @@
 	regulator-max-microvolt = <2850000>;
 	qcom,init-voltage = <2850000>;
 	regulator-always-on;
+};
+
+&soc {
+	/delete-node/ spi@78b7000;
+	fpc_fpc1020{
+		compatible = "fpc,fpc1020";
+		status = "ok";
+		irq = <&tlmm 48 0>;
+
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&ldo_en_active &int_active &rst_active>;
+		pinctrl-1 = <&ldo_en_suspend &int_suspend &rst_suspend>;
+	};
 };
 
 &pmi_haptic{
