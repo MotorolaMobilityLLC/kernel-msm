@@ -1,0 +1,14 @@
+fpc fpc1020 fingerprint  driver
+
+Required properties:
+
+ - compatible		: Should be "fpc,fpc1020" .
+
+Optional properites:
+
+		fpc_fpc1020@0{
+			compatible = "fpc,fpc1020";
+			status = "ok";
+			fpc,gpio_irq = <&tlmm 128 0>;
+		};
+
