@@ -656,7 +656,7 @@
 
 &pmi8950_fg {
 	/delete-property/ qcom,battery-data;
-	qcom,thermal-coefficients =  /bits/ 16 <0xc886 0xc150 0xd337>;
+	qcom,thermal-coefficients =  /bits/ 16 <0x2d87 0x9151 0x7d3c>;
 	qcom,irq-volt-empty-mv = <3000>;
 	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,battery-data = <&mot_batterydata>;
