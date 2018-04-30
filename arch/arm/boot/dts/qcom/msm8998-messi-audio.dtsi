@@ -104,9 +104,6 @@
 		cirrus,boost-ctl-millivolt = <10000>;
 		cirrus,boost-peak-milliamp = <4500>;
 		cirrus,amp-gain-zc;
-		cirrus,ldm-mode-select = <0x01>;
-		cirrus,pdm-ldm-exit;
-		cirrus,pdm-ldm-enter;
 		cirrus,weak-fet-delay = <0x04>;
 		cirrus,weak-fet-thld = <0x01>;
 		cirrus,temp-warn-threshold = <0x01>;
