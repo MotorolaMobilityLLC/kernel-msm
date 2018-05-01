@@ -3667,6 +3667,28 @@ irqreturn_t smblib_handle_debug(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+irqreturn_t smblib_handle_usbin_collapse(int irq, void *data)
+{
+	struct smb_irq_data *irq_data = data;
+	struct smb_charger *chg = irq_data->parent_data;
+	int rc;
+	union power_supply_propval val = {0, };
+
+	rc = smblib_get_prop_usb_present(chg, &val);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get usb present rc=%d\n", rc);
+		return IRQ_HANDLED;
+	}
+
+	if (val.intval && !chg->reverse_boost) {
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+				      msecs_to_jiffies(100));
+	}
+	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
+	return IRQ_HANDLED;
+}
+
 irqreturn_t smblib_handle_otg_overcurrent(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
@@ -7116,13 +7138,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		 batt_mv, batt_ma, batt_temp, usb_mv);
 
 	pok_irq = chip->irq_info[SWITCH_POWER_OK_IRQ].irq;
-	if (chip->reverse_boost) {
+	if (chip->reverse_boost || (batt_mv >= usb_mv && vbus_present)) {
 		if (((usb_mv < REV_BST_THRESH) &&
 		    ((prev_vbus_mv - REV_BST_DROP) > usb_mv)) ||
 		    (batt_ma > REV_BST_MA)) {
 			smblib_err(chip,
 				   "Reverse Boosted: Clear, USB Suspend\n");
-			chip->reverse_boost = false;
 			if (chip->mmi.factory_mode)
 				smblib_set_usb_suspend(chip, true);
 			else
@@ -7134,7 +7155,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			else
 				vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
 				     false, 0);
-			enable_irq(pok_irq);
+			if (chip->reverse_boost) {
+				chip->reverse_boost = false;
+				enable_irq(pok_irq);
+			}
 		} else {
 			smblib_err(chip,
 				   "Reverse Boosted: USB %d mV PUSB %d mV\n",
