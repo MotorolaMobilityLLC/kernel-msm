@@ -585,6 +585,7 @@ int smblib_ext_vbus_regulator_disable(struct regulator_dev *rdev);
 int smblib_ext_vbus_regulator_is_enabled(struct regulator_dev *rdev);
 
 irqreturn_t smblib_handle_debug(int irq, void *data);
+irqreturn_t smblib_handle_usbin_collapse(int irq, void *data);
 irqreturn_t smblib_handle_otg_overcurrent(int irq, void *data);
 irqreturn_t smblib_handle_chg_state_change(int irq, void *data);
 irqreturn_t smblib_handle_batt_temp_changed(int irq, void *data);
