@@ -2561,7 +2561,7 @@ static struct smb_irq_info smb2_irqs[] = {
 /* USB INPUT IRQs */
 	[USBIN_COLLAPSE_IRQ] = {
 		.name		= "usbin-collapse",
-		.handler	= smblib_handle_debug,
+		.handler	= smblib_handle_usbin_collapse,
 	},
 	[USBIN_LT_3P6V_IRQ] = {
 		.name		= "usbin-lt-3p6v",
