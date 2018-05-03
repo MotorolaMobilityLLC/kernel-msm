@@ -36,6 +36,25 @@
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
+&soc {
+	/delete-node/ gpio_keys;
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key>;
+		pinctrl-1 = <&gpio_key>;
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&tlmm 85 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
 
 &i2c_2 { /* BLSP1 QUP2 */
 	status = "okay";
