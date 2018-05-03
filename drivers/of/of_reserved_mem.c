@@ -22,7 +22,7 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/sort.h>
 
-#define MAX_RESERVED_REGIONS	16
+#define MAX_RESERVED_REGIONS	20
 static struct reserved_mem reserved_mem[MAX_RESERVED_REGIONS];
 static int reserved_mem_count;
 
