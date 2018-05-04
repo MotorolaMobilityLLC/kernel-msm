@@ -25,6 +25,7 @@
 #define FT6X36_ID       0x36
 
 #define MAX_PANEL_SUPPLIERS	5
+#define FTS_MAX_KEYS    4
 
 struct fw_upgrade_info {
 	bool auto_cal;
@@ -77,6 +78,14 @@ struct ft5x06_ts_platform_data {
 	u32 num_vendor_ids;
 	u32 vendor_ids[MAX_PANEL_SUPPLIERS];
 	const char *vendor_names[MAX_PANEL_SUPPLIERS];
+#ifdef CONFIG_TOUCHSCREEN_FT5336
+	bool have_key;
+	u32 key_number;
+	u32 keys[FTS_MAX_KEYS];
+	u32 key_y_coord;
+	u32 key_x_coords[FTS_MAX_KEYS];
+	u32 max_touch_number;
+#endif
 };
 
 extern int FPS_register_notifier(struct notifier_block *nb,
