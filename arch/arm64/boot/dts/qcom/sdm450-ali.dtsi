@@ -320,6 +320,9 @@
 		pinctrl-0 = <&ldo_en_active &int_active &rst_active>;
 		pinctrl-1 = <&ldo_en_suspend &int_suspend &rst_suspend>;
 	};
+	qcom,msm-thermal {
+		qcom,config-info = "ali";
+	};
 };
 
 &pmi_haptic{
