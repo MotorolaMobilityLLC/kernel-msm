@@ -1268,6 +1268,12 @@ config TOUCHSCREEN_ILITEK
 	help
 	Say Y here if you have a MSG2856A touchscreen.
 
+config TOUCHSCREEN_FT5336
+	bool "touchpanel ft5336"
+	depends on TOUCHSCREEN_FT5X06
+	help
+	Say Y here if you have a ft5336 touchscreen.
+
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 source "drivers/input/touchscreen/focaltech_touch/Kconfig"
 
