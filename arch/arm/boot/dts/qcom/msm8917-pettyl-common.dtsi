@@ -316,7 +316,8 @@
 			focaltech,group-id = <1>;
 			focaltech,hard-reset-delay-ms = <20>;
 			focaltech,soft-reset-delay-ms = <200>;
-			focaltech,num-max-touches = <10>;
+			focaltech,num-max-touches = <2>;
+			focaltech,max-touch-number = <2>;
 			focaltech,fw-delay-aa-ms = <2>;
 			focaltech,fw-delay-55-ms = <2>;
 			focaltech,fw-upgrade-id1 = <0x79>;
