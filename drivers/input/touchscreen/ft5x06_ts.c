@@ -3674,23 +3674,23 @@ static int ft5x06_parse_dt(struct device *dev,
 	if (pdata->have_key) {
 		ret = of_property_read_u32(np, "focaltech,key-number", &pdata->key_number);
 		if (ret)
-			dev_err(&data->client->dev, "Key number undefined!");
+			dev_err(dev, "Key number undefined!\n");
 
 		ret = of_property_read_u32_array(np, "focaltech,keys",
 			pdata->keys, pdata->key_number);
 		if (ret)
-			dev_err(&data->client->dev, "Keys undefined!");
+			dev_err(dev, "Keys undefined!\n");
 		else if (pdata->key_number > FTS_MAX_KEYS)
 			pdata->key_number = FTS_MAX_KEYS;
 
 		ret = of_property_read_u32(np, "focaltech,key-y-coord", &pdata->key_y_coord);
 		if (ret)
-			dev_err(&data->client->dev, "Key Y Coord undefined!");
+			dev_err(dev, "Key Y Coord undefined!\n");
 
 		ret = of_property_read_u32_array(np, "focaltech,key-x-coords",
 			pdata->key_x_coords, pdata->key_number);
 		if (ret)
-			dev_err(&data->client->dev, "Key X Coords undefined!");
+			dev_err(dev, "Key X Coords undefined!\n");
 
 		dev_info(&data->client->dev, "VK(%d): (%d, %d, %d), [%d, %d, %d][%d]",
 			pdata->key_number, pdata->keys[0], pdata->keys[1], pdata->keys[2],
@@ -3707,7 +3707,7 @@ static int ft5x06_parse_dt(struct device *dev,
 		else
 			pdata->max_touch_number = temp_val;
 	} else {
-		dev_err(&data->client->dev, "Unable to get max-touch-number");
+		dev_err(dev, "Unable to get max-touch-number\n");
 		pdata->max_touch_number = FTS_MAX_POINTS_SUPPORT;
 	}
 #endif
