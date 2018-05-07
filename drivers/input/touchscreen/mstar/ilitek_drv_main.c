@@ -3820,7 +3820,7 @@ void drv_get_customer_firmware_version(u16 *pMajor, u16 *pMinor, u8 **ppVersion)
 
         mutex_lock(&g_mutex);
 
-        /*drv_touch_device_hw_reset(); */
+		drv_touch_device_hw_reset();
 
         db_bus_enter_serial_debug_mode();
         db_bus_stop_mcu();
@@ -15876,11 +15876,37 @@ static s32 drv_create_procfs_dir_entry(void)
 }
 
 #define USHORT_MAX  ((unsigned short)(~0U))
+
+static int fw_crc_check(void)
+{
+	u32 nCrcMainA, nCrcInfoA, nCrcMainB, nCrcInfoB;
+
+	drv_touch_device_hw_reset();
+
+	nCrcMainA = drv_msg22xx_get_firmware_crc_by_hardware(EMEM_MAIN);
+	nCrcMainB = drv_msg22xx_retrieve_firmware_crc_from_eflash(EMEM_MAIN);
+	nCrcInfoA = drv_msg22xx_get_firmware_crc_by_hardware(EMEM_INFO);
+	nCrcInfoB = drv_msg22xx_retrieve_firmware_crc_from_eflash(EMEM_INFO);
+	DBG(&g_i2c_client->dev,
+		"nCrcMainA=0x%x, nCrcInfoA=0x%x, nCrcMainB=0x%x, nCrcInfoB=0x%x\n",
+		nCrcMainA, nCrcInfoA, nCrcMainB, nCrcInfoB);
+	if (!(nCrcMainA == nCrcMainB && nCrcInfoA == nCrcInfoB)) {
+		dev_err(&g_i2c_client->dev, "CRC Check Fail, Please FW upgrade\n");
+		snprintf(g_fw_version, 12, "%05d.%05d", 0, 0);
+		return -EFAULT;
+	}
+	return 0;
+}
 static ssize_t drv_build_id_show(struct device *pDevice, struct device_attribute *pAttr, char *pBuf)
 {
 	u16 n_major = 0, n_minor = 0;
 	char version[8] = {0};
 	int retry = 0;
+
+	if (fw_crc_check()) {
+		snprintf(version, ARRAY_SIZE(version), "%02d-%04d", 0, 0);
+		goto crc_fail;
+	}
 
 	while ((n_major | n_minor) == 0 && retry++ < 3)
 		drv_get_customer_firmware_version(&n_major, &n_minor, &g_fw_version);
@@ -15894,6 +15920,7 @@ static ssize_t drv_build_id_show(struct device *pDevice, struct device_attribute
 	snprintf(version, ARRAY_SIZE(version), "%02d-%04d", n_major, n_minor);
 	DBG(&g_i2c_client->dev, "*** %s() _gFwVersion = %s ***\n", __func__, version);
 
+crc_fail:
 	return scnprintf(pBuf, PAGE_SIZE, "%s\n", version);
 }
 
@@ -15951,23 +15978,25 @@ static ssize_t drv_dore_flash_store(struct device *pDevice, struct device_attrib
 				if (!g_is_suspend) {
 					if (retry == 1)
 						is_force_to_update_firmware_enabled = 0;
-
+					if (fw_crc_check())
+						is_force_to_update_firmware_enabled = 1;
 					g_system_update = 1;
 
 					if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
-						DBG(&g_i2c_client->dev, "Update FAILED\n");
+						pr_err("ILITEK: Update FAILED\n");
+						goto update_fw_fail;
 					} else {
-						DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+						pr_info("ILITEK: Update SUCCESS\n");
 					}
 				} else {
-					DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
+					pr_info("ILITEK: Suspend state,can not update.\n");
 				}
 
 				drv_get_customer_firmware_version(&ver_major, &ver_minor, &g_fw_version);
 
 				if (ver_major != USHORT_MAX && ver_minor != USHORT_MAX)
 					break;
-
+update_fw_fail:
 				is_force_to_update_firmware_enabled = 1;
 				pr_err("ILITEK: update firmware fail and retry %d times", retry);
 			}
@@ -16027,9 +16056,10 @@ static ssize_t drv_force_reflash_store(struct device *pDevice, struct device_att
 					g_system_update = 1;
 
 					if (0 != drv_check_update_firmware_by_sd_card(sz_file_path)) {
-						DBG(&g_i2c_client->dev, "Update FAILED\n");
+						pr_err("ILITEK: Update FAILED\n");
+						continue;
 					} else {
-						DBG(&g_i2c_client->dev, "Update SUCCESS\n");
+						pr_info("ILITEK: Update SUCCESS\n");
 					}
 				} else {
 					DBG(&g_i2c_client->dev, "Suspend state,can not update.\n");
