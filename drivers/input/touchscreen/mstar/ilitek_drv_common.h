@@ -1367,6 +1367,8 @@ extern s32 drv_ilitek_update_firmware_by_sd_card(const char *p_file_path);
 extern u32 drv_read_dq_mem_value(u16 n_addr);
 extern void drv_write_dq_mem_value(u16 n_addr, u32 n_data);
 extern void drv_optimize_current_consumption(void);
+extern u32 drv_msg22xx_retrieve_firmware_crc_from_eflash(enum emem_type_e eEmemType);
+extern u32 drv_msg22xx_get_firmware_crc_by_hardware(enum emem_type_e eEmemType);
 
 /* Create ILITEK Node */
 extern int drv_create_device_node(void);
