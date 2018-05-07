@@ -145,6 +145,74 @@ void drv_msg28xx_read_eflash_start(u16 nStartAddr, enum emem_type_e eEmemType);
 /*=============================================================*/
 /*GLOBAL FUNCTION DEFINITION*/
 /*=============================================================*/
+u32 drv_msg22xx_retrieve_firmware_crc_from_eflash(enum emem_type_e eEmemType)
+{
+	u32 n_ret_val = 0;
+	u16 nReg_data1 = 0, nReg_data2 = 0;
+
+	DBG(&g_i2c_client->dev, "*** %s() eEmemType = %d ***\n", __func__,
+		eEmemType);
+
+	db_bus_enter_serial_debug_mode();
+	db_bus_stop_mcu();
+	db_bus_iic_use_bus();
+	db_bus_iic_reshape();
+
+#ifdef CONFIG_ENABLE_UPDATE_FIRMWARE_WITH_SUPPORT_I2C_SPEED_400K
+	/*Stop MCU */
+	reg_set_l_byte_value(0x0FE6, 0x01);
+
+	/*Exit flash low power mode */
+	reg_set_l_byte_value(0x1619, BIT1);
+
+	/*Change PIU clock to 48MHz */
+	reg_set_l_byte_value(0x1E23, BIT6);
+
+	/*Change mcu clock deglitch mux source */
+	reg_set_l_byte_value(0x1E54, BIT0);
+#else
+	/*Stop MCU */
+	 reg_set_l_byte_value(0x0FE6, 0x01);
+#endif /*CONFIG_ENABLE_UPDATE_FIRMWARE_WITH_SUPPORT_I2C_SPEED_400K */
+
+	/*RIU password */
+	reg_set_16bit_value(0x161A, 0xABBA);
+
+	if (eEmemType == EMEM_MAIN) {   /*Read main block CRC(48KB-4) from main block */
+		reg_set_16bit_value(0x1600, 0xBFFC);   /*Set start address for main block CRC */
+	} else if (eEmemType == EMEM_INFO) {    /*Read info block CRC(512Byte-4) from info block */
+		reg_set_16bit_value(0x1600, 0xC1FC);   /*Set start address for info block CRC */
+	}
+
+	/*Enable burst mode */
+	reg_set_16bit_value(0x160C, (reg_get16_bit_value(0x160C) | 0x01));
+
+	reg_set_l_byte_value(0x160E, 0x01);
+
+	nReg_data1 = reg_get16_bit_value(0x1604);
+	nReg_data2 = reg_get16_bit_value(0x1606);
+
+	n_ret_val = ((nReg_data2 >> 8) & 0xFF) << 24;
+	n_ret_val |= (nReg_data2 & 0xFF) << 16;
+	n_ret_val |= ((nReg_data1 >> 8) & 0xFF) << 8;
+	n_ret_val |= (nReg_data1 & 0xFF);
+
+	DBG(&g_i2c_client->dev, "CRC = 0x%x\n", n_ret_val);
+
+	/*Clear burst mode */
+	reg_set_16bit_value(0x160C, reg_get16_bit_value(0x160C) & (~0x01));
+
+	reg_set_16bit_value(0x1600, 0x0000);
+
+	/*Clear RIU password */
+	reg_set_16bit_value(0x161A, 0x0000);
+
+	db_bus_iic_not_use_bus();
+	db_bus_not_stop_mcu();
+	db_bus_exit_serial_debug_mode();
+
+	return n_ret_val;
+}
 
 void drv_optimize_current_consumption(void)
 {
@@ -623,7 +691,7 @@ static void drv_msg22xx_get_tp_vender_code(u8 *pTpVendorCode)
     }
 }
 
-static u32 drv_msg22xx_get_firmware_crc_by_hardware(enum emem_type_e eEmemType)
+u32 drv_msg22xx_get_firmware_crc_by_hardware(enum emem_type_e eEmemType)
 {
     u16 nCrcDown = 0;
     u32 nTimeOut = 0;
@@ -774,6 +842,8 @@ static u16 drv_msg22xx_get_sw_id(enum emem_type_e eEmemType)
 
     DBG(&g_i2c_client->dev, "*** %s() eEmemType = %d ***\n", __func__,
         eEmemType);
+
+	drv_touch_device_hw_reset();
 
     db_bus_enter_serial_debug_mode();
     db_bus_stop_mcu();
@@ -3001,74 +3071,7 @@ ProgramEnd:
     db_bus_exit_serial_debug_mode();
 }
 
-static u32 drv_msg22xx_retrieve_firmware_crc_from_eflash(enum emem_type_e eEmemType)
-{
-    u32 n_ret_val = 0;
-    u16 nReg_data1 = 0, nReg_data2 = 0;
 
-    DBG(&g_i2c_client->dev, "*** %s() eEmemType = %d ***\n", __func__,
-        eEmemType);
-
-    db_bus_enter_serial_debug_mode();
-    db_bus_stop_mcu();
-    db_bus_iic_use_bus();
-    db_bus_iic_reshape();
-
-#ifdef CONFIG_ENABLE_UPDATE_FIRMWARE_WITH_SUPPORT_I2C_SPEED_400K
-    /*Stop MCU */
-    reg_set_l_byte_value(0x0FE6, 0x01);
-
-    /*Exit flash low power mode */
-    reg_set_l_byte_value(0x1619, BIT1);
-
-    /*Change PIU clock to 48MHz */
-    reg_set_l_byte_value(0x1E23, BIT6);
-
-    /*Change mcu clock deglitch mux source */
-    reg_set_l_byte_value(0x1E54, BIT0);
-#else
-    /*Stop MCU */
-    reg_set_l_byte_value(0x0FE6, 0x01);
-#endif /*CONFIG_ENABLE_UPDATE_FIRMWARE_WITH_SUPPORT_I2C_SPEED_400K */
-
-    /*RIU password */
-    reg_set_16bit_value(0x161A, 0xABBA);
-
-    if (eEmemType == EMEM_MAIN) {   /*Read main block CRC(48KB-4) from main block */
-        reg_set_16bit_value(0x1600, 0xBFFC);   /*Set start address for main block CRC */
-    } else if (eEmemType == EMEM_INFO) {    /*Read info block CRC(512Byte-4) from info block */
-        reg_set_16bit_value(0x1600, 0xC1FC);   /*Set start address for info block CRC */
-    }
-
-    /*Enable burst mode */
-    reg_set_16bit_value(0x160C, (reg_get16_bit_value(0x160C) | 0x01));
-
-    reg_set_l_byte_value(0x160E, 0x01);
-
-    nReg_data1 = reg_get16_bit_value(0x1604);
-    nReg_data2 = reg_get16_bit_value(0x1606);
-
-    n_ret_val = ((nReg_data2 >> 8) & 0xFF) << 24;
-    n_ret_val |= (nReg_data2 & 0xFF) << 16;
-    n_ret_val |= ((nReg_data1 >> 8) & 0xFF) << 8;
-    n_ret_val |= (nReg_data1 & 0xFF);
-
-    DBG(&g_i2c_client->dev, "CRC = 0x%x\n", n_ret_val);
-
-    /*Clear burst mode */
-    reg_set_16bit_value(0x160C, reg_get16_bit_value(0x160C) & (~0x01));
-
-    reg_set_16bit_value(0x1600, 0x0000);
-
-    /*Clear RIU password */
-    reg_set_16bit_value(0x161A, 0x0000);
-
-    db_bus_iic_not_use_bus();
-    db_bus_not_stop_mcu();
-    db_bus_exit_serial_debug_mode();
-
-    return n_ret_val;
-}
 
 static u32 drv_msg22xx_retrieve_firmware_crc_from_bin_file(u8 szTmpBuf[],
                                                      enum emem_type_e eEmemType)
