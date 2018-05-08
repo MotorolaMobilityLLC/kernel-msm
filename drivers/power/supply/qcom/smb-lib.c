@@ -7153,7 +7153,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 				     true, 0);
 			msleep(50);
 			if (chip->mmi.factory_mode)
-				smblib_set_usb_suspend(chip, false);
+				smblib_set_usb_suspend(chip,
+					chip->mmi.force_chg_suspend);
 			else
 				vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
 				     false, 0);
@@ -7976,6 +7977,7 @@ static ssize_t force_chg_usb_suspend_store(struct device *dev,
 		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
+	mmi_chip->mmi.force_chg_suspend = (bool)mode;
 	r = smblib_set_usb_suspend(mmi_chip, (bool)mode);
 
 	return r ? r : count;
