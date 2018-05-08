@@ -16,9 +16,10 @@
 #include "sdm450-ali.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. SDM450 + PMI8950 MTP";
-	compatible = "qcom,sdm450-mtp", "qcom,sdm450", "qcom,mtp";
-	qcom,board-id = <8 0>;
-	qcom,pmic-id = <0x010016 0x010011 0x0 0x0>;
+	qcom,board-id = <0x41 0xA100>;
+	compatible = "qcom,sdm450-ali", "qcom,sdm450-moto",
+			"qcom,sdm450";
+	qcom,msm-id = <338 0x0>;
+	model = "ali";
 };
 
