@@ -381,6 +381,7 @@ struct mmi_params {
 	int			inner_wls_imax;
 	struct gpio		wls_otg_gpio;
 	struct pinctrl		*wls_otg_pinctrl;
+	bool			force_chg_suspend;
 };
 
 struct smb_charger {
