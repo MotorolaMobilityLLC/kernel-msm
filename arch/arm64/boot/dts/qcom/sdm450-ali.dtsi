@@ -54,6 +54,14 @@
 			debounce-interval = <15>;
 		};
 	};
+
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
 };
 
 &i2c_2 { /* BLSP1 QUP2 */
