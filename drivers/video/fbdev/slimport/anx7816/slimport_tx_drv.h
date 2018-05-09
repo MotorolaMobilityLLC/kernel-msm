@@ -298,6 +298,7 @@ void check_edid_data(unchar *pblock_buf);
 
 int get_tx_system_state(void);
 int get_tx_audio_state(void);
+int get_tx_video_state(void);
 
 bool slimport_chip_detect(void);
 void slimport_chip_initial(void);

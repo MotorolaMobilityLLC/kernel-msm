@@ -857,8 +857,10 @@ ssize_t sp_irq_enable_store(struct device *dev,
 static ssize_t tx_system_status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int link_status = get_tx_system_state();
-	/* Fix me! Force video stable complete when factory mode. */
-	/* Need add video playing so we can get video stable when Edsel connected.*/
+	/* Force video stable complete when factory mode. */
+	/* If playing video while mydp test, we can get video stable when Edsel connected.*/
+	/* Since whether playing video do not affect reading video resolution, we keep this workaroud */
+	/* and do not play video when in mydp test */
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 	slimport_complete_video_stable();
 #endif
@@ -873,15 +875,28 @@ static ssize_t tx_audio_status_show(struct device *dev, struct device_attribute 
 	return snprintf(buf, PAGE_SIZE, "%d\n", audio_status);
 }
 
-static ssize_t tx_system_status_store(struct device *dev,	struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t tx_video_status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	pr_warn("%s:  not implemented\n", __func__);
+	int video_status = get_tx_video_state();
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", video_status);
+}
+
+static ssize_t tx_system_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	pr_info("%s %s:  not neccesorry to be  implemented\n", LOG_TAG, __func__);
 	return 0;
 }
 
-static ssize_t tx_audio_status_store(struct device *dev,	struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t tx_audio_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	pr_warn("%s:  not implemented\n", __func__);
+	pr_info("%s %s:  not neccesorry to be  implemented\n", LOG_TAG, __func__);
+	return 0;
+}
+
+static ssize_t tx_video_status_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	pr_info("%s %s:  not neccesorry to be  implemented\n", LOG_TAG, __func__);
 	return 0;
 }
 
@@ -922,6 +937,7 @@ static struct device_attribute slimport_device_attrs[] = {
 #endif
 	__ATTR(audio_status, S_IRUGO | S_IWUSR, tx_audio_status_show, tx_audio_status_store),
 	__ATTR(sys_status, S_IRUGO | S_IWUSR, tx_system_status_show, tx_system_status_store),
+	__ATTR(video_status, S_IRUGO | S_IWUSR, tx_video_status_show, tx_video_status_store),
 
 };
 
