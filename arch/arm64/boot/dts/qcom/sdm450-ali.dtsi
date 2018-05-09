@@ -20,16 +20,10 @@
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm450-ali-audio.dtsi"
 
-/{
-	mtp_batterydata: qcom,battery-data {
-		qcom,batt-id-range-pct = <15>;
-		#include "batterydata-itech-3000mah.dtsi"
-		#include "batterydata-ascent-3450mAh.dtsi"
-	};
-	aliases {
-		spi7 = &spi_7;
-		/delete-property/ spi3;
-	};
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	#include "batterydata-itech-3000mah.dtsi"
+	#include "batterydata-ascent-3450mAh.dtsi"
 };
 
 &qpnp_fg {
@@ -37,7 +31,6 @@
 };
 
 &soc {
-	/delete-node/ gpio_keys;
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
@@ -154,7 +147,6 @@
 };
 
 &i2c_5 { /* BLSP2 QUP1 (NFC) */
-	/delete-node/ nq@28;
 	nq@28 {/* NFC PN553 */
 		compatible = "qcom,nq-nci";
 		reg = <0x28>;
@@ -250,7 +242,6 @@
 
 	qcom,dsi-pref-prim-pan = <&mot_boe_565_1080p_vid_v0>;
 
-	/delete-property/ vdd-supply;
 	vddio_disp-supply = <&pm8953_l6>;
 	vsp_disp-supply = <&lab_regulator>;
 	vsn_disp-supply = <&ibb_regulator>;
@@ -260,11 +251,6 @@
 
 &mdss_dsi1 {
 	status = "disabled";
-};
-
-&mdss_dsi1_pll {
-	/delete-property/ qcom,dsi-pll-ssc-en;
-	/delete-property/ qcom,dsi-pll-ssc-mode;
 };
 
 &mot_dba_panel {
@@ -318,7 +304,6 @@
 };
 
 &soc {
-	/delete-node/ spi@78b7000;
 	fpc_fpc1020{
 		compatible = "fpc,fpc1020";
 		status = "ok";
