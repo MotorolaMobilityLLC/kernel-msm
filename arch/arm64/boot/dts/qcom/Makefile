@@ -7,6 +7,11 @@ endif
 # to be runtime added by the bootloader (i.e. /chosen properties)
 DTC_FLAGS += -p 1024
 
+dtbo-$(CONFIG_ARCH_SDM450) += sdm450-ali-evt-overlay.dtbo
+
+sdm450-ali-evt-overlay.dtbo-base := \
+	sdm450-ali-base.dtb
+
 else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb msm8916-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
