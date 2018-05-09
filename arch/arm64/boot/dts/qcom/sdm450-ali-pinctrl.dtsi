@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-&tlmm{
+&tlmm {
 	nfc_irq_default: nfc_irq_default {
 		config {
 			pins = "gpio17";
@@ -126,7 +126,6 @@
 		};
 	};
 
-	/delete-node/ tlmm_gpio_key;
 	tlmm_gpio_key {
 		gpio_key: gpio_key {
 			mux {

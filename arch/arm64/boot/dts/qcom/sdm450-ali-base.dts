@@ -1,0 +1,67 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "sdm450-moto-base.dtsi"
+
+&aliases {
+	/delete-property/ spi3;
+};
+
+&soc {
+	/delete-node/ gpio_keys;
+	/delete-node/ spi@78b7000;
+
+	/delete-node/ sound;
+	/delete-node/ sound-9335;
+	/delete-node/ wsa881x_analog_clk_pctrl;
+	/delete-node/ wsa881x_analog_reset_pctrl;
+	/delete-node/ msm_cdc_pinctrl_us_euro_sw;
+	/delete-node/ cdc_comp_pinctrl;
+	/delete-node/ msm_cdc_pinctrl_pri;
+	/delete-node/ msm_cdc_pinctrl_quin;
+	/delete-node/ wsa881x_analog_vi_pctrl;
+};
+
+&mdss_dsi0 {
+	/delete-property/ vdd-supply;
+};
+
+&mdss_dsi1_pll {
+	/delete-property/ qcom,dsi-pll-ssc-en;
+	/delete-property/ qcom,dsi-pll-ssc-mode;
+};
+
+/* the node cannot be deleted from sdm450-ali-pinctrl.dtsi
+&tlmm {
+	/delete-node/ tlmm_gpio_key;
+};
+*/
+
+&i2c_2 {
+	/delete-node/ wsa881x-i2c-codec@f;
+	/delete-node/ wsa881x-i2c-codec@45;
+};
+
+&i2c_5 { /* BLSP2 QUP1 (NFC) */
+	/delete-node/ nq@28;
+};
+
+&slim_msm {
+	/delete-node/ tasha_codec;
+};
+
+&qpnp_smbcharger {
+	/delete-property/ qcom,external-typec;
+	/delete-property/ qcom,typec-psy-name;
+};

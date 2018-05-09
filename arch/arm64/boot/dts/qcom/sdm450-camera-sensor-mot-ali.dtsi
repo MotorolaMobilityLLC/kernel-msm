@@ -290,8 +290,8 @@
 	};
 };
 
-&soc {
-	tlmm: pinctrl@1000000 {
+
+&tlmm {
 
 		cam_sensor_mclk0_default: cam_sensor_mclk0_default {
 			/* MCLK0 */
@@ -466,9 +466,9 @@
 				drive-strength = <2>; /* 2 MA */
 			};
 		};
-	};
+};
 
-	cci: qcom,cci@1b0c000 {
+&cci {
 		status = "ok";
 		cell-index = <0>;
 		compatible = "qcom,cci";
@@ -516,7 +516,6 @@
 			status = "disabled";
 		};
 
-	};
 };
 
 &rpm_bus {

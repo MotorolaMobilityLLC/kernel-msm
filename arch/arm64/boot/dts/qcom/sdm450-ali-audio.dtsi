@@ -99,9 +99,6 @@
 };
 
 &i2c_2 {
-	/delete-node/ wsa881x-i2c-codec@f;
-	/delete-node/ wsa881x-i2c-codec@45;
-
 	cs35l35@40 {
 		compatible = "cirrus,cs35l35";
 		reg = <0x40>;
@@ -124,7 +121,6 @@
 
 &slim_msm {
 	status = "okay";
-	/delete-node/ tasha_codec;
 	madera-codec {
 		compatible = "cirrus,madera-slim-audio";
 		elemental-addr = [00 00 60 63 FA 01];
@@ -132,16 +128,6 @@
 };
 
 &soc {
-	/delete-node/ sound;
-	/delete-node/ sound-9335;
-	/delete-node/ wsa881x_analog_clk_pctrl;
-	/delete-node/ wsa881x_analog_reset_pctrl;
-	/delete-node/ msm_cdc_pinctrl_us_euro_sw;
-	/delete-node/ cdc_comp_pinctrl;
-	/delete-node/ msm_cdc_pinctrl_pri;
-	/delete-node/ msm_cdc_pinctrl_quin;
-	/delete-node/ wsa881x_analog_vi_pctrl;
-
 	sound-madera {
 		status = "ok";
 		compatible = "qcom,msm8952-audio-slim-codec";
@@ -292,7 +278,6 @@
 				acc@1 {
 					reg = <1>;
 
-					/delete-property/ cirrus,jd-check-jd2;
 					cirrus,micd-detect-debounce-ms = <600>;
 					cirrus,micd-bias-start-time = <8>;
 					cirrus,micd-rate = <6>;
