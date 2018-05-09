@@ -11,42 +11,36 @@
  * GNU General Public License for more details.
  */
 
-#include "sdm450.dtsi"
-#include "pmi8950.dtsi"
-#include "msm8953-pmi8950.dtsi"
 #include "sdm450-moto-pinctrl.dtsi"
 
-/ {
-	reserved-memory{
-		ramoops_mem {
-			compatible = "ramoops";
-			no-map;
-			reg = <0x0 0xef000000 0x0 0xc0000>;
-			console-size = <0x40000>;
-			pmsg-size = <0x40000>;
-			record-size = <0x3f800>;
-			ramoops-annotate-size = <0x800>;
-			};
-
-	       tzlog_dump_mem: tzlog_dump_mem_region {
-			no-map;
-			reg = <0x0 0xaefd0000 0x0 0x30000>;
-		};
+&reserved_memory {
+	ramoops_mem {
+		compatible = "ramoops";
+		no-map;
+		reg = <0x0 0xef000000 0x0 0xc0000>;
+		console-size = <0x40000>;
+		pmsg-size = <0x40000>;
+		record-size = <0x3f800>;
+		ramoops-annotate-size = <0x800>;
 	};
 
-	utags {
-		compatible = "mmi,utags";
-		mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
-		mmi,backup-utags = "/dev/block/bootdevice/by-name/utagsBackup";
-	};
-
-	hw {
-		compatible = "mmi,utags";
-		mmi,dir-name = "hw";
-		mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+	tzlog_dump_mem: tzlog_dump_mem_region {
+		no-map;
+		reg = <0x0 0xaefd0000 0x0 0x30000>;
 	};
 };
 
+&utags {
+	compatible = "mmi,utags";
+	mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
+	mmi,backup-utags = "/dev/block/bootdevice/by-name/utagsBackup";
+};
+
+&hw {
+	compatible = "mmi,utags";
+	mmi,dir-name = "hw";
+	mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+};
 
 &blsp1_uart0 {
 	status = "ok";
@@ -176,11 +170,6 @@
 
 &pm8953_typec {
 	status = "disabled";
-};
-
-&qpnp_smbcharger {
-	/delete-property/ qcom,external-typec;
-	/delete-property/ qcom,typec-psy-name;
 };
 
 &other_ext_mem {
