@@ -2692,14 +2692,15 @@ void QC20_process(void)
 /******************End Audio process********************/
 
 
-
+/* This function read tx sys sate, if state is big than 5, it means mydp interface is ok. */
 int get_tx_system_state(void)
 {
-	pr_info("sp_tx_LT_state is %d\n", sp_tx_system_state);
+	pr_info("%s %s: sp_tx_LT_state is %d\n", LOG_TAG, __func__, sp_tx_system_state);
 
 	return sp_tx_system_state;
 }
 
+/* This function read audio status, not necessory for anx7816 */
 int get_tx_audio_state(void)
 {
 	unchar c;
@@ -2720,14 +2721,12 @@ int get_tx_audio_state(void)
 	sp_read_reg(SP_TX_PORT0_ADDR, AUDIO_N_VID_0, &c);
 	audio_N_val = audio_N_val + c;
 
-	pr_info("%s: Audio M = %lu, N = %lu\n", __func__, audio_M_val, audio_N_val);
+	pr_info("%s %s: Audio M = %lu, N = %lu\n", LOG_TAG, __func__, audio_M_val, audio_N_val);
 
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_AUDIO_TX_STATUS, &c);
 	audio_status = c;
-	pr_info("%s: Audio Status = 0x%02x\n", __func__, (unsigned int)audio_status);
-	
-//Fixme: these register of anx7816 represent audio status, not sure the acture value.
-//Not necessary for anx7816 to check audio status in assemble line
+	pr_info("%s %s: Audio Status = 0x%02x\n", LOG_TAG, __func__, (unsigned int)audio_status);
+
 #if 0 
 	if ((audio_M_val == 0x05D6 || audio_M_val == 0x05D7)
 	  && (audio_status == 0x45 || audio_status == 0x46)
@@ -2743,6 +2742,66 @@ int get_tx_audio_state(void)
 #endif
 }
 
+/* This function read video resolution and check video(HDMI) status */
+int get_tx_video_state(void)
+{
+	unchar c;
+	unchar cl, ch;
+	unchar video_pkg_len_h, video_pkg_len_l;
+	uint n;
+	uint h_res, v_res;
+	int ret = 0;
+
+	sp_read_reg(RX_P0, HDMI_RX_HACT_LOW, &cl);
+	sp_read_reg(RX_P0, HDMI_RX_HACT_HIGH, &ch);
+	n = ch;
+	n = (n << 8) + cl;
+	h_res = n;
+
+	sp_read_reg(RX_P0, HDMI_RX_VACT_LOW, &cl);
+	sp_read_reg(RX_P0, HDMI_RX_VACT_HIGH, &ch);
+	n = ch;
+	n = (n << 8) + cl;
+	v_res = n;
+
+	pr_info("%s %s : >HDMI_RX Info<\n", LOG_TAG, __func__);
+	sp_read_reg(RX_P0, HDMI_STATUS, &c);
+	if (c & HDMI_MODE)
+		pr_info("%s %s : HDMI_RX Mode = HDMI Mode.\n", LOG_TAG, __func__);
+	else
+		pr_info("%s %s : HDMI_RX Mode = DVI Mode.\n", LOG_TAG, __func__);
+
+	sp_read_reg(RX_P0, HDMI_RX_VIDEO_STATUS_REG1, &c);
+	if (c & VIDEO_TYPE) {
+		v_res += v_res;
+	}
+	pr_info("%s %s : HDMI_RX Video Resolution = %d * %d ",
+			LOG_TAG, __func__, h_res, v_res);
+	sp_read_reg(RX_P0, HDMI_RX_VIDEO_STATUS_REG1, &c);
+	if (c & VIDEO_TYPE)
+		pr_info("%s %s : Interlace Video.\n", LOG_TAG, __func__);
+	else
+		pr_info("%s %s : Progressive Video.\n", LOG_TAG, __func__);
+
+	/* ANX FAE said register addr 7a1e/7a1f of anx7816 register mean nothing*/
+	sp_read_reg(TX_P1, VIDEO_PKG_LEN_H, &video_pkg_len_h);
+	sp_read_reg(TX_P1, VIDEO_PKG_LEN_L, &video_pkg_len_l);
+	pr_info("%s %s : HDMI_TX Video packet length h/l = 0x%x * 0x%x ",
+			LOG_TAG, __func__, video_pkg_len_h, video_pkg_len_l);
+
+	/* NAX FAE believe valid resoluton can ensure good HDMI hardware */
+	if (sp_tx_vo_state >= VO_WAIT_TX_VIDEO_STABLE) {
+		pr_info("%s %s: anx7816 video status return 1, sp_tx_vo_state = %d, video package size: HByte 0x%x, LByte 0x%x\n",
+			LOG_TAG, __func__, sp_tx_vo_state, video_pkg_len_h, video_pkg_len_l);
+		ret = 0x10000|(video_pkg_len_h<<8)|video_pkg_len_l;
+	} else {
+		pr_info("%s %s: anx7816 video status return 0, sp_tx_vo_state = %d, video package size: HByte 0x%x, LByte 0x%x\n",
+			LOG_TAG, __func__, sp_tx_vo_state, video_pkg_len_h, video_pkg_len_l);
+		ret = (video_pkg_len_h<<8)|video_pkg_len_l;
+	}
+	return ret;
+
+}
 
 void slimport_initialization(void)
 {
