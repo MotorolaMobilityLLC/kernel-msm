@@ -274,12 +274,24 @@ static ssize_t tx_audio_status_show(struct device *dev, struct device_attribute 
 	return snprintf(buf, PAGE_SIZE, "%d\n", audio_status);
 }
 
+static ssize_t mipi_lenth_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	unsigned char ret_low, ret_high;
+
+	sp_read_reg(MIPI_RX_PORT1_ADDR, 0x1e, &ret_low);
+	sp_read_reg(MIPI_RX_PORT1_ADDR, 0x1f, &ret_high);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", (ret_high<<8)|ret_low);
+}
+
 static DEVICE_ATTR(sys_status, S_IRUGO, tx_system_status_show, NULL);
 static DEVICE_ATTR(audio_status, S_IRUGO, tx_audio_status_show, NULL);
+static DEVICE_ATTR(mipi_lenth, S_IRUGO, mipi_lenth_show, NULL);
 
 static struct attribute *slimport_attrs[] = {
 	&dev_attr_sys_status.attr,
 	&dev_attr_audio_status.attr,
+	&dev_attr_mipi_lenth.attr,
 	NULL,
 };
 
