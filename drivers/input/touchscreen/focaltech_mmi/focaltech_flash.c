@@ -383,7 +383,11 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 		return fts_fwupg_do_upgrade(fw_name);
 	}
 #endif
-
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+	if (pdata->family_id == FT8006U_ID) {
+		return fts_fwupg_do_upgrade(fw_name);
+	}
+#endif
 	/* no IC upgrade function enabled, return error */
 	if ((fts_updatefun_curr == NULL) || (fts_chip_type_curr == NULL)) {
 		FTS_ERROR("[UPGRADE] ID(0x%02x) not support\n",
@@ -446,7 +450,7 @@ int fts_fwupg_reset_in_boot(struct i2c_client *client)
 }
 
 /*****************************************************************/
-#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 struct fts_upgrade g_upgrade;
 struct fts_upgrade *fwupgrade;
 
@@ -461,6 +465,19 @@ struct ft_chip_t ft8006_fct = {
 	.bootloader_idh = 0x80,
 	.bootloader_idl = 0xB6,
 	.chip_type = 0x80060807,
+};
+
+struct ft_chip_t ft8006u_fct = {
+	.type = 0x0B,
+	.chip_idh = 0xF0,
+	.chip_idl = 0x06,
+	.rom_idh = 0xF0,
+	.rom_idl = 0x06,
+	.pramboot_idh = 0xF0,
+	.pramboot_idl = 0xA6,
+	.bootloader_idh = 0x00,
+	.bootloader_idl = 0x00,
+	.chip_type = 0x8006D80B,
 };
 
 struct fts_ts_data g_fts_data;
@@ -756,7 +773,12 @@ int fts_pram_write_init(struct i2c_client *client)
 	}
 
 	/* check the length of the pramboot */
+#ifndef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
     ret = fts_ft8006m_pram_write_remap(client);
+#else
+    ret = fts_ft8006u_pram_write_remap(client);
+#endif
+
 	if (ret < 0) {
 		FTS_ERROR("[UPGRADE]pram write fail, ret=%d\n", ret);
 		return ret;
@@ -2017,6 +2039,7 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 	fts_data->input_dev = input_dev;
 	fts_data->pdata = pdata;
 
+#ifndef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
 	if (FT8006M_ID == type) {
 		FTS_AUTO_LIC_UPGRADE_EN = true;
 		fwupgrade->func = &upgrade_func_ft8006;
@@ -2024,6 +2047,16 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 		fts_data->ic_info.is_incell = true;
 		fts_data->ic_info.hid_supported = false;
 	}
+#else
+	 if (FT8006U_ID == type) {
+		FTS_AUTO_LIC_UPGRADE_EN = true;
+		fwupgrade->func = &upgrade_func_ft8006u;
+		fts_data->ic_info.ids = ft8006u_fct;
+		fts_data->ic_info.is_incell = true;
+		fts_data->ic_info.hid_supported = false;
+	}
+#endif
+
 	return 0;
 
 }
