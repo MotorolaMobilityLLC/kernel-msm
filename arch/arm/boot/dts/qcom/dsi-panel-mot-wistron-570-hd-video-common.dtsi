@@ -97,7 +97,7 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 
-qcom,mdss-dsi-panel-timings = [9B 22 18 00 4A 4E 1C 26 1B 03 04 00];
+qcom,mdss-dsi-panel-timings = [9B 22 18 00 4A 4E 1C 26 1E 03 04 00];
 qcom,mdss-dsi-t-clk-post = <0x04>;
 qcom,mdss-dsi-t-clk-pre = <0x1f>;
 
