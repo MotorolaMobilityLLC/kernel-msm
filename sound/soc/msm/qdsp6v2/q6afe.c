@@ -681,14 +681,8 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 			/* payload[1] contains the error status for response */
 			if (payload[1] != 0) {
 				atomic_set(&this_afe.status, payload[1]);
-				if (payload[0] == AFE_PORT_CMD_SET_PARAM_V2)
-					pr_debug("%s: cmd = 0x%x returned error = 0x%x\n",
-						__func__,
-						payload[0], payload[1]);
-				else
-					pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
-						__func__,
-						payload[0], payload[1]);
+				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
+					__func__, payload[0], payload[1]);
 			}
 			switch (payload[0]) {
 			case AFE_PORT_CMD_SET_PARAM_V2:
@@ -1097,7 +1091,6 @@ int afe_q6_interface_prepare(void)
 static int afe_apr_send_pkt(void *data, wait_queue_head_t *wait)
 {
 	int ret;
-	struct afe_audioif_config_command_no_payload *afe_cal = data;
 
 	if (wait)
 		atomic_set(&this_afe.state, 1);
@@ -1111,19 +1104,9 @@ static int afe_apr_send_pkt(void *data, wait_queue_head_t *wait)
 			if (!ret) {
 				ret = -ETIMEDOUT;
 			} else if (atomic_read(&this_afe.status) > 0) {
-				if (afe_cal->hdr.opcode ==
-				    AFE_PORT_CMD_SET_PARAM_V2)
-					pr_debug("%s: DSP returned error[%s]\n",
-						__func__,
-						adsp_err_get_err_str(
-							atomic_read(
-							&this_afe.status)));
-				else
-					pr_err("%s: DSP returned error[%s]\n",
-						__func__,
-						adsp_err_get_err_str(
-							atomic_read(
-							&this_afe.status)));
+				pr_err("%s: DSP returned error[%s]\n", __func__,
+					adsp_err_get_err_str(atomic_read(
+					&this_afe.status)));
 				ret = adsp_err_get_lnx_err_code(
 						atomic_read(&this_afe.status));
 			} else {
@@ -2041,7 +2024,7 @@ static int afe_get_cal_topology_id(u16 port_id, u32 *topology_id)
 	cal_block = afe_find_cal_topo_id_by_port(
 		this_afe.cal_data[AFE_TOPOLOGY_CAL], port_id);
 	if (cal_block == NULL) {
-		pr_debug("%s: [AFE_TOPOLOGY_CAL] not initialized for this port %d\n",
+		pr_err("%s: [AFE_TOPOLOGY_CAL] not initialized for this port %d\n",
 				__func__, port_id);
 		ret = -EINVAL;
 		goto unlock;
