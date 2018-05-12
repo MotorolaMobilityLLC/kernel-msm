@@ -22,10 +22,6 @@
 #include "../codecs/msm_sdw/msm_sdw.h"
 #include <linux/pm_qos.h>
 
-#ifdef CONFIG_SND_SOC_TAS2560
-#include <sound/tas2560_algo.h>
-#endif
-
 #define __CHIPSET__ "SDM660 "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
 
@@ -1780,16 +1776,6 @@ struct snd_soc_dai_link_component dlc_tx2[] = {
 	},
 };
 
-#ifdef CONFIG_SND_SOC_TAS2560
-static int tas2560_dai_init(struct snd_soc_pcm_runtime *rtd)
-{
-	int ret = 0;
-
-	ret = tas2560_algo_routing_init(rtd);
-	return ret;
-}
-#endif
-
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm_int_dai[] = {
 	/* FrontEnd DAI Links */
@@ -2826,7 +2812,6 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "tas2560.2-004c",
 		.codec_dai_name = "tas2560 ASI1",
-		.init = &tas2560_dai_init,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
