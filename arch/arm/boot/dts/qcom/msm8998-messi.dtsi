@@ -263,3 +263,11 @@
 		mmi,muc-ctrl-select-spi-seq = <12 0 100>, <13 0 100>;
 		mmi,muc-ctrl-select-i2c-seq = <12 1 100>, <13 1 100>;
 };
+
+&rpm_bus {
+	rpm-regulator-vsa2 {
+		pm8998_lvs2: regulator-lvs2 {
+			regulator-boot-on;
+		};
+	};
+};
