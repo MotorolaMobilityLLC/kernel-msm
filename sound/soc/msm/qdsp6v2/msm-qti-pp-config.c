@@ -22,7 +22,6 @@
 #include <sound/asound.h>
 #include <sound/q6audio-v2.h>
 #include <sound/tlv.h>
-#include <sound/msm-audio-effects-q6-v2.h>
 
 #include "msm-qti-pp-config.h"
 #include "msm-pcm-routing-v2.h"
@@ -136,51 +135,6 @@ static int msm_qti_pp_put_eq_enable_mixer(struct snd_kcontrol *kcontrol,
 	eq_data[eq_idx].enable = value;
 	msm_pcm_routing_acquire_lock();
 	msm_qti_pp_send_eq_values_(eq_idx);
-	msm_pcm_routing_release_lock();
-	return 0;
-}
-
-static int msm_qti_pp_get_mmfx_eq_param_mixer(struct snd_kcontrol *kcontrol,
-					  struct snd_ctl_elem_value *ucontrol)
-{
-	return 0;
-}
-
-static int msm_qti_pp_put_mmfx_eq_param_mixer(struct snd_kcontrol *kcontrol,
-					  struct snd_ctl_elem_value *ucontrol)
-{
-	int eq_idx = ((struct soc_multi_mixer_control *)
-					kcontrol->private_value)->shift;
-	long *values = &(ucontrol->value.integer.value[0]);
-	int effects_module = *values++;
-	struct msm_pcm_routing_fdai_data fe_dai;
-	struct audio_client *ac = NULL;
-
-	pr_debug("%s: enter EQ #%d param\n", __func__, eq_idx);
-	if ((eq_idx < 0) || (eq_idx >= MAX_EQ_SESSIONS))
-		return -EINVAL;
-
-	if (effects_module != MMIFX_EQ_MODULE)
-		return -EINVAL;
-
-	msm_pcm_routing_get_fedai_info(eq_idx, SESSION_TYPE_RX, &fe_dai);
-	ac = q6asm_get_audio_client(fe_dai.strm_id);
-
-	if (ac == NULL) {
-		pr_debug("%s: Could not get audio client for session: %d\n",
-		      __func__, fe_dai.strm_id);
-		return -EINVAL;
-	}
-
-	msm_pcm_routing_acquire_lock();
-	msm_audio_effects_mmifx_params(&(mmifx[eq_idx]), values);
-	if (mmifx[eq_idx].cmds != 0) {
-		pr_debug("%s: Update MMIFX EQ Module params send\n",
-				__func__);
-		msm_audio_effects_mmifx_send_eq_params(ac,
-						&(mmifx[eq_idx].eq_params),
-						mmifx[eq_idx].cmds);
-	}
 	msm_pcm_routing_release_lock();
 	return 0;
 }
@@ -324,29 +278,6 @@ void msm_qti_pp_send_eq_values(int fedai_id)
 	if (eq_data[fedai_id].enable)
 		msm_qti_pp_send_eq_values_(fedai_id);
 }
-
-#ifdef CONFIG_MMI_PP_AFX
-void msm_qti_pp_mmfx_eq_send_eq_values(int fedai_id)
-{
-	struct mmi_eq_params *mmifx_eq = &(mmifx[fedai_id].eq_params);
-	struct msm_pcm_routing_fdai_data fe_dai;
-	struct audio_client *ac = NULL;
-
-	msm_pcm_routing_get_fedai_info(fedai_id, SESSION_TYPE_RX, &fe_dai);
-	ac = q6asm_get_audio_client(fe_dai.strm_id);
-
-	if (ac == NULL) {
-		pr_err("%s: Could not get audio client for session: %d\n",
-		      __func__, fe_dai.strm_id);
-		return;
-	}
-
-	if (mmifx_eq->enable_flag)
-		msm_audio_effects_mmifx_send_eq_params(ac,
-					&(mmifx[fedai_id].eq_params),
-					mmifx[fedai_id].cmds);
-}
-#endif
 
 /* CUSTOM MIXING */
 int msm_qti_pp_send_stereo_to_custom_stereo_cmd(int port_id, int copp_idx,
@@ -1380,18 +1311,6 @@ static const struct snd_kcontrol_new eq_enable_mixer_controls[] = {
 	msm_qti_pp_put_eq_enable_mixer),
 };
 
-static const struct snd_kcontrol_new mmfx_eq_enable_mixer_controls[] = {
-	SOC_SINGLE_MULTI_EXT("MMFX MultiMedia1 EQ Config", SND_SOC_NOPM,
-	MSM_FRONTEND_DAI_MULTIMEDIA1, 0xFFFFFFFF, 0, 128,
-	msm_qti_pp_get_mmfx_eq_param_mixer, msm_qti_pp_put_mmfx_eq_param_mixer),
-	SOC_SINGLE_MULTI_EXT("MMFX MultiMedia4 EQ Config", SND_SOC_NOPM,
-	MSM_FRONTEND_DAI_MULTIMEDIA4, 0xFFFFFFFF, 0, 128,
-	msm_qti_pp_get_mmfx_eq_param_mixer, msm_qti_pp_put_mmfx_eq_param_mixer),
-	SOC_SINGLE_MULTI_EXT("MMFX MultiMedia5 EQ Config", SND_SOC_NOPM,
-	MSM_FRONTEND_DAI_MULTIMEDIA5, 0xFFFFFFFF, 0, 128,
-	msm_qti_pp_get_mmfx_eq_param_mixer, msm_qti_pp_put_mmfx_eq_param_mixer),
-};
-
 static const struct snd_kcontrol_new eq_band_mixer_controls[] = {
 	SOC_SINGLE_EXT("MultiMedia1 EQ Band Count", SND_SOC_NOPM,
 	MSM_FRONTEND_DAI_MULTIMEDIA1, 11, 0,
@@ -1582,9 +1501,6 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, eq_enable_mixer_controls,
 			ARRAY_SIZE(eq_enable_mixer_controls));
-
-	snd_soc_add_platform_controls(platform, mmfx_eq_enable_mixer_controls,
-			ARRAY_SIZE(mmfx_eq_enable_mixer_controls));
 
 	snd_soc_add_platform_controls(platform, eq_band_mixer_controls,
 			ARRAY_SIZE(eq_band_mixer_controls));
