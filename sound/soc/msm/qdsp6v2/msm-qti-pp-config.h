@@ -13,8 +13,6 @@
 #define _MSM_QTI_PP_H_
 
 #include <sound/soc.h>
-#include <sound/audio_effects.h>
-#include "msm-pcm-routing-v2.h"
 int msm_adsp_inform_mixer_ctl(struct snd_soc_pcm_runtime *rtd,
 			uint32_t *payload);
 int msm_adsp_init_mixer_ctl_pp_event_queue(struct snd_soc_pcm_runtime *rtd);
@@ -50,14 +48,6 @@ void msm_qti_pp_asphere_deinit(int port_id);
 #define msm_qti_pp_asphere_init(port_id, copp_idx) (0)
 #define msm_qti_pp_asphere_deinit(port_id) do {} while (0)
 #endif
-
-#if defined(CONFIG_QTI_PP) && defined(CONFIG_MMI_PP_AFX)
-void msm_qti_pp_mmfx_eq_send_eq_values(int fedai_id);
-#else
-#define msm_qti_pp_mmfx_eq_send_eq_values(fedai_id) do {} while (0)
-#endif
-
-extern struct mmi_eq_vals mmifx[MSM_FRONTEND_DAI_MAX];
 
 #endif /* _MSM_QTI_PP_H_ */
 
