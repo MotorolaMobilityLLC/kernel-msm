@@ -207,9 +207,6 @@ struct msm_compr_audio_effects {
 	struct query_audio_effect query;
 };
 
-struct mmi_eq_vals mmifx[MSM_FRONTEND_DAI_MAX];
-uint32_t audio_effect_config[MSM_FRONTEND_DAI_MAX][MAX_PP_PARAMS_SZ];
-
 struct msm_compr_dec_params {
 	struct snd_dec_ddp ddp_params;
 };
@@ -2251,18 +2248,6 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 		} else {
 			msm_compr_read_buffer(prtd);
 		}
-		if (msm_audio_effects_is_effmodule_supp_in_top(MMIFX_EQ_MODULE,
-						prtd->audio_client->topology)) {
-			if (mmifx[fe_id].cmds != 0) {
-				pr_debug("%s: Update MMIFX EQ params send\n",
-					__func__);
-				msm_audio_effects_mmifx_send_eq_params(
-						prtd->audio_client,
-						&(mmifx[fe_id].eq_params),
-						mmifx[fe_id].cmds);
-				mmifx[fe_id].cmds = 0;
-			}
-		}
 		/* issue RUN command for the stream */
 		q6asm_run_nowait(prtd->audio_client, prtd->run_mode,
 				 prtd->start_delay_msw, prtd->start_delay_lsw);
@@ -3205,7 +3190,6 @@ static int msm_compr_audio_effects_config_put(struct snd_kcontrol *kcontrol,
 	struct msm_compr_audio *prtd = NULL;
 	long *values = &(ucontrol->value.integer.value[0]);
 	int effects_module;
-	int i;
 
 	pr_debug("%s\n", __func__);
 	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
@@ -3213,30 +3197,15 @@ static int msm_compr_audio_effects_config_put(struct snd_kcontrol *kcontrol,
 			__func__, fe_id);
 		return -EINVAL;
 	}
-	for (i = 0; i < MAX_PP_PARAMS_SZ; i++) {
-		audio_effect_config[fe_id][i] =
-				ucontrol->value.integer.value[i];
-	}
-
-	effects_module = *values++;
 	cstream = pdata->cstream[fe_id];
 	audio_effects = pdata->audio_effects[fe_id];
-	if (!cstream || !audio_effects || !cstream->runtime) {
-		pr_err("%s: stream or effects inactive %ld\n", __func__, fe_id);
-		if (effects_module == MMIFX_EQ_MODULE)
-			/* update mmfx params, will be set when compr
-			 * session is started
-			 */
-			msm_audio_effects_mmifx_params(&(mmifx[fe_id]),
-						     values);
+	if (!cstream || !audio_effects) {
+		pr_err("%s: stream or effects inactive\n", __func__);
 		return -EINVAL;
 	}
 	prtd = cstream->runtime->private_data;
 	if (!prtd) {
 		pr_err("%s: cannot set audio effects\n", __func__);
-		if (effects_module == MMIFX_EQ_MODULE)
-			msm_audio_effects_mmifx_params(&(mmifx[fe_id]),
-						     values);
 		return -EINVAL;
 	}
 	if (prtd->compr_passthr != LEGACY_PCM) {
@@ -3247,7 +3216,7 @@ static int msm_compr_audio_effects_config_put(struct snd_kcontrol *kcontrol,
 		pr_debug("%s: Effects supported for compr_type[%d]\n",
 			 __func__, prtd->compr_passthr);
 	}
-
+	effects_module = *values++;
 	switch (effects_module) {
 	case VIRTUALIZER_MODULE:
 		pr_debug("%s: VIRTUALIZER_MODULE\n", __func__);
@@ -3301,20 +3270,6 @@ static int msm_compr_audio_effects_config_put(struct snd_kcontrol *kcontrol,
 						&(audio_effects->volume),
 						values, SOFT_VOLUME_INSTANCE_2);
 		break;
-	case MMIFX_EQ_MODULE:
-		pr_debug("%s: MMIFX EQ Module\n", __func__);
-		if (msm_audio_effects_is_effmodule_supp_in_top(effects_module,
-						prtd->audio_client->topology)) {
-			msm_audio_effects_mmifx_params(&(mmifx[fe_id]), values);
-			if (atomic_read(&prtd->start)) {
-				msm_audio_effects_mmifx_send_eq_params(
-						prtd->audio_client,
-						&(mmifx[fe_id].eq_params),
-						mmifx[fe_id].cmds);
-				mmifx[fe_id].cmds = 0;
-			}
-		}
-		break;
 	default:
 		pr_err("%s Invalid effects config module\n", __func__);
 		return -EINVAL;
@@ -3332,7 +3287,6 @@ static int msm_compr_audio_effects_config_get(struct snd_kcontrol *kcontrol,
 	struct msm_compr_audio_effects *audio_effects = NULL;
 	struct snd_compr_stream *cstream = NULL;
 	struct msm_compr_audio *prtd = NULL;
-	int i;
 
 	pr_debug("%s\n", __func__);
 	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
@@ -3350,10 +3304,6 @@ static int msm_compr_audio_effects_config_get(struct snd_kcontrol *kcontrol,
 	if (!prtd) {
 		pr_err("%s: cannot set audio effects\n", __func__);
 		return -EINVAL;
-	}
-	for (i = 0; i < MAX_PP_PARAMS_SZ; i++) {
-		ucontrol->value.integer.value[i] =
-				audio_effect_config[fe_id][i];
 	}
 
 	return 0;
