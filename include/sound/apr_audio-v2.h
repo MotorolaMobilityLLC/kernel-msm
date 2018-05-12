@@ -11566,13 +11566,6 @@ struct adm_param_fluence_sourcetracking_t {
 	uint8_t polar_activity[MAX_POLAR_ACTIVITY_INDICATORS];
 } __packed;
 
-#define ASM_STREAM_POSTPROC_TOPO_ID_MMIFX           0x1000E0C0
-#define AUDPROC_MODULE_ID_MMIFX                     0x1000E0B0
-#define AUDPROC_PARAM_ID_MMIFX_ENABLE               0x1000E3B0
-#define AUDPROC_PARAM_ID_MMIFX_PRESET               0x1000E3A0
-#define AUDPROC_PARAM_ID_MMIFX_TABLE                0x1000E300
-#define AUDPROC_PARAM_ID_MMIFX_DEVICE               0x1000E310
-
 #define AUDPROC_MODULE_ID_AUDIOSPHERE               0x00010916
 #define AUDPROC_PARAM_ID_AUDIOSPHERE_ENABLE         0x00010917
 #define AUDPROC_PARAM_ID_AUDIOSPHERE_STRENGTH       0x00010918
