@@ -6286,6 +6286,10 @@ static int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 #else
 	snd_soc_dapm_ignore_suspend(dapm, "IN2AL");
 	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1L");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1R");
+	snd_soc_dapm_ignore_suspend(dapm, "SPKDAT1L");
+	snd_soc_dapm_ignore_suspend(dapm, "SPKDAT1R");
 #endif
 	snd_soc_dapm_ignore_suspend(dapm, "DSP2 Virtual Output");
 	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Virtual Output");
