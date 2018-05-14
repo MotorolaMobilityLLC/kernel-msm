@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "sdm450-ali.dtsi"
+
+/ {
+	qcom,board-id = <0x43 0xC100>;
+	compatible = "qcom,sdm450-ali", "qcom,sdm450-moto",
+			"qcom,sdm450";
+	qcom,msm-id = <338 0x0>;
+	model = "ali";
+};
+
