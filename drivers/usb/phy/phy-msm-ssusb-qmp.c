@@ -27,6 +27,11 @@
 #include <linux/clk/msm-clk.h>
 #include <linux/reset.h>
 
+#undef dev_dbg
+#undef pr_debug
+#define dev_dbg dev_err
+#define pr_debug pr_err
+
 enum ldo_levels {
 	VOLTAGE_LEVEL_NONE = 0,
 	VOLTAGE_LEVEL_MIN,

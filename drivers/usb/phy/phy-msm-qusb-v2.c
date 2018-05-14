@@ -29,6 +29,11 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/reset.h>
 
+#undef dev_dbg
+#undef pr_debug
+#define dev_dbg dev_err
+#define pr_debug pr_err
+
 #define QUSB2PHY_PWR_CTRL1		0x210
 #define PWR_CTRL1_POWR_DOWN		BIT(0)
 

@@ -20,6 +20,11 @@
 
 #include "dbm.h"
 
+#undef dev_dbg
+#undef pr_debug
+#define dev_dbg dev_err
+#define pr_debug pr_err
+
 /**
 *  USB DBM Hardware registers.
 *

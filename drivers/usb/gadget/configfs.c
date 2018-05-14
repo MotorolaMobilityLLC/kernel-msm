@@ -8,6 +8,10 @@
 #include "configfs.h"
 #include "u_f.h"
 #include "u_os_desc.h"
+
+#undef pr_debug
+#define pr_debug pr_err
+
 #include "debug.h"
 
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
@@ -453,6 +457,7 @@ static int config_usb_cfg_link(
 		goto out;
 	}
 
+	pr_info("[oem] %s: func: %s\n", __func__, f->name);
 	/* stash the function until we bind it to the gadget */
 	list_add_tail(&f->list, &cfg->func_list);
 	ret = 0;

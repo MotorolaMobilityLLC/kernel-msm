@@ -69,6 +69,11 @@
 /* AHB2PHY read/write waite value */
 #define ONE_READ_WRITE_WAIT 0x11
 
+#undef dev_dbg
+#undef pr_debug
+#define dev_dbg dev_err
+#define pr_debug pr_err
+
 /* cpu to fix usb interrupt */
 static int cpu_to_affin;
 module_param(cpu_to_affin, int, S_IRUGO|S_IWUSR);
@@ -2266,6 +2271,7 @@ static void dwc3_msm_power_collapse_por(struct dwc3_msm *mdwc)
 	}
 
 	if (!mdwc->init) {
+		dev_dbg(mdwc->dev, "dwc3_core_pre_init\n");
 		dbg_event(0xFF, "dwc3 init",
 				atomic_read(&mdwc->dev->power.usage_count));
 		ret = dwc3_core_pre_init(dwc);
@@ -2276,6 +2282,7 @@ static void dwc3_msm_power_collapse_por(struct dwc3_msm *mdwc)
 		mdwc->init = true;
 	}
 
+	dev_dbg(mdwc->dev, "dwc3 core init\n");
 	dwc3_core_init(dwc);
 	/* Re-configure event buffers */
 	dwc3_event_buffers_setup(dwc);
@@ -2372,6 +2379,8 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 
 	dbg_event(0xFF, "Ctl Sus", atomic_read(&dwc->in_lpm));
 
+	dev_info(mdwc->dev, "%s: entering lpm\n", __func__);
+
 	mutex_lock(&mdwc->suspend_resume_mutex);
 	if (atomic_read(&dwc->in_lpm)) {
 		dev_dbg(mdwc->dev, "%s: Already suspended\n", __func__);
@@ -2432,6 +2441,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 
 	ret = dwc3_msm_prepare_suspend(mdwc);
 	if (ret) {
+		dev_err(mdwc->dev, "%s:Failed to prepare suspend\n", __func__);
 		mutex_unlock(&mdwc->suspend_resume_mutex);
 		return ret;
 	}
@@ -2465,6 +2475,8 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 
 	/* make sure above writes are completed before turning off clocks */
 	wmb();
+
+	dev_info(mdwc->dev, "DWC3 phy has been suspended\n");
 
 	/* Disable clocks */
 	if (mdwc->bus_aggr_clk)
@@ -2562,6 +2574,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 		schedule_work(&mdwc->bus_vote_w);
 	}
 
+	dev_dbg(mdwc->dev, "%s: prepare xo clk\n", __func__);
 	/* Vote for TCXO while waking up USB HSPHY */
 	ret = clk_prepare_enable(mdwc->xo_clk);
 	if (ret)
@@ -2589,9 +2602,12 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	 * Enable clocks
 	 * Turned ON iface_clk before core_clk due to FSM depedency.
 	 */
+	dev_dbg(mdwc->dev, "%s: prepare iface clk\n", __func__);
 	clk_prepare_enable(mdwc->iface_clk);
-	if (mdwc->noc_aggr_clk)
+	if (mdwc->noc_aggr_clk) {
+		dev_dbg(mdwc->dev, "%s: prepare no aggr clk\n", __func__);
 		clk_prepare_enable(mdwc->noc_aggr_clk);
+	}
 
 	core_clk_rate = mdwc->core_clk_rate;
 	if (mdwc->in_host_mode && mdwc->max_rh_port_speed == USB_SPEED_HIGH) {
@@ -2600,6 +2616,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 			core_clk_rate);
 	}
 
+	dev_dbg(mdwc->dev, "%s: prepare core clk\n", __func__);
 	clk_set_rate(mdwc->core_clk, core_clk_rate);
 	clk_prepare_enable(mdwc->core_clk);
 
@@ -2607,9 +2624,12 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	clk_set_flags(mdwc->core_clk, CLKFLAG_RETAIN_MEM);
 	clk_set_flags(mdwc->core_clk, CLKFLAG_RETAIN_PERIPH);
 
+	dev_dbg(mdwc->dev, "%s: prepare utmi clk\n", __func__);
 	clk_prepare_enable(mdwc->utmi_clk);
-	if (mdwc->bus_aggr_clk)
+	if (mdwc->bus_aggr_clk) {
+		dev_dbg(mdwc->dev, "%s: prepare bus aggr clk\n", __func__);
 		clk_prepare_enable(mdwc->bus_aggr_clk);
+	}
 
 	/* Resume SS PHY */
 	if (dwc->maximum_speed == USB_SPEED_SUPER &&
@@ -2623,11 +2643,13 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 			mdwc->ss_phy->flags |= PHY_LANE_A;
 		else if (mdwc->typec_orientation == ORIENTATION_CC2)
 			mdwc->ss_phy->flags |= PHY_LANE_B;
+		dev_dbg(mdwc->dev, "%s: resume SS phy\n", __func__);
 		usb_phy_set_suspend(mdwc->ss_phy, 0);
 		mdwc->ss_phy->flags &= ~DEVICE_IN_SS_MODE;
 		mdwc->lpm_flags &= ~MDWC3_SS_PHY_SUSPEND;
 	}
 
+	dev_dbg(mdwc->dev, "%s: resume HS phy\n", __func__);
 	mdwc->hs_phy->flags &= ~(PHY_HSFS_MODE | PHY_LS_MODE);
 	/* Resume HS PHY */
 	usb_phy_set_suspend(mdwc->hs_phy, 0);

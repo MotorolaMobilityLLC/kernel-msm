@@ -35,6 +35,15 @@
 	(speed == USB_SPEED_SUPER ?\
 	SSUSB_GADGET_VBUS_DRAW : CONFIG_USB_GADGET_VBUS_DRAW)
 
+#undef INFO
+#undef DBG
+#undef VDBG
+#undef pr_debug
+#define INFO ERROR
+#define DBG ERROR
+#define VDBG ERROR
+#define pr_debug pr_err
+
 /* disable LPM by default */
 static bool disable_l1_for_hs = true;
 module_param(disable_l1_for_hs, bool, S_IRUGO | S_IWUSR);
@@ -1618,6 +1627,9 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 	req->complete = composite_setup_complete;
 	req->length = 0;
 	gadget->ep0->driver_data = cdev;
+
+	DBG(cdev, "composite_setup: req=0x%x, reqtype=0x%x, wValue=0x%x\n",
+		ctrl->bRequest, ctrl->bRequestType, w_value);
 
 	/*
 	 * Don't let non-standard requests match any of the cases below
