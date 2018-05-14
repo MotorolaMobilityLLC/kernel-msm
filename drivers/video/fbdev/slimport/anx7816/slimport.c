@@ -859,6 +859,7 @@ static ssize_t tx_system_status_show(struct device *dev, struct device_attribute
 	int link_status = get_tx_system_state();
 	/* Force video stable complete when factory mode. */
 	/* If playing video while mydp test, we can get video stable when Edsel connected.*/
+	/* Otherwise handle_connect fail to get video_stable_wait when Edsel connected */
 	/* Since whether playing video do not affect reading video resolution, we keep this workaroud */
 	/* and do not play video when in mydp test */
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
@@ -878,6 +879,10 @@ static ssize_t tx_audio_status_show(struct device *dev, struct device_attribute 
 static ssize_t tx_video_status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int video_status = get_tx_video_state();
+	/* Ensure video stable complete in case start waiting vide stable too late*/
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	slimport_complete_video_stable();
+#endif
 
 	return snprintf(buf, PAGE_SIZE, "%d\n", video_status);
 }
