@@ -43,10 +43,6 @@ static int hdcp_enable = 1;
 /* external_block_en = 1: enable, 0: disable*/
 int external_block_en = 1;
 
-/* This is a workaround to avoid usb test fail */
-/* Because we can not get video stable state when factory test mydp_video */
-int factory_force_video_complete = -1;
-
 /* to access global platform data */
 static struct anx7816_platform_data *g_pdata;
 static struct anx7816_data *g_data;
@@ -861,7 +857,6 @@ ssize_t sp_irq_enable_store(struct device *dev,
 static ssize_t tx_system_status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int link_status = get_tx_system_state();
-	factory_force_video_complete = 1;
 
 	return snprintf(buf, PAGE_SIZE, "%d\n", link_status);
 }
@@ -1695,7 +1690,6 @@ static int slimport_mod_display_handle_connect(void *data)
 	struct anx7816_data *anx7816;
 	int retries = 2;
 	int ret = 0;
-	int wait_video_stable_timeout = WAIT_VIDEO_STABLE_TIMEOUT;
 
 	pr_debug("%s+\n", __func__);
 
@@ -1735,22 +1729,16 @@ static int slimport_mod_display_handle_connect(void *data)
 	pr_debug("%s: Start to wait video stable\n", __func__);
 
 	while (!wait_for_completion_timeout(&anx7816->video_stable_wait,
-		msecs_to_jiffies(wait_video_stable_timeout)) && retries) {
+		msecs_to_jiffies(WAIT_VIDEO_STABLE_TIMEOUT)) && retries) {
 			pr_warn("%s: Video not stable... Retries left: %d\n",
 		__func__, retries);
-
-		/* Fix me! This is workaround for factory test. */
-		if (factory_force_video_complete > 0)	{
-			factory_force_video_complete = 0;
-			wait_video_stable_timeout = 1000;
-		}
 
 		retries--;
 	}
 
 	if (retries == 0)
 		pr_warn("%s: Video is not stable after waiting %ds.\n",
-			__func__, 2 * wait_video_stable_timeout / 1000);
+			__func__, 2 * WAIT_VIDEO_STABLE_TIMEOUT / 1000);
 #endif
 	pr_debug("%s-\n", __func__);
 
