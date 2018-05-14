@@ -2790,7 +2790,7 @@ int get_tx_video_state(void)
 			LOG_TAG, __func__, video_pkg_len_h, video_pkg_len_l);
 
 	/* NAX FAE believe valid resoluton can ensure good HDMI hardware */
-	if (sp_tx_vo_state >= VO_WAIT_TX_VIDEO_STABLE) {
+	if ((sp_tx_vo_state >= VO_WAIT_TX_VIDEO_STABLE) && h_res == 1920 && v_res == 1080) {
 		pr_info("%s %s: anx7816 video status return 1, sp_tx_vo_state = %d, video package size: HByte 0x%x, LByte 0x%x\n",
 			LOG_TAG, __func__, sp_tx_vo_state, video_pkg_len_h, video_pkg_len_l);
 		ret = 0x10000|(video_pkg_len_h<<8)|video_pkg_len_l;
