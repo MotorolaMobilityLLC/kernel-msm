@@ -62,17 +62,6 @@
 		ti,ilim = <0x0F>;
 	};
 
-	tmp108@49 {
-		compatible = "ti,tmp108";
-		reg = <0x49>;
-		interrupt-parent = <&tlmm>;
-		gpios = <&tlmm 1 0>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&tmp108_2_irq_default>;
-		label = "msm_tmp108";
-	};
-
 	cypress_capsensor@1D {
 		compatible = "cypress,sf3155";
 		label = "MotorolaCapSense";
@@ -102,6 +91,10 @@
 		cyttsp,key-num = <4>;
 		cyttsp,key-codes = <4>;
 	};
+
+	/delete-node/ qcom,smb138x@8;
+	/delete-node/ tmp108@48;
+	/delete-node/ tmp108@49;
 };
 
 &soc {
@@ -129,19 +122,6 @@
 	/delete-node/ spi_1;  /* delete spi_1 node in tlmm */
 	/delete-node/ kungpow_default;
 
-	tmp108_2_irq {
-		tmp108_2_irq_default: default {
-			mux {
-				pins = "gpio1";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio1";
-				drive-strength = <2>;
-				bias-pull-up;
-			};
-		};
-	};
 	/* SPI_I2C_MPHY_SEL, RGB_MOD_SEL*/
 	muc_spi_i2c_switch: muc_spi_i2c_switch@0 {
 		config {
