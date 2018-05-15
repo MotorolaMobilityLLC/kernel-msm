@@ -6769,11 +6769,12 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 	if (rc < 0) {
 		smblib_err(chip, "Error getting AICL Limited rc = %d\n", rc);
 	} else if (val.intval) {
+		int target_icl = get_effective_result(chip->usb_icl_votable);
 		rc = smblib_get_prop_input_current_settled(chip, &val);
 		if (rc < 0) {
 			smblib_err(chip,
 				   "Error getting AICL Settled rc = %d\n", rc);
-		} else if (val.intval < WEAK_CHRG_THRSH) {
+		} else if (target_icl > 0 && val.intval < WEAK_CHRG_THRSH) {
 			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
 			goto end_rate_check;
 		}
