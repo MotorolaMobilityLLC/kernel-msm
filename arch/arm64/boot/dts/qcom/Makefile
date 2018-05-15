@@ -12,6 +12,11 @@ dtbo-$(CONFIG_ARCH_SDM450) += sdm450-ali-evt-overlay.dtbo
 sdm450-ali-evt-overlay.dtbo-base := \
 	sdm450-ali-base.dtb
 
+dtbo-$(CONFIG_ARCH_SDM632) += sdm632-river-evt-overlay.dtbo
+
+sdm632-river-evt-overlay.dtbo-base := \
+       sdm632-river-base.dtb
+
 else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb msm8916-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
