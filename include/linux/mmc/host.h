@@ -402,6 +402,7 @@ struct mmc_host {
 #ifdef CONFIG_PM_SLEEP
 	struct notifier_block	pm_notify;
 #endif
+	struct wakeup_source	pm_ws;
 	u32			max_current_330;
 	u32			max_current_300;
 	u32			max_current_180;
