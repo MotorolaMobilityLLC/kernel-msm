@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 &pmi8950_flash0 {
-	qcom,current = <625>;
+	qcom,current = <1000>;
 };
 
 &pmi8950_flash1 {
@@ -19,7 +19,7 @@
 };
 
 &pmi8950_torch0 {
-	qcom,current = <100>;
+	qcom,current = <200>;
 };
 
 &pmi8950_torch1 {
