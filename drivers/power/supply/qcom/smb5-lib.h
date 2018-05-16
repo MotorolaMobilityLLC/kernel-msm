@@ -15,6 +15,7 @@
 #include <linux/types.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
+#include <linux/reboot.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/extcon.h>
@@ -289,6 +290,7 @@ struct smb_iio {
 struct mmi_params {
 	bool			factory_mode;
 	bool			demo_mode;
+	struct notifier_block	smb_reboot;
 };
 
 struct smb_charger {
