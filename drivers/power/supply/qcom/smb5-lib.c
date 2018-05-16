@@ -17,6 +17,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/irq.h>
+#include <linux/module.h>
 #include <linux/pmic-voter.h>
 #include <linux/of_batterydata.h>
 #include <linux/alarmtimer.h>
@@ -4389,7 +4390,55 @@ int smblib_deinit(struct smb_charger *chg)
 	return 0;
 }
 
+/*********************
+ * MMI Functionality *
+ *********************/
+
 static struct smb_charger *mmi_chip;
+
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
+static int smbchg_reboot(struct notifier_block *nb,
+			 unsigned long event, void *unused)
+{
+	struct smb_charger *chg = container_of(nb, struct smb_charger,
+						mmi.smb_reboot);
+	u8 stat=0;
+	bool vbus_rising;
+	pr_debug("SMB Reboot\n");
+	if (!chg) {
+		pr_warn("called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+
+	vbus_rising = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
+	if (chg->mmi.factory_mode) {
+		switch (event) {
+		case SYS_POWER_OFF:
+			/* Disable Factory Kill */
+			factory_kill_disable = true;
+			/* Disable Charging */
+			smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
+					    CHARGING_ENABLE_CMD_BIT,
+					    CHARGING_ENABLE_CMD_BIT);
+
+			/* Suspend USB and DC */
+			smblib_set_usb_suspend(chg, true);
+			smblib_set_dc_suspend(chg, true);
+
+			while (vbus_rising)
+				msleep(100);
+			pr_warn("VBUS UV wait 1 sec!\n");
+			/* Delay 1 sec to allow more VBUS decay */
+			msleep(1000);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return NOTIFY_DONE;
+}
 
 #define CHG_SHOW_MAX_SIZE 50
 static ssize_t force_demo_mode_store(struct device *dev,
@@ -4780,6 +4829,13 @@ void mmi_init(struct smb_charger *chg)
 		return;
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
+
+	chg->mmi.smb_reboot.notifier_call = smbchg_reboot;
+	chg->mmi.smb_reboot.next = NULL;
+	chg->mmi.smb_reboot.priority = 1;
+	rc = register_reboot_notifier(&chg->mmi.smb_reboot);
+	if (rc)
+		pr_err("SMB register for reboot failed\n");
 
 	rc = device_create_file(chg->dev,
 				&dev_attr_force_demo_mode);
