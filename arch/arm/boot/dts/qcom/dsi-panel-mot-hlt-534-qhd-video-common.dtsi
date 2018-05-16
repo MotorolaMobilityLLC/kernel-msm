@@ -39,12 +39,12 @@ qcom,mdss-dsi-on-command = [05 01 00 00 78 00 02 11 00
 		05 01 00 00 0A 00 02 29 00];
 
 qcom,mdss-dsi-off-command = [
-	05 01 00 00 14 00 01 28
-	39 00 00 04 BB 00 D8 F3
-	39 00 00 04 BB 00 58 F3
-	39 00 00 04 BB 00 40 F3
-	39 00 00 04 BB 00 00 F3
-	05 01 00 00 78 00 01 10];
+	05 01 00 00 1F 00 02 28 00
+	39 01 00 00 14 00 02 F3 D8
+	39 01 00 00 14 00 02 F3 58
+	39 01 00 00 14 00 02 F3 40
+	39 01 00 00 14 00 02 F3 00
+	05 01 00 00 8c 00 02 10 00];
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
@@ -97,17 +97,6 @@ qcom,panel-supply-entries {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	qcom,panel-supply-entry@0 {
-		qcom,supply-name = "vddio_disp";
-		qcom,supply-min-voltage = <1800000>;
-		qcom,supply-max-voltage = <1800000>;
-		qcom,supply-enable-load = <300000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <0>;
-		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <120>;
-	};
-	qcom,panel-supply-entry@1 {
 		qcom,supply-name = "vio_disp";
 		qcom,supply-min-voltage = <2800000>;
 		qcom,supply-max-voltage = <2800000>;
@@ -116,6 +105,15 @@ qcom,panel-supply-entries {
 		qcom,supply-pre-on-sleep = <2>;
 		qcom,supply-post-on-sleep = <2>;
 		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <120>;
+	};
+	qcom,panel-supply-entry@1 {
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <120>;
 	};
 };
