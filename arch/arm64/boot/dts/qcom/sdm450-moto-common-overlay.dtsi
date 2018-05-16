@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#include "sdm450-moto-pinctrl.dtsi"
+#include "sdm450-moto-pinctrl-overlay.dtsi"
 
 &reserved_memory {
 	ramoops_mem {

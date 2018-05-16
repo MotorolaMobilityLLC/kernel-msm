@@ -11,14 +11,14 @@
  * GNU General Public License for more details.
  */
 
-#include "sdm450-moto-common.dtsi"
-#include "sdm450-ali-pinctrl.dtsi"
-#include "sdm450-camera-sensor-mot-ali.dtsi"
+#include "sdm450-moto-common-overlay.dtsi"
+#include "sdm450-ali-pinctrl-overlay.dtsi"
+#include "sdm450-camera-sensor-mot-ali-overlay.dtsi"
 #include "dsi-panel-mot-boe-565-1080p-vid.dtsi"
 #include "dsi-panel-mot-tianma-565-1080p-vid.dtsi"
 #include "dsi-panel-mot-auo-565-1080p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
-#include "sdm450-ali-audio.dtsi"
+#include "sdm450-ali-audio-overlay.dtsi"
 
 &mtp_batterydata {
 	qcom,batt-id-range-pct = <15>;
