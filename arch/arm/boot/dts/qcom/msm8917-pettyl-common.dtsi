@@ -172,11 +172,19 @@
 };
 
 &other_ext_mem {
-	reg = <0x0 0x84F00000 0x0 0x1900000>;
+	reg = <0x0 0x85300000 0x0 0x1500000>;
 };
 
 &qcom_seecom {
-	reg = <0x84F00000 0x1400000>;
+	reg = <0x85300000 0x1000000>;
+};
+
+&venus_mem {
+	size = <0 0x800000>;
+};
+
+&adsp_mem {
+	compatible = "shared-dma-pool";
 };
 
 &et320 {
