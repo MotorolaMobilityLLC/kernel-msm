@@ -706,3 +706,20 @@ config VMAP_ZERO
 	help
 	   "vmap_zero()" will help kernel modules to zero big memory block.
 	   It will reserve a big vmalloc area dedicated to zero pages.
+
+config FORCE_RECLAIM
+	bool "Enable process reclaim"
+	depends on PROC_FS
+	default n
+	help
+	 It allows to force reclaim pages of all processes by /proc/pid/reclaim.
+
+	 (echo file > /proc/PID/reclaim) reclaims file-backed pages only.
+	 (echo anon > /proc/PID/reclaim) reclaims anonymous pages only.
+	 (echo all > /proc/PID/reclaim) reclaims all pages.
+
+	 (echo addr size-byte > /proc/PID/reclaim) reclaims pages in
+	 (addr, addr + size-bytes) of the process.
+
+	 Any other value is ignored.
+
