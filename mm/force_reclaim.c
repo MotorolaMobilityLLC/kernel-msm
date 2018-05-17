@@ -63,8 +63,10 @@ module_param_named(pressure_max, pressure_max, ulong, S_IRUGO | S_IWUSR);
 static int swap_eff_win = 2;
 module_param_named(swap_eff_win, swap_eff_win, int, S_IRUGO | S_IWUSR);
 
-static int swap_opt_eff = 50;
+static int swap_opt_eff = 10;
 module_param_named(swap_opt_eff, swap_opt_eff, int, S_IRUGO | S_IWUSR);
+
+static atomic_t swap_opt_loop = ATOMIC_INIT(0);
 
 static atomic_t skip_reclaim = ATOMIC_INIT(0);
 /* Not atomic since only a single instance of swap_fn run at a time */
@@ -121,6 +123,8 @@ static void swap_fn(struct work_struct *work)
 	int total_reclaimed = 0;
 	int nr_to_reclaim;
 	int efficiency;
+
+	printk(KERN_DEBUG "force reclaim starts to work\n");
 
 	selected = (struct selected_task *) kmalloc(sizeof(struct selected_task) \
 					* MAX_SWAP_TASKS, GFP_KERNEL);
@@ -185,8 +189,11 @@ static void swap_fn(struct work_struct *work)
 	rcu_read_unlock();
 
 	while (si--) {
+		/*
 		nr_to_reclaim =
 			(selected[si].tasksize * per_swap_size) / total_sz;
+		*/
+		nr_to_reclaim = selected[si].tasksize;
 		/* scan atleast a page */
 		if (!nr_to_reclaim)
 			nr_to_reclaim = 1;
@@ -215,6 +222,11 @@ static void swap_fn(struct work_struct *work)
 	}
 
 	kfree(selected);
+
+	if (atomic_read(&swap_opt_loop) != 0) {
+		queue_delayed_work(system_unbound_wq, &swap_work, HZ);
+		atomic_dec(&swap_opt_loop);
+	}
 }
 
 static int force_reclaim_show(struct seq_file *m, void *v)
@@ -255,11 +267,13 @@ static int force_reclaim_write(struct file *flip, const char *ubuf, size_t cnt, 
 	if (cnt >= 1) {
 		if (!enable_force_reclaim)
 			return 0;
-		if (0 < atomic_read(&skip_reclaim))
+		if (0 < atomic_read(&skip_reclaim) ||
+			(0 < atomic_read(&swap_opt_loop)))
 			return 0;
 
 		if (!delayed_work_pending(&swap_work)) {
 			printk(KERN_DEBUG "queue swap work with delay: %ld\n", delay);
+			atomic_set(&swap_opt_loop, 3);
 			queue_delayed_work(system_unbound_wq, &swap_work, (delay / 1000) * HZ);
 		}
 		return 1;
