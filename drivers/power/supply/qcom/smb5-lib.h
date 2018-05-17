@@ -294,6 +294,9 @@ struct mmi_params {
 	bool			factory_mode;
 	bool			demo_mode;
 	struct notifier_block	smb_reboot;
+	int			usb_system_temp_level;
+	int			usb_thermal_levels;
+	int			*usb_thermal_mitigation;
 };
 
 struct smb_charger {
@@ -609,6 +612,10 @@ int smblib_icl_override(struct smb_charger *chg, bool override);
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
 
+int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
+					  union power_supply_propval *val);
+int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
+				const union power_supply_propval *val);
 void mmi_init(struct smb_charger *chg);
 void mmi_deinit(struct smb_charger *chg);
 #endif /* __SMB5_CHARGER_H */

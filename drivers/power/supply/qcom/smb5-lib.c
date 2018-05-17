@@ -5013,6 +5013,36 @@ static DEVICE_ATTR(force_chg_itrick, 0664,
 		   force_chg_itrick_show,
 		   force_chg_itrick_store);
 
+int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
+					  union power_supply_propval *val)
+{
+	val->intval = chg->mmi.usb_system_temp_level;
+	return 0;
+}
+
+int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
+				const union power_supply_propval *val)
+{
+	if (val->intval < 0)
+		return -EINVAL;
+
+	if (chg->mmi.usb_thermal_levels <= 0)
+		return -EINVAL;
+
+	if (val->intval > chg->mmi.usb_thermal_levels)
+		return -EINVAL;
+
+	chg->mmi.usb_system_temp_level = val->intval;
+
+	if (chg->mmi.usb_system_temp_level == 0)
+		return vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+
+	vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
+	     chg->mmi.usb_thermal_mitigation[chg->mmi.usb_system_temp_level]);
+
+	return 0;
+}
+
 static bool mmi_factory_check(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -5026,6 +5056,39 @@ static bool mmi_factory_check(void)
 	return factory;
 }
 
+static int parse_mmi_dt(struct smb_charger *chg)
+{
+	struct device_node *node = chg->dev->of_node;
+	int rc = 0;
+	int byte_len;
+
+	if (!node) {
+		pr_err("mmi dtree info. missing\n");
+		return -ENODEV;
+	}
+
+	if (of_find_property(node, "qcom,usb-thermal-mitigation", &byte_len)) {
+		chg->mmi.usb_thermal_mitigation =
+			devm_kzalloc(chg->dev, byte_len, GFP_KERNEL);
+
+		if (chg->mmi.usb_thermal_mitigation == NULL)
+			return -ENOMEM;
+
+		chg->mmi.usb_thermal_levels = byte_len / sizeof(u32);
+		rc = of_property_read_u32_array(node,
+				"qcom,usb-thermal-mitigation",
+				chg->mmi.usb_thermal_mitigation,
+				chg->mmi.usb_thermal_levels);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't read usb therm limits rc = %d\n", rc);
+			return rc;
+		}
+	}
+
+	return rc;
+}
+
 void mmi_init(struct smb_charger *chg)
 {
 	int rc;
@@ -5034,6 +5097,10 @@ void mmi_init(struct smb_charger *chg)
 		return;
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
+
+	rc = parse_mmi_dt(chg);
+	if (rc < 0)
+		pr_err("Error getting mmi dt items\n");
 
 	chg->mmi.smb_reboot.notifier_call = smbchg_reboot;
 	chg->mmi.smb_reboot.next = NULL;
