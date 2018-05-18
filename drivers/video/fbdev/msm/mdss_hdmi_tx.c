@@ -863,12 +863,22 @@ static ssize_t hdmi_tx_sysfs_wta_hpd(struct device *dev,
 
 	DEV_DBG("%s: %d\n", __func__, hpd);
 
+	/*
+	* HPD on only can be triggered by Slimport driver
+	* instead of HWC if Slimport is connected
+	*/
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	if (hpd) {
+		DEV_DBG("%s: HDP on from HWC\n", __func__);
+		goto end;
+	}
+#else
 	if (hdmi_ctrl->ds_registered && hpd &&
 	    (!hdmi_ctrl->mhl_hpd_on || hdmi_ctrl->hpd_feature_on)) {
 		DEV_DBG("%s: DS registered, HPD on not allowed\n", __func__);
 		goto end;
 	}
-
+#endif
 	switch (hpd) {
 	case HPD_OFF:
 	case HPD_DISABLE:
