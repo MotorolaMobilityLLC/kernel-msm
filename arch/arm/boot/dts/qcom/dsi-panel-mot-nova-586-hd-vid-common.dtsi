@@ -81,7 +81,7 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <1 10>, <0 1>, <1 10>;
+qcom,mdss-dsi-reset-sequence = <0 11>, <1 10>, <0 1>, <1 10>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <50000>;
