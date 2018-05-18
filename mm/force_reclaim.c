@@ -124,7 +124,7 @@ static void swap_fn(struct work_struct *work)
 	int nr_to_reclaim;
 	int efficiency;
 
-	printk(KERN_DEBUG "force reclaim starts to work\n");
+	pr_debug("force_reclaim: force reclaim starts to work\n");
 
 	selected = (struct selected_task *) kmalloc(sizeof(struct selected_task) \
 					* MAX_SWAP_TASKS, GFP_KERNEL);
@@ -272,11 +272,10 @@ static int force_reclaim_write(struct file *flip, const char *ubuf, size_t cnt, 
 			return 0;
 
 		if (!delayed_work_pending(&swap_work)) {
-			printk(KERN_DEBUG "queue swap work with delay: %ld\n", delay);
 			atomic_set(&swap_opt_loop, 3);
+			pr_debug("force_reclaim: queue swap work with delay: %ld\n", delay);
 			queue_delayed_work(system_unbound_wq, &swap_work, (delay / 1000) * HZ);
 		}
-		return 1;
 	}
 
 	return cnt;
