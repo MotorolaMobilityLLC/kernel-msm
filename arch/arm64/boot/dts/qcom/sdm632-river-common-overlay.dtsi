@@ -14,3 +14,11 @@
 #include "sdm632-moto-common-overlay.dtsi"
 #include "sdm632-river-pinctrl-overlay.dtsi"
 
+&pmi632_rgb {
+	red {
+		label = "charging";
+		/delete-property/ linux,default-trigger;
+	};
+	/delete-node/ green;
+	/delete-node/ blue;
+};
