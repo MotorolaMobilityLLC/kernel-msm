@@ -193,28 +193,6 @@ queue_chg_work:
 	return IRQ_HANDLED;
 }
 
-static int gpio_usbdetect_notify_usb_type(struct gpio_usbdetect *usb,
-					enum power_supply_type type)
-{
-	int rc;
-	union power_supply_propval pval = {0, };
-
-	pval.intval = type;
-	rc = usb->usb_psy->set_property(usb->usb_psy,
-			POWER_SUPPLY_PROP_REAL_TYPE, &pval);
-	if (rc < 0) {
-		if (rc == -EINVAL) {
-			rc = usb->usb_psy->set_property(usb->usb_psy,
-					POWER_SUPPLY_PROP_TYPE, &pval);
-			if (!rc)
-				return 0;
-		}
-		pr_err("notify charger type to usb_psy failed, rc=%d\n", rc);
-	}
-
-	return rc;
-}
-
 static void gpio_usbdetect_chg_work(struct work_struct *w)
 {
 	struct gpio_usbdetect *usb = container_of(w, struct gpio_usbdetect,
@@ -224,7 +202,7 @@ static void gpio_usbdetect_chg_work(struct work_struct *w)
 		dev_dbg(&usb->pdev->dev, "ID:%d VBUS:%d\n",
 						usb->id, usb->vbus);
 		if (!usb->id) {
-			gpio_usbdetect_notify_usb_type(usb,
+			power_supply_set_supply_type(usb->usb_psy,
 					POWER_SUPPLY_TYPE_UNKNOWN);
 			power_supply_set_present(usb->usb_psy, 0);
 			power_supply_set_usb_otg(usb->usb_psy, 1);
@@ -239,11 +217,11 @@ static void gpio_usbdetect_chg_work(struct work_struct *w)
 			gpio_set_value(usb->dpdm_switch_gpio, 0);
 
 		if (usb->vbus) {
-			gpio_usbdetect_notify_usb_type(usb,
+			power_supply_set_supply_type(usb->usb_psy,
 						POWER_SUPPLY_TYPE_USB);
 			power_supply_set_present(usb->usb_psy, usb->vbus);
 		} else {
-			gpio_usbdetect_notify_usb_type(usb,
+			power_supply_set_supply_type(usb->usb_psy,
 					POWER_SUPPLY_TYPE_UNKNOWN);
 			power_supply_set_present(usb->usb_psy, usb->vbus);
 		}
@@ -256,13 +234,13 @@ static void gpio_usbdetect_chg_work(struct work_struct *w)
 			power_supply_set_usb_otg(usb->usb_psy, 0);
 
 		if (!usb->disable_device_mode) {
-			gpio_usbdetect_notify_usb_type(usb,
+			power_supply_set_supply_type(usb->usb_psy,
 						POWER_SUPPLY_TYPE_USB);
 			power_supply_set_present(usb->usb_psy, usb->vbus);
 		}
 	} else {
 		/* notify gpio_state = LOW as disconnect */
-		gpio_usbdetect_notify_usb_type(usb,
+		power_supply_set_supply_type(usb->usb_psy,
 				POWER_SUPPLY_TYPE_UNKNOWN);
 		power_supply_set_present(usb->usb_psy, usb->vbus);
 
