@@ -4760,6 +4760,63 @@ static bool mmi_has_current_tapered(struct smb_charger *chip,
 	return change_state;
 }
 
+#define WEAK_CHRG_THRSH 450
+#define TURBO_CHRG_THRSH 2500
+void mmi_chrg_rate_check(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval val;
+	struct mmi_params *mmi = &chip->mmi;
+	int prev_chg_rate = mmi->charger_rate;
+	char *charge_rate[] = {
+		"None", "Normal", "Weak", "Turbo"
+	};
+
+	rc = smblib_get_prop_usb_present(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting USB Present rc = %d\n", rc);
+		return;
+	} else if (!val.intval) {
+		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+		goto end_rate_check;
+	}
+
+	if (mmi->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO)
+		goto end_rate_check;
+
+	val.intval = get_client_vote(chip->usb_icl_votable, PD_VOTER);
+	if ((val.intval / 1000) >= TURBO_CHRG_THRSH) {
+		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		goto end_rate_check;
+	}
+
+	if (chip->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH) {
+		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		goto end_rate_check;
+	}
+
+	rc = smblib_get_prop_input_current_limited(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting AICL Limited rc = %d\n", rc);
+	} else if (val.intval) {
+		rc = smblib_get_prop_input_current_settled(chip, &val);
+		if (rc < 0) {
+			pr_err("Error getting AICL Settled rc = %d\n", rc);
+		} else if (val.intval < WEAK_CHRG_THRSH) {
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
+			goto end_rate_check;
+		}
+	}
+
+	mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+
+end_rate_check:
+	if (prev_chg_rate != mmi->charger_rate)
+		pr_err("%s Charger Detected\n",
+		       charge_rate[mmi->charger_rate]);
+
+}
+
 #define CHARGER_DETECTION_DONE 7
 #define HEARTBEAT_EB_MS 1000
 #define HEARTBEAT_DELAY_MS 60000
@@ -4878,6 +4935,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_usb = 1500;
 		else if (cl_usb <= 0)
 			cl_usb = 500;
+
+		if (cl_usb >= TURBO_CHRG_THRSH)
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 	}
 
 	mmi_find_temp_zone(chip, batt_temp);
@@ -5582,6 +5642,8 @@ void mmi_init(struct smb_charger *chg)
 		return;
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
+
+	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
 	INIT_DELAYED_WORK(&chg->mmi.heartbeat_work, mmi_heartbeat_work);
 	wakeup_source_init(&chg->mmi.smblib_mmi_hb_wake_source,
