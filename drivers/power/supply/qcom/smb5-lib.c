@@ -1516,6 +1516,9 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	if (!stat)
 		val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 
+	if (chg->mmi.pres_chrg_step == STEP_FULL)
+		val->intval = POWER_SUPPLY_STATUS_FULL;
+
 	return 0;
 }
 
@@ -1655,6 +1658,10 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 	val->intval = (stat == TERMINATE_CHARGE);
+
+	if (chg->mmi.pres_chrg_step == STEP_FULL)
+		val->intval = 1;
+
 	return 0;
 }
 
@@ -1996,6 +2003,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 			       union power_supply_propval *val)
 {
 	int rc = 0;
+#ifdef QCOM_BASE
 	u8 stat;
 
 	if (get_client_vote_locked(chg->usb_icl_votable, USER_VOTER) == 0) {
@@ -2014,6 +2022,12 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 
 	val->intval = (stat & USE_USBIN_BIT) &&
 		      (stat & VALID_INPUT_POWER_SOURCE_STS_BIT);
+#else
+	if (chg->mmi.apsd_done)
+		rc = smblib_get_prop_usb_present(chg, val);
+	else
+		val->intval = 0;
+#endif
 	return rc;
 }
 
@@ -3322,6 +3336,8 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		break;
 	}
 
+	chg->mmi.apsd_done = true;
+
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: apsd-done rising; %s detected\n",
 		   apsd_result->name);
 }
@@ -3390,6 +3406,10 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 	}
 	smblib_dbg(chg, PR_REGISTER, "APSD_STATUS = 0x%02x\n", stat);
 
+	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
 	return IRQ_HANDLED;
 }
 
@@ -3483,6 +3503,8 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
 	vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CTM_VOTER, false, 0);
+
+	chg->mmi.apsd_done = false;
 
 	/* reset usb irq voters */
 	vote(chg->usb_irq_enable_votable, PD_VOTER, false, 0);
@@ -4281,6 +4303,7 @@ int smblib_init(struct smb_charger *chg)
 {
 	int rc = 0;
 
+	device_init_wakeup(chg->dev, true);
 	mutex_init(&chg->lock);
 	INIT_WORK(&chg->bms_update_work, bms_update_work);
 	INIT_WORK(&chg->pl_update_work, pl_update_work);
@@ -4406,6 +4429,386 @@ int smblib_deinit(struct smb_charger *chg)
 
 static struct smb_charger *mmi_chip;
 
+static char *stepchg_str[] = {
+	[STEP_MAX]		= "MAX",
+	[STEP_NORM]		= "NORMAL",
+	[STEP_FULL]		= "FULL",
+	[STEP_FLOAT]		= "FLOAT",
+	[STEP_DEMO]		= "DEMO",
+	[STEP_STOP]		= "STOP",
+	[STEP_NONE]		= "NONE",
+};
+
+#define MIN_TEMP_C -20
+#define HYSTERISIS_DEGC 2
+static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
+{
+	int prev_zone, num_zones;
+	struct mmi_temp_zone *zones;
+	int hotter_t, hotter_fcc;
+	int colder_t, colder_fcc;
+	int i;
+
+	if (!chip) {
+		pr_warn("called before chip valid!\n");
+		return false;
+	}
+
+	zones = chip->mmi.temp_zones;
+	num_zones = chip->mmi.num_temp_zones;
+	prev_zone = chip->mmi.pres_temp_zone;
+
+	if (prev_zone == ZONE_NONE) {
+		for (i = num_zones - 1; i >= 0; i--) {
+			if (temp_c >= zones[i].temp_c) {
+				if (i == num_zones - 1)
+					chip->mmi.pres_temp_zone = ZONE_HOT;
+				else
+					chip->mmi.pres_temp_zone = i + 1;
+				return true;
+			}
+		}
+		chip->mmi.pres_temp_zone = ZONE_COLD;
+		return true;
+	}
+
+	if (prev_zone == ZONE_COLD) {
+		if (temp_c >= MIN_TEMP_C + HYSTERISIS_DEGC)
+			chip->mmi.pres_temp_zone = ZONE_FIRST;
+	} else if (prev_zone == ZONE_HOT) {
+		if (temp_c <= zones[num_zones - 1].temp_c - HYSTERISIS_DEGC)
+			chip->mmi.pres_temp_zone = num_zones - 1;
+	} else {
+		if (prev_zone == ZONE_FIRST) {
+			hotter_fcc = zones[prev_zone + 1].fcc_max_ma;
+			colder_fcc = 0;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = MIN_TEMP_C;
+		} else if (prev_zone == num_zones - 1) {
+			hotter_fcc = 0;
+			colder_fcc = zones[prev_zone - 1].fcc_max_ma;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = zones[prev_zone - 1].temp_c;
+		} else {
+			hotter_fcc = zones[prev_zone + 1].fcc_max_ma;
+			colder_fcc = zones[prev_zone - 1].fcc_max_ma;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = zones[prev_zone - 1].temp_c;
+		}
+
+		if (zones[prev_zone].fcc_max_ma < hotter_fcc)
+			hotter_t += HYSTERISIS_DEGC;
+
+		if (zones[prev_zone].fcc_max_ma < colder_fcc)
+			colder_t -= HYSTERISIS_DEGC;
+
+		if (temp_c < MIN_TEMP_C)
+			chip->mmi.pres_temp_zone = ZONE_COLD;
+		else if (temp_c >= zones[num_zones - 1].temp_c)
+			chip->mmi.pres_temp_zone = ZONE_HOT;
+		else if (temp_c >= hotter_t)
+			chip->mmi.pres_temp_zone++;
+		else if (temp_c < colder_t)
+			chip->mmi.pres_temp_zone--;
+	}
+
+	if (prev_zone != chip->mmi.pres_temp_zone) {
+		pr_warn("Entered Temp Zone %d!\n", chip->mmi.pres_temp_zone);
+		return true;
+	}
+
+	return false;
+}
+
+#define TAPER_COUNT 2
+static bool mmi_has_current_tapered(struct smb_charger *chip,
+				    int batt_ma, int taper_ma)
+{
+	bool change_state = false;
+	int allowed_fcc;
+
+	if (!chip) {
+		pr_warn("called before chip valid!\n");
+		return false;
+	}
+
+	allowed_fcc = get_effective_result(chip->fcc_votable) / 1000;
+
+	if (batt_ma < 0) {
+		batt_ma *= -1;
+		if ((batt_ma <= taper_ma) && (allowed_fcc >= taper_ma))
+			if (chip->mmi.chrg_taper_cnt >= TAPER_COUNT) {
+				change_state = true;
+				chip->mmi.chrg_taper_cnt = 0;
+			} else
+				chip->mmi.chrg_taper_cnt++;
+		else
+			chip->mmi.chrg_taper_cnt = 0;
+	} else {
+		if (chip->mmi.chrg_taper_cnt >= TAPER_COUNT) {
+			change_state = true;
+			chip->mmi.chrg_taper_cnt = 0;
+		} else
+			chip->mmi.chrg_taper_cnt++;
+	}
+
+	return change_state;
+}
+
+#define CHARGER_DETECTION_DONE 7
+#define HEARTBEAT_EB_MS 1000
+#define HEARTBEAT_DELAY_MS 60000
+#define HEARTBEAT_HOLDOFF_MS 10000
+#define HYST_STEP_MV 50
+static void mmi_heartbeat_work(struct work_struct *work)
+{
+	struct smb_charger *chip = container_of(work,
+						struct smb_charger,
+						mmi.heartbeat_work.work);
+	int rc;
+	int batt_mv;
+	int batt_ma;
+	int batt_soc;
+	int batt_temp;
+	int vbus_present = 0;
+	int charger_present = 0;
+	int cl_usb = -EINVAL;
+	int cl_pd = -EINVAL;
+	int cl_cc = -EINVAL;
+
+	int prev_step;
+	int hb_resch_time;
+
+	union power_supply_propval val;
+	struct mmi_params *mmi = &chip->mmi;
+	struct mmi_temp_zone *zone;
+	int max_fv_mv = -EINVAL;
+	int target_usb = -EINVAL;
+	int target_fcc = -EINVAL;
+	int target_fv = -EINVAL;
+
+	if (!atomic_read(&chip->mmi.hb_ready))
+		return;
+
+	vote(chip->awake_votable, HEARTBEAT_VOTER, true, true);
+
+	alarm_try_to_cancel(&chip->mmi.heartbeat_alarm);
+
+	/* Collect Current Information */
+	rc = smblib_get_prop_usb_present(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting USB Present rc = %d\n", rc);
+		goto end_hb;
+	} else
+		vbus_present = val.intval;
+
+	if (!vbus_present) {
+		charger_present = 0;
+		mmi->charger_debounce_cnt = 0;
+	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE)
+		mmi->charger_debounce_cnt++;
+	else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
+		charger_present = 1;
+
+	rc = smblib_get_prop_batt_voltage_now(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Voltage rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_mv = val.intval / 1000;
+
+	rc = smblib_get_prop_batt_current_now(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Current rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_ma = val.intval / 1000;
+
+	rc = smblib_get_prop_batt_capacity(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Capacity rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_soc = val.intval;
+
+	rc = smblib_get_prop_batt_temp(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Temperature rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_temp = val.intval / 10;
+
+	pr_debug("batt=%d mV, %d mA, %d C\n", batt_mv, batt_ma, batt_temp);
+
+	if (charger_present) {
+		val.intval = get_client_vote(chip->usb_icl_votable,
+					     USB_PSY_VOTER);
+		cl_usb = val.intval / 1000;
+
+		val.intval = get_client_vote(chip->usb_icl_votable,
+					     PD_VOTER);
+		cl_pd = val.intval / 1000;
+
+		switch (chip->typec_mode) {
+		case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
+			cl_cc = 500;
+			break;
+		case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
+			cl_cc = 1500;
+			break;
+		case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
+			cl_cc = 3000;
+			break;
+		default:
+			cl_cc = 0;
+			break;
+		}
+
+		if (cl_pd > 0)
+			cl_usb = cl_pd;
+		else if (cl_cc > 500)
+			cl_usb = cl_cc;
+		else if (chip->real_charger_type ==
+			 POWER_SUPPLY_TYPE_USB_DCP)
+			cl_usb = 1500;
+		else if (cl_usb <= 0)
+			cl_usb = 500;
+	}
+
+	mmi_find_temp_zone(chip, batt_temp);
+	zone = &mmi->temp_zones[mmi->pres_temp_zone];
+
+	max_fv_mv = get_client_vote(chip->fv_votable, DEFAULT_VOTER) / 1000;
+
+	/* Determine Next State */
+	prev_step = chip->mmi.pres_chrg_step;
+
+	if (!charger_present) {
+		mmi->pres_chrg_step = STEP_NONE;
+	} else if ((mmi->pres_temp_zone == ZONE_HOT) ||
+		   (mmi->pres_temp_zone == ZONE_COLD)) {
+		chip->mmi.pres_chrg_step = STEP_STOP;
+	} else if (mmi->demo_mode) {
+		mmi->pres_chrg_step = STEP_DEMO;
+	} else if ((mmi->pres_chrg_step == STEP_NONE) ||
+		   (mmi->pres_chrg_step == STEP_STOP)) {
+		if (zone->norm_mv && (batt_mv >= zone->norm_mv)) {
+			if (zone->fcc_norm_ma)
+				mmi->pres_chrg_step = STEP_NORM;
+			else
+				mmi->pres_chrg_step = STEP_STOP;
+		} else
+			mmi->pres_chrg_step = STEP_MAX;
+	} else if (mmi->pres_chrg_step == STEP_MAX) {
+		if (!zone->norm_mv) {
+			/* No Step in this Zone */
+			mmi->chrg_taper_cnt = 0;
+			if ((batt_mv + HYST_STEP_MV) >= max_fv_mv)
+				mmi->pres_chrg_step = STEP_NORM;
+			else
+				mmi->pres_chrg_step = STEP_MAX;
+		} else if ((batt_mv + HYST_STEP_MV) < zone->norm_mv) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_MAX;
+		} else if (!zone->fcc_norm_ma)
+			mmi->pres_chrg_step = STEP_FLOAT;
+		else if (mmi_has_current_tapered(chip, batt_ma,
+						 zone->fcc_norm_ma)) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_NORM;
+		}
+	} else if (mmi->pres_chrg_step == STEP_NORM) {
+		if (!zone->fcc_norm_ma)
+			mmi->pres_chrg_step = STEP_STOP;
+		else if ((batt_soc < 100) ||
+			 (batt_mv + HYST_STEP_MV) < max_fv_mv) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_NORM;
+		} else if (mmi_has_current_tapered(chip, batt_ma,
+						   mmi->chrg_iterm)) {
+			mmi->pres_chrg_step = STEP_FULL;
+		}
+	} else if (mmi->pres_chrg_step == STEP_FULL) {
+		if (batt_soc <= 99) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_NORM;
+		}
+	} else if (mmi->pres_chrg_step == STEP_FLOAT) {
+		if ((zone->fcc_norm_ma) ||
+		    ((batt_mv + HYST_STEP_MV) < zone->norm_mv))
+			mmi->pres_chrg_step = STEP_MAX;
+
+	}
+
+	/* Take State actions */
+	switch (mmi->pres_chrg_step) {
+	case STEP_FLOAT:
+	case STEP_MAX:
+		target_fv = zone->norm_mv;
+		target_fcc = zone->fcc_max_ma;
+		target_usb = cl_usb;
+		break;
+	case STEP_FULL:
+		target_fv = max_fv_mv;
+		target_fcc = -EINVAL;
+		target_usb = cl_usb;
+		break;
+	case STEP_NORM:
+		target_fv = max_fv_mv;
+		target_fcc = zone->fcc_norm_ma;
+		target_usb = cl_usb;
+		break;
+	case STEP_NONE:
+		target_fv = max_fv_mv;
+		target_fcc = zone->fcc_norm_ma;
+		target_usb = cl_usb;
+		break;
+	case STEP_STOP:
+		target_fv = max_fv_mv;
+		target_fcc = -EINVAL;
+		target_usb = cl_usb;
+		break;
+	default:
+		break;
+	}
+
+	/* Votes for State */
+	vote(chip->fv_votable, HEARTBEAT_VOTER, true, target_fv * 1000);
+
+	vote(chip->chg_disable_votable, HEARTBEAT_VOTER,
+	     (target_fcc < 0), 0);
+
+	vote(chip->fcc_votable, HEARTBEAT_VOTER,
+	     true, (target_fcc >= 0) ? (target_fcc * 1000) : 0);
+
+	rc = vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
+		  true, (target_usb >= 0) ? (target_usb * 1000) : 0);
+	if (rc < 0) {
+		pr_err("Problem setting USB ICL %d\n", target_usb);
+		goto end_hb;
+	}
+
+	pr_warn("PMI Input %d mA, USBC CL %d mA, FV %d mV, FCC %d mA\n",
+		 target_usb, cl_cc, target_fv, target_fcc);
+	pr_warn("Step State = %s\n",
+		stepchg_str[(int)mmi->pres_chrg_step]);
+end_hb:
+	if (chip->batt_psy)
+		power_supply_changed(chip->batt_psy);
+
+	hb_resch_time = HEARTBEAT_HOLDOFF_MS;
+
+	if (!chip->mmi.chrg_taper_cnt && (rc >= 0))
+		hb_resch_time = HEARTBEAT_DELAY_MS;
+
+	schedule_delayed_work(&mmi->heartbeat_work,
+			      msecs_to_jiffies(hb_resch_time));
+
+	__pm_relax(&mmi->smblib_mmi_hb_wake_source);
+	if (!vbus_present)
+		vote(chip->awake_votable, HEARTBEAT_VOTER, false, 0);
+}
+
 static int smbchg_reboot(struct notifier_block *nb,
 			 unsigned long event, void *unused)
 {
@@ -4418,6 +4821,9 @@ static int smbchg_reboot(struct notifier_block *nb,
 		pr_warn("called before chip valid!\n");
 		return NOTIFY_DONE;
 	}
+
+	atomic_set(&chg->mmi.hb_ready, 0);
+	cancel_delayed_work_sync(&chg->mmi.heartbeat_work);
 
 	if (chg->mmi.factory_mode) {
 		switch (event) {
@@ -4873,10 +5279,51 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	struct device_node *node = chg->dev->of_node;
 	int rc = 0;
 	int byte_len;
+	int i;
 
 	if (!node) {
 		pr_err("mmi dtree info. missing\n");
 		return -ENODEV;
+	}
+
+	if (of_find_property(node, "qcom,mmi-temp-zones", &byte_len)) {
+		if ((byte_len / sizeof(u32)) % 4) {
+			dev_err(chg->dev,
+				"DT error wrong mmi temp zones\n");
+			return -ENODEV;
+		}
+
+		chg->mmi.temp_zones = (struct mmi_temp_zone *)
+			devm_kzalloc(chg->dev, byte_len, GFP_KERNEL);
+
+		if (chg->mmi.temp_zones == NULL)
+			return -ENOMEM;
+
+		chg->mmi.num_temp_zones =
+			byte_len / sizeof(struct mmi_temp_zone);
+
+		rc = of_property_read_u32_array(node,
+				"qcom,mmi-temp-zones",
+				(u32 *)chg->mmi.temp_zones,
+				byte_len / sizeof(u32));
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't read mmi temp zones rc = %d\n", rc);
+			return rc;
+		}
+		dev_err(chg->dev,
+			"mmi temp zones: Num: %d\n", chg->mmi.num_temp_zones);
+		for (i = 0; i < chg->mmi.num_temp_zones; i++) {
+			dev_err(chg->dev,
+				"mmi temp zones: Zone %d, Temp %d C, "
+				"Step Volt %d mV, Full Rate %d mA, "
+				"Taper Rate %d mA\n", i,
+				chg->mmi.temp_zones[i].temp_c,
+				chg->mmi.temp_zones[i].norm_mv,
+				chg->mmi.temp_zones[i].fcc_max_ma,
+				chg->mmi.temp_zones[i].fcc_norm_ma);
+		}
+		chg->mmi.pres_temp_zone = ZONE_NONE;
 	}
 
 	if (of_find_property(node, "qcom,usb-thermal-mitigation", &byte_len)) {
@@ -4898,7 +5345,28 @@ static int parse_mmi_dt(struct smb_charger *chg)
 		}
 	}
 
+	rc = of_property_read_u32(node, "qcom,iterm-ma",
+				  &chg->mmi.chrg_iterm);
+	if (rc)
+		chg->mmi.chrg_iterm = 150;
+
 	return rc;
+}
+
+static enum alarmtimer_restart mmi_heartbeat_alarm_cb(struct alarm *alarm,
+							 ktime_t now)
+{
+	struct smb_charger *chip = container_of(alarm, struct smb_charger,
+						mmi.heartbeat_alarm);
+
+	pr_info("SMB: HB alarm fired\n");
+
+	__pm_stay_awake(&chip->mmi.smblib_mmi_hb_wake_source);
+	cancel_delayed_work(&chip->mmi.heartbeat_work);
+	schedule_delayed_work(&chip->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
+
+	return ALARMTIMER_NORESTART;
 }
 
 void mmi_init(struct smb_charger *chg)
@@ -4909,6 +5377,12 @@ void mmi_init(struct smb_charger *chg)
 		return;
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
+
+	INIT_DELAYED_WORK(&chg->mmi.heartbeat_work, mmi_heartbeat_work);
+	wakeup_source_init(&chg->mmi.smblib_mmi_hb_wake_source,
+			   "smblib_mmi_hb_wake");
+	alarm_init(&chg->mmi.heartbeat_alarm, ALARM_BOOTTIME,
+		   mmi_heartbeat_alarm_cb);
 
 	rc = parse_mmi_dt(chg);
 	if (rc < 0)
@@ -4991,4 +5465,5 @@ void mmi_deinit(struct smb_charger *chg)
 		device_remove_file(chg->dev,
 				   &dev_attr_force_chg_itrick);
 	}
+	wakeup_source_trash(&chg->mmi.smblib_mmi_hb_wake_source);
 }

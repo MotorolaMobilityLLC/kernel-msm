@@ -21,6 +21,7 @@
 #include <linux/extcon.h>
 #include <linux/alarmtimer.h>
 #include "storm-watch.h"
+#include <linux/alarmtimer.h>
 
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
@@ -75,6 +76,7 @@ enum print_reason {
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
+#define HEARTBEAT_VOTER			"HEARTBEAT_VOTER"
 
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
@@ -287,14 +289,57 @@ struct smb_iio {
 	struct iio_channel	*connector_temp_thr3_chan;
 };
 
+struct mmi_temp_zone {
+	int		temp_c;
+	int		norm_mv;
+	int		fcc_max_ma;
+	int		fcc_norm_ma;
+};
+
+#define MAX_NUM_STEPS 10
+enum mmi_temp_zones {
+	ZONE_FIRST = 0,
+	/* states 0-9 are reserved for zones */
+	ZONE_LAST = MAX_NUM_STEPS + ZONE_FIRST - 1,
+	ZONE_HOT,
+	ZONE_COLD,
+	ZONE_NONE = 0xFF,
+};
+
+enum mmi_chrg_step {
+	STEP_MAX,
+	STEP_NORM,
+	STEP_FULL,
+	STEP_FLOAT,
+	STEP_DEMO,
+	STEP_STOP,
+	STEP_NONE = 0xFF,
+};
+
 struct mmi_params {
 	bool			factory_mode;
 	bool			demo_mode;
 	struct notifier_block	smb_reboot;
+	/* thermal mitigation */
 	int			usb_system_temp_level;
 	int			usb_thermal_levels;
 	int			*usb_thermal_mitigation;
 	bool			factory_kill_armed;
+
+	/* Charge Profile */
+	int			num_temp_zones;
+	struct mmi_temp_zone	*temp_zones;
+	enum mmi_temp_zones	pres_temp_zone;
+	enum mmi_chrg_step	pres_chrg_step;
+	int			chrg_taper_cnt;
+	int			temp_state;
+	int			chrg_iterm;
+	atomic_t		hb_ready;
+	struct alarm		heartbeat_alarm;
+	struct delayed_work	heartbeat_work;
+	struct wakeup_source	smblib_mmi_hb_wake_source;
+	int			charger_debounce_cnt;
+	bool			apsd_done;
 };
 
 struct smb_charger {
