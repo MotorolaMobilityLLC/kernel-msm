@@ -83,6 +83,9 @@ static ssize_t power_supply_show_property(struct device *dev,
 	static const char * const typec_pr_text[] = {
 		"none", "dual power role", "sink", "source"
 	};
+	static char *charge_rate[] = {
+		"None", "Normal", "Weak", "Turbo"
+	};
 	ssize_t ret = 0;
 	struct power_supply *psy = dev_get_drvdata(dev);
 	const ptrdiff_t off = attr - power_supply_attrs;
@@ -111,6 +114,9 @@ static ssize_t power_supply_show_property(struct device *dev,
 	else if (off == POWER_SUPPLY_PROP_CHARGE_TYPE)
 		return scnprintf(buf, PAGE_SIZE, "%s\n",
 				charge_type[value.intval]);
+	else if (off == POWER_SUPPLY_PROP_CHARGE_RATE)
+		return snprintf(buf, strlen(charge_rate[value.intval]) + 2,
+				"%s\n", charge_rate[value.intval]);
 	else if (off == POWER_SUPPLY_PROP_HEALTH)
 		return scnprintf(buf, PAGE_SIZE, "%s\n",
 				health_text[value.intval]);
@@ -207,6 +213,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charge_now_raw),
 	POWER_SUPPLY_ATTR(charge_now_error),
 	POWER_SUPPLY_ATTR(charge_avg),
+	POWER_SUPPLY_ATTR(charge_rate),
 	POWER_SUPPLY_ATTR(charge_counter),
 	POWER_SUPPLY_ATTR(constant_charge_current),
 	POWER_SUPPLY_ATTR(constant_charge_current_max),
