@@ -1,0 +1,235 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/clock/qcom,gcc-sdm845.h>
+#include <dt-bindings/clock/qcom,camcc-sdm845.h>
+#include <dt-bindings/clock/qcom,dispcc-sdm845.h>
+#include <dt-bindings/clock/qcom,rpmh.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/*
+ * Including features only applicable to Olson here
+ */
+/ {
+	qcom,pmic-id = <0x0001001b 0x0101011a 0x0 0x0>,
+		       <0x0001001b 0x0102001a 0x0 0x0>,
+		       <0x0001001b 0x0201011a 0x0 0x0>;
+};
+
+&utags {
+	compatible = "mmi,utags";
+	mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
+	mmi,backup-utags = "/dev/block/bootdevice/by-name/utagsBackup";
+};
+
+&hw {
+	compatible = "mmi,utags";
+	mmi,dir-name = "hw";
+	mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+};
+
+&qupv3_se0_i2c { /* FIXME: Main Proximity, Magnetometer, Barometer, Cirrus Codec */
+	status = "disabled";
+};
+
+&tlmm {
+	nfc {
+		nfc_int_active: nfc_int_active {
+			mux {
+				pins = "gpio24";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio24";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up;
+			};
+		};
+
+		nfc_int_suspend: nfc_int_suspend {
+			mux {
+				pins = "gpio24";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio24";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up;
+			};
+		};
+
+		nfc_enable_active: nfc_enable_active {
+			mux {
+				pins = "gpio26";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio26";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up;
+			};
+		};
+
+		nfc_enable_suspend: nfc_enable_suspend {
+			mux {
+				pins = "gpio26";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio26";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+			};
+		};
+	};
+};
+
+&qupv3_se3_i2c {
+	status = "disabled";
+	nq@76 { /* FIXME: enable bus as well when ready */
+		status = "disabled";
+		compatible = "qcom,nq-nci";
+		reg = <0x76>;
+		qcom,nq-irq = <&tlmm 24 0x00>;
+		qcom,nq-ven = <&tlmm 26 0x00>;
+		qcom,nq-firm = <&tlmm 43 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <24 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend>;
+	};
+};
+
+&tlmm {
+	inductive_keys_irq { /* TI,LDC2114 */
+		inductive_keys_default: default {
+			mux {
+				pins = "gpio116";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio116";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
+};
+
+&qupv3_se4_i2c { /* FIXME: LP4 Fan, Main Board FuelGauge, Base InductiveKeys, HapticDriver */
+	status = "disabled";
+	ldc2114@2a {
+		status = "disabled";
+		compatible = "ti,ldc2114";
+		reg = <0x2a>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <116 0>;
+		gpios = <&tlmm 13 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&inductive_keys_default>;
+	};
+};
+
+&tlmm {
+	touch_int_mux {
+		touch_int_active: active {
+			mux {
+				pins = "gpio96";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio96";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		touch_int_suspend: default {
+			mux {
+				pins = "gpio96";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio96";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
+	touch_reset_mux {
+		touch_reset_active: active {
+			mux {
+				pins = "gpio95";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio95";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		touch_reset_suspend: default {
+			mux {
+				pins = "gpio95";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio95";
+				drive-strength = <2>;
+				bias-pull-down;
+				output-low;
+			};
+		};
+	};
+};
+
+&qupv3_se7_i2c {
+	status = "ok";
+	synaptics_dsx_i2c@20 {
+		status = "ok";
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <96 0>;
+		gpios = <&tlmm 96 0>, /* IRQ */
+			<&tlmm 95 0>; /* RESET */
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_suspend &touch_int_suspend>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod";
+		config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
+	};
+};
+
+&qupv3_se10_i2c { /* FIXME: CapSence, Womack, FLIP FuelGauge, InductiveKeys, Laser, LS Fan */
+	status = "disabled";
+};
