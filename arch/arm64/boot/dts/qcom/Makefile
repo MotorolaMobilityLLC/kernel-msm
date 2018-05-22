@@ -1,3 +1,17 @@
+# Only include Motorola DTBs
+ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
+ifneq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+$(error Moto DT w/o overlay is undefined!!!)
+endif
+
+# Motorola Device Trees
+dtbo-$(CONFIG_ARCH_SDM670) += \
+		sdm710-olson-dvt1-overlay.dtbo \
+		sdm710-monmouth-evt1-overlay.dtbo
+
+sdm710-monmouth-evt1-overlay.dtbo-base := sdm710-moto-base.dtb
+sdm710-olson-dvt1-overlay.dtbo-base := sdm710-moto-base.dtb
+else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb msm8916-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb
@@ -671,6 +685,7 @@ dtb-$(CONFIG_ARCH_SDM429) += sdm429-mtp.dtb \
 	sdm429-bg-iot-wtp.dtb
 
 endif
+endif  # CONFIG_MMI_DEVICE_DTBS
 
 dtb-$(CONFIG_ARCH_SDM845_VM) += sdm845-vm.dtb
 
