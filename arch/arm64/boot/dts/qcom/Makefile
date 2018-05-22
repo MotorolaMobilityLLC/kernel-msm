@@ -7,16 +7,16 @@ endif
 # to be runtime added by the bootloader (i.e. /chosen properties)
 DTC_FLAGS += -p 1024
 
-dtbo-$(CONFIG_ARCH_SDM450) += sdm450-ali-evt-overlay.dtbo
+dtbo-$(CONFIG_ALI_DTB) += sdm450-ali-evt-overlay.dtbo
 
-sdm450-ali-evt-overlay.dtbo-base := \
-	sdm450-ali-base.dtb
+dtbo-$(CONFIG_RIVER_DTB) += sdm632-river-evt-overlay.dtbo
 
-dtbo-$(CONFIG_ARCH_SDM632) += sdm632-river-evt-overlay.dtbo
-
-dtbo-$(CONFIG_ARCH_SDM632) += \
+dtbo-$(CONFIG_OCEAN_DTB) += \
 	sdm632-ocean-na-evt1-overlay.dtbo \
 	sdm632-ocean-row-evt1-overlay.dtbo
+
+sdm450-ali-evt-overlay.dtbo-base := \
+		sdm450-ali-base.dtb
 
 sdm632-river-evt-overlay.dtbo-base := \
        sdm632-river-base.dtb

@@ -9,6 +9,30 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config ALI_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Ali DTBs"
+	help
+	  Only include Ali specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+config RIVER_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "River DTBs"
+	help
+	  Only include River specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+config OCEAN_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Ocean DTBs"
+	help
+	  Only include Ocean specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QCOM_CPUSS_DUMP
 	bool "CPU Subsystem Dumping support"
 	help
@@ -839,13 +863,6 @@ config QMP_DEBUGFS_CLIENT
 	  This options enables a driver which allows clients to send messages
 	  to Alway On processor using QMP transport.
 
-config ALI_DTB
-       depends on ARCH_QCOM
-       default n
-       bool "ALI DTBs"
-       help
-         Only include Ali specific DTBs to limit the number that
-         get built during kernel compilation.
 
 source "drivers/soc/qcom/memshare/Kconfig"
 
