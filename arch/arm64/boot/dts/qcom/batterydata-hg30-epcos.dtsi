@@ -1,0 +1,51 @@
+
+qcom,hg30-epcos {
+	serialnum = "SB18C18509";
+	/* #3382429_Moto_HG30atl_3000mAh_averaged_MasterSlave_Mar28th2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "HG30-EPCOS-3000mah";
+	qcom,chg-rslow-comp-c1 = <3800901>;
+	qcom,chg-rslow-comp-c2 = <5932536>;
+	qcom,chg-rs-to-rslow = <1348548>;
+	qcom,chg-rslow-comp-thr = <0xAE>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,checksum = <0x86C1>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 BD 83 83 76
+		 69 7B 33 74
+		 36 83 2D 78
+		 05 85 C8 81
+		 F3 81 09 A0
+		 0C C4 8E D1
+		 6D 0F FB 83
+		 3E 7D 3D 81
+		 48 77 30 83
+		 31 7A 40 8C
+		 99 88 20 82
+		 F0 9B 81 C4
+		 14 D3 6A 0D
+		 BF 0B 65 59
+		 62 70 B2 FD
+		 A8 32 68 45
+		 BA 22 00 00
+		 01 4C 94 40
+		 5F 28 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 E5 71 46 70
+		 B0 8C 23 74
+		 2F 7C C5 70
+		 C1 6E 84 71
+		 9D 74 03 63
+		 58 74 8A A0
+		 2E 5F 69 C1
+		 67 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
