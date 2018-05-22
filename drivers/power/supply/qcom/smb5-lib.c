@@ -4623,6 +4623,9 @@ end_rate_check:
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
 #define HYST_STEP_MV 50
+#define DEMO_MODE_MAX_SOC 35
+#define DEMO_MODE_HYS_SOC 5
+#define DEMO_MODE_VOLTAGE 4000
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -4758,7 +4761,22 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		   (mmi->pres_temp_zone == ZONE_COLD)) {
 		chip->mmi.pres_chrg_step = STEP_STOP;
 	} else if (mmi->demo_mode) {
-		mmi->pres_chrg_step = STEP_DEMO;
+		int usb_suspend = get_client_vote(chip->usb_icl_votable,
+					      DEMO_VOTER);
+ 		mmi->pres_chrg_step = STEP_DEMO;
+		pr_warn("Battery in Demo Mode charging Limited\n");
+		if ((usb_suspend == 0) &&
+		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
+			vote(chip->usb_icl_votable, DEMO_VOTER, true, 0);
+			vote(chip->dc_suspend_votable, DEMO_VOTER, true, 0);
+			usb_suspend = true;
+		} else if (usb_suspend &&
+			   (batt_soc <=
+			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			vote(chip->usb_icl_votable, DEMO_VOTER, false, 0);
+			vote(chip->dc_suspend_votable, DEMO_VOTER, false, 0);
+			usb_suspend = false;
+		}
 	} else if ((mmi->pres_chrg_step == STEP_NONE) ||
 		   (mmi->pres_chrg_step == STEP_STOP)) {
 		if (zone->norm_mv && (batt_mv >= zone->norm_mv)) {
@@ -4835,6 +4853,11 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	case STEP_STOP:
 		target_fv = max_fv_mv;
 		target_fcc = -EINVAL;
+		target_usb = cl_usb;
+		break;
+	case STEP_DEMO:
+		target_fv = DEMO_MODE_VOLTAGE;
+		target_fcc = zone->fcc_max_ma;
 		target_usb = cl_usb;
 		break;
 	default:
