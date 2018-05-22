@@ -344,6 +344,7 @@ struct mmi_params {
 	int			charger_debounce_cnt;
 	bool			apsd_done;
 	int			charger_rate;
+	bool			hvdcp3_con;
 };
 
 struct smb_charger {
