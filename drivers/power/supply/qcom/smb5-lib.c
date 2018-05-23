@@ -4337,24 +4337,6 @@ int smblib_init(struct smb_charger *chg)
 {
 	int rc = 0;
 
-	chg->ipc_log = ipc_log_context_create(QPNP_LOG_PAGES,
-						"charger", 0);
-	if (chg->ipc_log == NULL)
-		pr_err("%s: failed to create charger IPC log\n",
-						__func__);
-	else
-		smblib_dbg(chg, PR_MISC,
-			   "IPC logging is enabled for charger\n");
-
-	chg->ipc_log_reg = ipc_log_context_create(QPNP_LOG_PAGES,
-						"charger_reg", 0);
-	if (chg->ipc_log_reg == NULL)
-		pr_err("%s: failed to create register IPC log\n",
-						__func__);
-	else
-		smblib_dbg(chg, PR_MISC,
-			   "IPC logging is enabled for charger\n");
-
 	device_init_wakeup(chg->dev, true);
 	mutex_init(&chg->lock);
 	INIT_WORK(&chg->bms_update_work, bms_update_work);
@@ -4829,19 +4811,24 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else if (mmi->demo_mode) {
 		int usb_suspend = get_client_vote(chip->usb_icl_votable,
 					      DEMO_VOTER);
+		if (usb_suspend == -EINVAL)
+			usb_suspend = 0;
+		else if(usb_suspend == 0)
+			usb_suspend = 1;
+
  		mmi->pres_chrg_step = STEP_DEMO;
 		smblib_dbg(chip, PR_MOTO, "Battery in Demo Mode charging Limited\n");
 		if ((usb_suspend == 0) &&
 		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
 			vote(chip->usb_icl_votable, DEMO_VOTER, true, 0);
 			vote(chip->dc_suspend_votable, DEMO_VOTER, true, 0);
-			usb_suspend = true;
+			usb_suspend = 1;
 		} else if (usb_suspend &&
 			   (batt_soc <=
 			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
 			vote(chip->usb_icl_votable, DEMO_VOTER, false, 0);
 			vote(chip->dc_suspend_votable, DEMO_VOTER, false, 0);
-			usb_suspend = false;
+			usb_suspend = 0;
 		}
 	} else if ((mmi->pres_chrg_step == STEP_NONE) ||
 		   (mmi->pres_chrg_step == STEP_STOP)) {
@@ -5553,6 +5540,25 @@ void mmi_init(struct smb_charger *chg)
 
 	if (!chg)
 		return;
+
+	chg->ipc_log = ipc_log_context_create(QPNP_LOG_PAGES,
+						"charger", 0);
+	if (chg->ipc_log == NULL)
+		pr_err("%s: failed to create charger IPC log\n",
+						__func__);
+	else
+		smblib_dbg(chg, PR_MISC,
+			   "IPC logging is enabled for charger\n");
+
+	chg->ipc_log_reg = ipc_log_context_create(QPNP_LOG_PAGES,
+						"charger_reg", 0);
+	if (chg->ipc_log_reg == NULL)
+		pr_err("%s: failed to create register IPC log\n",
+						__func__);
+	else
+		smblib_dbg(chg, PR_MISC,
+			   "IPC logging is enabled for charger\n");
+
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
 
