@@ -1642,7 +1642,7 @@
 				<45 4250 3000 1800>,
 				<60 4200 1323 0>;
 	qcom,enable-charging-limit;
-	qcom,upper-limit-capacity = <70>;
+	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
 	qcom,vfloat-comp-uv = <20000>;
 	qcom,external-vconn;
