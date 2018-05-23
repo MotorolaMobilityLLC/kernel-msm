@@ -10,18 +10,13 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
-/plugin/;
+/*
+ * Including features only applicable to Olson here
+ */
 
-#include "sdm710-olson-common-overlay.dtsi"
+#include "sdm710-moto-common-overlay.dtsi"
 
 / {
-	model = "Monmouth";
-	compatible = "qcom,sdm670-monmouth", "qcom,sdm670-moto", "qcom,sdm670";
-	qcom,msm-id = <360 0x0>;
-	qcom,board-id = <0 0xA000>;
+        model = "Olson";
+        compatible = "qcom,sdm670-olson", "qcom,sdm670-moto", "qcom,sdm670";
 };
-
-/*
- * Monmouth HW rev EVT1 specific changes go here
- */
