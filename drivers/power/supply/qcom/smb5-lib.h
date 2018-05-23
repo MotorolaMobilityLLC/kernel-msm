@@ -344,6 +344,7 @@ struct mmi_params {
 	bool			apsd_done;
 	int			charger_rate;
 	bool			hvdcp3_con;
+	bool			init_done;
 };
 
 struct smb_charger {
