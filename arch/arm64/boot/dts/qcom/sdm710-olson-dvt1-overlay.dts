@@ -13,11 +13,9 @@
 /dts-v1/;
 /plugin/;
 
-#include "sdm710-moto-common-overlay.dtsi"
+#include "sdm710-olson-common-overlay.dtsi"
 
 / {
-	model = "Olson";
-	compatible = "qcom,sdm670-olson", "qcom,sdm670-moto", "qcom,sdm670";
 	qcom,msm-id = <360 0x0>;
 	qcom,board-id = <0 0xB000>;
 };
