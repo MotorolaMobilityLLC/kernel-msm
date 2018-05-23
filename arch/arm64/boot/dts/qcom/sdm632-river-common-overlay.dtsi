@@ -13,6 +13,9 @@
 
 #include "sdm632-moto-common-overlay.dtsi"
 #include "sdm632-river-pinctrl-overlay.dtsi"
+#include "dsi-panel-mot-tianma-624-1080p-vid.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+
 
 &pmi632_rgb {
 	red {
@@ -31,4 +34,63 @@
 
 &pmi632_qg {
 	qcom,battery-data = <&mtp_batterydata>;
+};
+
+&pmx_mdss {
+	mdss_dsi_active {
+		mux {
+			pins = "gpio61";
+		};
+
+		config {
+			pins = "gpio61";
+		};
+	};
+
+	mdss_dsi_suspend {
+		mux {
+			pins = "gpio61";
+		};
+
+		config {
+			pins = "gpio61";
+		};
+	};
+
+};
+
+&pm8953_gpios {
+	bklt_en {
+		bklt_en_default: bklt_en_default {
+		pins = "gpio7";
+		function = "normal";
+		power-source = <0>;
+		output-high;
+		};
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_624_1080p_vid_v0>;
+
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &bklt_en_default>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-bklight-en-gpio = <&pm8953_gpios 7 0>;
+
+	/delete-property/ vdd-supply;
+	vddio_disp-supply = <&pm8953_l6>;
+	vsp_disp-supply = <&lcdb_ldo_vreg>;
+	vsn_disp-supply = <&lcdb_ncp_vreg>;
+
+	qcom,platform-reset-gpio = <&tlmm 61 0>;
+};
+
+&mdss_dsi1 {
+	status = "disabled";
 };
