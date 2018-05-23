@@ -14,9 +14,71 @@
  * Including features only applicable to Olson here
  */
 
+#include <dt-bindings/clock/mdss-10nm-pll-clk.h>
+#include "pm660a.dtsi"
 #include "sdm710-moto-common-overlay.dtsi"
 
 / {
         model = "Olson";
         compatible = "qcom,sdm670-olson", "qcom,sdm670-moto", "qcom,sdm670";
+};
+
+&soc {
+	vci_disp_vreg: vci_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vci_disp";
+		vin-supply = <&pm660l_l3>; /* BANG.. is this correct */
+		gpio = <&tlmm 107 0>;
+		enable-active-high;
+		startup-delay-us = <300>;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_v1_en_default>;
+	};
+
+	vio_disp_vreg: vio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vio_disp";
+		vin-supply = <&pm660_l11>;
+		gpio = <&tlmm 106 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_pwr_en_default>;
+	};
+};
+
+&tlmm {
+	disp_v1_en {
+		disp_v1_en_default: disp_v1_en_default{
+			mux {
+				pins = "gpio107";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio107";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-enable;
+			};
+		};
+	};
+
+	disp_pwr_en {
+		disp_pwr_en_default: disp_pwr_en_default{
+			mux {
+				pins = "gpio106";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio106";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-enable;
+			};
+		};
+	};
 };
