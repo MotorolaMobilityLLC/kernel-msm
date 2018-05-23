@@ -10,9 +10,6 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
-/plugin/;
-
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/thermal/thermal.h>
@@ -21,6 +18,7 @@
 #include <dt-bindings/clock/qcom,dispcc-sdm845.h>
 #include <dt-bindings/clock/qcom,rpmh.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include "sdm670-pmic-overlay.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 /*
@@ -203,6 +201,34 @@
 				bias-pull-down;
 				output-low;
 			};
+		};
+	};
+};
+
+&pmx_sde {
+	sde_dsi_active: sde_dsi_active {
+		mux {
+			pins = "gpio6";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio6";
+			drive-strength = <8>;    /* 8 mA */
+			bias-disable = <0>;   /* no pull */
+		};
+	};
+
+	sde_dsi_suspend: sde_dsi_suspend {
+		mux {
+			pins = "gpio6";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio6";
+			drive-strength = <2>;    /* 2 mA */
+			bias-pull-down;          /* PULL DOWN */
 		};
 	};
 };
