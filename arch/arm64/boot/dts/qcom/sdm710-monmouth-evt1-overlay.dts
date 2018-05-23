@@ -14,6 +14,7 @@
 /plugin/;
 
 #include "sdm710-olson-common-overlay.dtsi"
+#include "dsi-panel-mot-smd-601-1080p-olson-cmd.dtsi"
 
 / {
 	model = "Monmouth";
@@ -25,3 +26,41 @@
 /*
  * Monmouth HW rev EVT1 specific changes go here
  */
+ &soc {
+	dsi_smd_601_1080p_cmd_display: qcom,dsi-display@18 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_smd_601_1080p_cmd_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "src_byte_clk", "src_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
+		qcom,dsi-panel = <&mot_smd_601_1080p_cmd_v0>;
+		vci_disp-supply = <&vci_disp_vreg>;
+		vio_disp-supply = <&vio_disp_vreg>;
+		lab-supply = <&lab_regulator>;
+		ibb-supply = <&ibb_regulator>;
+		oledb-supply = <&pm660a_oledb>;
+	};
+};
+
+&mot_smd_601_1080p_cmd_v0 {
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0d>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+							08 05 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
