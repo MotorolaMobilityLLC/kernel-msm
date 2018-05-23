@@ -5627,11 +5627,13 @@ void mmi_init(struct smb_charger *chg)
 			smblib_err(chg, "couldn't create force_chg_itrick\n");
 		}
 	}
+
+	chg->mmi.init_done = true;
 }
 
 void mmi_deinit(struct smb_charger *chg)
 {
-	if (!chg)
+	if (!chg || !chg->mmi.init_done)
 		return;
 
 	device_remove_file(chg->dev,
