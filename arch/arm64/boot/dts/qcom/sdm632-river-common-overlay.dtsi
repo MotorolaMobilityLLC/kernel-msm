@@ -36,6 +36,14 @@
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
+&pmi632_charger {
+	qcom,mmi-temp-zones = <0 4200 529 0>,
+				<10 4200 1323 529>,
+				<15 0 1323 1323>,
+				<45 4250 3000 1800>,
+				<60 4200 1323 0>;
+};
+
 &pmx_mdss {
 	mdss_dsi_active {
 		mux {
