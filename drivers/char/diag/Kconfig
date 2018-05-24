@@ -45,4 +45,11 @@ config DIAG_OVER_PCIE
 	  diag will switch to usb mode and diag traffic will be routed
 	  over USB.
 
+config DIAG_OVER_TTY
+	bool "Enable DIAG traffic to go over a tty to userspace"
+	depends on ARCH_QCOM && DIAG_OVER_USB
+	default n
+	help
+	  This feature helps segregate code required for DIAG traffic to go over a TTY to userspace.
+
 endmenu
