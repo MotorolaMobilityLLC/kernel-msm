@@ -13,6 +13,23 @@
 
 #include "sdm632-moto-pinctrl-overlay.dtsi"
 
+&reserved_memory {
+	ramoops_mem {
+		compatible = "ramoops";
+		no-map;
+		reg = <0x0 0xef000000 0x0 0xc0000>;
+		console-size = <0x40000>;
+		pmsg-size = <0x40000>;
+		record-size = <0x3f800>;
+		ramoops-annotate-size = <0x800>;
+	};
+
+	tzlog_dump_mem: tzlog_dump_mem_region {
+		no-map;
+		reg = <0x0 0xaefd0000 0x0 0x30000>;
+	};
+};
+
 &utags {
 	compatible = "mmi,utags";
 	mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
@@ -25,6 +42,19 @@
 	mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
 };
 
+&soc{
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+
+	tzlog_dump {
+		compatible = "mmi,tzlog-dump";
+		memory-region = <&tzlog_dump_mem>;
+	};
+};
 &other_ext_mem {
 	reg = <0x0 0x84300000 0x0 0x2500000>;
 };
