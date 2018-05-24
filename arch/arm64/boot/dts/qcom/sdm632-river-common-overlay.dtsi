@@ -83,7 +83,6 @@
 
 	qcom,platform-bklight-en-gpio = <&pm8953_gpios 7 0>;
 
-	/delete-property/ vdd-supply;
 	vddio_disp-supply = <&pm8953_l6>;
 	vsp_disp-supply = <&lcdb_ldo_vreg>;
 	vsn_disp-supply = <&lcdb_ncp_vreg>;
