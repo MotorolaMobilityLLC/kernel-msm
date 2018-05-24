@@ -43,6 +43,9 @@
 #include <linux/hw_breakpoint.h>
 #include <linux/personality.h>
 #include <linux/notifier.h>
+#ifdef CONFIG_THREAD_INFO_IN_TASK
+#include <linux/percpu.h>
+#endif
 #include <linux/vmalloc.h>
 
 #ifdef CONFIG_THREAD_INFO_IN_TASK
