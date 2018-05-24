@@ -14,3 +14,7 @@
 
 #include "sdm632-moto-base.dtsi"
 
+&mdss_dsi0 {
+	/delete-property/ vdd-supply;
+};
+
