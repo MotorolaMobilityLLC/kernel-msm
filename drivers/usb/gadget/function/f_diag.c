@@ -20,8 +20,14 @@
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
 #include <linux/kmemleak.h>
+#include <linux/uaccess.h>
 
 #define MAX_INST_NAME_LEN	40
+
+#ifdef CONFIG_DIAG_OVER_TTY
+#include <linux/usb/tty_diag.h>
+#include <linux/of.h>
+#endif
 
 /* dload specific suppot */
 #define PID_MAGIC_ID		0x71432909
@@ -198,6 +204,69 @@ static inline struct diag_context *func_to_diag(struct usb_function *f)
 	return container_of(f, struct diag_context, function);
 }
 
+#ifdef CONFIG_DIAG_OVER_TTY
+#define BOOTMODE_MAX_LEN 64
+static char bootmode[BOOTMODE_MAX_LEN];
+int __init bootinfo_bootmode_init(char *s)
+{
+	strlcpy(bootmode, s, BOOTMODE_MAX_LEN);
+	return 1;
+}
+__setup("androidboot.mode=", bootinfo_bootmode_init);
+
+#define DIAG_LEGACY_BIT 1
+#define DIAG_MDM_BIT 2
+static uint8_t tty_mode_enabled;
+
+static bool tty_is_enabled_for_channel(const char *name)
+{
+	if (!name) {
+		pr_err("diag: %s: channel has no name!\n", __func__);
+		return 0;
+	}
+
+	if(strcmp(DIAG_LEGACY, name) == 0)
+		return (tty_mode_enabled & DIAG_LEGACY_BIT);
+	else if(strcmp(DIAG_MDM, name) == 0)
+		return (tty_mode_enabled & DIAG_MDM_BIT);
+	else
+		return 0;
+}
+
+static void tty_enable_for_channel(const char *name)
+{
+	if (!name) {
+		pr_err("diag: %s: channel has no name!\n", __func__);
+		return;
+	}
+
+	if(strcmp(DIAG_LEGACY, name) == 0)
+		tty_mode_enabled |= DIAG_LEGACY_BIT;
+	else if(strcmp(DIAG_MDM, name) == 0)
+		tty_mode_enabled |= DIAG_MDM_BIT;
+}
+
+static void tty_disable_for_channel(const char *name)
+{
+	if (!name) {
+		pr_err("diag: %s: channel has no name!\n", __func__);
+		return;
+	}
+
+	if(strcmp(DIAG_LEGACY, name) == 0)
+		tty_mode_enabled &= ~DIAG_LEGACY_BIT;
+	else if(strcmp(DIAG_MDM, name) == 0)
+		tty_mode_enabled &= ~DIAG_MDM_BIT;
+}
+
+static void factory_cable_present(void)
+{
+	if (!strncmp("mot-factory", bootmode, BOOTMODE_MAX_LEN) ||
+		(!strncmp("factory", bootmode, BOOTMODE_MAX_LEN)))
+		tty_enable_for_channel(DIAG_MDM);
+}
+#endif
+
 /* Called with ctxt->lock held; i.e. only use with kref_put_lock() */
 static void diag_context_release(struct kref *kref)
 {
@@ -326,6 +395,18 @@ struct usb_diag_ch *usb_diag_open(const char *name, void *priv,
 	bool connected = false;
 	struct diag_context  *dev;
 
+#ifdef CONFIG_DIAG_OVER_TTY
+	static bool init;
+
+	if (!init) {
+		init = true;
+		factory_cable_present();
+	}
+
+	if (tty_is_enabled_for_channel(name))
+		return tty_diag_channel_open(name, priv, notify, NULL);
+#endif
+
 	spin_lock_irqsave(&ch_lock, flags);
 	/* Check if we already have a channel with this name */
 	list_for_each_entry(ch, &usb_diag_ch_list, list) {
@@ -378,6 +459,11 @@ void usb_diag_close(struct usb_diag_ch *ch)
 	struct diag_context *dev = NULL;
 	unsigned long flags;
 
+#ifdef CONFIG_DIAG_OVER_TTY
+	if (tty_is_enabled_for_channel(ch->name))
+		return tty_diag_channel_close(ch);
+#endif
+
 	spin_lock_irqsave(&ch_lock, flags);
 	ch->priv = NULL;
 	ch->notify = NULL;
@@ -427,6 +513,11 @@ int usb_diag_alloc_req(struct usb_diag_ch *ch, int n_write, int n_read)
 	struct usb_request *req;
 	int i;
 	unsigned long flags;
+
+#ifdef CONFIG_DIAG_OVER_TTY
+	if (tty_is_enabled_for_channel(ch->name))
+		return 0;
+#endif
 
 	if (!ctxt)
 		return -ENODEV;
@@ -507,6 +598,11 @@ int usb_diag_read(struct usb_diag_ch *ch, struct diag_request *d_req)
 	struct usb_ep *out;
 	static DEFINE_RATELIMIT_STATE(rl, 10*HZ, 1);
 
+#ifdef CONFIG_DIAG_OVER_TTY
+	if (tty_is_enabled_for_channel(ch->name))
+		return tty_diag_channel_read(ch, d_req);
+#endif
+
 	if (!ctxt)
 		return -ENODEV;
 
@@ -581,6 +677,11 @@ int usb_diag_write(struct usb_diag_ch *ch, struct diag_request *d_req)
 	struct usb_request *req = NULL;
 	struct usb_ep *in;
 	static DEFINE_RATELIMIT_STATE(rl, 10*HZ, 1);
+
+#ifdef CONFIG_DIAG_OVER_TTY
+	if (tty_is_enabled_for_channel(ch->name))
+		return tty_diag_channel_write(ch, d_req);
+#endif
 
 	if (!ctxt)
 		return -ENODEV;
@@ -871,6 +972,43 @@ static struct diag_context *diag_context_init(const char *name)
 #if defined(CONFIG_DEBUG_FS)
 static char debug_buffer[PAGE_SIZE];
 
+#ifdef CONFIG_DIAG_OVER_TTY
+static ssize_t debug_enable_tty(struct file *file, const char __user *buf,
+				 size_t count, loff_t *ppos)
+{
+	struct usb_diag_ch *ch;
+	char enable;
+
+	/* Expect 0 or 1 plus a newline */
+	if (count < 2)
+		return -EINVAL;
+
+	if (copy_from_user(&enable, buf, 1))
+		return -EFAULT;
+
+	list_for_each_entry(ch, &usb_diag_ch_list, list) {
+		/* Limit to 5G device */
+		if (strcmp(DIAG_MDM, ch->name) != 0)
+			continue;
+
+		/* Open the channel in tty mode */
+		if (!strncmp(&enable, "1", 1)) {
+			if (!tty_is_enabled_for_channel(ch->name)) {
+				tty_enable_for_channel(ch->name);
+				tty_diag_channel_open(ch->name, ch->priv, ch->notify, ch);
+			}
+		} else if (!strncmp(&enable, "0", 1)) {
+			if (tty_is_enabled_for_channel(ch->name)) {
+				tty_disable_for_channel(ch->name);
+				tty_diag_channel_close(ch);
+			}
+		}
+	}
+
+	return count;
+}
+#endif
+
 static ssize_t debug_read_stats(struct file *file, char __user *ubuf,
 		size_t count, loff_t *ppos)
 {
@@ -934,6 +1072,13 @@ static const struct file_operations debug_fdiag_ops = {
 	.write = debug_reset_stats,
 };
 
+#ifdef CONFIG_DIAG_OVER_TTY
+static const struct file_operations debug_tty_ops = {
+	.open = debug_open,
+	.write = debug_enable_tty,
+};
+#endif
+
 struct dentry *dent_diag;
 static void fdiag_debugfs_init(void)
 {
@@ -945,6 +1090,12 @@ static void fdiag_debugfs_init(void)
 
 	dent_diag_status = debugfs_create_file("status", 0444, dent_diag, 0,
 			&debug_fdiag_ops);
+
+#ifdef CONFIG_DIAG_OVER_TTY
+	if(!IS_ERR(dent_diag_status))
+		dent_diag_status = debugfs_create_file("force_tty", 0644,
+			dent_diag, 0, &debug_tty_ops);
+#endif
 
 	if (!dent_diag_status || IS_ERR(dent_diag_status)) {
 		debugfs_remove(dent_diag);
