@@ -150,6 +150,12 @@ static void swap_fn(struct work_struct *work)
 		if (!p)
 			continue;
 
+		oom_score_adj = p->signal->oom_score_adj;
+		if (oom_score_adj >= 900) {
+			task_unlock(p);
+			continue;
+		}
+
 		tasksize = get_mm_counter(p->mm, MM_ANONPAGES);
 		task_unlock(p);
 
