@@ -723,3 +723,11 @@ config FORCE_RECLAIM
 
 	 Any other value is ignored.
 
+config DEFAULT_SWAPPINESS
+	int "control swappiness behavior"
+	range 0 100
+	default 60
+	help
+	  when user space enable MEMCG it could be too late to set the default
+	  swappiness, and it has to be reconfigured in the kernel layer
+
