@@ -37,10 +37,6 @@ static int enable_force_reclaim = 1;
 module_param_named(enable_force_reclaim, enable_force_reclaim, int,
 	S_IRUGO | S_IWUSR);
 
-/* The max number of pages tried to be reclaimed in a single run */
-static int per_swap_size = SWAP_CLUSTER_MAX * 32;
-module_param_named(per_swap_size, per_swap_size, int, S_IRUGO | S_IWUSR);
-
 static int reclaim_avg_efficiency;
 module_param_named(reclaim_avg_efficiency, reclaim_avg_efficiency,
 			int, S_IRUGO);
@@ -66,7 +62,7 @@ module_param_named(swap_eff_win, swap_eff_win, int, S_IRUGO | S_IWUSR);
 static int swap_opt_eff = 10;
 module_param_named(swap_opt_eff, swap_opt_eff, int, S_IRUGO | S_IWUSR);
 
-static atomic_t swap_opt_loop = ATOMIC_INIT(0);
+static atomic_t swap_opt_delay = ATOMIC_INIT(0);
 
 static atomic_t skip_reclaim = ATOMIC_INIT(0);
 /* Not atomic since only a single instance of swap_fn run at a time */
@@ -124,7 +120,9 @@ static void swap_fn(struct work_struct *work)
 	int nr_to_reclaim;
 	int efficiency;
 
-	pr_debug("force_reclaim: force reclaim starts to work\n");
+	long delay;
+
+	pr_info("force_reclaim: force reclaim starts to work\n");
 
 	selected = (struct selected_task *) kmalloc(sizeof(struct selected_task) \
 					* MAX_SWAP_TASKS, GFP_KERNEL);
@@ -195,10 +193,6 @@ static void swap_fn(struct work_struct *work)
 	rcu_read_unlock();
 
 	while (si--) {
-		/*
-		nr_to_reclaim =
-			(selected[si].tasksize * per_swap_size) / total_sz;
-		*/
 		nr_to_reclaim = selected[si].tasksize;
 		/* scan atleast a page */
 		if (!nr_to_reclaim)
@@ -229,9 +223,11 @@ static void swap_fn(struct work_struct *work)
 
 	kfree(selected);
 
-	if (atomic_read(&swap_opt_loop) != 0) {
-		queue_delayed_work(system_unbound_wq, &swap_work, HZ);
-		atomic_dec(&swap_opt_loop);
+	delay = atomic_read(&swap_opt_delay);
+
+	if (delay != 0) {
+		queue_delayed_work(system_unbound_wq, &swap_work, (delay / 1000) * HZ);
+		atomic_set(&swap_opt_delay, 0);
 	}
 }
 
@@ -274,13 +270,13 @@ static int force_reclaim_write(struct file *flip, const char *ubuf, size_t cnt, 
 		if (!enable_force_reclaim)
 			return 0;
 		if (0 < atomic_read(&skip_reclaim) ||
-			(0 < atomic_read(&swap_opt_loop)))
+			(0 < atomic_read(&swap_opt_delay)))
 			return 0;
 
 		if (!delayed_work_pending(&swap_work)) {
-			atomic_set(&swap_opt_loop, 3);
-			pr_debug("force_reclaim: queue swap work with delay: %ld\n", delay);
-			queue_delayed_work(system_unbound_wq, &swap_work, (delay / 1000) * HZ);
+			pr_info("force_reclaim: queue swap work with delay: %ld\n", delay);
+			atomic_set(&swap_opt_delay, delay);
+			queue_delayed_work(system_unbound_wq, &swap_work, 0);
 		}
 	}
 
