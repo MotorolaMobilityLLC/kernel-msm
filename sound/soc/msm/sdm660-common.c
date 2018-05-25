@@ -2498,6 +2498,10 @@ int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	int index = cpu_dai->id;
 	unsigned int fmt = SND_SOC_DAIFMT_CBS_CFS;
 
+#ifdef CONFIG_SND_SOC_TAS2560
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(rtd->card);
+#endif
+
 	dev_dbg(rtd->card->dev,
 		"%s: substream = %s  stream = %d, dai name %s, dai ID %d\n",
 		__func__, substream->name, substream->stream,
@@ -2548,6 +2552,10 @@ int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 				goto clk_off;
 			}
 		}
+#ifdef CONFIG_SND_SOC_TAS2560
+		if (index == TERT_MI2S)
+			msm_cdc_pinctrl_select_active_state(pdata->tert_mi2s_gpio_p);
+#endif
 	}
 	mutex_unlock(&mi2s_intf_conf[index].lock);
 	return 0;
@@ -2574,7 +2582,9 @@ void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	int port_id = msm_get_port_id(rtd->dai_link->be_id);
 	int index = rtd->cpu_dai->id;
-
+#ifdef CONFIG_SND_SOC_TAS2560
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(rtd->card);
+#endif
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 	if (index < PRIM_MI2S || index > QUAT_MI2S) {
@@ -2584,6 +2594,10 @@ void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 
 	mutex_lock(&mi2s_intf_conf[index].lock);
 	if (--mi2s_intf_conf[index].ref_cnt == 0) {
+#ifdef CONFIG_SND_SOC_TAS2560
+		if (index == TERT_MI2S)
+			msm_cdc_pinctrl_select_sleep_state(pdata->tert_mi2s_gpio_p);
+#endif
 		ret = msm_mi2s_set_sclk(substream, false);
 		if (ret < 0)
 			pr_err("%s:clock disable failed for MI2S (%d); ret=%d\n",
@@ -3126,6 +3140,10 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 					"qcom,cdc-dmic-gpios", 0);
 		pdata->ext_spk_gpio_p = of_parse_phandle(pdev->dev.of_node,
 					"qcom,cdc-ext-spk-gpios", 0);
+#ifdef CONFIG_SND_SOC_TAS2560
+		pdata->tert_mi2s_gpio_p = of_parse_phandle(pdev->dev.of_node,
+					"qcom,tert-mi2s-gpios", 0);
+#endif
 	}
 
 #ifndef CONFIG_SND_SOC_MADERA
