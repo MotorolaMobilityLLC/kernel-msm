@@ -268,6 +268,7 @@ config SND_SOC_MSM8998
 	select DOLBY_LICENSE
 	select SND_HWDEP
 	select DTS_EAGLE
+	select SND_SOC_OPALUM
 	help
 	 To add support for SoC audio on MSM8998.
 	 This will enable sound soc drivers which
