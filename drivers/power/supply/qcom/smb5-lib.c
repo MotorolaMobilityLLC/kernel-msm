@@ -4876,6 +4876,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	if (!vbus_present) {
 		charger_present = 0;
 		mmi->charger_debounce_cnt = 0;
+	} else if (chip->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
+		charger_present = 1;
+		mmi->charger_debounce_cnt = 0;
 	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE)
 		mmi->charger_debounce_cnt++;
 	else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
@@ -4952,10 +4955,23 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 	}
 
+	if (!mmi->temp_zones) {
+		vote(chip->usb_icl_votable, HEARTBEAT_VOTER, cl_usb >= 0,
+					(cl_usb * 1000));
+		pr_warn("EFFECTIVE: FV = %d, CDIS = %d, FCC = %d, "
+		   "USBICL = %d, USBCICL = %d\n",
+		   get_effective_result(chip->fv_votable),
+		   get_effective_result(chip->chg_disable_votable),
+		   get_effective_result(chip->fcc_votable),
+		   get_effective_result(chip->usb_icl_votable),
+		   cl_cc);
+		goto end_hb;
+	}
+
 	mmi_find_temp_zone(chip, batt_temp);
 	zone = &mmi->temp_zones[mmi->pres_temp_zone];
 
-	max_fv_mv = get_client_vote(chip->fv_votable, DEFAULT_VOTER) / 1000;
+	max_fv_mv = get_client_vote(chip->fv_votable, BATT_PROFILE_VOTER) / 1000;
 
 	/* Determine Next State */
 	prev_step = chip->mmi.pres_chrg_step;
@@ -5089,6 +5105,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		 target_usb, cl_cc, target_fv, target_fcc);
 	pr_warn("Step State = %s\n",
 		stepchg_str[(int)mmi->pres_chrg_step]);
+	pr_warn("EFFECTIVE: FV = %d, CDIS = %d, FCC = %d, "
+		"USBICL = %d\n",
+		get_effective_result(chip->fv_votable),
+		get_effective_result(chip->chg_disable_votable),
+		get_effective_result(chip->fcc_votable),
+		get_effective_result(chip->usb_icl_votable));
 end_hb:
 	if (chip->batt_psy)
 		power_supply_changed(chip->batt_psy);
@@ -5621,6 +5643,10 @@ static int parse_mmi_dt(struct smb_charger *chg)
 				chg->mmi.temp_zones[i].fcc_norm_ma);
 		}
 		chg->mmi.pres_temp_zone = ZONE_NONE;
+	} else {
+		chg->mmi.temp_zones = NULL;
+		chg->mmi.num_temp_zones = 0;
+		dev_err(chg->dev, "mmi temp zones is not set\n");
 	}
 
 	if (of_find_property(node, "qcom,usb-thermal-mitigation", &byte_len)) {
@@ -5640,6 +5666,10 @@ static int parse_mmi_dt(struct smb_charger *chg)
 				"Couldn't read usb therm limits rc = %d\n", rc);
 			return rc;
 		}
+	} else {
+		chg->mmi.usb_thermal_mitigation = NULL;
+		chg->mmi.usb_thermal_levels = 0;
+		dev_err(chg->dev, "usb-thermal-mitigation is not set\n");
 	}
 
 	rc = of_property_read_u32(node, "qcom,iterm-ma",
