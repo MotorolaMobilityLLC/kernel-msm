@@ -16,6 +16,26 @@
 #include "dsi-panel-mot-tianma-624-1080p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
+&i2c_3 {
+	status = "okay";
+
+	synaptics_tcm@20 {
+		compatible = "synaptics,tcm-i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <65 0x2008>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		synaptics,irq-gpio = <&tlmm 65 0x2008>;
+		synaptics,irq-on-state = <0>;
+		synaptics,reset-gpio = <&tlmm 64 0>;
+		synaptics,reset-on-state = <0>;
+		synaptics,power-delay-ms = <200>;
+		synaptics,reset-delay-ms = <200>;
+		synaptics,ubl-i2c-addr = <0x20>;
+	};
+};
 
 &pmi632_rgb {
 	red {
