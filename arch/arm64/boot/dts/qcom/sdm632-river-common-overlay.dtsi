@@ -18,6 +18,7 @@
 
 &i2c_3 {
 	status = "okay";
+	qcom,disable-dma;
 
 	synaptics_tcm@20 {
 		compatible = "synaptics,tcm-i2c";
