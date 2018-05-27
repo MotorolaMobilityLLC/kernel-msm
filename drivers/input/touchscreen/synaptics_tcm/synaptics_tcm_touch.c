@@ -240,7 +240,7 @@ static int touch_get_report_data(unsigned int offset,
 static int touch_parse_report(void)
 {
 	int retval;
-	bool active_only;
+	bool active_only = false;
 	bool num_of_active_objects;
 	unsigned char code;
 	unsigned int size;
@@ -251,7 +251,7 @@ static int touch_parse_report(void)
 	unsigned int bits;
 	unsigned int offset;
 	unsigned int objects;
-	unsigned int active_objects;
+	unsigned int active_objects = 0;
 	unsigned int report_size;
 	unsigned int config_size;
 	unsigned char *config_data;
