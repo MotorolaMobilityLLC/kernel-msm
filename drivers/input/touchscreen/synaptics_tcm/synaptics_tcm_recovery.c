@@ -758,6 +758,7 @@ static int recovery_init(struct syna_tcm_hcd *tcm_hcd)
 	if (!recovery_hcd->ihex_buf) {
 		LOGE(tcm_hcd->pdev->dev.parent,
 				"Failed to allocate memory for recovery_hcd->ihex_buf\n");
+		retval = -ENOMEM;
 		goto err_allocate_ihex_buf;
 	}
 
@@ -765,6 +766,7 @@ static int recovery_init(struct syna_tcm_hcd *tcm_hcd)
 	if (!recovery_hcd->data_buf) {
 		LOGE(tcm_hcd->pdev->dev.parent,
 				"Failed to allocate memory for recovery_hcd->data_buf\n");
+		retval = -ENOMEM;
 		goto err_allocate_data_buf;
 	}
 
