@@ -1762,7 +1762,7 @@ static int reflash_update_boot_config(bool lock)
 	int retval;
 	unsigned char slot_used;
 	unsigned int idx;
-	unsigned int addr;
+	unsigned int addr = 0;
 	struct boot_config *data;
 	struct boot_config *last_slot;
 	struct syna_tcm_hcd *tcm_hcd = reflash_hcd->tcm_hcd;
@@ -1989,6 +1989,7 @@ static int reflash_init(struct syna_tcm_hcd *tcm_hcd)
 	if (!reflash_hcd->image_buf) {
 		LOGE(tcm_hcd->pdev->dev.parent,
 				"Failed to allocate memory for reflash_hcd->image_buf\n");
+		retval = -ENOMEM;
 		goto err_allocate_memory;
 	}
 
