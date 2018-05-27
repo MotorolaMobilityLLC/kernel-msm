@@ -10,3 +10,9 @@
  * GNU General Public License for more details.
  */
 
+&touch_reset_active {
+	config {
+		bias-pull-up;
+		/delete-property/ bias-disable;
+	};
+};
