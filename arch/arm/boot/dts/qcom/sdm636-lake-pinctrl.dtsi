@@ -16,3 +16,12 @@
 		/delete-property/ bias-disable;
 	};
 };
+
+&tps61280_en_default {
+	mux {
+		pins = "gpio79";
+	};
+	config {
+		pins = "gpio79";
+	};
+};
