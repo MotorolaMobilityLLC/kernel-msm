@@ -2277,6 +2277,7 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 				len4 = len3;
 			#endif
 		}
+		len5 = len4;
 	}
 #endif
 
