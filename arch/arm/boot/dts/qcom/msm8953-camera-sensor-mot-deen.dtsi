@@ -19,7 +19,7 @@
 };
 
 &pmi8950_torch0 {
-	qcom,current = <200>;
+	qcom,current = <170>;
 };
 
 &pmi8950_torch1 {
