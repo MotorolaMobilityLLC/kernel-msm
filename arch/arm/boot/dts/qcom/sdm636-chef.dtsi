@@ -234,6 +234,11 @@
 	};
 };
 
+&red_led {
+	linux,name = "charging";
+	/delete-property/ linux,default-trigger;
+};
+
 &pm660_haptics { /* Vibrator */
 	qcom,actuator-type = "lra";
 	qcom,wave-shape = "sine";
