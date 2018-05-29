@@ -494,7 +494,8 @@ static void msm_wdog_ctx_lnx_arch(struct msm_wdog_lnx_info *lnx)
 static void msm_wdog_ctx_lnx(struct msm_wdog_lnx_info *lnx)
 {
 	lnx->tsk_size = sizeof(struct task_struct);
-	lnx->ti_tsk_offset = offsetof(struct thread_info, task);
+	/* struct thread_info doesnot recide anymore on stack  */
+	/* lnx->ti_tsk_offset = offsetof(struct thread_info, task); */
 	lnx->aa64 = config_enabled(CONFIG_ARM64);
 	lnx->lpae = config_enabled(CONFIG_ARM_LPAE);
 	lnx->text_paddr = virt_to_phys(_text);
