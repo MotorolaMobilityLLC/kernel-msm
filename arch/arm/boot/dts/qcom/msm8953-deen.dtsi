@@ -486,20 +486,6 @@
 			linux,name = "red";
 			qcom,ctrl-reg = <0x243>;
 		};
-		qcom,leds@1200 {
-			status = "ok";
-			reg = <0x1000 0x100>;
-			compatible = "qcom,leds-atc";
-			linux,name = "green";
-			qcom,ctrl-reg = <0x243>;
-		};
-		qcom,leds@1400 {
-			status = "ok";
-			reg = <0x1000 0x100>;
-			compatible = "qcom,leds-atc";
-			linux,name = "charging";
-			qcom,ctrl-reg = <0x243>;
-		};
 	};
 };
 
