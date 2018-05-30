@@ -36,3 +36,7 @@
 	utags: utags { };
 	hw: hw { };
 };
+
+&soc {
+	/delete-node/ hbtp;
+};
