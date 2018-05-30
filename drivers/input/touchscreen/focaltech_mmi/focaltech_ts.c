@@ -325,6 +325,7 @@ struct ft_ts_data {
 	u32 tch_data_len;
 	u8 fw_ver[3];
 	u8 fw_vendor_id;
+	const char *panel_supplier;
 	struct kobject *ts_info_kobj;
 #if defined(CONFIG_FB)
 	struct work_struct fb_notify_work;
@@ -474,9 +475,7 @@ static void TSI_id(struct input_dev *dev, int id)
 
 static int ft_ts_start(struct device *dev);
 static int ft_ts_stop(struct device *dev);
-#if defined(CONFIG_QPNP_SMB2_MMI)
 static void ft_resume_ps_chg_cm_state(struct ft_ts_data *data);
-#endif
 static struct config_modifier *ft_modifier_by_id(
 	struct ft_ts_data *data, int id);
 
@@ -775,7 +774,6 @@ static int ft_i2c_write(struct i2c_client *client, char *writebuf,
 	return ret;
 }
 
-#if !defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI) || defined(CONFIG_QPNP_SMB2_MMI)
 static int ft_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 {
 	u8 buf[2] = {0};
@@ -785,7 +783,6 @@ static int ft_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 
 	return ft_i2c_write(client, buf, sizeof(buf));
 }
-#endif
 
 static int ft_read_reg(struct i2c_client *client, u8 addr, u8 *val)
 {
@@ -808,6 +805,24 @@ static void ft_irq_enable(struct ft_ts_data *data)
 	}
 }
 
+static const char *ft_find_vendor_name(
+	const struct ft_ts_platform_data *pdata, u8 id)
+{
+	int i;
+
+	if (pdata->num_vendor_ids == 0)
+		return NULL;
+
+	for (i = 0; i < pdata->num_vendor_ids; i++)
+		if (id == pdata->vendor_ids[i]) {
+			pr_info("vendor id 0x%02x panel supplier is %s\n",
+				id, pdata->vendor_names[i]);
+			return pdata->vendor_names[i];
+		}
+
+	return NULL;
+}
+
 static void ft_update_fw_vendor_id(struct ft_ts_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -818,6 +833,8 @@ static void ft_update_fw_vendor_id(struct ft_ts_data *data)
 	err = ft_i2c_read(client, &reg_addr, 1, &data->fw_vendor_id, 1);
 	if (err < 0)
 		dev_err(&client->dev, "fw vendor id read failed");
+	data->panel_supplier = ft_find_vendor_name(data->pdata,
+		data->fw_vendor_id);
 }
 
 static void ft_update_fw_ver(struct ft_ts_data *data)
@@ -880,9 +897,11 @@ static irqreturn_t ft_ts_interrupt(int irq, void *dev_id)
 	struct ft_ts_data *data = dev_id;
 	struct input_dev *ip_dev;
 	int rc, i;
-	u32 id, x, y, status, num_touches = 0;
+	u32 id, x, y, status, num_touches;
 	u8 reg, *buf;
 	bool update_input = false;
+
+	num_touches = 0;
 
 	if (!data) {
 		pr_err("%s: Invalid data\n", __func__);
@@ -1408,10 +1427,10 @@ static int ft_ts_resume(struct device *dev)
 	err = ft_ts_start(dev);
 	if (err < 0)
 		return err;
-#if defined(CONFIG_QPNP_SMB2_MMI)
+
 	if (data->charger_detection_enabled)
 		ft_resume_ps_chg_cm_state(data);
-#endif
+
 	return 0;
 }
 
@@ -1510,7 +1529,6 @@ static void ft_ts_late_resume(struct early_suspend *handler)
 }
 #endif
 
-#if defined(CONFIG_QPNP_SMB2_MMI)
 static int ft_set_charger_state(struct ft_ts_data *data,
 					bool enable)
 {
@@ -1652,7 +1670,6 @@ static int ps_notify_callback(struct notifier_block *self,
 
 	return 0;
 }
-#endif
 
 static void ft_detection_work(struct work_struct *work)
 {
@@ -2348,6 +2365,18 @@ static ssize_t ft_drv_irq_show(struct device *dev,
 		data->irq_enabled ? "ENABLED" : "DISABLED");
 }
 
+static ssize_t ft_panel_supplier_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct ft_ts_data *data = dev_get_drvdata(dev);
+
+	if (data->panel_supplier)
+		return scnprintf(buf, PAGE_SIZE, "%s\n",
+			data->panel_supplier);
+	return 0;
+}
+static DEVICE_ATTR(panel_supplier, 0444, ft_panel_supplier_show, NULL);
+
 static ssize_t ft_drv_irq_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -2405,6 +2434,7 @@ static const struct attribute *ft_attrs[] = {
 	&dev_attr_doreflash.attr,
 	&dev_attr_buildid.attr,
 	&dev_attr_reset.attr,
+	&dev_attr_panel_supplier.attr,
 	&dev_attr_drv_irq.attr,
 	&dev_attr_tsi.attr,
 	NULL
@@ -3034,6 +3064,7 @@ static int ft_parse_dt(struct device *dev,
 	struct property *prop;
 	u32 temp_val, num_buttons;
 	u32 button_map[MAX_BUTTONS];
+	u32 num_vendor_ids, i;
 
 	pdata->name = "focaltech";
 	rc = of_property_read_string(np, "focaltech,name", &pdata->name);
@@ -3189,6 +3220,31 @@ static int ft_parse_dt(struct device *dev,
 		}
 	}
 
+	num_vendor_ids = of_property_count_elems_of_size(np,
+		"focaltech,vendor_ids", sizeof(u32));
+	if ((num_vendor_ids > 0) && (num_vendor_ids < MAX_PANEL_SUPPLIERS)) {
+		const char *name;
+
+		rc = of_property_read_u32_array(np,
+			"focaltech,vendor_ids", pdata->vendor_ids,
+			num_vendor_ids);
+		if (rc) {
+			dev_err(dev, "Unable to read vendor ids\n");
+			return rc;
+		}
+		prop = of_find_property(np, "focaltech,vendor_names", NULL);
+		if (!prop) {
+			dev_err(dev, "Unable to read vendor names\n");
+			return rc;
+		}
+		for (name = of_prop_next_string(prop, NULL), i = 0;
+			i < num_vendor_ids;
+			name = of_prop_next_string(prop, name), i++)
+			pdata->vendor_names[i] = name;
+
+		pdata->num_vendor_ids = num_vendor_ids;
+	}
+
 	return 0;
 }
 #else
@@ -3213,12 +3269,10 @@ static int ft_reboot(struct notifier_block *nb,
 		data->is_fps_registered = false;
 	}
 
-#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled) {
 		power_supply_unreg_notifier(&data->ps_notif);
 		data->charger_detection_enabled = false;
 	}
-#endif
 
 #if defined(CONFIG_FB)
 	fb_unregister_client(&data->fb_notif);
@@ -3300,6 +3354,13 @@ static int ft_ts_probe(struct i2c_client *client,
 	if (!data->tch_data)
 		return -ENOMEM;
 
+	input_dev = input_allocate_device();
+	if (!input_dev) {
+		dev_err(&client->dev, "failed to allocate input device\n");
+		return -ENOMEM;
+	}
+
+	data->input_dev = input_dev;
 	data->client = client;
 	data->pdata = pdata;
 	data->force_reflash = (data->pdata->no_force_update) ? false : true;
@@ -3311,8 +3372,32 @@ static int ft_ts_probe(struct i2c_client *client,
 	if (err)
 		data->patching_enabled = false;
 
+	input_dev->name = "focaltech_ts";
+	input_dev->id.bustype = BUS_I2C;
+	input_dev->dev.parent = &client->dev;
+
+	input_set_drvdata(input_dev, data);
 	i2c_set_clientdata(client, data);
 
+	__set_bit(EV_KEY, input_dev->evbit);
+	__set_bit(EV_ABS, input_dev->evbit);
+	__set_bit(BTN_TOUCH, input_dev->keybit);
+	__set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
+
+	input_mt_init_slots(input_dev, pdata->num_max_touches, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->x_min,
+			     pdata->x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, pdata->y_min,
+			     pdata->y_max, 0, 0);
+
+	err = input_register_device(input_dev);
+	if (err) {
+		dev_err(&client->dev, "Input device registration failed\n");
+		goto input_register_device_err;
+	}
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+	fts_extra_init(client, input_dev, pdata);
+#endif
 	if (pdata->power_init) {
 		err = pdata->power_init(true);
 		if (err)
@@ -3400,35 +3485,6 @@ static int ft_ts_probe(struct i2c_client *client,
 
 	dev_dbg(&client->dev, "touch threshold = %d\n", reg_value * 4);
 
-	input_dev = input_allocate_device();
-	if (!input_dev) {
-		dev_err(&client->dev, "failed to allocate input device\n");
-		goto free_gpio;
-	}
-
-	data->input_dev = input_dev;
-	input_dev->name = "focaltech_ts";
-	input_dev->id.bustype = BUS_I2C;
-	input_dev->dev.parent = &client->dev;
-	input_set_drvdata(input_dev, data);
-
-	__set_bit(EV_KEY, input_dev->evbit);
-	__set_bit(EV_ABS, input_dev->evbit);
-	__set_bit(BTN_TOUCH, input_dev->keybit);
-	__set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
-
-	input_mt_init_slots(input_dev, pdata->num_max_touches, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->x_min,
-			     pdata->x_max, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, pdata->y_min,
-			     pdata->y_max, 0, 0);
-
-	err = input_register_device(input_dev);
-	if (err) {
-		dev_err(&client->dev, "Input device registration failed\n");
-		goto input_register_device_err;
-	}
-
 	err = request_threaded_irq(client->irq, NULL,
 				ft_ts_interrupt,
 	/*
@@ -3439,7 +3495,7 @@ static int ft_ts_probe(struct i2c_client *client,
 				client->dev.driver->name, data);
 	if (err) {
 		dev_err(&client->dev, "request irq failed\n");
-		goto request_irq_err;
+		goto free_gpio;
 	}
 
 	/* request_threaded_irq enable irq,so set the flag irq_enabled */
@@ -3584,7 +3640,6 @@ static int ft_ts_probe(struct i2c_client *client,
 	exp_fn_ctrl.data_ptr = data;
 	mutex_unlock(&exp_fn_ctrl_mutex);
 
-#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled) {
 		struct power_supply *psy = NULL;
 
@@ -3625,7 +3680,6 @@ static int ft_ts_probe(struct i2c_client *client,
 						data->ps_is_present);
 		}
 	}
-#endif
 
 	if (data->fps_detection_enabled) {
 		data->fps_notif.notifier_call = fps_notifier_callback;
@@ -3650,12 +3704,9 @@ static int ft_ts_probe(struct i2c_client *client,
 reboot_register_err:
 	if (data->is_fps_registered)
 		FPS_unregister_notifier(&data->fps_notif, 0xBEEF);
-
-#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled)
 		power_supply_unreg_notifier(&data->ps_notif);
 free_fb_notifier:
-#endif
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
 		dev_err(&client->dev, "Error occurred while unregistering fb_notifier.\n");
@@ -3680,11 +3731,6 @@ sysfs_create_files_err:
 sysfs_class_err:
 	free_irq(client->irq, data);
 	data->irq_enabled = false;
-request_irq_err:
-	input_unregister_device(input_dev);
-input_register_device_err:
-	data->input_dev = NULL;
-	input_free_device(input_dev);
 free_gpio:
 	ft_gpio_configure(data, false);
 gpio_config_err:
@@ -3711,6 +3757,9 @@ regulator_en_err:
 		pdata->power_init(false);
 	else
 		ft_power_init(data, false);
+	input_unregister_device(input_dev);
+input_register_device_err:
+	input_free_device(input_dev);
 	return err;
 }
 
@@ -3730,10 +3779,8 @@ static int ft_ts_remove(struct i2c_client *client)
 
 	unregister_reboot_notifier(&data->ft_reboot);
 
-#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled)
 		power_supply_unreg_notifier(&data->ps_notif);
-#endif
 
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
@@ -3756,7 +3803,9 @@ static int ft_ts_remove(struct i2c_client *client)
 	data->irq_enabled = false;
 
 	ft_gpio_configure(data, false);
-
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+	fts_extra_exit();
+#endif
 	if (data->ts_pinctrl) {
 		if (IS_ERR_OR_NULL(data->pinctrl_state_release)) {
 			devm_pinctrl_put(data->ts_pinctrl);
