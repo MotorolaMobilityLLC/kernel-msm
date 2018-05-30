@@ -125,19 +125,4 @@
 			output-high;
 		};
 	};
-
-	tlmm_gpio_key {
-		gpio_key: gpio_key {
-			mux {
-				pins = "gpio85";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio85";
-				drive-strength = <2>;
-				bias-pull-up;
-			};
-		};
-	};
 };
-
