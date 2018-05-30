@@ -82,11 +82,12 @@ static void ospl2xx_load_config(struct work_struct *work)
 int ospl2xx_afe_set_single_param(uint32_t param_id, int32_t arg1)
 {
 	int result = 0;
-	int index = 0;
-	int size = 0;
-	uint32_t module_id = 0, port_id = 0;
-	struct afe_custom_opalum_set_config_t *config = NULL;
-	struct opalum_single_data_ctrl_t *settings = NULL;
+	uint32_t module_id = 0;
+	u16 port_id = 0;
+	struct param_hdr_v3 param_hdr = {0};
+	struct opalum_single_data_ctrl_t cfg;
+
+	cfg.value = arg1;
 
 	/* Destination settings for message */
 	if ((param_id >> 8) << 8 == AFE_CUSTOM_OPALUM_RX_MODULE) {
@@ -100,133 +101,12 @@ int ospl2xx_afe_set_single_param(uint32_t param_id, int32_t arg1)
 		return -EINVAL;
 	}
 
-	index = afe_get_port_index(port_id);
+	param_hdr.module_id = module_id;
+	param_hdr.instance_id = INSTANCE_ID_0;
+	param_hdr.param_id = param_id;
+	param_hdr.param_size = sizeof(struct opalum_single_data_ctrl_t);
 
-	/* Allocate memory for the message */
-	size = sizeof(struct afe_custom_opalum_set_config_t) +
-		sizeof(struct opalum_single_data_ctrl_t);
-	config = kzalloc(size, GFP_KERNEL);
-	if (config == NULL) {
-		pr_err("%s: Memory allocation failed!\n", __func__);
-		return -ENOMEM;
-	}
-	settings = (struct opalum_single_data_ctrl_t *)
-		((u8 *)config + sizeof(struct afe_custom_opalum_set_config_t));
-
-	/* Configure actual parameter settings */
-	settings->value = arg1;
-
-	/* Set header section */
-	config->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-						APR_HDR_LEN(APR_HDR_SIZE),
-						APR_PKT_VER);
-	config->hdr.pkt_size = size;
-	config->hdr.src_svc = APR_SVC_AFE;
-	config->hdr.src_domain = APR_DOMAIN_APPS;
-	config->hdr.src_port = 0;
-	config->hdr.dest_svc = APR_SVC_AFE;
-	config->hdr.dest_domain = APR_DOMAIN_ADSP;
-	config->hdr.dest_port = 0;
-	config->hdr.token = index;
-	config->hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
-
-	/* Set param section */
-	config->param.port_id = port_id;
-	config->param.payload_size =
-		sizeof(struct afe_port_param_data_v2) +
-		sizeof(struct opalum_single_data_ctrl_t);
-	config->param.payload_address_lsw = 0;
-	config->param.payload_address_msw = 0;
-	config->param.mem_map_handle = 0;
-
-	/* Set data section */
-	config->data.module_id = module_id;
-	config->data.param_id = param_id;
-	config->data.param_size = sizeof(struct opalum_single_data_ctrl_t);
-	config->data.reserved = 0;
-
-	result = ospl2xx_afe_apr_send_pkt(config, index);
-	if (result) {
-		pr_debug("%s: set_param for port %d failed with code %d\n",
-			 __func__, port_id, result);
-	} else {
-		pr_debug("%s: set_param packet param 0x%08X to module 0x%08X\n",
-			__func__, param_id, module_id);
-	}
-	kfree(config);
-	return result;
-}
-
-int ospl2xx_afe_set_tri_param(uint32_t param_id,
-			int32_t arg1, int32_t arg2, int32_t arg3) {
-	int result = 0;
-	int index = 0;
-	int size = 0;
-	uint32_t port_id = 0, module_id = 0;
-	struct afe_custom_opalum_set_config_t *config = NULL;
-	struct opalum_tri_data_ctrl_t *settings = NULL;
-
-	/* Destination settings for message */
-	if ((param_id >> 8) << 8 ==
-		AFE_CUSTOM_OPALUM_RX_MODULE) {
-		module_id = AFE_CUSTOM_OPALUM_RX_MODULE;
-		port_id = AFE_RX_PORT_ID;
-	} else if ((param_id >> 8) << 8 ==
-		AFE_CUSTOM_OPALUM_TX_MODULE) {
-		module_id = AFE_CUSTOM_OPALUM_TX_MODULE;
-		port_id = AFE_TX_PORT_ID;
-	} else {
-		pr_err("%s: unsupported paramID[0x%08X]\n",
-			__func__, param_id);
-		return -EINVAL;
-	}
-	index = afe_get_port_index(port_id);
-
-	/* Allocate memory for the message */
-	size = sizeof(struct afe_custom_opalum_set_config_t) +
-		sizeof(struct opalum_tri_data_ctrl_t);
-	config = kzalloc(size, GFP_KERNEL);
-	if (config == NULL) {
-		pr_err("%s: Memory allocation failed!\n", __func__);
-		return -ENOMEM;
-	}
-	settings = (struct opalum_tri_data_ctrl_t *)
-		((u8 *)config + sizeof(struct afe_custom_opalum_set_config_t));
-
-	/* Configure actual parameter settings */
-	settings->data1 = arg1;
-	settings->data2 = arg2;
-	settings->data3 = arg3;
-
-	/* Set header section */
-	config->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-						APR_HDR_LEN(APR_HDR_SIZE),
-						APR_PKT_VER);
-	config->hdr.pkt_size = size;
-	config->hdr.src_svc = APR_SVC_AFE;
-	config->hdr.src_domain = APR_DOMAIN_APPS;
-	config->hdr.src_port = 0;
-	config->hdr.dest_svc = APR_SVC_AFE;
-	config->hdr.dest_domain = APR_DOMAIN_ADSP;
-	config->hdr.dest_port = 0;
-	config->hdr.token = index;
-	config->hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
-
-	/* Set param section */
-	config->param.port_id = port_id;
-	config->param.payload_size =
-		sizeof(struct afe_port_param_data_v2) +
-		sizeof(struct opalum_tri_data_ctrl_t);
-	config->param.payload_address_lsw = 0;
-	config->param.payload_address_msw = 0;
-	config->param.mem_map_handle = 0;
-
-	/* Set data section */
-	config->data.module_id = module_id;
-	config->data.param_id = param_id;
-	config->data.param_size = sizeof(struct opalum_tri_data_ctrl_t);
-	config->data.reserved = 0;
-	result = ospl2xx_afe_apr_send_pkt(config, index);
+	result = afe_set_ospl2xx_params(port_id, param_hdr, (u8 *) &cfg);
 	if (result) {
 		pr_debug("%s: set_param for port %d failed with code %d\n",
 			__func__, port_id, result);
@@ -234,22 +114,21 @@ int ospl2xx_afe_set_tri_param(uint32_t param_id,
 		pr_debug("%s: set_param packet param 0x%08X to module 0x%08X\n",
 			__func__, param_id, module_id);
 	}
-	kfree(config);
+
 	return result;
 }
 
-int ospl2xx_afe_set_ext_config_param(const char *string, uint32_t param_id)
-{
+int ospl2xx_afe_set_tri_param(uint32_t param_id,
+			int32_t arg1, int32_t arg2, int32_t arg3) {
 	int result = 0;
-	int index = 0;
-	int size = 0;
-	int string_size = 0;
-	int mem_size = 0;
-	int sent = 0;
-	int chars_to_send = 0;
-	uint32_t port_id = 0, module_id = 0;
-	struct afe_custom_opalum_set_config_t *config = NULL;
-	struct opalum_external_config_t *payload = NULL;
+	uint32_t module_id = 0;
+	u16 port_id = 0;
+	struct param_hdr_v3 param_hdr = {0};
+	struct opalum_tri_data_ctrl_t cfg;
+
+	cfg.data1 = arg1;
+	cfg.data2 = arg2;
+	cfg.data3 = arg3;
 
 	/* Destination settings for message */
 	if ((param_id >> 8) << 8 ==
@@ -265,7 +144,52 @@ int ospl2xx_afe_set_ext_config_param(const char *string, uint32_t param_id)
 			__func__, param_id);
 		return -EINVAL;
 	}
-	index = afe_get_port_index(port_id);
+
+	param_hdr.module_id = module_id;
+	param_hdr.instance_id = INSTANCE_ID_0;
+	param_hdr.param_id = param_id;
+	param_hdr.param_size = sizeof(struct opalum_tri_data_ctrl_t);
+
+	result = afe_set_ospl2xx_params(port_id, param_hdr, (u8 *) &cfg);
+
+	if (result) {
+		pr_debug("%s: set_param for port %d failed with code %d\n",
+			__func__, port_id, result);
+	} else {
+		pr_debug("%s: set_param packet param 0x%08X to module 0x%08X\n",
+			__func__, param_id, module_id);
+	}
+
+	return result;
+}
+
+int ospl2xx_afe_set_ext_config_param(const char *string, uint32_t param_id)
+{
+	int result = 0;
+	int size = 0;
+	int string_size = 0;
+	int mem_size = 0;
+	int sent = 0;
+	int chars_to_send = 0;
+	uint32_t port_id = 0, module_id = 0;
+
+	struct param_hdr_v3 param_hdr = {0};
+	struct opalum_external_config_t *cfg = NULL;
+
+	/* Destination settings for message */
+	if ((param_id >> 8) << 8 ==
+		AFE_CUSTOM_OPALUM_RX_MODULE) {
+		module_id = AFE_CUSTOM_OPALUM_RX_MODULE;
+		port_id = AFE_RX_PORT_ID;
+	} else if ((param_id >> 8) << 8 ==
+		AFE_CUSTOM_OPALUM_TX_MODULE) {
+		module_id = AFE_CUSTOM_OPALUM_TX_MODULE;
+		port_id = AFE_TX_PORT_ID;
+	} else {
+		pr_err("%s: unsupported paramID[0x%08X]\n",
+			__func__, param_id);
+		return -EINVAL;
+	}
 
 	string_size = strlen(string);
 	if (string_size > MAX_APR_STRING)
@@ -274,86 +198,58 @@ int ospl2xx_afe_set_ext_config_param(const char *string, uint32_t param_id)
 		mem_size = string_size;
 
 	/* Allocate memory for the message */
-	size = sizeof(struct afe_custom_opalum_set_config_t) +
-		sizeof(struct opalum_external_config_t) + mem_size;
-	config = kzalloc(size, GFP_KERNEL);
-	if (config == NULL) {
+	size = sizeof(struct opalum_external_config_t) + mem_size;
+	cfg = kzalloc(size, GFP_KERNEL);
+	if (cfg == NULL) {
 		pr_err("%s: Memory allocation failed!\n", __func__);
 		return -ENOMEM;
 	}
-	payload = (struct opalum_external_config_t *)
-		((u8 *)config + sizeof(struct afe_custom_opalum_set_config_t));
-	payload->total_size = (uint32_t)string_size;
 
-	/* Initial configuration of message */
-	/* Set header section */
-	config->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-						APR_HDR_LEN(APR_HDR_SIZE),
-						APR_PKT_VER);
-	config->hdr.pkt_size = size;
-	config->hdr.src_svc = APR_SVC_AFE;
-	config->hdr.src_domain = APR_DOMAIN_APPS;
-	config->hdr.src_port = 0;
-	config->hdr.dest_svc = APR_SVC_AFE;
-	config->hdr.dest_domain = APR_DOMAIN_ADSP;
-	config->hdr.dest_port = 0;
-	config->hdr.token = index;
-	config->hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
+	param_hdr.module_id = module_id;
+	param_hdr.instance_id = INSTANCE_ID_0;
+	param_hdr.param_id = param_id;
 
-	/* Set param section */
-	config->param.port_id = port_id;
-	config->param.payload_size =
-		sizeof(struct afe_port_param_data_v2) +
-		sizeof(struct opalum_external_config_t) +
-		mem_size;
-	config->param.payload_address_lsw = 0;
-	config->param.payload_address_msw = 0;
-	config->param.mem_map_handle = 0;
-
-	/* Set data section */
-	config->data.module_id = module_id;
-	config->data.param_id = param_id;
-	config->data.param_size =
-		sizeof(struct opalum_external_config_t) +
-		mem_size;
-	config->data.reserved = 0;
+	cfg->total_size = (uint32_t)string_size;
 
 	/* Send config string in chunks of maximum 4000 or 400 bytes */
 	while (sent < string_size) {
 		chars_to_send = string_size - sent;
 		if (chars_to_send > MAX_APR_STRING) {
 			chars_to_send = MAX_APR_STRING;
-			payload->done = 0;
+			cfg->done = 0;
 		} else {
-			payload->done = 1;
+			cfg->done = 1;
 		}
 
 		/* Configure per message parameter settings */
-		memcpy(&payload->config, string + sent, chars_to_send);
-		payload->chunk_size = chars_to_send;
+		memcpy(&cfg->config, string + sent, chars_to_send);
+		cfg->chunk_size = chars_to_send;
+
+		param_hdr.param_size =
+			sizeof(struct opalum_external_config_t) + chars_to_send;
 
 		/* Send the actual message */
-		result = ospl2xx_afe_apr_send_pkt(config, index);
+		result = afe_set_ospl2xx_params(port_id, param_hdr, (u8 *) cfg);
 		if (result) {
 			pr_debug("%s: set_param for port %d failed, code %d\n",
 				__func__, port_id, result);
 		} else {
 			pr_debug("%s: set_param param 0x%08X to module 0x%08X\n",
-				 __func__, param_id, module_id);
+				__func__, param_id, module_id);
 		}
 		sent += chars_to_send;
 	}
-	kfree(config);
+	kfree(cfg);
+
 	return result;
 }
 
 int ospl2xx_afe_get_param(uint32_t param_id)
 {
 	int result = 0;
-	int index = 0;
 	int size = 0;
 	uint32_t module_id = 0, port_id = 0;
-	struct afe_custom_opalum_get_config_t *config = NULL;
+	struct param_hdr_v3 param_hdr = {0};
 
 	if ((param_id >> 8) << 8 == AFE_CUSTOM_OPALUM_RX_MODULE) {
 		module_id = AFE_CUSTOM_OPALUM_RX_MODULE;
@@ -366,44 +262,9 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 		return -EINVAL;
 	}
 
-	index = afe_get_port_index(port_id);
-
-	/* Allocate memory for the message */
-	size = sizeof(struct afe_custom_opalum_get_config_t);
-	config = kzalloc(size, GFP_KERNEL);
-	if (config == NULL) {
-		pr_err("%s: Memory allocation failed!\n", __func__);
-		return -ENOMEM;
-	}
-
-	/* Set header section */
-	config->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-						APR_HDR_LEN(APR_HDR_SIZE),
-						APR_PKT_VER);
-	config->hdr.pkt_size = size;
-	config->hdr.src_svc = APR_SVC_AFE;
-	config->hdr.src_domain = APR_DOMAIN_APPS;
-	config->hdr.src_port = 0;
-	config->hdr.dest_svc = APR_SVC_AFE;
-	config->hdr.dest_domain = APR_DOMAIN_ADSP;
-	config->hdr.dest_port = 0;
-	config->hdr.token = index;
-	config->hdr.opcode = AFE_PORT_CMD_GET_PARAM_V2;
-
-	/* Set param section */
-	config->param.port_id = port_id;
-	config->param.payload_size =
-		sizeof(struct afe_port_param_data_v2);
-	config->param.payload_address_lsw = 0;
-	config->param.payload_address_msw = 0;
-	config->param.mem_map_handle = 0;
-	config->param.module_id = module_id;
-	config->param.param_id = param_id;
-
-	/* Set data section */
-	config->data.module_id = module_id;
-	config->data.param_id = param_id;
-	config->data.reserved = 0;
+	param_hdr.module_id = module_id;
+	param_hdr.param_id = param_id;
+	param_hdr.instance_id = INSTANCE_ID_0;
 
 	/* payload and param size section */
 	switch (param_id) {
@@ -414,27 +275,20 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 	case PARAM_ID_OPALUM_RX_VOLUME_CONTROL:
 	case PARAM_ID_OPALUM_TX_ENABLE:
 	case PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET:
-		config->param.payload_size +=
-			sizeof(struct opalum_single_data_ctrl_t);
-		config->data.param_size =
-			sizeof(struct opalum_single_data_ctrl_t);
+		size = sizeof(struct opalum_single_data_ctrl_t);
 		break;
 	case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 	case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
-		config->param.payload_size +=
-			sizeof(struct opalum_dual_data_ctrl_t);
-		config->data.param_size =
-			sizeof(struct opalum_dual_data_ctrl_t);
+		size = sizeof(struct opalum_dual_data_ctrl_t);
 		break;
 	case PARAM_ID_OPALUM_TX_F0_CURVE:
-		config->param.payload_size +=
-			sizeof(struct opalum_f0_curve_t);
-		config->data.param_size =
-			sizeof(struct opalum_f0_curve_t);
+		size = sizeof(struct opalum_f0_curve_t);
 		break;
 	}
+	param_hdr.param_size = size;
 
-	result = ospl2xx_afe_apr_send_pkt(config, index);
+	result = afe_get_ospl2xx_params(port_id, NULL, &param_hdr);
+
 	if (result) {
 		pr_debug("%s: get_param for port %d failed with code %d\n",
 			__func__, port_id, result);
@@ -443,7 +297,6 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 			__func__, param_id, module_id);
 	}
 
-	kfree(config);
 	return result;
 }
 
@@ -558,12 +411,16 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 		return -EINVAL;
 	}
 
-	if (data->opcode == AFE_PORT_CMDRSP_GET_PARAM_V2) {
+	if (data->opcode == AFE_PORT_CMDRSP_GET_PARAM_V2 ||
+	    data->opcode == AFE_PORT_CMDRSP_GET_PARAM_V3) {
 		uint32_t *payload32 = data->payload;
+		uint32_t param_id;
+		param_id = (data->opcode == AFE_PORT_CMDRSP_GET_PARAM_V3) ?
+				payload32[3] : payload32[2];
 
 		if (payload32[1] == AFE_CUSTOM_OPALUM_RX_MODULE ||
 		    payload32[1] == AFE_CUSTOM_OPALUM_TX_MODULE) {
-			switch (payload32[2]) {
+			switch (param_id) {
 			case PARAM_ID_OPALUM_RX_ENABLE:
 			case PARAM_ID_OPLAUM_RX_TEMPERATURE:
 			case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
