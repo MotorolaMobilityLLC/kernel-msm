@@ -125,6 +125,7 @@
         qcom,msm-hs-micbias-type = "internal";
         qcom,cdc-pdm-gpios = <&cdc_pdm_gpios>;
         qcom,us-euro-gpios;
+	qcom,tert-mi2s-gpios = <&tert_mi2s_gpios>;
         qcom,audio-routing =
                 "RX_BIAS", "INT_MCLK0",
                 "SPK_RX_BIAS", "INT_MCLK0",
@@ -204,6 +205,16 @@
 };
 
 &soc {
+	tert_mi2s_gpios: tert_mi2s_pinctrl {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&ter_mi2s_clk_active &ter_mi2s_ws_active
+			&ter_mi2s_sd0_active &ter_mi2s_sd1_active>;
+		pinctrl-1 = <&ter_mi2s_clk_sleep &ter_mi2s_ws_sleep
+			&ter_mi2s_sd0_sleep &ter_mi2s_sd1_sleep>;
+		qcom,lpi-gpios;
+	};
+
 	ti,tas2560-algo {
 		compatible = "ti,tas2560-algo";
 		ti,tas2560-port-id = <0x1004>, <0x1005>;
@@ -254,11 +265,6 @@
                         qcom,msm-dai-q6-mi2s-dev-id = <2>;
                         qcom,msm-mi2s-rx-lines = <1>;
                         qcom,msm-mi2s-tx-lines = <2>;
-			pinctrl-names = "default","sleep";
-			pinctrl-0 = <&ter_mi2s_clk_active &ter_mi2s_ws_active
-				&ter_mi2s_sd0_active &ter_mi2s_sd1_active>;
-			pinctrl-1 = <&ter_mi2s_clk_sleep &ter_mi2s_ws_sleep
-				&ter_mi2s_sd0_sleep &ter_mi2s_sd1_sleep>;
 		};
 
                 dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
