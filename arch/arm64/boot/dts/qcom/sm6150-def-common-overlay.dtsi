@@ -31,6 +31,16 @@
 	};
 };
 
+&soc {
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+};
+
 &tlmm{
 	nfc {
 		nfc_int_active: nfc_int_active {
