@@ -25,6 +25,9 @@
 #define FT6X36_ID		0x36
 #define FT8716_ID		0x87
 #define FT5X46_ID		0x54
+#define FT8006U_ID		0xF0
+
+#define MAX_PANEL_SUPPLIERS	5
 
 struct fw_upgrade_info {
 	bool auto_cal;
@@ -68,6 +71,9 @@ struct ft_ts_platform_data {
 	bool y_flip;
 	int (*power_init)(bool);
 	int (*power_on)(bool);
+	u32 num_vendor_ids;
+	u32 vendor_ids[MAX_PANEL_SUPPLIERS];
+	const char *vendor_names[MAX_PANEL_SUPPLIERS];
 };
 
 #endif
