@@ -585,17 +585,6 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		uint32_t param_id;
 		uint32_t param_id_pos = 0;
 
-#ifdef CONFIG_SND_SOC_OPALUM
-		int32_t *payload32 = data->payload;
-
-		if (payload32[1] == AFE_CUSTOM_OPALUM_RX_MODULE ||
-		    payload32[1] == AFE_CUSTOM_OPALUM_TX_MODULE) {
-			if (ospl2xx_callback != NULL)
-				ospl2xx_callback(data);
-			atomic_set(&this_afe.state, 0);
-		} else {
-#endif
-
 		if (!payload || (data->token >= AFE_MAX_PORTS)) {
 			pr_err("%s: Error: size %d payload %pK token %d\n",
 				__func__, data->payload_size,
@@ -622,14 +611,18 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		if (param_id == AFE_PARAM_ID_DEV_TIMING_STATS) {
 			av_dev_drift_afe_cb_handler(data->opcode, data->payload,
 						    data->payload_size);
+#ifdef CONFIG_SND_SOC_OPALUM
+		} else if (payload[1] == AFE_CUSTOM_OPALUM_RX_MODULE ||
+			   payload[1] == AFE_CUSTOM_OPALUM_TX_MODULE) {
+				if (ospl2xx_callback != NULL)
+					ospl2xx_callback(data);
+				atomic_set(&this_afe.state, 0);
+#endif
 		} else {
 			if (sp_make_afe_callback(data->opcode, data->payload,
 						 data->payload_size))
 				return -EINVAL;
 		}
-#ifdef CONFIG_SND_SOC_OPALUM
-		}
-#endif
 		wake_up(&this_afe.wait[data->token]);
 	} else if (data->opcode == AFE_CMDRSP_REQUEST_LPASS_RESOURCES) {
 		uint32_t ret = 0;
@@ -1493,21 +1486,6 @@ done:
 	kfree(packed_param_data);
 	return ret;
 }
-
-#ifdef CONFIG_SND_SOC_OPALUM
-int ospl2xx_afe_apr_send_pkt(void *data, int index)
-{
-	int ret = 0;
-
-	ret = afe_q6_interface_prepare();
-	if (ret != 0) {
-		pr_err("%s: Q6 interface prepare failed %d\n", __func__, ret);
-		return -EINVAL;
-	}
-	ret = afe_apr_send_pkt(data, &this_afe.wait[index]);
-	return ret;
-}
-#endif
 
 static int afe_send_cal_block(u16 port_id, struct cal_block_data *cal_block)
 {
@@ -6269,6 +6247,25 @@ int afe_enable_lpass_core_shared_clock(u16 port_id, u32 enable)
 	return ret;
 }
 
+#ifdef CONFIG_SND_SOC_OPALUM
+int afe_set_ospl2xx_params(u16 port_id, struct param_hdr_v3 param_hdr,
+				u8 *param_data)
+{
+	int ret = 0;
+	int index = q6audio_get_port_index(port_id);
+
+	if (index < 0 || index >= AFE_MAX_PORTS) {
+		pr_err("%s: index[%d] invalid!\n", __func__, index);
+		return -EINVAL;
+	}
+
+	ret = q6afe_pack_and_set_param_in_band(port_id, index, param_hdr,
+						(u8 *) param_data);
+
+	return ret;
+}
+#endif
+
 int q6afe_check_osr_clk_freq(u32 freq)
 {
 	int ret = 0;
@@ -6437,6 +6434,18 @@ int afe_spk_prot_get_calib_data(struct afe_spkr_prot_get_vi_calib *calib_resp)
 fail_cmd:
 	return ret;
 }
+
+#ifdef CONFIG_SND_SOC_OPALUM
+int afe_get_ospl2xx_params(u16 port_id, struct mem_mapping_hdr *mem_hdr,
+				struct param_hdr_v3 *param_hdr)
+{
+	int ret = 0;
+
+	ret = q6afe_get_params(port_id, mem_hdr, param_hdr);
+
+	return ret;
+}
+#endif
 
 int afe_spk_prot_feed_back_cfg(int src_port, int dst_port,
 	int l_ch, int r_ch, u32 enable)
