@@ -3930,6 +3930,22 @@ static int wm_adsp_of_parse_firmware(struct wm_adsp *dsp,
 	while ((fw = of_get_next_child(fws, fw)) != NULL) {
 		ctl_names[i] = fw->name;
 
+		/* check for old dts configuration */
+		ret = of_property_read_string(fw, "wlf,wmfw-file",
+					      &dsp->firmwares[i].file);
+		if (ret == 0) {
+			ret = of_property_read_string(fw, "wlf,bin-file",
+					      &dsp->firmwares[i].binfile);
+			if (ret < 0)
+				dsp->firmwares[i].binfile = NULL;
+			dsp->firmwares[i].fullname = true;
+			dsp->firmwares[i].compr_direction = SND_COMPRESS_CAPTURE;
+			dsp->firmwares[i].num_caps = ARRAY_SIZE(trace_caps);
+			dsp->firmwares[i].caps = trace_caps;
+			i++;
+			continue;
+		}
+
 		ret = of_property_read_string(fw, "cirrus,wmfw-file",
 					      &dsp->firmwares[i].file);
 		if (ret < 0) {
