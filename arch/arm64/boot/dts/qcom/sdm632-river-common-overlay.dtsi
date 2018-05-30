@@ -16,6 +16,20 @@
 #include "dsi-panel-mot-tianma-624-1080p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
+&soc {
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>,
+			<135>,
+			<136>,
+			<137>,
+			<138>;
+	};
+};
+
 &i2c_3 {
 	status = "okay";
 	qcom,disable-dma;
