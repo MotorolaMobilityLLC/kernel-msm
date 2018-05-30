@@ -1,0 +1,109 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+compatible = "qcom,mdss-dsi-panel";
+qcom,mdss-dsi-panel-name = "mipi_mot_vid_ofilm_720p_622";
+qcom,mdss-dsi-panel-supplier = "ofilm";
+qcom,mdss-dsi-panel-type = "dsi_video_mode";
+qcom,mdss-dsi-panel-framerate = <60>;
+qcom,mdss-dsi-virtual-channel-id = <0>;
+qcom,mdss-dsi-stream = <0>;
+qcom,mdss-dsi-panel-width = <720>;
+qcom,mdss-dsi-panel-height = <1440>;
+qcom,mdss-dsi-h-front-porch = <48>;
+qcom,mdss-dsi-h-back-porch = <28>;
+qcom,mdss-dsi-h-pulse-width = <16>;
+qcom,mdss-dsi-h-sync-skew = <0>;
+qcom,mdss-dsi-v-back-porch = <36>;
+qcom,mdss-dsi-v-front-porch = <64>;
+qcom,mdss-dsi-v-pulse-width = <8>;
+qcom,mdss-dsi-h-left-border = <0>;
+qcom,mdss-dsi-h-right-border = <0>;
+qcom,mdss-dsi-v-top-border = <0>;
+qcom,mdss-dsi-v-bottom-border = <0>;
+qcom,mdss-dsi-bpp = <24>;
+qcom,mdss-dsi-underflow-color = <0xff>;
+qcom,mdss-dsi-border-color = <0>;
+qcom,mdss-dsi-on-command = [
+			05 01 00 00 78 00 02 11
+			05 01 00 00 14 00 02 29];	/* display on delay 20ms*/
+qcom,mdss-dsi-off-command = [
+	05 01 00 00 14 00 01 28
+	05 01 00 00 78 00 01 10];
+
+
+qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+
+qcom,mdss-dsi-h-sync-pulse = <0>;
+qcom,mdss-dsi-traffic-mode = "burst_mode";
+qcom,mdss-dsi-bllp-eof-power-mode;
+qcom,mdss-dsi-bllp-power-mode;
+qcom,mdss-dsi-lane-0-state;
+qcom,mdss-dsi-lane-1-state;
+qcom,mdss-dsi-lane-2-state;
+qcom,mdss-dsi-lane-3-state;
+qcom,mdss-dsi-panel-timings-phy-v2 = [
+			1e 1c 04 06 02 03 04 a0
+			1e 1c 04 06 02 03 04 a0
+			1e 1c 04 06 02 03 04 a0
+			1e 1c 04 06 02 03 04 a0
+			1e 0e 04 05 02 03 04 a0];
+qcom,mdss-dsi-t-clk-post = <0x0A>;
+qcom,mdss-dsi-t-clk-pre = <0x1E>;
+qcom,mdss-dsi-bl-min-level = <1>;
+qcom,mdss-dsi-bl-max-level = <2047>;
+qcom,mdss-dsi-dma-trigger = "trigger_sw";
+qcom,mdss-dsi-mdp-trigger = "none";
+qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
+qcom,mdss-dsi-lp11-init;
+qcom,mdss-dsi-tx-eot-append;
+qcom,mdss-dsi-init-delay-us = <50000>;
+qcom,mdss-dsi-no-panel-on-read-support;
+
+qcom,panel-supply-entries {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	qcom,panel-supply-entry@0 {
+		reg = <1>;
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <5>;
+		qcom,supply-post-off-sleep = <1>;
+	};
+
+	qcom,panel-supply-entry@1 {
+		reg = <2>;
+		qcom,supply-name = "vsp_disp";
+		qcom,supply-min-voltage = <6000000>;
+		qcom,supply-max-voltage = <6000000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+	};
+
+	qcom,panel-supply-entry@2 {
+		reg = <3>;
+		qcom,supply-name = "vsn_disp";
+		qcom,supply-min-voltage = <6000000>;
+		qcom,supply-max-voltage = <6000000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <10>;
+	};
+};
