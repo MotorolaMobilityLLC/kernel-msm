@@ -70,18 +70,6 @@
 #define MAX_APR_STRING			4000
 #endif
 
-struct afe_custom_opalum_set_config_t {
-	struct apr_hdr hdr;
-	struct afe_port_cmd_set_param_v2 param;
-	struct afe_port_param_data_v2 data;
-} __packed;
-
-struct afe_custom_opalum_get_config_t {
-	struct apr_hdr hdr;
-	struct afe_port_cmd_get_param_v2 param;
-	struct afe_port_param_data_v2 data;
-} __packed;
-
 struct opalum_single_data_ctrl_t {
 	int32_t value;
 };
