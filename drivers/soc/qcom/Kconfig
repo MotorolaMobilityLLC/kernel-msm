@@ -845,6 +845,14 @@ config HEART_DTB
 	  Only include Heart specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config LAKE_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Lake DTBs"
+	help
+	  Only include Lake specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config CHEF_DTB
 	depends on ARCH_QCOM
 	default n
