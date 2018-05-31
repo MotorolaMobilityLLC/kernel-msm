@@ -143,3 +143,7 @@
 &mdss_dsi1 {
 	status = "disabled";
 };
+
+&sdhc_2 {
+	cd-gpios = <&tlmm 133 0x0>;
+};
