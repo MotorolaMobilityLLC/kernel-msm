@@ -12,6 +12,7 @@
 #define DEBUG
 #define DRIVER_NAME "sx9310"
 #define USE_SENSORS_CLASS
+#define USE_KERNEL_SUSPEND
 
 #define MAX_WRITE_ARRAY_SIZE 32
 #include <linux/module.h>
@@ -29,6 +30,10 @@
 #include <linux/notifier.h>
 #include <linux/usb.h>
 #include <linux/power_supply.h>
+
+#if defined(CONFIG_FB)
+#include <linux/fb.h>
+#endif
 
 /* main struct, interrupt,init,pointers */
 #include <linux/input/sx9310_triple.h>
@@ -168,7 +173,8 @@ static int sx9310_detect(struct i2c_client *client)
 {
 	s32 returnValue = 0, i;
 	u8 address = SX9310_WHOAMI;
-	u8 value = 0x01;
+	u8 value_9310 = 0x01;
+	u8 value_9311 = 0x02;
 
 	if (client) {
 		for (i = 0; i < 3; i++) {
@@ -176,11 +182,10 @@ static int sx9310_detect(struct i2c_client *client)
 			LOG_INFO("sx9310 read_register for %d time Addr:\
 					0x%x Return: 0x%x\n",
 					i, address, returnValue);
-			if (returnValue >= 0) {
-				if (value == returnValue) {
-					LOG_INFO("sx9310 detect success!\n");
-					return 1;
-				}
+			if (value_9310 == returnValue ||
+					value_9311 == returnValue) {
+				LOG_INFO("sx9310 detect success !\n");
+				return 1;
 			}
 		}
 	}
@@ -488,7 +493,8 @@ static void touchProcess(psx93XX_t this)
 					last_val = 2;
 				} else if ((i & pCurrentButton->mask) ==
 					   (pCurrentButton->mask & 0x0f)) {
-					LOG_INFO("CS %d still in PROX State.\n",
+					if (sx9310_debug_enable)
+						LOG_INFO("CS %d still in PROX State.\n",
 							counter);
 				} else{
 					if (sx9310_debug_enable)
@@ -511,7 +517,8 @@ static void touchProcess(psx93XX_t this)
 			case S_BODY: /* Button is being in 0mm! */
 				if ((i & pCurrentButton->mask) ==
 							 pCurrentButton->mask) {
-					LOG_INFO("CS %d still in BODY State.\n",
+					if (sx9310_debug_enable)
+						LOG_INFO("CS %d still in BODY State.\n",
 							counter);
 				} else if ((i & pCurrentButton->mask) ==
 					   (pCurrentButton->mask & 0x0f)) {
@@ -1076,6 +1083,49 @@ static int ps_notify_callback(struct notifier_block *self,
 	return 0;
 }
 
+#if defined(CONFIG_FB)
+static void fb_notify_resume_work(struct work_struct *work)
+{
+	psx93XX_t this = container_of(work, sx93XX_t, fb_notify_work);
+	psx9310_t pDevice = NULL;
+	struct input_dev *input_top = NULL;
+	struct input_dev *input_bottom = NULL;
+	int ret = 0;
+
+	pDevice = this->pDevice;
+	input_top = pDevice->pbuttonInformation->input_top;
+	input_bottom = pDevice->pbuttonInformation->input_bottom;
+
+	if (sx9310_debug_enable)
+		LOG_INFO("Lcd suspend/resume event,going to force reset\n");
+	ret = write_register(this, SX9310_IRQSTAT_REG, 0xff);
+	if (ret < 0)
+		LOG_ERR(" Lcd suspend/resume,reset cap sensor failed\n");
+}
+
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	psx93XX_t this = container_of(self, sx93XX_t, fb_notif);
+
+	if ((event == FB_EVENT_BLANK) &&
+		evdata && evdata->data) {
+		blank = evdata->data;
+		if ((*blank == FB_BLANK_POWERDOWN)
+			|| (*blank == FB_BLANK_UNBLANK)) {
+			if (sx9310_debug_enable)
+				LOG_INFO("fb event = %lu blank = %d\n",
+				 event, *blank);
+			schedule_work(&this->fb_notify_work);
+		}
+	}
+
+	return 0;
+}
+#endif
+
 static struct class capsense_class = {
 	.name			= "capsense",
 	.owner			= THIS_MODULE,
@@ -1320,7 +1370,16 @@ static int sx9310_probe(struct i2c_client *client,
 			}
 		}
 
-		return  0;
+#if defined(CONFIG_FB)
+		INIT_WORK(&this->fb_notify_work, fb_notify_resume_work);
+		this->fb_notif.notifier_call = fb_notifier_callback;
+		ret = fb_register_client(&this->fb_notif);
+		if (ret) {
+			LOG_ERR("Unable to register fb_notifier: %d\n", ret);
+			goto free_ps_notifier;
+		}
+#endif
+		return 0;
 	}
 	return -ENOMEM;
 
@@ -1363,6 +1422,11 @@ static int sx9310_remove(struct i2c_client *client)
 
 	pDevice = this->pDevice;
 	if (this && pDevice) {
+#if defined(CONFIG_FB)
+		fb_unregister_client(&this->fb_notif);
+#endif
+		power_supply_unreg_notifier(&this->ps_notif);
+
 #ifdef USE_SENSORS_CLASS
 		sensors_classdev_unregister(&sensors_capsensor_top_cdev);
 		sensors_classdev_unregister(&sensors_capsensor_bottom_cdev);
@@ -1380,10 +1444,7 @@ static int sx9310_remove(struct i2c_client *client)
 			regulator_disable(this->board->cap_vdd);
 			regulator_put(this->board->cap_vdd);
 		}
-#ifdef USE_SENSORS_CLASS
-		sensors_classdev_unregister(&sensors_capsensor_top_cdev);
-		sensors_classdev_unregister(&sensors_capsensor_bottom_cdev);
-#endif
+
 		sysfs_remove_group(&client->dev.kobj, &sx9310_attr_group);
 		pplatData = client->dev.platform_data;
 		if (pplatData && pplatData->exit_platform_hw)
@@ -1395,19 +1456,21 @@ static int sx9310_remove(struct i2c_client *client)
 #if defined(USE_KERNEL_SUSPEND)
 /*====================================================*/
 /***** Kernel Suspend *****/
-static int sx9310_suspend(struct i2c_client *client, pm_message_t mesg)
+static int sx9310_suspend(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	psx93XX_t this = i2c_get_clientdata(client);
 
-	sx93XX_sar_suspend(this);
+	sx93XX_suspend(this);
 	return 0;
 }
 /***** Kernel Resume *****/
-static int sx9310_resume(struct i2c_client *client)
+static int sx9310_resume(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	psx93XX_t this = i2c_get_clientdata(client);
 
-	sx93XX_sar_resume(this);
+	sx93XX_resume(this);
 	return 0;
 }
 /*====================================================*/
@@ -1421,6 +1484,13 @@ static const struct of_device_id synaptics_rmi4_match_tbl[] = {
 MODULE_DEVICE_TABLE(of, synaptics_rmi4_match_tbl);
 #endif
 
+#if defined(USE_KERNEL_SUSPEND)
+static const struct dev_pm_ops sx9310_pm_ops = {
+	.suspend        = sx9310_suspend,
+	.resume         = sx9310_resume,
+};
+#endif
+
 static struct i2c_device_id sx9310_idtable[] = {
 	{ DRIVER_NAME, 0 },
 	{ }
@@ -1430,15 +1500,14 @@ MODULE_DEVICE_TABLE(i2c, sx9310_idtable);
 static struct i2c_driver sx9310_driver = {
 	.driver = {
 		.owner  = THIS_MODULE,
-		.name   = DRIVER_NAME
+		.name   = DRIVER_NAME,
+#if defined(USE_KERNEL_SUSPEND)
+		.pm     = &sx9310_pm_ops,
+#endif
 	},
 	.id_table = sx9310_idtable,
 	.probe	  = sx9310_probe,
 	.remove	  = sx9310_remove,
-#if defined(USE_KERNEL_SUSPEND)
-	.suspend  = sx9310_suspend,
-	.resume   = sx9310_resume,
-#endif
 };
 static int __init sx9310_init(void)
 {
@@ -1621,27 +1690,17 @@ static void sx93XX_worker_func(struct work_struct *work)
 }
 #endif
 
-void sx93XX_sar_suspend(psx93XX_t this)
+void sx93XX_suspend(psx93XX_t this)
 {
 	if (this) {
+		LOG_INFO("sx9310 suspend: disable irq!\n");
 		disable_irq(this->irq);
-		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
-		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
 	}
 }
-void sx93XX_sar_resume(psx93XX_t this)
+void sx93XX_resume(psx93XX_t this)
 {
 	if (this) {
-#ifdef USE_THREADED_IRQ
-		mutex_lock(&this->mutex);
-		/* Just in case need to reset any uncaught interrupts */
-		sx93XX_process_interrupt(this, 0);
-		mutex_unlock(&this->mutex);
-#else
-		sx93XX_schedule_work(this, 0);
-#endif
-		if (this->init)
-			this->init(this);
+		LOG_INFO("sx9310 resume: enable irq!\n");
 		enable_irq(this->irq);
 	}
 }
