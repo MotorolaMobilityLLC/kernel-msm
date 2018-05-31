@@ -1,0 +1,235 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm670-audio-overlay.dtsi"
+
+&soc {
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+			status = "disabled";
+		};
+
+		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
+			status = "disabled";
+		};
+
+		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+			status = "disabled";
+		};
+
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
+			status = "disabled";
+		};
+
+		dai_mi2s6: qcom,msm-dai-q6-mi2s-senary {
+			status = "disabled";
+		};
+
+		dai_int_mi2s0: qcom,msm-dai-q6-int-mi2s0 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s1: qcom,msm-dai-q6-int-mi2s1 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s2: qcom,msm-dai-q6-int-mi2s2 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s3: qcom,msm-dai-q6-int-mi2s3 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s4: qcom,msm-dai-q6-int-mi2s4 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s5: qcom,msm-dai-q6-int-mi2s5 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s6: qcom,msm-dai-q6-int-mi2s6 {
+			status = "disabled";
+		};
+	};
+
+	qcom,msm-dai-tdm-pri-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-pri-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-sec-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-sec-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-tert-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-tert-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-quat-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-quat-tx {
+		status = "disabled";
+	};
+
+	ospl {
+		compatible = "mmi,ospl2xx";
+		status = "ok";
+		mmi,ospl-afe-port-id = <16384 16387>;
+		mmi,ospl-left-feedback;
+		mmi,ospl-passive-f0;
+	};
+
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+	/delete-node/ qcom,wcd-dsp-mgr;
+	/delete-node/ qcom,wcd-dsp-glink;
+	/delete-node/ sound-tavil;
+	/delete-node/ sound-tasha;
+
+	aov_trigger {
+		compatible = "mmi,aov-trigger";
+	};
+
+	sound-madera {
+		status = "ok";
+		compatible = "qcom,sdm710-asoc-snd-madera";
+		qcom,model = "sdm710-madera-snd-card";
+		qcom,msm-mclk-freq = <9600000>;
+		qcom,ext-disp-audio-rx;
+		qcom,wcn-btfm;
+
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&compr>,
+				<&pcm_noirq>, <&cs47l90>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+				"msm-pcm-dsp.2", "msm-voip-dsp",
+				"msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless",
+				"msm-pcm-afe", "msm-lsm-client",
+				"msm-pcm-routing", "msm-compr-dsp",
+				"msm-pcm-dsp-noirq", "cs47l90-codec";
+		asoc-cpu = <&dai_hdmi>, <&dai_dp>,
+				<&dai_mi2s0>, <&dai_mi2s1>,
+				<&dai_mi2s2>, <&dai_mi2s3>,
+				<&dai_pri_auxpcm>, <&dai_sec_auxpcm>,
+				<&dai_tert_auxpcm>, <&dai_quat_auxpcm>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>,
+				<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
+				<&afe_proxy_tx>, <&incall_record_rx>,
+				<&incall_record_tx>, <&incall_music_rx>,
+				<&incall_music_2_rx>, <&sb_5_rx>, <&sb_6_rx>,
+				<&sb_7_rx>, <&sb_7_tx>, <&sb_8_tx>,
+				<&usb_audio_rx>, <&usb_audio_tx>,
+				<&dai_pri_tdm_rx_0>, <&dai_pri_tdm_tx_0>,
+				<&dai_sec_tdm_rx_0>, <&dai_sec_tdm_tx_0>,
+				<&dai_tert_tdm_rx_0>, <&dai_tert_tdm_tx_0>,
+				<&dai_quat_tdm_rx_0>, <&dai_quat_tdm_tx_0>;
+		asoc-cpu-names = "msm-dai-q6-hdmi.8",  "msm-dai-q6-dp.24608",
+				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+				"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+				"msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
+				"msm-dai-q6-auxpcm.3", "msm-dai-q6-auxpcm.4",
+				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
+				"msm-dai-q6-dev.16396", "msm-dai-q6-dev.16398",
+				"msm-dai-q6-dev.16399", "msm-dai-q6-dev.16401",
+				"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
+				"msm-dai-q6-tdm.36864", "msm-dai-q6-tdm.36865",
+				"msm-dai-q6-tdm.36880", "msm-dai-q6-tdm.36881",
+				"msm-dai-q6-tdm.36896", "msm-dai-q6-tdm.36897",
+				"msm-dai-q6-tdm.36912", "msm-dai-q6-tdm.36913";
+
+		qcom,audio-routing =
+			"IN2AL", "MICBIAS2A",
+			"IN1AL", "MICBIAS2B",
+			"IN2R",  "MICBIAS2C",
+			"IN1AR", "MICBIAS2D";
+
+		asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
+		asoc-codec-names = "msm-stub-codec.1",
+				   "msm-ext-disp-audio-codec-rx";
+	};
+
+	clock_audio_lnbb {
+		status = "okay";
+	};
+
+	wsa_spkr_en1 {
+		status = "disabled";
+	};
+
+	wsa_spkr_en2 {
+		status = "disabled";
+	};
+
+	cdc_sdw_gpios {
+		status = "disabled";
+	};
+
+	msm_sdw_codec {
+		status = "disabled";
+	};
+
+	wcd_rst_gpio {
+		status = "disabled";
+	};
+
+	cdc_pdm_gpios {
+		status = "disabled";
+	};
+};
+
+&slim_aud {
+	status = "ok";
+	/delete-node/ tavil_codec;
+	/delete-node/ tasha_codec;
+	madera-codec {
+		compatible = "cirrus,madera-slim-audio";
+		elemental-addr = [00 00 64 63 FA 01];
+	};
+};
+
