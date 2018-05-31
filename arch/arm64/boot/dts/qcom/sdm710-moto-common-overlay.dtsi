@@ -21,6 +21,7 @@
 #include "sdm670-pmic-overlay.dtsi"
 #include "sdm670-lpi.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "sdm710-moto-audio-overlay.dtsi"
 
 /*
  * Including features only applicable to Olson here
@@ -127,6 +128,20 @@
 	status = "disabled";
 };
 
+&lpi_tlmm {
+	lpi_hap_rst_n: lpi_hap_rst_n{
+		mux {
+			pins = "gpio29";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio29";
+			drive-strength = <2>;
+			output-low;
+		};
+	};
+};
+
 &tlmm {
 	nfc {
 		nfc_int_active: nfc_int_active {
@@ -179,6 +194,71 @@
 				drive-strength = <2>; /* 2 MA */
 				bias-disable;
 			};
+		};
+	};
+
+	moon_irq_default: moon_irq_default {
+		mux {
+			pins = "gpio54";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio54";
+			drive-strength = <8>;
+			bias-pull-up;
+			/* FIXME - to avoid interrupt storm */
+			output-high;
+		};
+	};
+
+	moon_reset_default: moon_reset_default {
+		mux {
+			pins = "gpio76";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio76";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	cs35l41_irq_default: cs35l41_irq_default {
+		mux {
+			pins = "gpio79";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio79";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	cs35l41_reset_default: cs35l41_reset_default {
+		mux {
+			pins = "gpio27";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio27";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	cs40l20_irq_default: cs40l20_irq_default {
+		mux {
+			pins = "gpio39";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio39";
+			drive_strength = <2>;
+			bias-pull-up;
 		};
 	};
 };
@@ -278,7 +358,7 @@
 };
 
 &qupv3_se4_i2c { /* FIXME: LP4 Fan, Main Board FuelGauge, Base InductiveKeys, HapticDriver */
-	status = "disabled";
+	status = "okay";
 	ldc2114@2a {
 		status = "disabled";
 		compatible = "ti,ldc2114";
@@ -301,6 +381,24 @@
 		pinctrl-1 = <&haptic_rst_active>;
 		pinctrl-2 = <&haptic_int_default>;
 	};
+
+	cs40l20@41 {
+		status = "ok";
+		compatible = "cirrus,cs40l20";
+		reg = <0x41>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&lpi_hap_rst_n &cs40l20_irq_default>;
+		reset-gpios = <&lpi_tlmm 29 0>;
+		irq-gpios = <&tlmm 39 0>;
+		interrupt-parent = <&tlmm>;
+		VA-supply = <&pm660_l13>;
+		clock-names = "hap_ref_clk";
+		clocks = <&clock_audio_lnbb AUDIO_PMIC_LNBB_CLK>;
+		cirrus,boost-ind-nanohenry = <1000>;
+		cirrus,boost-cap-microfarad = <4>;
+		cirrus,boost-ipk-milliamp = <4500>;
+	};
+
 };
 
 &tlmm {
@@ -411,7 +509,7 @@
 };
 
 &qupv3_se10_i2c { /* FIXME: CapSence, Womack, FLIP FuelGauge, InductiveKeys, Laser, LS Fan */
-	status = "disabled";
+	status = "ok";
 
 	ldc2114@2a {
 		status = "disabled";
@@ -423,4 +521,141 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&ldc2114_default>;
 	};
+
+	cs35l41@40 {
+		status = "ok";
+		compatible = "cirrus,cs35l41";
+		reg = <0x40>;
+		reset-gpios = <&tlmm 27 0>;
+		interrupts = <79 0>;
+		interrupt-parent = <&tlmm>;
+		interrupt-names = "prince_irq";
+
+		VA-supply = <&pm660_l13>;
+		VP-supply = <&pm660_l13>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l41_irq_default &cs35l41_reset_default>;
+
+		cirrus,left-channel-amp;
+		cirrus,boost-ind-nanohenry = <1000>; /* 1uH */
+		cirrus,boost-ctl-millivolt = <11000>;
+		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-cap-microfarad = <21>;
+		cirrus,amp-gain-zc;
+
+		cirrus,gpio-config2 {
+			cirrus,gpio-polarity-invert = <0x01>;
+			cirrus,gpio-output-enable = <0x01>;
+			cirrus,gpio-src-select = <0x01>;
+		};
+	};
 };
+
+&qupv3_se8_spi { /* Cirrus Audio */
+	status = "ok";
+	cs47l90: cs47l90@0 {
+		compatible = "cirrus,cs47l90";
+		spi-max-frequency = <50000000>;
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <54 0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		reset-gpios = <&tlmm 78 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&moon_irq_default &moon_reset_default>;
+
+		AVDD-supply = <&pm660_l13>;
+		DBVDD1-supply = <&pm660_l13>;
+		DBVDD2-supply = <&pm660_l13>;
+		CPVDD-supply = <&pm660_l13>;
+		CPVDD1-supply = <&pm660_l13>;
+		CPVDD2-supply = <&pm660_l13>;
+		DCVDD-supply = <&pm660_l13>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+		cirrus,gpio-defaults = <
+		0x00002000 0x0000f000 /* CDC_DEBUG / GPIO1 */
+		0x00002000 0x0000f000 /* ADSP_WAKE / GPIO2 */
+		0x00000040 0x00000000 /* SB_MCLK / GPIO3 */
+		0xffffffff 0xffffffff /* USBC-HS / GPIO4 */
+		0xffffffff 0xffffffff /* USBC-HS / GPIO5 */
+		0xffffffff 0xffffffff /* GPIO6 */
+		0xffffffff 0xffffffff /* GPIO7 */
+		0xffffffff 0xffffffff /* GPIO8 */
+		0xffffffff 0xffffffff /* GPIO9 */
+		0xffffffff 0xffffffff /* GPIO10 */
+		0xffffffff 0xffffffff /* GPIO11 */
+		0xffffffff 0xffffffff /* GPIO12 */
+		0xffffffff 0xffffffff /* GPIO13 */
+		0xffffffff 0xffffffff /* GPIO14 */
+		0x00002000 0x0000f000 /* AIF1TXDAT / GPIO15 */
+		0x00002000 0x0000f000 /* AIF1BCLK / GPIO16 */
+		0x00002000 0x0000f000 /* AIF1RXDAT / GPIO17 */
+		0x00002000 0x0000f000 /* AIF1LRCLK / GPIO18 */
+		0x00002000 0x0000f000 /* AIF2TXDAT / GPIO19 */
+		0x00002000 0x0000f000 /* AIF2BCLK / GPIO20 */
+		0x00002000 0x0000f000 /* AIF2RXDAT / GPIO21 */
+		0x00002000 0x0000f000 /* AIF2LRCLK / GPIO22 */
+		0xffffffff 0xffffffff /* GPIO23 */
+		0xffffffff 0xffffffff /* GPIO24 */
+		0xffffffff 0xffffffff /* GPIO25 */
+		0xffffffff 0xffffffff /* GPIO26 */
+		0xffffffff 0xffffffff /* GPIO27 */
+		0xffffffff 0xffffffff /* GPIO28 */
+		0xffffffff 0xffffffff /* GPIO29 */
+		0xffffffff 0xffffffff /* GPIO30 */
+		0xffffffff 0xffffffff /* GPIO31 */
+		0xffffffff 0xffffffff /* GPIO32 */
+		0xffffffff 0xffffffff /* GPIO33 */
+		0xffffffff 0xffffffff /* GPIO34 */
+		0xffffffff 0xffffffff /* GPIO35 */
+		0xffffffff 0xffffffff /* GPIO36 */
+		0xffffffff 0xffffffff /* GPIO37 */
+		0xffffffff 0xffffffff /* GPIO38 */
+		>;
+
+
+		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
+		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
+		cirrus,inmode = <
+				0 0 0 0
+				0 0 0 0
+				>;
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@0ffe00 {
+				reg = <0x0ffe00>;
+				firmware {
+					ultrasound {
+						cirrus,wmfw-file = "moon-dsp1-ultrasound.wmfw";
+						cirrus,bin-file = "moon-dsp1-ultrasound.bin";
+					};
+				};
+			};
+			adsp@17fe00 {
+				reg = <0x17fe00>;
+				firmware {
+					frontend {
+						cirrus,wmfw-file = "moon-dsp2-aov-frontend.wmfw";
+						cirrus,bin-file = "moon-dsp2-aov-vrgain.bin";
+					};
+				};
+			};
+			adsp@1ffe00 {
+				reg = <0x1ffe00>;
+				firmware {
+					aov {
+						cirrus,wmfw-file = "moon-dsp3-aov-control.wmfw";
+						cirrus,bin-file = "moon-dsp3-aov-model.bin";
+					};
+				};
+			};
+		};
+	};
+};
+
+
