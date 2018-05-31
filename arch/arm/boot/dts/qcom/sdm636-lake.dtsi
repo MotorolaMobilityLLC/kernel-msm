@@ -16,7 +16,7 @@
 #include "sdm636-lake-pinctrl.dtsi"
 #include "sdm636-camera-sensor-mot-lake.dtsi"
 #include "sdm636-lake-audio.dtsi"
-
+#include "sdm636-egis-fps.dtsi"
 
 / {
 	model = "lake";
@@ -43,6 +43,23 @@
 		synaptics,power-delay-ms = <200>;
 		synaptics,ubl-i2c-addr = <0x20>;
 	};
+};
+
+&ets_fps {
+	/delete-property/ egistec,gpio_ldo1p8_en;
+	/delete-property/ egistec,gpio_ldo3p3_en;
+	pinctrl-0 = <&ets_rst_active &ets_int_active>;
+	pinctrl-1 = <&ets_rst_suspend &ets_int_suspend>;
+};
+
+&pm660_l13 {
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+};
+
+&pm660l_l6 {
+	regulator-always-on;
+	qcom,init-voltage = <3300000>;
 };
 
 &firmware {
