@@ -382,6 +382,11 @@ struct sx93XX {
 	struct notifier_block ps_notif;
 	bool ps_is_present;
 
+#if defined(CONFIG_FB)
+	struct work_struct fb_notify_work;
+	struct notifier_block fb_notif;
+#endif
+
 	/* Function Pointers */
 	int (*init)(psx93XX_t this);
 	/* since we are trying to avoid knowing registers, create a pointer to a
