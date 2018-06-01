@@ -15,6 +15,7 @@
 #include "sdm632-ocean-pinctrl-overlay.dtsi"
 #include "dsi-panel-mot-ofilm-622-720p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "sdm632-camera-sensor-mot-ocean-overlay.dtsi"
 
 &pmx_mdss {
 	mdss_dsi_active {
