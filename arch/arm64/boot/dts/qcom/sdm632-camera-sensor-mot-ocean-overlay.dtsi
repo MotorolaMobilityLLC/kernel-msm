@@ -1,0 +1,400 @@
+/*
+ * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&pmi632_flash0 {
+	qcom,current = <1250>;
+};
+
+&pmi632_torch0 {
+	qcom,current = <200>;
+};
+
+&soc {
+	led_flash0: qcom,camera-flash {
+		cell-index = <0>;
+		compatible = "qcom,camera-flash";
+		qcom,flash-type = <1>;
+		qcom,flash-source = <&pmi632_flash0>;
+		qcom,torch-source = <&pmi632_torch0>;
+		qcom,switch-source = <&pmi632_switch0>;
+	};
+};
+
+&cci {
+	actuator0: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+		cam_vaf-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vaf";
+		qcom,cam-vreg-min-voltage = <2800000>;
+		qcom,cam-vreg-max-voltage = <2800000>;
+		qcom,cam-vreg-op-mode = <80000>;
+	};
+
+	eeprom0: qcom,eeprom@0 {
+		cell-index = <0>;
+		compatible = "qcom,eeprom";
+		reg = <0x0>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&pm8953_l23>;
+		cam_vaf-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig", "cam_vaf";
+		qcom,cam-vreg-min-voltage = <1800000 1200000 2800000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000 2800000>;
+		qcom,cam-vreg-op-mode = <80000 80000 100000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_default
+				&cam_sensor_rear_default>;
+		pinctrl-1 = <&cam_sensor_mclk0_sleep
+				&cam_sensor_rear_sleep>;
+		gpios = <&tlmm 26 0>,
+			<&tlmm 39 0>,
+			<&tlmm 35 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+			"CAM_RESET0",
+			"CAM_VANA0";
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk0_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk0_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	eeprom1: qcom,eeprom@1 {
+		cell-index = <1>;
+		compatible = "qcom,eeprom";
+		reg = <0x1>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&pm8953_l23>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1800000 1200000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000>;
+		qcom,cam-vreg-op-mode = <80000 80000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_default
+				&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk1_sleep
+				&cam_sensor_front_sleep>;
+		gpios = <&tlmm 27 0>,
+			<&tlmm 130 0>,
+			<&tlmm 35 0>;
+		qcom,gpio-standby = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+			"CAM_STANDBY2",
+			"CAM_VANA2";
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk1_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* OV12A10 REAR */
+	qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg = <0x0>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <90>;
+		qcom,led-flash-src = <&led_flash0>;
+		qcom,actuator-src = <&actuator0>;
+		qcom,eeprom-src = <&eeprom0>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&pm8953_l23>;
+		cam_vaf-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig", "cam_vaf";
+		qcom,cam-vreg-min-voltage = <1800000 1200000 2800000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000 2800000>;
+		qcom,cam-vreg-op-mode = <80000 80000 100000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_default
+				&cam_sensor_rear_default>;
+		pinctrl-1 = <&cam_sensor_mclk0_sleep
+				&cam_sensor_rear_sleep>;
+		gpios = <&tlmm 26 0>,
+			<&tlmm 39 0>,
+			<&tlmm 35 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+			"CAM_RESET0",
+			"CAM_VANA0";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk0_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk0_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* S5K4H7 */
+	qcom,camera@1 {
+		cell-index = <1>;
+		compatible = "qcom,camera";
+		reg = <0x1>;
+		qcom,csiphy-sd-index = <2>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <270>;
+		qcom,eeprom-src = <&eeprom1>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&pm8953_l23>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1800000 1200000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000>;
+		qcom,cam-vreg-op-mode = <80000 80000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_default
+				&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk1_sleep
+				&cam_sensor_front_sleep>;
+		gpios = <&tlmm 27 0>,
+			<&tlmm 130 0>,
+			<&tlmm 35 0>;
+		qcom,gpio-standby = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+			"CAM_STANDBY2",
+			"CAM_VANA2";
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk1_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+};
+
+
+&tlmm {
+
+		cam_sensor_mclk0_default: cam_sensor_mclk0_default {
+			/* MCLK0 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio26";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio26";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_mclk0_sleep: cam_sensor_mclk0_sleep {
+			/* MCLK0 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio26";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio26";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_rear_default: cam_sensor_rear_default {
+			/* VANA RESET */
+			mux {
+				pins = "gpio39", "gpio35";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio39", "gpio35";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_rear_sleep: cam_sensor_rear_sleep {
+			/* VANA RESET */
+			mux {
+				pins = "gpio39", "gpio35";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio39", "gpio35";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_mclk1_default: cam_sensor_mclk1_default {
+			/* MCLK1 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio27";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio27";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_mclk1_sleep: cam_sensor_mclk1_sleep {
+			/* MCLK1 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio27";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio27";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_front_default: cam_sensor_front_default {
+			/* VANA RESET */
+			mux {
+				pins = "gpio130", "gpio35";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio130", "gpio35";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_front_sleep: cam_sensor_front_sleep {
+			/* VANA RESET */
+			mux {
+				pins = "gpio130", "gpio35";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio130", "gpio35";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+};
+
+&cci {
+		status = "ok";
+		cell-index = <0>;
+		compatible = "qcom,cci";
+		reg = <0x1b0c000 0x4000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "cci";
+		interrupts = <0 50 0>;
+		interrupt-names = "cci";
+		clocks = <&clock_gcc clk_gcc_camss_ispif_ahb_clk>,
+			<&clock_gcc clk_cci_clk_src>,
+			<&clock_gcc clk_gcc_camss_cci_ahb_clk>,
+			<&clock_gcc clk_gcc_camss_cci_clk>,
+			<&clock_gcc clk_gcc_camss_ahb_clk>,
+			<&clock_gcc clk_gcc_camss_top_ahb_clk>;
+		clock-names = "ispif_ahb_clk", "cci_src_clk",
+			"cci_ahb_clk", "camss_cci_clk",
+			"camss_ahb_clk", "camss_top_ahb_clk";
+		qcom,clock-rates = <61540000 19200000 0 0 0 0>,
+				<61540000 37500000 0 0 0 0>;
+		pinctrl-names = "cci_default", "cci_suspend";
+			pinctrl-0 = <&cci0_active &cci1_active>;
+			pinctrl-1 = <&cci0_suspend &cci1_suspend>;
+		gpios = <&tlmm 29 0>,
+			<&tlmm 30 0>,
+			<&tlmm 31 0>,
+			<&tlmm 32 0>;
+		qcom,gpio-tbl-num = <0 1 2 3>;
+		qcom,gpio-tbl-flags = <1 1 1 1>;
+		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
+						"CCI_I2C_CLK0",
+						"CCI_I2C_DATA1",
+						"CCI_I2C_CLK1";
+		i2c_freq_100Khz: qcom,i2c_standard_mode {
+			status = "disabled";
+		};
+		i2c_freq_400Khz: qcom,i2c_fast_mode {
+			status = "disabled";
+		};
+		i2c_freq_custom: qcom,i2c_custom_mode {
+			status = "disabled";
+		};
+
+		i2c_freq_1Mhz: qcom,i2c_fast_plus_mode {
+			status = "disabled";
+		};
+
+};
+
+&rpm_bus {
+
+	rpm-regulator-ldoa6 {
+		status = "okay";
+		pm8953_l6: regulator-l6 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa17 {
+		status = "okay";
+		pm8953_l17: regulator-l17 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage = <2800000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa23 {
+		status = "okay";
+		pm8953_l23: regulator-l23 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			qcom,init-voltage = <1200000>;
+			status = "okay";
+		};
+	};
+};
+
