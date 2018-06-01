@@ -40,3 +40,10 @@
 &soc {
 	/delete-node/ hbtp;
 };
+&cci {
+	/delete-node/ qcom,actuator@1;
+	/delete-node/ qcom,eeprom@1;
+	/delete-node/ qcom,eeprom@2;
+	/delete-node/ qcom,camera@1;
+	/delete-node/ qcom,camera@2;
+};
