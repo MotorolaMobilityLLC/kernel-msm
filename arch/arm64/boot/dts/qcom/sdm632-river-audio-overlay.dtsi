@@ -57,7 +57,7 @@
 };
 
 &dai_slim {
-	status = "okay";
+	status = "disabled";
 };
 
 &slim_msm {
