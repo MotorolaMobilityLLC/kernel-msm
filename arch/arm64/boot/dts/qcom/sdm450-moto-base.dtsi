@@ -14,6 +14,10 @@
 #include "pmi8950.dtsi"
 #include "msm8953-pmi8950.dtsi"
 
+&soc {
+	spi_7: spi@7af7000 { };
+};
+
 / {
 /*
  * Some nodes need labels assigned to appear in __symbols__
@@ -24,7 +28,9 @@
 	qcom,pmic-name = "PMI8950";
 
 	chosen: chosen { };
-	aliases: aliases { };
+	aliases: aliases {
+		spi7 = &spi_7;
+	};
 	reserved_memory: reserved-memory { };
 	mtp_batterydata: qcom,battery-data {};
 	utags: utags { };
