@@ -10,4 +10,63 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+&tlmm{
+	int_active: int_active {
+		/* INTERRUPT */
+		mux {
+			pins = "gpio48";
+			function = "gpio";
+		};
 
+		config {
+			pins = "gpio48";
+			drive-strength = <2>; /* 2 MA */
+			input-enable;
+		};
+	};
+
+	int_suspend: int_suspend{
+		/* INTERRUPT */
+		mux {
+			pins = "gpio48";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio48";
+			drive-strength = <2>; /* 2 MA */
+			input-enable;
+		};
+	};
+
+	ldo_en_active: ldo_en_active {
+		/* LDO ENABLE */
+		mux {
+			pins = "gpio36";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio36";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up; /* pull up */
+			output-high;
+		};
+	};
+
+	ldo_en_suspend: ldo_en_suspend {
+		/* LDO ENABLE */
+		mux {
+			pins = "gpio36";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio36";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up; /* pull up */
+			output-high;
+		};
+	};
+
+};
