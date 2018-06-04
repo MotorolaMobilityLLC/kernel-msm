@@ -32,6 +32,8 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev,
 int msm_ext_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 			       struct snd_pcm_hw_params *params);
 #ifdef CONFIG_SND_SOC_EXT_CODEC
+#define MCLK_RATE_12P288	12288000
+#define SCLK_RATE_1P536	1536000
 int msm_ext_cdc_init(struct platform_device *, struct msm_asoc_mach_data *,
 		     struct snd_soc_card **, struct wcd_mbhc_config *);
 void msm_ext_register_audio_notifier(struct platform_device *pdev);
