@@ -88,6 +88,7 @@
  * Can be change at run time via @ref vl53l1_ioctl or @ref sysfs_attrib
  */
 #define STMVL53L1_CFG_TIMING_BUDGET_US	16000
+#define STMVL53L1_CFG_SAR_MODE_TIMING_BUDGET_US	76000
 
 /** default preset ranging mode */
 #define STMVL53L1_CFG_DEFAULT_MODE VL53L1_PRESETMODE_RANGING
@@ -868,6 +869,7 @@ static int activate_sar_mode(struct stmvl53l1_data *data)
 		data->sar_mode == 1 &&
 		data->cam_mode != 1) {
 		data->preset_mode = VL53L1_PRESETMODE_AUTONOMOUS;
+		data->timing_budget = STMVL53L1_CFG_SAR_MODE_TIMING_BUDGET_US;
 		rc = stmvl53l1_start(data);
 		if (rc == VL53L1_ERROR_NONE)
 			vl53l1_info("sensor in sar mode!\n");
