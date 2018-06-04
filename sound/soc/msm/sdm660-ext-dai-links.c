@@ -33,12 +33,8 @@
 #define WCN_CDC_SLIM_RX_CH_MAX 2
 #define WCN_CDC_SLIM_TX_CH_MAX 3
 
-#define CS35L35_MCLK_RATE	12288000
-#define CS35L35_SCLK_RATE	1536000
-
 static struct snd_soc_card snd_soc_card_msm_card_tavil;
 static struct snd_soc_card snd_soc_card_msm_card_tasha;
-static struct snd_soc_card snd_soc_card_msm_card_madera;
 
 static struct snd_soc_ops msm_ext_slimbus_be_ops = {
 	.hw_params = msm_snd_hw_params,
@@ -610,50 +606,85 @@ static const struct snd_soc_pcm_stream cs35l36_params[] = {
 	},
 };
 
-static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
+static const struct snd_soc_pcm_stream cs35l41_params[] = {
+	{
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 48000,
+		.rate_max = 48000,
+		.channels_min = 2,
+		.channels_max = 2,  /* 2 channels for 1.536MHz SCLK */
+	},
+	{
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.rate_min = 96000,
+		.rate_max = 96000,
+		.channels_min = 2,
+		.channels_max = 2, /* 2 channels for 3.072MHz SCLK */
+	},
+};
+
+static int cirrus_amp_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
+	int codec_clock = MCLK_RATE_12P288;
 	int ret;
-	int codec_clock = CS35L35_MCLK_RATE;
+
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
-	struct snd_soc_dai *cs35l35_dai = rtd->codec_dai;
+	struct snd_soc_dai *amp_dai = rtd->codec_dai;
 
+	pr_debug("%s: codec dai name %s\n", __func__, amp_dai->name);
 	ret = snd_soc_dai_set_sysclk(aif1_dai, MADERA_CLK_SYSCLK, 0, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
 		return ret;
 	}
-
-	ret = snd_soc_dai_set_sysclk(cs35l35_dai, 0, CS35L35_SCLK_RATE, 0);
+	ret = snd_soc_dai_set_sysclk(amp_dai, 0, SCLK_RATE_1P536, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set SCLK %d\n", ret);
 		return ret;
 	}
 
-#ifdef CONFIG_SND_SOC_CS35L36
-	codec_clock = CS35L35_SCLK_RATE;
-#endif
+	if (!strcmp(amp_dai->name, "cs35l41-pcm") ||
+		!strcmp(amp_dai->name, "cs35l36-pcm"))
+		codec_clock = SCLK_RATE_1P536;
+
 	ret = snd_soc_codec_set_sysclk(codec, 0, 0, codec_clock, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set MCLK %d\n", ret);
 		return ret;
 	}
+#ifdef CONFIG_SND_SOC_CS35L41_STEREO
+	if (!strcmp(rtd->dai_link->name, "MADERA-AMP")) {
+		snd_soc_dapm_ignore_suspend(dapm, "SPK AMP Playback");
+		snd_soc_dapm_ignore_suspend(dapm, "SPK SPK");
+		snd_soc_dapm_ignore_suspend(dapm, "SPK VP");
+		snd_soc_dapm_ignore_suspend(dapm, "SPK VSENSE");
+		snd_soc_dapm_ignore_suspend(dapm, "SPK Main AMP");
+	} else {
+		snd_soc_dapm_ignore_suspend(dapm, "RCV AMP Playback");
+		snd_soc_dapm_ignore_suspend(dapm, "RCV SPK");
+		snd_soc_dapm_ignore_suspend(dapm, "RCV VP");
+		snd_soc_dapm_ignore_suspend(dapm, "RCV VSENSE");
+		snd_soc_dapm_ignore_suspend(dapm, "RCV Main AMP");
+	}
+#else
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
-#ifdef CONFIG_SND_SOC_CS35L36
-	snd_soc_dapm_ignore_suspend(dapm, "SDIN");
-	snd_soc_dapm_ignore_suspend(dapm, "SDOUT");
-	snd_soc_dapm_ignore_suspend(dapm, "SPK");
-	snd_soc_dapm_ignore_suspend(dapm, "VP");
-	snd_soc_dapm_ignore_suspend(dapm, "AMP Enable");
-	snd_soc_dapm_ignore_suspend(dapm, "VSENSE");
-	snd_soc_dapm_ignore_suspend(dapm, "Main AMP");
-	snd_soc_dapm_sync(dapm);
+	if (!strcmp(amp_dai->name, "cs35l41-pcm") ||
+		!strcmp(amp_dai->name, "cs35l36-pcm")) {
+		snd_soc_dapm_ignore_suspend(dapm, "SPK");
+		snd_soc_dapm_ignore_suspend(dapm, "VP");
+		snd_soc_dapm_ignore_suspend(dapm, "AMP Enable");
+		snd_soc_dapm_ignore_suspend(dapm, "VSENSE");
+		snd_soc_dapm_ignore_suspend(dapm, "Main AMP");
+	}
 #endif
+	snd_soc_dapm_sync(dapm);
+
 	return 0;
 }
 
-#ifndef CONFIG_SND_SOC_CS35L36
+#ifdef CONFIG_SND_SOC_CS35L35
 static const struct snd_soc_pcm_stream cs35l35_pdm_params = {
 	.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	.rate_min = 96000,
@@ -689,6 +720,21 @@ static struct snd_soc_ops cs47l90_aif2_mods_be_ops = {
 };
 #endif
 
+#ifdef CONFIG_SND_SOC_CS35L41_STEREO
+#define CS35L41_NAME_1 "cs35l41.2-0040"
+#define CS35L41_NAME_2 "cs35l41.2-0041"
+
+static struct snd_soc_codec_conf cs35l41_codec_conf[] = {
+		{
+				.dev_name       = CS35L41_NAME_1,
+				.name_prefix    = "SPK",
+		},
+		{
+				.dev_name       = CS35L41_NAME_2,
+				.name_prefix    = "RCV",
+		},
+};
+#endif
 static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 	/* Backend DAI Links */
 	{
@@ -906,7 +952,7 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.cpu_dai_name = "cs47l35-aif1",
 		.codec_name = "cs35l35.2-0040",
 		.codec_dai_name = "cs35l35-pcm",
-		.init = cs35l35_dai_init,
+		.init = cirrus_amp_dai_init,
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
 		.no_pcm = 1,
@@ -936,7 +982,7 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.cpu_dai_name = "cs47l35-aif1",
 		.codec_name = "cs35l36.2-0040",
 		.codec_dai_name = "cs35l36-pcm",
-		.init = cs35l35_dai_init,
+		.init = cirrus_amp_dai_init,
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
 		.no_pcm = 1,
@@ -945,7 +991,41 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.params = &cs35l36_params[0],
 		.num_params = ARRAY_SIZE(cs35l36_params),
 	},
-
+#elif defined(CONFIG_SND_SOC_CS47L35) && defined(CONFIG_SND_SOC_CS35L41)
+	{ /* codec to amp link */
+		.name = "MADERA-AMP",
+		.stream_name = "MADERA-AMP Playback",
+		.cpu_name = "cs47l35-codec",
+		.cpu_dai_name = "cs47l35-aif1",
+		.codec_name = "cs35l41.2-0040",
+		.codec_dai_name = "cs35l41-pcm",
+		.init = cirrus_amp_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &cs35l41_params[0],
+		.num_params = ARRAY_SIZE(cs35l41_params),
+	},
+#ifdef CONFIG_SND_SOC_CS35L41_STEREO
+		{ /* codec to amp link */
+		.name = "MADERA-AMP-RCV",
+		.stream_name = "MADERA-AMP-RCV Playback",
+		.cpu_name = "cs47l35-codec",
+		.cpu_dai_name = "cs47l35-aif1",
+		.codec_name = "cs35l41.2-0041",
+		.codec_dai_name = "cs35l41-pcm",
+		.init = cirrus_amp_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &cs35l41_params[0],
+		.num_params = ARRAY_SIZE(cs35l41_params),
+	},
+#endif
 #else
 	{ /* codec to amp link */
 		.name = "MADERA-AMP",
@@ -954,7 +1034,7 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.cpu_dai_name = "cs47l90-aif1",
 		.codec_name = "cs35l36.2-0040",
 		.codec_dai_name = "cs35l36-pcm",
-		.init = cs35l35_dai_init,
+		.init = cirrus_amp_dai_init,
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
 		.no_pcm = 1,
@@ -2510,6 +2590,13 @@ ARRAY_SIZE(msm_auxpcm_be_dai_links) +
 ARRAY_SIZE(msm_wcn_be_dai_links) +
 ARRAY_SIZE(ext_disp_be_dai_link)];
 
+struct snd_soc_card snd_soc_card_msm_card_madera = {
+	.name		= "sdm660-madera-snd-card",
+#ifdef CONFIG_SND_SOC_CS35L41_STEREO
+	.codec_conf		= cs35l41_codec_conf,
+	.num_configs	= ARRAY_SIZE(cs35l41_codec_conf),
+#endif
+};
 /**
  * populate_snd_card_dailinks - prepares dailink array and initializes card.
  *
