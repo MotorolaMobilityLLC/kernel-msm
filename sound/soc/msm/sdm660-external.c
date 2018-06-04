@@ -62,9 +62,6 @@
 #define WSA8810_NAME_1 "wsa881x.20170211"
 #define WSA8810_NAME_2 "wsa881x.20170212"
 
-#define CS35L35_MCLK_RATE	12288000
-#define CS35L35_SCLK_RATE	1536000
-
 #define FLL_RATE_CS47L35 294912000
 #define CS47L35_SYSCLK_RATE (FLL_RATE_CS47L35 / 3)
 #define CS47L35_DSPCLK_RATE (FLL_RATE_CS47L35 / 2)
@@ -1986,14 +1983,23 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"Slim1 Capture", NULL, "MCLK"},
 	{"Slim2 Playback", NULL, "MCLK"},
 	{"Slim2 Capture", NULL, "MCLK"},
-
+#ifdef CONFIG_SND_SOC_CS35L41_STEREO
+	{"AIF1 Playback", NULL, "SPK AMP Capture"},
+	{"AIF1 Playback", NULL, "RCV AMP Capture"},
+	{"SPK AMP Playback", NULL, "OPCLK"},
+	{"RCV AMP Playback", NULL, "OPCLK"},
+	{"SPK AMP Capture", NULL, "OPCLK"},
+	{"RCV AMP Capture", NULL, "OPCLK"},
+#else
 	{"AIF1 Playback", NULL, "AMP Capture"},
+	{"AMP Playback", NULL, "OPCLK"},
+	{"AMP Capture", NULL, "OPCLK"},
+#endif
+
 #ifdef CONFIG_MODS_USE_EXTCODEC_MI2S
 	{"AIF2 Playback", NULL, "Mods Dai Capture"},
 	{"Mods Dai Playback", NULL, "AIF2 Capture"},
 #endif
-	{"AMP Playback", NULL, "OPCLK"},
-	{"AMP Capture", NULL, "OPCLK"},
 };
 
 static const struct snd_soc_dapm_widget msm_madera_dapm_widgets[] = {
@@ -2032,7 +2038,7 @@ int msm_madera_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	ret = snd_soc_codec_set_sysclk(codec, MADERA_CLK_OPCLK,
-			0, CS35L35_MCLK_RATE,
+			0, MCLK_RATE_12P288,
 			SND_SOC_CLOCK_OUT);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set OPCLK %d\n", ret);
