@@ -40,14 +40,28 @@
 
 };
 
-&pm8953_gpios {
-	bklt_en {
-		bklt_en_default: bklt_en_default {
-		pins = "gpio4";
-		function = "normal";
-		power-source = <0>;
-		output-high;
-		};
+&i2c_5 {
+	status = "ok";
+	sm_sm5350@36 {
+		compatible = "sm-sm5350";
+		reg = <0x36>;
+		pwm-cfg = <0x0e>;
+		boost-ctl = <0x03>;
+		ctl-bank-en = <0x02>;
+		map-mode = <0x01>;
+		/* fsc = 5 + 0.8 * value */
+		full-scale-current = <0x0A>;
+	};
+};
+
+&soc {
+	panel_iovcc: panel_iovcc-gpio-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "panel_iovcc-gpio-supply";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&tlmm 95 0>;
+		enable-active-high;
 	};
 };
 
@@ -59,12 +73,13 @@
 	qcom,dsi-pref-prim-pan = <&mot_ofilm_622_720p_vid_v0>;
 
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &bklt_en_default>;
+	pinctrl-0 = <&mdss_dsi_active>;
 	pinctrl-1 = <&mdss_dsi_suspend>;
 
-	qcom,platform-bklight-en-gpio = <&pm8953_gpios 7 0>;
+	qcom,platform-bklight-en-gpio = <&pm8953_gpios 4 0>;
 
-	vddio_disp-supply = <&pm8953_l6>;
+	panel_iovcc-supply = <&panel_iovcc>;
+	vddio-supply = <&pm8953_l6>;
 	vsp_disp-supply = <&lcdb_ldo_vreg>;
 	vsn_disp-supply = <&lcdb_ncp_vreg>;
 
