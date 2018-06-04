@@ -156,13 +156,13 @@
 		qcom,cam-vreg-op-mode = <105000 105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
-		pinctrl-0 = <&cam_sensor_mclk1_active
+		pinctrl-0 = <&cam_sensor_mclk3_active
 				 &cam_sensor_rear2_active>;
-		pinctrl-1 = <&cam_sensor_mclk1_suspend
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
 				 &cam_sensor_rear2_suspend>;
 		gpios = <&tlmm 35 0>,
 			<&tlmm 47 0>,
-			<&pm660l_gpios 3 0>,
+			<&pm660l_gpios 8 0>,
 			<&tlmm 49 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
@@ -173,8 +173,6 @@
 					"CAM_RESET2",
 					"CAM_VDIG2",
 					"CAM_VANA2";
-		qcom,sensor-position = <1>;
-		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
 		clocks = <&clock_mmss MCLK3_CLK_SRC>,
@@ -290,13 +288,13 @@
 		qcom,cam-vreg-op-mode = <105000 105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
-		pinctrl-0 = <&cam_sensor_mclk1_active
+		pinctrl-0 = <&cam_sensor_mclk3_active
 				 &cam_sensor_rear2_active>;
-		pinctrl-1 = <&cam_sensor_mclk1_suspend
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
 				 &cam_sensor_rear2_suspend>;
 		gpios = <&tlmm 35 0>,
 			<&tlmm 47 0>,
-			<&pm660l_gpios 3 0>,
+			<&pm660l_gpios 8 0>,
 			<&tlmm 49 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
@@ -307,7 +305,7 @@
 					"CAM_RESET2",
 					"CAM_VDIG2",
 					"CAM_VANA2";
-		qcom,sensor-position = <1>;
+		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
