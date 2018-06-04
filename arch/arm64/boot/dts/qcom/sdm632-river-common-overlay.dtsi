@@ -31,6 +31,20 @@
 	};
 };
 
+&i2c_2 {
+	status = "okay";
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x1D>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
+};
+
 &i2c_3 {
 	status = "okay";
 	qcom,disable-dma;
