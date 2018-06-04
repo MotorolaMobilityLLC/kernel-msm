@@ -48,6 +48,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_CS35L35 if I2C
 	select SND_SOC_CS35L36 if I2C
 	select SND_SOC_CS35L32 if I2C
+	select SND_SOC_CS35L41 if I2C
 	select SND_SOC_CS35L41_SPI if SPI_MASTER
 	select SND_SOC_CS35L41_I2C if I2C
 	select SND_SOC_CS42L51_I2C if I2C
@@ -397,7 +398,8 @@ config SND_SOC_CS35L36_TRIMMED
 	  to allow OPT errata workarounds.
 
 config SND_SOC_CS35L41
-	tristate
+	tristate "Cirrus Logic CS35L41"
+	depends on I2C
 	select SND_SOC_WM_ADSP
 
 config SND_SOC_CS35L41_SPI
@@ -411,6 +413,10 @@ config SND_SOC_CS35L41_I2C
 	depends on I2C
 	select SND_SOC_CS35L41
 	select REGMAP_I2C
+
+config SND_SOC_CS35L41_STEREO
+        tristate "Cirrus Logic CS35L41 STEREO"
+        depends on SND_SOC_CS35L41
 
 config SND_SOC_CS42L51
 	tristate
