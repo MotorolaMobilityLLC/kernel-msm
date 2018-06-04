@@ -11,3 +11,15 @@
  * GNU General Public License for more details.
  */
 
+&tlmm {
+	tps61280_en_default: tps61280_en_default {
+		mux {
+			pins = "gpio111";
+		};
+		config {
+			pins = "gpio111";
+			drive_strength = <16>;
+			output-high;
+		};
+	};
+};
