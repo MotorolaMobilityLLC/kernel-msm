@@ -34,8 +34,8 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
-			05 01 00 00 78 00 02 11
-			05 01 00 00 14 00 02 29];	/* display on delay 20ms*/
+	05 01 00 00 78 00 01 11
+	05 01 00 00 14 00 01 29];
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 14 00 01 28
 	05 01 00 00 78 00 01 10];
@@ -76,8 +76,8 @@ qcom,panel-supply-entries {
 	#size-cells = <0>;
 
 	qcom,panel-supply-entry@0 {
-		reg = <1>;
-		qcom,supply-name = "vddio_disp";
+		reg = <0>;
+		qcom,supply-name = "panel_iovcc";
 		qcom,supply-min-voltage = <1800000>;
 		qcom,supply-max-voltage = <1800000>;
 		qcom,supply-enable-load = <100000>;
@@ -88,6 +88,19 @@ qcom,panel-supply-entries {
 	};
 
 	qcom,panel-supply-entry@1 {
+		reg = <1>;
+		qcom,supply-name = "vddio";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <5>;
+		qcom,supply-post-off-sleep = <1>;
+	};
+
+
+	qcom,panel-supply-entry@2 {
 		reg = <2>;
 		qcom,supply-name = "vsp_disp";
 		qcom,supply-min-voltage = <6000000>;
@@ -96,7 +109,7 @@ qcom,panel-supply-entries {
 		qcom,supply-disable-load = <100>;
 	};
 
-	qcom,panel-supply-entry@2 {
+	qcom,panel-supply-entry@3 {
 		reg = <3>;
 		qcom,supply-name = "vsn_disp";
 		qcom,supply-min-voltage = <6000000>;
