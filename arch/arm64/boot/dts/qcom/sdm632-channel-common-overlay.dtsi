@@ -1,0 +1,75 @@
+/*
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sdm632-moto-common-overlay.dtsi"
+#include "sdm632-channel-pinctrl-overlay.dtsi"
+#include "dsi-panel-mot-boe-569-hd-vid.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+
+&pmx_mdss {
+	mdss_dsi_active {
+		mux {
+			pins = "gpio61", "gpio95";
+		};
+
+		config {
+			pins = "gpio61", "gpio95";
+		};
+	};
+
+	mdss_dsi_suspend {
+		mux {
+			pins = "gpio61", "gpio95";
+		};
+
+		config {
+			pins = "gpio61", "gpio95";
+		};
+	};
+
+};
+
+&pm8953_gpios {
+	bklt_en {
+		bklt_en_default: bklt_en_default {
+		pins = "gpio4";
+		function = "normal";
+		power-source = <0>;
+		output-high;
+		};
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_boe_569_hd_vid_v0>;
+
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &bklt_en_default>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-bklight-en-gpio = <&pm8953_gpios 4 0>;
+
+	vddio_disp-supply = <&pm8953_l6>;
+	vsp_disp-supply = <&lcdb_ldo_vreg>;
+	vsn_disp-supply = <&lcdb_ncp_vreg>;
+
+	qcom,platform-reset-gpio = <&tlmm 61 0>;
+};
+
+&mdss_dsi1 {
+	status = "disabled";
+};
