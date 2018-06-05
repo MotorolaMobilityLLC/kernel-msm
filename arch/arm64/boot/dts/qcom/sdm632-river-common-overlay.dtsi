@@ -55,10 +55,7 @@
 &pmi632_rgb {
 	red {
 		label = "charging";
-		/delete-property/ linux,default-trigger;
 	};
-	/delete-node/ green;
-	/delete-node/ blue;
 };
 
 &mtp_batterydata {
