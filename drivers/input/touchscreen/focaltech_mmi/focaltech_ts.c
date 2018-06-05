@@ -1027,14 +1027,15 @@ static int ft_gpio_configure(struct ft_ts_data *data, bool on)
 					"reset gpio request failed");
 				goto err_irq_gpio_dir;
 			}
-
-			err = gpio_direction_output(data->pdata->reset_gpio, 0);
-			if (err) {
-				dev_err(&data->client->dev,
-				"set_direction for reset gpio failed\n");
-				goto err_reset_gpio_dir;
+			if(data->pdata->family_id != 0x80){
+				err = gpio_direction_output(data->pdata->reset_gpio, 0);
+				if (err) {
+					dev_err(&data->client->dev,
+					"set_direction for reset gpio failed\n");
+					goto err_reset_gpio_dir;
+				}
+				msleep(data->pdata->hard_rst_dly);
 			}
-			msleep(data->pdata->hard_rst_dly);
 			gpio_set_value_cansleep(data->pdata->reset_gpio, 1);
 		}
 
@@ -1474,7 +1475,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 		pr_debug("fb notification: event = %lu blank = %d\n", event,
 			*blank);
 		if (data->pdata->resume_in_workqueue) {
-			if (event == FB_EARLY_EVENT_BLANK) {
+			if (event == FB_EVENT_BLANK) {
 				if (*blank != FB_BLANK_POWERDOWN)
 					return 0;
 				flush_work(&data->fb_notify_work);
