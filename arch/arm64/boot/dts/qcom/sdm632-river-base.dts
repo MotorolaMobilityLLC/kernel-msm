@@ -22,3 +22,7 @@
 	/delete-property/ vdd-supply;
 };
 
+&pmi632_rgb {
+	/delete-node/ green;
+	/delete-node/ blue;
+};
