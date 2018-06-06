@@ -65,6 +65,20 @@
 	};
 };
 
+&rpm_bus {
+	rpm-regulator-ldoa18 {
+		status = "okay";
+		pm8953_l18: regulator-l18 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <2700000>;
+			qcom,init-voltage = <1800000>;
+			status = "okay";
+			regulator-always-on;
+			regulator-boot-on;
+		};
+	};
+};
+
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
@@ -124,6 +138,28 @@
 		focaltech,fw-auto-cal;
 		focaltech,resume-in-workqueue;
 		focaltech,ignore-id-check;
+	};
+};
+
+&i2c_2 {
+	status = "ok";
+	sx9325@28 {
+		compatible = "sx9325";
+		reg = <0x28>;
+		//cap_vdd-supply = <&pm8953_l18>;
+		//cap_svdd-supply = <&pm8953_l14>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <86 0x2008>;
+		gpios = <&tlmm 86 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9325_int_default>;
+		cap,use_channel = <0x0f>;
+		cap,use_channel_top = <0x02>;
+		cap,use_channel_bottom = <0x00>;
+		cap,raw_data_channel = <0x01>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <5>;
+		reg_array_val = <0x36 0x1b 0x37 0x1b 0x4a 0x66 0x4b 0x00 0x4c 0x00>;
 	};
 };
 
