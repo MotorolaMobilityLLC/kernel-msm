@@ -664,7 +664,7 @@
 	qcom,fcc-max-ua = <3000000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <3000000>;
-	qcom,dc-icl-ua = <3000000>;
+	qcom,dc-icl-ua = <1500000>;
 	qcom,eb-batt-psy-name = "gb_battery";
 	qcom,eb-pwr-psy-name = "gb_ptp";
 	qcom,dc-eb-icl-ma = <900>;
