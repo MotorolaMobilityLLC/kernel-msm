@@ -1225,6 +1225,10 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 			pdata->auto_cal_time = 2;
 		}
 	}
+
+	pdata->no_firmware = of_property_read_bool(np, "ti,no_firmware");
+	if (pdata->no_firmware)
+		dev_info(&client->dev, "%s: no firmware loading\n", __func__);
 	return pdata;
 }
 #else
@@ -1457,10 +1461,12 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	Haptics_init(ctrl);
 
-	err = request_firmware_nowait(THIS_MODULE,
+	if (!ctrl->msPlatData.no_firmware) {
+		err = request_firmware_nowait(THIS_MODULE,
 				      FW_ACTION_HOTPLUG, "drv2624.bin",
 				      &(client->dev), GFP_KERNEL, ctrl,
 				      HapticsFirmwareLoad);
+	}
 
 	if (ctrl->msPlatData.auto_cal) {
 		err = dev_auto_calibrate(ctrl);

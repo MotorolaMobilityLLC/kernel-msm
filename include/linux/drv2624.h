@@ -246,6 +246,7 @@ struct drv2624_platform_data {
 	struct actuator_data msActuator;
 	bool auto_cal;
 	u8 auto_cal_time;
+	bool no_firmware;
 };
 
 #define DRV2624_MAGIC	0x2624
