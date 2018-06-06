@@ -69,4 +69,19 @@
 		};
 	};
 
+	sx9325_int_pin {
+		/* qcom,pins = <&gp 86>;*/
+		pins = "gpio86";
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "sx9325_int_pin";
+		sx9325_int_default: int_default {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+		sx9325_int_sleep: int_sleep {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
 };
