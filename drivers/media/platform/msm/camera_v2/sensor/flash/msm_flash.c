@@ -68,17 +68,29 @@ static void msm_torch_brightness_set(struct led_classdev *led_cdev,
 
 static struct led_classdev msm_torch_led[MAX_LED_TRIGGERS] = {
 	{
+#ifdef CONFIG_MSM_CAMERA_DUAL_PMIC_FLASH
+		.name		= "torch0_trigger",
+#else
 		.name		= "torch-light0",
+#endif
 		.brightness_set	= msm_torch_brightness_set,
 		.brightness	= LED_OFF,
 	},
 	{
+#ifdef CONFIG_MSM_CAMERA_DUAL_PMIC_FLASH
+		.name		= "torch1_trigger",
+#else
 		.name		= "torch-light1",
+#endif
 		.brightness_set	= msm_torch_brightness_set,
 		.brightness	= LED_OFF,
 	},
 	{
+#ifdef CONFIG_MSM_CAMERA_DUAL_PMIC_FLASH
+		.name		= "torch2_trigger",
+#else
 		.name		= "torch-light2",
+#endif
 		.brightness_set	= msm_torch_brightness_set,
 		.brightness	= LED_OFF,
 	},
@@ -89,6 +101,9 @@ static int32_t msm_torch_create_classdev(struct platform_device *pdev,
 {
 	int32_t rc = 0;
 	int32_t i = 0;
+#ifdef CONFIG_MSM_CAMERA_DUAL_PMIC_FLASH
+	int32_t j = 0;
+#endif
 	struct msm_flash_ctrl_t *fctrl =
 		(struct msm_flash_ctrl_t *)data;
 
@@ -100,6 +115,29 @@ static int32_t msm_torch_create_classdev(struct platform_device *pdev,
 	for (i = 0; i < fctrl->torch_num_sources; i++) {
 		if (fctrl->torch_trigger[i]) {
 			torch_trigger = fctrl->torch_trigger[i];
+#ifdef CONFIG_MSM_CAMERA_DUAL_PMIC_FLASH
+			for (j = 0; j < MAX_LED_TRIGGERS; j++) {
+				if (!strcmp(fctrl->torch_trigger[i]->name, msm_torch_led[j].name))
+					break;
+			}
+			CDBG("%s:%d msm_torch_brightness_set for torch %d ",
+				__func__, __LINE__, j);
+			msm_torch_brightness_set(&msm_torch_led[j],
+				LED_OFF);
+
+			rc = led_classdev_register(&pdev->dev,
+				&msm_torch_led[j]);
+
+			if (rc) {
+				pr_err("Failed to register %d led dev. rc = %d\n",
+					 j, rc);
+				return rc;
+			}
+		} else {
+			pr_err("Invalid fctrl->torch_trigger[%d]\n", j);
+			return -EINVAL;
+		}
+#else
 			CDBG("%s:%d msm_torch_brightness_set for torch %d",
 				__func__, __LINE__, i);
 			msm_torch_brightness_set(&msm_torch_led[i],
@@ -116,6 +154,7 @@ static int32_t msm_torch_create_classdev(struct platform_device *pdev,
 			pr_err("Invalid fctrl->torch_trigger[%d]\n", i);
 			return -EINVAL;
 		}
+#endif
 	}
 
 	return 0;
