@@ -336,54 +336,47 @@
 		/delete-property/ qcom,msm-vdd-wsa-switch-voltage;
 		/delete-property/ qcom,msm-vdd-wsa-switch-current;
 		/delete-property/ qcom,hdmi-dba-codec-rx;
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		/delete-property/ pinctrl-4;
+		/delete-property/ pinctrl-5;
+		/delete-property/ pinctrl-6;
+		/delete-property/ pinctrl-7;
+		/delete-property/ pinctrl-8;
+		/delete-property/ pinctrl-9;
+		/delete-property/ pinctrl-10;
+		/delete-property/ pinctrl-11;
+		/delete-property/ pinctrl-12;
+		/delete-property/ pinctrl-13;
+		/delete-property/ pinctrl-14;
+		/delete-property/ pinctrl-15;
 
 		qcom,msm-gpios =
 			"pri_i2s",
-			"us_eu_gpio",
 			"quat_i2s";
 		qcom,pinctrl-names =
 			"all_off",
 			"pri_i2s_act",
-			"us_eu_gpio_act",
-			"pri_i2s_us_eu_gpio_act",
 			"quat_i2s_act",
-			"quat_pri_i2s_act",
-			"quat_us_eu_gpio_act",
-			"quat_pri_i2s_us_eu_gpio_act";
+			"quat_pri_i2s_act";
 		pinctrl-names =
 			"all_off",
 			"pri_i2s_act",
-			"us_eu_gpio_act",
-			"pri_i2s_us_eu_gpio_act",
 			"quat_i2s_act",
-			"quat_pri_i2s_act",
-			"quat_us_eu_gpio_act",
-			"quat_pri_i2s_us_eu_gpio_act";
+			"quat_pri_i2s_act";
 
 		pinctrl-0 = <&cdc_pdm_lines_sus
-				&cdc_pdm_lines_2_sus &cross_conn_det_sus
-				&pri_tlmm_lines_sus &pri_tlmm_ws_sus &sec_tlmm_lines_sus>;
+				&cdc_pdm_lines_2_sus
+				&sec_tlmm_lines_sus>;
 		pinctrl-1 = <&cdc_pdm_lines_act
-				&cdc_pdm_lines_2_act &cross_conn_det_sus
-				&pri_tlmm_lines_sus &pri_tlmm_ws_sus &sec_tlmm_lines_sus>;
+				&cdc_pdm_lines_2_act
+				&sec_tlmm_lines_sus>;
 		pinctrl-2 = <&cdc_pdm_lines_sus
-				&cdc_pdm_lines_2_sus &cross_conn_det_act
-				&pri_tlmm_lines_sus &pri_tlmm_ws_sus &sec_tlmm_lines_sus>;
+				&cdc_pdm_lines_2_sus
+				&sec_tlmm_lines_act>;
 		pinctrl-3 = <&cdc_pdm_lines_act
-				&cdc_pdm_lines_2_act &cross_conn_det_act
-				&pri_tlmm_lines_sus &pri_tlmm_ws_sus &sec_tlmm_lines_sus>;
-		pinctrl-4 = <&cdc_pdm_lines_sus
-				&cdc_pdm_lines_2_sus &cross_conn_det_sus
+				&cdc_pdm_lines_2_act
 				&sec_tlmm_lines_act>;
-		pinctrl-5 = <&cdc_pdm_lines_act
-				&cdc_pdm_lines_2_act &cross_conn_det_sus
-				&sec_tlmm_lines_act>;
-		pinctrl-6 = <&cdc_pdm_lines_sus
-				&cdc_pdm_lines_2_sus &cross_conn_det_act
-				&sec_tlmm_lines_act>;
-		pinctrl-7 = <&cdc_pdm_lines_act
-				&cdc_pdm_lines_2_act &cross_conn_det_act
-				&sec_tlmm_lines_act>;
+
 
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 			<&loopback>, <&compress>, <&hostless>,
