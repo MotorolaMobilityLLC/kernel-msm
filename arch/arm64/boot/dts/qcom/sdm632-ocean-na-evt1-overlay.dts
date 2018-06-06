@@ -21,6 +21,6 @@
 / {
 	model = "ocean";
 	qcom,msm-id = <349 0x0>;
-	qcom,board-id = <0x41 0xA100>;
+	qcom,board-id = <(OCEAN_RADIO_NA << 8 | 0x41) 0xA100>;
 };
 
