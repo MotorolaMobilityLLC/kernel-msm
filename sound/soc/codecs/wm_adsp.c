@@ -528,8 +528,8 @@ static const char *wm_adsp_fw_text[WM_ADSP_NUM_FW] = {
 	[WM_ADSP_FW_TRACE] =    "Dbg Trace",
 	[WM_ADSP_FW_SPK_PROT] = "Protection",
 	[WM_ADSP_FW_MISC] =     "Misc",
-	[WM_ADSP_FW_AOU] =     "AoU",
-	[WM_ADSP_FW_AOU_CONCURR] = "AoU Audio",
+	[WM_ADSP_FW_AOU] =     "AOU Without Audio",
+	[WM_ADSP_FW_AOU_CONCURR] = "AOU With Audio",
 };
 
 struct wm_adsp_system_config_xm_hdr {
@@ -699,13 +699,13 @@ static struct wm_adsp_fw_defs wm_adsp_fw[WM_ADSP_NUM_FW] = {
 	[WM_ADSP_FW_SPK_PROT] = { .file = "spk-prot" },
 	[WM_ADSP_FW_MISC] = { .file = "misc" },
 	[WM_ADSP_FW_AOU] = {
-		.file = "aou-ultrasound",
+		.file = "ultrasound",
 		.compr_direction = SND_COMPRESS_CAPTURE,
 		.num_caps = ARRAY_SIZE(trace_caps),
 		.caps = trace_caps,
 	},
 	[WM_ADSP_FW_AOU_CONCURR] = {
-		.file = "aou-concurrent",
+		.file = "concurrent",
 		.compr_direction = SND_COMPRESS_CAPTURE,
 		.num_caps = ARRAY_SIZE(trace_caps),
 		.caps = trace_caps,
@@ -2029,6 +2029,31 @@ static int wm_adsp_write_blocks(struct wm_adsp *dsp, const u8 *data, size_t len,
 	return 0;
 }
 
+struct wm_adsp_device_names {
+	char device_number[32];
+	char device_name[32];
+};
+
+static const struct wm_adsp_device_names wm_adsp_dev_list[] = {
+	{"cs47l35", "marley"},
+	{"cs47l90", "moon"},
+};
+
+static void wm_adsp_change_device_name(const char *dev_num, char *name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(wm_adsp_dev_list); i++) {
+		if (!strncmp(dev_num, wm_adsp_dev_list[i].device_number,
+					strlen(dev_num))) {
+			strlcpy(name, wm_adsp_dev_list[i].device_name,
+				strlen(wm_adsp_dev_list[i].device_name)+1);
+			return;
+		}
+	}
+	strlcpy(name, dev_num, strlen(dev_num)+1);
+}
+
 static int wm_adsp_load(struct wm_adsp *dsp)
 {
 	LIST_HEAD(buf_list);
@@ -2043,6 +2068,7 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 	const struct wm_adsp_region *mem;
 	const char *region_name;
 	char *file, *text = NULL;
+	char part_name[32];
 	unsigned int reg;
 	int regions = 0;
 	int ret, offset, type, sizes;
@@ -2052,11 +2078,14 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 	if (file == NULL)
 		return -ENOMEM;
 
-	if (dsp->firmwares[dsp->fw].fullname)
+	if (dsp->firmwares[dsp->fw].fullname) {
 		snprintf(file, PAGE_SIZE, "%s", dsp->firmwares[dsp->fw].file);
-	else
-		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.wmfw", dsp->part,
+	}  else {
+		memset(part_name, 0, sizeof(part_name));
+		wm_adsp_change_device_name(dsp->part, part_name);
+		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.wmfw", part_name,
 			 dsp->num, dsp->firmwares[dsp->fw].file);
+	}
 	file[PAGE_SIZE - 1] = '\0';
 	ret = request_firmware(&firmware, file, dsp->dev);
 	if (ret != 0) {
@@ -2780,6 +2809,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 	const char *region_name;
 	int ret, pos, blocks, type, offset, reg;
 	char *file;
+	char part_name[32];
 	unsigned int burst_multiple;
 
 	if (dsp->firmwares[dsp->fw].binfile &&
@@ -2796,9 +2826,12 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 	else if (dsp->firmwares[dsp->fw].binfile)
 		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin", dsp->part,
 			 dsp->num, dsp->firmwares[dsp->fw].binfile);
-	else
-		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin", dsp->part,
+	else  {
+		memset(part_name, 0, sizeof(part_name));
+		wm_adsp_change_device_name(dsp->part, part_name);
+		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin", part_name,
 			 dsp->num, dsp->firmwares[dsp->fw].file);
+	}
 	file[PAGE_SIZE - 1] = '\0';
 
 	ret = request_firmware(&firmware, file, dsp->dev);
