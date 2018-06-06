@@ -17,6 +17,8 @@
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm632-camera-sensor-mot-ocean-overlay.dtsi"
 
+#define OCEAN_RADIO_NA 1
+
 &pmx_mdss {
 	mdss_dsi_active {
 		mux {
