@@ -24,13 +24,42 @@
 
 	/delete-node/ sound;
 	/delete-node/ sound-9335;
+	/delete-node/ msm_cdc_pinctrl_us_euro_sw;
+	/delete-node/ wsa881x_analog_vi_pctrl;
 	/delete-node/ wsa881x_analog_clk_pctrl;
 	/delete-node/ wsa881x_analog_reset_pctrl;
-	/delete-node/ msm_cdc_pinctrl_us_euro_sw;
-	/delete-node/ cdc_comp_pinctrl;
-	/delete-node/ msm_cdc_pinctrl_pri;
-	/delete-node/ msm_cdc_pinctrl_quin;
-	/delete-node/ wsa881x_analog_vi_pctrl;
+	/delete-node/ msm_cdc_pinctrl@67;
+
+	qcom,msm-dai-tdm-pri-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-pri-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-sec-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-sec-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-tert-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-tert-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quat-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quat-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quin-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quin-tx {
+		status = "disabled";
+	};
 };
 
 /* the node cannot be deleted from sdm450-ali-pinctrl.dtsi
@@ -43,3 +72,16 @@
 	/delete-node/ wsa881x-i2c-codec@f;
 	/delete-node/ wsa881x-i2c-codec@45;
 };
+
+&slim_msm {
+	/delete-node/ tasha_codec;
+};
+
+&tlmm {
+	/delete-node/ wsa-vi;
+	/delete-node/ wsa_reset;
+	/delete-node/ wsa_clk;
+	/delete-node/ cdc_reset_ctrl;
+	/delete-node/ cross-conn-det;
+};
+
