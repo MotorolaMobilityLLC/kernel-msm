@@ -1510,6 +1510,7 @@ static int cs35l41_dsp_init(struct cs35l41_private *cs35l41)
 	dsp->rev = 0;
 	dsp->dev = cs35l41->dev;
 	dsp->regmap = cs35l41->regmap;
+	dsp->suffix = "";
 
 	dsp->base = CS35L41_DSP1_CTRL_BASE;
 	dsp->base_sysinfo = CS35L41_DSP1_SYS_ID;
