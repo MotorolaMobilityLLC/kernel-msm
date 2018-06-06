@@ -115,6 +115,8 @@
 		/* sample time 300us  */
 		ti,sample_time = /bits/ 8 <0x1c>;
 		ti,drive_time = /bits/ 8 <0x13>;
+		/* bypass firmware loading to save time */
+		ti,no_firmware;
 	};
 };
 
