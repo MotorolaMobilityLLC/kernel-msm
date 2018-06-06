@@ -72,7 +72,7 @@ static struct smb_params v1_params = {
 		.name	= "dc input current limit",
 		.reg	= DCIN_CURRENT_LIMIT_CFG_REG,
 		.min_u	= 0,
-		.max_u	= 6000000,
+		.max_u	= 3000000,
 		.step_u	= 25000,
 	},
 	.dc_icl_pt_lv		= {
