@@ -34,8 +34,6 @@
 #include <linux/firmware.h>
 #include "synaptics_tcm_core.h"
 
-#define STARTUP_REFLASH
-
 #define FORCE_REFLASH false
 
 #define DISPLAY_REFLASH true
