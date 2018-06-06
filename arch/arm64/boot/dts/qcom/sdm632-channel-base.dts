@@ -17,4 +17,33 @@
 &mdss_dsi0 {
 	/delete-property/ vdd-supply;
 };
+/* fps gpio 8 */
+&aliases {
+	/delete-property/ spi3;
+};
+/* camera flash and gpio 50 */
+&soc {
+	/delete-node/ sound-9335;
+	/delete-node/ eldo2;
+	/delete-node/ spi@78b7000;
+	/delete-node/ qcom,camera-flash;
+};
 
+/* fingerprint spi8 gpio96 */
+&soc {
+       /delete-node/ wsa881x_analog_reset_pctrl;
+};
+
+&wsa881x_i2c_f {
+	/delete-property/ qcom,wsa-analog-reset-gpio;
+};
+
+/*  camera gpio50 and fingerprint spi8 gpio96 */
+&slim_msm {
+	/delete-node/ tasha_codec;
+};
+&cci {
+	/delete-node/ qcom,camera@0;
+	/delete-node/ qcom,actuator@0;
+	/delete-node/ qcom,eeprom@0;
+};
