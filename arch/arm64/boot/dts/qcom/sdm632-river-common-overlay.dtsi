@@ -16,6 +16,7 @@
 #include "sdm632-river-audio-overlay.dtsi"
 #include "dsi-panel-mot-tianma-624-1080p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "sdm632-camera-sensor-mot-river-overlay.dtsi"
 
 &soc {
 	qcom,tz_gpio {
