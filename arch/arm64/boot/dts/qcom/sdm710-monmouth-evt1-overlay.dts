@@ -26,7 +26,7 @@
 /*
  * Monmouth HW rev EVT1 specific changes go here
  */
- &soc {
+&soc {
 	dsi_smd_601_1080p_cmd_display: qcom,dsi-display@18 {
 		compatible = "qcom,dsi-display";
 		label = "dsi_smd_601_1080p_cmd_display";
@@ -63,4 +63,12 @@
 			qcom,default-topology-index = <0>;
 		};
 	};
+};
+
+&qupv3_se9_2uart {
+	status = "ok";
+};
+
+&qupv3_se12_2uart {
+	status = "disabled";
 };
