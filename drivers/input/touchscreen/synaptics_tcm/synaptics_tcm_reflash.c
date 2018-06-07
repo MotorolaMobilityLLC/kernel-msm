@@ -72,6 +72,8 @@
 
 #define IMAGE_BUF_SIZE (512 * 1024)
 
+#define IMAGE_FILENAME_SIZE  80
+
 #define ERASE_FLASH_DELAY_MS 500
 
 #define WRITE_FLASH_DELAY_MS 20
@@ -294,6 +296,7 @@ struct boot_config {
 struct reflash_hcd {
 	bool force_update;
 	bool disp_cfg_update;
+	char image_name[IMAGE_FILENAME_SIZE];
 	const unsigned char *image;
 	unsigned char *image_buf;
 	unsigned int image_size;
@@ -373,6 +376,19 @@ static ssize_t reflash_sysfs_oem_store(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
 		char *buf, loff_t pos, size_t count);
 
+static ssize_t reflash_sysfs_buildid_show(struct file *data_file,
+		struct kobject *kobj, struct bin_attribute *attributes,
+		char *buf, loff_t pos, size_t count);
+
+static ssize_t reflash_sysfs_forcereflash_store(struct file *data_file,
+		struct kobject *kobj, struct bin_attribute *attributes,
+		char *buf, loff_t pos, size_t count);
+
+static ssize_t reflash_sysfs_doreflash_store(struct file *data_file,
+		struct kobject *kobj, struct bin_attribute *attributes,
+		char *buf, loff_t pos, size_t count);
+
+
 static struct bin_attribute bin_attrs[] = {
 	{
 		.attr = {
@@ -408,6 +424,33 @@ static struct bin_attribute bin_attrs[] = {
 		.size = 0,
 		.read = reflash_sysfs_oem_show,
 		.write = reflash_sysfs_oem_store,
+	},
+};
+
+static struct bin_attribute moto_attrs[] = {
+	{
+		.attr = {
+			.name = "buildid",
+			.mode = (S_IRUGO),
+		},
+		.size = 0,
+		.read = reflash_sysfs_buildid_show,
+	},
+	{
+		.attr = {
+			.name = "forcereflash",
+			.mode = (S_IWUSR | S_IWGRP),
+		},
+		.size = 0,
+		.write = reflash_sysfs_forcereflash_store,
+	},
+	{
+		.attr = {
+			.name = "doreflash",
+			.mode = (S_IWUSR | S_IWGRP),
+		},
+		.size = 0,
+		.write = reflash_sysfs_doreflash_store,
 	},
 };
 
@@ -730,6 +773,128 @@ exit:
 	return retval;
 }
 
+static ssize_t reflash_sysfs_buildid_show(struct file *data_file,
+		struct kobject *kobj, struct bin_attribute *attributes,
+		char *buf, loff_t pos, size_t count)
+{
+	int retval;
+	int readlen;
+	unsigned int config_id;
+	struct syna_tcm_hcd *tcm_hcd = reflash_hcd->tcm_hcd;
+
+	mutex_lock(&tcm_hcd->extif_mutex);
+
+	config_id = le4_to_uint(&tcm_hcd->app_info.customer_config_id[12]);
+
+	retval = scnprintf(buf, PAGE_SIZE, "%x-%08x\n",
+		tcm_hcd->packrat_number, config_id);
+
+	readlen = MIN(count, retval - pos);
+
+	mutex_unlock(&tcm_hcd->extif_mutex);
+
+	return readlen;
+}
+
+static ssize_t reflash_sysfs_forcereflash_store(struct file *data_file,
+		struct kobject *kobj, struct bin_attribute *attributes,
+		char *buf, loff_t pos, size_t count)
+{
+	unsigned long value = 0;
+	int retval;
+	struct syna_tcm_hcd *tcm_hcd = reflash_hcd->tcm_hcd;
+
+	mutex_lock(&tcm_hcd->extif_mutex);
+
+	retval = kstrtoul(buf, 10, &value);
+	if (retval < 0) {
+		LOGE(tcm_hcd->pdev->dev.parent, "Failed to convert value\n");
+		goto exit;
+	}
+	reflash_hcd->force_update = (value != 0);
+	retval = count;
+
+exit:
+	mutex_unlock(&tcm_hcd->extif_mutex);
+
+	return retval;
+}
+
+static ssize_t reflash_sysfs_doreflash_store(struct file *data_file,
+		struct kobject *kobj, struct bin_attribute *attributes,
+		char *buf, loff_t pos, size_t count)
+{
+	int retval;
+	char prefix[IMAGE_FILENAME_SIZE] = "synaptics_tcm";
+	char template[IMAGE_FILENAME_SIZE];
+	struct syna_tcm_hcd *tcm_hcd = reflash_hcd->tcm_hcd;
+
+	if (count > IMAGE_FILENAME_SIZE) {
+		LOGE(tcm_hcd->pdev->dev.parent,
+			"%s: FW filename is too long\n",
+			__func__);
+		retval = -EINVAL;
+		goto exit;
+	}
+
+	if (!reflash_hcd->force_update) {
+		if (strncmp(buf, prefix,
+			strnlen(prefix, sizeof(prefix)))) {
+			LOGE(tcm_hcd->pdev->dev.parent,
+				"%s: FW does not belong to Synaptics TCM\n",
+				__func__);
+			retval = -EINVAL;
+			goto exit;
+		}
+
+		snprintf(template, sizeof(template), "-%s-",
+						tcm_hcd->product_id_string);
+		if (!strnstr(buf + strnlen(prefix, sizeof(prefix)), template,
+			count)) {
+			LOGE(tcm_hcd->pdev->dev.parent,
+				"%s: FW does not belong to %s\n",
+				__func__,
+				tcm_hcd->product_id_string);
+			retval = -EINVAL;
+			goto exit;
+		}
+	}
+
+	strlcpy(reflash_hcd->image_name, buf, count);
+	LOGD(tcm_hcd->pdev->dev.parent,
+		"%s: FW filename: %s\n",
+		__func__,
+		reflash_hcd->image_name);
+
+	mutex_lock(&tcm_hcd->extif_mutex);
+	pm_stay_awake(&tcm_hcd->pdev->dev);
+	mutex_lock(&reflash_hcd->reflash_mutex);
+
+	retval = reflash_do_reflash();
+	if (retval < 0) {
+		LOGE(tcm_hcd->pdev->dev.parent,
+				"Failed to do reflash\n");
+		goto reflash_failed;
+	}
+	retval = count;
+
+reflash_failed:
+	if (reflash_hcd->fw_entry) {
+		release_firmware(reflash_hcd->fw_entry);
+		reflash_hcd->fw_entry = NULL;
+	}
+
+	reflash_hcd->image = NULL;
+	reflash_hcd->image_size = 0;
+	reflash_hcd->force_update = FORCE_REFLASH;
+
+	mutex_unlock(&reflash_hcd->reflash_mutex);
+	pm_relax(&tcm_hcd->pdev->dev);
+	mutex_unlock(&tcm_hcd->extif_mutex);
+exit:
+	return retval;
+}
+
 static int reflash_set_up_flash_access(void)
 {
 	int retval;
@@ -926,7 +1091,13 @@ static int reflash_get_fw_image(void)
 	struct syna_tcm_hcd *tcm_hcd = reflash_hcd->tcm_hcd;
 
 	if (reflash_hcd->image == NULL) {
-		retval = request_firmware(&reflash_hcd->fw_entry, FW_IMAGE_NAME,
+		if (reflash_hcd->image_name[0] == 0)
+			retval = request_firmware(&reflash_hcd->fw_entry,
+				FW_IMAGE_NAME,
+				tcm_hcd->pdev->dev.parent);
+		else
+			retval = request_firmware(&reflash_hcd->fw_entry,
+				reflash_hcd->image_name,
 				tcm_hcd->pdev->dev.parent);
 		if (retval < 0) {
 			LOGE(tcm_hcd->pdev->dev.parent,
@@ -2058,9 +2229,23 @@ static int reflash_init(struct syna_tcm_hcd *tcm_hcd)
 		}
 	}
 
+	for (idx = 0; idx < ARRAY_SIZE(moto_attrs); idx++) {
+		retval = sysfs_create_bin_file(tcm_hcd->sysfs_dir,
+				&moto_attrs[idx]);
+		if (retval < 0) {
+			LOGE(tcm_hcd->pdev->dev.parent,
+					"Failed to create sysfs bin file\n");
+			goto err_moto_sysfs_create_bin_file;
+		}
+	}
+
 	tcm_hcd->read_flash_data = reflash_read_data;
 
 	return 0;
+
+err_moto_sysfs_create_bin_file:
+	for (idx = 0; idx < ARRAY_SIZE(moto_attrs); idx++)
+		sysfs_remove_bin_file(tcm_hcd->sysfs_dir, &moto_attrs[idx]);
 
 err_custom_sysfs_create_bin_file:
 	for (idx--; idx > 0; idx--)
@@ -2104,6 +2289,11 @@ static int reflash_remove(struct syna_tcm_hcd *tcm_hcd)
 	tcm_hcd->read_flash_data = NULL;
 
 	if (ENABLE_SYSFS_INTERFACE == true) {
+		for (idx = 0; idx < ARRAY_SIZE(moto_attrs); idx++) {
+			sysfs_remove_bin_file(tcm_hcd->sysfs_dir,
+				&moto_attrs[idx]);
+		}
+
 		for (idx = 1; idx < ARRAY_SIZE(bin_attrs); idx++) {
 			sysfs_remove_bin_file(reflash_hcd->custom_dir,
 					&bin_attrs[idx]);
