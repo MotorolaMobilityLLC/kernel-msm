@@ -40,6 +40,9 @@ qcom,mdss-dsi-on-command = [
 
 	05 01 00 00 78 00 02 11 00
 	05 01 00 00 0a 00 02 29 00
+	15 01 00 00 00 00 02 FF 24
+	15 01 00 00 00 00 02 FB 01
+	15 01 00 00 00 00 02 B4 00
 	//CABC PWM 20KHz
 	15 01 00 00 00 00 02 FF 10
 	15 01 00 00 00 00 02 FB 01
@@ -71,7 +74,7 @@ qcom,mdss-dsi-off-command = [
 
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
-qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 
 qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
 qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
@@ -107,7 +110,7 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <1 2>, <0 2>, <1 10>;
+qcom,mdss-dsi-reset-sequence = <0 10>,<1 2>, <0 5>, <1 10>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-lp11-lcdb-reset;
 qcom,mdss-dsi-tx-eot-append;
