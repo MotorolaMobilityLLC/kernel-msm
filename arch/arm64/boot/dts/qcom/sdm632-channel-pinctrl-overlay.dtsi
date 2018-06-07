@@ -11,3 +11,16 @@
  * GNU General Public License for more details.
  */
 
+&tlmm {
+	sx9310_irq_default: sx9310_irq_default {
+		mux {
+			pins = "gpio86";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio86";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+};
