@@ -141,6 +141,12 @@
 	};
 };
 
+&pmi632_rgb {
+	red {
+		label = "charging";
+	};
+};
+
 &i2c_2 {
 	status = "ok";
 	sx9325@28 {
