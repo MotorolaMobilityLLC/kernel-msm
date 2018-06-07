@@ -1326,4 +1326,16 @@ config TOUCHSCREEN_EKTF3XXX_CHIPSET
 
 		  If unusre, say N.
 
+config TOUCHSCREEN_NOVATEK_CHIPSET
+        tristate "Novatek touchpanel Novatek series"
+        depends on I2C
+        help
+          Say Y here if you have a Novatek NT36525  touchscreen.
+          Novatek controllers are multi touch controllers which can
+          report 10 touches at a time.
+
+          If unsure, say N.
+
+source "drivers/input/touchscreen/nova_mmi/Kconfig"
+
 endif
