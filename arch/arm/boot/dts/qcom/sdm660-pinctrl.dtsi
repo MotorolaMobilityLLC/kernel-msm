@@ -1788,6 +1788,19 @@
 					bias-disable;
 				};
 			};
+
+			ts_release: ts_release {
+				mux {
+					pins = "gpio67", "gpio66";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio67", "gpio66";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+			};
 		};
 	};
 };
