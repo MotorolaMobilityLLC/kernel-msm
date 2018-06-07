@@ -148,6 +148,8 @@ exit: \
 	return retval; \
 }
 
+static int syna_tcm_update_product_id(struct syna_tcm_hcd *tcm_hcd);
+
 DECLARE_COMPLETION(response_complete);
 
 static struct kobject *sysfs_dir;
@@ -171,12 +173,18 @@ SHOW_STORE_PROTOTYPE(syna_tcm, stimulus_fingers)
 SHOW_STORE_PROTOTYPE(syna_tcm, grip_suppression_enabled)
 SHOW_STORE_PROTOTYPE(syna_tcm, enable_thick_glove)
 SHOW_STORE_PROTOTYPE(syna_tcm, enable_glove)
+SHOW_PROTOTYPE(syna_tcm, poweron)
+SHOW_PROTOTYPE(syna_tcm, flashprog)
+SHOW_PROTOTYPE(syna_tcm, productinfo)
 
 static struct device_attribute *attrs[] = {
 	ATTRIFY(info),
 	ATTRIFY(irq_en),
 	ATTRIFY(reset),
 	ATTRIFY(watchdog),
+	ATTRIFY(poweron),
+	ATTRIFY(flashprog),
+	ATTRIFY(productinfo),
 };
 
 static struct device_attribute *dynamic_config_attrs[] = {
@@ -441,6 +449,71 @@ static ssize_t syna_tcm_sysfs_watchdog_store(struct device *dev,
 	return count;
 }
 
+static ssize_t syna_tcm_sysfs_poweron_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct device *p_dev;
+	struct kobject *p_kobj;
+	struct syna_tcm_hcd *tcm_hcd;
+
+	p_kobj = sysfs_dir->parent;
+	p_dev = container_of(p_kobj, struct device, kobj);
+	tcm_hcd = dev_get_drvdata(p_dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+		(tcm_hcd->in_suspend) ? 0 : 1);
+}
+
+static ssize_t syna_tcm_sysfs_flashprog_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct device *p_dev;
+	struct kobject *p_kobj;
+	struct syna_tcm_hcd *tcm_hcd;
+	int error;
+
+	p_kobj = sysfs_dir->parent;
+	p_dev = container_of(p_kobj, struct device, kobj);
+	tcm_hcd = dev_get_drvdata(p_dev);
+
+	mutex_lock(&tcm_hcd->extif_mutex);
+	error = tcm_hcd->identify(tcm_hcd, true);
+	mutex_unlock(&tcm_hcd->extif_mutex);
+	if (error < 0) {
+		LOGE(tcm_hcd->pdev->dev.parent,
+				"Failed to do identification\n");
+		return (ssize_t)0;
+	}
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+		((tcm_hcd->id_info.mode != MODE_APPLICATION) &&
+		(tcm_hcd->id_info.mode != MODE_PRODUCTION_TEST)) ? 1 : 0);
+}
+
+static ssize_t syna_tcm_sysfs_productinfo_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct device *p_dev;
+	struct kobject *p_kobj;
+	struct syna_tcm_hcd *tcm_hcd;
+	int error;
+
+	p_kobj = sysfs_dir->parent;
+	p_dev = container_of(p_kobj, struct device, kobj);
+	tcm_hcd = dev_get_drvdata(p_dev);
+
+	mutex_lock(&tcm_hcd->extif_mutex);
+	error = syna_tcm_update_product_id(tcm_hcd);
+	mutex_unlock(&tcm_hcd->extif_mutex);
+	if (error < 0) {
+		LOGE(tcm_hcd->pdev->dev.parent,
+				"Failed to update product id\n");
+		return (ssize_t)0;
+	}
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", tcm_hcd->product_id_string);
+}
+
 dynamic_config_sysfs(no_doze, DC_NO_DOZE)
 
 dynamic_config_sysfs(disable_noise_mitigation, DC_DISABLE_NOISE_MITIGATION)
@@ -510,6 +583,133 @@ exit:
 	return 0;
 }
 EXPORT_SYMBOL(syna_tcm_add_module);
+
+#include <linux/major.h>
+#include <linux/kdev_t.h>
+
+/* Attribute: path (RO) */
+static ssize_t path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+
+	struct syna_tcm_hcd *tcm_hcd = dev_get_drvdata(dev);
+	ssize_t blen;
+	const char *path;
+
+	if (!tcm_hcd) {
+		LOGE(tcm_hcd->pdev->dev.parent,
+			"cannot get tcm_hcd pointer\n");
+		return (ssize_t)0;
+	}
+	path = kobject_get_path(tcm_hcd->sysfs_dir, GFP_KERNEL);
+	blen = scnprintf(buf, PAGE_SIZE, "%s", path ? path : "na");
+	kfree(path);
+	return blen;
+}
+
+/* Attribute: vendor (RO) */
+static ssize_t vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "synaptics_tcm");
+}
+
+static struct device_attribute touchscreen_attributes[] = {
+	__ATTR_RO(path),
+	__ATTR_RO(vendor),
+	__ATTR_NULL
+};
+
+#define TSDEV_MINOR_BASE 128
+#define TSDEV_MINOR_MAX 32
+
+static int syna_tcm_sysfs_touchscreen(
+	struct syna_tcm_hcd *tcm_hcd, bool create)
+{
+	struct device_attribute *attrs = touchscreen_attributes;
+	int i, error = 0;
+	static struct class *touchscreen_class;
+	static struct device *ts_class_dev;
+	static int minor;
+
+	if (create) {
+		if (syna_tcm_update_product_id(tcm_hcd) < 0)
+			goto exit;
+
+		minor = input_get_new_minor(TSDEV_MINOR_BASE, TSDEV_MINOR_MAX,
+			true);
+		LOGI(tcm_hcd->pdev->dev.parent,
+			"assigned minor %d\n", minor);
+
+		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
+		if (IS_ERR(touchscreen_class)) {
+			error = PTR_ERR(touchscreen_class);
+			touchscreen_class = NULL;
+			return error;
+		}
+
+		ts_class_dev = device_create(touchscreen_class, NULL,
+				MKDEV(INPUT_MAJOR, minor),
+				tcm_hcd, tcm_hcd->product_id_string);
+		if (IS_ERR(ts_class_dev)) {
+			error = PTR_ERR(ts_class_dev);
+			ts_class_dev = NULL;
+			return error;
+		}
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i) {
+			error = device_create_file(ts_class_dev, &attrs[i]);
+			if (error)
+				break;
+		}
+
+		if (error)
+			goto device_destroy;
+	} else {
+		if (!touchscreen_class || !ts_class_dev)
+			return -ENODEV;
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i)
+			device_remove_file(ts_class_dev, &attrs[i]);
+
+		device_unregister(ts_class_dev);
+		class_unregister(touchscreen_class);
+	}
+
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		device_remove_file(ts_class_dev, &attrs[i]);
+	device_destroy(touchscreen_class, MKDEV(INPUT_MAJOR, minor));
+	ts_class_dev = NULL;
+	class_unregister(touchscreen_class);
+	LOGE(tcm_hcd->pdev->dev.parent, "error creating touchscreen class\n");
+exit:
+	return -ENODEV;
+}
+
+static int syna_tcm_update_product_id(struct syna_tcm_hcd *tcm_hcd)
+{
+	int i, error = 0;
+	struct syna_tcm_identification *id_info = &tcm_hcd->id_info;
+	char *src = (char *)id_info->part_number;
+	char *dst = tcm_hcd->product_id_string;
+
+	error = tcm_hcd->identify(tcm_hcd, true);
+	if (error < 0) {
+		LOGE(tcm_hcd->pdev->dev.parent,
+				"Failed to do identification when update id\n");
+		return -ENODEV;
+	}
+	for (i = 0; (*src != '-') && (i < sizeof(id_info->part_number)); i++)
+		*dst++ = *src++;
+
+	LOGI(tcm_hcd->pdev->dev.parent,
+		"id string %s\n", tcm_hcd->product_id_string);
+
+	return 0;
+}
 
 static void syna_tcm_module_work(struct work_struct *work)
 {
@@ -3250,6 +3450,7 @@ static int syna_tcm_probe(struct platform_device *pdev)
 		tcm_hcd->update_watchdog(tcm_hcd, true);
 	}
 
+	syna_tcm_sysfs_touchscreen(tcm_hcd, true);
 	mod_pool.workqueue =
 			create_singlethread_workqueue("syna_tcm_module");
 	INIT_WORK(&mod_pool.work, syna_tcm_module_work);
@@ -3370,6 +3571,7 @@ static int syna_tcm_remove(struct platform_device *pdev)
 #ifdef CONFIG_FB
 	fb_unregister_client(&tcm_hcd->fb_notifier);
 #endif
+	syna_tcm_sysfs_touchscreen(tcm_hcd, false);
 
 	for (idx = 0; idx < ARRAY_SIZE(dynamic_config_attrs); idx++) {
 		sysfs_remove_file(tcm_hcd->dynamnic_config_sysfs_dir,
