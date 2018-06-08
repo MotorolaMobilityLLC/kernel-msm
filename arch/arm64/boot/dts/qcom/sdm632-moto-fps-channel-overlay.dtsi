@@ -1,0 +1,118 @@
+/* Copyright (c) 2017, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	fpc_fpc1020{
+		compatible = "fpc,fpc1020";
+		status = "ok";
+		irq = <&tlmm 48 0>;
+		pinctrl-0 = <&ldo_en_active &int_active &rst_active>;
+		pinctrl-1 = <&ldo_en_suspend &int_suspend &rst_suspend>;
+	};
+};
+
+&pm8953_l6 {
+	regulator-always-on;
+};
+
+&tlmm {
+
+	fps {
+		rst_active: rst_active {
+			/* RESET */
+			mux {
+				pins = "gpio8";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio8";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* pull down */
+				output-high;
+			};
+		};
+
+		rst_suspend: rst_suspend{
+			/* RESET */
+			mux {
+				pins = "gpio8";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio8";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* pull down */
+				output-high;
+			};
+		};
+
+		int_active: int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio48";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio48";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		int_suspend: int_suspend{
+			/* INTERRUPT */
+			mux {
+				pins = "gpio48";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio48";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		ldo_en_active: ldo_en_active {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio36";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio36";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		ldo_en_suspend: ldo_en_suspend {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio36";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio36";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+	};
+};
