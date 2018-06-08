@@ -30,6 +30,32 @@
 		       <0x0001001b 0x0201011a 0x0 0x0>;
 };
 
+&ufsphy_mem {
+	compatible = "qcom,ufs-phy-qmp-v3";
+
+	vdda-phy-supply = <&pm660l_l1>; /* 0.88v */
+	vdda-pll-supply = <&pm660_l1>; /* 1.2v */
+	vdda-phy-max-microamp = <62900>;
+	vdda-pll-max-microamp = <18300>;
+
+	status = "ok";
+};
+
+&ufshc_mem {
+	vdd-hba-supply = <&ufs_phy_gdsc>;
+	vdd-hba-fixed-regulator;
+	vcc-supply = <&pm660l_l4>;
+	vcc-voltage-level = <2960000 2960000>;
+	vccq2-supply = <&pm660_l8>;
+	vcc-max-microamp = <600000>;
+	vccq2-max-microamp = <600000>;
+
+	qcom,vddp-ref-clk-supply = <&pm660_l1>;
+	qcom,vddp-ref-clk-max-microamp = <100>;
+
+	status = "ok";
+};
+
 &soc {
 	mot_panel_dummy_reg: mot_panel_dummy_reg {
 		compatible = "regulator-fixed";
@@ -83,6 +109,17 @@
 	compatible = "mmi,utags";
 	mmi,dir-name = "hw";
 	mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+};
+
+&firmware {
+	android {
+		fstab {
+			vendor {
+				dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/vendor";
+				fsmgr_flags = "wait,slotselect";
+			};
+		};
+	};
 };
 
 &qupv3_se0_i2c { /* FIXME: Main Proximity, Magnetometer, Barometer, Cirrus Codec */
