@@ -179,7 +179,7 @@ int tlmm_dump_info(char *buf, int size, int tlmm_num, int tlmm_count)
 			}
 		}
 		pr_debug("%s(), %d\n", __func__, __LINE__);
-		p += snprintf(p, size - (p - buf), "(%d)\n", p - buf);
+		p += snprintf(p, size - (p - buf), "(%d)\n", (int)(p - buf));
 	}
 	return p - buf;
 }
@@ -236,7 +236,7 @@ int tlmm_before_sleep_dump_info(char *buf, int size)
 			p += tlmm_dump_cfg(p, size - (p - buf),
 				i, cfg, output_val);
 		}
-		p += snprintf(p, size - (p - buf), "(%d)\n", p - buf);
+		p += snprintf(p, size - (p - buf), "(%d)\n", (int)(p - buf));
 	}
 	return p - buf;
 }
@@ -299,7 +299,7 @@ int tlmm_tz_dump_info(char *buf, int size)
 		p += snprintf(p, size - (p - buf), "%d: ", i);
 		p += snprintf(p, size - (p - buf), "%d\n", tz_configs[i]);
 	}
-	p += snprintf(p, size - (p - buf), "(%d)\n", p - buf);
+	p += snprintf(p, size - (p - buf), "(%d)\n", (int)(p - buf));
 	return p - buf;
 }
 
@@ -352,7 +352,7 @@ int tlmm_before_sleep_table_dump_info(char *buf, int size)
 		/* cfg &= ~0x40000000; */
 		p += tlmm_dump_cfg(p, size - (p - buf), i, cfg, output_val);
 	}
-	p += snprintf(p, size - (p - buf), "(%d)\n", p - buf);
+	p += snprintf(p, size - (p - buf), "(%d)\n", (int)(p - buf));
 	return p - buf;
 }
 
