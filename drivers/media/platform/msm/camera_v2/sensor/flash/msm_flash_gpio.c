@@ -112,23 +112,6 @@ static int32_t msm_flash_get_subdev_id(
 	return 0;
 }
 
-
-#ifdef CONFIG_COMPAT
-static void msm_flash_copy_power_settings_compat(
-	struct msm_sensor_power_setting *ps,
-	struct msm_sensor_power_setting32 *ps32, uint32_t size)
-{
-	uint16_t i = 0;
-
-	for (i = 0; i < size; i++) {
-		ps[i].config_val = ps32[i].config_val;
-		ps[i].delay = ps32[i].delay;
-		ps[i].seq_type = ps32[i].seq_type;
-		ps[i].seq_val = ps32[i].seq_val;
-	}
-}
-#endif
-
 static int32_t msm_flash_gpio_init(
 	struct msm_flash_ctrl_t *flash_ctrl,
 	struct msm_flash_cfg_data_t *flash_data)
