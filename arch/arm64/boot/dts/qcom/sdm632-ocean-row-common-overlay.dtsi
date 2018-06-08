@@ -1,4 +1,5 @@
-/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+/*
+ * Copyright (c) 2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,18 +10,4 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
-/dts-v1/;
-/plugin/;
-
-#include <dt-bindings/clock/msm-clocks-8953.h>
-
-#include "sdm632-ocean-common-overlay.dtsi"
-#include "sdm632-ocean-row-common-overlay.dtsi"
-
-/ {
-	model = "ocean";
-	qcom,msm-id = <349 0x0>;
-	qcom,board-id = <0x42 0xA200>;
-};
 
