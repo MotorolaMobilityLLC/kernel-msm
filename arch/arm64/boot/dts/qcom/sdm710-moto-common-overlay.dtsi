@@ -30,6 +30,49 @@
 		       <0x0001001b 0x0201011a 0x0 0x0>;
 };
 
+&soc {
+	mot_panel_dummy_reg: mot_panel_dummy_reg {
+		compatible = "regulator-fixed";
+		regulator-name = "mot_dummy_disp";
+	};
+
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@19 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_mot_dummy_qhd_video_display";
+		qcom,display-type = "primary";
+		qcom,dsi-display-active;
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "src_byte_clk", "src_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active>;
+		pinctrl-1 = <&sde_dsi_suspend>;
+
+		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
+		vci_disp-supply = <&mot_panel_dummy_reg>;
+	};
+};
+
+&mot_dummy_vid_qhd {
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
+	qcom,mdss-dsi-t-clk-post = <0x09>;
+	qcom,mdss-dsi-t-clk-pre = <0x15>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 0B 02 02 1C 1C 03
+							02 01 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
 &utags {
 	compatible = "mmi,utags";
 	mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
