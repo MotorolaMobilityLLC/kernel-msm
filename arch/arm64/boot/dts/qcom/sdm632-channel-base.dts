@@ -42,8 +42,3 @@
 &slim_msm {
 	/delete-node/ tasha_codec;
 };
-&cci {
-	/delete-node/ qcom,camera@0;
-	/delete-node/ qcom,actuator@0;
-	/delete-node/ qcom,eeprom@0;
-};
