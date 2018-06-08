@@ -2913,10 +2913,6 @@ static struct snd_soc_dai_driver tfa98xx_dai[] = {
 		 },
 		.ops = &tfa98xx_dai_ops,
 		.symmetric_rates = 1,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
-		.symmetric_channels = 1,
-		.symmetric_samplebits = 1,
-#endif
 	},
 };
 
