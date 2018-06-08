@@ -16,6 +16,7 @@
 #include "dsi-panel-mot-boe-569-hd-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm632-camera-sensor-mot-channel-overlay.dtsi"
+#include "sdm632-moto-fps-channel-overlay.dtsi"
 
 &pmx_mdss {
 	mdss_dsi_active {
