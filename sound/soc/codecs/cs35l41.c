@@ -679,7 +679,6 @@ static const struct snd_soc_dapm_route cs35l41_audio_map[] = {
 	{"ASP TX1 Source", "DSPTX2", "DSP1"},
 	{"ASP TX1 Source", "ASPRX1", "ASPRX1" },
 	{"ASP TX1 Source", "ASPRX2", "ASPRX2" },
-	{"ASP TX1 Source", "Zero", "ASPRX1" },
 	{"ASP TX2 Source", "VMON", "VMON ADC"},
 	{"ASP TX2 Source", "IMON", "IMON ADC"},
 	{"ASP TX2 Source", "VPMON", "VPMON ADC"},
@@ -687,7 +686,6 @@ static const struct snd_soc_dapm_route cs35l41_audio_map[] = {
 	{"ASP TX2 Source", "DSPTX2", "DSP1"},
 	{"ASP TX2 Source", "ASPRX1", "ASPRX1" },
 	{"ASP TX2 Source", "ASPRX2", "ASPRX2" },
-	{"ASP TX2 Source", "Zero", "ASPRX1" },
 	{"ASP TX3 Source", "VMON", "VMON ADC"},
 	{"ASP TX3 Source", "IMON", "IMON ADC"},
 	{"ASP TX3 Source", "VPMON", "VPMON ADC"},
@@ -695,7 +693,6 @@ static const struct snd_soc_dapm_route cs35l41_audio_map[] = {
 	{"ASP TX3 Source", "DSPTX2", "DSP1"},
 	{"ASP TX3 Source", "ASPRX1", "ASPRX1" },
 	{"ASP TX3 Source", "ASPRX2", "ASPRX2" },
-	{"ASP TX3 Source", "Zero", "ASPRX1" },
 	{"ASP TX4 Source", "VMON", "VMON ADC"},
 	{"ASP TX4 Source", "IMON", "IMON ADC"},
 	{"ASP TX4 Source", "VPMON", "VPMON ADC"},
@@ -703,7 +700,6 @@ static const struct snd_soc_dapm_route cs35l41_audio_map[] = {
 	{"ASP TX4 Source", "DSPTX2", "DSP1"},
 	{"ASP TX4 Source", "ASPRX1", "ASPRX1" },
 	{"ASP TX4 Source", "ASPRX2", "ASPRX2" },
-	{"ASP TX4 Source", "Zero", "ASPRX1" },
 	{"ASPTX1", NULL, "ASP TX1 Source"},
 	{"ASPTX2", NULL, "ASP TX2 Source"},
 	{"ASPTX3", NULL, "ASP TX3 Source"},
@@ -1340,7 +1336,7 @@ static struct snd_soc_codec_driver soc_codec_dev_cs35l41 = {
 	.controls = cs35l41_aud_controls,
 	.num_controls = ARRAY_SIZE(cs35l41_aud_controls),
 	.set_sysclk = cs35l41_codec_set_sysclk,
-	.ignore_pmdown_time = false,
+	.ignore_pmdown_time = true,
 };
 
 
