@@ -26,3 +26,15 @@
 	utags: utags { };
 	hw: hw { };
 };
+
+&soc {
+	/delete-node/ qcom,wcd-dsp-mgr;
+	/delete-node/ qcom,wcd-dsp-glink;
+	/delete-node/ sound-9335;
+	/delete-node/ sound-tavil;
+};
+
+&slim_aud {
+	/delete-node/ tasha_codec;
+	/delete-node/ tavil_codec;
+};
