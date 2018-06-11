@@ -140,7 +140,7 @@
 
 		qcom,page0 = <0 0x0 2 0x01 1 1>;
 		qcom,poll0 = <0 0x0 2 0 1 1>;
-		qcom,mem0 = <0x0F4E 0x0 2 0 1 0>;
+		qcom,mem0 = <0x11b1 0x0 2 0 1 0>;
 
 		cam_vio-supply = <&pm660_l11>;
 		cam_vana-supply = <&cam_avdd_gpio_regulator>;
