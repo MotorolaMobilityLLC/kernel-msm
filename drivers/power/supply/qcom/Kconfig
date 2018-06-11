@@ -163,4 +163,10 @@ config SMB1390_CHARGE_PUMP
 	  SMB1390 is a div2 charge pump capable of delivering 6A charge current
 	  with very high efficiency.
 
+config BAT_TEMP_30K_PULL
+	bool "BAT temp 30k pull up"
+	depends on MFD_SPMI_PMIC
+	help
+	  Say Y when you using 30K pull, or N
+
 endmenu
