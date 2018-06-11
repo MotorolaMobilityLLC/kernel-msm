@@ -202,7 +202,7 @@
 					"CAM_RESET2",
 					"CAM_VDIG2",
 					"CAM_VANA2";
-		qcom,cci-master = <0>;
+		qcom,cci-master = <1>;
 		status = "ok";
 		clocks = <&clock_mmss MCLK3_CLK_SRC>,
 			<&clock_mmss MMSS_CAMSS_MCLK3_CLK>;
@@ -336,7 +336,7 @@
 					"CAM_VANA2";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
-		qcom,cci-master = <0>;
+		qcom,cci-master = <1>;
 		status = "ok";
 		clocks = <&clock_mmss MCLK3_CLK_SRC>,
 			<&clock_mmss MMSS_CAMSS_MCLK3_CLK>;
@@ -444,7 +444,7 @@
 		config {
 			pins = "gpio32";
 			bias-disable; /* No PULL */
-			drive-strength = <4>; /* 4 MA */
+			drive-strength = <6>; /* 6 MA */
 		};
 	};
 
@@ -459,7 +459,7 @@
 		config {
 			pins = "gpio32";
 			bias-pull-down; /* PULL DOWN */
-			drive-strength = <4>; /* 4 MA */
+			drive-strength = <6>; /* 6 MA */
 		};
 	};
 
@@ -502,7 +502,7 @@
 		config {
 			pins = "gpio33";
 			bias-disable; /* No PULL */
-			drive-strength = <4>; /* 4 MA */
+			drive-strength = <6>; /* 6 MA */
 		};
 	};
 
@@ -517,7 +517,7 @@
 		config {
 			pins = "gpio33";
 			bias-pull-down; /* PULL DOWN */
-			drive-strength = <4>; /* 4 MA */
+			drive-strength = <6>; /* 6 MA */
 		};
 	};
 
@@ -532,7 +532,7 @@
 		config {
 			pins = "gpio35";
 			bias-disable; /* No PULL */
-			drive-strength = <4>; /* 4 MA */
+			drive-strength = <6>; /* 6 MA */
 		};
 	};
 
@@ -547,7 +547,7 @@
 		config {
 			pins = "gpio35";
 			bias-pull-down; /* PULL DOWN */
-			drive-strength = <4>; /* 4 MA */
+			drive-strength = <6>; /* 6 MA */
 		};
 	};
 
