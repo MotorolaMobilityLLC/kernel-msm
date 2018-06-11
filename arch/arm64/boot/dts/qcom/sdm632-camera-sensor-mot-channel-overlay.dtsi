@@ -87,7 +87,7 @@
 		qcom,cam-vreg-min-voltage = <2800000>;
 		qcom,cam-vreg-max-voltage = <2800000>;
 		qcom,cam-vreg-op-mode = <80000>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	eeprom0: qcom,eeprom@0 {
@@ -171,6 +171,7 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <270>;
 		qcom,led-flash-src = <&led_rear_flash>;
+		qcom,actuator-src = <&actuator0>;
 		//qcom,eeprom-src = <&eeprom0>;
 		cam_vio-supply = <&pm8953_l6>;
 		cam_vdig-supply = <&pm8953_l2>;
