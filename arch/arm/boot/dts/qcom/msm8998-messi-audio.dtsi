@@ -232,15 +232,6 @@
 		adsps {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			adsp@0ffe00 {
-				reg = <0x0ffe00>;
-				firmware {
-					ultrasound {
-						wlf,wmfw-file = "moon-dsp1-ultrasound.wmfw";
-						wlf,bin-file = "moon-dsp1-ultrasound.bin";
-					};
-				};
-			};
 			adsp@17fe00 {
 				reg = <0x17fe00>;
 				firmware {
