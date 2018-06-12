@@ -465,28 +465,37 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 	struct cs35l41_private *cs35l41 = data;
 	unsigned int status[4];
 	unsigned int masks[4];
+	unsigned int i;
 
-	regmap_bulk_read(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
-				status, ARRAY_SIZE(status));
-	regmap_bulk_read(cs35l41->regmap, CS35L41_IRQ1_MASK1,
-			masks, ARRAY_SIZE(masks));
+	for (i = 0; i < ARRAY_SIZE(status); i++) {
+		regmap_read(cs35l41->regmap,
+			    CS35L41_IRQ1_STATUS1 + (i * CS35L41_REGSTRIDE),
+			    &status[i]);
+		regmap_read(cs35l41->regmap,
+			    CS35L41_IRQ1_MASK1 + (i * CS35L41_REGSTRIDE),
+			    &masks[i]);
+	}
 
 	/* Check to see if unmasked bits are active */
 	if (!(status[0] & ~masks[0]) && !(status[1] & ~masks[1]) &&
 		!(status[2] & ~masks[2]) && !(status[3] & ~masks[3]))
 		return IRQ_NONE;
 
+	if (status[1] & (1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT)) {
+		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS2,
+			     1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT);
+		complete(&cs35l41->mbox_cmd);
+	}
+
 	if (status[0] & CS35L41_PUP_DONE_MASK) {
-		regmap_update_bits(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
-					CS35L41_PUP_DONE_MASK,
-					CS35L41_PUP_DONE_MASK);
+		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
+			     CS35L41_PUP_DONE_MASK);
 		complete(&cs35l41->global_pup_done);
 	}
 
 	if (status[0] & CS35L41_PDN_DONE_MASK) {
-		regmap_update_bits(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
-					CS35L41_PDN_DONE_MASK,
-					CS35L41_PDN_DONE_MASK);
+		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
+			     CS35L41_PDN_DONE_MASK);
 		complete(&cs35l41->global_pdn_done);
 	}
 
@@ -609,13 +618,86 @@ static const struct reg_sequence cs35l41_pdn_patch[] = {
 	{0x00000040, 0x00000033},
 };
 
+static bool cs35l41_is_csplmboxsts_correct(enum cspl_mboxcmd cmd,
+					   enum cspl_mboxstate sts)
+{
+	switch (cmd) {
+	case CSPL_MBOX_CMD_NONE:
+	case CSPL_MBOX_CMD_UNKNOWN_CMD:
+		return true;
+	case CSPL_MBOX_CMD_PAUSE:
+		return (sts == CSPL_MBOX_STS_PAUSED);
+	case CSPL_MBOX_CMD_RESUME:
+		return (sts == CSPL_MBOX_STS_RUNNING);
+	default:
+		return false;
+	}
+}
+
+static int cs35l41_set_csplmboxcmd(struct cs35l41_private *cs35l41,
+				   enum cspl_mboxcmd cmd)
+{
+	int		ret;
+	unsigned int	sts;
+
+	/* Reset DSP sticky bit */
+	regmap_write(cs35l41->regmap, CS35L41_IRQ2_STATUS2,
+		     1 << CS35L41_CSPL_MBOX_CMD_DRV_SHIFT);
+
+	/* Reset AP sticky bit */
+	regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS2,
+		     1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT);
+
+	/*
+	 * Set mailbox cmd
+	 */
+	reinit_completion(&cs35l41->mbox_cmd);
+	/* Unmask DSP INT */
+	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ2_MASK2,
+			   1 << CS35L41_CSPL_MBOX_CMD_DRV_SHIFT, 0);
+	/* Unmask AP INT */
+	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ1_MASK2,
+			   1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT, 0);
+	regmap_write(cs35l41->regmap, CS35L41_CSPL_MBOX_CMD_DRV, cmd);
+	ret = wait_for_completion_timeout(&cs35l41->mbox_cmd,
+					  usecs_to_jiffies(CS35L41_MBOXWAIT));
+	if (ret == 0) {
+		dev_err(cs35l41->dev,
+			"Timout waiting for DSP to set mbox cmd\n");
+		ret = -ETIMEDOUT;
+	}
+
+	/* Mask AP INT */
+	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ1_MASK2,
+			   1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT,
+			   1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT);
+	/* Mask DSP INT */
+	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ2_MASK2,
+			   1 << CS35L41_CSPL_MBOX_CMD_DRV_SHIFT,
+			   1 << CS35L41_CSPL_MBOX_CMD_DRV_SHIFT);
+
+	if (regmap_read(cs35l41->regmap,
+			CS35L41_CSPL_MBOX_STS, &sts) < 0) {
+		dev_err(cs35l41->dev, "Failed to read %u\n",
+			CS35L41_CSPL_MBOX_STS);
+		ret = -EACCES;
+	}
+
+	if (!cs35l41_is_csplmboxsts_correct(cmd, (enum cspl_mboxstate)sts)) {
+		dev_err(cs35l41->dev,
+			"Failed to set mailbox(cmd: %u, sts: %u)\n", cmd, sts);
+		ret = -ENOMSG;
+	}
+
+	return ret;
+}
+
 static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
-	unsigned int reg;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -629,11 +711,15 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 
 		usleep_range(1000, 1100);
 
-		regmap_read(cs35l41->regmap, CS35L41_IRQ1_RAW_STATUS3, &reg);
-		if (reg & CS35L41_PLL_UNLOCK)
-			dev_warn(cs35l41->dev, "PLL Unlocked\n");
+		if (cs35l41->halo_booted)
+			ret = cs35l41_set_csplmboxcmd(cs35l41,
+						      CSPL_MBOX_CMD_RESUME);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		if (cs35l41->halo_booted)
+			ret = cs35l41_set_csplmboxcmd(cs35l41,
+						      CSPL_MBOX_CMD_PAUSE);
+
 		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL1,
 				CS35L41_GLOBAL_EN_MASK, 0);
 
@@ -1684,6 +1770,8 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 
 	init_completion(&cs35l41->global_pdn_done);
 	init_completion(&cs35l41->global_pup_done);
+
+	init_completion(&cs35l41->mbox_cmd);
 
 	ret = devm_request_threaded_irq(cs35l41->dev, cs35l41->irq, NULL,
 				cs35l41_irq, IRQF_ONESHOT | irq_pol,
