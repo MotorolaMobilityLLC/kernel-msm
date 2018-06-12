@@ -57,6 +57,8 @@
 #define UDBG pr_default("DBG:%s:%s:%d\n", __FILE__, __func__, __LINE__)
 
 #define SDCARDFS_DIRENT_SIZE 256
+/*default reserved size 100MB*/
+#define LOWER_FS_MIN_FREE_SIZE  100
 
 /* temporary static uid settings for development */
 #define AID_ROOT             0	/* uid for accessing /mnt/sdcard & extSdcard */
