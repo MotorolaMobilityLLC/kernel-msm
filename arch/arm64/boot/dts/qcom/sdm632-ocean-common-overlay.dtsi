@@ -104,6 +104,20 @@
 	status = "disabled";
 };
 
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SB18C34004";
+	#include "qg-batterydata-jg30-atl-3000mah.dtsi"
+};
+
+&pmi632_qg {
+	qcom,battery-data = <&mtp_batterydata>;
+};
+
+&pmi632_charger {
+	qcom,battery-data = <&mtp_batterydata>;
+};
+
 &i2c_3 {
 	status = "ok";
 
