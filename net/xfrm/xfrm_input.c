@@ -251,6 +251,8 @@ int xfrm_input(struct sk_buff *skb, int nexthdr, __be32 spi, int encap_type)
 			goto drop;
 		}
 
+		skb->mark = xfrm_smark_get(skb->mark, x);
+
 		skb->sp->xvec[skb->sp->len++] = x;
 
 		if (xfrm_tunnel_check(skb, x, family)) {
