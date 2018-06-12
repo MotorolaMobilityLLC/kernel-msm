@@ -2481,7 +2481,6 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
 	flush_work(&tz->sensor.work);
 	tz->sensor.deregister_active = true;
 	complete(&tz->sensor.sysfs_notify_complete);
-	kthread_stop(tz->sensor.sysfs_notify_thread);
 	mutex_lock(&thermal_list_lock);
 	list_del_rcu(&tz->sensor.sensor_list);
 	mutex_unlock(&thermal_list_lock);
