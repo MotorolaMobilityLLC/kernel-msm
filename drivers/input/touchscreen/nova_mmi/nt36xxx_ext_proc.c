@@ -60,13 +60,13 @@ void nvt_change_mode(uint8_t mode)
 {
 	uint8_t buf[8] = {0};
 
-	//---set xdata index to EVENT BUF ADDR---
+	/*---set xdata index to EVENT BUF ADDR---*/
 	buf[0] = 0xFF;
 	buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
 	buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-	//---set mode---
+	/*---set mode---*/
 	buf[0] = EVENT_MAP_HOST_CMD;
 	buf[1] = mode;
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
@@ -90,18 +90,18 @@ uint8_t nvt_get_fw_pipe(void)
 {
 	uint8_t buf[8]= {0};
 
-	//---set xdata index to EVENT BUF ADDR---
+	/*---set xdata index to EVENT BUF ADDR---*/
 	buf[0] = 0xFF;
 	buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
 	buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-	//---read fw status---
+	/*---read fw status---*/
 	buf[0] = EVENT_MAP_HANDSHAKING_or_SUB_CMD_BYTE;
 	buf[1] = 0x00;
 	CTP_I2C_READ(ts->client, I2C_FW_Address, buf, 2);
 
-	//NVT_LOG("FW pipe=%d, buf[1]=0x%02X\n", (buf[1]&0x01), buf[1]);
+	/*NVT_LOG("FW pipe=%d, buf[1]=0x%02X\n", (buf[1]&0x01), buf[1]);*/
 
 	return (buf[1] & 0x01);
 }
@@ -192,84 +192,84 @@ void nvt_read_mdata(uint32_t xdata_addr, uint32_t xdata_btn_addr)
 	int32_t data_len = 0;
 	int32_t residual_len = 0;
 
-	//---set xdata sector address & length---
+	/*---set xdata sector address & length---*/
 	head_addr = xdata_addr - (xdata_addr % XDATA_SECTOR_SIZE);
 	dummy_len = xdata_addr - head_addr;
 	data_len = ts->x_num * ts->y_num * 2;
 	residual_len = (head_addr + dummy_len + data_len) % XDATA_SECTOR_SIZE;
 
-	//printk("head_addr=0x%05X, dummy_len=0x%05X, data_len=0x%05X, residual_len=0x%05X\n", head_addr, dummy_len, data_len, residual_len);
+	/*printk("head_addr=0x%05X, dummy_len=0x%05X, data_len=0x%05X, residual_len=0x%05X\n", head_addr, dummy_len, data_len, residual_len);*/
 
-	//read xdata : step 1
+	/*read xdata : step 1*/
 	for (i = 0; i < ((dummy_len + data_len) / XDATA_SECTOR_SIZE); i++) {
-		//---change xdata index---
+		/*---change xdata index---*/
 		buf[0] = 0xFF;
 		buf[1] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 16) & 0xFF;
 		buf[2] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 8) & 0xFF;
 		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-		//---read xdata by I2C_TANSFER_LENGTH
+		/*---read xdata by I2C_TANSFER_LENGTH*/
 		for (j = 0; j < (XDATA_SECTOR_SIZE / I2C_TANSFER_LENGTH); j++) {
-			//---read data---
+			/*---read data---*/
 			buf[0] = I2C_TANSFER_LENGTH * j;
 			CTP_I2C_READ(ts->client, I2C_FW_Address, buf, I2C_TANSFER_LENGTH + 1);
 
-			//---copy buf to xdata_tmp---
+			/*---copy buf to xdata_tmp---*/
 			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
 				xdata_tmp[XDATA_SECTOR_SIZE * i + I2C_TANSFER_LENGTH * j + k] = buf[k + 1];
-				//printk("0x%02X, 0x%04X\n", buf[k+1], (XDATA_SECTOR_SIZE*i + I2C_TANSFER_LENGTH*j + k));
+				/*printk("0x%02X, 0x%04X\n", buf[k+1], (XDATA_SECTOR_SIZE*i + I2C_TANSFER_LENGTH*j + k));*/
 			}
 		}
-		//printk("addr=0x%05X\n", (head_addr+XDATA_SECTOR_SIZE*i));
+		/*printk("addr=0x%05X\n", (head_addr+XDATA_SECTOR_SIZE*i));*/
 	}
 
-	//read xdata : step2
+	/*read xdata : step2*/
 	if (residual_len != 0) {
-		//---change xdata index---
+		/*---change xdata index---*/
 		buf[0] = 0xFF;
 		buf[1] = ((xdata_addr + data_len - residual_len) >> 16) & 0xFF;
 		buf[2] = ((xdata_addr + data_len - residual_len) >> 8) & 0xFF;
 		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-		//---read xdata by I2C_TANSFER_LENGTH
+		/*---read xdata by I2C_TANSFER_LENGTH*/
 		for (j = 0; j < (residual_len / I2C_TANSFER_LENGTH + 1); j++) {
-			//---read data---
+			/*---read data---*/
 			buf[0] = I2C_TANSFER_LENGTH * j;
 			CTP_I2C_READ(ts->client, I2C_FW_Address, buf, I2C_TANSFER_LENGTH + 1);
 
-			//---copy buf to xdata_tmp---
+			/*---copy buf to xdata_tmp---*/
 			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
 				xdata_tmp[(dummy_len + data_len - residual_len) + I2C_TANSFER_LENGTH * j + k] = buf[k + 1];
-				//printk("0x%02X, 0x%04x\n", buf[k+1], ((dummy_len+data_len-residual_len) + I2C_TANSFER_LENGTH*j + k));
+				/*printk("0x%02X, 0x%04x\n", buf[k+1], ((dummy_len+data_len-residual_len) + I2C_TANSFER_LENGTH*j + k));*/
 			}
 		}
-		//printk("addr=0x%05X\n", (xdata_addr+data_len-residual_len));
+		/*printk("addr=0x%05X\n", (xdata_addr+data_len-residual_len));*/
 	}
 
-	//---remove dummy data and 2bytes-to-1data---
+	/*---remove dummy data and 2bytes-to-1data---*/
 	for (i = 0; i < (data_len / 2); i++) {
 		xdata[i] = (int16_t)(xdata_tmp[dummy_len + i * 2] + 256 * xdata_tmp[dummy_len + i * 2 + 1]);
 	}
 
 #if TOUCH_KEY_NUM > 0
-	//read button xdata : step3
-	//---change xdata index---
+	/*read button xdata : step3*/
+	/*---change xdata index---*/
 	buf[0] = 0xFF;
 	buf[1] = (xdata_btn_addr >> 16) & 0xFF;
 	buf[2] = ((xdata_btn_addr >> 8) & 0xFF);
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-	//---read data---
+	/*---read data---*/
 	buf[0] = (xdata_btn_addr & 0xFF);
 	CTP_I2C_READ(ts->client, I2C_FW_Address, buf, (TOUCH_KEY_NUM * 2 + 1));
 
-	//---2bytes-to-1data---
+	/*---2bytes-to-1data---*/
 	for (i = 0; i < TOUCH_KEY_NUM; i++) {
 		xdata[ts->x_num * ts->y_num + i] = (int16_t)(buf[1 + i * 2] + 256 * buf[1 + i * 2 + 1]);
 	}
 #endif
 
-	//---set xdata index to EVENT BUF ADDR---
+	/*---set xdata index to EVENT BUF ADDR---*/
 	buf[0] = 0xFF;
 	buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
 	buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
