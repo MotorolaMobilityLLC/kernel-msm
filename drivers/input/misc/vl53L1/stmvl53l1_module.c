@@ -4183,6 +4183,30 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 		cali_data.customer.algo__crosstalk_compensation_y_plane_gradient_kcps
 			= data->xtalk_y;
 
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_PRM_00019    = 0 ;
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_PRM_00020    = 24;
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_PRM_00021    = 12;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[0]    = 353;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[1]    = 472;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[2]    = 472;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[3]    = 353;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[4]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[5]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[6]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[7]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[8]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[9]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[10]   = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[11]   = 0;
+		cali_data.xtalkhisto.xtalk_shape.phasecal_result__reference_phase = 10240;
+		cali_data.xtalkhisto.xtalk_shape.phasecal_result__vcsel_start     = 6;
+		cali_data.xtalkhisto.xtalk_shape.cal_config__vcsel_start          = 9;
+		cali_data.xtalkhisto.xtalk_shape.vcsel_width                      = 40;
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_PRM_00022                 = 48332;
+		cali_data.xtalkhisto.xtalk_shape.zero_distance_phase              = 4096;
+		cali_data.gain_cal.standard_ranging_gain_factor = 0x07D7;
+		cali_data.gain_cal.histogram_ranging_gain_factor = 0x07CC;
+
 		rc = VL53L1_SetCalibrationData(&data->stdev, &cali_data);
 		if (rc)
 			vl53l1_errmsg("VL53L1_SetCalibrationData fail\n");
