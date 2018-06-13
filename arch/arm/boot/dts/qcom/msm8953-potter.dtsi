@@ -420,6 +420,7 @@
 		qcom,msm-hs-micbias-type = "external";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
+			"SPK_RX_BIAS", "MCLK",
 			"INT_LDO_H", "MCLK",
 			"MIC BIAS External", "Handset Mic",
 			"MIC BIAS External2", "Headset Mic",
