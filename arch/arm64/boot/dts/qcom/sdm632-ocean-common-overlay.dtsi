@@ -111,10 +111,22 @@
 };
 
 &pmi632_qg {
+	qcom,qg-iterm-ma = <250>;
+	qcom,vbatt-cutoff-mv = <3200>;
+	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-low-mv = <3300>;
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
 &pmi632_charger {
+	qcom,iterm-ma = <98>;
+	qcom,fcc-max-ua = <3000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,mmi-temp-zones = <0 4200 1000 0>,
+				<15 0 1000 1000>,
+				<45 0 3000 3000>,
+				<60 4200 2500 0>;
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
