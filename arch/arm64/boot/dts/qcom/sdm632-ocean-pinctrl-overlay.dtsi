@@ -198,4 +198,15 @@
 			bias-pull-up; /* pull up */
 		};
 	};
+
+	tps61280_en_default: tps61280_en_default {
+		mux {
+			pins = "gpio132";
+		};
+		config {
+			pins = "gpio132";
+			drive_strength = <16>;
+			output-high;
+		};
+	};
 };
