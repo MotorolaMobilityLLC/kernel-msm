@@ -202,14 +202,28 @@
 };
 
 &tlmm {
-	inductive_keys_irq { /* TI,LDC2114 */
-		inductive_keys_default: default {
+	ldc2112_irq { /* TI,LDC2112 */
+		ldc2112_default: default {
 			mux {
 				pins = "gpio116";
 				function = "gpio";
 			};
 			config {
 				pins = "gpio116";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
+
+	ldc2114_irq { /* TI,LDC2114 */
+		ldc2114_default: default {
+			mux {
+				pins = "gpio3";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio3";
 				drive-strength = <2>;
 				bias-pull-up;
 			};
@@ -273,7 +287,7 @@
 		interrupts = <116 0>;
 		gpios = <&tlmm 13 0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&inductive_keys_default>;
+		pinctrl-0 = <&ldc2112_default>;
 	};
 
 	aw869x_haptic@5a {
@@ -398,4 +412,15 @@
 
 &qupv3_se10_i2c { /* FIXME: CapSence, Womack, FLIP FuelGauge, InductiveKeys, Laser, LS Fan */
 	status = "disabled";
+
+	ldc2114@2a {
+		status = "disabled";
+		compatible = "ti,ldc2114";
+		reg = <0x2a>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <3 0>;
+		gpios = <&tlmm 16 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&ldc2114_default>;
+	};
 };
