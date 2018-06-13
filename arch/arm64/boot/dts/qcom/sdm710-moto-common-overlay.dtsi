@@ -19,6 +19,7 @@
 #include <dt-bindings/clock/qcom,rpmh.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include "sdm670-pmic-overlay.dtsi"
+#include "sdm670-lpi.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 /*
@@ -214,6 +215,52 @@
 			};
 		};
 	};
+
+	haptic_int {
+		haptic_int_default: haptic_int_default {
+			mux {
+				pins = "gpio39";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio39";
+				drive-strength = <2>; /* 2 mA */
+				bias-disable;
+			};
+		};
+	};
+};
+
+
+&lpi_tlmm {
+	haptic_reset {
+		haptic_rst_default: haptic_rst_default {
+			mux {
+				pins = "gpio29";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio29";
+				drive-strength = <2>; /* 2 mA */
+				output-low;
+			};
+		};
+
+		haptic_rst_active: haptic_rst_active {
+			mux {
+				pins = "gpio29";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio29";
+				drive-strength = <2>; /* 2 mA */
+				output-high;
+			};
+		};
+	};
 };
 
 &qupv3_se4_i2c { /* FIXME: LP4 Fan, Main Board FuelGauge, Base InductiveKeys, HapticDriver */
@@ -227,6 +274,18 @@
 		gpios = <&tlmm 13 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&inductive_keys_default>;
+	};
+
+	aw869x_haptic@5a {
+		status = "disabled";
+		compatible = "awinic,aw869x_haptic";
+		reg = <0x5a>;
+		reset-gpio = <&lpi_tlmm 29 0>;
+		irq-gpio = <&tlmm 39 0>;
+		pinctrl-names = "aw869x_rst0", "aw869x_rst1", "aw869x_eint";
+		pinctrl-0 = <&haptic_rst_default>;
+		pinctrl-1 = <&haptic_rst_active>;
+		pinctrl-2 = <&haptic_int_default>;
 	};
 };
 
