@@ -583,41 +583,45 @@ int etspi_platformInit(struct etspi_data *etspi)
 	DEBUG_PRINT("%s\n", __func__);
 
 	if (etspi != NULL) {
-		/* initial 18V power pin */
-		status = gpio_request(etspi->vdd_18v_Pin, "18v-gpio");
-		if (status < 0) {
-			pr_err("%s gpio_requset vdd_18v_Pin failed\n",
-				__func__);
-			goto etspi_platformInit_rst_failed;
-		}
-		gpio_direction_output(etspi->vdd_18v_Pin, 1);
-		if (status < 0) {
-			pr_err("%s gpio_direction_output vdd_18v_Pin failed\n",
+		if (gpio_is_valid(etspi->vdd_18v_Pin)) {
+			/* initial 18V power pin */
+			status = gpio_request(etspi->vdd_18v_Pin, "18v-gpio");
+			if (status < 0) {
+				pr_err("%s gpio_requset vdd_18v_Pin failed\n",
 					__func__);
-			status = -EBUSY;
-			goto etspi_platformInit_rst_failed;
-		}
+				goto etspi_platformInit_rst_failed;
+			}
+			gpio_direction_output(etspi->vdd_18v_Pin, 1);
+			if (status < 0) {
+				pr_err("%s gpio_direction_output vdd_18v_Pin failed\n",
+						__func__);
+				status = -EBUSY;
+				goto etspi_platformInit_rst_failed;
+			}
 
-		gpio_set_value(etspi->vdd_18v_Pin, 1);
-		pr_err("etspi:  vdd_18v_Pin set to high\n");
-		mdelay(1);
-		/* initial 33V power pin */
-		status = gpio_request(etspi->vcc_33v_Pin, "33v-gpio");
-		if (status < 0) {
-			pr_err("%s gpio_requset vcc_33v_Pin failed\n",
-				__func__);
-			goto etspi_platformInit_rst_failed;
+			gpio_set_value(etspi->vdd_18v_Pin, 1);
+			pr_err("etspi:  vdd_18v_Pin set to high\n");
+			mdelay(1);
 		}
-		gpio_direction_output(etspi->vcc_33v_Pin, 1);
-		if (status < 0) {
-			pr_err("%s gpio_direction_output vcc_33v_Pin failed\n",
+		if (gpio_is_valid(etspi->vcc_33v_Pin)) {
+			/* initial 33V power pin */
+			status = gpio_request(etspi->vcc_33v_Pin, "33v-gpio");
+			if (status < 0) {
+				pr_err("%s gpio_requset vcc_33v_Pin failed\n",
 					__func__);
-			status = -EBUSY;
-			goto etspi_platformInit_rst_failed;
+				goto etspi_platformInit_rst_failed;
+			}
+			gpio_direction_output(etspi->vcc_33v_Pin, 1);
+			if (status < 0) {
+				pr_err("%s gpio_direction_output vcc_33v_Pin failed\n",
+						__func__);
+				status = -EBUSY;
+				goto etspi_platformInit_rst_failed;
+			}
+			gpio_set_value(etspi->vcc_33v_Pin, 1);
+			pr_err("etspi:  vcc_33v_Pin set to high\n");
+			mdelay(2);
 		}
-		gpio_set_value(etspi->vcc_33v_Pin, 1);
-		pr_err("etspi:  vcc_33v_Pin set to high\n");
-		mdelay(2);
 		/* Initial Reset Pin*/
 		status = gpio_request(etspi->rstPin, "reset-gpio");
 		if (status < 0) {
@@ -655,8 +659,10 @@ int etspi_platformInit(struct etspi_data *etspi)
 
 etspi_platformInit_gpio_init_failed:
 	gpio_free(etspi->irqPin);
-	gpio_free(etspi->vcc_33v_Pin);
-	gpio_free(etspi->vdd_18v_Pin);
+	if (gpio_is_valid(etspi->vcc_33v_Pin))
+		gpio_free(etspi->vcc_33v_Pin);
+	if (gpio_is_valid(etspi->vdd_18v_Pin))
+		gpio_free(etspi->vdd_18v_Pin);
 etspi_platformInit_irq_failed:
 	gpio_free(etspi->rstPin);
 etspi_platformInit_rst_failed:
@@ -690,16 +696,16 @@ static int etspi_parse_dt(struct device *dev,
 
 	gpio = of_get_named_gpio(np, "egistec,gpio_ldo3p3_en", 0);
 	if (gpio < 0) {
-		errorno = gpio;
-		goto dt_exit;
+		data->vcc_33v_Pin = ARCH_NR_GPIOS;
+		pr_warn("%s: 3.3v power pin is not used\n", __func__);
 	} else {
 		data->vcc_33v_Pin = gpio;
 		pr_info("%s: 3.3v power pin=%d\n", __func__, data->vcc_33v_Pin);
 	}
 	gpio = of_get_named_gpio(np, "egistec,gpio_ldo1p8_en", 0);
 	if (gpio < 0) {
-		errorno = gpio;
-		goto dt_exit;
+		data->vdd_18v_Pin = ARCH_NR_GPIOS;
+		pr_warn("%s: 1.8v power pin is not used\n", __func__);
 	} else {
 		data->vdd_18v_Pin = gpio;
 		pr_info("%s: 18v power pin=%d\n", __func__, data->vdd_18v_Pin);
