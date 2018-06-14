@@ -546,10 +546,10 @@ EXPORT_SYMBOL(usb_diag_alloc_req);
  */
 int usb_diag_request_size(struct usb_diag_ch *ch)
 {
-	struct diag_context *ctxt = ch->priv_usb;
-	struct usb_composite_dev *cdev = ctxt->cdev;
+	struct diag_context *ctxt = ch ? ch->priv_usb : NULL;
+	struct usb_composite_dev *cdev = ctxt ? ctxt->cdev : NULL;
 
-	if (cdev->gadget->is_chipidea)
+	if (cdev && cdev->gadget && cdev->gadget->is_chipidea)
 		return CI_MAX_REQUEST_SIZE;
 
 	return DWC3_MAX_REQUEST_SIZE;
