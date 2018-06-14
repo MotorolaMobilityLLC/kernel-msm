@@ -502,14 +502,26 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 	seq_printf(s, " %s", pulls[pull]);
 }
 
+static int msm_gpio_in_tz(unsigned i)
+{
+	/* FPS QUP */
+	if(i == 81 || i == 82 || i == 83 || i == 84)
+		return 1;
+	return 0;
+}
+
 static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 {
 	unsigned gpio = chip->base;
 	unsigned i;
 
 	for (i = 0; i < chip->ngpio; i++, gpio++) {
-		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
-		seq_puts(s, "\n");
+		if(msm_gpio_in_tz(i))
+				seq_printf(s, "gpio%d : protected by TZ\n", i);
+		else {
+			msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
+			seq_puts(s, "\n");
+		}
 	}
 }
 
