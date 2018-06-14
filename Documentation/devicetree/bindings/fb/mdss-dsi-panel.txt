@@ -578,6 +578,7 @@ Optional properites:
 					Each child represents timings settings for a specific resolution.
 - qcom,mdss-dsi-post-init-delay:        Specifies required number of frames to wait so that panel can be functional
 					to show proper display.
+- qcom,mdss-panel-reg-read-lp-enable:	Use dsi_lp_mode when read reg.
 - qcom,mdss-dsi-panel-reply-long-response: A boolean value to enable/disable long packet response of short read for
 					the panel. Short read means 1byte and 2bytes read.
 
