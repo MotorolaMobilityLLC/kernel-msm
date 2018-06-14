@@ -3400,6 +3400,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	pinfo->mipi.lp11_init = of_property_read_bool(np,
 					"qcom,mdss-dsi-lp11-init");
+
+	pinfo->panel_reg_read_lp_enable = of_property_read_bool(np,
+					"qcom,mdss-panel-reg-read-lp-enable");
+
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-init-delay-us", &tmp);
 	pinfo->mipi.init_delay = (!rc ? tmp : 0);
 
@@ -3517,13 +3521,14 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 							__func__);
 			return -EINVAL;
 		}
-	}
+	} else
+		return -EINVAL;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_read_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
-	if (hs_mode)
+	if (!pinfo->panel_reg_read_lp_enable && hs_mode)
 		cmdreq.flags |= CMD_REQ_HS_MODE;
 	cmdreq.rlen = size;
 	cmdreq.cb = NULL; /* call back */
