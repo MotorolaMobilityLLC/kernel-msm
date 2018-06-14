@@ -238,7 +238,7 @@
 			};
 
 			config {
-				pins = "gpio29";
+				pins = "gpio39";
 				drive-strength = <2>; /* 2 mA */
 				bias-disable;
 			};
