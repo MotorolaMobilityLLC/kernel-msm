@@ -210,3 +210,29 @@
 		};
 	};
 };
+
+
+&pri_tlmm_lines_act {
+	mux {
+		pins = "gpio88", "gpio91", "gpio93";
+		function = "pri_mi2s";
+	};
+
+	config {
+		pins = "gpio88", "gpio91", "gpio93";
+		drive-strength = <8>;
+	};
+};
+
+&pri_tlmm_lines_sus {
+	mux {
+		pins = "gpio88", "gpio91", "gpio93";
+		function = "pri_mi2s";
+	};
+
+	config {
+		pins = "gpio88", "gpio91", "gpio93";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+};
