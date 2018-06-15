@@ -303,6 +303,19 @@
 		reg_array_len = <5>;
 		reg_array_val = <0x36 0x1b 0x37 0x1b 0x4a 0x66 0x4b 0x00 0x4c 0x00>;
 	};
+	tfa987x:tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x34>;
+		nxp,reset-gpio = <&tlmm 94 0>;
+		nxp,irq-gpio = <&tlmm 63 0>;
+		status = "disabled";
+	};
+};
+&dai_mi2s4 {
+	compatible = "qcom,msm-dai-q6-mi2s";
+	qcom,msm-dai-q6-mi2s-dev-id = <4>;
+	qcom,msm-mi2s-rx-lines = <2>;
+	qcom,msm-mi2s-tx-lines = <1>;
 };
 
 &soc {
@@ -319,7 +332,7 @@
 	sound {
 		status = "okay";
 		compatible = "qcom,msm8952-audio-codec";
-		qcom,model = "msm8953-snd-card";
+		qcom,model = "msm8953_snd_card";
 		reg = <0xc051000 0x4>,
 			<0xc051004 0x4>,
 			<0xc055000 0x4>,

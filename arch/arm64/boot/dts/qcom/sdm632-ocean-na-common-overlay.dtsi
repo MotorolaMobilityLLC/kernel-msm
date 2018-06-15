@@ -24,3 +24,15 @@
 		pinctrl-0 = <&tps61280_en_default>;
 	};
 };
+
+&soc {
+	sound {
+		qcom,model = "msm8953_snd_card-tfa987x";
+		qcom,msm-ext-pa = "quinary";
+		nxp,have-tfa987x;
+	};
+};
+
+&tfa987x {
+        status = "ok";
+};
