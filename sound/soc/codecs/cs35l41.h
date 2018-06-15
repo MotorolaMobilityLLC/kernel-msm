@@ -741,16 +741,20 @@ extern const struct cs35l41_otp_map_element_t
 #define CS35L41_CSPL_MBOX_CMD_DRV		CS35L41_DSP_VIRT1_MBOX_1
 #define CS35L41_CSPL_MBOX_CMD_DRV_SHIFT		CS35L41_DSP_VIRT1_MBOX_SHIFT
 
-enum cspl_mboxstate {
+enum cs35l41_cspl_mboxstate {
 	CSPL_MBOX_STS_RUNNING = 0,
 	CSPL_MBOX_STS_PAUSED = 1,
+	CSPL_MBOX_STS_RDY_FOR_REINIT = 2,
 };
 
-enum cspl_mboxcmd {
+enum cs35l41_cspl_mboxcmd {
 	CSPL_MBOX_CMD_NONE = 0,
 	CSPL_MBOX_CMD_PAUSE = 1,
 	CSPL_MBOX_CMD_RESUME = 2,
+	CSPL_MBOX_CMD_REINIT = 3,
+	CSPL_MBOX_CMD_STOP_PRE_REINIT = 4,
 	CSPL_MBOX_CMD_UNKNOWN_CMD = -1,
+	CSPL_MBOX_CMD_INVALID_SEQUENCE = -2,
 };
 
 #endif /*__CS35L41_H__*/
