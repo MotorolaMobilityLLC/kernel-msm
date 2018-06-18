@@ -746,6 +746,30 @@
 	status = "disabled";
 };
 
+&vendor {
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <1000>;
+		#include "fg-gen3-batterydata-itech-3000mah.dtsi"
+	};
+};
+
+&pm660_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-cutoff-voltage = <3200>;
+	qcom,fg-empty-voltage = <3000>;
+};
+
+&pm660_charger {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,sw-jeita-enable;
+	qcom,fcc-max-ua = <1500000>;
+	qcom,fv-max-uv = <4200000>;
+	qcom,usb-icl-ua = <1500000>;
+	qcom,hvdcp-disable;
+	qcom,float-option = <1>;
+	qcom,auto-recharge-soc = <99>;
+};
+
 &pm660_0 {
 	pm660_mmi: qcom,qpnp-smb2-mmi {
 		compatible = "qcom,qpnp-smbcharger-mmi";
