@@ -107,6 +107,8 @@
 			<3>;
 	};
 
+	/delete-node/ qcom,qbt1000;
+
 	qcom,msm-thermal {
 		qcom,config-info = "payton";
 	};
