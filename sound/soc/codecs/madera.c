@@ -591,7 +591,6 @@ int madera_core_init(struct madera_priv *priv)
 
 	mutex_init(&priv->adsp_rate_lock);
 	mutex_init(&priv->rate_lock);
-	mutex_init(&priv->adsp_fw_lock);
 
 	return 0;
 }
@@ -601,7 +600,6 @@ int madera_core_destroy(struct madera_priv *priv)
 {
 	mutex_destroy(&priv->adsp_rate_lock);
 	mutex_destroy(&priv->rate_lock);
-	mutex_destroy(&priv->adsp_fw_lock);
 
 	return 0;
 }
