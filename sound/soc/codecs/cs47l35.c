@@ -2012,8 +2012,7 @@ static int cs47l35_probe(struct platform_device *pdev)
 		cs47l35->core.adsp[i].num_mems
 			= ARRAY_SIZE(cs47l35_dsp1_regions);
 
-		ret = wm_adsp2_init(&cs47l35->core.adsp[i],
-				    &cs47l35->core.adsp_fw_lock);
+		ret = wm_adsp2_init(&cs47l35->core.adsp[i]);
 		if (ret != 0) {
 			for (--i; i >= 0; --i)
 				wm_adsp2_remove(&cs47l35->core.adsp[i]);
