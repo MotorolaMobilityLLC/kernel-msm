@@ -2027,9 +2027,7 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.wmfw", dsp->part,
 			 dsp->num, dsp->firmwares[dsp->fw].file);
 	file[PAGE_SIZE - 1] = '\0';
-	mutex_lock(dsp->fw_lock);
 	ret = request_firmware(&firmware, file, dsp->dev);
-	mutex_unlock(dsp->fw_lock);
 	if (ret != 0) {
 		adsp_err(dsp, "Failed to request '%s'\n", file);
 		goto out;
@@ -4013,7 +4011,7 @@ static inline int wm_adsp_of_parse_adsp(struct wm_adsp *dsp)
 }
 #endif
 
-int wm_adsp2_init(struct wm_adsp *dsp, struct mutex *fw_lock)
+int wm_adsp2_init(struct wm_adsp *dsp)
 {
 	int ret;
 
@@ -4040,7 +4038,6 @@ int wm_adsp2_init(struct wm_adsp *dsp, struct mutex *fw_lock)
 	INIT_WORK(&dsp->boot_work, wm_adsp2_boot_work);
 
 	mutex_init(&dsp->pwr_lock);
-	dsp->fw_lock = fw_lock;
 
 	if (!dsp->dev->of_node || wm_adsp_of_parse_adsp(dsp) <= 0) {
 		dsp->fw_enum = wm_adsp_fw_enum[dsp->num - 1];
