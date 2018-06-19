@@ -2974,8 +2974,7 @@ static int cs47l90_probe(struct platform_device *pdev)
 
 		cs47l90->core.adsp[i].lock_regions = WM_ADSP2_REGION_1_9;
 
-		ret = wm_adsp2_init(&cs47l90->core.adsp[i],
-				    &cs47l90->core.adsp_fw_lock);
+		ret = wm_adsp2_init(&cs47l90->core.adsp[i]);
 		if (ret != 0) {
 			for (--i; i >= 0; --i)
 				wm_adsp2_remove(&cs47l90->core.adsp[i]);
