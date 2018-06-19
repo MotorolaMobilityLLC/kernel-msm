@@ -19,7 +19,6 @@
 #include <dt-bindings/clock/qcom,rpmh.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include "sdm670-pmic-overlay.dtsi"
-#include "sdm670-lpi.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm710-moto-audio-overlay.dtsi"
 
@@ -126,20 +125,6 @@
 
 &qupv3_se0_i2c { /* FIXME: Main Proximity, Magnetometer, Barometer, Cirrus Codec */
 	status = "disabled";
-};
-
-&lpi_tlmm {
-	lpi_hap_rst_n: lpi_hap_rst_n{
-		mux {
-			pins = "gpio29";
-			function = "gpio";
-		};
-		config {
-			pins = "gpio29";
-			drive-strength = <2>;
-			output-low;
-		};
-	};
 };
 
 &tlmm {
@@ -387,7 +372,7 @@
 		compatible = "cirrus,cs40l20";
 		reg = <0x41>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&lpi_hap_rst_n &cs40l20_irq_default>;
+		pinctrl-0 = <&haptic_rst_default &cs40l20_irq_default>;
 		reset-gpios = <&lpi_tlmm 29 0>;
 		irq-gpios = <&tlmm 39 0>;
 		interrupt-parent = <&tlmm>;
