@@ -215,6 +215,7 @@ static int parse_audio_format_rates_v1(struct snd_usb_audio *chip, struct audiof
 		fp->rate_min = fp->rate_max = 0;
 		for (r = 0, idx = offset + 1; r < nr_rates; r++, idx += 3) {
 			unsigned int rate = combine_triple(&fmt[idx]);
+			bool isHires = false;
 			if (!rate)
 				continue;
 			/* C-Media CM6501 mislabels its 96 kHz altsetting */
@@ -230,9 +231,11 @@ static int parse_audio_format_rates_v1(struct snd_usb_audio *chip, struct audiof
 			    (chip->usb_id == USB_ID(0x041e, 0x4064) ||
 			     chip->usb_id == USB_ID(0x041e, 0x4068)))
 				rate = 8000;
-			/* MX30 using capture max samplerate */
+			/* MX30/BestAudio using capture max samplerate */
 			/* when the capture samplerate diffrent with playback */
-			if ((chip->usb_id == USB_ID(0x22B8, 0x5830)) &&
+			isHires = (chip->usb_id == USB_ID(0x22B8, 0x5830) ||
+				chip->usb_id == USB_ID(0xBE57, 0x020F));
+			if (isHires &&
 				(fp->iface == 2) && chip->capture_rate_max &&
 				(chip->capture_rate_max < rate)) {
 				continue;
@@ -242,7 +245,7 @@ static int parse_audio_format_rates_v1(struct snd_usb_audio *chip, struct audiof
 				fp->rate_min = rate;
 			if (!fp->rate_max || rate > fp->rate_max)
 				fp->rate_max = rate;
-			if ((chip->usb_id == USB_ID(0x22B8, 0x5830)) &&
+			if (isHires &&
 				fp->rate_max && (fp->iface == 1)) {
 				chip->capture_rate_max = fp->rate_max;
 			}
