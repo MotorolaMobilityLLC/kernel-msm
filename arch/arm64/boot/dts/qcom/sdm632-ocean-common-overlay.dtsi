@@ -136,6 +136,9 @@
 				<45 0 3000 3000>,
 				<60 4200 2500 0>;
 	qcom,battery-data = <&mtp_batterydata>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 &i2c_3 {
