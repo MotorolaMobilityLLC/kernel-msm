@@ -2575,6 +2575,9 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 {
 	int rc = 0;
 
+	if (chg->mmi.factory_mode)
+		return 0;
+
 	chg->pd_active = val->intval;
 
 	if (chg->pd_active) {
@@ -4884,7 +4887,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	switch (mmi->pres_chrg_step) {
 	case STEP_FLOAT:
 	case STEP_MAX:
-		target_fv = zone->norm_mv;
+		if (!zone->norm_mv)
+			target_fv = max_fv_mv;
+		else
+			target_fv = zone->norm_mv;
 		target_fcc = zone->fcc_max_ma;
 		target_usb = cl_usb;
 		break;
@@ -4985,7 +4991,7 @@ static int smbchg_reboot(struct notifier_block *nb,
 			/* Disable Charging */
 			smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
 					    CHARGING_ENABLE_CMD_BIT,
-					    CHARGING_ENABLE_CMD_BIT);
+					    0);
 
 			/* Suspend USB and DC */
 			smblib_set_usb_suspend(chg, true);
@@ -5163,10 +5169,10 @@ static ssize_t force_chg_auto_enable_store(struct device *dev,
 
 	r = smblib_masked_write(mmi_chip, CHARGING_ENABLE_CMD_REG,
 				CHARGING_ENABLE_CMD_BIT,
-				mode ? 0 : CHARGING_ENABLE_CMD_BIT);
+				mode ? CHARGING_ENABLE_CMD_BIT : 0);
 	if (r < 0) {
 		smblib_err(mmi_chip, "Factory Couldn't %s charging rc=%d\n",
-		       mode ? "disable" : "enable", (int)r);
+		       mode ? "enable" : "disable", (int)r);
 		return r;
 	}
 
@@ -5194,7 +5200,7 @@ static ssize_t force_chg_auto_enable_show(struct device *dev,
 		goto end;
 	}
 
-	state = (CHARGING_ENABLE_CMD_BIT & value) ? 0 : 1;
+	state = (CHARGING_ENABLE_CMD_BIT & value) ? 1 : 0;
 end:
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
