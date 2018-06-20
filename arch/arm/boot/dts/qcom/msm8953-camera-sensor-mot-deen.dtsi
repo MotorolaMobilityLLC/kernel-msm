@@ -53,7 +53,6 @@
 	eeprom0: qcom,eeprom@0 {
 		cell-index = <0>;
 		compatible = "qcom,eeprom";
-		qcom,eeprom-name = "ov13855_truly";
 		qcom,slave-addr = <0xa0>;
 		qcom,cci-master = <0>;
 		reg = <0x0>;
@@ -105,7 +104,6 @@
 	eeprom1: qcom,eeprom@1 {
 		cell-index = <1>;
 		compatible = "qcom,eeprom";
-		qcom,eeprom-name = "gc2375h";
 		qcom,slave-addr = <0xa0>;
 		qcom,cci-master = <0>;
 		reg = <0x1>;
@@ -160,7 +158,6 @@
 		cell-index = <2>;
 		reg = <0x2>;
 		compatible = "qcom,eeprom";
-		qcom,eeprom-name = "s5k4h7_ofilm";
 		qcom,slave-addr = <0x20>;
 		qcom,cci-master = <1>;
 		qcom,num-blocks = <36>;
