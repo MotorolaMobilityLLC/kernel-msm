@@ -96,6 +96,9 @@
 				<15 0 1460 1460>,
 				<45 4250 3000 2000>,
 				<60 4200 1460 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 &pmx_mdss {
