@@ -1057,6 +1057,9 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 	union power_supply_propval pval = {0, };
 	int rc = 0;
 
+	if (chg->mmi.factory_mode)
+		return rc;
+
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		rc = smblib_set_charge_param(chg, &chg->param.fv, val->intval);
