@@ -70,6 +70,27 @@
 	};
 };
 
+&soc {
+	et320: et320{
+		compatible = "egistec,et516";
+		status = "okay";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <48 0x0>;
+		egistec,gpio_irq    = <&tlmm 48 0x1>;
+		egistec,gpio_rst    = <&tlmm 8 0x2>;
+		egistec,gpio_ldo3p3_en = <&tlmm 39 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&fps_rst_active &fps_int_active &fps_ldo3_en_active>;
+		pinctrl-1 = <&fps_rst_suspend &fps_int_suspend &fps_ldo3_en_suspend>;
+	};
+};
+
+&pm8953_l5 {
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+};
+
 &pmi632_rgb {
 	red {
 		label = "charging";
