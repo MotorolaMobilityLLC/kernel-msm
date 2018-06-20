@@ -833,9 +833,9 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 
 	/* reconfigure allowed voltage for HVDCP */
 	rc = smblib_set_adapter_allowance(chg,
-			USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V);
+			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 	if (rc < 0)
-		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V rc=%d\n",
+		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_TO_9V rc=%d\n",
 			rc);
 
 	/* reset USBOV votes and cancel work */
@@ -843,8 +843,10 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 	vote(chg->awake_votable, USBOV_DBC_VOTER, false, 0);
 	chg->dbc_usbov = false;
 
+#ifdef QCOM_BASE
 	chg->voltage_min_uv = MICRO_5V;
 	chg->voltage_max_uv = MICRO_5V;
+#endif
 	chg->usb_icl_delta_ua = 0;
 	chg->pulse_cnt = 0;
 	chg->uusb_apsd_rerun_done = false;
@@ -5870,6 +5872,8 @@ void mmi_init(struct smb_charger *chg)
 			   "IPC logging is enabled for charger\n");
 
 	mmi_chip = chg;
+	chg->voltage_min_uv = MICRO_5V;
+	chg->voltage_max_uv = MICRO_9V;
 	chg->mmi.factory_mode = mmi_factory_check();
 	chg->mmi.is_factory_image = false;
 	chg->mmi.charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
