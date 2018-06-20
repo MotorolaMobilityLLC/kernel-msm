@@ -329,7 +329,7 @@ enum charging_limit_modes {
 
 struct mmi_params {
 	bool			factory_mode;
-	bool			demo_mode;
+	int			demo_mode;
 	struct notifier_block	smb_reboot;
 	/* thermal mitigation */
 	int			usb_system_temp_level;
