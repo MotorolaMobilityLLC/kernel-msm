@@ -321,6 +321,12 @@ enum mmi_chrg_step {
 	STEP_NONE = 0xFF,
 };
 
+enum charging_limit_modes {
+	CHARGING_LIMIT_OFF,
+	CHARGING_LIMIT_RUN,
+	CHARGING_LIMIT_UNKNOWN,
+};
+
 struct mmi_params {
 	bool			factory_mode;
 	bool			demo_mode;
@@ -348,6 +354,11 @@ struct mmi_params {
 	int			charger_rate;
 	bool			hvdcp3_con;
 	bool			init_done;
+	bool			enable_charging_limit;
+	bool			is_factory_image;
+	enum charging_limit_modes	charging_limit_modes;
+	int			upper_limit_capacity;
+	int			lower_limit_capacity;
 };
 
 struct smb_charger {
