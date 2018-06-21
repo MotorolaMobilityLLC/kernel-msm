@@ -16,7 +16,7 @@
  */
 #ifdef CONFIG_TAS2560_REGMAP
 
-#define DEBUG
+/* #define DEBUG */
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/err.h>
