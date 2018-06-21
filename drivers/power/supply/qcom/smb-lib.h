@@ -87,6 +87,7 @@ enum print_reason {
 #define WIRELESS_VOTER			"WIRELESS_VOTER"
 #define DEMO_VOTER			"DEMO_VOTER"
 #define OTG_VOTER			"OTG_VOTER"
+#define MMI_VOTER			"MMI_VOTER"
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
