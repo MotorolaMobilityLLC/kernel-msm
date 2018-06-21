@@ -4930,9 +4930,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else if (chip->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
 		charger_present = 1;
 		mmi->charger_debounce_cnt = 0;
-	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE)
+	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE) {
 		mmi->charger_debounce_cnt++;
-	else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
+		/* Set the USB CL to 500 only if pd is not active to avoid
+		 * PD Compliance issues */
+		if (!chip->pd_active)
+			cl_usb = 500;
+	} else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
 		charger_present = 1;
 
 	rc = smblib_get_prop_batt_voltage_now(chip, &val);
