@@ -152,6 +152,25 @@
 	usb_nop_phy: usb_nop_phy {
 		compatible = "usb-nop-xceiv";
 	};
+
+	mmi_pl_chg_manager {
+		compatible = "mmi,pl-chg-manager";
+		mmi,pmic-curr-lp-lmt = <300000>;
+		mmi,flashc-volt-hysteresis = <500000>;
+		mmi,flashc-volt-up-steps = <100000>;
+		mmi,flashc-curr-up-steps = <100000>;
+		mmi,flashc-volt-down-steps = <100000>;
+		mmi,flashc-curr-down-steps = <50000>;
+		mmi,flashc-min-vbat-start = <3600000>;
+		flashc-name = "bq2597x";
+		qcom,usbpd-phandle = <&pm660_pdphy>;
+		mmi,mmi-pl-temp-zones =
+					<0 4200 582 0 0 0 0>,
+					<10 4200 2000 4400 582 0 0>,
+					<15 4200 4000 4400 2000 0 0>,
+					<45 4200 5500 4350 4000 4400 2000>,
+					<60 4200 4000 0 0 0 0>;
+	};
 };
 
 &usb3 {
@@ -202,6 +221,68 @@
 		status = "disabled";
 };
 
+&tlmm {
+	bq_int_default: bq_int_default {
+		mux {
+			pins = "gpio50";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio50";
+			drive-strength = <2>;
+			input-enable;
+		};
+	};
+};
+
+&i2c_2 {
+	status = "okay";
+	bq25970@66 {
+		compatible = "ti,bq25970-charger";
+		reg = <0x65>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <50 0x1>;
+		vdd-i2c-supply = <&pm660_l13>;
+		pinctrl-names = "bq_int_default";
+		pinctrl-0 = <&bq_int_default>;
+		gpios = <&tlmm 50 0x1>; /* IRQ */
+		gpio-names = "bq2597x_irq";
+
+	/*ti,bq2597x,bat-ovp-disable;*/
+	/*ti,bq2597x,bat-ovp-alarm-disable;*/
+	/*ti,bq2597x,bat-ocp-disable;*/
+	/*ti,bq2597x,bat-ocp-alarm-disable;*/
+	/*ti,bq2597x,bat-ucp-disable;*/
+
+	/*ti,bq2597x,bus-ovp-alarm-disable;*/
+	/*ti,bq2597x,bus-ocp-disable;*/
+	/*ti,bq2597x,bus-ocp-alarm-disable;*/
+
+		ti,bq2597x,bat-therm-disable;
+		ti,bq2597x,bus-therm-disable;
+		ti,bq2597x,die-therm-disable;
+		ti,bq2597x,bat-ucp-alarm-disable;
+
+		ti,bq2597x,bat-ovp-threshold = <5050>;
+		ti,bq2597x,bat-ovp-alarm-threshold = <5000>;
+		ti,bq2597x,bat-ocp-threshold = <8100>;
+		ti,bq2597x,bat-ocp-alarm-threshold = <8000>;
+
+		ti,bq2597x,bus-ovp-threshold = <11500>;
+		ti,bq2597x,bus-ovp-alarm-threshold = <11000>;
+		ti,bq2597x,bus-ocp-threshold = <4250>;
+		ti,bq2597x,bus-ocp-alarm-threshold = <4000>;
+		ti,bq2597x,bat-ucp-alarm-threshold = <1000>;
+
+		ti,bq2597x,bat-therm-threshold = <0x15>;/*4.1%*/
+		ti,bq2597x,bus-therm-threshold = <0x15>;/*4.1%*/
+		ti,bq2597x,die-therm-threshold = <125>;
+
+		ti,bq2597x,ac-ovp-threshold = <11>;
+	};
+};
+
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
@@ -215,3 +296,46 @@
 	status = "disabled";
 };
 
+&pm660_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-force-load-profile = <1>;
+	qcom,fg-rsense-sel = <1>;
+	qcom,fg-cutoff-voltage = <3200>;
+	qcom,fg-empty-voltage = <3000>;
+	qcom,fg-chg-term-current = <100>;
+	qcom,fg-sys-term-current = <(-200)>;
+	qcom,fg-delta-soc-thr = <1>;
+	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+	qcom,battery-thermal-coefficients = [9d 50 ff];
+};
+
+&pm660_charger {
+
+	qcom,dc-icl-ua = <1100000>;
+	qcom,fcc-max-ua = <5000000>;
+
+	qcom,mmi-temp-zones = <0 4200 582 0>,
+				<10 4200 2000 582>,
+				<15 4200 4000 2000>,
+				<45 4350 4000 2000>,
+				<60 4200 4000  0>;
+	qcom,mmi-sink-caps = <9000 3000>; /* 9V @ 3A */
+	io-channels = <&pm660_rradc 8>,
+		      <&pm660_rradc 10>,
+		      <&pm660_rradc 3>,
+		      <&pm660_rradc 4>,
+		      <&pm660_rradc 5>,
+		      <&pm660_rradc 6>;
+	io-channel-names = "charger_temp",
+			   "charger_temp_max",
+			   "usbin_i",
+			   "usbin_v",
+			   "dcin_i",
+			   "dcin_v";
+};
+
+&pm660_pdphy {
+	qcom,source-current = <900>;
+	qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
+				 <9000 3000>; /* 9V @ 3A */
+};
