@@ -73,6 +73,10 @@
 	};
 };
 
+&mdss_dsi1 {
+	status = "disable";
+};
+
 &qupv3_se9_2uart {
 	status = "ok";
 };
