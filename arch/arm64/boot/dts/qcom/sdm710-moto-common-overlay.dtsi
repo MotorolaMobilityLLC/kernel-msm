@@ -190,20 +190,19 @@
 
 		config {
 			pins = "gpio54";
-			drive-strength = <8>;
+			drive-strength = <2>;
 			bias-pull-up;
 			/* FIXME - to avoid interrupt storm */
-			output-high;
 		};
 	};
 
 	moon_reset_default: moon_reset_default {
 		mux {
-			pins = "gpio76";
+			pins = "gpio78";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio76";
+			pins = "gpio78";
 			output-high;
 			bias-pull-up;
 			drive-strength = <2>;
@@ -377,8 +376,8 @@
 		irq-gpios = <&tlmm 39 0>;
 		interrupt-parent = <&tlmm>;
 		VA-supply = <&pm660_l13>;
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
 		clock-names = "hap_ref_clk";
-		clocks = <&clock_audio_lnbb AUDIO_PMIC_LNBB_CLK>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <4>;
 		cirrus,boost-ipk-milliamp = <4500>;
@@ -559,6 +558,8 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&moon_irq_default &moon_reset_default>;
 
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
+		clock-names = "cdc_mclk2";
 		AVDD-supply = <&pm660_l13>;
 		DBVDD1-supply = <&pm660_l13>;
 		DBVDD2-supply = <&pm660_l13>;
