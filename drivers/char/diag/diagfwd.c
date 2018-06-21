@@ -48,6 +48,7 @@
 #define STM_RSP_SUPPORTED_INDEX		7
 #define STM_RSP_STATUS_INDEX		8
 #define STM_RSP_NUM_BYTES		9
+#define RETRY_MAX_COUNT			1000
 
 static int timestamp_switch;
 module_param(timestamp_switch, int, 0644);
@@ -261,11 +262,11 @@ static void pack_rsp_and_send(unsigned char *buf, int len)
 
 	/*
 	 * Keep trying till we get the buffer back. It should probably
-	 * take one or two iterations. When this loops till UINT_MAX, it
+	 * take one or two iterations. When this loops till RETRY_MAX_COUNT, it
 	 * means we did not get a write complete for the previous
 	 * response.
 	 */
-	while (retry_count < UINT_MAX) {
+	while (retry_count < RETRY_MAX_COUNT) {
 		if (!driver->rsp_buf_busy)
 			break;
 		/*
@@ -330,11 +331,11 @@ static void encode_rsp_and_send(unsigned char *buf, int len)
 
 	/*
 	 * Keep trying till we get the buffer back. It should probably
-	 * take one or two iterations. When this loops till UINT_MAX, it
+	 * take one or two iterations. When this loops till RETRY_MAX_COUNT, it
 	 * means we did not get a write complete for the previous
 	 * response.
 	 */
-	while (retry_count < UINT_MAX) {
+	while (retry_count < RETRY_MAX_COUNT) {
 		if (!driver->rsp_buf_busy)
 			break;
 		/*
