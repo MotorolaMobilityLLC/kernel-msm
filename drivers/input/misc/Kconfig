@@ -829,6 +829,14 @@ config INPUT_SX9310
           Say Y to enable the SAR detection application, if N here not to use the
           this SAR sensor.
 
+config INPUT_SX933x
+        tristate "SX933x_SAR_sensor"
+        depends on I2C
+        default n
+        help
+          Say Y to enable the SAR detection application, if N here not to use the
+          this SAR sensor.
+
 config INPUT_DRV2667_HAPTICS
 	tristate "TI DRV2667 haptics support"
 	depends on INPUT && I2C
