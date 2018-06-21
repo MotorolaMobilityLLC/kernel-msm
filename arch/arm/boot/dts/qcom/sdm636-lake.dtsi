@@ -45,6 +45,32 @@
 	};
 };
 
+&i2c_2 {
+	status = "okay";
+	sx933x@28 {
+		compatible = "Semtech,sx933x";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <75 0>;
+		Semtech,nirq-gpio = <&tlmm 75 0x00>;
+		cap_vdd-supply = <&pm660l_l8>;
+		Semtech,reg-num = <12>;
+		Semtech,button-flag = <0x07>;
+		Semtech,reg-init = <0x8020 0x3F00C0
+			0x8024 0x44F
+			0x8028 0x24928000
+			0x802C 0x44F
+			0x8030 0x24960000
+			0x8034 0x44F
+			0x8038 0x24B20000
+			0x803C 0x44F
+			0x8040 0x25920000
+			0x8044 0x44F
+			0x8048 0x2C920000
+			0x4004 0x67 >;
+	};
+};
+
 &ets_fps {
 	/delete-property/ egistec,gpio_ldo1p8_en;
 	/delete-property/ egistec,gpio_ldo3p3_en;
