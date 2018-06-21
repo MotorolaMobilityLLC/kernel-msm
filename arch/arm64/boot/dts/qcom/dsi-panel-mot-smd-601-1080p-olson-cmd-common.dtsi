@@ -80,17 +80,17 @@ qcom,mdss-dsi-display-timings {
 			05 01 00 00 23 00 01 28		/* display_off */
 			05 01 00 00 78 00 01 10];	/* enter sleep mode */
 
-			qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
-			qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
-			qcom,mdss-dsi-force-tx-mode = "dsi_hs_mode";
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-force-tx-mode = "dsi_hs_mode";
 
-			qcom,mdss-dsi-hbm-on-command = [
+		qcom,mdss-dsi-hbm-on-command = [
 				15 01 00 00 00 00 02 53 e0];
-			qcom,mdss-dsi-hbm-off-command = [
+		qcom,mdss-dsi-hbm-off-command = [
 				15 01 00 00 00 00 02 53 20];
-			qcom,mdss-dsi-acl-on-command = [
+		qcom,mdss-dsi-acl-on-command = [
 				15 01 00 00 00 00 02 55 03];
-			qcom,mdss-dsi-acl-off-command = [
+		qcom,mdss-dsi-acl-off-command = [
 				15 01 00 00 00 00 02 55 00];
 	};
 };
@@ -107,10 +107,11 @@ qcom,panel-supply-entries {
 		qcom,supply-enable-load = <300000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <2>;
 		qcom,supply-pre-off-sleep = <0>;
 		qcom,supply-post-off-sleep = <0>;
 	};
+
 	qcom,panel-supply-entry@1 {
 		reg = <1>;
 		qcom,supply-name = "vci_disp";
