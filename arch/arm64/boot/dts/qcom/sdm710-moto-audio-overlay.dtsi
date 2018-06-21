@@ -195,7 +195,7 @@
 	};
 
 	clock_audio_lnbb {
-		status = "okay";
+		status = "disabled";
 	};
 
 	wsa_spkr_en1 {
