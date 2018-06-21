@@ -1517,6 +1517,9 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 		vote(chg->fcc_votable, BATT_PROFILE_VOTER, true, val->intval);
 #endif
 		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		vote(chg->fcc_votable, MMI_VOTER, true, val->intval);
+		break;
 	case POWER_SUPPLY_PROP_SET_SHIP_MODE:
 		/* Not in ship mode as long as the device is active */
 		if (!val->intval)
