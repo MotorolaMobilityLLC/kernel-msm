@@ -13,6 +13,9 @@
 #include "sdm670-audio-overlay.dtsi"
 
 &soc {
+	msm_cdc_pinctrl_usbc_audio_en1 {
+		status = "disabled";
+	};
 	qcom,msm-dai-mi2s {
 		compatible = "qcom,msm-dai-mi2s";
 		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
