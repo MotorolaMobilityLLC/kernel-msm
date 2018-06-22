@@ -4151,7 +4151,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 			/* enforce DCP ICL if specified */
 			vote(chg->usb_icl_votable, DCP_VOTER,
 				chg->dcp_icl_ua != -EINVAL, chg->dcp_icl_ua);
-
+#ifdef QCOM_BASE
 		/*
 		 * if pd is not allowed, then set pd_active = false right here,
 		 * so that it starts the hvdcp engine
@@ -4159,6 +4159,7 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 		if (!get_effective_result(chg->pd_allowed_votable) &&
 				!chg->micro_usb_mode)
 			__smblib_set_prop_pd_active(chg, 0);
+#endif
 	}
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: smblib_handle_hvdcp_check_timeout %s\n",
