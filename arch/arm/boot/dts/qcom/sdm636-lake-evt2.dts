@@ -20,3 +20,4 @@
 	qcom,board-id = <0x4C 0xA200>;
 };
 
+/delete-node/ &pm660_haptics;
