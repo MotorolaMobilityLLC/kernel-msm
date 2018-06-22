@@ -20,3 +20,6 @@
 	qcom,board-id = <0x4C 0xA100>;
 };
 
+&i2c_2 {
+/delete-node/ aw869x_haptic@5B;
+};
