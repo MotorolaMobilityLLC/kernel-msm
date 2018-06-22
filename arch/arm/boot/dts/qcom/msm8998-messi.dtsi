@@ -102,6 +102,8 @@
 		cyttsp,key-num = <4>;
 		cyttsp,key-codes = <4>;
 	};
+
+	/delete-node/ qcom,smb138x@8;
 };
 
 &soc {
