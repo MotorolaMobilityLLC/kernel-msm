@@ -85,7 +85,6 @@ qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 qcom,mdss-dsi-reset-sequence = <0 11>, <1 10>, <0 1>, <1 10>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
-qcom,mdss-dsi-init-delay-us = <50000>;
 
 qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08];
