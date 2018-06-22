@@ -214,6 +214,10 @@
 &pmi8998_charger {
 	pinctrl-0 = <&eb_vbus_conf>;
 	pinctrl-1 = <&eb_vbus_active>;
+	qcom,dc-icl-ua = <1500000>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
 	qcom,iterm-ma = <58>;
 	qcom,mmi-temp-zones = <0 4200 582 0>,
 				<10 4200 1455 582>,
