@@ -3,7 +3,7 @@
 #
 menuconfig TOUCHSCREEN_SYNAPTICS_DSX_v26
 	bool "Synaptics DSX v2.6 touchscreen"
-	default y
+	default n
 	help
 	  Say Y here if you have a Synaptics DSX touchscreen connected
 	  to your system.
