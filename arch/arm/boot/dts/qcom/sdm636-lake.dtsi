@@ -69,6 +69,16 @@
 			0x8048 0x2C920000
 			0x4004 0x67 >;
 	};
+
+	/* AWINIC AW869X Haptic */
+	aw869x_haptic@5B {
+		compatible = "awinic,aw869x_haptic";
+		reg = <0x5B>;
+		reset-gpio = <&pm660_gpios 11 0>;
+		irq-gpio = <&tlmm 70 0>;
+		status = "okay";
+	};
+	/* AWINIC AW869X Haptic End */
 };
 
 &ets_fps {
@@ -86,6 +96,19 @@
 &pm660l_l6 {
 	regulator-always-on;
 	qcom,init-voltage = <3300000>;
+};
+
+&pm660_gpios {
+	/* GPIO 11 for VIB_RST_N */
+	gpio@ca00 {
+		qcom,mode = <1>;				/* Output */
+		qcom,pull = <5>;				/* Pull up */
+		qcom,vin-sel = <0>; 			/* VIN1 GPIO_LV */
+		qcom,src-sel = <0>; 			/* GPIO */
+		qcom,invert = <0>;				/* Invert */
+		qcom,master-en = <1>;			/* Enable GPIO */
+		status = "okay";
+	};
 };
 
 &firmware {
@@ -112,6 +135,8 @@
 /delete-node/ &blue_led;
 
 &soc{
+/delete-node/ qcom,qbt1000;
+
 	ssphy: ssphy@c010000 {
 		status = "disabled";
 	};
