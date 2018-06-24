@@ -682,11 +682,11 @@ static void qpnp_rtc_shutdown(struct platform_device *pdev)
 	unsigned long irq_flags;
 	struct qpnp_rtc *rtc_dd;
 	bool rtc_alarm_powerup;
-
+#if 0
 	unsigned long secs_rtc;
 	struct rtc_time rtc_tm;
 	struct rtc_wkalrm shipmode_alarm;
-
+#endif
 	if (!pdev) {
 		pr_err("qpnp-rtc: spmi device not found\n");
 		return;
@@ -734,6 +734,7 @@ fail_alarm_disable:
 		return;
 	}
 
+#if 0 //disable shipmode
 	rc = qpnp_rtc_read_time(&pdev->dev, &rtc_tm);
 	if (rc) {
 		dev_err(&pdev->dev, "Unable to read RTC time for Shipmode\n");
@@ -747,6 +748,7 @@ fail_alarm_disable:
 	rtc_time_to_tm(secs_rtc, &shipmode_alarm.time);
 	dev_warn(&pdev->dev, "Setup Shipmode trigger %ld secs\n", secs_rtc);
 	qpnp_rtc_set_alarm(&pdev->dev, &shipmode_alarm);
+#endif
 }
 
 static const struct of_device_id spmi_match_table[] = {
