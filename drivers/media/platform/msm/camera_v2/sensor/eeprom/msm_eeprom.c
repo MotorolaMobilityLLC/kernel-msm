@@ -1554,6 +1554,25 @@ static void msm_eeprom_copy_power_settings_compat(
 	}
 }
 #ifdef MULTI_CAMERA_DEEN
+static int msm_eeprom_get_cmm_data32(struct msm_eeprom_ctrl_t *e_ctrl,
+	void __user *arg)
+{
+	int rc = 0;
+	struct msm_eeprom_cfg_data32 *cdata32 =
+		(struct msm_eeprom_cfg_data32 *) arg;
+	struct msm_eeprom_cfg_data cdata;
+	struct msm_eeprom_cmm_t *cmm_data = &e_ctrl->eboard_info->cmm_data;
+	cdata32->cfg.get_cmm_data.cmm_support = cmm_data->cmm_support;
+	cdata32->cfg.get_cmm_data.cmm_compression = cmm_data->cmm_compression;
+	cdata32->cfg.get_cmm_data.cmm_size = cmm_data->cmm_size;
+	cdata.cfg.get_cmm_data.cmm_support =
+		cdata32->cfg.get_cmm_data.cmm_support;
+	cdata.cfg.get_cmm_data.cmm_compression =
+		cdata32->cfg.get_cmm_data.cmm_compression;
+	cdata.cfg.get_cmm_data.cmm_size =
+		cdata32->cfg.get_cmm_data.cmm_size;
+	return rc;
+}
 static int bst_eeprom_read_dualcam_cal_data32(struct msm_eeprom_ctrl_t *e_ctrl,
 		void __user *arg)
 {
@@ -1950,6 +1969,10 @@ static int msm_eeprom_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 		rc = eeprom_config_read_cal_data32(e_ctrl, argp);
 		break;
 #ifdef MULTI_CAMERA_DEEN
+	case CFG_EEPROM_GET_MM_INFO:
+		CDBG("%s E CFG_EEPROM_GET_MM_INFO\n", __func__);
+		rc = msm_eeprom_get_cmm_data32(e_ctrl, argp);
+		break;
 	case BST_CFG_EEPROM_WRITE_DUALCAM_CALI_DATA:
 		CDBG("%s E BST_CFG_EEPROM_WRITE_DUALCAM_CALI_DATA\n", __func__);
 		rc = bst_eeprom_write_dualcam_cal_data32(e_ctrl, cdata);
