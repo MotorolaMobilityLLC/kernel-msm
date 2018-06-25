@@ -3394,9 +3394,7 @@ static int ft_ts_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Input device registration failed\n");
 		goto input_register_device_err;
 	}
-#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
-	fts_extra_init(client, input_dev, pdata);
-#endif
+
 	if (pdata->power_init) {
 		err = pdata->power_init(true);
 		if (err)
@@ -3467,7 +3465,27 @@ static int ft_ts_probe(struct i2c_client *client,
 		goto free_gpio;
 	}
 
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) && defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
+	if (reg_value == 0x80) {
+		pdata->name = "ft8006m";
+		pdata->family_id = reg_value;
+                dev_info(&client->dev, "ft dbg: pos01-0 pdata->name=%s\n",pdata->name);
+	} else if (reg_value == 0xf0) {
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006S_MMI
+		pdata->name = "ft8006s";
+#else
+                pdata->name = "ft8006u";
+#endif
+		pdata->family_id = reg_value;
+                dev_info(&client->dev, "ft dbg: pos01 pdata->name=%s\n",pdata->name);
+	}
+#endif
+
 	data->family_id = pdata->family_id;
+
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
+	fts_extra_init(client, input_dev, pdata);
+#endif
 
 	/*get some register information */
 	reg_addr = FT_REG_POINT_RATE;
