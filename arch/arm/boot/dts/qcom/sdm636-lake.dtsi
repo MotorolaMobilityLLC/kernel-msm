@@ -203,3 +203,8 @@
 	};
 };
 
+
+&pm660_haptics {
+	/delete-property/ compatible;
+};
+
