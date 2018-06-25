@@ -773,11 +773,12 @@ int fts_pram_write_init(struct i2c_client *client)
 	}
 
 	/* check the length of the pramboot */
-#ifndef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
-    ret = fts_ft8006m_pram_write_remap(client);
-#else
-    ret = fts_ft8006u_pram_write_remap(client);
-#endif
+	if (upg->func->paramcfg2off) {
+		ret = fts_ft8006m_pram_write_remap(client);
+	}
+	else {
+		ret = fts_ft8006u_pram_write_remap(client);
+	}
 
 	if (ret < 0) {
 		FTS_ERROR("[UPGRADE]pram write fail, ret=%d\n", ret);
@@ -2039,7 +2040,6 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 	fts_data->input_dev = input_dev;
 	fts_data->pdata = pdata;
 
-#ifndef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
 	if (FT8006M_ID == type) {
 		FTS_AUTO_LIC_UPGRADE_EN = true;
 		fwupgrade->func = &upgrade_func_ft8006;
@@ -2047,15 +2047,13 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 		fts_data->ic_info.is_incell = true;
 		fts_data->ic_info.hid_supported = false;
 	}
-#else
-	 if (FT8006U_ID == type) {
+	 else if (FT8006U_ID == type) {
 		FTS_AUTO_LIC_UPGRADE_EN = true;
 		fwupgrade->func = &upgrade_func_ft8006u;
 		fts_data->ic_info.ids = ft8006u_fct;
 		fts_data->ic_info.is_incell = true;
 		fts_data->ic_info.hid_supported = false;
 	}
-#endif
 
 	return 0;
 
