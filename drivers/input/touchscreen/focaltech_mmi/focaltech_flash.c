@@ -2028,23 +2028,22 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI
 	if (FT8006M_ID == type) {
-		FTS_AUTO_LIC_UPGRADE_EN = false;
+		FTS_AUTO_LIC_UPGRADE_EN = true;
 		fwupgrade->func = &upgrade_func_ft8006;
 		fts_data->ic_info.ids = ft8006_fct;
 		fts_data->ic_info.is_incell = true;
 		fts_data->ic_info.hid_supported = false;
 	}
 #endif
-
-	if (FT8006U_ID == type) {
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
+	if (FT8006U_ID == type) {
 		FTS_AUTO_LIC_UPGRADE_EN = true;
 		fwupgrade->func = &upgrade_func_ft8006u;
 		fts_data->ic_info.ids = ft8006u_fct;
 		fts_data->ic_info.is_incell = true;
 		fts_data->ic_info.hid_supported = false;
-#endif
 	}
+#endif
 	return 0;
 }
 #endif
