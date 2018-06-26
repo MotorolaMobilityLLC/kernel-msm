@@ -187,6 +187,10 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	CDBG("Sensor %d tagged as %s\n", s_ctrl->id,
 		(s_ctrl->is_secure)?"SECURE":"NON-SECURE");
 
+	pr_err("probe sensor slave_addr:%x, slave_addr2:%x",
+	       s_ctrl->sensordata->cam_slave_info->slave_addr,
+	       s_ctrl->sensordata->cam_slave_info->slave_addr2);
+
 	for (retry = 0; retry < 3; retry++) {
 		if (s_ctrl->is_secure) {
 			rc = msm_camera_tz_i2c_power_up(sensor_i2c_client);
@@ -220,6 +224,49 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			continue;
 		} else {
 			break;
+		}
+	}
+
+	if (rc < 0 && s_ctrl->sensordata->cam_slave_info->slave_addr2 > 0) {
+		sensor_i2c_client->cci_client->sid =
+			s_ctrl->sensordata->cam_slave_info->slave_addr2 >> 1;
+		slave_info->sensor_slave_addr =
+			s_ctrl->sensordata->cam_slave_info->slave_addr2;
+		pr_err("probe sensor slave_addr2:%x", slave_info->sensor_slave_addr);
+
+		for (retry = 0; retry < 3; retry++) {
+			if (s_ctrl->is_secure) {
+				rc = msm_camera_tz_i2c_power_up(sensor_i2c_client);
+				if (rc < 0) {
+#ifdef CONFIG_MSM_SEC_CCI_DEBUG
+					CDBG("Secure Sensor %d use cci\n", s_ctrl->id);
+					/* session is not secure */
+					s_ctrl->sensor_i2c_client->i2c_func_tbl =
+						&msm_sensor_cci_func_tbl;
+#else  /* CONFIG_MSM_SEC_CCI_DEBUG */
+					return rc;
+#endif /* CONFIG_MSM_SEC_CCI_DEBUG */
+				} else {
+					/* session is secure */
+					s_ctrl->sensor_i2c_client->i2c_func_tbl =
+						&msm_sensor_secure_func_tbl;
+				}
+			}
+			rc = msm_camera_power_up(power_info,
+					s_ctrl->sensor_device_type,
+					sensor_i2c_client);
+			if (rc < 0)
+				return rc;
+			rc = msm_sensor_check_id(s_ctrl);
+			if (rc < 0) {
+				msm_camera_power_down(power_info,
+						s_ctrl->sensor_device_type,
+						sensor_i2c_client);
+				msleep(20);
+				continue;
+			} else {
+				break;
+			}
 		}
 	}
 
