@@ -320,6 +320,7 @@
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <1>;
 		qcom,msm-micbias2-ext-cap;
+		qcom,cdc-micbias-silicon-mv = <2750000>;
 
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
