@@ -21,9 +21,10 @@
 };
 
 &pm660_haptics {
-	compatible = "qcom,qpnp-haptic";
+	status = "okay";
 };
 
 &i2c_2 {
-/delete-node/ aw869x_haptic@5B;
+	/delete-node/ aw869x_haptic@5B;
 };
+
