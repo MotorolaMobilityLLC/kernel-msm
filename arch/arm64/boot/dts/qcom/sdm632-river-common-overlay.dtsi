@@ -21,6 +21,24 @@
 
 #define RIVER_RADIO_NA 1
 
+&firmware {
+	android {
+		fstab {
+			vendor {
+				compatible = "android,vendor";
+				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor_a";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1,discard";
+				fsmgr_flags = "wait, slotselect";
+				status = "ok";
+			};
+			system {
+				status = "disabled";
+			};
+		};
+	};
+};
+
 &soc {
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
