@@ -5713,7 +5713,19 @@ static void msm8x16_wcd_set_micb_v(struct snd_soc_codec *codec)
 
 	struct msm8x16_wcd *msm8x16 = codec->control_data;
 	struct msm8x16_wcd_pdata *pdata = msm8x16->dev->platform_data;
+	struct snd_soc_card *card = codec->component.card;
+	const char *micbias_silicon = "qcom,cdc-micbias-silicon-mv";
 	u8 reg_val;
+	u32 micb_s = 0;
+	int ret = 0;
+
+	ret = of_property_read_u32(card->dev->of_node, micbias_silicon, &micb_s);
+	if (ret) {
+		dev_err(card->dev,
+			"%s: missing %s in dt node\n", __func__, micbias_silicon);
+	} else {
+		pdata->micbias.cfilt1_mv = micb_s;
+	}
 
 	reg_val = VOLTAGE_CONVERTER(pdata->micbias.cfilt1_mv, MICBIAS_MIN_VAL,
 			MICBIAS_STEP_SIZE);
