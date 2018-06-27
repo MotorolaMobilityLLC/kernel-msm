@@ -26,3 +26,9 @@
 	/delete-node/ green;
 	/delete-node/ blue;
 };
+
+&pmi632_3 {
+	/delete-node/ qcom,vibrator@5700;
+};
+
+/delete-node/ &adv_vreg;
