@@ -28,3 +28,8 @@
 	/delete-node/ aw869x_haptic@5B;
 };
 
+&soc {
+	sound-madera {
+		qcom,model = "sdm660-madera-single_pa-snd-card";
+	};
+};
