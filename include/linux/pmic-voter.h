@@ -47,4 +47,8 @@ void destroy_votable(struct votable *votable);
 void lock_votable(struct votable *votable);
 void unlock_votable(struct votable *votable);
 
+int pmic_vote_force_val_set(struct votable *votable, u32 val);
+int pmic_vote_force_active_get(struct votable *votable, u64 *val);
+int pmic_vote_force_active_set(struct votable *votable, u64 val);
+
 #endif /* __PMIC_VOTER_H */
