@@ -123,8 +123,8 @@
 
 &mtp_batterydata {
 	qcom,batt-id-range-pct = <15>;
-	df-serialnum = "SB18C34004";
-	#include "qg-batterydata-jg30-atl-3000mah.dtsi"
+	df-serialnum = "SB18C28956";
+	#include "qg-batterydata-jk50-sucd-5000mah.dtsi"
 };
 
 &pmi632_qg {
