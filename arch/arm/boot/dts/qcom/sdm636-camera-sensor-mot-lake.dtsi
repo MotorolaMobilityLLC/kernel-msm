@@ -92,6 +92,7 @@
 		qcom,cam-vreg-min-voltage = <2800000>;
 		qcom,cam-vreg-max-voltage = <2800000>;
 		qcom,cam-vreg-op-mode = <100000>;
+		status = "ok";
 	};
 
 	eeprom0: qcom,eeprom@0 {
