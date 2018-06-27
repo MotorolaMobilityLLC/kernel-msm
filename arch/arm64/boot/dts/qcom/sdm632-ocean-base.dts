@@ -73,11 +73,18 @@
 	/delete-node/ wsa881x-i2c-codec@45;
 };
 
+&i2c_5 {
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
 &slim_msm {
 	/delete-node/ tasha_codec;
 };
 
 &tlmm {
+	/delete-node/ nfc;
+	/delete-node/ i2c_5;
 	/delete-node/ wsa-vi;
 	/delete-node/ wsa_reset;
 	/delete-node/ wsa_clk;
