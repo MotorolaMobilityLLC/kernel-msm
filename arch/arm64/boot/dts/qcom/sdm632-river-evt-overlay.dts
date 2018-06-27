@@ -27,3 +27,13 @@
 /*
  * River HW rev EVT0 except NA SKU specific changes go here
  */
+
+&drv2624 {
+	status = "okay";
+};
+
+&i2c_2 {
+	aw869x_haptic@5B {
+		status = "disabled";
+	};
+};
