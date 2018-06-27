@@ -26,6 +26,13 @@
 			bias-pull-up;
 		};
 	};
+	cs35l41_r_irq_default: cs35l41_r_irq_default {
+		config {
+			pins = "gpio9";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
 	marley_irq_default: marley_irq_default {
 		config {
 			pins = "gpio21";
@@ -42,6 +49,7 @@
 			drive-strength = <2>;
 		};
 	};
+
 };
 
 &soc {
@@ -237,12 +245,13 @@
 
 &i2c_2 {
 	status = "ok";
-	cs35l41: cs35l41@40 {
+	cs35l41_l: cs35l41@40 {
 		compatible = "cirrus,cs35l41";
 		reg = <0x40>;
 		reset-gpios = <&tlmm 63 0>;
 		interrupts = <76 0>;
 		interrupt-parent = <&tlmm>;
+		interrupt-names = "amp_l_irq";
 
 		cirrus,boost-peak-milliamp = <4500>;
 		cirrus,boost-ind-nanohenry = <1000>;
@@ -254,10 +263,36 @@
 		pinctrl-0 = <&cs35l41_irq_default &cs35l41_reset_default>;
 
 		cirrus,gpio-config2 {
-				cirrus,gpio-src-select = <0x4>;
-				cirrus,gpio-output-enable;
+			cirrus,gpio-src-select = <0x4>;
+			cirrus,gpio-output-enable;
 		};
 	};
+
+	cs35l41_r: cs35l41@41 {
+
+		compatible = "cirrus,cs35l41";
+		reg = <0x41>;
+		interrupts = <9 0>;
+		interrupt-parent = <&tlmm>;
+		interrupt-names = "amp_r_irq";
+
+		cirrus,right-channel-amp;
+
+		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-ind-nanohenry = <1000>;
+		cirrus,boost-cap-microfarad = <15>;
+
+		cirrus,asp-sdout-hiz = <0x1>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l41_r_irq_default>;
+
+		cirrus,gpio-config2 {
+			cirrus,gpio-src-select = <0x4>;
+			cirrus,gpio-output-enable;
+		};
+	};
+
 };
 
 &spi_7 {
