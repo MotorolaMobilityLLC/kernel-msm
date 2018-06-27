@@ -69,6 +69,95 @@
 		};
 	};
 
+	nfc_int_active: nfc_int_active {
+		/* active state */
+		mux {
+			/* GPIO 17 NFC Read Interrupt */
+			pins = "gpio17";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio17";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	nfc_int_suspend: nfc_int_suspend {
+		/* sleep state */
+		mux {
+			/* GPIO 17 NFC Read Interrupt */
+			pins = "gpio17";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio17";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	nfc_ven_active: nfc_ven_active {
+		/* active state */
+		mux {
+			/* GPIO 16 NFC Ven */
+			pins = "gpio16";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio16";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	nfc_ven_suspend: nfc_ven_suspend {
+		/* sleep state */
+		mux {
+			/* GPIO 16 NFC Ven */
+			pins = "gpio16";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio16";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+
+	i2c_5_active: i2c_5_active {
+		/* active state */
+		mux {
+			pins = "gpio18", "gpio19";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio18", "gpio19";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	i2c_5_sleep: i2c_5_sleep {
+		/* suspended state */
+		mux {
+			pins = "gpio18", "gpio19";
+			function = "blsp_i2c5";
+		};
+
+		config {
+			pins = "gpio18", "gpio19";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	sx9325_int_pin {
 		/* qcom,pins = <&gp 86>;*/
 		pins = "gpio86";

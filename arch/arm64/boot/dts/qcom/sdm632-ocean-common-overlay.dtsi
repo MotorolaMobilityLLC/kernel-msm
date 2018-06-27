@@ -42,6 +42,9 @@
 
 &i2c_5 {
 	status = "ok";
+	pinctrl-0 = <&i2c_5_active>;
+	pinctrl-1 = <&i2c_5_sleep>;
+
 	sm_sm5350@36 {
 		compatible = "sm-sm5350";
 		reg = <0x36>;
@@ -51,6 +54,20 @@
 		map-mode = <0x01>;
 		/* fsc = 5 + 0.8 * value */
 		full-scale-current = <0x0A>;
+	};
+
+	st21nfc@8 {
+		compatible = "st,st21nfc";
+		status = "/chosen", "mmi,nfc", "true";
+		reg = <0x08>;
+		st,irq_gpio = <&tlmm 17 0x00>;
+		st,reset_gpio = <&tlmm 16 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <17 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_ven_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_ven_suspend>;
 	};
 };
 
