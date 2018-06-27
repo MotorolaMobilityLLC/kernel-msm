@@ -52,4 +52,11 @@ config DIAG_USES_SMD
 	  Diag over SMD enables exchanging diagnostic information between
 	  application processor and peripherals over SDM.
 
+config DIAG_OVER_TTY
+	bool "Enable DIAG traffic to go over a tty to userspace"
+	depends on ARCH_QCOM && DIAG_OVER_USB
+	default n
+	help
+	  This feature helps segregate code required for DIAG traffic to go over a TTY to userspace.
+
 endmenu
