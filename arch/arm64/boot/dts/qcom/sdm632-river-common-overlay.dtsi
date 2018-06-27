@@ -36,6 +36,29 @@
 
 &i2c_2 {
 	status = "okay";
+
+	drv2624: drv2624@5a {
+		compatible = "ti,drv2624";
+		reg = <0x5A>;
+		/* voltage = *_voltage x 22 mV */
+		/* 2V for now */
+		ti,rated_voltage = /bits/ 8 <0x49>;
+		ti,overdrive_voltage = /bits/ 8 <0x9A>;
+		ti,rated_voltage_reduced = /bits/ 8 <0x19>;
+		ti,overdrive_voltage_reduced = /bits/ 8 <0x55>;
+		/* LRA period = lra_freq x 24.39 us */
+		/* 205 Hz for now */
+		ti,lra_freq = /bits/ 8 <0xCD>;
+		ti,lra_drive;
+		ti,auto_cal;
+		ti,auto_cal_time = /bits/ 8 <0x02>;
+		/* OD_CLAMP time 25ms, sample time 300us, ZC_DET time 200us */
+		ti,sample_time = /bits/ 8 <0x1D>;
+		ti,drive_time = /bits/ 8 <0x10>;
+		ti,nrst-gpio = <&pmi632_gpios 8 0>;   /* EN_GPIO */
+		ti,nvctrl-gpio = <&tlmm 0 0>;
+	};
+
 	tps61280@75 {
 		compatible = "ti,tps61280";
 		reg = <0x75>;
@@ -46,6 +69,20 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&tps61280_en_default>;
 	};
+
+	/* AWINIC AW869X Haptic */
+	aw869x_haptic@5B {
+		compatible = "awinic,aw869x_haptic";
+		reg = <0x5B>;
+		reset-gpio = <&pmi632_gpios 8 0>;
+		irq-gpio = <&pm8953_gpios 3 0>;
+		status = "okay";
+	};
+	/* AWINIC AW869X Haptic End */
+};
+
+&drv2624 {
+	status = "disabled";
 };
 
 &i2c_3 {
