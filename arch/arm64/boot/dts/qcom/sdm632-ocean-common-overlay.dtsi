@@ -268,6 +268,7 @@
 		focaltech,fw-upgrade-id2 = <0x08>;
 		focaltech,fw-delay-readid-ms = <10>;
 		focaltech,fw-delay-era-flsh-ms = <2000>;
+		focaltech,fw-update-mmi;
 		focaltech,fw-auto-cal;
 		focaltech,resume-in-workqueue;
 		focaltech,ignore-id-check;
