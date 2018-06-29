@@ -160,13 +160,21 @@ static struct afe_clk_set wsa_ana_clk = {
 };
 
 #ifdef CONFIG_SND_SOC_CS35L34
-static struct afe_clk_cfg l34_ana_clk = {
+static struct afe_clk_cfg l34_ana_clk_v1 = {
 	AFE_API_VERSION_I2S_CONFIG,
 	0,
 	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
 	Q6AFE_LPASS_CLK_SRC_INTERNAL,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
 	Q6AFE_LPASS_MODE_CLK2_VALID,
+	0,
+};
+static struct afe_clk_set l34_ana_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_CLK_ID_MCLK_2,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
 	0,
 };
 #endif
@@ -1214,11 +1222,32 @@ static int msm8952_enable_cs35l34_mclk(struct snd_soc_card *card, bool enable)
 	if (enable) {
 		if (!atomic_read(&pdata->l34_mclk_rsc_ref)) {
 			pr_debug("%s: going to enable afe clock for cs35l34\n", __func__);
-			l34_ana_clk.clk_val2 =
+			switch (q6core_get_avs_version()) {
+			case (Q6_SUBSYS_AVS2_6):
+			{
+				l34_ana_clk_v1.clk_val2 =
 					Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
-			ret = afe_set_lpass_clock(
-					AFE_PORT_ID_SECONDARY_MI2S_RX,
-					&l34_ana_clk);
+				ret = afe_set_lpass_clock(
+						AFE_PORT_ID_SECONDARY_MI2S_RX,
+						&l34_ana_clk_v1);
+				break;
+			}
+			case (Q6_SUBSYS_AVS2_7):
+			{
+				l34_ana_clk.enable = enable;
+				ret = afe_set_lpass_clock_v2(
+						AFE_PORT_ID_SECONDARY_MI2S_RX,
+						&l34_ana_clk);
+				break;
+			}
+			case (Q6_SUBSYS_INVALID):
+			default:
+			{
+				ret = -EINVAL;
+				pr_err("%s: unknown dsp image\n", __func__);
+				break;
+			}
+			}
 			if (ret < 0) {
 				pr_err("%s: failed to enable mclk %d\n",
 					__func__, ret);
@@ -1231,11 +1260,32 @@ static int msm8952_enable_cs35l34_mclk(struct snd_soc_card *card, bool enable)
 			goto done;
 		if (!atomic_dec_return(&pdata->l34_mclk_rsc_ref)) {
 			pr_debug("%s: going to disable afe clock for cs35l34\n", __func__);
-			l34_ana_clk.clk_val2 =
+			switch (q6core_get_avs_version()) {
+			case (Q6_SUBSYS_AVS2_6):
+			{
+				l34_ana_clk_v1.clk_val2 =
 					Q6AFE_LPASS_OSR_CLK_DISABLE;
-			ret = afe_set_lpass_clock(
+				ret = afe_set_lpass_clock(
+					AFE_PORT_ID_SECONDARY_MI2S_RX,
+					&l34_ana_clk_v1);
+				break;
+			}
+			case (Q6_SUBSYS_AVS2_7):
+			{
+				l34_ana_clk.enable = enable;
+				ret = afe_set_lpass_clock_v2(
 					AFE_PORT_ID_SECONDARY_MI2S_RX,
 					&l34_ana_clk);
+				break;
+			}
+			case (Q6_SUBSYS_INVALID):
+			default:
+			{
+				ret = -EINVAL;
+				pr_err("%s: unknown dsp image\n", __func__);
+				break;
+			}
+			}
 			if (ret < 0) {
 				pr_err("%s: failed to disable mclk %d\n",
 					__func__, ret);
@@ -2702,6 +2752,7 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.platform_name = "msm-pcm-hostless",
 		.codec_dai_name = "cs35l34",
 		.codec_name = "cs35l34.2-0040",
+		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8952_quin_mi2s_be_ops,
