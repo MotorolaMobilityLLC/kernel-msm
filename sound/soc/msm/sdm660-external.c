@@ -1983,19 +1983,17 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"Slim1 Capture", NULL, "MCLK"},
 	{"Slim2 Playback", NULL, "MCLK"},
 	{"Slim2 Capture", NULL, "MCLK"},
-#ifdef CONFIG_SND_SOC_CS35L41_STEREO
+#ifdef CONFIG_SND_SOC_CS35L41
 	{"AIF1 Playback", NULL, "SPK AMP Capture"},
-	{"AIF1 Playback", NULL, "RCV AMP Capture"},
-	{"SPK AMP Playback", NULL, "OPCLK"},
-	{"RCV AMP Playback", NULL, "OPCLK"},
-	{"SPK AMP Capture", NULL, "OPCLK"},
-	{"RCV AMP Capture", NULL, "OPCLK"},
 #else
 	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
 #endif
 
+#ifdef CONFIG_SND_SOC_CS35L41_STEREO
+	{"AIF1 Playback", NULL, "RCV AMP Capture"},
+#endif
 #ifdef CONFIG_MODS_USE_EXTCODEC_MI2S
 	{"AIF2 Playback", NULL, "Mods Dai Capture"},
 	{"Mods Dai Playback", NULL, "AIF2 Capture"},
