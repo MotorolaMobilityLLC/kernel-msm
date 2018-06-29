@@ -137,6 +137,14 @@
 &soc{
 /delete-node/ qcom,qbt1000;
 
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+
 	ssphy: ssphy@c010000 {
 		status = "disabled";
 	};
