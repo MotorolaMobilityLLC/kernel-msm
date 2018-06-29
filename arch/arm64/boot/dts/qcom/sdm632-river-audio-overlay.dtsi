@@ -204,7 +204,7 @@
 		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
 		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
 		cirrus,inmode = <
-			0 0 0 0
+			0 0 0 1
 			0 0 0 0
 		>;
 		cirrus,out-mono = <0 1 0 0 0 0>;
