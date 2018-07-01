@@ -151,6 +151,21 @@
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
 		};
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			prince_dsp: adsp@2b80000 {
+				reg = <0x2b80000>;
+				firmware {
+					protection {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
+					};
+				};
+			};
+		};
 	};
 };
 
