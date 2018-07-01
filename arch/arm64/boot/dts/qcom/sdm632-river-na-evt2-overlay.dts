@@ -28,3 +28,10 @@
  * River NA HW rev EVT2 specific changes go here
  */
 
+&prince_dsp {
+	firmware {
+		protection {
+			cirrus,bin-file = "cs35l41-dsp1-spk-prot-na.bin";
+		};
+	};
+};
