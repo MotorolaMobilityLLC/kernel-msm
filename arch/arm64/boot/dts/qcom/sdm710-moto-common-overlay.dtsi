@@ -271,6 +271,31 @@
 			bias-pull-up;
 		};
 	};
+
+	usb_sw_sel_default: usb_sw_sel_default {
+		mux {
+			pins = "gpio50";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio50";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+	usb_aud_det_default: usb_aud_det_default {
+		mux {
+			pins = "gpio92";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio92";
+			bias-pull-up;
+			drive-strength = <2>;
+			output-high;
+		};
+	};
 };
 
 &qupv3_se3_i2c {
@@ -584,7 +609,7 @@
 		#interrupt-cells = <2>;
 		reset-gpios = <&tlmm 78 0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&moon_irq_default &moon_reset_default>;
+		pinctrl-0 = <&moon_irq_default &moon_reset_default &usb_sw_sel_default &usb_aud_det_default>;
 
 		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
 		clock-names = "cdc_mclk2";
