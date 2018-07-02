@@ -358,6 +358,7 @@ struct mmi_params {
 	int			lower_limit_capacity;
 	int			base_fv_mv;
 	int			vfloat_comp_mv;
+	int			batt_health;
 };
 
 struct smb_charger {
