@@ -736,4 +736,6 @@
 	};
 };
 
-
+&pm660_haptics {
+	status = "disabled";
+};
