@@ -266,6 +266,20 @@
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
 		};
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			prince_l_dsp: adsp@2b80000 {
+				reg = <0x2b80000>;
+				firmware {
+					protection {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
+					};
+				};
+			};
+		};
 	};
 
 	cs35l41_r: cs35l41@41 {
@@ -291,8 +305,21 @@
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
 		};
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			prince_r_dsp: adsp@2b80000 {
+				reg = <0x2b80000>;
+				firmware {
+					protection {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-rcv-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-rcv-prot.bin";
+					};
+				};
+			};
+		};
 	};
-
 };
 
 &spi_7 {
@@ -380,15 +407,6 @@
 		adsps {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			adsp@0ffe00 {
-				reg = <0x0ffe00>;
-				firmware {
-					ultrasound {
-						wlf,wmfw-file = "marley-dsp1-ultrasound.wmfw";
-						wlf,bin-file = "marley-dsp1-ultrasound.bin";
-					};
-				};
-			};
 			adsp@17fe00 {
 				reg = <0x17fe00>;
 				firmware {
