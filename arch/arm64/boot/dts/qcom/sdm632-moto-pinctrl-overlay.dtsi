@@ -65,4 +65,81 @@
 			bias-disable = <0>;
 		};
 	};
+
+	/* add pinctrl for touchscreen */
+	pmx_touch_int_active {
+		touch_int_active: touch_int_active {
+			mux {
+				pins = "gpio65";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio65";
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+		};
+	};
+
+	pmx_touch_int_suspend {
+		touch_int_suspend: touch_int_suspend {
+			mux {
+				pins = "gpio65";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio65";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
+	pmx_touch_reset_active {
+		touch_reset_active: touch_reset_active {
+			mux {
+				pins = "gpio64";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio64";
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+		};
+	};
+
+	pmx_touch_reset_suspend {
+		touch_reset_suspend: touch_reset_suspend {
+			mux {
+				pins = "gpio64";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio64";
+				drive-strength = <2>;
+				bias-pull-down;
+				output-low;
+			};
+		};
+	};
+
+	pmx_touch_release {
+		touch_release: touch_release {
+			mux {
+				pins = "gpio65", "gpio64";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio65", "gpio64";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
 };
