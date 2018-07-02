@@ -53,6 +53,7 @@ endif #CONFIG_HEART_DTB
 ifeq ($(CONFIG_LAKE_DTB),y)
 dtb-$(CONFIG_ARCH_SDM636) += sdm636-lake-evt1.dtb
 dtb-$(CONFIG_ARCH_SDM636) += sdm636-lake-evt2.dtb
+dtb-$(CONFIG_ARCH_SDM636) += sdm636-lake-na-evt2.dtb
 endif #CONFIG_LAKE_DTB
 
 ifeq ($(CONFIG_CHEF_DTB),y)
