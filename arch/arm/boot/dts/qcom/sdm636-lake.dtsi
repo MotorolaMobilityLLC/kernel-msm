@@ -18,6 +18,8 @@
 #include "sdm636-lake-audio.dtsi"
 #include "sdm636-egis-fps.dtsi"
 
+#define LAKE_RADIO_NA 1
+
 / {
 	model = "lake";
 	compatible = "qcom,sdm636-lake", "qcom,sdm636-moto", "qcom,sdm636";
