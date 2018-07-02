@@ -238,6 +238,7 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
+	qcom,vfloat-comp-uv = <20000>;
 };
 
 &i2c_1 {
