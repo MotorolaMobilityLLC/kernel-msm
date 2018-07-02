@@ -24,4 +24,11 @@
  * Lake NA HW rev EVT1 specific changes go here
 */
 
+&prince_l_dsp {
+	firmware {
+		protection {
+			cirrus,bin-file = "cs35l41-dsp1-spk-prot-na.bin";
+		};
+	};
+};
 
