@@ -135,6 +135,13 @@
 		compatible = "mmi,tzlog-dump";
 		memory-region = <&tzlog_dump_mem>;
 	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+			"back_temp";
+		status = "ok";
+    };
 };
 &other_ext_mem {
 	reg = <0x0 0x84300000 0x0 0x2500000>;
