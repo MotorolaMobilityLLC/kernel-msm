@@ -9,7 +9,9 @@ DTC_FLAGS += -p 1024
 
 dtbo-$(CONFIG_ALI_DTB) += sdm450-ali-evt-overlay.dtbo
 
-dtbo-$(CONFIG_RIVER_DTB) += sdm632-river-evt-overlay.dtbo
+dtbo-$(CONFIG_RIVER_DTB) += \
+	sdm632-river-evt-overlay.dtbo \
+	sdm632-river-na-evt-overlay.dtbo
 
 dtbo-$(CONFIG_OCEAN_DTB) += \
 	sdm632-ocean-na-evt1-overlay.dtbo \
@@ -23,6 +25,8 @@ sdm450-ali-evt-overlay.dtbo-base := \
 		sdm450-ali-base.dtb
 
 sdm632-river-evt-overlay.dtbo-base := \
+       sdm632-river-base.dtb
+sdm632-river-na-evt-overlay.dtbo-base := \
        sdm632-river-base.dtb
 
 sdm632-ocean-na-evt1-overlay.dtbo-base := \
