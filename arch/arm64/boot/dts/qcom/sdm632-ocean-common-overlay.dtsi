@@ -16,6 +16,7 @@
 #include "dsi-panel-mot-ofilm-622-720p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm632-camera-sensor-mot-ocean-overlay.dtsi"
+#include <dt-bindings/interrupt-controller/irq.h>
 
 #define OCEAN_RADIO_NA 1
 
@@ -239,6 +240,32 @@
 	qcom,lower-limit-capacity = <60>;
 };
 
+&i2c_1 {
+	status = "ok";
+	drv2624@5a {
+		status = "ok";
+		compatible = "ti,drv2624";
+		reg = <0x5a>;
+		ti,nrst-gpio = <&pm8953_gpios 6 0>;
+		/* voltage = *_voltage x 22 mV */
+		/* 2V for now */
+		ti,rated_voltage = /bits/ 8 <0x49>;
+		ti,overdrive_voltage = /bits/ 8 <0x9A>;
+		ti,rated_voltage_reduced = /bits/ 8 <0x19>;
+		ti,overdrive_voltage_reduced = /bits/ 8 <0x55>;
+		/* LRA period = lra_freq x 24.39 us */
+		/* 235 Hz for ROW */
+		ti,lra_freq = /bits/ 8 <0xEB>;
+		ti,lra_drive;
+		ti,auto_cal;
+		ti,auto_cal_time = /bits/ 8 <0x02>;
+		/* OD_CLAMP time 25ms, sample time 300us, ZC_DET time 200us */
+		ti,sample_time = /bits/ 8 <0x1D>;
+		ti,drive_time = /bits/ 8 <0x10>;
+	};
+};
+
+
 &i2c_3 {
 	status = "ok";
 
@@ -280,6 +307,32 @@
 &pmi632_rgb {
 	red {
 		label = "charging";
+	};
+};
+
+
+&pm8953_gpios {
+	interrupts = <0x0 0xc0 0 IRQ_TYPE_NONE>,
+		<0x0 0xc1 0 IRQ_TYPE_NONE>,
+		<0x0 0xc3 0 IRQ_TYPE_NONE>,
+		<0x0 0xc4 0 IRQ_TYPE_NONE>,
+		<0x0 0xc5 0 IRQ_TYPE_NONE>,
+		<0x0 0xc6 0 IRQ_TYPE_NONE>,
+		<0x0 0xc7 0 IRQ_TYPE_NONE>;
+	interrupt-names = "pm8953_gpio1", "pm8953_gpio2",
+			"pm8953_gpio4", "pm8953_gpio5", "pm8953_gpio6",
+			"pm8953_gpio7", "pm8953_gpio8";
+	qcom,gpios-disallowed = <3>;
+
+	gpio@c500 {
+		reg = <0xc500 0x100>;
+		qcom,pin-num = <6>;
+		qcom,mode = <1>;
+		status = "ok";
+		qcom,pull = <4>;
+		qcom,vin-sel = <3>;
+		qcom,src-sel = <1>;
+		qcom,master-en = <1>;
 	};
 };
 
