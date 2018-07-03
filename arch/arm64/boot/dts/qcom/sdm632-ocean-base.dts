@@ -68,6 +68,10 @@
 };
 */
 
+&pmi632_3 {
+	/delete-node/ qcom,vibrator@5700;
+};
+
 &i2c_2 {
 	/delete-node/ wsa881x-i2c-codec@f;
 	/delete-node/ wsa881x-i2c-codec@45;
