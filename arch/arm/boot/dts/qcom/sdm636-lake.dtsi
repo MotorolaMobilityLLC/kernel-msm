@@ -29,22 +29,12 @@
 &i2c_3 {
 	status = "okay";
 
-	synaptics_tcm@20 {
-		compatible = "synaptics,tcm-i2c";
-		reg = <0x20>;
+	novatech@62 {
+		compatible = "novatek,NVT-ts";
+		reg = <0x62>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <67 0x2008>;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
-		pinctrl-0 = <&touch_int_active &touch_reset_active>;
-		pinctrl-1 = <&touch_int_suspend &touch_reset_suspend>;
-		synaptics,irq-gpio = <&tlmm 67 0x2008>; /* IRQF_ONESHOT | IRQF_TRIGGER_LOW */
-		synaptics,irq-on-state = <0>;
-		synaptics,reset-gpio = <&tlmm 66 0x0000>;
-		synaptics,reset-on-state = <0>;
-		synaptics,reset-active-ms = <20>;
-		synaptics,reset-delay-ms = <200>;
-		synaptics,power-delay-ms = <200>;
-		synaptics,ubl-i2c-addr = <0x20>;
+		novatek,irq-gpio = <&tlmm 67 0x2001>;
+		novatek,reset-gpio = <&tlmm 66 0x00>;
 	};
 };
 
