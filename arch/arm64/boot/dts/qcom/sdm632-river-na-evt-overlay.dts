@@ -19,11 +19,12 @@
 
 / {
 	model = "river";
-	compatible = "river,evt1";
+	compatible = "river,na,evt1";
 	qcom,msm-id = <349 0x0>;
-	qcom,board-id = <0x45 0xA100>;
+	qcom,board-id = <(RIVER_RADIO_NA << 8 | 0x45) 0xA100>;
 };
 
 /*
- * River HW rev EVT0 except NA SKU specific changes go here
+ * River NA HW rev EVT0 specific changes go here
  */
+
