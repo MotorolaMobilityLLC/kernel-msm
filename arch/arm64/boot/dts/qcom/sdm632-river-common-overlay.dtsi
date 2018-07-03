@@ -18,6 +18,8 @@
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm632-camera-sensor-mot-river-overlay.dtsi"
 
+#define RIVER_RADIO_NA 1
+
 &soc {
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
