@@ -351,6 +351,7 @@ struct mmi_params {
 	int			charger_rate;
 	bool			hvdcp3_con;
 	bool			init_done;
+	int			vbus_inc_cnt;
 	bool			enable_charging_limit;
 	bool			is_factory_image;
 	enum charging_limit_modes	charging_limit_modes;

@@ -2104,6 +2104,21 @@ int smblib_get_prop_usb_voltage_max_design(struct smb_charger *chg,
 	return 0;
 }
 
+int smblib_get_prop_usb_voltage_now(struct smb_charger *chg,
+				    union power_supply_propval *val)
+{
+	int rc = 0;
+
+	rc = smblib_get_prop_usb_present(chg, val);
+	if (rc < 0 || !val->intval)
+		return rc;
+
+	if (chg->usb_psy)
+		rc = power_supply_get_property(chg->usb_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW, val);
+	return rc;
+}
+
 int smblib_get_prop_typec_cc_orientation(struct smb_charger *chg,
 					 union power_supply_propval *val)
 {
@@ -3139,6 +3154,10 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		smblib_micro_usb_plugin(chg, vbus_rising);
 
 	power_supply_changed(chg->usb_psy);
+	__pm_stay_awake(&chg->mmi.smblib_mmi_hb_wake_source);
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: usbin-plugin %s\n",
 					vbus_rising ? "attached" : "detached");
 }
@@ -4668,12 +4687,17 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 }
 
 #define CHARGER_DETECTION_DONE 7
-#define HEARTBEAT_EB_MS 1000
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
+#define HEARTBEAT_EB_WAIT_MS 1000
 #define HYST_STEP_MV 50
 #define DEMO_MODE_HYS_SOC 5
 #define DEMO_MODE_VOLTAGE 4000
+#define VBUS_INPUT_VOLTAGE_TARGET 5200
+#define VBUS_INPUT_VOLTAGE_NOM ((VBUS_INPUT_VOLTAGE_TARGET) - 200)
+#define VBUS_INPUT_VOLTAGE_MAX ((VBUS_INPUT_VOLTAGE_TARGET) + 200)
+#define VBUS_INPUT_VOLTAGE_MIN 4000
+#define VBUS_INPUT_MAX_COUNT 4
 #define WARM_TEMP 45
 #define COOL_TEMP 0
 static void mmi_heartbeat_work(struct work_struct *work)
@@ -4686,6 +4710,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int batt_ma;
 	int batt_soc;
 	int batt_temp;
+	int usb_mv;
+	static int vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
+	bool vbus_inc_now = false;
 	int vbus_present = 0;
 	int charger_present = 0;
 	int cl_usb = -EINVAL;
@@ -4719,6 +4746,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vbus_present = val.intval;
 
 	if (!vbus_present) {
+		vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 		charger_present = 0;
 		mmi->charger_debounce_cnt = 0;
 	} else if (chip->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
@@ -4761,8 +4789,15 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		batt_temp = val.intval / 10;
 
-	smblib_dbg(chip, PR_MISC, "batt=%d mV, %d mA, %d C\n",
-		batt_mv, batt_ma, batt_temp);
+	rc = smblib_get_prop_usb_voltage_now(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting USB Voltage rc = %d\n", rc);
+		goto end_hb;
+	} else
+		usb_mv = val.intval / 1000;
+
+	smblib_dbg(chip, PR_MISC, "batt=%d mV, %d mA, %d C, USB= %d mV\n",
+		batt_mv, batt_ma, batt_temp, usb_mv);
 
 	if (charger_present) {
 		val.intval = get_client_vote(chip->usb_icl_votable,
@@ -4985,6 +5020,25 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		goto end_hb;
 	}
 
+	if (charger_present && mmi->hvdcp3_con && !chip->pd_active &&
+	    (vbus_inc_mv > VBUS_INPUT_VOLTAGE_NOM)) {
+		if ((usb_mv < vbus_inc_mv) &&
+		    (usb_mv >= VBUS_INPUT_VOLTAGE_MIN) &&
+		    (mmi->vbus_inc_cnt < VBUS_INPUT_MAX_COUNT)) {
+			pr_warn("HVDCP Input %d mV Low, Increase\n", usb_mv);
+			smblib_write(chip, CMD_HVDCP_2_REG,
+				     SINGLE_INCREMENT_BIT);
+			vbus_inc_now = true;
+			mmi->vbus_inc_cnt++;
+		} else if (usb_mv > VBUS_INPUT_VOLTAGE_MAX) {
+			vbus_inc_mv -= 50;
+			smblib_write(chip, CMD_HVDCP_2_REG,
+				     FORCE_5V_BIT);
+			vbus_inc_now = true;
+			mmi->vbus_inc_cnt = 0;
+		}
+	}
+
 	if (chip->mmi.pres_temp_zone == ZONE_HOT) {
 		chip->mmi.batt_health = POWER_SUPPLY_HEALTH_OVERHEAT;
 	} else if (chip->mmi.pres_temp_zone == ZONE_COLD) {
@@ -5021,6 +5075,10 @@ end_hb:
 
 	if (!chip->mmi.chrg_taper_cnt && (rc >= 0))
 		hb_resch_time = HEARTBEAT_DELAY_MS;
+
+	if ((!charger_present && mmi->charger_debounce_cnt) ||
+	    vbus_inc_now)
+		hb_resch_time = HEARTBEAT_EB_WAIT_MS;
 
 	schedule_delayed_work(&mmi->heartbeat_work,
 			      msecs_to_jiffies(hb_resch_time));
