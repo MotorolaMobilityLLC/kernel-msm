@@ -12,6 +12,7 @@
  */
 
 #include "sdm632-moto-pinctrl-overlay.dtsi"
+#include <moto-mem-reserve.h>
 
 &blsp1_uart0 {
 	status = "ok";
@@ -81,16 +82,22 @@
 	ramoops_mem {
 		compatible = "ramoops";
 		no-map;
-		reg = <0x0 0xef000000 0x0 0xc0000>;
-		console-size = <0x40000>;
-		pmsg-size = <0x40000>;
-		record-size = <0x3f800>;
-		ramoops-annotate-size = <0x800>;
+		reg = <0x0 RAMOOPS_BASE_ADDR 0x0 RAMOOPS_SIZE>;
+		console-size = <RAMOOPS_CONSOLE_SIZE>;
+		pmsg-size = <RAMOOPS_PMSG_SIZE>;
+		record-size = <RAMOOPS_RECORD_SIZE>;
 	};
 
 	tzlog_dump_mem: tzlog_dump_mem_region {
 		no-map;
-		reg = <0x0 0xaefd0000 0x0 0x30000>;
+		reg = <0x0  TZLOG_BCK_BASE
+				0x0 TZLOG_BCK_SIZE>;
+	};
+
+	mmi_annotate_mem: mmi_annotate_mem_region {
+		no-map;
+		reg = <0x0  MMI_ANNOTATE_BASE
+				0x0 MMI_ANNOTATE_SIZE>;
 	};
 };
 
@@ -134,6 +141,12 @@
 	tzlog_dump {
 		compatible = "mmi,tzlog-dump";
 		memory-region = <&tzlog_dump_mem>;
+	};
+
+	mmi_annotate {
+		compatible = "mmi,annotate";
+		memory-region = <&mmi_annotate_mem>;
+		mem-size = <0x20000>;
 	};
 
 	sys_temp_support {
