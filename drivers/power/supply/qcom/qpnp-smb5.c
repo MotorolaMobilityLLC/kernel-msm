@@ -1482,8 +1482,10 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		vote(chg->pl_disable_votable, USER_VOTER, (bool)val->intval, 0);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+#ifdef QCOM_BASE
 		chg->batt_profile_fv_uv = val->intval;
 		vote(chg->fv_votable, BATT_PROFILE_VOTER, true, val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED:
 		enable = !!val->intval || chg->sw_jeita_enabled;
@@ -1957,10 +1959,14 @@ static int smb5_init_hw(struct smb5 *chip)
 	if (chip->dt.batt_profile_fcc_ua < 0)
 		smblib_get_charge_param(chg, &chg->param.fcc,
 				&chg->batt_profile_fcc_ua);
+	else
+		chg->batt_profile_fcc_ua = chip->dt.batt_profile_fcc_ua;
 
 	if (chip->dt.batt_profile_fv_uv < 0)
 		smblib_get_charge_param(chg, &chg->param.fv,
 				&chg->batt_profile_fv_uv);
+	else
+		chg->batt_profile_fv_uv = chip->dt.batt_profile_fv_uv;
 
 	smblib_get_charge_param(chg, &chg->param.usb_icl,
 				&chg->default_icl_ua);
