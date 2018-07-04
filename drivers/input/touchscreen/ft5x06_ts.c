@@ -309,7 +309,8 @@ enum {
 	PROC_READ_REGISTER	= 1,
 	PROC_WRITE_REGISTER	= 2,
 	PROC_WRITE_DATA		= 6,
-	PROC_READ_DATA		= 7
+	PROC_READ_DATA		= 7,
+	PROC_HW_RESET		= 11,
 };
 
 enum {
@@ -3354,6 +3355,19 @@ static ssize_t ft5x06_proc_write(struct file *filp, const char __user *buff,
 			if (retval < 0)
 				dev_err(&data->client->dev,
 					"%s: write I2C error\n", __func__);
+		}
+		break;
+	case PROC_HW_RESET:
+		dev_err(&data->client->dev, "tp reset\n");
+		retval = gpio_direction_output(data->pdata->reset_gpio, 0);
+		if (0 == retval) {
+			gpio_set_value_cansleep(data->pdata->reset_gpio, 0);
+			msleep(data->pdata->hard_rst_dly);
+			gpio_set_value_cansleep(data->pdata->reset_gpio, 1);
+			msleep(100);
+		} else {
+			dev_err(&data->client->dev,
+				"set direction for reset gpio failed\n");
 		}
 		break;
 	default:
