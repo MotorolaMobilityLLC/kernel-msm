@@ -670,7 +670,7 @@ static inline int qpnp_rtc_is_rtc_alarm_enabled(struct qpnp_rtc *rtc_dd)
 }
 
 /* Module parameter to control shipmode delay in sec */
-static unsigned int shipmode_delay = 157680000; /* change shipmode time from 30 day to 5 year */
+static unsigned int shipmode_delay = 2592000;
 module_param(shipmode_delay, uint, 0644);
 MODULE_PARM_DESC(shipmode_delay, "shipmode delay time in second");
 EXPORT_SYMBOL(shipmode_delay);
