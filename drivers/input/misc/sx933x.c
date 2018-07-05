@@ -48,7 +48,8 @@
 #define SX933x_I2C_M_RD                 1 /* for i2c Read */
 
 #define IDLE			    0
-#define ACTIVE			  1
+#define PROXACTIVE			  1
+#define BODYACTIVE			  2
 
 #define MAIN_SENSOR		1 //CS1
 
@@ -291,7 +292,6 @@ static ssize_t sx933x_register_write_store(struct device *dev,
 	return count;
 }
 
-//read registers not include the advanced one
 static ssize_t sx933x_register_read_store(struct device *dev,
 		struct device_attribute *attr,  const char *buf, size_t count)
 {
@@ -334,10 +334,10 @@ static void read_rawData(psx93XX_t this)
 			average = (s32)uData>>10;
 			sx933x_i2c_read_16bit(this, SX933X_DIFFPH0_REG + index, &uData);
 			diff = (s32)uData>>10;
-			sx933x_i2c_read_16bit(this, SX933X_OFFSETPH0_REG + index, &uData);
+			sx933x_i2c_read_16bit(this, SX933X_OFFSETPH0_REG + index*2, &uData);
 			offset = (u16)(uData & 0x7FFF);
 			//state = psmtcButtons[csx].state;
-			LOG_DBG("[CS: %d] Useful = %d Average = %d, DIFF = %d Offset = %d \n",
+			LOG_DBG("[PH: %d] Useful = %d Average = %d, DIFF = %d Offset = %d \n",
 					csx,useful,average,diff,offset);
 		}
 	}
@@ -345,19 +345,34 @@ static void read_rawData(psx93XX_t this)
 
 static ssize_t sx933x_raw_data_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	char *p = buf;
+	int csx;
+	s32 useful, average, diff;
+	u32 uData;
+	u16 offset;
+
 	psx93XX_t this = dev_get_drvdata(dev);
-	read_rawData(this);
-	return 0;
+	if(this) {
+		for(csx =0; csx<5; csx++) {
+			sx933x_i2c_read_16bit(this, SX933X_USEPH0_REG + csx*4, &uData);
+			useful = (s32)uData>>10;
+			sx933x_i2c_read_16bit(this, SX933X_AVGPH0_REG + csx*4, &uData);
+			average = (s32)uData>>10;
+			sx933x_i2c_read_16bit(this, SX933X_DIFFPH0_REG + csx*4, &uData);
+			diff = (s32)uData>>10;
+			sx933x_i2c_read_16bit(this, SX933X_OFFSETPH0_REG + csx*8, &uData);
+			offset = (u16)(uData & 0x7FFF);
+			p += snprintf(p, PAGE_SIZE, "[PH: %d] Useful = %d, Average = %d, DIFF = %d Offset = %d \n",
+					csx,useful,average,diff,offset);
+		}
+	}
+	return (p-buf);
 }
-
-
 
 static DEVICE_ATTR(manual_calibrate, 0664, manual_offset_calibration_show,manual_offset_calibration_store);
 static DEVICE_ATTR(register_write,  0664, NULL,sx933x_register_write_store);
 static DEVICE_ATTR(register_read,0664, NULL,sx933x_register_read_store);
 static DEVICE_ATTR(raw_data,0664,sx933x_raw_data_show,NULL);
-
-
 
 static struct attribute *sx933x_attributes[] =
 {
@@ -473,6 +488,7 @@ static void touchProcess(psx93XX_t this)
 {
 	int counter = 0;
 	u32 i = 0;
+	u32 touchFlag = 0;
 	int numberOfButtons = 0;
 	psx933x_t pDevice = NULL;
 	struct _buttonInfo *buttons = NULL;
@@ -483,7 +499,7 @@ static void touchProcess(psx93XX_t this)
 	if (this && (pDevice = this->pDevice))
 	{
 		sx933x_i2c_read_16bit(this, SX933X_STAT0_REG, &i);
-		LOG_DBG("touchProcess STAT0_REG:0x%x\n", i);
+		LOG_DBG("touchProcess STAT0_REG:0x%08x\n", i);
 
 		buttons = pDevice->pbuttonInformation->buttons;
 		numberOfButtons = pDevice->pbuttonInformation->buttonSize;
@@ -516,38 +532,35 @@ static void touchProcess(psx93XX_t this)
 				LOG_DBG("ERROR!! current button input at index: %d NULL!!!\n", counter);
 				return; // ERRORR!!!!
 			}
-			switch (pCurrentButton->state)
-			{
-				case IDLE: /* Button is not being touched! */
-					if (((i & pCurrentButton->mask) == pCurrentButton->mask))
-					{
-						/* User pressed button */
-						LOG_DBG("report %s touched\n", pCurrentButton->name);
-						input_report_abs(input, ABS_DISTANCE, 1);
-						input_sync(input);
-						pCurrentButton->state = ACTIVE;
-					}
-					else
-					{
-						LOG_DBG("%s already released.\n", pCurrentButton->name);
-					}
-					break;
-				case ACTIVE: /* Button is being touched! */
-					if (((i & pCurrentButton->mask) != pCurrentButton->mask))
-					{
-						/* User released button */
-						LOG_DBG("report %s released\n", pCurrentButton->name);
-						input_report_abs(input, ABS_DISTANCE, 0);
-						input_sync(input);
-						pCurrentButton->state = IDLE;
-					}
-					else
-					{
-						LOG_DBG("%s still touched.\n", pCurrentButton->name);
-					}
-					break;
-				default: /* Shouldn't be here, device only allowed ACTIVE or IDLE */
-					break;
+
+			touchFlag = i & (pCurrentButton->ProxMask | pCurrentButton->BodyMask);
+			if (touchFlag == (pCurrentButton->ProxMask | pCurrentButton->BodyMask)) {
+				if (pCurrentButton->state == BODYACTIVE)
+					LOG_DBG(" %s already BODYACTIVE\n", pCurrentButton->name);
+				else {
+					input_report_abs(input, ABS_DISTANCE, 2);
+					input_sync(input);
+					pCurrentButton->state = BODYACTIVE;
+					LOG_DBG(" %s report 5mm BODYACTIVE\n", pCurrentButton->name);
+				}
+			} else if (touchFlag == pCurrentButton->ProxMask) {
+				if (pCurrentButton->state == PROXACTIVE)
+					LOG_DBG(" %s already PROXACTIVE\n", pCurrentButton->name);
+				else {
+					input_report_abs(input, ABS_DISTANCE, 1);
+					input_sync(input);
+					pCurrentButton->state = PROXACTIVE;
+					LOG_DBG(" %s report 15mm PROXACTIVE\n", pCurrentButton->name);
+				}
+			}else if (touchFlag == 0) {
+				if (pCurrentButton->state == IDLE)
+					LOG_DBG("%s already released.\n", pCurrentButton->name);
+				else {
+					input_report_abs(input, ABS_DISTANCE, 0);
+					input_sync(input);
+					pCurrentButton->state = IDLE;
+					LOG_DBG("%s report  released.\n", pCurrentButton->name);
+				}
 			}
 		}
 		LOG_INFO("Leaving touchProcess()\n");
@@ -574,7 +587,7 @@ static int sx933x_parse_dt(struct sx933x_platform_data *pdata, struct device *de
 	pdata->button_used_flag = 0;
 	of_property_read_u32(dNode,"Semtech,button-flag",&pdata->button_used_flag);
 	LOG_INFO("%s -  used button 0x%x \n", __func__, pdata->button_used_flag);
-	
+
 #ifdef USE_DTS_REG
 	// load in registers from device tree
 	of_property_read_u32(dNode,"Semtech,reg-num",&pdata->i2c_reg_num);
@@ -679,14 +692,16 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 				psmtcButtons[i].enabled = true;
 				input_report_abs(psmtcButtons[i].input_dev, ABS_DISTANCE, 0);
 				input_sync(psmtcButtons[i].input_dev);
+
+				manual_offset_calibration(global_sx933x);
 			} else if (enable == 0) {
 				LOG_DBG("disable cap sensor : %s\n", sensors_cdev->name);
 				psmtcButtons[i].enabled = false;
 				input_report_abs(psmtcButtons[i].input_dev, ABS_DISTANCE, -1);
 				input_sync(psmtcButtons[i].input_dev);
 			} else {
-	  			LOG_DBG("unknown enable symbol\n");
-	  		}
+				LOG_DBG("unknown enable symbol\n");
+			}
 		}
 	}
 
@@ -788,7 +803,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 		{
 			this->statusFunc[0] = 0; /* TXEN_STAT */
 			this->statusFunc[1] = 0; /* UNUSED */
-			this->statusFunc[2] = 0; /* UNUSED */
+			this->statusFunc[2] = touchProcess; /* body&table */
 			this->statusFunc[3] = read_rawData; /* CONV_STAT */
 			this->statusFunc[4] = 0; /* COMP_STAT */
 			this->statusFunc[5] = touchProcess; /* RELEASE_STAT */
@@ -897,7 +912,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 	}
 
 	pplatData->exit_platform_hw = sx933x_exit_platform_hw;
-	
+
 	if (sx933x_Hardware_Check(this) != 0) {
 		LOG_DBG("sx933x_Hardware_CheckFail!\n");
 		//return -1;

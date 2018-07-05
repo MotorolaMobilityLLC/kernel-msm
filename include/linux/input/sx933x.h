@@ -239,6 +239,13 @@
 #define   SX933X_STAT0_PROXSTAT_PH1_FLAG      0x02000000
 #define   SX933X_STAT0_PROXSTAT_PH0_FLAG      0x01000000
 
+#define   SX933X_STAT0_BODYSTAT_PH5_FLAG      0x00002000
+#define   SX933X_STAT0_BODYSTAT_PH4_FLAG      0x00001000
+#define   SX933X_STAT0_BODYSTAT_PH3_FLAG      0x00000800
+#define   SX933X_STAT0_BODYSTAT_PH2_FLAG      0x00000300
+#define   SX933X_STAT0_BODYSTAT_PH1_FLAG      0x00000200
+#define   SX933X_STAT0_BODYSTAT_PH0_FLAG      0x00000100
+
 /*      Chip ID 	*/
 #define SX933X_WHOAMI_VALUE                   0x00003113
 /*command*/
@@ -268,8 +275,10 @@ struct _buttonInfo
 {
 	/*! The Key to send to the input */
 	// int keycode; //not use
-	/*! Mask to look for on Touch Status */
-	int mask;
+	/*! Mask to look for on Prox Touch Status */
+	int ProxMask;
+	/*! Mask to look for on Table Touch Status */
+	int BodyMask;
 	/*! Current state of button. */
 	int state;
 	struct input_dev *input_dev;
@@ -637,31 +646,36 @@ static const struct smtc_reg_data sx933x_i2c_reg_setup[] =
 static struct _buttonInfo psmtcButtons[] =
 {
 	{
-		.mask = SX933X_STAT0_PROXSTAT_PH0_FLAG,
+		.ProxMask = SX933X_STAT0_PROXSTAT_PH0_FLAG,
+		.BodyMask = SX933X_STAT0_BODYSTAT_PH0_FLAG,
 		.name = "Moto CapSense Ch0",
 		.enabled = false,
 		.used = false,
 	},
 	{
-		.mask = SX933X_STAT0_PROXSTAT_PH1_FLAG,
+		.ProxMask = SX933X_STAT0_PROXSTAT_PH1_FLAG,
+		.BodyMask = SX933X_STAT0_BODYSTAT_PH1_FLAG,
 		.name = "Moto CapSense Ch1",
 		.enabled = false,
 		.used = false,
 	},
 	{
-		.mask = SX933X_STAT0_PROXSTAT_PH2_FLAG,
+		.ProxMask = SX933X_STAT0_PROXSTAT_PH2_FLAG,
+		.BodyMask = SX933X_STAT0_BODYSTAT_PH2_FLAG,
 		.name = "Moto CapSense Ch2",
 		.enabled = false,
 		.used = false,
 	},
 	{
-		.mask = SX933X_STAT0_PROXSTAT_PH3_FLAG,
+		.ProxMask = SX933X_STAT0_PROXSTAT_PH3_FLAG,
+		.BodyMask = SX933X_STAT0_BODYSTAT_PH3_FLAG,
 		.name = "Moto CapSense Ch3",
 		.enabled = false,
 		.used = false,
 	},
 	{
-		.mask = SX933X_STAT0_PROXSTAT_PH4_FLAG,
+		.ProxMask = SX933X_STAT0_PROXSTAT_PH4_FLAG,
+		.BodyMask = SX933X_STAT0_BODYSTAT_PH4_FLAG,
 		.name = "Moto CapSense Ch4",
 		.enabled = false,
 		.used = false,
