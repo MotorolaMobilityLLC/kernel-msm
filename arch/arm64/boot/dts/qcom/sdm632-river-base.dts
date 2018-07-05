@@ -31,4 +31,7 @@
 	/delete-node/ qcom,vibrator@5700;
 };
 
+&thermal_zones {
+	/delete-node/ quiet-therm-adc;
+};
 /delete-node/ &adv_vreg;
