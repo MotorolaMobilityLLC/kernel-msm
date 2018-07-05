@@ -207,6 +207,7 @@
 	qcom,batt-id-range-pct = <15>;
 	df-serialnum = "SB18C28956";
 	#include "qg-batterydata-jk50-sucd-5000mah.dtsi"
+	#include "qg-batterydata-jk50-atl-5000mah.dtsi"
 };
 
 &pmi632_qg {
