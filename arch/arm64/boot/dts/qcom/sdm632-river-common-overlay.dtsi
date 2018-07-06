@@ -76,7 +76,7 @@
 		compatible = "awinic,aw869x_haptic";
 		reg = <0x5B>;
 		reset-gpio = <&pmi632_gpios 8 0>;
-		irq-gpio = <&pm8953_gpios 3 0>;
+		irq-gpio = <&pm8953_gpios 5 0>;
 		status = "okay";
 	};
 	/* AWINIC AW869X Haptic End */
