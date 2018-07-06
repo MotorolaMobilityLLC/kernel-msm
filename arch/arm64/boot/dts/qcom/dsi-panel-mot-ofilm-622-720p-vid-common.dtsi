@@ -43,7 +43,9 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 14 00 01 29];
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 48 00 01 28
-	05 01 00 00 14 00 01 10];
+	05 01 00 00 14 00 01 10
+	15 00 00 00 00 00 02 04 5A
+	15 01 00 00 96 00 02 05 5A];
 
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -102,11 +104,11 @@ qcom,mdss-dsi-bl-max-level = <2047>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
+qcom,mdss-dsi-reset-sequence = <0 1>, <1 35>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
-qcom,mdss-dsi-init-delay-us = <50000>;
 qcom,mdss-dsi-no-panel-on-read-support;
+qcom,mdss-panel-off-rst-disable;
 qcom,mdss-panel-reg-read-lp-enable;
 
 qcom,panel-supply-entries {
@@ -114,31 +116,18 @@ qcom,panel-supply-entries {
 	#size-cells = <0>;
 
 	qcom,panel-supply-entry@0 {
-		reg = <0>;
-		qcom,supply-name = "panel_iovcc";
-		qcom,supply-min-voltage = <1800000>;
-		qcom,supply-max-voltage = <1800000>;
-		qcom,supply-enable-load = <100000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-post-on-sleep = <10>;
-		qcom,supply-pre-off-sleep = <5>;
-		qcom,supply-post-off-sleep = <1>;
-	};
-
-	qcom,panel-supply-entry@1 {
 		reg = <1>;
 		qcom,supply-name = "vddio";
 		qcom,supply-min-voltage = <1800000>;
 		qcom,supply-max-voltage = <1800000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
-		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-post-on-sleep = <3>;
 		qcom,supply-pre-off-sleep = <5>;
-		qcom,supply-post-off-sleep = <1>;
 	};
 
 
-	qcom,panel-supply-entry@2 {
+	qcom,panel-supply-entry@1 {
 		reg = <2>;
 		qcom,supply-name = "vsp_disp";
 		qcom,supply-min-voltage = <6000000>;
@@ -147,14 +136,12 @@ qcom,panel-supply-entries {
 		qcom,supply-disable-load = <100>;
 	};
 
-	qcom,panel-supply-entry@3 {
+	qcom,panel-supply-entry@2 {
 		reg = <3>;
 		qcom,supply-name = "vsn_disp";
 		qcom,supply-min-voltage = <6000000>;
 		qcom,supply-max-voltage = <6000000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
-		qcom,supply-post-on-sleep = <10>;
-		qcom,supply-pre-off-sleep = <10>;
 	};
 };
