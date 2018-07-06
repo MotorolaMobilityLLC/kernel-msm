@@ -117,6 +117,11 @@
 	};
 };
 
+&pm8953_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
