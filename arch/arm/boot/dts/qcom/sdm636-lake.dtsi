@@ -12,6 +12,7 @@
 
 #include "sdm636-moto-common.dtsi"
 #include "dsi-panel-mot-tianma-624-1080p-vid.dtsi"
+#include "dsi-panel-mot-tianma-nova-624-1080p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm636-lake-pinctrl.dtsi"
 #include "sdm636-camera-sensor-mot-lake.dtsi"
@@ -217,7 +218,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tianma_624_1080p_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_n_624_1080p_vid_v0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
