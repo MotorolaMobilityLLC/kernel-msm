@@ -70,13 +70,43 @@ static int cyttsp_i2c_read_block(struct device *dev, u8 addr,
 	return (ret < 0) ? ret : ret != len ? -EIO : 0;
 }
 
+static int cyttsp_reset_hw(struct cyttsp_sar_data *data)
+{
+	int ret = 0;
+	u8 buffer[2];
+	struct device *dev = &data->client->dev;
+	struct i2c_client *client = to_i2c_client(dev);
+
+	dev_err(&data->client->dev, "irq disable before reset chip!\n");
+	if (gpio_is_valid(ctrl_data->hssp_d.rst_gpio)) {
+		gpio_direction_output(ctrl_data->hssp_d.rst_gpio, 0);
+		dev_err(&data->client->dev, "direction out, value = 0\n");
+		usleep_range(1000, 1000);
+		gpio_set_value(ctrl_data->hssp_d.rst_gpio, 1);
+		dev_err(&data->client->dev, "direction out, value = 1\n");
+	}
+	msleep(1200);
+	if (data->enable == true) {
+		buffer[0] = CYTTSP_NORMAL_MODE;
+		buffer[1] = 0x00;
+		ret = i2c_master_send(client, buffer, sizeof(buffer));
+		if (ret != sizeof(buffer))
+			dev_err(&data->client->dev, "enable channel after reset chip failed\n");
+		buffer[0] = CYTTSP_SAR_CHANNEL_ENABLE;
+		buffer[1] = 0x0f;
+		ret = i2c_master_send(client, buffer, sizeof(buffer));
+		if (ret != sizeof(buffer))
+			dev_err(&data->client->dev, "enable channel after reset chip failed\n");
+	}
+	dev_err(&data->client->dev, "irq enable after reset chip!\n");
+	return ret;
+}
+
+
 static u8 cyttsp_read_reg(struct cyttsp_sar_data *data, u8 reg)
 {
 	int ret;
 	u8 val;
-	u8 buffer[2];
-	struct device *dev = &data->client->dev;
-	struct i2c_client *client = to_i2c_client(dev);
 	struct cyttsp_sar_platform_data *pdata = data->pdata;
 
 	mutex_lock(&pdata->i2c_mutex);
@@ -85,27 +115,8 @@ static u8 cyttsp_read_reg(struct cyttsp_sar_data *data, u8 reg)
 	if (ret < 0) {
 		dev_err(&data->client->dev, "Failed to read reg!\n");
 		disable_irq_nosync(gpio_to_irq(pdata->irq_gpio));
-		dev_err(&data->client->dev, "irq disable before reset chip!\n");
-		gpio_direction_output(ctrl_data->hssp_d.rst_gpio, 0);
-		dev_err(&data->client->dev, "direction out, value = 0\n");
-		msleep(1);
-		gpio_set_value(ctrl_data->hssp_d.rst_gpio, 1);
-		dev_err(&data->client->dev, "direction out, value = 1\n");
-		msleep(100);
-		if (data->enable == true) {
-			buffer[0] = CYTTSP_NORMAL_MODE;
-			buffer[1] = 0x00;
-			ret = i2c_master_send(client, buffer, sizeof(buffer));
-			if (ret != sizeof(buffer))
-				dev_err(&data->client->dev, "enable channel after reset chip failed\n");
-			buffer[0] = CYTTSP_SAR_CHANNEL_ENABLE;
-			buffer[1] = 0x0f;
-			ret = i2c_master_send(client, buffer, sizeof(buffer));
-			if (ret != sizeof(buffer))
-				dev_err(&data->client->dev, "enable channel after reset chip failed\n");
-		}
+		ret = cyttsp_reset_hw(data);
 		enable_irq(gpio_to_irq(pdata->irq_gpio));
-		dev_err(&data->client->dev, "irq enable after reset chip!\n");
 		mutex_unlock(&pdata->i2c_mutex);
 		dev_err(&data->client->dev, "mutex unlock after reset chip!\n");
 		return ret;
@@ -131,27 +142,8 @@ static int cyttsp_write_reg(struct cyttsp_sar_data *data,
 	if (ret != sizeof(buffer)) {
 		dev_err(&data->client->dev, "Failed to write %x reg!\n", buffer[0]);
 		disable_irq_nosync(gpio_to_irq(pdata->irq_gpio));
-		dev_err(&data->client->dev, "irq disable before reset chip!\n");
-		gpio_direction_output(ctrl_data->hssp_d.rst_gpio, 0);
-		dev_err(&data->client->dev, "direction out, value = 0\n");
-		msleep(1);
-		gpio_set_value(ctrl_data->hssp_d.rst_gpio, 1);
-		dev_err(&data->client->dev, "direction out, value = 1\n");
-		msleep(100);
-		if (data->enable == true) {
-			buffer[0] = CYTTSP_NORMAL_MODE;
-			buffer[1] = 0x00;
-			ret = i2c_master_send(client, buffer, sizeof(buffer));
-			if (ret != sizeof(buffer))
-				dev_err(&data->client->dev, "enable channel after reset chip failed\n");
-			buffer[0] = CYTTSP_SAR_CHANNEL_ENABLE;
-			buffer[1] = 0x0f;
-			ret = i2c_master_send(client, buffer, sizeof(buffer));
-			if (ret != sizeof(buffer))
-				dev_err(&data->client->dev, "enable channel after reset chip failed\n");
-		}
+		ret = cyttsp_reset_hw(data);
 		enable_irq(gpio_to_irq(pdata->irq_gpio));
-		dev_err(&data->client->dev, "irq enable after reset chip!\n");
 		mutex_unlock(&pdata->i2c_mutex);
 		dev_err(&data->client->dev, "mutex unlock after reset chip!\n");
 		return ret;
@@ -390,6 +382,7 @@ static void cyttsp_sar_eint_work(struct work_struct *work)
 		ret = cyttsp_i2c_read_block(&data->client->dev, CYTTSP_REG_INTERRUPT_PEDNING, 3, &temp[0]);
 		if (ret < 0) {
 			dev_err(&data->client->dev, "Failed to read interrupt pending regsiter!\n");
+			ret = cyttsp_reset_hw(data);
 			enable_irq(gpio_to_irq(pdata->irq_gpio));
 			dev_err(&data->client->dev, "enable irq in interrupt\n");
 			return;
@@ -823,9 +816,6 @@ int __cycapsense_fw_update(struct cycapsense_ctrl_data *data)
 		fw_dl_status = 0;
 	}
 
-	error = cyttsp_write_reg(pcyttsp_sar_ptr, CYTTSP_SAR_OP_MODE, 0x01);
-	if (error < 0)
-		LOG_ERR("reg write failed\n");
 	pcyttsp_sar_ptr->enable = false;
 
 fw_upd_end:
@@ -1648,8 +1638,16 @@ static int cypress_i2c_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cyttsp_sar_data *data = i2c_get_clientdata(client);
 	const struct cyttsp_sar_platform_data *pdata = data->pdata;
+	int ret = 0;
 
 	disable_irq(gpio_to_irq(pdata->irq_gpio));
+	if (data->enable) {
+		ret = cyttsp_write_reg(pcyttsp_sar_ptr,
+				CYTTSP_SAR_OP_MODE, 0x01);
+		if (ret < 0)
+			dev_err(&data->client->dev, "reg write failed\n");
+	}
+
 	dev_dbg(&client->dev, "cypress i2c suspend\n");
 
 	return 0;
@@ -1660,7 +1658,14 @@ static int cypress_i2c_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cyttsp_sar_data *data = i2c_get_clientdata(client);
 	const struct cyttsp_sar_platform_data *pdata = data->pdata;
+	int ret = 0;
 
+	if (data->enable) {
+		ret = cyttsp_write_reg(pcyttsp_sar_ptr,
+				CYTTSP_SAR_OP_MODE, 0x00);
+		if (ret < 0)
+			dev_err(&data->client->dev, "reg write failed\n");
+	}
 	enable_irq(gpio_to_irq(pdata->irq_gpio));
 	dev_dbg(&client->dev, "cypress i2c resume\n");
 
