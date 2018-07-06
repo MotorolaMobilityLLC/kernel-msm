@@ -1870,7 +1870,7 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 
 	switch (reg_revid) {
 	case CS35L41_REVID_A0:
-		ret = regmap_register_patch(cs35l41->regmap,
+		ret = regmap_multi_reg_write(cs35l41->regmap,
 				cs35l41_reva0_errata_patch,
 				ARRAY_SIZE(cs35l41_reva0_errata_patch));
 		if (ret < 0) {
@@ -1878,6 +1878,10 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 				"Failed to apply A0 errata patch %d\n", ret);
 			goto err;
 		}
+		break;
+	case CS35L41_REVID_B0:
+		regmap_write(cs35l41->regmap, CS35L41_BSTCVRT_DCM_CTRL, 0x51);
+		break;
 	}
 
 	ret = cs35l41_otp_unpack(cs35l41);
