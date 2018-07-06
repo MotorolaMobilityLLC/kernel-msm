@@ -2101,6 +2101,14 @@ static int smb5_init_hw(struct smb5 *chip)
 			dev_err(chg->dev, "Couldn't config AICL rc=%d\n", rc);
 			return rc;
 		}
+	} else if (!chg->mmi.factory_mode) {
+		rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				USBIN_AICL_ADC_EN_BIT | USBIN_AICL_EN_BIT,
+				USBIN_AICL_ADC_EN_BIT | USBIN_AICL_EN_BIT);
+		if (rc < 0) {
+			dev_err(chg->dev, "Couldn't config AICL rc=%d\n", rc);
+			return rc;
+		}
 	}
 
 	/* enable the charging path */
