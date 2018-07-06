@@ -1828,6 +1828,7 @@ static int smblib_dp_pulse(struct smb_charger *chg)
 	return rc;
 }
 
+#ifdef QCOM_BASE
 static int smblib_dm_pulse(struct smb_charger *chg)
 {
 	int rc;
@@ -1841,6 +1842,7 @@ static int smblib_dm_pulse(struct smb_charger *chg)
 
 	return rc;
 }
+#endif
 
 int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 {
@@ -1856,6 +1858,7 @@ int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 
 int smblib_dp_dm(struct smb_charger *chg, int val)
 {
+#ifdef QCOM_BASE
 	int target_icl_ua, rc = 0;
 	union power_supply_propval pval;
 
@@ -1925,6 +1928,9 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 	}
 
 	return rc;
+#else
+	return 0;
+#endif
 }
 
 int smblib_disable_hw_jeita(struct smb_charger *chg, bool disable)
@@ -3585,7 +3591,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->pulse_cnt = 0;
 	chg->usb_icl_delta_ua = 0;
 	chg->voltage_min_uv = MICRO_5V;
-	chg->voltage_max_uv = MICRO_5V;
+	chg->voltage_max_uv = MICRO_9V;
 
 	/* write back the default FLOAT charger configuration */
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_2_CFG_REG,
@@ -3596,9 +3602,9 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	/* reconfigure allowed voltage for HVDCP */
 	rc = smblib_set_adapter_allowance(chg,
-			USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V);
+			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 	if (rc < 0)
-		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V rc=%d\n",
+		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_TO_9V rc=%d\n",
 			rc);
 
 	if (chg->use_extcon)
@@ -5091,11 +5097,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		    (usb_mv >= VBUS_INPUT_VOLTAGE_MIN) &&
 		    (mmi->vbus_inc_cnt < VBUS_INPUT_MAX_COUNT)) {
 			pr_warn("HVDCP Input %d mV Low, Increase\n", usb_mv);
-			smblib_write(chip, CMD_HVDCP_2_REG,
-				     SINGLE_INCREMENT_BIT);
+			smblib_dp_pulse(chip);
 			vbus_inc_now = true;
 			mmi->vbus_inc_cnt++;
 		} else if (usb_mv > VBUS_INPUT_VOLTAGE_MAX) {
+			smblib_dbg(chip, PR_MOTO,
+				   "HVDCP Input %d mV High force 5V\n",
+				   usb_mv);
 			vbus_inc_mv -= 50;
 			smblib_write(chip, CMD_HVDCP_2_REG,
 				     FORCE_5V_BIT);
@@ -6098,6 +6106,10 @@ void mmi_init(struct smb_charger *chg)
 			smblib_err(chg, "couldn't create force_chg_itrick\n");
 		}
 	}
+
+	/* reconfigure allowed voltage for HVDCP */
+	rc = smblib_set_adapter_allowance(chg,
+			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 
 	/* Turn Jeita OFF */
 	rc = smblib_masked_write(chg, JEITA_EN_CFG_REG,
