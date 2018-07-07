@@ -372,3 +372,6 @@
 	cd-gpios = <&tlmm 133 0x0>;
 };
 
+&pm8953_l22 {
+	regulator-always-on;
+};
