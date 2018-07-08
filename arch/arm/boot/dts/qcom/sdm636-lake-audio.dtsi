@@ -277,6 +277,10 @@
 						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
 					};
+					calibration {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-cali.wmfw";
+					};
 				};
 			};
 		};
@@ -315,6 +319,10 @@
 						cirrus,full-name;
 						cirrus,wmfw-file = "cs35l41-dsp1-rcv-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-rcv-prot.bin";
+					};
+					calibration {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-cali.wmfw";
 					};
 				};
 			};
