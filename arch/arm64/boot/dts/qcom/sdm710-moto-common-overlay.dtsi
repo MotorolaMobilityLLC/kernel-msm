@@ -612,8 +612,9 @@
 		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
 		clock-names = "cdc_mclk2";
 		AVDD-supply = <&pm660_l13>;
-		DBVDD1-supply = <&pm660_l13>;
 		DBVDD2-supply = <&pm660_l13>;
+		DBVDD3-supply = <&pm660_l13>;
+		DBVDD4-supply = <&pm660_l13>;
 		CPVDD-supply = <&pm660_l13>;
 		CPVDD1-supply = <&pm660_l13>;
 		CPVDD2-supply = <&pm660_l13>;
