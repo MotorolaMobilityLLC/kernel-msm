@@ -42,3 +42,7 @@
 &slim_msm {
 	/delete-node/ tasha_codec;
 };
+
+&pmi632_3 {
+	/delete-node/ qcom,vibrator@5700;
+};
