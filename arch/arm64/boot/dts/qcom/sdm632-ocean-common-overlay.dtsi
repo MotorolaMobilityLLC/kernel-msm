@@ -554,6 +554,10 @@
 	};
 };
 
+&pmic_analog_codec{
+	qcom,cdc-micbias-cfilt-mv = <2750000>;
+};
+
 &sdhc_2 {
 	cd-gpios = <&tlmm 133 0x0>;
 };
