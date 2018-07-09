@@ -118,6 +118,12 @@ struct ramoops_context {
 static struct platform_device *dummy;
 static struct ramoops_platform_data *dummy_data;
 
+size_t get_annotate_size(struct pstore_info *psi)
+{
+	struct ramoops_context *cxt = psi->data;
+	return cxt->annotate_size;
+}
+
 static int ramoops_pstore_open(struct pstore_info *psi)
 {
 	struct ramoops_context *cxt = psi->data;
