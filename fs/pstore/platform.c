@@ -873,7 +873,7 @@ void pstore_get_records(int quiet)
 	 * or power up), create it now, since we need app to make annotation
 	 * during bootup.
 	 */
-	if (!made_annotate_file) {
+	if (!made_annotate_file && get_annotate_size(psi)) {
 		rc = pstore_mkfile(PSTORE_TYPE_ANNOTATE, psi->name, 0, 0, NULL,
 					0, 0, time, psi);
 		if (rc)
