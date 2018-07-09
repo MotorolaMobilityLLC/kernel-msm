@@ -119,3 +119,123 @@
 &pm8953_l22 {
 	regulator-always-on;
 };
+
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SB18C34004";
+	#include "qg-batterydata-jg30-atl-3000mah.dtsi"
+};
+
+&pmi632_qg {
+	qcom,qg-iterm-ma = <150>;
+	qcom,battery-data = <&mtp_batterydata>;
+};
+
+&pmi632_charger {
+	qcom,iterm-ma = <146>;
+	qcom,fcc-max-ua = <2000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <2000000>;
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,mmi-temp-zones = <0 4200 582 0>,
+				<10 4200 1460 582>,
+				<15 0 1460 1460>,
+				<45 4250 2000 2000>,
+				<60 4200 1460 0>;
+};
+
+&pmi632_vadc {
+	chan@2a {
+		label = "bat_therm_PU30";
+		reg = <0x2a>;
+		qcom,decimation = <2>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <22>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+		qcom,cal-val = <0>;
+	};
+};
+
+&pm8953_vadc {
+	pinctrl-0 = <&chg_therm_default &msm_therm_default>;
+	/delete-node/ chan@11;
+
+	chan@11 {
+		label = "chg_therm";
+		reg = <0x11>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
+	};
+
+	chan@13 {
+		label = "msm_therm";
+		reg = <0x13>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
+	};
+};
+
+&pm8953_mpps {
+	msm_therm {
+		msm_therm_default: msm_therm_default {
+		pins = "mpp4";
+		function = "analog";
+		input-enable;
+		qcom,amux-route = <3>;
+		};
+	};
+
+	chg_therm {
+		chg_therm_default: chg_therm_default {
+		pins = "mpp2";
+		function = "analog";
+		input-enable;
+		qcom,amux-route = <1>;
+		};
+	};
+};
+
+&thermal_zones {
+	msm_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-sensors = <&pm8953_vadc 0x13>;
+		thermal-governor = "user_space";
+
+		trips {
+			active-config0 {
+				temperature = <65000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	chg_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-sensors = <&pm8953_vadc 0x11>;
+		thermal-governor = "user_space";
+
+		trips {
+			active-config0 {
+				temperature = <65000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+};
+
