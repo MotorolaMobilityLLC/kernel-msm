@@ -639,7 +639,7 @@
 	qcom,vmax-mv = <2600>;
 	qcom,vmax-low-mv = <2600>;
 	qcom,ilim-ma = <100>;
-	qcom,brake-pattern = [03 03 00 00];
+	qcom,brake-pattern = [03 03 03 00];
 };
 
 &pm8953_l10 {
