@@ -169,6 +169,9 @@
 
 &pmi632_qg {
 	qcom,qg-iterm-ma = <150>;
+	qcom,vbatt-cutoff-mv = <3200>;
+	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-low-mv = <3300>;
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
@@ -178,11 +181,21 @@
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <2000000>;
 	qcom,battery-data = <&mtp_batterydata>;
+	qcom,thermal-mitigation = <2000>,
+				<1600>,
+				<1200>,
+				<1000>,
+				<800>,
+				<500>,
+				<300>;
 	qcom,mmi-temp-zones = <0 4200 582 0>,
 				<10 4200 1460 582>,
 				<15 0 1460 1460>,
-				<45 4250 2000 2000>,
+				<45 4200 2000 2000>,
 				<60 4200 1460 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 &pmi632_vadc {
