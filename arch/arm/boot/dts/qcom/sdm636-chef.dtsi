@@ -232,6 +232,7 @@
 		df-serialnum = "SB18C28956";
 		#include "batterydata-jk50-atl-5000mah.dtsi"
 		#include "batterydata-jk50-scud-5000mah.dtsi"
+		#include "batterydata-jk50-atl-india-5000mah.dtsi"
 	};
 };
 
