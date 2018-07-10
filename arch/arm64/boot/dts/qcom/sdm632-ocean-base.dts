@@ -95,4 +95,10 @@
 	/delete-node/ cdc_reset_ctrl;
 	/delete-node/ cross-conn-det;
 };
+/*
+&thermal_zones {
+	/delete-node/ pa-therm0;
+	/delete-node/ quiet-therm-adc;
+	/delete-node/ xo-therm-adc;
+};*/
 
