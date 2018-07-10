@@ -224,6 +224,66 @@
 			};
 		};
 	};
+
+	typec_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-sensors = <&pmi632_adc_tm 0x52>;
+		thermal-governor = "user_space";
+
+		trips {
+			active-config0 {
+				temperature = <65000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	quiet_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-sensors = <&pmi632_adc_tm 0x53>;
+		thermal-governor = "user_space";
+
+		trips {
+			active-config0 {
+				temperature = <65000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	pa_therm0 {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-sensors = <&pm8953_adc_tm 0x36>;
+		thermal-governor = "user_space";
+
+		trips {
+			active-config0 {
+				temperature = <65000>;
+				hysteresis = <5000>;
+				type = "passive";
+			};
+		};
+	};
+
+	xo_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-sensors = <&pm8953_adc_tm 0x32>;
+		thermal-governor = "user_space";
+
+		trips {
+			active-config0 {
+				temperature = <65000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
 };
 
 &mtp_batterydata {
