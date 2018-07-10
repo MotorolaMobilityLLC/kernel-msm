@@ -1,0 +1,74 @@
+
+qcom,jk50_atl_india_5000mah {
+	qcom, = <24>;
+	/* #3285716_JK50atl_5000mAh_averaged_MasterSlave_Jan22nd2018*/
+	serialnum = "SB18C29743";
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <5000>;
+	qcom,fastchg-current-ma = <3000>; // Set max battery charged current to 3000mA
+	qcom,batt-id-kohm = <240>; // Default battery ID was 240k on main board
+	qcom,battery-beta = <3435>;
+	qcom,battery-thermal-coeff = [8f 50 ff]; // B3200
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,battery-type = "JK50atl_india_4v4_5000mAh";
+	qcom,checksum = <0xF3FE>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 51 1F E4 05
+		 41 0A 0F FD
+		 E8 1C E0 01
+		 DB 0D 80 0A
+		 29 18 93 23
+		 A3 44 2B 5A
+		 74 00 00 00
+		 10 00 00 00
+		 00 00 67 CD
+		 C0 C4 05 D2
+		 17 00 08 00
+		 4A DB 76 E4
+		 B1 06 6F F3
+		 9A 01 6A 13
+		 0B 07 49 2B
+		 21 06 09 20
+		 27 00 14 00
+		 D0 20 4D 04
+		 75 0B 5A 05
+		 D8 1C B4 02
+		 91 0C 9E 0B
+		 9E 18 AB 23
+		 1E 44 D8 5A
+		 77 00 00 00
+		 0E 00 00 00
+		 00 00 5B CC
+		 34 C3 13 C2
+		 13 00 00 00
+		 B9 EA 76 E4
+		 06 F5 6A 00
+		 6E ED E8 02
+		 41 F5 60 13
+		 99 33 CC FF
+		 07 10 00 00
+		 8C 13 66 46
+		 13 00 40 00
+		 92 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
