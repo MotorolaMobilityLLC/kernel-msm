@@ -23,6 +23,18 @@
 		};
 	};
 
+	sx933x_irq_default: sx933x_irq_default {
+		mux {
+			pins = "gpio86";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio86";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
 	fps: fps {
 		fps_rst_active: rst_active {
 			/* RESET */
