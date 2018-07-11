@@ -32,6 +32,9 @@
 #ifdef CONFIG_SND_SOC_OPALUM
 #include <sound/ospl2xx.h>
 #endif
+#ifdef CONFIG_CIRRUS_PLAYBACK
+#include "msm-cirrus-playback.h"
+#endif
 
 #define WAKELOCK_TIMEOUT	5000
 enum {
@@ -585,6 +588,10 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		uint32_t param_id;
 		uint32_t param_id_pos = 0;
 
+#ifdef CONFIG_CIRRUS_PLAYBACK
+		if (crus_afe_callback(data->payload, data->payload_size) == 0)
+			return 0;
+#endif
 		if (!payload || (data->token >= AFE_MAX_PORTS)) {
 			pr_err("%s: Error: size %d payload %pK token %d\n",
 				__func__, data->payload_size,
@@ -1486,6 +1493,16 @@ done:
 	kfree(packed_param_data);
 	return ret;
 }
+
+#ifdef CONFIG_CIRRUS_PLAYBACK
+extern int afe_apr_send_pkt_crus(void *data, int index, int set)
+{
+	if (set)
+		return afe_apr_send_pkt(data, &this_afe.wait[index]);
+	else /* get */
+		return afe_apr_send_pkt(data, 0);
+}
+#endif
 
 static int afe_send_cal_block(u16 port_id, struct cal_block_data *cal_block)
 {
