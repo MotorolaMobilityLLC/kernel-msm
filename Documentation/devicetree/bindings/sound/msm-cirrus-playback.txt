@@ -1,0 +1,15 @@
+Cirrus Logic MSM Framework Driver
+
+Required properties:
+
+  - compatible : "cirrus,msm-cirrus-playback"
+
+  - usecase-names : List of strings representing the various usecases
+  available on a given platform (max of 4).
+
+Example:
+
+msm-cirrus-playback {
+	compatible = "cirrus,msm-cirrus-playback";
+	usecase-names = "Playback", "Voice", "Headset", "Handsfree";
+};
