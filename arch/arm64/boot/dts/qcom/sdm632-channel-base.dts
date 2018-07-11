@@ -23,19 +23,53 @@
 };
 /* camera flash and gpio 50 */
 &soc {
+	/delete-node/ gpio_keys;
+	/delete-node/ spi@78b7000;
+
+	/delete-node/ sound;
 	/delete-node/ sound-9335;
 	/delete-node/ eldo2;
-	/delete-node/ spi@78b7000;
+	/delete-node/ msm_cdc_pinctrl_us_euro_sw;
+	/delete-node/ wsa881x_analog_vi_pctrl;
+	/delete-node/ wsa881x_analog_clk_pctrl;
+	/delete-node/ wsa881x_analog_reset_pctrl;
+	/delete-node/ msm_cdc_pinctrl@67;
 	/delete-node/ qcom,camera-flash;
+	qcom,msm-dai-tdm-pri-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-pri-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-sec-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-sec-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-tert-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-tert-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quat-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quat-tx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quin-rx {
+		status = "disabled";
+	};
+	qcom,msm-dai-tdm-quin-tx {
+		status = "disabled";
+	};
 };
 
-/* fingerprint spi8 gpio96 */
-&soc {
-       /delete-node/ wsa881x_analog_reset_pctrl;
-};
-
-&wsa881x_i2c_f {
-	/delete-property/ qcom,wsa-analog-reset-gpio;
+&i2c_2 {
+	/delete-node/ wsa881x-i2c-codec@f;
+	/delete-node/ wsa881x-i2c-codec@45;
 };
 
 /*  camera gpio50 and fingerprint spi8 gpio96 */
