@@ -76,7 +76,7 @@
 		ctl-bank-en = <0x02>;
 		map-mode = <0x01>;
 		/* fsc = 5 + 0.8 * value */
-		full-scale-current = <0x0A>;
+		full-scale-current = <0x19>;
 	};
 
 	st21nfc@8 {
