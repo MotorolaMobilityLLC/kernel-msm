@@ -3327,6 +3327,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 					"qcom,mdss-dsi-lp11-init");
 	pinfo->panel_off_rst_disable = of_property_read_bool(np,
 					"qcom,mdss-panel-off-rst-disable");
+	pinfo->panel_reset_pull_high = of_property_read_bool(np,
+					"qcom,mdss-panel-reset-high");
 	pinfo->panel_reg_read_lp_enable = of_property_read_bool(np,
 					"qcom,mdss-panel-reg-read-lp-enable");
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-init-delay-us", &tmp);
