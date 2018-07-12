@@ -143,6 +143,7 @@
 	vsn_disp-supply = <&lcdb_ncp_vreg>;
 
 	qcom,platform-reset-gpio = <&tlmm 61 0>;
+	qcom,platform-tp-reset-gpio = <&tlmm 64 0>;
 };
 
 &mdss_dsi1 {
