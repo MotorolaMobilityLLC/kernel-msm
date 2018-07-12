@@ -736,6 +736,7 @@ int mdss_dba_utils_reconfigure_dsi(void *data, struct mdss_panel_info *pinfo)
 	struct msm_dba_dsi_cfg dsi_config;
 	struct dsi_panel_timing pt;
 	int ret = 0;
+	u64 clk_rate;
 
 	if (!ud || !pinfo) {
 		pr_err("invalid input\n");
@@ -809,8 +810,9 @@ int mdss_dba_utils_reconfigure_dsi(void *data, struct mdss_panel_info *pinfo)
 	pt.t_clk_pre = dsi_config.t_clk_pre;
 	pt.t_clk_post = dsi_config.t_clk_post;
 
-	pinfo->mipi.dsi_pclk_rate = pt.timing.clk_rate;
-	do_div(pinfo->mipi.dsi_pclk_rate, dsi_config.bpp);
+	clk_rate = (u64)(pt.timing.clk_rate);
+	do_div(clk_rate, dsi_config.bpp);
+	pinfo->mipi.dsi_pclk_rate = (u32)clk_rate;
 
 	ret = mdss_dsi_panel_timing_switch(ctrl, &pt.timing);
 	if (ret)
