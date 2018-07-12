@@ -602,7 +602,7 @@
 		spi-max-frequency = <50000000>;
 		reg = <0x0>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <54 IRQ_TYPE_EDGE_FALLING>;
+		interrupts = <54 0>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		reset-gpios = <&tlmm 78 0>;
@@ -695,8 +695,9 @@
 						1 0 1 1 0
 						0 1 0 0 1
 						>;
-				cirrus,micd-pol-gpios = <&cs47l90 4 0>,
-							<&cs47l90 5 0>;
+				cirrus,micd-pol-gpios = <&cs47l90 3 0>;
+				cirrus,micd-pol-alt-gpios = <&cs47l90 4 0>;
+
 				cirrus,usbc-headset;
 				cirrus,usbsel-gpios = <&tlmm 50 0>;
 				cirrus,hsdet-gpios = <&tlmm 92 GPIO_ACTIVE_LOW>;
