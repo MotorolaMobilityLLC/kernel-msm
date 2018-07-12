@@ -11,6 +11,8 @@
 #include <linux/random.h>
 #include <linux/string.h>
 #include <linux/mount.h>
+#include <linux/fs.h>
+#include <trace/events/android_fs.h>
 #include "fscrypt_private.h"
 
 /*
