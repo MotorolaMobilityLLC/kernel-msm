@@ -1660,7 +1660,8 @@ static struct mdss_mdp_pipe *__find_layer_in_validate_q(
 	list_for_each_entry(pipe, &mdp5_data->pipes_used, list) {
 		if ((pipe->ndx == layer->pipe_ndx) &&
 		    (pipe->multirect.num == vinfo->multirect.num)) {
-			if (__compare_layer_config(layer, pipe))
+			if (!pipe->dirty &&
+				__compare_layer_config(layer, pipe))
 				found = true;
 			break;
 		}
