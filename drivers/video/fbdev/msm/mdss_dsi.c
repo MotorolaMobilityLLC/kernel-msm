@@ -1572,6 +1572,8 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		pr_debug("%s: dsi_on from panel low power state\n", __func__);
 		goto end;
 	}
+	if (pinfo->panel_reset_pull_high)
+		mdss_dsi_panel_reset(pdata, 1);
 
 	ret = mdss_dsi_set_clk_src(ctrl_pdata);
 	if (ret) {

@@ -721,6 +721,7 @@ struct mdss_panel_info {
 	u32 rst_seq_len;
 	bool panel_off_rst_disable;
 	bool panel_reg_read_lp_enable;
+	bool panel_reset_pull_high;
 	u32 vic; /* video identification code */
 	struct mdss_rect roi;
 	int pwm_pmic_gpio;
