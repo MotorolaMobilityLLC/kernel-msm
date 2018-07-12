@@ -460,6 +460,7 @@ struct mdss_dsi_ctrl_pdata {
 	int irq_cnt;
 	int disp_te_gpio;
 	int rst_gpio;
+	int tp_rst_gpio;
 	int disp_en_gpio;
 	int bklt_en_gpio;
 	bool bklt_en_gpio_invert;
