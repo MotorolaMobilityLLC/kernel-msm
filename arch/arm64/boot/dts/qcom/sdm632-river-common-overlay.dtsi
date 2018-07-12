@@ -106,7 +106,6 @@
 
 &i2c_3 {
 	status = "okay";
-	qcom,disable-dma;
 
 	novatech@62 {
 		compatible = "novatek,NVT-ts";
