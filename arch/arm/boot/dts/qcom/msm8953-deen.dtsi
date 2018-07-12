@@ -455,6 +455,9 @@
 	};
 };
 
+&pm8953_diangu_dig{
+	qcom,cdc-micbias-cfilt-mv = <2750000>;
+};
 
 &slim_msm {
 	status = "disabled";
