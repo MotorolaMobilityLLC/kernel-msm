@@ -23,7 +23,7 @@ qcom,mdss-dsi-h-front-porch = <40>;
 qcom,mdss-dsi-h-back-porch = <40>;
 qcom,mdss-dsi-h-pulse-width = <20>;
 qcom,mdss-dsi-v-front-porch = <10>;
-qcom,mdss-dsi-v-back-porch = <10>;
+qcom,mdss-dsi-v-back-porch = <8>;
 qcom,mdss-dsi-v-pulse-width = <2>;
 qcom,mdss-dsi-h-left-border = <0>;
 qcom,mdss-dsi-h-right-border = <0>;
@@ -33,6 +33,9 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
+	15 01 00 00 00 00 02 FF 25
+	15 01 00 00 00 00 02 FB 01
+	15 01 00 00 00 00 02 05 04
 	15 01 00 00 00 00 02 FF F0
 	15 01 00 00 00 00 02 FB 01
 	15 01 00 00 00 00 02 A2 00
