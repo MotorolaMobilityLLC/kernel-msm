@@ -320,7 +320,6 @@
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <1>;
 		qcom,msm-micbias2-ext-cap;
-		qcom,cdc-micbias-silicon-mv = <2750000>;
 
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
@@ -456,6 +455,9 @@
 	};
 };
 
+&pm8953_diangu_dig{
+	qcom,cdc-micbias-cfilt-mv = <2750000>;
+};
 
 &slim_msm {
 	status = "disabled";
