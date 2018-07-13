@@ -23,6 +23,31 @@
 			bias-pull-up;
 		};
 	};
+
+	quin-mi2s-lines {
+		quin_mi2s_act: quin_mi2s_act {
+			mux {
+				pins = "gpio91", "gpio88", "gpio93";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio91", "gpio88", "gpio93";
+				drive-strength = <8>;
+			};
+		};
+		quin_mi2s_sus: quin_mi2s_sus {
+			mux {
+				pins = "gpio91", "gpio88", "gpio93";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio91", "gpio88", "gpio93";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
 	tps61280_en_default: tps61280_en_default {
 		mux {
 			pins = "gpio113";
