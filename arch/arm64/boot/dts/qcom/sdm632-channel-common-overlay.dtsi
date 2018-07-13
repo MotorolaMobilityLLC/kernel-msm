@@ -142,6 +142,19 @@
 		reg_array_len = <8>;
 		reg_array_val = <0x13 0x0f 0x15 0xc3 0x17 0x4e 0x18 0x79 0x19 0x79 0x1a 0x15 0x21 0x1c 0x23 0x20>;
 	};
+
+	audio_tas2560:tas2560@4f {
+		compatible = "ti,tas2560";
+		reg = <0x4f>;
+		ti,reset-gpio = <&tlmm 94 0>;
+		ti,irq-gpio = <&tlmm 63 0>;
+		ti,ear-switch-gpio = <&tlmm 59 0>;
+		ti,pll = <0>; /* refer to tas2560.h for more details */
+		ti,asi-format = <0>; /* 0, i2S; 1, DSP;  */
+		ti,load = <1>; /* 0, 8Ohm; 1, 6Ohm; 2, 4Ohm */
+		ti,ppg = <0>; /* 0, 0dB default; 1， enable -2dB */
+		status = "disabled";
+	};
 };
 
 &pm8953_l22 {
