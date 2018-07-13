@@ -12,7 +12,7 @@
  */
 
 #include "sdm632-moto-pinctrl-overlay.dtsi"
-#include <moto-mem-reserve.h>
+#include <dt-bindings/moto/moto-mem-reserve.h>
 
 &blsp1_uart0 {
 	status = "ok";
