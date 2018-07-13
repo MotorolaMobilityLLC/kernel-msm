@@ -19,7 +19,6 @@
 
 / {
 	model = "channel";
-	compatible = "channel,na,evt1";
 	qcom,msm-id = <349 0x0>;
 	qcom,board-id = <(CHANNEL_RADIO_NA << 8 | 0x4B) 0xA100>;
 };
