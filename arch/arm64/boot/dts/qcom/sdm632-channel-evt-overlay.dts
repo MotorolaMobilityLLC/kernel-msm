@@ -19,7 +19,6 @@
 
 / {
 	model = "channel";
-	compatible = "channel,evt1";
 	qcom,msm-id = <349 0x0>;
 	qcom,board-id = <0x49 0xA100>;
 };
