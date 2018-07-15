@@ -13,6 +13,7 @@
 #include "sdm636-moto-common.dtsi"
 #include "dsi-panel-mot-tianma-624-1080p-vid.dtsi"
 #include "dsi-panel-mot-tianma-nova-624-1080p-vid.dtsi"
+#include "dsi-panel-mot-boe-624-1080p-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm636-lake-pinctrl.dtsi"
 #include "sdm636-camera-sensor-mot-lake.dtsi"
