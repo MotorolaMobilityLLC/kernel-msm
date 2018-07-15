@@ -16,3 +16,12 @@
 		/delete-property/ bias-disable;
 	};
 };
+
+&tlmm {
+	haptic_irq_default: haptic_irq_default {
+		config {
+			pins = "gpio70";
+			bias-pull-up;
+		};
+	};
+};
