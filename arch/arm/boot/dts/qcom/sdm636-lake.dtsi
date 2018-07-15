@@ -81,6 +81,8 @@
 		reg = <0x5B>;
 		reset-gpio = <&pm660_gpios 11 0>;
 		irq-gpio = <&tlmm 70 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&haptic_irq_default>;
 		status = "okay";
 	};
 	/* AWINIC AW869X Haptic End */
