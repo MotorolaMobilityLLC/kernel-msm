@@ -169,4 +169,11 @@ config BAT_TEMP_30K_PULL
 	help
 	  Say Y when you using 30K pull, or N
 
+config BAT_TEMP_100K_PU_B4250K
+	bool "BAT temp 100K pull up with NTC 4250K B value"
+	depends on MFD_SPMI_PMIC
+	default n
+	help
+	  Say Y when you using 100K pullup and NTC 4250K B value, or N
+
 endmenu
