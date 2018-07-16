@@ -492,6 +492,9 @@ static int smb5_parse_dt(struct smb5 *chip)
 	if (rc < 0)
 		chg->otg_delay_ms = OTG_DEFAULT_DEGLITCH_TIME_MS;
 
+	chg->dr_supported = of_property_read_bool(node,
+					"qcom,dr-supported");
+
 	chg->hw_die_temp_mitigation = of_property_read_bool(node,
 					"qcom,hw-die-temp-mitigation");
 
@@ -501,7 +504,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chg->connector_pull_up = -EINVAL;
 	of_property_read_u32(node, "qcom,connector-internal-pull-kohm",
 					&chg->connector_pull_up);
-
 	chg->moisture_protection_enabled = of_property_read_bool(node,
 					"qcom,moisture-protection-enable");
 
@@ -2337,6 +2339,17 @@ static int smb5_post_init(struct smb5 *chip)
 	return 0;
 }
 
+static int smb5_typec_dr_init(struct smb5 *chip)
+{
+	struct smb_charger *chg = &chip->chg;
+	int rc = 0;
+
+	if (chg->dr_supported)
+		rc = smblib_typec_dual_role_init(chg);
+
+	return rc;
+}
+
 /****************************
  * DETERMINE INITIAL STATUS *
  ****************************/
@@ -2980,6 +2993,12 @@ static int smb5_probe(struct platform_device *pdev)
 	rc = smb5_init_batt_psy(chip);
 	if (rc < 0) {
 		pr_err("Couldn't initialize batt psy rc=%d\n", rc);
+		goto cleanup;
+	}
+
+	rc = smb5_typec_dr_init(chip);
+	if (rc < 0) {
+		pr_err("Couldn't initialize dual role rc=%d\n", rc);
 		goto cleanup;
 	}
 
