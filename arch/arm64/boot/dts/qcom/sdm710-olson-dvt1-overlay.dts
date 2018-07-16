@@ -23,3 +23,8 @@
 /*
  * Olson HW rev DVT1 specific changes go here
  */
+&qupv3_se4_i2c {
+	aw869x_haptic@5a {
+		status = "ok";
+	};
+};

@@ -358,19 +358,16 @@
 			};
 		};
 	};
-};
 
-
-&lpi_tlmm {
 	haptic_reset {
 		haptic_rst_default: haptic_rst_default {
 			mux {
-				pins = "gpio29";
+				pins = "gpio80";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio29";
+				pins = "gpio80";
 				drive-strength = <2>; /* 2 mA */
 				output-low;
 			};
@@ -378,12 +375,12 @@
 
 		haptic_rst_active: haptic_rst_active {
 			mux {
-				pins = "gpio29";
+				pins = "gpio80";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio29";
+				pins = "gpio80";
 				drive-strength = <2>; /* 2 mA */
 				output-high;
 			};
@@ -408,7 +405,7 @@
 		status = "disabled";
 		compatible = "awinic,aw869x_haptic";
 		reg = <0x5a>;
-		reset-gpio = <&lpi_tlmm 29 0>;
+		reset-gpio = <&tlmm 80 0>;
 		irq-gpio = <&tlmm 39 0>;
 		pinctrl-names = "aw869x_rst0", "aw869x_rst1", "aw869x_eint";
 		pinctrl-0 = <&haptic_rst_default>;
@@ -417,7 +414,7 @@
 	};
 
 	cs40l20@41 {
-		status = "ok";
+		status = "disabled";
 		compatible = "cirrus,cs40l20";
 		reg = <0x41>;
 		pinctrl-names = "default";
