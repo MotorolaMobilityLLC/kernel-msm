@@ -77,10 +77,8 @@
 	status = "disable";
 };
 
-&qupv3_se9_2uart {
-	status = "ok";
-};
-
-&qupv3_se12_2uart {
-	status = "disabled";
+&qupv3_se4_i2c {
+	cs40l20@41 {
+		status = "ok";
+	};
 };
