@@ -279,6 +279,7 @@
 			pins = "gpio50";
 			bias-pull-down;
 			drive-strength = <2>;
+			output-low;
 		};
 	};
 
