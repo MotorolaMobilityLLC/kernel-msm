@@ -200,3 +200,7 @@
 	qcom,master-id = <84>;
 	status = "disabled";
 };
+
+&pmi632_charger {
+	qcom,dr-supported;
+};
