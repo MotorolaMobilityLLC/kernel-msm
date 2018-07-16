@@ -22,6 +22,7 @@
 #include <linux/alarmtimer.h>
 #include "storm-watch.h"
 #include <linux/alarmtimer.h>
+#include <linux/usb/class-dual-role.h>
 
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
@@ -511,6 +512,11 @@ struct smb_charger {
 	struct mmi_params	mmi;
 	void			*ipc_log;
 	void			*ipc_log_reg;
+
+	/* dual role */
+	bool				dr_supported;
+	struct dual_role_phy_instance	*dr_inst;
+	struct dual_role_phy_desc	dr_desc;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -675,6 +681,7 @@ int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
 					  union power_supply_propval *val);
 int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
 				const union power_supply_propval *val);
+int smblib_typec_dual_role_init(struct smb_charger *chg);
 void mmi_init(struct smb_charger *chg);
 void mmi_deinit(struct smb_charger *chg);
 void mmi_chrg_rate_check(struct smb_charger *chip);
