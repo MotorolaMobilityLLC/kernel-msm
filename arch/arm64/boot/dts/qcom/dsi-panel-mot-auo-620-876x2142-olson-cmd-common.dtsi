@@ -51,7 +51,7 @@ qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
 qcom,mdss-dsi-display-timings {
 	timing@0{
-		qcom,mdss-dsi-panel-width = <1080>;
+		qcom,mdss-dsi-panel-width = <876>;
 		qcom,mdss-dsi-panel-height = <2142>;
 		qcom,mdss-dsi-h-front-porch = <44>;
 		qcom,mdss-dsi-h-back-porch = <32>;
@@ -100,7 +100,7 @@ qcom,panel-supply-entries {
 
 	qcom,panel-supply-entry@0 {
 		reg = <0>;
-		qcom,supply-name = "vio_disp";
+		qcom,supply-name = "l11_disp";
 		qcom,supply-min-voltage = <1800000>;
 		qcom,supply-max-voltage = <1800000>;
 		qcom,supply-enable-load = <300000>;
@@ -113,6 +113,19 @@ qcom,panel-supply-entries {
 
 	qcom,panel-supply-entry@1 {
 		reg = <1>;
+		qcom,supply-name = "vio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <1>;
+		qcom,supply-pre-off-sleep = <3>;
+		qcom,supply-post-off-sleep = <0>;
+	};
+
+	qcom,panel-supply-entry@2 {
+		reg = <2>;
 		qcom,supply-name = "vci_disp";
 		qcom,supply-min-voltage = <3200000>;
 		qcom,supply-max-voltage = <3200000>;
@@ -124,8 +137,8 @@ qcom,panel-supply-entries {
 		qcom,supply-post-off-sleep = <0>;
 	};
 
-	qcom,panel-supply-entry@2 {
-		reg = <2>;
+	qcom,panel-supply-entry@3 {
+		reg = <3>;
 		qcom,supply-name = "lab";
 		qcom,supply-min-voltage = <4600000>;
 		qcom,supply-max-voltage = <6100000>;
@@ -137,8 +150,8 @@ qcom,panel-supply-entries {
 		qcom,supply-post-off-sleep = <0>;
 	};
 
-	qcom,panel-supply-entry@3 {
-		reg = <3>;
+	qcom,panel-supply-entry@4 {
+		reg = <4>;
 		qcom,supply-name = "ibb";
 		qcom,supply-min-voltage = <4000000>;
 		qcom,supply-max-voltage = <6300000>;
@@ -150,8 +163,8 @@ qcom,panel-supply-entries {
 		qcom,supply-post-off-sleep = <0>;
 	};
 
-	qcom,panel-supply-entry@4 {
-		reg = <4>;
+	qcom,panel-supply-entry@5 {
+		reg = <5>;
 		qcom,supply-name = "oledb";
 		qcom,supply-min-voltage = <5000000>;
 		qcom,supply-max-voltage = <8100000>;
