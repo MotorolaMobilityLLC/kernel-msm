@@ -186,6 +186,8 @@
 	mmi_pl_chg_manager {
 		compatible = "mmi,pl-chg-manager";
 		mmi,pmic-curr-lp-lmt = <300000>;
+		mmi,pmic-step-volt = <4400000>;
+		mmi,pmic-step-curr = <1500000>;
 		mmi,flashc-volt-hysteresis = <500000>;
 		mmi,flashc-volt-up-steps = <100000>;
 		mmi,flashc-curr-up-steps = <100000>;
@@ -198,8 +200,20 @@
 					<0 4200 582 0 0 0 0>,
 					<10 4200 2000 4400 582 0 0>,
 					<15 4200 4000 4400 2000 0 0>,
-					<45 4200 5500 4350 4000 4400 2000>,
+					<45 4250 5500 4380 4000 4410 2000>,
 					<60 4200 4000 0 0 0 0>;
+		mmi,mmi-thermal-zones =
+					<9000000 3000000>,
+					<9000000 2800000>,
+					<9000000 2600000>,
+					<9000000 2400000>,
+					<9000000 2200000>,
+					<9000000 2000000>,
+					<9000000 1800000>,
+					<9000000 1600000>,
+					<9000000 1400000>,
+					<9000000 1200000>,
+					<9000000 1000000>;
 	};
 };
 
@@ -336,7 +350,6 @@
 	qcom,fg-sys-term-current = <(-200)>;
 	qcom,fg-delta-soc-thr = <1>;
 	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
-	qcom,battery-thermal-coefficients = [9d 50 ff];
 };
 
 &pm660_charger {
