@@ -2307,6 +2307,10 @@ static ssize_t ft_do_reflash_store(struct device *dev,
 	mutex_unlock(&data->input_dev->mutex);
 
 	retval = count;
+
+	ft_update_fw_ver(data);
+	ft_update_fw_vendor_id(data);
+	ft_update_fw_id(data);
 exit:
 	data->fw_name[0] = 0;
 	return retval;
