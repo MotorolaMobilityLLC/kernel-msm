@@ -603,6 +603,7 @@ bool cs35l41_readable_reg(struct device *dev, unsigned int reg)
 bool cs35l41_volatile_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
+	case CS35L41_DEVID:
 	case CS35L41_SFT_RESET:
 	case CS35L41_FABID:
 	case CS35L41_REVID:
