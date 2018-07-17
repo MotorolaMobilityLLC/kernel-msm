@@ -852,6 +852,9 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 					input_set_abs_params(pButtonInformationData->buttons[i].input_dev, ABS_DISTANCE, -1, 100, 0, 0);
 
 					err = input_register_device(pButtonInformationData->buttons[i].input_dev);
+					/* report a unused val, then first val will report after enable */
+					input_report_abs(pButtonInformationData->buttons[i].input_dev, ABS_DISTANCE, -1);
+					input_sync(pButtonInformationData->buttons[i].input_dev);
 
 					pButtonInformationData->buttons[i].sensors_capsensor_cdev.sensors_enable = capsensor_set_enable;
 					pButtonInformationData->buttons[i].sensors_capsensor_cdev.sensors_poll_delay = NULL;
