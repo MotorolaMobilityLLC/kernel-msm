@@ -35,6 +35,14 @@
 		};
 	};
 
+	nova_tp_rst_default: nova_tp_rst_default {
+		config {
+			pins = "gpio64";
+			bias-disable;
+			input-enable;
+		};
+	};
+
 	fps: fps {
 		fps_rst_active: rst_active {
 			/* RESET */

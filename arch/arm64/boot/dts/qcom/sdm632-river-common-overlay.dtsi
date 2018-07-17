@@ -125,6 +125,8 @@
 		interrupt-parent = <&tlmm>;
 		novatek,irq-gpio = <&tlmm 65 0x2001>;
 		novatek,reset-gpio = <&tlmm 64 0x00>;
+		pinctrl-names = "active";
+		pinctrl-0 = <&nova_tp_rst_default>;
 	};
 };
 
