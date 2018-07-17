@@ -1501,6 +1501,8 @@ int fts_upgrade_bin(struct i2c_client *client, char *fw_name, bool force)
 	}
 	fw_file_buf = (u8*)fw->data;
 	fw_file_len = (u32)fw->size;
+	upg->fw = fw_file_buf;
+	upg->fw_length = fw_file_len;
 #else
 	ret = fts_read_file(fw_name, &fw_file_buf);
 	if ((ret < 0) || (ret < FTS_MIN_LEN) || (ret > FTS_MAX_LEN_FILE)) {
@@ -1519,15 +1521,19 @@ int fts_upgrade_bin(struct i2c_client *client, char *fw_name, bool force)
 		}
 	} else {
 		if (FTS_AUTO_LIC_UPGRADE_EN) {
-			if (upg->func->lic_upgrade)
+			if (upg->func->lic_upgrade) {
 				ret = upg->func->lic_upgrade(client, fw_file_buf, fw_file_len);
-			else
+			} else {
 				FTS_INFO("[UPGRADE]lic_upgrade function is null, no upgrade\n");
+			}
 		}
+		fts_fwupg_upgrade(client , upg);
+		/*
 		if (upg->func->upgrade)
 			ret = upg->func->upgrade(client, fw_file_buf, fw_file_len);
 		else
 			FTS_INFO("[UPGRADE]upgrade function is null, no upgrade\n");
+		*/
 	}
 
 	if (ret < 0) {
@@ -1913,8 +1919,9 @@ static bool fts_fwupg_need_upgrade(struct i2c_client *client)
 		}
 
 		FTS_INFO("[UPGRADE]fw version in tp:%x, host:%x\n", fw_ver_in_tp, fw_ver_in_host);
-		if (fw_ver_in_tp < fw_ver_in_host)
+		if (fw_ver_in_tp != fw_ver_in_host) {
 			return true;
+		}
 	} else {
 		FTS_INFO("[UPGRADE]fw invalid, need upgrade fw\n");
 		return true;
@@ -2028,7 +2035,7 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI
 	if (FT8006M_ID == type) {
-		FTS_AUTO_LIC_UPGRADE_EN = true;
+		FTS_AUTO_LIC_UPGRADE_EN = false;
 		fwupgrade->func = &upgrade_func_ft8006;
 		fts_data->ic_info.ids = ft8006_fct;
 		fts_data->ic_info.is_incell = true;
@@ -2037,7 +2044,7 @@ int fts_extra_init(struct i2c_client *client, struct input_dev *input_dev, struc
 #endif
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI
 	if (FT8006U_ID == type) {
-		FTS_AUTO_LIC_UPGRADE_EN = true;
+		FTS_AUTO_LIC_UPGRADE_EN = false;
 		fwupgrade->func = &upgrade_func_ft8006u;
 		fts_data->ic_info.ids = ft8006u_fct;
 		fts_data->ic_info.is_incell = true;
