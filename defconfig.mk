@@ -12,6 +12,10 @@ ifneq ($(TARGET_BUILD_VARIANT), user)
 ifneq ($(TARGET_NO_KERNEL_DEBUG), true)
 ifneq ($(wildcard $(KERNEL_DEBUG_DEFCONFIG)),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_DEBUG_DEFCONFIG)
+# Add [32bit | 64bit] debug config
+ifneq ($(TARGET_QCOM_DEVICE),)
+PRODUCT_SPECIFIC_DEFCONFIGS += $(LJAPDEFCONFIGSRC)/debug-$(TARGET_QCOM_DEVICE).config
+endif
 # Add a product-specific debug defconfig, too
 ifneq ($(PRODUCT_DEBUG_DEFCONFIG),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(PRODUCT_KERNEL_DEBUG_DEFCONFIG)
@@ -22,6 +26,11 @@ endif
 
 ifeq ($(TARGET_FACTORY_DEFCONFIG), true)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(FACTORY_DEFCONFIG)
+endif
+
+# Add [32bit | 64bit] platform config
+ifneq ($(TARGET_QCOM_DEVICE),)
+PRODUCT_SPECIFIC_DEFCONFIGS += $(LJAPDEFCONFIGSRC)/moto-$(TARGET_QCOM_DEVICE).config
 endif
 
 # append all additional configs
