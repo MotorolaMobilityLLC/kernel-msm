@@ -52,6 +52,32 @@
 		pinctrl-0 = <&disp_pwr_en_default>;
 	};
 
+	vci_disp_sub_vreg: vci_disp_sub_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vci_disp_sub";
+		vin-supply = <&pm660l_l3>;
+		gpio = <&tlmm 105 0>;
+		enable-active-high;
+		startup-delay-us = <300>;
+/*		regulator-boot-on;
+*/
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_sub_avdd_en_default>;
+	};
+
+	vio_disp_sub_vreg: vio_disp_sub_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vio_disp_sub";
+		vin-supply = <&pm660_l11>;
+		gpio = <&tlmm 100 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+/*		regulator-boot-on;
+*/
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_sub_dvdd_en_default>;
+	};
+
 	dsi_auo_620_876x2142_cmd_display: qcom,dsi-display@20 {
 		compatible = "qcom,dsi-display";
 		label = "dsi_auo_620_876x2142_cmd_display";
@@ -131,6 +157,38 @@
 
 			config {
 				pins = "gpio106";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-enable;
+			};
+		};
+	};
+
+	disp_sub_v1_en {
+		disp_sub_avdd_en_default: disp_sub_avdd_en_default {
+			mux {
+				pins = "gpio105";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio105";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-enable;
+			};
+		};
+	};
+
+	disp_sub_v2_en {
+		disp_sub_dvdd_en_default: disp_sub_dvdd_en_default {
+			mux {
+				pins = "gpio100";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio100";
 				drive-strength = <2>; /* 2 mA */
 				bias-no-pull;
 				output-enable;
