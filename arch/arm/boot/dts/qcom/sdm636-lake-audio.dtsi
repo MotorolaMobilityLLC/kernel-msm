@@ -349,8 +349,8 @@
 		DBVDD2-supply = <&pm660_l13>;
 		CPVDD-supply = <&pm660_l13>;
 		CPVDD1-supply = <&pm660_l13>;
-		CPVDD2-supply = <&pm660_l13>;
-		DCVDD-supply = <&pm660_l13>;
+		CPVDD2-supply = <&pm660_s5>;
+		DCVDD-supply = <&pm660_s5>;
 		SPKVDD-supply = <&dummy_vreg>;
 
 		gpio-controller;
