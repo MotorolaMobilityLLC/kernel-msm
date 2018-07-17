@@ -24,4 +24,11 @@
 			bias-pull-up;
 		};
 	};
+	nova_tp_rst_default: nova_tp_rst_default {
+		config {
+			pins = "gpio66";
+			bias-disable;
+			input-enable;
+		};
+	};
 };
