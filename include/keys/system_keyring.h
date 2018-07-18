@@ -14,6 +14,8 @@
 
 #include <linux/key.h>
 
+struct key *get_system_trusted_keyring(void);
+
 #ifdef CONFIG_SYSTEM_TRUSTED_KEYRING
 
 extern int restrict_link_by_builtin_trusted(struct key *keyring,
