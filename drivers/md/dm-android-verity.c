@@ -30,9 +30,12 @@
 #include <linux/reboot.h>
 #include <linux/string.h>
 #include <linux/vmalloc.h>
+#include <linux/version.h>
+#include <linux/blk_types.h>
 
 #include <asm/setup.h>
 #include <crypto/hash.h>
+#include <crypto/hash_info.h>
 #include <crypto/public_key.h>
 #include <crypto/sha.h>
 #include <keys/asymmetric-type.h>
@@ -122,11 +125,20 @@ static inline bool is_unlocked(void)
 	return !strncmp(verifiedbootstate, unlocked, sizeof(unlocked));
 }
 
-static int table_extract_mpi_array(struct public_key_signature *pks,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+static int table_extract_signature(struct public_key_signature *pks,
 				const void *data, size_t len)
 {
+	pks->s = (u8*)data;
+	pks->s_size = len;
+	pks->pkey_algo = "rsa";
+	return 0;
+}
+#else
+static int table_extract_mpi_array(struct public_key_signature *pks,
+                               const void *data, size_t len)
+{
 	MPI mpi = mpi_read_raw_data(data, len);
-
 	if (!mpi) {
 		DMERR("Error while allocating mpi array");
 		return -ENOMEM;
@@ -136,6 +148,7 @@ static int table_extract_mpi_array(struct public_key_signature *pks,
 	pks->nr_mpi = 1;
 	return 0;
 }
+#endif
 
 static struct public_key_signature *table_make_digest(
 						enum hash_algo hash,
@@ -166,7 +179,7 @@ static struct public_key_signature *table_make_digest(
 	if (!pks)
 		goto error;
 
-	pks->pkey_hash_algo = hash;
+	pks->hash_algo = hash_algo_name[hash];
 	pks->digest = (u8 *)pks + sizeof(*pks) + desc_size;
 	pks->digest_size = digest_size;
 
@@ -230,7 +243,9 @@ static int read_block_dev(struct bio_read *payload, struct block_device *bdev,
 		}
 	}
 
-	if (!submit_bio_wait(READ, bio))
+	bio_set_op_attrs(bio, REQ_OP_READ, 0);
+
+	if (!submit_bio_wait(bio))
 		/* success */
 		goto free_bio;
 	DMERR("bio read failed");
@@ -575,7 +590,7 @@ static int verify_verity_signature(char *key_id,
 	struct public_key_signature *pks = NULL;
 	int retval = -EINVAL;
 
-	key_ref = keyring_search(make_key_ref(system_trusted_keyring, 1),
+	key_ref = keyring_search(make_key_ref(get_system_trusted_keyring(), 1),
 		&key_type_asymmetric, key_id);
 
 	if (IS_ERR(key_ref)) {
@@ -595,16 +610,24 @@ static int verify_verity_signature(char *key_id,
 		pks = NULL;
 		goto error;
 	}
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+	retval = table_extract_signature(pks, &metadata->header->signature[0],
+				RSANUMBYTES);
+	if (retval < 0) {
+		DMERR("Error extracting signature %d", retval);
+		goto error;
+	}
+#else
 	retval = table_extract_mpi_array(pks, &metadata->header->signature[0],
 				RSANUMBYTES);
 	if (retval < 0) {
 		DMERR("Error extracting mpi %d", retval);
 		goto error;
 	}
+	mpi_free(pks->rsa.s);
+#endif
 
 	retval = verify_signature(key, pks);
-	mpi_free(pks->rsa.s);
 error:
 	kfree(pks);
 	key_put(key);
@@ -694,7 +717,7 @@ static int android_verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 	dev_t uninitialized_var(dev);
 	struct android_metadata *metadata = NULL;
 	int err = 0, i, mode;
-	char *key_id, *table_ptr, dummy, *target_device,
+	char *key_id = NULL, *table_ptr, dummy, *target_device,
 	*verity_table_args[VERITY_TABLE_ARGS + 2 + VERITY_TABLE_OPT_FEC_ARGS];
 	/* One for specifying number of opt args and one for mode */
 	sector_t data_sectors;
