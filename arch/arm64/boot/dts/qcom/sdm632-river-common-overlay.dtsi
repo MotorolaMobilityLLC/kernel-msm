@@ -128,6 +128,18 @@
 		pinctrl-names = "active";
 		pinctrl-0 = <&nova_tp_rst_default>;
 	};
+
+	himax-ts@48 {
+		compatible = "himax,hxcommon";
+		reg = <0x48>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <65 0x2>;
+		himax,rst-gpio = <&tlmm 64 0x00>;
+		himax,irq-gpio = <&tlmm 65 0x00>;
+		himax,display-coords = <0 1080 0 2270>;
+		himax,panel-coords = <0 1080 0 2270>;
+		report_type = <1>;
+	};
 };
 
 &i2c_2 {
