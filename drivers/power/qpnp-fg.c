@@ -649,6 +649,7 @@ struct fg_chip {
 	bool			shutdown_in_process;
 	bool			nom_cap_unbound;
 	bool			low_batt_temp_comp;
+	bool			fg_support_multi_coefficients;
 };
 
 /* FG_MEMIF DEBUGFS structures */
@@ -6749,6 +6750,30 @@ wait:
 			 */
 			memcpy(chip->batt_profile, data, len);
 			chip->batt_profile_len = len;
+
+			if (chip->fg_support_multi_coefficients == true) {
+				/*
+				* For support multi B value of battery,
+				* This value will not be loaded when battery profile name is same.
+				*/
+				if (!of_find_property(chip->spmi->dev.of_node,
+							"qcom,thermal-coefficients", NULL)) {
+					data = of_get_property(profile_node,
+								"qcom,thermal-coefficients", &len);
+					if (data && len == THERMAL_COEFF_N_BYTES) {
+						memcpy(chip->thermal_coefficients, data, len);
+						rc = fg_mem_write(chip, chip->thermal_coefficients,
+							THERMAL_COEFF_ADDR, THERMAL_COEFF_N_BYTES,
+							THERMAL_COEFF_OFFSET, 0);
+						if (rc)
+							pr_err("spmi write failed addr:%03x, ret:%d\n",
+								THERMAL_COEFF_ADDR, rc);
+						else if (fg_debug_mask & FG_STATUS)
+							pr_info("Battery thermal coefficients changed\n");
+					}
+				}
+			}
+
 			goto done;
 		}
 	} else {
@@ -7419,6 +7444,10 @@ static int fg_of_init(struct fg_chip *chip)
 	chip->fg_force_restart_enable =
 			of_property_read_bool(chip->spmi->dev.of_node,
 			"qcom,fg-force-restart-enable");
+
+	chip->fg_support_multi_coefficients =
+			of_property_read_bool(chip->spmi->dev.of_node,
+			"qcom,support_multi_coefficients");
 
 	if (rc == 0) {
 		if (fg_sense_type < 0)
