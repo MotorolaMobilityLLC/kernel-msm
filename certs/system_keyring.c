@@ -20,6 +20,12 @@
 #include <crypto/pkcs7.h>
 
 static struct key *builtin_trusted_keys;
+
+struct key *get_system_trusted_keyring(void)
+{
+	return builtin_trusted_keys;
+}
+
 #ifdef CONFIG_SECONDARY_TRUSTED_KEYRING
 static struct key *secondary_trusted_keys;
 #endif
