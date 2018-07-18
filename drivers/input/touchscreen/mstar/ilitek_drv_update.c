@@ -2471,7 +2471,7 @@ s32 drv_update_firmware_by_sd_card(const char *p_file_path)
         is_force_to_update_firmware_enabled);
 
     if ((eSwId == eVendorId) || (is_force_to_update_firmware_enabled)) {
-		if ((!g_system_update) || ((g_system_update && (minor > g_firmware_minor))) || (is_force_to_update_firmware_enabled)) {
+		if ((!g_system_update) || ((g_system_update && (minor != g_firmware_minor))) || (is_force_to_update_firmware_enabled)) {
         if ((g_chip_type == CHIP_TYPE_MSG22XX && fsize == 49664 /* 48.5KB */ )) {
             n_ret_val = drv_update_firmware_cash(g_fw_data, EMEM_ALL);
 			g_system_update = 0;
