@@ -299,6 +299,7 @@
 	qcom,fg-cutoff-voltage-mv = <3400>;
 	qcom,cl-vbat-est-thr-uv = <300000>;
 	qcom,fg-force-restart-enable;
+	qcom,support_multi_coefficients;
 };
 
 &pm8937_vadc {
