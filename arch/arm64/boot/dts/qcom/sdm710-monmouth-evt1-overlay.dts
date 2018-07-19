@@ -82,3 +82,10 @@
 		status = "ok";
 	};
 };
+
+&qupv3_se15_spi {
+	status = "disabled";
+	fpc_fpc1020@0 {
+		status = "disabled";
+	};
+};
