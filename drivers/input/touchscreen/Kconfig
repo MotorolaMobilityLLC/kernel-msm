@@ -1261,8 +1261,21 @@ config TOUCHSCREEN_NT36xxx
 
          To compile this driver as a module, choose M here: the
          module will be called nvt.
+
+config TOUCHSCREEN_ILITEK_CHIPSET
+        tristate "Ilitek touchpanel Ilitek series"
+        depends on I2C
+        help
+          Say Y here if you have a Ilitek ili9881 touchscreen.
+          Ilitek controllers are multi touch controllers which can
+          report 10 touches at a time.
+
+          If unsure, say N.
+
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 source "drivers/input/touchscreen/gt9xx_mmi/Kconfig"
 source "drivers/input/touchscreen/himax_mmi/Kconfig"
 source "drivers/input/touchscreen/nova_mmi/Kconfig"
+source "drivers/input/touchscreen/ilitek_mmi/Kconfig"
+
 endif
