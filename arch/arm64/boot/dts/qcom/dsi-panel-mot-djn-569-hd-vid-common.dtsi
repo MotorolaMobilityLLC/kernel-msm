@@ -21,8 +21,8 @@ qcom,mdss-pan-physical-width-dimension = <64>;
 qcom,mdss-pan-physical-height-dimension = <128>;
 qcom,mdss-dsi-panel-width = <720>;
 qcom,mdss-dsi-panel-height = <1512>;
-qcom,mdss-dsi-h-front-porch = <300>;
-qcom,mdss-dsi-h-back-porch = <92>;
+qcom,mdss-dsi-h-front-porch = <280>;
+qcom,mdss-dsi-h-back-porch = <72>;
 qcom,mdss-dsi-h-pulse-width = <12>;
 qcom,mdss-dsi-h-sync-skew = <0>;
 qcom,mdss-dsi-v-back-porch = <8>;
@@ -65,11 +65,11 @@ qcom,mdss-dsi-on-command = [
 			29 01 00 00 00 00 02 87 8C
 			29 01 00 00 00 00 02 FF 10
 			29 01 00 00 00 00 02 FB 01
-			23 01 00 00 00 00 02 51 00
-			23 01 00 00 00 00 02 53 24
-			23 01 00 00 00 00 02 55 01
-			05 01 00 00 00 00 02 29 00
-			05 01 00 00 65 00 02 11 00];
+			29 01 00 00 00 00 02 51 00
+			29 01 00 00 00 00 02 53 24
+			29 01 00 00 00 00 02 55 01
+			05 01 00 00 00 00 01 29
+			05 01 00 00 65 00 01 11];
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 14 00 01 28		/* display_off  delay 50ms*/
 	05 01 00 00 28 00 01 10];	/* enter sleep mode delay 50ms*/
@@ -78,12 +78,12 @@ qcom,mdss-dsi-off-command = [
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
-//qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 05 00 02 55 01];
-//qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
-//qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
-//qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
-//qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
-//qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 05 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 02 51 FF];
 qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 02 51 FF];
@@ -100,11 +100,11 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 qcom,mdss-dsi-panel-timings-phy-v2 = [
-	20 1d 06 07 03 03 04 a0
-	20 1d 06 07 03 03 04 a0
-	20 1d 06 07 03 03 04 a0
-	20 1d 06 07 03 03 04 a0
-	20 13 05 07 03 03 04 a0];
+	20 1c 06 07 03 03 04 a0
+	20 1c 06 07 03 03 04 a0
+	20 1c 06 07 03 03 04 a0
+	20 1c 06 07 03 03 04 a0
+	20 13 05 06 03 03 04 a0];
 qcom,mdss-dsi-t-clk-post = <0x0b>;
 qcom,mdss-dsi-t-clk-pre = <0x24>;
 qcom,mdss-dsi-bl-min-level = <1>;
