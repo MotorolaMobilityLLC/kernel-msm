@@ -1,0 +1,77 @@
+ILI touch ILI9881 controller
+
+The ILI controller is connected to host processor
+via i2c. The controller generates interrupts when the
+user touches the panel. The host controller is expected
+to read the touch coordinates over i2c and pass the coordinates
+to the rest of the system.
+This driver contains MMI features.
+
+Required properties:
+
+ - compatible		: should be "ilitek,tchip".
+ - reg				: i2c slave address of the device.
+ - interrupt-parent	: parent of interrupt.
+ - interrupts		: touch sample interrupt to indicate presense or release
+				of fingers on the panel.
+ - ilitek,irq-gpio		: irq gpio which is to provide interrupts to host,
+				same as "interrupts" node. It will also
+				contain active low or active high information.
+ - ilitek,reset-gpio		: reset gpio to control the reset of chip.
+ - ilitek,display-coords 	: display coordinates in pixels. It is a four
+				tuple consisting of min x, min y, max x and
+				max y values
+ - ilitek,tp_touch_ic	: value of this ic type
+ - ilitek,tp_ic_type		: IC type string name
+ - pinctrl-names 		: This should be defined if a target uses pinctrl framework.
+				See "pinctrl" in Documentation/devicetree/bindings/pinctrl/msm-pinctrl.txt.
+				Specify the names of the configs that pinctrl can install in driver.
+				Following are the pinctrl configs that can be installed:
+				"pmx_ts_active" : Active configuration of pins, this should specify active
+				config defined in pin groups of interrupt and reset gpio.
+				"pmx_ts_suspend" : Disabled configuration of pins, this should specify sleep
+				config defined in pin groups of interrupt and reset gpio.
+				"pmx_ts_release" : Release configuration of pins, this should specify
+				release config defined in pin groups of interrupt and reset gpio.
+
+Optional properties:
+- ilitek,mt_b_type		:If use mt_b_type to report points
+-ilitek,tpd_height		:Max Y axis resolution,default 2048
+-ilitek,tpd_width		:Max X axis resolution,default 2048
+-ilitek,max_touch_num	:Max support of finger touch number
+-ilitek,x_flip			:X axis invert
+-ilitek,y_flip			:Y axis invert
+-ilitek,regulator_power_on :Enable power on voltage setting
+-ilitek,battery_check 	: Check battery's status in order to avoid some effects from charge
+
+
+Example:
+	i2c@f9923000{
+		ts@41 {
+			status = "okay";
+			compatible = "ilitek,tchip";
+			reg = <0x41>;
+			ilitek,irq-gpio = <&tlmm 65  IRQ_TYPE_EDGE_RISING>;
+			pinctrl-names ="pmx_ts_active",
+						"pmx_ts_suspend",
+						"pmx_ts_release";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			pinctrl-2 = <&ts_release>;
+			ilitek,mt_b_type;
+			ilitek,display-coords = <0 0 720 1520>;
+			ilitek,tpd_height   = <2048>;
+			ilitek,tpd_width    =  <2048>;
+			ilitek,max_touch_num = <10>;
+			ilitek,tp_touch_ic = <0x9881>;
+			ilitek,tp_ic_type     = "ILI9881";
+			ilitek,x_flip;
+			/*
+			ilitek,reset-gpio = <&tlmm 64  GPIO_ACTIVE_LOW>;
+			ilitek,y_flip;
+			ilitek,regulator_power_on;
+			ilitek,battery_check;
+			ilitek,enable_battery_check;
+			*/
+		};
+	};

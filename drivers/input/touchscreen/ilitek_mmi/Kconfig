@@ -1,0 +1,12 @@
+#
+# Ipio Touchscreen driver configuration
+#
+
+config TOUCHSCREEN_ILI9881H
+    bool "Ipio Touchscreen"
+    depends on I2C
+    default n
+    help
+    Say Y here if you have Ilitek touch panel.
+    If unsure, say N.
+
