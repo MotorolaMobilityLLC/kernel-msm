@@ -73,7 +73,9 @@ extern const uint16_t touch_key_array[TOUCH_KEY_NUM];
 //---Customerized func.---
 #define NVT_TOUCH_PROC 1
 #define NVT_TOUCH_EXT_PROC 1
+#define NVT_TOUCH_FW 1
 #define NVT_TOUCH_MP 1
+#define NVT_TOUCH_MP_LENOVO 1
 #define MT_PROTOCOL_B 1
 #define WAKEUP_GESTURE 0
 #if WAKEUP_GESTURE
@@ -83,8 +85,8 @@ extern const uint16_t gesture_key_array[];
 #define BOOT_UPDATE_FIRMWARE_NAME "novatek_ts_fw.bin"
 
 //---ESD Protect.---
-#define NVT_TOUCH_ESD_PROTECT 0
-#define NVT_TOUCH_ESD_CHECK_PERIOD 1500	/* ms */
+#define NVT_TOUCH_ESD_PROTECT 1
+#define NVT_TOUCH_ESD_CHECK_PERIOD 2000	/* ms */
 
 struct nvt_ts_data {
 	struct i2c_client *client;
@@ -114,7 +116,18 @@ struct nvt_ts_data {
 	const struct nvt_ts_mem_map *mmap;
 	uint8_t carrier_system;
 	uint16_t nvt_pid;
+#if NVT_TOUCH_FW
+	int8_t product_id[10];
+	uint8_t suspended;
+	uint8_t force_reflash;
+	uint8_t loading_fw;
+#endif
 };
+
+#if NVT_TOUCH_FW
+#define FW_NAME_MAX_LEN 80
+#define VENDOR_NAME "novatek_ts"
+#endif
 
 #if NVT_TOUCH_PROC
 struct nvt_flash_data{
@@ -137,7 +150,25 @@ typedef enum {
     EVENT_MAP_RESET_COMPLETE                = 0x60,
     EVENT_MAP_FWINFO                        = 0x78,
     EVENT_MAP_PROJECTID                     = 0x9A,
+    EVENT_MAP_FWDATE                        = 0x9C,
 } I2C_EVENT_MAP;
+
+#if NVT_TOUCH_MP_LENOVO
+typedef enum {
+    MP_RESULT_SHIFT_SHORT = 0x00,
+    MP_RESULT_SHIFT_SHORT_DIFF,
+    MP_RESULT_SHIFT_SHORT_BASE,
+    MP_RESULT_SHIFT_OPEN,
+    MP_RESULT_SHIFT_RAWDATA,
+    MP_RESULT_SHIFT_CC,
+    MP_RESULT_SHIFT_CC_I,
+    MP_RESULT_SHIFT_CC_Q,
+    MP_RESULT_SHIFT_NOISE,
+    MP_RESULT_SHIFT_DIFF_MAX,
+    MP_RESULT_SHIFT_DIFF_MIN,
+/*  MP_RESULT_SHIFT_READFAIL,*/
+} MP_TEST_RESULT;
+#endif
 
 //---extern structures---
 extern struct nvt_ts_data *ts;

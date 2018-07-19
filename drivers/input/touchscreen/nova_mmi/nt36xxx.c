@@ -15,6 +15,18 @@
  * more details.
  *
  */
+#include <linux/init.h>
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/miscdevice.h>
+#include <linux/platform_device.h>
+#include <linux/gfp.h>
+#include <linux/slab.h>
+#include <linux/miscdevice.h>
+#include <linux/list.h>
+#include <linux/device.h>
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -26,6 +38,7 @@
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
+
 
 #if defined(CONFIG_FB)
 #include <linux/notifier.h>
@@ -50,6 +63,11 @@ uint8_t esd_retry_max = 5;
 
 #if NVT_TOUCH_EXT_PROC
 extern int32_t nvt_extra_proc_init(void);
+#endif
+
+#if NVT_TOUCH_FW
+extern int32_t nvt_fw_sysfs_init(void);
+extern int32_t nvt_fw_sysfs_deinit(void);
 #endif
 
 #if NVT_TOUCH_MP
@@ -324,10 +342,18 @@ int32_t nvt_check_fw_reset_state(RST_COMPLETE_STATE check_reset_state)
 		}
 
 		retry++;
-		if (unlikely(retry > 100)) {
-			NVT_ERR("error, retry=%d, buf[1]=0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X\n", retry, buf[1], buf[2], buf[3], buf[4], buf[5]);
-			ret = -1;
-			break;
+		if (check_reset_state <= RESET_STATE_REK) {
+			if (unlikely(retry > 50)) {
+				NVT_ERR("error,retry = %d, buf[1] = 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x\n", retry, buf[1], buf[2], buf[3], buf[4], buf[5]);
+				ret = -1;
+				break;
+			}
+		} else {
+			if (unlikely(retry > 100)) {
+				NVT_ERR("error, retry=%d, buf[1]=0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X\n", retry, buf[1], buf[2], buf[3], buf[4], buf[5]);
+				ret = -1;
+				break;
+			}
 		}
 	}
 	NVT_LOG("exit %s end\n", __func__);
@@ -962,10 +988,6 @@ static void nvt_ts_work_func(struct work_struct *work)
 
 #if TOUCH_KEY_NUM > 0
 	if (point_data[61] == 0xF8) {
-#if NVT_TOUCH_ESD_PROTECT
-		/* update interrupt timer */
-		irq_timer = jiffies;
-#endif /* #if NVT_TOUCH_ESD_PROTECT */
 		for (i = 0; i < ts->max_button_num; i++) {
 			input_report_key(ts->input_dev, touch_key_array[i], ((point_data[62] >> i) & 0x01));
 		}
@@ -1139,6 +1161,19 @@ static int8_t nvt_ts_check_chip_ver_trim(void)
 
 			if (found_nvt_chip) {
 				NVT_LOG("This is NVT touch IC\n");
+#if NVT_TOUCH_FW
+				if (list == 0) {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36672A");
+				} else if (list == 9) {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36525");
+				} else if (list == 10) {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36870");
+				} else if (list == 11) {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36676F");
+				} else {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36772");
+				}
+#endif
 				ts->mmap = trim_id_table[list].mmap;
 				ts->carrier_system = trim_id_table[list].carrier_system;
 				ret = 0;
@@ -1352,6 +1387,18 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	}
 #endif
 
+#if NVT_TOUCH_FW
+	ts->suspended = 0;
+	ts->force_reflash = 0;
+	ts->loading_fw = 0;
+
+	ret = nvt_fw_sysfs_init();
+	if (ret != 0) {
+		NVT_ERR("nvt fw class init failed. ret=%d\n", ret);
+		goto err_init_NVT_ts;
+	}
+#endif
+
 #if NVT_TOUCH_MP
 	ret = nvt_mp_proc_init();
 	if (ret != 0) {
@@ -1437,6 +1484,10 @@ static int32_t nvt_ts_remove(struct i2c_client *client)
 	unregister_early_suspend(&ts->early_suspend);
 #endif
 
+#if NVT_TOUCH_FW
+	nvt_fw_sysfs_deinit();
+#endif
+
 	mutex_destroy(&ts->lock);
 
 	NVT_LOG("Removing driver...\n");
@@ -1471,7 +1522,9 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	mutex_lock(&ts->lock);
 
 	NVT_LOG("start\n");
-
+#if NVT_TOUCH_FW
+	ts->suspended = 1;
+#endif
 	bTouchIsAwake = 0;
 
 #if NVT_TOUCH_ESD_PROTECT
@@ -1548,7 +1601,8 @@ static int32_t nvt_ts_resume(struct device *dev)
 
 	// please make sure display reset(RESX) sequence and mipi dsi cmds sent before this
 #if NVT_TOUCH_SUPPORT_HW_RST
-	gpio_set_value(ts->reset_gpio, 1);
+	if (gpio_is_valid(ts->reset_gpio))
+		gpio_set_value(ts->reset_gpio, 1);
 #endif
 	nvt_bootloader_reset();
 	nvt_check_fw_reset_state(RESET_STATE_REK);
@@ -1563,6 +1617,9 @@ static int32_t nvt_ts_resume(struct device *dev)
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 	bTouchIsAwake = 1;
+#if NVT_TOUCH_FW
+	ts->suspended = 0;
+#endif
 
 	mutex_unlock(&ts->lock);
 
@@ -1587,7 +1644,8 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		}
 	} else if (evdata && evdata->data && event == FB_EVENT_BLANK) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
+		if (*blank == FB_BLANK_UNBLANK ||
+		(*blank == FB_BLANK_NORMAL && 0 == bTouchIsAwake)) {
 			nvt_ts_resume(&ts->client->dev);
 		}
 	}
