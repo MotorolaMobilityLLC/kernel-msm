@@ -251,7 +251,9 @@ static int sdcardfs_set_xattr(const struct xattr_handler *handler,
 	const struct cred *saved_cred = NULL;
 
 	/* save current_cred and override it */
-	OVERRIDE_CRED(SDCARDFS_SB(dentry->d_sb), saved_cred, SDCARDFS_I(inode));
+        saved_cred = override_fsids(SDCARDFS_SB(dentry->d_sb),SDCARDFS_I(inode)->data);
+        if (!saved_cred)
+             return -ENOMEM;
 	sdcardfs_get_lower_path(dentry, &lower_path);
 
 	lower_dentry = lower_path.dentry;
@@ -259,7 +261,7 @@ static int sdcardfs_set_xattr(const struct xattr_handler *handler,
 	err = vfs_setxattr(lower_dentry, name, value, size, flags);
 
 	sdcardfs_put_lower_path(dentry, &lower_path);
-	REVERT_CRED(saved_cred);
+        revert_fsids(saved_cred);
 	return err;
 }
 
@@ -274,15 +276,18 @@ static int sdcardfs_get_xattr(const struct xattr_handler *handler,
 	const struct cred *saved_cred = NULL;
 
 	/* save current_cred and override it */
-	OVERRIDE_CRED(SDCARDFS_SB(dentry->d_sb), saved_cred, SDCARDFS_I(inode));
-	sdcardfs_get_lower_path(dentry, &lower_path);
+        saved_cred = override_fsids(SDCARDFS_SB(dentry->d_sb),
+                                               SDCARDFS_I(inode)->data);
+	if (!saved_cred)
+             return -ENOMEM;
+        sdcardfs_get_lower_path(dentry, &lower_path);
 
 	lower_dentry = lower_path.dentry;
 	lower_inode = sdcardfs_lower_inode(inode);
 	err = vfs_getxattr(lower_dentry, name, value, size);
 
 	sdcardfs_put_lower_path(dentry, &lower_path);
-	REVERT_CRED(saved_cred);
+        revert_fsids(saved_cred);
 	return err;
 }
 
