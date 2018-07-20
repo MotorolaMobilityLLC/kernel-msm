@@ -160,6 +160,12 @@
 		mmi,ospl-passive-f0;
 	};
 
+	msm-cirrus-playback {
+		compatible = "cirrus,msm-cirrus-playback";
+		usecase-names = "Normal", "Voice", "Ring", "Sonification";
+		afe-port-id = <16384>;
+	};
+
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
 		status = "ok";
