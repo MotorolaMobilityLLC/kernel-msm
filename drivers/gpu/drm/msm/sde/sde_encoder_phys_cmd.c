@@ -1025,11 +1025,11 @@ static int sde_encoder_phys_cmd_get_line_count(
 	return hw_pp->ops.get_line_count(hw_pp);
 }
 
-static int sde_encoder_phys_cmd_get_write_line_count(
-		struct sde_encoder_phys *phys_enc)
+static int sde_encoder_phys_cmd_get_vsync_info(
+			struct sde_encoder_phys *phys_enc,
+			struct sde_hw_pp_vsync_info *info)
 {
 	struct sde_hw_pingpong *hw_pp;
-	struct sde_hw_pp_vsync_info info;
 
 	if (!phys_enc || !phys_enc->hw_pp)
 		return -EINVAL;
@@ -1041,10 +1041,36 @@ static int sde_encoder_phys_cmd_get_write_line_count(
 	if (!hw_pp->ops.get_vsync_info)
 		return -EINVAL;
 
-	if (hw_pp->ops.get_vsync_info(hw_pp, &info))
+	if (hw_pp->ops.get_vsync_info(hw_pp, info))
 		return -EINVAL;
 
-	return (int)info.wr_ptr_line_count;
+	return 0;
+}
+
+static int sde_encoder_phys_cmd_get_write_line_count(
+		struct sde_encoder_phys *phys_enc)
+{
+	int ret = 0;
+	struct sde_hw_pp_vsync_info info;
+
+	ret = sde_encoder_phys_cmd_get_vsync_info(phys_enc, &info);
+	if (!ret)
+		return (int)info.wr_ptr_line_count;
+	else
+		return ret;
+}
+
+static int sde_encoder_phys_cmd_get_rd_frame_count(
+		struct sde_encoder_phys *phys_enc)
+{
+	int ret = 0;
+	struct sde_hw_pp_vsync_info info;
+
+	ret = sde_encoder_phys_cmd_get_vsync_info(phys_enc, &info);
+	if (!ret)
+		return (int)info.rd_ptr_frame_count;
+	else
+		return ret;
 }
 
 static void sde_encoder_phys_cmd_disable(struct sde_encoder_phys *phys_enc)
@@ -1412,6 +1438,7 @@ static void sde_encoder_phys_cmd_init_ops(
 			sde_encoder_phys_cmd_is_autorefresh_enabled;
 	ops->get_line_count = sde_encoder_phys_cmd_get_line_count;
 	ops->get_wr_line_count = sde_encoder_phys_cmd_get_write_line_count;
+	ops->get_rd_frame_count = sde_encoder_phys_cmd_get_rd_frame_count;
 	ops->wait_for_active = NULL;
 }
 
