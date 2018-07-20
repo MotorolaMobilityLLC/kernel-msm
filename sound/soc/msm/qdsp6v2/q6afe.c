@@ -588,10 +588,6 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		uint32_t param_id;
 		uint32_t param_id_pos = 0;
 
-#ifdef CONFIG_CIRRUS_PLAYBACK
-		if (crus_afe_callback(data->payload, data->payload_size) == 0)
-			return 0;
-#endif
 		if (!payload || (data->token >= AFE_MAX_PORTS)) {
 			pr_err("%s: Error: size %d payload %pK token %d\n",
 				__func__, data->payload_size,
@@ -624,6 +620,10 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 				if (ospl2xx_callback != NULL)
 					ospl2xx_callback(data);
 				atomic_set(&this_afe.state, 0);
+#elif CONFIG_CIRRUS_PLAYBACK
+		} else if (payload[1] == CIRRUS_SE) {
+			crus_afe_callback(data->payload, data->payload_size);
+			atomic_set(&this_afe.state, 0);
 #endif
 		} else {
 			if (sp_make_afe_callback(data->opcode, data->payload,
@@ -1493,16 +1493,6 @@ done:
 	kfree(packed_param_data);
 	return ret;
 }
-
-#ifdef CONFIG_CIRRUS_PLAYBACK
-extern int afe_apr_send_pkt_crus(void *data, int index, int set)
-{
-	if (set)
-		return afe_apr_send_pkt(data, &this_afe.wait[index]);
-	else /* get */
-		return afe_apr_send_pkt(data, 0);
-}
-#endif
 
 static int afe_send_cal_block(u16 port_id, struct cal_block_data *cal_block)
 {
@@ -6283,6 +6273,25 @@ int afe_set_ospl2xx_params(u16 port_id, struct param_hdr_v3 param_hdr,
 }
 #endif
 
+#ifdef CONFIG_CIRRUS_PLAYBACK
+int afe_set_crus_params(u16 port_id, struct param_hdr_v3 param_hdr,
+				u8 *param_data)
+{
+	int ret = 0;
+	int index = q6audio_get_port_index(port_id);
+
+	if (index < 0 || index >= AFE_MAX_PORTS) {
+		pr_err("%s: index[%d] invalid!\n", __func__, index);
+		return -EINVAL;
+	}
+
+	ret = q6afe_pack_and_set_param_in_band(port_id, index, param_hdr,
+						(u8 *) param_data);
+
+	return ret;
+}
+#endif
+
 int q6afe_check_osr_clk_freq(u32 freq)
 {
 	int ret = 0;
@@ -6463,6 +6472,19 @@ int afe_get_ospl2xx_params(u16 port_id, struct mem_mapping_hdr *mem_hdr,
 	return ret;
 }
 #endif
+
+#ifdef CONFIG_CIRRUS_PLAYBACK
+int afe_get_crus_params(u16 port_id, struct mem_mapping_hdr *mem_hdr,
+				struct param_hdr_v3 *param_hdr)
+{
+	int ret = 0;
+
+	ret = q6afe_get_params(port_id, mem_hdr, param_hdr);
+
+	return ret;
+}
+#endif
+
 
 int afe_spk_prot_feed_back_cfg(int src_port, int dst_port,
 	int l_ch, int r_ch, u32 enable)
