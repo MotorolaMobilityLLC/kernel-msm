@@ -389,6 +389,13 @@
 		focaltech,resume-in-workqueue;
 		focaltech,ignore-id-check;
 	};
+
+	novatek@62 {
+		compatible = "novatek,NVT-ts";
+		reg = <0x62>;
+		status = "ok";
+		novatek,irq-gpio = <&tlmm 65 0x2001>;
+	};
 };
 
 &pmi632_rgb {
