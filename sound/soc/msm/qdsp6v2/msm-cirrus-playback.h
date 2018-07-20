@@ -19,18 +19,6 @@
 #include <sound/q6audio-v2.h>
 #include <uapi/sound/msm-cirrus-playback.h>
 
-struct afe_custom_crus_set_config_t {
-	struct apr_hdr hdr;
-	struct afe_port_cmd_set_param_v2 param;
-	struct afe_port_param_data_v2 data;
-} __packed;
-
-struct afe_custom_crus_get_config_t {
-	struct apr_hdr hdr;
-	struct afe_port_cmd_get_param_v2 param;
-	struct afe_port_param_data_v2 data;
-} __packed;
-
 /* Payload struct for getting or setting one integer value from/to the DSP
  * module
  */
@@ -109,7 +97,10 @@ struct crus_delta_config_t {
 	char data[APR_CHUNK_SIZE];
 };
 
-extern int afe_apr_send_pkt_crus(void *data, int index, int set);
+extern int afe_set_crus_params(u16 port_id, struct param_hdr_v3 param_hdr,
+				u8 *param_data);
+extern int afe_get_crus_params(u16 port_id, struct mem_mapping_hdr *mem_hdr,
+				struct param_hdr_v3 *param_hdr);
 extern int crus_afe_callback(void *payload, int size);
 void msm_crus_pb_add_controls(struct snd_soc_platform *platform);
 
