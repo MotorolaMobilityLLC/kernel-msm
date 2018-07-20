@@ -396,6 +396,27 @@
 		status = "ok";
 		novatek,irq-gpio = <&tlmm 65 0x2001>;
 	};
+
+	ilitek@41 {
+		status = "ok";
+		compatible = "ilitek,tchip";
+		reg = <0x41>;
+		ilitek,irq-gpio = <&tlmm 65 0x2001>;
+		pinctrl-names ="pmx_ts_active",
+					"pmx_ts_suspend",
+					"pmx_ts_release";
+		pinctrl-0 = <&touch_int_active>;
+		pinctrl-1 = <&touch_int_suspend>;
+		pinctrl-2 = <&touch_release>;
+		ilitek,mt_b_type;
+		ilitek,display-coords = <0 0 720 1520>;
+		ilitek,tpd_height   = <2048>;
+		ilitek,tpd_width    =  <2048>;
+		ilitek,max_touch_num = <10>;
+		ilitek,tp_touch_ic = <0x9881>;
+		ilitek,tp_ic_type     = "ILI9881";
+		ilitek,x_flip;
+	};
 };
 
 &pmi632_rgb {
