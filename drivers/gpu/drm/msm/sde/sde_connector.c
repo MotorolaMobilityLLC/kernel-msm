@@ -559,6 +559,24 @@ static int _sde_connector_update_bl_scale(struct sde_connector *c_conn)
 	return rc;
 }
 
+static int _sde_connector_update_param(struct sde_connector *c_conn,
+			struct msm_param_info *param_info)
+{
+	struct dsi_display *dsi_display;
+	int rc = 0;
+
+	if (!c_conn) {
+		SDE_ERROR("Invalid params sde_connector null\n");
+		return -EINVAL;
+	}
+
+	dsi_display = c_conn->display;
+	if (dsi_display && c_conn->ops.set_param)
+		rc = c_conn->ops.set_param(dsi_display, param_info);
+
+	return rc;
+}
+
 static int _sde_connector_update_dirty_properties(
 				struct drm_connector *connector)
 {
@@ -1164,6 +1182,7 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 	struct sde_connector_state *c_state;
 	int idx, rc;
 	uint64_t fence_fd;
+	struct msm_param_info param_info;
 
 	if (!connector || !state || !property) {
 		SDE_ERROR("invalid argument(s), conn %pK, state %pK, prp %pK\n",
@@ -1240,6 +1259,13 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 	case CONNECTOR_PROP_AD_BL_SCALE:
 		c_conn->bl_scale_ad = val;
 		c_conn->bl_scale_dirty = true;
+		break;
+	case CONNECTOR_PROP_HBM:
+		param_info.value = sde_connector_get_property(
+		connector->state, CONNECTOR_PROP_HBM);
+		param_info.param_idx = PARAM_HBM_ID;
+		param_info.param_conn_idx = CONNECTOR_PROP_HBM;
+		_sde_connector_update_param(c_conn, &param_info);
 		break;
 	default:
 		break;
@@ -2063,6 +2089,45 @@ static int sde_connector_populate_mode_info(struct drm_connector *conn,
 	return rc;
 }
 
+static int sde_connector_install_panel_params(struct sde_connector *c_conn)
+{
+	struct panel_param *param_cmds;
+	uint32_t prop_idx;
+	int i;
+	struct dsi_display *dsi_display;
+
+
+	if (c_conn->connector_type != DRM_MODE_CONNECTOR_DSI)
+		return 0;
+
+	dsi_display = (struct dsi_display *) (c_conn->display);
+	param_cmds = dsi_display->panel->param_cmds;
+	for (i = 0; i < PARAM_ID_NUM; i++) {
+		pr_debug("%s:i = %d param_name = %s is_support=%d\n",
+			__func__, i,
+                        param_cmds->param_name, param_cmds->is_supported);
+
+		if (!strncmp(param_cmds->param_name, "HBM", 3))
+			prop_idx = CONNECTOR_PROP_HBM;
+		else {
+			SDE_ERROR("Invalid param_name =%s\n",
+						param_cmds->param_name);
+			return -EINVAL;
+		}
+
+		if (param_cmds->is_supported)
+			msm_property_install_volatile_range(
+					&c_conn->property_info,
+					param_cmds->param_name,
+					0x0, 0, param_cmds->val_max,
+					param_cmds->default_value, prop_idx);
+
+		param_cmds++;
+	}
+
+	return 0;
+}
+
 int sde_connector_set_blob_data(struct drm_connector *conn,
 		struct drm_connector_state *state,
 		enum msm_mdp_conn_property prop_id)
@@ -2291,6 +2356,14 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 				sizeof(dsi_display->panel->hdr_props),
 				CONNECTOR_PROP_HDR_INFO);
 		}
+	}
+
+	rc = sde_connector_install_panel_params(c_conn);
+	if (rc) {
+		SDE_ERROR_CONN(c_conn,
+			"failed to install property for panel params. rc =%d\n",
+							rc);
+			goto error_cleanup_fence;
 	}
 
 	rc = sde_connector_get_info(&c_conn->base, &display_info);
