@@ -29,6 +29,45 @@
 	aw869x_haptic@5a {
 		status = "ok";
 	};
+
+	ldc2114@2a {
+		status = "ok";
+		configs {
+			config-ver = <0>;
+			config-normal {
+				config-data = [
+					0E 0E /*GAIN0*/
+					0F 01 /*LP_SCAN_RATE*/
+					13 07 /*LP_BASE_INC*/
+					15 07 /*NP_BASE_INC*/
+					16 10 /*BTPAUSE_MAXWIN*/
+					20 29 /*SENSOR0_CFG*/
+				];
+			};
+		};
+	};
+};
+
+&qupv3_se10_i2c {
+	ldc2114@2a {
+		status = "ok";
+		configs {
+			config-ver = <0>;
+			config-normal {
+				config-data = [
+					0C 33 /*EN*/
+					0E 3F /*GAIN0*/
+					0F 01 /*LP_SCAN_RATE*/
+					10 3F /*GAIN1*/
+					13 03 /*LP_BASE_INC*/
+					15 07 /*NP_BASE_INC*/
+					16 00 /*BTPAUSE_MAXWIN*/
+					20 59 /*SENSOR0_CFG*/
+					22 59 /*SENSOR1_CFG*/
+				];
+			};
+		};
+	};
 };
 
 &soc {
