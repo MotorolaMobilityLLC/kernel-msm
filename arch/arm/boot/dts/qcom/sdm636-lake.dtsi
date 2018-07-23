@@ -61,6 +61,8 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <75 0>;
 		Semtech,nirq-gpio = <&tlmm 75 0x00>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx933x_irq_default>;
 		cap_vdd-supply = <&pm660l_l8>;
 		Semtech,reg-num = <23>;
 		Semtech,button-flag = <0x07>;
