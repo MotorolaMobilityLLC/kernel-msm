@@ -31,4 +31,14 @@
 			input-enable;
 		};
 	};
+	sx933x_irq_default: sx933x_irq_default {
+		mux {
+			pins = "gpio75";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio75";
+			bias-disable;
+		};
+	};
 };
