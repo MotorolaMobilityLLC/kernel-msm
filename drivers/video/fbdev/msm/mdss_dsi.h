@@ -447,6 +447,7 @@ struct mdss_dsi_ctrl_pdata {
 	int vdd_ext_gpio;
 	int mode_gpio;
 	int intf_mux_gpio;
+	int hbm_en_gpio;
 	bool bklt_en_gpio_invert;
 	int lcd_mode_sel_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
