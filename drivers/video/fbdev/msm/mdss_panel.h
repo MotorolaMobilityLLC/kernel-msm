@@ -67,6 +67,7 @@ enum fps_resolution {
 #define HBM_TYPE_LCD_DCS_WLED	1
 #define HBM_TYPE_LCD_DCS_ONLY	2
 #define HBM_TYPE_LCD_WLED_ONLY	3
+#define HBM_TYPE_LCD_DCS_GPIO	4
 
 enum hbm_state {
 	HBM_OFF_STATE = 0,
