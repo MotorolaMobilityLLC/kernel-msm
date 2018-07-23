@@ -248,11 +248,11 @@
 &pm660_haptics { /* Vibrator */
 	qcom,actuator-type = "lra";
 	qcom,wave-shape = "sine";
-	qcom,vmax-mv = <2700>;
+	qcom,vmax-mv = <2100>;
 	qcom,ilim-ma = <800>;
 	qcom,wave-play-rate-us = <4255>;
 	/delete-property/ qcom,correct-lra-drive-freq;
 	qcom,lra-hw-auto-resonance;
 	qcom,lra-auto-res-mode ="zxd";
-	qcom,brake-pattern = [03 03 03 03];
+	qcom,brake-pattern = [03 01 00 00];
 };
