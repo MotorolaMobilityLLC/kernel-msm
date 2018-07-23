@@ -549,7 +549,21 @@
 	};
 };
 
-&qupv3_se10_i2c { /* FIXME: CapSence, Womack, FLIP FuelGauge, InductiveKeys, Laser, LS Fan */
+&tlmm {
+	capsense_gpio_pins: capsense_gpio_pins {
+		mux {
+			pins = "gpio40";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio40";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+
+&qupv3_se10_i2c { /* FIXME: Womack, FLIP FuelGauge, InductiveKeys, Laser, LS Fan */
 	status = "ok";
 
 	ldc2114@2a {
@@ -590,6 +604,42 @@
 			cirrus,gpio-output-enable = <0x01>;
 			cirrus,gpio-src-select = <0x01>;
 		};
+	};
+
+	sx933x@28 {
+		compatible = "Semtech,sx933x";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		Semtech,nirq-gpio = <&tlmm 40 0x00>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&capsense_gpio_pins>;
+		cap_vdd-supply = <&pm660l_bob>;
+		Semtech,reg-num = <23>;
+		Semtech,button-flag = <0x0F>;
+		Semtech,reg-init = <0x8020 0x1F0000
+			0x8024 0x300008D4 /*again 6.6pf*/
+			0x8028 0x24928000
+			0x802C 0x30000CD4
+			0x8030 0x24960000
+			0x8034 0x300006D4
+			0x8038 0x24B20000
+			0x803C 0x300004D4
+			0x8040 0x25920000
+			0x8044 0x300004D4
+			0x8048 0x2C920000
+			0x8054 0x02106400 /*ph0*/
+			0x8058 0x20600C00
+			0x805c 0x0
+			0x8064 0x00FE0000 /*5mm th*/
+			0x8070 0x0
+			0x8074 0x02105400 /*ph1*/
+			0x8084 0x00CD0000 /*5mm th*/
+			0x8094 0x01105F00 /*ph2*/
+			0x80A4 0x00C60000 /*5mm th*/
+			0x80B4 0x0010FF00
+			0x80D4 0x0010FF00
+			0x4004 0x67 >;
 	};
 };
 
