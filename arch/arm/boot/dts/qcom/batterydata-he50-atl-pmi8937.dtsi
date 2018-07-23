@@ -10,7 +10,7 @@ qcom,he50_atl_4850mAh {
 	qcom,chg-rslow-comp-c2 = <3480740>;
 	qcom,chg-rs-to-rslow = <682307>;
 	qcom,chg-rslow-comp-thr = <0x99>;
-	qcom,thermal-coefficients = [C8 86 C1 50 D3 37];
+	qcom,thermal-coefficients = [DA 86 F0 50 08 3C];
 	qcom,checksum = <0xEFFB>;
 	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
 	qcom,fg-profile-data = [
