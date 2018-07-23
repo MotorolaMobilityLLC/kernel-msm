@@ -17,14 +17,14 @@ qcom,mdss-dsi-panel-type = "dsi_video_mode";
 qcom,mdss-dsi-panel-framerate = <60>;
 qcom,mdss-dsi-virtual-channel-id = <0>;
 qcom,mdss-dsi-stream = <0>;
-//qcom,mdss-dsi-panel-clockrate = <964800000>;
+qcom,mdss-dsi-panel-clockrate = <964800000>;
 qcom,mdss-dsi-panel-width = <1080>;
 qcom,mdss-dsi-panel-height = <2270>;
-qcom,mdss-dsi-h-front-porch = <40>;
-qcom,mdss-dsi-h-back-porch = <40>;
+qcom,mdss-dsi-h-front-porch = <24>;
+qcom,mdss-dsi-h-back-porch = <44>;
 qcom,mdss-dsi-h-pulse-width = <20>;
 qcom,mdss-dsi-h-sync-skew = <0>;
-qcom,mdss-dsi-v-front-porch = <10>;
+qcom,mdss-dsi-v-front-porch = <14>;
 qcom,mdss-dsi-v-back-porch = <8>;
 qcom,mdss-dsi-v-pulse-width = <2>;
 qcom,mdss-dsi-h-left-border = <0>;
@@ -75,13 +75,13 @@ qcom,mdss-dsi-lane-0-state;
 qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
-qcom,mdss-dsi-panel-timings-phy-v2 = [25 1f 09 0a 06 03 04 a0
-	25 1f 09 0a 06 03 04 a0
-	25 1f 09 0a 06 03 04 a0
-	25 1f 09 0a 06 03 04 a0
-	25 1e 08 0a 06 03 04 a0];
+qcom,mdss-dsi-panel-timings-phy-v2 = [25 20 08 0a 06 03 04 a0
+	25 20 08 0a 06 03 04 a0
+	25 20 08 0a 06 03 04 a0
+	25 20 08 0a 06 03 04 a0
+	25 1d 08 0a 06 03 04 a0];
 qcom,mdss-dsi-t-clk-post = <0x0e>;
-qcom,mdss-dsi-t-clk-pre = <0x34>;
+qcom,mdss-dsi-t-clk-pre = <0x33>;
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
