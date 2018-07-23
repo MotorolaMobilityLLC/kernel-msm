@@ -235,6 +235,11 @@ static SOC_VALUE_ENUM_SINGLE_DECL(cs35l41_pcm_source_enum,
 static const struct snd_kcontrol_new pcm_source_mux =
 	SOC_DAPM_ENUM("PCM Source", cs35l41_pcm_source_enum);
 
+static const struct snd_kcontrol_new rx1_enable_ctrl =
+		SOC_DAPM_SINGLE("Switch", SND_SOC_NOPM, 0, 1, 0);
+static const struct snd_kcontrol_new rx2_enable_ctrl =
+		SOC_DAPM_SINGLE("Switch", SND_SOC_NOPM, 0, 1, 0);
+
 static const char * const cs35l41_tx_input_texts[] = {"Zero", "ASPRX1",
 							"ASPRX2", "VMON",
 							"IMON", "VPMON",
@@ -632,7 +637,8 @@ static const struct snd_soc_dapm_widget cs35l41_dapm_widgets[] = {
 				cs35l41_dsp_load_ev,
 				SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_OUTPUT("SPK"),
-
+	SND_SOC_DAPM_SWITCH("RX1 Enable", SND_SOC_NOPM, 0, 1, &rx1_enable_ctrl),
+	SND_SOC_DAPM_SWITCH("RX2 Enable", SND_SOC_NOPM, 0, 1, &rx2_enable_ctrl),
 	SND_SOC_DAPM_AIF_IN("ASPRX1", NULL, 0, CS35L41_SP_ENABLES, 16, 0),
 	SND_SOC_DAPM_AIF_IN("ASPRX2", NULL, 0, CS35L41_SP_ENABLES, 17, 0),
 	SND_SOC_DAPM_AIF_OUT("ASPTX1", NULL, 0, CS35L41_SP_ENABLES, 0, 0),
@@ -721,8 +727,10 @@ static const struct snd_soc_dapm_route cs35l41_audio_map[] = {
 	{"DSP1", NULL, "VPMON ADC"},
 	{"DSP1", NULL, "TEMPMON ADC"},
 
-	{"ASPRX1", NULL, "AMP Playback"},
-	{"ASPRX2", NULL, "AMP Playback"},
+	{"RX1 Enable", "Switch", "AMP Playback"},
+	{"ASPRX1", NULL, "RX1 Enable"},
+	{"RX2 Enable", "Switch", "AMP Playback"},
+	{"ASPRX2", NULL, "RX2 Enable"},
 	{"DRE", "DRE Switch", "CLASS H"},
 	{"Main AMP", NULL, "CLASS H"},
 	{"Main AMP", NULL, "DRE"},
