@@ -196,34 +196,35 @@
 		asoc-codec-names = "msm-stub-codec.1",
 				   "msm-ext-disp-audio-codec-rx";
 	};
+};
 
-	clock_audio_lnbb {
-		status = "disabled";
-	};
 
-	wsa_spkr_en1 {
-		status = "disabled";
-	};
+&clock_audio_lnbb {
+	status = "disabled";
+};
 
-	wsa_spkr_en2 {
-		status = "disabled";
-	};
+&wsa_spkr_en1 {
+	status = "disabled";
+};
 
-	cdc_sdw_gpios {
-		status = "disabled";
-	};
+&wsa_spkr_en2 {
+	status = "disabled";
+};
 
-	msm_sdw_codec {
-		status = "disabled";
-	};
+&cdc_sdw_gpios {
+	status = "disabled";
+};
 
-	wcd_rst_gpio {
-		status = "disabled";
-	};
+&msm_sdw_codec {
+	status = "disabled";
+};
 
-	cdc_pdm_gpios {
-		status = "disabled";
-	};
+&wcd_rst_gpio {
+	status = "disabled";
+};
+
+&cdc_pdm_gpios {
+	status = "disabled";
 };
 
 &slim_aud {
