@@ -527,7 +527,20 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				}
 			}
 
+			if (gpio_is_valid(pinfo->external_rst_gpio)) {
+				rc = gpio_request(pinfo->external_rst_gpio,
+						"external_rst_n");
+				if (rc) {
+					pr_err("request external reset gpio failed, rc=%d\n",
+							rc);
+					goto exit;
+				}
+			}
+
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+				if (gpio_is_valid(pinfo->external_rst_gpio))
+					gpio_set_value(pinfo->external_rst_gpio,
+						pdata->panel_info.rst_seq[i]);
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
 				if (pdata->panel_info.rst_seq[++i])
@@ -578,6 +591,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		}
 		if (!pinfo->panel_off_rst_disable)
 			gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		if (gpio_is_valid(pinfo->external_rst_gpio))
+			gpio_free(pinfo->external_rst_gpio);
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
@@ -3231,6 +3246,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-post-init-delay", &tmp);
 	pinfo->mipi.post_init_delay = (!rc ? tmp : 0);
+
+	pinfo->external_rst_gpio = of_get_named_gpio(np,
+					"qcom,mdss-dsi-external-rst-gpio", 0);
+	if (!gpio_is_valid(pinfo->external_rst_gpio))
+			pr_debug("%s:%d, external rst gpio not specified\n",
+					__func__, __LINE__);
 
 	mdss_dsi_parse_trigger(np, &(pinfo->mipi.mdp_trigger),
 		"qcom,mdss-dsi-mdp-trigger");
