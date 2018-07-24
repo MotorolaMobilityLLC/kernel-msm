@@ -41,20 +41,7 @@
 #include "parser.h"
 #include "finger_report.h"
 
-#define EXEC_READ  0
-#define EXEC_WRITE 1
 
-#define INT_CHECK 0
-#define POLL_CHECK 1
-#define DELAY_CHECK 2
-#define RETRY_COUNT 3
-
-#define NORMAL_CSV_PASS_NAME		"mp_pass"
-#define NORMAL_CSV_FAIL_NAME		"mp_fail"
-#define OPPO_CSV_PASS_NAME			"oppo_mp_pass"
-#define OPPO_CSV_FAIL_NAME			"oppo_mp_fail"
-#define OPPO_CSV_LCM_PASS_NAME		"oppo_mp_lcm_pass"
-#define OPPO_CSV_LCM_FAIL_NAME		"oppo_mp_lcm_fail"
 
 #define CSV_FILE_SIZE   (500 * 1024)
 
@@ -178,8 +165,8 @@ void dump_data(void *data, int type, int len, int row_len, const char *name)
 			return;
 		}
 
-		printk("\n\n");
-		printk("Dump %s data\n", name);
+		printk(KERN_CONT "\n\n");
+		printk(KERN_CONT "Dump %s data\n", name);
 
 		if (type == 8)
 			p8 = (uint8_t *) data;
@@ -188,15 +175,15 @@ void dump_data(void *data, int type, int len, int row_len, const char *name)
 
 		for (i = 0 ; i < len ; i++) {
 			if (type == 8)
-				printk(" %4x ", p8[i]);
+				printk(KERN_CONT " %4x ", p8[i]);
 			else if (type == 32)
-				printk(" %4x ", p32[i]);
+				printk(KERN_CONT " %4x ", p32[i]);
 			else if (type == 10)
-				printk(" %4d ", p32[i]);
+				printk(KERN_CONT " %4d ", p32[i]);
 			if ((i % row) == row-1)
-				printk("\n");
+				printk(KERN_CONT "\n");
 		}
-		printk("\n\n");
+		printk(KERN_CONT "\n\n");
 	}
 }
 EXPORT_SYMBOL(dump_data);
@@ -320,10 +307,10 @@ static void mp_compare_cdc_show_result(int32_t *tmp, char *csv, int *csv_len, in
 out:
 	if (type == TYPE_JUGE) {
 		if (mp_result == MP_PASS) {
-			pr_info("\n Result : PASS\n");
+			DUMP(DEBUG_MP_TEST, "\n Result : PASS\n");
 			tmp_len += snprintf(csv + tmp_len, (CSV_FILE_SIZE-tmp_len), "Result : PASS\n");
 		} else {
-			pr_info("\n Result : FAIL\n");
+			DUMP(DEBUG_MP_TEST, "\n Result : FAIL\n");
 			tmp_len += snprintf(csv + tmp_len, (CSV_FILE_SIZE-tmp_len), "Result : FAIL\n");
 		}
 	}
@@ -728,7 +715,7 @@ static int mp_cdc_get_pv5_4_command(uint8_t *cmd, int len, int index)
 	else if (strncmp(key, "Noise Peak to Peak(With Panel) (LCM OFF)", strlen(key)) == 0)
 		key = "Noise Peak To Peak(With Panel)";
 
-	ipio_info("%s gets %s command from INI.\n", tItems[index].desp, key);
+	ipio_debug(DEBUG_MP_TEST, "%s gets %s command from INI.\n", tItems[index].desp, key);
 
 	ret = core_parser_get_int_data("PV5_4 Command", key, str);
 	if (ret < 0) {
@@ -748,7 +735,7 @@ static int mp_cdc_init_cmd_common(uint8_t *cmd, int len, int index)
 	int ret = 0;
 
 	if (protocol->major >= 5 && protocol->mid >= 4) {
-		ipio_info("Get CDC command with protocol v5.4\n");
+		ipio_debug(DEBUG_MP_TEST, "Get CDC command with protocol v5.4\n");
 		protocol->cdc_len = 15;
 		return mp_cdc_get_pv5_4_command(cmd, len, index);
 	}
@@ -807,6 +794,7 @@ static int allnode_mutual_cdc_data(int index)
 
 	dump_data(cmd, 8, protocol->cdc_len, 0, "Mutual CDC command");
 
+	core_mp->mp_isr_check_busy_free = false;
 	res = core_write(core_config->slave_i2c_addr, cmd, protocol->cdc_len);
 	if (res < 0) {
 		ipio_err("I2C Write Error while initialising cdc\n");
@@ -814,17 +802,18 @@ static int allnode_mutual_cdc_data(int index)
 	}
 
 	/* Check busy */
-	ipio_info("Check busy method = %d\n", core_mp->busy_cdc);
 	if (core_mp->busy_cdc == POLL_CHECK) {
 		res = core_config_check_cdc_busy(50, 50);
 	} else if (core_mp->busy_cdc == INT_CHECK) {
 		res = core_config_check_int_status(true);
 	} else if (core_mp->busy_cdc == DELAY_CHECK) {
 		mdelay(600);
+	} else if (core_mp->busy_cdc == ISR_CHECK) {
+		core_config_check_int_isr_flag();
 	}
 
 	if (res < 0) {
-		ipio_err("Check busy timeout !\n");
+		ipio_err("Check busy timeout ! %d\n", core_mp->busy_cdc);
 		res = ERROR;
 		goto out;
 	}
@@ -1199,7 +1188,7 @@ int allnode_open_cdc_data(int mode, int *buf, int *dac)
 	core_parser_get_u8_array(tmp, cmd);
 
 	dump_data(cmd, 8, sizeof(cmd), 0, "Open SP command");
-
+	core_mp->mp_isr_check_busy_free = false;
 	res = core_write(core_config->slave_i2c_addr, cmd, protocol->cdc_len);
 	if (res < 0) {
 		ipio_err("I2C Write Error while initialising cdc\n");
@@ -1207,17 +1196,17 @@ int allnode_open_cdc_data(int mode, int *buf, int *dac)
 	}
 
 	/* Check busy */
-	ipio_info("Check busy method = %d\n", core_mp->busy_cdc);
 	if (core_mp->busy_cdc == POLL_CHECK) {
 		res = core_config_check_cdc_busy(50, 50);
 	} else if (core_mp->busy_cdc == INT_CHECK) {
 		res = core_config_check_int_status(true);
 	} else if (core_mp->busy_cdc == DELAY_CHECK) {
 		mdelay(600);
+	} else if (core_mp->busy_cdc == ISR_CHECK) {
+		core_config_check_int_isr_flag();
 	}
-
 	if (res < 0) {
-		ipio_err("Check busy timeout !\n");
+		ipio_err("Check busy timeout ! %d\n", core_mp->busy_cdc);
 		res = ERROR;
 		goto out;
 	}
@@ -1501,7 +1490,7 @@ int codeToOhm(int32_t Code)
 	}
 
 	if (Code == 0) {
-		ipio_debug(DEBUG_MP_TEST, "0,");
+		ipio_debug(DEBUG_MP_TEST, "code is invalid\n");
 	} else {
 		temp = ((douTVCH - douTVCL) * douVariation * (douTDF1 - douTDF2) * (1<<12) / (9 * Code * douCint)) * 100;
 		temp = (temp - douRinternal) / 1000;
@@ -1834,11 +1823,10 @@ void core_mp_retry(int index)
 
 	/* Switch to Demo mode */
 	core_fr_mode_control(&protocol->demo_mode);
-	ilitek_platform_disable_irq();
 
 	/* Switch to test mode */
 	core_fr_mode_control(&protocol->test_mode);
-	ilitek_platform_disable_irq();
+
 
 	tItems[index].do_test(index);
 	tItems[index].test_count++;
@@ -2425,8 +2413,9 @@ int core_mp_init(void)
 			core_mp->st_len = core_config->tp_info->side_touch_type;
 
 			core_mp->tdf = 240;
-			core_mp->busy_cdc = INT_CHECK;
-
+			core_mp->busy_cdc = ISR_CHECK;
+			ipio_info("Check busy method = %d\n", core_mp->busy_cdc);
+			core_mp->mp_isr_check_busy_free = false;
 			core_mp->run = false;
 			core_mp->retry = true;
 			core_mp->oppo_run = false;
