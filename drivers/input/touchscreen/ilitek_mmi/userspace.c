@@ -34,9 +34,9 @@
 #include "core/parser.h"
 #include "core/gesture.h"
 
-#define USER_STR_BUFF   128
+#define USER_STR_BUFF   2000
 #define ILITEK_IOCTL_MAGIC  100
-#define ILITEK_IOCTL_MAXNR  18
+#define ILITEK_IOCTL_MAXNR  21
 
 #define ILITEK_IOCTL_I2C_WRITE_DATA         _IOWR(ILITEK_IOCTL_MAGIC, 0, uint8_t*)
 #define ILITEK_IOCTL_I2C_SET_WRITE_LENGTH   _IOWR(ILITEK_IOCTL_MAGIC, 1, int)
@@ -64,7 +64,10 @@
 #define ILITEK_IOCTL_TP_MODE_STATUS         _IOWR(ILITEK_IOCTL_MAGIC, 18, int*)
 #define ILITEK_IOCTL_ICE_MODE_SWITCH		_IOWR(ILITEK_IOCTL_MAGIC, 19, int)
 
-unsigned char g_user_buf[USER_STR_BUFF] = { 0 };
+#define ILITEK_IOCTL_MP_WRITE_CDC_FLAG_FALSE _IOWR(ILITEK_IOCTL_MAGIC, 20, int*)
+#define ILITEK_IOCTL_MP_READ_CDC_FLAG	     _IOWR(ILITEK_IOCTL_MAGIC, 21, int*)
+
+unsigned char *g_user_buf;
 static struct class *touchscreen_class;
 static struct device *touchscreen_class_dev;
 
@@ -354,7 +357,10 @@ static ssize_t ilitek_proc_oppo_mp_lcm_on_read(struct file *filp,
 	/* Switch to test mode */
 	core_fr_mode_control(&protocol->test_mode);
 
-	ilitek_platform_disable_irq();
+	if (core_mp->busy_cdc != ISR_CHECK)
+		ilitek_platform_disable_irq();
+
+	core_fr->isEnableFR = false;
 
 	core_mp->oppo_run = true;
 
@@ -368,6 +374,9 @@ static ssize_t ilitek_proc_oppo_mp_lcm_on_read(struct file *filp,
 	core_mp_run_test("Raw Data(No BK)", true);
 	core_mp_run_test("Doze Raw Data", true);
 	core_mp_run_test("Doze Peak To Peak", true);
+
+	if (core_mp->busy_cdc == ISR_CHECK)
+		ilitek_platform_disable_irq();
 
 	core_mp_show_result();
 
@@ -388,6 +397,9 @@ static ssize_t ilitek_proc_oppo_mp_lcm_on_read(struct file *filp,
 	core_config_set_watch_dog(false);
 	mdelay(10);
 	core_config_ic_reset();
+
+	core_fr->isEnableFR = true;
+	ilitek_platform_enable_irq();
 
 out:
 	*pPos = len;
@@ -415,7 +427,10 @@ static ssize_t ilitek_proc_oppo_mp_lcm_off_read(struct file *filp,
 		goto out;
 	}
 
-	ilitek_platform_disable_irq();
+	if (core_mp->busy_cdc != ISR_CHECK)
+		ilitek_platform_disable_irq();
+
+	core_fr->isEnableFR = false;
 
 	/* Enter to suspend and move gesture code to iram */
 	core_config->isEnableGesture = true;
@@ -436,7 +451,6 @@ static ssize_t ilitek_proc_oppo_mp_lcm_off_read(struct file *filp,
 	/* Switch to test mode which moves mp code to iram */
 	core_fr_mode_control(&protocol->test_mode);
 
-	ilitek_platform_disable_irq();
 
 	/* Indicates running mp test is called by oppo node */
 	core_mp->oppo_run = true;
@@ -447,6 +461,9 @@ static ssize_t ilitek_proc_oppo_mp_lcm_off_read(struct file *filp,
 	core_mp_run_test("Noise Peak to Peak(With Panel) (LCM OFF)", true);
 	core_mp_run_test("Raw Data_TD (LCM OFF)", true);
 	core_mp_run_test("Peak To Peak_TD (LCM OFF)", true);
+
+	if (core_mp->busy_cdc == ISR_CHECK)
+		ilitek_platform_disable_irq();
 
 	core_mp_show_result();
 
@@ -466,6 +483,7 @@ static ssize_t ilitek_proc_oppo_mp_lcm_off_read(struct file *filp,
 	mdelay(10);
 	core_config_ic_reset();
 
+	core_fr->isEnableFR = true;
 	ilitek_platform_enable_irq();
 
 out:
@@ -495,8 +513,10 @@ static ssize_t ilitek_proc_mp_test_read(struct file *filp, char __user *buff,
 	/* Switch to Test mode nad move mp code */
 	core_fr_mode_control(&protocol->test_mode);
 
-	ilitek_platform_disable_irq();
+	if (core_mp->busy_cdc != ISR_CHECK)
+		ilitek_platform_disable_irq();
 
+	core_fr->isEnableFR = false;
 	/* Start to run MP test */
 	core_mp->run = true;
 
@@ -529,6 +549,10 @@ static ssize_t ilitek_proc_mp_test_read(struct file *filp, char __user *buff,
 	core_mp_run_test("Doze Peak To Peak", true);
 	/*core_mp_run_test("Pin Test ( INT and RST )", true); */
 
+
+	if (core_mp->busy_cdc == ISR_CHECK)
+		ilitek_platform_disable_irq();
+
 	core_mp_show_result();
 
 	core_mp->run = false;
@@ -551,6 +575,8 @@ static ssize_t ilitek_proc_mp_test_read(struct file *filp, char __user *buff,
 	ilitek_platform_tp_hw_reset(true);
 #endif
 
+
+	core_fr->isEnableFR = true;
 	ilitek_platform_enable_irq();
 
 out:
@@ -607,7 +633,7 @@ static ssize_t ilitek_proc_mp_test_write(struct file *filp, const char *buff,
 
 	for (i = 0 ; i < core_mp->mp_items; i++) {
 		if (strcmp(cmd, tItems[i].name) == 0) {
-			strlcpy(str, tItems[i].desp, strlen(str));
+			strlcpy(str, tItems[i].desp, strlen(str)+1);
 			tItems[i].run = 1;
 			tItems[i].max = va[1];
 			tItems[i].min = va[2];
@@ -657,7 +683,7 @@ static ssize_t ilitek_proc_debug_level_read(struct file *filp,
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	len = snprintf(g_user_buf, sizeof(g_user_buf), "%d", ipio_debug_level);
+	len = snprintf(g_user_buf, USER_STR_BUFF, "%d", ipio_debug_level);
 
 	ipio_info("Current DEBUG Level = %d\n", ipio_debug_level);
 	ipio_info("You can set one of levels for debug as below:\n");
@@ -716,7 +742,7 @@ static ssize_t ilitek_proc_gesture_read(struct file *filp, char __user *buff,
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	len = snprintf(g_user_buf, sizeof(g_user_buf), "%d", core_config->isEnableGesture);
+	len = snprintf(g_user_buf, USER_STR_BUFF, "%d", core_config->isEnableGesture);
 
 	ipio_info("isEnableGesture = %d\n", core_config->isEnableGesture);
 
@@ -777,7 +803,7 @@ static ssize_t ilitek_proc_check_battery_read(struct file *filp,
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	len = snprintf(g_user_buf, sizeof(g_user_buf), "%d", ipd->isEnablePollCheckPower);
+	len = snprintf(g_user_buf, USER_STR_BUFF, "%d", ipd->isEnablePollCheckPower);
 
 	ipio_info("isEnablePollCheckPower = %d\n", ipd->isEnablePollCheckPower);
 
@@ -845,7 +871,7 @@ static ssize_t ilitek_proc_fw_process_read(struct file *filp,
 
 	memset(g_user_buf, 0, USER_STR_BUFF * sizeof(unsigned char));
 
-	len = snprintf(g_user_buf, sizeof(g_user_buf), "%02d", core_firmware->update_status);
+	len = snprintf(g_user_buf, USER_STR_BUFF, "%02d", core_firmware->update_status);
 
 	ipio_info("update status = %d\n", core_firmware->update_status);
 
@@ -1431,6 +1457,29 @@ static long ilitek_proc_ioctl(struct file *filp, unsigned int cmd,
 			}
 		}
 		break;
+	case ILITEK_IOCTL_MP_WRITE_CDC_FLAG_FALSE:
+		res = copy_from_user(szBuf, (uint8_t *) arg, 1);
+		if (res < 0) {
+			ipio_err("Failed to copy data from user space\n");
+		} else {
+			ipio_debug(DEBUG_IOCTL, "ioctl write = %d\n", szBuf[0]);
+			if (szBuf[0] == 0) {
+				core_mp->mp_isr_check_busy_free = false;
+				ipio_debug(DEBUG_IOCTL, "core_mp->mp_isr_check_busy_free = %d\n", core_mp->mp_isr_check_busy_free);
+			}
+		}
+		break;
+
+	case ILITEK_IOCTL_MP_READ_CDC_FLAG:
+
+		res =
+		    copy_to_user((int *)arg, &core_mp->mp_isr_check_busy_free,
+				 sizeof(int));
+		ipio_debug(DEBUG_IOCTL, "core_mp->mp_isr_check_busy_free = %d\n", core_mp->mp_isr_check_busy_free);
+		if (res < 0) {
+			ipio_err("Failed to copy mp_isr_check_busy_free flag to user space\n");
+		}
+		break;
 
 	default:
 		res = -ENOTTY;
@@ -1638,6 +1687,13 @@ int ilitek_proc_init(void)
 {
 	int i = 0, res = 0;
 
+	g_user_buf = kcalloc(USER_STR_BUFF, sizeof(char), GFP_KERNEL);
+
+	if (ERR_ALLOC_MEM(g_user_buf)) {
+		ipio_err("Failed to allocate buffers for user space\n");
+		return -ENOMEM;
+	}
+
 	proc_dir_ilitek = proc_mkdir("ilitek", NULL);
 
 	for (; i < ARRAY_SIZE(proc_table); i++) {
@@ -1679,6 +1735,7 @@ void ilitek_proc_remove(void)
 
 	remove_proc_entry("ilitek", NULL);
 	netlink_kernel_release(_gNetLinkSkb);
+	ipio_kfree((void **)&g_user_buf);
 }
 
 EXPORT_SYMBOL(ilitek_proc_remove);
