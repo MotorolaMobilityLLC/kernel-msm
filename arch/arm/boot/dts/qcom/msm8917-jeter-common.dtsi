@@ -184,6 +184,20 @@
 		focaltech,ignore-id-check;
 	};
 
+	ilitek@41 {
+		status = "ok";
+		compatible = "ilitek,tchip";
+		reg = <0x41>;
+		ilitek,irq-gpio = <&tlmm 65 0x2001>;
+		ilitek,mt_b_type;
+		ilitek,display-coords = <0 0 720 1440>;
+		ilitek,tpd_height = <2048>;
+		ilitek,tpd_width = <2048>;
+		ilitek,max_touch_num = <10>;
+		ilitek,tp_touch_ic = <0x9881>;
+		ilitek,tp_ic_type = "ILI9881";
+	};
+
 };
 
 &i2c_5 { /* BLSP2 QUP1 */
