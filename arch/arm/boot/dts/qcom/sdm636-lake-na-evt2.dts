@@ -17,7 +17,7 @@
 #include "sdm636-lake.dtsi"
 
 / {
-	qcom,board-id = <(LAKE_RADIO_NA << 8 | 0x4C) 0xA200>;
+	qcom,board-id = <(LAKE_RADIO_NA << 8 | 0x4C) 0xA200>,<(LAKE_RADIO_TMO << 8 | 0x4C) 0xA200>;
 };
 
 /*
