@@ -269,6 +269,7 @@ static SOC_VALUE_ENUM_SINGLE_DECL(cs35l41_asptx2_enum,
 static const struct snd_kcontrol_new asp_tx2_mux =
 	SOC_DAPM_ENUM("ASPTX2 SRC", cs35l41_asptx2_enum);
 
+
 static SOC_VALUE_ENUM_SINGLE_DECL(cs35l41_asptx3_enum,
 				CS35L41_ASP_TX3_SRC,
 				0, CS35L41_ASP_SOURCE_MASK,
@@ -286,6 +287,38 @@ static SOC_VALUE_ENUM_SINGLE_DECL(cs35l41_asptx4_enum,
 
 static const struct snd_kcontrol_new asp_tx4_mux =
 	SOC_DAPM_ENUM("ASPTX4 SRC", cs35l41_asptx4_enum);
+
+static const char * const cs35l41_DSP1_input_texts[] = {"Zero", "ASPRX1",
+							"ASPRX2", "VMON",
+							"IMON", "VPMON",
+							"DSPTX1", "DSPTX2"};
+
+static const unsigned int cs35l41_DSP1_input_values[] = {0x00,
+						CS35L41_INPUT_SRC_ASPRX1,
+						CS35L41_INPUT_SRC_ASPRX2,
+						CS35L41_INPUT_SRC_VMON,
+						CS35L41_INPUT_SRC_IMON,
+						CS35L41_INPUT_SRC_VPMON,
+						CS35L41_INPUT_DSP_TX1,
+						CS35L41_INPUT_DSP_TX2};
+
+static SOC_VALUE_ENUM_SINGLE_DECL(cs35l41_dsp1_input1_enum,
+				CS35L41_DSP1_RX1_SRC,
+				0, CS35L41_ASP_SOURCE_MASK,
+				cs35l41_DSP1_input_texts,
+				cs35l41_DSP1_input_values);
+
+static SOC_VALUE_ENUM_SINGLE_DECL(cs35l41_dsp1_input2_enum,
+				CS35L41_DSP1_RX2_SRC,
+				0, CS35L41_ASP_SOURCE_MASK,
+				cs35l41_DSP1_input_texts,
+				cs35l41_DSP1_input_values);
+
+static const struct snd_kcontrol_new dsp_intput1_mux =
+	SOC_DAPM_ENUM("DSP1 Input1 SRC", cs35l41_dsp1_input1_enum);
+
+static const struct snd_kcontrol_new dsp_intput2_mux =
+	SOC_DAPM_ENUM("DSP1 Input2 SRC", cs35l41_dsp1_input2_enum);
 
 static const struct snd_kcontrol_new cs35l41_aud_controls[] = {
 	SOC_SINGLE_SX_TLV("Digital PCM Volume", CS35L41_AMP_DIG_VOL_CTRL,
@@ -666,12 +699,18 @@ static const struct snd_soc_dapm_widget cs35l41_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("ASP TX4 Source", SND_SOC_NOPM, 0, 0, &asp_tx4_mux),
 	SND_SOC_DAPM_MUX("PCM Source", SND_SOC_NOPM, 0, 0, &pcm_source_mux),
 	SND_SOC_DAPM_SWITCH("DRE", SND_SOC_NOPM, 0, 0, &dre_ctrl),
+	SND_SOC_DAPM_MUX("DSP1 Input1 Source", SND_SOC_NOPM, 0, 0, &dsp_intput1_mux),
+	SND_SOC_DAPM_MUX("DSP1 Input2 Source", SND_SOC_NOPM, 0, 0, &dsp_intput2_mux),
 };
 
 static const struct snd_soc_dapm_route cs35l41_audio_map[] = {
 
-	{ "DSP1", NULL, "ASPRX1" },
-	{ "DSP1", NULL, "ASPRX2" },
+	{"DSP1 Input1 Source", "ASPRX1", "ASPRX1"},
+	{"DSP1 Input1 Source", "ASPRX2", "ASPRX2"},
+	{"DSP1 Input2 Source", "ASPRX1", "ASPRX1"},
+	{"DSP1 Input2 Source", "ASPRX2", "ASPRX2"},
+	{ "DSP1", NULL, "DSP1 Input1 Source" },
+	{ "DSP1", NULL, "DSP1 Input2 Source" },
 	{ "DSP1", NULL, "DSP1 Preloader" },
 	{ "DSP1 Preload", NULL, "DSP1 Preloader" },
 
