@@ -118,7 +118,6 @@ int core_i2c_write(uint8_t nSlaveId, uint8_t *pBuf, uint16_t nSize)
 			txbuf[nSize] = check_sum;
 			msgs[0].buf = txbuf;
 			msgs[0].len = nSize + 1;
-			dump_data(txbuf, 8, nSize + 1, nSize + 1, "summer_i2c_dump");
 		}
 	}
 

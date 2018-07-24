@@ -358,18 +358,25 @@ static irqreturn_t ilitek_platform_irq_handler(int irq, void *dev_id)
 {
 	ipio_debug(DEBUG_IRQ, "IRQ = %d\n", ipd->isEnableIRQ);
 
-	if (ipd->isEnableIRQ) {
-		ilitek_platform_disable_irq();
-#ifdef USE_KTHREAD
-		ipd->irq_trigger = true;
-		ipio_debug(DEBUG_IRQ, "kthread: irq_trigger = %d\n",
-			   ipd->irq_trigger);
-		wake_up_interruptible(&waiter);
-#else
-		schedule_work(&ipd->report_work_queue);
-#endif /* USE_KTHREAD */
+	if (core_fr->actual_fw_mode == P5_0_FIRMWARE_TEST_MODE) {
+		if (core_mp->busy_cdc == ISR_CHECK) {
+			ipio_debug(DEBUG_IRQ, "MP INT enter irq\n");
+			core_mp->mp_isr_check_busy_free = true;
+			ipio_info("MP isr check busy is free ,%d\n", core_mp->mp_isr_check_busy_free);
+		}
+	} else {
+		if (ipd->isEnableIRQ) {
+			ilitek_platform_disable_irq();
+	#ifdef USE_KTHREAD
+			ipd->irq_trigger = true;
+			ipio_debug(DEBUG_IRQ, "kthread: irq_trigger = %d\n",
+				ipd->irq_trigger);
+			wake_up_interruptible(&waiter);
+	#else
+			schedule_work(&ipd->report_work_queue);
+	#endif /* USE_KTHREAD */
+		}
 	}
-
 	return IRQ_HANDLED;
 }
 
@@ -423,6 +430,8 @@ static int kthread_handler(void *arg)
 	int res = 0;
 	char *str = (char *)arg;
 
+	DEFINE_WAIT_FUNC(wait, woken_wake_function);
+
 	if (strcmp(str, "boot_fw") == 0) {
 		/* FW Upgrade event */
 		core_firmware->isboot = true;
@@ -449,7 +458,13 @@ static int kthread_handler(void *arg)
 			ipio_debug(DEBUG_IRQ,
 				   "kthread: before->irq_trigger = %d\n",
 				   ipd->irq_trigger);
-			set_current_state(TASK_INTERRUPTIBLE);
+			add_wait_queue(&waiter, &wait);
+			for (;;) {
+				if (ipd->irq_trigger)
+					break;
+				wait_woken(&wait, TASK_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+			}
+			remove_wait_queue(&waiter, &wait);
 			wait_event_interruptible(waiter, ipd->irq_trigger);
 			ipd->irq_trigger = false;
 			set_current_state(TASK_RUNNING);

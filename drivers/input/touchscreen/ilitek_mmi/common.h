@@ -207,7 +207,7 @@ enum ili9881_types {
  * Other settings
  */
 #define CSV_PATH		"/sdcard"
-#define INI_NAME_PATH		"/sdcard/mp.ini"
+#define INI_NAME_PATH		"mp.ini"
 #define UPDATE_FW_PATH		"/mnt/sdcard/ILITEK_FW"
 #define ILITEK_FW_FILENAME 	"ILITEK_FW.bin"
 #define POWER_STATUS_PATH	"/sys/class/power_supply/battery/status"
