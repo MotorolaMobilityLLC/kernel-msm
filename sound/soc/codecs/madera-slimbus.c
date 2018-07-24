@@ -316,6 +316,15 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		return -EINVAL;
 	}
 
+	/*
+	 * same reason with stashed_slim_dev, there is no clever way to link
+	 * codec and slimbus driver on madera based platform. whenever codec
+	 * calls slimbus driver, it will keep its client codec pointer and use
+	 * it as a bridge to call codec related functions.
+	 */
+	if (dai->codec != NULL)
+		slim_set_clientdata(stashed_slim_dev, dai->codec);
+
 	if (!priv->slim_logic_addr) {
 		madera_slim_get_la(stashed_slim_dev, &laddr);
 		priv->slim_logic_addr = laddr;
@@ -492,6 +501,38 @@ static int madera_slim_audio_probe(struct slim_device *slim)
 	return 0;
 }
 
+static int madera_slim_device_reset(struct slim_device *slim)
+{
+	struct snd_soc_codec *codec;
+
+	if (slim == NULL)
+		return -EINVAL;
+
+	codec = slim_get_devicedata(slim);
+	if (codec != NULL) {
+		dev_info(&slim->dev, "%s handle SLIM RESET\n", __func__);
+		snd_soc_card_change_online_state(codec->component.card, 1);
+	}
+
+	return 0;
+}
+
+static int madera_slim_device_down(struct slim_device *slim)
+{
+	struct snd_soc_codec *codec;
+
+	if (slim == NULL)
+		return -EINVAL;
+
+	codec = slim_get_devicedata(slim);
+	if (codec != NULL) {
+		dev_info(&slim->dev, "%s handle SLIM DOWN\n", __func__);
+		snd_soc_card_change_online_state(codec->component.card, 0);
+	}
+
+	return 0;
+}
+
 static struct slim_driver madera_slim_audio = {
 	.driver = {
 		.name = "madera-slim-audio",
@@ -499,6 +540,8 @@ static struct slim_driver madera_slim_audio = {
 	},
 	.probe = madera_slim_audio_probe,
 	.id_table = madera_slim_id,
+	.reset_device = madera_slim_device_reset,
+	.device_down = madera_slim_device_down,
 };
 
 static int __init madera_slim_audio_init(void)
