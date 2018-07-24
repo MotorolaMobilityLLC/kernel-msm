@@ -21,6 +21,7 @@
 #include "sdm636-egis-fps.dtsi"
 
 #define LAKE_RADIO_NA 1
+#define LAKE_RADIO_TMO 5
 
 / {
 	model = "lake";
