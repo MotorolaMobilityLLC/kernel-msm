@@ -35,6 +35,22 @@
 #define TYPE_NO_JUGE 1
 #define TYPE_JUGE 2
 
+#define EXEC_READ  0
+#define EXEC_WRITE 1
+
+#define INT_CHECK 0
+#define POLL_CHECK 1
+#define DELAY_CHECK 2
+#define ISR_CHECK 3
+#define RETRY_COUNT 0
+
+#define NORMAL_CSV_PASS_NAME		"mp_pass"
+#define NORMAL_CSV_FAIL_NAME		"mp_fail"
+#define OPPO_CSV_PASS_NAME		"oppo_mp_pass"
+#define OPPO_CSV_FAIL_NAME		"oppo_mp_fail"
+#define OPPO_CSV_LCM_PASS_NAME		"oppo_mp_lcm_pass"
+#define OPPO_CSV_LCM_FAIL_NAME		"oppo_mp_lcm_fail"
+
 struct mp_test_P540_open {
 	int32_t *cbk_700;
 	int32_t *cbk_250;
@@ -154,7 +170,8 @@ struct core_mp_test_data {
 
 	int tdf;
 	bool retry;
-	bool busy_cdc;
+	int busy_cdc;
+	bool mp_isr_check_busy_free;
 	bool ctrl_lcm;
 };
 
