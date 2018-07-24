@@ -12,7 +12,7 @@
 
 compatible = "qcom,mdss-dsi-panel";
 qcom,mdss-dsi-panel-name = "mipi_mot_vid_tianma_n_1080p_624";
-qcom,mdss-dsi-panel-supplier = "tianma_n";
+qcom,mdss-dsi-panel-supplier = "tianman";
 qcom,mdss-dsi-panel-type = "dsi_video_mode";
 qcom,mdss-dsi-panel-framerate = <60>;
 qcom,mdss-dsi-virtual-channel-id = <0>;
@@ -45,7 +45,7 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 78 00 02 11 00
 	15 01 00 00 00 00 02 51 CC
 	15 01 00 00 00 00 02 53 2C
-	15 01 00 00 00 00 02 55 00
+	15 01 00 00 00 00 02 55 01
 	05 01 00 00 14 00 02 29 00];/* display on */
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 23 00 01 28		/* display_off */
