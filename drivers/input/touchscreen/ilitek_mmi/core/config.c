@@ -626,7 +626,7 @@ EXPORT_SYMBOL(core_config_check_cdc_busy);
 
 int core_config_check_int_status(bool high)
 {
-	int timer = 1000, res = ERROR;
+	int timer = 5000, res = ERROR;
 
 	/* From FW request, timeout should at least be 5 sec */
 	while (timer) {
@@ -644,7 +644,7 @@ int core_config_check_int_status(bool high)
 			}
 		}
 
-		mdelay(5);
+		mdelay(1);
 		timer--;
 	}
 
@@ -654,6 +654,25 @@ int core_config_check_int_status(bool high)
 	return res;
 }
 EXPORT_SYMBOL(core_config_check_int_status);
+
+
+
+int core_config_check_int_isr_flag(void)
+{
+	int timer = 5000, res = ERROR;
+
+	/* From FW request, timeout should at least be 5 sec */
+	while (core_mp->mp_isr_check_busy_free == false && timer > 0) {
+		timer--;
+		mdelay(1);
+	}
+	if (core_mp->mp_isr_check_busy_free == true)
+		res = 0;
+
+	return res;
+}
+EXPORT_SYMBOL(core_config_check_int_isr_flag);
+
 
 int core_config_get_project_id(uint8_t *pid_data)
 {
