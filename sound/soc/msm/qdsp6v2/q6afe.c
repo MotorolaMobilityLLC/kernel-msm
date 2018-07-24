@@ -614,13 +614,13 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		if (param_id == AFE_PARAM_ID_DEV_TIMING_STATS) {
 			av_dev_drift_afe_cb_handler(data->opcode, data->payload,
 						    data->payload_size);
-#ifdef CONFIG_SND_SOC_OPALUM
+#if defined (CONFIG_SND_SOC_OPALUM)
 		} else if (payload[1] == AFE_CUSTOM_OPALUM_RX_MODULE ||
 			   payload[1] == AFE_CUSTOM_OPALUM_TX_MODULE) {
 				if (ospl2xx_callback != NULL)
 					ospl2xx_callback(data);
 				atomic_set(&this_afe.state, 0);
-#elif CONFIG_CIRRUS_PLAYBACK
+#elif defined (CONFIG_CIRRUS_PLAYBACK)
 		} else if (payload[1] == CIRRUS_SE) {
 			crus_afe_callback(data->payload, data->payload_size);
 			atomic_set(&this_afe.state, 0);
