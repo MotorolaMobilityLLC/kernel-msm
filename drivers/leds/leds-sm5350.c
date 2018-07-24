@@ -42,7 +42,7 @@
 #define SM5350_CTL_A_BRIGHTNESS_MSB_REG			0x21
 #define SM5350_CTL_B_BRIGHTNESS_LSB_REG			0x22
 #define SM5350_CTL_B_BRIGHTNESS_MSB_REG			0x23
-#define SM5350_CTL_B_BANK_EN_REG				0x24
+#define SM5350_CTL_BANK_EN_REG				0x24
 #define SM5350_HVLED_OPEN_FAULTS_REG			0xB0
 #define SM5350_HVLED_SHORT_FAULTS_REG			0xB2
 #define SM5350_LED_FAULT_ENABLES_REG			0xB4
@@ -143,12 +143,20 @@ static int sm5350_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 static int sm5350_init_registers(struct sm5350_data *drvdata)
 {
 	int err = 0;
+	int current_sink_out_cfg = 7;
 
 	sm5350_write_reg(drvdata->client, SM5350_BOOST_CTL_REG, drvdata->boost_ctl);
 	sm5350_write_reg(drvdata->client, SM5350_PWM_CFG_REG, drvdata->pwm_cfg);
-	sm5350_write_reg(drvdata->client, SM5350_CTL_B_BANK_EN_REG, drvdata->ctl_bank_en);
+	sm5350_write_reg(drvdata->client, SM5350_CTL_BANK_EN_REG, drvdata->ctl_bank_en);
+	if(drvdata->bank_B) {
+		sm5350_write_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, drvdata->full_scale_current);
+		current_sink_out_cfg = 7;
+	}else {
+		sm5350_write_reg(drvdata->client, SM5350_CTL_A_FULL_SCALE_CURR_REG, drvdata->full_scale_current);
+		current_sink_out_cfg = 0;
+	}
+	sm5350_write_reg(drvdata->client,  SM5350_HVLED_CURR_SINK_OUT_CFG_REG, current_sink_out_cfg);
 	sm5350_write_reg(drvdata->client, SM5350_BRIGHTNESS_CFG_REG, drvdata->map_mode);
-	sm5350_write_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, drvdata->full_scale_current);
 
 	drvdata->enable = true;
 
@@ -171,16 +179,19 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 
 		code = (code2 - code1) * remainder / 10 + code1;
 
-		brt_LSB = code % 0x7;
+		brt_LSB = code & 0x7;
 		brt_MSB = (code >> 3) & 0xFF;
 	} else {
-		brt_LSB = brt_val % 0x7;
+		brt_LSB = brt_val & 0x7;
 		brt_MSB = (brt_val >> 3) & 0xFF;
 	}
 
 	if (drvdata->bank_B) {
 		sm5350_write_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_LSB_REG, brt_LSB);
 		sm5350_write_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_MSB_REG, brt_MSB);
+	}else {
+		sm5350_write_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_LSB_REG, brt_LSB);
+		sm5350_write_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_MSB_REG, brt_MSB);
 	}
 
 	if (drvdata->enable == false)
@@ -198,17 +209,24 @@ static void dump_sm5350_regs(struct sm5350_data *drvdata)
 {
 	u8 brt_LSB = 0;
 	u8 brt_MSB = 0;
-	u8 boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current;
+	u8 boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current, sink_out_cfg;
 
+	sm5350_read_reg(drvdata->client, SM5350_HVLED_CURR_SINK_OUT_CFG_REG, &sink_out_cfg);
 	sm5350_read_reg(drvdata->client, SM5350_BOOST_CTL_REG, &boost_ctl);
 	sm5350_read_reg(drvdata->client, SM5350_PWM_CFG_REG, &pwm_cfg);
-	sm5350_read_reg(drvdata->client, SM5350_CTL_B_BANK_EN_REG, &ctl_bank_en);
-	sm5350_read_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, &full_scale_current);
-	sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_LSB_REG, &brt_LSB);
-	sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_MSB_REG, &brt_MSB);
+	sm5350_read_reg(drvdata->client, SM5350_CTL_BANK_EN_REG, &ctl_bank_en);
+	if(drvdata->bank_B) {
+		sm5350_read_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, &full_scale_current);
+		sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_LSB_REG, &brt_LSB);
+		sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_MSB_REG, &brt_MSB);
+	}else {
+		sm5350_read_reg(drvdata->client, SM5350_CTL_A_FULL_SCALE_CURR_REG, &full_scale_current);
+		sm5350_read_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_LSB_REG, &brt_LSB);
+		sm5350_read_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_MSB_REG, &brt_MSB);
+	}
 
-	pr_err(">>-- boost_ctl(0x%x), pwm_cfg(0x%x), ctl_bank_en(0x%x), full_scale_current(0x%x), brt_LSB(0x%x), brt_MSB(0x%x).\n",
-		boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current, brt_LSB, brt_MSB);
+	pr_err(">>-- boost_ctl(0x%x), pwm_cfg(0x%x), ctl_bank_en(0x%x), full_scale_current(0x%x), brt_LSB(0x%x), brt_MSB(0x%x), sink_out_cfg(0x%x).\n",
+		boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current, brt_LSB, brt_MSB, sink_out_cfg);
 }
 
 static void __sm5350_work(struct sm5350_data *led,
