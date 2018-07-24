@@ -25,6 +25,8 @@
 #include "../common.h"
 #include "parser.h"
 #include "config.h"
+#include <linux/firmware.h>
+#include "../platform.h"
 
 #define PARSER_MAX_CFG_BUF          (512 * 3)
 #define PARSER_MAX_KEY_NUM	        (600 * 3)
@@ -88,13 +90,11 @@ static int get_ini_phy_line(char *data, char *buffer, int maxlen)
 
 			break;
 		} else if (ch1 == 0x00) {
-			//iRetNum = -1;
 			break;	/* file end */
 		}
 
 		buffer[i++] = ch1;
 	}
-
 	buffer[i] = '\0';
 	return iRetNum;
 }
@@ -132,7 +132,6 @@ static int get_ini_phy_data(char *data, int fsize)
 
 	temp = strnstr(data, TYPE_MARK, fsize);
 	if (temp != NULL) {
-		ipio_debug(DEBUG_PARSER, "Find Type mark, locat = %d", temp-data);
 		if (core_config->core_type == CORE_TYPE_B)
 			offset = temp-data;
 		else
@@ -333,7 +332,6 @@ void core_parser_nodetype(int32_t *type_ptr, char *desp)
 					memcpy(str, &ilitek_ini_file_data[i].pKeyValue[index1], (j - index1));
 					temp = katoi(str);
 					type_ptr[count] = temp;
-					printk("%04d, ", temp);
 					count++;
 				}
 				record = ilitek_ini_file_data[i].pKeyValue[j];
@@ -341,7 +339,6 @@ void core_parser_nodetype(int32_t *type_ptr, char *desp)
 
 			}
 		}
-		printk("\n");
 
 	}
 }
@@ -431,7 +428,7 @@ int core_parser_get_int_data(char *section, char *keyname, char *rv)
 	}
 
 	len = snprintf(rv, sizeof(value), "%s", value);
-	printk("section =%s,keyname =%s,value = %s,rv =%s\n", section, keyname, value, rv);//summer
+
 	return len;
 }
 EXPORT_SYMBOL(core_parser_get_int_data);
@@ -439,28 +436,19 @@ EXPORT_SYMBOL(core_parser_get_int_data);
 
 int core_parser_path(char *path)
 {
-	int res = 0, fsize = 0;
+	int res = 0, fsize = 0, i = 0;
 	char *tmp = NULL;
-	struct file *f = NULL;
-	struct inode *inode;
-	mm_segment_t old_fs;
-	loff_t pos = 0;
+	const struct firmware *mp_ini;
 
-	ipio_info("path = %s\n", path);
-	f = filp_open(path, O_RDONLY, 0);
-	if (ERR_ALLOC_MEM(f)) {
-		ipio_err("Failed to open the file at %ld.\n", PTR_ERR(f));
-		res = -ENOENT;
-		return res;
+	res = request_firmware(&mp_ini, path, &ipd->client->dev);
+	if (res < 0) {
+		ipio_err("Failed to open the file Name %s.\n", path);
+		return -ENOENT;
 	}
 
-#if KERNEL_VERSION(3, 18, 0) >= LINUX_VERSION_CODE
-	inode = f->f_dentry->d_inode;
-#else
-	inode = f->f_path.dentry->d_inode;
-#endif
+	ipio_info("path = %s\n", path);
 
-	fsize = inode->i_size;
+	fsize = mp_ini->size;
 	ipio_info("fsize = %d\n", fsize);
 	if (fsize <= 0) {
 		ipio_err("The size of file is invaild\n");
@@ -475,11 +463,10 @@ int core_parser_path(char *path)
 		goto out;
 	}
 
-	/* ready to map user's memory to obtain data by reading files */
-	old_fs = get_fs();
-	set_fs(get_ds());
-	vfs_read(f, tmp, fsize, &pos);
-	set_fs(old_fs);
+
+	for (i = 0 ; i < fsize ; i++)
+		tmp[i] = mp_ini->data[i];
+
 	tmp[fsize] = 0x00;
 
 	init_ilitek_ini_data();
@@ -494,7 +481,7 @@ int core_parser_path(char *path)
 
 out:
 	ipio_kfree((void **)&tmp);
-	filp_close(f, NULL);
+	release_firmware(mp_ini);
 	return res;
 }
 EXPORT_SYMBOL(core_parser_path);
