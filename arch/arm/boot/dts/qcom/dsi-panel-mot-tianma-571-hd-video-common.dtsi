@@ -30,7 +30,7 @@ qcom,mdss-dsi-border-color = <0>;
 
 qcom,mdss-dsi-reset-sequence = <1 10>, <0 5>, <1 120>;
 qcom,mdss-dsi-dis-reset-sequence = <1 10>, <0 0>;
-qcom,mdss-dsi-external-rst-gpio = <64>;
+qcom,mdss-dsi-external-rst-gpio = <&tlmm 64 0>;
 
 qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 04 FF 98 81 03
