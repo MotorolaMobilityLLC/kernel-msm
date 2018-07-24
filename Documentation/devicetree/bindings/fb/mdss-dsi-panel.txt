@@ -199,6 +199,7 @@ Optional properties:
 					Requred if blpmiccontroltype is PWM
 - qcom,mdss-dsi-pwm-gpio:		PMIC gpio binding to backlight.
 					Requred if blpmiccontroltype is PWM
+- qcom,mdss-dsi-external-rst-gpio	Panel external rst gpio used in panel module,such as tp rst.
 - qcom,mdss-dsi-bl-min-level:		Specifies the min backlight level supported by the panel.
 					0 = default value.
 - qcom,mdss-dsi-bl-max-level:		Specifies the max backlight level supported by the panel.
