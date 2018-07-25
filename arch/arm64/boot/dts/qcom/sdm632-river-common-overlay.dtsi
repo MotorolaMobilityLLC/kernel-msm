@@ -107,7 +107,8 @@
 	haptic_irq {
 		haptic_irq_default: haptic_irq_default {
 			pins = "gpio5";
-			bias-pull-up;
+			bias-disable;
+			power-source = <3>;
 		};
 	};
 };
