@@ -45,7 +45,6 @@
 		compatible = "himax,hxcommon";
 		reg = <0x48>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <67 0x2>;
 		himax,rst-gpio = <&tlmm 66 0x00>;
 		himax,irq-gpio = <&tlmm 67 0x00>;
 		himax,display-coords = <0 1080 0 2270>;
