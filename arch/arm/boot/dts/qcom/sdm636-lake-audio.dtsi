@@ -251,13 +251,15 @@
 
 &i2c_2 {
 	status = "ok";
-	cs35l41_l: cs35l41@40 {
+	prince_spk: cs35l41@40 {
 		compatible = "cirrus,cs35l41";
 		reg = <0x40>;
 		reset-gpios = <&tlmm 63 0>;
 		interrupts = <76 0>;
 		interrupt-parent = <&tlmm>;
 		interrupt-names = "amp_l_irq";
+
+		cirrus,right-channel-amp;
 
 		cirrus,boost-peak-milliamp = <4500>;
 		cirrus,boost-ind-nanohenry = <1000>;
@@ -292,15 +294,12 @@
 		};
 	};
 
-	cs35l41_r: cs35l41@41 {
-
+	prince_rcv: cs35l41@41 {
 		compatible = "cirrus,cs35l41";
 		reg = <0x41>;
 		interrupts = <9 0>;
 		interrupt-parent = <&tlmm>;
 		interrupt-names = "amp_r_irq";
-
-		cirrus,right-channel-amp;
 
 		cirrus,boost-peak-milliamp = <4500>;
 		cirrus,boost-ind-nanohenry = <1000>;
