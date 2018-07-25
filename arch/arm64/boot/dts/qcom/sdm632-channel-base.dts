@@ -77,6 +77,10 @@
 	/delete-node/ tasha_codec;
 };
 
+&thermal_zones {
+	/delete-node/ quiet-therm-adc;
+};
+
 &pmi632_3 {
 	/delete-node/ qcom,vibrator@5700;
 };
