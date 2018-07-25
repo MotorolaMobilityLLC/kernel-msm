@@ -357,6 +357,9 @@ static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
 						bi_powerup_reason());
 	persistent_ram_annotation_append("\nBoot info:\n");
 	persistent_ram_annotation_append("Last boot reason: %s\n", bootreason);
+
+	/* Print to kmsg */
+	printk(KERN_INFO "bootinfo: Boot sequence = %u", bi_boot_seq());
 }
 
 /* get_bootinfo fills in the /proc/bootinfo information.
