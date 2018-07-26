@@ -11,9 +11,9 @@
  */
 
 &mdss_mdp {
-	dsi_nt35695b_truly_fhd_cmd: qcom,mdss_dsi_nt35695b_truly_fhd_cmd {
+	dsi_nt35695b_truly_fhd_cmd_1: qcom,mdss_dsi_nt35695b_truly_fhd_cmd_1 {
 		qcom,mdss-dsi-panel-name =
-				"nt35695b truly fhd command mode dsi panel";
+				"nt35695b truly fhd command mode dsi panel_1";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
@@ -44,6 +44,7 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-pan-physical-width-dimension = <64>;
 		qcom,mdss-pan-physical-height-dimension = <117>;
+		
 
 		qcom,mdss-dsi-display-timings {
 			timing@0{
