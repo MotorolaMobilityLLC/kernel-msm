@@ -603,7 +603,7 @@
 		cirrus,gpio-config2 {
 			cirrus,gpio-polarity-invert = <0x01>;
 			cirrus,gpio-output-enable = <0x01>;
-			cirrus,gpio-src-select = <0x01>;
+			cirrus,gpio-src-select = <0x04>;
 		};
 	};
 
