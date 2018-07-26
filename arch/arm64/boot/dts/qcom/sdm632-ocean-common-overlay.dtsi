@@ -184,6 +184,12 @@
 	};
 };
 
+&pmi632_vadc {
+	chan@4a {
+		qcom,scale-function = <26>;
+	};
+};
+
 &pm8953_mpps {
 	msm_therm {
 		msm_therm_default: msm_therm_default {
