@@ -282,7 +282,7 @@
 				firmware {
 					protection {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
 					};
 					calibration {
@@ -322,7 +322,7 @@
 				firmware {
 					protection {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-rcv-prot.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-rcv-prot.bin";
 					};
 					calibration {
