@@ -330,9 +330,9 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		df-serialnum = "SB18C26504";
+		df-serialnum = "SB18C35581";
 
-		#include "fg-gen3-batterydata-jx40atl-3010mah.dtsi"
+		#include "fg-gen3-batterydata-jg40-3000mah.dtsi"
 	};
 };
 
