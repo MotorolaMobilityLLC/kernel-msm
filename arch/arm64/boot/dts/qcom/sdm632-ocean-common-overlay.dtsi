@@ -398,6 +398,7 @@
 		focaltech,fw-delay-readid-ms = <10>;
 		focaltech,fw-delay-era-flsh-ms = <2000>;
 		focaltech,fw-update-mmi;
+		focaltech,force-send-sleep;
 		focaltech,fw-auto-cal;
 		focaltech,resume-in-workqueue;
 		focaltech,ignore-id-check;
