@@ -432,6 +432,7 @@ enum qpnp_adc_scale_fn_type {
 	SCALE_SMB1390_DIE_TEMP,
 	SCALE_BATT_THERM_TEMP_PU30,
 	SCALE_BATT_THERM_TEMP_PU400,
+	SCALE_BATT_THERM_B4250_PU100,
 	SCALE_NONE,
 };
 
@@ -1469,6 +1470,24 @@ int32_t qpnp_adc_batt_therm(struct qpnp_vadc_chip *dev,
  * @chan_rslt:	physical result to be stored.
  */
 int32_t qpnp_adc_batt_therm_qrd(struct qpnp_vadc_chip *dev,
+			int32_t adc_code,
+			const struct qpnp_adc_properties *adc_prop,
+			const struct qpnp_vadc_chan_properties *chan_prop,
+			struct qpnp_vadc_result *chan_rslt);
+/**
+* qpnp_adc_batt_therm_B4250_pu100() - Scales the pre-calibrated digitaloutput
+*		of an ADC to the ADC reference and compensates for the
+*		gain and offset. Returns the temperature in decidegC.
+*		It uses a mapping table computed for a 100K pull-up.
+* @dev:		Structure device for qpnp vadc
+* @adc_code: 	pre-calibrated digital output of the ADC.
+* @adc_prop: 	adc properties of the adc such as bit resolution,
+*		reference voltage.
+* @chan_prop: individual channel properties to compensate the i/pscaling,
+*		slope and offset.
+* @chan_rslt: physical result to be stored.
+*/
+int32_t qpnp_adc_batt_therm_B4250_pu100 (struct qpnp_vadc_chip *dev,
 			int32_t adc_code,
 			const struct qpnp_adc_properties *adc_prop,
 			const struct qpnp_vadc_chan_properties *chan_prop,
