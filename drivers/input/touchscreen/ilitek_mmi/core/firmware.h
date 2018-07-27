@@ -25,6 +25,17 @@
 #ifndef __FIRMWARE_H
 #define __FIRMWARE_H
 
+#define CHECK_FW_FAIL  -1
+#define NEED_UPDATE	1
+#define NO_NEED_UPDATE  0
+
+#define AP_STAR_ADDR    0x00000
+#define AP_END_ADDR	0x0FFFF
+#define DATA_STAR_ADDR  0x10000
+#define DATA_END_ADDR	0x11FFF
+#define MP_STAR_ADDR    0x13000
+#define MP_END_ADDR	0x1BFFF
+
 struct core_firmware_data {
 uint8_t new_fw_ver[4];
 uint8_t old_fw_ver[4];
@@ -59,6 +70,7 @@ extern int core_firmware_boot_upgrade(void);
 /* extern int core_firmware_iram_upgrade(const char* fpath); */
 extern int core_firmware_upgrade(const char *pFilePath, bool isIRAM);
 extern int core_firmware_init(void);
+extern int tddi_check_fw_upgrade(void);
 extern void core_firmware_remove(void);
 
 #endif /* __FIRMWARE_H */
