@@ -63,6 +63,7 @@ uint8_t gesture_fw[MAX_GESTURE_FIRMWARE_SIZE] = { 0 };
 uint8_t iram_fw[MAX_IRAM_FIRMWARE_SIZE] = { 0 };
 #endif
 
+#define CRC_ONESET(X, Y)	({Y = (*(X+0) << 24) | (*(X+1) << 16) | (*(X+2) << 8) | (*(X+3)); })
 /* the length of array in each sector */
 int g_section_len;
 int g_total_sector;
@@ -468,6 +469,109 @@ static int flash_erase_sector(void)
 
 out:
 	return res;
+}
+
+static int tddi_read_flash(uint32_t start, uint32_t end, uint8_t *data, int dlen)
+{
+	uint32_t i, cont = 0;
+
+	ipio_info("start = %x , end = %x\n", start, end);
+	if (data == NULL) {
+		ipio_err("data is null, read failed\n");
+		return -ENODEV;
+	}
+
+	if (end - start > dlen) {
+		ipio_err("the length (%d) reading crc is over than dlen(%d)\n", end - start, dlen);
+		return -ENODEV;
+	}
+
+	core_config_ice_mode_write(0x041000, 0x0, 1);	/* CS low */
+	core_config_ice_mode_write(0x041004, 0x66aa55, 3);	/* Key */
+	core_config_ice_mode_write(0x041008, 0x03, 1);
+
+	core_config_ice_mode_write(0x041008, (start & 0xFF0000) >> 16, 1);
+	core_config_ice_mode_write(0x041008, (start & 0x00FF00) >> 8, 1);
+	core_config_ice_mode_write(0x041008, (start & 0x0000FF), 1);
+
+	for (i = start; i <= end; i++) {
+		core_config_ice_mode_write(0x041008, 0xFF, 1);	/* Dummy */
+
+		data[cont] = core_config_read_write_onebyte(0x41010);
+		ipio_info("data[%d] = %x\n", cont, data[cont]);
+		cont++;
+	}
+
+	core_config_ice_mode_write(0x041000, 0x1, 1);	/* CS high */
+	return 0;
+}
+
+int tddi_check_fw_upgrade(void)
+{
+	int ret = NO_NEED_UPDATE;
+	int i, crc_byte_len = 4;
+	uint8_t flash_crc[4] = {0};
+	uint32_t start_addr = 0, end_addr = 0, flash_crc_cb;
+
+	ilitek_platform_disable_irq();
+
+	ret = core_config_ice_mode_enable();
+	if (ret < 0) {
+		ipio_err("Failed to enable ICE mode\n");
+		goto out;
+	}
+
+	mdelay(25);
+
+	if (core_config_set_watch_dog(false) < 0) {
+		ipio_err("Failed to disable watch dog\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	g_flash_block_info[0].start_addr = AP_STAR_ADDR;
+	g_flash_block_info[0].end_addr = AP_END_ADDR;
+	g_flash_block_info[1].start_addr = DATA_STAR_ADDR;
+	g_flash_block_info[1].end_addr = DATA_END_ADDR;
+	g_flash_block_info[2].start_addr = MP_STAR_ADDR;
+	g_flash_block_info[2].end_addr = MP_END_ADDR;
+	/* Check Flash CRC and HW CRC */
+	for (i = 0; i < 3; i++) {
+		start_addr = g_flash_block_info[i].start_addr;
+		end_addr = g_flash_block_info[i].end_addr;
+
+		/* Invaild end address */
+		if (end_addr == 0)
+			continue;
+
+		ret = tddi_read_flash(end_addr - crc_byte_len + 1, end_addr, flash_crc, sizeof(flash_crc));
+		if (ret < 0) {
+			ipio_info("Read Flash failed\n");
+			ret = CHECK_FW_FAIL;
+			goto out;
+		}
+		CRC_ONESET(flash_crc, flash_crc_cb);
+
+		if (g_flash_block_info[i].block_crc == 0)
+			g_flash_block_info[i].block_crc = tddi_check_data(start_addr, end_addr - start_addr - crc_byte_len + 1);
+
+		ipio_info("HW CRC = 0x%06x, Flash CRC = 0x%06x\n", g_flash_block_info[i].block_crc, flash_crc_cb);
+
+		/* Compare Hex to HW's CRC directly instead of fw version */
+		if (flash_crc_cb != g_flash_block_info[i].block_crc) {
+			ret = NEED_UPDATE;
+			goto out;
+		}
+
+		memset(flash_crc, 0, sizeof(flash_crc));
+	}
+
+out:
+	/* We do have to reset chip in order to move new code from flash to iram. */
+	ipio_info("Doing Soft Reset ..\n");
+	core_config_ic_reset();
+	ilitek_platform_enable_irq();
+	return ret;
 }
 
 #ifndef HOST_DOWNLOAD

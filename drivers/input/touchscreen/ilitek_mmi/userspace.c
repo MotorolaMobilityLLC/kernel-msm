@@ -214,6 +214,7 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp,
 	int one_data_bytes = 0;
 	int need_read_data_len = 0;
 	int type = 0;
+	int tmpbufsize = 4096;
 	unsigned char *tmpbuf = NULL;
 	unsigned char tmpbufback[128] = { 0 };
 
@@ -233,7 +234,7 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp,
 		ipio_err("buffer vmalloc error\n");
 		send_data_len +=
 		    snprintf(tmpbufback + send_data_len,
-		     (strlen(tmpbufback)-send_data_len),
+		     (sizeof(tmpbufback)-send_data_len),
 			    "buffer vmalloc error\n");
 		ret = copy_to_user(buff, tmpbufback, send_data_len);	/*ipd->debug_buf[0] */
 	} else {
@@ -264,14 +265,14 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp,
 					 need_read_data_len);
 				send_data_len +=
 				    snprintf(tmpbuf + send_data_len,
-				     (strlen(tmpbuf)-send_data_len),
+				     (tmpbufsize-send_data_len),
 					    "parse data err data len = %d\n",
 					    need_read_data_len);
 			} else {
 				for (i = 0 ; i < need_read_data_len ; i++) {
 					send_data_len +=
 					    snprintf(tmpbuf + send_data_len,
-					     (strlen(tmpbuf)-send_data_len),
+					     (tmpbufsize-send_data_len),
 						"%02X", ipd->debug_buf[0][i]);
 					if (send_data_len >= 4096) {
 						ipio_err
@@ -283,7 +284,7 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp,
 				}
 			}
 			send_data_len += snprintf(tmpbuf + send_data_len,
-			     (strlen(tmpbuf)-send_data_len), "\n\n");
+			     (tmpbufsize-send_data_len), "\n\n");
 
 			if (p == 5 || size == 4096 || size == 2048) {
 				ipd->debug_data_frame--;
@@ -299,7 +300,7 @@ static ssize_t ilitek_proc_debug_message_read(struct file *filp,
 		} else {
 			ipio_err("no data send\n");
 			send_data_len += snprintf(tmpbuf + send_data_len,
-			 (strlen(tmpbuf)-send_data_len), "no data send\n");
+			 (tmpbufsize-send_data_len), "no data send\n");
 		}
 
 		/* Preparing to send data to user */
