@@ -361,4 +361,10 @@
 			"IN2R",  "MICBIAS2B",
 			"IN1BR", "MICBIAS1B";
 	};
+
+	msm-cirrus-playback {
+		compatible = "cirrus,msm-cirrus-playback";
+		usecase-names = "Normal", "Voice", "Ring", "Sonification";
+		afe-port-id = <16384>;
+	};
 };
