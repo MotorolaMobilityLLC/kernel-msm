@@ -3057,6 +3057,7 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 				wdata = &data->storm_data;
 				update_storm_count(wdata,
 						WEAK_CHG_STORM_COUNT);
+				chg->reverse_boost = false;
 				vote(chg->usb_icl_votable, BOOST_BACK_VOTER,
 						false, 0);
 				vote(chg->usb_icl_votable, WEAK_CHARGER_VOTER,
@@ -3806,6 +3807,7 @@ irqreturn_t switcher_power_ok_irq_handler(int irq, void *data)
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
 	struct storm_watch *wdata = &irq_data->storm_data;
+	int pok_irq = chg->irq_info[SWITCHER_POWER_OK_IRQ].irq;
 	int rc, usb_icl;
 	u8 stat;
 
@@ -3827,6 +3829,20 @@ irqreturn_t switcher_power_ok_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 
 	if (is_storming(&irq_data->storm_data)) {
+		chg->reverse_boost = true;
+		stat = 0;
+		rc = smblib_read(chg, TYPE_C_SNK_STATUS_REG, &stat);
+		if (rc < 0) {
+			smblib_err(chg,
+				   "Error getting USB Pres rc = %d\n", rc);
+		} else if (stat) {
+			smblib_err(chg, "USB Present, Disable Power OK IRQ\n");
+			disable_irq_nosync(pok_irq);
+			cancel_delayed_work(&chg->mmi.heartbeat_work);
+			schedule_delayed_work(&chg->mmi.heartbeat_work,
+					      msecs_to_jiffies(100));
+			return IRQ_HANDLED;
+		}
 		/* This could be a weak charger reduce ICL */
 		if (!is_client_vote_enabled(chg->usb_icl_votable,
 						WEAK_CHARGER_VOTER)) {
@@ -4718,6 +4734,9 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 #define VBUS_INPUT_MAX_COUNT 4
 #define WARM_TEMP 45
 #define COOL_TEMP 0
+#define REV_BST_THRESH 4700
+#define REV_BST_DROP 150
+#define REV_BST_MA -10
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -4747,6 +4766,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int target_usb = -EINVAL;
 	int target_fcc = -EINVAL;
 	int target_fv = -EINVAL;
+	int pok_irq;
+	static int prev_vbus_mv = -1;
 
 	if (!atomic_read(&chip->mmi.hb_ready))
 		return;
@@ -4814,8 +4835,34 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		usb_mv = val.intval / 1000;
 
+	if (prev_vbus_mv == -1)
+		prev_vbus_mv = usb_mv;
+
 	smblib_dbg(chip, PR_MISC, "batt=%d mV, %d mA, %d C, USB= %d mV\n",
 		batt_mv, batt_ma, batt_temp, usb_mv);
+
+	pok_irq = chip->irq_info[SWITCHER_POWER_OK_IRQ].irq;
+	if (chip->reverse_boost) {
+		if (((usb_mv < REV_BST_THRESH) &&
+		    ((prev_vbus_mv - REV_BST_DROP) > usb_mv)) ||
+		    (batt_ma > REV_BST_MA)) {
+			smblib_err(chip,
+				   "Reverse Boosted: Clear, USB Suspend\n");
+			chip->reverse_boost = false;
+			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+			     true, 0);
+			msleep(50);
+			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+			     false, 0);
+			enable_irq(pok_irq);
+		} else {
+			smblib_err(chip,
+				   "Reverse Boosted: USB %d mV PUSB %d mV\n",
+				   usb_mv, prev_vbus_mv);
+		}
+	}
+
+	prev_vbus_mv = usb_mv;
 
 	if (charger_present) {
 		val.intval = get_client_vote(chip->usb_icl_votable,

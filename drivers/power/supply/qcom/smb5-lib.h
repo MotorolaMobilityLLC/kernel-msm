@@ -512,6 +512,7 @@ struct smb_charger {
 	struct mmi_params	mmi;
 	void			*ipc_log;
 	void			*ipc_log_reg;
+	bool			reverse_boost;
 
 	/* dual role */
 	bool				dr_supported;
