@@ -49,6 +49,10 @@
 		ibb-supply = <&ibb_regulator>;
 		oledb-supply = <&pm660a_oledb>;
 	};
+
+	gpio_keys {
+		status = "disable";
+	};
 };
 
 &mot_smd_601_1080p_cmd_v0 {
