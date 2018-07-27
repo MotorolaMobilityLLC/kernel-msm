@@ -485,6 +485,27 @@
 		reg_array_len = <5>;
 		reg_array_val = <0x36 0x1e 0x37 0x15 0x4a 0x11 0x4b 0x00 0x4c 0x00>;
 	};
+
+	abova96t316@20 {
+		label = "AbovCapSense";
+		compatible = "abov,abov_sar";
+		reg = <0x20>;
+		//cap_vdd-supply = <&pm8953_l18>;
+		//cap_svdd-supply = <&pm660_l14>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <86 0x2008>;
+		gpios = <&tlmm 86 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&abov_int_default>;
+		cap,use_channel = <0x0f>;
+		cap,use_channel_top = <0x01>;
+		cap,use_channel_bottom = <0x00>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <2>;
+		reg_array_val = <0x18 0x5a 0x19 0x93>;
+	};
+
+
 	tfa987x:tfa98xx@34 {
 		compatible = "nxp,tfa98xx";
 		reg = <0x34>;
