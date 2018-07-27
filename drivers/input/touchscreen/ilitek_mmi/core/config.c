@@ -401,6 +401,7 @@ EXPORT_SYMBOL(core_config_set_phone_cover);
  */
 void core_config_ic_suspend(void)
 {
+	int i = 0;
 	if (ipd->suspended) {
 		ipio_info("TP already in suspend status ...\n");
 		return;
@@ -434,6 +435,18 @@ void core_config_ic_suspend(void)
 		core_config_sleep_ctrl(false);
 	}
 #endif
+	/* release all touches */
+	if (ipd->MT_B_TYPE) {
+		for (i = 0 ; i < ipd->MAX_TOUCH_NUM; i++) {
+			core_fr_touch_release(0, 0, i);
+			}
+		input_report_key(core_fr->input_device, BTN_TOUCH, 0);
+		input_report_key(core_fr->input_device, BTN_TOOL_FINGER, 0);
+	} else{
+		core_fr_touch_release(0, 0, 0);
+	}
+	input_sync(core_fr->input_device);
+
 	ipd->suspended = true;
 	ipio_info("Suspend done\n");
 }
