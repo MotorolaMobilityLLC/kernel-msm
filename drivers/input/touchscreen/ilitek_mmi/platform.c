@@ -1013,6 +1013,14 @@ static int ilitek_platform_probe(struct spi_device *spi)
 		goto sys_init_err;
 	}
 #endif /* BOOT_FW_UPGRADE */
+
+	ret = tddi_check_fw_upgrade();
+	if (ret == NEED_UPDATE || ret == CHECK_FW_FAIL) {
+		core_config->firmware_ver[1] = 0;
+		core_config->firmware_ver[2] = 0;
+		core_config->firmware_ver[3] = 0;
+		core_config->firmware_ver[4] = 0;
+	}
 	ipd->suspended = false;
 	return 0;
 
