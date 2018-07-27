@@ -375,7 +375,6 @@
 		reg = <0x38>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <65 0x02>;
-		vcc_i2c-supply = <&pm8953_l6>;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 		pinctrl-0 = <&touch_int_active>;
 		pinctrl-1 = <&touch_int_suspend>;
