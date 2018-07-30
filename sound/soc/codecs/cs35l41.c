@@ -1049,57 +1049,6 @@ static const struct cs35l41_global_fs_config cs35l41_fs_rates[] = {
 	{ 32000,	0x13 },
 };
 
-static int cs35l41_pcm_hw_params(struct snd_pcm_substream *substream,
-				 struct snd_pcm_hw_params *params,
-				 struct snd_soc_dai *dai)
-{
-	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(dai->codec);
-	int i;
-	unsigned int rate = params_rate(params);
-	u8 asp_width, asp_wl;
-
-	for (i = 0; i < ARRAY_SIZE(cs35l41_fs_rates); i++) {
-		if (rate == cs35l41_fs_rates[i].rate)
-			break;
-	}
-	regmap_update_bits(cs35l41->regmap, CS35L41_GLOBAL_CLK_CTRL,
-			CS35L41_GLOBAL_FS_MASK,
-			cs35l41_fs_rates[i].fs_cfg << CS35L41_GLOBAL_FS_SHIFT);
-
-	asp_wl = params_width(params);
-	asp_width = params_physical_width(params);
-
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		regmap_update_bits(cs35l41->regmap, CS35L41_SP_FORMAT,
-				CS35L41_ASP_WIDTH_RX_MASK,
-				asp_width << CS35L41_ASP_WIDTH_RX_SHIFT);
-		regmap_update_bits(cs35l41->regmap, CS35L41_SP_RX_WL,
-				CS35L41_ASP_RX_WL_MASK,
-				asp_wl << CS35L41_ASP_RX_WL_SHIFT);
-		if (cs35l41->i2s_mode || cs35l41->tdm_mode) {
-			regmap_update_bits(cs35l41->regmap,
-					CS35L41_SP_FRAME_RX_SLOT,
-					CS35L41_ASP_RX1_SLOT_MASK,
-					((cs35l41->pdata.right_channel) ? 1 : 0)
-					 << CS35L41_ASP_RX1_SLOT_SHIFT);
-			regmap_update_bits(cs35l41->regmap,
-					CS35L41_SP_FRAME_RX_SLOT,
-					CS35L41_ASP_RX2_SLOT_MASK,
-					((cs35l41->pdata.right_channel) ? 0 : 1)
-					 << CS35L41_ASP_RX2_SLOT_SHIFT);
-		}
-	} else {
-		regmap_update_bits(cs35l41->regmap, CS35L41_SP_FORMAT,
-				CS35L41_ASP_WIDTH_TX_MASK,
-				asp_width << CS35L41_ASP_WIDTH_TX_SHIFT);
-		regmap_update_bits(cs35l41->regmap, CS35L41_SP_TX_WL,
-				CS35L41_ASP_TX_WL_MASK,
-				asp_wl << CS35L41_ASP_TX_WL_SHIFT);
-	}
-
-	return 0;
-}
-
 static int cs35l41_get_clk_config(int freq)
 {
 	int i;
@@ -1138,6 +1087,8 @@ static int cs35l41_codec_set_sysclk(struct snd_soc_codec *codec,
 	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(codec);
 
 	cs35l41->extclk_freq = freq;
+
+	dev_dbg(cs35l41->dev, "Set CODEC sysclk to %d\n", freq);
 
 	switch (clk_id) {
 	case 0:
@@ -1203,7 +1154,85 @@ static int cs35l41_dai_set_sysclk(struct snd_soc_dai *dai,
 	if (clk_id == CS35L41_PLLSRC_SCLK)
 		cs35l41->sclk = freq;
 
+	dev_dbg(cs35l41->dev, "Set DAI sysclk %d\n", freq);
+
 	return 0;
+}
+
+static int cs35l41_pcm_hw_params(struct snd_pcm_substream *substream,
+				 struct snd_pcm_hw_params *params,
+				 struct snd_soc_dai *dai)
+{
+	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(dai->codec);
+	struct snd_soc_codec *codec = dai->codec;
+	int i, ret;
+	unsigned int rate = params_rate(params);
+	u8 asp_width, asp_wl;
+	int sclk_rate = params_rate(params) * params_width(params)
+			* params_channels(params);
+
+	if ((cs35l41->clksrc == CS35L41_PLLSRC_SCLK) &&
+		(cs35l41->sclk != sclk_rate)) {
+		dev_dbg(cs35l41->dev, "Reset sclk rate to %d from %d\n",
+			sclk_rate, cs35l41->sclk);
+		dev_dbg(cs35l41->dev, "rate %d width %d channels %d\n",
+			params_rate(params), params_width(params),
+			params_channels(params));
+		ret = cs35l41_codec_set_sysclk(codec, CS35L41_PLLSRC_SCLK, 0,
+			sclk_rate, 0);
+		if (ret != 0) {
+			dev_err(cs35l41->dev, "Can't set codec sysclk %d\n",
+				ret);
+			return ret;
+		}
+		ret = cs35l41_dai_set_sysclk(dai,
+				CS35L41_PLLSRC_SCLK, sclk_rate, 0);
+		if (ret != 0) {
+			dev_err(cs35l41->dev, "Can't set dai sysclk %d\n", ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(cs35l41_fs_rates); i++) {
+		if (rate == cs35l41_fs_rates[i].rate)
+			break;
+	}
+	regmap_update_bits(cs35l41->regmap, CS35L41_GLOBAL_CLK_CTRL,
+			CS35L41_GLOBAL_FS_MASK,
+			cs35l41_fs_rates[i].fs_cfg << CS35L41_GLOBAL_FS_SHIFT);
+
+	asp_wl = params_width(params);
+	asp_width = params_physical_width(params);
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		regmap_update_bits(cs35l41->regmap, CS35L41_SP_FORMAT,
+				CS35L41_ASP_WIDTH_RX_MASK,
+				asp_width << CS35L41_ASP_WIDTH_RX_SHIFT);
+		regmap_update_bits(cs35l41->regmap, CS35L41_SP_RX_WL,
+				CS35L41_ASP_RX_WL_MASK,
+				asp_wl << CS35L41_ASP_RX_WL_SHIFT);
+		if (cs35l41->i2s_mode || cs35l41->tdm_mode) {
+			regmap_update_bits(cs35l41->regmap,
+					CS35L41_SP_FRAME_RX_SLOT,
+					CS35L41_ASP_RX1_SLOT_MASK,
+					((cs35l41->pdata.right_channel) ? 1 : 0)
+					 << CS35L41_ASP_RX1_SLOT_SHIFT);
+			regmap_update_bits(cs35l41->regmap,
+					CS35L41_SP_FRAME_RX_SLOT,
+					CS35L41_ASP_RX2_SLOT_MASK,
+					((cs35l41->pdata.right_channel) ? 0 : 1)
+					 << CS35L41_ASP_RX2_SLOT_SHIFT);
+		}
+	} else {
+		regmap_update_bits(cs35l41->regmap, CS35L41_SP_FORMAT,
+				CS35L41_ASP_WIDTH_TX_MASK,
+				asp_width << CS35L41_ASP_WIDTH_TX_SHIFT);
+		regmap_update_bits(cs35l41->regmap, CS35L41_SP_TX_WL,
+				CS35L41_ASP_TX_WL_MASK,
+				asp_wl << CS35L41_ASP_TX_WL_SHIFT);
+	}
+
+	return ret;
 }
 
 static int cs35l41_boost_config(struct cs35l41_private *cs35l41,
