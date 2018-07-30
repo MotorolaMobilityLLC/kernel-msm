@@ -19,7 +19,6 @@
 
 / {
 	model = "river";
-	compatible = "river,na,evt2";
 	qcom,msm-id = <349 0x0>;
 	qcom,board-id = <(RIVER_RADIO_NA << 8 | 0x45) 0xA200>;
 };
