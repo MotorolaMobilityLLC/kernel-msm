@@ -19,7 +19,6 @@
 
 / {
 	model = "river";
-	compatible = "river,evt2";
 	qcom,msm-id = <349 0x0>;
 	qcom,board-id = <0x45 0xA200>;
 };
