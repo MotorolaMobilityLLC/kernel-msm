@@ -449,6 +449,18 @@ static const struct snd_kcontrol_new dsp_intput1_mux =
 static const struct snd_kcontrol_new dsp_intput2_mux =
 	SOC_DAPM_ENUM("DSP1 Input2 SRC", cs35l41_dsp1_input2_enum);
 
+ 
+static const char * const cs35l41_bst_en_text[] = {"On", "Bypass"};
+static const unsigned int cs35l41_bst_en_values[] = {CS35L41_BST_EN_DEFAULT,
+						 CS35L41_BST_EN_BYPASS};
+
+static SOC_VALUE_ENUM_SINGLE_DECL(bst_en_ctl,
+				CS35L41_PWR_CTRL2,
+				CS35L41_BST_EN_SHIFT,
+				CS35L41_BST_EN_MASK>>CS35L41_BST_EN_SHIFT,
+				cs35l41_bst_en_text,
+				cs35l41_bst_en_values);
+
 static const struct snd_kcontrol_new cs35l41_aud_controls[] = {
 	SOC_SINGLE_SX_TLV("Digital PCM Volume", CS35L41_AMP_DIG_VOL_CTRL,
 		      3, 0x4CF, 0x391, dig_vol_tlv),
@@ -463,6 +475,7 @@ static const struct snd_kcontrol_new cs35l41_aud_controls[] = {
 	SOC_SINGLE_RANGE("ASPTX4 Slot Position", CS35L41_SP_FRAME_TX_SLOT, 24,
 			 0, 7, 0),
 	SOC_ENUM("PCM Soft Ramp", pcm_sft_ramp),
+	SOC_ENUM("Boost Enable", bst_en_ctl),
 	SOC_VALUE_ENUM_EXT("CSPL Command", cs35l41_cspl_cmd,
 			   cs35l41_cspl_cmd_get, cs35l41_cspl_cmd_put),
 	SOC_SINGLE_EXT("DSP Booted", SND_SOC_NOPM, 0, 1, 0,
