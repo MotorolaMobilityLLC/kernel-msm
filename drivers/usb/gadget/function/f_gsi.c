@@ -3109,14 +3109,14 @@ static ssize_t gsi_info_show(struct config_item *item, char *page)
 
 CONFIGFS_ATTR_RO(gsi_, info);
 
-static ssize_t gsi_rndis_wceis_show(struct config_item *item, char *page)
+static ssize_t gsi_wceis_show(struct config_item *item, char *page)
 {
 	struct f_gsi *gsi = to_gsi_opts(item)->gsi;
 
 	return snprintf(page, PAGE_SIZE, "%d\n", gsi->rndis_use_wceis);
 }
 
-static ssize_t gsi_rndis_wceis_store(struct config_item *item,
+static ssize_t gsi_wceis_store(struct config_item *item,
 			const char *page, size_t len)
 {
 	struct f_gsi *gsi = to_gsi_opts(item)->gsi;
@@ -3130,11 +3130,11 @@ static ssize_t gsi_rndis_wceis_store(struct config_item *item,
 	return len;
 }
 
-CONFIGFS_ATTR(gsi_, rndis_wceis);
+CONFIGFS_ATTR(gsi_, wceis);
 
 static struct configfs_attribute *gsi_rndis_attrs[] = {
 	&gsi_attr_info,
-	&gsi_attr_rndis_wceis,
+	&gsi_attr_wceis,
 	NULL,
 };
 
@@ -3196,8 +3196,10 @@ static int gsi_set_inst_name(struct usb_function_instance *fi,
 	mutex_unlock(&inst_status[prot_id].gsi_lock);
 
 	if (prot_id == IPA_USB_RNDIS)
-		config_group_init_type_name(&opts->func_inst.group, "",
-					    &gsi_func_rndis_type);
+		config_group_init_type_name(&opts->func_inst.group,
+				opts->func_inst.group.cg_item.ci_name,
+				&gsi_func_rndis_type);
+
 	gsi = gsi_function_init(prot_id);
 	if (IS_ERR(gsi))
 		return PTR_ERR(gsi);
