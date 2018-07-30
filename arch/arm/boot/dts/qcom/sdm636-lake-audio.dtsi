@@ -392,7 +392,6 @@
 				cirrus,micd-detect-debounce-ms = <600>;
 				cirrus,micd-bias-start-time = <8>;
 				cirrus,micd-rate = <6>;
-				cirrus,jd-check-jd2;
 				cirrus,report-to-input;
 				cirrus,micd-dbtime = <0x1>;
 				cirrus,micd-ranges = <
@@ -404,6 +403,7 @@
 				cirrus,micd-configs = <
 					0 1 2 0 0
 				>;
+				cirrus,init-mic-delay-ms = <200>;
 				cirrus,micd-clamp-mode = <0x4>;
 				cirrus,gpsw = <1>;
 			};
