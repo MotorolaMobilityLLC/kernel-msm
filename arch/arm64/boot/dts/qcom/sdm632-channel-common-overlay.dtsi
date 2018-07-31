@@ -199,6 +199,12 @@
 	qcom,lower-limit-capacity = <60>;
 };
 
+&pmi632_rgb {
+	red {
+		label = "charging";
+	};
+}
+
 &pmi632_vadc {
 	chan@2a {
 		label = "bat_therm_PU30";
