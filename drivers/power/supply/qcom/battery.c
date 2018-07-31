@@ -644,12 +644,13 @@ static int usb_icl_vote_callback(struct votable *votable, void *data,
 	}
 
 	/* rerun AICL if new ICL is above settled ICL */
-	if (icl_ua > pval.intval)
+	if (icl_ua != INT_MAX && icl_ua > pval.intval)
 		rerun_aicl = true;
 
 	if (rerun_aicl && (chip->wa_flags & AICL_RERUN_WA_BIT)) {
 		/* set a lower ICL */
 		pval.intval = max(pval.intval - ICL_STEP_UA, ICL_STEP_UA);
+		pr_debug("****initial step icl setting %d\n", pval.intval);
 		power_supply_set_property(chip->main_psy,
 				POWER_SUPPLY_PROP_CURRENT_MAX,
 				&pval);
@@ -657,6 +658,7 @@ static int usb_icl_vote_callback(struct votable *votable, void *data,
 
 	/* set the effective ICL */
 	pval.intval = icl_ua;
+	pr_debug("****final icl setting %d\n", pval.intval);
 	power_supply_set_property(chip->main_psy,
 			POWER_SUPPLY_PROP_CURRENT_MAX,
 			&pval);
