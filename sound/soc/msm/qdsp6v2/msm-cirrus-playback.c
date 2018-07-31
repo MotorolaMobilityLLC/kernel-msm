@@ -88,6 +88,7 @@ static int crus_get_param(int port, int module, int param, int length,
 		if (count++ >= 1000) {
 			pr_err("%s: AFE callback timeout\n", __func__);
 			atomic_set(&crus_se_get_param_flag, 1);
+			mutex_unlock(&crus_se_get_param_lock);
 			return -EINVAL;
 		}
 	}
