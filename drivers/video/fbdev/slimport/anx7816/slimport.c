@@ -1717,7 +1717,7 @@ static int slimport_mod_display_handle_connect(void *data)
 	int retries = 2;
 	int ret = 0;
 
-	pr_debug("%s+\n", __func__);
+	pr_info("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
 
@@ -1730,7 +1730,7 @@ static int slimport_mod_display_handle_connect(void *data)
 
 	while (!wait_for_completion_timeout(&anx7816->connect_wait,
 				msecs_to_jiffies(1000)) && retries) {
-		pr_debug("%s: Slimport not connected... Retries left: %d\n",
+		pr_warn("%s: Slimport not connected... Retries left: %d\n",
 					__func__, retries);
 		retries--;
 
@@ -1744,6 +1744,7 @@ static int slimport_mod_display_handle_connect(void *data)
 	if (!atomic_read(&anx7816->slimport_connected)) {
 		pr_warn("%s: Slimport failed to connect...\n", __func__);
 		ret = -ENODEV;
+		goto exit;
 	}
 
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
@@ -1766,6 +1767,8 @@ static int slimport_mod_display_handle_connect(void *data)
 		pr_warn("%s: Video is not stable after waiting %ds.\n",
 			__func__, 2 * WAIT_VIDEO_STABLE_TIMEOUT / 1000);
 #endif
+
+exit:
 	pr_info("%s-\n", __func__);
 
 	return ret;
@@ -1807,7 +1810,7 @@ static int slimport_mod_display_handle_disconnect(void *data)
 	while (atomic_read(&anx7816->slimport_connected) &&
 			!wait_for_completion_timeout(&anx7816->connect_wait,
 			msecs_to_jiffies(1000)) && retries) {
-		pr_info("%s: Slimport not disconnected... Retries left: %d\n",
+		pr_warn("%s: Slimport not disconnected... Retries left: %d\n",
 			__func__, retries);
 		retries--;
 	}
