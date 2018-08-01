@@ -103,14 +103,6 @@
 		status = "disabled";
 	};
 
-	ospl {
-		compatible = "mmi,ospl2xx";
-		status = "ok";
-		mmi,ospl-afe-port-id = <16384 16387>;
-		mmi,ospl-left-feedback;
-		mmi,ospl-passive-f0;
-	};
-
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
 		status = "ok";
