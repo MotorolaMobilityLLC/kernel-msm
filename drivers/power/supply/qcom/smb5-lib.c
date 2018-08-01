@@ -3637,6 +3637,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	int rc;
 	struct smb_irq_data *data;
 	struct storm_watch *wdata;
+	union power_supply_propval val;
 
 	/* disable apsd */
 	rc = smblib_configure_hvdcp_apsd(chg, false);
@@ -3671,7 +3672,15 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CTM_VOTER, false, 0);
 
-	chg->mmi.apsd_done = false;
+	rc = smblib_get_prop_usb_present(chg, &val);
+	if (rc < 0) {
+		smblib_err(chg, "Error getting USB Present rc = %d\n", rc);
+		chg->mmi.apsd_done = false;
+		chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+	} else if (!val.intval) {
+		chg->mmi.apsd_done = false;
+		chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+	}
 
 	/* reset usb irq voters */
 	vote(chg->usb_irq_enable_votable, PD_VOTER, false, 0);
@@ -3713,7 +3722,6 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	chg->typec_legacy = false;
 
-	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 	chg->mmi.charging_limit_modes = CHARGING_LIMIT_OFF;
 	chg->mmi.hvdcp3_con = false;
 	chg->mmi.vbus_inc_cnt = 0;
@@ -4889,6 +4897,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int batt_soc;
 	int batt_temp;
 	int usb_mv;
+	u8 apsd_reg;
+	bool icl_override;
 	static int vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 	bool vbus_inc_now = false;
 	int vbus_present = 0;
@@ -4937,6 +4947,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 		charger_present = 0;
 		mmi->charger_debounce_cnt = 0;
+		if (mmi->apsd_done &&
+		    chip->typec_mode == POWER_SUPPLY_TYPEC_NONE)
+			typec_src_removal(chip);
 	} else if (chip->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
 		charger_present = 1;
 		mmi->charger_debounce_cnt = 0;
@@ -4946,6 +4959,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		 * PD Compliance issues */
 		if (!chip->pd_active)
 			cl_usb = 500;
+		if ((chip->typec_mode == POWER_SUPPLY_TYPEC_NONE) ||
+		    (chip->typec_mode ==
+		     POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)) {
+			mmi->charger_debounce_cnt = CHARGER_DETECTION_DONE;
+			charger_present = 1;
+			mmi->apsd_done = true;
+		}
 	} else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
 		charger_present = 1;
 
@@ -4986,6 +5006,17 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 	if (prev_vbus_mv == -1)
 		prev_vbus_mv = usb_mv;
+
+	rc = smblib_read(chip, APSD_RESULT_STATUS_REG, &apsd_reg);
+	if (rc < 0) {
+		smblib_err(chip, "Couldn't read APSD_RESULT_STATUS rc=%d\n",
+			   rc);
+		icl_override = false;
+		apsd_reg = 0;
+	} else {
+		icl_override = !!(apsd_reg & APSD_RESULT_STATUS_7_BIT);
+		apsd_reg &= APSD_RESULT_STATUS_MASK;
+	}
 
 	smblib_dbg(chip, PR_MISC, "batt=%d mV, %d mA, %d C, USB= %d mV\n",
 		batt_mv, batt_ma, batt_temp, usb_mv);
@@ -5035,6 +5066,22 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
 			cl_cc = 3000;
 			break;
+		case POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
+			cl_cc = 500;
+			break;
+		case POWER_SUPPLY_TYPEC_NONE:
+			if (vbus_present)
+				cl_cc = 500;
+			if (vbus_present &&
+			    !icl_override &&
+			    (apsd_reg == 0)) {
+				rc = smblib_masked_write(chip, CMD_ICL_OVERRIDE,
+							 ICL_OVERRIDE_BIT,
+							 ICL_OVERRIDE_BIT);
+				if (rc < 0)
+					smblib_err(chip,
+						   "Fail ICL Over rc%d\n", rc);
+			}
 		default:
 			cl_cc = 0;
 			break;
@@ -5042,7 +5089,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 		if (cl_pd > 0)
 			cl_usb = cl_pd;
-		else if (cl_cc > 500)
+		else if ((cl_cc > 500) ||
+			 (chip->typec_mode ==
+			  POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER))
 			cl_usb = cl_cc;
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_DCP)
@@ -5050,6 +5099,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
 			cl_usb = 1500;
+		else if ((cl_cc == 500) &&
+			 (cl_usb <= 500))
+			cl_usb = cl_cc;
 		else if (cl_usb <= 0)
 			cl_usb = 500;
 
