@@ -2902,6 +2902,7 @@ static int smb5_probe(struct platform_device *pdev)
 	chg->irq_info = smb5_irqs;
 	chg->die_health = -EINVAL;
 	chg->otg_present = false;
+	chg->suspended = false;
 	mutex_init(&chg->vadc_lock);
 
 	chg->regmap = dev_get_regmap(chg->dev->parent, NULL);
@@ -3091,6 +3092,37 @@ static void smb5_shutdown(struct platform_device *pdev)
 				BC1P2_SRC_DETECT_BIT, BC1P2_SRC_DETECT_BIT);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int smb5_suspend(struct device *device)
+{
+	struct platform_device *pdev = to_platform_device(device);
+	struct smb5 *chip = platform_get_drvdata(pdev);
+	struct smb_charger *chg = &chip->chg;
+
+	chg->suspended = true;
+
+	return 0;
+}
+
+static int smb5_resume(struct device *device)
+{
+	struct platform_device *pdev = to_platform_device(device);
+	struct smb5 *chip = platform_get_drvdata(pdev);
+	struct smb_charger *chg = &chip->chg;
+
+	chg->suspended = false;
+
+	return 0;
+}
+#else
+#define smb5_suspend NULL
+#define smb5_resume NULL
+#endif
+
+static const struct dev_pm_ops smb5_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(smb5_suspend, smb5_resume)
+};
+
 static const struct of_device_id match_table[] = {
 	{ .compatible = "qcom,qpnp-smb5", },
 	{ },
@@ -3100,6 +3132,7 @@ static struct platform_driver smb5_driver = {
 	.driver		= {
 		.name		= "qcom,qpnp-smb5",
 		.owner		= THIS_MODULE,
+		.pm		= &smb5_dev_pm_ops,
 		.of_match_table	= match_table,
 	},
 	.probe		= smb5_probe,
