@@ -361,6 +361,7 @@ struct mmi_params {
 	int			base_fv_mv;
 	int			vfloat_comp_mv;
 	int			batt_health;
+	int			max_chrg_temp;
 };
 
 struct smb_charger {
