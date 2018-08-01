@@ -522,6 +522,7 @@ struct smb_charger {
 	void			*ipc_log;
 	void			*ipc_log_reg;
 	bool			reverse_boost;
+	bool			suspended;
 
 	/* dual role */
 	bool				dr_supported;
