@@ -1285,18 +1285,8 @@ static ssize_t cycapsense_fw_download_status_show(struct class *class,
 	return snprintf(buf, 8, "%d", fw_dl_status);
 }
 
-static CLASS_ATTR(fw_update, 0660, cycapsense_fw_show, cycapsense_fw_store);
-static CLASS_ATTR(set_threshold, 0660, NULL, cycapsense_set_threshold_store);
-static CLASS_ATTR(reset, 0660, NULL, cycapsense_reset_store);
-static CLASS_ATTR(enable, 0660, cycapsense_enable_show, cycapsense_enable_store);
-static CLASS_ATTR(reg, 0660, cycapsense_reg_show, cycapsense_reg_store);
-static CLASS_ATTR(debug, 0660, NULL, cycapsense_debug_store);
-static CLASS_ATTR(fw_download_status, 0660, cycapsense_fw_download_status_show, NULL);
-
-static void ps_notify_callback_work(struct work_struct *work)
+static void cycapsense_calibrate(struct cyttsp_sar_data *data)
 {
-	struct cyttsp_sar_data *data =
-		container_of(work, struct cyttsp_sar_data, ps_notify_work);
 	struct cyttsp_sar_platform_data *pdata = data->pdata;
 	struct input_dev *input;
 	int i, ret;
@@ -1311,6 +1301,33 @@ static void ps_notify_callback_work(struct work_struct *work)
 		input_report_abs(input, ABS_DISTANCE, 0);
 		input_sync(input);
 	}
+}
+
+static ssize_t cycapsense_calibrate_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct cyttsp_sar_data *data = pcyttsp_sar_ptr;
+
+	cycapsense_calibrate(data);
+	return count;
+}
+
+static CLASS_ATTR(fw_update, 0660, cycapsense_fw_show, cycapsense_fw_store);
+static CLASS_ATTR(set_threshold, 0660, NULL, cycapsense_set_threshold_store);
+static CLASS_ATTR(reset, 0660, NULL, cycapsense_reset_store);
+static CLASS_ATTR(enable, 0660, cycapsense_enable_show, cycapsense_enable_store);
+static CLASS_ATTR(reg, 0660, cycapsense_reg_show, cycapsense_reg_store);
+static CLASS_ATTR(debug, 0660, NULL, cycapsense_debug_store);
+static CLASS_ATTR(fw_download_status, 0660, cycapsense_fw_download_status_show, NULL);
+static CLASS_ATTR(calibrate, 0660, NULL, cycapsense_calibrate_store);
+
+static void ps_notify_callback_work(struct work_struct *work)
+{
+	struct cyttsp_sar_data *data =
+		container_of(work, struct cyttsp_sar_data, ps_notify_work);
+
+	cycapsense_calibrate(data);
 }
 
 
@@ -1534,6 +1551,13 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 	if (error < 0) {
 		dev_err(&client->dev,
 				"Create fw dl status file failed (%d)\n", error);
+		return error;
+	}
+
+	error = class_create_file(&capsense_class, &class_attr_calibrate);
+	if (error < 0) {
+		dev_err(&client->dev,
+				"Create calibrate file failed (%d)\n", error);
 		return error;
 	}
 
