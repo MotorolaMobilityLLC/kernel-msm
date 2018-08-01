@@ -80,6 +80,7 @@ struct core_config_data {
     bool isEnableGesture;
     bool icemodeenable;
     bool spi_pro_9881h11;
+    bool interrupt_flag;
     TP_INFO *tp_info;
 };
 
