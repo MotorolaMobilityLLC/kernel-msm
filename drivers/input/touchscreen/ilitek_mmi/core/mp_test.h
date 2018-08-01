@@ -171,7 +171,6 @@ struct core_mp_test_data {
 	int tdf;
 	bool retry;
 	int busy_cdc;
-	bool mp_isr_check_busy_free;
 	bool ctrl_lcm;
 };
 
