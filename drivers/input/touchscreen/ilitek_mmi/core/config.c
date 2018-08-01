@@ -498,6 +498,7 @@ void core_config_ic_resume(void)
 	core_fr_mode_control(&protocol->demo_mode);
 
 #endif
+	core_fr->actual_fw_mode = P5_0_FIRMWARE_DEMO_MODE;
 	ilitek_platform_enable_irq();
 
 	if (ipd->isEnablePollCheckPower)
@@ -675,11 +676,11 @@ int core_config_check_int_isr_flag(void)
 	int timer = 5000, res = ERROR;
 
 	/* From FW request, timeout should at least be 5 sec */
-	while (core_mp->mp_isr_check_busy_free == false && timer > 0) {
+	while (core_config->interrupt_flag == false && timer > 0) {
 		timer--;
 		mdelay(1);
 	}
-	if (core_mp->mp_isr_check_busy_free == true)
+	if (core_config->interrupt_flag == true)
 		res = 0;
 
 	return res;

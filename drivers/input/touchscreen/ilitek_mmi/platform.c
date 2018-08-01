@@ -359,11 +359,9 @@ static irqreturn_t ilitek_platform_irq_handler(int irq, void *dev_id)
 	ipio_debug(DEBUG_IRQ, "IRQ = %d\n", ipd->isEnableIRQ);
 
 	if (core_fr->actual_fw_mode == P5_0_FIRMWARE_TEST_MODE) {
-		if (core_mp->busy_cdc == ISR_CHECK) {
 			ipio_debug(DEBUG_IRQ, "MP INT enter irq\n");
-			core_mp->mp_isr_check_busy_free = true;
-			ipio_info("MP isr check busy is free ,%d\n", core_mp->mp_isr_check_busy_free);
-		}
+			core_config->interrupt_flag = true;
+			ipio_info("MP isr check busy is free ,%d\n", core_config->interrupt_flag);
 	} else {
 		if (ipd->isEnableIRQ) {
 			ilitek_platform_disable_irq();
