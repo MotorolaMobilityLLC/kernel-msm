@@ -203,7 +203,7 @@
 	red {
 		label = "charging";
 	};
-}
+};
 
 &pmi632_vadc {
 	chan@2a {
