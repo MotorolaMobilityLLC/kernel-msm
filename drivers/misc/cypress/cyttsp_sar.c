@@ -1015,7 +1015,7 @@ static ssize_t cycapsense_reset_store(struct class *class,
 
 	if (!strncmp(buf, "reset", 5) || !strncmp(buf, "1", 1)) {
 		LOG_INFO("Going to refresh baseline\n");
-		ret = cyttsp_write_reg(data, CYTTSP_SAR_REFRESH_BASELINE, 0x01);
+		ret = cyttsp_write_reg(data, CYTTSP_SAR_REFRESH_BASELINE, 0x0f);
 		if (ret < 0)
 			dev_err(&data->client->dev, "reg write failed\n");
 
