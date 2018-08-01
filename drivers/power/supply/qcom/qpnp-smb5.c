@@ -2132,6 +2132,17 @@ static int smb5_init_hw(struct smb5 *chip)
 		return rc;
 	}
 
+	/* configure usbin input collapse GF*/
+	rc = smblib_masked_write(chg, USBIN_LOAD_CFG_REG,
+		USBIN_IN_COLLAPSE_FG_SEL,
+		USBIN_IN_COLLAPSE_FG_30US);
+	if (rc < 0) {
+		dev_err(chg->dev,
+			"Couldn't configure usbin input collapse FG rc=%d\n",
+			rc);
+		return rc;
+	}
+
 	/*
 	 * configure the one time watchdong periodic interval and
 	 * disable "watchdog bite disable charging".
