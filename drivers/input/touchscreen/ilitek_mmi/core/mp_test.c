@@ -794,7 +794,7 @@ static int allnode_mutual_cdc_data(int index)
 
 	dump_data(cmd, 8, protocol->cdc_len, 0, "Mutual CDC command");
 
-	core_mp->mp_isr_check_busy_free = false;
+	core_config->interrupt_flag = false;
 	res = core_write(core_config->slave_i2c_addr, cmd, protocol->cdc_len);
 	if (res < 0) {
 		ipio_err("I2C Write Error while initialising cdc\n");
@@ -1188,7 +1188,7 @@ int allnode_open_cdc_data(int mode, int *buf, int *dac)
 	core_parser_get_u8_array(tmp, cmd);
 
 	dump_data(cmd, 8, sizeof(cmd), 0, "Open SP command");
-	core_mp->mp_isr_check_busy_free = false;
+	core_config->interrupt_flag = false;
 	res = core_write(core_config->slave_i2c_addr, cmd, protocol->cdc_len);
 	if (res < 0) {
 		ipio_err("I2C Write Error while initialising cdc\n");
@@ -2415,7 +2415,7 @@ int core_mp_init(void)
 			core_mp->tdf = 240;
 			core_mp->busy_cdc = ISR_CHECK;
 			ipio_info("Check busy method = %d\n", core_mp->busy_cdc);
-			core_mp->mp_isr_check_busy_free = false;
+			core_config->interrupt_flag = false;
 			core_mp->run = false;
 			core_mp->retry = true;
 			core_mp->oppo_run = false;

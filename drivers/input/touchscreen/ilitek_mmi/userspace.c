@@ -1209,7 +1209,7 @@ static long ilitek_proc_ioctl(struct file *filp, unsigned int cmd,
 			      unsigned long arg)
 {
 	int res = 0, length = 0;
-	uint8_t szBuf[512] = { 0 };
+	uint8_t *szBuf = NULL;
 	static uint16_t i2c_rw_length;
 	uint32_t id_to_user = 0x0;
 	char dbg[10] = { 0 };
@@ -1224,6 +1224,12 @@ static long ilitek_proc_ioctl(struct file *filp, unsigned int cmd,
 	if (_IOC_NR(cmd) > ILITEK_IOCTL_MAXNR) {
 		ipio_err("The number of ioctl doesn't match\n");
 		return -ENOTTY;
+	}
+
+	szBuf = kmalloc(2048 * sizeof(uint8_t), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(szBuf)) {
+		ipio_err("Failed to allocate szBuf memory\n");
+		return -ENOMEM;
 	}
 
 	switch (cmd) {
@@ -1367,7 +1373,7 @@ static long ilitek_proc_ioctl(struct file *filp, unsigned int cmd,
 		break;
 
 	case ILITEK_IOCTL_TP_DRV_VER:
-		length = snprintf(szBuf, sizeof(szBuf), "%s", DRIVER_VERSION);
+		length = snprintf(szBuf, 2048, "%s", DRIVER_VERSION);
 		if (!length) {
 			ipio_err
 			    ("Failed to convert driver version from definiation\n");
@@ -1465,8 +1471,8 @@ static long ilitek_proc_ioctl(struct file *filp, unsigned int cmd,
 		} else {
 			ipio_debug(DEBUG_IOCTL, "ioctl write = %d\n", szBuf[0]);
 			if (szBuf[0] == 0) {
-				core_mp->mp_isr_check_busy_free = false;
-				ipio_debug(DEBUG_IOCTL, "core_mp->mp_isr_check_busy_free = %d\n", core_mp->mp_isr_check_busy_free);
+				core_config->interrupt_flag = false;
+				ipio_debug(DEBUG_IOCTL, "core_config->interrupt_flag = %d\n", core_config->interrupt_flag);
 			}
 		}
 		break;
@@ -1474,11 +1480,11 @@ static long ilitek_proc_ioctl(struct file *filp, unsigned int cmd,
 	case ILITEK_IOCTL_MP_READ_CDC_FLAG:
 
 		res =
-		    copy_to_user((int *)arg, &core_mp->mp_isr_check_busy_free,
+		    copy_to_user((int *)arg, &core_config->interrupt_flag,
 				 sizeof(int));
-		ipio_debug(DEBUG_IOCTL, "core_mp->mp_isr_check_busy_free = %d\n", core_mp->mp_isr_check_busy_free);
+		ipio_debug(DEBUG_IOCTL, "core_config->interrupt_flag = %d\n", core_config->interrupt_flag);
 		if (res < 0) {
-			ipio_err("Failed to copy mp_isr_check_busy_free flag to user space\n");
+			ipio_err("Failed to copy interrupt_flag flag to user space\n");
 		}
 		break;
 
@@ -1486,6 +1492,7 @@ static long ilitek_proc_ioctl(struct file *filp, unsigned int cmd,
 		res = -ENOTTY;
 		break;
 	}
+	kfree((void **)szBuf);
 
 	return res;
 }

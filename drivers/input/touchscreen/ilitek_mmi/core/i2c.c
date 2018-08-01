@@ -103,17 +103,15 @@ int core_i2c_write(uint8_t nSlaveId, uint8_t *pBuf, uint16_t nSize)
 	 * NOTE: If TP driver is doing MP test and commanding 0xF1 to FW,
 	 * we add a checksum to the last index and plus 1 with size.
 	 */
+	txbuf = kcalloc(nSize + 1, sizeof(uint8_t), GFP_KERNEL);
+	if (ERR_ALLOC_MEM(txbuf)) {
+		ipio_err("Failed to allocate txbuf mem\n");
+		res = -ENOMEM;
+		goto out;
+	}
 	if (protocol->major >= 5 && protocol->mid >= 4) {
-		if (!core_config->icemodeenable && pBuf[0] == 0xF1 &&
-		 core_mp->run) {
+		if (core_fr->actual_fw_mode == protocol->test_mode && pBuf[0] == 0xF1) {
 			check_sum = core_fr_calc_checksum(pBuf, nSize);
-			txbuf =
-			 kcalloc(nSize + 1, sizeof(uint8_t), GFP_KERNEL);
-			if (ERR_ALLOC_MEM(txbuf)) {
-				ipio_err("Failed to allocate txbuf mem\n");
-				res = -ENOMEM;
-				goto out;
-			}
 			memcpy(txbuf, pBuf, nSize);
 			txbuf[nSize] = check_sum;
 			msgs[0].buf = txbuf;
