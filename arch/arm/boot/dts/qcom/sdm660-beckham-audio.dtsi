@@ -352,6 +352,7 @@
 			acc@1 {
 				reg = <1>;
 
+				cirrus,report-to-input;
 				cirrus,micd-force-micbias;
 				cirrus,micd-detect-debounce-ms = <300>;
 				cirrus,jd-wake-time= <3000>;
