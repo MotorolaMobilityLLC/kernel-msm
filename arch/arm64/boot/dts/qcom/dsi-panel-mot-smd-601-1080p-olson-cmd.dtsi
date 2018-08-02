@@ -14,4 +14,8 @@
 	mot_smd_601_1080p_cmd_v0: qcom,mdss_dsi_mot_smd_601_1080p_cmd_v0 {
 		#include "dsi-panel-mot-smd-601-1080p-olson-cmd-common.dtsi"
 	};
+
+	mot_smd_601_1080p_cmd_s_v0: qcom,mdss_dsi_mot_smd_601_1080p_cmd_s_v0 {
+		#include "dsi-panel-mot-smd-601-1080p-olson-cmd-common.dtsi"
+	};
 };
