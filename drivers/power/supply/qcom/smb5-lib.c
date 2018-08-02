@@ -1089,7 +1089,7 @@ int smblib_get_icl_current(struct smb_charger *chg, int *icl_ua)
 
 	if ((chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT
 		|| chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB)
-		&& (chg->usb_psy->desc->type == POWER_SUPPLY_TYPE_USB)) {
+		&& (chg->real_charger_type == POWER_SUPPLY_TYPE_USB)) {
 		rc = get_sdp_current(chg, icl_ua);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't get SDP ICL rc=%d\n", rc);
