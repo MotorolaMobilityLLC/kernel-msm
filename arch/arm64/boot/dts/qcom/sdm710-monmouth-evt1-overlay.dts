@@ -27,6 +27,17 @@
  * Monmouth HW rev EVT1 specific changes go here
  */
 &soc {
+	vio_disp_sub_evt1_vreg: vio_disp_sub_evt1_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vio_disp_sub";
+		vin-supply = <&pm660_l13>;
+		gpio = <&tlmm 100 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_sub_dvdd_en_default>;
+	};
+
 	dsi_smd_601_1080p_cmd_display: qcom,dsi-display@18 {
 		compatible = "qcom,dsi-display";
 		label = "dsi_smd_601_1080p_cmd_display";
@@ -53,6 +64,32 @@
 	gpio_keys {
 		status = "disable";
 	};
+
+	dsi_smd_601_1080p_cmd_s_display: qcom,dsi-display@20 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_smd_601_1080p_cmd_s_display";
+		qcom,display-type = "secondary";
+
+		qcom,dsi-ctrl = <&mdss_dsi1>;
+		qcom,dsi-phy = <&mdss_dsi_phy1>;
+		clocks = <&mdss_dsi1_pll BYTECLK_MUX_1_CLK>,
+			<&mdss_dsi1_pll PCLK_MUX_1_CLK>;
+		clock-names = "src_byte_clk", "src_pixel_clk";
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi1_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi1_suspend &sde_te_suspend>;
+		qcom,platform-te-gpio = <&tlmm 11 0>;
+		qcom,dsi-panel = <&mot_smd_601_1080p_cmd_s_v0>;
+
+		vci_disp-supply = <&pm660l_l3>;
+		vio_disp-supply = <&vio_disp_sub_evt1_vreg>;
+	};
+};
+
+&pm660l_l3 {
+	regulator-min-microvolt = <3200000>;
+	regulator-max-microvolt = <3200000>;
+	qcom,init-voltage = <3200000>;
 };
 
 &mot_smd_601_1080p_cmd_v0 {
@@ -78,8 +115,21 @@
 	};
 };
 
-&mdss_dsi1 {
-	status = "disable";
+&mot_smd_601_1080p_cmd_s_v0 {
+	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_smd_1080p_601_s";
+
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0d>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+							08 05 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
 };
 
 &qupv3_se4_i2c {
