@@ -133,16 +133,99 @@
 	};
 };
 
-&mot_auo_620_876x2142_cmd_v0 {
+&mot_smd_601_1080p_cmd_v0 {
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
-	qcom,mdss-dsi-t-clk-post = <0x0c>;
-	qcom,mdss-dsi-t-clk-pre = <0x2A>;
+	qcom,mdss-dsi-t-clk-post = <0x0d>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
-			qcom,mdss-dsi-panel-phy-timings = [00 1b 06 06 22 20 07
-							07 04 03 04 00];
+			qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+							08 05 03 04 00];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
+		};
+	};
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "l11_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <3>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vio_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <2>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+
+		qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "vci_disp";
+			qcom,supply-min-voltage = <3200000>;
+			qcom,supply-max-voltage = <3200000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <2>;
+			qcom,supply-pre-off-sleep = <11>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+
+		qcom,panel-supply-entry@3 {
+			reg = <3>;
+			qcom,supply-name = "lab";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6100000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+
+		qcom,panel-supply-entry@4 {
+			reg = <4>;
+			qcom,supply-name = "ibb";
+			qcom,supply-min-voltage = <4000000>;
+			qcom,supply-max-voltage = <6300000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+
+		qcom,panel-supply-entry@5 {
+			reg = <5>;
+			qcom,supply-name = "oledb";
+			qcom,supply-min-voltage = <5000000>;
+			qcom,supply-max-voltage = <8100000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
 		};
 	};
 };

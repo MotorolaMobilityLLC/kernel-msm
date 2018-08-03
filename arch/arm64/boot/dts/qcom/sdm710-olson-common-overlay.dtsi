@@ -33,8 +33,7 @@
 		gpio = <&tlmm 107 0>;
 		enable-active-high;
 		startup-delay-us = <300>;
-/*		regulator-boot-on;
-*/
+		regulator-boot-on;
 		pinctrl-names = "default";
 		pinctrl-0 = <&disp_v1_en_default>;
 	};
@@ -46,8 +45,7 @@
 		gpio = <&tlmm 106 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
-/*		regulator-boot-on;
-*/
+		regulator-boot-on;
 		pinctrl-names = "default";
 		pinctrl-0 = <&disp_pwr_en_default>;
 	};
