@@ -565,7 +565,6 @@
 		gpios = <&tlmm 96 0>, /* IRQ */
 			<&tlmm 95 0>; /* RESET */
 		touch_vdd-supply = <&pm660l_l3>;
-		vdd_quirk-supply = <&pm660_l11>;
 		synaptics,gpio-config;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_suspend &touch_int_suspend>;
