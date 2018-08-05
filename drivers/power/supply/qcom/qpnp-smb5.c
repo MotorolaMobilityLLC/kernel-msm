@@ -1089,10 +1089,12 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 					pr_err("Failed to force 5V\n");
 				else
 					chg->pulse_cnt = 0;
+#ifdef QCOM_BASE
 			} else {
 				/* USB absent & flash not-active - vote 100mA */
 				vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
 							true, SDP_100_MA);
+#endif
 			}
 
 			pr_debug("flash active VBUS 5V restriction %s\n",
@@ -1470,7 +1472,9 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 {
 	int rc = 0;
 	struct smb_charger *chg = power_supply_get_drvdata(psy);
+#ifdef QCOM_BASE
 	bool enable;
+#endif
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_STATUS:
@@ -1491,11 +1495,10 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PARALLEL_DISABLE:
 		vote(chg->pl_disable_votable, USER_VOTER, (bool)val->intval, 0);
 		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 #ifdef QCOM_BASE
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		chg->batt_profile_fv_uv = val->intval;
 		vote(chg->fv_votable, BATT_PROFILE_VOTER, true, val->intval);
-#endif
 		break;
 	case POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED:
 		enable = !!val->intval || chg->sw_jeita_enabled;
@@ -1513,11 +1516,10 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		}
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-#ifdef QCOM_BASE
 		chg->batt_profile_fcc_ua = val->intval;
 		vote(chg->fcc_votable, BATT_PROFILE_VOTER, true, val->intval);
-#endif
 		break;
+#endif
 	case POWER_SUPPLY_PROP_SET_SHIP_MODE:
 		/* Not in ship mode as long as the device is active */
 		if (!val->intval)
