@@ -49,3 +49,8 @@
 	/delete-node/ qcom,camera@1;
 	/delete-node/ qcom,camera@2;
 };
+
+&pmi632_charger {
+	/delete-property/ qcom,hw-die-temp-mitigation;
+	/delete-property/ qcom,hw-connector-mitigation;
+};
