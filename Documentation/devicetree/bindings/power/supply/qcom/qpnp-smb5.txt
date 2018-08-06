@@ -246,6 +246,11 @@ Charger specific properties:
 	Value type: bool
 	Definition: Boolean flag which when present enables mositure protection
 		    feature.
+- qcom,mmi-disable-hvdcp
+	Usage:  optional
+	Value type: <bool>
+	Definition: if defined , disable hvdcp enable bit at init .
+		    if not defined, enable hvdcp by default.
 
 - qcom,fcc-stepping-enable
   Usage:      optional
