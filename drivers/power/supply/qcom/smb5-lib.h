@@ -362,6 +362,7 @@ struct mmi_params {
 	int			vfloat_comp_mv;
 	int			batt_health;
 	int			max_chrg_temp;
+	bool			force_chg_suspend;
 	bool			mmi_hvdcp_disable;
 };
 
