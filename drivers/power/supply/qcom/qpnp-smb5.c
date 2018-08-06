@@ -495,6 +495,9 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chg->dr_supported = of_property_read_bool(node,
 					"qcom,dr-supported");
 
+	chip->chg.mmi.mmi_hvdcp_disable = of_property_read_bool(node,
+								"qcom,mmi-disable-hvdcp");
+
 	chg->hw_die_temp_mitigation = of_property_read_bool(node,
 					"qcom,hw-die-temp-mitigation");
 
@@ -1998,6 +2001,8 @@ static int smb5_init_hw(struct smb5 *chip)
 		return rc;
 	}
 
+	if(chip->chg.mmi.mmi_hvdcp_disable == true)
+		smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG,HVDCP_EN_BIT,0);
 	/*
 	 * PMI632 can have the connector type defined by a dedicated register
 	 * TYPEC_MICRO_USB_MODE_REG or by a common TYPEC_U_USB_CFG_REG.
