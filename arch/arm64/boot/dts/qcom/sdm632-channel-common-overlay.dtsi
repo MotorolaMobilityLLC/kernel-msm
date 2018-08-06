@@ -197,6 +197,7 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
+	qcom,mmi-disable-hvdcp;
 };
 
 &pmi632_rgb {
