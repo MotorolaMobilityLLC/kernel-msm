@@ -23,3 +23,14 @@
 	qcom,board-id = <0x42 0xB1B0>;
 };
 
+&soc {
+	sound {
+		qcom,model = "msm8953_snd_card-tfa987x";
+		qcom,msm-ext-pa = "quinary";
+		nxp,have-tfa987x;
+	};
+};
+
+&tfa987x {
+        status = "ok";
+};
