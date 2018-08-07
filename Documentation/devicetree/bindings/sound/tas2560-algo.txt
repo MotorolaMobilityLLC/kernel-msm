@@ -1,0 +1,14 @@
+Tas2560 algo driver
+
+Required properties:
+
+  - compatible : "ti,tas2560-algo"
+
+  - tas2560-port-id : afe port id for the mi2s used for tas2560.
+
+Example:
+
+ti,tas2560-algo {
+	compatible = "ti,tas2560-algo";
+	ti,tas2560-port-id = <0x1016>, <0x1017>;
+};
