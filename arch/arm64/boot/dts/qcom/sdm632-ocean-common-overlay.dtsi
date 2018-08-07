@@ -126,11 +126,6 @@
 	status = "okay";
 };
 
-&pm8953_l6 {
-	regulator-always-on;
-	regulator-boot-on;
-};
-
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
@@ -145,7 +140,7 @@
 	qcom,platform-bklight-en-gpio = <&pm8953_gpios 4 0>;
 
 	panel_iovcc-supply = <&panel_iovcc>;
-	vddio-supply = <&pm8953_l6>;
+	vddio-supply = <&pm8953_l22>;
 	vsp_disp-supply = <&lcdb_ldo_vreg>;
 	vsn_disp-supply = <&lcdb_ncp_vreg>;
 
