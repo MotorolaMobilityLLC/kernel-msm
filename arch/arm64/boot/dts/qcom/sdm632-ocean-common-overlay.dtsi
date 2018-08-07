@@ -213,7 +213,7 @@
 &thermal_zones {
 	msm_therm {
 		polling-delay-passive = <0>;
-		polling-delay = <100>;
+		polling-delay = <1000>;
 		thermal-sensors = <&pm8953_vadc 0x13>;
 		thermal-governor = "user_space";
 
@@ -228,7 +228,7 @@
 
 	chg_therm {
 		polling-delay-passive = <0>;
-		polling-delay = <100>;
+		polling-delay = <1000>;
 		thermal-sensors = <&pm8953_vadc 0x11>;
 		thermal-governor = "user_space";
 
