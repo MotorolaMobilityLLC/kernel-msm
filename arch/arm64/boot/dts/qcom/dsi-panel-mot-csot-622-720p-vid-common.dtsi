@@ -96,7 +96,6 @@ qcom,mdss-dsi-reset-sequence = <0 1>, <5 10>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-no-panel-on-read-support;
-qcom,mdss-panel-off-rst-disable;
 qcom,mdss-panel-reg-read-lp-enable;
 
 qcom,panel-supply-entries {
