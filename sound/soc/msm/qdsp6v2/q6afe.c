@@ -32,6 +32,9 @@
 #ifdef CONFIG_SND_SOC_OPALUM
 #include <sound/ospl2xx.h>
 #endif
+#ifdef CONFIG_SND_SOC_TAS2560
+#include <sound/tas2560_algo.h>
+#endif
 #ifdef CONFIG_CIRRUS_PLAYBACK
 #include "msm-cirrus-playback.h"
 #endif
@@ -152,6 +155,16 @@ int ospl2xx_afe_set_callback(
 }
 #endif
 
+#ifdef CONFIG_SND_SOC_TAS2560
+int32_t (*tas2560_algo_callback)(struct apr_client_data *data);
+
+int tas2560_algo_afe_set_callback(
+	int32_t (*tas2560_algo_callback_func)(struct apr_client_data *data))
+{
+	tas2560_algo_callback = tas2560_algo_callback_func;
+	return 0;
+}
+#endif
 #define TIMEOUT_MS 1000
 #define Q6AFE_MAX_VOLUME 0x3FFF
 
@@ -614,7 +627,13 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		if (param_id == AFE_PARAM_ID_DEV_TIMING_STATS) {
 			av_dev_drift_afe_cb_handler(data->opcode, data->payload,
 						    data->payload_size);
-#if defined (CONFIG_SND_SOC_OPALUM)
+#if defined (CONFIG_SND_SOC_TAS2560)
+		} else if (payload[1] == AFE_TAS2560_ALGO_MODULE_RX ||
+			payload[1] == AFE_TAS2560_ALGO_MODULE_TX) {
+				if (tas2560_algo_callback != NULL)
+					tas2560_algo_callback(data);
+				atomic_set(&this_afe.state, 0);
+#elif defined (CONFIG_SND_SOC_OPALUM)
 		} else if (payload[1] == AFE_CUSTOM_OPALUM_RX_MODULE ||
 			   payload[1] == AFE_CUSTOM_OPALUM_TX_MODULE) {
 				if (ospl2xx_callback != NULL)
@@ -6292,6 +6311,25 @@ int afe_set_crus_params(u16 port_id, struct param_hdr_v3 param_hdr,
 }
 #endif
 
+#ifdef CONFIG_SND_SOC_TAS2560
+int afe_set_tas25xx_params(u16 port_id, struct param_hdr_v3 param_hdr,
+				u8 *param_data)
+{
+	int ret = 0;
+	int index = q6audio_get_port_index(port_id);
+
+	if (index < 0 || index >= AFE_MAX_PORTS) {
+		pr_err("%s: index[%d] invalid!\n", __func__, index);
+		return -EINVAL;
+	}
+
+	ret = q6afe_pack_and_set_param_in_band(port_id, index, param_hdr,
+						(u8 *) param_data);
+
+	return ret;
+}
+#endif
+
 int q6afe_check_osr_clk_freq(u32 freq)
 {
 	int ret = 0;
@@ -6485,6 +6523,17 @@ int afe_get_crus_params(u16 port_id, struct mem_mapping_hdr *mem_hdr,
 }
 #endif
 
+#ifdef CONFIG_SND_SOC_TAS2560
+int afe_get_tas25xx_params(u16 port_id, struct mem_mapping_hdr *mem_hdr,
+				struct param_hdr_v3 *param_hdr)
+{
+	int ret = 0;
+
+	ret = q6afe_get_params(port_id, mem_hdr, param_hdr);
+
+	return ret;
+}
+#endif
 
 int afe_spk_prot_feed_back_cfg(int src_port, int dst_port,
 	int l_ch, int r_ch, u32 enable)
