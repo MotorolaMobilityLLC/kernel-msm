@@ -19,6 +19,16 @@
 #include "sdm632-camera-sensor-mot-channel-overlay.dtsi"
 #include "sdm632-moto-fps-channel-overlay.dtsi"
 
+&firmware {
+	android {
+		fstab {
+			vendor {
+				fsmgr_flags = "wait,verify";
+			};
+		};
+	};
+};
+
 &pmx_mdss {
 	mdss_dsi_active {
 		mux {
