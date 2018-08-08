@@ -257,7 +257,7 @@
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cs35l41_irq_default &cs35l41_reset_default>;
@@ -297,7 +297,7 @@
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cs35l41_r_irq_default>;
