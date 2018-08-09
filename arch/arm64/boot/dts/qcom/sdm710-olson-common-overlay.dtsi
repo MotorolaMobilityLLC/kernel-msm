@@ -253,6 +253,44 @@
 		};
 	};
 
+	ts_sub_int_mux {
+		pmx_ts_active: pmx_ts_active {
+			mux {
+				pins = "gpio125";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio125";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		pmx_ts_suspend: pmx_ts_suspend {
+			mux {
+				pins = "gpio125";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio125";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		pmx_ts_release: pmx_ts_release {
+			mux {
+				pins = "gpio125";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio125";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
 	max17050_main_cc {
 		max17050_main_cc_default: max17050_main_cc_default{
 			mux {
@@ -313,6 +351,24 @@
 &qupv3_se7_i2c {
 	synaptics_dsx_i2c@20 {
 		synaptics,splash-screen-mode;
+	};
+
+	raydium-ts@39 {
+		status = "disabled";
+		compatible = "raydium,raydium-ts";
+		reg = <0x39>;
+		/*raydium,reset-gpio = <&tlmm 99 0>;*/
+		raydium,irq-gpio = <&tlmm 125 0>;
+		vcc_i2c-supply = <&pm660_l11>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend", "pmx_ts_release";
+		pinctrl-0 = <&pmx_ts_active>;
+		pinctrl-1 = <&pmx_ts_suspend>;
+		pinctrl-2 = <&pmx_ts_release>;
+		raydium,control-dsi = <1>;
+		raydium,display-coords = <0 0 480 480>;
+		raydium,soft-reset-delay = <360>;
+		raydium,num-max-touches = <2>;
+/*		raydium,hard-reset-delay-ms = <>;*/
 	};
 };
 
