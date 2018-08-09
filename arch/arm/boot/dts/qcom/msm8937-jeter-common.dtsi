@@ -15,6 +15,7 @@
 #include "dsi-panel-mot-djn-570-hd-video.dtsi"
 #include "dsi-panel-mot-djn-571-hd-video.dtsi"
 #include "dsi-panel-mot-wistron-570-hd-video.dtsi"
+#include "dsi-panel-mot-hlt-570-hd-video.dtsi"
 / {
 	aliases {
 		i2c5 = &i2c_5;
