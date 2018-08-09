@@ -33,15 +33,17 @@
 	ldc2114@2a {
 		status = "ok";
 		configs {
-			config-ver = <0>;
+			config-ver = <1>;
 			config-normal {
 				config-data = [
-					0E 0E /*GAIN0*/
+					0C 11 /*EN*/
+					0E 17 /*GAIN0*/
 					0F 01 /*LP_SCAN_RATE*/
-					13 07 /*LP_BASE_INC*/
+					13 03 /*LP_BASE_INC*/
 					15 07 /*NP_BASE_INC*/
-					16 10 /*BTPAUSE_MAXWIN*/
+					16 00 /*BTPAUSE_MAXWIN*/
 					20 29 /*SENSOR0_CFG*/
+					28 00 /*FTF1_2*/
 				];
 			};
 		};
@@ -52,16 +54,17 @@
 	ldc2114@2a {
 		status = "ok";
 		configs {
-			config-ver = <0>;
+			config-ver = <1>;
 			config-normal {
 				config-data = [
-					0C 33 /*EN*/
-					0E 3F /*GAIN0*/
+					0C 30 /*EN*/
+					0E 33 /*GAIN0*/
 					0F 01 /*LP_SCAN_RATE*/
-					10 3F /*GAIN1*/
+					10 33 /*GAIN1*/
 					13 03 /*LP_BASE_INC*/
 					15 07 /*NP_BASE_INC*/
 					16 00 /*BTPAUSE_MAXWIN*/
+					1C 00 /*OPOL_DPOL*/
 					20 59 /*SENSOR0_CFG*/
 					22 59 /*SENSOR1_CFG*/
 				];
