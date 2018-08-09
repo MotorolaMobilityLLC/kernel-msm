@@ -11,7 +11,7 @@
  */
 
 compatible = "qcom,mdss-dsi-panel";
-qcom,mdss-dsi-panel-name = "mipi_mot_cmd_auo_454X454_139";
+qcom,mdss-dsi-panel-name = "mipi_mot_cmd_auo_480x480_139";
 qcom,mdss-dsi-panel-supplier = "auo";
 qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 qcom,mdss-dsi-virtual-channel-id = <0>;
@@ -44,8 +44,8 @@ qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
 qcom,mdss-dsi-display-timings {
 	timing@0{
-		qcom,mdss-dsi-panel-width = <454>;
-		qcom,mdss-dsi-panel-height = <454>;
+		qcom,mdss-dsi-panel-width = <480>;
+		qcom,mdss-dsi-panel-height = <480>;
 		qcom,mdss-dsi-h-front-porch = <44>;
 		qcom,mdss-dsi-h-back-porch = <32>;
 		qcom,mdss-dsi-h-pulse-width = <12>;
@@ -54,15 +54,16 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-v-back-porch = <4>;
 		qcom,mdss-dsi-v-front-porch = <8>;
 		qcom,mdss-dsi-v-pulse-width = <4>;
-		qcom,mdss-dsi-panel-framerate = <45>;
+		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
 		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-on-command = [
 			05 01 00 00 0A 00 01 11
+			15 00 00 00 00 00 02 35 00
 			15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
-			39 00 00 00 00 00 03 51 01 ff
+			15 00 00 00 00 00 02 51 7f
 			05 01 00 00 00 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 23 00 01 28		/* display_off */
