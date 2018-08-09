@@ -210,6 +210,33 @@
 		};
 	};
 
+	ts_sub_rst_mux {
+		ts_sub_rst_active: ts-sub-rst-active {
+			mux {
+				pins = "gpio99";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio99";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		ts_sub_rst_suspend: ts-sub-rst-suspend {
+			mux {
+				pins = "gpio99";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio99";
+				drive-strength = <2>;
+				bias-pull-down;
+				output-low;
+			};
+		};
+	};
+
 	max17050_main_cc {
 		max17050_main_cc_default: max17050_main_cc_default{
 			mux {
