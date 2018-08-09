@@ -50,6 +50,12 @@
 	};
 };
 
+&qupv3_se7_i2c {
+	raydium-ts@39 {
+		status = "ok";
+	};
+};
+
 &qupv3_se10_i2c {
 	ldc2114@2a {
 		status = "ok";
