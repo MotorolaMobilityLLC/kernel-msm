@@ -150,7 +150,7 @@
 		"tmo",		/* 133 */
 		"sprint",	/* 134 */
 		"repw",		/* 135 */
-		"aio",		/* 136 */
+		"attpre",	/* 136 */
 		"cricket",	/* 137 */
 		"cc",		/* 138 */
 		"usc",		/* 139 */
@@ -166,7 +166,7 @@
 		"lra",		/* 149 */
 		"comcast",	/* 150 */
 		"fi",		/* 151 */
-		"undefined",	/* 152 */
+		"vzwpre",	/* 152 */
 		"undefined",	/* 153 */
 		"undefined",	/* 154 */
 		"undefined",	/* 155 */
