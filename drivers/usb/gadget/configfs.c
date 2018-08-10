@@ -342,15 +342,15 @@ static ssize_t gadget_dev_desc_UDC_store(struct config_item *item,
 			ret = -EBUSY;
 			goto err;
 		}
-		if(!gi->secure) {
-			gi->composite.gadget_driver.udc_name = name;
+		gi->composite.gadget_driver.udc_name = name;
+		if (!gi->secure) {
 			ret = usb_gadget_probe_driver(&gi->composite.gadget_driver);
 			if (ret) {
 				gi->composite.gadget_driver.udc_name = NULL;
 				goto err;
 			}
-			schedule_work(&gi->work);
 		}
+		schedule_work(&gi->work);
 	}
 	mutex_unlock(&gi->lock);
 	return len;
