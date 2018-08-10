@@ -294,6 +294,12 @@
 	};
 };
 
+&qupv3_se7_i2c {
+	synaptics_dsx_i2c@20 {
+		synaptics,splash-screen-mode;
+	};
+};
+
 &qupv3_se4_i2c {
 	status = "ok";
 	max17050_main: max17050-battery-main@36 {
