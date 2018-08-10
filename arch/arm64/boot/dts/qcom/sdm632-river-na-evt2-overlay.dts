@@ -27,12 +27,6 @@
  * River NA HW rev EVT2 specific changes go here
  */
 
-&soc {
-	sound-madera {
-		qcom,model = "msm8952-madera-river_na-snd-card";
-	};
-};
-
 &prince_dsp {
 	firmware {
 		protection {
