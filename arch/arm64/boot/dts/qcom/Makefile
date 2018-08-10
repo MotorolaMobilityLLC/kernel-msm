@@ -13,7 +13,8 @@ dtbo-$(CONFIG_RIVER_DTB) += \
 	sdm632-river-evt-overlay.dtbo \
 	sdm632-river-na-evt-overlay.dtbo \
 	sdm632-river-evt2-overlay.dtbo \
-	sdm632-river-na-evt2-overlay.dtbo
+	sdm632-river-na-evt2-overlay.dtbo \
+	sdm632-river-dvt1b-overlay.dtbo
 
 dtbo-$(CONFIG_OCEAN_DTB) += \
 	sdm632-ocean-na-evt1-overlay.dtbo \
@@ -38,6 +39,8 @@ sdm632-river-na-evt-overlay.dtbo-base := \
 sdm632-river-evt2-overlay.dtbo-base := \
        sdm632-river-base.dtb
 sdm632-river-na-evt2-overlay.dtbo-base := \
+       sdm632-river-base.dtb
+sdm632-river-dvt1b-overlay.dtbo-base := \
        sdm632-river-base.dtb
 
 sdm632-ocean-na-evt1-overlay.dtbo-base := \
