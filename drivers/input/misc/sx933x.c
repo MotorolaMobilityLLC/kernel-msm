@@ -28,6 +28,9 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/of_gpio.h>
+#include <linux/notifier.h>
+#include <linux/usb.h>
+#include <linux/power_supply.h>
 #include <linux/sensors.h>
 #include <linux/input/sx933x.h> 	/* main struct, interrupt,init,pointers */
 
@@ -723,6 +726,60 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 	return 0;
 }
 
+static void ps_notify_callback_work(struct work_struct *work)
+{
+	LOG_DBG("USB state change, Going to force calibrate\n");
+	manual_offset_calibration(global_sx933x);
+}
+
+static int ps_get_state(struct power_supply *psy, bool *present)
+{
+	union power_supply_propval pval = {0};
+	int retval;
+
+	retval = power_supply_get_property(psy, POWER_SUPPLY_PROP_PRESENT,
+			&pval);
+	if (retval) {
+		LOG_DBG("%s psy get property failed\n", psy->desc->name);
+		return retval;
+	}
+	*present = (pval.intval) ? true : false;
+	LOG_INFO("%s is %s\n", psy->desc->name,
+			(*present) ? "present" : "not present");
+	return 0;
+}
+
+static int ps_notify_callback(struct notifier_block *self,
+		unsigned long event, void *p)
+{
+	struct sx933x_platform_data *data =
+		container_of(self, struct sx933x_platform_data, ps_notif);
+	struct power_supply *psy = p;
+	bool present;
+	int retval;
+
+	if ((event == PSY_EVENT_PROP_ADDED || event == PSY_EVENT_PROP_CHANGED)
+			&& psy && psy->desc->get_property && psy->desc->name &&
+			!strncmp(psy->desc->name, "usb", sizeof("usb")) && data) {
+		LOG_INFO("ps notification: event = %lu\n", event);
+		retval = ps_get_state(psy, &present);
+		if (retval) {
+			return retval;
+		}
+
+		if (event == PSY_EVENT_PROP_CHANGED) {
+			if (data->ps_is_present == present) {
+				LOG_INFO("ps present state not change\n");
+				return 0;
+			}
+		}
+		data->ps_is_present = present;
+		schedule_work(&data->ps_notify_work);
+	}
+
+	return 0;
+}
+
 /*! \fn static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *id)
  * \brief Probe function
  * \param client pointer to i2c_client
@@ -737,6 +794,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 	psx93XX_t this = 0;
 	psx933x_t pDevice = 0;
 	psx933x_platform_data_t pplatData = 0;
+	struct power_supply *psy = NULL;
 	struct totalButtonInformation *pButtonInformationData = NULL;
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 
@@ -899,6 +957,22 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 			LOG_INFO("cap_vdd regulator is %s\n",
 					regulator_is_enabled(pplatData->cap_vdd) ?
 					"on" : "off");
+		}
+
+		/*notify usb state*/
+		INIT_WORK(&pplatData->ps_notify_work, ps_notify_callback_work);
+		pplatData->ps_notif.notifier_call = ps_notify_callback;
+		err = power_supply_reg_notifier(&pplatData->ps_notif);
+		if (err)
+			LOG_DBG("Unable to register ps_notifier: %d\n", err);
+
+		psy = power_supply_get_by_name("usb");
+		if (psy) {
+			err = ps_get_state(psy, &pplatData->ps_is_present);
+			if (err) {
+				LOG_DBG("psy get property failed rc=%d\n", err);
+				power_supply_unreg_notifier(&pplatData->ps_notif);
+			}
 		}
 
 		sx93XX_IRQ_init(this);
