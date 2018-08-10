@@ -46,3 +46,8 @@
 	};
 };
 
+&soc {
+	sound-madera {
+		qcom,model = "msm8952-madera-epout-snd-card";
+	};
+};
