@@ -175,12 +175,12 @@ static int cs35l41_dsp_load_ev(struct snd_soc_dapm_widget *w,
 			cs35l41->halo_booted = true;
 		}
 
-		regmap_write(cs35l41->regmap, cs35l41->cspl_cmd_reg,
-				CS35L41_CSPL_CMD_UNMUTE);
+		regmap_write(cs35l41->regmap, CS35L41_CSPL_COMMAND,
+				(CS35L41_CSPL_CMD_UNMUTE));
 
 		return 0;
 	case SND_SOC_DAPM_PRE_PMD:
-		regmap_write(cs35l41->regmap, cs35l41->cspl_cmd_reg,
+		regmap_write(cs35l41->regmap, CS35L41_CSPL_COMMAND,
 				CS35L41_CSPL_CMD_MUTE);
 	default:
 		return 0;
@@ -1718,12 +1718,6 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 				"Failed to apply A0 errata patch %d\n", ret);
 			goto err;
 		}
-
-		cs35l41->cspl_cmd_reg = CS35L41_CSPL_COMMAND_REV_A0;
-		break;
-	case CS35L41_REVID_B0:
-		cs35l41->cspl_cmd_reg = CS35L41_CSPL_COMMAND_REV_B0;
-		break;
 	}
 
 	ret = cs35l41_otp_unpack(cs35l41);
