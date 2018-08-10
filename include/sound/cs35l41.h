@@ -61,7 +61,6 @@ struct cs35l41_private {
 	int extclk_freq;
 	int extclk_cfg;
 	int sclk;
-	unsigned int cspl_cmd_reg;
 	bool tdm_mode;
 	bool i2s_mode;
 	bool swire_mode;
