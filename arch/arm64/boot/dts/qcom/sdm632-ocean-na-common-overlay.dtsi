@@ -17,6 +17,13 @@
 	};
 };
 
+&i2c_2 {
+	status = "ok";
+	abova96t316@20 {
+		reg_array_val = <0x07 0x00 0x08 0x97 0xFB 0x01>;
+	};
+};
+
 &i2c_5 {
 	status = "okay";
 	tps61280@75 {
