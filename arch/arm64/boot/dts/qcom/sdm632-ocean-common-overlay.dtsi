@@ -495,8 +495,8 @@
 		cap,use_channel_top = <0x01>;
 		cap,use_channel_bottom = <0x00>;
 		cap,scan_period = <0x02>;
-		reg_array_len = <2>;
-		reg_array_val = <0x18 0x5a 0x19 0x93>;
+		reg_array_len = <3>;
+		reg_array_val = <0x07 0x00 0x08 0x07 0xFB 0x01>;
 	};
 
 
