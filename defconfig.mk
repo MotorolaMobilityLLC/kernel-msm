@@ -11,7 +11,10 @@ FACTORY_DEFCONFIG		:= $(LJAPDEFCONFIGSRC)/factory-$(DEFCONFIG_BASENAME).config
 ifneq ($(TARGET_BUILD_VARIANT), user)
 ifneq ($(TARGET_NO_KERNEL_DEBUG), true)
 ifneq ($(wildcard $(KERNEL_DEBUG_DEFCONFIG)),)
+# MMI-STOPSHIP remove debug-msm8953.config for channel
+ifeq ($(findstring channel, $(PRODUCT_DEBUG_DEFCONFIG)),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_DEBUG_DEFCONFIG)
+endif
 # Add [32bit | 64bit] debug config
 ifneq ($(TARGET_QCOM_DEVICE),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(LJAPDEFCONFIGSRC)/debug-$(TARGET_QCOM_DEVICE).config
