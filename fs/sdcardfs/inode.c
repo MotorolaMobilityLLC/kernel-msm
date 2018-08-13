@@ -75,6 +75,11 @@ static int sdcardfs_create(struct inode *dir, struct dentry *dentry,
 		err = -EACCES;
 		goto out_eacces;
 	}
+	if (!check_min_free_space(dentry, 0, 1)) {
+		pr_err("sdcardfs: No minimum free space.\n");
+		err = -ENOSPC;
+		goto out_eacces;
+	}
 
 	/* save current_cred and override it */
 	saved_cred = override_fsids(SDCARDFS_SB(dir->i_sb),
