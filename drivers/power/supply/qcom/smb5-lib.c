@@ -1907,7 +1907,6 @@ static int smblib_dp_pulse(struct smb_charger *chg)
 	return rc;
 }
 
-#ifdef QCOM_BASE
 static int smblib_dm_pulse(struct smb_charger *chg)
 {
 	int rc;
@@ -1921,7 +1920,6 @@ static int smblib_dm_pulse(struct smb_charger *chg)
 
 	return rc;
 }
-#endif
 
 int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 {
@@ -5554,15 +5552,15 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			smblib_dp_pulse(chip);
 			vbus_inc_now = true;
 			mmi->vbus_inc_cnt++;
-		} else if (usb_mv > VBUS_INPUT_VOLTAGE_MAX) {
+		} else if ((usb_mv > VBUS_INPUT_VOLTAGE_MAX)
+				&& (mmi->vbus_inc_cnt > 0)) {
 			smblib_dbg(chip, PR_MOTO,
-				   "HVDCP Input %d mV High force 5V\n",
+				   "HVDCP Input %d mV High, Decrease\n",
 				   usb_mv);
 			vbus_inc_mv -= 50;
-			smblib_write(chip, CMD_HVDCP_2_REG,
-				     FORCE_5V_BIT);
+			smblib_dm_pulse(chip);
 			vbus_inc_now = true;
-			mmi->vbus_inc_cnt = 0;
+			mmi->vbus_inc_cnt--;
 		}
 	}
 
