@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  */
 
+#include "carrier-channel-ids.dtsi"
 #include "sdm632-moto-pinctrl-overlay.dtsi"
 #include <dt-bindings/moto/moto-mem-reserve.h>
 
