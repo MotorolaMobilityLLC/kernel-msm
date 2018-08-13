@@ -380,21 +380,32 @@ static __ref int sensor_sysfs_notify(void *data)
 {
 	int ret = 0;
 	struct sensor_info *sensor = (struct sensor_info *)data;
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
+	sched_setscheduler(current, SCHED_RR, &param);
 
+	set_current_state(TASK_INTERRUPTIBLE);
 	while (!kthread_should_stop()) {
 		if (wait_event_interruptible(
 		   sensor->sysfs_notify_complete.wait,
 		   sensor->sysfs_notify_complete.done || kthread_should_stop()))
 			continue;
-		if (sensor->deregister_active)
-			return ret;
 
 		if (kthread_should_stop())
 			break;
 
+		set_current_state(TASK_RUNNING);
+		/*  Wait the kthread_should_stop to exit,
+		 *  avoid the crash from double free thread or sensor freed.
+		*/
+		if (sensor->deregister_active) {
+			set_current_state(TASK_INTERRUPTIBLE);
+			continue;
+		}
+
 		reinit_completion(&sensor->sysfs_notify_complete);
 		sysfs_notify(&sensor->tz->device.kobj, NULL,
 					THERMAL_UEVENT_DATA);
+		set_current_state(TASK_INTERRUPTIBLE);
 	}
 	return ret;
 }
@@ -2481,6 +2492,7 @@ void thermal_zone_device_unregister(struct thermal_zone_device *tz)
 	flush_work(&tz->sensor.work);
 	tz->sensor.deregister_active = true;
 	complete(&tz->sensor.sysfs_notify_complete);
+	kthread_stop(tz->sensor.sysfs_notify_thread);
 	mutex_lock(&thermal_list_lock);
 	list_del_rcu(&tz->sensor.sensor_list);
 	mutex_unlock(&thermal_list_lock);
