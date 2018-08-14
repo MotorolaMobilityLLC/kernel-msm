@@ -246,76 +246,6 @@ static int manual_offset_calibration(psx93XX_t this)
 /*! \brief sysfs show function for manual calibration which currently just
  * returns register value.
  */
-static ssize_t manual_offset_calibration_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	u32 reg_value = 0;
-	psx93XX_t this = dev_get_drvdata(dev);
-
-	LOG_DBG("Reading IRQSTAT_REG\n");
-	sx933x_i2c_read_16bit(this,SX933X_HOSTIRQSRC_REG,&reg_value);
-	return sprintf(buf, "%d\n", reg_value);
-}
-
-
-static ssize_t manual_offset_calibration_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long val;
-	psx93XX_t this = dev_get_drvdata(dev);
-
-	if (kstrtoul(buf, 10, &val))                //(strict_strtoul(buf, 10, &val)) {
-	{
-		LOG_DBG(" %s - Invalid Argument\n", __func__);
-		return -EINVAL;
-	}
-
-	if (val)
-		manual_offset_calibration(this);
-
-	return count;
-}
-
-/****************************************************************************/
-static ssize_t sx933x_register_write_store(struct device *dev,
-		struct device_attribute *attr,  const char *buf, size_t count)
-{
-	u32 reg_address = 0, val = 0;
-	psx93XX_t this = dev_get_drvdata(dev);
-
-	if (sscanf(buf, "%x,%x", &reg_address, &val) != 2)
-	{
-		LOG_DBG("%s - The number of data are wrong\n",__func__);
-		return -EINVAL;
-	}
-
-	sx933x_i2c_write_16bit(this, reg_address, val);
-
-	LOG_DBG("%s - Register(0x%x) data(0x%x)\n",__func__, reg_address, val);
-	return count;
-}
-
-static ssize_t sx933x_register_read_store(struct device *dev,
-		struct device_attribute *attr,  const char *buf, size_t count)
-{
-	u32 val=0;
-	int regist = 0;
-	int nirq_state = 0;
-	psx93XX_t this = dev_get_drvdata(dev);
-
-	if (sscanf(buf, "%x", &regist) != 1)
-	{
-		LOG_DBG("%s - The number of data are wrong\n",__func__);
-		return -EINVAL;
-	}
-
-	sx933x_i2c_read_16bit(this, regist, &val);
-	nirq_state = sx933x_get_nirq_state();
-
-	LOG_DBG("%s - Register(0x%2x) data(0x%4x) nirq_state(%d)\n",__func__, regist, val, nirq_state);
-	return count;
-}
-
 static void read_rawData(psx93XX_t this)
 {
 	u8 csx, index;
@@ -346,7 +276,28 @@ static void read_rawData(psx93XX_t this)
 	}
 }
 
-static ssize_t sx933x_raw_data_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t capsense_reset_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	u32 temp = 0;
+	sx933x_i2c_read_16bit(global_sx933x, SX933X_GNRLCTRL2_REG, &temp);
+	if (!count)
+		return -EINVAL;
+
+	if (!strncmp(buf, "reset", 5) || !strncmp(buf, "1", 1)) {
+		if (temp & 0x0000001F) {
+			LOG_DBG("Going to refresh baseline\n");
+			manual_offset_calibration(global_sx933x);
+		}
+	}
+
+	return count;
+}
+
+static ssize_t capsense_raw_data_show(struct class *class,
+		struct class_attribute *attr,
+		char *buf)
 {
 	char *p = buf;
 	int csx;
@@ -354,7 +305,7 @@ static ssize_t sx933x_raw_data_show(struct device *dev, struct device_attribute 
 	u32 uData;
 	u16 offset;
 
-	psx93XX_t this = dev_get_drvdata(dev);
+	psx93XX_t this = global_sx933x;
 	if(this) {
 		for(csx =0; csx<5; csx++) {
 			sx933x_i2c_read_16bit(this, SX933X_USEPH0_REG + csx*4, &uData);
@@ -372,22 +323,91 @@ static ssize_t sx933x_raw_data_show(struct device *dev, struct device_attribute 
 	return (p-buf);
 }
 
-static DEVICE_ATTR(manual_calibrate, 0664, manual_offset_calibration_show,manual_offset_calibration_store);
-static DEVICE_ATTR(register_write,  0664, NULL,sx933x_register_write_store);
-static DEVICE_ATTR(register_read,0664, NULL,sx933x_register_read_store);
-static DEVICE_ATTR(raw_data,0664,sx933x_raw_data_show,NULL);
+static ssize_t sx933x_register_write_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	u32 reg_address = 0, val = 0;
+	psx93XX_t this = global_sx933x;
 
-static struct attribute *sx933x_attributes[] =
+	if (sscanf(buf, "%x,%x", &reg_address, &val) != 2)
+	{
+		LOG_DBG("%s - The number of data are wrong\n",__func__);
+		return -EINVAL;
+	}
+
+	sx933x_i2c_write_16bit(this, reg_address, val);
+
+	LOG_DBG("%s - Register(0x%x) data(0x%x)\n",__func__, reg_address, val);
+	return count;
+}
+
+static ssize_t sx933x_register_read_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
 {
-	&dev_attr_manual_calibrate.attr,
-	&dev_attr_register_write.attr,
-	&dev_attr_register_read.attr,
-	&dev_attr_raw_data.attr,
-	NULL,
+	u32 val=0;
+	int regist = 0;
+	int nirq_state = 0;
+	psx93XX_t this = global_sx933x;
+
+	if (sscanf(buf, "%x", &regist) != 1)
+	{
+		LOG_DBG("%s - The number of data are wrong\n",__func__);
+		return -EINVAL;
+	}
+
+	sx933x_i2c_read_16bit(this, regist, &val);
+	nirq_state = sx933x_get_nirq_state();
+
+	LOG_DBG("%s - Register(0x%2x) data(0x%4x) nirq_state(%d)\n",__func__, regist, val, nirq_state);
+	return count;
+}
+
+static ssize_t manual_offset_calibration_show(struct class *class,
+		struct class_attribute *attr,
+		char *buf)
+{
+	u32 reg_value = 0;
+	psx93XX_t this = global_sx933x;
+
+	LOG_DBG("Reading IRQSTAT_REG\n");
+	sx933x_i2c_read_16bit(this,SX933X_HOSTIRQSRC_REG,&reg_value);
+	return sprintf(buf, "%d\n", reg_value);
+}
+
+
+static ssize_t manual_offset_calibration_store(struct class *class,
+		struct class_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned long val;
+	psx93XX_t this = global_sx933x;
+
+	if (kstrtoul(buf, 10, &val))                //(strict_strtoul(buf, 10, &val)) {
+	{
+		LOG_DBG(" %s - Invalid Argument\n", __func__);
+		return -EINVAL;
+	}
+
+	if (val)
+		manual_offset_calibration(this);
+
+	return count;
+}
+static struct class_attribute capsense_class_attributes[] = {
+	__ATTR(reset, 0660, NULL, capsense_reset_store),
+	__ATTR(raw_data, 0660, capsense_raw_data_show, NULL),
+	__ATTR(register_write,  0660, NULL,sx933x_register_write_store),
+	__ATTR(register_read,0660, NULL,sx933x_register_read_store),
+	__ATTR(manual_calibrate, 0660, manual_offset_calibration_show,manual_offset_calibration_store),
+	__ATTR_NULL,
 };
-static struct attribute_group sx933x_attr_group =
-{
-	.attrs = sx933x_attributes,
+
+struct class capsense_class = {
+	.name                   = "capsense",
+	.owner                  = THIS_MODULE,
+	.class_attrs		= capsense_class_attributes,
 };
 
 /**************************************/
@@ -728,8 +748,12 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 
 static void ps_notify_callback_work(struct work_struct *work)
 {
-	LOG_DBG("USB state change, Going to force calibrate\n");
-	manual_offset_calibration(global_sx933x);
+	u32 temp = 0;
+	sx933x_i2c_read_16bit(global_sx933x, SX933X_GNRLCTRL2_REG, &temp);
+	if (temp & 0x0000001F) {
+		LOG_DBG("USB state change, Going to force calibrate\n");
+		manual_offset_calibration(global_sx933x);
+	}
 }
 
 static int ps_get_state(struct power_supply *psy, bool *present)
@@ -798,7 +822,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 	struct totalButtonInformation *pButtonInformationData = NULL;
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 
-	LOG_DBG("sx933x_probe()\n");	
+	LOG_DBG("sx933x_probe()\n");
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_READ_WORD_DATA))
 	{
@@ -863,7 +887,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 			this->statusFunc[1] = 0; /* UNUSED */
 			this->statusFunc[2] = touchProcess; /* body&table */
 			this->statusFunc[3] = read_rawData; /* CONV_STAT */
-			this->statusFunc[4] = 0; /* COMP_STAT */
+			this->statusFunc[4] = touchProcess; /* COMP_STAT */
 			this->statusFunc[5] = touchProcess; /* RELEASE_STAT */
 			this->statusFunc[6] = touchProcess; /* TOUCH_STAT  */
 			this->statusFunc[7] = 0; /* RESET_STAT */
@@ -883,8 +907,11 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 		if (pDevice)
 		{
 			/* for accessing items in user data (e.g. calibrate) */
-			err = sysfs_create_group(&client->dev.kobj, &sx933x_attr_group);
-			//sysfs_create_group(client, &sx933x_attr_group);
+			err = class_register(&capsense_class);
+			if (err < 0) {
+				LOG_DBG("Create fsys class failed (%d)\n", err);
+				return err;
+			}
 
 			/* Add Pointer to main platform data struct */
 			pDevice->hw = pplatData;
@@ -952,7 +979,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 				LOG_DBG("%s: Error %d enable regulator\n",
 						__func__, err);
 				return err;
-			}    
+			}
 			pplatData->cap_vdd_en = true;
 			LOG_INFO("cap_vdd regulator is %s\n",
 					regulator_is_enabled(pplatData->cap_vdd) ?
@@ -1005,7 +1032,6 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
  * \param client Pointer to i2c_client struct
  * \return Value 0
  */
-//static int __devexit sx933x_remove(struct i2c_client *client)
 static int sx933x_remove(struct i2c_client *client)
 {
 	psx933x_platform_data_t pplatData =0;
@@ -1019,7 +1045,8 @@ static int sx933x_remove(struct i2c_client *client)
 		free_irq(this->irq, this);
 		cancel_delayed_work_sync(&(this->dworker));	
 
-		sysfs_remove_group(&client->dev.kobj, &sx933x_attr_group);
+		class_unregister(&capsense_class);
+		power_supply_unreg_notifier(&pplatData->ps_notif);
 		pplatData = client->dev.platform_data;
 		if (pplatData && pplatData->exit_platform_hw)
 			pplatData->exit_platform_hw(client);
