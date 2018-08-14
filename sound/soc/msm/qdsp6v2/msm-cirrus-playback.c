@@ -360,16 +360,18 @@ static int msm_crus_se_usecase(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
-	cirrus_se_usecase = crus_set;
+	if (cirrus_se_usecase != crus_set) {
+		cirrus_se_usecase = crus_set;
 
-	case_ctrl.status_l = 0;
-	case_ctrl.status_r = 0;
-	case_ctrl.atemp = 0;
-	case_ctrl.value = cirrus_se_usecase;
+		case_ctrl.status_l = 0;
+		case_ctrl.status_r = 0;
+		case_ctrl.atemp = 0;
+		case_ctrl.value = cirrus_se_usecase;
 
-	crus_set_param(cirrus_ff_port, CIRRUS_SE,
-		       CRUS_PARAM_RX_SET_USECASE, sizeof(case_ctrl),
-		       (void *)&case_ctrl);
+		crus_set_param(cirrus_ff_port, CIRRUS_SE,
+			       CRUS_PARAM_RX_SET_USECASE, sizeof(case_ctrl),
+			       (void *)&case_ctrl);
+	}
 
 	return 0;
 }
