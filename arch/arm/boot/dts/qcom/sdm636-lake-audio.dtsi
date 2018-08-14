@@ -404,6 +404,7 @@
 					0 1 2 0 0
 				>;
 				cirrus,init-mic-delay-ms = <200>;
+				cirrus,micd-manual-debounce = <3>;
 				cirrus,micd-clamp-mode = <0x4>;
 				cirrus,gpsw = <1>;
 			};
