@@ -159,6 +159,9 @@ struct qusb_phy {
 	int			tune2_efuse_num_of_bits;
 	int			tune2_efuse_correction;
 	int			tune2_efuse_correction_host;
+#ifdef CONFIG_USB_PHY_TUNE_FACTORY_OVERRIDE
+	u32			tune_factory_override;
+#endif
 
 	bool			power_enabled;
 	bool			clocks_enabled;
@@ -807,6 +810,24 @@ static int qusb_phy_init(struct usb_phy *phy)
 				qphy->base + QUSB2PHY_PORT_TUNE2);
 	}
 
+#ifdef CONFIG_USB_PHY_TUNE_FACTORY_OVERRIDE
+	if (qphy->tune_factory_override) {
+		pr_debug("%s():Factory TUNEX val:0x%x %x %x %x\n", __func__,
+				qphy->tune_factory_override & 0xFF,
+				(qphy->tune_factory_override >> 8) & 0xFF,
+				(qphy->tune_factory_override >> 16) & 0xFF,
+				(qphy->tune_factory_override >> 24) & 0xFF);
+		writel_relaxed(qphy->tune_factory_override & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE1);
+		writel_relaxed((qphy->tune_factory_override >> 8) & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE2);
+		writel_relaxed((qphy->tune_factory_override >> 16) & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE3);
+		writel_relaxed((qphy->tune_factory_override >> 24) & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE4);
+	}
+#endif
+
 	/* If tune modparam set, override tune value */
 
 	pr_debug("%s():userspecified modparams TUNEX val:0x%x %x %x %x %x\n",
@@ -1255,6 +1276,12 @@ static int qusb_phy_probe(struct platform_device *pdev)
 			}
 		}
 	}
+
+#ifdef CONFIG_USB_PHY_TUNE_FACTORY_OVERRIDE
+	of_property_read_u32(dev->of_node,
+			"qcom,tune-factory-override",
+			&qphy->tune_factory_override);
+#endif
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 							"ref_clk_addr");
