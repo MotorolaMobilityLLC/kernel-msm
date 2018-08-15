@@ -226,10 +226,10 @@
 };
 
 &qusb_phy0 {
-	qcom,tune2-efuse-correction = <(-9)>;
+	qcom,tune2-efuse-correction = <5>;
 	qcom,tune2-efuse-correction-host = <(-8)>;
 	qcom,qusb-phy-init-seq = <0xc0 0x80
-				0x31 0x84
+				0x11 0x84
 				0x83 0x88
 				0xc7 0x8c
 				0x30 0x08
