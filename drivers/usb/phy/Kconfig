@@ -265,4 +265,12 @@ config USB_MSM_OTG
 	  required after resetting the hardware and power management.
 	  This driver is required even for peripheral only or host only
 	  mode configurations.
+
+config USB_PHY_TUNE_FACTORY_OVERRIDE
+	bool "USB phy tune override for factory"
+	depends on USB_PHY
+	default n
+	help
+	  Select use USB phy tune override parameters for factory.
+
 endmenu
