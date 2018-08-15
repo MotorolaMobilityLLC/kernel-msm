@@ -115,6 +115,14 @@
 		compatible = "mmi,watchdog_cpu_ctx";
 		memory-region = <&wdog_cpuctx_mem>;
 	};
+
+	fpc_fpc1020 {
+		status = "ok";
+		compatible = "fpc,fpc1020";
+		reg = <0>;
+		irq = <&tlmm 23 0>;
+	};
+
 };
 
 
