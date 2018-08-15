@@ -879,18 +879,7 @@
 	};
 };
 
-&qupv3_se15_spi { /* FPS */
-	status = "ok";
 
-	fpc_fpc1020@0 {
-		status = "ok";
-		compatible = "fpc,fpc1020";
-		reg = <0>;
-		irq = <&tlmm 23 0>;
-		fpc,txout_boost_enable;
-		spi-max-frequency = <4800000>;
-	};
-};
 
 &pm660_vadc {
 	chan@4f {
