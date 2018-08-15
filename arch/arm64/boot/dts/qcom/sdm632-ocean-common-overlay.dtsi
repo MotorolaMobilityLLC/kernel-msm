@@ -403,6 +403,7 @@
 		reg = <0x62>;
 		status = "ok";
 		novatek,irq-gpio = <&tlmm 65 0x2001>;
+		novatek,def-max-resolution = <720 1520>;
 	};
 
 	ilitek@41 {
