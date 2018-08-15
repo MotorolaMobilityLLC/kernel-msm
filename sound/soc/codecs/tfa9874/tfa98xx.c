@@ -2751,19 +2751,18 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-extern int send_tfa_cal_in_band(void *buf, int cmd_size);
-
 #ifdef TFA9874_NONDSP_STEREO
+extern int send_tfa_cal_in_band(void *buf, int cmd_size);
 static uint8_t bytes[3*3+1] = {0};
-
+#define MONO_I2C_ADDR (0x34)
+#define IMPEDANCE_VALUE (4000) /*or 20000*/
 enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(struct tfa98xx *tfa98xx)
 {
 	int ret = 0;
 	struct tfa_device *tfa = tfa98xx->tfa;
 	int value = 0, nr, dsp_cal_value = 0;
 
-	/* If calibration is set to once we load from MTP, else send zero's */
-	if (TFA_GET_BF(tfa, MTPEX) == 1 && tfa98xx->i2c->addr == 0x34)
+	if (TFA_GET_BF(tfa, MTPEX) == 1 && tfa98xx->i2c->addr == MONO_I2C_ADDR)
 	{
 		value = tfa_dev_mtp_get(tfa, TFA_MTP_RE25);
 		dsp_cal_value = (value * 65536) / 1000;
@@ -2776,27 +2775,12 @@ enum Tfa98xx_Error tfa98xx_adsp_send_calib_values(struct tfa98xx *tfa98xx)
 
 		dev_err(&tfa98xx->i2c->dev, "%s: cal value 0x%x\n", __func__, dsp_cal_value);
 
-		/* Receiver RDC */
-		if (value > 20000)
-			bytes[0] |= 0x01;
-	}
-
-	if (TFA_GET_BF(tfa, MTPEX) == 1 && tfa98xx->i2c->addr == 0x35)
-	{
-		value = tfa_dev_mtp_get(tfa, TFA_MTP_RE25);
-		dsp_cal_value = (value * 65536) / 1000;
-
-		nr = 7;
-		/* We have to copy it for both channels. Even when mono! */
-		bytes[nr++] = (uint8_t)((dsp_cal_value >> 16) & 0xff);
-		bytes[nr++] = (uint8_t)((dsp_cal_value >> 8) & 0xff);
-		bytes[nr++] = (uint8_t)(dsp_cal_value & 0xff);
-
-		dev_err(&tfa98xx->i2c->dev, "%s: cal value 0x%x\n", __func__, dsp_cal_value);
-
-		/* Speaker RDC */
-		if (value > 4000)
-			bytes[0] |= 0x10;
+		bytes[nr++] = bytes[4];
+		bytes[nr++] = bytes[5];
+		bytes[nr++] = bytes[6];
+		/* RDC */
+		if (value > IMPEDANCE_VALUE)
+			bytes[0] |= 0x11;
 	}
 
 	if (bytes[0] == 0x11)
