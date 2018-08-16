@@ -80,6 +80,7 @@ qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
+qcom,mdss-panel-reg-read-lp-enable;
 qcom,mdss-dsi-off-reset-disable;
 qcom,cont-splash-enabled;
 qcom,esd-check-enabled;
