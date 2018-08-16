@@ -17,4 +17,9 @@
 			cirrus,bin-file = "cs35l41-dsp1-spk-prot-na.bin";
 		};
 	};
+
+&soc {
+	msm-cirrus-playback {
+		usecase-indexes = <4 5 6 7>;
+	};
 };
