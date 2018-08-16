@@ -15,6 +15,7 @@
 
 #include "sdm636.dtsi"
 #include "sdm636-lake.dtsi"
+#include "sdm636-lake-audio-na.dtsi"
 
 / {
 	qcom,board-id = <(LAKE_RADIO_NA << 8 | 0x4C) 0xA200>,<(LAKE_RADIO_TMO << 8 | 0x4C) 0xA200>;
@@ -23,14 +24,6 @@
 /*
  * Lake NA HW rev EVT1 specific changes go here
 */
-
-&prince_l_dsp {
-	firmware {
-		protection {
-			cirrus,bin-file = "cs35l41-dsp1-spk-prot-na.bin";
-		};
-	};
-};
 
 &i2c_3 {
 	synaptics_tcm@20 {
