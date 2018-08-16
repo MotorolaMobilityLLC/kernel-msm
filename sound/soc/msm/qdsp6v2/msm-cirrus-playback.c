@@ -46,6 +46,7 @@ static int cirrus_ff_port = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX;
 
 static int crus_se_usecase_dt_count;
 static const char *crus_se_usecase_dt_text[MAX_TUNING_CONFIGS];
+static u32 crus_se_usecase_dt_index[MAX_TUNING_CONFIGS] = {0, 1, 2, 3};
 
 static int crus_get_param(int port, int module, int param, int length,
 			      void *data)
@@ -353,20 +354,24 @@ static int msm_crus_se_usecase(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	uint32_t max_index = e->items;
 
-	pr_debug("Starting Cirrus SE Config function call %d\n", crus_set);
+	pr_debug("Starting Cirrus SE Usecase function call [%d,%d]\n",
+		 crus_set, crus_se_usecase_dt_index[crus_set]);
 
 	if (crus_set >= max_index) {
 		pr_err("Cirrus SE Config index out of bounds (%d)\n", crus_set);
 		return -EINVAL;
 	}
 
-	if (cirrus_se_usecase != crus_set) {
-		cirrus_se_usecase = crus_set;
+	if (cirrus_se_usecase != crus_se_usecase_dt_index[crus_set]) {
+		cirrus_se_usecase = crus_se_usecase_dt_index[crus_set];
 
 		case_ctrl.status_l = 0;
 		case_ctrl.status_r = 0;
 		case_ctrl.atemp = 0;
 		case_ctrl.value = cirrus_se_usecase;
+
+		/* TODO: remove below when QDSP/LPASS is ready for 8 slots */
+		case_ctrl.value -= crus_se_usecase_dt_index[0];
 
 		crus_set_param(cirrus_ff_port, CIRRUS_SE,
 			       CRUS_PARAM_RX_SET_USECASE, sizeof(case_ctrl),
@@ -387,6 +392,9 @@ static int msm_crus_se_usecase_get(struct snd_kcontrol *kcontrol,
 			   sizeof(struct crus_single_data_t), (void *)&crus_usecase);
 
 	ucontrol->value.integer.value[0] = crus_usecase.value;
+
+	/* TODO: uncomment this when QDSP/LPASS is ready for 8 slots */
+	//ucontrol->value.integer.value[0] -= crus_se_usecase_dt_index[0];
 
 	return 0;
 }
@@ -565,6 +573,20 @@ static int msm_crus_chan_swap_dur_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int msm_crus_se_usecase_index_get(struct snd_kcontrol *kcontrol,
+					 struct snd_ctl_elem_value *ucontrol)
+{
+	int i = 0;
+
+	pr_debug("Starting Cirrus SE Usecase Index Get function call\n");
+
+	for (i = 0 ; i < crus_se_usecase_dt_count; i++) {
+		ucontrol->value.integer.value[i] = crus_se_usecase_dt_index[i];
+	}
+
+	return 0;
+}
+
 static const char * const crus_en_text[] = {"Disable", "Enable"};
 
 static const char * const crus_conf_load_text[] = {"Idle", "Load RX"};
@@ -607,6 +629,8 @@ static const struct snd_kcontrol_new crus_mixer_controls[] = {
 	SOC_SINGLE_EXT("Cirrus SE Channel Swap Duration", SND_SOC_NOPM, 0,
 	MAX_CHAN_SWAP_SAMPLES, 0, msm_crus_chan_swap_dur_get,
 	msm_crus_chan_swap_dur),
+	SOC_SINGLE_MULTI_EXT("Cirrus SE Audio Index", SND_SOC_NOPM, 0,
+	0xFFFF, 0, 4, msm_crus_se_usecase_index_get, NULL),
 };
 
 void msm_crus_pb_add_controls(struct snd_soc_platform *platform)
@@ -773,6 +797,7 @@ static int msm_cirrus_playback_probe(struct platform_device *pdev)
 {
 	int i, rc = 0;
 	u32 ff_port_id;
+	int num_entries = 0;
 
 	pr_info("CRUS_SE: initializing platform device\n");
 
@@ -796,9 +821,20 @@ static int msm_cirrus_playback_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	for (i = 0; i < crus_se_usecase_dt_count; i++)
-		pr_info("CRUS_SE: usecase[%d] = %s\n", i,
+	num_entries = of_property_count_u32_elems(pdev->dev.of_node,
+						  "usecase-indexes");
+	if (num_entries > 0) {
+		of_property_read_u32_array(pdev->dev.of_node,
+					   "usecase-indexes",
+					   crus_se_usecase_dt_index,
+					   crus_se_usecase_dt_count);
+	}
+
+	for (i = 0; i < crus_se_usecase_dt_count; i++) {
+		pr_info("CRUS_SE: usecase[%u] = %s\n",
+			 crus_se_usecase_dt_index[i],
 			 crus_se_usecase_dt_text[i]);
+	}
 
 	rc = of_property_read_u32_index(pdev->dev.of_node,
 					"afe-port-id", 0, &ff_port_id);

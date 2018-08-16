@@ -7,6 +7,8 @@ Required properties:
   - usecase-names : List of strings representing the various usecases
   available on a given platform (max of 4).
 
+  - usecase-indexes : List of usecases index representing the above
+
   - ff-port-id : Port index of feedforward speaker enhancement module
 
 Example:
@@ -14,5 +16,6 @@ Example:
 msm-cirrus-playback {
 	compatible = "cirrus,msm-cirrus-playback";
 	usecase-names = "Playback", "Voice", "Headset", "Handsfree";
+	usecase-indexes = <0 1 2 3>;
 	ff-port-id = "16384";
 };
