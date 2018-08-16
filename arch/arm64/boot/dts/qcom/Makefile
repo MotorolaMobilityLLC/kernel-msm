@@ -27,6 +27,7 @@ dtbo-$(CONFIG_OCEAN_DTB) += \
 
 dtbo-$(CONFIG_CHANNEL_DTB) += \
 	sdm632-channel-evt-overlay.dtbo \
+	sdm632-channel-dvt2-overlay.dtbo \
 	sdm632-channel-na-evt-overlay.dtbo
 
 sdm450-ali-evt-overlay.dtbo-base := \
@@ -59,6 +60,8 @@ sdm632-ocean-row-dvt1b-overlay.dtbo-base := \
        sdm632-ocean-base.dtb
 
 sdm632-channel-evt-overlay.dtbo-base := \
+	sdm632-channel-base.dtb
+sdm632-channel-dvt2-overlay.dtbo-base := \
 	sdm632-channel-base.dtb
 sdm632-channel-na-evt-overlay.dtbo-base := \
 	sdm632-channel-base.dtb
