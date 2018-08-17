@@ -113,13 +113,11 @@ static int sx933x_i2c_write_16bit(psx93XX_t this, u16 reg_addr, u32 buf)
 
 		ret = i2c_transfer(i2c->adapter, &msg, 1);
 		if (ret < 0)
-			LOG_DBG("%s - i2c write error %d\n", __func__, ret);
+			LOG_DBG("%s - i2c write reg 0x%x error %d\n", __func__, reg_addr, ret);
 
 	}
 	return ret;
 }
-
-
 
 /*! \fn static int sx933x_i2c_read_16bit(psx93XX_t this, u8 address, u8 *value)
  * \brief Reads a register's value from the device
@@ -155,7 +153,7 @@ static int sx933x_i2c_read_16bit(psx93XX_t this, u16 reg_addr, u32 *data32)
 
 		ret = i2c_transfer(i2c->adapter, msg, 2);
 		if (ret < 0)
-			LOG_DBG("%s - i2c read error %d\n", __func__, ret);
+			LOG_DBG("%s - i2c read reg 0x%x error %d\n", __func__, reg_addr, ret);
 
 		data32[0] = ((u32)buf[0]<<24) | ((u32)buf[1]<<16) | ((u32)buf[2]<<8) | ((u32)buf[3]);
 
@@ -474,7 +472,7 @@ static void sx933x_reg_init(psx93XX_t this)
  */
 static int initialize(psx93XX_t this)
 {
-	int ret;
+	int ret, retry;
 	if (this)
 	{
 		LOG_DBG("SX933x income initialize\n");
@@ -482,7 +480,12 @@ static int initialize(psx93XX_t this)
 		this->irq_disabled = 1;
 		disable_irq(this->irq);
 		/* perform a reset */
-		sx933x_i2c_write_16bit(this, SX933X_RESET_REG, I2C_SOFTRESET_VALUE);
+		for ( retry = 10; retry > 0; retry-- ) {
+			if (sx933x_i2c_write_16bit(this, SX933X_RESET_REG, I2C_SOFTRESET_VALUE) >= 0)
+				break;
+			LOG_DBG("SX933x write SX933X_RESET_REG retry:%d\n", 11 - retry);
+			msleep(10);
+		}
 		/* wait until the reset has finished by monitoring NIRQ */
 		LOG_DBG("Sent Software Reset. Waiting until device is back from reset to continue.\n");
 		/* just sleep for awhile instead of using a loop with reading irq status */
@@ -970,7 +973,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 				err = PTR_ERR(pplatData->cap_vdd);
 				return err;
 			}    
-			LOG_INFO("%s: Failed to get regulator\n",
+			LOG_DBG("%s: Failed to get regulator\n",
 					__func__);
 		} else {
 			err = regulator_enable(pplatData->cap_vdd);
@@ -981,7 +984,7 @@ static int sx933x_probe(struct i2c_client *client, const struct i2c_device_id *i
 				return err;
 			}
 			pplatData->cap_vdd_en = true;
-			LOG_INFO("cap_vdd regulator is %s\n",
+			LOG_DBG("cap_vdd regulator is %s\n",
 					regulator_is_enabled(pplatData->cap_vdd) ?
 					"on" : "off");
 		}
@@ -1041,13 +1044,15 @@ static int sx933x_remove(struct i2c_client *client)
 	psx93XX_t this = i2c_get_clientdata(client);
 	LOG_DBG("sx933x_remove");
 	if (this && (pDevice = this->pDevice))
-	{    
+	{
+		pplatData = client->dev.platform_data;
 		free_irq(this->irq, this);
 		cancel_delayed_work_sync(&(this->dworker));	
 
 		class_unregister(&capsense_class);
+		cancel_work_sync(&pplatData->ps_notify_work);
 		power_supply_unreg_notifier(&pplatData->ps_notif);
-		pplatData = client->dev.platform_data;
+
 		if (pplatData && pplatData->exit_platform_hw)
 			pplatData->exit_platform_hw(client);
 
@@ -1057,8 +1062,10 @@ static int sx933x_remove(struct i2c_client *client)
 		}
 		for (i = 0; i <pDevice->pbuttonInformation->buttonSize; i++) {
 			pCurrentbutton = &(pDevice->pbuttonInformation->buttons[i]);
-			sensors_classdev_unregister(&(pCurrentbutton->sensors_capsensor_cdev));
-			input_unregister_device(pCurrentbutton->input_dev);
+			if (pCurrentbutton->used == true) {
+				sensors_classdev_unregister(&(pCurrentbutton->sensors_capsensor_cdev));
+				input_unregister_device(pCurrentbutton->input_dev);
+			}
 		}
 	}
 	return 0;
