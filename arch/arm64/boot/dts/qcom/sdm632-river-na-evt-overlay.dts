@@ -16,6 +16,7 @@
 #include <dt-bindings/clock/msm-clocks-8953.h>
 
 #include "sdm632-river-common-overlay.dtsi"
+#include "sdm632-river-na-audio-overlay.dtsi"
 
 / {
 	model = "river";
@@ -26,14 +27,6 @@
 /*
  * River NA HW rev EVT0 specific changes go here
  */
-
-&prince_dsp {
-	firmware {
-		protection {
-			cirrus,bin-file = "cs35l41-dsp1-spk-prot-na.bin";
-		};
-	};
-};
 
 &drv2624 {
 	status = "okay";
