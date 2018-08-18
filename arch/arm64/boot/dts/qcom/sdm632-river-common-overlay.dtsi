@@ -301,6 +301,7 @@
 				0x9f 0x1c
 				0x00 0x18>;
 	qcom,tune-factory-override = <0xC78303A0>;
+	qcom,tune2-host-override = <0x51>;
 };
 
 &pmx_mdss {
