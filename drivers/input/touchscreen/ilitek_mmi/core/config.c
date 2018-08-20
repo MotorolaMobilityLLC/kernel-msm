@@ -413,7 +413,7 @@ void core_config_ic_suspend(void)
 	if (ipd->isEnablePollCheckPower)
 		cancel_delayed_work_sync(&ipd->check_power_status_work);
 
-#ifndef SUSPEND_TP_POWER_OFF
+#ifdef SUSPEND_TP_POWER_OFF
 	/* sense stop */
 	core_config_sense_ctrl(false);
 
