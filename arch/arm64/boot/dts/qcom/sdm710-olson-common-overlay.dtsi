@@ -133,6 +133,14 @@
 };
 */
 
+
+&pm660l_l6 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	regulator-always-on;
+};
+
 &pm660l_l3 {
 	regulator-min-microvolt = <3200000>;
 	regulator-max-microvolt = <3200000>;
