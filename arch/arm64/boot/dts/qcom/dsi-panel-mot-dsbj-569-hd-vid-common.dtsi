@@ -36,7 +36,7 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [39 01 00 00 00 00 04 B9 83 10 2D
-			39 01 00 00 00 00 03 51 0F FF
+			39 01 00 00 00 00 03 51 00 00
 			15 01 00 00 00 00 02 53 24
 			15 01 00 00 05 00 02 55 01
 			05 01 00 00 78 00 01 11
@@ -79,10 +79,12 @@ qcom,mdss-dsi-panel-timings-phy-v2 = [
 qcom,mdss-dsi-t-clk-post = <0x0b>;
 qcom,mdss-dsi-t-clk-pre = <0x24>;
 qcom,mdss-dsi-bl-min-level = <1>;
-qcom,mdss-dsi-bl-max-level = <255>;
+qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+qcom,mdss-dsi-bl-dcs-command-state = "dsi_hs_mode";
+qcom,bklt-dcs-2bytes-enabled;
 qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
