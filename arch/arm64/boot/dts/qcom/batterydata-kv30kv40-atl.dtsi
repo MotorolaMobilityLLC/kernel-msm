@@ -1,0 +1,71 @@
+
+qcom,kv30kv40-atl {
+	qcom, = <24>;
+	/* #3580064_Moto_KV30KV40_2500mAh_averaged_MasterSlave_Aug8th2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <2500>;
+	qcom,batt-id-kohm = <243>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "KV30KV40-ATL-2500mah";
+	qcom,checksum = <0x909C>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 40 1F 02 06
+		 25 0A 5F FD
+		 EA 1C DB 01
+		 EB 0D 71 0A
+		 39 18 6E 23
+		 DE 44 EB 53
+		 74 00 00 00
+		 11 00 00 00
+		 00 00 40 CD
+		 B9 C5 04 00
+		 2E 00 08 00
+		 52 DB 75 E4
+		 45 F5 C7 CB
+		 21 DB 1C 0A
+		 E7 35 E9 4B
+		 07 06 09 20
+		 27 00 14 00
+		 98 1F B1 05
+		 6B 0A BF FC
+		 CF 1C E2 02
+		 FC 15 44 12
+		 8F 18 D3 23
+		 E8 4D 2E 5B
+		 67 00 00 00
+		 0E 00 00 00
+		 00 00 83 D5
+		 05 00 3A BB
+		 2A 00 00 00
+		 B7 EA 75 E4
+		 68 07 8D CA
+		 E4 ED 11 02
+		 E2 06 90 13
+		 99 33 CC FF
+		 07 10 00 00
+		 18 0A 66 46
+		 2A 00 40 00
+		 F5 00 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
