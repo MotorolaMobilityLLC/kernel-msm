@@ -338,6 +338,10 @@
 		maxim,hot-temp-c = <60>;
 		maxim,cool-temp-c = <0>;
 		maxim,cold-temp-c = <(-20)>;
+		maxim,configuration {
+			df-serialnum    = "KV30";
+			/include/ "batterydata-kv30-atl-maxim.dtsi"
+		};
 		maxim,temp-conv {
 			start   = /bits/ 16 <(-20)>;    /* in degrees C */
 			result  = /bits/ 16 <
@@ -377,6 +381,10 @@
 		maxim,hot-temp-c = <60>;
 		maxim,cool-temp-c = <0>;
 		maxim,cold-temp-c = <(-20)>;
+		maxim,configuration {
+			df-serialnum    = "KV40";
+			/include/ "batterydata-kv40-atl-maxim.dtsi"
+		};
 		maxim,temp-conv {
 			start   = /bits/ 16 <(-20)>;    /* in degrees C */
 			result  = /bits/ 16 <
