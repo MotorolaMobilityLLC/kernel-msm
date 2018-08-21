@@ -402,3 +402,7 @@
 &qupv3_se12_2uart {
 	status = "disabled";
 };
+
+&red_led {
+	linux,name = "charging";
+};
