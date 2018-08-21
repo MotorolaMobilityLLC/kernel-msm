@@ -850,7 +850,7 @@
 &vendor {
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <1000>;
-		#include "fg-gen3-batterydata-itech-3000mah.dtsi"
+		#include "batterydata-kv30kv40-atl.dtsi"
 	};
 };
 
