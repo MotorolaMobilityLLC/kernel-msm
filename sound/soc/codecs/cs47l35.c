@@ -1379,7 +1379,6 @@ static const struct snd_soc_dapm_route cs47l35_dapm_routes[] = {
 	{ "DSP2 Trigger Output", "Switch", "DSP2" },
 	{ "DSP3 Trigger Output", "Switch", "DSP3" },
 
-	{ "DSP1 Preloader", NULL, "DSP Virtual Input" },
 	{ "DSP1 Trigger Out", NULL, "DSP1 Virtual Output" },
 	{ "DSP1 Virtual Output", NULL, "SYSCLK" },
 
