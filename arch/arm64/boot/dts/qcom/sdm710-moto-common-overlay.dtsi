@@ -881,7 +881,21 @@
 	};
 };
 
-
+&pm660_gpios {
+	interrupts = <0x0 0xc1 0 IRQ_TYPE_NONE>,
+		<0x0 0xc2 0 IRQ_TYPE_NONE>,
+		<0x0 0xc3 0 IRQ_TYPE_NONE>,
+		<0x0 0xc5 0 IRQ_TYPE_NONE>,
+		<0x0 0xc8 0 IRQ_TYPE_NONE>,
+		<0x0 0xca 0 IRQ_TYPE_NONE>,
+		<0x0 0xcb 0 IRQ_TYPE_NONE>,
+		<0x0 0xcc 0 IRQ_TYPE_NONE>;
+	interrupt-names = "pm660_gpio2", "pm660_gpio3",
+			"pm660_gpio4", "pm660_gpio6",
+			"pm660_gpio9", "pm660_gpio11",
+			"pm660_gpio12", "pm660_gpio13";
+	qcom,gpios-disallowed = <1 5 7 8 10>;
+};
 
 &pm660_vadc {
 	chan@4f {
