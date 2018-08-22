@@ -875,6 +875,8 @@
 	pm660_mmi: qcom,qpnp-smb2-mmi {
 		compatible = "qcom,qpnp-smbcharger-mmi";
 		qcom,pmic-revid = <&pm660_revid>;
+		mmi,max-main-psy = "max17_main_battery";
+		mmi,max-flip-psy = "max17_flip_battery";
 		status = "ok";
 	};
 };
