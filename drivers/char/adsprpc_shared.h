@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,8 @@
 #define FASTRPC_IOCTL_SETMODE    _IOWR('R', 5, uint32_t)
 #define FASTRPC_IOCTL_INIT       _IOWR('R', 6, struct fastrpc_ioctl_init)
 #define FASTRPC_IOCTL_GETINFO	_IOWR('R', 8, uint32_t)
+#define FASTRPC_IOCTL_CONTROL	_IOWR('R', 12, struct fastrpc_ioctl_control)
+
 #define FASTRPC_GLINK_GUID "fastrpcglink-apps-dsp"
 #define FASTRPC_SMD_GUID "fastrpcsmd-apps-dsp"
 #define DEVICE_NAME      "adsprpc-smd"
@@ -150,6 +152,31 @@ struct fastrpc_ioctl_mmap {
 	uintptr_t vaddrout;		/* dsps virtual address */
 };
 
+#define FASTRPC_CONTROL_LATENCY	(1)
+struct fastrpc_ctrl_latency {
+	uint32_t enable;	/* !latency control enable */
+	uint32_t level;		/* !level of control */
+};
+
+#define FASTRPC_CONTROL_SMMU	(2)
+struct fastrpc_ctrl_smmu {
+	uint32_t sharedcb;
+};
+
+#define FASTRPC_CONTROL_KALLOC (3)
+struct fastrpc_ctrl_kalloc {
+	uint32_t kalloc_support; /* Remote memory allocation from kernel */
+};
+
+struct fastrpc_ioctl_control {
+	uint32_t req;
+	union {
+		struct fastrpc_ctrl_latency lp;
+		struct fastrpc_ctrl_smmu smmu;
+		struct fastrpc_ctrl_kalloc kalloc;
+	};
+};
+
 struct smq_null_invoke {
 	uint64_t ctx;			/* invoke caller context */
 	uint32_t handle;	    /* handle to invoke */
@@ -194,6 +221,7 @@ static inline struct smq_phy_page *smq_phy_page_start(uint32_t sc,
 						struct smq_invoke_buf *buf)
 {
 	uint32_t nTotal = REMOTE_SCALARS_INBUFS(sc)+REMOTE_SCALARS_OUTBUFS(sc);
+
 	return (struct smq_phy_page *)(&buf[nTotal]);
 }
 
