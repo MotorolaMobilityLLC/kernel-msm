@@ -748,7 +748,7 @@
 		pinctrl-0 = <&capsense_gpio_pins>;
 		cap_vdd-supply = <&pm660l_bob>;
 		Semtech,reg-num = <23>;
-		Semtech,button-flag = <0x0F>;
+		Semtech,button-flag = <0x19>;
 		Semtech,reg-init = <0x8020 0x1F0000
 			0x8024 0x300008D4 /*again 6.6pf*/
 			0x8028 0x24928000
