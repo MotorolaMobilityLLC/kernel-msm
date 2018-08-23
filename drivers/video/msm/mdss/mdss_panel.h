@@ -19,6 +19,7 @@
 #include <linux/stringify.h>
 #include <linux/types.h>
 #include <linux/debugfs.h>
+#include "mdss_dsi_panel.h"
 
 #define KHZ_TO_HZ 1000
 
@@ -714,6 +715,7 @@ struct mdss_panel_info {
 	u32 rst_seq[MDSS_DSI_RST_SEQ_LEN];
 	u32 rst_seq_len;
         u32 external_rst_gpio;
+        bool fw_upgrade_interrupt_disable;
 	bool panel_off_rst_disable;
 	bool panel_reg_read_lp_enable;
 	u32 vic; /* video identification code */
