@@ -387,6 +387,7 @@ Optional properties:
 					delay required by panel to reach functional.
 - qcom,mdss-dsi-rx-eot-ignore:		Boolean used to enable ignoring end of transmission packets.
 - qcom,mdss-dsi-tx-eot-append:		Boolean used to enable appending end of transmission packets.
+- qcom,mdss-dsi-fw-upgrade-interrupt-disable:		Boolean used to enable disabling interruption when tp fw upgrade.
 - qcom,ulps-enabled:			Boolean to enable support for Ultra Low Power State (ULPS) mode.
 - qcom,suspend-ulps-enabled:		Boolean to enable support for ULPS mode for panels during suspend state.
 - qcom,panel-roi-alignment:		Specifies the panel ROI alignment restrictions on its

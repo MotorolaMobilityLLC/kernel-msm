@@ -3233,6 +3233,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	pinfo->mipi.lp11_init = of_property_read_bool(np,
 					"qcom,mdss-dsi-lp11-init");
+	pinfo->fw_upgrade_interrupt_disable = of_property_read_bool(np,
+					"qcom,mdss-dsi-fw-upgrade-interrupt-disable");
 	pinfo->rst_disable = of_property_read_bool(np,
 					"qcom,mdss-dsi-off-reset-disable");
 	pinfo->panel_reg_read_lp_enable = of_property_read_bool(np,
