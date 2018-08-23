@@ -72,7 +72,7 @@ qcom,mdss-dsi-on-command = [
 			05 01 00 00 65 00 01 11];
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 14 00 01 28		/* display_off  delay 50ms*/
-	05 01 00 00 28 00 01 10];	/* enter sleep mode delay 50ms*/
+	05 01 00 00 64 00 01 10];	/* enter sleep mode delay 50ms*/
 
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -112,7 +112,7 @@ qcom,mdss-dsi-bl-max-level = <255>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-qcom,mdss-dsi-reset-sequence = <1 100>, <0 100>, <1 100>;
+qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 5>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <7000>;
