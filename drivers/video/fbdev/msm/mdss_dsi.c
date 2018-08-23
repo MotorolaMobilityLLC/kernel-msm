@@ -1618,7 +1618,8 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 				ctrl_pdata->panel_power_data.vreg_config,
 				ctrl_pdata->panel_power_data.num_vreg);
 		}
-		mdss_dsi_panel_reset(pdata, 1);
+		if (!pinfo->panel_reset_pull_high)
+			mdss_dsi_panel_reset(pdata, 1);
 
 		if (mipi->lp11_reset_lcdb)
 			ret = msm_mdss_enable_lcdb(
