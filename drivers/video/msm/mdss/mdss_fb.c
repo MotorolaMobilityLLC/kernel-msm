@@ -2096,6 +2096,13 @@ static void mdss_panel_validate_debugfs_info(struct msm_fb_data_type *mfd)
 	}
 }
 
+static int tp_fw_upgrade_flag;
+void set_touchscreen_fw_upgrade_flag(uint8_t flag)
+{
+	tp_fw_upgrade_flag = flag;
+	pr_info("tp dbg: set_touchscreen_fw_upgrade_flag, tp_fw_upgrade_flag=%d\n", tp_fw_upgrade_flag);
+}
+
 static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 	int req_power_state)
 {
@@ -2107,6 +2114,11 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	if (!mdss_fb_is_power_on(mfd) || !mfd->mdp.off_fnc)
 		return 0;
+
+	if (mfd->panel_info->fw_upgrade_interrupt_disable && (TP_FW_UPGRADING_ON == tp_fw_upgrade_flag)) {
+		pr_info("%s:tp dbg: lcm_tp firmware is upgrading\n", __func__);
+		return 0;
+	}
 
 	cur_power_state = mfd->panel_power_state;
 
