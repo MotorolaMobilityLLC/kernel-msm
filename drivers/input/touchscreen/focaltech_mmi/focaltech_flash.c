@@ -23,6 +23,10 @@
 #include "focaltech_flash.h"
 #include "focaltech_upgrade_common.h"
 
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_INTERRUPTION_PREVENT
+#include "../../../video/msm/mdss/mdss_dsi_panel.h"
+#endif
+
 static struct fts_upgrade_fun *fts_updatefun_curr;
 static struct ft_chip_t *fts_chip_type_curr;
 static const struct ft_ts_platform_data *fts_pdata_curr;
@@ -1492,11 +1496,17 @@ int fts_upgrade_bin(struct i2c_client *client, char *fw_name, bool force)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_INTERRUPTION_PREVENT
+	set_touchscreen_fw_upgrade_flag(TP_FW_UPGRADING_ON);
+#endif
 #if FTS_USE_FIRMWARE
 	ret = request_firmware(&fw, fw_name, &client->dev);
 	if (ret < 0) {
 		FTS_ERROR("[UPGRADE] Request firmware failed - %s (%d)\n",
 			fw_name, ret);
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_INTERRUPTION_PREVENT
+		set_touchscreen_fw_upgrade_flag(TP_FW_UPGRADING_OFF);
+#endif
 		return ret;
 	}
 	fw_file_buf = (u8*)fw->data;
@@ -1552,6 +1562,9 @@ err_bin:
 		vfree(fw_file_buf);
 		fw_file_buf = NULL;
 	}
+#endif
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_INTERRUPTION_PREVENT
+	set_touchscreen_fw_upgrade_flag(TP_FW_UPGRADING_OFF);
 #endif
 	return ret;
 }
