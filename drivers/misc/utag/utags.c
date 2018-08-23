@@ -587,7 +587,7 @@ static int proc_utag_file(char *utag_name, char *utag_type,
 		node->mode = mode;
 		node->dir = dnode->dir;
 		node->ctrl = ctrl;
-		node->file = proc_create_data(node->file_name, 0,
+		node->file = proc_create_data(node->file_name, 0640,
 			dnode->dir, fops, node);
 
 		pr_debug("created file [%s/%s]\n",
@@ -613,13 +613,13 @@ static int proc_utag_util(struct ctrl *ctrl)
 {
 	struct proc_dir_entry *dir;
 
-	dir = proc_mkdir("all", ctrl->root);
+	dir = proc_mkdir_data("all", 0511, ctrl->root, NULL);;
 	if (!dir) {
 		pr_err("failed to create util\n");
 		return -EIO;
 	}
 
-	if (!proc_create_data("new", 0600, dir, &new_fops, ctrl)) {
+	if (!proc_create_data("new", 0200, dir, &new_fops, ctrl)) {
 		pr_err("Failed to create utag new entry\n");
 		return -EIO;
 	}
@@ -629,7 +629,7 @@ static int proc_utag_util(struct ctrl *ctrl)
 		return -EIO;
 	}
 
-	if (!proc_create_data(".delete", 0600, dir, &delete_fops, ctrl)) {
+	if (!proc_create_data(".delete", 0200, dir, &delete_fops, ctrl)) {
 		pr_err("Failed to create delete entry\n");
 		return -EIO;
 	}
@@ -656,7 +656,7 @@ static struct proc_dir_entry *proc_utag_dir(struct ctrl *ctrl,
 		return dnode->dir;
 	}
 
-	dir = proc_mkdir(tname, parent);
+	dir = proc_mkdir_data(tname, 0511, parent, NULL);
 	if (!dir) {
 		pr_err("failed to create dir %s\n", tname);
 		return ERR_PTR(-ENOMEM);
@@ -1870,7 +1870,7 @@ static int utags_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	ctrl->root = proc_mkdir(ctrl->dir_name, NULL);
+	ctrl->root = proc_mkdir_data(ctrl->dir_name, 0511, NULL, NULL);
 	if (!ctrl->root) {
 		destroy_workqueue(ctrl->load_queue);
 		destroy_workqueue(ctrl->store_queue);
