@@ -24,3 +24,51 @@
 	qcom,board-id = <(OCEAN_RADIO_NA << 8 | 0x41) 0xB1A0>;
 };
 
+&mdss_dsi0 {
+	tp-vddio-supply = <&pm8953_l6>;
+};
+
+&mot_ofilm_622_720p_vid_v0 {
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@4 {
+			reg = <1>;
+			qcom,supply-name = "tp-vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <3>;
+			qcom,supply-pre-off-sleep = <5>;
+		};
+	};
+};
+
+&mot_tianma_622_720p_vid_v0 {
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@4 {
+			reg = <1>;
+			qcom,supply-name = "tp-vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <3>;
+			qcom,supply-pre-off-sleep = <5>;
+		};
+	};
+};
+
+&mot_csot_622_720p_vid_v0 {
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@4 {
+			reg = <1>;
+			qcom,supply-name = "tp-vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <3>;
+			qcom,supply-pre-off-sleep = <5>;
+		};
+	};
+};
