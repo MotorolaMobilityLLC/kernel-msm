@@ -85,6 +85,13 @@
 };
 
 &soc {
+	vreg_5p0: vreg_5v {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_5p0";
+		gpio = <&pm660l_gpios 5 0>;
+		enable-active-high;
+	};
+
 	mot_panel_dummy_reg: mot_panel_dummy_reg {
 		compatible = "regulator-fixed";
 		regulator-name = "mot_dummy_disp";
@@ -862,6 +869,7 @@
 
 &pm660_charger {
 	qcom,battery-data = <&mot_batterydata>;
+	vconn-parent-supply = <&vreg_5p0>;
 	qcom,sw-jeita-enable;
 	qcom,fcc-max-ua = <1500000>;
 	qcom,fv-max-uv = <4200000>;
