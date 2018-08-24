@@ -125,6 +125,10 @@
 		qcom,config-info = "messi";
 	};
 	/delete-node/ spi@c175000;
+
+	qcom,bcl {
+		qcom,bcl-charger-mitigate-enable;
+	};
 };
 
 &tlmm {
