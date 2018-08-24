@@ -172,6 +172,10 @@
 	regulator-always-on;
 };
 
+&pm660l_l8 {
+	/delete-property/ regulator-always-on;
+};
+
 &i2c_2 { /* capsensor */
 	status = "okay";
 	sx9310@28 {
