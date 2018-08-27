@@ -148,6 +148,11 @@ int sde_encoder_prepare_for_kickoff(struct drm_encoder *encoder,
 void sde_encoder_trigger_kickoff_pending(struct drm_encoder *encoder);
 
 /**
+ * sde_encoder_is_primary - check if this drm-encoder is for primary panel
+ */
+bool sde_encoder_is_primary(struct drm_encoder *encoder);
+
+/**
  * sde_encoder_kickoff - trigger a double buffer flip of the ctl path
  *	(i.e. ctl flush and start) immediately.
  * @encoder:	encoder pointer

@@ -629,7 +629,6 @@ static bool _sde_rm_check_lm_and_get_connected_blks(
 	*ds = NULL;
 	*pp = NULL;
 	display_pref = lm_cfg->features & BIT(SDE_DISP_PRIMARY_PREF);
-
 	SDE_DEBUG("check lm %d: dspp %d ds %d pp %d display_pref: %d\n",
 		lm_cfg->id, lm_cfg->dspp, lm_cfg->ds,
 		lm_cfg->pingpong, display_pref);
@@ -840,7 +839,7 @@ static int _sde_rm_reserve_lms(
 	}
 
 	if (lm_count != reqs->topology->num_lm) {
-		SDE_DEBUG("unable to find appropriate mixers\n");
+		SDE_ERROR("unable to find appropriate mixers\n");
 		return -ENAVAIL;
 	}
 
@@ -1541,6 +1540,7 @@ static int _sde_rm_make_next_rsvp_for_cont_splash(
 	struct sde_rm_topology_def topology;
 	struct msm_drm_private *priv;
 	struct sde_kms *sde_kms;
+	struct sde_splash_data *splash_data;
 	int i;
 
 	if (!enc->dev || !enc->dev->dev_private) {
@@ -1552,13 +1552,18 @@ static int _sde_rm_make_next_rsvp_for_cont_splash(
 		SDE_ERROR("invalid kms\n");
 		return -EINVAL;
 	}
+
 	sde_kms = to_sde_kms(priv->kms);
+	if (sde_encoder_is_primary(enc))
+		splash_data = &sde_kms->splash_data;
+	else
+		splash_data = &sde_kms->splash_data_secDisp;
 
-	for (i = 0; i < sde_kms->splash_data.lm_cnt; i++)
-		SDE_DEBUG("splash_data.lm_ids[%d] = %d\n",
-			i, sde_kms->splash_data.lm_ids[i]);
+	for (i = 0; i < splash_data->lm_cnt; i++)
+		SDE_DEBUG("splash_data->lm_ids[%d] = %d\n",
+			i, splash_data->lm_ids[i]);
 
-	if (sde_kms->splash_data.lm_cnt !=
+	if (splash_data->lm_cnt !=
 			reqs->topology->num_lm)
 		SDE_DEBUG("Configured splash screen LMs != needed LM cnt\n");
 
@@ -1575,11 +1580,11 @@ static int _sde_rm_make_next_rsvp_for_cont_splash(
 	 * - Only then allow to grab from mixers with DSPP capability
 	 */
 	ret = _sde_rm_reserve_lms(rm, rsvp, reqs,
-				sde_kms->splash_data.lm_ids);
+				splash_data->lm_ids);
 	if (ret && !RM_RQ_DSPP(reqs)) {
 		reqs->top_ctrl |= BIT(SDE_RM_TOPCTL_DSPP);
 		ret = _sde_rm_reserve_lms(rm, rsvp, reqs,
-					sde_kms->splash_data.lm_ids);
+					splash_data->lm_ids);
 	}
 
 	if (ret) {
@@ -1592,17 +1597,17 @@ static int _sde_rm_make_next_rsvp_for_cont_splash(
 	 * - Check mixers without Split Display
 	 * - Only then allow to grab from CTLs with split display capability
 	 */
-	for (i = 0; i < sde_kms->splash_data.ctl_top_cnt; i++)
+	for (i = 0; i < splash_data->ctl_top_cnt; i++)
 		SDE_DEBUG("splash_data.ctl_ids[%d] = %d\n",
-			i, sde_kms->splash_data.ctl_ids[i]);
+			i, splash_data->ctl_ids[i]);
 
 	_sde_rm_reserve_ctls(rm, rsvp, reqs, reqs->topology,
-			sde_kms->splash_data.ctl_ids);
+			splash_data->ctl_ids);
 	if (ret && !reqs->topology->needs_split_display) {
 		memcpy(&topology, reqs->topology, sizeof(topology));
 		topology.needs_split_display = true;
 		_sde_rm_reserve_ctls(rm, rsvp, reqs, &topology,
-				sde_kms->splash_data.ctl_ids);
+				splash_data->ctl_ids);
 	}
 	if (ret) {
 		SDE_ERROR("unable to find appropriate CTL\n");
@@ -1614,12 +1619,12 @@ static int _sde_rm_make_next_rsvp_for_cont_splash(
 	if (ret)
 		return ret;
 
-	for (i = 0; i < sde_kms->splash_data.dsc_cnt; i++)
-		SDE_DEBUG("splash_data.dsc_ids[%d] = %d\n",
-			i, sde_kms->splash_data.dsc_ids[i]);
+	for (i = 0; i < splash_data->dsc_cnt; i++)
+		SDE_DEBUG("splash_data->dsc_ids[%d] = %d\n",
+			i, splash_data->dsc_ids[i]);
 
 	ret = _sde_rm_reserve_dsc(rm, rsvp, reqs->topology,
-				sde_kms->splash_data.dsc_ids);
+				splash_data->dsc_ids);
 	if (ret)
 		return ret;
 
@@ -1865,6 +1870,7 @@ int sde_rm_reserve(
 	struct sde_rm_requirements reqs;
 	struct msm_drm_private *priv;
 	struct sde_kms *sde_kms;
+	struct sde_splash_data *splash_data;
 	int ret;
 
 	if (!rm || !enc || !crtc_state || !conn_state) {
@@ -1883,8 +1889,13 @@ int sde_rm_reserve(
 	}
 	sde_kms = to_sde_kms(priv->kms);
 
+	if (sde_encoder_is_primary(enc))
+		splash_data = &sde_kms->splash_data;
+	else
+		splash_data = &sde_kms->splash_data_secDisp;
+
 	/* Check if this is just a page-flip */
-	if (!sde_kms->splash_data.cont_splash_en &&
+	if (!splash_data->cont_splash_en &&
 			!drm_atomic_crtc_needs_modeset(crtc_state))
 		return 0;
 
@@ -1936,7 +1947,7 @@ int sde_rm_reserve(
 	}
 
 	/* Check the proposed reservation, store it in hw's "next" field */
-	if (sde_kms->splash_data.cont_splash_en) {
+	if (splash_data->cont_splash_en) {
 		SDE_DEBUG("cont_splash feature enabled\n");
 		ret = _sde_rm_make_next_rsvp_for_cont_splash
 			(rm, enc, crtc_state, conn_state, rsvp_nxt, &reqs);
