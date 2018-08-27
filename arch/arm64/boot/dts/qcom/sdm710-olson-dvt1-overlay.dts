@@ -41,7 +41,7 @@
 					0F 01 /*LP_SCAN_RATE*/
 					13 03 /*LP_BASE_INC*/
 					15 07 /*NP_BASE_INC*/
-					16 00 /*BTPAUSE_MAXWIN*/
+					16 10 /*BTPAUSE_MAXWIN*/
 					20 29 /*SENSOR0_CFG*/
 					28 00 /*FTF1_2*/
 				];
