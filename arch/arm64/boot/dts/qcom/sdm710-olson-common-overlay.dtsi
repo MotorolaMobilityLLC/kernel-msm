@@ -121,6 +121,8 @@
 		compatible = "fpc,fpc1020";
 		reg = <0>;
 		irq = <&tlmm 23 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fpc1020_reset_default>;
 	};
 
 };
@@ -165,6 +167,19 @@
 };
 
 &tlmm {
+	fpc1020_reset_default: fpc1020_reset_default {
+		mux {
+			pins = "gpio91";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio91";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
 	disp_v1_en {
 		disp_v1_en_default: disp_v1_en_default {
 			mux {
