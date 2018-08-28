@@ -372,7 +372,7 @@
 	};
 
 	raydium-ts@39 {
-		status = "disabled";
+		status = "ok";
 		compatible = "raydium,raydium-ts";
 		reg = <0x39>;
 		/*raydium,reset-gpio = <&tlmm 99 0>;*/
@@ -382,7 +382,7 @@
 		pinctrl-0 = <&pmx_ts_active>;
 		pinctrl-1 = <&pmx_ts_suspend>;
 		pinctrl-2 = <&pmx_ts_release>;
-		raydium,control-dsi = <1>;
+		raydium,control-dsi = <2>;
 		raydium,display-coords = <0 0 480 480>;
 		raydium,soft-reset-delay = <360>;
 		raydium,num-max-touches = <2>;
