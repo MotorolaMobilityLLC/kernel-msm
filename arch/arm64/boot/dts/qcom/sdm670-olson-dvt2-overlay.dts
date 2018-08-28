@@ -18,55 +18,13 @@
 #include "dsi-panel-mot-auo-139-480x480-olson-cmd.dtsi"
 
 / {
-	qcom,msm-id = <360 0x0>;
-	qcom,board-id = <0 0xB000>;
+	qcom,msm-id = <336 0x0>;
+	qcom,board-id = <0 0xB200>;
 };
 
 /*
- * Olson HW rev DVT1 specific changes go here
+ * Olson HW rev DVT2 specific changes go here
  */
-&qupv3_se4_i2c {
-	ldc2114@2a {
-		configs {
-			config-ver = <1>;
-			config-normal {
-				config-data = [
-					0C 11 /*EN*/
-					0E 17 /*GAIN0*/
-					0F 01 /*LP_SCAN_RATE*/
-					13 03 /*LP_BASE_INC*/
-					15 07 /*NP_BASE_INC*/
-					16 10 /*BTPAUSE_MAXWIN*/
-					20 29 /*SENSOR0_CFG*/
-					28 00 /*FTF1_2*/
-				];
-			};
-		};
-	};
-};
-
-&qupv3_se10_i2c {
-	ldc2114@2a {
-		configs {
-			config-ver = <1>;
-			config-normal {
-				config-data = [
-					0C 30 /*EN*/
-					0E 33 /*GAIN0*/
-					0F 01 /*LP_SCAN_RATE*/
-					10 33 /*GAIN1*/
-					13 03 /*LP_BASE_INC*/
-					15 07 /*NP_BASE_INC*/
-					16 00 /*BTPAUSE_MAXWIN*/
-					1C 00 /*OPOL_DPOL*/
-					20 59 /*SENSOR0_CFG*/
-					22 59 /*SENSOR1_CFG*/
-				];
-			};
-		};
-	};
-};
-
 &soc {
 	dsi_auo_139_480x480_cmd_dvt1_display: qcom,dsi-display@22 {
 		compatible = "qcom,dsi-display";
@@ -80,9 +38,9 @@
 		clock-names = "src_byte_clk", "src_pixel_clk";
 
 		pinctrl-names = "panel_active", "panel_suspend";
-		pinctrl-0 = <&sde_dsi1_active &sde_te_active
+		pinctrl-0 = <&sde_dsi1_active &sde_te1_active
 						&ts_sub_rst_active>;
-		pinctrl-1 = <&sde_dsi1_suspend &sde_te_suspend
+		pinctrl-1 = <&sde_dsi1_suspend &sde_te1_suspend
 						&ts_sub_rst_suspend>;
 		qcom,platform-te-gpio = <&tlmm 11 0>;
 		qcom,dsi-panel = <&mot_auo_139_480x480_cmd_v0>;
