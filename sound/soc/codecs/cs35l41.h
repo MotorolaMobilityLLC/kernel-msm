@@ -731,7 +731,7 @@ extern const struct cs35l41_otp_map_element_t
 				cs35l41_otp_map_map[CS35L41_NUM_OTP_MAPS];
 
 #define CS35L41_REGSTRIDE			4
-#define CS35L41_MBOXWAIT			100
+#define CS35L41_MBOXWAIT			5
 
 #define CS35L41_DSP_VIRT1_MBOX_SHIFT		20
 #define CS35L41_DSP_VIRT2_MBOX_SHIFT		21
