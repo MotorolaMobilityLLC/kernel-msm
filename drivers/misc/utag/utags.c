@@ -587,7 +587,7 @@ static int proc_utag_file(char *utag_name, char *utag_type,
 		node->mode = mode;
 		node->dir = dnode->dir;
 		node->ctrl = ctrl;
-		node->file = proc_create_data(node->file_name, 0640,
+		node->file = proc_create_data(node->file_name, 0660,
 			dnode->dir, fops, node);
 
 		pr_debug("created file [%s/%s]\n",
@@ -1881,7 +1881,7 @@ static int utags_probe(struct platform_device *pdev)
 	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT)))
 		ctrl->hwtag = 1;
 
-	if (!proc_create_data("reload", 0600, ctrl->root, &reload_fops, ctrl)) {
+	if (!proc_create_data("reload", 0640, ctrl->root, &reload_fops, ctrl)) {
 		pr_err("Failed to create reload entry\n");
 		destroy_workqueue(ctrl->load_queue);
 		destroy_workqueue(ctrl->store_queue);
