@@ -277,7 +277,7 @@ static int cs35l41_set_csplmboxcmd(struct cs35l41_private *cs35l41,
 			   1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT, 0);
 	regmap_write(cs35l41->regmap, CS35L41_CSPL_MBOX_CMD_DRV, cmd);
 	ret = wait_for_completion_timeout(&cs35l41->mbox_cmd,
-					  usecs_to_jiffies(CS35L41_MBOXWAIT));
+					  msecs_to_jiffies(CS35L41_MBOXWAIT));
 	if (ret == 0) {
 		dev_err(cs35l41->dev,
 			"Timout waiting for DSP to set mbox cmd\n");
