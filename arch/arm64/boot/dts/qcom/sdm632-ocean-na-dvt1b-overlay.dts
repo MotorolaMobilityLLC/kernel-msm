@@ -24,3 +24,23 @@
 	qcom,board-id = <(OCEAN_RADIO_NA << 8 | 0x41) 0xB1B0>;
 };
 
+&pm8953_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mdss_dsi0 {
+	vddio-supply = <&pm8953_l6>;
+};
+
+&mot_ofilm_622_720p_vid_v0 {
+	qcom,mdss-panel-off-rst-disable;
+};
+
+&mot_tianma_622_720p_vid_v0 {
+	qcom,mdss-panel-off-rst-disable;
+};
+
+&mot_csot_622_720p_vid_v0 {
+	qcom,mdss-panel-off-rst-disable;
+};
