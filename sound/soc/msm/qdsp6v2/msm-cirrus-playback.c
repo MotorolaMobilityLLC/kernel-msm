@@ -370,9 +370,6 @@ static int msm_crus_se_usecase(struct snd_kcontrol *kcontrol,
 		case_ctrl.atemp = 0;
 		case_ctrl.value = cirrus_se_usecase;
 
-		/* TODO: remove below when QDSP/LPASS is ready for 8 slots */
-		case_ctrl.value -= crus_se_usecase_dt_index[0];
-
 		crus_set_param(cirrus_ff_port, CIRRUS_SE,
 			       CRUS_PARAM_RX_SET_USECASE, sizeof(case_ctrl),
 			       (void *)&case_ctrl);
@@ -391,10 +388,14 @@ static int msm_crus_se_usecase_get(struct snd_kcontrol *kcontrol,
 	crus_get_param(cirrus_ff_port, CIRRUS_SE, CRUS_PARAM_RX_GET_USECASE,
 			   sizeof(struct crus_single_data_t), (void *)&crus_usecase);
 
-	ucontrol->value.integer.value[0] = crus_usecase.value;
 
-	/* TODO: uncomment this when QDSP/LPASS is ready for 8 slots */
-	//ucontrol->value.integer.value[0] -= crus_se_usecase_dt_index[0];
+	if (crus_usecase.value == 0) {
+		/* QDSP/LPASS default */
+		ucontrol->value.integer.value[0] = 0;
+	} else {
+		ucontrol->value.integer.value[0] =
+			crus_usecase.value - crus_se_usecase_dt_index[0];
+	}
 
 	return 0;
 }
