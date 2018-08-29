@@ -368,4 +368,9 @@
 		usecase-indexes = <0 1 2 3>;
 		afe-port-id = <16384>;
 	};
+
+	aov_trigger {
+		compatible = "mmi,aov-trigger";
+		status = "ok";
+	};
 };
