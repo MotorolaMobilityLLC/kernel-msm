@@ -3462,6 +3462,24 @@ static int ft_ts_probe(struct i2c_client *client,
 		goto free_gpio;
 	}
 
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI)
+	if ((reg_value != 0x80) && (reg_value != 0xf0)) {
+		u8 id_cmd[4] = {0};
+		u8 chip_id[2] = {0};
+		id_cmd[0] = FTS_CMD_START1;
+		id_cmd[1] = FTS_CMD_START2;
+		err = fts_i2c_write(client, id_cmd, 2);
+		if (err < 0) {
+			FTS_ERROR("[UPGRADE]write 55 aa cmd fail\n");
+			return err;
+		}
+		msleep(FTS_CMD_START_DELAY);
+		id_cmd[0] = FTS_CMD_READ_ID;
+		id_cmd[1] = id_cmd[2] = id_cmd[3] = 0x00 ;
+		err = fts_i2c_read(client, id_cmd, 4, chip_id, 2);
+		reg_value = chip_id[0] ;
+	}
+#endif
 	dev_info(&client->dev, "Device ID = 0x%x\n", reg_value);
 
 	if ((pdata->family_id != reg_value) && (!pdata->ignore_id_check)) {
