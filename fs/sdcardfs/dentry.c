@@ -196,7 +196,7 @@ void sdcardfs_update_xattr_dirwriter(struct dentry *lower_dentry,
 	struct dentry *dentry, *parent;
 	const char *dir_name[2];
 	int xlen, depth;
-	const char *xattr_feat_name = "user.dwriter";
+	const char *xattr_feat_name = SDCARDFS_XATTR_DWRITER_NAME;
 	const char *xattr_name = "user.dwriter.name";
 	struct dentry *xdentry = NULL, *child = NULL;
 	appid_t app_id = uid_is_app(writer_uid) ?
