@@ -74,6 +74,8 @@
 
 #define AID_PACKAGE_INFO  1027
 
+#define SDCARDFS_XATTR_DWRITER_NAME "user.dwriter"
+#define SDCARDFS_XATTR_PARTIAL_RELATIME_NAME "user.relatime"
 
 /*
  * Permissions are handled by our permission function.
