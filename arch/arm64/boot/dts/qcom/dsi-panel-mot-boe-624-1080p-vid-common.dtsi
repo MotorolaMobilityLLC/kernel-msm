@@ -116,7 +116,7 @@ qcom,panel-supply-entries {
 		qcom,supply-min-voltage = <5500000>;
 		qcom,supply-max-voltage = <5500000>;
 		qcom,supply-enable-load = <100000>;
-		qcom,supply-disable-load = <100>;
+		qcom,supply-disable-load = <100000>;
 	};
 
 	qcom,panel-supply-entry@2 {
