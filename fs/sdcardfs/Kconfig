@@ -13,7 +13,7 @@ config SDCARD_FS_FADV_NOACTIVE
 	  Sdcardfs supports fadvise noactive mode.
 
 config SDCARD_FS_PARTIAL_RELATIME
-	bool "sdcardfs partial relatime update support"
+	string "sdcardfs partial relatime update support"
 	depends on SDCARD_FS
 	default n
 	help
@@ -24,7 +24,7 @@ config SDCARD_FS_PARTIAL_RELATIME
 	  would be updated whatever their xattr is set.
 
 config SDCARD_FS_DIR_WRITER
-	bool "sdcardfs directory writer extended attribute support"
+	string "sdcardfs directory writer extended attribute support"
 	depends on SDCARD_FS
 	default n
 	help
