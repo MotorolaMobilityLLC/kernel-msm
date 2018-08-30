@@ -23,6 +23,9 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/parser.h>
+#if defined(CONFIG_SDCARD_FS_DIR_WRITER) || defined(CONFIG_SDCARD_FS_PARTIAL_RELATIME)
+#include <linux/xattr.h>
+#endif
 
 enum {
 	Opt_fsuid,
@@ -382,6 +385,26 @@ static int sdcardfs_read_super(struct vfsmount *mnt, struct super_block *sb,
 	if (!silent)
 		pr_info("sdcardfs: mounted on top of %s type %s\n",
 				dev_name, lower_sb->s_type->name);
+
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
+	if (vfs_setxattr(lower_path.dentry,
+		SDCARDFS_XATTR_DWRITER_NAME,
+		CONFIG_SDCARD_FS_DIR_WRITER,
+		strlen(CONFIG_SDCARD_FS_DIR_WRITER), 0)) {
+		pr_warn("sdcardfs: failed to set %s\n",
+			SDCARDFS_XATTR_DWRITER_NAME);
+	}
+#endif
+#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
+	if (vfs_setxattr(lower_path.dentry,
+		SDCARDFS_XATTR_PARTIAL_RELATIME_NAME,
+		CONFIG_SDCARD_FS_PARTIAL_RELATIME,
+		strlen(CONFIG_SDCARD_FS_PARTIAL_RELATIME), 0)) {
+		pr_warn("sdcardfs: failed to set xattr %s\n",
+			SDCARDFS_XATTR_PARTIAL_RELATIME_NAME);
+	}
+#endif
+
 	goto out; /* all is well */
 
 	/* no longer needed: free_dentry_private_data(sb->s_root); */
