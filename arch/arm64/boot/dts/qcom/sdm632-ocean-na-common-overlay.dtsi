@@ -10,12 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-&i2c_1 {
-	status = "ok";
-	drv2624@5a {
-		ti,lra-frequency = <205>; /* NA 205Hz */
-	};
-};
 
 &i2c_2 {
 	status = "ok";
