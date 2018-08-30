@@ -818,7 +818,7 @@ void sdcardfs_update_relatime_flag(struct file *lower_file,
 	char *xexcept = NULL, *xpath;
 	int xlen, i, depth = 0;
 	struct dentry *dentry, *parent, *child = NULL;
-	const char *xattr_name = "user.relatime";
+	const char *xattr_name = SDCARDFS_XATTR_PARTIAL_RELATIME_NAME;
 	__u32 flags = 0;
 	appid_t app_id = uid_is_app(writer_uid) ?
 		writer_uid % AID_USER_OFFSET : 0;
