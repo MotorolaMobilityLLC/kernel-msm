@@ -21,14 +21,14 @@
 	};
 	cs35l41_irq_default: cs35l41_irq_default {
 		config {
-			pins = "gpio76";
+			pins = "gpio9";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
 	};
 	cs35l41_r_irq_default: cs35l41_r_irq_default {
 		config {
-			pins = "gpio9";
+			pins = "gpio76";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
@@ -248,7 +248,7 @@
 		compatible = "cirrus,cs35l41";
 		reg = <0x40>;
 		reset-gpios = <&tlmm 63 0>;
-		interrupts = <76 0>;
+		interrupts = <9 0>;
 		interrupt-parent = <&tlmm>;
 		interrupt-names = "amp_l_irq";
 
@@ -290,7 +290,7 @@
 	prince_rcv: cs35l41@41 {
 		compatible = "cirrus,cs35l41";
 		reg = <0x41>;
-		interrupts = <9 0>;
+		interrupts = <76 0>;
 		interrupt-parent = <&tlmm>;
 		interrupt-names = "amp_r_irq";
 
