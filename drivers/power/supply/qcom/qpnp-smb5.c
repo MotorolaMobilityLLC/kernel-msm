@@ -2067,6 +2067,26 @@ static int smb5_init_hw(struct smb5 *chip)
 	}
 
 	/*
+	 * Clear the bits TYPEC_STATE_MACHINE_CHANGE_INT_EN_BIT and
+	 * TYPEC_WATER_DETECTION_INT_EN_BIT if moisture protection feature
+	 * is not available, so as to fix the typec-or-rid-change-detect irq
+	 * storm when no device or host is attached.
+	 */
+	if (!chg->moisture_protection_enabled ||
+				!(chg->wa_flags & MOISTURE_PROTECTION_WA)) {
+
+		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
+					TYPEC_STATE_MACHINE_CHANGE_INT_EN_BIT |
+					TYPEC_WATER_DETECTION_INT_EN_BIT, 0);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't configure TYPEC_INT_EN_CFG rc=%d\n",
+					rc);
+			return rc;
+		}
+	}
+
+	/*
 	 * PMI632 based hw init:
 	 * - Enable STAT pin function on SMB_EN
 	 * - Rerun APSD to ensure proper charger detection if device
