@@ -281,6 +281,7 @@
 					calibration {
 						cirrus,full-name;
 						cirrus,wmfw-file = "cs35l41-dsp1-spk-cali.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
 					};
 				};
 			};
@@ -321,6 +322,7 @@
 					calibration {
 						cirrus,full-name;
 						cirrus,wmfw-file = "cs35l41-dsp1-spk-cali.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-rcv-cali.bin";
 					};
 				};
 			};
