@@ -16,6 +16,9 @@
 		protection {
 			cirrus,bin-file = "cs35l41-dsp1-spk-prot-na.bin";
 		};
+		calibration {
+			cirrus,bin-file = "cs35l41-dsp1-spk-cali-na.bin";
+		};
 	};
 };
 
