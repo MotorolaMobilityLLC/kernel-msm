@@ -221,6 +221,16 @@
 		status = "ok";
 	};
 
+	actuator_rear: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		cci-master = <0>;
+		cam_vaf-supply = <&camera_rear_vdig_ldo>;
+		regulator-names = "cam_vaf";
+		status = "ok";
+	};
+
 	/*IMX519*/
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -231,6 +241,7 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
 		led-flash-src = <&led_flash_rear>;
+		actuator-src = <&actuator_rear>;
 		cam_vana-supply = <&camera_vana_ldo>;
 		cam_vdig-supply = <&camera_rear_vdig_ldo>;
 		cam_vio-supply = <&camera_vio_ldo>;
