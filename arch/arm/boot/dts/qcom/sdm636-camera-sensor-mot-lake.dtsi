@@ -77,9 +77,9 @@
 		qcom,cci-master = <0>;
 		cam_vaf-supply = <&pm660l_l3>;
 		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-min-voltage = <2800000>;
-		qcom,cam-vreg-max-voltage = <2800000>;
-		qcom,cam-vreg-op-mode = <80000>;
+		qcom,cam-vreg-min-voltage = <2850000>;
+		qcom,cam-vreg-max-voltage = <2850000>;
+		qcom,cam-vreg-op-mode = <100000>;
 	};
 
 	ois0: qcom,ois@0 {
@@ -89,8 +89,8 @@
 		qcom,cci-master = <0>;
 		cam_vaf-supply = <&pm660l_l3>;
 		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-min-voltage = <2800000>;
-		qcom,cam-vreg-max-voltage = <2800000>;
+		qcom,cam-vreg-min-voltage = <2850000>;
+		qcom,cam-vreg-max-voltage = <2850000>;
 		qcom,cam-vreg-op-mode = <100000>;
 		status = "ok";
 	};
@@ -103,9 +103,9 @@
 		cam_vaf-supply = <&pm660l_l3>;
 		cam_vdig-supply = <&pm660_s5>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf", "cam_vdig";
-		qcom,cam-vreg-min-voltage = <1800000 2800000 1350000>;
-		qcom,cam-vreg-max-voltage = <1800000 2800000 1350000>;
-		qcom,cam-vreg-op-mode = <105000 80000 105000>;
+		qcom,cam-vreg-min-voltage = <1800000 2850000 1350000>;
+		qcom,cam-vreg-max-voltage = <1800000 2850000 1350000>;
+		qcom,cam-vreg-op-mode = <105000 100000 105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_active
@@ -227,9 +227,9 @@
 		cam_vaf-supply = <&pm660l_l3>;
 		cam_vdig-supply = <&pm660_s5>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf", "cam_vdig";
-		qcom,cam-vreg-min-voltage = <1800000 2800000 1350000>;
-		qcom,cam-vreg-max-voltage = <1800000 2800000 1350000>;
-		qcom,cam-vreg-op-mode = <105000 80000 105000>;
+		qcom,cam-vreg-min-voltage = <1800000 2850000 1350000>;
+		qcom,cam-vreg-max-voltage = <1800000 2850000 1350000>;
+		qcom,cam-vreg-op-mode = <105000 100000 105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_active
@@ -630,8 +630,8 @@
 	rpm-regulator-ldob3 {
 		status = "okay";
 		pm660l_l3: regulator-l3 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
+			regulator-min-microvolt = <2850000>;
+			regulator-max-microvolt = <2850000>;
 			status = "okay";
 		};
 	};
