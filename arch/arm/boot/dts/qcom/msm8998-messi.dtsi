@@ -62,17 +62,6 @@
 		ti,ilim = <0x0F>;
 	};
 
-	tmp108@49 {
-		compatible = "ti,tmp108";
-		reg = <0x49>;
-		interrupt-parent = <&tlmm>;
-		gpios = <&tlmm 1 0>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&tmp108_2_irq_default>;
-		label = "msm_tmp108";
-	};
-
 	cypress_capsensor@1D {
 		compatible = "cypress,sf3155";
 		label = "MotorolaCapSense";
@@ -104,6 +93,29 @@
 	};
 
 	/delete-node/ qcom,smb138x@8;
+	/delete-node/ tmp108@48;
+	/delete-node/ tmp108@49;
+	drv2624@5a {
+		status = "ok";
+		compatible = "ti,drv2624";
+		reg = <0x5A>;
+		/* voltage = *_voltage x 22 mV */
+		/* 1.8V for now */
+		ti,rated_voltage = /bits/ 8 <0x49>;
+		ti,overdrive_voltage = /bits/ 8 <0x92>;
+		ti,rate_voltage_clamp = /bits/ 8 <0x97>;
+		ti,rtp_input = /bits/ 8 <0x7f>;
+		ti,rtp_input_reduced = /bits/ 8 <0x51>;
+		/* LRA period = lra_freq x 24.39 us */
+		/* 205 Hz for now */
+		ti,lra_freq = /bits/ 8 <0xCD>;
+		ti,lra_drive;
+		ti,auto_cal;
+		ti,auto_cal_time = /bits/ 8 <0x01>;
+		/* sample time 300us  */
+		ti,sample_time = /bits/ 8 <0x1c>;
+		ti,drive_time = /bits/ 8 <0x13>;
+	};
 };
 
 &soc {
@@ -135,19 +147,6 @@
 	/delete-node/ spi_1;  /* delete spi_1 node in tlmm */
 	/delete-node/ kungpow_default;
 
-	tmp108_2_irq {
-		tmp108_2_irq_default: default {
-			mux {
-				pins = "gpio1";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio1";
-				drive-strength = <2>;
-				bias-pull-up;
-			};
-		};
-	};
 	/* SPI_I2C_MPHY_SEL, RGB_MOD_SEL*/
 	muc_spi_i2c_switch: muc_spi_i2c_switch@0 {
 		config {
