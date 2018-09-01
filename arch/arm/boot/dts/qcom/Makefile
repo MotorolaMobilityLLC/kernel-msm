@@ -2,7 +2,7 @@
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
 # to be runtime added by the bootloader (i.e. /chosen properties)
-DTC_FLAGS := -p 1024
+DTC_FLAGS += -p 1024
 
 # Motorola Device Trees
 dtb-$(CONFIG_ARCH_MSM8998) += msm8998-saratoga-p1.dtb \
@@ -51,9 +51,20 @@ dtb-$(CONFIG_ARCH_SDM636) += sdm636-heart-evt2.dtb
 endif #CONFIG_HEART_DTB
 
 ifeq ($(CONFIG_LAKE_DTB),y)
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+dtbo-$(CONFIG_ARCH_SDM636) += \
+	sdm636-lake-evt1-overlay.dtbo \
+	sdm636-lake-evt2-overlay.dtbo \
+	sdm636-lake-na-evt2-overlay.dtbo
+
+sdm636-lake-evt1-overlay.dtbo-base :=  sdm636-lake-base.dtb
+sdm636-lake-evt2-overlay.dtbo-base :=  sdm636-lake-base.dtb
+sdm636-lake-na-evt2-overlay.dtbo-base :=  sdm636-lake-base.dtb
+else
 dtb-$(CONFIG_ARCH_SDM636) += sdm636-lake-evt1.dtb
 dtb-$(CONFIG_ARCH_SDM636) += sdm636-lake-evt2.dtb
 dtb-$(CONFIG_ARCH_SDM636) += sdm636-lake-na-evt2.dtb
+endif
 endif #CONFIG_LAKE_DTB
 
 ifeq ($(CONFIG_CHEF_DTB),y)
