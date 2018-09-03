@@ -613,23 +613,23 @@ static int proc_utag_util(struct ctrl *ctrl)
 {
 	struct proc_dir_entry *dir;
 
-	dir = proc_mkdir_data("all", 0511, ctrl->root, NULL);;
+	dir = proc_mkdir_data("all", 0551, ctrl->root, NULL);
 	if (!dir) {
 		pr_err("failed to create util\n");
 		return -EIO;
 	}
 
-	if (!proc_create_data("new", 0200, dir, &new_fops, ctrl)) {
+	if (!proc_create_data("new", 0220, dir, &new_fops, ctrl)) {
 		pr_err("Failed to create utag new entry\n");
 		return -EIO;
 	}
 
-	if (!proc_create_data("lock", 0600, dir, &lock_fops, ctrl)) {
+	if (!proc_create_data("lock", 0660, dir, &lock_fops, ctrl)) {
 		pr_err("Failed to create lock entry\n");
 		return -EIO;
 	}
 
-	if (!proc_create_data(".delete", 0200, dir, &delete_fops, ctrl)) {
+	if (!proc_create_data(".delete", 0220, dir, &delete_fops, ctrl)) {
 		pr_err("Failed to create delete entry\n");
 		return -EIO;
 	}
@@ -1881,7 +1881,7 @@ static int utags_probe(struct platform_device *pdev)
 	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT)))
 		ctrl->hwtag = 1;
 
-	if (!proc_create_data("reload", 0640, ctrl->root, &reload_fops, ctrl)) {
+	if (!proc_create_data("reload", 0660, ctrl->root, &reload_fops, ctrl)) {
 		pr_err("Failed to create reload entry\n");
 		destroy_workqueue(ctrl->load_queue);
 		destroy_workqueue(ctrl->store_queue);
