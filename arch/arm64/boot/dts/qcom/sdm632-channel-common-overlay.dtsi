@@ -13,7 +13,6 @@
 
 #include "sdm632-moto-common-overlay.dtsi"
 #include "sdm632-channel-pinctrl-overlay.dtsi"
-#include "dsi-panel-mot-boe-569-hd-vid.dtsi"
 #include "dsi-panel-mot-djn-569-hd-vid.dtsi"
 #include "dsi-panel-mot-dsbj-569-hd-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
@@ -69,7 +68,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_boe_569_hd_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_djn_569_hd_vid_v0>;
 
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &bklt_en_default>;
