@@ -221,7 +221,7 @@
 		polling-delay = <1000>;
 		thermal-sensors = <&pm8953_vadc 0x13>;
 		thermal-governor = "user_space";
-		thermal-user-alarm = <40000>;
+		thermal-user-alarm = <37000>;
 
 		trips {
 			active-config0 {
@@ -237,7 +237,7 @@
 		polling-delay = <1000>;
 		thermal-sensors = <&pm8953_vadc 0x11>;
 		thermal-governor = "user_space";
-		thermal-user-alarm = <40000>;
+		thermal-user-alarm = <37000>;
 
 		trips {
 			active-config0 {
