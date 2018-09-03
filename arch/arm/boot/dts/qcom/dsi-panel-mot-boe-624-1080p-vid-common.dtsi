@@ -35,13 +35,13 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
-	05 01 00 00 c8 00 02 11 00
-	05 01 00 00 78 00 02 29 00
+	05 01 00 00 64 00 02 11 00
+	05 01 00 00 14 00 02 29 00
 	39 01 00 00 00 00 03 51 0C CC
 	15 01 00 00 00 00 02 53 2C
-	15 01 00 00 14 00 02 55 01
-        39 01 00 00 14 00 04 b9 83 11 2a
-        39 01 00 00 00 00 05 c9 04 08 B9 00
+	15 01 00 00 00 00 02 55 01
+        39 01 00 00 00 00 04 b9 83 11 2a
+        39 01 00 00 00 00 05 c9 04 08 B9 01
 	15 01 00 00 00 00 02 cc 08
         39 01 00 00 00 00 03 ba 73 23];/* display on */
 
@@ -85,7 +85,7 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 10>, <1 10>;
+qcom,mdss-dsi-reset-sequence = <1 2>, <0 2>, <1 10>;
 qcom,mdss-dsi-lp11-init;
 //qcom,mdss-dsi-tx-eot-append;
 //qcom,mdss-dsi-init-delay-us = <50000>;
@@ -110,7 +110,7 @@ qcom,panel-supply-entries {
 		qcom,supply-max-voltage = <1950000>;
 		qcom,supply-enable-load = <32000>;
 		qcom,supply-disable-load = <80>;
-		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-post-on-sleep = <2>;
 		qcom,supply-pre-off-sleep = <5>;
 		qcom,supply-post-off-sleep = <1>;
 	};
