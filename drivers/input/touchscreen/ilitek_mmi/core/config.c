@@ -407,7 +407,7 @@ void core_config_ic_suspend(void)
 		return;
 	}
 	ipio_info("Starting to suspend ...\n");
-
+	core_fr->isEnableFR = false;
 	ilitek_platform_disable_irq();
 
 	if (ipd->isEnablePollCheckPower)
@@ -500,7 +500,7 @@ void core_config_ic_resume(void)
 #endif
 	core_fr->actual_fw_mode = P5_0_FIRMWARE_DEMO_MODE;
 	ilitek_platform_enable_irq();
-
+	core_fr->isEnableFR = true;
 	if (ipd->isEnablePollCheckPower)
 		queue_delayed_work(ipd->check_power_status_queue,
 		 &ipd->check_power_status_work, ipd->work_delay);
