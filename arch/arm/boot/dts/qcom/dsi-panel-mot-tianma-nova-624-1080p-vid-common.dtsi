@@ -87,10 +87,9 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <0 15>, <1 10>, <0 10>, <1 10>;
+qcom,mdss-dsi-reset-sequence = <1 10>, <0 2>, <1 10>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
-qcom,mdss-dsi-init-delay-us = <50000>;
 qcom,mdss-dsi-no-panel-on-read-support;
 //qcom,mdss-dsi-lp11-lcdb-reset;
 
@@ -112,7 +111,7 @@ qcom,panel-supply-entries {
 		qcom,supply-max-voltage = <1950000>;
 		qcom,supply-enable-load = <32000>;
 		qcom,supply-disable-load = <80>;
-		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-post-on-sleep = <2>;
 		qcom,supply-pre-off-sleep = <5>;
 		qcom,supply-post-off-sleep = <1>;
 	};
@@ -133,7 +132,7 @@ qcom,panel-supply-entries {
 		qcom,supply-max-voltage = <6000000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
-		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-post-on-sleep = <15>;
 		qcom,supply-pre-off-sleep = <10>;
 	};
 };
