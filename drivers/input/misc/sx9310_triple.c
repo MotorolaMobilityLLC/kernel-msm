@@ -1694,15 +1694,27 @@ static void sx93XX_worker_func(struct work_struct *work)
 void sx93XX_suspend(psx93XX_t this)
 {
 	if (this) {
-		LOG_INFO("sx9310 suspend: disable irq!\n");
+		write_register(this, 0x41, 0x00);
+		if (sx9310_debug_enable)
+			LOG_INFO("sx9310 suspend: disable irq!\n");
 		disable_irq(this->irq);
 	}
 }
 void sx93XX_resume(psx93XX_t this)
 {
 	if (this) {
-		LOG_INFO("sx9310 resume: enable irq!\n");
+		if (sx9310_debug_enable)
+			LOG_INFO("sx9310 resume: enable irq!\n");
+#ifdef USE_THREADED_IRQ
+		mutex_lock(&this->mutex);
+		/* Just in case need to reset any uncaught interrupts */
+		sx93XX_process_interrupt(this, 0);
+		mutex_unlock(&this->mutex);
+#else
+		sx93XX_schedule_work(this, 0);
+#endif
 		enable_irq(this->irq);
+		write_register(this, 0x41, 0x01);
 	}
 }
 
