@@ -74,7 +74,7 @@ typedef struct sx933x
 
 static int irq_gpio_num;
 static psx93XX_t global_sx933x;
-
+static void sx93XX_schedule_work(psx93XX_t this, unsigned long delay);
 static int sx933x_get_nirq_state(void)
 {
 	return  !gpio_get_value(irq_gpio_num);
@@ -1079,8 +1079,9 @@ static int sx933x_suspend(struct device *dev)
 {
 	psx93XX_t this = dev_get_drvdata(dev);
 	if (this) {
-		disable_irq(this->irq);
-		//sx933x_i2c_write_16bit(this,SX933X_CPS_CTRL0_REG,0x20);//make sx933x in Sleep mode
+          	sx933x_i2c_write_16bit(this,SX933X_CMD_REG,0xD);//make sx933x in Sleep mode
+          	LOG_DBG(LOG_TAG "sx933x suspend:disable irq!\n");
+          	disable_irq(this->irq);
 	}
 	return 0;
 }
@@ -1089,8 +1090,10 @@ static int sx933x_resume(struct device *dev)
 {
 	psx93XX_t this = dev_get_drvdata(dev);
 	if (this) {
+		LOG_DBG(LOG_TAG "sx933x resume:enable irq!\n");
+		sx93XX_schedule_work(this,0);
 		enable_irq(this->irq);
-		//sx933x_i2c_write_16bit(this,SX933X_CPS_CTRL0_REG,0x27);//Exit from Sleep mode
+		sx933x_i2c_write_16bit(this,SX933X_CMD_REG,0xC);//Exit from Sleep mode
 	}
 	return 0;
 }
