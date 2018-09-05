@@ -313,6 +313,39 @@ struct dwc3_msm {
 	struct work_struct	ext_usb_work;
 };
 
+static struct dwc3_msm *the_chip;
+static int usb_priority;
+static int set_usb_pri_param(const char *val, const struct kernel_param *kp)
+{
+	int rc;
+	int prev_up = usb_priority;
+
+	rc = param_set_int(val, kp);
+	if (rc)
+		return rc;
+
+	if (the_chip) {
+		if (prev_up != usb_priority) {
+			pr_info("dwc3_msm: %s - usbpri %d\n",
+				__func__, usb_priority);
+			schedule_work(&the_chip->ext_usb_work);
+		} else
+			pr_info("dwc3_msm: %s - usbpri same\n", __func__);
+	} else
+		pr_err("dwc3_msm: set usb_priority the_chip not ready\n");
+
+
+	return 0;
+}
+
+static struct kernel_param_ops usb_pri_ops = {
+	.set = set_usb_pri_param,
+	.get = param_get_int,
+};
+
+module_param_cb(usb_priority, &usb_pri_ops, &usb_priority, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(usb_priority, "USB Priority with MOD, default is Phone");
+
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
 #define USB_HSPHY_3P3_VOL_MAX		3300000 /* uV */
 #define USB_HSPHY_3P3_HPM_LOAD		16000	/* uA */
@@ -3457,12 +3490,12 @@ static void dwc3_ext_usb_work(struct work_struct *w)
 		extcon_get_cable_state_(mdwc->extcon_vbus, EXTCON_USB) ||
 		extcon_get_cable_state_(mdwc->extcon_id, EXTCON_USB_HOST);
 
-
+	dev_info(mdwc->dev, "%s - usbpri %d\n", __func__, usb_priority);
 	if (!mdwc->ext_state.active) {
 		dbg_event(0xFF, "ext work none", 0);
 		dwc3_extcon_restore(mdwc);
 		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
-	} else if (usb_present) {
+	} else if (usb_present && !usb_priority) {
 		dbg_event(0xFF, "ext work dis", 0);
 		dwc3_ext_usb_enable(mdwc, false);
 		dwc3_ext_send_uevent(mdwc, true);
@@ -3533,7 +3566,8 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 		mdwc->ext_state.active = 0;
 
 	dbg_event(0xFF, "EXT Notif", mdwc->ext_state.active);
-	if (usb_present && val) {
+	dev_info(mdwc->dev, "%s - usbpri %d\n", __func__, usb_priority);
+	if (usb_present && val && !usb_priority) {
 		dbg_event(0xFF, "EXT defer", usb_present);
 		dev_info(mdwc->dev, "Primary USB present, Ignore EXT\n");
 		mdwc->ext_enabled = false;
@@ -3976,6 +4010,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_modusb_enable);
 	device_create_file(&pdev->dev, &dev_attr_modusb_protocol);
 	device_create_file(&pdev->dev, &dev_attr_extusb_state);
+	the_chip = mdwc;
 	return 0;
 
 put_dwc3:
