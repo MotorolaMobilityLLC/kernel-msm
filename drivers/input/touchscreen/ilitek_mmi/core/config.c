@@ -461,11 +461,24 @@ EXPORT_SYMBOL(core_config_ic_suspend);
  */
 void core_config_ic_resume(void)
 {
+	int i = 0 ;
 	if (!ipd->suspended) {
 		ipio_info("TP already in resume statues ...\n");
 		return;
 	}
 	ipio_info("Starting to resume ...\n");
+
+	/* release all touches */
+	if (ipd->MT_B_TYPE) {
+		for (i = 0 ; i < ipd->MAX_TOUCH_NUM; i++) {
+			core_fr_touch_release(0, 0, i);
+			}
+		input_report_key(core_fr->input_device, BTN_TOUCH, 0);
+		input_report_key(core_fr->input_device, BTN_TOOL_FINGER, 0);
+	} else{
+		core_fr_touch_release(0, 0, 0);
+	}
+	input_sync(core_fr->input_device);
 
 #ifndef SUSPEND_TP_POWER_OFF
 
