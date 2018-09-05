@@ -1410,7 +1410,7 @@ void SetStateDelayUnattached(void)
 
 void SetStateUnattached(void)
 {
-
+struct fusb30x_chip *chip = fusb30x_GetChip();	
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = TRUE;
 	platform_enable_timer(FALSE);
@@ -1460,6 +1460,8 @@ void SetStateUnattached(void)
 	gRequestOpVoltage = 100; /*Reset to default 100*50mv*/
 	if (debug_audio)
 		platform_set_usb_device_enable(FALSE);
+	if (chip->dual_role)
+		dual_role_instance_changed(chip->dual_role);
 }
 
 #ifdef FSC_HAVE_SNK
@@ -1552,6 +1554,8 @@ void SetStateAttachWaitAccessory(void)
 #ifdef FSC_HAVE_SRC
 void SetStateAttachedSource(void)
 {
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
 	Registers.Mask.M_COMP_CHNG = 0;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	platform_set_usb_host_enable(TRUE);
@@ -1569,12 +1573,16 @@ void SetStateAttachedSource(void)
 	platform_toggleAudioSwitch(fsa_usb_mode);
 	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
 	power_supply_changed(&usbc_psy);
+	if(chip->dual_role)
+		dual_role_instance_changed(chip->dual_role);
 }
 #endif // FSC_HAVE_SRC
 
 #ifdef FSC_HAVE_SNK
 void SetStateAttachedSink(void)
 {
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = TRUE;
 	platform_enable_timer(FALSE);
@@ -1590,6 +1598,8 @@ void SetStateAttachedSink(void)
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	loopCounter = 0;
 
+	if(chip->dual_role)
+		dual_role_instance_changed(chip->dual_role);
 	ConnState = AttachedSink;	// Set the state machine variable to Attached.Sink
 	setStateSink();
 	platform_notify_cc_orientation(blnCCPinIsCC2);
@@ -1605,6 +1615,7 @@ void SetStateAttachedSink(void)
 #ifdef FSC_HAVE_DRP
 void RoleSwapToAttachedSink(void)
 {
+	struct fusb30x_chip *chip = fusb30x_GetChip();
 	/*Set the state machine variable to Attached.Sink*/
 	ConnState = AttachedSink;
 	sourceOrSink = SINK;
@@ -1632,6 +1643,8 @@ void RoleSwapToAttachedSink(void)
 	/*Disable the 2nd level debounce timer, not used in this state*/
 	CCDebounceTimer = tCCDebounce;
 	PDFilterTimer = T_TIMER_DISABLE;	// Disable PD filter timer
+	if(chip->dual_role)
+		dual_role_instance_changed(chip->dual_role);
 #ifdef FSC_DEBUG
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
 #endif // FSC_DEBUG
@@ -1641,6 +1654,7 @@ void RoleSwapToAttachedSink(void)
 #ifdef FSC_HAVE_DRP
 void RoleSwapToAttachedSource(void)
 {
+	struct fusb30x_chip *chip = fusb30x_GetChip();
 	Registers.Measure.MEAS_VBUS = 0;
 	DeviceWrite(regMeasure, 1, &Registers.Measure.byte);
 	platform_set_vbus_lvl_enable(VBUS_LVL_5V, TRUE, TRUE);	// Enable only the 5V output
@@ -1669,6 +1683,8 @@ void RoleSwapToAttachedSource(void)
 	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
 	power_supply_changed(&usbc_psy);
 	platform_set_usb_host_enable(TRUE);
+	if(chip->dual_role)
+		dual_role_instance_changed(chip->dual_role);
 #ifdef FSC_DEBUG
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
 #endif // FSC_DEBUG
