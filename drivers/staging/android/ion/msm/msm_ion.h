@@ -1,3 +1,16 @@
+/*
+ * Copyright (c) 2016, 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #ifndef _MSM_MSM_ION_H
 #define _MSM_MSM_ION_H
 
@@ -157,6 +170,8 @@ int ion_handle_get_size(struct ion_client *client, struct ion_handle *handle,
 int msm_ion_do_cache_op(struct ion_client *client, struct ion_handle *handle,
 			void *vaddr, unsigned long len, unsigned int cmd);
 
+bool is_buffer_hlos_assigned(struct ion_buffer *buffer);
+
 #else
 static inline struct ion_client *msm_ion_client_create(const char *name)
 {
@@ -174,6 +189,11 @@ static inline int msm_ion_do_cache_op(struct ion_client *client,
 			unsigned long len, unsigned int cmd)
 {
 	return -ENODEV;
+}
+
+static bool is_buffer_hlos_assigned(struct ion_buffer *buffer)
+{
+	return true;
 }
 
 #endif /* CONFIG_ION */
