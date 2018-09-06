@@ -84,6 +84,10 @@
 	status = "ok";
 };
 
+&key_vol_up_default {
+	power-source = <1>;
+};
+
 &soc {
 	vreg_5p0: vreg_5v {
 		compatible = "regulator-fixed";
