@@ -632,7 +632,7 @@ int madera_mux_put(struct snd_kcontrol *kcontrol,
 
 	mux = ucontrol->value.enumerated.item[0];
 
-	if (priv_enum->val == mux)
+	if (mux < 0 || priv_enum->val == mux)
 		return 0;
 
 	priv_enum->val = mux;
