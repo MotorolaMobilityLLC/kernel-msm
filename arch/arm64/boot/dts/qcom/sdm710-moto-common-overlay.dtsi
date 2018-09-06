@@ -630,7 +630,6 @@
 		touch_vdd-supply = <&pm660l_l3>;
 		vdd_quirk-supply = <&pm660_l11>;
 		synaptics,gpio-config;
-		synaptics,control-dsi = <1>;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_suspend &touch_int_suspend>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
