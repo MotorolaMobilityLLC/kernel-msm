@@ -10500,7 +10500,8 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 						   chip->vfloat_parallel_mv);
 	}
 
-	if (chip->stepchg_state == STEP_NONE)
+	if ((chip->stepchg_state == STEP_NONE) &&
+		(!chip->demo_mode))
 		return;
 
 	if (chip->ext_high_temp ||
