@@ -72,6 +72,11 @@ struct page_info {
 	struct list_head list;
 };
 
+int ion_heap_is_system_heap_type(enum ion_heap_type type)
+{
+	return type == ((enum ion_heap_type)ION_HEAP_TYPE_SYSTEM);
+}
+
 static struct page *alloc_buffer_page(struct ion_system_heap *heap,
 				      struct ion_buffer *buffer,
 				      unsigned long order,
@@ -222,6 +227,13 @@ static int ion_system_heap_allocate(struct ion_heap *heap,
 	struct pages_mem data;
 	unsigned int sz;
 	int vmid = get_secure_vmid(buffer->flags);
+
+	if (ion_heap_is_system_heap_type(buffer->heap->type) &&
+	    is_secure_vmid_valid(vmid)) {
+		pr_info("%s: System heap doesn't support secure allocations\n",
+			__func__);
+		return -EINVAL;
+	}
 
 	if (align > PAGE_SIZE)
 		return -EINVAL;
