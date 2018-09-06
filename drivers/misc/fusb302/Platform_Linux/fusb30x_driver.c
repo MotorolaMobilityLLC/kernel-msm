@@ -257,7 +257,14 @@ static int fusb30x_probe(struct i2c_client *client,
 		}
 
 		desc->name = "otg_default";
-		PortType = (USBTypeCPort)GetTypeCSMControl() & 0x03;
+		/* Set DRP by default if we support */
+#ifdef FSC_HAVE_DRP
+		PortType = USBTypeC_DRP;
+#elif FSC_HAVE_SRC
+		PortType = USBTypeC_Source;
+#elif FSC_HAVE_SNK
+		PortType = USBTypeC_Sink;
+#endif // FSC_HAVE_DRP / FSC_HAVE_SRC / FSC_HAVE_SNK
 		switch (PortType) {
 		case USBTypeC_Sink:
 			desc->supported_modes =
