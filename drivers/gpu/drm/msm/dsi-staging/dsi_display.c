@@ -62,6 +62,8 @@ static const struct of_device_id dsi_display_dt_match[] = {
 static struct dsi_display *primary_display;
 static struct dsi_display *secondary_display;
 
+static void dsi_display_is_probed(int enable_idx, int probe_status);
+
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
 {
@@ -5296,7 +5298,7 @@ static struct platform_driver dsi_display_driver = {
 
 int dsi_display_dev_probe(struct platform_device *pdev)
 {
-	int rc = 0;
+	int enable_idx, rc = 0;
 	struct dsi_display *display;
 	static bool boot_displays_parsed;
 	static struct device_node *primary_np, *secondary_np;
@@ -5396,10 +5398,13 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 						"qcom,dsi-display-active");
 
 	if (display->is_active) {
-		if (!strcmp(display->display_type, "primary"))
+		if (!strcmp(display->display_type, "primary")) {
 			primary_display = display;
-		else
+			enable_idx = 0;
+		} else {
 			secondary_display = display;
+			enable_idx = 1;
+		}
 		rc = _dsi_display_dev_init(display);
 		if (rc) {
 			pr_err("device init failed, rc=%d\n", rc);
@@ -5409,6 +5414,8 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 		rc = component_add(&pdev->dev, &dsi_display_comp_ops);
 		if (rc)
 			pr_err("component add failed, rc=%d\n", rc);
+		else
+			dsi_display_is_probed(enable_idx, rc);
 
 		pr_debug("Component_add success: %s\n", display->name);
 		if (!strcmp(display->display_type, "primary"))
@@ -6900,10 +6907,24 @@ error_out:
 /* start of MMI_STOPSHIP section */
 struct dsi_enable_status {
 	struct dsi_display *display;
+	int probed;
 	bool enable;
 };
 
-static struct dsi_enable_status enable_status[2];
+static struct dsi_enable_status enable_status[2] = {
+	{
+		.probed = -ENODEV,
+	},
+	{
+		.probed = -ENODEV,
+	},
+};
+
+static void dsi_display_is_probed (int enable_idx, int probe_status)
+{
+	enable_status[enable_idx].probed = probe_status;
+	pr_debug("display->drm_conn[%d] probe set =%d\n", enable_idx, probe_status);
+}
 
 static int dsi_display_enable_status (struct dsi_display *display, bool enable)
 {
@@ -6915,12 +6936,12 @@ static int dsi_display_enable_status (struct dsi_display *display, bool enable)
 		enable_status[0].display = display;
 		enable_status[0].enable = enable;
 	} else if (!strncmp("DSI-2", display->drm_conn->name, 5)) {
-                pr_debug("display->drm_conn->name=%s enable = %d CLI_DISPLAY\n",
+		pr_debug("display->drm_conn->name=%s enable = %d CLI_DISPLAY\n",
 			display->drm_conn->name, enable);
 		enable_status[1].display = display;
 		enable_status[1].enable = enable;
 	} else {
-		pr_err(" Invalid display->drm_conn->name = %s\n",
+		pr_err("display->drm_conn: invalid name =%s\n",
 					display->drm_conn->name);
 		ret =  -EINVAL;
 	}
@@ -6928,15 +6949,20 @@ static int dsi_display_enable_status (struct dsi_display *display, bool enable)
 	return ret;
 }
 
-bool dsi_display_is_panel_enable (int panel_index)
+bool dsi_display_is_panel_enable (int panel_index, int *probe_status)
 {
 	struct dsi_display *display;
 	bool enable = false;
 
 	if (panel_index > 1) {
-		pr_err("Invalid panel index =%d\n", panel_index);
+		pr_err("display->drm_conn: invalid panel index =%d\n", panel_index);
+		if (probe_status)
+			*probe_status = -ENODEV;
 		return false;
 	}
+
+	if (probe_status)
+		*probe_status = enable_status[panel_index].probed;
 
 	display = enable_status[panel_index].display;
 	if (display) {
