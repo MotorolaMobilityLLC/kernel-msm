@@ -3495,7 +3495,7 @@ static ssize_t himax_buildid_show(struct device *dev,
 	size_t count = 0;
 	ts_data = private_ts;
 
-	count += snprintf(buf, BUF_LEN, "%04X-%d\n", ic_data->vendor_config_ver, ic_data->vendor_fw_ptime);
+	count += snprintf(buf, BUF_LEN, "%d-%04X\n", ic_data->vendor_fw_ptime, ic_data->vendor_config_ver);
 
 	return count;
 }
