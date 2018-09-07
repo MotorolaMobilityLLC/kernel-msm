@@ -3838,6 +3838,9 @@ static int dsi_display_res_init(struct dsi_display *display)
 	display->panel = dsi_panel_get(&display->pdev->dev, display->panel_of,
 					display->cmdline_topology, panel_type);
 
+	dsi_panel_parse_panel_cfg(display->panel,
+				!strcmp(display->display_type, "primary"));
+
 	if (IS_ERR_OR_NULL(display->panel)) {
 		rc = PTR_ERR(display->panel);
 		pr_err("failed to get panel, rc=%d\n", rc);
@@ -5668,6 +5671,11 @@ int dsi_display_get_info(struct msm_display_info *info, void *disp)
 	info->height_mm = phy_props.panel_height_mm;
 	info->max_width = 1920;
 	info->max_height = 1080;
+
+	info->panel_id = display->panel->panel_id;
+	info->panel_ver = display->panel->panel_ver;
+	strncpy(info->panel_name, display->panel->panel_name,
+				sizeof(display->panel->panel_name));
 
 	switch (display->panel->panel_mode) {
 	case DSI_OP_VIDEO_MODE:
