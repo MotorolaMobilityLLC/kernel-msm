@@ -317,7 +317,7 @@
 };
 
 &pmi632_qg {
-	qcom,qg-iterm-ma = <250>;
+	qcom,qg-iterm-ma = <300>;
 	qcom,vbatt-cutoff-mv = <3200>;
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-low-mv = <3300>;
@@ -325,7 +325,7 @@
 };
 
 &pmi632_charger {
-	qcom,iterm-ma = <98>;
+	qcom,iterm-ma = <150>;
 	qcom,fcc-max-ua = <3000000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <3000000>;
