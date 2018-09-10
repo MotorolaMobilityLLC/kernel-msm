@@ -62,6 +62,8 @@ struct ilitek_platform_data {
 
 #ifdef CONFIG_FB
 	struct notifier_block notifier_fb;
+	struct workqueue_struct *ilitek_att_wq;
+	struct delayed_work work_att;
 #else
 	struct early_suspend early_suspend;
 #endif
