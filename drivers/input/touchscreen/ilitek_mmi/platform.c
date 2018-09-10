@@ -325,7 +325,7 @@ static int ilitek_platform_reg_power_check(void)
  * mechnaism. If you'd rather liek to use early suspend,
  * CONFIG_HAS_EARLYSUSPEND in kernel config must be enabled.
  */
-static int ilitek_platform_reg_suspend(void)
+static void ilitek_platform_reg_suspend(struct work_struct *work)
 {
 	int res = 0;
 	ipio_info("Register suspend/resume callback function\n");
@@ -339,7 +339,6 @@ static int ilitek_platform_reg_suspend(void)
 	res = register_early_suspend(ipd->early_suspend);
 #endif /* CONFIG_FB */
 
-	return res;
 }
 
 #ifndef USE_KTHREAD
@@ -981,12 +980,23 @@ static int ilitek_platform_probe(struct spi_device *spi)
 		goto isr_register_err;
 	}
 
+	#if 0
 	ret = ilitek_platform_reg_suspend() ;
 	if (ret < 0) {
 		ipio_err("Failed to register suspend/resume function\n");
 		goto reg_suspend_err;
 	}
-
+	#endif
+#ifdef CONFIG_FB
+	ipd->ilitek_att_wq = create_singlethread_workqueue("ILITEK_ATT_reuqest");
+	if (!ipd->ilitek_att_wq) {
+		ipio_err(" allocate syn_att_wq failed\n");
+		ret = -ENOMEM;
+		goto reg_suspend_err;
+	}
+	INIT_DELAYED_WORK(&ipd->work_att, ilitek_platform_reg_suspend);
+	queue_delayed_work(ipd->ilitek_att_wq, &ipd->work_att, msecs_to_jiffies(16000));
+#endif
 	ret = ilitek_platform_reg_power_check() ;
 	if (ret < 0) {
 		ipio_err("Failed to register power check function\n");
