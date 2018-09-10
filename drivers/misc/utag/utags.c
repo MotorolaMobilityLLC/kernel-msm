@@ -613,7 +613,7 @@ static int proc_utag_util(struct ctrl *ctrl)
 {
 	struct proc_dir_entry *dir;
 
-	dir = proc_mkdir_data("all", 0551, ctrl->root, NULL);
+	dir = proc_mkdir_data("all", 0771, ctrl->root, NULL);
 	if (!dir) {
 		pr_err("failed to create util\n");
 		return -EIO;
@@ -656,7 +656,7 @@ static struct proc_dir_entry *proc_utag_dir(struct ctrl *ctrl,
 		return dnode->dir;
 	}
 
-	dir = proc_mkdir_data(tname, 0511, parent, NULL);
+	dir = proc_mkdir_data(tname, 0771, parent, NULL);
 	if (!dir) {
 		pr_err("failed to create dir %s\n", tname);
 		return ERR_PTR(-ENOMEM);
@@ -1870,7 +1870,7 @@ static int utags_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	ctrl->root = proc_mkdir_data(ctrl->dir_name, 0511, NULL, NULL);
+	ctrl->root = proc_mkdir_data(ctrl->dir_name, 0771, NULL, NULL);
 	if (!ctrl->root) {
 		destroy_workqueue(ctrl->load_queue);
 		destroy_workqueue(ctrl->store_queue);
