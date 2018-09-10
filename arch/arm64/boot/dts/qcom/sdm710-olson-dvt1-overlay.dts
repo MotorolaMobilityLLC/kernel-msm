@@ -25,8 +25,18 @@
 /*
  * Olson HW rev DVT1 specific changes go here
  */
+&ldc2112_default {
+	mux {
+		pins = "gpio116";
+	};
+	config {
+		pins = "gpio116";
+	};
+};
+
 &qupv3_se4_i2c {
 	ldc2114@2a {
+		interrupts = <116 0>;
 		configs {
 			config-ver = <1>;
 			config-normal {

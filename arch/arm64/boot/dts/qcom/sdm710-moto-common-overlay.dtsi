@@ -387,11 +387,11 @@
 	ldc2112_irq { /* TI,LDC2112 */
 		ldc2112_default: default {
 			mux {
-				pins = "gpio116";
+				pins = "gpio43";
 				function = "gpio";
 			};
 			config {
-				pins = "gpio116";
+				pins = "gpio43";
 				drive-strength = <2>;
 				bias-pull-up;
 			};
@@ -463,7 +463,7 @@
 		compatible = "ti,ldc2114";
 		reg = <0x2a>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <116 0>;
+		interrupts = <43 0>;
 		gpios = <&tlmm 13 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&ldc2112_default>;
