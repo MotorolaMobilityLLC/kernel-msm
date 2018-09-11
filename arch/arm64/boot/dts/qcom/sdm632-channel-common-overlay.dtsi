@@ -189,6 +189,8 @@
 	qcom,batt-id-range-pct = <15>;
 	df-serialnum = "SB18C30735";
 	#include "batterydata-je40-scud-3000mah.dtsi"
+        #include "batterydata-je40-atl-3000mah.dtsi"
+        #include "batterydata-je40-atl-india-3000mah.dtsi"
 };
 
 &pmi632_qg {
