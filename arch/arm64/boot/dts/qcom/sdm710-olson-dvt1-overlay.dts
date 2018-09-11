@@ -120,6 +120,15 @@
 	regulator-boot-on;
 };
 
+&camera_avdd_en_default {
+	output-high;
+};
+
+&camera_vana_ldo {
+	regulator-boot-on;
+	regulator-always-on;
+};
+
 /*
  * The CLI display of the DVT1 is a in-cell display which has one controller
  * to control both the display and touch, therefore the touch reset will
