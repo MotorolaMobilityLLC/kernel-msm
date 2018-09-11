@@ -1055,7 +1055,7 @@ int q6asm_audio_client_buf_free_contiguous(unsigned int dir,
 			&port->buf[0].phys,
 			port->buf[0].client,
 			port->buf[0].handle);
-		if (!rc || atomic_read(&ac->reset))
+		if (!rc && cnt >= 0)
 			msm_audio_ion_free(port->buf[0].client,
 					   port->buf[0].handle);
 		port->buf[0].client = NULL;
@@ -1071,7 +1071,7 @@ int q6asm_audio_client_buf_free_contiguous(unsigned int dir,
 	kfree(port->buf);
 	port->buf = NULL;
 	mutex_unlock(&ac->cmd_lock);
-	return 0;
+	return rc;
 }
 
 void q6asm_audio_client_free(struct audio_client *ac)
