@@ -499,7 +499,7 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	struct ramoops_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
 	u32 start, size, console, annotate = 0;
-	u32 record, oops;
+	u32 record, oops, pmsg_size = 0;
 	int ret;
 
 	pdata = dev_get_drvdata(dev);
@@ -522,6 +522,11 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	if (ret)
 		return;
 
+	ret = of_property_read_u32(np, "android,ramoops-pmsg-size",
+				&pmsg_size);
+	if (ret)
+		pr_info("pmsg size not configured");
+
 	ret = of_property_read_u32(np, "android,ramoops-annotate-size",
 				&annotate);
 	if (ret)
@@ -542,6 +547,7 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	pdata->console_size = console;
 	pdata->annotate_size = annotate;
 	pdata->record_size = record;
+	pdata->pmsg_size = pmsg_size;
 	pdata->dump_oops = (int)oops;
 }
 #else
