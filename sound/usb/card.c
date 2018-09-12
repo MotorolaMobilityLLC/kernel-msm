@@ -577,6 +577,7 @@ snd_usb_audio_probe(struct usb_device *dev,
 		chip->ctrl_intf = alts;
 
 	chip->txfr_quirk = 0;
+	chip->capture_rate_max = 0;
 	err = 1; /* continue */
 	if (quirk && quirk->ifnum != QUIRK_NO_INTERFACE) {
 		/* need some special handlings */
