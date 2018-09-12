@@ -1,0 +1,50 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/msm-clocks-8953.h>
+
+#include "sdm632-channel-common-overlay.dtsi"
+
+/ {
+	model = "channel";
+	qcom,msm-id = <349 0x0>;
+	qcom,board-id = <0x49 0xB2A0>;
+};
+
+/*
+ * Channel RoW HW rev DVT2A specific changes go here
+ */
+
+&i2c_2 { /* capsensor */
+
+	sx9310@28 {
+		compatible = "sx9325";
+		reg = <0x28>;
+		cap_vdd-supply = <&pm8953_l5>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <86 0x2008>;
+		gpios = <&tlmm 86 0x2008>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		cap,use_channel = <0x0f>;
+		cap,use_channel_top = <0x03>;
+		cap,use_channel_bottom = <0x01>;
+		cap,raw_data_channel = <0x01>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <26>;
+		reg_array_val = <0x05 0x74 0x10 0x09 0x20 0x80 0x23 0x00 0x24 0x5F 0x26 0x00 0x27 0x47 0x28 0x00 0x29 0x36 0x2a 0x01 0x2b 0x10 0x2d 0x06 0x30 0x12 0x31 0x12 0x32 0x10 0x33 0x3F 0x34 0x0a 0x35 0x10 0x36 0x23 0x37 0x23 0x42 0x1C 0x43 0x17 0x44 0x01 0x4a 0x22 0x4b 0x00 0x4c 0x00>;
+		/delete-property/ cap_svdd-supply;
+	};
+};
