@@ -62,6 +62,7 @@
 	/delete-node/ qcom,actuator@1;
 	/delete-node/ qcom,actuator@2;
 	/delete-node/ qcom,tof@29;
+	/delete-node/ qcom,ois@0;
 	/delete-node/ qcom,eeprom@0;
 	/delete-node/ qcom,eeprom@1;
 	/delete-node/ qcom,eeprom@2;
@@ -87,11 +88,6 @@
 		reg = <0x0>;
 		compatible = "qcom,ois";
 		qcom,cci-master = <0>;
-		cam_vaf-supply = <&pm660l_l3>;
-		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-min-voltage = <2850000>;
-		qcom,cam-vreg-max-voltage = <2850000>;
-		qcom,cam-vreg-op-mode = <100000>;
 		status = "ok";
 	};
 
