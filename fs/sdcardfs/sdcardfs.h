@@ -586,37 +586,34 @@ static inline int check_min_free_space(struct dentry *dentry, size_t size, int d
 	u64 avail;
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 
-	if (sbi->options.reserved_mb) {
-		/* Get fs stat of lower filesystem. */
-		sdcardfs_get_lower_path(dentry, &lower_path);
-		err = vfs_statfs(&lower_path, &statfs);
-		sdcardfs_put_lower_path(dentry, &lower_path);
+	/* Get fs stat of lower filesystem. */
+	sdcardfs_get_lower_path(dentry, &lower_path);
+	err = vfs_statfs(&lower_path, &statfs);
+	sdcardfs_put_lower_path(dentry, &lower_path);
 
-		if (unlikely(err))
-			return 0;
-
-		/* Invalid statfs informations. */
-		if (unlikely(statfs.f_bsize == 0))
-			return 0;
-
-		/* if you are checking directory, set size to f_bsize. */
-		if (unlikely(dir))
-			size = statfs.f_bsize;
-
-		/* available size */
-		avail = statfs.f_bavail * statfs.f_bsize;
-
-		/* not enough space */
-		if ((u64)size > avail)
-			return 0;
-
-		/* enough space */
-		if ((avail - size) > (sbi->options.reserved_mb * 1024 * 1024))
-			return 1;
-
+	if (unlikely(err))
 		return 0;
-	} else
+
+	/* Invalid statfs informations. */
+	if (unlikely(statfs.f_bsize == 0))
+		return 0;
+
+	/* if you are checking directory, set size to f_bsize. */
+	if (unlikely(dir))
+		size = statfs.f_bsize;
+
+	/* available size */
+	avail = statfs.f_bavail * statfs.f_bsize;
+
+	/* not enough space */
+	if ((u64)size > avail)
+		return 0;
+
+	/* enough space */
+	if ((avail - size) > (sbi->options.reserved_mb * 1024 * 1024))
 		return 1;
+
+	return 0;
 }
 
 /*
