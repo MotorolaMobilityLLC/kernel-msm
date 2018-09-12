@@ -35,7 +35,7 @@
 	reserved-memory {
 		ramoops_mem: ramoops_mem_region {
 			no-map;
-			reg = <0x0 0xef000000 0x0 0x80000>;
+			reg = <0x0 0xef000000 0x0 0xC0000>;
 			label = "ramoops_mem";
 		};
 		tzlog_bck_mem: tzlog_bck_region {
@@ -764,8 +764,9 @@
 		status = "ok";
 
 		android,ramoops-buffer-start = <0xef000000>;
-		android,ramoops-buffer-size = <0x80000>;
+		android,ramoops-buffer-size = <0xC0000>;
 		android,ramoops-console-size = <0x40000>;
+		android,ramoops-pmsg-size = <0x40000>;
 		android,ramoops-record-size = <0x3F800>;
 		android,ramoops-annotate-size = <0x800>;
 		android,ramoops-dump-oops = <0x1>;
