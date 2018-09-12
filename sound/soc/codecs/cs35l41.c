@@ -44,6 +44,8 @@
 #include "cs35l41.h"
 #include <sound/cs35l41.h>
 
+#define WORKAROUND_CSPL_VOLUME
+
 static const char * const cs35l41_supplies[] = {
 	"VA",
 	"VP",
@@ -174,6 +176,14 @@ static int cs35l41_dsp_load_ev(struct snd_soc_dapm_widget *w,
 			wm_halo_event(w, kcontrol, event);
 			cs35l41->halo_booted = true;
 		}
+        regmap_write(cs35l41->regmap, cs35l41->cspl_cmd_reg,
+            CS35L41_CSPL_CMD_UNMUTE);
+		return 0;
+
+    case SND_SOC_DAPM_PRE_PMD:
+        regmap_write(cs35l41->regmap, cs35l41->cspl_cmd_reg,
+            CS35L41_CSPL_CMD_MUTE);
+
 	default:
 		return 0;
 	}
@@ -257,6 +267,10 @@ static int cs35l41_set_csplmboxcmd(struct cs35l41_private *cs35l41,
 	int		ret;
 	unsigned int	sts;
 
+#ifdef WORKAROUND_CSPL_VOLUME
+	pr_info("%s: workaround cspl volume\n", __func__);
+	return 0;
+#endif
 	/* Reset DSP sticky bit */
 	regmap_write(cs35l41->regmap, CS35L41_IRQ2_STATUS2,
 		     1 << CS35L41_CSPL_MBOX_CMD_DRV_SHIFT);
@@ -832,7 +846,8 @@ static const struct snd_soc_dapm_widget cs35l41_dapm_widgets[] = {
 				SND_SOC_NOPM, 0, 0, cs35l41_dsp_power_ev,
 				SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_OUT_DRV_E("DSP1", SND_SOC_NOPM, 0, 0, NULL, 0,
-				cs35l41_dsp_load_ev, SND_SOC_DAPM_POST_PMU),
+				cs35l41_dsp_load_ev,
+				SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_OUTPUT("SPK"),
 	SND_SOC_DAPM_SWITCH("AMP Enable", SND_SOC_NOPM, 0, 1, &amp_enable_ctrl),
 	SND_SOC_DAPM_AIF_IN("ASPRX1", NULL, 0, CS35L41_SP_ENABLES, 16, 0),
@@ -1920,9 +1935,11 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 				"Failed to apply A0 errata patch %d\n", ret);
 			goto err;
 		}
+		cs35l41->cspl_cmd_reg = CS35L41_CSPL_COMMAND_REV_A0;
 		break;
 	case CS35L41_REVID_B0:
 		regmap_write(cs35l41->regmap, CS35L41_BSTCVRT_DCM_CTRL, 0x51);
+		cs35l41->cspl_cmd_reg = CS35L41_CSPL_COMMAND_REV_B0;
 		break;
 	}
 
