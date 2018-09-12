@@ -46,6 +46,7 @@ struct snd_usb_audio {
 	
 	int num_interfaces;
 	int num_suspended_intf;
+	unsigned int capture_rate_max;
 
 	struct list_head pcm_list;	/* list of pcm streams */
 	struct list_head ep_list;	/* list of audio-related endpoints */
