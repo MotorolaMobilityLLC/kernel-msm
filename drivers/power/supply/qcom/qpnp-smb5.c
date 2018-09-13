@@ -2160,8 +2160,9 @@ static int smb5_init_hw(struct smb5 *chip)
 		}
 	} else if (!chg->mmi.factory_mode) {
 		rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				SUSPEND_ON_COLLAPSE_USBIN_BIT | USBIN_AICL_RERUN_EN_BIT |
 				USBIN_AICL_ADC_EN_BIT | USBIN_AICL_EN_BIT,
-				USBIN_AICL_ADC_EN_BIT | USBIN_AICL_EN_BIT);
+				USBIN_AICL_RERUN_EN_BIT | USBIN_AICL_EN_BIT);
 		if (rc < 0) {
 			dev_err(chg->dev, "Couldn't config AICL rc=%d\n", rc);
 			return rc;
