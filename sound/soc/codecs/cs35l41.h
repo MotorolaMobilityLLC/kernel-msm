@@ -733,13 +733,6 @@ extern const struct cs35l41_otp_map_element_t
 #define CS35L41_REGSTRIDE			4
 #define CS35L41_MBOXWAIT			5
 
-#define CS35L41_CSPL_CMD_NONE                  0
-#define CS35L41_CSPL_CMD_MUTE                  1
-#define CS35L41_CSPL_CMD_UNMUTE                        2
-#define CS35L41_CSPL_CMD_REINIT                        3
-#define CS35L41_CSPL_COMMAND_REV_A0            0x02800210
-#define CS35L41_CSPL_COMMAND_REV_B0            0x02800234
-
 #define CS35L41_DSP_VIRT1_MBOX_SHIFT		20
 #define CS35L41_DSP_VIRT2_MBOX_SHIFT		21
 #define CS35L41_CSPL_MBOX_STS			CS35L41_DSP_MBOX_2
