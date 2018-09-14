@@ -607,6 +607,7 @@ bool cs35l41_volatile_reg(struct device *dev, unsigned int reg)
 	case CS35L41_SFT_RESET:
 	case CS35L41_FABID:
 	case CS35L41_REVID:
+	case CS35L41_DTEMP_EN:
 	case CS35L41_IRQ1_STATUS:
 	case CS35L41_IRQ1_STATUS1:
 	case CS35L41_IRQ1_STATUS2:
