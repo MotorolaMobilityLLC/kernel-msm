@@ -280,8 +280,12 @@
 					};
 					calibration {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-cali.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
+					};
+					diagnostic {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-diag.wmfw";
 					};
 				};
 			};
@@ -321,8 +325,12 @@
 					};
 					calibration {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-cali.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-rcv-cali.bin";
+					};
+					diagnostic {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-diag.wmfw";
 					};
 				};
 			};
