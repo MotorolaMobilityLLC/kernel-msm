@@ -3748,6 +3748,7 @@ err_no_work:
 				(i + 1), num_responses);
 			break;
 		}
+		}
 		device->callback(r->response_type, &r->response);
 	}
 
