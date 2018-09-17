@@ -48,27 +48,3 @@
 		/delete-property/ cap_svdd-supply;
 	};
 };
-
-&audio_tas2560 {
-	status = "ok";
-};
-
-&soc {
-	cdc_quin_mi2s_gpios: msm_cdc_pinctrl_quin {
-		compatible = "qcom,msm-cdc-pinctrl";
-		pinctrl-names = "aud_active", "aud_sleep";
-		pinctrl-0 = <&quin_mi2s_act &pri_tlmm_ws_act>;
-		pinctrl-1 = <&quin_mi2s_sus &pri_tlmm_ws_sus>;
-	};
-
-	sound {
-		qcom,model = "msm8953_snd_card-tas2560";
-		qcom,msm-ext-pa = "quinary";
-		ti,have-tas2560;
-	};
-
-	tas_smartamp: qcom,tas2560-algo {
-		compatible = "qcom,tas2560-algo";
-		qcom,tas2560-port-id = <0x1016>, <0x1017>; /*<RX_PORT_ID>, <TX_PORT_ID>*/
-	};
-};
