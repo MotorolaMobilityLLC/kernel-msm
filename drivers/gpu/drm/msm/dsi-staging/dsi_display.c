@@ -62,6 +62,7 @@ static const struct of_device_id dsi_display_dt_match[] = {
 static struct dsi_display *primary_display;
 static struct dsi_display *secondary_display;
 
+static int dsi_display_enable_status (struct dsi_display *display, bool enable);
 static void dsi_display_is_probed(int enable_idx, int probe_status, const char *pname);
 
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
@@ -4743,7 +4744,8 @@ int dsi_display_cont_splash_config(void *dsi_display)
 	if (!display->is_cont_splash_enabled) {
 		pr_err("Continuous splash is not enabled\n");
 		goto splash_disabled;
-	}
+	} else
+		dsi_display_enable_status(display, 1);
 
 	/* Update splash status for clock manager */
 	dsi_display_clk_mngr_update_splash_status(display->clk_mngr,
@@ -6921,12 +6923,11 @@ error_out:
 	return rc;
 }
 
-/* start of MMI_STOPSHIP section */
 struct dsi_enable_status {
 	struct dsi_display *display;
 	int probed;
 	bool enable;
-	char pname[128];
+	char pname[DSI_PANEL_MAX_PANEL_LEN];
 };
 
 static struct dsi_enable_status enable_status[2] = {
@@ -6938,7 +6939,8 @@ static struct dsi_enable_status enable_status[2] = {
 	},
 };
 
-static void dsi_display_is_probed (int enable_idx, int probe_status, const char *pname)
+static void dsi_display_is_probed (int enable_idx, int probe_status,
+						const char *pname)
 {
 	enable_status[enable_idx].probed = probe_status;
 	strncpy(enable_status[enable_idx].pname, pname,
@@ -6970,13 +6972,15 @@ static int dsi_display_enable_status (struct dsi_display *display, bool enable)
 	return ret;
 }
 
-bool dsi_display_is_panel_enable (int panel_index, int *probe_status, char **pname)
+bool dsi_display_is_panel_enable (int panel_index, int *probe_status,
+						char **pname)
 {
 	struct dsi_display *display;
 	bool enable = false;
 
 	if (panel_index > 1) {
-		pr_err("display->drm_conn: invalid panel index =%d\n", panel_index);
+		pr_err("display->drm_conn: invalid panel index =%d\n",
+								panel_index);
 		if (probe_status)
 			*probe_status = -ENODEV;
 		return false;
@@ -6997,7 +7001,6 @@ bool dsi_display_is_panel_enable (int panel_index, int *probe_status, char **pna
 	return enable;
 }
 EXPORT_SYMBOL(dsi_display_is_panel_enable);
-/* end of MMI_STOPSHIP section */
 
 int dsi_display_enable(struct dsi_display *display)
 {
