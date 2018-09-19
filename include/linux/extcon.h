@@ -76,6 +76,14 @@
 #define EXTCON_JACK_SPDIF_IN	26	/* Sony Philips Digital InterFace */
 #define EXTCON_JACK_SPDIF_OUT	27
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+/* connector orientation 0 - CC1, 1 - CC2 */
+#define EXTCON_USB_CC		28
+
+/* connector speed 0 - High Speed, 1 - super speed */
+#define EXTCON_USB_SPEED	29
+#endif
+
 /* Display external connector */
 #define EXTCON_DISP_HDMI	40	/* High-Definition Multimedia Interface */
 #define EXTCON_DISP_MHL		41	/* Mobile High-Definition Link */
@@ -136,7 +144,11 @@
 #define EXTCON_PROP_USB_TYPEC_MED_HIGH_CURRENT	3
 
 #define EXTCON_PROP_USB_MIN		0
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+#define EXTCON_PROP_USB_MAX		4
+#else
 #define EXTCON_PROP_USB_MAX		3
+#endif
 #define EXTCON_PROP_USB_CNT	(EXTCON_PROP_USB_MAX - EXTCON_PROP_USB_MIN + 1)
 
 /* Properties of EXTCON_TYPE_CHG. */
@@ -444,4 +456,20 @@ static inline int extcon_unregister_interest(struct extcon_specific_cable_nb *ob
 {
 	return -EINVAL;
 }
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+extern int extcon_get_cable_state(struct extcon_dev *edev, const unsigned int id);
+extern int extcon_set_cable_state(struct extcon_dev *edev, unsigned int id, bool state);
+
+static inline int extcon_get_cable_state_(struct extcon_dev *edev, unsigned int id)
+{
+	return extcon_get_cable_state(edev, id);
+}
+
+static inline int extcon_set_cable_state_(struct extcon_dev *edev, unsigned int id,
+				   bool cable_state)
+{
+	return extcon_set_cable_state(edev, id, cable_state);
+}
+#endif
 #endif /* __LINUX_EXTCON_H__ */
