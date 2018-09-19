@@ -933,8 +933,10 @@ static int wm_adsp_fw_put(struct snd_kcontrol *kcontrol,
 
 	mutex_lock(&dsp[e->shift_l].pwr_lock);
 
-	if (dsp[e->shift_l].booted || dsp[e->shift_l].compr[0])
+	if (dsp[e->shift_l].booted || dsp[e->shift_l].compr[0]) {
 		ret = -EBUSY;
+		adsp_err(dsp, "Failed to set dsp firmware: %d\n", ret);
+	}
 	else
 		dsp[e->shift_l].fw = ucontrol->value.enumerated.item[0];
 
