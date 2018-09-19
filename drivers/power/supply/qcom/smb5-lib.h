@@ -264,6 +264,10 @@ struct smb_irq_info {
 static const unsigned int smblib_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	EXTCON_USB_CC,
+	EXTCON_USB_SPEED,
+#endif
 	EXTCON_NONE,
 };
 

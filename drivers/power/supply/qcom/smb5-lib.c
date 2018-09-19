@@ -338,6 +338,12 @@ static void smblib_notify_extcon_props(struct smb_charger *chg, int id)
 		extcon_set_property(chg->extcon, id,
 				EXTCON_PROP_USB_SS, val);
 	}
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	extcon_set_cable_state_(chg->extcon, EXTCON_USB_CC,
+					(val.intval == 2) ? 1 : 0);
+	extcon_set_cable_state_(chg->extcon, EXTCON_USB_SPEED, true);
+#endif
 }
 
 static void smblib_notify_device_mode(struct smb_charger *chg, bool enable)
