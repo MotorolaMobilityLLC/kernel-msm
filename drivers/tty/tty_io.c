@@ -154,7 +154,11 @@ static long tty_compat_ioctl(struct file *file, unsigned int cmd,
 #endif
 static int __tty_fasync(int fd, struct file *filp, int on);
 static int tty_fasync(int fd, struct file *filp, int on);
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+void release_tty(struct tty_struct *tty, int idx);
+#else
 static void release_tty(struct tty_struct *tty, int idx);
+#endif
 
 /**
  *	free_tty_struct		-	free a disused tty
@@ -1492,7 +1496,11 @@ EXPORT_SYMBOL(tty_kref_put);
  *	of ttys that the driver keeps.
  *
  */
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+void release_tty(struct tty_struct *tty, int idx)
+#else
 static void release_tty(struct tty_struct *tty, int idx)
+#endif
 {
 	/* This should always be true but check for the moment */
 	WARN_ON(tty->index != idx);
@@ -1511,6 +1519,9 @@ static void release_tty(struct tty_struct *tty, int idx)
 	tty_kref_put(tty->link);
 	tty_kref_put(tty);
 }
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+EXPORT_SYMBOL(release_tty);
+#endif
 
 /**
  *	tty_release_checks - check a tty before real release
