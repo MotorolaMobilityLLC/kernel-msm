@@ -49,6 +49,12 @@
 #include <linux/clk/qcom.h>
 #include <soc/qcom/boot_stats.h>
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+#include <linux/mods/usb_ext_bridge.h>
+#include <linux/mods/usb3813.h>
+#include <linux/mods/modbus_ext.h>
+#endif
+
 #include "power.h"
 #include "core.h"
 #include "gadget.h"
@@ -70,6 +76,13 @@
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
 #define USB3_PORTSC		(0x420)
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+#define USB3_USBCMD             (0x20)
+
+#define USBCMD_HCRST		BIT(1)
+#define PORTSC_PP		BIT(9)
+#define HSTPRTCMPL		BIT(30)
+#endif
 
 /**
  *  USB QSCRATCH Hardware registers
@@ -236,6 +249,14 @@ struct extcon_nb {
 	struct notifier_block	blocking_sync_nb;
 };
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+enum modusb_protocol {
+	MODUSB_HIGH,
+	MODUSB_SUPER,
+	MODUSB_DUAL,
+};
+#endif
+
 /* Input bits to state machine (mdwc->inputs) */
 
 #define ID			0
@@ -343,6 +364,26 @@ struct dwc3_msm {
 	struct device_node *dwc3_node;
 	struct property *num_gsi_eps;
 	bool			dual_port;
+	
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	bool			ext_typec_switch;
+	bool                    ss_compliance;
+	struct gpio		mod_switch_gpio;
+	struct i2c_client	*mod_hub;
+	bool			mods_support;
+	bool			mod_enabled; /* Sysfs control of mod intf */
+	enum modusb_protocol	mod_proto;   /* Sysfs control of mod intf */
+	bool			mod_ss_path;
+	struct notifier_block   usbext_nb;
+	struct usb_ext_status   ext_state;   /* Greybus control of mod intf */
+	bool			ext_enabled; /* Greybus control of mod intf */
+	struct work_struct	ext_usb_work;
+
+	struct extcon_dev	*extcon_vbus;
+	struct extcon_dev	*extcon_id;
+	bool			mod_vbus_active;
+	enum dwc3_id_state	mod_id_state;
+#endif
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -363,6 +404,12 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 						unsigned int value);
 static int dwc3_usb_blocking_sync(struct notifier_block *nb,
 					unsigned long event, void *ptr);
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+static void dwc3_ext_send_uevent(struct dwc3_msm *mdwc, bool usb_present);
+
+static void dwc3_ext_event_notify(struct dwc3_msm *mdwc);
+static void dwc3_ext_send_uevent(struct dwc3_msm *mdwc, bool usb_present);
+#endif
 
 /**
  *
@@ -490,6 +537,340 @@ static bool dwc3_msm_is_host_superspeed(struct dwc3_msm *mdwc)
 
 	return is_host_ss;
 }
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+static void dwc3_mods_hsusb_path_enable(struct dwc3_msm *mdwc,
+					bool enable,
+					enum usb_ext_path path)
+{
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	dwc->maximum_speed = USB_SPEED_HIGH;
+	dbg_event(0xFF, "EXT HSUSB", enable);
+	if (enable) {
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 1);
+		usb3813_enable_hub(mdwc->mod_hub, 1, path);
+	} else {
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
+		usb3813_enable_hub(mdwc->mod_hub, 0, USB_EXT_PATH_UNKNOWN);
+	}
+}
+
+static void dwc3_mods_ssusb_path_enable(struct dwc3_msm *mdwc, bool enable)
+{
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	struct modbus_ext_status status = {0, MODBUS_PROTO_USB_SS};
+
+	dbg_event(0xFF, "EXT SSUSB", enable);
+	status.active = enable;
+	mdwc->mod_ss_path = enable;
+	dwc->maximum_speed = enable ? USB_SPEED_SUPER: USB_SPEED_HIGH;
+	modbus_ext_set_state(&status);
+}
+
+static void dwc3_extcon_restore(struct dwc3_msm *mdwc)
+{
+	int speed = 0;
+	struct extcon_dev *edev = NULL;
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	mdwc->vbus_active = extcon_get_cable_state_(mdwc->extcon_vbus,
+						EXTCON_USB);
+	mdwc->id_state = extcon_get_cable_state_(mdwc->extcon_id,
+						EXTCON_USB_HOST) ?
+						DWC3_ID_GROUND :
+						DWC3_ID_FLOAT;
+
+	if (mdwc->vbus_active)
+		edev = mdwc->extcon_vbus;
+	else if (mdwc->id_state == DWC3_ID_GROUND)
+		edev = mdwc->extcon_id;
+
+	if (edev)
+		speed = extcon_get_cable_state_(edev, EXTCON_USB_SPEED);
+	dwc->maximum_speed = (speed == 0) ? USB_SPEED_HIGH : USB_SPEED_SUPER;
+}
+
+static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
+{
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	if (mdwc->ext_enabled == enable)
+		return;
+
+	mdwc->ext_enabled = enable;
+	if (mdwc->hs_phy)
+		mdwc->hs_phy->mods_usb_enabled = enable;
+
+	if (atomic_read(&dwc->in_lpm) && atomic_read(&mdwc->pm_suspended))
+		mdwc->resume_pending = true;
+
+	/* Resume the controller first */
+	queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+	flush_workqueue(mdwc->dwc3_wq);
+
+	dbg_event(0xFF, "EXT Enable", enable);
+	/* Enable/Disable the physical path next*/
+	if (mdwc->ext_state.proto == USB_EXT_PROTO_DUAL) {
+		dwc3_mods_ssusb_path_enable(mdwc, enable);
+		dwc3_mods_hsusb_path_enable(mdwc, enable,
+					USB_EXT_PATH_ENTERPRISE);
+		dwc->maximum_speed = USB_SPEED_SUPER;
+		if (enable) {
+			mdwc->id_state = DWC3_ID_GROUND;
+			mdwc->vbus_active = 0;
+		} else /* Restore the ext con state on disable */
+			dwc3_extcon_restore(mdwc);
+	} else if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
+		dwc3_mods_hsusb_path_enable(mdwc, enable,
+					mdwc->ext_state.path);
+
+		/*
+		 * Mod HSUSB path only supports host mode, hence set
+		 * vbus_active to 0 and clear ID.
+		 */
+		if (enable) {
+			mdwc->id_state = DWC3_ID_GROUND;
+			mdwc->vbus_active = 0;
+		} else /* Restore the ext con state on disable */
+			dwc3_extcon_restore(mdwc);
+	} else {
+		dwc3_mods_ssusb_path_enable(mdwc, enable);
+		if (enable) {
+			if (mdwc->ext_state.type == USB_EXT_REMOTE_DEVICE) {
+				/* Mod is a USB Device  */
+				mdwc->vbus_active = 0;
+				mdwc->id_state = DWC3_ID_GROUND;
+			} else {
+				/* Mod is a USB Host*/
+				mdwc->vbus_active = 1;
+				mdwc->id_state = DWC3_ID_FLOAT;
+			}
+		} else /* Restore the ext con state on disable */
+			dwc3_extcon_restore(mdwc);
+	}
+
+	/* Trigger the USB SM change and wait for it to complete */
+	dwc3_ext_event_notify(mdwc);
+	flush_delayed_work(&mdwc->sm_work);
+	dbg_event(0xFF, "EXT Hdlr\n", enable);
+}
+
+static ssize_t ss_compliance_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	int i, num_ports;
+	u32 reg;
+
+	reg = dwc3_msm_read_reg(mdwc->base, USB3_HCSPARAMS1);
+	num_ports = HCS_MAX_PORTS(reg);
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	/* Handle the mode change if it is valid */
+	if (mode) {
+		dwc3_msm_write_reg_field(mdwc->base,
+				USB3_USBCMD, USBCMD_HCRST, USBCMD_HCRST);
+		for (i = 0; i < num_ports; i++) {
+			dwc3_msm_write_reg_field(mdwc->base,
+			USB3_PORTSC + i*0x10, PORTSC_PP, 0x0);
+		}
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg|HSTPRTCMPL);
+	} else {
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg&(~HSTPRTCMPL));
+		dwc3_msm_write_reg_field(mdwc->base,
+				USB3_USBCMD, USBCMD_HCRST, USBCMD_HCRST);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(enable_ss_compliance, 0220,
+			NULL,
+			ss_compliance_store);
+
+static ssize_t toggle_pattern_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	u32 reg;
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg&(~HSTPRTCMPL));
+	mdelay(2);
+	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg|HSTPRTCMPL);
+	return count;
+}
+
+static DEVICE_ATTR(toggle_pattern, 0220,
+			NULL,
+			toggle_pattern_store);
+
+static ssize_t modusb_protocol_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	if (mdwc->mod_proto == MODUSB_DUAL)
+		return scnprintf(buf, PAGE_SIZE, "dual\n");
+	else if (mdwc->mod_proto == MODUSB_SUPER)
+		return scnprintf(buf, PAGE_SIZE, "super\n");
+	else
+		return scnprintf(buf, PAGE_SIZE, "high\n");
+}
+
+static ssize_t modusb_protocol_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	if (mdwc->mod_enabled)
+		return -EFAULT;
+
+	if (!strncmp(buf, "dual", 4))
+		mdwc->mod_proto = MODUSB_DUAL;
+	else if (!strncmp(buf, "super", 5))
+		mdwc->mod_proto = MODUSB_SUPER;
+	else
+		mdwc->mod_proto = MODUSB_HIGH;
+	return count;
+}
+
+static DEVICE_ATTR(modusb_protocol, 0660,
+			modusb_protocol_show,
+			modusb_protocol_store);
+
+static ssize_t modusb_enable_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", mdwc->mod_enabled);
+}
+
+static ssize_t modusb_enable_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		dev_err(dev, "Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	mode = !!mode;
+	if (mode == mdwc->mod_enabled)
+		return count;
+	mdwc->mod_enabled = mode;
+
+	if (mdwc->mod_proto == MODUSB_DUAL) {
+		dwc3_mods_hsusb_path_enable(mdwc, mdwc->mod_enabled,
+						USB_EXT_PATH_ENTERPRISE);
+		dwc3_mods_ssusb_path_enable(mdwc, mdwc->mod_enabled);
+	} else if (mdwc->mod_proto == MODUSB_SUPER)
+		dwc3_mods_ssusb_path_enable(mdwc, mdwc->mod_enabled);
+	else
+		dwc3_mods_hsusb_path_enable(mdwc, mdwc->mod_enabled,
+						USB_EXT_PATH_ENTERPRISE);
+
+	if (mdwc->mod_enabled) {
+		mdwc->mod_vbus_active = mdwc->vbus_active;
+		mdwc->mod_id_state = mdwc->id_state;
+		mdwc->vbus_active = 0;
+		mdwc->id_state = DWC3_ID_GROUND;
+	} else {
+		mdwc->vbus_active = mdwc->mod_vbus_active;
+		mdwc->id_state = mdwc->mod_id_state;
+	}
+
+	dbg_event(0xFF, "Q RW mods", mdwc->mod_enabled);
+	queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+
+	return count;
+}
+
+static DEVICE_ATTR(modusb_enable, 0660,
+			modusb_enable_show,
+			modusb_enable_store);
+
+static ssize_t extusb_state_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	char *connected, *proto, *type;
+
+	if (!mdwc)
+		return -ENODEV;
+
+	proto =  "NO";
+	type = "DEVICE";
+	connected = "ATTACHED";
+
+	if (mdwc->ext_state.active) {
+		if (mdwc->ext_enabled)
+			connected = "CONNECTED";
+
+		if (mdwc->ext_state.proto == USB_EXT_PROTO_DUAL) {
+			proto = "DUAL SPEED USB";
+		} else if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
+			proto = "USB2.0";
+		} else if (mdwc->ext_state.proto == USB_EXT_PROTO_3_1) {
+			proto = "USB3.1";
+			if (mdwc->ext_state.type == USB_EXT_REMOTE_HOST)
+				type = "HOST";
+		}
+	} else if (mdwc->mod_enabled) {
+		connected = "CONNECTED";
+
+		if (mdwc->mod_proto == MODUSB_DUAL) {
+			proto = "DUAL SPEED USB";
+		} else if (mdwc->mod_proto == MODUSB_SUPER) {
+			proto = "USB3.1";
+		} else if (mdwc->mod_proto == MODUSB_HIGH) {
+			proto = "USB2.0";
+		}
+	}
+
+	return scnprintf(buf, PAGE_SIZE,
+				"%s %s %s\n",
+				proto, type, connected);
+}
+
+static DEVICE_ATTR(extusb_state, 0440,
+			extusb_state_show,
+			NULL);
+#endif
 
 static inline bool dwc3_msm_is_dev_superspeed(struct dwc3_msm *mdwc)
 {
@@ -2981,10 +3362,24 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	if (dwc->maximum_speed >= USB_SPEED_SUPER &&
 			mdwc->lpm_flags & MDWC3_SS_PHY_SUSPEND) {
 		dwc3_msm_clear_ssphy_flags(mdwc, PHY_LANE_A | PHY_LANE_B);
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+		if (mdwc->mod_ss_path)
+			mdwc->ss_phy->flags |= PHY_LANE_B;
+		else if (mdwc->ext_typec_switch)
+			mdwc->ss_phy->flags |= PHY_LANE_A;
+		else if (mdwc->typec_orientation == ORIENTATION_CC1)
+			mdwc->ss_phy->flags |= PHY_LANE_A;
+		else if (mdwc->typec_orientation == ORIENTATION_CC2)
+			mdwc->ss_phy->flags |= PHY_LANE_B;
+
+		pr_info("%s flag 0x%x \n", __func__, mdwc->ss_phy->flags);
+#else
 		if (mdwc->typec_orientation == ORIENTATION_CC1)
 			mdwc->ss_phy->flags |= PHY_LANE_A;
 		if (mdwc->typec_orientation == ORIENTATION_CC2)
 			mdwc->ss_phy->flags |= PHY_LANE_B;
+#endif
+
 		usb_phy_set_suspend(mdwc->ss_phy1, 0);
 		usb_phy_set_suspend(mdwc->ss_phy, 0);
 		dwc3_msm_clear_ssphy_flags(mdwc, DEVICE_IN_SS_MODE);
@@ -3443,6 +3838,10 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 	struct extcon_nb *enb = container_of(nb, struct extcon_nb, id_nb);
 	struct dwc3_msm *mdwc = enb->mdwc;
 	enum dwc3_id_state id;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	int cc_state;
+	int speed;
+#endif
 
 	if (!edev || !mdwc)
 		return NOTIFY_DONE;
@@ -3452,6 +3851,42 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 	dbg_event(0xFF, "extcon idx", enb->idx);
 
 	id = event ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	dev_dbg(mdwc->dev, "host:%ld (id:%d) event received\n", event, id);
+
+	/* If usb(ext) is enabled via GB handle it separately */
+	if (mdwc->ext_state.active) {
+		if (event)
+			dbg_event(0xFF, "Ext=>ID", event);
+		else
+			dbg_event(0xFF, "ID=>Ext", event);
+
+		schedule_work(&mdwc->ext_usb_work);
+		return NOTIFY_DONE;
+	}
+
+	cc_state = extcon_get_cable_state_(edev, EXTCON_USB_CC);
+	if (cc_state < 0)
+		mdwc->typec_orientation = ORIENTATION_NONE;
+	else
+		mdwc->typec_orientation =
+			cc_state ? ORIENTATION_CC2 : ORIENTATION_CC1;
+
+	dbg_event(0xFF, "cc_state", mdwc->typec_orientation);
+
+	speed = extcon_get_cable_state_(edev, EXTCON_USB_SPEED);
+	dwc->maximum_speed = (speed <= 0) ? USB_SPEED_HIGH : USB_SPEED_SUPER;
+	if (dwc->maximum_speed > dwc->max_hw_supp_speed)
+		dwc->maximum_speed = dwc->max_hw_supp_speed;
+
+	/* Ignore ID notifications when Mod usb is enabled via sysfs*/
+	if (mdwc->mod_enabled) {
+		mdwc->mod_id_state = id;
+		dbg_event(0xFF, "Ignore ID", id);
+		return NOTIFY_DONE;
+	}
+#endif
 
 	if (mdwc->id_state == id)
 		return NOTIFY_DONE;
@@ -3502,6 +3937,10 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	struct extcon_dev *edev = ptr;
 	struct extcon_nb *enb = container_of(nb, struct extcon_nb, vbus_nb);
 	struct dwc3_msm *mdwc = enb->mdwc;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	int cc_state;
+	int speed;
+#endif
 
 	if (!edev || !mdwc)
 		return NOTIFY_DONE;
@@ -3509,6 +3948,39 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	dwc = platform_get_drvdata(mdwc->dwc3);
 
 	dbg_event(0xFF, "extcon idx", enb->idx);
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	/* If usb(ext) is enabled via GB handle it separately */
+	if (mdwc->ext_state.active) {
+		if (event)
+			dbg_event(0xFF, "Ext=>Vbus", event);
+		else
+			dbg_event(0xFF, "Vbus=>Ext", event);
+		schedule_work(&mdwc->ext_usb_work);
+		return NOTIFY_DONE;
+	}
+
+	cc_state = extcon_get_cable_state_(edev, EXTCON_USB_CC);
+	if (cc_state < 0)
+		mdwc->typec_orientation = ORIENTATION_NONE;
+	else
+		mdwc->typec_orientation =
+			cc_state ? ORIENTATION_CC2 : ORIENTATION_CC1;
+
+	dbg_event(0xFF, "cc_state", mdwc->typec_orientation);
+
+	speed = extcon_get_cable_state_(edev, EXTCON_USB_SPEED);
+	dwc->maximum_speed = (speed <= 0) ? USB_SPEED_HIGH : USB_SPEED_SUPER;
+	if (dwc->maximum_speed > dwc->max_hw_supp_speed)
+		dwc->maximum_speed = dwc->max_hw_supp_speed;
+
+	/* Ignore Vbus notifications when Mod USB is enabled via sysfs */
+	if (mdwc->mod_enabled) {
+		mdwc->mod_vbus_active = event;
+		dbg_event(0xFF, "Ignore Vbus", event);
+		return NOTIFY_DONE;
+	}
+#endif
 
 	if (mdwc->vbus_active == event)
 		return NOTIFY_DONE;
@@ -3537,6 +4009,19 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 	struct extcon_dev *edev;
 	int idx, extcon_cnt, ret = 0;
 	bool check_vbus_state, check_id_state, phandle_found = false;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	if (!of_property_read_bool(node, "extcon")) {
+		if (dwc->dr_mode == USB_DR_MODE_OTG) {
+			dev_err(mdwc->dev, "%s: no extcon, simulate vbus connect\n",
+								__func__);
+			mdwc->vbus_active = true;
+			queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+		}
+		return 0;
+	}
+#endif
 
 	extcon_cnt = of_count_phandle_with_args(node, "extcon", NULL);
 	if (extcon_cnt < 0) {
@@ -3566,6 +4051,14 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 
 		mdwc->extcon[idx].vbus_nb.notifier_call =
 						dwc3_msm_vbus_notifier;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+		mdwc->extcon_vbus = edev;
+		mdwc->extcon_id = edev;
+#endif
+
+		pr_info("%s ww_debug extcon %d name %s\n", __func__, idx, extcon_get_edev_name(edev)
+);
+
 		ret = extcon_register_notifier(edev, EXTCON_USB,
 						&mdwc->extcon[idx].vbus_nb);
 		if (ret < 0)
@@ -3827,6 +4320,147 @@ static ssize_t bus_vote_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(bus_vote);
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+static void dwc3_ext_send_uevent(struct dwc3_msm *mdwc, bool usb_present)
+{
+	struct kobj_uevent_env *env;
+
+	env = kzalloc(sizeof(*env), GFP_KERNEL);
+	if (!env)
+		return;
+
+	if (mdwc->ext_state.active)
+		add_uevent_var(env, "EXT_USB_STATE=ATTACHED");
+	else
+		add_uevent_var(env, "EXT_USB_STATE=DETACHED");
+
+	if (mdwc->ext_enabled)
+		add_uevent_var(env, "EXT_USB=ALLOWED");
+	else
+		add_uevent_var(env, "EXT_USB=DISABLED");
+
+	if (mdwc->ext_state.proto == USB_EXT_PROTO_DUAL)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=DUALSPEED_USB");
+	else if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=USB2.0");
+	else if (mdwc->ext_state.proto == USB_EXT_PROTO_3_1)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=USB3.1");
+
+	if (mdwc->ext_state.type == USB_EXT_REMOTE_DEVICE)
+		add_uevent_var(env, "EXT_USB_MODE=DEVICE");
+	else if (mdwc->ext_state.type == USB_EXT_REMOTE_HOST)
+		add_uevent_var(env, "EXT_USB_MODE=HOST");
+
+	add_uevent_var(env, "MAIN_USB=ALLOWED");
+
+	if (usb_present)
+		add_uevent_var(env, "MAIN_USB_STATE=ATTACHED");
+	else
+		add_uevent_var(env, "MAIN_USB_STATE=DETACHED");
+
+	kobject_uevent_env(&mdwc->dev->kobj, KOBJ_CHANGE, env->envp);
+	kfree(env);
+}
+
+static void dwc3_ext_usb_work(struct work_struct *w)
+{
+	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm,
+			ext_usb_work);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	bool usb_present =
+		extcon_get_cable_state_(mdwc->extcon_vbus, EXTCON_USB) ||
+		extcon_get_cable_state_(mdwc->extcon_id, EXTCON_USB_HOST);
+
+	if (!mdwc->ext_state.active) {
+		dbg_event(0xFF, "ext work none", 0);
+		dwc3_extcon_restore(mdwc);
+		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+	} else if (usb_present) {
+		dbg_event(0xFF, "ext work dis", 0);
+		dwc3_ext_usb_enable(mdwc, false);
+		dwc3_ext_send_uevent(mdwc, true);
+	} else {
+		dbg_event(0xFF, "ext work en", 0);
+		dwc3_ext_usb_enable(mdwc, true);
+		dwc3_ext_send_uevent(mdwc, false);
+	}
+}
+
+static int dwc3_validate_ext_params(struct usb_ext_status *status)
+{
+	if (status->proto == USB_EXT_PROTO_DUAL) {
+		/* For Dual Speed only Host mode is supported */
+		if (status->type != USB_EXT_REMOTE_DEVICE)
+			return -EINVAL;
+	} else if (status->proto == USB_EXT_PROTO_2_0) {
+		/*
+		* We support both Enterprise and Bridge as the path for
+		* USB 2.0 Ext Class, but only if the remote is a USB
+		* peripheral.
+		*/
+		if (status->path == USB_EXT_PATH_UNKNOWN)
+			return -EINVAL;
+		else if (status->type != USB_EXT_REMOTE_DEVICE)
+			return -EINVAL;
+	} else if (status->proto == USB_EXT_PROTO_3_1) {
+		/*
+		* For USB 3.1 Ext Class, both USB hosts and
+		* peripherals are supported.
+		*/
+		if (status->type == USB_EXT_REMOTE_UNKNOWN)
+			return -EINVAL;
+	} else
+		return -EINVAL;
+
+	return 0;
+}
+
+static int usb_ext_notifier_call(struct notifier_block *nb,
+		unsigned long val,
+		void *v)
+{
+	struct dwc3_msm *mdwc = container_of(nb, struct dwc3_msm, usbext_nb);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	struct usb_ext_status *status = v;
+	bool usb_present =
+		extcon_get_cable_state_(mdwc->extcon_vbus, EXTCON_USB) ||
+		extcon_get_cable_state_(mdwc->extcon_id, EXTCON_USB_HOST);
+
+	dev_info(mdwc->dev, "%s - val = %lu, proto = %d, type = %d, path = %d\n",
+			__func__, val,
+			status->proto, status->type, status->path);
+
+	if (val == mdwc->ext_state.active) {
+		dev_dbg(mdwc->dev, "Spurious EXT notification\n");
+		dbg_event(0xFF, "Spurious EXT", 0);
+		return NOTIFY_DONE;
+	}
+
+	if (val) {
+		if (dwc3_validate_ext_params(status)) {
+			dev_err(mdwc->dev, "Invalid EXT parameters\n");
+			dbg_event(0xFF, "Invalid EXT", 0);
+			return NOTIFY_DONE;
+		}
+		memcpy(&mdwc->ext_state, status, sizeof(struct usb_ext_status));
+	} else
+		mdwc->ext_state.active = 0;
+
+	dbg_event(0xFF, "EXT Notif", mdwc->ext_state.active);
+	if (usb_present && val) {
+		dbg_event(0xFF, "EXT defer", usb_present);
+		dev_info(mdwc->dev, "Primary USB present, Ignore EXT\n");
+		mdwc->ext_enabled = false;
+		goto ext_done;
+	}
+
+	dwc3_ext_usb_enable(mdwc, mdwc->ext_state.active);
+ext_done:
+	dwc3_ext_send_uevent(mdwc, usb_present);
+	return NOTIFY_OK;
+}
+#endif
+
 static int dwc_dpdm_cb(struct notifier_block *nb, unsigned long evt, void *p)
 {
 	struct dwc3_msm *mdwc = container_of(nb, struct dwc3_msm, dpdm_nb);
@@ -3916,6 +4550,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	int ret = 0, i;
 	u32 val;
 	unsigned long irq_type;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	struct device_node *hub_node;
+	enum of_gpio_flags gpio_flags;
+#endif
 
 	mdwc = devm_kzalloc(&pdev->dev, sizeof(*mdwc), GFP_KERNEL);
 	if (!mdwc)
@@ -3963,6 +4601,15 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc->charging_disabled = of_property_read_bool(node,
 				"qcom,charging-disabled");
 	mdwc->dual_port = of_property_read_bool(node, "qcom,dual-port");
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	mdwc->ss_compliance = of_property_read_bool(node,
+				"qcom,ssusb-compliance");
+	mdwc->mods_support = of_property_read_bool(node,
+				"mmi,mods-support");
+
+	mdwc->ext_typec_switch = of_property_read_bool(node,
+				"mmi,ext-typec-switch");
+#endif
 
 	ret = of_property_read_u32(node, "qcom,lpm-to-suspend-delay-ms",
 				&mdwc->lpm_to_suspend_delay);
@@ -4306,6 +4953,52 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_usb_compliance_mode);
 	device_create_file(&pdev->dev, &dev_attr_bus_vote);
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	if (mdwc->ss_compliance) {
+		device_create_file(&pdev->dev, &dev_attr_enable_ss_compliance);
+		device_create_file(&pdev->dev, &dev_attr_toggle_pattern);
+	}
+
+	if (!mdwc->mods_support)
+		return 0;
+
+	INIT_WORK(&mdwc->ext_usb_work, dwc3_ext_usb_work);
+	mdwc->mod_switch_gpio.gpio = of_get_named_gpio_flags(node,
+					"mmi,mod-hs-switch", 0, &gpio_flags);
+
+	if (gpio_is_valid(mdwc->mod_switch_gpio.gpio) &&
+		!devm_gpio_request_one(&pdev->dev, mdwc->mod_switch_gpio.gpio,
+				gpio_flags, "mod_hsusb_switch")) {
+
+		ret = gpio_export(mdwc->mod_switch_gpio.gpio, 0);
+
+		if (!ret)
+			ret = gpio_export_link(&pdev->dev,
+					"mod_hsusb_switch",
+					mdwc->mod_switch_gpio.gpio);
+		if (ret)
+			dev_err(&pdev->dev,
+				"failed to export mod switch gpio\n");
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
+	}
+
+	hub_node = of_parse_phandle(node, "mod-usb-hub", 0);
+	if (hub_node) {
+		mdwc->mod_hub = of_find_i2c_device_by_node(hub_node);
+		of_node_put(hub_node);
+	} else
+		mdwc->mod_hub = NULL;
+
+	mdwc->usbext_nb.notifier_call = usb_ext_notifier_call;
+	ret = usb_ext_register_notifier(&mdwc->usbext_nb, NULL);
+	if (ret)
+		dev_err(&pdev->dev, "couldn't register usb ext notifier\n");
+
+	device_create_file(&pdev->dev, &dev_attr_modusb_enable);
+	device_create_file(&pdev->dev, &dev_attr_modusb_protocol);
+	device_create_file(&pdev->dev, &dev_attr_extusb_state);
+#endif
+
 	return 0;
 
 err_get_extcon:
@@ -4376,6 +5069,21 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 	dwc3_msm_clear_hsphy_flags(mdwc, PHY_HOST_MODE);
 	dbg_event(0xFF, "Remov put", 0);
 	platform_device_put(mdwc->dwc3);
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	if (mdwc->ss_compliance) {
+		device_remove_file(&pdev->dev, &dev_attr_enable_ss_compliance);
+		device_remove_file(&pdev->dev, &dev_attr_toggle_pattern);
+	}
+
+	if (mdwc->mods_support) {
+		usb_ext_unregister_notifier(&mdwc->usbext_nb);
+		device_remove_file(&pdev->dev, &dev_attr_modusb_enable);
+		device_remove_file(&pdev->dev, &dev_attr_modusb_protocol);
+		device_remove_file(&pdev->dev, &dev_attr_extusb_state);
+	}
+#endif
+
 	of_platform_depopulate(&pdev->dev);
 
 	if (mdwc->num_gsi_eps) {

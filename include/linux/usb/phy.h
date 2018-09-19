@@ -136,6 +136,11 @@ struct usb_phy {
 	u16			port_status;
 	u16			port_change;
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	/*mods usb enabled flag*/
+	bool			mods_usb_enabled;
+#endif
+
 	/* to support controllers that have multiple phys */
 	struct list_head	head;
 
