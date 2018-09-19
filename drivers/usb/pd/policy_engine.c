@@ -496,6 +496,10 @@ static const unsigned int usbpd_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
 	EXTCON_DISP_DP,
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	EXTCON_USB_CC,
+	EXTCON_USB_SPEED,
+#endif
 	EXTCON_NONE,
 };
 
@@ -540,6 +544,12 @@ static inline void start_usb_host(struct usbpd *pd, bool ss)
 	enum plug_orientation cc = usbpd_get_plug_orientation(pd);
 	union extcon_property_value val;
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	extcon_set_cable_state_(pd->extcon, EXTCON_USB_CC,
+			cc == ORIENTATION_CC2);
+	extcon_set_cable_state_(pd->extcon, EXTCON_USB_SPEED, ss);
+#endif
+
 	val.intval = (cc == ORIENTATION_CC2);
 	extcon_set_property(pd->extcon, EXTCON_USB_HOST,
 			EXTCON_PROP_USB_TYPEC_POLARITY, val);
@@ -560,6 +570,12 @@ static inline void start_usb_peripheral(struct usbpd *pd)
 {
 	enum plug_orientation cc = usbpd_get_plug_orientation(pd);
 	union extcon_property_value val;
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	extcon_set_cable_state_(pd->extcon, EXTCON_USB_CC,
+			cc == ORIENTATION_CC2);
+	extcon_set_cable_state_(pd->extcon, EXTCON_USB_SPEED, 1);
+#endif
 
 	val.intval = (cc == ORIENTATION_CC2);
 	extcon_set_property(pd->extcon, EXTCON_USB,
