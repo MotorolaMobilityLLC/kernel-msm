@@ -14,7 +14,6 @@
 #include <linux/rwsem.h>
 #include <linux/llist.h>
 
-
 /*
  * Lock subclasses for tty locks
  *
@@ -788,6 +787,10 @@ extern void proc_tty_unregister_driver(struct tty_driver *);
 #else
 static inline void proc_tty_register_driver(struct tty_driver *d) {}
 static inline void proc_tty_unregister_driver(struct tty_driver *d) {}
+#endif
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+extern void release_tty(struct tty_struct *tty, int idx);
 #endif
 
 #define tty_msg(fn, tty, f, ...) \
