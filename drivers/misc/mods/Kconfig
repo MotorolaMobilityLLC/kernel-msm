@@ -1,0 +1,102 @@
+#
+# Misc strange devices
+#
+
+menu "mods devices"
+
+config USB3813
+	tristate "Microchip USB3813 Hub Controller"
+	default n
+	help
+	  This option enables a device driver for the USB3813 which is a
+	  3-Port Hub Controller.
+
+config MODS_USB_EXT_BRIDGE
+	bool "Enable interface to support MODS USB"
+	default n
+	help
+	  This enables an interface that integrates the MODS usb greybus
+	  module with the kernel USB drivers. If you are using the MODS
+	  kernel modules, you should select yes, if not no.
+
+config MODS_MODBUS_SWITCH
+	bool "Enable control of the mods muxing swtich(different with mods_modbus_ext)"
+	default n
+	help
+	  This enables ability to mux the i2s, mphy, and usb paths through the
+	  set of ts3usb3031 switches depending on the requested configuration.
+	  If you are using the MODS kernel modules, you should select yes, if
+	  not no. This file is defferent with the file of mods_modbus_ext. This
+	  is a common file which could be applied in lots of defferent hw design.
+
+config MODS_CODEC_BUS
+	tristate "mods codec bus interface support"
+	default n
+	help
+	  This enables bus interface for mods shim sound codec to talk to
+	  greybus sound codec module.
+
+config MODS_2ND_GEN
+	bool "MODS_2ND_GEN Support"
+	default n
+	help
+	  This option enables the mods 2nd generation hw designation.
+
+config ICE40
+	bool "MODS_2ND_GEN Support"
+	default n
+	help
+	  This option enables the mods 2nd generation hw designation.
+
+config APBA_SPI_SWITCH
+	bool "use apba spi switch"
+	default n
+	help
+	  This option indicates the using of apba spi switch.
+
+config MODS_NEW_SW_ARCH
+	bool "use new sw arch"
+	default n
+	help
+	  For transport mods relative changes more convinient, we
+	  re-redevelop a new mods architecture from android-p.
+
+config SERIAL_MAX310X
+    tristate "MAX310X support"
+    depends on (SPI && !I2C) || I2C
+	select SERIAL_CORE
+	help
+	  This selects support for an advanced UART from Maxim (Dallas).
+	  Supported ICs are MAX3107, MAX3108, MAX3109, MAX14830.
+	  Each IC contains 128 words each of receive and transmit FIFO
+	  that can be controlled through I2C or high-speed SPI.
+	  Select SPI or I2C bus using options below.
+
+config SERIAL_MAX310X_SPI
+    bool "MAX310x for spi interface"
+    depends on SERIAL_MAX310X
+    depends on SPI
+    select SERIAL_MAX310X_CORE if SERIAL_MAX310X
+    select REGMAP_SPI if SPI
+    default n
+    help
+	  Enable MAX310x driver on SPI bus,
+	  If required say y, and say n to spi if not required,
+	  Enabled by default to support oldconfig.
+	  You must select at least one bus for the driver to be built.
+
+config SERIAL_MAX310X_I2C
+    bool "MAX310x for I2C interface"
+    depends on SERIAL_MAX310X
+    depends on I2C
+    select SERIAL_MAX310XX_CORE if SERIAL_MAX310X
+    select REGMAP_I2C if I2C
+    help
+	  Enable MAX310x driver on I2C bus,
+	  If required say y, and say n to i2c if not required,
+	  This is additional support to existing driver.
+	  You must select at least one bus for the driver to be built.
+
+	  Say Y here if you want to support this ICs.
+
+endmenu
