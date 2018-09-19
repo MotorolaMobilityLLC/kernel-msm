@@ -59,7 +59,20 @@ struct __extcon_info {
 		.id = EXTCON_USB_HOST,
 		.name = "USB-HOST",
 	},
-
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	/* connector orientation 0 - CC1, 1 - CC2 */
+	[EXTCON_USB_CC] = {
+		.type = EXTCON_TYPE_USB,
+		.id = EXTCON_USB,
+		.name = "USB-CC",
+	},
+	/* connector speed 0 - High Speed, 1 - Super Speed */
+	[EXTCON_USB_SPEED] = {
+		.type = EXTCON_TYPE_USB,
+		.id = EXTCON_USB,
+		.name = "USB-SPEED",
+	},
+#endif
 	/* Charging external connector */
 	[EXTCON_CHG_USB_SDP] = {
 		.type = EXTCON_TYPE_CHG | EXTCON_TYPE_USB,
@@ -1400,6 +1413,64 @@ void extcon_dev_unregister(struct extcon_dev *edev)
 	put_device(&edev->dev);
 }
 EXPORT_SYMBOL_GPL(extcon_dev_unregister);
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+int extcon_get_cable_state(struct extcon_dev *edev, const unsigned int id)
+{
+	int index, state;
+
+	if (!edev)
+		return -EINVAL;
+
+	index = find_cable_index_by_id(edev, id);
+	if (index < 0)
+		return index;
+
+	state = is_extcon_attached(edev, index);
+
+	return state;
+}
+EXPORT_SYMBOL_GPL(extcon_get_cable_state);
+
+int extcon_set_cable_state(struct extcon_dev *edev, unsigned int id, bool state)
+{
+	int index, ret = 0;
+
+	if (!edev)
+		return -EINVAL;
+
+	index = find_cable_index_by_id(edev, id);
+	if (index < 0)
+		return index;
+
+	/* Check whether the external connector's state is changed. */
+	if (!is_extcon_changed(edev, index, state))
+		goto out;
+
+	if (check_mutually_exclusive(edev,
+		(edev->state & ~BIT(index)) | (state & BIT(index)))) {
+		ret = -EPERM;
+		goto out;
+	}
+
+	/*
+	 * Initialize the value of extcon property before setting
+	 * the detached state for an external connector.
+	 */
+	if (!state)
+		init_property(edev, id, index);
+
+	/* Update the state for an external connector. */
+	if (state)
+		edev->state |= BIT(index);
+	else
+		edev->state &= ~(BIT(index));
+out:
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(extcon_set_cable_state);
+#endif
 
 #ifdef CONFIG_OF
 /*
