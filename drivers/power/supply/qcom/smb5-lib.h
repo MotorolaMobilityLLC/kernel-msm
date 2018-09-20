@@ -12,12 +12,14 @@
 
 #ifndef __SMB5_CHARGER_H
 #define __SMB5_CHARGER_H
+#include <linux/gpio.h>
 #include <linux/alarmtimer.h>
 #include <linux/ktime.h>
 #include <linux/types.h>
 #include <linux/timer.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
+#include <linux/reboot.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/extcon.h>
@@ -385,6 +387,8 @@ struct smb_iio {
 struct mmi_params {
 	bool			factory_mode;
 	bool			demo_mode;
+	struct gpio		ebchg_gpio;
+	struct notifier_block	smb_reboot;
 };
 
 struct smb_charger {
