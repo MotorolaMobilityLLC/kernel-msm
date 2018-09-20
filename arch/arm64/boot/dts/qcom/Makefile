@@ -1,3 +1,13 @@
+ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
+ifneq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+	$(error Pippen DT w/o overlay is undefined!!!)
+endif
+
+# Add 1k of padding to the DTBs to allow for environment variables
+# to be runtime added by the bootloader (i.e. /chosen properties)
+DTC_FLAGS += -p 1024
+
+else
 # SPDX-License-Identifier: GPL-2.0
 ifeq ($(TARGET_BOARD_TYPE),auto)
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -585,6 +595,8 @@ dtb-$(CONFIG_ARCH_SDM429W) += sdm429-wtp.dtb\
 endif
 
 endif
+
+endif  #CONFIG_MMI_DEVICE_DTBS
 
 ifeq ($(CONFIG_ARM64),y)
 always		:= $(dtb-y)
