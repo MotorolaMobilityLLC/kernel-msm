@@ -24,7 +24,7 @@
  *	qcom,msm-id = <355 0x0>;
  *	qcom,board-id = <0x41 0xA100>;
 */
-	model = "Qualcomm Technologies, Inc. SM6150 jixj";
+	model = "Qualcomm Technologies, Inc. SM6150 foles";
 	compatible = "qcom,sm6150-idp", "qcom,sm6150", "qcom,idp";
 	qcom,msm-id = <355 0x0>;
 	qcom,board-id = <34 0>;
