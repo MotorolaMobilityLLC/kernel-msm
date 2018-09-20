@@ -167,6 +167,11 @@
 
 &soc{
 /delete-node/ qcom,qbt1000;
+/delete-node/ typec-temp-sensor;
+
+	thermal-zones {
+	    /delete-node/ pcm_therm;
+	};
 
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
