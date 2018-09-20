@@ -10,6 +10,14 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config FOLES_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Foles DTBs"
+	help
+	  Only include Ali specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QCOM_MEM_OFFLINE
 	bool "Dynamic Memory Region Offline driver"
 	help
