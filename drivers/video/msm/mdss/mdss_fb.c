@@ -3907,7 +3907,8 @@ void mdss_panelinfo_to_fb_var(struct mdss_panel_info *pinfo,
 		v_total = var->yres + var->lower_margin
 			+ var->upper_margin + var->vsync_len;
 		clk_rate = h_total * v_total * frame_rate;
-		var->pixclock = KHZ2PICOS(clk_rate / 1000);
+		if (clk_rate)
+			var->pixclock = KHZ2PICOS(clk_rate / 1000);
 	} else if (pinfo->clk_rate) {
 		var->pixclock = KHZ2PICOS(
 				(unsigned long int) pinfo->clk_rate / 1000);
