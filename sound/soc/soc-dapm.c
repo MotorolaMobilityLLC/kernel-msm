@@ -2079,6 +2079,9 @@ static int soc_dapm_mux_update_power(struct snd_soc_card *card,
 	struct snd_soc_dapm_path *path;
 	int found = 0;
 
+	if (mux < 0)
+		return -EINVAL;
+
 	lockdep_assert_held(&card->dapm_mutex);
 
 	/* find dapm widget path assoc with kcontrol */
