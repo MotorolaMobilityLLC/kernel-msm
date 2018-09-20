@@ -13,6 +13,8 @@
 #include <linux/device.h>
 #include <linux/regmap.h>
 #include <linux/delay.h>
+#include <linux/of_gpio.h>
+#include <linux/module.h>
 #include <linux/power_supply.h>
 #include <linux/regulator/driver.h>
 #include <linux/qpnp/qpnp-revid.h>
@@ -7824,7 +7826,55 @@ int smblib_deinit(struct smb_charger *chg)
 	return 0;
 }
 
+/*********************
+ * MMI Functionality *
+ *********************/
+
 static struct smb_charger *mmi_chip;
+
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
+static int smbchg_reboot(struct notifier_block *nb,
+			 unsigned long event, void *unused)
+{
+	struct smb_charger *chg = container_of(nb, struct smb_charger,
+						mmi.smb_reboot);
+	u8 stat;
+	bool vbus_rising;
+	pr_debug("SMB Reboot\n");
+	if (!chg) {
+		pr_warn("called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+
+	vbus_rising = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
+	if (chg->mmi.factory_mode) {
+		switch (event) {
+		case SYS_POWER_OFF:
+			/* Disable Factory Kill */
+			factory_kill_disable = true;
+			/* Disable Charging */
+			smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
+					    CHARGING_ENABLE_CMD_BIT,
+					    CHARGING_ENABLE_CMD_BIT);
+
+			/* Suspend USB and DC */
+			smblib_set_usb_suspend(chg, true);
+			smblib_set_dc_suspend(chg, true);
+
+			while (vbus_rising)
+				msleep(100);
+			pr_warn("VBUS UV wait 1 sec!\n");
+			/* Delay 1 sec to allow more VBUS decay */
+			msleep(1000);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return NOTIFY_DONE;
+}
 
 #define CHG_SHOW_MAX_SIZE 50
 static ssize_t force_demo_mode_store(struct device *dev,
@@ -8207,6 +8257,50 @@ static bool mmi_factory_check(void)
 	return factory;
 }
 
+static void parse_mmi_dt_gpio(struct smb_charger *chg)
+{
+	struct device_node *node = chg->dev->of_node;
+	enum of_gpio_flags flags;
+	int rc;
+
+	if (!node) {
+		pr_err("gpio dtree info. missing\n");
+		return;
+	}
+
+	if (!of_gpio_count(node)) {
+		pr_err("No GPIOS defined.\n");
+		return;
+	}
+
+	chg->mmi.ebchg_gpio.gpio = of_get_gpio_flags(node, 0, &flags);
+	chg->mmi.ebchg_gpio.flags = flags;
+	of_property_read_string_index(node, "gpio-names", 0,
+				      &chg->mmi.ebchg_gpio.label);
+
+	rc = gpio_request_one(chg->mmi.ebchg_gpio.gpio,
+			      chg->mmi.ebchg_gpio.flags,
+			      chg->mmi.ebchg_gpio.label);
+	if (rc) {
+		pr_err("failed to request eb GPIO\n");
+		return;
+	}
+
+	rc = gpio_export(chg->mmi.ebchg_gpio.gpio, 1);
+	if (rc) {
+		pr_err("Failed to export eb GPIO %s: %d\n",
+		       chg->mmi.ebchg_gpio.label, chg->mmi.ebchg_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export_link(chg->dev, chg->mmi.ebchg_gpio.label,
+			      chg->mmi.ebchg_gpio.gpio);
+	if (rc)
+		pr_err("Failed to eb link GPIO %s: %d\n",
+		       chg->mmi.ebchg_gpio.label, chg->mmi.ebchg_gpio.gpio);
+
+}
+
 void mmi_init(struct smb_charger *chg)
 {
 	int rc;
@@ -8215,6 +8309,15 @@ void mmi_init(struct smb_charger *chg)
 		return;
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
+
+	parse_mmi_dt_gpio(chg);
+
+	chg->mmi.smb_reboot.notifier_call = smbchg_reboot;
+	chg->mmi.smb_reboot.next = NULL;
+	chg->mmi.smb_reboot.priority = 1;
+	rc = register_reboot_notifier(&chg->mmi.smb_reboot);
+	if (rc)
+		pr_err("SMB register for reboot failed\n");
 
 	rc = device_create_file(chg->dev,
 				&dev_attr_force_demo_mode);
