@@ -7,6 +7,12 @@ endif
 # to be runtime added by the bootloader (i.e. /chosen properties)
 DTC_FLAGS += -p 1024
 
+dtbo-$(CONFIG_FOLES_DTB) += \
+	sm6150-foles-evt1-overlay.dtbo
+
+sm6150-foles-evt1-overlay.dtbo-base := \
+	sm6150-foles-base.dtb
+
 else
 # SPDX-License-Identifier: GPL-2.0
 ifeq ($(TARGET_BOARD_TYPE),auto)
