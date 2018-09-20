@@ -239,7 +239,6 @@
 				cirrus,init-mic-delay-ms = <200>;
 				cirrus,micd-manual-debounce = <3>;
 				cirrus,micd-detect-debounce-ms = <600>;
-				cirrus,micd-manual-debounce = <2>;
 				cirrus,micd-bias-start-time = <8>;
 				cirrus,micd-rate = <6>;
 				cirrus,micd-dbtime = <0x1>;
