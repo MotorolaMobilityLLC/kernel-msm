@@ -41,17 +41,13 @@ qcom,mdss-dsi-te-dcs-command = <1>;
 qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
 
-qcom,panel-size-diff-ctrl-mem-size;
-qcom,panel-diff-mem-size-left-offset = <102>;
-qcom,panel-diff-mem-size-right-offset = <102>;
-
 qcom,mdss-dsi-bl-min-level = <3>;
 qcom,mdss-dsi-bl-max-level = <255>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
 qcom,mdss-dsi-display-timings {
 	timing@0{
-		qcom,mdss-dsi-panel-width = <876>;
+		qcom,mdss-dsi-panel-width = <1080>;
 		qcom,mdss-dsi-panel-height = <2142>;
 		qcom,mdss-dsi-h-front-porch = <44>;
 		qcom,mdss-dsi-h-back-porch = <32>;
@@ -72,8 +68,6 @@ qcom,mdss-dsi-display-timings {
 			15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
 			15 00 00 00 00 00 02 51 7f
 			15 00 00 00 78 00 02 55 00      /* ACL OFF */
-			39 00 00 00 00 00 05 2A 00 66 03 D1
-			39 00 00 00 00 00 05 2B 00 00 08 5D
 			05 01 00 00 00 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 23 00 01 28		/* display_off */
