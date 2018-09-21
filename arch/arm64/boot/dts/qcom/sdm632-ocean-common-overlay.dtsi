@@ -686,3 +686,7 @@
 	};
 };
 
+&bcl_soc {
+	qcom,bcl-not-mitigate-cpu;
+};
+
