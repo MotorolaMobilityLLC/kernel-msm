@@ -12,3 +12,19 @@
 
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-audio-overlay.dtsi"
+
+
+&qupv3_se3_i2c {
+	status = "okay";
+
+	pcal_pin:gpio@20 {
+		compatible = "pcal,pcal-pin";
+		status = "ok";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		#address-cells = <1>;
+		pcal,pin-num = <16>;
+		pcal,reset-gpio = <&tlmm 109 1>;
+	};
+};
