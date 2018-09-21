@@ -634,7 +634,11 @@ static enum power_supply_property smb5_usb_props[] = {
 };
 
 #define SDP_CURRENT_UA			500000
+#ifdef CONFIG_DCP_2A_SUPPORT
+#define DCP_CURRENT_UA			1800000
+#else
 #define DCP_CURRENT_UA			1500000
+#endif
 
 static int smb5_usb_get_prop(struct power_supply *psy,
 		enum power_supply_property psp,
