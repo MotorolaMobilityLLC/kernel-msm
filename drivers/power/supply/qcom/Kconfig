@@ -176,4 +176,11 @@ config BAT_TEMP_100K_PU_B4250K
 	help
 	  Say Y when you using 100K pullup and NTC 4250K B value, or N
 
+config DCP_2A_SUPPORT
+        bool "bc1.2 2A dcp current support"
+        depends on MFD_SPMI_PMIC
+        default n
+        help
+          Say Y when need 2A dcp current support, or N
+
 endmenu
