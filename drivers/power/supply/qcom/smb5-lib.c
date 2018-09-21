@@ -5148,7 +5148,11 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			if (apsd_reg & OCP_CHARGER_BIT)
 				cl_usb = 1000;
 			else
+#ifdef CONFIG_DCP_2A_SUPPORT
+				cl_usb = 1800;
+#else
 				cl_usb = 1500;
+#endif
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
 			cl_usb = 1500;
