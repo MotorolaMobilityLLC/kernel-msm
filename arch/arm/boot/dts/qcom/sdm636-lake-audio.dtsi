@@ -421,7 +421,7 @@
 				firmware {
 					ultrasound {
 						wlf,wmfw-file = "marley-dsp1-ultrasound.wmfw";
-						wlf,bin-file = "marley-dsp1v-ultrasound.bin";
+						wlf,bin-file = "marley-dsp1-ultrasound.bin";
 					};
 				};
 			};
