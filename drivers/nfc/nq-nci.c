@@ -1019,8 +1019,9 @@ static int nqx_clock_select(struct nqx_dev *nqx_dev)
 
 	nqx_dev->s_clk = clk_get(&nqx_dev->client->dev, "ref_clk");
 
-	if (nqx_dev->s_clk == NULL)
-		goto err_clk;
+	/* if NULL we assume external crystal and dont fail */
+	if ((nqx_dev->s_clk == NULL) || IS_ERR(nqx_dev->s_clk))
+		return 0;
 
 	if (nqx_dev->clk_run == false)
 		r = clk_prepare_enable(nqx_dev->s_clk);
@@ -1044,7 +1045,11 @@ static int nqx_clock_deselect(struct nqx_dev *nqx_dev)
 {
 	int r = -1;
 
-	if (nqx_dev->s_clk != NULL) {
+	/* if NULL we assume external crystal and dont fail */
+	if ((nqx_dev->s_clk == NULL) || IS_ERR(nqx_dev->s_clk))
+		return 0;
+
+	if ((nqx_dev->s_clk != NULL) && !IS_ERR(nqx_dev->s_clk)) {
 		if (nqx_dev->clk_run == true) {
 			clk_disable_unprepare(nqx_dev->s_clk);
 			nqx_dev->clk_run = false;
@@ -1088,6 +1093,11 @@ static int nfc_parse_dt(struct device *dev, struct nqx_platform_data *pdata)
 		pdata->clk_pin_voting = true;
 
 	pdata->clkreq_gpio = of_get_named_gpio(np, "qcom,nq-clkreq", 0);
+	if (!gpio_is_valid(pdata->clkreq_gpio)) {
+		dev_warn(dev,
+			"clkreq GPIO <OPTIONAL> error getting from OF node\n");
+		pdata->clkreq_gpio = -EINVAL;
+	}
 
 	return r;
 }
@@ -1277,9 +1287,9 @@ static int nqx_probe(struct i2c_client *client,
 			goto err_clkreq_gpio;
 		}
 	} else {
-		dev_err(&client->dev,
-			"%s: clkreq gpio not provided\n", __func__);
-		goto err_ese_gpio;
+		dev_warn(&client->dev,
+		"%s: clkreq gpio not provided. Ext xtal expected\n",
+		__func__);
 	}
 
 	nqx_dev->en_gpio = platform_data->en_gpio;
@@ -1342,8 +1352,10 @@ static int nqx_probe(struct i2c_client *client,
 	if (r) {
 		/* make sure NFCC is not enabled */
 		gpio_set_value(platform_data->en_gpio, 0);
-		/* We don't think there is hardware switch NFC OFF */
-		goto err_request_hw_check_failed;
+		/*
+		 * Not failing here. Probe will succeed and device created so that
+		 * NFC SW stack can run and try recover NFCC with firmware download
+		 */
 	}
 
 	/* Register reboot notifier here */
@@ -1395,10 +1407,12 @@ err_class_create:
 err_char_dev_register:
 	mutex_destroy(&nqx_dev->read_mutex);
 err_clkreq_gpio:
-	gpio_free(platform_data->clkreq_gpio);
+	/* optional gpio, not sure was configured in probe */
+	if (gpio_is_valid(platform_data->clkreq_gpio))
+		gpio_free(platform_data->clkreq_gpio);
 err_ese_gpio:
 	/* optional gpio, not sure was configured in probe */
-	if (nqx_dev->ese_gpio > 0)
+	if (gpio_is_valid(platform_data->ese_gpio))
 		gpio_free(platform_data->ese_gpio);
 err_firm_gpio:
 	gpio_free(platform_data->firm_gpio);
