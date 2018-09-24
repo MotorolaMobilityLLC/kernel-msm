@@ -21,7 +21,14 @@
 	status = "ok";
 };
 
-&tlmm {
+&tlmm{
+	haptic_irq {
+		haptic_irq_default: haptic_irq_default {
+			pins = "gpio97";
+			bias-pull-up;
+		};
+	};
+
 	touch_int_mux {
 		touch_int_active: active {
 			mux {
@@ -72,15 +79,6 @@
 				bias-pull-down;
 				output-low;
 			};
-		};
-	};
-};
-
-&tlmm{
-	haptic_irq {
-		haptic_irq_default: haptic_irq_default {
-			pins = "gpio97";
-			bias-pull-up;
 		};
 	};
 };
