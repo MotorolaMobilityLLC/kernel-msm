@@ -13,3 +13,17 @@
 /dts-v1/;
 
 #include "sm6150-moto-base.dtsi"
+
+&thermal_zones {
+	/delete-node/ rf_pa0_therm-therm;
+	/delete-node/ quiet-therm;
+	/delete-node/ emmc_ufs-therm;
+	/delete-node/ xo-therm-adc;
+	/delete-node/ sdm-therm;
+	/delete-node/ conn-therm;
+	/delete-node/ xo-therm;
+};
+
+&pm6150_adc_tm {
+	/delete-node/ io-channels;
+};
