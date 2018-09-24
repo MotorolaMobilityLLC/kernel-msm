@@ -170,10 +170,25 @@
 			   "usb_in_current",
 			   "chg_temp";
 	qcom,battery-data = <&mtp_batterydata>;
-	qcom,step-charging-enable;
-	qcom,sw-jeita-enable;
-	qcom,fcc-stepping-enable;
-	qcom,sec-charger-config = <3>;
+	qcom,iterm-ma = <150>;
+	qcom,fcc-max-ua = <3000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,thermal-mitigation = <3000>,
+				   <2500>,
+				   <2000>,
+				   <1500>,
+				   <1200>,
+				   <900>,
+				   <700>,
+				   <300>;
+	qcom,mmi-temp-zones = <0 4200 1000 0>,
+				<15 0 1000 1000>,
+				<45 0 3000 3000>,
+				<60 4200 2500 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 &smb1390 {
@@ -181,23 +196,23 @@
 	interrupts = <0x0 0xc2 0x0 IRQ_TYPE_LEVEL_LOW>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&smb_stat_default>;
-	status = "ok";
+	status = "disabled";
 };
 
 &smb1390_charger {
 	io-channels = <&pm6150_vadc ADC_AMUX_THM3>;
 	io-channel-names = "cp_die_temp";
-	status = "ok";
+	status = "disabled";
 };
 
 &smb1355 {
 	/delete-property/ interrupts;
 	interrupts = <0x0 0xc2 0x0 IRQ_TYPE_LEVEL_LOW>;
-	status = "ok";
+	status = "disabled";
 };
 
 &smb1355_charger {
-	status = "ok";
+	status = "disabled";
 };
 
 &dsi_sim_cmd {
