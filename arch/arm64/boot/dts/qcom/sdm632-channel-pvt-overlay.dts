@@ -20,11 +20,11 @@
 / {
 	model = "channel";
 	qcom,msm-id = <349 0x0>;
-	qcom,board-id = <0x49 0xB2A0>;
+	qcom,board-id = <0x49 0xC000>;
 };
 
 /*
- * Channel RoW HW rev DVT2A specific changes go here
+ * Channel RoW HW rev PVT specific changes go here
  */
 
 &i2c_2 { /* capsensor */
