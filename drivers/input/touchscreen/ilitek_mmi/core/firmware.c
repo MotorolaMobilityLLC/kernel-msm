@@ -535,8 +535,10 @@ int tddi_check_fw_upgrade(void)
 	g_flash_block_info[1].end_addr = DATA_END_ADDR;
 	g_flash_block_info[2].start_addr = MP_STAR_ADDR;
 	g_flash_block_info[2].end_addr = MP_END_ADDR;
+	g_flash_block_info[3].start_addr = DDI_STAR_ADDR;
+	g_flash_block_info[3].end_addr = DDI_END_ADDR;
 	/* Check Flash CRC and HW CRC */
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < 4; i++) {
 		start_addr = g_flash_block_info[i].start_addr;
 		end_addr = g_flash_block_info[i].end_addr;
 
