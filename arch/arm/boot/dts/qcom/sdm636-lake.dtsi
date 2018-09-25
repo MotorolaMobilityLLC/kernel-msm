@@ -403,3 +403,10 @@
 	qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
 				 <9000 3000>; /* 9V @ 3A */
 };
+
+&pm660_bcl {
+	qcom,bcl-charger-mitigate-enable;
+	qcom,ibat-monitor {
+		qcom,soc-low-threshold = <5>;
+	};
+};
