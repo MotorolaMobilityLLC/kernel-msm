@@ -8312,6 +8312,11 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 	of_property_read_string_index(node, "gpio-names", 0,
 				      &chg->mmi.ebchg_gpio.label);
 
+	if (!gpio_is_valid(chg->mmi.ebchg_gpio.gpio)) {
+		dev_err(chg->dev, "get gpio ebchg error rc=%d\n", chg->mmi.ebchg_gpio.gpio);
+		return;
+	}
+
 	rc = gpio_request_one(chg->mmi.ebchg_gpio.gpio,
 			      chg->mmi.ebchg_gpio.flags,
 			      chg->mmi.ebchg_gpio.label);
