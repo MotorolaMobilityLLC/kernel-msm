@@ -43,7 +43,7 @@
 		gpios = <&tlmm 86 0x2008>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sx9310_irq_default>;
-		cap,use_channel = <0x0f>;
+		cap,use_channel = <0x0e>;
 		cap,use_channel_top = <0x03>;
 		cap,use_channel_bottom = <0x01>;
 		cap,raw_data_channel = <0x01>;
