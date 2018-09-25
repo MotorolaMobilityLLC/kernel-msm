@@ -43,6 +43,7 @@ static struct regmap_config cs35l41_regmap_i2c = {
 	.num_reg_defaults = ARRAY_SIZE(cs35l41_reg),
 	.volatile_reg = cs35l41_volatile_reg,
 	.readable_reg = cs35l41_readable_reg,
+	.precious_reg = cs35l41_precious_reg,
 	.cache_type = REGCACHE_RBTREE,
 };
 
