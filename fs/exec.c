@@ -1165,6 +1165,18 @@ static int de_thread(struct task_struct *tsk)
 		leader->group_leader = tsk;
 
 		tsk->exit_signal = SIGCHLD;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+		/*
+         * need to delete leader from adj tree, because it will not be
+         * group leader (exit_signal = -1) soon. release_task(leader)
+         * can't delete it.
+         */
+        spin_lock_irq(lock);
+        delete_from_adj_tree(leader);
+        add_2_adj_tree(tsk);
+        spin_unlock_irq(lock);
+#endif
+
 		leader->exit_signal = -1;
 
 		BUG_ON(leader->exit_state != EXIT_ZOMBIE);
