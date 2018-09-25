@@ -8,6 +8,7 @@
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/tty_flip.h>
+#include <linux/usb/usbdiag.h>
 
 #include <linux/usb/tty_diag.h>
 
@@ -201,6 +202,9 @@ struct usb_diag_ch *tty_diag_channel_open(const char *name, void *priv,
 {
 	int i;
 	unsigned long flags;
+
+	if(strcmp(DIAG_LEGACY, name) != 0)
+		return ERR_PTR(-EINVAL);
 
 	if (legacy_ch.priv != NULL)
 		return ERR_PTR(-EBUSY);
