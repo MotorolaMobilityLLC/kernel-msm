@@ -198,7 +198,7 @@
 		interrupt-controller;
 	};
 
-	dsi_panel_pwr_supply_vdd_no_amoled: dsi_panel_pwr_supply_vdd_amoled {
+	dsi_panel_pwr_supply_vdd_amoled: dsi_panel_pwr_supply_vdd_amoled {
 		#address-cells = <1>;
 		#size-cells = <0>;
 
