@@ -1383,12 +1383,12 @@ static int goodix_hw_reset(struct goodix_ts_device *dev)
 	if (dev->ic_type == IC_TYPE_NORMANDY) {
 #ifdef GPIOD_API
 		gpiod_direction_output(dev->board_data->reset_gpiod, 0);
-		udelay(200);
+		udelay(2000);
 		gpiod_direction_output(dev->board_data->reset_gpiod, 1);
 		msleep(100);
 #else
 		gpio_direction_output(dev->board_data->reset_gpio, 0);
-		udelay(200);
+		udelay(2000);
 		gpio_direction_output(dev->board_data->reset_gpio, 1);
 		msleep(100);
 #endif
