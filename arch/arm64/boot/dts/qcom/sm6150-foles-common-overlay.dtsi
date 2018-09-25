@@ -12,6 +12,7 @@
 
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-audio-overlay.dtsi"
+#include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
 
 
 &pm6150_l18 {
@@ -196,6 +197,43 @@
 		interrupts = <93 0>;
 		interrupt-controller;
 	};
+
+	dsi_panel_pwr_supply_vdd_no_amoled: dsi_panel_pwr_supply_vdd_amoled {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <62000>;
+			qcom,supply-disable-load = <80>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vdd";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3000000>;
+			qcom,supply-enable-load = <857000>;
+			qcom,supply-disable-load = <0>;
+			qcom,supply-post-on-sleep = <0>;
+		};
+	};
+
+	dsi_smd_639_1080x2340_cmd_display: qcom,dsi-display@5 {
+		label = "dsi_smd_639_1080x2340_cmd_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "src_byte_clk0", "src_pixel_clk0";
+
+		qcom,dsi-panel = <&mot_smd_639_1080p_cmd_v1>;
+	};
+
 };
 
 &qupv3_se1_i2c {
@@ -410,5 +448,44 @@
 		reg = <ADC_AMUX_THM3_PU2>;
 		qcom,ratiometric;
 		qcom,hw-settle-time = <200>;
+	};
+};
+
+&pm6150l_wled {
+	status = "disable";
+};
+
+&pm6150l_lcdb {
+	status = "disable";
+};
+
+&sde_dsi {
+	vdd-supply = <&pm6150_l18>;
+	qcom,dsi-display-list =
+		<&dsi_smd_639_1080x2340_cmd_display>;
+
+	/delete-property/lab-supply;
+	/delete-property/ibb-supply;
+};
+
+&mot_smd_639_1080p_cmd_v1 {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
+	qcom,platform-te-gpio = <&tlmm 90 0>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+
+	qcom,mdss-dsi-t-clk-post = <0x0e>;
+	qcom,mdss-dsi-t-clk-pre = <0x31>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[24 1f 08 09 05 03 04 a0
+				24 1f 08 09 05 03 04 a0
+				24 1f 08 09 05 03 04 a0
+				24 1f 08 09 05 03 04 a0
+				24 1f 08 09 05 03 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
 	};
 };
