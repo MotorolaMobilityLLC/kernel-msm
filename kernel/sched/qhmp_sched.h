@@ -27,10 +27,6 @@ extern atomic_long_t calc_load_tasks;
 
 extern long calc_load_fold_active(struct rq *this_rq);
 extern void update_cpu_load_active(struct rq *this_rq);
-static inline void sched_account_irqstart(int cpu, struct task_struct *curr,
-					u64 wallclock)
-{
-}
 
 /*
  * Helpers for converting nanosecond timing to jiffy resolution
