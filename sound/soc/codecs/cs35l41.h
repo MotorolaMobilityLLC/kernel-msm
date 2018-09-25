@@ -712,6 +712,7 @@
 				| SNDRV_PCM_FMTBIT_S32_LE)
 
 bool cs35l41_readable_reg(struct device *dev, unsigned int reg);
+bool cs35l41_precious_reg(struct device *dev, unsigned int reg);
 bool cs35l41_volatile_reg(struct device *dev, unsigned int reg);
 
 struct cs35l41_otp_packed_element_t {
