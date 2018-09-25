@@ -22,6 +22,12 @@
 	status = "ok";
 };
 
+&pm6150_l19 {
+	regulator-boot-on;
+	regulator-always-on;
+	status = "ok";
+};
+
 &tlmm{
 	nfc {
 		nfc_int_active: nfc_int_active {
@@ -81,6 +87,36 @@
 				pins = "gpio84";
 				drive-strength = <2>; /* 2 MA */
 				bias-pull-up;
+			};
+		};
+
+		nfc_115_active: nfc_115_active {
+			/* active state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio115";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio115";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+
+		nfc_115_suspend: nfc_115_suspend {
+			/* sleep state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio115";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio115";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
 			};
 		};
 
@@ -319,11 +355,11 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <86 0>;
 		interrupt-names = "nfc_irq";
-		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-names = "default", "suspend";
 		pinctrl-0 = <&nfc_int_active &nfc_enable_active
-					&nfc_clk_req_active>;
+				&nfc_115_active	&nfc_clk_req_active>;
 		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend
-					&nfc_clk_req_suspend>;
+				&nfc_115_suspend &nfc_clk_req_suspend>;
 	};
 };
 
