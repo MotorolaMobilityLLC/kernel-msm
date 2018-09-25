@@ -175,6 +175,18 @@
 	};
 };
 
+&soc {
+	goodix_fingerprint{
+		compatible = "goodix,fingerprint";
+		fp-gpio-reset = <&tlmm 46 0x00>;
+		fp-gpio-irq = <&tlmm 93 0x00>;
+		fp-gpio-ven = <&pm6150l_gpios 12 0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <93 0>;
+		interrupt-controller;
+	};
+};
+
 &qupv3_se1_i2c {
 	status = "okay";
 
