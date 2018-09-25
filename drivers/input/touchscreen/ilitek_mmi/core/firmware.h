@@ -35,6 +35,8 @@
 #define DATA_END_ADDR	0x11FFF
 #define MP_STAR_ADDR    0x13000
 #define MP_END_ADDR	0x1BFFF
+#define DDI_STAR_ADDR   0x1E000
+#define DDI_END_ADDR	0x1FFFF
 
 struct core_firmware_data {
 uint8_t new_fw_ver[4];
