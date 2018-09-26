@@ -317,12 +317,17 @@ static int cs35l41_cspl_cmd_put(struct snd_kcontrol *kcontrol,
 	struct cs35l41_private	*cs35l41 = snd_soc_codec_get_drvdata(codec);
 	struct soc_enum		*soc_enum;
 	unsigned int		i = ucontrol->value.enumerated.item[0];
-	int			ret = 0;
 
 	soc_enum = (struct soc_enum *)kcontrol->private_value;
+
+	if (i >= soc_enum->items) {
+		dev_err(codec->dev, "Invalid mixer input (%u)\n", i);
+		return -EINVAL;
+	}
+
 	cs35l41->cspl_cmd = soc_enum->values[i];
 
-	return ret;
+	return 0;
 }
 
 static int cs35l41_cspl_cmd_get(struct snd_kcontrol *kcontrol,
