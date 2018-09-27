@@ -283,6 +283,22 @@
 		qcom,dsi-panel = <&mot_smd_639_1080p_cmd_v1>;
 	};
 
+	mot_panel_dummy_reg: mot_panel_dummy_reg {
+		compatible = "regulator-fixed";
+		regulator-name = "mot_dummy_disp";
+	};
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@6 {
+		label = "dsi_mot_dummy_qhd_video_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "src_byte_clk0", "src_pixel_clk0";
+
+		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
+	};
+
 };
 
 &qupv3_se1_i2c {
@@ -547,7 +563,8 @@
 &sde_dsi {
 	vdd-supply = <&pm6150_l18>;
 	qcom,dsi-display-list =
-		<&dsi_smd_639_1080x2340_cmd_display>;
+		<&dsi_smd_639_1080x2340_cmd_display
+		 &dsi_mot_dummy_qhd_video_display>;
 
 	/delete-property/lab-supply;
 	/delete-property/ibb-supply;
@@ -569,6 +586,23 @@
 				24 1f 08 09 05 03 04 a0
 				24 1f 08 09 05 03 04 a0];
 
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&mot_dummy_vid_qhd {
+	vci_disp-supply = <&mot_panel_dummy_reg>;
+	qcom,platform-te-gpio = <&tlmm 90 0>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+
+	qcom,mdss-dsi-t-clk-post = <0x09>;
+	qcom,mdss-dsi-t-clk-pre = <0x15>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 0B 02 02 1C 1C 03
+							02 01 03 04 00];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 		};
