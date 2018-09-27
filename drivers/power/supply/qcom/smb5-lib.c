@@ -2419,6 +2419,7 @@ int smblib_run_aicl(struct smb_charger *chg, int type)
 	return 0;
 }
 
+#ifdef QCOM_BASE
 static int smblib_dp_pulse(struct smb_charger *chg)
 {
 	int rc;
@@ -2458,6 +2459,7 @@ int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 
 	return rc;
 }
+#endif
 
 static void smblib_hvdcp_set_fsw(struct smb_charger *chg, int bit)
 {
@@ -2539,6 +2541,7 @@ static void smblib_hvdcp_adaptive_voltage_change(struct smb_charger *chg)
 
 int smblib_dp_dm(struct smb_charger *chg, int val)
 {
+#ifdef QCOM_BASE
 	int target_icl_ua, rc = 0;
 	union power_supply_propval pval;
 	u8 stat;
@@ -2671,6 +2674,9 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 	}
 
 	return rc;
+#else
+	return 0;
+#endif
 }
 
 int smblib_disable_hw_jeita(struct smb_charger *chg, bool disable)
