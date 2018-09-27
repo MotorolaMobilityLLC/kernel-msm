@@ -239,10 +239,10 @@
 };
 
 &qusb_phy0 {
-	qcom,tune2-efuse-correction = <(-4)>;
+	qcom,tune2-efuse-correction = <(-1)>;
 	qcom,tune2-efuse-correction-host = <(-1)>;
 	qcom,qusb-phy-init-seq = <0xc0 0x80
-				0x81 0x84
+				0xb1 0x84
 				0x83 0x88
 				0xc7 0x8c
 				0x30 0x08
@@ -251,7 +251,7 @@
 				0x14 0x9c
 				0x9f 0x1c
 				0x00 0x18>;
-	qcom,tune-factory-override = <0xC78351C0>;
+	qcom,tune-factory-override = <0xC783B1C0>;
 };
 
 &mdss_mdp {
