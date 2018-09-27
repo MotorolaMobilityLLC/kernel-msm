@@ -297,17 +297,15 @@ static int msm_comm_get_mbs_per_frame(struct msm_vidc_inst *inst)
 
 static int msm_comm_get_mbs_per_sec(struct msm_vidc_inst *inst)
 {
-	int rc;
 	u32 fps;
-	struct v4l2_control ctrl;
 	int mb_per_frame;
+	u32 oper_rate;
 
 	mb_per_frame = msm_comm_get_mbs_per_frame(inst);
+	oper_rate = inst->prop.operating_rate;
 
-	ctrl.id = V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE;
-	rc = msm_comm_g_ctrl(inst, &ctrl);
-	if (!rc && ctrl.value) {
-		fps = (ctrl.value >> 16) ? ctrl.value >> 16 : 1;
+	if (oper_rate) {
+		fps = (oper_rate >> 16) ? oper_rate >> 16 : 1;
 		/*
 		 * Check if operating rate is less than fps.
 		 * If Yes, then use fps to scale the clocks
