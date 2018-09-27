@@ -217,6 +217,12 @@
 	status = "ok";
 };
 
+&pm6150l_rgb_led {
+	red {
+		label = "charging";
+	};
+};
+
 &pm6150_qg {
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,qg-iterm-ma = <250>;
