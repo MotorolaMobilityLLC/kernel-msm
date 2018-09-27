@@ -221,6 +221,19 @@
                         output-high;
               };
         };
+
+	sx933x_irq_default: sx933x_irq_default {
+		mux {
+			pins = "gpio110";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio110";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
 };
 
 &soc {
@@ -340,6 +353,42 @@
                 pinctrl-names = "default";
                 pinctrl-0 = <&tps61280_en_default>;
         };
+
+	sx933x@28 {
+		compatible = "Semtech,sx933x";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <110 0x2008>;
+		Semtech,nirq-gpio = <&tlmm 110 0x2008>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx933x_irq_default>;
+		cap_vdd-supply = <&pm6150l_l7>;
+		Semtech,button-flag = <0x07>;
+		Semtech,reg-num = <23>;
+		Semtech,reg-init = <0x8020 0x1F0000
+			0x8024 0x300014D4 /*again 6.6pf*/
+			0x8028 0x24928000
+			0x802C 0x300004D4
+			0x8030 0x24960000
+			0x8034 0x300004D4
+			0x8038 0x24B20000
+			0x803C 0x300004D4
+			0x8040 0x25920000
+			0x8044 0x300004D4
+			0x8048 0x2C920000
+			0x8054 0x03107000 /*ph0*/
+			0x8058 0x20600C00
+			0x805c 0x0
+			0x8064 0x008D0000 /*5mm th*/
+			0x8070 0x0
+			0x8074 0x03107000 /*ph1*/
+			0x8084 0x008D0000 /*5mm th*/
+			0x8094 0x03107000 /*ph2*/
+			0x80A4 0x008D0000 /*5mm th*/
+			0x80B4 0x0010FF00
+			0x80D4 0x0010FF00
+			0x4004 0x67 >;
+	};
 };
 
 &qupv3_se5_i2c {
