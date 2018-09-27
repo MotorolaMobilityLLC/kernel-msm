@@ -462,3 +462,11 @@
 		};
 	};
 };
+
+&pmi632_low_soc {
+	temperature = <5>;
+};
+
+&bcl_soc {
+	qcom,bcl-not-mitigate-cpu;
+};
