@@ -1034,6 +1034,9 @@ static int goodix_update_finish(struct goodix_ts_device *ts_dev,
 	/*add by lishuai, avoid read_version failed*/
 	msleep(300);
 
+	/*reset*/
+	r = ts_dev->hw_ops->reset(ts_dev);
+
 	return r;
 }
 
