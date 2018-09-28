@@ -1823,6 +1823,7 @@ static int arm_smmu_init_asid(struct iommu_domain *domain,
 		if (ret < 0) {
 			dev_err(smmu->dev, "dynamic ASID allocation failed: %d\n",
 				ret);
+			BUG();
 			return ret;
 		}
 		cfg->asid = ret;
