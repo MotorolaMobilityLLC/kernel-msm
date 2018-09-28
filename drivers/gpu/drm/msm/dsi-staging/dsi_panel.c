@@ -2332,11 +2332,15 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 	panel->bl_config.bl_inverted_dbv = utils->read_bool(utils->data,
 		"qcom,mdss-dsi-bl-inverted-dbv");
 
-	panel->bl_config.bl_2bytes_enable = of_property_read_bool(of_node,
-					"qcom,bklt-dcs-2bytes-enabled");
-
-	pr_info("[%s] bl_2bytes_enable=%d\n", panel->name,
-					panel->bl_config.bl_2bytes_enable);
+	rc = utils->read_u32(utils->data, "qcom,bklt-dcs-2bytes-enabled",
+		&val);
+	if (rc) {
+		pr_debug("[%s] bklt-dcs-2bytes default\n",
+			 panel->name);
+		panel->bl_config.bl_2bytes_enable = 1;
+	} else {
+		panel->bl_config.bl_2bytes_enable = val;
+	}
 
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(panel);
