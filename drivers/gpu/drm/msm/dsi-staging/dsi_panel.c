@@ -2325,12 +2325,16 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		panel->bl_config.brightness_default_level = val;
 	}
 
+	rc = utils->read_u32(utils->data, "qcom,bklt-dcs-2bytes-enabled",
+		&val);
+	if (rc) {
+		pr_debug("[%s] bklt-dcs-2bytes default\n",
+			 panel->name);
+		panel->bl_config.bl_2bytes_enable = 1;
+	} else {
+		panel->bl_config.bl_2bytes_enable = val;
+	}
 
-	panel->bl_config.bl_2bytes_enable = of_property_read_bool(of_node,
-					"qcom,bklt-dcs-2bytes-enabled");
-
-	pr_info("[%s] bl_2bytes_enable=%d\n", panel->name,
-					panel->bl_config.bl_2bytes_enable);
 
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(panel);
