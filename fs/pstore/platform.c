@@ -77,12 +77,13 @@ struct pstore_info *psinfo;
 static char *backend;
 
 /* Compression parameters */
-#ifdef CONFIG_PSTORE_ZLIB_COMPRESS
+#if defined(CONFIG_PSTORE_ZLIB_COMPRESS)
 #define COMPR_LEVEL 6
 #define WINDOW_BITS 12
 #define MEM_LEVEL 4
 static struct z_stream_s stream;
-#else
+#elif defined(CONFIG_PSTORE_LZO_COMPRESS) \
+   || defined(CONFIG_PSTORE_LZ4_COMPRESS)
 static unsigned char *workspace;
 #endif
 
