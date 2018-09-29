@@ -44,9 +44,7 @@ enum iio_chan_type {
 	IIO_COUNT,
 	IIO_INDEX,
 	IIO_GRAVITY,
-#ifdef CONFIG_MODS_NEW_SW_ARCH
 	IIO_PROPRIETARY,
-#endif
 };
 
 enum iio_modifier {
@@ -96,9 +94,7 @@ enum iio_event_type {
 	IIO_EV_TYPE_THRESH_ADAPTIVE,
 	IIO_EV_TYPE_MAG_ADAPTIVE,
 	IIO_EV_TYPE_CHANGE,
-#ifdef CONFIG_MODS_NEW_SW_ARCH
 	IIO_EV_TYPE_BUFFER_EMPTY,
-#endif
 };
 
 enum iio_event_direction {
