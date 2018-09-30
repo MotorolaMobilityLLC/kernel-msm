@@ -355,7 +355,6 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
 	POWER_SUPPLY_PROP_BATTERY_TYPE,
 	POWER_SUPPLY_PROP_CYCLE_COUNTS,
-#ifdef CONFIG_MODS_NEW_SW_ARCH
 	POWER_SUPPLY_PROP_CHARGE_RATE,
 	POWER_SUPPLY_PROP_FG_RESET_CLOCK,
 	POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
@@ -373,7 +372,6 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_PTP_MAX_INPUT_VOLTAGE,
 	POWER_SUPPLY_PROP_PTP_INPUT_VOLTAGE,
 	POWER_SUPPLY_PROP_AGE,
-#endif
 };
 
 enum power_supply_type {
@@ -400,9 +398,7 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_UFP,			/* Type-C UFP */
 	POWER_SUPPLY_TYPE_DFP,			/* Type-C DFP */
 	POWER_SUPPLY_TYPE_CHARGE_PUMP,		/* Charge Pump */
-	#ifdef CONFIG_MODS_NEW_SW_ARCH
 	POWER_SUPPLY_TYPE_PTP,		/* Greybus power transfer protocol */
-	#endif
 };
 
 /* Indicates USB Type-C CC connection status */
@@ -446,7 +442,6 @@ union power_supply_propval {
 	int64_t int64val;
 };
 
-#ifdef CONFIG_MODS_NEW_SW_ARCH
 enum {
 	POWER_SUPPLY_CHARGE_RATE_NONE = 0,
 	POWER_SUPPLY_CHARGE_RATE_NORMAL,
@@ -520,7 +515,6 @@ enum {
 	POWER_SUPPLY_PTP_POWER_SOURCE_WIRED_TURBO,
 	POWER_SUPPLY_PTP_POWER_SOURCE_WIRELESS_TURBO,
 };
-#endif
 
 struct device_node;
 struct power_supply;
