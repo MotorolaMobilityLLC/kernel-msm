@@ -3256,6 +3256,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 			       union power_supply_propval *val)
 {
 	int rc = 0;
+#ifdef QCOM_BASE
 	u8 stat;
 
 	if (get_client_vote_locked(chg->usb_icl_votable, USER_VOTER) == 0) {
@@ -3280,6 +3281,12 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 
 	val->intval = (stat & USE_USBIN_BIT) &&
 		      (stat & VALID_INPUT_POWER_SOURCE_STS_BIT);
+#else
+	if (chg->mmi.apsd_done)
+		rc = smblib_get_prop_usb_present(chg, val);
+	else
+		val->intval = 0;
+#endif
 	return rc;
 }
 
@@ -5597,6 +5604,8 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		break;
 	}
 
+	chg->mmi.apsd_done = true;
+
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: apsd-done rising; %s detected\n",
 		   apsd_result->name);
 }
@@ -5663,6 +5672,10 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 	}
 	smblib_dbg(chg, PR_INTERRUPT, "APSD_STATUS = 0x%02x\n", stat);
 
+	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
 	return IRQ_HANDLED;
 }
 
@@ -5879,6 +5892,8 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
 	vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
+
+	chg->mmi.apsd_done = false;
 
 	/* reset usb irq voters */
 	vote(chg->limited_irq_disable_votable, CHARGER_TYPE_VOTER,
@@ -8611,6 +8626,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 	power_supply_put(eb_pwr_psy);
 }
 
+#define CHARGER_DETECTION_DONE 7
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
@@ -8628,7 +8644,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int batt_soc;
 	int eb_soc;
 	int batt_temp;
-	int vbus_present;
+	int vbus_present = 0;
+	int charger_present = 0;
 	int cl_usb = -EINVAL;
 	int cl_pd = -EINVAL;
 	int cl_cc = -EINVAL;
@@ -8701,6 +8718,14 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		vbus_present = val.intval;
 
+	if (!vbus_present) {
+		charger_present = 0;
+		mmi->charger_debounce_cnt = 0;
+	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE)
+		mmi->charger_debounce_cnt++;
+	else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
+		charger_present = 1;
+
 	if (vbus_present || mmi->wls_present || !mmi->usbeb_present)
 		smblib_enable_dc_aicl(chip, false);
 	else if (mmi->usbeb_present && !prev_usbeb_pres)
@@ -8739,7 +8764,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 	pr_debug("batt=%d mV, %d mA, %d C\n", batt_mv, batt_ma, batt_temp);
 
-	if (vbus_present) {
+	if (charger_present) {
 		val.intval = get_client_vote(chip->usb_icl_votable,
 					     USB_PSY_VOTER);
 		cl_usb = val.intval / 1000;
@@ -8863,7 +8888,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	/* Determine Next State */
 	prev_step = chip->mmi.pres_chrg_step;
 
-	if (!vbus_present && (mmi->ebchg_state != EB_SRC)) {
+	if (!charger_present && (mmi->ebchg_state != EB_SRC)) {
 		mmi->pres_chrg_step = STEP_NONE;
 	} else if ((mmi->pres_temp_zone == ZONE_HOT) ||
 		   (mmi->pres_temp_zone == ZONE_COLD)) {
@@ -9003,11 +9028,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	vote(chip->fcc_votable, HEARTBEAT_VOTER,
 	     true, (target_fcc >= 0) ? (target_fcc * 1000) : 0);
 
-	vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
-	     (target_usb < 0), 0);
-
-	vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
-	     true, (target_usb >= 0) ? (target_usb * 1000) : 0);
+	rc = vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
+		  true, (target_usb >= 0) ? (target_usb * 1000) : 0);
+	if (rc < 0) {
+		pr_err("Problem setting USB ICL %d\n", target_usb);
+		goto end_hb;
+	}
 
 	if (vbus_present) {
 		if (mmi->cl_ebchg > 0) {
@@ -9032,7 +9058,7 @@ end_hb:
 
 	hb_resch_time = HEARTBEAT_HOLDOFF_MS;
 
-	if (!chip->mmi.chrg_taper_cnt)
+	if (!chip->mmi.chrg_taper_cnt && (rc >= 0))
 		hb_resch_time = HEARTBEAT_DELAY_MS;
 
 	if (ebparams_cnt != mmi->update_eb_params)
@@ -9040,7 +9066,8 @@ end_hb:
 	else
 		mmi->update_eb_params = 0;
 
-	if (eb_sink_to_off)
+	if (eb_sink_to_off ||
+	    (!charger_present && mmi->charger_debounce_cnt))
 		hb_resch_time = HEARTBEAT_EB_WAIT_MS;
 
 	schedule_delayed_work(&mmi->heartbeat_work,
