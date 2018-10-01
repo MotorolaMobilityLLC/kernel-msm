@@ -151,6 +151,60 @@
 		};
 	};
 
+	fps_rst_active: fps_rst_active {
+		/* active state */
+		mux {
+			pins = "gpio46";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio46";
+			drive-strength = <2>; /* 2 MA */
+		};
+	};
+
+	fps_rst_suspend: fps_rst_suspend {
+		/* sleep state */
+		mux {
+			pins = "gpio46";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio46";
+			drive-strength = <2>; /* 2 MA */
+		};
+	};
+
+	fps_int_active: fps_int_active {
+		/* active state */
+		mux {
+			pins = "gpio93";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio93";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+		};
+	};
+
+	fps_int_suspend: fps_int_suspend {
+		/* sleep state */
+		mux {
+			pins = "gpio93";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio93";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+		};
+	};
+
 	haptic_irq {
 		haptic_irq_default: haptic_irq_default {
 			pins = "gpio97";
@@ -245,6 +299,9 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <93 0>;
 		interrupt-controller;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&fps_rst_active &fps_int_active>;
+		pinctrl-1 = <&fps_rst_suspend &fps_int_suspend>;
 	};
 
 	dsi_panel_pwr_supply_vdd_amoled: dsi_panel_pwr_supply_vdd_amoled {
