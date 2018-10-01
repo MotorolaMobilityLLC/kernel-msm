@@ -7595,7 +7595,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		     false, 0);
 		vote(chip->dc_suspend_votable, EB_VOTER,
 		     true, 1);
-		gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+		if (gpio_is_valid(chip->mmi.ebchg_gpio.gpio))
+				gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
 		chip->mmi.cl_ebsrc = 0;
 
 		ret.intval = MICRO_9V;
@@ -7661,7 +7662,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			     false, 0);
 			vote(chip->dc_suspend_votable, EB_VOTER,
 			     true, 1);
-			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 1);
+			if (gpio_is_valid(chip->mmi.ebchg_gpio.gpio))
+				gpio_set_value(chip->mmi.ebchg_gpio.gpio, 1);
 		}
 		break;
 	case EB_SRC:
@@ -7698,7 +7700,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			     true, 0);
 			vote(chip->dc_suspend_votable, EB_VOTER,
 			     false, 1);
-			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+			if (gpio_is_valid(chip->mmi.ebchg_gpio.gpio))
+				gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
 
 			ret.intval = MICRO_9V;
 			rc = smblib_set_prop_pd_voltage_max(chip, &ret);
@@ -7714,7 +7717,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 					    &ret);
 		if (!rc) {
 			chip->mmi.ebchg_state = state;
-			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+			if (gpio_is_valid(chip->mmi.ebchg_gpio.gpio))
+				gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
 			vote(chip->usb_icl_votable, EB_VOTER,
 			     false, 0);
 			vote(chip->dc_suspend_votable, EB_VOTER,
