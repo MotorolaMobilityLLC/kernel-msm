@@ -672,3 +672,7 @@
 		};
 	};
 };
+
+&usb0{
+	mmi,ext-typec-switch;
+};
