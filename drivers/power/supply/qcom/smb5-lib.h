@@ -425,6 +425,7 @@ struct mmi_params {
 	enum ebchg_state	ebchg_state;
 	bool			force_eb_chrg;
 	int			update_eb_params;
+	int			charger_debounce_cnt;
 	int			cl_ebchg;
 	int			cl_ebsrc;
 	int			vl_ebsrc;
@@ -442,6 +443,7 @@ struct mmi_params {
 	struct power_supply	*usbeb_psy;
 	struct pinctrl		*smb_pinctrl;
 	struct wakeup_source	smblib_mmi_hb_wake_source;
+	bool			apsd_done;
 	int			base_fv_mv;
 };
 
