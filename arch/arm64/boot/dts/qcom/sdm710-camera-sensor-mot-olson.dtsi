@@ -248,6 +248,34 @@
 		status = "ok";
 	};
 
+	otp_front: qcom,eeprom@1 {
+		cell-index = <1>;
+		reg = <0x1>;
+		compatible = "qcom,eeprom";
+		cci-master = <0>;
+		cam_vana-supply = <&camera_vana_ldo>;
+		cam_vdig-supply = <&camera_front_vdig_ldo>;
+		cam_vio-supply = <&camera_vio_ldo>;
+		cam_clk-supply = <&titan_top_gdsc>;
+		regulator-names = "cam_vana", "cam_vdig", "cam_vio", "cam_clk";
+		gpios = <&tlmm 14 0>,
+			<&tlmm 9 0>;
+		gpio-reset = <1>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <1 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK1", "CAM_RESET1";
+		status = "ok";
+		clocks = <&clock_camcc CAM_CC_MCLK1_CLK>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "turbo";
+		clock-rates = <24000000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active
+				&cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend
+				&cam_sensor_front_suspend>;
+	};
+
 	/*IMX519*/
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -300,6 +328,7 @@
 		sensor-position-roll = <0>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
+		eeprom-src = <&otp_front>;
 		/* Temp workaround to unblock factory testing */
 		led-flash-src = <&led_flash_rear>;
 		cam_vana-supply = <&camera_vana_ldo>;
