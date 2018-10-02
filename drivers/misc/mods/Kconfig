@@ -67,10 +67,9 @@ config MODS_NEW_SW_ARCH
 	  For transport mods relative changes more convinient, we
 	  re-redevelop a new mods architecture from android-p.
 
-config SERIAL_MAX310X
+config SERIAL_MAX310X_CORE
     tristate "MAX310X support"
     depends on (SPI && !I2C) || I2C
-	select SERIAL_CORE
 	help
 	  This selects support for an advanced UART from Maxim (Dallas).
 	  Supported ICs are MAX3107, MAX3108, MAX3109, MAX14830.
@@ -80,9 +79,8 @@ config SERIAL_MAX310X
 
 config SERIAL_MAX310X_SPI
     bool "MAX310x for spi interface"
-    depends on SERIAL_MAX310X
+    depends on SERIAL_MAX310X_CORE
     depends on SPI
-    select SERIAL_MAX310X_CORE if SERIAL_MAX310X
     select REGMAP_SPI if SPI
     default n
     help
@@ -93,9 +91,8 @@ config SERIAL_MAX310X_SPI
 
 config SERIAL_MAX310X_I2C
     bool "MAX310x for I2C interface"
-    depends on SERIAL_MAX310X
+    depends on SERIAL_MAX310X_CORE
     depends on I2C
-    select SERIAL_MAX310XX_CORE if SERIAL_MAX310X
     select REGMAP_I2C if I2C
     help
 	  Enable MAX310x driver on I2C bus,
