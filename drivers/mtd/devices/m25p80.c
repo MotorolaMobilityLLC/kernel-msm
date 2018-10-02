@@ -27,11 +27,17 @@
 #include <linux/spi/flash.h>
 #include <linux/mtd/spi-nor.h>
 
+#include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/of_platform.h>
+
 #define	MAX_CMD_SIZE		6
 struct m25p {
 	struct spi_device	*spi;
 	struct spi_nor		spi_nor;
 	u8			command[MAX_CMD_SIZE];
+	int gpio_spi_cs;
 };
 
 static int m25p80_read_reg(struct spi_nor *nor, u8 code, u8 *val, int len)
@@ -40,9 +46,15 @@ static int m25p80_read_reg(struct spi_nor *nor, u8 code, u8 *val, int len)
 	struct spi_device *spi = flash->spi;
 	int ret;
 
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 0);
+
 	ret = spi_write_then_read(spi, &code, 1, val, len);
 	if (ret < 0)
 		dev_err(&spi->dev, "error %d reading %x\n", ret, code);
+
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 1);
 
 	return ret;
 }
@@ -84,6 +96,9 @@ static ssize_t m25p80_write(struct spi_nor *nor, loff_t to, size_t len,
 	int cmd_sz = m25p_cmdsz(nor);
 	ssize_t ret;
 
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 0);
+
 	/* get transfer protocols. */
 	inst_nbits = spi_nor_get_protocol_inst_nbits(nor->write_proto);
 	addr_nbits = spi_nor_get_protocol_addr_nbits(nor->write_proto);
@@ -122,11 +137,18 @@ static ssize_t m25p80_write(struct spi_nor *nor, loff_t to, size_t len,
 
 	ret = spi_sync(spi, &m);
 	if (ret)
-		return ret;
+		goto end;
 
 	ret = m.actual_length - cmd_sz;
-	if (ret < 0)
-		return -EIO;
+	if (ret < 0) {
+		ret = -EIO;
+		goto end;
+	}
+
+end:
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 1);
+
 	return ret;
 }
 
@@ -145,6 +167,9 @@ static ssize_t m25p80_read(struct spi_nor *nor, loff_t from, size_t len,
 	unsigned int dummy = nor->read_dummy;
 	ssize_t ret;
 	int cmd_sz;
+
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 0);
 
 	/* get transfer protocols. */
 	inst_nbits = spi_nor_get_protocol_inst_nbits(nor->read_proto);
@@ -171,8 +196,10 @@ static ssize_t m25p80_read(struct spi_nor *nor, loff_t from, size_t len,
 
 		ret = spi_flash_read(spi, &msg);
 		if (ret < 0)
-			return ret;
-		return msg.retlen;
+			goto end;
+
+		ret = msg.retlen;
+		goto end;
 	}
 
 	spi_message_init(&m);
@@ -218,11 +245,18 @@ static ssize_t m25p80_read(struct spi_nor *nor, loff_t from, size_t len,
 
 	ret = spi_sync(spi, &m);
 	if (ret)
-		return ret;
+		goto end;
 
 	ret = m.actual_length - cmd_sz;
-	if (ret < 0)
-		return -EIO;
+	if (ret < 0) {
+		ret = -EIO;
+		goto end;
+	}
+
+end:
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 1);
+
 	return ret;
 }
 
@@ -294,6 +328,28 @@ static int m25p_probe(struct spi_device *spi)
 	else
 		flash_name = spi->modalias;
 
+	//gpio cs-pin
+	if (spi->dev.of_node) {
+		flash->gpio_spi_cs = of_get_named_gpio(spi->dev.of_node,
+					"mmi,spi-cs-gpio", 0);
+		if (flash->gpio_spi_cs < 0) {
+			pr_err("%s there is no gpio spi-cs-pin. Using spi phy cs!\n",
+				__func__);
+		} else {
+			pr_err("%s use %d as gpio spi cs\n",
+				__func__, flash->gpio_spi_cs);
+			if (gpio_is_valid(flash->gpio_spi_cs)) {
+				ret = gpio_request(flash->gpio_spi_cs, "apba_spi_cs");
+				if (ret == 0) {
+					gpio_direction_output(flash->gpio_spi_cs, 1);
+				}
+			}
+			gpio_export(flash->gpio_spi_cs, true);
+		}
+	} else {
+		pr_err("%s of node null\n", __func__);
+	}
+
 	ret = spi_nor_scan(nor, flash_name, &hwcaps);
 	if (ret)
 		return ret;
@@ -351,6 +407,9 @@ static const struct spi_device_id m25p_ids[] = {
 	{"m25p40"},	{"m25p80"},	{"m25p16"},	{"m25p32"},
 	{"m25p64"},	{"m25p128"},
 	{"w25x80"},	{"w25x32"},	{"w25q32"},	{"w25q32dw"},
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	{"w25q40bw"},	{"w25q40ew"},
+#endif
 	{"w25q80bl"},	{"w25q128"},	{"w25q256"},
 
 	/* Flashes that can't be detected using JEDEC */
