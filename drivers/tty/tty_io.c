@@ -136,8 +136,12 @@ EXPORT_SYMBOL(tty_std_termios);
 
 LIST_HEAD(tty_drivers);			/* linked list of tty drivers */
 
+EXPORT_SYMBOL(tty_drivers);
+
 /* Mutex to protect creating and releasing a tty */
 DEFINE_MUTEX(tty_mutex);
+
+EXPORT_SYMBOL(tty_mutex);
 
 static ssize_t tty_read(struct file *, char __user *, size_t, loff_t *);
 static ssize_t tty_write(struct file *, const char __user *, size_t, loff_t *);
@@ -1384,6 +1388,7 @@ err_release_lock:
 	release_tty(tty, idx);
 	return ERR_PTR(retval);
 }
+EXPORT_SYMBOL(tty_init_dev);
 
 static void tty_free_termios(struct tty_struct *tty)
 {
