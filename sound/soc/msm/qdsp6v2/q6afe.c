@@ -678,8 +678,13 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 			/* payload[1] contains the error status for response */
 			if (payload[1] != 0) {
 				atomic_set(&this_afe.status, payload[1]);
-				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
-					__func__, payload[0], payload[1]);
+				if (payload[0] == AFE_PORT_CMD_SET_PARAM_V2) {
+					pr_debug("%s: cmd = 0x%x returned error = 0x%x\n",
+						__func__, payload[0], payload[1]);
+				} else {
+					pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
+						__func__, payload[0], payload[1]);
+				}
 			}
 			switch (payload[0]) {
 			case AFE_PORT_CMD_SET_PARAM_V2:
@@ -1088,6 +1093,7 @@ int afe_q6_interface_prepare(void)
 static int afe_apr_send_pkt(void *data, wait_queue_head_t *wait)
 {
 	int ret;
+	struct apr_hdr *hdr = (struct apr_hdr *)data;
 
 	if (wait)
 		atomic_set(&this_afe.state, 1);
@@ -1101,9 +1107,15 @@ static int afe_apr_send_pkt(void *data, wait_queue_head_t *wait)
 			if (!ret) {
 				ret = -ETIMEDOUT;
 			} else if (atomic_read(&this_afe.status) > 0) {
-				pr_err("%s: DSP returned error[%s]\n", __func__,
-					adsp_err_get_err_str(atomic_read(
-					&this_afe.status)));
+				if (hdr->opcode == AFE_PORT_CMD_SET_PARAM_V2) {
+					pr_debug("%s: DSP returned error[%s]\n", __func__,
+						adsp_err_get_err_str(atomic_read(
+							&this_afe.status)));
+				} else {
+					pr_err("%s: DSP returned error[%s]\n", __func__,
+						adsp_err_get_err_str(atomic_read(
+							&this_afe.status)));
+				}
 				ret = adsp_err_get_lnx_err_code(
 						atomic_read(&this_afe.status));
 			} else {
