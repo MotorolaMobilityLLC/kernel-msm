@@ -36,6 +36,12 @@ config MODS_CODEC_BUS
 	  This enables bus interface for mods shim sound codec to talk to
 	  greybus sound codec module.
 
+config MOD_DISPLAY
+	tristate "Mod Display Support"
+	default n
+	---help---
+	  Say yes here if you wish to include the Mod Display support drivers.
+
 config MODS_2ND_GEN
 	bool "MODS_2ND_GEN Support"
 	default n
