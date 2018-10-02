@@ -96,6 +96,22 @@
 			gpio-key,wakeup;
 		};
 	};
+
+	wdog_cputctx {
+		compatible = "mmi,watchdog_cpu_ctx";
+		memory-region = <&wdog_cpuctx_mem>;
+	};
+
+	tzlog_dump {
+		compatible = "mmi,tzlog-dump";
+		memory-region = <&tzlog_dump_mem>;
+	};
+
+	mmi_annotate {
+		compatible = "mmi,annotate";
+		memory-region = <&mmi_annotate_mem>;
+		mem-size = <0x20000>;
+	};
 };
 
 &qupv3_se0_2uart {
