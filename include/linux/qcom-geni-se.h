@@ -112,8 +112,9 @@ struct se_geni_rsc {
 	struct pinctrl *geni_pinctrl;
 	struct pinctrl_state *geni_gpio_active;
 	struct pinctrl_state *geni_gpio_sleep;
-	int clk_freq_out;
 	struct se_rsc_ssr rsc_ssr;
+	int	clk_freq_out;
+	int without_pinctrl;
 };
 
 #define PINCTRL_DEFAULT	"default"
