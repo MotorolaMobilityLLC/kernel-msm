@@ -15,7 +15,11 @@
 
 #ifdef __KERNEL__
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+#include <linux/mods/mod_display.h>
+#else
 #include <linux/mod_display.h>
+#endif
 
 enum mod_display_notification {
 	MOD_NOTIFY_INVALID,
