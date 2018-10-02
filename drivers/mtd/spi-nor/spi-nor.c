@@ -1148,6 +1148,10 @@ static const struct flash_info spi_nor_ids[] = {
 	{ "w25q20bw", INFO(0xef5012, 0, 64 * 1024,  4, SECT_4K) },
 	{ "w25q20ew", INFO(0xef6012, 0, 64 * 1024,  4, SECT_4K) },
 	{ "w25q32", INFO(0xef4016, 0, 64 * 1024,  64, SECT_4K) },
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	{ "w25q40bw", INFO(0xef5013, 0, 64 * 1024, 8, SECT_4K) },
+	{ "w25q40ew", INFO(0xef6013, 0, 64 * 1024, 8, SECT_4K) },
+#endif
 	{
 		"w25q32dw", INFO(0xef6016, 0, 64 * 1024,  64,
 			SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
