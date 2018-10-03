@@ -200,6 +200,8 @@ enum msm_mdp_conn_property {
 	CONNECTOR_PROP_FB_TRANSLATION_MODE,
 	CONNECTOR_PROP_QSYNC_MODE,
 
+	/* MOT feature panel*/
+	CONNECTOR_PROP_HBM,
 	/* total # of properties */
 	CONNECTOR_PROP_COUNT
 };
@@ -305,6 +307,17 @@ struct msm_roi_caps {
 	bool merge_rois;
 	uint32_t num_roi;
 	struct msm_roi_alignment align;
+};
+
+enum msm_param_id {
+	PARAM_HBM_ID = 0,
+	PARAM_ID_NUM
+};
+
+struct msm_param_info {
+	enum msm_param_id param_idx;
+	enum msm_mdp_conn_property param_conn_idx;
+	int value;
 };
 
 /**
