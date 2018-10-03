@@ -44,6 +44,9 @@
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define TICKS_IN_MICRO_SECOND		1000000
 
+#define DSI_PANEL_UNKNOWN_PANEL_NAME	"unknown"
+#define DSI_PANEL_PANEL_DEFAULT_VER 	0xffffffffffffffff
+
 enum dsi_dsc_ratio_type {
 	DSC_8BPC_8BPP,
 	DSC_10BPC_8BPP,
@@ -1324,6 +1327,46 @@ static int dsi_panel_parse_host_config(struct dsi_panel *panel)
 error:
 	return rc;
 }
+
+static int dsi_panel_parse_panel_cfg(struct dsi_panel *panel)
+{
+	struct device_node *np;
+	const char *pname;
+	u32 panel_ver, tmp;
+
+	np = of_find_node_by_path("/chosen");
+	/* Disable ESD only if the prop "mmi,esd" exists and is equal to 0 */
+	if (!of_property_read_u32(np, "mmi,esd", &tmp) && tmp == 0) {
+		panel->esd_utag_enable = false;
+		pr_warn("ESD detection is disabled by UTAGS\n");
+	} else
+		panel->esd_utag_enable = true;
+
+	panel->panel_ver = DSI_PANEL_PANEL_DEFAULT_VER;
+	of_property_read_u64(np, "mmi,panel_ver", &panel->panel_ver);
+
+	pname = of_get_property(np, "mmi,panel_name", NULL);
+	if (!pname || strlen(pname) == 0) {
+		pr_warn("Failed to get mmi,panel_name\n");
+		strlcpy(panel->panel_name, DSI_PANEL_UNKNOWN_PANEL_NAME,
+				sizeof(panel->panel_name));
+	} else
+		strlcpy(panel->panel_name, pname, sizeof(panel->panel_name));
+
+	pr_debug("esd_utage_enable=%d\n", panel->esd_utag_enable);
+
+	panel_ver = (u32)panel->panel_ver;
+	pr_info("BL: panel = %s, manufacture_id(0xDA) = 0x%x controller_ver(0xDB) = 0x%x controller_drv_ver(0XDC) = 0x%x, full = 0x%016llx\n",
+		panel->panel_name,
+		panel_ver & 0xff, (panel_ver & 0xff00) >> 8,
+		(panel_ver & 0xff0000) >> 16,
+		panel->panel_ver);
+
+	of_node_put(np);
+
+	return 0;
+}
+
 
 static int dsi_panel_parse_qsync_caps(struct dsi_panel *panel,
 				     struct device_node *of_node)
@@ -3323,6 +3366,13 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		pr_err("failed to parse panel mode configuration, rc=%d\n", rc);
 		goto error;
 	}
+
+		rc = dsi_panel_parse_panel_cfg(panel);
+		if (rc) {
+			pr_err("failed to parse panel config from dts. rc=%d\n",
+				rc);
+			goto error;
+		}
 
 	rc = dsi_panel_parse_dfps_caps(panel);
 	if (rc)
