@@ -169,6 +169,98 @@ end:
 	return ret;
 }
 
+static int _sde_debugfs_motUtil_set_tearing(struct sde_kms *kms,
+					size_t count, char input[])
+{
+	struct sde_connector *sde_conn = NULL;
+	int ret = 0;
+	bool te_enable = input[TETEST_TE_ENABLE];
+	enum sde_motUtil_disp_cmd panel_type = input[DISPUTIL_PANEL_TYPE];
+
+	if (panel_type > MOTUTIL_CLI_DISP) {
+		DRM_ERROR("Invalid panel number = %d\n", panel_type);
+		return -EINVAL;
+	}
+
+	if (te_enable == motUtil_data.te_enable) {
+		SDE_DEBUG("TE doesn't change. new_te_enable=%d old_te_enable=%d\n",
+				te_enable, motUtil_data.te_enable);
+		goto end;
+	}
+
+	sde_conn = _sde_debugfs_motUtil_get_sde_conn(kms, count, input);
+	if(!sde_conn) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	if (sde_conn && !sde_conn->ops.set_tearing) {
+		DRM_ERROR("no set_tearing for connector name %s\n",
+					sde_conn->name);
+		ret = -ENOENT;
+		goto end;
+	}
+
+	mutex_lock(&sde_conn->lock);
+	ret = sde_conn->ops.set_tearing(sde_conn->display,
+					input[TETEST_TE_ENABLE]);
+	if (ret)
+		motUtil_data.te_enable = te_enable;
+	mutex_unlock(&sde_conn->lock);
+end:
+	return 0;
+}
+
+static int _sde_debugfs_motUtil_read_frame_cnt(struct drm_encoder *drm_enc)
+{
+	int ret = 0;
+
+	motUtil_data.val = sde_encoder_poll_rd_frame_counts(drm_enc);
+	if (motUtil_data.val >= 0) {
+		pr_info("Encoder transfer frame_count= %d\n", motUtil_data.val);
+		motUtil_data.last_cmd_tx_status = 1;
+	} else {
+		SDE_ERROR("failed to get_frame_count ret =%d\n", ret);
+		ret = -EAGAIN;
+		motUtil_data.last_cmd_tx_status = 0;
+	}
+
+        return ret;
+
+}
+
+static int _sde_debugfs_motUtil_te_test(struct sde_kms *kms,
+					size_t count, char input[])
+{
+	struct sde_connector *sde_conn = NULL;
+	int ret = 0;
+
+	motUtil_data.read_cmd = true;
+	sde_conn = _sde_debugfs_motUtil_get_sde_conn(kms, count, input);
+	if (!sde_conn) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	if (count < TETEST_TE_ENABLE) {
+		DRM_ERROR(" Number of Input data is invalid (%zu).\n", count);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	ret = _sde_debugfs_motUtil_set_tearing(kms, count, input);
+	if (ret)
+		goto end;
+
+	ret = _sde_debugfs_motUtil_read_frame_cnt(sde_conn->encoder);
+	if (!ret) {
+		ret = -EAGAIN;
+		goto end;
+	}
+
+end:
+	return ret;
+}
 
 static ssize_t _sde_debugfs_motUtil_exe_command(struct sde_kms *kms,
 					size_t count, char input[])
@@ -180,6 +272,9 @@ static ssize_t _sde_debugfs_motUtil_exe_command(struct sde_kms *kms,
 	switch (motUtil_type) {
 	case MOTUTIL_DISP_UTIL:
 		ret = _sde_debugfs_motUtil_transfer(kms, count, input);
+		break;
+	case MOTUTIL_TE_TEST:
+		ret = _sde_debugfs_motUtil_te_test(kms, count, input);
 		break;
 	default:
 		SDE_ERROR("Un-support motUtil type = %d\n", motUtil_type);
@@ -257,7 +352,12 @@ static ssize_t _sde_debugfs_motUtil_read(struct file *file,
 			"motUtil_status: 0x%x\n",
 			motUtil_data.last_cmd_tx_status);
 	} else if (motUtil_data.motUtil_type == MOTUTIL_DISP_UTIL) {
-			blen = _sde_debugfs_motUtil_dispUtil_read(buffer);
+		blen = _sde_debugfs_motUtil_dispUtil_read(buffer);
+	} else if (motUtil_data.motUtil_type == MOTUTIL_TE_TEST) {
+		blen = snprintf(buffer, 16, "motUtil_read: ");
+		blen += snprintf((buffer + blen), 12, "0x%08x ",
+							motUtil_data.val);
+		blen += snprintf((buffer + blen), 2, "\n");
 	}
 
         pr_info("%s\n", buffer);
