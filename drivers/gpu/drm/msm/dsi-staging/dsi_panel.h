@@ -225,6 +225,9 @@ struct dsi_panel {
 	bool esd_utag_enable;
 	u64 panel_ver;
 	char panel_name[DSI_PANEL_MAX_PANEL_LEN];
+
+	u32 disp_on_chk_val;
+	bool no_panel_on_read_support;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
