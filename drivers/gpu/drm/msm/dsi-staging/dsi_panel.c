@@ -3299,6 +3299,74 @@ error:
 	return rc;
 }
 
+static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
+					struct device_node *of_node)
+{
+	int rc;
+	struct drm_panel_esd_config *esd_config = &panel->esd_config;
+
+	rc = of_property_read_u32(of_node,
+			"qcom,mdss-dsi-panel-on-check-value",
+			&panel->disp_on_chk_val);
+	if (rc) {
+		/*
+		 * No panel_on_chk_val is configured in dts, then check for ESD
+		 * setting */
+		if ((esd_config->status_cmd.count == 1) &&
+				(esd_config->status_value) &&
+				(esd_config->status_value[0] != 0)) {
+			panel->disp_on_chk_val = esd_config->status_value[0];
+			pr_info("%s: disp_on_chk_val is set with ESD's chk value\n",
+					__func__);
+		 } else {
+			pr_info("%s: hardcode disp_on_chk_val\n", __func__);
+			panel->disp_on_chk_val = 0x9c;
+		}
+	} else
+		pr_info("%s: disp_on_chk_val = 0x%x is defined\n",
+				__func__, panel->disp_on_chk_val);
+
+	panel->no_panel_on_read_support = of_property_read_bool(of_node,
+				"qcom,mdss-dsi-no-panel-on-read-support");
+	return rc;
+}
+
+static int dsi_panel_get_pwr_mode(struct dsi_panel *panel, u8 *val)
+{
+	int rc = 0;
+	ssize_t len;
+	struct dsi_cmd_desc cmd;
+	const struct mipi_dsi_host_ops *ops = panel->host->ops;
+	u8 payload = MIPI_DCS_GET_POWER_MODE;
+
+	if (!val) {
+		pr_err("%s: Invalid val\n", __func__);
+		return -EINVAL;
+	}
+
+	memset(&cmd, 0x00, sizeof(struct dsi_cmd_desc));
+	cmd.msg.type = MIPI_DSI_DCS_READ;
+	cmd.msg.channel = 0;
+	cmd.msg.flags =  MIPI_DSI_MSG_READ | MIPI_DSI_MSG_LASTCOMMAND;
+	cmd.msg.ctrl = 0;
+
+	cmd.msg.tx_len = 1;
+	cmd.msg.tx_buf = &payload;
+	cmd.msg.rx_len = 1;
+	cmd.msg.rx_buf = val;
+
+	len =  ops->transfer(panel->host, &cmd.msg);
+	if (len < 0) {
+		pr_err("failed to transfer pwr_mode cmd\n");
+		goto err;
+	}
+
+	pr_debug("%s: pwr_mode = 0x%x\n", __func__, *val);
+err:
+	return rc;
+
+}
+
 static void dsi_panel_update_util(struct dsi_panel *panel,
 				  struct device_node *parser_node)
 {
@@ -3437,6 +3505,10 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		pr_debug("failed to parse esd config, rc=%d\n", rc);
 
 	panel->power_mode = SDE_MODE_DPMS_OFF;
+	rc = dsi_panel_parse_mot_panel_config(panel, of_node);
+	if (rc)
+		pr_debug("failed to parse mot_panel_config, rc = %d\n", rc);
+
 	drm_panel_init(&panel->drm_panel);
 	mutex_init(&panel->panel_lock);
 
@@ -4311,6 +4383,7 @@ int dsi_panel_post_switch(struct dsi_panel *panel)
 int dsi_panel_enable(struct dsi_panel *panel)
 {
 	int rc = 0;
+	u8 pwr_mode;
 
 	if (!panel) {
 		pr_err("Invalid params\n");
@@ -4321,11 +4394,31 @@ int dsi_panel_enable(struct dsi_panel *panel)
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ON);
-	if (rc)
+	if (rc) {
 		pr_err("[%s] failed to send DSI_CMD_SET_ON cmds, rc=%d\n",
 		       panel->name, rc);
-	else
-		panel->panel_initialized = true;
+		goto err;
+	}
+
+	if (!panel->no_panel_on_read_support) {
+		rc = dsi_panel_get_pwr_mode(panel, &pwr_mode);
+		if (rc) {
+			pr_err("[%s] Failed to read pwr_mode, rc = %d",
+							panel->name, rc);
+			goto err;
+		}
+
+		if (pwr_mode != panel->disp_on_chk_val) {
+			pr_err("%s: Read Pwr_mode=0%x is not matched with expected value =0x%x\n",
+				__func__, pwr_mode, panel->disp_on_chk_val);
+		} else
+			pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n",
+						__func__, pwr_mode);
+	} else
+		pr_info("%s-: no_panel_on_read_support is set\n", __func__);
+
+	panel->panel_initialized = true;
+err:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
