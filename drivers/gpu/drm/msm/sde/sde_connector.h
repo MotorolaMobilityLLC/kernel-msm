@@ -286,6 +286,13 @@ struct sde_connector_ops {
 	bool (*force_esd_disable)(void *display);
 
 	/**
+	 * set_param - set display's feature param setting
+	 * @display: Pointer to private display handle
+	 * Returns: Zero for success, negative for failure
+	 */
+	int (*set_param)(void *display, struct msm_param_info *param_info);
+
+	/**
 	 * config_hdr - configure HDR
 	 * @connector: Pointer to drm connector structure
 	 * @display: Pointer to private display handle
