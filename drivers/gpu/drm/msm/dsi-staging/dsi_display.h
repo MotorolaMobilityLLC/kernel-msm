@@ -649,6 +649,13 @@ int dsi_display_motUtil_transfer(void *display, const char *cmd_buf,
 
 
 /**
+ * dsi_display_force_esd_disable() - check if ESD UTAG is forced to disable ESD
+ * @display:            Handle to display.
+ */
+bool dsi_display_force_esd_disable(void *display);
+
+
+/**
  * dsi_display_soft_reset() - perform a soft reset on DSI controller
  * @display:         Handle to display
  *
