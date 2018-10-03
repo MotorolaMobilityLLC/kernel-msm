@@ -873,6 +873,33 @@ bool dsi_display_force_esd_disable(void *display)
 	return (panel->esd_utag_enable? false: true);
 }
 
+int dsi_display_set_tearing(void *display, bool enable)
+{
+	struct dsi_display *dsi_display = display;
+	struct dsi_panel *panel;
+	int rc = 0x01;
+
+	if (dsi_display == NULL)
+		return -EINVAL;
+
+	panel = dsi_display->panel;
+	mutex_lock(&dsi_display->display_lock);
+	if (!panel->panel_initialized) {
+		pr_err("Panel not initialized\n");
+		mutex_unlock(&dsi_display->display_lock);
+		return rc;
+	}
+
+	dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
+			DSI_ALL_CLKS, DSI_CLK_ON);
+	dsi_panel_set_tearing(panel, enable);
+	dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
+			DSI_ALL_CLKS, DSI_CLK_OFF);
+	mutex_unlock(&dsi_display->display_lock);
+
+	return rc;
+}
+
 static int dsi_display_cmd_prepare(const char *cmd_buf, u32 cmd_buf_len,
 		struct dsi_cmd_desc *cmd, u8 *payload, u32 payload_len)
 {
