@@ -330,6 +330,7 @@ static int _sde_debugfs_init(struct sde_kms *sde_kms)
 	(void) sde_debugfs_danger_init(sde_kms, debugfs_root);
 	(void) sde_debugfs_vbif_init(sde_kms, debugfs_root);
 	(void) sde_debugfs_core_irq_init(sde_kms, debugfs_root);
+	(void) sde_debugfs_mot_util_init(sde_kms, debugfs_root);
 
 	rc = sde_core_perf_debugfs_init(&sde_kms->perf, debugfs_root);
 	if (rc) {
