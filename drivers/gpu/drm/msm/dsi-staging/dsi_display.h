@@ -550,6 +550,8 @@ int dsi_post_clkoff_cb(void *priv, enum dsi_clk_type clk_type,
 		enum dsi_lclk_type l_type,
 		enum dsi_clk_state curr_state);
 
+int dsi_display_set_param(void *display, struct msm_param_info *param_info);
+
 /**
  * dsi_post_clkon_cb() - Callback after clock is turned on
  * @priv: private data pointer.
