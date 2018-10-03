@@ -578,6 +578,12 @@ static bool dsi_display_validate_reg_read(struct dsi_panel *panel)
 		group += len;
 	}
 
+	for (i = 0; i < len; ++i) {
+		pr_err("%s: read back[%i] = 0x%x and expected[%d] =0x%x\n",
+			__func__, i, config->return_buf[i],
+			i, config->status_value[i]);
+	}
+
 	return false;
 }
 
