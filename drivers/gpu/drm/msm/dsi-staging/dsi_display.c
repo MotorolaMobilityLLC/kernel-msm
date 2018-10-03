@@ -887,6 +887,166 @@ static int dsi_display_cmd_prepare(const char *cmd_buf, u32 cmd_buf_len,
 	return 0;
 }
 
+
+static int dsi_display_dispUtil_get_datatype (char dsi_cmd, u8 cmd_type,
+				size_t tx_len, u8 *tx_data_type)
+{
+	int rc = 0;
+
+	*tx_data_type = 0;
+
+	/* cmd_type = 0 : DSI DCS cmd;
+	 * cmd_type = 1 : DSI Generic cmd */
+	if (cmd_type > DISPUTIL_DSI_GENERIC) {
+		pr_err("%s: Invalid DSI package type[%d] = 0x%x\n",
+					__func__, DISPUTIL_MIPI_CMD_TYPE,
+					cmd_type);
+		return -EINVAL;
+	}
+
+	pr_debug("dsi_cmd =0x%x cmd_type=0x%x tx_len=0x%x\n",
+				dsi_cmd, cmd_type, (u32)tx_len);
+
+	if (dsi_cmd == DISPUTIL_DSI_WRITE) {
+		/* This is a DSI write command */
+		switch(tx_len) {
+		case 1:
+			if (cmd_type == DISPUTIL_DSI_GENERIC)
+				/* write, generic, no param */
+				*tx_data_type = 0x3;
+			else if (cmd_type == DISPUTIL_DSI_DCS)
+				/* write, DCS, no param */
+				*tx_data_type = 0x5;
+			break;
+		case 2:
+			if (cmd_type == DISPUTIL_DSI_GENERIC)
+				/* Write, generic, 1 param */
+				*tx_data_type = 0x13;
+			else if (cmd_type == DISPUTIL_DSI_DCS)
+				/* write, DCS, 1 param */
+				*tx_data_type = 0x15;
+			break;
+		default:
+			if (cmd_type == DISPUTIL_DSI_GENERIC)
+				/* Write, generic, long*/
+				*tx_data_type = 0x29;
+			else if (cmd_type == DISPUTIL_DSI_DCS)
+				/* write, DCS, long*/
+				*tx_data_type = 0x39;
+			break;
+		}
+	} else if (dsi_cmd == DISPUTIL_DSI_READ) {
+		if ((cmd_type == DISPUTIL_DSI_DCS) && (tx_len > 1)) {
+			/* Note: tx_len will include read command and payload */
+			/* DCS read */
+			pr_err("DCS read supports no parameter. tx_len=%d\n",
+					(u32)tx_len);
+			rc = -EINVAL;
+		} else {
+			switch(tx_len) {
+			case 1:
+				if (cmd_type == DISPUTIL_DSI_GENERIC)
+					/* Read, generic, no param */
+					*tx_data_type = 0x4;
+				else if (cmd_type == DISPUTIL_DSI_DCS)
+					/* Read, DCS, no param */
+					*tx_data_type = 0x6;
+				break;
+			case 2:
+				if (cmd_type == DISPUTIL_DSI_GENERIC)
+					/* Read, Generic, 1 param */
+					*tx_data_type = 0x14;
+
+				break;
+			case 3:
+				if (cmd_type == DISPUTIL_DSI_GENERIC)
+					/* read, generic, 2 params */
+					*tx_data_type = 0x24;
+				break;
+			default:
+				pr_err("Invalid for tx_len= %d\n", (u32)tx_len);
+				break;
+			}
+		}
+	} else
+		rc = -EINVAL;
+
+	if (rc)
+		pr_err("Invalid input data: dsi_cmd=0x%x tx_data_type =0x%x for tx_len=0x%x\n",
+			dsi_cmd, *tx_data_type, (u32)tx_len);
+
+	return rc;
+}
+
+static int dsi_display_dispUtil_prepare(const char *cmd_buf, u32 cmd_buf_len,
+	struct dsi_cmd_desc *cmd, u8 *payload, u32 payload_len_max,
+	struct motUtil *motUtil_data)
+{
+	int rc, i;
+	u8 tx_data_type;
+
+	memset(cmd, 0x00, sizeof(*cmd));
+
+	/*
+	 * DISPUTIL_PAYLOAD_LEN_U and SDE_MOT_UTIL_PAYLOAD_LEN_L to
+	 * indicate number of payload in bytes
+	 */
+	cmd->msg.tx_len = ((cmd_buf[DISPUTIL_PAYLOAD_LEN_U] << 8) |
+				(cmd_buf[DISPUTIL_PAYLOAD_LEN_L]));
+	rc = dsi_display_dispUtil_get_datatype(cmd_buf[DISPUTIL_CMD_TYPE],
+				cmd_buf[DISPUTIL_MIPI_CMD_TYPE],
+				cmd->msg.tx_len, &tx_data_type);
+	if (rc)
+		return rc;
+
+	cmd->msg.type = tx_data_type;
+	cmd->msg.channel =  0;
+	cmd->last_command = 1;
+	cmd->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
+
+	/* DISPUTIL_CMD_TYPE = 1 for DSI write cmd
+	 * DISPUTIL_CMD_TYPE = 0 for DSI read cmd */
+	if (cmd_buf[DISPUTIL_CMD_TYPE] == DISPUTIL_DSI_READ) {
+		cmd->msg.flags |= MIPI_DSI_MSG_READ; /* This is a read DSI */
+		cmd->msg.rx_buf = motUtil_data->rd_buf;
+		/* cmd_buf[3] = number bytes host wants to read */
+		cmd->msg.rx_len = cmd_buf[DISPUTIL_NUM_BYTE_RD];
+
+		motUtil_data->read_cmd = true;
+	} else
+		motUtil_data->read_cmd = false;
+
+	/*
+	 * DISPUTIL_CMD_XFER_MODE = 0: DSI cmd transfers at HS mode
+	 * DISPUTIL_CMD_XFER_MODE = 1: DSI cmd transfers at LP mode
+	 */
+	if (cmd_buf[DISPUTIL_CMD_XFER_MODE] == DISPUTIL_DSI_LP_MODE)
+		cmd->msg.flags |= MIPI_DSI_MSG_USE_LPM;
+
+	cmd->msg.ctrl = 0;
+	cmd->post_wait_ms = 0;
+
+	/*
+	 * msg.tx_len is number of bytes of the payload.
+	 * Checking msg.tx_len with the payload, DISPUTIL_PAYLOAD,
+	 * to make sure they are matched
+	 */
+	if ((cmd->msg.tx_len > (cmd_buf_len - DISPUTIL_PAYLOAD)) ||
+			(cmd->msg.tx_len > payload_len_max)) {
+		pr_err("Incorrect payload length tx_len:%ld, payload_len_max=%d cmd_buf_len=%d\n",
+			cmd->msg.tx_len, payload_len_max, cmd_buf_len);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < cmd->msg.tx_len; i++)
+		payload[i] = cmd_buf[DISPUTIL_PAYLOAD + i];
+
+	cmd->msg.tx_buf = payload;
+
+	return 0;
+}
+
+
 static int dsi_display_ctrl_get_host_init_state(struct dsi_display *dsi_display,
 		bool *state)
 {
@@ -948,6 +1108,53 @@ int dsi_display_cmd_transfer(struct drm_connector *connector,
 
 	rc = dsi_display->host.ops->transfer(&dsi_display->host,
 			&cmd.msg);
+end:
+	mutex_unlock(&dsi_display->display_lock);
+	return rc;
+}
+
+}
+
+int dsi_display_motUtil_transfer(void *display, const char *cmd_buf,
+                u32 cmd_buf_len, struct motUtil *motUtil_data)
+{
+	struct dsi_display *dsi_display = display;
+	struct dsi_cmd_desc cmd;
+	u8 cmd_payload[MAX_CMD_PAYLOAD_SIZE];
+	int rc = 0;
+	bool state = false;
+
+	if (!dsi_display || !cmd_buf) {
+		pr_err("[DSI] invalid params\n");
+		return -EINVAL;
+	}
+
+	pr_info("[DSI] Display dispUtil transfer\n");
+
+	rc = dsi_display_dispUtil_prepare(cmd_buf, cmd_buf_len,
+				&cmd, cmd_payload, MAX_CMD_PAYLOAD_SIZE,
+				motUtil_data);
+	if (rc) {
+		pr_err("[DSI] command prepare failed. rc %d\n", rc);
+		return rc;
+	}
+
+	mutex_lock(&dsi_display->display_lock);
+	rc = dsi_display_ctrl_get_host_init_state(dsi_display, &state);
+	if (rc || !state) {
+		pr_err("[DSI] Invalid host state %d rc %d\n",
+						state, rc);
+		rc = -EPERM;
+		goto end;
+	}
+
+	/*
+	 * rc will be returned from ops->transfer, which will be 0 or 1 for
+	 * DSI write command. rc will be returned for number of read bytes
+	 * for DSI read commad
+	 */
+	rc = dsi_display->host.ops->transfer(&dsi_display->host,
+						&cmd.msg);
 end:
 	mutex_unlock(&dsi_display->display_lock);
 	return rc;
