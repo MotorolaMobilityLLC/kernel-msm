@@ -105,6 +105,15 @@ static char dsi_dsc_rc_range_max_qp_1_1_scr1[][15] = {
 static char dsi_dsc_rc_range_bpg_offset[] = {2, 0, 0, -2, -4, -6, -8, -8,
 		-8, -10, -10, -12, -12, -12, -12};
 
+static struct panel_param_val_map hbm_map[HBM_STATE_NUM] = {
+	{HBM_OFF_STATE, DSI_CMD_SET_HBM_OFF, NULL},
+	{HBM_ON_STATE, DSI_CMD_SET_HBM_ON, NULL},
+};
+
+static struct panel_param dsi_panel_param[PARAM_ID_NUM] = {
+	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, HBM_OFF_STATE, false},
+};
+
 int dsi_dsc_create_pps_buf_cmd(struct msm_display_dsc_info *dsc, char *buf,
 				int pps_id)
 {
@@ -770,6 +779,100 @@ static int dsi_panel_pwm_register(struct dsi_panel *panel)
 	}
 
 	return 0;
+}
+
+static int dsi_panel_send_param_cmd (struct dsi_panel *panel,
+                                struct msm_param_info *param_info)
+{
+	int rc = 0;
+	struct panel_param_val_map *param_map;
+	struct panel_param_val_map *param_map_state;
+	struct panel_param *panel_param;
+	struct dsi_cmd_desc *cmds;
+	ssize_t len;
+	const struct mipi_dsi_host_ops *ops = panel->host->ops;
+
+	panel_param = &panel->param_cmds[param_info->param_idx];
+	if (!panel_param) {
+		pr_err("%s: invalid panel_param.\n", __func__);
+		return -EINVAL;
+	}
+
+        param_map = panel_param->val_map;
+
+	pr_debug("%s: param_name=%s; val_max =%d, default_value=%d, value=%d\n",
+	        __func__, panel_param->param_name, panel_param->val_max,
+		panel_param->default_value, panel_param->value);
+
+	mutex_lock(&panel->panel_lock);
+	if (panel_param->value == param_info->value)
+	{
+		pr_info("%s(mode=%d): requested value=%d is same. Do nothing\n",
+			__func__, param_info->param_idx, param_info->value);
+		rc = 0;
+	} else {
+		pr_debug("%s: requested: old=%d new=%d.\n", __func__,
+			panel_param->value, param_info->value);
+		param_map = panel->param_cmds[param_info->param_idx].val_map;
+		param_map_state = &param_map[param_info->value];
+
+		cmds = param_map_state->cmds->cmds;
+		if (param_map_state->cmds->state == DSI_CMD_SET_STATE_LP)
+			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM |
+						MIPI_DSI_MSG_LASTCOMMAND;
+		len = ops->transfer(panel->host, &cmds->msg);
+		if (len < 0) {
+			rc = len;
+			pr_err("%s:failed to send param cmd, rc=%d\n",
+					__func__, rc);
+			goto end;
+		}
+
+		panel_param->value = param_info->value;
+		pr_info("%s(%d) is setting new value %d\n", __func__,
+			param_info->param_idx, param_info->value);
+		rc = len;
+	}
+
+end:
+	mutex_unlock(&panel->panel_lock);
+	return rc;
+};
+
+static int dsi_panel_set_hbm(struct dsi_panel *panel,
+                        struct msm_param_info *param_info)
+{
+	int rc = 0;
+
+	pr_info("%s(%d)\n", __func__, param_info->value);
+	rc = dsi_panel_send_param_cmd(panel, param_info);
+	if (rc < 0)
+		pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
+
+        return rc;
+};
+
+int dsi_panel_set_param(struct dsi_panel *panel,
+				struct msm_param_info *param_info)
+{
+	int rc = 0;
+
+	if (!panel || !param_info) {
+                pr_err("invalid params\n");
+                return -EINVAL;
+        }
+
+	pr_debug("%s+\n", __func__);
+
+	if (param_info->param_idx == PARAM_HBM_ID)
+		rc = dsi_panel_set_hbm(panel, param_info);
+	else {
+		pr_err("%s: Invalid set_param type=%d\n",
+			__func__, param_info->param_idx);
+		rc = -EINVAL;
+	}
+
+	return rc;
 }
 
 static int dsi_panel_bl_register(struct dsi_panel *panel)
@@ -1799,6 +1902,8 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command",
 	"qcom,mdss-dsi-qsync-on-commands",
 	"qcom,mdss-dsi-qsync-off-commands",
+	"qcom,mdss-dsi-hbm-on-command",
+	"qcom,mdss-dsi-hbm-off-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1825,6 +1930,8 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
 	"qcom,mdss-dsi-qsync-on-commands-state",
 	"qcom,mdss-dsi-qsync-off-commands-state",
+	"qcom,mdss-dsi-hbm-on-command-state",
+	"qcom,mdss-dsi-hbm-off-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -3300,6 +3407,68 @@ error:
 	return rc;
 }
 
+static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
+					struct device_node *of_node)
+{
+	int i, j, rc =0;
+	struct panel_param *param;
+	struct panel_param_val_map *param_map;
+	struct dsi_panel_cmd_set *cmds;
+	enum dsi_cmd_set_type type;
+	const char *prop;
+	struct dsi_parser_utils *utils = &panel->utils;
+
+	for (i = 0; i < PARAM_ID_NUM; i++) {
+		param = &dsi_panel_param[i];
+
+		for (j = 0; j < param->val_max; j++) {
+			param_map = &param->val_map[j];
+			param_map->cmds = NULL;
+			cmds = kcalloc(param->val_max,
+				sizeof(struct dsi_panel_cmd_set), GFP_KERNEL);
+			if (cmds == NULL) {
+				rc = -ENOMEM;
+				goto err;
+			}
+
+			param_map->cmds = cmds;
+			type = param_map->type;
+			prop =  cmd_set_prop_map[type];
+			if (!prop)
+				continue;
+
+			rc = dsi_panel_parse_cmd_sets_sub(param_map->cmds, type,
+								utils);
+			if (rc) {
+				pr_err("panel param cmd %s parsing failed\n",
+						param->param_name);
+				rc = -EINVAL;
+				goto parse_err;
+			}
+		}
+
+		param->is_supported = true;
+		pr_info("%s: feature enabled.\n", param->param_name);
+	}
+
+	return rc;
+
+parse_err:
+	for (i = 0; i < ARRAY_SIZE(dsi_panel_param); i++) {
+		param = &dsi_panel_param[i];
+		for (j = 0; j < param->val_max; j++) {
+			if (param->val_map[j].cmds) {
+				kfree(param->val_map[j].cmds);
+				param->val_map[j].cmds= NULL;
+			}
+		}
+		param->is_supported = false;
+	}
+err:
+	return rc;
+
+}
+
 static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 					struct device_node *of_node)
 {
@@ -3522,6 +3691,11 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		pr_debug("failed to parse esd config, rc=%d\n", rc);
 
 	panel->power_mode = SDE_MODE_DPMS_OFF;
+	panel->param_cmds = &dsi_panel_param[0];
+	rc = dsi_panel_parse_param_prop(panel, of_node);
+	if (rc)
+		pr_debug("failed to parse panel param prop, rc =%d\n", rc);
+
 	rc = dsi_panel_parse_mot_panel_config(panel, of_node);
 	if (rc)
 		pr_debug("failed to parse mot_panel_config, rc = %d\n", rc);

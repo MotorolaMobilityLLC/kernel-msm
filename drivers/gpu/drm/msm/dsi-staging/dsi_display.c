@@ -241,6 +241,28 @@ error:
 	return rc;
 }
 
+int dsi_display_set_param(void *display, struct msm_param_info *param_info)
+{
+	struct dsi_display *dsi_display = display;
+	struct dsi_panel *panel;
+	int rc = 0;
+
+	if (dsi_display == NULL || dsi_display->panel == NULL)
+		return -EINVAL;
+
+	panel = dsi_display->panel;
+
+	pr_debug("%s+\n", __func__);
+	if (!dsi_panel_initialized(panel))
+		return -EINVAL;
+
+	rc = dsi_panel_set_param(panel, param_info);
+	if (rc)
+		pr_err("[%s] failed to panel to set param. rc=%d\n",
+				dsi_display->name, rc);
+	return rc;
+}
+
 static int dsi_display_cmd_engine_enable(struct dsi_display *display)
 {
 	int rc = 0;
