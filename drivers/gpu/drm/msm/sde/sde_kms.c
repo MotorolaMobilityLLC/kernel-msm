@@ -1390,6 +1390,7 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 		.enable_event = dsi_conn_enable_event,
 		.motUtil_transfer = dsi_display_motUtil_transfer,
 		.cmd_transfer = dsi_display_cmd_transfer,
+		.force_esd_disable = dsi_display_force_esd_disable,
 		.cont_splash_config = dsi_display_cont_splash_config,
 		.get_panel_vfp = dsi_display_get_panel_vfp,
 		.prepare_commit = dsi_conn_prepare_commit,
@@ -1406,6 +1407,7 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 		.get_dst_format = NULL,
 		.check_status = NULL,
 		.cmd_transfer = NULL,
+		.force_esd_disable = NULL,
 		.cont_splash_config = NULL,
 		.get_panel_vfp = NULL,
 	};
@@ -1421,10 +1423,12 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 		.check_status = NULL,
 		.config_hdr = dp_connector_config_hdr,
 		.cmd_transfer = NULL,
+		.force_esd_disable = NULL,
 		.cont_splash_config = NULL,
 		.get_panel_vfp = NULL,
 		.update_pps = dp_connector_update_pps,
 	};
+
 	struct msm_display_info info;
 	struct drm_encoder *encoder;
 	void *display, *connector;
