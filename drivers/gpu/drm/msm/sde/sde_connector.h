@@ -237,6 +237,14 @@ struct sde_connector_ops {
 	void (*post_open)(struct drm_connector *connector, void *display);
 
 	/**
+         * set_tearing - set tearing on/off of connected display panel
+         * @display: Pointer to private display handle
+	 * @enable: tearing on or off
+         * Returns: positive value for success, negetive or zero for failure
+         */
+        int (*set_tearing)(void *display, bool enable);
+
+	/**
 	 * check_status - check status of connected display panel
 	 * @connector: Pointer to drm connector structure
 	 * @display: Pointer to private display handle

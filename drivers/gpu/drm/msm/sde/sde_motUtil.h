@@ -20,6 +20,7 @@
 
 enum sde_motUtil_type {
         MOTUTIL_DISP_UTIL = 0,
+        MOTUTIL_TE_TEST,
 };
 
 enum sde_motUtil_disp_cmd {
@@ -32,6 +33,12 @@ enum sde_motUtil_disp_cmd {
 	DISPUTIL_PAYLOAD_LEN_U,
 	DISPUTIL_PAYLOAD_LEN_L,
 	DISPUTIL_PAYLOAD,
+};
+
+enum sde_motUtil_teTest_cmd {
+	TETEST_TYPE,
+	TETEST_PANEL_TYPE,
+	TETEST_TE_ENABLE,
 };
 
 struct motUtil {
