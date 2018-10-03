@@ -44,7 +44,7 @@
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-		qcom,mdss-dsi-no-panel-read-support;
+		qcom,mdss-dsi-no-panel-on-read-support;
 
 		qcom,mdss-dsi-display-timings {
 	                timing@0{
