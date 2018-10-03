@@ -379,8 +379,10 @@ void sde_connector_schedule_status_work(struct drm_connector *connector,
 		return;
 
 	sde_connector_get_info(connector, &info);
-	if (c_conn->ops.check_status &&
-		(info.capabilities & MSM_DISPLAY_ESD_ENABLED)) {
+	if ((c_conn->ops.force_esd_disable &&
+		(c_conn->ops.force_esd_disable(c_conn->display) == false)) &&
+		(c_conn->ops.check_status &&
+		(info.capabilities & MSM_DISPLAY_ESD_ENABLED))) {
 		if (en) {
 			u32 interval;
 
