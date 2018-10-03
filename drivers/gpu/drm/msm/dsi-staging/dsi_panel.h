@@ -108,6 +108,7 @@ struct dsi_backlight_config {
 	enum dsi_backlight_type type;
 	enum bl_update_flag bl_update;
 
+	bool bl_2bytes_enable;
 	u32 bl_min_level;
 	u32 bl_max_level;
 	u32 brightness_max_level;
