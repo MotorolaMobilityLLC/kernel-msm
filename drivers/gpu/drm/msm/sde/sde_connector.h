@@ -271,6 +271,13 @@ struct sde_connector_ops {
 			u32 cmd_buf_len, struct motUtil *motUtil_data);
 
 	/**
+	 * force_esd_disable - force to disable check_status
+	 * @display: Pointer to private display handle
+	 * Returns: true for forcing ESD disable
+	 */
+	bool (*force_esd_disable)(void *display);
+
+	/**
 	 * config_hdr - configure HDR
 	 * @connector: Pointer to drm connector structure
 	 * @display: Pointer to private display handle
