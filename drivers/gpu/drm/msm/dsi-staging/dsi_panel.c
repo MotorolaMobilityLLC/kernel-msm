@@ -4401,6 +4401,7 @@ int dsi_panel_enable(struct dsi_panel *panel)
 {
 	int rc = 0;
 	u8 pwr_mode;
+	static int panel_recovery_retry;
 
 	if (!panel) {
 		pr_err("Invalid params\n");
@@ -4428,10 +4429,18 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		if (pwr_mode != panel->disp_on_chk_val) {
 			pr_err("%s: Read Pwr_mode=0%x is not matched with expected value =0x%x\n",
 				__func__, pwr_mode, panel->disp_on_chk_val);
+			if (panel_recovery_retry++ > 5) {
+				pr_err("%s: panel recovery failed for all retries",
+						__func__);
+
+				BUG();
+			}
 			dsi_panel_trigger_panel_dead_event(panel);
-		} else
+		} else {
 			pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n",
 						__func__, pwr_mode);
+			panel_recovery_retry = 0;
+		}
 	} else
 		pr_info("%s-: no_panel_on_read_support is set\n", __func__);
 
