@@ -4092,6 +4092,37 @@ exit:
 	return rc;
 }
 
+int dsi_panel_set_tearing(struct dsi_panel *panel, bool enable)
+{
+	int rc = 0;
+	ssize_t len;
+	struct dsi_cmd_desc cmd;
+	const struct mipi_dsi_host_ops *ops = panel->host->ops;
+	u8 payload;
+
+	if (enable)
+		payload = MIPI_DCS_SET_TEAR_ON;
+	else
+		payload = MIPI_DCS_SET_TEAR_OFF;
+
+	memset(&cmd, 0x00, sizeof(struct dsi_cmd_desc));
+	cmd.msg.type = MIPI_DSI_DCS_SHORT_WRITE;
+	cmd.msg.channel = 0;
+	cmd.msg.flags =  MIPI_DSI_MSG_LASTCOMMAND;
+	cmd.msg.ctrl = 0;
+
+	cmd.msg.tx_len = 1;
+	cmd.msg.tx_buf = &payload;
+
+	len =  ops->transfer(panel->host, &cmd.msg);
+	if (len < 0) {
+		pr_err("failed to transfer 0x%x cmd\n", payload);
+		goto err;
+	}
+err:
+	return rc;
+}
+
 int dsi_panel_prepare(struct dsi_panel *panel)
 {
 	int rc = 0;

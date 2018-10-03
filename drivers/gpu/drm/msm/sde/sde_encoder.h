@@ -136,6 +136,15 @@ struct sde_rsc_client *sde_encoder_get_rsc_client(struct drm_encoder *encoder);
 int sde_encoder_poll_line_counts(struct drm_encoder *encoder);
 
 /**
+ * sde_encoder_poll_rd_frame_counts - poll encoder read_frame_counts for number
+ *			of frame have sending to displays
+ * @encoder:    encoder pointer
+ * @Returns:    number for frame count on success
+ */
+int sde_encoder_poll_rd_frame_counts(struct drm_encoder *encoder);
+
+
+/**
  * sde_encoder_prepare_for_kickoff - schedule double buffer flip of the ctl
  *	path (i.e. ctl flush and start) at next appropriate time.
  *	Immediately: if no previous commit is outstanding.
