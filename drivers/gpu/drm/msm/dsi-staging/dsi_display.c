@@ -876,6 +876,19 @@ release_panel_lock:
 	return rc;
 }
 
+bool dsi_display_force_esd_disable(void *display)
+{
+	struct dsi_display *dsi_display = display;
+	struct dsi_panel *panel;
+
+	if (dsi_display == NULL)
+		return false;
+
+	panel = dsi_display->panel;
+
+	return (panel->esd_utag_enable? false: true);
+}
+
 static int dsi_display_cmd_prepare(const char *cmd_buf, u32 cmd_buf_len,
 		struct dsi_cmd_desc *cmd, u8 *payload, u32 payload_len)
 {
@@ -1127,8 +1140,6 @@ int dsi_display_cmd_transfer(struct drm_connector *connector,
 end:
 	mutex_unlock(&dsi_display->display_lock);
 	return rc;
-}
-
 }
 
 int dsi_display_motUtil_transfer(void *display, const char *cmd_buf,
