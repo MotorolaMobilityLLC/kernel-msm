@@ -4496,6 +4496,29 @@ exit:
 	_sde_encoder_power_enable(sde_enc, false);
 }
 
+int sde_encoder_poll_rd_frame_counts(struct drm_encoder *drm_enc)
+{
+	struct sde_encoder_virt *sde_enc;
+	int rd_frame_count;
+
+	if (!drm_enc) {
+		SDE_ERROR("invalid encoder\n");
+		return -EINVAL;
+	}
+
+	sde_enc = to_sde_encoder_virt(drm_enc);
+	if (!sde_enc->cur_master ||
+		!sde_enc->cur_master->ops.get_rd_frame_count) {
+		SDE_DEBUG_ENC(sde_enc, "can't get master rd_frame_count\n");
+		return -EINVAL;
+	}
+
+	rd_frame_count = sde_enc->cur_master->ops.get_rd_frame_count(
+					sde_enc->cur_master);
+
+	return rd_frame_count;
+}
+
 int sde_encoder_poll_line_counts(struct drm_encoder *drm_enc)
 {
 	static const uint64_t timeout_us = 50000;
