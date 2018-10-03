@@ -38,6 +38,7 @@
 #define DSI_MODE_MAX 5
 
 #define DSI_PANEL_MAX_PANEL_LEN	256
+#define MAX_PARAM_NAME 10
 
 enum dsi_panel_rotation {
 	DSI_PANEL_ROTATE_NONE = 0,
@@ -171,6 +172,27 @@ struct drm_panel_esd_config {
 	u32 groups;
 };
 
+enum hbm_state {
+	HBM_OFF_STATE = 0,
+	HBM_ON_STATE,
+	HBM_STATE_NUM
+};
+
+struct panel_param_val_map {
+	int state;
+	enum dsi_cmd_set_type type;
+	struct dsi_panel_cmd_set *cmds;
+};
+
+struct panel_param {
+	const char *param_name;
+	struct panel_param_val_map *val_map;
+	const u16 val_max;
+	const u16 default_value;
+	u16 value;
+	bool is_supported;
+};
+
 struct dsi_panel {
 	const char *name;
 	const char *type;
@@ -228,6 +250,8 @@ struct dsi_panel {
 
 	u32 disp_on_chk_val;
 	bool no_panel_on_read_support;
+
+	struct panel_param *param_cmds;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -349,5 +373,8 @@ struct dsi_panel *dsi_panel_ext_bridge_get(struct device *parent,
 int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel);
 
 void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
+
+int dsi_panel_set_param(struct dsi_panel *panel,
+			struct msm_param_info *param_info);
 
 #endif /* _DSI_PANEL_H_ */
