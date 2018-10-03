@@ -137,6 +137,8 @@ struct sde_encoder_virt_ops {
  *                              enable/disable state.
  * @get_line_count:		Obtain current internal vertical line count
  * @get_wr_line_count:		Obtain current output vertical line count
+ * @get_rd_frame_count:		Obtain current number of frames have sent to
+ *				display
  * @wait_dma_trigger:		Returns true if lut dma has to trigger and wait
  *                              unitl transaction is complete.
  * @wait_for_active:		Wait for display scan line to be in active area
@@ -188,6 +190,7 @@ struct sde_encoder_phys_ops {
 	bool (*is_autorefresh_enabled)(struct sde_encoder_phys *phys);
 	int (*get_line_count)(struct sde_encoder_phys *phys);
 	int (*get_wr_line_count)(struct sde_encoder_phys *phys);
+	int (*get_rd_frame_count)(struct sde_encoder_phys *phys);
 	bool (*wait_dma_trigger)(struct sde_encoder_phys *phys);
 	int (*wait_for_active)(struct sde_encoder_phys *phys);
 	void (*setup_vsync_source)(struct sde_encoder_phys *phys,
