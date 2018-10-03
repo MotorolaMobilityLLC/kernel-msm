@@ -7065,6 +7065,7 @@ int dsi_display_prepare(struct dsi_display *display)
 	}
 
 	SDE_EVT32(SDE_EVTLOG_FUNC_ENTRY);
+	pr_info("%s(%s)+\n", __func__, display->drm_conn->name);
 	mutex_lock(&display->display_lock);
 
 	mode = display->panel->cur_mode;
@@ -7655,6 +7656,7 @@ int dsi_display_disable(struct dsi_display *display)
 	}
 
 	SDE_EVT32(SDE_EVTLOG_FUNC_ENTRY);
+	pr_info("%s(%s)+\n", __func__, display->drm_conn->name);
 	mutex_lock(&display->display_lock);
 
 	rc = dsi_display_wake_up(display);
