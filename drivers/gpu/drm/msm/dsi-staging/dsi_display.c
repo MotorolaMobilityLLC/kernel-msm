@@ -2893,9 +2893,15 @@ static ssize_t dsi_host_transfer(struct mipi_dsi_host *host,
 		int ctrl_idx = (msg->flags & MIPI_DSI_MSG_UNICAST) ?
 				msg->ctrl : 0;
 
+		u32 flags = DSI_CTRL_CMD_FETCH_MEMORY;
+
+		if (msg->rx_buf)
+			flags |= DSI_CTRL_CMD_READ;
+
 		rc = dsi_ctrl_cmd_transfer(display->ctrl[ctrl_idx].ctrl, msg,
-					  DSI_CTRL_CMD_FETCH_MEMORY);
-		if (rc) {
+					  flags);
+		/* QCOM Bug */
+		if (rc < 0) {
 			pr_err("[%s] cmd transfer failed, rc=%d\n",
 			       display->name, rc);
 			goto error_disable_cmd_engine;
