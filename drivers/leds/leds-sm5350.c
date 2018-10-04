@@ -205,6 +205,20 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 
 }
 
+static int sm5350_check_id(struct sm5350_data *drvdata)
+{
+	u8 value = 0;
+	int err = 0;
+	sm5350_read_reg(drvdata->client, 0x00, &value);
+	if (value != 0x00) {
+		pr_err("%s : ID check err\n", __func__);
+		err = -EINVAL;
+		return err;
+	}
+
+	return err;
+}
+
 static void dump_sm5350_regs(struct sm5350_data *drvdata)
 {
 	u8 brt_LSB = 0;
@@ -396,6 +410,7 @@ static int sm5350_probe(struct i2c_client *client,
 
 	drvdata->client = client;
 	drvdata->adapter = client->adapter;
+	client->addr = 0x36;
 	drvdata->addr = client->addr;
 	drvdata->brightness = LED_OFF;
 	drvdata->enable = true;
@@ -415,6 +430,12 @@ static int sm5350_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, drvdata);
+
+	err = sm5350_check_id(drvdata);
+	if (err < 0) {
+		pr_err("%s : ID idenfy failed\n", __func__);
+		goto err_init;
+	}
 
 	err = led_classdev_register(&client->dev, &drvdata->led_dev);
 	if (err < 0) {
