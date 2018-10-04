@@ -78,9 +78,28 @@
 	pinctrl-0 = <&i2c_5_active>;
 	pinctrl-1 = <&i2c_5_sleep>;
 
+	ktd@36 {
+		compatible = "ktd,ktd3136";
+		reg = <0x36>;
+		ktd,hwen-gpio = <&pm8953_gpios 4 0>;
+		ktd,using-lsb;
+		ktd,pwm-frequency = <100>;
+		ktd,bl-fscal-led = <0x98>;/*default 20.2mA*/
+		ktd,turn-on-ramp = <0>; /* Should add ms value, please check datasheet*/
+		ktd,turn-off-ramp = <0>;  /* Should add ms value, please check datasheet*/
+		ktd,pwm-trans-dim = <0>;  /* Should add ms value, please check datasheet*/
+		ktd,i2c-trans-dim = <0>;  /* Should add ms value, please check datasheet*/
+		ktd,bl-channel = <3>;
+		ktd,ovp-level = <32>; /*default 32v*/
+		ktd,switching-frequency = <1000>; /*default 1000kHz*/
+		ktd,inductor-current = <2600>; /*dfault 2600mA*/
+		ktd,flash-timeout = <500>;/*default 500ms*/
+		ktd,flash-current = <0xf>;/*default, it depends on full-scale led*/
+	};
+
 	sm_sm5350@36 {
 		compatible = "sm-sm5350";
-		reg = <0x36>;
+		reg = <0x37>;
 		pwm-cfg = <0x0e>;
 		boost-ctl = <0x03>;
 		ctl-bank-en = <0x02>;
