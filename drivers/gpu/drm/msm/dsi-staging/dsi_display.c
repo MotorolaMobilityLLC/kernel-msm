@@ -7352,6 +7352,7 @@ int dsi_display_prepare(struct dsi_display *display)
 {
 	int rc = 0;
 	struct dsi_display_mode *mode;
+	struct dsi_display_ctrl *ctrl = &display->ctrl[0];
 
 	if (!display) {
 		pr_err("Invalid params\n");
@@ -7364,7 +7365,9 @@ int dsi_display_prepare(struct dsi_display *display)
 	}
 
 	SDE_EVT32(SDE_EVTLOG_FUNC_ENTRY);
-	pr_info("%s(%s)+\n", __func__, display->drm_conn->name);
+	pr_info("panel_name=%s ctrl-index=%d\n",
+			display->panel->name, ctrl->ctrl->cell_index);
+
 	mutex_lock(&display->display_lock);
 
 	mode = display->panel->cur_mode;
