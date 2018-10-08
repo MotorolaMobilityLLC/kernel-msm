@@ -1690,8 +1690,36 @@ static int sde_connector_init_debugfs(struct drm_connector *connector)
 }
 #endif
 
+static int sde_connector_get_panel_vendor_info(struct drm_connector *connector)
+{
+	struct sde_connector *sde_connector;
+	struct msm_display_info info;
+
+	if (!connector) {
+		SDE_ERROR("invalid connector\n");
+		return -EINVAL;
+	}
+
+	sde_connector = to_sde_connector(connector);
+	sde_connector_get_info(connector, &info);
+	connector->display_info.panel_id = info.panel_id;
+	connector->display_info.panel_ver = info.panel_ver;
+	strncpy(connector->display_info.panel_name, info.panel_name,
+					sizeof(info.panel_name));
+
+	return 0;
+}
+
 static int sde_connector_late_register(struct drm_connector *connector)
 {
+	int ret = 0;
+
+	ret = sde_connector_get_panel_vendor_info(connector);
+	if (ret) {
+		SDE_ERROR("failed to retrieve panel vendor info\n");
+		return ret;
+	}
+
 	return sde_connector_init_debugfs(connector);
 }
 
