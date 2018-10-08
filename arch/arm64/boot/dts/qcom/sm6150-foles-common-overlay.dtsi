@@ -585,6 +585,11 @@
 	};
 };
 
+
+&pm6150_vib {
+	status = "disable";
+};
+
 &pm6150_vadc {
 	chg_therm {
 		reg = <ADC_AMUX_THM3_PU2>;
