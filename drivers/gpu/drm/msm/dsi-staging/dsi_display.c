@@ -1779,6 +1779,94 @@ error:
 	return len;
 }
 
+static ssize_t debugfs_alter_panel_hbm(struct file *file,
+				  const char __user *user_buf,
+				  size_t user_len,
+				  loff_t *ppos)
+{
+	struct dsi_display *display = file->private_data;
+	struct msm_param_info param_info;
+	int panel_hbm = 0;
+	char buf[SZ_8];
+	int rc = 0;
+	size_t len = min_t(size_t, user_len, SZ_8 - 1);
+
+	if (!display)
+		return -ENODEV;
+
+	if (*ppos)
+		return 0;
+
+	if (copy_from_user(buf, user_buf, user_len)) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	buf[len] = '\0'; /* terminate the string */
+	if (!display->panel) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	if (kstrtoint(buf, 10, &panel_hbm) != 0) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	param_info.param_idx = PARAM_HBM_ID;
+	param_info.value = panel_hbm;
+
+	if(dsi_display_set_param(display, &param_info) < 0) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	rc = len;
+error:
+	return rc;
+}
+
+static ssize_t debugfs_read_panel_hbm(struct file *file,
+				 char __user *user_buf,
+				 size_t user_len,
+				 loff_t *ppos)
+{
+	struct dsi_display *display = file->private_data;
+	struct dsi_panel *panel;
+	struct panel_param *panel_param;
+	struct msm_param_info param_info;
+
+	char buf[SZ_8];
+	size_t len = 0;
+
+	if (!display)
+		return -ENODEV;
+
+	if (*ppos)
+		return 0;
+
+	if (!display->panel) {
+		pr_err("invalid panel data\n");
+		return -EINVAL;
+	}
+
+	panel = display->panel;
+	param_info.param_idx = PARAM_HBM_ID;
+	panel_param = &panel->param_cmds[param_info.param_idx];
+	if (!panel_param) {
+		pr_err("invalid panel_param.\n");
+		return -EINVAL;
+	}
+
+	len += snprintf(buf, SZ_8, "0x%x\n", panel_param->value);
+
+	if (copy_to_user(user_buf, buf, len))
+		return -EFAULT;
+
+	*ppos += len;
+	return len;
+}
+
 static const struct file_operations dump_info_fops = {
 	.open = simple_open,
 	.read = debugfs_dump_info_read,
@@ -1799,6 +1887,12 @@ static const struct file_operations esd_check_mode_fops = {
 	.open = simple_open,
 	.write = debugfs_alter_esd_check_mode,
 	.read = debugfs_read_esd_check_mode,
+};
+
+static const struct file_operations panel_hbm_fops = {
+	.open = simple_open,
+	.write = debugfs_alter_panel_hbm,
+	.read = debugfs_read_panel_hbm,
 };
 
 static int dsi_display_debugfs_init(struct dsi_display *display)
@@ -1911,6 +2005,18 @@ static int dsi_display_debugfs_init(struct dsi_display *display)
 			&display->ulps_enabled)) {
 		pr_err("[%s] debugfs create ulps status file failed\n",
 		       display->name);
+		goto error_remove_dir;
+	}
+
+	dump_file = debugfs_create_file("panel_hbm",
+				0644,
+				dir,
+				display,
+				&panel_hbm_fops);
+	if (IS_ERR_OR_NULL(dump_file)) {
+		rc = PTR_ERR(dump_file);
+		pr_err("[%s] debugfs for hbm file failed, rc=%d\n",
+		       display->name, rc);
 		goto error_remove_dir;
 	}
 
