@@ -208,6 +208,7 @@ enum msm_mdp_conn_property {
 };
 
 #define MAX_H_TILES_PER_DISPLAY 2
+#define MSM_DISP_NAME_LEN_MAX  128
 
 /**
  * enum msm_display_compression_type - compression method used for pixel stream
@@ -521,6 +522,10 @@ struct msm_display_info {
 	uint32_t h_tile_instance[MAX_H_TILES_PER_DISPLAY];
 
 	bool is_connected;
+
+	uint64_t panel_id;
+	uint64_t panel_ver;
+	char panel_name[MSM_DISP_NAME_LEN_MAX];
 
 	unsigned int width_mm;
 	unsigned int height_mm;
