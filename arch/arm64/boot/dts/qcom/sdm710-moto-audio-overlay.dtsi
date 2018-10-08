@@ -115,6 +115,7 @@
 	/delete-node/ sound-tasha;
 
 	aov_trigger {
+		status = "ok";
 		compatible = "mmi,aov-trigger";
 	};
 
