@@ -380,8 +380,6 @@ static __ref int sensor_sysfs_notify(void *data)
 {
 	int ret = 0;
 	struct sensor_info *sensor = (struct sensor_info *)data;
-	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
-	sched_setscheduler(current, SCHED_RR, &param);
 
 	set_current_state(TASK_INTERRUPTIBLE);
 	while (!kthread_should_stop()) {
