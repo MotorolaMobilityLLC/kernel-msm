@@ -340,11 +340,6 @@
 		qcom,dsi-panel = <&mot_smd_639_1080p_cmd_v1>;
 	};
 
-	mot_panel_dummy_reg: mot_panel_dummy_reg {
-		compatible = "regulator-fixed";
-		regulator-name = "mot_dummy_disp";
-	};
-
 	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@6 {
 		label = "dsi_mot_dummy_qhd_video_display";
 		qcom,display-type = "primary";
@@ -655,7 +650,6 @@
 };
 
 &mot_dummy_vid_qhd {
-	vci_disp-supply = <&mot_panel_dummy_reg>;
 	qcom,platform-te-gpio = <&tlmm 90 0>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 
