@@ -533,12 +533,12 @@ static const struct apsd_result smblib_apsd_results[] = {
 	[HVDCP2] = {
 		.name	= "HVDCP2",
 		.bit	= DCP_CHARGER_BIT | QC_2P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP
+		.pst	= POWER_SUPPLY_TYPE_USB_DCP
 	},
 	[HVDCP3] = {
 		.name	= "HVDCP3",
 		.bit	= DCP_CHARGER_BIT | QC_3P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP_3,
+		.pst	= POWER_SUPPLY_TYPE_USB_DCP,
 	},
 };
 
@@ -1085,6 +1085,9 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 {
 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
 
+	if (!strcmp(apsd_result->name, "HVDCP3"))
+	    chg->mmi.hvdcp3_con = true;
+
 	/* if PD is active, APSD is disabled so won't have a valid result */
 	if (chg->pd_active) {
 		chg->real_charger_type = POWER_SUPPLY_TYPE_USB_PD;
@@ -1102,6 +1105,8 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 
 	smblib_dbg(chg, PR_MISC, "APSD=%s PD=%d QC3P5=%d\n",
 			apsd_result->name, chg->pd_active, chg->qc3p5_detected);
+	smblib_dbg(chg, PR_MOTO, "APSD=%s PD=%d\n",
+					apsd_result->name, chg->pd_active);
 	return apsd_result;
 }
 
@@ -6017,6 +6022,11 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	del_timer_sync(&chg->apsd_timer);
 	chg->apsd_ext_timeout = false;
+	chg->mmi.hvdcp3_con = false;
+	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
 }
 
 static void typec_mode_unattached(struct smb_charger *chg)
@@ -8701,7 +8711,8 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 
 	val.intval = smblib_get_prop_typec_mode(chip);
 
-	if (val.intval == POWER_SUPPLY_TYPEC_SOURCE_HIGH) {
+	if (val.intval == POWER_SUPPLY_TYPEC_SOURCE_HIGH ||
+		 mmi->hvdcp3_con) {
 		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 		goto end_rate_check;
 	}
@@ -8883,7 +8894,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		} else {
 			switch (val.intval) {
 			case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
-				cl_cc = 500;
+				if (mmi->hvdcp3_con)
+					cl_cc = 3000;
+				else
+					cl_cc = 500;
 				break;
 			case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
 				cl_cc = 1500;
