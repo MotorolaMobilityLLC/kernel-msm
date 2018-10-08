@@ -1,0 +1,637 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <dt-bindings/clock/qcom,rpmh.h>
+#include <dt-bindings/clock/qcom,gcc-sm6150.h>
+
+/*mods relative changes for soc*/
+&usb0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb_mod_hs_switch_default>;
+	mmi,mod-hs-switch = <&pm6150_gpios 1 0>;
+	mod-usb-hub = <&usb3813>;
+
+	qcom,ssusb-compliance;
+	mmi,mods-support;
+	mmi,ext-typec-switch;
+};
+
+&soc {
+	mods_codec_shim {
+		compatible = "mmi,mods-codec-shim";
+	};
+
+	muc: muc {
+		status = "okay";
+		compatible = "mmi,muc";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0 0 0xffffffff>;
+		/*interrupt-parent = <&tlmm>;
+		interrupts = <119 0>;
+		interrupt-names = "muc_irq";*/
+
+		gpios = <&tlmm 119 1>,         /* gpio_muc_det_n, input */
+			<&pm6150l_gpios 9 0>, 		/* gpio_muc_bplus_en, output-low */
+			<&tlmm 96 1>,         /* gpio_muc_int_n, input */
+			<&tlmm 41 2>,         /* gpio_muc_wake_n, output-high */
+			<&tlmm 121 1>,         /* gpio_muc_rdy_n, input */
+			<&tlmm 26 0>,  /* gpio_muc_ff, output-low */
+			<&tlmm 7 0>,          /* gpio_muc_spi_mosi, output-low */
+			<&tlmm 6 1>,          /* gpio_muc_spi_miso, input */
+			<&pm6150l_gpios 3 1>,        /* gpio_muc_bplus_iset, output-high */
+			<0>,     /* gpio_muc_bplus_discharg, cs */
+			<&tlmm 95 1>,  /* gpio_muc_bplus_fault_n, input */
+			<&tlmm 8 1>;          /* gpio_muc_clk, input */
+
+		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+					"gpio_muc_bplus_en",
+					"gpio_muc_int_n",
+					"gpio_muc_wake_n",
+					"gpio_muc_rdy_n",
+					"gpio_muc_ff",
+					"gpio_muc_spi_mosi",
+					"gpio_muc_spi_miso",
+					"gpio_muc_bplus_iset",
+					"gpio_muc_bplus_discharg",
+					"gpio_muc_bplus_fault_n",
+					"gpio_muc_clk";
+
+		/* Addison has shared muc/flash SPI. */
+		mmi,spi-shared-with-flash;
+
+		mmi,muc-ctrl-det-hysteresis = <200>;
+		mmi,muc-ctrl-rm-hysteresis = <5>;
+		mmi,muc-ctrl-en-seq = <8 1 20>, <1 1 100>;
+		mmi,muc-ctrl-dis-seq = <8 0 20>, <1 0 505>;
+
+		/* v1 FF first, BPLUS second on enable */
+		mmi,muc-ctrl-ff-seq-v1 = <5 1 20>, <1 0 100>,
+					<1 1 100>, <5 0 20>;
+
+		/* v2 BPLUS first, FF second on enable */
+		mmi,muc-ctrl-ff-seq-v2 = <1 1 100>, <5 1 20>,
+					<5 0 20>;
+
+		pinctrl-names = "disconnected", "spi_active", "spi_ack", "i2c_active",
+					"spi_cs_sleep", "default";
+		pinctrl-0 = <&muc_attach &muc_det &mods_spi_sleep &muc_spi_ctrl
+						&mods_bplus_iset &mods_spi_cs_sleep>;
+		pinctrl-1 = <&mods_spi_active &mods_spi_cs_active>;
+		pinctrl-2 = <&mods_spi_mosi_ack &mods_spi_miso_ack>;
+		pinctrl-3 = <&muc_spi_ctrl>;
+		pinctrl-4 = <&mods_spi_cs_sleep>;
+		pinctrl-5 = <&mods_bplus_default>;
+
+		transports {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0 0xffffffff>;
+
+			/* Placeholder for SPI defined later */
+			mods_spi: spi@a88000 { };
+
+			/* Placeholder for I2C defined later */
+			mods_i2c: i2c@a88000 { };
+		};
+	};
+
+	muc_svc: muc_svc@0 {
+		compatible = "mmi,muc_svc";
+
+		mmi,use-authentication;
+		mmi,endo-mask = <0x4755>;
+		mmi,default-root-ver = /bits/ 8 <2>;
+	};
+
+	apba_ctrl {
+		status = "okay";
+		compatible = "mmi,apba-ctrl";
+		reg = <0 0>;
+		clock-names = "apba_mclk";
+		qcom,clk-src = "BBCLK2";
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&apba_default &apba_1p1_en_default &apba_2_spi_switch_default>;
+		gpios = <&pm6150l_gpios 4 0>,      /* APBA_1P1_EN, output-low */
+			<&tlmm 45 0>,     /* APBA_BOOTRET, output-low */
+			<&tlmm 42 0>,     /* APBA_RESET_N, output-low */
+			<&tlmm 117 1>,      /* APBA_INT_N, in */
+			<&tlmm 27 0>,     /* APBA_WAKE, output-low */
+			<&tlmm 43 0>,      /* APBA_SFLASH_EN, output-low */
+			<&pm6150_gpios 3 0>;      /* SENCOND_SPI_SWITCH_EN, output-low */
+		mmi,gpio-labels = "gpio_apba_1p1_en",
+				  "gpio_apba_bootret",
+				  "gpio_apba_rst_n",
+				  "gpio_apba_int_n",
+				  "gpio_apba_wake",
+				  "gpio_apba_sflash_en",
+				  "second_spi_switch_en";
+		//mmi,spi-cs-gpio = <&tlmm 24 1>;
+		mmi,int-index = <3>;
+		/* Notes about boot sequence:  w25q40bw spec says 10 usec needed
+		   from VCC high to first /CS low for read.  It requires 10 msec max
+		   until first write. */
+		/* ES3 AP Bridge power on sequence requires 40 usec minimum between
+		   (APBA_VDDIO + SYS_CLK) and SYS_RESET_N high, and requires RESET_N low during
+		   boot. */
+		mmi,enable-preclk-seq = <5 0 0>, <2 0 0>, <4 1 0>, <0 1 0>, <1 0 0>;
+		mmi,enable-postclk-seq = <2 1 0>;
+		mmi,disable-seq = <1 0 0>, <2 0 1>, <4 0 0>, <0 0 0>;
+		mmi,wake-assert-seq = <4 0 0>;
+		mmi,wake-deassert-seq = <4 1 0>;
+		mmi,flash-start-seq = <5 1 0>, <0 1 11>, <6 1 0>;
+		mmi,flash-end-seq = <0 0 0>, <5 0 0>, <6 0 0>;
+		/*mmi,apba-unipro-mid = <0x00000126>;
+		mmi,apba-unipro-pid = <0x00001001>;
+		mmi,apba-ara-vid = <0xfed70128>;
+		mmi,apba-ara-pid = <0xfffe0001>;*/
+	};
+
+	mod_uart: mod_uart {
+		compatible = "mmi,mod-uart";
+		mmi,tty = "ttyMAX0";
+		mmi,tty_speed = <115200>;
+		mmi,intf-id = /bits/ 8 <5>;
+
+		mmi,without-pinctrl;
+		//pinctrl-names = "default", "active";
+		//pinctrl-0 = <&blsp2_uart6_sleep>;
+		//pinctrl-1 = <&blsp2_uart6_active>;
+	};
+
+	modbus_switch {
+		status = "okay";
+		compatible = "mmi,mods-switch";
+		pinctrl-names = "default";
+		pinctrl-0 = <&mod_mphy_en_default &mod_mphy_en_default &mod_mphy_sel1_default>;
+
+		vdd-switch-supply = <&pm6150l_l7>;
+		mmi,vdd-voltage-level = <3300000 3300000>;
+
+		gpios = <&pm6150_gpios 4 0>, /*MOD_MPHY_EN, output hgih*/
+			<&pm6150_gpios 6 0>,  /* MOD_MPHY_SEL0, output high */
+			<&pm6150_gpios 7 0>;           /* MOD_MPHY_SEL1, output high */
+		mmi,mods-switch-gpio-labels = "MOD_MPHY_EN",
+						"MOD_MPHY_SEL0",
+						"MOD_MPHY_SEL1";
+		mmi,mods-switch-seq = <1 0 0>,
+					<1 0 1>,
+					<1 1 1>;
+		/*The string need to be as the same as protocol_list in mods_switch.c*/
+		/*The array sequence refers to the sequence of "mmi,mods-switch-seq"*/
+		mmi,mods-switch-seq-labels = "usbss",
+						"mphy",
+						"i2s";
+	};
+};
+
+/*directly copy from sm6150-qupv3.dtsi*/
+&mods_spi {
+	compatible = "qcom,spi-geni";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg = <0xa88000 0x4000>;
+	reg-names = "se_phys";
+	clock-names = "se-clk", "m-ahb", "s-ahb";
+	clocks = <&clock_gcc GCC_QUPV3_WRAP1_S2_CLK>,
+		<&clock_gcc GCC_QUPV3_WRAP_1_M_AHB_CLK>,
+		<&clock_gcc GCC_QUPV3_WRAP_1_S_AHB_CLK>;
+	/*pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&qupv3_se6_spi_active>;
+	pinctrl-1 = <&qupv3_se6_spi_sleep>;*/
+	interrupts = <GIC_SPI 355 0>;
+	spi-max-frequency = <50000000>;
+	qcom,wrapper-core = <&qupv3_1>;
+	dmas = <&gpi_dma1 0 2 1 64 0>,
+		<&gpi_dma1 1 2 1 64 0>;
+	dma-names = "tx", "rx";
+	status = "disabled";
+};
+
+/*override mods_spi for mods*/
+&mods_spi {
+	status = "okay";
+	compatible = "qcom,spi-geni", "moto,mod-spi-transfer";
+
+	spi-max-frequency = <4800000>;
+	qcom,rt-priority;
+	qcom,active-only;
+
+	mmi,without-pinctrl;
+
+	muc_spi: muc_spi@0 {
+		compatible = "moto,muc_spi";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <96 0>;
+		spi-max-frequency = <4800000>;
+
+		mmi,intf-id = /bits/ 8 <3>;
+	};
+
+	apba_flash: m25p80@1 {
+		compatible = "w25q40ew";
+		reg = <1>;
+		spi-max-frequency = <4800000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		mmi,spi-cs-gpio = <&tlmm 24 1>;
+
+		partition@0 {
+			label = "apba";
+			reg = <0x0 0x40000>;
+		};
+		partition@1 {
+			label = "es2_apbaboot";
+			reg = <0x0 0x4000>;
+		};
+		partition@2 {
+			label = "es2_apba";
+			reg = <0x4000 0x3C000>;
+		};
+	};
+
+	ice40@2 {
+		status = "okay";
+		compatible = "lattice,ice40";
+		reg = <2>;
+		spi-max-frequency = <4800000>;
+		vdd_1p2-supply = <&pm6150l_s8>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&ice40_gpio_default>;
+
+		ice,gpio-reset = <&tlmm 36 0x0>;
+		ice,gpio-cdone = <&tlmm 100 0x0>;
+		ice,gpio-hpd = <&tlmm 103 0x0>;
+		ice,gpio-cs = <&tlmm 25 0x0>;
+		//ice,gpio-spi-sel = <&pm6150_gpios 3 0>;
+
+		ice,gpio-ldo-1p2-en = <&tlmm 38 0x0>;
+		ice,gpio-ldo-1p8-en = <&tlmm 37 0x0>;
+		ice,gpio-ldo-2p5-en = <&tlmm 39 0x0>;
+	};
+};
+
+/*just for debug*/
+/*
+&qupv3_se6_spi {
+	status = "okay";
+
+	ice40@0 {
+		status = "okay";
+		compatible = "lattice,ice40";
+		reg = <2>;
+		spi-max-frequency = <4800000>;
+		vdd_1p2-supply = <&pm6150l_s8>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&apba_2_spi_switch_default>;
+
+		ice,gpio-sel1 = <&tlmm 43 0>;
+
+		ice,gpio-reset = <&tlmm 36 0x0>;
+		ice,gpio-cdone = <&tlmm 100 0x0>;
+		ice,gpio-hpd = <&tlmm 103 0x0>;
+		ice,gpio-cs = <&tlmm 25 0x0>;
+		ice,gpio-spi-sel = <&pm6150_gpios 3 0>;
+
+		ice,gpio-ldo-1p2-en = <&tlmm 38 0x0>;
+		ice,gpio-ldo-1p8-en = <&tlmm 37 0x0>;
+		ice,gpio-ldo-2p5-en = <&tlmm 39 0x0>;
+	};
+};*/
+&qupv3_se3_i2c {
+	status = "okay";
+
+	usb3813: usb3813@2D {
+		status = "okay";
+		compatible = "microchip,usb3813";
+		reg = <0x2D>;
+		gpios = <&tlmm 12 0x0>,   /* HUB_RESET_EN */
+			<&tlmm 13 0x1>;    /* HUB_INT_EN */
+		gpio-labels = "gpio_hub_reset_n",
+			"gpio_hub_int_n";
+		clock-names = "hub_clk";
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
+		enable-usbhost;
+		vdd-hsic-supply = <&pm6150_l10>;
+	};
+};
+
+&qupv3_se5_i2c {
+	status = "okay";
+
+	max_serial: max_serial@6C {
+		status = "ok";
+		compatible = "max,max3108";
+		reg = <0x6C>;
+
+		vcc-supply = <&pm6150_l19>;
+		max,vcc-voltage-level = <2700000 2700000>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <46 0>;
+		interrupt-names = "max310x_irq";
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&max310x_irq_default>;
+		//max,gpio-irq = <&tlmm 46 0x00>;
+		max,gpio-ldo-en = <&tlmm 115 0x00>;
+		max,gpio-reset = <&tlmm 116 0x00>;
+
+		max,use-ext-clock;
+		//max,ext-clock-freq = <19200000>;
+		clock-names = "osc";
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
+	};
+};
+
+&pm6150_gpios {
+	interrupts = <0x0 0xc0 0 IRQ_TYPE_NONE>,
+					<0x0 0xc1 0 IRQ_TYPE_NONE>,
+					<0x0 0xc2 0 IRQ_TYPE_NONE>,
+					<0x0 0xc3 0 IRQ_TYPE_NONE>,
+					<0x0 0xc5 0 IRQ_TYPE_NONE>,
+					<0x0 0xc6 0 IRQ_TYPE_NONE>,
+					<0x0 0xc7 0 IRQ_TYPE_NONE>;
+	interrupt-names = "pm6150_gpio1", "pm6150_gpio2",
+					"pm6150_gpio3", "pm6150_gpio4",
+					"pm6150_gpio6", "pm6150_gpio7",
+					"pm6150_gpio8";
+	qcom,gpios-disallowed = <5 9 10>;
+
+	usb_mod_hs_switch {
+		usb_mod_hs_switch_default: usb_mod_hs_switch_default {
+			pins = "gpio1";
+			function = "normal";
+			qcom,drive-strength = <2>;
+			power-source = <1>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+
+	apba_2_spi_switch {
+		apba_2_spi_switch_default: apba_2_spi_switch_default {
+			pins = "gpio3";
+			function = "normal";
+			qcom,drive-strength = <2>;
+			power-source = <1>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	mod_mphy_en {
+		mod_mphy_en_default: mod_mphy_en_default {
+			pins = "gpio4";
+			function = "normal";
+			qcom,drive-strength = <2>;
+			power-source = <1>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	mod_mphy_sel0 {
+		mod_mphy_sel0_default: mod_mphy_sel0_default {
+			pins = "gpio6";
+			function = "normal";
+			qcom,drive-strength = <2>;
+			power-source = <1>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	mod_mphy_sel1 {
+		mod_mphy_sel1_default: mod_mphy_sel1_default {
+			pins = "gpio7";
+			function = "normal";
+			qcom,drive-strength = <2>;
+			power-source = <0>;
+			bias-disable;
+			output-low;
+		};
+	};
+};
+
+&pm6150l_gpios {
+	usb_ext_hub_reset {
+		usb_ext_hub_reset_default: usb_ext_hub_reset_default {
+			pins = "gpio1";
+			function = "normal";
+			qcom,drive-strength = <2>;
+			power-source = <0>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	mods_bplus_iset: mods_bplus_iset {
+		pins = "gpio3";
+		function = "normal";
+		power-source = <0>;
+		output-high;
+	};
+
+	apba_1p1_en_default: apba_1p1_en {
+		pins = "gpio4";
+		function = "normal";
+		power-source = <0>;
+		output-low;
+	};
+
+	mods_bplus_default: mods_bplus_default {
+		pins = "gpio9";
+		function = "normal";
+		power-source = <1>;
+		output-low;
+	};
+};
+
+&tlmm {
+	/* MODS Related */
+	mods_spi_pins: mods_spi_pins {
+		mods_spi_active: mods_spi_active {
+			mux {
+				pins = "gpio6", "gpio7", "gpio8";
+				function = "qup12";
+			};
+
+			config {
+				pins = "gpio6", "gpio7", "gpio8";
+				drive-strength = <16>;
+				bias-disable;
+			};
+		};
+
+		mods_spi_sleep: mods_spi_sleep {
+			mux {
+				pins = "gpio6", "gpio7", "gpio8";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio6", "gpio7", "gpio8";
+				drive-strength = <2>;
+				bias-pull-down;
+				input-enable;
+			};
+		};
+
+		mods_spi_mosi_ack: mods_spi_mosi_ack {
+			mux {
+				pins = "gpio7";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio7";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		mods_spi_miso_ack: mods_spi_miso_ack {
+			mux {
+				pins = "gpio6";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio6";
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		mods_spi_cs_active: mods_spi_cs_active {
+			mux {
+				pins = "gpio9";
+				function = "qup12";
+			};
+
+			config {
+				pins = "gpio9";
+				drive-strength = <16>;
+				bias-disable;
+			};
+		};
+
+		mods_spi_cs_sleep: mods_spi_cs_sleep {
+			mux {
+				pins = "gpio9";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio9";
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
+	};
+
+	/* INT_N, FORCE_FLASH */
+	muc_attach: muc_attach {
+		config {
+			pins = "gpio96", "gpio26";
+			bias-disable;
+		};
+	};
+
+	muc_det: muc_det {
+		config {
+			pins = "gpio119";
+			bias-disable;
+			drive-strength = <16>;
+		};
+	};
+
+	/* WAKE_N, RDY_N */
+	muc_spi_ctrl: muc_spi_ctrl {
+		config {
+			pins = "gpio41", "gpio121";
+			bias-disable;
+		};
+	};
+
+	apba_spi_cs_pin: apba_spi_cs_pin {
+		apba_spi_cs_active: apba_spi_cs_active {
+			mux {
+				pins = "gpio24";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio24";
+				drive-strength = <6>;
+				bias-disable;
+			};
+		};
+
+		apba_spi_cs_sleep: apba_spi_cs_sleep {
+			mux {
+				pins = "gpio24";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio24";
+				drive-strength = <6>;
+				bias-disable;
+			};
+		};
+	};
+
+	apba_default: apba_default {
+		apba_bootret {
+			config {
+				pins = "gpio45";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		apba_reset_n {
+			config {
+				pins = "gpio42";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		apba_wake {
+			config {
+				pins = "gpio27";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		apba_int_n {
+			config {
+				pins = "gpio117";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
+};
+
+&sde_dp {
+	status = "okay";
+};
