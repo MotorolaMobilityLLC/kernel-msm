@@ -72,23 +72,5 @@
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 			};
 		};
-
-		qcom,panel-supply-entries {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			qcom,panel-supply-entry@0 {
-				reg = <0>;
-				qcom,supply-name = "vci_disp";
-				qcom,supply-min-voltage = <3000000>;
-				qcom,supply-max-voltage = <3000000>;
-				qcom,supply-enable-load = <300000>;
-				qcom,supply-disable-load = <100>;
-				qcom,supply-pre-on-sleep = <0>;
-				qcom,supply-post-on-sleep = <0>;
-				qcom,supply-pre-off-sleep = <0>;
-				qcom,supply-post-off-sleep = <0>;
-			};
-		};
 	};
 };
