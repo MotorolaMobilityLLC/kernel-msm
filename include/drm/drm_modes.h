@@ -150,6 +150,8 @@ enum drm_mode_status {
 
 #define DRM_MODE_FLAG_3D_MAX	DRM_MODE_FLAG_3D_SIDE_BY_SIDE_HALF
 
+#define DRM_MODE_DISPLAY_NAME_LEN 128
+
 /**
  * struct drm_display_mode - DRM kernel-internal display mode structure
  * @hdisplay: horizontal display size
@@ -284,6 +286,11 @@ struct drm_display_mode {
 	int vsync_end;
 	int vtotal;
 	int vscan;
+
+	u64 panel_id;
+	u64 panel_ver;
+	char panel_name[DRM_MODE_DISPLAY_NAME_LEN];
+
 	/**
 	 * @flags:
 	 *
