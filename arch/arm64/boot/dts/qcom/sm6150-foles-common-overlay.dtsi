@@ -13,7 +13,7 @@
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-audio-overlay.dtsi"
 #include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
-
+#include "sm6150-foles-mods.dtsi"
 
 &pm6150_l18 {
 	regulator-boot-on;
