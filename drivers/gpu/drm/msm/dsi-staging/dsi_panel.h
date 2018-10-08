@@ -37,7 +37,7 @@
 
 #define DSI_MODE_MAX 5
 
-#define DSI_PANEL_MAX_PANEL_LEN	256
+#define DSI_PANEL_MAX_PANEL_LEN	128
 #define MAX_PARAM_NAME 10
 
 enum dsi_panel_rotation {
@@ -245,6 +245,7 @@ struct dsi_panel {
 	enum dsi_panel_physical_type panel_type;
 
 	bool esd_utag_enable;
+	u64 panel_id;
 	u64 panel_ver;
 	char panel_name[DSI_PANEL_MAX_PANEL_LEN];
 
@@ -371,6 +372,8 @@ struct dsi_panel *dsi_panel_ext_bridge_get(struct device *parent,
 				int topology_override);
 
 int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel);
+
+int dsi_panel_parse_panel_cfg(struct dsi_panel *panel, bool is_primary);
 
 void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
 

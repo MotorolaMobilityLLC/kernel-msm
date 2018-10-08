@@ -1432,7 +1432,7 @@ error:
 	return rc;
 }
 
-static int dsi_panel_parse_panel_cfg(struct dsi_panel *panel)
+int dsi_panel_parse_panel_cfg(struct dsi_panel *panel, bool is_primary)
 {
 	struct device_node *np;
 	const char *pname;
@@ -1447,9 +1447,18 @@ static int dsi_panel_parse_panel_cfg(struct dsi_panel *panel)
 		panel->esd_utag_enable = true;
 
 	panel->panel_ver = DSI_PANEL_PANEL_DEFAULT_VER;
-	of_property_read_u64(np, "mmi,panel_ver", &panel->panel_ver);
+	panel->panel_id = DSI_PANEL_PANEL_DEFAULT_VER;
 
-	pname = of_get_property(np, "mmi,panel_name", NULL);
+	if (is_primary) {
+		of_property_read_u64(np, "mmi,panel_ver", &panel->panel_ver);
+		of_property_read_u64(np, "mmi,panel_id", &panel->panel_id);
+		pname = of_get_property(np, "mmi,panel_name", NULL);
+	} else {
+		of_property_read_u64(np, "mmi,panel_ver_s", &panel->panel_ver);
+		of_property_read_u64(np, "mmi,panel_id_s", &panel->panel_id);
+		pname = of_get_property(np, "mmi,panel_name_s", NULL);
+	}
+
 	if (!pname || strlen(pname) == 0) {
 		pr_warn("Failed to get mmi,panel_name\n");
 		strlcpy(panel->panel_name, DSI_PANEL_UNKNOWN_PANEL_NAME,
@@ -1460,11 +1469,12 @@ static int dsi_panel_parse_panel_cfg(struct dsi_panel *panel)
 	pr_debug("esd_utage_enable=%d\n", panel->esd_utag_enable);
 
 	panel_ver = (u32)panel->panel_ver;
-	pr_info("BL: panel = %s, manufacture_id(0xDA) = 0x%x controller_ver(0xDB) = 0x%x controller_drv_ver(0XDC) = 0x%x, full = 0x%016llx\n",
-		panel->panel_name,
+	pr_info("BL: panel(%s) =%s, panel_id =0x%016llx  panel_ver=0x%016llx\n",
+		is_primary? "primary": "secondary",
+		panel->panel_name, panel->panel_id, panel->panel_ver);
+	pr_info("BL: manufacture_id(0xDA) = 0x%x controller_ver(0xDB) = 0x%x controller_drv_ver(0XDC) = 0x%x\n",
 		panel_ver & 0xff, (panel_ver & 0xff00) >> 8,
-		(panel_ver & 0xff0000) >> 16,
-		panel->panel_ver);
+		(panel_ver & 0xff0000) >> 16);
 
 	of_node_put(np);
 
@@ -3620,13 +3630,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		pr_err("failed to parse panel mode configuration, rc=%d\n", rc);
 		goto error;
 	}
-
-		rc = dsi_panel_parse_panel_cfg(panel);
-		if (rc) {
-			pr_err("failed to parse panel config from dts. rc=%d\n",
-				rc);
-			goto error;
-		}
 
 	rc = dsi_panel_parse_dfps_caps(panel);
 	if (rc)
