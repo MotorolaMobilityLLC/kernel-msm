@@ -37,6 +37,7 @@ enum print_reason {
 	PR_PARALLEL	= BIT(3),
 	PR_OTG		= BIT(4),
 	PR_WLS		= BIT(5),
+	PR_MOTO		= BIT(7),
 };
 
 #define DEFAULT_VOTER			"DEFAULT_VOTER"
@@ -471,6 +472,7 @@ struct mmi_params {
 	struct wakeup_source	smblib_mmi_hb_wake_source;
 	bool			apsd_done;
 	int			charger_rate;
+	bool			hvdcp3_con;
 	int			base_fv_mv;
 };
 
