@@ -410,3 +410,11 @@
 		qcom,soc-low-threshold = <5>;
 	};
 };
+
+&spmi_bus {
+	qcom,pm660l@2 {
+		qcom,power-on@800 {
+			/delete-property/ qcom,shipmode;
+		};
+	};
+};
