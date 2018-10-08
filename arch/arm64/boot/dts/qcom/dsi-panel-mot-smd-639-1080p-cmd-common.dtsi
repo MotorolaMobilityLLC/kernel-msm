@@ -46,7 +46,10 @@ qcom,mdss-dsi-bl-min-level = <3>;
 qcom,mdss-dsi-bl-max-level = <1023>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
-
+qcom,mdss-dsi-hbm-on-command = [
+		15 01 00 00 00 00 02 53 e0];
+qcom,mdss-dsi-hbm-off-command = [
+		15 01 00 00 00 00 02 53 20];
 
 qcom,mdss-dsi-display-timings {
 	timing@0{
@@ -82,15 +85,6 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-force-tx-mode = "dsi_hs_mode";
-
-		qcom,mdss-dsi-hbm-on-command = [
-				15 01 00 00 00 00 02 53 e0];
-		qcom,mdss-dsi-hbm-off-command = [
-				15 01 00 00 00 00 02 53 20];
-		qcom,mdss-dsi-acl-on-command = [
-				15 01 00 00 00 00 02 55 03];
-		qcom,mdss-dsi-acl-off-command = [
-				15 01 00 00 00 00 02 55 00];
 	};
 
 };
