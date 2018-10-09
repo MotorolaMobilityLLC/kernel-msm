@@ -1540,7 +1540,11 @@ static int smb5_dc_prop_is_writeable(struct power_supply *psy,
 
 static const struct power_supply_desc dc_psy_desc = {
 	.name = "dc",
+#ifdef QCOM_BASE
 	.type = POWER_SUPPLY_TYPE_WIRELESS,
+#else
+	.type = POWER_SUPPLY_TYPE_WIPOWER,
+#endif
 	.properties = smb5_dc_props,
 	.num_properties = ARRAY_SIZE(smb5_dc_props),
 	.get_property = smb5_dc_get_prop,
@@ -1565,6 +1569,264 @@ static int smb5_init_dc_psy(struct smb5 *chip)
 
 	return 0;
 }
+
+/*************************
+ * WLS PSY REGISTRATION *
+ *************************/
+
+static enum power_supply_property mmi_wls_properties[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
+};
+
+static int mmi_wls_get_property(struct power_supply *psy,
+				enum power_supply_property prop,
+				union power_supply_propval *val)
+{
+	int rc, pa, ep;
+	union power_supply_propval ret = {0, };
+	struct smb_charger *chip = power_supply_get_drvdata(psy);
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (eb_pwr_psy) {
+		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+					POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
+						    &ret);
+		if (rc)
+			pa = 0;
+		else
+			pa = ret.intval;
+
+		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+					POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+						    &ret);
+		if (rc)
+			ep = 0;
+		else
+			ep = ret.intval;
+
+		power_supply_put(eb_pwr_psy);
+	}
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+		if ((pa == POWER_SUPPLY_PTP_POWER_AVAILABLE_EXTERNAL) &&
+		    (ep == POWER_SUPPLY_PTP_EXT_WIRELESS_PRESENT ||
+		     ep == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT))
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		val->intval = get_effective_result(chip->dc_icl_votable);
+		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		rc = smblib_get_prop_dc_system_temp_level(chip, val);
+		break;
+	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS:
+		val->intval = chip->mmi.dc_thermal_levels;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int mmi_wls_is_writeable(struct power_supply *psy,
+				enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+static int mmi_wls_set_property(struct power_supply *psy,
+				enum power_supply_property prop,
+				const union power_supply_propval *val)
+{
+	int rc = 0;
+	struct smb_charger *chip = power_supply_get_drvdata(psy);
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		rc = smblib_set_prop_dc_current_max(chip, val);
+		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		rc = smblib_set_prop_dc_system_temp_level(chip, val);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
+
+static const struct power_supply_desc wls_psy_desc = {
+	.name = "wireless",
+	.type = POWER_SUPPLY_TYPE_WIRELESS,
+	.properties = mmi_wls_properties,
+	.num_properties = ARRAY_SIZE(mmi_wls_properties),
+	.get_property = mmi_wls_get_property,
+	.set_property = mmi_wls_set_property,
+	.property_is_writeable = mmi_wls_is_writeable,
+};
+
+static int smb5_init_wls_psy(struct smb5 *chip)
+{
+	struct power_supply_config wls_cfg = {};
+	struct smb_charger *chg = &chip->chg;
+
+	wls_cfg.drv_data = chip;
+	wls_cfg.of_node = chg->dev->of_node;
+	chg->mmi.wls_psy = devm_power_supply_register(chg->dev,
+						      &wls_psy_desc,
+						      &wls_cfg);
+	if (IS_ERR(chg->mmi.wls_psy)) {
+		pr_err("Couldn't register WLS power supply\n");
+		return PTR_ERR(chg->mmi.wls_psy);
+	}
+
+	return 0;
+}
+
+/*************************
+ * USBEB PSY REGISTRATION *
+ *************************/
+
+static enum power_supply_property mmi_usbeb_properties[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+};
+
+static int mmi_usbeb_get_property(struct power_supply *psy,
+				  enum power_supply_property prop,
+				  union power_supply_propval *val)
+{
+	int rc, pa, ep;
+	union power_supply_propval ret = {0, };
+	struct smb_charger *chip = power_supply_get_drvdata(psy);
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (eb_pwr_psy) {
+		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+					POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
+						    &ret);
+		if (rc)
+			pa = 0;
+		else
+			pa = ret.intval;
+
+		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+					POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+						    &ret);
+		if (rc)
+			ep = 0;
+		else
+			ep = ret.intval;
+
+		power_supply_put(eb_pwr_psy);
+	}
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+		if ((pa == POWER_SUPPLY_PTP_POWER_AVAILABLE_EXTERNAL) &&
+		    (ep == POWER_SUPPLY_PTP_EXT_WIRED_PRESENT ||
+		     ep == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT))
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		val->intval = get_effective_result(chip->dc_icl_votable);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int mmi_usbeb_is_writeable(struct power_supply *psy,
+				  enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+static int mmi_usbeb_set_property(struct power_supply *psy,
+				     enum power_supply_property prop,
+				     const union power_supply_propval *val)
+{
+	int rc = 0;
+	struct smb_charger *chip = power_supply_get_drvdata(psy);
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		rc = smblib_set_prop_dc_current_max(chip, val);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
+static const struct power_supply_desc usbeb_psy_desc = {
+	.name = "usbeb",
+	.type = POWER_SUPPLY_TYPE_USB_DCP,
+	.properties = mmi_usbeb_properties,
+	.num_properties = ARRAY_SIZE(mmi_usbeb_properties),
+	.get_property = mmi_usbeb_get_property,
+	.set_property = mmi_usbeb_set_property,
+	.property_is_writeable = mmi_usbeb_is_writeable,
+};
+
+static int smb5_init_usbeb_psy(struct smb5 *chip)
+{
+	struct power_supply_config usbeb_cfg = {};
+	struct smb_charger *chg = &chip->chg;
+
+	usbeb_cfg.drv_data = chip;
+	usbeb_cfg.of_node = chg->dev->of_node;
+	chg->mmi.usbeb_psy = devm_power_supply_register(chg->dev,
+							&usbeb_psy_desc,
+							&usbeb_cfg);
+	if (IS_ERR(chg->mmi.usbeb_psy)) {
+		pr_err("Couldn't register USBEB power supply\n");
+		return PTR_ERR(chg->mmi.usbeb_psy);
+	}
+
+	return 0;
+}
+
 
 /*************************
  * BATT PSY REGISTRATION *
@@ -3689,6 +3951,18 @@ static int smb5_probe(struct platform_device *pdev)
 	rc = smb5_init_usb_psy(chip);
 	if (rc < 0) {
 		pr_err("Couldn't initialize usb psy rc=%d\n", rc);
+		goto cleanup;
+	}
+
+	rc = smb5_init_wls_psy(chip);
+	if (rc < 0) {
+		pr_err("Couldn't initialize wls psy rc=%d\n", rc);
+		goto cleanup;
+	}
+
+	rc = smb5_init_usbeb_psy(chip);
+	if (rc < 0) {
+		pr_err("Couldn't initialize usbeb psy rc=%d\n", rc);
 		goto cleanup;
 	}
 
