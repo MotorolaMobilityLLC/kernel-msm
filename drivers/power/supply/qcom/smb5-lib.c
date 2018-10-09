@@ -2479,7 +2479,6 @@ int smblib_run_aicl(struct smb_charger *chg, int type)
 	return 0;
 }
 
-#ifdef QCOM_BASE
 static int smblib_dp_pulse(struct smb_charger *chg)
 {
 	int rc;
@@ -2519,7 +2518,6 @@ int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 
 	return rc;
 }
-#endif
 
 static void smblib_hvdcp_set_fsw(struct smb_charger *chg, int bit)
 {
@@ -5361,6 +5359,11 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 	power_supply_changed(chg->usb_psy);
 	if (chg->dual_role)
 		dual_role_instance_changed(chg->dual_role);
+
+	__pm_stay_awake(&chg->mmi.smblib_mmi_hb_wake_source);
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: usbin-plugin %s\n",
 					vbus_rising ? "attached" : "detached");
 }
@@ -8753,6 +8756,11 @@ static int mmi_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 #define EB_SPLIT_MA 500
 #define DEMO_MODE_HYS_SOC 5
 #define DEMO_MODE_VOLTAGE 4000
+#define VBUS_INPUT_VOLTAGE_TARGET 5200
+#define VBUS_INPUT_VOLTAGE_NOM ((VBUS_INPUT_VOLTAGE_TARGET) - 200)
+#define VBUS_INPUT_VOLTAGE_MAX ((VBUS_INPUT_VOLTAGE_TARGET) + 200)
+#define VBUS_INPUT_VOLTAGE_MIN 4000
+#define VBUS_INPUT_MAX_COUNT 4
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -8764,6 +8772,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int batt_soc;
 	int eb_soc;
 	int batt_temp;
+	int usb_mv;
+	static int vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
+	bool vbus_inc_now = false;
 	int vbus_present = 0;
 	int charger_present = 0;
 	int cl_usb = -EINVAL;
@@ -8839,6 +8850,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vbus_present = val.intval;
 
 	if (!vbus_present) {
+		vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 		charger_present = 0;
 		mmi->charger_debounce_cnt = 0;
 	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE)
@@ -8882,7 +8894,15 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		batt_temp = val.intval / 10;
 
-	pr_debug("batt=%d mV, %d mA, %d C\n", batt_mv, batt_ma, batt_temp);
+	rc = smblib_get_prop_usb_voltage_now(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting USB Voltage rc = %d\n", rc);
+		goto end_hb;
+	} else
+		usb_mv = val.intval / 1000;
+
+	pr_debug("batt=%d mV, %d mA, %d C, USB= %d mV\n",
+		 batt_mv, batt_ma, batt_temp, usb_mv);
 
 	if (charger_present) {
 		val.intval = get_client_vote(chip->usb_icl_votable,
@@ -9229,6 +9249,27 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	vote(chip->dc_icl_votable, HEARTBEAT_VOTER,
 	     true, (target_dc >= 0) ? (target_dc * 1000) : 0);
 
+	if (charger_present && mmi->hvdcp3_con && !chip->pd_active &&
+	    (vbus_inc_mv > VBUS_INPUT_VOLTAGE_NOM)) {
+		if ((usb_mv < vbus_inc_mv) &&
+		    (usb_mv >= VBUS_INPUT_VOLTAGE_MIN) &&
+		    (mmi->vbus_inc_cnt < VBUS_INPUT_MAX_COUNT)) {
+			pr_warn("HVDCP Input %d mV Low, Increase\n", usb_mv);
+			smblib_dp_pulse(chip);
+			vbus_inc_now = true;
+			mmi->vbus_inc_cnt++;
+		} else if ((usb_mv > VBUS_INPUT_VOLTAGE_MAX)
+				&& (mmi->vbus_inc_cnt > 0)) {
+			smblib_dbg(chip, PR_MOTO,
+				   "HVDCP Input %d mV High, Decrease\n",
+				   usb_mv);
+			vbus_inc_mv -= 50;
+			smblib_dm_pulse(chip);
+			vbus_inc_now = true;
+			mmi->vbus_inc_cnt--;
+		}
+	}
+
 	pr_warn("EB Input %d mA, PMI Input %d mA, USBC CL %d mA, DC %d mA\n",
 		 mmi->cl_ebchg, target_usb, cl_cc,
 		 target_dc);
@@ -9250,7 +9291,8 @@ end_hb:
 		mmi->update_eb_params = 0;
 
 	if (eb_sink_to_off ||
-	    (!charger_present && mmi->charger_debounce_cnt))
+	    (!charger_present && mmi->charger_debounce_cnt) ||
+	    vbus_inc_now)
 		hb_resch_time = HEARTBEAT_EB_WAIT_MS;
 
 	schedule_delayed_work(&mmi->heartbeat_work,
