@@ -30,3 +30,11 @@
 	utags: utags { };
 	hw: hw { };
 };
+
+&removed_region {
+	reg = <0 0x86200000 0 0x4100000>;
+};
+
+&qcom_seecom {
+	reg = <0x86d00000 0x2200000>;
+};
