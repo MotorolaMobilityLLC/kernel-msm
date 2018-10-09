@@ -98,6 +98,7 @@ enum print_reason {
 #define HEARTBEAT_VOTER			"HEARTBEAT_VOTER"
 #define EB_VOTER			"EB_VOTER"
 #define WIRELESS_VOTER			"WIRELESS_VOTER"
+#define DEMO_VOTER			"DEMO_VOTER"
 
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
@@ -429,7 +430,7 @@ enum ebchg_state {
 
 struct mmi_params {
 	bool			factory_mode;
-	bool			demo_mode;
+	int			demo_mode;
 	struct gpio		ebchg_gpio;
 	struct notifier_block	smb_reboot;
 	/* thermal mitigation */
