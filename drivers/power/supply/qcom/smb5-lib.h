@@ -433,6 +433,9 @@ struct mmi_params {
 	struct gpio		ebchg_gpio;
 	struct notifier_block	smb_reboot;
 	/* thermal mitigation */
+	int			dc_system_temp_level;
+	int			dc_thermal_levels;
+	int			*dc_thermal_mitigation;
 	int			usb_system_temp_level;
 	int			usb_thermal_levels;
 	int			*usb_thermal_mitigation;
@@ -473,6 +476,7 @@ struct mmi_params {
 	bool			apsd_done;
 	int			charger_rate;
 	bool			hvdcp3_con;
+	struct notifier_block	mmi_psy_notifier;
 	int			base_fv_mv;
 };
 
@@ -928,6 +932,10 @@ int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
 
+int smblib_get_prop_dc_system_temp_level(struct smb_charger *chg,
+					 union power_supply_propval *val);
+int smblib_set_prop_dc_system_temp_level(struct smb_charger *chg,
+				const union power_supply_propval *val);
 int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
 					  union power_supply_propval *val);
 int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
