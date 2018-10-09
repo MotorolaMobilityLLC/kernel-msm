@@ -8140,12 +8140,52 @@ static bool mmi_has_current_tapered(struct smb_charger *chip,
 
 static bool is_wls_present(struct smb_charger *chip)
 {
-	return false;
+	int rc;
+	union power_supply_propval ret = {0, };
+	const struct power_supply_desc *wls;
+
+	if (chip->mmi.wls_psy && chip->mmi.wls_psy->desc)
+		wls = chip->mmi.wls_psy->desc;
+	else
+		return false;
+
+	if (!wls->get_property)
+		return false;
+
+	rc = wls->get_property(chip->mmi.wls_psy,
+			       POWER_SUPPLY_PROP_PRESENT,
+			       &ret);
+	if (rc < 0) {
+		pr_err("Couldn't get wls status\n");
+		return false;
+	}
+
+	return ret.intval ? true : false;
 }
 
 static bool is_usbeb_present(struct smb_charger *chip)
 {
-	return false;
+	int rc;
+	union power_supply_propval ret = {0, };
+	const struct power_supply_desc *usbeb;
+
+	if (chip->mmi.usbeb_psy && chip->mmi.usbeb_psy->desc)
+		usbeb = chip->mmi.usbeb_psy->desc;
+	else
+		return false;
+
+	if (!usbeb->get_property)
+		return false;
+
+	rc = chip->mmi.usbeb_psy->desc->get_property(chip->mmi.usbeb_psy,
+					       POWER_SUPPLY_PROP_PRESENT,
+					       &ret);
+	if (rc < 0) {
+		pr_err("Couldn't get usbeb status\n");
+		return false;
+	}
+
+	return ret.intval ? true : false;
 }
 
 static int get_eb_pwr_prop(struct smb_charger *chip,
@@ -8324,7 +8364,7 @@ static void mmi_get_extbat_out_cl(struct smb_charger *chip)
 	}
 
 	if (prev_cl_ebsrc != chip->mmi.cl_ebsrc)
-		pr_warn("cl_ebsrc %d mA, retval %d mA\n",
+		pr_debug("cl_ebsrc %d mA, retval %d mA\n",
 			chip->mmi.cl_ebsrc, ret.intval);
 
 	power_supply_put(eb_pwr_psy);
@@ -8356,7 +8396,7 @@ static void mmi_get_extbat_in_vl(struct smb_charger *chip)
 	}
 
 	if (prev_vi_ebsrc != chip->mmi.vi_ebsrc)
-		pr_warn("vi_ebsrc %d uV, retval %d uV\n",
+		pr_debug("vi_ebsrc %d uV, retval %d uV\n",
 			chip->mmi.vi_ebsrc, ret.intval);
 
 	power_supply_put(eb_pwr_psy);
@@ -8741,6 +8781,43 @@ end_rate_check:
 		pr_err("%s Charger Detected\n",
 		       charge_rate[mmi->charger_rate]);
 
+}
+
+static int mmi_psy_notifier_call(struct notifier_block *nb, unsigned long val,
+				 void *v)
+{
+	struct smb_charger *chip = container_of(nb,
+				struct smb_charger, mmi.mmi_psy_notifier);
+	struct power_supply *psy = v;
+
+	if (!chip) {
+		pr_warn("called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+
+	if ((val == PSY_EVENT_PROP_ADDED) ||
+	    (val == PSY_EVENT_PROP_REMOVED)) {
+		pr_debug("PSY Added/Removed run HB!\n");
+		cancel_delayed_work(&chip->mmi.heartbeat_work);
+		schedule_delayed_work(&chip->mmi.heartbeat_work,
+				      msecs_to_jiffies(0));
+		return NOTIFY_OK;
+	}
+
+	if (val != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+
+	if (psy &&
+	    (strcmp(psy->desc->name,
+		    (char *)chip->mmi.eb_pwr_psy_name) == 0)) {
+		pr_debug("PSY changed on PTP\n");
+		cancel_delayed_work(&chip->mmi.heartbeat_work);
+		schedule_delayed_work(&chip->mmi.heartbeat_work,
+				      msecs_to_jiffies(100));
+		return NOTIFY_OK;
+	}
+
+	return NOTIFY_OK;
 }
 
 #define CHARGER_DETECTION_DONE 7
@@ -9626,6 +9703,36 @@ static DEVICE_ATTR(force_chg_itrick, 0664,
 		   force_chg_itrick_show,
 		   force_chg_itrick_store);
 
+int smblib_get_prop_dc_system_temp_level(struct smb_charger *chg,
+					 union power_supply_propval *val)
+{
+	val->intval = chg->mmi.dc_system_temp_level;
+	return 0;
+}
+
+int smblib_set_prop_dc_system_temp_level(struct smb_charger *chg,
+					 const union power_supply_propval *val)
+{
+	if (val->intval < 0)
+		return -EINVAL;
+
+	if (chg->mmi.dc_thermal_levels <= 0)
+		return -EINVAL;
+
+	if (val->intval >= chg->mmi.dc_thermal_levels)
+		chg->mmi.dc_system_temp_level = chg->mmi.dc_thermal_levels - 1;
+	else
+		chg->mmi.dc_system_temp_level = val->intval;
+
+	if (chg->mmi.dc_system_temp_level == 0)
+		return vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+
+	vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, true,
+	     chg->mmi.dc_thermal_mitigation[chg->mmi.dc_system_temp_level] * 1000);
+
+	return 0;
+}
+
 int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
 					  union power_supply_propval *val)
 {
@@ -9792,6 +9899,30 @@ static int parse_mmi_dt(struct smb_charger *chg)
 		dev_err(chg->dev, "usb-thermal-mitigation is not set\n");
 	}
 
+	if (of_find_property(node, "qcom,dc-thermal-mitigation", &byte_len)) {
+		chg->mmi.dc_thermal_mitigation =
+			devm_kzalloc(chg->dev, byte_len, GFP_KERNEL);
+
+		if (chg->mmi.dc_thermal_mitigation == NULL)
+			return -ENOMEM;
+
+		chg->mmi.dc_thermal_levels = byte_len / sizeof(u32);
+		rc = of_property_read_u32_array(node,
+				"qcom,dc-thermal-mitigation",
+				chg->mmi.dc_thermal_mitigation,
+				chg->mmi.dc_thermal_levels);
+		if (rc < 0) {
+			smblib_err(chg,
+				   "Couldn't read usb therm limits rc = %d\n",
+				   rc);
+			return rc;
+		}
+	} else {
+		chg->mmi.dc_thermal_mitigation = NULL;
+		chg->mmi.dc_thermal_levels = 0;
+		dev_err(chg->dev, "dc-thermal-mitigation is not set\n");
+	}
+
 	rc = of_property_read_u32(node, "qcom,iterm-ma",
 				  &chg->mmi.chrg_iterm);
 	if (rc)
@@ -9928,6 +10059,13 @@ void mmi_init(struct smb_charger *chg)
 	if (rc)
 		pr_err("couldn't set DCIN AICL Threshold\n");
 #endif
+
+	/* Register the notifier for the psy updates*/
+	chg->mmi.mmi_psy_notifier.notifier_call = mmi_psy_notifier_call;
+	rc = power_supply_reg_notifier(&chg->mmi.mmi_psy_notifier);
+	if (rc)
+		smblib_err(chg, "failed to reg notifier: %d\n", rc);
+
 }
 
 void mmi_deinit(struct smb_charger *chg)
@@ -9953,4 +10091,5 @@ void mmi_deinit(struct smb_charger *chg)
 				   &dev_attr_force_chg_itrick);
 	}
 	wakeup_source_trash(&chg->mmi.smblib_mmi_hb_wake_source);
+	power_supply_unreg_notifier(&chg->mmi.mmi_psy_notifier);
 }
