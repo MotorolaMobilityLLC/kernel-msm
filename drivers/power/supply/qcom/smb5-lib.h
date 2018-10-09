@@ -478,6 +478,7 @@ struct mmi_params {
 	int			charger_rate;
 	bool			hvdcp3_con;
 	struct notifier_block	mmi_psy_notifier;
+	int			vbus_inc_cnt;
 	int			base_fv_mv;
 };
 
