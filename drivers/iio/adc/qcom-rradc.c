@@ -802,7 +802,6 @@ static int rradc_check_status_ready_with_retry(struct rradc_chip *chip,
 			rradc_chans[prop->channel].datasheet_name, buf[0]);
 
 		if (((prop->channel == RR_ADC_CHG_TEMP) ||
-			(prop->channel == RR_ADC_SKIN_TEMP) ||
 			(prop->channel == RR_ADC_USBIN_I) ||
 			(prop->channel == RR_ADC_DIE_TEMP)) &&
 					((!rradc_is_usb_present(chip)))) {
