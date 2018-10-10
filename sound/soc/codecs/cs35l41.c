@@ -319,9 +319,6 @@ static int cs35l41_cspl_cmd_put(struct snd_kcontrol *kcontrol,
 	unsigned int		i = ucontrol->value.enumerated.item[0];
 	int			ret = 0;
 
-	if (i <0 || i >= sizeof(cs35l41_cspl_cmd_val)/sizeof(cs35l41_cspl_cmd_val[0]))
-		return -EINVAL;
-
 	soc_enum = (struct soc_enum *)kcontrol->private_value;
 	cs35l41->cspl_cmd = soc_enum->values[i];
 
