@@ -140,6 +140,21 @@
 		pinctrl-2 = <&ts_release>;
 	};
 
+	ilitek@41 {
+		compatible = "ilitek,tchip";
+		reg = <0x41>;
+		ilitek,panel-coords = <0 0 720 1512>;
+		ilitek,display-coords = <0 0 720 1512>;
+		ilitek,irq-gpio = <&tlmm 65 0x2002>;
+		ilitek,reset-gpio = <&tlmm 64 0x00>;
+		ilitek,tp_ic_type = "ilitek,9881";
+		ilitek,tp_touch_ic = <0x9881>;
+		ilitek,mt_b_type = <1>;
+		ilitek,tpd_height = <2048>;
+		ilitek,tpd_width  = <2048>;
+		ilitek,max_touch_num = <10>;
+	};
+
 	himax@48 {
 		compatible = "himax,hxcommon";
 		reg = <0x48>;
