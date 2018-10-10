@@ -21,10 +21,6 @@
 	};
 };
 
-&pm8953_l6 {
-	regulator-always-on;
-};
-
 &tlmm {
 
 	fps {
