@@ -895,7 +895,7 @@
 						cirrus,wmfw-file = "moon-dsp1-ultrasound.wmfw";
 						cirrus,bin-file = "moon-dsp1-ultrasound.bin";
 						cirrus,full-name;
-						cirrus,compr-caps = <36 8 4 1 16000 96000>;
+						cirrus,compr-caps = <14 8 4 1 16000 96000>;
 					};
 				};
 			};
@@ -906,7 +906,7 @@
 						cirrus,wmfw-file = "moon-dsp2-aov-frontend.wmfw";
 						cirrus,bin-file = "moon-dsp2-aov-vrgain.bin";
 						cirrus,full-name;
-						cirrus,compr-caps = <36 1 4 1 16000>;
+						cirrus,compr-caps = <14 1 4 1 16000>;
 					};
 				};
 			};
@@ -917,7 +917,7 @@
 						cirrus,wmfw-file = "moon-dsp3-aov-control.wmfw";
 						cirrus,bin-file = "moon-dsp3-aov-model.bin";
 						cirrus,full-name;
-						cirrus,compr-caps = <36 1 4 1 16000>;
+						cirrus,compr-caps = <14 1 4 1 16000>;
 					};
 				};
 			};
