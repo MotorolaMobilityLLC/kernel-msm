@@ -24,11 +24,12 @@
 	qcom,init-voltage = <1200000>;
 	status = "okay";
 };
-
+//Per samsung,the vddio of 3l6 sensor need to be set always-on to avoid current leakage issue
 &pm8953_l6 {
 	regulator-min-microvolt = <1800000>;
 	regulator-max-microvolt = <1800000>;
 	qcom,init-voltage = <1800000>;
+	regulator-always-on;
 	status = "okay";
 };
 
@@ -109,16 +110,13 @@
 					&cam_sensor_rear_sleep>;
 		gpios = <&tlmm 26 0>,
 			<&tlmm 39 0>,
-			<&tlmm 50 0>,
 			<&tlmm 35 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-vdig = <2>;
-		qcom,gpio-vana = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
 			"CAM_RESET0",
-			"CAM_VDIG0",
 			"CAM_VANA0";
 		status = "okay";
 		clocks = <&clock_gcc clk_mclk0_clk_src>,
@@ -145,16 +143,13 @@
 				&cam_sensor_front_sleep>;
 		gpios = <&tlmm 27 0>,
 			<&tlmm 130 0>,
-			<&tlmm 50 0>,
 			<&tlmm 35 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-vdig = <2>;
-		qcom,gpio-vana = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
 					"CAM_RESET1",
-					"CAM_VDIG1",
 					"CAM_VANA1";
 		status = "okay";
 		clocks = <&clock_gcc clk_mclk1_clk_src>,
@@ -187,16 +182,13 @@
 					&cam_sensor_rear_sleep>;
 		gpios = <&tlmm 26 0>,
 			<&tlmm 39 0>,
-			<&tlmm 50 0>,
 			<&tlmm 35 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-vdig = <2>;
-		qcom,gpio-vana = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
 			"CAM_RESET0",
-			"CAM_VDIG0",
 			"CAM_VANA0";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
@@ -230,16 +222,13 @@
 				&cam_sensor_front_sleep>;
 		gpios = <&tlmm 27 0>,
 			<&tlmm 130 0>,
-			<&tlmm 50 0>,
 			<&tlmm 35 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-vdig = <2>;
-		qcom,gpio-vana = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
 					"CAM_RESET1",
-					"CAM_VDIG1",
 					"CAM_VANA1";
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <0>;
@@ -321,11 +310,11 @@
 	cam_sensor_rear_default: cam_sensor_rear_default {
 		/* RESET*/
 		mux {
-			pins = "gpio39","gpio35","gpio50";
+			pins = "gpio39","gpio35";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio39","gpio35","gpio50";
+			pins = "gpio39","gpio35";
 			bias-disable; /* No PULL */
 			drive-strength = <2>; /* 2 MA */
 		};
@@ -333,11 +322,11 @@
 	cam_sensor_rear_sleep: cam_sensor_rear_sleep {
 		/* RESET */
 		mux {
-			pins = "gpio39","gpio35","gpio50";
+			pins = "gpio39","gpio35";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio39","gpio35","gpio50";
+			pins = "gpio39","gpio35";
 			bias-disable; /* No PULL */
 			drive-strength = <2>; /* 2 MA */
 		};
@@ -345,12 +334,12 @@
 	cam_sensor_front_default: cam_sensor_front_default {
 		/* RESET  VANA*/
 		mux {
-			pins = "gpio130","gpio35","gpio50";
+			pins = "gpio130","gpio35";
 			function = "gpio";
 		};
 
 		config {
-			pins = "gpio130","gpio35","gpio50";
+			pins = "gpio130","gpio35";
 			bias-disable; /* No PULL */
 			drive-strength = <2>; /* 2 MA */
 		};
@@ -358,11 +347,11 @@
 	cam_sensor_front_sleep: cam_sensor_front_sleep {
 		/* RESET */
 		mux {
-			pins = "gpio130","gpio35","gpio50";
+			pins = "gpio130","gpio35";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio130","gpio35","gpio50";
+			pins = "gpio130","gpio35";
 			bias-disable; /* No PULL */
 			drive-strength = <2>; /* 2 MA */
 		};
