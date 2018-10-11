@@ -104,6 +104,7 @@ static char dsi_dsc_rc_range_max_qp_1_1_scr1[][15] = {
 static char dsi_dsc_rc_range_bpg_offset[] = {2, 0, 0, -2, -4, -6, -8, -8,
 		-8, -10, -10, -12, -12, -12, -12};
 
+
 static struct panel_param_val_map hbm_map[HBM_STATE_NUM] = {
 	{HBM_OFF_STATE, DSI_CMD_SET_HBM_OFF, NULL},
 	{HBM_ON_STATE, DSI_CMD_SET_HBM_ON, NULL},
@@ -113,14 +114,30 @@ static struct panel_param_val_map hbm_map_s[HBM_STATE_NUM] = {
 	{HBM_OFF_STATE, DSI_CMD_SET_HBM_OFF, NULL},
 	{HBM_ON_STATE, DSI_CMD_SET_HBM_ON, NULL},
 };
+
+static struct panel_param_val_map acl_map[ACL_STATE_NUM] = {
+        {ACL_OFF_STATE, DSI_CMD_SET_ACL_OFF, NULL},
+        {ACL_ON_STATE, DSI_CMD_SET_ACL_ON, NULL},
+};
+
+static struct panel_param_val_map acl_map_s[ACL_STATE_NUM] = {
+        {ACL_OFF_STATE, DSI_CMD_SET_ACL_OFF, NULL},
+        {ACL_ON_STATE, DSI_CMD_SET_ACL_ON, NULL},
+};
+
+
 static struct panel_param dsi_panel_param[PANEL_IDX_MAX][PARAM_ID_NUM] = {
 	{
 		{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE,
 				HBM_OFF_STATE, false},
+		{"ACL", acl_map, ACL_STATE_NUM, ACL_OFF_STATE,
+				ACL_OFF_STATE, false}
 	},
 	{
 		{"HBM", hbm_map_s, HBM_STATE_NUM, HBM_OFF_STATE,
 				HBM_OFF_STATE, false},
+		{"ACL", acl_map_s, ACL_STATE_NUM, ACL_OFF_STATE,
+				ACL_OFF_STATE, false},
 	}
 };
 
@@ -1930,6 +1947,8 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command",
 	"qcom,mdss-dsi-hbm-on-command",
 	"qcom,mdss-dsi-hbm-off-command",
+	"qcom,mdss-dsi-acl-on-command",
+	"qcom,mdss-dsi-acl-off-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1956,6 +1975,8 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
 	"qcom,mdss-dsi-hbm-on-command-state",
 	"qcom,mdss-dsi-hbm-off-command-state",
+	"qcom,mdss-dsi-acl-on-command-state",
+	"qcom,mdss-dsi-acl-off-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
