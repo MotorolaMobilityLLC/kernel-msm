@@ -353,7 +353,7 @@ long f2fs_sync_meta_pages(struct f2fs_sb_info *sbi, enum page_type type,
 	blk_start_plug(&plug);
 
 	while ((nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
-				PAGECACHE_TAG_DIRTY))) {
+				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE))) {
 		int i;
 
 		for (i = 0; i < nr_pages; i++) {

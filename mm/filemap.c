@@ -347,7 +347,7 @@ int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
 		unsigned i;
 
 		nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index,
-				end, PAGECACHE_TAG_WRITEBACK);
+				end, PAGECACHE_TAG_WRITEBACK, PAGEVEC_SIZE);
 		if (!nr_pages)
 			break;
 
