@@ -1,0 +1,57 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/msm-clocks-8953.h>
+
+#include "sdm632-ocean-common-overlay.dtsi"
+
+/ {
+	model = "ocean";
+	qcom,msm-id = <349 0x0>;
+	qcom,board-id = <0x43 0xC100>;
+};
+
+&soc {
+	sound {
+		qcom,model = "msm8953_snd_card-tfa987x";
+		qcom,msm-ext-pa = "quinary";
+		nxp,have-tfa987x;
+	};
+};
+
+&tfa987x {
+        status = "ok";
+};
+
+&pm8953_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mdss_dsi0 {
+	vddio-supply = <&pm8953_l6>;
+};
+
+&mot_ofilm_622_720p_vid_v0 {
+	qcom,mdss-panel-off-rst-disable;
+};
+
+&mot_tianma_622_720p_vid_v0 {
+	qcom,mdss-panel-off-rst-disable;
+};
+
+&mot_csot_622_720p_vid_v0 {
+	qcom,mdss-panel-off-rst-disable;
+};
