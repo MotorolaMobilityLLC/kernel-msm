@@ -456,6 +456,7 @@
 		status = "ok";
 		novatek,irq-gpio = <&tlmm 65 0x2001>;
 		novatek,def-max-resolution = <720 1520>;
+		novatek,usb_charger;
 	};
 
 	ilitek@41 {
