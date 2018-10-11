@@ -3814,6 +3814,7 @@ static int dsi_display_res_init(struct dsi_display *display)
 	struct dsi_display_ctrl *ctrl;
 	enum dsi_panel_type panel_type =
 		dsi_display_has_ext_bridge(display) ? EXT_BRIDGE : DSI_PANEL;
+	u32 param_idx = 0;
 
 	for (i = 0; i < display->ctrl_count; i++) {
 		ctrl = &display->ctrl[i];
@@ -3835,8 +3836,16 @@ static int dsi_display_res_init(struct dsi_display *display)
 		}
 	}
 
-	display->panel = dsi_panel_get(&display->pdev->dev, display->panel_of,
-					display->cmdline_topology, panel_type);
+	if (!strcmp(display->display_type, "primary"))
+		param_idx = 0;
+	else if (!strcmp(display->display_type, "secondary"))
+		param_idx = 1;
+	else
+		param_idx = 0;
+	display->panel = dsi_panel_get(&display->pdev->dev,
+					display->panel_of,
+					display->cmdline_topology, panel_type,
+					param_idx);
 
 	dsi_panel_parse_panel_cfg(display->panel,
 				!strcmp(display->display_type, "primary"));

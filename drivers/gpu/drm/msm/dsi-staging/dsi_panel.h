@@ -277,7 +277,8 @@ static inline void dsi_panel_release_panel_lock(struct dsi_panel *panel)
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				int topology_override,
-				enum dsi_panel_type type);
+				enum dsi_panel_type type,
+				u32 param_idx);
 
 int dsi_panel_trigger_esd_attack(struct dsi_panel *panel);
 

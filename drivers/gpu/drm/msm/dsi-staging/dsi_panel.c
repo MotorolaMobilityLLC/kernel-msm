@@ -109,8 +109,19 @@ static struct panel_param_val_map hbm_map[HBM_STATE_NUM] = {
 	{HBM_ON_STATE, DSI_CMD_SET_HBM_ON, NULL},
 };
 
-static struct panel_param dsi_panel_param[PARAM_ID_NUM] = {
-	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, HBM_OFF_STATE, false},
+static struct panel_param_val_map hbm_map_s[HBM_STATE_NUM] = {
+	{HBM_OFF_STATE, DSI_CMD_SET_HBM_OFF, NULL},
+	{HBM_ON_STATE, DSI_CMD_SET_HBM_ON, NULL},
+};
+static struct panel_param dsi_panel_param[PANEL_IDX_MAX][PARAM_ID_NUM] = {
+	{
+		{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE,
+				HBM_OFF_STATE, false},
+	},
+	{
+		{"HBM", hbm_map_s, HBM_STATE_NUM, HBM_OFF_STATE,
+				HBM_OFF_STATE, false},
+	}
 };
 
 int dsi_dsc_create_pps_buf_cmd(struct msm_display_dsc_info *dsc, char *buf,
@@ -927,7 +938,7 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	return rc;
 }
 
-static int dsi_panel_send_param_cmd (struct dsi_panel *panel,
+static int dsi_panel_send_param_cmd(struct dsi_panel *panel,
                                 struct msm_param_info *param_info)
 {
 	int rc = 0;
@@ -961,6 +972,12 @@ static int dsi_panel_send_param_cmd (struct dsi_panel *panel,
 			panel_param->value, param_info->value);
 		param_map = panel->param_cmds[param_info->param_idx].val_map;
 		param_map_state = &param_map[param_info->value];
+
+		if (!param_map_state->cmds || !param_map_state->cmds->cmds) {
+			pr_err("Invalid cmds or cmds->cmds\n");
+			rc = -EINVAL;
+			goto end;
+		}
 
 		cmds = param_map_state->cmds->cmds;
 		if (param_map_state->cmds->state == DSI_CMD_SET_STATE_LP)
@@ -2215,7 +2232,7 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel,
 	panel->ulps_suspend_enabled =
 		of_property_read_bool(of_node, "qcom,suspend-ulps-enabled");
 
-	pr_info("%s: ulps during suspend feature %s", __func__,
+	pr_info("%s: ulps during suspend feature %s\n", __func__,
 		(panel->ulps_suspend_enabled ? "enabled" : "disabled"));
 
 	panel->te_using_watchdog_timer = of_property_read_bool(of_node,
@@ -3407,7 +3424,7 @@ error:
 }
 
 static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
-					struct device_node *of_node)
+				struct device_node *of_node, u32 param_idx)
 {
 	int i, j, rc =0;
 	struct panel_param *param;
@@ -3417,9 +3434,15 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 	const char *prop;
 
 	for (i = 0; i < PARAM_ID_NUM; i++) {
-		param = &dsi_panel_param[i];
+		param = &dsi_panel_param[param_idx][i];
 
-		for (j = 0; j < param->val_max; j++) {
+		if (!param) {
+			pr_err("Invalid param\n");
+			goto err;
+		}
+
+		rc = -EINVAL;
+		for (j = 0; j < param->val_max && param->val_max > 0 ; j++) {
 			param_map = &param->val_map[j];
 			param_map->cmds = NULL;
 			cmds = kcalloc(param->val_max,
@@ -3445,15 +3468,17 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 			}
 		}
 
-		param->is_supported = true;
-		pr_info("%s: feature enabled.\n", param->param_name);
+		if (!rc) {
+			param->is_supported = true;
+			pr_info("%s: feature enabled.\n", param->param_name);
+		}
 	}
 
 	return rc;
 
 parse_err:
 	for (i = 0; i < ARRAY_SIZE(dsi_panel_param); i++) {
-		param = &dsi_panel_param[i];
+		param = &dsi_panel_param[param_idx][i];
 		for (j = 0; j < param->val_max; j++) {
 			if (param->val_map[j].cmds) {
 				kfree(param->val_map[j].cmds);
@@ -3554,7 +3579,8 @@ static int dsi_panel_trigger_panel_dead_event(struct dsi_panel *panel)
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				int topology_override,
-				enum dsi_panel_type type)
+				enum dsi_panel_type type,
+				u32 param_idx)
 {
 	struct dsi_panel *panel;
 	int rc = 0;
@@ -3650,8 +3676,8 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		goto error;
 	}
 
-	panel->param_cmds = &dsi_panel_param[0];
-	rc = dsi_panel_parse_param_prop(panel, of_node);
+	panel->param_cmds = dsi_panel_param[param_idx];
+	rc = dsi_panel_parse_param_prop(panel, of_node, param_idx );
 	if (rc)
 		pr_debug("failed to parse panel param prop, rc =%d\n", rc);
 

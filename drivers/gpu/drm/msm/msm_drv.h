@@ -276,6 +276,13 @@ struct msm_roi_caps {
 	struct msm_roi_alignment align;
 };
 
+enum msm_param_state {
+	PARAM_STATE_OFF = 0,
+	PARAM_STATE_ON,
+	PARAM_STATE_NUM,
+	PARAM_STATE_DISABLE = 0xFFFF,
+};
+
 enum msm_param_id {
 	PARAM_HBM_ID = 0,
 	PARAM_ID_NUM
