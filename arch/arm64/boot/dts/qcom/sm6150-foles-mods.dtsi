@@ -339,7 +339,7 @@
 		max,vcc-voltage-level = <2700000 2700000>;
 
 		interrupt-parent = <&tlmm>;
-		interrupts = <46 0>;
+		interrupts = <118 0>;
 		interrupt-names = "max310x_irq";
 		//pinctrl-names = "default";
 		//pinctrl-0 = <&max310x_irq_default>;
