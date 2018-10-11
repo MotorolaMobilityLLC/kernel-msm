@@ -118,6 +118,8 @@ struct spi_panel_data {
 	u8 *exp_status_value;
 	u8 *act_status_value;
 	unsigned char *return_buf;
+
+	struct blocking_notifier_head notifier_head;
 };
 
 int mdss_spi_panel_kickoff(struct mdss_panel_data *pdata,
