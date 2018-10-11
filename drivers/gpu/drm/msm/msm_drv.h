@@ -196,6 +196,7 @@ enum msm_mdp_conn_property {
 
 	/* MOT feature panel*/
 	CONNECTOR_PROP_HBM,
+	CONNECTOR_PROP_ACL,
 	/* total # of properties */
 	CONNECTOR_PROP_COUNT
 };
@@ -284,6 +285,7 @@ enum msm_param_state {
 
 enum msm_param_id {
 	PARAM_HBM_ID = 0,
+	PARAM_ACL_ID,
 	PARAM_ID_NUM
 };
 
