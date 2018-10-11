@@ -76,6 +76,13 @@
 			power-source = <0>;
 		};
 	};
+
+	mod_vbus_en: mod_vbus_en {
+		pins = "gpio8";
+		function = "normal";
+		power-source = <1>;
+		output-low;
+	};
 };
 
 &soc {
@@ -276,6 +283,11 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
+};
+
+&pm6150_charger {
+	gpios = <&pm6150l_gpios 8 0x0>; /* GPIOF_OUT_INIT_LOW */
+	gpio-names = "eb_vbus_en";
 };
 
 &smb1390 {
