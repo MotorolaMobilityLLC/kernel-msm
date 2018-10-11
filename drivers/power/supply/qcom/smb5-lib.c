@@ -726,6 +726,8 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 		if (!(apsd_result->pst == POWER_SUPPLY_TYPE_USB_FLOAT &&
 			chg->real_charger_type == POWER_SUPPLY_TYPE_USB))
 			chg->real_charger_type = apsd_result->pst;
+		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT)
+			chg->real_charger_type = POWER_SUPPLY_TYPE_USB;
 	}
 
 	smblib_dbg(chg, PR_MOTO, "APSD=%s PD=%d\n",
