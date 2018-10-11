@@ -4541,6 +4541,9 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 	int rc = 0;
 	int sec_charger;
 
+	if (chg->mmi.factory_mode)
+		return 0;
+
 	chg->pd_active = val->intval;
 
 	smblib_apsd_enable(chg, !chg->pd_active);
@@ -9408,7 +9411,7 @@ static int smbchg_reboot(struct notifier_block *nb,
 			/* Disable Charging */
 			smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
 					    CHARGING_ENABLE_CMD_BIT,
-					    CHARGING_ENABLE_CMD_BIT);
+					    0);
 
 			/* Suspend USB and DC */
 			smblib_set_usb_suspend(chg, true);
@@ -9584,10 +9587,10 @@ static ssize_t force_chg_auto_enable_store(struct device *dev,
 
 	r = smblib_masked_write(mmi_chip, CHARGING_ENABLE_CMD_REG,
 				CHARGING_ENABLE_CMD_BIT,
-				mode ? 0 : CHARGING_ENABLE_CMD_BIT);
+				mode ? CHARGING_ENABLE_CMD_BIT : 0);
 	if (r < 0) {
 		pr_err("Factory Couldn't %s charging rc=%d\n",
-		       mode ? "disable" : "enable", (int)r);
+		       mode ? "enable" : "disable", (int)r);
 		return r;
 	}
 
@@ -9615,7 +9618,7 @@ static ssize_t force_chg_auto_enable_show(struct device *dev,
 		goto end;
 	}
 
-	state = (CHARGING_ENABLE_CMD_BIT & value) ? 0 : 1;
+	state = (CHARGING_ENABLE_CMD_BIT & value) ? 1 : 0;
 end:
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
