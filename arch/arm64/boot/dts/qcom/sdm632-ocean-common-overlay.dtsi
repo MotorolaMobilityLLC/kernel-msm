@@ -397,16 +397,14 @@
 		ti,nrst-gpio = <&pm8953_gpios 6 0>;
 		/* voltage = *_voltage x 22 mV */
 		/* 2V for now */
-		ti,rated_voltage = /bits/ 8 <0x49>;
-		ti,overdrive_voltage = /bits/ 8 <0x9A>;
+		ti,rated_voltage = /bits/ 8 <0x23>;
+		ti,overdrive_voltage = /bits/ 8 <0x61>;
 		ti,rated_voltage_reduced = /bits/ 8 <0x19>;
 		ti,overdrive_voltage_reduced = /bits/ 8 <0x55>;
 		/* LRA period = lra_freq x 24.39 us */
 		/* 235 Hz for ROW */
-		ti,lra_freq = /bits/ 8 <0xE8>;
+		ti,lra_freq = /bits/ 8 <0xEB>;
 		ti,lra_drive;
-		ti,open_loop;
-		ti,rtp_input = /bits/ 8 <0x46>;
 		ti,auto_cal;
 		ti,auto_cal_time = /bits/ 8 <0x02>;
 		/* OD_CLAMP time 25ms, sample time 300us, ZC_DET time 200us */
