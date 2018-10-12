@@ -307,7 +307,9 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cs35l41_r_irq_default>;
-
+		cirrus,gpio-config1 {
+			cirrus,gpio-src-select = <0x1>;
+		};
 		cirrus,gpio-config2 {
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
