@@ -8249,9 +8249,26 @@ relax:
 	pm_relax(chg->dev);
 }
 
+static bool mmi_factory_mode;
+static void smblib_mmi_factory_check(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+
+	if (np)
+		mmi_factory_mode = of_property_read_bool(np,
+							 "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return;
+}
+
 static int smblib_create_votables(struct smb_charger *chg)
 {
 	int rc = 0;
+
+	mmi_factory_mode = false;
+	smblib_mmi_factory_check();
 
 	chg->fcc_votable = find_votable("FCC");
 	if (chg->fcc_votable == NULL) {
@@ -8382,6 +8399,27 @@ static int smblib_create_votables(struct smb_charger *chg)
 		rc = PTR_ERR(chg->bat_temp_irq_disable_votable);
 		chg->bat_temp_irq_disable_votable = NULL;
 		return rc;
+	}
+
+	if (mmi_factory_mode) {
+		smblib_err(chg, "MMI Factory Mode Force Charge Values!\n");
+		if(chg->chg_disable_votable) {
+			pmic_vote_force_val_set(chg->chg_disable_votable, 1);
+			pmic_vote_force_active_set(chg->chg_disable_votable, 1);
+		}
+		if(chg->fcc_votable) {
+			pmic_vote_force_val_set(chg->fcc_votable, 100000);
+			pmic_vote_force_active_set(chg->fcc_votable, 1);
+		}
+		if(chg->fv_votable) {
+			pmic_vote_force_val_set(chg->fv_votable, 4400000);
+			pmic_vote_force_active_set(chg->fv_votable, 1);
+		}
+		if(chg->usb_icl_votable) {
+			pmic_vote_force_val_set(chg->usb_icl_votable,
+						3000000);
+			pmic_vote_force_active_set(chg->usb_icl_votable, 1);
+		}
 	}
 
 	return rc;
