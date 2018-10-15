@@ -20,7 +20,7 @@
 / {
 	model = "channel";
 	qcom,msm-id = <349 0x0>;
-	qcom,board-id = <0x49 0xC0A0>;
+	qcom,board-id = <0x49 0xCA00>;
 };
 
 /*
