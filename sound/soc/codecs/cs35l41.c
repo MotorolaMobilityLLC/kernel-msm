@@ -217,12 +217,14 @@ static SOC_ENUM_SINGLE_DECL(pcm_sft_ramp,
 			    cs35l41_pcm_sftramp_text);
 
 static const char * const cs35l41_cspl_cmd_text[] = {
+	"CSPL_MBOX_CMD_PAUSE",
 	"CSPL_MBOX_CMD_RESUME",
 	"CSPL_MBOX_CMD_REINIT",
 	"CSPL_MBOX_CMD_STOP_PRE_REINIT",
 };
 
 static const unsigned int cs35l41_cspl_cmd_val[] = {
+	(unsigned int)CSPL_MBOX_CMD_PAUSE,
 	(unsigned int)CSPL_MBOX_CMD_RESUME,
 	(unsigned int)CSPL_MBOX_CMD_REINIT,
 	(unsigned int)CSPL_MBOX_CMD_STOP_PRE_REINIT,
