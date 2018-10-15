@@ -4052,12 +4052,12 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 		mdwc->extcon[idx].vbus_nb.notifier_call =
 						dwc3_msm_vbus_notifier;
 #ifdef CONFIG_MODS_NEW_SW_ARCH
-		mdwc->extcon_vbus = edev;
-		mdwc->extcon_id = edev;
+		pr_debug("%s extcon %d name %s\n", __func__, idx, extcon_get_edev_name(edev));
+		if (strstr(extcon_get_edev_name(edev), "usb-pdphy")) {
+			mdwc->extcon_vbus = edev;
+			mdwc->extcon_id = edev;
+		}
 #endif
-
-		pr_info("%s ww_debug extcon %d name %s\n", __func__, idx, extcon_get_edev_name(edev)
-);
 
 		ret = extcon_register_notifier(edev, EXTCON_USB,
 						&mdwc->extcon[idx].vbus_nb);
