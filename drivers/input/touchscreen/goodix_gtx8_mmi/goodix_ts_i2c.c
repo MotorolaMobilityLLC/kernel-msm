@@ -1544,7 +1544,7 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 			coord_sta, touch_data->have_key, touch_data->key_value);*/
 
 	for (i = 0; i < touch_num; i++) {
-		ts_info("data%d:0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x",
+		dev_dbg(dev->dev, "data%d:0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x\n",
 				i, buffer[i * 8 + 2], buffer[i * 8 + 3],
 				buffer[i * 8 + 4], buffer[i * 8 + 5],
 				buffer[i * 8 + 6], buffer[i * 8 + 7],
@@ -1643,10 +1643,10 @@ static int goodix_event_handler(struct goodix_ts_device *dev,
 	if (unlikely(r < 0))
 		return r;
 
-	ts_info("touch flag=%d,coor=%d",event_sta,dev->reg.coor);
-
 	/* buffer[0]: event state */
 	event_sta = pre_buf[0];
+	dev_dbg(dev->dev, "touch flag=%d,coor=%d\n", event_sta,dev->reg.coor);
+
 	if (likely((event_sta & 0x80) == 0x80)) {
 		/*handle touch event*/
 		goodix_touch_handler(dev,
@@ -1660,13 +1660,13 @@ static int goodix_event_handler(struct goodix_ts_device *dev,
 				&ts_event->event_data.request_data);
 	} else if ((event_sta & 0x20) == 0x20) {
 		/* handle gesture event */
-		ts_info("Gesture event");
+		dev_dbg(dev->dev, "Gesture event\n");
 	} else if ((event_sta & 0x10) == 0x10) {
 		/* handle hotknot event */
-		ts_info("Hotknot event");
+		dev_dbg(dev->dev, "Hotknot event\n");
 	} else {
-		ts_info("touch flag=%d,coor=%d",event_sta,dev->reg.coor);
-		ts_info("unknow event type");
+		dev_dbg(dev->dev, "touch flag=%d,coor=%d\n",event_sta,dev->reg.coor);
+		dev_dbg(dev->dev, "unknow event type\n");
 		r = -EINVAL;
 	}
 
