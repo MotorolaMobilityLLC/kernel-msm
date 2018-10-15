@@ -316,8 +316,10 @@
 		status = "okay";
 		compatible = "microchip,usb3813";
 		reg = <0x2D>;
-		gpios = <&tlmm 12 0x0>,   /* HUB_RESET_EN */
-			<&tlmm 13 0x1>;    /* HUB_INT_EN */
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb_ext_hub_reset_default>;
+		gpios = <&pm6150l_gpios 1 0x0>,   /* HUB_RESET_EN */
+			<&tlmm 113 0x1>;    /* HUB_INT_EN */
 		gpio-labels = "gpio_hub_reset_n",
 			"gpio_hub_int_n";
 		clock-names = "hub_clk";
