@@ -17,6 +17,10 @@
 &mdss_dsi0 {
 	/delete-property/ vdd-supply;
 };
+&mdss_dsi0_pll {
+        /delete-property/ qcom,dsi-pll-ssc-en;
+        /delete-property/ qcom,dsi-pll-ssc-mode;
+};
 /* fps gpio 8 */
 &aliases {
 	/delete-property/ spi3;
