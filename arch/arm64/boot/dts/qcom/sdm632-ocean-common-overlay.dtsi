@@ -403,7 +403,7 @@
 		ti,overdrive_voltage_reduced = /bits/ 8 <0x55>;
 		/* LRA period = lra_freq x 24.39 us */
 		/* 235 Hz for ROW */
-		ti,lra_freq = /bits/ 8 <0xE8>;
+		ti,lra_freq = /bits/ 8 <0xEB>;
 		ti,lra_drive;
 		ti,open_loop;
 		ti,rtp_input = /bits/ 8 <0x46>;
