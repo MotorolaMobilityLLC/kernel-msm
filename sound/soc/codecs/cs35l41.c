@@ -810,6 +810,12 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 				ret = cs35l41_set_csplmboxcmd(cs35l41,
 							cs35l41->cspl_cmd);
 		}
+		regmap_update_bits(cs35l41->regmap, CS35L41_AMP_OUT_MUTE,
+				CS35L41_AMP_MUTE_MASK, 0);
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		regmap_update_bits(cs35l41->regmap, CS35L41_AMP_OUT_MUTE,
+				CS35L41_AMP_MUTE_MASK, CS35L41_AMP_MUTE_MASK);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		if (cs35l41->halo_booted) {
@@ -863,7 +869,8 @@ static const struct snd_soc_dapm_widget cs35l41_dapm_widgets[] = {
 
 	SND_SOC_DAPM_OUT_DRV_E("Main AMP", CS35L41_PWR_CTRL2, 0, 0, NULL, 0,
 				cs35l41_main_amp_event,
-				SND_SOC_DAPM_POST_PMD |	SND_SOC_DAPM_POST_PMU),
+				SND_SOC_DAPM_POST_PMD |	SND_SOC_DAPM_POST_PMU
+				| SND_SOC_DAPM_PRE_PMD),
 
 	SND_SOC_DAPM_INPUT("VP"),
 	SND_SOC_DAPM_INPUT("VBST"),
