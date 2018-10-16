@@ -1237,6 +1237,7 @@ void drm_wait_one_vblank(struct drm_device *dev, unsigned int pipe)
 	struct drm_vblank_crtc *vblank = &dev->vblank[pipe];
 	int ret;
 	u32 last;
+	static int timeout_cnt = 0;
 
 	if (WARN_ON(pipe >= dev->num_crtcs))
 		return;
@@ -1251,7 +1252,11 @@ void drm_wait_one_vblank(struct drm_device *dev, unsigned int pipe)
 				 last != drm_vblank_count(dev, pipe),
 				 msecs_to_jiffies(100));
 
-	WARN(ret == 0, "vblank wait timed out on crtc %i\n", pipe);
+	if (!ret && !(timeout_cnt++ % 10))
+		DRM_ERROR("vblank wait timed out on crtc %i timeout_cnt=%d\n",
+							pipe, timeout_cnt);
+	else if (ret)
+		timeout_cnt = 0;
 
 	drm_vblank_put(dev, pipe);
 }
