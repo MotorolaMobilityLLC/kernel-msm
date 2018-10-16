@@ -405,8 +405,6 @@
 		/* 235 Hz for ROW */
 		ti,lra_freq = /bits/ 8 <0xEB>;
 		ti,lra_drive;
-		ti,open_loop;
-		ti,rtp_input = /bits/ 8 <0x46>;
 		ti,auto_cal;
 		ti,auto_cal_time = /bits/ 8 <0x02>;
 		/* OD_CLAMP time 25ms, sample time 300us, ZC_DET time 200us */
