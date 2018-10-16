@@ -39,6 +39,7 @@
 		/*interrupt-parent = <&tlmm>;
 		interrupts = <119 0>;
 		interrupt-names = "muc_irq";*/
+		mmi,with-cs-sleep-pinctrl;
 
 		gpios = <&tlmm 119 1>,         /* gpio_muc_det_n, input */
 			<&pm6150l_gpios 9 0>, 		/* gpio_muc_bplus_en, output-low */
