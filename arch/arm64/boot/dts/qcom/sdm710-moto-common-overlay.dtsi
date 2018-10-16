@@ -950,9 +950,9 @@
 	qcom,battery-data = <&mot_batterydata>;
 	vconn-parent-supply = <&vreg_5p0>;
 	qcom,sw-jeita-enable;
-	qcom,fcc-max-ua = <1500000>;
-	qcom,fv-max-uv = <4200000>;
-	qcom,usb-icl-ua = <1500000>;
+	qcom,fcc-max-ua = <2500000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
 	qcom,hvdcp-disable;
 	qcom,float-option = <1>;
 	qcom,auto-recharge-soc = <99>;
@@ -965,6 +965,19 @@
 		mmi,max-main-psy = "max17_main_battery";
 		mmi,max-flip-psy = "max17_flip_battery";
 		status = "ok";
+		qcom,mmi-temp-zones-main = <0 4200 240 0>,
+					<10 4200 600 240>,
+					<15 0 600 600>,
+					<45 4200 1205 840>,
+					<60 4200 600 0>;
+		qcom,iterm-ma-main = <124>;
+		qcom,mmi-temp-zones-flip = <0 4200 250 0>,
+					<10 4200 610 250>,
+					<15 0 610 610>,
+					<45 4200 1225 860>,
+					<60 4200 610 0>;
+		qcom,iterm-ma-flip = <125>;
+		qcom,vfloat-comp-uv = <20000>;
 	};
 };
 
