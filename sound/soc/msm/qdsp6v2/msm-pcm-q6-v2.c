@@ -1107,6 +1107,12 @@ static int msm_pcm_adsp_stream_cmd_put(struct snd_kcontrol *kcontrol,
 	}
 
 	prtd = substream->runtime->private_data;
+	if (!prtd) {
+		pr_err("%s private_data is NULL\n", __func__);
+		ret = -EINVAL;
+		goto done;
+	}
+
 	if (prtd->audio_client == NULL) {
 		pr_err("%s prtd is null.\n", __func__);
 		ret = -EINVAL;
@@ -1883,6 +1889,7 @@ static int msm_pcm_playback_dnmix_ctl_put(struct snd_kcontrol *kcontrol,
 	usr_value = (char *) ucontrol->value.bytes.data;
 	if (!usr_value) {
 		pr_err("%s usrvalue is null\n", __func__);
+		ret = -EINVAL;
 		goto done;
 	}
 	memcpy(&be_id, usr_value, sizeof(be_id));
