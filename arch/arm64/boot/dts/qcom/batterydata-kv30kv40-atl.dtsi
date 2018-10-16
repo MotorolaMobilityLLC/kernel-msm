@@ -3,6 +3,7 @@ qcom,kv30kv40-atl {
 	qcom, = <24>;
 	/* #3580064_Moto_KV30KV40_2500mAh_averaged_MasterSlave_Aug8th2018*/
 	qcom,max-voltage-uv = <4400000>;
+	qcom,fastchg-current-ma = <2500>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,nom-batt-capacity-mah = <2500>;
 	qcom,batt-id-kohm = <243>;
