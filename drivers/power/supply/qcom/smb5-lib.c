@@ -8193,9 +8193,9 @@ static bool is_usbeb_present(struct smb_charger *chip)
 	if (!usbeb->get_property)
 		return false;
 
-	rc = chip->mmi.usbeb_psy->desc->get_property(chip->mmi.usbeb_psy,
-					       POWER_SUPPLY_PROP_PRESENT,
-					       &ret);
+	rc = power_supply_get_property(chip->mmi.usbeb_psy,
+				       POWER_SUPPLY_PROP_PRESENT,
+				       &ret);
 	if (rc < 0) {
 		smblib_err(chip, "Couldn't get usbeb status\n");
 		return false;
@@ -8218,7 +8218,7 @@ static int get_eb_pwr_prop(struct smb_charger *chip,
 	    !eb_pwr_psy->desc->get_property)
 		return -ENODEV;
 
-	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy, prop, &ret);
+	rc = power_supply_get_property(eb_pwr_psy, prop, &ret);
 	if (rc) {
 		smblib_dbg(chip, PR_MISC,
 			   "eb pwr error reading Prop %d rc = %d\n", prop, rc);
@@ -8245,7 +8245,7 @@ static int get_eb_prop(struct smb_charger *chip,
 	    !eb_batt_psy->desc->get_property)
 		return -ENODEV;
 
-	rc = eb_batt_psy->desc->get_property(eb_batt_psy, prop, &ret);
+	rc = power_supply_get_property(eb_batt_psy, prop, &ret);
 	if (rc) {
 		smblib_dbg(chip, PR_MISC,
 			   "eb batt error reading Prop %d rc = %d\n",
@@ -8347,8 +8347,9 @@ static void mmi_set_extbat_in_cl(struct smb_charger *chip)
 	ret.intval = chip->mmi.cl_ebchg * 1000;
 
 	smblib_dbg(chip, PR_MISC, "Set EB In Current %d uA\n", ret.intval);
-	rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
-				POWER_SUPPLY_PROP_PTP_MAX_INPUT_CURRENT, &ret);
+	rc = power_supply_set_property(eb_pwr_psy,
+				       POWER_SUPPLY_PROP_PTP_MAX_INPUT_CURRENT,
+				       &ret);
 	if (rc)
 		smblib_err(chip, "Failed to set EB Input Current %d mA",
 		       ret.intval / 1000);
@@ -8370,9 +8371,9 @@ static void mmi_get_extbat_out_cl(struct smb_charger *chip)
 		return;
 	}
 
-	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_MAX_OUTPUT_CURRENT,
-				      &ret);
+	rc = power_supply_get_property(eb_pwr_psy,
+				       POWER_SUPPLY_PROP_PTP_MAX_OUTPUT_CURRENT,
+				       &ret);
 	if (rc)
 		smblib_err(chip, "Failed to get EB Output Current");
 	else {
@@ -8410,9 +8411,9 @@ static void mmi_get_extbat_in_vl(struct smb_charger *chip)
 		return;
 	}
 
-	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_MAX_INPUT_VOLTAGE,
-				      &ret);
+	rc = power_supply_get_property(eb_pwr_psy,
+				       POWER_SUPPLY_PROP_PTP_MAX_INPUT_VOLTAGE,
+				       &ret);
 	if (rc) {
 		smblib_err(chip, "Failed to get EB Input Voltage");
 		chip->mmi.vi_ebsrc = MICRO_5V;
@@ -8450,9 +8451,9 @@ static void mmi_set_extbat_in_volt(struct smb_charger *chip)
 		ret.intval = MICRO_5V;
 
 	smblib_dbg(chip, PR_MISC, "Set EB In Voltage %d uV\n", ret.intval);
-	rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_INPUT_VOLTAGE,
-				      &ret);
+	rc = power_supply_set_property(eb_pwr_psy,
+				       POWER_SUPPLY_PROP_PTP_INPUT_VOLTAGE,
+				       &ret);
 	if (rc)
 		smblib_err(chip, "Failed to set EB Input Voltage %d mV",
 		       ret.intval / 1000);
@@ -8474,9 +8475,9 @@ static void mmi_get_extbat_out_volt(struct smb_charger *chip)
 		return;
 	}
 
-	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_OUTPUT_VOLTAGE,
-				      &ret);
+	rc = power_supply_get_property(eb_pwr_psy,
+				       POWER_SUPPLY_PROP_PTP_OUTPUT_VOLTAGE,
+				       &ret);
 	if (rc)
 		smblib_err(chip, "Failed to get EB Output Voltage");
 	else {
@@ -8507,7 +8508,7 @@ static void mmi_set_extbat_out_vl(struct smb_charger *chip)
 	ret.intval = chip->mmi.vl_ebsrc;
 
 	smblib_dbg(chip, PR_MISC, "Set EB Out Voltage %d uV\n", ret.intval);
-	rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+	rc = power_supply_set_property(eb_pwr_psy,
 				      POWER_SUPPLY_PROP_PTP_MAX_OUTPUT_VOLTAGE,
 				      &ret);
 	if (rc)
@@ -8530,9 +8531,9 @@ static int mmi_get_extbat_state(struct smb_charger *chip, int *state)
 		return 0;
 	}
 
-	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
-				      &ret);
+	rc = power_supply_get_property(eb_pwr_psy,
+				       POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+				       &ret);
 	power_supply_put(eb_pwr_psy);
 
 	if (rc) {
@@ -8661,9 +8662,9 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		mmi_set_extbat_in_volt(chip);
 
 		ret.intval = POWER_SUPPLY_PTP_CURRENT_FROM_PHONE;
-		rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
-					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
-					    &ret);
+		rc = power_supply_set_property(eb_pwr_psy,
+					       POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					       &ret);
 		if (!rc) {
 			chip->mmi.ebchg_state = state;
 
@@ -8678,9 +8679,9 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 	case EB_SRC:
 		mmi_set_extbat_out_vl(chip);
 		ret.intval = POWER_SUPPLY_PTP_CURRENT_TO_PHONE;
-		rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
-					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
-					    &ret);
+		rc = power_supply_set_property(eb_pwr_psy,
+					       POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					       &ret);
 		if (!rc) {
 			for (i = 0; i < 100; i++) {
 				rc = smblib_get_prop_dc_voltage_now(chip,
@@ -8722,7 +8723,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		break;
 	case EB_OFF:
 		ret.intval = POWER_SUPPLY_PTP_CURRENT_OFF;
-		rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+		rc = power_supply_set_property(eb_pwr_psy,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
 					    &ret);
 		if (!rc) {
