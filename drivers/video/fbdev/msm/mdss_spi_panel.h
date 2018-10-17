@@ -144,8 +144,6 @@ struct spi_panel_data {
 	bool vsync_enable;
 	struct kernfs_node *vsync_event_sd;
 	unsigned char *return_buf;
-	int te_count;
-
 	struct blocking_notifier_head notifier_head;
 };
 
