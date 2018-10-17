@@ -542,12 +542,25 @@ static int msm_iommu_sec_ptbl_map(struct msm_iommu_drvdata *iommu_drvdata,
 {
 	struct msm_scm_map2_req map;
 	void *flush_va, *flush_va_end;
+	phys_addr_t *tmp_pa_ptr = NULL;
 	int ret = 0;
 
 	if (!IS_ALIGNED(va, SZ_1M) || !IS_ALIGNED(len, SZ_1M) ||
 		!IS_ALIGNED(pa, SZ_1M))
 		return -EINVAL;
-	map.plist.list = virt_to_phys(&pa);
+#if defined(CONFIG_ARM64)
+	if (virt_is_valid_lowmem(&pa)) {
+#else
+	if (virt_addr_valid(&pa)) {
+#endif
+		tmp_pa_ptr = &pa;
+	} else {
+		tmp_pa_ptr = kmalloc(sizeof(*tmp_pa_ptr), GFP_KERNEL);
+		if (!tmp_pa_ptr)
+			return -ENOMEM;
+		*tmp_pa_ptr = pa;
+	}
+	map.plist.list = virt_to_phys(tmp_pa_ptr);
 	map.plist.list_size = 1;
 	map.plist.size = len;
 	map.info.id = iommu_drvdata->sec_id;
@@ -555,7 +568,7 @@ static int msm_iommu_sec_ptbl_map(struct msm_iommu_drvdata *iommu_drvdata,
 	map.info.va = va;
 	map.info.size = len;
 
-	flush_va = &pa;
+	flush_va = tmp_pa_ptr;
 	flush_va_end = (void *)
 		(((unsigned long) flush_va) + sizeof(phys_addr_t));
 
@@ -565,6 +578,8 @@ static int msm_iommu_sec_ptbl_map(struct msm_iommu_drvdata *iommu_drvdata,
 	dmac_clean_range(flush_va, flush_va_end);
 
 	ret = msm_iommu_sec_map2(&map);
+	if (tmp_pa_ptr != &pa)
+		kfree(tmp_pa_ptr);
 	if (ret)
 		return -EINVAL;
 
@@ -614,10 +629,23 @@ static int msm_iommu_sec_ptbl_map_range(struct msm_iommu_drvdata *iommu_drvdata,
 		pa = get_phys_addr(sg);
 		if (!IS_ALIGNED(pa, SZ_1M))
 			return -EINVAL;
-		map.plist.list = virt_to_phys(&pa);
 		map.plist.list_size = 1;
 		map.plist.size = len;
-		flush_va = &pa;
+#if defined(CONFIG_ARM64)
+		if (virt_is_valid_lowmem(&pa)) {
+#else
+		if (virt_addr_valid(&pa)) {
+#endif
+			map.plist.list = virt_to_phys(&pa);
+			flush_va = &pa;
+		} else {
+			pa_list = kmalloc(sizeof(*pa_list), GFP_KERNEL);
+			if (!pa_list)
+				return -ENOMEM;
+			pa_list[0] = pa;
+			map.plist.list = virt_to_phys(pa_list);
+			flush_va = pa_list;
+		}
 	} else {
 		sgiter = sg;
 		if (!IS_ALIGNED(sgiter->length, SZ_1M))
