@@ -10072,12 +10072,14 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 	enum of_gpio_flags flags;
 	int rc;
 
+	chg->mmi.ebchg_gpio.gpio = -EINVAL;
+
 	if (!node) {
 		smblib_err(chg, "gpio dtree info. missing\n");
 		return;
 	}
 
-	if (!of_gpio_count(node)) {
+	if (of_gpio_count(node) < 0) {
 		smblib_err(chg, "No GPIOS defined.\n");
 		return;
 	}
