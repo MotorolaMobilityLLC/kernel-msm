@@ -517,9 +517,7 @@ struct power_supply_config {
 
 	char **supplied_to;
 	size_t num_supplicants;
-#ifdef CONFIG_MODS_NEW_SW_ARCH
 	bool free_drv_data;
-#endif
 };
 
 /* Description of power supply */
@@ -573,6 +571,7 @@ struct power_supply {
 
 	/* Driver private data */
 	void *drv_data;
+	bool free_pdd_on_release;
 
 	/* private */
 	struct device dev;
