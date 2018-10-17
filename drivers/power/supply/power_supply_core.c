@@ -464,7 +464,10 @@ struct power_supply *power_supply_get_by_name(const char *name)
 
 	if (dev) {
 		psy = dev_get_drvdata(dev);
-		atomic_inc(&psy->use_cnt);
+		if (atomic_read(&psy->use_cnt) >= 1)
+			atomic_inc(&psy->use_cnt);
+		else
+			psy = NULL;
 	}
 
 	return psy;
@@ -523,7 +526,10 @@ struct power_supply *power_supply_get_by_phandle(struct device_node *np,
 
 	if (dev) {
 		psy = dev_get_drvdata(dev);
-		atomic_inc(&psy->use_cnt);
+		if (atomic_read(&psy->use_cnt) >= 1)
+			atomic_inc(&psy->use_cnt);
+		else
+			psy = NULL;
 	}
 
 	return psy;
@@ -630,7 +636,8 @@ int power_supply_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    union power_supply_propval *val)
 {
-	if (atomic_read(&psy->use_cnt) <= 0) {
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->get_property) {
 		if (!psy->initialized)
 			return -EAGAIN;
 		return -ENODEV;
@@ -644,7 +651,8 @@ int power_supply_set_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    const union power_supply_propval *val)
 {
-	if (atomic_read(&psy->use_cnt) <= 0 || !psy->desc->set_property)
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->set_property)
 		return -ENODEV;
 
 	return psy->desc->set_property(psy, psp, val);
@@ -654,8 +662,8 @@ EXPORT_SYMBOL_GPL(power_supply_set_property);
 int power_supply_property_is_writeable(struct power_supply *psy,
 					enum power_supply_property psp)
 {
-	if (atomic_read(&psy->use_cnt) <= 0 ||
-			!psy->desc->property_is_writeable)
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->property_is_writeable)
 		return -ENODEV;
 
 	return psy->desc->property_is_writeable(psy, psp);
@@ -664,8 +672,8 @@ EXPORT_SYMBOL_GPL(power_supply_property_is_writeable);
 
 void power_supply_external_power_changed(struct power_supply *psy)
 {
-	if (atomic_read(&psy->use_cnt) <= 0 ||
-			!psy->desc->external_power_changed)
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->external_power_changed)
 		return;
 
 	psy->desc->external_power_changed(psy);
@@ -681,8 +689,14 @@ EXPORT_SYMBOL_GPL(power_supply_powers);
 static void power_supply_dev_release(struct device *dev)
 {
 	struct power_supply *psy = container_of(dev, struct power_supply, dev);
-	pr_debug("device: '%s': %s\n", dev_name(dev), __func__);
+	void *drvr_data = NULL;
+
+	if (psy->free_pdd_on_release)
+		drvr_data = psy->drv_data;
+	pr_warn("device: '%s': %s\n", dev_name(dev), __func__);
 	kfree(psy);
+	if (drvr_data)
+		kfree(drvr_data);
 }
 
 int power_supply_reg_notifier(struct notifier_block *nb)
@@ -886,6 +900,8 @@ __power_supply_register(struct device *parent,
 		psy->of_node = cfg->of_node;
 		psy->supplied_to = cfg->supplied_to;
 		psy->num_supplicants = cfg->num_supplicants;
+		if (cfg->drv_data)
+			psy->free_pdd_on_release = cfg->free_drv_data;
 	}
 
 	rc = dev_set_name(dev, "%s", desc->name);
