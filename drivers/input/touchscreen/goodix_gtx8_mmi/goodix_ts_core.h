@@ -50,14 +50,9 @@
 #endif
 
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3, 13, 0)
-#include <linux/gpio/consumer.h>
-//#define GPIOD_API
-#endif
-
 /* macros definition */
 #define GOODIX_CORE_DRIVER_NAME	"goodix_ts"
-#define GOODIX_DRIVER_VERSION	"v0.8"
+#define GOODIX_DRIVER_VERSION	"v1.3.0.1"
 #define GOODIX_BUS_RETRY_TIMES	3
 #define GOODIX_MAX_TOUCH	10
 #define GOODIX_MAX_PEN		1
@@ -67,8 +62,38 @@
 
 #define GOODIX_DEFAULT_CFG_NAME "goodix_config.cfg"
 
+#define IC_TYPE_NONE		0
 #define IC_TYPE_NORMANDY	1
 #define IC_TYPE_NANJING		2
+
+
+/* Sleep time define */
+#define GTP_2000_udelay		2000
+#define GTP_20_DLY_MS			20
+#define GTP_100_DLY_MS		100
+#define GTP_150_DLY_MS		150
+#define GTP_250_DLY_MS		250
+#define GTP_500_DLY_MS		500
+#define GTP_1000_DLY_MS		1000
+
+/*#define GTP_10_DLY_MS			10*/
+
+
+#define GTP_1000_DLY_US		1000
+#define GTP_1100_DLY_US		1100
+#define GTP_5000_DLY_US		5000
+#define GTP_10000_DLY_US	10000
+#define GTP_11000_DLY_US	11000
+
+#define GTP_100000_DLY_US	100000
+#define GTP_110000_DLY_US	110000
+#define GTP_10100_DLY_US	10100
+#define GTP_250_DLY_US		250
+#define GTP_260_DLY_US		260
+#define GTP_5100_DLY_US		5100
+#define GTP_5200_DLY_US		5200
+#define GTP_55000_DLY_US	55000
+#define GTP_56000_DLY_US	56000
 
 /*
  * struct goodix_module - external modules container
@@ -111,13 +136,8 @@ struct goodix_module {
 struct goodix_ts_board_data {
 	const char *avdd_name;
 	const char *iovdd_name;
-#ifdef GPIOD_API
-	struct gpio_desc *reset_gpiod;
-	struct gpio_desc *irq_gpiod;
-#else
 	unsigned int reset_gpio;
 	unsigned int irq_gpio;
-#endif
 	int irq;
 	unsigned int  irq_flags;
 
@@ -310,19 +330,15 @@ struct goodix_ts_device {
 	u8 ic_type;
 	struct goodix_ts_regs reg;
 
+	int doze_mode_set_count;
+	struct mutex doze_mode_lock;
+
 	struct goodix_ts_board_data *board_data;
 	struct goodix_ts_config *normal_cfg;
 	struct goodix_ts_config *highsense_cfg;
 	const struct goodix_ts_hw_ops *hw_ops;
 
 	struct goodix_ts_version chip_version;
-	struct goodix_ts_cmd sleep_cmd;
-	struct goodix_ts_cmd gesture_cmd;
-	struct goodix_ts_cmd close_hid_cmd;
-	struct goodix_ts_cmd start_send_cfg_cmd;
-	struct goodix_ts_cmd end_send_cfg_cmd;
-	struct goodix_ts_cmd send_small_cfg_cmd;
-
 	struct device *dev;
 };
 
@@ -347,11 +363,16 @@ struct goodix_ts_hw_ops {
 			 unsigned char *data, unsigned int len);
 	int (*write)(struct goodix_ts_device *dev, unsigned int addr,
 			unsigned char *data, unsigned int len);
-	int (*send_cmd)(struct goodix_ts_device *dev, struct goodix_ts_cmd *cmd);
+	int (*read_trans)(struct goodix_ts_device *dev, unsigned int addr,
+			 unsigned char *data, unsigned int len);
+	int (*write_trans)(struct goodix_ts_device *dev, unsigned int addr,
+			unsigned char *data, unsigned int len);
+	int (*send_cmd)(struct goodix_ts_device *dev,
+			struct goodix_ts_cmd *cmd);
 	int (*send_config)(struct goodix_ts_device *dev,
 			struct goodix_ts_config *config);
 	int (*read_config)(struct goodix_ts_device *dev,
-						   u8 *config_data, u32 config_len);
+			u8 *config_data, u32 config_len);
 	int (*read_version)(struct goodix_ts_device *dev,
 			struct goodix_ts_version *version);
 	int (*event_handler)(struct goodix_ts_device *dev,
@@ -390,7 +411,6 @@ struct goodix_ts_esd {
  * @irq: irq number
  * @irq_enabled: irq enabled/disabled flag
  * @suspended: suspend/resume flag
- * @hw_err: indicate that hw_ops->init() failed
  * @ts_notifier: generic notifier
  * @ts_esd: esd protector structure
  * @fb_notifier: framebuffer notifier
@@ -415,7 +435,6 @@ struct goodix_ts_core {
 
 	atomic_t irq_enabled;
 	atomic_t suspended;
-	bool hw_err;
 
 	bool cfg_group_parsed;
 
@@ -443,27 +462,27 @@ struct goodix_ext_module;
 /* external module's operations callback */
 struct goodix_ext_module_funcs {
 	int (*init)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 	int (*exit)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 
 	int (*before_reset)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 	int (*after_reset)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 
 	int (*before_suspend)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 	int (*after_suspend)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 
 	int (*before_resume)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 	int (*after_resume)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 
 	int (*irq_event)(struct goodix_ts_core *core_data,
-						struct goodix_ext_module *module);
+		struct goodix_ext_module *module);
 };
 
 /*
@@ -508,7 +527,7 @@ struct goodix_ext_attribute {
 /* external attrs helper macro, used to define external attrs */
 #define DEFINE_EXTMOD_ATTR(_name, _mode, _show, _store)	\
 static struct goodix_ext_attribute ext_attr_##_name = \
-	__EXTMOD_ATTR(_name, _mode, _show, _store);
+	__EXTMOD_ATTR(_name, _mode, _show, _store)
 
 /*
  * get board data pointer
@@ -610,7 +629,7 @@ static inline u32 checksum_be32(u8 *data, u32 size)
  *	2. you want the flow of this event continue, in
  *	this condition, you should return EVT_HANDLED in
  *	the callback function.
- * */
+ */
 #define EVT_HANDLED				0
 #define EVT_CONTINUE			0
 #define EVT_CANCEL				1
@@ -633,11 +652,15 @@ static inline u32 checksum_be32(u8 *data, u32 size)
 
 #define CONFIG_GOODIX_DEBUG
 /* log macro */
-#define ts_info(fmt, arg...)	pr_info("[GTP-INF][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
-#define	ts_err(fmt, arg...)		pr_err("[GTP-ERR][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
-#define boot_log(fmt, arg...)	g_info(fmt, ##arg)
+#define ts_info(fmt, arg...)	\
+		pr_info("[GTP-INF][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
+#define	ts_err(fmt, arg...)		\
+		pr_err("[GTP-ERR][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
+#define boot_log(fmt, arg...)	\
+		g_info(fmt, ##arg)
 #ifdef CONFIG_GOODIX_DEBUG
-#define ts_debug(fmt, arg...)	pr_info("[GTP-DBG][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
+#define ts_debug(fmt, arg...)	\
+		pr_info("[GTP-DBG][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
 #else
 #define ts_debug(fmt, arg...)	do {} while (0)
 #endif
@@ -682,7 +705,7 @@ int goodix_ts_blocking_notify(enum ts_notify_event evt, void *v);
  *  * goodix_ts_power_on - Turn on power to the touch device
  *   * @core_data: pointer to touch core data
  *    * return: 0 ok, <0 failed
- *     */
+ */
 int goodix_ts_power_on(struct goodix_ts_core *core_data);
 
 /**
