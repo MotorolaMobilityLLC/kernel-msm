@@ -257,10 +257,14 @@
 &pm6150_charger {
 	io-channels = <&pm6150_vadc ADC_USB_IN_V_16>,
 		      <&pm6150_vadc ADC_USB_IN_I>,
-		      <&pm6150_vadc ADC_CHG_TEMP>;
+		      <&pm6150_vadc ADC_CHG_TEMP>,
+		      <&pm6150_vadc ADC_VPH_PWR>,
+		      <&pm6150_vadc ADC_MID_CHG_DIV6>;
 	io-channel-names = "usb_in_voltage",
 			   "usb_in_current",
-			   "chg_temp";
+			   "chg_temp",
+			   "vph_voltage",
+			   "dcin_v";
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,iterm-ma = <175>;
 	qcom,fcc-max-ua = <3600000>;
