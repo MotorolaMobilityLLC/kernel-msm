@@ -144,6 +144,11 @@
 	};
 };
 
+&pm8953_l10 {
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+};
+
 &i2c_2 {
 	status = "okay";
 	sx933x@28 {
