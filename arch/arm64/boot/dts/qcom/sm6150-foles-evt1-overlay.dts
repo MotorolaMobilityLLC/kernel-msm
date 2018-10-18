@@ -27,3 +27,14 @@
 &dsi_smd_639_1080x2340_cmd_display {
 	qcom,dsi-display-active;
 };
+
+&lpi_tlmm {
+	marley_reset_default: marley_reset_default {
+		config {
+			pins = "gpio24";
+			output-high;
+			bias-pull-up;
+			drive-strength = <16>;
+		};
+	};
+};
