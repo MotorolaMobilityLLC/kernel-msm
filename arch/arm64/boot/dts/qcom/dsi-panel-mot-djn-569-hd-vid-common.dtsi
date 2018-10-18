@@ -21,7 +21,7 @@ qcom,mdss-pan-physical-width-dimension = <64>;
 qcom,mdss-pan-physical-height-dimension = <128>;
 qcom,mdss-dsi-panel-width = <720>;
 qcom,mdss-dsi-panel-height = <1512>;
-qcom,mdss-dsi-h-front-porch = <280>;
+qcom,mdss-dsi-h-front-porch = <220>;
 qcom,mdss-dsi-h-back-porch = <72>;
 qcom,mdss-dsi-h-pulse-width = <12>;
 qcom,mdss-dsi-h-sync-skew = <0>;
@@ -43,6 +43,7 @@ qcom,mdss-dsi-on-command = [
 			29 01 00 00 00 00 02 09 00
 			29 01 00 00 00 00 02 FF 24
 			29 01 00 00 00 00 02 FB 01
+			29 01 00 00 00 00 02 5E 11
 			29 01 00 00 00 00 02 3B 8C
 			29 01 00 00 00 00 02 5B 8C
 			29 01 00 00 00 00 02 FF 25
@@ -92,7 +93,6 @@ qcom,mdss-dsi-hbm-type = "lcd-dcs-gpio";
 
 qcom,mdss-dsi-h-sync-pulse = <0>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
-qcom,mdss-dsi-hfp-power-mode;
 qcom,mdss-dsi-bllp-eof-power-mode;
 qcom,mdss-dsi-bllp-power-mode;
 qcom,mdss-dsi-lane-0-state;
@@ -100,13 +100,13 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 qcom,mdss-dsi-panel-timings-phy-v2 = [
-	20 1c 06 07 03 03 04 a0
-	20 1c 06 07 03 03 04 a0
-	20 1c 06 07 03 03 04 a0
-	20 1c 06 07 03 03 04 a0
-	20 13 05 06 03 03 04 a0];
+	20 1d 05 07 03 03 04 a0
+	20 1d 05 07 03 03 04 a0
+	20 1d 05 07 03 03 04 a0
+	20 1d 05 07 03 03 04 a0
+	20 11 05 06 03 03 04 a0];
 qcom,mdss-dsi-t-clk-post = <0x0b>;
-qcom,mdss-dsi-t-clk-pre = <0x24>;
+qcom,mdss-dsi-t-clk-pre = <0x23>;
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <255>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
