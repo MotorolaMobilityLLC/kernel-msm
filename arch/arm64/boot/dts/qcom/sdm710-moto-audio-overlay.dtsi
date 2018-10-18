@@ -183,7 +183,9 @@
 			"IN2AL", "MICBIAS2A",
 			"IN1AL", "MICBIAS2B",
 			"IN2R",  "MICBIAS2C",
-			"IN1AR", "MICBIAS2D";
+			"IN1AR", "MICBIAS2D",
+			"IN1BR",  "MICBIAS1A",
+			"IN1BR", "MICBIAS1B";
 
 		asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
 		asoc-codec-names = "msm-stub-codec.1",
