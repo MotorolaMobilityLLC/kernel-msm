@@ -648,6 +648,13 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		}
 		task_unlock(selected);
 		trace_lowmemory_kill(selected, cache_size, cache_limit, free);
+		for (i = array_size-1; i >= 0; i--) {
+			if (selected_oom_score_adj >= lowmem_adj[i]){
+				/* update minfree count offset */
+				minfree_count_offset = i;
+				break;
+			}
+		}
 		lowmem_per_minfree_count[minfree_count_offset]++;
 		lowmem_print(1, "Killing '%s' (%d) (tgid %d), adj %hd,\n"
 			"to free %ldkB on behalf of '%s' (%d) because\n"
