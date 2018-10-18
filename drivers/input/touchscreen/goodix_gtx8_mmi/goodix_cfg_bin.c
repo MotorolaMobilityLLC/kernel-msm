@@ -1,7 +1,11 @@
 #include "goodix_cfg_bin.h"
 
-extern int goodix_i2c_write(struct goodix_ts_device *dev, unsigned int reg, unsigned char *data, unsigned int len);
-extern int goodix_i2c_read(struct goodix_ts_device *dev, unsigned int reg, unsigned char *data, unsigned int len);
+
+int goodix_i2c_write(struct goodix_ts_device *dev,
+	unsigned int reg, unsigned char *data, unsigned int len);
+int goodix_i2c_read(struct goodix_ts_device *dev,
+	unsigned int reg, unsigned char *data, unsigned int len);
+int goodix_hw_reset(struct goodix_ts_device *dev);
 extern struct goodix_module goodix_modules;
 
 int goodix_start_cfg_bin(struct goodix_ts_core *ts_core)
@@ -9,7 +13,7 @@ int goodix_start_cfg_bin(struct goodix_ts_core *ts_core)
 	struct task_struct *cfg_bin_thrd;
 	/* create and run update thread */
 	cfg_bin_thrd = kthread_run(goodix_cfg_bin_proc,
-							ts_core, "goodix-parse_cfg_bin");
+			ts_core, "goodix-parse_cfg_bin");
 	if (IS_ERR_OR_NULL(cfg_bin_thrd)) {
 		ts_err("Failed to create update thread:%ld",
 				PTR_ERR(cfg_bin_thrd));
@@ -18,14 +22,16 @@ int goodix_start_cfg_bin(struct goodix_ts_core *ts_core)
 	return 0;
 }
 
-
 int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin)
 {
 	u8 checksum;
 	int i, r;
 	u16 offset1, offset2;
-	if (!cfg_bin->bin_data || cfg_bin->bin_data_len == 0) {
-		ts_err("NO cfg_bin data, cfg_bin data length:%d", cfg_bin->bin_data_len);
+
+	if (!cfg_bin->bin_data ||
+			cfg_bin->bin_data_len == 0) {
+		ts_err("NO cfg_bin data, cfg_bin data length:%d",
+				cfg_bin->bin_data_len);
 		r = -EINVAL;
 		goto exit;
 	}
@@ -36,7 +42,8 @@ int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin)
 		r = -EINVAL;
 		goto exit;
 	}
-	memcpy(&cfg_bin->head, cfg_bin->bin_data, sizeof(struct goodix_cfg_bin_head));
+	memcpy(&cfg_bin->head, cfg_bin->bin_data,
+			sizeof(struct goodix_cfg_bin_head));
 	cfg_bin->head.bin_len = le32_to_cpu(cfg_bin->head.bin_len);
 
 
@@ -50,9 +57,9 @@ int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin)
 
 	/*check cfg_bin valid*/
 	checksum = 0;
-	for (i = 5; i < cfg_bin->bin_data_len; i++) {
+	for (i = 5; i < cfg_bin->bin_data_len; i++)
 		checksum += cfg_bin->bin_data[i];
-	}
+
 	if (checksum != cfg_bin->head.checksum) {
 		ts_err("cfg_bin checksum ERROR, checksum in cfg_bin:0x%02x, checksum caculate:0x%02x",
 				cfg_bin->head.checksum, checksum);
@@ -61,9 +68,10 @@ int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin)
 	}
 
 	/*allocate memory for cfg packages*/
-	cfg_bin->cfg_pkgs = kzalloc(sizeof(struct goodix_cfg_package) * cfg_bin->head.pkg_num, GFP_KERNEL);
+	cfg_bin->cfg_pkgs = kzalloc(sizeof(struct goodix_cfg_package)
+			* cfg_bin->head.pkg_num, GFP_KERNEL);
 	if (!cfg_bin->cfg_pkgs) {
-		ts_err("cfg_pkgs, allocate memory ERROR");
+		/*ts_err("cfg_pkgs, allocate memory ERROR");*/
 		r = -ENOMEM;
 		goto exit;
 	}
@@ -71,19 +79,27 @@ int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin)
 	for (i = 0; i < cfg_bin->head.pkg_num; i++) {
 		/*get cfg pkg length*/
 		if (i == cfg_bin->head.pkg_num - 1) {
-			offset1 = cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2] +
-				(cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 1] << 8);
+			offset1 =
+			cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2] +
+			(cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 1]
+			<< 8);
 
-			cfg_bin->cfg_pkgs[i].pkg_len = cfg_bin->bin_data_len - offset1;
+			cfg_bin->cfg_pkgs[i].pkg_len =
+				cfg_bin->bin_data_len - offset1;
 		} else {
-			offset1 = cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2] +
-				(cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 1] << 8);
+			offset1 =
+			cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2] +
+			(cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 1]
+			<< 8);
 
-			offset2 = cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 2] +
-				(cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 3] << 8);
+			offset2 =
+			cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 2] +
+			(cfg_bin->bin_data[TS_CFG_BIN_HEAD_LEN + i * 2 + 3]
+			<< 8);
 
 			if (offset2 <= offset1) {
-				ts_err("offset error,pkg:%d, offset1:%d, offset2:%d", i, offset1, offset2);
+				ts_err("offset error,pkg:%d, offset1:%d, offset2:%d",
+				i, offset1, offset2);
 				r = -EINVAL;
 				goto exit;
 			}
@@ -95,47 +111,70 @@ int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin)
 				&cfg_bin->bin_data[offset1],
 				TS_PKG_CONST_INFO_LEN);
 		memcpy(&cfg_bin->cfg_pkgs[i].reg_info,
-				&cfg_bin->bin_data[offset1 + TS_PKG_CONST_INFO_LEN],
+				&cfg_bin->bin_data
+				[offset1 + TS_PKG_CONST_INFO_LEN],
 				TS_PKG_REG_INFO_LEN);
 		/*compatible little edition and big edition*/
 		goodix_cfg_pkg_leToCpu(&cfg_bin->cfg_pkgs[i]);
 
 		/*get configuration data*/
-		cfg_bin->cfg_pkgs[i].cfg = &cfg_bin->bin_data[offset1 + TS_PKG_HEAD_LEN];
+		cfg_bin->cfg_pkgs[i].cfg =
+		&cfg_bin->bin_data[offset1 + TS_PKG_HEAD_LEN];
 	}
-	cfg_bin->cfg_pkgs[i].reg_info.coor.addr = 0x4100;
+
 	/*debug, print pkg information*/
 	for (i = 0; i < cfg_bin->head.pkg_num; i++) {
 		ts_info("---------------------------------------------");
 		ts_info("------package:%d------", i + 1);
-		ts_info("package len:%04x", cfg_bin->cfg_pkgs[i].cnst_info.pkg_len);
-		ts_info("package ic_type:%s", cfg_bin->cfg_pkgs[i].cnst_info.ic_type);
-		ts_info("package cfg_type:%01x", cfg_bin->cfg_pkgs[i].cnst_info.cfg_type);
-		ts_info("package sensor_id:%01x", cfg_bin->cfg_pkgs[i].cnst_info.sensor_id);
-		ts_info("package hw_pid:%s", cfg_bin->cfg_pkgs[i].cnst_info.hw_pid);
-		ts_info("package hw_vid:%s", cfg_bin->cfg_pkgs[i].cnst_info.hw_vid);
-		ts_info("package fw_mask_version:%s", cfg_bin->cfg_pkgs[i].cnst_info.fw_mask);
-		ts_info("package fw_patch_version:%s", cfg_bin->cfg_pkgs[i].cnst_info.fw_patch);
-		ts_info("package x_res_offset:%02x", cfg_bin->cfg_pkgs[i].cnst_info.x_res_offset);
-		ts_info("package y_res_offset:%02x", cfg_bin->cfg_pkgs[i].cnst_info.y_res_offset);
-		ts_info("package trigger_offset:%02x", cfg_bin->cfg_pkgs[i].cnst_info.trigger_offset);
+		ts_info("package len:%04x",
+			cfg_bin->cfg_pkgs[i].cnst_info.pkg_len);
+		ts_info("package ic_type:%s",
+			cfg_bin->cfg_pkgs[i].cnst_info.ic_type);
+		ts_info("package cfg_type:%01x",
+			cfg_bin->cfg_pkgs[i].cnst_info.cfg_type);
+		ts_info("package sensor_id:%01x",
+			cfg_bin->cfg_pkgs[i].cnst_info.sensor_id);
+		ts_info("package hw_pid:%s",
+			cfg_bin->cfg_pkgs[i].cnst_info.hw_pid);
+		ts_info("package hw_vid:%s",
+			cfg_bin->cfg_pkgs[i].cnst_info.hw_vid);
+		ts_info("package fw_mask_version:%s",
+			cfg_bin->cfg_pkgs[i].cnst_info.fw_mask);
+		ts_info("package fw_patch_version:%s",
+			cfg_bin->cfg_pkgs[i].cnst_info.fw_patch);
+		ts_info("package x_res_offset:%02x",
+			cfg_bin->cfg_pkgs[i].cnst_info.x_res_offset);
+		ts_info("package y_res_offset:%02x",
+			cfg_bin->cfg_pkgs[i].cnst_info.y_res_offset);
+		ts_info("package trigger_offset:%02x",
+			cfg_bin->cfg_pkgs[i].cnst_info.trigger_offset);
 
 		ts_info("");
-		ts_info("send_cfg_flag reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.cfg_send_flag.addr);
+		ts_info("send_cfg_flag reg:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.cfg_send_flag.addr);
 		ts_info("version base reg:%02x, len:%d",
-				cfg_bin->cfg_pkgs[i].reg_info.version_base.addr,
-				cfg_bin->cfg_pkgs[i].reg_info.version_base.reserved1);
+			cfg_bin->cfg_pkgs[i].reg_info.version_base.addr,
+			cfg_bin->cfg_pkgs[i].reg_info.version_base.reserved1);
 		ts_info("pid reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.pid.addr);
 		ts_info("vid reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.vid.addr);
-		ts_info("sensor_id reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.sensor_id.addr);
-		ts_info("fw_status reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.fw_status.addr);
-		ts_info("cfg_addr reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.cfg_addr.addr);
-		ts_info("esd reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.esd.addr);
-		ts_info("command reg:%02x", cfg_bin->cfg_pkgs[i].reg_info.command.addr);
-		ts_info("coor:%02x", cfg_bin->cfg_pkgs[i].reg_info.coor.addr);
-		ts_info("gesture:%02x", cfg_bin->cfg_pkgs[i].reg_info.gesture.addr);
-		ts_info("fw_request:%02x", cfg_bin->cfg_pkgs[i].reg_info.fw_request.addr);
-		ts_info("proximity:%02x", cfg_bin->cfg_pkgs[i].reg_info.proximity.addr);
+		ts_info("sensor_id reg:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.sensor_id.addr);
+		ts_info("fw_status reg:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.fw_status.addr);
+		ts_info("cfg_addr reg:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.cfg_addr.addr);
+		ts_info("esd reg:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.esd.addr);
+		ts_info("command reg:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.command.addr);
+		ts_info("coor:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.coor.addr);
+		ts_info("gesture:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.gesture.addr);
+		ts_info("fw_request:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.fw_request.addr);
+		ts_info("proximity:%02x",
+			cfg_bin->cfg_pkgs[i].reg_info.proximity.addr);
 
 		ts_info("--------------------------------------------");
 	}
@@ -154,7 +193,7 @@ int goodix_cfg_bin_proc(void *data)
 	struct goodix_cfg_bin *cfg_bin = kzalloc(sizeof(struct goodix_cfg_bin),
 							GFP_KERNEL);
 	if (!cfg_bin) {
-		ts_err("Failed to alloc memory for cfg_bin");
+		/*ts_err("Failed to alloc memory for cfg_bin");*/
 		r = -ENOMEM;
 		goto exit;
 	}
@@ -173,6 +212,10 @@ int goodix_cfg_bin_proc(void *data)
 		goto exit;
 	}
 
+	/*init i2c_set_doze_mode para*/
+	ts_dev->doze_mode_set_count = 0;
+	mutex_init(&ts_dev->doze_mode_lock);
+
 	/*get register address and configuration from cfg bin*/
 	r = goodix_get_reg_and_cfg(ts_dev, cfg_bin);
 	if (!r) {
@@ -189,7 +232,7 @@ int goodix_cfg_bin_proc(void *data)
 			goto exit;
 		}
 	}
-	ts_dev->reg.coor = 0x4100;
+
 	/*debug*/
 	ts_info("@@@@@@@@@");
 	ts_info("cfg_send_flag:0x%04x", ts_dev->reg.cfg_send_flag);
@@ -226,10 +269,11 @@ int goodix_cfg_bin_proc(void *data)
 	core_data->cfg_group_parsed = true;
 
 	/* inform the external module manager that
-	 * touch core layer is ready now */
+	 * touch core layer is ready now
+	 */
 	goodix_modules.core_data = core_data;
 	goodix_modules.core_exit = false;
-	complete_all(&goodix_modules.core_comp);
+	/*complete_all(&goodix_modules.core_comp);*/
 
 #ifdef CONFIG_FB
 	core_data->fb_notifier.notifier_call = goodix_ts_fb_notifier_callback;
@@ -252,19 +296,20 @@ int goodix_cfg_bin_proc(void *data)
 exit:
 	complete_all(&goodix_modules.core_comp);
 
-	if (cfg_bin->cfg_pkgs) {
+	/*if (cfg_bin->cfg_pkgs) {*/
 		kfree(cfg_bin->cfg_pkgs);
 		cfg_bin->cfg_pkgs = NULL;
-	}
+	/*}*/
 
-	if (cfg_bin->bin_data) {
+	/*if (cfg_bin->bin_data) {*/
 		kfree(cfg_bin->bin_data);
 		cfg_bin->bin_data = NULL;
-	}
+	/*}*/
 	return r;
 }
 
-int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bin *cfg_bin)
+int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev,
+	struct goodix_cfg_bin *cfg_bin)
 {
 	int i;
 	u16 addr;
@@ -274,38 +319,66 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 	u8 temp_fw_mask[9] = {0x00};
 	u8 temp_pid[8] = {0x00};
 	int r = -EINVAL;
+
 	normal_pkg = NULL;
 	high_sense_pkg = NULL;
 
 	if (!cfg_bin->head.pkg_num || !cfg_bin->cfg_pkgs) {
-		ts_err("there is none cfg package, pkg_num:%d", cfg_bin->head.pkg_num);
+		ts_err("there is none cfg package, pkg_num:%d",
+			cfg_bin->head.pkg_num);
 		r = -EINVAL;
 		goto exit;
 	}
 
 	/*select suitable cfg packages*/
 	for (i = 0; i < cfg_bin->head.pkg_num; i++) {
+		/*get ic type*/
+		if (!strncmp(cfg_bin->cfg_pkgs[i].cnst_info.ic_type, "nanjing",
+			sizeof(cfg_bin->cfg_pkgs[i].cnst_info.ic_type)))
+			ts_dev->ic_type = IC_TYPE_NANJING;
+		else if (!strncmp(cfg_bin->cfg_pkgs[i].cnst_info.ic_type,
+			"normandy",
+			sizeof(cfg_bin->cfg_pkgs[i].cnst_info.ic_type)))
+			ts_dev->ic_type = IC_TYPE_NORMANDY;
+		else
+			ts_err("get ic type FAILED, unknow ic type from cfg_bin:%s",
+					cfg_bin->cfg_pkgs[i].cnst_info.ic_type);
+
+
+		ts_info("ic_type:%d", ts_dev->ic_type);
+		/*reset IC*/
+		r = goodix_hw_reset(ts_dev);
+
 		/*contrast sensor id*/
 		addr = cfg_bin->cfg_pkgs[i].reg_info.sensor_id.addr;
 		if (!addr) {
 			ts_info("pkg:%d, sensor_id reg is NULL", i);
 			continue;
 		}
+
 		r = goodix_i2c_read(ts_dev, addr,
 				&temp_sensor_id, 1);
+
 		if (r < 0) {
-			ts_err("read sensor id FAILED,I2C ERROR, pkg:%d, sensor_id reg:0x%02x", i, addr);
+			ts_err(
+			"read sensor id FAILED,I2C ERROR, pkg:%d, sensor_id reg:0x%02x",
+			i, addr);
 			goto exit;
 		} else {
 			/*sensor.reserved1 is a mask, if it's not ZERO, use it*/
-			if (cfg_bin->cfg_pkgs[i].reg_info.sensor_id.reserved1 != 0)
-				temp_sensor_id &= cfg_bin->cfg_pkgs[i].reg_info.sensor_id.reserved1;
+			if (cfg_bin->cfg_pkgs[i].reg_info.sensor_id.reserved1
+				!= 0)
+				temp_sensor_id &=
+				cfg_bin->
+				cfg_pkgs[i].reg_info.sensor_id.reserved1;
 
-			if (temp_sensor_id != cfg_bin->cfg_pkgs[i].cnst_info.sensor_id) {
-				ts_err("pkg:%d, sensor id contrast FAILED, reg:0x%02x,\
-						sensor_id from i2c:%d, sensor_id of cfg bin:%d",
-						i, addr, temp_sensor_id,
-						cfg_bin->cfg_pkgs[i].cnst_info.sensor_id);
+			if (temp_sensor_id !=
+				cfg_bin->cfg_pkgs[i].cnst_info.sensor_id) {
+				ts_err("pkg:%d, sensor id contrast FAILED, reg:0x%02x",
+				i, addr);
+				ts_err("sensor_id from i2c:%d, sensor_id of cfg bin:%d",
+				temp_sensor_id,
+				cfg_bin->cfg_pkgs[i].cnst_info.sensor_id);
 				continue;
 			}
 		}
@@ -315,16 +388,21 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 		if (!addr || !cfg_bin->cfg_pkgs[i].cnst_info.fw_mask[0]) {
 			ts_err("pkg:%d, fw_mask of cfg bin is NULL, Skip!!", i);
 		} else {
-			r = goodix_i2c_read(ts_dev, addr, temp_fw_mask, sizeof(temp_fw_mask));
+			r = goodix_i2c_read(ts_dev, addr,
+				temp_fw_mask, sizeof(temp_fw_mask));
 			if (r < 0) {
-				ts_err("read fw_mask FAILED, I2C ERROR, pkg: %d, fw_mask reg:0x%02x", i, addr);
+				ts_err(
+					"read fw_mask FAILED, I2C ERROR, pkg: %d, fw_mask reg:0x%02x",
+					i, addr);
 				goto exit;
-			} else if (strncmp(temp_fw_mask, cfg_bin->cfg_pkgs[i].cnst_info.fw_mask,
-						sizeof(temp_fw_mask))) {
-				ts_err("pkg:%d, fw_mask contrast FAILED, reg:0x%02x,\
-						mask from i2c:%s, mask of cfg bin:%s",
-						i, addr, temp_fw_mask,
-						cfg_bin->cfg_pkgs[i].cnst_info.fw_mask);
+			} else if (strncmp(temp_fw_mask,
+					cfg_bin->cfg_pkgs[i].cnst_info.fw_mask,
+					sizeof(temp_fw_mask))) {
+				ts_err("pkg:%d, fw_mask contrast FAILED, reg:0x%02x,",
+					i, addr);
+				ts_err("mask from i2c:%s, mask of cfg bin:%s",
+					temp_fw_mask,
+					cfg_bin->cfg_pkgs[i].cnst_info.fw_mask);
 				continue;
 			}
 		}
@@ -337,19 +415,24 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 			continue;
 		}
 		if (read_len <= 0 || read_len > 8) {
-			ts_err("pkg:%d, hw_pid length ERROR, len:%d", i, read_len);
+			ts_err("pkg:%d, hw_pid length ERROR, len:%d",
+			i, read_len);
 			continue;
 		}
 		r = goodix_i2c_read(ts_dev, addr, temp_pid, read_len);
 		if (r < 0) {
-			ts_err("read pid FAILED, I2C ERROR, pkg: %d, pid reg:0x%02x", i, addr);
+			ts_err("read pid FAILED, I2C ERROR, pkg: %d, pid reg:0x%02x",
+			i, addr);
 			goto exit;
-		} else if (strncmp(temp_pid, cfg_bin->cfg_pkgs[i].cnst_info.hw_pid, read_len)) {
-				ts_err("pkg:%d, pid contrast FAILED, reg:0x%02x,\
-						pid from i2c:%s, pid of cfg bin:%s",
-						i, addr, temp_pid,
-						cfg_bin->cfg_pkgs[i].cnst_info.hw_pid);
-				continue;
+		} else if (strncmp(temp_pid,
+					cfg_bin->cfg_pkgs[i].cnst_info.hw_pid,
+					read_len)) {
+			ts_err("pkg:%d, pid contrast FAILED, reg:0x%02x",
+				i, addr);
+			ts_err("pid from i2c:%s, pid of cfg bin:%s",
+				temp_pid,
+				cfg_bin->cfg_pkgs[i].cnst_info.hw_pid);
+			continue;
 		}
 
 		/*contrast success, cfg_type*/
@@ -367,6 +450,7 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 	/*get register address from normal_pkg*/
 	if (!normal_pkg) {
 		ts_err("ERROR, none suitable normal_pkg exist in cfg_bin");
+		/*ts_dev->ic_type = IC_TYPE_NONE;*/
 		r = -EINVAL;
 		goto exit;
 	} else {
@@ -382,10 +466,13 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 					normal_pkg->cnst_info.ic_type);
 
 		/*get register info*/
-		ts_dev->reg.cfg_send_flag = normal_pkg->reg_info.cfg_send_flag.addr;
+		ts_dev->reg.cfg_send_flag =
+			normal_pkg->reg_info.cfg_send_flag.addr;
 
-		ts_dev->reg.version_base = normal_pkg->reg_info.version_base.addr;
-		ts_dev->reg.version_len = normal_pkg->reg_info.version_base.reserved1;
+		ts_dev->reg.version_base =
+			normal_pkg->reg_info.version_base.addr;
+		ts_dev->reg.version_len =
+			normal_pkg->reg_info.version_base.reserved1;
 
 		ts_dev->reg.pid = normal_pkg->reg_info.pid.addr;
 		ts_dev->reg.pid_len = normal_pkg->reg_info.pid.reserved1;
@@ -394,7 +481,8 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 		ts_dev->reg.vid_len = normal_pkg->reg_info.vid.reserved1;
 
 		ts_dev->reg.sensor_id = normal_pkg->reg_info.sensor_id.addr;
-		ts_dev->reg.sensor_id_mask = normal_pkg->reg_info.sensor_id.reserved1;
+		ts_dev->reg.sensor_id_mask =
+			normal_pkg->reg_info.sensor_id.reserved1;
 
 		ts_dev->reg.fw_mask = normal_pkg->reg_info.fw_mask.addr;
 		ts_dev->reg.fw_status = normal_pkg->reg_info.fw_status.addr;
@@ -412,9 +500,9 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 		ts_info("normal cfg is found!");
 		if (!ts_dev->normal_cfg) {
 			ts_dev->normal_cfg = devm_kzalloc(ts_dev->dev,
-					sizeof(*ts_dev->normal_cfg), GFP_KERNEL);
+				sizeof(*ts_dev->normal_cfg), GFP_KERNEL);
 			if (!ts_dev->normal_cfg) {
-				ts_err("Failed to alloc memory for normal cfg");
+			/*ts_err("Failed to alloc memory for normal cfg");*/
 				return -ENOMEM;
 			}
 			mutex_init(&ts_dev->normal_cfg->lock);
@@ -431,9 +519,11 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 		ts_info("high sense cfg is found!");
 		if (!ts_dev->highsense_cfg) {
 			ts_dev->highsense_cfg = devm_kzalloc(ts_dev->dev,
-					sizeof(*ts_dev->highsense_cfg), GFP_KERNEL);
+				sizeof(*ts_dev->highsense_cfg), GFP_KERNEL);
 			if (!ts_dev->highsense_cfg) {
-				ts_err("Failed to alloc memory for high sense cfg");
+				/*ts_err(
+				 *"Failed to alloc memory for high sense cfg");
+				 */
 				return -ENOMEM;
 			}
 			mutex_init(&ts_dev->highsense_cfg->lock);
@@ -467,10 +557,12 @@ int goodix_read_cfg_bin(struct device *dev, struct goodix_cfg_bin *cfg_bin)
 	for (i = 0; i < 2; i++) {
 		r = request_firmware(&firmware, cfg_bin_name, dev);
 		if (r < 0) {
-			ts_err("Cfg_bin image [%s] not available,error:%d, try_times:%d", cfg_bin_name, r, i + 1);
-			msleep(1000);
+			ts_err("Cfg_bin image [%s] not available,error:%d, try_times:%d",
+				cfg_bin_name, r, i + 1);
+			msleep(GTP_1000_DLY_MS);
 		} else {
-			ts_info("Cfg_bin image [%s] is ready, try_times:%d", cfg_bin_name, i + 1);
+			ts_info("Cfg_bin image [%s] is ready, try_times:%d",
+				cfg_bin_name, i + 1);
 			break;
 		}
 	}
@@ -480,7 +572,8 @@ int goodix_read_cfg_bin(struct device *dev, struct goodix_cfg_bin *cfg_bin)
 	}
 
 	if (firmware->size <= 0) {
-		ts_err("request_firmware, cfg_bin length ERROR,len:%zu", firmware->size);
+		ts_err("request_firmware, cfg_bin length ERROR,len:%zu",
+			firmware->size);
 		r = -EINVAL;
 		goto exit;
 	}
@@ -489,7 +582,7 @@ int goodix_read_cfg_bin(struct device *dev, struct goodix_cfg_bin *cfg_bin)
 	/*allocate memory for cfg_bin->bin_data*/
 	cfg_bin->bin_data = kzalloc(cfg_bin->bin_data_len, GFP_KERNEL);
 	if (!cfg_bin->bin_data) {
-		ts_err("Allocate memory for cfg_bin->bin_data FAILED");
+		/*ts_err("Allocate memory for cfg_bin->bin_data FAILED");*/
 		r = -ENOMEM;
 	}
 	memcpy(cfg_bin->bin_data, firmware->data, cfg_bin->bin_data_len);
@@ -503,7 +596,8 @@ exit:
 	return r;
 }
 
-int goodix_read_cfg_bin_from_dts(struct device_node *node, struct goodix_cfg_bin *cfg_bin)
+int goodix_read_cfg_bin_from_dts(struct device_node *node,
+	struct goodix_cfg_bin *cfg_bin)
 {
 	unsigned int len = 0;
 	struct property *prop = NULL;
@@ -518,7 +612,7 @@ int goodix_read_cfg_bin_from_dts(struct device_node *node, struct goodix_cfg_bin
 	/*allocate memory for cfg_bin->bin_data*/
 	cfg_bin->bin_data = kzalloc(cfg_bin->bin_data_len, GFP_KERNEL);
 	if (!cfg_bin->bin_data) {
-		ts_err("Allocate memory for cfg_bin->bin_data FAILED");
+		/*ts_err("Allocate memory for cfg_bin->bin_data FAILED");*/
 		return -ENOMEM;
 	}
 	memcpy(cfg_bin->bin_data, prop->value, cfg_bin->bin_data_len);
@@ -534,21 +628,34 @@ void goodix_cfg_pkg_leToCpu(struct goodix_cfg_package *pkg)
 	}
 	/*package const_info*/
 	pkg->cnst_info.pkg_len = le32_to_cpu(pkg->cnst_info.pkg_len);
-	pkg->cnst_info.x_res_offset = le16_to_cpu(pkg->cnst_info.x_res_offset);
-	pkg->cnst_info.y_res_offset = le16_to_cpu(pkg->cnst_info.y_res_offset);
-	pkg->cnst_info.trigger_offset = le16_to_cpu(pkg->cnst_info.trigger_offset);
+	pkg->cnst_info.x_res_offset =
+		le16_to_cpu(pkg->cnst_info.x_res_offset);
+	pkg->cnst_info.y_res_offset =
+		le16_to_cpu(pkg->cnst_info.y_res_offset);
+	pkg->cnst_info.trigger_offset =
+		le16_to_cpu(pkg->cnst_info.trigger_offset);
 
 	/*package reg_info*/
-	pkg->reg_info.cfg_send_flag.addr = le16_to_cpu(pkg->reg_info.cfg_send_flag.addr);
+	pkg->reg_info.cfg_send_flag.addr =
+		le16_to_cpu(pkg->reg_info.cfg_send_flag.addr);
 	pkg->reg_info.pid.addr = le16_to_cpu(pkg->reg_info.pid.addr);
 	pkg->reg_info.vid.addr = le16_to_cpu(pkg->reg_info.vid.addr);
-	pkg->reg_info.sensor_id.addr = le16_to_cpu(pkg->reg_info.sensor_id.addr);
-	pkg->reg_info.fw_status.addr = le16_to_cpu(pkg->reg_info.fw_status.addr);
-	pkg->reg_info.cfg_addr.addr = le16_to_cpu(pkg->reg_info.cfg_addr.addr);
-	pkg->reg_info.esd.addr = le16_to_cpu(pkg->reg_info.esd.addr);
-	pkg->reg_info.command.addr = le16_to_cpu(pkg->reg_info.command.addr);
-	pkg->reg_info.coor.addr = le16_to_cpu(pkg->reg_info.coor.addr);
-	pkg->reg_info.gesture.addr = le16_to_cpu(pkg->reg_info.gesture.addr);
-	pkg->reg_info.fw_request.addr = le16_to_cpu(pkg->reg_info.fw_request.addr);
-	pkg->reg_info.proximity.addr = le16_to_cpu(pkg->reg_info.proximity.addr);
+	pkg->reg_info.sensor_id.addr =
+		le16_to_cpu(pkg->reg_info.sensor_id.addr);
+	pkg->reg_info.fw_status.addr =
+		le16_to_cpu(pkg->reg_info.fw_status.addr);
+	pkg->reg_info.cfg_addr.addr =
+		le16_to_cpu(pkg->reg_info.cfg_addr.addr);
+	pkg->reg_info.esd.addr =
+		le16_to_cpu(pkg->reg_info.esd.addr);
+	pkg->reg_info.command.addr =
+		le16_to_cpu(pkg->reg_info.command.addr);
+	pkg->reg_info.coor.addr =
+		le16_to_cpu(pkg->reg_info.coor.addr);
+	pkg->reg_info.gesture.addr =
+		le16_to_cpu(pkg->reg_info.gesture.addr);
+	pkg->reg_info.fw_request.addr =
+		le16_to_cpu(pkg->reg_info.fw_request.addr);
+	pkg->reg_info.proximity.addr =
+		le16_to_cpu(pkg->reg_info.proximity.addr);
 }
