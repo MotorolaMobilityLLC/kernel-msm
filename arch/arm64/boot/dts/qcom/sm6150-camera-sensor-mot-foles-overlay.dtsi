@@ -41,13 +41,35 @@
 		gpio = <&pcal_pin 4 0>;
 	};
 
+	camera_afvdd: gpio-regulator@5 {
+		compatible = "regulator-fixed";
+		regulator-name = "camera_afvdd";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		regulator-enable-ramp-delay = <135>;
+		enable-active-high;
+		gpio = <&pcal_pin 8 0>;
+	};
 };
+
 &cam_cci {
 	qcom,cam-res-mgr {
 		compatible = "qcom,cam-res-mgr";
 		status = "ok";
 	};
 
+	actuator_rear: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		cci-master = <0>;
+		cam_vaf-supply = <&camera_afvdd>;
+		regulator-names = "cam_vaf";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <2800000>;
+		rgltr-max-voltage = <2800000>;
+		rgltr-load-current = <0>;
+	};
 
 	qcom,cam-sensor@0 {
 		cell-index = <0>;
@@ -58,6 +80,7 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
 		led-flash-src = <&led_flash_rear>;
+		actuator-src = <&actuator_rear>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_avdd>;
 		cam_vdig-supply = <&camera_dvdd>;
