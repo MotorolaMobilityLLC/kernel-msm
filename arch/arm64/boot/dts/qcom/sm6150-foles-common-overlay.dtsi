@@ -14,6 +14,7 @@
 #include "sm6150-audio-overlay.dtsi"
 #include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
 #include "sm6150-foles-mods.dtsi"
+#include "sm6150-foles-audio-overlay.dtsi"
 
 &pm6150_l18 {
 	regulator-boot-on;
@@ -727,4 +728,13 @@
 
 &usb0{
 	mmi,ext-typec-switch;
+};
+
+&spmi_bus {
+	qcom,pm6150@0 {
+		pm6150_clkdiv: clock-controller@5b00 {
+			compatible = "qcom,spmi-clkdiv";
+			assigned-clock-rates = <2400000>;
+		};
+	};
 };
