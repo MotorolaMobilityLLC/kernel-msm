@@ -681,6 +681,8 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_input_current_settled(chg, val);
 		switch (chg->real_charger_type) {
 		case POWER_SUPPLY_TYPE_USB_CDP:
+			val->intval = max(CDP_CURRENT_UA, val->intval);
+			break;
 		case POWER_SUPPLY_TYPE_USB_DCP:
 			val->intval = max(DCP_CURRENT_UA, val->intval);
 			break;
