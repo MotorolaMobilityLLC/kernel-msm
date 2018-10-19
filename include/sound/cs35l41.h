@@ -71,7 +71,6 @@ struct cs35l41_private {
 	struct gpio_desc *reset_gpio;
 	struct completion global_pup_done;
 	struct completion global_pdn_done;
-	struct completion mbox_cmd;
 };
 
 int cs35l41_probe(struct cs35l41_private *cs35l41,
