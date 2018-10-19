@@ -256,8 +256,9 @@ static bool cs35l41_is_csplmboxsts_correct(enum cs35l41_cspl_mboxcmd cmd,
 static int cs35l41_set_csplmboxcmd(struct cs35l41_private *cs35l41,
 				   enum cs35l41_cspl_mboxcmd cmd)
 {
-	int		ret;
-	unsigned int	sts;
+	int		ret = 0;
+	unsigned int	sts, i;
+	bool		ack = false;
 
 	/* Reset DSP sticky bit */
 	regmap_write(cs35l41->regmap, CS35L41_IRQ2_STATUS2,
@@ -270,26 +271,33 @@ static int cs35l41_set_csplmboxcmd(struct cs35l41_private *cs35l41,
 	/*
 	 * Set mailbox cmd
 	 */
-	reinit_completion(&cs35l41->mbox_cmd);
+
 	/* Unmask DSP INT */
 	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ2_MASK2,
 			   1 << CS35L41_CSPL_MBOX_CMD_DRV_SHIFT, 0);
-	/* Unmask AP INT */
-	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ1_MASK2,
-			   1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT, 0);
 	regmap_write(cs35l41->regmap, CS35L41_CSPL_MBOX_CMD_DRV, cmd);
-	ret = wait_for_completion_timeout(&cs35l41->mbox_cmd,
-					  msecs_to_jiffies(CS35L41_MBOXWAIT));
-	if (ret == 0) {
+
+	/* Poll for DSP ACK */
+	for (i = 0; i < 5; i++) {
+		usleep_range(1000, 1010);
+		regmap_read(cs35l41->regmap, CS35L41_IRQ1_STATUS2, &sts);
+		if (sts & (1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT)) {
+			dev_dbg(cs35l41->dev,
+				"%u: Received ACK in EINT for mbox cmd (%d)\n",
+				i, cmd);
+			regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS2,
+			     1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT);
+			ack = true;
+			break;
+		}
+	}
+
+	if (!ack) {
 		dev_err(cs35l41->dev,
 			"Timout waiting for DSP to set mbox cmd\n");
 		ret = -ETIMEDOUT;
 	}
 
-	/* Mask AP INT */
-	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ1_MASK2,
-			   1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT,
-			   1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT);
 	/* Mask DSP INT */
 	regmap_update_bits(cs35l41->regmap, CS35L41_IRQ2_MASK2,
 			   1 << CS35L41_CSPL_MBOX_CMD_DRV_SHIFT,
@@ -644,12 +652,6 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 	if (!(status[0] & ~masks[0]) && !(status[1] & ~masks[1]) &&
 		!(status[2] & ~masks[2]) && !(status[3] & ~masks[3]))
 		return IRQ_NONE;
-
-	if (status[1] & (1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT)) {
-		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS2,
-			     1 << CS35L41_CSPL_MBOX_CMD_FW_SHIFT);
-		complete(&cs35l41->mbox_cmd);
-	}
 
 	if (status[0] & CS35L41_PUP_DONE_MASK) {
 		regmap_write(cs35l41->regmap, CS35L41_IRQ1_STATUS1,
@@ -1928,8 +1930,6 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 
 	init_completion(&cs35l41->global_pdn_done);
 	init_completion(&cs35l41->global_pup_done);
-
-	init_completion(&cs35l41->mbox_cmd);
 
 	ret = devm_request_threaded_irq(cs35l41->dev, cs35l41->irq, NULL,
 				cs35l41_irq, IRQF_ONESHOT | irq_pol,
