@@ -6825,6 +6825,10 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 	int rc, wireless_vout = 0, wls_set = 0;
 	int sec_charger;
 
+	if (!chg->wls_psy) {
+		return IRQ_HANDLED;
+	}
+
 	rc = smblib_get_prop_vph_voltage_now(chg, &pval);
 	if (rc < 0)
 		return IRQ_HANDLED;
