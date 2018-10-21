@@ -2134,6 +2134,10 @@ static int ngd_slim_runtime_suspend(struct device *device)
 	struct platform_device *pdev = to_platform_device(device);
 	struct msm_slim_ctrl *dev = platform_get_drvdata(pdev);
 	int ret = 0;
+/* MMI_STOPSHIP <audio>: workaround for FC slimbus issue,
+ * will revert this change after find the root caues
+ */
+	return ret;
 
 	mutex_lock(&dev->tx_lock);
 	if (dev->qmi.handle != NULL) {
