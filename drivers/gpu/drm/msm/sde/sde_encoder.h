@@ -153,6 +153,13 @@ void sde_encoder_trigger_kickoff_pending(struct drm_encoder *encoder);
 bool sde_encoder_is_primary(struct drm_encoder *encoder);
 
 /**
+ * sde_encoder_set_pp_config_height - Change the PP_SYNC_CONFIG_HEIGHT for
+ *				motUtil's TE test
+ */
+int sde_encoder_set_pp_config_height(struct drm_encoder *drm_enc, bool enable,
+					u32 *prev_height);
+
+/**
  * sde_encoder_kickoff - trigger a double buffer flip of the ctl path
  *	(i.e. ctl flush and start) immediately.
  * @encoder:	encoder pointer

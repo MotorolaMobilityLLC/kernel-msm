@@ -142,6 +142,12 @@ struct sde_hw_pingpong_ops {
 	 * Obtain current vertical line counter
 	 */
 	u32 (*get_line_count)(struct sde_hw_pingpong *pp);
+
+	/**
+	 * Change pp_sync_config_height for TeTest
+	 */
+	int (*change_config_height)(struct sde_hw_pingpong *pp, bool enable,
+				u32 new_height, u32 *prev_height);
 };
 
 struct sde_hw_pingpong {
