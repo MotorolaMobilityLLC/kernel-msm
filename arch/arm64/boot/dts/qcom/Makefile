@@ -6,6 +6,7 @@ endif
 
 # Motorola Device Trees
 dtbo-$(CONFIG_ARCH_SDM670) += \
+		sdm710-olson-dvt3-overlay.dtbo \
 		sdm670-olson-dvt2-overlay.dtbo \
 		sdm710-olson-dvt1-overlay.dtbo \
 		sdm710-monmouth-evt1-overlay.dtbo
@@ -13,6 +14,7 @@ dtbo-$(CONFIG_ARCH_SDM670) += \
 sdm710-monmouth-evt1-overlay.dtbo-base := sdm710-moto-base.dtb
 sdm710-olson-dvt1-overlay.dtbo-base := sdm710-moto-base.dtb
 sdm670-olson-dvt2-overlay.dtbo-base := sdm670-moto-base.dtb
+sdm710-olson-dvt3-overlay.dtbo-base := sdm710-moto-base.dtb
 else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb msm8916-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
