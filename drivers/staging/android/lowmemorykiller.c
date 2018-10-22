@@ -60,6 +60,12 @@
 #define CREATE_TRACE_POINTS
 #include "trace/lowmemorykiller.h"
 
+#ifdef CONFIG_HIGHMEM
+/* to enable lowmemorykiller tune */
+static int enable_tune = 0;
+module_param_named(enable_tune, enable_tune, int, 0644);
+#endif
+
 /* to enable lowmemorykiller */
 static int enable_lmk = 1;
 module_param_named(enable_lmk, enable_lmk, int,
@@ -449,6 +455,10 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 						total_swapcache_pages();
 	else
 		other_file = 0;
+
+#ifdef CONFIG_HIGHMEM
+	if (enable_tune)
+#endif
 
 	tune_lmk_param(&other_free, &other_file, sc);
 
