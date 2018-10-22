@@ -919,9 +919,13 @@ static ssize_t oom_adj_write(struct file *file, const char __user *buf,
 		  current->comm, task_pid_nr(current), task_pid_nr(task),
 		  task_pid_nr(task));
 
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
 	delete_from_adj_tree(task);
+#endif
 	task->signal->oom_score_adj = oom_adj;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
 	add_2_adj_tree(task);
+#endif
 	trace_oom_score_adj_update(task);
 err_sighand:
 	unlock_task_sighand(task, &flags);
@@ -1007,9 +1011,13 @@ static ssize_t oom_score_adj_write(struct file *file, const char __user *buf,
 		goto err_sighand;
 	}
 
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
 	delete_from_adj_tree(task);
+#endif
 	task->signal->oom_score_adj = (short)oom_score_adj;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
 	add_2_adj_tree(task);
+#endif
 
 	if (has_capability_noaudit(current, CAP_SYS_RESOURCE))
 		task->signal->oom_score_adj_min = (short)oom_score_adj;
