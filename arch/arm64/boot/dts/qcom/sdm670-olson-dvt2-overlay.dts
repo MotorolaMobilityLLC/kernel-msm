@@ -25,47 +25,6 @@
 /*
  * Olson HW rev DVT2 specific changes go here
  */
-&qupv3_se4_i2c {
-	ldc2114@2a {
-		configs {
-			config-ver = <2>;
-			config-normal {
-				config-data = [
-					0C 11 /*EN*/
-					0E 17 /*GAIN0*/
-					0F 01 /*LP_SCAN_RATE*/
-					13 07 /*LP_BASE_INC*/
-					15 07 /*NP_BASE_INC*/
-					16 10 /*BTPAUSE_MAXWIN*/
-					20 29 /*SENSOR0_CFG*/
-					28 00 /*FTF1_2*/
-				];
-			};
-		};
-	};
-};
-
-&qupv3_se10_i2c {
-	ldc2114@2a {
-		configs {
-			config-ver = <2>;
-			config-normal {
-				config-data = [
-					0C 30 /*EN*/
-					0E 13 /*GAIN0*/
-					0F 01 /*LP_SCAN_RATE*/
-					10 13 /*GAIN1*/
-					13 07 /*LP_BASE_INC*/
-					15 07 /*NP_BASE_INC*/
-					16 33 /*BTPAUSE_MAXWIN*/
-					20 59 /*SENSOR0_CFG*/
-					22 59 /*SENSOR1_CFG*/
-				];
-			};
-		};
-	};
-};
-
 &soc {
 	dsi_auo_139_480x480_cmd_dvt1_display: qcom,dsi-display@22 {
 		compatible = "qcom,dsi-display";
