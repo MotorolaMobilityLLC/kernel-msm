@@ -365,13 +365,21 @@ static int ktd3136_backlight_init(struct ktd3136_data *drvdata)
 	ktd3136_ramp_setting(drvdata);
 	ktd3136_transition_ramp(drvdata);
 	ktd3136_read_reg(drvdata->client, REG_CONTROL, &value);
-	ktd3136_masked_write(drvdata->client, REG_MODE, 0xf8, drvdata->full_scale_led);
 	pr_debug("read control register -before--<0x%x> -after--<0x%x> \n",
 					update_value, value);
+
+	return err;
+}
+
+static int ktd3136_backlight_enable(struct ktd3136_data *drvdata)
+{
+	int err = 0;
+	ktd3136_masked_write(drvdata->client, REG_MODE, 0xf8, drvdata->full_scale_led);
 	drvdata->enable = true;
 
 	return err;
 }
+
 static int ktd3136_check_id(struct ktd3136_data *drvdata)
 {
 	u8 value=0;
@@ -397,6 +405,7 @@ static void ktd3136_check_status(struct ktd3136_data *drvdata)
 			ktd3136_hwen_pin_ctrl(drvdata, 0);
 			ktd3136_hwen_pin_ctrl(drvdata, 1);
 			ktd3136_backlight_init(drvdata);
+			ktd3136_backlight_enable(drvdata);
 		}
 
 	}
@@ -405,6 +414,8 @@ static void ktd3136_check_status(struct ktd3136_data *drvdata)
 
 void ktd3136_set_brightness(struct ktd3136_data *drvdata, int brt_val)
 {
+	if (drvdata->enable == false)
+		ktd3136_backlight_init(drvdata);
 
 	pr_debug("brt_val is %d \n", brt_val);
 	if (brt_val>0) {
@@ -413,16 +424,15 @@ void ktd3136_set_brightness(struct ktd3136_data *drvdata, int brt_val)
 		ktd3136_masked_write(drvdata->client, REG_MODE, 0x01, 0x00); //disable bl mode
 	}
 	if (drvdata->using_lsb) {
-			ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, brt_val);
-			ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, brt_val>>3);
-		} else {
-			ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, ktd3136_brightness_table_reg4[brt_val]);
-			ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, ktd3136_brightness_table_reg5[brt_val]);
-		}
+		ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, brt_val);
+		ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, brt_val>>3);
+	} else {
+		ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, ktd3136_brightness_table_reg4[brt_val]);
+		ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, ktd3136_brightness_table_reg5[brt_val]);
+	}
 
 	if (drvdata->enable == false)
-		ktd3136_backlight_init(drvdata);
-
+		ktd3136_backlight_enable(drvdata);
 
 	drvdata->brightness = brt_val;
 
@@ -631,6 +641,7 @@ static int ktd3136_probe(struct i2c_client *client,
 	}
 	ktd3136_gpio_init(drvdata);
 	ktd3136_backlight_init(drvdata);
+	ktd3136_backlight_enable(drvdata);
 	ktd3136_check_status(drvdata);
 
 	return 0;
