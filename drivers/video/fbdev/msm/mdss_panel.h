@@ -810,6 +810,7 @@ struct mdss_panel_info {
 	char panel_family_name[MDSS_MAX_PANEL_LEN];
 	u32 panel_ver;
 	char panel_supplier[8];
+	char panel_vendor_id[16];
 	struct mdss_mdp_pp_tear_check te;
 
 	/*
