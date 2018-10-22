@@ -349,6 +349,7 @@ static int msm_crus_se_enable_get(struct snd_kcontrol *kcontrol,
 static int msm_crus_se_usecase(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
+	int ret = 0;
 	struct crus_rx_run_case_ctrl_t case_ctrl;
 	const int crus_set = ucontrol->value.integer.value[0];
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -362,18 +363,17 @@ static int msm_crus_se_usecase(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
-	if (cirrus_se_usecase != crus_se_usecase_dt_index[crus_set]) {
+	case_ctrl.status_l = 0;
+	case_ctrl.status_r = 0;
+	case_ctrl.atemp = 0;
+	case_ctrl.value = crus_se_usecase_dt_index[crus_set];
+
+	ret = crus_set_param(cirrus_ff_port, CIRRUS_SE,
+			     CRUS_PARAM_RX_SET_USECASE, sizeof(case_ctrl),
+			     (void *)&case_ctrl);
+
+	if (ret == 0)
 		cirrus_se_usecase = crus_se_usecase_dt_index[crus_set];
-
-		case_ctrl.status_l = 0;
-		case_ctrl.status_r = 0;
-		case_ctrl.atemp = 0;
-		case_ctrl.value = cirrus_se_usecase;
-
-		crus_set_param(cirrus_ff_port, CIRRUS_SE,
-			       CRUS_PARAM_RX_SET_USECASE, sizeof(case_ctrl),
-			       (void *)&case_ctrl);
-	}
 
 	return 0;
 }
@@ -388,9 +388,10 @@ static int msm_crus_se_usecase_get(struct snd_kcontrol *kcontrol,
 	crus_get_param(cirrus_ff_port, CIRRUS_SE, CRUS_PARAM_RX_GET_USECASE,
 			   sizeof(struct crus_single_data_t), (void *)&crus_usecase);
 
+	pr_debug("Usecase from qdsp returned as %d\n", crus_usecase.value);
 
-	if (crus_usecase.value == 0) {
-		/* QDSP/LPASS default */
+	if (crus_usecase.value < 0) {
+		/* QDSP/LPASS default, module isn't running */
 		ucontrol->value.integer.value[0] = 0;
 	} else {
 		ucontrol->value.integer.value[0] =
