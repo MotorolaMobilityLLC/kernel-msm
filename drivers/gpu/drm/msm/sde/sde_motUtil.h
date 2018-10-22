@@ -35,6 +35,7 @@
  * - Usage:                                                                  *
  *   - 1st byte will indicate which motUtil test will be run.                *
  *           0x00 = dispUtil, 0x01 = TeTest, 0x02 = kmsPropTest              *
+ * --------------------------------------------------------------------------*
  *   - dispUtil:                                                             *
  *     1st byte: 0x00: dispUtil                                              *
  *     2nd byte: 0x00: primary panel and 0x01: Secondary panel               *
@@ -55,22 +56,31 @@
  *       - This will send MIPI read cmd "0xa" to the panel.                  *
  *     cat motUtil                                                           *
  *       - number of reading bytes from previous command or errno if it fails*
+ *---------------------------------------------------------------------------*
  *  - TeTest:                                                                *
  *    1st byte: TeTest                                                       *
  *    2nd byte: 0x00: Primary panel and 0x01: Secondary panel                *
- *    3rd byte: 0x00: Disable TE  and 0x01: Enable TE                        *
+ *    3rd byte: 0x00: Disable TE, 0x01: Enable TE                            *
+ *              0x02: Start TeTest, 0x03 End TeTest                          *
  *    - Example:                                                             *
+ *      echo "0x01 0x00 0x02" > motUtil                                      *
+ *        - This STARTs the TeTest which will change pp_sync_config_height   *
+ *          and enable the DSI clks                                          *
  *      echo "0x01 0x00 0x01" > motUtil                                      *
  *        - This will run the "TE enable testcase"                           *
  *      cat motUtil                                                          *
  *        - This will return number of TE signal the MDSS receive from panel *
  *      cat motUtil                                                          *
- *        - This will return the NEW number of TE signel                     *
+ *        - This will return the NEW number of TE signal                     *
  *      echo "0x01 0x00 0x00" > motUtil                                      *
  *        - This will run the "TE disable testcase"                          *
  *      cat motUtil                                                          *
  *        - This will return number of TE signal the MDSS receive from panel *
  *          which will not change before the "TE disable testcase"           *
+ *      echo "0x01 0x00 0x03" > motUtil                                      *
+ *        - This ENDs the TeTest which will change pp_sync_config_height back*
+ *          and disable the DSI clks                                         *
+ *---------------------------------------------------------------------------*
  *  - kmsPropTest                                                            *
  *    1st byte: kmsPropTest                                                  *
  *    2nd byte: 0x00: primary panel and 0x01: Secondary panel                *
@@ -119,7 +129,14 @@ enum sde_motUtil_disp_cmd {
 enum sde_motUtil_teTest_cmd {
 	TETEST_TYPE,
 	TETEST_PANEL_TYPE,
-	TETEST_TE_ENABLE,
+	TETEST_TE_TEST_TYPE,
+};
+
+enum sde_motutil_teTest_type {
+	TETEST_TE_ENABLE = 0,
+	TETEST_TE_DISABLE,
+	TETEST_TE_TEST_START,
+	TETEST_TE_TEST_END,
 };
 
 enum sde_motUtil_kmsPropTest_cmd {
