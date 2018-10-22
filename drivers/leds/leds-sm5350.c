@@ -170,6 +170,9 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 	int index = 0, remainder;
 	int code, code1, code2;
 
+	if (drvdata->enable == false)
+		sm5350_init_registers(drvdata);
+
 	if (drvdata->brt_code_enable) {
 		index = brt_val / 10;
 		remainder = brt_val % 10;
@@ -193,10 +196,6 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 		sm5350_write_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_LSB_REG, brt_LSB);
 		sm5350_write_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_MSB_REG, brt_MSB);
 	}
-
-	if (drvdata->enable == false)
-		sm5350_init_registers(drvdata);
-
 
 	drvdata->brightness = brt_val;
 
