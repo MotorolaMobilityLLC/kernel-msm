@@ -3125,6 +3125,16 @@ static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
 				np->name, &pt->timing);
 	}
 
+	data = of_get_property(np, "qcom,mdss-dsi-panel-vendor-id", NULL);
+	if (!data)
+		memset(pinfo->panel_vendor_id, '\0',
+			sizeof(pinfo->panel_vendor_id));
+	else if (strlcpy(pinfo->panel_vendor_id, data,
+			sizeof(pinfo->panel_vendor_id)) >=
+				sizeof(pinfo->panel_vendor_id)) {
+		pr_err("%s: Panel vendor id too large\n", __func__);
+	}
+
 	return 0;
 }
 
