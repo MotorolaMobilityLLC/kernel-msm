@@ -467,6 +467,21 @@
 		gpios = <&tlmm 13 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&ldc2112_default>;
+		configs {
+			config-ver = <3>;
+			config-normal {
+				config-data = [
+					0C 11 /*EN*/
+					0E 17 /*GAIN0*/
+					0F 01 /*LP_SCAN_RATE*/
+					13 07 /*LP_BASE_INC*/
+					15 07 /*NP_BASE_INC*/
+					16 10 /*BTPAUSE_MAXWIN*/
+					20 29 /*SENSOR0_CFG*/
+					28 00 /*FTF1_2*/
+				];
+			};
+		};
 	};
 
 	aw869x_haptic@5a {
@@ -687,6 +702,22 @@
 		gpios = <&tlmm 16 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&ldc2114_default>;
+		configs {
+			config-ver = <3>;
+			config-normal {
+				config-data = [
+					0C 33 /*EN*/
+					0E 13 /*GAIN0*/
+					0F 01 /*LP_SCAN_RATE*/
+					10 13 /*GAIN1*/
+					13 07 /*LP_BASE_INC*/
+					15 07 /*NP_BASE_INC*/
+					16 33 /*BTPAUSE_MAXWIN*/
+					20 59 /*SENSOR0_CFG*/
+					22 59 /*SENSOR1_CFG*/
+				];
+			};
+		};
 	};
 
 	cs35l41@40 {
