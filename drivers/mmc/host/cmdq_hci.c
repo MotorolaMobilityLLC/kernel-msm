@@ -1100,7 +1100,7 @@ skip_cqterri:
 		/* read CQTCN and complete the request */
 		comp_status = cmdq_readl(cq_host, CQTCN);
 		if (!comp_status)
-			goto out;
+			goto hac;
 		/*
 		 * The CQTCN must be cleared before notifying req completion
 		 * to upper layers to avoid missing completion notification
@@ -1127,7 +1127,7 @@ skip_cqterri:
 			}
 		}
 	}
-
+hac:
 	if (status & CQIS_HAC) {
 		if (cq_host->ops->post_cqe_halt)
 			cq_host->ops->post_cqe_halt(mmc);
@@ -1138,7 +1138,7 @@ skip_cqterri:
 		complete(&cq_host->halt_comp);
 	}
 
-out:
+
 	return IRQ_HANDLED;
 }
 EXPORT_SYMBOL(cmdq_irq);
