@@ -91,4 +91,6 @@ void goodix_cfg_pkg_leToCpu(struct goodix_cfg_package *pkg);
 
 int goodix_start_cfg_bin(struct goodix_ts_core *ts_core);
 
+void goodix_release_fb_notifier(struct goodix_ts_core *core_data);
+
 #endif
