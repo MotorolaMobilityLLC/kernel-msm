@@ -84,11 +84,11 @@
 		ktd,hwen-gpio = <&pm8953_gpios 4 0>;
 		ktd,using-lsb;
 		ktd,pwm-frequency = <100>;
-		ktd,bl-fscal-led = <0x98>;/*default 20.2mA*/
-		ktd,turn-on-ramp = <0>; /* Should add ms value, please check datasheet*/
-		ktd,turn-off-ramp = <0>;  /* Should add ms value, please check datasheet*/
-		ktd,pwm-trans-dim = <0>;  /* Should add ms value, please check datasheet*/
-		ktd,i2c-trans-dim = <0>;  /* Should add ms value, please check datasheet*/
+		ktd,bl-fscal-led = <0xC9>;/*default 25mA*/
+		ktd,turn-on-ramp = <8>; /* Should add ms value, please check datasheet*/
+		ktd,turn-off-ramp = <8>;  /* Should add ms value, please check datasheet*/
+		ktd,pwm-trans-dim = <4>;  /* Should add ms value, please check datasheet*/
+		ktd,i2c-trans-dim = <256>;  /* Should add ms value, please check datasheet*/
 		ktd,bl-channel = <3>;
 		ktd,ovp-level = <32>; /*default 32v*/
 		ktd,switching-frequency = <1000>; /*default 1000kHz*/
