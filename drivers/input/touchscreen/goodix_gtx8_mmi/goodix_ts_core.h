@@ -44,7 +44,9 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
-#ifdef CONFIG_FB
+#ifdef CONFIG_DRM
+#include <linux/msm_drm_notify.h>
+#elif defined(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
 #endif
@@ -139,6 +141,7 @@ struct goodix_ts_board_data {
 	unsigned int reset_gpio;
 	unsigned int irq_gpio;
 	int irq;
+	int ctrl_dsi;
 	unsigned int  irq_flags;
 
 	unsigned int power_on_delay_us;
