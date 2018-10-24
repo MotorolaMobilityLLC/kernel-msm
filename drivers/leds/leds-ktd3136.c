@@ -352,10 +352,10 @@ static int ktd3136_backlight_init(struct ktd3136_data *drvdata)
 	u8 value;
 	u8 update_value;
 	update_value = (drvdata->ovp_level == 32) ? 0x20 : 0x00;
-	(drvdata->induct_current == 2600) ? update_value |=0x08 : update_value;
+	(drvdata->induct_current == 2600) ? update_value |=0x0E : update_value;
 	(drvdata->frequency == 1000) ? update_value |=0x40: update_value;
 
-	ktd3136_write_reg(drvdata->client, REG_CONTROL, update_value | 0x06); /* Linear default*/
+	ktd3136_write_reg(drvdata->client, REG_CONTROL, update_value);
 	ktd3136_bl_enable_channel(drvdata);
 		if (drvdata->pwm_mode) {
 			ktd3136_pwm_mode_enable(drvdata, true);
