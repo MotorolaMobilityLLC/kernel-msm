@@ -275,7 +275,14 @@ int goodix_cfg_bin_proc(void *data)
 	goodix_modules.core_exit = false;
 	/*complete_all(&goodix_modules.core_comp);*/
 
-#ifdef CONFIG_FB
+#ifdef CONFIG_DRM
+	core_data->fb_notifier.notifier_call = goodix_ts_fb_notifier_callback;
+	if (!msm_drm_register_client(&core_data->fb_notifier))
+		ts_info("registered DRM notifier");
+	else
+		ts_err("%s: Unable to register DRM notifier",
+				__func__);
+#elif defined(CONFIG_FB)
 	core_data->fb_notifier.notifier_call = goodix_ts_fb_notifier_callback;
 	if (fb_register_client(&core_data->fb_notifier))
 		ts_err("Failed to register fb notifier client:%d", r);
@@ -658,4 +665,13 @@ void goodix_cfg_pkg_leToCpu(struct goodix_cfg_package *pkg)
 		le16_to_cpu(pkg->reg_info.fw_request.addr);
 	pkg->reg_info.proximity.addr =
 		le16_to_cpu(pkg->reg_info.proximity.addr);
+}
+
+void goodix_release_fb_notifier(struct goodix_ts_core *core_data)
+{
+#if defined(CONFIG_DRM)
+	msm_drm_unregister_client(&core_data->fb_notifier);
+#elif defined(CONFIG_FB)
+	fb_unregister_client(&core_data->fb_notifier);
+#endif
 }

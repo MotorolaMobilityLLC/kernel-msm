@@ -26,11 +26,8 @@
 #include <linux/completion.h>
 #include <linux/debugfs.h>
 #include <linux/of_irq.h>
-#ifdef CONFIG_FB
 #include <linux/notifier.h>
 #include <linux/fb.h>
-#endif
-
 #include "goodix_ts_core.h"
 #include <linux/input/mt.h>
 #define INPUT_TYPE_B_PROTOCOL
@@ -42,7 +39,9 @@
 #define GT_VTG_MAX_UV		3000000
 #define GT_I2C_VTG_MIN_UV	1800000
 #define GT_I2C_VTG_MAX_UV	1800000
+
 int goodix_start_cfg_bin(struct goodix_ts_core *ts_core);
+void goodix_release_fb_notifier(struct goodix_ts_core *core_data);
 
 struct goodix_module goodix_modules;
 
@@ -1875,8 +1874,6 @@ static int goodix_ts_resume(struct goodix_ts_core *core_data)
 
 	goodix_ts_irq_enable(core_data, true);
 
-	goodix_ts_power_off(core_data);
-	goodix_ts_power_release(core_data);/*release power*/
 out:
 	/*
 	 * notify resume event, inform the esd protector
@@ -1887,7 +1884,37 @@ out:
 	return 0;
 }
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_DRM)
+int goodix_ts_fb_notifier_callback(struct notifier_block *self,
+		unsigned long event, void *data)
+{
+	struct goodix_ts_core *core_data =
+		container_of(self, struct goodix_ts_core, fb_notifier);
+	struct goodix_ts_board_data *ts_bdata = board_data(core_data);
+	struct msm_drm_notifier *evdata = data;
+
+	if (!evdata || (evdata->id != ts_bdata->ctrl_dsi))
+		return 0;
+
+	ts_info("Notifier's event = %ld", event);
+	if ((event == MSM_DRM_EARLY_EVENT_BLANK || event == MSM_DRM_EVENT_BLANK) &&
+			evdata && evdata->data && core_data) {
+		int *blank = evdata->data;
+		pr_debug("drm notification: event = %lu blank = %d\n", event, *blank);
+		if (event == MSM_DRM_EARLY_EVENT_BLANK) {
+			if (*blank != MSM_DRM_BLANK_POWERDOWN)
+				return 0;
+			ts_info("TP Suspend");
+			goodix_ts_suspend(core_data);
+		} else if (*blank == MSM_DRM_BLANK_UNBLANK) {
+			ts_info("TP Resume");
+			goodix_ts_resume(core_data);
+		}
+	}
+
+	return 0;
+}
+#elif defined(CONFIG_FB)
 /**
  * goodix_ts_fb_notifier_callback - Framebuffer notifier callback
  * Called by kernel during framebuffer blanck/unblank phrase
@@ -2111,9 +2138,10 @@ static int goodix_ts_remove(struct platform_device *pdev)
 	struct goodix_ts_core *core_data =
 		platform_get_drvdata(pdev);
 
-	goodix_ts_power_off(core_data);
 	goodix_debugfs_exit();
 	goodix_ts_sysfs_exit(core_data);
+
+	goodix_release_fb_notifier(core_data);
 
 	goodix_ts_power_off(core_data);
 	goodix_ts_power_release(core_data);
@@ -2122,7 +2150,7 @@ static int goodix_ts_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM
 static const struct dev_pm_ops dev_pm_ops = {
-#if !defined(CONFIG_FB) && !defined(CONFIG_HAS_EARLYSUSPEND)
+#if !defined(CONFIG_FB) && !defined(CONFIG_DRM) && !defined(CONFIG_HAS_EARLYSUSPEND)
 	.suspend = goodix_ts_pm_suspend,
 	.resume = goodix_ts_pm_resume,
 #endif
