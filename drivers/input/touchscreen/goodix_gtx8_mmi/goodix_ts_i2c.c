@@ -186,6 +186,10 @@ static int goodix_parse_dt(struct device_node *node,
 		return r;
 	}
 
+	r = of_property_read_u32(node, "goodix,control-dsi",
+		&board_data->ctrl_dsi);
+	if (!r)
+		ts_info("control DSI %d", board_data->ctrl_dsi);
 
 	/* key map */
 	prop = of_find_property(node, "goodix,panel-key-map", NULL);
