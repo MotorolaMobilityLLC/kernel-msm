@@ -1621,7 +1621,6 @@ static const struct snd_soc_dapm_route marley_dapm_routes[] = {
 	{ "DSP3 Preloader", NULL, "DSP3 Virtual Input" },
 	{ "DSP3 Virtual Input", "Shared Memory", "DSP2" },
 
-	{ "DSP1 Preloader", NULL, "DSP Virtual Input" },
 	{ "DSP1 Virtual Output", NULL, "DSP1 Virtual Output Mux" },
 	{ "DSP1 Virtual Output Mux", "DSP1", "DSP1" },
 	{ "DSP1 Virtual Output", NULL, "SYSCLK" },
