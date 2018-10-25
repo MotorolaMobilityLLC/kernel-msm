@@ -62,6 +62,12 @@
 #define CREATE_TRACE_POINTS
 #include "trace/lowmemorykiller.h"
 
+#ifdef CONFIG_HIGHMEM
+/* to enable lowmemorykiller tune */
+static int enable_tune = 0;
+module_param_named(enable_tune, enable_tune, int, 0644);
+#endif
+
 static uint32_t lowmem_debug_level = 1;
 static short lowmem_adj[6] = {
 	0,
@@ -448,6 +454,10 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		other_file = 0;
 
 	memset(zall, 0, sizeof(zall));
+
+#ifdef CONFIG_HIGHMEM
+	if (enable_tune)
+#endif
 	tune_lmk_param(&other_free, &other_file, sc, zall);
 
 	if (lowmem_adj_size < array_size)
