@@ -27,3 +27,14 @@
 &pm6150_adc_tm {
 	/delete-node/ io-channels;
 };
+
+&pm6150l_vadc {
+	/delete-node/ emmc_ufs_therm;
+	/delete-node/ rf_pa0_therm;
+};
+
+
+&pm6150l_adc_tm {
+	/delete-node/ emmc_ufs_therm;
+	/delete-node/ rf_pa0_therm;
+};
