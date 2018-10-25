@@ -314,7 +314,7 @@ int goodix_i2c_read_trans(struct goodix_ts_device *dev, unsigned int reg,
 	struct i2c_client *client = to_i2c_client(dev->dev);
 	unsigned int transfer_length = 0;
 	unsigned int pos = 0, address = reg;
-	unsigned char get_buf[64], addr_buf[2];
+	unsigned char get_buf[32], addr_buf[2];
 	int retry, r = 0;
 	struct i2c_msg msgs[] = {
 		{
@@ -389,7 +389,7 @@ int goodix_i2c_write_trans(struct goodix_ts_device *dev, unsigned int reg,
 	struct i2c_client *client = to_i2c_client(dev->dev);
 	unsigned int pos = 0, transfer_length = 0;
 	unsigned int address = reg;
-	unsigned char put_buf[64];
+	unsigned char put_buf[32];
 	int retry, r = 0;
 	struct i2c_msg msg = {
 			.addr = client->addr,
@@ -605,7 +605,7 @@ int goodix_i2c_write_trans_once(struct goodix_ts_device *dev, unsigned int reg,
 	struct i2c_client *client = to_i2c_client(dev->dev);
 	unsigned int pos = 0, transfer_length = 0;
 	unsigned int address = reg;
-	unsigned char put_buf[64];
+	unsigned char put_buf[32];
 	struct i2c_msg msg = {
 			.addr = client->addr,
 			.flags = !I2C_M_RD,
