@@ -637,9 +637,6 @@
 };
 
 &pm6150l_adc_tm {
-	io-channels = <&pm6150l_vadc ADC_AMUX_THM1_PU2>,
-			<&pm6150l_vadc ADC_AMUX_THM2_PU2>;
-
 	/* Channel nodes */
 	msm_therm {
 		reg = <ADC_AMUX_THM1_PU2>;
