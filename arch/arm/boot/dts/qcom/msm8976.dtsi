@@ -35,8 +35,6 @@
                                         dev = "/dev/block/platform/soc.0/7824900.sdhci/by-name/system";
                                         type = "ext4";
                                         mnt_flags = "ro,barrier=1,discard";
-					//MMI_STOPSHIP Disable system verity until it is supported
-                                        //fsmgr_flags = "wait,verify";
                                         fsmgr_flags = "wait";
                                         status = "ok";
                                 };
