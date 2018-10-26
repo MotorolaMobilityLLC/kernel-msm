@@ -446,6 +446,9 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 		case POWER_SUPPLY_TYPE_USB:
 			val->intval = min(SDP_CURRENT_UA, val->intval);
 			break;
+		case POWER_SUPPLY_TYPE_USB_PD:
+			val->intval = get_client_vote(chg->usb_icl_votable, PD_VOTER);
+			break;
 		default:
 			val->intval = 0;
 			break;
