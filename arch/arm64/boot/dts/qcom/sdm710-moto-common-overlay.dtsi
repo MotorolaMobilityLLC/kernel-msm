@@ -826,8 +826,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&moon_irq_default &moon_reset_default &usb_sw_sel_default &usb_aud_det_default>;
 
-		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
-		clock-names = "cdc_mclk2";
 		AVDD-supply = <&pm660_l13>;
 		DBVDD2-supply = <&pm660_l13>;
 		DBVDD3-supply = <&pm660_l13>;
