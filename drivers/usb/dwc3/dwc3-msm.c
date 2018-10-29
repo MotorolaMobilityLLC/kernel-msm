@@ -2617,7 +2617,7 @@ static void dwc3_pwr_event_handler(struct dwc3_msm *mdwc)
 	/* Clear L2 exit */
 	if (irq_stat & PWR_EVNT_LPM_OUT_L2_MASK) {
 		irq_stat &= ~PWR_EVNT_LPM_OUT_L2_MASK;
-		irq_stat |= PWR_EVNT_LPM_OUT_L2_MASK;
+		irq_clear |= PWR_EVNT_LPM_OUT_L2_MASK;
 	}
 
 	/* Handle exit from L1 events */
