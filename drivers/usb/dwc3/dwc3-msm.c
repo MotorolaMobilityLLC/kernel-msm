@@ -519,6 +519,7 @@ static void dwc3_mods_ssusb_path_enable(struct dwc3_msm *mdwc, bool enable)
 	struct modbus_ext_status status = {0, MODBUS_PROTO_USB_SS};
 
 	dbg_event(0xFF, "EXT SSUSB", enable);
+	pr_err("%s: Switch SS Path enable %d\n", __func__, enable ? 1 : 0);
 	status.active = enable;
 	mdwc->mod_ss_path = enable;
 	dwc->maximum_speed = enable ? USB_SPEED_SUPER: USB_SPEED_HIGH;
@@ -551,6 +552,10 @@ static void dwc3_extcon_restore(struct dwc3_msm *mdwc)
 static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	pr_err("%s: ext_enabled %d enable %d\n", __func__,
+	       mdwc->ext_enabled ? 1 : 0, enable ? 1 : 0);
+
 	if (mdwc->ext_enabled == enable)
 		return;
 
@@ -558,12 +563,9 @@ static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
 	if (mdwc->hs_phy)
 		mdwc->hs_phy->mods_usb_enabled = enable;
 
-	if (atomic_read(&dwc->in_lpm) && atomic_read(&mdwc->pm_suspended))
-		mdwc->resume_pending = true;
-
-	/* Resume the controller first */
-	queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
-	flush_workqueue(mdwc->dwc3_wq);
+	/* Resume the controller first on disable*/
+	if (!enable)
+		pm_runtime_get_sync(mdwc->dev);
 
 	dbg_event(0xFF, "EXT Enable", enable);
 	/* Enable/Disable the physical path next*/
@@ -609,6 +611,12 @@ static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
 	/* Trigger the USB SM change and wait for it to complete */
 	dwc3_ext_event_notify(mdwc);
 	flush_delayed_work(&mdwc->sm_work);
+
+	if (!enable) {
+		pm_runtime_mark_last_busy(mdwc->dev);
+		pm_runtime_put_sync_autosuspend(mdwc->dev);
+	}
+
 	dbg_event(0xFF, "EXT Hdlr\n", enable);
 }
 
