@@ -30,6 +30,11 @@
 		compatible = "mmi,mods-codec-shim";
 	};
 
+	mods_dp_bridge {
+		compatible = "mmi,mods-dp-bridge";
+		mmi,dp-sel-gpio = <&tlmm 40 1>;
+	};
+
 	muc: muc {
 		status = "okay";
 		compatible = "mmi,muc";
