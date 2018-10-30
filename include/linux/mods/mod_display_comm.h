@@ -44,10 +44,7 @@ struct mod_display_comm_data {
 	struct mod_display_comm_ops *ops;
 };
 
-/* MMI_STOPSHIP<use fake functions>: use it until mod display completed
- *	#ifdef CONFIG_MOD_DISPLAY
-*/
-#if 0
+#ifdef CONFIG_MOD_DISPLAY
 int mod_display_notification(enum mod_display_notification event);
 int mod_display_register_comm(struct mod_display_comm_data *comm);
 int mod_display_unregister_comm(struct mod_display_comm_data *comm);
