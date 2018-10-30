@@ -273,7 +273,6 @@
 
 		ice,gpio-reset = <&tlmm 36 0x0>;
 		ice,gpio-cdone = <&tlmm 100 0x0>;
-		ice,gpio-hpd = <&tlmm 103 0x0>;
 		ice,gpio-cs = <&tlmm 25 0x0>;
 		//ice,gpio-spi-sel = <&pm6150_gpios 3 0>;
 
