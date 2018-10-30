@@ -78,6 +78,25 @@
 	regulator-boot-on;
 };
 
+&inductive_volume_keys {
+	configs {
+		config-ver = <2>;
+		config-normal {
+			config-data = [
+				0C 33 /*EN*/
+				0E 13 /*GAIN0*/
+				0F 01 /*LP_SCAN_RATE*/
+				10 13 /*GAIN1*/
+				13 07 /*LP_BASE_INC*/
+				15 07 /*NP_BASE_INC*/
+				16 03 /*BTPAUSE_MAXWIN*/
+				20 59 /*SENSOR0_CFG*/
+				22 59 /*SENSOR1_CFG*/
+			];
+		};
+	};
+};
+
 /*
  * The CLI display of the DVT1 is a in-cell display which has one controller
  * to control both the display and touch, therefore the touch reset will

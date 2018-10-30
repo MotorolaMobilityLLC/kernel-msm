@@ -458,7 +458,7 @@
 
 &qupv3_se4_i2c { /* FIXME: LP4 Fan, Main Board FuelGauge, Base InductiveKeys, HapticDriver */
 	status = "okay";
-	ldc2114@2a {
+	inductive_power_key: ldc2114@2a {
 		status = "ok";
 		compatible = "ti,ldc2114";
 		reg = <0x2a>;
@@ -693,7 +693,7 @@
 		st,xtalkval = <0x9C4 0xFACD 0x0>;
 	};
 
-	ldc2114@2a {
+	inductive_volume_keys: ldc2114@2a {
 		status = "ok";
 		compatible = "ti,ldc2114";
 		reg = <0x2a>;
