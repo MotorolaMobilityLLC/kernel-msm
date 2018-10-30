@@ -100,6 +100,16 @@ int usbpd_send_svdm(struct usbpd *pd, u16 svid, u8 cmd,
 		const u32 *vdos, int num_vdos);
 
 /*
+ * Look for best match for PDO selection in Source Mode.
+ */
+int usbpd_select_pdo_match(struct usbpd *pd);
+
+/*
+ * Grab Data Role
+ */
+int usbpd_get_current_dr(struct usbpd *pd);
+
+/*
  * Get current status of CC pin orientation.
  *
  * Return: ORIENTATION_CC1 or ORIENTATION_CC2 if attached,
@@ -135,6 +145,19 @@ static inline int usbpd_send_vdm(struct usbpd *pd, u32 vdm_hdr, const u32 *vdos,
 static inline int usbpd_send_svdm(struct usbpd *pd, u16 svid, u8 cmd,
 		enum usbpd_svdm_cmd_type cmd_type, int obj_pos,
 		const u32 *vdos, int num_vdos)
+{
+	return -EINVAL;
+}
+
+/*
+ * Look for best match for PDO selection in Source Mode.
+ */
+static inline int usbpd_select_pdo_match(struct usbpd *pd)
+{
+	return -EINVAL;
+}
+
+static inline int usbpd_get_current_dr(struct usbpd *pd)
 {
 	return -EINVAL;
 }
