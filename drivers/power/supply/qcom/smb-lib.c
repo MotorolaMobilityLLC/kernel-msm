@@ -6976,6 +6976,8 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 #define REV_BST_THRESH 4700
 #define REV_BST_DROP 150
 #define REV_BST_MA -10
+#define REV_BST_BULK_DROP 100
+#define REV_BST_IUSB_MA 100
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -6988,6 +6990,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int eb_soc;
 	int batt_temp;
 	int usb_mv;
+	int usb_ma;
 	int dcin_mv;
 	u8 apsd_reg;
 	bool icl_override;
@@ -7163,6 +7166,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	if (prev_vbus_mv == -1)
 		prev_vbus_mv = usb_mv;
 
+	rc = smblib_get_prop_usb_current_now(chip, &val);
+	if (rc < 0) {
+		smblib_err(chip, "Error getting USB Current rc = %d\n", rc);
+		goto end_hb;
+	} else
+		usb_ma = val.intval / 1000;
+
 	rc = smblib_read(chip, APSD_RESULT_STATUS_REG, &apsd_reg);
 	if (rc < 0) {
 		smblib_err(chip, "Couldn't read APSD_RESULT_STATUS rc=%d\n",
@@ -7174,11 +7184,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		apsd_reg &= APSD_RESULT_STATUS_MASK;
 	}
 
-	smblib_dbg(chip, PR_MISC, "batt=%d mV, %d mA, %d C, USB= %d mV\n",
-		 batt_mv, batt_ma, batt_temp, usb_mv);
+	smblib_dbg(chip, PR_MISC, "batt=%dmV, %dmA, %dC, USB= %dmV, %dmA\n",
+		 batt_mv, batt_ma, batt_temp, usb_mv, usb_ma);
 
 	pok_irq = chip->irq_info[SWITCH_POWER_OK_IRQ].irq;
-	if (chip->reverse_boost || (batt_mv >= usb_mv && vbus_present)) {
+	if (chip->reverse_boost || (vbus_present && usb_ma < REV_BST_IUSB_MA
+	    && abs(usb_mv - batt_mv) < REV_BST_BULK_DROP)) {
 		if (((usb_mv < REV_BST_THRESH) &&
 		    ((prev_vbus_mv - REV_BST_DROP) > usb_mv)) ||
 		    (batt_ma > REV_BST_MA)) {
