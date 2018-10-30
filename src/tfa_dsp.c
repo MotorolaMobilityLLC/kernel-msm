@@ -7,6 +7,7 @@
  *
  */
 
+#include "dbgprint.h"
 #include "tfa_container.h"
 #include "tfa.h"
 #include "tfa98xx_tfafieldnames.h"
@@ -241,7 +242,7 @@ void tfa_set_query_info(struct tfa_device *tfa)
 	case 0: /* tfanone : non-i2c external DSP device */
 		/* e.g. qc adsp */
 		tfa->supportDrc = supportYes;
-		tfa->tfa_family = 2;
+		tfa->tfa_family = 0;
 		tfa->spkr_count = 0;
 		tfa->daimap = 0;
 		tfanone_ops(&tfa->dev_ops); /* register device operations via tfa hal*/
@@ -599,24 +600,6 @@ enum Tfa98xx_Error tfa98xx_set_osc_powerdown(struct tfa_device *tfa, int state)
 	return Tfa98xx_Error_Not_Implemented;
 }
 
-/* * Set manager state to operating state with coolflux disabled.
-*
-*
-*  @param[in] tfa device description structure
-*  @return Tfa98xx_Error_Ok when successfull, error otherwise.
-*/
-enum Tfa98xx_Error tfa98xx_set_calib_state(struct tfa_device *tfa) {
-	enum Tfa98xx_Error error = Tfa98xx_Error_Ok;
-	
-	(void)error;
-	if (tfa->dev_ops.set_calib_state) {
-		return tfa->dev_ops.set_calib_state(tfa);
-	}
-
-	return Tfa98xx_Error_Not_Implemented;
-
-}
-
 /** Check presence of powerswitch=1 in configuration and optimal setting.
 *
 *  @param[in] tfa device description structure
@@ -720,25 +703,15 @@ enum Tfa98xx_Error tfa98xx_get_mtp(struct tfa_device *tfa, uint16_t *value)
 {
 	int status;
 	int result;
-	int tries = 0;
 
 	/* not possible if PLL in powerdown */
 	if ( TFA_GET_BF(tfa, PWDN) ) {
 		pr_debug("PLL in powerdown\n");
 		return Tfa98xx_Error_NoClock;
 	}
-	
-	/* Wait until we are in PLL powerdown */
-	do {
-		result = tfa98xx_dsp_system_stable(tfa, &status);
-		if (status==1)
-			break;
-		else
-			msleep_interruptible(10); /* wait 10ms to avoid busload */
-		tries++;
-	} while (tries <= 100);
 
-	if ((tries > 100) || (status == 0)) {
+	tfa98xx_dsp_system_stable(tfa, &status);
+	if (status==0) {
 		pr_debug("PLL not running\n");
 		return Tfa98xx_Error_NoClock;
 	}
@@ -767,6 +740,45 @@ void tfa98xx_key2(struct tfa_device *tfa, int lock)
 	TFA_WRITE_REG(tfa, MTPKEY2, lock? 0 :0x5A );
 	/* unhide lock registers */
 	reg_write(tfa, (tfa->tfa_family == 1) ? 0x40 :0x0F, 0);
+}
+void tfa2_manual_mtp_cpy(struct tfa_device *tfa,  uint16_t reg_row_to_keep,uint16_t reg_row_to_set ,uint8_t row)///MCH_TO_TEST
+{
+		uint16_t value;
+		int loop = 0;
+		enum Tfa98xx_Error error;
+	/* Assure FAIM is enabled (enable it when neccesery) */
+		if (tfa->is_probus_device)
+		{
+			error = tfa98xx_faim_protect(tfa, 1);
+			if (tfa->verbose) {
+				pr_debug("FAIM enabled (err:%d).\n", error);
+			}
+		}
+		reg_read(tfa, (unsigned char)reg_row_to_keep, &value);
+		if(!row)
+		{
+			reg_write(tfa, 0xA7 , value);
+			reg_write(tfa, 0xA8 , reg_row_to_set);
+		}
+	    else
+		{
+		reg_write(tfa, 0xA7 , reg_row_to_set);	
+		reg_write(tfa, 0xA8 , value);	
+		}
+		reg_write(tfa, 0xA3 , 0x10 | row);	
+		if (tfa->is_probus_device)
+		{
+			/* Assure FAIM is enabled (enable it when neccesery) */
+			for (loop = 0; loop < 100 /*x10ms*/; loop++) {
+				msleep_interruptible(10); 			/* wait 10ms to avoid busload */
+				if (tfa_dev_get_mtpb(tfa) == 0)
+					break;
+			}
+			error = tfa98xx_faim_protect(tfa, 0);
+			if (tfa->verbose) {
+				pr_debug("FAIM disabled (err:%d).\n", error);
+			}
+		}
 }
 
 enum Tfa98xx_Error tfa98xx_set_mtp(struct tfa_device *tfa, uint16_t value, uint16_t mask)
@@ -809,10 +821,10 @@ enum Tfa98xx_Error tfa98xx_set_mtp(struct tfa_device *tfa, uint16_t value, uint1
 	tfa98xx_key2(tfa, 0); /* unlock */
 	TFA_WRITE_REG(tfa, MTP0, mtp_new); 	/* write to i2c shadow reg */
 	/* CIMTP=1 start copying all the data from i2c regs_mtp to mtp*/
+    if (tfa->tfa_family == 2)
+     tfa2_manual_mtp_cpy(tfa,0xF1,mtp_new,0);
+	else
 	TFA_SET_BF(tfa, CIMTP, 1);
-	/* no check for MTPBUSY here, i2c delay assumed to be enough */
-	tfa98xx_key2(tfa, 1); /* lock */
-
 	/* wait until MTP write is done */
 	error = Tfa98xx_Error_StateTimedOut;
 	for(loop=0; loop<100 /*x10ms*/ ;loop++) {
@@ -822,8 +834,10 @@ enum Tfa98xx_Error tfa98xx_set_mtp(struct tfa_device *tfa, uint16_t value, uint1
 			break;
 		}
 	}
+	tfa98xx_key2(tfa, 1); /* lock */
 	/* MTP setting failed due to timeout ?*/
 	if (error) {
+	  tfa98xx_faim_protect(tfa, 0);
 		return error;
 	}
 
@@ -917,10 +931,12 @@ tfa98xx_set_mute_tfa2(struct tfa_device *tfa, enum Tfa98xx_Mute mute)
 	switch (mute) {
 	case Tfa98xx_Mute_Off:
 		error = tfa->dev_ops.set_mute(tfa, 0);
+        TFA_SET_BF(tfa, AMPE, 1);
 		break;
 	case Tfa98xx_Mute_Amplifier:
 	case Tfa98xx_Mute_Digital:
 		error = tfa->dev_ops.set_mute(tfa, 1);
+        TFA_SET_BF(tfa, AMPE, 0);
 		break;
 	default:
 		return Tfa98xx_Error_Bad_Parameter;
@@ -1100,6 +1116,7 @@ tfa_dsp_patch(struct tfa_device *tfa, int patchLength,
 		 const unsigned char *patchBytes)
 {
 	enum Tfa98xx_Error error;
+    int status;
 	if(tfa->in_use == 0)
 		return Tfa98xx_Error_NotOpen;
 
@@ -1110,6 +1127,16 @@ tfa_dsp_patch(struct tfa_device *tfa, int patchLength,
 	if (Tfa98xx_Error_Ok != error) {
 		return error;
 	}
+	tfa98xx_dsp_system_stable(tfa, &status);
+	if (!status)
+		return Tfa98xx_Error_NoClock; // Only test when we have a clock.
+			/******MCH_TO_TEST**************/
+			if (error == Tfa98xx_Error_Ok) {		
+				error = tfaRunColdboot(tfa, 1);
+					if(error)
+				     return Tfa98xx_Error_DSP_not_running;
+			}
+	/**************************/
 	error =
 	    tfa98xx_process_patch_file(tfa, patchLength - PATCH_HEADER_LENGTH,
 			     patchBytes + PATCH_HEADER_LENGTH);
@@ -2497,13 +2524,20 @@ static enum Tfa98xx_Error tfa98xx_aec_output(struct tfa_device *tfa, int enable)
  * Print the current state of the hardware manager
  * Device manager status information, man_state from TFA9888_N1B_I2C_regmap_V12
  */
+int is_94_N2_device(struct tfa_device *tfa)
+{
+	return ((((tfa->rev) & 0xff) == 0x94) && (((tfa->rev >> 8) & 0xff) > 0x1a));
+}
 enum Tfa98xx_Error show_current_state(struct tfa_device *tfa)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
         int manstate = -1;
 
 	if (tfa->tfa_family == 2 && tfa->verbose) {
-		manstate = TFA_GET_BF(tfa, MANSTATE);
+		if (is_94_N2_device(tfa))
+		  manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else
+		  manstate = TFA_GET_BF(tfa, MANSTATE);
 		if (manstate < 0)
         		return -manstate;
 
@@ -2726,7 +2760,7 @@ enum Tfa98xx_Error tfaRunStartup(struct tfa_device *tfa, int profile)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 	nxpTfaDeviceList_t *dev = tfaContDevice(tfa->cnt, tfa->dev_idx);
-	int i, noinit=0;
+	int i, noinit=0, audfs=0, fractdel=0;
 
 	if(dev == NULL)
 		return Tfa98xx_Error_Fail;
@@ -2743,9 +2777,17 @@ enum Tfa98xx_Error tfaRunStartup(struct tfa_device *tfa, int profile)
 	}
 
 	if(!noinit) {
+		/* Read AUDFS & FRACTDEL prior to (re)init. */
+		audfs = TFA_GET_BF(tfa, AUDFS);
+		fractdel = TFA_GET_BF(tfa, FRACTDEL);
 		/* load the optimal TFA98XX in HW settings */
 		err = tfa98xx_init(tfa);
 		PRINT_ASSERT(err);
+		
+		/* Restore audfs & fractdel after coldboot, so we can calibrate with correct fs setting.
+		 * in case something else was given in cnt file, profile below will apply this. */
+		TFA_SET_BF(tfa, AUDFS, audfs);
+		TFA_SET_BF(tfa, FRACTDEL, fractdel);
 	} else {
 		pr_debug("\nWarning: No init keyword found in the cnt file. Init is skipped! \n");
 	}
@@ -2764,7 +2806,7 @@ enum Tfa98xx_Error tfaRunStartup(struct tfa_device *tfa, int profile)
 	tfa98xx_factory_trimmer(tfa);
 
 	/* Go to the initCF state */
-	tfa_dev_set_state(tfa, TFA_STATE_INIT_CF);
+	tfa_dev_set_state(tfa, TFA_STATE_INIT_CF, strstr(tfaContProfileName(tfa->cnt, tfa->dev_idx, profile), ".cal") != NULL);
 
 	err = show_current_state(tfa);
 
@@ -2996,7 +3038,7 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 		tfa98xx_set_osc_powerdown(tfa, 0);
 
 		/* Go to the Operating state */
-		tfa_dev_set_state(tfa, TFA_STATE_OPERATING | TFA_STATE_MUTE);
+		tfa_dev_set_state(tfa, TFA_STATE_OPERATING | TFA_STATE_MUTE,0);
 		}
 		active_profile = tfa_dev_get_swprof(tfa);
 
@@ -3017,9 +3059,9 @@ enum tfa_error tfa_dev_start(struct tfa_device *tfa, int next_profile, int vstep
 		}
 
 		err = show_current_state(tfa);
-		/* get current vstep*/
-		tfa->vstep = tfa_dev_get_swvstep(tfa);
-		if (vstep != tfa->vstep && vstep != -1) {
+
+	    tfa->vstep = tfa_dev_get_swvstep(tfa);
+		if ((TFA_GET_BF(tfa, CFE) != 0) && (vstep != tfa->vstep) && (vstep != -1)) {
 			err = tfaContWriteFilesVstep(tfa, next_profile, vstep);
 			if ( err != Tfa98xx_Error_Ok)
 				goto error_exit;
@@ -3072,37 +3114,116 @@ enum tfa_error tfa_dev_stop(struct tfa_device *tfa)
 int tfa_reset(struct tfa_device *tfa)
 {
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+	int state = -1;
+	int retry_cnt = 0;
 
-	err = -TFA_SET_BF_VOLATILE(tfa, I2CR, 1);
-	if(err) return err;
-
-	if (tfa->tfa_family == 2) {
-		/* restore MANSCONF to POR state */
-		TFA_SET_BF_VOLATILE(tfa, MANSCONF, 0);
+	/* Check device state. Print warning if reset is done from other state than powerdown (when verbose) */
+	state = tfa_dev_get_state(tfa);
+	if (tfa->verbose) {
+		if (((tfa->tfa_family == 1) && state != TFA_STATE_RESET) ||
+			((tfa->tfa_family == 2) && state != TFA_STATE_POWERDOWN)) {
+				pr_info("WARNING: Device reset should be performed in POWERDOWN state\n");
+		}
 	}
 
-	if( !tfa->is_probus_device ) {
-		if (tfa->tfa_family == 2) {
-			/* restore MANCOLD to POR state */
-			TFA_SET_BF_VOLATILE(tfa, MANCOLD, 1);
+	/* Split TFA1 behavior from TFA2*/
+	if (tfa->tfa_family == 1) {
+		err = TFA_SET_BF(tfa, I2CR, 1);
+		if(err)
+			return err;
+		err = tfa98xx_powerdown(tfa, 0);
+		if (err)
+			return err;
+		err = tfa_cf_powerup(tfa);
+		if (err)
+			return err;
+		err = tfaRunColdboot(tfa, 1);
+		if (err)
+			return err;
+		err = TFA_SET_BF(tfa, I2CR, 1);
+	} else {
+		/* Probus devices needs extra protection to ensure proper reset
+		   behavior, this step is valid only in state other than powerdown */
+		if (tfa->is_probus_device && state != TFA_STATE_POWERDOWN) {
+			err = TFA_SET_BF_VOLATILE(tfa, AMPE, 0);
+			if (err)
+				return err;
+			err = tfa98xx_powerdown(tfa, 1);
+			if (err)
+				return err;
 		}
 
-		/* powerup CF to access CF io */
-		tfa98xx_powerdown(tfa, 0 );
-		/* for clock */
-		err = tfa_cf_powerup(tfa);
-		PRINT_ASSERT(err);
+		err = TFA_SET_BF_VOLATILE(tfa, I2CR, 1);
+		if (err)
+			return err;
 
-		/* force cold boot */
-		err = tfaRunColdboot(tfa, 1); // set ACS
-		PRINT_ASSERT(err);
+		/* Restore MANSCONF to POR state */
+		err = TFA_SET_BF_VOLATILE(tfa, MANSCONF, 0);
+		if (err)
+			return err;
 
-		/* reset all i2C registers to default */
-		err = -TFA_SET_BF(tfa, I2CR, 1);
-		PRINT_ASSERT(err);
-	} else {
-		if (tfa->ext_dsp > 0) {
-			tfa98xx_init_dsp(tfa);
+		/* Probus devices HW are already reseted here,
+		   Last step is to send init message to softDSP */
+		if (tfa->is_probus_device) {
+			if (tfa->ext_dsp > 0) {
+				err = tfa98xx_init_dsp(tfa);
+				/* ext_dsp status from warm to cold after reset */
+				if(tfa->ext_dsp==2) {
+					tfa->ext_dsp=1;
+			 	}
+			}
+		} else {
+			/* Restore MANCOLD to POR state */
+			TFA_SET_BF_VOLATILE(tfa, MANCOLD, 1);
+
+			/* Coolflux has to be powered on to ensure proper ACS
+			   bit state */
+
+			/* Powerup CF to access CF io */
+			err = tfa98xx_powerdown(tfa, 0);
+			if (err)
+				return err;
+
+			/* For clock */
+			err = tfa_cf_powerup(tfa);
+			if (err)
+				return err;
+
+			/* Force cold boot */
+			err = tfaRunColdboot(tfa, 1); /* Set ACS */
+			if (err)
+				return err;
+
+			/* Set PWDN = 1, this will transfer device into powerdown state */
+			err = TFA_SET_BF_VOLATILE(tfa, PWDN, 1);
+			if (err)
+				return err;
+
+			/* 88 needs SBSL on top of PWDN bit to start transition,
+			   for 92 and 94 this doesn't matter */
+			err = TFA_SET_BF_VOLATILE(tfa, SBSL, 1);
+			if (err)
+				return err;
+
+			/* Powerdown state should be reached within 1ms */
+			for (retry_cnt = 0; retry_cnt < TFA98XX_WAITRESULT_NTRIES; retry_cnt++) {
+				if (is_94_N2_device(tfa))
+					state = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+				else
+					state = TFA_GET_BF(tfa, MANSTATE);
+				if (state < 0) {
+					return err;
+				}
+
+				/* Check for MANSTATE=Powerdown (0) */
+				if (state == 0)
+					break;
+				msleep_interruptible(2);
+			}
+
+			/* Reset all I2C registers to default values,
+			   now device state is consistent, same as after powerup */
+			err = TFA_SET_BF(tfa, I2CR, 1);
 		}
 	}
 
@@ -3491,7 +3612,7 @@ int tfa_dev_probe(int slave, struct tfa_device *tfa)
 
 	/* read revid via low level hal, register 3 */
 	if (tfa98xx_read_register16(tfa, 3, &rev) != Tfa98xx_Error_Ok) {
-		pr_err("Error: Unable to read revid from slave:0x%02x\n", slave);
+		PRINT("\nError: Unable to read revid from slave:0x%02x \n", slave);
 		return -1;
 	}
 
@@ -3507,7 +3628,7 @@ int tfa_dev_probe(int slave, struct tfa_device *tfa)
 	return 0;
 }
 
-enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
+enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state, int is_calibration)
 {
 	enum tfa_error err = tfa_error_ok;
 	int loop = 50, ready = 0;
@@ -3522,6 +3643,7 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
 		break;
 	case TFA_STATE_INIT_CF:      /* coolflux HW access possible (~initcf) */
 								 /* Start with SBSL=0 to stay in initCF state */
+	if(!tfa->is_probus_device)
 		TFA_SET_BF(tfa, SBSL, 0);
 
 		/* We want to leave Wait4SrcSettings state for max2 */
@@ -3539,11 +3661,14 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
 			if (ready)
 				break;
 		} while (loop--);
+ if (((!tfa->is_probus_device) && (is_calibration)) || ((tfa->rev & 0xff) == 0x13))
+	{
 		/* Enable FAIM when clock is stable, to avoid MTP corruption */
 		err = tfa98xx_faim_protect(tfa, 1);
 		if (tfa->verbose) {
 			pr_debug("FAIM enabled (err:%d).\n", err);
 		}
+	}
 		break;
 	case TFA_STATE_INIT_FW:      /* DSP framework active (~patch loaded) */
 		break;
@@ -3551,24 +3676,29 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state)
 								 /* Depending on our previous state we need to set 3 bits */
 		TFA_SET_BF(tfa, PWDN, 0);	/* Coming from state 0 */
 		TFA_SET_BF(tfa, MANSCONF, 1);	/* Coming from state 1 */
+	if (!tfa->is_probus_device)
 		TFA_SET_BF(tfa, SBSL, 1);	/* Coming from state 6 */
+	else
+		TFA_SET_BF(tfa, AMPE, 1);	/* No SBSL for probus device, we set AMPE to 1  */
 
 									/*
 									* Disable MTP clock to protect memory.
 									* However in case of calibration wait for DSP! (This should be case only during calibration).
 									*/
-		if (TFA_GET_BF(tfa, MTPOTC) == 1) {
+		if (TFA_GET_BF(tfa, MTPOTC) == 1 && tfa->tfa_family == 2) {
 			count = MTPEX_WAIT_NTRIES * 4; /* Calibration takes a lot of time */
 			while ((TFA_GET_BF(tfa, MTPEX) != 1) && count) {
 				msleep_interruptible(10);
 				count--;
 			}
 		}
+ if (((!tfa->is_probus_device) && (is_calibration)) || ((tfa->rev & 0xff) == 0x13))
+	{ 
 		err = tfa98xx_faim_protect(tfa, 0);
 		if (tfa->verbose) {
 			pr_debug("FAIM disabled (err:%d).\n", err);
 		}
-
+	}
 		/* Synchonize I/V delay on 96/97 at cold start */
 		if (tfa->sync_iv_delay) {
 			if (tfa->verbose)
@@ -3623,6 +3753,9 @@ enum tfa_state tfa_dev_get_state(struct tfa_device *tfa)
 		else if ( !cold && TFA_GET_BF(tfa, SWS))
 			tfa->state = TFA_STATE_OPERATING;
 	} else /* family 2 */ {
+		if (is_94_N2_device(tfa))
+			manstate = tfa_get_bf(tfa, TFA9894N2_BF_MANSTATE);
+		else
 		manstate = TFA_GET_BF(tfa, MANSTATE);
 		switch(manstate) {
 			case 0:
@@ -3697,7 +3830,11 @@ enum tfa_error tfa_dev_mtp_set(struct tfa_device *tfa, enum tfa_mtp item, int va
 				if((tfa->rev & 0xFF) == 0x88)
 					TFA_SET_BF(tfa, R25CL, (uint16_t)value);
 				else
+				{
+				 	if (tfa->is_probus_device == 1 && TFA_GET_BF(tfa, MTPOTC) == 1)
+						tfa2_manual_mtp_cpy(tfa, 0xF4, value, 2);	
 					TFA_SET_BF(tfa, R25C, (uint16_t)value);
+				}	
 			}
 			break;
 		case TFA_MTP_RE25_SEC:
@@ -3807,7 +3944,7 @@ int tfa_plop_noise_interrupt(struct tfa_device *tfa, int profile, int vstep)
 				pr_err("Error loading i2c registers (tfa_dev_start), err=%d\n", err);
 			} else {
 				pr_info("Setting i2c registers after I2CR succesfull\n");
-				tfa_dev_set_state(tfa, TFA_STATE_UNMUTE);
+				tfa_dev_set_state(tfa, TFA_STATE_UNMUTE,0);
 			}
 
 			/* Remove sticky bit by reading it once */

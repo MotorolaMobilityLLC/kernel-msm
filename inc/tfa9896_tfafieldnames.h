@@ -10,6 +10,7 @@
 #ifndef _TFA9896_TFAFIELDNAMES_H
 #define _TFA9896_TFAFIELDNAMES_H
 
+
 #define TFA9896_I2CVERSION    16
 
 typedef enum nxpTFA9896BfEnumList {
@@ -376,6 +377,488 @@ typedef enum nxpTFA9896BfEnumList {
    { 0x8045, "SWPROFIL" },\
    { 0x80a5, "SWVSTEP" },\
    { 0xffff,"Unknown bitfield enum" }   /* not found */\
+};
+
+#define TFA9896_BITNAMETABLE static tfaBfName_t Tfa9896BitNames[]= {\
+   { 0x0, "flag_por"},    /* Power-on-reset flag (auto clear by reading)       , */\
+   { 0x10, "flag_pll_lock"},    /* PLL lock to programmed frequency                  , */\
+   { 0x20, "flag_otpok"},    /* Over Temperature Protection alarm                 , */\
+   { 0x30, "flag_ovpok"},    /* Over Voltage Protection alarm                     , */\
+   { 0x40, "flag_uvpok"},    /* Under Voltage Protection alarm                    , */\
+   { 0x50, "flag_ocp_alarm"},    /* Over Current Protection alarm                     , */\
+   { 0x60, "flag_clocks_stable"},    /* Clocks stable flag                                , */\
+   { 0x70, "flag_clip"},    /* Amplifier clipping                                , */\
+   { 0x80, "mtp_busy"},    /* MTP busy copying data to/from I2C registers       , */\
+   { 0x90, "flag_lost_clk"},    /* lost clock detection (reference input clock)      , */\
+   { 0xa0, "flag_cf_speakererror"},    /* Speaker error                                     , */\
+   { 0xb0, "flag_cold_started"},    /* Cold Start required                               , */\
+   { 0xc0, "flag_engage"},    /* Amplifier engage (Amp Switching)                  , */\
+   { 0xd0, "flag_watchdog_reset"},    /* watchdog reset (activates reset)                  , */\
+   { 0xe0, "flag_enbl_amp"},    /* Amplifier is enabled by manager                   , */\
+   { 0xf0, "flag_enbl_ref"},    /* References are enabled by manager                 , */\
+   { 0x109, "bat_adc"},    /* Battery voltage from ADC readout                  , */\
+   { 0x208, "temp_adc"},    /* Temperature readout from the temperature sensor ( C), */\
+   { 0x30f, "device_rev"},    /* Device revision information                       , */\
+   { 0x420, "ctrl_rcv"},    /* Enable receiver mode                              , */\
+   { 0x431, "chan_sel"},    /* Channel Selection TDM input for Coolflux          , */\
+   { 0x450, "input_level"},    /* Input level selection attenuator (                , */\
+   { 0x461, "vamp_sel"},    /* Input selection for amplifier                     , */\
+   { 0x4c3, "audio_fs"},    /* Audio sample rate setting                         , */\
+   { 0x501, "vbat_prot_attacktime"},    /* Batteery protection attack time                   , */\
+   { 0x523, "vbat_prot_thlevel"},    /* Battery protection threshold level                , */\
+   { 0x561, "vbat_prot_max_reduct"},    /* Battery protection maximum reduction              , */\
+   { 0x582, "vbat_prot_release_t"},    /* Battery protection release time                   , */\
+   { 0x5b1, "vbat_prot_hysterese"},    /* Battery Protection Hysteresis                     , */\
+   { 0x5d0, "reset_min_vbat"},    /* Battery supply safeguard clipper reset ( if CF_DSP is bypassed), */\
+   { 0x5e0, "sel_vbat"},    /* Battery voltage value for read out (only)         , */\
+   { 0x5f0, "bypass_clipper"},    /* Bypass clipper battery protection                 , */\
+   { 0x600, "dpsa"},    /* Enable dynamic powerstage activation (DPSA)       , */\
+   { 0x613, "ctrl_att"},    /* Gain attenuation setting                          , */\
+   { 0x650, "cf_mute"},    /* Soft mute in CoolFlux                             , */\
+   { 0x670, "batsense_steepness"},    /* Battery sense steepness                           , */\
+   { 0x687, "vol"},    /* Coolflux volume control                           , */\
+   { 0x702, "scnd_boost_voltage"},    /* Second Boost Voltage                              , */\
+   { 0x733, "boost_cur"},    /* Max boost coil current - step of 175 mA           , */\
+   { 0x772, "frst_boost_voltage"},    /* First Boost Voltage                               , */\
+   { 0x7a0, "boost_intel"},    /* Adaptive boost mode                               , */\
+   { 0x7b0, "boost_speed"},    /* Soft Rampup/down mode for DCDC controller         , */\
+   { 0x7c0, "boost_peak2avg"},    /* ctrl_peak2avg for analog part of DCDC             , */\
+   { 0x7d0, "dcdc_pwmonly"},    /* DCDC PWM only mode                                , */\
+   { 0x7e0, "ignore_flag_voutcomp86"},    /* Ignore flag_voutcomp86  (flag from analog)        , */\
+   { 0x800, "ext_temp_sel"},    /* Selection ambient temperature for speaker calibration , */\
+   { 0x818, "ext_temp"},    /* External temperature for speaker calibration (C)  , */\
+   { 0x900, "powerdown"},    /* powerdown selection                               , */\
+   { 0x910, "reset"},    /* All I2C registers reset to default                , */\
+   { 0x920, "enbl_coolflux"},    /* Enable CoolFlux                                   , */\
+   { 0x930, "enbl_amplifier"},    /* Enable Amplifier                                  , */\
+   { 0x940, "enbl_boost"},    /* Enable DCDC Boost converter                       , */\
+   { 0x950, "coolflux_configured"},    /* Coolflux configured                               , */\
+   { 0x960, "sel_enbl_amplifier"},    /* Selection if Coolflux enables amplifier           , */\
+   { 0x970, "dcdcoff_mode"},    /* DCDC boost converter not connected                , */\
+   { 0x980, "iddqtest"},    /* IDDQ amplifier test selection                     , */\
+   { 0x9c1, "int_pad_io"},    /* INT pad (interrupt bump output) configuration     , */\
+   { 0x9e0, "sel_fs_bck"},    /* PLL input reference clock selection               , */\
+   { 0x9f0, "sel_scl_cf_clock"},    /* Coolflux sub-system clock selection               , */\
+   { 0xa04, "boost_trip_lvl"},    /* Adaptive boost trip levels (effective only when boost_intel is set to 1), */\
+   { 0xa54, "boost_hold_time"},    /* Hold time for DCDC booster (effective only when boost_intel is set to 1), */\
+   { 0xaa1, "bst_slpcmplvl"},    /* Slope compensation current, represents LxF (inductance x frequency) value , */\
+   { 0xb07, "mtpkey2"},    /* KEY2 to access key2 protected registers (default for engineering), */\
+   { 0xc00, "enbl_volt_sense"},    /* Voltage sense enabling control bit                , */\
+   { 0xc10, "vsense_pwm_sel"},    /* Voltage sense source selection                    , */\
+   { 0xc25, "vi_frac_delay"},    /* Fractional delay adjustment between current and voltage sense, */\
+   { 0xc80, "sel_voltsense_out"},    /* TDM output data selection for AEC                 , */\
+   { 0xc90, "vsense_bypass_avg"},    /* Voltage sense average block bypass                , */\
+   { 0xd05, "cf_frac_delay"},    /* Fractional delay adjustment between current and voltage sense by firmware, */\
+   { 0xe00, "bypass_dcdc_curr_prot"},    /* Control to switch off dcdc current reduction with bat protection, */\
+   { 0xe10, "bypass_ocp"},    /* Bypass OCP (digital IP block)                     , */\
+   { 0xe20, "ocptest"},    /* ocptest (analog IP block) enable                  , */\
+   { 0xe80, "disable_clock_sh_prot"},    /* Disable clock_sh protection                       , */\
+   { 0xe92, "reserve_reg_15_09"},    /* Spare control bits for future usage               , */\
+   { 0xec0, "unprotect_mtp"},    /* Enable programming of the MTP memory              , */\
+   { 0xed2, "reserve_reg_15_13"},    /* Spare control bits for future usage               , */\
+   { 0xf00, "dcdc_pfm20khz_limit"},    /* DCDC in PFM mode forcing each 50us a pwm pulse    , */\
+   { 0xf11, "dcdc_ctrl_maxzercnt"},    /* DCDC number of zero current flags required to go to pfm mode, */\
+   { 0xf36, "dcdc_vbat_delta_detect"},    /* DCDC threshold required on a delta Vbat (in PFM mode) switching to PWM mode, */\
+   { 0xfa0, "dcdc_ignore_vbat"},    /* Ignore an increase on Vbat                        , */\
+   { 0x1011, "tdm_usecase"},    /* TDM usecase selection control                     , */\
+   { 0x1030, "tdm_enable"},    /* TDM interface enable                              , */\
+   { 0x1040, "tdm_clk_inversion"},    /* TDM clock inversion, receive on                   , */\
+   { 0x1053, "tdm_fs_ws_length"},    /* TDM FS length                                     , */\
+   { 0x1090, "tdm_fs_ws_polarity"},    /* TDM FS polarity (start frame)                     , */\
+   { 0x10a4, "tdm_sample_size"},    /* TDM sample size for all TDM sinks and sources     , */\
+   { 0x1103, "tdm_nb_of_slots"},    /* TDM number of slots                               , */\
+   { 0x1144, "tdm_slot_length"},    /* TDM slot length                                   , */\
+   { 0x1194, "tdm_bits_remaining"},    /* TDM bits remaining after the last slot            , */\
+   { 0x11e0, "tdm_data_delay"},    /* TDM data delay                                    , */\
+   { 0x11f0, "tdm_data_adjustment"},    /* TDM data adjustment                               , */\
+   { 0x1201, "tdm_txdata_format"},    /* TDM TXDATA format                                 , */\
+   { 0x1221, "tdm_txdata_format_unused_slot_sd0"},    /* TDM TXDATA format unused slot SD0                 , */\
+   { 0x1241, "tdm_txdata_format_unused_slot_sd1"},    /* TDM TXDATA format unused slot SD1                 , */\
+   { 0x1270, "tdm_sink0_enable"},    /* TDM sink0 enable                                  , */\
+   { 0x1280, "tdm_sink1_enable"},    /* TDM sink1 enable                                  , */\
+   { 0x1290, "tdm_sink2_enable"},    /* TDM sink2 enable                                  , */\
+   { 0x12a0, "tdm_source0_enable"},    /* TDM source0 enable                                , */\
+   { 0x12b0, "tdm_source1_enable"},    /* TDM source1 enable                                , */\
+   { 0x12c0, "tdm_source2_enable"},    /* TDM source2 enable                                , */\
+   { 0x12d0, "tdm_sink0_io"},    /* TDM sink0 IO selection                            , */\
+   { 0x12e0, "tdm_sink1_io"},    /* TDM sink1 IO selection                            , */\
+   { 0x12f0, "tdm_sink2_io"},    /* TDM sink2 IO selection                            , */\
+   { 0x1300, "tdm_source0_io"},    /* TDM source0 IO selection                          , */\
+   { 0x1310, "tdm_source1_io"},    /* TDM source1 IO selection                          , */\
+   { 0x1320, "tdm_source2_io"},    /* TDM source2 IO selection                          , */\
+   { 0x1333, "tdm_sink0_slot"},    /* TDM sink0 slot position [GAIN IN]                 , */\
+   { 0x1373, "tdm_sink1_slot"},    /* TDM sink1 slot position [CH1 IN]                  , */\
+   { 0x13b3, "tdm_sink2_slot"},    /* TDM sink2 slot position [CH2 IN]                  , */\
+   { 0x1403, "tdm_source0_slot"},    /* TDM source0 slot position [GAIN OUT]              , */\
+   { 0x1443, "tdm_source1_slot"},    /* TDM source1 slot position [Voltage Sense]         , */\
+   { 0x1483, "tdm_source2_slot"},    /* TDM source2 slot position [Current Sense]         , */\
+   { 0x14c3, "tdm_nbck"},    /* TDM NBCK bit clock ratio                          , */\
+   { 0x1500, "flag_tdm_lut_error"},    /* TDM LUT error flag                                , */\
+   { 0x1512, "flag_tdm_status"},    /* TDM interface status bits                         , */\
+   { 0x1540, "flag_tdm_error"},    /* TDM interface error indicator                     , */\
+   { 0x1551, "status_bst_mode"},    /* DCDC mode status bits                             , */\
+   { 0x2000, "flag_por_int_out"},    /* flag_por_int_out                                  , */\
+   { 0x2010, "flag_pll_lock_int_out"},    /* flag_pll_lock_int_out                             , */\
+   { 0x2020, "flag_otpok_int_out"},    /* flag_otpok_int_out                                , */\
+   { 0x2030, "flag_ovpok_int_out"},    /* flag_ovpok_int_out                                , */\
+   { 0x2040, "flag_uvpok_int_out"},    /* flag_uvpok_int_out                                , */\
+   { 0x2050, "flag_ocp_alarm_int_out"},    /* flag_ocp_alarm_int_out                            , */\
+   { 0x2060, "flag_clocks_stable_int_out"},    /* flag_clocks_stable_int_out                        , */\
+   { 0x2070, "flag_clip_int_out"},    /* flag_clip_int_out                                 , */\
+   { 0x2080, "mtp_busy_int_out"},    /* mtp_busy_int_out                                  , */\
+   { 0x2090, "flag_lost_clk_int_out"},    /* flag_lost_clk_int_out                             , */\
+   { 0x20a0, "flag_cf_speakererror_int_out"},    /* flag_cf_speakererror_int_out                      , */\
+   { 0x20b0, "flag_cold_started_int_out"},    /* flag_cold_started_int_out                         , */\
+   { 0x20c0, "flag_engage_int_out"},    /* flag_engage_int_out                               , */\
+   { 0x20d0, "flag_watchdog_reset_int_out"},    /* flag_watchdog_reset_int_out                       , */\
+   { 0x20e0, "flag_enbl_amp_int_out"},    /* flag_enbl_amp_int_out                             , */\
+   { 0x20f0, "flag_enbl_ref_int_out"},    /* flag_enbl_ref_int_out                             , */\
+   { 0x2100, "flag_voutcomp_int_out"},    /* flag_voutcomp_int_out                             , */\
+   { 0x2110, "flag_voutcomp93_int_out"},    /* flag_voutcomp93_int_out                           , */\
+   { 0x2120, "flag_voutcomp86_int_out"},    /* flag_voutcomp86_int_out                           , */\
+   { 0x2130, "flag_hiz_int_out"},    /* flag_hiz_int_out                                  , */\
+   { 0x2140, "flag_ocpokbst_int_out"},    /* flag_ocpokbst_int_out                             , */\
+   { 0x2150, "flag_peakcur_int_out"},    /* flag_peakcur_int_out                              , */\
+   { 0x2160, "flag_ocpokap_int_out"},    /* flag_ocpokap_int_out                              , */\
+   { 0x2170, "flag_ocpokan_int_out"},    /* flag_ocpokan_int_out                              , */\
+   { 0x2180, "flag_ocpokbp_int_out"},    /* flag_ocpokbp_int_out                              , */\
+   { 0x2190, "flag_ocpokbn_int_out"},    /* flag_ocpokbn_int_out                              , */\
+   { 0x21a0, "flag_adc10_ready_int_out"},    /* flag_adc10_ready_int_out                          , */\
+   { 0x21b0, "flag_clipa_high_int_out"},    /* flag_clipa_high_int_out                           , */\
+   { 0x21c0, "flag_clipa_low_int_out"},    /* flag_clipa_low_int_out                            , */\
+   { 0x21d0, "flag_clipb_high_int_out"},    /* flag_clipb_high_int_out                           , */\
+   { 0x21e0, "flag_clipb_low_int_out"},    /* flag_clipb_low_int_out                            , */\
+   { 0x21f0, "flag_tdm_error_int_out"},    /* flag_tdm_error_int_out                            , */\
+   { 0x2200, "flag_cfma_err_int_out"},    /* flag_cfma_err_int_out                             , */\
+   { 0x2210, "flag_cfma_ack_int_out"},    /* flag_cfma_ack_int_out                             , */\
+   { 0x2300, "flag_por_int_in"},    /* flag_por_int_in                                   , */\
+   { 0x2310, "flag_pll_lock_int_in"},    /* flag_pll_lock_int_in                              , */\
+   { 0x2320, "flag_otpok_int_in"},    /* flag_otpok_int_in                                 , */\
+   { 0x2330, "flag_ovpok_int_in"},    /* flag_ovpok_int_in                                 , */\
+   { 0x2340, "flag_uvpok_int_in"},    /* flag_uvpok_int_in                                 , */\
+   { 0x2350, "flag_ocp_alarm_int_in"},    /* flag_ocp_alarm_int_in                             , */\
+   { 0x2360, "flag_clocks_stable_int_in"},    /* flag_clocks_stable_int_in                         , */\
+   { 0x2370, "flag_clip_int_in"},    /* flag_clip_int_in                                  , */\
+   { 0x2380, "mtp_busy_int_in"},    /* mtp_busy_int_in                                   , */\
+   { 0x2390, "flag_lost_clk_int_in"},    /* flag_lost_clk_int_in                              , */\
+   { 0x23a0, "flag_cf_speakererror_int_in"},    /* flag_cf_speakererror_int_in                       , */\
+   { 0x23b0, "flag_cold_started_int_in"},    /* flag_cold_started_int_in                          , */\
+   { 0x23c0, "flag_engage_int_in"},    /* flag_engage_int_in                                , */\
+   { 0x23d0, "flag_watchdog_reset_int_in"},    /* flag_watchdog_reset_int_in                        , */\
+   { 0x23e0, "flag_enbl_amp_int_in"},    /* flag_enbl_amp_int_in                              , */\
+   { 0x23f0, "flag_enbl_ref_int_in"},    /* flag_enbl_ref_int_in                              , */\
+   { 0x2400, "flag_voutcomp_int_in"},    /* flag_voutcomp_int_in                              , */\
+   { 0x2410, "flag_voutcomp93_int_in"},    /* flag_voutcomp93_int_in                            , */\
+   { 0x2420, "flag_voutcomp86_int_in"},    /* flag_voutcomp86_int_in                            , */\
+   { 0x2430, "flag_hiz_int_in"},    /* flag_hiz_int_in                                   , */\
+   { 0x2440, "flag_ocpokbst_int_in"},    /* flag_ocpokbst_int_in                              , */\
+   { 0x2450, "flag_peakcur_int_in"},    /* flag_peakcur_int_in                               , */\
+   { 0x2460, "flag_ocpokap_int_in"},    /* flag_ocpokap_int_in                               , */\
+   { 0x2470, "flag_ocpokan_int_in"},    /* flag_ocpokan_int_in                               , */\
+   { 0x2480, "flag_ocpokbp_int_in"},    /* flag_ocpokbp_int_in                               , */\
+   { 0x2490, "flag_ocpokbn_int_in"},    /* flag_ocpokbn_int_in                               , */\
+   { 0x24a0, "flag_adc10_ready_int_in"},    /* flag_adc10_ready_int_in                           , */\
+   { 0x24b0, "flag_clipa_high_int_in"},    /* flag_clipa_high_int_in                            , */\
+   { 0x24c0, "flag_clipa_low_int_in"},    /* flag_clipa_low_int_in                             , */\
+   { 0x24d0, "flag_clipb_high_int_in"},    /* flag_clipb_high_int_in                            , */\
+   { 0x24e0, "flag_clipb_low_int_in"},    /* flag_clipb_low_int_in                             , */\
+   { 0x24f0, "flag_tdm_error_int_in"},    /* flag_tdm_error_int_in                             , */\
+   { 0x2500, "flag_cfma_err_int_in"},    /* flag_cfma_err_int_in                              , */\
+   { 0x2510, "flag_cfma_ack_int_in"},    /* flag_cfma_ack_int_in                              , */\
+   { 0x2600, "flag_por_int_enable"},    /* flag_por_int_enable                               , */\
+   { 0x2610, "flag_pll_lock_int_enable"},    /* flag_pll_lock_int_enable                          , */\
+   { 0x2620, "flag_otpok_int_enable"},    /* flag_otpok_int_enable                             , */\
+   { 0x2630, "flag_ovpok_int_enable"},    /* flag_ovpok_int_enable                             , */\
+   { 0x2640, "flag_uvpok_int_enable"},    /* flag_uvpok_int_enable                             , */\
+   { 0x2650, "flag_ocp_alarm_int_enable"},    /* flag_ocp_alarm_int_enable                         , */\
+   { 0x2660, "flag_clocks_stable_int_enable"},    /* flag_clocks_stable_int_enable                     , */\
+   { 0x2670, "flag_clip_int_enable"},    /* flag_clip_int_enable                              , */\
+   { 0x2680, "mtp_busy_int_enable"},    /* mtp_busy_int_enable                               , */\
+   { 0x2690, "flag_lost_clk_int_enable"},    /* flag_lost_clk_int_enable                          , */\
+   { 0x26a0, "flag_cf_speakererror_int_enable"},    /* flag_cf_speakererror_int_enable                   , */\
+   { 0x26b0, "flag_cold_started_int_enable"},    /* flag_cold_started_int_enable                      , */\
+   { 0x26c0, "flag_engage_int_enable"},    /* flag_engage_int_enable                            , */\
+   { 0x26d0, "flag_watchdog_reset_int_enable"},    /* flag_watchdog_reset_int_enable                    , */\
+   { 0x26e0, "flag_enbl_amp_int_enable"},    /* flag_enbl_amp_int_enable                          , */\
+   { 0x26f0, "flag_enbl_ref_int_enable"},    /* flag_enbl_ref_int_enable                          , */\
+   { 0x2700, "flag_voutcomp_int_enable"},    /* flag_voutcomp_int_enable                          , */\
+   { 0x2710, "flag_voutcomp93_int_enable"},    /* flag_voutcomp93_int_enable                        , */\
+   { 0x2720, "flag_voutcomp86_int_enable"},    /* flag_voutcomp86_int_enable                        , */\
+   { 0x2730, "flag_hiz_int_enable"},    /* flag_hiz_int_enable                               , */\
+   { 0x2740, "flag_ocpokbst_int_enable"},    /* flag_ocpokbst_int_enable                          , */\
+   { 0x2750, "flag_peakcur_int_enable"},    /* flag_peakcur_int_enable                           , */\
+   { 0x2760, "flag_ocpokap_int_enable"},    /* flag_ocpokap_int_enable                           , */\
+   { 0x2770, "flag_ocpokan_int_enable"},    /* flag_ocpokan_int_enable                           , */\
+   { 0x2780, "flag_ocpokbp_int_enable"},    /* flag_ocpokbp_int_enable                           , */\
+   { 0x2790, "flag_ocpokbn_int_enable"},    /* flag_ocpokbn_int_enable                           , */\
+   { 0x27a0, "flag_adc10_ready_int_enable"},    /* flag_adc10_ready_int_enable                       , */\
+   { 0x27b0, "flag_clipa_high_int_enable"},    /* flag_clipa_high_int_enable                        , */\
+   { 0x27c0, "flag_clipa_low_int_enable"},    /* flag_clipa_low_int_enable                         , */\
+   { 0x27d0, "flag_clipb_high_int_enable"},    /* flag_clipb_high_int_enable                        , */\
+   { 0x27e0, "flag_clipb_low_int_enable"},    /* flag_clipb_low_int_enable                         , */\
+   { 0x27f0, "flag_tdm_error_int_enable"},    /* flag_tdm_error_int_enable                         , */\
+   { 0x2800, "flag_cfma_err_int_enable"},    /* flag_cfma_err_int_enable                          , */\
+   { 0x2810, "flag_cfma_ack_int_enable"},    /* flag_cfma_ack_int_enable                          , */\
+   { 0x2900, "flag_por_int_pol"},    /* flag_por_int_pol                                  , */\
+   { 0x2910, "flag_pll_lock_int_pol"},    /* flag_pll_lock_int_pol                             , */\
+   { 0x2920, "flag_otpok_int_pol"},    /* flag_otpok_int_pol                                , */\
+   { 0x2930, "flag_ovpok_int_pol"},    /* flag_ovpok_int_pol                                , */\
+   { 0x2940, "flag_uvpok_int_pol"},    /* flag_uvpok_int_pol                                , */\
+   { 0x2950, "flag_ocp_alarm_int_pol"},    /* flag_ocp_alarm_int_pol                            , */\
+   { 0x2960, "flag_clocks_stable_int_pol"},    /* flag_clocks_stable_int_pol                        , */\
+   { 0x2970, "flag_clip_int_pol"},    /* flag_clip_int_pol                                 , */\
+   { 0x2980, "mtp_busy_int_pol"},    /* mtp_busy_int_pol                                  , */\
+   { 0x2990, "flag_lost_clk_int_pol"},    /* flag_lost_clk_int_pol                             , */\
+   { 0x29a0, "flag_cf_speakererror_int_pol"},    /* flag_cf_speakererror_int_pol                      , */\
+   { 0x29b0, "flag_cold_started_int_pol"},    /* flag_cold_started_int_pol                         , */\
+   { 0x29c0, "flag_engage_int_pol"},    /* flag_engage_int_pol                               , */\
+   { 0x29d0, "flag_watchdog_reset_int_pol"},    /* flag_watchdog_reset_int_pol                       , */\
+   { 0x29e0, "flag_enbl_amp_int_pol"},    /* flag_enbl_amp_int_pol                             , */\
+   { 0x29f0, "flag_enbl_ref_int_pol"},    /* flag_enbl_ref_int_pol                             , */\
+   { 0x2a00, "flag_voutcomp_int_pol"},    /* flag_voutcomp_int_pol                             , */\
+   { 0x2a10, "flag_voutcomp93_int_pol"},    /* flag_voutcomp93_int_pol                           , */\
+   { 0x2a20, "flag_voutcomp86_int_pol"},    /* flag_voutcomp86_int_pol                           , */\
+   { 0x2a30, "flag_hiz_int_pol"},    /* flag_hiz_int_pol                                  , */\
+   { 0x2a40, "flag_ocpokbst_int_pol"},    /* flag_ocpokbst_int_pol                             , */\
+   { 0x2a50, "flag_peakcur_int_pol"},    /* flag_peakcur_int_pol                              , */\
+   { 0x2a60, "flag_ocpokap_int_pol"},    /* flag_ocpokap_int_pol                              , */\
+   { 0x2a70, "flag_ocpokan_int_pol"},    /* flag_ocpokan_int_pol                              , */\
+   { 0x2a80, "flag_ocpokbp_int_pol"},    /* flag_ocpokbp_int_pol                              , */\
+   { 0x2a90, "flag_ocpokbn_int_pol"},    /* flag_ocpokbn_int_pol                              , */\
+   { 0x2aa0, "flag_adc10_ready_int_pol"},    /* flag_adc10_ready_int_pol                          , */\
+   { 0x2ab0, "flag_clipa_high_int_pol"},    /* flag_clipa_high_int_pol                           , */\
+   { 0x2ac0, "flag_clipa_low_int_pol"},    /* flag_clipa_low_int_pol                            , */\
+   { 0x2ad0, "flag_clipb_high_int_pol"},    /* flag_clipb_high_int_pol                           , */\
+   { 0x2ae0, "flag_clipb_low_int_pol"},    /* flag_clipb_low_int_pol                            , */\
+   { 0x2af0, "flag_tdm_error_int_pol"},    /* flag_tdm_error_int_pol                            , */\
+   { 0x2b00, "flag_cfma_err_int_pol"},    /* flag_cfma_err_int_pol                             , */\
+   { 0x2b10, "flag_cfma_ack_int_pol"},    /* flag_cfma_ack_int_pol                             , */\
+   { 0x3000, "flag_voutcomp"},    /* Status flag_voutcomp, indication Vset is larger than Vbat, */\
+   { 0x3010, "flag_voutcomp93"},    /* Status flag_voutcomp93, indication Vset is larger than 1.07 x Vbat, */\
+   { 0x3020, "flag_voutcomp86"},    /* Status flag voutcomp86, indication Vset is larger than 1.14 x Vbat, */\
+   { 0x3030, "flag_hiz"},    /* Status flag_hiz, indication Vbst is larger than Vbat, */\
+   { 0x3040, "flag_ocpokbst"},    /* Status flag_ocpokbst, indication no over current in boost converter PMOS switch, */\
+   { 0x3050, "flag_peakcur"},    /* Status flag_peakcur, indication current is max in dcdc converter, */\
+   { 0x3060, "flag_ocpokap"},    /* Status flag_ocpokap, indication no over current in amplifier A PMOS output stage, */\
+   { 0x3070, "flag_ocpokan"},    /* Status flag_ocpokan, indication no over current in amplifier A NMOS output stage, */\
+   { 0x3080, "flag_ocpokbp"},    /* Status flag_ocpokbp, indication no over current in amplifier B PMOS output stage, */\
+   { 0x3090, "flag_ocpokbn"},    /* Status flag_ocpokbn, indication no over current in amplifier B NMOS output stage, */\
+   { 0x30a0, "flag_adc10_ready"},    /* Status flag_adc10_ready, indication adc10 is ready, */\
+   { 0x30b0, "flag_clipa_high"},    /* Status flag_clipa_high, indication pmos amplifier A is clipping, */\
+   { 0x30c0, "flag_clipa_low"},    /* Status flag_clipa_low, indication nmos amplifier A is clipping, */\
+   { 0x30d0, "flag_clipb_high"},    /* Status flag_clipb_high, indication pmos amplifier B is clipping, */\
+   { 0x30e0, "flag_clipb_low"},    /* Status flag_clipb_low, indication nmos amplifier B is clipping, */\
+   { 0x310f, "mtp_man_data_out"},    /* MTP manual read out data                          , */\
+   { 0x3200, "key01_locked"},    /* Indicates KEY1 is locked                          , */\
+   { 0x3210, "key02_locked"},    /* Indicates KEY2 is locked                          , */\
+   { 0x3225, "mtp_ecc_tcout"},    /* MTP error correction test data out                , */\
+   { 0x3280, "mtpctrl_valid_test_rd"},    /* MTP test readout for read                         , */\
+   { 0x3290, "mtpctrl_valid_test_wr"},    /* MTP test readout for write                        , */\
+   { 0x32a0, "flag_in_alarm_state"},    /* Flag alarm state                                  , */\
+   { 0x32b0, "mtp_ecc_err2"},    /* Two or more bit errors detected in MTP, can not reconstruct value, */\
+   { 0x32c0, "mtp_ecc_err1"},    /* One bit error detected in MTP, reconstructed value, */\
+   { 0x32d0, "mtp_mtp_hvf"},    /* High voltage ready flag for MTP                   , */\
+   { 0x32f0, "mtp_zero_check_fail"},    /* Zero check failed for MTP                         , */\
+   { 0x3309, "data_adc10_tempbat"},    /* ADC10 data output for testing battery voltage and temperature, */\
+   { 0x400f, "hid_code"},    /* 5A6Bh, 23147d to access hidden registers (default for engineering), */\
+   { 0x4100, "bypass_hp"},    /* Bypass High Pass Filter                           , */\
+   { 0x4110, "hard_mute"},    /* Hard Mute                                         , */\
+   { 0x4120, "soft_mute"},    /* Soft Mute                                         , */\
+   { 0x4134, "pwm_delay"},    /* PWM delay setting                                 , */\
+   { 0x4180, "pwm_shape"},    /* PWM Shape                                         , */\
+   { 0x4190, "pwm_bitlength"},    /* PWM Bitlength in noise shaper                     , */\
+   { 0x4203, "drive"},    /* Drive bits to select number of amplifier power stages, */\
+   { 0x4240, "reclock_pwm"},    /* Control for enabling reclocking of PWM signal     , */\
+   { 0x4250, "reclock_voltsense"},    /* Control for enabling reclocking of voltage sense signal, */\
+   { 0x4281, "dpsalevel"},    /* DPSA threshold level                              , */\
+   { 0x42a1, "dpsa_release"},    /* DPSA release time                                 , */\
+   { 0x42c0, "coincidence"},    /* Prevent simultaneously switching of output stage  , */\
+   { 0x42d0, "kickback"},    /* Prevent double pulses of output stage             , */\
+   { 0x4306, "drivebst"},    /* Drive bits to select the power transistor sections boost converter, */\
+   { 0x4370, "boost_alg"},    /* Control for boost adaptive loop gain              , */\
+   { 0x4381, "boost_loopgain"},    /* DCDC boost loopgain setting                       , */\
+   { 0x43a0, "ocptestbst"},    /* Boost OCP. For old ocp (ctrl_reversebst is 0); For new ocp (ctrl_reversebst is 1), */\
+   { 0x43d0, "test_abistfft_enbl"},    /* FFT Coolflux                                      , */\
+   { 0x43e0, "bst_dcmbst"},    /* DCM mode control for DCDC during I2C direct control mode, */\
+   { 0x43f0, "test_bcontrol"},    /* test_bcontrol                                     , */\
+   { 0x4400, "reversebst"},    /* OverCurrent Protection selection of power stage boost converter, */\
+   { 0x4410, "sensetest"},    /* Test option for the sense NMOS in booster for current mode control., */\
+   { 0x4420, "enbl_engagebst"},    /* Enable power stage of dcdc controller             , */\
+   { 0x4470, "enbl_slopecur"},    /* Enable bit of max-current dac                     , */\
+   { 0x4480, "enbl_voutcomp"},    /* Enable vout comparators                           , */\
+   { 0x4490, "enbl_voutcomp93"},    /* Enable vout-93 comparators                        , */\
+   { 0x44a0, "enbl_voutcomp86"},    /* Enable vout-86 comparators                        , */\
+   { 0x44b0, "enbl_hizcom"},    /* Enable hiz comparator                             , */\
+   { 0x44c0, "enbl_peakcur"},    /* Enable peak current                               , */\
+   { 0x44d0, "bypass_ovpglitch"},    /* Bypass OVP Glitch Filter                          , */\
+   { 0x44e0, "enbl_windac"},    /* Enable window dac                                 , */\
+   { 0x44f0, "enbl_powerbst"},    /* Enable line of the powerstage                     , */\
+   { 0x4507, "ocp_thr"},    /* OCP threshold level                               , */\
+   { 0x4580, "bypass_glitchfilter"},    /* Bypass glitch filter                              , */\
+   { 0x4590, "bypass_ovp"},    /* Bypass OVP                                        , */\
+   { 0x45a0, "bypass_uvp"},    /* Bypass UVP                                        , */\
+   { 0x45b0, "bypass_otp"},    /* Bypass OTP                                        , */\
+   { 0x45d0, "bypass_ocpcounter"},    /* Bypass OCP counter                                , */\
+   { 0x45e0, "bypass_lost_clk"},    /* Bypass lost clock detector                        , */\
+   { 0x45f0, "vpalarm"},    /* vpalarm (UVP/OUP handling)                        , */\
+   { 0x4600, "bypass_gc"},    /* Bypasses the CS gain correction                   , */\
+   { 0x4610, "cs_gain_control"},    /* Current sense gain control                        , */\
+   { 0x4627, "cs_gain"},    /* Current sense gain                                , */\
+   { 0x46a0, "bypass_lp"},    /* Bypass the low power filter inside temperature sensor, */\
+   { 0x46b0, "bypass_pwmcounter"},    /* Bypass PWM Counter                                , */\
+   { 0x46c0, "cs_negfixed"},    /* Current sense does not switch to neg              , */\
+   { 0x46d2, "cs_neghyst"},    /* Current sense switches to neg depending on hyseteris level, */\
+   { 0x4700, "switch_fb"},    /* Current sense control switch_fb                   , */\
+   { 0x4713, "se_hyst"},    /* Current sense control se_hyst                     , */\
+   { 0x4754, "se_level"},    /* Current sense control se_level                    , */\
+   { 0x47a5, "ktemp"},    /* Current sense control temperature compensation trimming, */\
+   { 0x4800, "cs_negin"},    /* Current sense control negin                       , */\
+   { 0x4810, "cs_sein"},    /* Current sense control cs_sein                     , */\
+   { 0x4820, "cs_coincidence"},    /* Coincidence current sense                         , */\
+   { 0x4830, "iddqtestbst"},    /* IDDQ testing in powerstage of DCDC boost converter, */\
+   { 0x4840, "coincidencebst"},    /* Switch protection on to prevent simultaneously switching power stages bst and amp, */\
+   { 0x4876, "delay_se_neg"},    /* delay of se and neg                               , */\
+   { 0x48e1, "cs_ttrack"},    /* Sample and hold track time                        , */\
+   { 0x4900, "bypass_clip"},    /* Bypass clip control                               , */\
+   { 0x4920, "cf_cgate_off"},    /* Disable clock gating in the coolflux              , */\
+   { 0x4940, "clipfast"},    /* Clock selection for HW clipper for battery safeguard, */\
+   { 0x4950, "cs_8ohm"},    /* 8 ohm mode for current sense (gain mode)          , */\
+   { 0x4974, "delay_clock_sh"},    /* delay_sh, tunes S7H delay                         , */\
+   { 0x49c0, "inv_clksh"},    /* Invert the sample/hold clock for current sense ADC, */\
+   { 0x49d0, "inv_neg"},    /* Invert neg signal                                 , */\
+   { 0x49e0, "inv_se"},    /* Invert se signal                                  , */\
+   { 0x49f0, "setse"},    /* Switches between Single Ended and differential mode; 1 is single ended, */\
+   { 0x4a12, "adc10_sel"},    /* Select the input to convert the 10b ADC           , */\
+   { 0x4a60, "adc10_reset"},    /* Reset for ADC10 - I2C direct control mode         , */\
+   { 0x4a81, "adc10_test"},    /* Test mode selection signal for ADC10 - I2C direct control mode, */\
+   { 0x4aa0, "bypass_lp_vbat"},    /* LP filter in batt sensor                          , */\
+   { 0x4ae0, "dc_offset"},    /* Current sense decimator offset control            , */\
+   { 0x4af0, "tsense_hibias"},    /* Bit to set the biasing in temp sensor to high     , */\
+   { 0x4b00, "adc13_iset"},    /* MICADC setting of current consumption (debug use only), */\
+   { 0x4b14, "adc13_gain"},    /* MICADC gain setting (two's complement format)     , */\
+   { 0x4b61, "adc13_slowdel"},    /* MICADC delay setting for internal clock (debug use only), */\
+   { 0x4b83, "adc13_offset"},    /* MICADC offset setting                             , */\
+   { 0x4bc0, "adc13_bsoinv"},    /* MICADC bit stream output invert mode for test     , */\
+   { 0x4bd0, "adc13_resonator_enable"},    /* MICADC give extra SNR with less stability (debug use only), */\
+   { 0x4be0, "testmicadc"},    /* Mux at input of MICADC for test purpose           , */\
+   { 0x4c0f, "abist_offset"},    /* Offset control for ABIST testing                  , */\
+   { 0x4d05, "windac"},    /* For testing direct control windac                 , */\
+   { 0x4dc3, "pwm_dcc_cnt"},    /* control pwm duty cycle when enbl_pwm_dcc is 1     , */\
+   { 0x4e04, "slopecur"},    /* For testing direct control slopecur               , */\
+   { 0x4e50, "ctrl_dem"},    /* Dynamic element matching control, rest of codes are optional, */\
+   { 0x4ed0, "enbl_pwm_dcc"},    /* Enable direct control of pwm duty cycle           , */\
+   { 0x4f00, "bst_bypass_bstcur"},    /* Bypass control for boost current settings         , */\
+   { 0x4f10, "bst_bypass_bstfoldback"},    /* Bypass control for boost foldback                 , */\
+   { 0x4f20, "bst_ctrl_azbst"},    /* Control of auto-zeroing of zero current comparator, */\
+   { 0x5007, "gain"},    /* Gain setting of the gain multiplier               , */\
+   { 0x5081, "sourceb"},    /* PWM OUTB selection control                        , */\
+   { 0x50a1, "sourcea"},    /* PWM OUTA selection control                        , */\
+   { 0x50c1, "sourcebst"},    /* Sets the source of the pwmbst output to boost converter input for testing, */\
+   { 0x50e0, "tdm_enable_loopback"},    /* TDM loopback test                                 , */\
+   { 0x5104, "pulselengthbst"},    /* Pulse length setting test input for boost converter, */\
+   { 0x5150, "bypasslatchbst"},    /* Bypass latch in boost converter                   , */\
+   { 0x5160, "invertbst"},    /* Invert pwmbst test signal                         , */\
+   { 0x5174, "pulselength"},    /* Pulse length setting test input for amplifier     , */\
+   { 0x51c0, "bypasslatch"},    /* Bypass latch in PWM source selection module       , */\
+   { 0x51d0, "invertb"},    /* invert pwmb test signal                           , */\
+   { 0x51e0, "inverta"},    /* invert pwma test signal                           , */\
+   { 0x51f0, "bypass_ctrlloop"},    /* bypass_ctrlloop bypasses the control loop of the amplifier, */\
+   { 0x5210, "test_rdsona"},    /* tbd for rdson testing                             , */\
+   { 0x5220, "test_rdsonb"},    /* tbd for rdson testing                             , */\
+   { 0x5230, "test_rdsonbst"},    /* tbd for rdson testing                             , */\
+   { 0x5240, "test_cvia"},    /* tbd for rdson testing                             , */\
+   { 0x5250, "test_cvib"},    /* tbd for rdson testing                             , */\
+   { 0x5260, "test_cvibst"},    /* tbd for rdson testing                             , */\
+   { 0x5306, "digimuxa_sel"},    /* DigimuxA input selection control (see Digimux list for details), */\
+   { 0x5376, "digimuxb_sel"},    /* DigimuxB input selection control (see Digimux list for details), */\
+   { 0x5400, "hs_mode"},    /* I2C high speed mode selection control             , */\
+   { 0x5412, "test_parametric_io"},    /* Control for parametric tests of IO cells          , */\
+   { 0x5440, "enbl_ringo"},    /* Enable ring oscillator control, for test purpose to check with ringo, */\
+   { 0x5456, "digimuxc_sel"},    /* DigimuxC input selection control (see Digimux list for details), */\
+   { 0x54c0, "dio_ehs"},    /* Slew control for DIO in output mode               , */\
+   { 0x54d0, "gainio_ehs"},    /* Slew control for GAINIO in output mode            , */\
+   { 0x550d, "enbl_amp"},    /* enbl_amp for testing to enable all analoge blocks in amplifier, */\
+   { 0x5600, "use_direct_ctrls"},    /* Use direct controls to overrule several functions for testing - I2C direct control mode, */\
+   { 0x5610, "rst_datapath"},    /* Reset datapath during direct control mode         , */\
+   { 0x5620, "rst_cgu"},    /* Reset CGU during durect control mode              , */\
+   { 0x5637, "enbl_ref"},    /* For testing to enable all analoge blocks in references, */\
+   { 0x56b0, "enbl_engage"},    /* Enable output stage amplifier                     , */\
+   { 0x56c0, "use_direct_clk_ctrl"},    /* use_direct_clk_ctrl, to overrule several functions direct for testing, */\
+   { 0x56d0, "use_direct_pll_ctrl"},    /* use_direct_pll_ctrl, to overrule several functions direct for testing, */\
+   { 0x5707, "anamux"},    /* Anamux control                                    , */\
+   { 0x57e0, "otptest"},    /* otptest, test mode otp amplifier                  , */\
+   { 0x57f0, "reverse"},    /* 1b = Normal mode, slope is controlled             , */\
+   { 0x5813, "pll_selr"},    /* PLL pll_selr                                      , */\
+   { 0x5854, "pll_selp"},    /* PLL pll_selp                                      , */\
+   { 0x58a5, "pll_seli"},    /* PLL pll_seli                                      , */\
+   { 0x5950, "pll_mdec_msb"},    /* Most significant bits of pll_mdec[16]             , */\
+   { 0x5960, "pll_ndec_msb"},    /* Most significant bits of pll_ndec[9]              , */\
+   { 0x5970, "pll_frm"},    /* PLL pll_frm                                       , */\
+   { 0x5980, "pll_directi"},    /* PLL pll_directi                                   , */\
+   { 0x5990, "pll_directo"},    /* PLL pll_directo                                   , */\
+   { 0x59a0, "enbl_pll"},    /* PLL enbl_pll                                      , */\
+   { 0x59f0, "pll_bypass"},    /* PLL bypass                                        , */\
+   { 0x5a0f, "tsig_freq"},    /* Internal sinus test generator frequency control LSB bits, */\
+   { 0x5b02, "tsig_freq_msb"},    /* Select internal sine wave generator, frequency control MSB bits, */\
+   { 0x5b30, "inject_tsig"},    /* Control bit to switch to internal sinus test generator, */\
+   { 0x5b44, "adc10_prog_sample"},    /* ADC10 program sample setting - I2C direct control mode, */\
+   { 0x5c0f, "pll_mdec"},    /* PLL MDEC - I2C direct PLL control mode only       , */\
+   { 0x5d06, "pll_pdec"},    /* PLL PDEC - I2C direct PLL control mode only       , */\
+   { 0x5d78, "pll_ndec"},    /* PLL NDEC - I2C direct PLL control mode only       , */\
+   { 0x6007, "mtpkey1"},    /* 5Ah, 90d To access KEY1_Protected registers (Default for engineering), */\
+   { 0x6185, "mtp_ecc_tcin"},    /* MTP ECC TCIN data                                 , */\
+   { 0x6203, "mtp_man_address_in"},    /* MTP address from I2C register for read/writing mtp in manual single word mode, */\
+   { 0x6260, "mtp_ecc_eeb"},    /* Enable code bit generation (active low!)          , */\
+   { 0x6270, "mtp_ecc_ecb"},    /* Enable correction signal (active low!)            , */\
+   { 0x6280, "man_copy_mtp_to_iic"},    /* Start copying single word from mtp to I2C mtp register, */\
+   { 0x6290, "man_copy_iic_to_mtp"},    /* Start copying single word from I2C mtp register to mtp, */\
+   { 0x62a0, "auto_copy_mtp_to_iic"},    /* Start copying all the data from mtp to I2C mtp registers, */\
+   { 0x62b0, "auto_copy_iic_to_mtp"},    /* Start copying data from I2C mtp registers to mtp  , */\
+   { 0x62d2, "mtp_speed_mode"},    /* MTP speed mode                                    , */\
+   { 0x6340, "mtp_direct_enable"},    /* mtp_direct_enable                                 , */\
+   { 0x6350, "mtp_direct_wr"},    /* mtp_direct_wr                                     , */\
+   { 0x6360, "mtp_direct_rd"},    /* mtp_direct_rd                                     , */\
+   { 0x6370, "mtp_direct_rst"},    /* mtp_direct_rst                                    , */\
+   { 0x6380, "mtp_direct_ers"},    /* mtp_direct_ers                                    , */\
+   { 0x6390, "mtp_direct_prg"},    /* mtp_direct_prg                                    , */\
+   { 0x63a0, "mtp_direct_epp"},    /* mtp_direct_epp                                    , */\
+   { 0x63b4, "mtp_direct_test"},    /* mtp_direct_test                                   , */\
+   { 0x640f, "mtp_man_data_in"},    /* Write data for MTP manual write                   , */\
+   { 0x7000, "cf_rst_dsp"},    /* Reset CoolFlux DSP                                , */\
+   { 0x7011, "cf_dmem"},    /* Target memory for access                          , */\
+   { 0x7030, "cf_aif"},    /* Auto increment flag for memory-address            , */\
+   { 0x7040, "cf_int"},    /* CF Interrupt - auto clear                         , */\
+   { 0x7087, "cf_req"},    /* CF request for accessing the 8 channels           , */\
+   { 0x710f, "cf_madd"},    /* Memory address                                    , */\
+   { 0x720f, "cf_mema"},    /* Activate memory access                            , */\
+   { 0x7307, "cf_err"},    /* CF error flags                                    , */\
+   { 0x7387, "cf_ack"},    /* CF acknowledgement of the requests channels       , */\
+   { 0x8000, "calibration_onetime"},    /* Calibration schedule selection                    , */\
+   { 0x8010, "calibr_ron_done"},    /* Calibration of RON status bit                     , */\
+   { 0x8105, "calibr_vout_offset"},    /* calibr_vout_offset (DCDCoffset) 2's compliment (key1 protected), */\
+   { 0x8163, "calibr_delta_gain"},    /* delta gain for vamp (alpha) 2's compliment (key1 protected), */\
+   { 0x81a5, "calibr_offs_amp"},    /* offset for vamp (Ampoffset) 2's compliment (key1 protected), */\
+   { 0x8207, "calibr_gain_cs"},    /* gain current sense (Imeasalpha) 2's compliment (key1 protected), */\
+   { 0x8284, "calibr_temp_offset"},    /* temperature offset 2's compliment (key1 protected), */\
+   { 0x82d2, "calibr_temp_gain"},    /* temperature gain 2's compliment (key1 protected)  , */\
+   { 0x830f, "calibr_ron"},    /* calibration value of the RON resistance of the coil, */\
+   { 0x8505, "type_bits_hw"},    /* bit0 = disable function dcdcoff_mode ($09[7])     , */\
+   { 0x8601, "type_bits_1_0_sw"},    /* MTP control SW                                    , */\
+   { 0x8681, "type_bits_9_8_sw"},    /* MTP control SW                                    , */\
+   { 0x870f, "type_bits2_sw"},    /* MTP-control SW2                                   , */\
+   { 0x8806, "htol_iic_addr"},    /* 7-bit I2C address to be used during HTOL testing  , */\
+   { 0x8870, "htol_iic_addr_en"},    /* HTOL I2C_Address_Enable                           , */\
+   { 0x8881, "ctrl_ovp_response"},    /* OVP response control                              , */\
+   { 0x88a0, "disable_ovp_alarm_state"},    /* OVP alarm state control                           , */\
+   { 0x88b0, "enbl_stretch_ovp"},    /* OVP alram strech control                          , */\
+   { 0x88c0, "cf_debug_mode"},    /* Coolflux debug mode                               , */\
+   { 0x8a0f, "production_data1"},    /* production_data1                                  , */\
+   { 0x8b0f, "production_data2"},    /* production_data2                                  , */\
+   { 0x8c0f, "production_data3"},    /* production_data3                                  , */\
+   { 0x8d0f, "production_data4"},    /* production_data4                                  , */\
+   { 0x8e0f, "production_data5"},    /* production_data5                                  , */\
+   { 0x8f0f, "production_data6"},    /* production_data6                                  , */\
+   { 0xffff,"Unknown bitfield enum" }    /* not found */\
 };
 
 enum TFA9896_irq {

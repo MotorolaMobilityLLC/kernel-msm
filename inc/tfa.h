@@ -35,7 +35,6 @@ struct tfa_device ** tfa_devs_create(int count);
 void tfa_devs_destroy(int count);
 
 struct tfa_device ** tfa_get_device_struct(void);
-struct tfa_device *tfa_get_address_device(int address);
 
 int tfa_plop_noise_interrupt(struct tfa_device *tfa, int profile, int vstep);
 void tfa_lp_mode_interrupt(struct tfa_device *tfa);

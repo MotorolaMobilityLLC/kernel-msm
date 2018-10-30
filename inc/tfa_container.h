@@ -38,14 +38,6 @@ enum tfa_error tfa_load_cnt(void *cnt, int length);
 char *tfaContGetString(nxpTfaContainer_t *cnt, nxpTfaDescPtr_t *dsc);
 
 /**
-* Return the descriptor tfahal
-* @param cnt pointer to the container struct
-* @param dsc pointer to nxpTfa descriptor
-* @return descriptor tfahal
-*/
-char *tfa_cont_get_tfahal(nxpTfaContainer_t *cnt, nxpTfaDescPtr_t *dsc);
-
-/**
  * Gets the string for the given command type number
  * @param type number representing a command
  * @return string of a command

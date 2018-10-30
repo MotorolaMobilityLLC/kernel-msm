@@ -7,6 +7,7 @@
  *
  */
 
+#include "dbgprint.h"
 #include "tfa_container.h"
 #include "tfa.h"
 #include "tfa98xx_tfafieldnames.h"
@@ -879,7 +880,12 @@ enum Tfa98xx_Error tfaRunWriteBitfield(struct tfa_device *tfa,  nxpTfaBitfield_t
         
 	value=bf.value;
 	bfUni.field = bf.field;
-	error = tfa_set_bf(tfa, bfUni.field, value);
+#ifdef TFA_DEBUG
+	if (tfa->verbose)
+		pr_debug("bitfield: %s=0x%x (0x%x[%d..%d]=0x%x)\n", tfaContBfName(bfUni.field, tfa->rev), value,
+			bfUni.Enum.address, bfUni.Enum.pos, bfUni.Enum.pos+bfUni.Enum.len, value);
+#endif
+        error = tfa_set_bf(tfa, bfUni.field, value);
 
 	return error;
 }
@@ -992,6 +998,20 @@ static enum Tfa98xx_Error tfaRunWriteFilter(struct tfa_device *tfa, nxpTfaContBi
 			error = tfa_dsp_cmd_id_write(tfa, MODULE_FRAMEWORK, 4 /* param */ , sizeof(data), data);
 		}
 	}
+
+#ifdef TFA_DEBUG
+	if (tfa->verbose) {
+		if (bq->aa.index==13) {
+			pr_debug("=%d,%.0f,%.2f \n",
+				bq->in.type, bq->in.cutOffFreq, bq->in.leakage);
+		} else if(bq->aa.index >= 10 && bq->aa.index <= 12) {
+			pr_debug("=%d,%.0f,%.1f,%.1f \n", bq->aa.type,
+				bq->aa.cutOffFreq, bq->aa.rippleDb, bq->aa.rolloff);
+		} else {
+			pr_debug("= unsupported filter index \n");
+		}
+	}
+#endif
 
 	/* Because we can load the same filters multiple times
 	 * For example: When we switch profile we re-write in operating mode.

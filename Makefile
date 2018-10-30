@@ -25,9 +25,6 @@ endif
 GIT_VERSION=$(shell cd $(PLMA_TFA_AUDIO_DRV_DIR); git describe --tags --dirty --match "v[0-9]*.[0-9]*.[0-9]*")
 EXTRA_CFLAGS += -DTFA98XX_GIT_VERSIONS=\"$(GIT_VERSION)\"
 
-# debugging support (also enables trace_printk)
-EXTRA_CFLAGS += -DDEBUG
-
 EXTRA_CFLAGS += -I$(src)/inc
 EXTRA_CFLAGS += -Werror
 
@@ -38,10 +35,6 @@ snd-soc-tfa98xx-objs += src/tfa_container.o
 snd-soc-tfa98xx-objs += src/tfa_dsp.o
 snd-soc-tfa98xx-objs += src/tfa_init.o
 
-ifdef TFA_DEBUG
-EXTRA_CFLAGS += -DTFA_DEBUG -DDEBUG
-snd-soc-tfa98xx-objs += src/tfa_debug.o
-endif
 
 else
 
