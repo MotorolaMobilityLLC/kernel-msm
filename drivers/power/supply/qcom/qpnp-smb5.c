@@ -772,9 +772,9 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		if (!val->intval)
 			break;
 
-		if (((chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) ||
-		   (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB))
-			&& (chg->real_charger_type == POWER_SUPPLY_TYPE_USB))
+		if ( (chg->real_charger_type == POWER_SUPPLY_TYPE_USB) ||
+			(chg->pd_active && chg->pd &&
+		     (usbpd_get_current_dr(chg->pd) == 1)))
 			val->intval = 0;
 		else
 			val->intval = 1;
@@ -1118,9 +1118,9 @@ static int smb5_usb_port_get_prop(struct power_supply *psy,
 		if (!val->intval)
 			break;
 
-		if (((chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) ||
-		   (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB))
-			&& (chg->real_charger_type == POWER_SUPPLY_TYPE_USB))
+		if ( (chg->real_charger_type == POWER_SUPPLY_TYPE_USB) ||
+			(chg->pd_active && chg->pd &&
+		     (usbpd_get_current_dr(chg->pd) == 1)))
 			val->intval = 1;
 		else
 			val->intval = 0;
@@ -3879,6 +3879,12 @@ static int smb5_probe(struct platform_device *pdev)
 	if (!chg->regmap) {
 		pr_err("parent regmap is missing\n");
 		return -EINVAL;
+	}
+
+	chg->pd = devm_usbpd_get_by_phandle(chg->dev, "qcom,usbpd-phandle");
+	if (IS_ERR_OR_NULL(chg->pd)) {
+		pr_err("Error getting the pd phandle %ld\n", PTR_ERR(chg->pd));
+		chg->pd = NULL;
 	}
 
 	rc = smb5_chg_config_init(chip);
