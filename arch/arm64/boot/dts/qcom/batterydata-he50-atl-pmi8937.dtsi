@@ -1,0 +1,50 @@
+
+qcom,he50_atl_4850mAh {
+	/* #3089905_Lenovo_HE50atl_4850mAh_averaged_MasterSlave_Sept19th2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <4850>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "he50_atl_4850mAh";
+	qcom,chg-rslow-comp-c1 = <2812656>;
+	qcom,chg-rslow-comp-c2 = <3480740>;
+	qcom,chg-rs-to-rslow = <682307>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,thermal-coefficients = [C8 86 C1 50 D3 37];
+	qcom,checksum = <0xEFFB>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 EE 83 4F 7D
+		 7F 81 11 7C
+		 5A 83 12 64
+		 EE 81 AF 8C
+		 30 82 D3 99
+		 E5 BC 9A C9
+		 5C 0E 0D 88
+		 82 7E 57 82
+		 D7 7C 4C 83
+		 55 71 5A 6C
+		 BA 75 51 82
+		 83 99 C1 BC
+		 97 C9 5E 0D
+		 39 13 FC 59
+		 14 70 4A FC
+		 8F 3E 02 3E
+		 8E 3A 00 00
+		 AB 46 81 28
+		 56 3A 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 10 6A 12 69
+		 30 79 FB 8A
+		 28 74 B1 69
+		 F4 63 67 80
+		 FC 6C C2 61
+		 81 7D 7F 98
+		 1E 03 61 EF
+		 5D A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};

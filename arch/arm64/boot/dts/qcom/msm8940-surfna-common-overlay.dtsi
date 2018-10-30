@@ -1,0 +1,346 @@
+/* Copyright (c) 2018, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#include "msm8940-moto-common-overlay.dtsi"
+#include "msm8940-surfna-pinctrl-overlay.dtsi"
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&firmware {
+	android {
+		fstab {
+			vendor {
+				compatible = "android,vendor";
+				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1,discard";
+				fsmgr_flags = "wait,verify";
+				status = "ok";
+			};
+		};
+	};
+};
+
+&pmx_mdss {
+	mdss_dsi_active {
+		mux {
+			pins = "gpio60";
+		};
+
+		config {
+			pins = "gpio60";
+		};
+	};
+
+	mdss_dsi_suspend {
+		mux {
+			pins = "gpio60";
+		};
+
+		config {
+			pins = "gpio60";
+			output-high;
+		};
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_ofilm_545_720p_vid_v0>;
+
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	vddio_disp-supply = <&pm8937_l6>;
+	vsp_disp-supply = <&lab_regulator>;
+	vsn_disp-supply = <&ibb_regulator>;
+	qcom,regulator-ldo-mode;
+	qcom,platform-reset-gpio = <&tlmm 60 0>;
+};
+
+&i2c_3 {
+	status = "ok";
+	/* clock-frequency = <400000>; */
+
+	focaltech@38 {
+		compatible = "focaltech,mmi";
+		reg = <0x38>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <65 0x02>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend","pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		focaltech,name = "ft5446";
+		focaltech,family-id = <0x54>;
+		focaltech,reset-gpio = <&tlmm 64 0x01>;
+		focaltech,irq-gpio = <&tlmm 65 0x02>;
+		focaltech,display-coords = <0 0 720 1440>;
+		focaltech,i2c-pull-up;
+		focaltech,group-id = <1>;
+		focaltech,hard-reset-delay-ms = <20>;
+		focaltech,soft-reset-delay-ms = <200>;
+		focaltech,num-max-touches = <10>;
+		focaltech,fw-delay-aa-ms = <2>;
+		focaltech,fw-delay-55-ms = <2>;
+		focaltech,fw-upgrade-id1 = <0x54>;
+		focaltech,fw-upgrade-id2 = <0x22>;
+		focaltech,fw-delay-readid-ms = <20>;
+		focaltech,fw-delay-era-flsh-ms = <2000>;
+		focaltech,resume-in-workqueue;
+		focaltech,ignore-id-check;
+	};
+
+};
+
+&i2c_2 {
+	status = "ok";
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_int_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <44 0x2002>;
+		cap_vdd-supply = <&pm8937_l10>;
+		cap_svdd-supply = <&pm8937_l5>;
+		gpios = <&tlmm 44 0x2008>; /* IRQ */
+		cap,use_channel = <0x0F>;
+		cap,use_channel_top = <0x00>;
+		cap,use_channel_bottom = <0x01>;
+		cap,raw_data_channel = <0x01>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <9>;
+		reg_array_val = <0x14 0x0d 0x15 0xc2 0x17 0x4a 0x18 0x41 0x19 0x31 0x1a 0x1f 0x21 0x1c 0x22 0x16 0x23 0x20>;
+	};
+
+	/delete-node/ adv7533@39;
+	/delete-node/ pericom-type-c@1d;
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		status = "okay";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
+
+	tfa987x:tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x34>;
+		nxp,reset-gpio = <&tlmm 89 0>;
+		nxp,irq-gpio = <&tlmm 90 0>;
+		status = "ok";
+	};
+};
+
+&pm8937_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	#include "batterydata-he50-atl-pmi8937.dtsi"
+	#include "batterydata-he50-cos-pmi8937.dtsi"
+	#include "batterydata-he50-cos-pmi8937-r1.dtsi"
+};
+
+
+&qpnp_fg {
+	qcom,ext-sense-type; /* External Sense Resistor */
+	/delete-property/ qcom,thermal-coefficients ;
+	qcom,irq-volt-empty-mv = <3200>;
+	qcom,fg-cutoff-voltage-mv = <3400>;
+
+	status = "okay";
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <0>;
+	qcom,hot-bat-decidegc = <600>;
+	qcom,cold-bat-decidegc = <(-200)>;
+	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
+	qcom,thermal-coefficients =  /bits/ 16 <0x6986 0x5D4B 0x6235>;
+	qcom,resume-soc = <99>;
+	qcom,bcl-lm-threshold-ma = <126>;
+	qcom,bcl-mh-threshold-ma = <400>;
+	qcom,fg-iterm-ma = <150>;
+	qcom,fg-vbat-estimate-diff-mv = <1000>;
+	qcom,fg-delta-soc = <1>;
+	qcom,fg-max-soc = <100>;
+	qcom,fg-min-soc = <0>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,battery-data = <&mtp_batterydata>;
+};
+
+&qpnp_smbcharger {
+	qcom,fastchg-current-ma = <3000>;
+	qcom,iterm-ma = <146>;
+	qcom,fcc-max-ua = <2000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <2000000>;
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,thermal-mitigation = <2000>,
+				<1600>,
+				<1200>,
+				<1000>,
+				<800>,
+				<500>,
+				<300>;
+	qcom,mmi-temp-zones = <0 4200 582 0>,
+				<10 4200 1460 582>,
+				<15 0 1460 1460>,
+				<45 4200 2000 2000>,
+				<60 4200 1460 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <75>;
+	qcom,lower-limit-capacity = <60>;
+	qcom,mmi-disable-hvdcp;
+	dpdm-supply = <&usb_otg>;
+};
+
+&pm8937_vadc {
+	chan@11 {
+		label = "chg_therm";
+	};
+
+	chan@13 {
+		label = "msm_therm";
+	};
+};
+
+&dai_mi2s4 {
+	compatible = "qcom,msm-dai-q6-mi2s";
+	qcom,msm-dai-q6-mi2s-dev-id = <4>;
+	qcom,msm-mi2s-rx-lines = <2>;
+	qcom,msm-mi2s-tx-lines = <1>;
+};
+
+
+/* display boost and inverting boost regulators */
+&labibb {
+	status = "ok";
+	qpnp,qpnp-labibb-mode = "lcd";
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-discharge-resistor = <32>;
+};
+
+&wled {
+	qcom,fs-curr-ua = <25000>;
+	qcom,cons-sync-write-delay-us = <1000>;
+	qcom,en-cabc;
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa18 {
+		status = "okay";
+		pm8937_l18: regulator-l18 {
+			regulator-min-microvolt = <2700000>;
+			regulator-max-microvolt = <2700000>;
+			qcom,init-voltage = <2700000>;
+			status = "okay";
+		};
+	};
+};
+
+&usb_otg {
+	qcom,hsusb-otg-phy-init-seq =
+		<0x40 0x80 0x6a 0x81 0x3f 0x82 0x13 0x83 0xffffffff>;
+	qcom,chg-dcp-icl = <1800>;
+	extcon = <&qpnp_smbcharger>;
+};
+
+&soc {
+	qcom,msm-thermal {
+		qcom,config-info = "surfna";
+	};
+
+	vdda_touch_vreg: vdda_touch_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdda_touch";
+		gpio = <&tlmm 131 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	sound {
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		qcom,msm-micbias1-ext-cap;
+		/delete-property/ qcom,msm-micbias2-ext-cap;
+		qcom,msm-hs-micbias-type = "external";
+		qcom,msm-hs-insert-debounce = <9>;
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS External2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS External2",
+			"AMIC3", "MIC BIAS External";
+		qcom,msm-gpios =
+			"pri_i2s",
+			"quin_i2s";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act";
+		pinctrl-0 = <&cdc_pdm_lines_sus
+                        &cdc_pdm_lines_2_sus
+                        &quin_mi2s_sus &pri_tlmm_ws_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act
+                        &cdc_pdm_lines_2_act
+                        &quin_mi2s_sus &pri_tlmm_ws_sus>;
+		pinctrl-2 = <&cdc_pdm_lines_sus
+                        &cdc_pdm_lines_2_sus
+                        &quin_mi2s_act &pri_tlmm_ws_act>;
+		pinctrl-3 = <&cdc_pdm_lines_act
+                        &cdc_pdm_lines_2_act
+                        &quin_mi2s_act &pri_tlmm_ws_act>;
+		/delete-property/ pinctrl-4;
+		/delete-property/ pinctrl-5;
+		/delete-property/ pinctrl-6;
+		/delete-property/ pinctrl-7;
+	};
+};
+
+&sdhc_2 {
+	cd-gpios = <&tlmm 67 0x0>;
+};
+
+
+&pm8937_l10 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&pmi_haptic {
+	compatible = "qcom,qpnp-haptics";
+	interrupt-names = "hap-sc-irq", "hap-play-irq";
+	qcom,wave-samples = <0x3e 0x3e 0x3e 0x3e 0x3e
+                        0x3e 0x3e 0x3e>;
+	qcom,vmax-mv = <2600>;
+	/delete-property/ qcom,en-brake; /* disable internal reverse braking */
+	/delete-property/ qcom,brake-pattern; /* disable brake pattern */
+};
