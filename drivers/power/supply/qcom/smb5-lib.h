@@ -29,6 +29,7 @@
 #include <linux/alarmtimer.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/power_supply.h>
+#include <linux/usb/usbpd.h>
 
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
@@ -60,6 +61,7 @@ enum print_reason {
 #define CTM_VOTER			"CTM_VOTER"
 #define SW_QC3_VOTER			"SW_QC3_VOTER"
 #define AICL_RERUN_VOTER		"AICL_RERUN_VOTER"
+#define ICL_LIMIT_VOTER		"ICL_LIMIT_VOTER"
 #define SW_ICL_MAX_VOTER		"SW_ICL_MAX_VOTER"
 #define PL_QNOVO_VOTER			"PL_QNOVO_VOTER"
 #define QNOVO_VOTER			"QNOVO_VOTER"
@@ -733,6 +735,9 @@ struct smb_charger {
 	struct mmi_params	mmi;
 	void			*ipc_log;
 	void			*ipc_log_reg;
+	struct usbpd		*pd;
+	int			pd_contract_uv;
+	struct delayed_work	pd_contract_work;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
