@@ -42,6 +42,13 @@ config MOD_DISPLAY
 	---help---
 	  Say yes here if you wish to include the Mod Display support drivers.
 
+config MOD_DP_BRIDGE
+	tristate "Mod dp bridge Display Support"
+	depends on MOD_DISPLAY
+	default n
+	---help---
+	  Say yes here if you wish to include the Mod Display support drivers.
+
 config MODS_2ND_GEN
 	bool "MODS_2ND_GEN Support"
 	default n
