@@ -34,6 +34,39 @@ struct dp_gpio_hpd_private {
 	bool hpd;
 };
 
+#ifdef CONFIG_MOD_DISPLAY
+static struct dp_gpio_hpd_private *g_gpio_hpd;
+
+extern int dp_bridge_check_connect_state(bool connect);
+extern int dp_bridge_connect_wait_complete(void);
+
+static irqreturn_t dp_gpio_isr(int unused, void *data);
+
+int dp_enable_irq(bool en)
+{
+	if (!g_gpio_hpd) {
+		pr_err("%s gpio_hpd data null\n", __func__);
+		return -1;
+	}
+
+	pr_debug("%s en %d\n", __func__, en);
+
+	if (en)
+		devm_request_threaded_irq(g_gpio_hpd->dev,
+							g_gpio_hpd->irq, NULL,
+							dp_gpio_isr,
+							IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+							"dp-gpio-intp", g_gpio_hpd);
+	else
+		devm_free_irq(g_gpio_hpd->dev,
+				g_gpio_hpd->irq, g_gpio_hpd);
+
+	return 0;
+
+}
+EXPORT_SYMBOL(dp_enable_irq);
+#endif
+
 static int dp_gpio_hpd_connect(struct dp_gpio_hpd_private *gpio_hpd, bool hpd)
 {
 	int rc = 0;
@@ -98,12 +131,23 @@ static irqreturn_t dp_gpio_isr(int unused, void *data)
 
 	if (!gpio_hpd->hpd && hpd) {
 		gpio_hpd->hpd = true;
+#ifdef CONFIG_MOD_DISPLAY
+		dp_bridge_check_connect_state(1);
+		dp_bridge_connect_wait_complete();
+#endif
 		queue_delayed_work(system_wq, &gpio_hpd->work, 0);
 		return IRQ_HANDLED;
 	}
-
+#ifdef CONFIG_MOD_DISPLAY
+	if (!gpio_hpd->hpd) {
+		dp_bridge_check_connect_state(0);
+		dp_bridge_connect_wait_complete();
+		return IRQ_HANDLED;
+	}
+#else
 	if (!gpio_hpd->hpd)
 		return IRQ_HANDLED;
+#endif
 
 	/* In DP 1.2 spec, 100msec is recommended for the detection
 	 * of HPD connect event. Here we'll poll HPD status for
@@ -282,6 +326,12 @@ struct dp_hpd *dp_gpio_hpd_get(struct device *dev,
 	gpio_hpd->base.simulate_connect = dp_gpio_hpd_simulate_connect;
 	gpio_hpd->base.simulate_attention = dp_gpio_hpd_simulate_attention;
 	gpio_hpd->base.register_hpd = dp_gpio_hpd_register;
+
+#ifdef CONFIG_MOD_DISPLAY
+	g_gpio_hpd = gpio_hpd;
+	dp_enable_irq(0);
+#endif
+
 
 	return &gpio_hpd->base;
 
