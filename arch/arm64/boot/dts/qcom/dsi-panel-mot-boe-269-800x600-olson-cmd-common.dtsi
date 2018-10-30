@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,13 +11,13 @@
  */
 
 compatible = "qcom,mdss-dsi-panel";
-qcom,mdss-dsi-panel-name = "mipi_mot_cmd_auo_876x2142_620";
-qcom,mdss-dsi-panel-supplier = "auo";
+qcom,mdss-dsi-panel-name = "mipi_mot_cmd_boe_800x600_269";
+qcom,mdss-dsi-panel-supplier = "boe";
 qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 qcom,mdss-dsi-virtual-channel-id = <0>;
 qcom,mdss-dsi-stream = <0>;
-qcom,mdss-pan-physical-width-dimension = <62>;
-qcom,mdss-pan-physical-height-dimension = <172>;
+qcom,mdss-pan-physical-width-dimension = <55>;
+qcom,mdss-pan-physical-height-dimension = <41>;
 qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
@@ -27,12 +27,10 @@ qcom,mdss-dsi-bllp-eof-power-mode;
 qcom,mdss-dsi-bllp-power-mode;
 qcom,mdss-dsi-lane-0-state;
 qcom,mdss-dsi-lane-1-state;
-qcom,mdss-dsi-lane-2-state;
-qcom,mdss-dsi-lane-3-state;
 
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
-qcom,mdss-dsi-reset-sequence = <0 11>, <1 1>, <0 1>, <1 11>;
+qcom,mdss-dsi-reset-sequence = <0 2>, <1 35>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 
@@ -47,8 +45,8 @@ qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
 qcom,mdss-dsi-display-timings {
 	timing@0{
-		qcom,mdss-dsi-panel-width = <1080>;
-		qcom,mdss-dsi-panel-height = <2142>;
+		qcom,mdss-dsi-panel-width = <800>;
+		qcom,mdss-dsi-panel-height = <600>;
 		qcom,mdss-dsi-h-front-porch = <44>;
 		qcom,mdss-dsi-h-back-porch = <32>;
 		qcom,mdss-dsi-h-pulse-width = <12>;
@@ -67,7 +65,6 @@ qcom,mdss-dsi-display-timings {
 			15 00 00 00 00 00 02 35 00
 			15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
 			15 00 00 00 00 00 02 51 7f
-			15 00 00 00 00 00 02 55 00      /* ACL OFF */
 			05 01 00 00 00 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 23 00 01 28		/* display_off */
@@ -85,32 +82,19 @@ qcom,panel-supply-entries {
 
 	qcom,panel-supply-entry@0 {
 		reg = <0>;
-		qcom,supply-name = "l11_disp";
-		qcom,supply-min-voltage = <1800000>;
-		qcom,supply-max-voltage = <1800000>;
-		qcom,supply-enable-load = <300000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <1>;
-		qcom,supply-pre-off-sleep = <3>;
-		qcom,supply-post-off-sleep = <0>;
-	};
-
-	qcom,panel-supply-entry@1 {
-		reg = <1>;
 		qcom,supply-name = "vio_disp";
 		qcom,supply-min-voltage = <1800000>;
 		qcom,supply-max-voltage = <1800000>;
 		qcom,supply-enable-load = <300000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <1>;
-		qcom,supply-pre-off-sleep = <3>;
+		qcom,supply-post-on-sleep = <3>;
+		qcom,supply-pre-off-sleep = <2>;
 		qcom,supply-post-off-sleep = <0>;
 	};
 
-	qcom,panel-supply-entry@2 {
-		reg = <2>;
+	qcom,panel-supply-entry@1 {
+		reg = <1>;
 		qcom,supply-name = "vci_disp";
 		qcom,supply-min-voltage = <3200000>;
 		qcom,supply-max-voltage = <3200000>;
@@ -119,45 +103,6 @@ qcom,panel-supply-entries {
 		qcom,supply-pre-on-sleep = <0>;
 		qcom,supply-post-on-sleep = <0>;
 		qcom,supply-pre-off-sleep = <2>;
-		qcom,supply-post-off-sleep = <0>;
-	};
-
-	qcom,panel-supply-entry@3 {
-		reg = <3>;
-		qcom,supply-name = "lab";
-		qcom,supply-min-voltage = <4600000>;
-		qcom,supply-max-voltage = <6100000>;
-		qcom,supply-enable-load = <100000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <0>;
-		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <0>;
-	};
-
-	qcom,panel-supply-entry@4 {
-		reg = <4>;
-		qcom,supply-name = "ibb";
-		qcom,supply-min-voltage = <4000000>;
-		qcom,supply-max-voltage = <6300000>;
-		qcom,supply-enable-load = <100000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <0>;
-		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <0>;
-	};
-
-	qcom,panel-supply-entry@5 {
-		reg = <5>;
-		qcom,supply-name = "oledb";
-		qcom,supply-min-voltage = <5000000>;
-		qcom,supply-max-voltage = <8100000>;
-		qcom,supply-enable-load = <100000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <0>;
-		qcom,supply-pre-off-sleep = <0>;
 		qcom,supply-post-off-sleep = <0>;
 	};
 };
