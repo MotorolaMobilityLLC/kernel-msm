@@ -61,10 +61,8 @@
 		clock-names = "src_byte_clk", "src_pixel_clk";
 
 		pinctrl-names = "panel_active", "panel_suspend";
-		pinctrl-0 = <&sde_dsi1_active &sde_te1_active
-					&ts_sub_rst_active>;
-		pinctrl-1 = <&sde_dsi1_suspend &sde_te1_suspend
-					&ts_sub_rst_suspend>;
+		pinctrl-0 = <&sde_dsi1_active &sde_te1_active>;
+		pinctrl-1 = <&sde_dsi1_suspend &sde_te1_suspend>;
 		qcom,platform-te-gpio = <&tlmm 11 0>;
 		qcom,dsi-panel = <&mot_boe_269_800x600_cmd_v0>;
 		vci_disp-supply = <&vci_disp_sub_vreg>;
@@ -298,5 +296,11 @@
 			qcom,supply-pre-off-sleep = <3>;
 			qcom,supply-post-off-sleep = <0>;
 		};
+	};
+};
+
+&qupv3_se7_i2c {
+	raydium-ts@39 {
+		status = "ok";
 	};
 };
