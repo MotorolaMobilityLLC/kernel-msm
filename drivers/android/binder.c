@@ -3347,8 +3347,8 @@ static void binder_transaction(struct binder_proc *proc,
 		BUG_ON(t->buffer->async_transaction != 0);
 		binder_pop_transaction_ilocked(target_thread, in_reply_to);
 		binder_enqueue_thread_work_ilocked(target_thread, &t->work);
+		wake_up_interruptible(&target_thread->wait);
 		binder_inner_proc_unlock(target_proc);
-		wake_up_interruptible_sync(&target_thread->wait);
 		binder_restore_priority(current, in_reply_to->saved_priority);
 		binder_free_transaction(in_reply_to);
 	} else if (!(t->flags & TF_ONE_WAY)) {
