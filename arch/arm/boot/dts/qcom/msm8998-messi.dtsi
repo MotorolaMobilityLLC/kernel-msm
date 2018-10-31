@@ -269,8 +269,8 @@
 		pinctrl-3 = <&muc_attach &muc_det &i2c_9_active &muc_spi_ctrl &muc_spi_i2c_switch>;
 		mmi,muc-ctrl-en-seq = <1 1 100>, <12 0 100>, <13 0 100>;
 		mmi,muc-ctrl-dis-seq = <1 0 505>, <12 0 100>, <13 0 100>;
-		mmi,muc-ctrl-select-spi-seq = <12 0 100>, <13 0 100>;
-		mmi,muc-ctrl-select-i2c-seq = <12 1 100>, <13 1 100>;
+		mmi,muc-ctrl-select-spi-seq = <12 0 10>, <13 0 10>;
+		mmi,muc-ctrl-select-i2c-seq = <12 1 10>, <13 1 10>;
 };
 
 &ssphy {
