@@ -637,13 +637,22 @@
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_suspend &touch_int_suspend>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
-		config_modifier-names = "aod";
-		config_modifier-aod {
-			aod-suspended {
-				/* Power->sleep; */
-				patch-data = "S";
-			};
-		};
+	};
+
+	synaptics_dsx_i2c@38 {
+		status = "/chosen","mmi,cli","true";
+		compatible = "synaptics,synaptics_mmi";
+		reg = <0x38>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <125 0>;
+		gpios = <&tlmm 125 0>, /* IRQ */
+			<&tlmm 99 0>; /* RESET */
+		touch_vdd-supply = <&pm660l_l3>;
+		vdd_quirk-supply = <&pm660_l11>;
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&ts_sub_rst_suspend &ts_sub_int_suspend>;
+		pinctrl-1 = <&ts_sub_rst_active &ts_sub_int_active>;
 	};
 };
 

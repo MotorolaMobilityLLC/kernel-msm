@@ -285,7 +285,7 @@
 	};
 
 	ts_sub_int_mux {
-		pmx_ts_active: pmx_ts_active {
+		ts_sub_int_active: ts-sub-int-active {
 			mux {
 				pins = "gpio125";
 				function = "gpio";
@@ -297,7 +297,7 @@
 			};
 		};
 
-		pmx_ts_suspend: pmx_ts_suspend {
+		ts_sub_int_suspend: ts-sub-int-suspend {
 			mux {
 				pins = "gpio125";
 				function = "gpio";
@@ -309,7 +309,7 @@
 			};
 		};
 
-		pmx_ts_release: pmx_ts_release {
+		ts_sub_int_release: ts-sub-int-release {
 			mux {
 				pins = "gpio125";
 				function = "gpio";
@@ -394,18 +394,26 @@
 		synaptics,splash-screen-mode;
 	};
 
+	synaptics_dsx_i2c@38 {
+		status = "/chosen","mmi,cli","true";
+		synaptics,splash-screen-mode;
+		synaptics,control-dsi = <1>;
+		synaptics,bound-display = "dsi_boe_269_800x600_cmd_display";
+	};
+
 	raydium-ts@39 {
-		status = "ok";
+		status = "disabled";
 		compatible = "raydium,raydium-ts";
 		reg = <0x39>;
 		/*raydium,reset-gpio = <&tlmm 99 0>;*/
 		raydium,irq-gpio = <&tlmm 125 0>;
 		vcc_i2c-supply = <&pm660_l11>;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend", "pmx_ts_release";
-		pinctrl-0 = <&pmx_ts_active>;
-		pinctrl-1 = <&pmx_ts_suspend>;
-		pinctrl-2 = <&pmx_ts_release>;
+		pinctrl-names = "ts_sub_int_active", "ts_sub_int_suspend", "ts_sub_int_release";
+		pinctrl-0 = <&ts_sub_int_active>;
+		pinctrl-1 = <&ts_sub_int_suspend>;
+		pinctrl-2 = <&ts_sub_int_release>;
 		raydium,control-dsi = <1>;
+		raydium,bound-display = "dsi_auo_139_480x480_cmd_dvt1_display";
 		raydium,display-coords = <0 0 480 480>;
 		raydium,soft-reset-delay = <360>;
 		raydium,num-max-touches = <2>;

@@ -291,3 +291,9 @@
 		};
 	};
 };
+
+&qupv3_se7_i2c {
+	raydium-ts@39 {
+		status = "ok";
+	};
+};
