@@ -570,7 +570,7 @@ static struct goodix_ext_module_funcs goodix_tools_module_funcs = {
  *
  * return: 0 success, else failed
  */
-static int __init goodix_tools_init(void)
+int __init goodix_tools_init(void)
 {
 	int ret;
 
@@ -598,16 +598,9 @@ static int __init goodix_tools_init(void)
 	return ret;
 }
 
-static void __exit goodix_tools_exit(void)
+void __exit goodix_tools_exit(void)
 {
 	misc_deregister(&goodix_tools_miscdev);
 	kfree(goodix_tools_dev);
 	ts_info("Goodix tools miscdev exit");
 }
-
-module_init(goodix_tools_init);
-module_exit(goodix_tools_exit);
-
-MODULE_DESCRIPTION("Goodix tools Module");
-MODULE_AUTHOR("Goodix, Inc.");
-MODULE_LICENSE("GPL v2");
