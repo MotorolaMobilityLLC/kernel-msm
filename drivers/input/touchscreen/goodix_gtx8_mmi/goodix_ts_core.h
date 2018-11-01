@@ -61,6 +61,7 @@
 #define GOODIX_MAX_KEY	3
 #define GOODIX_PEN_MAX_KEY	2
 #define GOODIX_CFG_MAX_SIZE	1024
+#define GOODIX_TP_IC_TYPE "GTx5"
 
 #define GOODIX_DEFAULT_CFG_NAME "goodix_config.cfg"
 
@@ -440,6 +441,8 @@ struct goodix_ts_core {
 	atomic_t suspended;
 
 	bool cfg_group_parsed;
+	bool update_from_sysfs;
+	bool gtp_suspended;
 
 	struct notifier_block ts_notifier;
 	struct goodix_ts_esd ts_esd;
