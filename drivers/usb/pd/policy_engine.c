@@ -241,6 +241,7 @@ static void *usbpd_ipc_log;
 #define VCONN_ON_TIME		100
 #define SINK_TX_TIME		16
 #define DR_SWAP_RESPONSE_TIME	20
+#define APSD_RECHECK_TIME	5000
 
 /* tPSHardReset + tSafe0V */
 #define SNK_HARD_RESET_VBUS_OFF_TIME	(35 + 650)
@@ -2707,6 +2708,7 @@ static void usbpd_sm(struct work_struct *w)
 
 		if (pd->current_pr == PR_SINK) {
 			usbpd_set_state(pd, PE_SNK_STARTUP);
+			kick_sm(pd, APSD_RECHECK_TIME);
 		} else if (pd->current_pr == PR_SRC) {
 			if (!pd->vconn_enabled &&
 					pd->typec_mode ==
