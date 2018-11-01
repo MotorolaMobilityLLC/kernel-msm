@@ -44,6 +44,8 @@ int goodix_start_cfg_bin(struct goodix_ts_core *ts_core);
 void goodix_release_fb_notifier(struct goodix_ts_core *core_data);
 
 struct goodix_module goodix_modules;
+static struct class *touchscreen_class;
+static struct device *touchscreen_class_dev;
 
 /**
  * __do_register_ext_module - register external module
@@ -206,7 +208,7 @@ int goodix_unregister_ext_module(struct goodix_ext_module *module)
 		module->funcs->exit(goodix_modules.core_data, module);
 	goodix_modules.count--;
 
-	ts_info("Moudle [%s] unregistered",
+	ts_info("Module [%s] unregistered",
 			module->name ? module->name : " ");
 	return 0;
 }
@@ -324,32 +326,6 @@ static void goodix_debugfs_exit(void)
 	pr_info("Debugfs module exit\n");
 }
 
-/* show buildid module infomation */
-static ssize_t goodix_ts_build_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct goodix_ts_core *core_data =
-		dev_get_drvdata(dev);
-	struct goodix_ts_device *ts_dev = core_data->ts_dev;
-	struct goodix_ts_version chip_ver;
-	int r, cnt = 0;
-
-	cnt += snprintf(buf, PAGE_SIZE,
-			"TouchDeviceName:%s\n", ts_dev->name);
-	if (ts_dev->hw_ops->read_version) {
-		r = ts_dev->hw_ops->read_version(ts_dev, &chip_ver);
-		if (!r && chip_ver.valid) {
-			cnt += snprintf(&buf[cnt], PAGE_SIZE,
-					"%s%02x%02x%02x%02x",
-					chip_ver.pid, chip_ver.vid[0],
-					chip_ver.vid[1], chip_ver.vid[2],
-					chip_ver.vid[3]);
-		}
-	}
-
-	return cnt;
-}
-
 /* show external module infomation */
 static ssize_t goodix_ts_extmod_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -459,7 +435,7 @@ static ssize_t goodix_ts_reset_store(struct device *dev,
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
 	int en;
 
-	if (kstrtoint(buf, 10, &en) != 1)
+	if (kstrtoint(buf, 10, &en) != 0)
 		return -EINVAL;
 
 	if (en != 1)
@@ -566,7 +542,7 @@ static ssize_t goodix_ts_send_cfg_store(struct device *dev,
 
 	ts_info("******IN");
 
-	if (kstrtoint(buf, 10, &en) != 1)
+	if (kstrtoint(buf, 10, &en) != 0)
 		return -EINVAL;
 
 	if (en != 1)
@@ -674,15 +650,12 @@ static ssize_t goodix_ts_irq_info_store(struct device *dev,
 		dev_get_drvdata(dev);
 	int en;
 
-	if (kstrtoint(buf, 10, &en) != 1)
+	if (kstrtoint(buf, 10, &en) != 0)
 		return -EINVAL;
 
 	goodix_ts_irq_enable(core_data, en);
 	return count;
 }
-
-static DEVICE_ATTR(build_id, 0444, goodix_ts_build_show, NULL);
-
 
 static u16 rw_addr;
 static u32 rw_len;
@@ -811,6 +784,7 @@ err_out:
 		"invalied params, format{r/w:4100:length:[41:21:31]}");
 	return -EINVAL;
 }
+
 static DEVICE_ATTR(extmod_info, 0444, goodix_ts_extmod_show, NULL);
 static DEVICE_ATTR(driver_info, 0444, goodix_ts_driver_info_show, NULL);
 static DEVICE_ATTR(chip_info, 0444, goodix_ts_chip_info_show, NULL);
@@ -824,7 +798,6 @@ static DEVICE_ATTR(reg_rw, 0664,
 		goodix_ts_reg_rw_show, goodix_ts_reg_rw_store);
 
 static struct attribute *sysfs_attrs[] = {
-    &dev_attr_build_id.attr,
 	&dev_attr_extmod_info.attr,
 	&dev_attr_driver_info.attr,
 	&dev_attr_chip_info.attr,
@@ -839,8 +812,99 @@ static struct attribute *sysfs_attrs[] = {
 
 
 /****/
-#include <linux/major.h>
-#include <linux/kdev_t.h>
+static ssize_t path_show(struct device *dev, struct device_attribute *pAttr, char *pBuf)
+{
+	ssize_t blen;
+	const char *path;
+	struct goodix_ts_device *ts_device =
+		dev_get_drvdata(dev);
+	struct i2c_client *client = to_i2c_client(ts_device->dev);
+
+	path = kobject_get_path(&client->dev.kobj, GFP_KERNEL);
+	blen = scnprintf(pBuf, PAGE_SIZE, "%s\n", path ? path : "na");
+	kfree(path);
+
+	return blen;
+}
+
+/* Attribute: vendor (RO) */
+static ssize_t vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ts_info("*** %s() vendor = %s ***", __func__, "goodix");
+	return scnprintf(buf, PAGE_SIZE, "goodix");
+}
+
+
+static struct device_attribute touchscreen_attributes[] = {
+	__ATTR_RO(path),
+	__ATTR_RO(vendor),
+	__ATTR_NULL
+};
+
+static int goodix_ts_sysfs_class(struct goodix_ts_device *core_data, bool create)
+{
+	int i, error = 0;
+	dev_t devno;
+	s32 ret = 0;
+	struct device_attribute *attrs = touchscreen_attributes;
+
+	if (create) {
+		ret = alloc_chrdev_region(&devno, 0, 1, GOODIX_TP_IC_TYPE);
+
+		if (ret) {
+			ts_err("cant`t allocate chrdev");
+			return ret;
+		}
+		ts_debug("allocate chrdev ok");
+
+		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
+		if (IS_ERR(touchscreen_class)) {
+			error = PTR_ERR(touchscreen_class);
+			touchscreen_class = NULL;
+			ts_err("Faild to create touchscreen class!");
+			return ret;
+		}
+
+		touchscreen_class_dev = device_create(touchscreen_class, NULL,
+				devno, core_data, GOODIX_TP_IC_TYPE);
+		if (IS_ERR(touchscreen_class_dev)) {
+			error = PTR_ERR(touchscreen_class_dev);
+			touchscreen_class_dev = NULL;
+			ts_err("Faild to create device(touchscreen_class_dev)!");
+			return error;
+		}
+
+		ts_info("Succeed to create device(touchscreen_class_dev)!");
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i) {
+			ret = device_create_file(touchscreen_class_dev, &attrs[i]);
+			if (ret < 0)
+				goto device_destroy;
+		}
+	} else {
+		if (!touchscreen_class || !touchscreen_class_dev)
+			return -ENODEV;
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i)
+			device_remove_file(touchscreen_class_dev, &attrs[i]);
+
+		device_unregister(touchscreen_class_dev);
+		class_unregister(touchscreen_class);
+	}
+
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		device_remove_file(touchscreen_class_dev, &attrs[i]);
+	/*device_destroy(touchscreen_class, MKDEV(INPUT_MAJOR, minor));*/
+	touchscreen_class_dev = NULL;
+	class_unregister(touchscreen_class);
+	ts_err("error creating touchscreen class");
+
+	return -ENODEV;
+}
 
 static const struct attribute_group sysfs_group = {
 	.attrs = sysfs_attrs,
@@ -848,11 +912,22 @@ static const struct attribute_group sysfs_group = {
 
 int goodix_ts_sysfs_init(struct goodix_ts_core *core_data)
 {
-	return sysfs_create_group(&core_data->pdev->dev.kobj, &sysfs_group);
+	int err;
+	err = goodix_ts_sysfs_class(core_data->ts_dev, true);
+	if (err) {
+		ts_err("sys class files creation failed");
+	}
+	err = sysfs_create_group(&core_data->pdev->dev.kobj, &sysfs_group);
+	return err;
 }
 
 static void goodix_ts_sysfs_exit(struct goodix_ts_core *core_data)
 {
+	int err;
+	err = goodix_ts_sysfs_class(core_data->ts_dev, false);
+	if (err) {
+		ts_err("sys class files delete failed");
+	}
 	sysfs_remove_group(&core_data->pdev->dev.kobj, &sysfs_group);
 }
 
@@ -1740,6 +1815,10 @@ static int goodix_ts_suspend(struct goodix_ts_core *core_data)
 
 	ts_info("Suspend start");
 
+	if (core_data->gtp_suspended) {
+		ts_info( "Already in suspend state");
+		return 0;
+	}
 	/*
 	 * notify suspend event, inform the esd protector
 	 * and charger detector to turn off the work
@@ -1806,6 +1885,7 @@ out:
 	core_data->ts_event.event_data.touch_data.touch_num = 0;
 	goodix_ts_input_report(core_data->input_dev,
 			&core_data->ts_event.event_data.touch_data);
+	core_data->gtp_suspended = true;
 	ts_info("Suspend end");
 	return 0;
 }
@@ -1822,6 +1902,12 @@ static int goodix_ts_resume(struct goodix_ts_core *core_data)
 	int r;
 
 	ts_info("Resume start");
+
+	if (!core_data->gtp_suspended) {
+		ts_info("Already in awake state\n");
+		return 0;
+	}
+
 	mutex_lock(&goodix_modules.mutex);
 	if (!list_empty(&goodix_modules.head)) {
 		list_for_each_entry(ext_module, &goodix_modules.head, list) {
@@ -1880,6 +1966,7 @@ out:
 	 * and charger detector to turn on the work
 	 */
 	goodix_ts_blocking_notify(NOTIFY_RESUME, NULL);
+	core_data->gtp_suspended = false;
 	ts_debug("Resume end");
 	return 0;
 }
@@ -2045,6 +2132,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 {
 	struct goodix_ts_core *core_data = NULL;
 	struct goodix_ts_device *ts_device;
+	struct i2c_client *client = NULL;
 	int r;
 	u8 read_val = 0;
 
@@ -2073,7 +2161,10 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	core_data->ts_dev = ts_device;
 	platform_set_drvdata(pdev, core_data);
 	core_data->cfg_group_parsed = false;
-
+	core_data->update_from_sysfs = false;
+	core_data->gtp_suspended = true;
+	client = to_i2c_client(ts_device->dev);
+	i2c_set_clientdata(client, core_data);
 	r = goodix_ts_power_init(core_data);
 	if (r < 0)
 		goto out;
@@ -2201,8 +2292,37 @@ static void __exit goodix_ts_core_exit(void)
 	/*return;*/
 }
 
-module_init(goodix_ts_core_init);
-module_exit(goodix_ts_core_exit);
+extern int goodix_i2c_init(void);
+extern int goodix_tools_init(void);
+extern int goodix_fwu_module_init(void);
+extern int goodix_i2c_exit(void);
+extern int goodix_tools_exit(void);
+extern int goodix_fwu_module_exit(void);
+
+static int __init goodix_ts_module_init(void)
+{
+	int err;
+	if((err = goodix_ts_core_init()) != 0)
+		return err;
+	if((err = goodix_i2c_init()) != 0)
+		return err;
+	if((err = goodix_tools_init()) != 0)
+		return err;
+	if((err = goodix_fwu_module_init()) != 0)
+		return err;
+	return 0;
+}
+
+static void __exit goodix_ts_module_exit(void)
+{
+	goodix_fwu_module_exit();
+	goodix_tools_exit();
+	goodix_i2c_exit();
+	goodix_ts_core_exit();
+}
+
+module_init(goodix_ts_module_init);
+module_exit(goodix_ts_module_exit);
 
 MODULE_DESCRIPTION("Goodix Touchscreen Core Module");
 MODULE_AUTHOR("Goodix, Inc.");
