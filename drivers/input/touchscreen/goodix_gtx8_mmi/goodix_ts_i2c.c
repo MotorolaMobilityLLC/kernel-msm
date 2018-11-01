@@ -2092,7 +2092,7 @@ static int goodix_i2c_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 
-	ts_device->name = "GTx5 TouchDevcie";
+	ts_device->name = "gtx5";
 	ts_device->dev = &client->dev;
 	ts_device->board_data = ts_bdata;
 	ts_device->hw_ops = &hw_i2c_ops;
@@ -2165,21 +2165,14 @@ static struct i2c_driver goodix_i2c_driver = {
 	.id_table = i2c_id_table,
 };
 
-static int __init goodix_i2c_init(void)
+int __init goodix_i2c_init(void)
 {
 	ts_info("GTx5xx HW layer init V1.3.0.1");
 	return i2c_add_driver(&goodix_i2c_driver);
 }
 
-static void __exit goodix_i2c_exit(void)
+void __exit goodix_i2c_exit(void)
 {
 	i2c_del_driver(&goodix_i2c_driver);
 	/*return;*/
 }
-
-module_init(goodix_i2c_init);
-module_exit(goodix_i2c_exit);
-
-MODULE_DESCRIPTION("Goodix GTx5 Touchscreen Hardware Module");
-MODULE_AUTHOR("Goodix, Inc.");
-MODULE_LICENSE("GPL v2");
