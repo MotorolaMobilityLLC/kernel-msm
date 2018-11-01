@@ -15,6 +15,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  */
+#include <linux/i2c.h>
 #include "goodix_ts_core.h"
 #include "goodix_cfg_bin.h"
 #include "goodix_default_fw.h"
@@ -25,6 +26,7 @@
 #define FW_SUBSYS_INFO_SIZE			8
 #define FW_SUBSYS_INFO_OFFSET		32
 #define FW_SUBSYS_MAX_NUM			28
+#define FW_NAME_MAX_LEN			    50
 
 #define ISP_MAX_BUFFERSIZE			(1024 * 4)
 
@@ -58,6 +60,7 @@
  */
 atomic_t fw_update_mode = ATOMIC_INIT(1);
 
+static struct goodix_ext_module *goodix_module = NULL;
 /**
  * fw_subsys_info - subsytem firmware infomation
  * @type: sybsystem type
@@ -152,7 +155,8 @@ struct fw_update_ctrl {
 	struct goodix_ts_device *ts_dev;
 	struct goodix_ts_core *core_data;
 
-	char fw_name[32];
+	char fw_name[FW_NAME_MAX_LEN];
+	char fw_name_sysfs[FW_NAME_MAX_LEN];
 	struct bin_attribute attr_fwimage;
 	bool fw_from_sysfs;
 };
@@ -1051,19 +1055,34 @@ static inline void goodix_release_firmware(struct firmware_data *fw_data)
 	}
 }
 
+#ifdef UPDATE_USING_KTHREAD
 static int goodix_fw_update_thread(void *data)
+#else
+static int goodix_fw_update_thread(struct fw_update_ctrl *fwu_ctrl)
+#endif
 {
+#ifdef UPDATE_USING_KTHREAD
 	struct fw_update_ctrl *fwu_ctrl = data;
+#endif
 	struct firmware *temp_firmware = NULL;
 	static DEFINE_MUTEX(fwu_lock);
 	int r;
 
 	if (!fwu_ctrl) {
 		ts_err("Invaid thread params");
+#ifdef UPDATE_USING_KTHREAD
 		goodix_unregister_ext_module(&goodix_fwu_module);
+#endif
 		return 0;
 	}
 
+	if (!fwu_ctrl->core_data->update_from_sysfs) {
+		ts_info("Not update from sysfs, firmware won't be updated");
+#ifdef UPDATE_USING_KTHREAD
+		goodix_unregister_ext_module(&goodix_fwu_module);
+#endif
+		return 0;
+    }
 	mutex_lock(&fwu_lock);
 	if (!fwu_ctrl->fw_from_sysfs) {
 		if (atomic_read(&fw_update_mode) == 0) {
@@ -1133,7 +1152,9 @@ static int goodix_fw_update_thread(void *data)
 		goodix_cfg_bin_proc(fwu_ctrl->core_data);
 
 out:
+#ifdef UPDATE_USING_KTHREAD
 	goodix_unregister_ext_module(&goodix_fwu_module);
+#endif
 	mutex_unlock(&fwu_lock);
 	atomic_set(&fw_update_mode, 0);
 	return 0;
@@ -1145,15 +1166,32 @@ static ssize_t goodix_sysfs_update_en_store(
 		const char *buf, size_t count)
 {
 	int val = 0, r;
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+	struct goodix_ts_board_data *ts_bdata = board_data(fw_ctrl->core_data);
 
 	r = kstrtoint(buf, 10, &val);
 	if (r < 0)
 		return r;
 
-	if (r) {
+	if (!r) {
+		/* find a valid firmware image name */
+		if (ts_bdata && ts_bdata->fw_name)
+			strlcpy(fw_ctrl->fw_name, ts_bdata->fw_name,
+					sizeof(fw_ctrl->fw_name));
+		else
+			strlcpy(fw_ctrl->fw_name, TS_DEFAULT_FIRMWARE,
+					sizeof(fw_ctrl->fw_name));
+
+		fw_ctrl->core_data->update_from_sysfs = true;
 		atomic_set(&fw_update_mode, 1);
-		if (goodix_register_ext_module(&goodix_fwu_module))
+#ifdef UPDATE_USING_KTHREAD
+		ts_info("Start to register ext module %s", __func__);
+		if (goodix_register_ext_module(&goodix_fwu_module)) {
 			return -EIO;
+		}
+#else
+		goodix_fw_update_thread(fw_ctrl);
+#endif
 	}
 
 	return count;
@@ -1309,7 +1347,7 @@ static ssize_t goodix_sysfs_force_update_store(
 	if (r < 0)
 		return r;
 
-	if (r)
+	if (!r)
 		fw_ctrl->force_update = true;
 	else
 		fw_ctrl->force_update = false;
@@ -1323,7 +1361,7 @@ static struct goodix_ext_attribute goodix_fwu_attrs[] = {
 	__EXTMOD_ATTR(result, 0444, goodix_sysfs_update_result_show, NULL),
 	__EXTMOD_ATTR(fwversion, 0444,
 			goodix_sysfs_update_fwversion_show, NULL),
-	__EXTMOD_ATTR(fwsize, 0666, goodix_sysfs_fwsize_show,
+	__EXTMOD_ATTR(fwsize, 0664, goodix_sysfs_fwsize_show,
 			goodix_sysfs_fwsize_store),
 	__EXTMOD_ATTR(force_update, 0222, NULL,
 			goodix_sysfs_force_update_store),
@@ -1357,7 +1395,7 @@ static int goodix_syfs_init(struct goodix_ts_core *core_data,
 	}
 
 	fw_ctrl->attr_fwimage.attr.name = "fwimage";
-	fw_ctrl->attr_fwimage.attr.mode = 0666;
+	fw_ctrl->attr_fwimage.attr.mode = 0664;
 	fw_ctrl->attr_fwimage.size = 0;
 	fw_ctrl->attr_fwimage.write = goodix_sysfs_fwimage_store;
 	ret = sysfs_create_bin_file(&module->kobj,
@@ -1367,13 +1405,180 @@ exit_sysfs_init:
 	return ret;
 }
 
+/* Motorola feature sysfs */
+static ssize_t goodix_sysfs_force_reflash_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+	int val = 0, r;
+
+	r = kstrtoint(buf, 10, &val);
+	if (r < 0)
+		return r;
+
+	if (!r)
+		fw_ctrl->force_update = true;
+	else
+		fw_ctrl->force_update = false;
+
+	return count;
+}
+
+static ssize_t goodix_sysfs_do_reflash_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+	int retval;
+
+	if (count > FW_NAME_MAX_LEN) {
+		ts_info("FW filename is too long");
+		retval = -EINVAL;
+		goto exit;
+	}
+
+	if (fw_ctrl->status == UPSTA_PREPARING ||
+			fw_ctrl->status == UPSTA_UPDATING) {
+		ts_err("Firmware update already in progress");
+		retval = -EINVAL;
+		goto exit;
+	}
+
+	fw_ctrl->core_data->update_from_sysfs = true;
+	strlcpy(fw_ctrl->fw_name_sysfs, buf,
+			count);
+
+	if (fw_ctrl->fw_name_sysfs[0] != 0) {
+		ts_info("%s: Using specific name from sysfs:%s",
+				 __func__, fw_ctrl->fw_name_sysfs);
+		strlcpy(fw_ctrl->fw_name, fw_ctrl->fw_name_sysfs,
+				sizeof(fw_ctrl->fw_name));
+		fw_ctrl->fw_name_sysfs[0] = 0;
+	}
+
+	atomic_set(&fw_update_mode, 1);
+#ifdef UPDATE_USING_KTHREAD
+	ts_info("Start to register ext module %s", __func__);
+	if (goodix_register_ext_module(&goodix_fwu_module)) {
+		retval = -EIO;
+		goto exit;
+	}
+#else
+	goodix_fw_update_thread(fw_ctrl);
+#endif
+	return count;
+
+exit:
+	return retval;
+}
+
+static ssize_t goodix_sysfs_poweron_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+	bool val;
+
+	mutex_lock(&fw_ctrl->core_data->input_dev->mutex);
+	val = fw_ctrl->core_data->gtp_suspended;
+	mutex_unlock(&fw_ctrl->core_data->input_dev->mutex);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+			val == false);
+}
+
+static ssize_t goodix_sysfs_flashprog_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+			(fw_ctrl->status == UPSTA_PREPARING ||
+			fw_ctrl->status == UPSTA_UPDATING) ? 1 : 0);
+}
+
+static ssize_t goodix_sysfs_productinfo_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+	struct goodix_ts_core *core_data = fw_ctrl->core_data;
+	struct goodix_ts_device *ts_dev = core_data->ts_dev;
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+		ts_dev->name);
+}
+
+/* show buildid module infomation */
+static ssize_t goodix_sysfs_buildid_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+	struct goodix_ts_core *core_data = fw_ctrl->core_data;
+	struct goodix_ts_device *ts_dev = core_data->ts_dev;
+	struct goodix_ts_version chip_ver;
+	int r, cnt = 0;
+
+
+	if (ts_dev->hw_ops->read_version) {
+		r = ts_dev->hw_ops->read_version(ts_dev, &chip_ver);
+		if (!r && chip_ver.valid) {
+			cnt = snprintf(buf, PAGE_SIZE, "%02x-%02x\n",
+				chip_ver.vid[1],chip_ver.vid[3]);
+		}
+
+	}
+
+	return cnt;
+}
+
+static struct device_attribute moto_attrs[] = {
+	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
+			NULL,
+			goodix_sysfs_force_reflash_store),
+	__ATTR(doreflash, S_IWUSR | S_IWGRP,
+			NULL,
+			goodix_sysfs_do_reflash_store),
+	__ATTR(poweron, S_IRUSR | S_IRGRP,
+			goodix_sysfs_poweron_show,
+			NULL),
+	__ATTR(flashprog, S_IRUSR | S_IRGRP,
+			goodix_sysfs_flashprog_show,
+			NULL),
+	__ATTR(productinfo, S_IRUGO,
+			goodix_sysfs_productinfo_show,
+			NULL),
+	__ATTR(buildid, S_IRUGO,
+			goodix_sysfs_buildid_show,
+			NULL),
+};
+
+static int goodix_moto_sysfs_init(struct goodix_ext_module *module)
+{
+	struct fw_update_ctrl *fw_ctrl = module->priv_data;
+	struct i2c_client *client = to_i2c_client(fw_ctrl->ts_dev->dev);
+	int ret = 0, i;
+
+	for (i = 0; i < ARRAY_SIZE(moto_attrs); i++) {
+		if (sysfs_create_file(&client->dev.kobj,
+				&moto_attrs[i].attr)) {
+			ts_err("Create moto sysfs attr file error");
+			ret = -EINVAL;
+			goto exit_sysfs_init;
+		}
+	}
+
+exit_sysfs_init:
+	return ret;
+}
+
 static int goodix_fw_update_init(struct goodix_ts_core *core_data,
 				struct goodix_ext_module *module)
 {
 	struct goodix_ts_board_data *ts_bdata = board_data(core_data);
+#ifdef UPDATE_USING_KTHREAD
 	struct task_struct *fwu_thrd;
+#endif
 	struct fw_update_ctrl *fwu_ctrl;
 	static bool init_sysfs = true;
+	static bool init_moto_sysfs = true;
 
 	if (!core_data->ts_dev)
 		return -ENODEV;
@@ -1385,6 +1590,13 @@ static int goodix_fw_update_init(struct goodix_ts_core *core_data,
 			return -ENOMEM;
 		}
 	}
+
+	if (goodix_module) {
+		ts_info("%s: Handle already exists",
+				__func__);
+	}
+
+	goodix_module = module;
 	fwu_ctrl = module->priv_data;
 	fwu_ctrl->ts_dev = core_data->ts_dev;
 	fwu_ctrl->allow_reset = true;
@@ -1407,6 +1619,13 @@ static int goodix_fw_update_init(struct goodix_ts_core *core_data,
 			init_sysfs = false;
 	}
 
+	/* create motorola sysfs interface */
+	if (init_moto_sysfs) {
+		if (!goodix_moto_sysfs_init(module))
+			init_moto_sysfs = false;
+	}
+
+#ifdef UPDATE_USING_KTHREAD
 	/* create and run update thread */
 	fwu_thrd = kthread_run(goodix_fw_update_thread,
 			module->priv_data, "goodix-fwu");
@@ -1415,7 +1634,7 @@ static int goodix_fw_update_init(struct goodix_ts_core *core_data,
 				PTR_ERR(fwu_thrd));
 		return -EFAULT;
 	}
-
+#endif
 	return 0;
 }
 
@@ -1485,19 +1704,13 @@ static struct goodix_ext_module goodix_fwu_module = {
 	.priority = EXTMOD_PRIO_FWUPDATE,
 };
 
-static int __init goodix_fwu_module_init(void)
+int __init goodix_fwu_module_init(void)
 {
+	ts_info("fwu_init");
 	return goodix_register_ext_module(&goodix_fwu_module);
 }
 
-static void __exit goodix_fwu_module_exit(void)
+void __exit goodix_fwu_module_exit(void)
 {
 	/*return;*/
 }
-
-module_init(goodix_fwu_module_init);
-module_exit(goodix_fwu_module_exit);
-
-MODULE_DESCRIPTION("Goodix FWU Module");
-MODULE_AUTHOR("Goodix, Inc.");
-MODULE_LICENSE("GPL v2");
