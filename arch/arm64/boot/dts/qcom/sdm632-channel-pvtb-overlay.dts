@@ -51,3 +51,25 @@
         };
 };
 
+&i2c_2 { /* capsensor */
+
+        sx9310@28 {
+                compatible = "semtech,sx9310";
+                reg = <0x28>;
+                cap_vdd-supply = <&pm8953_l22>;
+                cap_svdd-supply = <&pm8953_l5>;
+                interrupt-parent = <&tlmm>;
+                interrupts = <86 0x2008>;
+                gpios = <&tlmm 86 0x2008>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&sx9310_irq_default>;
+                cap,use_channel = <0x07>;
+                cap,use_channel_top = <0x01>;
+                cap,use_channel_bottom = <0x02>;
+                cap,raw_data_channel = <0x01>;
+                cap,scan_period = <0x02>;
+                reg_array_len = <12>;
+                reg_array_val = <0x13 0x0a 0x14 0x0f 0x15 0x43 0x16 0x7f 0x17 0x4b 0x18 0x59 0x19 0x59 0x1a 0x15 0x21 0x18 0x22 0x23 0x23 0x05 0x2a 0x01>;
+        };
+};
+
