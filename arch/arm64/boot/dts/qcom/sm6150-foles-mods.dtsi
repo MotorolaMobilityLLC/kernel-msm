@@ -636,4 +636,5 @@
 
 &sde_dp {
 	status = "okay";
+	qcom,dp-hpd-gpio = <&tlmm 103 0>;
 };
