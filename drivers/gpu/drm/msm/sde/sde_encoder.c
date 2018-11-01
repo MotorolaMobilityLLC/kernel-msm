@@ -5625,9 +5625,17 @@ int sde_encoder_display_failure_notification(struct drm_encoder *enc)
 
 	event_thread = &priv->event_thread[sde_enc->crtc->index];
 
-	kthread_queue_work(&event_thread->worker,
-			   &sde_enc->esd_trigger_work);
-	kthread_flush_work(&sde_enc->esd_trigger_work);
+	/*MMI_STOPSHIP IKSWP-34153: get patch from qcom old baseline,When the
+	new patch based on the new baseline is ready,we will revert the change*/
+
+	if (current->tgid == event_thread->thread->tgid) {
+		sde_encoder_resource_control(&sde_enc->base,
+					     SDE_ENC_RC_EVENT_KICKOFF);
+	} else {
+		kthread_queue_work(&event_thread->worker,
+				   &sde_enc->esd_trigger_work);
+		kthread_flush_work(&sde_enc->esd_trigger_work);
+	}
 
 	/**
 	 * panel may stop generating te signal (vsync) during esd failure. rsc
