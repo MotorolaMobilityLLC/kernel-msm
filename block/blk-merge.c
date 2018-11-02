@@ -584,6 +584,8 @@ int ll_back_merge_fn(struct request_queue *q, struct request *req,
 	if (blk_integrity_rq(req) &&
 	    integrity_req_gap_back_merge(req, bio))
 		return 0;
+	if (blk_try_merge(req, bio) != ELEVATOR_BACK_MERGE)
+		return 0;
 	if (blk_rq_sectors(req) + bio_sectors(bio) >
 	    blk_rq_get_max_sectors(req, blk_rq_pos(req))) {
 		req->cmd_flags |= REQ_NOMERGE;
@@ -607,6 +609,8 @@ int ll_front_merge_fn(struct request_queue *q, struct request *req,
 		return 0;
 	if (blk_integrity_rq(req) &&
 	    integrity_req_gap_front_merge(req, bio))
+		return 0;
+	if (blk_try_merge(req, bio) != ELEVATOR_FRONT_MERGE)
 		return 0;
 	if (blk_rq_sectors(req) + bio_sectors(bio) >
 	    blk_rq_get_max_sectors(req, bio->bi_iter.bi_sector)) {
@@ -869,20 +873,19 @@ bool blk_rq_merge_ok(struct request *rq, struct bio *bio)
 	    !blk_write_same_mergeable(rq->bio, bio))
 		return false;
 
-	if (crypto_not_mergeable(rq->bio, bio))
-		return false;
 	return true;
 }
 
 int blk_try_merge(struct request *rq, struct bio *bio)
 {
-#ifdef CONFIG_PFK
-	if (blk_rq_dun(rq) || bio_dun(bio))
-		return ELEVATOR_NO_MERGE;
-#endif
-	if (blk_rq_pos(rq) + blk_rq_sectors(rq) == bio->bi_iter.bi_sector)
+	if (blk_rq_pos(rq) + blk_rq_sectors(rq) == bio->bi_iter.bi_sector) {
+		if (crypto_not_mergeable(rq->bio, bio))
+			return ELEVATOR_NO_MERGE;
 		return ELEVATOR_BACK_MERGE;
-	else if (blk_rq_pos(rq) - bio_sectors(bio) == bio->bi_iter.bi_sector)
+	} else if (blk_rq_pos(rq) - bio_sectors(bio) == bio->bi_iter.bi_sector) {
+		if (crypto_not_mergeable(bio, rq->bio))
+			return ELEVATOR_NO_MERGE;
 		return ELEVATOR_FRONT_MERGE;
+	}
 	return ELEVATOR_NO_MERGE;
 }
