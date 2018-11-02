@@ -28,10 +28,14 @@
 	qcom,dsi-display-active;
 };
 
-&tlmm {
+&sm6150_snd {
+	foles,audio_slimbus_workaround = <1>;
+};
+
+&lpi_tlmm {
 	marley_reset_default: marley_reset_default {
 		config {
-			pins = "gpio31";
+			pins = "gpio24";
 			output-high;
 			bias-pull-up;
 			drive-strength = <16>;
