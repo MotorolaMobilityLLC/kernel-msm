@@ -525,7 +525,7 @@ static void touchProcess(psx93XX_t this)
 	if (this && (pDevice = this->pDevice))
 	{
 		sx933x_i2c_read_16bit(this, SX933X_STAT0_REG, &i);
-		LOG_DBG("touchProcess STAT0_REG:0x%08x\n", i);
+		LOG_INFO("touchProcess STAT0_REG:0x%08x\n", i);
 
 		buttons = pDevice->pbuttonInformation->buttons;
 		numberOfButtons = pDevice->pbuttonInformation->buttonSize;
@@ -562,30 +562,30 @@ static void touchProcess(psx93XX_t this)
 			touchFlag = i & (pCurrentButton->ProxMask | pCurrentButton->BodyMask);
 			if (touchFlag == (pCurrentButton->ProxMask | pCurrentButton->BodyMask)) {
 				if (pCurrentButton->state == BODYACTIVE)
-					LOG_DBG(" %s already BODYACTIVE\n", pCurrentButton->name);
+					LOG_INFO(" %s already BODYACTIVE\n", pCurrentButton->name);
 				else {
 					input_report_abs(input, ABS_DISTANCE, 2);
 					input_sync(input);
 					pCurrentButton->state = BODYACTIVE;
-					LOG_DBG(" %s report 5mm BODYACTIVE\n", pCurrentButton->name);
+					LOG_INFO(" %s report 5mm BODYACTIVE\n", pCurrentButton->name);
 				}
 			} else if (touchFlag == pCurrentButton->ProxMask) {
 				if (pCurrentButton->state == PROXACTIVE)
-					LOG_DBG(" %s already PROXACTIVE\n", pCurrentButton->name);
+					LOG_INFO(" %s already PROXACTIVE\n", pCurrentButton->name);
 				else {
 					input_report_abs(input, ABS_DISTANCE, 1);
 					input_sync(input);
 					pCurrentButton->state = PROXACTIVE;
-					LOG_DBG(" %s report 15mm PROXACTIVE\n", pCurrentButton->name);
+					LOG_INFO(" %s report 15mm PROXACTIVE\n", pCurrentButton->name);
 				}
 			}else if (touchFlag == 0) {
 				if (pCurrentButton->state == IDLE)
-					LOG_DBG("%s already released.\n", pCurrentButton->name);
+					LOG_INFO("%s already released.\n", pCurrentButton->name);
 				else {
 					input_report_abs(input, ABS_DISTANCE, 0);
 					input_sync(input);
 					pCurrentButton->state = IDLE;
-					LOG_DBG("%s report  released.\n", pCurrentButton->name);
+					LOG_INFO("%s report  released.\n", pCurrentButton->name);
 				}
 			}
 		}
@@ -1080,7 +1080,7 @@ static int sx933x_suspend(struct device *dev)
 	psx93XX_t this = dev_get_drvdata(dev);
 	if (this) {
           	sx933x_i2c_write_16bit(this,SX933X_CMD_REG,0xD);//make sx933x in Sleep mode
-          	LOG_DBG(LOG_TAG "sx933x suspend:disable irq!\n");
+          	LOG_INFO(LOG_TAG "sx933x suspend:disable irq!\n");
           	disable_irq(this->irq);
 	}
 	return 0;
@@ -1090,7 +1090,7 @@ static int sx933x_resume(struct device *dev)
 {
 	psx93XX_t this = dev_get_drvdata(dev);
 	if (this) {
-		LOG_DBG(LOG_TAG "sx933x resume:enable irq!\n");
+		LOG_INFO(LOG_TAG "sx933x resume:enable irq!\n");
 		sx93XX_schedule_work(this,0);
 		enable_irq(this->irq);
 		sx933x_i2c_write_16bit(this,SX933X_CMD_REG,0xC);//Exit from Sleep mode
