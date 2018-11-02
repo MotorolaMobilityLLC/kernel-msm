@@ -1155,35 +1155,40 @@ static struct regmap_config cs35l35_regmap = {
 
 static irqreturn_t cs35l35_irq(int irq, void *data)
 {
-		struct cs35l35_private *cs35l35 = data;
+	struct cs35l35_private *cs35l35 = data;
 	struct i2c_client *i2c_client = cs35l35->i2c_client;
-	unsigned int sticky1, sticky2, sticky3, sticky4;
-	unsigned int mask1, mask2, mask3, mask4, current1;
+	unsigned char sticky[4];
+	unsigned char masks[4];
+	unsigned int current1;
 
 	/* ack the irq by reading all status registers */
-	regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_4, &sticky4);
-	regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_3, &sticky3);
-	regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_2, &sticky2);
-	regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_1, &sticky1);
+	if (regmap_bulk_read(cs35l35->regmap, CS35L35_INT_STATUS_1,
+				sticky, ARRAY_SIZE(sticky)) < 0) {
+		dev_err(&i2c_client->dev, "Read IRQ status error\n");
+		return IRQ_NONE;
+	}
 
-	regmap_read(cs35l35->regmap, CS35L35_INT_MASK_4, &mask4);
-	regmap_read(cs35l35->regmap, CS35L35_INT_MASK_3, &mask3);
-	regmap_read(cs35l35->regmap, CS35L35_INT_MASK_2, &mask2);
-	regmap_read(cs35l35->regmap, CS35L35_INT_MASK_1, &mask1);
+	if (regmap_bulk_read(cs35l35->regmap, CS35L35_INT_MASK_1,
+				masks, ARRAY_SIZE(masks)) < 0) {
+		dev_err(&i2c_client->dev, "Read IRQ mask error\n");
+		return IRQ_NONE;
+	}
 
 	/* Check to see if unmasked bits are active */
-	if (!(sticky1 & ~mask1) && !(sticky2 & ~mask2) && !(sticky3 & ~mask3)
-			&& !(sticky4 & ~mask4))
+	if (!(sticky[0] & ~masks[0]) && !(sticky[1] & ~masks[1]) &&
+		!(sticky[2] & ~masks[2]) && !(sticky[3] & ~masks[3])) {
 		return IRQ_NONE;
+	}
 
-	if (sticky2 & CS35L35_PDN_DONE)
+	if (sticky[1] & CS35L35_PDN_DONE)
 		complete(&cs35l35->pdn_done);
 
 	/* read the current values */
-	regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_1, &current1);
-
+	if (regmap_read(cs35l35->regmap, CS35L35_INT_STATUS_1, &current1)) {
+		return IRQ_NONE;
+	}
 	/* handle the interrupts */
-	if (sticky1 & CS35L35_CAL_ERR) {
+	if (sticky[0] & CS35L35_CAL_ERR) {
 		dev_err(&i2c_client->dev, "Calibration Error\n");
 
 		/* error is no longer asserted; safe to reset */
@@ -1202,7 +1207,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 		}
 	}
 
-	if (sticky1 & CS35L35_AMP_SHORT) {
+	if (sticky[0] & CS35L35_AMP_SHORT) {
 		/* error is no longer asserted; safe to reset */
 		if (!(current1 & CS35L35_AMP_SHORT)) {
 			dev_dbg(&i2c_client->dev,
@@ -1220,7 +1225,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 		}
 	}
 
-	if (sticky1 & CS35L35_OTW) {
+	if (sticky[0] & CS35L35_OTW) {
 		dev_err(&i2c_client->dev, "Over temperature warning\n");
 
 		/* error is no longer asserted; safe to reset */
@@ -1240,7 +1245,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 		}
 	}
 
-	if (sticky1 & CS35L35_OTE) {
+	if (sticky[0] & CS35L35_OTE) {
 		dev_crit(&i2c_client->dev, "Over temperature error\n");
 
 		/* error is no longer asserted; safe to reset */
@@ -1260,7 +1265,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 		}
 	}
 
-	if (sticky3 & CS35L35_BST_HIGH) {
+	if (sticky[2] & CS35L35_BST_HIGH) {
 		dev_crit(&i2c_client->dev, "VBST error: powering off!\n");
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
 			CS35L35_PDN_AMP, CS35L35_PDN_AMP);
@@ -1268,7 +1273,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 			CS35L35_PDN_ALL, CS35L35_PDN_ALL);
 	}
 
-	if (sticky3 & CS35L35_LBST_SHORT) {
+	if (sticky[2] & CS35L35_LBST_SHORT) {
 		dev_crit(&i2c_client->dev, "LBST error: powering off!\n");
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
 			CS35L35_PDN_AMP, CS35L35_PDN_AMP);
@@ -1276,13 +1281,13 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 			CS35L35_PDN_ALL, CS35L35_PDN_ALL);
 	}
 
-	if (sticky2 & CS35L35_VPBR_ERR)
+	if (sticky[1] & CS35L35_VPBR_ERR)
 		dev_err(&i2c_client->dev, "Error: Reactive Brownout\n");
 
-	if (sticky4 & CS35L35_VMON_OVFL)
+	if (sticky[3] & CS35L35_VMON_OVFL)
 		dev_err(&i2c_client->dev, "Error: VMON overflow\n");
 
-	if (sticky4 & CS35L35_IMON_OVFL)
+	if (sticky[3] & CS35L35_IMON_OVFL)
 		dev_err(&i2c_client->dev, "Error: IMON overflow\n");
 
 	return IRQ_HANDLED;
