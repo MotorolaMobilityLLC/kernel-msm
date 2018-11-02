@@ -118,8 +118,7 @@
 };
 
 &lpi_tlmm {
-    /* Mod I2S */
-	/*ter_mi2s_clk_active: ter_mi2s_clk_active {
+	sec_mi2s_clk_active: sec_mi2s_clk_active {
 		mux {
 			pins = "gpio8";
 			function = "func3";
@@ -129,7 +128,7 @@
 			drive-strength = <8>;
 		};
 	};
-	ter_mi2s_clk_sleep: ter_mi2s_clk_sleep {
+	sec_mi2s_clk_sleep: sec_mi2s_clk_sleep {
 		mux {
 			pins = "gpio8";
 			function = "func3";
@@ -140,7 +139,7 @@
 		};
 	};
 
-	ter_mi2s_ws_active: ter_mi2s_ws_active {
+	sec_mi2s_ws_active: sec_mi2s_ws_active {
 		mux {
 			pins = "gpio9";
 			function = "func3";
@@ -150,7 +149,7 @@
 			drive-strength = <8>;
 		};
 	};
-	ter_mi2s_ws_sleep: ter_mi2s_ws_sleep {
+	sec_mi2s_ws_sleep: sec_mi2s_ws_sleep {
 		mux {
 			pins = "gpio9";
 			function = "func3";
@@ -161,20 +160,20 @@
 		};
 	};
 
-	ter_mi2s_sd0_active: ter_mi2s_sd0_active {
+	sec_mi2s_sd0_active: sec_mi2s_sd0_active {
 		mux {
 			pins = "gpio10";
-			function = "func3";
+			function = "func4";
 		};
 		config {
 			pins = "gpio10";
 			drive-strength = <8>;
 		};
 	};
-	ter_mi2s_sd0_sleep: ter_mi2s_sd0_sleep {
+	sec_mi2s_sd0_sleep: sec_mi2s_sd0_sleep {
 		mux {
 			pins = "gpio10";
-			function = "func3";
+			function = "func4";
 		};
 		config {
 			pins = "gpio10";
@@ -182,27 +181,29 @@
 		};
 	};
 
-	ter_mi2s_sd1_active: ter_mi2s_sd1_active {
+	sec_mi2s_sd1_active: sec_mi2s_sd1_active {
 		mux {
 			pins = "gpio11";
-			function = "func3";
+			function = "func2";
 		};
 
 		config {
 			pins = "gpio11";
 			drive-strength = <8>;
+			bias-disable;
+			input-enable;
 		};
 	};
-	ter_mi2s_sd1_sleep: ter_mi2s_sd1_sleep {
+	sec_mi2s_sd1_sleep: sec_mi2s_sd1_sleep {
 		mux {
 			pins = "gpio11";
-			function = "func3";
+			function = "func2";
 		};
 		config {
 			pins = "gpio11";
 			drive-strength = <2>;
 		};
-	};*/
+	};
 };
 
 &qupv3_se3_i2c {
@@ -440,8 +441,7 @@
 			"msm-pcm-routing", "msm-compr-dsp",
 			"msm-pcm-dsp-noirq", "cs47l35-codec";
 
-	asoc-cpu = <&dai_dp>, <&dai_mi2s0>, <&dai_mi2s1>,
-		<&dai_mi2s2>, <&dai_mi2s3>, <&dai_mi2s4>,
+	asoc-cpu = <&dai_dp>, <&dai_mi2s1>,
 		<&dai_pri_auxpcm>, <&dai_sec_auxpcm>,
 		<&dai_tert_auxpcm>, <&dai_quat_auxpcm>,
 		<&dai_quin_auxpcm>,
@@ -454,16 +454,8 @@
 		<&afe_proxy_tx>, <&incall_record_rx>,
 		<&incall_record_tx>, <&incall_music_rx>,
 		<&incall_music_2_rx>,
-		<&usb_audio_rx>, <&usb_audio_tx>,
-		<&dai_pri_tdm_rx_0>, <&dai_pri_tdm_tx_0>,
-		<&dai_sec_tdm_rx_0>, <&dai_sec_tdm_tx_0>,
-		<&dai_tert_tdm_rx_0>, <&dai_tert_tdm_tx_0>,
-		<&dai_quat_tdm_rx_0>, <&dai_quat_tdm_tx_0>,
-		<&dai_quin_tdm_rx_0>, <&dai_quin_tdm_tx_0>;
-	asoc-cpu-names = "msm-dai-q6-dp.24608",
-		"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
-		"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
-		"msm-dai-q6-mi2s.4",
+		<&usb_audio_rx>, <&usb_audio_tx>;
+	asoc-cpu-names = "msm-dai-q6-dp.24608", "msm-dai-q6-mi2s.1",
 		"msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
 		"msm-dai-q6-auxpcm.3", "msm-dai-q6-auxpcm.4",
 		"msm-dai-q6-auxpcm.5",
@@ -480,12 +472,7 @@
 		"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
 		"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
 		"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770",
-		"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
-		"msm-dai-q6-tdm.36864", "msm-dai-q6-tdm.36865",
-		"msm-dai-q6-tdm.36880", "msm-dai-q6-tdm.36881",
-		"msm-dai-q6-tdm.36896", "msm-dai-q6-tdm.36897",
-		"msm-dai-q6-tdm.36912", "msm-dai-q6-tdm.36913",
-		"msm-dai-q6-tdm.36928", "msm-dai-q6-tdm.36929";
+		"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673";
 	asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
 	asoc-codec-names = "msm-stub-codec.1",
 					"msm-ext-disp-audio-codec-rx";
@@ -513,17 +500,43 @@
 		status = "ok";
 	};
 
-	/*qcom,msm-dai-mi2s {
-		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+	mods_codec_shim {
+		compatible = "mmi,mods-codec-shim";
+	};
+
+	msm_dai_mi2s: qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+			status = "disabled";
+		};
+
+		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
 			compatible = "qcom,msm-dai-q6-mi2s";
 			status = "ok";
-			qcom,msm-dai-q6-mi2s-dev-id = <2>;
+			qcom,msm-dai-q6-mi2s-dev-id = <1>;
 			qcom,msm-mi2s-rx-lines = <1>;
+			qcom,msm-mi2s-tx-lines = <2>;
 			pinctrl-names = "default","idle";
-			pinctrl-0 = <&ter_mi2s_clk_active &ter_mi2s_ws_active
-				&ter_mi2s_sd0_active &ter_mi2s_sd1_active>;
-			pinctrl-1 = <&ter_mi2s_clk_sleep &ter_mi2s_ws_sleep
-				&ter_mi2s_sd0_sleep &ter_mi2s_sd1_sleep>;
+			pinctrl-0 = <&sec_mi2s_clk_active &sec_mi2s_ws_active
+				&sec_mi2s_sd0_active &sec_mi2s_sd1_active>;
+			pinctrl-1 = <&sec_mi2s_clk_sleep &sec_mi2s_ws_sleep
+				&sec_mi2s_sd0_sleep &sec_mi2s_sd1_sleep>;
 		};
-	};*/
+
+		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+			status = "disabled";
+		};
+
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+
+		dai_mi2s4: qcom,msm-dai-q6-mi2s-quin {
+			status = "disabled";
+		};
+
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-senary {
+			status = "disabled";
+		};
+	};
 };
