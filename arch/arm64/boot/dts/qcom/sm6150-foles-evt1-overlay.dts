@@ -28,6 +28,10 @@
 	qcom,dsi-display-active;
 };
 
+&sm6150_snd {
+	foles,audio_slimbus_workaround = <1>;
+};
+
 &lpi_tlmm {
 	marley_reset_default: marley_reset_default {
 		config {
