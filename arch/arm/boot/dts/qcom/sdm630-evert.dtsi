@@ -158,6 +158,10 @@
 	fpc_fpc1020{
 		pinctrl-0 = <&fps_ldo_1P8_en_default>;
 	};
+
+	i2c_2: i2c@c176000 { /* BLSP1 QUP2 */
+		qcom,clk-freq-out = <100000>;
+	};
 };
 
 &i2c_2 { /* BLSP1 QUP2 */
