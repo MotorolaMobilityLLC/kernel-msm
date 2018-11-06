@@ -10,7 +10,8 @@ DTC_FLAGS += -p 1024
 dtbo-$(CONFIG_FOLES_DTB) += \
 	sm6150-foles-evt1-overlay.dtbo \
 	sm6150-foles-evt2-overlay.dtbo \
-	sm6150-foles-evt3-overlay.dtbo
+	sm6150-foles-evt3-overlay.dtbo \
+	sm6150-foles-dvt1a-overlay.dtbo
 
 sm6150-foles-evt1-overlay.dtbo-base := \
 	sm6150-foles-base.dtb
@@ -19,6 +20,9 @@ sm6150-foles-evt2-overlay.dtbo-base := \
 	sm6150-foles-base.dtb
 
 sm6150-foles-evt3-overlay.dtbo-base := \
+	sm6150-foles-base.dtb
+
+sm6150-foles-dvt1a-overlay.dtbo-base := \
 	sm6150-foles-base.dtb
 
 else
