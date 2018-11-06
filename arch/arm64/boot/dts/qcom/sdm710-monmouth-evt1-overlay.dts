@@ -23,6 +23,11 @@
 	qcom,board-id = <0 0xA000>;
 };
 
+&tlmm {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
+
 /*
  * Monmouth HW rev EVT1 specific changes go here
  */

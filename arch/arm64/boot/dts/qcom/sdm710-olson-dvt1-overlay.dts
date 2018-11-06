@@ -60,6 +60,11 @@
 	};
 };
 
+&tlmm {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
+
 &soc {
 	fpc_fpc1020 {
 		irq = <&tlmm 23 0>;
