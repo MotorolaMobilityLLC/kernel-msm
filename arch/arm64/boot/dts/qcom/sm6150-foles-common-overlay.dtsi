@@ -16,13 +16,6 @@
 #include "sm6150-foles-mods.dtsi"
 #include "sm6150-foles-audio-overlay.dtsi"
 
-&pm6150_l18 {
-	regulator-boot-on;
-	regulator-always-on;
-
-	status = "ok";
-};
-
 &pm6150_l19 {
 	regulator-boot-on;
 	regulator-always-on;
@@ -363,9 +356,6 @@
 		status = "ok";
 		interrupt-parent = <&tlmm>;
 		interrupts = <89 0>;
-		vtouch-supply = <&pm6150_l18>;
-		iovtouch-supply = <&pm6150_l13>;
-		//vtouch-supply = <&tlmm 88 0>;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
 		pinctrl-0 = <&touch_int_active &touch_reset_active>;
 		pinctrl-1 = <&touch_int_suspend &touch_reset_suspend>;
