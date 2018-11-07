@@ -34,6 +34,9 @@
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
 #include "pil-msa.h"
+#include "mmi-unit-info.h"
+
+#define SMEM_KERNEL_RESERVE SMEM_ID_VENDOR0
 
 #define PROXY_TIMEOUT_MS	10000
 #define MAX_SSR_REASON_LEN	256U
@@ -46,6 +49,13 @@ static void log_modem_sfr(void)
 	u32 size;
 	char *smem_reason, reason[MAX_SSR_REASON_LEN];
 
+        struct mmi_unit_info * mui = (struct mmi_unit_info *) smem_alloc(SMEM_KERNEL_RESERVE,
+		SMEM_KERNEL_RESERVE_SIZE, 0, SMEM_ANY_HOST_FLAG);
+	if(mui){
+                mui->powerup_reason = PU_REASON_MODEM_RESET;
+		pr_debug("%s: Set modem PU reason value in SMEM to %d\n",
+				__func__, mui->powerup_reason);
+	 }
 	smem_reason = smem_get_entry_no_rlock(SMEM_SSR_REASON_MSS0, &size, 0,
 							SMEM_ANY_HOST_FLAG);
 	if (!smem_reason || !size) {
