@@ -166,17 +166,6 @@
 	mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
 };
 
-&firmware {
-	android {
-		fstab {
-			vendor {
-				dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/vendor";
-				fsmgr_flags = "wait,slotselect";
-			};
-		};
-	};
-};
-
 &qupv3_se0_i2c { /* FIXME: Main Proximity, Magnetometer, Barometer, Cirrus Codec */
 	status = "disabled";
 };
