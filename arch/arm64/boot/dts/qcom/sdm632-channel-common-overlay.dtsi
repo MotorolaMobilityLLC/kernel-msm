@@ -242,6 +242,16 @@
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-low-mv = <3300>;
 	qcom,battery-data = <&mtp_batterydata>;
+	qcom,rbat-conn-mohm = <10>;
+	qcom,cl-feedback-on;
+	qcom,cl-min-start-soc = <0>;
+	qcom,cl-max-start-soc = <5>;
+	qcom,cl-min-temp = <150>;
+	qcom,cl-max-temp = <450>;
+	qcom,cl-max-increment = <5>;
+	qcom,cl-max-decrement = <10>;
+	qcom,cl-min-limit = <200>;
+	qcom,cl-max-limit = <30>;
 };
 
 &pmi632_charger {
