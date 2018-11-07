@@ -661,6 +661,9 @@ static void move_data_block(struct inode *inode, block_t bidx,
 	fio.page = page;
 	fio.new_blkaddr = fio.old_blkaddr = dn.data_blkaddr;
 
+	/* wait writeback before reading out */
+	f2fs_wait_on_block_writeback(inode, fio.old_blkaddr);
+
 	allocate_data_block(fio.sbi, NULL, fio.old_blkaddr, &newaddr,
 					&sum, CURSEG_COLD_DATA, NULL, false);
 
