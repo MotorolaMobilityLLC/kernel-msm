@@ -81,7 +81,6 @@
 	ktd@36 {
 		compatible = "ktd,ktd3136";
 		reg = <0x36>;
-		ktd,hwen-gpio = <&pm8953_gpios 4 0>;
 		ktd,using-lsb;
 		ktd,pwm-frequency = <100>;
 		ktd,bl-fscal-led = <0xC9>;/*default 25mA*/
