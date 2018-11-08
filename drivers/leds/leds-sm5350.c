@@ -418,9 +418,6 @@ static int sm5350_probe(struct i2c_client *client,
 	drvdata->led_dev.brightness_set = sm5350_brightness_set;
 	drvdata->led_dev.max_brightness = MAX_BRIGHTNESS;
 
-	mutex_init(&drvdata->lock);
-	INIT_WORK(&drvdata->work, sm5350_work);
-
 	err = sm5350_get_dt_data(&client->dev, drvdata);
 	if(err < 0) {
 		pr_err("%s : get dt failed\n", __func__);
@@ -435,6 +432,9 @@ static int sm5350_probe(struct i2c_client *client,
 		pr_err("%s : ID idenfy failed\n", __func__);
 		goto err_init;
 	}
+
+	mutex_init(&drvdata->lock);
+	INIT_WORK(&drvdata->work, sm5350_work);
 
 	err = led_classdev_register(&client->dev, &drvdata->led_dev);
 	if (err < 0) {
