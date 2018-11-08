@@ -162,6 +162,11 @@ static int sm5350_init_registers(struct sm5350_data *drvdata)
 
 	return err;
 }
+
+/* Recovery mode does not set brightness to 0 when first suspend,
+    so use first_boot to force init regs first set brightness. */
+static int first_boot = 1;
+
 void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 {
 
@@ -170,8 +175,13 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 	int index = 0, remainder;
 	int code, code1, code2;
 
-	if (drvdata->enable == false)
+	if (first_boot == 1) {
+		first_boot = 2;
 		sm5350_init_registers(drvdata);
+	} else {
+		if (drvdata->enable == false)
+			sm5350_init_registers(drvdata);
+	}
 
 	if (drvdata->brt_code_enable) {
 		index = brt_val / 10;
