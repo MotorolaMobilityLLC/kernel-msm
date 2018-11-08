@@ -419,10 +419,19 @@ static void ktd3136_check_status(struct ktd3136_data *drvdata)
 	return ;
 }
 
+/* Recovery mode does not set brightness to 0 when first suspend,
+    so use first_boot to force init regs first set brightness. */
+static int first_boot = 1;
+
 void ktd3136_set_brightness(struct ktd3136_data *drvdata, int brt_val)
 {
-	if (drvdata->enable == false)
+	if (first_boot == 1) {
+		first_boot = 2;
 		ktd3136_backlight_init(drvdata);
+	} else {
+		if (drvdata->enable == false)
+			ktd3136_backlight_init(drvdata);
+	}
 
 	pr_debug("brt_val is %d \n", brt_val);
 	if (brt_val>0) {
