@@ -181,15 +181,16 @@ static int ktd3136_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 }
 static void ktd3136_hwen_pin_ctrl(struct ktd3136_data *drvdata, int en)
 {
-
-	if (en) {
-		pr_debug("hwen pin is going to be high!---<%d>\n", en);
-		gpio_set_value(drvdata->hwen_gpio, true);
-	} else {
-		pr_debug("hwen pin is going to be low!---<%d>\n", en);
-		gpio_set_value(drvdata->hwen_gpio, false);
+	if (gpio_is_valid(drvdata->hwen_gpio)) {
+		if (en) {
+			pr_debug("hwen pin is going to be high!---<%d>\n", en);
+			gpio_set_value(drvdata->hwen_gpio, true);
+		} else {
+			pr_debug("hwen pin is going to be low!---<%d>\n", en);
+			gpio_set_value(drvdata->hwen_gpio, false);
+		}
+		msleep(1);
 	}
-	msleep(1);
 }
 
 
@@ -380,6 +381,13 @@ static int ktd3136_backlight_enable(struct ktd3136_data *drvdata)
 	return err;
 }
 
+static int ktd3136_backlight_reset(struct ktd3136_data *drvdata)
+{
+	int err = 0;
+	ktd3136_masked_write(drvdata->client, REG_SW_RESET, 0x01, 0x01);
+	return err;
+}
+
 static int ktd3136_check_id(struct ktd3136_data *drvdata)
 {
 	u8 value=0;
@@ -402,8 +410,7 @@ static void ktd3136_check_status(struct ktd3136_data *drvdata)
 		pr_err("status bit has been change! <%x>", value);
 
 		if (value & RESET_CONDITION_BITS) {
-			ktd3136_hwen_pin_ctrl(drvdata, 0);
-			ktd3136_hwen_pin_ctrl(drvdata, 1);
+			ktd3136_backlight_reset(drvdata);
 			ktd3136_backlight_init(drvdata);
 			ktd3136_backlight_enable(drvdata);
 		}
@@ -621,8 +628,6 @@ static int ktd3136_probe(struct i2c_client *client,
 	drvdata->led_dev.name = KTD3136_LED_DEV;
 	drvdata->led_dev.brightness_set = ktd3136_brightness_set;
 	drvdata->led_dev.max_brightness = MAX_BRIGHTNESS;
-	mutex_init(&drvdata->lock);
-	INIT_WORK(&drvdata->work, ktd3136_work);
 	ktd3136_get_dt_data(&client->dev, drvdata);
 	i2c_set_clientdata(client, drvdata);
 	err =ktd3136_check_id(drvdata);
@@ -630,6 +635,9 @@ static int ktd3136_probe(struct i2c_client *client,
 		pr_err("%s : ID idenfy failed\n", __func__);
 		goto err_init;
 	}
+
+	mutex_init(&drvdata->lock);
+	INIT_WORK(&drvdata->work, ktd3136_work);
 	err = led_classdev_register(&client->dev, &drvdata->led_dev);
 	if (err < 0) {
 		pr_err("%s : Register led class failed\n", __func__);
