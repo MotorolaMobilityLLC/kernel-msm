@@ -30,6 +30,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&tps61280_en_default>;
 	};
+
+	sm_sm5350@36 {
+		boost-ctl = <0x02>;
+	};
 };
 
 &soc {
