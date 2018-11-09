@@ -834,3 +834,6 @@ config MMC_SDHCI_BRCMSTB
 	  Broadcom STB SoCs.
 
 	  If unsure, say Y.
+config SDHCI_DUMPREG_DEBUG_PANIC
+        tristate "MMC panic when error happend"
+        default n
