@@ -38,3 +38,7 @@
 	/delete-node/ emmc_ufs_therm;
 	/delete-node/ rf_pa0_therm;
 };
+
+&ufshc_mem {
+	/delete-property/ spm-level;
+};
