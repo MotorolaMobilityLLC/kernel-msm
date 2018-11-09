@@ -199,7 +199,7 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 	sdhci_dump_state(host);
 	pr_info(DRIVER_NAME ": ===========================================\n");
 
-#ifdef SDHCI_DUMPREG_DEBUG_PANIC
+#ifdef CONFIG_SDHCI_DUMPREG_DEBUG_PANIC
 	if (mmc_card_mmc(host->mmc->card))
 		BUG_ON(true);
 #endif
