@@ -1672,9 +1672,16 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	struct msm_camera_cci_ctrl *cci_ctrl)
 {
 	int32_t rc = 0;
+#ifdef CONFIG_MSM_CAMERA_CCI_MUTEX
+	struct cci_device *cci_dev;
+#endif
 
 	CDBG("%s line %d cmd %d\n", __func__, __LINE__,
 		cci_ctrl->cmd);
+#ifdef CONFIG_MSM_CAMERA_CCI_MUTEX
+	cci_dev = v4l2_get_subdevdata(sd);
+	mutex_lock(&cci_dev->mutex);
+#endif
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
 		rc = msm_cci_init(sd, cci_ctrl);
@@ -1683,6 +1690,10 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 		rc = msm_cci_release(sd);
 		break;
 	case MSM_CCI_I2C_READ:
+#ifdef CONFIG_MSM_CAMERA_CCI_MUTEX
+		if (cci_dev->cci_state == CCI_STATE_DISABLED)
+			break;
+#endif
 		rc = msm_cci_i2c_read_bytes(sd, cci_ctrl);
 		break;
 	case MSM_CCI_I2C_WRITE:
@@ -1690,6 +1701,10 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	case MSM_CCI_I2C_WRITE_SYNC:
 	case MSM_CCI_I2C_WRITE_ASYNC:
 	case MSM_CCI_I2C_WRITE_SYNC_BLOCK:
+#ifdef CONFIG_MSM_CAMERA_CCI_MUTEX
+		if (cci_dev->cci_state == CCI_STATE_DISABLED)
+			break;
+#endif
 		rc = msm_cci_write(sd, cci_ctrl);
 		break;
 	case MSM_CCI_GPIO_WRITE:
@@ -1703,6 +1718,9 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	}
 	CDBG("%s line %d rc %d\n", __func__, __LINE__, rc);
 	cci_ctrl->status = rc;
+#ifdef CONFIG_MSM_CAMERA_CCI_MUTEX
+	mutex_unlock(&cci_dev->mutex);
+#endif
 	return rc;
 }
 
@@ -2099,6 +2117,9 @@ static int msm_cci_probe(struct platform_device *pdev)
 		pr_err("%s: no enough memory\n", __func__);
 		return -ENOMEM;
 	}
+#ifdef CONFIG_MSM_CAMERA_CCI_MUTEX
+	mutex_init(&new_cci_dev->mutex);
+#endif
 	v4l2_subdev_init(&new_cci_dev->msm_sd.sd, &msm_cci_subdev_ops);
 	snprintf(new_cci_dev->msm_sd.sd.name,
 			ARRAY_SIZE(new_cci_dev->msm_sd.sd.name), "msm_cci");
@@ -2196,6 +2217,9 @@ cci_invalid_vreg_data:
 cci_release_mem:
 	msm_camera_put_reg_base(pdev, new_cci_dev->base, "cci", true);
 cci_no_resource:
+#ifdef CONFIG_MSM_CAMERA_CCI_MUTEX
+	mutex_destroy(&new_cci_dev->mutex);
+#endif
 	kfree(new_cci_dev);
 	return rc;
 }
