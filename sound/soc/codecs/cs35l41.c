@@ -201,6 +201,32 @@ static int cs35l41_halo_booted_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int cs35l41_gpi_glob_en_get(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = cs35l41->gpi_glob_en;
+
+	return 0;
+}
+
+static int cs35l41_gpi_glob_en_put(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct cs35l41_private *cs35l41 = snd_soc_codec_get_drvdata(codec);
+
+	cs35l41->gpi_glob_en = ucontrol->value.integer.value[0];
+
+	if (cs35l41->halo_booted && cs35l41->enabled)
+		regmap_write(cs35l41->regmap, CS35L41_DSP_VIRT1_MBOX_8,
+			     cs35l41->gpi_glob_en);
+
+	return 0;
+}
+
 static const DECLARE_TLV_DB_RANGE(dig_vol_tlv,
 		0, 0, TLV_DB_SCALE_ITEM(TLV_DB_GAIN_MUTE, 0, 1),
 		1, 913, TLV_DB_SCALE_ITEM(-10200, 25, 0));
@@ -499,7 +525,8 @@ static const struct snd_kcontrol_new cs35l41_aud_controls[] = {
 			   cs35l41_cspl_cmd_get, cs35l41_cspl_cmd_put),
 	SOC_SINGLE_EXT("DSP Booted", SND_SOC_NOPM, 0, 1, 0,
 			cs35l41_halo_booted_get, cs35l41_halo_booted_put),
-	SOC_SINGLE("GLOBAL_EN from GPIO", CS35L41_PWR_CTRL1, 8, 1, 0),
+	SOC_SINGLE_EXT("GLOBAL_EN from GPIO", SND_SOC_NOPM, 0, 1, 0,
+			cs35l41_gpi_glob_en_get, cs35l41_gpi_glob_en_put),
 	WM_ADSP2_PRELOAD_SWITCH("DSP1", 1),
 };
 
@@ -797,6 +824,14 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 					cs35l41_pup_patch,
 					ARRAY_SIZE(cs35l41_pup_patch));
 
+		if (cs35l41->halo_booted)
+			/*
+			 * Set GPIO-controlled GLOBAL_EN by firmware
+			 * according to mixer setting
+			 */
+			regmap_write(cs35l41->regmap, CS35L41_DSP_VIRT1_MBOX_8,
+				     cs35l41->gpi_glob_en);
+
 		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL1,
 				CS35L41_GLOBAL_EN_MASK,
 				1 << CS35L41_GLOBAL_EN_SHIFT);
@@ -814,6 +849,7 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 		}
 		regmap_update_bits(cs35l41->regmap, CS35L41_AMP_OUT_MUTE,
 				CS35L41_AMP_MUTE_MASK, 0);
+		cs35l41->enabled = true;
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		regmap_update_bits(cs35l41->regmap, CS35L41_AMP_OUT_MUTE,
@@ -827,6 +863,10 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 			else
 				ret = cs35l41_set_csplmboxcmd(cs35l41,
 							CSPL_MBOX_CMD_PAUSE);
+
+			/* Disable GPIO-controlled GLOBAL_EN by firmware */
+			regmap_write(cs35l41->regmap,
+				     CS35L41_DSP_VIRT1_MBOX_8, 0);
 		}
 
 		regmap_update_bits(cs35l41->regmap, CS35L41_PWR_CTRL1,
@@ -837,6 +877,7 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
 		regmap_multi_reg_write_bypassed(cs35l41->regmap,
 					cs35l41_pdn_patch,
 					ARRAY_SIZE(cs35l41_pdn_patch));
+		cs35l41->enabled = false;
 		break;
 	default:
 		dev_err(codec->dev, "Invalid event = 0x%x\n", event);
@@ -1826,6 +1867,8 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 
 	/* Default to RESUME cmd */
 	cs35l41->cspl_cmd = (unsigned int)CSPL_MBOX_CMD_RESUME;
+	cs35l41->gpi_glob_en = 0;
+	cs35l41->enabled = false;
 
 	for (i = 0; i < ARRAY_SIZE(cs35l41_supplies); i++)
 		cs35l41->supplies[i].supply = cs35l41_supplies[i];
