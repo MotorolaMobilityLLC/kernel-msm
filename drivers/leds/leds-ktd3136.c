@@ -17,6 +17,10 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
+#if defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 
 
 
@@ -81,6 +85,9 @@ struct ktd3136_data {
 	struct mutex		lock;
 	struct work_struct	work;
 	enum led_brightness brightness;
+#ifdef CONFIG_FB
+	struct notifier_block fb_notif;
+#endif
 	bool enable;
 	u8 pwm_cfg;
 	u8 boost_ctl;
@@ -419,6 +426,30 @@ static void ktd3136_check_status(struct ktd3136_data *drvdata)
 	return ;
 }
 
+#if defined(CONFIG_FB)
+static int fb_notifier_callback(struct notifier_block *self,
+				       unsigned long event, void *data)
+{
+	int *blank;
+	struct fb_event *evdata = data;
+	struct ktd3136_data *drvdata =
+		container_of(self, struct ktd3136_data, fb_notif);
+
+	/*
+	 *  FB_EVENT_BLANK(0x09): A hardware display blank change occurred.
+	 *  FB_EARLY_EVENT_BLANK(0x10): A hardware display blank early change
+	 * occurred.
+	 */
+	if (evdata && evdata->data && (event == FB_EARLY_EVENT_BLANK)) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_POWERDOWN)
+			drvdata->enable = false;
+	}
+
+	return NOTIFY_OK;
+}
+#endif
+
 void ktd3136_set_brightness(struct ktd3136_data *drvdata, int brt_val)
 {
 	if (drvdata->enable == false)
@@ -651,6 +682,13 @@ static int ktd3136_probe(struct i2c_client *client,
 	ktd3136_backlight_init(drvdata);
 	ktd3136_backlight_enable(drvdata);
 	ktd3136_check_status(drvdata);
+
+#if defined(CONFIG_FB)
+	drvdata->fb_notif.notifier_call = fb_notifier_callback;
+	err = fb_register_client(&drvdata->fb_notif);
+	if (err)
+		pr_err("%s : Unable to register fb_notifier: %d\n", __func__, err);
+#endif
 
 	return 0;
 
