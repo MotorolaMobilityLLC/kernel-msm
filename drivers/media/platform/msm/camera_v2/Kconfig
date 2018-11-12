@@ -274,3 +274,10 @@ config MSM_CAMERA_DUAL_PMIC_FLASH
 	default n
 	---help---
 		Enables support for dual pmic flash led
+
+config MSM_CAMERA_CCI_MUTEX
+	bool "Enable cci mutex protection on product with this kind of issue"
+	default n
+	---help---
+		Enables cci mutext protection
+
