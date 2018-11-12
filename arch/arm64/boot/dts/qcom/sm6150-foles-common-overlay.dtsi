@@ -407,7 +407,7 @@
                 compatible = "ti,tps61280";
                 reg = <0x75>;
                 ti,config = <0x0D>;
-                ti,vout-floor = <0x17>;
+                ti,vout-floor = <0x0F>;
                 ti,vout-roof = <0x1F>;
                 ti,ilim = <0x0F>;
                 pinctrl-names = "default";
