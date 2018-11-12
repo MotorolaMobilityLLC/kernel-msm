@@ -20,6 +20,16 @@
 #include "sdm632-camera-sensor-mot-channel-overlay.dtsi"
 #include "sdm632-moto-fps-channel-overlay.dtsi"
 
+
+&reserved_memory {
+	venus_mem: venus_region@0 {
+		compatible = "removed-dma-pool";
+		no-map;
+		reg = <0x0 0x8ee00000 0x0 0x800000>;
+	};
+};
+
+
 &firmware {
 	android {
 		fstab {
