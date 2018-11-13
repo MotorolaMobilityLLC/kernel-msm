@@ -738,6 +738,7 @@ struct smb_charger {
 	struct usbpd		*pd;
 	int			pd_contract_uv;
 	struct delayed_work	pd_contract_work;
+	bool			suspended;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
