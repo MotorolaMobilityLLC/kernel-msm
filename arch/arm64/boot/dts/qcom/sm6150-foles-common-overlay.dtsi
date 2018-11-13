@@ -345,6 +345,13 @@
 		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
 	};
 
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+			"back_temp";
+		status = "ok";
+	};
+
 };
 
 &qupv3_se1_i2c {
