@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#include "carrier-channel-ids.dtsi"
 #include "sm6150-thermal-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-foles-overlay.dtsi"
 #include <dt-bindings/gpio/gpio.h>
