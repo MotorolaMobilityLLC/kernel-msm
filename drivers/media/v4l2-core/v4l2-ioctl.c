@@ -902,6 +902,9 @@ static int check_fmt(struct file *file, enum v4l2_buf_type type)
 	bool is_tch = vfd->vfl_type == VFL_TYPE_TOUCH;
 	bool is_rx = vfd->vfl_dir != VFL_DIR_TX;
 	bool is_tx = vfd->vfl_dir != VFL_DIR_RX;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	is_vid = is_vid || vfd->vfl_type == VFL_TYPE_MOT_GRABBER;
+#endif
 
 	if (ops == NULL)
 		return -EINVAL;
