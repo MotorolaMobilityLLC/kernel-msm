@@ -667,7 +667,7 @@
 	/delete-property/lab-supply;
 	/delete-property/ibb-supply;
 
-	vddio-supply = <&pm6150_l13>;
+	vddio-supply = <&pm6150_l15>;
 	vdd-supply = <&pm6150_l18>;
 };
 
