@@ -194,7 +194,7 @@ static void v4l2_device_release(struct device *cd)
 	mutex_unlock(&videodev_lock);
 
 #if defined(CONFIG_MEDIA_CONTROLLER)
-	if (v4l2_dev->mdev) {
+	if (v4l2_dev && v4l2_dev->mdev) {
 		/* Remove interfaces and interface links */
 		media_devnode_remove(vdev->intf_devnode);
 		if (vdev->entity.function != MEDIA_ENT_F_UNKNOWN)
@@ -210,7 +210,7 @@ static void v4l2_device_release(struct device *cd)
 	 * TODO: In the long run all drivers that use v4l2_device should use the
 	 * v4l2_device release callback. This check will then be unnecessary.
 	 */
-	if (v4l2_dev->release == NULL)
+	if (v4l2_dev && v4l2_dev->release == NULL)
 		v4l2_dev = NULL;
 
 	/* Release video_device and perform other
@@ -530,6 +530,9 @@ static void determine_valid_ioctls(struct video_device *vdev)
 	bool is_tch = vdev->vfl_type == VFL_TYPE_TOUCH;
 	bool is_rx = vdev->vfl_dir != VFL_DIR_TX;
 	bool is_tx = vdev->vfl_dir != VFL_DIR_RX;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	is_vid = is_vid || vdev->vfl_type == VFL_TYPE_MOT_GRABBER;
+#endif
 
 	bitmap_zero(valid_ioctls, BASE_VIDIOC_PRIVATE);
 
@@ -705,9 +708,16 @@ static void determine_valid_ioctls(struct video_device *vdev)
 			SET_VALID_IOCTL(ops, VIDIOC_G_AUDOUT, vidioc_g_audout);
 			SET_VALID_IOCTL(ops, VIDIOC_S_AUDOUT, vidioc_s_audout);
 		}
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+		if (ops->vidioc_g_parm || ((vdev->vfl_type == VFL_TYPE_MOT_GRABBER ||
+						vdev->vfl_type == VFL_TYPE_GRABBER) &&
+					ops->vidioc_g_std))
+			set_bit(_IOC_NR(VIDIOC_G_PARM), valid_ioctls);
+#else
 		if (ops->vidioc_g_parm || (vdev->vfl_type == VFL_TYPE_GRABBER &&
 					ops->vidioc_g_std))
 			set_bit(_IOC_NR(VIDIOC_G_PARM), valid_ioctls);
+#endif
 		SET_VALID_IOCTL(ops, VIDIOC_S_PARM, vidioc_s_parm);
 		SET_VALID_IOCTL(ops, VIDIOC_S_DV_TIMINGS, vidioc_s_dv_timings);
 		SET_VALID_IOCTL(ops, VIDIOC_G_DV_TIMINGS, vidioc_g_dv_timings);
@@ -744,6 +754,9 @@ static int video_register_media_controller(struct video_device *vdev, int type)
 	vdev->entity.function = MEDIA_ENT_F_UNKNOWN;
 
 	switch (type) {
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	case VFL_TYPE_MOT_GRABBER:
+#endif
 	case VFL_TYPE_GRABBER:
 		intf_type = MEDIA_INTF_T_V4L_VIDEO;
 		vdev->entity.function = MEDIA_ENT_F_IO_V4L;
@@ -866,6 +879,11 @@ int __video_register_device(struct video_device *vdev, int type, int nr,
 	case VFL_TYPE_TOUCH:
 		name_base = "v4l-touch";
 		break;
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	case VFL_TYPE_MOT_GRABBER:
+		name_base = "mot_camera_ext";
+		break;
+#endif
 	default:
 		printk(KERN_ERR "%s called with unknown type: %d\n",
 		       __func__, type);
@@ -891,6 +909,9 @@ int __video_register_device(struct video_device *vdev, int type, int nr,
 	 * of 128-191 and just pick the first free minor there
 	 * (new style). */
 	switch (type) {
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	case VFL_TYPE_MOT_GRABBER:
+#endif
 	case VFL_TYPE_GRABBER:
 		minor_offset = 0;
 		minor_cnt = 64;
