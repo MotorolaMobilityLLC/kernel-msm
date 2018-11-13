@@ -50,6 +50,16 @@
 		enable-active-high;
 		gpio = <&pcal_pin 8 0>;
 	};
+
+	tof_avdd: gpio-regulator@6 {
+		compatible = "regulator-fixed";
+		regulator-name = "tof_avdd";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		regulator-enable-ramp-delay = <135>;
+		enable-active-high;
+		gpio = <&pcal_pin 12 0>;
+	};
 };
 
 &cam_cci {
@@ -96,6 +106,25 @@
 		clock-names = "cam_clk";
 		clock-cntl-level = "turbo";
 		clock-rates = <24000000>;
+	};
+
+	tof0: qcom,tof@0{
+		cell-index = <0>;
+		reg = <0x29>;
+		compatible = "st,stmvl53l1";
+		cci-master = <1>;
+		cci-device = <0>;
+		laser-supply = <&tof_avdd>;
+		cci-supply = <&pm6150_l13>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_tof_active>;
+		pinctrl-1 = <&cam_tof_suspend>;
+		gpios =<&pcal_pin 6 0>,
+			<&tlmm 122 0>;
+		qcom,gpio-reset = <0>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 1>;
+		qcom,gpio-req-tbl-label ="TOF_XSHUTDOWN","TOF_INT";
 	};
 
 	actuator_rear: qcom,actuator@0 {
