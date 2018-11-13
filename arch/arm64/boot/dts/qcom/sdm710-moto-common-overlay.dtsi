@@ -139,6 +139,14 @@
 			linux,can-disable;
 		};
 	};
+
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <81>,
+			<82>,
+			<83>,
+			<84>;
+	};
 };
 
 &mot_dummy_vid_qhd {
