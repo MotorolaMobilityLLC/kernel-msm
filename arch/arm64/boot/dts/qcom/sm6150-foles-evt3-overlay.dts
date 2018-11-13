@@ -38,3 +38,8 @@
 		};
 	};
 };
+
+&sde_dsi {
+	/delete-property/vddio-supply;
+	vddio-supply = <&pm6150_l13>;
+};
