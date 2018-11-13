@@ -12,6 +12,7 @@
 
 #include "trinket-moto-common-overlay-base.dtsi"
 #include <dt-bindings/moto/moto-mem-reserve.h>
+#include "carrier-channel-ids.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
