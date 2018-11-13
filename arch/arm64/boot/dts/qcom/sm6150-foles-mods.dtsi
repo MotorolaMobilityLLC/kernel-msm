@@ -159,6 +159,15 @@
 		mmi,apba-ara-pid = <0xfffe0001>;*/
 	};
 
+	mods_camera_ext {
+		compatible = "mmi,mods-camera-ext";
+		camera_ext_cdsi-supply = <&pm6150l_s8>;
+	};
+
+	mods_v4l2_hal {
+		compatible = "mmi,mods-v4l2_hal";
+	};
+
 	mod_uart: mod_uart {
 		compatible = "mmi,mod-uart";
 		mmi,tty = "ttyMAX0";
