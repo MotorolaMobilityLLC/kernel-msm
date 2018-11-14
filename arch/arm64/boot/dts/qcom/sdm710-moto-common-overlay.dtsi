@@ -23,6 +23,7 @@
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm710-moto-audio-overlay.dtsi"
 #include "sdm710-camera-sensor-mot-olson.dtsi"
+#include "carrier-channel-ids.dtsi"
 
 /*
  * Including features only applicable to Olson here
