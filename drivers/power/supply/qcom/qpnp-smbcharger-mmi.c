@@ -31,10 +31,8 @@ static int set_eb_param(const char *val, const struct kernel_param *kp)
 	if (mmi_chip) {
 		mmi_chip->mmi.update_eb_params++;
 		vote(mmi_chip->awake_votable, HEARTBEAT_VOTER, true, true);
-#ifdef MMI_SHIP
 		mmi_chip->mmi.check_ebsrc_vl = (eb_attach_stop_soc !=
 						prev_attach_stop_soc);
-#endif
 		cancel_delayed_work(&mmi_chip->mmi.heartbeat_work);
 		schedule_delayed_work(&mmi_chip->mmi.heartbeat_work,
 				      msecs_to_jiffies(HEARTBEAT_EB_MS));
