@@ -494,6 +494,7 @@ struct mmi_params {
 	int			upper_limit_capacity;
 	int			lower_limit_capacity;
 	int			base_fv_mv;
+	int			vfloat_comp_mv;
 };
 
 struct smb_charger {

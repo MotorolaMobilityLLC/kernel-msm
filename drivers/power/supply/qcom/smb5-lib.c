@@ -9476,7 +9476,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		target_usb = cl_usb;
 		break;
 	case STEP_NORM:
-		target_fv = max_fv_mv;
+		target_fv = max_fv_mv + mmi->vfloat_comp_mv;
 		target_fcc = zone->fcc_norm_ma;
 		mmi->cl_ebchg = 0;
 
@@ -10349,6 +10349,12 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	if (rc)
 		chg->mmi.lower_limit_capacity = 0;
 
+	rc = of_property_read_u32(node, "qcom,vfloat-comp-uv",
+				  &chg->mmi.vfloat_comp_mv);
+	if (rc)
+		chg->mmi.vfloat_comp_mv = 0;
+	chg->mmi.vfloat_comp_mv /= 1000;
+
 	return rc;
 }
 
@@ -10362,6 +10368,7 @@ static enum alarmtimer_restart mmi_heartbeat_alarm_cb(struct alarm *alarm,
 
 	__pm_stay_awake(&chip->mmi.smblib_mmi_hb_wake_source);
 	cancel_delayed_work(&chip->mmi.heartbeat_work);
+	/* Delay by 500 ms to allow devices to resume. */
 	schedule_delayed_work(&chip->mmi.heartbeat_work,
 			      msecs_to_jiffies(500));
 
