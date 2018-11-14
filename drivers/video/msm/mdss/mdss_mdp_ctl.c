@@ -2193,6 +2193,11 @@ static int mdss_mdp_ctl_fbc_enable(int enable,
 
 	fbc = &pdata->fbc;
 
+	if (!fbc->enabled) {
+		pr_debug("FBC not enabled\n");
+		return -EINVAL;
+	}
+
 	if (mixer->num == MDSS_MDP_INTF_LAYERMIXER0 ||
 			mixer->num == MDSS_MDP_INTF_LAYERMIXER1) {
 		pr_debug("Mixer supports FBC.\n");
