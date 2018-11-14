@@ -16,6 +16,8 @@
 
 / {
 	qcom,board-id = <0 0>;
+	/* anchor for channel id */
+	channel-id-map = "";
 /*
  * Some nodes need labels assigned to appear in __symbols__
  */
