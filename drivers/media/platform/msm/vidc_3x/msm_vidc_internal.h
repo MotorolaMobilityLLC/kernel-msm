@@ -164,7 +164,6 @@ struct session_prop {
 	u32 height[MAX_PORT_NUM];
 	u32 fps;
 	u32 bitrate;
-	u32 operating_rate;
 };
 
 struct buf_queue {
