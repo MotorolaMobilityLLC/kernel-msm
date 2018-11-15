@@ -250,6 +250,9 @@
 #define MAX310X_CLKSRC_EXTCLK_BIT	(1 << 4) /* External clock enable */
 #define MAX310X_CLKSRC_CLK2RTS_BIT	(1 << 7) /* Baud clk to RTS pin */
 
+#define MAX310X_CLKSRC_PLL_DIS (MAX310X_CLKSRC_EXTCLK_BIT | MAX310X_CLKSRC_PLLBYP_BIT)
+#define MAX310X_CLKSRC_PLL_EN   (MAX310X_CLKSRC_PLL_BIT)
+
 /* Global commands */
 #define MAX310X_EXTREG_ENBL		(0xce)
 #define MAX310X_EXTREG_DSBL		(0xcd)
@@ -269,6 +272,8 @@
 #define MAX14830_REV_ID			(0xb0)
 
 #define MAX310X_VCC_DEFAULT 2700000
+
+#define MAX_PM_MANAGE
 
 struct max310x_devtype {
 	char	name[9];
@@ -292,8 +297,11 @@ struct max310x_port {
 #ifdef CONFIG_MAX310X_GPIOLIB
 	struct gpio_chip	gpio;
 #endif
-	struct max310x_one	p[0];
+	struct max310x_one	p[1];
 	struct regulator *vcc_supply;
+
+	bool xtal;
+	long freq;
 
 	int gpio_reset;
 	int gpio_ldo_en;
@@ -301,6 +309,12 @@ struct max310x_port {
 	bool use_ext_clock;
 	int ext_clock_freq;
 };
+
+#ifdef MAX_PM_MANAGE
+static int max310x_prepare(struct max310x_port *s);
+static int max310x_uart_pin_en(struct max310x_port *s, int en);
+static int max310x_pll_en(struct max310x_port *s, int en);
+#endif
 
 static u8 max310x_port_read(struct uart_port *port, u8 reg)
 {
@@ -361,13 +375,7 @@ static int max3108_detect(struct device *dev)
 	}
 
 	if (s->use_ext_clock) {
-		if (val != (MAX310X_CLKSRC_EXTCLK_BIT | MAX310X_CLKSRC_PLL_BIT)) {
-			dev_err(dev, "%s clk-%d error val 0x%x\n",
-				s->devtype->name, s->use_ext_clock, val);
-			ret = -ENODEV;
-		}
-	} else {
-		if (val != (MAX310X_CLKSRC_PLLBYP_BIT)) {
+		if (!(val & (MAX310X_CLKSRC_PLL_DIS))) {
 			dev_err(dev, "%s clk-%d error val 0x%x\n",
 				s->devtype->name, s->use_ext_clock, val);
 			ret = -ENODEV;
@@ -973,6 +981,11 @@ static int max310x_startup(struct uart_port *port)
 
 	s->devtype->power(port, 1);
 
+#ifdef MAX_PM_MANAGE
+	max310x_uart_pin_en(s, 1);
+	max310x_prepare(s);
+#endif
+
 	/* Configure MODE1 register */
 	max310x_port_update(port, MAX310X_MODE1_REG,
 			    MAX310X_MODE1_TRNSCVCTRL_BIT, 0);
@@ -1006,6 +1019,12 @@ static void max310x_shutdown(struct uart_port *port)
 	max310x_port_write(port, MAX310X_IRQEN_REG, 0);
 
 	s->devtype->power(port, 0);
+
+#ifdef MAX_PM_MANAGE
+	max310x_uart_pin_en(s, 0);
+	max310x_pll_en(s, 0);
+	clk_disable_unprepare(s->clk);
+#endif
 }
 
 static const char *max310x_type(struct uart_port *port)
@@ -1134,6 +1153,68 @@ static int max310x_gpio_direction_output(struct gpio_chip *chip,
 }
 #endif
 
+#ifdef MAX_PM_MANAGE
+static int max310x_pll_en(struct max310x_port *s, int en)
+{
+	int mask = (MAX310X_CLKSRC_EXTCLK_BIT
+				|MAX310X_CLKSRC_PLLBYP_BIT
+				|MAX310X_CLKSRC_PLL_BIT);
+	int val;
+	int ret = 0;
+
+	val = en ? MAX310X_CLKSRC_PLL_EN : MAX310X_CLKSRC_PLL_DIS;
+
+	pr_info("%s %s pll : 0x%x\n", __func__, en ? "enable" : "disable", val);
+
+	regmap_update_bits(s->regmap,
+					MAX310X_CLKSRC_REG,
+					mask,
+					val);
+
+	return ret;
+}
+
+static int max310x_uart_pin_en(struct max310x_port *s, int en)
+{
+	int mask;
+	int val;
+	int ret = 0;
+
+	mask = (MAX310X_MODE1_TXHIZ_BIT
+		| MAX310X_MODE1_RTSHIZ_BIT);
+	val = en ? 0 : (MAX310X_MODE1_TXHIZ_BIT
+				| MAX310X_MODE1_RTSHIZ_BIT);
+
+	pr_info("%s %s uart : 0x%x\n", __func__, en ? "enable" : "disable", val);
+
+	regmap_update_bits(s->regmap,
+					MAX310X_MODE1_REG,
+					mask,
+					val);
+
+	return ret;
+}
+
+static int max310x_prepare(struct max310x_port *s)
+{
+	int ret = 0;
+
+	ret = clk_prepare_enable(s->clk);
+	if (ret) {
+		pr_err("%s clock enable err %d\n", __func__, ret);
+		return ret;
+	}
+
+	if (s->use_ext_clock) {
+		ret = max310x_pll_en(s, 0);
+	} else {
+		ret = max310x_pll_en(s, 1);
+	}
+
+	return ret;
+}
+#endif
+
 static int max310x_of_init(struct device *dev)
 {
 	struct max310x_port *s = dev_get_drvdata(dev);
@@ -1192,6 +1273,7 @@ static int max310x_of_init(struct device *dev)
 		ret = gpio_request(s->gpio_reset, MAX310X_NAME "reset");
 		if (ret == 0) {
 			gpio_direction_output(s->gpio_reset, 1);
+			gpio_export(s->gpio_reset, true);
 		}
 	}
 
@@ -1207,6 +1289,7 @@ static int max310x_of_init(struct device *dev)
 		ret = gpio_request(s->gpio_ldo_en, MAX310X_NAME "ldo-en");
 		if (ret == 0) {
 			gpio_direction_output(s->gpio_ldo_en, 1);
+			gpio_export(s->gpio_ldo_en, true);
 		}
 	}
 
@@ -1217,7 +1300,8 @@ end:
 int max310x_probe(struct device *dev, struct max310x_devtype *devtype,
 			 struct regmap *regmap, int irq, unsigned long flags)
 {
-	int i, ret, fmin, fmax, freq, uartclk;
+	int i, ret, fmin, fmax, uartclk;
+	long freq;
 	struct clk *clk_osc, *clk_xtal;
 	struct max310x_port *s;
 	bool xtal = false;
@@ -1279,19 +1363,23 @@ int max310x_probe(struct device *dev, struct max310x_devtype *devtype,
 	freq = clk_get_rate(s->clk);
 	/* Check frequency limits */
 	if (freq < fmin || freq > fmax) {
+		pr_err("%s freq out of range %l(%d-%d)\n",
+			__func__, freq, fmin, fmax);
 		ret = -ERANGE;
 		goto out_clk;
 	}
 
 jump_internal_clock:
+	s->freq = freq;
+	s->xtal = xtal;
 
 	if (s->use_ext_clock) {
 		int mask = (MAX310X_CLKSRC_EXTCLK_BIT
 					|MAX310X_CLKSRC_PLLBYP_BIT
 					|MAX310X_CLKSRC_PLL_BIT);
-		int val = (MAX310X_CLKSRC_EXTCLK_BIT | MAX310X_CLKSRC_PLL_BIT);
+		int val = (MAX310X_CLKSRC_EXTCLK_BIT | MAX310X_CLKSRC_PLLBYP_BIT);
 
-		pr_info("%s use ext clk freq %d\n", __func__, freq);
+		pr_info("%s use ext clk freq %ld\n", __func__, freq);
 		regmap_update_bits(s->regmap,
 						MAX310X_CLKSRC_REG,
 						mask,
@@ -1325,8 +1413,10 @@ jump_internal_clock:
 				   MAX310X_MODE1_AUTOSLEEP_BIT);
 	}
 
-	uartclk = max310x_set_ref_clk(s, freq, xtal);
-	dev_dbg(dev, "Reference clock set to %i Hz\n", uartclk);
+	if (!s->use_ext_clock) {
+		uartclk = max310x_set_ref_clk(s, freq, xtal);
+		dev_dbg(dev, "Input clock %d . Reference clock set to %i Hz\n", freq, uartclk);
+	}
 
 	/* Register UART driver */
 	s->uart.owner		= THIS_MODULE;
@@ -1395,7 +1485,14 @@ jump_internal_clock:
 	ret = devm_request_threaded_irq(dev, irq, NULL, max310x_ist,
 					IRQF_ONESHOT | flags, dev_name(dev), s);
 	if (!ret) {
-		dev_info(dev, "%s successed\n\n", __func__);
+		dev_info(dev, "%s successed\n", __func__);
+
+#ifdef MAX_PM_MANAGE
+		pr_info("%s Disable tx/rts pin for low power mode!\n", __func__);
+		max310x_uart_pin_en(s, 0);
+		max310x_pll_en(s, 0);
+		clk_disable_unprepare(s->clk);
+#endif
 
 		return 0;
 	}
