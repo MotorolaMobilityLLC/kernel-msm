@@ -121,7 +121,7 @@
 		reg = <0 0>;
 		clock-names = "apba_mclk";
 		qcom,clk-src = "BBCLK2";
-		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK3>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&apba_default &apba_1p1_en_default &apba_2_spi_switch_default>;
 		gpios = <&pm6150l_gpios 4 0>,      /* APBA_1P1_EN, output-low */
@@ -324,7 +324,7 @@
 		gpio-labels = "gpio_hub_reset_n",
 			"gpio_hub_int_n";
 		clock-names = "hub_clk";
-		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK3>;
 		enable-usbhost;
 		vdd-hsic-supply = <&pm6150_l10>;
 	};
@@ -350,10 +350,9 @@
 		max,gpio-ldo-en = <&tlmm 115 0x00>;
 		max,gpio-reset = <&tlmm 116 0x00>;
 
-		max,use-ext-clock;
 		//max,ext-clock-freq = <19200000>;
 		clock-names = "osc";
-		clocks = <&clock_rpmh RPMH_LN_BB_CLK2>;
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK3>;
 	};
 };
 
