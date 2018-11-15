@@ -121,7 +121,7 @@ void sdhci_dumpregs(struct sdhci_host *host)
 	       sdhci_readl(host, SDHCI_INT_ENABLE),
 	       sdhci_readl(host, SDHCI_SIGNAL_ENABLE));
 	SDHCI_DUMP("AC12 err:  0x%08x | Slot int: 0x%08x\n",
-		   sdhci_readw(host, SDHCI_ACMD12_ERR),
+		   sdhci_readw(host, SDHCI_AUTO_CMD_STATUS),
 	       sdhci_readw(host, SDHCI_SLOT_INT_STATUS));
 	SDHCI_DUMP("Caps:      0x%08x | Caps_1:   0x%08x\n",
 	       sdhci_readl(host, SDHCI_CAPABILITIES),
@@ -325,7 +325,7 @@ static void sdhci_set_default_irqs(struct sdhci_host *host)
 		    SDHCI_INT_DATA_CRC | SDHCI_INT_DATA_TIMEOUT |
 		    SDHCI_INT_INDEX | SDHCI_INT_END_BIT | SDHCI_INT_CRC |
 		    SDHCI_INT_TIMEOUT | SDHCI_INT_DATA_END |
-		    SDHCI_INT_RESPONSE | SDHCI_INT_ACMD12ERR;
+		    SDHCI_INT_RESPONSE | SDHCI_INT_AUTO_CMD_ERR;
 
 	if (host->tuning_mode == SDHCI_TUNING_MODE_2 ||
 	    host->tuning_mode == SDHCI_TUNING_MODE_3)
@@ -3111,7 +3111,7 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 
 	if (intmask & (SDHCI_INT_TIMEOUT | SDHCI_INT_CRC |
 		       SDHCI_INT_END_BIT | SDHCI_INT_INDEX |
-		       SDHCI_INT_ACMD12ERR)) {
+		       SDHCI_INT_AUTO_CMD_ERR)) {
 		if (intmask & SDHCI_INT_TIMEOUT) {
 			host->cmd->error = -ETIMEDOUT;
 			host->mmc->err_stats[MMC_ERR_CMD_TIMEOUT]++;
@@ -3120,7 +3120,7 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 			host->mmc->err_stats[MMC_ERR_CMD_CRC]++;
 		}
 
-		if (intmask & SDHCI_INT_ACMD12ERR) {
+		if (intmask & SDHCI_INT_AUTO_CMD_ERR) {
 			auto_cmd_status = host->auto_cmd_err_sts;
 			host->mmc->err_stats[MMC_ERR_AUTO_CMD]++;
 			pr_err_ratelimited("%s: %s: AUTO CMD err sts 0x%08x\n",
@@ -3487,9 +3487,9 @@ static irqreturn_t sdhci_irq(int irq, void *dev_id)
 		MMC_TRACE(host->mmc,
 			"%s: intmask: 0x%x\n", __func__, intmask);
 
-		if (intmask & SDHCI_INT_ACMD12ERR)
+		if (intmask & SDHCI_INT_AUTO_CMD_ERR)
 			host->auto_cmd_err_sts = sdhci_readw(host,
-			SDHCI_ACMD12_ERR);
+			SDHCI_AUTO_CMD_STATUS);
 
 		/* Clear selected interrupts. */
 		mask = intmask & (SDHCI_INT_CMD_MASK | SDHCI_INT_DATA_MASK |
@@ -3990,7 +3990,7 @@ static void sdhci_cmdq_clear_set_irqs(struct mmc_host *mmc, bool clear)
 			     SDHCI_INT_INDEX | SDHCI_INT_END_BIT |
 			     SDHCI_INT_CRC | SDHCI_INT_TIMEOUT |
 			     SDHCI_INT_DATA_END | SDHCI_INT_RESPONSE |
-			     SDHCI_INT_ACMD12ERR;
+			     SDHCI_INT_AUTO_CMD_ERR;
 		sdhci_writel(host, ier, SDHCI_INT_ENABLE);
 		sdhci_writel(host, ier, SDHCI_SIGNAL_ENABLE);
 	}
