@@ -155,6 +155,7 @@
 		config {
 			pins = "gpio46";
 			drive-strength = <2>; /* 2 MA */
+			output-low;
 		};
 	};
 
