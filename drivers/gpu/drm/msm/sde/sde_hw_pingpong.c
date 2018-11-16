@@ -163,6 +163,27 @@ static struct sde_pingpong_cfg *_pingpong_offset(enum sde_pingpong pp,
 	return ERR_PTR(-EINVAL);
 }
 
+static int sde_hw_set_pp_sync_config_height_for_tetest(
+		struct sde_hw_pingpong *pp, bool enable,
+		u32 new_height, u32 *prev_height)
+{
+	struct sde_hw_blk_reg_map *c;
+
+	if (!pp || !prev_height)
+		return -EINVAL;
+
+	c = &pp->hw;
+
+	if (enable) {
+		*prev_height = SDE_REG_READ(c, PP_SYNC_CONFIG_HEIGHT) & 0xffff;
+		SDE_REG_WRITE(c, PP_SYNC_CONFIG_HEIGHT, new_height);
+	} else if (!enable && *prev_height) {
+		SDE_REG_WRITE(c, PP_SYNC_CONFIG_HEIGHT, *prev_height);
+	}
+
+	return 0;
+}
+
 static int sde_hw_pp_setup_te_config(struct sde_hw_pingpong *pp,
 		struct sde_hw_tear_check *te)
 {
@@ -485,6 +506,7 @@ static void _setup_pingpong_ops(struct sde_hw_pingpong_ops *ops,
 	ops->enable_dsc = sde_hw_pp_dsc_enable;
 	ops->disable_dsc = sde_hw_pp_dsc_disable;
 	ops->get_dsc_status = sde_hw_pp_get_dsc_status;
+	ops->change_config_height = sde_hw_set_pp_sync_config_height_for_tetest;
 
 	version = SDE_COLOR_PROCESS_MAJOR(hw_cap->sblk->dither.version);
 	switch (version) {
