@@ -1258,8 +1258,10 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 	/* reset both usbin current and voltage votes */
 	vote(chg->pl_enable_votable_indirect, USBIN_I_VOTER, false, 0);
 	vote(chg->pl_enable_votable_indirect, USBIN_V_VOTER, false, 0);
+#ifdef QCOM_BASE
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 			is_flash_active(chg) ? SDP_CURRENT_UA : SDP_100_MA);
+#endif
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
@@ -4175,6 +4177,7 @@ int smblib_get_prop_connector_health(struct smb_charger *chg)
 	return POWER_SUPPLY_HEALTH_COOL;
 }
 
+#ifdef QCOM_BASE
 static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 {
 	int rp_ua;
@@ -4192,6 +4195,7 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 
 	return rp_ua;
 }
+#endif
 
 /*******************
  * USB PSY SETTERS *
@@ -4349,7 +4353,9 @@ int smblib_set_prop_sdp_current_max(struct smb_charger *chg,
 	if (0 == val->intval)
 		enable = false;
 
-	if (!chg->pd_active) {
+	if (!chg->pd_active &&
+	    (smblib_get_prop_typec_mode(chg) ==
+	     POWER_SUPPLY_TYPEC_SOURCE_DEFAULT)) {
 		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
 				enable, val->intval);
 	} else if (chg->system_suspend_supported) {
@@ -5601,8 +5607,10 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 					CHARGER_TYPE_VOTER, false, 0);
 			vote(chg->hdc_irq_disable_votable,
 					CHARGER_TYPE_VOTER, false, 0);
+			#ifdef QCOM_BASE
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 				HVDCP_CURRENT_UA);
+			#endif
 		} else {
 			/* A plain DCP, enforce DCP ICL if specified */
 			vote(chg->usb_icl_votable, DCP_VOTER,
@@ -5622,6 +5630,7 @@ static void smblib_handle_hvdcp_detect_done(struct smb_charger *chg,
 		   rising ? "rising" : "falling");
 }
 
+#ifdef QCOM_BASE
 static void update_sw_icl_max(struct smb_charger *chg, int pst)
 {
 	int typec_mode;
@@ -5690,6 +5699,7 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 		break;
 	}
 }
+#endif
 
 static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 {
@@ -5700,7 +5710,9 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 
 	apsd_result = smblib_update_usb_type(chg);
 
+#ifdef QCOM_BASE
 	update_sw_icl_max(chg, apsd_result->pst);
+#endif
 
 	switch (apsd_result->bit) {
 	case SDP_CHARGER_BIT:
@@ -5994,8 +6006,10 @@ static void typec_src_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->pl_enable_work);
 
 	/* reset input current limit voters */
+#ifdef QCOM_BASE
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 			is_flash_active(chg) ? SDP_CURRENT_UA : SDP_100_MA);
+#endif
 	vote(chg->usb_icl_votable, PD_VOTER, false, 0);
 	vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 	vote(chg->usb_icl_votable, DCP_VOTER, false, 0);
@@ -6105,7 +6119,10 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	del_timer_sync(&chg->apsd_timer);
 	chg->apsd_ext_timeout = false;
+	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+	chg->mmi.charging_limit_modes = CHARGING_LIMIT_OFF;
 	chg->mmi.hvdcp3_con = false;
+	chg->mmi.vbus_inc_cnt = 0;
 	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
 	cancel_delayed_work(&chg->mmi.heartbeat_work);
 	schedule_delayed_work(&chg->mmi.heartbeat_work,
@@ -6114,9 +6131,11 @@ static void typec_src_removal(struct smb_charger *chg)
 
 static void typec_mode_unattached(struct smb_charger *chg)
 {
+#ifdef QCOM_BASE
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, USBIN_100MA);
+#endif
 }
-
+#ifdef QCOM_BASE
 static void smblib_handle_rp_change(struct smb_charger *chg, int typec_mode)
 {
 	const struct apsd_result *apsd = smblib_get_apsd_result(chg);
@@ -6141,6 +6160,7 @@ static void smblib_handle_rp_change(struct smb_charger *chg, int typec_mode)
 	smblib_dbg(chg, PR_MISC, "CC change old_mode=%d new_mode=%d\n",
 						chg->typec_mode, typec_mode);
 }
+#endif
 
 static void smblib_lpd_launch_ra_open_work(struct smb_charger *chg)
 {
@@ -6215,7 +6235,8 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
-	int typec_mode;
+	int typec_mode, icl_vote_ma;
+	bool typec_chg = false;
 
 	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
 		smblib_dbg(chg, PR_INTERRUPT,
@@ -6226,8 +6247,30 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 	typec_mode = smblib_get_prop_typec_mode(chg);
 	if (chg->sink_src_mode != UNATTACHED_MODE
 			&& (typec_mode != chg->typec_mode))
+#ifdef QCOM_BASE
 		smblib_handle_rp_change(chg, typec_mode);
+#else
+		typec_chg = true;
+#endif
+
 	chg->typec_mode = typec_mode;
+
+	if (typec_chg) {
+		icl_vote_ma = get_client_vote(chg->usb_icl_votable,
+					      HEARTBEAT_VOTER) / 1000;
+		if ((typec_mode == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM) &&
+		    (icl_vote_ma > 1500))
+			vote(chg->usb_icl_votable, HEARTBEAT_VOTER,
+			     true, 1500000);
+		else if ((typec_mode ==  POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) &&
+			 (icl_vote_ma > 500))
+			vote(chg->usb_icl_votable, HEARTBEAT_VOTER,
+			     true, 500000);
+		vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+				      msecs_to_jiffies(0));
+	}
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: cc-state-change; Type-C %s detected\n",
 				smblib_typec_mode_name[chg->typec_mode]);
@@ -9167,7 +9210,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		mmi->charger_debounce_cnt = 0;
 	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE) {
 		mmi->charger_debounce_cnt++;
-		cl_usb = 500;
+		/* Set the USB CL to 500 only if pd is not active to avoid
+		 * PD Compliance issues */
+		if (!chip->pd_active)
+			cl_usb = 500;
 	} else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
 		charger_present = 1;
 
