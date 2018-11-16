@@ -773,6 +773,7 @@ int smblib_set_usb_suspend(struct smb_charger *chg, bool suspend)
 		vote(chg->icl_irq_disable_votable, USB_SUSPEND_VOTER,
 				true, 0);
 
+	smblib_dbg(chg, PR_MISC, "%s\n", suspend ? "suspend" : "resume");
 	rc = smblib_masked_write(chg, USBIN_CMD_IL_REG, USBIN_SUSPEND_BIT,
 				 suspend ? USBIN_SUSPEND_BIT : 0);
 	if (rc < 0)
@@ -1478,6 +1479,8 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 		pr_err("USB ICL callback in Facory Mode! %d\n", icl_ua);
 		return rc;
 	}
+
+	smblib_dbg(chg, PR_MISC, "%d uA\n", icl_ua);
 
 	if (suspend)
 		return smblib_set_usb_suspend(chg, true);
