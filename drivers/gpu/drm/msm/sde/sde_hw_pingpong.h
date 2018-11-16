@@ -133,6 +133,12 @@ struct sde_hw_pingpong_ops {
 	 * reset 3d blend configuration
 	 */
 	void (*reset_3d_mode)(struct sde_hw_pingpong *pp);
+
+	/**
+	 * Change pp_sync_config_height for TeTest
+	 */
+	int (*change_config_height)(struct sde_hw_pingpong *pp, bool enable,
+				u32 new_height, u32 *prev_height);
 };
 
 struct sde_hw_merge_3d_ops {
