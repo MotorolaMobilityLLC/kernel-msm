@@ -1230,10 +1230,13 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 				&c_state->property_state, idx);
 	case CONNECTOR_PROP_HBM:
 		param_info.value = sde_connector_get_property(
-		connector->state, CONNECTOR_PROP_HBM);
+					connector->state, CONNECTOR_PROP_HBM);
 		param_info.param_idx = PARAM_HBM_ID;
 		param_info.param_conn_idx = CONNECTOR_PROP_HBM;
-		_sde_connector_update_param(c_conn, &param_info);
+		rc = _sde_connector_update_param(c_conn, &param_info);
+		if (rc)
+			goto end;
+		break;
 		break;
 	default:
 		break;
@@ -2106,7 +2109,7 @@ static int sde_connector_install_panel_params(struct sde_connector *c_conn)
 	uint32_t prop_idx;
 	int i;
 	struct dsi_display *dsi_display;
-
+	u16 prop_max, prop_min, prop_init;
 
 	if (c_conn->connector_type != DRM_MODE_CONNECTOR_DSI)
 		return 0;
@@ -2126,12 +2129,20 @@ static int sde_connector_install_panel_params(struct sde_connector *c_conn)
 			return -EINVAL;
 		}
 
-		if (param_cmds->is_supported)
-			msm_property_install_volatile_range(
-					&c_conn->property_info,
-					param_cmds->param_name,
-					0x0, 0, param_cmds->val_max,
-					param_cmds->default_value, prop_idx);
+		if (param_cmds->is_supported) {
+			prop_max = param_cmds->val_max;
+			prop_min = PARAM_STATE_OFF;
+			prop_init = param_cmds->default_value;
+		} else {
+			prop_max = PARAM_STATE_OFF;
+			prop_min = PARAM_STATE_OFF;
+			prop_init = PARAM_STATE_DISABLE;
+		}
+
+		msm_property_install_volatile_range( &c_conn->property_info,
+					param_cmds->param_name, 0x0,
+					prop_min, prop_max,
+					prop_init, prop_idx);
 
 		param_cmds++;
 	}
