@@ -1461,6 +1461,42 @@ static const struct mount_opts {
 	{Opt_err, 0, 0}
 };
 
+#ifdef CONFIG_EXT4_FORCE_NODISCARD
+#include <linux/of.h>
+
+static int force_nodiscard(char *devname)
+{
+	struct property *p;
+	struct device_node *n;
+	char storagevendor[32] = {0};
+	char userdata[32] = {0};
+	int userblk_num;
+
+	n = of_find_node_by_path("/chosen/mmi,storage");
+	if (n == NULL) {
+		return 0;
+	}
+
+	for_each_property_of_node(n, p) {
+		if (!strcmp(p->name, "manufacturer") && p->value)
+			strlcpy(storagevendor, (char *)p->value,
+					sizeof(storagevendor));
+	}
+
+	of_node_put(n);
+
+	userblk_num = CONFIG_EXT4_USERDATA_BLKNUM;
+	sprintf(userdata, "mmcblk0p%d", userblk_num);
+
+	pr_info("manufacturer devname userdataname:%s %s %s\n", storagevendor, devname, userdata);
+	if (!strcmp(strim(storagevendor), "MICRON") && (strstr(devname, userdata) != NULL)){
+		return 1;
+	}
+
+	return 0;
+}
+#endif
+
 static int handle_mount_opt(struct super_block *sb, char *opt, int token,
 			    substring_t *args, unsigned long *journal_devnum,
 			    unsigned int *journal_ioprio, int is_remount)
@@ -1703,6 +1739,11 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
 		else
 			sbi->s_mount_opt &= ~m->mount_opt;
 	}
+#ifdef CONFIG_EXT4_FORCE_NODISCARD
+	if (force_nodiscard(sb->s_id)){
+		clear_opt(sb, DISCARD);
+	}
+#endif
 	return 1;
 }
 
