@@ -62,6 +62,18 @@ config EXT4_FS
 
 	  If unsure, say N.
 
+config EXT4_USERDATA_BLKNUM
+	int "userdata blknumber"
+	range 40 100
+	default 70
+
+config EXT4_FORCE_NODISCARD
+	bool "EXT4 force nodiscard"
+	depends on EXT4_FS
+	help
+	  debug MIRCON discard issue
+	  If unsure, say N.
+
 config EXT4_USE_FOR_EXT2
 	bool "Use ext4 for ext2 file systems"
 	depends on EXT4_FS
