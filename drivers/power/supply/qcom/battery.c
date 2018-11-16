@@ -1390,12 +1390,13 @@ static int usb_icl_vote_callback(struct votable *votable, void *data,
 	}
 
 	/* rerun AICL if new ICL is above settled ICL */
-	if (icl_ua > val)
+	if (icl_ua != INT_MAX && icl_ua > val)
 		rerun_aicl = true;
 
 	if (rerun_aicl && (chip->wa_flags & AICL_RERUN_WA_BIT)) {
 		/* set a lower ICL */
 		val = max(val - ICL_STEP_UA, ICL_STEP_UA);
+		pr_debug("****initial step icl setting %d\n", val);
 		rc = chip->chg_param->iio_write(chip->dev, PSY_IIO_CURRENT_MAX,
 			val);
 		if (rc < 0)
@@ -1404,6 +1405,7 @@ static int usb_icl_vote_callback(struct votable *votable, void *data,
 
 	/* set the effective ICL */
 	val = icl_ua;
+	pr_debug("****final icl setting %d\n", val);
 	rc = chip->chg_param->iio_write(chip->dev, PSY_IIO_CURRENT_MAX, val);
 	if (rc < 0)
 		pr_err("Couldn't set main current_max, rc=%d\n", rc);
