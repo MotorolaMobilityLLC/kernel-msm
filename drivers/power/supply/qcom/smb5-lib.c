@@ -2060,8 +2060,10 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		switch (stat) {
 		case TERMINATE_CHARGE:
 		case INHIBIT_CHARGE:
+#ifdef QCOM_BASE
 			val->intval = POWER_SUPPLY_STATUS_FULL;
 			break;
+#endif
 		default:
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 			break;
@@ -2078,8 +2080,10 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		break;
 	case TERMINATE_CHARGE:
 	case INHIBIT_CHARGE:
+#ifdef QCOM_BASE
 		val->intval = POWER_SUPPLY_STATUS_FULL;
 		break;
+#endif
 	case DISABLE_CHARGE:
 	case PAUSE_CHARGE:
 		val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
