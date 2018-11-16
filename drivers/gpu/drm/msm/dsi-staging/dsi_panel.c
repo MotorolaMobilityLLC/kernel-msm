@@ -816,6 +816,12 @@ static int dsi_panel_send_param_cmd (struct dsi_panel *panel,
 		param_map = panel->param_cmds[param_info->param_idx].val_map;
 		param_map_state = &param_map[param_info->value];
 
+		if (!param_map_state->cmds || !param_map_state->cmds->cmds) {
+			pr_err("Invalid cmds or cmds->cmds\n");
+			rc = -EINVAL;
+			goto end;
+		}
+
 		cmds = param_map_state->cmds->cmds;
 		if (param_map_state->cmds->state == DSI_CMD_SET_STATE_LP)
 			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM |
@@ -3431,7 +3437,13 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 	for (i = 0; i < PARAM_ID_NUM; i++) {
 		param = &dsi_panel_param[i];
 
-		for (j = 0; j < param->val_max; j++) {
+		if (!param) {
+			pr_err("Invalid param\n");
+			goto err;
+		}
+
+		rc = -EINVAL;
+		for (j = 0; j < param->val_max && param->val_max > 0 ; j++) {
 			param_map = &param->val_map[j];
 			param_map->cmds = NULL;
 			cmds = kcalloc(param->val_max,
@@ -3457,8 +3469,10 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 			}
 		}
 
-		param->is_supported = true;
-		pr_info("%s: feature enabled.\n", param->param_name);
+		if (!rc) {
+			param->is_supported = true;
+			pr_info("%s: feature enabled.\n", param->param_name);
+		}
 	}
 
 	return rc;
