@@ -25,7 +25,6 @@
 
 
 #define MAIN_DSI_CONN_NAME "DSI-1"
-#define CLI_DSI_CONN_NAME "DSI-2"
 
 struct motUtil motUtil_data;
 
@@ -61,6 +60,7 @@ static ssize_t _sde_debugfs_motUtil_string2num(const char __user *buf,
 	while (token) {
 		rc = kstrtoint(token, 0, &strtoint);
 		if (rc) {
+			rc = -EIO;
 			SDE_ERROR("input buffer conversion failed\n");
 			goto end;
 		}
@@ -84,47 +84,48 @@ end:
 	return rc;
 }
 
-static struct sde_connector *_sde_debugfs_motUtil_get_sde_conn(
+static struct drm_connector *_sde_debugfs_motUtil_get_drm_conn(
 					struct sde_kms *kms,
 					size_t count, char input[])
 {
 	struct drm_device *dev = kms->dev;
 	struct drm_connector *conn = NULL;
 	struct drm_connector_list_iter conn_iter;
-	struct sde_connector *sde_conn = NULL;
 	int found_conn = 0;
 	enum sde_motUtil_disp_cmd panel_type = input[DISPUTIL_PANEL_TYPE];
 
-        mutex_lock(&dev->mode_config.mutex);
+	mutex_lock(&dev->mode_config.mutex);
 	drm_connector_list_iter_begin(dev, &conn_iter);
 	drm_for_each_connector_iter(conn, &conn_iter) {
-                if (panel_type == MOTUTIL_MAIN_DISP) {
-                        if (!strncmp(conn->name, MAIN_DSI_CONN_NAME, 5)) {
-                                DRM_DEBUG("found MAIN disp conn\n");
-                                found_conn = 1;
-                                break;
-                        }
-                } else if (panel_type == MOTUTIL_CLI_DISP) {
-                         if (!strncmp(conn->name, CLI_DSI_CONN_NAME, 5)) {
-                                SDE_DEBUG("found CLI disp conn\n");
-                                found_conn = 1;
-                                break;
-                        }
-                }
-        }
-
-        if (found_conn) {
-		DRM_DEBUG("found SDE Connector for %s\n",
-				(panel_type == MOTUTIL_MAIN_DISP) ?
-				"Main Display" : "CLI Display");
-                sde_conn = to_sde_connector(conn);
-	} else {
-		DRM_ERROR("Can not find SDE Connector for %s\n",
-				(panel_type == MOTUTIL_MAIN_DISP) ?
-				"Main Display" : "CLI Display");
+		if (panel_type == MOTUTIL_MAIN_DISP) {
+			if (!strncmp(conn->name, MAIN_DSI_CONN_NAME, 5)) {
+				DRM_DEBUG("found MAIN disp conn\n");
+				found_conn = 1;
+				break;
+			}
+		}
 	}
+	drm_connector_list_iter_end(&conn_iter);
+	mutex_unlock(&dev->mode_config.mutex);
 
-        mutex_unlock(&dev->mode_config.mutex);
+	if (found_conn)
+		return conn;
+	else
+		return NULL;
+}
+
+static struct sde_connector *_sde_debugfs_motUtil_get_sde_conn(
+					struct sde_kms *kms,
+					size_t count, char input[])
+{
+	struct drm_connector *conn = NULL;
+	struct sde_connector *sde_conn = NULL;
+
+	conn = _sde_debugfs_motUtil_get_drm_conn(kms, count, input);
+	if (conn)
+                sde_conn = to_sde_connector(conn);
+	else
+		DRM_ERROR("Can not find SDE Connector for Main Display\n");
 
 	return sde_conn;
 }
@@ -136,7 +137,7 @@ static int _sde_debugfs_motUtil_transfer(struct sde_kms *kms,
 	int ret = 0;
 	enum sde_motUtil_disp_cmd panel_type = input[DISPUTIL_PANEL_TYPE];
 
-	if (panel_type > MOTUTIL_CLI_DISP) {
+	if (panel_type > MOTUTIL_MAIN_DISP) {
 		DRM_ERROR("Invalid panel number = %d\n", panel_type);
 		return -EINVAL;
 	}
@@ -158,7 +159,7 @@ static int _sde_debugfs_motUtil_transfer(struct sde_kms *kms,
 		mutex_lock(&sde_conn->lock);
 		ret = sde_conn->ops.motUtil_transfer(sde_conn->display,
 						input,	count, &motUtil_data);
-		motUtil_data.last_cmd_tx_status = !ret ? true : false;
+		motUtil_data.cmd_status = ret;
 		motUtil_data.read_len = ret;
 		mutex_unlock(&sde_conn->lock);
 
@@ -177,7 +178,7 @@ static int _sde_debugfs_motUtil_set_tearing(struct sde_kms *kms,
 	bool te_enable = input[TETEST_TE_ENABLE];
 	enum sde_motUtil_disp_cmd panel_type = input[DISPUTIL_PANEL_TYPE];
 
-	if (panel_type > MOTUTIL_CLI_DISP) {
+	if (panel_type > MOTUTIL_MAIN_DISP) {
 		DRM_ERROR("Invalid panel number = %d\n", panel_type);
 		return -EINVAL;
 	}
@@ -218,11 +219,11 @@ static int _sde_debugfs_motUtil_read_frame_cnt(struct drm_encoder *drm_enc)
 	motUtil_data.val = sde_encoder_poll_rd_frame_counts(drm_enc);
 	if (motUtil_data.val >= 0) {
 		pr_info("Encoder transfer frame_count= %d\n", motUtil_data.val);
-		motUtil_data.last_cmd_tx_status = 1;
+		motUtil_data.cmd_status = 0;
 	} else {
 		SDE_ERROR("failed to get_frame_count ret =%d\n", ret);
 		ret = -EAGAIN;
-		motUtil_data.last_cmd_tx_status = 0;
+		motUtil_data.cmd_status = ret;
 	}
 
         return ret;
@@ -262,6 +263,97 @@ end:
 	return ret;
 }
 
+static int _sde_debugfs_motUtil_kms_prop_test(struct sde_kms *kms,
+					size_t count, char input[])
+{
+	struct drm_connector *conn = NULL;
+	struct sde_connector *sde_conn = NULL;
+	struct drm_property *property;
+
+	int ret = 0;
+	enum msm_mdp_conn_property conn_prop_idx;
+	uint64_t prop_val;
+
+	conn = _sde_debugfs_motUtil_get_drm_conn(kms, count, input);
+	if (!conn) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	sde_conn = to_sde_connector(conn);
+	if (!sde_conn) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	if (count < KMSPROPTEST_NEW_VAL) {
+		DRM_ERROR(" Number of Input data is invalid (%zu).\n", count);
+		ret = -EINVAL;
+		goto end;
+        }
+
+	switch (input[KMSPROPTEST_PROP_INDEX]) {
+		case KMSPROPTEST_TYPE_HBM:
+			conn_prop_idx = CONNECTOR_PROP_HBM;
+			break;
+		case KMSPROPTEST_TYPE_ACL:
+			conn_prop_idx = CONNECTOR_PROP_ACL;
+			break;
+		default:
+			DRM_ERROR(" Invalid KMSPROPTEST_PROP_INDEX = %d\n",
+						input[KMSPROPTEST_PROP_INDEX]);
+			ret = -EINVAL;
+			break;
+	}
+
+	if (ret)
+		goto end;
+
+	property = msm_property_index_to_drm_property(&sde_conn->property_info,
+							conn_prop_idx);
+	if (!property) {
+		SDE_ERROR("invalid property index %d for sde_conn_name=%s\n",
+				conn_prop_idx, sde_conn->name);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	prop_val = sde_connector_get_property(conn->state, conn_prop_idx);
+	if (prop_val == PARAM_STATE_DISABLE) {
+		DRM_ERROR("This KMS Property=%d is disabled\n", conn_prop_idx);
+		ret = -EPERM;
+		goto end;
+	}
+
+	switch(input[KMSPROPTEST_PROP_TYPE]) {
+		case KMSPROPTEST_GETPROP:
+			motUtil_data.read_cmd = true;
+			motUtil_data.val = (int)prop_val;
+			break;
+		case KMSPROPTEST_SETPROP:
+			motUtil_data.read_cmd = false;
+			if (conn->funcs && conn->funcs->set_property) {
+				ret = conn->funcs->set_property(conn,
+					property,
+					input[KMSPROPTEST_NEW_VAL]);
+			} else {
+				ret = -EINVAL;
+				DRM_ERROR("Unsupport KMS set property\n");
+			}
+
+			break;
+		default:
+			DRM_ERROR("Invalid KMSPROPTEST_PROP_TYPE = %d\n",
+					input[KMSPROPTEST_PROP_TYPE]);
+			ret = -EINVAL;
+			break;
+	}
+
+end:
+	motUtil_data.cmd_status = ret;
+	return ret;
+}
+
 static ssize_t _sde_debugfs_motUtil_exe_command(struct sde_kms *kms,
 					size_t count, char input[])
 {
@@ -275,6 +367,9 @@ static ssize_t _sde_debugfs_motUtil_exe_command(struct sde_kms *kms,
 		break;
 	case MOTUTIL_TE_TEST:
 		ret = _sde_debugfs_motUtil_te_test(kms, count, input);
+		break;
+	case MOTUTIL_KMS_PROP_TEST:
+		ret = _sde_debugfs_motUtil_kms_prop_test(kms, count, input);
 		break;
 	default:
 		SDE_ERROR("Un-support motUtil type = %d\n", motUtil_type);
@@ -301,22 +396,26 @@ static ssize_t _sde_debugfs_motUtil_write(struct file *file,
 	u32 buf_size = 0;
 	char buffer[MAX_CMD_PAYLOAD_SIZE];
 	struct sde_kms *kms = (struct sde_kms *)file->private_data;
+	int ret = 0;
 
 	if (*ppos || !kms) {
 		SDE_ERROR("invalid argument(s)\n");
-		return 0;
+		ret = -EINVAL;
+		goto end;
 	}
 
 	buf_size = _sde_debugfs_motUtil_string2num(buf, count, buffer);
-	if (!buf_size){
+	if (buf_size <= 0){
 		SDE_ERROR("invalid input\n");
-		return count;
+		ret = -EINVAL;
+		goto end;
 	}
 
 	mutex_lock(&motUtil_data.lock);
-	_sde_debugfs_motUtil_exe_command(kms, count, buffer);
+	ret = _sde_debugfs_motUtil_exe_command(kms, count, buffer);
 	mutex_unlock(&motUtil_data.lock);
-
+end:
+	motUtil_data.cmd_status = ret;
 	return count;
 }
 
@@ -347,13 +446,14 @@ static ssize_t _sde_debugfs_motUtil_read(struct file *file,
 		return 0;
 
 	mutex_lock(&motUtil_data.lock);
-	if (!motUtil_data.read_cmd) {
+	if (motUtil_data.cmd_status < 0 || !motUtil_data.read_cmd) {
 		blen = snprintf(buffer, MAX_CMD_PAYLOAD_SIZE,
-			"motUtil_status: 0x%x\n",
-			motUtil_data.last_cmd_tx_status);
+			"motUtil_status: %d\n",
+			motUtil_data.cmd_status);
 	} else if (motUtil_data.motUtil_type == MOTUTIL_DISP_UTIL) {
 		blen = _sde_debugfs_motUtil_dispUtil_read(buffer);
-	} else if (motUtil_data.motUtil_type == MOTUTIL_TE_TEST) {
+	} else if ((motUtil_data.motUtil_type == MOTUTIL_TE_TEST) ||
+		(motUtil_data.motUtil_type == MOTUTIL_KMS_PROP_TEST)) {
 		blen = snprintf(buffer, 16, "motUtil_read: ");
 		blen += snprintf((buffer + blen), 12, "0x%08x ",
 							motUtil_data.val);
