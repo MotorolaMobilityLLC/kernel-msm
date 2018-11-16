@@ -202,6 +202,7 @@ enum msm_mdp_conn_property {
 
 	/* MOT feature panel*/
 	CONNECTOR_PROP_HBM,
+	CONNECTOR_PROP_ACL,
 	/* total # of properties */
 	CONNECTOR_PROP_COUNT
 };
@@ -308,6 +309,13 @@ struct msm_roi_caps {
 	bool merge_rois;
 	uint32_t num_roi;
 	struct msm_roi_alignment align;
+};
+
+enum msm_param_state {
+	PARAM_STATE_OFF = 0,
+	PARAM_STATE_ON,
+	PARAM_STATE_NUM,
+	PARAM_STATE_DISABLE = 0xFFFF,
 };
 
 enum msm_param_id {
