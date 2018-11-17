@@ -300,9 +300,6 @@ struct max310x_port {
 	struct max310x_one	p[1];
 	struct regulator *vcc_supply;
 
-	bool xtal;
-	long freq;
-
 	int gpio_reset;
 	int gpio_ldo_en;
 
@@ -810,7 +807,7 @@ static unsigned int max310x_get_mctrl(struct uart_port *port)
 	/* DCD and DSR are not wired and CTS/RTS is handled automatically
 	 * so just indicate DSR and CAR asserted
 	 */
-	return TIOCM_DSR | TIOCM_CAR;
+	return TIOCM_CAR | TIOCM_CTS | TIOCM_DSR | TIOCM_RTS;
 }
 
 static void max310x_md_proc(struct work_struct *ws)
@@ -917,10 +914,10 @@ static void max310x_set_termios(struct uart_port *port,
 			MAX310X_MODE1_AUTOSLEEP_BIT, 0);
 		max310x_port_update(port, MAX310X_MODE1_REG,
 			MAX310X_MODE1_TXDIS_BIT, MAX310X_MODE1_TXDIS_BIT);
+	} else {
+		max310x_port_update(port, MAX310X_MODE1_REG,
+			MAX310X_MODE1_TXDIS_BIT, 0);
 	}
-
-	pr_debug("max310x debug %s 0x%x value 0x%x\n", __func__,
-		MAX310X_MODE1_REG, max310x_port_read(port, MAX310X_MODE1_REG));
 
 	max310x_port_write(port, MAX310X_FLOWCTRL_REG, flow);
 
@@ -1370,8 +1367,6 @@ int max310x_probe(struct device *dev, struct max310x_devtype *devtype,
 	}
 
 jump_internal_clock:
-	s->freq = freq;
-	s->xtal = xtal;
 
 	if (s->use_ext_clock) {
 		int mask = (MAX310X_CLKSRC_EXTCLK_BIT
