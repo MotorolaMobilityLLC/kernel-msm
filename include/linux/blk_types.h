@@ -188,8 +188,6 @@ enum rq_flag_bits {
 	__REQ_FUA,		/* forced unit access */
 	__REQ_PREFLUSH,		/* request for cache flush */
 	__REQ_BARRIER,		/* marks flush req as barrier */
-        __REQ_NOENCRYPT,        /* ok to not encrypt (already encrypted at fs
-                                   level) */
 
 	/* bio only flags */
 	__REQ_RAHEAD,		/* read ahead, can fail anytime */
@@ -266,7 +264,6 @@ enum rq_flag_bits {
 #define REQ_PM			(1ULL << __REQ_PM)
 #define REQ_HASHED		(1ULL << __REQ_HASHED)
 #define REQ_MQ_INFLIGHT		(1ULL << __REQ_MQ_INFLIGHT)
-#define REQ_NOENCRYPT		(1ULL << __REQ_NOENCRYPT)
 
 enum req_op {
 	REQ_OP_READ,
