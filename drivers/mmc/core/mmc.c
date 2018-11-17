@@ -684,6 +684,9 @@ static int mmc_decode_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	if (card->ext_csd.rev >= 7) {
 		memcpy(card->ext_csd.fwrev, &ext_csd[EXT_CSD_FIRMWARE_VERSION],
 		       MMC_FIRMWARE_LEN);
+                memcpy(card->ext_csd.device_version, &ext_csd[EXT_CSD_DEVICE_VERSION],
+                       MMC_DEVICE_VERSION_LEN);
+
 		card->ext_csd.ffu_capable =
 			(ext_csd[EXT_CSD_SUPPORTED_MODE] & 0x1) &&
 			!(ext_csd[EXT_CSD_FW_CONFIG] & 0x1);
@@ -863,6 +866,7 @@ MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
 MMC_DEV_ATTR(ocr, "0x%08x\n", card->ocr);
 MMC_DEV_ATTR(cmdq_en, "%d\n", card->ext_csd.cmdq_en);
 MMC_DEV_ATTR(firmware_version, "0x%08x\n", card->ext_csd.fw_version);
+MMC_DEV_ATTR(device_version,"0x%02x%02x\n",card->ext_csd.device_version[0],card->ext_csd.device_version[1]);
 
 static ssize_t mmc_fwrev_show(struct device *dev,
 			      struct device_attribute *attr,
@@ -922,6 +926,7 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_dsr.attr,
 	&dev_attr_cmdq_en.attr,
         &dev_attr_firmware_version.attr,
+        &dev_attr_device_version.attr,
 
 	NULL,
 };
