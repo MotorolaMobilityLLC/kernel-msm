@@ -2792,6 +2792,12 @@ static inline int ext4_issue_discard(struct super_block *sb,
  * This function is called by the jbd2 layer once the commit has finished,
  * so we know we can free the blocks that were released with that commit.
  */
+#ifdef CONFIG_EXT4_FORCE_NODISCARD
+extern int use_force_nodiscard_strategy;
+extern __u32 force_nodiscard_blkdev;
+#define IS_FORCE_NODISCARD_CONDITION(count_num) (use_force_nodiscard_strategy && (count_num >= 512) && (sb->s_dev == force_nodiscard_blkdev))
+#endif
+
 static void ext4_free_data_callback(struct super_block *sb,
 				    struct ext4_journal_cb_entry *jce,
 				    int rc)
@@ -2804,7 +2810,11 @@ static void ext4_free_data_callback(struct super_block *sb,
 	mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
 		 entry->efd_count, entry->efd_group, entry);
 
+#ifdef CONFIG_EXT4_FORCE_NODISCARD
+	if (test_opt(sb, DISCARD) && IS_FORCE_NODISCARD_CONDITION(entry->efd_count)) {
+#else
 	if (test_opt(sb, DISCARD)) {
+#endif
 		err = ext4_issue_discard(sb, entry->efd_group,
 					 entry->efd_start_cluster,
 					 entry->efd_count, 0);
@@ -2836,7 +2846,11 @@ static void ext4_free_data_callback(struct super_block *sb,
 	 * If the volume is mounted with -o discard, online discard
 	 * is supported and the free blocks will be trimmed online.
 	 */
+#ifdef CONFIG_EXT4_FORCE_NODISCARD
+	if (!(test_opt(sb, DISCARD) && IS_FORCE_NODISCARD_CONDITION(entry->efd_count)))
+#else
 	if (!test_opt(sb, DISCARD))
+#endif
 		EXT4_MB_GRP_CLEAR_TRIMMED(db);
 
 	if (!db->bb_free_root.rb_node) {
@@ -4864,7 +4878,11 @@ do_more:
 		 * with group lock held. generate_buddy look at
 		 * them with group lock_held
 		 */
+#ifdef CONFIG_EXT4_FORCE_NODISCARD
+		if (test_opt(sb, DISCARD) && IS_FORCE_NODISCARD_CONDITION(count)) {
+#else
 		if (test_opt(sb, DISCARD)) {
+#endif
 			err = ext4_issue_discard(sb, block_group, bit, count,
 						 0);
 			if (err && err != -EOPNOTSUPP)
