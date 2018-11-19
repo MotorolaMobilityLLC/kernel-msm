@@ -1453,6 +1453,9 @@ static const struct mount_opts {
 #ifdef CONFIG_EXT4_FORCE_NODISCARD
 #include <linux/of.h>
 
+int use_force_nodiscard_strategy = 0;
+__u32 force_nodiscard_blkdev = 0;
+
 static int force_nodiscard(char *devname)
 {
 	struct property *p;
@@ -1730,7 +1733,8 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
 	}
 #ifdef CONFIG_EXT4_FORCE_NODISCARD
 	if (force_nodiscard(sb->s_id)){
-		clear_opt(sb, DISCARD);
+		use_force_nodiscard_strategy = 1;
+		force_nodiscard_blkdev = sb->s_dev;
 	}
 #endif
 	return 1;
