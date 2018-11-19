@@ -77,12 +77,21 @@ static int m25p80_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 {
 	struct m25p *flash = nor->priv;
 	struct spi_device *spi = flash->spi;
+	int ret;
 
 	flash->command[0] = opcode;
 	if (buf)
 		memcpy(&flash->command[1], buf, len);
 
-	return spi_write(spi, flash->command, len + 1);
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 0);
+
+	ret = spi_write(spi, flash->command, len + 1);
+
+	if (gpio_is_valid(flash->gpio_spi_cs))
+		gpio_set_value(flash->gpio_spi_cs, 1);
+
+	return ret;
 }
 
 static ssize_t m25p80_write(struct spi_nor *nor, loff_t to, size_t len,
