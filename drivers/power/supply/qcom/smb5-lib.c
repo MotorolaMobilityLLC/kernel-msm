@@ -6622,7 +6622,9 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
+#ifdef QCOM_BASE
 	union power_supply_propval pval;
+#endif
 	int input_present;
 	bool dcin_present, vbus_present;
 	int rc, wireless_vout = 0;
@@ -6697,7 +6699,7 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 
 		chg->last_wls_vout = 0;
 	}
-
+#endif
 	power_supply_changed(chg->dc_psy);
 
 	smblib_dbg(chg, (PR_WLS | PR_INTERRUPT), "dcin_present= %d, usbin_present= %d, cp_reason = %d\n",
