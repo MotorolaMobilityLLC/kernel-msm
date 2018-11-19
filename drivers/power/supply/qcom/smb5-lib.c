@@ -3168,6 +3168,7 @@ int smblib_set_prop_dc_current_max(struct smb_charger *chg,
 #endif
 }
 
+#ifdef QCOM_BASE
 int smblib_set_prop_voltage_wls_output(struct smb_charger *chg,
 				    const union power_supply_propval *val)
 {
@@ -3190,6 +3191,7 @@ int smblib_set_prop_voltage_wls_output(struct smb_charger *chg,
 
 	return rc;
 }
+#endif
 
 int smblib_set_prop_dc_reset(struct smb_charger *chg)
 {
@@ -6140,7 +6142,9 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
+#ifdef QCOM_BASE
 	union power_supply_propval pval;
+#endif
 	int input_present;
 	bool dcin_present, vbus_present;
 	int rc, wireless_vout = 0;
@@ -6159,7 +6163,7 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 
 	dcin_present = input_present & INPUT_PRESENT_DC;
 	vbus_present = input_present & INPUT_PRESENT_USB;
-
+#ifdef QCOM_BASE
 	if (dcin_present) {
 		if (!vbus_present && chg->sec_cp_present) {
 			pval.intval = wireless_vout;
@@ -6189,7 +6193,7 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 
 		vote(chg->dc_suspend_votable, CHG_TERMINATION_VOTER, false, 0);
 	}
-
+#endif
 	power_supply_changed(chg->dc_psy);
 
 	smblib_dbg(chg, PR_WLS, "dcin_present= %d, usbin_present= %d, cp_reason = %d\n",
