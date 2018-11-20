@@ -18,9 +18,9 @@ static phys_addr_t stack_page1_virt_to_phys(struct cpu_suspend_ctx *ptr)
 {
 	struct thread_info *ti = current_thread_info();
 
-	if (virt_is_valid_lowmem(ti)) {
+	if (virt_is_valid_lowmem(ti) && virt_is_valid_lowmem(ptr)) {
 		return virt_to_phys(ptr);
-	} else if (is_vmalloc_addr(ti)) {
+	} else if (is_vmalloc_addr(ti) || is_vmalloc_addr(ptr)) {
 		unsigned long stack_page, low, high;
 
 		stack_page = (unsigned long)task_stack_page(current);
