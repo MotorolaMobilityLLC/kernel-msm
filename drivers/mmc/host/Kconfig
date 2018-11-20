@@ -781,3 +781,7 @@ config MMC_CQ_HCI
 	  If you have a controller with this interface, say Y or M here.
 
 	  If unsure, say N.
+
+config SDHCI_DUMPREG_DEBUG_PANIC
+        tristate "MMC panic when error happend"
+        default n
