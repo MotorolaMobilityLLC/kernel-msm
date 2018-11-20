@@ -288,6 +288,7 @@ struct _mmc_csd {
 #define EXT_CSD_CACHE_SIZE		249	/* RO, 4 bytes */
 #define EXT_CSD_PWR_CL_DDR_200_360	253	/* RO */
 #define EXT_CSD_FW_VERSION		254	/* RO */
+#define EXT_CSD_DEVICE_VERSION		262	/* RO, 2 bytes */
 #define EXT_CSD_NUM_OF_FW_SEC_PROG     302     /* RO, 4 bytes */
 #define EXT_CSD_CMDQ_DEPTH		307	/* RO */
 #define EXT_CSD_CMDQ_SUPPORT		308	/* RO */
