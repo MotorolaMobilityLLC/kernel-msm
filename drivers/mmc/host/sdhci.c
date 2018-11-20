@@ -180,6 +180,11 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 		host->ops->dump_vendor_regs(host);
 	sdhci_dump_state(host);
 	pr_info(DRIVER_NAME ": ===========================================\n");
+//MMI_SHOPSHIP for micron 4.3 FW have timeout issue.BUG_ON can trigger reboot for MMC FW upgrading
+#ifdef CONFIG_SDHCI_DUMPREG_DEBUG_PANIC
+	if (mmc_card_mmc(host->mmc->card))
+		BUG_ON(true);
+#endif
 }
 
 /*****************************************************************************\
