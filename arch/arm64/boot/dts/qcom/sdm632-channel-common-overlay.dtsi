@@ -221,6 +221,8 @@
 	audio_tas2560:tas2560@4f {
 		compatible = "ti,tas2560";
 		reg = <0x4f>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cdc_dmic0_clk_sus>;
 		ti,reset-gpio = <&tlmm 94 0>;
 		ti,irq-gpio = <&tlmm 63 0>;
 		ti,ear-switch-gpio = <&tlmm 59 0>;
