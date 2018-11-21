@@ -239,7 +239,6 @@ struct rradc_chip {
 	struct device_node		*revid_dev_node;
 	struct pmic_revid_data		*pmic_fab_id;
 	int volt;
-	struct power_supply		*usb_trig;
 	struct power_supply		*batt_psy;
 	struct power_supply		*bms_psy;
 	struct notifier_block		nb;
@@ -762,24 +761,6 @@ static int rradc_disable_continuous_mode(struct rradc_chip *chip)
 	return rc;
 }
 
-static bool rradc_is_usb_present(struct rradc_chip *chip)
-{
-	union power_supply_propval pval;
-	int rc;
-	bool usb_present = false;
-
-	if (!chip->usb_trig) {
-		pr_debug("USB property not present\n");
-		return usb_present;
-	}
-
-	rc = power_supply_get_property(chip->usb_trig,
-			POWER_SUPPLY_PROP_PRESENT, &pval);
-	usb_present = (rc < 0) ? 0 : pval.intval;
-
-	return usb_present;
-}
-
 static int rradc_check_status_ready_with_retry(struct rradc_chip *chip,
 		struct rradc_chan_prop *prop, u8 *buf, u16 status)
 {
@@ -800,15 +781,6 @@ static int rradc_check_status_ready_with_retry(struct rradc_chip *chip,
 			(retry_cnt < FG_RR_CONV_MAX_RETRY_CNT)) {
 		pr_debug("%s is not ready; nothing to read:0x%x\n",
 			rradc_chans[prop->channel].datasheet_name, buf[0]);
-
-		if (((prop->channel == RR_ADC_CHG_TEMP) ||
-			(prop->channel == RR_ADC_USBIN_I) ||
-			(prop->channel == RR_ADC_DIE_TEMP)) &&
-					((!rradc_is_usb_present(chip)))) {
-			pr_debug("USB not present for %d\n", prop->channel);
-			rc = -ENODATA;
-			break;
-		}
 
 		if ((chip->conv_cbk) && (prop->channel == RR_ADC_USBIN_V))
 			msleep(FG_RR_CONV_CONT_CBK_TIME_MIN_MS);
@@ -1305,10 +1277,6 @@ static int rradc_probe(struct platform_device *pdev)
 	indio_dev->info = &rradc_info;
 	indio_dev->channels = chip->iio_chans;
 	indio_dev->num_channels = chip->nchannels;
-
-	chip->usb_trig = power_supply_get_by_name("usb");
-	if (!chip->usb_trig)
-		pr_debug("Error obtaining usb power supply\n");
 
 	chip->batt_psy = power_supply_get_by_name("battery");
 	if (!chip->batt_psy)
