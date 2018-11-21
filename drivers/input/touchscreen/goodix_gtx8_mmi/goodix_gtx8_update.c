@@ -1477,9 +1477,7 @@ static ssize_t goodix_sysfs_poweron_show(struct device *dev,
 	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
 	bool val;
 
-	mutex_lock(&fw_ctrl->core_data->input_dev->mutex);
 	val = fw_ctrl->core_data->gtp_suspended;
-	mutex_unlock(&fw_ctrl->core_data->input_dev->mutex);
 
 	return scnprintf(buf, PAGE_SIZE, "%d\n",
 			val == false);
