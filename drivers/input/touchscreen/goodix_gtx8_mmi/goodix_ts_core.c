@@ -2162,7 +2162,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, core_data);
 	core_data->cfg_group_parsed = false;
 	core_data->update_from_sysfs = false;
-	core_data->gtp_suspended = true;
+	core_data->gtp_suspended = false;
 	client = to_i2c_client(ts_device->dev);
 	i2c_set_clientdata(client, core_data);
 	r = goodix_ts_power_init(core_data);
