@@ -849,6 +849,7 @@ static int pil_load_seg(struct pil_desc *desc, struct pil_seg *seg)
 		if (fw->size != seg->filesz) {
 			pil_err(desc, "Blob size %u doesn't match %lu\n",
 					ret, seg->filesz);
+			release_firmware(fw);
 			return -EPERM;
 		}
 	}
@@ -864,6 +865,7 @@ static int pil_load_seg(struct pil_desc *desc, struct pil_seg *seg)
 		buf = desc->map_fw_mem(paddr, size, map_data);
 		if (!buf) {
 			pil_err(desc, "Failed to map memory\n");
+			release_firmware(fw);
 			return -ENOMEM;
 		}
 		pil_memset_io(buf, 0, size);
@@ -880,7 +882,7 @@ static int pil_load_seg(struct pil_desc *desc, struct pil_seg *seg)
 			pil_err(desc, "Blob%u failed verification(rc:%d)\n",
 								num, ret);
 	}
-
+	release_firmware(fw);
 	return ret;
 }
 
