@@ -54,7 +54,7 @@
 #define COMMAND_SEND_SMALL_CFG	0x81
 
 #define BYTES_PER_COORD 8
-#define TS_MAX_SENSORID	5
+#define TS_MAX_SENSORID	9
 #define TS_CFG_MAX_LEN	1024
 #if TS_CFG_MAX_LEN > GOODIX_CFG_MAX_SIZE
 #error GOODIX_CFG_MAX_SIZE too small, please fix.
