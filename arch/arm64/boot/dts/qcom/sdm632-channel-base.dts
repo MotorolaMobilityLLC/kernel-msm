@@ -88,3 +88,12 @@
 &pmi632_3 {
 	/delete-node/ qcom,vibrator@5700;
 };
+
+&tlmm {
+	/delete-node/ nfc;
+	/delete-node/ wsa-vi;
+	/delete-node/ wsa_reset;
+	/delete-node/ wsa_clk;
+	/delete-node/ cdc_reset_ctrl;
+	/delete-node/ cross-conn-det;
+};
