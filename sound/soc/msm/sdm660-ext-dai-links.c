@@ -823,6 +823,7 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 	},
+#ifdef CONFIG_SND_SOC_OPALUM
 	{
 		.name = LPASS_BE_SLIMBUS_1_TX,
 		.stream_name = "Slimbus1 Capture",
@@ -842,6 +843,22 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
 	},
+#else
+	{
+		.name = LPASS_BE_SLIMBUS_1_TX,
+		.stream_name = "Slimbus1 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16387",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "cs47l35-codec",
+		.codec_dai_name = "cs47l35-slim2",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
+		.be_hw_params_fixup = msm_ext_be_hw_params_fixup,
+		.ops = &msm_ext_slimbus_be_ops,
+		.ignore_suspend = 1,
+	},
+#endif
 	{
 		.name = LPASS_BE_SLIMBUS_2_RX,
 		.stream_name = "Slimbus2 Playback",
