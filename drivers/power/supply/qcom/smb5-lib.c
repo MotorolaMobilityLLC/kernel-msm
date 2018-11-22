@@ -4073,6 +4073,18 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 	update_sw_icl_max(chg, apsd->pst);
 
 	if (chg->pd_active) {
+#ifndef QCOM_BASE
+		/*
+		 * advertise 1.5A current to comply with the Type-C Specification.
+		 * While an explicit USB PD contract is in place, the provider shall
+		 * advertisea USB Type-C Current of either 1.5 A or 3.0 A.*/
+		rc = smblib_masked_write(chg, TYPE_C_CURRSRC_CFG_REG,
+				TYPEC_SRC_RP_SEL_MASK, TYPEC_SRC_RP_1P5A);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't write to TYPE_C_CURRSRC_CFG_REG rc=%d\n",
+				rc);
+		}
+#endif
 		vote(chg->usb_irq_enable_votable, PD_VOTER, true, 0);
 
 		/*
@@ -4104,6 +4116,15 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 					rc);
 		}
 	} else {
+#ifndef QCOM_BASE
+		/*advertise default current*/
+		rc = smblib_masked_write(chg, TYPE_C_CURRSRC_CFG_REG,
+				TYPEC_SRC_RP_SEL_MASK, TYPEC_SRC_RP_STD);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
+				rc);
+		}
+#endif
 		vote(chg->usb_icl_votable, PD_VOTER, false, 0);
 		vote(chg->usb_irq_enable_votable, PD_VOTER, false, 0);
 
