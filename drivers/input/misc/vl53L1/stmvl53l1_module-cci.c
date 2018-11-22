@@ -425,9 +425,14 @@ static int32_t stmvl53l1_platform_probe(struct platform_device *pdev)
 
 	/* setup other stuff */
 	rc = stmvl53l1_setup(vl53l1_data);
+	if (rc) {
+		vl53l1_errmsg("fail to setup stmvl53l1");
+		goto release_gpios;
+	}
 	vl53l1_data->sysfs_base = cci_client->sid;
 	rc = stmvl53l1_sysfs_laser(vl53l1_data, true);
 	if (rc) {
+		vl53l1_errmsg("fail to create sysfs laser node");
 		goto release_gpios;
 	}
 	kref_init(&tof_ctrl->ref);
