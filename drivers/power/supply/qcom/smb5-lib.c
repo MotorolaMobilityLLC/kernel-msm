@@ -3260,7 +3260,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 
 			if (chg->smb_version == PMI632_SUBTYPE)
 				schgm_flash_torch_priority(chg,
-						TORCH_BOOST_MODE);
+						TORCH_BUCK_MODE);
 
 			data = chg->irq_info[USBIN_UV_IRQ].irq_data;
 			if (data) {
