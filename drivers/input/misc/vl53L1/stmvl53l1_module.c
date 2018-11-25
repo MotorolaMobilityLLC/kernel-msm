@@ -160,7 +160,7 @@ static long stmvl53l1_compat_ioctl(struct file *file,
 				unsigned int cmd, unsigned long arg);
 #endif
 
-static bool force_device_on_en_default = true;
+static bool force_device_on_en_default = false;
 
 module_param(force_device_on_en_default, bool, 0444);
 MODULE_PARM_DESC(force_device_on_en_default,
