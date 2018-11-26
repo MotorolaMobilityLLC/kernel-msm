@@ -470,6 +470,7 @@
 	qcom,cons-sync-write-delay-us = <1000>;
 	qcom,led-strings-list = [00 01];
 	qcom,en-cabc;
+	qcom,switch-freq-khz = <600>;
 };
 
 &spmi_bus {
