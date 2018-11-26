@@ -896,9 +896,11 @@ static void max310x_set_termios(struct uart_port *port,
 	/* Configure flow control */
 	max310x_port_write(port, MAX310X_XON1_REG, termios->c_cc[VSTART]);
 	max310x_port_write(port, MAX310X_XOFF1_REG, termios->c_cc[VSTOP]);
-	if (termios->c_cflag & CRTSCTS)
+	if (termios->c_cflag & CRTSCTS) {
+		port->status |= (UPSTAT_AUTOCTS | UPSTAT_AUTORTS);
 		flow |= MAX310X_FLOWCTRL_AUTOCTS_BIT |
 			MAX310X_FLOWCTRL_AUTORTS_BIT;
+	}
 	if (termios->c_iflag & IXON)
 		flow |= MAX310X_FLOWCTRL_SWFLOW3_BIT |
 			MAX310X_FLOWCTRL_SWFLOWEN_BIT;
