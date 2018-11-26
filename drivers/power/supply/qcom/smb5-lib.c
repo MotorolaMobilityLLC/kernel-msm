@@ -5662,6 +5662,8 @@ static void typec_src_removal(struct smb_charger *chg)
 #endif
 	chg->usbin_forced_max_uv = 0;
 
+	chg->pd_contract_uv = 0;
+
 	/* write back the default FLOAT charger configuration */
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_2_CFG_REG,
 				(u8)FLOAT_OPTIONS_MASK, chg->float_cfg);
