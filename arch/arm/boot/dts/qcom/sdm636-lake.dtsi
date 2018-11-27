@@ -38,6 +38,7 @@
 		interrupt-parent = <&tlmm>;
 		novatek,irq-gpio = <&tlmm 67 0x2001>;
 		novatek,reset-gpio = <&tlmm 66 0x00>;
+		novatek,usb_charger;
 		pinctrl-names = "active";
 		pinctrl-0 = <&nova_tp_rst_default>;
 	};
