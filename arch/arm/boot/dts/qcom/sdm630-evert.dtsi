@@ -347,6 +347,10 @@
 	};
 };
 
+&pm660_bcl {
+	qcom,bcl-charger-mitigate-enable;
+};
+
 &pm660_fg {
 	qcom,battery-thermal-coefficients = [92 50 ff];
 	qcom,fg-esr-tight-lt-filter-micro-pct = <20000>;
