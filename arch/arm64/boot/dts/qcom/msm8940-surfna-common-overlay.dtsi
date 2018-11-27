@@ -350,6 +350,6 @@
 	qcom,wave-samples = <0x3e 0x3e 0x3e 0x3e 0x3e
                         0x3e 0x3e 0x3e>;
 	qcom,vmax-mv = <2600>;
+	qcom,brake-pattern = <0x3 0x3 0x0 0x0>;
 	/delete-property/ qcom,en-brake; /* disable internal reverse braking */
-	/delete-property/ qcom,brake-pattern; /* disable brake pattern */
 };
