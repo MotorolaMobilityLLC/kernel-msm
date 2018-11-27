@@ -11,6 +11,7 @@
  */
 #include "msm8940-moto-common-overlay.dtsi"
 #include "msm8940-surfna-pinctrl-overlay.dtsi"
+#include "msm8940-camera-sensor-surfna-overlay.dtsi"
 #include <dt-bindings/interrupt-controller/irq.h>
 
 &firmware {
