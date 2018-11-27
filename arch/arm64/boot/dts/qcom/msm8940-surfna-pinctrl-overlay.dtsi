@@ -101,21 +101,4 @@
 			output-high;
 		};
 	};
-
-    i2c_3 {
-			i2c_3_active: i2c_3_active {
-				/* active state */
-				mux {
-					pins = "gpio10", "gpio11";
-					function = "blsp_i2c3";
-				};
-
-				config {
-					pins = "gpio10", "gpio11";
-					/* update drive-strength from 2 to 16 */
-					drive-strength = <16>;
-					bias-disable;
-				};
-			};
-	};
 };
