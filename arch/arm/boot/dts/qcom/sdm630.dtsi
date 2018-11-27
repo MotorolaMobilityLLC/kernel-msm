@@ -815,7 +815,7 @@
 		interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	qcom,bcl {
+	pm660_bcl: qcom,bcl {
 		compatible = "qcom,bcl";
 		qcom,bcl-enable;
 		qcom,bcl-framework-interface;
