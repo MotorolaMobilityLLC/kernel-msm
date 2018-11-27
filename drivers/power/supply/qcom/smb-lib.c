@@ -8336,6 +8336,78 @@ static DEVICE_ATTR(force_chg_idc, 0664,
 		force_chg_idc_show,
 		force_chg_idc_store);
 
+static ssize_t force_thermreg_die_disable_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long disable;
+
+	r = kstrtoul(buf, 0, &disable);
+	if (r) {
+		smblib_err(mmi_chip,
+			   "Invalid params value = %lu\n", disable);
+		return -EINVAL;
+	}
+
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smblib_masked_write(mmi_chip, THERMREG_SRC_CFG_REG,
+				THERMREG_DIE_ADC_SRC_EN_BIT |
+				THERMREG_DIE_CMP_SRC_EN_BIT,
+				disable ? 0 : THERMREG_DIE_ADC_SRC_EN_BIT |
+				THERMREG_DIE_CMP_SRC_EN_BIT);
+	if (r < 0) {
+		smblib_err(mmi_chip, "Couldn't %s die temp rc=%d\n",
+			   disable ? "disable" : "enable", (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(force_thermreg_die_disable, S_IWUSR,
+		NULL,
+		force_thermreg_die_disable_store);
+
+static ssize_t force_thermreg_skin_disable_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long disable;
+
+	r = kstrtoul(buf, 0, &disable);
+	if (r) {
+		smblib_err(mmi_chip,
+			   "Invalid params value = %lu\n", disable);
+		return -EINVAL;
+	}
+
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smblib_masked_write(mmi_chip, THERMREG_SRC_CFG_REG,
+				THERMREG_SKIN_ADC_SRC_EN_BIT,
+				disable ? 0 : THERMREG_SKIN_ADC_SRC_EN_BIT);
+	if (r < 0) {
+		smblib_err(mmi_chip, "Couldn't %s skin temp rc=%d\n",
+			   disable ? "disable" : "enable", (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(force_thermreg_skin_disable, S_IWUSR,
+		NULL,
+		force_thermreg_skin_disable_store);
+
 #define PRE_CHARGE_CONV_MV 25
 #define PRE_CHARGE_MAX 0x3F
 static ssize_t force_chg_itrick_store(struct device *dev,
@@ -8920,6 +8992,16 @@ void mmi_init(struct smb_charger *chg)
 	if (rc)
 		smblib_err(chg, "couldn't create factory_charge_upper\n");
 
+	rc = device_create_file(chg->dev,
+				&dev_attr_force_thermreg_die_disable);
+	if (rc)
+		smblib_err(chg, "couldn't create force_thermreg_die_disable\n");
+
+	rc = device_create_file(chg->dev,
+				&dev_attr_force_thermreg_skin_disable);
+	if (rc)
+		smblib_err(chg, "couldn't create force_thermreg_skin_disable\n");
+
 	if (chg->mmi.factory_mode) {
 		mmi_chip = chg;
 		smblib_err(chg, "Entering Factory Mode SMB!\n");
@@ -9011,6 +9093,10 @@ void mmi_deinit(struct smb_charger *chg)
 			   &dev_attr_force_demo_mode);
 	device_remove_file(chg->dev,
 			   &dev_attr_force_max_chrg_temp);
+	device_remove_file(chg->dev,
+			   &dev_attr_force_thermreg_die_disable);
+	device_remove_file(chg->dev,
+			   &dev_attr_force_thermreg_skin_disable);
 
 	if (chg->mmi.factory_mode) {
 		device_remove_file(chg->dev,
