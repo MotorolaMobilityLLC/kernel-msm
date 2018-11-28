@@ -20,6 +20,8 @@
 #include "cam_debug_util.h"
 #include "cam_common_util.h"
 
+#define CAM_SYNC_MAX_OPEN_CNT 2
+
 struct sync_device *sync_dev;
 
 /*
@@ -767,7 +769,7 @@ static int cam_sync_open(struct file *filep)
 	}
 
 	mutex_lock(&sync_dev->table_lock);
-	if (sync_dev->open_cnt >= 1) {
+	if (sync_dev->open_cnt >= CAM_SYNC_MAX_OPEN_CNT) {
 		mutex_unlock(&sync_dev->table_lock);
 		return -EALREADY;
 	}
@@ -776,7 +778,7 @@ static int cam_sync_open(struct file *filep)
 	if (!rc) {
 		sync_dev->open_cnt++;
 		spin_lock_bh(&sync_dev->cam_sync_eventq_lock);
-		sync_dev->cam_sync_eventq = filep->private_data;
+		sync_dev->cam_sync_eventq_exists = true;
 		spin_unlock_bh(&sync_dev->cam_sync_eventq_lock);
 	} else {
 		CAM_ERR(CAM_SYNC, "v4l2_fh_open failed : %d", rc);
@@ -844,7 +846,9 @@ static int cam_sync_close(struct file *filep)
 	}
 	mutex_unlock(&sync_dev->table_lock);
 	spin_lock_bh(&sync_dev->cam_sync_eventq_lock);
-	sync_dev->cam_sync_eventq = NULL;
+	if (!sync_dev->open_cnt) {
+		sync_dev->cam_sync_eventq_exists = false;
+	}
 	spin_unlock_bh(&sync_dev->cam_sync_eventq_lock);
 	v4l2_fh_release(filep);
 
