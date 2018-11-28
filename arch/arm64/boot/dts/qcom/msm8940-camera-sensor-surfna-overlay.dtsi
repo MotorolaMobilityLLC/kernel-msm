@@ -20,6 +20,7 @@
 		qcom,switch-source = <&pmi8940_switch>;
 	};
 };
+
 &pmi8940_flash0 {
 	qcom,current = <900>;
 };
@@ -72,7 +73,7 @@
 		clocks = <&clock_gcc clk_mclk0_clk_src>,
 				<&clock_gcc clk_gcc_camss_mclk0_clk>;
 		clock-names = "cam_src_clk", "cam_clk";
-		qcom,clock-rates = <19200000 0>;
+		qcom,clock-rates = <24000000 0>;
 	};
 
 	eeprom1: qcom,eeprom@1 {
@@ -109,7 +110,7 @@
 		clocks = <&clock_gcc clk_mclk1_clk_src>,
 			<&clock_gcc clk_gcc_camss_mclk1_clk>;
 		clock-names = "cam_src_clk", "cam_clk";
-		qcom,clock-rates = <19200000 0>;
+		qcom,clock-rates = <24000000 0>;
 	};
 
 	qcom,camera@0 {
@@ -196,11 +197,9 @@
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 	};
-
 };
 
-&soc {
-	cci: qcom,cci@1b0c000 {
+&cci {
 		status = "ok";
 		cell-index = <0>;
 		compatible = "qcom,cci";
@@ -239,14 +238,13 @@
 		i2c_freq_custom: qcom,i2c_custom_mode {
 			status = "disabled";
 		};
-
 		i2c_freq_1Mhz: qcom,i2c_fast_plus_mode {
 			status = "disabled";
 		};
+};
 
-	};
 
-	tlmm: pinctrl@1000000 {
+&tlmm {
 		cci {
 			cci0_active: cci0_active {
 				/* cci0 active state */
@@ -278,7 +276,6 @@
 				};
 			};
 		};
-
 		cam_sensor_mclk0_default: cam_sensor_mclk0_default {
 			/* MCLK0 */
 			mux {
@@ -393,9 +390,7 @@
 				drive-strength = <2>; /* 2 MA */
 			};
 		};
-	};
 };
-
 
 &rpm_bus {
 	rpm-regulator-ldoa6 {
