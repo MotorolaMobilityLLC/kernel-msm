@@ -333,7 +333,7 @@ void cam_sync_util_dispatch_signaled_cb(int32_t sync_obj,
 	list_for_each_entry_safe(payload_info, temp_payload_info,
 		&signalable_row->user_payload_list, list) {
 		spin_lock_bh(&sync_dev->cam_sync_eventq_lock);
-		if (!sync_dev->cam_sync_eventq) {
+		if (!sync_dev->cam_sync_eventq_exists) {
 			spin_unlock_bh(
 				&sync_dev->cam_sync_eventq_lock);
 			break;
