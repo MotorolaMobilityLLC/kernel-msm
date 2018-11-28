@@ -10,22 +10,7 @@
  * GNU General Public License for more details.
  */
 
-&tlmm {
-	sx9310:sx9310 {
-		sx9310_int_default: default {
-			mux {
-				pins = "gpio44";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio44";
-				drive-strength = <2>;
-				bias-pull-up;
-				input-enable;
-			};
-		};
-	};
+&tlmm{
 	spi7 {
 		/* BLSP7 MOSI, MISO, CLK */
 		spi_7_active: spi_7_active {
