@@ -67,30 +67,6 @@
 		};
 	};
 
-	quin-mi2s-lines {
-		quin_mi2s_act: quin_mi2s_act {
-			mux {
-				pins = "gpio85", "gpio86", "gpio88";
-				function = "pri_mi2s";
-			};
-			config {
-				pins = "gpio85", "gpio86", "gpio88";
-				drive-strength = <8>;
-			};
-		};
-		quin_mi2s_sus: quin_mi2s_sus {
-			mux {
-				pins = "gpio85", "gpio86", "gpio88";
-				function = "pri_mi2s";
-			};
-			config {
-				pins = "gpio85", "gpio86", "gpio88";
-				drive-strength = <2>;
-				bias-pull-down;
-			};
-		};
-	};
-
 	tps61280_en_default: tps61280_en_default {
 		mux {
 			pins = "gpio96";
@@ -100,5 +76,30 @@
 			drive_strength = <8>;
 			output-high;
 		};
+	};
+};
+
+&pri_tlmm_lines_act {
+	mux {
+		pins = "gpio85", "gpio88", "gpio86";
+		function = "pri_mi2s";
+	};
+
+	config {
+		pins = "gpio85", "gpio88", "gpio86";
+		drive-strength = <8>;
+	};
+};
+
+&pri_tlmm_lines_sus {
+	mux {
+		pins = "gpio85", "gpio88", "gpio86";
+		function = "pri_mi2s";
+	};
+
+	config {
+		pins = "gpio85", "gpio88", "gpio86";
+		drive-strength = <2>;
+		bias-pull-down;
 	};
 };
