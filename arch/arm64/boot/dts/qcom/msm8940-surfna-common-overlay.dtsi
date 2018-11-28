@@ -71,6 +71,9 @@
 	qcom,platform-reset-gpio = <&tlmm 60 0>;
 };
 
+&mdss_dsi1 {
+	status = "disabled";
+};
 
 &i2c_2 {
 	status = "ok";
