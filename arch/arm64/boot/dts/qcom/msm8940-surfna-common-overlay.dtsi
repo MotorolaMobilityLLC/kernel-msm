@@ -98,6 +98,14 @@
 
 	/delete-node/ adv7533@39;
 	/delete-node/ pericom-type-c@1d;
+
+	tfa987x:tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x34>;
+		reset-gpio = <&tlmm 89 0>;
+		irq-gpio = <&tlmm 90 0>;
+		status = "ok";
+	};
 };
 
 &i2c_3 {
