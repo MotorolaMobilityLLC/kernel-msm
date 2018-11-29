@@ -10,7 +10,23 @@
  * GNU General Public License for more details.
  */
 
-&tlmm{
+&tlmm {
+	abov_int_pin {
+		/* qcom,pins = <&gp 44>;*/
+		pins = "gpio44";
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "abov_int_pin";
+		abov_int_default: int_default {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+		abov_int_sleep: int_sleep {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	spi7 {
 		/* BLSP7 MOSI, MISO, CLK */
 		spi_7_active: spi_7_active {
