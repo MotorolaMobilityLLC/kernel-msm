@@ -28,6 +28,10 @@
 	qcom,dsi-display-active;
 };
 
+&dsi_tianma_639_1080x2340_cmd_display {
+	qcom,dsi-display-active;
+};
+
 &tlmm {
 	marley_reset_default: marley_reset_default {
 		config {
