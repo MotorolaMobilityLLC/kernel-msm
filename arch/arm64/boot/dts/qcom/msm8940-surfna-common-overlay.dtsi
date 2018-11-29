@@ -228,6 +228,8 @@
 	qcom,lower-limit-capacity = <60>;
 	qcom,mmi-disable-hvdcp;
 	dpdm-supply = <&usb_otg>;
+	qcom,chg-led-sw-controls;
+	qcom,chg-led-support;
 };
 
 &pm8937_vadc {
