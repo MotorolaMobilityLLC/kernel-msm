@@ -122,7 +122,9 @@
 &i2c_3 {
 	status = "ok";
 	/* clock-frequency = <400000>; */
-
+	pinctrl-names = "i2c_active", "i2c_sleep";
+	pinctrl-0 = <&i2c_3_active>;
+	pinctrl-1 = <&i2c_3_sleep>;
 	focaltech@38 {
 		compatible = "focaltech,ft5446", "focaltech,mmi";
 		reg = <0x38>;
