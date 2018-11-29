@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-&tlmm{
+&tlmm {
 	sx9310:sx9310 {
 		sx9310_int_default: default {
 			mux {

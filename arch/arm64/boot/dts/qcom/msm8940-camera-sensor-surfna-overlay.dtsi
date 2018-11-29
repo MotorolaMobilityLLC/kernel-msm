@@ -399,7 +399,7 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			qcom,init-voltage = <1800000>;
-			//Per samsung,the DOVDD of 3l6 sensor need to be set always-on to avoid current leakage issue
+			/* Per samsung,the DOVDD of 3l6 sensor need to be set always-on to avoid current leakage issue */
 			regulator-always-on;
 			status = "okay";
 		};
@@ -423,5 +423,4 @@
 			status = "okay";
 		};
 	};
-	
 };
