@@ -98,25 +98,6 @@
 
 	/delete-node/ adv7533@39;
 	/delete-node/ pericom-type-c@1d;
-	tps61280@75 {
-		compatible = "ti,tps61280";
-		status = "okay";
-		reg = <0x75>;
-		ti,config = <0x0D>;
-		ti,vout-floor = <0x0D>;
-		ti,vout-roof = <0x19>;
-		ti,ilim = <0x0F>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&tps61280_en_default>;
-	};
-
-	tfa987x:tfa98xx@34 {
-		compatible = "nxp,tfa98xx";
-		reg = <0x34>;
-		reset-gpio = <&tlmm 89 0>;
-		irq-gpio = <&tlmm 90 0>;
-		status = "ok";
-	};
 };
 
 &i2c_3 {
@@ -160,6 +141,21 @@
 		touchpanel,irq-gpio = <&tlmm 65 0x02>;
 	};
 
+};
+
+&i2c_5 {
+	status = "ok";
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		status = "okay";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
 };
 
 &pm8937_l6 {
