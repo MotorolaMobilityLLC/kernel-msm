@@ -13,6 +13,7 @@
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-audio-overlay.dtsi"
 #include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
+#include "dsi-panel-mot-tianma-639-1080p-cmd-overlay.dtsi"
 #include "sm6150-foles-mods.dtsi"
 #include "sm6150-foles-audio-overlay.dtsi"
 
@@ -335,7 +336,18 @@
 		qcom,dsi-panel = <&mot_smd_639_1080p_cmd_v1>;
 	};
 
-	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@6 {
+	dsi_tianma_639_1080x2340_cmd_display: qcom,dsi-display@6 {
+		label = "dsi_tianma_639_1080x2340_cmd_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "src_byte_clk0", "src_pixel_clk0";
+
+		qcom,dsi-panel = <&mot_tianma_639_1080p_cmd_v1>;
+	};
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@7 {
 		label = "dsi_mot_dummy_qhd_video_display";
 		qcom,display-type = "primary";
 
@@ -664,6 +676,7 @@
 &sde_dsi {
 	qcom,dsi-display-list =
 		<&dsi_smd_639_1080x2340_cmd_display
+		 &dsi_tianma_639_1080x2340_cmd_display
 		 &dsi_mot_dummy_qhd_video_display>;
 
 	/delete-property/vddio-supply;
@@ -688,7 +701,42 @@
 	//qcom,mdss-dsi-panel-status-read-length = <1>;
 	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-	qcom,mdss-dsi-panel-status-value = <0x9c>;
+	//qcom,mdss-dsi-panel-status-value = <0x9c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
+
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&mot_tianma_639_1080p_cmd_v1 {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
+	qcom,platform-te-gpio = <&tlmm 90 0>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+	qcom,panel-te-source = <0>;
+
+	qcom,mdss-dsi-t-clk-post = <0x0f>;
+	qcom,mdss-dsi-t-clk-pre = <0x37>;
+	/* Enable ESD checking */
+	qcom,esd-check-enabled;
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
+	//qcom,mdss-dsi-panel-status-read-length = <1>;
+	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+	//qcom,mdss-dsi-panel-status-value = <0x0c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x0c>;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
