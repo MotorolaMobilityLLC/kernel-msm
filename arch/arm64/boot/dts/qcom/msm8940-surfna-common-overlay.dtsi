@@ -81,13 +81,13 @@
 		label = "AbovCapSense";
 		compatible = "abov,abov_sar";
 		reg = <0x20>;
-		cap_vdd-supply = <&pm8953_l10>;
+		cap_vdd-supply = <&pm8937_l18>;
 		//cap_svdd-supply = <&pm660_l14>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <86 0x2008>;
-		gpios = <&tlmm 86 0x2008>; /* IRQ */
+		interrupts = <44 0x2008>;
+		gpios = <&tlmm 44 0x2008>; /* IRQ */
 		pinctrl-names = "default";
-		pinctrl-0 = <&sx9310_irq_default>;
+		pinctrl-0 = <&abov_int_default>;
 		cap,use_channel = <0x0f>;
 		cap,use_channel_top = <0x01>;
 		cap,use_channel_bottom = <0x00>;
