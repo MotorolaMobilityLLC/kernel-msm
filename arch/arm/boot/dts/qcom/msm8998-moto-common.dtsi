@@ -266,10 +266,6 @@
 	mmi,mods-support;
 	mod-usb-hub = <&usb3813>;
 	mmi,mod-hs-switch = <&tlmm 103 0>;           /* USB_HS_SEL, output-low */
-
-	dwc3@a800000 {
-		snps,usb3_lpm_capable;
-	};
 };
 
 &qusb_phy0{
