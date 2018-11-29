@@ -35,6 +35,8 @@
 	/delete-node/ cam_sensor_rear_vdig_sleep;
 	/delete-node/ cam_sensor_rear_vana;
 	/delete-node/ cam_sensor_rear_vana_sleep;
+	/delete-node/ cam_sensor_front_default;
+	/delete-node/ cam_sensor_front_sleep;
 	/delete-node/ cam_sensor_front1_default;
 	/delete-node/ cam_sensor_front1_sleep;
 };
@@ -52,7 +54,7 @@
 	/delete-node/ wsa881x_analog_clk_pctrl;
 	/delete-node/ wsa881x_analog_reset_pctrl;
 	/delete-node/ msm_cdc_pinctrl@67;
-	/delete-node/ qcom,camera-flash;
+
 	qcom,msm-dai-tdm-pri-rx {
 		status = "disabled";
 	};
