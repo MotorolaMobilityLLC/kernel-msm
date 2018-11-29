@@ -415,7 +415,7 @@ long usermodehelper_read_lock_wait(long timeout)
 			break;
 
 		up_read(&umhelper_sem);
-
+		WARN_ONCE(1, "Block suspend for %lds\n", timeout/HZ);
 		timeout = schedule_timeout(timeout);
 		if (!timeout)
 			break;
