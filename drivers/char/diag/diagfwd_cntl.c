@@ -1160,8 +1160,7 @@ void diag_real_time_work_fn(struct work_struct *work)
 
 		if (!driver->feature[peripheral].peripheral_buffering)
 			continue;
-             //MMI_STOPSHIP
-		switch (driver->buffering_mode[peripheral].mode) {
+		switch (driver->buffering_mode[i].mode) {
 		case DIAG_BUFFERING_MODE_THRESHOLD:
 		case DIAG_BUFFERING_MODE_CIRCULAR:
 			send_update = 0;
