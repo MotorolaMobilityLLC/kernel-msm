@@ -13,6 +13,7 @@
 #include "msm8940-surfna-pinctrl-overlay.dtsi"
 #include "msm8940-camera-sensor-surfna-overlay.dtsi"
 #include "dsi-panel-mot-ofilm-545-720p-vid.dtsi"
+#include "dsi-panel-mot-wistron_545_720p-video.dtsi"
 #include <dt-bindings/interrupt-controller/irq.h>
 
 &firmware {
@@ -58,7 +59,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_ofilm_545_720p_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_wistron_545_720p_vid_v0>;
 
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active>;
