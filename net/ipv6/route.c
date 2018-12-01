@@ -367,14 +367,11 @@ EXPORT_SYMBOL(ip6_dst_alloc);
 
 static void ip6_dst_destroy(struct dst_entry *dst)
 {
-	struct dst_metrics *p = (struct dst_metrics *)DST_METRICS_PTR(dst);
 	struct rt6_info *rt = (struct rt6_info *)dst;
 	struct dst_entry *from = dst->from;
 	struct inet6_dev *idev;
 
-	if (p != &dst_default_metrics && atomic_dec_and_test(&p->refcnt))
-		kfree(p);
-
+	dst_destroy_metrics_generic(dst);
 	free_percpu(rt->rt6i_pcpu);
 	rt6_uncached_list_del(rt);
 
