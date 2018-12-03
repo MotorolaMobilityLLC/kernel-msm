@@ -1514,14 +1514,17 @@ static ssize_t goodix_sysfs_buildid_show(struct device *dev,
 	struct goodix_ts_version chip_ver;
 	int r, cnt = 0;
 
-
 	if (ts_dev->hw_ops->read_version) {
 		r = ts_dev->hw_ops->read_version(ts_dev, &chip_ver);
-		if (!r && chip_ver.valid) {
+		if (r == -EBUS) {
+			ts_err("read version error with -EBUS");
+			return cnt;
+		} else if (!r && chip_ver.valid) {
 			cnt = snprintf(buf, PAGE_SIZE, "%02x-%02x\n",
 				chip_ver.vid[1],chip_ver.vid[3]);
+		} else {
+			cnt = snprintf(buf, PAGE_SIZE, "%02x-%02x\n", 0, 0);
 		}
-
 	}
 
 	return cnt;
