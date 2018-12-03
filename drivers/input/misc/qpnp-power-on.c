@@ -397,7 +397,7 @@ int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
 		rc = qpnp_pon_masked_write(pon, QPNP_PON_DVDD_RB_SPARE(pon),
 					   (mask & 0xFF), (val & 0xFF));
 		if (rc) {
-			dev_err(&pon->pdev->dev,
+			dev_err(pon->dev,
 				"Failed to store extra reset info to 0x%x\n",
 				QPNP_PON_DVDD_RB_SPARE(pon));
 			return rc;
@@ -408,7 +408,7 @@ int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
 		rc = qpnp_pon_masked_write(pon, QPNP_PON_XVDD_RB_SPARE(pon),
 				((mask >> 8) & 0xFF), ((val >> 8) & 0xFF));
 		if (rc) {
-			dev_err(&pon->pdev->dev,
+			dev_err(pon->dev,
 				"Failed to store extra reset info to 0x%x\n",
 				QPNP_PON_XVDD_RB_SPARE(pon));
 			return rc;
