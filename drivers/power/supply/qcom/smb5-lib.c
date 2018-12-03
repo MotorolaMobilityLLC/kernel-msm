@@ -9335,7 +9335,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_usb = 500;
 		if ((chip->typec_mode == POWER_SUPPLY_TYPEC_NONE) ||
 		    (chip->typec_mode ==
-		     POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)) {
+		     POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) ||
+		    (chip->pd_active && (chip->pd_contract_uv > 0))) {
 			mmi->charger_debounce_cnt = CHARGER_DETECTION_DONE;
 			charger_present = 1;
 			mmi->apsd_done = true;
