@@ -372,7 +372,7 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 
 	if (mmc_card_cmdq(card)) {
 		/* halt cmdq engine */
-		err = mmc_cmdq_halt_on_empty_queue(card->host);
+		err = mmc_cmdq_halt_on_empty_queue(card->host, 0);
 		if (err) {
 			pr_err("fail to halt cmdq on host side err=%d\n", err);
 			goto exit;
