@@ -320,8 +320,8 @@ static int crypto_rfc3686_init_tfm(struct crypto_skcipher *tfm)
 
 	align = crypto_skcipher_alignmask(tfm);
 	align &= ~(crypto_tfm_ctx_alignment() - 1);
-	reqsize = align + sizeof(struct crypto_rfc3686_req_ctx) +
-		  crypto_skcipher_reqsize(cipher);
+	reqsize = align + ALIGN(sizeof(struct crypto_rfc3686_req_ctx) +
+		  crypto_skcipher_reqsize(cipher), crypto_tfm_ctx_alignment());
 	crypto_skcipher_set_reqsize(tfm, reqsize);
 
 	return 0;
