@@ -323,6 +323,13 @@
 	qcom,fg-sys-term-current = <(-200)>;
 	qcom,fg-delta-soc-thr = <1>;
 	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+	qcom,cl-start-capacity = <5>;
+	qcom,cl-min-temp = <150>;
+	qcom,cl-max-temp = <450>;
+	qcom,cl-max-increment = <5>;
+	qcom,cl-max-decrement = <10>;
+	qcom,cl-min-limit = <200>;
+	qcom,cl-max-limit = <30>;
 };
 
 &pm660_charger {
