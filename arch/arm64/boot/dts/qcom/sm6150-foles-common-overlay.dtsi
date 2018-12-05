@@ -379,6 +379,7 @@
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
 		pinctrl-0 = <&touch_int_active &touch_reset_active>;
 		pinctrl-1 = <&touch_int_suspend &touch_reset_suspend>;
+		goodix,reg-en-gpio = <&tlmm 94 0x0>;
 		goodix,reset-gpio = <&tlmm 88 0x0>;
 		goodix,irq-gpio = <&tlmm 89 0x2002>;
 		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
