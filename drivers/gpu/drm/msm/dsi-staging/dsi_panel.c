@@ -110,8 +110,13 @@ static struct panel_param_val_map hbm_map[HBM_STATE_NUM] = {
 	{HBM_ON_STATE, DSI_CMD_SET_HBM_ON, NULL},
 };
 
+static struct panel_param_val_map acl_map[ACL_STATE_NUM] = {
+        {ACL_OFF_STATE, DSI_CMD_SET_ACL_OFF, NULL},
+        {ACL_ON_STATE, DSI_CMD_SET_ACL_ON, NULL},
+};
 static struct panel_param dsi_panel_param[PARAM_ID_NUM] = {
 	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, HBM_OFF_STATE, false},
+	{"ACL", acl_map, ACL_STATE_NUM, ACL_OFF_STATE, ACL_OFF_STATE, false},
 };
 
 int dsi_dsc_create_pps_buf_cmd(struct msm_display_dsc_info *dsc, char *buf,
@@ -1920,6 +1925,8 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-qsync-off-commands",
 	"qcom,mdss-dsi-hbm-on-command",
 	"qcom,mdss-dsi-hbm-off-command",
+	"qcom,mdss-dsi-acl-on-command",
+	"qcom,mdss-dsi-acl-off-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1948,6 +1955,8 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-qsync-off-commands-state",
 	"qcom,mdss-dsi-hbm-on-command-state",
 	"qcom,mdss-dsi-hbm-off-command-state",
+	"qcom,mdss-dsi-acl-on-command-state",
+	"qcom,mdss-dsi-acl-off-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
