@@ -130,6 +130,14 @@ static int goodix_parse_dt(struct device_node *node,
 		return -EINVAL;
 	}
 
+	r =  of_get_named_gpio(node, "goodix,reg-en-gpio", 0);
+	if (r < 0) {
+		ts_err("failed to get pwr gpio!");
+	}
+
+	ts_info("Parse reg-en-gpio[%d] from dt", r);
+	board_data->reg_en_gpio = r;
+
 	r = of_get_named_gpio(node, "goodix,reset-gpio", 0);
 	if (r < 0) {
 		ts_err("Invalid reset-gpio in dt: %d", r);
