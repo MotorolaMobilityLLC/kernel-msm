@@ -320,6 +320,7 @@ enum msm_param_state {
 
 enum msm_param_id {
 	PARAM_HBM_ID = 0,
+	PARAM_ACL_ID,
 	PARAM_ID_NUM
 };
 
