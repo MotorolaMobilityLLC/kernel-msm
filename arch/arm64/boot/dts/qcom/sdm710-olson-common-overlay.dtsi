@@ -123,6 +123,15 @@
 		pinctrl-0 = <&fpc1020_reset_default>;
 	};
 
+	flip_detection: flip_detection {
+		compatible = "extcon-gpio";
+		extcon-id = <62>; /* EXTCON_MECHANICAL */
+		gpio = <&tlmm 133 GPIO_ACTIVE_HIGH>;
+		debounce-ms = <200>;
+		irq-flags = <IRQ_TYPE_EDGE_BOTH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&flip_det_default>;
+	};
 };
 
 
@@ -180,6 +189,18 @@
 };
 
 &tlmm {
+	flip_det_default: flip_det_default {
+		mux {
+			pins = "gpio133";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio133";
+			drive-strength = <2>; /* 2 mA */
+			bias-no-pull;
+		};
+	};
+
 	fpc1020_reset_default: fpc1020_reset_default {
 		mux {
 			pins = "gpio91";

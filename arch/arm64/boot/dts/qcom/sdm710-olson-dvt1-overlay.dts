@@ -122,6 +122,10 @@
 	};
 };
 
+&flip_detection {
+	status = "disabled";
+};
+
 &vio_disp_sub_vreg {
 	regulator-boot-on;
 };
