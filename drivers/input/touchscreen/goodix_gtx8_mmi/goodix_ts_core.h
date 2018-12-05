@@ -139,6 +139,7 @@ struct goodix_module {
 struct goodix_ts_board_data {
 	const char *avdd_name;
 	const char *iovdd_name;
+	unsigned int reg_en_gpio;
 	unsigned int reset_gpio;
 	unsigned int irq_gpio;
 	int irq;
