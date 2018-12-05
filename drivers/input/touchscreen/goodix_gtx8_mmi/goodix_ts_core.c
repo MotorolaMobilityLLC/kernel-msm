@@ -1482,12 +1482,23 @@ static int goodix_ts_gpio_setup(struct goodix_ts_core *core_data)
 			 board_data(core_data);
 	int r = 0;
 
-	ts_info("GPIO setup,reset-gpio:%d, irq-gpio:%d",
-		ts_bdata->reset_gpio, ts_bdata->irq_gpio);
+	ts_info("GPIO setup,reg-en-gpio:%d, reset-gpio:%d, irq-gpio:%d",
+		ts_bdata->reg_en_gpio, ts_bdata->reset_gpio, ts_bdata->irq_gpio);
 	/*
 	 * after kenerl3.13, gpio_ api is deprecated, new
 	 * driver should use gpiod_ api.
 	 */
+
+	if (gpio_is_valid(ts_bdata->reg_en_gpio)) {
+		r = devm_gpio_request_one(&core_data->pdev->dev,
+				ts_bdata->reg_en_gpio,
+				GPIOF_OUT_INIT_HIGH,
+				"ts_reg_en_gpio");
+		if (r < 0) {
+			ts_err("Failed to request regulator enable gpio, r:%d", r);
+		}
+	}
+
 	r = devm_gpio_request_one(&core_data->pdev->dev,
 			ts_bdata->reset_gpio,
 			GPIOF_OUT_INIT_HIGH,
@@ -1804,6 +1815,24 @@ int goodix_ts_esd_init(struct goodix_ts_core *core)
 }
 
 /**
+ * goodix_ts_set_regulator_gpio - Touchscreen regulator gpio control function
+ * Regulator gpio will control avdd 3.0V
+ */
+static int goodix_ts_set_regulator_gpio(struct goodix_ts_board_data *ts_bdata, int value)
+{
+	if (!ts_bdata) {
+		ts_err("ts_bdata is NULL.\n");
+		return -ENODEV;
+	}
+
+	if (gpio_is_valid(ts_bdata->reg_en_gpio)) {
+		gpio_set_value(ts_bdata->reg_en_gpio, value);
+		ts_info("Output reg_en_gpio num:%d to %d, actually: %d",
+				ts_bdata->reg_en_gpio, value, gpio_get_value(ts_bdata->reg_en_gpio));
+	}
+	return 0;
+}
+/**
  * goodix_ts_suspend - Touchscreen suspend function
  * Called by PM/FB/EARLYSUSPEN module to put the device to  sleep
  */
@@ -1811,6 +1840,8 @@ static int goodix_ts_suspend(struct goodix_ts_core *core_data)
 {
 	struct goodix_ext_module *ext_module;
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
+	struct goodix_ts_board_data *ts_bdata =
+			 board_data(core_data);
 	int r;
 
 	ts_info("Suspend start");
@@ -1880,6 +1911,9 @@ static int goodix_ts_suspend(struct goodix_ts_core *core_data)
 	}
 	mutex_unlock(&goodix_modules.mutex);
 
+	/* power off when suspend */
+	goodix_ts_set_regulator_gpio(ts_bdata, 0);
+
 out:
 	/* release all the touch IDs */
 	core_data->ts_event.event_data.touch_data.touch_num = 0;
@@ -1899,6 +1933,8 @@ static int goodix_ts_resume(struct goodix_ts_core *core_data)
 	struct goodix_ext_module *ext_module;
 	struct goodix_ts_device *ts_dev =
 				core_data->ts_dev;
+	struct goodix_ts_board_data *ts_bdata =
+			 board_data(core_data);
 	int r;
 
 	ts_info("Resume start");
@@ -1925,6 +1961,9 @@ static int goodix_ts_resume(struct goodix_ts_core *core_data)
 		}
 	}
 	mutex_unlock(&goodix_modules.mutex);
+
+	/* power on when resume */
+	goodix_ts_set_regulator_gpio(ts_bdata, 1);
 
 #ifdef CONFIG_PINCTRL
 	if (core_data->pinctrl) {
