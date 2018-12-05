@@ -86,6 +86,10 @@
 	};
 };
 
+&flip_detection {
+	status = "disabled";
+};
+
 &pm660l_l3 {
 	regulator-min-microvolt = <3300000>;
 	regulator-max-microvolt = <3300000>;
