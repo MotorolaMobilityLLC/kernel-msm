@@ -3473,29 +3473,23 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 			if (rc) {
 				pr_err("panel param cmd %s parsing failed\n",
 						param->param_name);
-				rc = -EINVAL;
-				goto parse_err;
+				break;
 			}
 		}
 
 		if (!rc) {
 			param->is_supported = true;
 			pr_info("%s: feature enabled.\n", param->param_name);
-		}
-	}
-
-	return rc;
-
-parse_err:
-	for (i = 0; i < ARRAY_SIZE(dsi_panel_param); i++) {
-		param = &dsi_panel_param[i];
-		for (j = 0; j < param->val_max; j++) {
-			if (param->val_map[j].cmds) {
-				kfree(param->val_map[j].cmds);
-				param->val_map[j].cmds= NULL;
+		} else {
+			param->is_supported = false;
+			pr_info("%s: feature disabled.\n", param->param_name);
+			for (j = 0; j < param->val_max; j++) {
+				if (param->val_map[j].cmds) {
+					kfree(param->val_map[j].cmds);
+					param->val_map[j].cmds= NULL;
+				}
 			}
 		}
-		param->is_supported = false;
 	}
 err:
 	return rc;
