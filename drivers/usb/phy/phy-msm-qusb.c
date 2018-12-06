@@ -878,6 +878,13 @@ static int qusb_phy_dpdm_regulator_enable(struct regulator_dev *rdev)
 	int ret = 0;
 	struct qusb_phy *qphy = rdev_get_drvdata(rdev);
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	if (qphy->phy.mods_usb_enabled) {
+		pr_info("%s in mods usb mode, do not operate dpdm, return\n", __func__);
+		return 0;
+	}
+#endif
+
 	dev_dbg(qphy->phy.dev, "%s dpdm_enable:%d\n",
 				__func__, qphy->dpdm_enable);
 
@@ -944,6 +951,13 @@ static int qusb_phy_dpdm_regulator_disable(struct regulator_dev *rdev)
 {
 	int ret = 0;
 	struct qusb_phy *qphy = rdev_get_drvdata(rdev);
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	if (qphy->phy.mods_usb_enabled) {
+		pr_info("%s in mods usb mode, do not operate dpdm, return\n", __func__);
+		return 0;
+	}
+#endif
 
 	dev_dbg(qphy->phy.dev, "%s dpdm_enable:%d\n",
 				__func__, qphy->dpdm_enable);
