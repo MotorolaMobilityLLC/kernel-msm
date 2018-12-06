@@ -1226,8 +1226,7 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 		c_conn->bl_scale_dirty = true;
 		break;
 	case CONNECTOR_PROP_HBM:
-		param_info.value = sde_connector_get_property(
-					connector->state, CONNECTOR_PROP_HBM);
+		param_info.value = val;
 		param_info.param_idx = PARAM_HBM_ID;
 		param_info.param_conn_idx = CONNECTOR_PROP_HBM;
 		rc = _sde_connector_update_param(c_conn, &param_info);
@@ -1235,8 +1234,7 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 			goto end;
 		break;
 	case CONNECTOR_PROP_ACL:
-		param_info.value = sde_connector_get_property(
-					connector->state, CONNECTOR_PROP_ACL);
+		param_info.value = val;
 		param_info.param_idx = PARAM_ACL_ID;
 		param_info.param_conn_idx = CONNECTOR_PROP_ACL;
 		rc = _sde_connector_update_param(c_conn, &param_info);
