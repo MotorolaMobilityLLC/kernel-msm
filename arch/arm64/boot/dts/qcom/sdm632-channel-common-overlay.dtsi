@@ -158,6 +158,7 @@
 		ilitek,tp_ic_type = "ILI9881";
 		ilitek,tp_touch_ic = <0x9881>;
 		ilitek,mt_b_type = <1>;
+		ilitek,hardware_rst = <1>;
 		ilitek,tpd_height = <2048>;
 		ilitek,tpd_width  = <2048>;
 		ilitek,max_touch_num = <10>;
