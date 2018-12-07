@@ -329,8 +329,6 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
 		eeprom-src = <&otp_front>;
-		/* Temp workaround to unblock factory testing */
-		led-flash-src = <&led_flash_rear>;
 		cam_vana-supply = <&camera_vana_ldo>;
 		cam_vdig-supply = <&camera_front_vdig_ldo>;
 		cam_vio-supply = <&camera_vio_ldo>;
