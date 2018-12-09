@@ -51,7 +51,7 @@
 #ifdef CAMERA_CCI
 
 
-#define TOF_SENSOR_NAME         "tof_vl53l1"
+#define TOF_SENSOR_NAME         "tof_vl53l3"
 #define STMVL53l1_DRV_NAME      "stmvl53l1"
 
 
@@ -69,7 +69,7 @@ static int stmvl53l1_request_xsdn(struct tof_ctrl_t *tof_ctrl)
 		goto no_gpio;
 	}
 
-	vl53l1_errmsg("request xsdn_gpio %d", tof_ctrl->xsdn_gpio);
+	vl53l1_dbgmsg("request xsdn_gpio %d", tof_ctrl->xsdn_gpio);
 	rc = gpio_request(tof_ctrl->xsdn_gpio, "vl53l1_xsdn");
 	if (rc) {
 		vl53l1_errmsg("fail to acquire xsdn %d", rc);
@@ -231,7 +231,6 @@ static int stmvl53l1_get_dt_info(struct device *dev, struct tof_ctrl_t *t_ctrl)
 	rc = of_property_read_u32(of_node, "cci-device", &t_ctrl->cci_num);
 	if (rc < 0) {
 		/* Set default master 0 */
-		printk("failed to get the cci device %d\n", __LINE__);
 		t_ctrl->cci_num = CCI_DEVICE_0;
 		rc = 0;
 	}
@@ -694,7 +693,7 @@ int stmvl53l1_reset_release_cci(void *object)
 		//INIT_DELAYED_WORK(&tof_ctrl->dwork, stmvl53l1_work_handler_cci);
 		gpio_set_value_cansleep(tof_ctrl->xsdn_gpio, 0);
 		vl53l1_errmsg("boot fail with error %d", rc);
-		tof_ctrl->vl53l1_data->last_error = rc;
+		tof_ctrl->vl53l1_data->last_error = rc;	
 		//schedule_delayed_work(&tof_ctrl->dwork, msecs_to_jiffies(5000));
 		rc = -EIO;
 	}
