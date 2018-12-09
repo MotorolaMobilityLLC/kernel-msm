@@ -8,7 +8,7 @@
 FEATURE_USE_CCI := true
 
 ifeq ($(FEATURE_USE_CCI), true)
-ccflags-y	+= -I$(TOP)/kernel/msm-4.14/drivers/input/misc/vl53L1/inc -I$(TOP)/kernel/msm-4.14/drivers/input/misc/vl53L1/ipp -I$(TOP)/kernel/msm-4.14/drivers/input/misc/vl53L1 -DCAMERA_CCI
+ccflags-y	+= -I$(src)/inc -I$(src)/ipp -I$(src) -DCAMERA_CCI
 else
 ccflags-y	+= -I$(src)/inc -I$(src)/ipp -I$(src)
 endif
@@ -37,7 +37,7 @@ stmvl53l1-objs		+= src/vl53l1_api_strings.o src/vl53l1_error_strings.o
 stmvl53l1-objs		+= src/vl53l1_core.o src/vl53l1_register_funcs.o
 stmvl53l1-objs		+= src/vl53l1_api_preset_modes.o
 stmvl53l1-objs		+= src/vl53l1_api_calibration.o
-stmvl53l1-objs		+= src/vl53l1_fpga_core.o src/vl53l1_silicon_core.o
+stmvl53l1-objs		+= src/vl53l1_silicon_core.o
 stmvl53l1-objs		+= src/vl53l1_zone_presets.o src/vl53l1_nvm.o
 stmvl53l1-objs		+= src/vl53l1_api_debug.o src/vl53l1_core_support.o
 stmvl53l1-objs		+= src/vl53l1_wait.o ipp/ipp_linux.o

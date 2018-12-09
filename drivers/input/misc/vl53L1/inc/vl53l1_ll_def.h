@@ -1,65 +1,65 @@
 
-/*
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed,
-* either 'STMicroelectronics
-* Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
+/*******************************************************************************
+ * Copyright (c) 2017, STMicroelectronics - All Rights Reserved
+
+ This file is part of VL53L1 Core and is dual licensed,
+ either 'STMicroelectronics
+ Proprietary license'
+ or 'BSD 3-clause "New" or "Revised" License' , at your option.
+
 ********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
+
+ 'STMicroelectronics Proprietary license'
+
 ********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
+
+ License terms: STMicroelectronics Proprietary in accordance with licensing
+ terms at www.st.com/sla0081
+
+ STMicroelectronics confidential
+ Reproduction and Communication of this document is strictly prohibited unless
+ specifically authorized in writing by STMicroelectronics.
+
+
 ********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
+
+ Alternatively, VL53L1 Core may be distributed under the terms of
+ 'BSD 3-clause "New" or "Revised" License', in which case the following
+ provisions apply instead of the ones
+ mentioned above :
+
 ********************************************************************************
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 ********************************************************************************
-*
+
 */
 
 
@@ -128,12 +128,12 @@ extern "C" {
 #define VL53L1_LL_API_IMPLEMENTATION_VER_MINOR       1
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         43
+#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         46
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION   12193
+#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION   12207
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.43.12193"
+#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.46p2"
 
 
 
@@ -238,7 +238,7 @@ typedef struct {
 
 	uint8_t    device_test_mode;
 
-	uint8_t    VL53L1_PRM_00008;
+	uint8_t    VL53L1_p_009;
 
 	uint32_t   timeout_us;
 
@@ -380,7 +380,7 @@ typedef struct {
 
 
 
-	uint8_t    VL53L1_PRM_00008;
+	uint8_t    VL53L1_p_009;
 
 
 	uint8_t    vcsel_start;
@@ -1179,29 +1179,29 @@ typedef struct {
 	uint32_t time_stamp;
 
 
-	uint8_t  VL53L1_PRM_00014;
+	uint8_t  VL53L1_p_015;
 
 
-	uint8_t  VL53L1_PRM_00019;
+	uint8_t  VL53L1_p_022;
 
 
-	uint8_t  VL53L1_PRM_00023;
+	uint8_t  VL53L1_p_025;
 
 
-	uint8_t  VL53L1_PRM_00024;
+	uint8_t  VL53L1_p_026;
 
 
-	uint8_t  VL53L1_PRM_00015;
+	uint8_t  VL53L1_p_016;
 
 
-	uint8_t  VL53L1_PRM_00025;
+	uint8_t  VL53L1_p_027;
 
 
 
 	uint16_t   width;
 
 
-	uint8_t    VL53L1_PRM_00029;
+	uint8_t    VL53L1_p_030;
 
 
 
@@ -1212,7 +1212,7 @@ typedef struct {
 	uint16_t   zero_distance_phase;
 
 
-	uint16_t   VL53L1_PRM_00004;
+	uint16_t   VL53L1_p_006;
 
 
 
@@ -1232,14 +1232,14 @@ typedef struct {
 
 
 
-	uint32_t   VL53L1_PRM_00017;
+	uint32_t   VL53L1_p_020;
 
 
-	uint32_t   VL53L1_PRM_00018;
+	uint32_t   VL53L1_p_021;
 
 
 
-	int32_t    VL53L1_PRM_00012;
+	int32_t    VL53L1_p_013;
 
 
 
@@ -1259,28 +1259,28 @@ typedef struct {
 	uint16_t    total_rate_per_spad_mcps;
 
 
-	uint32_t    VL53L1_PRM_00011;
+	uint32_t    VL53L1_p_012;
 
 
 
 
 
 
-	uint16_t   VL53L1_PRM_00003;
+	uint16_t   VL53L1_p_005;
 
 
 
 
 
 
-	uint16_t   VL53L1_PRM_00026;
+	uint16_t   VL53L1_p_028;
 
 
 
-	uint16_t   VL53L1_PRM_00013;
+	uint16_t   VL53L1_p_014;
 
 
-	uint16_t   VL53L1_PRM_00027;
+	uint16_t   VL53L1_p_029;
 
 
 
@@ -1337,7 +1337,7 @@ typedef struct {
 
 
 
-	int16_t                VL53L1_PRM_00006[VL53L1_MAX_AMBIENT_DMAX_VALUES];
+	int16_t                VL53L1_p_007[VL53L1_MAX_AMBIENT_DMAX_VALUES];
 
 
 
@@ -1357,7 +1357,7 @@ typedef struct {
 	uint8_t                active_results;
 
 
-	VL53L1_range_data_t    VL53L1_PRM_00005[VL53L1_MAX_RANGE_RESULTS];
+	VL53L1_range_data_t    VL53L1_p_002[VL53L1_MAX_RANGE_RESULTS];
 
 
 	VL53L1_range_data_t    xmonitor;
@@ -1477,7 +1477,8 @@ typedef struct {
 
 
 
-	VL53L1_xtalk_range_data_t   VL53L1_PRM_00005[VL53L1_MAX_XTALK_RANGE_RESULTS];
+	VL53L1_xtalk_range_data_t
+		VL53L1_p_002[VL53L1_MAX_XTALK_RANGE_RESULTS];
 
 
 	VL53L1_histogram_bin_data_t central_histogram_sum;
@@ -1496,15 +1497,18 @@ typedef struct {
 
 
 
-	VL53L1_histogram_bin_data_t histogram_avg_1[VL53L1_MAX_XTALK_RANGE_RESULTS];
+	VL53L1_histogram_bin_data_t
+		histogram_avg_1[VL53L1_MAX_XTALK_RANGE_RESULTS];
 
 
 
-	VL53L1_histogram_bin_data_t histogram_avg_2[VL53L1_MAX_XTALK_RANGE_RESULTS];
+	VL53L1_histogram_bin_data_t
+		histogram_avg_2[VL53L1_MAX_XTALK_RANGE_RESULTS];
 
 
 
-	VL53L1_histogram_bin_data_t xtalk_avg[VL53L1_MAX_XTALK_RANGE_RESULTS];
+	VL53L1_histogram_bin_data_t
+		xtalk_avg[VL53L1_MAX_XTALK_RANGE_RESULTS];
 
 
 
@@ -1541,7 +1545,7 @@ typedef struct {
 	uint32_t   peak_rate_mcps;
 
 
-	uint32_t   VL53L1_PRM_00003;
+	uint32_t   VL53L1_p_005;
 
 
 	int32_t    median_range_mm;
@@ -1584,7 +1588,8 @@ typedef struct {
 	uint8_t      active_results;
 
 
-	VL53L1_offset_range_data_t VL53L1_PRM_00005[VL53L1_MAX_OFFSET_RANGE_RESULTS];
+	VL53L1_offset_range_data_t
+		VL53L1_p_002[VL53L1_MAX_OFFSET_RANGE_RESULTS];
 
 
 
@@ -1632,14 +1637,14 @@ typedef struct {
 
 typedef struct {
 
-	uint32_t   VL53L1_PRM_00017;
+	uint32_t   VL53L1_p_020;
 
 
-	uint32_t   VL53L1_PRM_00018;
+	uint32_t   VL53L1_p_021;
 
 
 
-	uint16_t   VL53L1_PRM_00013;
+	uint16_t   VL53L1_p_014;
 
 
 	uint8_t    range_status;
@@ -1678,7 +1683,7 @@ typedef struct {
 	uint8_t                active_objects;
 
 
-	VL53L1_object_data_t   VL53L1_PRM_00005[VL53L1_MAX_RANGE_RESULTS];
+	VL53L1_object_data_t   VL53L1_p_002[VL53L1_MAX_RANGE_RESULTS];
 
 
 
@@ -1709,7 +1714,7 @@ typedef struct {
 	uint8_t                active_zones;
 
 
-	VL53L1_zone_objects_t VL53L1_PRM_00005[VL53L1_MAX_USER_ZONES];
+	VL53L1_zone_objects_t VL53L1_p_002[VL53L1_MAX_USER_ZONES];
 
 
 
@@ -1737,7 +1742,7 @@ typedef struct {
 	uint16_t result__dss_actual_effective_spads;
 
 
-	uint8_t  VL53L1_PRM_00008;
+	uint8_t  VL53L1_p_009;
 
 
 	uint32_t total_periods_elapsed;
@@ -1768,7 +1773,7 @@ typedef struct {
 	uint8_t                     active_zones;
 
 
-	VL53L1_zone_hist_info_t     VL53L1_PRM_00005[VL53L1_MAX_USER_ZONES];
+	VL53L1_zone_hist_info_t     VL53L1_p_002[VL53L1_MAX_USER_ZONES];
 
 
 
@@ -1793,10 +1798,10 @@ typedef struct {
 	uint32_t   peak_rate_mcps;
 
 
-	uint32_t   VL53L1_PRM_00013;
+	uint32_t   VL53L1_p_014;
 
 
-	uint32_t   VL53L1_PRM_00003;
+	uint32_t   VL53L1_p_005;
 
 
 
@@ -1853,7 +1858,7 @@ typedef struct {
 	uint8_t                          active_zones;
 
 
-	VL53L1_zone_calibration_data_t   VL53L1_PRM_00005[VL53L1_MAX_USER_ZONES];
+	VL53L1_zone_calibration_data_t   VL53L1_p_002[VL53L1_MAX_USER_ZONES];
 
 
 
@@ -1950,7 +1955,7 @@ typedef struct {
 	uint8_t                     active_zones;
 
 
-	VL53L1_zone_private_dyn_cfg_t VL53L1_PRM_00005[VL53L1_MAX_USER_ZONES];
+	VL53L1_zone_private_dyn_cfg_t VL53L1_p_002[VL53L1_MAX_USER_ZONES];
 
 
 
@@ -1977,6 +1982,109 @@ typedef struct {
 
 
 } VL53L1_xtalk_calibration_results_t;
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+	uint32_t   sample_count;
+
+
+
+	uint32_t   pll_period_mm;
+
+
+
+	uint32_t   peak_duration_us_sum;
+
+
+
+	uint32_t   effective_spad_count_sum;
+
+
+
+	uint32_t   zero_distance_phase_sum;
+
+
+
+	uint32_t   zero_distance_phase_avg;
+
+
+
+	int32_t    event_scaler_sum;
+
+
+
+	int32_t    event_scaler_avg;
+
+
+
+	int32_t   signal_events_sum;
+
+
+
+	uint32_t  xtalk_rate_kcps_per_spad;
+
+
+
+	int32_t   xtalk_start_phase;
+
+
+
+	int32_t   xtalk_end_phase;
+
+
+
+	int32_t   xtalk_width_phase;
+
+
+
+	int32_t   target_start_phase;
+
+
+
+	int32_t   target_end_phase;
+
+
+
+	int32_t   target_width_phase;
+
+
+
+	int32_t   effective_width;
+
+
+
+	int32_t   event_scaler;
+
+
+
+	uint8_t   VL53L1_p_015;
+
+
+
+	uint8_t   VL53L1_p_016;
+
+
+
+	uint8_t   target_start;
+
+
+
+	int32_t   max_shape_value;
+
+
+
+	int32_t   bin_data_sums[VL53L1_XTALK_HISTO_BINS];
+
+} VL53L1_hist_xtalk_extract_data_t;
 
 
 
@@ -2179,6 +2287,7 @@ typedef struct {
 	VL53L1_xtalk_histogram_data_t       xtalk_shapes;
 	VL53L1_xtalk_range_results_t        xtalk_results;
 	VL53L1_xtalk_calibration_results_t  xtalk_cal;
+	VL53L1_hist_xtalk_extract_data_t    xtalk_extract;
 
 
 
@@ -2333,9 +2442,9 @@ typedef struct {
 	uint16_t        vl53l1_tuningparm_hist_sigma_thresh_mm;
 	uint16_t        vl53l1_tuningparm_hist_gain_factor;
 	uint8_t        vl53l1_tuningparm_consistency_hist_phase_tolerance;
-	uint16_t        vl53l1_tuningparm_consistency_hist_min_max_tolerance_mm;
+	uint16_t  vl53l1_tuningparm_consistency_hist_min_max_tolerance_mm;
 	uint8_t        vl53l1_tuningparm_consistency_hist_event_sigma;
-	uint16_t        vl53l1_tuningparm_consistency_hist_event_sigma_min_spad_limit;
+	uint16_t  vl53l1_tuningparm_consistency_hist_event_sigma_min_spad_limit;
 	uint8_t        vl53l1_tuningparm_initial_phase_rtn_histo_long_range;
 	uint8_t        vl53l1_tuningparm_initial_phase_rtn_histo_med_range;
 	uint8_t        vl53l1_tuningparm_initial_phase_rtn_histo_short_range;
@@ -2413,14 +2522,14 @@ typedef struct {
 	uint8_t        vl53l1_tuningparm_spadmap_vcsel_period;
 	uint8_t        vl53l1_tuningparm_spadmap_vcsel_start;
 	uint16_t        vl53l1_tuningparm_spadmap_rate_limit_mcps;
-	uint16_t        vl53l1_tuningparm_lite_dss_config_target_total_rate_mcps;
-	uint16_t        vl53l1_tuningparm_ranging_dss_config_target_total_rate_mcps;
+	uint16_t  vl53l1_tuningparm_lite_dss_config_target_total_rate_mcps;
+	uint16_t   vl53l1_tuningparm_ranging_dss_config_target_total_rate_mcps;
 	uint16_t        vl53l1_tuningparm_mz_dss_config_target_total_rate_mcps;
-	uint16_t        vl53l1_tuningparm_timed_dss_config_target_total_rate_mcps;
+	uint16_t     vl53l1_tuningparm_timed_dss_config_target_total_rate_mcps;
 	uint32_t        vl53l1_tuningparm_lite_phasecal_config_timeout_us;
-	uint32_t        vl53l1_tuningparm_ranging_long_phasecal_config_timeout_us;
-	uint32_t        vl53l1_tuningparm_ranging_med_phasecal_config_timeout_us;
-	uint32_t        vl53l1_tuningparm_ranging_short_phasecal_config_timeout_us;
+	uint32_t     vl53l1_tuningparm_ranging_long_phasecal_config_timeout_us;
+	uint32_t      vl53l1_tuningparm_ranging_med_phasecal_config_timeout_us;
+	uint32_t    vl53l1_tuningparm_ranging_short_phasecal_config_timeout_us;
 	uint32_t        vl53l1_tuningparm_mz_long_phasecal_config_timeout_us;
 	uint32_t        vl53l1_tuningparm_mz_med_phasecal_config_timeout_us;
 	uint32_t        vl53l1_tuningparm_mz_short_phasecal_config_timeout_us;
@@ -2492,7 +2601,7 @@ typedef struct {
 	uint8_t    spad_type;
 
 
-	uint16_t   VL53L1_PRM_00020;
+	uint16_t   VL53L1_p_023;
 
 
 	uint16_t   rate_data[VL53L1_NO_OF_SPAD_ENABLES];
@@ -2560,11 +2669,12 @@ typedef struct {
 
 
 
-	VL53L1_histogram_bin_data_t    VL53L1_PRM_00009;
+	VL53L1_histogram_bin_data_t    VL53L1_p_010;
 
 
 
 } VL53L1_additional_data_t;
+
 
 
 

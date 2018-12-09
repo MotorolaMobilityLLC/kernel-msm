@@ -1,65 +1,65 @@
 
-/*
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed,
-* either 'STMicroelectronics
-* Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
+/*******************************************************************************
+ * Copyright (c) 2017, STMicroelectronics - All Rights Reserved
+
+ This file is part of VL53L1 Core and is dual licensed,
+ either 'STMicroelectronics
+ Proprietary license'
+ or 'BSD 3-clause "New" or "Revised" License' , at your option.
+
 ********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
+
+ 'STMicroelectronics Proprietary license'
+
 ********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
+
+ License terms: STMicroelectronics Proprietary in accordance with licensing
+ terms at www.st.com/sla0081
+
+ STMicroelectronics confidential
+ Reproduction and Communication of this document is strictly prohibited unless
+ specifically authorized in writing by STMicroelectronics.
+
+
 ********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
+
+ Alternatively, VL53L1 Core may be distributed under the terms of
+ 'BSD 3-clause "New" or "Revised" License', in which case the following
+ provisions apply instead of the ones
+ mentioned above :
+
 ********************************************************************************
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 ********************************************************************************
-*
+
 */
 
 
@@ -366,7 +366,7 @@ void VL53L1_init_histogram_multizone_config_structure(
 
 void VL53L1_init_xtalk_bin_data_struct(
 	uint32_t                        bin_value,
-	uint16_t                        VL53L1_PRM_00021,
+	uint16_t                        VL53L1_p_024,
 	VL53L1_xtalk_histogram_shape_t *pdata);
 
 
@@ -699,7 +699,7 @@ VL53L1_Error VL53L1_force_shadow_stream_count_to_zero(
 
 uint32_t VL53L1_calc_macro_period_us(
 	uint16_t fast_osc_frequency,
-	uint8_t  VL53L1_PRM_00008);
+	uint8_t  VL53L1_p_009);
 
 
 
@@ -852,7 +852,7 @@ VL53L1_Error  VL53L1_calc_timeout_register_values(
 
 
 uint8_t VL53L1_encode_vcsel_period(
-	uint8_t VL53L1_PRM_00030);
+	uint8_t VL53L1_p_031);
 
 
 
@@ -1130,6 +1130,113 @@ void VL53L1_hist_combine_mm1_mm2_offsets(
 
 
 
+VL53L1_Error VL53L1_hist_xtalk_extract_calc_window(
+	int16_t                             target_distance_mm,
+	uint16_t                            target_width_oversize,
+	VL53L1_histogram_bin_data_t        *phist_bins,
+	VL53L1_hist_xtalk_extract_data_t   *pxtalk_data);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_hist_xtalk_extract_calc_event_sums(
+	VL53L1_histogram_bin_data_t        *phist_bins,
+	VL53L1_hist_xtalk_extract_data_t   *pxtalk_data);
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_hist_xtalk_extract_calc_rate_per_spad(
+	VL53L1_hist_xtalk_extract_data_t   *pxtalk_data);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_hist_xtalk_extract_calc_shape(
+	VL53L1_hist_xtalk_extract_data_t  *pxtalk_data,
+	VL53L1_xtalk_histogram_shape_t    *pxtalk_shape);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_hist_xtalk_shape_model(
+	uint16_t                         events_per_bin,
+	uint16_t                         pulse_centre,
+	uint16_t                         pulse_width,
+	VL53L1_xtalk_histogram_shape_t  *pxtalk_shape);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint16_t VL53L1_hist_xtalk_shape_model_interp(
+	uint16_t      events_per_bin,
+	uint32_t      phase_delta);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void VL53L1_spad_number_to_byte_bit_index(
 	uint8_t  spad_number,
 	uint8_t *pbyte_index,
@@ -1305,7 +1412,7 @@ void VL53L1_hist_copy_results_to_sys_and_core(
 
 
 
-VL53L1_Error VL53L1_sum_histogram_data (
+VL53L1_Error VL53L1_sum_histogram_data(
 		VL53L1_histogram_bin_data_t *phist_input,
 		VL53L1_histogram_bin_data_t *phist_output);
 
@@ -1323,7 +1430,7 @@ VL53L1_Error VL53L1_sum_histogram_data (
 
 
 
-VL53L1_Error VL53L1_avg_histogram_data (
+VL53L1_Error VL53L1_avg_histogram_data(
 		uint8_t no_of_samples,
 		VL53L1_histogram_bin_data_t *phist_sum,
 		VL53L1_histogram_bin_data_t *phist_avg);
@@ -1377,7 +1484,7 @@ VL53L1_Error VL53L1_dynamic_zone_update(
 
 
 VL53L1_Error VL53L1_update_internal_stream_counters(
-	  VL53L1_DEV  Dev,
+	VL53L1_DEV  Dev,
 	uint8_t     external_stream_count,
 	uint8_t     *pinternal_stream_count,
 	uint8_t     *pinternal_stream_count_val
@@ -1404,10 +1511,10 @@ VL53L1_Error VL53L1_multizone_hist_bins_update(
 
 
 VL53L1_Error VL53L1_set_histogram_multizone_initial_bin_config(
-	  VL53L1_zone_config_t           *pzone_cfg,
-	  VL53L1_histogram_config_t      *phist_cfg,
-	  VL53L1_histogram_config_t      *pmulti_hist
-    );
+	VL53L1_zone_config_t           *pzone_cfg,
+	VL53L1_histogram_config_t      *phist_cfg,
+	VL53L1_histogram_config_t      *pmulti_hist
+	);
 
 
 
@@ -1678,10 +1785,10 @@ VL53L1_Error VL53L1_dynamic_xtalk_correction_calc_required_samples(
 
 
 VL53L1_Error VL53L1_dynamic_xtalk_correction_calc_new_xtalk(
-	VL53L1_DEV                     		Dev,
+	VL53L1_DEV				Dev,
 	uint32_t				xtalk_offset_out,
-	VL53L1_smudge_corrector_config_t 	*pconfig,
-	VL53L1_smudge_corrector_data_t 		*pout,
+	VL53L1_smudge_corrector_config_t	*pconfig,
+	VL53L1_smudge_corrector_data_t		*pout,
 	uint8_t					add_smudge,
 	uint8_t					soft_update
 	);
