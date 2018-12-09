@@ -1,64 +1,63 @@
-/*
-* Copyright (c) 2017, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed, either
-* 'STMicroelectronics Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
-********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
-********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
-********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
-********************************************************************************
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
-********************************************************************************
-*
-*/
+/******************************************************************************
+ * Copyright (c) 2017, STMicroelectronics - All Rights Reserved
+
+ This file is part of VL53L1 Core and is dual licensed,
+ either 'STMicroelectronics
+ Proprietary license'
+ or 'BSD 3-clause "New" or "Revised" License' , at your option.
+
+ ******************************************************************************
+
+ 'STMicroelectronics Proprietary license'
+
+ *******************************************************************************
+
+ License terms: STMicroelectronics Proprietary in accordance with licensing
+ terms at www.st.com/sla0081
+
+ STMicroelectronics confidential
+ Reproduction and Communication of this document is strictly prohibited unless
+ specifically authorized in writing by STMicroelectronics.
+
+
+ *******************************************************************************
+
+ Alternatively, VL53L1 Core may be distributed under the terms of
+ 'BSD 3-clause "New" or "Revised" License', in which case the following
+ provisions apply instead of the ones mentioned above :
+
+ *******************************************************************************
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+ *******************************************************************************
+ */
 
 /**
  * @file vl53l1_def.h
@@ -84,13 +83,13 @@ extern "C" {
 
 
 /** VL53L1 IMPLEMENTATION major version */
-#define VL53L1_IMPLEMENTATION_VER_MAJOR       5
+#define VL53L1_IMPLEMENTATION_VER_MAJOR       6
 /** VL53L1 IMPLEMENTATION minor version */
-#define VL53L1_IMPLEMENTATION_VER_MINOR       1
+#define VL53L1_IMPLEMENTATION_VER_MINOR       0
 /** VL53L1 IMPLEMENTATION sub version */
 #define VL53L1_IMPLEMENTATION_VER_SUB         1
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_REVISION  1767
+#define VL53L1_IMPLEMENTATION_VER_REVISION  2003
 
 /****************************************
  * PRIVATE define do not edit
@@ -170,9 +169,9 @@ typedef uint8_t VL53L1_OutputModes;
 /** @} VL53L1_define_OutputModes_group */
 
 /** @defgroup VL53L1_define_XtalkCal_group Defines Xtalk Calibration modes
-*  Defines all possible Offset Calibration modes for the device
-*  @{
-*/
+ *  Defines all possible Offset Calibration modes for the device
+ *  @{
+ */
 typedef uint8_t VL53L1_XtalkCalibrationModes;
 
 #define VL53L1_XTALKCALIBRATIONMODE_NO_TARGET \
@@ -181,13 +180,16 @@ typedef uint8_t VL53L1_XtalkCalibrationModes;
 #define VL53L1_XTALKCALIBRATIONMODE_SINGLE_TARGET \
 	((VL53L1_OffsetCalibrationModes)  1)
 /*!< To perform Xtalk calibration with one target */
+#define VL53L1_XTALKCALIBRATIONMODE_FULL_ROI \
+	((VL53L1_OffsetCalibrationModes)  2)
+/*!< To perform Xtalk calibration based on histogram with full ROI */
 
 /** @} VL53L1_define_XtalkCal_group */
 
 /** @defgroup VL53L1_define_OffsetCal_group Defines Offset Calibration modes
-*  Defines all possible Offset Calibration modes for the device
-*  @{
-*/
+ *  Defines all possible Offset Calibration modes for the device
+ *  @{
+ */
 typedef uint8_t VL53L1_OffsetCalibrationModes;
 
 #define VL53L1_OFFSETCALIBRATIONMODE_STANDARD \
@@ -200,9 +202,9 @@ typedef uint8_t VL53L1_OffsetCalibrationModes;
 /** @} VL53L1_define_OffsetCal_group */
 
 /** @defgroup VL53L1_define_DeviceDmaxModes_group Defines Dmax source modes
-*  Defines all possible sources for Dmax calibration for the device
-*  @{
-*/
+ *  Defines all possible sources for Dmax calibration for the device
+ *  @{
+ */
 typedef uint8_t VL53L1_DeviceDmaxModes;
 
 #define VL53L1_DMAXMODE_FMT_CAL_DATA      ((VL53L1_DeviceDmaxModes)  1)
@@ -313,7 +315,7 @@ typedef uint8_t VL53L1_DetectionMode;
 #define VL53L1_DETECTION_DISTANCE_OR_RATE   \
 	((VL53L1_DetectionMode)  4)
 	/*!< Trigger interrupt if "threshold event" occurs on distance OR rate
-	*/
+	 */
 
 /** @} end of VL53L1_DetectionMode_group */
 
@@ -336,22 +338,14 @@ typedef struct {
 	/*!< Defines the Output mode to be used for the next measure */
 	VL53L1_DistanceModes DistanceMode;
 	/*!< Defines the operating mode to be used for the next measure */
-	VL53L1_DistanceModes InternalDistanceMode;
-	/*!< Defines the internal operating mode to be used for the next
-	 * measure
-	 */
-	VL53L1_DistanceModes NewDistanceMode;
-	/*!< Defines the new operating mode to be programmed for the next
-	 * measure
-	 */
 	uint32_t MeasurementTimingBudgetMicroSeconds;
 	/*!< Defines the allowed total time for a single measurement */
 	uint8_t LimitChecksEnable[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array store all the Limit Check enable for this device. */
 	uint8_t LimitChecksStatus[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array stores all the Status of the check linked to last
-	* measurement.
-	*/
+	 * measurement.
+	 */
 	FixPoint1616_t LimitChecksValue[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array stores all the Limit Check value for this device */
 	FixPoint1616_t LimitChecksCurrent[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
@@ -534,10 +528,10 @@ typedef struct {
 		/*!< Denotes on which ROI the range data is related to. */
 	uint8_t NumberOfObjectsFound;
 		/*!< Indicate the number of objects found in the current ROI.
-		* This is used to know how many ranging data should be get.
-		* NumberOfObjectsFound is in the range 0 to
-		* VL53L1_MAX_RANGE_RESULTS.
-		*/
+		 * This is used to know how many ranging data should be get.
+		 * NumberOfObjectsFound is in the range 0 to
+		 * VL53L1_MAX_RANGE_RESULTS.
+		 */
 	VL53L1_RoiStatus RoiStatus;
 		/*!< Indicate if the data read is valid or not or if this is
 		 * the last valid data in the ROI.
@@ -754,80 +748,80 @@ typedef struct {
 
 /* Defines */
 #define VL53L1_SETPARAMETERFIELD(Dev, field, value) \
-	(PALDevDataSet(Dev, CurrentParameters.field, value))
+	(VL53L1DevDataSet(Dev, CurrentParameters.field, value))
 
 #define VL53L1_GETPARAMETERFIELD(Dev, field, variable) \
-	(variable = PALDevDataGet(Dev, CurrentParameters).field)
+	(variable = VL53L1DevDataGet(Dev, CurrentParameters).field)
 
 
 #define VL53L1_SETARRAYPARAMETERFIELD(Dev, field, index, value) \
-	(PALDevDataSet(Dev, CurrentParameters.field[index], value))
+	(VL53L1DevDataSet(Dev, CurrentParameters.field[index], value))
 
 #define VL53L1_GETARRAYPARAMETERFIELD(Dev, field, index, variable) \
-	(variable = PALDevDataGet(Dev, CurrentParameters).field[index])
+	(variable = VL53L1DevDataGet(Dev, CurrentParameters).field[index])
 
 
 #define VL53L1_SETDEVICESPECIFICPARAMETER(Dev, field, value) \
-	(PALDevDataSet(Dev, DeviceSpecificParameters.field, value))
+	(VL53L1DevDataSet(Dev, DeviceSpecificParameters.field, value))
 
 #define VL53L1_GETDEVICESPECIFICPARAMETER(Dev, field) \
-	(PALDevDataGet(Dev, DeviceSpecificParameters).field)
+	(VL53L1DevDataGet(Dev, DeviceSpecificParameters).field)
 
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT44(Value) \
 	(uint16_t)((Value>>12)&0xFFFF)
 #define VL53L1_FIXPOINT44TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<12)
+	(FixPoint1616_t)((uint32_t)Value<<12)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT72(Value) \
 	(uint16_t)((Value>>14)&0xFFFF)
 #define VL53L1_FIXPOINT72TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<14)
+	(FixPoint1616_t)((uint32_t)Value<<14)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT97(Value) \
 	(uint16_t)((Value>>9)&0xFFFF)
 #define VL53L1_FIXPOINT97TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<9)
+	(FixPoint1616_t)((uint32_t)Value<<9)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT88(Value) \
 	(uint16_t)((Value>>8)&0xFFFF)
 #define VL53L1_FIXPOINT88TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<8)
+	(FixPoint1616_t)((uint32_t)Value<<8)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT412(Value) \
 	(uint16_t)((Value>>4)&0xFFFF)
 #define VL53L1_FIXPOINT412TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<4)
+	(FixPoint1616_t)((uint32_t)Value<<4)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT313(Value) \
 	(uint16_t)((Value>>3)&0xFFFF)
 #define VL53L1_FIXPOINT313TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<3)
+	(FixPoint1616_t)((uint32_t)Value<<3)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT08(Value) \
 	(uint8_t)((Value>>8)&0x00FF)
 #define VL53L1_FIXPOINT08TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<8)
+	(FixPoint1616_t)((uint32_t)Value<<8)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT53(Value) \
 	(uint8_t)((Value>>13)&0x00FF)
 #define VL53L1_FIXPOINT53TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<13)
+	(FixPoint1616_t)((uint32_t)Value<<13)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT102(Value) \
 	(uint16_t)((Value>>14)&0x0FFF)
 #define VL53L1_FIXPOINT102TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<14)
+	(FixPoint1616_t)((uint32_t)Value<<14)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT142(Value) \
 	(uint16_t)((Value>>14)&0xFFFF)
 #define VL53L1_FIXPOINT142TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<14)
+	(FixPoint1616_t)((uint32_t)Value<<14)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT160(Value) \
 	(uint16_t)((Value>>16)&0xFFFF)
 #define VL53L1_FIXPOINT160TOFIXPOINT1616(Value) \
-	(FixPoint1616_t)(Value<<16)
+	(FixPoint1616_t)((uint32_t)Value<<16)
 
 #define VL53L1_MAKEUINT16(lsb, msb) (uint16_t)((((uint16_t)msb)<<8) + \
 		(uint16_t)lsb)
@@ -835,11 +829,6 @@ typedef struct {
 #ifndef SUPPRESS_UNUSED_WARNING
 #define SUPPRESS_UNUSED_WARNING(x) ((void) (x))
 #endif
-
-#define CHECK_ERROR_GO_ENDFUNC do {\
-		if (Status != VL53L1_ERROR_NONE) \
-			goto ENDFUNC; \
-	} while (0)
 
 /** @} VL53L1_define_GeneralMacro_group */
 
