@@ -899,4 +899,14 @@ config INPUT_STMVL53L1
 	  To compile this driver as a module, choose M here: the
 	  module will be called stmvl53l1.
 
+config INPUT_STMVL53L1
+   tristate "STM VL53L1 Proximity support"
+   depends on INPUT && I2C
+   help
+    Say Y here if you want to use STMicroelectronics's proximity sensor
+    through I2C interface.
+
+    To compile this driver as a module, choose M here: the
+    module will be called stmvl53l1.
+
 endif
