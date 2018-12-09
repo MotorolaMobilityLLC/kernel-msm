@@ -1,65 +1,65 @@
 
-/*
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed,
-* either 'STMicroelectronics
-* Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
+/*******************************************************************************
+ * Copyright (c) 2017, STMicroelectronics - All Rights Reserved
+
+ This file is part of VL53L1 Core and is dual licensed,
+ either 'STMicroelectronics
+ Proprietary license'
+ or 'BSD 3-clause "New" or "Revised" License' , at your option.
+
 ********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
+
+ 'STMicroelectronics Proprietary license'
+
 ********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
+
+ License terms: STMicroelectronics Proprietary in accordance with licensing
+ terms at www.st.com/sla0081
+
+ STMicroelectronics confidential
+ Reproduction and Communication of this document is strictly prohibited unless
+ specifically authorized in writing by STMicroelectronics.
+
+
 ********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
+
+ Alternatively, VL53L1 Core may be distributed under the terms of
+ 'BSD 3-clause "New" or "Revised" License', in which case the following
+ provisions apply instead of the ones
+ mentioned above :
+
 ********************************************************************************
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 ********************************************************************************
-*
+
 */
 
 
@@ -125,7 +125,8 @@
 #define LOG_FUNCTION_END(status, ...) \
 	_LOG_FUNCTION_END(VL53L1_TRACE_MODULE_NVM, status, ##__VA_ARGS__)
 #define LOG_FUNCTION_END_FMT(status, fmt, ...) \
-	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_NVM, status, fmt, ##__VA_ARGS__)
+	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_NVM,\
+		status, fmt, ##__VA_ARGS__)
 
 #define trace_print(level, ...) \
 	_LOG_TRACE_PRINT(VL53L1_TRACE_MODULE_NVM, \
@@ -174,8 +175,8 @@ VL53L1_Error VL53L1_nvm_enable(
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WaitUs(
-					Dev,
-					VL53L1_ENABLE_POWERFORCE_SETTLING_TIME_US);
+			Dev,
+			VL53L1_ENABLE_POWERFORCE_SETTLING_TIME_US);
 
 
 
@@ -214,9 +215,9 @@ VL53L1_Error VL53L1_nvm_enable(
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WrWord(
-					Dev,
-					VL53L1_RANGING_CORE__NVM_CTRL__PULSE_WIDTH_MSB,
-					nvm_ctrl_pulse_width);
+			Dev,
+			VL53L1_RANGING_CORE__NVM_CTRL__PULSE_WIDTH_MSB,
+			nvm_ctrl_pulse_width);
 
 	LOG_FUNCTION_END(status);
 
@@ -256,53 +257,54 @@ VL53L1_Error VL53L1_nvm_read(
 		   "%-12s = 0x%02X (%3u)\n",
 		   "count", count, count);
 
-	for (nvm_addr = start_address; nvm_addr < (start_address+count) ; nvm_addr++) {
+	for (nvm_addr = start_address;
+		nvm_addr < (start_address+count) ; nvm_addr++) {
 
 
 
 
 		if (status == VL53L1_ERROR_NONE)
 			status = VL53L1_WrByte(
-						Dev,
-						VL53L1_RANGING_CORE__NVM_CTRL__ADDR,
-						nvm_addr);
+				Dev,
+				VL53L1_RANGING_CORE__NVM_CTRL__ADDR,
+				nvm_addr);
 
 
 
 
 		if (status == VL53L1_ERROR_NONE)
 			status = VL53L1_WrByte(
-						Dev,
-						VL53L1_RANGING_CORE__NVM_CTRL__READN,
-						0x00);
+				Dev,
+				VL53L1_RANGING_CORE__NVM_CTRL__READN,
+				0x00);
 
 
 
 
 		if (status == VL53L1_ERROR_NONE)
 			status = VL53L1_WaitUs(
-						Dev,
-						VL53L1_NVM_READ_TRIGGER_DELAY_US);
+				Dev,
+				VL53L1_NVM_READ_TRIGGER_DELAY_US);
 
 		if (status == VL53L1_ERROR_NONE)
 			status = VL53L1_WrByte(
-						Dev,
-						VL53L1_RANGING_CORE__NVM_CTRL__READN,
-						0x01);
+				Dev,
+				VL53L1_RANGING_CORE__NVM_CTRL__READN,
+				0x01);
 
 
 
 		if (status == VL53L1_ERROR_NONE)
 			status = VL53L1_ReadMulti(
-						Dev,
-						VL53L1_RANGING_CORE__NVM_CTRL__DATAOUT_MMM,
-						pdata,
-						4);
+				Dev,
+				VL53L1_RANGING_CORE__NVM_CTRL__DATAOUT_MMM,
+				pdata,
+				4);
 
 		trace_print(
-			   VL53L1_TRACE_LEVEL_INFO,
-			   "NVM address : 0x%02X = 0x%02X%02X%02X%02X\n",
-			   nvm_addr, *pdata, *(pdata+1), *(pdata+2), *(pdata+3));
+			VL53L1_TRACE_LEVEL_INFO,
+			"NVM address : 0x%02X = 0x%02X%02X%02X%02X\n",
+			nvm_addr, *pdata, *(pdata+1), *(pdata+2), *(pdata+3));
 
 
 
@@ -386,7 +388,7 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_NVM_SIZE_IN_BYTES > buf_size)
+	if (buf_size < VL53L1_NVM_SIZE_IN_BYTES)
 		return VL53L1_ERROR_BUFFER_TOO_SMALL;
 
 	pdata->nvm__identification_model_id =
@@ -434,7 +436,8 @@ VL53L1_Error VL53L1_nvm_format_decode(
 	pdata->nvm__ews__fast_osc_frequency =
 		(uint16_t)VL53L1_i2c_decode_with_mask(
 			2,
-			pbuffer + VL53L1_NVM__EWS__OSC_MEASURED__FAST_OSC_FREQUENCY,
+			pbuffer +
+			VL53L1_NVM__EWS__OSC_MEASURED__FAST_OSC_FREQUENCY,
 			0x0000FFFF,
 			0,
 			0);
@@ -462,7 +465,8 @@ VL53L1_Error VL53L1_nvm_format_decode(
 	pdata->nvm__fmt__fast_osc_frequency =
 		(uint16_t)VL53L1_i2c_decode_with_mask(
 			2,
-			pbuffer + VL53L1_NVM__FMT__OSC_MEASURED__FAST_OSC_FREQUENCY,
+			pbuffer +
+			VL53L1_NVM__FMT__OSC_MEASURED__FAST_OSC_FREQUENCY,
 			0x0000FFFF,
 			0,
 			0);
@@ -525,14 +529,16 @@ VL53L1_Error VL53L1_nvm_format_decode(
 	pdata->nvm__vhv_timeout__macrop =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
-			pbuffer + VL53L1_NVM__VHV_CONFIG__TIMEOUT_MACROP_LOOP_BOUND,
+			pbuffer +
+			VL53L1_NVM__VHV_CONFIG__TIMEOUT_MACROP_LOOP_BOUND,
 			0x00000003,
 			0,
 			0);
 	pdata->nvm__vhv_loop_bound =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
-			pbuffer + VL53L1_NVM__VHV_CONFIG__TIMEOUT_MACROP_LOOP_BOUND,
+			pbuffer +
+			VL53L1_NVM__VHV_CONFIG__TIMEOUT_MACROP_LOOP_BOUND,
 			0x000000FC,
 			2,
 			0);
@@ -691,14 +697,16 @@ VL53L1_Error VL53L1_nvm_format_decode(
 	pdata->nvm__fmt__roi_config__mode_roi_centre_spad =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
-			pbuffer + VL53L1_NVM__FMT__ROI_CONFIG__MODE_ROI_CENTRE_SPAD,
+			pbuffer +
+			VL53L1_NVM__FMT__ROI_CONFIG__MODE_ROI_CENTRE_SPAD,
 			0x000000FF,
 			0,
 			0);
 	pdata->nvm__fmt__roi_config__mode_roi_x_size =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
-			pbuffer + VL53L1_NVM__FMT__ROI_CONFIG__MODE_ROI_XY_SIZE,
+			pbuffer +
+			VL53L1_NVM__FMT__ROI_CONFIG__MODE_ROI_XY_SIZE,
 			0x000000F0,
 			4,
 			0);
@@ -712,7 +720,8 @@ VL53L1_Error VL53L1_nvm_format_decode(
 	pdata->nvm__fmt__ref_spad_apply__num_requested_ref_spad =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
-			pbuffer + VL53L1_NVM__FMT__REF_SPAD_APPLY__NUM_REQUESTED_REF_SPAD,
+			pbuffer +
+			VL53L1_NVM__FMT__REF_SPAD_APPLY__NUM_REQUESTED_REF_SPAD,
 			0x000000FF,
 			0,
 			0);
@@ -740,42 +749,48 @@ VL53L1_Error VL53L1_nvm_format_decode(
 	pdata->nvm__fmt__algo_part_to_part_range_offset_mm =
 		(uint16_t)VL53L1_i2c_decode_with_mask(
 			2,
-			pbuffer + VL53L1_NVM__FMT__ALGO__PART_TO_PART_RANGE_OFFSET_MM,
+			pbuffer +
+			VL53L1_NVM__FMT__ALGO__PART_TO_PART_RANGE_OFFSET_MM,
 			0x00000FFF,
 			0,
 			0);
 	pdata->nvm__fmt__algo__crosstalk_compensation_plane_offset_kcps =
 		(uint16_t)VL53L1_i2c_decode_with_mask(
-			2,
-			pbuffer + VL53L1_NVM__FMT__ALGO__CROSSTALK_COMPENSATION_PLANE_OFFSET_KCPS,
-			0x0000FFFF,
-			0,
-			0);
+		2,
+		pbuffer +
+		VL53L1_NVM__FMT__ALGO__CROSSTALK_COMPENSATION_PLANE_OFFSET_KCPS,
+		0x0000FFFF,
+		0,
+		0);
 	pdata->nvm__fmt__algo__crosstalk_compensation_x_plane_gradient_kcps =
-		(uint16_t)VL53L1_i2c_decode_with_mask(
-			2,
-			pbuffer + VL53L1_NVM__FMT__ALGO__CROSSTALK_COMPENSATION_X_PLANE_GRADIENT_KCPS,
-			0x0000FFFF,
-			0,
-			0);
+	(uint16_t)VL53L1_i2c_decode_with_mask(
+	2,
+	pbuffer +
+	VL53L1_NVM__FMT__ALGO__CROSSTALK_COMPENSATION_X_PLANE_GRADIENT_KCPS,
+	0x0000FFFF,
+	0,
+	0);
 	pdata->nvm__fmt__algo__crosstalk_compensation_y_plane_gradient_kcps =
-		(uint16_t)VL53L1_i2c_decode_with_mask(
-			2,
-			pbuffer + VL53L1_NVM__FMT__ALGO__CROSSTALK_COMPENSATION_Y_PLANE_GRADIENT_KCPS,
-			0x0000FFFF,
-			0,
-			0);
+	(uint16_t)VL53L1_i2c_decode_with_mask(
+	2,
+	pbuffer +
+	VL53L1_NVM__FMT__ALGO__CROSSTALK_COMPENSATION_Y_PLANE_GRADIENT_KCPS,
+	0x0000FFFF,
+	0,
+	0);
 	pdata->nvm__fmt__spare__host_config__nvm_config_spare_0 =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
-			pbuffer + VL53L1_NVM__FMT__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_0,
+			pbuffer +
+			VL53L1_NVM__FMT__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_0,
 			0x000000FF,
 			0,
 			0);
 	pdata->nvm__fmt__spare__host_config__nvm_config_spare_1 =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
-			pbuffer + VL53L1_NVM__FMT__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_1,
+			pbuffer +
+			VL53L1_NVM__FMT__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_1,
 			0x000000FF,
 			0,
 			0);
@@ -795,11 +810,12 @@ VL53L1_Error VL53L1_nvm_format_decode(
 			0);
 	pdata->nvm__cust__ref_spad_apply__num_requested_ref_spad =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
-			1,
-			pbuffer + VL53L1_NVM__CUST__REF_SPAD_APPLY__NUM_REQUESTED_REF_SPAD,
-			0x000000FF,
-			0,
-			0);
+		1,
+		pbuffer +
+		VL53L1_NVM__CUST__REF_SPAD_APPLY__NUM_REQUESTED_REF_SPAD,
+		0x000000FF,
+		0,
+		0);
 	pdata->nvm__cust__ref_spad_man__ref_location =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
 			1,
@@ -824,75 +840,81 @@ VL53L1_Error VL53L1_nvm_format_decode(
 	pdata->nvm__cust__algo_part_to_part_range_offset_mm =
 		(uint16_t)VL53L1_i2c_decode_with_mask(
 			2,
-			pbuffer + VL53L1_NVM__CUST__ALGO__PART_TO_PART_RANGE_OFFSET_MM,
+			pbuffer +
+			VL53L1_NVM__CUST__ALGO__PART_TO_PART_RANGE_OFFSET_MM,
 			0x00000FFF,
 			0,
 			0);
 	pdata->nvm__cust__algo__crosstalk_compensation_plane_offset_kcps =
-		(uint16_t)VL53L1_i2c_decode_with_mask(
-			2,
-			pbuffer + VL53L1_NVM__CUST__ALGO__CROSSTALK_COMPENSATION_PLANE_OFFSET_KCPS,
-			0x0000FFFF,
-			0,
-			0);
+	(uint16_t)VL53L1_i2c_decode_with_mask(
+	2,
+	pbuffer +
+	VL53L1_NVM__CUST__ALGO__CROSSTALK_COMPENSATION_PLANE_OFFSET_KCPS,
+	0x0000FFFF,
+	0,
+	0);
 	pdata->nvm__cust__algo__crosstalk_compensation_x_plane_gradient_kcps =
-		(uint16_t)VL53L1_i2c_decode_with_mask(
-			2,
-			pbuffer + VL53L1_NVM__CUST__ALGO__CROSSTALK_COMPENSATION_X_PLANE_GRADIENT_KCPS,
-			0x0000FFFF,
-			0,
-			0);
+	(uint16_t)VL53L1_i2c_decode_with_mask(
+	2,
+	pbuffer +
+	VL53L1_NVM__CUST__ALGO__CROSSTALK_COMPENSATION_X_PLANE_GRADIENT_KCPS,
+	0x0000FFFF,
+	0,
+	0);
 	pdata->nvm__cust__algo__crosstalk_compensation_y_plane_gradient_kcps =
-		(uint16_t)VL53L1_i2c_decode_with_mask(
-			2,
-			pbuffer + VL53L1_NVM__CUST__ALGO__CROSSTALK_COMPENSATION_Y_PLANE_GRADIENT_KCPS,
-			0x0000FFFF,
-			0,
-			0);
+	(uint16_t)VL53L1_i2c_decode_with_mask(
+	2,
+	pbuffer +
+	VL53L1_NVM__CUST__ALGO__CROSSTALK_COMPENSATION_Y_PLANE_GRADIENT_KCPS,
+	0x0000FFFF,
+	0,
+	0);
 	pdata->nvm__cust__spare__host_config__nvm_config_spare_0 =
-		(uint8_t)VL53L1_i2c_decode_with_mask(
-			1,
-			pbuffer + VL53L1_NVM__CUST__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_0,
-			0x000000FF,
-			0,
-			0);
+	(uint8_t)VL53L1_i2c_decode_with_mask(
+	1,
+	pbuffer + VL53L1_NVM__CUST__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_0,
+	0x000000FF,
+	0,
+	0);
 	pdata->nvm__cust__spare__host_config__nvm_config_spare_1 =
 		(uint8_t)VL53L1_i2c_decode_with_mask(
-			1,
-			pbuffer + VL53L1_NVM__CUST__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_1,
-			0x000000FF,
-			0,
-			0);
+		1,
+		pbuffer +
+		VL53L1_NVM__CUST__SPARE_HOST_CONFIG__NVM_CONFIG_SPARE_1,
+		0x000000FF,
+		0,
+		0);
 
 
 
 
 	if (status == VL53L1_ERROR_NONE)
 		status =
-			VL53L1_nvm_decode_optical_centre(
-				buf_size,
-				pbuffer + VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_INDEX,
-				&(pdata->fmt_optical_centre));
+		VL53L1_nvm_decode_optical_centre(
+			buf_size,
+			pbuffer + VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_INDEX,
+			&(pdata->fmt_optical_centre));
 
 
 
 
 	if (status == VL53L1_ERROR_NONE)
 		status =
-			VL53L1_nvm_decode_cal_peak_rate_map(
-				buf_size,
-				pbuffer + VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX,
-				&(pdata->fmt_peak_rate_map));
+		VL53L1_nvm_decode_cal_peak_rate_map(
+			buf_size,
+			pbuffer + VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX,
+			&(pdata->fmt_peak_rate_map));
 
 
 
 
 	if (status == VL53L1_ERROR_NONE)
 		status =
-			VL53L1_nvm_decode_additional_offset_cal_data(
-				buf_size,
-				pbuffer + VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX,
-				&(pdata->fmt_add_offset_data));
+		VL53L1_nvm_decode_additional_offset_cal_data(
+			buf_size,
+			pbuffer +
+			VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX,
+			&(pdata->fmt_add_offset_data));
 
 
 
@@ -943,7 +965,7 @@ VL53L1_Error VL53L1_nvm_decode_optical_centre(
 
 	uint16_t  tmp = 0;
 
-	if (VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE > buf_size)
+	if (buf_size < VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE)
 		return VL53L1_ERROR_BUFFER_TOO_SMALL;
 
 
@@ -973,7 +995,7 @@ VL53L1_Error VL53L1_nvm_decode_cal_peak_rate_map(
 	uint8_t   *ptmp = NULL;
 	uint8_t       i = 0;
 
-	if (VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE > buf_size)
+	if (buf_size < VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE)
 		return VL53L1_ERROR_BUFFER_TOO_SMALL;
 
 	pdata->cal_distance_mm =
@@ -1007,7 +1029,7 @@ VL53L1_Error VL53L1_nvm_decode_additional_offset_cal_data(
 
 	VL53L1_Error status   = VL53L1_ERROR_NONE;
 
-	if (VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE > buf_size)
+	if (buf_size < VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE)
 		return VL53L1_ERROR_BUFFER_TOO_SMALL;
 
 	pdata->result__mm_inner_actual_effective_spads =
@@ -1034,7 +1056,7 @@ VL53L1_Error VL53L1_nvm_decode_fmt_range_results_data(
 
 	VL53L1_Error status   = VL53L1_ERROR_NONE;
 
-	if (VL53L1_NVM__FMT__RANGE_RESULTS__SIZE_BYTES > buf_size)
+	if (buf_size < VL53L1_NVM__FMT__RANGE_RESULTS__SIZE_BYTES)
 		return VL53L1_ERROR_BUFFER_TOO_SMALL;
 
 	pdata->result__actual_effective_rtn_spads =
@@ -1076,7 +1098,7 @@ VL53L1_Error VL53L1_nvm_decode_fmt_info(
 
 	VL53L1_Error status   = VL53L1_ERROR_NONE;
 
-	if (VL53L1_NVM_SIZE_IN_BYTES > buf_size)
+	if (buf_size < VL53L1_NVM_SIZE_IN_BYTES)
 		return VL53L1_ERROR_BUFFER_TOO_SMALL;
 
 	pdata->nvm__fmt__fgc[0] =
@@ -1297,7 +1319,7 @@ VL53L1_Error VL53L1_nvm_decode_ews_info(
 
 	VL53L1_Error status   = VL53L1_ERROR_NONE;
 
-	if (VL53L1_NVM_SIZE_IN_BYTES > buf_size)
+	if (buf_size < VL53L1_NVM_SIZE_IN_BYTES)
 		return VL53L1_ERROR_BUFFER_TOO_SMALL;
 
 	pdata->nvm__ews__test_program_major =
@@ -1559,8 +1581,10 @@ VL53L1_Error VL53L1_read_nvm_optical_centre(
 	status =
 		VL53L1_read_nvm_raw_data(
 			Dev,
-			(uint8_t)(VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_INDEX >> 2),
-			(uint8_t)(VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE >> 2),
+			(uint8_t)(VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_INDEX
+					>> 2),
+			(uint8_t)(VL53L1_NVM__FMT__OPTICAL_CENTRE_DATA_SIZE
+					>> 2),
 			nvm_data);
 
 
@@ -1603,8 +1627,10 @@ VL53L1_Error VL53L1_read_nvm_cal_peak_rate_map(
 	status =
 		VL53L1_read_nvm_raw_data(
 			Dev,
-			(uint8_t)(VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX >> 2),
-			(uint8_t)(VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE >> 2),
+			(uint8_t)(VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX
+					>> 2),
+			(uint8_t)(VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE
+					>> 2),
 			nvm_data);
 
 
@@ -1652,8 +1678,10 @@ VL53L1_Error VL53L1_read_nvm_additional_offset_cal_data(
 	status =
 		VL53L1_read_nvm_raw_data(
 			Dev,
-			(uint8_t)(VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX >> 2),
-			(uint8_t)(VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE >> 2),
+			(uint8_t)(
+			VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX >> 2),
+			(uint8_t)(
+			VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE >> 2),
 			nvm_data);
 
 
