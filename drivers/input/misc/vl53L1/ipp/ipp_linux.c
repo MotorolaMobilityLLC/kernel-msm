@@ -1,33 +1,33 @@
-/*
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/**************************************************************************
+ * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ****************************************************************************/
 
 /**
  * @file ipp_linux.c kernel side implementation of vl53l1 protected processing
@@ -53,7 +53,7 @@ static int stmvl53l1_ipp_do_wrapper(struct stmvl53l1_data *data,
 		rc = IPP_ERR_CODE;
 		goto done;
 	}
-	BUG_ON(pin->payload > IPP_WORK_MAX_PAYLOAD);
+	WARN_ON(pin->payload > IPP_WORK_MAX_PAYLOAD);
 	stmvl531_ipp_tim_start(data);
 	rc = stmvl53l1_ipp_do(data, pin, pout);
 	if (rc != 0) {
@@ -61,7 +61,7 @@ static int stmvl53l1_ipp_do_wrapper(struct stmvl53l1_data *data,
 		rc = IPP_ERR_CODE;
 		goto done;
 	}
-	vl53l1_dbgmsg("ipp ok \n");
+	vl53l1_dbgmsg("ipp okÂ \n");
 	/* check what we got back if valid answer error etc */
 	if (pout->status) {
 		vl53l1_errmsg("ipp error status %d from user", pout->status);
@@ -71,7 +71,7 @@ static int stmvl53l1_ipp_do_wrapper(struct stmvl53l1_data *data,
 			rc = IPP_ERR_CODE;
 		goto done;
 	}
-	BUG_ON(pout->payload > IPP_WORK_MAX_PAYLOAD);
+	WARN_ON(pout->payload > IPP_WORK_MAX_PAYLOAD);
 	if (pout->payload != payload_out) {
 		/* bad formated answer */
 		vl53l1_errmsg("bad payload %d != %d in ipp work back",
