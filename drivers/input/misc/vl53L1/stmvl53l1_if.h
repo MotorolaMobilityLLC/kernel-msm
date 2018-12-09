@@ -1,39 +1,39 @@
-/*
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/**************************************************************************
+ * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ****************************************************************************/
 
 
 /**
  *  @file stmvl53l1_if.h  vl53l1 kernel driver user interface
  *
-  * @note to use this header in a user space application it requires
+ * @note to use this header in a user space application it requires
  *  all st bare/ll driver platform wrapper files (for data struct def)
  *  this files (types etc ..) shall be same or compliant with bar driver version
  *  used in the kernel module
@@ -80,7 +80,7 @@ enum __stmv53l1_parameter_name_e {
 	 */
 
 	VL53L1_DEVICEMODE_PAR = 6,
-	/*!< DEVICEMODE_PAR set ranging mode  \n
+	/*!< DEVICEMODE_PAR set ranging mode Â \n
 	 * valid mode value :
 	 * @li 1 @a VL53L1_PRESETMODE_RANGING default ranging
 	 * @li 2 @a VL53L1_PRESETMODE_MULTIZONES_SCANNING multiple zone
@@ -100,8 +100,8 @@ enum __stmv53l1_parameter_name_e {
 	 */
 	VL53L1_TIMINGBUDGET_PAR = 11,
 	/*!< VL53L1_TIMINGBUDGET_PAR
-	* @ref stmvl53l1_parameter.value field is timing budget in micro second
-	*/
+	 * @ref stmvl53l1_parameter.value field is timing budget in micro second
+	 */
 
 	VL53L1_DISTANCEMODE_PAR = 12,
 	/*!< VL53L1_DISTANCEMODE_PAR
@@ -223,14 +223,14 @@ enum __stmv53l1_parameter_name_e {
  * parameter structure use in @ref VL53L1_IOCTL_PARAMETER
  */
 struct stmvl53l1_parameter {
-	uint32_t is_read;	/*!< [in] 1: Get 0: Set*/
-	stmv53l1_parameter_name_e name;	/*!< [in] parameter to set/get
-	* see @ref stmv53l1_parameter_name_e
-	*/
-
+	uint32_t is_read;	/*!< [in]Â 1: Get 0: Set*/
+	/*!< [in]Â parameter to set/get
+	 * see @ref stmv53l1_parameter_name_e
+	 */
+	stmv53l1_parameter_name_e name;
 	int32_t value;		/*!< [in/out] value to set /get */
 	int32_t value2;		/*!< [in/out] optional 2nd value */
-	int32_t status;		/*!< [out] status of the operation */
+	int32_t status;		/*!< [out]Â status of the operation */
 };
 
 
@@ -245,7 +245,7 @@ struct stmvl53l1_roi_t {
 	/*!<  specify roi transfer direction \n
 	 * @li 0 to get roi
 	 * @li !0 to set roi
-	*/
+	 */
 	/*! roi data and count type use in @ VL53L1_IOCTL_ROI */
 	struct roi_cfg_t {
 		uint8_t NumberOfRoi;
@@ -259,7 +259,7 @@ struct stmvl53l1_roi_t {
 		 * [in] max number provided\n
 		 * [out] number of ROI  copied back to user\n
 		 * @warning 0 will not return any roi datas!
-		*/
+		 */
 		VL53L1_UserRoi_t    UserRois[1];
 		/*!< roi data array length  definition is 1 but
 		 * NumberOfRoi+ FirstRoiToScan in array are required
@@ -283,7 +283,7 @@ struct stmvl53l1_roi_full_t {
 	/*!<  specify roi transfer direction \n
 	 * @li 0 to get roi
 	 * @li !0 to set roi
-	*/
+	 */
 	VL53L1_RoiConfig_t roi_cfg;
 	/*!< roi data array of max length but only requested copy to/from user
 	 * space effectively used
@@ -295,7 +295,7 @@ struct stmvl53l1_roi_full_t {
  * parameter structure use in @ref VL53L1_IOCTL_CALIBRATION_DATA
  */
 struct stmvl53l1_ioctl_calibration_data_t {
-	int32_t is_read;	/*!< [in] 1: Get 0: Set*/
+	int32_t is_read;	/*!< [in]Â 1: Get 0: Set*/
 	VL53L1_CalibrationData_t data;
 	/*!< [in/out] data to set /get. Caller
 	 * should consider this structure as an opaque one
@@ -317,7 +317,7 @@ struct _stmvl531_zone_calibration_data_t {
  * parameter structure use in @ref VL53L1_IOCTL_ZONE_CALIBRATION_DATA
  */
 struct stmvl53l1_ioctl_zone_calibration_data_t {
-	int32_t is_read;	/*!< [in] 1: Get 0: Set*/
+	int32_t is_read;	/*!< [in]Â 1: Get 0: Set*/
 	stmvl531_zone_calibration_data_t data;
 	/*!< [in/out] data to set /get. Caller
 	 * should consider this structure as an opaque one
@@ -333,6 +333,9 @@ struct stmvl53l1_ioctl_zone_calibration_data_t {
 /** Select crosstalk calibration in @ref VL53L1_IOCTL_PERFORM_CALIBRATION.
  *
  * param1 is calibration method. param2 and param3 not use.
+ * @li VL53L1_XTALKCALIBRATIONMODE_NO_TARGET
+ * @li VL53L1_XTALKCALIBRATIONMODE_SINGLE_TARGET
+ * @li VL53L1_XTALKCALIBRATIONMODE_FULL_ROI
  */
 #define VL53L1_CALIBRATION_CROSSTALK		1
 
@@ -393,7 +396,7 @@ struct stmvl53l1_ioctl_perform_calibration_t {
  */
 struct stmvl53l1_autonomous_config_t {
 	int32_t is_read;
-	/*!< [in] 1: Get 0: Set*/
+	/*!< [in]Â 1: Get 0: Set*/
 	uint32_t pollingTimeInMs;
 	/*!< [in/out] interval between two measure in ms */
 	VL53L1_DetectionConfig_t config;
@@ -490,7 +493,7 @@ int smtvl53l1_stop(int fd){
  * to ensure race free usage acquiring mutex and/or locks.
  */
 #define VL53L1_IOCTL_GETDATAS \
-			_IOWR('p', 0x0b, stmvl531_range_data_t)
+	_IOWR('p', 0x0b, stmvl531_range_data_t)
 
 /**
  * set or get parameter
@@ -507,7 +510,7 @@ int smtvl53l1_stop(int fd){
  * @note a set parameter may not be absorbed straight aways !
  */
 #define VL53L1_IOCTL_PARAMETER \
-			_IOWR('p', 0x0d, struct stmvl53l1_parameter)
+	_IOWR('p', 0x0d, struct stmvl53l1_parameter)
 
 
 /**
@@ -516,7 +519,7 @@ int smtvl53l1_stop(int fd){
  * shall only be use while device is stopped (EBUSY error otherwise)
  * setting 0 rois stand for "disable  user define roi usage, use device default"
  *
- * @param roi_cfg [in/out] type @ref stmvl53l1_roi_t and
+ * @param roi_cfg [in/out]Â type @ref stmvl53l1_roi_t and
  * @ref stmvl53l1_roi_full_t
  * @note when getting roi the returned roi cnt is set to available number
  * of roi in driver but  at most requested number or available one
@@ -538,7 +541,7 @@ int smtvl53l1_stop(int fd){
  *  @li other errno code could be ll driver specific
  */
 #define VL53L1_IOCTL_ROI\
-			_IOWR('p', 0x0e, struct stmvl53l1_roi_t)
+	_IOWR('p', 0x0e, struct stmvl53l1_roi_t)
 
 /**
  * Get multi object/zone ranging data
@@ -556,7 +559,7 @@ int smtvl53l1_stop(int fd){
  * as in that case MZ data may not be fully valid
  */
 #define VL53L1_IOCTL_MZ_DATA\
-			_IOR('p', 0x0f, VL53L1_MultiRangingData_t)
+	_IOR('p', 0x0f, VL53L1_MultiRangingData_t)
 
 /**
  * get single ranging data @sa for multi zone/objet
@@ -573,7 +576,7 @@ int smtvl53l1_stop(int fd){
  * @li -ERESTARTSYS interrupt while sleeping.
  */
 #define VL53L1_IOCTL_GETDATAS_BLOCKING\
-			_IOWR('p', 0x10, stmvl531_range_data_t)
+	_IOWR('p', 0x10, stmvl531_range_data_t)
 
 /**
  * Get multi object/zone ranging data
@@ -592,7 +595,7 @@ int smtvl53l1_stop(int fd){
  * as in that case MZ data may not be fully valid
  */
 #define VL53L1_IOCTL_MZ_DATA_BLOCKING\
-			_IOR('p', 0x11, VL53L1_MultiRangingData_t)
+	_IOR('p', 0x11, VL53L1_MultiRangingData_t)
 
 /**
  * Get / set calibration data
