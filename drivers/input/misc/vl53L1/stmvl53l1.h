@@ -1,33 +1,33 @@
-/*
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/**************************************************************************
+ * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ****************************************************************************/
 /**
  * @file stmvl53l1.h header for vl53l1 sensor driver
  */
@@ -71,7 +71,7 @@
 /**
  * Configure the Netlink-id use
  */
-#define STMVL531_CFG_NETLINK_USER 23
+#define STMVL531_CFG_NETLINK_USER   8
 
 #define STMVL53L1_MAX_CCI_XFER_SZ	256
 #define STMVL53L1_DRV_NAME	"stmvl53l1"
@@ -83,7 +83,7 @@
  */
 /* define CFG_STMVL53L1_HAVE_REGULATOR */
 
-#define DRIVER_VERSION		"12.13.0"
+#define DRIVER_VERSION		"13.0.1"
 
 /** @ingroup vl53l1_config
  * @{
@@ -111,12 +111,12 @@ extern int stmvl53l1_enable_debug;
 #define vl53l1_dbgmsg(str, ...) do { \
 	if (stmvl53l1_enable_debug) \
 		pr_info("%s: " str, __func__, ##__VA_ARGS__); \
-	} while (0)
+} while (0)
 #	else
 #define vl53l1_dbgmsg(str, ...) do { \
 	if (stmvl53l1_enable_debug) \
 		pr_debug("%s: " str, __func__, ##__VA_ARGS__); \
-	} while (0)
+} while (0)
 #	endif
 #else
 #	define vl53l1_dbgmsg(...) (void)0
@@ -128,13 +128,13 @@ extern int stmvl53l1_enable_debug;
 #define WORK_DEBUG	0
 #if WORK_DEBUG
 #	define work_dbg(msg, ...)\
-		printk("[D WK53L1] :" msg "\n", ##__VA_ARGS__)
+	printk("[D WK53L1] :" msg "\n", ##__VA_ARGS__)
 #else
 #	define work_dbg(...) (void)0
 #endif
 
 #define vl53l1_info(str, args...) \
-	pr_info("%s: " str, __func__, ##args)
+	pr_info("%s: " str "\n", __func__, ##args)
 
 #define vl53l1_errmsg(str, args...) \
 	pr_err("%s: " str, __func__, ##args)
@@ -166,21 +166,22 @@ struct ipp_data_t {
 	struct ipp_work_t work;
 	struct ipp_work_t work_out;
 	int test_n;
-	int buzy;	/*!< buzy state 0 is idle
-	 * any other value do not try to use (state value defined in source)
-	*/
+	/*!< buzy state 0 is idle
+	 *any other value do not try to use (state value defined in source)
+	 */
+	int buzy;
 	int waited_xfer_id;
 	/*!< when buzy is set that is the id we are expecting
 	 * note that value 0 is reserved and stand for "not waiting"
 	 * as such never id 0 will be in any round trip exchange
 	 * it's ok for daemon to use 0 in "ping" when it identify himself
-	*/
+	 */
 	int status;	/** if that is not 0 do not look at out work data */
 	wait_queue_head_t waitq;
 	/*!< ipp caller are put in that queue wait while job is posted to user
 	 * @warning  ipp and dev mutex will be released before waiting
 	 * see @ref ipp_abort
-	*/
+	 */
 #if IPP_LOG_TIMING
 	struct timeval start_tv, stop_tv;
 #endif
@@ -316,13 +317,13 @@ struct stmvl53l1_data {
 	struct ipp_data_t ipp;
 #if IPP_LOG_TIMING
 #	define stmvl531_ipp_tim_stop(data)\
-		do_gettimeofday(&data->ipp.stop_tv)
+	do_gettimeofday(&data->ipp.stop_tv)
 #	define stmvl531_ipp_tim_start(data)\
-		do_gettimeofday(&data->ipp.start_tv)
+	do_gettimeofday(&data->ipp.start_tv)
 #	define stmvl531_ipp_time(data)\
-		stmvl53l1_tv_dif(&data->ipp.start_tv, &data->ipp.stop_tv)
+	stmvl53l1_tv_dif(&data->ipp.start_tv, &data->ipp.stop_tv)
 #	define stmvl531_ipp_stat(data, fmt, ...)\
-		vl53l1_dbgmsg("IPPSTAT " fmt "\n", ##__VA_ARGS__)
+	vl53l1_dbgmsg("IPPSTAT " fmt "\n", ##__VA_ARGS__)
 #else
 #	define stmvl531_ipp_tim_stop(data) (void)0
 #	define stmvl531_ipp_tim_start(data) (void)0
@@ -349,6 +350,9 @@ extern struct stmvl53l1_data *stmvl53l1_dev_table[];
 
 int stmvl53l1_setup(struct stmvl53l1_data *data);
 void stmvl53l1_cleanup(struct stmvl53l1_data *data);
+#ifdef CONFIG_PM_SLEEP
+void stmvl53l1_pm_suspend_stop(struct stmvl53l1_data *data);
+#endif
 int stmvl53l1_intr_handler(struct stmvl53l1_data *data);
 
 int stmvl53l1_sysfs_laser(struct stmvl53l1_data *data, bool create);

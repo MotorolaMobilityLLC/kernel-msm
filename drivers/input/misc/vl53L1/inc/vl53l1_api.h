@@ -1,64 +1,64 @@
-/*
-* Copyright (c) 2017, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed, either
-* 'STMicroelectronics Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
-********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
-********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-*  terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
-********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-*  provisions apply instead of the ones
-* mentioned above :
-*
-********************************************************************************
-*
-* License terms: BSD 3-clause "New" or "Revised" License.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this
-* list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice,
-* this list of conditions and the following disclaimer in the documentation
-* and/or other materials provided with the distribution.
-*
-* 3. Neither the name of the copyright holder nor the names of its contributors
-* may be used to endorse or promote products derived from this software
-* without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
-********************************************************************************
-*
-*/
+
+/******************************************************************************
+ * Copyright (c) 2017, STMicroelectronics - All Rights Reserved
+
+ This file is part of VL53L1 Core and is dual licensed,
+ either 'STMicroelectronics
+ Proprietary license'
+ or 'BSD 3-clause "New" or "Revised" License' , at your option.
+
+ ******************************************************************************
+
+ 'STMicroelectronics Proprietary license'
+
+ *******************************************************************************
+
+ License terms: STMicroelectronics Proprietary in accordance with licensing
+ terms at www.st.com/sla0081
+
+ STMicroelectronics confidential
+ Reproduction and Communication of this document is strictly prohibited unless
+ specifically authorized in writing by STMicroelectronics.
+
+
+ *******************************************************************************
+
+ Alternatively, VL53L1 Core may be distributed under the terms of
+ 'BSD 3-clause "New" or "Revised" License', in which case the following
+ provisions apply instead of the ones mentioned above :
+
+ *******************************************************************************
+
+ License terms: BSD 3-clause "New" or "Revised" License.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+ this list of conditions and the following disclaimer in the documentation
+ and/or other materials provided with the distribution.
+
+ 3. Neither the name of the copyright holder nor the names of its contributors
+ may be used to endorse or promote products derived from this software
+ without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+ *******************************************************************************
+ */
 
 #ifndef _VL53L1_API_H_
 #define _VL53L1_API_H_
@@ -69,6 +69,16 @@
 #ifdef __cplusplus
 extern "C"
 {
+#endif
+
+#if !defined(VL53L1DevDataGet)
+#warning "PALDevDataGet is deprecated define VL53L1DevDataGet instead"
+#define VL53L1DevDataGet(Dev, field) (Dev->Data.field)
+#endif
+
+#if !defined(VL53L1DevDataSet)
+#warning "PALDevDataSet is deprecated define VL53L1DevDataSet instead"
+#define VL53L1DevDataSet(Dev, field, data) ((Dev->Data.field) = (data))
 #endif
 
 /** @defgroup VL53L1_cut11_group VL53L1 cut1.1 Function Definition
@@ -194,6 +204,9 @@ VL53L1_Error VL53L1_GetPalState(VL53L1_DEV Dev,
  * This function should be called when several devices are used in parallel
  * before start programming the sensor.
  * When a single device us used, there is no need to call this function.
+ *
+ * When it is requested for multi devices system this function MUST be called
+ * prior to VL53L1_DataInit()
  *
  * @note This function Access to the device
  *
@@ -368,9 +381,9 @@ VL53L1_Error VL53L1_GetDistanceMode(VL53L1_DEV Dev,
  * Set the output mode to be used for the next ranging. The output mode is used
  * to select, in case of multiple objects, which one will be used in
  * function @a VL53L1_GetRangingMeasurementData().
-  * VL53L1_SetOutputMode also sets the object used by automatic
-  * distance mode algorithm when @a VL53L1_SetDistanceMode() is
-  * set to automatic mode.
+ * VL53L1_SetOutputMode also sets the object used by automatic
+ * distance mode algorithm when @a VL53L1_SetDistanceMode() is
+ * set to automatic mode.
  *
  * @note This function doesn't Access to the device
  *
@@ -451,6 +464,9 @@ VL53L1_Error VL53L1_GetMeasurementTimingBudgetMicroSeconds(
  *
  * @param   Dev                                  Device Handle
  * @param   InterMeasurementPeriodMilliSeconds   Inter-Measurement Period in ms.
+ *  this value should be greater than the duration set in
+ *  @a VL53L1_SetMeasurementTimingBudgetMicroSeconds() to ensure smooth ranging
+ *  operation.
  * @return  VL53L1_ERROR_NONE            Success
  * @return  "Other error code"           See ::VL53L1_Error
  */
@@ -523,7 +539,7 @@ VL53L1_Error VL53L1_SetDmaxMode(VL53L1_DEV Dev,
  *
  * @return   VL53L1_ERROR_NONE    Success
  * @return  "Other error code"    See ::VL53L1_Error
-  */
+ */
 
 VL53L1_Error VL53L1_GetDmaxMode(VL53L1_DEV Dev,
 	VL53L1_DeviceDmaxModes *pDmaxMode);
@@ -559,7 +575,7 @@ VL53L1_Error VL53L1_GetNumberOfLimitCheck(
  * The limit check is identified with the LimitCheckId.
  *
  * @param   LimitCheckId                  Limit Check ID
- (0<= LimitCheckId < VL53L1_GetNumberOfLimitCheck() ).
+ * (0<= LimitCheckId < VL53L1_GetNumberOfLimitCheck() ).
  * @param   pLimitCheckString             Pointer to the description string of
  * the given check limit. Shall be defined as char buf[VL53L1_MAX_STRING_LENGTH]
  * @return  VL53L1_ERROR_NONE            Success
@@ -886,8 +902,12 @@ VL53L1_Error VL53L1_GetSequenceStepEnable(VL53L1_DEV Dev,
  * @return  VL53L1_ERROR_NONE                  Success
  * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED    This error occurs when
  * PresetMode programmed with @a VL53L1_SetPresetMode
- *
  * @return  VL53L1_ERROR_TIME_OUT    Time out on start measurement
+ * @return  VL53L1_ERROR_INVALID_PARAMS This error might occur in timed mode
+ * when inter measurement period is smaller or too close to the timing budget.
+ * In such case measurements are not started and user must correct the timings
+ * passed to @a VL53L1_SetMeasurementTimingBudgetMicroSeconds() and
+ * @a VL53L1_SetInterMeasurementPeriodMilliSeconds() functions.
  * @return  "Other error code"   See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_StartMeasurement(VL53L1_DEV Dev);
@@ -1110,7 +1130,7 @@ VL53L1_Error VL53L1_PerformRefSpadManagement(VL53L1_DEV Dev);
  * See ::VL53L1_SmudgeCorrectionModes
  * @return  VL53L1_ERROR_NONE        Success
  * @return  "Other error code"       See ::VL53L1_Error
-*/
+ */
 VL53L1_Error VL53L1_SmudgeCorrectionEnable(VL53L1_DEV Dev,
 		VL53L1_SmudgeCorrectionModes Mode);
 
@@ -1124,7 +1144,7 @@ VL53L1_Error VL53L1_SmudgeCorrectionEnable(VL53L1_DEV Dev,
  *  to be set 0 = disabled or 1 = enabled.
  * @return  VL53L1_ERROR_NONE        Success
  * @return  "Other error code"       See ::VL53L1_Error
-*/
+ */
 VL53L1_Error VL53L1_SetXTalkCompensationEnable(VL53L1_DEV Dev,
 uint8_t XTalkCompensationEnable);
 
@@ -1175,6 +1195,15 @@ VL53L1_Error VL53L1_GetXTalkCompensationEnable(VL53L1_DEV Dev,
  * User must call @a VL53L1_SetPresetMode() again after calibration to set the
  * desired one. during this calibration mode no object must be put below a 80cm
  * distance from the target
+ * @li VL53L1_XTALKCALIBRATIONMODE_FULL_ROI the calibration sets appropriate
+ * preset and distance mode and thus override existing ones<br>
+ * User must call @a VL53L1_SetPresetMode() again after calibration to set the
+ * desired one.
+ * The ROI settings must define a single 16x16 ROI before to launch this
+ * function.
+ * The calibration uses a target which should be located at least @60cm from the
+ * device. The actual location of the target shall be passed
+ * through the bare driver tuning parameters table
  *
  * @return  VL53L1_ERROR_NONE    Success
  * @return  "Other error code"   See ::VL53L1_Error
@@ -1377,22 +1406,22 @@ VL53L1_Error VL53L1_GetOpticalCenter(VL53L1_DEV Dev,
  */
 
 /**
-* @brief Configure the interrupt config, from the given structure
-*
-* @param[in]    Dev     : Device Handle
-* @param[in]    pConfig : pointer to configuration structure
-*/
+ * @brief Configure the interrupt config, from the given structure
+ *
+ * @param[in]    Dev     : Device Handle
+ * @param[in]    pConfig : pointer to configuration structure
+ */
 
 VL53L1_Error VL53L1_SetThresholdConfig(VL53L1_DEV Dev,
 		VL53L1_DetectionConfig_t *pConfig);
 
 /**
-* @brief Retrieves the interrupt config structure currently programmed
-*                             into the API
-*
-* @param[in]    Dev     : Device Handle
-* @param[out]   pConfig : pointer to configuration structure
-*/
+ * @brief Retrieves the interrupt config structure currently programmed
+ *                             into the API
+ *
+ * @param[in]    Dev     : Device Handle
+ * @param[out]   pConfig : pointer to configuration structure
+ */
 
 VL53L1_Error VL53L1_GetThresholdConfig(VL53L1_DEV Dev,
 		VL53L1_DetectionConfig_t *pConfig);
