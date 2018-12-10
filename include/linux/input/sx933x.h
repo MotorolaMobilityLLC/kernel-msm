@@ -287,6 +287,7 @@ struct _buttonInfo
 	bool enabled;
 	//may different project use different buttons
 	bool used;
+	int offset;
 };
 
 struct totalButtonInformation
@@ -651,6 +652,7 @@ static struct _buttonInfo psmtcButtons[] =
 		.name = "Moto CapSense Ch0",
 		.enabled = false,
 		.used = false,
+		.offset = 0,
 	},
 	{
 		.ProxMask = SX933X_STAT0_PROXSTAT_PH1_FLAG,
@@ -658,6 +660,7 @@ static struct _buttonInfo psmtcButtons[] =
 		.name = "Moto CapSense Ch1",
 		.enabled = false,
 		.used = false,
+		.offset = 1,
 	},
 	{
 		.ProxMask = SX933X_STAT0_PROXSTAT_PH2_FLAG,
@@ -665,6 +668,7 @@ static struct _buttonInfo psmtcButtons[] =
 		.name = "Moto CapSense Ch2",
 		.enabled = false,
 		.used = false,
+		.offset = 2,
 	},
 	{
 		.ProxMask = SX933X_STAT0_PROXSTAT_PH3_FLAG,
@@ -672,6 +676,7 @@ static struct _buttonInfo psmtcButtons[] =
 		.name = "Moto CapSense Ch3",
 		.enabled = false,
 		.used = false,
+		.offset = 3,
 	},
 	{
 		.ProxMask = SX933X_STAT0_PROXSTAT_PH4_FLAG,
@@ -679,6 +684,7 @@ static struct _buttonInfo psmtcButtons[] =
 		.name = "Moto CapSense Ch4",
 		.enabled = false,
 		.used = false,
+		.offset = 4,
 	},
 };
 
