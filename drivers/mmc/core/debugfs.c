@@ -425,7 +425,7 @@ static int mmc_err_stats_show(struct seq_file *file, void *data)
 		   host->err_stats[MMC_ERR_DAT_CRC]);
 
 	seq_printf(file, "# Auto-Cmd Error Occurred:\t %d\n",
-		   host->err_stats[MMC_ERR_ADMA]);
+		   host->err_stats[MMC_ERR_AUTO_CMD]);
 
 	seq_printf(file, "# ADMA Error Occurred:\t %d\n",
 		   host->err_stats[MMC_ERR_ADMA]);
