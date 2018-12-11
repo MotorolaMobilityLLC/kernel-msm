@@ -119,6 +119,7 @@
 		compatible = "focaltech,ft5446", "focaltech,mmi";
 		reg = <0x38>;
 		interrupts-extended = <&tlmm 65 IRQ_TYPE_EDGE_FALLING>;
+                vdd-supply = <&pm8937_l10>;
 		vcc_i2c-supply = <&pm8937_l5>;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
