@@ -1386,6 +1386,8 @@ static int _mmc_sd_resume(struct mmc_host *host)
 		pr_err("%s: %s: mmc_sd_init_card_failed (%d)\n",
 				mmc_hostname(host), __func__, err);
 		mmc_power_off(host);
+                // This will power on mmc at mmc_sd_detect card
+                host->bus_resume_flags |= MMC_BUSRESUME_NEEDS_RESUME;
 		goto out;
 	}
 	mmc_card_clr_suspended(host->card);
