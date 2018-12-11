@@ -27,4 +27,11 @@
 	mot_batterydata: qcom,battery-data { };
 	utags: utags { };
 	hw: hw { };
+	firmware: firmware {
+		android {
+			fstab {
+				oem { };
+			};
+		};
+	};
 };
