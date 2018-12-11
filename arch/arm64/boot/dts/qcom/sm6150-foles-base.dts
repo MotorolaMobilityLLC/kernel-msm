@@ -42,3 +42,7 @@
 &ufshc_mem {
 	/delete-property/ spm-level;
 };
+
+&tlmm {
+	/delete-node/ nfc;
+};
