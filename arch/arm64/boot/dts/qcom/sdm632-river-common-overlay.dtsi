@@ -386,6 +386,7 @@
 
 &sdhc_2 {
 	cd-gpios = <&tlmm 133 0x0>;
+	qcom,sdr104-wa;
 };
 
 &pm8953_vadc {
