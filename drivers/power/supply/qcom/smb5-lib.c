@@ -6130,6 +6130,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
 	vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
+	vote(chg->usb_icl_votable, ICL_LIMIT_VOTER, false, 0);
 
 	rc = smblib_get_prop_usb_present(chg, &val);
 	if (rc < 0) {
