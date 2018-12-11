@@ -731,6 +731,14 @@ static int mmc_sd_init_uhs_card(struct mmc_card *card)
 				mmc_hostname(card->host));
 			err = 0;
 		}
+
+		if (err && card->host->sdr104_wa &&
+			card->host->ios.timing == MMC_TIMING_UHS_SDR104) {
+			mmc_set_clock(card->host, UHS_SDR104_MIN_DTR);
+			pr_warn("%s: 200MHz tuning failed, force reduce clk to 100MHz\n",
+				mmc_hostname(card->host));
+			err = 0;
+		}
 	}
 
 out:
