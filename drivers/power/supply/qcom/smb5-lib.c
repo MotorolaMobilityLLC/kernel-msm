@@ -4437,7 +4437,7 @@ int smblib_set_prop_sdp_current_max(struct smb_charger *chg,
 	int rc = 0;
 	bool enable = true;
 
-	if (0 == val->intval)
+	if (0 >= val->intval)
 		enable = false;
 
 	if (!chg->pd_active &&
