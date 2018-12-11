@@ -35,8 +35,8 @@
 
 			config {
 				pins = "gpio86";
-				drive-strength = <2>; /* 2 MA */
-				bias-pull-up;
+				bias-disable;
+				input-enable;
 			};
 		};
 
@@ -50,8 +50,8 @@
 
 			config {
 				pins = "gpio86";
-				drive-strength = <2>; /* 2 MA */
-				bias-pull-up;
+				bias-disable;
+				input-enable;
 			};
 		};
 
@@ -66,7 +66,7 @@
 			config {
 				pins = "gpio84";
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-up;
+				bias-disable;
 			};
 		};
 
@@ -81,7 +81,7 @@
 			config {
 				pins = "gpio84";
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-up;
+				bias-disable;
 			};
 		};
 
@@ -125,8 +125,8 @@
 
 			config {
 				pins = "gpio50";
-				drive-strength = <2>; /* 2 MA */
-				bias-pull-up;
+				bias-disable;
+				input-enable;
 			};
 		};
 
@@ -140,8 +140,8 @@
 
 			config {
 				pins = "gpio50";
-				drive-strength = <2>; /* 2 MA */
 				bias-disable;
+				input-enable;
 			};
 		};
 	};
