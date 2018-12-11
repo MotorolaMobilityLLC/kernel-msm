@@ -9509,7 +9509,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
 			cl_usb = 1500;
-		else if (cl_cc == 500)
+		else if ((cl_cc == 500) &&
+			 (cl_usb <= 500))
 			cl_usb = cl_cc;
 		else if (cl_usb <= 0)
 			cl_usb = 500;
