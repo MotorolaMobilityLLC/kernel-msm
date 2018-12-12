@@ -19,6 +19,7 @@
 #include "sdm670-sde-display.dtsi"
 #include "sdm710-moto-common-overlay.dtsi"
 #include "dsi-panel-mot-auo-620-876x2142-olson-cmd.dtsi"
+#include "dsi-panel-mot-boe-269-800x600-olson-cmd.dtsi"
 
 / {
         model = "Olson";
@@ -98,6 +99,26 @@
 		oledb-supply = <&pm660a_oledb>;
 	};
 
+	dsi_boe_269_800x600_cmd_display: qcom,dsi-display@23 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_boe_269_800x600_cmd_display";
+		qcom,display-type = "secondary";
+
+		qcom,dsi-ctrl = <&mdss_dsi1>;
+		qcom,dsi-phy = <&mdss_dsi_phy1>;
+		clocks = <&mdss_dsi1_pll BYTECLK_MUX_1_CLK>,
+				<&mdss_dsi1_pll PCLK_MUX_1_CLK>;
+		clock-names = "src_byte_clk", "src_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi1_active &sde_te1_active>;
+		pinctrl-1 = <&sde_dsi1_suspend &sde_te1_suspend>;
+		qcom,platform-te-gpio = <&tlmm 11 0>;
+		qcom,dsi-panel = <&mot_boe_269_800x600_cmd_v0>;
+		vci_disp-supply = <&vci_disp_sub_vreg>;
+		vio_disp-supply = <&vio_disp_sub_vreg>;
+	};
+
 	tzlog_dump {
 		compatible = "mmi,tzlog-dump";
 		memory-region = <&tzlog_dump_mem>;
@@ -142,6 +163,10 @@
 };
 */
 
+&vio_disp_sub_vreg {
+	regulator-boot-on;
+};
+
 &pm660_l14 {
 	regulator-always-on;
 };
@@ -157,6 +182,29 @@
 	regulator-min-microvolt = <3200000>;
 	regulator-max-microvolt = <3200000>;
 	qcom,init-voltage = <3200000>;
+};
+
+&mot_boe_269_800x600_cmd_v0 {
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0a>;
+	qcom,mdss-dsi-t-clk-pre = <0x1B>;
+
+	/* Enable ESD checking
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9c>;
+	*/
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 10 03 03 1E 1E 04
+								04 02 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
 };
 
 &mot_auo_620_876x2142_cmd_v0 {
