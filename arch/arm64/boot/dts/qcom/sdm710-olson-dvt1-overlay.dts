@@ -126,10 +126,6 @@
 	status = "disabled";
 };
 
-&vio_disp_sub_vreg {
-	regulator-boot-on;
-};
-
 &camera_avdd_en_default {
 	output-high;
 };
