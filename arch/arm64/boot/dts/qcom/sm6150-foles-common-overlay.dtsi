@@ -184,6 +184,7 @@
 			pins = "gpio93";
 			drive-strength = <2>; /* 2 MA */
 			bias-disable;
+			input-enable;
 		};
 	};
 
@@ -198,6 +199,7 @@
 			pins = "gpio93";
 			drive-strength = <2>; /* 2 MA */
 			bias-disable;
+			input-enable;
 		};
 	};
 
