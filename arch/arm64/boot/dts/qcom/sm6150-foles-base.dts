@@ -45,4 +45,5 @@
 
 &tlmm {
 	/delete-node/ nfc;
+	/delete-node/ fpc_reset_int;
 };
