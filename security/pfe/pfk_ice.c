@@ -79,7 +79,7 @@ static void qti_pfk_ice_stat_failure(char *type, uint32_t id, int32_t err)
 
 	pr_warn("%s: failed to call scm %d (%d %d)\n",
 		__func__, id, set_key_failure, invalidate_key_failure);
-	if (err != -EBUSY || !strncmp(type, "sdcc", 4))
+	if (err != -EBUSY)
 		BUG();
 	BUG_ON((invalidate_key_failure + set_key_failure) > 10);
 }
