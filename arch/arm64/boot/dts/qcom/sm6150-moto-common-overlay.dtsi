@@ -309,6 +309,10 @@
 	gpio-names = "eb_vbus_en";
 };
 
+&bcl_soc {
+	qcom,bcl-not-mitigate-cpu;
+};
+
 &smb1390 {
 	/delete-property/ interrupts;
 	interrupts = <0x0 0xc2 0x0 IRQ_TYPE_LEVEL_LOW>;
