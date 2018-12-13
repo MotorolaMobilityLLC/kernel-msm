@@ -76,7 +76,6 @@ int set_memory_ro(unsigned long addr, int numpages)
 					__pgprot(L_PTE_RDONLY),
 					__pgprot(0));
 }
-EXPORT_SYMBOL_GPL(set_memory_ro); //IKSWP-34109, MMI_STOPSHIP <WiFi>: debug patch for corrupted stack
 
 int set_memory_rw(unsigned long addr, int numpages)
 {
