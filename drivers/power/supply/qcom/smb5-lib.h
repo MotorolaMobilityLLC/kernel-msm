@@ -753,6 +753,7 @@ struct smb_charger {
 	struct delayed_work	pd_contract_work;
 	bool			external_vbus;
 	bool			suspended;
+	u32			source_current_ma;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -989,5 +990,7 @@ extern int eb_attach_stop_soc;
 extern int eb_low_start_soc;
 extern int eb_low_stop_soc;
 extern int eb_on_sw;
+
+#define DEFAULT_SOURCE_CURRENT_MA 1500
 
 #endif /* __SMB5_CHARGER_H */
