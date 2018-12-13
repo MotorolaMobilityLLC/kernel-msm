@@ -487,6 +487,12 @@ static int smb5_parse_dt(struct smb5 *chip)
 		rc = of_property_read_u32(node, "qcom,chg-term-base-current-ma",
 				&chip->dt.term_current_thresh_lo_ma);
 
+	rc = of_property_read_u32(node,
+				"qcom,source-current-ma",
+				&chg->source_current_ma);
+	if (rc < 0)
+		chg->source_current_ma = DEFAULT_SOURCE_CURRENT_MA;
+
 	if (of_find_property(node, "qcom,thermal-mitigation", &byte_len)) {
 		chg->thermal_mitigation = devm_kzalloc(chg->dev, byte_len,
 			GFP_KERNEL);
@@ -2612,6 +2618,17 @@ static int smb5_configure_typec(struct smb_charger *chg)
 				"Couldn't configure VCONN for SW control rc=%d\n",
 				rc);
 			return rc;
+		}
+	}
+
+	if (chg->source_current_ma < DEFAULT_SOURCE_CURRENT_MA) {
+		/*advertise default current*/
+		rc = smblib_masked_write(chg, TYPE_C_CURRSRC_CFG_REG,
+				TYPEC_SRC_RP_SEL_MASK, TYPEC_SRC_RP_STD);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't write to TYPE_C_CURRSRC_CFG_REG rc=%d\n",
+				rc);
 		}
 	}
 
