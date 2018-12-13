@@ -4601,6 +4601,17 @@ int smblib_set_prop_typec_power_role(struct smb_charger *chg,
 		return -EINVAL;
 	}
 
+	if ((power_role != EN_SNK_ONLY_BIT)
+		&& (chg->source_current_ma < DEFAULT_SOURCE_CURRENT_MA)) {
+			/*advertise default current*/
+			rc = smblib_masked_write(chg, TYPE_C_CURRSRC_CFG_REG,
+					TYPEC_SRC_RP_SEL_MASK, TYPEC_SRC_RP_STD);
+			if (rc < 0) {
+				smblib_err(chg, "Couldn't write to TYPE_C_CURRSRC_CFG_REG rc=%d\n",
+					rc);
+			}
+	}
+
 	rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
 				TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK,
 				power_role);
@@ -4757,12 +4768,14 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 		}
 	} else {
 #ifndef QCOM_BASE
-		/*advertise default current*/
-		rc = smblib_masked_write(chg, TYPE_C_CURRSRC_CFG_REG,
-				TYPEC_SRC_RP_SEL_MASK, TYPEC_SRC_RP_STD);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
-				rc);
+		if (chg->source_current_ma < DEFAULT_SOURCE_CURRENT_MA) {
+			/*advertise default current*/
+			rc = smblib_masked_write(chg, TYPE_C_CURRSRC_CFG_REG,
+					TYPEC_SRC_RP_SEL_MASK, TYPEC_SRC_RP_STD);
+			if (rc < 0) {
+				smblib_err(chg, "Couldn't write to TYPE_C_CURRSRC_CFG_REG rc=%d\n",
+					rc);
+			}
 		}
 #endif
 		vote(chg->usb_icl_votable, PD_VOTER, false, 0);
