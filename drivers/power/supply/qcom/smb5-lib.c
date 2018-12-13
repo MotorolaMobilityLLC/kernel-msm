@@ -10203,6 +10203,9 @@ static ssize_t force_chg_usb_suspend_store(struct device *dev,
 		return -ENODEV;
 	}
 	r = smblib_set_usb_suspend(mmi_chip, (bool)mode);
+	if (r)
+		return r;
+	r = smblib_set_dc_suspend(mmi_chip, (bool)mode);
 
 	return r ? r : count;
 }
