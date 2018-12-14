@@ -370,12 +370,19 @@
 
 &usb_otg {
 	qcom,hsusb-otg-phy-init-seq =
-		<0x40 0x80 0x6a 0x81 0x3f 0x82 0x13 0x83 0xffffffff>;
+		<0x74 0x80 0x7f 0x81 0x3f 0x82 0x13 0x83 0xffffffff>;
 	qcom,chg-dcp-icl = <1800>;
 	extcon = <&qpnp_smbcharger>;
 };
 
 &soc {
+	usb_otg: usb@78db000 {
+		pinctrl-names = "default","usbid-off";
+                pinctrl-0 = <&usbid_default>;
+                pinctrl-1 = <&usbid_off>;
+                qcom,usbid-gpio = <&tlmm 97 0>;
+                extcon = <&qpnp_smbcharger>;
+        };
 	qcom,msm-thermal {
 		qcom,config-info = "surfna";
 	};
