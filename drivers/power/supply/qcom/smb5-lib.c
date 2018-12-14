@@ -1950,6 +1950,9 @@ int smblib_vconn_regulator_is_enabled(struct regulator_dev *rdev)
  * OTG REGULATOR *
  *****************/
 
+static void mmi_set_extbat_state(struct smb_charger *chip,
+				 enum ebchg_state state,
+				 bool force);
 int smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 {
 	struct smb_charger *chg = rdev_get_drvdata(rdev);
@@ -1957,11 +1960,21 @@ int smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 
 	smblib_dbg(chg, PR_OTG, "enabling OTG\n");
 
+	mutex_lock(&chg->otg_lock);
+	chg->mmi.is_otg_enable = 1;
+	mutex_unlock(&chg->otg_lock);
+
+	if (chg->mmi.ebchg_state == EB_SRC)
+		mmi_set_extbat_state(chg, EB_OFF, false);
+
 	rc = smblib_masked_write(chg, DCDC_CMD_OTG_REG, OTG_EN_BIT, OTG_EN_BIT);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't enable OTG rc=%d\n", rc);
 		return rc;
 	}
+
+	if (chg->usb_psy)
+		power_supply_changed(chg->usb_psy);
 
 	return 0;
 }
@@ -1978,6 +1991,19 @@ int smblib_vbus_regulator_disable(struct regulator_dev *rdev)
 		smblib_err(chg, "Couldn't disable OTG regulator rc=%d\n", rc);
 		return rc;
 	}
+
+	mutex_lock(&chg->otg_lock);
+	chg->mmi.is_otg_enable = 0;
+	mutex_unlock(&chg->otg_lock);
+
+	if (chg->mmi.ebchg_state != EB_DISCONN) {
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+				      msecs_to_jiffies(0));
+	}
+
+	if (chg->usb_psy)
+		power_supply_changed(chg->usb_psy);
 
 	return 0;
 }
@@ -7962,6 +7988,7 @@ int smblib_init(struct smb_charger *chg)
 	mutex_init(&chg->dpdm_lock);
 	spin_lock_init(&chg->typec_pr_lock);
 	mutex_init(&chg->dcin_aicl_lock);
+	mutex_init(&chg->otg_lock);
 	INIT_WORK(&chg->bms_update_work, bms_update_work);
 	INIT_WORK(&chg->pl_update_work, pl_update_work);
 	INIT_WORK(&chg->jeita_update_work, jeita_update_work);
@@ -8866,6 +8893,15 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			   "Setting SRC State not Allowed on SND Never EB\n");
 		goto set_eb_done;
 	}
+
+	mutex_lock(&chip->otg_lock);
+	if (chip->mmi.is_otg_enable == true && state == EB_SRC) {
+		smblib_err(chip,
+			   "OTG is enable, so couldn't set SRC state\n");
+		mutex_unlock(&chip->otg_lock);
+		goto set_eb_done;
+	}
+	mutex_unlock(&chip->otg_lock);
 
 	smblib_dbg(chip, PR_MOTO,
 		   "EB State is %d setting %d\n",
