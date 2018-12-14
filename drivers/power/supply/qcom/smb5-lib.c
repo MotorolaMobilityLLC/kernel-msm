@@ -9491,8 +9491,14 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_cc = 500;
 			break;
 		case POWER_SUPPLY_TYPEC_NONE:
-			if (vbus_present)
-				cl_cc = 500;
+			if (vbus_present) {
+				if (mmi->hvdcp3_con)
+					cl_cc = 3000;
+				else
+					cl_cc = 500;
+			} else
+				cl_cc = 0;
+
 			if (vbus_present &&
 			    !icl_override &&
 			    (apsd_reg == 0)) {
@@ -9503,6 +9509,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 					smblib_err(chip,
 						   "Fail ICL Over rc%d\n", rc);
 			}
+			break;
 		default:
 			cl_cc = 0;
 			break;
