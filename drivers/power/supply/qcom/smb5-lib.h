@@ -472,6 +472,7 @@ struct mmi_params {
 	bool			check_ebsrc_vl;
 	int			batt_health;
 	int			max_chrg_temp;
+	int			is_otg_enable;
 };
 
 struct smb_charger {
@@ -493,6 +494,7 @@ struct smb_charger {
 	/* locks */
 	struct mutex		smb_lock;
 	struct mutex		ps_change_lock;
+	struct mutex		otg_lock;
 
 	/* power supplies */
 	struct power_supply		*batt_psy;
@@ -669,6 +671,7 @@ struct smb_charger {
 	struct usbpd		*pd;
 	int			pd_contract_uv;
 	struct delayed_work	pd_contract_work;
+	bool			external_vbus;
 	bool			suspended;
 };
 
