@@ -184,8 +184,6 @@
 
 
 &qpnp_fg {
-	qcom,ext-sense-type; /* External Sense Resistor */
-	/delete-property/ qcom,thermal-coefficients ;
 	qcom,irq-volt-empty-mv = <3200>;
 	qcom,fg-cutoff-voltage-mv = <3400>;
 
@@ -195,7 +193,7 @@
 	qcom,hot-bat-decidegc = <600>;
 	qcom,cold-bat-decidegc = <(-200)>;
 	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
-	qcom,thermal-coefficients =  /bits/ 16 <0x6986 0x5D4B 0x6235>;
+	qcom,thermal-coefficients = [C5 86 BE 50 D1 37];
 	qcom,resume-soc = <99>;
 	qcom,bcl-lm-threshold-ma = <126>;
 	qcom,bcl-mh-threshold-ma = <400>;
@@ -206,6 +204,10 @@
 	qcom,fg-min-soc = <0>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,battery-data = <&mtp_batterydata>;
+
+	qcom,cl-vbat-est-thr-uv = <300000>;
+	qcom,fg-force-restart-enable;
+	/delete-property/ qcom,support_multi_coefficients;
 };
 
 &qpnp_smbcharger {
@@ -234,6 +236,25 @@
 	dpdm-supply = <&usb_otg>;
 	qcom,chg-led-sw-controls;
 	qcom,chg-led-support;
+
+	/delete-property/ qcom,dc-thermal-mitigation;
+	qcom,parallel-charge-current-map = <3000 3000 0>,
+					<2500 2500 0>,
+					<2000 2000 0>,
+					<1500 1500 0>,
+					<1000 1000 0>,
+					<700 700 0>,
+					<400 400 0>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <2000>;
+	qcom,stepchg-taper-ma = <1800>;
+	qcom,stepchg-iterm-ma = <125>;
+	qcom,enable-hvdcp-9v;
+	qcom,weak-charger-check-enable;
+	qcom,temp-warm-current-ma = <1500>;
+	qcom,temp-cool-current-ma = <900>;
+	qcom,temp-slightly-cool-current-ma = <900>;
+	qcom,slightly-cool-temp-c = <15>;
 };
 
 &pm8937_vadc {
@@ -246,6 +267,19 @@
 	};
 };
 
+
+&pmi8940_vadc {
+	chan@10 {
+		label = "host_det";
+		reg = <0x10>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
 
 &thermal_zones {
         /delete-node/ pa-therm1-adc;
