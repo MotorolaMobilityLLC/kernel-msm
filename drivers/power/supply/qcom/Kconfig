@@ -106,6 +106,15 @@ config QPNP_SMBCHARGER
 	  The driver also offers relevant information to userspace via the
 	  power supply framework.
 
+config QPNP_SMBCHARGER_MMI_LITE
+	tristate "QPNP SMB Charger driver for MMI LITE"
+	depends on MFD_SPMI_PMIC
+	help
+	  Say Y here to enable the dual path switch mode battery charger which
+	  supports USB detection and battery charging up to 3A.
+	  The driver also offers relevant information to userspace via the
+	  power supply framework.
+
 config QPNP_QNOVO
 	bool "QPNP QNOVO driver"
 	depends on MFD_SPMI_PMIC

@@ -60,7 +60,7 @@ static ssize_t power_supply_show_property(struct device *dev,
 		"Unknown", "Good", "Overheat", "Dead", "Over voltage",
 		"Unspecified failure", "Cold", "Watchdog timer expire",
 		"Safety timer expire",
-		"Warm", "Cool", "Hot"
+		"Warm", "Cool", "Hot", "Slightly cool"
 	};
 	static char *technology_text[] = {
 		"Unknown", "NiMH", "Li-ion", "Li-poly", "LiFe", "NiCd",
@@ -240,6 +240,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(temp_ambient),
 	POWER_SUPPLY_ATTR(temp_ambient_alert_min),
 	POWER_SUPPLY_ATTR(temp_ambient_alert_max),
+	POWER_SUPPLY_ATTR(temp_hotspot),
 	POWER_SUPPLY_ATTR(time_to_empty_now),
 	POWER_SUPPLY_ATTR(time_to_empty_avg),
 	POWER_SUPPLY_ATTR(time_to_full_now),
@@ -443,8 +444,12 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 	dev_dbg(dev, "POWER_SUPPLY_NAME=%s\n", psy->desc->name);
 
 	ret = add_uevent_var(env, "POWER_SUPPLY_NAME=%s", psy->desc->name);
-	if (ret)
+
+	if (ret) {
+		dev_err(dev, "failed to add POWER_SUPPLY_NAME=%s\n",
+							psy->desc->name);
 		return ret;
+	}
 
 	prop_buf = (char *)get_zeroed_page(GFP_KERNEL);
 	if (!prop_buf)
@@ -481,8 +486,11 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 		ret = add_uevent_var(env, "POWER_SUPPLY_%s=%s", attrname, prop_buf);
 		kfree(attrname);
-		if (ret)
+		if (ret) {
+			dev_err(dev, "failed to add POWER_SUPPLY_%s=%s\n",
+							attrname, prop_buf);
 			goto out;
+                }
 	}
 
 out:
