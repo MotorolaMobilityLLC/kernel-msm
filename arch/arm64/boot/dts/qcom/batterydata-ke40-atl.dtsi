@@ -10,49 +10,51 @@
  * GNU General Public License for more details.
  */
 
-qcom,gk40-atl {
-	//serialnum = "SNN5976A";
-	/* #2441117_Lenovo_GK40_ATL_2800mAh_averaged_MasterSlave_Jun13th2016*/
+qcom,ke40-atl {
+	serialnum = "SB18C43804";
 	qcom,max-voltage-uv = <4400000>;
-	qcom,nom-batt-capacity-mah = <2800>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,chg-term-ua = <100000>;
 	qcom,batt-id-kohm = <100>;
-	qcom,battery-beta = <3435>;
-	qcom,battery-type = "KE40-ATL-2800mah";
-	qcom,chg-rslow-comp-c1 = <3202975>;
-	qcom,chg-rslow-comp-c2 = <4376644>;
-	qcom,chg-rs-to-rslow = <1083131>;
-	qcom,chg-rslow-comp-thr = <0xA2>;
-	qcom,checksum = <0xF2C1>;
+	qcom,battery-beta = <3440>;
+	qcom,battery-type = "KE40_ATL_2820mAh_4v4";
+	qcom,thermal-coefficients = [C5 86 BE 50 D1 37];
+	qcom,chg-rslow-comp-c1 = <2366607>;
+	qcom,chg-rslow-comp-c2 = <2419896>;
+	qcom,chg-rs-to-rslow = <649245>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0x301A>;
 	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
 	qcom,fg-profile-data = [
-		 EE 83 54 7D
-		 7D 81 04 7C
-		 5C 83 23 67
-		 2E 83 D4 8D
-		 57 82 40 98
-		 E0 B5 75 C1
-		 58 14 00 88
-		 8C 7D 92 81
-		 09 7C 53 83
-		 69 6A 9E 78
-		 27 86 58 82
-		 63 99 9E BC
-		 58 C9 59 0E
-		 3C 0B F7 59
-		 14 70 D9 FD
-		 5C 3E F4 3C
-		 6E 33 00 00
-		 05 45 BB 2A
-		 AE 35 00 00
+		 0F 88 89 7E
+		 F9 81 28 7C
+		 3F 83 88 72
+		 92 7E 81 7B
+		 04 82 5F 9B
+		 F9 BE 7F D0
+		 87 10 04 88
+		 BB 7D 7F 81
+		 CB 77 2E 83
+		 31 7A 30 8C
+		 69 88 1A 82
+		 54 A0 52 C5
+		 85 D8 6E 0C
+		 CC 0B 39 60
+		 14 70 29 FC
+		 1F 3C 96 3C
+		 21 31 00 00
+		 88 45 FC 40
+		 A6 3B 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 4E 70 F8 6A
-		 AE 71 4B 88
-		 42 6E 98 5B
-		 35 64 AB 78
-		 A8 6D 0A 60
-		 F4 6F 8F A2
-		 15 7F 63 B7
+		 E6 69 E1 68
+		 6B 71 FE 83
+		 3F 6F 48 63
+		 58 68 B7 80
+		 D9 6E 81 68
+		 98 6D F6 A3
+		 18 39 62 B6
 		 64 A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
