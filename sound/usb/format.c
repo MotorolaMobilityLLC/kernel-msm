@@ -215,9 +215,9 @@ static int parse_audio_format_rates_v1(struct snd_usb_audio *chip, struct audiof
 		fp->rate_min = fp->rate_max = 0;
 		for (r = 0, idx = offset + 1; r < nr_rates; r++, idx += 3) {
 			unsigned int rate = combine_triple(&fmt[idx]);
-			bool isHires = false;
 			if (!rate)
 				continue;
+
 			/* C-Media CM6501 mislabels its 96 kHz altsetting */
 			/* Terratec Aureon 7.1 USB C-Media 6206, too */
 			if (rate == 48000 && nr_rates == 1 &&
@@ -231,22 +231,19 @@ static int parse_audio_format_rates_v1(struct snd_usb_audio *chip, struct audiof
 			    (chip->usb_id == USB_ID(0x041e, 0x4064) ||
 			     chip->usb_id == USB_ID(0x041e, 0x4068)))
 				rate = 8000;
-			/* MX30/BestAudio using capture max samplerate */
-			/* when the capture samplerate diffrent with playback */
-			isHires = (chip->usb_id == USB_ID(0x22B8, 0x5830) ||
-				chip->usb_id == USB_ID(0xBE57, 0x020F));
-			if (isHires &&
-				(fp->iface == 2) && chip->capture_rate_max &&
-				(chip->capture_rate_max < rate)) {
+			/* if playback sample rate is greater than the capture max samplerate, skip this item
+			 * such as the max capture rate of MX30/BestAudio is 48k, and the playback rate has
+			 * the 96k, Android usb hal can't support this
+			 */
+			if (fp->iface == 2 && chip->capture_rate_max &&
+				rate > chip->capture_rate_max)
 				continue;
-			}
 			fp->rate_table[fp->nr_rates] = rate;
 			if (!fp->rate_min || rate < fp->rate_min)
 				fp->rate_min = rate;
 			if (!fp->rate_max || rate > fp->rate_max)
 				fp->rate_max = rate;
-			if (isHires &&
-				fp->rate_max && (fp->iface == 1)) {
+			if (fp->rate_max && fp->iface == 1) {
 				chip->capture_rate_max = fp->rate_max;
 			}
 			fp->rates |= snd_pcm_rate_to_rate_bit(rate);
