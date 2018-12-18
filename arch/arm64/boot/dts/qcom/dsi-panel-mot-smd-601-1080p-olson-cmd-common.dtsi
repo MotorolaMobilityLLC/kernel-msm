@@ -63,8 +63,6 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-h-right-border = <0>;
 		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
-		/* MMI_STOPSHIP: sends 51 with 1FF to turn on the backlight
-		 * since the there is no backlight control for sec panel */
 		qcom,mdss-dsi-on-command = [
 			05 01 00 00 78 00 01 11
 			39 00 00 00 00 00 03 F0 5A 5A
@@ -75,7 +73,7 @@ qcom,mdss-dsi-display-timings {
 			15 00 00 00 00 00 02 B1 59
 			39 00 00 00 00 00 03 F0 A5 A5
 			15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
-			39 00 00 00 00 00 03 51 01 ff
+			39 00 00 00 00 00 03 51 00 00
 			15 00 00 00 00 00 02 55 00      /* ACL OFF */
 			05 01 00 00 00 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [

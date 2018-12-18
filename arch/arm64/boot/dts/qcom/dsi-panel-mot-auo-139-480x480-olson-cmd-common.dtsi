@@ -63,7 +63,7 @@ qcom,mdss-dsi-display-timings {
 			05 01 00 00 78 00 01 11
 			15 00 00 00 00 00 02 35 00
 			15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
-			15 00 00 00 00 00 02 51 7f
+			15 00 00 00 00 00 02 51 00
 			05 01 00 00 00 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 23 00 01 28		/* display_off */
