@@ -471,24 +471,17 @@ static long goodix_tools_compat_ioctl(struct file *file, unsigned int cmd,
 
 static int goodix_tools_open(struct inode *inode, struct file *filp)
 {
-	int ret = 0;
-
 	filp->private_data = goodix_tools_dev;
 	ts_info("tools open");
-	/* Only the first time open device need to register module */
-	ret = goodix_register_ext_module(&goodix_tools_dev->module);
-	if (ret)
-		ts_info("failed register to core module");
 
-	return ret;
+	return 0;
 }
 
 static int goodix_tools_release(struct inode *inode, struct file *filp)
 {
-	int ret = 0;
-	/* when the last close this dev node unregister the module */
-	ret = goodix_unregister_ext_module(&goodix_tools_dev->module);
-	return ret;
+	ts_info("tools closed");
+
+	return 0;
 }
 
 /**
@@ -594,6 +587,10 @@ int __init goodix_tools_init(void)
 	ret = misc_register(&goodix_tools_miscdev);
 	if (ret)
 		ts_err("Debug tools miscdev register failed");
+
+	ret = goodix_register_ext_module(&goodix_tools_dev->module);
+	if (ret)
+		ts_err("failed register to core module");
 
 	return ret;
 }
