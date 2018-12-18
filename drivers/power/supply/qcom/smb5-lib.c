@@ -10951,19 +10951,12 @@ void mmi_init(struct smb_charger *chg)
 	rc = smblib_set_adapter_allowance(chg,
 			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 
-#ifdef MMI_SHIP
-	/* Disable all WIPWR Feature */
-	rc = smblib_masked_write(chg, WI_PWR_OPTIONS_REG, 0xFF, 0x00);
+	/* Set DCIN  adapter allowance */
+	rc = smblib_masked_write(chg, DCIN_ADAPTER_ALLOW_CFG_REG,
+				 DCIN_ADAPTER_ALLOW_MASK,
+				 DCIN_ADAPTER_ALLOW_5V_TO_9V);
 	if (rc)
-		smblib_err(chg, "couldn't disable Wipwr settings\n");
-
-	/* Set 4.0 V for DCIN AICL Threshold */
-	rc = smblib_masked_write(chg, DCIN_AICL_REF_SEL_CFG_REG,
-				 DCIN_CONT_AICL_THRESHOLD_CFG_MASK,
-				 0x00);
-	if (rc)
-		smblib_err(chg, "couldn't set DCIN AICL Threshold\n");
-#endif
+		smblib_err(chg, "couldn't set DCIN adapter allowance\n");
 
 	/* Turn Jeita OFF */
 	rc = smblib_masked_write(chg, JEITA_EN_CFG_REG,
