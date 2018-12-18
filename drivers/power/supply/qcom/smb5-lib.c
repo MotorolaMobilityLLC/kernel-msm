@@ -79,7 +79,9 @@
 	|| typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH)	\
 	&& (!chg->typec_legacy || chg->typec_legacy_use_rp_icl))
 
+#ifdef QCOM_BASE
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
+#endif
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val)
@@ -4666,8 +4668,9 @@ int smblib_set_prop_pd_voltage_max(struct smb_charger *chg,
 int smblib_set_prop_pd_active(struct smb_charger *chg,
 				const union power_supply_propval *val)
 {
+#ifdef QCOM_BASE
 	const struct apsd_result *apsd = smblib_get_apsd_result(chg);
-
+#endif
 	int rc = 0;
 	int sec_charger;
 
@@ -4675,7 +4678,9 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 
 	smblib_apsd_enable(chg, !chg->pd_active);
 
+#ifdef QCOM_BASE
 	update_sw_icl_max(chg, apsd->pst);
+#endif
 
 	if (chg->pd_active) {
 #ifndef QCOM_BASE
