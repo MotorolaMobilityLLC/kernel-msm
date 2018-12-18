@@ -8345,21 +8345,6 @@ static char *ebchg_str[] = {
 	[EB_OFF]		= "OFF",
 };
 
-int smblib_enable_dc_aicl(struct smb_charger *chg, bool enable)
-{
-	int rc = 0;
-
-	if (!chg)
-		return rc;
-#ifdef MMI_SHIP
-	rc = smblib_masked_write(chg, DCIN_AICL_OPTIONS_CFG_REG,
-				 DCIN_AICL_EN_BIT,
-				 enable ? DCIN_AICL_EN_BIT : 0);
-#endif
-	return rc;
-
-}
-
 int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
 				    union power_supply_propval *val)
 {
@@ -9380,7 +9365,6 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int cl_usb = -EINVAL;
 	int cl_pd = -EINVAL;
 	int cl_cc = -EINVAL;
-	bool prev_usbeb_pres = chip->mmi.usbeb_present;
 
 	int prev_step;
 	char eb_able = 0;
@@ -9494,11 +9478,6 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		}
 	} else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
 		charger_present = 1;
-
-	if (vbus_present || mmi->wls_present || !mmi->usbeb_present)
-		smblib_enable_dc_aicl(chip, false);
-	else if (mmi->usbeb_present && !prev_usbeb_pres)
-		smblib_enable_dc_aicl(chip, true);
 
 	rc = smblib_get_prop_from_bms(chip,
 				POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
