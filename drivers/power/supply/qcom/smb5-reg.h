@@ -339,7 +339,19 @@ enum {
 
 #define DCIN_LOAD_CFG_REG			(DCIN_BASE + 0x65)
 #define INPUT_MISS_POLL_EN_BIT			BIT(5)
-
+#define DCIN_ADAPTER_ALLOW_CFG_REG      (DCIN_BASE + 0x60)
+#define DCIN_ADAPTER_ALLOW_MASK              GENMASK(3, 0)
+enum {
+	DCIN_ADAPTER_ALLOW_5V		= 0,
+	DCIN_ADAPTER_ALLOW_9V		= 2,
+	DCIN_ADAPTER_ALLOW_5V_OR_9V	= 3,
+	DCIN_ADAPTER_ALLOW_12V		= 4,
+	DCIN_ADAPTER_ALLOW_5V_OR_12V	= 5,
+	DCIN_ADAPTER_ALLOW_9V_TO_12V	= 6,
+	DCIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V = 7,
+	DCIN_ADAPTER_ALLOW_5V_TO_9V	= 8,
+	DCIN_ADAPTER_ALLOW_5V_TO_12V	= 12,
+};
 /********************************
  *  TYPEC Peripheral Registers  *
  ********************************/
