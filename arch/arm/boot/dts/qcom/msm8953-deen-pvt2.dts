@@ -19,3 +19,7 @@
 / {
 	qcom,board-id = <0x4D 0xC200>;
 };
+
+&usb3 {
+	mmi,dcp-max-current = <1000>;
+};
