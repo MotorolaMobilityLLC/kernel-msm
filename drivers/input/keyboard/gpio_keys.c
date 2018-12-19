@@ -57,6 +57,12 @@ struct gpio_keys_drvdata {
 	struct gpio_button_data data[0];
 };
 
+extern unsigned int key_swap_algo(unsigned int code);
+unsigned int __attribute__((weak)) key_swap_algo(unsigned int code)
+{
+	return code;
+}
+
 /*
  * SYSFS interface for enabling/disabling keys and switches:
  *
@@ -373,7 +379,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
-		input_event(input, type, button->code, state);
+		input_event(input, type, key_swap_algo(button->code), state);
 	}
 	input_sync(input);
 }
@@ -632,7 +638,7 @@ static void gpio_keys_close(struct input_dev *input)
  * Translate OpenFirmware node properties into platform_data
  */
 static struct gpio_keys_platform_data *
-gpio_keys_get_devtree_pdata(struct device *dev)
+gpio_keys_get_devtree_pdata(struct device *dev, unsigned int *swap)
 {
 	struct device_node *node, *pp;
 	struct gpio_keys_platform_data *pdata;
@@ -640,6 +646,7 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 	int error;
 	int nbuttons;
 	int i;
+	unsigned int swap_code = 0;
 
 	node = dev->of_node;
 	if (!node)
@@ -695,6 +702,13 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 			return ERR_PTR(-EINVAL);
 		}
 
+		if (!of_property_read_u32(pp, "mmi,key-swap-code", &swap_code)) {
+			if (swap){
+				*swap = swap_code;
+				dev_info(dev, "Added swap key code %d\n", swap_code);
+			}
+		}
+
 		button->desc = of_get_property(pp, "label", NULL);
 
 		if (of_property_read_u32(pp, "linux,input-type", &button->type))
@@ -726,7 +740,7 @@ MODULE_DEVICE_TABLE(of, gpio_keys_of_match);
 #else
 
 static inline struct gpio_keys_platform_data *
-gpio_keys_get_devtree_pdata(struct device *dev)
+gpio_keys_get_devtree_pdata(struct device *dev, unsigned int *swap)
 {
 	return ERR_PTR(-ENODEV);
 }
@@ -741,10 +755,11 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	struct input_dev *input;
 	size_t size;
 	int i, error;
+	unsigned int swap = 0;
 	int wakeup = 0;
 
 	if (!pdata) {
-		pdata = gpio_keys_get_devtree_pdata(dev);
+		pdata = gpio_keys_get_devtree_pdata(dev, &swap);
 		if (IS_ERR(pdata))
 			return PTR_ERR(pdata);
 	}
@@ -762,6 +777,9 @@ static int gpio_keys_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to allocate input device\n");
 		return -ENOMEM;
 	}
+
+	if (swap)
+		input_set_capability(input, EV_KEY, swap);
 
 	ddata->pdata = pdata;
 	ddata->input = input;
