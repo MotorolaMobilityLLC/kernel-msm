@@ -512,7 +512,15 @@
 	interrupt-names = "hap-sc-irq", "hap-play-irq";
 	qcom,wave-samples = <0x3e 0x3e 0x3e 0x3e 0x3e
                         0x3e 0x3e 0x3e>;
-	qcom,vmax-mv = <2600>;
-	qcom,brake-pattern = <0x3 0x3 0x0 0x0>;
-	/delete-property/ qcom,en-brake; /* disable internal reverse braking */
+	qcom,wave-play-rate-us = <4255>;
+	qcom,actuator-type = <0>; //LRA
+	qcom,wave-shape = "sine";
+	qcom,vmax-mv = <2500>;
+	qcom,brake-pattern = <0x3 0x3 0x3 0x3>;
+	qcom,en-brake;
+	qcom,lra-auto-res-mode="qwd";
+	qcom,lra-high-z="opt1";
+	qcom,lra-res-cal-period = <4>;
+	qcom,correct-lra-drive-freq;
+	qcom,misc-trim-error-rc19p2-clk-reg-present;
 };
