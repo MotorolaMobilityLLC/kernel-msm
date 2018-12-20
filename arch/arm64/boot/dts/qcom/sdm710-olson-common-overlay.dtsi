@@ -153,6 +153,20 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&flip_det_default>;
 	};
+
+	key_swap {
+		compatible = "mmi,key_swap";
+		action-0 {
+			action-type = "swap";
+			code = <KEY_VOLUMEDOWN>;
+			swap = <KEY_VOLUMEUP>;
+		};
+		action-1 {
+			action-type = "swap";
+			code = <KEY_VOLUMEUP>;
+			swap = <KEY_VOLUMEDOWN>;
+		};
+	};
 };
 
 
