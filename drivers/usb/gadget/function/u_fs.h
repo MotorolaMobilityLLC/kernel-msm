@@ -21,7 +21,6 @@
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
 #include <linux/refcount.h>
-#include <linux/ipc_logging.h>
 
 #ifdef VERBOSE_DEBUG
 #ifndef pr_vdebug
@@ -289,8 +288,6 @@ struct ffs_data {
 	 * destroyed by ffs_epfiles_destroy().
 	 */
 	struct ffs_epfile		*epfiles;
-
-	void				*ipc_log;
 };
 
 
