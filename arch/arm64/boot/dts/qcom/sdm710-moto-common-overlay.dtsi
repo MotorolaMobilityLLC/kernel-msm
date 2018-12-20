@@ -641,7 +641,7 @@
 	};
 
 	synaptics_dsx_i2c@38 {
-		status = "/chosen","mmi,cli","true";
+		status = "ok";
 		compatible = "synaptics,synaptics_mmi";
 		reg = <0x38>;
 		interrupt-parent = <&tlmm>;
