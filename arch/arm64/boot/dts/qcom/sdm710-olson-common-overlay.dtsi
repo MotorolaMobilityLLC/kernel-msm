@@ -466,7 +466,6 @@
 	};
 
 	synaptics_dsx_i2c@38 {
-		status = "/chosen","mmi,cli","true";
 		synaptics,splash-screen-mode;
 		synaptics,control-dsi = <1>;
 		synaptics,bound-display = "dsi_boe_269_800x600_cmd_display";
