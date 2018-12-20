@@ -80,24 +80,31 @@
 };
 
 &reserved_memory {
-	ramoops_mem: ramoops_mem_region {
+	ramoops_mem {
+		compatible = "ramoops";
 		no-map;
-		reg = <0x0 0xae000000 0x0 0x80000>;
-		label = "ramoops_mem";
+		reg = <0x0 0xae000000 0x0 RAMOOPS_SIZE>;
+		console-size = <RAMOOPS_CONSOLE_SIZE>;
+		pmsg-size = <RAMOOPS_PMSG_SIZE>;
+		record-size = <RAMOOPS_RECORD_SIZE>;
 	};
 
 	wdog_cpuctx_mem: wdog_cpuctx_region {
 		no-map;
 		reg = <0x0 WDOG_CPUCTX_BASE_8937
-			0x0 WDOG_CPUCTX_SIZE_8937>;
-		label = "wdog_cpuctx_mem";
+				0x0 WDOG_CPUCTX_SIZE_8937>;
 	};
 
-	tzlog_bck_mem: tzlog_bck_region {
+	tzlog_dump_mem: tzlog_dump_mem_region {
 		no-map;
 		reg = <0x0 TZLOG_BCK_BASE_8937
-			0x0 TZLOG_BCK_SIZE>;
-		label = "tzlog_bck_mem";
+				0x0 TZLOG_BCK_SIZE>;
+	};
+
+	mmi_annotate_mem: mmi_annotate_mem_region {
+		no-map;
+		reg = <0x0 MMI_ANNOTATE_BASE_8937
+				0x0 MMI_ANNOTATE_SIZE>;
 	};
 };
 
@@ -129,6 +136,22 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+	};
+
+	wdog_cputctx {
+		compatible = "mmi,watchdog_cpu_ctx";
+		memory-region = <&wdog_cpuctx_mem>;
+	};
+
+	tzlog_dump {
+		compatible = "mmi,tzlog-dump";
+		memory-region = <&tzlog_dump_mem>;
+	};
+
+	mmi_annotate {
+		compatible = "mmi,annotate";
+		memory-region = <&mmi_annotate_mem>;
+		mem-size = <0x20000>;
 	};
 
 	sys_temp_support {
