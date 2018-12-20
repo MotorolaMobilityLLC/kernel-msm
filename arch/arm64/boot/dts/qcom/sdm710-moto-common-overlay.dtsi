@@ -133,6 +133,7 @@
 			gpios = <&pm660l_gpios 7 GPIO_ACTIVE_LOW>;
 			linux,input-type = <1>;
 			linux,code = <115>;
+			mmi,key-swap-code = <114>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 			linux,can-disable;
@@ -1129,5 +1130,11 @@
 		mmi,temperature-names = "front_temp",
 					"back_temp";
 		status = "ok";
+	};
+};
+
+&pm660_pon {
+	qcom,pon_2 {
+		mmi,key-swap-code = <115>;
 	};
 };
