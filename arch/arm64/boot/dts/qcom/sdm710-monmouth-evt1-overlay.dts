@@ -159,6 +159,12 @@
 	};
 };
 
+&qupv3_se7_i2c {
+	synaptics_dsx_i2c@38 {
+		status = "disable";
+	};
+};
+
 &qupv3_se10_i2c {
 	ldc2114@2a {
 		status = "disable";

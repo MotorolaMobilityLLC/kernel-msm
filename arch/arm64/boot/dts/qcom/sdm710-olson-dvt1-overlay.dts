@@ -295,6 +295,9 @@
 };
 
 &qupv3_se7_i2c {
+	synaptics_dsx_i2c@38 {
+		status = "disable";
+	};
 	raydium-ts@39 {
 		status = "ok";
 	};
