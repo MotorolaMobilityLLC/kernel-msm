@@ -286,6 +286,7 @@ enum dsi_dyn_clk_feature_type {
  * @DSI_CMD_SET_HBM_OFF:                   Turning HBM off
  * @DSI_CMD_SET_ACL_ON:                    Turning ACL on
  * @DSI_CMD_SET_ACL_OFF:                   Turning ACL off
+ * DSI_CMD_SET_HBM_DIM_OFF:		   Turning HBM DIM off
  * @DSI_CMD_SET_MAX
  */
 enum dsi_cmd_set_type {
@@ -316,6 +317,9 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_HBM_OFF,
 	DSI_CMD_SET_ACL_ON,
 	DSI_CMD_SET_ACL_OFF,
+
+	DSI_CMD_SET_HBM_DIM_OFF,
+
 	DSI_CMD_SET_MAX
 };
 
