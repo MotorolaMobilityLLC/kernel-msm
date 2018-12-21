@@ -322,6 +322,10 @@ static inline void mipi_dsi_set_drvdata(struct mipi_dsi_device *dsi, void *data)
 	dev_set_drvdata(&dsi->dev, data);
 }
 
+int mipi_dsi_dcs_get_elvss_data(struct mipi_dsi_device *dsi);
+int mipi_dsi_dcs_get_elvss_data_1(struct mipi_dsi_device *dsi);
+int mipi_dsi_dcs_set_elvss_dim_off(struct mipi_dsi_device *dsi, u8 val);
+
 int mipi_dsi_driver_register_full(struct mipi_dsi_driver *driver,
 				  struct module *owner);
 void mipi_dsi_driver_unregister(struct mipi_dsi_driver *driver);
