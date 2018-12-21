@@ -14,6 +14,7 @@
 #include "sdm632-channel-common-overlay.dtsi"
 
 #define CHANNEL_RADIO_NA 3
+#define CHANNEL_RADIO_TMO 4
 
 &i2c_1 {
 		tps61280@75 {
