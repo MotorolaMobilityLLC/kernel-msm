@@ -885,4 +885,13 @@ config INPUT_SC27XX_VIBRA
 	  To compile this driver as a module, choose M here. The module will
 	  be called sc27xx_vibra.
 
+config INPUT_MMI_KEY_SWAP
+	tristate "MMI volume keys swap support"
+	depends on INPUT_QPNP_POWER_ON && KEYBOARD_GPIO
+	help
+	  Say Y to enable support MMI key swap.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called key_swap.
+
 endif
