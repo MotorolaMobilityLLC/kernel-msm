@@ -1220,6 +1220,141 @@ end:
 	return rc;
 }
 
+static int dsi_display_read_elvss_status(struct dsi_display_ctrl *ctrl,
+		struct dsi_panel *panel)
+{
+	int rc = 0;
+	struct dsi_cmd_desc cmds;
+	u8 data[] = {06, 01, 00, 01, 00, 00, 01, 0xB7};
+	u32 flags = 0;
+	u8 *payload;
+	int size, j;
+	u8 elvss_val;
+	pr_info("++\n");
+
+	if (!panel || !ctrl || !ctrl->ctrl)
+		return -EINVAL;
+	pr_info("1++\n");
+	cmds.msg.type = data[0];
+	cmds.last_command = (data[1] == 1 ? true : false);
+	cmds.msg.channel = data[2];
+	cmds.msg.flags |= (data[3] == 1 ? MIPI_DSI_MSG_REQ_ACK : 0);
+	cmds.msg.ctrl = 0;
+	cmds.post_wait_ms = cmds.msg.wait_ms = data[4];
+	cmds.msg.tx_len = ((data[5] << 8) | (data[6]));
+
+	size = cmds.msg.tx_len * sizeof(u8);
+	payload = kzalloc(size, GFP_KERNEL);
+	if (!payload) {
+		return -ENOMEM;
+	}
+
+	for (j = 0; j < cmds.msg.tx_len; j++)
+		payload[j] = data[7+j];
+
+	cmds.msg.tx_buf = payload;
+	/*
+	 * When DSI controller is not in initialized state, we do not want to
+	 * read reg and hence we defer until next read
+	 * happen.
+	 */
+	/*
+	if (dsi_ctrl_validate_host_state(ctrl->ctrl))
+		return 0;
+	*/
+	flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ |
+		  DSI_CTRL_CMD_CUSTOM_DMA_SCHED);
+
+	if (cmds.last_command) {
+		cmds.msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
+		flags |= DSI_CTRL_CMD_LAST_COMMAND;
+	}
+	cmds.msg.rx_buf = &elvss_val;
+	cmds.msg.rx_len = 1;
+	rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmds.msg, flags);
+	if (rc <= 0) {
+		pr_err("rx cmd transfer failed rc=%d\n", rc);
+		goto error;
+	}
+	pr_info("elvss val = 0x%x\n", elvss_val);
+error:
+	if (elvss_val != 0)
+		return elvss_val;
+	return 0;
+}
+
+static int dsi_display_elvss_read(struct dsi_display *display)
+{
+	struct dsi_display_ctrl *m_ctrl;
+	int rc;
+	pr_info("++\n");
+
+	m_ctrl = &display->ctrl[display->cmd_master_idx];
+
+	rc = dsi_display_cmd_engine_enable(display);
+	if (rc) {
+		pr_err("cmd engine enable failed\n");
+		return 0;
+	}
+
+	rc = dsi_display_read_elvss_status(m_ctrl, display->panel);
+	if (rc <= 0) {
+		pr_err("[%s] read elvss failed on master,rc=%d\n",
+		       display->name, rc);
+		goto exit;
+	}
+
+exit:
+	dsi_display_cmd_engine_disable(display);
+	return rc;
+}
+
+int dsi_display_read_elvss_volt(void *display)
+{
+	struct dsi_display *dsi_display = display;
+	struct dsi_panel *panel;
+	int rc = 0x1;
+	int elvss_vl = 0;
+	static bool read_flag = false;
+
+	if (read_flag)
+		return rc;
+
+	if (!dsi_display || !dsi_display->panel)
+		return -EINVAL;
+
+	panel = dsi_display->panel;
+
+	dsi_panel_acquire_panel_lock(panel);
+
+	if (!panel->panel_initialized) {
+		pr_info("Panel not initialized\n");
+		goto release_panel_lock;
+	}
+
+	dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
+		DSI_ALL_CLKS, DSI_CLK_ON);
+
+	dsi_panel_get_elvss_data(panel);
+	elvss_vl = dsi_display_elvss_read(dsi_display);
+	dsi_panel_get_elvss_data_1(panel);
+	if ( elvss_vl > 0) {
+		dsi_panel_set_elvss_dim_off(panel, elvss_vl);
+		dsi_panel_parse_elvss_config(panel, elvss_vl);
+		read_flag = true;
+	} else {
+		elvss_vl = 0x92;
+		dsi_panel_set_elvss_dim_off(panel, elvss_vl);
+		pr_info("read elvss volt failed\n");
+	}
+	dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
+		DSI_ALL_CLKS, DSI_CLK_OFF);
+
+release_panel_lock:
+	dsi_panel_release_panel_lock(panel);
+	return rc;
+}
+
 static void _dsi_display_continuous_clk_ctrl(struct dsi_display *display,
 					     bool enable)
 {
@@ -8003,8 +8138,10 @@ int dsi_display_post_enable(struct dsi_display *display)
 		pr_err("Invalid params\n");
 		return -EINVAL;
 	}
-
 	mutex_lock(&display->display_lock);
+
+	if (display->panel->panel_hbm_dim_off)
+		dsi_display_read_elvss_volt(display);
 
 	if (display->panel->cur_mode->dsi_mode_flags & DSI_MODE_FLAG_POMS) {
 		if (display->config.panel_mode == DSI_OP_CMD_MODE)
