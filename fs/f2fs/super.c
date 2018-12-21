@@ -994,7 +994,15 @@ static void f2fs_umount_end(struct super_block *sb, int flags)
 			struct cp_control cpc = {
 				.reason = CP_UMOUNT,
 			};
-			f2fs_quota_off_umount(sb);
+			int locked, err;
+
+			/* only failed during mount/umount/freeze/quotactl */
+			locked = down_read_trylock(&sb->s_umount);
+			err = f2fs_quota_sync(sb, -1);
+			if (locked)
+				up_read(&sb->s_umount);
+			if (err)
+				return;
 			write_checkpoint(F2FS_SB(sb), &cpc);
 		}
 	}
@@ -1776,7 +1784,7 @@ static int f2fs_enable_quotas(struct super_block *sb)
 	return 0;
 }
 
-static int f2fs_quota_sync(struct super_block *sb, int type)
+int f2fs_quota_sync(struct super_block *sb, int type)
 {
 	struct quota_info *dqopt = sb_dqopt(sb);
 	int cnt;
