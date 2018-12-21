@@ -1,0 +1,51 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/msm-clocks-8953.h>
+
+#include "sdm632-channel-na-common-overlay.dtsi"
+
+/ {
+	model = "channel";
+	qcom,msm-id = <349 0x0>;
+	qcom,board-id = <(CHANNEL_RADIO_TMO << 8 | 0x4B) 0xB000>;
+};
+
+/*
+ * Channel RoW HW rev DVT2 specific changes go here
+ */
+&i2c_2 { /* capsensor */
+	abova96t316@20 {
+		label = "AbovCapSense";
+		compatible = "abov,abov_sar";
+		reg = <0x20>;
+		cap_vdd-supply = <&pm8953_l10>;
+		//cap_svdd-supply = <&pm660_l14>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <86 0x2008>;
+		gpios = <&tlmm 86 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		cap,use_channel = <0x0f>;
+		cap,use_channel_top = <0x01>;
+		cap,use_channel_bottom = <0x00>;
+		cap,scan_period = <0x02>;
+		reg_array_len = <3>;
+		reg_array_val = <0x07 0x00 0x08 0x07 0xFB 0x01>;
+	};
+};
+/*
+ * Channel NA HW rev DVT2 specific changes go here
+ */
