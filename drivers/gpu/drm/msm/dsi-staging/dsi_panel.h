@@ -264,6 +264,8 @@ struct dsi_panel {
 	u32 disp_on_chk_val;
 	bool no_panel_on_read_support;
 
+	bool panel_hbm_dim_off;
+
 	struct panel_param *param_cmds;
 };
 
@@ -391,5 +393,10 @@ void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
 
 int dsi_panel_set_param(struct dsi_panel *panel,
 			struct msm_param_info *param_info);
+
+int dsi_panel_get_elvss_data(struct dsi_panel *panel);
+int dsi_panel_get_elvss_data_1(struct dsi_panel *panel);
+int dsi_panel_set_elvss_dim_off(struct dsi_panel *panel, u8 val);
+int dsi_panel_parse_elvss_config(struct dsi_panel *panel, u8 elv_vl);
 
 #endif /* _DSI_PANEL_H_ */
