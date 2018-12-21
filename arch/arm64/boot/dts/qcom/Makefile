@@ -38,7 +38,8 @@ dtbo-$(CONFIG_CHANNEL_DTB) += \
 	sdm632-channel-pvtb-overlay.dtbo \
 	sdm632-channel-pvtc-overlay.dtbo \
 	sdm632-channel-na-evt-overlay.dtbo \
-	sdm632-channel-na-dvt1b-overlay.dtbo
+	sdm632-channel-na-dvt1b-overlay.dtbo \
+	sdm632-channel-tmo-dvt-overlay.dtbo
 
 dtbo-$(CONFIG_SURFNA_DTB) += msm8940-surfna-evt-overlay.dtbo
 
@@ -96,6 +97,8 @@ sdm632-channel-pvtc-overlay.dtbo-base := \
 sdm632-channel-na-evt-overlay.dtbo-base := \
 	sdm632-channel-base.dtb
 sdm632-channel-na-dvt1b-overlay.dtbo-base := \
+	sdm632-channel-base.dtb
+sdm632-channel-tmo-dvt-overlay.dtbo-base := \
 	sdm632-channel-base.dtb
 
 msm8940-surfna-evt-overlay.dtbo-base := \
