@@ -732,14 +732,16 @@
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 
+			qcom,mdss-mdp-transfer-time-us = <12500>;
+
 			qcom,mdss-dsi-hbm-dim-off-command = [
-					39 00 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 03 B7 01 58
-					15 01 00 00 00 00 02 B0 07
-					15 01 00 00 00 00 02 B7 12
-					39 00 00 00 00 00 03 F0 5A 5A];
-				};
-			};
+				39 00 00 00 00 00 03 F0 5A 5A
+				39 00 00 00 00 00 03 B7 01 58
+				15 01 00 00 00 00 02 B0 07
+				15 01 00 00 00 00 02 B7 12
+				39 00 00 00 00 00 03 F0 5A 5A];
+		};
+	};
 };
 
 &mot_tianma_639_1080p_cmd_v1 {
