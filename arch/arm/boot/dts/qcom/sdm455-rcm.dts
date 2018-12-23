@@ -21,8 +21,6 @@
 	model = "Qualcomm Technologies, Inc. SDM 630 PM660 + PM660L RCM";
 	compatible = "qcom,sdm630-cdp", "qcom,sdm630", "qcom,cdp";
 	qcom,board-id = <21 0>;
-	qcom,pmic-id = <0x0001001b 0x0101011a 0x0 0x0>,
-			<0x0001001b 0x0201011a 0x0 0x0>;
 };
 
 &tavil_snd {
