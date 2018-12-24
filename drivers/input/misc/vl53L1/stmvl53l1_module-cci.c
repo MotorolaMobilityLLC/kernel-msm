@@ -473,7 +473,8 @@ static int32_t stmvl53l1_platform_remove(struct platform_device *pdev)
 
 		devm_pinctrl_put(tof_ctrl->pinctrl_info.pinctrl);
 	}
-
+	/* main driver cleanup */
+	stmvl53l1_cleanup(vl53l1_data);
 	/* release gpios */
 	stmvl53l1_release_gpios_cci(tof_ctrl);
 
@@ -528,7 +529,6 @@ int stmvl53l1_power_up_cci(void *object)
 		vl53l1_info("slow power on");
 	} else
 		vl53l1_wanrmsg("no power control");
-
 	rc = camera_io_init(&tof_ctrl->io_master_info);
 	if (rc < 0)
 		vl53l1_errmsg("cci init failed: rc: %d", rc);
@@ -560,7 +560,6 @@ int stmvl53l1_power_down_cci(void *cci_object)
 	} else if (tof_ctrl->pwren_gpio != -1) {
 		gpio_set_value_cansleep(tof_ctrl->pwren_gpio, 0);
 	}
-
 	camera_io_release(&tof_ctrl->io_master_info);
 
 	vl53l1_dbgmsg("power off");
