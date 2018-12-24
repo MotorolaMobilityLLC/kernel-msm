@@ -436,6 +436,13 @@ static int reset_release(struct stmvl53l1_data *data)
 	if (!data->reset_state)
 		return 0;
 
+	vl53l1_errmsg("turn on vdd\n");
+	rc = stmvl53l1_module_func_tbl.power_up(data->client_object);
+	if (rc) {
+		vl53l1_errmsg("%d,error rc %d\n", __LINE__, rc);
+		return rc;
+	}
+
 	rc = stmvl53l1_module_func_tbl.reset_release(data->client_object);
 	if (rc)
 		vl53l1_errmsg("reset release fail rc=%d\n", rc);
@@ -448,7 +455,6 @@ static int reset_release(struct stmvl53l1_data *data)
 static int reset_hold(struct stmvl53l1_data *data)
 {
 	int rc;
-
 	if (data->reset_state)
 		return 0;
 
@@ -458,6 +464,13 @@ static int reset_hold(struct stmvl53l1_data *data)
 	rc = stmvl53l1_module_func_tbl.reset_hold(data->client_object);
 	if (!rc)
 		data->reset_state = 1;
+
+	vl53l1_errmsg("turn off vdd\n");
+	rc = stmvl53l1_module_func_tbl.power_down(data->client_object);
+	if (rc) {
+		vl53l1_errmsg("%d,error rc %d\n", __LINE__, rc);
+		return rc;
+	}
 
 	return rc;
 }
@@ -800,7 +813,12 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 		rc = store_last_error(data, rc);
 		goto done;
 	}
+	rc = VL53L1_PerformRefSpadManagement(&data->stdev);
 
+	if (rc) {
+		vl53l1_errmsg("VL53L1_PerformRefSpadManagement fail => %d", rc);
+		rc = store_last_error(data, rc);
+	}
 	rc = stmvl53l1_sendparams(data);
 	if (rc)
 		goto done;
@@ -4326,12 +4344,6 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 	data->is_calibrating = false;
 	data->last_error = VL53L1_ERROR_NONE;
 	data->is_device_remove = false;
-
-	rc = stmvl53l1_module_func_tbl.power_up(data->client_object);
-	if (rc) {
-		vl53l1_errmsg("%d,error rc %d\n", __LINE__, rc);
-		goto exit_ipp_cleanup;
-	}
 	rc = reset_release(data);
 	if (rc)
 		goto exit_ipp_cleanup;
@@ -4595,7 +4607,6 @@ void stmvl53l1_cleanup(struct stmvl53l1_data *data)
 	/* be sure device is put under reset */
 	data->force_device_on_en = false;
 	reset_hold(data);
-	stmvl53l1_module_func_tbl.power_down(data->client_object);
 	vl53l1_dbgmsg("done\n");
 	deallocate_dev_id(data->id);
 	data->is_device_remove = true;
