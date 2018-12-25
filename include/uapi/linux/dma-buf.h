@@ -42,5 +42,6 @@ struct dma_buf_sync {
 #define DMA_BUF_BASE		'b'
 #define DMA_BUF_IOCTL_SYNC	_IOW(DMA_BUF_BASE, 0, struct dma_buf_sync)
 #define DMA_BUF_SET_NAME	_IOW(DMA_BUF_BASE, 1, const char *)
+#define DMA_BUF_IOCTL_IMPORT_BUF_ADD_BY_MOTO _IO(DMA_BUF_BASE, 0xCC)
 
 #endif
