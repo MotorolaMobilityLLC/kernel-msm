@@ -352,6 +352,9 @@ static long dma_buf_ioctl(struct file *file,
 				ret = dma_buf_begin_cpu_access(dmabuf, dir);
 
 		return ret;
+	case DMA_BUF_IOCTL_IMPORT_BUF_ADD_BY_MOTO:
+		dmabuf->ops->import_buf_add_by_moto(dmabuf);
+		return 0;
 	default:
 		return -ENOTTY;
 	}
