@@ -369,6 +369,16 @@ struct dma_buf_ops {
 	 * will be populated with the buffer's flags.
 	 */
 	int (*get_flags)(struct dma_buf *dmabuf, unsigned long *flags);
+
+	/**
+	 *  @import_buf_add_by_moto:
+	 *
+	 *  This is called by gr_ion_alloc added by Motorola
+	 *
+	 *  Returns:
+	 *  always return 0
+	 */
+	int (*import_buf_add_by_moto)(struct dma_buf *);
 };
 
 /**
