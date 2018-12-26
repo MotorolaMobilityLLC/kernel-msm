@@ -448,6 +448,9 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chg->external_vbus = of_property_read_bool(node,
 						"qcom,external-vbus");
 
+	chg->support_mods = of_property_read_bool(node,
+						"qcom,support-mods");
+
 	rc = of_property_read_u32(node,
 			"qcom,fcc-max-ua", &chip->dt.batt_profile_fcc_ua);
 	if (rc < 0)
@@ -761,7 +764,7 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
 	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
 	POWER_SUPPLY_PROP_USB_OTG,
-	POWER_SUPPLY_PROP_EXTERNAL_VBUS,
+	POWER_SUPPLY_PROP_VBUS_CONFLICT,
 };
 
 #define SDP_CURRENT_UA			500000
@@ -969,8 +972,8 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_USB_OTG:
 		val->intval = chg->mmi.is_otg_enable;
 		break;
-	case POWER_SUPPLY_PROP_EXTERNAL_VBUS:
-		val->intval = chg->external_vbus;
+	case POWER_SUPPLY_PROP_VBUS_CONFLICT:
+		val->intval = !chg->external_vbus && chg->support_mods;
 		break;
 	default:
 		pr_err("get prop %d is not supported in usb\n", psp);
