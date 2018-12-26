@@ -2134,22 +2134,6 @@ static int ngd_slim_runtime_suspend(struct device *device)
 	struct platform_device *pdev = to_platform_device(device);
 	struct msm_slim_ctrl *dev = platform_get_drvdata(pdev);
 	int ret = 0;
-/* MMI_STOPSHIP <audio>: workaround for FC slimbus issue,
- * will revert this change after find the root caues
- */
-	u32 audio_slimbus_workaround = 0;
-	struct device_node *n = of_find_node_by_path("/soc/qcom,msm-audio-apr/qcom,q6core-audio/sound");
-	of_property_read_u32(n, "foles,audio_slimbus_workaround", &audio_slimbus_workaround);
-
-	SLIM_INFO(dev, "foles,audio_slimbus_workaround :%d\n", audio_slimbus_workaround);
-
-	of_node_put(n);
-	if (audio_slimbus_workaround == 1)
-		return ret;
-/* MMI_STOPSHIP <audio>: workaround for FC slimbus issue,
- * will revert this change after find the root caues  --- end
- */
-
 
 	mutex_lock(&dev->tx_lock);
 	if (dev->qmi.handle != NULL) {
