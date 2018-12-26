@@ -39,10 +39,6 @@
 	/delete-node/ rf_pa0_therm;
 };
 
-&ufshc_mem {
-	/delete-property/ spm-level;
-};
-
 &tlmm {
 	/delete-node/ nfc;
 	/delete-node/ fpc_reset_int;
