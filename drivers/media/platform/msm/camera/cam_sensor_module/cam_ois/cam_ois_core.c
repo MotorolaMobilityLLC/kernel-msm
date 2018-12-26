@@ -20,6 +20,9 @@
 #include "cam_res_mgr_api.h"
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
+#ifdef CONFIG_OIS_BM24218
+#include "cam_ois_bm24218.h"
+#endif
 
 int32_t cam_ois_construct_default_power_setting(
 	struct cam_sensor_power_ctrl_t *power_info)
@@ -295,6 +298,7 @@ static int cam_ois_slaveInfo_pkt_parser(struct cam_ois_ctrl_t *o_ctrl,
 	return rc;
 }
 
+#ifndef CONFIG_OIS_BM24218
 static int cam_ois_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 {
 	uint16_t                           total_bytes = 0;
@@ -414,6 +418,7 @@ release_firmware:
 
 	return rc;
 }
+#endif
 
 /**
  * cam_ois_pkt_parse - Parse csl packet
@@ -593,18 +598,24 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		}
 
 		if (o_ctrl->ois_fw_flag) {
+#ifdef CONFIG_OIS_BM24218
+			rc = cam_ois_bm24218_fw_download(o_ctrl);
+#else
 			rc = cam_ois_fw_download(o_ctrl);
+#endif
 			if (rc) {
 				CAM_ERR(CAM_OIS, "Failed OIS FW Download");
 				goto pwr_dwn;
 			}
 		}
 
+#ifndef CONFIG_OIS_BM24218
 		rc = cam_ois_apply_settings(o_ctrl, &o_ctrl->i2c_init_data);
 		if (rc < 0) {
 			CAM_ERR(CAM_OIS, "Cannot apply Init settings");
 			goto pwr_dwn;
 		}
+#endif
 
 		if (o_ctrl->is_ois_calib) {
 			rc = cam_ois_apply_settings(o_ctrl,
@@ -614,6 +625,10 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 				goto pwr_dwn;
 			}
 		}
+
+#ifdef CONFIG_OIS_BM24218
+		cam_ois_bm24218_after_cal_data_dl(o_ctrl);
+#endif
 
 		rc = delete_request(&o_ctrl->i2c_init_data);
 		if (rc < 0) {

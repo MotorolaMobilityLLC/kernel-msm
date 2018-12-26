@@ -9,3 +9,4 @@ ccflags-y += -Idrivers/media/platform/msm/camera/cam_smmu/
 ccflags-y += -Idrivers/media/platform/msm/camera/cam_core
 
 obj-$(CONFIG_SPECTRA_CAMERA) += cam_ois_dev.o cam_ois_core.o cam_ois_soc.o
+obj-$(CONFIG_OIS_BM24218) += cam_ois_bm24218.o
