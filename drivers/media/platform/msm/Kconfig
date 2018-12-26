@@ -13,6 +13,13 @@ menuconfig SPECTRA_CAMERA
       Enabling this adds support for the camera driver stack including sensor,
       IFE and postprocessing drivers.
 
+menuconfig OIS_BM24218
+    bool "Motorola, Inc. For Rohm BM24218 OIS driver"
+    depends on SPECTRA_CAMERA
+    default n
+    ---help---
+      Say Y here to enable selecting the ROHM BM24218 OIS driver.
+
 source "drivers/media/platform/msm/vidc/Kconfig"
 source "drivers/media/platform/msm/sde/Kconfig"
 source "drivers/media/platform/msm/npu/Kconfig"
