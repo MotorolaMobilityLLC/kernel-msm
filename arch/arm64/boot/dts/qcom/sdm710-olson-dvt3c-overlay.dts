@@ -18,11 +18,11 @@
 
 / {
 	qcom,msm-id = <360 0x0>;
-	qcom,board-id = <0 0xB300>;
+	qcom,board-id = <0 0xB3C0>;
 };
 
 /*
- * Olson HW rev DVT3 specific changes go here
+ * Olson HW rev DVT3C specific changes go here
  */
 &soc {
 	dsi_smd_601_1080p_cmd_display: qcom,dsi-display@18 {
