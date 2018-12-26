@@ -90,18 +90,13 @@ qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <50000>;
 qcom,mdss-dsi-no-panel-on-read-support;
 qcom,cont-splash-enabled;
-//qcom,esd-check-enabled;
-qcom,mdss-dsi-panel-status-command = [
-	06 01 00 01 05 00 01 D9
-	06 01 00 01 05 00 01 09];
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 09];
 qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-qcom,mdss-dsi-panel-status-read-length = <4 4>;
-qcom,mdss-dsi-panel-status-valid-params = <1 1>;
+qcom,mdss-dsi-panel-status-read-length = <3>;
 qcom,mdss-dsi-panel-status-value =
-	<0x80 0x80>,
-	<0x80 0x80>;
-qcom,mdss-dsi-panel-max-error-count = <3>;
+	<0x80 0x73 0x06>;
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
