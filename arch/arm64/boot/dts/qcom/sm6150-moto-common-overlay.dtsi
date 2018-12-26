@@ -299,6 +299,7 @@
 	qcom,lower-limit-capacity = <60>;
 	qcom,usbpd-phandle = <&pm6150_pdphy>;
 	qcom,disable-suspend-on-collapse;
+	qcom,support-mods;
 };
 
 &pm6150_pdphy {
