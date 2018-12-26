@@ -53,6 +53,13 @@ config MSMB_CAMERA_DEBUG
     ---help---
       Enable printk() debug for msm camera 2.0
 
+menuconfig OIS_BM24218
+    bool "Motorola, Inc. For Rohm BM24218 OIS driver"
+    depends on SPECTRA_CAMERA
+    default n
+    ---help---
+      Say Y here to enable selecting the ROHM BM24218 OIS driver.
+
 if MSMB_CAMERA
 source "drivers/media/platform/msm/camera_v2/Kconfig"
 endif # MSMB_CAMERA
