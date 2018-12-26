@@ -57,7 +57,7 @@
 		"opencl",	/* 40 */
 		"openmx",	/* 41 */
 		"altmx",	/* 42 */
-		"undefined",	/* 43 */
+		"openpe",	/* 43 */
 		"undefined",	/* 44 */
 		"undefined",	/* 45 */
 		"undefined",	/* 46 */
