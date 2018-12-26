@@ -753,6 +753,7 @@ struct smb_charger {
 	int			pd_contract_uv;
 	struct delayed_work	pd_contract_work;
 	bool			external_vbus;
+	bool			support_mods;
 	bool			suspended;
 	u32			source_current_ma;
 	bool			reverse_boost;
