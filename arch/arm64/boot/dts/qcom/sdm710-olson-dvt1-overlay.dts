@@ -74,6 +74,10 @@
 };
 
 &soc {
+	fpc_fpc1020 {
+		irq = <&tlmm 23 0>;
+	};
+
 	dsi_auo_139_480x480_cmd_dvt1_display: qcom,dsi-display@22 {
 		compatible = "qcom,dsi-display";
 		label = "dsi_auo_139_480x480_cmd_dvt1_display";
