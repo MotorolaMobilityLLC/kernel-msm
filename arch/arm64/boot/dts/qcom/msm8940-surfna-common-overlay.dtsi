@@ -251,7 +251,7 @@
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1800>;
 	qcom,stepchg-iterm-ma = <125>;
-	qcom,enable-hvdcp-9v;
+	/delete-property/ qcom,enable-hvdcp-9v;
 	qcom,weak-charger-check-enable;
 	qcom,temp-warm-current-ma = <1500>;
 	qcom,temp-cool-current-ma = <900>;
