@@ -2039,6 +2039,8 @@ static int qpnp_pon_read_gen2_pon_off_reason(struct qpnp_pon *pon, u16 *reason,
 	rc = qpnp_pon_read(pon, QPNP_PON_OFF_REASON(pon), &reg);
 	if (rc)
 		return rc;
+	dev_info(pon->dev, "PON Register , addr=0x%04X, val=0x%x\n",
+			QPNP_PON_OFF_REASON(pon), (u8)reg);
 
 	if (reg & QPNP_GEN2_POFF_SEQ) {
 		rc = qpnp_pon_read(pon, QPNP_POFF_REASON1(pon), &reg1);
@@ -2046,6 +2048,8 @@ static int qpnp_pon_read_gen2_pon_off_reason(struct qpnp_pon *pon, u16 *reason,
 			return rc;
 		*reason = (u8)reg1;
 		*reason_index_offset = 0;
+		dev_info(pon->dev, "PON Register , addr=0x%04X, val=0x%x\n",
+				QPNP_POFF_REASON1(pon), (u8)buf[0]);
 	} else if (reg & QPNP_GEN2_FAULT_SEQ) {
 		rc = regmap_bulk_read(pon->regmap, QPNP_FAULT_REASON1(pon), buf,
 				      2);
@@ -2056,12 +2060,18 @@ static int qpnp_pon_read_gen2_pon_off_reason(struct qpnp_pon *pon, u16 *reason,
 		}
 		*reason = buf[0] | (u16)(buf[1] << 8);
 		*reason_index_offset = POFF_REASON_FAULT_OFFSET;
+		dev_info(pon->dev, "PON Register , addr=0x%04X, val=0x%x\n",
+				QPNP_FAULT_REASON1(pon), (u8)buf[0]);
+		dev_info(pon->dev, "PON Register , addr=0x%04X, val=0x%x\n",
+				QPNP_FAULT_REASON1(pon), (u8)buf[1]);
 	} else if (reg & QPNP_GEN2_S3_RESET_SEQ) {
 		rc = qpnp_pon_read(pon, QPNP_S3_RESET_REASON(pon), &reg1);
 		if (rc)
 			return rc;
 		*reason = (u8)reg1;
 		*reason_index_offset = POFF_REASON_S3_RESET_OFFSET;
+		dev_info(pon->dev, "PON Register , addr=0x%04X, val=0x%x\n",
+				QPNP_S3_RESET_REASON(pon), (u8)buf[0]);
 	}
 
 	return 0;
