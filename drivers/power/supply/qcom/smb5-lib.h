@@ -480,6 +480,7 @@ struct mmi_params {
 	int			batt_health;
 	int			max_chrg_temp;
 	int			is_otg_enable;
+	bool			force_chg_suspend;
 };
 
 struct smb_charger {
