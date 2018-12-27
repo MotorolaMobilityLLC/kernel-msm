@@ -35,25 +35,12 @@
 };
 
 &inductive_power_key {
+	status = "ok";
 	interrupts = <116 0>;
-	configs {
-		config-ver = <2>;
-		config-normal {
-			config-data = [
-				0C 11 /*EN*/
-				0E 17 /*GAIN0*/
-				0F 01 /*LP_SCAN_RATE*/
-				13 01 /*LP_BASE_INC*/
-				15 01 /*NP_BASE_INC*/
-				16 00 /*BTPAUSE_MAXWIN*/
-				20 29 /*SENSOR0_CFG*/
-				28 00 /*FTF1_2*/
-			];
-		};
-	};
 };
 
 &inductive_volume_keys {
+	status = "ok";
 	configs {
 		config-ver = <1>;
 		config-normal {
