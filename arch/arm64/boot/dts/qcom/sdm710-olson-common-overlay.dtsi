@@ -139,7 +139,7 @@
 		status = "ok";
 		compatible = "fpc,fpc1020";
 		reg = <0>;
-		irq = <&tlmm 23 0>;
+		irq = <&tlmm 26 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&fpc1020_reset_default>;
 	};
