@@ -78,7 +78,12 @@
 	};
 };
 
+&inductive_power_key {
+	status = "ok";
+};
+
 &inductive_volume_keys {
+	status = "ok";
 	configs {
 		config-ver = <2>;
 		config-normal {

@@ -436,6 +436,34 @@
 			};
 		};
 	};
+
+        ldc2112_irq { /* TI,LDC2112 */
+                ldc2112_default: default {
+                        mux {
+                                pins = "gpio43";
+                                function = "gpio";
+                        };
+                        config {
+                                pins = "gpio43";
+                                drive-strength = <2>;
+                                bias-pull-up;
+                        };
+                };
+        };
+
+        ldc2114_irq { /* TI,LDC2114 */
+                ldc2114_default: default {
+                        mux {
+                                pins = "gpio3";
+                                function = "gpio";
+                        };
+                        config {
+                                pins = "gpio3";
+                                drive-strength = <2>;
+                                bias-pull-up;
+                        };
+                };
+        };
 };
 
 &reserved_memory{
@@ -547,6 +575,32 @@
 			>;
 		};
  	};
+
+        inductive_power_key: ldc2114@2a {
+                status = "disable";
+                compatible = "ti,ldc2114";
+                reg = <0x2a>;
+                interrupt-parent = <&tlmm>;
+                interrupts = <43 0>;
+                gpios = <&tlmm 13 0>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&ldc2112_default>;
+                configs {
+                        config-ver = <4>;
+                        config-normal {
+                                config-data = [
+                                        0C 11 /*EN*/
+                                        0E 17 /*GAIN0*/
+                                        0F 01 /*LP_SCAN_RATE*/
+                                        13 01 /*LP_BASE_INC*/
+                                        15 01 /*NP_BASE_INC*/
+                                        16 00 /*BTPAUSE_MAXWIN*/
+                                        20 29 /*SENSOR0_CFG*/
+                                        28 00 /*FTF1_2*/
+                                ];
+                        };
+                };
+        };
 };
 
 &qupv3_se10_i2c {
@@ -590,6 +644,33 @@
 			>;
 		};
  	};
+
+        inductive_volume_keys: ldc2114@2a {
+                status = "disable";
+                compatible = "ti,ldc2114";
+                reg = <0x2a>;
+                interrupt-parent = <&tlmm>;
+                interrupts = <3 0>;
+                gpios = <&tlmm 16 0>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&ldc2114_default>;
+                configs {
+                        config-ver = <3>;
+                        config-normal {
+                                config-data = [
+                                        0C 33 /*EN*/
+                                        0E 13 /*GAIN0*/
+                                        0F 01 /*LP_SCAN_RATE*/
+                                        10 13 /*GAIN1*/
+                                        13 07 /*LP_BASE_INC*/
+                                        15 07 /*NP_BASE_INC*/
+                                        16 33 /*BTPAUSE_MAXWIN*/
+                                        20 59 /*SENSOR0_CFG*/
+                                        22 59 /*SENSOR1_CFG*/
+                                ];
+                        };
+                };
+        };
 };
 
 &qupv3_se9_2uart {

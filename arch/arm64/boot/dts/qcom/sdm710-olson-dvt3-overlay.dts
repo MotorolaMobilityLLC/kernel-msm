@@ -55,6 +55,14 @@
 	};
 };
 
+&inductive_power_key {
+        status = "ok";
+};
+
+&inductive_volume_keys {
+        status = "ok";
+};
+
 &mot_smd_601_1080p_cmd_v0 {
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0d>;
