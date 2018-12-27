@@ -153,10 +153,6 @@
 	aw869x_haptic@5a {
 		status = "disable";
 	};
-
-	ldc2114@2a {
-		status = "disable";
-	};
 };
 
 &qupv3_se7_i2c {
@@ -166,10 +162,6 @@
 };
 
 &qupv3_se10_i2c {
-	ldc2114@2a {
-		status = "disable";
-	};
-
 	/* Allow channels 0,1,2,3 on monmouth */
 	sx933x@28 {
 		Semtech,button-flag = <0x0F>;
