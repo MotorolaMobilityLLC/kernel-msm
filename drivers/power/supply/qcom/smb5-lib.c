@@ -5360,6 +5360,7 @@ unsuspend_input:
 
 	wdata = &chg->irq_info[SWITCHER_POWER_OK_IRQ].irq_data->storm_data;
 	reset_storm_count(wdata);
+	chg->reverse_boost = false;
 
 	/* Workaround for non-QC2.0-compliant chargers follows */
 	if (!chg->qc2_unsupported_voltage &&
@@ -5503,6 +5504,7 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 				wdata = &data->storm_data;
 				update_storm_count(wdata,
 						WEAK_CHG_STORM_COUNT);
+				chg->reverse_boost = false;
 				vote(chg->usb_icl_votable, BOOST_BACK_VOTER,
 						false, 0);
 				vote(chg->usb_icl_votable, WEAK_CHARGER_VOTER,
@@ -6848,6 +6850,7 @@ irqreturn_t switcher_power_ok_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 
 	if (is_storming(&irq_data->storm_data)) {
+		chg->reverse_boost = true;
 		stat = 0;
 		rc = smblib_read(chg, TYPE_C_SNK_STATUS_REG, &stat);
 		stat = stat & DETECTED_SRC_TYPE_MASK;
@@ -9331,6 +9334,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int target_fcc;
 	int target_fv;
 	int prev_vl_ebsrc = chip->mmi.vl_ebsrc;
+	int pok_irq;
 
 	if (!atomic_read(&chip->mmi.hb_ready))
 		return;
@@ -9489,6 +9493,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 					     PD_VOTER);
 		cl_pd = val.intval / 1000;
 
+		pok_irq = chip->irq_info[SWITCH_POWER_OK_IRQ].irq;
 		switch (chip->typec_mode) {
 		case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 			if (mmi->hvdcp3_con)
@@ -9526,6 +9531,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			}
 			break;
 		default:
+			if (chip->reverse_boost) {
+				smblib_err(chip,
+					   "SRC Removed: POK En\n");
+				chip->reverse_boost = false;
+				enable_irq(pok_irq);
+			}
 			cl_cc = 0;
 			break;
 		}

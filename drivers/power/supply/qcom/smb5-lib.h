@@ -754,6 +754,7 @@ struct smb_charger {
 	bool			external_vbus;
 	bool			suspended;
 	u32			source_current_ma;
+	bool			reverse_boost;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
