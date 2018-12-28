@@ -236,8 +236,8 @@
 	qcom,lower-limit-capacity = <60>;
 	qcom,mmi-disable-hvdcp;
 	dpdm-supply = <&usb_otg>;
-	qcom,chg-led-sw-controls;
-	qcom,chg-led-support;
+	//qcom,chg-led-sw-controls;
+	//qcom,chg-led-support;
 
 	/delete-property/ qcom,dc-thermal-mitigation;
 	qcom,parallel-charge-current-map = <3000 3000 0>,
@@ -391,6 +391,19 @@
 	qcom,fs-curr-ua = <25000>;
 	qcom,cons-sync-write-delay-us = <1000>;
 	qcom,en-cabc;
+};
+
+&spmi_bus {
+        qcom,pmi8940@2 {
+                /delete-node/ qcom,leds@a100;
+                qcom,leds@1000 {
+                status = "ok";
+                reg = <0x1000 0x100>;
+                compatible = "qcom,leds-atc";
+                linux,name = "charging";
+                qcom,ctrl-reg = <0x243>;
+                };
+        };
 };
 
 &rpm_bus {
