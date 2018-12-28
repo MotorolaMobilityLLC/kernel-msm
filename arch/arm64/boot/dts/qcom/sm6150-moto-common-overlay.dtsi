@@ -254,6 +254,8 @@
 	qcom,cl-max-decrement = <10>;
 	qcom,cl-min-limit = <200>;
 	qcom,cl-max-limit = <30>;
+	qcom,s3-entry-ibat-ua = <15000>;
+	qcom,s3-exit-ibat-ua = <35000>;
 };
 
 &pm6150_charger {
