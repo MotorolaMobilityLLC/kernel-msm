@@ -683,6 +683,15 @@ config LEDS_MLXCPLD
 	  This option enabled support for the LEDs on the Mellanox
 	  boards. Say Y to enabled these.
 
+config LEDS_ATC
+        tristate "Support for PMIC ATC LED"
+        depends on LEDS_CLASS && SPMI
+        help
+          This driver supports the ATC led functionality of Qualcomm PNP PMIC.
+          Creates standard LED interface for the auto trickle charge indication
+          LED. SPMI register write is used to access PMIC control register.
+          Device tree can be used to adjust control register address used.
+
 config LEDS_QPNP
 	tristate "Support for QPNP LEDs"
 	depends on LEDS_CLASS && SPMI
