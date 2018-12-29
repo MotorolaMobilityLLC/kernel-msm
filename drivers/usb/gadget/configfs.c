@@ -285,6 +285,13 @@ static int unregister_gadget(struct gadget_info *gi)
 	if (!gi->udc_name)
 		return -ENODEV;
 
+	if (gi->secure) {
+		gi->unbinding = false;
+		kfree(gi->udc_name);
+		gi->udc_name = NULL;
+		return 0;
+	}
+
 	gi->unbinding = true;
 	ret = usb_gadget_unregister_driver(&gi->composite.gadget_driver);
 	if (ret) {
@@ -1664,14 +1671,18 @@ static ssize_t secure_store(struct device *pdev, struct device_attribute *attr,
 	mode = !!mode;
 	if (mode == gi->secure)
 		return count;
+
+	mutex_lock(&gi->lock);
+
 	gi->secure = mode;
 
-	if (!gi->udc_name)
+	if (!gi->udc_name) {
+		mutex_unlock(&gi->lock);
 		return count;
+	}
 	log_event_dbg("Secure Store , UDC = %s, secure = %d\n",
 				gi->udc_name, gi->secure);
 
-	mutex_lock(&gi->lock);
 	if (gi->secure) {
 		ret = usb_gadget_unregister_driver(
 				&gi->composite.gadget_driver);
