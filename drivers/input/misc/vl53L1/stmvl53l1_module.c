@@ -88,7 +88,7 @@
  *
  * Can be change at run time via @ref vl53l1_ioctl or @ref sysfs_attrib
  */
-#define STMVL53L1_CFG_TIMING_BUDGET_US	16000
+#define STMVL53L1_CFG_TIMING_BUDGET_US	30000
 #define STMVL53L1_CFG_SAR_MODE_TIMING_BUDGET_US	76000
 
 /** default preset ranging mode */
