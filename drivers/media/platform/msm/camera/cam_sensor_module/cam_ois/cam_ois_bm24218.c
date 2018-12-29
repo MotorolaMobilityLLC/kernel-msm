@@ -75,14 +75,14 @@ static int cam_ois_bm24218_read_reg6024(struct camera_io_master *io_master_info,
 
 static void cam_ois_bm24218_poll_status(struct camera_io_master *io_master_info)
 {
-	uint16_t cnt = 0;
+	uint32_t cnt = 0;
 	uint32_t val = 0;
 
 	do {
 		cam_ois_bm24218_read_reg6024(io_master_info, &val);
 		if (val) break;
-		usleep_range(10, 20);
-	} while (!val && cnt++ <100000);
+		usleep_range(5000, 6000);
+	} while (!val && cnt++ <100);
 }
 
 static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_info)
