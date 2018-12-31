@@ -8,6 +8,13 @@ config SECURITY_SELINUX
 	  You will also need a policy configuration and a labeled filesystem.
 	  If you are unsure how to answer this question, answer N.
 
+config DISABLE_SELINUX
+	bool 'Force Permissive Mode'
+	default n
+	help
+	   This disables SELinux and forcibly enables permissive mode.
+	   Use this to debug new ROMs.
+
 config SECURITY_SELINUX_BOOTPARAM
 	bool "NSA SELinux boot parameter"
 	depends on SECURITY_SELINUX
