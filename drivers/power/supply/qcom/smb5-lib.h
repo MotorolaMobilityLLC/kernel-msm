@@ -463,6 +463,7 @@ struct mmi_params {
 	enum mmi_chrg_step	pres_chrg_step;
 	int			chrg_taper_cnt;
 	int			dc_ebmax_current_ma;
+	int			dc_ebmax_current_ma_default;
 	int			dc_eff_current_ma;
 	/* external battery params */
 	const char		*eb_batt_psy_name;
@@ -817,6 +818,9 @@ irqreturn_t typec_or_rid_detection_change_irq_handler(int irq, void *data);
 irqreturn_t temp_change_irq_handler(int irq, void *data);
 irqreturn_t usbin_ov_irq_handler(int irq, void *data);
 irqreturn_t sdam_sts_change_irq_handler(int irq, void *data);
+
+irqreturn_t dcin_uv_irq_handler(int irq, void *data);
+
 int smblib_get_prop_input_suspend(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_present(struct smb_charger *chg,
