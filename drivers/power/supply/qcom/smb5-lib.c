@@ -6805,6 +6805,8 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 		chg->last_wls_vout = 0;
 	}
 #endif
+	chg->mmi.dc_ebmax_current_ma = chg->mmi.dc_ebmax_current_ma_default;
+	chg->mmi.cl_ebsrc = chg->mmi.dc_ebmax_current_ma_default;
 	power_supply_changed(chg->dc_psy);
 
 	smblib_dbg(chg, (PR_WLS | PR_INTERRUPT), "dcin_present= %d, usbin_present= %d, cp_reason = %d\n",
@@ -8636,6 +8638,45 @@ static int get_eb_prop(struct smb_charger *chip,
 	power_supply_put(eb_batt_psy);
 
 	return eb_prop;
+}
+
+irqreturn_t dcin_uv_irq_handler(int irq, void *data)
+{
+	struct smb_irq_data *irq_data = data;
+	struct smb_charger *chg = irq_data->parent_data;
+	int ret, dcin_chg_cur = 0;
+	union power_supply_propval vol = {0, };
+
+	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
+
+	smblib_get_prop_dc_voltage_now(chg,
+					    &vol);
+	smblib_dbg(chg, PR_INTERRUPT, "dcin: %d\n", vol);
+	if ((vol.intval > 3800000) && (vol.intval < 4600000))
+		ret = 1;
+	else
+		ret = 0;
+
+	if (ret <= 0) {
+		goto end;
+	}
+
+	dcin_chg_cur = get_effective_result(chg->dc_icl_votable);
+
+	//divide dcin current by uv abnormal count nubmer
+	dcin_chg_cur = dcin_chg_cur / 2;
+	if (dcin_chg_cur <= USBIN_25MA)
+		dcin_chg_cur = USBIN_100MA;
+
+	chg->mmi.dc_ebmax_current_ma = dcin_chg_cur / 1000;
+	chg->mmi.cl_ebsrc = chg->mmi.dc_ebmax_current_ma;
+	vote(chg->dc_icl_votable,
+		HEARTBEAT_VOTER, true, dcin_chg_cur);
+
+	pr_info("DCIN uv set dcin %d\n", dcin_chg_cur);
+
+end:
+	return IRQ_HANDLED;
 }
 
 #define EB_RCV_NEVER BIT(7)
@@ -10853,6 +10894,8 @@ static int parse_mmi_dt(struct smb_charger *chg)
 				  &chg->mmi.dc_ebmax_current_ma);
 	if (rc)
 		chg->mmi.dc_ebmax_current_ma = 900;
+
+	chg->mmi.dc_ebmax_current_ma_default = chg->mmi.dc_ebmax_current_ma;
 
 	rc = of_property_read_u32(node, "qcom,dc-eb-icl-eff-ma",
 				  &chg->mmi.dc_eff_current_ma);
