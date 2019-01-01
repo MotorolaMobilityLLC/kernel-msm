@@ -3441,7 +3441,7 @@ static struct smb_irq_info smb5_irqs[] = {
 	},
 	[DCIN_UV_IRQ] = {
 		.name		= "dcin-uv",
-		.handler	= default_irq_handler,
+		.handler	= dcin_uv_irq_handler,
 	},
 	[DCIN_OV_IRQ] = {
 		.name		= "dcin-ov",
