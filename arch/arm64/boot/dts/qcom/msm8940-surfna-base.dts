@@ -100,3 +100,8 @@
 &thermal_zones {
 	/delete-node/ quiet-therm-adc;
 };
+
+&qpnp_smbcharger {
+	/delete-property/ qcom,iterm-ma;
+	/delete-property/ qcom,autoadjust-vfloat;
+};

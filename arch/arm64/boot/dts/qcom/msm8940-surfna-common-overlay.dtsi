@@ -214,7 +214,6 @@
 
 &qpnp_smbcharger {
 	qcom,fastchg-current-ma = <3000>;
-	qcom,iterm-ma = <146>;
 	qcom,fcc-max-ua = <2000000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <2000000>;
