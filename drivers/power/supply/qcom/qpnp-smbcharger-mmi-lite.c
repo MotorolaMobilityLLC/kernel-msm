@@ -6446,8 +6446,8 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	/* set iterm */
 	if (chip->iterm_ma != -EINVAL) {
 		if (chip->iterm_disabled) {
-			/*dev_err(chip->dev, "Error: Both iterm_disabled and iterm_ma set\n");
-			return -EINVAL;*///TBD
+			dev_err(chip->dev, "Error: Both iterm_disabled and iterm_ma set\n");
+			return -EINVAL;
 		} else {
 			if (chip->iterm_ma <= 50)
 				reg = CHG_ITERM_50MA;
