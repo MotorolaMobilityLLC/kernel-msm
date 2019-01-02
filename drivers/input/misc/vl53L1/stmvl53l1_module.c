@@ -4314,6 +4314,7 @@ int stmvl53l1_intr_handler(struct stmvl53l1_data *data)
 int stmvl53l1_setup(struct stmvl53l1_data *data)
 {
 	int rc = 0;
+	VL53L1_CalibrationData_t cali_data;
 	VL53L1_DeviceInfo_t dev_info;
 
 	vl53l1_dbgmsg("Enter\n");
@@ -4436,7 +4437,57 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 		vl53l1_errmsg("setup_tunings %d\n", rc);
 		goto exit_unregister_dev_ps;
 	}
-    data->hw_rev = dev_info.ProductRevisionMinor;
+
+	data->hw_rev = dev_info.ProductRevisionMinor;
+
+	memset(&cali_data, 0, sizeof(cali_data));
+	rc = VL53L1_GetCalibrationData(&data->stdev, &cali_data);
+	if (rc)
+		vl53l1_errmsg("VL53L1_GetCalibrationData fail\n");
+	else {
+		data->inner_offset = cali_data.customer.mm_config__inner_offset_mm;
+		data->outer_offset = cali_data.customer.mm_config__outer_offset_mm;
+
+		/* update xtalk values */
+		cali_data.customer.algo__crosstalk_compensation_plane_offset_kcps
+			= 765;
+		cali_data.customer.algo__crosstalk_compensation_x_plane_gradient_kcps
+			= 0;
+		cali_data.customer.algo__crosstalk_compensation_y_plane_gradient_kcps
+			= 0;
+		cali_data.xtalkhisto.xtalk_shape.zone_id    = 0;
+		cali_data.xtalkhisto.xtalk_shape.time_stamp   = 0;
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_p_022    = 0;
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_p_023    = 12;
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_p_024    = 12;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[0]    = 398;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[1]    = 531;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[2]    = 531;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[3]    = 398;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[4]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[5]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[6]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[7]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[8]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[9]    = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[10]   = 0;
+		cali_data.xtalkhisto.xtalk_shape.bin_data[11]   = 0;
+		cali_data.xtalkhisto.xtalk_shape.phasecal_result__reference_phase = 10744;
+		cali_data.xtalkhisto.xtalk_shape.phasecal_result__vcsel_start     = 6;
+		cali_data.xtalkhisto.xtalk_shape.cal_config__vcsel_start          = 9;
+		cali_data.xtalkhisto.xtalk_shape.vcsel_width                      = 40;
+		cali_data.xtalkhisto.xtalk_shape.VL53L1_p_019             = 48250;
+		cali_data.xtalkhisto.xtalk_shape.zero_distance_phase              = 4600;
+
+		rc = VL53L1_SetCalibrationData(&data->stdev, &cali_data);
+		if (rc)
+			vl53l1_errmsg("VL53L1_SetCalibrationData fail\n");
+		else {
+			vl53l1_info("device crosstalk data updated: %u %d %d\n",
+					data->xtalk_offset, data->xtalk_x, data->xtalk_y);
+		}
+	}
+
 	/* if working in interrupt ask intr to enable and hook the handler */
 	data->poll_mode = 0;
 	rc = stmvl53l1_module_func_tbl.start_intr(data->client_object,
