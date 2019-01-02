@@ -723,6 +723,16 @@
 	vdd-supply = <&pm6150_l18>;
 };
 
+&mdss_dsi_phy0 {
+	/delete-property/qcom,platform-strength-ctrl;
+	qcom,platform-strength-cfg-count = <3>;
+	qcom,platform-strength-ctrl = [ff 06 66
+					ff 06 66
+					ff 06 66
+					ff 06 66
+					ff 00 66];
+};
+
 &mot_smd_639_1080p_cmd_v1 {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
 	qcom,platform-te-gpio = <&tlmm 90 0>;
