@@ -130,6 +130,15 @@
 		ti,sample_time = /bits/ 8 <0x1D>;
 		ti,drive_time = /bits/ 8 <0x10>;
 	};
+
+	aw8624_haptic@7f {
+		compatible = "awinic,aw8624_haptic";
+		reg = <0x7f>;
+		reset-gpio = <&tlmm 126 0>;
+		ram-update-delay;
+		real-i2c-addr = <0x5A>;
+		status = "ok";
+	};
 };
 
 &i2c_3 { /* BLSP1 QUP3 */
