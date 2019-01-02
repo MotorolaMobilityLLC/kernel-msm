@@ -229,7 +229,7 @@
 	qcom,flash-disable-soc = <1>;
         status = "okay";
 	/delete-property/ qcom,iterm-ma;
-	//qcom,iterm-disabled;
+	qcom,iterm-disabled;
 	qcom,usbid-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
 	qcom,fastchg-current-ma = <2500>;
