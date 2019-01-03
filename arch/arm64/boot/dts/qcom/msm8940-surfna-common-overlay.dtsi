@@ -213,7 +213,7 @@
 };
 
 &qpnp_smbcharger {
-	qcom,fastchg-current-ma = <3000>;
+	qcom,fastchg-current-ma = <1850>;
 	qcom,fcc-max-ua = <2000000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <2000000>;
@@ -225,11 +225,6 @@
 				<1000>,
 				<700>,
 				<400>;
-	qcom,mmi-temp-zones = <0 4200 582 0>,
-				<10 4200 1460 582>,
-				<15 0 1460 1460>,
-				<45 4200 2000 2000>,
-				<60 4200 1460 0>;
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
@@ -239,22 +234,22 @@
 	//qcom,chg-led-support;
 
 	/delete-property/ qcom,dc-thermal-mitigation;
-	qcom,parallel-charge-current-map = <3000 3000 0>,
-					<2500 2500 0>,
-					<2000 2000 0>,
-					<1500 1500 0>,
+        qcom,parallel-charge-current-map = <2000 2000 0>,
+                                        <1850 1850 0>,
+					<1600 1600 0>,
+					<1200 1200 0>,
 					<1000 1000 0>,
 					<700 700 0>,
 					<400 400 0>;
 	qcom,stepchg-voltage-mv = <4200>;
-	qcom,stepchg-current-ma = <2000>;
-	qcom,stepchg-taper-ma = <1800>;
-	qcom,stepchg-iterm-ma = <125>;
+	qcom,stepchg-current-ma = <1850>;
+	qcom,stepchg-taper-ma = <1850>;
+	qcom,stepchg-iterm-ma = <146>;
 	/delete-property/ qcom,enable-hvdcp-9v;
 	qcom,weak-charger-check-enable;
-	qcom,temp-warm-current-ma = <1500>;
-	qcom,temp-cool-current-ma = <900>;
-	qcom,temp-slightly-cool-current-ma = <900>;
+	qcom,temp-warm-current-ma = <1455>;
+	qcom,temp-cool-current-ma = <582>;
+	qcom,temp-slightly-cool-current-ma = <1455>;
 	qcom,slightly-cool-temp-c = <15>;
 };
 
