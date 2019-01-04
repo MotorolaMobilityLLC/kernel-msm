@@ -125,7 +125,8 @@
 		};
 		config {
 			pins = "gpio8";
-			drive-strength = <8>;
+			drive-strength = <16>;
+			bias-bus-hold;
 		};
 	};
 	sec_mi2s_clk_sleep: sec_mi2s_clk_sleep {
@@ -135,7 +136,8 @@
 		};
 		config {
 			pins = "gpio8";
-			drive-strength = <2>;
+			drive-strength = <16>;
+			bias-bus-hold;
 		};
 	};
 
@@ -146,7 +148,8 @@
 		};
 		config {
 			pins = "gpio9";
-			drive-strength = <8>;
+			drive-strength = <16>;
+			bias-bus-hold;
 		};
 	};
 	sec_mi2s_ws_sleep: sec_mi2s_ws_sleep {
@@ -156,7 +159,8 @@
 		};
 		config {
 			pins = "gpio9";
-			drive-strength = <2>;
+			drive-strength = <16>;
+			bias-bus-hold;
 		};
 	};
 
@@ -167,7 +171,8 @@
 		};
 		config {
 			pins = "gpio10";
-			drive-strength = <8>;
+			drive-strength = <16>;
+			bias-bus-hold;
 		};
 	};
 	sec_mi2s_sd0_sleep: sec_mi2s_sd0_sleep {
@@ -177,7 +182,8 @@
 		};
 		config {
 			pins = "gpio10";
-			drive-strength = <2>;
+			drive-strength = <16>;
+			bias-bus-hold;
 		};
 	};
 
@@ -189,7 +195,7 @@
 
 		config {
 			pins = "gpio11";
-			drive-strength = <8>;
+			drive-strength = <16>;
 			bias-disable;
 			input-enable;
 		};
@@ -201,7 +207,7 @@
 		};
 		config {
 			pins = "gpio11";
-			drive-strength = <2>;
+			drive-strength = <16>;
 		};
 	};
 };
