@@ -6114,6 +6114,23 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	return 0;
 }
 
+static void initial_factory_usb_online(struct smbchg_chip *chip)
+{
+	bool user_enabled = true;
+	int online = 0;
+
+	if(chip->factory_mode)
+	{
+		user_enabled = (chip->usb_suspended && REASON_USER) == 0;
+		online = user_enabled && chip->usb_present;
+
+		if(chip->usb_online != online)
+		{
+			chip->usb_online = online;
+		}
+	}
+}
+
 static int prechg_time[] = {
 	24,
 	48,
@@ -9285,6 +9302,8 @@ static int smbchg_probe(struct platform_device *pdev)
 			"Unable to determine init status rc = %d\n", rc);
 		goto free_regulator;
 	}
+
+	initial_factory_usb_online(chip);
 
 	chip->previous_soc = -EINVAL;
 	chip->batt_psy_d.name		= chip->battery_psy_name;
