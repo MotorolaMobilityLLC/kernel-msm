@@ -66,7 +66,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		struct msm_cci_intf_xfer *xfer,
 		unsigned int cmd)
 {
-	int32_t rc, rc2;
+	int32_t rc=0, rc2=0;
 	struct cam_sensor_cci_client cci_info = {
 		.cci_subdev     = cam_cci_get_subdev(xfer->cci_bus),
 		.cci_i2c_master = xfer->cci_bus,
@@ -83,23 +83,29 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			__func__, cmd, xfer->cci_bus, xfer->slave_addr,
 			xfer->reg.width, xfer->reg.addr, xfer->data.count);
 
-	if (xfer->cci_bus > 1 || xfer->slave_addr > 0x7F ||
+	if ((xfer->cci_bus > 1 || xfer->slave_addr > 0x7F ||
 			xfer->reg.width < 1 || xfer->reg.width > 2 ||
 			xfer->reg.addr > ((1<<(8*xfer->reg.width))-1) ||
 			xfer->data.count < 1 ||
-			xfer->data.count > MSM_CCI_INTF_MAX_XFER)
+			xfer->data.count > MSM_CCI_INTF_MAX_XFER)  &&
+		(cmd == MSM_CCI_INTF_WRITE || cmd == MSM_CCI_INTF_READ)){
+		pr_err("%s: cci reg/data setting is invalid\n", __func__);
 		return -EINVAL;
-
-	/* init */
-	cci_ctrl.cmd = MSM_CCI_INIT;
-	rc = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
-			core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
-	if (rc < 0) {
-		pr_err("%s: cci init fail (%d)\n", __func__, rc);
-		return rc;
 	}
 
 	switch (cmd) {
+	case MSM_CCI_INTF_INIT:
+		/* init */
+		cci_ctrl.cmd = MSM_CCI_INIT;
+		rc = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
+				core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
+		if (rc < 0) {
+			pr_err("%s: cci init fail (%d)\n", __func__, rc);
+			return rc;
+		}
+		pr_err("%s: MSM_CCI_INIT ret:%d", __func__, rc);
+		break;
+
 	case MSM_CCI_INTF_READ:
 		/* read */
 		cci_ctrl.cmd = MSM_CCI_I2C_READ;
@@ -144,6 +150,16 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		}
 		rc = cci_ctrl.status;
 		break;
+	case MSM_CCI_INTF_RELEASE:
+		/* release */
+		cci_ctrl.cmd = MSM_CCI_RELEASE;
+		rc2 = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
+				core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
+		if (rc2 < 0) {
+			pr_err("%s: cci release fail (%d)\n", __func__, rc2);
+			return rc2;
+		}
+		break;
 	default:
 		pr_err("%s: Unknown command (%d)\n", __func__, cmd);
 		rc = -EINVAL;
@@ -151,14 +167,6 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 	}
 
 release:
-	/* release */
-	cci_ctrl.cmd = MSM_CCI_RELEASE;
-	rc2 = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
-			core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
-	if (rc2 < 0) {
-		pr_err("%s: cci release fail (%d)\n", __func__, rc2);
-		return rc2;
-	}
 
 	return rc;
 }
@@ -171,6 +179,8 @@ static long msm_cci_intf_ioctl(struct v4l2_subdev *sd,
 	switch (cmd) {
 	case MSM_CCI_INTF_READ:
 	case MSM_CCI_INTF_WRITE:
+	case MSM_CCI_INTF_INIT:
+	case MSM_CCI_INTF_RELEASE:
 		return cci_intf_xfer(sd, (struct msm_cci_intf_xfer *)arg, cmd);
 	default:
 		return -ENOIOCTLCMD;
@@ -200,6 +210,12 @@ static long msm_cci_intf_ioctl32(struct v4l2_subdev *sd,
 		break;
 	case MSM_CCI_INTF_WRITE32:
 		cmd = MSM_CCI_INTF_WRITE;
+		break;
+	case MSM_CCI_INTF_INIT32:
+		cmd = MSM_CCI_INTF_INIT;
+		break;
+	case MSM_CCI_INTF_RELEASE32:
+		cmd = MSM_CCI_INTF_RELEASE;
 		break;
 	default:
 		return -ENOIOCTLCMD;
