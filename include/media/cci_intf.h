@@ -47,4 +47,13 @@ struct msm_cci_intf_xfer {
 #define MSM_CCI_INTF_WRITE32 \
 	_IOWR('X', BASE_VIDIOC_PRIVATE + 51, struct msm_cci_intf_xfer)
 
+#define MSM_CCI_INTF_INIT \
+	_IOWR('X', BASE_VIDIOC_PRIVATE + 52, struct msm_cci_intf_xfer)
+#define MSM_CCI_INTF_INIT32 \
+	_IOWR('X', BASE_VIDIOC_PRIVATE + 52, struct msm_cci_intf_xfer)
+
+#define MSM_CCI_INTF_RELEASE \
+	_IOWR('X', BASE_VIDIOC_PRIVATE + 53, struct msm_cci_intf_xfer)
+#define MSM_CCI_INTF_RELEASE32 \
+	_IOWR('X', BASE_VIDIOC_PRIVATE + 53, struct msm_cci_intf_xfer)
 #endif
