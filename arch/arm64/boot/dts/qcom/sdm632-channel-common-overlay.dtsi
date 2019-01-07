@@ -495,6 +495,7 @@
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "internal";
 		qcom,msm-micbias1-ext-cap;
+		qcom,msm-mbhc-seperate-headphone-dtv;
 
 		qcom,audio-routing =
 				"RX_BIAS", "MCLK",
