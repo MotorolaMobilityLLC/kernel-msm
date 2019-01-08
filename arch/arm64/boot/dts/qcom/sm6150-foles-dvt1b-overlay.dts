@@ -42,3 +42,9 @@
 		};
 	};
 };
+
+&pm6150_qg {
+	qcom,vbatt-cutoff-mv = <3200>;
+	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-empty-cold-mv = <3000>;
+};

@@ -242,9 +242,10 @@
 &pm6150_qg {
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,qg-iterm-ma = <300>;
-	qcom,vbatt-cutoff-mv = <3200>;
-	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-cutoff-mv = <3000>;
+	qcom,vbatt-empty-mv = <2800>;
 	qcom,vbatt-low-mv = <3300>;
+	qcom,vbatt-empty-cold-mv = <2800>;
 	qcom,rbat-conn-mohm = <10>;
 	qcom,cl-feedback-on;
 	qcom,cl-min-start-soc = <0>;
