@@ -617,6 +617,25 @@
 			};
 		};
 	};
+	quiet-therm-step {
+		trips {
+			modem_trip1: modem-trip1 {
+				temperature = <70000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+			modem_trip2: modem-trip2 {
+				temperature = <72000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+			modem_trip3_batt_trip1: modem-trip3 {
+				temperature = <75000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
 };
 
 
