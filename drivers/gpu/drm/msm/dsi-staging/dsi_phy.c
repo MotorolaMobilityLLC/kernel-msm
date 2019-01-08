@@ -289,6 +289,8 @@ static int dsi_phy_settings_init(struct platform_device *pdev,
 	struct dsi_phy_per_lane_cfgs *strength = &phy->cfg.strength;
 	struct dsi_phy_per_lane_cfgs *timing = &phy->cfg.timing;
 	struct dsi_phy_per_lane_cfgs *regs = &phy->cfg.regulators;
+	u32 strength_cfg_count = 0;
+	int ret;
 
 	lane->count_per_lane = phy->ver_info->lane_cfg_count;
 	rc = dsi_phy_parse_dt_per_lane_cfgs(pdev, lane,
@@ -299,6 +301,11 @@ static int dsi_phy_settings_init(struct platform_device *pdev,
 	}
 
 	strength->count_per_lane = phy->ver_info->strength_cfg_count;
+
+	ret = of_property_read_u32(pdev->dev.of_node, "qcom,platform-strength-cfg-count", &strength_cfg_count);
+	if (!ret)
+		strength->count_per_lane = strength_cfg_count;
+
 	rc = dsi_phy_parse_dt_per_lane_cfgs(pdev, strength,
 					    "qcom,platform-strength-ctrl");
 	if (rc) {
