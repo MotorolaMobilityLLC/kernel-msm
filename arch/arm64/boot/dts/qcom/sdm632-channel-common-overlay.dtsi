@@ -137,6 +137,22 @@
 		reset-gpio = <&tlmm 126 0>;
 		ram-update-delay;
 		real-i2c-addr = <0x5A>;
+
+		vib_f0_pre = < 2350 >;
+		vib_f0_cali_percen = < 7 >;
+		vib_cont_drv_lev = < 125 >;
+		vib_cont_drv_lvl_ov = < 155 >;
+		vib_cont_td = < 61548 >;  /* 0xF06C*/
+		vib_cont_zc_thr = < 4081 >; /*0FF1*/
+		vib_cont_num_brk = < 3 >;
+		vib_f0_coeff = < 260 >;
+
+		vib_duration_time = < 14 30 0 0 0 >;
+		vib_brake_ram_config = < 1 1 80 40 20 3 3 1    1 1 80 40 30 5 3 1    1 1 80 60 30 7 3 1 >;
+		vib_brake_cont_config = < 1 1 90 42 20 5 2 2 0 0 0  0  0  0 0 0 0 0 0   0  0  0 0 0 >;
+		vib_f0_trace_parameter = < 5 3 1 15 >;
+		vib_bemf_config = < 16 8 19 248 >;
+
 		status = "ok";
 	};
 };
