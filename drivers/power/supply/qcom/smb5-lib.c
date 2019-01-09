@@ -227,7 +227,7 @@ int smblib_icl_override(struct smb_charger *chg, enum icl_override_mode  mode)
 	}
 
 	if (chg->mmi.factory_mode)
-		apsd_override = true;
+		apsd_override = ICL_OVERRIDE_AFTER_APSD_BIT;
 
 	rc = smblib_masked_write(chg, USBIN_ICL_OPTIONS_REG,
 				USBIN_MODE_CHG_BIT, usb51_mode);
