@@ -20,41 +20,41 @@ qcom,ke40-atl {
 	qcom,battery-beta = <3440>;
 	qcom,battery-type = "KE40_ATL_2820mAh_4v4";
 	qcom,thermal-coefficients = [C5 86 BE 50 D1 37];
-	qcom,chg-rslow-comp-c1 = <2366607>;
-	qcom,chg-rslow-comp-c2 = <2419896>;
-	qcom,chg-rs-to-rslow = <649245>;
+	qcom,chg-rslow-comp-c1 = <2269400>;
+	qcom,chg-rslow-comp-c2 = <2084707>;
+	qcom,chg-rs-to-rslow = <687220>;
 	qcom,chg-rslow-comp-thr = <0x99>;
-	qcom,checksum = <0x301A>;
+	qcom,checksum = <0x8442>;
 	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
 	qcom,fg-profile-data = [
-		 0F 88 89 7E
-		 F9 81 28 7C
-		 3F 83 88 72
-		 92 7E 81 7B
-		 04 82 5F 9B
-		 F9 BE 7F D0
-		 87 10 04 88
-		 BB 7D 7F 81
-		 CB 77 2E 83
-		 31 7A 30 8C
-		 69 88 1A 82
-		 54 A0 52 C5
-		 85 D8 6E 0C
-		 CC 0B 39 60
+		 E9 83 D6 7C
+		 DA 80 65 76
+		 3C 83 7D 73
+		 3B 84 CE 80
+		 06 82 43 9B
+		 D8 BE 69 D0
+		 79 10 01 88
+		 83 7D 64 81
+		 A2 77 2B 83
+		 8B 7A 8C 8C
+		 DA 88 18 82
+		 84 A0 C7 C5
+		 1D D9 6A 0C
+		 CB 0B 19 60
 		 14 70 29 FC
-		 1F 3C 96 3C
-		 21 31 00 00
-		 88 45 FC 40
-		 A6 3B 00 00
+		 11 3D 3E 3D
+		 DD 30 00 00
+		 49 3D 44 41
+		 7A 44 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 E6 69 E1 68
-		 6B 71 FE 83
-		 3F 6F 48 63
-		 58 68 B7 80
-		 D9 6E 81 68
-		 98 6D F6 A3
-		 18 39 62 B6
+		 25 6A 0C 69
+		 1B 5C 2F 82
+		 C7 6D 88 59
+		 73 7B 9B 89
+		 D3 65 7F 5C
+		 D1 51 6E A3
+		 1A 22 62 52
 		 64 A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
