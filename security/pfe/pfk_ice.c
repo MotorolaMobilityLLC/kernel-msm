@@ -67,26 +67,36 @@ enum {
 	ICE_CIPHER_MODE_XTS_256 = 3,
 	ICE_CIPHER_MODE_CBC_256 = 4
 };
+
 static void qti_pfk_ice_stat_failure(char *type, uint32_t id, int32_t err)
 {
-	static uint32_t set_key_failure, invalidate_key_failure;
+	static uint32_t set_key_failure = 0, invalidate_key_failure = 0;
+	static uint32_t set_key_cont_failure = 0, invalidate_key_cont_failure = 0;
 
-	if (id == TZ_ES_CONFIG_SET_ICE_KEY_ID)
+	if (err == 0) {
+		set_key_cont_failure = 0;
+		invalidate_key_cont_failure = 0;
+		return;
+	}
+
+	if (id == TZ_ES_CONFIG_SET_ICE_KEY_ID) {
 		set_key_failure++;
-	else if (id == TZ_ES_INVALIDATE_ICE_KEY_ID)
+		set_key_cont_failure++;
+	} else if (id == TZ_ES_INVALIDATE_ICE_KEY_ID) {
 		invalidate_key_failure++;
-	else {
+		invalidate_key_cont_failure++;
+	} else {
 		pr_warn("%s: unsupported id %d\n", __func__, id);
 		return;
 	}
 
-	pr_warn("%s: failed to call scm %d (%d %d)\n",
-		__func__, id, set_key_failure, invalidate_key_failure);
-	if (err != -EBUSY || !strncmp(type, "sdcc", 4))
+	pr_warn("%s: failed to call scm %d (%d %d %d %d)\n",
+		__func__, id, set_key_failure, invalidate_key_failure,
+		set_key_cont_failure, invalidate_key_cont_failure);
+	if (err != -EBUSY)
 		BUG();
-	BUG_ON((invalidate_key_failure + set_key_failure) > 10);
+	BUG_ON((invalidate_key_cont_failure + set_key_cont_failure) > 30000);
 }
-
 
 static int set_key(uint32_t index, const uint8_t *key, const uint8_t *salt,
 		unsigned int data_unit)
@@ -169,9 +179,9 @@ int qti_pfk_ice_set_key(uint32_t index, uint8_t *key, uint8_t *salt,
 	}
 
 	ret = set_key(index, key, salt, data_unit);
+	qti_pfk_ice_stat_failure(s_type, TZ_ES_CONFIG_SET_ICE_KEY_ID, ret);
 	if (ret) {
 		pr_err("%s: Set Key Error: %d\n", __func__, ret);
-		qti_pfk_ice_stat_failure(s_type, TZ_ES_CONFIG_SET_ICE_KEY_ID, ret);
 		if (ret == -EBUSY) {
 			if (qcom_ice_setup_ice_hw((const char *)s_type, false))
 				pr_err("%s: clock disable failed\n", __func__);
@@ -212,10 +222,9 @@ int qti_pfk_ice_invalidate_key(uint32_t index, char *storage_type)
 	}
 
 	ret = clear_key(index);
-	if (ret) {
+	qti_pfk_ice_stat_failure(storage_type, TZ_ES_INVALIDATE_ICE_KEY_ID, ret);
+	if (ret)
 		pr_err("%s: Invalidate key error: %d\n", __func__, ret);
-		qti_pfk_ice_stat_failure(storage_type, TZ_ES_INVALIDATE_ICE_KEY_ID, ret);
-	}
 
 	if (qcom_ice_setup_ice_hw((const char *)storage_type, false))
 		pr_err("%s: could not disable clocks\n", __func__);
