@@ -1387,7 +1387,7 @@ struct urb_priv {
 /* Poll every 60 seconds */
 #define	POLL_TIMEOUT	60
 /* Stop endpoint command timeout (secs) for URB cancellation watchdog timer */
-#define XHCI_STOP_EP_CMD_TIMEOUT	5
+#define XHCI_STOP_EP_CMD_TIMEOUT	1
 /* XXX: Make these module parameters */
 
 struct s3_save {
