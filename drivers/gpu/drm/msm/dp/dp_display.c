@@ -126,6 +126,12 @@ static const struct of_device_id dp_dt_match[] = {
 	{}
 };
 
+#ifdef CONFIG_MOD_DISPLAY
+int dp_fix_lane_num = true;
+int dp_fix_linkrate = 1;
+int dp_enhance_en = 0;
+#endif
+
 static inline bool dp_display_is_hdcp_enabled(struct dp_display_private *dp)
 {
 	return dp->link->hdcp_status.hdcp_version && dp->hdcp.ops;
@@ -2722,6 +2728,104 @@ static int dp_display_mst_get_fixed_topology_display_type(
 	return 0;
 }
 
+#ifdef CONFIG_MOD_DISPLAY
+static ssize_t dp_fix_lane_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s(%d)\n",
+				dp_fix_lane_num ? "true" : "false", dp_fix_lane_num);
+}
+
+static ssize_t dp_fix_lane_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (kstrtoint(buf, 10, &dp_fix_lane_num) < 0)
+		return -EINVAL;
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(dp_fix_lane);
+
+static ssize_t dp_fix_linkrate_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s(%d)\n",
+				(dp_fix_linkrate > 0) ? "true" : "false", dp_fix_linkrate);
+}
+
+static ssize_t dp_fix_linkrate_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (kstrtoint(buf, 10, &dp_fix_linkrate) < 0)
+		return -EINVAL;
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(dp_fix_linkrate);
+
+static ssize_t dp_hdcp_en_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct dp_display_private *dp;
+	struct platform_device *pdev = to_platform_device(dev);
+	int en;
+
+	dp = platform_get_drvdata(pdev);
+	en = dp->debug->hdcp_disabled;
+
+	return scnprintf(buf, PAGE_SIZE, "%s(%d)\n",
+				(en > 0) ? "true" : "false", en);
+}
+
+static ssize_t dp_hdcp_en_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dp_display_private *dp;
+	struct platform_device *pdev = to_platform_device(dev);
+	int en;
+
+	if (kstrtoint(buf, 10, &en) < 0)
+		return -EINVAL;
+
+	dp = platform_get_drvdata(pdev);
+	dp->debug->hdcp_disabled = en;
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(dp_hdcp_en);
+
+static ssize_t dp_enhance_en_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s(%d)\n",
+				(dp_enhance_en > 0) ? "true" : "false", dp_enhance_en);
+}
+
+static ssize_t dp_enhance_en_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (kstrtoint(buf, 10, &dp_enhance_en) < 0)
+		return -EINVAL;
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(dp_enhance_en);
+
+static struct attribute *dp_attrs[] = {
+	&dev_attr_dp_fix_lane.attr,
+	&dev_attr_dp_fix_linkrate.attr,
+	&dev_attr_dp_hdcp_en.attr,
+	&dev_attr_dp_enhance_en.attr,
+	NULL,
+};
+
+ATTRIBUTE_GROUPS(dp);
+#endif
+
 static int dp_display_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -2813,6 +2917,14 @@ static int dp_display_probe(struct platform_device *pdev)
 		pr_err("component add failed, rc=%d\n", rc);
 		goto error;
 	}
+
+#ifdef CONFIG_MOD_DISPLAY
+	rc = sysfs_create_groups(&pdev->dev.kobj, dp_groups);
+	if (rc) {
+		dev_err(&pdev->dev, "%s Failed to create sysfs attr\n", __func__);
+		goto error;
+	}
+#endif
 
 	return 0;
 error:
