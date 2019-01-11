@@ -50,7 +50,6 @@
 
 		config {
 			pins = "gpio60";
-			output-high;
 		};
 	};
 };
