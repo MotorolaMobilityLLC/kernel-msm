@@ -28,6 +28,10 @@
 #define VSC_EXT_VESA_SDP_SUPPORTED BIT(4)
 #define VSC_EXT_VESA_SDP_CHAINING_SUPPORTED BIT(5)
 
+#ifdef CONFIG_MOD_DISPLAY
+extern unsigned char* dp_bridge_mod_dispalay_get_edid(int size);
+#endif
+
 enum dp_panel_hdr_pixel_encoding {
 	RGB,
 	YCbCr444,
@@ -1796,11 +1800,27 @@ static int dp_panel_read_edid(struct dp_panel *dp_panel,
 	sde_get_edid(connector, &panel->aux->drm_aux->ddc,
 		(void **)&dp_panel->edid_ctrl);
 	if (!dp_panel->edid_ctrl->edid) {
+#ifdef CONFIG_MOD_DISPLAY
+		pr_err("AUX EDID read failed, try mods greybus read\n");
+		dp_panel->edid_ctrl->edid =
+				(struct edid*) dp_bridge_mod_dispalay_get_edid( sizeof(struct edid));
+		if(!dp_panel->edid_ctrl->edid) {
+			pr_err("greybus EDID read failed\n");
+			ret = -EINVAL;
+			goto end;
+		}
+
+		print_hex_dump(KERN_DEBUG, "[drm-dp]edid : ",
+			DUMP_PREFIX_NONE, 8, 1,
+			dp_panel->edid_ctrl->edid, sizeof(struct edid), false);
+#else
 		pr_err("EDID read failed\n");
 		ret = -EINVAL;
 		goto end;
+#endif
 	}
 end:
+
 	edid = dp_panel->edid_ctrl->edid;
 	dp_panel->audio_supported = drm_detect_monitor_audio(edid);
 
