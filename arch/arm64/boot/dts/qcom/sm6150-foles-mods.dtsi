@@ -29,6 +29,7 @@
 	mods_dp_bridge {
 		compatible = "mmi,mods-dp-bridge";
 		mmi,dp-sel-gpio = <&tlmm 40 1>;
+		mmi,gpio-dp-int-trig = <&tlmm 37 0>;
 	};
 
 	muc: muc {
