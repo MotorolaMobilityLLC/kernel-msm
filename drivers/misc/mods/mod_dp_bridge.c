@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/of_gpio.h>
+#include <linux/delay.h>
 
 #include <linux/mods/mod_display.h>
 #include <linux/mods/mod_display_ops.h>
@@ -38,6 +39,7 @@ struct dp_bridge_data {
 	struct completion video_stable_wait;
 	struct dentry *debugfs;
 	int gpio_sel;
+	int gpio_dp_int_trigo;
 };
 
 static struct dp_bridge_data *dp_data;
@@ -48,6 +50,25 @@ extern int dp_enable_irq(bool en);
 static inline int dp_enable_irq(bool en)
 	{ return 0; };
 #endif
+
+static int muc_trigger_dp_int(int val)
+{
+	struct dp_bridge_data *cd = dp_data;
+	int ret;
+
+	/* Log the new state and interrupts since last change in state */
+	if (!cd) {
+		pr_info("%s no muc data\n", __func__);
+		return -1;
+	}
+
+	if (gpio_is_valid(cd->gpio_dp_int_trigo)) {
+		pr_info("%s set %d\n", __func__, val);
+		gpio_direction_output(cd->gpio_dp_int_trigo, !!val);
+	}
+
+	return 0;
+}
 
 int dp_bridge_check_connect_state(bool connect)
 {
@@ -94,6 +115,22 @@ static int dp_bridge_parse_dt(struct device *dev,
 			gpio_export(dp->gpio_sel, true);
 		}
 	}
+
+	//dp-int-trigger
+	dp->gpio_dp_int_trigo = of_get_named_gpio(dev->of_node, "mmi,gpio-dp-int-trig", 0);
+	if (dp->gpio_dp_int_trigo < 0) {
+		pr_err("There is no dp-int-gpio.\n");
+		ret = dp->gpio_dp_int_trigo;
+		goto end;
+	}
+
+	if (gpio_is_valid(dp->gpio_dp_int_trigo)) {
+		ret = gpio_request(dp->gpio_dp_int_trigo, MOD_DP_BRIDGE_LABLE"dp-int-trig");
+		if (ret == 0) {
+			gpio_direction_output(dp->gpio_dp_int_trigo, 0);
+		}
+	}
+	gpio_export(dp->gpio_dp_int_trigo, true);
 
 end:
 	return ret;
@@ -185,9 +222,9 @@ static int dp_bridge_mod_display_handle_connect(void *data)
 
 	reinit_completion(&dp->connect_wait);
 
-	dp_enable_irq(1);
-
 	mod_display_set_display_state(MOD_DISPLAY_ON);
+	msleep(500);
+	muc_trigger_dp_int(1);
 
 	while (!wait_for_completion_timeout(&dp->connect_wait,
 				msecs_to_jiffies(1000)) && retries) {
@@ -225,6 +262,7 @@ static int dp_bridge_mod_display_handle_disconnect(void *data)
 	reinit_completion(&dp->connect_wait);
 
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
+	muc_trigger_dp_int(0);
 
 	while (atomic_read(&dp->dp_bridge_connected) &&
 			!wait_for_completion_timeout(&dp->connect_wait,
@@ -240,8 +278,6 @@ static int dp_bridge_mod_display_handle_disconnect(void *data)
 			LOG_TAG, __func__);
 		cable_disconnect(dp);
 	}
-
-	dp_enable_irq(0);
 
 	if (gpio_is_valid(dp->gpio_sel))
 		gpio_set_value(dp->gpio_sel, 0);
