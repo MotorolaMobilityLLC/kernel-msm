@@ -28,6 +28,8 @@
 #define VSC_EXT_VESA_SDP_CHAINING_SUPPORTED BIT(5)
 
 #ifdef CONFIG_MOD_DISPLAY
+extern int dp_fix_lane_num;
+
 extern unsigned char* dp_bridge_mod_dispalay_get_edid(int size);
 #endif
 
@@ -1667,6 +1669,11 @@ skip_dpcd_read:
 	if (multi_func)
 		link_info->num_lanes = min_t(unsigned int,
 			link_info->num_lanes, 2);
+
+#ifdef CONFIG_MOD_DISPLAY
+	if (dp_fix_lane_num)
+		link_info->num_lanes = 1;
+#endif
 
 	pr_debug("lane_count=%d\n", link_info->num_lanes);
 
