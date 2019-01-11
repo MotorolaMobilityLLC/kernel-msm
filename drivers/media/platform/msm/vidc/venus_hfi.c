@@ -569,6 +569,8 @@ static int __read_queue(struct vidc_iface_q_info *qinfo, u8 *packet,
 
 	queue->qhdr_read_idx = new_read_idx;
 
+	queue->qhdr_read_idx = new_read_idx;
+
 	*pb_tx_req_is_set = (1 == queue->qhdr_tx_req) ? 1 : 0;
 
 	if (msm_vidc_debug & VIDC_PKT) {
