@@ -35,36 +35,8 @@ struct dp_gpio_hpd_private {
 };
 
 #ifdef CONFIG_MOD_DISPLAY
-static struct dp_gpio_hpd_private *g_gpio_hpd;
-
 extern int dp_bridge_check_connect_state(bool connect);
 extern int dp_bridge_connect_wait_complete(void);
-
-static irqreturn_t dp_gpio_isr(int unused, void *data);
-
-int dp_enable_irq(bool en)
-{
-	if (!g_gpio_hpd) {
-		pr_err("%s gpio_hpd data null\n", __func__);
-		return -1;
-	}
-
-	pr_debug("%s en %d\n", __func__, en);
-
-	if (en)
-		devm_request_threaded_irq(g_gpio_hpd->dev,
-							g_gpio_hpd->irq, NULL,
-							dp_gpio_isr,
-							IRQF_TRIGGER_RISING | IRQF_ONESHOT,
-							"dp-gpio-intp", g_gpio_hpd);
-	else
-		devm_free_irq(g_gpio_hpd->dev,
-				g_gpio_hpd->irq, g_gpio_hpd);
-
-	return 0;
-
-}
-EXPORT_SYMBOL(dp_enable_irq);
 #endif
 
 static int dp_gpio_hpd_connect(struct dp_gpio_hpd_private *gpio_hpd, bool hpd)
@@ -129,11 +101,12 @@ static irqreturn_t dp_gpio_isr(int unused, void *data)
 
 	hpd = gpio_get_value_cansleep(gpio_hpd->gpio_cfg.gpio);
 
+	pr_debug("%s %d -> %d\n", __func__, gpio_hpd->hpd, hpd);
+
 	if (!gpio_hpd->hpd && hpd) {
 		gpio_hpd->hpd = true;
 #ifdef CONFIG_MOD_DISPLAY
 		dp_bridge_check_connect_state(1);
-		dp_bridge_connect_wait_complete();
 #endif
 		queue_delayed_work(system_wq, &gpio_hpd->work, 0);
 		return IRQ_HANDLED;
@@ -197,6 +170,10 @@ static void dp_gpio_hpd_work(struct work_struct *work)
 
 	if (ret < 0)
 		pr_err("Cannot claim IRQ dp-gpio-intp\n");
+
+#ifdef CONFIG_MOD_DISPLAY
+	dp_bridge_connect_wait_complete();
+#endif
 }
 
 static int dp_gpio_hpd_simulate_connect(struct dp_hpd *dp_hpd, bool hpd)
@@ -326,12 +303,6 @@ struct dp_hpd *dp_gpio_hpd_get(struct device *dev,
 	gpio_hpd->base.simulate_connect = dp_gpio_hpd_simulate_connect;
 	gpio_hpd->base.simulate_attention = dp_gpio_hpd_simulate_attention;
 	gpio_hpd->base.register_hpd = dp_gpio_hpd_register;
-
-#ifdef CONFIG_MOD_DISPLAY
-	g_gpio_hpd = gpio_hpd;
-	dp_enable_irq(0);
-#endif
-
 
 	return &gpio_hpd->base;
 
