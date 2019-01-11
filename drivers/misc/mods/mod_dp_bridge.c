@@ -108,6 +108,36 @@ static int cable_disconnect(struct dp_bridge_data *dp)
 	return ret;
 }
 
+unsigned char* dp_bridge_mod_dispalay_get_edid(int size)
+{
+	struct mod_display_panel_config *display_config = NULL;
+	unsigned char *edid;
+	int ret;
+
+	if ((edid = kmalloc(size, GFP_KERNEL)) == NULL)
+		return NULL;
+
+	ret = mod_display_get_display_config(&display_config);
+	if (ret) {
+		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
+		goto fail;
+	}
+
+	if (size != display_config->config_size) {
+		pr_err("%s edid size %d not availabe(%d)\n",
+			display_config->config_size, size);
+		goto fail;
+	}
+
+	memcpy(edid, display_config->config_buf, display_config->config_size);
+
+	return edid;
+
+fail:
+	kfree(edid);
+	return 0;
+}
+
 static int dp_bridge_mod_display_handle_available(void *data)
 {
 	struct dp_bridge_data *dp;
