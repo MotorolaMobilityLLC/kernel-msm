@@ -2620,7 +2620,13 @@ static void dp_panel_config_misc(struct dp_panel *dp_panel)
 
 	misc_val = cc;
 	misc_val |= (tb << 5);
+
+#ifdef CONFIG_MOD_DISPLAY
+	misc_val &= (~BIT(0)); /* Configure clock to ansynchronous mode */
+	pr_info("disable sync mode 0x%x\n", misc_val);
+#else
 	misc_val |= BIT(0); /* Configure clock to synchronous mode */
+#endif
 
 	catalog->misc_val = misc_val;
 	catalog->config_misc(catalog);
