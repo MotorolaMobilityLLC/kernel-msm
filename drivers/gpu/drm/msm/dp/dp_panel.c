@@ -2616,6 +2616,11 @@ static bool dp_panel_use_fixed_nvid(struct dp_panel *dp_panel)
 	u8 *dpcd = dp_panel->dpcd;
 	struct sde_connector *c_conn = to_sde_connector(dp_panel->connector);
 
+#ifndef CONFIG_MOD_DISPLAY
+	pr_info("%s fix nvid\n", __func__);
+	return true;
+#endif
+
 	/* use fixe mvid and nvid for MST streams */
 	if (c_conn->mst_port)
 		return true;
