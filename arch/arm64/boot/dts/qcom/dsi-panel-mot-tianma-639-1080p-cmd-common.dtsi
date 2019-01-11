@@ -76,12 +76,13 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-on-command = [
 			15 00 00 00 00 00 02 35 00
 			15 00 00 00 00 00 02 53 24
+			15 00 00 00 00 00 02 55 00
 			39 00 00 00 00 00 03 51 00 00
 			05 01 00 00 00 00 01 29
-			05 01 00 00 78 00 01 11];	/* display on */
+			05 01 00 00 96 00 01 11];	/* display on */
 		qcom,mdss-dsi-off-command = [
-			05 01 00 00 23 00 01 28		/* display_off */
-			05 01 00 00 78 00 01 10];	/* enter sleep mode */
+			05 01 00 00 00 00 01 28		/* display_off */
+			05 01 00 00 96 00 01 10];	/* enter sleep mode */
 
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
