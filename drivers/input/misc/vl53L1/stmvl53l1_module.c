@@ -813,12 +813,6 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 		rc = store_last_error(data, rc);
 		goto done;
 	}
-	rc = VL53L1_PerformRefSpadManagement(&data->stdev);
-
-	if (rc) {
-		vl53l1_errmsg("VL53L1_PerformRefSpadManagement fail => %d", rc);
-		rc = store_last_error(data, rc);
-	}
 	rc = stmvl53l1_sendparams(data);
 	if (rc)
 		goto done;
@@ -2160,7 +2154,19 @@ static ssize_t stmvl53l1_store_offset(struct device *dev,
 	int n = 0;
 	int inner = 0;
 	int outer = 0;
-
+	int refspad_0 = 0;
+	int refspad_1 = 0;
+	int refspad_2 = 0;
+	int refspad_3 = 0;
+	int refspad_4 = 0;
+	int refspad_5 = 0;
+	int refspad_num = 0;
+	int refspad_location = 0;
+	int ref__actual_effective_spads = 0;
+	int ref__peak_signal_count_rate_mcps = 0;
+	int ref__distance_mm = 0;
+	int ref_reflectance_pc = 0;
+	int coverglass_transmission = 0;
 	mutex_lock(&data->work_mutex);
 
 	if (data->enable_sensor) {
@@ -2169,8 +2175,12 @@ static ssize_t stmvl53l1_store_offset(struct device *dev,
 		goto finish;
 	}
 
-	n = sscanf(buf, "%d,%d", &inner, &outer);
-	if(n != 2) {
+	n = sscanf(buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+		&inner, &outer,&refspad_0,&refspad_1,&refspad_2,&refspad_3,
+		&refspad_4, &refspad_5,&refspad_num,&refspad_location,
+		&ref__actual_effective_spads,&ref__peak_signal_count_rate_mcps,
+		&ref__distance_mm,&ref_reflectance_pc,&coverglass_transmission);
+	if(n != 15) {
 		vl53l1_errmsg("wrong offset syntax around %s\n", buf);
 		rc = -EINVAL;
 		goto finish;
@@ -2190,6 +2200,19 @@ static ssize_t stmvl53l1_store_offset(struct device *dev,
 			cali_data.customer.mm_config__outer_offset_mm);
 	cali_data.customer.mm_config__inner_offset_mm = inner;
 	cali_data.customer.mm_config__outer_offset_mm = outer;
+	cali_data.customer.global_config__spad_enables_ref_0 = refspad_0;
+	cali_data.customer.global_config__spad_enables_ref_1 = refspad_1;
+	cali_data.customer.global_config__spad_enables_ref_2 = refspad_2;
+	cali_data.customer.global_config__spad_enables_ref_3 = refspad_3;
+	cali_data.customer.global_config__spad_enables_ref_4 = refspad_4;
+	cali_data.customer.global_config__spad_enables_ref_5 = refspad_5;
+	cali_data.customer.ref_spad_man__num_requested_ref_spads = refspad_num;
+	cali_data.customer.ref_spad_man__ref_location = ref_reflectance_pc;
+	cali_data.cust_dmax_cal.ref__actual_effective_spads = ref__actual_effective_spads;
+	cali_data.cust_dmax_cal.ref__peak_signal_count_rate_mcps = ref__peak_signal_count_rate_mcps;
+	cali_data.cust_dmax_cal.ref__distance_mm = ref__distance_mm;
+	cali_data.cust_dmax_cal.ref_reflectance_pc = ref_reflectance_pc;
+	cali_data.cust_dmax_cal.coverglass_transmission = coverglass_transmission;
 
 	rc = VL53L1_SetCalibrationData(&data->stdev, &cali_data);
 	if (rc) {
@@ -4395,7 +4418,8 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 	data->cam_mode = 0;
 	data->sar_mode = 0;
 	stmvl53l1_setup_auto_config(data);
-	data->dmax_mode = STMVL53L1_CFG_DEFAULT_DMAX_MODE;
+	data->dmax_reflectance = (5 << 16);
+	data->dmax_mode = VL53L1_DMAXMODE_CUSTCAL_DATA;
 	data->smudge_correction_mode =
 		STMVL53L1_CFG_DEFAULT_SMUDGE_CORRECTION_MODE;
 	data->current_roi_id = 0;
@@ -4419,11 +4443,6 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 			dev_info.Name, dev_info.Type);
 
 	/* get managed data here */
-	rc = VL53L1_GetDmaxReflectance(&data->stdev, &data->dmax_reflectance);
-	if (rc) {
-		vl53l1_errmsg("VL53L1_GetDmaxReflectance %d\n", rc);
-		goto exit_unregister_dev_ps;
-	}
 	rc = VL53L1_GetOpticalCenter(&data->stdev, &data->optical_offset_x,
 		&data->optical_offset_y);
 	if (rc) {
