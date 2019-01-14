@@ -11,16 +11,13 @@
  * GNU General Public License for more details.
  *
  */
+
 #define pr_fmt(fmt)	"[drm-dp] %s: " fmt, __func__
 
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 
 #include "dp_parser.h"
-
-#ifdef CONFIG_MOD_DISPLAY
-extern int dp_fix_lane_num;
-#endif
 
 static void dp_parser_unmap_io_resources(struct dp_parser *parser)
 {
@@ -160,14 +157,7 @@ static int dp_parser_misc(struct dp_parser *parser)
 	data = of_get_property(of_node, "qcom,logical2physical-lane-map", &len);
 	if (data && (len == DP_MAX_PHY_LN)) {
 		for (i = 0; i < len; i++)
-#ifdef CONFIG_MOD_DISPLAY
-			if (!dp_fix_lane_num)
-				parser->l_map[i] = data[i];
-			else
-				parser->l_map[i] = 0;
-#else
 			parser->l_map[i] = data[i];
-#endif
 	}
 
 	data = of_get_property(of_node, "qcom,pn-swap-lane-map", &len);
