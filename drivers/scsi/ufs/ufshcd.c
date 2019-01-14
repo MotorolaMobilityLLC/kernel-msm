@@ -7746,6 +7746,7 @@ static int ufshcd_quirk_tune_host_pa_tactivate(struct ufs_hba *hba)
 	int ret = 0;
 	u32 granularity, peer_granularity;
 	u32 pa_tactivate, peer_pa_tactivate;
+	u32 peer_rx_min_activatetime = 0, tuned_pa_tactivate;
 	u32 pa_tactivate_us, peer_pa_tactivate_us;
 	u8 gran_to_us_table[] = {1, 4, 8, 16, 32, 100};
 
@@ -7782,11 +7783,31 @@ static int ufshcd_quirk_tune_host_pa_tactivate(struct ufs_hba *hba)
 	if (ret)
 		goto out;
 
+	ret = ufshcd_dme_peer_get(hba,
+		UIC_ARG_MIB_SEL(RX_MIN_ACTIVATETIME_CAPABILITY,
+		UIC_ARG_MPHY_RX_GEN_SEL_INDEX(0)),
+		&peer_rx_min_activatetime);
+	if (ret)
+		goto out;
+
+	/* pa_tactiveate must be larger than peer_rx_min_activatetime */
+	tuned_pa_tactivate =
+		((peer_rx_min_activatetime * RX_MIN_ACTIVATETIME_UNIT_US)
+		  + gran_to_us_table[granularity - 1]) /
+		 gran_to_us_table[granularity - 1];
+	if (tuned_pa_tactivate > pa_tactivate) {
+		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TACTIVATE),
+			tuned_pa_tactivate);
+		pr_info("%s: set tuned_pa_tactivate %d\n",
+			__func__, tuned_pa_tactivate);
+		pa_tactivate = tuned_pa_tactivate;
+	}
+
 	pa_tactivate_us = pa_tactivate * gran_to_us_table[granularity - 1];
 	peer_pa_tactivate_us = peer_pa_tactivate *
 			     gran_to_us_table[peer_granularity - 1];
 
-	if (pa_tactivate_us > peer_pa_tactivate_us) {
+	if (pa_tactivate_us >= peer_pa_tactivate_us) {
 		u32 new_peer_pa_tactivate;
 
 		new_peer_pa_tactivate = pa_tactivate_us /
