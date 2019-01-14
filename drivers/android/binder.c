@@ -358,6 +358,8 @@ struct binder_error {
  * @inherit_rt:           inherit RT scheduling policy from caller
  * @txn_security_ctx:     require sender's security context
  *                        (invariant after initialized)
+ * @txn_security_ctx:     require sender's security context
+ *                        (invariant after initialized)
  * @async_todo:           list of async work items
  *                        (protected by @proc->inner_lock)
  *
@@ -3174,7 +3176,7 @@ static void binder_transaction(struct binder_proc *proc,
 				    ALIGN(secctx_sz, sizeof(u64));
 		char *kptr = t->buffer->data + buf_offset;
 
-		t->security_ctx = (uintptr_t)kptr +
+		t->security_ctx = (binder_uintptr_t)kptr +
 		    binder_alloc_get_user_buffer_offset(&target_proc->alloc);
 		memcpy(kptr, secctx, secctx_sz);
 		security_release_secctx(secctx, secctx_sz);
