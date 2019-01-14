@@ -127,6 +127,7 @@ static const struct of_device_id dp_dt_match[] = {
 };
 
 #ifdef CONFIG_MOD_DISPLAY
+unsigned char dp_dpcd_debug_buf[8] = {0};
 int dp_fix_lane_num = true;
 int dp_fix_linkrate = 1;
 int dp_enhance_en = 0;
@@ -2729,6 +2730,39 @@ static int dp_display_mst_get_fixed_topology_display_type(
 }
 
 #ifdef CONFIG_MOD_DISPLAY
+static ssize_t dp_dpcd_read_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	unsigned char ret = dp_dpcd_debug_buf[0];
+
+	return scnprintf(buf, PAGE_SIZE, "0x%x\n", ret);
+}
+
+static ssize_t dp_dpcd_read_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dp_display_private *dp;
+	struct platform_device *pdev = to_platform_device(dev);
+	unsigned long addr;
+
+	if (!dev || !pdev) {
+		pr_err("%s invalid param(s), dev %pK, pdev %pK\n",
+				__func__, dev, pdev);
+		return 0;
+	}
+
+	dp = platform_get_drvdata(pdev);
+
+	if (kstrtoul(buf, 10, &addr) < 0)
+		return -EINVAL;
+
+	drm_dp_dpcd_read(dp->aux->drm_aux, addr, dp_dpcd_debug_buf, 1);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(dp_dpcd_read);
+
 static ssize_t dp_fix_lane_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -2820,6 +2854,7 @@ static struct attribute *dp_attrs[] = {
 	&dev_attr_dp_fix_linkrate.attr,
 	&dev_attr_dp_hdcp_en.attr,
 	&dev_attr_dp_enhance_en.attr,
+	&dev_attr_dp_dpcd_read.attr,
 	NULL,
 };
 
