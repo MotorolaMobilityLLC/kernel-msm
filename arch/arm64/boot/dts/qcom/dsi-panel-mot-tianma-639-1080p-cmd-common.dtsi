@@ -46,8 +46,12 @@ qcom,mdss-dsi-bl-min-level = <3>;
 qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
-qcom,mdss-dsi-hbm-on-command = [
+qcom,mdss-dsi-hbm-fod;
+qcom,mdss-dsi-hbm-fod-on-command = [
 		39 01 00 00 00 00 02 53 E4];
+
+qcom,mdss-dsi-hbm-on-command = [
+		39 01 00 00 00 00 02 53 64];
 qcom,mdss-dsi-hbm-off-command = [
 		39 01 00 00 00 00 02 53 24];
 
