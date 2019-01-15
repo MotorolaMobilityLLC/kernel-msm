@@ -54,7 +54,6 @@ static inline int dp_enable_irq(bool en)
 static int muc_trigger_dp_int(int val)
 {
 	struct dp_bridge_data *cd = dp_data;
-	int ret;
 
 	/* Log the new state and interrupts since last change in state */
 	if (!cd) {
