@@ -2730,6 +2730,61 @@ static int dp_display_mst_get_fixed_topology_display_type(
 }
 
 #ifdef CONFIG_MOD_DISPLAY
+/*============= For amps factory test =============*/
+static ssize_t video_status_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct dp_display_private *dp;
+	struct platform_device *pdev = to_platform_device(dev);
+	unsigned char video_state = 0;
+
+	dp = platform_get_drvdata(pdev);
+
+	drm_dp_dpcd_read(dp->aux->drm_aux, DP_SINK_STATUS, &video_state, 1);
+
+	return scnprintf(buf, PAGE_SIZE, "%s(0x%x)\n",
+				(video_state & BIT(0)) ? "true" : "false", video_state);
+}
+
+static ssize_t video_status_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	pr_info("%s not suport store\n", __func__);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(video_status);
+
+static ssize_t link_status_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct dp_display_private *dp;
+	struct platform_device *pdev = to_platform_device(dev);
+	int link;
+
+	dp = platform_get_drvdata(pdev);
+
+	link = dp->catalog->ctrl.mainlink_ready(&dp->catalog->ctrl);
+
+	//for amps test in tc_cmn_drv_amps_get_mydp_link_status()
+	//it will check the value of link. For the common code logic,
+	//when result > 5, link is ready, and <= 5 for not ready.
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+				link ? 5 + link : 0);
+}
+
+static ssize_t link_status_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	pr_info("%s not suport store\n", __func__);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(link_status);
+/*============= For amps factory test end =============*/
+
 static ssize_t dp_dpcd_read_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -2855,6 +2910,8 @@ static struct attribute *dp_attrs[] = {
 	&dev_attr_dp_hdcp_en.attr,
 	&dev_attr_dp_enhance_en.attr,
 	&dev_attr_dp_dpcd_read.attr,
+	&dev_attr_link_status.attr,
+	&dev_attr_video_status.attr,
 	NULL,
 };
 
