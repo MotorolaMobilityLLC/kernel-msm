@@ -271,6 +271,8 @@
 	#include "batterydata-je40-scud-3000mah.dtsi"
         #include "batterydata-je40-atl-3000mah.dtsi"
         #include "batterydata-je40-atl-india-3000mah.dtsi"
+	#include "batterydata-je40-atl-unicoba-3000mah.dtsi"
+	#include "batterydata-je40-atl-flex-3000mah.dtsi"
 };
 
 &pmi632_qg {
