@@ -301,6 +301,7 @@
 	qcom,usbpd-phandle = <&pm6150_pdphy>;
 	qcom,disable-suspend-on-collapse;
 	qcom,support-mods;
+	dpdm-supply = <&qusb_phy0>;
 };
 
 &pm6150_pdphy {
