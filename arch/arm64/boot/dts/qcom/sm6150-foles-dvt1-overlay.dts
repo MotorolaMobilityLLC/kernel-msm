@@ -28,6 +28,10 @@
 	qcom,dsi-display-active;
 };
 
+&mot_smd_639_1080p_cmd_v1 {
+	qcom,mdss-dsi-hbm-dim-off;
+};
+
 &dsi_tianma_639_1080x2340_cmd_display {
 	qcom,dsi-display-active;
 };
