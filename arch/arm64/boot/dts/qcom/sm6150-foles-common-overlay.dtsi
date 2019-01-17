@@ -738,7 +738,6 @@
 	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 	//qcom,mdss-dsi-panel-status-value = <0x9c>;
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
-	qcom,mdss-dsi-hbm-dim-off;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
