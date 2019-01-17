@@ -156,12 +156,7 @@ static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_
 			.delay = 0
 		},
 	};
-	struct cam_sensor_i2c_reg_array    ois_on_setting = {
-		.reg_addr = 0x6020,
-		.reg_data = 0x02,
-		.data_mask = 0,
-		.delay = 0
-	};
+
 	int32_t ret = 0, i;
 	CAM_DBG(CAM_OIS, "Enable SERV&GYRO");
 	for (i=0; i<11; i++) {
@@ -178,20 +173,11 @@ static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_
 		}
 		ret = camera_io_dev_write(io_master_info, &i2c_reg_setting);
 		if (i2c_reg_array[i].reg_addr == 0x602d && i2c_reg_array[i].reg_data == 0x58) {
-			usleep_range(20*1000, 21*1000);
-			CAM_DBG(CAM_OIS, "Delay for 20ms");
+			usleep_range(25*1000, 30*1000);
+			CAM_DBG(CAM_OIS, "Delay for 25ms");
 		}
 	}
 
-	CAM_DBG(CAM_OIS, "Before OIS ON");
-	cam_ois_bm24218_poll_status(io_master_info);
-	i2c_reg_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
-	i2c_reg_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
-	i2c_reg_setting.reg_setting = &ois_on_setting;
-	i2c_reg_setting.size = 1;
-	i2c_reg_setting.delay = 0;
-	camera_io_dev_write(io_master_info, &i2c_reg_setting);
-	CAM_DBG(CAM_OIS, "After OIS ON");
 	cam_ois_bm24218_poll_status(io_master_info);
 
 	CAM_ERR(CAM_OIS, "Enable SERV&GYRO Done");
