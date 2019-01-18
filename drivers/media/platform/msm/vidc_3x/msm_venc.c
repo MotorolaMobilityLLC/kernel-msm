@@ -3640,8 +3640,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		}
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE:
-		if ((ctrl->val >> 16) < inst->capability.frame_rate.min ||
-			 (ctrl->val >> 16) > inst->capability.frame_rate.max) {
+		if (ctrl->val > MAX_OPERATING_FRAME_RATE) {
 			dprintk(VIDC_ERR, "Invalid operating rate %u\n",
 				(ctrl->val >> 16));
 			rc = -ENOTSUPP;
