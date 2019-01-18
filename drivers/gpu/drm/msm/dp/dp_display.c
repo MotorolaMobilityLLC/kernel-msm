@@ -2785,6 +2785,177 @@ static ssize_t link_status_store(struct device *dev,
 static DEVICE_ATTR_RW(link_status);
 /*============= For amps factory test end =============*/
 
+static bool dp_get_sink_addr(int dev_id, unsigned char *addr)
+{
+	switch (dev_id) {
+		case 0x50:
+			*addr = 0;
+			break;
+		case 0x8c:
+			*addr = 0x01;
+			break;
+		case 0x58:
+			*addr = 0x02;
+			break;
+		case 0x5c:
+			*addr = 0x03;
+			break;
+		case 0x82:
+			*addr = 0x05;
+			break;
+		case 0x84:
+			*addr = 0x06;
+			break;
+		case 0x86:
+			*addr = 0x07;
+			break;
+		case 0x72:
+			*addr = 0x09;
+			break;
+		case 0x7a:
+			*addr = 0x0a;
+			break;
+		case 0x70:
+			*addr = 0x0b;
+			break;
+		case 0x60:
+			*addr = 0x0c;
+			break;
+		case 0x62:
+			*addr = 0x0d;
+			break;
+		case 0x64:
+			*addr = 0x0e;
+			break;
+		default:
+			pr_err("%s unsupported devid 0x%x\n", __func__, dev_id);
+			return -1;
+	}
+
+	return 0;
+}
+
+static bool dp_sink_reg_write(void *input, int dev_id, int reg,
+							unsigned char data, unsigned char mask)
+{
+	struct drm_dp_aux *drm_aux = input;
+	int ret;
+	unsigned char buf[8] = {0};
+
+	if (dp_get_sink_addr(dev_id, &buf[0])) {
+		pr_err("%s get devid fail 0x%x\n", dev_id);
+		return -1;
+	}
+
+	buf[1] = reg;
+
+	drm_dp_dpcd_write(drm_aux, 0x5f0, buf, 2);
+	drm_dp_dpcd_read(drm_aux, 0x5f2, &ret, 1);
+
+	buf[2] = (ret & ~mask) | data;
+	pr_info("%s write dev 0x%x addr 0x%x val 0x%x\n",  __func__, buf[0], buf[1], ret);
+
+	drm_dp_dpcd_write(drm_aux, 0x5f0, buf, 3);
+
+	//check
+	if (1) {
+		drm_dp_dpcd_write(drm_aux, 0x5f0, buf, 2);
+		drm_dp_dpcd_read(drm_aux, 0x5f2, &ret, 1);
+		pr_info("ww_debug dev 0x%x addr 0x%x val 0x%x\n",  buf[0], buf[1], ret);
+	}
+
+	return 0;
+}
+
+static bool dp_sink_reg_read(void *input, int dev_id, int reg,
+							unsigned char *data)
+{
+	struct drm_dp_aux *drm_aux = input;
+	unsigned char buf[256] = {0};
+
+	if (dp_get_sink_addr(dev_id, &buf[0])) {
+		return -1;
+	}
+
+	buf[1] = reg;
+
+	drm_dp_dpcd_write(drm_aux, 0x5f0, buf, 2);
+	drm_dp_dpcd_read(drm_aux, 0x5f2, data, 1);
+
+	return 0;
+}
+
+static ssize_t dp_sink_rw_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct dp_display_private *dp;
+	struct platform_device *pdev = to_platform_device(dev);
+	char data;
+	unsigned char addr, reg;
+	int ret;
+
+	if (!dev || !pdev) {
+		pr_err("%s invalid param(s), dev %pK, pdev %pK\n",
+				__func__, dev, pdev);
+		return 0;
+	}
+
+	addr = dp_dpcd_debug_buf[0];
+	reg = dp_dpcd_debug_buf[1];
+
+	dp = platform_get_drvdata(pdev);
+
+	/*data[] : addr | reg*/
+	dp_sink_reg_read(dp->aux->drm_aux, addr, reg, &data);
+
+	ret = scnprintf(buf, PAGE_SIZE, "read addr 0x%x reg 0x%x val 0x%x\n",
+			addr, reg, data);
+
+	return ret;
+}
+
+static ssize_t dp_sink_rw_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dp_display_private *dp;
+	struct platform_device *pdev = to_platform_device(dev);
+	int cnt = 0;
+	char* str;
+	int ret = 0;
+
+	if (!dev || !pdev) {
+		pr_err("%s invalid param(s), dev %pK, pdev %pK\n",
+				__func__, dev, pdev);
+		return 0;
+	}
+
+	dp = platform_get_drvdata(pdev);
+
+	while(cnt < sizeof(dp_dpcd_debug_buf)) {
+		str = strsep((char**)&buf, " ");
+		if (str == NULL)
+			break;
+
+		kstrtou8(str, 16, &dp_dpcd_debug_buf[cnt]);
+
+		cnt++;
+	}
+
+	/*data[] : addr | reg | [val](option, only wr needed)*/
+	if (cnt == 3) {
+		ret = dp_sink_reg_write(dp->aux->drm_aux, dp_dpcd_debug_buf[0],
+					dp_dpcd_debug_buf[1], dp_dpcd_debug_buf[2], 0xff);
+		if (ret)
+			pr_err("%s write failed %d\n", __func__, ret);
+	} else {
+		pr_err("%s data len %d, do not need writing sink\n", __func__, cnt);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(dp_sink_rw);
+
 static ssize_t dp_dpcd_read_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -2910,6 +3081,7 @@ static struct attribute *dp_attrs[] = {
 	&dev_attr_dp_hdcp_en.attr,
 	&dev_attr_dp_enhance_en.attr,
 	&dev_attr_dp_dpcd_read.attr,
+	&dev_attr_dp_sink_rw.attr,
 	&dev_attr_link_status.attr,
 	&dev_attr_video_status.attr,
 	NULL,
