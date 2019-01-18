@@ -2979,7 +2979,7 @@ static ssize_t dp_dpcd_read_store(struct device *dev,
 
 	dp = platform_get_drvdata(pdev);
 
-	if (kstrtoul(buf, 10, &addr) < 0)
+	if (kstrtoul(buf, 16, &addr) < 0)
 		return -EINVAL;
 
 	drm_dp_dpcd_read(dp->aux->drm_aux, addr, dp_dpcd_debug_buf, 1);
