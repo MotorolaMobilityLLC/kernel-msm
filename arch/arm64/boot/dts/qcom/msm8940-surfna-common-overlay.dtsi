@@ -448,7 +448,6 @@
 		qcom,model = "msm8953_snd_card-tfa987x";
 
 		/delete-property/ qcom,cdc-us-euro-gpios;
-		/delete-property/ qcom,msm-micbias2-ext-cap;
 		/delete-property/ asoc-wsa-codec-names;
 		/delete-property/ asoc-wsa-codec-prefixes;
 		/delete-property/ msm-vdd-wsa-switch-supply;
@@ -473,6 +472,7 @@
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "internal";
 		qcom,msm-micbias1-ext-cap;
+		qcom,msm-micbias2-ext-cap;
 
 		qcom,audio-routing =
 				"RX_BIAS", "MCLK",
