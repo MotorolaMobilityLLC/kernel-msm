@@ -20,6 +20,7 @@
 #include "sdm636-lake-audio.dtsi"
 #include "sdm636-egis-fps.dtsi"
 #include "dsi-panel-mot-tianma-h-624-1080p-vid.dtsi"
+#include "dsi-panel-mot-tianma-n-revvl-624-1080p-vid.dtsi"
 
 #define LAKE_RADIO_NA 1
 #define LAKE_RADIO_TMO 5
