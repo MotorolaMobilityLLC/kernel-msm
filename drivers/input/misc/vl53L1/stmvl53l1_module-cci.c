@@ -81,6 +81,7 @@ static int stmvl53l1_request_xsdn(struct tof_ctrl_t *tof_ctrl)
 		vl53l1_errmsg("fail to configure xsdn as output %d", rc);
 		goto direction_failed;
 	}
+	rc = gpio_export(tof_ctrl->xsdn_gpio, true);
 	tof_ctrl->io_flag.xsdn_owned = 1;
 
 	return rc;
@@ -421,19 +422,6 @@ static int32_t stmvl53l1_platform_probe(struct platform_device *pdev)
 
 	/* setup device data */
 	dev_set_drvdata(&pdev->dev, vl53l1_data);
-	/* turn on power */
-	if (tof_ctrl->power_supply) {
-		rc = cam_soc_util_regulator_enable(tof_ctrl->power_supply, "laser", 2800000, 2800000, 80000, 0);
-		rc |= cam_soc_util_regulator_enable(tof_ctrl->cci_supply,"cci", 1800000, 1800000, 0, 0);
-		if (rc) {
-			vl53l1_errmsg("fail to turn on regulator");
-			return rc;
-		}
-	} else if (tof_ctrl->pwren_gpio != -1) {
-		gpio_set_value_cansleep(tof_ctrl->pwren_gpio, 1);
-		vl53l1_info("slow power on");
-	} else
-		vl53l1_wanrmsg("no power control");
 	/* setup other stuff */
 	rc = stmvl53l1_setup(vl53l1_data);
 	if (rc) {
@@ -453,6 +441,7 @@ static int32_t stmvl53l1_platform_probe(struct platform_device *pdev)
 	return rc;
 
 release_gpios:
+	camera_io_release(&tof_ctrl->io_master_info);
 	stmvl53l1_release_gpios_cci(tof_ctrl);
 unregister_subdev:
 	cam_unregister_subdev(&(tof_ctrl->v4l2_dev_str));
@@ -526,11 +515,28 @@ int stmvl53l1_power_up_cci(void *object)
 		vl53l1_errmsg("stmvl53l1_power_up_cci failed %d\n", __LINE__);
 		return -EINVAL;
 	}
-
+	/* turn on power */
+	if (tof_ctrl->power_supply) {
+		rc = cam_soc_util_regulator_enable(tof_ctrl->power_supply, "laser", 2800000, 2800000, 80000, 0);
+		if (rc) {
+			vl53l1_errmsg("fail to turn on avdd regulator");
+			return rc;
+		}
+	} else if (tof_ctrl->pwren_gpio != -1) {
+		gpio_set_value_cansleep(tof_ctrl->pwren_gpio, 1);
+		vl53l1_info("slow power on");
+	} else
+		vl53l1_wanrmsg("no power control");
 	rc = camera_io_init(&tof_ctrl->io_master_info);
 	if (rc < 0)
 		vl53l1_errmsg("cci init failed: rc: %d", rc);
-
+	if (tof_ctrl->power_supply) {
+	rc = cam_soc_util_regulator_enable(tof_ctrl->cci_supply,"cci", 1800000, 1800000, 0, 0);
+		if (rc) {
+			vl53l1_errmsg("fail to turn on iovdd regulator");
+			return rc;
+		}
+		}
 	vl53l1_dbgmsg("End\n");
 
 	return rc;
@@ -547,7 +553,16 @@ int stmvl53l1_power_down_cci(void *cci_object)
 	}
 
 	vl53l1_dbgmsg("Enter\n");
-
+	/* turn off power */
+	if (tof_ctrl->power_supply) {
+		rc = cam_soc_util_regulator_disable(tof_ctrl->power_supply, "laser", 2800000, 2800000, 80000, 0);
+		rc = cam_soc_util_regulator_disable(tof_ctrl->cci_supply,"cci", 1800000, 1800000, 0, 0);
+		if (rc)
+			vl53l1_errmsg("reg disable failed. rc=%d\n",
+				rc);
+	} else if (tof_ctrl->pwren_gpio != -1) {
+		gpio_set_value_cansleep(tof_ctrl->pwren_gpio, 0);
+	}
 	camera_io_release(&tof_ctrl->io_master_info);
 
 	vl53l1_dbgmsg("power off");
@@ -697,7 +712,6 @@ int stmvl53l1_reset_hold_cci(void *object)
 	if (!tof_ctrl) {
 		vl53l1_errmsg("Invalid parameter = %d\n", rc);
 	}
-
 	gpio_set_value_cansleep(tof_ctrl->xsdn_gpio, 0);
 
 	vl53l1_dbgmsg("End\n");
