@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
+#include <linux/regulator/consumer.h>
 
 #include <linux/mods/mod_display.h>
 #include <linux/mods/mod_display_ops.h>
@@ -38,6 +39,8 @@ struct dp_bridge_data {
 	struct completion connect_wait;
 	struct completion video_stable_wait;
 	struct dentry *debugfs;
+	struct regulator *dp_aux_supply;
+
 	int gpio_sel;
 	int gpio_dp_int_trigo;
 };
@@ -54,11 +57,25 @@ static inline int dp_enable_irq(bool en)
 static int muc_trigger_dp_int(int val)
 {
 	struct dp_bridge_data *cd = dp_data;
+	int ret;
 
 	/* Log the new state and interrupts since last change in state */
 	if (!cd) {
 		pr_info("%s no muc data\n", __func__);
 		return -1;
+	}
+
+	if (!IS_ERR(cd->dp_aux_supply)) {
+		if (val)
+			ret = regulator_enable(cd->dp_aux_supply);
+		else
+			ret = regulator_disable(cd->dp_aux_supply);
+
+		if (ret) {
+			pr_err("%s Unable to %s aux_supply\n",
+				__func__, val ? "enable" : "disable");
+			return ret;
+		}
 	}
 
 	if (gpio_is_valid(cd->gpio_dp_int_trigo)) {
@@ -100,7 +117,30 @@ static int dp_bridge_parse_dt(struct device *dev,
 			    struct dp_bridge_data *dp)
 {
 	struct device_node *np = dev->of_node;
+	const __be32 *prop;
+	int len;
+	int aux_vol_low, aux_vol_high;
 	int ret = 0;
+
+	dp->dp_aux_supply = devm_regulator_get(dev, "dp-aux");
+	if (IS_ERR(dp->dp_aux_supply))  {
+		dev_info(dev, "there is no dp aux supply\n");
+	} else {
+		prop = of_get_property(np, "mmi,aux-voltage-level", &len);
+		if (prop && (len == (2 * sizeof(__be32)))) {
+			aux_vol_low = be32_to_cpup(&prop[0]);
+			aux_vol_high = be32_to_cpup(&prop[1]);
+
+			dev_info(dev, "%s set vcc supply as %d %d\n",
+					__func__, aux_vol_low, aux_vol_high);
+			regulator_set_voltage(dp->dp_aux_supply, aux_vol_low, aux_vol_high);
+		}
+
+		ret = regulator_set_load(dp->dp_aux_supply, 100000);
+		if (ret ) {
+			dev_err(dev, "Failed to set reg aux_supply cur: %d\n", ret);
+		}
+	}
 
 	//sel gpio
 	dp->gpio_sel = of_get_named_gpio(np, "mmi,dp-sel-gpio", 0);
