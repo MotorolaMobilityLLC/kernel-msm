@@ -29,6 +29,8 @@
 #define VSC_EXT_VESA_SDP_CHAINING_SUPPORTED BIT(5)
 
 #ifdef CONFIG_MOD_DISPLAY
+extern int dp_fix_linkrate;
+
 extern unsigned char* dp_bridge_mod_dispalay_get_edid(int size);
 #endif
 
@@ -1633,6 +1635,13 @@ static int dp_panel_read_dpcd(struct dp_panel *dp_panel, bool multi_func)
 
 	print_hex_dump(KERN_DEBUG, "[drm-dp] SINK DPCD: ",
 		DUMP_PREFIX_NONE, 8, 1, dp_panel->dpcd, rlen, false);
+
+#ifdef CONFIG_MOD_DISPLAY
+	if (dp_fix_linkrate) {
+		dp_panel->dpcd[DP_MAX_LINK_RATE] = DP_LINK_BW_1_62;//force 1.62
+		pr_info("%s linkrate forece 1.62G\n", __func__);
+	}
+#endif
 
 	rlen = drm_dp_dpcd_read(panel->aux->drm_aux,
 		DPRX_FEATURE_ENUMERATION_LIST, &rx_feature, 1);
