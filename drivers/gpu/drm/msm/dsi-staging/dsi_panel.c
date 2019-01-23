@@ -908,6 +908,17 @@ int dsi_panel_set_param(struct dsi_panel *panel,
 	return rc;
 }
 
+void dsi_panel_reset_param(struct dsi_panel *panel)
+{
+	struct panel_param *param;
+	int i;
+
+	for (i = 0; i < PARAM_ID_NUM; i++) {
+		param = &dsi_panel_param[i];
+		param->value = param->default_value;
+	}
+}
+
 static int dsi_panel_bl_register(struct dsi_panel *panel)
 {
 	int rc = 0;
