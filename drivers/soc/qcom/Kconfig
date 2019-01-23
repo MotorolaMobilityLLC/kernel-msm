@@ -15,7 +15,15 @@ config FOLES_DTB
 	default n
 	bool "Foles DTBs"
 	help
-	  Only include Ali specific DTBs to limit the number that
+	  Only include Foles specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+config PARKER_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Parker DTBs"
+	help
+	  Only include Parker specific DTBs to limit the number that
 	  get built during kernel compilation.
 
 config QCOM_MEM_OFFLINE
