@@ -15,6 +15,7 @@
 #include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
 #include "dsi-panel-mot-tianma-639-1080p-cmd-overlay.dtsi"
 #include "sm6150-parker-audio-overlay.dtsi"
+#include "sm6150-camera-sensor-mot-parker-overlay.dtsi"
 
 &pm6150_l19 {
 	regulator-boot-on;
