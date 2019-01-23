@@ -733,7 +733,8 @@ check_entry_size_and_hooks(struct ipt_entry *e,
 	if (!ip_checkentry(&e->ip))
 		return -EINVAL;
 
-	err = xt_check_entry_offsets(e, e->target_offset, e->next_offset);
+	err = xt_check_entry_offsets(e, e->elems, e->target_offset,
+				     e->next_offset);
 	if (err)
 		return err;
 
@@ -1471,7 +1472,7 @@ check_compat_entry_size_and_hooks(struct compat_ipt_entry *e,
 	if (!ip_checkentry(&e->ip))
 		return -EINVAL;
 
-	ret = xt_compat_check_entry_offsets(e,
+	ret = xt_compat_check_entry_offsets(e, e->elems,
 					    e->target_offset, e->next_offset);
 	if (ret)
 		return ret;
