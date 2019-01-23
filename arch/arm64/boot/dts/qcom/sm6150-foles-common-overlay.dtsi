@@ -16,6 +16,7 @@
 #include "dsi-panel-mot-tianma-639-1080p-cmd-overlay.dtsi"
 #include "sm6150-foles-mods.dtsi"
 #include "sm6150-foles-audio-overlay.dtsi"
+#include "sm6150-camera-sensor-mot-foles-overlay.dtsi"
 
 &pm6150_l19 {
 	regulator-boot-on;
