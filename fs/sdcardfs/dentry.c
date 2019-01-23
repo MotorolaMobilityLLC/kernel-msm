@@ -186,7 +186,6 @@ static void sdcardfs_canonical_path(const struct path *path,
 	sdcardfs_get_real_lower(path->dentry, actual_path);
 }
 
-#ifdef CONFIG_SDCARD_FS_DIR_WRITER
 void sdcardfs_update_xattr_dirwriter(struct dentry *lower_dentry,
 	uid_t writer_uid)
 {
@@ -199,6 +198,10 @@ void sdcardfs_update_xattr_dirwriter(struct dentry *lower_dentry,
 	struct dentry *xdentry = NULL, *child = NULL;
 	appid_t app_id = uid_is_app(writer_uid) ?
 		writer_uid % AID_USER_OFFSET : 0;
+
+	if (strlen(CONFIG_SDCARD_FS_DIR_WRITER) == 1 &&
+		!strncmp(CONFIG_SDCARD_FS_DIR_WRITER, "n", 1))
+		return;
 
 	dentry = lower_dentry;
 	if (IS_ERR_OR_NULL(dentry) || !app_id)
@@ -260,7 +263,6 @@ void sdcardfs_update_xattr_dirwriter(struct dentry *lower_dentry,
 out_unlock:
 	dput(xdentry);
 }
-#endif
 
 const struct dentry_operations sdcardfs_ci_dops = {
 	.d_revalidate	= sdcardfs_d_revalidate,
