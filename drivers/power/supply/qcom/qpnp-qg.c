@@ -2193,7 +2193,12 @@ static int qg_psy_get_property(struct power_supply *psy,
 		break;
 	}
 
-	return rc;
+	if (rc < 0) {
+		pr_err("Failed to get property: %d\n", rc);
+		return rc;
+	}
+
+	return 0;
 }
 
 static int qg_property_is_writeable(struct power_supply *psy,
