@@ -229,9 +229,7 @@ static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode
 	struct fs_struct *copied_fs;
 	struct qstr q_obb = QSTR_LITERAL("obb");
 	struct qstr q_data = QSTR_LITERAL("data");
-#ifdef CONFIG_SDCARD_FS_DIR_WRITER
 	uid_t writer_uid = current_fsuid().val;
-#endif
 
 	if (!check_caller_access_to_name(dir, &dentry->d_name)) {
 		err = -EACCES;
@@ -342,10 +340,8 @@ static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode
 			goto out;
 		}
 	}
-#ifdef CONFIG_SDCARD_FS_DIR_WRITER
 	if (pd->perm < PERM_ANDROID)
 		sdcardfs_update_xattr_dirwriter(lower_dentry, writer_uid);
-#endif
 out:
 	task_lock(current);
 	current->fs = saved_fs;
@@ -807,7 +803,6 @@ out:
 	return err;
 }
 
-#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
 void sdcardfs_update_relatime_flag(struct file *lower_file,
 	struct inode *lower_inode, uid_t writer_uid)
 {
@@ -820,6 +815,10 @@ void sdcardfs_update_relatime_flag(struct file *lower_file,
 	__u32 flags = 0;
 	appid_t app_id = uid_is_app(writer_uid) ?
 		writer_uid % AID_USER_OFFSET : 0;
+
+	if (strlen(CONFIG_SDCARD_FS_PARTIAL_RELATIME) == 1 &&
+		!strncmp(CONFIG_SDCARD_FS_PARTIAL_RELATIME, "n", 1))
+		return;
 
 	dentry = lower_file->f_path.dentry;
 	if (IS_ERR_OR_NULL(dentry) || S_ISDIR(d_inode(dentry)->i_mode))
@@ -874,7 +873,6 @@ void sdcardfs_update_relatime_flag(struct file *lower_file,
 	lower_inode->i_flags |= flags;
 	spin_unlock(&lower_inode->i_lock);
 }
-#endif
 
 const struct inode_operations sdcardfs_symlink_iops = {
 	.permission2	= sdcardfs_permission,
