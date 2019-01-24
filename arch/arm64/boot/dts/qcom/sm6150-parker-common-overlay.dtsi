@@ -496,6 +496,46 @@
 			0x8020 0x000F0000
 		>;
 	};
+	aw2015@64 {/* add for breath led. */
+		compatible = "awinic,aw2015_led";
+		reg = <0x64>;
+
+		aw2015,red {
+			aw2015,name = "red";
+			aw2015,id = <0>;
+			aw2015,imax = <1>;
+			aw2015,led-current = <255>;
+			aw2015,max-brightness = <255>;
+			aw2015,rise-time-ms = <6>;
+			aw2015,hold-time-ms = <0>;
+			aw2015,fall-time-ms = <6>;
+			aw2015,off-time-ms = <4>;
+		};
+
+		aw2015,green {
+			aw2015,name = "green";
+			aw2015,id = <1>;
+			aw2015,imax = <1>;
+			aw2015,led-current = <255>;
+			aw2015,max-brightness = <255>;
+			aw2015,rise-time-ms = <6>;
+			aw2015,hold-time-ms = <0>;
+			aw2015,fall-time-ms = <6>;
+			aw2015,off-time-ms = <4>;
+		};
+
+		aw2015,blue {
+			aw2015,name = "blue";
+			aw2015,id = <2>;
+			aw2015,imax = <1>;
+			aw2015,led-current = <255>;
+			aw2015,max-brightness = <255>;
+			aw2015,rise-time-ms = <6>;
+			aw2015,hold-time-ms = <0>;
+			aw2015,fall-time-ms = <6>;
+			aw2015,off-time-ms = <4>;
+		};
+	};
 };
 
 &qupv3_se5_i2c {
