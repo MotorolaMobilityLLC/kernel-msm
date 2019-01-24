@@ -3220,6 +3220,8 @@ static int finish_port_resume(struct usb_device *udev)
 {
 	int	status = 0;
 	u16	devstatus = 0;
+	int	intf_retry = 0;
+	int	dev_retry = 0;
 
 	/* caller owns the udev device lock */
 	dev_dbg(&udev->dev, "%s\n",
@@ -3258,12 +3260,22 @@ static int finish_port_resume(struct usb_device *udev)
 	 * and device drivers will know about any resume quirks.
 	 */
 	if (status == 0) {
+ retry_get_status_dev:
 		devstatus = 0;
 		status = usb_get_status(udev, USB_RECIP_DEVICE, 0, &devstatus);
-
+		if (status) {
+			dev_info(&udev->dev,
+				 "dev disable rem wakeup, stat %d, try %d\n",
+				 status, dev_retry);
+			if (dev_retry < 3) {
+				dev_retry++;
+				mdelay(5);
+				goto retry_get_status_dev;
+			}
+		}
 		/* If a normal resume failed, try doing a reset-resume */
 		if (status && !udev->reset_resume && udev->persist_enabled) {
-			dev_dbg(&udev->dev, "retry with reset-resume\n");
+			dev_err(&udev->dev, "retry with reset-resume\n");
 			udev->reset_resume = 1;
 			goto retry_reset_resume;
 		}
@@ -3283,6 +3295,7 @@ static int finish_port_resume(struct usb_device *udev)
 			if (devstatus & (1 << USB_DEVICE_REMOTE_WAKEUP))
 				status = usb_disable_remote_wakeup(udev);
 		} else {
+ retry_get_status_intf:
 			status = usb_get_status(udev, USB_RECIP_INTERFACE, 0,
 					&devstatus);
 			if (!status && devstatus & (USB_INTRF_STAT_FUNC_RW_CAP
@@ -3290,10 +3303,17 @@ static int finish_port_resume(struct usb_device *udev)
 				status = usb_disable_remote_wakeup(udev);
 		}
 
-		if (status)
-			dev_dbg(&udev->dev,
-				"disable remote wakeup, status %d\n",
-				status);
+		if (status) {
+			dev_info(&udev->dev,
+				 "disable rem wakeup, status %d, try %d\n",
+				 status, intf_retry);
+			if (intf_retry < 3) {
+				intf_retry++;
+				mdelay(5);
+				goto retry_get_status_intf;
+			}
+		}
+
 		status = 0;
 	}
 	return status;
