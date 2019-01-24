@@ -46,6 +46,10 @@
 #include <linux/kernel.h>
 #include <linux/pm_runtime.h>
 
+#ifdef CONFIG_PANEL_NOTIFICATIONS
+#include <linux/panel_notifier.h>
+#endif
+
 #define DRIVER_VERSION		"22-Aug-2005"
 
 
@@ -89,6 +93,9 @@ static int msg_level = -1;
 module_param (msg_level, int, 0);
 MODULE_PARM_DESC (msg_level, "Override default message level");
 
+#ifdef CONFIG_PANEL_NOTIFICATIONS
+int last_panel_state = -1;
+#endif
 /*-------------------------------------------------------------------------*/
 
 /* handles CDC Ethernet and many other network "bulk data" interfaces */
@@ -1551,6 +1558,10 @@ void usbnet_disconnect (struct usb_interface *intf)
 	if (!dev)
 		return;
 
+#ifdef CONFIG_PANEL_NOTIFICATIONS
+	panel_unregister_notifier(&dev->panel_usb_notifier);
+#endif
+
 	xdev = interface_to_usbdev (intf);
 
 	netif_info(dev, probe, dev->net, "unregister '%s' usb-%s-%s, %s\n",
@@ -1598,6 +1609,52 @@ static struct device_type wlan_type = {
 static struct device_type wwan_type = {
 	.name	= "wwan",
 };
+
+#ifdef CONFIG_PANEL_NOTIFICATIONS
+static void panel_usb_work(struct work_struct *work)
+{
+	struct usbnet *dev = container_of(work, struct usbnet,
+					  panel_update_work);
+
+	if (last_panel_state == dev->panel_state)
+		return;
+
+	last_panel_state = dev->panel_state;
+
+	if (dev->panel_state) {
+		usb_disable_autosuspend(dev->udev);
+		pr_err("USB Autosuspend OFF\n");
+	} else {
+		usb_enable_autosuspend(dev->udev);
+		pr_err("USB Autosuspend ON\n");
+	}
+
+}
+
+static int panel_usb_notifier_call(struct notifier_block *nb,
+				   unsigned long event,
+				   void *data)
+{
+	struct usbnet *dev = container_of(nb, struct usbnet,
+					  panel_usb_notifier);
+
+	switch (event) {
+	case PANEL_EVENT_DISPLAY_ON:
+		pr_err("USB Panel ON\n");
+		dev->panel_state = 1;
+		schedule_work(&dev->panel_update_work);
+		break;
+	case PANEL_EVENT_PRE_DISPLAY_OFF:
+		pr_err("USB Panel OFF\n");
+		dev->panel_state = 0;
+		schedule_work(&dev->panel_update_work);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+#endif
 
 int
 usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
@@ -1764,8 +1821,22 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 	if (dev->driver_info->flags & FLAG_LINK_INTR)
 		usbnet_link_change(dev, 0, 0);
 
-	return 0;
+#ifdef CONFIG_PANEL_NOTIFICATIONS
+	INIT_WORK(&dev->panel_update_work, panel_usb_work);
+	if (last_panel_state != -1) {
+		dev->panel_state = last_panel_state;
+		last_panel_state = -1;
+		pr_err("Update USB Panel to last state %s\n",
+		       (dev->panel_state == 1) ? "ON" : "OFF");
+		schedule_work(&dev->panel_update_work);
+	}
+	dev->panel_usb_notifier.notifier_call = panel_usb_notifier_call;
+	status = panel_register_notifier(&dev->panel_usb_notifier);
+	if (status)
+		pr_err("USBNET Probe: Panel Notifier Failure %d\n", status);
+#endif
 
+	return 0;
 out5:
 	kfree(dev->padding_pkt);
 out4:
