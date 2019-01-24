@@ -69,6 +69,11 @@
 /* AHB2PHY read/write waite value */
 #define ONE_READ_WRITE_WAIT 0x11
 
+#undef dev_dbg
+#undef pr_debug
+#define dev_dbg dev_err
+#define pr_debug pr_err
+
 /* cpu to fix usb interrupt */
 static int cpu_to_affin;
 
