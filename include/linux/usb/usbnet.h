@@ -120,6 +120,13 @@ struct usbnet {
 	struct work_struct ipa_send_task;
 	/* work for odu bridge initialization */
 	struct work_struct odu_bridge_init;
+
+#ifdef CONFIG_PANEL_NOTIFICATIONS
+	struct notifier_block	panel_usb_notifier;
+	struct work_struct	panel_update_work;
+	u32			panel_state;
+	int			last_panel_state;
+#endif
 };
 
 static inline struct usb_driver *driver_of(struct usb_interface *intf)
