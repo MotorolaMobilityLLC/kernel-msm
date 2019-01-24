@@ -814,10 +814,6 @@
 	};
 };
 
-&usb0{
-	mmi,ext-typec-switch;
-};
-
 &spmi_bus {
 	qcom,pm6150@0 {
 		pm6150_clkdiv: clock-controller@5b00 {
