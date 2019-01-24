@@ -826,3 +826,9 @@
 		};
 	};
 };
+
+&sde_dp {
+	status = "okay";
+	qcom,dp-gpio-aux-switch;
+	qcom,aux-sel-gpio = <&tlmm 49 0>;
+};
