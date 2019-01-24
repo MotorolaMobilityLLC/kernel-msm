@@ -487,6 +487,59 @@ void rndis_unbind(struct usbnet *dev, struct usb_interface *intf)
 }
 EXPORT_SYMBOL_GPL(rndis_unbind);
 
+static int rndis_host_reset_resume (struct usb_interface *intf)
+{
+	int retval;
+	struct usbnet *dev;
+	union {
+		void			*buf;
+		struct rndis_msg_hdr	*header;
+		struct rndis_init	*init;
+		struct rndis_init_c	*init_c;
+		struct rndis_query	*get;
+		struct rndis_query_c	*get_c;
+		struct rndis_set	*set;
+		struct rndis_set_c	*set_c;
+		struct rndis_halt	*halt;
+	} u;
+
+	dev_err(&intf->dev, "rndis_host reset resume start\n");
+	u.buf = kmalloc(CONTROL_BUFFER_SIZE, GFP_KERNEL);
+	if (!u.buf) {
+		dev_err(&intf->dev, "rndis_host reset resume ENOMEM\n");
+		return -ENOMEM;
+	}
+
+	dev = usb_get_intfdata(intf);
+	if (!dev) {
+		pr_err("usbnet device NULL\n");
+		return 0;
+	}
+	/* set a nonzero filter to enable data transfers */
+	memset(u.set, 0, sizeof *u.set);
+	u.set->msg_type = cpu_to_le32(RNDIS_MSG_SET);
+	u.set->msg_len = cpu_to_le32(4 + sizeof *u.set);
+	u.set->oid = cpu_to_le32(RNDIS_OID_GEN_CURRENT_PACKET_FILTER);
+	u.set->len = cpu_to_le32(4);
+	u.set->offset = cpu_to_le32((sizeof *u.set) - 8);
+	*(__le32 *)(u.buf + sizeof *u.set) = cpu_to_le32(RNDIS_DEFAULT_FILTER);
+
+	retval = rndis_command(dev, u.header, CONTROL_BUFFER_SIZE);
+	if (unlikely(retval < 0)) {
+		dev_err(&intf->dev, "rndis set packet filter, %d\n", retval);
+	}
+
+	retval = 0;
+	retval = usbnet_resume(intf);
+	if (retval < 0)
+		dev_err(&intf->dev, "usbnet resume error: %d\n", retval);
+
+	kfree(u.buf);
+
+	dev_err(&intf->dev, "rndis_host reset resume complete\n");
+	return 0;
+}
+
 /*
  * DATA -- host must not write zlps
  */
@@ -594,6 +647,7 @@ static const struct driver_info	rndis_info = {
 	.status =	rndis_status,
 	.rx_fixup =	rndis_rx_fixup,
 	.tx_fixup =	rndis_tx_fixup,
+	.manage_power = usbnet_manage_power,
 };
 
 static const struct driver_info	rndis_poll_status_info = {
@@ -605,6 +659,7 @@ static const struct driver_info	rndis_poll_status_info = {
 	.status =	rndis_status,
 	.rx_fixup =	rndis_rx_fixup,
 	.tx_fixup =	rndis_tx_fixup,
+	.manage_power = usbnet_manage_power,
 };
 
 /*-------------------------------------------------------------------------*/
@@ -639,6 +694,7 @@ static struct usb_driver rndis_driver = {
 	.disconnect =	usbnet_disconnect,
 	.suspend =	usbnet_suspend,
 	.resume =	usbnet_resume,
+	.reset_resume = rndis_host_reset_resume,
 	.disable_hub_initiated_lpm = 1,
 };
 
