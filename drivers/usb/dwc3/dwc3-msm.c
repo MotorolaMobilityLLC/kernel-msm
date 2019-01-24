@@ -2290,6 +2290,13 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 
 	/* Suspend SS PHY */
 	if (can_suspend_ssphy) {
+		if (mdwc->in_host_mode) {
+			u32 reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+
+			reg |= DWC3_GUSB3PIPECTL_DIS_RXDET_U3_RXDET;
+			dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+			dev_dbg(mdwc->dev, "RXDET set\n");
+		}
 		/* indicate phy about SS mode */
 		if (dwc3_msm_is_superspeed(mdwc))
 			mdwc->ss_phy->flags |= DEVICE_IN_SS_MODE;
@@ -2427,6 +2434,14 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	clk_prepare_enable(mdwc->utmi_clk);
 	if (mdwc->bus_aggr_clk)
 		clk_prepare_enable(mdwc->bus_aggr_clk);
+
+	if (mdwc->in_host_mode) {
+		u32 reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+
+		reg &= ~DWC3_GUSB3PIPECTL_DIS_RXDET_U3_RXDET;
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+		dev_dbg(mdwc->dev, "RXDET cleared\n");
+	}
 
 	/* Resume SS PHY */
 	if (mdwc->lpm_flags & MDWC3_SS_PHY_SUSPEND) {
