@@ -72,6 +72,10 @@
 
 /* DP_DM linestate float */
 #define DP_DM_STATE_FLOAT 0x02
+#undef dev_dbg
+#undef pr_debug
+#define dev_dbg dev_err
+#define pr_debug pr_err
 
 /* cpu to fix usb interrupt */
 static int cpu_to_affin;
