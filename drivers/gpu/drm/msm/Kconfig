@@ -198,3 +198,9 @@ config DRM_SDE_RSC
 	  avoids the display core power collapse. A client can also register
 	  for display core power collapse events on rsc.
 
+config IRIS2P_FULL_SUPPORT
+       bool "Enable IRIS2P Support"
+       default n
+       ---help---
+       Say y to enable
+
