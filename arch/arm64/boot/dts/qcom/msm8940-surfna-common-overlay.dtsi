@@ -178,10 +178,9 @@
 
 &mtp_batterydata {
 	qcom,batt-id-range-pct = <15>;
+        df-serialnum = "SB18C43804";
         #include "batterydata-ke40-atl.dtsi"
-        //#include "batterydata-he50-atl-pmi8937.dtsi"
-        //#include "batterydata-he50-cos-pmi8937.dtsi"
-        //#include "batterydata-he50-cos-pmi8937-r1.dtsi"
+        #include "batterydata-KE40_Sunwoda-4V4-2820mah.dtsi"
 };
 
 

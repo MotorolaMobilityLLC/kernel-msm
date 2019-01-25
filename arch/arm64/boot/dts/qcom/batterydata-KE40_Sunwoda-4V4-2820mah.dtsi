@@ -1,0 +1,63 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,batterydata-KE40_Sunwoda-4V4-2820mah {
+        serialnum = "SB18C43801";
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,chg-term-ua = <100000>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3440>;
+	qcom,battery-type = "KE40_Sunwoda_2820mAh_4v4";
+	qcom,thermal-coefficients = [C5 86 BE 50 D1 37];
+	qcom,chg-rslow-comp-c1 = <2954729>;
+	qcom,chg-rslow-comp-c2 = <3696396>;
+	qcom,chg-rs-to-rslow = <853151>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0xC299>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 F1 83 28 7D
+		 11 81 C7 76
+		 3C 83 32 73
+		 F2 7F 87 80
+		 02 82 C4 9A
+		 D8 BD E7 CA
+		 7C 12 00 88
+		 6E 7D 4F 81
+		 5F 77 20 83
+		 CB 7B AF 8D
+		 17 8A 0E 82
+		 B7 A0 42 C6
+		 C6 D9 65 0B
+		 AA 0B BE 5B
+		 14 70 29 FC
+		 81 3E 7F 2E
+		 5F 38 00 00
+		 FE 47 CE 40
+		 CF 38 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 57 70 49 6A
+		 93 7D C8 7A
+		 9F 7D 0D 78
+		 5E 7C C9 5F
+		 DE 77 D3 70
+		 79 7E DC A8
+		 1A F1 5A 57
+		 5F A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
