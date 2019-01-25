@@ -419,7 +419,7 @@
 	aw869x_haptic@5A {
 		compatible = "awinic,aw869x_haptic";
 		reg = <0x5A>;
-		reset-gpio = <&pcal_pin 10 0>;
+		reset-gpio = <&tlmm 113 0>;
 		irq-gpio = <&tlmm 97 0>;
 		haptic-context-gpio = <&tlmm 101 0>;
 		pinctrl-names = "default";
