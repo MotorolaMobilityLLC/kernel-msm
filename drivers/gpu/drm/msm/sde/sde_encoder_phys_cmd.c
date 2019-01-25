@@ -1473,6 +1473,12 @@ static int _sde_encoder_phys_cmd_wait_for_ctl_start(
 		else
 			ret = 0;
 
+/*
+*MMI_STOPSHIP IKSWP-58080: it is a workaround solution.
+*When we find the root cause ,and commit the formal solution.
+*/
+
+#if 0
 		if (sde_encoder_phys_cmd_is_master(phys_enc)) {
 			/*
 			 * Signaling the retire fence at ctl start timeout
@@ -1491,7 +1497,7 @@ static int _sde_encoder_phys_cmd_wait_for_ctl_start(
 				&phys_enc->pending_ctlstart_cnt, -1, 0);
 			atomic_inc_return(&phys_enc->ctlstart_timeout);
 		}
-
+#endif
 	}
 
 	return ret;
