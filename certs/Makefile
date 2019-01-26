@@ -9,8 +9,7 @@ ifeq ($(CONFIG_SYSTEM_TRUSTED_KEYRING),y)
 # GCC doesn't include .incbin files in -MD generated dependencies (PR#66871)
 $(obj)/system_certificates.o: $(obj)/x509_certificate_list
 
-# SYSTEM_TRUSTED_KEYS := certs/mmi_verity_keys.pem
-SYSTEM_TRUSTED_KEYS := certs/*.pem
+SYSTEM_TRUSTED_KEYS := certs/mmi_verity_keys.pem
 
 # Cope with signing_key.x509 existing in $(srctree) not $(objtree)
 AFLAGS_system_certificates.o := -I$(srctree)
