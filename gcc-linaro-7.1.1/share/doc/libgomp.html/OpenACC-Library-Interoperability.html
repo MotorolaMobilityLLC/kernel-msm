@@ -1,0 +1,258 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Copyright (C) 2006-2017 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with the
+Invariant Sections being "Funding Free Software", the Front-Cover
+texts being (a) (see below), and with the Back-Cover Texts being (b)
+(see below).  A copy of the license is included in the section entitled
+"GNU Free Documentation License".
+
+(a) The FSF's Front-Cover Text is:
+
+A GNU Manual
+
+(b) The FSF's Back-Cover Text is:
+
+You have freedom to copy and modify this GNU Manual, like GNU
+     software.  Copies published by the Free Software Foundation raise
+     funds for GNU development. -->
+<!-- Created by GNU Texinfo 5.2, http://www.gnu.org/software/texinfo/ -->
+<head>
+<title>GNU libgomp: OpenACC Library Interoperability</title>
+
+<meta name="description" content="GNU libgomp: OpenACC Library Interoperability">
+<meta name="keywords" content="GNU libgomp: OpenACC Library Interoperability">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link href="index.html#Top" rel="start" title="Top">
+<link href="Library-Index.html#Library-Index" rel="index" title="Library Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html#Top" rel="up" title="Top">
+<link href="The-libgomp-ABI.html#The-libgomp-ABI" rel="next" title="The libgomp ABI">
+<link href="CUDA-Streams-Usage.html#CUDA-Streams-Usage" rel="prev" title="CUDA Streams Usage">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.smallquotation {font-size: smaller}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.indentedblock {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+div.smalldisplay {margin-left: 3.2em}
+div.smallexample {margin-left: 3.2em}
+div.smallindentedblock {margin-left: 3.2em; font-size: smaller}
+div.smalllisp {margin-left: 3.2em}
+kbd {font-style:oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+pre.smalldisplay {font-family: inherit; font-size: smaller}
+pre.smallexample {font-size: smaller}
+pre.smallformat {font-family: inherit; font-size: smaller}
+pre.smalllisp {font-size: smaller}
+span.nocodebreak {white-space:nowrap}
+span.nolinebreak {white-space:nowrap}
+span.roman {font-family:serif; font-weight:normal}
+span.sansserif {font-family:sans-serif; font-weight:normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en" bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
+<a name="OpenACC-Library-Interoperability"></a>
+<div class="header">
+<p>
+Next: <a href="The-libgomp-ABI.html#The-libgomp-ABI" accesskey="n" rel="next">The libgomp ABI</a>, Previous: <a href="CUDA-Streams-Usage.html#CUDA-Streams-Usage" accesskey="p" rel="prev">CUDA Streams Usage</a>, Up: <a href="index.html#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Library-Index.html#Library-Index" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<a name="OpenACC-Library-Interoperability-1"></a>
+<h2 class="chapter">8 OpenACC Library Interoperability</h2>
+
+<a name="Introduction-1"></a>
+<h3 class="section">8.1 Introduction</h3>
+
+<p>The OpenACC library uses the CUDA Driver API, and may interact with
+programs that use the Runtime library directly, or another library
+based on the Runtime library, e.g., CUBLAS<a name="DOCF2" href="#FOOT2"><sup>2</sup></a>.
+This chapter describes the use cases and what changes are
+required in order to use both the OpenACC library and the CUBLAS and Runtime
+libraries within a program.
+</p>
+<a name="First-invocation_003a-NVIDIA-CUBLAS-library-API"></a>
+<h3 class="section">8.2 First invocation: NVIDIA CUBLAS library API</h3>
+
+<p>In this first use case (see below), a function in the CUBLAS library is called
+prior to any of the functions in the OpenACC library. More specifically, the
+function <code>cublasCreate()</code>.
+</p>
+<p>When invoked, the function initializes the library and allocates the
+hardware resources on the host and the device on behalf of the caller. Once
+the initialization and allocation has completed, a handle is returned to the
+caller. The OpenACC library also requires initialization and allocation of
+hardware resources. Since the CUBLAS library has already allocated the
+hardware resources for the device, all that is left to do is to initialize
+the OpenACC library and acquire the hardware resources on the host.
+</p>
+<p>Prior to calling the OpenACC function that initializes the library and
+allocate the host hardware resources, you need to acquire the device number
+that was allocated during the call to <code>cublasCreate()</code>. The invoking of the
+runtime library function <code>cudaGetDevice()</code> accomplishes this. Once
+acquired, the device number is passed along with the device type as
+parameters to the OpenACC library function <code>acc_set_device_num()</code>.
+</p>
+<p>Once the call to <code>acc_set_device_num()</code> has completed, the OpenACC
+library uses the  context that was created during the call to
+<code>cublasCreate()</code>. In other words, both libraries will be sharing the
+same context.
+</p>
+<div class="smallexample">
+<pre class="smallexample">    /* Create the handle */
+    s = cublasCreate(&amp;h);
+    if (s != CUBLAS_STATUS_SUCCESS)
+    {
+        fprintf(stderr, &quot;cublasCreate failed %d\n&quot;, s);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Get the device number */
+    e = cudaGetDevice(&amp;dev);
+    if (e != cudaSuccess)
+    {
+        fprintf(stderr, &quot;cudaGetDevice failed %d\n&quot;, e);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Initialize OpenACC library and use device 'dev' */
+    acc_set_device_num(dev, acc_device_nvidia);
+
+</pre></div>
+<div align="center">Use Case 1
+</div>
+<a name="First-invocation_003a-OpenACC-library-API"></a>
+<h3 class="section">8.3 First invocation: OpenACC library API</h3>
+
+<p>In this second use case (see below), a function in the OpenACC library is
+called prior to any of the functions in the CUBLAS library. More specificially,
+the function <code>acc_set_device_num()</code>.
+</p>
+<p>In the use case presented here, the function <code>acc_set_device_num()</code>
+is used to both initialize the OpenACC library and allocate the hardware
+resources on the host and the device. In the call to the function, the
+call parameters specify which device to use and what device
+type to use, i.e., <code>acc_device_nvidia</code>. It should be noted that this
+is but one method to initialize the OpenACC library and allocate the
+appropriate hardware resources. Other methods are available through the
+use of environment variables and these will be discussed in the next section.
+</p>
+<p>Once the call to <code>acc_set_device_num()</code> has completed, other OpenACC
+functions can be called as seen with multiple calls being made to
+<code>acc_copyin()</code>. In addition, calls can be made to functions in the
+CUBLAS library. In the use case a call to <code>cublasCreate()</code> is made
+subsequent to the calls to <code>acc_copyin()</code>.
+As seen in the previous use case, a call to <code>cublasCreate()</code>
+initializes the CUBLAS library and allocates the hardware resources on the
+host and the device.  However, since the device has already been allocated,
+<code>cublasCreate()</code> will only initialize the CUBLAS library and allocate
+the appropriate hardware resources on the host. The context that was created
+as part of the OpenACC initialization is shared with the CUBLAS library,
+similarly to the first use case.
+</p>
+<div class="smallexample">
+<pre class="smallexample">    dev = 0;
+
+    acc_set_device_num(dev, acc_device_nvidia);
+
+    /* Copy the first set to the device */
+    d_X = acc_copyin(&amp;h_X[0], N * sizeof (float));
+    if (d_X == NULL)
+    { 
+        fprintf(stderr, &quot;copyin error h_X\n&quot;);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Copy the second set to the device */
+    d_Y = acc_copyin(&amp;h_Y1[0], N * sizeof (float));
+    if (d_Y == NULL)
+    { 
+        fprintf(stderr, &quot;copyin error h_Y1\n&quot;);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Create the handle */
+    s = cublasCreate(&amp;h);
+    if (s != CUBLAS_STATUS_SUCCESS)
+    {
+        fprintf(stderr, &quot;cublasCreate failed %d\n&quot;, s);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Perform saxpy using CUBLAS library function */
+    s = cublasSaxpy(h, N, &amp;alpha, d_X, 1, d_Y, 1);
+    if (s != CUBLAS_STATUS_SUCCESS)
+    {
+        fprintf(stderr, &quot;cublasSaxpy failed %d\n&quot;, s);
+        exit(EXIT_FAILURE);
+    }
+
+    /* Copy the results from the device */
+    acc_memcpy_from_device(&amp;h_Y1[0], d_Y, N * sizeof (float));
+
+</pre></div>
+<div align="center">Use Case 2
+</div>
+<a name="OpenACC-library-and-environment-variables"></a>
+<h3 class="section">8.4 OpenACC library and environment variables</h3>
+
+<p>There are two environment variables associated with the OpenACC library
+that may be used to control the device type and device number:
+<code>ACC_DEVICE_TYPE</code> and <code>ACC_DEVICE_NUM</code>, respecively. These two
+environement variables can be used as an alternative to calling
+<code>acc_set_device_num()</code>. As seen in the second use case, the device
+type and device number were specified using <code>acc_set_device_num()</code>.
+If however, the aforementioned environment variables were set, then the
+call to <code>acc_set_device_num()</code> would not be required.
+</p>
+
+<p>The use of the environment variables is only relevant when an OpenACC function
+is called prior to a call to <code>cudaCreate()</code>. If <code>cudaCreate()</code>
+is called prior to a call to an OpenACC function, then you must call
+<code>acc_set_device_num()</code><a name="DOCF3" href="#FOOT3"><sup>3</sup></a>
+</p>
+
+
+
+<div class="footnote">
+<hr>
+<h4 class="footnotes-heading">Footnotes</h4>
+
+<h3><a name="FOOT2" href="#DOCF2">(2)</a></h3>
+<p>See section 2.26,
+&quot;Interactions with the CUDA Driver API&quot; in
+&quot;CUDA Runtime API&quot;, Version 5.5, and section 2.27, &quot;VDPAU
+Interoperability&quot;, in &quot;CUDA Driver API&quot;, TRM-06703-001, Version 5.5,
+for additional information on library interoperability.</p>
+<h3><a name="FOOT3" href="#DOCF3">(3)</a></h3>
+<p>More complete information
+about <code>ACC_DEVICE_TYPE</code> and <code>ACC_DEVICE_NUM</code> can be found in
+sections 4.1 and 4.2 of the <a href="http://www.openacc.org/">OpenACC</a>
+Application Programming Interfaceâ, Version 2.0.</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="The-libgomp-ABI.html#The-libgomp-ABI" accesskey="n" rel="next">The libgomp ABI</a>, Previous: <a href="CUDA-Streams-Usage.html#CUDA-Streams-Usage" accesskey="p" rel="prev">CUDA Streams Usage</a>, Up: <a href="index.html#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Library-Index.html#Library-Index" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

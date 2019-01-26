@@ -1,0 +1,188 @@
+manifest_format=1.4
+
+# Note that for ABE, these parameters are not used
+# Component data for gmp
+gmp_url=http://snapshots.linaro.org/components/toolchain/infrastructure
+gmp_filespec=gmp-6.1.2.tar.xz
+gmp_md5sum=f58fa8001d60c4c77595fbbb62b63c1d
+gmp_mingw_only="no"
+gmp_configure="--enable-cxx --enable-fft"
+gmp_staticlink="yes"
+
+# Component data for mpfr
+mpfr_url=http://snapshots.linaro.org/components/toolchain/infrastructure
+mpfr_filespec=mpfr-3.1.5.tar.xz
+mpfr_md5sum=c4ac246cf9795a4491e7766002cd528f
+mpfr_mingw_only="no"
+mpfr_configure="--with-gmp=${local_builds}/destdir/${host}"
+mpfr_staticlink="yes"
+
+# Component data for mpc
+mpc_url=http://snapshots.linaro.org/components/toolchain/infrastructure/
+mpc_filespec=mpc-1.0.3.tar.gz
+mpc_md5sum=d6a1d5f8ddea3abd2cc3e98f58352d26
+mpc_mingw_only="no"
+mpc_configure="--with-gmp=${local_builds}/destdir/${host} --with-mpfr=${local_builds}/destdir/${host}"
+mpc_staticlink="yes"
+
+# Component data for linux
+linux_url=http://snapshots.linaro.org/components/toolchain/infrastructure
+linux_filespec=linux-4.10.3.tar.xz
+linux_md5sum=626292ab8b495e81efe6ee45baf6b817
+linux_mingw_only="no"
+linux_staticlink="yes"
+
+# Component data for dejagnu
+dejagnu_url=http://git.linaro.org/git/toolchain
+dejagnu_branch=linaro-local/stable
+dejagnu_revision=9c19d3d7473ef731b74f3a48fcce5a168bf701ec
+dejagnu_filespec=dejagnu.git
+dejagnu_mingw_only="no"
+dejagnu_staticlink="yes"
+
+# Component data for expat
+expat_url=http://snapshots.linaro.org/components/toolchain/infrastructure/
+expat_filespec=expat-2.1.0-1-mingw32-dev.tar.xz
+expat_md5sum=1dae54e2670882843d496692154a0e27
+expat_mingw_only="yes"
+expat_staticlink="yes"
+
+# Component data for python
+python_url=http://snapshots.linaro.org/components/toolchain/infrastructure/
+python_filespec=python-2.7.4-mingw32.tar.xz
+python_md5sum=9b3092eff5508c4802936dfe4f5225ef
+python_mingw_only="yes"
+python_staticlink="yes"
+
+# Component data for binutils
+binutils_url=http://git.linaro.org/git/toolchain
+binutils_branch=binutils-2_28-branch
+binutils_revision=baa9aa3153b506532a2ab780e2a231db96bd0df2
+binutils_filespec=binutils-gdb.git
+binutils_mingw_only="no"
+binutils_configure="--enable-lto --enable-plugins --enable-gold --disable-werror CPPFLAGS=-UFORTIFY_SOURCE --with-pkgversion=Linaro_Binutils-2017.05 --disable-gdb --disable-sim --disable-libdecnumber --disable-readline --with-sysroot=${sysroots}"
+binutils_staticlink="yes"
+
+# Component data for gcc
+gcc_url=http://git.linaro.org/git/toolchain
+gcc_branch=linaro-7.1-2017.05
+gcc_revision=0b3f7dd5306812a4965e18aabca83d3137a05fe2
+gcc_filespec=gcc.git
+gcc_makeflags="MAKEINFOFLAGS=--force"
+gcc_mingw_only="no"
+gcc_configure=
+gcc_staticlink="no"
+gcc_stage1_flags="--with-mpc=${local_builds}/destdir/${host} --with-mpfr=${local_builds}/destdir/${host} --with-gmp=${local_builds}/destdir/${host} --with-gnu-as --with-gnu-ld --disable-libmudflap --enable-lto --enable-shared --without-included-gettext --enable-nls --disable-sjlj-exceptions --enable-gnu-unique-object --enable-linker-build-id --disable-libstdcxx-pch --enable-c99 --enable-clocale=gnu --enable-libstdcxx-debug --enable-long-long --with-cloog=no --with-ppl=no --with-isl=no --disable-multilib --with-float=hard --with-fpu=vfpv3-d16 --with-mode=thumb --with-tune=cortex-a9 --with-arch=armv7-a --enable-threads=posix --enable-multiarch --enable-libstdcxx-time=yes --enable-gnu-indirect-function --disable-libssp --disable-libquadmath --disable-threads --without-headers --with-newlib --disable-libmudflap --disable-bootstrap --disable-decimal-float --disable-libgomp --disable-libatomic --disable-libsanitizer --disable-plugins --disable-libitm --enable-languages=c --with-sysroot=${local_builds}/sysroot-arm-linux-gnueabihf --disable-shared --with-glibc-version=2.18"
+gcc_stage2_flags="--with-mpc=${local_builds}/destdir/${host} --with-mpfr=${local_builds}/destdir/${host} --with-gmp=${local_builds}/destdir/${host} --with-gnu-as --with-gnu-ld --disable-libmudflap --enable-lto --enable-shared --without-included-gettext --enable-nls --disable-sjlj-exceptions --enable-gnu-unique-object --enable-linker-build-id --disable-libstdcxx-pch --enable-c99 --enable-clocale=gnu --enable-libstdcxx-debug --enable-long-long --with-cloog=no --with-ppl=no --with-isl=no --disable-multilib --with-float=hard --with-fpu=vfpv3-d16 --with-mode=thumb --with-tune=cortex-a9 --with-arch=armv7-a --enable-threads=posix --enable-multiarch --enable-libstdcxx-time=yes --enable-gnu-indirect-function --with-build-sysroot=${sysroots} --with-sysroot=${local_builds}/destdir/${host}/arm-linux-gnueabihf/libc --enable-checking=release --disable-bootstrap --enable-languages=c,c++,fortran,lto"
+
+# Component data for glibc
+glibc_url=http://git.linaro.org/git/toolchain
+glibc_branch=release/2.25/master
+glibc_revision=34b6f41c14d09fe627c6a6224880d76d0959079e
+glibc_filespec=glibc.git
+glibc_makeflags="PARALLELMFLAGS=-j32"
+glibc_mingw_only="no"
+glibc_configure="--disable-profile --without-gd --enable-obsolete-rpc --with-headers=${sysroots}/usr/include libc_cv_forced_unwind=yes libc_cv_c_cleanup=yes --without-selinux --disable-werror"
+
+# Component data for gdb
+gdb_url=http://git.linaro.org/git/toolchain
+gdb_branch=gdb-8.0-branch
+gdb_revision=1453200901b754f1870b0f55f84bbc1c6becc3db
+gdb_filespec=binutils-gdb.git
+gdb_mingw_only="no"
+gdb_configure="--with-gnu-ld --enable-plugins --enable-tui --with-pkgversion=Linaro_GDB-2017.05 --disable-gas --disable-binutils --disable-ld --disable-gold --disable-gprof --with-python=yes"
+gdb_mingw_extraconf="--disable-tui --with-python=${local_snapshots}/python-2.7.4-mingw32 CFLAGS=-I${local_builds}/destdir/${host}/usr/include LDFLAGS=-L${local_builds}/destdir/${host}/usr/lib"
+gdb_staticlink="yes"
+
+# Component data for gdbserver
+gdbserver_url=http://git.linaro.org/git/toolchain
+gdbserver_branch=gdb-8.0-branch
+gdbserver_revision=1453200901b754f1870b0f55f84bbc1c6becc3db
+gdbserver_filespec=binutils-gdb.git
+gdbserver_mingw_only="no"
+gdbserver_configure="LDFLAGS=-static CPPFLAGS=--sysroot=${sysroots} CFLAGS=--sysroot=${sysroots} CXXFLAGS=--sysroot=${sysroots}"
+gdbserver_staticlink="yes"
+
+
+clibrary=glibc
+target=arm-linux-gnueabihf
+manifestid=13e8dd79518ad8d35ad715a73161945de9383532
+
+ ##############################################################################
+ # Everything below this line is only for informational purposes for developers
+ ##############################################################################
+
+# Build machine data
+build: linux
+host: x86_64-unknown-linux-gnu
+kernel: 4.4.0-45-generic
+hostname: 2bd4b14f2bc1
+distribution: trusty
+host_gcc: gcc version 4.8.4 (Ubuntu 4.8.4-2ubuntu1~14.04.3) 
+
+# These aren't used in the repeat build. just a sanity check for developers
+build directory: /home/tcwg-buildslave/workspace/tcwg-make-release/builder_arch/amd64/label/tcwg-x86_64-build/target/arm-linux-gnueabihf/_build/builds
+sysroot directory: /home/tcwg-buildslave/workspace/tcwg-make-release/builder_arch/amd64/label/tcwg-x86_64-build/target/arm-linux-gnueabihf/_build/sysroots/arm-linux-gnueabihf
+snapshots directory: /home/tcwg-buildslave/workspace/tcwg-make-release/builder_arch/amd64/label/tcwg-x86_64-build/target/arm-linux-gnueabihf/snapshots
+git reference directory: /home/tcwg-buildslave/snapshots-ref
+
+abe_url=https://git-us.linaro.org/toolchain
+abe_branch=branch=
+abe_revision=65c852531980701575bdd2109cbcb22999812cab
+abe_filespec=abe.git
+abe_configure="--with-local-snapshots=${local_snapshots} --with-git-reference-dir=/home/tcwg-buildslave/snapshots-ref"
+
+--------------------- gcc ----------------------
+commit 0b3f7dd5306812a4965e18aabca83d3137a05fe2
+Author: TCWG Automation <linaro-toolchain@lists.linaro.org>
+Date:   Tue Jun 6 14:34:24 2017 +0100
+
+    Make Linaro GCC Release 7.1-2017.05.
+    
+    	gcc/
+    	* LINARO-VERSION: Update.
+
+--------------------- binutils ----------------------
+commit baa9aa3153b506532a2ab780e2a231db96bd0df2
+Author: GDB Administrator <gdbadmin@sourceware.org>
+Date:   Wed Jun 7 00:01:29 2017 +0000
+
+    Automatic date update in version.in
+
+--------------------- glibc ----------------------
+commit 34b6f41c14d09fe627c6a6224880d76d0959079e
+Author: Joseph Myers <joseph@codesourcery.com>
+Date:   Wed Mar 15 17:32:46 2017 +0000
+
+    Fix test-math-vector-sincos.h aliasing.
+    
+    x86_64 libmvec tests have been failing to build lately with GCC
+    mainline with -Wuninitialized errors, and Markus Trippelsdorf traced
+    this to an aliasing issue
+    <https://sourceware.org/ml/libc-alpha/2017-03/msg00169.html>.
+    
+    This patch fixes the aliasing issue, so that the vectors-of-pointers
+    are initialized using a union instead of pointer casts.  This also
+    fixes the testsuite build failures with GCC mainline.
+    
+    Tested for x86_64 (full testsuite with GCC 6; testsuite build with GCC
+    mainline with build-many-glibcs.py).
+    
+    	* sysdeps/x86/fpu/test-math-vector-sincos.h (INIT_VEC_PTRS_LOOP):
+    	Use a union when storing pointers.
+    	(VECTOR_WRAPPER_fFF_2): Do not take address of integer vector and
+    	cast result when passing to INIT_VEC_PTRS_LOOP.
+    	(VECTOR_WRAPPER_fFF_3): Likewise.
+    	(VECTOR_WRAPPER_fFF_4): Likewise.
+    
+    (cherry picked from commit ffe308e4fcf2f276c87fd405596569ba52ad0a29)
+
+--------------------- abe ----------------------
+commit 65c852531980701575bdd2109cbcb22999812cab
+Author: Yvan Roux <yvan.roux@linaro.org>
+Date:   Tue May 23 12:38:24 2017 +0200
+
+    config/gcc7/newlib.conf: Use latest release tag (2.5.0).
+    
+    Change-Id: I272e0723185dc7cc603c2266b7c33d75f845d0dd
+

@@ -1,0 +1,288 @@
+comment_char %
+escape_char /
+
+% This file is part of the GNU C Library and contains locale data.
+% The Free Software Foundation does not claim any copyright interest
+% in the locale data contained in this file.  The foregoing does not
+% affect the license of the GNU C Library as a whole.  It does not
+% exempt you from the conditions of the license if your use would
+% otherwise be governed by that license.
+
+% Kazakh Language Locale for Kazakhstan
+% Source: linukz.org
+% Address:
+% Contact: Timur Birsh
+% Email: taem@linukz.org
+% Tel:
+% Fax:
+% Language: kk
+% Territory: KZ
+% Revision: 1.1
+% Date: 2016-03-22
+% Application: general
+% Users: general
+% Charset: UTF-8
+% License: Public Domain
+
+LC_IDENTIFICATION
+title      "Kazakh locale for Kazakhstan"
+source     "linukz.org"
+address    ""
+contact    "Timur Birsh"
+email      "bug-glibc-locales@gnu.org"
+tel        ""
+fax        ""
+language   "Kazakh"
+territory  "Kazakhstan"
+revision   "1.1"
+date       "2016-03-22"
+
+category "i18n:2012";LC_IDENTIFICATION
+category "i18n:2012";LC_CTYPE
+category "i18n:2012";LC_COLLATE
+category "i18n:2012";LC_TIME
+category "i18n:2012";LC_NUMERIC
+category "i18n:2012";LC_MONETARY
+category "i18n:2012";LC_MESSAGES
+category "i18n:2012";LC_PAPER
+category "i18n:2012";LC_NAME
+category "i18n:2012";LC_ADDRESS
+category "i18n:2012";LC_TELEPHONE
+category "i18n:2012";LC_MEASUREMENT
+END LC_IDENTIFICATION
+
+LC_COLLATE
+copy "iso14651_t1"
+
+% iso14651_t1 is missing Ukrainian ghe
+collating-symbol <UKR-GHE>
+collating-symbol <CYR-SCHWA>
+collating-symbol <CYR-GHE-WITH-STROKE>
+collating-symbol <CYR-KA-WITH-DESCENDER>
+collating-symbol <CYR-EN-WITH-DESCENDER>
+collating-symbol <CYR-BARRED-O>
+collating-symbol <CYR-STRAIGHT-U-WITH-STROKE>
+collating-symbol <CYR-STRAIGHT-U>
+collating-symbol <CYR-SHHA>
+collating-symbol <CYR-BEL-UKR-I>
+
+reorder-after <CYR-GZHE>
+<UKR-GHE>
+
+reorder-after <U0453>
+<U0491> <UKR-GHE>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U0403>
+<U0490> <UKR-GHE>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-A>
+<CYR-SCHWA>
+
+reorder-after <U0430>
+<U04D9> <CYR-SCHWA>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U0410>
+<U04D8> <CYR-SCHWA>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-GHE>
+<CYR-GHE-WITH-STROKE>
+
+reorder-after <U0433>
+<U0493> <CYR-GHE-WITH-STROKE>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U0413>
+<U0492> <CYR-GHE-WITH-STROKE>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-KA>
+<CYR-KA-WITH-DESCENDER>
+
+reorder-after <U043A>
+<U049B> <CYR-KA-WITH-DESCENDER>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U041A>
+<U049A> <CYR-KA-WITH-DESCENDER>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-EN>
+<CYR-EN-WITH-DESCENDER>
+
+reorder-after <U043D>
+<U04A3> <CYR-EN-WITH-DESCENDER>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U041D>
+<U04A2> <CYR-EN-WITH-DESCENDER>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-O>
+<CYR-BARRED-O>
+
+reorder-after <U043E>
+<U04E9> <CYR-BARRED-O>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U041E>
+<U04E8> <CYR-BARRED-O>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-OU>
+<CYR-STRAIGHT-U-WITH-STROKE>
+<CYR-STRAIGHT-U>
+
+reorder-after <U0443>
+<U04B1> <CYR-STRAIGHT-U-WITH-STROKE>;<BAS>;<MIN>;IGNORE
+<U04AF> <CYR-STRAIGHT-U>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U0423>
+<U04B0> <CYR-STRAIGHT-U-WITH-STROKE>;<BAS>;<CAP>;IGNORE
+<U04AE> <CYR-STRAIGHT-U>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-HA>
+<CYR-SHHA>
+
+reorder-after <U0445>
+<U04BB> <CYR-SHHA>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U0425>
+<U04BA> <CYR-SHHA>;<BAS>;<CAP>;IGNORE
+
+reorder-after <CYR-YEROU>
+<CYR-BEL-UKR-I>
+
+reorder-after <U044B>
+<U0456> <CYR-BEL-UKR-I>;<BAS>;<MIN>;IGNORE
+
+reorder-after <U042B>
+<U0406> <CYR-BEL-UKR-I>;<BAS>;<CAP>;IGNORE
+
+reorder-end
+END LC_COLLATE
+
+LC_CTYPE
+copy "i18n"
+
+translit_start
+include "translit_combining";""
+translit_end
+END LC_CTYPE
+
+LC_MESSAGES
+yesexpr "<U005E><U005B><U002B><U0031><U0418><U0438><U0059><U0079><U005D>"
+noexpr  "<U005E><U005B><U002D><U0030><U0416><U0436><U004E><U006E><U005D>"
+yesstr  "<U0438><U04D9>"
+nostr   "<U0436><U043E><U049B>"
+END LC_MESSAGES
+
+LC_MONETARY
+int_curr_symbol           "<U004B><U005A><U0054><U0020>"
+currency_symbol           "<U20B8>"
+mon_decimal_point         "<U002C>"
+mon_thousands_sep         "<U00A0>"
+mon_grouping              3;3
+positive_sign             ""
+negative_sign             "<U002D>"
+int_frac_digits           2
+frac_digits               2
+p_cs_precedes             0
+p_sep_by_space            2
+n_cs_precedes             0
+n_sep_by_space            1
+p_sign_posn               1
+n_sign_posn               1
+int_p_cs_precedes         1
+int_p_sep_by_space        2
+int_n_cs_precedes         1
+int_n_sep_by_space        1
+int_p_sign_posn           4
+int_n_sign_posn           4
+END LC_MONETARY
+
+LC_NUMERIC
+decimal_point             "<U002C>"
+thousands_sep             "<U00A0>"
+grouping                  3;3
+END LC_NUMERIC
+
+LC_TIME
+day     "<U0416><U0435><U043A><U0441><U0435><U043D><U0431><U0456>";/
+        "<U0414><U04AF><U0439><U0441><U0435><U043D><U0431><U0456>";/
+        "<U0421><U0435><U0439><U0441><U0435><U043D><U0431><U0456>";/
+        "<U0421><U04D9><U0440><U0441><U0435><U043D><U0431><U0456>";/
+        "<U0411><U0435><U0439><U0441><U0435><U043D><U0431><U0456>";/
+        "<U0416><U04B1><U043C><U0430>";/
+        "<U0421><U0435><U043D><U0431><U0456>"
+abday   "<U0416><U043A>";/
+        "<U0414><U0441>";/
+        "<U0421><U0441>";/
+        "<U0421><U0440>";/
+        "<U0411><U0441>";/
+        "<U0416><U043C>";/
+        "<U0421><U0431>"
+mon     "<U049A><U0430><U04A3><U0442><U0430><U0440>";/
+        "<U0410><U049B><U043F><U0430><U043D>";/
+        "<U041D><U0430><U0443><U0440><U044B><U0437>";/
+        "<U0421><U04D9><U0443><U0456><U0440>";/
+        "<U041C><U0430><U043C><U044B><U0440>";/
+        "<U041C><U0430><U0443><U0441><U044B><U043C>";/
+        "<U0428><U0456><U043B><U0434><U0435>";/
+        "<U0422><U0430><U043C><U044B><U0437>";/
+        "<U049A><U044B><U0440><U043A><U04AF><U0439><U0435><U043A>";/
+        "<U049A><U0430><U0437><U0430><U043D>";/
+        "<U049A><U0430><U0440><U0430><U0448><U0430>";/
+        "<U0416><U0435><U043B><U0442><U043E><U049B><U0441><U0430><U043D>"
+abmon   "<U049A><U0430><U04A3>";/
+        "<U0410><U049B><U043F>";/
+        "<U041D><U0430><U0443>";/
+        "<U0421><U04D9><U0443>";/
+        "<U041C><U0430><U043C>";/
+        "<U041C><U0430><U0443>";/
+        "<U0428><U0456><U043B>";/
+        "<U0422><U0430><U043C>";/
+        "<U049A><U044B><U0440>";/
+        "<U049A><U0430><U0437>";/
+        "<U049A><U0430><U0440>";/
+        "<U0416><U0435><U043B>"
+d_t_fmt "<U0025><U0061><U0020><U0025><U0064><U0020><U0025><U0062>/
+<U0020><U0025><U0059><U0020><U0025><U0054>"
+d_fmt     "<U0025><U0064><U002E><U0025><U006D><U002E><U0025><U0059>"
+t_fmt     "<U0025><U0054>"
+am_pm     "";""
+t_fmt_ampm ""
+week 7;19971130;1
+first_weekday 2
+END LC_TIME
+
+LC_PAPER
+copy "i18n"
+END LC_PAPER
+
+LC_TELEPHONE
+tel_int_fmt "<U002B><U0025><U0063><U0020><U0025><U0061><U0020><U0025>/
+<U006C>"
+tel_dom_fmt "<U0028><U0025><U0041><U0029><U0020><U0025><U006C>"
+int_prefix  "<U0037>"
+int_select  "<U0038><U007E><U0031><U0030>"
+END LC_TELEPHONE
+
+LC_MEASUREMENT
+copy "i18n"
+END LC_MEASUREMENT
+
+LC_NAME
+name_fmt    "<U0025><U0064><U0025><U0074><U0025><U0067><U0025><U0074>/
+<U0025><U006D><U0025><U0074><U0025><U0066>"
+END LC_NAME
+
+LC_ADDRESS
+postal_fmt   "<U0025><U0066><U0025><U004E><U0025><U0061><U0025><U004E>/
+<U0025><U0064><U0025><U004E><U0025><U0062><U0025><U004E><U0025><U0073>/
+<U0020><U0025><U0068><U0020><U0025><U0065><U0020><U0025><U0072><U0025>/
+<U004E><U0025><U007A><U0020><U0025><U0054><U0025>/
+<U004E><U0025><U0063><U0025><U004E>"
+country_name "<U049A><U0430><U0437><U0430><U049B><U0441><U0442><U0430><U043D>"
+country_post "<U004B><U0041><U005A>"
+country_ab2  "<U004B><U005A>"
+country_ab3  "<U004B><U0041><U005A>"
+country_num  398
+country_car  "<U004B><U005A>"
+country_isbn "<U0039><U0037><U0038><U002D><U0036><U0030><U0031>"
+lang_name    "<U049B><U0430><U0437><U0430><U049B><U0020><U0442><U0456><U043B><U0456>"
+lang_ab      "<U006B><U006B>"
+lang_term    "<U006B><U0061><U007A>"
+lang_lib     "<U006B><U0061><U007A>"
+END LC_ADDRESS

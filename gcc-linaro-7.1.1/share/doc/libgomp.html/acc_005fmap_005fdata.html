@@ -1,0 +1,104 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Copyright (C) 2006-2017 Free Software Foundation, Inc.
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with the
+Invariant Sections being "Funding Free Software", the Front-Cover
+texts being (a) (see below), and with the Back-Cover Texts being (b)
+(see below).  A copy of the license is included in the section entitled
+"GNU Free Documentation License".
+
+(a) The FSF's Front-Cover Text is:
+
+A GNU Manual
+
+(b) The FSF's Back-Cover Text is:
+
+You have freedom to copy and modify this GNU Manual, like GNU
+     software.  Copies published by the Free Software Foundation raise
+     funds for GNU development. -->
+<!-- Created by GNU Texinfo 5.2, http://www.gnu.org/software/texinfo/ -->
+<head>
+<title>GNU libgomp: acc_map_data</title>
+
+<meta name="description" content="GNU libgomp: acc_map_data">
+<meta name="keywords" content="GNU libgomp: acc_map_data">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link href="index.html#Top" rel="start" title="Top">
+<link href="Library-Index.html#Library-Index" rel="index" title="Library Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="OpenACC-Runtime-Library-Routines.html#OpenACC-Runtime-Library-Routines" rel="up" title="OpenACC Runtime Library Routines">
+<link href="acc_005funmap_005fdata.html#acc_005funmap_005fdata" rel="next" title="acc_unmap_data">
+<link href="acc_005fupdate_005fself.html#acc_005fupdate_005fself" rel="prev" title="acc_update_self">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.smallquotation {font-size: smaller}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.indentedblock {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+div.smalldisplay {margin-left: 3.2em}
+div.smallexample {margin-left: 3.2em}
+div.smallindentedblock {margin-left: 3.2em; font-size: smaller}
+div.smalllisp {margin-left: 3.2em}
+kbd {font-style:oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+pre.smalldisplay {font-family: inherit; font-size: smaller}
+pre.smallexample {font-size: smaller}
+pre.smallformat {font-family: inherit; font-size: smaller}
+pre.smalllisp {font-size: smaller}
+span.nocodebreak {white-space:nowrap}
+span.nolinebreak {white-space:nowrap}
+span.roman {font-family:serif; font-weight:normal}
+span.sansserif {font-family:sans-serif; font-weight:normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en" bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
+<a name="acc_005fmap_005fdata"></a>
+<div class="header">
+<p>
+Next: <a href="acc_005funmap_005fdata.html#acc_005funmap_005fdata" accesskey="n" rel="next">acc_unmap_data</a>, Previous: <a href="acc_005fupdate_005fself.html#acc_005fupdate_005fself" accesskey="p" rel="prev">acc_update_self</a>, Up: <a href="OpenACC-Runtime-Library-Routines.html#OpenACC-Runtime-Library-Routines" accesskey="u" rel="up">OpenACC Runtime Library Routines</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Library-Index.html#Library-Index" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<a name="acc_005fmap_005fdata-_002d_002d-Map-previously-allocated-device-memory-to-host-memory_002e"></a>
+<h3 class="section">5.25 <code>acc_map_data</code> &ndash; Map previously allocated device memory to host memory.</h3>
+<dl compact="compact">
+<dt><em>Description</em></dt>
+<dd><p>This function maps previously allocated device and host memory. The device
+memory is specified with the device address <var>d</var>. The host memory is
+specified with the host address <var>h</var> and a length of <var>len</var>.
+</p>
+</dd>
+<dt><em>C/C++</em>:</dt>
+<dd><table>
+<tr><td width="20%"><em>Prototype</em>:</td><td width="80%"><code>acc_map_data(h_void *h, d_void *d, size_t len);</code></td></tr>
+</table>
+
+</dd>
+<dt><em>Reference</em>:</dt>
+<dd><p><a href="http://www.openacc.org/">OpenACC specification v2.0</a>, section
+3.2.25.
+</p></dd>
+</dl>
+
+
+
+
+
+
+</body>
+</html>
