@@ -1176,9 +1176,9 @@ static void mdss_dsi_post_panel_on_hdmi(struct mdss_panel_info *pinfo)
 	u32 vsync_period = 0;
 
 	if (pinfo->is_dba_panel && pinfo->is_pluggable) {
-		/* ensure at least 1 frame transfers to down stream device */
-		vsync_period = (MSEC_PER_SEC / pinfo->mipi.frame_rate) + 1;
-		msleep(vsync_period);
+//		/* ensure at least 1 frame transfers to down stream device */
+//		vsync_period = (MSEC_PER_SEC / pinfo->mipi.frame_rate) + 1;
+//		msleep(vsync_period);
 		mdss_dba_utils_hdcp_enable(pinfo->dba_data, true);
 	}
 }
@@ -1219,9 +1219,9 @@ static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 
 	if (pinfo->is_dba_panel) {
 		/* ensure at least 1 frame transfers to down stream device */
-		vsync_period = (MSEC_PER_SEC / pinfo->mipi.frame_rate) + 1;
-		msleep(vsync_period);
-		mdss_dba_utils_hdcp_enable(pinfo->dba_data, true);
+//		vsync_period = (MSEC_PER_SEC / pinfo->mipi.frame_rate) + 1;
+//		msleep(vsync_period);
+//		mdss_dba_utils_hdcp_enable(pinfo->dba_data, true);
 	}
 
 	display_on = false;

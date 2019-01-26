@@ -16,7 +16,7 @@
 #if !defined(_TRACE_MSM_VFE_H) || defined(TRACE_HEADER_MULTI_READ)
 #define _TRACE_MSM_VFE_H
 
-#include "msm_isp.h"
+#include "../../uapi/media/msm_isp.h"
 #include <linux/types.h>
 #include <linux/tracepoint.h>
 

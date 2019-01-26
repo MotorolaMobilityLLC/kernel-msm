@@ -28,6 +28,7 @@ config SYSTEM_TRUSTED_KEYRING
 
 config SYSTEM_TRUSTED_KEYS
 	string "Additional X.509 keys for default system keyring"
+	default "certs/signing_key.pem"
 	depends on SYSTEM_TRUSTED_KEYRING
 	help
 	  If set, this option should be the filename of a PEM-formatted file

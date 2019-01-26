@@ -1,3 +1,4 @@
+EXTRA_CFLAGS=-w
 obj-$(CONFIG_DIAG_CHAR) := diagchar.o
 obj-$(CONFIG_DIAGFWD_BRIDGE_CODE) += diagfwd_bridge.o
 obj-$(CONFIG_USB_QCOM_DIAG_BRIDGE) += diagfwd_hsic.o

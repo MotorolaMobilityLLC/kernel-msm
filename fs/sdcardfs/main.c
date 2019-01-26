@@ -23,6 +23,8 @@
 #include <linux/types.h>
 #include <linux/parser.h>
 
+#define SDCARDFS_VERSION "0.1"
+
 enum {
 	Opt_fsuid,
 	Opt_fsgid,
