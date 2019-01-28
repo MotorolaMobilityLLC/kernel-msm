@@ -31,13 +31,13 @@ endif
 
 define do-make-defconfig
 	$(hide) mkdir -p $(dir $(1))
-	( perl -le 'print "# This file was automatically generated from:\n#\t" . join("\n#\t", @ARGV) . "\n"' $(2) && cat $(2) ) > $(1) || ( rm -f $(1) && false )
+	( $(MOTO_PERL_EXECUTABLES)/perl -le 'print "# This file was automatically generated from:\n#\t" . join("\n#\t", @ARGV) . "\n"' $(2) && cat $(2) ) > $(1) || ( rm -f $(1) && false )
 endef
 
 #
 # make combined defconfig file
 #---------------------------------------
-$(TARGET_DEFCONFIG): FORCE $(PRODUCT_SPECIFIC_DEFCONFIGS)
+$(TARGET_DEFCONFIG): FORCE $(PRODUCT_SPECIFIC_DEFCONFIGS) $(MOTO_PERL_EXECUTABLES)/perl
 	$(call do-make-defconfig,$@,$(PRODUCT_SPECIFIC_DEFCONFIGS))
 
 .PHONY: FORCE
