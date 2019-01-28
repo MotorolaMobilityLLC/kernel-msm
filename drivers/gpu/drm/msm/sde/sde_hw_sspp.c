@@ -18,6 +18,9 @@
 #include "sde_dbg.h"
 #include "sde_kms.h"
 #include "sde_hw_reg_dma_v1_color_proc.h"
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+#include "dsi_iris2p_api.h"
+#endif
 
 #define SDE_FETCH_CONFIG_RESET_VALUE   0x00000087
 
@@ -779,6 +782,19 @@ static void sde_hw_sspp_setup_csc(struct sde_hw_pipe *ctx,
 {
 	u32 idx;
 	bool csc10 = false;
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+        struct sde_csc_cfg hdrRGBlike = {
+                {
+                        0x00010000, 0xFFFF8000, 0x00008000,
+                        0x00010000, 0x00000000, 0xFFFF8000,
+                        0x00010000, 0x00008000, 0x00008000,
+                },
+                { 0x0, 0xfe00, 0xfe00,},
+                { 0x0, 0x0, 0x0,},
+                { 0x0, 0x3ff, 0x40, 0x3c0, 0x40, 0x3c0,},
+                { 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
+        };
+#endif
 
 	if (_sspp_subblk_offset(ctx, SDE_SSPP_CSC, &idx) || !data)
 		return;
@@ -788,6 +804,12 @@ static void sde_hw_sspp_setup_csc(struct sde_hw_pipe *ctx,
 		csc10 = true;
 	}
 
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+	if (iris_hdr_enable_get()) {
+		sde_hw_csc_setup(&ctx->hw, idx, &hdrRGBlike, csc10);
+		return;
+	}
+#endif
 	sde_hw_csc_setup(&ctx->hw, idx, data, csc10);
 }
 
@@ -797,6 +819,9 @@ static void sde_hw_sspp_setup_sharpening(struct sde_hw_pipe *ctx,
 	struct sde_hw_blk_reg_map *c;
 	u32 idx;
 
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+	cfg = NULL;
+#endif
 	if (_sspp_subblk_offset(ctx, SDE_SSPP_SCALER_QSEED2, &idx) || !cfg ||
 			!test_bit(SDE_SSPP_SCALER_QSEED2, &ctx->cap->features))
 		return;
