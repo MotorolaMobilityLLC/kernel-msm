@@ -31,7 +31,11 @@
 #define SDE_ENCODER_NAME_MAX	16
 
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+#define KICKOFF_TIMEOUT_MS		1500
+#else
 #define KICKOFF_TIMEOUT_MS		84
+#endif
 #define KICKOFF_TIMEOUT_JIFFIES		msecs_to_jiffies(KICKOFF_TIMEOUT_MS)
 
 /**
