@@ -923,7 +923,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
-	//POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
@@ -1153,7 +1153,7 @@ static int get_prop_batt_current_now(struct smbchg_chip *chip)
 }
 
 #define DEFAULT_CHARGE_COUNT	0
-/*
+
 static int get_prop_charge_counter(struct smbchg_chip *chip)
 {
 	int uah, rc;
@@ -1166,7 +1166,7 @@ static int get_prop_charge_counter(struct smbchg_chip *chip)
 	}
 	return uah;
 }
-*/
+
 
 #define DEFAULT_BATT_VOLTAGE_NOW	0
 static int get_prop_batt_voltage_now(struct smbchg_chip *chip)
@@ -3417,9 +3417,9 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_batt_current_now(chip);
 		break;
-	/*case POWER_SUPPLY_PROP_CHARGE_COUNTER:
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 		val->intval = get_prop_charge_counter(chip);
-		break;*/
+		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = get_prop_batt_voltage_now(chip);
 		break;
