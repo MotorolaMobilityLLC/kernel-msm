@@ -1808,8 +1808,9 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 			(buffer[i * BYTES_PER_COORD + 4] << 8);
 		coords->y = buffer[i * BYTES_PER_COORD + 5] |
 			(buffer[i * BYTES_PER_COORD + 6] << 8);
-		coords->w = buffer[i * BYTES_PER_COORD + 7];
-		coords->p = coords->w;
+		coords->p = buffer[i * BYTES_PER_COORD + 7] |
+			(buffer[i * BYTES_PER_COORD + 8] << 8);
+		coords->w = coords->p / 16;
 
 		coords++;
 	}
@@ -1829,10 +1830,10 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 			touch_data->pen_coords[0].y =
 				buffer[i * BYTES_PER_COORD + 5] |
 				(buffer[i * BYTES_PER_COORD + 6] << 8);
-			touch_data->pen_coords[0].w =
-				buffer[i * BYTES_PER_COORD + 7];
+			touch_data->pen_coords[0].w = 6;
 			touch_data->pen_coords[0].p =
-				touch_data->pen_coords[0].w;
+				buffer[i * BYTES_PER_COORD + 7] |
+				(buffer[i * BYTES_PER_COORD + 8] << 8);
 		}
 	} else {/*it's a finger*/
 		coords->id = buffer[i * BYTES_PER_COORD + 2] & 0x0f;
@@ -1840,8 +1841,9 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 				(buffer[i * BYTES_PER_COORD + 4] << 8);
 		coords->y = buffer[i * BYTES_PER_COORD + 5] |
 				(buffer[i * BYTES_PER_COORD + 6] << 8);
-		coords->w = buffer[i * BYTES_PER_COORD + 7];
-		coords->p = coords->w;
+		coords->p = buffer[i * BYTES_PER_COORD + 7] |
+				(buffer[i * BYTES_PER_COORD + 8] << 8);
+		coords->w = coords->p / 16;
 
 		if (touch_data->pen_down == true) {
 			touch_data->pen_down = false;
