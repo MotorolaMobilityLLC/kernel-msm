@@ -25,6 +25,9 @@
 #include "sde_hw_interrupts.h"
 #include "sde_core_irq.h"
 #include "dsi_panel.h"
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+#include "dsi_iris2p_api.h"
+#endif
 
 struct sde_cp_node {
 	u32 property_id;
@@ -157,6 +160,12 @@ enum {
 		(p)->feature = feature; \
 		(p)->val = val; \
 	} while (0)
+
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+static int iris_pcc_ops = SDE_CP_CRTC_DSPP_MAX;
+static bool iris_pcc_dirty = false;
+struct sde_cp_node *iris_prop_node[SDE_CP_CRTC_DSPP_MAX] = {};
+#endif
 
 static void sde_cp_get_hw_payload(struct sde_cp_node *prop_node,
 				  struct sde_hw_cp_cfg *hw_cfg,
@@ -396,6 +405,10 @@ void sde_cp_crtc_init(struct drm_crtc *crtc)
 	INIT_LIST_HEAD(&sde_crtc->feature_list);
 	INIT_LIST_HEAD(&sde_crtc->ad_dirty);
 	INIT_LIST_HEAD(&sde_crtc->ad_active);
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+	iris_pcc_ops = SDE_CP_CRTC_DSPP_MAX;
+	memset(iris_prop_node, 0, sizeof(iris_prop_node));
+#endif
 }
 
 static void sde_cp_crtc_install_immutable_property(struct drm_crtc *crtc,
@@ -670,6 +683,11 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 				ret = -EINVAL;
 				continue;
 			}
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+			iris_prop_node[prop_node->feature] = prop_node;
+			if (iris_pcc_ops == SDE_CP_CRTC_DSPP_PCC)
+				hw_cfg.payload = NULL;
+#endif
 			hw_dspp->ops.setup_pcc(hw_dspp, &hw_cfg);
 			break;
 		case SDE_CP_CRTC_DSPP_IGC:
@@ -677,6 +695,11 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 				ret = -EINVAL;
 				continue;
 			}
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+			iris_prop_node[prop_node->feature] = prop_node;
+			if (iris_pcc_ops == SDE_CP_CRTC_DSPP_PCC)
+				hw_cfg.payload = NULL;
+#endif
 			hw_dspp->ops.setup_igc(hw_dspp, &hw_cfg);
 			break;
 		case SDE_CP_CRTC_DSPP_GC:
@@ -684,6 +707,11 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 				ret = -EINVAL;
 				continue;
 			}
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+			iris_prop_node[prop_node->feature] = prop_node;
+			if (iris_pcc_ops == SDE_CP_CRTC_DSPP_PCC)
+				hw_cfg.payload = NULL;
+#endif
 			hw_dspp->ops.setup_gc(hw_dspp, &hw_cfg);
 			break;
 		case SDE_CP_CRTC_DSPP_HSIC:
@@ -849,6 +877,14 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 		return;
 	}
 
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+	if (iris_pcc_dirty) {
+		DRM_DEBUG_DRIVER("Not update list to feature %d\n",
+			prop_node->feature);
+		return;
+	}
+#endif
+
 	if (feature_enabled) {
 		DRM_DEBUG_DRIVER("Add feature to active list %d\n",
 				 prop_node->property_id);
@@ -898,6 +934,9 @@ void sde_cp_crtc_apply_properties(struct drm_crtc *crtc)
 		list_empty(&sde_crtc->ad_dirty)) {
 		if (list_empty(&sde_crtc->ad_active)) {
 			DRM_DEBUG_DRIVER("Dirty list is empty\n");
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+			if (iris_hdr_enable_get() == 0 && iris_pcc_ops == SDE_CP_CRTC_DSPP_MAX)
+#endif
 			goto exit;
 		}
 		set_dspp_flush = true;
@@ -917,6 +956,34 @@ void sde_cp_crtc_apply_properties(struct drm_crtc *crtc)
 			set_lm_flush = true;
 	}
 
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+        iris_pcc_dirty = false;
+        if (iris_hdr_enable_get() > 0 && iris_pcc_ops == SDE_CP_CRTC_DSPP_MAX) {
+                DRM_INFO("Iris hdr enable\n");
+                iris_pcc_ops = SDE_CP_CRTC_DSPP_PCC;
+                iris_pcc_dirty = true;
+        } else if (iris_hdr_enable_get() == 0 && iris_pcc_ops == SDE_CP_CRTC_DSPP_PCC) {
+                DRM_INFO("Iris hdr disable\n");
+                iris_pcc_ops = SDE_CP_CRTC_DSPP_MAX;
+                iris_pcc_dirty = true;
+        }
+
+        if (iris_pcc_dirty) {
+                for (i = 0; i < SDE_CP_CRTC_DSPP_MAX; i++) {
+                        prop_node = iris_prop_node[i];
+                        if (prop_node == NULL)
+                                continue;
+
+                        sde_cp_crtc_setfeature(prop_node, sde_crtc);
+                        /* Set the flush flag to true */
+                        if (prop_node->is_dspp_feature)
+                                set_dspp_flush = true;
+                        else
+                                set_lm_flush = true;
+                }
+                iris_pcc_dirty = false;
+        }
+#endif
 	list_for_each_entry_safe(prop_node, n, &sde_crtc->ad_dirty,
 				dirty_list) {
 		set_dspp_flush = true;
@@ -1208,6 +1275,10 @@ void sde_cp_crtc_suspend(struct drm_crtc *crtc)
 		sde_cp_update_list(prop_node, sde_crtc, true);
 		list_del_init(&prop_node->active_list);
 	}
+#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
+	iris_pcc_ops = SDE_CP_CRTC_DSPP_MAX;
+	memset(iris_prop_node, 0, sizeof(iris_prop_node));
+#endif
 
 	list_for_each_entry_safe(prop_node, n, &sde_crtc->ad_active,
 				 active_list) {
