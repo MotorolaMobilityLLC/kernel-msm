@@ -355,7 +355,9 @@
 	qcom,msm-mclk-freq = <9600000>;
 	qcom,ext-disp-audio-rx = <1>;
 	qcom,wcn-btfm;
+	qcom,mi2s-audio-intf;
 	qcom,auxpcm-audio-intf;
+	qcom,msm-mi2s-master = <1>, <1>, <1>, <1>, <1>;
 
 	reg = <0xc051000 0x4>,
 		<0xc051004 0x4>,
@@ -378,7 +380,7 @@
 			"msm-pcm-routing", "msm-compr-dsp",
 			"msm-pcm-dsp-noirq", "cs47l35-codec";
 
-	asoc-cpu = <&dai_dp>,
+	asoc-cpu = <&dai_dp>, <&dai_mi2s1>,
 		<&dai_pri_auxpcm>, <&dai_sec_auxpcm>,
 		<&dai_tert_auxpcm>, <&dai_quat_auxpcm>,
 		<&dai_quin_auxpcm>,
@@ -392,7 +394,7 @@
 		<&incall_record_tx>, <&incall_music_rx>,
 		<&incall_music_2_rx>,
 		<&usb_audio_rx>, <&usb_audio_tx>;
-	asoc-cpu-names = "msm-dai-q6-dp.24608",
+	asoc-cpu-names = "msm-dai-q6-dp.24608", "msm-dai-q6-mi2s.1",
 		"msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
 		"msm-dai-q6-auxpcm.3", "msm-dai-q6-auxpcm.4",
 		"msm-dai-q6-auxpcm.5",
@@ -444,7 +446,7 @@
 		};
 
 		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
-			status = "disabled";
+			status = "ok";
 		};
 
 		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
