@@ -12,10 +12,17 @@
 
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-audio-overlay.dtsi"
-#include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
-#include "dsi-panel-mot-tianma-639-1080p-cmd-overlay.dtsi"
+#include "dsi-panel-mot-tianma-639-1080p-cmd-overlay-parker.dtsi"
 #include "sm6150-parker-audio-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-parker-overlay.dtsi"
+
+#include <dt-bindings/clock/qcom,rpmh.h>
+
+&pm6150_l19 {
+	regulator-boot-on;
+	regulator-always-on;
+	status = "ok";
+};
 
 &tlmm{
 	nfc {
@@ -238,7 +245,6 @@
 			bias-pull-up;
 		};
 	};
-
 };
 
 &soc {
@@ -278,17 +284,6 @@
 			qcom,supply-disable-load = <0>;
 			qcom,supply-post-on-sleep = <0>;
 		};
-	};
-
-	dsi_smd_639_1080x2340_cmd_display: qcom,dsi-display@5 {
-		label = "dsi_smd_639_1080x2340_cmd_display";
-		qcom,display-type = "primary";
-
-		qcom,dsi-ctrl-num = <0>;
-		qcom,dsi-phy-num = <0>;
-		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
-
-		qcom,dsi-panel = <&mot_smd_639_1080p_cmd_v1>;
 	};
 
 	dsi_tianma_639_1080x2340_cmd_display: qcom,dsi-display@6 {
@@ -478,6 +473,11 @@
 			aw2015,off-time-ms = <4>;
 		};
 	};
+
+        iris2p@22 {
+                compatible = "pxlw,iris2p_i2c";
+                reg = <0x22>;
+        };
 };
 
 &qupv3_se5_i2c {
@@ -693,8 +693,7 @@
 
 &sde_dsi {
 	qcom,dsi-display-list =
-		<&dsi_smd_639_1080x2340_cmd_display
-		 &dsi_tianma_639_1080x2340_cmd_display
+		<&dsi_tianma_639_1080x2340_cmd_display
 		 &dsi_mot_dummy_qhd_video_display>;
 
 	/delete-property/vddio-supply;
@@ -703,45 +702,11 @@
 
 	vddio-supply = <&pm6150_l15>;
 	vdd-supply = <&pm6150_l18>;
-};
 
-&mot_smd_639_1080p_cmd_v1 {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
-	qcom,platform-te-gpio = <&tlmm 90 0>;
-	qcom,platform-reset-gpio = <&tlmm 91 0>;
-	qcom,platform-vsync-source = <0>;
-
-	qcom,mdss-dsi-t-clk-post = <0x0f>;
-	qcom,mdss-dsi-t-clk-pre = <0x37>;
-	/* Enable ESD checking */
-	qcom,esd-check-enabled;
-	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
-	//qcom,mdss-dsi-panel-status-read-length = <1>;
-	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
-	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-	//qcom,mdss-dsi-panel-status-value = <0x9c>;
-	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
-
-	qcom,mdss-dsi-display-timings {
-		timing@0{
-			qcom,mdss-dsi-panel-phy-timings =
-				[26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0];
-
-			qcom,display-topology = <1 0 1>;
-			qcom,default-topology-index = <0>;
-
-			qcom,mdss-dsi-hbm-dim-off-command = [
-				39 00 00 00 00 00 03 F0 5A 5A
-				39 00 00 00 00 00 03 B7 01 58
-				15 01 00 00 00 00 02 B0 07
-				15 01 00 00 00 00 02 B7 12
-				39 00 00 00 00 00 03 F0 5A 5A];
-		};
-	};
+	clocks = <&mdss_dsi0_pll BYTE0_MUX_CLK>,
+		 <&mdss_dsi0_pll PIX0_MUX_CLK>,
+		 <&clock_rpmh RPMH_LN_BB_CLK3>;
+	clock-names = "mux_byte_clk0", "mux_pixel_clk0", "div_clk3";
 };
 
 &mot_tianma_639_1080p_cmd_v1 {
@@ -750,26 +715,25 @@
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 	qcom,panel-te-source = <0>;
 
+	qcom,dsp-iris_1v1 = <&tlmm 116 0>;
+	qcom,dsp-reset-gpio = <&tlmm 122 0>;
+	qcom,dsp-wakeup-gpio = <&tlmm 103 0>;
+
 	qcom,mdss-dsi-t-clk-post = <0x0f>;
 	qcom,mdss-dsi-t-clk-pre = <0x37>;
 	/* Enable ESD checking */
-	qcom,esd-check-enabled;
-	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
-	//qcom,mdss-dsi-panel-status-read-length = <1>;
-	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
-	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-	//qcom,mdss-dsi-panel-status-value = <0x0c>;
+	//qcom,esd-check-enabled;
+	//qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
 	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
-				[26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0];
-
+				[26 21 09 0B 06 03 04 a0
+				26 21 09 0B 06 03 04 a0
+				26 21 09 0B 06 03 04 a0
+				26 21 09 0B 06 03 04 a0
+				26 21 09 0B 06 03 04 a0];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 		};
@@ -810,4 +774,13 @@
 	status = "okay";
 	qcom,dp-gpio-aux-switch;
 	qcom,aux-sel-gpio = <&tlmm 49 0>;
+
+	pinctrl-names = "mdss_dp_active", "mdss_dp_sleep",
+			"mdss_dp_hpd_active";
+	pinctrl-0 = <&sde_dp_usbplug_cc_active &sde_dp_switch_active>;
+	pinctrl-1 = <&sde_dp_usbplug_cc_suspend &sde_dp_switch_suspend>;
+	pinctrl-2 = <&sde_dp_connector_enable &sde_dp_switch_suspend>;
+
+	/delete-property/pinctrl-3;
+	/delete-property/pinctrl-4;
 };
