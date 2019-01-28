@@ -5134,7 +5134,10 @@ int ipa3_bind_api_controller(enum ipa_hw_type ipa_hw_type,
 	api_ctrl->ipa_is_vlan_mode = ipa3_is_vlan_mode;
 	api_ctrl->ipa_pm_is_used = ipa3_pm_is_used;
 	api_ctrl->ipa_get_lan_rx_napi = ipa3_get_lan_rx_napi;
-
+	api_ctrl->ipa_register_client_callback =
+		ipa3_register_client_callback;
+	api_ctrl->ipa_deregister_client_callback =
+		ipa3_deregister_client_callback;
 	return 0;
 }
 

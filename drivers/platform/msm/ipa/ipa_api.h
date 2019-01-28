@@ -435,6 +435,12 @@ struct ipa_api_controller {
 	bool (*ipa_pm_is_used)(void);
 
 	bool (*ipa_get_lan_rx_napi)(void);
+
+	void (*ipa_register_client_callback)(
+		int (*client_cb)(bool is_lock),
+		bool (*teth_port_state)(void), u32 ipa_ep_idx);
+
+	void (*ipa_deregister_client_callback)(u32 ipa_ep_idx);
 };
 
 #ifdef CONFIG_IPA
