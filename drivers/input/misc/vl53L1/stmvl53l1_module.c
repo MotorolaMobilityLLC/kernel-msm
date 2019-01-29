@@ -4551,7 +4551,7 @@ exit_unregister_dev_ps:
 	input_unregister_device(data->input_dev_ps);
 exit_ipp_cleanup:
 	stmvl53l1_ipp_cleanup(data);
-
+	reset_hold(data);
 	return rc;
 }
 
