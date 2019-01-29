@@ -712,6 +712,7 @@
 
 	sx933x@28 {
 		compatible = "Semtech,sx933x";
+		extcon = <&flip_detection>;
 		reg = <0x28>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <40 0>;
