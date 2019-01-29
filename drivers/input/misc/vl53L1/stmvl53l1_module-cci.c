@@ -169,7 +169,7 @@ static int stmvl53l1_request_intr(struct tof_ctrl_t *tof_ctrl)
 		vl53l1_errmsg("failed to request gpio %d, error %d\n", tof_ctrl->intr_gpio, rc);
 		goto end;
 	}
-
+	rc = gpio_export(tof_ctrl->intr_gpio, true);
 	tof_ctrl->io_flag.intr_owned = 1;
 end:
 	return rc;
@@ -527,9 +527,6 @@ int stmvl53l1_power_up_cci(void *object)
 		vl53l1_info("slow power on");
 	} else
 		vl53l1_wanrmsg("no power control");
-	rc = camera_io_init(&tof_ctrl->io_master_info);
-	if (rc < 0)
-		vl53l1_errmsg("cci init failed: rc: %d", rc);
 	if (tof_ctrl->power_supply) {
 	rc = cam_soc_util_regulator_enable(tof_ctrl->cci_supply,"cci", 1800000, 1800000, 0, 0);
 		if (rc) {
@@ -537,6 +534,10 @@ int stmvl53l1_power_up_cci(void *object)
 			return rc;
 		}
 		}
+	rc = camera_io_init(&tof_ctrl->io_master_info);
+	if (rc < 0)
+		vl53l1_errmsg("cci init failed: rc: %d", rc);
+
 	vl53l1_dbgmsg("End\n");
 
 	return rc;
