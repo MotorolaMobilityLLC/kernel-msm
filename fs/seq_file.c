@@ -72,8 +72,8 @@ int seq_open(struct file *file, const struct seq_operations *op)
 	mutex_init(&p->lock);
 	p->op = op;
 
-	// No refcounting: the lifetime of 'p' is constrained
-	// to the lifetime of the file.
+	/* No refcounting: the lifetime of 'p' is constrained
+	to the lifetime of the file.*/
 	p->file = file;
 
 	/*
