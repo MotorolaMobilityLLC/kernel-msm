@@ -130,7 +130,7 @@ static const struct of_device_id dp_dt_match[] = {
 unsigned char dp_dpcd_debug_buf[8] = {0};
 int dp_fix_lane_num = true;
 int dp_fix_linkrate = 1;
-int dp_enhance_en = 0;
+int dp_enhance_en = 1;
 #endif
 
 static inline bool dp_display_is_hdcp_enabled(struct dp_display_private *dp)
