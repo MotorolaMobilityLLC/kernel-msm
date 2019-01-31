@@ -466,6 +466,7 @@ use_default_name:
 	return &rdev->wiphy;
 }
 EXPORT_SYMBOL(wiphy_new_nm);
+EXPORT_SYMBOL(wiphy_new);
 
 static int wiphy_verify_combinations(struct wiphy *wiphy)
 {
