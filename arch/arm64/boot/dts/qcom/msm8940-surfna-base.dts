@@ -110,3 +110,9 @@
 	/delete-property/ qcom,iterm-ma;
 	/delete-property/ qcom,autoadjust-vfloat;
 };
+
+&firmware {
+	android {
+		/delete-node/ vbmeta;
+	};
+};
