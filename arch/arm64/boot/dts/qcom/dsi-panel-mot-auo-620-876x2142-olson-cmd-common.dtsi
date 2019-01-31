@@ -76,6 +76,9 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-force-tx-mode = "dsi_hs_mode";
+
+		qcom,mdss-dsi-panel-clockrate = <1102000000>;
+
 	};
 };
 
