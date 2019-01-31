@@ -28,7 +28,7 @@
 		regulator-max-microvolt = <2800000>;
 		regulator-enable-ramp-delay = <135>;
 		enable-active-high;
-		gpio = <&pcal_pin 7 0>;
+		gpio = <&tlmm 43 0>;
 	};
 
 	camera_dvdd: gpio-regulator@4 {
@@ -38,7 +38,7 @@
 		regulator-max-microvolt = <1050000>;
 		regulator-enable-ramp-delay = <135>;
 		enable-active-high;
-		gpio = <&pcal_pin 4 0>;
+		gpio = <&tlmm 41 0>;
 	};
 
 	camera_afvdd: gpio-regulator@5 {
@@ -48,7 +48,7 @@
 		regulator-max-microvolt = <2800000>;
 		regulator-enable-ramp-delay = <135>;
 		enable-active-high;
-		gpio = <&pcal_pin 8 0>;
+		gpio = <&tlmm 42 0>;
 	};
 };
 
@@ -185,12 +185,15 @@
 		pinctrl-1 = <&cam_sensor_mclk0_suspend
 				&cam_sensor_rear_suspend>;
 		gpios = <&tlmm 28 0>,
-			<&pcal_pin 0 0>;
-		gpio-reset= <1>;
-		gpio-req-tbl-num = <0 1>;
-		gpio-req-tbl-flags = <1 0>;
+			<&tlmm 40 0>,
+			<&tlmm 37 0>;
+		gpio-reset = <1>;
+		gpio-custom1 = <2>;
+		gpio-req-tbl-num = <0 1 2>;
+		gpio-req-tbl-flags = <1 0 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK0",
-				"CAM_RESET0";
+				"CAM_RESET0",
+				"MIPI_SWT0";
 		sensor-mode = <0>;
 		cci-master = <0>;
 		status = "ok";
