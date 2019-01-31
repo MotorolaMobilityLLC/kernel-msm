@@ -554,6 +554,7 @@
 	qcom,actuator-type = <0>; //LRA
 	qcom,wave-shape = "sine";
 	qcom,vmax-mv = <2350>;
+        qcom,max-play-time-ms = <30000>;
 	qcom,brake-pattern = <0x3 0x3 0x3 0x3>;
 	qcom,en-brake;
 	qcom,lra-auto-res-mode="qwd";
