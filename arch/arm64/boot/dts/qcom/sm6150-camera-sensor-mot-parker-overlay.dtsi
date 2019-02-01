@@ -207,7 +207,7 @@
 		cell-index = <1>;
 		compatible = "qcom,cam-sensor";
 		reg = <0x01>;
-		csiphy-sd-index = <1>;
+		csiphy-sd-index = <0>;
 		sensor-position-roll = <270>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
@@ -225,24 +225,24 @@
 		rgltr-load-current = <0 80000 105000 105000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
-		pinctrl-0 = <&cam_sensor_mclk2_active
+		pinctrl-0 = <&cam_sensor_mclk0_active
 				 &cam_sensor_front_active>;
-		pinctrl-1 = <&cam_sensor_mclk2_suspend
+		pinctrl-1 = <&cam_sensor_mclk0_suspend
 				 &cam_sensor_front_suspend>;
-		gpios = <&tlmm 30 0>,
-			<&pcal_pin 2 0>,
-			<&pcal_pin 3 0>;
+		gpios = <&tlmm 28 0>,
+			<&tlmm 39 0>,
+			<&tlmm 37 0>;
 		gpio-reset= <1>;
-		gpio-standby= <2>;
+		gpio-custom1= <2>;
 		gpio-req-tbl-num = <0 1 2>;
 		gpio-req-tbl-flags = <1 0 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK1",
 				"CAM_RESET1",
-				"CAM_STANDBY2";
+				"CAM_SWT1";
 		sensor-mode = <0>;
 		cci-master = <0>;
 		status = "ok";
-		clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
+		clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
 		clock-names = "cam_clk";
 		clock-cntl-level = "turbo";
 		clock-rates = <24000000>;
