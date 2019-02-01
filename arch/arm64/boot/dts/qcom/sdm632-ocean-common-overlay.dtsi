@@ -220,7 +220,7 @@
 
 &pmi632_vadc {
 	chan@4a {
-		qcom,scale-function = <26>;
+		qcom,scale-function = <27>;
 	};
 };
 
