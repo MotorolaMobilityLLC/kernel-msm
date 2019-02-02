@@ -193,6 +193,8 @@ static int dp_parser_misc(struct dp_parser *parser)
 	if (!parser->display_type)
 		parser->display_type = "unknown";
 
+	parser->without_sw_flip = of_find_property(of_node, "qcom,without-sw-flip", NULL);
+
 	return 0;
 }
 
