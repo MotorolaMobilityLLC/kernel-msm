@@ -176,6 +176,8 @@ static int dp_parser_misc(struct dp_parser *parser)
 	if (rc)
 		parser->max_lclk_khz = DP_MAX_LINK_CLK_KHZ;
 
+	parser->without_sw_flip = of_find_property(of_node, "qcom,without-sw-flip", NULL);
+
 	return 0;
 }
 
