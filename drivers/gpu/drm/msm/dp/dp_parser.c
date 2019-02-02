@@ -276,6 +276,7 @@ static int dp_parser_gpio(struct dp_parser *parser)
 		"qcom,aux-en-gpio",
 		"qcom,aux-sel-gpio",
 		"qcom,usbplug-cc-gpio",
+		"qcom,mux-sel-gpio",
 	};
 
 	if (of_find_property(of_node, "qcom,dp-hpd-gpio", NULL)) {
@@ -295,6 +296,20 @@ static int dp_parser_gpio(struct dp_parser *parser)
 	mp->num_gpio = ARRAY_SIZE(dp_gpios);
 
 	for (i = 0; i < ARRAY_SIZE(dp_gpios); i++) {
+		if (!strcmp("qcom,mux-sel-gpio", dp_gpios[i])) {
+			enum of_gpio_flags flag;
+
+			mp->gpio_config[i].gpio = of_get_named_gpio_flags(of_node,
+								"qcom,mux-sel-gpio",
+								0,
+								&flag);
+			strlcpy(mp->gpio_config[i].gpio_name, dp_gpios[i],
+				sizeof(mp->gpio_config[i].gpio_name));
+			mp->gpio_config[i].value = (flag == OF_GPIO_ACTIVE_LOW) ? 0 : 1;
+
+			continue;
+		}
+
 		mp->gpio_config[i].gpio = of_get_named_gpio(of_node,
 			dp_gpios[i], 0);
 
