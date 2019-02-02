@@ -737,7 +737,9 @@ static void dp_display_host_init(struct dp_display_private *dp)
 	if (dp->core_initialized)
 		return;
 
-	if (dp->hpd->orientation == ORIENTATION_CC2)
+	if (dp->parser->without_sw_flip)
+		pr_info("%s do not flip for SW\n", __func__);
+	else if (dp->hpd->orientation == ORIENTATION_CC2)
 		flip = true;
 
 	reset = dp->debug->sim_mode ? false :
