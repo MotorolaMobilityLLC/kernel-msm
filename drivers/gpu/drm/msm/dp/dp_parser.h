@@ -240,6 +240,7 @@ struct dp_parser {
 	u32 max_dp_dsc_input_width_pixs;
 	bool lphw_hpd;
 	u32 mst_fixed_port[MAX_DP_MST_STREAMS];
+	bool without_sw_flip;
 
 	int (*parse)(struct dp_parser *parser);
 	struct dp_io_data *(*get_io)(struct dp_parser *parser, char *name);

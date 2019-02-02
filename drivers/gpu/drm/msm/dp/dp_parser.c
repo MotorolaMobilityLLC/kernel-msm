@@ -188,6 +188,8 @@ static int dp_parser_misc(struct dp_parser *parser)
 	rc = of_property_read_u32(of_node,
 		"qcom,max-vdisplay", &parser->max_vdisplay);
 
+	parser->without_sw_flip = of_find_property(of_node, "qcom,without-sw-flip", NULL);
+
 	return 0;
 }
 
