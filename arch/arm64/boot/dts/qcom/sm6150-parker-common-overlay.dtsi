@@ -773,6 +773,7 @@
 &sde_dp {
 	status = "okay";
 	qcom,mux-sel-gpio = <&tlmm 49 GPIO_ACTIVE_HIGH>;
+	qcom,without-sw-flip;
 
 	pinctrl-names = "mdss_dp_active", "mdss_dp_sleep",
 			"mdss_dp_hpd_active";
