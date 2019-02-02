@@ -772,8 +772,7 @@
 
 &sde_dp {
 	status = "okay";
-	qcom,dp-gpio-aux-switch;
-	qcom,aux-sel-gpio = <&tlmm 49 0>;
+	qcom,mux-sel-gpio = <&tlmm 49 GPIO_ACTIVE_HIGH>;
 
 	pinctrl-names = "mdss_dp_active", "mdss_dp_sleep",
 			"mdss_dp_hpd_active";
@@ -781,6 +780,7 @@
 	pinctrl-1 = <&sde_dp_usbplug_cc_suspend &sde_dp_switch_suspend>;
 	pinctrl-2 = <&sde_dp_connector_enable &sde_dp_switch_suspend>;
 
+	/delete-property/qcom,usbplug-cc-gpio;
 	/delete-property/pinctrl-3;
 	/delete-property/pinctrl-4;
 };
