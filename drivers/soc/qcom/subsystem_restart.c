@@ -1063,10 +1063,7 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 			__pm_stay_awake(&dev->ssr_wlock);
 			queue_work(ssr_wq, &dev->work);
 		} else {
-			/* MMI_STOPSHIP bringup: prevent kernel from crashing due to modem failure
-			 *panic("Subsystem %s crashed during SSR!", name);
-			 */
-			pr_err("Subsystem %s crashed during SSR!\n", name);
+			panic("Subsystem %s crashed during SSR!", name);
 		}
 	} else
 		WARN(dev->track.state == SUBSYS_OFFLINE,
@@ -1125,16 +1122,13 @@ int subsystem_restart_dev(struct subsys_device *dev)
 
 	switch (dev->restart_level) {
 
-	case RESET_SOC:
 	case RESET_SUBSYS_COUPLED:
 		__subsystem_restart_dev(dev);
 		break;
-	/* MMI_STOPSHIP - we have to uncomment this when the modem is stabilized
-	* case RESET_SOC:
-	*	__pm_stay_awake(&dev->ssr_wlock);
-	*	schedule_work(&dev->device_restart_work);
-	*	return 0;
-	*/
+	case RESET_SOC:
+		__pm_stay_awake(&dev->ssr_wlock);
+		schedule_work(&dev->device_restart_work);
+		return 0;
 	default:
 		panic("subsys-restart: Unknown restart level!\n");
 		break;
