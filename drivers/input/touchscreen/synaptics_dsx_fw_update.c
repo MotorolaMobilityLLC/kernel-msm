@@ -1092,17 +1092,6 @@ static int fwu_read_flash_status(void)
 		return retval;
 	}
 
-	retval = synaptics_rmi4_reg_read(rmi4_data,
-			fwu->f34_fd.data_base_addr + fwu->off.partition_id,
-			(unsigned char *)&data15,
-			sizeof(data15));
-	if (retval < 0) {
-		dev_err(LOGDEV,
-				"%s: Failed to read data15\n",
-				__func__);
-		return retval;
-	}
-
 	fwu->in_bl_mode = status >> 7;
 
 	if (fwu->bl_version == BL_V5)
@@ -1112,18 +1101,58 @@ static int fwu_read_flash_status(void)
 	else
 		fwu->flash_status = status & MASK_5BIT;
 
-	if (fwu->flash_status != 0x00) {
-		dev_err(LOGDEV,
-				"%s: Flash status = %d, part_id = %d, command = 0x%02x\n",
-				__func__, fwu->flash_status, data15.partition_id, data15.command);
-	}
+	if (fwu->bl_version <= BL_V6) {
+		unsigned char command;
 
-	if (fwu->bl_version >= BL_V7) {
+		retval = synaptics_rmi4_reg_read(rmi4_data,
+				fwu->f34_fd.data_base_addr + fwu->off.flash_cmd,
+				&command,
+				sizeof(command));
+		if (retval < 0) {
+			dev_err(LOGDEV,
+					"%s: Failed to read flash command\n",
+					__func__);
+			return retval;
+		}
+
+		if (fwu->bl_version == BL_V5)
+			fwu->command = command & MASK_4BIT;
+		else if (fwu->bl_version == BL_V6)
+			fwu->command = command & MASK_6BIT;
+		else
+			fwu->command = command;
+
+		if (fwu->flash_status != 0x00) {
+			dev_err(LOGDEV,
+				"%s: Flash status = %d, command = 0x%02x\n",
+				__func__, fwu->flash_status, fwu->command);
+		}
+
+	} else {
+		retval = synaptics_rmi4_reg_read(rmi4_data,
+			fwu->f34_fd.data_base_addr + fwu->off.partition_id,
+			(unsigned char *)&data15,
+			sizeof(data15));
+		if (retval < 0) {
+			dev_err(LOGDEV,
+					"%s: Failed to read data15\n",
+					__func__);
+			return retval;
+		}
+
 		if (fwu->flash_status == BAD_PARTITION_TABLE)
 			fwu->flash_status = 0x00;
-	}
 
-	fwu->command = data15.command;
+		fwu->command = data15.command;
+
+		if (fwu->flash_status != 0x00) {
+			dev_err(LOGDEV,
+				"%s: Flash status = %d, part_id = %d, "
+				"command = 0x%02x\n", __func__,
+				fwu->flash_status, data15.partition_id,
+				data15.command);
+		}
+	}
 
 	return 0;
 }
@@ -1211,14 +1240,17 @@ static int fwu_wait_for_idle(int timeout_ms)
 {
 	int retval, counter = fwu->irq_sema.count;
 
-	/* handle missed irq */
-	if (counter > 0) {
-		int i;
-		for (i = 0; i < counter; i++)
-			down(&fwu->irq_sema);
-		dev_warn(LOGDEV,
-				"%s: invalid semaphore counter %d\n",
-				__func__, counter);
+	if (fwu->bl_version > BL_V6) {
+		/* handle missed irq */
+		if (counter > 0) {
+			int i;
+
+			for (i = 0; i < counter; i++)
+				down(&fwu->irq_sema);
+			dev_warn(LOGDEV,
+					"%s: invalid semaphore counter %d\n",
+					__func__, counter);
+		}
 	}
 
 	retval = down_timeout(&fwu->irq_sema, msecs_to_jiffies(timeout_ms));
