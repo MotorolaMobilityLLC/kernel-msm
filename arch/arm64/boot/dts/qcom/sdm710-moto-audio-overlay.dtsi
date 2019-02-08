@@ -238,3 +238,6 @@
 	};
 };
 
+&pmic_analog_codec {
+	status = "disabled";
+};
