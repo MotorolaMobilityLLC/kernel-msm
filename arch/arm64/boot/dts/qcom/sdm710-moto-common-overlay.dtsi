@@ -948,13 +948,13 @@
 					<15 0 600 600>,
 					<45 4200 1205 840>,
 					<60 4200 600 0>;
-		qcom,iterm-ma-main = <124>;
+		qcom,iterm-ma-main = <80>;
 		qcom,mmi-temp-zones-flip = <0 4200 250 0>,
 					<10 4200 610 250>,
 					<15 0 610 610>,
 					<45 4200 1225 860>,
 					<60 4200 610 0>;
-		qcom,iterm-ma-flip = <125>;
+		qcom,iterm-ma-flip = <80>;
 		qcom,vfloat-comp-uv = <20000>;
 	};
 };
