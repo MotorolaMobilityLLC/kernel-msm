@@ -949,7 +949,7 @@ int usb_get_status(struct usb_device *dev, int type, int target, void *data)
 
 	ret = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 		USB_REQ_GET_STATUS, USB_DIR_IN | type, 0, target, status,
-		sizeof(*status), USB_CTRL_GET_TIMEOUT);
+			      sizeof(*status), 500);
 
 	if (ret == 2) {
 		*(u16 *) data = le16_to_cpu(*status);
