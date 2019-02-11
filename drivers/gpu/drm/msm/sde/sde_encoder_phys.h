@@ -373,6 +373,7 @@ struct sde_encoder_phys_cmd {
 	int stream_sel;
 	bool serialize_wait4pp;
 	int pp_timeout_report_cnt;
+	int pp_timeout_te_check_cnt;
 	struct sde_encoder_phys_cmd_autorefresh autorefresh;
 	atomic_t pending_rd_ptr_cnt;
 	ktime_t rd_ptr_timestamp;

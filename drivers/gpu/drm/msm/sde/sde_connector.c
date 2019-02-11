@@ -1961,10 +1961,11 @@ static void _sde_connector_report_panel_dead(struct sde_connector *conn)
 			conn->base.base.id, conn->encoder->base.id);
 }
 
-int sde_connector_esd_status(struct drm_connector *conn)
+int sde_connector_esd_status(struct drm_connector *conn, bool esd_recovery)
 {
 	struct sde_connector *sde_conn = NULL;
 	int ret = 0;
+	struct dsi_display *dsi_display;
 
 	if (!conn)
 		return ret;
@@ -1978,11 +1979,31 @@ int sde_connector_esd_status(struct drm_connector *conn)
 	ret = sde_conn->ops.check_status(sde_conn->display, true);
 	mutex_unlock(&sde_conn->lock);
 
+	SDE_DEBUG("check_status returns ret=%d\n", ret);
 	if (ret <= 0) {
-		/* cancel if any pending esd work */
-		sde_connector_schedule_status_work(conn, false);
-		_sde_connector_report_panel_dead(sde_conn);
+		/* esd_recovery is set when ESD detection/recovery is needed */
+		if (esd_recovery == true) {
+			/* cancel if any pending esd work */
+			sde_connector_schedule_status_work(conn, false);
+			_sde_connector_report_panel_dead(sde_conn);
+		} else {
+			/*
+			 * When esd_recovery is NOT set, when this API is just
+			 * checking the ESD recovery status, specially checking
+			 * for the ESD TE. In the ops.check_status() will
+			 * set esd_recovery_pending when there still have ESD
+			 * issue. At this point, the ESD detection still detect
+			 * the ESD, therefore esd_recovery_pending needs to be
+			 * cleared
+			 */
+			SDE_DEBUG("esd_recovery = FALSE, need to clear esd_recovery_pending flag\n");
+			dsi_display = sde_conn->display;
+			atomic_set(&dsi_display->panel->esd_recovery_pending,
+						0);
+		}
 		ret = -ETIMEDOUT;
+	} else if (ret == SDE_ESD_PENDING) {
+		SDE_DEBUG("ESD recovery still is pending, do nothing\n");
 	} else {
 		SDE_DEBUG("Successfully received TE from panel\n");
 		ret = 0;

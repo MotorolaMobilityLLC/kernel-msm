@@ -25,6 +25,7 @@
 #include "sde_motUtil.h"
 
 #define SDE_CONNECTOR_NAME_SIZE	16
+#define SDE_ESD_PENDING 0xffff
 
 struct sde_connector;
 struct sde_connector_state;
@@ -873,7 +874,9 @@ int sde_connector_get_panel_vfp(struct drm_connector *connector,
 /**
  * sde_connector_esd_status - helper function to check te status
  * @connector: Pointer to DRM connector object
+ * @esd_recovery: true: trigger ESD recovery as reporting panel_dead
  */
-int sde_connector_esd_status(struct drm_connector *connector);
+int sde_connector_esd_status(struct drm_connector *connector,
+	bool esd_recovery);
 
 #endif /* _SDE_CONNECTOR_H_ */
