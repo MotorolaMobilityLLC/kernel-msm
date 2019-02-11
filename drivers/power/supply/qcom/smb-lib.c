@@ -75,6 +75,13 @@
 
 #define QPNP_LOG_PAGES (50)
 
+#define EB_RCV_NEVER BIT(7)
+#define EB_RCV_PARALLEL BIT(4)
+#define EB_SND_EXT BIT(2)
+#define EB_SND_LOW BIT(1)
+#define EB_SND_NEVER BIT(0)
+static void mmi_check_extbat_ability(struct smb_charger *chip, char *able);
+
 static bool is_secure(struct smb_charger *chg, int addr)
 {
 	if (addr == SHIP_MODE_REG || addr == FREQ_CLK_DIV_REG)
@@ -644,6 +651,15 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 
 	if (!strcmp(apsd_result->name, "HVDCP3"))
 	    chg->mmi.hvdcp3_con = true;
+
+	if (!strcmp(apsd_result->name, "HVDCP2")) {
+		char ability = 0;
+		mmi_check_extbat_ability(chg, &ability);
+		if (ability & EB_RCV_PARALLEL) {
+			chg->mmi.hvdcp3_con = true;
+			smblib_err(chg, "Force HVDCP3 from HVDCP2\n");
+		}
+	}
 
 	/* if PD is active, APSD is disabled so won't have a valid result */
 	if (chg->pd_active) {
@@ -6283,11 +6299,6 @@ static int get_eb_prop(struct smb_charger *chip,
 	return eb_prop;
 }
 
-#define EB_RCV_NEVER BIT(7)
-#define EB_RCV_PARALLEL BIT(4)
-#define EB_SND_EXT BIT(2)
-#define EB_SND_LOW BIT(1)
-#define EB_SND_NEVER BIT(0)
 static void mmi_check_extbat_ability(struct smb_charger *chip, char *able)
 {
 	int rc;
