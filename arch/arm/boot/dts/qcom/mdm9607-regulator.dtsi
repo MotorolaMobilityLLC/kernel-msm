@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2017, 2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -382,6 +382,9 @@
 		qcom,cpr-quot-adjust-scaling-factor-max = <1400>;
 		qcom,disable-closed-loop-in-pc;
 		qcom,cpr-cpus = <&CPU0>;
+		qcom,cpr-thermal-sensor-id = <4>;
+		qcom,cpr-disable-temp-threshold = <10>;
+		qcom,cpr-enable-temp-threshold = <15>;
 		qcom,cpr-enable;
 	};
 
