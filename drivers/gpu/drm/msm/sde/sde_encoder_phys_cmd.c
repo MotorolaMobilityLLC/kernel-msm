@@ -32,7 +32,7 @@
 #define to_sde_encoder_phys_cmd(x) \
 	container_of(x, struct sde_encoder_phys_cmd, base)
 
-#define PP_TIMEOUT_MAX_TRIALS	2
+#define PP_TIMEOUT_MAX_TRIALS	5
 
 /*
  * Tearcheck sync start and continue thresholds are empirically found
@@ -469,6 +469,7 @@ static bool _sde_encoder_phys_is_ppsplit(struct sde_encoder_phys *phys_enc)
 static int _sde_encoder_phys_cmd_handle_ppdone_timeout(
 		struct sde_encoder_phys *phys_enc)
 {
+	int ret;
 	struct sde_encoder_phys_cmd *cmd_enc =
 			to_sde_encoder_phys_cmd(phys_enc);
 	u32 frame_event = SDE_ENCODER_FRAME_EVENT_ERROR
@@ -496,15 +497,29 @@ static int _sde_encoder_phys_cmd_handle_ppdone_timeout(
 			frame_event);
 
 	/* check if panel is still sending TE signal or not */
-	if (sde_connector_esd_status(phys_enc->connector))
+	ret = sde_connector_esd_status(phys_enc->connector, true);
+	if (ret == 0) {
+		cmd_enc->pp_timeout_te_check_cnt = 0;
+		SDE_DEBUG("Clear pp_timeout_te_check_cnt\n");
 		goto exit;
+	} else if (ret == SDE_ESD_PENDING) {
+		SDE_DEBUG("ESD recovery is till pending\n");
+		goto exit;
+	} else {
+		cmd_enc->pp_timeout_te_check_cnt++;
+		SDE_ERROR("Still detects ESD event, increase pp_timeout_te_check_cnt = %d\n",
+		cmd_enc->pp_timeout_te_check_cnt);
+	}
 
-	if (cmd_enc->pp_timeout_report_cnt >= PP_TIMEOUT_MAX_TRIALS) {
-		cmd_enc->pp_timeout_report_cnt = PP_TIMEOUT_MAX_TRIALS;
+	if (cmd_enc->pp_timeout_te_check_cnt >= PP_TIMEOUT_MAX_TRIALS) {
+		cmd_enc->pp_timeout_te_check_cnt  = PP_TIMEOUT_MAX_TRIALS;
 		frame_event |= SDE_ENCODER_FRAME_EVENT_PANEL_DEAD;
 
 		SDE_DBG_DUMP("panic");
-	} else if (cmd_enc->pp_timeout_report_cnt == 1) {
+		SDE_ERROR("Reaching maximum pp_timeout_report_cnt = %d, calling BUG()\n",
+			cmd_enc->pp_timeout_report_cnt);
+		BUG();
+	} else if (cmd_enc->pp_timeout_te_check_cnt == 1) {
 		/* to avoid flooding, only log first time, and "dead" time */
 		SDE_ERROR_CMDENC(cmd_enc,
 				"pp:%d kickoff timed out ctl %d cnt %d koff_cnt %d\n",
@@ -621,6 +636,32 @@ static bool _sde_encoder_phys_cmd_is_ongoing_pptx(
 	return false;
 }
 
+static int _sde_encoder_phy_check_te_recovery(struct sde_encoder_phys *phys_enc)
+{
+	struct sde_encoder_phys_cmd *cmd_enc =
+			to_sde_encoder_phys_cmd(phys_enc);
+	struct drm_connector *conn = phys_enc->connector;
+	struct sde_connector *sde_conn = NULL;
+	int ret = -EINVAL;
+
+	if (!conn)
+		return ret;
+
+	sde_conn = to_sde_connector(conn);
+	if (!sde_conn)
+		return ret;
+
+	if (cmd_enc->pp_timeout_te_check_cnt) {
+		ret  = sde_connector_esd_status(phys_enc->connector, false);
+		if (ret == 0) {
+			cmd_enc->pp_timeout_te_check_cnt = 0;
+			SDE_ERROR("ESD is recovered then clearing pp_timeout_te_check_cnt\n");
+		}
+	}
+
+	return 0;
+}
+
 static int _sde_encoder_phys_cmd_wait_for_idle(
 		struct sde_encoder_phys *phys_enc)
 {
@@ -646,8 +687,14 @@ static int _sde_encoder_phys_cmd_wait_for_idle(
 			&wait_info);
 	if (ret == -ETIMEDOUT)
 		_sde_encoder_phys_cmd_handle_ppdone_timeout(phys_enc);
-	else if (!ret)
+	else if (!ret) {
+		if (cmd_enc->pp_timeout_te_check_cnt) {
+			ret = _sde_encoder_phy_check_te_recovery(phys_enc);
+			if (ret)
+				return ret;
+		}
 		cmd_enc->pp_timeout_report_cnt = 0;
+	}
 
 	return ret;
 }
