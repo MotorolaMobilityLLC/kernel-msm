@@ -453,8 +453,10 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 						atomic_set(&this_afe.status, payload[1]);
 
 					atomic_set(&this_afe.tfa_state, 0);
-					wake_up(&this_afe.wait[data->token]);
-
+					if (afe_token_is_valid(data->token))
+						wake_up(&this_afe.wait[data->token]);
+					else
+						return -EINVAL;
 					return 0;
 				}
 		#endif /*CONFIG_SND_SOC_TFA9874*/
