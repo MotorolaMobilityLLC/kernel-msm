@@ -415,7 +415,7 @@
 				firmware {
 					aov {
 						cirrus,wmfw-file = "marley-dsp3-aov-control.wmfw";
-						cirrus,bin-file = "None";
+						cirrus,bin-file = "marley-dsp3-aov-model.bin";
 						cirrus,full-name;
 						cirrus,compr-caps = <14 1 4 1 16000>;
 					};
