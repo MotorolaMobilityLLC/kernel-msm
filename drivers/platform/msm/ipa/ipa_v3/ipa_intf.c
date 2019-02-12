@@ -728,6 +728,12 @@ ssize_t ipa3_read(struct file *filp, char __user *buf, size_t count,
 		if (msg) {
 			locked = 0;
 			mutex_unlock(&ipa3_ctx->msg_lock);
+			if (count < sizeof(struct ipa_msg_meta)) {
+				kfree(msg);
+				msg = NULL;
+				ret = -EFAULT;
+				break;
+			}
 			if (copy_to_user(buf, &msg->meta,
 					  sizeof(struct ipa_msg_meta))) {
 				ret = -EFAULT;
@@ -738,8 +744,15 @@ ssize_t ipa3_read(struct file *filp, char __user *buf, size_t count,
 			buf += sizeof(struct ipa_msg_meta);
 			count -= sizeof(struct ipa_msg_meta);
 			if (msg->buff) {
-				if (copy_to_user(buf, msg->buff,
-						  msg->meta.msg_len)) {
+				if (count >= msg->meta.msg_len) {
+					if (copy_to_user(buf, msg->buff,
+							msg->meta.msg_len)) {
+						ret = -EFAULT;
+						kfree(msg);
+						msg = NULL;
+						break;
+					}
+				} else {
 					ret = -EFAULT;
 					kfree(msg);
 					msg = NULL;
