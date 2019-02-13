@@ -6328,6 +6328,15 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 			chip->hvdcp3_confirmed = true;
 			chip->cl_usbc = 3000;
 			chip->usb_target_current_ma = 3000;
+		} else {
+			char ability = 0;
+			smbchg_check_extbat_ability(chip, &ability);
+			if (ability & EB_RCV_PARALLEL) {
+				chip->hvdcp3_confirmed = true;
+				SMB_WARN(chip, "Force HVDCP3 from HVDCP2\n");
+				chip->cl_usbc = 3000;
+				chip->usb_target_current_ma = 3000;
+			}
 		}
 		SMB_WARN(chip, "HVDCP%s FOUND!\n", chip->hvdcp3_confirmed ? "3" : "2");
 	}
