@@ -4281,6 +4281,7 @@ static int smbchg_usbeb_set_property(struct power_supply *psy,
 }
 
 #define EB_RCV_NEVER BIT(7)
+#define EB_RCV_PARALLEL BIT(4)
 #define EB_SND_EXT BIT(2)
 #define EB_SND_LOW BIT(1)
 #define EB_SND_NEVER BIT(0)
@@ -4308,7 +4309,9 @@ static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
 		SMB_ERR(chip,
 			"Could not read Receive Params rc = %d\n", rc);
 		*able |= EB_RCV_NEVER;
-	} else if ((ret.intval == POWER_SUPPLY_PTP_INT_RCV_NEVER) ||
+	} else if (ret.intval == POWER_SUPPLY_PTP_INT_RCV_PARALLEL)
+		*able |= EB_RCV_PARALLEL;
+	else if ((ret.intval == POWER_SUPPLY_PTP_INT_RCV_NEVER) ||
 		   (ret.intval == POWER_SUPPLY_PTP_INT_RCV_UNKNOWN))
 		*able |= EB_RCV_NEVER;
 
@@ -11102,6 +11105,10 @@ void smbchg_pulse_charger(struct smbchg_chip *chip, bool increment)
 		chip->vbus_inc_cnt--;
 }
 
+/* For Testing 50/50 Turbo Charge Split with EB */
+static int force_eb_fifty;
+module_param(force_eb_fifty, int, 0644);
+
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
@@ -11185,6 +11192,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 	if (eb_soc == -EINVAL)
 		eb_soc = 0;
+
+	if (force_eb_fifty)
+		eb_able |= EB_RCV_PARALLEL;
 
 	if ((eb_soc == -ENODEV) && (pwr_ext == -ENODEV))
 		smbchg_set_extbat_state(chip, EB_DISCONN, false);
@@ -11665,11 +11675,16 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			    (((chip->cl_usbc - 500) >=
 			     MIN(chip->stepchg_steps[index].max_ma,
 				 pmi_max_chrg_ma)) || extra_in_pwr)) {
+				int split_unit = 500;
+				if (eb_able & EB_RCV_PARALLEL) {
+					if (chip->cl_usbc >= 1500)
+						split_unit = chip->cl_usbc / 2; /* 50/50 Split */
+				}
 				mutex_lock(&chip->current_change_lock);
 				chip->usb_target_current_ma =
-					chip->cl_usbc - 500;
+					chip->cl_usbc - split_unit;
 				mutex_unlock(&chip->current_change_lock);
-				chip->cl_ebchg = 500;
+				chip->cl_ebchg = split_unit;
 				smbchg_set_thermal_limited_usb_current_max(
 						chip,
 						chip->usb_target_current_ma);
