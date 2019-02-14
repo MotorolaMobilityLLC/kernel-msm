@@ -16,6 +16,7 @@ dtbo-$(CONFIG_FOLES_DTB) += \
 	sm6150-foles-dvt1b-overlay.dtbo \
 	sm6150-foles-dvt2a-overlay.dtbo \
 	sm6150-foles-dvt2b-overlay.dtbo \
+	sm6150-foles-pvt-overlay.dtbo \
 	sm6150-foles_npi-evt1-overlay.dtbo \
 	sm6150-foles_npi-evt3-overlay.dtbo \
 	sm6150-foles_npi-dvt1-overlay.dtbo \
@@ -50,6 +51,9 @@ sm6150-foles-dvt2a-overlay.dtbo-base := \
 	sm6150-foles-base.dtb
 
 sm6150-foles-dvt2b-overlay.dtbo-base := \
+	sm6150-foles-base.dtb
+
+sm6150-foles-pvt-overlay.dtbo-base := \
 	sm6150-foles-base.dtb
 
 sm6150-foles_npi-evt1-overlay.dtbo-base := \
