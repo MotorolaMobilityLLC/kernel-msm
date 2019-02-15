@@ -1861,6 +1861,13 @@ static int mtp_ctrlreq_configfs(struct usb_function *f,
 	struct mtp_instance *fi_mtp =
 		container_of(f->fi, struct mtp_instance, func_inst);
 
+	if (!f || !f->config) {
+		pr_err("%s: Invalid input for %s function\n",
+			__func__, (f && f->name)? f->name : "unknown");
+
+		return -EINVAL;
+	}
+
 	if (!fi_mtp || (fi_mtp->is_bound == false))
 		return -EOPNOTSUPP;
 	else
