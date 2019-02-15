@@ -73,7 +73,7 @@ static int cam_ois_bm24218_read_reg6024(struct camera_io_master *io_master_info,
 	return rc;
 }
 
-static void cam_ois_bm24218_poll_status(struct camera_io_master *io_master_info)
+static uint32_t cam_ois_bm24218_poll_status(struct camera_io_master *io_master_info)
 {
 	uint32_t cnt = 0;
 	uint32_t val = 0;
@@ -83,6 +83,8 @@ static void cam_ois_bm24218_poll_status(struct camera_io_master *io_master_info)
 		if (val) break;
 		usleep_range(5000, 6000);
 	} while (!val && cnt++ <100);
+
+	return val;
 }
 
 static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_info)
@@ -158,6 +160,8 @@ static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_
 	};
 
 	int32_t ret = 0, i;
+	uint32_t status = 0;
+
 	CAM_DBG(CAM_OIS, "Enable SERV&GYRO");
 	for (i=0; i<11; i++) {
 		i2c_reg_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
@@ -169,7 +173,11 @@ static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_
 		if ((i2c_reg_array[i].reg_addr == 0x614F) ||
 		    (i2c_reg_array[i].reg_addr == 0x6020 && i2c_reg_array[i].reg_data == 0x01)) {
 			CAM_ERR(CAM_OIS, "Poll OIS status before 0x%04x", i2c_reg_array[i].reg_addr);
-			cam_ois_bm24218_poll_status(io_master_info);
+			status = cam_ois_bm24218_poll_status(io_master_info);
+			if (0 == status) {
+				CAM_ERR(CAM_OIS, "Poll OIS timeout");
+				break;
+			}
 		}
 		ret = camera_io_dev_write(io_master_info, &i2c_reg_setting);
 		if (i2c_reg_array[i].reg_addr == 0x602d && i2c_reg_array[i].reg_data == 0x58) {
@@ -341,9 +349,12 @@ int cam_ois_bm24218_after_cal_data_dl(struct cam_ois_ctrl_t *o_ctrl)
 		CAM_ERR(CAM_OIS, "OIS cam_ois_bm24218_stop_dl failed: %d", rc);
 	}
 	cam_ois_bm24218_poll_status(&(o_ctrl->io_master_info));
-	rc = cam_ois_bm24218_enable_servo_gyro(&(o_ctrl->io_master_info));
-	if (rc < 0) {
-		CAM_ERR(CAM_OIS, "OIS cam_ois_bm24218_enable_servo_gyro failed: %d", rc);
+	if (o_ctrl->is_ois_calib) {
+		rc = cam_ois_bm24218_enable_servo_gyro(&(o_ctrl->io_master_info));
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "OIS cam_ois_bm24218_enable_servo_gyro failed: %d", rc);
+		}
 	}
+
 	return rc;
 }
