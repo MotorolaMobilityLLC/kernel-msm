@@ -171,6 +171,12 @@ static phys_addr_t audio_aio_ion_fixup(struct q6audio_aio *audio, void *addr,
 	phys_addr_t paddr;
 	int ret;
 
+	// IKSWP-61073: Null pointers check
+	if(audio==NULL || addr == NULL){
+		pr_err("%s audio[%pK]or addr(%pK) is NULL\n",__func__, audio, addr);
+		return 0;
+        }
+
 	ret = audio_aio_ion_lookup_vaddr(audio, addr, len, &region);
 	if (ret) {
 		pr_err("%s[%pK]:lookup (%pK, %ld) failed\n",
