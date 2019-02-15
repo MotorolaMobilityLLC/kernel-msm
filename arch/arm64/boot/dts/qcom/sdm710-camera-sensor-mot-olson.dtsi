@@ -212,12 +212,13 @@
 		reg = <0x0>;
 		compatible = "qcom,camera-flash";
 		cci-master = <0>;
+		cam_vana-supply = <&camera_vana_ldo>;
 		cam_v_custom1-supply = <&camera_flash_en_gpio>;
-		regulator-names = "cam_v_custom1";
+		regulator-names = "cam_vana", "cam_v_custom1";
 		rgltr-cntrl-support;
-		rgltr-min-voltage = <1808000>;
-		rgltr-max-voltage = <1808000>;
-		rgltr-load-current = <0>;
+		rgltr-min-voltage = <1808000 1808000>;
+		rgltr-max-voltage = <1808000 1808000>;
+		rgltr-load-current = <1808000 0>;
 		status = "ok";
 	};
 
