@@ -1832,6 +1832,13 @@ static struct usb_function_instance *mtp_alloc_inst(void)
 static int mtp_ctrlreq_configfs(struct usb_function *f,
 				const struct usb_ctrlrequest *ctrl)
 {
+	if (!f || !f->config) {
+		pr_err("%s: Invalid input for %s function\n",
+			__func__, (f && f->name)? f->name : "unknown");
+
+		return -EINVAL;
+	}
+
 	return mtp_ctrlrequest(f->config->cdev, ctrl);
 }
 
