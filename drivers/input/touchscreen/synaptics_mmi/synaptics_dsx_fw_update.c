@@ -25,6 +25,7 @@
 #include <linux/firmware.h>
 #include <linux/platform_device.h>
 #include <linux/wakelock.h>
+#include <soc/qcom/bootinfo.h>
 #include "synaptics_dsx_i2c.h"
 
 #define FORCE_UPDATE false
@@ -152,10 +153,10 @@ static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 
 static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
+#endif
 
 static ssize_t fwu_sysfs_erase_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
-#endif
 
 static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
@@ -583,6 +584,7 @@ struct synaptics_rmi4_fwu_handle {
 	bool do_lockdown;
 	bool has_guest_code;
 	bool new_partition_table;
+        bool has_erase_all;
 	unsigned int data_pos;
 	unsigned char *ext_data_source;
 	unsigned char *read_config_buf;
@@ -684,9 +686,6 @@ static struct device_attribute attrs[] = {
 	__ATTR(writeguestcode, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_write_guest_code_store),
-	__ATTR(erase, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
-			fwu_sysfs_erase_store),
 #endif
 	__ATTR(doreflash, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
@@ -694,6 +693,13 @@ static struct device_attribute attrs[] = {
 	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_force_reflash_store),
+};
+
+
+static struct device_attribute erase_attr[] = {
+	__ATTR(erase_all, S_IWUSR | S_IWGRP,
+			synaptics_rmi4_show_error,
+			fwu_sysfs_erase_store),
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
@@ -4277,6 +4283,7 @@ exit:
 	fwu->image = NULL;
 	return retval;
 }
+#endif
 
 static ssize_t fwu_sysfs_erase_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -4332,7 +4339,6 @@ reset_and_exit:
 
 	return count;
 }
-#endif
 
 static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,
 		unsigned char intr_mask)
@@ -4444,6 +4450,16 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 
+        if (strncmp(bi_bootmode(), "mot-factory", strlen("mot-factory")) == 0) {
+                retval = sysfs_create_file(SYSFS_KOBJ, &erase_attr[0].attr);
+                if (retval < 0) {
+                        dev_err(LOGDEV,
+                                        "%s: Failed to create erase sysfs attributes\n",
+                                        __func__);
+                } else
+                        fwu->has_erase_all = true;
+        }
+
 	return 0;
 
 exit_remove_attrs:
@@ -4473,6 +4489,9 @@ static void synaptics_rmi4_fwu_remove(struct synaptics_rmi4_data *rmi4_data)
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		sysfs_remove_file(SYSFS_KOBJ, &attrs[attr_count].attr);
 	}
+
+        if (fwu->has_erase_all)
+            sysfs_remove_file(SYSFS_KOBJ, &erase_attr[0].attr);
 
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 	sysfs_remove_bin_file(SYSFS_KOBJ, &dev_attr_data);
