@@ -86,10 +86,8 @@
 		rgltr-load-current = <0 80000 105000 105000 0 80000>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
-		pinctrl-0 = <&cam_sensor_mclk2_active
-				 &cam_sensor_front_active>;
-		pinctrl-1 = <&cam_sensor_mclk2_suspend
-				 &cam_sensor_front_suspend>;
+		pinctrl-0 = <&cam_sensor_mclk2_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend>;
 		gpios = <&tlmm 30 0>,
 			<&pcal_pin 2 0>,
 			<&pcal_pin 3 0>;
@@ -254,10 +252,8 @@
 		rgltr-load-current = <0 80000 105000 105000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
-		pinctrl-0 = <&cam_sensor_mclk2_active
-				 &cam_sensor_front_active>;
-		pinctrl-1 = <&cam_sensor_mclk2_suspend
-				 &cam_sensor_front_suspend>;
+		pinctrl-0 = <&cam_sensor_mclk2_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend>;
 		gpios = <&tlmm 30 0>,
 			<&pcal_pin 2 0>,
 			<&pcal_pin 3 0>;
