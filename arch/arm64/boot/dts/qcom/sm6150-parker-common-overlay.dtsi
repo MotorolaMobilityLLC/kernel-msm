@@ -784,3 +784,7 @@
 	/delete-property/pinctrl-3;
 	/delete-property/pinctrl-4;
 };
+
+&pm6150l_rgb_led {
+	status = "disabled";
+};
