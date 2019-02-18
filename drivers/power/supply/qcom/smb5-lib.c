@@ -9396,7 +9396,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	if (chip->suspended) {
 		smblib_err(chip, "SMB HB running before Resume\n");
 		schedule_delayed_work(&mmi->heartbeat_work,
-				      msecs_to_jiffies(100));
+				      msecs_to_jiffies(300));
 		return;
 	}
 
