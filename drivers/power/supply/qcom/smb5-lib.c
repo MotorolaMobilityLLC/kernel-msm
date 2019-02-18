@@ -6033,9 +6033,7 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
-#ifdef QCOM_BASE
 	union power_supply_propval pval;
-#endif
 	int input_present;
 	bool dcin_present, vbus_present;
 	int rc, wireless_vout = 0;
