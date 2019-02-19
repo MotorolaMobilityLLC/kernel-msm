@@ -663,7 +663,7 @@
                                         10 13 /*GAIN1*/
                                         13 07 /*LP_BASE_INC*/
                                         15 07 /*NP_BASE_INC*/
-                                        16 33 /*BTPAUSE_MAXWIN*/
+                                        16 03 /*BTPAUSE_MAXWIN*/
                                         20 59 /*SENSOR0_CFG*/
                                         22 59 /*SENSOR1_CFG*/
                                 ];
