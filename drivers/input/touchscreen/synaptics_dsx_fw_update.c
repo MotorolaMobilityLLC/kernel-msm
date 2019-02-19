@@ -26,6 +26,7 @@
 #include <linux/platform_device.h>
 #include <linux/wakelock.h>
 #include <linux/input/synaptics_dsx.h>
+#include <soc/qcom/bootinfo.h>
 #include "synaptics_dsx_i2c.h"
 
 #define FORCE_UPDATE false
@@ -157,6 +158,9 @@ static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t fwu_sysfs_erase_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 enum f34_version {
@@ -579,6 +583,7 @@ struct synaptics_rmi4_fwu_handle {
 	bool do_lockdown;
 	bool has_guest_code;
 	bool new_partition_table;
+	bool has_erase_all;
 	unsigned int data_pos;
 	unsigned char *ext_data_source;
 	unsigned char *read_config_buf;
@@ -684,6 +689,12 @@ static struct device_attribute attrs[] = {
 	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_force_reflash_store),
+};
+
+static struct device_attribute erase_attr[] = {
+	__ATTR(erase_all, S_IWUSR | S_IWGRP,
+			synaptics_rmi4_show_error,
+			fwu_sysfs_erase_store),
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
@@ -4272,6 +4283,61 @@ static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
 	return count;
 }
 
+static ssize_t fwu_sysfs_erase_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+	int retval;
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input != 1)
+		return -EINVAL;
+
+	wake_lock(&fwu->flash_wake_lock);
+	mutex_lock(&rmi4_data->rmi4_exp_init_mutex);
+
+	if (!fwu->in_bl_mode) {
+		fwu_irq_enable(true);
+
+		retval = fwu_write_f34_command(CMD_ENABLE_FLASH_PROG);
+		if (retval < 0)
+			goto reset_and_exit;
+
+		retval = fwu_wait_for_idle(ENABLE_WAIT_MS);
+		fwu_irq_enable(false);
+		if (retval < 0 || !fwu->in_bl_mode)
+			goto reset_and_exit;
+	}
+
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_INIT);
+	fwu_irq_enable(true);
+
+	retval = fwu_erase_all();
+	if (retval < 0)
+		pr_err("%s: ERASE_ALL failed\n", __func__);
+
+	fwu_irq_enable(false);
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_UNKNOWN);
+
+reset_and_exit:
+	fwu_reset_device();
+	pr_notice("%s: End of reflash process\n", __func__);
+
+	/* Rescan PDT after flashing and before register access */
+	retval = fwu_scan_pdt();
+	if (retval < 0)
+		dev_err(LOGDEV, "%s: Failed to scan PDT\n", __func__);
+
+	fwu->rmi4_data->ready_state(fwu->rmi4_data, false);
+	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
+	wake_unlock(&fwu->flash_wake_lock);
+
+	return count;
+}
+
 static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,
 		unsigned char intr_mask)
 {
@@ -4381,6 +4447,16 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 
+	if (strncmp(bi_bootmode(), "mot-factory", strlen("mot-factory")) == 0) {
+			retval = sysfs_create_file(SYSFS_KOBJ, &erase_attr[0].attr);
+			if (retval < 0) {
+					dev_err(LOGDEV,
+									"%s: Failed to create erase sysfs attributes\n",
+									__func__);
+			} else
+					fwu->has_erase_all = true;
+	}
+
 	return 0;
 
 exit_remove_attrs:
@@ -4410,6 +4486,9 @@ static void synaptics_rmi4_fwu_remove(struct synaptics_rmi4_data *rmi4_data)
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		sysfs_remove_file(SYSFS_KOBJ, &attrs[attr_count].attr);
 	}
+
+	if (fwu->has_erase_all)
+		sysfs_remove_file(SYSFS_KOBJ, &erase_attr[0].attr);
 
 	sysfs_remove_bin_file(SYSFS_KOBJ, &dev_attr_data);
 
