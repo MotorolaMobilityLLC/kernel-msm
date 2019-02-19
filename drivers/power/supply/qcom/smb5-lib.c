@@ -4438,13 +4438,15 @@ int smblib_set_prop_sdp_current_max(struct smb_charger *chg,
 #else
 	int rc = 0;
 	bool enable = true;
+	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
 
 	if (0 >= val->intval)
 		enable = false;
 
 	if (!chg->pd_active &&
 	    (smblib_get_prop_typec_mode(chg) ==
-	     POWER_SUPPLY_TYPEC_SOURCE_DEFAULT)) {
+	     POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) &&
+	     (apsd_result->pst != POWER_SUPPLY_TYPE_USB_FLOAT)) {
 		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
 				enable, val->intval);
 	} else if (chg->system_suspend_supported) {
