@@ -67,6 +67,9 @@
 /* Indicate backport support for processing user cell base hint */
 #define CFG80211_USER_HINT_CELL_BASE_SELF_MANAGED 1
 
+/* Indicate backport support for external authentication in AP mode */
+#define CFG80211_EXTERNAL_AUTH_AP_SUPPORT 1
+
 /**
  * DOC: Introduction
  *
