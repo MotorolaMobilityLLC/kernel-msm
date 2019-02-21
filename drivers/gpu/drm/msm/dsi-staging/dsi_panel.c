@@ -3504,6 +3504,29 @@ error:
 	return rc;
 }
 
+static void dsi_panel_parse_panel_hbm_config(struct dsi_panel *panel,
+					struct device_node *of_node)
+{
+	struct panel_hbm *hbm_config = &panel->hbm_config;
+	struct panel_param *panel_param;
+	const char *data;
+
+	hbm_config->panel_hbm_dim_off = of_property_read_bool(of_node,
+					"qcom,mdss-dsi-hbm-dim-off");
+
+	data = of_get_property(of_node, "qcom,mdss-dsi-hbm-type", NULL);
+	if (data && !strcmp(data, "hbm_oled_fod_dcs")) {
+		hbm_config->hbm_type = HBM_TYPE_OLED_FOD_DCS;
+		pr_info("HBM_TYPE_OLED_FOD_DCS\n");
+	} else {
+		hbm_config->hbm_type = HBM_TYPE_OLED;
+		panel_param = &dsi_panel_param[PARAM_HBM_ID];
+		panel_param->val_max = 2;
+		pr_info("HBM_TYPE_OLED\n");
+	}
+}
+
+
 static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 					struct device_node *of_node)
 {
@@ -3514,6 +3537,8 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 	enum dsi_cmd_set_type type;
 	const char *prop;
 	struct dsi_parser_utils *utils = &panel->utils;
+
+	dsi_panel_parse_panel_hbm_config(panel, of_node);
 
 	for (i = 0; i < PARAM_ID_NUM; i++) {
 		param = &dsi_panel_param[i];
@@ -3539,11 +3564,6 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 			prop =  cmd_set_prop_map[type];
 			if (!prop)
 				continue;
-
-			if ((type == DSI_CMD_SET_HBM_FOD_ON) && (!panel->panel_hbm_fod)) {
-				param->val_max -= 1;
-				continue;
-			}
 
 			rc = dsi_panel_parse_cmd_sets_sub(param_map->cmds, type,
 								utils);
@@ -3602,12 +3622,6 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 
 	panel->no_panel_on_read_support = of_property_read_bool(of_node,
 				"qcom,mdss-dsi-no-panel-on-read-support");
-
-	panel->panel_hbm_dim_off = of_property_read_bool(of_node,
-				"qcom,mdss-dsi-hbm-dim-off");
-
-	panel->panel_hbm_fod = of_property_read_bool(of_node,
-				"qcom,mdss-dsi-hbm-fod");
 
 	return rc;
 }
@@ -5092,7 +5106,7 @@ int dsi_panel_post_unprepare(struct dsi_panel *panel)
 		goto error;
 	}
 
-	if (panel->panel_hbm_dim_off) {
+	if (panel->hbm_config.panel_hbm_dim_off) {
 		rc = dsi_panel_tx_cmd_set_elvss(panel, DSI_CMD_SET_HBM_DIM_OFF);
 		if (rc) {
 			pr_err("[%s] failed to send DSI_CMD_SET_ON cmds, rc=%d\n",
