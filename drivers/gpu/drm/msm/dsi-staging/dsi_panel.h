@@ -196,6 +196,7 @@ enum hbm_state {
 enum panel_hbm_type {
 	HBM_TYPE_OLED = 0,
 	HBM_TYPE_OLED_FOD_DCS,
+	HBM_TYPE_TIANMA_OLED_LHBM_DCS_GPIO,
 };
 
 struct panel_param_val_map {
@@ -216,6 +217,8 @@ struct panel_param {
 struct panel_hbm {
 	bool panel_hbm_dim_off;
 	enum panel_hbm_type hbm_type;
+	u32 bl_hbm_off;
+	int hbm_en_gpio;
 };
 
 struct dsi_panel {
