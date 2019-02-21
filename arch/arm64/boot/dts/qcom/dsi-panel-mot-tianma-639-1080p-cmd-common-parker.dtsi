@@ -46,14 +46,17 @@ qcom,mdss-dsi-bl-min-level = <3>;
 qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
-qcom,mdss-dsi-hbm-fod;
+qcom,mdss-dsi-hbm-type = "tianma_oled_lhbm_dcs_gpio";
 qcom,mdss-dsi-hbm-fod-on-command = [
-		39 01 00 00 00 00 02 53 E4];
+		29 01 00 00 00 00 02 B0 80
+		29 01 00 00 00 00 02 F1 81
+		29 01 00 00 00 00 27 D1 60 96 B2 C3 C9 DA D1 24 F6 68 22 7B 38 B9 3F B3 F4 1F 5A CA CE 32 6B A7 99 D8 D3 8C EC 59 E6 FE D0 D2 7F 00 C0 03];
 
 qcom,mdss-dsi-hbm-on-command = [
-		39 01 00 00 00 00 02 53 64];
+		39 01 00 00 00 00 03 51 0F FF];
+
 qcom,mdss-dsi-hbm-off-command = [
-		39 01 00 00 00 00 02 53 24];
+		39 01 00 00 00 00 03 51 09 D3];
 
 qcom,mdss-dsi-acl-on-command = [
 		15 01 00 00 00 00 02 55 03];
@@ -90,7 +93,15 @@ qcom,mdss-dsi-display-timings {
 			15 00 00 00 00 00 02 55 00
 			39 00 00 00 00 00 03 51 00 00
 			05 01 00 00 00 00 01 29
-			05 01 00 00 96 00 01 11];	/* display on */
+			05 01 00 00 96 00 01 11	/* display on */
+			29 01 00 00 00 00 02 B0 00
+			29 01 00 00 00 00 86 CF 64 0B 00 00 00 00 02 75 09 D4 0D B6 01 01 02 01 03 03 03 03 03 04 05 05 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 03 FF 03 FF 03 FF 03 FF 03 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 00 FF 03 FF 03 FF 03 FF 03 FF 03 FF 01 35 01 35 01 35 01 35 01 35 01 35 01 35 01 35 01 35 01 35 01 35 01 35 1A 1A 1A 1A 1A 1A 1A 1A 1A 1A 1A 1A 00 00 06 B6 06 B6 00 00 00 00 0B 33 0B 33 0B 33 0B 33 0B 33 0D 64 0F A0 19
+			29 01 00 00 00 00 02 B0 80
+			29 01 00 00 00 00 02 F1 81
+			29 01 00 00 00 00 27 D1 60 96 B2 C3 C9 DA D1 24 F6 68 22 7B 38 B9 3F B3 F4 1F 5A CA CE 32 6B A7 99 D8 D3 8C EC 59 E6 FE D0 D2 7F 00 C0 03
+			29 01 00 00 00 00 0b E1 23 00 01 18 0F FF 00 00 00 00
+			29 01 00 00 00 00 07 E2 00 00 03 FF 00 00
+			29 01 00 00 00 00 02 E6 01];
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 00 00 01 28		/* display_off */
 			05 01 00 00 96 00 01 10];	/* enter sleep mode */
