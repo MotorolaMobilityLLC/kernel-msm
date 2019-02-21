@@ -8186,7 +8186,7 @@ int dsi_display_post_enable(struct dsi_display *display)
 	}
 	mutex_lock(&display->display_lock);
 
-	if (display->panel->panel_hbm_dim_off)
+	if (display->panel->hbm_config.panel_hbm_dim_off)
 		dsi_display_read_elvss_volt(display);
 
 	if (display->panel->cur_mode->dsi_mode_flags & DSI_MODE_FLAG_POMS) {

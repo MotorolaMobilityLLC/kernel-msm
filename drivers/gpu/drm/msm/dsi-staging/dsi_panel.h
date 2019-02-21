@@ -194,6 +194,11 @@ enum hbm_state {
 	HBM_STATE_NUM
 };
 
+enum panel_hbm_type {
+	HBM_TYPE_OLED = 0,
+	HBM_TYPE_OLED_FOD_DCS,
+};
+
 struct panel_param_val_map {
 	int state;
 	enum dsi_cmd_set_type type;
@@ -207,6 +212,11 @@ struct panel_param {
 	const u16 default_value;
 	u16 value;
 	bool is_supported;
+};
+
+struct panel_hbm {
+	bool panel_hbm_dim_off;
+	enum panel_hbm_type hbm_type;
 };
 
 struct dsi_panel {
@@ -268,8 +278,7 @@ struct dsi_panel {
 	u32 disp_on_chk_val;
 	bool no_panel_on_read_support;
 
-	bool panel_hbm_dim_off;
-	bool panel_hbm_fod;
+	struct panel_hbm hbm_config;
 
 	struct panel_param *param_cmds;
 
