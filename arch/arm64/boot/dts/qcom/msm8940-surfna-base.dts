@@ -21,6 +21,13 @@
         /delete-property/ qcom,dsi-pll-ssc-en;
         /delete-property/ qcom,dsi-pll-ssc-mode;
 };
+
+&mdss_dsi_active {
+	config {
+		/delete-property/ output-high;
+	};
+};
+
 /* fps gpio 8 */
 &aliases {
 	/delete-property/ spi3;
@@ -55,6 +62,8 @@
 	/delete-node/ wsa881x_analog_clk_pctrl;
 	/delete-node/ wsa881x_analog_reset_pctrl;
 	/delete-node/ msm_cdc_pinctrl@67;
+	/delete-node/ hdmi_dba;
+	/delete-node/ dai_hdmi;
 
 	qcom,msm-dai-tdm-pri-rx {
 		status = "disabled";
@@ -91,6 +100,8 @@
 &i2c_2 {
 	/delete-node/ wsa881x-i2c-codec@f;
 	/delete-node/ wsa881x-i2c-codec@45;
+	/delete-node/ adv7533@39;
+	/delete-node/ pericom-type-c@1d;
 };
 
 /*  camera gpio50 and fingerprint spi8 gpio96 */
@@ -109,6 +120,19 @@
 &qpnp_smbcharger {
 	/delete-property/ qcom,iterm-ma;
 	/delete-property/ qcom,autoadjust-vfloat;
+	/delete-property/ qcom,dc-thermal-mitigation;
+	/delete-property/ qcom,enable-hvdcp-9v;
+};
+
+&qpnp_fg {
+	/delete-property/ qcom,ext-sense-type;
+	/delete-property/ qcom,support_multi_coefficients;
+};
+
+&spmi_bus {
+	qcom,pmi8940@2 {
+		/delete-node/ qcom,leds@a100;
+	};
 };
 
 &firmware {

@@ -18,6 +18,12 @@
 #include "dsi-panel-mot-djn_545_720p-video.dtsi"
 #include <dt-bindings/interrupt-controller/irq.h>
 
+&venus_mem {
+	compatible = "removed-dma-pool";
+	no-map;
+	reg = <0x0 0x8ea00000 0x0 0x800000>;
+};
+
 &firmware {
 	android {
 		fstab {
