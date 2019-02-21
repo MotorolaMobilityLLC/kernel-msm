@@ -713,6 +713,7 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
 	qcom,platform-te-gpio = <&tlmm 90 0>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
+	qcom,platform-hbm-en-gpio = <&tlmm 117 1>;
 	qcom,panel-te-source = <0>;
 
 	qcom,dsp-iris_1v1 = <&tlmm 116 0>;
