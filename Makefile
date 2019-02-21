@@ -1019,6 +1019,10 @@ define filechk_kernel.release
 endef
 
 # Store (new) KERNELRELEASE string in include/config/kernel.release
+# Motorola: This rule requires large chunks of .git metadata, which
+#           take a while to "wink in" when running electric cloud.
+#           So disable electric cloud for this step.
+#pragma runlocal
 include/config/kernel.release: include/config/auto.conf FORCE
 	$(call filechk,kernel.release)
 
