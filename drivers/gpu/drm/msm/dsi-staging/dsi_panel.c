@@ -313,7 +313,19 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 		}
 	}
 
+	if (gpio_is_valid(panel->hbm_config.hbm_en_gpio)) {
+		rc = gpio_request(panel->hbm_config.hbm_en_gpio, "hbm_enable");
+		if (rc) {
+			pr_err("request hbm gpio failed, rc=%d\n", rc);
+			goto error_release_hbm_en;
+		}
+		gpio_export(panel->hbm_config.hbm_en_gpio, true);
+	}
+
 	goto error;
+error_release_hbm_en:
+	if (gpio_is_valid(r_config->lcd_mode_sel_gpio))
+		gpio_free(r_config->lcd_mode_sel_gpio);
 error_release_mode_sel:
 	if (gpio_is_valid(panel->bl_config.en_gpio))
 		gpio_free(panel->bl_config.en_gpio);
@@ -343,6 +355,9 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_free(panel->reset_config.lcd_mode_sel_gpio);
+
+	if (gpio_is_valid(panel->hbm_config.hbm_en_gpio))
+		gpio_free(panel->hbm_config.hbm_en_gpio);
 
 #if defined(CONFIG_IRIS2P_FULL_SUPPORT)
 	iris_dsi_gpio_free(panel);
@@ -741,6 +756,36 @@ error:
 	return rc;
 }
 
+static  bool dsi_panel_param_is_hbm_on(struct dsi_panel *panel)
+{
+	struct panel_param *panel_param;
+
+	panel_param = &dsi_panel_param[PARAM_HBM_ID];
+	if (!panel_param) {
+		pr_err("%s: invalid panel_param.\n", __func__);
+		return false;
+	}
+
+	if(panel_param->is_supported && panel_param->value != HBM_OFF_STATE)
+		return true;
+
+	return false;
+}
+
+static bool dsi_panel_set_hbm_backlight(struct dsi_panel *panel, u32 bl_lvl)
+{
+	panel->hbm_config.bl_hbm_off = bl_lvl;
+	if (panel->hbm_config.hbm_type == HBM_TYPE_TIANMA_OLED_LHBM_DCS_GPIO) {
+		if (dsi_panel_param_is_hbm_on(panel)) {
+			pr_info("%s: Ignore setting brightness %d in  HBM mode\n",
+				__func__, bl_lvl);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
@@ -749,7 +794,10 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	if (panel->host_config.ext_bridge_num)
 		return 0;
 
-	pr_debug("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
+	if(dsi_panel_set_hbm_backlight(panel, bl_lvl))
+		return 0;
+
+	pr_info("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
 	switch (bl->type) {
 	case DSI_BACKLIGHT_WLED:
 		rc = backlight_device_set_brightness(bl->raw_bd, bl_lvl);
@@ -890,15 +938,70 @@ end:
 	return rc;
 };
 
+static int tm_oled_lhbm_panel_set_hbm(struct dsi_panel *panel,
+                        struct msm_param_info *param_info)
+{
+	int rc = 0;
+	struct panel_param *panel_param;
+	u16 temp_hbm;
+
+	if (!gpio_is_valid(panel->hbm_config.hbm_en_gpio)) {
+		pr_err("%s: invalid hbm_en_gpio.\n", __func__);
+		return -EINVAL;
+	}
+
+	panel_param = &dsi_panel_param[PARAM_HBM_ID];
+	if (!panel_param) {
+		pr_err("%s: invalid panel_param.\n", __func__);
+		return -EINVAL;
+	}
+
+	switch (param_info->value) {
+		case HBM_FOD_ON_STATE:
+			rc = gpio_direction_output(panel->hbm_config.hbm_en_gpio, 1);
+			if (rc)
+				pr_err("unable to set dir for disp gpio rc=%d\n", rc);
+			break;
+		case HBM_ON_STATE:
+			rc = gpio_direction_output(panel->hbm_config.hbm_en_gpio, 0);
+			rc = dsi_panel_send_param_cmd(panel, param_info);
+			if (rc < 0)
+				pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
+			break;
+		case HBM_OFF_STATE:
+			rc = gpio_direction_output(panel->hbm_config.hbm_en_gpio, 0);
+			temp_hbm = panel_param->value;
+			panel_param->value = param_info->value;
+			rc = dsi_panel_set_backlight(panel, panel->hbm_config.bl_hbm_off);
+			if (rc < 0) {
+				pr_err("%s: failed to set backlight. ret=%d\n", __func__, rc);
+				panel_param->value = temp_hbm;
+			}
+			break;
+		default:
+			rc = -EINVAL;
+			break;
+	}
+
+	if(!rc)
+		panel_param->value = param_info->value;
+
+	return rc;
+}
+
 static int dsi_panel_set_hbm(struct dsi_panel *panel,
                         struct msm_param_info *param_info)
 {
 	int rc = 0;
 
 	pr_info("Set HBM to (%d)\n", param_info->value);
-	rc = dsi_panel_send_param_cmd(panel, param_info);
-	if (rc < 0)
-		pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
+	if(panel->hbm_config.hbm_type == HBM_TYPE_TIANMA_OLED_LHBM_DCS_GPIO) {
+		rc = tm_oled_lhbm_panel_set_hbm(panel, param_info);
+	} else {
+		rc = dsi_panel_send_param_cmd(panel, param_info);
+		if (rc < 0)
+			pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
+	}
 
         return rc;
 };
@@ -2405,6 +2508,12 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 	struct dsi_parser_utils *utils = &panel->utils;
 	char *reset_gpio_name, *mode_set_gpio_name;
 
+	panel->hbm_config.hbm_en_gpio = utils->get_named_gpio(utils->data,
+						"qcom,platform-hbm-en-gpio", 0);
+	if (!gpio_is_valid(panel->hbm_config.hbm_en_gpio))
+		pr_info("%s:%d, HBM enable gpio not specified\n",
+						__func__, __LINE__);
+
 	if (!strcmp(panel->type, "primary")) {
 		reset_gpio_name = "qcom,platform-reset-gpio";
 		mode_set_gpio_name = "qcom,panel-mode-gpio";
@@ -3518,6 +3627,9 @@ static void dsi_panel_parse_panel_hbm_config(struct dsi_panel *panel,
 	if (data && !strcmp(data, "hbm_oled_fod_dcs")) {
 		hbm_config->hbm_type = HBM_TYPE_OLED_FOD_DCS;
 		pr_info("HBM_TYPE_OLED_FOD_DCS\n");
+	} else if (data && !strcmp(data, "tianma_oled_lhbm_dcs_gpio")) {
+		hbm_config->hbm_type = HBM_TYPE_TIANMA_OLED_LHBM_DCS_GPIO;
+		pr_info("HBM_TYPE_TIANMA_OLED_LHBM_DCS_GPIO\n");
 	} else {
 		hbm_config->hbm_type = HBM_TYPE_OLED;
 		panel_param = &dsi_panel_param[PARAM_HBM_ID];
