@@ -6689,7 +6689,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 
 	mmi_check_extbat_ability(chip, &ability);
 
-	if ((state == EB_SINK) && (ability & EB_RCV_NEVER) && !force) {
+	if ((state == EB_SINK) && (ability & EB_RCV_NEVER) && !force &&
+	    !(ability & EB_RCV_PARALLEL)) {
 		smblib_err(chip,
 			   "Setting Sink State not Allowed on RVC Never EB\n");
 		goto set_eb_done;
@@ -7577,13 +7578,26 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (eb_chrg_allowed && (eb_able & EB_RCV_PARALLEL) &&
 			 (mmi->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO))
 			mmi->cl_ebchg = cl_usb / 2; /* 50/50 Split */
+		else if ((eb_able & EB_RCV_PARALLEL) &&
+			 (mmi->charger_rate ==
+			  POWER_SUPPLY_CHARGE_RATE_TURBO) &&
+			 !mmi->usbeb_present)
+			mmi->cl_ebchg = EB_SPLIT_MA;
 
 		target_usb = cl_usb - mmi->cl_ebchg;
 		break;
 	case STEP_FULL:
 		target_fv = max_fv_mv;
 		target_fcc = -EINVAL;
-		target_usb = cl_usb;
+		mmi->cl_ebchg = 0;
+
+		if ((eb_able & EB_RCV_PARALLEL) &&
+		    (mmi->charger_rate ==
+		     POWER_SUPPLY_CHARGE_RATE_TURBO) &&
+		    !mmi->usbeb_present)
+			mmi->cl_ebchg = EB_SPLIT_MA;
+
+		target_usb = cl_usb - mmi->cl_ebchg;
 		break;
 	case STEP_NORM:
 		target_fv = max_fv_mv + mmi->vfloat_comp_mv;
@@ -7595,6 +7609,11 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (eb_chrg_allowed && (eb_able & EB_RCV_PARALLEL) &&
 			 (mmi->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO))
 			mmi->cl_ebchg = cl_usb / 2; /* 50/50 Split */
+		else if ((eb_able & EB_RCV_PARALLEL) &&
+			 (mmi->charger_rate ==
+			  POWER_SUPPLY_CHARGE_RATE_TURBO) &&
+			 !mmi->usbeb_present)
+			mmi->cl_ebchg = EB_SPLIT_MA;
 
 		target_usb = cl_usb - mmi->cl_ebchg;
 		break;
