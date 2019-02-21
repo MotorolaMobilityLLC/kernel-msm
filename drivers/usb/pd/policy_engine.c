@@ -876,8 +876,8 @@ static int pd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua)
 
 	pd->requested_current = curr;
 	pd->requested_pdo = pdo_pos;
-	usbpd_warn(&pd->dev, "select_pdo: PDO:%d, %d uV, %d uA\n",
-		   pdo_pos, uv, ua);
+	usbpd_warn(&pd->dev, "select_pdo: PDO:%d, %d uV, %d uA, type %d\n",
+		   pdo_pos, uv, ua, type);
 
 	return 0;
 }
@@ -4231,6 +4231,7 @@ EXPORT_SYMBOL(usbpd_select_pdo_match);
 static ssize_t select_pdo_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+#ifdef QCOM_BASE
 	struct usbpd *pd = dev_get_drvdata(dev);
 	int src_cap_id;
 	int pdo, uv = 0, ua = 0;
@@ -4292,6 +4293,9 @@ out:
 	pd->send_request = false;
 	mutex_unlock(&pd->swap_lock);
 	return ret ? ret : size;
+#else
+	return size;
+#endif
 }
 
 static ssize_t select_pdo_show(struct device *dev,
