@@ -373,6 +373,7 @@
 	qcom,fg-auto-recharge-soc;
 	qcom,fg-recharge-soc-thr = <97>;
 	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+	qcom,fg-esr-timer-asleep = <0 256>;
 };
 
 &pm660_charger {
