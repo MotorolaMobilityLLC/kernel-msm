@@ -119,7 +119,7 @@ struct goodix_module {
 	struct completion core_comp;
 	struct goodix_ts_core *core_data;
 };
-
+extern struct goodix_module goodix_modules;
 
 /*
  * struct goodix_ts_board_data -  board data
@@ -740,6 +740,16 @@ int goodix_generic_noti_callback(struct notifier_block *self,
 int goodix_ts_fb_notifier_callback(struct notifier_block *self,
 			unsigned long event, void *data);
 
+int goodix_i2c_read(struct goodix_ts_device *dev, unsigned int reg,
+	unsigned char *data, unsigned int len);
+int goodix_i2c_write(struct goodix_ts_device *dev, unsigned int reg,
+	unsigned char *data, unsigned int len);
+
+int goodix_get_channel_num(u32 *sen_num, u32 *drv_num);
+
+int goodix_get_rawordiff_data(int which, int *data);
+
+int goodix_nodereg_read(void);
 extern void goodix_msg_printf(const char *fmt, ...);
 
 #endif
