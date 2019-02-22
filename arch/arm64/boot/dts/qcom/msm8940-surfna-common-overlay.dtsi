@@ -106,6 +106,7 @@
 		reg = <0x34>;
 		reset-gpio = <&tlmm 89 0>;
 		irq-gpio = <&tlmm 90 0>;
+		rpc-send-delay = <5>;
 		status = "ok";
 	};
 };
