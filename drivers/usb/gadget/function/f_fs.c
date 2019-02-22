@@ -1678,6 +1678,10 @@ ffs_fs_mount(struct file_system_type *t, int flags,
 	ffs = ffs_data_new(dev_name);
 	if (unlikely(!ffs))
 		return ERR_PTR(-ENOMEM);
+
+	if (IS_ERR(ffs))
+		return ERR_PTR(-EBUSY);
+
 	ffs->file_perms = data.perms;
 	ffs->no_disconnect = data.no_disconnect;
 
