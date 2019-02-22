@@ -215,7 +215,16 @@ static void aw2015_led_blink_set(struct aw2015_led *led, unsigned long blinking)
 		aw2015_write(led, AW2015_REG_GCR, AW2015_LED_CHIP_ENABLE_MASK | AW2015_LED_CHARGE_DISABLE_MASK);
 	}
 
-	led->cdev.brightness = blinking ? led->cdev.max_brightness : 0;
+	if (blinking == 1) {
+		led->cdev.brightness = led->cdev.max_brightness;
+	} else {
+		blinking = (blinking > 0) ? blinking : 0;
+		blinking = (blinking > led->cdev.max_brightness) ? led->cdev.max_brightness : blinking;
+		led->cdev.brightness = blinking;
+	}
+	led->pdata->led_current = led->cdev.brightness;
+
+	pr_info("%s set blink %d\n", __func__, led->pdata->led_current);
 
 	if (blinking > 0) {
 		aw2015_write(led, AW2015_REG_LCFG1 + led->id, AW2015_LED_BREATHE_MODE_MASK);
