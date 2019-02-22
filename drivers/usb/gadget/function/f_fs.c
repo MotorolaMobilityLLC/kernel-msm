@@ -1770,6 +1770,9 @@ static int ffs_fs_get_tree(struct fs_context *fc)
 			return PTR_ERR(ffs);
 	}
 
+	if (IS_ERR(ffs))
+		return PTR_ERR(ffs);
+
 	ffs->file_perms = ctx->perms;
 	ffs->no_disconnect = ctx->no_disconnect;
 
