@@ -18,6 +18,7 @@
 
 #include <linux/delay.h>
 #include <linux/firmware.h>
+#include <soc/qcom/bootinfo.h>
 
 #include "nt36xxx.h"
 
@@ -426,10 +427,19 @@ int32_t Erase_Flash(void)
 		}
 	}
 
-	if (fw_entry->size % FLASH_SECTOR_SIZE)
-		count = fw_entry->size / FLASH_SECTOR_SIZE + 1;
-	else
-		count = fw_entry->size / FLASH_SECTOR_SIZE;
+	if (fw_entry == NULL) {
+		if (FW_BIN_SIZE_116KB % FLASH_SECTOR_SIZE) {
+			count = FW_BIN_SIZE_116KB / FLASH_SECTOR_SIZE + 1;
+		} else {
+			count = FW_BIN_SIZE_116KB / FLASH_SECTOR_SIZE;
+		}
+	} else {
+		if (fw_entry->size % FLASH_SECTOR_SIZE) {
+			count = fw_entry->size / FLASH_SECTOR_SIZE + 1;
+		} else {
+			count = fw_entry->size / FLASH_SECTOR_SIZE;
+		}
+	}
 
 	for (i = 0; i < count; i++) {
 		buf[0] = 0x00;
@@ -820,6 +830,35 @@ int32_t Update_Firmware(void)
 
 	return ret;
 }
+
+/*******************************************************
+Description:
+	Novatek touchscreen erase firmware function.
+
+return:
+	Executive outcomes. 0---succeed. negative---failed.
+*******************************************************/
+int32_t Erase_Firmware(void)
+{
+	int32_t ret = 0;
+
+	ret = Init_BootLoader();
+	if (ret) {
+		return ret;
+	}
+	ret = Resume_PD();
+	if (ret) {
+		return ret;
+	}
+	ret = Erase_Flash();
+	if (ret) {
+		return ret;
+	}
+	nvt_bootloader_reset();
+	nvt_check_fw_reset_state(RESET_STATE_INIT);
+
+	return ret;
+}
 #endif
 
 #if BOOT_UPDATE_FIRMWARE
@@ -926,6 +965,37 @@ static ssize_t nvt_force_reflash_store(struct device *dev,
 }
 
 static DEVICE_ATTR(forcereflash, 0220, NULL, nvt_force_reflash_store);
+
+static ssize_t nvt_erase_all_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input, retval;
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (ts->suspended) {
+		NVT_ERR("In suspend state, try again later\n");
+		retval = -EINVAL;
+	}
+
+	if (ts->loading_fw) {
+		NVT_ERR("In FW flashing state, try again later\n");
+		retval = -EINVAL;
+	}
+
+	mutex_lock(&ts->lock);
+	ts->loading_fw = 1;
+	nvt_sw_reset_idle();
+	retval = Erase_Firmware();
+	if (retval < 0)
+		NVT_ERR("Erase failed\n");
+
+	ts->loading_fw = 0;
+	mutex_unlock(&ts->lock);
+	return count;
+}
+
+static DEVICE_ATTR(erase_all, 0220, NULL, nvt_erase_all_store);
 
 static ssize_t nvt_flashprog_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -1172,6 +1242,8 @@ int nvt_fw_sysfs_init(void)
 		return ret;
 	}
 
+	ts->in_factory_mode = false;
+
 	ret = device_create_file(&client->dev, &dev_attr_forcereflash);
 	if (ret) {
 		NVT_ERR("create_file dev_attr_forcereflash failed\n");
@@ -1213,6 +1285,16 @@ int nvt_fw_sysfs_init(void)
 		return ret;
 	}
 
+	if (strncmp(bi_bootmode(), "mot-factory", strlen("mot-factory")) == 0) {
+		ret = device_create_file(&client->dev, &dev_attr_erase_all);
+			if (ret < 0) {
+				NVT_ERR("create_file dev_attr_erase_all failed\n");
+				return ret;
+			} else {
+				ts->in_factory_mode = true;
+			}
+	}
+
 	return 0;
 }
 void nvt_fw_sysfs_deinit(void)
@@ -1225,6 +1307,8 @@ void nvt_fw_sysfs_deinit(void)
 	device_remove_file(&client->dev, &dev_attr_productinfo);
 	device_remove_file(&client->dev, &dev_attr_poweron);
 	device_remove_file(&client->dev, &dev_attr_ic_ver);
+	if (ts->in_factory_mode == true)
+		device_remove_file(&client->dev, &dev_attr_erase_all);
 	nvt_fw_class_init(false);
 }
 #endif
