@@ -457,7 +457,7 @@ static ssize_t goodix_ts_read_cfg_show(struct device *dev,
 	int ret, i, offset;
 	char *cfg_buf;
 
-	cfg_buf = kzalloc(4096, GFP_KERNEL);
+	cfg_buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	disable_irq(core_data->irq);
 	if (ts_dev->hw_ops->read_config)
 		ret = ts_dev->hw_ops->read_config(ts_dev, cfg_buf, 0);
@@ -465,16 +465,23 @@ static ssize_t goodix_ts_read_cfg_show(struct device *dev,
 		ret = -EINVAL;
 	enable_irq(core_data->irq);
 
+	snprintf(&buf[0], PAGE_SIZE, "%d ", ret);
+
+#define LINE_NUM	20
 	offset = 0;
 	if (ret > 0) {
 		for (i = 0; i < ret; i++) {
-			if (i != 0 && i % 20 == 0)
-				buf[offset++] = '\n';
-			offset += snprintf(&buf[offset], 4096 - offset,
+			if (i != 0 && i % LINE_NUM == 0)
+				ts_info("%s", &buf[offset - (LINE_NUM * 3)]);
+
+			offset += snprintf(&buf[offset], PAGE_SIZE,
 					"%02x ", cfg_buf[i]);
 		}
-
 	}
+
+	if (i % LINE_NUM)
+		ts_info("%s", &buf[offset - (i % LINE_NUM) * 3]);
+
 	kfree(cfg_buf);
 	return ret;
 }
@@ -785,6 +792,208 @@ err_out:
 	return -EINVAL;
 }
 
+/* get_raw\Diff\Baseline */
+static ssize_t goodix_ts_get_rawDiff_data_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf,
+		size_t count)
+{
+	int i, j;
+	u32 sen_num, drv_num;
+	int data_size;
+	int *temp_data = NULL;
+	int offset = 0;
+	char *tm_buf = NULL;
+	struct goodix_ts_core *core_data =
+				dev_get_drvdata(dev);
+	int state;
+
+	if (kstrtoint(buf, 10, &state) != 0)
+		return -EINVAL;
+
+	if (state > 2)
+		return -EINVAL;
+
+	goodix_get_channel_num(&sen_num, &drv_num);
+	data_size = sen_num * drv_num;
+	temp_data = kzalloc(data_size * 4, GFP_KERNEL);
+	if (!temp_data) {
+		ts_err("Alloc rawdiff temp_data mem fail.");
+		return -EINVAL;
+	}
+	tm_buf = kzalloc(drv_num * 5, GFP_KERNEL);
+	if (!tm_buf)
+		return -EINVAL;
+
+	disable_irq(core_data->irq);
+	if (goodix_get_rawordiff_data(state, temp_data)) {
+		kfree(temp_data);
+		temp_data = NULL;
+		enable_irq(core_data->irq);
+		return -EINVAL;
+	}
+	enable_irq(core_data->irq);
+
+	switch (state) {
+	case 0:
+		ts_info("rawdata: sen_num = %d;drv_num = %d;total = %d",
+			sen_num, drv_num, (sen_num * drv_num));
+		break;
+	case 1:
+		ts_info("Diffdata: sen_num = %d;drv_num = %d;total = %d",
+			sen_num, drv_num, (sen_num * drv_num));
+		break;
+	case 2:
+		ts_info("Baseline: sen_num = %d;drv_num = %d;total = %d",
+			sen_num, drv_num, (sen_num * drv_num));
+		break;
+	default:
+		ts_info("Err CMD !");
+		break;
+	}
+	for (j = 0; j < sen_num; j++) {
+		offset = 0;
+		for (i = 0; i < drv_num; i++) {
+			offset += snprintf(&tm_buf[offset], PAGE_SIZE,
+			"%4d ", temp_data[data_size - (i * sen_num + j) - 1]);
+		}
+		ts_info("%s", &tm_buf[0]);
+	}
+
+	offset = snprintf(&tm_buf[0], PAGE_SIZE, "%s", "Check kmsg !");
+
+	kfree(temp_data);
+	kfree(tm_buf);
+	temp_data = NULL;
+	tm_buf = NULL;
+	return data_size;
+}
+
+/* get_self_data */
+static ssize_t goodix_ts_get_self_data_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf,
+		size_t count)
+{
+	int i;
+	u32 sen_num, drv_num;
+	int data_size;
+	int *temp_data = NULL;
+	int offset = 0;
+	char *tm_buf = NULL;
+	int state;
+	struct goodix_ts_core *core_data =
+				dev_get_drvdata(dev);
+
+	if (kstrtoint(buf, 10, &state) != 0)
+		return -EINVAL;
+
+	if (state > 2)
+		return -EINVAL;
+
+	goodix_get_channel_num(&sen_num, &drv_num);
+	data_size = sen_num + drv_num;
+	temp_data = kzalloc(data_size * 4, GFP_KERNEL);
+	if (!temp_data) {
+		ts_err("Alloc rawdiff temp_data mem fail.");
+		return -EINVAL;
+	}
+	tm_buf = kzalloc(sen_num * 6, GFP_KERNEL);
+	if (!tm_buf)
+		return -EINVAL;
+
+	state += 3;
+	disable_irq(core_data->irq);
+	if (goodix_get_rawordiff_data(state, temp_data)) {
+		kfree(temp_data);
+		temp_data = NULL;
+		enable_irq(core_data->irq);
+		return -EINVAL;
+	}
+	enable_irq(core_data->irq);
+
+	switch (state) {
+	case 3:
+		ts_info("self_rawdata: sen_num = %d;drv_num = %d;total = %d",
+			sen_num, drv_num, (sen_num + drv_num));
+		break;
+	case 4:
+		ts_info("self_Diffdata: sen_num = %d;drv_num = %d;total = %d",
+			sen_num, drv_num, (sen_num + drv_num));
+		break;
+	case 5:
+		ts_info("self_Baseline: sen_num = %d;drv_num = %d;total = %d",
+			sen_num, drv_num, (sen_num + drv_num));
+		break;
+	default:
+		ts_info("Err CMD !");
+		break;
+	}
+	//display drv_num
+	ts_info("selfdata drv_num,1~%d", drv_num);
+	offset = 0;
+	for (i = 0; i < drv_num; i++) {
+		offset += snprintf(&tm_buf[offset], PAGE_SIZE,
+			"%5d ", temp_data[i]);
+	}
+	ts_info("%s", &tm_buf[0]);
+	//display sen_num0
+	ts_info("selfdata sen_num,1~%d", drv_num);
+	offset = 0;
+	for (i = 0; i < drv_num; i++) {
+		offset += snprintf(&tm_buf[offset], PAGE_SIZE,
+			"%5d ", temp_data[i + drv_num]);
+	}
+	ts_info("%s", &tm_buf[0]);
+	//display sen_num1
+	ts_info("selfdata sen_num,%d~%d", (drv_num + 1), (drv_num + drv_num));
+	offset = 0;
+	for (i = 0; i < drv_num; i++) {
+		offset += snprintf(&tm_buf[offset], PAGE_SIZE,
+			"%5d ", temp_data[i + drv_num + drv_num]);
+	}
+	ts_info("%s", &tm_buf[0]);
+	//display sen_num2
+	offset = 0;
+	ts_info("selfdata sen_num,%d~%d", (drv_num + drv_num + 1), sen_num);
+	for (i = 0; i < (sen_num - drv_num - drv_num); i++) {
+		offset += snprintf(&tm_buf[offset], PAGE_SIZE,
+			"%5d ", temp_data[i + drv_num + drv_num + drv_num]);
+	}
+	ts_info("%s", &tm_buf[0]);
+
+	kfree(temp_data);
+	kfree(tm_buf);
+	temp_data = NULL;
+	tm_buf = NULL;
+	return data_size;
+}
+
+/* get_reg */
+static ssize_t goodix_ts_get_reg_data_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf,
+		size_t count)
+{
+	struct goodix_ts_core *core_data =
+				dev_get_drvdata(dev);
+	int state;
+
+	if (kstrtoint(buf, 10, &state) != 0)
+		return -EINVAL;
+
+	if (state != 1)
+		return -EINVAL;
+
+	disable_irq(core_data->irq);
+	ts_info("reg start");
+	goodix_nodereg_read();
+	ts_info("reg end");
+	enable_irq(core_data->irq);
+
+	return state;
+}
+
 static DEVICE_ATTR(extmod_info, 0444, goodix_ts_extmod_show, NULL);
 static DEVICE_ATTR(driver_info, 0444, goodix_ts_driver_info_show, NULL);
 static DEVICE_ATTR(chip_info, 0444, goodix_ts_chip_info_show, NULL);
@@ -796,6 +1005,9 @@ static DEVICE_ATTR(irq_info, 0664,
 		goodix_ts_irq_info_show, goodix_ts_irq_info_store);
 static DEVICE_ATTR(reg_rw, 0664,
 		goodix_ts_reg_rw_show, goodix_ts_reg_rw_store);
+static DEVICE_ATTR(get_rawDiff, 0220, NULL, goodix_ts_get_rawDiff_data_store);
+static DEVICE_ATTR(get_selfdata, 0220, NULL, goodix_ts_get_self_data_store);
+static DEVICE_ATTR(get_regdata, 0220, NULL, goodix_ts_get_reg_data_store);
 
 static struct attribute *sysfs_attrs[] = {
 	&dev_attr_extmod_info.attr,
@@ -807,6 +1019,9 @@ static struct attribute *sysfs_attrs[] = {
 	&dev_attr_read_cfg.attr,
 	&dev_attr_irq_info.attr,
 	&dev_attr_reg_rw.attr,
+	&dev_attr_get_rawDiff.attr,
+	&dev_attr_get_selfdata.attr,
+	&dev_attr_get_regdata.attr,
 	NULL,
 };
 

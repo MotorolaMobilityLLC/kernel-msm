@@ -4,6 +4,7 @@
 #
 # core layer
 
+obj-$(CONFIG_TOUCHSCREEN_GOODIX_GTX8_MMI)           += goodix_ts_test.o
 obj-$(CONFIG_TOUCHSCREEN_GOODIX_GTX8_MMI)           += goodix_ts_i2c.o
 obj-$(CONFIG_TOUCHSCREEN_GOODIX_GTX8_MMI)           += goodix_ts_core.o
 obj-$(CONFIG_TOUCHSCREEN_GOODIX_GTX8_MMI)           += goodix_cfg_bin.o
