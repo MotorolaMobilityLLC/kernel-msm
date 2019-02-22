@@ -129,6 +129,7 @@ struct nvt_ts_data {
 	uint8_t suspended;
 	uint8_t force_reflash;
 	uint8_t loading_fw;
+        bool    in_factory_mode;
 #endif
 };
 
