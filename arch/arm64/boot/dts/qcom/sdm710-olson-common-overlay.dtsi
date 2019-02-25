@@ -15,7 +15,6 @@
  */
 
 #include <dt-bindings/clock/mdss-10nm-pll-clk.h>
-#include "pm660a.dtsi"
 #include "sdm670-sde-display.dtsi"
 #include "sdm710-moto-common-overlay.dtsi"
 #include "dsi-panel-mot-auo-620-876x2142-olson-cmd.dtsi"
