@@ -36,6 +36,7 @@
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
 #include <linux/proc_fs.h>
+#include <soc/qcom/bootinfo.h>
 #if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 #include "focaltech_flash.h"
 #endif
@@ -2318,6 +2319,57 @@ exit:
 
 static DEVICE_ATTR(doreflash, 0220, NULL, ft_do_reflash_store);
 
+static ssize_t ft_eraseall_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ft_ts_data *data = dev_get_drvdata(dev);
+	unsigned int input;
+	int retval=0;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+	/* Check for suspend state */
+	if (data->suspended) {
+		dev_err(&data->client->dev,
+			"%s: In suspend state, try again later\n",
+			__func__);
+		retval = -EINVAL;
+	}
+	/* Check for FW loading state */
+	if (data->loading_fw) {
+		dev_err(&data->client->dev,
+			"%s: In FW flashing state, try again later\n",
+			__func__);
+		retval = -EINVAL;
+	}
+	mutex_lock(&data->input_dev->mutex);
+	ft_irq_disable(data);
+	data->loading_fw = true;
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
+	retval = fts_erase_firmware(data->client);
+#endif
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI)
+	FTS_DEBUG("Erase for ft8006m is not verified\n");
+#endif
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI)
+	FTS_DEBUG("Erase for ft5x46 is not verified\n");
+#endif
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716_MMI)
+	FTS_DEBUG("Erase for ft8716 is not verified\n");
+#endif
+	if ( retval < 0 )
+		FTS_ERROR("FW erase failed\n");
+	else
+		FTS_DEBUG("FW erase complete\n");
+	/* After erase Enable IRQ */
+	ft_irq_enable(data);
+	data->loading_fw = false;
+	mutex_unlock(&data->input_dev->mutex);
+	return count;
+}
+
+static DEVICE_ATTR(erase_all, 0220, NULL, ft_eraseall_store);
+
 static ssize_t ft_build_id_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -2440,6 +2492,11 @@ static const struct attribute *ft_attrs[] = {
 	&dev_attr_panel_supplier.attr,
 	&dev_attr_drv_irq.attr,
 	&dev_attr_tsi.attr,
+	NULL
+};
+
+static const struct attribute *ft_erase_attr[] = {
+	&dev_attr_erase_all.attr,
 	NULL
 };
 
@@ -3552,6 +3609,13 @@ static int ft_ts_probe(struct i2c_client *client,
 		goto sysfs_create_files_err;
 	}
 
+	if (strncmp(bi_bootmode(), "mot-factory", strlen("mot-factory")) == 0) {
+		err = sysfs_create_files(&client->dev.kobj, ft_erase_attr);
+		if (err) {
+			dev_err(&client->dev, "sys erase file creation failed\n");
+			goto sysfs_create_files_err;
+		}
+	}
 	data->dir = debugfs_create_dir(FT_DEBUG_DIR_NAME, NULL);
 	if (data->dir == NULL || IS_ERR(data->dir)) {
 		pr_err("debugfs_create_dir failed(%ld)\n", PTR_ERR(data->dir));
@@ -3765,6 +3829,8 @@ free_debug_dir:
 	debugfs_remove_recursive(data->dir);
 debugfs_create_dir_err:
 	sysfs_remove_files(&client->dev.kobj, ft_attrs);
+	if (strncmp(bi_bootmode(), "mot-factory", strlen("mot-factory")) == 0)
+		sysfs_remove_files(&client->dev.kobj, ft_erase_attr);
 sysfs_create_files_err:
 	ft_ts_sysfs_class(data, false);
 sysfs_class_err:
@@ -3836,6 +3902,8 @@ static int ft_ts_remove(struct i2c_client *client)
 	ft_remove_proc_entry(data);
 	debugfs_remove_recursive(data->dir);
 	sysfs_remove_files(&client->dev.kobj, ft_attrs);
+	if (strncmp(bi_bootmode(), "mot-factory", strlen("mot-factory")) == 0)
+		sysfs_remove_files(&client->dev.kobj, ft_erase_attr);
 	ft_ts_sysfs_class(data, false);
 
 	free_irq(client->irq, data);
