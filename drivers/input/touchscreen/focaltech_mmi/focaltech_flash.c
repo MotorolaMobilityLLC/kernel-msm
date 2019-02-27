@@ -431,6 +431,43 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 	return i_ret;
 }
 
+/************************************************************************
+* Name: fts_erase_firmware
+* Brief:  erase firmware from flash
+* Input:
+* Output:
+* Return: 0 - success
+***********************************************************************/
+int fts_erase_firmware(struct i2c_client *client)
+{
+	int ret = 0;
+	u8 cmd = 0;
+	u32 delay = 0;
+	ret = fts_fwupg_enter_into_boot(client);
+	if (ret < 0) {
+		FTS_ERROR("enter into pramboot/bootloader fail\n");
+		return -EINVAL;
+	}
+	cmd = FTS_CMD_FLASH_MODE;
+	ret = fts_i2c_write(client, &cmd, 1);
+	if ( ret < 0 ){
+		FTS_ERROR("Flash mode set failed\n");
+		return -EINVAL;
+	}
+	delay = FTS_ERASE_SECTOR_DELAY * (FTS_MAX_LEN_FILE / FTS_MAX_LEN_SECTOR);
+	ret = fts_fwupg_erase(client, delay);
+	if ( ret < 0 ) {
+		FTS_ERROR("Erase cmd write fail\n");
+		return -EINVAL;
+	}
+	ret = fts_fwupg_reset_in_boot(client);
+	if ( ret < 0 ) {
+		FTS_ERROR("reset to normal boot fail\n");
+		return -EINVAL;
+	}
+	return ret;
+}
+
 #if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 struct fts_upgrade g_upgrade;
 struct fts_upgrade *fwupgrade;
