@@ -224,6 +224,7 @@ int fts_ft8006u_pram_write_remap(struct i2c_client *client);
 int fts_pram_write_buf(struct i2c_client *client, u8 *buf, u32 len);
 int fts_pram_ecc_cal(struct i2c_client *client, u32 saddr, u32 len);
 int fts_pram_start(struct i2c_client *client);
+int fts_erase_firmware(struct i2c_client *client);
 
 int fts_fwupg_do_upgrade(const char *fwname);
 int fts_fwupg_upgrade(struct i2c_client *client, struct fts_upgrade *upg);
