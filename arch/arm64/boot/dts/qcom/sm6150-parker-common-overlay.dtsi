@@ -705,8 +705,14 @@
 
 	clocks = <&mdss_dsi0_pll BYTE0_MUX_CLK>,
 		 <&mdss_dsi0_pll PIX0_MUX_CLK>,
+		 <&mdss_dsi0_pll BYTE0_SRC_CLK>,
+		 <&mdss_dsi0_pll PIX0_SRC_CLK>,
+		 <&mdss_dsi0_pll SHADOW_BYTE0_SRC_CLK>,
+		 <&mdss_dsi0_pll SHADOW_PIX0_SRC_CLK>,
 		 <&clock_rpmh RPMH_LN_BB_CLK3>;
-	clock-names = "mux_byte_clk0", "mux_pixel_clk0", "div_clk3";
+	clock-names = "mux_byte_clk0", "mux_pixel_clk0",
+		"src_byte_clk0", "src_pixel_clk0",
+		"shadow_byte_clk0", "shadow_pixel_clk0","div_clk3";
 };
 
 &mot_tianma_639_1080p_cmd_v1 {
