@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -109,6 +109,8 @@ struct wdsp_glink_priv {
 	/* Respone buffer related */
 	u8 rsp_cnt;
 	struct wdsp_glink_rsp_que rsp[RESP_QUEUE_SIZE];
+	u8 write_idx;
+	u8 read_idx;
 	struct completion rsp_complete;
 	struct mutex rsp_mutex;
 
@@ -202,13 +204,19 @@ static void wdsp_glink_notify_rx(void *handle, const void *priv,
 	mutex_lock(&wpriv->rsp_mutex);
 	rsp_cnt = wpriv->rsp_cnt;
 	if (rsp_cnt >= RESP_QUEUE_SIZE) {
-		dev_err(wpriv->dev, "%s: Resp Queue is Full\n", __func__);
-		rsp_cnt = 0;
+		dev_err(wpriv->dev, "%s: Resp Queue is Full. Ignore latest and keep oldest.\n",
+				__func__);
+		mutex_unlock(&wpriv->rsp_mutex);
+		glink_rx_done(handle, ptr, true);
+		return;
 	}
-	dev_dbg(wpriv->dev, "%s: copy into buffer %d\n", __func__, rsp_cnt);
+	dev_dbg(wpriv->dev, "%s: rsp_cnt = %d copy into buffer %d\n",
+		__func__, rsp_cnt, wpriv->write_idx);
 
-	memcpy(wpriv->rsp[rsp_cnt].buf, rx_buf, size);
-	wpriv->rsp[rsp_cnt].buf_size = size;
+	memcpy(wpriv->rsp[wpriv->write_idx].buf, rx_buf, size);
+	wpriv->rsp[wpriv->write_idx].buf_size = size;
+
+	wpriv->write_idx = (wpriv->write_idx + 1) % RESP_QUEUE_SIZE;
 	wpriv->rsp_cnt = ++rsp_cnt;
 	mutex_unlock(&wpriv->rsp_mutex);
 
@@ -781,10 +789,11 @@ static ssize_t wdsp_glink_read(struct file *file, char __user *buf,
 	mutex_lock(&wpriv->rsp_mutex);
 	if (wpriv->rsp_cnt) {
 		wpriv->rsp_cnt--;
-		dev_dbg(wpriv->dev, "%s: read from buffer %d\n",
-			__func__, wpriv->rsp_cnt);
+		dev_dbg(wpriv->dev, "%s: rsp_cnt=%d read from buffer %d\n",
+			__func__, wpriv->rsp_cnt, wpriv->read_idx);
 
-		rsp = &wpriv->rsp[wpriv->rsp_cnt];
+		rsp = &wpriv->rsp[wpriv->read_idx];
+		wpriv->read_idx = (wpriv->read_idx + 1) % RESP_QUEUE_SIZE;
 		if (count < rsp->buf_size) {
 			ret1 = copy_to_user(buf, &rsp->buf, count);
 			/* Return the number of bytes copied */
