@@ -445,6 +445,8 @@ EXPORT_SYMBOL(mipi_dsi_packet_format_is_long);
 int mipi_dsi_create_packet(struct mipi_dsi_packet *packet,
 			   const struct mipi_dsi_msg *msg)
 {
+	const u8 *dsi_buf;
+
 	if (!packet || !msg)
 		return -EINVAL;
 
@@ -455,6 +457,13 @@ int mipi_dsi_create_packet(struct mipi_dsi_packet *packet,
 
 	if (msg->channel > 3)
 		return -EINVAL;
+
+	dsi_buf = msg->tx_buf;
+	if ((dsi_buf[0] == MIPI_DCS_READ_MEMORY_START) ||
+		(dsi_buf[0] == MIPI_DCS_READ_MEMORY_CONTINUE)) {
+                pr_debug("%s: Invalid dsi_cmd=0x%4x\n", __func__, dsi_buf[0]);
+                return -EINVAL;
+        }
 
 	memset(packet, 0, sizeof(*packet));
 	packet->header[2] = ((msg->channel & 0x3) << 6) | (msg->type & 0x3f);
