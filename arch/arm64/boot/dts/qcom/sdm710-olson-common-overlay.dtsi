@@ -203,6 +203,12 @@
 	qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 	qcom,mdss-dsi-panel-status-value = <0x9c>;
 
+	/* MOT panel params */
+	qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 e0];
+	qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 53 20];
+	qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
+	qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
+
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings = [00 10 03 03 1E 1E 04
