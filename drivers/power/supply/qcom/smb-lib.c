@@ -5026,7 +5026,6 @@ static int smblib_usb_typec_debounce_detect(struct smb_charger *chg)
 	if ((typec_mode == POWER_SUPPLY_TYPEC_SINK) ||
 		(typec_mode == POWER_SUPPLY_TYPEC_SINK_POWERED_CABLE) ||
 		(typec_mode == POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY) ||
-		(typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) ||
 		(typec_mode == POWER_SUPPLY_TYPEC_POWERED_CABLE_ONLY)) {
 		if (!delayed_work_pending(&chg->mmi.typec_debounce_work)) {
 			chg->mmi.typec_debounce_cnt = 0;
