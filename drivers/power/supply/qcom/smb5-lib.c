@@ -8647,7 +8647,7 @@ irqreturn_t dcin_uv_irq_handler(int irq, void *data)
 	dcin_chg_cur = get_effective_result(chg->dc_icl_votable);
 
 	//divide dcin current by uv abnormal count nubmer
-	dcin_chg_cur = dcin_chg_cur / 2;
+	dcin_chg_cur = dcin_chg_cur - (dcin_chg_cur  / 4);
 	if (dcin_chg_cur <= USBIN_25MA)
 		dcin_chg_cur = USBIN_100MA;
 
