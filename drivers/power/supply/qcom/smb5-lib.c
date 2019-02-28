@@ -9815,17 +9815,18 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	switch (mmi->pres_chrg_step) {
 	case STEP_EB:
 		target_fv = max_fv_mv;
-		if (batt_soc < 100)
-			target_fcc = zone->fcc_norm_ma;
-		else
-			target_fcc = -EINVAL;
 
 		if (cl_usb > 1500) {
 			mmi->cl_ebchg = cl_usb - EB_SPLIT_MA;
-			target_usb = EB_SPLIT_MA;
+			target_usb = cl_usb;
+			if (batt_soc < 100)
+				target_fcc = min(zone->fcc_norm_ma, EB_SPLIT_MA);
+			else
+				target_fcc = -EINVAL;
 		} else {
 			mmi->cl_ebchg = cl_usb;
-			target_usb = -EINVAL;
+			target_usb = cl_usb;
+			target_fcc = -EINVAL;
 		}
 
 		break;
@@ -9841,7 +9842,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		if (((cl_usb - EB_SPLIT_MA) >= target_fcc) && eb_chrg_allowed)
 			mmi->cl_ebchg = EB_SPLIT_MA;
 
-		target_usb = cl_usb - mmi->cl_ebchg;
+		target_usb = cl_usb;
 		break;
 	case STEP_FULL:
 		target_fv = max_fv_mv;
@@ -9856,7 +9857,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		if (((cl_usb - EB_SPLIT_MA) >= target_fcc) && eb_chrg_allowed)
 			mmi->cl_ebchg = EB_SPLIT_MA;
 
-		target_usb = cl_usb - mmi->cl_ebchg;
+		target_usb = cl_usb;
 		break;
 	case STEP_NONE:
 		target_fv = max_fv_mv;
@@ -9871,7 +9872,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	case STEP_DEMO:
 		target_fv = DEMO_MODE_VOLTAGE;
 		target_fcc = zone->fcc_max_ma;
-		target_usb = cl_usb - mmi->cl_ebchg;
+		target_usb = cl_usb;
 		break;
 	default:
 		break;
