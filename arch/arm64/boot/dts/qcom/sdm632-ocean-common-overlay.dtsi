@@ -343,6 +343,8 @@
 	df-serialnum = "SB18C28956";
 	#include "qg-batterydata-jk50-sucd-5000mah.dtsi"
 	#include "qg-batterydata-jk50-atl-5000mah.dtsi"
+	#include "qg-batterydata-jk50-atl-flex-5000mah.dtsi"
+	#include "qg-batterydata-jk50-atl-ucb-5000mah.dtsi"
 };
 
 &pmi632_qg {
