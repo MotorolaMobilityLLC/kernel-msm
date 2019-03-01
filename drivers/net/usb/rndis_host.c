@@ -27,6 +27,7 @@
 #include <linux/usb/usbnet.h>
 #include <linux/usb/rndis_host.h>
 
+#define RNDIS_AGGR_SIZE_RX 16384
 
 /*
  * RNDIS is NDIS remoted over USB.  It's a MSFT variant of CDC ACM ... of
@@ -352,8 +353,8 @@ generic_rndis_bind(struct usbnet *dev, struct usb_interface *intf, int flags)
 		goto fail_and_release;
 	}
 
-	dev->rx_urb_size = dev->hard_mtu + (dev->maxpacket + 1);
-	dev->rx_urb_size &= ~(dev->maxpacket - 1);
+	dev->rx_urb_size = dev->hard_mtu + (RNDIS_AGGR_SIZE_RX + 1);
+	dev->rx_urb_size &= ~(RNDIS_AGGR_SIZE_RX - 1);
 	u.init->max_transfer_size = cpu_to_le32(dev->rx_urb_size);
 
 	net->netdev_ops = &rndis_netdev_ops;
