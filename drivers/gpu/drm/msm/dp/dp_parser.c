@@ -300,6 +300,7 @@ static int dp_parser_gpio(struct dp_parser *parser)
 	for (i = 0; i < ARRAY_SIZE(dp_gpios); i++) {
 		if (!strcmp("qcom,mux-sel-gpio", dp_gpios[i])) {
 			enum of_gpio_flags flag;
+			int rc = 0;
 
 			mp->gpio_config[i].gpio = of_get_named_gpio_flags(of_node,
 								"qcom,mux-sel-gpio",
@@ -308,6 +309,10 @@ static int dp_parser_gpio(struct dp_parser *parser)
 			strlcpy(mp->gpio_config[i].gpio_name, dp_gpios[i],
 				sizeof(mp->gpio_config[i].gpio_name));
 			mp->gpio_config[i].value = (flag == OF_GPIO_ACTIVE_LOW) ? 0 : 1;
+			rc = gpio_direction_output(mp->gpio_config[i].gpio, !mp->gpio_config[i].value);
+			if (rc) {
+				pr_err("unable to disable mux_sel gpio rc=%d\n", rc);
+			}
 
 			continue;
 		}
