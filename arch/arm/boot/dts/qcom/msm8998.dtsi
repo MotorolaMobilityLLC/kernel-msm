@@ -1775,7 +1775,7 @@
 		clock-names = "core_clk", "iface_clk", "bus_aggr_clk",
 				"utmi_clk", "sleep_clk", "xo";
 
-		qcom,core-clk-rate = <120000000>;
+		qcom,core-clk-rate = <240000000>;
 		qcom,core-clk-rate-hs = <60000000>;
 
 		resets = <&clock_gcc USB_30_BCR>;
@@ -1793,6 +1793,7 @@
 			snps,has-lpm-erratum;
 			snps,hird-threshold = /bits/ 8 <0x10>;
 			snps,num-gsi-evt-buffs = <0x3>;
+			xhci-imod-value = <4000>;
 		};
 
 		qcom,usbbam@a904000 {
