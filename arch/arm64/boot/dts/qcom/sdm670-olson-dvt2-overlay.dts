@@ -262,8 +262,13 @@
 };
 
 &qupv3_se7_i2c {
+	synaptics_dsx_i2c@20 {
+		synaptics,splash-screen-mode;
+	};
+
 	synaptics_dsx_i2c@38 {
 		status = "/chosen","mmi,cli","true";
+		synaptics,splash-screen-mode;
 	};
 	raydium-ts@39 {
 		status = "ok";
