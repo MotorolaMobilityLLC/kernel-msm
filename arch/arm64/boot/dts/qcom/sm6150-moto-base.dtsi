@@ -39,3 +39,7 @@
 &qcom_seecom {
 	reg = <0x86d00000 0x2D00000>;
 };
+
+&mdss_dsi0 {
+	/delete-property/ qcom,split-link-supported;
+};
