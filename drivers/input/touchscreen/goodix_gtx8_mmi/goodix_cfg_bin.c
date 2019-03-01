@@ -295,7 +295,16 @@ int goodix_cfg_bin_proc(void *data)
 
 	/* esd protector */
 	goodix_ts_esd_init(core_data);
+#ifdef GTP_CHARGER
+	goodix_charger_init(ts_dev->board_data);
 
+	if (ts_dev->board_data->charger_detection)
+		queue_work(
+		ts_dev->board_data->charger_detection->goodix_charger_notify_wq,
+		&ts_dev->board_data->charger_detection->charger_notify_work);
+
+	ts_dev->board_data->charger_send_flage_enable = true;
+#endif
 	/* generic notifier callback */
 	core_data->ts_notifier.notifier_call = goodix_generic_noti_callback;
 	goodix_ts_register_notifier(&core_data->ts_notifier);
