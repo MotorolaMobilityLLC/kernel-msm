@@ -729,8 +729,8 @@
 	qcom,mdss-dsi-t-clk-post = <0x0f>;
 	qcom,mdss-dsi-t-clk-pre = <0x37>;
 	/* Enable ESD checking */
-	//qcom,esd-check-enabled;
-	//qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
 	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
 
 	qcom,mdss-dsi-display-timings {
