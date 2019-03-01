@@ -365,8 +365,9 @@ struct dwc3_msm {
 	struct property *num_gsi_eps;
 	bool			dual_port;
 	
-#ifdef CONFIG_MODS_NEW_SW_ARCH
 	bool			ext_typec_switch;
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 	bool                    ss_compliance;
 	struct gpio		mod_switch_gpio;
 	struct i2c_client	*mod_hub;
@@ -3379,9 +3380,11 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 
 		pr_info("%s flag 0x%x \n", __func__, mdwc->ss_phy->flags);
 #else
-		if (mdwc->typec_orientation == ORIENTATION_CC1)
+		if (mdwc->ext_typec_switch)
 			mdwc->ss_phy->flags |= PHY_LANE_A;
-		if (mdwc->typec_orientation == ORIENTATION_CC2)
+		else if (mdwc->typec_orientation == ORIENTATION_CC1)
+			mdwc->ss_phy->flags |= PHY_LANE_A;
+		else if (mdwc->typec_orientation == ORIENTATION_CC2)
 			mdwc->ss_phy->flags |= PHY_LANE_B;
 #endif
 
@@ -4612,9 +4615,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc->mods_support = of_property_read_bool(node,
 				"mmi,mods-support");
 
+#endif
 	mdwc->ext_typec_switch = of_property_read_bool(node,
 				"mmi,ext-typec-switch");
-#endif
 
 	ret = of_property_read_u32(node, "qcom,lpm-to-suspend-delay-ms",
 				&mdwc->lpm_to_suspend_delay);
