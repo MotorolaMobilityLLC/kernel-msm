@@ -120,6 +120,10 @@
 		memory-region = <&mmi_annotate_mem>;
 		mem-size = <0x20000>;
 	};
+
+	wdog: qcom,wdt@17c10000 {
+		qcom,bark-time = <22000>;
+	};
 };
 
 &qupv3_se0_2uart {
