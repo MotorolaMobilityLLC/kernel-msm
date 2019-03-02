@@ -4187,6 +4187,14 @@ static int smb5_resume(struct device *device)
 	struct smb5 *chip = platform_get_drvdata(pdev);
 	struct smb_charger *chg = &chip->chg;
 
+	if (delayed_work_pending(&chg->mmi.heartbeat_work)) {
+		pr_info("QPNP SMB5 resume\n");
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		/* Delay by 500 ms to allow devices to resume. */
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+				      msecs_to_jiffies(500));
+	}
+
 	chg->suspended = false;
 
 	return 0;
