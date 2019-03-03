@@ -1704,7 +1704,7 @@ static int smblib_chg_disable_vote_callback(struct votable *votable, void *data,
 			chg_disable ? "disable" : "enable", rc);
 		return rc;
 	}
-	smblib_rerun_aicl(chg);
+	smblib_run_aicl(chg, RESTART_AICL);
 
 	return 0;
 }
@@ -2517,7 +2517,6 @@ static int smblib_dm_pulse(struct smb_charger *chg)
 	return rc;
 }
 
-#ifdef QCOM_BASE
 int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 {
 	int rc;
@@ -2529,7 +2528,6 @@ int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 
 	return rc;
 }
-#endif
 
 static void smblib_hvdcp_set_fsw(struct smb_charger *chg, int bit)
 {
