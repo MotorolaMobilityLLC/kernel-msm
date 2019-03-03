@@ -1877,7 +1877,7 @@ static int smblib_chg_disable_vote_callback(struct votable *votable, void *data,
 			chg_disable ? "disable" : "enable", rc);
 		return rc;
 	}
-	smblib_run_aicl(chg, RERUN_AICL);
+	smblib_run_aicl(chg, RESTART_AICL);
 
 	return 0;
 }
