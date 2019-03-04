@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, Motorola Mobility LLC. All rights reserved.
+/* Copyright (c) 2019, Motorola Mobility LLC. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,7 +11,7 @@
  */
 
 &mdss_mdp {
-	mot_wistron_546_720p_vid_v0: qcom,mdss_dsi_mot_wistron_546_720p_video_v0 {
-		#include "dsi-panel-mot-wistron_546_720p-video-common.dtsi"
+	mot_hlt_545_720p_vid_v0: qcom,mdss_dsi_mot_hlt_545_720p_video_v0 {
+		#include "dsi-panel-mot-hlt-545-720p-vid-common.dtsi"
 	};
 };
