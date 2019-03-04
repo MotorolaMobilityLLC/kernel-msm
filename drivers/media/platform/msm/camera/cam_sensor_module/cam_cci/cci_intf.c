@@ -103,7 +103,8 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			pr_err("%s: cci init fail (%d)\n", __func__, rc);
 			return rc;
 		}
-		pr_err("%s: MSM_CCI_INIT ret:%d", __func__, rc);
+		pr_err("%s: MSM_CCI_INIT (master:%d, slave_addr:%x) ret:%d", __func__,
+		       xfer->cci_bus, xfer->reg.addr, rc);
 		break;
 
 	case MSM_CCI_INTF_READ:
@@ -159,6 +160,8 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			pr_err("%s: cci release fail (%d)\n", __func__, rc2);
 			return rc2;
 		}
+		pr_err("%s: MSM_CCI_RELEASE (master:%d, slave_addr:%x) ret:%d", __func__,
+		       xfer->cci_bus, xfer->reg.addr, rc2);
 		break;
 	default:
 		pr_err("%s: Unknown command (%d)\n", __func__, cmd);
