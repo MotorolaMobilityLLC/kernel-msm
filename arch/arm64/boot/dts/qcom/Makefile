@@ -24,7 +24,8 @@ dtbo-$(CONFIG_FOLES_DTB) += \
 	sm6150-foles_npi-dvt2b-overlay.dtbo
 
 dtbo-$(CONFIG_PARKER_DTB) += \
-	sm6150-parker-evt1-overlay.dtbo
+	sm6150-parker-evt1-overlay.dtbo \
+	sm6150-parker-dvt1a-overlay.dtbo
 
 dtbo-$(CONFIG_DEF_DTB) += \
 	sm6150-def-evt1-overlay.dtbo
@@ -72,6 +73,9 @@ sm6150-foles_npi-dvt2b-overlay.dtbo-base := \
 	sm6150-foles_npi-base.dtb
 
 sm6150-parker-evt1-overlay.dtbo-base := \
+	sm6150-parker-base.dtb
+
+sm6150-parker-dvt1a-overlay.dtbo-base := \
 	sm6150-parker-base.dtb
 
 sm6150-def-evt1-overlay.dtbo-base := \
