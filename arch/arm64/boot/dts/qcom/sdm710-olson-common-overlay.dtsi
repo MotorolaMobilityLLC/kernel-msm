@@ -507,6 +507,7 @@
 		synaptics,splash-screen-mode;
 		synaptics,control-dsi = <1>;
 		synaptics,bound-display = "dsi_boe_269_800x600_cmd_display";
+		synaptics,class-entry-name = "secondary";
 	};
 
 	raydium-ts@39 {
