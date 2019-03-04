@@ -675,7 +675,7 @@
 		cirrus,left-channel-amp;
 		cirrus,boost-ind-nanohenry = <1000>; /* 1uH */
 		cirrus,boost-ctl-millivolt = <11000>;
-		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-peak-milliamp = <4000>;
 		cirrus,boost-cap-microfarad = <21>;
 		cirrus,amp-gain-zc;
 
