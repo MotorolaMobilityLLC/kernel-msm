@@ -10,5 +10,7 @@ extern int fts_ctpm_auto_upgrade(struct i2c_client *client,
 				const struct ft_ts_platform_data *pdata);
 
 int fts_ctpm_i2c_hid2std(struct i2c_client *client);
+extern int fts_ctpm_erase_fw(struct i2c_client *client,
+				const struct ft_ts_platform_data *pdata);
 #endif
 
