@@ -30,11 +30,13 @@
 static int fts_5x46_get_app_bin_file_ver(const char *firmware_name);
 static int fts_5x46_fw_upgrade_with_app_bin_file(
 		struct i2c_client *client, const char *firmware_name);
+static int fts_5x46_fw_erase(struct i2c_client *client);
 
 
 static struct fts_upgrade_fun fts_updatefun_5x46 = {
 	.get_app_bin_file_ver = fts_5x46_get_app_bin_file_ver,
 	.upgrade_with_app_bin_file = fts_5x46_fw_upgrade_with_app_bin_file,
+	.erase_fw = fts_5x46_fw_erase,
 	.upgrade_with_lcd_cfg_bin_file = NULL,
 };
 
@@ -442,10 +444,98 @@ static int fts_5x46_fw_upgrade_with_app_bin_file(struct i2c_client *client, cons
         FTS_ERROR("[UPGRADE] app.bin ecc failed");
     }
 
-    return i_ret;
-	
+	return i_ret;
+
 file_upgrade_rel_fw:
 	release_firmware(fw);
 	return i_ret;
+}
+
+/************************************************************************
+* Name: fts_5x46_fw_erase
+* Brief: erase firmware
+* Input: i2c info
+* Output: no
+* Return: success =0
+***********************************************************************/
+static int fts_5x46_fw_erase(struct i2c_client *client)
+{
+	u8 reg_val[2] = {0};
+	u32 i = 0;
+	u32 dw_lenth = 0;
+	u8 auc_i2c_write_buf[4];
+	int i_ret;
+
+	fts_ctpm_i2c_hid2std(client);
+
+	for (i = 0; i < FTS_UPGRADE_LOOP; i++)
+	{
+		/*********Step 1:Reset  CTPM *****/
+		fts_i2c_write_reg(client, FTS_RST_CMD_REG1, FTS_UPGRADE_AA);
+		msleep(10);
+		fts_i2c_write_reg(client, FTS_RST_CMD_REG1, FTS_UPGRADE_55);
+		msleep(200);
+
+		/*********Step 2:Enter upgrade mode *****/
+		fts_ctpm_i2c_hid2std(client);
+		msleep(5);
+
+		auc_i2c_write_buf[0] = FTS_UPGRADE_55;
+		auc_i2c_write_buf[1] = FTS_UPGRADE_AA;
+		i_ret = fts_i2c_write(client, auc_i2c_write_buf, 2);
+		if (i_ret < 0)
+		{
+			FTS_ERROR("[ERASE]: failed writing  0x55 and 0xaa!!");
+			continue;
+		}
+
+		/*********Step 3:Check bootloader ID *****/
+		msleep(1);
+		auc_i2c_write_buf[0] = FTS_READ_ID_REG;
+		auc_i2c_write_buf[1] = auc_i2c_write_buf[2] = auc_i2c_write_buf[3] = 0x00;
+		reg_val[0] = reg_val[1] = 0x00;
+		fts_i2c_read(client, auc_i2c_write_buf, 4, reg_val, 2);
+		if ((reg_val[0] == 0x54) && (reg_val[1] != 0))
+		{
+			FTS_DEBUG("[ERASE]: read bootload id ok!! ID1 = 0x%x,ID2 = 0x%x!!",reg_val[0], reg_val[1]);
+			break;
+		}
+		else
+		{
+			FTS_ERROR("[ERASE]: read bootload id fail!! ID1 = 0x%x,ID2 = 0x%x!!",reg_val[0], reg_val[1]);
+			continue;
+		}
+	}
+
+	if (i >= FTS_UPGRADE_LOOP)
+	{
+		FTS_ERROR("[ERASE]: failed writing  0x55 and 0xaa : i = %d!!", i);
+		return -EIO;
+	}
+
+	/*Step 4:erase app and panel paramenter area*/
+	FTS_DEBUG("[ERASE]: erase app and panel paramenter area!!");
+	auc_i2c_write_buf[0] = FTS_ERASE_APP_REG;
+	fts_i2c_write(client, auc_i2c_write_buf, 1);
+	msleep(1350);
+	for (i = 0; i < 15; i++)
+	{
+		auc_i2c_write_buf[0] = 0x6a;
+		reg_val[0] = reg_val[1] = 0x00;
+		fts_i2c_read(client, auc_i2c_write_buf, 1, reg_val, 2);
+		if ((0xF0 == reg_val[0]) && (0xAA == reg_val[1]))
+		{
+			break;
+		}
+		msleep(50);
+	}
+	FTS_DEBUG("[ERASE]: erase app area reg_val[0] = %x reg_val[1] = %x!!", reg_val[0], reg_val[1]);
+	dw_lenth = APP_FILE_MAX_SIZE;
+	auc_i2c_write_buf[0] = 0xB0;
+	auc_i2c_write_buf[1] = (u8) ((dw_lenth >> 16) & 0xFF);
+	auc_i2c_write_buf[2] = (u8) ((dw_lenth >> 8) & 0xFF);
+	auc_i2c_write_buf[3] = (u8) (dw_lenth & 0xFF);
+	fts_i2c_write(client, auc_i2c_write_buf, 4);
+	return 0;
 }
 

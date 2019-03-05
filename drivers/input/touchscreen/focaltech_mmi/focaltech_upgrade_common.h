@@ -133,6 +133,7 @@ struct ft_chip_t {
 struct fts_upgrade_fun {
 	int (*get_app_bin_file_ver)(const char *);
 	int (*upgrade_with_app_bin_file)(struct i2c_client *, const char *);
+	int (*erase_fw)(struct i2c_client *);
 	int (*upgrade_with_lcd_cfg_bin_file)(struct i2c_client *, const char *);
 };
 

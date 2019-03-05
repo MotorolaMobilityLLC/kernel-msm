@@ -48,10 +48,12 @@
 static int fts_ctpm_get_app_bin_file_ver(const char *firmware_name);
 static int fts_ctpm_fw_upgrade_with_app_bin_file(
 			struct i2c_client *client, const char *firmware_name);
+static int fts_8716_fw_erase(struct i2c_client *client);
 
 static struct fts_upgrade_fun fts_updatefun_8716 = {
 	.get_app_bin_file_ver = fts_ctpm_get_app_bin_file_ver,
 	.upgrade_with_app_bin_file = fts_ctpm_fw_upgrade_with_app_bin_file,
+	.erase_fw = fts_8716_fw_erase,
 	.upgrade_with_lcd_cfg_bin_file = NULL,
 };
 
@@ -392,5 +394,44 @@ static int fts_ctpm_fw_upgrade_with_app_bin_file
 
 file_upgrade_rel_fw:
 	release_firmware(fw);
+	return i_ret;
+}
+
+static int fts_8716_fw_erase(struct i2c_client *client)
+{
+	u32 dw_length;
+	int i_ret;
+	bool inpram = false;
+
+	FTS_FUNC_ENTER();
+	dw_length = APP_FILE_MAX_SIZE;
+
+	/*check run in pramboot or not if not rum in pramboot, can not upgrade*/
+	inpram = fts_ctpm_check_run_state(client, FTS_RUN_IN_PRAM);
+	if (!inpram) {
+		FTS_ERROR("[UPGRADE] not run in pram, upgrade fail\n");
+		return -EIO;
+	}
+
+	/*upgrade init*/
+	i_ret = fts_ctpm_upgrade_idc_init(client, dw_length);
+	if (i_ret < 0) {
+		FTS_ERROR("[UPGRADE] upgrade init error, upgrade fail\n");
+		return i_ret;
+	}
+
+	/*read vendor id from flash, if vendor id error, can not upgrade*/
+	i_ret = fts_ctpm_get_vendor_id_flash(client);
+	if (i_ret < 0) {
+		FTS_ERROR("[UPGRADE] read vendor id in flash fail\n");
+		return i_ret;
+	}
+
+	/*erase the app erea in flash*/
+	i_ret = fts_ctpm_erase_flash(client);
+	if (i_ret < 0) {
+		FTS_ERROR("[UPGRADE] erase flash error\n");
+		return i_ret;
+	}
 	return i_ret;
 }
