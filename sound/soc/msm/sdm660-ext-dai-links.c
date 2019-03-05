@@ -652,6 +652,7 @@ static const struct snd_soc_pcm_stream cs35l41_params[] = {
 static int cirrus_amp_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int codec_clock = MCLK_RATE_12P288;
+	int madera_sysclk = MADERA_CLK_SYSCLK;
 	int ret;
 
 	struct snd_soc_codec *codec = rtd->codec;
@@ -659,7 +660,10 @@ static int cirrus_amp_dai_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
 	struct snd_soc_dai *amp_dai = rtd->codec_dai;
 
-	ret = snd_soc_dai_set_sysclk(aif1_dai, MADERA_CLK_SYSCLK_3, 0, 0);
+#if defined(CONFIG_SND_SOC_CS47L90) && defined(CONFIG_SND_SOC_CS35L36)
+	madera_sysclk = MADERA_CLK_SYSCLK_3;
+#endif
+	ret = snd_soc_dai_set_sysclk(aif1_dai, madera_sysclk, 0, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
 		return ret;
