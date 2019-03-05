@@ -431,6 +431,7 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 	return i_ret;
 }
 
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 /************************************************************************
 * Name: fts_erase_firmware
 * Brief:  erase firmware from flash
@@ -467,6 +468,8 @@ int fts_erase_firmware(struct i2c_client *client)
 	}
 	return ret;
 }
+
+#endif
 
 #if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006M_MMI) || defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8006U_MMI)
 struct fts_upgrade g_upgrade;
