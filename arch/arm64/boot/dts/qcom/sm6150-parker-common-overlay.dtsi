@@ -731,7 +731,8 @@
 	/* Enable ESD checking */
 	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
-	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
+	//qcom,mdss-dsi-panel-on-check-value = <0x1c>;
+	qcom,mdss-dsi-no-panel-on-read-support;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
