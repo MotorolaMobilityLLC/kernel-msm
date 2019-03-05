@@ -238,6 +238,24 @@ int fts_ctpm_fw_upgrade(struct i2c_client *client)
 }
 
 /************************************************************************
+* Name: fts_ctpm_fw_erase
+* Brief:  fw erase entry funciotn
+* Input:
+* Output:
+* Return: 0  - erase successfully
+*         <0 - erase failed
+***********************************************************************/
+int fts_ctpm_fw_erase(struct i2c_client *client)
+{
+	int i_ret = 0;
+
+	if (fts_updatefun_curr->erase_fw)
+		i_ret = fts_updatefun_curr->erase_fw(client);
+
+	return i_ret;
+}
+
+/************************************************************************
 * Name: fts_ctpm_check_fw_status
 * Brief: Check App is valid or not
 * Input:
@@ -416,3 +434,59 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 	return i_ret;
 }
 
+/************************************************************************
+* Name: fts_ctpm_erase_fw
+* Brief:  erase firmware
+* Input:
+* Output:
+* Return: 0 - no upgrade
+***********************************************************************/
+int fts_ctpm_erase_fw(struct i2c_client *client,
+				const struct ft_ts_platform_data *pdata)
+{
+	int i_ret = 0;
+	int fw_status = 0;
+	FTS_FUNC_ENTER();
+
+	FTS_DEBUG("[UPGRADE] set update function and type by ID\n");
+
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716
+	if (pdata->family_id == FT8716_ID) {
+		ft8716_set_upgrade_function(&fts_updatefun_curr);
+		ft8716_set_chip_id(&fts_chip_type_curr);
+	}
+#endif
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
+	if (pdata->family_id == FT5X46_ID) {
+		ft5x46_set_upgrade_function(&fts_updatefun_curr);
+		ft5x46_set_chip_id(&fts_chip_type_curr);
+	}
+#endif
+	/* no IC function enabled, return error */
+	if ((fts_updatefun_curr == NULL) || (fts_chip_type_curr == NULL)) {
+		FTS_ERROR("[ERASE] ID(0x%02x) not support\n",
+			pdata->family_id);
+		return -EINVAL;
+	}
+	fts_pdata_curr = pdata;
+
+	/* 1. veriry FW APP is valid or not */
+	fw_status = fts_ctpm_check_fw_status(client);
+	FTS_DEBUG("[ERASE] fw_status = %d\n", fw_status);
+	if (fw_status < 0) {
+		/* I2C no ACK, return immediately */
+		FTS_ERROR("[ERASE] I2C NO ACK,exit upgrade\n");
+		return -EIO;
+	} else if (fw_status == FTS_RUN_IN_ERROR)
+		FTS_ERROR("[ERASE] IC Type Fail\n");
+	else if (fw_status == FTS_RUN_IN_APP) {
+		i_ret = fts_ctpm_fw_erase(client);
+	} else {
+		/* if app is invalid, reset to run ROM */
+		FTS_INFO("[ERASE] FW APP invalid\n");
+		fts_ctpm_rom_or_pram_reset(client);
+	}
+
+	FTS_FUNC_EXIT();
+	return i_ret;
+}
