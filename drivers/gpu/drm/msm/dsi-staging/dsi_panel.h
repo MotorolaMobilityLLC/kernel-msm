@@ -29,9 +29,6 @@
 #include "dsi_pwr.h"
 #include "dsi_parser.h"
 #include "msm_drv.h"
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-#include "dsi_iris2p_hw.h"
-#endif
 
 #define MAX_BL_LEVEL 4096
 #define MAX_BL_SCALE_LEVEL 1024
@@ -284,10 +281,6 @@ struct dsi_panel {
 	struct panel_hbm hbm_config;
 
 	struct panel_param *param_cmds;
-
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	struct iris_hw_config iris_hw_cfg;
-#endif
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)

@@ -364,8 +364,5 @@ int sde_encoder_in_cont_splash(struct drm_encoder *enc);
  * @Return:     non zero value if ctl start timeout occurred
  */
 int sde_encoder_get_ctlstart_timeout_state(struct drm_encoder *enc);
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-#include "iris_sde_encoder_helper.h"
-#endif
 
 #endif /* __SDE_ENCODER_H__ */

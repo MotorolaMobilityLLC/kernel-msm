@@ -1165,12 +1165,6 @@ static void _sde_sspp_setup_vig(struct sde_mdss_cfg *sde_cfg,
 	if (PROP_VALUE_ACCESS(prop_value, VIG_INVERSE_PMA, 0))
 		set_bit(SDE_SSPP_INVERSE_PMA, &sspp->features);
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-        clear_bit(SDE_SSPP_PCC, &sspp->features);
-        clear_bit(SDE_SSPP_HSIC, &sspp->features);
-        clear_bit(SDE_SSPP_MEMCOLOR, &sspp->features);
-        clear_bit(SDE_SSPP_VIG_IGC, &sspp->features);
-#endif
 	sblk->format_list = sde_cfg->vig_formats;
 	sblk->virt_format_list = sde_cfg->virt_vig_formats;
 }
@@ -2104,17 +2098,6 @@ static void _sde_dspp_setup_blocks(struct sde_mdss_cfg *sde_cfg,
 		sblk->sixzone.len = 0;
 		set_bit(SDE_DSPP_VLUT, &dspp->features);
 	}
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	clear_bit(SDE_DSPP_VLUT, &dspp->features);
-	clear_bit(SDE_DSPP_SIXZONE, &dspp->features);
-	clear_bit(SDE_DSPP_MEMCOLOR, &dspp->features);
-	clear_bit(SDE_DSPP_HSIC, &dspp->features);
-	// clear_bit(SDE_DSPP_IGC, &dspp->features);
-	// clear_bit(SDE_DSPP_PCC, &dspp->features);
-	// clear_bit(SDE_DSPP_GC, &dspp->features);
-	clear_bit(SDE_DSPP_GAMUT, &dspp->features);
-	clear_bit(SDE_DSPP_HIST, &dspp->features);
-#endif
 }
 
 static void _sde_inline_rot_parse_dt(struct device_node *np,
@@ -2421,9 +2404,6 @@ static int sde_dspp_parse_dt(struct device_node *np,
 			sblk->ad.version = PROP_VALUE_ACCESS(ad_prop_value,
 				AD_VERSION, 0);
 			set_bit(SDE_DSPP_AD, &dspp->features);
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-			clear_bit(SDE_DSPP_AD, &dspp->features);
-#endif
 		}
 	}
 
@@ -3277,11 +3257,7 @@ static int sde_parse_dt(struct device_node *np, struct sde_mdss_cfg *cfg)
 
 	cfg->has_src_split = PROP_VALUE_ACCESS(prop_value, SRC_SPLIT, 0);
 	cfg->has_dim_layer = PROP_VALUE_ACCESS(prop_value, DIM_LAYER, 0);
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-        cfg->has_idle_pc = 0;
-#else
 	cfg->has_idle_pc = PROP_VALUE_ACCESS(prop_value, IDLE_PC, 0);
-#endif
 	cfg->pipe_order_type = PROP_VALUE_ACCESS(prop_value,
 		PIPE_ORDER_VERSION, 0);
 	cfg->has_line_insertion = PROP_VALUE_ACCESS(prop_value,

@@ -43,11 +43,6 @@
 #define DITHER_DEPTH_MAP_INDEX 9
 static u32 dither_depth_map[DITHER_DEPTH_MAP_INDEX] = {
 	0, 0, 0, 0, 0, 1, 2, 3, 3
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	0, 0, 0, 0, 0, 1, 2, 3, 2
-#else
-	0, 0, 0, 0, 0, 1, 2, 3, 3
-#endif
 };
 
 #define MERGE_3D_MODE 0x004

@@ -25,10 +25,6 @@
 #include "dsi_parser.h"
 #include "dsi_display.h"
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-#include "dsi_iris2p_api.h"
-#endif
-
 /**
  * topology is currently defined by a set of following 3 values:
  * 1. num of layer mixers
@@ -359,9 +355,6 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->hbm_config.hbm_en_gpio))
 		gpio_free(panel->hbm_config.hbm_en_gpio);
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	iris_dsi_gpio_free(panel);
-#endif
 	return rc;
 }
 
@@ -471,9 +464,6 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 	return rc;
 }
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	#include "dsi_iris2p_panel.c"
-#endif
 
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
@@ -486,12 +476,6 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto exit;
 	}
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-        rc = dsi_iris_power_on(panel);
-        if (rc) {
-                pr_err("[%s] failed to dsi_iris_power_on, rc=%d\n", panel->name, rc);
-        }
-#endif
 	rc = dsi_panel_set_pinctrl_state(panel, true);
 	if (rc) {
 		pr_err("[%s] failed to set pinctrl, rc=%d\n", panel->name, rc);
@@ -541,22 +525,10 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		pr_err("[%s] failed set pinctrl state, rc=%d\n", panel->name,
 		       rc);
 	}
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	if (gpio_is_valid(panel->iris_hw_cfg.iris_reset_gpio)) {
-		rc = gpio_direction_output(panel->iris_hw_cfg.iris_reset_gpio, 0);
-		if (rc) {
-			pr_err("unable to set dir for disp gpio rc=%d\n", rc);
-		}
-	}
-#endif
+
 	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
 	if (rc)
 		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	rc = dsi_iris_power_off(panel);
-	if (rc)
-		pr_err("[%s] failed to dsi_iris_power_off, rc=%d\n", panel->name, rc);
-#endif
 
 	return rc;
 }
@@ -683,22 +655,15 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 		return -EINVAL;
 	}
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-        pr_info("%s: bl leve=%d bl->bl_2bytes_enable=%d\n", __func__, bl_lvl, bl->bl_2bytes_enable);
-#endif
 	dsi = &panel->mipi_device;
 
 	if (panel->bl_config.bl_inverted_dbv)
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-        rc = iris_handover_dcs_set_display_brightness(panel, bl_lvl, DSI_CMD_SET_STATE_LP);
-#else
 	if (bl->bl_2bytes_enable)
 		rc = mipi_dsi_dcs_set_display_brightness_2bytes(dsi, bl_lvl);
 	else
 		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
-#endif
 	if (rc < 0)
 		pr_err("failed to update dcs backlight:%d\n", bl_lvl);
 
@@ -3887,11 +3852,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		goto error;
 	}
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	rc = dsi_panel_parse_iris_gpios(panel, of_node);
-	if (rc)
-		pr_err("failed to parse iris_gpios, rc=%d\n", rc);
-#endif
 	rc = dsi_panel_parse_power_cfg(panel);
 	if (rc)
 		pr_err("failed to parse power config, rc=%d\n", rc);
@@ -3924,12 +3884,6 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	rc = dsi_panel_parse_esd_config(panel);
 	if (rc)
 		pr_debug("failed to parse esd config, rc=%d\n", rc);
-
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	iris_enable_ref_clk(panel, parent);
-
-	iris_info_init(panel);
-#endif
 
 	rc = dsi_panel_parse_mot_panel_config(panel, of_node);
 	if (rc)
@@ -5005,46 +4959,7 @@ int dsi_panel_enable(struct dsi_panel *panel)
 
 	pr_info("(%s)+\n", panel->name);
 	mutex_lock(&panel->panel_lock);
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-        rc = iris_dsi_panel_enable(panel);
-	if (rc) {
-		pr_err("[%s] failed to light up iris and panel, rc=%d\n",
-		       panel->name, rc);
-		goto err;
-	}
 
-	/*just to avoid building failure*/
-	if (0) {
-		if (!panel->no_panel_on_read_support) {
-			rc = dsi_panel_get_pwr_mode(panel, &pwr_mode);
-			if (rc) {
-				pr_err("[%s] Failed to read pwr_mode, rc = %d",
-								panel->name, rc);
-				goto err;
-			}
-
-			if (pwr_mode != panel->disp_on_chk_val) {
-				pr_err("%s: Read Pwr_mode=0%x is not matched with expected value =0x%x\n",
-					__func__, pwr_mode, panel->disp_on_chk_val);
-				if (panel_recovery_retry++ > 5) {
-					pr_err("%s: panel recovery failed for all retries",
-							__func__);
-
-					BUG();
-				}
-				dsi_panel_trigger_panel_dead_event(panel);
-			} else {
-				pr_info("Pwr_mode(0x0A) = 0x%x\n", pwr_mode);
-				panel_recovery_retry = 0;
-			}
-		} else
-			pr_info("-: no_panel_on_read_support is set\n");
-	}
-
-        panel->panel_initialized = true;
-
-        iris_work_enable(true);
-#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ON);
 	if (rc) {
 		pr_err("[%s] failed to send DSI_CMD_SET_ON cmds, rc=%d\n",
@@ -5078,7 +4993,6 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		pr_info("-: no_panel_on_read_support is set\n");
 
 	panel->panel_initialized = true;
-#endif
 err:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -5153,10 +5067,6 @@ int dsi_panel_disable(struct dsi_panel *panel)
 			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 				"ibb", REGULATOR_MODE_STANDBY);
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-		iris_lightdown(panel);
-		iris_work_enable(false);
-#endif
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
 		if (rc) {
 			/*
