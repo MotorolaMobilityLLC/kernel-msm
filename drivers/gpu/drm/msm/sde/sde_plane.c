@@ -37,9 +37,6 @@
 #include "sde_plane.h"
 #include "sde_color_processing.h"
 #include "sde_hw_rot.h"
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-#include "dsi_iris2p_api.h"
-#endif
 
 #define SDE_DEBUG_PLANE(pl, fmt, ...) SDE_DEBUG("plane%d " fmt,\
 		(pl) ? (pl)->base.base.id : -1, ##__VA_ARGS__)
@@ -1417,11 +1414,6 @@ static void sde_color_process_plane_setup(struct drm_plane *plane)
 
 	psde = to_sde_plane(plane);
 	pstate = to_sde_plane_state(plane->state);
-
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	if (iris_hdr_enable_get())
-		return;
-#endif
 
 	hue = (uint32_t) sde_plane_get_property(pstate, PLANE_PROP_HUE_ADJUST);
 	if (psde->pipe_hw->ops.setup_pa_hue)
