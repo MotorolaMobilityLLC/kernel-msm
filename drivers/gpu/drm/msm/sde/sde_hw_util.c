@@ -128,9 +128,6 @@ void sde_set_scaler_v2(struct sde_hw_scaler3_cfg *cfg,
 	cfg->unsharp_mask_blend = scale_v2->unsharp_mask_blend;
 
 	cfg->de.enable = scale_v2->de.enable;
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	cfg->de.enable = false;
-#endif
 	cfg->de.sharpen_level1 = scale_v2->de.sharpen_level1;
 	cfg->de.sharpen_level2 = scale_v2->de.sharpen_level2;
 	cfg->de.clip = scale_v2->de.clip;
@@ -280,9 +277,6 @@ static void _sde_hw_setup_scaler3_de(struct sde_hw_blk_reg_map *c,
 	u32 sharp_lvl, sharp_ctl, shape_ctl, de_thr;
 	u32 adjust_a, adjust_b, adjust_c;
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	de_cfg->enable = false;
-#endif
 	if (!de_cfg->enable)
 		return;
 
