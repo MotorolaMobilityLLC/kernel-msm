@@ -361,8 +361,4 @@ void sde_encoder_control_idle_pc(struct drm_encoder *enc, bool enable);
  */
 int sde_encoder_in_cont_splash(struct drm_encoder *enc);
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-#include "iris_sde_encoder_helper.h"
-#endif
-
 #endif /* __SDE_ENCODER_H__ */
