@@ -162,14 +162,6 @@ msm_drm-$(CONFIG_DRM_MSM_DSI_STAGING) += dsi-staging/dsi_phy.o \
 				dsi-staging/dsi_clk_manager.o \
 				dsi-staging/dsi_display_test.o
 
-ifeq ($(CONFIG_IRIS2P_FULL_SUPPORT),y)
-msm_drm-$(CONFIG_DRM_MSM_DSI_STAGING) += dsi-staging/dsi_iris2p_lightup.o \
-                               dsi-staging/dsi_iris2p_mode_switch.o \
-                               dsi-staging/dsi_iris2p_proc.o \
-                               dsi-staging/dsi_iris2p_device.o \
-                               dsi-staging/dsi_iris2p_i2c.o
-endif
-
 msm_drm-$(CONFIG_DSI_PARSER) += dsi-staging/dsi_parser.o
 
 msm_drm-$(CONFIG_DRM_MSM_DSI_PLL) += dsi/pll/dsi_pll.o \
