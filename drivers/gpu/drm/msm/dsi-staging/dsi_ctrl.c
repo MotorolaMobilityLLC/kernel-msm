@@ -995,12 +995,6 @@ static int dsi_ctrl_copy_and_pad_cmd(struct dsi_ctrl *dsi_ctrl,
 	    (cmd_type == MIPI_DSI_GENERIC_READ_REQUEST_2_PARAM))
 		buf[3] |= BIT(5);
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	/*fixed generic read*/
-	if ((buf[2] & 0x3f) == MIPI_DSI_GENERIC_READ_REQUEST_1_PARAM)
-		buf[3] |= BIT(5);
-#endif
-
 	*buffer = buf;
 	*size = len;
 
@@ -1685,11 +1679,7 @@ int dsi_ctrl_buffer_init(struct dsi_ctrl *dsi_ctrl)
 	}
 
 	dsi_ctrl->tx_cmd_buf = msm_gem_new(dsi_ctrl->drm_dev,
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-					   SZ_512K,
-#else
 					   SZ_4K,
-#endif
 					   MSM_BO_UNCACHED);
 
 	if (IS_ERR(dsi_ctrl->tx_cmd_buf)) {
@@ -1699,11 +1689,7 @@ int dsi_ctrl_buffer_init(struct dsi_ctrl *dsi_ctrl)
 		goto error;
 	}
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	dsi_ctrl->cmd_buffer_size = SZ_512K;
-#else
 	dsi_ctrl->cmd_buffer_size = SZ_4K;
-#endif
 
 	rc = msm_gem_get_iova(dsi_ctrl->tx_cmd_buf, aspace, &iova);
 	if (rc) {
@@ -2589,25 +2575,9 @@ static void _dsi_ctrl_destroy_isr(struct dsi_ctrl *dsi_ctrl)
 		return;
 
 	if (dsi_ctrl->irq_info.irq_num != -1) {
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-		uint32_t intr_idx = 0;
-#endif
 		devm_free_irq(&dsi_ctrl->pdev->dev,
 				dsi_ctrl->irq_info.irq_num, dsi_ctrl);
 		dsi_ctrl->irq_info.irq_num = -1;
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-		/* reset the refcounts to avoid info disconnection */
-		for (intr_idx = 0; intr_idx < DSI_STATUS_INTERRUPT_COUNT; intr_idx++) {
-			if (dsi_ctrl->irq_info.irq_stat_refcount[intr_idx] != 0) {
-				pr_err("_dsi_ctrl_destroy_isr: intr_idx=%d, refcount=%d",
-					intr_idx,
-					dsi_ctrl->irq_info.irq_stat_refcount[intr_idx]);
-
-				dsi_ctrl->irq_info.irq_stat_refcount[intr_idx] = 0;
-				dsi_ctrl->irq_info.irq_stat_mask = 0;
-			}
-		}
-#endif
 	}
 }
 
