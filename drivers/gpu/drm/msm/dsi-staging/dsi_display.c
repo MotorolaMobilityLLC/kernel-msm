@@ -32,9 +32,6 @@
 #include "sde_dbg.h"
 #include "dsi_parser.h"
 #include "dsi_phy.h"
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-#include "dsi_iris2p_api.h"
-#endif
 
 #define to_dsi_display(x) container_of(x, struct dsi_display, host)
 #define INT_BASE_10 10
@@ -502,11 +499,7 @@ static int dsi_host_alloc_cmd_tx_buffer(struct dsi_display *display)
 	struct dsi_display_ctrl *display_ctrl;
 
 	display->tx_cmd_buf = msm_gem_new(display->drm_dev,
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-			SZ_512K,
-#else
 			SZ_4K,
-#endif
 			MSM_BO_UNCACHED);
 
 	if ((display->tx_cmd_buf) == NULL) {
@@ -514,11 +507,9 @@ static int dsi_host_alloc_cmd_tx_buffer(struct dsi_display *display)
 		rc = -ENOMEM;
 		goto error;
 	}
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	display->cmd_buffer_size = SZ_512K;
-#else
+
 	display->cmd_buffer_size = SZ_4K;
-#endif
+
 	display->aspace = msm_gem_smmu_address_space_get(
 			display->drm_dev, MSM_SMMU_DOMAIN_UNSECURE);
 	if (!display->aspace) {
@@ -551,11 +542,7 @@ static int dsi_host_alloc_cmd_tx_buffer(struct dsi_display *display)
 
 	display_for_each_ctrl(cnt, display) {
 		display_ctrl = &display->ctrl[cnt];
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-		display_ctrl->ctrl->cmd_buffer_size = SZ_512K;
-#else
 		display_ctrl->ctrl->cmd_buffer_size = SZ_4K;
-#endif
 		display_ctrl->ctrl->cmd_buffer_iova =
 					display->cmd_buffer_iova;
 		display_ctrl->ctrl->vaddr = display->vaddr;
@@ -860,13 +847,6 @@ int dsi_display_check_status(struct drm_connector *connector, void *display,
 	dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
 			     DSI_ALL_CLKS, DSI_CLK_ON);
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	/* use i2c to read register */
-	if (status_mode == ESD_MODE_REG_READ) {
-		rc = get_iris_status();
-		goto release_panel_lock;
-       }
-#endif
 	/* Mask error interrupts before attempting ESD read */
 	mask = BIT(DSI_FIFO_OVERFLOW) | BIT(DSI_FIFO_UNDERFLOW);
 	dsi_display_set_ctrl_esd_check_flag(dsi_display, true);
@@ -3429,12 +3409,7 @@ static ssize_t dsi_host_transfer(struct mipi_dsi_host *host,
 
 		u32 flags = DSI_CTRL_CMD_FETCH_MEMORY;
 
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-		/*FIXME for ESD if needed*/
-		if (msg->rx_buf && msg->flags&BIT(6))
-#else
 		if (msg->rx_buf)
-#endif
 			flags |= DSI_CTRL_CMD_READ;
 
 		rc = dsi_ctrl_cmd_transfer(display->ctrl[ctrl_idx].ctrl, msg,
@@ -7475,21 +7450,12 @@ static void dsi_display_handle_lp_rx_timeout(struct work_struct *work)
 	u32 version = 0;
 
 	display = container_of(work, struct dsi_display, lp_rx_timeout_work);
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	if (!display || !display->panel ||
-            atomic_read(&display->panel->esd_recovery_pending)) {
-                pr_debug("Invalid recovery use case\n");
-                return;
-        }
-	pr_err("handle DSI LP RX Timeout error: recovery\n");
-#else
 	if (!display || !display->panel ||
 	    (display->panel->panel_mode != DSI_OP_VIDEO_MODE) ||
 	    atomic_read(&display->panel->esd_recovery_pending)) {
 		pr_debug("Invalid recovery use case\n");
 		return;
 	}
-#endif
 
 	mutex_lock(&display->display_lock);
 
@@ -7534,11 +7500,7 @@ static void dsi_display_handle_lp_rx_timeout(struct work_struct *work)
 	/* Enable Video mode for DSI controller */
 	display_for_each_ctrl(i, display) {
 		ctrl = &display->ctrl[i];
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-		dsi_ctrl_vid_engine_en(ctrl->ctrl, false);
-#else
 		dsi_ctrl_vid_engine_en(ctrl->ctrl, true);
-#endif
 	}
 
 	/*
@@ -7644,10 +7606,6 @@ int dsi_display_prepare(struct dsi_display *display)
 		pr_err("Invalid params\n");
 		return -EINVAL;
 	}
-
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-        iris_drm_device_handle_get(display, display->drm_dev);
-#endif
 
 	if (!display->panel->cur_mode) {
 		pr_err("no valid mode set for the display");
@@ -8096,9 +8054,6 @@ int dsi_display_enable(struct dsi_display *display)
 		}
 
 		display->panel->panel_initialized = true;
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-		iris_firmware_download_cont_splash(display->panel);
-#endif
 		pr_debug("cont splash enabled, display enable not required\n");
 		return 0;
 	}
@@ -8382,9 +8337,6 @@ int dsi_display_unprepare(struct dsi_display *display)
 
 static int __init dsi_display_register(void)
 {
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	iris2p_register_fs();
-#endif
 	dsi_phy_drv_register();
 	dsi_ctrl_drv_register();
 
@@ -8395,9 +8347,6 @@ static int __init dsi_display_register(void)
 
 static void __exit dsi_display_unregister(void)
 {
-#if defined(CONFIG_IRIS2P_FULL_SUPPORT)
-	iris2p_unregister_fs();
-#endif
 	platform_driver_unregister(&dsi_display_driver);
 	dsi_ctrl_drv_unregister();
 	dsi_phy_drv_unregister();
