@@ -16,14 +16,6 @@
 #include "sm6150-parker-audio-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-parker-overlay.dtsi"
 
-#include <dt-bindings/clock/qcom,rpmh.h>
-
-&pm6150_l19 {
-	regulator-boot-on;
-	regulator-always-on;
-	status = "ok";
-};
-
 &tlmm{
 	nfc {
 		nfc_int_active: nfc_int_active {
@@ -473,11 +465,6 @@
 			aw2015,off-time-ms = <4>;
 		};
 	};
-
-        iris2p@22 {
-                compatible = "pxlw,iris2p_i2c";
-                reg = <0x22>;
-        };
 };
 
 &qupv3_se5_i2c {
@@ -702,18 +689,8 @@
 
 	vddio-supply = <&pm6150_l15>;
 	vdd-supply = <&pm6150_l18>;
-
-	clocks = <&mdss_dsi0_pll BYTE0_MUX_CLK>,
-		 <&mdss_dsi0_pll PIX0_MUX_CLK>,
-		 <&mdss_dsi0_pll BYTE0_SRC_CLK>,
-		 <&mdss_dsi0_pll PIX0_SRC_CLK>,
-		 <&mdss_dsi0_pll SHADOW_BYTE0_SRC_CLK>,
-		 <&mdss_dsi0_pll SHADOW_PIX0_SRC_CLK>,
-		 <&clock_rpmh RPMH_LN_BB_CLK3>;
-	clock-names = "mux_byte_clk0", "mux_pixel_clk0",
-		"src_byte_clk0", "src_pixel_clk0",
-		"shadow_byte_clk0", "shadow_pixel_clk0","div_clk3";
 };
+
 
 &mot_tianma_639_1080p_cmd_v1 {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
@@ -721,10 +698,6 @@
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 	qcom,platform-hbm-en-gpio = <&tlmm 117 1>;
 	qcom,panel-te-source = <0>;
-
-	qcom,dsp-iris_1v1 = <&tlmm 116 0>;
-	qcom,dsp-reset-gpio = <&tlmm 122 0>;
-	qcom,dsp-wakeup-gpio = <&tlmm 103 0>;
 
 	qcom,mdss-dsi-t-clk-post = <0x0f>;
 	qcom,mdss-dsi-t-clk-pre = <0x37>;
@@ -737,11 +710,12 @@
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
-				[26 21 09 0B 06 03 04 a0
-				26 21 09 0B 06 03 04 a0
-				26 21 09 0B 06 03 04 a0
-				26 21 09 0B 06 03 04 a0
-				26 21 09 0B 06 03 04 a0];
+				[26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0];
+
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 		};
