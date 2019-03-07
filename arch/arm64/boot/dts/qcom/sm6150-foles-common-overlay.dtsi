@@ -738,7 +738,7 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
 	qcom,platform-te-gpio = <&tlmm 90 0>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
-	qcom,platform-vsync-source = <0>;
+	qcom,panel-te-source = <0>;
 
 	qcom,mdss-dsi-t-clk-post = <0x0f>;
 	qcom,mdss-dsi-t-clk-pre = <0x37>;
@@ -749,7 +749,8 @@
 	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 	//qcom,mdss-dsi-panel-status-value = <0x9c>;
-	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
+	//qcom,mdss-dsi-panel-on-check-value = <0x9c>;
+	qcom,mdss-dsi-no-panel-on-read-support;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
@@ -788,7 +789,8 @@
 	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 	//qcom,mdss-dsi-panel-status-value = <0x0c>;
-	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
+	//qcom,mdss-dsi-panel-on-check-value = <0x1c>;
+	qcom,mdss-dsi-no-panel-on-read-support;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
