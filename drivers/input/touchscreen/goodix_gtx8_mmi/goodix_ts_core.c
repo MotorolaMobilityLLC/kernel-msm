@@ -30,10 +30,6 @@
 #include <linux/fb.h>
 #include "goodix_ts_core.h"
 #include <linux/input/mt.h>
-#ifdef GTP_CHARGER
-#include <linux/power_supply.h>
-#endif
-
 #define INPUT_TYPE_B_PROTOCOL
 #define GOOIDX_INPUT_PHYS		"goodix_ts/input0"
 #define PINCTRL_STATE_ACTIVE    "pmx_ts_active"
@@ -2302,14 +2298,7 @@ static void goodix_ts_earlysuspend(struct early_suspend *h)
 	struct goodix_ts_core *core_data =
 		container_of(h, struct goodix_ts_core,
 			 early_suspend);
-#ifdef GTP_CHARGER
-	if (core_data->ts_dev->board_data->charger_detection) {
-		if (core_data->ts_dev->board_data->charger_detection->charger_notif.notifier_call)
-			power_supply_unreg_notifier(&core_data->charger_detection->charger_notif);
-		destroy_workqueue(core_data->ts_dev->board_data->charger_detection->goodix_charger_notify_wq);
-		kfree(core_data->ts_dev->board_data->charger_detection);
-	}
-#endif
+
 	goodix_ts_suspend(core_data);
 }
 /**
@@ -2387,6 +2376,7 @@ exit:
 	return 0;
 
 }
+
 
 /**
  * goodix_ts_probe - called by kernel when a Goodix touch
@@ -2551,20 +2541,6 @@ static int __init goodix_ts_core_init(void)
 
 static void __exit goodix_ts_core_exit(void)
 {
-#ifdef GTP_CHARGER
-	struct goodix_ts_core *core_data = goodix_modules.core_data;
-
-	core_data->ts_dev->board_data->charger_send_flage_enable = false;
-	if (core_data->ts_dev->board_data->charger_detection) {
-		if (core_data->ts_dev->board_data->charger_detection
-			->charger_notif.notifier_call)
-			power_supply_unreg_notifier(
-			&core_data->ts_dev->board_data->charger_detection->charger_notif);
-		destroy_workqueue(core_data->ts_dev->board_data->
-		charger_detection->goodix_charger_notify_wq);
-		kfree(core_data->ts_dev->board_data->charger_detection);
-	}
-#endif
 	ts_info("Core layer exit");
 	platform_driver_unregister(&goodix_ts_driver);
 	/*return;*/
