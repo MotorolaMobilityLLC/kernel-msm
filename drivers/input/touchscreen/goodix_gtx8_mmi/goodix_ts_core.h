@@ -121,20 +121,6 @@ struct goodix_module {
 };
 extern struct goodix_module goodix_modules;
 
-#define GTP_CHARGER
-#ifdef GTP_CHARGER
-
-#define USB_DETECT_IN 1
-#define USB_DETECT_OUT 0
-extern int usb_detect_flag;
-struct usb_charger_detection {
-	struct notifier_block charger_notif;
-	int usb_connected;
-	struct workqueue_struct *goodix_charger_notify_wq;
-	struct work_struct charger_notify_work;
-};
-#endif
-
 /*
  * struct goodix_ts_board_data -  board data
  * @avdd_name: name of analoy regulator
@@ -181,11 +167,6 @@ struct goodix_ts_board_data {
 	const char *fw_name;
 	const char *cfg_bin_name;
 	bool esd_default_on;
-#ifdef GTP_CHARGER
-	bool charger_detection_enable;
-	struct usb_charger_detection *charger_detection;
-	bool charger_send_flage_enable;
-#endif
 };
 
 /*
@@ -769,10 +750,6 @@ int goodix_get_channel_num(u32 *sen_num, u32 *drv_num);
 int goodix_get_rawordiff_data(int which, int *data);
 
 int goodix_nodereg_read(void);
-#ifdef GTP_CHARGER
-int goodix_set_charger_bit(int state);
-int goodix_charger_init(struct goodix_ts_board_data *board_data);
-#endif
 extern void goodix_msg_printf(const char *fmt, ...);
 
 #endif
