@@ -1119,9 +1119,6 @@ static int goodix_fw_update_thread(struct fw_update_ctrl *fwu_ctrl)
 	fwu_ctrl->allow_suspend = false;
 	fwu_ctrl->allow_resume = false;
 	fwu_ctrl->allow_reset = false;
-#ifdef GTP_CHARGER
-	fwu_ctrl->core_data->ts_dev->board_data->charger_send_flage_enable = false;
-#endif
 	goodix_ts_blocking_notify(NOTIFY_FWUPDATE_START, NULL);
 
 	/* ready to update */
@@ -1132,9 +1129,7 @@ static int goodix_fw_update_thread(struct fw_update_ctrl *fwu_ctrl)
 	fwu_ctrl->allow_irq = true;
 	fwu_ctrl->allow_suspend = true;
 	fwu_ctrl->allow_resume = true;
-#ifdef GTP_CHARGER
-	fwu_ctrl->core_data->ts_dev->board_data->charger_send_flage_enable = true;
-#endif
+
 	/* clean */
 	if (!fwu_ctrl->fw_from_sysfs) {
 		if (atomic_read(&fw_update_mode) == 0) {
