@@ -1,10 +1,4 @@
 #include "goodix_ts_core.h"
-#ifdef GTP_CHARGER
-#include <linux/power_supply.h>
-
-#define MOTO_CHARGER_FLAGE_IN			0x06
-#define MOTO_CHARGER_FLAGE_OUT			0x07
-#endif
 
 #define MOTO_SENSOR_NUM_ADDR			0x5473
 #define MOTO_DRIVER_GROUP_A_NUM_ADDR		0x5477
@@ -441,53 +435,3 @@ int goodix_nodereg_read(void)
 	return ret;
 }
 
-#ifdef GTP_CHARGER
-int goodix_set_charger_bit(int state)
-{
-	int ret = 0;
-	int count = 3;
-	u8 read_val = 0;
-	struct goodix_ts_cmd charger_cmd;
-	struct goodix_ts_device *ts_dev = goodix_modules.core_data->ts_dev;
-
-	ts_info("send cmd charger ! %d", state);
-	if (ts_dev == NULL) {
-		ts_err("i2c no register");
-		return -EPERM;
-	}
-	if (!ts_dev->board_data->charger_send_flage_enable) {
-		ts_err("charger send flage disable");
-		return -EPERM;
-	}
-
-	if (state == 1) {
-		goodix_cmds_init(&charger_cmd, MOTO_CHARGER_FLAGE_IN, 0,
-			ts_dev->reg.command);
-	} else if (state == 0) {
-		goodix_cmds_init(&charger_cmd, MOTO_CHARGER_FLAGE_OUT, 0,
-			ts_dev->reg.command);
-	} else {
-		ts_err("Invalid set charger bit params");
-		return -EPERM;
-	}
-
-	while (count--) {
-		ret = ts_dev->hw_ops->send_cmd(ts_dev, &charger_cmd);
-		if (ret) {
-			ts_err("Send charger command error");
-			ret = -1;
-		}
-
-		usleep_range(GTP_10000_DLY_US, GTP_11000_DLY_US);
-		if (goodix_i2c_read(ts_dev, MOTO_CMD_ADDR, &read_val, 1))
-			ts_err("Read cmd reg fail.");
-		else
-			ts_info("Read cmd reg value:%02x.", read_val);
-
-		if (read_val == 0xff)
-			break;
-	}
-
-	return ret;
-}
-#endif
