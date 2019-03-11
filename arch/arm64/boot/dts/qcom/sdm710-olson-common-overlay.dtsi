@@ -172,6 +172,10 @@
 	regulator-boot-on;
 };
 
+&pm660_l11 {
+	regulator-always-on;
+};
+
 &pm660_l14 {
 	regulator-always-on;
 };
