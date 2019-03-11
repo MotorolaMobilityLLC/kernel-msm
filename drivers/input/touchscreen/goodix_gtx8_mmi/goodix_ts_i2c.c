@@ -25,7 +25,10 @@
 #include <linux/interrupt.h>
 #include "goodix_ts_core.h"
 #include "goodix_cfg_bin.h"
-
+#ifdef GTP_CHARGER
+#include <linux/power_supply.h>
+#include "goodix_ts_core.h"
+#endif
 #define TS_DT_COMPATIBLE "goodix,goodix_mmi"
 #define TS_DRIVER_NAME "goodix_i2c"
 #define I2C_MAX_TRANSFER_SIZE	256
@@ -60,6 +63,9 @@
 #error GOODIX_CFG_MAX_SIZE too small, please fix.
 #endif
 
+#ifdef GTP_CHARGER
+int usb_detect_flag;
+#endif
 #ifdef CONFIG_OF
 /**
  * goodix_parse_dt_resolution - parse resolution from dt
@@ -112,6 +118,155 @@ static int goodix_parse_dt_resolution(struct device_node *node,
 
 	return 0;
 }
+
+#ifdef GTP_CHARGER
+static void goodix_charger_notify_work(struct work_struct *work)
+{
+	if (work == NULL) {
+		ts_err("%s:  parameter work is null!\n", __func__);
+		return;
+	}
+
+	if (usb_detect_flag == USB_DETECT_IN)
+		goodix_set_charger_bit(USB_DETECT_IN);
+	else
+		goodix_set_charger_bit(USB_DETECT_OUT);
+}
+
+static int charger_notifier_callback(struct notifier_block *nb,
+		unsigned long val, void *v)
+{
+	int ret = 0;
+	struct power_supply *psy = NULL;
+	struct usb_charger_detection *charger_detection =
+			container_of(nb, struct usb_charger_detection,
+			charger_notif);
+	union power_supply_propval prop;
+
+	psy = power_supply_get_by_name("usb");
+
+	if (!psy) {
+		return -EINVAL;
+		ts_err("Couldn't get usbpsy\n");
+	}
+
+	if (!strcmp(psy->desc->name, "usb")) {
+		if (psy && charger_detection && val ==
+				POWER_SUPPLY_PROP_STATUS) {
+
+			ret = power_supply_get_property(psy,
+				POWER_SUPPLY_PROP_PRESENT, &prop);
+			if (ret < 0)
+				ts_err("Couldn't get POWER_SUPPLY_PROP_ONLINE rc=%d\n",
+					ret);
+			else {
+				usb_detect_flag = prop.intval;
+				if (usb_detect_flag !=
+					charger_detection->usb_connected) {
+					if (usb_detect_flag == USB_DETECT_IN)
+						charger_detection->usb_connected =
+							USB_DETECT_IN;
+					else
+						charger_detection->usb_connected =
+							USB_DETECT_OUT;
+
+					queue_work(
+					charger_detection->goodix_charger_notify_wq,
+					&charger_detection->charger_notify_work);
+				}
+			}
+		}
+	}
+	return ret;
+}
+
+int goodix_charger_init(struct goodix_ts_board_data *board_data)
+{
+	int r;
+
+	if (board_data->charger_detection_enable) {
+		board_data->charger_detection =
+		kzalloc(sizeof(struct usb_charger_detection), GFP_KERNEL);
+		if (!board_data->charger_detection)
+			goto err_charger_detection_alloc_failed;
+	}
+
+	if (board_data->charger_detection) {
+		struct power_supply *psy = NULL;
+		union power_supply_propval prop = {0};
+
+		board_data->charger_detection->usb_connected = 0;
+		board_data->charger_detection->goodix_charger_notify_wq =
+			create_singlethread_workqueue("goodix_charger_wq");
+		if (!board_data->charger_detection->goodix_charger_notify_wq) {
+			ts_err("allocate goodix_charger_notify_wq failed\n");
+			goto err_charger_notify_wq_failed;
+		}
+
+		INIT_WORK(
+			&board_data->charger_detection->charger_notify_work,
+			goodix_charger_notify_work);
+
+		board_data->charger_detection->charger_notif.notifier_call = charger_notifier_callback;
+		r = power_supply_reg_notifier(
+			&board_data->charger_detection->charger_notif);
+		if (r) {
+			ts_err("Unable to register charger_notifier:%d\n", r);
+			goto err_register_charger_notify_failed;
+		}
+
+		/* if power supply supplier registered brfore TP
+		 * ps_notify_callback will not receive PSY_EVENT_PROP_ADDED
+		 * event, and will cause miss to set TP into charger state.
+		 * So check PS state in probe.
+		 */
+		psy = power_supply_get_by_name("usb");
+
+		if (psy) {
+			r = power_supply_get_property(psy,
+					POWER_SUPPLY_PROP_PRESENT, &prop);
+			if (r < 0) {
+				ts_err("Couldn't get POWER_SUPPLY_PROP_ONLINE rc one\n");
+				goto err_register_charger_notify_failed;
+			} else {
+				usb_detect_flag = prop.intval;
+				if (usb_detect_flag !=
+					board_data->charger_detection->usb_connected) {
+					if (usb_detect_flag == USB_DETECT_IN)
+						board_data->charger_detection->usb_connected
+							= USB_DETECT_IN;
+					else {
+						board_data->charger_detection->usb_connected
+							= USB_DETECT_OUT;
+					}
+
+					goodix_set_charger_bit(
+					board_data->charger_detection->usb_connected);
+				}
+			}
+		}
+	}
+
+	return 0;
+
+err_register_charger_notify_failed:
+	ts_info("usb psy err");
+	if (board_data->charger_detection) {
+		if (board_data->charger_detection->charger_notif.notifier_call)
+			power_supply_unreg_notifier(
+				&board_data->charger_detection->charger_notif);
+		destroy_workqueue(
+			board_data->charger_detection->
+			goodix_charger_notify_wq);
+		board_data->charger_detection->goodix_charger_notify_wq = NULL;
+		kfree(board_data->charger_detection);
+	}
+err_charger_detection_alloc_failed:
+err_charger_notify_wq_failed:
+
+	return 0;
+}
+#endif
 
 /**
  * goodix_parse_dt - parse board data from dt
@@ -254,6 +409,15 @@ static int goodix_parse_dt(struct device_node *node,
 			board_data->panel_max_y,
 			board_data->panel_max_w,
 			board_data->panel_max_p);
+
+#ifdef GTP_CHARGER
+	if (of_property_read_bool(node, "goodix,usb_charger")) {
+		ts_info("goodix,usb_charger set");
+		board_data->charger_detection_enable = true;
+		usb_detect_flag = 0;
+	} else
+		board_data->charger_detection_enable = false;
+#endif
 	return 0;
 }
 
@@ -1918,6 +2082,17 @@ static int goodix_hw_suspend(struct goodix_ts_device *dev)
 {
 	struct goodix_ts_cmd sleep_cmd;
 	int r = 0;
+#ifdef GTP_CHARGER
+	struct goodix_ts_device *ts_dev = goodix_modules.core_data->ts_dev;
+
+	//is has, charger off
+	if ((ts_dev->board_data->charger_detection_enable) &&
+		(USB_DETECT_IN == ts_dev->board_data->charger_detection->usb_connected)) {
+		goodix_set_charger_bit(USB_DETECT_OUT);
+	}
+
+	ts_dev->board_data->charger_send_flage_enable = false;
+#endif
 
 	goodix_cmds_init(&sleep_cmd, COMMAND_SLEEP, 0, dev->reg.command);
 	if (sleep_cmd.initialized) {
@@ -1940,6 +2115,9 @@ static int goodix_hw_resume(struct goodix_ts_device *dev)
 	int r, i, retry = GOODIX_BUS_RETRY_TIMES;
 	u8 temp_buf[256], checksum;
 	u8 data[2] = {0x00};
+#ifdef GTP_CHARGER
+	struct goodix_ts_device *ts_dev = goodix_modules.core_data->ts_dev;
+#endif
 
 	for (; retry > 0; retry--) {
 		/*resume IC*/
@@ -1970,7 +2148,14 @@ static int goodix_hw_resume(struct goodix_ts_device *dev)
 			data[1] = 0;
 			goodix_i2c_write(dev, 0x824d, data, 2);
 		}
-
+#ifdef GTP_CHARGER
+		ts_dev->board_data->charger_send_flage_enable = true;
+		//if has, charger on
+		if ((ts_dev->board_data->charger_detection_enable) &&
+			(USB_DETECT_IN == ts_dev->board_data->charger_detection->usb_connected)) {
+			goodix_set_charger_bit(USB_DETECT_IN);
+		}
+#endif
 		/*read version and check checksum*/
 		if (dev->reg.version_base && dev->reg.version_len < 256) {
 			r = goodix_i2c_read(dev, dev->reg.version_base,
