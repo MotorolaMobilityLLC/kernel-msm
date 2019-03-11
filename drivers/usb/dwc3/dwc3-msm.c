@@ -386,10 +386,11 @@ struct dwc3_msm {
 	struct extcon_dev	*extcon_id;
 	bool			mod_vbus_active;
 	enum dwc3_id_state	mod_id_state;
-#endif
 	bool			ext_usb_run;
+#endif
 };
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 static struct dwc3_msm *the_chip;
 static int usb_priority;
 static int set_usb_pri_param(const char *val, const struct kernel_param *kp)
@@ -422,6 +423,7 @@ static struct kernel_param_ops usb_pri_ops = {
 
 module_param_cb(usb_priority, &usb_pri_ops, &usb_priority, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(usb_priority, "USB Priority with MOD, default is Phone");
+#endif
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
 #define USB_HSPHY_3P3_VOL_MAX		3300000 /* uV */
@@ -5069,8 +5071,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_modusb_enable);
 	device_create_file(&pdev->dev, &dev_attr_modusb_protocol);
 	device_create_file(&pdev->dev, &dev_attr_extusb_state);
-#endif
 	the_chip = mdwc;
+#endif
 	return 0;
 
 err_get_extcon:
@@ -6086,12 +6088,12 @@ static int dwc3_msm_pm_restore(struct device *dev)
 
 	/* kick in otg state machine */
 	queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
-
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 	if (mdwc->ext_usb_run) {
 		mdwc->ext_usb_run = false;
 		schedule_work(&mdwc->ext_usb_work);
 	}
-
+#endif
 	return 0;
 }
 #endif
