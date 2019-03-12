@@ -237,6 +237,7 @@ struct cci_device {
 	bool is_burst_read;
 	uint32_t irqs_disabled;
 	struct mutex init_mutex;
+	atomic_t is_busy;
 };
 
 enum cam_cci_i2c_cmd_type {
