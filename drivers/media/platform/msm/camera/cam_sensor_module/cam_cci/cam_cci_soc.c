@@ -45,6 +45,26 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	CAM_DBG(CAM_CCI, "Base address %pK", base);
 
+	if (atomic_cmpxchg(&cci_dev->is_busy, 0, 1) != 0) {
+		#define POLL_INTERVAL 5
+		#define TIMEOUT_CNT (jiffies_to_msecs(CCI_TIMEOUT)/POLL_INTERVAL)
+		uint32_t count = 0;
+
+		CAM_WARN(CAM_CCI, "Concurrent access to CCI_INIT (master: %d, sid: %d)",
+		                  c_ctrl->cci_info->cci_i2c_master,
+		                  c_ctrl->cci_info->sid);
+
+		do {
+			usleep_range(POLL_INTERVAL*1000, (POLL_INTERVAL+1)*1000);
+		} while (atomic_cmpxchg(&cci_dev->is_busy, 0, 1) == 1 &&
+		         count++ < TIMEOUT_CNT);
+
+		if (count >= TIMEOUT_CNT) {
+			CAM_ERR(CAM_CCI, "CCI was blocked by last accessor!!!");
+			return -ETIMEDOUT;
+		}
+	}
+
 	if (cci_dev->ref_count++) {
 		CAM_DBG(CAM_CCI, "ref_count %d", cci_dev->ref_count);
 		CAM_DBG(CAM_CCI, "master %d", master);
@@ -76,6 +96,7 @@ int cam_cci_init(struct v4l2_subdev *sd,
 				CAM_ERR(CAM_CCI, "wait failed %d", rc);
 			mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		}
+		atomic_set(&cci_dev->is_busy, 0);
 		return 0;
 	}
 
@@ -172,6 +193,7 @@ int cam_cci_init(struct v4l2_subdev *sd,
 		base + CCI_I2C_M1_RD_THRESHOLD_ADDR);
 
 	cci_dev->cci_state = CCI_STATE_ENABLED;
+	atomic_set(&cci_dev->is_busy, 0);
 
 	return 0;
 
@@ -181,6 +203,7 @@ reset_complete_failed:
 platform_enable_failed:
 	cci_dev->ref_count--;
 	cam_cpas_stop(cci_dev->cpas_handle);
+	atomic_set(&cci_dev->is_busy, 0);
 
 	return rc;
 }
