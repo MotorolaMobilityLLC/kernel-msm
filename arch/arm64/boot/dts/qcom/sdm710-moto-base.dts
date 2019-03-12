@@ -35,3 +35,7 @@
 		};
 	};
 };
+
+&soc {
+	regulator_ldoa11: rpmh-regulator-ldoa11 { };
+};
