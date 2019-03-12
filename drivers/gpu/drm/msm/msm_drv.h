@@ -36,6 +36,7 @@
 #include <linux/sde_io_util.h>
 #include <asm/sizes.h>
 #include <linux/kthread.h>
+#include <linux/notifier.h>
 
 #include <drm/drmP.h>
 #include <drm/drm_atomic.h>
@@ -654,6 +655,8 @@ struct msm_drm_private {
 
 	/* update the flag when msm driver receives shutdown notification */
 	bool shutdown_in_progress;
+
+	struct notifier_block msm_drv_notifier;
 };
 
 /* get struct msm_kms * from drm_device * */
