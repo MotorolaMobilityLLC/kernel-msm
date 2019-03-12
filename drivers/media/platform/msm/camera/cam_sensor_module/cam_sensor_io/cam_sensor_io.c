@@ -162,7 +162,7 @@ int32_t camera_io_init(struct camera_io_master *io_master_info)
 	if (io_master_info->master_type == CCI_MASTER) {
 		io_master_info->cci_client->cci_subdev =
 		cam_cci_get_subdev(io_master_info->cci_client->cci_device);
-		CAM_ERR(CAM_SENSOR, "MSM_CCI_INIT: master:%d, slave_addr:%x",
+		CAM_DBG(CAM_SENSOR, "MSM_CCI_INIT: master:%d, slave_addr:%x",
 		        io_master_info->cci_client->cci_i2c_master,
 		        io_master_info->cci_client->sid);
 		return cam_sensor_cci_i2c_util(io_master_info->cci_client,
@@ -183,7 +183,7 @@ int32_t camera_io_release(struct camera_io_master *io_master_info)
 	}
 
 	if (io_master_info->master_type == CCI_MASTER) {
-		CAM_ERR(CAM_SENSOR, "MSM_CCI_RELEASE: master:%d, slave_addr:%x",
+		CAM_DBG(CAM_SENSOR, "MSM_CCI_RELEASE: master:%d, slave_addr:%x",
 		        io_master_info->cci_client->cci_i2c_master,
 		        io_master_info->cci_client->sid);
 		return cam_sensor_cci_i2c_util(io_master_info->cci_client,
