@@ -2285,7 +2285,7 @@
 		reg-names = "cti-base";
 
 		coresight-name = "coresight-cti-wcss_cti0";
-
+		status = "disabled";
 		clocks = <&clock_rpmcc RPM_SMD_QDSS_CLK>;
 		clock-names = "apb_pclk";
 	};
@@ -2297,7 +2297,7 @@
 		reg-names = "cti-base";
 
 		coresight-name = "coresight-cti-wcss_cti1";
-
+		status = "disabled";
 		clocks = <&clock_rpmcc RPM_SMD_QDSS_CLK>;
 		clock-names = "apb_pclk";
 	};
@@ -2309,7 +2309,7 @@
 		reg-names = "cti-base";
 
 		coresight-name = "coresight-cti-wcss_cti2";
-
+		status = "disabled";
 		clocks = <&clock_rpmcc RPM_SMD_QDSS_CLK>;
 		clock-names = "apb_pclk";
 	};
