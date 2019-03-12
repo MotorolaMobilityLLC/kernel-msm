@@ -771,6 +771,38 @@
 	/delete-property/qcom,usbplug-cc-gpio;
 	/delete-property/pinctrl-3;
 	/delete-property/pinctrl-4;
+	/delete-property/qcom,phy-supply-entries;
+
+	mux-sel-supply = <&pm6150l_l7>;
+
+	qcom,phy-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,phy-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vdda-0p9";
+			qcom,supply-min-voltage = <880000>;
+			qcom,supply-max-voltage = <975000>;
+			qcom,supply-enable-load = <36000>;
+			qcom,supply-disable-load = <0>;
+		};
+		qcom,phy-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "hpd-pwr";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3230000>;
+			qcom,supply-enable-load = <30000>;
+			qcom,supply-disable-load = <0>;
+		};
+		qcom,phy-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "mux-sel";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3230000>;
+			qcom,supply-enable-load = <30000>;
+			qcom,supply-disable-load = <0>;
+		};
+	};
 };
 
 &pm6150l_rgb_led {
