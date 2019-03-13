@@ -68,7 +68,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 {
 	int32_t rc=0, rc2=0;
 	struct cam_sensor_cci_client cci_info = {
-		.cci_subdev     = cam_cci_get_subdev(xfer->cci_bus),
+		.cci_subdev     = cam_cci_get_subdev(0),
 		.cci_i2c_master = xfer->cci_bus,
 		.i2c_freq_mode = I2C_FAST_MODE,
 		.sid            = xfer->slave_addr,
@@ -97,7 +97,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 	case MSM_CCI_INTF_INIT:
 		/* init */
 		cci_ctrl.cmd = MSM_CCI_INIT;
-		rc = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
+		rc = v4l2_subdev_call(cam_cci_get_subdev(0),
 				core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
 		if (rc < 0) {
 			pr_err("%s: cci init fail (%d)\n", __func__, rc);
@@ -115,7 +115,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			cci_intf_xfer_addr_convert(xfer->reg.width);
 		cci_ctrl.cfg.cci_i2c_read_cfg.data = xfer->data.buf;
 		cci_ctrl.cfg.cci_i2c_read_cfg.num_byte = xfer->data.count;
-		rc = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
+		rc = v4l2_subdev_call(cam_cci_get_subdev(0),
 			core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
 		if (rc < 0) {
 			pr_err("%s: cci read fail (%d)\n", __func__, rc);
@@ -142,7 +142,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		cci_ctrl.cfg.cci_i2c_write_cfg.addr_type = cci_intf_xfer_addr_convert(xfer->reg.width);
 		cci_ctrl.cfg.cci_i2c_write_cfg.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
 		cci_ctrl.cfg.cci_i2c_write_cfg.size = xfer->data.count;
-		rc = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
+		rc = v4l2_subdev_call(cam_cci_get_subdev(0),
 				core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
 		kfree(reg_conf_tbl);
 		if (rc < 0) {
@@ -154,7 +154,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 	case MSM_CCI_INTF_RELEASE:
 		/* release */
 		cci_ctrl.cmd = MSM_CCI_RELEASE;
-		rc2 = v4l2_subdev_call(cam_cci_get_subdev(xfer->cci_bus),
+		rc2 = v4l2_subdev_call(cam_cci_get_subdev(0),
 				core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
 		if (rc2 < 0) {
 			pr_err("%s: cci release fail (%d)\n", __func__, rc2);
