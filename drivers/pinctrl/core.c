@@ -1271,7 +1271,7 @@ unapply_new_state:
 int pinctrl_select_state(struct pinctrl *p, struct pinctrl_state *state)
 {
 	if ((!p) || (!state)) {
-		pr_err("%s pinctrl or state null, escape!\n", __func__);
+		pr_info("%s pinctrl or state null, escape!\n", __func__);
 		return 0;
 	}
 
