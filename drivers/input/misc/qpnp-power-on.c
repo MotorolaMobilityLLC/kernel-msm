@@ -26,6 +26,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/time.h>
 
 #define PMIC_VER_8941				0x01
 #define PMIC_VERSION_REG			0x0105
@@ -986,6 +987,10 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	uint pon_rt_sts;
 	u64 elapsed_us;
 	int rc;
+	struct timespec64 now;
+	struct timeval timestamp;
+	struct tm tm;
+	char buff[255];
 
 	cfg = qpnp_get_cfg(pon, pon_type);
 	if (!cfg)
@@ -1014,6 +1019,19 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		pon_rt_bit = is_pon_gen3(pon)
 				? QPNP_PON_GEN3_KPDPWR_N_SET
 				: QPNP_PON_KPDPWR_N_SET;
+
+		/* get the time stamp in readable format to print*/
+		ktime_get_real_ts64(&now);
+		timestamp.tv_sec = now.tv_sec;
+		timestamp.tv_usec = now.tv_nsec/1000;
+		time64_to_tm((time64_t)(timestamp.tv_sec), 0, &tm);
+		snprintf(buff, sizeof(buff),
+			"%u-%02d-%02d %02d:%02d:%02d UTC",
+			(int) tm.tm_year + 1900, tm.tm_mon + 1,
+			tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+		pr_info("Report pwrkey %s event at: %s\n", pon_rt_bit &
+			pon_rt_sts ? "press" : "release", buff);
 		break;
 	case PON_RESIN:
 		pon_rt_bit = is_pon_gen3(pon)
