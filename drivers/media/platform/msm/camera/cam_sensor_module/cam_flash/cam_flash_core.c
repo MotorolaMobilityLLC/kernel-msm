@@ -576,6 +576,12 @@ static int cam_flash_i2c_delete_req(struct cam_flash_ctrl *fctrl,
 					== 1)) {
 				del_req_id = top;
 				top = fctrl->i2c_data.per_frame[i].request_id;
+			} else if (top >
+				fctrl->i2c_data.per_frame[i].request_id &&
+				del_req_id <
+				fctrl->i2c_data.per_frame[i].request_id) {
+				del_req_id =
+					fctrl->i2c_data.per_frame[i].request_id;
 			}
 		}
 
