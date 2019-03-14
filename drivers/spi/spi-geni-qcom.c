@@ -1973,8 +1973,17 @@ static int spi_geni_resume(struct device *dev)
 
 static int spi_geni_suspend(struct device *dev)
 {
+	struct spi_master *this_spi = get_spi_master(dev);
+	struct spi_geni_master *this_mas = spi_master_get_devdata(this_spi);
+	struct se_geni_rsc *rsc = &this_mas->spi_rsc;
 	int ret = 0;
-#if 0
+
+	if (rsc->without_pinctrl) {
+		GENI_SE_DBG(this_mas->ipc, true, dev,
+					"%s: mods spi. Do not force suspend", __func__);
+		return ret;
+	}
+
 	if (!pm_runtime_status_suspended(dev)) {
 		struct spi_master *spi = get_spi_master(dev);
 		struct spi_geni_master *geni_mas = spi_master_get_devdata(spi);
@@ -1995,7 +2004,7 @@ static int spi_geni_suspend(struct device *dev)
 			ret = -EBUSY;
 		}
 	}
-#endif
+
 	return ret;
 }
 #else
