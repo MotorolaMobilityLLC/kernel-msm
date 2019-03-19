@@ -924,6 +924,7 @@
 
 &pm660_fg {
 	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-force-load-profile = <1>;
 	qcom,fg-cutoff-voltage = <3200>;
 	qcom,fg-empty-voltage = <3000>;
 };
