@@ -2635,13 +2635,25 @@ void register_console(struct console *newcon)
 	struct console *bcon = NULL;
 	struct console_cmdline *c;
 	static bool has_preferred;
+	bool duplicated = false;
 
 	if (console_drivers)
-		for_each_console(bcon)
+		for_each_console(bcon) {
 			if (WARN(bcon == newcon,
 					"console '%s%d' already registered\n",
 					bcon->name, bcon->index))
 				return;
+
+			if ((bcon->flags & CON_BOOT) && bcon->match &&
+				!bcon->match(bcon, newcon->name,
+					     newcon->index, NULL)) {
+				pr_info("Duplicated console '%s%d' & '%s%d'\n",
+					bcon->name, bcon->index,
+					newcon->name, newcon->index);
+
+				duplicated = true;
+			}
+		}
 
 	/*
 	 * before we register a new CON_BOOT console, make sure we don't
@@ -2717,8 +2729,18 @@ void register_console(struct console *newcon)
 		break;
 	}
 
-	if (!(newcon->flags & CON_ENABLED))
+	if (!(newcon->flags & CON_ENABLED)) {
+		if (duplicated) {
+			if (newcon->index < 0)
+				newcon->index = 0;
+
+			if (newcon->setup && newcon->setup(newcon, NULL))
+				pr_err("Failed to set up duplicated console "
+				       "'%s%d'\n", newcon->name, newcon->index);
+		}
+
 		return;
+	}
 
 	/*
 	 * If we have a bootconsole, and are switching to a real console,
