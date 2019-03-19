@@ -150,6 +150,8 @@
 		ipc_log_string(ctx, x); \
 } while (0)
 
+#define MSM_CONSOLE_NAME	"ttyMSM"
+
 #define DMA_RX_BUF_SIZE		(2048)
 #define UART_CONSOLE_RX_WM	(2)
 
@@ -2948,6 +2950,13 @@ static void msm_geni_serial_cancel_rx(struct uart_port *uport)
 						GENI_FORCE_DEFAULT_REG);
 }
 
+static int
+msm_geni_serial_early_console_match(struct console *con, char *name, int idx,
+				    char *options)
+{
+	return (!name || strcmp(MSM_CONSOLE_NAME, name));
+}
+
 static int __init
 msm_geni_serial_earlycon_setup(struct earlycon_device *dev,
 		const char *opt)
@@ -3051,6 +3060,7 @@ msm_geni_serial_earlycon_setup(struct earlycon_device *dev,
 	geni_read_reg_nolog(uport->membase, GENI_SER_M_CLK_CFG);
 
 	dev->con->write = msm_geni_serial_early_console_write;
+	dev->con->match = msm_geni_serial_early_console_match;
 	dev->con->setup = NULL;
 	/*
 	 * Ensure that the early console setup completes before
@@ -3073,7 +3083,7 @@ static void console_unregister(struct uart_driver *drv)
 }
 
 static struct console cons_ops = {
-	.name = "ttyMSM",
+	.name = MSM_CONSOLE_NAME,
 	.write = msm_geni_serial_console_write,
 	.device = uart_console_device,
 	.setup = msm_geni_console_setup,
