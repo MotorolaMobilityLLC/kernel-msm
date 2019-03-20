@@ -18,7 +18,7 @@ maxim,kv30-atl-batterydata {
 	config		= /bits/ 16 <0x0154>;
 	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
 	design_cap	= /bits/ 16 <1260>;	/* mAh */
-	ichgt_term	= /bits/ 16 <153>;	/* mA */
+	ichgt_term	= /bits/ 16 <80>;	/* mA */
 	learn_cfg	= /bits/ 16 <0x2603>;	/* app note constant */
 	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
 	relax_cfg	= /bits/ 16 <0x203B>;
