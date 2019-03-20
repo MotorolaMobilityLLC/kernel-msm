@@ -165,6 +165,8 @@ static bool get_dload_mode(void)
 
 static void enable_emergency_dload_mode(void)
 {
+// IKSECURITY-2018 - Disable EDL mode
+#if 0
 	int ret;
 
 	if (emergency_dload_mode_addr) {
@@ -188,6 +190,7 @@ static void enable_emergency_dload_mode(void)
 	ret = scm_set_dload_mode(SCM_EDLOAD_MODE, 0);
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
+#endif
 }
 
 static int dload_set(const char *val, const struct kernel_param *kp)
