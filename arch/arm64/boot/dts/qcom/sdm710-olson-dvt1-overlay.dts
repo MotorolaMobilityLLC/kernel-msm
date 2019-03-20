@@ -306,3 +306,13 @@
 			 RPMH_REGULATOR_MODE_HPM>;
 	qcom,mode-threshold-currents = <0 1>;
 };
+
+&haptic_int_default {
+	mux {
+		pins = "gpio39";
+	};
+
+	config {
+		pins = "gpio39";
+	};
+};
