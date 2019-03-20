@@ -3960,7 +3960,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 
 		if (chg->mmi.factory_kill_armed && !factory_kill_disable) {
 			smblib_err(chg, "Factory kill power off\n");
-			kernel_power_off();
+			orderly_poweroff(true);
 		} else
 			chg->mmi.factory_kill_armed = false;
 	}
