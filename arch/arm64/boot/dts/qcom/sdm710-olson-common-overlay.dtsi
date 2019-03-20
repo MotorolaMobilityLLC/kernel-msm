@@ -563,6 +563,7 @@
 		maxim,hot-temp-c = <60>;
 		maxim,cool-temp-c = <0>;
 		maxim,cold-temp-c = <(-20)>;
+		maxim,df-read-battsn;
 		maxim,configuration {
 			df-serialnum    = "KV30";
 			/include/ "batterydata-kv30-atl-maxim.dtsi"
@@ -632,6 +633,7 @@
 		maxim,hot-temp-c = <60>;
 		maxim,cool-temp-c = <0>;
 		maxim,cold-temp-c = <(-20)>;
+		maxim,df-read-battsn;
 		maxim,configuration {
 			df-serialnum    = "KV40";
 			/include/ "batterydata-kv40-atl-maxim.dtsi"
