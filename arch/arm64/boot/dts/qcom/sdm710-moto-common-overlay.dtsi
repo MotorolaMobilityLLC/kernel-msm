@@ -396,12 +396,12 @@
 	haptic_int {
 		haptic_int_default: haptic_int_default {
 			mux {
-				pins = "gpio39";
+				pins = "gpio52";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio39";
+				pins = "gpio52";
 				drive-strength = <2>; /* 2 mA */
 				bias-disable;
 			};

@@ -176,3 +176,13 @@
 		};
 	};
 };
+
+&haptic_int_default {
+	mux {
+		pins = "gpio39";
+	};
+
+	config {
+		pins = "gpio39";
+	};
+};
