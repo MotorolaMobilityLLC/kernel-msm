@@ -678,6 +678,16 @@
 	status = "disable";
 };
 
+&pm6150_charger {
+	/delete-property/qcom,support-mods;
+	qcom,iterm-ma = <194>;
+	qcom,mmi-temp-zones = <0 4200 776 0>,
+				<10 4200 1940 776>,
+				<15 0 1940 1940>,
+				<45 4200 3600 2500>,
+				<60 4200 1940 0>;
+};
+
 &sde_dsi {
 	qcom,dsi-display-list =
 		<&dsi_tianma_639_1080x2340_cmd_display
@@ -806,5 +816,10 @@
 };
 
 &pm6150l_rgb_led {
-	status = "disabled";
+	green {
+		status = "disabled";
+	};
+	blue {
+		status = "disabled";
+	};
 };
