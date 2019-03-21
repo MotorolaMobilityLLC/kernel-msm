@@ -269,8 +269,10 @@
 	};
 };
 
-
 &pmi8940_vadc {
+        pinctrl-names = "default";
+        pinctrl-0 = <&host_det_default>;
+
 	chan@10 {
 		label = "host_det";
 		reg = <0x10>;
@@ -278,9 +280,20 @@
 		qcom,pre-div-channel-scaling = <1>;
 		qcom,calibration-type = "absolute";
 		qcom,scale-function = <0>;
-		qcom,hw-settle-time = <0>;
-		qcom,fast-avg-setup = <0>;
+		qcom,hw-settle-time = <1>;
+		qcom,fast-avg-setup = <2>;
 	};
+};
+
+&pmi8940_mpps {
+        host_det {
+               host_det_default: host_det_default {
+                     pins = "mpp1";
+                     function = "analog";
+                     input-enable;
+                     qcom,amux-route = <0>;
+               };
+        };
 };
 
 &thermal_zones {
