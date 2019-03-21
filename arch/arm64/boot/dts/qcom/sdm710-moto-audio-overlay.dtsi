@@ -9,13 +9,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
-#include "sdm670-audio-overlay.dtsi"
+#include "sdm670-lpi.dtsi"
 
 &soc {
-	msm_cdc_pinctrl_usbc_audio_en1 {
-		status = "disabled";
-	};
 	qcom,msm-dai-mi2s {
 		compatible = "qcom,msm-dai-mi2s";
 		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
@@ -109,10 +105,6 @@
 		regulator-name = "dummy_vreg";
 		regulator-always-on;
 	};
-	/delete-node/ qcom,wcd-dsp-mgr;
-	/delete-node/ qcom,wcd-dsp-glink;
-	/delete-node/ sound-tavil;
-	/delete-node/ sound-tasha;
 
 	aov_trigger {
 		status = "ok";
@@ -200,44 +192,14 @@
 };
 
 
-&clock_audio_lnbb {
-	status = "disabled";
-};
-
-&wsa_spkr_en1 {
-	status = "disabled";
-};
-
-&wsa_spkr_en2 {
-	status = "disabled";
-};
-
-&cdc_sdw_gpios {
-	status = "disabled";
-};
-
-&msm_sdw_codec {
-	status = "disabled";
-};
-
-&wcd_rst_gpio {
-	status = "disabled";
-};
-
-&cdc_pdm_gpios {
-	status = "disabled";
-};
-
 &slim_aud {
 	status = "ok";
-	/delete-node/ tavil_codec;
-	/delete-node/ tasha_codec;
 	madera-codec {
 		compatible = "cirrus,madera-slim-audio";
 		elemental-addr = [00 00 64 63 FA 01];
 	};
 };
 
-&pmic_analog_codec {
+&int_codec {
 	status = "disabled";
 };
