@@ -6085,13 +6085,23 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 enum alarmtimer_restart smblib_lpd_recheck_timer(struct alarm *alarm,
 						ktime_t time)
 {
-	union power_supply_propval pval;
 	struct smb_charger *chg = container_of(alarm, struct smb_charger,
 							lpd_recheck_timer);
-	int rc;
-	unsigned long flags;
 
-	spin_lock_irqsave(&chg->moisture_detection_enable, flags);
+	if (queue_work(chg->wq, &chg->lpd_recheck_work))
+		pm_stay_awake(chg->dev);
+
+	return ALARMTIMER_NORESTART;
+}
+
+static void lpd_recheck_work(struct work_struct *work)
+{
+	union power_supply_propval pval;
+	struct smb_charger *chg = container_of(work, struct smb_charger,
+					       lpd_recheck_work);
+	int rc;
+
+	mutex_lock(&chg->moisture_detection_enable);
 	if (!chg->moisture_detection_enabled)
 		goto disable;
 
@@ -6121,15 +6131,14 @@ disable:
 	chg->lpd_reason = LPD_NONE;
 
 exit:
-	spin_unlock_irqrestore(&chg->moisture_detection_enable, flags);
-
-	return ALARMTIMER_NORESTART;
+	mutex_unlock(&chg->moisture_detection_enable);
+	pm_relax(chg->dev);
+	return;
 }
 
 int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 {
 	int rc = 0;
-	unsigned long flags;
 
 	if (chg->lpd_disabled)
 		return 0;
@@ -6140,8 +6149,8 @@ int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 
 	cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 	alarm_cancel(&chg->lpd_recheck_timer);
+	mutex_lock(&chg->moisture_detection_enable);
 
-	spin_lock_irqsave(&chg->moisture_detection_enable, flags);
 	rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
 				TYPEC_WATER_DETECTION_INT_EN_BIT,
 				enable ?
@@ -6167,7 +6176,7 @@ int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 	}
 
 exit:
-	spin_unlock_irqrestore(&chg->moisture_detection_enable, flags);
+	mutex_unlock(&chg->moisture_detection_enable);
 	return rc;
 }
 
@@ -6178,16 +6187,16 @@ static bool smblib_src_lpd(struct smb_charger *chg)
 	bool lpd_flag = false;
 	u8 stat;
 	int rc;
-	unsigned long flags;
 
-	if (chg->lpd_disabled)
-		return false;
+	mutex_lock(&chg->moisture_detection_enable);
+	if (chg->lpd_disabled || !chg->moisture_detection_enabled)
+		goto exit;
 
 	rc = smblib_read(chg, TYPE_C_SRC_STATUS_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read TYPE_C_SRC_STATUS_REG rc=%d\n",
 				rc);
-		return false;
+		goto exit;
 	}
 
 	switch (stat & DETECTED_SNK_TYPE_MASK) {
@@ -6201,10 +6210,6 @@ static bool smblib_src_lpd(struct smb_charger *chg)
 	default:
 		break;
 	}
-
-	spin_lock_irqsave(&chg->moisture_detection_enable, flags);
-	if (!chg->moisture_detection_enabled)
-		lpd_flag = false;
 
 	if (lpd_flag) {
 		chg->lpd_stage = LPD_STAGE_COMMIT;
@@ -6224,7 +6229,8 @@ static bool smblib_src_lpd(struct smb_charger *chg)
 		chg->typec_mode = smblib_get_prop_typec_mode(chg);
 	}
 
-	spin_unlock_irqrestore(&chg->moisture_detection_enable, flags);
+exit:
+	mutex_unlock(&chg->moisture_detection_enable);
 	return lpd_flag;
 }
 
@@ -6639,7 +6645,6 @@ static void smblib_lpd_launch_ra_open_work(struct smb_charger *chg)
 {
 	u8 stat;
 	int rc;
-	unsigned long flags;
 
 	if (chg->lpd_disabled)
 		return;
@@ -6655,7 +6660,7 @@ static void smblib_lpd_launch_ra_open_work(struct smb_charger *chg)
 			&& chg->lpd_stage == LPD_STAGE_NONE) {
 		chg->lpd_stage = LPD_STAGE_FLOAT;
 		cancel_delayed_work_sync(&chg->lpd_ra_open_work);
-		spin_lock_irqsave(&chg->moisture_detection_enable, flags);
+		mutex_lock(&chg->moisture_detection_enable);
 		if (chg->moisture_detection_enabled) {
 			vote(chg->awake_votable, LPD_VOTER, true, 0);
 			schedule_delayed_work(&chg->lpd_ra_open_work,
@@ -6663,7 +6668,7 @@ static void smblib_lpd_launch_ra_open_work(struct smb_charger *chg)
 		} else {
 			chg->lpd_stage = LPD_STAGE_NONE;
 		}
-		spin_unlock_irqrestore(&chg->moisture_detection_enable, flags);
+		mutex_unlock(&chg->moisture_detection_enable);
 	}
 }
 
@@ -8149,10 +8154,11 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	union power_supply_propval pval;
 	u8 stat;
 	int rc;
-	unsigned long flags;
-	bool rsbux_low = false;
 
-	if (chg->pr_swap_in_progress || chg->pd_hard_reset) {
+	mutex_lock(&chg->moisture_detection_enable);
+
+	if (chg->pr_swap_in_progress || chg->pd_hard_reset
+	    || !chg->moisture_detection_enabled) {
 		chg->lpd_stage = LPD_STAGE_NONE;
 		goto out;
 	}
@@ -8188,22 +8194,14 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	/* Wait 1.5ms to get SBUx ready */
 	usleep_range(1500, 1510);
 
-	rsbux_low = smblib_rsbux_low(chg, RSBU_K_300K_UV);
-
-	spin_lock_irqsave(&chg->moisture_detection_enable, flags);
-	if (!chg->moisture_detection_enabled) {
-		chg->lpd_stage = LPD_STAGE_NONE;
-		goto unlock;
-	}
-
-	if (rsbux_low) {
+	if (smblib_rsbux_low(chg, RSBU_K_300K_UV)) {
 		/* Moisture detected, enable sink only mode */
 		pval.intval = POWER_SUPPLY_TYPEC_PR_SINK;
 		rc = smblib_set_prop_typec_power_role(chg, &pval);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't set typec sink only rc=%d\n",
 				rc);
-			goto unlock;
+			goto out;
 		}
 
 		chg->lpd_reason = LPD_MOISTURE_DETECTED;
@@ -8217,7 +8215,7 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't set TYPE_C_INTERRUPT_EN_CFG_2_REG rc=%d\n",
 					rc);
-			goto unlock;
+			goto out;
 		}
 
 		/* restore DRP mode */
@@ -8226,7 +8224,7 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't write 0x%02x to TYPE_C_INTRPT_ENB_SOFTWARE_CTRL rc=%d\n",
 				pval.intval, rc);
-			goto unlock;
+			goto out;
 		}
 
 		chg->lpd_reason = LPD_FLOATING_CABLE;
@@ -8234,9 +8232,8 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 
 	/* recheck in 60 seconds */
 	alarm_start_relative(&chg->lpd_recheck_timer, ms_to_ktime(60000));
-unlock:
-	spin_unlock_irqrestore(&chg->moisture_detection_enable, flags);
 out:
+	mutex_unlock(&chg->moisture_detection_enable);
 	vote(chg->awake_votable, LPD_VOTER, false, 0);
 }
 
@@ -8488,15 +8485,16 @@ int smblib_init(struct smb_charger *chg)
 	int rc = 0;
 
 	mutex_init(&chg->smb_lock);
+	mutex_init(&chg->moisture_detection_enable);
 	mutex_init(&chg->irq_status_lock);
 	mutex_init(&chg->dcin_aicl_lock);
 	mutex_init(&chg->dpdm_lock);
 	spin_lock_init(&chg->typec_pr_lock);
-	spin_lock_init(&chg->moisture_detection_enable);
 	INIT_WORK(&chg->bms_update_work, bms_update_work);
 	INIT_WORK(&chg->pl_update_work, pl_update_work);
 	INIT_WORK(&chg->jeita_update_work, jeita_update_work);
 	INIT_WORK(&chg->dcin_aicl_work, dcin_aicl_work);
+	INIT_WORK(&chg->lpd_recheck_work, lpd_recheck_work);
 	INIT_WORK(&chg->cp_status_change_work, smblib_cp_status_change_work);
 	INIT_DELAYED_WORK(&chg->clear_hdc_work, clear_hdc_work);
 	INIT_DELAYED_WORK(&chg->icl_change_work, smblib_icl_change_work);
@@ -8640,6 +8638,12 @@ int smblib_init(struct smb_charger *chg)
 		return -EINVAL;
 	}
 
+	chg->wq = create_singlethread_workqueue(dev_name(chg->dev));
+	if (!chg->wq) {
+		smblib_err(chg, "workqueue creation failed\n");
+		return -ENODEV;
+	}
+
 	return rc;
 }
 
@@ -8685,6 +8689,7 @@ int smblib_deinit(struct smb_charger *chg)
 	}
 
 	smblib_iio_deinit(chg);
+	destroy_workqueue(chg->wq);
 
 	return 0;
 }
