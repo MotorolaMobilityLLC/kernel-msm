@@ -328,15 +328,12 @@
 		reg = <0x08>;
 		st,irq_gpio = <&tlmm 24 0x00>;
 		st,reset_gpio = <&tlmm 12 0x00>;
-		st,clkreq_gpio = <&pm660_gpios 4 0x00>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <24 0>;
 		interrupt-names = "nfc_irq";
 		pinctrl-names = "nfc_active", "nfc_suspend";
-		pinctrl-0 = <&nfc_int_active &nfc_enable_active &nfc_clk_default>;
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active>;
 		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend>;
-		clocks = <&clock_rpmh RPMH_LN_BB_CLK3>;
-		clock-names = "nfc_ref_clk";
 	};
 };
 
@@ -1076,6 +1073,16 @@
 		mmi,temperature-names = "front_temp",
 					"back_temp";
 		status = "ok";
+	};
+
+	mmi_nfc_clk {
+		compatible = "mmi,nfc-clk";
+		interrupt-parent = <&spmi_bus>;
+		mmi,clkreq_gpio = <&pm660_gpios 4 0x00>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&nfc_clk_default>;
+		clocks = <&clock_rpmh RPMH_LN_BB_CLK3>;
+		clock-names = "mmi_nfc_ref_clk";
 	};
 };
 
