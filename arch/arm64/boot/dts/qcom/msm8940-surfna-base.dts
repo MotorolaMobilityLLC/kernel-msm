@@ -113,7 +113,6 @@
 	/delete-node/ quiet-therm-adc;
 	/delete-node/ pa-therm1-adc;
 	/delete-node/ case-therm-adc;
-	/delete-node/ pa-therm0-adc;
 	/delete-node/ xo-therm-adc;
 };
 
