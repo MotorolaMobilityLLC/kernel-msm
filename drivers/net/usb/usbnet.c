@@ -96,6 +96,51 @@ MODULE_PARM_DESC (msg_level, "Override default message level");
 #ifdef CONFIG_PANEL_NOTIFICATIONS
 int last_panel_state = -1;
 #endif
+struct usbnet *the_dev;
+/* user space override of autosuspend */
+static int force_on;
+static int set_force_on_param(const char *val, const struct kernel_param *kp)
+{
+	int rc;
+	int prev_up = force_on;
+	int panel_state = 0;
+
+#ifdef CONFIG_PANEL_NOTIFICATIONS
+	panel_state = last_panel_state;
+#endif
+
+	rc = param_set_int(val, kp);
+	if (rc)
+		return rc;
+
+	if (the_dev) {
+		if (prev_up != force_on) {
+			pr_info("usbnet: %s - force_on %d\n",
+				__func__, force_on);
+			if ((force_on == 0) && (panel_state == 0)) {
+				usb_enable_autosuspend(the_dev->udev);
+				pr_err("USB Autosuspend ON\n");
+			} else {
+				usb_disable_autosuspend(the_dev->udev);
+				pr_err("USB Autosuspend OFF\n");
+			}
+		} else
+			pr_info("usbnet: %s - force_on same\n", __func__);
+	} else
+		pr_err("usbnet: set force_on the_dev not ready\n");
+
+
+	return 0;
+}
+
+static struct kernel_param_ops force_on_ops = {
+	.set = set_force_on_param,
+	.get = param_get_int,
+};
+
+module_param_cb(force_on, &force_on_ops, &force_on, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC (force_on, "Override panel autosuspend decision");
+
 /*-------------------------------------------------------------------------*/
 
 /* handles CDC Ethernet and many other network "bulk data" interfaces */
@@ -1561,6 +1606,7 @@ void usbnet_disconnect (struct usb_interface *intf)
 #ifdef CONFIG_PANEL_NOTIFICATIONS
 	panel_unregister_notifier(&dev->panel_usb_notifier);
 #endif
+	the_dev = NULL;
 
 	xdev = interface_to_usbdev (intf);
 
@@ -1615,6 +1661,12 @@ static void panel_usb_work(struct work_struct *work)
 {
 	struct usbnet *dev = container_of(work, struct usbnet,
 					  panel_update_work);
+
+	if (force_on > 0) {
+		usb_disable_autosuspend(dev->udev);
+		last_panel_state = dev->panel_state;
+		return;
+	}
 
 	if (last_panel_state == dev->panel_state)
 		return;
@@ -1835,6 +1887,8 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 	if (status)
 		pr_err("USBNET Probe: Panel Notifier Failure %d\n", status);
 #endif
+	/* Store so that force_on can access */
+	the_dev = dev;
 
 	return 0;
 out5:
