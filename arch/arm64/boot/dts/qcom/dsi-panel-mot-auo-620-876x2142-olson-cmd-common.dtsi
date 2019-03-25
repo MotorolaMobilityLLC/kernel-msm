@@ -63,9 +63,6 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-on-command = [
-			15 00 00 00 00 00 02 FE 70
-			15 00 00 00 00 00 02 7D 35
-			15 00 00 00 00 00 02 FE 00
 			05 01 00 00 78 00 01 11
 			15 00 00 00 00 00 02 35 00
 			15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
