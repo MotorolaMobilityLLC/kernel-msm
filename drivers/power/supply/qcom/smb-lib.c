@@ -3007,13 +3007,18 @@ int smblib_set_prop_pd_current_max(struct smb_charger *chg,
 #else
 	bool enable = true;
 
-	if (0 == val->intval)
-		enable = false;
-
-	if (chg->pd_active)
+	if (chg->pd_active) {
 		rc = vote(chg->usb_icl_votable, PD_VOTER, enable, val->intval);
-	else
+		vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+					msecs_to_jiffies(0));
+	} else {
+		vote(chg->usb_icl_votable, PD_VOTER, false, 0);
 		rc = -EPERM;
+	}
+	smblib_dbg(chg, PR_MISC, "Set pd current: %duA, active=%d\n",
+				val->intval, chg->pd_active);
 #endif
 	return rc;
 }
@@ -3268,11 +3273,9 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 			return rc;
 		}
 
-		if (chg->pd_contract_uv <= 0) {
-			cancel_delayed_work(&chg->pd_contract_work);
-			schedule_delayed_work(&chg->pd_contract_work,
-					      msecs_to_jiffies(0));
-		}
+		cancel_delayed_work(&chg->pd_contract_work);
+		schedule_delayed_work(&chg->pd_contract_work,
+				      msecs_to_jiffies(0));
 
 		/* SW controlled CC_OUT */
 		rc = smblib_masked_write(chg, TAPER_TIMER_SEL_CFG_REG,
@@ -7136,7 +7139,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		if ((chip->typec_mode == POWER_SUPPLY_TYPEC_NONE) ||
 		    (chip->typec_mode ==
 		     POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) ||
-		    (chip->pd_active && (chip->pd_contract_uv > 0))) {
+		    (chip->pd_active && (chip->pd_contract_uv > 0)) ||
+		    mmi->hvdcp3_con) {
 			mmi->charger_debounce_cnt = CHARGER_DETECTION_DONE;
 			charger_present = 1;
 			mmi->apsd_done = true;
