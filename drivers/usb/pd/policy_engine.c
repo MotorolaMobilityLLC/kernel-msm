@@ -2370,6 +2370,8 @@ static void usbpd_sm(struct work_struct *w)
 				int mv = max(pd->requested_voltage,
 						pd->current_voltage) / 1000;
 				val.intval = (2500000 / mv) * 1000;
+				val.intval = min(val.intval,
+						pd->requested_current * 1000);
 				power_supply_set_property(pd->usb_psy,
 					POWER_SUPPLY_PROP_PD_CURRENT_MAX, &val);
 			} else {
@@ -2435,6 +2437,10 @@ static void usbpd_sm(struct work_struct *w)
 			pd->src_cap_id++;
 
 			usbpd_set_state(pd, PE_SNK_EVALUATE_CAPABILITY);
+
+			val.intval = 1;
+			power_supply_set_property(pd->usb_psy,
+					POWER_SUPPLY_PROP_PD_ACTIVE, &val);
 		} else if (IS_CTRL(rx_msg, MSG_GET_SINK_CAP)) {
 			ret = pd_send_msg(pd, MSG_SINK_CAPABILITIES,
 					pd->sink_caps, pd->num_sink_caps,
@@ -3524,6 +3530,10 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 					max_uv_diff = uv_diff;
 					pdo = i;
 				}
+				if (usb_compliance_mode && !pdo_ua) {
+					pdo = i;
+					break;
+				}
 			}
 		}
 	}
@@ -3540,6 +3550,11 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 		goto out;
 	else
 		ret = pdo_max_uv;
+
+	val.intval = pd->requested_current * 1000;
+	power_supply_set_property(pd->usb_psy,
+			     POWER_SUPPLY_PROP_PD_CURRENT_MAX,
+			     &val);
 
 	reinit_completion(&pd->is_ready);
 	pd->send_request = true;
