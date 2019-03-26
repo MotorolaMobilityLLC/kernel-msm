@@ -26,7 +26,7 @@
 #define I2C_COMPARE_MATCH 0
 #define I2C_COMPARE_MISMATCH 1
 
-#define I2C_REG_DATA_MAX       (8*1024)
+#define I2C_REG_DATA_MAX       (12*1024)
 
 /**
  * @client: CCI client structure
