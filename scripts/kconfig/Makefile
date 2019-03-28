@@ -40,6 +40,9 @@ build_nconfig: $(obj)/nconf
 
 build_gconfig: $(obj)/gconf
 
+defoldconfig: $(obj)/conf
+	$< $(silent) --defconfig=.config $(Kconfig)
+
 build_xconfig: $(obj)/qconf
 
 localyesconfig localmodconfig: $(obj)/conf
