@@ -98,6 +98,12 @@ static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_
 			.delay = 0,
 		},
 		{
+			.reg_addr = 0x614F,
+			.reg_data = 0x01,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
 			.reg_addr = 0x6023,
 			.reg_data = 0x02,
 			.data_mask = 0,
@@ -142,12 +148,6 @@ static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_
 		{
 			.reg_addr = 0x6023,
 			.reg_data = 0x00,
-			.data_mask = 0,
-			.delay = 0
-		},
-		{
-			.reg_addr = 0x614F,
-			.reg_data = 0x01,
 			.data_mask = 0,
 			.delay = 0
 		},
