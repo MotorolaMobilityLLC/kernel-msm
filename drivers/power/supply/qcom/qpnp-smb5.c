@@ -2480,8 +2480,8 @@ static int smb5_init_dc_peripheral(struct smb_charger *chg)
 	if (chg->smb_version == PMI632_SUBTYPE)
 		return 0;
 
-	/* set DC icl_max 1A */
-	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, 1000000);
+	/* set DC icl_max 500 mA */
+	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, 500000);
 	if (rc < 0) {
 		dev_err(chg->dev, "Couldn't set dc_icl rc=%d\n", rc);
 		return rc;
