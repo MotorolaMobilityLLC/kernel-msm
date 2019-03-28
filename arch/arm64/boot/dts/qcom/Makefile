@@ -1,3 +1,24 @@
+# Only include Motorola DTBs
+ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
+# Add 1k of padding to the DTBs to allow for environment variables
+# to be runtime added by the bootloader (i.e. /chosen properties)
+DTC_FLAGS += -p 1024
+
+# Motorola Device Trees
+
+#CONFIG_DOHA_DTB
+ifeq ($(CONFIG_DOHA_DTB),y)
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+dtbo-$(CONFIG_ARCH_TRINKET) += \
+	trinket-doha-evt1-overlay.dtbo
+
+trinket-doha-evt1-overlay.dtbo-base :=  trinket-doha-base.dtb
+else
+dtb-$(CONFIG_ARCH_TRINKET) += trinket-doha-evt1.dtb
+endif
+endif #CONFIG_DOHA_DTB
+
+else
 # SPDX-License-Identifier: GPL-2.0
 ifeq ($(TARGET_BOARD_TYPE),auto)
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -562,6 +583,7 @@ dtb-$(CONFIG_ARCH_SDM429W) += sdm429-wtp.dtb\
 endif
 
 endif
+endif # CONFIG_MMI_DEVICE_DTBS
 
 ifeq ($(CONFIG_ARM64),y)
 always		:= $(dtb-y)
