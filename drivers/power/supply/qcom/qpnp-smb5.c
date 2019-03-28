@@ -2885,7 +2885,7 @@ static int smb5_init_dc_peripheral(struct smb_charger *chg)
 	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, DCIN_ICL_MIN_UA);
 #ifdef QCOM_BASE
 	/* set DC icl_max 1A */
-	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, 1000000);
+	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, 500000);
 	if (rc < 0) {
 		dev_err(chg->dev, "Couldn't set dc_icl rc=%d\n", rc);
 		return rc;
