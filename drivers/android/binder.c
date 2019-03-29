@@ -3169,7 +3169,7 @@ static void binder_transaction(struct binder_proc *proc,
 			    	ALIGN(secctx_sz, sizeof(u64));
 		char *kptr = t->buffer->data + buf_offset;
 
-		t->security_ctx = (binder_uintptr_t)kptr +
+		t->security_ctx = (uintptr_t)kptr +
 	    	binder_alloc_get_user_buffer_offset(&target_proc->alloc);
 		memcpy(kptr, secctx, secctx_sz);
 		security_release_secctx(secctx, secctx_sz);
