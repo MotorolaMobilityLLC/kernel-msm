@@ -58,9 +58,36 @@ qcom,mdss-dsi-off-command = [
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 
-qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command = [
+39 01 00 00 00 00 04 FF 98 81 00
+15 01 00 00 00 00 02 55 01
+39 01 00 00 00 00 04 FF 98 81 01
+39 01 00 00 00 00 02 34 01
+39 01 00 00 00 00 04 FF 98 81 02
+39 01 00 00 00 00 02 00 BF
+39 01 00 00 00 00 02 34 3F
+39 01 00 00 00 00 02 35 7E
+39 01 00 00 00 00 02 36 BD
+39 01 00 00 00 00 02 37 BD
+];
 qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-mv-command = [
+39 01 00 00 00 00 04 FF 98 81 00
+15 01 00 00 00 00 02 55 03
+39 01 00 00 00 00 04 FF 98 81 01
+39 01 00 00 00 00 02 34 01
+39 01 00 00 00 00 04 FF 98 81 02
+39 01 00 00 00 00 02 01 3F
+39 01 00 00 00 00 02 20 3E
+39 01 00 00 00 00 02 22 3A
+39 01 00 00 00 00 02 23 3A
+39 01 00 00 00 00 02 24 38
+39 01 00 00 00 00 02 25 37
+39 01 00 00 00 00 02 26 36
+39 01 00 00 00 00 02 27 35
+39 01 00 00 00 00 02 28 34
+39 01 00 00 00 00 02 29 32
+];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
