@@ -8586,6 +8586,7 @@ end:
 }
 
 #define EB_RCV_NEVER BIT(7)
+#define EB_RCV_PARALLEL BIT(4)
 #define EB_SND_EXT BIT(2)
 #define EB_SND_LOW BIT(1)
 #define EB_SND_NEVER BIT(0)
@@ -8617,7 +8618,9 @@ static void mmi_check_extbat_ability(struct smb_charger *chip, char *able)
 		smblib_err(chip,
 			   "Could not read Receive Params rc = %d\n", rc);
 		*able |= EB_RCV_NEVER;
-	} else if ((ret.intval == POWER_SUPPLY_PTP_INT_RCV_NEVER) ||
+	}  else if (ret.intval == POWER_SUPPLY_PTP_INT_RCV_PARALLEL)
+		*able |= EB_RCV_PARALLEL;
+	else if ((ret.intval == POWER_SUPPLY_PTP_INT_RCV_NEVER) ||
 		   (ret.intval == POWER_SUPPLY_PTP_INT_RCV_UNKNOWN))
 		*able |= EB_RCV_NEVER;
 
@@ -9249,6 +9252,10 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 		chip->mmi.charging_limit_modes = charging_limit_modes;
 }
 
+/* For Testing 50/50 Turbo Charge Split with EB */
+static int force_eb_fifty;
+module_param(force_eb_fifty, int, 0644);
+
 #define CHARGER_DETECTION_DONE 7
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
@@ -9573,6 +9580,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			   !mmi->usbeb_present &&
 			   !mmi->wls_present);
 
+	if (force_eb_fifty)
+		eb_able |= EB_RCV_PARALLEL;
+
 	mmi_get_extbat_out_volt(chip);
 	mmi_get_extbat_out_cl(chip);
 
@@ -9822,6 +9832,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 		if (((cl_usb - EB_SPLIT_MA) >= target_fcc) && eb_chrg_allowed)
 			mmi->cl_ebchg = EB_SPLIT_MA;
+		else if (eb_chrg_allowed && (eb_able & EB_RCV_PARALLEL) &&
+			 (mmi->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO))
+			mmi->cl_ebchg = cl_usb / 2; /* 50/50 Split */
 
 		target_usb = cl_usb;
 		break;
@@ -9837,6 +9850,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 		if (((cl_usb - EB_SPLIT_MA) >= target_fcc) && eb_chrg_allowed)
 			mmi->cl_ebchg = EB_SPLIT_MA;
+		else if (eb_chrg_allowed && (eb_able & EB_RCV_PARALLEL) &&
+			 (mmi->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO))
+			mmi->cl_ebchg = cl_usb / 2; /* 50/50 Split */
 
 		target_usb = cl_usb;
 		break;
