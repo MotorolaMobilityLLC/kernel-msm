@@ -222,6 +222,7 @@
 	regulator-min-microvolt = <3200000>;
 	regulator-max-microvolt = <3200000>;
 	qcom,init-voltage = <3200000>;
+	regulator-always-on;
 };
 
 &mot_boe_269_800x600_cmd_v0 {
