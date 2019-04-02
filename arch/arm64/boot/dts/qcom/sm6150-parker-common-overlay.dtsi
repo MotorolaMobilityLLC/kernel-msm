@@ -679,6 +679,12 @@
 	status = "disable";
 };
 
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SB18C49475";
+	#include "qg-batterydata-kp50-atl-4000mah.dtsi"
+};
+
 &pm6150_charger {
 	/delete-property/qcom,support-mods;
 	qcom,iterm-ma = <194>;
