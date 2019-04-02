@@ -12,7 +12,8 @@
  * GNU General Public License for more details.
  *
  */
-#define pr_fmt(fmt) "%s: " fmt, __func__
+#define MYNAME "key-swap"
+#define pr_fmt(fmt) MYNAME"(%s): " fmt, __func__
 
 #include <linux/input.h>
 #include <linux/module.h>
@@ -26,7 +27,6 @@
 #define pr_debug pr_err
 #endif
 #endif
-#define MYNAME "key-swap"
 
 struct filter_action {
 	unsigned int code;			/* trigger key code */
@@ -70,7 +70,7 @@ unsigned int key_swap_algo(unsigned int code)
 			continue;
 
 		if (act->swap_code) {
-			pr_debug("swapping: %u -> %u\n", code, act->swap_code);
+			pr_info("swapping: %u -> %u\n", code, act->swap_code);
 			code = act->swap_code;
 			break;
 		}
@@ -97,7 +97,7 @@ static int flip_state_changed(struct notifier_block *nb,
 
 	atomic_set(&kfd->flip_state, (int)event);
 
-	pr_debug("flip state change notification = %d\n", (int)event);
+	pr_info("%d\n", (int)event);
 
 	return NOTIFY_DONE;
 }
@@ -138,7 +138,7 @@ static int key_swap_dt(struct device *device)
 #if 0
 		}
 #endif
-		pr_debug("will swap %d with %d\n", fa->code, fa->swap_code);
+		pr_info("will swap %d with %d\n", fa->code, fa->swap_code);
 		list_add(&fa->link, &kfd->fa);
 	}
 
@@ -169,7 +169,7 @@ static int key_swap_probe(struct platform_device *pdev)
 
 	atomic_set(&kfd->flip_state, extcon_get_state(kfd->flip_dev, EXTCON_MECHANICAL));
 
-	pr_debug("flip state at probe time = %d\n", atomic_read(&kfd->flip_state));
+	pr_info("flip state = %d\n", atomic_read(&kfd->flip_state));
 
 	kfd->flip_nb.notifier_call = flip_state_changed;
 	rc = extcon_register_notifier(kfd->flip_dev,
