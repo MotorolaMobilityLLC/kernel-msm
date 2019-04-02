@@ -5031,6 +5031,15 @@ int dsi_panel_pre_disable(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+	if (gpio_is_valid(panel->hbm_config.hbm_en_gpio)) {
+		rc = gpio_direction_output(panel->hbm_config.hbm_en_gpio, 0);
+		if (rc) {
+			pr_err("[%s] failed to set hbm_en_gpio to low, rc=%d\n",
+				panel->name, rc);
+			goto error;
+		}
+	}
+
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_OFF);
 	if (rc) {
 		pr_err("[%s] failed to send DSI_CMD_SET_PRE_OFF cmds, rc=%d\n",
