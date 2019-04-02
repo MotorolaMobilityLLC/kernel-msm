@@ -64,6 +64,10 @@ static char *override_phy_init;
 module_param(override_phy_init, charp, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "QMP PHY TUNE Override");
 
+
+static bool max_tuning;
+module_param(max_tuning, bool, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(max_tuning, "QMP PHY Max TX tuning");
 /*
  * register bits
  * PCIE_USB3_PHY_PCS_MISC_TYPEC_CTRL - for QMP USB PHY
@@ -583,6 +587,21 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 		return ret;
 	}
         qmp_override_phy_init(phy);
+
+	if (max_tuning) {
+		dev_err(uphy->dev, "Maximize PHY TX\n");
+		if (phy->phy.flags & PHY_LANE_A) {
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXA_TX_DRV_LVL);
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXA_TX_EMP_POST1_LVL);
+		} else {
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXB_TX_DRV_LVL);
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXB_TX_EMP_POST1_LVL);
+		}
+	}
 
 	usb_qmp_apply_link_training_workarounds(phy);
 
