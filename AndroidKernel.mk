@@ -1,7 +1,5 @@
 #Android makefile to build kernel as a part of Android Build
-PERL		= $(MOTO_PERL_EXECUTABLES)/perl
-MAKE		= $(MOTO_MAKE_EXECUTABLES)/make
-
+PERL		= perl
 
 KERNEL_TARGET := $(strip $(INSTALLED_KERNEL_TARGET))
 ifeq ($(KERNEL_TARGET),)
