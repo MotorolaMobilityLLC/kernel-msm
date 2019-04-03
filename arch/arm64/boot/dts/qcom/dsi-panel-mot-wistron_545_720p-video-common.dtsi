@@ -69,6 +69,7 @@ qcom,mdss-dsi-cabc-ui-command = [
 39 01 00 00 00 00 02 35 7E
 39 01 00 00 00 00 02 36 BD
 39 01 00 00 00 00 02 37 BD
+39 01 00 00 00 00 04 FF 98 81 00
 ];
 qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-mv-command = [
@@ -87,6 +88,7 @@ qcom,mdss-dsi-cabc-mv-command = [
 39 01 00 00 00 00 02 27 35
 39 01 00 00 00 00 02 28 34
 39 01 00 00 00 00 02 29 32
+39 01 00 00 00 00 04 FF 98 81 00
 ];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
