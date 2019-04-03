@@ -27,6 +27,7 @@ typedef struct TfaIrqName {
 #include "tfa9912_tfafieldnames.h"
 #include "tfa9896_tfafieldnames.h"
 #include "tfa9874_tfafieldnames.h"
+#include "tfa9878_tfafieldnames.h"
 #include "tfa9894_tfafieldnames.h"
 #include "tfa9894_tfafieldnames_N2.h"
 
