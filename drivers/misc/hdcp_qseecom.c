@@ -42,7 +42,7 @@
 #define HDCP1_APP_NAME        "hdcp1"
 #define QSEECOM_SBUFF_SIZE    0x1000
 
-#define MAX_TX_MESSAGE_SIZE	129
+#define MAX_TX_MESSAGE_SIZE	132
 #define MAX_RX_MESSAGE_SIZE	534
 #define MAX_TOPOLOGY_ELEMS	32
 #define HDCP1_AKSV_SIZE         8
