@@ -782,6 +782,10 @@ static struct pil_reset_ops pil_ops_trusted = {
 	.proxy_unvote = pil_remove_proxy_vote,
 };
 
+static char pil_wcnss_ssr_reason[MAX_SSR_REASON_LEN];
+static char *wcnss_ssr_reason = pil_wcnss_ssr_reason;
+module_param(wcnss_ssr_reason, charp, S_IRUGO);
+
 static void log_failure_reason(const struct pil_tz_data *d)
 {
 	u32 size;
@@ -803,6 +807,7 @@ static void log_failure_reason(const struct pil_tz_data *d)
 		return;
 	}
 
+	strlcpy(pil_wcnss_ssr_reason, smem_reason, min((size_t)size, sizeof(pil_wcnss_ssr_reason)));
 	strlcpy(reason, smem_reason, min(size, MAX_SSR_REASON_LEN));
 	pr_err("%s subsystem failure reason: %s.\n", name, reason);
 
