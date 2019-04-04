@@ -109,6 +109,9 @@
 #define DEFAULT_CE_INFO_UNIT 0
 #define DEFAULT_NUM_CE_INFO_UNIT 1
 
+#define FDE_FLAG_POS    4
+#define ENABLE_KEY_WRAP_IN_KS    (1 << FDE_FLAG_POS)
+
 enum qseecom_clk_definitions {
 	CLK_DFAB = 0,
 	CLK_SFPB,
@@ -285,6 +288,7 @@ struct qseecom_control {
 	unsigned int ce_opp_freq_hz;
 	bool appsbl_qseecom_support;
 	uint32_t qsee_reentrancy_support;
+	bool enable_key_wrap_in_ks;
 
 	uint32_t app_block_ref_cnt;
 	wait_queue_head_t app_block_wq;
@@ -1832,7 +1836,7 @@ err_resp:
 		else
 			*(uint32_t *)cmd_buf =
 				QSEOS_LISTENER_DATA_RSP_COMMAND_WHITELIST;
-		if (ptr_svc) {
+		if (ptr_svc && ptr_svc->ihandle) {
 			ret = msm_ion_do_cache_op(qseecom.ion_clnt,
 					ptr_svc->ihandle,
 					ptr_svc->sb_virt, ptr_svc->sb_length,
@@ -2143,7 +2147,7 @@ err_resp:
 		else
 			*(uint32_t *)cmd_buf =
 				QSEOS_LISTENER_DATA_RSP_COMMAND_WHITELIST;
-		if (ptr_svc) {
+		if (ptr_svc && ptr_svc->ihandle) {
 			ret = msm_ion_do_cache_op(qseecom.ion_clnt,
 					ptr_svc->ihandle,
 					ptr_svc->sb_virt, ptr_svc->sb_length,
@@ -4139,6 +4143,7 @@ static int __qseecom_allocate_img_data(struct ion_handle **pihandle,
 	struct ion_handle *ihandle = NULL;
 	u8 *img_data = NULL;
 	int retry = 0;
+	int ion_flag = ION_FLAG_CACHED;
 
 	do {
 		if (retry++) {
@@ -4147,7 +4152,7 @@ static int __qseecom_allocate_img_data(struct ion_handle **pihandle,
 			mutex_lock(&app_access_lock);
 		}
 		ihandle = ion_alloc(qseecom.ion_clnt, fw_size,
-			SZ_4K, ION_HEAP(ION_QSECOM_TA_HEAP_ID), 0);
+			SZ_4K, ION_HEAP(ION_QSECOM_TA_HEAP_ID), ion_flag);
 	} while (IS_ERR_OR_NULL(ihandle) &&
 			(retry <= QSEECOM_TA_ION_ALLOCATE_MAX_ATTEMP));
 
@@ -5978,6 +5983,9 @@ static int qseecom_create_key(struct qseecom_dev_handle *data,
 	else
 		flags |= QSEECOM_ICE_FDE_KEY_SIZE_16_BYTE;
 
+	if (qseecom.enable_key_wrap_in_ks == true)
+		flags |= ENABLE_KEY_WRAP_IN_KS;
+
 	generate_key_ireq.flags = flags;
 	generate_key_ireq.qsee_command_id = QSEOS_GENERATE_KEY;
 	memset((void *)generate_key_ireq.key_id,
@@ -7028,7 +7036,7 @@ static void __qseecom_clean_data_sglistinfo(struct qseecom_dev_handle *data)
 	}
 }
 
-static inline long qseecom_ioctl(struct file *file,
+static long qseecom_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
@@ -8713,6 +8721,14 @@ static int qseecom_probe(struct platform_device *pdev)
 		} else {
 			pr_warn("qseecom.qsee_reentrancy_support = %d\n",
 				qseecom.qsee_reentrancy_support);
+		}
+
+		qseecom.enable_key_wrap_in_ks =
+			of_property_read_bool((&pdev->dev)->of_node,
+					"qcom,enable-key-wrap-in-ks");
+		if (qseecom.enable_key_wrap_in_ks) {
+			pr_warn("qseecom.enable_key_wrap_in_ks = %d\n",
+					qseecom.enable_key_wrap_in_ks);
 		}
 
 		/*
