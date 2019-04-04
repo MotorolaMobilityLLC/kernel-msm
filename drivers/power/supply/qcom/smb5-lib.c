@@ -6729,9 +6729,7 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 	int input_present;
 	bool dcin_present, vbus_present;
 	int rc, wireless_vout = 0;
-#ifdef QCOM_BASE
 	int sec_charger;
-#endif
 
 	rc = smblib_get_prop_vph_voltage_now(chg, &pval);
 	if (rc < 0)
