@@ -43,3 +43,9 @@
 &mdss_dsi0 {
 	/delete-property/ qcom,split-link-supported;
 };
+
+&usb0 {
+	dwc3@a600000 {
+		snps,usb3-u1u2-disable;
+	};
+};
