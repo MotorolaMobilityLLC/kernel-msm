@@ -436,10 +436,10 @@
 		clock-rates = <24000000>;
 	};
 
-	qcom,cam-sensor@4 {
-		cell-index = <4>;
+	qcom,cam-sensor@3 {
+		cell-index = <3>;
 		compatible = "qcom,cam-sensor";
-		reg = <0x04>;
+		reg = <0x03>;
 		csiphy-sd-index = <2>;
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
@@ -480,10 +480,10 @@
 		clock-cntl-level = "turbo";
 		clock-rates = <24000000>;
 	};
-	qcom,cam-sensor@5 {
-		cell-index = <5>;
+	qcom,cam-sensor@4 {
+		cell-index = <4>;
 		compatible = "qcom,cam-sensor";
-		reg = <0x05>;
+		reg = <0x04>;
 		csiphy-sd-index = <1>;
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
