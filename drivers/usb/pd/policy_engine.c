@@ -337,6 +337,12 @@ module_param(check_vsafe0v, bool, S_IRUSR | S_IWUSR);
 static int min_sink_current = 900;
 module_param(min_sink_current, int, S_IRUSR | S_IWUSR);
 
+static int vbus_off_delay = 0;
+module_param(vbus_off_delay, int, S_IRUSR | S_IWUSR);
+
+static int vbus_on_delay = 0;
+module_param(vbus_on_delay, int, S_IRUSR | S_IWUSR);
+
 static int start_usb_for_dcp;
 module_param(start_usb_for_dcp, int, 0600);
 
@@ -1835,6 +1841,11 @@ static int enable_vbus(struct usbpd *pd)
 	if (!check_vsafe0v)
 		goto enable_reg;
 
+	if (vbus_off_delay > 0) {
+		msleep(vbus_off_delay);
+		goto enable_reg;
+	}
+
 	/*
 	 * Check to make sure there's no lingering charge on
 	 * VBUS before enabling it as a source. If so poll here
@@ -1857,6 +1868,11 @@ enable_reg:
 		usbpd_err(&pd->dev, "Unable to enable vbus (%d)\n", ret);
 	else
 		pd->vbus_enabled = true;
+
+	if (vbus_on_delay > 0) {
+		msleep(vbus_on_delay);
+		return ret;
+	}
 
 	count = 10;
 	/*
@@ -4225,6 +4241,14 @@ struct usbpd *usbpd_create(struct device *parent)
 				sizeof(default_snk_caps));
 		pd->num_sink_caps = ARRAY_SIZE(default_snk_caps);
 	}
+
+	device_property_read_u32(parent,
+					"qcom,vbus-off-delay",
+					&vbus_off_delay);
+
+	device_property_read_u32(parent,
+					"qcom,vbus-on-delay",
+					&vbus_on_delay);
 
 	device_property_read_u32(parent,
 					"qcom,source-current",
