@@ -406,6 +406,8 @@
 	qcom,source-current = <900>;
 	qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
 				 <9000 3000>; /* 9V @ 3A */
+	qcom,vbus-off-delay = <220>; /* Wait 220ms for VSafe0V (0.8V) */
+	qcom,vbus-on-delay = <30>; /* Wait 30ms for Vsafe5Vmin (4.75v) */
 };
 
 &pm660_bcl {
