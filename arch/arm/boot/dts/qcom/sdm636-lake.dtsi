@@ -354,6 +354,7 @@
 
 		#include "fg-gen3-batterydata-jg40-3000mah.dtsi"
 		#include "fg-gen3-batterydata-jg40cos-3000mah.dtsi"
+		#include "fg-gen3-batterydata-jg40-2-3000mah.dtsi"
 	};
 };
 
