@@ -1,0 +1,83 @@
+/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,jg40-2-3000mah {
+	serialnum = "SB18C44559";
+	qcom, = <24>;
+	/* Moto_Lake_3000mAh_averaged_MasterSlave_Jul25th2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "moto_lake_3000mah_averaged_masterslave_jul25th2018";
+	qcom,checksum = <0xE80C>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 D5 20 34 04
+		 82 0B 5A 05
+		 F9 1C 92 01
+		 0E 05 82 03
+		 C7 17 A9 23
+		 BC 44 FA 53
+		 8A 00 00 00
+		 11 00 00 00
+		 00 00 82 CD
+		 5E BC A0 CA
+		 25 00 08 00
+		 D3 DB B2 07
+		 FA 06 19 EB
+		 39 FB 5D 12
+		 7E 06 D6 2B
+		 18 06 09 20
+		 27 00 14 00
+		 34 20 E9 04
+		 1B 0B 9E 05
+		 C4 1C F0 02
+		 0F 0C 27 12
+		 8F 18 71 23
+		 9C 44 52 5A
+		 6D 00 00 00
+		 0F 00 00 00
+		 00 00 3A CC
+		 7C C2 7C AB
+		 21 00 00 00
+		 EC EB B2 07
+		 B1 F4 2A EA
+		 A7 07 ED 01
+		 69 E3 A5 1A
+		 AE 33 CC FF
+		 07 10 00 00
+		 DD 0B 66 46
+		 21 00 40 00
+		 2A 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
