@@ -73,7 +73,9 @@ config DRM_MSM_DSI_STAGING
 
 config DSI_PARSER
 	bool "Enable DSI panel configuration parser"
-	depends on DYNAMIC_DEBUG
+	depends on DRM_MSM
+	select DRM_PANEL
+	select DRM_MIPI_DSI
 	default y
 	help
 	  Choose this option if you need text parser for a DSI panel
