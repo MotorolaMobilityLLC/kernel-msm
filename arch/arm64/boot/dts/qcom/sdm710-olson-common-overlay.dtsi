@@ -121,7 +121,7 @@
 
 	dsi_auo_620_876x2142_cmd_display_v1: qcom,dsi-display@24 {
 		compatible = "qcom,dsi-display";
-		label = "dsi_auo_620_876x2142_cmd_final_display";
+		label = "dsi_auo_620_876x2142_cmd_display_v1";
 		qcom,display-type = "primary";
 
 		qcom,dsi-ctrl = <&mdss_dsi0>;
