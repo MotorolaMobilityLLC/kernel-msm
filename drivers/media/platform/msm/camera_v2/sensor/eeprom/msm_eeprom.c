@@ -174,7 +174,11 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
 				&(e_ctrl->i2c_client), emap[j].page.addr,
 				emap[j].page.data, emap[j].page.data_t);
-				msleep(emap[j].page.delay);
+				if (emap[j].page.delay > 20)
+					msleep(emap[j].page.delay);
+				else if (emap[j].page.delay)
+					usleep_range(emap[j].page.delay * 1000,
+						emap[j].page.delay * 1000 + 1000);
 			if (rc < 0) {
 				pr_err("%s: page write failed\n", __func__);
 				return rc;
@@ -185,7 +189,11 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
 				&(e_ctrl->i2c_client), emap[j].pageen.addr,
 				emap[j].pageen.data, emap[j].pageen.data_t);
-				msleep(emap[j].pageen.delay);
+				if (emap[j].pageen.delay > 20)
+					msleep(emap[j].pageen.delay);
+				else if (emap[j].pageen.delay)
+					usleep_range(emap[j].pageen.delay * 1000,
+						emap[j].pageen.delay * 1000 + 1000);
 			if (rc < 0) {
 				pr_err("%s: page enable failed\n", __func__);
 				return rc;
@@ -366,7 +374,11 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 					eeprom_map->mem_settings[i].reg_addr,
 					eeprom_map->mem_settings[i].reg_data,
 					eeprom_map->mem_settings[i].data_type);
-				msleep(eeprom_map->mem_settings[i].delay);
+				if (eeprom_map->mem_settings[i].delay > 20)
+					msleep(eeprom_map->mem_settings[i].delay);
+				else if (eeprom_map->mem_settings[i].delay)
+					usleep_range(eeprom_map->mem_settings[i].delay * 1000,
+						eeprom_map->mem_settings[i].delay * 1000 + 1000);
 				if (rc < 0) {
 					pr_err("%s: page write failed\n",
 						__func__);
@@ -399,7 +411,11 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 					eeprom_map->mem_settings[i].reg_addr,
 					memptr,
 					eeprom_map->mem_settings[i].reg_data);
-				msleep(eeprom_map->mem_settings[i].delay);
+				if (eeprom_map->mem_settings[i].delay > 20)
+					msleep(eeprom_map->mem_settings[i].delay);
+				else if (eeprom_map->mem_settings[i].delay)
+					usleep_range(eeprom_map->mem_settings[i].delay * 1000,
+						eeprom_map->mem_settings[i].delay * 1000 + 1000);
 				if (rc < 0) {
 					pr_err("%s: read failed\n",
 						__func__);
