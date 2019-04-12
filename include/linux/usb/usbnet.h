@@ -88,7 +88,7 @@ struct usbnet {
 	void			*ipc_log_ctxt;
 	int			netdev_id;
 
-#ifdef CONFIG_PANEL_NOTIFICATIONS
+#ifdef CONFIG_DRM_MSM
 	struct notifier_block 	panel_usb_notifier;
 	struct work_struct	panel_update_work;
 	u32			panel_state;
