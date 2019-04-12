@@ -5225,21 +5225,6 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 		arm_iommu_release_mapping(mdwc->iommu_map);
 	}
 
-	if (mdwc->dp_mux_sel_power) {
-		ret_pm = regulator_disable(mdwc->dp_mux_sel_power);
-		if (ret_pm)
-			dev_err(mdwc->dev, "unable to disable dp_mux_sel_power\n");
-		else
-			dev_err(mdwc->dev, "disable dp_mux_sel_power ok\n");
-	}
-	if (mdwc->typec_mux_sel_power) {
-		ret_pm = regulator_disable(mdwc->typec_mux_sel_power);
-		if (ret_pm)
-			dev_err(mdwc->dev, "unable to disable typec_mux_sel_power\n");
-		else
-			dev_err(mdwc->dev, "disable typec_mux_sel_power ok\n");
-	}
-
 	destroy_workqueue(mdwc->sm_usb_wq);
 	destroy_workqueue(mdwc->dwc3_wq);
 
@@ -5846,6 +5831,12 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				ret = regulator_disable(mdwc->dp_mux_sel_power);
 				if (ret)
 					dev_err(mdwc->dev, "unable to disable dp_mux_sel_power\n");
+			}
+
+			if (mdwc->typec_mux_sel_power) {
+				ret = regulator_disable(mdwc->typec_mux_sel_power);
+				if (ret)
+					dev_err(mdwc->dev, "unable to disable typec_mux_sel_power\n");
 			}
 		}
 		break;
