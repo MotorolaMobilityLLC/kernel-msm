@@ -21,6 +21,26 @@
 		status = "ok";
 	};
 
+	led_flash_wfov: qcom,camera-flash@3 {
+		cell-index = <3>;
+		reg = <0x03 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm6150l_flash0 &pm6150l_flash1>;
+		torch-source = <&pm6150l_torch0 &pm6150l_torch1>;
+		switch-source = <&pm6150l_switch2>;
+		status = "ok";
+	};
+
+	led_flash_tele: qcom,camera-flash@4 {
+		cell-index = <4>;
+		reg = <0x04 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm6150l_flash0 &pm6150l_flash1>;
+		torch-source = <&pm6150l_torch0 &pm6150l_torch1>;
+		switch-source = <&pm6150l_switch2>;
+		status = "ok";
+	};
+
 	camera_main_avdd: gpio-regulator@3 {
 		compatible = "regulator-fixed";
 		regulator-name = "camera_main_avdd";
@@ -444,6 +464,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_wfov>;
 		eeprom-src = <&eeprom_rear_wfov>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_tele_wfov_avdd>;
@@ -488,6 +509,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_tele>;
 		actuator-src = <&actuator_tele>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_tele_wfov_avdd>;
