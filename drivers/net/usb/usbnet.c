@@ -47,8 +47,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/ipc_logging.h>
 
-#ifdef CONFIG_PANEL_NOTIFICATIONS
-#include <linux/panel_notifier.h>
+#ifdef CONFIG_DRM_MSM
+#include <linux/msm_drm_notify.h>
 #endif
 
 #define DRIVER_VERSION		"22-Aug-2005"
@@ -133,7 +133,7 @@ if ((dev->netdev_id == USBNET_RMNET_USB1 && debug_mask == 1) || \
 		       __func__, ##__VA_ARGS__); \
 } while (0)
 
-#ifdef CONFIG_PANEL_NOTIFICATIONS
+#ifdef CONFIG_DRM_MSM
 int last_panel_state = -1;
 #endif
 /*-------------------------------------------------------------------------*/
@@ -1698,8 +1698,8 @@ void usbnet_disconnect (struct usb_interface *intf)
 		return;
 
 	dev->ipc_log_ctxt = NULL;
-#ifdef CONFIG_PANEL_NOTIFICATIONS
-	panel_unregister_notifier(&dev->panel_usb_notifier);
+#ifdef CONFIG_DRM_MSM
+	msm_drm_unregister_client(&dev->panel_usb_notifier);
 #endif
 
 	xdev = interface_to_usbdev (intf);
@@ -1752,7 +1752,7 @@ static struct device_type wwan_type = {
 	.name	= "wwan",
 };
 
-#ifdef CONFIG_PANEL_NOTIFICATIONS
+#ifdef CONFIG_DRM_MSM
 static void panel_usb_work(struct work_struct *work)
 {
 	struct usbnet *dev = container_of(work, struct usbnet,
@@ -1777,19 +1777,32 @@ static int panel_usb_notifier_call(struct notifier_block *nb,
 				   unsigned long event,
 				   void *data)
 {
+	int *blank;
+	struct msm_drm_notifier *evdata = data;
 	struct usbnet *dev = container_of(nb, struct usbnet,
 					  panel_usb_notifier);
 
+	if (!evdata || (evdata->id != 0)) {
+		pr_err("Panel Notifier missing data\n");
+		return 0;
+	}
+
+	blank = evdata->data;
+
 	switch (event) {
-	case PANEL_EVENT_DISPLAY_ON:
-		pr_err("USB Panel ON\n");
-		dev->panel_state = 1;
-		schedule_work(&dev->panel_update_work);
+	case MSM_DRM_EVENT_BLANK:
+		if (blank && (*blank == MSM_DRM_BLANK_UNBLANK)) {
+			pr_err("USB Panel ON\n");
+			dev->panel_state = 1;
+			schedule_work(&dev->panel_update_work);
+		}
 		break;
-	case PANEL_EVENT_PRE_DISPLAY_OFF:
-		pr_err("USB Panel OFF\n");
-		dev->panel_state = 0;
-		schedule_work(&dev->panel_update_work);
+	case MSM_DRM_EARLY_EVENT_BLANK:
+		if (blank && (*blank == MSM_DRM_BLANK_POWERDOWN)) {
+			pr_err("USB Panel OFF\n");
+			dev->panel_state = 0;
+			schedule_work(&dev->panel_update_work);
+		}
 		break;
 	default:
 		break;
@@ -1974,7 +1987,7 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 	if (dev->netdev_id >= 0)
 		dev->ipc_log_ctxt = usbnet_ipc_log_ctxt[dev->netdev_id];
 
-#ifdef CONFIG_PANEL_NOTIFICATIONS
+#ifdef CONFIG_DRM_MSM
 	INIT_WORK(&dev->panel_update_work, panel_usb_work);
 	if (last_panel_state != -1) {
 		dev->panel_state = last_panel_state;
@@ -1984,7 +1997,7 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 		schedule_work(&dev->panel_update_work);
 	}
 	dev->panel_usb_notifier.notifier_call = panel_usb_notifier_call;
-	status = panel_register_notifier(&dev->panel_usb_notifier);
+	status = msm_drm_register_client(&dev->panel_usb_notifier);
 	if (status)
 		pr_err("USBNET Probe: Panel Notifier Failure %d\n", status);
 #endif
