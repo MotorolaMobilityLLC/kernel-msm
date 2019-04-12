@@ -860,6 +860,10 @@ int32_t msm_sensor_driver_probe(void *setting,
 		}
 
 		slave_info->slave_addr = slave_info32->slave_addr;
+		slave_info->slave_addr2 = slave_info32->slave_addr2;
+		pr_err("slave_addr:%x, slave_addr2:%x", slave_info->slave_addr,
+		                                        slave_info->slave_addr2);
+
 		slave_info->power_setting_array.size =
 			slave_info32->power_setting_array.size;
 		slave_info->power_setting_array.size_down =
@@ -1097,6 +1101,9 @@ CSID_TG:
 	s_ctrl->sensordata->actuator_name = slave_info->actuator_name;
 	s_ctrl->sensordata->ois_name = slave_info->ois_name;
 	s_ctrl->sensordata->flash_name = slave_info->flash_name;
+	/* Save Sensor Info */
+	s_ctrl->sensordata->cam_slave_info = slave_info;
+
 	/*
 	 * Update eeporm subdevice Id by input eeprom name
 	 */
@@ -1181,9 +1188,6 @@ CSID_TG:
 		8);
 
 	s_ctrl->msm_sd.sd.entity.flags = mount_pos | MEDIA_ENT_FL_DEFAULT;
-
-	/*Save sensor info*/
-	s_ctrl->sensordata->cam_slave_info = slave_info;
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
 

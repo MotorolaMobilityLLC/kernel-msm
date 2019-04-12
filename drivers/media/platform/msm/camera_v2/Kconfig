@@ -277,3 +277,15 @@ config MSM_SEC_CCI_DEBUG
 	---help---
 	  Enables simulation of secure camera for Secure CCI Realy
 	  debugging.
+config MSM_CAMERA_DUAL_PMIC_FLASH
+	bool "Enable dual pmic flash led support in kernel"
+	default n
+	---help---
+		Enables support for dual pmic flash led
+
+config MSM_CAMERA_CCI_MUTEX
+	bool "Enable cci mutex protection on product with this kind of issue"
+	default n
+	---help---
+		Enables cci mutext protection
+
