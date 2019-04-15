@@ -25,6 +25,27 @@
 	mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
 };
 
+
+&firmware {
+       android {
+               vbmeta {
+                       parts = "vbmeta,boot,system,vendor,dtbo,oem";
+               };
+               fstab {
+                       vendor {
+                               dev = "/dev/block/platform/soc/4744000.sdhci/by-name/vendor";
+                       };
+                       oem {
+                               compatible = "android,oem";
+                               dev = "/dev/block/platform/soc/4744000.sdhci/by-name/oem";
+                               type = "ext4";
+                               mnt_flags = "ro,barrier=1,discard";
+                               fsmgr_flags = "wait,slotselect,avb";
+                       };
+               };
+       };
+};
+
 &reserved_memory {
 	ramoops_mem {
 		compatible = "ramoops";
