@@ -191,6 +191,222 @@ static int cam_ois_bm24218_enable_servo_gyro(struct camera_io_master *io_master_
 	CAM_ERR(CAM_OIS, "Enable SERV&GYRO Done");
 	return ret;
 }
+static int cam_ois_bm24218tele_enable_servo_gyro(struct camera_io_master *io_master_info)
+{
+	struct cam_sensor_i2c_reg_setting  i2c_reg_setting;
+	struct cam_sensor_i2c_reg_array    i2c_reg_array[] = {
+		{
+			.reg_addr = 0x6020,
+			.reg_data = 0x01,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x6023,
+			.reg_data = 0x02,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x11,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x01,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x76,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x01,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x7a,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x02,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x7b,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x02,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x76,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x00,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x4c,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x03,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x13,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x05,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x14,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x1b,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x64,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x60,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x65,
+			.data_mask = 0,
+			.delay = 0
+		},
+{
+			.reg_addr = 0x602d,
+			.reg_data = 0x08,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x4f,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x63,
+			.data_mask = 0,
+			.delay = 0,
+		},
+		{
+			.reg_addr = 0x602c,
+			.reg_data = 0x4e,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x602d,
+			.reg_data = 0x0c,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x6023,
+			.reg_data = 0x00,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x6021,
+			.reg_data = 0x7b,
+			.data_mask = 0,
+			.delay = 0
+		},
+		{
+			.reg_addr = 0x6020,
+			.reg_data = 0x02,
+			.data_mask = 0,
+			.delay = 0
+		},
+	};
+
+	int32_t ret = 0, i;
+	uint32_t status = 0;
+
+	CAM_DBG(CAM_OIS, "Enable SERV&GYRO");
+	for (i=0; i<29; i++) {
+		i2c_reg_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+		i2c_reg_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+		i2c_reg_setting.reg_setting = &i2c_reg_array[i];
+		i2c_reg_setting.size = 1;
+		i2c_reg_setting.delay = 0;
+		CAM_DBG(CAM_OIS, "SERV&GYRO: reg[%04x], %02x", i2c_reg_array[i].reg_addr, i2c_reg_array[i].reg_data);
+		if ((i2c_reg_array[i].reg_addr == 0x6021 && i2c_reg_array[i].reg_data == 0x7b) ||
+		    (i2c_reg_array[i].reg_addr == 0x6020 && i2c_reg_array[i].reg_data == 0x01)) {
+			CAM_ERR(CAM_OIS, "Poll OIS status before 0x%04x", i2c_reg_array[i].reg_addr);
+			status = cam_ois_bm24218_poll_status(io_master_info);
+			if (0 == status) {
+				CAM_ERR(CAM_OIS, "Poll OIS timeout");
+				break;
+			}
+		}
+		ret = camera_io_dev_write(io_master_info, &i2c_reg_setting);
+		if (i2c_reg_array[i].reg_addr == 0x602d && i2c_reg_array[i].reg_data == 0x01) {
+			usleep_range(100*1000, 100*1000);
+			CAM_DBG(CAM_OIS, "Delay for 100ms");
+		}
+		if (i2c_reg_array[i].reg_addr == 0x602d && i2c_reg_array[i].reg_data == 0x0c) {
+			usleep_range(25*1000, 30*1000);
+			CAM_DBG(CAM_OIS, "Delay for 25ms");
+		}
+	}
+
+	cam_ois_bm24218_poll_status(io_master_info);
+
+	CAM_ERR(CAM_OIS, "Enable SERV&GYRO Done");
+	return ret;
+}
 
 int cam_ois_bm24218_fw_download(struct cam_ois_ctrl_t *o_ctrl)
 {
@@ -349,7 +565,12 @@ int cam_ois_bm24218_after_cal_data_dl(struct cam_ois_ctrl_t *o_ctrl)
 		CAM_ERR(CAM_OIS, "OIS cam_ois_bm24218_stop_dl failed: %d", rc);
 	}
 	cam_ois_bm24218_poll_status(&(o_ctrl->io_master_info));
-	if (o_ctrl->is_ois_calib) {
+	if (o_ctrl->is_ois_calib &&  !strcmp(o_ctrl->ois_name, "mot_bm24218_tele")) {
+		rc = cam_ois_bm24218tele_enable_servo_gyro(&(o_ctrl->io_master_info));
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "OIS cam_ois_bm24218tele_enable_servo_gyro failed: %d", rc);
+		}
+	} else if (o_ctrl->is_ois_calib &&  !strcmp(o_ctrl->ois_name, "mot_bm24218")) {
 		rc = cam_ois_bm24218_enable_servo_gyro(&(o_ctrl->io_master_info));
 		if (rc < 0) {
 			CAM_ERR(CAM_OIS, "OIS cam_ois_bm24218_enable_servo_gyro failed: %d", rc);
