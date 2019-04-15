@@ -18,6 +18,14 @@ config DOHA_DTB
 	  Only include Doha specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config ROMA_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Roma DTBs"
+	help
+	  Only include Roma specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QCOM_MEM_OFFLINE
 	bool "Dynamic Memory Region Offline driver"
 	help
