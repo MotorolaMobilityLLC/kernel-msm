@@ -43,6 +43,8 @@
 
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
+static int smblib_read_mid_voltage_chan(struct smb_charger *chg,
+					union power_supply_propval *val);
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val)
 {
@@ -3147,7 +3149,11 @@ int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
 	if (!chg->wls_psy) {
 		chg->wls_psy = power_supply_get_by_name("wireless");
 		if (!chg->wls_psy)
+#ifdef QCOM_BASE
 			return -ENODEV;
+#else
+			return smblib_read_mid_voltage_chan(chg, val);
+#endif
 	}
 
 	rc = power_supply_get_property(chg->wls_psy,
