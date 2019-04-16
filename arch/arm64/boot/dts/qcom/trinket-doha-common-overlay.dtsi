@@ -11,4 +11,5 @@
  */
 
 #include "trinket-moto-common-overlay.dtsi"
+#include "doha-panel.dtsi"
 
