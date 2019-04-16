@@ -742,14 +742,22 @@ static bool dsi_panel_set_hbm_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	panel->hbm_config.bl_hbm_off = bl_lvl;
 	if (panel->hbm_config.hbm_type == HBM_TYPE_TIANMA_OLED_LHBM_DCS_GPIO) {
 		if (dsi_panel_param_is_hbm_on(panel)) {
-			pr_info("%s: Ignore setting brightness %d in  HBM mode\n",
-				__func__, bl_lvl);
+			if (!bl_lvl) {
+				if (gpio_is_valid(panel->hbm_config.hbm_en_gpio)) {
+					if (gpio_direction_output(panel->hbm_config.hbm_en_gpio, 0))
+						pr_err("[%s] failed to set hbm_en_gpio to low\n",panel->name);
+				}
+				return false;
+			} else
+				pr_info("%s: Ignore setting brightness %d in  HBM mode\n",
+					__func__, bl_lvl);
 			return true;
 		}
 	}
 
 	return false;
 }
+
 
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
