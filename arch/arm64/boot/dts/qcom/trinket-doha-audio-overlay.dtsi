@@ -10,24 +10,8 @@
  * GNU General Public License for more details.
  */
 
-#include "trinket-moto-common-overlay.dtsi"
-#include "doha-panel.dtsi"
-#include "trinket-doha-audio-overlay.dtsi"
-
-&usb_qmp_phy {
-	status = "disabled";
+&sm6150_snd {
+	status = "ok";
+	compatible = "qcom,sm6150-tacna-asoc-snd";
+	qcom,model = "trinket-tacna-snd-card";
 };
-
-&usb0 {
-	dwc3@4e00000 {
-		usb-phy = <&qusb_phy0>, <&usb_nop_phy>;
-		maximum-speed = "high-speed";
-	};
-};
-
-&pmi632_rgb {
-	red {
-		label = "charging";
-	};
-};
-
