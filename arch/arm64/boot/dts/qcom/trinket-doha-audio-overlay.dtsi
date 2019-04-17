@@ -10,8 +10,507 @@
  * GNU General Public License for more details.
  */
 
+&tlmm {
+	/* codec 1.2v power enable */
+	codec_power_en: codec_power_en {
+		mux {
+			pins = "gpio125";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio125";
+			drive-strength = <2>; /* 2 MA */
+			output-high;
+		};
+	};
+
+	codec_reset: codec_reset {
+		mux {
+			pins = "gpio117";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio117";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	amp_r_irq: amp_r_irq {
+		mux {
+			pins = "gpio101";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio101";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	codec_irq: codec_irq {
+		mux {
+			pins = "gpio97";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio97";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	amp_l_irq: amp_l_irq {
+		mux {
+			pins = "gpio100";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio100";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	amp_r_reset: amp_r_reset {
+		mux {
+			pins = "gpio119";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio119";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	amp_l_reset: amp_l_reset {
+		mux {
+			pins = "gpio123";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio123";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	pri_mi2s_clk_active: pri_mi2s_clk_active {
+		mux {
+			pins = "gpio113";
+			function = "pri_mi2s";
+		};
+		config {
+			pins = "gpio113";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+			output-high;
+		};
+	};
+
+	pri_mi2s_clk_sleep: pri_mi2s_clk_sleep {
+		mux {
+			pins = "gpio113";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio113";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+
+	pri_mi2s_ws_active: pri_mi2s_ws_active {
+		mux {
+			pins = "gpio114";
+			function = "pri_mi2s_ws";
+		};
+		config {
+			pins = "gpio114";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+			output-high;
+		};
+	};
+
+	pri_mi2s_ws_sleep: pri_mi2s_ws_sleep {
+		mux {
+			pins = "gpio114";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio114";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+
+	pri_mi2s_sd0_active: pri_mi2s_sd0_active {
+		mux {
+			pins = "gpio115";
+			function = "pri_mi2s";
+		};
+		config {
+			pins = "gpio115";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+		};
+	};
+
+	pri_mi2s_sd0_sleep: pri_mi2s_sd0_sleep {
+		mux {
+			pins = "gpio115";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio115";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+
+	pri_mi2s_sd1_active: pri_mi2s_sd1_active {
+		mux {
+			pins = "gpio116";
+			function = "pri_mi2s";
+		};
+
+		config {
+			pins = "gpio116";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+		};
+	};
+
+	pri_mi2s_sd1_sleep: pri_mi2s_sd1_sleep {
+		mux {
+			pins = "gpio116";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio116";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+};
+
+&cdc_dmic01_gpios {
+	status = "disabled";
+};
+
+&cdc_dmic23_gpios {
+	status = "disabled";
+};
+
+&wsa_swr_gpios {
+	status = "disabled";
+};
+
+&qupv3_se3_i2c {
+	status = "ok";
+	cs35l41_l: cs35l41@40 {
+		#sound-dai-cells = <1>;
+		compatible = "cirrus,cs35l41";
+		reg = <0x40>;
+		/* NFC header pin 10 */
+		reset-gpios = <&tlmm 123 0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <100 IRQ_TYPE_EDGE_FALLING>;
+		VA-supply = <&pm6125_l9>;
+		VP-supply = <&pm6125_l9>;
+
+		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-ind-nanohenry = <1000>;
+		cirrus,boost-cap-microfarad = <15>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&amp_l_irq>, <&amp_l_reset>;
+
+		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,gpio-config2 {
+			cirrus,gpio-src-select = <0x4>;
+			cirrus,gpio-output-enable;
+		};
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@2b80000 {
+				reg = <0x2b80000>;
+				firmware {
+					protection {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
+					};
+					calibration {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
+					};
+					diagnostic {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-diag.wmfw";
+					};
+				};
+			};
+		};
+	};
+
+	cs35l41_r: cs35l41@41 {
+		compatible = "cirrus,cs35l41";
+		reg = <0x41>;
+		/* R & L reset are shorted in miniboard
+                   set an unused GPIO as reset */
+		reset-gpios = <&tlmm 119 0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <101 IRQ_TYPE_EDGE_FALLING>;
+		cirrus,right-channel-amp;
+
+		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-ind-nanohenry = <1000>;
+		cirrus,boost-cap-microfarad = <15>;
+
+		cirrus,asp-sdout-hiz = <0x1>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&amp_r_irq>, <&amp_r_reset>;
+
+		cirrus,gpio-config2 {
+			cirrus,gpio-src-select = <0x4>;
+			cirrus,gpio-output-enable;
+		};
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@2b80000 {
+				reg = <0x2b80000>;
+				firmware {
+					protection {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
+					};
+					calibration {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
+					};
+					diagnostic {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs35l41-dsp1-spk-diag.wmfw";
+					};
+				};
+			};
+		};
+	};
+};
+
+&qupv3_se8_spi {
+	status = "ok";
+	spi-max-frequency = <9600000>;
+	cs48l32: cs48l32@0 {
+		compatible = "cirrus,cs48l32";
+		reg = <0x0>;
+
+		spi-max-frequency = <50000000>;
+
+		gpio-controller;
+		interrupt-controller;
+		interrupt-parent = <&tlmm>;
+		interrupts = <97 0>;
+		/* NFC header pin 3 */
+		reset-gpios =  <&tlmm 117 0>;
+/*
+		qcom,clk-src = "BBCLK3";
+		clocks = <&clock_rpmh_RPMH_LN_BB_CLK3>;
+		clock-names = "ref_clk";
+*/
+		VDD_A-supply = <&pm6125_s6>;
+		VDD_IO1-supply = <&pm6125_l9>;
+		VDD1_CP-supply = <&pm6125_l9>;
+		VDD_D-supply = <&pm6125_s6>;
+
+		pinctrl-names = "probe", "active";
+		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en>;
+		pinctrl-1 = <&cs48l32_defaults>;
+
+		cirrus,in-type = <
+				0 0 0 0 /* IN1 */
+				>;
+
+		cirrus,clk32k-src = <3>;
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			prince_dsp: adsp@2b80000 {
+				reg = <0x2b80000>;
+				firmware {
+					aov {
+						cirrus,full-name;
+						cirrus,wmfw-file = "cs48l32-dsp1-aov.wmfw";
+					};
+				};
+			};
+		};
+
+		tacna_pinctrl: tacna-pinctrl {
+			compatible = "cirrus,tacna-pinctrl";
+
+			cs48l32_defaults: defaults {
+				asp1 {
+					groups = "asp1";
+					function = "asp1";
+					bias-bus-hold;
+				};
+
+				asp2 {
+					groups = "asp2";
+					function = "asp2";
+					bias-bus-hold;
+				};
+			};
+		};
+
+		micvdd {
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+		};
+
+		MICBIAS1 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			cirrus,ext-cap = <1>;
+		};
+
+		MICBIAS1A {
+			regulator-active-discharge = <1>;
+		};
+
+		MICBIAS1B {
+			regulator-active-discharge = <1>;
+		};
+
+		MICBIAS2 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			cirrus,ext-cap = <1>;
+		};
+
+		MICBIAS2A {
+			regulator-active-discharge = <1>;
+		};
+	};
+};
+
+&dai_mi2s0 {
+	status="ok";
+	pinctrl-names = "default","idle";
+	pinctrl-0 = <&pri_mi2s_clk_active &pri_mi2s_ws_active
+		&pri_mi2s_sd0_active &pri_mi2s_sd1_active>;
+	pinctrl-1 = <&pri_mi2s_clk_sleep &pri_mi2s_ws_sleep
+		&pri_mi2s_sd0_sleep &pri_mi2s_sd1_sleep>;
+	qcom,msm-mi2s-rx-lines = <1>;
+	qcom,msm-mi2s-tx-lines = <2>;
+};
+
+&dai_mi2s1 {
+	status = "disabled";
+};
+
+&dai_mi2s2 {
+	status = "disabled";
+};
+
+&dai_mi2s3 {
+	status = "disabled";
+};
+
+&dai_mi2s4 {
+	status = "disabled";
+};
+
+&dai_mi2s5 {
+	status = "disabled";
+};
+
+&clock_audio {
+	status = "ok";
+};
+
+&cdc_dmic01_gpios {
+	status = "disabled";
+};
+
+&cdc_dmic23_gpios {
+	status = "disabled";
+};
+
+&wsa_swr_clk_active {
+	status = "disabled";
+};
+
+&wsa_spkr_en1 {
+	status = "disabled";
+};
+
+&clock_audio_wsa_1 {
+	status = "disabled";
+};
+
+&clock_audio_wsa_2 {
+	status = "disabled";
+};
+
+&wsa_macro {
+	status = "disabled";
+};
+
+&bolero {
+	qcom,num-macros = <3>;
+};
+
 &sm6150_snd {
 	status = "ok";
 	compatible = "qcom,sm6150-tacna-asoc-snd";
 	qcom,model = "trinket-tacna-snd-card";
+	qcom,audio-routing =
+		"AMIC1", "MIC BIAS1",
+		"MIC BIAS1", "Analog Mic1",
+		"AMIC2", "MIC BIAS2",
+		"MIC BIAS2", "Analog Mic2",
+		"AMIC3", "MIC BIAS3",
+		"MIC BIAS3", "Analog Mic3",
+		"TX_AIF1 CAP", "VA_MCLK",
+		"TX_AIF2 CAP", "VA_MCLK",
+		"RX AIF1 PB", "VA_MCLK",
+		"RX AIF2 PB", "VA_MCLK",
+		"RX AIF3 PB", "VA_MCLK",
+		"RX AIF4 PB", "VA_MCLK",
+		"HPHL_OUT", "VA_MCLK",
+		"HPHR_OUT", "VA_MCLK",
+		"AUX_OUT", "VA_MCLK",
+		"IN1_HPHL", "HPHL_OUT",
+		"IN2_HPHR", "HPHR_OUT",
+		"IN3_AUX", "AUX_OUT",
+		"TX SWR_ADC0", "ADC1_OUTPUT",
+		"TX SWR_ADC2", "ADC2_OUTPUT",
+		"WSA SRC0_INP", "SRC0",
+		"WSA_TX DEC0_INP", "TX DEC0 MUX",
+		"WSA_TX DEC1_INP", "TX DEC1 MUX",
+		"RX_TX DEC0_INP", "TX DEC0 MUX",
+		"RX_TX DEC1_INP", "TX DEC1 MUX",
+		"RX_TX DEC2_INP", "TX DEC2 MUX",
+		"RX_TX DEC3_INP", "TX DEC3 MUX",
+		"IN1LP_1", "MICBIAS1A",
+		"IN1RP_1",  "MICBIAS1B";
+	qcom,wsa-max-devs = <0>;
 };
