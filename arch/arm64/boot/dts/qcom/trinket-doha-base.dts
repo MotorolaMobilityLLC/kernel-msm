@@ -14,4 +14,7 @@
 
 #include "trinket-moto-base.dtsi"
 
-
+&pmi632_rgb {
+	/delete-node/ blue;
+	/delete-node/ green;
+};
