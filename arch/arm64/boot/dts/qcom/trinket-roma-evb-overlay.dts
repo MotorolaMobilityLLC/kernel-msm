@@ -17,9 +17,9 @@
 #include "trinket-roma-common-overlay.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. TRINKET ROMA";
+	model = "ROMA";
 	compatible = "qcom,trinket-roma", "qcom,trinket-moto", "qcom,trinket";
 	qcom,msm-id = <394 0x0>;
-	qcom,board-id = <0x44 0xA200>;
+	qcom,board-id = <0x41 0xA100>;
 };
 
