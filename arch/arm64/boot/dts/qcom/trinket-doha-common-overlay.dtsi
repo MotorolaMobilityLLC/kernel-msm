@@ -13,3 +13,13 @@
 #include "trinket-moto-common-overlay.dtsi"
 #include "doha-panel.dtsi"
 
+&usb_qmp_phy {
+	status = "disabled";
+};
+
+&usb0 {
+	dwc3@4e00000 {
+		usb-phy = <&qusb_phy0>, <&usb_nop_phy>;
+		maximum-speed = "high-speed";
+	};
+};
