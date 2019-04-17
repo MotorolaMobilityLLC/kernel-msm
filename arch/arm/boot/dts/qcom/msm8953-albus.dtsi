@@ -67,7 +67,7 @@
 	vci_disp_vreg: vci_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vci_disp";
-		gpio = <&tlmm 32 0>;
+		gpio = <&tlmm 33 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
 		regulator-boot-on;
