@@ -12,6 +12,7 @@
 
 #include "trinket-moto-common-overlay.dtsi"
 #include "doha-panel.dtsi"
+#include "doha-dtv.dtsi"
 #include "trinket-doha-audio-overlay.dtsi"
 #include "trinket-doha-touch-overlay.dtsi"
 #include "trinket-doha-camera-overlay.dtsi"
