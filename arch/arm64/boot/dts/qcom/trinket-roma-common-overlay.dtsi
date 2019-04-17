@@ -11,4 +11,4 @@
  */
 
 #include "trinket-moto-common-overlay.dtsi"
-
+#include "roma-panel.dtsi"
