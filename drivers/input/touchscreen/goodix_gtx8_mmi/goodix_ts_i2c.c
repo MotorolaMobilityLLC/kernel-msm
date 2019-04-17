@@ -2112,7 +2112,7 @@ static int goodix_hw_suspend(struct goodix_ts_device *dev)
  */
 static int goodix_hw_resume(struct goodix_ts_device *dev)
 {
-	int r, i, retry = GOODIX_BUS_RETRY_TIMES;
+	int r = 0, i, retry = GOODIX_BUS_RETRY_TIMES;
 	u8 temp_buf[256], checksum;
 	u8 data[2] = {0x00};
 #ifdef GTP_CHARGER
