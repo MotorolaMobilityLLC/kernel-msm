@@ -37,6 +37,7 @@
 #include <linux/completion.h>
 #include <linux/debugfs.h>
 #include <linux/of_irq.h>
+#include <linux/sensors.h>
 #ifdef CONFIG_OF
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
@@ -62,6 +63,9 @@
 #define GOODIX_PEN_MAX_KEY	2
 #define GOODIX_CFG_MAX_SIZE	1024
 #define GOODIX_TP_IC_TYPE "GTx5"
+#define GOODIX_TP_GESTURE "touch_gesture"
+#define GOODIX_SENSOR_EN
+#define REPORT_MAX_COUNT 10000
 
 #define GOODIX_DEFAULT_CFG_NAME "goodix_config.cfg"
 
@@ -73,6 +77,7 @@
 /* Sleep time define */
 #define GTP_2000_udelay		2000
 #define GTP_20_DLY_MS			20
+#define GTP_60_DLY_MS			60
 #define GTP_100_DLY_MS		100
 #define GTP_150_DLY_MS		150
 #define GTP_250_DLY_MS		250
@@ -444,7 +449,9 @@ struct goodix_ts_core {
 	struct platform_device *pdev;
 	struct goodix_ts_device *ts_dev;
 	struct input_dev *input_dev;
-
+#ifdef GOODIX_SENSOR_EN
+	struct goodix_sensor_platform_data *sensor_pdata;
+#endif
 	struct regulator *avdd;
 	struct regulator *iovdd;
 #ifdef CONFIG_PINCTRL
@@ -463,7 +470,8 @@ struct goodix_ts_core {
 	bool cfg_group_parsed;
 	bool update_from_sysfs;
 	bool gtp_suspended;
-
+	bool wakeable;
+	bool irq_waked;
 	struct notifier_block ts_notifier;
 	struct goodix_ts_esd ts_esd;
 
@@ -510,6 +518,16 @@ struct goodix_ext_module_funcs {
 	int (*irq_event)(struct goodix_ts_core *core_data,
 		struct goodix_ext_module *module);
 };
+
+#ifdef GOODIX_SENSOR_EN
+struct goodix_sensor_platform_data {
+	struct input_dev *input_sensor_dev;
+	struct sensors_classdev ps_cdev;
+	int sensor_opened;
+	char sensor_data; /* 0 near, 1 far */
+	struct goodix_ts_core *data;
+};
+#endif
 
 /*
  * struct goodix_ext_module - external module struct
@@ -773,6 +791,8 @@ int goodix_nodereg_read(void);
 int goodix_set_charger_bit(int state);
 int goodix_charger_init(struct goodix_ts_board_data *board_data);
 #endif
+int goodix_ts_start_suspend(struct goodix_ts_core *core_data);
+int goodix_ts_start_resume(struct goodix_ts_core *core_data);
 extern void goodix_msg_printf(const char *fmt, ...);
 
 #endif
