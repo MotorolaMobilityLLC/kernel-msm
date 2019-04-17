@@ -50,6 +50,8 @@ void goodix_release_fb_notifier(struct goodix_ts_core *core_data);
 struct goodix_module goodix_modules;
 static struct class *touchscreen_class;
 static struct device *touchscreen_class_dev;
+static struct class *gesture_class;
+static struct device *gesture_class_dev;
 
 /**
  * __do_register_ext_module - register external module
@@ -458,7 +460,7 @@ static ssize_t goodix_ts_read_cfg_show(struct device *dev,
 	struct goodix_ts_core *core_data =
 				dev_get_drvdata(dev);
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
-	int ret, i, offset;
+	int ret, i = 0, offset;
 	char *cfg_buf;
 
 	cfg_buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
@@ -691,7 +693,8 @@ static ssize_t goodix_ts_reg_rw_show(struct device *dev,
 		if (ret) {
 			ts_err("failed read addr(%x) length(%d)\n", rw_addr,
 				rw_len);
-			return snprintf(buf, PAGE_SIZE, "failed read addr(%x), len(%d)\n",
+			return snprintf(buf, PAGE_SIZE,
+				"failed read addr(%x), len(%d)\n",
 					rw_addr, rw_len);
 		} else {
 			return snprintf(buf, PAGE_SIZE, "0x%x,%d {%*ph}\n",
@@ -1125,6 +1128,104 @@ device_destroy:
 	return -ENODEV;
 }
 
+/* enable/disable gesture feature */
+static ssize_t goodix_gesture_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE,
+		"gesture:%d\n", goodix_modules.core_data->wakeable);
+}
+
+static ssize_t goodix_gesture_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf,
+		size_t count)
+{
+	int en;
+
+	ts_err("Touch screen gesture.\n");
+	if (kstrtoint(buf, 10, &en) != 0)
+		return -EINVAL;
+
+	if (en > 0)
+		goodix_modules.core_data->wakeable = true;
+	else if (en == 0)
+		goodix_modules.core_data->wakeable = false;
+	else
+		ts_err("Open gesture invalid!");
+
+	ts_debug("enable gesture= %d", goodix_modules.core_data->wakeable);
+	return count;
+}
+
+static struct device_attribute gesture_attributes[] = {
+	__ATTR(gesture, 0664, goodix_gesture_show, goodix_gesture_store),
+	__ATTR_NULL
+};
+
+static int goodix_ts_gesture_class(struct goodix_ts_device *core_data, bool create)
+{
+	int i, error = 0;
+	dev_t devno;
+	s32 ret = 0;
+	struct device_attribute *attrs = gesture_attributes;
+
+	if (create) {
+		ret = alloc_chrdev_region(&devno, 0, 1, GOODIX_TP_GESTURE);
+
+		if (ret) {
+			ts_err("cant`t allocate chrdev");
+			return ret;
+		}
+		ts_debug("allocate chrdev ok");
+
+		gesture_class = class_create(THIS_MODULE, "touch_gesture");
+		if (IS_ERR(gesture_class)) {
+			error = PTR_ERR(gesture_class);
+			gesture_class = NULL;
+			ts_err("Faild to create gesture class!");
+			return ret;
+		}
+
+		gesture_class_dev = device_create(gesture_class, NULL,
+				devno, core_data, GOODIX_TP_GESTURE);
+		if (IS_ERR(gesture_class_dev)) {
+			error = PTR_ERR(gesture_class_dev);
+			gesture_class_dev = NULL;
+			ts_err("Faild to create device(gesture_class_dev)!");
+			return error;
+		}
+
+		ts_info("Succeed to create device(gesture_class_dev)!");
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i) {
+			ret = device_create_file(gesture_class_dev, &attrs[i]);
+			if (ret < 0)
+				goto device_destroy;
+		}
+	} else {
+		if (!gesture_class || !gesture_class_dev)
+			return -ENODEV;
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i)
+			device_remove_file(gesture_class_dev, &attrs[i]);
+
+		device_unregister(gesture_class_dev);
+		class_unregister(gesture_class);
+	}
+
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		device_remove_file(gesture_class_dev, &attrs[i]);
+	gesture_class_dev = NULL;
+	class_unregister(gesture_class);
+	ts_err("error creating gesture class");
+
+	return -ENODEV;
+}
+
 static const struct attribute_group sysfs_group = {
 	.attrs = sysfs_attrs,
 };
@@ -1136,6 +1237,10 @@ int goodix_ts_sysfs_init(struct goodix_ts_core *core_data)
 	if (err) {
 		ts_err("sys class files creation failed");
 	}
+	err = goodix_ts_gesture_class(core_data->ts_dev, true);
+	if (err) {
+		ts_err("gesture class files creation failed");
+	}
 	err = sysfs_create_group(&core_data->pdev->dev.kobj, &sysfs_group);
 	return err;
 }
@@ -1144,6 +1249,10 @@ static void goodix_ts_sysfs_exit(struct goodix_ts_core *core_data)
 {
 	int err;
 	err = goodix_ts_sysfs_class(core_data->ts_dev, false);
+	if (err) {
+		ts_err("sys class files delete failed");
+	}
+	err = goodix_ts_gesture_class(core_data->ts_dev, false);
 	if (err) {
 		ts_err("sys class files delete failed");
 	}
@@ -1425,11 +1534,21 @@ int goodix_ts_irq_enable(struct goodix_ts_core *core_data,
 		if (!atomic_cmpxchg(&core_data->irq_enabled, 0, 1)) {
 			enable_irq(core_data->irq);
 			ts_debug("Irq enabled");
+			if (core_data->wakeable) {
+				enable_irq_wake(core_data->irq);
+				core_data->irq_waked = true;
+				ts_debug("Irq enabled wake");
+			}
 		}
 	} else {
 		if (atomic_cmpxchg(&core_data->irq_enabled, 1, 0)) {
 			disable_irq(core_data->irq);
 			ts_debug("Irq disabled");
+			if (core_data->irq_waked) {
+				disable_irq_wake(core_data->irq);
+				core_data->irq_waked = false;
+				ts_debug("Irq disabled wake");
+			}
 		}
 	}
 
@@ -2292,6 +2411,16 @@ int goodix_ts_fb_notifier_callback(struct notifier_block *self,
 }
 #endif
 
+int goodix_ts_start_suspend(struct goodix_ts_core *core_data)
+{
+	return goodix_ts_suspend(core_data);
+}
+
+int goodix_ts_start_resume(struct goodix_ts_core *core_data)
+{
+	return goodix_ts_resume(core_data);
+}
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 /**
  * goodix_ts_earlysuspend - Early suspend function
@@ -2427,6 +2556,8 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	core_data->cfg_group_parsed = false;
 	core_data->update_from_sysfs = false;
 	core_data->gtp_suspended = false;
+	core_data->wakeable = false;
+	core_data->irq_waked = false;
 	client = to_i2c_client(ts_device->dev);
 	i2c_set_clientdata(client, core_data);
 	r = goodix_ts_power_init(core_data);
@@ -2573,30 +2704,41 @@ static void __exit goodix_ts_core_exit(void)
 extern int goodix_i2c_init(void);
 extern int goodix_tools_init(void);
 extern int goodix_fwu_module_init(void);
+extern int goodix_gsx_gesture_init(void);
 extern int goodix_i2c_exit(void);
 extern int goodix_tools_exit(void);
 extern int goodix_fwu_module_exit(void);
+extern void goodix_gsx_gesture_exit(void);
 
-static int __init goodix_ts_module_init(void)
+int __init goodix_ts_module_init(void)
 {
 	int err;
-	if((err = goodix_ts_core_init()) != 0)
+
+	err = goodix_ts_core_init();
+	if (err)
 		return err;
-	if((err = goodix_i2c_init()) != 0)
+	err = goodix_i2c_init();
+	if (err)
 		return err;
-	if((err = goodix_tools_init()) != 0)
+	err = goodix_tools_init();
+	if (err)
 		return err;
-	if((err = goodix_fwu_module_init()) != 0)
+	err = goodix_fwu_module_init();
+	if (err)
+		return err;
+	err = goodix_gsx_gesture_init();
+	if (err)
 		return err;
 	return 0;
 }
 
-static void __exit goodix_ts_module_exit(void)
+void __exit goodix_ts_module_exit(void)
 {
 	goodix_fwu_module_exit();
 	goodix_tools_exit();
 	goodix_i2c_exit();
 	goodix_ts_core_exit();
+	goodix_gsx_gesture_exit();
 }
 
 module_init(goodix_ts_module_init);
