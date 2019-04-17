@@ -26,6 +26,8 @@
 #include <linux/version.h>
 #include <linux/delay.h>
 #include <linux/atomic.h>
+#include <linux/i2c.h>
+#include <linux/mods/wakelock.h>
 #include "goodix_ts_core.h"
 
 #define GSX_REG_GESTURE_DATA			0x4100
@@ -37,6 +39,33 @@
 
 #define GSX_KEY_DATA_LEN	37
 
+#ifdef GOODIX_SENSOR_EN
+static struct wake_lock gesture_wakelock;
+static struct goodix_ts_core *goodix_core_data;
+static int gsx_sensor_init(struct goodix_ts_core *data);
+
+/*****************************************************************************
+ * Static variables
+ *****************************************************************************/
+static struct sensors_classdev __maybe_unused sensors_touch_cdev = {
+
+	.name = "dt-gesture",
+	.vendor = "Goodix",
+	.version = 1,
+	.type = SENSOR_TYPE_MOTO_DOUBLE_TAP,
+	.max_range = "5.0",
+	.resolution = "5.0",
+	.sensor_power = "1",
+	.min_delay = -1,
+	.max_delay = 0,
+	.fifo_reserved_event_count = 0,
+	.fifo_max_event_count = 0,
+	.enabled = 0,
+	.delay_msec = 200,
+	.sensors_enable = NULL,
+	.sensors_poll_delay = NULL,
+};
+#endif
 /*
  * struct gesture_module - gesture module data
  * @registered: module register state
@@ -211,7 +240,9 @@ static int gsx_gesture_init(struct goodix_ts_core *core_data,
 {
 	int i, ret;
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
-
+#ifdef GOODIX_SENSOR_EN
+	static bool initialized_sensor;
+#endif
 	if (!core_data || !ts_dev->hw_ops->write || !ts_dev->hw_ops->read) {
 		ts_err("Register gesture module failed, ts_core unsupported");
 		goto exit_gesture_init;
@@ -229,6 +260,16 @@ static int gsx_gesture_init(struct goodix_ts_core *core_data,
 
 	ts_debug("Set gesture type manually");
 	memset(gsx_gesture->gesture_type, 0xff, 32);
+
+#ifdef GOODIX_SENSOR_EN
+	goodix_core_data = core_data;
+	if (!initialized_sensor) {
+		wake_lock_init(&gesture_wakelock,
+			WAKE_LOCK_SUSPEND, "poll-wake-lock");
+		if (!gsx_sensor_init(core_data))
+			initialized_sensor = true;
+	}
+#endif
 
 	if (gsx_gesture->kobj_initialized)
 		goto exit_gesture_init;
@@ -323,6 +364,9 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 {
 	int ret;
 	unsigned char clear_reg = 0;
+#ifdef GOODIX_SENSOR_EN
+	static int report_cnt = 0;
+#endif
 	unsigned char checksum = 0, temp_data[GSX_KEY_DATA_LEN];
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
 	struct goodix_ts_cmd *gesture_cmd = &gsx_gesture->cmd;
@@ -358,10 +402,22 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 	if (QUERYBIT(gsx_gesture->gesture_type, temp_data[2])) {
 		/* do resume routine */
 		ts_info("Gesture match success, resume IC");
+#ifdef GOODIX_SENSOR_EN
+		input_report_abs(core_data->sensor_pdata->input_sensor_dev,
+				ABS_DISTANCE,
+				++report_cnt);
+		ts_info("input report: %d", report_cnt);
+		if (report_cnt >= REPORT_MAX_COUNT) {
+			report_cnt = 0;
+		}
+		input_sync(core_data->sensor_pdata->input_sensor_dev);
+		wake_lock_timeout(&gesture_wakelock, msecs_to_jiffies(5000));
+#else
 		input_report_key(core_data->input_dev, KEY_POWER, 1);
 		input_sync(core_data->input_dev);
 		input_report_key(core_data->input_dev, KEY_POWER, 0);
 		input_sync(core_data->input_dev);
+#endif
 		goto gesture_ist_exit;
 	} else {
 		ts_info("Unsupported gesture:%x", temp_data[2]);
@@ -396,16 +452,136 @@ static int gsx_gesture_before_suspend(struct goodix_ts_core *core_data,
 		return 0;
 	}
 
-	ret = hw_ops->send_cmd(core_data->ts_dev, gesture_cmd);
-	if (ret != 0) {
-		ts_err("Send doze command error");
+	ts_info("Before suspend goodix_core_data->wakeable %d!",
+		goodix_core_data->wakeable);
+	if (goodix_core_data->wakeable) {
+		ret = hw_ops->send_cmd(core_data->ts_dev, gesture_cmd);
+		if (ret != 0) {
+			ts_err("Send doze command error");
+			return 0;
+		}
+
+		ts_info("Set IC in doze mode");
+		atomic_set(&core_data->suspended, 1);
+		return EVT_CANCEL_SUSPEND;
+	} else {
 		return 0;
 	}
+}
+
+static int gsx_sensor_set_enable(struct sensors_classdev *sensors_cdev,
+		unsigned int enable)
+{
+	int ret;
+	struct goodix_ts_cmd *gesture_cmd = &gsx_gesture->cmd;
+	struct goodix_ts_device *ts_dev = goodix_core_data->ts_dev;
+
+	ts_info("Gesture set enable %d!", enable);
+	if (enable == 1) {
+		goodix_core_data->wakeable = true;
+		goodix_ts_start_resume(goodix_core_data);
+
+		msleep(GTP_60_DLY_MS);
+
+		ret = ts_dev->hw_ops->send_cmd(goodix_core_data->ts_dev,
+			gesture_cmd);
+		if (ret != 0) {
+			ts_err("Send doze command error");
+			return 0;
+		}
+
+	msleep(GTP_20_DLY_MS);
+
+#ifdef GTP_CHARGER
+	//charger off
+	if ((ts_dev->board_data->charger_detection_enable) &&
+		(USB_DETECT_IN == ts_dev->board_data->charger_detection->usb_connected)) {
+		goodix_set_charger_bit(USB_DETECT_OUT);
+	}
+
+	ts_dev->board_data->charger_send_flage_enable = false;
+#endif
 
 	ts_info("Set IC in doze mode");
-	atomic_set(&core_data->suspended, 1);
-	return EVT_CANCEL_SUSPEND;
+	atomic_set(&goodix_core_data->suspended, 1);
+	goodix_core_data->gtp_suspended = true;
+
+	} else if (enable == 0) {
+		goodix_core_data->wakeable = false;
+		goodix_ts_start_resume(goodix_core_data);
+	} else {
+		ts_info("unknown enable symbol\n");
+	}
+	return 0;
 }
+
+#ifdef GOODIX_SENSOR_EN
+static int gsx_sensor_init(struct goodix_ts_core *data)
+{
+	struct goodix_sensor_platform_data *sensor_pdata;
+	struct input_dev *sensor_input_dev;
+	int err;
+
+	sensor_input_dev = input_allocate_device();
+	if (!sensor_input_dev) {
+		ts_err("Failed to allocate device");
+		goto exit;
+	}
+
+	sensor_pdata = devm_kzalloc(&sensor_input_dev->dev,
+			sizeof(struct goodix_sensor_platform_data),
+			GFP_KERNEL);
+	if (!sensor_pdata) {
+		ts_err("Failed to allocate memory");
+		goto free_sensor_pdata;
+	}
+	data->sensor_pdata = sensor_pdata;
+
+	__set_bit(EV_ABS, sensor_input_dev->evbit);
+	__set_bit(EV_SYN, sensor_input_dev->evbit);
+	input_set_abs_params(sensor_input_dev, ABS_DISTANCE,
+			0, REPORT_MAX_COUNT, 0, 0);
+	sensor_input_dev->name = "double-tap";
+	data->sensor_pdata->input_sensor_dev = sensor_input_dev;
+
+	err = input_register_device(sensor_input_dev);
+	if (err) {
+		ts_err("Unable to register device, err=%d", err);
+		goto free_sensor_input_dev;
+	}
+
+	sensor_pdata->ps_cdev = sensors_touch_cdev;
+	sensor_pdata->ps_cdev.sensors_enable = gsx_sensor_set_enable;
+	sensor_pdata->data = data;
+
+	err = sensors_classdev_register(&sensor_input_dev->dev,
+				&sensor_pdata->ps_cdev);
+	if (err)
+		goto unregister_sensor_input_device;
+
+	return 0;
+
+unregister_sensor_input_device:
+	input_unregister_device(data->sensor_pdata->input_sensor_dev);
+free_sensor_input_dev:
+	input_free_device(data->sensor_pdata->input_sensor_dev);
+free_sensor_pdata:
+	devm_kfree(&sensor_input_dev->dev, sensor_pdata);
+	data->sensor_pdata = NULL;
+exit:
+	return 1;
+}
+
+int gsx_sensor_remove(struct goodix_ts_core *data)
+{
+	sensors_classdev_unregister(&data->sensor_pdata->ps_cdev);
+	input_unregister_device(data->sensor_pdata->input_sensor_dev);
+	devm_kfree(&data->sensor_pdata->input_sensor_dev->dev,
+		data->sensor_pdata);
+	data->sensor_pdata = NULL;
+	return 0;
+}
+#endif
 
 /**
  * gsx_gesture_before_resume - execute gesture resume routine
@@ -432,7 +608,7 @@ static struct goodix_ext_module_funcs gsx_gesture_funcs = {
 	.before_suspend = gsx_gesture_before_suspend
 };
 
-static int __init goodix_gsx_gesture_init(void)
+int __init goodix_gsx_gesture_init(void)
 {
 	/* initialize core_data->ts_dev->gesture_cmd*/
 	int result;
@@ -455,7 +631,7 @@ static int __init goodix_gsx_gesture_init(void)
 	return result;
 }
 
-static void __exit goodix_gsx_gesture_exit(void)
+void __exit goodix_gsx_gesture_exit(void)
 {
 	ts_info("gesture module exit");
 	if (gsx_gesture->kobj_initialized)
@@ -463,9 +639,6 @@ static void __exit goodix_gsx_gesture_exit(void)
 	kfree(gsx_gesture);
 	/*return;*/
 }
-
-module_init(goodix_gsx_gesture_init);
-module_exit(goodix_gsx_gesture_exit);
 
 MODULE_DESCRIPTION("Goodix gsx Touchscreen Gesture Module");
 MODULE_AUTHOR("Goodix, Inc.");
