@@ -23,3 +23,9 @@
 		maximum-speed = "high-speed";
 	};
 };
+
+&pmi632_rgb {
+	red {
+		label = "charging";
+	};
+};
