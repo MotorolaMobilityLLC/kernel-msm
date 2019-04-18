@@ -218,6 +218,12 @@ static int32_t cam_sensor_i2c_pkt_parse(struct cam_sensor_ctrl_t *s_ctrl,
 		cam_sensor_update_req_mgr(s_ctrl, csl_packet);
 		return 0;
 	}
+	case CAM_SENSOR_PACKET_OPCODE_SENSOR_SET_STROBE: {
+		i2c_reg_settings =
+			&i2c_data->per_frame[csl_packet->header.request_id %
+				MAX_PER_FRAME_ARRAY];
+		break;
+	}
 	default:
 		CAM_ERR(CAM_SENSOR, "Invalid Packet Header");
 		return -EINVAL;
@@ -235,7 +241,10 @@ static int32_t cam_sensor_i2c_pkt_parse(struct cam_sensor_ctrl_t *s_ctrl,
 	}
 
 	if ((csl_packet->header.op_code & 0xFFFFFF) ==
-		CAM_SENSOR_PACKET_OPCODE_SENSOR_UPDATE) {
+		CAM_SENSOR_PACKET_OPCODE_SENSOR_UPDATE ||
+		(csl_packet->header.op_code & 0xFFFFFF) ==
+		CAM_SENSOR_PACKET_OPCODE_SENSOR_SET_STROBE) {
+
 		i2c_reg_settings->request_id =
 			csl_packet->header.request_id;
 		cam_sensor_update_req_mgr(s_ctrl, csl_packet);
