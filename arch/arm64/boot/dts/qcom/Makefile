@@ -15,11 +15,14 @@ dtbo-$(CONFIG_DOHA_DTB) += \
 	trinket-doha-evt1-overlay.dtbo
 
 dtbo-$(CONFIG_ROMA_DTB) += \
-	trinket-roma-evb-overlay.dtbo
+	trinket-roma-evb-overlay.dtbo \
+	trinket-roma-evt1-overlay.dtbo
 
 trinket-doha-evt1-overlay.dtbo-base :=  trinket-doha-base.dtb
 
 trinket-roma-evb-overlay.dtbo-base :=  trinket-roma-base.dtb
+
+trinket-roma-evt1-overlay.dtbo-base :=  trinket-roma-base.dtb
 
 else
 # SPDX-License-Identifier: GPL-2.0
