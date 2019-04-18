@@ -612,6 +612,7 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 {
 	int rc = 0;
 	struct mipi_dsi_device *dsi;
+	struct dsi_backlight_config *bl = &panel->bl_config;
 
 	if (!panel || (bl_lvl > 0xffff)) {
 		pr_err("invalid params\n");
@@ -619,6 +620,9 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	}
 
 	dsi = &panel->mipi_device;
+
+       if (bl->bl_2bytes_0xff0f_enable)
+		bl_lvl = ((bl_lvl & 0x000f) << 8) |(bl_lvl >> 4);
 
 	rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
 	if (rc < 0)
@@ -2320,6 +2324,12 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 	} else {
 		panel->bl_config.brightness_default_level = val;
 	}
+
+	panel->bl_config.bl_2bytes_0xff0f_enable = utils->read_bool(utils->data,
+			"qcom,bklt-dcs-2bytes-0xff0f-enabled");
+
+	pr_info("[%s] bl_2bytes_0xff0f_enable=%d\n", panel->name,
+					panel->bl_config.bl_2bytes_0xff0f_enable);
 
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(panel);
