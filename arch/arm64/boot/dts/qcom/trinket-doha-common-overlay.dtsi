@@ -14,6 +14,7 @@
 #include "doha-panel.dtsi"
 #include "trinket-doha-audio-overlay.dtsi"
 #include "trinket-doha-touch-overlay.dtsi"
+#include "trinket-doha-camera-overlay.dtsi"
 
 &usb_qmp_phy {
 	status = "disabled";
