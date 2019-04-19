@@ -1,0 +1,828 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sm6150-moto-common-overlay.dtsi"
+#include "sm6150-audio-overlay.dtsi"
+#include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
+#include "dsi-panel-mot-tianma-639-1080p-cmd-overlay.dtsi"
+#include "sm6150-def-audio-overlay.dtsi"
+#include "sm6150-camera-sensor-mot-def-overlay.dtsi"
+
+&pm6150_l19 {
+	regulator-boot-on;
+	regulator-always-on;
+	status = "ok";
+};
+
+&tlmm{
+	nfc {
+		nfc_int_active: nfc_int_active {
+			/* active state */
+			mux {
+				/* GPIO86 NFC Read Interrupt */
+				pins = "gpio86";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86";
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		nfc_int_suspend: nfc_int_suspend {
+			/* sleep state */
+			mux {
+				/* GPIO 86 NFC Read Interrupt */
+				pins = "gpio86";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86";
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		nfc_enable_active: nfc_enable_active {
+			/* active state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio84";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio84";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+			};
+		};
+
+		nfc_enable_suspend: nfc_enable_suspend {
+			/* sleep state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio84";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio84";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+			};
+		};
+
+		nfc_115_active: nfc_115_active {
+			/* active state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio115";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio115";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+
+		nfc_115_suspend: nfc_115_suspend {
+			/* sleep state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio115";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio115";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+
+		nfc_clk_req_active: nfc_clk_req_active {
+			/* active state */
+			mux {
+				/* 50: NFC CLOCK REQUEST */
+				pins = "gpio50";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio50";
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		nfc_clk_req_suspend: nfc_clk_req_suspend {
+			/* sleep state */
+			mux {
+				/* 50: NFC CLOCK REQUEST */
+				pins = "gpio50";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio50";
+				bias-disable;
+				input-enable;
+			};
+		};
+	};
+
+	fps_rst_active: fps_rst_active {
+		/* active state */
+		mux {
+			pins = "gpio46";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio46";
+			drive-strength = <2>; /* 2 MA */
+			output-low;
+		};
+	};
+
+	fps_rst_suspend: fps_rst_suspend {
+		/* sleep state */
+		mux {
+			pins = "gpio46";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio46";
+			drive-strength = <2>; /* 2 MA */
+		};
+	};
+
+	fps_int_active: fps_int_active {
+		/* active state */
+		mux {
+			pins = "gpio93";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio93";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+			input-enable;
+		};
+	};
+
+	fps_int_suspend: fps_int_suspend {
+		/* sleep state */
+		mux {
+			pins = "gpio93";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio93";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+			input-enable;
+		};
+	};
+
+	haptic_irq {
+		haptic_irq_default: haptic_irq_default {
+			pins = "gpio97";
+			bias-pull-up;
+		};
+	};
+
+	touch_int_mux {
+		touch_int_active: active {
+			mux {
+				pins = "gpio89";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio89";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		touch_int_suspend: default {
+			mux {
+				pins = "gpio89";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio89";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
+	touch_reset_mux {
+		touch_reset_active: active {
+			mux {
+				pins = "gpio88";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio88";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		touch_reset_suspend: default {
+			mux {
+				pins = "gpio88";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio88";
+				drive-strength = <2>;
+				bias-pull-down;
+				output-low;
+			};
+		};
+	};
+
+        tps61280_en_default: tps61280_en_default {
+               mux {
+                        pins = "gpio60";
+               };
+               config {
+                        pins = "gpio60";
+                        drive_strength = <16>;
+                        output-high;
+              };
+        };
+
+	sx933x_irq_default: sx933x_irq_default {
+		mux {
+			pins = "gpio110";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio110";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
+};
+
+&soc {
+	goodix_fingerprint{
+		compatible = "goodix,fingerprint";
+		fp-gpio-reset = <&tlmm 46 0x00>;
+		fp-gpio-irq = <&tlmm 93 0x00>;
+		fp-gpio-ven = <&pm6150l_gpios 12 0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <93 0>;
+		interrupt-controller;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&fps_rst_active &fps_int_active>;
+		pinctrl-1 = <&fps_rst_suspend &fps_int_suspend>;
+	};
+
+	dsi_panel_pwr_supply_vdd_amoled: dsi_panel_pwr_supply_vdd_amoled {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <62000>;
+			qcom,supply-disable-load = <80>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vdd";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3000000>;
+			qcom,supply-enable-load = <857000>;
+			qcom,supply-disable-load = <0>;
+			qcom,supply-post-on-sleep = <0>;
+		};
+	};
+
+	dsi_smd_639_1080x2340_cmd_display: qcom,dsi-display@5 {
+		label = "dsi_smd_639_1080x2340_cmd_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+
+		qcom,dsi-panel = <&mot_smd_639_1080p_cmd_v1>;
+	};
+
+	dsi_tianma_639_1080x2340_cmd_display: qcom,dsi-display@6 {
+		label = "dsi_tianma_639_1080x2340_cmd_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+
+		qcom,dsi-panel = <&mot_tianma_639_1080p_cmd_v1>;
+	};
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@7 {
+		label = "dsi_mot_dummy_qhd_video_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+
+		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
+	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+			"back_temp";
+		status = "ok";
+	};
+
+};
+
+&qupv3_se1_i2c {
+	status = "okay";
+
+	goodix_ts_i2c@5d {
+		compatible = "goodix,goodix_mmi";
+		reg = <0x5d>;
+		status = "ok";
+		interrupt-parent = <&tlmm>;
+		interrupts = <89 0>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
+		pinctrl-0 = <&touch_int_active &touch_reset_active>;
+		pinctrl-1 = <&touch_int_suspend &touch_reset_suspend>;
+		goodix,reg-en-gpio = <&tlmm 94 0x0>;
+		goodix,reset-gpio = <&tlmm 88 0x0>;
+		goodix,irq-gpio = <&tlmm 89 0x2002>;
+		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
+		goodix,control-dsi = <0>;
+		goodix,panel-max-id = <10>;
+		goodix,panel-max-x = <1080>;
+		goodix,panel-max-y = <2340>;
+		goodix,panel-max-w = <512>;
+		goodix,panel-max-p = <512>;
+		goodix,panel-key-map = <158 172 217>; /*KEY_BACK, KEY_HOMEPAGE, KEY_SEARCH*/
+		goodix,power-on-delay-us = <300000>; /*300ms*/
+		goodix,power-off-delay-us = <5000>;
+		/*goodix,swap-axis;*/
+		goodix,x2x;
+		goodix,y2y;
+		goodix,pen-enable;
+		goodix,key-of-pen = <331 332>;/*BTN_STYLUS, BTN_STYLUS2*/
+	};
+};
+
+&qupv3_se3_i2c {
+	status = "okay";
+
+	pcal_pin:gpio@20 {
+		compatible = "pcal,pcal-pin";
+		status = "ok";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		#address-cells = <1>;
+		pcal,pin-num = <16>;
+		pcal,reset-gpio = <&tlmm 109 1>;
+	};
+
+	aw869x_haptic@5A {
+		compatible = "awinic,aw869x_haptic";
+		reg = <0x5A>;
+		reset-gpio = <&pcal_pin 10 0>;
+		irq-gpio = <&tlmm 97 0>;
+		haptic-context-gpio = <&tlmm 101 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&haptic_irq_default>;
+		status = "okay";
+	};
+
+        tps61280@75 {
+                compatible = "ti,tps61280";
+                reg = <0x75>;
+                ti,config = <0x0D>;
+                ti,vout-floor = <0x0F>;
+                ti,vout-roof = <0x1F>;
+                ti,ilim = <0x0F>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&tps61280_en_default>;
+        };
+
+	sx933x@28 {
+		compatible = "Semtech,sx933x";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <110 0x2008>;
+		Semtech,nirq-gpio = <&tlmm 110 0x2008>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx933x_irq_default>;
+		cap_vdd-supply = <&pm6150l_l7>;
+		Semtech,button-flag = <0x07>;
+		Semtech,reg-num = <44>;
+		Semtech,reg-init = <
+			0x4004 0x77
+			0x4054 0x400
+			0x42C0 0x8000000
+			0x42C4 0x3F
+			0x801C 0x31
+			0x8024 0x3001A46 /*again 6.6pf*/
+			0x8028 0x3FFE8262
+			0x802c 0x130006BF
+			0x8030 0x3FF78258
+			0x8034 0x3000C46
+			0x8038 0x3FBF8269
+			0x803c 0x130006BF
+			0x8040 0x3DFF825D
+			0x8044 0x88E
+			0x8048 0x280002D4
+			0x804C 0x88E
+			0x8050 0x80001EE6
+			0x8054 0x10124000 /*ph0*/
+			0x8058 0x60600D31
+			0x805c 0x54AC4300
+			0x8064 0x00AD0000 /*5mm th*/
+			0x8074 0x10223900 /*ph1*/
+			0x8078 0x60600D31
+			0x807c 0x54AC4300
+			0x8084 0x009E0000 /*5mm th*/
+			0x808C 0x1F001F00
+			0x8090 0x00010000
+			0x8094 0x10123900 /*ph2*/
+			0x8098 0x60600D31
+			0x809C 0x54AC4300
+			0x80A4 0x00B30000 /*5mm th*/
+			0x80B4 0x10027E00
+			0x80B8 0x60600931
+			0x80bc 0x54AC4300
+			0x80D4 0x10162800
+			0x80D8 0x20400031
+			0x80DC 0x54AC5300
+			0x80E4 0x62623B
+			0x80F4 0x10162800
+			0x80F8 0x20400031
+			0x80FC 0x54AC5300
+			0x8124 0x400000B
+			0x81A4 0x1C40009
+			0x8020 0x000F0000
+		>;
+	};
+};
+
+&qupv3_se5_i2c {
+	status = "ok";
+	nq@28 {
+		compatible = "qcom,nq-nci";
+		reg = <0x28>;
+		qcom,nq-irq = <&tlmm 86 0x00>;
+		qcom,nq-ven = <&tlmm 84 0x00>;
+		qcom,nq-firm = <&tlmm 85 0x00>;
+		qcom,nq-clkreq = <&tlmm 50 0x00>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <86 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active
+				&nfc_115_active	&nfc_clk_req_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend
+				&nfc_115_suspend &nfc_clk_req_suspend>;
+	};
+};
+
+&thermal_zones {
+	xo_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150_adc_tm ADC_XO_THERM_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	sdm_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM2_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	conn_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM4_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	msm_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM1_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	pa_therm0 {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150l_adc_tm ADC_AMUX_THM2_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	chg_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM3_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+
+	quiet_therm {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "user_space";
+		thermal-sensors = <&pm6150l_adc_tm ADC_GPIO4_PU2>;
+		trips {
+			active-config0 {
+				temperature = <125000>;
+				hysteresis = <1000>;
+				type = "passive";
+			};
+		};
+	};
+	quiet-therm-step {
+		trips {
+			modem_trip1: modem-trip1 {
+				temperature = <70000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+			modem_trip2: modem-trip2 {
+				temperature = <72000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+			modem_trip3_batt_trip1: modem-trip3 {
+				temperature = <75000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+};
+
+
+&pm6150_vib {
+	status = "disable";
+};
+
+&pm6150_vadc {
+	chg_therm {
+		reg = <ADC_AMUX_THM3_PU2>;
+		label = "chg_therm";
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+};
+
+&pm6150_adc_tm {
+	io-channels = <&pm6150_vadc ADC_XO_THERM_PU2>,
+			<&pm6150_vadc ADC_AMUX_THM2_PU2>,
+			<&pm6150_vadc ADC_AMUX_THM3_PU2>,
+			<&pm6150_vadc ADC_AMUX_THM4_PU2>;
+
+	/* Channel nodes */
+	chg_therm {
+		reg = <ADC_AMUX_THM3_PU2>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+};
+
+&pm6150l_vadc {
+	msm_therm {
+		reg = <ADC_AMUX_THM1_PU2>;
+		label = "msm_therm";
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+
+	pa_therm0 {
+		reg = <ADC_AMUX_THM2_PU2>;
+		label = "pa_therm0";
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+		qcom,pre-scaling = <1 1>;
+	};
+};
+
+&pm6150l_adc_tm {
+	/* Channel nodes */
+	msm_therm {
+		reg = <ADC_AMUX_THM1_PU2>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+
+	pa_therm0 {
+		reg = <ADC_AMUX_THM2_PU2>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+};
+
+&pm6150l_wled {
+	status = "disable";
+};
+
+&pm6150l_lcdb {
+	status = "disable";
+};
+
+&sde_dsi {
+	qcom,dsi-display-list =
+		<&dsi_smd_639_1080x2340_cmd_display
+		 &dsi_tianma_639_1080x2340_cmd_display
+		 &dsi_mot_dummy_qhd_video_display>;
+
+	/delete-property/vddio-supply;
+	/delete-property/lab-supply;
+	/delete-property/ibb-supply;
+
+	vddio-supply = <&pm6150_l15>;
+	vdd-supply = <&pm6150_l18>;
+};
+
+&mot_smd_639_1080p_cmd_v1 {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
+	qcom,platform-te-gpio = <&tlmm 90 0>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+	qcom,platform-vsync-source = <0>;
+
+	qcom,mdss-dsi-t-clk-post = <0x0f>;
+	qcom,mdss-dsi-t-clk-pre = <0x37>;
+	/* Enable ESD checking */
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
+	//qcom,mdss-dsi-panel-status-read-length = <1>;
+	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+	//qcom,mdss-dsi-panel-status-value = <0x9c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+
+			qcom,mdss-dsi-hbm-dim-off-command = [
+				39 00 00 00 00 00 03 F0 5A 5A
+				39 00 00 00 00 00 03 B7 01 58
+				15 01 00 00 00 00 02 B0 07
+				15 01 00 00 00 00 02 B7 12
+				39 00 00 00 00 00 03 F0 5A 5A];
+		};
+	};
+};
+
+&mot_tianma_639_1080p_cmd_v1 {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
+	qcom,platform-te-gpio = <&tlmm 90 0>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+	qcom,panel-te-source = <0>;
+
+	qcom,mdss-dsi-t-clk-post = <0x0f>;
+	qcom,mdss-dsi-t-clk-pre = <0x37>;
+	/* Enable ESD checking */
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
+	//qcom,mdss-dsi-panel-status-read-length = <1>;
+	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+	//qcom,mdss-dsi-panel-status-value = <0x0c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0
+				26 20 0A 0B 06 03 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&mot_dummy_vid_qhd {
+	qcom,platform-te-gpio = <&tlmm 90 0>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+
+	qcom,mdss-dsi-t-clk-post = <0x0e>;
+	qcom,mdss-dsi-t-clk-pre = <0x31>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[24 1f 08 09 05 02 04 a0
+				24 1f 08 09 05 02 04 a0
+				24 1f 08 09 05 02 04 a0
+				24 1f 08 09 05 02 04 a0
+				24 1c 08 09 05 02 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&usb0{
+	mmi,ext-typec-switch;
+};
+
+&spmi_bus {
+	qcom,pm6150@0 {
+		pm6150_clkdiv: clock-controller@5b00 {
+			compatible = "qcom,spmi-clkdiv";
+			assigned-clock-rates = <2400000>;
+		};
+	};
+};
