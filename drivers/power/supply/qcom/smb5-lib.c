@@ -7218,6 +7218,9 @@ static void smblib_pd_contract_work(struct work_struct *work)
 	if (rc < 0)
 		smblib_err(chg, "Error setting %d uA rc=%d\n", max_ua, rc);
 
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work, 0);
+
 }
 
 static void smblib_uusb_otg_work(struct work_struct *work)
