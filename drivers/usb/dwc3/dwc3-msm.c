@@ -2375,7 +2375,7 @@ static void dwc3_msm_vbus_draw_work(struct work_struct *w)
 	dwc3_msm_gadget_vbus_draw(mdwc, dwc->vbus_draw);
 }
 
-#define MAX_ERR_CNT 5
+#define MAX_ERR_CNT 50
 static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 							unsigned int value)
 {
@@ -2388,7 +2388,8 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 	switch (event) {
 	case DWC3_CONTROLLER_ERROR_EVENT:
 		/* Avoid a flood of Error events */
-		if (dwc->err_cnt++ >= MAX_ERR_CNT)
+		if ((dwc->err_cnt++ >= MAX_ERR_CNT) &&
+		    (dwc->err_cnt % MAX_ERR_CNT))
 			break;
 
 		dev_info(mdwc->dev,
@@ -3794,6 +3795,9 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 
 	mdwc->ext_idx = enb->idx;
 
+	/* Reset the Controller Error Count for Vbus change */
+	dwc->err_cnt = 0;
+
 	dev_dbg(mdwc->dev, "vbus:%ld event received\n", event);
 
 	mdwc->vbus_active = event;
@@ -5009,9 +5013,6 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		}
 	}
 
-	/* Reset Controller Error Count */
-	dwc->err_cnt = 0;
-
 	if (on) {
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
 
@@ -5167,9 +5168,6 @@ static void dwc3_override_vbus_status(struct dwc3_msm *mdwc, bool vbus_present)
 static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
-
-	/* Reset Controller Error Count */
-	dwc->err_cnt = 0;
 
 	pm_runtime_get_sync(mdwc->dev);
 	dbg_event(0xFF, "StrtGdgt gsync",
