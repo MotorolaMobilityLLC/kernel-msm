@@ -1,0 +1,64 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/clock/qcom,camcc-sm6150.h>
+
+#include "sm6150-def-common-overlay.dtsi"
+#include "sm6150-moto-dap-common-overlay.dtsi"
+
+/ {
+	model = "def";
+	qcom,msm-id = <355 0x0>;
+	qcom,board-id = <0x47 0xA100>;
+};
+
+&dsi_smd_639_1080x2340_cmd_display {
+	qcom,dsi-display-active;
+};
+
+&mot_smd_639_1080p_cmd_v1 {
+	qcom,mdss-dsi-hbm-dim-off;
+};
+
+&dsi_tianma_639_1080x2340_cmd_display {
+	qcom,dsi-display-active;
+};
+
+&sm6150_snd {
+	def,audio_slimbus_workaround = <1>;
+};
+
+&lpi_tlmm {
+	marley_reset_default: marley_reset_default {
+		config {
+			pins = "gpio24";
+			output-high;
+			bias-pull-up;
+			drive-strength = <16>;
+		};
+	};
+};
+
+&sde_dsi {
+	/delete-property/vddio-supply;
+	vddio-supply = <&pm6150_l13>;
+};
+
+&pm6150_qg {
+	qcom,vbatt-cutoff-mv = <3200>;
+	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-empty-cold-mv = <3000>;
+};
