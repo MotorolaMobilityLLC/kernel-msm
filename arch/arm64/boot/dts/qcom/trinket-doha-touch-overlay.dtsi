@@ -18,11 +18,6 @@
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_release>;
-		focaltech,have-key;
-		focaltech,key-number = <3>;
-		focaltech,keys = <139 102 158>;
-		focaltech,key-x-coords = <200 600 800>;
-		focaltech,key-y-coords = <2000 2000 2000>;
 	};
 };
 
