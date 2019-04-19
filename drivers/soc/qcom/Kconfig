@@ -26,6 +26,14 @@ config PARKER_DTB
 	  Only include Parker specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config DEF_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Def DTBs"
+	help
+	  Only include Def specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QCOM_MEM_OFFLINE
 	bool "Dynamic Memory Region Offline driver"
 	help
