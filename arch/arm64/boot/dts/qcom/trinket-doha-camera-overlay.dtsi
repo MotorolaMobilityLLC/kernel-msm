@@ -11,6 +11,26 @@
  * GNU General Public License for more details.
  */
 
+&soc {
+    led_flash_rear: qcom,camera-flash@0 {
+        cell-index = <0>;
+        compatible = "qcom,camera-flash";
+        qcom,flash-source = <&pmi632_flash0>;
+        qcom,torch-source = <&pmi632_torch0>;
+        qcom,switch-source = <&pmi632_switch0>;
+        status = "ok";
+    };
+};
+
+&cci {
+    actuator_rear: qcom,actuator@0 {
+        cell-index = <0>;
+        reg = <0x0>;
+        compatible = "qcom,actuator";
+        qcom,cci-master = <0>;
+    };
+};
+
 &tlmm {
     /delete-node/ pm8008_active;
 
@@ -162,6 +182,8 @@
         qcom,csiphy-sd-index = <0>;
         qcom,csid-sd-index = <0>;
         qcom,mount-angle = <90>;
+        qcom,actuator-src = <&actuator_rear>;
+        qcom,led-flash-src = <&led_flash_rear>;
         cam_vio-supply = <&L12A>;
         cam_clk-supply = <&camss_top_gdsc>;
         qcom,cam-vreg-name = "cam_vio", "cam_clk";
