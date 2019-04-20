@@ -16,6 +16,7 @@
 #include "trinket-doha-audio-overlay.dtsi"
 #include "trinket-doha-touch-overlay.dtsi"
 #include "trinket-doha-camera-overlay.dtsi"
+#include "trinket-doha-haptic-overlay.dtsi"
 
 &usb_qmp_phy {
 	status = "disabled";
