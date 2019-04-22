@@ -2900,7 +2900,7 @@ long diagchar_compat_ioctl(struct file *filp,
 			result = -EFAULT;
 		else
 			result = 0;
-
+		break;
 	case DIAG_IOCTL_MD_SUPPORT_LIST:
 		result = diag_ioctl_md_support_list(ioarg);
 
@@ -3084,6 +3084,7 @@ long diagchar_ioctl(struct file *filp,
 		break;
 	case DIAG_IOCTL_MD_SUPPORT_LIST:
 		result = diag_ioctl_md_support_list(ioarg);
+		break;
 	}
 	return result;
 }
