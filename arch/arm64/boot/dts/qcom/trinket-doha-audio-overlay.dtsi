@@ -411,13 +411,19 @@
 	};
 };
 
+&soc {
+	cdc_pri_mi2s_gpios: msm_cdc_pinctrl_pri {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&pri_mi2s_clk_active &pri_mi2s_ws_active
+		       &pri_mi2s_sd0_active &pri_mi2s_sd1_active>;
+		pinctrl-1 = <&pri_mi2s_clk_sleep &pri_mi2s_ws_sleep
+		       &pri_mi2s_sd0_sleep &pri_mi2s_sd1_sleep>;
+	};
+};
+
 &dai_mi2s0 {
 	status="ok";
-	pinctrl-names = "default","idle";
-	pinctrl-0 = <&pri_mi2s_clk_active &pri_mi2s_ws_active
-		&pri_mi2s_sd0_active &pri_mi2s_sd1_active>;
-	pinctrl-1 = <&pri_mi2s_clk_sleep &pri_mi2s_ws_sleep
-		&pri_mi2s_sd0_sleep &pri_mi2s_sd1_sleep>;
 	qcom,msm-mi2s-rx-lines = <1>;
 	qcom,msm-mi2s-tx-lines = <2>;
 };
@@ -482,6 +488,7 @@
 	status = "ok";
 	compatible = "qcom,sm6150-tacna-asoc-snd";
 	qcom,model = "trinket-tacna-snd-card";
+	qcom,pri-mi2s-gpios = <&cdc_pri_mi2s_gpios>;
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
 		"MIC BIAS1", "Analog Mic1",
