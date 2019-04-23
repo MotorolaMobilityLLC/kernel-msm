@@ -431,7 +431,7 @@
 		reg = <0x64>;
 
 		aw2015,red {
-			aw2015,name = "red";
+			aw2015,name = "red_moto";
 			aw2015,id = <0>;
 			aw2015,imax = <1>;
 			aw2015,imax-factory = <2>;
@@ -444,7 +444,7 @@
 		};
 
 		aw2015,green {
-			aw2015,name = "green";
+			aw2015,name = "green_moto";
 			aw2015,id = <1>;
 			aw2015,imax = <1>;
 			aw2015,imax-factory = <2>;
@@ -457,7 +457,7 @@
 		};
 
 		aw2015,blue {
-			aw2015,name = "blue";
+			aw2015,name = "blue_moto";
 			aw2015,id = <2>;
 			aw2015,imax = <1>;
 			aw2015,imax-factory = <2>;
