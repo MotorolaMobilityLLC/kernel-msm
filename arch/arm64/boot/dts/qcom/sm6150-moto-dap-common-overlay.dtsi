@@ -13,7 +13,7 @@
 &firmware {
 	android {
 		vbmeta {
-			parts = "system,vendor";
+			parts = "system,vendor,product";
 		};
 		fstab {
 			vendor {
@@ -29,6 +29,15 @@
 				compatible = "android,system";
 				dev = "system";
 				mnt_point = "/system";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1";
+				fsmgr_flags = "wait,slotselect,avb=vbmeta,logical,first_stage_mount";
+				status = "ok";
+			};
+			product {
+				compatible = "android,product";
+				dev = "product";
+				mnt_point = "/product";
 				type = "ext4";
 				mnt_flags = "ro,barrier=1";
 				fsmgr_flags = "wait,slotselect,avb=vbmeta,logical,first_stage_mount";
