@@ -4824,6 +4824,48 @@ static int _sde_encoder_reset_ctl_hw(struct drm_encoder *drm_enc)
 	return rc;
 }
 
+
+int sde_encoder_set_pp_config_height(struct drm_encoder *drm_enc, bool enable,
+					u32 *prev_height)
+{
+	int ret = 0;
+	struct sde_encoder_virt *sde_enc_virt;
+	struct drm_display_mode *mode;
+	struct sde_encoder_phys *phys;
+
+	sde_enc_virt = to_sde_encoder_virt(drm_enc);
+	if (!sde_enc_virt->cur_master) {
+		ret = -EINVAL;
+		SDE_ERROR("Invalid sde_encoder_virt\n");
+		goto end;
+	}
+
+	mode = &sde_enc_virt->cur_master->cached_mode;
+	if (!mode) {
+		ret = -EINVAL;
+		SDE_ERROR("Invalid drm_display_mode\n");
+		goto end;
+	}
+
+	/* TODO.. how to handle with 2 DSIs for split display */
+	phys = sde_enc_virt->phys_encs[0];
+
+	/* The TE max height in MDP is being set to a max value of
+	 * 0xFFF0. Since this is such a large number, when TE is
+	 * disabled from the panel, we'll start to get constant timeout
+	 * errors and get 1 FPS.  To prevent this from happening, set
+	 * the height to display height * 2.  This will just cause our
+	 * FPS to drop to 30 FPS, and prevent timeout errors.
+	 */
+	if (phys->hw_pp->ops.change_config_height)
+		ret = phys->hw_pp->ops.change_config_height(
+					phys->hw_pp, enable,
+					mode->vdisplay * 2, prev_height);
+
+end:
+	return ret;
+}
+
 void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error)
 {
 	struct sde_encoder_virt *sde_enc;
