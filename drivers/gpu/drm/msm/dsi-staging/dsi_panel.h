@@ -298,6 +298,8 @@ int dsi_panel_set_lp2(struct dsi_panel *panel);
 
 int dsi_panel_set_nolp(struct dsi_panel *panel);
 
+int dsi_panel_set_tearing(struct dsi_panel *panel, bool enable);
+
 int dsi_panel_prepare(struct dsi_panel *panel);
 
 int dsi_panel_enable(struct dsi_panel *panel);
