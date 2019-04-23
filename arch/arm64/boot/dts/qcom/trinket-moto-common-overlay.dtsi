@@ -77,4 +77,7 @@
 
 };
 
+&pmi632_charger {
+	qcom,hvdcp-disable;
+};
 
