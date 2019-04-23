@@ -164,7 +164,7 @@ static void aw2015_brightness_work(struct work_struct *work)
 	u8 val = 0;
 
 	mutex_lock(&led->pdata->led->lock);
-
+	dev_info(&led->client->dev,"AW2015 brightness_work led(%d) ,brightness=%d", led->id, led->cdev.brightness);
 	/* enable aw2015 if disabled */
 	aw2015_read(led, AW2015_REG_GCR, &val);
 	if (!(val&AW2015_LED_CHIP_ENABLE_MASK)) {
