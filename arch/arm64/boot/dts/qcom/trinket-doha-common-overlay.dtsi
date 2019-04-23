@@ -18,6 +18,7 @@
 #include "trinket-doha-camera-overlay.dtsi"
 #include "trinket-doha-haptic-overlay.dtsi"
 #include "trinket-doha-fps-overlay.dtsi"
+#include "trinket-doha-sensor-overlay.dtsi"
 
 &usb_qmp_phy {
 	status = "disabled";
