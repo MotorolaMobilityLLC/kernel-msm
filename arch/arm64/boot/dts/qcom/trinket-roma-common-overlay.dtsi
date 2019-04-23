@@ -13,3 +13,18 @@
 #include "trinket-moto-common-overlay.dtsi"
 #include "roma-panel.dtsi"
 #include "trinket-roma-touch-overlay.dtsi"
+
+&qupv3_se1_i2c {
+	status = "ok";
+	aw8695_haptic@5A {
+	    compatible = "awinic,aw8695_haptic";
+	    reg = <0x5A>;
+	    reset-gpio = <&pmi632_gpios 4 0>;
+	    irq-gpio = <&tlmm 89 0>;
+	    status = "okay";
+	};
+
+	nq@28 {
+	    status = "disabled";
+	};
+};
