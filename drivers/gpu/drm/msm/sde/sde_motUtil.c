@@ -22,6 +22,7 @@
 #include "sde_encoder.h"
 #include "sde_motUtil.h"
 #include "dsi_display.h"
+#include "sde_hw_pingpong.h"
 
 
 #define MAIN_DSI_CONN_NAME "DSI-1"
@@ -155,6 +156,8 @@ static int _sde_debugfs_motUtil_transfer(struct sde_kms *kms,
 		goto end;
 	}
 
+	motUtil_data.read_cmd = (input[DISPUTIL_CMD_TYPE] ==
+					DISPUTIL_DSI_WRITE) ? false : true;
 	if (motUtil_data.rd_buf) {
 		mutex_lock(&sde_conn->lock);
 		ret = sde_conn->ops.motUtil_transfer(sde_conn->display,
@@ -162,8 +165,6 @@ static int _sde_debugfs_motUtil_transfer(struct sde_kms *kms,
 		motUtil_data.cmd_status = ret;
 		motUtil_data.read_len = ret;
 		mutex_unlock(&sde_conn->lock);
-
-		ret = count;
 	} else
 		ret = -ENOMEM;
 end:
@@ -175,7 +176,7 @@ static int _sde_debugfs_motUtil_set_tearing(struct sde_kms *kms,
 {
 	struct sde_connector *sde_conn = NULL;
 	int ret = 0;
-	bool te_enable = input[TETEST_TE_ENABLE];
+	bool te_enable = input[TETEST_TE_TEST_TYPE];
 	enum sde_motUtil_disp_cmd panel_type = input[DISPUTIL_PANEL_TYPE];
 
 	if (panel_type > MOTUTIL_MAIN_DISP) {
@@ -204,7 +205,7 @@ static int _sde_debugfs_motUtil_set_tearing(struct sde_kms *kms,
 
 	mutex_lock(&sde_conn->lock);
 	ret = sde_conn->ops.set_tearing(sde_conn->display,
-					input[TETEST_TE_ENABLE]);
+					input[TETEST_TE_TEST_TYPE]);
 	if (ret)
 		motUtil_data.te_enable = te_enable;
 	mutex_unlock(&sde_conn->lock);
@@ -219,11 +220,10 @@ static int _sde_debugfs_motUtil_read_frame_cnt(struct drm_encoder *drm_enc)
 	motUtil_data.val = sde_encoder_poll_rd_frame_counts(drm_enc);
 	if (motUtil_data.val >= 0) {
 		pr_info("Encoder transfer frame_count= %d\n", motUtil_data.val);
-		motUtil_data.cmd_status = 0;
+		ret = motUtil_data.val;
 	} else {
 		SDE_ERROR("failed to get_frame_count ret =%d\n", ret);
 		ret = -EAGAIN;
-		motUtil_data.cmd_status = ret;
 	}
 
         return ret;
@@ -233,32 +233,63 @@ static int _sde_debugfs_motUtil_read_frame_cnt(struct drm_encoder *drm_enc)
 static int _sde_debugfs_motUtil_te_test(struct sde_kms *kms,
 					size_t count, char input[])
 {
+	struct drm_connector *conn = NULL;
 	struct sde_connector *sde_conn = NULL;
+	static u32 pre_height = 0;
+	bool te_test_enable;
 	int ret = 0;
 
-	motUtil_data.read_cmd = true;
-	sde_conn = _sde_debugfs_motUtil_get_sde_conn(kms, count, input);
+	conn = _sde_debugfs_motUtil_get_drm_conn(kms, count, input);
+	if (!conn) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	sde_conn =  to_sde_connector(conn);
 	if (!sde_conn) {
 		ret = -EINVAL;
+		DRM_ERROR("Invalid sde_connector\n");
 		goto end;
 	}
 
-	if (count < TETEST_TE_ENABLE) {
-		DRM_ERROR(" Number of Input data is invalid (%zu).\n", count);
+	if (count < TETEST_TE_TEST_TYPE) {
+		DRM_ERROR("Number of Input data is invalid (%zu).\n", count);
 		ret = -EINVAL;
 		goto end;
 	}
 
-	ret = _sde_debugfs_motUtil_set_tearing(kms, count, input);
-	if (ret)
-		goto end;
-
-	ret = _sde_debugfs_motUtil_read_frame_cnt(sde_conn->encoder);
-	if (!ret) {
-		ret = -EAGAIN;
-		goto end;
+	switch(input[TETEST_TE_TEST_TYPE]) {
+		case TETEST_TE_TEST_START:
+		case TETEST_TE_TEST_END:
+			 motUtil_data.read_cmd = false;
+			te_test_enable = (input[TETEST_TE_TEST_TYPE] ==
+						TETEST_TE_TEST_START) ?
+							true : false;
+			ret = sde_encoder_set_pp_config_height(
+						sde_conn->encoder,
+						te_test_enable,
+						&pre_height);
+			if (!ret)
+				ret = sde_connector_clk_ctrl(conn,
+						te_test_enable);
+			break;
+		case TETEST_TE_ENABLE:
+		case TETEST_TE_DISABLE:
+			motUtil_data.read_cmd = true;
+			ret = _sde_debugfs_motUtil_set_tearing(kms, count,
+						input);
+			if (!ret) {
+				ret = _sde_debugfs_motUtil_read_frame_cnt(
+							sde_conn->encoder);
+				if (!ret)
+					ret = -EAGAIN;
+			}
+			break;
+		default:
+			DRM_ERROR("Unsupport TE_TEST_TYPE =0x%x\n",
+					input[TETEST_TE_TEST_TYPE]);
+			break;
 	}
-
 end:
 	return ret;
 }
