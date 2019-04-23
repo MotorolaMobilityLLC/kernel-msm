@@ -51,6 +51,7 @@
 	qcom,mdss-dsi-panel-status-value = <0x1c>;
 	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-no-panel-on-read-support;
 	//qcom,dsi-dyn-clk-enable;
 	//qcom,dsi-dyn-clk-list =
 	//	<1005903360 989138304 993329568 997520832 1001712096>;
