@@ -29,3 +29,21 @@
 	    status = "disabled";
 	};
 };
+
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SB18C52858";
+	#include "qg-batterydata-kd40-scud-4000mah.dtsi"
+};
+
+&pmi632_qg {
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,qg-iterm-ma = <300>;
+	qcom,hold-soc-while-full;
+	qcom,linearize-soc;
+	qcom,qg-use-s7-ocv;
+};
+
+&pmi632_charger {
+	qcom,battery-data = <&mtp_batterydata>;
+};
