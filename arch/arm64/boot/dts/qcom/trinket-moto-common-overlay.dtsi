@@ -99,6 +99,18 @@
 	};
 };
 
+&pmi632_rgb {
+	green {
+		status = "disabled";
+	};
+	blue {
+		status = "disabled";
+	};
+	red {
+		label = "charging";
+	};
+};
+
 &pmi632_charger {
 	qcom,hvdcp-disable;
 };
