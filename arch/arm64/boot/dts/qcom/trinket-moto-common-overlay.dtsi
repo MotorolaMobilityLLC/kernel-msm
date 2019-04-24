@@ -118,7 +118,69 @@
 	};
 };
 
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+	df-serialnum = "SB18C52858";
+	#include "qg-batterydata-kd40-scud-4000mah.dtsi"
+};
+
+&pmi632_qg {
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,linearize-soc;
+	qcom,qg-use-s7-ocv;
+	qcom,qg-iterm-ma = <250>;
+	qcom,vbatt-cutoff-mv = <3000>;
+	qcom,vbatt-empty-mv = <2800>;
+	qcom,vbatt-low-mv = <3200>;
+	qcom,vbatt-empty-cold-mv = <3400>;
+	qcom,rbat-conn-mohm = <10>;
+	qcom,cl-feedback-on;
+	qcom,cl-min-start-soc = <0>;
+	qcom,cl-max-start-soc = <5>;
+	qcom,cl-min-temp = <150>;
+	qcom,cl-max-temp = <450>;
+	qcom,cl-max-increment = <5>;
+	qcom,cl-max-decrement = <10>;
+	qcom,cl-min-limit = <200>;
+	qcom,cl-max-limit = <30>;
+	qcom,s3-entry-ibat-ua = <15000>;
+	qcom,s3-exit-ibat-ua = <35000>;
+};
+
 &pmi632_charger {
 	qcom,hvdcp-disable;
+	qcom,fcc-max-ua = <3600000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,sec-charger-config = <0>;
+	dpdm-supply = <&qusb_phy0>;
+	qcom,charger-temp-max = <800>;
+	qcom,smb-temp-max = <800>;
+	qcom,auto-recharge-soc = <99>;
+	qcom,flash-disable-soc = <5>;
+	qcom,thermal-mitigation = <3600000 2500000
+			2000000 1500000
+			1200000 900000
+			600000 300000>;
+};
+
+&spmi_bus {
+	qcom,pmi632@2 {
+		pmi632_mmi: qcom,qpnp-smb5-mmi {
+			status = "ok";
+			compatible = "qcom,qpnp-smbcharger-mmi";
+			qcom,pmic-revid = <&pmi632_revid>;
+			qcom,enable-charging-limit;
+			qcom,upper-limit-capacity = <75>;
+			qcom,lower-limit-capacity = <60>;
+			qcom,mmi-temp-zones = <0 4200 776 0>,
+						<10 4200 1940 776>,
+						<15 0 1940 1940>,
+						<45 4200 3600 2000>,
+						<60 4200 1940 0>;
+			qcom,iterm-ma = <194>;
+			qcom,vfloat-comp-uv = <20000>;
+		};
+	};
 };
 
