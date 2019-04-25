@@ -97,6 +97,13 @@
 	wdog: qcom,wdt@f017000 {
 		qcom,bark-time = <22000>;
 	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+		"back_temp";
+		status = "ok";
+	};
 };
 
 &pmi632_rgb {
