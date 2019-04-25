@@ -1,0 +1,48 @@
+&tlmm {
+	ets {
+		ets_int_active: ets_int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio92";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio92";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+		ets_int_suspend: ets_int_suspend {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio92";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio92";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+	};
+};
+
+&soc {
+	et520: et520 {
+		compatible = "egistec,et516";
+		status = "ok";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <92 0x0>;
+		egistec,gpio_irq = <&tlmm 92 0x2>;
+		egistec,gpio_rst = <&tlmm 93 0x2>;
+		vdd_io-supply = <&pm6125_l9>;
+		egistec,gpio_ldo1p8_en = <&tlmm 128 0x0>;
+		egistec,gpio_ldo3p3_en = <&tlmm 127 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&ets_int_active>;
+		pinctrl-1 = <&ets_int_suspend>;
+	};
+};
