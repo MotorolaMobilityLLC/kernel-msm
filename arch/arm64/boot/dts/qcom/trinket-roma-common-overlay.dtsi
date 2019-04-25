@@ -12,6 +12,7 @@
 
 #include "trinket-moto-common-overlay.dtsi"
 #include "roma-panel.dtsi"
+#include "trinket-roma-fps-overlay.dtsi"
 #include "trinket-roma-touch-overlay.dtsi"
 #include "trinket-roma-audio-overlay.dtsi"
 
