@@ -10,6 +10,15 @@
  * GNU General Public License for more details.
  */
 
+&pm6125_gpios {
+		codec_power_bob_en: codec_power_bob_en {
+			pins = "gpio6";
+			function = "normal";
+			output-high;
+			bias-disable;
+		};
+};
+
 &tlmm {
 	/* codec 1.2v power enable */
 	codec_power_en: codec_power_en {
@@ -328,6 +337,7 @@
 		interrupts = <97 0>;
 		/* NFC header pin 3 */
 		reset-gpios =  <&tlmm 117 0>;
+		bob-en-gpios = <&pm6125_gpios 6 GPIO_ACTIVE_HIGH>;
 /*
 		qcom,clk-src = "BBCLK3";
 		clocks = <&clock_rpmh_RPMH_LN_BB_CLK3>;
@@ -339,7 +349,7 @@
 		VDD_D-supply = <&pm6125_s6>;
 
 		pinctrl-names = "probe", "active";
-		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en>;
+		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &codec_power_bob_en>;
 		pinctrl-1 = <&cs48l32_defaults>;
 
 		cirrus,in-type = <
