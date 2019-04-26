@@ -1418,8 +1418,8 @@ int __init of_parse_thermal_zones(void)
 			goto exit_free;
 		}
 
-		/* No hwmon because there might be hwmon drivers registering */
-		tzp->no_hwmon = true;
+		/* no_hwmon should be set in dtsi */
+		tzp->no_hwmon = !of_property_read_bool(child, "thermal-has-hwmon");
 
 		if (!of_property_read_string(child, "thermal-governor",
 						&governor_name))
