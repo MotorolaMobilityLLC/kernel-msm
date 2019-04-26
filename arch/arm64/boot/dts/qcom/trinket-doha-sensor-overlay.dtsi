@@ -13,11 +13,11 @@
 &tlmm {
 	sar_int_default: sar_int_default {
 			mux {
-				pins = "gpio67";
+				pins = "gpio43";
 				function =  "gpio";
 			};
 			config {
-				pins = "gpio67";
+				pins = "gpio43";
 				num-grp-pins = <1>;
 				drive-strength = <2>;
 				bias-no-pull;
@@ -26,11 +26,11 @@
 
 	sar_int_sleep: sar_int_sleep {
 			mux {
-				pins = "gpio67";
+				pins = "gpio43";
 				function =  "gpio";
 			};
 			config {
-				pins = "gpio67";
+				pins = "gpio43";
 				num-grp-pins = <1>;
 				drive-strength = <2>;
 				bias-no-pull;
@@ -49,9 +49,9 @@
 		pinctrl-1 = <&sar_int_sleep>;
 		cap_vdd-supply = <&pm6125_l21>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <67 0x02>;
+		interrupts = <43 0x02>;
 		interrupt-names = "sx933x_irq";
-		Semtech,nirq-gpio= <&tlmm 67 0x02>;
+		Semtech,nirq-gpio= <&tlmm 43 0x02>;
 		Semtech,button-flag = <0x0b>;
 		Semtech,reg-num = <83>;
 		Semtech,reg-init =<
