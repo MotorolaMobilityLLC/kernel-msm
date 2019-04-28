@@ -834,9 +834,3 @@
 		status = "disabled";
 	};
 };
-
-&sdhc_2 {
-	qcom,clk-rates = <400000 20000000 25000000
-				50000000 100000000>;
-	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50";
-};
