@@ -23,10 +23,6 @@
 	qcom,board-id = <0x41 0xA100>;
 };
 
-&codec_power_bob_en {
-	pins = "gpio4";
-};
-
 &key_vol_up_default {
 	pins = "gpio5";
 };
