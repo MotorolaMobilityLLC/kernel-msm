@@ -108,6 +108,15 @@
 		};
 	};
 
+	marley_reset_default: marley_reset_default {
+		config {
+			pins = "gpio31";
+			output-high;
+			bias-pull-up;
+			drive-strength = <16>;
+		};
+	};
+
 	cs35l41_irq_default: cs35l41_irq_default {
 		config {
 			pins = "gpio108";
@@ -275,7 +284,7 @@
 		interrupts = <112 0x8>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		reset-gpios = <&lpi_tlmm 24 0>;
+		reset-gpios = <&tlmm 31 0>;
 		pinctrl-names ="probe", "active";
 		pinctrl-0 = <&marley_reset_default>;
 		pinctrl-1 = <&cs47l35_defaults>;
