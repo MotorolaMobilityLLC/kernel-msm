@@ -255,17 +255,17 @@
 				firmware {
 					protection {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-rcv-prot.bin";
 					};
 					calibration {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
+						cirrus,bin-file = "cs35l41-dsp1-rcv-cali.bin";
 					};
 					diagnostic {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-diag.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-diag.wmfw";
 					};
 				};
 			};
@@ -304,17 +304,17 @@
 				firmware {
 					protection {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
 					};
 					calibration {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
 						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
 					};
 					diagnostic {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-diag.wmfw";
+						cirrus,wmfw-file = "cs35l41-dsp1-diag.wmfw";
 					};
 				};
 			};
@@ -335,14 +335,8 @@
 		interrupt-controller;
 		interrupt-parent = <&tlmm>;
 		interrupts = <97 0>;
-		/* NFC header pin 3 */
 		reset-gpios =  <&tlmm 117 0>;
 		bob-en-gpios = <&pm6125_gpios 6 GPIO_ACTIVE_HIGH>;
-/*
-		qcom,clk-src = "BBCLK3";
-		clocks = <&clock_rpmh_RPMH_LN_BB_CLK3>;
-		clock-names = "ref_clk";
-*/
 		VDD_A-supply = <&pm6125_s6>;
 		VDD_IO1-supply = <&pm6125_l9>;
 		VDD1_CP-supply = <&pm6125_l9>;
@@ -367,6 +361,7 @@
 					aov {
 						cirrus,full-name;
 						cirrus,wmfw-file = "cs48l32-dsp1-aov.wmfw";
+						cirrus,compr-caps = <14 1 4 1 16000>;
 					};
 				};
 			};
@@ -499,6 +494,19 @@
 	compatible = "qcom,sm6150-moto-asoc-snd";
 	qcom,model = "trinket-moto-snd-card";
 	qcom,pri-mi2s-gpios = <&cdc_pri_mi2s_gpios>;
+
+	asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+			<&loopback>, <&compress>, <&hostless>,
+			<&afe>, <&lsm>, <&routing>, <&compr>,
+			<&pcm_noirq>, <&cs48l32>;
+	asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+			"msm-pcm-dsp.2", "msm-voip-dsp",
+			"msm-pcm-voice", "msm-pcm-loopback",
+			"msm-compress-dsp", "msm-pcm-hostless",
+			"msm-pcm-afe", "msm-lsm-client",
+			"msm-pcm-routing", "msm-compr-dsp",
+			"msm-pcm-dsp-noirq", "cs48l32-codec";
+
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
 		"MIC BIAS1", "Analog Mic1",
