@@ -23,3 +23,15 @@
 	qcom,board-id = <0x41 0xA100>;
 };
 
+&key_vol_up_default {
+	pins = "gpio5";
+};
+
+&soc {
+	gpio_keys {
+		vol_up {
+			gpios = <&pm6125_gpios 5 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
