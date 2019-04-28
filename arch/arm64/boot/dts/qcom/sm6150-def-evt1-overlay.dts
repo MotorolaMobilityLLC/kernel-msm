@@ -40,16 +40,6 @@
 	def,audio_slimbus_workaround = <1>;
 };
 
-&lpi_tlmm {
-	marley_reset_default: marley_reset_default {
-		config {
-			pins = "gpio24";
-			output-high;
-			bias-pull-up;
-			drive-strength = <16>;
-		};
-	};
-};
 
 &sde_dsi {
 	/delete-property/vddio-supply;
