@@ -115,6 +115,18 @@
 	};
 };
 
+&key_vol_up_default {
+	pins = "gpio9";
+};
+
+&soc {
+	gpio_keys {
+		vol_up {
+			gpios = <&pm6125_gpios 9 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
 &thermal_zones {
 	rf-pa0-therm-adc {
 		status = "disabled";
