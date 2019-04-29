@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "trinket-qrd.dtsi"
+#include "trinket-moto-common-overlay-base.dtsi"
 #include <dt-bindings/moto/moto-mem-reserve.h>
 
 &utags {
