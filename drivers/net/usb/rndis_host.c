@@ -342,8 +342,7 @@ generic_rndis_bind(struct usbnet *dev, struct usb_interface *intf, int flags)
 	 * for such low data rates and which is also more than Linux
 	 * can usually expect to allocate for SKB data...
 	 */
-	net->hard_header_len += sizeof (struct rndis_data_hdr);
-	dev->hard_mtu = net->mtu + net->hard_header_len;
+	dev->hard_mtu = net->mtu + net->hard_header_len + sizeof(struct rndis_data_hdr);
 
 	dev->maxpacket = usb_maxpacket(dev->udev, dev->out, 1);
 	if (dev->maxpacket == 0) {
@@ -367,7 +366,7 @@ generic_rndis_bind(struct usbnet *dev, struct usb_interface *intf, int flags)
 	}
 	tmp = le32_to_cpu(u.init_c->max_transfer_size);
 	if (tmp < dev->hard_mtu) {
-		if (tmp <= net->hard_header_len) {
+		if (tmp <= (net->hard_header_len + sizeof(struct rndis_data_hdr))) {
 			dev_err(&intf->dev,
 				"dev can't take %u byte packets (max %u)\n",
 				dev->hard_mtu, tmp);
@@ -376,10 +375,10 @@ generic_rndis_bind(struct usbnet *dev, struct usb_interface *intf, int flags)
 		}
 		dev_warn(&intf->dev,
 			 "dev can't take %u byte packets (max %u), "
-			 "adjusting MTU to %u\n",
-			 dev->hard_mtu, tmp, tmp - net->hard_header_len);
+			 "adjusting MTU to %lu\n",
+			 dev->hard_mtu, tmp, tmp - net->hard_header_len - sizeof(struct rndis_data_hdr));
 		dev->hard_mtu = tmp;
-		net->mtu = dev->hard_mtu - net->hard_header_len;
+		net->mtu = dev->hard_mtu - net->hard_header_len - sizeof(struct rndis_data_hdr);
 	}
 
 	/* REVISIT:  peripheral "alignment" request is ignored ... */
@@ -541,13 +540,26 @@ static int rndis_host_reset_resume (struct usb_interface *intf)
 	return 0;
 }
 
+static struct sk_buff *rndis_new_skb(struct usbnet *dev, struct sk_buff *skb, int pkt_len)
+{
+	struct sk_buff *skb2;
+
+	skb2 = netdev_alloc_skb_ip_align(dev->net, pkt_len);
+	if (!skb)
+		return NULL;
+	memcpy(skb2->data, skb->data, pkt_len);
+	skb_put(skb2, pkt_len);
+
+	return skb2;
+}
+
 /*
  * DATA -- host must not write zlps
  */
 int rndis_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 {
 	/* This check is no longer done by usbnet */
-	if (skb->len < dev->net->hard_header_len)
+	if (skb->len < (dev->net->hard_header_len + sizeof(struct rndis_data_hdr)))
 		return 0;
 
 	/* peripheral may have batched packets to us... */
@@ -579,12 +591,15 @@ int rndis_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 		}
 
 		/* try to return all the packets in the batch */
-		skb2 = skb_clone(skb, GFP_ATOMIC);
+		skb2 = rndis_new_skb(dev, skb, data_len);
 		if (unlikely(!skb2))
 			break;
 		skb_pull(skb, msg_len - sizeof *hdr);
-		skb_trim(skb2, data_len);
-		usbnet_skb_return(dev, skb2);
+
+		if (dev->napi_work_done < dev->napi_budget)
+			usbnet_skb_return(dev, skb2);
+		else
+			__skb_queue_tail(&dev->rx_queue, skb2);
 	}
 
 	/* caller will usbnet_skb_return the remaining packet */
