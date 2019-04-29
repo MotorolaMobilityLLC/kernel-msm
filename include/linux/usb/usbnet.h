@@ -41,7 +41,6 @@ struct usbnet {
 	unsigned		in, out;
 	struct usb_host_endpoint *status;
 	unsigned		maxpacket;
-	struct timer_list	delay;
 	const char		*padding_pkt;
 
 	/* protocol/interface state */
@@ -57,12 +56,16 @@ struct usbnet {
 	struct sk_buff_head	rxq;
 	struct sk_buff_head	txq;
 	struct sk_buff_head	done;
+	struct sk_buff_head	rx_done;
+	struct sk_buff_head	rx_queue;
 	struct sk_buff_head	rxq_pause;
 	struct urb		*interrupt;
 	unsigned		interrupt_count;
 	struct mutex		interrupt_mutex;
 	struct usb_anchor	deferred;
-	struct tasklet_struct	bh;
+	struct napi_struct napi;
+	int napi_work_done;
+	int napi_budget;
 
 	struct work_struct	kevent;
 	unsigned long		flags;
@@ -79,6 +82,7 @@ struct usbnet {
 #		define EVENT_RX_KILL	10
 #		define EVENT_LINK_CHANGE	11
 #		define EVENT_SET_RX_MODE	12
+#		define USBNET_DISCONNECT	13
 
 #ifdef CONFIG_PANEL_NOTIFICATIONS
 	struct notifier_block 	panel_usb_notifier;
