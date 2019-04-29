@@ -17,7 +17,6 @@
 #include <dt-bindings/clock/qcom,camcc-sm6150.h>
 
 #include "sm6150-def-common-overlay.dtsi"
-#include "sm6150-moto-dap-common-overlay.dtsi"
 
 / {
 	model = "def";
