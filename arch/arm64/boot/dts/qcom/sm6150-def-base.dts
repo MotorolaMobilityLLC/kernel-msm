@@ -19,12 +19,7 @@
 };
 
 &firmware {
-	android {
-		fstab {
-			/delete-node/ oem;
-			system { };
-		};
-	};
+	/delete-node/ android;
 };
 
 &thermal_zones {
