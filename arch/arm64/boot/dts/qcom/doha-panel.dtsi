@@ -12,8 +12,7 @@
  */
 
 #include "dsi-panel-ft8719-tm-fhd-video.dtsi"
-
-
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 &soc {
 	dsi_ft8719_tm_vid_display: qcom,dsi-display@4 {
@@ -29,11 +28,27 @@
 		ibb-supply = <&lcdb_ncp_vreg>;
 		qcom,dsi-panel = <&dsi_ft8719_tm_video>;
 	};
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@5 {
+		label = "dsi_mot_dummy_qhd_video_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
+			"src_byte_clk0", "src_pixel_clk0",
+			"shadow_byte_clk0", "shadow_pixel_clk0";
+		lab-supply = <&lcdb_ldo_vreg>;
+		ibb-supply = <&lcdb_ncp_vreg>;
+		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
+	};
+
 };
 
 &sde_dsi {
 	qcom,dsi-display-list = <
-				  &dsi_ft8719_tm_vid_display>;
+				  &dsi_ft8719_tm_vid_display
+                                  &dsi_mot_dummy_qhd_video_display>;
         /delete-property/ qcom,platform-te-gpio;
 };
 
@@ -79,4 +94,26 @@
 	qcom,platform-reset-gpio = <&tlmm 90 0>;
 };
 
+&mot_dummy_vid_qhd {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	pwms = <&pm6125_pwm 0 0>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,platform-reset-gpio = <&tlmm 90 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0e>;
+	qcom,mdss-dsi-t-clk-pre = <0x33>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[25 1F 09 0A 06 02 04 a0
+				25 1F 09 0A 06 02 04 a0
+				25 1F 09 0A 06 02 04 a0
+				25 1F 09 0A 06 02 04 a0
+				25 1D 08 0A 06 03 04 a0];
 
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
