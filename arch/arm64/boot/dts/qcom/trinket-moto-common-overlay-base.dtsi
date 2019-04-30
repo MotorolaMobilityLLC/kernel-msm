@@ -34,32 +34,6 @@
 	};
 };
 
-&pmi632_qg {
-	qcom,battery-data = <&mtp_batterydata>;
-	qcom,qg-iterm-ma = <100>;
-	qcom,hold-soc-while-full;
-	qcom,linearize-soc;
-	qcom,qg-use-s7-ocv;
-};
-
-&pmi632_charger {
-	qcom,battery-data = <&mtp_batterydata>;
-	qcom,suspend-input-on-debug-batt;
-	qcom,sw-jeita-enable;
-	/* SMB1355 only */
-	qcom,sec-charger-config = <2>;
-	dpdm-supply = <&qusb_phy0>;
-	qcom,charger-temp-max = <800>;
-	qcom,smb-temp-max = <800>;
-	qcom,auto-recharge-soc = <98>;
-	qcom,flash-disable-soc = <10>;
-	qcom,hw-die-temp-mitigation;
-	qcom,hw-connector-mitigation;
-	qcom,connector-internal-pull-kohm = <100>;
-	qcom,thermal-mitigation = <3000000 2500000
-			2000000 1500000 1000000 500000>;
-};
-
 &qupv3_se2_i2c {
 	status = "okay";
 
@@ -215,23 +189,6 @@
 			input-enable;
 		};
 	};
-};
-
-&smb1355 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&smb_int_default>;
-	interrupt-parent = <&tlmm>;
-	interrupts = <130 IRQ_TYPE_LEVEL_LOW>;
-	status = "ok";
-};
-
-&smb1355_charger {
-	pinctrl-names = "default";
-	pinctrl-0 = <&smb_en_default &pmi632_sense_default &pmi632_ctm_default>;
-	qcom,parallel-mode = <1>;
-	qcom,disable-ctm;
-	qcom,hw-die-temp-mitigation;
-	status = "ok";
 };
 
 &ufsphy_mem {
