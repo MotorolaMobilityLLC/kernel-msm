@@ -42,33 +42,23 @@ qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
 
 qcom,bklt-dcs-2bytes-enabled;
-qcom,mdss-dsi-bl-min-level = <2>;
-qcom,mdss-dsi-bl-max-level = <2936>;
+qcom,mdss-dsi-bl-min-level = <3>;
+qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
-qcom,mdss-dsi-hbm-type = "tianma_oled_lhbm_dcs_gpio";
+qcom,mdss-dsi-hbm-type = "hbm_oled_fod_dcs";
 qcom,mdss-dsi-hbm-fod-on-command = [
-		29 01 00 00 00 00 02 B0 80
-		29 01 00 00 00 00 02 F1 81
-		29 01 00 00 00 00 27 D1 60 96 B2 C3 C9 DA D1 24 F6 68 22 7B 38 B9 3F B3 F4 1F 5A CA CE 32 6B A7 99 D8 D3 8C EC 59 E6 FE D0 D2 7F 00 C0 03];
+		39 01 00 00 00 00 02 53 E4];
 
 qcom,mdss-dsi-hbm-on-command = [
-		39 01 00 00 00 00 03 51 0F FF];
-
+		39 01 00 00 00 00 02 53 64];
 qcom,mdss-dsi-hbm-off-command = [
-		39 01 00 00 00 00 03 51 09 D3];
+		39 01 00 00 00 00 02 53 24];
 
 qcom,mdss-dsi-acl-on-command = [
 		15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-acl-off-command = [
 		15 01 00 00 00 00 02 55 00];
-
-qcom,mdss-dsi-panel-hdr-enabled;
-qcom,mdss-dsi-panel-hdr-color-primaries = <14500 15500 32000
-			17000 15500 30000 8000 3000>;
-qcom,mdss-dsi-panel-peak-brightness = <4300000>;
-qcom,mdss-dsi-panel-blackness-level = <3230>;
-
 
 qcom,mdss-dsi-display-timings {
 	timing@0{
@@ -93,11 +83,7 @@ qcom,mdss-dsi-display-timings {
 			15 00 00 00 00 00 02 55 00
 			39 00 00 00 00 00 03 51 00 00
 			05 01 00 00 00 00 01 29
-			05 01 00 00 96 00 01 11	/* display on */
-			29 01 00 00 00 00 02 B0 80
-			29 01 00 00 00 00 02 F1 81
-			29 01 00 00 00 00 27 D1 60 96 6D 6B 49 B8 A1 64 E7 50 C2 73 2D A9 3C B3 6C 1E 5A B6 6D 34 E1 86 9A 9D 43 0D CF 8D A6 F2 D0 B2 79 00 C0 03
-			29 01 00 00 00 00 02 E6 01];
+			05 01 00 00 96 00 01 11];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 00 00 01 28		/* display_off */
 			05 01 00 00 96 00 01 10];	/* enter sleep mode */
