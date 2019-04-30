@@ -82,6 +82,16 @@ int tlmm_set_config(unsigned config)
 }
 #endif
 
+int get_tz_configs(unsigned gpio)
+{
+	int ret = 0;
+
+	if (gpio < TLMM_NUM_GPIO)
+		ret = tz_configs[gpio];
+
+	return ret;
+}
+
 static int tlmm_dump_cfg(char *buf, int size,
 	unsigned gpio, unsigned cfg, int output_val)
 {
