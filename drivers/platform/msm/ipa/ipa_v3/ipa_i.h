@@ -1996,6 +1996,7 @@ struct ipa3_context {
 	bool ipa_mhi_proxy;
 	bool ipa_wan_skb_page;
 	struct ipa3_app_clock_vote app_clock_vote;
+	struct ipa_mem_buffer uc_dma_addr;
 };
 
 struct ipa3_plat_drv_res {
