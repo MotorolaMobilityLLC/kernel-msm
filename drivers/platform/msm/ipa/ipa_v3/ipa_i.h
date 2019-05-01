@@ -1910,6 +1910,7 @@ struct ipa3_context {
 		gsi_info[IPA_HW_PROTOCOL_MAX];
 	bool ipa_mhi_proxy;
 	bool ipa_wan_skb_page;
+	struct ipa_mem_buffer uc_dma_addr;
 };
 
 struct ipa3_plat_drv_res {
