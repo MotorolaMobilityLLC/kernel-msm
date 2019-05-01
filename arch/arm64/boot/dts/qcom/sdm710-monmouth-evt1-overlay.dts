@@ -179,6 +179,7 @@
 	/* Allow channels 0,1,2,3 on monmouth */
 	sx933x@28 {
 		Semtech,button-flag = <0x0F>;
+		cap_vdd-supply = <&pm660l_bob>;
 	};
 };
 
