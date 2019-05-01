@@ -3369,6 +3369,7 @@ int smblib_get_prop_usb_voltage_max_design(struct smb_charger *chg,
 int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 					union power_supply_propval *val)
 {
+#ifdef QCOM_BASE
 	switch (chg->real_charger_type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
 		if (chg->qc2_unsupported_voltage == QC2_NON_COMPLIANT_9V) {
@@ -3403,6 +3404,9 @@ int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 	}
 
 	return 0;
+#else
+	return smblib_get_prop_usb_voltage_max_design(chg, val);
+#endif
 }
 
 #define HVDCP3_STEP_UV	200000
