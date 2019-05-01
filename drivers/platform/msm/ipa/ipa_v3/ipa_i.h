@@ -2034,6 +2034,7 @@ struct ipa3_context {
 	int uc_act_tbl_ipv6_nat_total;
 	int uc_act_tbl_next_index;
 	bool manual_fw_load;
+	struct ipa_mem_buffer uc_dma_addr;
 };
 
 struct ipa3_plat_drv_res {
