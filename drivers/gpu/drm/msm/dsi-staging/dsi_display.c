@@ -6587,7 +6587,7 @@ int dsi_display_prepare(struct dsi_display *display)
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
 		if (display->is_cont_splash_enabled) {
 			pr_err("DMS is not supposed to be set on first frame\n");
-			return -EINVAL;
+			goto error;
 		}
 		/* update dsi ctrl for new mode */
 		rc = dsi_display_pre_switch(display);
@@ -6595,20 +6595,6 @@ int dsi_display_prepare(struct dsi_display *display)
 			pr_err("[%s] panel pre-prepare-res-switch failed, rc=%d\n",
 					display->name, rc);
 		goto error;
-	}
-
-	if (!display->is_cont_splash_enabled) {
-		/*
-		 * For continuous splash usecase we skip panel
-		 * pre prepare since the regulator vote is already
-		 * taken care in splash resource init
-		 */
-		rc = dsi_panel_pre_prepare(display->panel);
-		if (rc) {
-			pr_err("[%s] panel pre-prepare failed, rc=%d\n",
-					display->name, rc);
-			goto error;
-		}
 	}
 
 	/* Set up ctrl isr before enabling core clk */
@@ -6619,7 +6605,7 @@ int dsi_display_prepare(struct dsi_display *display)
 	if (rc) {
 		pr_err("[%s] failed to enable DSI core clocks, rc=%d\n",
 		       display->name, rc);
-		goto error_panel_post_unprep;
+		goto error;
 	}
 
 	/*
@@ -6645,18 +6631,36 @@ int dsi_display_prepare(struct dsi_display *display)
 		}
 	}
 
+	/*
+	 * panel should be powered on here after the DSI PHY is finished with
+	 * the initialization, and the MIPI lines are in the LP00 state
+	 */
+	if (!display->is_cont_splash_enabled) {
+		/*
+		 * For continuous splash usecase we skip panel
+		 * pre prepare since the regulator vote is already
+		 * taken care in splash resource init
+		 */
+		rc = dsi_panel_pre_prepare(display->panel);
+		if (rc) {
+			pr_err("[%s] panel pre-prepare failed, rc=%d\n",
+						display->name, rc);
+			goto error_phy_disable;
+		}
+	}
+
 	rc = dsi_display_set_clk_src(display);
 	if (rc) {
 		pr_err("[%s] failed to set DSI link clock source, rc=%d\n",
 			display->name, rc);
-		goto error_phy_disable;
+		goto error_panel_post_unprep;
 	}
 
 	rc = dsi_display_ctrl_init(display);
 	if (rc) {
 		pr_err("[%s] failed to setup DSI controller, rc=%d\n",
 		       display->name, rc);
-		goto error_phy_disable;
+		goto error_panel_post_unprep;
 	}
 	/* Set up DSI ERROR event callback */
 	dsi_display_register_error_handler(display);
@@ -6705,13 +6709,14 @@ error_host_engine_off:
 	(void)dsi_display_ctrl_host_disable(display);
 error_ctrl_deinit:
 	(void)dsi_display_ctrl_deinit(display);
+error_panel_post_unprep:
+	if (!display->is_cont_splash_enabled)
+	        (void)dsi_panel_post_unprepare(display->panel);
 error_phy_disable:
 	(void)dsi_display_phy_disable(display);
 error_ctrl_clk_off:
 	(void)dsi_display_clk_ctrl(display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_OFF);
-error_panel_post_unprep:
-	(void)dsi_panel_post_unprepare(display->panel);
 error:
 	mutex_unlock(&display->display_lock);
 	SDE_EVT32(SDE_EVTLOG_FUNC_EXIT);

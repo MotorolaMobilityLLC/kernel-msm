@@ -334,6 +334,8 @@ int dsi_panel_set_tearing(struct dsi_panel *panel, bool enable);
 
 int dsi_panel_prepare(struct dsi_panel *panel);
 
+int dsi_panel_reset(struct dsi_panel *panel);
+
 int dsi_panel_enable(struct dsi_panel *panel);
 
 int dsi_panel_post_enable(struct dsi_panel *panel);
