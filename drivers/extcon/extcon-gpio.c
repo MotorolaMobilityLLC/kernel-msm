@@ -31,6 +31,7 @@
 #include <linux/of_gpio.h>
 
 struct gpio_extcon_data {
+	struct device *dev;
 	struct extcon_dev *edev;
 	int irq;
 	struct delayed_work work;
@@ -162,6 +163,11 @@ struct gpio_extcon_pdata *extcon_populate_pdata(struct device *dev)
 		goto out;
 	}
 
+	if (of_property_read_bool(np, "wakeup-source")) {
+		dev_info(dev, "will check gpio-state-on-resume\n");
+		pdata->check_on_resume = true;
+	}
+
 	return pdata;
 out:
 	return NULL;
@@ -218,6 +224,7 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	if (ret < 0)
 		return ret;
 
+	data->dev = &pdev->dev;
 	INIT_DELAYED_WORK(&data->work, gpio_extcon_work);
 
 	/*
@@ -229,6 +236,9 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 					pdev->name, data);
 	if (ret < 0)
 		return ret;
+
+	if (data->pdata->check_on_resume)
+		device_init_wakeup(data->dev, true);
 
 	platform_set_drvdata(pdev, data);
 	/* Perform initial detection */
@@ -242,25 +252,44 @@ static int gpio_extcon_remove(struct platform_device *pdev)
 	struct gpio_extcon_data *data = platform_get_drvdata(pdev);
 
 	cancel_delayed_work_sync(&data->work);
+	if (data->pdata->check_on_resume)
+		device_init_wakeup(data->dev, false);
 
 	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
+static int gpio_extcon_suspend(struct device *dev)
+{
+	struct gpio_extcon_data *data;
+
+	data = dev_get_drvdata(dev);
+	if (device_may_wakeup(data->dev)) {
+		enable_irq_wake(data->irq);
+		dev_info(dev, "enable irq wakeable\n");
+	}
+	return 0;
+}
+
 static int gpio_extcon_resume(struct device *dev)
 {
 	struct gpio_extcon_data *data;
 
 	data = dev_get_drvdata(dev);
-	if (data->pdata->check_on_resume)
+	if (device_may_wakeup(data->dev)) {
+		disable_irq_wake(data->irq);
+		dev_info(dev, "disable irq wakeable\n");
+	}
+	if (data->pdata->check_on_resume) {
+		dev_info(dev, "checking gpio-state-on-resume\n");
 		queue_delayed_work(system_power_efficient_wq,
 			&data->work, data->debounce_jiffies);
-
+	}
 	return 0;
 }
 #endif
 
-static SIMPLE_DEV_PM_OPS(gpio_extcon_pm_ops, NULL, gpio_extcon_resume);
+static SIMPLE_DEV_PM_OPS(gpio_extcon_pm_ops, gpio_extcon_suspend, gpio_extcon_resume);
 
 static const struct of_device_id extcon_gpio_of_match[] = {
 	{ .compatible = "extcon-gpio"},
