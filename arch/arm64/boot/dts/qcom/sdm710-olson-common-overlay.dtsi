@@ -195,6 +195,7 @@
 		extcon-id = <62>; /* EXTCON_MECHANICAL */
 		gpio = <&tlmm 133 GPIO_ACTIVE_HIGH>;
 		debounce-ms = <200>;
+		wakeup-source;
 		irq-flags = <IRQ_TYPE_EDGE_BOTH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&flip_det_default>;
