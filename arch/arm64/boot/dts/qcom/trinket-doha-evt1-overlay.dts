@@ -35,3 +35,7 @@
 	};
 };
 
+
+&sm6150_snd {
+	cirrus,pmic-audio-clk;
+};
