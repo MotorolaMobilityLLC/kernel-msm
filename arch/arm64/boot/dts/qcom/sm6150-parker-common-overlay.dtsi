@@ -340,6 +340,7 @@
 		goodix,pen-enable;
 		goodix,usb_charger;
 		goodix,key-of-pen = <331 332>;/*BTN_STYLUS, BTN_STYLUS2*/
+		goodix,cfg_bin_name = "goodix_cfg_group2_parker.bin";
 	};
 };
 
