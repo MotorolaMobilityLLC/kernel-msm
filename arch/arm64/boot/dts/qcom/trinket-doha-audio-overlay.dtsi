@@ -223,11 +223,10 @@
 
 &qupv3_se3_i2c {
 	status = "ok";
-	cs35l41_l: cs35l41@40 {
+	cs35l41_rcv: cs35l41@40 {
 		#sound-dai-cells = <1>;
 		compatible = "cirrus,cs35l41";
 		reg = <0x40>;
-		/* NFC header pin 10 */
 		reset-gpios = <&tlmm 123 0>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <100 IRQ_TYPE_EDGE_FALLING>;
@@ -272,7 +271,7 @@
 		};
 	};
 
-	cs35l41_r: cs35l41@41 {
+	cs35l41_spk: cs35l41@41 {
 		compatible = "cirrus,cs35l41";
 		reg = <0x41>;
 		/* R & L reset are shorted in miniboard
@@ -509,6 +508,8 @@
 			"msm-pcm-afe", "msm-lsm-client",
 			"msm-pcm-routing", "msm-compr-dsp",
 			"msm-pcm-dsp-noirq", "cs48l32-codec";
+	asoc-codec  = <&stub_codec>, <&bolero>, <&cs48l32>, <&cs35l41_rcv>, <&cs35l41_spk>;
+	asoc-codec-names = "msm-stub-codec.1", "bolero_codec", "cs48l32-codec", "cs35l41-rcv", "cs35l41-spk";
 
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
@@ -542,5 +543,7 @@
 		"IN1RP_1",  "MICBIAS1B";
 	qcom,wsa-max-devs = <0>;
 	cirrus,prince-max-devs = <2>;
+	cirrus,prince-devs = <&cs35l41_rcv>, <&cs35l41_spk>;
+	cirrus,prince-dev-prefix = "RCV", "SPK";
 	cirrus,tacna-dev = <1>;
 };
