@@ -187,8 +187,6 @@ int goodix_cfg_bin_proc(void *data)
 {
 	struct goodix_ts_core *core_data = data;
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
-
-	struct device *dev = ts_dev->dev;
 	int r;
 	struct goodix_cfg_bin *cfg_bin = kzalloc(sizeof(struct goodix_cfg_bin),
 							GFP_KERNEL);
@@ -198,7 +196,7 @@ int goodix_cfg_bin_proc(void *data)
 		goto exit;
 	}
 	/*get cfg_bin from file system*/
-	r = goodix_read_cfg_bin(dev, cfg_bin);
+	r = goodix_read_cfg_bin(ts_dev, cfg_bin);
 	if (r < 0) {
 		ts_err("read cfg_bin from /etc/firmware FAILED");
 		goto exit;
@@ -557,7 +555,7 @@ exit:
 }
 
 
-int goodix_read_cfg_bin(struct device *dev, struct goodix_cfg_bin *cfg_bin)
+int goodix_read_cfg_bin(struct goodix_ts_device *ts_dev, struct goodix_cfg_bin *cfg_bin)
 {
 	int r;
 	const struct firmware *firmware;
@@ -565,13 +563,17 @@ int goodix_read_cfg_bin(struct device *dev, struct goodix_cfg_bin *cfg_bin)
 	int i = 0;
 
 	/*get cfg_bin_name*/
-	strlcpy(cfg_bin_name, TS_DEFAULT_CFG_BIN,
+	if(ts_dev->board_data->cfg_bin_name)
+		strlcpy(cfg_bin_name, ts_dev->board_data->cfg_bin_name,
 				sizeof(cfg_bin_name));
+	else
+		strlcpy(cfg_bin_name, TS_DEFAULT_CFG_BIN,
+					sizeof(cfg_bin_name));
 
 	ts_info("cfg_bin_name:%s", cfg_bin_name);
 
 	for (i = 0; i < 2; i++) {
-		r = request_firmware(&firmware, cfg_bin_name, dev);
+		r = request_firmware(&firmware, cfg_bin_name, ts_dev->dev);
 		if (r < 0) {
 			ts_err("Cfg_bin image [%s] not available,error:%d, try_times:%d",
 				cfg_bin_name, r, i + 1);
