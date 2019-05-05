@@ -82,7 +82,7 @@ int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin);
 int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev,
 	struct goodix_cfg_bin *cfg_bin);
 
-int goodix_read_cfg_bin(struct device *dev, struct goodix_cfg_bin *cfg_bin);
+int goodix_read_cfg_bin(struct goodix_ts_device *ts_dev, struct goodix_cfg_bin *cfg_bin);
 
 int goodix_read_cfg_bin_from_dts(struct device_node *node,
 	struct goodix_cfg_bin *cfg_bin);
