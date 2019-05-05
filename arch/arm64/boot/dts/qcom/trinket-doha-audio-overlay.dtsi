@@ -342,6 +342,9 @@
 		VDD1_CP-supply = <&pm6125_l9>;
 		VDD_D-supply = <&pm6125_s6>;
 
+		clocks = <&clock_audio 0>;
+		clock-names = "ref_clk";
+
 		pinctrl-names = "probe", "active";
 		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &codec_power_bob_en>;
 		pinctrl-1 = <&cs48l32_defaults>;
