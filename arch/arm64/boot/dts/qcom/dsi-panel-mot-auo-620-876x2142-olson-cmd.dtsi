@@ -18,4 +18,8 @@
 	mot_auo_620_876x2142_cmd_v1: qcom,mdss_dsi_mot_auo_620_876x2142_cmd_v1 {
 		#include "dsi-panel-mot-auo-620-876x2142-olson-cmd-common.dtsi"
 	};
+
+	mot_auo_620_876x2142_cmd_v2: qcom,mdss_dsi_mot_auo_620_876x2142_cmd_v2 {
+		#include "dsi-panel-mot-auo-620-876x2142-olson-cmd-common.dtsi"
+	};
 };
