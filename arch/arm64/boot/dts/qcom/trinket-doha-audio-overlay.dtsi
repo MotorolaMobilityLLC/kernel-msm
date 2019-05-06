@@ -491,6 +491,98 @@
 	qcom,num-macros = <3>;
 };
 
+&sb_0_rx {
+	status = "disabled";
+};
+
+&sb_0_tx {
+	status = "disabled";
+};
+
+&sb_1_rx {
+	status = "disabled";
+};
+
+&sb_1_tx {
+	status = "disabled";
+};
+
+&sb_2_rx {
+	status = "disabled";
+};
+
+&sb_2_tx {
+	status = "disabled";
+};
+
+&sb_3_rx {
+	status = "disabled";
+};
+
+&sb_3_tx {
+	status = "disabled";
+};
+
+&sb_4_rx {
+	status = "disabled";
+};
+
+&sb_4_tx {
+	status = "disabled";
+};
+
+&sb_5_rx {
+	status = "disabled";
+};
+
+&sb_5_tx {
+	status = "disabled";
+};
+
+&sb_6_rx {
+	status = "disabled";
+};
+
+&sb_8_rx {
+	status = "disabled";
+};
+
+&sb_9_rx {
+	status = "disabled";
+};
+
+&sb_9_tx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_0_rx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_0_tx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_1_rx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_1_tx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_2_tx {
+	status = "disabled";
+};
+
+&va_cdc_dma_0_tx {
+	status = "disabled";
+};
+
+&va_cdc_dma_1_tx {
+	status = "disabled";
+};
+
 &sm6150_snd {
 	status = "ok";
 	compatible = "qcom,sm6150-moto-asoc-snd";
@@ -508,8 +600,10 @@
 			"msm-pcm-afe", "msm-lsm-client",
 			"msm-pcm-routing", "msm-compr-dsp",
 			"msm-pcm-dsp-noirq", "cs48l32-codec";
-	asoc-codec  = <&stub_codec>, <&bolero>, <&cs48l32>, <&cs35l41_rcv>, <&cs35l41_spk>;
-	asoc-codec-names = "msm-stub-codec.1", "bolero_codec", "cs48l32-codec", "cs35l41-rcv", "cs35l41-spk";
+	asoc-codec  = <&stub_codec>, <&bolero>, <&cs48l32>,
+			<&cs35l41_rcv>, <&cs35l41_spk>;
+	asoc-codec-names = "msm-stub-codec.1", "bolero_codec",
+			"cs48l32-codec", "cs35l41-rcv", "cs35l41-spk";
 
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
@@ -518,29 +612,18 @@
 		"MIC BIAS2", "Analog Mic2",
 		"AMIC3", "MIC BIAS3",
 		"MIC BIAS3", "Analog Mic3",
-		"TX_AIF1 CAP", "VA_MCLK",
-		"TX_AIF2 CAP", "VA_MCLK",
-		"RX AIF1 PB", "VA_MCLK",
-		"RX AIF2 PB", "VA_MCLK",
-		"RX AIF3 PB", "VA_MCLK",
-		"RX AIF4 PB", "VA_MCLK",
-		"HPHL_OUT", "VA_MCLK",
-		"HPHR_OUT", "VA_MCLK",
-		"AUX_OUT", "VA_MCLK",
 		"IN1_HPHL", "HPHL_OUT",
 		"IN2_HPHR", "HPHR_OUT",
-		"IN3_AUX", "AUX_OUT",
 		"TX SWR_ADC0", "ADC1_OUTPUT",
 		"TX SWR_ADC2", "ADC2_OUTPUT",
-		"WSA SRC0_INP", "SRC0",
-		"WSA_TX DEC0_INP", "TX DEC0 MUX",
-		"WSA_TX DEC1_INP", "TX DEC1 MUX",
 		"RX_TX DEC0_INP", "TX DEC0 MUX",
 		"RX_TX DEC1_INP", "TX DEC1 MUX",
 		"RX_TX DEC2_INP", "TX DEC2 MUX",
 		"RX_TX DEC3_INP", "TX DEC3 MUX",
 		"IN1LP_1", "MICBIAS1A",
-		"IN1RP_1",  "MICBIAS1B";
+		"IN1LN_1", "MICBIAS1A",
+		"IN1RP_1",  "MICBIAS1B",
+		"IN1RN_1",  "MICBIAS1B";
 	qcom,wsa-max-devs = <0>;
 	cirrus,prince-max-devs = <2>;
 	cirrus,prince-devs = <&cs35l41_rcv>, <&cs35l41_spk>;
