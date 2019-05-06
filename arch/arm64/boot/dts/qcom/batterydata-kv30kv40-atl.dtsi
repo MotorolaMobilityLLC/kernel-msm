@@ -1,54 +1,54 @@
 
 qcom,kv30kv40-atl {
 	qcom, = <24>;
-	/* #3580064_Moto_KV30KV40_2500mAh_averaged_MasterSlave_Aug8th2018*/
+	/* #3831217_Moto_KV40KV30_2510mAh_averaged_MasterSlave_Apr10th2019*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,fastchg-current-ma = <2500>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,nom-batt-capacity-mah = <2500>;
 	qcom,batt-id-kohm = <243>;
 	qcom,battery-beta = <3900>;
-	qcom,battery-type = "KV30KV40-ATL-2500mah";
-	qcom,checksum = <0x909C>;
+	qcom,battery-type = "KV30KV40-ATL-V2-2500mah";
+	qcom,checksum = <0xE164>;
 	qcom,gui-version = "PM660GUI - 0.0.0.45";
 	qcom,fg-profile-data = [
-		 40 1F 02 06
-		 25 0A 5F FD
-		 EA 1C DB 01
-		 EB 0D 71 0A
-		 39 18 6E 23
-		 DE 44 EB 53
-		 74 00 00 00
+		 B6 21 A6 0D
+		 0F 12 D5 04
+		 06 1D DF FA
+		 80 05 16 03
+		 A4 18 19 23
+		 3F 45 5B 53
+		 92 00 00 00
 		 11 00 00 00
-		 00 00 40 CD
-		 B9 C5 04 00
-		 2E 00 08 00
-		 52 DB 75 E4
-		 45 F5 C7 CB
-		 21 DB 1C 0A
-		 E7 35 E9 4B
-		 07 06 09 20
+		 00 00 8F CD
+		 0F C5 68 C3
+		 27 00 08 00
+		 8B D3 2F E5
+		 E3 F4 BB DB
+		 83 BA 25 0A
+		 FD 1D E8 4B
+		 09 06 09 20
 		 27 00 14 00
-		 98 1F B1 05
-		 6B 0A BF FC
-		 CF 1C E2 02
-		 FC 15 44 12
-		 8F 18 D3 23
-		 E8 4D 2E 5B
-		 67 00 00 00
-		 0E 00 00 00
-		 00 00 83 D5
-		 05 00 3A BB
-		 2A 00 00 00
-		 B7 EA 75 E4
-		 68 07 8D CA
-		 E4 ED 11 02
-		 E2 06 90 13
-		 99 33 CC FF
+		 D4 1F 4B 05
+		 D9 0A D9 05
+		 C5 1C 0C 03
+		 D0 15 7C 12
+		 8A 18 F4 23
+		 C1 4D 88 5B
+		 66 00 00 00
+		 0D 00 00 00
+		 00 00 D5 D5
+		 9D C3 3A BB
+		 20 00 00 00
+		 61 EA 2F E5
+		 79 F5 FA DA
+		 69 EA 20 03
+		 CD DB 1F 1A
+		 9C 33 CC FF
 		 07 10 00 00
-		 18 0A 66 46
-		 2A 00 40 00
-		 F5 00 0A FA
+		 D0 09 66 46
+		 20 00 40 00
+		 5E 01 0A FA
 		 FF 00 00 00
 		 00 00 00 00
 		 00 00 00 00
