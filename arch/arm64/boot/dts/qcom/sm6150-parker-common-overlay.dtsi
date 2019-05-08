@@ -767,7 +767,6 @@
 &usb0{
 	mmi,ext-dp-switch;
 	dp-mux-sel-supply = <&pm6150_l17>;
-	typec-mux-sel-supply = <&pm6150l_l7>;
 };
 
 &spmi_bus {
