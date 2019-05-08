@@ -353,6 +353,7 @@ struct dwc3_msm {
 	struct regulator	*dpdm_reg;
 	bool			ext_dp_switch;
 	struct regulator	*dp_mux_sel_power;
+	bool			is_enable_dp_mux_power;
 
 #ifdef CONFIG_MODS_NEW_SW_ARCH
 	bool			ext_typec_switch;
@@ -4234,6 +4235,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		if (ret)
 			dev_err(dev, "Failed to set reg ldo_dp_mux_sel_power cur: %d\n", ret );
 	}
+	mdwc->is_enable_dp_mux_power = false;
 
 	ret = of_property_read_u32(node, "qcom,lpm-to-suspend-delay-ms",
 				&mdwc->lpm_to_suspend_delay);
@@ -4830,10 +4832,12 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 	if (on) {
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
 
-		if (mdwc->dp_mux_sel_power) {
+		if ((mdwc->dp_mux_sel_power) && (!mdwc->is_enable_dp_mux_power)) {
 			ret = regulator_enable(mdwc->dp_mux_sel_power);
 			if (ret)
 				dev_err(mdwc->dev, "unable to enable dp_mux_sel_power\n");
+			else
+				mdwc->is_enable_dp_mux_power = true;
 		}
 
 		mdwc->hs_phy->flags |= PHY_HOST_MODE;
@@ -5253,19 +5257,23 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			mdwc->drd_state = DRD_STATE_PERIPHERAL;
 			work = 1;
 
-			if (mdwc->dp_mux_sel_power) {
+			if ((mdwc->dp_mux_sel_power) && (!mdwc->is_enable_dp_mux_power)) {
 				ret = regulator_enable(mdwc->dp_mux_sel_power);
 				if (ret)
 					dev_err(mdwc->dev, "unable to enable dp_mux_sel_power\n");
+				else
+					mdwc->is_enable_dp_mux_power = true;
 			}
 		} else {
 			dwc3_msm_gadget_vbus_draw(mdwc, 0);
 			dev_dbg(mdwc->dev, "Cable disconnected\n");
 
-			if (mdwc->dp_mux_sel_power) {
+			if ((mdwc->dp_mux_sel_power) && (mdwc->is_enable_dp_mux_power)) {
 				ret = regulator_disable(mdwc->dp_mux_sel_power);
 				if (ret)
 					dev_err(mdwc->dev, "unable to disable dp_mux_sel_power\n");
+				else
+					mdwc->is_enable_dp_mux_power = false;
 			}
 		}
 		break;
