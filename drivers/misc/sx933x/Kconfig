@@ -16,3 +16,11 @@ config SENSORS_SX933X
       allows automatically identify device and matching firmware. See file
       Documentation/devicetree/bindings/misc/capsense_hssp.txt for details.
 
+config CAPSENSE_USB_CAL
+	bool "Enable cap-sensor usb calibration"
+	depends on SENSORS_SX933X
+	help
+	  Enable Cap-sensor calibration when usb plug.
+
+	  To use CAPSENSE_USB_CAL open the feature that it can enable cap-sensor calibration
+	  when usb plug.
