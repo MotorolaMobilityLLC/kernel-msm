@@ -256,6 +256,15 @@ enum ts_notify_event {
 	NOTIFY_ESD_ON,
 };
 
+#ifdef GOODIX_SENSOR_EN
+/* display state */
+enum display_state {
+	SCREEN_UNKNOWN,
+	SCREEN_OFF,
+	SCREEN_ON,
+};
+#endif
+
 /* coordinate package */
 struct goodix_ts_coords {
 	int id;
@@ -450,6 +459,8 @@ struct goodix_ts_core {
 	struct goodix_ts_device *ts_dev;
 	struct input_dev *input_dev;
 #ifdef GOODIX_SENSOR_EN
+	enum display_state screen_state;
+	struct mutex state_mutex;
 	struct goodix_sensor_platform_data *sensor_pdata;
 #endif
 	struct regulator *avdd;
