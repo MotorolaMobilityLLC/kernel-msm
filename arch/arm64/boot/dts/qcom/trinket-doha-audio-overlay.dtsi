@@ -11,12 +11,24 @@
  */
 
 &pm6125_gpios {
-		codec_power_bob_en: codec_power_bob_en {
-			pins = "gpio6";
-			function = "normal";
-			output-high;
+	codec_power_bob_en: codec_power_bob_en {
+		pins = "gpio6";
+		function = "normal";
+		output-high;
+		bias-disable;
+	};
+
+	tacna_mclk {
+		tacna_mclk_default: tacna_mclk_default{
+			pins = "gpio5";
+			function = "func1";
+			qcom,drive-strength = <2>;
+			power-source = <0>;
 			bias-disable;
+			output-low;
+			input-disable;
 		};
+	};
 };
 
 &tlmm {
@@ -345,7 +357,7 @@
 		clock-names = "ref_clk";
 
 		pinctrl-names = "probe", "active";
-		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &codec_power_bob_en>;
+		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &tacna_mclk_default &codec_power_bob_en>;
 		pinctrl-1 = <&cs48l32_defaults>;
 
 		cirrus,in-type = <
@@ -453,10 +465,6 @@
 
 &dai_mi2s5 {
 	status = "disabled";
-};
-
-&clock_audio {
-	status = "ok";
 };
 
 &cdc_dmic01_gpios {
