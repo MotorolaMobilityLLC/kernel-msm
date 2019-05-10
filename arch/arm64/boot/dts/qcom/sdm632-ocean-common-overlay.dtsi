@@ -441,7 +441,7 @@
 		vib_td_brake = < 51264 46992 46992 >; /*level0  level1  level2*/
 		vib_tset = < 0x11 >;
 		vib_func_parameter1 = < 1000 >;
-		status = "ok";
+		status = "disabled";
 	};
 };
 
