@@ -149,7 +149,6 @@
 };
 
 &pmi632_charger {
-	qcom,hvdcp-disable;
 	qcom,fcc-max-ua = <3600000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <3000000>;
@@ -181,6 +180,7 @@
 						<60 4200 1940 0>;
 			qcom,iterm-ma = <194>;
 			qcom,vfloat-comp-uv = <20000>;
+			qcom,force-hvdcp-5v;
 		};
 	};
 };
