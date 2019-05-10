@@ -36,6 +36,16 @@
 	};
 };
 
+&clock_audio {
+	status = "ok";
+};
+
+&cs48l32 {
+	pinctrl-names = "probe", "active";
+	pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &codec_power_bob_en>;
+	pinctrl-1 = <&cs48l32_defaults>;
+};
+
 &sm6150_snd {
 	cirrus,pmic-audio-clk;
 };
