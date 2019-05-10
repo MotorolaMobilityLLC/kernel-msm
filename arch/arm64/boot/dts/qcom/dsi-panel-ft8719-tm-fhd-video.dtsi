@@ -13,7 +13,7 @@
 &mdss_mdp {
 	dsi_ft8719_tm_video: qcom,mdss_dsi_ft8719_tm_video {
 		qcom,mdss-dsi-panel-name =
-				"ft8719 tm video mode dsi panel";
+				"mipi_mot_vid_tianma_1080p_630";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 
 		qcom,mdss-dsi-virtual-channel-id = <0>;
