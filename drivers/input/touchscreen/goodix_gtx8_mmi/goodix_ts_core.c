@@ -2365,6 +2365,25 @@ int goodix_ts_fb_notifier_callback(struct notifier_block *self,
 			evdata && evdata->data && core_data) {
 		int *blank = evdata->data;
 		pr_debug("drm notification: event = %lu blank = %d\n", event, *blank);
+#ifdef GOODIX_SENSOR_EN
+		mutex_lock(&core_data->state_mutex);
+		if (event == MSM_DRM_EARLY_EVENT_BLANK) {
+			if (*blank != MSM_DRM_BLANK_POWERDOWN) {
+				mutex_unlock(&core_data->state_mutex);
+				return 0;
+			}
+			//screen off
+			core_data->screen_state = SCREEN_OFF;
+			ts_info("TP Suspend");
+			goodix_ts_suspend(core_data);
+		} else if (*blank == MSM_DRM_BLANK_UNBLANK) {
+			ts_info("TP Resume");
+			//screen on
+			core_data->screen_state = SCREEN_ON;
+			goodix_ts_resume(core_data);
+		}
+		mutex_unlock(&core_data->state_mutex);
+#else
 		if (event == MSM_DRM_EARLY_EVENT_BLANK) {
 			if (*blank != MSM_DRM_BLANK_POWERDOWN)
 				return 0;
@@ -2374,6 +2393,7 @@ int goodix_ts_fb_notifier_callback(struct notifier_block *self,
 			ts_info("TP Resume");
 			goodix_ts_resume(core_data);
 		}
+#endif
 	}
 
 	return 0;
@@ -2558,6 +2578,11 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	core_data->gtp_suspended = false;
 	core_data->wakeable = false;
 	core_data->irq_waked = false;
+#ifdef GOODIX_SENSOR_EN
+	mutex_init(&core_data->state_mutex);
+	//unknown screen state
+	core_data->screen_state = SCREEN_UNKNOWN;
+#endif
 	client = to_i2c_client(ts_device->dev);
 	i2c_set_clientdata(client, core_data);
 	r = goodix_ts_power_init(core_data);

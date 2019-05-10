@@ -379,9 +379,9 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 		GSX_REG_GESTURE_DATA,
 		temp_data, sizeof(temp_data));
 	if (ret < 0 || ((temp_data[0] & 0x20)  == 0)) {
-		ts_debug("Read gesture data faild, ret=%d, temp_data[0]=0x%x",
+		ts_debug("Read gesture data failed, ret=%d, temp_data[0]=0x%x",
 			ret, temp_data[0]);
-		goto re_send_ges_cmd;
+		goto gesture_ist_exit;
 	}
 
 	checksum = checksum_u8(temp_data, sizeof(temp_data));
@@ -477,8 +477,16 @@ static int gsx_sensor_set_enable(struct sensors_classdev *sensors_cdev,
 	struct goodix_ts_device *ts_dev = goodix_core_data->ts_dev;
 
 	ts_info("Gesture set enable %d!", enable);
+	mutex_lock(&goodix_core_data->state_mutex);
 	if (enable == 1) {
 		goodix_core_data->wakeable = true;
+		//If touch still work in normal mode and screen on, skip enter into gesture mode.
+		if (goodix_core_data->gtp_suspended == false
+			&& goodix_core_data->screen_state == SCREEN_ON) {
+			ts_info("Touch still in normal mode, skip to set to gesture mode");
+			mutex_unlock(&goodix_core_data->state_mutex);
+			return 0;
+		}
 		goodix_ts_start_resume(goodix_core_data);
 
 		msleep(GTP_60_DLY_MS);
@@ -487,6 +495,7 @@ static int gsx_sensor_set_enable(struct sensors_classdev *sensors_cdev,
 			gesture_cmd);
 		if (ret != 0) {
 			ts_err("Send doze command error");
+			mutex_unlock(&goodix_core_data->state_mutex);
 			return 0;
 		}
 
@@ -512,6 +521,7 @@ static int gsx_sensor_set_enable(struct sensors_classdev *sensors_cdev,
 	} else {
 		ts_info("unknown enable symbol\n");
 	}
+	mutex_unlock(&goodix_core_data->state_mutex);
 	return 0;
 }
 
