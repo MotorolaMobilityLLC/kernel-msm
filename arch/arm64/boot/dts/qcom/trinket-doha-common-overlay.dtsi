@@ -66,55 +66,6 @@
 	};
 };
 
-&pm6125_vadc {
-	rf_pa0_therm {
-		status = "disabled";
-	};
-	pa_therm0 {
-		reg = <ADC_AMUX_THM1_PU2>;
-		label = "pa_therm0";
-		qcom,ratiometric;
-		qcom,hw-settle-time = <200>;
-		qcom,pre-scaling = <1 1>;
-	};
-
-	emmc_ufs_therm {
-		status = "disabled";
-	};
-	msm_therm {
-		reg = <ADC_GPIO3_PU2>;
-		label = "msm_therm";
-		qcom,ratiometric;
-		qcom,hw-settle-time = <200>;
-		qcom,pre-scaling = <1 1>;
-	};
-};
-
-&pm6125_adc_tm {
-	rf_pa0_therm {
-		status = "disabled";
-	};
-};
-
-&pmi632_vadc {
-	skin_therm {
-		status = "disabled";
-	};
-	chg_therm {
-		reg = <ADC_GPIO2_PU2>;
-		label = "chg_therm";
-		qcom,ratiometric;
-		qcom,hw-settle-time = <200>;
-		qcom,pre-scaling = <1 1>;
-	};
-};
-
-&pmi632_adc_tm {
-	skin_therm {
-		status = "disabled";
-	};
-};
-
 &key_vol_up_default {
 	pins = "gpio9";
 };
@@ -208,17 +159,12 @@
 	camera-ftherm-adc {
 		status = "disabled";
 	};
-
-	emmc-ufs-therm-adc {
-		status = "disabled";
-	};
-
 	msm_therm {
 		polling-delay-passive = <0>;
 		polling-delay = <5000>;
 		thermal-has-hwmon;
 		thermal-governor = "user_space";
-		thermal-sensors = <&pm6125_adc_tm_iio ADC_GPIO3_PU2>;
+		thermal-sensors = <&pm6125_adc_tm_iio ADC_GPIO1_PU2>;
 		trips {
 			active-config0 {
 				temperature = <125000>;
@@ -226,5 +172,9 @@
 				type = "passive";
 			};
 		};
+	};
+
+	emmc-ufs-therm-adc {
+		status = "disabled";
 	};
 };
