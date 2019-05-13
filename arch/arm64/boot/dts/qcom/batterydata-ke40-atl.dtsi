@@ -19,7 +19,7 @@ qcom,ke40-atl {
 	qcom,batt-id-kohm = <100>;
 	qcom,battery-beta = <3440>;
 	qcom,battery-type = "KE40_ATL_2820mAh_4v4";
-	qcom,thermal-coefficients = [C5 86 BE 50 D1 37];
+	qcom,thermal-coefficients = [DA 86 F0 50 08 3C];
 	qcom,chg-rslow-comp-c1 = <2269400>;
 	qcom,chg-rslow-comp-c2 = <2084707>;
 	qcom,chg-rs-to-rslow = <687220>;
