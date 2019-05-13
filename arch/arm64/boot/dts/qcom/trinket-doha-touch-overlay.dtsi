@@ -18,6 +18,7 @@
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_release>;
+		status = "/chosen", "mmi,panel_name", "tm_ft8719_fhd_vid";
 	};
 };
 
