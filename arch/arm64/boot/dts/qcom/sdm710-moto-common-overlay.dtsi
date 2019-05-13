@@ -503,7 +503,7 @@
 			config {
 				pins = "gpio95";
 				drive-strength = <2>;
-				bias-disable;
+				bias-pull-up;
 			};
 		};
 
