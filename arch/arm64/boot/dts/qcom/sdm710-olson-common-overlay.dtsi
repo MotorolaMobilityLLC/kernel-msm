@@ -410,6 +410,14 @@
 &qupv3_se7_i2c {
 	synaptics_dsx_i2c@20 {
 		synaptics,splash-screen-mode;
+		pinctrl-0 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod";
+			config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
 	};
 
 	synaptics_dsx_i2c@38 {
@@ -417,6 +425,14 @@
 		synaptics,control-dsi = <1>;
 		synaptics,bound-display = "dsi_boe_269_800x600_cmd_display";
 		synaptics,class-entry-name = "secondary";
+		pinctrl-0 = <&ts_sub_rst_active &ts_sub_int_active>;
+		config_modifier-names = "aod";
+			config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
 	};
 
 	raydium-ts@39 {
