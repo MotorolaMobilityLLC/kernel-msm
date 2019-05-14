@@ -143,6 +143,69 @@ static struct kernel_param_ops force_on_ops = {
 module_param_cb(force_on, &force_on_ops, &force_on, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC (force_on, "Override panel autosuspend decision");
 
+static int rx_queue_len;
+static int set_rx_queue_len_param(const char *val, const struct kernel_param *kp)
+{
+	int rc;
+	int prev_up = rx_queue_len;
+
+	rc = param_set_int(val, kp);
+	if (rc)
+		return rc;
+
+	if (the_dev) {
+		if (prev_up != rx_queue_len) {
+			pr_info("usbnet: %s - rx_queue_len %d\n",
+				__func__, rx_queue_len);
+                        the_dev->rx_qlen = rx_queue_len / the_dev->rx_urb_size;
+		} else
+			pr_info("usbnet: %s - rx_queue_len is the same\n", __func__);
+	} else
+		pr_err("usbnet: set rx_queue_len the_dev not ready\n");
+
+
+	return 0;
+}
+
+static struct kernel_param_ops rx_queue_len_ops = {
+	.set = set_rx_queue_len_param,
+	.get = param_get_int,
+};
+
+module_param_cb(rx_queue_len, &rx_queue_len_ops, &rx_queue_len, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC (rx_queue_len, "Set the rx queue buffer size");
+
+static int tx_queue_len;
+static int set_tx_queue_len_param(const char *val, const struct kernel_param *kp)
+{
+	int rc;
+	int prev_up = tx_queue_len;
+
+	rc = param_set_int(val, kp);
+	if (rc)
+		return rc;
+
+	if (the_dev) {
+		if (prev_up != tx_queue_len) {
+			pr_info("usbnet: %s - tx_queue_len %d\n",
+				__func__, tx_queue_len);
+                        the_dev->tx_qlen = tx_queue_len / the_dev->hard_mtu;
+		} else
+			pr_info("usbnet: %s - tx_queue_len is the same\n", __func__);
+	} else
+		pr_err("usbnet: set tx_queue_len the_dev not ready\n");
+
+	return 0;
+}
+
+static struct kernel_param_ops tx_queue_len_ops = {
+	.set = set_tx_queue_len_param,
+	.get = param_get_int,
+};
+
+module_param_cb(tx_queue_len, &tx_queue_len_ops, &tx_queue_len, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC (tx_queue_len, "Set the tx queue buffer size");
+
 /*-------------------------------------------------------------------------*/
 
 /* handles CDC Ethernet and many other network "bulk data" interfaces */
@@ -405,8 +468,8 @@ void usbnet_update_max_qlen(struct usbnet *dev)
 
 	switch (speed) {
 	case USB_SPEED_HIGH:
-		dev->rx_qlen = MAX_QUEUE_MEMORY / dev->rx_urb_size;
-		dev->tx_qlen = MAX_QUEUE_MEMORY / dev->hard_mtu / 10;
+		dev->rx_qlen = rx_queue_len / dev->rx_urb_size;
+		dev->tx_qlen = tx_queue_len / dev->hard_mtu;
 		break;
 	case USB_SPEED_SUPER:
 		/*
@@ -414,8 +477,8 @@ void usbnet_update_max_qlen(struct usbnet *dev)
 		 * save memory, and iperf tests show 2.5ms qlen can
 		 * work well
 		 */
-		dev->rx_qlen = 5 * MAX_QUEUE_MEMORY / dev->rx_urb_size;
-		dev->tx_qlen = 5 * MAX_QUEUE_MEMORY / dev->hard_mtu / 10;
+		dev->rx_qlen = rx_queue_len / dev->rx_urb_size;
+		dev->tx_qlen = tx_queue_len / dev->hard_mtu;
 		break;
 	default:
 		dev->rx_qlen = dev->tx_qlen = 4;
@@ -1916,6 +1979,26 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 		SET_NETDEV_DEVTYPE(net, &wlan_type);
 	if ((dev->driver_info->flags & FLAG_WWAN) != 0)
 		SET_NETDEV_DEVTYPE(net, &wwan_type);
+
+        /*Default rx and tx queue lengths for use in update max qlen */
+	switch (dev->udev->speed) {
+	case USB_SPEED_HIGH:
+		rx_queue_len = MAX_QUEUE_MEMORY;
+		tx_queue_len = MAX_QUEUE_MEMORY/10;
+		break;
+	case USB_SPEED_SUPER:
+		/*
+		 * Not take default 5ms qlen for super speed HC to
+		 * save memory, and iperf tests show 2.5ms qlen can
+		 * work well
+		 */
+		rx_queue_len = 5 * MAX_QUEUE_MEMORY;
+		tx_queue_len = 5 * MAX_QUEUE_MEMORY/10;
+		break;
+	default:
+		rx_queue_len = MAX_QUEUE_MEMORY;
+		tx_queue_len = MAX_QUEUE_MEMORY/10;
+	}
 
 	/* initialize max rx_qlen and tx_qlen */
 	usbnet_update_max_qlen(dev);
