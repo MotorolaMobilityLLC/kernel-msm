@@ -411,19 +411,6 @@ static int aw2015_led_err_handle(struct aw2015_led *led_array,
 	return i;
 }
 
-static bool mmi_factory_check(void)
-{
-	struct device_node *np = of_find_node_by_path("/chosen");
-	bool factory = false;
-
-	if (np)
-		factory = of_property_read_bool(np, "mmi,factory-cable");
-
-	of_node_put(np);
-
-	return factory;
-}
-
 static int aw2015_led_parse_child_node(struct aw2015_led *led_array,
 				struct device_node *node)
 {
@@ -463,13 +450,8 @@ static int aw2015_led_parse_child_node(struct aw2015_led *led_array,
 			goto free_pdata;
 		}
 
-		if (true == mmi_factory_check()) {
-			rc = of_property_read_u32(temp, "aw2015,imax-factory",
-				&led->pdata->imax);
-		} else {
-			rc = of_property_read_u32(temp, "aw2015,imax",
-				&led->pdata->imax);
-		}
+		rc = of_property_read_u32(temp, "aw2015,imax",
+			&led->pdata->imax);
 		if (rc < 0) {
 			dev_err(&led->client->dev,
 				"Failure reading imax, rc = %d\n", rc);
