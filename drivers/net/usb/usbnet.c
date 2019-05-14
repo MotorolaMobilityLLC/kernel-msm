@@ -1119,6 +1119,32 @@ void usbnet_set_msglevel (struct net_device *net, u32 level)
 }
 EXPORT_SYMBOL_GPL(usbnet_set_msglevel);
 
+void usbnet_get_ringparam (struct net_device *net, struct ethtool_ringparam *ering)
+{
+	struct usbnet *dev = netdev_priv(net);
+
+	ering->tx_max_pending = 5*MAX_QUEUE_MEMORY / 10;
+ 	ering->tx_pending = dev->tx_qlen*dev->hard_mtu;
+ 	ering->rx_max_pending = 5*MAX_QUEUE_MEMORY;
+ 	ering->rx_pending = dev->rx_qlen*dev->rx_urb_size;
+
+	printk("usbnet_get_ringparam: tx max = %d, tx pend = %d, rx max = %d, rx pend = %d, hard_mtu = %d, rx_urb_size = %d\n", ering->tx_max_pending, ering->tx_pending, ering->rx_max_pending, ering->rx_pending, dev->hard_mtu, (int)dev->rx_urb_size);
+}
+EXPORT_SYMBOL_GPL(usbnet_get_ringparam);
+
+int usbnet_set_ringparam (struct net_device *net, struct ethtool_ringparam *ering)
+{
+	struct usbnet *dev = netdev_priv(net);
+
+	if(ering->rx_mini_pending != 0 || ering->rx_jumbo_pending != 0)
+		return -EINVAL;
+	dev->tx_qlen = ering->tx_pending/dev->hard_mtu;
+	dev->rx_qlen = ering->rx_pending/dev->rx_urb_size ;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(usbnet_set_ringparam);
+
 /* drivers may override default ethtool_ops in their bind() routine */
 static const struct ethtool_ops usbnet_ethtool_ops = {
 	.get_settings		= usbnet_get_settings,
@@ -1129,6 +1155,8 @@ static const struct ethtool_ops usbnet_ethtool_ops = {
 	.get_msglevel		= usbnet_get_msglevel,
 	.set_msglevel		= usbnet_set_msglevel,
 	.get_ts_info		= ethtool_op_get_ts_info,
+	.get_ringparam		= usbnet_get_ringparam,
+	.set_ringparam		= usbnet_set_ringparam,
 };
 
 /*-------------------------------------------------------------------------*/
