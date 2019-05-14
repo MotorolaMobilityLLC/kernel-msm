@@ -230,6 +230,7 @@ void tfa_set_query_info(struct tfa_device *tfa)
 	tfa->vstep = -1;
 	/* defaults */
 	tfa->is_probus_device = 0;
+	tfa->advance_keys_handling = 0; /*artf65038*/
 	tfa->tfa_family = 1;
 	tfa->daimap = Tfa98xx_DAI_I2S;		/* all others */
 	tfa->spkr_count = 1;
@@ -275,10 +276,12 @@ void tfa_set_query_info(struct tfa_device *tfa)
 		tfa9874_ops(&tfa->dev_ops); /* register device operations */
 		break;
 	case 0x78:
-		/* tfa9874 */
+		/* tfa9878 */
 		tfa->supportDrc = supportYes;
 		tfa->tfa_family = 2;
-		tfa->spkr_count = 1;		tfa->is_probus_device = 1;
+		tfa->spkr_count = 1;
+		tfa->is_probus_device = 1;
+		tfa->advance_keys_handling = 1; /*artf65038*/
 		tfa->daimap = Tfa98xx_DAI_TDM;
 		tfa9878_ops(&tfa->dev_ops); /* register device operations */
 		break;
@@ -771,7 +774,8 @@ void tfa98xx_key2(struct tfa_device *tfa, int lock)
 	/* lock/unlock key2 MTPK */
 	TFA_WRITE_REG(tfa, MTPKEY2, lock ? 0 : 0x5A);
 	/* unhide lock registers */
-	reg_write(tfa, (tfa->tfa_family == 1) ? 0x40 : 0x0F, 0);
+	if (!tfa->advance_keys_handling) /*artf65038*/
+		reg_write(tfa, (tfa->tfa_family == 1) ? 0x40 : 0x0F, 0);
 }
 void tfa2_manual_mtp_cpy(struct tfa_device *tfa, uint16_t reg_row_to_keep, uint16_t reg_row_to_set, uint8_t row)///MCH_TO_TEST
 {

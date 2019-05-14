@@ -137,6 +137,7 @@ struct tfa_device {
 	int convert_dsp32; /**< convert 24 bit DSP messages to 32 bit */
 	int sync_iv_delay; /**< synchronize I/V delay at cold start */
 	int is_probus_device; /**< probus device: device without internal DSP */
+	int advance_keys_handling;
 	int needs_reset; /**< add the reset trigger for SetAlgoParams and SetMBDrc commands */
 	struct kmem_cache *cachep;	/**< Memory allocator handle */
 	char fw_itf_ver[4];          /* Firmware ITF version */
