@@ -257,6 +257,7 @@
 	qcom,temp-cool-current-ma = <582>;
 	qcom,temp-slightly-cool-current-ma = <582>;
 	qcom,slightly-cool-temp-c = <15>;
+        qcom,cold-temp-c = <(-14)>;
 };
 
 &pm8937_vadc {
