@@ -625,6 +625,7 @@
 		"IN1RP_1",  "MICBIAS1B",
 		"IN1RN_1",  "MICBIAS1B";
 	qcom,wsa-max-devs = <0>;
+	qcom,ext-disp-audio-rx = <0>;
 	cirrus,prince-max-devs = <2>;
 	cirrus,prince-devs = <&cs35l41_rcv>, <&cs35l41_spk>;
 	cirrus,prince-dev-prefix = "RCV", "SPK";
