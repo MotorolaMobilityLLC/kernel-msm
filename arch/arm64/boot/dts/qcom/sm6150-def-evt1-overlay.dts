@@ -24,27 +24,10 @@
 	qcom,board-id = <0x47 0xA100>;
 };
 
-&dsi_smd_639_1080x2340_cmd_display {
-	qcom,dsi-display-active;
-};
-
-&mot_smd_639_1080p_cmd_v1 {
-	qcom,mdss-dsi-hbm-dim-off;
-};
-
-&dsi_tianma_639_1080x2340_cmd_display {
-	qcom,dsi-display-active;
-};
-
 &sm6150_snd {
 	def,audio_slimbus_workaround = <1>;
 };
 
-
-&sde_dsi {
-	/delete-property/vddio-supply;
-	vddio-supply = <&pm6150_l13>;
-};
 
 &pm6150_qg {
 	qcom,vbatt-cutoff-mv = <3200>;
