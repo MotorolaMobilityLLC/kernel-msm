@@ -12,10 +12,9 @@
 
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-audio-overlay.dtsi"
-#include "dsi-panel-mot-smd-639-1080p-cmd-overlay.dtsi"
-#include "dsi-panel-mot-tianma-639-1080p-cmd-overlay.dtsi"
 #include "sm6150-def-audio-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-def-overlay.dtsi"
+#include "defender-panel.dtsi"
 
 &pm6150_l19 {
 	regulator-boot-on;
@@ -301,65 +300,6 @@
 		pinctrl-0 = <&fps_rst_active &fps_int_active>;
 		pinctrl-1 = <&fps_rst_suspend &fps_int_suspend>;
 	};
-
-	dsi_panel_pwr_supply_vdd_amoled: dsi_panel_pwr_supply_vdd_amoled {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		qcom,panel-supply-entry@0 {
-			reg = <0>;
-			qcom,supply-name = "vddio";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <62000>;
-			qcom,supply-disable-load = <80>;
-			qcom,supply-post-on-sleep = <20>;
-		};
-
-		qcom,panel-supply-entry@1 {
-			reg = <1>;
-			qcom,supply-name = "vdd";
-			qcom,supply-min-voltage = <3000000>;
-			qcom,supply-max-voltage = <3000000>;
-			qcom,supply-enable-load = <857000>;
-			qcom,supply-disable-load = <0>;
-			qcom,supply-post-on-sleep = <0>;
-		};
-	};
-
-	dsi_smd_639_1080x2340_cmd_display: qcom,dsi-display@5 {
-		label = "dsi_smd_639_1080x2340_cmd_display";
-		qcom,display-type = "primary";
-
-		qcom,dsi-ctrl-num = <0>;
-		qcom,dsi-phy-num = <0>;
-		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
-
-		qcom,dsi-panel = <&mot_smd_639_1080p_cmd_v1>;
-	};
-
-	dsi_tianma_639_1080x2340_cmd_display: qcom,dsi-display@6 {
-		label = "dsi_tianma_639_1080x2340_cmd_display";
-		qcom,display-type = "primary";
-
-		qcom,dsi-ctrl-num = <0>;
-		qcom,dsi-phy-num = <0>;
-		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
-
-		qcom,dsi-panel = <&mot_tianma_639_1080p_cmd_v1>;
-	};
-
-	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@7 {
-		label = "dsi_mot_dummy_qhd_video_display";
-		qcom,display-type = "primary";
-
-		qcom,dsi-ctrl-num = <0>;
-		qcom,dsi-phy-num = <0>;
-		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
-
-		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
-	};
-
 	sys_temp_support {
 		compatible = "mmi,sys-temp";
 		mmi,temperature-names = "front_temp",
@@ -694,120 +634,6 @@
 		reg = <ADC_AMUX_THM2_PU2>;
 		qcom,ratiometric;
 		qcom,hw-settle-time = <200>;
-	};
-};
-
-&pm6150l_wled {
-	status = "disable";
-};
-
-&pm6150l_lcdb {
-	status = "disable";
-};
-
-&sde_dsi {
-	qcom,dsi-display-list =
-		<&dsi_smd_639_1080x2340_cmd_display
-		 &dsi_tianma_639_1080x2340_cmd_display
-		 &dsi_mot_dummy_qhd_video_display>;
-
-	/delete-property/vddio-supply;
-	/delete-property/lab-supply;
-	/delete-property/ibb-supply;
-
-	vddio-supply = <&pm6150_l15>;
-	vdd-supply = <&pm6150_l18>;
-};
-
-&mot_smd_639_1080p_cmd_v1 {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
-	qcom,platform-te-gpio = <&tlmm 90 0>;
-	qcom,platform-reset-gpio = <&tlmm 91 0>;
-	qcom,platform-vsync-source = <0>;
-
-	qcom,mdss-dsi-t-clk-post = <0x0f>;
-	qcom,mdss-dsi-t-clk-pre = <0x37>;
-	/* Enable ESD checking */
-	qcom,esd-check-enabled;
-	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
-	//qcom,mdss-dsi-panel-status-read-length = <1>;
-	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
-	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-	//qcom,mdss-dsi-panel-status-value = <0x9c>;
-	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
-
-	qcom,mdss-dsi-display-timings {
-		timing@0{
-			qcom,mdss-dsi-panel-phy-timings =
-				[26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0];
-
-			qcom,display-topology = <1 0 1>;
-			qcom,default-topology-index = <0>;
-
-			qcom,mdss-dsi-hbm-dim-off-command = [
-				39 00 00 00 00 00 03 F0 5A 5A
-				39 00 00 00 00 00 03 B7 01 58
-				15 01 00 00 00 00 02 B0 07
-				15 01 00 00 00 00 02 B7 12
-				39 00 00 00 00 00 03 F0 5A 5A];
-		};
-	};
-};
-
-&mot_tianma_639_1080p_cmd_v1 {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vdd_amoled>;
-	qcom,platform-te-gpio = <&tlmm 90 0>;
-	qcom,platform-reset-gpio = <&tlmm 91 0>;
-	qcom,panel-te-source = <0>;
-
-	qcom,mdss-dsi-t-clk-post = <0x0f>;
-	qcom,mdss-dsi-t-clk-pre = <0x37>;
-	/* Enable ESD checking */
-	qcom,esd-check-enabled;
-	qcom,mdss-dsi-panel-status-check-mode = "te_signal_check";
-	//qcom,mdss-dsi-panel-status-read-length = <1>;
-	//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
-	//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-	//qcom,mdss-dsi-panel-status-value = <0x0c>;
-	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
-
-	qcom,mdss-dsi-display-timings {
-		timing@0{
-			qcom,mdss-dsi-panel-phy-timings =
-				[26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0
-				26 20 0A 0B 06 03 04 a0];
-
-			qcom,display-topology = <1 0 1>;
-			qcom,default-topology-index = <0>;
-		};
-	};
-};
-
-&mot_dummy_vid_qhd {
-	qcom,platform-te-gpio = <&tlmm 90 0>;
-	qcom,platform-reset-gpio = <&tlmm 91 0>;
-
-	qcom,mdss-dsi-t-clk-post = <0x0e>;
-	qcom,mdss-dsi-t-clk-pre = <0x31>;
-	qcom,mdss-dsi-display-timings {
-		timing@0{
-			qcom,mdss-dsi-panel-phy-timings =
-				[24 1f 08 09 05 02 04 a0
-				24 1f 08 09 05 02 04 a0
-				24 1f 08 09 05 02 04 a0
-				24 1f 08 09 05 02 04 a0
-				24 1c 08 09 05 02 04 a0];
-
-			qcom,display-topology = <1 0 1>;
-			qcom,default-topology-index = <0>;
-		};
 	};
 };
 
