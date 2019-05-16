@@ -198,7 +198,7 @@
 		interrupts = <112 0x8>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		reset-gpios = <&lpi_tlmm 24 0>;
+		reset-gpios = <&tlmm 31 0>;
 		pinctrl-names ="probe", "active";
 		pinctrl-0 = <&marley_reset_default>;
 		pinctrl-1 = <&cs47l35_defaults>;
