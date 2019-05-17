@@ -1691,6 +1691,14 @@ static int cam_ife_mgr_check_and_update_fe(
 		((uint8_t *)&acquire_hw_info->data +
 		 acquire_hw_info->input_info_offset);
 	for (i = 0; i < acquire_hw_info->num_inputs; i++) {
+
+		if ((in_port->num_out_res > CAM_IFE_HW_OUT_RES_MAX) ||
+			(in_port->num_out_res <= 0)) {
+			CAM_ERR(CAM_ISP, "Invalid num output res %u",
+				in_port->num_out_res);
+			return -EINVAL;
+		}
+
 		in_port_length = sizeof(struct cam_isp_in_port_info) +
 			(in_port->num_out_res - 1) *
 			sizeof(struct cam_isp_out_port_info);
@@ -1927,7 +1935,6 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	}
 	cdm_acquire.base_array_cnt = j;
 
-
 	cdm_acquire.id = CAM_CDM_VIRTUAL;
 	cdm_acquire.cam_cdm_callback = cam_ife_cam_cdm_callback;
 	rc = cam_cdm_acquire(&cdm_acquire);
@@ -1943,21 +1950,23 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	acquire_hw_info =
 		(struct cam_isp_acquire_hw_info *)acquire_args->acquire_info;
-	in_port = (struct cam_isp_in_port_info *)
-		((uint8_t *)&acquire_hw_info->data +
-		 acquire_hw_info->input_info_offset);
 
 	rc = cam_ife_mgr_check_and_update_fe(ife_ctx, acquire_hw_info);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "buffer size is not enough");
-		goto free_ctx;
+		goto free_cdm;
 	}
+
+	in_port = (struct cam_isp_in_port_info *)
+		((uint8_t *)&acquire_hw_info->data +
+		 acquire_hw_info->input_info_offset);
 
 	/* acquire HW resources */
 	for (i = 0; i < acquire_hw_info->num_inputs; i++) {
 
-		if (in_port->num_out_res > CAM_IFE_HW_OUT_RES_MAX) {
-			CAM_ERR(CAM_ISP, "too many output res %d",
+		if ((in_port->num_out_res > CAM_IFE_HW_OUT_RES_MAX) ||
+			(in_port->num_out_res <= 0)) {
+			CAM_ERR(CAM_ISP, "Invalid num output res %u",
 				in_port->num_out_res);
 			rc = -EINVAL;
 			goto free_res;
@@ -2010,6 +2019,7 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 	return 0;
 free_res:
 	cam_ife_hw_mgr_release_hw_for_ctx(ife_ctx);
+free_cdm:
 	cam_cdm_release(ife_ctx->cdm_handle);
 free_ctx:
 	cam_ife_hw_mgr_put_ctx(&ife_hw_mgr->free_ctx_list, &ife_ctx);
@@ -3697,10 +3707,33 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 	}
 		break;
 	case CAM_ISP_GENERIC_BLOB_TYPE_BW_CONFIG_V2: {
-		struct cam_isp_bw_config_ab    *bw_config_ab =
-			(struct cam_isp_bw_config_ab *)blob_data;
+		struct cam_isp_bw_config_ab    *bw_config_ab;
+
 		struct cam_isp_prepare_hw_update_data   *prepare_hw_data;
 
+		if (blob_size < sizeof(struct cam_isp_bw_config_ab)) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u", blob_size);
+			return -EINVAL;
+		}
+
+		bw_config_ab = (struct cam_isp_bw_config_ab *)blob_data;
+
+		if (bw_config_ab->num_rdi > CAM_IFE_RDI_NUM_MAX) {
+			CAM_ERR(CAM_ISP, "Invalid num_rdi %u in bw config ab",
+				bw_config_ab->num_rdi);
+			return -EINVAL;
+		}
+
+		if (blob_size < (sizeof(uint32_t) * 2
+			+ (bw_config_ab->num_rdi + 2)
+			* sizeof(struct cam_isp_bw_vote))) {
+			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
+				blob_size,
+				sizeof(uint32_t) * 2
+				+ (bw_config_ab->num_rdi + 2)
+				* sizeof(struct cam_isp_bw_vote));
+			return -EINVAL;
+		}
 		CAM_DBG(CAM_ISP, "AB L:%lld R:%lld usage_type %d",
 			bw_config_ab->left_pix_vote_ab,
 			bw_config_ab->right_pix_vote_ab,
@@ -3833,7 +3866,8 @@ static int cam_ife_mgr_prepare_hw_update(void *hw_mgr_priv,
 
 	rc = cam_packet_util_process_patches(prepare->packet,
 		hw_mgr->mgr_common.cmd_iommu_hdl,
-		hw_mgr->mgr_common.cmd_iommu_hdl_secure);
+		hw_mgr->mgr_common.cmd_iommu_hdl_secure,
+		0);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Patch ISP packet failed.");
 		return rc;
