@@ -102,6 +102,7 @@
 			usb-core-id = <0>;
 			maximum-speed = "super-speed";
 			dr_mode = "otg";
+			xhci-imod-value = <4000>;
 		};
 
 		qcom,usbbam@a704000 {
