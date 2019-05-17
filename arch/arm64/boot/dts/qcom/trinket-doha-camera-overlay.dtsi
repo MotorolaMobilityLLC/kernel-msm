@@ -10,7 +10,35 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+&i2c_freq_custom {
+	qcom,hw-thigh = <23>;
+	qcom,hw-tlow = <30>;
+	qcom,hw-tsu-sto = <20>;
+	qcom,hw-tsu-sta = <20>;
+	qcom,hw-thd-dat = <18>;
+	qcom,hw-thd-sta = <19>;
+	qcom,hw-tbuf = <31>;
+	qcom,hw-scl-stretch-en = <0>;
+	qcom,hw-trdhld = <3>;
+};
+
 &soc {
+	qcom,csiphy@1628000 {
+		qcom,clock-rates = <0 0 311000000 0 0 311000000 0
+			0 311000000 0 0>;
+	};
+
+	qcom,csiphy@1629000 {
+		qcom,clock-rates = <0 0 311000000 0 0 311000000 0
+			0 311000000 0 0>;
+	};
+
+	qcom,csiphy@162a000 {
+		qcom,clock-rates = <0 0 311000000 0 0 311000000 0
+			0 311000000 0 0>;
+
+	};
+
 	led_flash_rear: qcom,camera-flash@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera-flash";
