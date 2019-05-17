@@ -455,6 +455,7 @@ static int gsx_gesture_before_suspend(struct goodix_ts_core *core_data,
 	ts_info("Before suspend goodix_core_data->wakeable %d!",
 		goodix_core_data->wakeable);
 	if (goodix_core_data->wakeable) {
+		msleep(GTP_60_DLY_MS);
 		ret = hw_ops->send_cmd(core_data->ts_dev, gesture_cmd);
 		if (ret != 0) {
 			ts_err("Send doze command error");
@@ -462,6 +463,7 @@ static int gsx_gesture_before_suspend(struct goodix_ts_core *core_data,
 		}
 
 		ts_info("Set IC in doze mode");
+		msleep(GTP_20_DLY_MS);
 		atomic_set(&core_data->suspended, 1);
 		return EVT_CANCEL_SUSPEND;
 	} else {
