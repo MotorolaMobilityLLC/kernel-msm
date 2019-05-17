@@ -207,6 +207,7 @@
 	qcom,bcl-lm-threshold-ma = <126>;
 	qcom,bcl-mh-threshold-ma = <400>;
 	qcom,fg-iterm-ma = <150>;
+        qcom,fg-chg-iterm-ma = <58>;
 	qcom,fg-vbat-estimate-diff-mv = <1000>;
 	qcom,fg-delta-soc = <1>;
 	qcom,fg-max-soc = <100>;
@@ -251,7 +252,7 @@
 	qcom,stepchg-voltage-mv = <4200>;
 	qcom,stepchg-current-ma = <1850>;
 	qcom,stepchg-taper-ma = <1850>;
-	qcom,stepchg-iterm-ma = <146>;
+	qcom,stepchg-iterm-ma = <58>;
 	/delete-property/ qcom,enable-hvdcp-9v;
 	qcom,weak-charger-check-enable;
 	qcom,temp-warm-current-ma = <1455>;
