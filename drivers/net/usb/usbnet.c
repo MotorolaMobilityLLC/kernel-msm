@@ -561,8 +561,10 @@ static enum skb_state defer_bh(struct usbnet *dev, struct sk_buff *skb,
 	else
 		__skb_queue_tail(&dev->done, skb);
 
-	if (dev->done.qlen == 1 || dev->rx_done.qlen == 1)
-		napi_schedule(&dev->napi);
+	if (!test_bit(USBNET_DISCONNECT, &dev->flags)) {
+		if (dev->done.qlen == 1 || dev->rx_done.qlen == 1)
+			napi_schedule(&dev->napi);
+	}
 
 	spin_unlock(&dev->rx_done.lock);
 	spin_unlock(&dev->done.lock);
@@ -634,7 +636,8 @@ static int rx_submit (struct usbnet *dev, struct urb *urb, gfp_t flags)
 	    netif_device_present (dev->net) &&
 	    test_bit(EVENT_DEV_OPEN, &dev->flags) &&
 	    !test_bit (EVENT_RX_HALT, &dev->flags) &&
-	    !test_bit (EVENT_DEV_ASLEEP, &dev->flags)) {
+	    !test_bit (EVENT_DEV_ASLEEP, &dev->flags) &&
+	    !test_bit (USBNET_DISCONNECT, &dev->flags)) {
 		switch (retval = usb_submit_urb (urb, GFP_ATOMIC)) {
 		case -EPIPE:
 			usbnet_defer_kevent (dev, EVENT_RX_HALT);
@@ -820,7 +823,9 @@ void usbnet_resume_rx(struct usbnet *dev)
 		num++;
 	}
 
-	napi_schedule(&dev->napi);
+	if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+		napi_schedule(&dev->napi);
+
 	netif_dbg(dev, rx_status, dev->net,
 		  "paused rx queue disabled, %d skbs requeued\n", num);
 }
@@ -888,7 +893,8 @@ void usbnet_unlink_rx_urbs(struct usbnet *dev)
 {
 	if (netif_running(dev->net)) {
 		(void) unlink_urbs (dev, &dev->rxq);
-		napi_schedule(&dev->napi);
+		if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+			napi_schedule(&dev->napi);
 	}
 }
 EXPORT_SYMBOL_GPL(usbnet_unlink_rx_urbs);
@@ -1051,6 +1057,8 @@ int usbnet_open (struct net_device *net)
 	/* hard_mtu or rx_urb_size may change in reset() */
 	usbnet_update_max_qlen(dev);
 
+	napi_enable(&dev->napi);
+
 	// insist peer be connected
 	if (info->check_connect && (retval = info->check_connect (dev)) < 0) {
 		netif_dbg(dev, ifup, dev->net, "can't open; %d\n", retval);
@@ -1085,7 +1093,6 @@ int usbnet_open (struct net_device *net)
 	dev->pkt_err = 0;
 	clear_bit(EVENT_RX_KILL, &dev->flags);
 
-	napi_enable(&dev->napi);
 	napi_schedule(&dev->napi);
 
 	if (info->manage_power) {
@@ -1257,6 +1264,9 @@ static void __handle_link_change(struct usbnet *dev)
 	if (!test_bit(EVENT_DEV_OPEN, &dev->flags))
 		return;
 
+	if (test_bit(USBNET_DISCONNECT, &dev->flags))
+		return;
+
 	if (!netif_carrier_ok(dev->net)) {
 		/* kill URBs for reading packets to save bus bandwidth */
 		unlink_urbs(dev, &dev->rxq);
@@ -1342,7 +1352,8 @@ fail_halt:
 					   status);
 		} else {
 			clear_bit (EVENT_RX_HALT, &dev->flags);
-			napi_schedule(&dev->napi);
+			if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+				napi_schedule(&dev->napi);
 		}
 	}
 
@@ -1366,8 +1377,10 @@ fail_halt:
 				resched = 0;
 			usb_autopm_put_interface(dev->intf);
 fail_lowmem:
-			if (resched)
-				napi_schedule(&dev->napi);
+			if (resched) {
+				if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+					napi_schedule(&dev->napi);
+			}
 		}
 	}
 
@@ -1469,7 +1482,8 @@ void usbnet_tx_timeout (struct net_device *net)
 	struct usbnet		*dev = netdev_priv(net);
 
 	unlink_urbs (dev, &dev->txq);
-	napi_schedule(&dev->napi);
+	if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+		napi_schedule(&dev->napi);
 	/* this needs to be handled individually because the generic layer
 	 * doesn't know what is sufficient and could not restore private
 	 * information if a remedy of an unconditional reset were used.
@@ -2165,7 +2179,8 @@ int usbnet_suspend (struct usb_interface *intf, pm_message_t message)
 		 */
 		netif_device_attach (dev->net);
 
-		napi_disable(&dev->napi);
+		if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+			napi_disable(&dev->napi);
 	}
 	return 0;
 }
@@ -2179,6 +2194,8 @@ int usbnet_resume (struct usb_interface *intf)
 	int                     retval;
 
 	if (!--dev->suspend_count) {
+		napi_enable(&dev->napi);
+
 		/* resume interrupt URB if it was previously submitted */
 		__usbnet_status_start_force(dev, GFP_NOIO);
 
@@ -2198,8 +2215,6 @@ int usbnet_resume (struct usb_interface *intf)
 			}
 		}
 
-		napi_enable(&dev->napi);
-
 		smp_mb();
 		clear_bit(EVENT_DEV_ASLEEP, &dev->flags);
 		spin_unlock_irq(&dev->txq.lock);
@@ -2215,7 +2230,8 @@ int usbnet_resume (struct usb_interface *intf)
 			if (!(dev->txq.qlen >= TX_QLEN(dev)))
 				netif_tx_wake_all_queues(dev->net);
 
-			napi_schedule(&dev->napi);
+			if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+				napi_schedule(&dev->napi);
 		}
 	}
 
@@ -2258,7 +2274,8 @@ void usbnet_link_change(struct usbnet *dev, bool link, bool need_reset)
 		napi_enable(&dev->napi);
 	} else {
 		netif_carrier_off(dev->net);
-		napi_disable(&dev->napi);
+		if (!test_bit(USBNET_DISCONNECT, &dev->flags))
+			napi_disable(&dev->napi);
 	}
 
 	if (need_reset && link)
