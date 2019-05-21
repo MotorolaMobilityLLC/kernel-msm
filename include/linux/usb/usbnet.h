@@ -88,7 +88,7 @@ struct usbnet {
 #		define EVENT_SET_RX_MODE	12
 #		define EVENT_NO_IP_ALIGN	13
 #		define USBNET_DISCONNECT	14
-
+#		define USBNET_LINK		15
 	void			*ipc_log_ctxt;
 	int			netdev_id;
 
