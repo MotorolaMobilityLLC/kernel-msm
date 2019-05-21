@@ -39,6 +39,18 @@
 
 	};
 
+	vfe0: qcom,vfe0@5c10000 {
+		qcom,clock-rates = <0 0 403200000 0 0 0 0 0 0 0
+					0 0 576000000 0 0 0 0 0 0 0
+					0 0 576000000 0 0 0 0 0 0 0>;
+	};
+
+	vfe1: qcom,vfe1@5c14000 {
+		qcom,clock-rates = <0 0 403200000 0 0 0 0 0 0 0
+					0 0 576000000 0 0 0 0 0 0 0
+					0 0 576000000 0 0 0 0 0 0 0>;
+	};
+
 	led_flash_rear: qcom,camera-flash@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera-flash";
