@@ -35,6 +35,7 @@
                fstab {
                        vendor {
                                dev = "/dev/block/platform/soc/4744000.sdhci/by-name/vendor";
+                               mnt_flags = "ro,barrier=1,discard";
                        };
                        oem {
                                compatible = "android,oem";
