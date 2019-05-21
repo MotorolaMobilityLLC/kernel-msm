@@ -86,7 +86,7 @@ struct usbnet {
 #		define EVENT_SET_RX_MODE	12
 #		define EVENT_NO_IP_ALIGN	13
 #		define USBNET_DISCONNECT	14
-
+#		define USBNET_LINK		15
 
 #ifdef CONFIG_DRM_MSM
 	struct notifier_block 	panel_usb_notifier;
