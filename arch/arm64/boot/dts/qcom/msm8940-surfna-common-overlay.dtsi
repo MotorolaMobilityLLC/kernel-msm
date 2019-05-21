@@ -110,10 +110,9 @@
 	tfa987x:tfa98xx@34 {
 		compatible = "nxp,tfa98xx";
 		reg = <0x34>;
-		nxp,reset-gpio = <&tlmm 89 0>;
-		nxp,irq-gpio = <&tlmm 90 0>;
+		reset-gpio = <&tlmm 89 0>;
+		irq-gpio = <&tlmm 90 0>;
 		rpc-send-delay = <5>;
-		rcv-ampe-monitor;
 		status = "ok";
 	};
 };
