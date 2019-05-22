@@ -639,3 +639,12 @@
 	cirrus,prince-dev-prefix = "RCV", "SPK";
 	cirrus,tacna-dev = <1>;
 };
+
+&soc {
+	msm-cirrus-playback {
+		compatible = "cirrus,msm-cirrus-playback";
+		usecase-names = "Normal", "Voice", "Ring", "Sonification";
+		usecase-indexes = <0 1 2 3>;
+		afe-port-id = <0x1000>; /* primary mi2s port */
+	};
+};
