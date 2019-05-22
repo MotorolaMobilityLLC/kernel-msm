@@ -3587,11 +3587,7 @@ out:
 			   mmc_hostname(host->mmc), unexpected);
 		MMC_TRACE(host->mmc, "Unexpected interrupt 0x%08x.\n",
 				unexpected);
-		if (host->mmc->cmdq_ops && host->mmc->cmdq_ops->dumpstate)
-			host->mmc->cmdq_ops->dumpstate(host->mmc);
-		else
-			sdhci_dumpregs(host);
-		BUG_ON(1);
+		sdhci_dumpregs(host);
 	}
 
 	return result;
