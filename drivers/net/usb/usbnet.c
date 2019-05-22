@@ -2056,6 +2056,14 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 		}
 	}
 
+#ifdef DBG_NAPI
+	if (!usbnet_ipc_log)
+		usbnet_ipc_log = ipc_log_context_create(USBNET_IPC_LOG_PAGES, "usbnet", 0);
+	if (!usbnet_ipc_log)
+		pr_err("usbnet: failed to create ipc log.");
+#endif
+	DBG_LOG_FUNC(netif_napi_add(net, &dev->napi, usbnet_poll, USBNET_NAPI_WEIGHT));
+
 	status = register_netdev (net);
 	if (status)
 		goto out5;
@@ -2090,16 +2098,6 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 #endif
 	/* Store so that force_on can access */
 	the_dev = dev;
-
-#ifdef DBG_NAPI
-	if (!usbnet_ipc_log)
-		usbnet_ipc_log = ipc_log_context_create(USBNET_IPC_LOG_PAGES, "usbnet", 0);
-	if (!usbnet_ipc_log)
-		pr_err("usbnet: failed to create ipc log.");
-#endif
-
-	DBG_LOG_FUNC(netif_napi_add(net, &dev->napi, usbnet_poll, USBNET_NAPI_WEIGHT));
-	clear_bit(USBNET_DISCONNECT, &dev->flags);
 
 	return 0;
 out5:
