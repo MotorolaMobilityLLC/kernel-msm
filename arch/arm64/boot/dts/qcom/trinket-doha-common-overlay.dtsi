@@ -77,6 +77,14 @@
 	};
 };
 
+&pm8008_8 {
+	status = "disabled";
+};
+
+&pm8008_9 {
+	status = "disabled";
+};
+
 &soc {
 	gpio_keys {
 		vol_up {
