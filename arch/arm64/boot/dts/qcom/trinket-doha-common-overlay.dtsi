@@ -83,6 +83,11 @@
 	rf-pa0-therm-adc {
 		status = "disabled";
 	};
+
+	quiet-therm-step {
+		status = "disabled";
+	};
+
 	pa_therm0 {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
