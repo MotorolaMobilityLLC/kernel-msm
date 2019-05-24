@@ -71,6 +71,12 @@
 	power-source = <1>;
 };
 
+&qupv3_se2_i2c {
+	synaptics_tcm@20 {
+		status = "disabled";
+	};
+};
+
 &soc {
 	gpio_keys {
 		vol_up {
