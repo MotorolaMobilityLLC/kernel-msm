@@ -124,98 +124,12 @@
 			drive-strength = <2>;
 		};
 	};
-};
 
-&lpi_tlmm {
-	sec_mi2s_clk_active: sec_mi2s_clk_active {
-		mux {
-			pins = "gpio8";
-			function = "func3";
-		};
+	cs35l41_reset_default: cs35l41_reset_default {
 		config {
-			pins = "gpio8";
-			drive-strength = <16>;
-			bias-bus-hold;
-		};
-	};
-	sec_mi2s_clk_sleep: sec_mi2s_clk_sleep {
-		mux {
-			pins = "gpio8";
-			function = "func3";
-		};
-		config {
-			pins = "gpio8";
-			drive-strength = <16>;
-			bias-bus-hold;
-		};
-	};
-
-	sec_mi2s_ws_active: sec_mi2s_ws_active {
-		mux {
-			pins = "gpio9";
-			function = "func3";
-		};
-		config {
-			pins = "gpio9";
-			drive-strength = <16>;
-			bias-bus-hold;
-		};
-	};
-	sec_mi2s_ws_sleep: sec_mi2s_ws_sleep {
-		mux {
-			pins = "gpio9";
-			function = "func3";
-		};
-		config {
-			pins = "gpio9";
-			drive-strength = <16>;
-			bias-bus-hold;
-		};
-	};
-
-	sec_mi2s_sd0_active: sec_mi2s_sd0_active {
-		mux {
-			pins = "gpio10";
-			function = "func4";
-		};
-		config {
-			pins = "gpio10";
-			drive-strength = <16>;
-			bias-bus-hold;
-		};
-	};
-	sec_mi2s_sd0_sleep: sec_mi2s_sd0_sleep {
-		mux {
-			pins = "gpio10";
-			function = "func4";
-		};
-		config {
-			pins = "gpio10";
-			drive-strength = <16>;
-			bias-bus-hold;
-		};
-	};
-
-	sec_mi2s_sd1_active: sec_mi2s_sd1_active {
-		mux {
-			pins = "gpio11";
-			function = "func2";
-		};
-
-		config {
-			pins = "gpio11";
-			drive-strength = <16>;
-			bias-disable;
-			input-enable;
-		};
-	};
-	sec_mi2s_sd1_sleep: sec_mi2s_sd1_sleep {
-		mux {
-			pins = "gpio11";
-			function = "func2";
-		};
-		config {
-			pins = "gpio11";
+			pins = "gpio121";
+			output-high;
+			bias-pull-up;
 			drive-strength = <16>;
 		};
 	};
@@ -229,14 +143,14 @@
 		status = "okay";
 		compatible = "cirrus,cs35l41";
 		reg = <0x40>;
-		reset-gpios = <&pcal_pin 9 0>;
+		reset-gpios = <&tlmm 121 0>;
 		irq-gpios = <&tlmm 108 0>;
 		interrupts = <108 0>;
 		interrupt-parent = <&tlmm>;
 		VA-supply = <&dummy_vreg>;
 		VP-supply = <&dummy_vreg>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&cs35l41_irq_default>;
+		pinctrl-0 = <&cs35l41_irq_default &cs35l41_reset_default>;
 
 		cirrus,boost-peak-milliamp = <4500>;
 		cirrus,boost-ind-nanohenry = <1000>;
@@ -288,6 +202,7 @@
 		pinctrl-names ="probe", "active";
 		pinctrl-0 = <&marley_reset_default>;
 		pinctrl-1 = <&cs47l35_defaults>;
+
 
 		AVDD-supply = <&pm6150_l10>;
 		DBVDD1-supply = <&pm6150_l10>;
@@ -501,8 +416,6 @@
 	asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
 	asoc-codec-names = "msm-stub-codec.1",
 					"msm-ext-disp-audio-codec-rx";
-	qcom,msm_audio_ssr_devs = <&audio_apr>, <&madera_codec>,
-				  <&q6core>, <&lpi_tlmm>;
 
 	qcom,audio-routing =
 		"IN1AL", "MICBIAS2A",
@@ -525,10 +438,6 @@
 		status = "ok";
 	};
 
-	mods_codec_shim {
-		compatible = "mmi,mods-codec-shim";
-	};
-
 	msm_dai_mi2s: qcom,msm-dai-mi2s {
 		compatible = "qcom,msm-dai-mi2s";
 		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
@@ -536,16 +445,7 @@
 		};
 
 		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
-			compatible = "qcom,msm-dai-q6-mi2s";
 			status = "ok";
-			qcom,msm-dai-q6-mi2s-dev-id = <1>;
-			qcom,msm-mi2s-rx-lines = <1>;
-			qcom,msm-mi2s-tx-lines = <2>;
-			pinctrl-names = "default","idle";
-			pinctrl-0 = <&sec_mi2s_clk_active &sec_mi2s_ws_active
-				&sec_mi2s_sd0_active &sec_mi2s_sd1_active>;
-			pinctrl-1 = <&sec_mi2s_clk_sleep &sec_mi2s_ws_sleep
-				&sec_mi2s_sd0_sleep &sec_mi2s_sd1_sleep>;
 		};
 
 		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
