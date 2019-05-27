@@ -22,6 +22,14 @@
 	status = "ok";
 };
 
+&soc {
+	L13A: pm6150_l13: regulator-pm6150-l13 {
+		regulator-name = "pm6150_l13";
+		regulator-always-on;
+		status = "ok";
+	};
+};
+
 &tlmm{
 	nfc {
 		nfc_int_active: nfc_int_active {
