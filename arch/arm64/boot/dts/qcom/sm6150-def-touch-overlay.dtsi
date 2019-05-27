@@ -1,0 +1,29 @@
+&qupv3_se6_i2c {
+	status = "disabled";
+};
+
+&qupv3_se1_i2c {
+	himax_ts@48 {
+		status = "disabled";
+	};
+};
+
+&qupv3_se6_spi {
+	status = "ok";
+	focaltech@0 {
+		compatible = "focaltech,fts";
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <89 0x02>;
+		spi-max-frequency=<20000000>;
+		focaltech,reset-gpio = <&tlmm 88 0x01>;
+		focaltech,irq-gpio = <&tlmm 89 0x02>;
+		focaltech,max-touch-number = <5>;
+		focaltech,display-coords =  <0 0 1080 2280>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+	};
+};
+
