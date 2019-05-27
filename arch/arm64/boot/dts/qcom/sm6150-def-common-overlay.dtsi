@@ -14,6 +14,7 @@
 #include "sm6150-audio-overlay.dtsi"
 #include "sm6150-def-audio-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-def-overlay.dtsi"
+#include "sm6150-def-touch-overlay.dtsi"
 #include "defender-panel.dtsi"
 
 &pm6150_l19 {
@@ -217,59 +218,6 @@
 		};
 	};
 
-	touch_int_mux {
-		touch_int_active: active {
-			mux {
-				pins = "gpio89";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio89";
-				drive-strength = <2>;
-				bias-pull-up;
-			};
-		};
-
-		touch_int_suspend: default {
-			mux {
-				pins = "gpio89";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio89";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-	};
-
-	touch_reset_mux {
-		touch_reset_active: active {
-			mux {
-				pins = "gpio88";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio88";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		touch_reset_suspend: default {
-			mux {
-				pins = "gpio88";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio88";
-				drive-strength = <2>;
-				bias-pull-down;
-				output-low;
-			};
-		};
-	};
-
         tps61280_en_default: tps61280_en_default {
                mux {
                         pins = "gpio60";
@@ -319,35 +267,6 @@
 
 &qupv3_se1_i2c {
 	status = "okay";
-
-	goodix_ts_i2c@5d {
-		compatible = "goodix,goodix_mmi";
-		reg = <0x5d>;
-		status = "ok";
-		interrupt-parent = <&tlmm>;
-		interrupts = <89 0>;
-		pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
-		pinctrl-0 = <&touch_int_active &touch_reset_active>;
-		pinctrl-1 = <&touch_int_suspend &touch_reset_suspend>;
-		goodix,reg-en-gpio = <&tlmm 94 0x0>;
-		goodix,reset-gpio = <&tlmm 88 0x0>;
-		goodix,irq-gpio = <&tlmm 89 0x2002>;
-		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
-		goodix,control-dsi = <0>;
-		goodix,panel-max-id = <10>;
-		goodix,panel-max-x = <1080>;
-		goodix,panel-max-y = <2340>;
-		goodix,panel-max-w = <512>;
-		goodix,panel-max-p = <512>;
-		goodix,panel-key-map = <158 172 217>; /*KEY_BACK, KEY_HOMEPAGE, KEY_SEARCH*/
-		goodix,power-on-delay-us = <300000>; /*300ms*/
-		goodix,power-off-delay-us = <5000>;
-		/*goodix,swap-axis;*/
-		goodix,x2x;
-		goodix,y2y;
-		goodix,pen-enable;
-		goodix,key-of-pen = <331 332>;/*BTN_STYLUS, BTN_STYLUS2*/
-	};
 };
 
 &qupv3_se3_i2c {
