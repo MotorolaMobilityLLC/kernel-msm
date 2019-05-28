@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -953,7 +953,7 @@ void msm_clock_data_reset(struct msm_vidc_inst *inst)
 
 	dprintk(VIDC_DBG, "Init DCVS Load\n");
 
-	if (!inst || !inst->core) {
+	if (!inst || !inst->core || !inst->clk_data.entry) {
 		dprintk(VIDC_ERR, "%s Invalid args: Inst = %pK\n",
 			__func__, inst);
 		return;

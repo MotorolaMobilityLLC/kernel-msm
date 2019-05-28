@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -476,7 +476,8 @@ bool msm_smem_compare_buffers(void *clt, int fd, void *priv)
 	}
 	handle = ion_import_dma_buf_fd(client->clnt, fd);
 	ret = handle == priv;
-	handle ? ion_free(client->clnt, handle) : 0;
+	if (!IS_ERR_OR_NULL(handle))
+		ion_free(client->clnt, handle);
 	return ret;
 }
 
