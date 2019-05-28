@@ -710,6 +710,14 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 		"keeper",
 		"pull up"
 	};
+#ifdef CONFIG_SUSPEND_DEBUG
+	extern int get_tz_configs(unsigned gpio);
+
+	if (get_tz_configs(gpio)) {
+		seq_printf(s, " gpio%-4d: protected by TZ", gpio);
+		return;
+	}
+#endif
 
 	g = &pctrl->soc->groups[offset];
 	base = reassign_pctrl_reg(pctrl->soc, offset);
