@@ -33,6 +33,9 @@
 #include <linux/wakeup_reason.h>
 
 #include "power.h"
+#ifdef CONFIG_SUSPEND_DEBUG
+#include "user_sysfs_private.h"
+#endif
 
 const char * const pm_labels[] = {
 	[PM_SUSPEND_TO_IDLE] = "freeze",
@@ -432,6 +435,12 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		s2idle_loop();
 		goto Platform_wake;
 	}
+
+#ifdef CONFIG_SUSPEND_DEBUG
+	vreg_before_sleep_save_configs();
+	tlmm_before_sleep_set_configs();
+	tlmm_before_sleep_save_configs();
+#endif
 
 	error = suspend_disable_secondary_cpus();
 	if (error || suspend_test(TEST_CPUS)) {
