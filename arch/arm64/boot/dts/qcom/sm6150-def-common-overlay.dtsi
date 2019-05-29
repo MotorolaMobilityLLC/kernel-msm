@@ -512,6 +512,9 @@
 	};
 };
 
+&sdhc_2 {
+	cd-gpios = <&tlmm 99 0x0>;
+};
 
 &pm6150_vib {
 	status = "disable";
