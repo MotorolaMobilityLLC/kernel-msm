@@ -3,15 +3,15 @@
  * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
-qcom,kd40-scud-4000mah {
-	serialnum = "SB18C52858";
+qcom,kd40-atl-4000mah {
+	serialnum = "SB18C52857";
 	qcom,max-voltage-uv = <4400000>;
 	qcom,fg-cc-cv-threshold-uv = <4390000>;
 	qcom,fastchg-current-ma = <3600>;
 	qcom,batt-id-kohm = <0>;
 	qcom,battery-beta = <3380>;
 	qcom,battery-therm-kohm = <10>;
-	qcom,battery-type = "KD40-SCUD-4000mah";
+	qcom,battery-type = "KD40-ATL-4000mah";
 	qcom,qg-batt-profile-ver = <100>;
 
 	qcom,fcc1-temp-lut {
