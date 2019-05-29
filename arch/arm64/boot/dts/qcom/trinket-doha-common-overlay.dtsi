@@ -39,17 +39,12 @@
 };
 
 &mtp_batterydata {
-	qcom,batt-id-range-pct = <15>;
-	df-serialnum = "SB18C52858";
-	#include "qg-batterydata-kd40-scud-4000mah.dtsi"
+	df-serialnum = "SB18C52857";
 };
 
 &pmi632_qg {
 	qcom,battery-data = <&mtp_batterydata>;
-	qcom,qg-iterm-ma = <100>;
-	qcom,hold-soc-while-full;
-	qcom,linearize-soc;
-	qcom,qg-use-s7-ocv;
+	qcom,qg-iterm-ma = <300>;
 };
 
 &pmi632_charger {
