@@ -165,6 +165,7 @@
 			2000000 1500000
 			1200000 900000
 			600000 300000>;
+	qcom,disable-suspend-on-collapse;
 };
 
 &spmi_bus {
