@@ -73,6 +73,7 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-h-right-border = <0>;
 		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
 		qcom,mdss-dsi-on-command = [
 			05 01 00 00 0A 00 01 11
 			39 00 00 00 00 00 03 F0 5A 5A
