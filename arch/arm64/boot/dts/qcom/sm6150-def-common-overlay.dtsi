@@ -589,3 +589,53 @@
 		};
 	};
 };
+
+&pm6150l_lpg {
+	qcom,lut-patterns = <0 3 6 9 12 15 18 21 24 27 30 34 38 42 46 50 55 60 65 70 80 90 100
+			     100 90 80 70 65 60 55 50 46 42 38 34 30 27 24 21 18 15 12 9 6 3 0>;
+	lpg1 {
+		qcom,lpg-chan-id = <1>;
+		qcom,ramp-step-ms = <50>;
+		qcom,ramp-pause-hi-count = <2>;
+		qcom,ramp-pause-lo-count = <2>;
+		qcom,ramp-low-index = <0>;
+		qcom,ramp-high-index = <45>;
+	};
+	lpg2 {
+		qcom,lpg-chan-id = <2>;
+		qcom,ramp-step-ms = <50>;
+		qcom,ramp-pause-hi-count = <2>;
+		qcom,ramp-pause-lo-count = <2>;
+		qcom,ramp-low-index = <0>;
+		qcom,ramp-high-index = <45>;
+	};
+	lpg3 {
+		qcom,lpg-chan-id = <3>;
+		qcom,ramp-step-ms = <50>;
+		qcom,ramp-pause-hi-count = <2>;
+		qcom,ramp-pause-lo-count = <2>;
+		qcom,ramp-low-index = <0>;
+		qcom,ramp-high-index = <45>;
+	};
+};
+
+&pm6150l_rgb_led {
+	red {
+		label = "red";
+		pwms = <&pm6150l_lpg 0 1000000>;
+		led-sources = <0>;
+		linux,default-trigger = "timer";
+	};
+	green {
+		label = "green";
+		pwms = <&pm6150l_lpg 1 1000000>;
+		led-sources = <1>;
+		linux,default-trigger = "timer";
+	};
+	blue {
+		label = "blue";
+		pwms = <&pm6150l_lpg 2 1000000>;
+		led-sources = <2>;
+		linux,default-trigger = "timer";
+	};
+};
