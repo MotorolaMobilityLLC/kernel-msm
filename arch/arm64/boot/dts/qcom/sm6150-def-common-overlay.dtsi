@@ -24,14 +24,6 @@
 };
 
 &soc {
-	L13A: pm6150_l13: regulator-pm6150-l13 {
-		regulator-name = "pm6150_l13";
-		regulator-always-on;
-		status = "ok";
-	};
-};
-
-&soc {
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
 		tlmm-tz = <0>,
@@ -251,6 +243,178 @@
 		};
 	};
 
+	hall_group_irq {
+		hall_top_irq_default: hall_top_irq_default {
+			pins = "gpio94";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		hall_bottom_irq_default: hall_bottom_irq_default {
+			pins = "gpio95";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	aw8646_gpios {
+		aw8646_int_default: aw8646_int_default {
+			mux {
+				pins = "gpio41";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio41";
+				drive-strength = <6>;
+				input-enable;
+				bias-disable;
+			};
+		};
+		aw8646_mode0_low: aw8646_mode0_low{
+			mux {
+				pins = "gpio47";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio47";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_mode0_high: aw8646_mode0_high{
+			mux {
+				pins = "gpio47";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio47";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_mode0_disable: aw8646_mode0_disable {
+			mux {
+				pins = "gpio47";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio47";
+				input-enable;
+				bias-pull-none;
+			};
+		};
+		aw8646_mode1_low: aw8646_mode1_low {
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio49";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_mode1_high: aw8646_mode1_high {
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio49";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_mode1_disable: aw8646_mode1_disable {
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio49";
+				input-enable;
+				bias-pull-none;
+			};
+		};
+		aw8646_t0_low: aw8646_t0_low {
+			mux {
+				pins = "gpio36";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio36";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_t0_high: aw8646_t0_high {
+			mux {
+				pins = "gpio36";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio36";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_t0_disable: aw8646_t0_disable {
+			mux {
+				pins = "gpio36";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio36";
+				input-enable;
+				bias-pull-none;
+			};
+		};
+		aw8646_t1_low: aw8646_t1_low {
+			mux {
+				pins = "gpio27";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio27";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_t1_high: aw8646_t1_high {
+			mux {
+				pins = "gpio27";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio27";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_t1_disable: aw8646_t1_disable {
+			mux {
+				pins = "gpio27";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio27";
+				input-enable;
+				bias-pull-none;
+			};
+		};
+	};
 };
 
 &soc {
@@ -273,6 +437,34 @@
 		status = "ok";
 	};
 
+	moto_aw8646_support {
+		compatible = "moto,aw8646";
+		status = "ok";
+		pinctrl-names = "m0_low", "m0_high", "m0_disable",
+						"m1_low", "m1_high", "m1_disable",
+						"t0_low", "t0_high", "t0_disable",
+						"t1_low", "t1_high", "t1_disable",
+						"aw8646_int_default";
+		pinctrl-0 = <&aw8646_mode0_low>;
+		pinctrl-1 = <&aw8646_mode0_high>;
+		pinctrl-2 = <&aw8646_mode0_disable>;
+		pinctrl-3 = <&aw8646_mode1_low>;
+		pinctrl-4 = <&aw8646_mode1_high>;
+		pinctrl-5 = <&aw8646_mode1_disable>;
+		pinctrl-6 = <&aw8646_t0_low>;
+		pinctrl-7 = <&aw8646_t0_high>;
+		pinctrl-8 = <&aw8646_t0_disable>;
+		pinctrl-9 = <&aw8646_t1_low>;
+		pinctrl-10 = <&aw8646_t1_high>;
+		pinctrl-11 = <&aw8646_t1_disable>;
+		pinctrl-12 = <&aw8646_int_default>;
+		vdd-supply = <&pm6150_l13>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <41 0x2002>;
+		aw8646-gpios = <116 41 122 37 47 49 26 85 36 27>;
+		aw8646-gpios-cells = <10>;
+		aw8646-max-freq = <250000>;
+	};
 };
 
 &qupv3_se1_i2c {
@@ -372,6 +564,36 @@
 			0x81A4 0x1C40009
 			0x8020 0x000F0000
 		>;
+	};
+
+	magnachip@c {
+		compatible = "magnachip,mxm1120";
+		label = "mxm1120_top";
+		reg = <0x0c>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hall_top_irq_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <94 0x2002>;
+		vdd-supply = <&pm6150_l5>;
+		vio-supply = <&pm6150_l13>;
+		magnachip,init-interval = <200>;
+		magnachip,gpio-int = <&tlmm 94 0x2002>;
+		/* magnachip,use-hrtimer; */
+	};
+
+	magnachip@f { // Hall Sensor
+		compatible = "magnachip,mxm1120";
+		label = "mxm1120_bottom";
+		reg = <0x0f>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hall_bottom_irq_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <95 0x2002>;
+		vdd-supply = <&pm6150_l5>;
+		vio-supply = <&pm6150_l13>;
+		magnachip,init-interval = <200>;
+		magnachip,gpio-int = <&tlmm 95 0x2002>;
+		/* magnachip,use-hrtimer; */
 	};
 };
 
