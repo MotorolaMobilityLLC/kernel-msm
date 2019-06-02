@@ -1918,7 +1918,11 @@ int himax_report_data(struct himax_ts_data *ts, int ts_path, int ts_status)
 #endif
 #ifdef HX_SMART_WAKEUP
     } else if (ts_path == HX_REPORT_SMWP_EVENT) {
+#ifdef CONFIG_HAS_WAKELOCK
         wake_lock_timeout(&ts->ts_SMWP_wake_lock, TS_WAKE_LOCK_TIMEOUT);
+#else
+		__pm_wakeup_event(&ts->ts_SMWP_wake_lock, TS_WAKE_LOCK_TIMEOUT);
+#endif
         himax_wake_event_report();
 #endif
     } else {
@@ -2286,7 +2290,11 @@ FW_force_upgrade:
 
 #ifdef HX_SMART_WAKEUP
     ts->SMWP_enable = 0;
+#ifdef CONFIG_HAS_WAKELOCK
     wake_lock_init(&ts->ts_SMWP_wake_lock, WAKE_LOCK_SUSPEND, HIMAX_common_NAME);
+#else
+	wakeup_source_init(&ts->ts_SMWP_wake_lock, HIMAX_common_NAME);
+#endif
 #endif
 #ifdef HX_HIGH_SENSE
     ts->HSEN_enable = 0;
@@ -2335,7 +2343,11 @@ err_register_interrupt_failed:
 err_creat_proc_file_failed:
 err_report_data_init_failed:
 #ifdef HX_SMART_WAKEUP
+#ifdef CONFIG_HAS_WAKELOCK
     wake_lock_destroy(&ts->ts_SMWP_wake_lock);
+#else
+	wakeup_source_trash(&ts->ts_SMWP_wake_lock);
+#endif
 #endif
 #if defined(CONFIG_FB) || defined(CONFIG_DRM)
     cancel_delayed_work_sync(&ts->work_att);
@@ -2393,7 +2405,11 @@ void himax_chip_common_deinit(void)
     }
 
 #ifdef HX_SMART_WAKEUP
+#ifdef CONFIG_HAS_WAKELOCK
     wake_lock_destroy(&ts->ts_SMWP_wake_lock);
+#else
+	wakeup_source_trash(&ts->ts_SMWP_wake_lock);
+#endif
 #endif
 #if defined(CONFIG_DRM)
     if (msm_drm_unregister_client(&ts->fb_notif))
