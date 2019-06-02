@@ -20,5 +20,18 @@
 		pinctrl-2 = <&ts_release>;
 		status = "/chosen", "mmi,panel_name", "tm_ft8719_fhd_vid";
 	};
+	himax@0 {
+		compatible = "himax,hxcommon";
+		reg = <0x0>;
+		spi-max-frequency = <10000000>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <88 0x02>;
+		himax,panel-coords = <0 1080 0 2280>;
+		himax,display-coords = <0 1080 0 2280>;
+		himax,irq-gpio = <&tlmm 88 0x02>;
+		himax,rst-gpio = <&tlmm 87 0x01>;
+		report_type = <1>;
+		status = "/chosen", "mmi,panel_name", "ds_hx83112a_fhd_vid";
+	};
 };
 
