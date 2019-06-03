@@ -15,6 +15,7 @@
 #include "sm6150-def-audio-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-def-overlay.dtsi"
 #include "sm6150-def-touch-overlay.dtsi"
+#include "sm6150-def-fps-overlay.dtsi"
 #include "defender-panel.dtsi"
 
 &pm6150_l19 {
@@ -153,63 +154,6 @@
 				bias-disable;
 				input-enable;
 			};
-		};
-	};
-
-	fps_rst_active: fps_rst_active {
-		/* active state */
-		mux {
-			pins = "gpio46";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio46";
-			drive-strength = <2>; /* 2 MA */
-			output-low;
-		};
-	};
-
-	fps_rst_suspend: fps_rst_suspend {
-		/* sleep state */
-		mux {
-			pins = "gpio46";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio46";
-			drive-strength = <2>; /* 2 MA */
-		};
-	};
-
-	fps_int_active: fps_int_active {
-		/* active state */
-		mux {
-			pins = "gpio93";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio93";
-			drive-strength = <2>; /* 2 MA */
-			bias-disable;
-			input-enable;
-		};
-	};
-
-	fps_int_suspend: fps_int_suspend {
-		/* sleep state */
-		mux {
-			pins = "gpio93";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio93";
-			drive-strength = <2>; /* 2 MA */
-			bias-disable;
-			input-enable;
 		};
 	};
 
@@ -418,18 +362,6 @@
 };
 
 &soc {
-	goodix_fingerprint{
-		compatible = "goodix,fingerprint";
-		fp-gpio-reset = <&tlmm 46 0x00>;
-		fp-gpio-irq = <&tlmm 93 0x00>;
-		fp-gpio-ven = <&pm6150l_gpios 12 0>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <93 0>;
-		interrupt-controller;
-		pinctrl-names = "default", "suspend";
-		pinctrl-0 = <&fps_rst_active &fps_int_active>;
-		pinctrl-1 = <&fps_rst_suspend &fps_int_suspend>;
-	};
 	sys_temp_support {
 		compatible = "mmi,sys-temp";
 		mmi,temperature-names = "front_temp",
