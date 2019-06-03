@@ -273,6 +273,14 @@
 		mmi,muc-ctrl-select-i2c-seq = <12 1 10>, <13 1 10>;
 };
 
+&rpm_bus {
+	rpm-regulator-vsa2 {
+		pm8998_lvs2: regulator-lvs2 {
+			regulator-boot-on;
+		};
+	};
+};
+
 &ssphy {
 	qcom,qmp-phy-init-seq =
 		/* <reg_offset, value, delay> */
