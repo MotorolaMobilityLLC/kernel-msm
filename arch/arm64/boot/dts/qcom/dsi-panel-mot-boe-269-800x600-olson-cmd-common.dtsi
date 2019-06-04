@@ -62,11 +62,8 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-panel-jitter = <0x20 0xa>;
 		qcom,mdss-dsi-on-command = [
-			15 00 00 00 00 00 02 FE 40 /* Switch to CMD2 */
-			15 00 00 00 00 00 02 2F 80 /* fixed charged pump of power */
-			15 00 00 00 00 00 02 31 80
-			15 00 00 00 00 00 02 33 80
-			15 00 00 00 00 00 02 35 80
+			15 00 00 00 00 00 02 FE 60 /* Switch to CMD2 */
+			15 00 00 00 00 00 02 95 CE /* EM pull High */
 			15 00 00 00 00 00 02 FE 00 /* Switch back CMD0 */
 			05 01 00 00 78 00 01 11
 			15 00 00 00 00 00 02 35 00
