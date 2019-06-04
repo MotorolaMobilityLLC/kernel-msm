@@ -161,8 +161,8 @@
 		clock-names = "mux_byte_clk", "mux_pixel_clk";
 
 		pinctrl-names = "panel_active", "panel_suspend";
-		pinctrl-0 = <&sde_dsi1_active &sde_te1_active>;
-		pinctrl-1 = <&sde_dsi1_suspend &sde_te1_suspend>;
+		pinctrl-0 = <&sde_dsi1_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi1_suspend &sde_te_suspend>;
 		qcom,platform-te-gpio = <&tlmm 11 0>;
 		qcom,dsi-panel = <&mot_boe_269_800x600_cmd_v0>;
 		vci_disp-supply = <&vci_disp_sub_vreg>;
@@ -181,10 +181,30 @@
 		clock-names = "mux_byte_clk", "mux_pixel_clk";
 
 		pinctrl-names = "panel_active", "panel_suspend";
-		pinctrl-0 = <&sde_dsi1_active &sde_te1_active>;
-		pinctrl-1 = <&sde_dsi1_suspend &sde_te1_suspend>;
+		pinctrl-0 = <&sde_dsi1_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi1_suspend &sde_te_suspend>;
 		qcom,platform-te-gpio = <&tlmm 11 0>;
 		qcom,dsi-panel = <&mot_boe_269_800x600_cmd_v1>;
+		vci_disp-supply = <&vci_disp_sub_vreg>;
+		vio_disp-supply = <&vio_disp_sub_vreg>;
+	};
+
+	dsi_boe_269_800x600_cmd_display_v2: qcom,dsi-display@27 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_boe_269_800x600_cmd_display_v2";
+		qcom,display-type = "secondary";
+
+		qcom,dsi-ctrl = <&mdss_dsi1>;
+		qcom,dsi-phy = <&mdss_dsi_phy1>;
+		clocks = <&mdss_dsi1_pll BYTECLK_MUX_1_CLK>,
+				<&mdss_dsi1_pll PCLK_MUX_1_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi1_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi1_suspend &sde_te_suspend>;
+		qcom,platform-te-gpio = <&tlmm 11 0>;
+		qcom,dsi-panel = <&mot_boe_269_800x600_cmd_v2>;
 		vci_disp-supply = <&vci_disp_sub_vreg>;
 		vio_disp-supply = <&vio_disp_sub_vreg>;
 	};
@@ -299,8 +319,6 @@
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 			qcom,mdss-dsi-on-command = [
-				15 00 00 00 00 00 02 FE D0
-				15 00 00 00 00 00 02 51 30
 				15 00 00 00 00 00 02 FE 72
 				15 00 00 00 00 00 02 10 85
 				15 00 00 00 00 00 02 FE 40 /* Switch to CMD2 */
@@ -320,6 +338,51 @@
 };
 
 &mot_boe_269_800x600_cmd_v1 {
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0a>;
+	qcom,mdss-dsi-t-clk-pre = <0x1B>;
+	qcom,mdss-mdp-transfer-time-us = <14000>;
+
+	/* Enable ESD checking */
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9c>;
+
+	/* MOT panel params */
+	qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 e0];
+	qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 53 20];
+	qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
+	qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 10 03 03 1E 1E 04
+								04 02 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-dsi-on-command = [
+				15 00 00 00 00 00 02 FE 60 /* Switch to CMD2 */
+				15 00 00 00 00 00 02 95 CE /* EM pull high */
+				15 00 00 00 00 00 02 FE 40 /* Switch to CMD2 */
+				15 00 00 00 00 00 02 2F 80 /* Fixed charged pump of power */
+				15 00 00 00 00 00 02 31 80
+				15 00 00 00 00 00 02 33 80
+				15 00 00 00 00 00 02 35 80
+				15 00 00 00 00 00 02 FE 00 /* Switch back CMD0 */
+				05 01 00 00 78 00 01 11
+				15 00 00 00 00 00 02 35 00
+				15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
+				15 00 00 00 00 00 02 51 00
+				15 00 00 00 00 00 02 55 00 /* ACL OFF */
+				05 01 00 00 00 00 01 29];       /* display on */
+		};
+	};
+};
+
+&mot_boe_269_800x600_cmd_v2 {
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0a>;
 	qcom,mdss-dsi-t-clk-pre = <0x1B>;
