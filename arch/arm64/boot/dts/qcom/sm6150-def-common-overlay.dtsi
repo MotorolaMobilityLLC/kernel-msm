@@ -247,7 +247,7 @@
 			config {
 				pins = "gpio47";
 				input-enable;
-				bias-pull-none;
+				bias-disable;
 			};
 		};
 		aw8646_mode1_low: aw8646_mode1_low {
@@ -283,7 +283,7 @@
 			config {
 				pins = "gpio49";
 				input-enable;
-				bias-pull-none;
+				bias-disable;
 			};
 		};
 		aw8646_t0_low: aw8646_t0_low {
@@ -319,7 +319,7 @@
 			config {
 				pins = "gpio36";
 				input-enable;
-				bias-pull-none;
+				bias-disable;
 			};
 		};
 		aw8646_t1_low: aw8646_t1_low {
@@ -355,7 +355,7 @@
 			config {
 				pins = "gpio27";
 				input-enable;
-				bias-pull-none;
+				bias-disable;
 			};
 		};
 	};
