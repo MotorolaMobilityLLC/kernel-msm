@@ -17,4 +17,7 @@
 	mot_boe_269_800x600_cmd_v1: qcom,mdss_dsi_mot_boe_269_800x600_cmd_v1 {
 		#include "dsi-panel-mot-boe-269-800x600-olson-cmd-common.dtsi"
 	};
+	mot_boe_269_800x600_cmd_v2: qcom,mdss_dsi_mot_boe_269_800x600_cmd_v2 {
+		#include "dsi-panel-mot-boe-269-800x600-olson-cmd-common.dtsi"
+	};
 };
