@@ -26,6 +26,14 @@ config ROMA_DTB
 	  Only include Roma specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config SOFIA_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Sofia DTBs"
+	help
+	  Only include Sofia specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QCOM_MEM_OFFLINE
 	bool "Dynamic Memory Region Offline driver"
 	help
