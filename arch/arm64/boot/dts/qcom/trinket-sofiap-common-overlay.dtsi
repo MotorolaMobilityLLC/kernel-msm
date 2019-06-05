@@ -62,8 +62,8 @@
 };
 
 &key_vol_up_default {
-	pins = "gpio9";
-	power-source = <1>;
+	pins = "gpio1";
+	power-source = <0>;
 };
 
 &qupv3_se2_i2c {
@@ -83,7 +83,7 @@
 &soc {
 	gpio_keys {
 		vol_up {
-			gpios = <&pm6125_gpios 9 GPIO_ACTIVE_LOW>;
+			gpios = <&pm6125_gpios 1 GPIO_ACTIVE_LOW>;
 		};
 	};
 };
