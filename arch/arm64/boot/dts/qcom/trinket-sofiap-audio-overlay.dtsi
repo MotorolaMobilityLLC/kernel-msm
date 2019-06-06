@@ -11,13 +11,6 @@
  */
 
 &pm6125_gpios {
-	codec_power_bob_en: codec_power_bob_en {
-		pins = "gpio6";
-		function = "normal";
-		output-high;
-		bias-disable;
-	};
-
 	tacna_mclk {
 		tacna_mclk_default: tacna_mclk_default{
 			pins = "gpio5";
@@ -233,7 +226,7 @@
 	status = "disabled";
 };
 
-&qupv3_se3_i2c {
+&qupv3_se1_i2c {
 	status = "ok";
 	cs35l41_rcv: cs35l41@40 {
 		#sound-dai-cells = <1>;
@@ -357,7 +350,7 @@
 		clock-names = "ref_clk";
 
 		pinctrl-names = "probe", "active";
-		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &tacna_mclk_default &codec_power_bob_en>;
+		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &tacna_mclk_default>;
 		pinctrl-1 = <&cs48l32_defaults>;
 
 		cirrus,in-type = <
