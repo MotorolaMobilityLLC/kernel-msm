@@ -10,53 +10,7 @@
  * GNU General Public License for more details.
  */
 
-&pm6125_gpios {
-	codec_power_bob_en: codec_power_bob_en {
-		pins = "gpio6";
-		function = "normal";
-		output-high;
-		bias-disable;
-	};
-
-	tacna_mclk {
-		tacna_mclk_default: tacna_mclk_default{
-			pins = "gpio5";
-			function = "func1";
-			qcom,drive-strength = <2>;
-			power-source = <0>;
-			bias-disable;
-			output-low;
-			input-disable;
-		};
-	};
-};
-
 &tlmm {
-	/* codec 1.2v power enable */
-	codec_power_en: codec_power_en {
-		mux {
-			pins = "gpio125";
-			function = "gpio";
-		};
-		config {
-			pins = "gpio125";
-			drive-strength = <2>; /* 2 MA */
-			output-high;
-		};
-	};
-
-	codec_reset: codec_reset {
-		mux {
-			pins = "gpio117";
-			function = "gpio";
-		};
-		config {
-			pins = "gpio117";
-			drive-strength = <2>; /* 2 MA */
-			bias-pull-up;
-		};
-	};
-
 	amp_r_irq: amp_r_irq {
 		mux {
 			pins = "gpio101";
@@ -64,18 +18,6 @@
 		};
 		config {
 			pins = "gpio101";
-			drive-strength = <2>; /* 2 MA */
-			bias-pull-up;
-		};
-	};
-
-	codec_irq: codec_irq {
-		mux {
-			pins = "gpio97";
-			function = "gpio";
-		};
-		config {
-			pins = "gpio97";
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-up;
 		};
@@ -233,7 +175,7 @@
 	status = "disabled";
 };
 
-&qupv3_se3_i2c {
+&qupv3_se1_i2c {
 	status = "ok";
 	cs35l41_rcv: cs35l41@40 {
 		#sound-dai-cells = <1>;
@@ -329,103 +271,6 @@
 					};
 				};
 			};
-		};
-	};
-};
-
-&qupv3_se8_spi {
-	status = "ok";
-	spi-max-frequency = <9600000>;
-	cs48l32: cs48l32@0 {
-		compatible = "cirrus,cs48l32";
-		reg = <0x0>;
-
-		spi-max-frequency = <50000000>;
-
-		gpio-controller;
-		interrupt-controller;
-		interrupt-parent = <&tlmm>;
-		interrupts = <97 0>;
-		reset-gpios =  <&tlmm 117 0>;
-		bob-en-gpios = <&pm6125_gpios 6 GPIO_ACTIVE_HIGH>;
-		VDD_A-supply = <&pm6125_s6>;
-		VDD_IO1-supply = <&pm6125_l9>;
-		VDD1_CP-supply = <&pm6125_l9>;
-		VDD_D-supply = <&pm6125_s6>;
-
-		clocks = <&clock_audio 0>;
-		clock-names = "ref_clk";
-
-		pinctrl-names = "probe", "active";
-		pinctrl-0 = <&codec_irq &codec_reset &codec_power_en &tacna_mclk_default &codec_power_bob_en>;
-		pinctrl-1 = <&cs48l32_defaults>;
-
-		cirrus,in-type = <
-				0 0 0 0 /* IN1 */
-				>;
-
-		cirrus,clk32k-src = <3>;
-
-		adsps {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			prince_dsp: adsp@2b80000 {
-				reg = <0x2b80000>;
-				firmware {
-					aov {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs48l32-dsp1-aov.wmfw";
-						cirrus,compr-caps = <14 1 4 1 16000>;
-					};
-				};
-			};
-		};
-
-		tacna_pinctrl: tacna-pinctrl {
-			compatible = "cirrus,tacna-pinctrl";
-
-			cs48l32_defaults: defaults {
-				asp1 {
-					groups = "asp1";
-					function = "asp1";
-					bias-bus-hold;
-				};
-
-				asp2 {
-					groups = "asp2";
-					function = "asp2";
-					bias-bus-hold;
-				};
-			};
-		};
-
-		micvdd {
-			regulator-min-microvolt = <3000000>;
-			regulator-max-microvolt = <3000000>;
-		};
-
-		MICBIAS1 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			cirrus,ext-cap = <1>;
-		};
-
-		MICBIAS1A {
-			regulator-active-discharge = <1>;
-		};
-
-		MICBIAS1B {
-			regulator-active-discharge = <1>;
-		};
-
-		MICBIAS2 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			cirrus,ext-cap = <1>;
-		};
-
-		MICBIAS2A {
-			regulator-active-discharge = <1>;
 		};
 	};
 };
@@ -600,18 +445,18 @@
 	asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 			<&loopback>, <&compress>, <&hostless>,
 			<&afe>, <&lsm>, <&routing>, <&compr>,
-			<&pcm_noirq>, <&cs48l32>;
+			<&pcm_noirq>;
 	asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
 			"msm-pcm-dsp.2", "msm-voip-dsp",
 			"msm-pcm-voice", "msm-pcm-loopback",
 			"msm-compress-dsp", "msm-pcm-hostless",
 			"msm-pcm-afe", "msm-lsm-client",
 			"msm-pcm-routing", "msm-compr-dsp",
-			"msm-pcm-dsp-noirq", "cs48l32-codec";
-	asoc-codec  = <&stub_codec>, <&bolero>, <&cs48l32>,
+			"msm-pcm-dsp-noirq";
+	asoc-codec  = <&stub_codec>, <&bolero>,
 			<&cs35l41_rcv>, <&cs35l41_spk>;
 	asoc-codec-names = "msm-stub-codec.1", "bolero_codec",
-			"cs48l32-codec", "cs35l41-rcv", "cs35l41-spk";
+			"cs35l41-rcv", "cs35l41-spk";
 
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
@@ -624,20 +469,18 @@
 		"IN2_HPHR", "HPHR_OUT",
 		"TX SWR_ADC0", "ADC1_OUTPUT",
 		"TX SWR_ADC2", "ADC2_OUTPUT",
+		"WSA SRC0_INP", "SRC0",
+		"WSA_TX DEC0_INP", "TX DEC0 MUX",
+		"WSA_TX DEC1_INP", "TX DEC1 MUX",
 		"RX_TX DEC0_INP", "TX DEC0 MUX",
 		"RX_TX DEC1_INP", "TX DEC1 MUX",
 		"RX_TX DEC2_INP", "TX DEC2 MUX",
-		"RX_TX DEC3_INP", "TX DEC3 MUX",
-		"IN1LP_1", "MICBIAS1A",
-		"IN1LN_1", "MICBIAS1A",
-		"IN1RP_1",  "MICBIAS1B",
-		"IN1RN_1",  "MICBIAS1B";
+		"RX_TX DEC3_INP", "TX DEC3 MUX";
 	qcom,wsa-max-devs = <0>;
 	qcom,ext-disp-audio-rx = <0>;
 	cirrus,prince-max-devs = <2>;
 	cirrus,prince-devs = <&cs35l41_rcv>, <&cs35l41_spk>;
 	cirrus,prince-dev-prefix = "RCV", "SPK";
-	cirrus,tacna-dev = <1>;
 };
 
 &soc {
