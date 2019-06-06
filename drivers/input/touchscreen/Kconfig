@@ -1268,19 +1268,6 @@ config TOUCHSCREEN_HIMAX_CHIPSET
 
 source "drivers/input/touchscreen/hxchipset/Kconfig"
 
-config TOUCHSCREEN_HIMAX_CHIPSET_SPI
-	tristate "support SPI bus connection"
-	depends on SPI
-	help
-	  Say Y here if you have hx83112 hooked to a SPI bus.
-
-	  If unsure, say N (but it's safe to say "Y").
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called hx83112-spi.
-
-source "drivers/input/touchscreen/hxchipset_spi/Kconfig"
-
 config TOUCHSCREEN_SYNAPTICS_DSX
         bool "Synaptics DSX Touchscreen Driver"
         depends on I2C
