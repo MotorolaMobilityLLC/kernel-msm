@@ -2064,9 +2064,9 @@ const struct snd_kcontrol_new msm_common_snd_controls[] = {
 	SOC_ENUM_EXT("QUAT_TDM_TX_0 Channels", tdm_tx_chs,
 			tdm_tx_ch_get,
 			tdm_tx_ch_put),
+#endif
 	SOC_ENUM_EXT("MultiMedia5_RX QOS Vote", qos_vote, msm_qos_ctl_get,
 			msm_qos_ctl_put),
-#endif
 
 };
 
