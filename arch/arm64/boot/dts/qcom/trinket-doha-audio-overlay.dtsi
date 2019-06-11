@@ -252,7 +252,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_l_irq>, <&amp_l_reset>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 		cirrus,gpio-config2 {
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
@@ -297,7 +297,7 @@
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_r_irq>, <&amp_r_reset>;
