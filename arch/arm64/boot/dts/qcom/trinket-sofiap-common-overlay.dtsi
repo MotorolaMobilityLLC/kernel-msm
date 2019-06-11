@@ -66,6 +66,33 @@
 	power-source = <0>;
 };
 
+&tlmm{
+    tps61280_en_default: tps61280_en_default {
+		mux {
+				pins = "gpio59";
+		};
+		config {
+				pins = "gpio59";
+				drive_strength = <16>;
+				output-high;
+		};
+    };
+};
+
+&qupv3_se1_i2c {
+	status = "ok";
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x17>;
+		ti,vout-roof = <0x1F>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
+};
+
 &qupv3_se2_i2c {
 	synaptics_tcm@20 {
 		status = "disabled";
