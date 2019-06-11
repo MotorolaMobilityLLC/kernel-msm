@@ -12,6 +12,7 @@
  */
 
 #include "dsi-panel-mot-ft8756-focal-720p-video.dtsi"
+#include "dsi-panel-mot-ft8756-focal-1080P-video.dtsi"
 
 &pm6150l_wled {
 	qcom,string-cfg= <7>;
@@ -42,13 +43,27 @@
 
 		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
 	};
+	dsi_ft8756_focal_1080P_vid_display: qcom,dsi-display@12 {
+		label = "dsi_ft8756_focal_1080P_vid_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
+			"src_byte_clk0", "src_pixel_clk0",
+			"shadow_byte_clk0", "shadow_pixel_clk0";
+		lab-supply = <&lcdb_ldo_vreg>;
+		ibb-supply = <&lcdb_ncp_vreg>;
+		qcom,dsi-panel = <&dsi_ft8756_focal_1080P_video>;
+	};
 
 };
 
 &sde_dsi {
 	qcom,dsi-display-list = <
 				  &dsi_ft8756_focal_vid_display
-                                  &dsi_mot_dummy_qhd_video_display>;
+                                  &dsi_mot_dummy_qhd_video_display
+				  &dsi_ft8756_focal_1080P_vid_display>;
         /delete-property/ qcom,platform-te-gpio;
 	/delete-property/vddio-supply;
 
@@ -89,6 +104,43 @@
 };
 
 &dsi_ft8756_focal_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+};
+
+&dsi_ft8756_focal_1080P_video {
+	qcom,mdss-dsi-t-clk-post = <0x0e>;
+	qcom,mdss-dsi-t-clk-pre = <0x32>;
+	/*qcom,dsi-supported-dfps-list = <60 55 48>;
+	qcom,mdss-dsi-pan-enable-dynamic-fps;
+	qcom,mdss-dsi-pan-fps-update =
+		"dfps_immediate_porch_mode_vfp";*/
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0a];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+	qcom,mdss-dsi-panel-status-value = <0x1c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-no-panel-on-read-support;
+	//qcom,dsi-dyn-clk-enable;
+	//qcom,dsi-dyn-clk-list =
+	//	<1005903360 989138304 993329568 997520832 1001712096>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[25 1F 09 0A 06 02 04 a0
+				25 1F 09 0A 06 02 04 a0
+				25 1F 09 0A 06 02 04 a0
+				25 1F 09 0A 06 02 04 a0
+				25 1E 08 0A 06 03 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&dsi_ft8756_focal_1080P_video {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 };
