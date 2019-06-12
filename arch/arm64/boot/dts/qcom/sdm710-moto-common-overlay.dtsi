@@ -674,7 +674,7 @@
 		status = "ok";
 		compatible = "st,stmvl53l1";
 		reg = <0x29>;
-		vdd-supply = <&pm660l_l5>;
+		vdd-vl53l1-supply = <&pm660l_l5>;
 		gpios = <&tlmm 21 0>, <&tlmm 22 0>;
 		qcom,gpio-reset = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
