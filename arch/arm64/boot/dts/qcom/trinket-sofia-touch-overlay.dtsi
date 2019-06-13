@@ -9,29 +9,18 @@
 		reg = <0x0>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <88 0x02>;
-		spi-max-frequency=<20000000>;
-		focaltech,reset-gpio = <&tlmm 87 0x01>;
-		focaltech,irq-gpio = <&tlmm 88 0x02>;
-		focaltech,max-touch-number = <10>;
-		focaltech,display-coords =  <0 0 1080 2280>;
+		spi-max-frequency=<10000000>;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_release>;
-		status = "/chosen", "mmi,panel_name", "tm_ft8719_fhd_vid";
-	};
-	himax@0 {
-		compatible = "himax,hxcommon";
-		reg = <0x0>;
-		spi-max-frequency = <10000000>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <88 0x02>;
-		himax,panel-coords = <0 1080 0 2280>;
-		himax,display-coords = <0 1080 0 2280>;
-		himax,irq-gpio = <&tlmm 88 0x02>;
-		himax,rst-gpio = <&tlmm 87 0x01>;
-		report_type = <1>;
-		status = "/chosen", "mmi,panel_name", "ds_hx83112a_fhd_vid";
+		focaltech,name = "ft8756";
+		focaltech,family-id = <0xf0>;
+		focaltech,reset-gpio = <&tlmm 87 0x01>;
+		focaltech,irq-gpio = <&tlmm 88 0x02>;
+		focaltech,display-coords = <0 0 1079 2519>;
+		focaltech,max-touch-number = <10>;
+		status = "/chosen", "mmi,panel_name", "dsi_ft8756_tm_vid_display";
 	};
 };
 
