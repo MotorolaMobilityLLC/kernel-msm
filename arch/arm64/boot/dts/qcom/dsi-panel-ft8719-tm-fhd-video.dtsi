@@ -43,7 +43,9 @@
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
 		qcom,bklt-dcs-2bytes-0xff0f-enabled;
-		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
+		qcom,mdss-dsi-reset-sequence = <1 10>, <0 5>, <1 10>;
+		qcom,tp-reset-enabled;
+		qcom,mdss-dsi-tp-reset-sequence = <1 0>, <0 5>, <1 2>;
 		/*
 		qcom,mdss-pan-physical-width-dimension = <65>;
 		qcom,mdss-pan-physical-height-dimension = <129>;
@@ -84,10 +86,14 @@
 					15 01 00 00 00 00 02 53 2c
 				];
 				qcom,mdss-dsi-off-command = [
-					15 01 00 00 32 00 02 28 00
-					15 01 00 00 78 00 02 10 00
+					15 01 00 00 14 00 02 28 00
+					15 01 00 00 3C 00 02 10 00
 					39 01 00 00 00 00 02 00 00
-					39 01 00 00 00 00 05 F7 5A A5 95 27
+					39 01 00 00 00 00 04 FF 87 19 01
+					39 01 00 00 00 00 02 00 80
+					39 01 00 00 00 00 03 FF 87 19//cmd2 enable
+					39 01 00 00 00 00 02 00 00
+					39 01 00 00 50 00 05 F7 5A A5 95 27
 				];
 				qcom,mdss-dsi-t-clk-post = <0x0E>;
 				qcom,mdss-dsi-t-clk-pre = <0x33>;
