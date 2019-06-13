@@ -832,6 +832,10 @@
 	};
 };
 
+&pm6150_charger {
+	qcom,support-mods;
+};
+
 &usb0{
 	mmi,ext-typec-switch;
 };
