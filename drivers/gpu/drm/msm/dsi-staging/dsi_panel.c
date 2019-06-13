@@ -917,6 +917,10 @@ static int dsi_panel_send_param_cmd (struct dsi_panel *panel,
 			goto end;
 		}
 
+		if (cmds->post_wait_ms)
+			usleep_range(cmds->post_wait_ms*1000,
+					((cmds->post_wait_ms*1000)+10));
+
 		panel_param->value = param_info->value;
 		pr_info("(%d) is setting new value %d\n",
 			param_info->param_idx, param_info->value);
