@@ -684,7 +684,6 @@
 };
 
 &pm6150_charger {
-	/delete-property/qcom,support-mods;
 	qcom,iterm-ma = <194>;
 	qcom,mmi-temp-zones = <0 4200 776 0>,
 				<10 4200 1940 776>,
