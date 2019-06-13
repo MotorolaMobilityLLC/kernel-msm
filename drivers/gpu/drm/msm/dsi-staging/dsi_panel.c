@@ -285,11 +285,21 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 		}
 	}
 
+	if(panel->reset_config.tp_reset_enabled){
+		if (gpio_is_valid(r_config->tp_reset_gpio)) {
+			rc = gpio_request(r_config->tp_reset_gpio, "tp_reset_gpio");
+			if (rc) {
+				pr_err("request for tp_reset_gpio failed, rc=%d\n", rc);
+				goto error_release_reset;
+			}
+		}
+	}
+
 	if (gpio_is_valid(r_config->disp_en_gpio)) {
 		rc = gpio_request(r_config->disp_en_gpio, "disp_en_gpio");
 		if (rc) {
 			pr_err("request for disp_en_gpio failed, rc=%d\n", rc);
-			goto error_release_reset;
+			goto error_release_tp_reset;
 		}
 	}
 
@@ -316,6 +326,9 @@ error_release_mode_sel:
 error_release_disp_en:
 	if (gpio_is_valid(r_config->disp_en_gpio))
 		gpio_free(r_config->disp_en_gpio);
+error_release_tp_reset:
+	if (gpio_is_valid(r_config->tp_reset_gpio))
+		gpio_free(r_config->tp_reset_gpio);
 error_release_reset:
 	if (gpio_is_valid(r_config->reset_gpio))
 		gpio_free(r_config->reset_gpio);
@@ -330,6 +343,9 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 
 	if (gpio_is_valid(r_config->reset_gpio))
 		gpio_free(r_config->reset_gpio);
+
+	if (gpio_is_valid(r_config->tp_reset_gpio))
+		gpio_free(r_config->tp_reset_gpio);
 
 	if (gpio_is_valid(r_config->disp_en_gpio))
 		gpio_free(r_config->disp_en_gpio);
@@ -428,6 +444,83 @@ exit:
 	return rc;
 }
 
+static int dsi_panel_lcd_tp_reset(struct dsi_panel *panel)
+{
+	int rc = 0;
+	struct dsi_panel_reset_config *r_config = &panel->reset_config;
+	int i;
+
+	if (gpio_is_valid(panel->reset_config.disp_en_gpio)) {
+		rc = gpio_direction_output(panel->reset_config.disp_en_gpio, 1);
+		if (rc) {
+			pr_err("unable to set dir for disp gpio rc=%d\n", rc);
+			goto exit;
+		}
+	}
+
+	if (r_config->count) {
+		rc = gpio_direction_output(r_config->reset_gpio,
+			r_config->sequence[0].level);
+		if (rc) {
+			pr_err("unable to set dir for rst gpio rc=%d\n", rc);
+			goto exit;
+		}
+	}
+
+	if (r_config->tp_count) {
+		rc = gpio_direction_output(r_config->tp_reset_gpio,
+			r_config->tp_sequence[0].tp_level);
+		if (rc) {
+			pr_err("unable to set dir for tp rst gpio rc=%d\n", rc);
+			goto exit;
+		}
+	}
+
+	for (i = 0; i < r_config->count && i < r_config->tp_count; i++) {
+		gpio_set_value(r_config->tp_reset_gpio,
+			       r_config->tp_sequence[i].tp_level);
+
+		if (r_config->tp_sequence[i].tp_sleep_ms)
+			usleep_range(r_config->tp_sequence[i].tp_sleep_ms * 1000,
+				(r_config->tp_sequence[i].tp_sleep_ms * 1000) + 100);
+
+		gpio_set_value(r_config->reset_gpio,
+			       r_config->sequence[i].level);
+
+		if (r_config->sequence[i].sleep_ms)
+			usleep_range(r_config->sequence[i].sleep_ms * 1000,
+				(r_config->sequence[i].sleep_ms * 1000) + 100);
+	}
+
+
+	if (gpio_is_valid(panel->bl_config.en_gpio)) {
+		rc = gpio_direction_output(panel->bl_config.en_gpio, 1);
+		if (rc)
+			pr_err("unable to set dir for bklt gpio rc=%d\n", rc);
+	}
+
+	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio)) {
+		bool out = true;
+
+		if ((panel->reset_config.mode_sel_state == MODE_SEL_DUAL_PORT)
+				|| (panel->reset_config.mode_sel_state
+					== MODE_GPIO_LOW))
+			out = false;
+		else if ((panel->reset_config.mode_sel_state
+				== MODE_SEL_SINGLE_PORT) ||
+				(panel->reset_config.mode_sel_state
+				 == MODE_GPIO_HIGH))
+			out = true;
+
+		rc = gpio_direction_output(
+			panel->reset_config.lcd_mode_sel_gpio, out);
+		if (rc)
+			pr_err("unable to set dir for mode gpio rc=%d\n", rc);
+	}
+exit:
+	return rc;
+}
+
 static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 {
 	int rc = 0;
@@ -454,7 +547,26 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
 
+
 	pr_info("(%s)+\n", panel->name);
+
+	if(panel->reset_config.tp_reset_enabled){
+		if (gpio_is_valid(panel->reset_config.tp_reset_gpio)) {
+			rc = gpio_direction_output(panel->reset_config.tp_reset_gpio, 0);
+			if (rc)
+				pr_err("unable to set dir for tp reset gpio rc=%d\n", rc);
+		}
+	}
+
+	if (gpio_is_valid(panel->reset_config.reset_gpio)) {
+		rc = gpio_direction_output(panel->reset_config.reset_gpio, 0);
+		if (rc)
+			pr_err("unable to set dir for reset gpio rc=%d\n", rc);
+	}
+
+	mdelay(5);
+
+
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
 		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
@@ -467,11 +579,23 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto error_disable_vregs;
 	}
 
-	rc = dsi_panel_reset(panel);
-	if (rc) {
-		pr_err("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
-		goto error_disable_gpio;
+	if(panel->reset_config.tp_reset_enabled){
+		rc = dsi_panel_lcd_tp_reset(panel);
+		if (rc) {
+			pr_err("[%s] failed to lcd tp reset panel, rc=%d\n", panel->name, rc);
+			goto error_disable_gpio;
+		}
 	}
+	else
+	{
+		rc = dsi_panel_reset(panel);
+		if (rc) {
+			pr_err("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
+			goto error_disable_gpio;
+		}
+	}
+
+	pr_err("[%s] dsi panel power on ok!\n", panel->name);
 
 	goto exit;
 
@@ -499,8 +623,6 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
-	if (gpio_is_valid(panel->reset_config.reset_gpio))
-		gpio_set_value(panel->reset_config.reset_gpio, 0);
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -2258,6 +2380,85 @@ error:
 	return rc;
 }
 
+static int dsi_panel_parse_tp_reset_sequence(struct dsi_panel *panel)
+{
+	int rc = 0;
+	int i;
+	u32 length = 0;
+	u32 count = 0;
+	u32 size = 0;
+	u32 *arr_32 = NULL;
+	const u32 *arr;
+	struct dsi_parser_utils *utils = &panel->utils;
+	struct dsi_tp_reset_seq *tp_seq;
+	struct dsi_panel_reset_config *reset_config;
+
+	reset_config = &panel->reset_config;
+	reset_config->tp_reset_enabled = utils->read_bool(utils->data,
+		"qcom,tp-reset-enabled");
+	if (!reset_config->tp_reset_enabled){
+		return 0;
+	}
+
+	if (panel->host_config.ext_bridge_num)
+		return 0;
+
+	arr = utils->get_property(utils->data,
+			"qcom,mdss-dsi-tp-reset-sequence", &length);
+	if (!arr) {
+		pr_err("[%s] dsi-tp-reset-sequence not found\n", panel->name);
+		rc = -EINVAL;
+		goto error;
+	}
+	if (length & 0x1) {
+		pr_err("[%s] syntax error for dsi-tp-reset-sequence\n",
+		       panel->name);
+		rc = -EINVAL;
+		goto error;
+	}
+
+	pr_err("TP RESET SEQ LENGTH = %d\n", length);
+	length = length / sizeof(u32);
+
+	size = length * sizeof(u32);
+
+	arr_32 = kzalloc(size, GFP_KERNEL);
+	if (!arr_32) {
+		rc = -ENOMEM;
+		goto error;
+	}
+
+	rc = utils->read_u32_array(utils->data, "qcom,mdss-dsi-tp-reset-sequence",
+					arr_32, length);
+	if (rc) {
+		pr_err("[%s] cannot read dso-tp-reset-seqience\n", panel->name);
+		goto error_free_arr_32;
+	}
+
+	count = length / 2;
+	size = count * sizeof(*tp_seq);
+	tp_seq = kzalloc(size, GFP_KERNEL);
+	if (!tp_seq) {
+		rc = -ENOMEM;
+		goto error_free_arr_32;
+	}
+
+	panel->reset_config.tp_sequence = tp_seq;
+	panel->reset_config.tp_count = count;
+
+	for (i = 0; i < length; i += 2) {
+		tp_seq->tp_level = arr_32[i];
+		tp_seq->tp_sleep_ms = arr_32[i + 1];
+		tp_seq++;
+	}
+
+
+error_free_arr_32:
+	kfree(arr_32);
+error:
+	return rc;
+}
+
 static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 {
 	struct dsi_parser_utils *utils = &panel->utils;
@@ -2360,19 +2561,24 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 	int rc = 0;
 	const char *data;
 	struct dsi_parser_utils *utils = &panel->utils;
-	char *reset_gpio_name, *mode_set_gpio_name;
+	char *reset_gpio_name, *mode_set_gpio_name, *tp_reset_gpio_name;
 
 	if (!strcmp(panel->type, "primary")) {
+		tp_reset_gpio_name = "qcom,platform-tp-reset-gpio";
 		reset_gpio_name = "qcom,platform-reset-gpio";
 		mode_set_gpio_name = "qcom,panel-mode-gpio";
 	} else {
+		tp_reset_gpio_name = "qcom,platform-sec-tp-reset-gpio";
 		reset_gpio_name = "qcom,platform-sec-reset-gpio";
 		mode_set_gpio_name = "qcom,panel-sec-mode-gpio";
 	}
 
 	panel->reset_config.reset_gpio = utils->get_named_gpio(utils->data,
 					      reset_gpio_name, 0);
+	panel->reset_config.tp_reset_gpio = utils->get_named_gpio(utils->data,
+					      tp_reset_gpio_name, 0);
 	if (!gpio_is_valid(panel->reset_config.reset_gpio) &&
+		!gpio_is_valid(panel->reset_config.tp_reset_gpio) &&
 		!panel->host_config.ext_bridge_num) {
 		rc = panel->reset_config.reset_gpio;
 		pr_err("[%s] failed get reset gpio, rc=%d\n", panel->name, rc);
@@ -2425,6 +2631,13 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 	rc = dsi_panel_parse_reset_sequence(panel);
 	if (rc) {
 		pr_err("[%s] failed to parse reset sequence, rc=%d\n",
+		       panel->name, rc);
+		goto error;
+	}
+
+	rc = dsi_panel_parse_tp_reset_sequence(panel);
+	if (rc) {
+		pr_err("[%s] failed to parse tp reset sequence, rc=%d\n",
 		       panel->name, rc);
 		goto error;
 	}

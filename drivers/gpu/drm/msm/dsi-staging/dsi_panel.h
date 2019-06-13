@@ -140,10 +140,19 @@ struct dsi_reset_seq {
 	u32 sleep_ms;
 };
 
-struct dsi_panel_reset_config {
-	struct dsi_reset_seq *sequence;
-	u32 count;
+struct dsi_tp_reset_seq {
+	u32 tp_level;
+	u32 tp_sleep_ms;
+};
 
+struct dsi_panel_reset_config {
+	bool tp_reset_enabled;
+	struct dsi_reset_seq *sequence;
+	struct dsi_tp_reset_seq *tp_sequence;
+	u32 count;
+	u32 tp_count;
+
+	int tp_reset_gpio;
 	int reset_gpio;
 	int disp_en_gpio;
 	int lcd_mode_sel_gpio;
