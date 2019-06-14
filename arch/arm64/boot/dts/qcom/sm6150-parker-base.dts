@@ -43,3 +43,13 @@
 	/delete-node/ nfc;
 	/delete-node/ fpc_reset_int;
 };
+
+&tlmm {
+	/*delete mclk*/
+	/delete-property/ cam_sensor_mclk0_active;
+	/delete-property/ cam_sensor_mclk0_suspend;
+	/delete-property/ cam_sensor_mclk1_active;
+	/delete-property/ cam_sensor_mclk1_suspend;
+	/delete-property/ cam_sensor_mclk2_active;
+	/delete-property/ cam_sensor_mclk2_suspend;
+};
