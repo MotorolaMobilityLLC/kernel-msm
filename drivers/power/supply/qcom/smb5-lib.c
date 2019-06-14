@@ -5990,6 +5990,9 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 			smblib_notify_device_mode(chg, true);
 		break;
 	case OCP_CHARGER_BIT:
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+						OCP_CURRENT_UA);
+		break;
 	case DCP_CHARGER_BIT:
 		break;
 	default:
