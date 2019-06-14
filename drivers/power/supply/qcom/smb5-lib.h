@@ -95,6 +95,7 @@ enum print_reason {
 
 #define SDP_100_MA			100000
 #define SDP_CURRENT_UA			500000
+#define OCP_CURRENT_UA			1000000
 #define CDP_CURRENT_UA			1500000
 #define DCP_CURRENT_UA			1500000
 #define HVDCP_2_CURRENT_UA		1500000
