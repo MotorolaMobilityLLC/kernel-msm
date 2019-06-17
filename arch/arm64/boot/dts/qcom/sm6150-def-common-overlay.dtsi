@@ -731,8 +731,15 @@
 	};
 };
 
-&usb0{
-	mmi,ext-typec-switch;
+&usb_qmp_phy {
+	status = "disabled";
+};
+
+&usb0 {
+	dwc3@a600000 {
+		usb-phy = <&qusb_phy0>, <&usb_nop_phy>;
+		maximum-speed = "high-speed";
+	};
 };
 
 &spmi_bus {
