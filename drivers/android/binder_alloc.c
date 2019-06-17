@@ -386,6 +386,9 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC,
 			     "%d: binder_alloc_buf size %zd failed, no async space left\n",
 			      alloc->pid, size);
+		pr_err("%d: binder_alloc_buf size %zd:%zd:%d failed, no async space left\n",
+			alloc->pid, size, alloc->free_async_space, sizeof(struct binder_buffer));
+
 		return ERR_PTR(-ENOSPC);
 	}
 
