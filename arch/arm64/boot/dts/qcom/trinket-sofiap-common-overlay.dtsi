@@ -66,7 +66,7 @@
 	power-source = <0>;
 };
 
-&tlmm{
+&tlmm {
     tps61280_en_default: tps61280_en_default {
 		mux {
 				pins = "gpio59";
