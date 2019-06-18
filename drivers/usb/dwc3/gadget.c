@@ -1885,6 +1885,7 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 		if (dwc->has_hibernation && !suspend)
 			reg &= ~DWC3_DCTL_KEEP_CONNECT;
 
+		dwc->err_evt_seen = false;
 		dwc->pullups_connected = false;
 		usb_gadget_set_state(&dwc->gadget, USB_STATE_NOTATTACHED);
 	}
@@ -2944,6 +2945,9 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 
 	dwc3_update_ram_clk_sel(dwc, speed);
 
+	/* Reset the retry on erratic error event count */
+	dwc->retries_on_error = 0;
+
 	switch (speed) {
 	case DWC3_DCFG_SUPERSPEED:
 		/*
@@ -3333,7 +3337,7 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
 		dwc3_trace(trace_dwc3_gadget, "Erratic Error");
 		if (!dwc->err_evt_seen) {
-			dbg_event(0xFF, "ERROR", 0);
+			dbg_event(0xFF, "ERROR", dwc->retries_on_error);
 			dwc3_dump_reg_info(dwc);
 		}
 		dwc->dbg_gadget_events.erratic_error++;
@@ -3419,6 +3423,7 @@ static irqreturn_t dwc3_process_event_buf(struct dwc3 *dwc, u32 buf)
 			if (dwc3_notify_event(dwc,
 						DWC3_CONTROLLER_ERROR_EVENT, 0))
 				dwc->err_evt_seen = 0;
+			dwc->retries_on_error++;
 			break;
 		}
 
