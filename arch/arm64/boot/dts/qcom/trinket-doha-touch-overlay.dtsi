@@ -10,12 +10,14 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <88 0x02>;
 		spi-max-frequency=<20000000>;
+		focaltech,reset-gpio = <&tlmm 87 0x01>;
 		focaltech,irq-gpio = <&tlmm 88 0x02>;
+		focaltech,share_reset_gpio;
 		focaltech,max-touch-number = <10>;
 		focaltech,display-coords =  <0 0 1080 2280>;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
-		pinctrl-0 = <&ts_int_active>;
-		pinctrl-1 = <&ts_int_suspend>;
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_release>;
 		status = "/chosen", "mmi,panel_name", "tm_ft8719_fhd_vid";
 	};
