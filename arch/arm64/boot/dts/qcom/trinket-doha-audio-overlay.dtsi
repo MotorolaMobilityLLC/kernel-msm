@@ -245,7 +245,7 @@
 		VA-supply = <&pm6125_l9>;
 		VP-supply = <&pm6125_l9>;
 
-		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
@@ -293,7 +293,7 @@
 		interrupts = <101 IRQ_TYPE_EDGE_FALLING>;
 		cirrus,right-channel-amp;
 
-		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
@@ -369,7 +369,7 @@
 		adsps {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			prince_dsp: adsp@2b80000 {
+			adsp@2b80000 {
 				reg = <0x2b80000>;
 				firmware {
 					aov {
