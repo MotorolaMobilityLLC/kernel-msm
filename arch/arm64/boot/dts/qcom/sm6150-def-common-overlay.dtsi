@@ -782,19 +782,19 @@
 
 &pm6150l_rgb_led {
 	red {
-		label = "red";
+		label = "red_moto";
 		pwms = <&pm6150l_lpg 0 1000000>;
 		led-sources = <0>;
 		linux,default-trigger = "timer";
 	};
 	green {
-		label = "green";
+		label = "green_moto";
 		pwms = <&pm6150l_lpg 1 1000000>;
 		led-sources = <1>;
 		linux,default-trigger = "timer";
 	};
 	blue {
-		label = "blue";
+		label = "blue_moto";
 		pwms = <&pm6150l_lpg 2 1000000>;
 		led-sources = <2>;
 		linux,default-trigger = "timer";
