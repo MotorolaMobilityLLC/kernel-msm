@@ -39,7 +39,7 @@
 };
 
 
-&qupv3_se3_i2c {
+&qupv3_se1_i2c {
 	status = "ok";
 	sx933x@28 { /* SAR sensor */
 		compatible = "Semtech,sx933x";
