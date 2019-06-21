@@ -5,6 +5,9 @@
 	    reg = <0x5A>;
 	    reset-gpio = <&pmi632_gpios 4 0>;
 	    irq-gpio = <&tlmm 89 0>;
+	    haptic-context-gpio = <&tlmm 118 0>;
+	    long-gain-normal = <0x0e>;
+	    long-gain-reduced = <0x06>;
 	    status = "okay";
 	};
 };
