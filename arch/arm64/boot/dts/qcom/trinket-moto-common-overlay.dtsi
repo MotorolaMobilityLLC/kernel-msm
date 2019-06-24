@@ -129,6 +129,7 @@
 
 &pmi632_qg {
 	qcom,battery-data = <&mtp_batterydata>;
+	qcom,hold-soc-while-full;
 	qcom,linearize-soc;
 	qcom,qg-use-s7-ocv;
 	qcom,qg-iterm-ma = <250>;
@@ -160,7 +161,7 @@
 	qcom,charger-temp-max = <800>;
 	qcom,smb-temp-max = <800>;
 	qcom,auto-recharge-soc = <99>;
-	qcom,flash-disable-soc = <5>;
+	qcom,flash-disable-soc = <1>;
 	qcom,thermal-mitigation = <3600000 2500000
 			2000000 1500000
 			1200000 900000
