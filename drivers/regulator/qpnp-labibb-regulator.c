@@ -557,6 +557,7 @@ struct lab_regulator {
 	struct regulator_desc		rdesc;
 	struct regulator_dev		*rdev;
 	struct mutex			lab_mutex;
+	struct mutex			reg_status;
 
 	int				lab_vreg_ok_irq;
 	int				lab_sc_irq;
@@ -570,6 +571,11 @@ struct lab_regulator {
 	int				sc_wait_time_ms;
 
 	int				vreg_enabled;
+	/*
+	 * lab_reg_enabled flag is keeping track the lab regulator enable and
+	 * disable getting called.
+	 */
+	bool				lab_reg_enabled;
 };
 
 struct ibb_regulator {
@@ -2193,6 +2199,8 @@ static void qpnp_lab_vreg_notifier_work(struct work_struct *work)
 	u8 val;
 	struct qpnp_labibb *labibb  = container_of(work, struct qpnp_labibb,
 							lab_vreg_ok_work);
+	bool lab_reg_status = true;
+
 	if (labibb->lab_vreg.sc_wait_time_ms != -EINVAL)
 		retries = labibb->lab_vreg.sc_wait_time_ms / 5;
 
@@ -2205,6 +2213,15 @@ static void qpnp_lab_vreg_notifier_work(struct work_struct *work)
 			return;
 		}
 
+		mutex_lock(&(labibb->lab_vreg.reg_status));
+		lab_reg_status = labibb->lab_vreg.lab_reg_enabled;
+		mutex_unlock(&(labibb->lab_vreg.reg_status));
+
+		if (!lab_reg_status) {
+			pr_warn("lab_reg is disabled\n");
+			break;
+		}
+
 		if (val & LAB_STATUS1_VREG_OK_BIT) {
 			raw_notifier_call_chain(&labibb_notifier,
 						LAB_VREG_OK, NULL);
@@ -2215,7 +2232,15 @@ static void qpnp_lab_vreg_notifier_work(struct work_struct *work)
 		retries--;
 	}
 
-	if (!retries) {
+	/*
+	 * when the qpnp_lab_regulator_enable() is called, it will start this
+	 * work_queue, but if somehow the qpnp_lab_regulator_disable() is called
+	 * before this work_queue is completed, then the retries will reach 0,
+	 * and sc_detected flag will be set, and this LAB/IBB/OLEDB will be
+	 * disable forever, until the phone reboot
+	 */
+
+	if (!retries && lab_reg_status) {
 		if (labibb->detect_lab_sc) {
 			pr_crit("short circuit detected on LAB rail.. disabling the LAB/IBB/OLEDB modules\n");
 			/* Disable LAB module */
@@ -2494,6 +2519,9 @@ static int qpnp_lab_regulator_enable(struct regulator_dev *rdev)
 		labibb->lab_vreg.vreg_enabled = 1;
 	}
 
+	mutex_lock(&(labibb->lab_vreg.reg_status));
+	labibb->lab_vreg.lab_reg_enabled = true;
+	mutex_unlock(&(labibb->lab_vreg.reg_status));
 	if (labibb->notify_lab_vreg_ok_sts || labibb->detect_lab_sc)
 		schedule_work(&labibb->lab_vreg_ok_work);
 
@@ -2525,6 +2553,10 @@ static int qpnp_lab_regulator_disable(struct regulator_dev *rdev)
 
 		labibb->lab_vreg.vreg_enabled = 0;
 	}
+
+	mutex_lock(&(labibb->lab_vreg.reg_status));
+	labibb->lab_vreg.lab_reg_enabled = false;
+	mutex_unlock(&(labibb->lab_vreg.reg_status));
 	return 0;
 }
 
@@ -4103,6 +4135,7 @@ static int qpnp_labibb_regulator_probe(struct platform_device *pdev)
 	labibb->pdev = pdev;
 
 	mutex_init(&(labibb->lab_vreg.lab_mutex));
+	mutex_init(&(labibb->lab_vreg.reg_status));
 	mutex_init(&(labibb->ibb_vreg.ibb_mutex));
 	mutex_init(&(labibb->bus_mutex));
 
