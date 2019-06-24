@@ -238,14 +238,14 @@
 		VA-supply = <&pm6125_l9>;
 		VP-supply = <&pm6125_l9>;
 
-		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_l_irq>, <&amp_l_reset>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 		cirrus,gpio-config2 {
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
@@ -286,11 +286,11 @@
 		interrupts = <101 IRQ_TYPE_EDGE_FALLING>;
 		cirrus,right-channel-amp;
 
-		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_r_irq>, <&amp_r_reset>;
@@ -362,7 +362,7 @@
 		adsps {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			prince_dsp: adsp@2b80000 {
+			adsp@2b80000 {
 				reg = <0x2b80000>;
 				firmware {
 					aov {
@@ -607,12 +607,12 @@
 			"cs48l32-codec", "cs35l41-rcv", "cs35l41-spk";
 
 	qcom,audio-routing =
-		"AMIC1", "MIC BIAS1",
-		"MIC BIAS1", "Analog Mic1",
+		"AMIC1", "MICBIAS1A",
+		"MICBIAS1A", "Analog Mic1",
 		"AMIC2", "MIC BIAS2",
 		"MIC BIAS2", "Analog Mic2",
-		"AMIC3", "MIC BIAS3",
-		"MIC BIAS3", "Analog Mic3",
+		"AMIC3", "MICBIAS1B",
+		"MICBIAS1B", "Analog Mic3",
 		"IN1_HPHL", "HPHL_OUT",
 		"IN2_HPHR", "HPHR_OUT",
 		"TX SWR_ADC0", "ADC1_OUTPUT",
