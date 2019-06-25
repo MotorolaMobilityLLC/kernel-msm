@@ -86,6 +86,11 @@ enum print_reason {
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
+#define HEARTBEAT_VOTER			"HEARTBEAT_VOTER"
+#define EB_VOTER			"EB_VOTER"
+#define WIRELESS_VOTER			"WIRELESS_VOTER"
+#define DEMO_VOTER			"DEMO_VOTER"
+#define MMI_VOTER			"MMI_VOTER"
 
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
