@@ -491,6 +491,10 @@
 	status = "disabled";
 };
 
+&tx_macro {
+	qcom,mute-delay-ms = <50>;
+};
+
 &wsa_macro {
 	status = "disabled";
 };
@@ -614,12 +618,10 @@
 			"cs48l32-codec", "cs35l41-rcv", "cs35l41-spk";
 
 	qcom,audio-routing =
-		"AMIC1", "MICBIAS1A",
-		"MICBIAS1A", "Analog Mic1",
+		"AMIC1", "Analog Mic1",
 		"AMIC2", "MIC BIAS2",
 		"MIC BIAS2", "Analog Mic2",
-		"AMIC3", "MICBIAS1B",
-		"MICBIAS1B", "Analog Mic3",
+		"AMIC3", "Analog Mic3",
 		"IN1_HPHL", "HPHL_OUT",
 		"IN2_HPHR", "HPHR_OUT",
 		"TX SWR_ADC0", "ADC1_OUTPUT",
