@@ -4365,6 +4365,8 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 		rp_ua = TYPEC_HIGH_CURRENT_UA;
 		break;
 	case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
+		rp_ua = TYPEC_MEDIUM_CURRENT_UA;
+		break;
 	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 	/* fall through */
 	default:
@@ -5093,7 +5095,11 @@ int smblib_get_charge_current(struct smb_charger *chg,
 			current_ua = CDP_CURRENT_UA;
 			break;
 		case DCP_CHARGER_BIT:
+			current_ua = DCP_CURRENT_UA;
+			break;
 		case OCP_CHARGER_BIT:
+			current_ua = OCP_CURRENT_UA;
+			break;
 		case FLOAT_CHARGER_BIT:
 			current_ua = DCP_CURRENT_UA;
 			break;
@@ -5116,7 +5122,11 @@ int smblib_get_charge_current(struct smb_charger *chg,
 			current_ua = CDP_CURRENT_UA;
 			break;
 		case DCP_CHARGER_BIT:
+			current_ua = DCP_CURRENT_UA;
+			break;
 		case OCP_CHARGER_BIT:
+			current_ua = OCP_CURRENT_UA;
+			break;
 		case FLOAT_CHARGER_BIT:
 			current_ua = chg->default_icl_ua;
 			break;
