@@ -46,7 +46,6 @@
 #define MHI_RING_PRIMARY_EVT_ID		1
 #define MHI_1K_SIZE			0x1000
 /* Updated Specification for event start is NER - 2 and end - NER -1 */
-#define MHI_HW_ACC_EVT_RING_START	3
 #define MHI_HW_ACC_EVT_RING_END		1
 
 #define MHI_HOST_REGION_NUM             2
@@ -1133,7 +1132,7 @@ static void mhi_dev_get_erdb_db_cfg(struct mhi_dev *mhi,
 		erdb_cfg->end = HW_CHANNEL_END;
 	} else {
 		erdb_cfg->base = mhi->cfg.event_rings -
-					MHI_HW_ACC_EVT_RING_START;
+					(mhi->cfg.hw_event_rings);
 		erdb_cfg->end =  mhi->cfg.event_rings -
 					MHI_HW_ACC_EVT_RING_END;
 	}
@@ -1341,7 +1340,7 @@ static int mhi_hwc_chcmd(struct mhi_dev *mhi, uint chid,
 		rc = ipa_mhi_connect_pipe(&connect_params,
 			&mhi->ipa_clnt_hndl[chid-HW_CHANNEL_BASE]);
 		if (rc)
-			pr_err("HW Channel%d start failed 0x%X\n",
+			pr_err("HW Channel%d start failed : %d\n",
 							chid, rc);
 		break;
 	case MHI_DEV_RING_EL_INVALID:
