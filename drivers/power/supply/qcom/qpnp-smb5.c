@@ -2072,6 +2072,12 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 				POWER_SUPPLY_PROP_SET_SHIP_MODE, val);
 		rc = smblib_set_prop_ship_mode(chg, val);
 		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		if (val->intval < 0) {
+			vote(chg->fcc_votable, MMI_VOTER, false, 0);
+		} else
+			vote(chg->fcc_votable, MMI_VOTER, true, val->intval);
+		break;
 	case POWER_SUPPLY_PROP_RERUN_AICL:
 		rc = smblib_run_aicl(chg, RERUN_AICL);
 		break;
