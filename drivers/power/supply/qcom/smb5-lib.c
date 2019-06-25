@@ -7208,7 +7208,8 @@ static void smblib_pd_contract_work(struct work_struct *work)
 		schedule_delayed_work(&chg->pd_contract_work,
 				      msecs_to_jiffies(100));
 		return;
-	}
+	} else
+		power_supply_changed(chg->usb_psy);
 
 	if (chg->pd_contract_uv >= MICRO_9V)
 		smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_9V);
