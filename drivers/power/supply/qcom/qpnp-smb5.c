@@ -609,6 +609,9 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chip->dt.adc_based_aicl = of_property_read_bool(node,
 					"qcom,adc-based-aicl");
 
+	chg->extrn_fg = of_property_read_bool(node,
+					"qcom,extrn-fg");
+
 	/* Extract ADC channels */
 	rc = smblib_get_iio_channel(chg, "mid_voltage", &chg->iio.mid_chan);
 	if (rc < 0)
@@ -2235,6 +2238,16 @@ static const struct power_supply_desc batt_psy_desc = {
 	.property_is_writeable = smb5_batt_prop_is_writeable,
 };
 
+static const struct power_supply_desc qcom_batt_psy_desc = {
+	.name = "qcom_battery",
+	.type = POWER_SUPPLY_TYPE_MAIN,
+	.properties = smb5_batt_props,
+	.num_properties = ARRAY_SIZE(smb5_batt_props),
+	.get_property = smb5_batt_get_prop,
+	.set_property = smb5_batt_set_prop,
+	.property_is_writeable = smb5_batt_prop_is_writeable,
+};
+
 static int smb5_init_batt_psy(struct smb5 *chip)
 {
 	struct power_supply_config batt_cfg = {};
@@ -2243,9 +2256,17 @@ static int smb5_init_batt_psy(struct smb5 *chip)
 
 	batt_cfg.drv_data = chg;
 	batt_cfg.of_node = chg->dev->of_node;
-	chg->batt_psy = devm_power_supply_register(chg->dev,
+
+	if (chg->extrn_fg) {
+		chg->batt_psy = devm_power_supply_register(chg->dev,
+					   &qcom_batt_psy_desc,
+					   &batt_cfg);
+	} else {
+		chg->batt_psy = devm_power_supply_register(chg->dev,
 					   &batt_psy_desc,
 					   &batt_cfg);
+	}
+
 	if (IS_ERR(chg->batt_psy)) {
 		pr_err("Couldn't register battery power supply\n");
 		return PTR_ERR(chg->batt_psy);
