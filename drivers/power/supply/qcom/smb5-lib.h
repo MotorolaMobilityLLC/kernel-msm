@@ -638,6 +638,7 @@ struct smb_charger {
 	int			dcp_icl_ua;
 	int			fake_capacity;
 	int			fake_batt_status;
+	bool			extrn_fg;
 	bool			step_chg_enabled;
 	bool			sw_jeita_enabled;
 	bool			typec_legacy_use_rp_icl;
