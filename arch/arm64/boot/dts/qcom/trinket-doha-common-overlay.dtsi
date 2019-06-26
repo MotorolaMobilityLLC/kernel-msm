@@ -195,4 +195,8 @@
 	emmc-ufs-therm-adc {
 		status = "disabled";
 	};
+
+	soc {
+		status = "disabled";
+	};
 };
