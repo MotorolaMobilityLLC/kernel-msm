@@ -184,6 +184,13 @@ enum acl_state {
 	ACL_STATE_NUM,
 };
 
+enum cabc_state {
+	CABC_UI_STATE,
+	CABC_MV_STATE,
+	CABC_DIS_STATE,
+	CABC_STATE_NUM,
+};
+
 enum hbm_state {
 	HBM_OFF_STATE = 0,
 	HBM_ON_STATE,
