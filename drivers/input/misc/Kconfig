@@ -899,14 +899,19 @@ config INPUT_STMVL53L1
 	  To compile this driver as a module, choose M here: the
 	  module will be called stmvl53l1.
 
-config INPUT_STMVL53L1
-   tristate "STM VL53L1 Proximity support"
-   depends on INPUT && I2C
-   help
-    Say Y here if you want to use STMicroelectronics's proximity sensor
-    through I2C interface.
+config STMVL53L1_NETLINK_PROTOCOL
+	int "STM VL53L1 netlink protocol"
+	range 0 32
+	default 8
+	help
+	  This option sets the netlink protocol used for netlink creation
+	  in STMVL53L1 module.
 
-    To compile this driver as a module, choose M here: the
-    module will be called stmvl53l1.
+config STMVL53L1_USE_CAMERA_CCI
+	bool "STM VL53L1 use camera cci interface"
+	depends on I2C
+	default y
+	help
+	  Say Y if camera cci interface is used in STMVL53L1 module.
 
 endif
