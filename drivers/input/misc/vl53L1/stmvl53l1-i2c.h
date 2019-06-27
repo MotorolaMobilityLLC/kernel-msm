@@ -93,6 +93,12 @@ struct i2c_data {
 	struct msgtctrl_t {
 		unsigned unhandled_irq_vec:1;
 	} msg_flag;
+
+	struct i2c_dma_data {
+		struct mutex lock;
+		uint8_t *data;
+		unsigned int len;
+	} dma_data;
 };
 
 int stmvl53l1_init_i2c(void);
