@@ -367,6 +367,9 @@ int stmvl53l1_ipp_init(void)
 			&cfg);
 #endif
 
+	if (!nl_sk)
+		ipp_err("Failed to create netlink, type=%d", STMVL531_CFG_NETLINK_USER);
+
 	return nl_sk ? 0 : -1;
 }
 
