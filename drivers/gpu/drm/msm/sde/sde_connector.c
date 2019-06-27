@@ -1236,6 +1236,14 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 		if (rc)
 			goto end;
 		break;
+	case CONNECTOR_PROP_CABC:
+		param_info.value = val;
+		param_info.param_idx = PARAM_CABC_ID;
+		param_info.param_conn_idx = CONNECTOR_PROP_CABC;
+		rc = _sde_connector_update_param(c_conn, &param_info);
+		if (rc)
+			goto end;
+		break;
 	case CONNECTOR_PROP_ACL:
 		param_info.value = val;
 		param_info.param_idx = PARAM_ACL_ID;
@@ -1456,7 +1464,7 @@ int sde_connector_helper_reset_custom_properties(
 	enum msm_mdp_conn_property prop_idx;
 
 	if (!connector || !connector_state) {
-		SDE_ERROR("invalid params\n");
+		SDE_ERROR("invalid params %d\n", __LINE__);
 		return -EINVAL;
 	}
 
@@ -2129,6 +2137,8 @@ static int sde_connector_install_panel_params(struct sde_connector *c_conn)
 
 		if (!strncmp(param_cmds->param_name, "HBM", 3))
 			prop_idx = CONNECTOR_PROP_HBM;
+		else if (!strncmp(param_cmds->param_name, "CABC", 4))
+			prop_idx = CONNECTOR_PROP_CABC;
 		else if (!strncmp(param_cmds->param_name, "ACL", 3))
 			prop_idx = CONNECTOR_PROP_ACL;
 		else {
@@ -2137,15 +2147,11 @@ static int sde_connector_install_panel_params(struct sde_connector *c_conn)
 			return -EINVAL;
 		}
 
-		if (param_cmds->is_supported) {
-			prop_max = param_cmds->val_max;
-			prop_min = PARAM_STATE_OFF;
-			prop_init = param_cmds->default_value;
-		} else {
-			prop_max = PARAM_STATE_OFF;
-			prop_min = PARAM_STATE_OFF;
-			prop_init = PARAM_STATE_DISABLE;
-		}
+		//set prop max/min/default no matter whether it is supported
+		//because install happend before param_cmds->is_supported being set
+		prop_max = param_cmds->val_max;
+		prop_min = PARAM_STATE_OFF;
+		prop_init = param_cmds->default_value;
 
 		msm_property_install_volatile_range( &c_conn->property_info,
 					param_cmds->param_name, 0x0,
