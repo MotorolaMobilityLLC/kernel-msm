@@ -153,6 +153,7 @@ struct usb_charger_detection {
  * @panel_max_x/y/w/p: resolution and size
  * @panel_max_key: max supported keys
  * @pannel_key_map: key map
+ * @debug_reg_version: debug regs addr version
  * @fw_name: name of the firmware image
  */
 struct goodix_ts_board_data {
@@ -176,6 +177,7 @@ struct goodix_ts_board_data {
 	unsigned int panel_max_p; /*pressure*/
 	unsigned int panel_max_key;
 	unsigned int panel_key_map[GOODIX_MAX_KEY + GOODIX_PEN_MAX_KEY];
+	unsigned int debug_reg_ver;
 	/*add by lishuai*/
 	unsigned int x2x;
 	unsigned int y2y;
