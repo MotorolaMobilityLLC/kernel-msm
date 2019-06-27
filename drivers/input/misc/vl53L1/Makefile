@@ -3,11 +3,8 @@
 #
 
 # Each configuration option enables a list of files.
-#FEATURE_USE_CCI := false
 
-FEATURE_USE_CCI := true
-
-ifeq ($(FEATURE_USE_CCI), true)
+ifdef CONFIG_STMVL53L1_USE_CAMERA_CCI
 ccflags-y	+= -I$(src)/inc -I$(src)/ipp -I$(src) -DCAMERA_CCI
 else
 ccflags-y	+= -I$(src)/inc -I$(src)/ipp -I$(src)
