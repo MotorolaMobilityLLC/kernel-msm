@@ -86,6 +86,94 @@
 				output-high;
 		};
     };
+
+	laser_xsdn_active: laser_xsdn_active {
+		mux {
+			pins = "gpio118";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio118";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	laser_xsdn_suspend: laser_xsdn_suspend {
+		mux {
+			pins = "gpio118";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio118";
+			drive-strength = <2>;
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+
+	laser_int_active: laser_int_active {
+		mux {
+			pins = "gpio3";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio3";
+			drive-strength = <2>;
+			bias-pull-up; /* PULL UP */
+		};
+	};
+
+	laser_int_suspend: laser_int_suspend {
+		mux {
+			pins = "gpio3";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio3";
+			drive-strength = <2>;
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+};
+
+&pmi632_gpios {
+	tof_supply_en {
+		tof_supply_en_default: tof_supply_en_default {
+			pins = "gpio7";
+			function = "func1";
+			output-enable;
+			drive-push-pull;
+		};
+	};
+};
+
+&qupv3_se0_spi {
+	status = "disabled";
+};
+
+&qupv3_se3_i2c {
+	status = "ok";
+	stmvl53l1@29 {
+		/* Enable once the matching driver is ported completely */
+		status = "ok";
+		compatible = "st,stmvl53l1";
+		reg = <0x29>;
+		pwren-gpio = <&pmi632_gpios 7 0>;
+		gpios = <&tlmm 118 0>, <&tlmm 3 0>;
+		qcom,gpio-reset = <0>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 1>;
+		qcom,gpio-req-tbl-label ="TOF_XSHUTDOWN","TOF_INT";
+		pinctrl-names = "laser_default", "laser_suspend";
+		pinctrl-0 = <&laser_xsdn_active &laser_int_active &tof_supply_en_default>;
+		pinctrl-1 = <&laser_xsdn_suspend &laser_int_suspend>;
+		st,sensorthreshold = <60 65>;
+		st,xtalkval = <0x9C4 0xFACD 0x0>;
+	};
 };
 
 &qupv3_se1_i2c {
