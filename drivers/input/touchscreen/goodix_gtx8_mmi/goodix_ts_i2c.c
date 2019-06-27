@@ -380,6 +380,14 @@ static int goodix_parse_dt(struct device_node *node,
 			return r;
 	}
 
+	/* get debug register address version */
+	r = of_property_read_u32(node, "goodix,debug-reg-ver",
+			&board_data->debug_reg_ver);
+	if (r) {
+		board_data->debug_reg_ver = 0;
+		ts_err("Invalid debug-reg-ver");
+	}
+
 	/*get pen-enable switch and pen keys, must after "key map"*/
 	board_data->pen_enable =
 		of_property_read_bool(node, "goodix,pen-enable");
