@@ -4251,14 +4251,16 @@ static int dsi_display_res_init(struct dsi_display *display)
 				display->parser_node,
 				display->dsi_type,
 				display->cmdline_topology);
-	dsi_panel_parse_panel_cfg(display->panel,
-				!strcmp(display->display_type, "primary"));
+
 	if (IS_ERR_OR_NULL(display->panel)) {
 		rc = PTR_ERR(display->panel);
 		pr_err("failed to get panel, rc=%d\n", rc);
 		display->panel = NULL;
 		goto error_ctrl_put;
 	}
+
+	dsi_panel_parse_panel_cfg(display->panel,
+				!strcmp(display->display_type, "primary"));
 
 	display_for_each_ctrl(i, display) {
 		struct msm_dsi_phy *phy = display->ctrl[i].phy;
