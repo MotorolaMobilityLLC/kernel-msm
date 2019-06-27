@@ -330,6 +330,9 @@ static int _sde_debugfs_motUtil_kms_prop_test(struct sde_kms *kms,
 		case KMSPROPTEST_TYPE_ACL:
 			conn_prop_idx = CONNECTOR_PROP_ACL;
 			break;
+		case KMSPROPTEST_TYPE_CABC:
+			conn_prop_idx = CONNECTOR_PROP_CABC;
+			break;
 		default:
 			DRM_ERROR(" Invalid KMSPROPTEST_PROP_INDEX = %d\n",
 						input[KMSPROPTEST_PROP_INDEX]);
@@ -363,8 +366,8 @@ static int _sde_debugfs_motUtil_kms_prop_test(struct sde_kms *kms,
 			break;
 		case KMSPROPTEST_SETPROP:
 			motUtil_data.read_cmd = false;
-			if (conn->funcs && conn->funcs->set_property) {
-				ret = conn->funcs->set_property(conn,
+			if (conn->funcs && conn->funcs->atomic_set_property) {
+				ret = conn->funcs->atomic_set_property(conn, conn->state,
 					property,
 					input[KMSPROPTEST_NEW_VAL]);
 			} else {
