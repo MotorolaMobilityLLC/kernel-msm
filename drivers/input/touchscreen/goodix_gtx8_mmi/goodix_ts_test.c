@@ -368,53 +368,103 @@ int goodix_nodereg_read(void)
 	ret |= goodix_i2c_read(ts_dev, 0x563b, tm_buf, 1);
 	ts_info("0x563b = 0x%02x", tm_buf[0]);
 
-	for (i = 0; i < 5; i++) {
-		ret |= goodix_i2c_read(ts_dev, 0x59d5, tm_buf, 2);
-		ts_info("0x59d5 = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+	if (ts_dev->board_data->debug_reg_ver == 1) {
+		for (i = 0; i < 5; i++) {
+			ret |= goodix_i2c_read(ts_dev, 0x59dd, tm_buf, 2);
+			ts_info("0x59dd = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		}
+
+		ret |= goodix_i2c_read(ts_dev, 0x59e1, tm_buf, 2);
+		ts_info("0x59e1 = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		ret |= goodix_i2c_read(ts_dev, 0x59e7, tm_buf, 2);
+		ts_info("0x59e7 = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		ret |= goodix_i2c_read(ts_dev, 0x59e9, tm_buf, 1);
+		ts_info("0x59e9 = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x59ea, tm_buf, 1);
+		ts_info("0x59ea = 0x%02x", tm_buf[0]);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5a72, tm_buf, 12);
+		offset = 0;
+		for (i = 0; i < 12; i++) {
+			offset += snprintf(&char_buf[offset], PAGE_SIZE,
+				"%02x ", tm_buf[i]);
+		}
+		char_buf[offset] = 0;
+		ts_info("0x5a72 = %s", &char_buf);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5b57, tm_buf, 1);
+		ts_info("0x5b57 = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5bc4, tm_buf, 1);
+		ts_info("0x5bc4 = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5c85, tm_buf, 1);
+		ts_info("0x5c85 = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5c99, tm_buf, 1);
+		ts_info("0x5c99 = 0x%02x", tm_buf[0]);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5e22, tm_buf, 9);
+		offset = 0;
+		for (i = 0; i < 9; i++) {
+			offset += snprintf(&char_buf[offset], PAGE_SIZE,
+				"%02x ", tm_buf[i]);
+		}
+		char_buf[offset] = 0;
+		ts_info("0x5e22 = %s", &char_buf);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5ef9, tm_buf, 1);
+		ts_info("0x5ef9 = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5f2c, tm_buf, 2);
+		ts_info("0x5f2c = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		ret |= goodix_i2c_read(ts_dev, 0x5f4b, tm_buf, 1);
+		ts_info("0x5f4b = 0x%02x", tm_buf[0]);
+	} else {
+		for (i = 0; i < 5; i++) {
+			ret |= goodix_i2c_read(ts_dev, 0x59d5, tm_buf, 2);
+			ts_info("0x59d5 = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		}
+
+		ret |= goodix_i2c_read(ts_dev, 0x59dd, tm_buf, 2);
+		ts_info("0x59dd = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		ret |= goodix_i2c_read(ts_dev, 0x59df, tm_buf, 2);
+		ts_info("0x59df = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		ret |= goodix_i2c_read(ts_dev, 0x59e1, tm_buf, 1);
+		ts_info("0x59e1 = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x59e2, tm_buf, 1);
+		ts_info("0x59e2 = 0x%02x", tm_buf[0]);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5a6a, tm_buf, 12);
+		offset = 0;
+		for (i = 0; i < 12; i++) {
+			offset += snprintf(&char_buf[offset], PAGE_SIZE,
+				"%02x ", tm_buf[i]);
+		}
+		char_buf[offset] = 0;
+		ts_info("0x5a6a = %s", &char_buf);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5b4e, tm_buf, 1);
+		ts_info("0x5b4e = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5bbc, tm_buf, 1);
+		ts_info("0x5bbc = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5c7c, tm_buf, 1);
+		ts_info("0x5c7c = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5c90, tm_buf, 1);
+		ts_info("0x5c90 = 0x%02x", tm_buf[0]);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5e19, tm_buf, 9);
+		offset = 0;
+		for (i = 0; i < 9; i++) {
+			offset += snprintf(&char_buf[offset], PAGE_SIZE,
+				"%02x ", tm_buf[i]);
+		}
+		char_buf[offset] = 0;
+		ts_info("0x5e19 = %s", &char_buf);
+
+		ret |= goodix_i2c_read(ts_dev, 0x5ef0, tm_buf, 1);
+		ts_info("0x5ef0 = 0x%02x", tm_buf[0]);
+		ret |= goodix_i2c_read(ts_dev, 0x5f23, tm_buf, 2);
+		ts_info("0x5f23 = 0x%02x%02x", tm_buf[0], tm_buf[1]);
+		ret |= goodix_i2c_read(ts_dev, 0x5f42, tm_buf, 1);
+		ts_info("0x5f42 = 0x%02x", tm_buf[0]);
 	}
-
-	ret |= goodix_i2c_read(ts_dev, 0x59dd, tm_buf, 2);
-	ts_info("0x59dd = 0x%02x%02x", tm_buf[0], tm_buf[1]);
-	ret |= goodix_i2c_read(ts_dev, 0x59df, tm_buf, 2);
-	ts_info("0x59df = 0x%02x%02x", tm_buf[0], tm_buf[1]);
-	ret |= goodix_i2c_read(ts_dev, 0x59e1, tm_buf, 1);
-	ts_info("0x59e1 = 0x%02x", tm_buf[0]);
-	ret |= goodix_i2c_read(ts_dev, 0x59e2, tm_buf, 1);
-	ts_info("0x59e2 = 0x%02x", tm_buf[0]);
-
-	ret |= goodix_i2c_read(ts_dev, 0x5a6a, tm_buf, 12);
-	offset = 0;
-	for (i = 0; i < 12; i++) {
-		offset += snprintf(&char_buf[offset], PAGE_SIZE,
-			"%02x ", tm_buf[i]);
-	}
-	char_buf[offset] = 0;
-	ts_info("0x5a6a = %s", &char_buf);
-
-	ret |= goodix_i2c_read(ts_dev, 0x5b4e, tm_buf, 1);
-	ts_info("0x5b4e = 0x%02x", tm_buf[0]);
-	ret |= goodix_i2c_read(ts_dev, 0x5bbc, tm_buf, 1);
-	ts_info("0x5bbc = 0x%02x", tm_buf[0]);
-	ret |= goodix_i2c_read(ts_dev, 0x5c7c, tm_buf, 1);
-	ts_info("0x5c7c = 0x%02x", tm_buf[0]);
-	ret |= goodix_i2c_read(ts_dev, 0x5c90, tm_buf, 1);
-	ts_info("0x5c90 = 0x%02x", tm_buf[0]);
-
-	ret |= goodix_i2c_read(ts_dev, 0x5e19, tm_buf, 9);
-	offset = 0;
-	for (i = 0; i < 9; i++) {
-		offset += snprintf(&char_buf[offset], PAGE_SIZE,
-			"%02x ", tm_buf[i]);
-	}
-	char_buf[offset] = 0;
-	ts_info("0x5e19 = %s", &char_buf);
-
-	ret |= goodix_i2c_read(ts_dev, 0x5ef0, tm_buf, 1);
-	ts_info("0x5ef0 = 0x%02x", tm_buf[0]);
-	ret |= goodix_i2c_read(ts_dev, 0x5f23, tm_buf, 2);
-	ts_info("0x5f23 = 0x%02x%02x", tm_buf[0], tm_buf[1]);
-	ret |= goodix_i2c_read(ts_dev, 0x5f42, tm_buf, 1);
-	ts_info("0x5f42 = 0x%02x", tm_buf[0]);
 
 	ret |= goodix_i2c_read(ts_dev, 0x6ea0, tm_buf, 12);
 	offset = 0;
