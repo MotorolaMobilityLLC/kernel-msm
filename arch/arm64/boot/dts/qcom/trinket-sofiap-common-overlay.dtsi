@@ -12,7 +12,6 @@
 
 #include "trinket-moto-common-overlay.dtsi"
 #include "sofia-panel.dtsi"
-#include "sofiap-dtv.dtsi"
 #include "trinket-sofiap-audio-overlay.dtsi"
 #include "trinket-sofiap-touch-overlay.dtsi"
 #include "trinket-sofiap-camera-overlay.dtsi"
