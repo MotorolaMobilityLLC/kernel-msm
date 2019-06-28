@@ -23,3 +23,35 @@
 	qcom,board-id = <0x42 0xB200>;
 };
 
+&amp_l_reset {
+	mux {
+		pins = "gpio67";
+		function = "gpio";
+	};
+	config {
+		pins = "gpio67";
+		drive-strength = <2>; /* 2 MA */
+		bias-pull-up;
+	};
+};
+
+&codec_irq {
+	mux {
+		pins = "gpio123";
+		function = "gpio";
+	};
+	config {
+		pins = "gpio123";
+		drive-strength = <2>; /* 2 MA */
+		bias-pull-up;
+	};
+};
+
+/* cant use the low level trigger on the old hardware as it cause the power issue */
+&cs48l32 {
+	interrupts = <123 IRQ_TYPE_LEVEL_LOW>;
+};
+
+&cs35l41_rcv {
+	reset-gpios = <&tlmm 67 0>;
+};
