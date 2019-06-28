@@ -345,7 +345,7 @@
 		gpio-controller;
 		interrupt-controller;
 		interrupt-parent = <&tlmm>;
-		interrupts = <97 0>;
+		interrupts = <97 IRQ_TYPE_EDGE_FALLING>;
 		reset-gpios =  <&tlmm 117 0>;
 		bob-en-gpios = <&pm6125_gpios 6 GPIO_ACTIVE_HIGH>;
 		VDD_A-supply = <&pm6125_s6>;
