@@ -642,6 +642,9 @@ struct smb_charger {
 	int			fake_capacity;
 	int			fake_batt_status;
 	bool			extrn_fg;
+	bool			dc_unsupported;
+	bool			wireless_unsupported;
+	bool			usbeb_unsupported;
 	bool			step_chg_enabled;
 	bool			sw_jeita_enabled;
 	bool			typec_legacy_use_rp_icl;
