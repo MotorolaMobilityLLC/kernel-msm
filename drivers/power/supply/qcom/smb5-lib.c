@@ -6317,8 +6317,9 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 	chg->mmi.dc_ebmax_current_ma = chg->mmi.dc_ebmax_current_ma_default;
 	chg->mmi.cl_ebsrc = chg->mmi.dc_ebmax_current_ma_default;
 
-	power_supply_changed(chg->dc_psy);
-
+	if (chg->dc_psy) {
+		power_supply_changed(chg->dc_psy);
+	}
 	smblib_dbg(chg, PR_WLS, "dcin_present= %d, usbin_present= %d, cp_reason = %d\n",
 			dcin_present, vbus_present, chg->cp_reason);
 
