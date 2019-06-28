@@ -754,6 +754,7 @@
 &pm6150l_lpg {
 	qcom,lut-patterns = <0 3 6 9 12 15 18 21 24 27 30 34 38 42 46 50 55 60 65 70 80 90 100
 			     100 90 80 70 65 60 55 50 46 42 38 34 30 27 24 21 18 15 12 9 6 3 0>;
+	qcom,sync-channel-ids = <1 2 3>;
 	lpg1 {
 		qcom,lpg-chan-id = <1>;
 		qcom,ramp-step-ms = <50>;
