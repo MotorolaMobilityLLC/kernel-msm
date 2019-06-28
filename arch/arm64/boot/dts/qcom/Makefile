@@ -13,7 +13,8 @@ DTC_FLAGS += -p 1024
 #CONFIG_DOHA_DTB
 dtbo-$(CONFIG_DOHA_DTB) += \
 	trinket-doha-evt1-overlay.dtbo \
-	trinket-doha-evt2-overlay.dtbo
+	trinket-doha-evt2-overlay.dtbo \
+	trinket-doha-dvt2-overlay.dtbo
 
 dtbo-$(CONFIG_ROMA_DTB) += \
 	trinket-roma-evb-overlay.dtbo \
@@ -29,6 +30,7 @@ dtbo-$(CONFIG_SOFIAP_DTB) += \
 
 trinket-doha-evt1-overlay.dtbo-base :=  trinket-doha-base.dtb
 trinket-doha-evt2-overlay.dtbo-base :=  trinket-doha-base.dtb
+trinket-doha-dvt2-overlay.dtbo-base :=  trinket-doha-base.dtb
 
 trinket-roma-evb-overlay.dtbo-base :=  trinket-roma-base.dtb
 trinket-roma-evt1-overlay.dtbo-base :=  trinket-roma-base.dtb
