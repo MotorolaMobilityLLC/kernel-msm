@@ -17,6 +17,7 @@
 #include "sm6150-def-touch-overlay.dtsi"
 #include "sm6150-def-fps-overlay.dtsi"
 #include "defender-panel.dtsi"
+#include "sm6150-def-charger-overlay.dtsi"
 
 &pm6150_l19 {
 	regulator-boot-on;
