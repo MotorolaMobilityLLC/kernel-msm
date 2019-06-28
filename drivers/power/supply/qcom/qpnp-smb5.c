@@ -606,6 +606,12 @@ static int smb5_parse_dt(struct smb5 *chip)
 
 	chg->extrn_fg = of_property_read_bool(node,
 					"qcom,extrn-fg");
+	chg->dc_unsupported = of_property_read_bool(node,
+					"qcom,dc-unsupported");
+	chg->wireless_unsupported = of_property_read_bool(node,
+					"qcom,wireless-unsupported");
+	chg->usbeb_unsupported = of_property_read_bool(node,
+					"qcom,usbeb-unsupported");
 
 	/* Extract ADC channels */
 	rc = smblib_get_iio_channel(chg, "mid_voltage", &chg->iio.mid_chan);
@@ -3787,8 +3793,9 @@ static void smb5_disable_interrupts(struct smb_charger *chg)
 static int force_batt_psy_update_write(void *data, u64 val)
 {
 	struct smb_charger *chg = data;
-
-	power_supply_changed(chg->batt_psy);
+	if (chg->batt_psy) {
+		power_supply_changed(chg->batt_psy);
+	}
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(force_batt_psy_update_ops, NULL,
@@ -3797,8 +3804,9 @@ DEFINE_SIMPLE_ATTRIBUTE(force_batt_psy_update_ops, NULL,
 static int force_usb_psy_update_write(void *data, u64 val)
 {
 	struct smb_charger *chg = data;
-
-	power_supply_changed(chg->usb_psy);
+	if (chg->usb_psy) {
+		power_supply_changed(chg->usb_psy);
+	}
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(force_usb_psy_update_ops, NULL,
@@ -3807,8 +3815,9 @@ DEFINE_SIMPLE_ATTRIBUTE(force_usb_psy_update_ops, NULL,
 static int force_dc_psy_update_write(void *data, u64 val)
 {
 	struct smb_charger *chg = data;
-
-	power_supply_changed(chg->dc_psy);
+	if (chg->dc_psy) {
+		power_supply_changed(chg->dc_psy);
+	}
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(force_dc_psy_update_ops, NULL,
@@ -4047,10 +4056,12 @@ static int smb5_probe(struct platform_device *pdev)
 	switch (chg->chg_param.smb_version) {
 	case PM8150B_SUBTYPE:
 	case PM6150_SUBTYPE:
-		rc = smb5_init_dc_psy(chip);
-		if (rc < 0) {
-			pr_err("Couldn't initialize dc psy rc=%d\n", rc);
-			goto cleanup;
+		if (!chg->dc_unsupported) {
+			rc = smb5_init_dc_psy(chip);
+			if (rc < 0) {
+				pr_err("Couldn't initialize dc psy rc=%d\n", rc);
+				goto cleanup;
+			}
 		}
 		break;
 	default:
@@ -4063,16 +4074,20 @@ static int smb5_probe(struct platform_device *pdev)
 		goto cleanup;
 	}
 
-	rc = smb5_init_wls_psy(chip);
-	if (rc < 0) {
-		pr_err("Couldn't initialize wls psy rc=%d\n", rc);
-		goto cleanup;
+	if (!chg->wireless_unsupported) {
+		rc = smb5_init_wls_psy(chip);
+		if (rc < 0) {
+			pr_err("Couldn't initialize wls psy rc=%d\n", rc);
+			goto cleanup;
+		}
 	}
 
-	rc = smb5_init_usbeb_psy(chip);
-	if (rc < 0) {
-		pr_err("Couldn't initialize usbeb psy rc=%d\n", rc);
-		goto cleanup;
+	if (!chg->usbeb_unsupported) {
+		rc = smb5_init_usbeb_psy(chip);
+		if (rc < 0) {
+			pr_err("Couldn't initialize usbeb psy rc=%d\n", rc);
+			goto cleanup;
+		}
 	}
 
 	rc = smb5_init_usb_main_psy(chip);
