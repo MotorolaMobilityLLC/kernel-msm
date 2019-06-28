@@ -15,7 +15,7 @@
 #include "trinket-sofiap-audio-overlay.dtsi"
 #include "trinket-sofiap-touch-overlay.dtsi"
 #include "trinket-sofiap-camera-overlay.dtsi"
-#include "trinket-sofiap-haptic-overlay.dtsi"
+#include "trinket-sofia-haptic-overlay.dtsi"
 #include "trinket-sofiap-fps-overlay.dtsi"
 #include "trinket-sofiap-nfc-overlay.dtsi"
 #include "trinket-sofiap-sensor-overlay.dtsi"
