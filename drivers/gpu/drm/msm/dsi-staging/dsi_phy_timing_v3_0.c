@@ -18,7 +18,7 @@ void dsi_phy_hw_v3_0_get_default_phy_params(
 		struct phy_clk_params *params)
 {
 	params->clk_prep_buf = 50;
-	params->clk_zero_buf = 2;
+	params->clk_zero_buf = 0;
 	params->clk_trail_buf = 30;
 	params->hs_prep_buf = 50;
 	params->hs_zero_buf = 10;
