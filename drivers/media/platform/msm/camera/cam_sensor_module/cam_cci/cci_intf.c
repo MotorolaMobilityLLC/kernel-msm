@@ -50,7 +50,7 @@ static int32_t cci_intf_xfer(
 	struct cam_sensor_cci_client cci_info = {
 		.cci_subdev     = cam_cci_get_subdev(0),
 		.cci_i2c_master = xfer->cci_bus,
-		.i2c_freq_mode = I2C_FAST_MODE,
+		.i2c_freq_mode = I2C_FAST_PLUS_MODE,
 		.sid            = xfer->slave_addr,
 	};
 	struct cam_cci_ctrl cci_ctrl = {
