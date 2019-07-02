@@ -18,3 +18,7 @@
 	/delete-node/ blue;
 	/delete-node/ green;
 };
+
+&tlmm {
+	/delete-node/ nfc;
+};
