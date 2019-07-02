@@ -53,7 +53,7 @@
 		focaltech,reset-gpio = <&tlmm 88 0x01>;
 		focaltech,irq-gpio = <&tlmm 89 0x02>;
 		focaltech,max-touch-number = <5>;
-		focaltech,display-coords =  <0 0 1080 2280>;
+		focaltech,display-coords =  <0 0 1080 2340>;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
