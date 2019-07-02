@@ -32,6 +32,7 @@
 		himax,irq-gpio = <&tlmm 88 0x02>;
 		himax,rst-gpio = <&tlmm 87 0x01>;
 		himax,touch_info = <36 18 0 1080 2280 10 0 1>;
+		himax,vdd_1v8_always_on;
 		report_type = <1>;
 		status = "/chosen", "mmi,panel_name", "ds_hx83112a_fhd_vid";
 	};
