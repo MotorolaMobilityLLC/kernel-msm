@@ -237,7 +237,9 @@
 
 &gpu_cx_gdsc {
 	/delete-property/ parent-supply;
+	/delete-property/ vdd_parent-supply;
 	parent-supply = <&pm8005_s1_level>;
+	vdd_parent-supply = <&pm8005_s1_level>;
 };
 
 &gpu_gx_gdsc {
