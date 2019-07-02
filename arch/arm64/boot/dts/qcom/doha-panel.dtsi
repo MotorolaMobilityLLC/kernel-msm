@@ -63,6 +63,8 @@
 	qcom,dsi-display-list = <&dsi_ft8719_tm_vid_display
                   &dsi_mot_dummy_qhd_video_display
                   &dsi_hx83112a_ds_vid_display>;
+	pinctrl-0 = <&sde_dsi_active>;
+	pinctrl-1 = <&sde_dsi_suspend>;
         /delete-property/ qcom,platform-te-gpio;
 };
 
