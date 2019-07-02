@@ -38,7 +38,6 @@
 			config {
 				pins = "gpio93";
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-down; /* pull down */
 				output-high;
 			};
 		};
@@ -52,8 +51,20 @@
 			config {
 				pins = "gpio93";
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-down; /* pull down */
 				output-high;
+			};
+		};
+		rst_reset: rst_reset{
+			/* RESET */
+			mux {
+				pins = "gpio93";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio93";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
 			};
 		};
 
@@ -168,8 +179,9 @@
 		compatible = "fpc,fpc1020";
 		status = "ok";
 		irq = <&tlmm 92 0>;
+		rst = <&tlmm 93 0>;
 		pinctrl-names = "default", "suspend";
-		pinctrl-0 = <&ldo18_en_active &ldo33_en_active &int_active &rst_active>;
+		pinctrl-0 = <&ldo18_en_active &ldo33_en_active &int_active &rst_reset>;
 		pinctrl-1 = <&ldo18_en_suspend &ldo33_en_suspend &int_suspend &rst_suspend>;
 	};
 };
