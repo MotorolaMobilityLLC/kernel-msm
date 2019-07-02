@@ -19,6 +19,7 @@
 #include "trinket-sofia-fps-overlay.dtsi"
 #include "trinket-sofia-nfc-overlay.dtsi"
 #include "trinket-sofia-sensor-overlay.dtsi"
+#include "trinket-sofia-fmr-overlay.dtsi"
 
 &usb_qmp_phy {
 	status = "disabled";
