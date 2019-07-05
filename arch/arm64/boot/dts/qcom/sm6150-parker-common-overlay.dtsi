@@ -829,11 +829,3 @@
 		status = "disabled";
 	};
 };
-
-&ibat_lvl0 {
-	temperature = <4500>;
-};
-
-&ibat_lvl1 {
-	temperature = <5000>;
-};
