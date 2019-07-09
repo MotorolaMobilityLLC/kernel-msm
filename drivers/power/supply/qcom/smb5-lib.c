@@ -4397,7 +4397,7 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 		if (chg->pd_contract_uv <= 0) {
 			cancel_delayed_work(&chg->pd_contract_work);
 			schedule_delayed_work(&chg->pd_contract_work,
-					      msecs_to_jiffies(0));
+					      msecs_to_jiffies(2000));
 		}
 
 		/*
@@ -6471,7 +6471,7 @@ static void smblib_pd_contract_work(struct work_struct *work)
 
 	if (chg->pd_contract_uv <= 0) {
 		schedule_delayed_work(&chg->pd_contract_work,
-				      msecs_to_jiffies(100));
+				      msecs_to_jiffies(500));
 		return;
 	}
 
