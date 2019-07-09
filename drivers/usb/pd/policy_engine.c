@@ -903,6 +903,8 @@ static int pd_get_pdo(struct usbpd *pd, int pdo_pos, int *uv_max, int *uv_min, i
 		return -ENOTSUPP;
 	}
 
+	usbpd_warn(&pd->dev, "pdo_pos = %d, type= %d, uv_max = %d, uv_min= %d, *ua = %d\n",
+		pdo_pos, type, *uv_max, *uv_min, *ua);
 	return 0;
 }
 
