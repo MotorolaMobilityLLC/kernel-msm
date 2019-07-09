@@ -94,24 +94,24 @@
 
 	laser_active: laser_active {
 		mux {
-			pins ="gpio57", "gpio70", "gpio58";
+			pins ="gpio57", "gpio58";
 			function = "gpio";
 		};
 
 		config {
-			pins ="gpio57", "gpio70", "gpio58";
+			pins ="gpio57", "gpio58";
 			drive-strength = <2>;
 				bias-pull-up; /* PULL Up */
 		};
 	};
 	laser_suspend: laser_suspend{
 		mux {
-			pins ="gpio57", "gpio70", "gpio58";
+			pins ="gpio57", "gpio58";
 			function = "gpio";
 		};
 
 		config {
-			pins ="gpio57", "gpio70", "gpio58";
+			pins ="gpio57", "gpio58";
 			drive-strength = <2>;
 			bias-pull-down; /* PULL Down */
 		};
