@@ -1261,6 +1261,7 @@ static enum hrtimer_restart pd_timeout(struct hrtimer *timer)
 {
 	struct usbpd *pd = container_of(timer, struct usbpd, timer);
 
+	usbpd_dbg(&pd->dev, "timeout");
 	queue_work(pd->wq, &pd->sm_work);
 
 	return HRTIMER_NORESTART;
@@ -4549,6 +4550,7 @@ out:
 static ssize_t get_src_cap_ext_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+#ifdef QCOM_BASE
 	int i, ret, len = 0;
 	struct usbpd *pd = dev_get_drvdata(dev);
 
@@ -4567,6 +4569,11 @@ static ssize_t get_src_cap_ext_show(struct device *dev,
 	buf[len] = '\0';
 
 	return len;
+#else
+	struct usbpd *pd = dev_get_drvdata(dev);
+	usbpd_warn(&pd->dev, "%s don't get src cap ext\n", __func__);
+	return -EINVAL;
+#endif
 }
 static DEVICE_ATTR_RO(get_src_cap_ext);
 
