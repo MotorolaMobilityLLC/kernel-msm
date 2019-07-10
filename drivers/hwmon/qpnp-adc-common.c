@@ -956,7 +956,7 @@ static const struct qpnp_vadc_map_pt adcmap_batt_therm_qrd_215[] = {
 	{569,	740},
 	{565,	760},
 	{562,	780},
-	{558,	800}
+	{558,	350} /* MMI_STOPSHIP PMIC:Avoid shutdown due to high temp */
 };
 
 /* Voltage to temperature */
