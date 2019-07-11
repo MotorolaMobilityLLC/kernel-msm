@@ -63,6 +63,7 @@ struct lm3697_backlight_platform_data {
 
 	enum lm3697_max_current imax;
 	unsigned int init_brightness;
+	bool pwm_enable;
 
 	/* Only valid in case of PWM mode */
 	unsigned int pwm_period;
