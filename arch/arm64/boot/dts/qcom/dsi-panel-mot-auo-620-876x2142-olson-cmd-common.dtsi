@@ -52,6 +52,20 @@ qcom,mdss-dsi-panel-hdr-color-primaries = <14800 15350 33200 16500
 qcom,mdss-dsi-panel-peak-brightness = <4260000>;
 qcom,mdss-dsi-panel-blackness-level = <18>;
 
+/* Enable ESD checking */
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+qcom,mdss-dsi-panel-status-read-length = <1>;
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-panel-status-value = <0x9c>;
+
+/* MOT panel params */
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 e0];
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 53 20];
+qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
+
 qcom,mdss-dsi-display-timings {
 	timing@0{
 		qcom,mdss-dsi-panel-width = <1080>;
