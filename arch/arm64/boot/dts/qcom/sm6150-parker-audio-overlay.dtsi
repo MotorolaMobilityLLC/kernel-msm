@@ -157,13 +157,6 @@
 		cirrus,boost-cap-microfarad = <15>;
 		cirrus,asp-sdout-hiz = <0x1>;
 
-		cirrus,vpr-en = <1>;
-		cirrus,vpr-thrld = <12>;
-		cirrus,vpr-atk-vol = <3>;
-		cirrus,vpr-atk-rate = <2>;
-		cirrus,vpr-wait = <0>;
-		cirrus,vpr-rel-rate = <0>;
-
 		cirrus,gpio-config2 {
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
