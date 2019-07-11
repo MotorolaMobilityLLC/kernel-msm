@@ -63,6 +63,10 @@
 	qcom,dsi-display-list = <&dsi_ft8756_tm_vid_display
                   &dsi_mot_dummy_qhd_video_display>;
         /delete-property/ qcom,platform-te-gpio;
+
+	vddio_disp-supply = <&L9A>;
+	vsp_disp-supply = <&lcdb_ldo_vreg>;
+	vsn_disp-supply = <&lcdb_ncp_vreg>;
 };
 
 
@@ -95,7 +99,6 @@
 };
 
 &dsi_ft8756_tm_video {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,platform-reset-gpio = <&tlmm 90 0>;
@@ -106,7 +109,6 @@
 };
 
 &mot_dummy_vid_qhd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	pwms = <&pm6125_pwm 0 0>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <1>;
@@ -145,8 +147,9 @@
 			hvled1-used;
 			hvled2-used;
 			hvled3-used;
+			pwm-enable;
 
-			max-current-milliamp = <20>;
+			max-current-milliamp = <25>;
 			initial-brightness = <2000>;
 			//pwm-period = <10000>;
 		};
