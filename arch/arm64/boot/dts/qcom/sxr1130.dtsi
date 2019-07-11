@@ -16,4 +16,31 @@
 / {
 	model = "Qualcomm Technologies, Inc. SXR1130";
 	qcom,msm-id = <371 0x0>;
+
+	reserved-memory {
+		mdsp_mem: mdsp_region {
+			compatible = "shared-dma-pool";
+			alloc-ranges = <0 0x00000000 0 0xffffffff>;
+			reusable;
+			alignment = <0 0x400000>;
+			size = <0 0x12c00000>;
+		};
+	};
+
+	qcom,msm-mdsprpc-mem {
+		compatible = "qcom,msm-mdsprpc-mem-region";
+		memory-region = <&mdsp_mem>;
+	};
+};
+
+&soc {
+	qcom,ion {
+		compatible = "qcom,msm-ion";
+
+		qcom,ion-heap@22 { /* MDSP HEAP */
+			reg = <22>;
+			memory-region = <&mdsp_mem>;
+			qcom,ion-heap-type = "DMA";
+		};
+	};
 };
