@@ -54,6 +54,7 @@
 enum lm3697_bl_ctrl_mode {
 	BL_REGISTER_BASED,
 	BL_PWM_BASED,
+	BL_REGISTER_BASED_PWM,
 };
 
 /*
@@ -202,6 +203,8 @@ static int lm3697_bl_set_ctrl_mode(struct lm3697_bl *lm3697_bl)
 
 	if (pdata->pwm_period > 0)
 		lm3697_bl->mode = BL_PWM_BASED;
+	else if (pdata->pwm_enable)
+		lm3697_bl->mode = BL_REGISTER_BASED_PWM;
 	else
 		lm3697_bl->mode = BL_REGISTER_BASED;
 
@@ -210,6 +213,11 @@ static int lm3697_bl_set_ctrl_mode(struct lm3697_bl *lm3697_bl)
 		snprintf(lm3697_bl->pwm_name, sizeof(lm3697_bl->pwm_name),
 			 "%s", LM3697_DEFAULT_PWM);
 
+		return lm3697_bl_update_bits(lm3697_bl->chip,
+					     LM3697_REG_PWM_CFG, BIT(bank_id),
+					     1 << bank_id);
+	}
+	else if(lm3697_bl->mode == BL_REGISTER_BASED_PWM) {
 		return lm3697_bl_update_bits(lm3697_bl->chip,
 					     LM3697_REG_PWM_CFG, BIT(bank_id),
 					     1 << bank_id);
@@ -373,6 +381,9 @@ static int lm3697_bl_parse_dt(struct device *dev, struct lm3697_bl_chip *chip)
 		/* PWM mode */
 		of_property_read_u32(child, "pwm-period",
 				     &bl_pdata[i].pwm_period);
+
+		bl_pdata[i].pwm_enable = 0;
+		bl_pdata[i].pwm_enable = of_property_read_bool(child, "pwm-enable");
 
 		i++;
 	}
