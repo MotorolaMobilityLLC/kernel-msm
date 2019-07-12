@@ -63,7 +63,7 @@
 
 &tlmm {
 	cam_sensor_rear_gpio_active: cam_sensor_rear_gpio_active {
-		/*MIPI_SEL */
+		/* MIPI_SEL */
 		mux {
 			pins = "gpio27";
 			function = "gpio";
@@ -91,7 +91,7 @@
 	};
 
 	cam_sensor_front_gpio_active: cam_sensor_front_gpio_active {
-		/*MIPI_SEL */
+		/* MIPI_SEL */
 		mux {
 			pins = "gpio27";
 			function = "gpio";
@@ -146,7 +146,7 @@
 		};
 	};
 	cam_sensor_video_gpio_active: cam_sensor_video_gpio_active {
-		/* RESET*/
+		/* RESET */
 		mux {
 			pins = "gpio41";
 			function = "gpio";
@@ -160,7 +160,7 @@
 	};
 
 	cam_sensor_video_gpio_suspend: cam_sensor_video_gpio_suspend {
-		/* RESET*/
+		/* RESET */
 		mux {
 			pins = "gpio41";
 			function = "gpio";
@@ -180,6 +180,13 @@
 		reg = <0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
+	};
+
+	actuator_macro: qcom,actuator@1 {
+		cell-index = <1>;
+		reg = <0x1>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <1>;
 	};
 
 	eeprom_rear: qcom,eeprom@0 {
@@ -282,7 +289,7 @@
 	eeprom_macro: qcom,eeprom@2 {
 		cell-index = <2>;
 		compatible = "qcom,eeprom";
-		reg = <0x2>;
+		reg = <0x02>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
 		qcom,cam-vreg-name = "cam_vio";
@@ -302,16 +309,19 @@
 		gpios = <&tlmm 36 0>,
 			<&tlmm 46 0>,
 			<&pm6125_gpios 2 0>,
-			<&pm6125_gpios 9 0>;
+			<&pm6125_gpios 9 0>,
+			<&pmi632_gpios 2 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
 		qcom,gpio-vio = <3>;
+		qcom,gpio-vaf = <4>;
 		qcom,gpio-req-tbl-num = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAM_S_MCLK",
-					  "CAM_S_RESET",
-					  "CAM_S_AVDD",
-					  "CAM_S_VIO";
+					"CAM_S_RESET",
+					"CAM_S_AVDD",
+					"CAM_S_VIO",
+					"CAM_R_AF";
 		qcom,cci-master = <1>;
 		status = "ok";
 		clocks = <&clock_gcc GCC_CAMSS_MCLK2_CLK_SRC>,
@@ -320,7 +330,7 @@
 		qcom,clock-rates = <24000000 0>;
 	};
 
-	eeprom_video: qcom,eeprom@3 {
+	eeprom_wide: qcom,eeprom@3 {
 		cell-index = <3>;
 		compatible = "qcom,eeprom";
 		reg = <0x03>;
@@ -350,13 +360,13 @@
 		qcom,gpio-req-tbl-num = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAM_V_MCLK",
-					  "CAM_V_RESET",
-					  "CAM_V_AVDD",
-					  "CAM_V_DVDD";
+					"CAM_V_RESET",
+					"CAM_V_AVDD",
+					"CAM_V_DVDD";
 		qcom,cci-master = <0>;
 		status = "ok";
 		clocks = <&clock_gcc GCC_CAMSS_MCLK3_CLK_SRC>,
-				<&clock_gcc GCC_CAMSS_MCLK3_CLK>;
+			<&clock_gcc GCC_CAMSS_MCLK3_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 	};
@@ -480,6 +490,7 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
 		qcom,eeprom-src = <&eeprom_macro>;
+		qcom,actuator-src = <&actuator_macro>;
 		qcom,led-flash-src = <&led_flash_rear>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
@@ -500,16 +511,19 @@
 		gpios = <&tlmm 36 0>,
 			<&tlmm 46 0>,
 			<&pm6125_gpios 2 0>,
-			<&pm6125_gpios 9 0>;
+			<&pm6125_gpios 9 0>,
+			<&pmi632_gpios 2 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
 		qcom,gpio-vio = <3>;
+		qcom,gpio-vaf = <4>;
 		qcom,gpio-req-tbl-num = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAM_S_MCLK",
-					  "CAM_S_RESET",
-					  "CAM_S_AVDD",
-					  "CAM_S_VIO";
+					"CAM_S_RESET",
+					"CAM_S_AVDD",
+					"CAM_S_VIO",
+					"CAM_R_AF";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -526,8 +540,8 @@
 		reg = <0x03>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
-		qcom,mount-angle = <0>;
-		qcom,eeprom-src = <&eeprom_video>;
+		qcom,mount-angle = <90>;
+		qcom,eeprom-src = <&eeprom_wide>;
 		qcom,led-flash-src = <&led_flash_rear>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
@@ -555,15 +569,15 @@
 		qcom,gpio-req-tbl-num = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAM_V_MCLK",
-					  "CAM_V_RESET",
-					  "CAM_V_AVDD",
-					  "CAM_V_DVDD";
+					"CAM_V_RESET",
+					"CAM_V_AVDD",
+					"CAM_V_DVDD";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
 		clocks = <&clock_gcc GCC_CAMSS_MCLK3_CLK_SRC>,
-				<&clock_gcc GCC_CAMSS_MCLK3_CLK>;
+			<&clock_gcc GCC_CAMSS_MCLK3_CLK>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 	};
