@@ -824,6 +824,22 @@
 	};
 };
 
+&qusb_phy0 {
+	qcom,tune2-efuse-bit-pos = <25>;
+	qcom,tune2-efuse-num-bits = <4>;
+	qcom,tune2-efuse-correction = <(-1)>;
+	qcom,qusb-phy-init-seq = <0xf8 0x80 /* tune1 */
+				0xb3 0x84   /* tune2 */
+				0x81 0x88   /* tune3 */
+				0xc7 0x8c   /* tune4 */
+				0x30 0x08
+				0x79 0x0c
+				0x21 0x10
+				0x14 0x9c
+				0x9f 0x1c
+				0x00 0x18>;
+};
+
 &spmi_bus {
 	qcom,pm6150@0 {
 		pm6150_clkdiv: clock-controller@5b00 {
