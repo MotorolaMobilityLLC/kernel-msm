@@ -1182,7 +1182,13 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		if (i2c_reg_settings->is_settings_valid == true) {
 			i2c_reg_settings->request_id = 0;
 			i2c_reg_settings->is_settings_valid = false;
-			goto update_req_mgr;
+
+			rc = delete_request(i2c_reg_settings);
+			if (rc) {
+				CAM_ERR(CAM_FLASH,
+					"Error deleting req: %d", rc);
+				return rc;
+			}
 		}
 		i2c_reg_settings->is_settings_valid = true;
 		i2c_reg_settings->request_id =
