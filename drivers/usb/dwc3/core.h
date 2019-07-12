@@ -39,6 +39,8 @@
 
 #define DWC3_MSG_MAX	500
 
+#define MAX_ERROR_RECOVERY_TRIES              3
+
 /* Global constants */
 #define DWC3_PULL_UP_TIMEOUT	500	/* ms */
 #define DWC3_BOUNCE_SIZE	1024	/* size of a superspeed bulk */
@@ -1180,6 +1182,7 @@ struct dwc3 {
 	struct dwc3_gadget_events	dbg_gadget_events;
 	u32			xhci_imod_value;
 	int			core_id;
+	int			retries_on_error;
 	int			tx_fifo_size;
 	int			last_fifo_depth;
 
