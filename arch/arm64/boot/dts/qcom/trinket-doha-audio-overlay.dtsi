@@ -258,6 +258,9 @@
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
 		};
+		cirrus,gpio-config1 {
+			cirrus,gpio-src-select = <0x1>;
+		};
 
 		adsps {
 			#address-cells = <1>;
