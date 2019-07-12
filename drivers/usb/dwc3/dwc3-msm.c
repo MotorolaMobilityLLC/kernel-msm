@@ -2269,7 +2269,6 @@ static void dwc3_msm_vbus_draw_work(struct work_struct *w)
 	dwc3_msm_gadget_vbus_draw(mdwc, dwc->vbus_draw);
 }
 
-#define MAX_ERR_CNT 5
 static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 							unsigned int value)
 {
@@ -2281,10 +2280,6 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 
 	switch (event) {
 	case DWC3_CONTROLLER_ERROR_EVENT:
-		/* Avoid a flood of Error events */
-		if (dwc->err_cnt++ >= MAX_ERR_CNT)
-			break;
-
 		dev_info(mdwc->dev,
 			"DWC3_CONTROLLER_ERROR_EVENT received, irq cnt %lu\n",
 			dwc->irq_cnt);
@@ -3653,9 +3648,6 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 		return NOTIFY_DONE;
 
 	mdwc->ext_idx = enb->idx;
-
-	/* Reset the Controller Error Count for Vbus change */
-	dwc->err_cnt = 0;
 
 	dev_dbg(mdwc->dev, "vbus:%ld event received\n", event);
 
