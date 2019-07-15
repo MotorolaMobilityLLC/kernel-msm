@@ -484,6 +484,10 @@
 	status = "disabled";
 };
 
+&tx_macro {
+	qcom,mute-delay-ms = <50>;
+};
+
 &wsa_macro {
 	status = "disabled";
 };
