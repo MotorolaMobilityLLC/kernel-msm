@@ -2826,6 +2826,7 @@ static int fastrpc_session_alloc_locked(struct fastrpc_channel_ctx *chan,
 {
 	struct fastrpc_apps *me = &gfa;
 	int idx = 0, err = 0;
+	int cid = 0;
 
 	if (chan->sesscount) {
 		for (idx = 0; idx < chan->sesscount; ++idx) {
@@ -2842,11 +2843,24 @@ static int fastrpc_session_alloc_locked(struct fastrpc_channel_ctx *chan,
 			goto bail;
 		chan->session[idx].smmu.faults = 0;
 	} else {
-		VERIFY(err, me->mdev != NULL);
-		if (err)
-			goto bail;
-		chan->session[0].dev = me->mdev;
-		chan->session[0].smmu.dev = me->mdev;
+		cid = chan - &gcinfo[0];
+		if (cid == MDSP_DOMAIN_ID) {
+			VERIFY(err, me->mdev != NULL);
+			if (err) {
+				pr_info("ADSPRPC: mdsprpc-mem not initialized\n");
+				goto bail;
+			}
+			chan->session[0].dev = me->mdev;
+			chan->session[0].smmu.dev = me->mdev;
+		} else {
+			VERIFY(err, me->dev != NULL);
+			if (err) {
+				pr_info("ADSPRPC: adsprpc-mem not initialized\n");
+				goto bail;
+			}
+			chan->session[0].dev = me->dev;
+			chan->session[0].smmu.dev = me->dev;
+		}
 	}
 
 	*session = &chan->session[idx];
@@ -3572,7 +3586,7 @@ static int fastrpc_get_info(struct fastrpc_file *fl, uint32_t *info)
 					srcVM, 1, destVM, destVMperm, 3));
 			if (err)
 				goto bail;
-			(fl->apps->channel[cid].memshareenabled)++;
+			fl->apps->channel[cid].memshareenabled = 2;
 		}
 		VERIFY(err, !fastrpc_session_alloc_locked(
 			&fl->apps->channel[cid], 0, fl->sharedcb, &fl->sctx));
