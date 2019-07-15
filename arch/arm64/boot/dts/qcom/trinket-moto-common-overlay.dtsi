@@ -136,7 +136,7 @@
 	qcom,vbatt-cutoff-mv = <3000>;
 	qcom,vbatt-empty-mv = <2800>;
 	qcom,vbatt-low-mv = <3200>;
-	qcom,vbatt-empty-cold-mv = <3400>;
+	qcom,vbatt-empty-cold-mv = <3000>;
 	qcom,rbat-conn-mohm = <10>;
 	qcom,cl-feedback-on;
 	qcom,cl-min-start-soc = <0>;
