@@ -372,9 +372,9 @@
 			adsp@2b80000 {
 				reg = <0x2b80000>;
 				firmware {
-					aov {
+					aox {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs48l32-dsp1-aov.wmfw";
+						cirrus,wmfw-file = "cs48l32-dsp1-aox.wmfw";
 						cirrus,compr-caps = <14 1 4 1 16000>;
 					};
 				};
