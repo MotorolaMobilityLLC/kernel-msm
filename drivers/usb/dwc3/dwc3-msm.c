@@ -2284,8 +2284,6 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 			"DWC3_CONTROLLER_ERROR_EVENT received, irq cnt %lu\n",
 			dwc->irq_cnt);
 
-		dwc->retries_on_error++;
-
 		dwc3_gadget_disable_irq(dwc);
 
 		/* prevent core from generating interrupts until recovery */
@@ -5226,7 +5224,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			dev_dbg(mdwc->dev, "!id\n");
 			mdwc->drd_state = DRD_STATE_HOST_IDLE;
 			work = 1;
-		} else if (!(dwc->retries_on_error == MAX_ERROR_RECOVERY_TRIES) && test_bit(B_SESS_VLD, &mdwc->inputs)) {
+		} else if (test_bit(B_SESS_VLD, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "b_sess_vld\n");
 			if (get_psy_type(mdwc) == POWER_SUPPLY_TYPE_USB_FLOAT)
 				queue_delayed_work(mdwc->dwc3_wq,
@@ -5254,8 +5252,6 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			}
 		} else {
 			dwc3_msm_gadget_vbus_draw(mdwc, 0);
-			if (dwc->retries_on_error == MAX_ERROR_RECOVERY_TRIES)
-				dwc->retries_on_error = 0;
 			dev_dbg(mdwc->dev, "Cable disconnected\n");
 
 			if ((mdwc->dp_mux_sel_power) && (mdwc->is_enable_dp_mux_power)) {
@@ -5270,7 +5266,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 
 	case DRD_STATE_PERIPHERAL:
 		if (!test_bit(B_SESS_VLD, &mdwc->inputs) ||
-				!test_bit(ID, &mdwc->inputs) || (dwc->retries_on_error == MAX_ERROR_RECOVERY_TRIES)) {
+				!test_bit(ID, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "!id || !bsv\n");
 			mdwc->drd_state = DRD_STATE_IDLE;
 			cancel_delayed_work_sync(&mdwc->sdp_check);

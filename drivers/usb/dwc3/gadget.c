@@ -3255,9 +3255,6 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 	speed = reg & DWC3_DSTS_CONNECTSPD;
 	dwc->speed = speed;
 
-	/* Reset the retry on erratic error event count */
-	dwc->retries_on_error = 0;
-
 	/* Enable SUSPENDEVENT(BIT:6) for version 230A and above */
 	if (dwc->revision >= DWC3_REVISION_230A) {
 		reg = dwc3_readl(dwc->regs, DWC3_DEVTEN);
@@ -3628,7 +3625,7 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 		dwc->dbg_gadget_events.sof++;
 		break;
 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
-		dbg_event(0xFF, "ERROR retries_on_error=%d\n", dwc->retries_on_error);
+		dbg_event(0xFF, "ERROR", 0);
 		dwc->dbg_gadget_events.erratic_error++;
 		dwc->err_evt_seen = true;
 		break;
