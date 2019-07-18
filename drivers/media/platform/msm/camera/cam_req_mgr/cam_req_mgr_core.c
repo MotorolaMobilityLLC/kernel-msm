@@ -1092,26 +1092,6 @@ static int __cam_req_mgr_check_sync_req_is_ready(
 				sync_link->link_hdl);
 			link->sync_link_sof_skip = true;
 		}
-	} else if ((sync_link->sof_timestamp > 0) &&
-		(link->sof_timestamp < sync_link->sof_timestamp) &&
-		(sync_link->sof_timestamp - link->sof_timestamp <
-		sync_frame_duration / 5) &&
-		(sync_rd_slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC)) {
-
-		/*
-		 * There is a timing issue once enter this condition,
-		 * it means link receives the SOF event earlier than
-		 * sync link in IFE CSID side, but the process in CRM
-		 * is sync_link earlier than link, then previous SOF
-		 * event of sync link is skipped, so we also need to
-		 * skip this SOF event.
-		 */
-		if (req_id >= sync_req_id) {
-			CAM_DBG(CAM_CRM,
-				"Timing issue, the sof event of link %x is delayed",
-				link->link_hdl);
-			return -EAGAIN;
-		}
 	}
 
 	CAM_DBG(CAM_REQ,
@@ -2012,6 +1992,7 @@ int cam_req_mgr_process_add_req(void *priv, void *data)
 	struct cam_req_mgr_req_tbl          *tbl = NULL;
 	struct cam_req_mgr_tbl_slot         *slot = NULL;
 	struct crm_task_payload             *task_data = NULL;
+	struct cam_req_mgr_core_session     *session;
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_CRM, "input args NULL %pK %pK", data, priv);
@@ -2022,6 +2003,7 @@ int cam_req_mgr_process_add_req(void *priv, void *data)
 	link = (struct cam_req_mgr_core_link *)priv;
 	task_data = (struct crm_task_payload *)data;
 	add_req = (struct cam_req_mgr_add_request *)&task_data->u;
+	session = (struct cam_req_mgr_core_session *)link->parent;
 
 	for (i = 0; i < link->num_devs; i++) {
 		device = &link->l_dev[i];
@@ -2046,6 +2028,7 @@ int cam_req_mgr_process_add_req(void *priv, void *data)
 	 * 3. mark req_ready_map with this dev_bit.
 	 */
 
+	mutex_lock(&session->lock);
 	mutex_lock(&link->req.lock);
 	idx = __cam_req_mgr_find_slot_for_req(link->req.in_q, add_req->req_id);
 	if (idx < 0) {
@@ -2054,6 +2037,7 @@ int cam_req_mgr_process_add_req(void *priv, void *data)
 			add_req->req_id, device->dev_info.name, link->link_hdl);
 		rc = -EBADSLT;
 		mutex_unlock(&link->req.lock);
+		mutex_unlock(&session->lock);
 		goto end;
 	}
 
@@ -2093,6 +2077,7 @@ int cam_req_mgr_process_add_req(void *priv, void *data)
 		slot->state = CRM_REQ_STATE_READY;
 	}
 	mutex_unlock(&link->req.lock);
+	mutex_unlock(&session->lock);
 
 end:
 	return rc;
