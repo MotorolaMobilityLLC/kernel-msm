@@ -187,14 +187,14 @@
 		VA-supply = <&pm6125_l9>;
 		VP-supply = <&pm6125_l9>;
 
-		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_l_irq>, <&amp_l_reset>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 		cirrus,gpio-config2 {
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
@@ -235,11 +235,11 @@
 		interrupts = <101 IRQ_TYPE_EDGE_FALLING>;
 		cirrus,right-channel-amp;
 
-		cirrus,boost-peak-milliamp = <4500>;
+		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
 
-		cirrus,asp-sdout-hiz = <0x1>;
+		cirrus,asp-sdout-hiz = <0x3>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_r_irq>, <&amp_r_reset>;
@@ -334,6 +334,10 @@
 
 &clock_audio_wsa_2 {
 	status = "disabled";
+};
+
+&tx_macro {
+	qcom,mute-delay-ms = <50>;
 };
 
 &wsa_macro {
