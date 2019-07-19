@@ -404,7 +404,6 @@
 };
 
 &mot_auo_620_876x2142_cmd_v0 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_auo_876x2142_620_v0";
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0D>;
 	qcom,mdss-dsi-t-clk-pre = <0x30>;
@@ -438,7 +437,6 @@
 };
 
 &mot_auo_620_876x2142_cmd_v1 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_auo_876x2142_620_v1";
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0D>;
 	qcom,mdss-dsi-t-clk-pre = <0x30>;
@@ -480,7 +478,6 @@
 };
 
 &mot_auo_620_876x2142_cmd_v2 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_auo_876x2142_620_v2";
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0D>;
 	qcom,mdss-dsi-t-clk-pre = <0x30>;
@@ -496,7 +493,6 @@
 };
 
 &mot_boe_620_876x2142_cmd_v0 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_boe_876x2142_620_v0";
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0D>;
 	qcom,mdss-dsi-t-clk-pre = <0x30>;
@@ -512,7 +508,6 @@
 };
 
 &mot_csot_620_876x2142_cmd_v0 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_csot_876x2142_620_v0";
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0D>;
 	qcom,mdss-dsi-t-clk-pre = <0x30>;
@@ -535,7 +530,6 @@
  * feature which is using qcom,panel-mode-gpio as the touch reset GPIO
  */
 &mot_auo_139_480x480_cmd_v0 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_auo_139_480x480_cmd_v0";
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 	qcom,mdss-dsi-mode-sel-gpio-state = "single_port";
 	qcom,panel-mode-gpio = <&tlmm 99 0>;
@@ -554,7 +548,6 @@
 };
 
 &mot_boe_269_800x600_cmd_v0 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_boe_269_800x600_cmd_v0";
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0a>;
 	qcom,mdss-dsi-t-clk-pre = <0x1B>;
@@ -586,7 +579,6 @@
 };
 
 &mot_boe_269_800x600_cmd_v1 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_boe_269_800x600_cmd_v1";
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0a>;
 	qcom,mdss-dsi-t-clk-pre = <0x1B>;
@@ -622,7 +614,6 @@
 };
 
 &mot_boe_269_800x600_cmd_v2 {
-	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_boe_269_800x600_cmd_v2";
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0a>;
 	qcom,mdss-dsi-t-clk-pre = <0x1B>;
