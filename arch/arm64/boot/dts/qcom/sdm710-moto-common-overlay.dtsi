@@ -587,7 +587,7 @@
 &qupv3_se7_i2c {
 	status = "ok";
 	synaptics_dsx_i2c@20 {
-		status = "ok";
+		status = "/chosen","mmi,panel_name","contains","auo";
 		compatible = "synaptics,synaptics_mmi";
 		reg = <0x20>;
 		interrupt-parent = <&tlmm>;
@@ -616,6 +616,21 @@
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&ts_sub_rst_suspend &ts_sub_int_suspend>;
 		pinctrl-1 = <&ts_sub_rst_active &ts_sub_int_active>;
+	};
+
+	sec_mmi@48 {
+		status = "/chosen","mmi,panel_name","contains","boe","csot";
+		compatible = "sec,sec_ts";
+		reg = <0x48>;
+		sec,rst_gpio = <&tlmm 95 0>;
+		sec,irq_gpio = <&tlmm 96 0>;
+		sec,irq_type = <0x2008>; /*IRQF_TRIGGER_LOW | IRQF_ONESHOT*/
+		sec,max_coords = <876 2142>;
+		sec,regulator_dvdd = "pm660l_l3";
+		sec,regulator_avdd = "pm660_l11";
+		pinctrl-names = "on_state", "off_state";
+		pinctrl-0 = <&touch_reset_active &touch_int_active>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
 	};
 };
 
