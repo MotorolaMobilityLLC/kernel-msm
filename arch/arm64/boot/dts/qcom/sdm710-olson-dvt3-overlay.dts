@@ -57,3 +57,9 @@
 		cap_vdd-supply = <&pm660l_bob>;
 	};
 };
+
+&qupv3_se7_i2c {
+	sec_mmi@48 {
+		status = "disabled";
+	};
+};
