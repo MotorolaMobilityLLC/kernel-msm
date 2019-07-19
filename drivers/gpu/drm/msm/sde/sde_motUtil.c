@@ -366,8 +366,8 @@ static int _sde_debugfs_motUtil_kms_prop_test(struct sde_kms *kms,
 			break;
 		case KMSPROPTEST_SETPROP:
 			motUtil_data.read_cmd = false;
-			if (conn->funcs && conn->funcs->set_property) {
-				ret = conn->funcs->set_property(conn,
+			if (conn->funcs && conn->funcs->atomic_set_property) {
+				ret = conn->funcs->atomic_set_property(conn, conn->state,
 					property,
 					input[KMSPROPTEST_NEW_VAL]);
 			} else {
