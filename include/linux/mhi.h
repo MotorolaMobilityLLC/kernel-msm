@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -113,6 +113,9 @@ enum mhi_dev_state {
 	MHI_STATE_SYS_ERR  = 0xFF,
 	MHI_STATE_MAX,
 };
+
+#define MHI_VOTE_BUS BIT(0) /* do not disable the bus */
+#define MHI_VOTE_DEVICE BIT(1) /* prevent mhi device from entering lpm */
 
 /**
  * struct image_info - firmware and rddm table table
@@ -463,22 +466,25 @@ int mhi_device_configure(struct mhi_device *mhi_div,
  * Only disables lpm, does not immediately exit low power mode
  * if controller already in a low power mode
  * @mhi_dev: Device associated with the channels
+ * @vote: requested vote (for future usage)
  */
-void mhi_device_get(struct mhi_device *mhi_dev);
+void mhi_device_get(struct mhi_device *mhi_dev, int vote);
 
 /**
  * mhi_device_get_sync - disable all low power modes
  * Synchronously disable all low power, exit low power mode if
  * controller already in a low power state
  * @mhi_dev: Device associated with the channels
+ * @vote: requested vote (for future usage)
  */
-int mhi_device_get_sync(struct mhi_device *mhi_dev);
+int mhi_device_get_sync(struct mhi_device *mhi_dev, int vote);
 
 /**
  * mhi_device_put - re-enable low power modes
  * @mhi_dev: Device associated with the channels
+ * @vote: requested vote (for future usage)
  */
-void mhi_device_put(struct mhi_device *mhi_dev);
+void mhi_device_put(struct mhi_device *mhi_dev, int vote);
 
 /**
  * mhi_prepare_for_transfer - setup channel for data transfer
