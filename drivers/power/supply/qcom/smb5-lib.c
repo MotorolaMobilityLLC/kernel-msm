@@ -771,8 +771,6 @@ static int smblib_set_adapter_allowance(struct smb_charger *chg,
 			break;
 		case USBIN_ADAPTER_ALLOW_5V_OR_12V:
 		case USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V:
-			allowed_voltage = USBIN_ADAPTER_ALLOW_5V_OR_9V;
-			break;
 		case USBIN_ADAPTER_ALLOW_5V_TO_12V:
 			allowed_voltage = USBIN_ADAPTER_ALLOW_5V_TO_9V;
 			break;
