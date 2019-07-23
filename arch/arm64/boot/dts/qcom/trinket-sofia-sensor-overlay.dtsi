@@ -38,7 +38,16 @@
 	};
 };
 
+/* Compatible with the external LDO or forced power
 
+	Semtech,power-supply-type:
+	<0> means the LDO from PMIC: the default value if no set "Semtech,power-supply-type";
+		 The configuration for vdd-supply remains the same.
+	<1> means forced power supply;
+		no need set others.
+	<2> means external LDO power supply;
+		Need define "Semtech,eldo-gpio" for external LDO enable gpio;
+*/
 &qupv3_se1_i2c {
 	status = "ok";
 	sx933x@28 { /* SAR sensor */
@@ -47,7 +56,8 @@
 		pinctrl-names = "default","sleep";
 		pinctrl-0 = <&sar_int_default>;
 		pinctrl-1 = <&sar_int_sleep>;
-		cap_vdd-supply = <&pm6125_l21>;
+		Semtech,power-supply-type=<2>;
+		Semtech,eldo-gpio=<&tlmm 49 0x02>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <82 0x02>;
 		interrupt-names = "sx933x_irq";
