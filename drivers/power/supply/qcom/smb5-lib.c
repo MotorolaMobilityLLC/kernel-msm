@@ -6636,15 +6636,41 @@ int smblib_force_dr_mode(struct smb_charger *chg, int mode)
 
 	return rc;
 }
+static int smblib_handle_dual_role_failure(struct smb_charger *chg, int mode)
+{
+	int rc = 0;
+	union power_supply_propval pval = {0, };
+	bool usb_present;
 
+	rc = smblib_get_prop_usb_present(chg, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't get usb presence status rc=%d\n", rc);
+		return rc;
+	}
+	usb_present = pval.intval;
+	if (chg->use_extcon) {
+		if (usb_present) {
+			if (mode == DUAL_ROLE_PROP_MODE_DFP)
+				smblib_notify_device_mode(chg, true);
+		} else {
+			if (mode == DUAL_ROLE_PROP_MODE_UFP)
+				smblib_notify_usb_host(chg, true);
+		}
+		smblib_dbg(chg, PR_MISC, "Role reversal is failed for setting %s notifying usb the same\n",
+							mode ? "DFP" : "UFP");
+	}
+	return rc;
+}
 static void smblib_dual_role_check_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 					role_reversal_check.work);
 	int rc = 0;
+	int mode = 0;
 
 	mutex_lock(&chg->dr_lock);
 
+	mode = chg->dr_mode;
 	switch (chg->dr_mode) {
 	case DUAL_ROLE_PROP_MODE_UFP:
 		if (chg->typec_mode < POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) {
@@ -6654,6 +6680,10 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 						DUAL_ROLE_PROP_MODE_NONE);
 			if (rc < 0)
 				pr_err("Failed to set DRP mode, rc=%d\n", rc);
+			rc = smblib_handle_dual_role_failure(chg, mode);
+			if (rc < 0)
+				pr_err("Failed to handle dual role_failure rc=%d\n",
+									rc);
 		}
 		chg->pr_swap_in_progress = false;
 		break;
@@ -6666,6 +6696,10 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 						DUAL_ROLE_PROP_MODE_NONE);
 			if (rc < 0)
 				pr_err("Failed to set DRP mode, rc=%d\n", rc);
+			rc = smblib_handle_dual_role_failure(chg, mode);
+			if (rc < 0)
+				pr_err("Failed to handle dual role failure rc=%d\n",
+									rc);
 		}
 		chg->pr_swap_in_progress = false;
 		break;
