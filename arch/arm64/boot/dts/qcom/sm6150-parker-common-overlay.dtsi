@@ -769,6 +769,18 @@
 			assigned-clock-rates = <2400000>;
 		};
 	};
+
+	qcom,pm6150l@5 {
+		pm6150a_amoled_moto: qcom,amoled_moto {
+			compatible = "qcom,qpnp-amoled-regulator-moto";
+			status = "okay";
+
+			ab_vreg: ab@de00 {
+				reg = <0xde00 0x100>;
+				reg-names = "ab_base";
+			};
+		};
+	};
 };
 
 &sde_dp {
