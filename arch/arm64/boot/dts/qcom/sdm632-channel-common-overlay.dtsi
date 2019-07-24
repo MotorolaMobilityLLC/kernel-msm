@@ -37,8 +37,7 @@
 				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
 				type = "ext4";
 				mnt_flags = "ro,barrier=1,discard";
-                                /* MMI_STOPSHIP Kernel: disable verify for bringup */
-				fsmgr_flags = "wait,slotselect";
+				fsmgr_flags = "wait,verify,slotselect";
 				status = "ok";
 			};
 			system {
