@@ -1,0 +1,208 @@
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+
+&tlmm{
+	bq27426_irq_default: bq27426_irq_default {
+		mux {
+			pins = "gpio119";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio119";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+			input-enable;
+		};
+	};
+
+};
+
+&soc {
+	mmi_chrg_manager {
+		compatible = "mmi,chrg-manager";
+		qcom,usbpd-phandle = <&pm6150_pdphy>;
+		mmi,pps-volt-steps = <20000>;
+		mmi,pps-curr-steps = <100000>;
+		mmi,pd-volt-max = <11000000>;
+		mmi,pd-curr-max = <4000000>;
+		mmi,batt-curr-boost = <300000>;
+		mmi,batt-ovp-lmt = <4475000>;
+		mmi,pl-chrg-vbatt-min = <3600000>;
+		mmi,extrn-fg;
+		mmi,extrn-fg-name = "bq27426_bms";
+		mmi,extrn-sense;
+		mmi,chrg-temp-zones-num = <5>;
+		mmi,mmi-chrg-temp-zones =
+					<0 4200 582 0 0 0 0 0 0>,
+					<10 4200 2000 4400 582 0 0 0 0>,
+					<15 4200 6000 4400 2000 0 0 0 0>,
+					<45 4250 8000 4300 6000 4350 4000 4400 2000>,
+					<60 4200 6000 0 0 0 0 0 0>;
+		mmi,thermal-mitigation =
+					<8000000>,
+					<7000000>,
+					<6000000>,
+					<5000000>,
+					<4000000>,
+					<3000000>,
+					<2000000>,
+					<1000000>;
+		charger_device_0 {
+			chrg-name = "pmic-sw";
+			psy-name = "qcom_battery";
+			charging-curr-limited = <500000>;
+		};
+		charger_device_1 {
+			chrg-name = "cp-master";
+			psy-name = "bq2597x-master";
+			charging-curr-min = <2000000>;
+		};
+		charger_device_2 {
+			chrg-name = "cp-slave";
+			psy-name = "bq2597x-slave";
+			charging-curr-min = <4000000>;
+		};
+	};
+};
+
+&pm6150_gpios {
+	bq2597x_int {
+		bq2597x_int_default: bq2597x_int_default {
+			pins = "gpio3";
+			function = "normal";
+			input-enable;
+			bias-disable;
+			bias-pull-up;
+			qcom,pull-up-strength = <PMIC_GPIO_PULL_UP_30>;
+			power-source = <0>;
+		};
+	};
+	bq2597x_slave_int {
+		bq2597x_slave_int_default: bq2597x_slave_int_default {
+			pins = "gpio1";
+			function = "normal";
+			input-enable;
+			bias-disable;
+			bias-pull-up;
+			qcom,pull-up-strength = <PMIC_GPIO_PULL_UP_30>;
+			power-source = <0>;
+		};
+	};
+};
+
+&qupv3_se3_i2c {
+	bq27426@55 {
+		compatible = "ti,bq27426";
+		reg = <0x55>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bq27426_irq_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <119 0>;
+		interrupt-names = "bq27426_irq";
+		status = "okay";
+	};
+
+	bq2597x-master@65 {
+		compatible = "ti,bq2597x-master";
+		reg = <0x65>;
+
+		/delete-property/ interrupts;
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <0x0 0xc2 0x0 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bq2597x_int_default>;
+		ti,bq2597x,bat-ovp-disable;
+		ti,bq2597x,bat-ovp-alarm-disable;
+		ti,bq2597x,bat-ucp-alarm-disable;
+		ti,bq2597x,bat-ocp-disable;
+		ti,bq2597x,bat-ocp-alarm-disable;
+
+		ti,bq2597x,bat-ucp-disable;
+
+		ti,bq2597x,bus-ovp-alarm-disable;
+		ti,bq2597x,bus-ocp-disable;
+		ti,bq2597x,bus-ocp-alarm-disable;
+
+
+		ti,bq2597x,bat-therm-disable;
+		ti,bq2597x,bus-therm-disable;
+		ti,bq2597x,die-therm-disable;
+
+		ti,bq2597x,bat-ovp-threshold = <4525>;
+		ti,bq2597x,bat-ovp-alarm-threshold = <4400>;
+		ti,bq2597x,bat-ocp-threshold = <10000>;
+		ti,bq2597x,bat-ocp-alarm-threshold = <8500>;
+
+		ti,bq2597x,bus-ovp-threshold = <12000>;
+		ti,bq2597x,bus-ovp-alarm-threshold = <11000>;
+		ti,bq2597x,bus-ocp-threshold = <3750>;
+		ti,bq2597x,bus-ocp-alarm-threshold = <3500>;
+
+		ti,bq2597x,bat-ucp-alarm-threshold = <2000>;
+
+		ti,bq2597x,bat-therm-threshold = <0x15>;/*4.1%*/
+		ti,bq2597x,bus-therm-threshold = <0x15>;/*4.1%*/
+		ti,bq2597x,die-therm-threshold = <125>;
+
+		ti,bq2597x,ac-ovp-threshold = <17>;
+		ti,bq2597x,sense-resistor-mohm = <5>;
+
+	};
+
+	bq2597x-slave@66 {
+		compatible = "ti,bq2597x-slave";
+		reg = <0x66>;
+		/delete-property/ interrupts;
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <0x0 0xc0 0x0 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bq2597x_slave_int_default>;
+
+		ti,bq2597x,bat-ovp-disable;
+		ti,bq2597x,bat-ovp-alarm-disable;
+		ti,bq2597x,bat-ucp-alarm-disable;
+		ti,bq2597x,bat-ocp-disable;
+		ti,bq2597x,bat-ocp-alarm-disable;
+
+		ti,bq2597x,bat-ucp-disable;
+
+		ti,bq2597x,bus-ovp-alarm-disable;
+		ti,bq2597x,bus-ocp-disable;
+		ti,bq2597x,bus-ocp-alarm-disable;
+
+		ti,bq2597x,bat-therm-disable;
+		ti,bq2597x,bus-therm-disable;
+		ti,bq2597x,die-therm-disable;
+
+		ti,bq2597x,bat-ovp-threshold = <4525>;
+		ti,bq2597x,bat-ovp-alarm-threshold = <4400>;
+		ti,bq2597x,bat-ocp-threshold = <10000>;
+		ti,bq2597x,bat-ocp-alarm-threshold = <8500>;
+
+		ti,bq2597x,bus-ovp-threshold = <12000>;
+		ti,bq2597x,bus-ovp-alarm-threshold = <11000>;
+		ti,bq2597x,bus-ocp-threshold = <3750>;
+		ti,bq2597x,bus-ocp-alarm-threshold = <3500>;
+
+		ti,bq2597x,bat-ucp-alarm-threshold = <2000>;
+
+		ti,bq2597x,bat-therm-threshold = <0x15>;/*4.1%*/
+		ti,bq2597x,bus-therm-threshold = <0x15>;/*4.1%*/
+		ti,bq2597x,die-therm-threshold = <125>;
+
+		ti,bq2597x,ac-ovp-threshold = <12>;
+		ti,bq2597x,sense-resistor-mohm = <5>;
+
+	};
+};
+
+&pm6150_charger {
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,iterm-ma = <175>;
+	qcom,extrn-fg;
+	qcom,dc-unsupported;
+	qcom,wireless-unsupported;
+	qcom,usbeb-unsupported;
+};
+

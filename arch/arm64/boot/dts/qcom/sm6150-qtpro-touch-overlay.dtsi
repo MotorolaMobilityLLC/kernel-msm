@@ -1,0 +1,63 @@
+&qupv3_se6_i2c {
+	status = "disabled";
+};
+
+&qupv3_se1_i2c {
+	himax_ts@48 {
+		status = "disabled";
+	};
+
+	focaltech@38 {
+		compatible = "focaltech,mmi";
+		reg = <0x38>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <89 0x02>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		focaltech,name = "ft8756";
+		focaltech,family-id = <0xf0>;
+		focaltech,irq-gpio = <&tlmm 89 0x02>;
+		focaltech,display-coords = <0 0 720 1544>;
+		focaltech,max-touch-number = <10>;
+		focaltech,no-force-update;
+		focaltech,i2c-pull-up;
+		focaltech,group-id = <1>;
+		focaltech,hard-reset-delay-ms = <20>;
+		focaltech,soft-reset-delay-ms = <200>;
+		focaltech,num-max-touches = <10>;
+		focaltech,fw-delay-aa-ms = <30>;
+		focaltech,fw-delay-55-ms = <30>;
+		focaltech,fw-upgrade-id1 = <0x79>;
+		focaltech,fw-upgrade-id2 = <0x08>;
+		focaltech,fw-delay-readid-ms = <10>;
+		focaltech,fw-delay-era-flsh-ms = <2000>;
+		focaltech,fw-update-mmi;
+		focaltech,force-send-sleep;
+		focaltech,fw-auto-cal;
+		focaltech,resume-in-workqueue;
+		focaltech,ignore-id-check;
+		status = "/chosen", "mmi,panel_name", "dsi_ft8756_focal_vid_display";
+	};
+};
+
+&qupv3_se6_spi {
+	status = "ok";
+	focaltech@0 {
+		compatible = "focaltech,fts";
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <89 0x02>;
+		spi-max-frequency=<20000000>;
+		focaltech,reset-gpio = <&tlmm 88 0x01>;
+		focaltech,irq-gpio = <&tlmm 89 0x02>;
+		focaltech,max-touch-number = <5>;
+		focaltech,display-coords =  <0 0 1080 2340>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+	};
+};
+
