@@ -1,0 +1,14 @@
+&qupv3_se1_i2c {
+	status = "ok";
+	aw8695_haptic@5A {
+	    compatible = "awinic,aw8695_haptic";
+	    reg = <0x5A>;
+	    reset-gpio = <&pmi632_gpios 4 0>;
+	    irq-gpio = <&tlmm 43 0>;
+	    status = "okay";
+	};
+};
+
+&pmi632_vib {
+	status = "disabled";
+};
