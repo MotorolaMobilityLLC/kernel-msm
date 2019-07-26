@@ -58,6 +58,7 @@
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_release>;
+		status = "/chosen", "mmi,panel_name", "dsi_ft8756_focal_1080P_vid_display";
 	};
 };
 
