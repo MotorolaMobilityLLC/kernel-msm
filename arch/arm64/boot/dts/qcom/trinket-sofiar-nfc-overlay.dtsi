@@ -1,0 +1,120 @@
+&tlmm {
+
+    nfc {
+        nfc_enable_active: nfc_enable_active {
+		/* active state */
+		mux {
+			/* 83: Enable */
+			pins = "gpio83";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio83";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+        nfc_enable_suspend: nfc_enable_suspend {
+		/* sleep state */
+		mux {
+			/* 83: Enable */
+			pins = "gpio83";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio83";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+		};
+        };
+
+	nfc_int_active: nfc_int_active {
+		/* active state */
+		mux {
+			/* GPIO 85 NFC Read Interrupt */
+			pins = "gpio85";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio85";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+		};
+	};
+
+	nfc_int_suspend: nfc_int_suspend {
+		/* sleep state */
+		mux {
+			/* GPIO 85 NFC Read Interrupt */
+			pins = "gpio85";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio85";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+		};
+	};
+
+	nfc_clk_req_active: nfc_clk_req_active {
+		/* active state */
+		mux {
+			/* GPIO 95: NFC CLOCK REQUEST */
+			pins = "gpio95";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio95";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+		};
+	};
+
+	nfc_clk_req_suspend: nfc_clk_req_suspend {
+		/* sleep state */
+		mux {
+			/* GPIO 95: NFC CLOCK REQUEST */
+			pins = "gpio95";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio95";
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;
+		};
+	};
+    };
+};
+
+&qupv3_se3_i2c {
+	status = "ok";
+	st21nfc@8 {
+		compatible = "st,st21nfc";
+		status = "/chosen", "mmi,nfc", "true";
+		reg = <0x08>;
+		st,irq_gpio = <&tlmm 85 0x00>;
+		st,reset_gpio = <&tlmm 83 0x00>;
+		st,clkreq_gpio = <&tlmm 95 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <85 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active
+				&nfc_clk_req_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend
+				&nfc_clk_req_suspend>;
+	};
+};
+
+&qupv3_se1_i2c {
+	nq@28 {
+		status = "disabled";
+	};
+};
