@@ -2018,6 +2018,7 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 			msleep(50);
 			vote(chg->chg_disable_votable, FORCE_RECHARGE_VOTER,
 					false, 0);
+		chg->chg_done = 0;
 		break;
 	case POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE:
 		chg->fcc_stepper_enable = val->intval;
