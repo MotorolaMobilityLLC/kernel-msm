@@ -1,0 +1,114 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm {
+	sar_int_default: sar_int_default {
+			mux {
+				pins = "gpio82";
+				function =  "gpio";
+			};
+			config {
+				pins = "gpio82";
+				num-grp-pins = <1>;
+				drive-strength = <2>;
+				bias-no-pull;
+			};
+	};
+
+	sar_int_sleep: sar_int_sleep {
+			mux {
+				pins = "gpio82";
+				function =  "gpio";
+			};
+			config {
+				pins = "gpio82";
+				num-grp-pins = <1>;
+				drive-strength = <2>;
+				bias-no-pull;
+			};
+	};
+};
+
+/* Compatible with the external LDO or forced power
+
+	Semtech,power-supply-type:
+	<0> means the LDO from PMIC: the default value if no set "Semtech,power-supply-type";
+		 The configuration for vdd-supply remains the same.
+	<1> means forced power supply;
+		no need set others.
+	<2> means external LDO power supply;
+		Need define "Semtech,eldo-gpio" for external LDO enable gpio;
+*/
+&qupv3_se1_i2c {
+	status = "ok";
+	sx933x@28 { /* SAR sensor */
+		compatible = "Semtech,sx933x";
+		reg = <0x28>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&sar_int_default>;
+		pinctrl-1 = <&sar_int_sleep>;
+		Semtech,power-supply-type=<2>;
+		Semtech,eldo-gpio=<&tlmm 49 0x02>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <82 0x02>;
+		interrupt-names = "sx933x_irq";
+		Semtech,nirq-gpio= <&tlmm 82 0x02>;
+		Semtech,button-flag = <0x07>;
+		Semtech,reg-num = <43>;
+		Semtech,reg-init = <
+			0x8020 0x000F0000
+			0x4004 0x77
+			0x4054 0x400
+			0x42C0 0x8000000
+			0x42C4 0x3F
+			0x801C 0x31
+			0x8024 0x1A5E
+			0x8028 0x3dff825e
+			0x802C 0x1000065F
+			0x8030 0x3ffe8258
+			0x8034 0x1000085E
+			0x8038 0x2fff8260
+			0x803C 0x1000065F
+			0x8040 0x3ff78262
+			0x8044 0x85E
+			0x8048 0x3fbf82d1
+			0x804C 0x88E
+			0x8050 0x80001EE6
+			0x8054 0x10124015
+			0x8058 0x60600028
+			0x805C 0x5000
+			0x8064 0xC80000
+			0x8074 0x10222B15
+			0x8078 0x60600028
+			0x807C 0x7000
+			0x8084 0x9E0000
+			0x808C 0x1F001F00
+			0x8090 0x10000
+			0x8094 0x10123C15
+			0x8098 0x60600031
+			0x809C 0x5000
+			0x80A4 0xD60000
+			0x80B4 0x1052C800
+			0x80B8 0x60600004
+			0x80BC 0x54AC5000
+			0x80D4 0x1016C800
+			0x80D8 0x20600031
+			0x80DC 0x54AC5300
+			0x80F4 0x10162800
+			0x80F8 0x20400031
+			0x80FC 0x54AC5300
+			0x8124 0x4000003
+			0x8128 0x4000004
+		>;
+		status = "ok";
+	};
+};
