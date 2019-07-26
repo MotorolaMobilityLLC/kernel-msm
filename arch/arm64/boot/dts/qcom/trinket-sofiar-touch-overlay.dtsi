@@ -1,0 +1,26 @@
+&qupv3_se2_i2c {
+	status = "disabled";
+};
+
+&qupv3_se2_spi {
+	status = "ok";
+	focaltech@0 {
+		compatible = "focaltech,fts";
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <88 0x02>;
+		spi-max-frequency=<10000000>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		focaltech,name = "ft8756";
+		focaltech,family-id = <0xf0>;
+		focaltech,reset-gpio = <&tlmm 87 0x01>;
+		focaltech,irq-gpio = <&tlmm 88 0x02>;
+		focaltech,display-coords = <0 0 1079 2299>;
+		focaltech,max-touch-number = <10>;
+		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
+	};
+};
+
