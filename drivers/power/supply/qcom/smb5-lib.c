@@ -1272,6 +1272,7 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->usbov_dbc_work);
 	vote(chg->awake_votable, USBOV_DBC_VOTER, false, 0);
 	chg->dbc_usbov = false;
+	chg->chg_done = 0;
 
 	chg->voltage_min_uv = MICRO_5V;
 	chg->voltage_max_uv = MICRO_5V;
@@ -2078,7 +2079,10 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		 * charging path is un-suspended.
 		 */
 		if (pval.intval && !suspend) {
-			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+			if (chg->chg_done)
+				val->intval = POWER_SUPPLY_STATUS_FULL;
+			else
+				val->intval = POWER_SUPPLY_STATUS_CHARGING;
 			return 0;
 		}
 	}
@@ -5273,6 +5277,7 @@ static void smblib_eval_chg_termination(struct smb_charger *chg, u8 batt_status)
 		chg->cc_soc_ref = 0;
 		chg->last_cc_soc = 0;
 		chg->term_vbat_uv = 0;
+		chg->chg_done = 1;
 		alarm_start_relative(&chg->chg_termination_alarm,
 				ms_to_ktime(CHG_TERM_WA_ENTRY_DELAY_MS));
 	} else if (pval.intval < 100) {
@@ -6458,6 +6463,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->usbov_dbc_work);
 	vote(chg->awake_votable, USBOV_DBC_VOTER, false, 0);
 	chg->dbc_usbov = false;
+	chg->chg_done = 0;
 
 	chg->pulse_cnt = 0;
 	chg->usb_icl_delta_ua = 0;
@@ -7284,17 +7290,12 @@ irqreturn_t usbin_ov_irq_handler(int irq, void *data)
 	 * differentiate between OV IRQ glitch and real OV_IRQ, add a debounce
 	 * period for evaluation.
 	 */
-	if (stat & USBIN_OV_RT_STS_BIT) {
-		chg->dbc_usbov = true;
-		vote(chg->awake_votable, USBOV_DBC_VOTER, true, 0);
-		schedule_delayed_work(&chg->usbov_dbc_work,
-				msecs_to_jiffies(USB_OV_DBC_PERIOD_MS));
-	} else {
-		cancel_delayed_work_sync(&chg->usbov_dbc_work);
-		chg->dbc_usbov = false;
-		vote(chg->awake_votable, USBOV_DBC_VOTER, false, 0);
-	}
+	chg->dbc_usbov = true;
+	vote(chg->awake_votable, USBOV_DBC_VOTER, true, 0);
+	schedule_delayed_work(&chg->usbov_dbc_work,
+			msecs_to_jiffies(USB_OV_DBC_PERIOD_MS));
 
+	power_supply_changed(chg->batt_psy);
 	smblib_dbg(chg, PR_MISC, "USBOV debounce status %d\n",
 				chg->dbc_usbov);
 	return IRQ_HANDLED;
