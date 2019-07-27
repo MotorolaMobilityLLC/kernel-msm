@@ -42,6 +42,14 @@ config SOFIAP_DTB
 	  Only include Sofiap specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config SOFIAR_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Sofiar DTBs"
+	help
+	  Only include Sofiar specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QCOM_MEM_OFFLINE
 	bool "Dynamic Memory Region Offline driver"
 	help
