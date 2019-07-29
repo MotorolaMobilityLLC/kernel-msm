@@ -31,7 +31,7 @@
 
 	/* Primary Display:  BOE */
 	mot_boe_620_876x2142_cmd_v0: qcom,mdss_dsi_mot_boe_620_876x2142_cmd_v0 {
-		#include "dsi-panel-mot-auo-620-876x2142-olson-cmd-common.dtsi"
+		#include "dsi-panel-mot-boe-620-876x2142-olson-cmd-common.dtsi"
 	};
 
 	/* Primary Display:  SMD */
