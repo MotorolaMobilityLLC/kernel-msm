@@ -22,6 +22,8 @@ struct mipi_dsi_device;
 #define MIPI_DSI_MSG_UNICAST	BIT(2)
 /* Stack all commands until lastcommand bit and trigger all in one go */
 #define MIPI_DSI_MSG_LASTCOMMAND BIT(3)
+/* transmit message is a DSI read message */
+#define MIPI_DSI_MSG_READ       BIT(4)
 
 /**
  * struct mipi_dsi_msg - read/write DSI buffer
