@@ -6673,7 +6673,6 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 		pr_debug("Already in DRP mode\n");
 		break;
 	}
-	smblib_rerun_apsd_if_required(chg);
 
 	mutex_unlock(&chg->dr_lock);
 	vote(chg->awake_votable, DR_SWAP_VOTER, false, 0);
