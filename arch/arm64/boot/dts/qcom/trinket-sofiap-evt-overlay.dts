@@ -1,0 +1,40 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/qcom,gcc-trinket.h>
+#include "trinket-sofiap-common-overlay.dtsi"
+
+/ {
+	model = "sofiap";
+	compatible = "qcom,trinket-sofiap", "qcom,trinket-moto", "qcom,trinket";
+	qcom,msm-id = <394 0x0>;
+	qcom,board-id = <0x47 0xA200>;
+};
+
+&codec_irq {
+	mux {
+		pins = "gpio45";
+		function = "gpio";
+	};
+	config {
+		pins = "gpio45";
+		drive-strength = <2>; /* 2 MA */
+		bias-pull-up;
+	};
+};
+
+&cs48l32 {
+	interrupts = <45 IRQ_TYPE_LEVEL_LOW>;
+};
