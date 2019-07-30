@@ -17,7 +17,7 @@
 #include "trinket-sofiar-common-overlay.dtsi"
 
 / {
-	model = "sofiar";
+	model = "sofia";
 	compatible = "qcom,trinket-sofiar", "qcom,trinket-moto", "qcom,trinket";
 	qcom,msm-id = <394 0x0>;
 	qcom,board-id = <0x46 0xA100>;
