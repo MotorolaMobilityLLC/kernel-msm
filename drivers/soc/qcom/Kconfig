@@ -11,6 +11,23 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config GUAM_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "Guam DTBs"
+    help
+      Only include Guam specific DTBs to limit the number that
+      get built during kernel compilation
+
+config GUAMP_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "Guamp DTBs"
+    help
+      Only include Guamp specific DTBs to limit the number that
+      get built during kernel compilatio
+
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
