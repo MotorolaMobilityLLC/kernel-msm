@@ -248,6 +248,7 @@
 		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
+		cirrus,fast-switch = "rcv_fast_switch1.txt", "rcv_fast_switch2.txt";
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_l_irq>, <&amp_l_reset>;
@@ -296,6 +297,7 @@
 		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
+		cirrus,fast-switch = "spk_fast_switch1.txt", "spk_fast_switch2.txt";
 
 		cirrus,asp-sdout-hiz = <0x3>;
 
