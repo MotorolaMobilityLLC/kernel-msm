@@ -546,9 +546,10 @@ EXPORT_SYMBOL(of_machine_is_compatible);
  *  Returns true if the status property
  *  -- is absent or set to "okay" or "ok",
  *  -- refers to another property using string list as following
- *     status = <path>, <okay property>, <value1>[, <value2>...];
+ *     status = <path>, <okay property>, [<contains>,] <value1>[, <value2>...];
  *     and at least one <value> in the list of values matches
  *     value of /<path>/<okay property>.
+ *     Partial matches accepted when "contains" provided.
  *  false otherwise
  */
 static bool __of_device_is_available(const struct device_node *device)
@@ -557,7 +558,8 @@ static bool __of_device_is_available(const struct device_node *device)
 	struct device_node *np;
 	const char *val, *status;
 	const char *okay_prop_name, *okay_val;
-	int len;
+	bool found;
+	int len, operation;
 
 	if (!device)
 		return false;
@@ -585,9 +587,24 @@ static bool __of_device_is_available(const struct device_node *device)
 			return false;
 
 		val = okay_prop_name;
-		while ((val = of_prop_next_string(pp, val)))
-			if (!strcmp(val, okay_val))
+		operation = 0;
+		found = false;
+		while ((val = of_prop_next_string(pp, val))) {
+			if (!operation) {
+				operation++;
+				if (!strcmp(val, "contains")) {
+					operation++;
+					continue;
+				}
+			}
+			if (operation == 1) {
+				if (!strcmp(val, okay_val))
+						found = true;
+			} else if (strstr(okay_val, val))
+						found = true;
+			if (found)
 				return true;
+		}
 	}
 
 	return false;
