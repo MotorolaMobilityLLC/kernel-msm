@@ -197,9 +197,6 @@
 	synaptics_dsx_i2c@38 {
 		status = "disable";
 	};
-	sec_mmi@48 {
-		status = "disable";
-	};
 };
 
 &qupv3_se10_i2c {

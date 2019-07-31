@@ -65,9 +65,6 @@
 	raydium-ts@39 {
 		status = "ok";
 	};
-	sec_mmi@48 {
-		status = "disable";
-	};
 };
 
 &regulator_ldoa11 {
