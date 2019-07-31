@@ -26,8 +26,6 @@
 		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
 			"src_byte_clk0", "src_pixel_clk0",
 			"shadow_byte_clk0", "shadow_pixel_clk0";
-		lab-supply = <&lcdb_ldo_vreg>;
-		ibb-supply = <&lcdb_ncp_vreg>;
 		qcom,dsi-panel = <&dsi_ft8756_tm_video>;
 	};
 
@@ -40,8 +38,6 @@
 		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
 			"src_byte_clk0", "src_pixel_clk0",
 			"shadow_byte_clk0", "shadow_pixel_clk0";
-		lab-supply = <&lcdb_ldo_vreg>;
-		ibb-supply = <&lcdb_ncp_vreg>;
 		qcom,dsi-panel = <&dsi_ft8756_auo_video>;
 	};
 
@@ -54,8 +50,6 @@
 		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
 			"src_byte_clk0", "src_pixel_clk0",
 			"shadow_byte_clk0", "shadow_pixel_clk0";
-		lab-supply = <&lcdb_ldo_vreg>;
-		ibb-supply = <&lcdb_ncp_vreg>;
 		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
 	};
 
@@ -63,14 +57,6 @@
 };
 
 &L9A {
-        regulator-always-on;
-};
-
-&lcdb_ldo_vreg {
-        regulator-always-on;
-};
-
-&lcdb_ncp_vreg {
         regulator-always-on;
 };
 
@@ -168,6 +154,7 @@
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,platform-reset-gpio = <&tlmm 90 0>;
+	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,mdss-dsi-t-clk-post = <0x0e>;
 	qcom,mdss-dsi-t-clk-pre = <0x33>;
 	qcom,mdss-dsi-display-timings {
