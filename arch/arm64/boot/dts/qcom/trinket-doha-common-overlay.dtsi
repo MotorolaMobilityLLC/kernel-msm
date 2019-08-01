@@ -50,6 +50,14 @@
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
+&pmi632_mmi {
+	qcom,mmi-temp-zones = <0 4200 776 0>,
+			<10 4200 1940 776>,
+			<15 0 1940 1940>,
+			<45 4200 3000 2500>,
+			<60 4200 1940 0>;
+};
+
 &soc {
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
