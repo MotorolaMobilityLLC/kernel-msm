@@ -210,6 +210,7 @@
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,iterm-ma = <175>;
 	qcom,extrn-fg;
+	qcom,extrn-fg-psy-name = "bq27426_bms";
 	qcom,dc-unsupported;
 	qcom,wireless-unsupported;
 	qcom,usbeb-unsupported;
