@@ -941,6 +941,57 @@ int smblib_set_aicl_cont_threshold(struct smb_chg_param *param,
 /********************
  * HELPER FUNCTIONS *
  ********************/
+static int is_extrn_fg_present(struct smb_charger *chip)
+{
+	int ret;
+	struct power_supply *extrn_fg_psy;
+
+	if (!chip->mmi.extrn_fg_psy_name)
+		return -ENODEV;
+
+	extrn_fg_psy =
+		power_supply_get_by_name((char *)chip->mmi.extrn_fg_psy_name);
+	if (!extrn_fg_psy || !extrn_fg_psy->desc ||
+	    !extrn_fg_psy->desc->get_property) {
+		ret = false;
+	} else {
+		ret = true;
+		power_supply_put(extrn_fg_psy);
+	}
+
+	return ret;
+}
+
+int smblib_get_prop_from_extrn_bms(struct smb_charger *chg,
+				enum power_supply_property psp,
+				union power_supply_propval *val)
+{
+	int rc;
+	struct power_supply *extrn_fg_psy;
+
+	if (!chg->mmi.extrn_fg_psy_name)
+		return -ENODEV;
+
+	extrn_fg_psy =
+		power_supply_get_by_name((char *)chg->mmi.extrn_fg_psy_name);
+	if (!extrn_fg_psy || !extrn_fg_psy->desc ||
+	    !extrn_fg_psy->desc->get_property)
+		return -ENODEV;
+
+	switch(psp) {
+	case POWER_SUPPLY_PROP_CAPACITY:
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+	case POWER_SUPPLY_PROP_TEMP:
+		rc = power_supply_get_property(extrn_fg_psy, psp, val);
+		break;
+	default:
+		rc = -EINVAL;
+		break;
+	}
+
+	power_supply_put(extrn_fg_psy);
+	return rc;
+}
 
 static bool is_cp_available(struct smb_charger *chg)
 {
@@ -1016,6 +1067,14 @@ int smblib_get_prop_from_bms(struct smb_charger *chg,
 
 	if (!chg->bms_psy)
 		return -EINVAL;
+
+	if (chg->extrn_fg && is_extrn_fg_present(chg)) {
+
+		rc = smblib_get_prop_from_extrn_bms(chg,
+				psp, val);
+		if (!rc)
+			return rc;
+	}
 
 	rc = power_supply_get_property(chg->bms_psy, psp, val);
 
@@ -10947,6 +11006,12 @@ static int parse_mmi_dt(struct smb_charger *chg)
 				     &chg->mmi.eb_pwr_psy_name);
 	if (rc)
 		chg->mmi.eb_pwr_psy_name = "gb_ptp";
+
+	/* read the external fuel gauge power supply name */
+	rc = of_property_read_string(node, "qcom,extrn-fg-psy-name",
+				     &chg->mmi.extrn_fg_psy_name);
+	if (rc)
+		chg->mmi.extrn_fg_psy_name = NULL;
 
 	chg->mmi.vl_ebsrc = MICRO_9V;
 	chg->mmi.check_ebsrc_vl = false;
