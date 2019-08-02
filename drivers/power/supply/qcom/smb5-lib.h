@@ -469,6 +469,7 @@ struct mmi_params {
 	/* external battery params */
 	const char		*eb_batt_psy_name;
 	const char		*eb_pwr_psy_name;
+	const char		*extrn_fg_psy_name;
 	enum ebchg_state	ebchg_state;
 	bool			force_eb_chrg;
 	int			update_eb_params;
