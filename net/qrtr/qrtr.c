@@ -697,7 +697,6 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 		skb = alloc_skb_with_frags(0, len, 0, &err, GFP_ATOMIC);
 		if (!skb) {
 			pr_err("%s memory allocation failed\n", __func__);
-			BUG_ON(1);
 			return -ENOMEM;
 		}
 		frag = true;
