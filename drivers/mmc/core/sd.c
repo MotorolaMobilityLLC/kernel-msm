@@ -61,6 +61,10 @@ static const unsigned int sd_au_size[] = {
 	SZ_16M / 512,	(SZ_16M + SZ_8M) / 512,	SZ_32M / 512,	SZ_64M / 512,
 };
 
+static const unsigned int sd_speed_class[] = {
+	0,	2,	4,	6,	10,
+};
+
 #define UNSTUFF_BITS(resp,start,size)					\
 	({								\
 		const int __size = size;				\
@@ -276,7 +280,12 @@ static int mmc_read_ssr(struct mmc_card *card)
 				mmc_hostname(card->host));
 		}
 	}
-
+	card->ssr.speed_class = sd_speed_class[UNSTUFF_BITS(card->raw_ssr, 440 - 384, 8)];
+	card->ssr.uhs_speed_grade = UNSTUFF_BITS(card->raw_ssr, 396 - 384, 4);
+	pr_info("%s: card speed is C%d. uhs grade is %d\n",
+		mmc_hostname(card->host),
+		card->ssr.speed_class,
+		card->ssr.uhs_speed_grade);
 	return 0;
 }
 
@@ -421,6 +430,7 @@ static void sd_update_bus_speed_mode(struct mmc_card *card)
 	 */
 	if (!mmc_host_uhs(card->host)) {
 		card->sd_bus_speed = 0;
+		pr_info("%s: not UHS\n", mmc_hostname(card->host));
 		return;
 	}
 
@@ -428,25 +438,30 @@ static void sd_update_bus_speed_mode(struct mmc_card *card)
 	    (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR104) &&
 	    (card->host->f_max > UHS_SDR104_MIN_DTR)) {
 		card->sd_bus_speed = UHS_SDR104_BUS_SPEED;
+		pr_info("%s: selected SDR104\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50)) && (card->sw_caps.sd3_bus_mode &
 		    SD_MODE_UHS_SDR50) &&
 		    (card->host->f_max > UHS_SDR50_MIN_DTR)) {
 		card->sd_bus_speed = UHS_SDR50_BUS_SPEED;
+		pr_info("%s: selected SDR50\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & MMC_CAP_UHS_DDR50) &&
 		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_DDR50) &&
 		    (card->host->f_max > UHS_DDR50_MIN_DTR)) {
 		card->sd_bus_speed = UHS_DDR50_BUS_SPEED;
+		pr_info("%s: selected DDR50\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR25)) &&
 		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR25) &&
 		 (card->host->f_max > UHS_SDR25_MIN_DTR)) {
 		card->sd_bus_speed = UHS_SDR25_BUS_SPEED;
+		pr_info("%s: selected SDR25\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR25 |
 		    MMC_CAP_UHS_SDR12)) && (card->sw_caps.sd3_bus_mode &
 		    SD_MODE_UHS_SDR12)) {
 		card->sd_bus_speed = UHS_SDR12_BUS_SPEED;
+		pr_info("%s: selected SDR12\n", mmc_hostname(card->host));
 	}
 }
 
@@ -746,7 +761,8 @@ MMC_DEV_ATTR(name, "%s\n", card->cid.prod_name);
 MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
 MMC_DEV_ATTR(ocr, "0x%08x\n", card->ocr);
-
+MMC_DEV_ATTR(speed_class, "%u\n", card->ssr.speed_class);
+MMC_DEV_ATTR(uhs_speed_grade, "%u\n", card->ssr.uhs_speed_grade);
 
 static ssize_t mmc_dsr_show(struct device *dev,
                            struct device_attribute *attr,
@@ -780,6 +796,8 @@ static struct attribute *sd_std_attrs[] = {
 	&dev_attr_serial.attr,
 	&dev_attr_ocr.attr,
 	&dev_attr_dsr.attr,
+	&dev_attr_speed_class.attr,
+	&dev_attr_uhs_speed_grade.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(sd_std);
@@ -1089,10 +1107,12 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 
 	/* Initialization sequence for UHS-I cards */
 	if (rocr & SD_ROCR_S18A) {
+		pr_info("%s: card is UHS\n", mmc_hostname(card->host));
 		err = mmc_sd_init_uhs_card(card);
 		if (err)
 			goto free_card;
 	} else {
+		pr_info("%s: card is legacy\n", mmc_hostname(card->host));
 		/*
 		 * Attempt to change to high-speed (if supported)
 		 */
