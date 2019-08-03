@@ -34,6 +34,14 @@ config DEF_DTB
 	  Only include Def specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config QTPRO_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Qtpro DTBs"
+	help
+	  Only include Qtpro specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QCOM_MEM_OFFLINE
 	bool "Dynamic Memory Region Offline driver"
 	help
