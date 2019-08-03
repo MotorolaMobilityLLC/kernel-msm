@@ -19,9 +19,9 @@
 #include "sm6150-def-common-overlay.dtsi"
 
 / {
-	model = "def";
+	model = "qtpro";
 	qcom,msm-id = <355 0x0>;
-	qcom,board-id = <0x47 0xA100>;
+	qcom,board-id = <0x49 0xA100>;
 };
 
 &sm6150_snd {
