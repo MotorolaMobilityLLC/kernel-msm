@@ -33,6 +33,9 @@ dtbo-$(CONFIG_PARKER_DTB) += \
 dtbo-$(CONFIG_DEF_DTB) += \
 	sm6150-def-evt1-overlay.dtbo
 
+dtbo-$(CONFIG_QTPRO_DTB) += \
+	sm6150-qtpro-evt1-overlay.dtbo
+
 sm6150-foles-evt1-overlay.dtbo-base := \
 	sm6150-foles-base.dtb
 
@@ -92,6 +95,9 @@ sm6150-parker-dvt2b-overlay.dtbo-base := \
 
 sm6150-def-evt1-overlay.dtbo-base := \
 	sm6150-def-base.dtb
+
+sm6150-qtpro-evt1-overlay.dtbo-base := \
+	sm6150-qtpro-base.dtb
 
 else
 # SPDX-License-Identifier: GPL-2.0
