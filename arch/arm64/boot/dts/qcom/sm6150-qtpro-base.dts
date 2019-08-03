@@ -15,7 +15,7 @@
 #include "sm6150-moto-base.dtsi"
 
 / {
-	model = "def";
+	model = "qtpro";
 };
 
 &firmware {
