@@ -188,3 +188,10 @@ config DRM_SDE_RSC
 	  avoids the display core power collapse. A client can also register
 	  for display core power collapse events on rsc.
 
+config SDE_FENCE_NO_ZERO
+	bool "Force sde retire fence none zero"
+	depends on DRM_MSM
+	help
+	  Zero retire fence fd may cause display freeze because of some issue on fence
+	  file mapping. This is a workaround for such kind of issue.
+
