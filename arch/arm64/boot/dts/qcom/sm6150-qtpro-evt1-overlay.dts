@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,7 +16,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/qcom,camcc-sm6150.h>
 
-#include "sm6150-def-common-overlay.dtsi"
+#include "sm6150-qtpro-common-overlay.dtsi"
 
 / {
 	model = "qtpro";
@@ -24,13 +24,6 @@
 	qcom,board-id = <0x49 0xA100>;
 };
 
-&sm6150_snd {
-	def,audio_slimbus_workaround = <1>;
-};
-
-
-&pm6150_qg {
-	qcom,vbatt-cutoff-mv = <3200>;
-	qcom,vbatt-empty-mv = <3000>;
-	qcom,vbatt-empty-cold-mv = <3000>;
+&dsi_tianma_639_1080x2340_cmd_display {
+	qcom,dsi-display-active;
 };
