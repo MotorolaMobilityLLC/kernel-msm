@@ -177,101 +177,20 @@
 
 &qupv3_se1_i2c {
 	status = "ok";
-	cs35l41_rcv: cs35l41@40 {
-		#sound-dai-cells = <1>;
-		compatible = "cirrus,cs35l41";
-		reg = <0x40>;
-		reset-gpios = <&tlmm 123 0>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <100 IRQ_TYPE_EDGE_FALLING>;
-		VA-supply = <&pm6125_l9>;
-		VP-supply = <&pm6125_l9>;
 
-		cirrus,boost-peak-milliamp = <3500>;
-		cirrus,boost-ind-nanohenry = <1000>;
-		cirrus,boost-cap-microfarad = <15>;
+	tas2562:tas2562@4c {
+		#sound-dai-cells = <0>;
+		compatible = "ti,tas2562";
+		reg = <0x4c>;
+		ti,left-channel = <0x4c>;
+		ti,right-channel = <0x4e>;
+		ti,channels = <2>; /* channel number */
+		ti,reset-gpio = <&tlmm 119 0>;
+		ti,reset-gpio2 = <&tlmm 123 0>;
+		ti,irq-gpio = <&tlmm 101 0>;
+		ti,irq-gpio2 = <&tlmm 100 0>;
 
-		pinctrl-names = "default";
-		pinctrl-0 = <&amp_l_irq>, <&amp_l_reset>;
-
-		cirrus,asp-sdout-hiz = <0x3>;
-		cirrus,gpio-config2 {
-			cirrus,gpio-src-select = <0x4>;
-			cirrus,gpio-output-enable;
-		};
-
-		adsps {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			adsp@2b80000 {
-				reg = <0x2b80000>;
-				firmware {
-					protection {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-rcv-prot.bin";
-					};
-					calibration {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-rcv-cali.bin";
-					};
-					diagnostic {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-diag.wmfw";
-					};
-				};
-			};
-		};
-	};
-
-	cs35l41_spk: cs35l41@41 {
-		compatible = "cirrus,cs35l41";
-		reg = <0x41>;
-		/* R & L reset are shorted in miniboard
-                   set an unused GPIO as reset */
-		reset-gpios = <&tlmm 119 0>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <101 IRQ_TYPE_EDGE_FALLING>;
-		cirrus,right-channel-amp;
-
-		cirrus,boost-peak-milliamp = <3500>;
-		cirrus,boost-ind-nanohenry = <1000>;
-		cirrus,boost-cap-microfarad = <15>;
-
-		cirrus,asp-sdout-hiz = <0x3>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&amp_r_irq>, <&amp_r_reset>;
-
-		cirrus,gpio-config2 {
-			cirrus,gpio-src-select = <0x4>;
-			cirrus,gpio-output-enable;
-		};
-
-		adsps {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			adsp@2b80000 {
-				reg = <0x2b80000>;
-				firmware {
-					protection {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
-					};
-					calibration {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
-					};
-					diagnostic {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-diag.wmfw";
-					};
-				};
-			};
-		};
+		status = "ok";
 	};
 };
 
@@ -457,10 +376,8 @@
 			"msm-pcm-afe", "msm-lsm-client",
 			"msm-pcm-routing", "msm-compr-dsp",
 			"msm-pcm-dsp-noirq";
-	asoc-codec  = <&stub_codec>, <&bolero>,
-			<&cs35l41_rcv>, <&cs35l41_spk>;
-	asoc-codec-names = "msm-stub-codec.1", "bolero_codec",
-			"cs35l41-rcv", "cs35l41-spk";
+	asoc-codec  = <&stub_codec>, <&bolero>;
+	asoc-codec-names = "msm-stub-codec.1", "bolero_codec";
 
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
@@ -482,16 +399,6 @@
 		"RX_TX DEC3_INP", "TX DEC3 MUX";
 	qcom,wsa-max-devs = <0>;
 	qcom,ext-disp-audio-rx = <0>;
-	cirrus,prince-max-devs = <2>;
-	cirrus,prince-devs = <&cs35l41_rcv>, <&cs35l41_spk>;
-	cirrus,prince-dev-prefix = "RCV", "SPK";
+	ti,2558-max-devs = <2>;
 };
 
-&soc {
-	msm-cirrus-playback {
-		compatible = "cirrus,msm-cirrus-playback";
-		usecase-names = "Normal", "Voice", "Ring", "Sonification";
-		usecase-indexes = <0 1 2 3>;
-		afe-port-id = <0x1000>; /* primary mi2s port */
-	};
-};
