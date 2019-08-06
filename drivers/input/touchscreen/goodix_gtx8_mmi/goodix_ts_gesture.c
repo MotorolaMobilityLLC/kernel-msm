@@ -365,7 +365,11 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 	int ret;
 	unsigned char clear_reg = 0;
 #ifdef GOODIX_SENSOR_EN
-	static int report_cnt = 0;
+	int screen_width = 0;
+	int screen_height = 0;
+	int start_x = 0;
+	int start_y = 0;
+	int type = 0;
 #endif
 	unsigned char checksum = 0, temp_data[GSX_KEY_DATA_LEN];
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
@@ -391,9 +395,46 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 		goto re_send_ges_cmd;
 	}
 
-	ts_debug("Gesture data:");
-	ts_debug("data[0-4]0x%x, 0x%x, 0x%x, 0x%x", temp_data[0], temp_data[1],
+	ts_debug("Gesture data[0-3]:0x%x, 0x%x, 0x%x, 0x%x", temp_data[0], temp_data[1],
 		 temp_data[2], temp_data[3]);
+
+#ifdef GOODIX_SENSOR_EN
+	// Single tap[KEY_F1]: 0x20 & 0x0c;
+	// Single tap or long tap for fod area[KEY_F2]: 0x28 & 0x46;
+	if ((temp_data[0] == 0x20) && (temp_data[2] == 0x0c)) {
+		type = KEY_F1;
+	} else if ((temp_data[0] == 0x28) && (temp_data[2] == 0x46)) {
+		type = KEY_F2;
+	}
+
+	// Get the current screen resolution.
+	screen_width = ts_dev->board_data->panel_max_x;
+	screen_height = ts_dev->board_data->panel_max_y;
+
+	// Recalculate the coordinate value since the origin is at the right-buttom.
+	// X vaule: data[4]: low byte, data[5]: high byte;
+	// Y vaule: data[6]: low byte, data[7]: high byte;
+	if (type != 0) {
+		start_x = temp_data[5];
+		start_x = (start_x << 8) + temp_data[4];
+		start_x = screen_width - start_x;
+		if (start_x < 0) {
+			start_x = 0;
+		} else if (start_x > screen_width) {
+			start_x = screen_width;
+		}
+
+		start_y = temp_data[7];
+		start_y = (start_y << 8) + temp_data[6];
+		start_y = screen_height - start_y;
+		if (start_y < 0) {
+			start_y = 0;
+		} else if (start_y > screen_height) {
+			start_y = screen_height;
+		}
+		ts_debug("type:%d, start_x:%d, start_y:%d", type, start_x, start_y);
+	}
+#endif
 
 	write_lock(&gsx_gesture->rwlock);
 	memcpy(gsx_gesture->gesture_data, temp_data, sizeof(temp_data));
@@ -403,15 +444,24 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 		/* do resume routine */
 		ts_info("Gesture match success, resume IC");
 #ifdef GOODIX_SENSOR_EN
-		input_report_abs(core_data->sensor_pdata->input_sensor_dev,
-				ABS_DISTANCE,
-				++report_cnt);
-		ts_info("input report: %d", report_cnt);
-		if (report_cnt >= REPORT_MAX_COUNT) {
-			report_cnt = 0;
+		if (type != 0) {
+			input_report_abs(core_data->sensor_pdata->input_sensor_dev,
+					ABS_X,
+					start_x);
+			input_report_abs(core_data->sensor_pdata->input_sensor_dev,
+					ABS_Y,
+					start_y);
+
+			input_report_key(core_data->sensor_pdata->input_sensor_dev,
+					type, 1);
+			input_sync(core_data->sensor_pdata->input_sensor_dev);
+
+			input_report_key(core_data->sensor_pdata->input_sensor_dev,
+					type, 0);
+			input_sync(core_data->sensor_pdata->input_sensor_dev);
+
+			wake_lock_timeout(&gesture_wakelock, msecs_to_jiffies(5000));
 		}
-		input_sync(core_data->sensor_pdata->input_sensor_dev);
-		wake_lock_timeout(&gesture_wakelock, msecs_to_jiffies(5000));
 #else
 		input_report_key(core_data->input_dev, KEY_POWER, 1);
 		input_sync(core_data->input_dev);
@@ -549,10 +599,18 @@ static int gsx_sensor_init(struct goodix_ts_core *data)
 	}
 	data->sensor_pdata = sensor_pdata;
 
-	__set_bit(EV_ABS, sensor_input_dev->evbit);
 	__set_bit(EV_SYN, sensor_input_dev->evbit);
-	input_set_abs_params(sensor_input_dev, ABS_DISTANCE,
-			0, REPORT_MAX_COUNT, 0, 0);
+
+	// set EV_KEY event capability
+	__set_bit(EV_KEY, sensor_input_dev->evbit);
+	__set_bit(KEY_F1, sensor_input_dev->keybit);
+	__set_bit(KEY_F2, sensor_input_dev->keybit);
+
+	// set EV_ABS event capability
+	__set_bit(EV_ABS, sensor_input_dev->evbit);
+	input_set_abs_params(sensor_input_dev, ABS_X, 0, 4096, 0, 0);
+	input_set_abs_params(sensor_input_dev, ABS_Y, 0, 4096, 0, 0);
+
 	sensor_input_dev->name = "double-tap";
 	data->sensor_pdata->input_sensor_dev = sensor_input_dev;
 
