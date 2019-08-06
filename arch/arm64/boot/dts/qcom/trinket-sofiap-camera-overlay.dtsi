@@ -363,7 +363,7 @@
 					"CAM_V_RESET",
 					"CAM_V_AVDD",
 					"CAM_V_DVDD";
-		qcom,cci-master = <0>;
+		qcom,cci-master = <1>;
 		status = "ok";
 		clocks = <&clock_gcc GCC_CAMSS_MCLK3_CLK_SRC>,
 			<&clock_gcc GCC_CAMSS_MCLK3_CLK>;
@@ -574,7 +574,7 @@
 					"CAM_V_DVDD";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
-		qcom,cci-master = <0>;
+		qcom,cci-master = <1>;
 		status = "ok";
 		clocks = <&clock_gcc GCC_CAMSS_MCLK3_CLK_SRC>,
 			<&clock_gcc GCC_CAMSS_MCLK3_CLK>;
