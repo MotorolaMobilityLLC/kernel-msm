@@ -38,3 +38,13 @@
 &cs48l32 {
 	interrupts = <45 IRQ_TYPE_LEVEL_LOW>;
 };
+
+&cci {
+	qcom,eeprom@3 {
+		qcom,cci-master = <0>;
+	};
+
+	qcom,camera@3 {
+		qcom,cci-master = <0>;
+	};
+};
