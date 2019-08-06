@@ -38,7 +38,8 @@
 };
 
 &mtp_batterydata {
-	df-serialnum = "SB18C52857";
+	df-serialnum = "SB18C57585";
+	#include "qg-batterydata-kz50-amperex-5000mah.dtsi"
 };
 
 &pmi632_qg {
