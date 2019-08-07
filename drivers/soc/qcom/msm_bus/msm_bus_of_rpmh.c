@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -379,6 +379,8 @@ static struct msm_bus_node_info_type *get_node_info_data(
 		node_info->num_connections = size / sizeof(int);
 		node_info->connections = devm_kzalloc(&pdev->dev, size,
 				GFP_KERNEL);
+		if (!node_info->connections)
+			goto node_info_err;
 	} else {
 		node_info->num_connections = 0;
 		node_info->connections = 0;
@@ -399,6 +401,8 @@ static struct msm_bus_node_info_type *get_node_info_data(
 		node_info->num_blist = size/sizeof(u32);
 		node_info->black_listed_connections = devm_kzalloc(&pdev->dev,
 		size, GFP_KERNEL);
+		if (!node_info->black_listed_connections)
+			goto node_info_err;
 	} else {
 		node_info->num_blist = 0;
 		node_info->black_listed_connections = 0;
@@ -433,6 +437,8 @@ static struct msm_bus_node_info_type *get_node_info_data(
 		node_info->num_bcm_devs = size / sizeof(int);
 		node_info->bcm_dev_ids = devm_kzalloc(&pdev->dev, size,
 				GFP_KERNEL);
+		if (!node_info->bcm_dev_ids)
+			goto node_info_err;
 	} else {
 		node_info->num_bcm_devs = 0;
 		node_info->bcm_devs = 0;
@@ -456,6 +462,8 @@ static struct msm_bus_node_info_type *get_node_info_data(
 		node_info->num_rsc_devs = size / sizeof(int);
 		node_info->rsc_dev_ids = devm_kzalloc(&pdev->dev, size,
 				GFP_KERNEL);
+		if (!node_info->rsc_dev_ids)
+			goto node_info_err;
 	} else {
 		node_info->num_rsc_devs = 0;
 		node_info->rsc_devs = 0;
@@ -772,6 +780,8 @@ static int msm_bus_of_get_ids(struct platform_device *pdev,
 	if (of_get_property(dev_node, prop_name, &size)) {
 		*num_ids = size / sizeof(int);
 		ids = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
+		if (!ids)
+			return -ENOMEM;
 	} else {
 		dev_err(&pdev->dev, "No rule nodes, skipping node");
 		ret = -ENXIO;
