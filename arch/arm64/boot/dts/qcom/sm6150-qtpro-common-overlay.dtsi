@@ -13,7 +13,7 @@
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-audio-overlay.dtsi"
 #include "dsi-panel-mot-tianma-639-1080p-cmd-overlay-parker.dtsi"
-#include "sm6150-parker-audio-overlay.dtsi"
+#include "sm6150-qtpro-audio-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-parker-overlay.dtsi"
 
 &tlmm{
