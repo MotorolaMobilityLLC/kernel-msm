@@ -241,6 +241,7 @@
 		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
+		cirrus,fast-switch = "rcv_fast_switch1.txt", "rcv_fast_switch2.txt";
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&amp_l_irq>, <&amp_l_reset>;
@@ -249,6 +250,9 @@
 		cirrus,gpio-config2 {
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
+		};
+		cirrus,gpio-config1 {
+			cirrus,gpio-src-select = <0x1>;
 		};
 
 		adsps {
@@ -289,6 +293,7 @@
 		cirrus,boost-peak-milliamp = <3500>;
 		cirrus,boost-ind-nanohenry = <1000>;
 		cirrus,boost-cap-microfarad = <15>;
+		cirrus,fast-switch = "spk_fast_switch1.txt", "spk_fast_switch2.txt";
 
 		cirrus,asp-sdout-hiz = <0x3>;
 
@@ -365,9 +370,9 @@
 			adsp@2b80000 {
 				reg = <0x2b80000>;
 				firmware {
-					aov {
+					aox {
 						cirrus,full-name;
-						cirrus,wmfw-file = "cs48l32-dsp1-aov.wmfw";
+						cirrus,wmfw-file = "cs48l32-dsp1-aox.wmfw";
 						cirrus,compr-caps = <14 1 4 1 16000>;
 					};
 				};
