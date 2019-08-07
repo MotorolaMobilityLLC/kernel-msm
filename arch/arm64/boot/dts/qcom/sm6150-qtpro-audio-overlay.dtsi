@@ -110,7 +110,7 @@
 
 	marley_reset_default: marley_reset_default {
 		config {
-			pins = "gpio31";
+			pins = "gpio36";
 			output-high;
 			bias-pull-up;
 			drive-strength = <16>;
@@ -198,11 +198,10 @@
 		interrupts = <112 0x8>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		reset-gpios = <&tlmm 31 0>;
+		reset-gpios = <&tlmm 36 0>;
 		pinctrl-names ="probe", "active";
 		pinctrl-0 = <&marley_reset_default>;
 		pinctrl-1 = <&cs47l35_defaults>;
-
 
 		AVDD-supply = <&pm6150_l10>;
 		DBVDD1-supply = <&pm6150_l10>;
@@ -339,7 +338,7 @@
 				firmware {
 					aov {
 						cirrus,wmfw-file = "marley-dsp3-aov-control.wmfw";
-						cirrus,bin-file = "None";
+						cirrus,bin-file = "marley-dsp3-aov-model.bin";
 						cirrus,full-name;
 						cirrus,compr-caps = <14 1 4 1 16000>;
 					};
@@ -416,6 +415,7 @@
 	asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
 	asoc-codec-names = "msm-stub-codec.1",
 					"msm-ext-disp-audio-codec-rx";
+	qcom,msm_audio_ssr_devs = <&audio_apr>,<&q6core>, <&lpi_tlmm>;
 
 	qcom,audio-routing =
 		"IN1AL", "MICBIAS2A",
