@@ -12,5 +12,6 @@
 
 #include "trinket-moto-common-overlay.dtsi"
 #include "rav-panel.dtsi"
+#include "trinket-rav-touch-overlay.dtsi"
 
 #define RAV_RADIO_NA 2
