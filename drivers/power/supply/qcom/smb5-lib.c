@@ -1196,6 +1196,8 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 #ifdef QCOM_BASE
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 			is_flash_active(chg) ? SDP_CURRENT_UA : SDP_100_MA);
+#else
+	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 #endif
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
@@ -5707,6 +5709,8 @@ static void typec_src_removal(struct smb_charger *chg)
 #ifdef QCOM_BASE
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 			is_flash_active(chg) ? SDP_CURRENT_UA : SDP_100_MA);
+#else
+	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 #endif
 	vote(chg->usb_icl_votable, PD_VOTER, false, 0);
 	vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
