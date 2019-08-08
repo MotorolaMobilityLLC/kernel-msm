@@ -88,6 +88,11 @@ static struct qg_sdam_info sdam_info[] = {
 		.offset = QG_SDAM_ESR_DISCHARGE_SF_OFFSET,
 		.length = 2,
 	},
+	[SDAM_MAGIC] = {
+		.name	= "SDAM_MAGIC_OFFSET",
+		.offset = QG_SDAM_MAGIC_OFFSET,
+		.length = 4,
+	},
 };
 
 int qg_sdam_write(u8 param, u32 data)
@@ -240,6 +245,23 @@ int qg_sdam_write_all(u32 *sdam_data)
 	}
 
 	return 0;
+}
+
+int qg_sdam_clear(void)
+{
+	int i, rc = 0;
+	struct qg_sdam *chip = the_chip;
+	u8 data = 0;
+
+	if (!chip) {
+		pr_err("Invalid sdam-chip pointer\n");
+		return -EINVAL;
+	}
+
+	for (i = SDAM_MIN_OFFSET; i <= SDAM_MAX_OFFSET; i++)
+		rc |= qg_sdam_multibyte_write(i, &data, 1);
+
+	return rc;
 }
 
 int qg_sdam_init(struct device *dev)
