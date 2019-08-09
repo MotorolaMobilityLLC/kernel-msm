@@ -15,3 +15,16 @@
 #include "trinket-rav-touch-overlay.dtsi"
 
 #define RAV_RADIO_NA 2
+
+&key_vol_up_default {
+	pins = "gpio1";
+	power-source = <0>;
+};
+
+&soc {
+	gpio_keys {
+		vol_up {
+			gpios = <&pm6125_gpios 1 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
