@@ -1,0 +1,376 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm {
+	amp_irq: amp_irq {
+		mux {
+			pins = "gpio117";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio117";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	amp_reset: amp_reset {
+		mux {
+			pins = "gpio101";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio101";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+
+	pri_mi2s_clk_active: pri_mi2s_clk_active {
+		mux {
+			pins = "gpio113";
+			function = "pri_mi2s";
+		};
+		config {
+			pins = "gpio113";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+			output-high;
+		};
+	};
+
+	pri_mi2s_clk_sleep: pri_mi2s_clk_sleep {
+		mux {
+			pins = "gpio113";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio113";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+
+	pri_mi2s_ws_active: pri_mi2s_ws_active {
+		mux {
+			pins = "gpio114";
+			function = "pri_mi2s_ws";
+		};
+		config {
+			pins = "gpio114";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+			output-high;
+		};
+	};
+
+	pri_mi2s_ws_sleep: pri_mi2s_ws_sleep {
+		mux {
+			pins = "gpio114";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio114";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+
+	pri_mi2s_sd0_active: pri_mi2s_sd0_active {
+		mux {
+			pins = "gpio115";
+			function = "pri_mi2s";
+		};
+		config {
+			pins = "gpio115";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+		};
+	};
+
+	pri_mi2s_sd0_sleep: pri_mi2s_sd0_sleep {
+		mux {
+			pins = "gpio115";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio115";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+
+	pri_mi2s_sd1_active: pri_mi2s_sd1_active {
+		mux {
+			pins = "gpio116";
+			function = "pri_mi2s";
+		};
+
+		config {
+			pins = "gpio116";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable;           /* NO PULL */
+		};
+	};
+
+	pri_mi2s_sd1_sleep: pri_mi2s_sd1_sleep {
+		mux {
+			pins = "gpio116";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio116";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+			input-enable;
+		};
+	};
+};
+
+&cdc_dmic01_gpios {
+	status = "disabled";
+};
+
+&cdc_dmic23_gpios {
+	status = "disabled";
+};
+
+&wsa_swr_gpios {
+	status = "disabled";
+};
+
+&qupv3_se1_i2c {
+	status = "ok";
+
+	tas2562:tas2562@4c {
+		compatible = "ti,tas2562";
+		reg = <0x4c>;
+		ti,channels = <1>;
+		ti,left-channel = <0x4c>;
+		ti,reset-gpio = <&tlmm 101 0>;
+		ti,irq-gpio = <&tlmm 117 0>;
+		ti,asi-format = <0>;   /* 0, i2S; 1, DSP; */
+		status = "ok";
+	};
+};
+
+&soc {
+	cdc_pri_mi2s_gpios: msm_cdc_pinctrl_pri {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&pri_mi2s_clk_active &pri_mi2s_ws_active
+		       &pri_mi2s_sd0_active &pri_mi2s_sd1_active>;
+		pinctrl-1 = <&pri_mi2s_clk_sleep &pri_mi2s_ws_sleep
+		       &pri_mi2s_sd0_sleep &pri_mi2s_sd1_sleep>;
+	};
+};
+
+&dai_mi2s0 {
+	status="ok";
+	qcom,msm-mi2s-rx-lines = <1>;
+	qcom,msm-mi2s-tx-lines = <2>;
+};
+
+&dai_mi2s1 {
+	status = "disabled";
+};
+
+&dai_mi2s2 {
+	status = "disabled";
+};
+
+&dai_mi2s3 {
+	status = "disabled";
+};
+
+&dai_mi2s4 {
+	status = "disabled";
+};
+
+&dai_mi2s5 {
+	status = "disabled";
+};
+
+&cdc_dmic01_gpios {
+	status = "disabled";
+};
+
+&cdc_dmic23_gpios {
+	status = "disabled";
+};
+
+&wsa_swr_clk_active {
+	status = "disabled";
+};
+
+&wsa_spkr_en1 {
+	status = "disabled";
+};
+
+&clock_audio_wsa_1 {
+	status = "disabled";
+};
+
+&clock_audio_wsa_2 {
+	status = "disabled";
+};
+
+&tx_macro {
+	qcom,mute-delay-ms = <50>;
+};
+
+&wsa_macro {
+	status = "disabled";
+};
+
+&bolero {
+	qcom,num-macros = <3>;
+};
+
+&sb_0_rx {
+	status = "disabled";
+};
+
+&sb_0_tx {
+	status = "disabled";
+};
+
+&sb_1_rx {
+	status = "disabled";
+};
+
+&sb_1_tx {
+	status = "disabled";
+};
+
+&sb_2_rx {
+	status = "disabled";
+};
+
+&sb_2_tx {
+	status = "disabled";
+};
+
+&sb_3_rx {
+	status = "disabled";
+};
+
+&sb_3_tx {
+	status = "disabled";
+};
+
+&sb_4_rx {
+	status = "disabled";
+};
+
+&sb_4_tx {
+	status = "disabled";
+};
+
+&sb_5_rx {
+	status = "disabled";
+};
+
+&sb_5_tx {
+	status = "disabled";
+};
+
+&sb_6_rx {
+	status = "disabled";
+};
+
+&sb_8_rx {
+	status = "disabled";
+};
+
+&sb_9_rx {
+	status = "disabled";
+};
+
+&sb_9_tx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_0_rx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_0_tx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_1_rx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_1_tx {
+	status = "disabled";
+};
+
+&wsa_cdc_dma_2_tx {
+	status = "disabled";
+};
+
+&va_cdc_dma_0_tx {
+	status = "disabled";
+};
+
+&va_cdc_dma_1_tx {
+	status = "disabled";
+};
+
+&sm6150_snd {
+	status = "ok";
+	compatible = "qcom,sm6150-moto-asoc-snd";
+	qcom,model = "trinket-moto-snd-card";
+	qcom,pri-mi2s-gpios = <&cdc_pri_mi2s_gpios>;
+
+	asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+			<&loopback>, <&compress>, <&hostless>,
+			<&afe>, <&lsm>, <&routing>, <&compr>,
+			<&pcm_noirq>;
+	asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+			"msm-pcm-dsp.2", "msm-voip-dsp",
+			"msm-pcm-voice", "msm-pcm-loopback",
+			"msm-compress-dsp", "msm-pcm-hostless",
+			"msm-pcm-afe", "msm-lsm-client",
+			"msm-pcm-routing", "msm-compr-dsp",
+			"msm-pcm-dsp-noirq";
+	asoc-codec  = <&stub_codec>, <&bolero>;
+	asoc-codec-names = "msm-stub-codec.1", "bolero_codec";
+
+	qcom,audio-routing =
+		"AMIC1", "MIC BIAS1",
+		"MIC BIAS1", "Analog Mic1",
+		"AMIC2", "MIC BIAS2",
+		"MIC BIAS2", "Analog Mic2",
+		"AMIC3", "MIC BIAS3",
+		"MIC BIAS3", "Analog Mic3",
+		"IN1_HPHL", "HPHL_OUT",
+		"IN2_HPHR", "HPHR_OUT",
+		"TX SWR_ADC0", "ADC1_OUTPUT",
+		"TX SWR_ADC2", "ADC2_OUTPUT",
+		"WSA SRC0_INP", "SRC0",
+		"WSA_TX DEC0_INP", "TX DEC0 MUX",
+		"WSA_TX DEC1_INP", "TX DEC1 MUX",
+		"RX_TX DEC0_INP", "TX DEC0 MUX",
+		"RX_TX DEC1_INP", "TX DEC1 MUX",
+		"RX_TX DEC2_INP", "TX DEC2 MUX",
+		"RX_TX DEC3_INP", "TX DEC3 MUX";
+	qcom,wsa-max-devs = <0>;
+	qcom,ext-disp-audio-rx = <0>;
+	ti,2558-max-devs = <2>;
+};
+
