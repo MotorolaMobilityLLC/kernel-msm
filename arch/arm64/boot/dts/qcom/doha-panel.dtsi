@@ -165,6 +165,7 @@
 	qcom,platform-reset-gpio = <&tlmm 90 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0e>;
 	qcom,mdss-dsi-t-clk-pre = <0x33>;
+	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
