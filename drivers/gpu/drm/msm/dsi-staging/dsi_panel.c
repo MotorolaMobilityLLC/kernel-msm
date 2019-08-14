@@ -470,7 +470,14 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	int rc = 0;
 
 	pr_info("(%s)+\n", panel->name);
-	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+
+       if(panel->sleep_no_power_down)
+		pr_info("[%s] vsp vsn sleep_no_power_down = true\n",
+			panel->name);
+	else{
+		rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+	}
+
 	if (rc) {
 		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
 		goto exit;
@@ -513,9 +520,13 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	pr_info("(%s)+\n", panel->name);
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
-
-	if (gpio_is_valid(panel->reset_config.reset_gpio))
-		gpio_set_value(panel->reset_config.reset_gpio, 0);
+       if(panel->sleep_no_power_down)
+		pr_info("[%s] reset sleep_no_power_down = true\n",
+			panel->name);
+	else{
+		if (gpio_is_valid(panel->reset_config.reset_gpio))
+			gpio_set_value(panel->reset_config.reset_gpio, 0);
+	}
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -526,9 +537,14 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		       rc);
 	}
 
-	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
-	if (rc)
-		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+       if(panel->sleep_no_power_down)
+		pr_info("[%s] vsp vsn sleep_no_power_down = true\n",
+			panel->name);
+	else{
+		rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+		if (rc)
+			pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+	}
 
 	return rc;
 }
@@ -3708,6 +3724,8 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 	panel->no_panel_on_read_support = of_property_read_bool(of_node,
 				"qcom,mdss-dsi-no-panel-on-read-support");
 
+	panel->sleep_no_power_down = of_property_read_bool(of_node,
+				"qcom,mdss-dsi-sleep-no-power-down");
 	return rc;
 }
 
