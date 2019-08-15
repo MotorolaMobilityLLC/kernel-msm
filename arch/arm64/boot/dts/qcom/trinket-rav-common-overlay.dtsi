@@ -15,6 +15,7 @@
 #include "trinket-rav-touch-overlay.dtsi"
 #include "trinket-rav-audio-overlay.dtsi"
 #include "trinket-rav-sensor-overlay.dtsi"
+#include "trinket-rav-fps-overlay.dtsi"
 
 #define RAV_RADIO_NA 2
 
