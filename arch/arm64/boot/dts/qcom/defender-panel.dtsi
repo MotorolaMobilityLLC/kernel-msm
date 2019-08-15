@@ -223,3 +223,8 @@
 	};
 };
 
+&pm6150l_wled {
+       qcom,fs-current-limit = <25000>;
+       qcom,en-cabc;
+};
+
