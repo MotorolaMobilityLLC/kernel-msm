@@ -61,7 +61,7 @@
 				qcom,mdss-dsi-panel-framerate = <60>;
 				qcom,mdss-dsi-on-command =
 				[
-					15 01 00 00 00 00 03 51 FF 0F
+					15 01 00 00 00 00 03 51 CC 0C
 					15 01 00 00 00 00 02 53 2c
 					15 01 00 00 00 00 02 55 01
 					15 01 00 00 c8 00 02 11 00
