@@ -30,6 +30,9 @@
 #include "dsi_panel.h"
 #include "sde_connector.h"
 #include "sde_motUtil.h"
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+#include "dsi_display_mot_ext.h"
+#endif
 
 #define DSI_CLIENT_NAME_SIZE		20
 #define MAX_CMDLINE_PARAM_LEN	 512
@@ -275,6 +278,12 @@ struct dsi_display {
 	struct work_struct fifo_underflow_work;
 	struct work_struct fifo_overflow_work;
 	struct work_struct lp_rx_timeout_work;
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	/* used for early dsi panel power on to speed up the power on sequence */
+	bool is_dsi_display_prepared;
+	bool is_primary;
+	struct dsi_display_early_power early_power;
+#endif
 
 	/* firmware panel data */
 	const struct firmware *fw;
