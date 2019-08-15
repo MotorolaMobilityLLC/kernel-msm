@@ -5915,6 +5915,13 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 	if (rc)
 		goto end;
 
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	if ( index == DSI_PRIMARY ) {
+		dsi_display_ext_init(display);
+	}
+	pr_info("display(%p), name: %s\n", display, display->name);
+#endif
+
 	return 0;
 end:
 	if (display)
@@ -6485,8 +6492,12 @@ int dsi_display_get_info(struct drm_connector *connector,
 	info->is_connected = true;
 	info->is_primary = false;
 
-	if (!strcmp(display->dsi_type, "primary"))
+	if (!strcmp(display->display_type, "primary")) {
 		info->is_primary = true;
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+		display->is_primary = true;
+#endif
+	}
 
 	info->width_mm = phy_props.panel_width_mm;
 	info->height_mm = phy_props.panel_height_mm;
@@ -7063,6 +7074,14 @@ int dsi_display_set_mode(struct dsi_display *display,
 	}
 
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
+
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	//This is called from dsi bridge, not moto early-power.
+	//It means it is system who want powr on display
+	//From now on early power on is forbidden
+	display->early_power.early_power_state = DSI_EARLY_POWER_FORBIDDEN;
+#endif
+
 error:
 	mutex_unlock(&display->display_lock);
 	return rc;
@@ -7443,6 +7462,13 @@ int dsi_display_prepare(struct dsi_display *display)
 
 	mutex_lock(&display->display_lock);
 
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	if ( display->is_dsi_display_prepared ) {
+		pr_info("already prepared\n");
+		goto error;
+	}
+#endif
+
 	mode = display->panel->cur_mode;
 
 	dsi_display_set_ctrl_esd_check_flag(display, false);
@@ -7560,6 +7586,9 @@ int dsi_display_prepare(struct dsi_display *display)
 			goto error_ctrl_link_off;
 		}
 	}
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	display->is_dsi_display_prepared = true;
+#endif
 	goto error;
 
 error_ctrl_link_off:
@@ -7882,6 +7911,13 @@ int dsi_display_enable(struct dsi_display *display)
 
 	mutex_lock(&display->display_lock);
 
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	if (dsi_panel_initialized(display->panel)) {
+		pr_info("panel already enabled\n");
+		goto error;
+	}
+#endif
+
 	mode = display->panel->cur_mode;
 
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
@@ -7998,6 +8034,13 @@ int dsi_display_pre_disable(struct dsi_display *display)
 		pr_err("[%s] panel pre-disable failed, rc=%d\n",
 		       display->name, rc);
 
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	//This is called from dsi bridge, not moto early-power.
+	//It means it is system who want powr off display
+	//From now on early power on is permitted
+	display->early_power.early_power_state = DSI_EARLY_POWER_IDLE;
+#endif
+
 	mutex_unlock(&display->display_lock);
 	return rc;
 }
@@ -8014,6 +8057,14 @@ int dsi_display_disable(struct dsi_display *display)
 	SDE_EVT32(SDE_EVTLOG_FUNC_ENTRY);
 	pr_info("%s(%s)+\n", __func__, display->drm_conn->name);
 	mutex_lock(&display->display_lock);
+
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	if (!dsi_panel_initialized(display->panel)) {
+		mutex_unlock(&display->display_lock);
+		pr_info("panel already disabled\n");
+		return rc;
+	}
+#endif
 
 	rc = dsi_display_wake_up(display);
 	if (rc)
@@ -8074,6 +8125,15 @@ int dsi_display_unprepare(struct dsi_display *display)
 	SDE_EVT32(SDE_EVTLOG_FUNC_ENTRY);
 	mutex_lock(&display->display_lock);
 
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	pr_info("display %p, name %s is_primary(%d)\n", display, display->name, display->is_primary);
+	if (!display->is_dsi_display_prepared) {
+		mutex_unlock(&display->display_lock);
+		pr_info("panel already unprepared\n");
+		return rc;
+	}
+#endif
+
 	rc = dsi_display_wake_up(display);
 	if (rc)
 		pr_err("[%s] display wake up failed, rc=%d\n",
@@ -8122,6 +8182,9 @@ int dsi_display_unprepare(struct dsi_display *display)
 		       display->name, rc);
 
 	dsi_display_set_clk_src(display, false);
+#ifdef CONFIG_DRM_MSM_DSI_MOT_EXT
+	display->is_dsi_display_prepared = false;
+#endif
 
 	mutex_unlock(&display->display_lock);
 
