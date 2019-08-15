@@ -50,6 +50,17 @@
 	};
 };
 
+&soc {
+	ps_vled_en: ps_vled_en {
+		compatible = "regulator-fixed";
+		regulator-name = "ps_vled";
+		gpio = <&pmi632_gpios 7 0>;
+		enable-active-high;
+		startup-delay-us = <300>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+};
 
 &qupv3_se1_i2c {
 	status = "ok";
