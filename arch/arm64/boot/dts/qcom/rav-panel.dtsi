@@ -45,8 +45,8 @@
 };
 
 &sde_dsi {
-	qcom,dsi-display-list = <
-				&dsi_ft8009_boe_vid_display>;
+	qcom,dsi-display-list = <&dsi_ft8009_boe_vid_display
+				&dsi_mot_dummy_qhd_video_display>;
 };
 
 
