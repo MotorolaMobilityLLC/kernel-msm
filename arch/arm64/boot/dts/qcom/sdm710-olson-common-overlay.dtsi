@@ -135,10 +135,6 @@
 	qcom,mode-threshold-currents = <0>;
 };
 
-&pm660_l11 {
-	regulator-always-on;
-};
-
 &pm660_l14 {
 	regulator-always-on;
 };
@@ -154,7 +150,6 @@
 	regulator-min-microvolt = <3200000>;
 	regulator-max-microvolt = <3200000>;
 	qcom,init-voltage = <3200000>;
-	regulator-always-on;
 };
 
 &tlmm {
