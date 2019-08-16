@@ -73,7 +73,7 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <82 0x02>;
 		interrupt-names = "abov_irq";
-		abov,irq-gpio = <&tlmm 82 0x02>;
+		gpios = <&tlmm 82 0x02>;
 		pinctrl-names = "default","sleep";
 		pinctrl-0 = <&sar_int_default>;
 		pinctrl-1 = <&sar_int_sleep>;
