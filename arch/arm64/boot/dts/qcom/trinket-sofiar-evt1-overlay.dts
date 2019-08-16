@@ -23,3 +23,13 @@
 	qcom,board-id = <0x46 0xA300>;
 };
 
+&qupv3_se1_i2c {
+	lm3697@36 {
+		status = "ok";
+	};
+
+	aw99703-bl@36 {
+		status = "disable";
+	};
+};
+
