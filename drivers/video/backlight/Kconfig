@@ -484,6 +484,14 @@ config BACKLIGHT_LM3697
 	  Up to 3 backlight strings and 11 bit dimming is supported.
 	  PWM brightness control is also supported.
 
+config BACKLIGHT_AW99703
+	tristate "Backlight driver forAW99703"
+	depends on I2C
+	help
+	  Say Y to enable the backlight driver for AW99703.
+	  Up to 3 backlight strings and 11 bit dimming is supported.
+	  PWM brightness control is also supported.
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT
