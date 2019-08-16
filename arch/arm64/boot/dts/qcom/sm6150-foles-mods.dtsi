@@ -96,7 +96,7 @@
 		pinctrl-2 = <&mods_spi_mosi_ack &mods_spi_miso_ack>;
 		pinctrl-3 = <&muc_spi_ctrl>;
 		pinctrl-4 = <&mods_spi_cs_sleep>;
-		pinctrl-5 = <&mods_bplus_default>;
+		pinctrl-5 = <&mods_bplus_default &bplus_fault>;
 
 		transports {
 			#address-cells = <1>;
@@ -580,6 +580,13 @@
 	muc_spi_ctrl: muc_spi_ctrl {
 		config {
 			pins = "gpio41", "gpio121";
+			bias-disable;
+		};
+	};
+
+	bplus_fault: bplus_fault {
+		config {
+			pins = "gpio95";
 			bias-disable;
 		};
 	};
