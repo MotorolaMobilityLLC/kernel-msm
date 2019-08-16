@@ -1322,6 +1322,7 @@ int smblib_rerun_apsd_if_required(struct smb_charger *chg)
 		smblib_err(chg, "Couldn't to enable DPDM rc=%d\n", rc);
 
 	chg->uusb_apsd_rerun_done = true;
+	chg->typec_apsd_rerun_done = true;
 	smblib_rerun_apsd(chg);
 
 	return 0;
@@ -4139,6 +4140,20 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 		if (!rc && !val.intval)
 			return 0;
 
+		if (usb_current == -ETIMEDOUT &&
+		    !chg->typec_apsd_rerun_done) {
+			rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+							false, 0);
+			if (rc < 0)
+				return rc;
+			rc = vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
+							false, 0);
+			if (rc < 0)
+				return rc;
+			smblib_rerun_apsd_if_required(chg);
+			return 0;
+		}
+
 		typec_mode = smblib_get_prop_typec_mode(chg);
 		if (typec_rp_med_high(chg, typec_mode))
 			return 0;
@@ -5850,6 +5865,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->voltage_max_uv = MICRO_5V;
 	chg->usbin_forced_max_uv = 0;
 	chg->chg_param.forced_main_fcc = 0;
+	chg->typec_apsd_rerun_done = false;
 
 	/* Reset CC mode votes */
 	vote(chg->fcc_main_votable, MAIN_FCC_VOTER, false, 0);
