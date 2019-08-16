@@ -32,3 +32,9 @@
 		};
 	};
 };
+
+&qupv3_se1_i2c {
+	nq@28 {
+		status = "disabled";
+	};
+};
