@@ -3489,6 +3489,18 @@ static void check_for_sdp_connection(struct work_struct *w)
 	if (mdwc->usb_compliance_mode)
 		return;
 
+	dev_info(mdwc->dev, "SDP CHK: state=%d, link=%d\n",
+				dwc->gadget.state,
+				dwc3_gadget_get_link_state(dwc));
+
+	/* Wait additional time at boot for USB enumeration complete */
+	if (dwc->gadget.state == USB_STATE_NOTATTACHED &&
+	    dwc3_gadget_get_link_state(dwc) == DWC3_LINK_STATE_SS_DIS) {
+		queue_delayed_work(mdwc->dwc3_wq, &mdwc->sdp_check,
+			msecs_to_jiffies(SDP_CONNETION_CHECK_TIME));
+		return;
+	}
+
 	/* floating D+/D- lines detected */
 	if (dwc->gadget.state < USB_STATE_DEFAULT &&
 		dwc3_gadget_get_link_state(dwc) != DWC3_LINK_STATE_CMPLY) {
@@ -4909,6 +4921,11 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned int mA)
 		goto set_prop;
 	}
 
+	if (psy_type == POWER_SUPPLY_TYPE_USB && !mA) {
+		pval.intval = -ETIMEDOUT;
+		goto set_prop;
+	}
+
 	if (mdwc->max_power == mA || psy_type != POWER_SUPPLY_TYPE_USB)
 		return 0;
 
@@ -4998,7 +5015,8 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			work = 1;
 		} else if (test_bit(B_SESS_VLD, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "b_sess_vld\n");
-			if (get_psy_type(mdwc) == POWER_SUPPLY_TYPE_USB_FLOAT)
+			if (get_psy_type(mdwc) == POWER_SUPPLY_TYPE_USB_FLOAT ||
+			    get_psy_type(mdwc) == POWER_SUPPLY_TYPE_USB)
 				queue_delayed_work(mdwc->dwc3_wq,
 						&mdwc->sdp_check,
 				msecs_to_jiffies(SDP_CONNETION_CHECK_TIME));
