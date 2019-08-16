@@ -145,6 +145,7 @@
 			600000 300000>;
 	qcom,disable-suspend-on-collapse;
 	qcom,typec-legacy-rp-icl;
+	qcom,lpd-disable;
 };
 
 &spmi_bus {
