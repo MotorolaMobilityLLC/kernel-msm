@@ -103,7 +103,7 @@
 		interrupt-names = "bq27426_irq";
 		df-serialnum = "SB18C54570";
 		battery_profile_0 {
-			chem_id = <48>;
+			chem_id = <2542>;
 			serialnum = "SB18C54570";
 		};
 		battery_profile_1 {
@@ -216,8 +216,8 @@
 	qcom,usbeb-unsupported;
 	qcom,mmi-temp-zones = <0 4200 582 0>,
 				<10 4200 2000 582>,
-				<15 4200 4000 2000>,
-				<45 4250 6000 2000>,
-				<60 4200 1750 0>;
+				<15 4200 3000 2000>,
+				<46 4350 3000 2000>,
+				<60 4200 2000 0>;
 };
 
