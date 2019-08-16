@@ -154,4 +154,24 @@
 			//pwm-period = <10000>;
 		};
 	};
+
+	aw99703-bl@36 {
+		compatible = "awinic,aw99703-bl";
+		reg = <0x36>;
+		aw99703,hwen-gpio = <&pmi632_gpios 6 0>;
+		aw99703,pwm-mode = <0>;  /*0 pwm disable,1 PWM enable*/
+		aw99703,using-lsb;
+		aw99703,pwm-frequency = <100>;
+		aw99703,bl-fscal-led = <0x13>;/*default 20mA*/
+		aw99703,turn-on-ramp = <0x09>;
+		aw99703,turn-off-ramp = <0x09>;
+		aw99703,pwm-trans-dim = <0>;
+		aw99703,i2c-trans-dim = <0>;
+		aw99703,bl-channel = <3>;
+		aw99703,ovp-level = <0x03>; /*default 32v*/
+		aw99703,switching-frequency = <1000>; /*default 1000kHz*/
+		aw99703,inductor-current = <2600>; /*dfault 2600mA*/
+		aw99703,flash-timeout = <500>;/*default 500ms*/
+		aw99703,flash-current = <0xf>;/*default, it depends on full-scale led*/
+	};
 };
