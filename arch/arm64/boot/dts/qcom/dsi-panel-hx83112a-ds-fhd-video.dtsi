@@ -43,6 +43,7 @@
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 30>;
+		qcom,tp_state_check_enable;
 		/*
 		qcom,mdss-pan-physical-width-dimension = <65>;
 		qcom,mdss-pan-physical-height-dimension = <129>;
@@ -85,10 +86,17 @@
 					15 01 00 00 32 00 02 28 00
 					15 01 00 00 64 00 02 10 00
 				];
+				qcom,mdss-dsi-off-not-sleep-command = [
+					39 01 00 00 00 00 04 B9 83 11 2A
+					39 01 00 00 00 00 02 BD 01
+					39 01 00 00 00 00 04 B2 00 00 00
+					39 01 00 00 00 00 02 CF FF
+				];
 				qcom,mdss-dsi-t-clk-post = <0x0E>;
 				qcom,mdss-dsi-t-clk-pre = <0x33>;
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-off-not-sleep-command-state = "dsi_hs_mode";
 				qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03
                                                                  39 01 00 00 00 00 17 E4 2C 01 2C 00 08 00 10 08 04 04 FF
                                                                                       FF FF FF FF 66 66 E2 FF AA FE EF];
