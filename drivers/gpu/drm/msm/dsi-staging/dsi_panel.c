@@ -476,10 +476,15 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	int rc = 0;
 
 	pr_info("(%s)+\n", panel->name);
-	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
-	if (rc) {
-		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
-		goto exit;
+
+	if(panel->tp_state_check && panel->lcd_not_sleep){
+		pr_info("(%s)+lcd not sleep \n", panel->name);
+	}else{
+		rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+		if (rc) {
+			pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+			goto exit;
+		}
 	}
 
 	rc = dsi_panel_set_pinctrl_state(panel, true);
@@ -520,8 +525,12 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
-	if (gpio_is_valid(panel->reset_config.reset_gpio))
-		gpio_set_value(panel->reset_config.reset_gpio, 0);
+	if(panel->tp_state_check && panel->lcd_not_sleep){
+		pr_info("(%s)+lcd not sleep \n", panel->name);
+	}else{
+		if (gpio_is_valid(panel->reset_config.reset_gpio))
+			gpio_set_value(panel->reset_config.reset_gpio, 0);
+	}
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -531,11 +540,13 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		pr_err("[%s] failed set pinctrl state, rc=%d\n", panel->name,
 		       rc);
 	}
-
-	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
-	if (rc)
-		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
-
+	if(panel->tp_state_check && panel->lcd_not_sleep){
+		pr_info("(%s)+lcd not sleep \n", panel->name);
+	}else{
+		rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+		if (rc)
+			pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+	}
 	return rc;
 }
 static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
@@ -3737,6 +3748,9 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 	panel->no_panel_on_read_support = of_property_read_bool(of_node,
 				"qcom,mdss-dsi-no-panel-on-read-support");
 
+	panel->tp_state_check= of_property_read_bool(of_node,
+				"qcom,tp_state_check_enable");
+
 	return rc;
 }
 
@@ -5118,6 +5132,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 				"ibb", REGULATOR_MODE_STANDBY);
 
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
+
 		if (rc) {
 			/*
 			 * Sending panel off commands may fail when  DSI
