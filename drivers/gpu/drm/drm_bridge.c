@@ -379,6 +379,19 @@ void drm_bridge_enable(struct drm_bridge *bridge)
 }
 EXPORT_SYMBOL(drm_bridge_enable);
 
+void drm_bridge_tp_state_set(struct drm_bridge *bridge,
+			bool lcd_not_sleep)
+{
+	if (!bridge)
+		return;
+
+	drm_bridge_disable(bridge->next);
+
+	if (bridge->funcs->tp_state_set)
+		bridge->funcs->tp_state_set(bridge, lcd_not_sleep);
+}
+EXPORT_SYMBOL(drm_bridge_tp_state_set);
+
 #ifdef CONFIG_OF
 /**
  * of_drm_find_bridge - find the bridge corresponding to the device node in
