@@ -649,11 +649,13 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		pr_err("[%s] failed set pinctrl state, rc=%d\n", panel->name,
 		       rc);
 	}
-
-	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
-	if (rc)
-		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
-
+	if(panel->tp_state_check && panel->lcd_not_sleep){
+		pr_info("(%s)+lcd not sleep \n", panel->name);
+	}else{
+		rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+		if (rc)
+			pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+	}
 	return rc;
 }
 static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
@@ -2018,6 +2020,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-cabc-ui-command",
 	"qcom,mdss-dsi-cabc-mv-command",
 	"qcom,mdss-dsi-cabc-dis-command",
+	"qcom,mdss-dsi-off-not-sleep-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -2053,6 +2056,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-cabc-ui-command-state",
 	"qcom,mdss-dsi-cabc-mv-command-state",
 	"qcom,mdss-dsi-cabc-dis-command-state",
+	"qcom,mdss-dsi-off-not-sleep-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -3722,6 +3726,9 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 	panel->panel_hbm_fod = of_property_read_bool(of_node,
 				"qcom,mdss-dsi-hbm-fod");
 
+	panel->tp_state_check= of_property_read_bool(of_node,
+				"qcom,tp_state_check_enable");
+
 	return rc;
 }
 
@@ -4914,7 +4921,14 @@ int dsi_panel_disable(struct dsi_panel *panel)
 
 	/* Avoid sending panel off commands when ESD recovery is underway */
 	if (!atomic_read(&panel->esd_recovery_pending)) {
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
+		if(panel->tp_state_check && panel->lcd_not_sleep){
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF_NOT_SLEEP);
+			pr_info("(%s) DSI_CMD_SET_OFF_NOT_SLEEP+\n", panel->name);
+		}
+		else{
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
+			pr_info("(%s) DSI_CMD_SET_OFF+\n", panel->name);
+		}
 		if (rc) {
 			/*
 			 * Sending panel off commands may fail when  DSI
