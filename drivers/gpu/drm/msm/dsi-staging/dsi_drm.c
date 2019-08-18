@@ -313,6 +313,20 @@ static void dsi_bridge_mode_set(struct drm_bridge *bridge,
 	pr_debug("clk_rate: %llu\n", c_bridge->dsi_mode.timing.clk_rate_hz);
 }
 
+static void dsi_bridge_tp_state_set(struct drm_bridge *bridge,
+				bool lcd_not_sleep)
+{
+	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+
+	if (!bridge) {
+		pr_err("Invalid params\n");
+		return;
+	}
+       c_bridge->display->panel->lcd_not_sleep= lcd_not_sleep;
+
+	printk("c_bridge->display->lcd_not_sleep: %d\n", c_bridge->display->panel->lcd_not_sleep);
+}
+
 static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 				  const struct drm_display_mode *mode,
 				  struct drm_display_mode *adjusted_mode)
@@ -487,6 +501,7 @@ static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.disable      = dsi_bridge_disable,
 	.post_disable = dsi_bridge_post_disable,
 	.mode_set     = dsi_bridge_mode_set,
+	.tp_state_set = dsi_bridge_tp_state_set,
 };
 
 int dsi_conn_set_info_blob(struct drm_connector *connector,
