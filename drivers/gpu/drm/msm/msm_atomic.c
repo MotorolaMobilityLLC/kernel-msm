@@ -212,6 +212,7 @@ msm_disable_outputs(struct drm_device *dev, struct drm_atomic_state *old_state)
 	struct drm_crtc_state *old_crtc_state;
 	struct msm_drm_notifier notifier_data;
 	int i, blank;
+	int tp_state;
 
 	SDE_ATRACE_BEGIN("msm_disable");
 	for_each_connector_in_state(old_state, connector, old_conn_state, i) {
@@ -256,8 +257,9 @@ msm_disable_outputs(struct drm_device *dev, struct drm_atomic_state *old_state)
 			blank = MSM_DRM_BLANK_POWERDOWN;
 			notifier_data.data = &blank;
 			notifier_data.id = crtc_idx;
-			msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK,
+			tp_state = msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK,
 						     &notifier_data);
+			drm_bridge_tp_state_set(encoder->bridge, tp_state);
 		}
 		/*
 		 * Each encoder has at most one connector (since we always steal
