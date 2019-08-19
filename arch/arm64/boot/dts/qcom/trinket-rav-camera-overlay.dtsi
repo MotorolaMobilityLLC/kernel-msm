@@ -273,11 +273,6 @@
 		reg = <0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
-		cam_vaf-supply = <&L5P>;
-		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-min-voltage = <2800000>;
-		qcom,cam-vreg-max-voltage = <2800000>;
-		qcom,cam-vreg-op-mode = <0>;
 	};
 
 	actuator1: qcom,actuator@1 {
@@ -285,11 +280,6 @@
 		reg = <0x1>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <1>;
-		cam_vaf-supply = <&L5P>;
-		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-min-voltage = <2800000>;
-		qcom,cam-vreg-max-voltage = <2800000>;
-		qcom,cam-vreg-op-mode = <0>;
 	};
 
 	eeprom0: qcom,eeprom@0 {
@@ -470,6 +460,7 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
+                qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash_rear>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
@@ -607,6 +598,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
+                qcom,actuator-src = <&actuator1>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
 		qcom,cam-vreg-name = "cam_vio","cam_clk";
