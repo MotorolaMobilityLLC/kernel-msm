@@ -71,11 +71,11 @@
 				qcom,mdss-dsi-off-command = [
 					15 01 00 00 32 00 02 28 00
 					15 01 00 00 78 00 02 10 00
+					15 01 00 00 00 00 02 00 00
+					29 01 00 00 05 00 05 F7 5A A5 95 27
 				];
-				qcom,mdss-dsi-t-clk-post = <0x0E>;
-				qcom,mdss-dsi-t-clk-pre = <0x33>;
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 			};
 		};
 	};
