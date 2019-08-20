@@ -71,10 +71,19 @@
 	vsn_disp-supply = <&lcdb_ncp_vreg>;
 };
 
+&mdss_dsi_phy0 {
+	/delete-property/qcom,platform-strength-ctrl;
+	qcom,platform-strength-cfg-count = <3>;
+	qcom,platform-strength-ctrl = [ff 06 66
+					ff 06 66
+					ff 06 66
+					ff 06 66
+					ff 00 66];
+};
 
 &dsi_ft8756_tm_video {
 	qcom,mdss-dsi-t-clk-post = <0x0e>;
-	qcom,mdss-dsi-t-clk-pre = <0x32>;
+	qcom,mdss-dsi-t-clk-pre = <0x33>;
 
 	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
@@ -93,11 +102,11 @@
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
-				[25 20 08 0A 05 03 04 a0
-				25 20 08 0A 05 03 04 a0
-				25 20 08 0A 05 03 04 a0
-				25 20 08 0A 05 03 04 a0
-				24 1D 08 09 05 03 04 a0];
+				[25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1D 08 0A 06 03 04 a0];
 
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
@@ -117,7 +126,7 @@
 
 &dsi_ft8756_auo_video {
 	qcom,mdss-dsi-t-clk-post = <0x0e>;
-	qcom,mdss-dsi-t-clk-pre = <0x32>;
+	qcom,mdss-dsi-t-clk-pre = <0x33>;
 
 	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
@@ -136,11 +145,11 @@
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
-				[25 20 08 0A 05 03 04 a0
-				25 20 08 0A 05 03 04 a0
-				25 20 08 0A 05 03 04 a0
-				25 20 08 0A 05 03 04 a0
-				24 1D 08 09 05 03 04 a0];
+				[25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1D 08 0A 06 03 04 a0];
 
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
