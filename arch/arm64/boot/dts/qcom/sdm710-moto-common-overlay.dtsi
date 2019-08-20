@@ -153,6 +153,10 @@
 			<83>,
 			<84>;
 	};
+
+	qcom,qbt1000 {
+		status = "disabled";
+	};
 };
 
 &mot_dummy_vid_qhd {
