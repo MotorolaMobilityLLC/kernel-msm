@@ -631,6 +631,16 @@
 		pinctrl-names = "on_state", "off_state";
 		pinctrl-0 = <&touch_reset_active &touch_int_active>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		mmi,panel-mappings {
+			boe_evt {
+				panel-id = <0x0 0xd0014c03>;
+				panel-ver = <0x0 0x00cf62f2>;
+			};
+			csot_evt {
+				panel-id = <0x0 0xd001ef03>;
+				panel-ver = <0x0 0x00b062f2>;
+			};
+		};
 	};
 };
 
