@@ -52,8 +52,8 @@
 			timing@0 {
 				qcom,mdss-dsi-panel-width = <720>;
 				qcom,mdss-dsi-panel-height = <1560>;
-				qcom,mdss-dsi-h-front-porch = <160>;
-				qcom,mdss-dsi-h-back-porch = <40>;
+				qcom,mdss-dsi-h-front-porch = <272>;
+				qcom,mdss-dsi-h-back-porch = <140>;
 				qcom,mdss-dsi-h-pulse-width = <16>;
 				qcom,mdss-dsi-h-sync-skew = <0>;
 				qcom,mdss-dsi-v-back-porch = <21>;
@@ -87,8 +87,6 @@
 					05 01 00 00 14 00 01 28
 					05 01 00 00 3C 00 01 10
 				];
-				qcom,mdss-dsi-t-clk-post = <0x0B>;
-				qcom,mdss-dsi-t-clk-pre = <0x23>;
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 			};
