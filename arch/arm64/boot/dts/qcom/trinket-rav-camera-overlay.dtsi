@@ -617,18 +617,21 @@
 			<&tlmm 2 0>,
 			<&tlmm 47 0>,
 			<&tlmm 26 0>,
-			<&pm6125_gpios 2 0>;
+			<&pm6125_gpios 2 0>,
+			<&tlmm 84 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vaf = <2>;
 		qcom,gpio-custom1 = <3>;
 		qcom,gpio-vana = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-vdig = <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "MICRO_CAMIF_MCLK3",
 					"MICRO_CAM_RESET",
 					"MICRO_CAM_AF",
 					"MICRO_CAM_MIPI_SEL",
-					"MICRO_CAM_AVDD";
+					"MICRO_CAM_AVDD",
+					"MICRO_CAM_WIDE_DVDD";
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
 		status = "ok";
