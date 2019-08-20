@@ -123,6 +123,8 @@
 };
 
 &dsi_ft8756_focal_1080P_video {
+	qcom,mdss-dsi-t-clk-post = <0x0E>;
+	qcom,mdss-dsi-t-clk-pre = <0x33>;
 	/*qcom,dsi-supported-dfps-list = <60 55 48>;
 	qcom,mdss-dsi-pan-enable-dynamic-fps;
 	qcom,mdss-dsi-pan-fps-update =
@@ -163,6 +165,8 @@
 };
 
 &dsi_nt36675_nova_1080P_video {
+	qcom,mdss-dsi-t-clk-post = <0x0E>;
+	qcom,mdss-dsi-t-clk-pre = <0x33>;
 	/*qcom,dsi-supported-dfps-list = <60 55 48>;
 	qcom,mdss-dsi-pan-enable-dynamic-fps;
 	qcom,mdss-dsi-pan-fps-update =
@@ -186,11 +190,11 @@
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
-				[26 20 09 0B 06 02 04 a0
-				26 20 09 0B 06 02 04 a0
-				26 20 09 0B 06 02 04 a0
-				26 20 09 0B 06 02 04 a0
-				26 20 09 0B 06 02 04 a0];
+				[25 20 08 0A 06 02 04 a0
+				25 20 08 0A 06 02 04 a0
+				25 20 08 0A 06 02 04 a0
+				25 20 08 0A 06 02 04 a0
+				25 1D 08 0A 06 02 04 a0];
 
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
