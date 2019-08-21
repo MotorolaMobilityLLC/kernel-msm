@@ -1,3 +1,18 @@
+&tlmm{
+	haptic_irq_default: haptic_irq_default {
+		mux {
+			pins = "gpio43";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio43";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+};
+
 &qupv3_se1_i2c {
 	status = "ok";
 	aw8695_haptic@5A {
@@ -5,6 +20,8 @@
 	    reg = <0x5A>;
 	    reset-gpio = <&pmi632_gpios 4 0>;
 	    irq-gpio = <&tlmm 43 0>;
+	    pinctrl-names = "default";
+	    pinctrl-0 = <&haptic_irq_default>;
 	    status = "okay";
 	};
 };
