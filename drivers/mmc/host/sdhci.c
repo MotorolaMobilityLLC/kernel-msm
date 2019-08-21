@@ -3093,7 +3093,6 @@ static void sdhci_timeout_data_timer(unsigned long data)
 
 static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 {
-	u16 auto_cmd_status;
 	/* Handle auto-CMD12 error */
 	if (intmask & SDHCI_INT_AUTO_CMD_ERR && host->data_cmd) {
 		struct mmc_request *mrq = host->data_cmd->mrq;
@@ -3105,6 +3104,9 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 		/* Treat auto-CMD12 error the same as data error */
 		if (!mrq->sbc && (host->flags & SDHCI_AUTO_CMD12)) {
 			*intmask_p |= data_err_bit;
+			pr_err_ratelimited("%s: %s: AUTO CMD12 err sts 0x%08x\n",
+				mmc_hostname(host->mmc), __func__,
+								auto_cmd_status);
 			return;
 		}
 	}
@@ -3130,40 +3132,16 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 				sdhci_readl(host, SDHCI_RESPONSE));
 
 	if (intmask & (SDHCI_INT_TIMEOUT | SDHCI_INT_CRC |
-		       SDHCI_INT_END_BIT | SDHCI_INT_INDEX |
-		       SDHCI_INT_AUTO_CMD_ERR)) {
-		if (intmask & SDHCI_INT_TIMEOUT) {
+		       SDHCI_INT_END_BIT | SDHCI_INT_INDEX)) {
+		if (intmask & SDHCI_INT_TIMEOUT)
 			host->cmd->error = -ETIMEDOUT;
-			host->mmc->err_stats[MMC_ERR_CMD_TIMEOUT]++;
-		} else {
+		else
 			host->cmd->error = -EILSEQ;
-			host->mmc->err_stats[MMC_ERR_CMD_CRC]++;
-		}
 
-		if (intmask & SDHCI_INT_AUTO_CMD_ERR) {
-			auto_cmd_status = host->auto_cmd_err_sts;
-			host->mmc->err_stats[MMC_ERR_AUTO_CMD]++;
-			pr_err_ratelimited("%s: %s: AUTO CMD err sts 0x%08x\n",
-				mmc_hostname(host->mmc), __func__,
-					auto_cmd_status);
-			if (auto_cmd_status & (SDHCI_AUTO_CMD12_NOT_EXEC |
-					       SDHCI_AUTO_CMD_INDEX |
-					       SDHCI_AUTO_CMD_END_BIT))
-				host->cmd->error = -EIO;
-			else if (auto_cmd_status & SDHCI_AUTO_CMD_TIMEOUT)
-				host->cmd->error = -ETIMEDOUT;
-			else if (auto_cmd_status & SDHCI_AUTO_CMD_CRC)
-				host->cmd->error = -EILSEQ;
-		}
-
-		/* Treat data command CRC error the same as data CRC error
-		 *
-		 * Even in case of cmd INDEX OR ENDBIT error we
-		 * handle it the same way.
-		 */
+		/* Treat data command CRC error the same as data CRC error */
 		if (host->cmd->data &&
-		    (((intmask & (SDHCI_INT_CRC | SDHCI_INT_TIMEOUT)) ==
-		     SDHCI_INT_CRC) || (host->cmd->error == -EILSEQ))) {
+		    (intmask & (SDHCI_INT_CRC | SDHCI_INT_TIMEOUT)) ==
+		     SDHCI_INT_CRC) {
 			host->cmd = NULL;
 			*intmask_p |= SDHCI_INT_DATA_CRC;
 			return;
@@ -3180,9 +3158,13 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *intmask_p)
 		int err = (auto_cmd_status & SDHCI_AUTO_CMD_TIMEOUT) ?
 			  -ETIMEDOUT :
 			  -EILSEQ;
+		host->mmc->err_stats[MMC_ERR_AUTO_CMD]++;
 
 		if (mrq->sbc && (host->flags & SDHCI_AUTO_CMD23)) {
 			mrq->sbc->error = err;
+			pr_err_ratelimited("%s: %s: AUTO CMD23 err sts 0x%08x\n",
+				mmc_hostname(host->mmc), __func__,
+					auto_cmd_status);
 			sdhci_finish_mrq(host, mrq);
 			return;
 		}
