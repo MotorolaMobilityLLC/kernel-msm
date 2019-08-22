@@ -9,7 +9,7 @@
 		reg = <0x0>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <88 0x02>;
-		spi-max-frequency=<20000000>;
+		spi-max-frequency=<8000000>;
 		focaltech,reset-gpio = <&tlmm 87 0x01>;
 		focaltech,irq-gpio = <&tlmm 88 0x02>;
 		focaltech,share_reset_gpio;
