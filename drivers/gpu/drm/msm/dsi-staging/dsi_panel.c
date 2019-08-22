@@ -635,6 +635,9 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		       rc);
 	}
 
+	if (panel->reset_config.reset_assert_time > 0)
+		mdelay(panel->reset_config.reset_assert_time);
+
 	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
 	if (rc)
 		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
@@ -2317,6 +2320,7 @@ static int dsi_panel_parse_reset_sequence(struct dsi_panel *panel)
 	int i;
 	u32 length = 0;
 	u32 count = 0;
+	u32 val = 0;
 	u32 size = 0;
 	u32 *arr_32 = NULL;
 	const u32 *arr;
@@ -2349,6 +2353,15 @@ static int dsi_panel_parse_reset_sequence(struct dsi_panel *panel)
 	if (!arr_32) {
 		rc = -ENOMEM;
 		goto error;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-reset-assert-time", &val);
+	if (rc) {
+		panel->reset_config.reset_assert_time = 0;
+		pr_debug("[%s] cannot read qcom,mdss-dsi-reset-assert-time\n", panel->name);
+	} else {
+		panel->reset_config.reset_assert_time = val;
+		pr_debug("[%s] panel->reset_config.reset_assert_time is %d\n", panel->name, val);
 	}
 
 	rc = utils->read_u32_array(utils->data, "qcom,mdss-dsi-reset-sequence",
