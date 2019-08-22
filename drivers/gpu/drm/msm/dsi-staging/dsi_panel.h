@@ -153,6 +153,7 @@ struct dsi_panel_reset_config {
 	u32 tp_count;
 
 	int tp_reset_gpio;
+	int reset_assert_time;
 	int reset_gpio;
 	int disp_en_gpio;
 	int lcd_mode_sel_gpio;
