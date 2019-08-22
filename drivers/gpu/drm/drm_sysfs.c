@@ -229,16 +229,64 @@ static ssize_t modes_show(struct device *device,
 	return written;
 }
 
+static ssize_t panelId_show(struct device *device,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+
+	mutex_lock(&connector->dev->mode_config.mutex);
+	snprintf(buf, PAGE_SIZE, "0x%016llx\n",
+	connector->display_info.panel_id);
+	mutex_unlock(&connector->dev->mode_config.mutex);
+
+	return 20;
+}
+
+static ssize_t panelVer_show(struct device *device,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+
+	mutex_lock(&connector->dev->mode_config.mutex);
+	snprintf(buf, PAGE_SIZE, "0x%016llx\n",
+	connector->display_info.panel_ver);
+	mutex_unlock(&connector->dev->mode_config.mutex);
+
+	return 20;
+}
+
+static ssize_t panelName_show(struct device *device,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+
+	mutex_lock(&connector->dev->mode_config.mutex);
+	snprintf(buf, PAGE_SIZE, "%s\n", connector->display_info.panel_name);
+	mutex_unlock(&connector->dev->mode_config.mutex);
+
+	return sizeof(connector->display_info.panel_name);
+}
+
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
 static DEVICE_ATTR_RO(modes);
+static DEVICE_ATTR_RO(panelId);
+static DEVICE_ATTR_RO(panelVer);
+static DEVICE_ATTR_RO(panelName);
+
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
 	&dev_attr_enabled.attr,
 	&dev_attr_dpms.attr,
 	&dev_attr_modes.attr,
+	&dev_attr_panelId.attr,
+	&dev_attr_panelVer.attr,
+	&dev_attr_panelName.attr,
 	NULL
 };
 
