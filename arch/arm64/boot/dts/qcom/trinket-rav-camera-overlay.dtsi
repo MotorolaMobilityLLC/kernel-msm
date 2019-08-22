@@ -460,6 +460,7 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
+		qcom,eeprom-src = <&eeprom0>;
                 qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash_rear>;
 		cam_vio-supply = <&L12A>;
@@ -510,6 +511,7 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
+		qcom,eeprom-src = <&eeprom1>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
 		qcom,cam-vreg-name = "cam_vio";
@@ -553,6 +555,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
+		qcom,eeprom-src = <&eeprom2>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
 		qcom,cam-vreg-name = "cam_vio";
@@ -598,6 +601,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
+		qcom,eeprom-src = <&eeprom3>;
                 qcom,actuator-src = <&actuator1>;
 		cam_vio-supply = <&L12A>;
 		cam_clk-supply = <&camss_top_gdsc>;
