@@ -146,6 +146,7 @@ enum drm_mode_status {
 #define CRTC_STEREO_DOUBLE_ONLY	(CRTC_STEREO_DOUBLE | CRTC_NO_DBLSCAN | CRTC_NO_VSCAN)
 
 #define DRM_MODE_FLAG_3D_MAX	DRM_MODE_FLAG_3D_SIDE_BY_SIDE_HALF
+#define DRM_MODE_DISPLAY_NAME_LEN 128
 
 #define DRM_MODE_MATCH_TIMINGS (1 << 0)
 #define DRM_MODE_MATCH_CLOCK (1 << 1)
@@ -286,6 +287,10 @@ struct drm_display_mode {
 	int vsync_end;
 	int vtotal;
 	int vscan;
+
+	u64 panel_id;
+	u64 panel_ver;
+	char panel_name[DRM_MODE_DISPLAY_NAME_LEN];
 	/**
 	 * @flags:
 	 *
@@ -331,7 +336,7 @@ struct drm_display_mode {
 	int width_mm;
 
 	/**
-	 * @height_mm:
+	 * @Height_mm:
 	 *
 	 * Addressable size of the output in mm, projectors should set this to
 	 * 0.
