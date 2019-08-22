@@ -348,6 +348,9 @@ Optional properties:
 - qcom,mdss-tear-check-frame-rate:	Specify the value to be a real frame rate(fps) x 100 factor to tune the
 					timing of TE simulation with more precision.
 					The default value is 6000 with 60 fps.
+- qcom,mdss-dsi-reset-assert-time:	An value that defines the delay time between reset pull down and vsn/vsp
+					power down when panel suspend. If don't specify in dtsi, then no delay
+					between reset and vsn/vsp.
 - qcom,mdss-dsi-reset-sequence:		An array that lists the
 					sequence of reset gpio values and sleeps
 					Each command will have the format defined
