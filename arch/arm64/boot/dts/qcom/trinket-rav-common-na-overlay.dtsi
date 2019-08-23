@@ -11,3 +11,4 @@
  */
 
 #include "trinket-rav-common-overlay.dtsi"
+#include "trinket-rav-sensor-na-overlay.dtsi"
