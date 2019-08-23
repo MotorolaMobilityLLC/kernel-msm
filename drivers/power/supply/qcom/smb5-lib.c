@@ -10299,6 +10299,29 @@ static ssize_t factory_image_mode_show(struct device *dev,
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
 
+ssize_t mmi_get_factory_image_mode(void)
+{
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	return mmi_chip->mmi.is_factory_image;
+}
+
+ssize_t mmi_set_factory_image_mode(int mode)
+{
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	mmi_chip->mmi.is_factory_image = (mode) ? true : false;
+	return 0;
+}
+EXPORT_SYMBOL(mmi_get_factory_image_mode);
+EXPORT_SYMBOL(mmi_set_factory_image_mode);
+
 static DEVICE_ATTR(factory_image_mode, 0644,
 		factory_image_mode_show,
 		factory_image_mode_store);
@@ -10318,6 +10341,17 @@ static ssize_t factory_charge_upper_show(struct device *dev,
 
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
+
+ssize_t mmi_get_factory_charge_upper(void)
+{
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	return mmi_chip->mmi.upper_limit_capacity;
+}
+EXPORT_SYMBOL(mmi_get_factory_charge_upper);
 
 static DEVICE_ATTR(factory_charge_upper, 0444,
 		factory_charge_upper_show,
@@ -10366,6 +10400,34 @@ static ssize_t force_demo_mode_show(struct device *dev,
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
 
+ssize_t mmi_get_demo_mode(void)
+{
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	return mmi_chip->mmi.demo_mode;
+}
+
+ssize_t mmi_set_demo_mode(int mode)
+{
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	mmi_chip->mmi.chrg_taper_cnt = 0;
+	if ((mode >= 35) && (mode <= 80))
+		mmi_chip->mmi.demo_mode = mode;
+	else
+		mmi_chip->mmi.demo_mode = 35;
+
+	return 0;
+}
+EXPORT_SYMBOL(mmi_get_demo_mode);
+EXPORT_SYMBOL(mmi_set_demo_mode);
+
 static DEVICE_ATTR(force_demo_mode, 0644,
 		force_demo_mode_show,
 		force_demo_mode_store);
@@ -10411,6 +10473,32 @@ static ssize_t force_max_chrg_temp_show(struct device *dev,
 
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
+
+ssize_t mmi_get_max_chrg_temp(void)
+{
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	return mmi_chip->mmi.max_chrg_temp;
+}
+
+ssize_t mmi_set_max_chrg_temp(int value)
+{
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	if ((value >= MIN_MAX_TEMP_C) && (value <= MAX_TEMP_C))
+		mmi_chip->mmi.max_chrg_temp = value;
+	else
+		mmi_chip->mmi.max_chrg_temp = MAX_TEMP_C;
+	return 0;
+}
+EXPORT_SYMBOL(mmi_set_max_chrg_temp);
+EXPORT_SYMBOL(mmi_get_max_chrg_temp);
 
 static DEVICE_ATTR(force_max_chrg_temp, 0644,
 		force_max_chrg_temp_show,
