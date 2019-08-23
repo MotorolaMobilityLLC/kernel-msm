@@ -19,12 +19,6 @@
 #include "defender-panel.dtsi"
 #include "sm6150-def-charger-overlay.dtsi"
 
-&pm6150_l19 {
-	regulator-boot-on;
-	regulator-always-on;
-	status = "ok";
-};
-
 &soc {
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
