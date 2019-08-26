@@ -69,7 +69,6 @@ struct stack_record {
 	struct stack_record *next;	/* Link in the hashtable */
 	u32 hash;			/* Hash in the hastable */
 	u32 size;			/* Number of frames in the stack */
-	pid_t pid;
 	union handle_parts handle;
 	unsigned long entries[1];	/* Variable-sized array of entries. */
 };
@@ -202,8 +201,7 @@ EXPORT_SYMBOL_GPL(depot_fetch_stack);
  * Returns the handle of the stack struct stored in depot.
  */
 depot_stack_handle_t depot_save_stack(struct stack_trace *trace,
-				    gfp_t alloc_flags,
-                                     pid_t pid)
+				    gfp_t alloc_flags)
 {
 	u32 hash;
 	depot_stack_handle_t retval = 0;
@@ -257,7 +255,6 @@ depot_stack_handle_t depot_save_stack(struct stack_trace *trace,
 		struct stack_record *new =
 			depot_alloc_stack(trace->entries, trace->nr_entries,
 					  hash, &prealloc, alloc_flags);
-		new->pid = pid;
 		if (new) {
 			new->next = *bucket;
 			/*
