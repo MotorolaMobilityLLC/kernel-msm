@@ -5,7 +5,7 @@ $(error Moto DT w/o overlay is undefined!!!)
 endif
 
 # Motorola Device Trees
-dtbo-$(CONFIG_ARCH_SDM670) += \
+dtbo-$(CONFIG_OLSON_DTB) += \
 		sdm710-olson-dvt3c-overlay.dtbo \
 		sdm710-olson-dvt3-overlay.dtbo \
 		sdm670-olson-dvt2-overlay.dtbo \
