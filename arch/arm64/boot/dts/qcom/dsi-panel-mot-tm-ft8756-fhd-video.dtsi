@@ -42,6 +42,7 @@
 		//qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
+		qcom,mdss-dsi-reset-assert-time = <5>;
 		qcom,mdss-dsi-reset-sequence = <1 4>, <0 1>, <1 11>;
 		/*
 		qcom,mdss-pan-physical-width-dimension = <65>;
@@ -66,7 +67,7 @@
 					39 01 00 00 00 00 02 00 80
 					39 01 00 00 00 00 03 FF 87 56//cmd2 enable
 					15 01 00 00 00 00 02 51 A3
-					15 01 00 00 00 00 02 53 2c
+					15 01 00 00 00 00 02 53 24
 					15 01 00 00 00 00 02 55 01
 					15 01 00 00 78 00 02 11 00
 					15 01 00 00 00 00 02 29 00
