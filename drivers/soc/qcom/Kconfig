@@ -9,6 +9,14 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config OLSON_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "OLSON DTBs"
+	help
+	Only include Olson specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_CPUSS_DUMP
 	bool "CPU Subsystem Dumping support"
 	help
