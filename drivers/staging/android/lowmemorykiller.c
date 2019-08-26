@@ -132,6 +132,16 @@ module_param_named(enable_adaptive_lmk, enable_adaptive_lmk, int, 0644);
 static int vmpressure_file_min;
 module_param_named(vmpressure_file_min, vmpressure_file_min, int, 0644);
 
+/*
+ * This parameter controls the behaviour of LMK when vmpressure is in
+ * the range of 95-100. As high vmpressure comes very frequently in
+ * 2G and lower device, almk also kills processes very frequently,
+ * it already broke the original minfree design in such case. So it's better
+ * to control the almk in critical vmpressure 95-100.
+ */
+static int vmpressure_file_min_critical;
+module_param_named(vmpressure_file_min_critical, vmpressure_file_min_critical, int, 0644);
+
 /* User knob to enable/disable oom reaping feature */
 static int oom_reaper = 1;
 module_param_named(oom_reaper, oom_reaper, int, 0644);
@@ -187,13 +197,23 @@ static int lmk_vmpressure_notifier(struct notifier_block *nb,
 		return 0;
 
 	if (pressure >= 95) {
+		if (lowmem_adj_size < array_size)
+			array_size = lowmem_adj_size;
+		if (lowmem_minfree_size < array_size)
+			array_size = lowmem_minfree_size;
+
 		other_file = global_node_page_state(NR_FILE_PAGES) -
 			global_node_page_state(NR_SHMEM) -
 			total_swapcache_pages();
 		other_free = global_zone_page_state(NR_FREE_PAGES);
 
-		atomic_set(&shift_adj, 1);
-		trace_almk_vmpressure(pressure, other_free, other_file);
+		lowmem_print(3, "vmpressure_notifier other_free %d other_file %d, pressure %ld\n",
+			other_free, other_file, pressure);
+
+		if ((other_free < lowmem_minfree[array_size - 1]) &&
+		    (other_file < vmpressure_file_min_critical)) {
+			atomic_set(&shift_adj, 1);
+		}
 	} else if (pressure >= 90) {
 		if (lowmem_adj_size < array_size)
 			array_size = lowmem_adj_size;
@@ -203,27 +223,22 @@ static int lmk_vmpressure_notifier(struct notifier_block *nb,
 		other_file = global_node_page_state(NR_FILE_PAGES) -
 			global_node_page_state(NR_SHMEM) -
 			total_swapcache_pages();
-
 		other_free = global_zone_page_state(NR_FREE_PAGES);
 
-		if (other_free < lowmem_minfree[array_size - 1] &&
-		    other_file < vmpressure_file_min) {
+		lowmem_print(3, "vmpressure_notifier other_free %d other_file %d, pressure %ld\n",
+			other_free, other_file, pressure);
+
+		if ((other_free < lowmem_minfree[array_size - 1]) &&
+		    (other_file < vmpressure_file_min)) {
 			atomic_set(&shift_adj, 1);
-			trace_almk_vmpressure(pressure, other_free, other_file);
 		}
 	} else if (atomic_read(&shift_adj)) {
-		other_file = global_node_page_state(NR_FILE_PAGES) -
-			global_node_page_state(NR_SHMEM) -
-			total_swapcache_pages();
-
-		other_free = global_zone_page_state(NR_FREE_PAGES);
 		/*
 		 * shift_adj would have been set by a previous invocation
 		 * of notifier, which is not followed by a lowmem_shrink yet.
 		 * Since vmpressure has improved, reset shift_adj to avoid
 		 * false adaptive LMK trigger.
 		 */
-		trace_almk_vmpressure(pressure, other_free, other_file);
 		atomic_set(&shift_adj, 0);
 	}
 
