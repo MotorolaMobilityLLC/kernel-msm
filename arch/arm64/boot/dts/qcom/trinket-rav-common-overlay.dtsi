@@ -230,3 +230,26 @@
 		status = "disabled";
 	};
 };
+
+&mtp_batterydata {
+	df-serialnum = "SB18C51711";
+	#include "qg-batterydata-kg40-atl-4000mah.dtsi"
+};
+
+&pmi632_qg {
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,qg-iterm-ma = <300>;
+};
+
+&pmi632_charger {
+	qcom,battery-data = <&mtp_batterydata>;
+};
+
+&pmi632_mmi {
+	qcom,mmi-temp-zones = <0 4200 776 0>,
+				<10 4200 1940 776>,
+				<15 0 1940 1940>,
+				<45 4200 3600 2520>,
+				<60 4200 1940 0>;
+	qcom,iterm-ma = <194>;
+};
