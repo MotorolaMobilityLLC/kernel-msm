@@ -17,6 +17,14 @@ config OLSON_DTB
 	Only include Olson specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config RACERL_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "RACERL DTBs"
+	help
+	Only include Racerl specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_CPUSS_DUMP
 	bool "CPU Subsystem Dumping support"
 	help
