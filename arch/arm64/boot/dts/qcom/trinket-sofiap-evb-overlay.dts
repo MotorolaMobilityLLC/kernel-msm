@@ -23,3 +23,12 @@
 	qcom,board-id = <0x47 0xA100>;
 };
 
+&et520 {
+	egistec,gpio_ldo1p8_en = <&tlmm 128 0x0>;
+};
+
+&fpc {
+	pinctrl-0 = <&ldo18_en_active &ldo33_en_active &int_active &rst_active>;
+	pinctrl-1 = <&ldo18_en_suspend &ldo33_en_suspend &int_suspend &rst_suspend>;
+};
+
