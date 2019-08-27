@@ -234,6 +234,7 @@
 &mtp_batterydata {
 	df-serialnum = "SB18C51711";
 	#include "qg-batterydata-kg40-atl-4000mah.dtsi"
+	#include "qg-batterydata-kg40-sucd-4000mah.dtsi"
 };
 
 &pmi632_qg {
