@@ -124,29 +124,6 @@
 };
 
 &qupv3_se1_i2c {
-	lm3697@36 {
-		compatible = "ti,lm3697";
-		reg = <0x36>;
-
-		/* GPIO134 for HWEN pin */
-		ti,enable-gpio = <&pmi632_gpios 6 0>;
-
-		//pwms = <&pwm3943 1 10000>;
-		//pwm-names = "lm3697-backlight";
-
-		lcd_bl {
-			backlight-name = "lcd";
-			hvled1-used;
-			hvled2-used;
-			hvled3-used;
-			pwm-enable;
-
-			max-current-milliamp = <25>;
-			initial-brightness = <2000>;
-			//pwm-period = <10000>;
-		};
-	};
-
 	aw99703-bl@36 {
 		compatible = "awinic,aw99703-bl";
 		reg = <0x36>;
