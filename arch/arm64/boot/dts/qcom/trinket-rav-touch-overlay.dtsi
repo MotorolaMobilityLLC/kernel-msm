@@ -2,6 +2,15 @@
 	status = "disabled";
 };
 
+&qupv3_se2_spi_sleep {
+	/delete-node/ configs;
+	configs {
+		pins = "gpio6", "gpio7", "gpio9";
+		drive-strength = <6>;
+		bias-pull-up;
+	};
+};
+
 &qupv3_se2_spi {
 	status = "ok";
 	focaltech@0 {
@@ -21,6 +30,20 @@
 		focaltech,display-coords = <0 0 719 1559>;
 		focaltech,max-touch-number = <10>;
 		status = "/chosen", "mmi,panel_name", "boe_ft8009_hd_vid";
+	};
+
+	novatek@1 {
+		compatible = "novatek,NVT-ts-spi";
+		reg = <0x1>;
+
+		spi-max-frequency = <9600000>;	//4800000,9600000,15000000,19200000
+		novatek,reset-gpio = <&tlmm 87 0x01>;
+		novatek,irq-gpio = <&tlmm 88 0x2001>;
+
+		/* 672A, 525B, 675, 526 */
+		novatek,swrst-n8-addr = <0x03F0FE>;
+		novatek,spi-rd-fast-addr = <0x03F310>;
+		status = "/chosen", "mmi,panel_name", "tm_nt36526_hd_vid";
 	};
 };
 
