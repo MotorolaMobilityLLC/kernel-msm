@@ -13,6 +13,7 @@
 
 #include "dsi-panel-mot-tm-ft8756-fhd-video.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-auo-nt36675-fhd-video.dtsi"
 
 
 &soc {
@@ -28,7 +29,19 @@
 		qcom,dsi-panel = <&dsi_ft8756_tm_video>;
 	};
 
-	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@5 {
+	dsi_nt36675_auo_vid_display: qcom,dsi-display@5 {
+		label = "dsi_nt36675_auo_vid_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
+			"src_byte_clk0", "src_pixel_clk0",
+			"shadow_byte_clk0", "shadow_pixel_clk0";
+		qcom,dsi-panel = <&dsi_nt36675_auo_video>;
+	};
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@6 {
 		label = "dsi_mot_dummy_qhd_video_display";
 		qcom,display-type = "primary";
 
@@ -49,6 +62,7 @@
 
 &sde_dsi {
 	qcom,dsi-display-list = <&dsi_ft8756_tm_vid_display
+                  &dsi_nt36675_auo_vid_display
                   &dsi_mot_dummy_qhd_video_display>;
         /delete-property/ qcom,platform-te-gpio;
 
@@ -92,6 +106,49 @@
 };
 
 &dsi_ft8756_tm_video {
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+	qcom,platform-reset-gpio = <&tlmm 90 0>;
+	qcom,platform-en-gpio = <&tlmm 86 0>;
+	//qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+};
+
+&dsi_nt36675_auo_video {
+	qcom,mdss-dsi-t-clk-post = <0x0e>;
+	qcom,mdss-dsi-t-clk-pre = <0x33>;
+
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0a];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-no-panel-on-read-support;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1F 09 0A 06 03 04 a0
+				25 1D 08 0A 06 03 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+
+			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+			qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
+			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 A3];
+			qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
+		};
+	};
+};
+
+&dsi_nt36675_auo_video {
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,platform-reset-gpio = <&tlmm 90 0>;
