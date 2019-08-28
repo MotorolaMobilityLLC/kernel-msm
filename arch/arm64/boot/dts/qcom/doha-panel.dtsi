@@ -142,12 +142,16 @@
 	/*qcom,dsi-supported-dfps-list = <60 55 48>;
 	qcom,mdss-dsi-pan-fps-update =
 		"dfps_immediate_porch_mode_vfp";*/
+	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0a];
-	qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-	qcom,mdss-dsi-panel-status-value = <0x1c>;
-	qcom,mdss-dsi-panel-on-check-value = <0x1c>;
-	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-panel-status-command = [14 01 00 01 00 00 01 0a
+				 06 01 00 01 00 00 01 09];
+
+	qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9d>,<0x80 0x73 0x04>;
+	qcom,mdss-dsi-panel-on-check-value = <0x9d>,<0x80 0x73 0x04>;
+
+	qcom,mdss-dsi-panel-status-read-length = <1>,<3>;
 	qcom,mdss-dsi-no-panel-on-read-support;
     qcom,bklt-dcs-2bytes-enabled;
 	//qcom,dsi-dyn-clk-enable;
