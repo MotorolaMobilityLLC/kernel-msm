@@ -23,8 +23,8 @@
 		interrupt-names = "abov_irq";
 		reg_array_len = <0x03>;
 		reg_array_val = <0x07 0x00 0x08 0x1F 0xFB 0x01>;
-		cap,use_channel_bottom_lmb = <0x00>;
-		cap,use_channel_bottom_hb = <0x01>;
+		cap,use_channel_bottom_left = <0x01>;
+		cap,use_channel_bottom_right = <0x00>;
 		cap,use_channel_top = <0x02>;
 		label = "AbovCapSense";
 	};
