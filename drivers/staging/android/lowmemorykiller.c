@@ -86,6 +86,14 @@ static int lowmem_minfree[6] = {
 static int lowmem_minfree_size = 4;
 static int lmk_fast_run = 1;
 
+/*
+ * This parameter tracks the kill count per minfree since boot.
+ * 0, 100, 200, 300, 900, 906, 900, 901, 902, 903, 904, 905, 906, almk
+ * Generally LPMC[4] = sum(LPMC[6]~LPMC[11]); LPMC[5] = LPMC[12]
+ * almk makes above not equal
+ */
+static int lowmem_per_minfree_count[14];
+
 static unsigned long lowmem_deathpending_timeout;
 
 #define lowmem_print(level, x...)			\
@@ -473,6 +481,8 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	int other_free;
 	int other_file;
 	bool lock_required = true;
+	int minfree_count_offset = 0;
+	int array_count = ARRAY_SIZE(lowmem_per_minfree_count);
 
 	other_free = global_zone_page_state(NR_FREE_PAGES) - totalreserve_pages;
 
@@ -504,11 +514,15 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		minfree = mult_frac(lowmem_minfree[i], scale_percent, 100);
 		if (other_free < minfree && other_file < minfree) {
 			min_score_adj = lowmem_adj[i];
+			minfree_count_offset = i;
 			break;
 		}
 	}
 
 	ret = adjust_minadj(&min_score_adj);
+	if (ret == VMPRESSURE_ADJUST_ENCROACH) {
+		minfree_count_offset = array_count-1;
+	}
 
 	lowmem_print(3, "%s %lu, %x, ofree %d %d, ma %hd\n",
 		     __func__, sc->nr_to_scan, sc->gfp_mask, other_free,
@@ -621,6 +635,13 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		}
 		task_unlock(selected);
 		trace_lowmemory_kill(selected, cache_size, cache_limit, free);
+		if (minfree_count_offset >= array_size - 2 && minfree_count_offset < array_size
+					&& selected_oom_score_adj >= lowmem_adj[array_size - 2]) {
+			//This condition is to ensure it is cached adj that being killed
+			int cache_index = array_size + (int)(selected_oom_score_adj % 10);
+			lowmem_per_minfree_count[cache_index]++;
+		}
+		lowmem_per_minfree_count[minfree_count_offset]++;
 		lowmem_print(1, "Killing '%s' (%d) (tgid %d), adj %hd,\n"
 			"to free %ldkB on behalf of '%s' (%d) because\n"
 			"cache %ldkB is below limit %ldkB for oom score %hd\n"
@@ -784,6 +805,8 @@ module_param_array_named(adj, lowmem_adj, short, &lowmem_adj_size, 0644);
 #endif
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
+module_param_array_named(lmk_count, lowmem_per_minfree_count, uint, NULL,
+			 S_IRUGO);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
 module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
 
