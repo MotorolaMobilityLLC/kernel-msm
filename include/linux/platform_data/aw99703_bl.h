@@ -1,7 +1,7 @@
 #ifndef _AW99703_REG_H_
 #define _AW99703_REG_H_
 
-#include <linux/backlight.h>
+
 /********************************************
  * Register List
  *******************************************/
@@ -193,6 +193,14 @@ const unsigned char aw99703_reg_access[AW99703_REG_MAX] = {
 #define AW99703_PWM_P_FLT_100MS			(1<<0)
 #define AW99703_PWM_P_FLT_150MS			(2<<0)
 #define AW99703_PWM_P_FLT_200MS			(3<<0)
+
+/*TURNCFG:0x09*/
+#define AW99703_TURNCFG_ON_TIM_MASK		(~(15<<4))
+#define AW99703_TURNCFG_OFF_TIM_MASK		(~(15<<0))
+
+/*TRANCFG:0x0A*/
+#define AW99703_TRANCFG_PWM_TIM_MASK		(~(7<<4))
+#define AW99703_TRANCFG_I2C_TIM_MASK		(~(15<<0))
 
 #define MAX_BRIGHTNESS		(2047)
 #define AW_READ_CHIPID_RETRIES 5
