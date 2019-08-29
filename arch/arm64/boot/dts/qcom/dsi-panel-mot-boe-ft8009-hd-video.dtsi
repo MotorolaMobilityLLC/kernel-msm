@@ -43,7 +43,7 @@
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
 		qcom,bklt-dcs-2bytes-0xff0f-enabled;
-		qcom,mdss-dsi-reset-assert-time = <10>;
+		qcom,mdss-dsi-reset-always-high;
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
 		/*
 		qcom,mdss-pan-physical-width-dimension = <65>;
@@ -80,13 +80,19 @@
 					15 00 00 00 00 00 02 36 08
 					05 01 00 00 78 00 01 11
 					05 01 00 00 14 00 01 29
-					39 00 00 00 00 00 03 51 FF 0F
+					39 00 00 00 00 00 03 51 00 00
 					15 00 00 00 00 00 02 53 2C
 					15 01 00 00 00 00 02 55 01
 				];
 				qcom,mdss-dsi-off-command = [
 					05 01 00 00 14 00 01 28
-					05 01 00 00 3C 00 01 10
+					05 01 00 00 14 00 01 10
+					15 00 00 00 00 00 02 00 00
+					39 00 00 00 00 00 04 FF 80 09 01
+					15 00 00 00 00 00 02 00 80
+					39 00 00 00 00 00 03 FF 80 09 //cmd2 enble
+					15 00 00 00 00 00 02 00 00
+					39 01 00 00 78 00 05 F7 5A A5 95 27 //lcd deepsleep
 				];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
