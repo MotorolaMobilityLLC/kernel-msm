@@ -587,7 +587,7 @@
 &qupv3_se7_i2c {
 	status = "ok";
 	synaptics_dsx_i2c@20 {
-		status = "/chosen","mmi,panel_name","contains","auo";
+		status = "/chosen","mmi,panel_name","contains","auo","smd";
 		compatible = "synaptics,synaptics_mmi";
 		reg = <0x20>;
 		interrupt-parent = <&tlmm>;
