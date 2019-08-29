@@ -2,8 +2,65 @@
 	status = "disabled";
 };
 
+&qupv3_se2_spi_pins {
+	qupv3_se2_spi_active: qupv3_se2_spi_active {
+		mux {
+			pins = "gpio6", "gpio7", "gpio8";
+			function = "qup02";
+		};
+
+		config {
+			pins = "gpio6", "gpio7", "gpio8";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se2_spi_sleep: qupv3_se2_spi_sleep {
+		mux {
+			pins = "gpio6", "gpio7", "gpio8";
+			function = "gpio";
+		};
+
+		configs {
+			pins = "gpio6", "gpio7", "gpio8";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se2_spi_cs_active: qupv3_se2_spi_cs_active {
+		mux {
+			pins = "gpio9";
+			function = "qup02";
+		};
+
+		config {
+			pins = "gpio9";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se2_spi_cs_sleep: qupv3_se2_spi_cs_sleep {
+		mux {
+			pins = "gpio9";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio9";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+};
+
 &qupv3_se2_spi {
 	status = "ok";
+	pinctrl-0 = <&qupv3_se2_spi_active &qupv3_se2_spi_cs_active>;
+	pinctrl-1 = <&qupv3_se2_spi_sleep &qupv3_se2_spi_cs_sleep>;
+
 	focaltech@0 {
 		compatible = "focaltech,fts";
 		reg = <0x0>;
@@ -21,6 +78,17 @@
 		focaltech,display-coords = <0 0 1079 2299>;
 		focaltech,max-touch-number = <10>;
 		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
+	};
+
+	novatek@0 {
+		compatible = "novatek,NVT-ts-spi";
+		reg = <0x0>;
+		spi-max-frequency = <9600000>;  /* 4800000,9600000,15000000,19200000 */
+		novatek,reset-gpio = <&tlmm 87 0x00>;
+		novatek,irq-gpio = <&tlmm 88 0x2001>;
+		novatek,swrst-n8-addr = <0x03F0FE>;
+		novatek,spi-rd-fast-addr = <0x03F310>;
+		status = "/chosen", "mmi,panel_name", "auo_nt36675_fhd_vid";
 	};
 };
 
