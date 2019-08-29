@@ -13,7 +13,7 @@
 &mdss_mdp {
 	dsi_nt36675_nova_1080P_video: qcom,mdss_dsi_nt36675_nova_1080P_video {
 		qcom,mdss-dsi-panel-name =
-				"dsi_nt36675_nova_1080P_video";
+				"mipi_mot_vid_nova_1080p_653";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 
 		qcom,mdss-dsi-virtual-channel-id = <0>;
@@ -42,7 +42,7 @@
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
-		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
+		qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 10>, <1 10>;
 		/*
 		qcom,mdss-pan-physical-width-dimension = <65>;
 		qcom,mdss-pan-physical-height-dimension = <129>;
