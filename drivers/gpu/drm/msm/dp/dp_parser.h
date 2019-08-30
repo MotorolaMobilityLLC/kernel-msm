@@ -247,6 +247,7 @@ struct dp_parser {
 	const char *mst_fixed_display_type[MAX_DP_MST_STREAMS];
 	const char *display_type;
 	bool without_sw_flip;
+	bool multi_func;
 
 	int (*parse)(struct dp_parser *parser);
 	struct dp_io_data *(*get_io)(struct dp_parser *parser, char *name);
