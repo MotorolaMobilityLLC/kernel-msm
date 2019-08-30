@@ -20,9 +20,6 @@
 	    reg = <0x5A>;
 	    reset-gpio = <&pmi632_gpios 4 0>;
 	    irq-gpio = <&tlmm 43 0>;
-	    haptic-context-gpio = <&tlmm 99 0>;
-	    long-gain-normal = <0x80>;
-	    long-gain-reduced = <0x3A>;
 	    pinctrl-names = "default";
 	    pinctrl-0 = <&haptic_irq_default>;
 	    status = "okay";
