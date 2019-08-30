@@ -234,6 +234,7 @@ struct dp_parser {
 	u32 max_dp_dsc_input_width_pixs;
 	bool lphw_hpd;
 	bool without_sw_flip;
+	bool multi_func;
 
 	int (*parse)(struct dp_parser *parser);
 	struct dp_io_data *(*get_io)(struct dp_parser *parser, char *name);
