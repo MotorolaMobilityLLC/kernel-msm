@@ -116,12 +116,12 @@
 
 	laser_int_active: laser_int_active {
 		mux {
-			pins = "gpio3";
+			pins = "gpio132";
 			function = "gpio";
 		};
 
 		config {
-			pins = "gpio3";
+			pins = "gpio132";
 			drive-strength = <2>;
 			bias-pull-up; /* PULL UP */
 		};
@@ -129,12 +129,12 @@
 
 	laser_int_suspend: laser_int_suspend {
 		mux {
-			pins = "gpio3";
+			pins = "gpio132";
 			function = "gpio";
 		};
 
 		config {
-			pins = "gpio3";
+			pins = "gpio132";
 			drive-strength = <2>;
 			bias-pull-down; /* PULL DOWN */
 		};
@@ -158,13 +158,13 @@
 
 &qupv3_se3_i2c {
 	status = "ok";
-	stmvl53l1@29 {
+	stmvl53l1: stmvl53l1@29 {
 		/* Enable once the matching driver is ported completely */
 		status = "ok";
 		compatible = "st,stmvl53l1";
 		reg = <0x29>;
 		pwren-gpio = <&pmi632_gpios 7 0>;
-		gpios = <&tlmm 118 0>, <&tlmm 3 0>;
+		gpios = <&tlmm 118 0>, <&tlmm 132 0>;
 		qcom,gpio-reset = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <0 1>;
