@@ -1766,24 +1766,104 @@ stop_building_utags:
 }
 
 #ifdef CONFIG_OF
+static char *bootargs_str;
+
+static int utag_get_bootarg(char *key, char **value)
+{
+	const char *bootargs_ptr = NULL;
+	char *idx = NULL;
+	char *kvpair = NULL;
+	int err = 1;
+	struct device_node *n = of_find_node_by_path("/chosen");
+
+	if (n == NULL)
+		goto err;
+
+	if (of_property_read_string(n, "bootargs", &bootargs_ptr) != 0)
+		goto err_putnode;
+
+	if (!bootargs_str) {
+		/* Following operations need a non-const version of bootargs */
+		bootargs_str = kzalloc(strlen(bootargs_ptr) + 1, GFP_KERNEL);
+		if (!bootargs_str)
+			goto err_putnode;
+	}
+	strlcpy(bootargs_str, bootargs_ptr, strlen(bootargs_ptr) + 1);
+
+	idx = strnstr(bootargs_str, key, strlen(bootargs_str));
+	if (idx) {
+		kvpair = strsep(&idx, " ");
+		if (kvpair)
+			if (strsep(&kvpair, "=")) {
+				*value = strsep(&kvpair, " ");
+				if (*value)
+					err = 0;
+			}
+	}
+
+err_putnode:
+	of_node_put(n);
+err:
+	return err;
+}
+
+#define PLATFORM_PATH "/dev/block/platform/soc/"
+
+static void utags_bootdevice_expand(const char **name_ptr, const char *name)
+{
+	int rc;
+	size_t max_len = strlen(name);
+	char *bootdevice = NULL;
+	char *replace, *suffix, *expanded;
+
+	rc = utag_get_bootarg("androidboot.bootdevice=", &bootdevice);
+	if (rc || !bootdevice)
+		goto need_no_expansion;
+
+	replace = strnstr(name, "bootdevice", max_len);
+	suffix = strnstr(name, "by-name", max_len);
+	if (!replace || !suffix)
+		goto need_no_expansion;
+
+	max_len = strlen(PLATFORM_PATH) + strlen(bootdevice) + strlen(suffix);
+	max_len += 2;	/* account on '/' and null termination */
+
+	expanded = kzalloc(max_len, GFP_KERNEL);
+	if (!expanded) {
+		pr_err("cannot expand bootdevice\n");
+		goto need_no_expansion;
+	}
+
+	snprintf(expanded, max_len,
+			PLATFORM_PATH "%s/%s", bootdevice, suffix);
+	pr_info("path expanded to: %s(%zu)\n", expanded, max_len);
+	*name_ptr = (const char *)expanded;
+
+	return;
+
+need_no_expansion:
+	*name_ptr = name;
+}
+
 static int utags_dt_init(struct platform_device *pdev)
 {
 	int rc;
+	const char *path_ptr;
 	struct device_node *node = pdev->dev.of_node;
 	struct ctrl *ctrl;
 
 	ctrl = dev_get_drvdata(&pdev->dev);
-	rc = of_property_read_string(node, "mmi,main-utags",
-		&ctrl->main.name);
+	rc = of_property_read_string(node, "mmi,main-utags", &path_ptr);
 	if (rc) {
 		pr_err("storage path not provided\n");
 		return -EIO;
 	}
+	utags_bootdevice_expand(&ctrl->main.name, path_ptr);
 
-	rc = of_property_read_string(node, "mmi,backup-utags",
-		&ctrl->backup.name);
+	rc = of_property_read_string(node, "mmi,backup-utags", &path_ptr);
 	if (rc)
 		pr_info("backup storage path not provided\n");
+	utags_bootdevice_expand(&ctrl->backup.name, path_ptr);
 
 	ctrl->dir_name = DEFAULT_ROOT;
 	rc = of_property_read_string(node, "mmi,dir-name", &ctrl->dir_name);
