@@ -32,3 +32,8 @@
 	pinctrl-1 = <&ldo18_en_suspend &ldo33_en_suspend &int_suspend &rst_suspend>;
 };
 
+&stmvl53l1 {
+        /* Disable once the matching driver is ported completely */
+        status = "disable";
+};
+
