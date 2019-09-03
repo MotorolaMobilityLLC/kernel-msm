@@ -780,6 +780,9 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
        if (bl->bl_2bytes_0xff0f_enable)
 		bl_lvl = ((bl_lvl & 0x000f) << 8) |(bl_lvl >> 4);
 
+	if (bl->bl_2bytes_0x0fff_enable)
+		bl_lvl = ((bl_lvl & 0x00ff) << 8) | (bl_lvl >> 8);
+
 	if (bl->bl_2bytes_enable)
 		rc = mipi_dsi_dcs_set_display_brightness_2bytes(dsi, bl_lvl);
 	else
@@ -2803,6 +2806,12 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 
 	pr_info("[%s] bl_2bytes_0xff0f_enable=%d\n", panel->name,
 					panel->bl_config.bl_2bytes_0xff0f_enable);
+
+	panel->bl_config.bl_2bytes_0x0fff_enable = utils->read_bool(utils->data,
+			"qcom,bklt-dcs-2bytes-0x0fff-enabled");
+
+	pr_debug("[%s] bl_2bytes_0x0fff_enable=%d\n", panel->name,
+					panel->bl_config.bl_2bytes_0x0fff_enable);
 
 	panel->bl_config.bl_2bytes_enable = utils->read_bool(utils->data,
 			"qcom,bklt-dcs-2bytes-enabled");
