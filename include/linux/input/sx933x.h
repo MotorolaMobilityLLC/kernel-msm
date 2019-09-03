@@ -747,6 +747,9 @@ struct sx93XX
 	 * or does not work properly */
 	char irq_disabled;
 
+	/* interrupt check flag */
+	int int_state;
+
 	u8 useIrqTimer; /* older models need irq timer for pen up cases */
 
 	int irqTimeout; /* msecs only set if useIrqTimer is true */
