@@ -200,7 +200,6 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&key_cam_snapshot_default
-			     &key_cam_focus_default
 			     &key_vol_up_default>;
 
 		cam_snapshot {
@@ -208,16 +207,6 @@
 			gpios = <&tlmm 91 GPIO_ACTIVE_LOW>;
 			linux,input-type = <1>;
 			linux,code = <766>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-			linux,can-disable;
-		};
-
-		cam_focus {
-			label = "cam_focus";
-			gpios = <&tlmm 92 GPIO_ACTIVE_HIGH>;
-			linux,input-type = <1>;
-			linux,code = <528>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 			linux,can-disable;
