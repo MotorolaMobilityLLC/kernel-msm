@@ -19,7 +19,6 @@
 #include "trinket-sofiap-fps-overlay.dtsi"
 #include "trinket-sofiap-nfc-overlay.dtsi"
 #include "trinket-sofiap-sensor-overlay.dtsi"
-#include "trinket-sofiap-fmr-overlay.dtsi"
 
 &usb_qmp_phy {
 	status = "disabled";
