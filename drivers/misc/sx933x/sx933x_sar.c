@@ -409,6 +409,15 @@ static ssize_t sx933x_dump_reg_show(struct class *class,
 	return (p-buf);
 }
 
+static ssize_t sx933x_int_state_show(struct class *class,
+		struct class_attribute *attr,
+		char *buf)
+{
+	psx93XX_t this = global_sx933x;
+	LOG_DBG("Reading INT line state\n");
+	return sprintf(buf, "%d\n", this->int_state);
+}
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
 static struct class_attribute class_attr_reset =
 	__ATTR(reset, 0660, NULL, capsense_reset_store);
@@ -423,6 +432,8 @@ static struct class_attribute class_attr_manual_calibrate =
 	manual_offset_calibration_store);
 static struct class_attribute class_attr_dump_reg =
 	__ATTR(dump_reg, 0440, sx933x_dump_reg_show, NULL);
+static struct class_attribute class_attr_int_state =
+	__ATTR(int_state, 0440, sx933x_int_state_show, NULL);
 
 static struct attribute *capsense_class_attrs[] = {
 	&class_attr_reset.attr,
@@ -431,6 +442,7 @@ static struct attribute *capsense_class_attrs[] = {
 	&class_attr_register_read.attr,
 	&class_attr_manual_calibrate.attr,
 	&class_attr_dump_reg.attr,
+	&class_attr_int_state.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(capsense_class);
@@ -442,6 +454,7 @@ static struct class_attribute capsense_class_attributes[] = {
 	__ATTR(register_read,0660, NULL,sx933x_register_read_store),
 	__ATTR(manual_calibrate, 0660, manual_offset_calibration_show,manual_offset_calibration_store),
 	__ATTR(dump_reg, 0440, sx933x_dump_reg_show, NULL),
+	__ATTR(int_state, 0440, sx933x_int_state_show, NULL),
 	__ATTR_NULL,
 };
 #endif
@@ -1232,6 +1245,7 @@ static irqreturn_t sx93XX_irq(int irq, void *pvoid)
 		{
 			LOG_INFO("sx93XX_irq - call sx93XX_schedule_work\n");
 			sx93XX_schedule_work(this,0);
+			this->int_state = 1;
 		}
 		else
 		{
@@ -1298,6 +1312,7 @@ int sx93XX_IRQ_init(psx93XX_t this)
 	int err = 0;
 	if (this && this->pDevice)
 	{
+		this->int_state = 0;
 		/* initialize spin lock */
 		spin_lock_init(&this->lock);
 		/* initialize worker function */
