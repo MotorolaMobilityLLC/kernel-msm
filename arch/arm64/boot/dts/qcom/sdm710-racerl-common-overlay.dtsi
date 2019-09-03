@@ -57,24 +57,6 @@
 	};
 };
 
-&firmware {
-        android {
-                vbmeta {
-                        parts = "vbmeta,boot,system,vendor,dtbo,oem";
-                };
-                fstab {
-                        oem {
-                                compatible = "android,oem";
-                                dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/oem";
-                                type = "ext4";
-                                mnt_flags = "ro,barrier=1,discard";
-                                /*MMI_STOPSHIP security: Remove until oem */
-                                /*fsmgr_flags = "wait,slotselect,avb";*/
-                                fsmgr_flags = "wait,slotselect";
-                        };
-                };
-        };
-};
 
 &vendor {
         mot_batterydata: qcom,battery-data {
