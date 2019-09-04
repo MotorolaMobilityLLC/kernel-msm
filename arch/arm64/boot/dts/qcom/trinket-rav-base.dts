@@ -13,3 +13,7 @@
 /dts-v1/;
 
 #include "trinket-moto-base.dtsi"
+
+&firmware {
+	/delete-node/ android;
+};
