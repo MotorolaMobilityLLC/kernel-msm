@@ -84,8 +84,8 @@
 		pinctrl-0 = <&sar_int_default>;
 		pinctrl-1 = <&sar_int_sleep>;
 		cap,use_channel = <0x0f>;
-		cap,use_channel_top = <0x00>;
-		cap,use_channel_bottom = <0x01>;
+		cap,use_channel_top = <0x01>;
+		cap,use_channel_bottom = <0x00>;
 		//cap,use_channel_middle = <0x02>;
 		cap,scan_period = <0x02>;
 		reg_array_len = <3>;
