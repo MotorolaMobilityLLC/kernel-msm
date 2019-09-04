@@ -284,7 +284,6 @@ struct dsi_panel {
 
 	u32 disp_on_chk_val;
 	bool no_panel_on_read_support;
-	bool sleep_no_power_down;
 
 	struct panel_hbm hbm_config;
 
