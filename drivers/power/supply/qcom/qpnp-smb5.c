@@ -1862,7 +1862,7 @@ static int smb5_dr_prop_writeable(struct dual_role_phy_instance *dual_role,
 
 	switch (prop) {
 	case DUAL_ROLE_PROP_MODE:
-		return 1;
+		return 0;
 	default:
 		break;
 	}
