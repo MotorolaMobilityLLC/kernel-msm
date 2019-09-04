@@ -61,13 +61,14 @@
 				qcom,mdss-dsi-v-front-porch = <16>;
 				qcom,mdss-dsi-v-pulse-width = <20>;
 				qcom,mdss-dsi-panel-framerate = <60>;
+				qcom,mdss-dsi-panel-clockrate = <668000000>;
 				qcom,mdss-dsi-on-command = [
 					15 00 00 00 00 00 02 00 00
 					39 00 00 00 00 00 04 FF 80 09 01
 					15 00 00 00 00 00 02 00 80
 					39 00 00 00 00 00 03 FF 80 09//cmd2 enable
 					15 00 00 00 00 00 02 00 B0
-					15 00 00 00 00 00 02 CA 15 //normal DBF=00
+					15 00 00 00 00 00 02 CA 01 //normal DBF=00
 					15 00 00 00 00 00 02 00 B2
 					15 00 00 00 00 00 02 CA 0C //pwm 15k 12 Bit
 					15 00 00 00 00 00 02 00 B5
