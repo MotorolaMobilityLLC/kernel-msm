@@ -97,6 +97,119 @@ static char *charge_rate[] = {
 	"None", "Normal", "Weak", "Turbo"
 };
 
+static ssize_t power_supply_check_property(struct device *dev,
+					  struct device_attribute *attr,
+					  union power_supply_propval value) {
+	ssize_t ret = 0;
+	struct power_supply *psy = dev_get_drvdata(dev);
+	const ptrdiff_t off = attr - power_supply_attrs;
+
+	if (!psy ||!psy->desc) {
+		dev_err(dev, "no dev\n");
+		return -ENODEV;
+	}
+
+	if (off == POWER_SUPPLY_PROP_STATUS
+		&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_status_text))) {
+			dev_err(dev, "power_supply_status_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CHARGE_TYPE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_charge_type_text))) {
+			dev_err(dev, "power_supply_charge_type_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CHARGE_RATE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(charge_rate))) {
+			dev_err(dev, "charge_rate, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TECHNOLOGY
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_technology_text))) {
+			dev_err(dev, "power_supply_technology_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CAPACITY_LEVEL
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_capacity_level_text))) {
+			dev_err(dev, "power_supply_capacity_level_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if ((off == POWER_SUPPLY_PROP_TYPE ||
+			off == POWER_SUPPLY_PROP_REAL_TYPE)
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_type_text))) {
+			dev_err(dev, "power_supply_type_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_SCOPE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_scope_text))) {
+			dev_err(dev, "power_supply_scope_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TYPEC_MODE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_usbc_text))) {
+			dev_err(dev, "power_supply_usbc_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TYPEC_POWER_ROLE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_usbc_pr_text))) {
+			dev_err(dev, "power_supply_usbc_pr_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TYPEC_SRC_RP
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_typec_src_rp_text))) {
+			dev_err(dev, "power_supply_typec_src_rp_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_DIE_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_die_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CONNECTOR_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_connector_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_SKIN_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_skin_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off >= POWER_SUPPLY_PROP_MODEL_NAME
+			&& !value.strval) {
+			dev_err(dev, "power_supply_mode_name is null\n");
+			goto check_failed;
+	}
+
+	return ret;
+
+check_failed:
+
+	if (psy->desc->name)
+		dev_err(dev, "psy : %s\n", psy->desc->name);
+	ret = -ENODATA;
+	return ret;
+}
+
 static ssize_t power_supply_show_property(struct device *dev,
 					  struct device_attribute *attr,
 					  char *buf) {
@@ -121,6 +234,9 @@ static ssize_t power_supply_show_property(struct device *dev,
 			return ret;
 		}
 	}
+
+	if (power_supply_check_property(dev, attr, value) < 0)
+		return ret;
 
 	if (off == POWER_SUPPLY_PROP_STATUS)
 		return sprintf(buf, "%s\n",
