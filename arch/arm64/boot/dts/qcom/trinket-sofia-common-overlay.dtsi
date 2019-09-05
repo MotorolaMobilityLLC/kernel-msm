@@ -45,7 +45,7 @@
 
 &pmi632_qg {
 	qcom,battery-data = <&mtp_batterydata>;
-	qcom,qg-iterm-ma = <300>;
+	qcom,qg-iterm-ma = <500>;
 };
 
 &pmi632_charger {
