@@ -4147,10 +4147,25 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			if (rc < 0)
 				return rc;
 			rc = vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
-							false, 0);
+							true, SDP_CURRENT_UA);
 			if (rc < 0)
 				return rc;
+			pr_warn("Rerun apsd for USB timeout\n");
 			smblib_rerun_apsd_if_required(chg);
+			return 0;
+		} else if (usb_current == -ETIMEDOUT) {
+			/*
+			 * Set USB_PYH 500mA ICL after rerun apsd complete
+			 * if USB still timeout.
+			 */
+			if (is_client_vote_enabled(chg->usb_icl_votable,
+							USB_PSY_VOTER)) {
+				vote(chg->usb_icl_votable, USB_PSY_VOTER,
+							true, SDP_CURRENT_UA);
+				vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
+							false, 0);
+				pr_warn("Set ICL to 500mA for USB timeout\n");
+			}
 			return 0;
 		}
 
