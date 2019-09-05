@@ -340,13 +340,10 @@
 
 &qupv3_se8_spi {
 	status = "ok";
-	spi-max-frequency = <9600000>;
 	cs48l32: cs48l32@0 {
 		compatible = "cirrus,cs48l32";
 		reg = <0x0>;
-
-		spi-max-frequency = <50000000>;
-
+		spi-max-frequency = <20000000>;
 		gpio-controller;
 		interrupt-controller;
 		interrupt-parent = <&tlmm>;
