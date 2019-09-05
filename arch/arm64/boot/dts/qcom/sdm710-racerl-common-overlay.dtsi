@@ -18,6 +18,7 @@
 
 #include "sdm670-mtp.dtsi"
 #include "sdm670-audio-overlay.dtsi"
+#include "sdm710-racerl-touchscreen.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
