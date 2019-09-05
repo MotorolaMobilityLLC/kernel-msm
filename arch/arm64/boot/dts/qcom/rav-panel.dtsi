@@ -13,6 +13,7 @@
 
 #include "dsi-panel-mot-boe-ft8009-hd-video.dtsi"
 #include "dsi-panel-mot-tm-nt36526-hd-video.dtsi"
+#include "dsi-panel-mot-inx-hx83104a-hd-video.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 &soc {
@@ -44,7 +45,21 @@
 		qcom,dsi-panel = <&dsi_nt36526_tm_video>;
 	};
 
-	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@7 {
+	dsi_hx83104a_inx_vid_display: qcom,dsi-display@7 {
+		label = "dsi_hx83104a_inx_vid_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
+			"src_byte_clk0", "src_pixel_clk0",
+			"shadow_byte_clk0", "shadow_pixel_clk0";
+		lab-supply = <&lcdb_ldo_vreg>;
+		ibb-supply = <&lcdb_ncp_vreg>;
+		qcom,dsi-panel = <&dsi_hx83104a_inx_video>;
+	};
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@8 {
 		label = "dsi_mot_dummy_qhd_video_display";
 		qcom,display-type = "primary";
 
@@ -62,6 +77,7 @@
 &sde_dsi {
 	qcom,dsi-display-list = <&dsi_ft8009_boe_vid_display
 				&dsi_nt36526_tm_vid_display
+				&dsi_hx83104a_inx_vid_display
 				&dsi_mot_dummy_qhd_video_display>;
 };
 
@@ -165,6 +181,42 @@
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,platform-reset-gpio = <&tlmm 90 0>;
 	qcom,platform-tp-reset-gpio = <&tlmm 87 0>;
+	qcom,platform-en-gpio = <&tlmm 86 0>;
+	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
+	qcom,platform-high-light-gpio = <&pmi632_gpios 2 0>;
+};
+
+
+
+&dsi_hx83104a_inx_video {
+	qcom,mdss-dsi-t-clk-post = <0x0C>;
+	qcom,mdss-dsi-t-clk-pre = <0x27>;
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-command = [14 01 00 01 00 00 01 0a];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9d>;
+	qcom,mdss-dsi-panel-on-check-value = <0x9d>;
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings =
+				[21 1D 06 07 04 02 04 a0
+				21 1D 06 07 04 02 04 a0
+				21 1D 06 07 04 02 04 a0
+				21 1D 06 07 04 02 04 a0
+				21 14 06 07 04 02 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&dsi_hx83104a_inx_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,platform-reset-gpio = <&tlmm 90 0>;
 	qcom,platform-en-gpio = <&tlmm 86 0>;
 	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
 	qcom,platform-high-light-gpio = <&pmi632_gpios 2 0>;
