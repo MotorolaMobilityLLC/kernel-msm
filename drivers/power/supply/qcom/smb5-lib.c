@@ -6697,10 +6697,6 @@ static void smblib_dual_role_check_work(struct work_struct *work)
 						DUAL_ROLE_PROP_MODE_NONE);
 			if (rc < 0)
 				pr_err("Failed to set DRP mode, rc=%d\n", rc);
-			rc = smblib_handle_dual_role_failure(chg, mode);
-			if (rc < 0)
-				pr_err("Failed to handle dual role_failure rc=%d\n",
-									rc);
 		}
 		chg->pr_swap_in_progress = false;
 		break;
