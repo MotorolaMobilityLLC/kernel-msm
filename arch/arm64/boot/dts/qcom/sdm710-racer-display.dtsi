@@ -1,0 +1,105 @@
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-tianma-639-1080p-racer-cmd.dtsi"
+#include "pm660a.dtsi"
+
+&soc {
+	mot_panel_dummy_reg: mot_panel_dummy_reg {
+		compatible = "regulator-fixed";
+		regulator-name = "mot_dummy_disp";
+	};
+
+
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@19 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_mot_dummy_qhd_video_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active>;
+		pinctrl-1 = <&sde_dsi_suspend>;
+
+		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
+		vci_disp-supply = <&mot_panel_dummy_reg>;
+	};
+
+	/* Please keep all the "primary" panel nodes together */
+	dsi_tianma_639_1080p_cmd_display: qcom,dsi-display@21 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_tianma_639_1080p_cmd_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
+		qcom,platform-te-gpio = <&tlmm 10 0>;
+		qcom,dsi-panel = <&mot_tianma_639_1080p_cmd_v0>;
+		vddio-supply = <&pm660_l11>;
+		vdda-3p3-supply = <&pm660l_l6>;
+
+	};
+
+
+};
+
+&mot_dummy_vid_qhd {
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-reset-gpio = <&tlmm 75 0>;
+	qcom,mdss-dsi-t-clk-post = <0x09>;
+	qcom,mdss-dsi-t-clk-pre = <0x15>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 0B 02 02 1C 1C 03
+							02 01 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&mot_tianma_639_1080p_cmd_v0 {
+        qcom,platform-te-gpio = <&tlmm 10 0>;
+        qcom,platform-reset-gpio = <&tlmm 75 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_labibb_amoled>;
+        qcom,mdss-dsi-t-clk-post = <0x0d>;
+        qcom,mdss-dsi-t-clk-pre = <0x30>;
+        qcom,mdss-mdp-transfer-time-us = <14000>;
+        qcom,mdss-dsi-no-panel-on-read-support;
+
+        qcom,mdss-dsi-display-timings {
+                timing@0{
+                        qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+                                                        08 05 03 04 00];
+                        qcom,display-topology = <1 0 1>;
+                        qcom,default-topology-index = <0>;
+                };
+        };
+};
+&dsi_tianma_639_1080p_cmd_display {
+	qcom,dsi-display-active;
+	lab-supply = <&lab_regulator>;
+	ibb-supply = <&ibb_regulator>;
+	oledb-supply = <&pm660a_oledb>;
+};
