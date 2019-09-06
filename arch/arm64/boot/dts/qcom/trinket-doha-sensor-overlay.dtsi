@@ -20,7 +20,7 @@
 				pins = "gpio43";
 				num-grp-pins = <1>;
 				drive-strength = <2>;
-				bias-no-pull;
+				bias-disable;
 			};
 	};
 
@@ -33,7 +33,7 @@
 				pins = "gpio43";
 				num-grp-pins = <1>;
 				drive-strength = <2>;
-				bias-no-pull;
+				bias-disable;
 			};
 	};
 };
