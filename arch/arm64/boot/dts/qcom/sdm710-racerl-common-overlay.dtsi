@@ -17,6 +17,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 #include "sdm670-mtp.dtsi"
+#include "sdm710-racer-display.dtsi"
 #include "sdm670-audio-overlay.dtsi"
 #include "sdm710-racerl-touchscreen.dtsi"
 
