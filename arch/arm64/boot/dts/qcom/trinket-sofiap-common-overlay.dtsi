@@ -40,6 +40,7 @@
 &mtp_batterydata {
 	df-serialnum = "SB18C57819";
 	#include "qg-batterydata-kx50-amperex-4000mah.dtsi"
+	#include "qg-batterydata-kx50-swd-4000mah.dtsi"
 };
 
 &pmi632_qg {
