@@ -553,7 +553,7 @@ static int gsx_sensor_set_enable(struct sensors_classdev *sensors_cdev,
 			return 0;
 		}
 
-	msleep(GTP_20_DLY_MS);
+	msleep(GTP_100_DLY_MS);
 
 #ifdef GTP_CHARGER
 	//charger off
