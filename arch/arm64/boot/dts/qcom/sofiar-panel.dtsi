@@ -187,8 +187,16 @@
 		reg = <0x36>;
 		aw99703,hwen-gpio = <&pmi632_gpios 6 0>;
 		aw99703,pwm-mode = <1>;  /*0 pwm disable,1 PWM enable*/
-		aw99703,using-lsb;
+		aw99703,pwm-maptype = <1>;  /*0: exponential,1: linear*/
 		aw99703,bl-fscal-led = <0x19>;/*default 20mA*/
-		aw99703,bl-channel = <3>;
+		aw99703,bl-map = <3>; /*brightness map level 1:256,2:1024,3:2048*/
+		aw99703,ovp-sel = <2>;
+		aw99703,ocp-sel = <1>;
+		aw99703,turn-on-ramp = <0>;
+		aw99703,turn-off-ramp = <0>;
+		aw99703,wprt1 = <0x1C>;
+		aw99703,bstcrt3 = <0x61>;
+		aw99703,bstcrt4 = <0x4C>;
+		aw99703,bstcrt5 = <0x61>;
 	};
 };
