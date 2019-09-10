@@ -202,41 +202,46 @@ const unsigned char aw99703_reg_access[AW99703_REG_MAX] = {
 #define AW99703_TRANCFG_PWM_TIM_MASK		(~(7<<4))
 #define AW99703_TRANCFG_I2C_TIM_MASK		(~(15<<0))
 
+/*TRANCFG:0x0B*/
+#define AW99703_FLASH_FLTO_TIM_MASK		(~(15<<4))
+#define AW99703_FLASH_FL_S_TIM_MASK		(~(15<<0))
+
 #define MAX_BRIGHTNESS		(2047)
 #define AW_READ_CHIPID_RETRIES 5
 #define AW_READ_CHIPID_RETRY_DELAY 2
 
 struct aw99703_data {
-	struct led_classdev led_dev;
 	struct i2c_client *client;
 	struct device dev;
 	struct i2c_adapter *adapter;
 	unsigned short addr;
-	struct mutex lock;
-	struct work_struct work;
-	enum led_brightness brightness;
+    int brightness;
 	bool enable;
-	u8 pwm_cfg;
-	u8 full_scale_current;
-	bool brt_code_enable;
-	u16 *brt_code_table;
 	int hwen_gpio;
-	unsigned int  pwm_mode;
-	bool using_lsb;
-	unsigned int pwm_period;
+	unsigned int pwm_mode;
+	unsigned int maptype;
 	unsigned int full_scale_led;
+	unsigned int channel;
+	unsigned int sf_sft;
+	unsigned int sf;
+	unsigned int ovp_sel;
+	unsigned int ocp_sel;
+	unsigned int idctsel;
+	unsigned int p_sf;
+	unsigned int p_hys;
+	unsigned int p_flt;
 	unsigned int ramp_on_time;
 	unsigned int ramp_off_time;
 	unsigned int pwm_trans_dim;
 	unsigned int i2c_trans_dim;
-	unsigned int channel;
-	unsigned int ovp_level;
-	unsigned int frequency;
-	unsigned int default_brightness;
+	unsigned int flto_tim;
+	unsigned int fl_s;
+	unsigned int wprt1;
+	unsigned int bstcrt3;
+	unsigned int bstcrt4;
+	unsigned int bstcrt5;
 	unsigned int max_brightness;
-	unsigned int induct_current;
-	unsigned int flash_current;
-	unsigned int flash_timeout;
+	unsigned int bl_map;
 	struct backlight_device *bl_dev;
 };
 
