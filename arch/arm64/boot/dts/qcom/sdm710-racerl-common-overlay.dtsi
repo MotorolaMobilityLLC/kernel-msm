@@ -20,6 +20,7 @@
 #include "sdm710-racer-display.dtsi"
 #include "sdm670-audio-overlay.dtsi"
 #include "sdm710-racerl-touchscreen.dtsi"
+#include "sdm710-racerl-fingerprint.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
