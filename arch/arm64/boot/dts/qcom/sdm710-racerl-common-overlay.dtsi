@@ -191,6 +191,32 @@
         qcom,fg-empty-voltage = <3000>;
 };
 
+&tlmm {
+	tps61280_en_default: tps61280_en_default {
+		mux {
+			pins = "gpio135";
+		};
+		config {
+			pins = "gpio135";
+			output-high;
+		};
+	};
+};
+
+&qupv3_se4_i2c {
+	status = "ok";
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x17>;
+		ti,vout-roof = <0x1F>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
+};
+
 &dsi_dual_nt35597_truly_video {
 	qcom,mdss-dsi-no-panel-on-read-support;
 };
