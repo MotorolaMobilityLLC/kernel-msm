@@ -71,6 +71,15 @@
 	vsn_disp-supply = <&lcdb_ncp_vreg>;
 };
 
+&mdss_dsi_phy0 {
+	/delete-property/qcom,platform-strength-ctrl;
+	qcom,platform-strength-cfg-count = <3>;
+	qcom,platform-strength-ctrl = [ff 06 66
+					ff 06 66
+					ff 06 66
+					ff 06 66
+					ff 00 66];
+};
 
 &dsi_ft8756_tm_video {
 	qcom,mdss-dsi-t-clk-post = <0x0e>;
