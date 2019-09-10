@@ -21,6 +21,7 @@
 #include "sdm670-audio-overlay.dtsi"
 #include "sdm710-racerl-touchscreen.dtsi"
 #include "sdm710-racerl-fingerprint.dtsi"
+#include "sdm710-racerl-haptic-overlay.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
