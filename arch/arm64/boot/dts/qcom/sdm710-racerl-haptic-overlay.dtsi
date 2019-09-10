@@ -1,0 +1,44 @@
+&tlmm{
+	aw8695_reset {
+		aw8695_reset_default: aw8695_reset_default {
+			mux {
+				pins = "gpio80";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio80";
+				bias-no-pull;
+			};
+		};
+	};
+	aw8695_irq {
+		aw8695_irq_default: aw8695_irq_default {
+			mux {
+				pins = "gpio77";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio77";
+				bias-no-pull;
+			};
+		};
+	};
+};
+
+&qupv3_se10_i2c {
+	status = "ok";
+	aw8695_haptic@5A {
+		compatible = "awinic,aw8695_haptic";
+		reg = <0x5A>;
+		reset-gpio = <&tlmm 80 0>;
+		irq-gpio = <&tlmm 77 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&aw8695_reset_default &aw8695_irq_default>;
+		haptic-context-gpio = <&tlmm 133 0>;
+		long-gain-normal = <0x80>;
+		long-gain-reduced = <0x80>;
+		status = "okay";
+	};
+};
