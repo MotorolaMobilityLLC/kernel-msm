@@ -1,7 +1,7 @@
 /*
 * aw99703.c   aw99703 backlight module
 *
-* Version: v1.0.2
+* Version: v1.0.4
 *
 * Copyright (c) 2019 AWINIC Technology CO., LTD
 *
@@ -14,21 +14,20 @@
 */
 
 #include <linux/i2c.h>
-#include <linux/leds.h>
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/types.h>
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
+#include <linux/version.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/backlight.h>
 #include <linux/platform_data/aw99703_bl.h>
 
-#define AW99703_LED_DEV "aw99703-bl"
 #define AW99703_NAME "aw99703-bl"
 
-#define AW99703_VERSION "v1.0.2"
+#define AW99703_VERSION "v1.0.4"
 
 struct aw99703_data *g_aw99703_data;
 
@@ -106,20 +105,6 @@ static int aw99703_i2c_write(struct i2c_client *client, u8 addr, const u8 val)
 
 	return platform_write_i2c_block(client, buf, sizeof(buf));
 }
-static void aw99703_hwen_pin_ctrl(struct aw99703_data *drvdata, int en)
-{
-	if (gpio_is_valid(drvdata->hwen_gpio)) {
-		if (en) {
-			pr_info("hwen pin is going to be high!---<%d>\n", en);
-			gpio_set_value(drvdata->hwen_gpio, true);
-			usleep_range(3500, 4000);
-		} else {
-			pr_info("hwen pin is going to be low!---<%d>\n", en);
-			gpio_set_value(drvdata->hwen_gpio, false);
-			usleep_range(1000, 2000);
-		}
-	}
-}
 
 static int aw99703_gpio_init(struct aw99703_data *drvdata)
 {
@@ -132,7 +117,7 @@ static int aw99703_gpio_init(struct aw99703_data *drvdata)
 			pr_err("failed to request gpio\n");
 			return -1;
 		}
-		ret = gpio_direction_output(drvdata->hwen_gpio, 0);
+		ret = gpio_direction_output(drvdata->hwen_gpio, 1);
 		pr_info(" request gpio init\n");
 		if (ret < 0) {
 			pr_err("failed to set output");
@@ -140,7 +125,6 @@ static int aw99703_gpio_init(struct aw99703_data *drvdata)
 			return ret;
 		}
 		pr_info("gpio is valid!\n");
-		aw99703_hwen_pin_ctrl(drvdata, 1);
 	}
 
 	return 0;
@@ -157,6 +141,25 @@ static int aw99703_i2c_write_bit(struct i2c_client *client,
 	aw99703_i2c_write(client, reg_addr, reg_val);
 
 	return 0;
+}
+
+static int aw99703_brightness_map(unsigned int level)
+{
+	/*MAX_LEVEL_256*/
+	if (g_aw99703_data->bl_map == 1) {
+		if (level == 255)
+			return 2047;
+		return level * 8;
+	}
+
+	/*MAX_LEVEL_1024*/
+	if (g_aw99703_data->bl_map == 2)
+		return level * 2;
+	/*MAX_LEVEL_2048*/
+	if (g_aw99703_data->bl_map == 3)
+		return level;
+
+	return  level;
 }
 
 static int aw99703_bl_enable_channel(struct aw99703_data *drvdata)
@@ -212,6 +215,24 @@ static void aw99703_pwm_mode_enable(struct aw99703_data *drvdata)
 	}
 }
 
+
+static void aw99703_pwm_maptype_set(struct aw99703_data *drvdata)
+{
+	pr_info("%s enter\n", __func__);
+	/*mode:map type*/
+	if(drvdata->maptype == 1)
+		aw99703_i2c_write_bit(drvdata->client,
+				      AW99703_REG_MODE,
+				      AW99703_MODE_MAP_MASK,
+				      AW99703_MODE_MAP_LINEAR);
+	else
+		aw99703_i2c_write_bit(drvdata->client,
+				      AW99703_REG_MODE,
+				      AW99703_MODE_MAP_MASK,
+				      AW99703_MODE_MAP_EXPONENTIAL);
+
+}
+
 static void aw99703_ramp_setting(struct aw99703_data *drvdata)
 {
 	aw99703_i2c_write_bit(drvdata->client,
@@ -229,14 +250,32 @@ static void aw99703_ramp_setting(struct aw99703_data *drvdata)
 		__func__, drvdata->ramp_off_time);
 
 }
+
+static void aw99703_flash_setting(struct aw99703_data *drvdata)
+{
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_FLASH,
+				AW99703_FLASH_FLTO_TIM_MASK,
+				drvdata->flto_tim << 4);
+	pr_info("%s drvdata->flto_tim is 0x%x\n",
+		__func__, drvdata->flto_tim);
+
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_FLASH,
+				AW99703_FLASH_FL_S_TIM_MASK,
+				drvdata->fl_s);
+	pr_info("%s drvdata->fl_s is 0x%x\n",
+		__func__, drvdata->fl_s);
+
+}
+
 static void aw99703_transition_ramp(struct aw99703_data *drvdata)
 {
-
 	pr_info("%s enter\n", __func__);
 	aw99703_i2c_write_bit(drvdata->client,
 				AW99703_REG_TRANCFG,
 				AW99703_TRANCFG_PWM_TIM_MASK,
-				drvdata->pwm_trans_dim);
+				drvdata->pwm_trans_dim << 4);
 	pr_info("%s drvdata->pwm_trans_dim is 0x%x\n", __func__,
 		drvdata->pwm_trans_dim);
 
@@ -246,7 +285,54 @@ static void aw99703_transition_ramp(struct aw99703_data *drvdata)
 				drvdata->i2c_trans_dim);
 	pr_info("%s drvdata->i2c_trans_dim is 0x%x\n",
 		__func__, drvdata->i2c_trans_dim);
+}
 
+static void aw99703_bstctrl1_set(struct aw99703_data *drvdata)
+{
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_BSTCTR1,
+				AW99703_BSTCTR1_SF_SFT_MASK,
+				drvdata->sf_sft << 6);
+
+	/*switch frequency*/
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_BSTCTR1,
+				AW99703_BSTCTR1_SF_MASK,
+				drvdata->sf << 5);
+
+	/*default OVPSEL*/
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_BSTCTR1,
+				AW99703_BSTCTR1_OVPSEL_MASK,
+				drvdata->ovp_sel << 2);
+
+	/*OCP SELECT*/
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_BSTCTR1,
+				AW99703_BSTCTR1_OCPSEL_MASK,
+				drvdata->ocp_sel << 0);
+}
+
+
+static void aw99703_pwm_config_set(struct aw99703_data *drvdata)
+{
+	/*Pwm sampler frequency*/
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_PWM,
+				AW99703_PWM_P_SF_MASK,
+				drvdata->p_sf << 6);
+
+	/*Pwm hysteresis*/
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_PWM,
+				AW99703_PWM_P_HYS_MASK,
+				drvdata->p_hys << 2);
+
+	/*Pwm filter*/
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_PWM,
+				AW99703_PWM_P_FLT_MASK,
+				drvdata->p_flt << 0);
 }
 
 static int aw99703_backlight_init(struct aw99703_data *drvdata)
@@ -255,35 +341,17 @@ static int aw99703_backlight_init(struct aw99703_data *drvdata)
 
 	aw99703_pwm_mode_enable(drvdata);
 
-	/*mode:map type*/
-	aw99703_i2c_write_bit(drvdata->client,
-				AW99703_REG_MODE,
-				AW99703_MODE_MAP_MASK,
-				AW99703_MODE_MAP_LINEAR);
+	aw99703_pwm_maptype_set(drvdata);
 
-	/*default OVPSEL 38V*/
-	aw99703_i2c_write_bit(drvdata->client,
-				AW99703_REG_BSTCTR1,
-				AW99703_BSTCTR1_OVPSEL_MASK,
-				AW99703_BSTCTR1_OVPSEL_38V);
-
-	/*switch frequency 1000kHz*/
-	aw99703_i2c_write_bit(drvdata->client,
-				AW99703_REG_BSTCTR1,
-				AW99703_BSTCTR1_SF_MASK,
-				AW99703_BSTCTR1_SF_1000KHZ);
-
-	/*OCP SELECT*/
-	aw99703_i2c_write_bit(drvdata->client,
-				AW99703_REG_BSTCTR1,
-				AW99703_BSTCTR1_OCPSEL_MASK,
-				AW99703_BSTCTR1_OCPSEL_3P3A);
+	aw99703_bstctrl1_set(drvdata);
 
 	/*BSTCRT2 IDCTSEL*/
 	aw99703_i2c_write_bit(drvdata->client,
 				AW99703_REG_BSTCTR2,
 				AW99703_BSTCTR2_IDCTSEL_MASK,
-				AW99703_BSTCTR2_IDCTSEL_10UH);
+				drvdata->idctsel << 6);
+
+	aw99703_pwm_config_set(drvdata);
 
 	/*Backlight current full scale*/
 	aw99703_i2c_write_bit(drvdata->client,
@@ -295,6 +363,12 @@ static int aw99703_backlight_init(struct aw99703_data *drvdata)
 
 	aw99703_ramp_setting(drvdata);
 	aw99703_transition_ramp(drvdata);
+	aw99703_flash_setting(drvdata);
+
+	aw99703_i2c_write(drvdata->client, AW99703_REG_WPRT1, (char)drvdata->wprt1);
+	aw99703_i2c_write(drvdata->client, AW99703_REG_BSTCTR3, (char)drvdata->bstcrt3);
+	aw99703_i2c_write(drvdata->client, AW99703_REG_BSTCTR4, (char)drvdata->bstcrt4);
+	aw99703_i2c_write(drvdata->client, AW99703_REG_BSTCTR5, (char)drvdata->bstcrt5);
 
 	return 0;
 }
@@ -316,10 +390,13 @@ static int aw99703_backlight_enable(struct aw99703_data *drvdata)
 int  aw99703_set_brightness(struct aw99703_data *drvdata, int brt_val)
 {
 	pr_info("%s brt_val is %d\n", __func__, brt_val);
+
 	if (drvdata->enable == false) {
 		aw99703_backlight_init(drvdata);
 		aw99703_backlight_enable(drvdata);
 	}
+
+	brt_val = aw99703_brightness_map(brt_val);
 
 	if (brt_val > 0) {
 		/*enalbe bl mode*/
@@ -351,7 +428,6 @@ int  aw99703_set_brightness(struct aw99703_data *drvdata, int brt_val)
 	return 0;
 }
 
-
 static int aw99703_bl_get_brightness(struct backlight_device *bl_dev)
 {
 		return bl_dev->props.brightness;
@@ -377,7 +453,6 @@ static const struct backlight_ops aw99703_bl_ops = {
 		.update_status = aw99703_bl_update_status,
 		.get_brightness = aw99703_bl_get_brightness,
 };
-
 
 static int aw99703_read_chipid(struct aw99703_data *drvdata)
 {
@@ -409,32 +484,6 @@ static int aw99703_read_chipid(struct aw99703_data *drvdata)
 }
 
 
-static void __aw99703_work(struct aw99703_data *led,
-				enum led_brightness value)
-{
-	mutex_lock(&led->lock);
-	aw99703_set_brightness(led, value);
-	mutex_unlock(&led->lock);
-}
-
-static void aw99703_work(struct work_struct *work)
-{
-	struct aw99703_data *drvdata = container_of(work,
-					struct aw99703_data, work);
-
-	__aw99703_work(drvdata, drvdata->led_dev.brightness);
-}
-
-
-static void aw99703_brightness_set(struct led_classdev *led_cdev,
-			enum led_brightness brt_val)
-{
-	struct aw99703_data *drvdata;
-
-	drvdata = container_of(led_cdev, struct aw99703_data, led_dev);
-	schedule_work(&drvdata->work);
-}
-
 static void
 aw99703_get_dt_data(struct device *dev, struct aw99703_data *drvdata)
 {
@@ -446,73 +495,198 @@ aw99703_get_dt_data(struct device *dev, struct aw99703_data *drvdata)
 	pr_info("%s drvdata->hwen_gpio --<%d>\n", __func__, drvdata->hwen_gpio);
 
 	rc = of_property_read_u32(np, "aw99703,pwm-mode", &drvdata->pwm_mode);
-	if (rc != 0)
+	if (rc) {
+		drvdata->pwm_mode = 0;
 		pr_err("%s pwm-mode not found\n", __func__);
-	else
-		pr_info("%s pwm_mode=%d\n", __func__, drvdata->pwm_mode);
-
-	drvdata->using_lsb = of_property_read_bool(np, "aw99703,using-lsb");
-	pr_info("%s using_lsb --<%d>\n", __func__, drvdata->using_lsb);
-
-	if (drvdata->using_lsb) {
-		drvdata->default_brightness = 0x7ff;
-		drvdata->max_brightness = 2047;
 	} else {
-		drvdata->default_brightness = 0xff;
-		drvdata->max_brightness = 255;
+		pr_info("%s pwm_mode=%d\n", __func__, drvdata->pwm_mode);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,pwm-maptype", &drvdata->maptype);
+	if (rc) {
+		drvdata->maptype = 0;
+		pr_err("%s pwm-maptype not found\n", __func__);
+	} else {
+		pr_info("%s pwm-maptype=%d\n", __func__, drvdata->maptype);
 	}
 
 	rc = of_property_read_u32(np, "aw99703,bl-fscal-led", &temp);
 	if (rc) {
+		drvdata->full_scale_led = 0x13;
 		pr_err("Invalid backlight full-scale led current!\n");
 	} else {
 		drvdata->full_scale_led = temp;
-		pr_info("%s full-scale led current --<%d mA>\n",
+		pr_info("%s full-scale led current --<0x%x>\n",
 			__func__, drvdata->full_scale_led);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,bl-channel", &bl_channel);
+	if (rc) {
+		drvdata->channel = 3;
+		pr_err("Invalid channel setup\n");
+	} else {
+		drvdata->channel = bl_channel;
+		pr_info("%s bl-channel --<%x>\n", __func__, drvdata->channel);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,sf-sft", &drvdata->sf_sft);
+	if (rc) {
+		drvdata->sf_sft = 0;
+		pr_err("%s sf-sft not found\n", __func__);
+	} else {
+		pr_info("%s sf-sft=%d\n", __func__, drvdata->sf_sft);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,switching-frequency", &drvdata->sf);
+	if (rc) {
+		drvdata->sf = 1;
+		pr_err("%s switching-frequency not found\n", __func__);
+	} else {
+		pr_info("%s switching-frequency=%d\n", __func__, drvdata->sf);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,ovp-sel", &drvdata->ovp_sel);
+	if (rc) {
+		drvdata->ovp_sel = 3;
+		pr_err("%s ovp-sel not found\n", __func__);
+	} else {
+		pr_info("%s ovp-sel = 0x%x\n", __func__, drvdata->ovp_sel);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,ocp-sel", &drvdata->ocp_sel);
+	if (rc) {
+		drvdata->ocp_sel = 2;
+		pr_err("%s ocp-sel not found\n", __func__);
+	} else {
+		pr_info("%s ocp-sel = 0x%x\n", __func__, drvdata->ocp_sel);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,idctsel", &drvdata->idctsel);
+	if (rc) {
+		drvdata->idctsel = 0;
+		pr_err("%s idctsel not found\n", __func__);
+	} else {
+		pr_info("%s idctsel = %d\n", __func__, drvdata->idctsel);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,pwm-frequency", &drvdata->p_sf);
+	if (rc) {
+		drvdata->p_sf = 2;
+		pr_err("%s pwm-frequency not found\n", __func__);
+	} else {
+		pr_info("%s pwm-frequency = %d\n", __func__, drvdata->p_sf);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,pwm-hysteresis", &drvdata->p_hys);
+	if (rc) {
+		drvdata->p_hys = 4;
+		pr_err("%s pwm-hysteresis not found\n", __func__);
+	} else {
+		pr_info("%s pwm-hysteresis = %d\n", __func__, drvdata->p_hys);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,pwm-filter", &drvdata->p_flt);
+	if (rc) {
+		drvdata->p_flt = 3;
+		pr_err("%s pwm-filter not found\n", __func__);
+	} else {
+		pr_info("%s pwm-filter = %d\n", __func__, drvdata->p_flt);
 	}
 
 	rc = of_property_read_u32(np, "aw99703,turn-on-ramp", &temp);
 	if (rc) {
+		drvdata->ramp_on_time = 4;
 		pr_err("Invalid ramp timing ,turnon!\n");
 	} else {
 		drvdata->ramp_on_time = temp;
-		pr_info("%s ramp on time --<%d ms>\n",
+		pr_info("%s ramp on time --<0x%x>\n",
 			__func__, drvdata->ramp_on_time);
 	}
 
 	rc = of_property_read_u32(np, "aw99703,turn-off-ramp", &temp);
 	if (rc) {
+		drvdata->ramp_off_time = 4;
 		pr_err("Invalid ramp timing ,,turnoff!\n");
 	} else {
 		drvdata->ramp_off_time = temp;
-		pr_info("%s ramp off time --<%d ms>\n",
+		pr_info("%s ramp off time --<0x%x>\n",
 			__func__, drvdata->ramp_off_time);
 	}
 
 	rc = of_property_read_u32(np, "aw99703,pwm-trans-dim", &temp);
 	if (rc) {
+		drvdata->pwm_trans_dim = 0;
 		pr_err("Invalid pwm-tarns-dim value!\n");
 	} else {
 		drvdata->pwm_trans_dim = temp;
-		pr_info("%s pwm trnasition dimming	--<%d ms>\n",
+		pr_info("%s pwm trnasition dimming--<%d>\n",
 			__func__, drvdata->pwm_trans_dim);
 	}
 
 	rc = of_property_read_u32(np, "aw99703,i2c-trans-dim", &temp);
 	if (rc) {
+		drvdata->i2c_trans_dim = 0;
 		pr_err("Invalid i2c-trans-dim value !\n");
 	} else {
 		drvdata->i2c_trans_dim = temp;
-		pr_info("%s i2c transition dimming --<%d ms>\n",
+		pr_info("%s i2c transition dimming --<%d>\n",
 			__func__, drvdata->i2c_trans_dim);
 	}
 
-	rc = of_property_read_u32(np, "aw99703,bl-channel", &bl_channel);
+	rc = of_property_read_u32(np, "aw99703,flash-flto-dim", &drvdata->flto_tim);
 	if (rc) {
-		pr_err("Invalid channel setup\n");
+		drvdata->flto_tim = 5;
+		pr_err("%s flash-flto-dim not found\n", __func__);
 	} else {
-		drvdata->channel = bl_channel;
-		pr_info("%s bl-channel --<%x>\n", __func__, drvdata->channel);
+		pr_info("%s flash-flto-dim = %d\n", __func__, drvdata->flto_tim);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,flash-fl-s", &drvdata->fl_s);
+	if (rc) {
+		drvdata->fl_s = 8;
+		pr_err("%s flash-fl-s not found\n", __func__);
+	} else {
+		pr_info("%s flash-fl-s = %d\n", __func__, drvdata->fl_s);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,bl-map", &drvdata->bl_map);
+	if (rc) {
+		drvdata->bl_map = 1;
+		pr_err("%s bl_map not found\n", __func__);
+	} else {
+		pr_info("%s bl_map=%d\n", __func__, drvdata->bl_map);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,wprt1", &drvdata->wprt1);
+	if (rc) {
+		drvdata->wprt1 = 0 ;
+		pr_err("%s wprt1 not found\n", __func__);
+	} else {
+		pr_info("%s wprt1=0x%x\n", __func__, drvdata->wprt1);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,bstcrt3", &drvdata->bstcrt3);
+	if (rc) {
+		drvdata->bstcrt3 = 0x81;
+		pr_err("%s bstcrt3 not found\n", __func__);
+	} else {
+		pr_info("%s bstcrt3=0x%x\n", __func__, drvdata->bstcrt3);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,bstcrt4", &drvdata->bstcrt4);
+	if (rc) {
+		drvdata->bstcrt4 = 0x48;
+		pr_err("%s bstcrt4 not found\n", __func__);
+	} else {
+		pr_info("%s bstcrt4=0x%x\n", __func__, drvdata->bstcrt4);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,bstcrt5", &drvdata->bstcrt5);
+	if (rc) {
+		drvdata->bstcrt5 = 0x69;
+		pr_err("%s bstcrt5 not found\n", __func__);
+	} else {
+		pr_info("%s bstcrt5=0x%x\n", __func__, drvdata->bstcrt5);
 	}
 }
 
@@ -598,14 +772,9 @@ static int aw99703_probe(struct i2c_client *client,
 	drvdata->client = client;
 	drvdata->adapter = client->adapter;
 	drvdata->addr = client->addr;
-	drvdata->brightness = LED_OFF;
+	drvdata->brightness = MAX_BRIGHTNESS;
 	drvdata->enable = true;
-	drvdata->led_dev.default_trigger = "bkl-trigger";
-	drvdata->led_dev.name = AW99703_LED_DEV;
-	drvdata->led_dev.brightness_set = aw99703_brightness_set;
-	drvdata->led_dev.max_brightness = MAX_BRIGHTNESS;
-	mutex_init(&drvdata->lock);
-	INIT_WORK(&drvdata->work, aw99703_work);
+
 	aw99703_get_dt_data(&client->dev, drvdata);
 	i2c_set_clientdata(client, drvdata);
 	aw99703_gpio_init(drvdata);
@@ -616,21 +785,16 @@ static int aw99703_probe(struct i2c_client *client,
 		goto err_init;
 	}
 
-	err = led_classdev_register(&client->dev, &drvdata->led_dev);
-	if (err < 0) {
-		pr_err("%s : Register led class failed\n", __func__);
-		err = -ENODEV;
-		goto err_init;
-	} else {
-	pr_debug("%s: Register led class successful\n", __func__);
-	}
-
 	memset(&props, 0, sizeof(struct backlight_properties));
 	props.type = BACKLIGHT_RAW;
 	props.brightness = MAX_BRIGHTNESS;
 	props.max_brightness = MAX_BRIGHTNESS;
 	bl_dev = backlight_device_register(AW99703_NAME, &client->dev,
 					drvdata, &aw99703_bl_ops, &props);
+	if (err) {
+		pr_err("%s : register backlight device failed\n", __func__);
+		goto err_dev;
+	}
 
 	g_aw99703_data = drvdata;
 	aw99703_backlight_init(drvdata);
@@ -646,6 +810,8 @@ static int aw99703_probe(struct i2c_client *client,
 	return 0;
 
 err_sysfs:
+err_dev:
+	backlight_device_unregister(bl_dev);
 err_init:
 	kfree(drvdata);
 err_out:
@@ -656,7 +822,7 @@ static int aw99703_remove(struct i2c_client *client)
 {
 	struct aw99703_data *drvdata = i2c_get_clientdata(client);
 
-	led_classdev_unregister(&drvdata->led_dev);
+	backlight_device_unregister(drvdata->bl_dev);
 
 	kfree(drvdata);
 	return 0;

@@ -1,0 +1,65 @@
+aw99703 panel backlight control IC configuration
+
+This document describes the DTS configuration items of aw99703 backlight control IC.
+
+Required properties:
+    compatible : Must be "awinic,aw99703-bl"
+    reg:Specifies the i2c slave address,must be 0x36
+    aw99703,hwen-gpio:Specifies the enabled gpio.
+
+Optional properties:
+    aw99703,pwm-mode:Write the Mode Register 0x02 bit[4] to disable or enable the PWM dimming function,0:disable 1:enable,default disable.
+
+    aw99703,pwm-maptype:Write the Mode Register 0x02 bit[2] to select map type, 0:exponential(default) 1:linear.
+
+    aw99703,bl-fscal-led:Write the LED Current Register 0x03 bits[7:3] to control the backlight full scale current.
+                         Full scale current ranges from 4.8mA to 29.6mA with 0.8mA/step and 20mA as the default.
+                         I = 4.8mA + code × 0.8mA
+
+    aw99703,bl-channel: Write the LED Current Register 0x03 bits[2:0] to enable or disable led channel.
+                        0:all channels are disabled, 1:enable channel 1, 2:enable channel 1 and channel 2, 3:all channels are enabled,
+                        default all channels are enabled
+
+    aw99703,sf-sft: Write the Boost Control1 Register 0x04 bits[7:6] to switch frequency shift.
+                    0:No shift, 1:Shift Up by 20%, 2:Shift Down by 12%, 3:Shift Down by 24%, default: No shift.
+
+    aw99703,switching-frequency: Write the Boost Control1 Register 0x04 bit[5] to switch Frequency.
+                    0:500kHZ, 1:1000kHZ, default:1000kHZ
+
+    aw99703,ovp-sel: Write the Boost Control1 Register 0x04 bits[4:2] to set up the boost output exceeding safe operating voltages
+                    0:17v, 1:24v, 2:31v 3:38v, 4:41.5v, default:38v
+
+    aw99703,ocp-sel: Write the Boost Control1 Register 0x04 bits[1:0] to set up the over current protection.
+                    0:0.9A, 1:1.8A, 2:2.7A, 3:3.4A, default:2.7A
+
+    aw99703,idctsel: Write the Boost Control2 Register 0x05 bit[6] to set up the value of inductors.
+                    0:For less than 10μH inductors, 1:For 10μH inductors, default:0
+
+    aw99703,pwm-frequency: Write the PWM Control Register 0x08 bits[7:6] to set up selectable frequency of PWM input.
+                    0:800kHZ, 1:4MHZ, 2:24MHZ, default:24MHZ
+
+    aw99703,pwm-hysteresis: Write the PWM Control Register 0x08 bits[4:2] to set up pwm duty cycle hysteresis.
+                    0:0/2047, 1:1/2047, 2:2/2047, 3:3/2047, 4:4/2047, 5:5/2047, 6:6/2047, 7:7/2047, default 4
+
+    aw99703,pwm-filter:Write the PWM Control Register 0x08 bits[1:0] to set up pwm filter time.
+                    0:No filter, 1:100ns, 2:150ns, 3:200ns, default 3
+
+    aw99703,turn-on-ramp:Write the Turn ON/OFF Ramp Time Register 0x09 bits[7:4] to set up LED current ramp up time.
+                    0:512us, 1:1ms, 2:2ms, 3:4ms, 4:8ms, 5:16ms. 6:32ms,..., D:4096, E:8192, F:16384ms,default:8ms
+
+    aw99703,turn-off-ramp:Write the Turn ON/OFF Ramp Time Register bits[3:0] to set up LED current ramp down time.
+                    0:512us, 1:1ms, 2:2ms, 3:4ms, 4:8ms, 5:16ms. 6:32ms,..., D:4096, E:8192, F:16384ms,default:8ms
+
+    aw99703,pwm-trans-dim:Write the Transition Ramp Time Register 0x0A bits[7:4] to set up PWM transition ramp time
+                    0:2ms, 1:4ms, 2:8ms ,..., 5:64ms, 6:128ms, 7:256ms,  default:2ms
+
+    aw99703,i2c-trans-dim:Write the Transition Ramp Time Register 0x0A bits[3:0] to set up I2C transition ramp time
+                    0:2ms, 1:4ms, 2:8ms ,..., 5:64ms, 6:128ms, 7:256ms, default:2ms
+
+    aw99703,flash-flto-dim:Write the Flash Setting Register 0x0B bits[7:4] to set up flash timeout time
+                    0:200ms, 1:300ms, 2:400ms ,..., D:1300ms, E:1400ms, F:1500ms, default:500ms
+
+    aw99703,flash-fl-s:Write the Flash Setting Register 0x0B bits[3:0] to set up flash current, I = (1 + (code + 2)/10)*29.6mA
+                    0:35.52mA, 1:38.48mA, ... , E:76.96mA, 79.92mA, default:59,2mA
+
+    aw99703,bl-map:Set up the brightness map level. 1:256, 2:1024, 3:2048, default:256
