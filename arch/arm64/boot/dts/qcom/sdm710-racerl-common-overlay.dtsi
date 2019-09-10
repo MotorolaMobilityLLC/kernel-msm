@@ -164,6 +164,25 @@
 	};
 };
 
+&pm660_0 {
+	pm660_mmi: qcom,qpnp-smb2-mmi {
+		status = "ok";
+		compatible = "qcom,qpnp-smbcharger-mmi";
+		qcom,pmic-revid = <&pm660_revid>;
+		qcom,enable-charging-limit;
+		qcom,upper-limit-capacity = <75>;
+		qcom,lower-limit-capacity = <60>;
+		qcom,mmi-temp-zones = <0 4200 776 0>,
+					<10 4200 1940 776>,
+					<15 0 1940 1940>,
+					<45 4200 3600 2000>,
+					<60 4200 1940 0>;
+		qcom,iterm-ma = <194>;
+		qcom,vfloat-comp-uv = <20000>;
+		qcom,force-hvdcp-5v;
+	};
+};
+
 &pm660_fg {
         qcom,battery-data = <&mot_batterydata>;
         qcom,fg-force-load-profile = <1>;
@@ -191,3 +210,15 @@
 	qcom,mdss-dsi-no-panel-on-read-support;
 };
 
+&red_led {
+	status = "ok";
+	linux,name = "charging";
+};
+
+&green_led {
+	status = "disabled";
+};
+
+&blue_led {
+	status = "disabled";
+};
