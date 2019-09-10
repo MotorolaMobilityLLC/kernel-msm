@@ -1,0 +1,165 @@
+&tlmm {
+	ets {
+		ets_int_active: ets_int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio122";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio122";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+		ets_int_suspend: ets_int_suspend {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio122";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio122";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+	};
+
+	fps {
+		rst_active: rst_active {
+			/* RESET */
+			mux {
+				pins = "gpio134";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio134";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		rst_suspend: rst_suspend {
+			/* RESET */
+			mux {
+				pins = "gpio134";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio134";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		rst_reset: rst_reset {
+			/* RESET */
+			mux {
+				pins = "gpio134";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio134";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+
+		int_active: int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio122";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio122";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		int_suspend: int_suspend {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio122";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio122";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		ldo33_en_active: ldo33_en_active {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio4";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio4";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		ldo33_en_suspend: ldo33_en_suspend {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio4";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio4";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+	};
+};
+
+&pm660_l13 {
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+};
+
+&soc {
+	qcom,qbt1000 {
+		status = "disabled";
+	};
+
+	et520: et520 {
+		compatible = "egistec,et516";
+		status = "ok";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <122 0x0>;
+		egistec,gpio_irq = <&tlmm 122 0x2>;
+		egistec,gpio_rst = <&tlmm 134 0x2>;
+		vdd_io-supply = <&pm660_l13>;
+		egistec,gpio_ldo3p3_en = <&tlmm 4 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&ets_int_active>;
+		pinctrl-1 = <&ets_int_suspend>;
+	};
+
+	fpc_fpc1020 {
+		compatible = "fpc,fpc1020";
+		status = "ok";
+		irq = <&tlmm 122 0>;
+		rst = <&tlmm 134 0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&ldo33_en_active &int_active &rst_reset>;
+		pinctrl-1 = <&ldo33_en_suspend &int_suspend &rst_suspend>;
+	};
+};
