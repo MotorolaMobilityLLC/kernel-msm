@@ -56,6 +56,8 @@
 		himax,display-coords = <0 720 0 1560>;
 		himax,irq-gpio = <&tlmm 88 0x02>;
 		himax,rst-gpio = <&tlmm 87 0x01>;
+		himax,touch_info = <34 16 0 720 1560 10 0 1>;
+		himax,vdd_1v8_always_on;
 		report_type = <1>;
 		status = "/chosen", "mmi,panel_name", "inx_hx83104a_hd_vid";
 	};
@@ -70,6 +72,8 @@
 		himax,display-coords = <0 720 0 1560>;
 		himax,irq-gpio = <&tlmm 88 0x02>;
 		himax,rst-gpio = <&tlmm 87 0x01>;
+		himax,touch_info = <34 16 0 720 1560 10 0 1>;
+		himax,vdd_1v8_always_on;
 		report_type = <1>;
 		status = "/chosen", "mmi,panel_name", "inxr_hx83104a_hd_vid";
 	};
