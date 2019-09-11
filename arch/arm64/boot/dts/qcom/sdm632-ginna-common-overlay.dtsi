@@ -13,10 +13,7 @@
 
 #include "sdm632-moto-common-overlay.dtsi"
 #include "sdm632-ginna-pinctrl-overlay.dtsi"
-#include "dsi-panel-mot-djn-569-hd-vid.dtsi"
-#include "dsi-panel-mot-djn-568-hd-vid.dtsi"
-#include "dsi-panel-mot-dsbj-569-hd-vid.dtsi"
-#include "dsi-panel-mot-dsbj-570-hd-vid.dtsi"
+#include "dsi-panel-mot-tianma-621-hd-vid.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm632-camera-sensor-mot-ginna-overlay.dtsi"
 #include "sdm632-moto-fps-ginna-overlay.dtsi"
@@ -86,7 +83,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_djn_569_hd_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_621_hd_vid_v0>;
 
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &bklt_en_default>;
