@@ -12,11 +12,14 @@
 #include <linux/usb/usbdiag.h>
 #include <linux/usb/tty_diag.h>
 
-#define DIAG_MAJOR 185
-#define DIAG_TTY_MINOR_COUNT 2
+#define NUM_MDM_PORTS 2
+#define NUM_MSM_PORTS 1
 
-#define DIAG_LEGACY_IDX 0
-#define DIAG_MDM_IDX 1
+#define DIAG_MDM_START_IDX 0
+#define DIAG_MSM_START_IDX (DIAG_MDM_START_IDX + NUM_MDM_PORTS)
+
+#define DIAG_MAJOR 185
+#define DIAG_TTY_MINOR_COUNT (NUM_MDM_PORTS + NUM_MSM_PORTS)
 
 static DEFINE_SPINLOCK(diag_tty_lock);
 
@@ -102,12 +105,21 @@ static int diag_tty_write(struct tty_struct *tty,
 	/* Make sure diag char driver is ready and no outstanding request */
 	if (tty_data->d_req_ptr == NULL) {
 		spin_unlock_irqrestore(&diag_tty_lock, flags);
+		pr_err("ttydiag: error writing diag message, channel not ready\n");
+		return -EAGAIN;
+	}
+
+	if (tty_data->legacy_ch->priv_usb) {
+		spin_unlock_irqrestore(&diag_tty_lock, flags);
+		pr_err("ttydiag: error writing diag message, channel in use\n");
 		return -EAGAIN;
 	}
 
 	/* Diag packet must fit in buff and be written all at once */
 	if (len > tty_data->d_req_ptr->length) {
 		spin_unlock_irqrestore(&diag_tty_lock, flags);
+		pr_err("ttydiag: error writing diag message, bad len: %d/%d\n",
+			len, tty_data->d_req_ptr->length);
 		return -EMSGSIZE;
 	}
 
@@ -140,6 +152,9 @@ static int diag_tty_write(struct tty_struct *tty,
 	} else
 		tty_data->diag_packet_incomplete = 0;
 
+	/* Set active tty for responding */
+	tty_data->legacy_ch->priv_usb = tty_data;
+
 	spin_unlock_irqrestore(&diag_tty_lock, flags);
 	tty_data->legacy_ch->notify(tty_data->legacy_ch->priv,
 		USB_DIAG_READ_DONE,
@@ -155,7 +170,7 @@ static int diag_tty_write_room(struct tty_struct *tty)
 	if (!tty_data)
 		return -ENODEV;
 
-	if (tty_data->d_req_ptr == NULL)
+	if (tty_data->d_req_ptr == NULL || tty_data->legacy_ch->priv_usb)
 		return 0;
 	else
 		return tty_data->d_req_ptr->length;
@@ -183,22 +198,20 @@ struct usb_diag_ch *tty_diag_channel_open(const char *name, void *priv,
 {
 	unsigned long flags;
 	struct diag_tty_data *tty_data;
+	int i;
+	int start_idx;
+	int num_ports;
 
 	pr_info("ttydiag, registering channel %s\n", name);
 
 	if(strcmp(DIAG_LEGACY, name) == 0) {
-		tty_data = &diag_tty[DIAG_LEGACY_IDX];
-		tty_data->idx = DIAG_LEGACY_IDX;
-		tty_data->ch_name = name;
+		start_idx = DIAG_MSM_START_IDX;
+		num_ports = NUM_MSM_PORTS;
 	} else if(strcmp(DIAG_MDM, name) == 0) {
-		tty_data = &diag_tty[DIAG_MDM_IDX];
-		tty_data->idx = DIAG_MDM_IDX;
-		tty_data->ch_name = name;
+		start_idx = DIAG_MDM_START_IDX;
+		num_ports = NUM_MDM_PORTS;
 	} else
 		return ERR_PTR(-ENODEV);
-
-	if (tty_data->legacy_ch)
-		return ERR_PTR(-EBUSY);
 
 	if(!legacy_ch) {
 		legacy_ch = kzalloc(sizeof(*legacy_ch), GFP_KERNEL);
@@ -206,19 +219,30 @@ struct usb_diag_ch *tty_diag_channel_open(const char *name, void *priv,
 		legacy_ch->priv = priv;
 		legacy_ch->notify = notify;
 	}
-	legacy_ch->priv_usb = tty_data;
 
-	spin_lock_irqsave(&diag_tty_lock, flags);
-	tty_data->legacy_ch = legacy_ch;
-	spin_unlock_irqrestore(&diag_tty_lock, flags);
+	legacy_ch->priv_usb = NULL;
 
-	tty_port_init(&tty_data->port);
-	tty_port_register_device(&tty_data->port, diag_tty_driver,
-			tty_data->idx, NULL);
+	for (i=0; i < num_ports; i++) {
+		tty_data = &diag_tty[start_idx + i];
+		tty_data->idx = start_idx + i;
+		tty_data->ch_name = name;
 
-	pr_info("ttydiag, registered channel %s OK\n", name);
+		if (tty_data->legacy_ch)
+			return ERR_PTR(-EBUSY);
 
-	return tty_data->legacy_ch;
+		spin_lock_irqsave(&diag_tty_lock, flags);
+		tty_data->legacy_ch = legacy_ch;
+		spin_unlock_irqrestore(&diag_tty_lock, flags);
+
+		tty_port_init(&tty_data->port);
+		tty_port_register_device(&tty_data->port, diag_tty_driver,
+				tty_data->idx, NULL);
+
+		pr_info("ttydiag, registered channel %s as ttydiag%d OK\n",
+			name, start_idx + i);
+	}
+
+	return legacy_ch;
 }
 
 /* Diag char driver no longer ready */
@@ -250,11 +274,20 @@ EXPORT_SYMBOL(tty_diag_channel_close);
 int tty_diag_channel_read(struct usb_diag_ch *diag_ch,
 				struct diag_request *d_req)
 {
-	/* Find what channel this is for */
-	struct diag_tty_data *tty_data = diag_ch->priv_usb;
+	int i;
+	struct diag_tty_data *tty_data;
 
-	if(tty_data)
-		tty_data->d_req_ptr = d_req;
+	/* If channel is MSM, assign d_req for all MSM ports,
+	 * If channel is MDM, assign d_req for all MDM ports
+	 */
+	for (i=0; i < DIAG_TTY_MINOR_COUNT; i++) {
+		tty_data = &diag_tty[i];
+		/* NULL pointers in strcmp bad */
+		if(tty_data->ch_name && diag_ch->name) {
+			if(strcmp(tty_data->ch_name, diag_ch->name) == 0)
+				tty_data->d_req_ptr = d_req;
+		}
+	}
 
 	return 0;
 }
@@ -286,6 +319,9 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 		spin_unlock_irqrestore(&diag_tty_lock, flags);
 		return -ENOMEM;
 	}
+
+	/* Unset active tty for next request diag tool */
+	diag_ch->priv_usb = NULL;
 
 	memcpy(tty_buf, d_req->buf, d_req->length);
 	tty_flip_buffer_push(&tty_data->port);
