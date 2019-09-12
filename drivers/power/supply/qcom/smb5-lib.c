@@ -4488,8 +4488,11 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			return 0;
 
 		typec_mode = smblib_get_prop_typec_mode(chg);
-		if (typec_rp_med_high(chg, typec_mode))
+		if (typec_rp_med_high(chg, typec_mode)) {
+			vote(chg->usb_icl_votable, USB_PSY_VOTER,
+							false, 0);
 			return 0;
+		}
 
 		/* if flash is active force 500mA */
 		if ((usb_current < SDP_CURRENT_UA) && is_flash_active(chg))
@@ -5931,40 +5934,29 @@ static void update_sw_icl_max(struct smb_charger *chg, int val)
 	if (typec_rp_med_high(chg, typec_mode)) {
 		rp_ua = get_rp_based_dcp_current(chg, typec_mode);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, rp_ua);
+		vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 		return;
 	}
 
 	/* rp-std or legacy, USB BC 1.2 */
 	switch (val) {
 	case POWER_SUPPLY_TYPE_USB:
-		/*
-		 * USB_PSY will vote to increase the current to 500/900mA once
-		 * enumeration is done.
-		 */
-		if (!is_client_vote_enabled(chg->usb_icl_votable,
-						USB_PSY_VOTER)) {
-			/* if flash is active force 500mA */
-			vote(chg->usb_icl_votable, USB_PSY_VOTER, true,
-					is_flash_active(chg) ?
-					SDP_CURRENT_UA : SDP_100_MA);
-		}
+		vote(chg->usb_icl_votable, USB_PSY_VOTER, true, SDP_CURRENT_UA);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					CDP_CURRENT_UA);
+		vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
 		rp_ua = get_rp_based_dcp_current(chg, typec_mode);
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, rp_ua);
+		vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 		break;
 	case QTI_POWER_SUPPLY_TYPE_USB_FLOAT:
-		/*
-		 * limit ICL to 100mA, the USB driver will enumerate to check
-		 * if this is a SDP and appropriately set the current
-		 */
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-					SDP_100_MA);
+					SDP_CURRENT_UA);
 		break;
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	default:
@@ -6034,6 +6026,26 @@ irqreturn_t smb5_usb_source_change_irq_handler(int irq, void *data)
 		chg->uusb_apsd_rerun_done = true;
 		smblib_rerun_apsd_if_required(chg);
 		return IRQ_HANDLED;
+	}
+
+	if ((chg->connector_type == QTI_POWER_SUPPLY_CONNECTOR_TYPEC)
+		&& (stat & APSD_DTC_STATUS_DONE_BIT)
+		&& !chg->typec_apsd_rerun_done) {
+		const struct apsd_result *apsd_result =
+					smblib_update_usb_type(chg);
+		/*
+		 * Force re-run APSD to handle slow insertion related
+		 * charger-mis-detection.
+		 */
+		if (apsd_result->bit == SDP_CHARGER_BIT ||
+		    apsd_result->bit == OCP_CHARGER_BIT ||
+		    apsd_result->bit == FLOAT_CHARGER_BIT) {
+			smblib_dbg(chg, PR_INTERRUPT, "IRQ: rerun apsd for %s\n",
+				   apsd_result->name);
+			chg->typec_apsd_rerun_done = true;
+			smblib_rerun_apsd_if_required(chg);
+			return IRQ_HANDLED;
+		}
 	}
 
 	smblib_handle_apsd_done(chg,
@@ -6458,6 +6470,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->usbin_forced_max_uv = 0;
 	chg->chg_param.forced_main_fcc = 0;
 	chg->pd_contract_uv = 0;
+	chg->typec_apsd_rerun_done = false;
 
 	/* Reset all CC mode votes */
 	vote(chg->fcc_main_votable, MAIN_FCC_VOTER, false, 0);
