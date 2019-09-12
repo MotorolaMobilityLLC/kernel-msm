@@ -234,8 +234,6 @@ static void usb_event_work_fn(struct work_struct *work)
 	struct diag_usb_event_q *entry = NULL;
 	unsigned long flags;
 
-	unsigned long flags;
-
 	if (!ch)
 		return;
 	spin_lock_irqsave(&ch->event_lock, flags);
@@ -258,13 +256,6 @@ static void usb_event_work_fn(struct work_struct *work)
 		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 		"diag: USB channel %s: connected_status: %d\n",
 		ch->name, atomic_read(&ch->connected));
-
-		/* Clean up diag_request for new sessions, context ptr is not used
-		* on read, and buf ptr is reset to read_buf in usb_read_work_fn
-		*/
-		spin_lock_irqsave(&ch->lock, flags);
-		memset(ch->read_ptr, 0, sizeof(struct diag_request));
-		spin_unlock_irqrestore(&ch->lock, flags);
 
 		usb_connect(ch);
 		break;
