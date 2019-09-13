@@ -262,8 +262,10 @@ static void tty_disable_for_channel(const char *name)
 static void factory_cable_present(void)
 {
 	if (!strncmp("mot-factory", bootmode, BOOTMODE_MAX_LEN) ||
-		(!strncmp("factory", bootmode, BOOTMODE_MAX_LEN)))
+		(!strncmp("factory", bootmode, BOOTMODE_MAX_LEN))) {
 		tty_enable_for_channel(DIAG_MDM);
+		tty_enable_for_channel(DIAG_LEGACY);
+	}
 }
 #endif
 
