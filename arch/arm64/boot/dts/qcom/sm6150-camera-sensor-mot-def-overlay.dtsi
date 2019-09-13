@@ -105,8 +105,8 @@
 		cell-index = <0>;
 		reg = <0x00 0x00>;
 		compatible = "qcom,camera-flash";
-		flash-source = <&pm6150l_flash0 &pm6150l_flash1>;
-		torch-source = <&pm6150l_torch0 &pm6150l_torch1>;
+		flash-source = <&pm6150l_flash0>;
+		torch-source = <&pm6150l_torch0>;
 		switch-source = <&pm6150l_switch2>;
 		status = "ok";
 	};
@@ -115,8 +115,8 @@
 		cell-index = <3>;
 		reg = <0x03 0x00>;
 		compatible = "qcom,camera-flash";
-		flash-source = <&pm6150l_flash0 &pm6150l_flash1>;
-		torch-source = <&pm6150l_torch0 &pm6150l_torch1>;
+		flash-source = <&pm6150l_flash0>;
+		torch-source = <&pm6150l_torch0>;
 		switch-source = <&pm6150l_switch2>;
 		status = "ok";
 	};
