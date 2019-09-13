@@ -13,11 +13,11 @@
 &tlmm {
 	amp_irq: amp_irq {
 		mux {
-			pins = "gpio117";
+			pins = "gpio101";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio117";
+			pins = "gpio101";
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-up;
 		};
@@ -25,11 +25,11 @@
 
 	amp_reset: amp_reset {
 		mux {
-			pins = "gpio101";
+			pins = "gpio117";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio101";
+			pins = "gpio117";
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-up;
 		};
@@ -159,9 +159,11 @@
 		reg = <0x4c>;
 		ti,channels = <1>;
 		ti,left-channel = <0x4c>;
-		ti,reset-gpio = <&tlmm 101 0>;
-		ti,irq-gpio = <&tlmm 117 0>;
+		ti,reset-gpio = <&tlmm 117 0>;
+		ti,irq-gpio = <&tlmm 101 0>;
 		ti,asi-format = <0>;   /* 0, i2S; 1, DSP; */
+		pinctrl-names = "default";
+		pinctrl-0 = <&amp_irq>;
 		status = "ok";
 	};
 };
