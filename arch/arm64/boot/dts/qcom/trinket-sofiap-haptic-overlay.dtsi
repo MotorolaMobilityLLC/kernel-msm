@@ -20,6 +20,13 @@
 	    reg = <0x5A>;
 	    reset-gpio = <&pmi632_gpios 4 0>;
 	    irq-gpio = <&tlmm 43 0>;
+	    vib_f0_pre = < 2350 >;
+	    vib_f0_cali_percen = < 7 >;
+	    vib_cont_drv_lvl = < 110 >;
+	    vib_cont_drv_lvl_ov = < 120 >;
+	    vib_cont_td = < 0x006C >;
+	    vib_cont_zc_thr = < 0x0FF1 >;
+	    vib_cont_num_brk = < 3 >;
 	    pinctrl-names = "default";
 	    pinctrl-0 = <&haptic_irq_default>;
 	    status = "okay";
