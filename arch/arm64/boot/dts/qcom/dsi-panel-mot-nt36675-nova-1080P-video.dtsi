@@ -42,7 +42,7 @@
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
-		qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 10>, <1 10>;
+		qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 2>, <1 10>;
 		/*
 		qcom,mdss-pan-physical-width-dimension = <65>;
 		qcom,mdss-pan-physical-height-dimension = <129>;
@@ -122,9 +122,9 @@
 					15 01 00 00 00 00 02 FB 01
 					39 01 00 00 00 00 03 51 06 65
 					15 01 00 00 00 00 02 53 2c
-					15 01 00 00 00 00 02 55 01
-					15 01 00 00 c8 00 02 11 00
-					15 01 00 00 14 00 02 29 00
+					15 01 00 00 01 00 02 55 01
+					15 01 00 00 41 00 02 11 00
+					15 01 00 00 28 00 02 29 00
 
 				];
 				qcom,mdss-dsi-off-command = [
