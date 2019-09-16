@@ -47,18 +47,21 @@ static void dsi_display_early_power_on_work(struct work_struct *work)
 		pr_warning("failed to get early_power\n");
 		return;
 	}
+	__pm_wakeup_event(&early_power->early_wake_src, 500);
 	display = early_power->display;
 	if (!display || !display->panel || !display->is_primary ||
 	    (display->panel->panel_mode != DSI_OP_VIDEO_MODE) ||
 	    atomic_read(&display->panel->esd_recovery_pending)) {
 		pr_warning("Invalid recovery use case, early_power_state: %d\n", early_power->early_power_state);
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 
 	mutex_lock(&display->display_lock);
 	if (display->is_dsi_display_prepared) {
-		mutex_unlock(&display->display_lock);
 		pr_warning("already prepared, early_power_state: %d\n", early_power->early_power_state);
+		mutex_unlock(&display->display_lock);
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 	mutex_unlock(&display->display_lock);
@@ -67,6 +70,7 @@ static void dsi_display_early_power_on_work(struct work_struct *work)
 	rc = dsi_display_prepare(display);
 	if (rc) {
 		pr_err("DSI display prepare failed, rc=%d. early_power_state %d\n", rc, early_power->early_power_state);
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 
@@ -74,6 +78,7 @@ static void dsi_display_early_power_on_work(struct work_struct *work)
 	if (display->panel->panel_initialized) {
 		mutex_unlock(&display->display_lock);
 		pr_warning("already enabled, early_power_state: %d\n", early_power->early_power_state);
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 	mutex_unlock(&display->display_lock);
@@ -86,6 +91,7 @@ static void dsi_display_early_power_on_work(struct work_struct *work)
 	}
 	early_power->early_power_state = DSI_EARLY_POWER_INITIALIZED;
 	queue_delayed_work(early_power->early_power_workq, &early_power->early_off_work, HZ);
+	__pm_relax(&early_power->early_wake_src);
 
 	pr_info("----- early_power_state: %d\n", early_power->early_power_state);
 }
@@ -103,31 +109,37 @@ static void dsi_display_early_power_off_work(struct work_struct *work)
 		pr_warning("failed to get early_power\n");
 		return;
 	}
+	__pm_wakeup_event(&early_power->early_wake_src, 500);
 	display = early_power->display;
 	if (!display || !display->panel ||
 	    (display->panel->panel_mode != DSI_OP_VIDEO_MODE) ||
 	    atomic_read(&display->panel->esd_recovery_pending)) {
 		pr_warning("Invalid recovery use case, early_power_state: %d\n", early_power->early_power_state);
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 	if (early_power->early_power_state != DSI_EARLY_POWER_INITIALIZED) {
 		pr_info("%s ----- no need, return.  early_power_state %d\n", __func__, early_power->early_power_state);
 		//early_power->early_power_state = DSI_EARLY_POWER_IDLE;
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 
 	rc = dsi_display_disable(display);
 	if (rc) {
 		pr_err("DSI display disable failed, rc=%d. early_power_state %d\n", rc, early_power->early_power_state);
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 
 	rc = dsi_display_unprepare(display);
 	if (rc) {
 		pr_err("DSI display unprepare failed, rc=%d. early_power_state %d\n", rc, early_power->early_power_state);
+		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 	g_early_power->early_power_state = DSI_EARLY_POWER_IDLE;
+	__pm_relax(&early_power->early_wake_src);
 
 	pr_info("----- early_power_state: %d\n", early_power->early_power_state);
 }
@@ -248,6 +260,8 @@ int dsi_display_ext_init(struct dsi_display *display)
 		dsi_display_sysfs_ext_deinit(display);
 		return 0;
 	}
+
+	wakeup_source_init(&g_early_power->early_wake_src, "dsi_early_wakelock");
 
 	INIT_WORK(&g_early_power->early_on_work,
 				dsi_display_early_power_on_work);
