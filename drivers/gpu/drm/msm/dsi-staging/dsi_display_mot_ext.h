@@ -47,6 +47,7 @@ struct dsi_display_early_power {
 	struct work_struct early_on_work;
 	struct delayed_work early_off_work;
 	enum dsi_display_early_power_state early_power_state;
+	struct wakeup_source early_wake_src;
 };
 
 /**
