@@ -56,7 +56,6 @@
 #include "debug.h"
 #include "xhci.h"
 
-#define SDP_CUR_MAX 500 /* in mA */
 #define SDP_CONNETION_CHECK_TIME 10000 /* in ms */
 
 /* time out to wait for USB cable status notification (in ms)*/
@@ -332,7 +331,6 @@ struct dwc3_msm {
 	struct pm_qos_request pm_qos_req_dma;
 	struct delayed_work perf_vote_work;
 	struct delayed_work sdp_check;
-	bool sdp_check_ready;
 	bool usb_compliance_mode;
 	struct mutex suspend_resume_mutex;
 
@@ -2080,24 +2078,10 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 			mdwc->suspend = dwc->b_suspend;
 			queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
 		}
-		if (!mdwc->sdp_check_ready) {
-			if (delayed_work_pending(&mdwc->sdp_check)) {
-				cancel_delayed_work(&mdwc->sdp_check);
-				queue_delayed_work(mdwc->dwc3_wq, &mdwc->sdp_check,
-					msecs_to_jiffies(SDP_CONNETION_CHECK_TIME));
-				dev_info(mdwc->dev, "SDP CHK: rescheduled\n");
-			}
-			mdwc->sdp_check_ready = true;
-		}
 		break;
 	case DWC3_CONTROLLER_SET_CURRENT_DRAW_EVENT:
 		dev_dbg(mdwc->dev, "DWC3_CONTROLLER_SET_CURRENT_DRAW_EVENT received\n");
 		schedule_work(&mdwc->vbus_draw_work);
-		if (delayed_work_pending(&mdwc->sdp_check) &&
-		    dwc->vbus_draw >= SDP_CUR_MAX) {
-			cancel_delayed_work(&mdwc->sdp_check);
-			dev_info(mdwc->dev, "SDP CHK: cancelled\n");
-		}
 		break;
 	case DWC3_CONTROLLER_RESTART_USB_SESSION:
 		dev_dbg(mdwc->dev, "DWC3_CONTROLLER_RESTART_USB_SESSION received\n");
@@ -3505,13 +3489,13 @@ static void check_for_sdp_connection(struct work_struct *w)
 	if (mdwc->usb_compliance_mode)
 		return;
 
-	dev_info(mdwc->dev, "SDP CHK: ready = %d, state=%d, link=%d\n",
-				mdwc->sdp_check_ready,
+	dev_info(mdwc->dev, "SDP CHK: state=%d, link=%d\n",
 				dwc->gadget.state,
 				dwc3_gadget_get_link_state(dwc));
 
 	/* Wait additional time at boot for USB enumeration complete */
-	if (!mdwc->sdp_check_ready) {
+	if (dwc->gadget.state == USB_STATE_NOTATTACHED &&
+	    dwc3_gadget_get_link_state(dwc) == DWC3_LINK_STATE_SS_DIS) {
 		queue_delayed_work(mdwc->dwc3_wq, &mdwc->sdp_check,
 			msecs_to_jiffies(SDP_CONNETION_CHECK_TIME));
 		return;
