@@ -34,6 +34,7 @@
 #include "dsi_display_mot_ext.h"
 
 static struct dsi_display_early_power *g_early_power = NULL;
+static int g_early_power_count = 0;
 
 static void dsi_display_early_power_on_work(struct work_struct *work)
 {
@@ -47,7 +48,7 @@ static void dsi_display_early_power_on_work(struct work_struct *work)
 		pr_warning("failed to get early_power\n");
 		return;
 	}
-	__pm_wakeup_event(&early_power->early_wake_src, 500);
+	__pm_wakeup_event(&early_power->early_wake_src, 900);
 	display = early_power->display;
 	if (!display || !display->panel || !display->is_primary ||
 	    (display->panel->panel_mode != DSI_OP_VIDEO_MODE) ||
@@ -90,10 +91,11 @@ static void dsi_display_early_power_on_work(struct work_struct *work)
 		(void)dsi_display_unprepare(display);
 	}
 	early_power->early_power_state = DSI_EARLY_POWER_INITIALIZED;
-	queue_delayed_work(early_power->early_power_workq, &early_power->early_off_work, HZ);
-	__pm_relax(&early_power->early_wake_src);
+	queue_delayed_work(early_power->early_power_workq, &early_power->early_off_work, HZ/2);
+	//Do not relax wake_lock here to avoid AP enter deep suspend before early_off called, which may cause kernel panic.
+	//__pm_relax(&early_power->early_wake_src);
 
-	pr_info("----- early_power_state: %d\n", early_power->early_power_state);
+	pr_info("----- early_power_state: %d, g_early_power_count %d\n", early_power->early_power_state, g_early_power_count++);
 }
 
 static void dsi_display_early_power_off_work(struct work_struct *work)
