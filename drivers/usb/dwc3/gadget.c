@@ -800,8 +800,11 @@ static int __dwc3_gadget_ep_enable(struct dwc3_ep *dep,
 		dep->trb_dequeue = 0;
 		dep->trb_enqueue = 0;
 
-		if (usb_endpoint_xfer_control(desc))
+		if (usb_endpoint_xfer_control(desc)) {
+			memset(dwc->ep0_trb, 0,
+					sizeof(struct dwc3_trb));
 			goto out;
+		}
 
 		/* Initialize the TRB ring */
 		memset(dep->trb_pool, 0,
