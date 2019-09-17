@@ -19,12 +19,14 @@
 		vib_brake_cont_config = < 1 1 90 42 20 5 2 2 0 0 0  0  0  0 0 0 0 0 0   0  0  0 0 0 >;
 		vib_f0_trace_parameter = < 9 3 1 31 >;
 		vib_bemf_config = < 0x10 0x08 0x23 0xf8 >;
-		vib_sw_brake = < 0x2c >;
-		vib_wavseq = < 0 1 1 2 0 0 0 0 0 0 0 0 0 0 0 0 >; /*wavseq1-seq8 0x07-0x0E*/
+		vib_sw_brake = < 0x08 >;
+		vib_wavseq = < 0 1 1 2 2 3 3 4 0 0 0 0 0 0 0 0 >; /*wavseq1-seq8 0x07-0x0E*/
 		vib_wavloop = < 0 6 1 15 0 0 0 0 0 0>;/*loop1-mainloog 0x0f-0x13*/
 		vib_td_brake = < 42720 42720 42720 >; /*level0  level1  level2*/
 		vib_tset = < 0x11 >;
 		vib_func_parameter1 = < 1000 >;
+		vib_ram_config = < 1 >; /* brake using the wave in the ram*/
+		vib_vbat_comp = < 1 >; /* control the vbat comp*/
 		status = "ok";
 	};
 };
