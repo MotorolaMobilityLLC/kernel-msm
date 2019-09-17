@@ -51,6 +51,34 @@
 			};
 		};
 	};
+
+	touch_vio_en_mux {
+		touch_vio_en_active: active {
+			mux {
+				pins = "gpio39";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio39";
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+
+		touch_vio_en_suspend: default {
+			mux {
+				pins = "gpio39";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio39";
+				drive-strength = <2>;
+				bias-pull-down;
+				output-low;
+			};
+		};
+	};
 };
 
 &pm660l_l3 {
@@ -62,15 +90,14 @@
 	status = "okay";
 
 	goodix_ts_i2c@5d {
-		compatible = "goodix,goodix_mmi";
+		compatible = "goodix,gt9896";
 		reg = <0x5d>;
 		status = "ok";
 		interrupt-parent = <&tlmm>;
 		interrupts = <125 0>;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
-		pinctrl-0 = <&touch_int_active &touch_reset_active>;
-		pinctrl-1 = <&touch_int_suspend &touch_reset_suspend>;
-		goodix,reg-en-gpio = <&tlmm 39 0x0>;
+		pinctrl-0 = <&touch_int_active &touch_reset_active &touch_vio_en_active>;
+		pinctrl-1 = <&touch_int_suspend &touch_reset_suspend &touch_vio_en_suspend>;
 		goodix,reset-gpio = <&tlmm 99 0x0>;
 		goodix,irq-gpio = <&tlmm 125 0x2002>;
 		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
@@ -88,7 +115,7 @@
 		goodix,pen-enable;
 		goodix,usb_charger;
 		goodix,key-of-pen = <331 332>;/*BTN_STYLUS, BTN_STYLUS2*/
-		goodix,cfg_bin_name = "goodix_cfg_group2_racerl.bin";
+		goodix,cfg_bin_name = "goodix_cfg_group_boe_racerl.bin";
 	};
 };
 
