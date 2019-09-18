@@ -301,6 +301,23 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 	unsigned char *tty_buf;
 	int tty_allocated;
 	unsigned long flags;
+	int i;
+
+	/* Pick primary channel...even though it's ugly
+	 * Ported from old version of ttydiag driver and needed
+	 * for ftmipcd commands.
+	 */
+	if (tty_data == NULL) {
+		for (i=0; i < DIAG_TTY_MINOR_COUNT; i++) {
+			if(diag_tty[i].ch_name && diag_ch->name) {
+				if(strcmp(diag_tty[i].ch_name, diag_ch->name) == 0 &&
+						diag_tty[i].idx == 0) {
+					tty_data = &diag_tty[i];
+					break;
+				}
+			}
+		}
+	}
 
 	if (tty_data == NULL)
 		return -ENODEV;
