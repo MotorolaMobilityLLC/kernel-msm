@@ -97,6 +97,17 @@
 				];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+				qcom,mdss-dsi-cabc-mv-command-state =  "dsi_hs_mode";
+				qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+				qcom,mdss-dsi-cabc-ui-command-state =  "dsi_hs_mode";
+				qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+				qcom,mdss-dsi-cabc-dis-command-state =  "dsi_hs_mode";
+				//acturlly hbm is impliemented by controlling gpio. add this commond just enable HBM feature.
+				qcom,mdss-dsi-hbm-on-command = [01];
+				qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
+				qcom,mdss-dsi-hbm-off-command = [00];
+				qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
 			};
 		};
 	};
