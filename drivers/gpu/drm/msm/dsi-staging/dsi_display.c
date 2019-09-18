@@ -5882,6 +5882,19 @@ static void dsi_display_unbind(struct device *dev,
 	mutex_unlock(&display->display_lock);
 }
 
+void dsi_display_dev_shutdown(struct platform_device *pdev)
+{
+	struct dsi_display *display = NULL;
+
+	if (!pdev) {
+		pr_err("Invalid device\n");
+	} else {
+		display = platform_get_drvdata(pdev);
+		display->panel->reset_config.reset_force_pull_low = display->panel->utils.read_bool (
+			display->panel->utils.data, "qcom,mdss-dsi-reset-force-pull-low");
+	}
+}
+
 static const struct component_ops dsi_display_comp_ops = {
 	.bind = dsi_display_bind,
 	.unbind = dsi_display_unbind,
@@ -5890,6 +5903,7 @@ static const struct component_ops dsi_display_comp_ops = {
 static struct platform_driver dsi_display_driver = {
 	.probe = dsi_display_dev_probe,
 	.remove = dsi_display_dev_remove,
+	.shutdown = dsi_display_dev_shutdown,
 	.driver = {
 		.name = "msm-dsi-display",
 		.of_match_table = dsi_display_dt_match,
