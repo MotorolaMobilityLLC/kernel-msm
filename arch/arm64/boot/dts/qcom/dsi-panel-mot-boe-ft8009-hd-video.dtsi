@@ -44,6 +44,7 @@
 		qcom,mdss-dsi-bl-max-level = <4095>;
 		qcom,bklt-dcs-2bytes-0xff0f-enabled;
 		qcom,mdss-dsi-reset-always-high;
+		qcom,mdss-dsi-reset-force-pull-low;
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
 		/*
 		qcom,mdss-pan-physical-width-dimension = <65>;
