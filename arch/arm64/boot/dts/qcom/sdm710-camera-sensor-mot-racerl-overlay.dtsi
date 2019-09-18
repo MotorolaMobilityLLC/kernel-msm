@@ -43,6 +43,16 @@
 };
 
 &soc {
+	led_flash_rear: qcom,camera-flash@0 {
+		cell-index = <0>;
+		reg = <0x00 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm660l_flash0 &pm660l_flash1>;
+		torch-source = <&pm660l_torch0 &pm660l_torch1>;
+		switch-source = <&pm660l_switch0>;
+		status = "ok";
+	};
+
 	camera_main_front_avdd_ldo: gpio-regulator@0 {
 		compatible = "regulator-fixed";
 		reg = <0x00 0x00>;
@@ -119,6 +129,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_rear>;
 		actuator-src = <&actuator_main>;
 		cam_vio-supply = <&camera_iovdd_ldo>;
 		cam_vana-supply = <&camera_main_front_avdd_ldo>;
