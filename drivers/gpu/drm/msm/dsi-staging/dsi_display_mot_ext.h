@@ -31,6 +31,7 @@
 #include "sde_connector.h"
 #include "sde_motUtil.h"
 #include "dsi_display.h"
+#include <linux/alarmtimer.h>
 
 enum dsi_display_early_power_state {
 	DSI_EARLY_POWER_IDLE = 0,
