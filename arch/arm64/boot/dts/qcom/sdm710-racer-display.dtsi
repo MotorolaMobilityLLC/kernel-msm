@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
-#include "dsi-panel-mot-tianma-639-1080p-racer-cmd.dtsi"
+#include "dsi-panel-mot-boe-667-1080p-racer-cmd.dtsi"
 #include "pm660a.dtsi"
 
 &soc {
@@ -40,9 +40,9 @@
 	};
 
 	/* Please keep all the "primary" panel nodes together */
-	dsi_tianma_639_1080p_cmd_display: qcom,dsi-display@21 {
+	dsi_boe_667_1080p_cmd_display: qcom,dsi-display@21 {
 		compatible = "qcom,dsi-display";
-		label = "dsi_tianma_639_1080p_cmd_display";
+		label = "dsi_boe_667_1080p_cmd_display";
 		qcom,display-type = "primary";
 
 		qcom,dsi-ctrl = <&mdss_dsi0>;
@@ -55,7 +55,7 @@
 		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
 		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
 		qcom,platform-te-gpio = <&tlmm 10 0>;
-		qcom,dsi-panel = <&mot_tianma_639_1080p_cmd_v0>;
+		qcom,dsi-panel = <&mot_boe_667_1080p_cmd_v0>;
 		vddio-supply = <&pm660_l11>;
 		vdda-3p3-supply = <&pm660l_l6>;
 
@@ -79,7 +79,7 @@
 	};
 };
 
-&mot_tianma_639_1080p_cmd_v0 {
+&mot_boe_667_1080p_cmd_v0 {
         qcom,platform-te-gpio = <&tlmm 10 0>;
         qcom,platform-reset-gpio = <&tlmm 75 0>;
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_labibb_amoled>;
@@ -92,12 +92,14 @@
                 timing@0{
                         qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
                                                         08 05 03 04 00];
-                        qcom,display-topology = <1 0 1>;
-                        qcom,default-topology-index = <0>;
+			qcom,display-topology = <1 1 1>,
+						<2 2 1>, /* dsc merge */
+						<2 1 1>; /* 3d mux */
+			qcom,default-topology-index = <1>;
                 };
         };
 };
-&dsi_tianma_639_1080p_cmd_display {
+&dsi_boe_667_1080p_cmd_display {
 	qcom,dsi-display-active;
 	lab-supply = <&lab_regulator>;
 	ibb-supply = <&ibb_regulator>;
