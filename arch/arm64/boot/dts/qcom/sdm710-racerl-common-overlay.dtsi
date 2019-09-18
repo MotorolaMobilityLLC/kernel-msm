@@ -23,6 +23,7 @@
 #include "sdm710-racerl-touchscreen.dtsi"
 #include "sdm710-racerl-fingerprint.dtsi"
 #include "sdm710-racerl-haptic-overlay.dtsi"
+#include "sdm710-racerl-sensor-overlay.dtsi"
 #include "sdm710-racerl-audio-overlay.dtsi"
 
 &utags {
