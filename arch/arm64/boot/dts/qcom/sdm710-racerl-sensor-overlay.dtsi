@@ -1,0 +1,71 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&tlmm {
+	capsense_gpio_pins: capsense_gpio_pins {
+		mux {
+			pins = "gpio40";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio40";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+
+&qupv3_se10_i2c {
+	status = "ok";
+	sx933x@28 {
+		compatible = "Semtech,sx933x";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		Semtech,nirq-gpio = <&tlmm 40 0x00>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&capsense_gpio_pins>;
+		Semtech,power-supply-type = <2>;
+		Semtech,eldo-gpio = <&tlmm 5 0x00>;
+		Semtech,reg-num = <30>;
+		Semtech,button-flag = <0x07>;
+		Semtech,reg-init = <0x8020 0x1F0000
+			0x8024 0x1000087E /*again 6.6pf*/
+			0x8028 0x24928000
+			0x802c 0x1000107E
+			0x8030 0x24960000
+			0x8034 0x1000107E
+			0x8038 0x24B20000
+			0x803c 0x1000087E
+			0x8040 0x25920000
+			0x8044 0x1000087E
+			0x8048 0x2C920000
+			0x8054 0x02103010 /*ph0*/
+			0x8058 0x20600C00
+			0x805c 0x0
+			0x8064 0x006E0000 /*5mm th*/
+			0x806C 0xB5009300
+			0x8070 0x00010000
+			0x8074 0x02103110 /*ph1*/
+			0x8084 0x006D0000 /*5mm th*/
+			0x808C 0x0021001D
+			0x8090 0x00020000
+			0x8094 0x02103810 /*ph2*/
+			0x80A4 0x003F0000 /*5mm th*/
+			0x80AC 0x0021001D
+			0x80B0 0x00020000
+			0x80B4 0x0010FF00
+			0x80D4 0x0010FF00
+			0x8124 0x0400000C
+			0x8128 0x0400000B
+			0x4004 0x77 >;
+	};
+};
