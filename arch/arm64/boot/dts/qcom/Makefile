@@ -30,6 +30,9 @@ dtbo-$(CONFIG_OCEAN_DTB) += \
 	sdm632-ocean-na-dvt2-overlay.dtbo \
 	sdm632-ocean-na-pvt1-overlay.dtbo
 
+dtbo-$(CONFIG_GINNA_DTB) += \
+	sdm632-ginna-evt-overlay.dtbo
+
 dtbo-$(CONFIG_CHANNEL_DTB) += \
 	sdm632-channel-evt-overlay.dtbo \
 	sdm632-channel-dvt2-overlay.dtbo \
@@ -81,6 +84,9 @@ sdm632-ocean-na-dvt2-overlay.dtbo-base := \
        sdm632-ocean-base.dtb
 sdm632-ocean-na-pvt1-overlay.dtbo-base := \
        sdm632-ocean-base.dtb
+
+sdm632-ginna-evt-overlay.dtbo-base := \
+	sdm632-ginna-base.dtb
 
 sdm632-channel-evt-overlay.dtbo-base := \
 	sdm632-channel-base.dtb

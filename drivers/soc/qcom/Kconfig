@@ -49,6 +49,14 @@ config SURFNA_DTB
           Only include SurfNA specific DTBs to limit the number that
           get built during kernel compilation.
 
+config GINNA_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "Ginna DTBs"
+        help
+          Only include Ginna specific DTBs to limit the number that
+          get built during kernel compilation.
+
 config QCOM_CPUSS_DUMP
 	bool "CPU Subsystem Dumping support"
 	help
