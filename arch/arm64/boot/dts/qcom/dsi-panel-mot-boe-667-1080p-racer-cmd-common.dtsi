@@ -41,9 +41,9 @@ qcom,mdss-dsi-te-dcs-command = <1>;
 qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
 
-//qcom,bklt-dcs-2bytes-enabled;
+qcom,bklt-dcs-2bytes-enabled;
 qcom,mdss-dsi-bl-min-level = <3>;
-qcom,mdss-dsi-bl-max-level = <1023>;
+qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
 /* Enable ESD checking */
@@ -93,21 +93,21 @@ qcom,mdss-dsi-display-timings {
 			15 00 00 00 00 00 02 35 00
 			39 00 00 00 00 00 05 3B 00 08 00 08
 			15 00 00 00 00 00 02 53 20
-			39 00 00 00 00 00 05 51 06 40 0F FF
+			39 00 00 00 00 00 03 51 00 00
 			39 00 00 00 00 00 05 2A 00 00 04 37
 			39 00 00 00 00 00 05 2B 00 00 09 23
 			39 00 00 00 00 00 13 93 89 28 00 14 02 00 02 0E 01 E8 00 07 05 0E 05 16 10 F0
 
 			15 00 00 00 00 00 02 90 01
 			15 00 00 00 00 00 02 03 11
-			15 00 00 00 00 00 02 2C 00
+			15 01 00 00 01 00 02 2C 00
 			05 01 00 00 96 00 01 11
 			05 01 00 00 00 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 23 00 01 28		/* display_off */
 			05 01 00 00 78 00 01 10];	/* enter sleep mode */
 
-		qcom,mdss-dsi-on-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 
 				qcom,mdss-dsi-h-sync-pulse = <0>;
