@@ -1417,7 +1417,7 @@ static int __init qpnp_oledb_regulator_init(void)
 {
 	return platform_driver_register(&qpnp_oledb_regulator_driver);
 }
-arch_initcall(qpnp_oledb_regulator_init);
+device_initcall(qpnp_oledb_regulator_init);
 
 static void __exit qpnp_oledb_regulator_exit(void)
 {
