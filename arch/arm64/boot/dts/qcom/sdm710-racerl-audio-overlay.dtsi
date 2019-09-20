@@ -30,11 +30,11 @@
 
 	cs35l41_rcv_irq_default: cs35l41_rcv_irq_default {
 		mux {
-			pins = "gpio1";
+			pins = "gpio123";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio1";
+			pins = "gpio123";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
@@ -42,11 +42,11 @@
 
 	cs35l41_rcv_rst_default: cs35l41_rcv_rst_default {
 		mux {
-			pins = "gpio0";
+			pins = "gpio124";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio0";
+			pins = "gpio124";
 			output-high;
 			bias-pull-up;
 			drive-strength = <2>;
@@ -209,8 +209,8 @@
 		status = "ok";
 		compatible = "cirrus,cs35l41";
 		reg = <0x41>;
-		reset-gpios = <&tlmm 0 0>;
-		interrupts = <1 0>;
+		reset-gpios = <&tlmm 124 0>;
+		interrupts = <123 0>;
 		interrupt-parent = <&tlmm>;
 		interrupt-names = "prince_rcv_irq";
 
