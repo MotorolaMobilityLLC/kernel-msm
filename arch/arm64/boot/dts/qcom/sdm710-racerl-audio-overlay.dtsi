@@ -220,7 +220,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&cs35l41_rcv_rst_default &cs35l41_rcv_irq_default>;
 
-		cirrus,left-channel-amp;
 		cirrus,boost-ind-nanohenry = <1000>; /* 1uH */
 		cirrus,boost-ctl-millivolt = <11000>;
 		cirrus,boost-peak-milliamp = <4000>;
@@ -242,12 +241,12 @@
 					protection {
 						cirrus,full-name;
 						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
+						cirrus,bin-file = "cs35l41-dsp1-rcv-prot.bin";
 					};
 					calibration {
 						cirrus,full-name;
 						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
+						cirrus,bin-file = "cs35l41-dsp1-rcv-cali.bin";
 					};
 					diagnostic {
 						cirrus,full-name;
