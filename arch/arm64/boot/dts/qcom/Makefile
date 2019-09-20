@@ -31,7 +31,8 @@ dtbo-$(CONFIG_PARKER_DTB) += \
 	sm6150-parker-dvt2b-overlay.dtbo
 
 dtbo-$(CONFIG_DEF_DTB) += \
-	sm6150-def-evt1-overlay.dtbo
+	sm6150-def-evt1-overlay.dtbo \
+	sm6150-def-pvt-overlay.dtbo
 
 dtbo-$(CONFIG_QTPRO_DTB) += \
 	sm6150-qtpro-evt1-overlay.dtbo \
@@ -95,6 +96,9 @@ sm6150-parker-dvt2b-overlay.dtbo-base := \
 	sm6150-parker-base.dtb
 
 sm6150-def-evt1-overlay.dtbo-base := \
+	sm6150-def-base.dtb
+
+sm6150-def-pvt-overlay.dtbo-base := \
 	sm6150-def-base.dtb
 
 sm6150-qtpro-evt1-overlay.dtbo-base := \
