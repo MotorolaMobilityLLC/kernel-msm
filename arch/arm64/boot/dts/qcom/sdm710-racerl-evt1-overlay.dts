@@ -25,3 +25,26 @@
 		       <0x0001001b 0x0102001a 0x0 0x0>,
 		       <0x0001001b 0x0201011a 0x0 0x0>;
 };
+
+&cs35l41_rcv_irq_default {
+	mux {
+		pins = "gpio1";
+	};
+	config {
+		pins = "gpio1";
+	};
+};
+
+&cs35l41_rcv_rst_default {
+	mux {
+		pins = "gpio0";
+	};
+	config {
+		pins = "gpio0";
+	};
+};
+
+&cs35l41_rcv {
+	reset-gpios = <&tlmm 0 0>;
+	interrupts = <1 0>;
+};
