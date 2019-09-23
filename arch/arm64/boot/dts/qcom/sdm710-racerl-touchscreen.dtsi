@@ -113,6 +113,7 @@
 		goodix,y2y;
 		goodix,usb_charger;
 		goodix,cfg_bin_name = "goodix_cfg_group_boe_racerl.bin";
+		goodix,fw_name = "goodix-gtx8-01-06-racerl.bin";
 	};
 };
 
