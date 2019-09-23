@@ -925,3 +925,8 @@
 		linux,default-trigger = "timer";
 	};
 };
+
+&pm6150_qg {
+	qcom,s3-entry-ibat-ua = <35000>;
+	qcom,s3-exit-ibat-ua = <50000>;
+};
