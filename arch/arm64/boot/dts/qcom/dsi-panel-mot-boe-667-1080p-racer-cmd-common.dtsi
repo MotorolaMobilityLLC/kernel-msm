@@ -69,7 +69,7 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-h-pulse-width = <16>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
 		qcom,mdss-dsi-v-back-porch = <8>;
-		qcom,mdss-dsi-v-front-porch = <10>;
+		qcom,mdss-dsi-v-front-porch = <16>;
 		qcom,mdss-dsi-v-pulse-width = <2>;
 		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-h-left-border = <0>;
