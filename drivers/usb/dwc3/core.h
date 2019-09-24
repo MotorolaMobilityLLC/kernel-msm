@@ -1330,6 +1330,7 @@ struct dwc3 {
 
 	u16			imod_interval;
 	u32			xhci_imod_value;
+	bool			xhci_hw_lpm_disable;
 	int			core_id;
 	struct workqueue_struct *dwc_wq;
 	struct work_struct      bh_work;
