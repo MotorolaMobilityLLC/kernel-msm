@@ -1343,6 +1343,7 @@ struct dwc3 {
 	void			*dwc_ipc_log_ctxt;
 	void			*dwc_dma_ipc_log_ctxt;
 	struct dwc3_gadget_events	dbg_gadget_events;
+	bool			xhci_hw_lpm_disable;
 	int			tx_fifo_size;
 	int			last_fifo_depth;
 

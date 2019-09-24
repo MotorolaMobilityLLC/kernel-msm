@@ -1280,6 +1280,8 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 
 	device_property_read_u32(dev, "snps,xhci-imod-value",
 			&dwc->xhci_imod_value);
+	dwc->xhci_hw_lpm_disable = device_property_read_bool(dev,
+				"xhci-hw-lpm-disable");
 
 	dwc->core_id = -1;
 	device_property_read_u32(dev, "usb-core-id", &dwc->core_id);
