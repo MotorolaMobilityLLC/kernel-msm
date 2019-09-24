@@ -326,6 +326,9 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	/* Iterate over all parent nodes for finding quirks */
 	for (tmpdev = &pdev->dev; tmpdev; tmpdev = tmpdev->parent) {
 
+		if (device_property_read_bool(&pdev->dev, "xhci-hw-lpm-disable"))
+			xhci->quirks |= XHCI_HW_LPM_DISABLE;
+
 		if (device_property_read_bool(tmpdev, "usb2-lpm-disable"))
 			xhci->quirks |= XHCI_HW_LPM_DISABLE;
 
