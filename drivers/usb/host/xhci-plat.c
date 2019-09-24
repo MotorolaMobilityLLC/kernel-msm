@@ -329,6 +329,9 @@ static int xhci_plat_probe(struct platform_device *pdev)
 		goto disable_clk;
 	}
 
+	if (device_property_read_bool(&pdev->dev, "xhci-hw-lpm-disable"))
+		xhci->quirks |= XHCI_HW_LPM_DISABLE;
+
 	if (device_property_read_bool(&pdev->dev, "usb3-lpm-capable"))
 		xhci->quirks |= XHCI_LPM_SUPPORT;
 
