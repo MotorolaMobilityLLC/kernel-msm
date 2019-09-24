@@ -251,6 +251,7 @@
 	qcom,vbatt-low-mv = <3300>;
 	qcom,vbatt-empty-cold-mv = <2800>;
 	qcom,rbat-conn-mohm = <10>;
+	qcom,ignore-shutdown-soc-secs = <1800>;
 	qcom,cl-feedback-on;
 	qcom,cl-min-start-soc = <0>;
 	qcom,cl-max-start-soc = <5>;
