@@ -33,8 +33,7 @@
 				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
 				type = "ext4";
 				mnt_flags = "ro,barrier=1,discard";
-/*MMI_STOPSHIP <Encryption>: disable verity for Q bringup*/
-				fsmgr_flags = "wait,slotselect";
+				fsmgr_flags = "wait,slotselect,verify";
 				status = "ok";
 			};
 			system {
