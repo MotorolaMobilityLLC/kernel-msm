@@ -1198,6 +1198,7 @@ struct dwc3 {
 	void			*dwc_dma_ipc_log_ctxt;
 	struct dwc3_gadget_events	dbg_gadget_events;
 	u32			xhci_imod_value;
+	bool			xhci_hw_lpm_disable;
 	int			core_id;
 	int			tx_fifo_size;
 	int			last_fifo_depth;
