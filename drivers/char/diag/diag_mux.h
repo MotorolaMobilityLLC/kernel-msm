@@ -78,4 +78,5 @@ int diag_mux_close_all(void);
 int diag_pcie_register_ops(int proc, int ctx, struct diag_mux_ops *ops);
 int diag_usb_register_ops(int proc, int ctx, struct diag_mux_ops *ops);
 int diag_mux_switch_logging(int proc, int *new_mode, int *peripheral_mask);
+void diag_notify_md_client(uint8_t proc, uint8_t peripheral, int data);
 #endif
