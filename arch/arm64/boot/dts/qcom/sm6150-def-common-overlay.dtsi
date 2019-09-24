@@ -930,3 +930,17 @@
 	qcom,s3-entry-ibat-ua = <35000>;
 	qcom,s3-exit-ibat-ua = <50000>;
 };
+
+&sde_dp {
+	status = "disabled";
+};
+
+&mdss_mdp {
+       connectors = <&sde_rscc &sde_wb &sde_dsi>;
+};
+
+&soc {
+        sde_dp: qcom,dp_display@0{
+               status = "disabled";
+        };
+};
