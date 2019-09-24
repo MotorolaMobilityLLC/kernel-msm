@@ -10,7 +10,21 @@
  * GNU General Public License for more details.
  */
 
-&tlmm{
+&pm660_gpios {
+	cs35l41_rcv_irq_default: cs35l41_rcv_irq_default {
+		mux {
+			pins = "gpio5";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio5";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+};
+
+&tlmm {
 	marley_irq_default: marley_irq_default {
 		config {
 			pins = "gpio54";
@@ -25,18 +39,6 @@
 			output-high;
 			bias-pull-up;
 			drive-strength = <2>;
-		};
-	};
-
-	cs35l41_rcv_irq_default: cs35l41_rcv_irq_default {
-		mux {
-			pins = "gpio123";
-			function = "gpio";
-		};
-		config {
-			pins = "gpio123";
-			drive-strength = <2>;
-			bias-pull-up;
 		};
 	};
 
@@ -210,15 +212,12 @@
 		compatible = "cirrus,cs35l41";
 		reg = <0x41>;
 		reset-gpios = <&tlmm 124 0>;
-		interrupts = <123 0>;
-		interrupt-parent = <&tlmm>;
-		interrupt-names = "prince_rcv_irq";
 
 		VA-supply = <&pm660_l13>;
 		VP-supply = <&pm660_l13>;
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&cs35l41_rcv_rst_default &cs35l41_rcv_irq_default>;
+		pinctrl-0 = <&cs35l41_rcv_rst_default>;
 
 		cirrus,boost-ind-nanohenry = <1000>; /* 1uH */
 		cirrus,boost-ctl-millivolt = <11000>;

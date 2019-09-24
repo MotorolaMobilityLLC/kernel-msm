@@ -26,12 +26,17 @@
 		       <0x0001001b 0x0201011a 0x0 0x0>;
 };
 
-&cs35l41_rcv_irq_default {
-	mux {
-		pins = "gpio1";
-	};
-	config {
-		pins = "gpio1";
+&tlmm {
+	cs35l41_rcv_irq_evt1: cs35l41_rcv_irq_evt1 {
+		mux {
+			pins = "gpio1";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio1";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
 	};
 };
 
@@ -45,6 +50,10 @@
 };
 
 &cs35l41_rcv {
+	pinctrl-0 = <&cs35l41_rcv_rst_default &cs35l41_rcv_irq_evt1>;
 	reset-gpios = <&tlmm 0 0>;
+
 	interrupts = <1 0>;
+	interrupt-parent = <&tlmm>;
+	interrupt-names = "prince_rcv_irq";
 };
