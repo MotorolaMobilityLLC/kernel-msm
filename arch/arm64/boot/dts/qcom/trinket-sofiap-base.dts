@@ -14,6 +14,10 @@
 
 #include "trinket-moto-base.dtsi"
 
+&firmware {
+	/delete-node/ android;
+};
+
 &pmi632_rgb {
 	/delete-node/ blue;
 	/delete-node/ green;
