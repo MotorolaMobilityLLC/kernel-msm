@@ -37,7 +37,8 @@ dtbo-$(CONFIG_SOFIAP_DTB) += \
 	trinket-sofiap-evb-overlay.dtbo \
 	trinket-sofiap-evt-overlay.dtbo \
 	trinket-sofiap-dvt1a-overlay.dtbo \
-	trinket-sofiap-dvt1b-overlay.dtbo
+	trinket-sofiap-dvt1b-overlay.dtbo \
+	trinket-sofiap-dvt2-overlay.dtbo
 
 dtbo-$(CONFIG_SOFIAR_DTB) += \
 	trinket-sofiar-evb1-overlay.dtbo \
@@ -61,6 +62,7 @@ trinket-sofiap-evb-overlay.dtbo-base :=  trinket-sofiap-base.dtb
 trinket-sofiap-evt-overlay.dtbo-base :=  trinket-sofiap-base.dtb
 trinket-sofiap-dvt1a-overlay.dtbo-base :=  trinket-sofiap-base.dtb
 trinket-sofiap-dvt1b-overlay.dtbo-base :=  trinket-sofiap-base.dtb
+trinket-sofiap-dvt2-overlay.dtbo-base :=  trinket-sofiap-base.dtb
 
 trinket-sofiar-evb1-overlay.dtbo-base :=  trinket-sofiar-base.dtb
 trinket-sofiar-evt1-overlay.dtbo-base :=  trinket-sofiar-base.dtb
