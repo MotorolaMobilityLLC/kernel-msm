@@ -3135,10 +3135,12 @@ wait_for_buffer:
 		return PKT_DROP;
 	}
 	spin_lock_irqsave(&driver->diagmem_lock, flags);
+
 	if (data->flushed) {
 		spin_unlock_irqrestore(&driver->diagmem_lock, flags);
 		goto wait_for_buffer;
 	}
+
 	if (!data->buf) {
 		data->buf = diagmem_alloc(driver, DIAG_MAX_HDLC_BUF_SIZE +
 					APF_DIAG_PADDING,
@@ -3183,6 +3185,7 @@ wait_for_buffer:
 			ret = -EIO;
 			goto fail_free_buf;
 		}
+
 wait_for_agg_buff:
 		wait_err = wait_event_interruptible_timeout(driver->hdlc_wait_q,
 				(data->flushed == 0),
@@ -3195,10 +3198,12 @@ wait_for_agg_buff:
 		}
 
 		spin_lock_irqsave(&driver->diagmem_lock, flags);
+
 		if (data->flushed) {
 			spin_unlock_irqrestore(&driver->diagmem_lock, flags);
 			goto wait_for_agg_buff;
 		}
+
 		data->buf = diagmem_alloc(driver, DIAG_MAX_HDLC_BUF_SIZE +
 					APF_DIAG_PADDING,
 					 POOL_TYPE_HDLC);
@@ -3268,6 +3273,7 @@ static int diag_process_apps_data_non_hdlc(unsigned char *buf, int len,
 		       __func__, buf, len);
 		return -EIO;
 	}
+
 wait_for_buffer:
 	wait_err = wait_event_interruptible_timeout(driver->hdlc_wait_q,
 					(data->flushed == 0),
@@ -3280,10 +3286,12 @@ wait_for_buffer:
 	}
 
 	spin_lock_irqsave(&driver->diagmem_lock, flags);
+
 	if (data->flushed) {
 		spin_unlock_irqrestore(&driver->diagmem_lock, flags);
 		goto wait_for_buffer;
 	}
+
 	if (!data->buf) {
 		data->buf = diagmem_alloc(driver, DIAG_MAX_HDLC_BUF_SIZE +
 					APF_DIAG_PADDING,
