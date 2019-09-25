@@ -861,6 +861,7 @@
 	dwc3@a600000 {
 		usb-phy = <&qusb_phy0>, <&usb_nop_phy>;
 		maximum-speed = "high-speed";
+		xhci-hw-lpm-disable;
 	};
 };
 
