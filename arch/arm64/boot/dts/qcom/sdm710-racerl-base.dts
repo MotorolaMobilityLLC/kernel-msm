@@ -14,3 +14,6 @@
 
 #include "sdm710-moto-common-base.dtsi"
 
+&firmware {
+       /delete-node/ android;
+};
