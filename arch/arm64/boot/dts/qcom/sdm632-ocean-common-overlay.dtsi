@@ -597,8 +597,8 @@
 	tfa987x:tfa98xx@34 {
 		compatible = "nxp,tfa98xx";
 		reg = <0x34>;
-		nxp,reset-gpio = <&tlmm 94 0>;
-		nxp,irq-gpio = <&tlmm 63 0>;
+		reset-gpio = <&tlmm 94 0>;
+		irq-gpio = <&tlmm 63 0>;
 		status = "disabled";
 	};
 };
