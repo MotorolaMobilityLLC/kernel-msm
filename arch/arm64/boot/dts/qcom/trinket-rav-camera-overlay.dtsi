@@ -311,7 +311,7 @@
 		qcom,cam-vreg-name = "cam_vio","cam_vaf","cam_clk";
 		qcom,cam-vreg-min-voltage = <1800000 2800000 0>;
 		qcom,cam-vreg-max-voltage = <1800000 2800000 0>;
-		qcom,cam-vreg-op-mode = <0 100000 0>;
+		qcom,cam-vreg-op-mode = <105000 100000 0>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_active
@@ -354,7 +354,7 @@
 		qcom,cam-vreg-name = "cam_vio";
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
-		qcom,cam-vreg-op-mode = <0>;
+		qcom,cam-vreg-op-mode = <105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk1_active
@@ -396,7 +396,7 @@
 		qcom,cam-vreg-name = "cam_vio","cam_vaf","cam_clk";
 		qcom,cam-vreg-min-voltage = <1800000 2800000 0>;
 		qcom,cam-vreg-max-voltage = <1800000 2800000 0>;
-		qcom,cam-vreg-op-mode = <0 100000 0>;
+		qcom,cam-vreg-op-mode = <105000 100000 0>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk3_active
@@ -438,7 +438,7 @@
 		qcom,cam-vreg-name = "cam_vio";
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
-		qcom,cam-vreg-op-mode = <0>;
+		qcom,cam-vreg-op-mode = <105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk2_active
@@ -490,7 +490,7 @@
 		qcom,cam-vreg-name = "cam_vio","cam_vaf","cam_clk";
 		qcom,cam-vreg-min-voltage = <1800000 2800000 0>;
 		qcom,cam-vreg-max-voltage = <1800000 2800000 0>;
-		qcom,cam-vreg-op-mode = <0 100000 0>;
+		qcom,cam-vreg-op-mode = <105000 100000 0>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_active
@@ -536,7 +536,7 @@
 		qcom,cam-vreg-name = "cam_vio";
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
-		qcom,cam-vreg-op-mode = <0>;
+		qcom,cam-vreg-op-mode = <105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk1_active
@@ -583,7 +583,7 @@
 		qcom,cam-vreg-name = "cam_vio","cam_vaf","cam_clk";
 		qcom,cam-vreg-min-voltage = <1800000 2800000 0>;
 		qcom,cam-vreg-max-voltage = <1800000 2800000 0>;
-		qcom,cam-vreg-op-mode = <0 100000 0>;
+		qcom,cam-vreg-op-mode = <105000 100000 0>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk3_active
@@ -630,7 +630,7 @@
 		qcom,cam-vreg-name = "cam_vio";
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
-		qcom,cam-vreg-op-mode = <0>;
+		qcom,cam-vreg-op-mode = <105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk2_active
