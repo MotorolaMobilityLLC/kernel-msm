@@ -38,3 +38,8 @@
 &cs48l32 {
 	interrupts = <45 IRQ_TYPE_LEVEL_LOW>;
 };
+
+&stmvl53l1 {
+        /* Disable once the matching driver is ported completely */
+        status = "disabled";
+};

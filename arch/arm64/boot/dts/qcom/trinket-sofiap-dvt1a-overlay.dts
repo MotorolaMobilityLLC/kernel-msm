@@ -41,5 +41,5 @@
 
 &stmvl53l1 {
         /* Disable once the matching driver is ported completely */
-        status = "disable";
+        status = "disabled";
 };
