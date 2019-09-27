@@ -661,7 +661,8 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		       rc);
 	}
 
-	if (panel->reset_config.reset_assert_time > 0)
+	if ((panel->reset_config.reset_assert_time > 0)
+		&& (!panel->reset_config.reset_always_high || panel->reset_config.reset_force_pull_low))
 		mdelay(panel->reset_config.reset_assert_time);
 
 	if (panel->tp_state_check && panel->lcd_not_sleep) {
