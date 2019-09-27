@@ -125,6 +125,7 @@
 		novatek,swrst-n8-addr = <0x03F0FE>;
 		novatek,spi-rd-fast-addr = <0x03F310>;
 		novatek,def-max-resolution = <1080 2340>;
+		novatek,usb_charger;
 		status = "/chosen", "mmi,panel_name", "dsi_nt36675_nova_1080P_vid_display";
 	};
 };
