@@ -373,8 +373,34 @@
 
 			config {
 				pins = "gpio59";
+				/* drive-strength = <2>; */ /* 2 MA */
+				/* bias-pull-down; */
+				input-enable;
+				bias-disable;
+			};
+		};
+		aw8646_sw_clk_active: aw8646_sw_clk_active {
+			mux {
+				pins = "gpio122";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio122";
 				drive-strength = <2>; /* 2 MA */
-				bias-pull-down;
+				output-low;
+			};
+		};
+		aw8646_sw_clk_disable: aw8646_sw_clk_disable {
+			mux {
+				pins = "gpio122";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio122";
+				input-enable;
+				bias-disable;
 			};
 		};
 	};
@@ -449,7 +475,8 @@
 						"t0_low", "t0_high", "t0_disable",
 						"t1_low", "t1_high", "t1_disable",
 						"aw8646_int_default",
-						"aw8646_clk_active", "aw8646_clk_sleep";
+						"aw8646_clk_active", "aw8646_clk_sleep",
+						"aw8646_sw_clk_active", "aw8646_sw_clk_disable";
 		pinctrl-0 = <&aw8646_mode0_low>;
 		pinctrl-1 = <&aw8646_mode0_high>;
 		pinctrl-2 = <&aw8646_mode0_disable>;
@@ -465,6 +492,8 @@
 		pinctrl-12 = <&aw8646_int_default>;
 		pinctrl-13 = <&aw8646_clk_active>;
 		pinctrl-14 = <&aw8646_clk_sleep>;
+		pinctrl-15 = <&aw8646_sw_clk_active>;
+		pinctrl-16 = <&aw8646_sw_clk_disable>;
 		clocks = <&clock_gcc 42>;
 		clock-names = "gcc_gp3";
 		vdd-supply = <&pm6150_l13>;
