@@ -21,6 +21,7 @@
 		focaltech,display-coords = <0 0 1079 2299>;
 		focaltech,max-touch-number = <10>;
 		focaltech,panel-supplier = "tianma";
+		focaltech,always_on_vio;
 		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
 	};
 
@@ -41,6 +42,7 @@
 		focaltech,display-coords = <0 0 1079 2299>;
 		focaltech,max-touch-number = <10>;
 		focaltech,panel-supplier = "auo";
+		focaltech,always_on_vio;
 		status = "/chosen", "mmi,panel_name", "auo_ft8756_fhd_vid";
 	};
 };
