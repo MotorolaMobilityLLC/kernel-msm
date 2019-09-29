@@ -1439,7 +1439,11 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		val->intval = chg->thermal_levels;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		rc = smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_TEMP, val);
+		if (chg->mmi.test_mode && !(chg->mmi.test_mode_temp < -350)
+		    && !(chg->mmi.test_mode_temp > 1250))
+			val->intval = chg->mmi.test_mode_temp;
+		else
+			rc = smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_TEMP, val);
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -1595,6 +1599,13 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		rc = smblib_set_prop_system_temp_level(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		if (chg->mmi.test_mode)
+			chg->mmi.test_mode_temp = val->intval;
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+					msecs_to_jiffies(0));
 		break;
 	default:
 		rc = -EINVAL;
