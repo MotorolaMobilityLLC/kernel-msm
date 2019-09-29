@@ -1444,6 +1444,12 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 {
 	int rc = -EINVAL;
 
+	if (chg->mmi.test_mode && !(chg->mmi.test_mode_soc < 0)
+	    && !(chg->mmi.test_mode_soc > 100)) {
+		val->intval = chg->mmi.test_mode_soc;
+                return 0;
+        }
+
 	if (chg->fake_capacity >= 0) {
 		val->intval = chg->fake_capacity;
 		return 0;
@@ -1818,6 +1824,9 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 int smblib_set_prop_batt_capacity(struct smb_charger *chg,
 				  const union power_supply_propval *val)
 {
+	if (chg->mmi.test_mode)
+	   chg->mmi.test_mode_soc = val->intval;
+
 	chg->fake_capacity = val->intval;
 
 	power_supply_changed(chg->batt_psy);
@@ -4749,6 +4758,26 @@ static void smblib_destroy_votables(struct smb_charger *chg)
 		destroy_votable(chg->chg_disable_votable);
 }
 
+static bool smblib_test_mode(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *mode;
+	int rc;
+	bool test = false;
+
+	if (!np)
+		return test;
+
+	rc = of_property_read_string(np, "mmi,battery", &mode);
+	if ((rc >= 0) && mode) {
+		if (strcmp(mode, "test") == 0)
+			test = true;
+	}
+	of_node_put(np);
+
+	return test;
+}
+
 int smblib_init(struct smb_charger *chg)
 {
 	int rc = 0;
@@ -4797,6 +4826,12 @@ int smblib_init(struct smb_charger *chg)
 	chg->fake_batt_status = -EINVAL;
 	chg->jeita_configured = false;
 	chg->sink_src_mode = UNATTACHED_MODE;
+
+	chg->mmi.test_mode_soc = DEFAULT_TEST_MODE_SOC;
+	chg->mmi.test_mode_temp = DEFAULT_TEST_MODE_TEMP;
+	chg->mmi.test_mode = smblib_test_mode();
+	if (chg->mmi.test_mode)
+	        smblib_dbg(chg, PR_MISC, "Test Mode Enabled\n");
 
 	switch (chg->mode) {
 	case PARALLEL_MASTER:
@@ -5235,8 +5270,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		batt_soc = val.intval;
 
-	rc = smblib_get_prop_from_bms(chip,
+	if (chip->mmi.test_mode && !(chip->mmi.test_mode_temp < -350)
+		 && !(chip->mmi.test_mode_temp > 1250))
+		val.intval = chip->mmi.test_mode_temp;
+	else
+		rc = smblib_get_prop_from_bms(chip,
 				POWER_SUPPLY_PROP_TEMP, &val);
+	
 	if (rc < 0) {
 		smblib_err(chip, "Error getting Batt Temperature rc = %d\n", rc);
 		goto end_hb;

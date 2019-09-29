@@ -98,6 +98,9 @@ enum print_reason {
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
 
+#define DEFAULT_TEST_MODE_SOC  52
+#define DEFAULT_TEST_MODE_TEMP  225
+
 enum smb_mode {
 	PARALLEL_MASTER = 0,
 	PARALLEL_SLAVE,
@@ -371,6 +374,9 @@ struct mmi_params {
 	int			max_chrg_temp;
 	bool			force_chg_suspend;
 	bool			mmi_hvdcp_disable;
+	bool                    test_mode;
+	int                     test_mode_soc;
+	int                     test_mode_temp;
 };
 
 struct smb_charger {
