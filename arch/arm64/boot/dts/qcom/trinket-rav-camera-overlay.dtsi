@@ -10,6 +10,18 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+&pmi632_flash0 {
+			label = "flash";
+			qcom,led-name = "led:flash_0";
+			qcom,max-current = <1200>;
+			qcom,default-led-trigger = "flash0_trigger";
+			qcom,id = <0>;
+			qcom,current-ma = <1000>;
+			qcom,duration-ms = <1280>;
+			qcom,ires-ua = <12500>;
+			qcom,hdrm-voltage-mv = <400>;
+			qcom,hdrm-vol-hi-lo-win-mv = <100>;
+};
 &tlmm {
 		rear_cam_sensor_active: rear_cam_sensor_active {
 			/* REAR CAMERA */
