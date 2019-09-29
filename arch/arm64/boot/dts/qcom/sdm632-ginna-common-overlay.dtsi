@@ -106,6 +106,20 @@
 &i2c_1 {
 	status = "okay";
 
+        tps61280@75 {
+                 compatible = "ti,tps61280";
+                 status = "okay";
+                 reg = <0x75>;
+                 ti,config = <0x0D>;
+                 ti,vout-floor = <0x0D>;
+                 ti,vout-roof = <0x19>;/*0x19*/
+                 ti,ilim = <0x0F>;
+                 ti,en-gpio = <&tlmm 113 0>;
+                 /*ti,vsel-gpio = <&tlmm 104 0>;*/
+                 pinctrl-names = "default";
+                 pinctrl-0 = <&tps61280_en_default>;
+         };
+
 	drv2624@5a {
 		status = "ok";
 		compatible = "ti,drv2624";
