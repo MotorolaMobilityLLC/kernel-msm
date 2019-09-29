@@ -77,6 +77,7 @@
 		focaltech,irq-gpio = <&tlmm 88 0x02>;
 		focaltech,display-coords = <0 0 1079 2299>;
 		focaltech,max-touch-number = <10>;
+		focaltech,always_on_vio;
 		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
 	};
 
