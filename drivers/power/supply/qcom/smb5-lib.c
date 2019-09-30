@@ -4994,7 +4994,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 	typec_source_rd = smblib_get_prop_ufp_mode(chg);
 
 	/* QC 2.0/3.0 adapter */
-	if (apsd_result->bit & (QC_3P0_BIT | QC_2P0_BIT)) {
+	if (apsd_result->bit & QC_2P0_BIT) {
+		*total_current_ua = HVDCP_2_CURRENT_UA;
+		return 0;
+	} else if (apsd_result->bit & QC_3P0_BIT){
 		*total_current_ua = HVDCP_CURRENT_UA;
 		return 0;
 	}
@@ -5789,7 +5792,11 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 					CHARGER_TYPE_VOTER, false, 0);
 			vote(chg->hdc_irq_disable_votable,
 					CHARGER_TYPE_VOTER, false, 0);
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+			if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP)
+				vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+					HVDCP_2_CURRENT_UA);
+			else
+				vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					hvdcp_ua);
 		} else {
 			/* A plain DCP, enforce DCP ICL if specified */
