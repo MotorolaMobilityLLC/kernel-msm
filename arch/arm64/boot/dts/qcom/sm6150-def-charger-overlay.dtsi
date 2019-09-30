@@ -35,7 +35,7 @@
 		qcom,usbpd-phandle = <&pm6150_pdphy>;
 		mmi,pps-volt-steps = <20000>;
 		mmi,pps-curr-steps = <100000>;
-		mmi,pd-volt-max = <11000000>;
+		mmi,pd-volt-max = <10800000>;
 		mmi,pd-curr-max = <4000000>;
 		mmi,batt-curr-boost = <300000>;
 		mmi,batt-ovp-lmt = <4475000>;
@@ -45,11 +45,11 @@
 		mmi,extrn-sense;
 		mmi,chrg-temp-zones-num = <5>;
 		mmi,mmi-chrg-temp-zones =
-					<0 4200 582 0 0 0 0 0 0>,
-					<10 4200 2000 4400 582 0 0 0 0>,
+					<0 4200 700 0 0 0 0 0 0>,
+					<10 4200 2000 4400 700 0 0 0 0>,
 					<15 4200 6000 4400 2000 0 0 0 0>,
 					<45 4250 8000 4300 6000 4350 4000 4400 2000>,
-					<60 4200 6000 0 0 0 0 0 0>;
+					<60 4200 2000 0 0 0 0 0 0>;
 		mmi,thermal-mitigation =
 					<8000000>,
 					<7000000>,
@@ -218,14 +218,14 @@
 
 &pm6150_charger {
 	qcom,battery-data = <&mtp_batterydata>;
-	qcom,iterm-ma = <175>;
+	qcom,iterm-ma = <200>;
 	qcom,extrn-fg;
 	qcom,extrn-fg-psy-name = "bq27426_bms";
 	qcom,dc-unsupported;
 	qcom,wireless-unsupported;
 	qcom,usbeb-unsupported;
-	qcom,mmi-temp-zones = <0 4200 800 0>,
-				<10 4200 2000 800>,
+	qcom,mmi-temp-zones = <0 4200 700 0>,
+				<10 4200 2000 700>,
 				<15 4200 3600 2000>,
 				<46 4350 3600 2000>,
 				<60 4200 2000 0>;
