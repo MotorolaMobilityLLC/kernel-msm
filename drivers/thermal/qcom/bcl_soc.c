@@ -37,6 +37,7 @@ struct bcl_device {
 	bool					irq_enabled;
 	struct thermal_zone_device		*tz_dev;
 	struct thermal_zone_of_device_ops	ops;
+	bool					bcl_not_mitigate_cpu_enalbe;
 };
 
 static struct bcl_device *bcl_perph;
@@ -61,13 +62,29 @@ unlock_and_exit:
 	return 0;
 }
 
+#define TURBO_CHRG_THRSH 2500
 static int bcl_read_soc(void *data, int *val)
 {
 	static struct power_supply *batt_psy;
+	static struct power_supply *usb_psy;
 	union power_supply_propval ret = {0,};
 	int err = 0;
 
 	*val = 100;
+
+	if (!usb_psy)
+		usb_psy = power_supply_get_by_name("usb");
+	if (usb_psy && bcl_perph->bcl_not_mitigate_cpu_enalbe) {
+		err = power_supply_get_property(usb_psy,
+			POWER_SUPPLY_PROP_HW_CURRENT_MAX, &ret);
+		if (err)
+			pr_err("HW current max read error:%d\n", err);
+		else if ((ret.intval /1000) >= TURBO_CHRG_THRSH) {
+			pr_debug("turbo charge connected\n");
+			return err;
+		}
+	}
+
 	if (!batt_psy)
 		batt_psy = power_supply_get_by_name("battery");
 	if (batt_psy) {
@@ -159,6 +176,13 @@ static int bcl_soc_probe(struct platform_device *pdev)
 		bcl_perph->tz_dev = NULL;
 		goto bcl_soc_probe_exit;
 	}
+
+	if (of_property_read_bool(pdev->dev.of_node,
+		"qcom,bcl-not-mitigate-cpu"))
+		bcl_perph->bcl_not_mitigate_cpu_enalbe = true;
+	else
+		bcl_perph->bcl_not_mitigate_cpu_enalbe = false;
+
 	thermal_zone_device_update(bcl_perph->tz_dev, THERMAL_DEVICE_UP);
 	schedule_work(&bcl_perph->soc_eval_work);
 
