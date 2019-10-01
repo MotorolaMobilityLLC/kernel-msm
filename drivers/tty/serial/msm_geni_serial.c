@@ -779,7 +779,7 @@ static void msm_geni_serial_console_write(struct console *co, const char *s,
 {
 	struct uart_port *uport;
 	struct msm_geni_serial_port *port;
-	int locked = 1;
+	bool locked = true;
 	unsigned long flags;
 
 	WARN_ON(co->index < 0 || co->index >= GENI_UART_NR_PORTS);
@@ -794,10 +794,24 @@ static void msm_geni_serial_console_write(struct console *co, const char *s,
 	else
 		spin_lock_irqsave(&uport->lock, flags);
 
-	if (locked) {
-		__msm_geni_serial_console_write(uport, s, count);
-		spin_unlock_irqrestore(&uport->lock, flags);
+	/* Cancel the current write to log the fault */
+	if (!locked) {
+		geni_cancel_m_cmd(uport->membase);
+		if (!msm_geni_serial_poll_bit(uport, SE_GENI_M_IRQ_STATUS,
+						M_CMD_CANCEL_EN, true)) {
+			geni_abort_m_cmd(uport->membase);
+			msm_geni_serial_poll_bit(uport, SE_GENI_M_IRQ_STATUS,
+							M_CMD_ABORT_EN, true);
+			geni_write_reg_nolog(M_CMD_ABORT_EN, uport->membase,
+							SE_GENI_M_IRQ_CLEAR);
+		}
+		writel_relaxed(M_CMD_CANCEL_EN, uport->membase +
+							SE_GENI_M_IRQ_CLEAR);
 	}
+
+	__msm_geni_serial_console_write(uport, s, count);
+	if (locked)
+		spin_unlock_irqrestore(&uport->lock, flags);
 }
 
 static int handle_rx_console(struct uart_port *uport,
