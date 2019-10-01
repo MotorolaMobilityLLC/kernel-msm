@@ -98,6 +98,10 @@
 	};
 };
 
+&bcl_soc {
+	qcom,bcl-not-mitigate-cpu;
+};
+
 &mtp_batterydata {
 	qcom,batt-id-range-pct = <15>;
 	df-serialnum = "SB18C52858";
