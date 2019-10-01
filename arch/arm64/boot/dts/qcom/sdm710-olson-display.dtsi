@@ -29,6 +29,10 @@
 		#include "dsi-panel-mot-csot-620-876x2142-olson-cmd-common.dtsi"
 	};
 
+	mot_csot_620_876x2142_cmd_v1: qcom,mdss_dsi_mot_csot_620_876x2142_cmd_v1 {
+		#include "dsi-panel-mot-csot-620-876x2142-olson-cmd-common.dtsi"
+	};
+
 	/* Primary Display:  BOE */
 	mot_boe_620_876x2142_cmd_v0: qcom,mdss_dsi_mot_boe_620_876x2142_cmd_v0 {
 		#include "dsi-panel-mot-boe-620-876x2142-olson-cmd-common.dtsi"
@@ -206,6 +210,30 @@
 		ibb-supply = <&ibb_regulator>;
 		oledb-supply = <&pm660a_oledb>;
 	};
+
+	dsi_csot_620_876x2142_cmd_display_v1: qcom,dsi-display@30 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_csot_620_876x2142_cmd_display_v1";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
+		qcom,platform-te-gpio = <&tlmm 10 0>;
+		qcom,dsi-panel = <&mot_csot_620_876x2142_cmd_v1>;
+		l11_disp-supply = <&pm660_l11>;
+		vci_disp-supply = <&vci_disp_vreg>;
+		vio_disp-supply = <&vio_disp_vreg>;
+		lab-supply = <&lab_regulator>;
+		ibb-supply = <&ibb_regulator>;
+		oledb-supply = <&pm660a_oledb>;
+};
 
 	/* Please keep all the "secondary" panel nodes together */
 	dsi_auo_139_480x480_cmd_dvt1_display: qcom,dsi-display@22 {
@@ -521,6 +549,74 @@
 		};
 	};
 };
+
+&mot_csot_620_876x2142_cmd_v1 {
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0D>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
+
+	qcom,bklt-dcs-2bytes-enabled;
+	qcom,mdss-dsi-bl-min-level = <3>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+
+	qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
+	qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 07 FF];
+
+	qcom,mdss-dsi-panel-hbm-is-51cmd;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+								08 05 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+
+			qcom,mdss-dsi-on-command = [
+				15 00 00 00 00 00 02 FE 40 /*switch CMD2*/
+				15 00 00 00 00 00 02 6F 02 /*swire update by vsync*/
+				15 00 00 00 00 00 02 FE 00
+				15 00 00 00 00 00 02 5E 01 /* swire control Enable */
+				15 00 00 00 00 00 02 FE E0 /* */
+				15 00 00 00 00 00 02 C3 00 /* Enable Avg Y */
+				15 00 00 00 00 00 02 8B 12 /* ops dimming off*/
+				15 00 00 00 00 00 02 8E 21 /* Step width*/
+				15 00 00 00 00 00 02 90 14 /* First pulse width*/
+				15 00 00 00 00 00 02 FE 70 /* */
+				15 00 00 00 00 00 02 11 C0 /* Ops_ref_bc */
+				15 00 00 00 00 00 02 17 00 /* opsen_3mode */
+				/* Lookup table setting swire pulse */
+				15 00 00 00 00 00 02 FE E0 /* */
+				15 00 00 00 00 00 02 91 19 /* lut1 = -3v */
+				15 00 00 00 00 00 02 92 19 /* lut2 = -3v */
+				15 00 00 00 00 00 02 93 19 /* lut3 = -3v */
+				15 00 00 00 00 00 02 94 19 /* lut4 = -3v */
+				15 00 00 00 00 00 02 95 0F /* lut5 = -3v */
+				15 00 00 00 00 00 02 96 0F /* lut6 = -3v */
+				15 00 00 00 00 00 02 97 0F /* lut7 = -3v */
+				15 00 00 00 00 00 02 98 0F /* lut8 = -3v */
+				15 00 00 00 00 00 02 99 0F /* lut9 = -3v */
+				/* Lookup table setting 51 ratio */
+				15 00 00 00 00 00 02 9A 7F /* lut1 = 000~7FF */
+				15 00 00 00 00 00 02 9B 7F /* lut2 = 000~7FF */
+				15 00 00 00 00 00 02 9C 7F /* lut3 = 000~7FF */
+				15 00 00 00 00 00 02 9D 7F /* lut4 = 800~7FF */
+				15 00 00 00 00 00 02 9E FF /* lut5 = 800~7FF */
+				15 00 00 00 00 00 02 9F FF /* lut6 = 800~7FF */
+				15 00 00 00 00 00 02 A0 FF /* lut7 = 800~7FF */
+				15 00 00 00 00 00 02 A2 FF /* lut8 = 800~7FF */
+				15 00 00 00 00 00 02 FE 00
+				15 00 00 00 00 00 02 C2 08
+				15 00 00 00 00 00 02 9A 00 /* corner R function off, 0x00 for off, 0x01 for on*/
+				05 01 00 00 78 00 01 11
+				15 00 00 00 00 00 02 35 00
+				15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
+				39 00 00 00 00 00 03 51 00 00
+				15 00 00 00 00 00 02 55 00      /* ACL OFF */
+				05 01 00 00 00 00 01 29];       /* display on */
+		};
+	};
+};
+
 
 /*
  * The CLI display of the DVT1 is a in-cell display which has one controller
