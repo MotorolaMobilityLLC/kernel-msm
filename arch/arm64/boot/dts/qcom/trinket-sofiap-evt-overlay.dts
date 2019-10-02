@@ -15,7 +15,7 @@
 
 #include <dt-bindings/clock/qcom,gcc-trinket.h>
 #include "trinket-sofiap-common-overlay.dtsi"
-
+#include "trinket-sofiap-audio-cooke.dtsi"
 / {
 	model = "sofiap";
 	compatible = "qcom,trinket-sofiap", "qcom,trinket-moto", "qcom,trinket";
