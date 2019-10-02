@@ -60,6 +60,12 @@
 	status = "ok";
 };
 
+&pm660_l8 {
+	regulator-min-microvolt = <1860000>;
+	regulator-max-microvolt = <1860000>;
+	qcom,init-voltage = <1860000>;
+};
+
 &bluetooth {
 	compatible = "qca,wcn3990";
 	qca,bt-vdd-io-supply = <&pm660_l13>;
