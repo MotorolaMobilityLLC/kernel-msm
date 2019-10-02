@@ -614,7 +614,7 @@
 				compatible = "android,oem";
 				dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/oem";
 				type = "ext4";
-				mnt_flags = "ro,barrier=1,discard";
+				mnt_flags = "ro,barrier=1";
 				/*MMI_STOPSHIP security: Remove until oem */
 				/*fsmgr_flags = "wait,slotselect,avb";*/
 				fsmgr_flags = "wait,slotselect";
