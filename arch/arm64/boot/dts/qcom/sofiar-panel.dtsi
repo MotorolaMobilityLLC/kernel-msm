@@ -203,6 +203,7 @@
 		aw99703,ocp-sel = <1>;
 		aw99703,turn-on-ramp = <0>;
 		aw99703,turn-off-ramp = <0>;
+		aw99703,emisel = <0x02>;
 		aw99703,wprt1 = <0x1C>;
 		aw99703,bstcrt3 = <0x61>;
 		aw99703,bstcrt4 = <0x4C>;
