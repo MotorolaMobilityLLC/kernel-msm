@@ -273,37 +273,43 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 		chip->step_chg_config->hysteresis = 0;
 	}
 
-	chip->step_chg_cfg_valid = true;
-	rc = read_range_data_from_node(profile_node,
-			"qcom,step-chg-ranges",
-			chip->step_chg_config->fcc_cfg,
-			chip->soc_based_step_chg ? 100 : max_fv_uv,
-			max_fcc_ma * 1000);
-	if (rc < 0) {
-		pr_debug("Read qcom,step-chg-ranges failed from battery profile, rc=%d\n",
-					rc);
-		chip->step_chg_cfg_valid = false;
+	chip->step_chg_cfg_valid = false;
+	if(of_property_read_bool(profile_node, "qcom,step-charging-enable")) {
+		chip->step_chg_cfg_valid = true;
+		rc = read_range_data_from_node(profile_node,
+				"qcom,step-chg-ranges",
+				chip->step_chg_config->fcc_cfg,
+				chip->soc_based_step_chg ? 100 : max_fv_uv,
+				max_fcc_ma * 1000);
+		if (rc < 0) {
+			pr_debug("Read qcom,step-chg-ranges failed from battery profile, rc=%d\n",
+						rc);
+			chip->step_chg_cfg_valid = false;
+		}
 	}
 
-	chip->sw_jeita_cfg_valid = true;
-	rc = read_range_data_from_node(profile_node,
-			"qcom,jeita-fcc-ranges",
-			chip->jeita_fcc_config->fcc_cfg,
-			BATT_HOT_DECIDEGREE_MAX, max_fcc_ma * 1000);
-	if (rc < 0) {
-		pr_debug("Read qcom,jeita-fcc-ranges failed from battery profile, rc=%d\n",
-					rc);
-		chip->sw_jeita_cfg_valid = false;
-	}
+	chip->sw_jeita_cfg_valid = false;
+	if(of_property_read_bool(profile_node, "qcom,sw-jeita-enable")) {
+		chip->sw_jeita_cfg_valid = true;
+		rc = read_range_data_from_node(profile_node,
+				"qcom,jeita-fcc-ranges",
+				chip->jeita_fcc_config->fcc_cfg,
+				BATT_HOT_DECIDEGREE_MAX, max_fcc_ma * 1000);
+		if (rc < 0) {
+			pr_debug("Read qcom,jeita-fcc-ranges failed from battery profile, rc=%d\n",
+						rc);
+			chip->sw_jeita_cfg_valid = false;
+		}
 
-	rc = read_range_data_from_node(profile_node,
-			"qcom,jeita-fv-ranges",
-			chip->jeita_fv_config->fv_cfg,
-			BATT_HOT_DECIDEGREE_MAX, max_fv_uv);
-	if (rc < 0) {
-		pr_debug("Read qcom,jeita-fv-ranges failed from battery profile, rc=%d\n",
-					rc);
-		chip->sw_jeita_cfg_valid = false;
+		rc = read_range_data_from_node(profile_node,
+				"qcom,jeita-fv-ranges",
+				chip->jeita_fv_config->fv_cfg,
+				BATT_HOT_DECIDEGREE_MAX, max_fv_uv);
+		if (rc < 0) {
+			pr_debug("Read qcom,jeita-fv-ranges failed from battery profile, rc=%d\n",
+						rc);
+			chip->sw_jeita_cfg_valid = false;
+		}
 	}
 
 	return rc;
