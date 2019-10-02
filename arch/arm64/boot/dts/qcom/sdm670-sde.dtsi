@@ -432,6 +432,15 @@
 					"pixel_clk", "pixel_clk_rcg",
 					"esc_clk";
 
+		/* Bus Scale Settings */
+		qcom,msm-bus,name = "mdss_dsi_0";
+		qcom,msm-bus,num-cases = <3>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<25 512 0 0>,
+			<25 512 0 6400000>,
+			<25 512 0 6400000>;
+
 		qcom,null-insertion-enabled;
 		qcom,ctrl-supply-entries {
 			#address-cells = <1>;
@@ -467,6 +476,16 @@
 		clock-names = "byte_clk", "byte_clk_rcg", "byte_intf_clk",
 				"pixel_clk", "pixel_clk_rcg", "esc_clk";
 		qcom,null-insertion-enabled;
+
+		/* Bus Scale Settings */
+		qcom,msm-bus,name = "mdss_dsi_1";
+		qcom,msm-bus,num-cases = <3>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<25 512 0 0>,
+			<25 512 0 6400000>,
+			<25 512 0 6400000>;
+
 		qcom,ctrl-supply-entries {
 			#address-cells = <1>;
 			#size-cells = <0>;
