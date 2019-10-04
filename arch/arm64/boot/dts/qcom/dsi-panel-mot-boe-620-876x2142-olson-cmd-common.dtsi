@@ -67,6 +67,8 @@ qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 0B 95];
 qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
 
+qcom,mdss-dsi-panel-hbm-is-51cmd;
+
 qcom,mdss-dsi-display-timings {
 	timing@0{
 		qcom,mdss-dsi-panel-width = <1080>;
@@ -102,7 +104,7 @@ qcom,mdss-dsi-display-timings {
 			15 00 00 00 00 00 02 C2 08
 			15 00 00 00 00 00 02 53 20 /*HBM off ,dimming=1frame*/
 			15 00 00 00 00 00 02 55 00	/*ACL OFF */
-			15 00 00 00 00 00 02 51 00
+			39 00 00 00 00 00 03 51 00 00
 			05 01 00 00 78 00 01 11
 			05 01 00 00 00 00 01 29];	/* display on */
 		qcom,mdss-dsi-off-command = [
