@@ -900,6 +900,13 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 
 	dsi = &panel->mipi_device;
 
+	if (panel->is_hbm_using_51_cmd && panel->is_hbm_on) {
+		panel->bl_lvl_during_hbm = bl_lvl;
+		pr_debug("HBM is on.. ignore setting backlight. bl_vl=%d\n",
+					panel->bl_lvl_during_hbm);
+		return 0;
+	}
+
 	if (bl->bl_2bytes_enable)
 		rc = mipi_dsi_dcs_set_display_brightness_2bytes(dsi, bl_lvl);
 	else
@@ -919,6 +926,7 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 		return 0;
 
 	pr_debug("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
+
 	switch (bl->type) {
 	case DSI_BACKLIGHT_WLED:
 		led_trigger_event(bl->wled, bl_lvl);
@@ -1002,11 +1010,36 @@ static int dsi_panel_set_hbm(struct dsi_panel *panel,
                         struct msm_param_info *param_info)
 {
 	int rc = 0;
+	u32 tmp_bklt_lvl = 0;
+	bool old_hbm_on;
 
 	pr_info("Set HBM to (%d)\n", param_info->value);
 	rc = dsi_panel_send_param_cmd(panel, param_info);
 	if (rc < 0)
 		pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
+	else {
+		mutex_lock(&panel->panel_lock);
+		if (!panel->is_hbm_using_51_cmd) {
+			mutex_unlock(&panel->panel_lock);
+			return rc;
+		}
+
+		old_hbm_on = panel->is_hbm_on ;
+		panel->is_hbm_on = param_info->value;
+		if (!panel->is_hbm_on) {
+			tmp_bklt_lvl= panel->bl_lvl_during_hbm;
+			panel->bl_lvl_during_hbm = 0;
+		}
+		mutex_unlock(&panel->panel_lock);
+
+		if (param_info->value == 0 && old_hbm_on && tmp_bklt_lvl) {
+			rc = dsi_panel_set_backlight(panel, tmp_bklt_lvl);
+			if (rc)
+				pr_err("unable to set backlight\n");
+			else
+				tmp_bklt_lvl = 0;
+		}
+	}
 
         return rc;
 };
@@ -3490,6 +3523,11 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 			pr_info("%s: feature enabled.\n", param->param_name);
 		}
 	}
+
+	panel->is_hbm_using_51_cmd = of_property_read_bool(of_node,
+					"qcom,mdss-dsi-panel-hbm-is-51cmd");
+	if (panel->is_hbm_using_51_cmd)
+		pr_info("HBM command is using 0x51 command\n");
 
 	return rc;
 

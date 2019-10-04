@@ -263,6 +263,10 @@ struct dsi_panel {
 	u32 disp_on_chk_val;
 	bool no_panel_on_read_support;
 
+	bool is_hbm_using_51_cmd;
+	bool is_hbm_on;
+	u32  bl_lvl_during_hbm;
+
 	struct panel_param *param_cmds;
 };
 
