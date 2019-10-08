@@ -515,6 +515,15 @@ static inline int sde_crtc_get_mixer_height(struct sde_crtc *sde_crtc,
 }
 
 /**
+ * sde_crtc_get_num_datapath - get the number of datapath active
+ * of primary connector
+ * @crtc: Pointer to drm crtc object
+ * @connector: Pointer to DRM connector object of WB in CWB case
+ */
+int sde_crtc_get_num_datapath(struct drm_crtc *crtc,
+	struct drm_connector *connector);
+
+/**
  * sde_crtc_get_rotator_op_mode - get the rotator op mode from the crtc state
  * @crtc: Pointer to drm crtc object
  */
