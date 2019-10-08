@@ -38,6 +38,11 @@
 		#include "dsi-panel-mot-boe-620-876x2142-olson-cmd-common.dtsi"
 	};
 
+	/* Primary Display:  BOE */
+	mot_boe_620_876x2142_cmd_v1: qcom,mdss_dsi_mot_boe_620_876x2142_cmd_v1 {
+		#include "dsi-panel-mot-boe-620-876x2142-olson-cmd-common.dtsi"
+	};
+
 	/* Primary Display:  SMD */
 	mot_smd_601_1080p_cmd_v0: qcom,mdss_dsi_mot_smd_601_1080p_cmd_v0 {
 		#include "dsi-panel-mot-smd-601-1080p-olson-cmd-common.dtsi"
@@ -187,7 +192,30 @@
 		oledb-supply = <&pm660a_oledb>;
 	};
 
-	dsi_csot_620_876x2142_cmd_display_v0: qcom,dsi-display@29 {
+	dsi_boe_620_876x2142_cmd_display_v1: qcom,dsi-display@29 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_boe_620_876x2142_cmd_display_v1";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
+		qcom,platform-te-gpio = <&tlmm 10 0>;
+		qcom,dsi-panel = <&mot_boe_620_876x2142_cmd_v1>;
+		l11_disp-supply = <&pm660_l11>;
+		vci_disp-supply = <&vci_disp_vreg>;
+		vio_disp-supply = <&vio_disp_vreg>;
+		lab-supply = <&lab_regulator>;
+		ibb-supply = <&ibb_regulator>;
+		oledb-supply = <&pm660a_oledb>;
+	};
+	dsi_csot_620_876x2142_cmd_display_v0: qcom,dsi-display@30 {
 		compatible = "qcom,dsi-display";
 		label = "dsi_csot_620_876x2142_cmd_display_v0";
 		qcom,display-type = "primary";
@@ -521,6 +549,40 @@
 };
 
 &mot_boe_620_876x2142_cmd_v0 {
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0D>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+								08 05 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-dsi-on-command = [
+					15 00 00 00 00 00 02 FE 40
+					15 00 00 00 00 00 02 74 2E
+					15 00 00 00 00 00 02 80 19
+					15 00 00 00 00 00 02 FE E0
+					15 00 00 00 00 00 02 9A D7
+					15 00 00 00 00 00 02 91 19
+					15 00 00 00 00 00 02 92 14
+					15 00 00 00 00 00 02 FE 40
+					15 00 00 00 00 00 02 9A 00
+					15 00 00 00 00 00 02 FE 00
+					15 00 00 00 00 00 02 35 00
+					15 00 00 00 00 00 02 5E 01
+					15 00 00 00 00 00 02 C2 08
+					15 00 00 00 00 00 02 53 20 /*HBM off ,dimming=1frame*/
+					15 00 00 00 00 00 02 55 00	/*ACL OFF */
+					15 00 00 00 00 00 02 51 00
+					05 01 00 00 78 00 01 11
+					05 01 00 00 00 00 01 29];	/* display on */
+		};
+	};
+};
+
+&mot_boe_620_876x2142_cmd_v1 {
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	qcom,mdss-dsi-t-clk-post = <0x0D>;
 	qcom,mdss-dsi-t-clk-pre = <0x30>;
