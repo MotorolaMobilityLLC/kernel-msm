@@ -1583,9 +1583,8 @@ static int _sde_rm_populate_requirements(
 		 */
 		reqs->topology =
 			&rm->topology_tbl[SDE_RM_TOPOLOGY_DUALPIPE_3DMERGE];
-
 		num_lm = sde_crtc_get_num_datapath(crtc_state->crtc,
-				conn_state->connector);
+			conn_state->connector);
 
 		if (num_lm == 1)
 			reqs->topology =
