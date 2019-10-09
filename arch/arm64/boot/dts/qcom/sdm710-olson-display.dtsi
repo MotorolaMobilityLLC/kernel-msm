@@ -239,7 +239,7 @@
 		oledb-supply = <&pm660a_oledb>;
 	};
 
-	dsi_csot_620_876x2142_cmd_display_v1: qcom,dsi-display@30 {
+	dsi_csot_620_876x2142_cmd_display_v1: qcom,dsi-display@31 {
 		compatible = "qcom,dsi-display";
 		label = "dsi_csot_620_876x2142_cmd_display_v1";
 		qcom,display-type = "primary";
