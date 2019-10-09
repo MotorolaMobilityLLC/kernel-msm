@@ -446,8 +446,13 @@ static struct extcon_dev *dwc3_get_extcon(struct dwc3 *dwc)
 	struct device_node *np_phy, *np_conn;
 	struct extcon_dev *edev;
 
-	if (of_property_read_bool(dev->of_node, "extcon"))
-		return extcon_get_edev_by_phandle(dwc->dev, 0);
+	if (of_property_read_bool(dev->of_node, "extcon")) {
+		edev = extcon_get_edev_by_phandle(dwc->dev, 0);
+		if(!edev)
+			return ERR_PTR(-EPROBE_DEFER)
+;
+		return edev;
+	}
 
 	np_phy = of_parse_phandle(dev->of_node, "phys", 0);
 	np_conn = of_graph_get_remote_node(np_phy, -1, -1);
