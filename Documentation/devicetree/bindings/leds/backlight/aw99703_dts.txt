@@ -35,6 +35,9 @@ Optional properties:
     aw99703,idctsel: Write the Boost Control2 Register 0x05 bit[6] to set up the value of inductors.
                     0:For less than 10μH inductors, 1:For 10μH inductors, default:0
 
+    aw99703,emisel: Write the Boost Control2 Register 0x05 bits[5:3] to select EMI ，this value shouled be tuned with RF team.
+                    0:typical, 1:slow3, 2:slow2, 3:slow1, 4:fast1, 5:fast2, 6:fast3, 7:fast4, default:0
+
     aw99703,pwm-frequency: Write the PWM Control Register 0x08 bits[7:6] to set up selectable frequency of PWM input.
                     0:800kHZ, 1:4MHZ, 2:24MHZ, default:24MHZ
 

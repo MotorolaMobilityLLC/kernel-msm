@@ -27,7 +27,7 @@
 
 #define AW99703_NAME "aw99703-bl"
 
-#define AW99703_VERSION "v1.0.4"
+#define AW99703_VERSION "v1.0.5"
 
 struct aw99703_data *g_aw99703_data;
 
@@ -351,6 +351,11 @@ static int aw99703_backlight_init(struct aw99703_data *drvdata)
 				AW99703_BSTCTR2_IDCTSEL_MASK,
 				drvdata->idctsel << 6);
 
+	aw99703_i2c_write_bit(drvdata->client,
+				AW99703_REG_BSTCTR2,
+				AW99703_BSTCTR2_EMISEL_MASK,
+				drvdata->emisel << 3);
+
 	aw99703_pwm_config_set(drvdata);
 
 	/*Backlight current full scale*/
@@ -567,6 +572,14 @@ aw99703_get_dt_data(struct device *dev, struct aw99703_data *drvdata)
 		pr_err("%s idctsel not found\n", __func__);
 	} else {
 		pr_info("%s idctsel = %d\n", __func__, drvdata->idctsel);
+	}
+
+	rc = of_property_read_u32(np, "aw99703,emisel", &drvdata->emisel);
+	if (rc) {
+		drvdata->emisel = 0;
+		pr_err("%s emisel not found\n", __func__);
+	} else {
+		pr_info("%s emisel = %d\n", __func__, drvdata->emisel);
 	}
 
 	rc = of_property_read_u32(np, "aw99703,pwm-frequency", &drvdata->p_sf);
