@@ -227,6 +227,7 @@ struct aw99703_data {
 	unsigned int ovp_sel;
 	unsigned int ocp_sel;
 	unsigned int idctsel;
+	unsigned int emisel;
 	unsigned int p_sf;
 	unsigned int p_hys;
 	unsigned int p_flt;
