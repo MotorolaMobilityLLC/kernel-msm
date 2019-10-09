@@ -573,6 +573,7 @@
 
 			qcom,mdss-dsi-on-command = [
 				15 00 00 00 00 00 02 FE 40 /*switch CMD2*/
+				15 00 00 00 00 00 02 9A 00 /* corner R function off, 0x00 for off, 0x01 for on*/
 				15 00 00 00 00 00 02 6F 02 /*swire update by vsync*/
 				15 00 00 00 00 00 02 FE 00
 				15 00 00 00 00 00 02 5E 01 /* swire control Enable */
@@ -606,7 +607,6 @@
 				15 00 00 00 00 00 02 A2 FF /* lut8 = 800~7FF */
 				15 00 00 00 00 00 02 FE 00
 				15 00 00 00 00 00 02 C2 08
-				15 00 00 00 00 00 02 9A 00 /* corner R function off, 0x00 for off, 0x01 for on*/
 				05 01 00 00 78 00 01 11
 				15 00 00 00 00 00 02 35 00
 				15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
