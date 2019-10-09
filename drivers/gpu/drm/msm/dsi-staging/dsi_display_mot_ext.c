@@ -58,45 +58,54 @@ static void dsi_display_early_power_on_work(struct work_struct *work)
 	if (!display || !display->panel || !display->is_primary ||
 	    (display->panel->panel_mode != DSI_OP_VIDEO_MODE) ||
 	    atomic_read(&display->panel->esd_recovery_pending)) {
-		pr_warning("Invalid recovery use case, early_power_state: %d\n", early_power->early_power_state);
+		pr_warning("----- Invalid recovery use case, early_power_state: %d\n", early_power->early_power_state);
 		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 
 	mutex_lock(&display->display_lock);
-	if (display->is_dsi_display_prepared) {
-		pr_warning("already prepared, early_power_state: %d\n", early_power->early_power_state);
+	if (early_power->early_power_state == DSI_EARLY_POWER_FORBIDDEN || display->is_dsi_display_prepared) {
+		pr_warning("----- already prepared or set_mode called, early_power_state: %d, is_dsi_display_prepared %d\n",
+			early_power->early_power_state, display->is_dsi_display_prepared);
 		mutex_unlock(&display->display_lock);
 		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
+	early_power->early_power_state = DSI_EARLY_POWER_BEGIN;
 	mutex_unlock(&display->display_lock);
 
-	early_power->early_power_state = DSI_EARLY_POWER_BEGIN;
 	rc = dsi_display_prepare(display);
 	if (rc) {
-		pr_err("DSI display prepare failed, rc=%d. early_power_state %d\n", rc, early_power->early_power_state);
+		pr_err("----- DSI display prepare failed, rc=%d. early_power_state %d\n", rc, early_power->early_power_state);
 		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
 
 	mutex_lock(&display->display_lock);
-	if (display->panel->panel_initialized) {
+	if (early_power->early_power_state == DSI_EARLY_POWER_FORBIDDEN || display->panel->panel_initialized) {
 		mutex_unlock(&display->display_lock);
-		pr_warning("already enabled, early_power_state: %d\n", early_power->early_power_state);
+		pr_warning("----- already enabled or set_mode called, early_power_state: %d, panel_initialized %d\n",
+			early_power->early_power_state, display->panel->panel_initialized);
 		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
+	early_power->early_power_state = DSI_EARLY_POWER_PREPARED;
 	mutex_unlock(&display->display_lock);
 
-	early_power->early_power_state = DSI_EARLY_POWER_PREPARED;
 	rc = dsi_display_enable(display);
 	if (rc) {
 		pr_err("DSI display enable failed, rc=%d. early_power_state %d\n", rc, early_power->early_power_state);
 		(void)dsi_display_unprepare(display);
+		return;
 	}
-	early_power->early_power_state = DSI_EARLY_POWER_INITIALIZED;
-	queue_delayed_work(early_power->early_power_workq, &early_power->early_off_work, HZ/2);
+
+	mutex_lock(&display->display_lock);
+	if (early_power->early_power_state != DSI_EARLY_POWER_FORBIDDEN) {
+		early_power->early_power_state = DSI_EARLY_POWER_INITIALIZED;
+		queue_delayed_work(early_power->early_power_workq, &early_power->early_off_work, HZ/2);
+	}
+	mutex_unlock(&display->display_lock);
+
 	//Do not relax wake_lock here to avoid AP enter deep suspend before early_off called, which may cause kernel panic.
 	//__pm_relax(&early_power->early_wake_src);
 
