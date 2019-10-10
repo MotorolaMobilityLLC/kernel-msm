@@ -522,7 +522,8 @@
 		gpios = <&tlmm 34 0>,
 			<&tlmm 48 0>,
 			<&pmi632_gpios 8 0>,
-			<&pmi632_gpios 5 0>;
+			<&pmi632_gpios 5 0>,
+			<&tlmm 2 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
 		qcom,gpio-vdig = <3>;
