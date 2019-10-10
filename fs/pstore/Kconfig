@@ -58,7 +58,7 @@ config PSTORE_ZSTD_COMPRESS
 	  This option enables zstd compression algorithm support.
 
 config PSTORE_COMPRESS
-	def_bool y
+	bool y
 	depends on PSTORE
 	depends on PSTORE_DEFLATE_COMPRESS || PSTORE_LZO_COMPRESS ||	\
 		   PSTORE_LZ4_COMPRESS || PSTORE_LZ4HC_COMPRESS ||	\
@@ -67,6 +67,7 @@ config PSTORE_COMPRESS
 choice
 	prompt "Default pstore compression algorithm"
 	depends on PSTORE_COMPRESS
+	optional
 	help
 	  This option chooses the default active compression algorithm.
 	  This change be changed at boot with "pstore.compress=..." on
