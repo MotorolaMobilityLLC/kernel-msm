@@ -468,7 +468,7 @@ static struct lm3697_bl *lm3697_bl_register(struct lm3697_bl_chip *chip)
 			goto cleanup_backlights;
 		}
 
-		backlight_update_status(each->bl_dev);
+		//backlight_update_status(each->bl_dev);
 	}
 
 	return lm3697_bl;
