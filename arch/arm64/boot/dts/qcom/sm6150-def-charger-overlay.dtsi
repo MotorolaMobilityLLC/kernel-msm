@@ -178,11 +178,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&bq2597x_slave_int_default>;
 
-		ti,bq2597x,bat-ovp-disable;
-		ti,bq2597x,bat-ovp-alarm-disable;
 		ti,bq2597x,bat-ucp-alarm-disable;
-		ti,bq2597x,bat-ocp-disable;
-		ti,bq2597x,bat-ocp-alarm-disable;
 
 		ti,bq2597x,bat-ucp-disable;
 
@@ -194,9 +190,9 @@
 		ti,bq2597x,bus-therm-disable;
 		ti,bq2597x,die-therm-disable;
 
-		ti,bq2597x,bat-ovp-threshold = <4525>;
-		ti,bq2597x,bat-ovp-alarm-threshold = <4400>;
-		ti,bq2597x,bat-ocp-threshold = <10000>;
+		ti,bq2597x,bat-ovp-threshold = <4450>;
+		ti,bq2597x,bat-ovp-alarm-threshold = <4420>;
+		ti,bq2597x,bat-ocp-threshold = <9000>;
 		ti,bq2597x,bat-ocp-alarm-threshold = <8500>;
 
 		ti,bq2597x,bus-ovp-threshold = <12000>;
