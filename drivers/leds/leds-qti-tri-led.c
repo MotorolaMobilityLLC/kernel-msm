@@ -443,10 +443,11 @@ static int qpnp_tri_led_set_brightness(struct led_classdev *led_cdev,
 	led->led_setting.brightness = brightness;
 	if (!!brightness)
 		led->led_setting.off_ms = 0;
-	else
+	else {
 		led->led_setting.on_ms = 0;
+		led->led_setting.breath = false;
+	}
 	led->led_setting.blink = false;
-	led->led_setting.breath = false;
 
 	rc = qpnp_tri_led_set(led);
 	if (rc)
