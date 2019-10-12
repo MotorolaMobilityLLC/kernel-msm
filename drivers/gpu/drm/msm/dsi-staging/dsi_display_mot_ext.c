@@ -18,6 +18,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/err.h>
+#include <linux/random.h>
 
 #include "msm_drv.h"
 #include "sde_connector.h"
@@ -35,6 +36,10 @@
 
 static struct dsi_display_early_power *g_early_power = NULL;
 static int g_early_power_count = 0;
+//Timer for pressure test and debug
+static static struct alarm *g_wakeup_timer = NULL;
+static int g_wakeup_timer_interval = 0;
+static int g_early_power_test_en = 0;
 
 static void dsi_display_early_power_on_work(struct work_struct *work)
 {
@@ -165,6 +170,26 @@ void ext_dsi_display_early_power_on(void)
 }
 EXPORT_SYMBOL(ext_dsi_display_early_power_on);
 
+static enum alarmtimer_restart dsi_display_wakeup_timer_func(struct alarm *alarm, ktime_t now)
+{
+	ktime_t start, add;
+	int randomTime = 0;
+	pr_info("g_wakeup_timer_interval %d, g_early_power_test_en %d\n", g_wakeup_timer_interval, g_early_power_test_en);
+	if (g_early_power_test_en)
+		ext_dsi_display_early_power_on();
+
+	if (g_wakeup_timer_interval != 0) {
+		//srand(time(NULL));
+		start = ktime_get_boottime();
+		randomTime = prandom_u32_max(g_wakeup_timer_interval) + g_wakeup_timer_interval;
+		add = ktime_set(randomTime, 0);
+		alarm_start(g_wakeup_timer, ktime_add(start, add));
+		pr_info("%s: randomTimer %d seconds set\n", __func__, randomTime);
+	}
+
+	return ALARMTIMER_NORESTART;
+}
+
 static ssize_t dsi_display_early_power_read(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -187,34 +212,131 @@ static ssize_t dsi_display_early_power_read(struct device *dev,
 static ssize_t dsi_display_early_power_write(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	int rc = 0;
 	struct dsi_display *display;
 
 	display = dev_get_drvdata(dev);
 	if (!display) {
 		pr_err("Invalid display\n");
-		return -EINVAL;
+		return count;
 	}
 
 	if (display->panel->panel_initialized) {
 		pr_err("panel already initialized\n");
-		return -ENOTSUPP;
+		return count;
 	}
 	pr_info("%s: early_power_state %d\n", __func__,
 		display->early_power.early_power_state);
 
 	ext_dsi_display_early_power_on();
 
-	return rc;
+	return count;
 
 }
 
+static ssize_t dsi_display_wakup_get(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int rc = 0;
+
+	rc = snprintf(buf, PAGE_SIZE, "%s: timerhandle:%p\n",  (g_wakeup_timer_interval==0)? "Stopped":"Started", g_wakeup_timer);
+	pr_info("%s:  %s: timerhandle:%p\n", __func__,  (g_wakeup_timer_interval==0)? "Stopped":"Started", g_wakeup_timer);
+
+	return rc;
+}
+
+static ssize_t dsi_display_wakup_set(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dsi_display *display;
+	ktime_t now, add;
+	u16 val = 0;
+
+	display = dev_get_drvdata(dev);
+	if (!display) {
+		pr_err("Invalid display\n");
+		return count;
+	}
+
+	if (kstrtou16(buf, 16, &val) < 0)
+		return count;
+	g_wakeup_timer_interval = val&0x7fff;
+
+	pr_info("val: 0x%x(enable:0x%x : interval:%d seconds), early_power_state %d\n", val, (val&0x8000), g_wakeup_timer_interval,
+		display->early_power.early_power_state);
+
+	if (g_wakeup_timer == NULL) {
+		g_wakeup_timer = devm_kzalloc(&display->pdev->dev, sizeof(*g_wakeup_timer), GFP_KERNEL);
+		if (g_wakeup_timer) {
+			alarm_init(g_wakeup_timer, ALARM_BOOTTIME, dsi_display_wakeup_timer_func);
+		}
+		else {
+			pr_err("failed to init timer\n");
+			return count;
+		}
+	}
+
+	// 0xffff :   0x8000/enable/disable    0x7fff/interval seconds
+	if (val&0x8000) {
+		now = ktime_get_boottime();
+		add = ktime_set(g_wakeup_timer_interval, 0);
+		alarm_start(g_wakeup_timer, ktime_add(now, add));
+	}else {
+		if (g_wakeup_timer)
+			alarm_cancel(g_wakeup_timer);
+		g_wakeup_timer_interval = 0;
+	}
+	return count;
+}
+
+static ssize_t dsi_display_early_test_en_get(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int rc = 0;
+
+	rc = snprintf(buf, PAGE_SIZE, "g_early_power_test_en: %d\n",   g_early_power_test_en);
+	pr_info("g_early_power_test_en:%d\n", g_early_power_test_en);
+
+	return rc;
+}
+
+static ssize_t dsi_display_early_test_en_set(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dsi_display *display;
+	u16 val = 0;
+
+	display = dev_get_drvdata(dev);
+	if (!display) {
+		pr_err("Invalid display\n");
+		return count;
+	}
+
+	if (kstrtou16(buf, 10, &val) < 0)
+		return count;
+	g_early_power_test_en = val;
+
+	pr_info("interval:%d seconds, early_power_state %d, g_early_power_test_en %d\n",
+		g_wakeup_timer_interval, display->early_power.early_power_state, g_early_power_test_en);
+
+	return count;
+}
+
+///sys/devices/platform/soc/soc:qcom,dsi-display/
 static DEVICE_ATTR(dsi_display_early_power, 0644,
 			dsi_display_early_power_read,
 			dsi_display_early_power_write);
+static DEVICE_ATTR(dsi_display_wakeup, 0644,
+			dsi_display_wakup_get,
+			dsi_display_wakup_set);
+static DEVICE_ATTR(early_test_en, 0644,
+			dsi_display_early_test_en_get,
+			dsi_display_early_test_en_set);
+
 
 static struct attribute *dsi_display_early_power_fs_attrs[] = {
 	&dev_attr_dsi_display_early_power.attr,
+	&dev_attr_dsi_display_wakeup.attr,
+	&dev_attr_early_test_en.attr,
 	NULL,
 };
 static struct attribute_group dsi_display_early_power_fs_attrs_group = {
@@ -269,6 +391,7 @@ int dsi_display_ext_init(struct dsi_display *display)
 				dsi_display_early_power_on_work);
 	INIT_DELAYED_WORK(&g_early_power->early_off_work,
 				dsi_display_early_power_off_work);
+
 	return rc;
 }
 
