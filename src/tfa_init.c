@@ -885,18 +885,23 @@ static enum Tfa98xx_Error tfa9878_specific(struct tfa_device *tfa)
 
 		break;
 	case 0x1a78: /* Initial revision ID */
-				 /* ----- generated code start ----- */
-				 /* -----  version 4 ----- */
+		/* ----- generated code start ----- */
+		/* -----  version 12 ----- */
 		reg_write(tfa, 0x01, 0x2e18); //POR=0x2e88
 		reg_write(tfa, 0x02, 0x0628); //POR=0x0008
-		reg_write(tfa, 0x04, 0x0240); //POR=0x0340
+		reg_write(tfa, 0x04, 0x0241); //POR=0x0340
 		reg_write(tfa, 0x52, 0x587c); //POR=0x57dc
 		reg_write(tfa, 0x61, 0x0183); //POR=0x0a82
 		reg_write(tfa, 0x63, 0x055a); //POR=0x0a9a
 		reg_write(tfa, 0x65, 0x0542); //POR=0x0a82
+		reg_write(tfa, 0x70, 0xb7ff); //POR=0x37ff
 		reg_write(tfa, 0x71, 0x303e); //POR=0x307e
 		reg_write(tfa, 0x83, 0x009a); //POR=0x0799
-			/* ----- generated code end   ----- */
+		reg_write(tfa, 0x84, 0x0211); //POR=0x0011
+		reg_write(tfa, 0x8c, 0x0210); //POR=0x0010
+		reg_write(tfa, 0xce, 0x2202); //POR=0xa202
+		reg_write(tfa, 0xd5, 0x0000); //POR=0x0100
+		/* ----- generated code end   ----- */
 
 		break;
 	default:

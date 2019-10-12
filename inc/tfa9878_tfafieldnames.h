@@ -11,7 +11,7 @@
 #define _TFA9878_TFAFIELDNAMES_H
 
 
-#define TFA9878_I2CVERSION    4
+#define TFA9878_I2CVERSION    12
 
 typedef enum nxpTfa9878BfEnumList {
     TFA9878_BF_PWDN  = 0x0000,    /*!< Powerdown selection                                */
