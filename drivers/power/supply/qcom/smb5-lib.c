@@ -991,6 +991,24 @@ void smblib_hvdcp_detect_enable(struct smb_charger *chg, bool enable)
 	return;
 }
 
+void smblib_hvdcp_enable_mmi(struct smb_charger *chg, bool enable)
+{
+	int rc;
+	u8 mask;
+
+	if (chg->hvdcp_disable)
+		return;
+
+	mask = HVDCP_AUTH_ALG_EN_CFG_BIT | HVDCP_EN_BIT;
+	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG, mask,
+						enable ? mask : 0);
+	if (rc < 0)
+		smblib_err(chg, "MMI failed to write USBIN_OPTIONS_1_CFG rc=%d\n",
+				rc);
+
+	return;
+}
+
 void smblib_hvdcp_exit_config(struct smb_charger *chg)
 {
 	u8 stat;
@@ -5072,6 +5090,15 @@ unsuspend_input:
 	wdata = &chg->irq_info[SWITCHER_POWER_OK_IRQ].irq_data->storm_data;
 	reset_storm_count(wdata);
 
+	if (!chg->qc2_vbus_collapse_wa &&
+			apsd->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
+		smblib_err(chg, "QC2.0 vbus collapse disable HVDCP\n");
+		chg->qc2_vbus_collapse_wa = true;
+		smblib_hvdcp_enable_mmi(chg, false);
+		smblib_rerun_apsd(chg);
+		return IRQ_HANDLED;
+	}
+
 	/* Workaround for non-QC2.0-compliant chargers follows */
 	if (!chg->qc2_unsupported_voltage &&
 			apsd->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
@@ -5927,6 +5954,12 @@ static void typec_src_removal(struct smb_charger *chg)
 					rc);
 
 		chg->qc2_unsupported_voltage = QC2_COMPLIANT;
+	}
+
+	if (chg->qc2_vbus_collapse_wa) {
+		smblib_err(chg, "QC2.0 vbus collapse enable HVDCP\n");
+		chg->qc2_vbus_collapse_wa = false;
+		smblib_hvdcp_enable_mmi(chg, true);
 	}
 
 	if (chg->use_extcon)
