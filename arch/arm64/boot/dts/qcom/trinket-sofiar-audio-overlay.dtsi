@@ -182,8 +182,8 @@
 		#sound-dai-cells = <0>;
 		compatible = "ti,tas2562";
 		reg = <0x4c>;
-		ti,left-channel = <0x4c>;
-		ti,right-channel = <0x4e>;
+		ti,left-channel = <0x4e>;
+		ti,right-channel = <0x4c>;
 		ti,channels = <2>; /* channel number */
 		ti,reset-gpio = <&tlmm 119 0>;
 		ti,reset-gpio2 = <&tlmm 123 0>;
