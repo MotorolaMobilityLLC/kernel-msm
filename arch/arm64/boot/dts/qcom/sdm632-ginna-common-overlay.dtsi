@@ -113,7 +113,7 @@
                  reg = <0x75>;
                  ti,config = <0x0D>;
                  ti,vout-floor = <0x0D>;
-                 ti,vout-roof = <0x19>;/*0x19*/
+                 ti,vout-roof = <0x1F>;/*0x1F*/
                  ti,ilim = <0x0F>;
                  ti,en-gpio = <&tlmm 113 0>;
                  /*ti,vsel-gpio = <&tlmm 104 0>;*/
