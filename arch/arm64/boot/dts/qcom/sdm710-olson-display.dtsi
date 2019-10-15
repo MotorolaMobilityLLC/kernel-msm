@@ -560,6 +560,8 @@
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 			qcom,mdss-dsi-on-command = [
+					15 00 00 00 00 00 02 FE D0
+					15 00 00 00 00 00 02 99 00
 					15 00 00 00 00 00 02 FE 40
 					15 00 00 00 00 00 02 74 2E
 					15 00 00 00 00 00 02 80 19
