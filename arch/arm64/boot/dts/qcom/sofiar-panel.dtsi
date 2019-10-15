@@ -93,6 +93,8 @@
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,tp_state_check_enable;
+	qcom,mdss-dsi-reset-always-high;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
@@ -137,6 +139,8 @@
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,tp_state_check_enable;
+	qcom,mdss-dsi-reset-always-high;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
