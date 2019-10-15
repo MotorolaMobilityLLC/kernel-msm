@@ -89,6 +89,8 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-panel-jitter = <0x20 0xa>;
 
 		qcom,mdss-dsi-on-command = [
+			15 00 00 00 00 00 02 FE D0
+			15 00 00 00 00 00 02 99 00
 			15 00 00 00 00 00 02 FE 40
 			15 00 00 00 00 00 02 9A 00
 			15 00 00 00 00 00 02 FE 00
