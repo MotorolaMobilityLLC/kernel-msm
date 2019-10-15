@@ -1264,7 +1264,7 @@ __init *thermal_of_build_thermal_zone(struct device_node *np)
 
 	ret = of_property_read_u32(np, "thermal-user-alarm", &prop);
 	if (ret < 0) {
-		pr_err("missing thermal-user-alarm property\n");
+		pr_info("missing thermal-user-alarm property\n");
 		prop = 0;
 	}
 	tz->alarm_temperature = prop;
