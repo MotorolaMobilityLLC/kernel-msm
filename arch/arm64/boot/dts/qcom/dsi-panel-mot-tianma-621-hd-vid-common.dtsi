@@ -38,12 +38,14 @@ qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
 	 15 01 00 00 00 00 02 51 D0
-	 15 01 00 00 00 00 02 53 24
+	 15 01 00 00 00 00 02 53 2C
 	 15 01 00 00 00 00 02 55 00
 	 15 01 00 00 78 00 02 11 00
 	 15 01 00 00 0A 00 02 29 00
+	 15 01 00 00 01 00 02 26 01
 ];
 qcom,mdss-dsi-off-command = [
+	15 01 00 00 01 00 02 26 08
 	15 01 00 00 14 00 02 28 00
 	15 01 00 00 78 00 02 10 00
 ];
@@ -74,11 +76,11 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 qcom,mdss-dsi-panel-timings-phy-v2 = [
-	1e 1b 04 06 02 03 04 a0
-	1e 1b 04 06 02 03 04 a0
-	1e 1b 04 06 02 03 04 a0
-	1e 1b 04 06 02 03 04 a0
-	1e 1d 04 05 02 03 04 a0];
+	1e 1b 04 06 02 02 04 a0
+	1e 1b 04 06 02 02 04 a0
+	1e 1b 04 06 02 02 04 a0
+	1e 1b 04 06 02 02 04 a0
+	1e 0d 04 05 02 02 04 a0];
 qcom,mdss-dsi-t-clk-post = <0x0A>;
 qcom,mdss-dsi-t-clk-pre = <0x1D>;
 qcom,mdss-dsi-bl-min-level = <1>;
@@ -86,8 +88,8 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
-//qcom,mdss-dsi-lp11-init;
+qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 50>;
+qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <7000>;
 qcom,mdss-dsi-no-panel-on-read-support;
@@ -95,14 +97,14 @@ qcom,mdss-dsi-no-panel-on-read-support;
 //qcom,mdss-panel-off-rst-disable;
 //qcom,mdss-panel-reset-high;
 
-//qcom,esd-check-enabled;
-qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 01 0A];
-qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0a];
+qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 qcom,mdss-dsi-panel-status-value = <0x9C>;
 qcom,mdss-dsi-panel-status-read-length = <1>;
-qcom,mdss-dsi-panel-status-valid-params = <1>;
-qcom,mdss-dsi-panel-status-command-mode = "dsi_lp_mode";
+//qcom,mdss-dsi-panel-status-valid-params = <1>;
+//qcom,mdss-dsi-panel-status-command-mode = "dsi_lp_mode";
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
