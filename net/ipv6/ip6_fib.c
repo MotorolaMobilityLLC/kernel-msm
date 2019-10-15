@@ -1216,6 +1216,12 @@ out:
 #endif
 		goto failure;
 	}
+	/* MMI_STOPSHIP - sofia: debug patch from QCom for IKSWQ-15553 */
+	if (!err && strstr(rt->dst.dev->name, "wlan"))
+		pr_err("%s(): created route. Prefix: %pI6/%u, GW: %pI6, dev: %s, table: %u, proto: %u\n",
+				__func__, &rt->rt6i_dst.addr, rt->rt6i_dst.plen, &rt->rt6i_gateway, rt->dst.dev->name,
+				rt->rt6i_table->tb6_id, rt->rt6i_protocol);
+
 	return err;
 
 failure:
