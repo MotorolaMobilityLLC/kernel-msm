@@ -2481,8 +2481,20 @@ static int fastrpc_munmap_on_dsp_rh(struct fastrpc_file *fl, uint64_t phys,
 
 		VERIFY(err, 0 == (err = fastrpc_internal_invoke(fl,
 				FASTRPC_MODE_PARALLEL, 1, &ioctl)));
+		if (err == AEE_EUNSUPPORTED) {
+			remote_arg_t ra[1];
+
+			pr_warn("ADSPRPC:Failed to get security key with updated remote call, falling back to older method");
+			ra[0].buf.pv = (void *)&routargs;
+			ra[0].buf.len = sizeof(routargs);
+			ioctl.inv.sc = REMOTE_SCALARS_MAKE(7, 0, 1);
+			ioctl.inv.pra = ra;
+			VERIFY(err, 0 == (err = fastrpc_internal_invoke(fl,
+				FASTRPC_MODE_PARALLEL, 1, &ioctl)));
+		}
 		if (err)
 			goto bail;
+
 		desc.args[0] = TZ_PIL_AUTH_QDSP6_PROC;
 		desc.args[1] = phys;
 		desc.args[2] = size;
@@ -2764,6 +2776,7 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 		mutex_lock(&fl->fl_map_mutex);
 		if (!fastrpc_mmap_find(fl, ud->fd, (uintptr_t)ud->vaddrin,
 				 ud->size, ud->flags, 1, &map)) {
+			ud->vaddrout = map->raddr;
 			mutex_unlock(&fl->fl_map_mutex);
 			mutex_unlock(&fl->map_mutex);
 			return 0;
@@ -2806,11 +2819,10 @@ static void fastrpc_channel_close(struct kref *kref)
 
 	ctx = container_of(kref, struct fastrpc_channel_ctx, kref);
 	cid = ctx - &gcinfo[0];
-	if (!me->glink)
-		smd_close(ctx->chan);
-	else
+	if (me->glink) {
 		fastrpc_glink_close(ctx->chan, cid);
-	ctx->chan = NULL;
+		ctx->chan = NULL;
+	}
 	mutex_unlock(&me->smd_mutex);
 	pr_info("'closed /dev/%s c %d %d'\n", gcinfo[cid].name,
 						MAJOR(me->dev_no), cid);
@@ -3423,16 +3435,23 @@ static int fastrpc_channel_open(struct fastrpc_file *fl)
 			if (err)
 				goto bail;
 			VERIFY(err, 0 == fastrpc_glink_open(cid));
+		VERIFY(err,
+			 wait_for_completion_timeout(&me->channel[cid].workport,
+						RPC_TIMEOUT));
 		} else {
-		VERIFY(err, !smd_named_open_on_edge(FASTRPC_SMD_GUID,
+			if (me->channel[cid].chan == NULL) {
+				VERIFY(err, !smd_named_open_on_edge(
+				FASTRPC_SMD_GUID,
 				gcinfo[cid].channel,
 				(smd_channel_t **)&me->channel[cid].chan,
 				(void *)(uintptr_t)cid,
 				smd_event_handler));
-		}
 		VERIFY(err,
 			 wait_for_completion_timeout(&me->channel[cid].workport,
 						RPC_TIMEOUT));
+
+			}
+		}
 		if (err) {
 			me->channel[cid].chan = NULL;
 			goto bail;
