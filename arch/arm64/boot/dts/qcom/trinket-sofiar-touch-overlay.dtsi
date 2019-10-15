@@ -87,7 +87,7 @@
 		spi-max-frequency = <9600000>;  /* 4800000,9600000,15000000,19200000 */
 		novatek,reset-gpio = <&tlmm 87 0x00>;
 		novatek,irq-gpio = <&tlmm 88 0x2001>;
-		novatek,def-max-resolution = <1080 2340>;
+		novatek,def-max-resolution = <1080 2300>;
 		novatek,swrst-n8-addr = <0x03F0FE>;
 		novatek,spi-rd-fast-addr = <0x03F310>;
 		status = "/chosen", "mmi,panel_name", "auo_nt36675_fhd_vid";
