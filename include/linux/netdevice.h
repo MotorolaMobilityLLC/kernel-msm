@@ -3406,6 +3406,10 @@ void netdev_run_todo(void);
 static inline void dev_put(struct net_device *dev)
 {
 	this_cpu_dec(*dev->pcpu_refcnt);
+	/* MMI_STOPSHIP - sofia: debug patch from QCom for IKSWQ-15553 */
+	if (strstr(dev->name, "wlan"))
+		pr_err("%s() dev %s pcpu_refcnt %d cpu %d total %d caller %pS -> %pS\n",
+				__func__, dev->name, __this_cpu_read(*dev->pcpu_refcnt), smp_processor_id(), netdev_refcnt_read(dev), __builtin_return_address(1), __builtin_return_address(0));
 }
 
 /**
@@ -3417,6 +3421,10 @@ static inline void dev_put(struct net_device *dev)
 static inline void dev_hold(struct net_device *dev)
 {
 	this_cpu_inc(*dev->pcpu_refcnt);
+	/* MMI_STOPSHIP - sofia: debug patch from QCom for IKSWQ-15553 */
+	if (strstr(dev->name, "wlan"))
+		pr_err("%s() dev %s pcpu_refcnt %d cpu %u total %d caller %pS -> %pS\n",
+				__func__, dev->name, __this_cpu_read(*dev->pcpu_refcnt), smp_processor_id(),netdev_refcnt_read(dev), __builtin_return_address(1), __builtin_return_address(0));
 }
 
 /* Carrier loss detection, dial on demand. The functions netif_carrier_on
