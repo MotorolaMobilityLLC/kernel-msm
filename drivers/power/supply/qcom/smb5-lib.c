@@ -6514,7 +6514,7 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	} else {
 		chg->mmi.usb_thermal_mitigation = NULL;
 		chg->mmi.usb_thermal_levels = 0;
-		dev_err(chg->dev, "usb-thermal-mitigation is not set\n");
+		dev_info(chg->dev, "usb-thermal-mitigation is not set\n");
 	}
 
 	rc = of_property_read_u32(node, "qcom,iterm-ma",
