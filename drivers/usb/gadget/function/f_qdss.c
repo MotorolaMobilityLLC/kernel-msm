@@ -1,7 +1,7 @@
 /*
  * f_qdss.c -- QDSS function Driver
  *
- * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -525,6 +525,10 @@ static void qdss_unbind(struct usb_configuration *c, struct usb_function *f)
 	pr_debug("%s\n", __func__);
 
 	flush_workqueue(qdss->wq);
+
+	/* Reset string ids */
+	qdss_string_defs[QDSS_DATA_IDX].id = 0;
+	qdss_string_defs[QDSS_CTRL_IDX].id = 0;
 
 	qdss->debug_inface_enabled = 0;
 
