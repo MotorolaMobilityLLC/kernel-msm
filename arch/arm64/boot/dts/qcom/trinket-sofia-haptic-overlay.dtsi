@@ -20,9 +20,10 @@
 	    reg = <0x5A>;
 	    reset-gpio = <&pmi632_gpios 4 0>;
 	    irq-gpio = <&tlmm 43 0>;
+	    factorymode-reduce;
 	    haptic-context-gpio = <&tlmm 99 0>;
 	    long-gain-normal = <0x80>;
-	    long-gain-reduced = <0x3A>;
+	    long-gain-reduced = <0x50>;
 	    vib_f0_pre = < 2350 >;
 	    vib_f0_cali_percen = < 7 >;
 	    vib_cont_drv_lvl = < 110 >;
