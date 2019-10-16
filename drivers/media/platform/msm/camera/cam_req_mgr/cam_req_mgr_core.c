@@ -2240,7 +2240,8 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 
 	mutex_lock(&link->req.lock);
 
-	if (trigger_data->trigger == CAM_TRIGGER_POINT_SOF) {
+	if (trigger_data->trigger == CAM_TRIGGER_POINT_SOF &&
+		!link->sync_link) {
 		idx = __cam_req_mgr_find_slot_for_req(in_q,
 			trigger_data->req_id);
 		if (idx >= 0) {
