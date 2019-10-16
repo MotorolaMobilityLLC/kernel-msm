@@ -89,6 +89,7 @@
 				qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
 				qcom,mdss-dsi-hbm-off-command = [00];
 				qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
+				qcom,mdss-dsi-hbm-type = "hbm_type_gpio";
 			};
 		};
 	};
