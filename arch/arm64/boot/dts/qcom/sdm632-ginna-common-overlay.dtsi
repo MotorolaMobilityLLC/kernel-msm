@@ -18,6 +18,7 @@
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "sdm632-camera-sensor-mot-ginna-overlay.dtsi"
 #include "sdm632-moto-fps-ginna-overlay.dtsi"
+#include "sdm632-moto-tof-ginna-overlay.dtsi"
 
 
 &venus_mem {
@@ -174,12 +175,6 @@
 
 		status = "ok";
 	};
-};
-
-&i2c_3 { /* BLSP1 QUP3 */
-	status = "ok";
-	qcom,clk-freq-out = <400000>;
-
 };
 
 &i2c_2 { /* capsensor */
