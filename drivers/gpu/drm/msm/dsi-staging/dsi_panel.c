@@ -317,6 +317,14 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 		}
 	}
 
+	if (gpio_is_valid(panel->hbm_config.hbm_en_gpio)) {
+		rc = gpio_request(panel->hbm_config.hbm_en_gpio, "hbm_en_gpio");
+		if (rc) {
+			pr_err("request for hbm_en_gpio failed, rc=%d\n", rc);
+			goto error_release_hbm_en;
+		}
+	}
+
 	if (gpio_is_valid(r_config->lcd_mode_sel_gpio)) {
 		rc = gpio_request(r_config->lcd_mode_sel_gpio, "mode_gpio");
 		if (rc) {
@@ -327,6 +335,9 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 
 	goto error;
 error_release_mode_sel:
+	if (gpio_is_valid(panel->hbm_config.hbm_en_gpio))
+		gpio_free(panel->hbm_config.hbm_en_gpio);
+error_release_hbm_en:
 	if (gpio_is_valid(panel->bl_config.en_gpio))
 		gpio_free(panel->bl_config.en_gpio);
 error_release_disp_en:
@@ -361,6 +372,9 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_free(panel->reset_config.lcd_mode_sel_gpio);
+
+	if (gpio_is_valid(panel->hbm_config.hbm_en_gpio))
+		gpio_free(panel->hbm_config.hbm_en_gpio);
 
 	return rc;
 }
@@ -1014,11 +1028,22 @@ static int dsi_panel_set_hbm(struct dsi_panel *panel,
 	int rc = 0;
 
 	pr_info("%s: Set HBM to (%d)\n", __func__, param_info->value);
-	rc = dsi_panel_send_param_cmd(panel, param_info);
-	if (rc < 0)
-		pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
-
-        return rc;
+	if (panel->hbm_config.hbm_type == HBM_TYPE_GPIO) {
+		if (gpio_is_valid(panel->hbm_config.hbm_en_gpio)) {
+			if (param_info->value)
+				gpio_set_value(panel->hbm_config.hbm_en_gpio, 1);
+			else
+				gpio_set_value(panel->hbm_config.hbm_en_gpio, 0);
+		} else {
+			pr_err("%s: invalid params\n", __func__);
+			rc = -EINVAL;
+		}
+	} else {
+		rc = dsi_panel_send_param_cmd(panel, param_info);
+		if (rc < 0)
+			pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
+	}
+    return rc;
 };
 
 static int dsi_panel_set_cabc(struct dsi_panel *panel,
@@ -2629,6 +2654,12 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 	struct dsi_parser_utils *utils = &panel->utils;
 	char *reset_gpio_name, *mode_set_gpio_name, *tp_reset_gpio_name;
 
+	panel->hbm_config.hbm_en_gpio = utils->get_named_gpio(utils->data,
+					      "qcom,platform-hbm-en-gpio", 0);
+	if (!gpio_is_valid(panel->hbm_config.hbm_en_gpio))
+		pr_info("%s:%d, HBM enable gpio not specified\n",
+						__func__, __LINE__);
+
 	if (!strcmp(panel->type, "primary")) {
 		tp_reset_gpio_name = "qcom,platform-tp-reset-gpio";
 		reset_gpio_name = "qcom,platform-reset-gpio";
@@ -3748,6 +3779,29 @@ error:
 	return rc;
 }
 
+static void dsi_panel_parse_hbm_config(struct dsi_panel *panel)
+{
+	struct panel_hbm *hbm_config = &panel->hbm_config;
+	const char *string;
+	struct dsi_parser_utils *utils = &panel->utils;
+	int rc = 0;
+
+	rc = utils->read_string(utils->data, "qcom,mdss-dsi-hbm-type", &string);
+
+	if (!rc) {
+		if (string && !strcmp(string, "hbm_type_gpio")) {
+			hbm_config->hbm_type = HBM_TYPE_GPIO;
+			pr_info("hbm_type: HBM_TYPE_GPIO\n");
+		} else {
+			hbm_config->hbm_type = HBM_TYPE_DCS;
+			pr_info("hbm_type: HBM_TYPE_DCS\n");
+		}
+	} else {
+		hbm_config->hbm_type = HBM_TYPE_DCS;
+		pr_debug("HBM type not defined, so set it to HBM_TYPE_DCS!\n");
+	}
+}
+
 static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 					struct device_node *of_node)
 {
@@ -3758,6 +3812,8 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 	enum dsi_cmd_set_type type;
 	const char *prop;
 	struct dsi_parser_utils *utils = &panel->utils;
+
+	dsi_panel_parse_hbm_config(panel);
 
 	for (i = 0; i < PARAM_ID_NUM; i++) {
 		param = &dsi_panel_param[i];

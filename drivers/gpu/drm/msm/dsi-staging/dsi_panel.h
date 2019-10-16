@@ -226,6 +226,16 @@ struct panel_param {
 	bool is_supported;
 };
 
+enum panel_hbm_type {
+	HBM_TYPE_DCS = 0,
+	HBM_TYPE_GPIO,
+};
+
+struct panel_hbm {
+	enum panel_hbm_type hbm_type;
+	int hbm_en_gpio;
+};
+
 struct dsi_panel {
 	const char *name;
 	const char *type;
@@ -257,6 +267,7 @@ struct dsi_panel {
 	struct dsi_pinctrl_info pinctrl;
 	struct drm_panel_hdr_properties hdr_props;
 	struct drm_panel_esd_config esd_config;
+	struct panel_hbm hbm_config;
 
 	struct dsi_parser_utils utils;
 
