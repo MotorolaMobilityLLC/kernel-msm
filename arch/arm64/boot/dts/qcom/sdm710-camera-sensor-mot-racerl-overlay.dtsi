@@ -285,6 +285,19 @@
 		rgltr-load-current = <0>;
 	};
 
+	actuator_wide: qcom,actuator@2 {
+		cell-index = <2>;
+		reg = <0x2>;
+		compatible = "qcom,actuator";
+		cci-master = <1>;
+		cam_vaf-supply = <&camera_wide_tele_afvdd_ldo>;
+		regulator-names = "cam_vaf";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <2800000>;
+		rgltr-max-voltage = <2800000>;
+		rgltr-load-current = <0>;
+	};
+
 	qcom,cam-sensor@0 {
 		cell-index = <0>;
 		compatible = "qcom,cam-sensor";
@@ -375,6 +388,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		actuator-src = <&actuator_wide>;
 		cam_vio-supply = <&camera_iovdd_ldo>;
 		cam_vana-supply = <&camera_wide_tele_avdd_ldo>;
 		cam_vdig-supply = <&camera_wide_tele_dvdd_ldo>;
