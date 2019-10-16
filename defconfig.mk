@@ -34,6 +34,10 @@ define do-make-defconfig
 	( perl -le 'print "# This file was automatically generated from:\n#\t" . join("\n#\t", @ARGV) . "\n"' $(2) && cat $(2) ) > $(1) || ( rm -f $(1) && false )
 endef
 
+#When building MSI, moto config does not really take effect
+ifneq ($(findstring msi, $(TARGET_PRODUCT)),)
+PRODUCT_SPECIFIC_DEFCONFIGS := $(DEFCONFIGSRC)/$(KERNEL_DEFCONFIG)
+endif
 #
 # make combined defconfig file
 #---------------------------------------
