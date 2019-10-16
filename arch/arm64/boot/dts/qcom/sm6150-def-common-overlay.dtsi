@@ -981,9 +981,3 @@
 &mdss_mdp {
        connectors = <&sde_rscc &sde_wb &sde_dsi>;
 };
-
-&soc {
-        sde_dp: qcom,dp_display@0{
-               status = "disabled";
-        };
-};
