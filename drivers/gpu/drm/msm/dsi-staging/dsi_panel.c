@@ -317,14 +317,6 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 		}
 	}
 
-	if (gpio_is_valid(panel->bl_config.hbm_en_gpio)) {
-		rc = gpio_request(panel->bl_config.hbm_en_gpio, "hbm_en_gpio");
-		if (rc) {
-			pr_err("request for hbm_en_gpio failed, rc=%d\n", rc);
-			goto error_release_hbm_en;
-		}
-	}
-
 	if (gpio_is_valid(r_config->lcd_mode_sel_gpio)) {
 		rc = gpio_request(r_config->lcd_mode_sel_gpio, "mode_gpio");
 		if (rc) {
@@ -335,9 +327,6 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 
 	goto error;
 error_release_mode_sel:
-	if (gpio_is_valid(panel->bl_config.hbm_en_gpio))
-		gpio_free(panel->bl_config.hbm_en_gpio);
-error_release_hbm_en:
 	if (gpio_is_valid(panel->bl_config.en_gpio))
 		gpio_free(panel->bl_config.en_gpio);
 error_release_disp_en:
@@ -1025,12 +1014,9 @@ static int dsi_panel_set_hbm(struct dsi_panel *panel,
 	int rc = 0;
 
 	pr_info("%s: Set HBM to (%d)\n", __func__, param_info->value);
-	if (gpio_is_valid(panel->bl_config.hbm_en_gpio)) {
-		if (param_info->value)
-			gpio_set_value(panel->bl_config.hbm_en_gpio, 1);
-		else
-			gpio_set_value(panel->bl_config.hbm_en_gpio, 0);
-	}
+	rc = dsi_panel_send_param_cmd(panel, param_info);
+	if (rc < 0)
+		pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
 
         return rc;
 };
@@ -2846,6 +2832,7 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 	pr_info("[%s] bl_2bytes_enable=%d\n", panel->name,
 					panel->bl_config.bl_2bytes_enable);
 
+
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(panel);
 		if (rc) {
@@ -2869,26 +2856,6 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 			rc = 0;
 		}
 	}
-
-	panel->bl_config.hbm_en_gpio = utils->get_named_gpio(utils->data,
-					      "qcom,platform-high-light-gpio",
-					      0);
-	if (!gpio_is_valid(panel->bl_config.hbm_en_gpio)) {
-		if (panel->bl_config.hbm_en_gpio == -EPROBE_DEFER) {
-			pr_warn("[%s] failed to get hbm gpio, rc=%d\n",
-						panel->name, rc);
-			rc = -EPROBE_DEFER;
-		} else {
-			pr_warn("[%s]failed to get hbm gpio, rc=%d\n",
-						panel->name, rc);
-			rc = 0;
-		}
-	}
-
-	pr_info("[%s]  bl_config: type=%d, bl_max_level=%d, brightness_default_level=%d, en_gpio=%d, hbm_en_gpio=%d, rc=%d\n", panel->name,
-					panel->bl_config.type, panel->bl_config.bl_max_level, panel->bl_config.brightness_default_level,
-					panel->bl_config.en_gpio, panel->bl_config.hbm_en_gpio, rc);
-	rc = 0;
 
 error:
 	return rc;
@@ -4051,6 +4018,7 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		if (rc == -EPROBE_DEFER)
 			goto error;
 	}
+
 
 	rc = dsi_panel_parse_misc_features(panel);
 	if (rc)
