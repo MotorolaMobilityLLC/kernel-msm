@@ -247,7 +247,7 @@ static int fbtft_request_gpios_dt(struct fbtft_par *par)
 static int fbtft_backlight_update_status(struct backlight_device *bd)
 {
 	struct fbtft_par *par = bl_get_data(bd);
-	bool polarity = !!(bd->props.state & BL_CORE_DRIVER1);
+	bool polarity = par->polarity;
 
 	fbtft_par_dbg(DEBUG_BACKLIGHT, par,
 		"%s: polarity=%d, power=%d, fb_blank=%d\n",
@@ -296,7 +296,7 @@ void fbtft_register_backlight(struct fbtft_par *par)
 	/* Assume backlight is off, get polarity from current state of pin */
 	bl_props.power = FB_BLANK_POWERDOWN;
 	if (!gpio_get_value(par->gpio.led[0]))
-		bl_props.state |= BL_CORE_DRIVER1;
+		par->polarity = true;
 
 	bd = backlight_device_register(dev_driver_string(par->info->device),
 				par->info->device, par, &fbtft_bl_ops, &bl_props);
@@ -814,7 +814,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	if (par->gamma.curves && gamma) {
 		if (fbtft_gamma_parse_str(par,
 			par->gamma.curves, gamma, strlen(gamma)))
-			goto alloc_fail;
+			goto release_framebuf;
 	}
 
 	/* Transmit buffer */
@@ -839,7 +839,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 			txbuf = devm_kzalloc(par->info->device, txbuflen, GFP_KERNEL);
 		}
 		if (!txbuf)
-			goto alloc_fail;
+			goto release_framebuf;
 		par->txbuf.buf = txbuf;
 		par->txbuf.len = txbuflen;
 	}
@@ -874,6 +874,9 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	fbtft_merge_fbtftops(&par->fbtftops, &display->fbtftops);
 
 	return info;
+
+release_framebuf:
+	framebuffer_release(info);
 
 alloc_fail:
 	vfree(vmem);
