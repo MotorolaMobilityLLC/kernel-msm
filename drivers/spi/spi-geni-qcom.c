@@ -1859,6 +1859,9 @@ static int spi_geni_suspend(struct device *dev)
 			ret = -EBUSY;
 		}
 	}
+#else
+	if (!pm_runtime_status_suspended(dev))
+		ret = -EBUSY;
 #endif
 	return ret;
 }
