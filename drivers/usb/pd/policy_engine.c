@@ -4319,6 +4319,13 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 	for (i = 1; i < 8; i++) {
 		if (!pd_get_pdo(pd, i, &pdo_max_uv, &pdo_min_uv, &pdo_ua)) {
 			if (pdo_max_uv <= uv_in) {
+				//If there is a valid pdo we should default to choosing one
+				//even if it charges slower vs not setting a pdo
+				//and getting invalid pdo prints
+				if(pdo == 0)
+				{
+					pdo = i;
+				}
 				uv_diff = uv_in - pdo_max_uv;
 				if (uv_diff < max_uv_diff) {
 					max_uv_diff = uv_diff;
