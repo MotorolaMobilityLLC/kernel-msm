@@ -1813,9 +1813,10 @@ static ssize_t secure_store(struct device *pdev, struct device_attribute *attr,
 					ret);
 	} else {
 		ret = usb_gadget_probe_driver(&gi->composite.gadget_driver);
-		if (ret)
-			pr_debug("Failed attaching UDC to gadget %d\n",
-					ret);
+		if (ret) {
+			gi->composite.gadget_driver.udc_name = NULL;
+			pr_err("Failed attaching UDC to gadget %d\n", ret);
+		}
 	}
 	mutex_unlock(&gi->lock);
 
