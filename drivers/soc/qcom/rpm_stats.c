@@ -49,10 +49,11 @@ struct msm_rpm_stats_data {
 	u64 last_entered_at;
 	u64 last_exited_at;
 	u64 accumulated;
-#if defined(CONFIG_MSM_RPM_SMD)
+/* todo from voyager: fixing  error: 'struct msm_rpm_stats_data' has no member named 'reserved' */
+//#if defined(CONFIG_MSM_RPM_SMD)
 	u32 client_votes;
 	u32 reserved[3];
-#endif
+//#endif
 
 };
 
@@ -98,10 +99,14 @@ static inline int msm_rpmstats_append_data_to_buf(char *buf,
 	return scnprintf(buf, buflength,
 		"RPM Mode:%s\n\t count:%d\ntime in last mode(msec):%llu\n"
 		"time since last mode(sec):%llu\nactual last sleep(msec):%llu\n"
-		"client votes: %#010x\n\n",
+		"client votes: %#010x\n"
+		"reserved[0]: 0x%08x\n"
+		"reserved[1]: 0x%08x\n"
+		"reserved[2]: 0x%08x\n\n",
 		stat_type, data->count, time_in_last_mode,
 		time_since_last_mode, actual_last_sleep,
-		data->client_votes);
+		data->client_votes,
+		data->reserved[0], data->reserved[1], data->reserved[2]);
 #else
 	return scnprintf(buf, buflength,
 		"RPM Mode:%s\n\t count:%d\ntime in last mode(msec):%llu\n"
@@ -157,6 +162,15 @@ static inline int msm_rpmstats_copy_stats(
 		data.client_votes = msm_rpmstats_read_long_register(reg,
 				i, offsetof(struct msm_rpm_stats_data,
 					client_votes));
+		data.reserved[0] = msm_rpmstats_read_long_register(reg,
+				i, offsetof(struct msm_rpm_stats_data,
+					reserved));
+		data.reserved[1] = msm_rpmstats_read_long_register(reg,
+				i, offsetof(struct msm_rpm_stats_data,
+					reserved) + 4);
+		data.reserved[2] = msm_rpmstats_read_long_register(reg,
+				i, offsetof(struct msm_rpm_stats_data,
+					reserved) + 8);
 #endif
 
 		length += msm_rpmstats_append_data_to_buf(prvdata->buf + length,
@@ -165,6 +179,77 @@ static inline int msm_rpmstats_copy_stats(
 	}
 
 	return length;
+}
+
+#define MAX_MASTER_NUM 5
+
+enum {
+	DEBUG_RPM_SPM_LOG = 1U << 0,
+};
+
+static int debug_mask;
+module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
+
+static struct msm_rpmstats_platform_data *rpmstats;
+static u32 reserved[2][4];
+static u32 reserved0[2][4];
+
+static void msm_rpmstats_get_reserved(u32 reserved[][4])
+{
+	void __iomem *reg_base;
+	int i;
+
+	if (rpmstats == NULL) {
+		pr_err("%s: rpm stats has not been initialized\n", __func__);
+		return;
+	}
+
+	reg_base = ioremap_nocache(rpmstats->phys_addr_base,
+					rpmstats->phys_size);
+	if (reg_base == NULL) {
+		pr_err("%s: ERROR could not ioremap start=%p, len=%u\n",
+			__func__, (void *)rpmstats->phys_addr_base,
+			rpmstats->phys_size);
+		return;
+	}
+
+	for (i = 0; i < 2; i++) {
+		reserved[i][0] = msm_rpmstats_read_long_register(reg_base,
+				i, offsetof(struct msm_rpm_stats_data,
+					reserved));
+		reserved[i][1] = msm_rpmstats_read_long_register(reg_base,
+				i, offsetof(struct msm_rpm_stats_data,
+					reserved) + 4);
+		reserved[i][2] = msm_rpmstats_read_long_register(reg_base,
+				i, offsetof(struct msm_rpm_stats_data,
+					reserved) + 8);
+	}
+
+	iounmap(reg_base);
+}
+
+void msm_rpmstats_log_suspend_enter(void)
+{
+	if (debug_mask & DEBUG_RPM_SPM_LOG)
+	msm_rpmstats_get_reserved(reserved0);
+}
+
+void msm_rpmstats_log_suspend_exit(int error)
+{
+	uint32_t smem_value;
+	int i;
+
+	if (debug_mask & DEBUG_RPM_SPM_LOG && error == 0) {
+		msm_rpmstats_get_reserved(reserved);
+
+		for (i = 0; i <= MAX_MASTER_NUM; i++) {
+			smem_value = reserved[i / 3][i % 3]
+				- reserved0[i / 3][i % 3];
+			if (smem_value > 0)
+				pr_warn("rpm: %s[%d] = %d\n", "spm_active",
+					i, smem_value);
+		}
+	}
 }
 
 static ssize_t rpmstats_show(struct kobject *kobj,
@@ -272,6 +357,7 @@ static int msm_rpmstats_probe(struct platform_device *pdev)
 
 	msm_rpmstats_create_sysfs(pdev, pdata);
 
+	rpmstats = pdata;
 	return 0;
 }
 
