@@ -1158,6 +1158,33 @@ static const struct seq_operations wakeup_sources_stats_seq_ops = {
 	.show  = wakeup_sources_stats_seq_show,
 };
 
+int wakelock_dump_active_info(char *buf, int size)
+{
+	struct wakeup_source *ws;
+	unsigned long flags;
+	char *p = buf;
+
+	rcu_read_lock();
+	list_for_each_entry_rcu(ws, &wakeup_sources, entry) {
+		spin_lock_irqsave(&ws->lock, flags);
+		if (ws->active) {
+			if (time_after(ws->timer_expires, jiffies)) {
+				long timeout = ws->timer_expires - jiffies;
+
+				p += snprintf(p, size - (p - buf),
+				"   (active)[%s], time left %d (msecs)\n",
+				ws->name, jiffies_to_msecs(timeout));
+			} else /* active */
+				p += snprintf(p, size - (p - buf),
+				"   (active)[%s]\n", ws->name);
+		}
+		spin_unlock_irqrestore(&ws->lock, flags);
+	}
+	rcu_read_unlock();
+
+	return p - buf;
+}
+
 static int wakeup_sources_stats_open(struct inode *inode, struct file *file)
 {
 	return seq_open_private(file, &wakeup_sources_stats_seq_ops, sizeof(int));
