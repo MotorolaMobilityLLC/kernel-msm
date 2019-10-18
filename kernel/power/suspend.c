@@ -40,6 +40,9 @@
 extern void msm_rpmstats_log_suspend_enter(void);
 extern void msm_rpmstats_log_suspend_exit(int error);
 #endif
+#ifdef CONFIG_SUSPEND_DEBUG
+#include "user_sysfs_private.h"
+#endif
 
 const char * const pm_labels[] = {
 	[PM_SUSPEND_TO_IDLE] = "freeze",
@@ -450,6 +453,12 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		log_suspend_abort_reason("Disabling non-boot cpus failed");
 		goto Enable_cpus;
 	}
+
+#ifdef CONFIG_SUSPEND_DEBUG
+	vreg_before_sleep_save_configs();
+	tlmm_before_sleep_set_configs();
+	tlmm_before_sleep_save_configs();
+#endif
 
 	arch_suspend_disable_irqs();
 	BUG_ON(!irqs_disabled());
