@@ -27,7 +27,7 @@
 
 #define AW99703_NAME "aw99703-bl"
 
-#define AW99703_VERSION "v1.0.5"
+#define AW99703_VERSION "v1.0.6"
 
 struct aw99703_data *g_aw99703_data;
 
@@ -396,7 +396,7 @@ int  aw99703_set_brightness(struct aw99703_data *drvdata, int brt_val)
 {
 	pr_info("%s brt_val is %d\n", __func__, brt_val);
 
-	if (drvdata->enable == false) {
+	if ((drvdata->enable == false) && (brt_val != 0)) {
 		aw99703_backlight_init(drvdata);
 		aw99703_backlight_enable(drvdata);
 	}
@@ -487,7 +487,6 @@ static int aw99703_read_chipid(struct aw99703_data *drvdata)
 
 	return -EINVAL;
 }
-
 
 static void
 aw99703_get_dt_data(struct device *dev, struct aw99703_data *drvdata)
