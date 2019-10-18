@@ -148,13 +148,29 @@ static void dsi_display_early_power_off_work(struct work_struct *work)
 		return;
 	}
 
+	mutex_lock(&display->display_lock);
+	if (early_power->early_power_state == DSI_EARLY_POWER_FORBIDDEN) {
+		pr_warning("----- set_mode called, early_power_state: %d, is_dsi_display_prepared %d\n",
+			early_power->early_power_state, display->is_dsi_display_prepared);
+		mutex_unlock(&display->display_lock);
+		__pm_relax(&early_power->early_wake_src);
+		return;
+	}
+	mutex_unlock(&display->display_lock);
+
 	rc = dsi_display_unprepare(display);
 	if (rc) {
 		pr_err("DSI display unprepare failed, rc=%d. early_power_state %d\n", rc, early_power->early_power_state);
 		__pm_relax(&early_power->early_wake_src);
 		return;
 	}
-	g_early_power->early_power_state = DSI_EARLY_POWER_IDLE;
+
+	mutex_lock(&display->display_lock);
+	if (early_power->early_power_state != DSI_EARLY_POWER_FORBIDDEN) {
+		g_early_power->early_power_state = DSI_EARLY_POWER_IDLE;
+	}
+	mutex_unlock(&display->display_lock);
+
 	__pm_relax(&early_power->early_wake_src);
 
 	pr_info("----- early_power_state: %d\n", early_power->early_power_state);
