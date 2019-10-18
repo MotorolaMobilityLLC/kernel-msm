@@ -313,3 +313,12 @@ config ENERGY_MODEL
 	  The exact usage of the energy model is subsystem-dependent.
 
 	  If in doubt, say N.
+
+config SUSPEND_DEBUG
+	bool "Enable snapshot of regulator and tlmm when suspend"
+	depends on SUSPEND
+	default n
+	help
+	  This allows you to dump the regulator state and tlmm configuration
+	  before suspend. It doesn't work only if you have read the system
+	  file node /sys/privae/tlmm_before_sleep and vreg_before_sleep
