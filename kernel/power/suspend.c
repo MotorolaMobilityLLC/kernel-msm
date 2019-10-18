@@ -36,6 +36,11 @@
 
 #include "power.h"
 
+#ifdef CONFIG_MSM_RPM_STATS_LOG
+extern void msm_rpmstats_log_suspend_enter(void);
+extern void msm_rpmstats_log_suspend_exit(int error);
+#endif
+
 const char * const pm_labels[] = {
 	[PM_SUSPEND_TO_IDLE] = "freeze",
 	[PM_SUSPEND_STANDBY] = "standby",
@@ -631,6 +636,9 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
+#ifdef CONFIG_MSM_RPM_STATS_LOG
+	msm_rpmstats_log_suspend_enter();
+#endif
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -638,6 +646,9 @@ int pm_suspend(suspend_state_t state)
 	} else {
 		suspend_stats.success++;
 	}
+#ifdef CONFIG_MSM_RPM_STATS_LOG
+	msm_rpmstats_log_suspend_exit(error);
+#endif
 	pr_info("suspend exit\n");
 	return error;
 }
