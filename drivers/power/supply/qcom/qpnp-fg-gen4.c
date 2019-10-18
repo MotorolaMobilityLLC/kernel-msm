@@ -817,6 +817,7 @@ static int fg_gen4_get_battery_temp(struct fg_dev *fg, int *val)
 	 * 0.25 C. Multiply by 10 to convert it to deci degrees C.
 	 */
 	*val = sign_extend32(buf, 9) * 100 / 40;
+	*val = 300; /* MMI_STOPSHIP PMIC: steady 30degC, until Burton EVT1 finishes */
 
 	return 0;
 }
