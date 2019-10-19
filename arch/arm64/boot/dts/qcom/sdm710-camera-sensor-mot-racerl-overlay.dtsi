@@ -298,6 +298,25 @@
 		rgltr-load-current = <0>;
 	};
 
+	eeprom_rear: qcom,eeprom@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,eeprom";
+		cam_vaf-supply = <&camera_main_afvdd_ldo>;
+		cam_vio-supply = <&camera_iovdd_ldo>;
+		regulator-names = "cam_vaf", "cam_vio";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <2800000 1800000>;
+		rgltr-max-voltage = <2800000 1800000>;
+		rgltr-load-current = <0 0>;
+		cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "turbo";
+		clock-rates = <24000000>;
+	};
+
 	qcom,cam-sensor@0 {
 		cell-index = <0>;
 		compatible = "qcom,cam-sensor";
@@ -306,6 +325,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		eeprom-src = <&eeprom_rear>;
 		led-flash-src = <&led_flash_rear>;
 		actuator-src = <&actuator_main>;
 		cam_vio-supply = <&camera_iovdd_ldo>;
