@@ -13,7 +13,7 @@
 &mdss_mdp {
 	dsi_nt36526_tm_video: qcom,mdss_dsi_nt36526_tm_video {
 		qcom,mdss-dsi-panel-name =
-				"nt36526 tm video mode dsi panel";
+				"mipi_mot_vid_tm_720p_639";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 
 		qcom,mdss-dsi-virtual-channel-id = <0>;
