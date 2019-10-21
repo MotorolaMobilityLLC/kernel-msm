@@ -13,7 +13,7 @@
 &mdss_mdp {
 	dsi_hx83104a_inxr_video: qcom,mdss_dsi_hx83104a_inxr_video {
 		qcom,mdss-dsi-panel-name =
-		"hx83104a inxr video mode dsi panel";
+		"mipi_mot_vid_inxr_720p_639";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
