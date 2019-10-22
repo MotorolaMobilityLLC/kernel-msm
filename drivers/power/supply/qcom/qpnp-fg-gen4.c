@@ -321,6 +321,7 @@ struct fg_gen4_chip {
 	bool			vbatt_low;
 	bool			chg_term_good;
 	bool			soc_scale_mode;
+	bool			loading_profile;
 };
 
 struct bias_config {
@@ -987,6 +988,7 @@ static int fg_gen4_get_prop_capacity(struct fg_dev *fg, int *val)
 	}
 
 	if (chip->vbatt_low) {
+		pr_err("FG Blocked SOC; vbatt_low\n");
 		*val = EMPTY_SOC;
 		return 0;
 	}
@@ -2517,16 +2519,7 @@ static void profile_load_work(struct work_struct *work)
 
 	fg_dbg(fg, FG_STATUS, "profile loading started\n");
 
-	if (chip->dt.multi_profile_load &&
-		chip->batt_age_level != chip->last_batt_age_level) {
-		rc = fg_gen4_get_learned_capacity(chip, &learned_cap_uah);
-		if (rc < 0)
-			pr_err("Error in getting learned capacity rc=%d\n", rc);
-		else
-			fg_dbg(fg, FG_STATUS, "learned capacity: %lld uAh\n",
-				learned_cap_uah);
-	}
-
+	chip->loading_profile = true;
 	rc = qpnp_fg_gen4_load_profile(chip);
 	if (rc < 0)
 		goto out;
@@ -2585,6 +2578,7 @@ done:
 	fg_notify_charger(fg);
 
 	schedule_delayed_work(&chip->ttf->ttf_work, msecs_to_jiffies(10000));
+	chip->loading_profile = false;
 	fg_dbg(fg, FG_STATUS, "profile loaded successfully");
 out:
 	if (!chip->esr_fast_calib || is_debug_batt_id(fg)) {
@@ -3516,6 +3510,11 @@ static irqreturn_t fg_vbatt_low_irq_handler(int irq, void *data)
 	int rc, vbatt_mv, msoc_raw;
 	s64 time_us;
 
+	if (chip->loading_profile) {
+		pr_err("Blocked vbatt Low During Profile Load!\n");
+		return IRQ_HANDLED;
+	}
+
 	rc = fg_get_battery_voltage(fg, &vbatt_mv);
 	if (rc < 0)
 		return IRQ_HANDLED;
@@ -3525,8 +3524,8 @@ static irqreturn_t fg_vbatt_low_irq_handler(int irq, void *data)
 	if (rc < 0)
 		return IRQ_HANDLED;
 
-	fg_dbg(fg, FG_IRQ, "irq %d triggered vbatt_mv: %d msoc_raw:%d\n", irq,
-		vbatt_mv, msoc_raw);
+	pr_err("FG: %s irq %d triggered vbatt_mv: %d msoc_raw:%d cutoff: %d\n",
+		       __func__, irq, vbatt_mv, msoc_raw, chip->dt.cutoff_volt_mv);
 
 	if (!fg->soc_reporting_ready) {
 		fg_dbg(fg, FG_IRQ, "SOC reporting is not ready\n");
