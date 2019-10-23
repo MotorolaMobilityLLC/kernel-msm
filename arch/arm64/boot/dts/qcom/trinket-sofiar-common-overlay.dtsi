@@ -53,6 +53,7 @@
 
 &pmi632_charger {
 	qcom,battery-data = <&mtp_batterydata>;
+	mmi,ext-ovp-greater-12v;
 };
 
 &pmi632_mmi {
