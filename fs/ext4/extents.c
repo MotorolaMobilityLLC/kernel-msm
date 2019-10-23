@@ -1304,7 +1304,6 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
 	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
 	int err = 0;
 	size_t ext_size = 0;
-
 	/* Try to prepend new index to old one */
 	if (ext_depth(inode))
 		goal = ext4_idx_pblock(EXT_FIRST_INDEX(ext_inode_hdr(inode)));
