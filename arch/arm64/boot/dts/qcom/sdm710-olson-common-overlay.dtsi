@@ -189,7 +189,7 @@
 				pins = "gpio107";
 				drive-strength = <2>; /* 2 mA */
 				bias-no-pull;
-				output-enable;
+				output-high;
 			};
 		};
 	};
@@ -205,7 +205,7 @@
 				pins = "gpio106";
 				drive-strength = <2>; /* 2 mA */
 				bias-no-pull;
-				output-enable;
+				output-high;
 			};
 		};
 	};
@@ -221,7 +221,7 @@
 				pins = "gpio105";
 				drive-strength = <2>; /* 2 mA */
 				bias-no-pull;
-				output-enable;
+				output-high;
 			};
 		};
 	};
@@ -237,7 +237,7 @@
 				pins = "gpio100";
 				drive-strength = <2>; /* 2 mA */
 				bias-no-pull;
-				output-enable;
+				output-high;
 			};
 		};
 	};
