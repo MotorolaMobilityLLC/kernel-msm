@@ -5913,8 +5913,6 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 	if (chg->pd_active)
 		return IRQ_HANDLED;
 
-	if (mmi_factory_mode)
-		chg->ok_to_pd = false;
 	/*
 	 * Prepared to run PD or PD is active. At this moment, APSD is disabled,
 	 * but there still can be irq on apsd_done from previously unfinished
