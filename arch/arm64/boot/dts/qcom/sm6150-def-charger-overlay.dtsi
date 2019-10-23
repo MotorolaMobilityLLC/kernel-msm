@@ -40,6 +40,7 @@
 		mmi,batt-curr-boost = <300000>;
 		mmi,batt-ovp-lmt = <4475000>;
 		mmi,pl-chrg-vbatt-min = <3600000>;
+		mmi,use-batt-age;
 		mmi,extrn-fg;
 		mmi,extrn-fg-name = "bq27426_bms";
 		mmi,extrn-sense;
@@ -111,6 +112,7 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <119 0>;
 		interrupt-names = "bq27426_irq";
+		design-capacity = <4000>;
 		df-serialnum = "SB18C54570";
 		battery_profile_0 {
 			chem_id = <2542>;
@@ -219,6 +221,7 @@
 	qcom,extrn-fg-psy-name = "bq27426_bms";
 	qcom,dc-unsupported;
 	qcom,wireless-unsupported;
+	qcom,auto-recharge-soc = <99>;
 	qcom,usbeb-unsupported;
 	qcom,mmi-temp-zones = <0 4200 700 0>,
 				<10 4200 2000 700>,
