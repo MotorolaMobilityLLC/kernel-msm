@@ -138,14 +138,13 @@ static void qpnp_tri_led_update_pwm_pattern(struct qpnp_led_dev *led,
 	int i, start_idx, step_len;
 	u32 rise_steps, hold_steps, fall_steps, off_steps;
 	u32 rise_time, hold_time, fall_time, off_time;
-	u64 percent;
-	u64 duty_ns;
+	u64 duty_ns, target_duty_ns, max_duty_ns, inc_duty_ns;
 	enum led_brightness brightness = led->led_setting.brightness;
 	struct pwm_output_pattern *pattern = NULL;
-	u32 pattern_len = led->pwm_setting.max_pattern_length;
-	u32 breath_rate_ms = led->led_setting.breath_rate_ms;
+	u32 pattern_len = pwm->max_pattern_length;
+	u32 duration;
 
-	if (!pwm->duty_pattern || pwm->max_pattern_length <= 0)
+	if (!pwm->duty_pattern || pwm->max_pattern_length < 1)
 		goto updated;
 
 	pattern = kzalloc(sizeof(*pattern), GFP_KERNEL);
@@ -157,14 +156,80 @@ static void qpnp_tri_led_update_pwm_pattern(struct qpnp_led_dev *led,
 	fall_time = led->led_setting.breath_pattern.fall_time;
 	off_time = led->led_setting.breath_pattern.off_time;
 
-	rise_steps = rise_time * pattern_len + breath_rate_ms / 2;
-	do_div(rise_steps, breath_rate_ms);
-	hold_steps = hold_time * pattern_len + breath_rate_ms / 2;
-	do_div(hold_steps, breath_rate_ms);
-	fall_steps = fall_time * pattern_len + breath_rate_ms / 2;
-	do_div(fall_steps, breath_rate_ms);
-	off_steps = off_time * pattern_len + breath_rate_ms / 2;
-	do_div(off_steps, breath_rate_ms);
+	target_duty_ns = brightness * pwm->period_ns;
+	do_div(target_duty_ns, LED_FULL);
+	if (target_duty_ns > pwm->period_ns)
+		target_duty_ns = pwm->period_ns;
+
+	if (!rise_time || !fall_time || rise_time == fall_time) {
+		if (rise_time)
+			pwm->ramp_step_ms = rise_time / pattern_len;
+		else if (fall_time)
+			pwm->ramp_step_ms = fall_time / pattern_len;
+		else
+			pwm->ramp_step_ms = led->led_setting.breath_rate_ms \
+				/ 2 / pattern_len;
+		if (!pwm->ramp_step_ms)
+			pwm->ramp_step_ms = 1;
+
+		rise_steps = rise_time > 0? pattern_len : 0;
+		hold_steps = hold_time / pwm->ramp_step_ms;
+		fall_steps = fall_time > 0? pattern_len : 0;
+		off_steps = off_time / pwm->ramp_step_ms;
+
+		max_duty_ns = (pattern_len - 1) * pwm->period_ns;
+		do_div(max_duty_ns, 100);
+		if (max_duty_ns > pwm->period_ns)
+			max_duty_ns = pwm->period_ns;
+		if (target_duty_ns > max_duty_ns)
+			inc_duty_ns = target_duty_ns - max_duty_ns;
+		else
+			inc_duty_ns = 0;
+
+		for (i = 0; i < pattern_len; i++) {
+			if (inc_duty_ns > 0) {
+				start_idx = pattern_len / 2;
+				duty_ns = i * max_duty_ns / (pattern_len - 1);
+				if (i >= start_idx)
+					duty_ns += (i - start_idx) * inc_duty_ns \
+						/ (pattern_len - 1 - start_idx);
+			} else {
+				start_idx = target_duty_ns * 100 / pwm->period_ns;
+				start_idx = pattern_len - 1 - start_idx;
+				duty_ns = 0;
+				if (i >= start_idx)
+					duty_ns += (i - start_idx) * target_duty_ns \
+						/ (pattern_len - 1 - start_idx);
+			}
+			pwm->duty_pattern[i] = min(duty_ns, pwm->period_ns);
+			dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d(%d)\n",
+			led->cdev.name, i, pwm->duty_pattern[i],
+			100 * pwm->duty_pattern[i] / pwm->period_ns);
+		}
+
+		pattern->lo_idx = 0;
+		pattern->hi_idx = pattern->lo_idx + pattern_len - 1;
+		pattern->pause_lo_count = off_steps;
+		pattern->pause_hi_count = hold_steps;
+		pattern->ramp_dir_low_to_hi = (rise_steps || !fall_steps);
+		pattern->toggle = (rise_steps == fall_steps);
+		pattern->pattern_repeat = true;
+
+		goto lut_update;
+	}
+
+	duration = rise_time + hold_time + fall_time;
+	pwm->ramp_step_ms =  duration / pattern_len;
+	if (!pwm->ramp_step_ms)
+		pwm->ramp_step_ms = 1;
+
+	rise_steps = rise_time * pattern_len + duration / 2;
+	do_div(rise_steps, duration);
+	hold_steps = hold_time * pattern_len + duration / 2;
+	do_div(hold_steps, duration);
+	fall_steps = fall_time * pattern_len + duration / 2;
+	do_div(fall_steps, duration);
+	off_steps = off_time / pwm->ramp_step_ms;
 
 	start_idx = 0;
 	step_len = start_idx + rise_steps;
@@ -173,15 +238,12 @@ static void qpnp_tri_led_update_pwm_pattern(struct qpnp_led_dev *led,
 		step_len = pattern_len;
 	}
 	for (i = start_idx; i < step_len; i++) {
-		percent = 100 * brightness;
-		do_div(percent, LED_FULL);
-		percent = (i - start_idx) * percent;
-		do_div(percent, rise_steps);
-		duty_ns = percent * pwm->period_ns;
-		do_div(duty_ns, 100);
+		duty_ns = (i - start_idx) * target_duty_ns \
+				/ (rise_steps - 1);
 		pwm->duty_pattern[i] = min(duty_ns, pwm->period_ns);
-		dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d\n",
-				led->cdev.name, i, pwm->duty_pattern[i]);
+		dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d(%d)\n",
+				led->cdev.name, i, pwm->duty_pattern[i],
+				100 * pwm->duty_pattern[i] / pwm->period_ns);
 	}
 
 	start_idx = i;
@@ -191,15 +253,11 @@ static void qpnp_tri_led_update_pwm_pattern(struct qpnp_led_dev *led,
 		step_len = pattern_len;
 	}
 	for (i = start_idx; i < step_len; i++) {
-		percent = 100 * brightness;
-		do_div(percent, LED_FULL);
-		if (!percent)
-			percent = 1;
-		duty_ns = percent * pwm->period_ns;
-		do_div(duty_ns, 100);
+		duty_ns = target_duty_ns;
 		pwm->duty_pattern[i] = min(duty_ns, pwm->period_ns);
-		dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d\n",
-				led->cdev.name, i, pwm->duty_pattern[i]);
+		dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d(%d)\n",
+				led->cdev.name, i, pwm->duty_pattern[i],
+				100 * pwm->duty_pattern[i] / pwm->period_ns);
 	}
 
 	start_idx = i;
@@ -209,45 +267,23 @@ static void qpnp_tri_led_update_pwm_pattern(struct qpnp_led_dev *led,
 		step_len = pattern_len;
 	}
 	for (i = start_idx; i < step_len; i++) {
-		percent = 100 * brightness;
-		do_div(percent, LED_FULL);
-		percent = (step_len - i - 1) * percent;
-		do_div(percent, fall_steps);
-		duty_ns = percent * pwm->period_ns;
-		do_div(duty_ns, 100);
+		duty_ns = (step_len - i - 1) * target_duty_ns \
+				/ (fall_steps - 1);
 		pwm->duty_pattern[i] = min(duty_ns, pwm->period_ns);
-		dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d\n",
-				led->cdev.name, i, pwm->duty_pattern[i]);
+		dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d(%d)\n",
+				led->cdev.name, i, pwm->duty_pattern[i],
+				100 * pwm->duty_pattern[i] / pwm->period_ns);
 	}
 
-	start_idx = i;
-	step_len = start_idx + off_steps;
-	if (step_len > pattern_len) {
-		off_steps = pattern_len - start_idx;
-		step_len = pattern_len;
-	}
-	for (i = start_idx; i < step_len; i++) {
-		pwm->duty_pattern[i] = 0;
-		dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d\n",
-				led->cdev.name, i, pwm->duty_pattern[i]);
-	}
+	pattern->lo_idx = 0;
+	pattern->hi_idx = pattern->lo_idx + i - 1;
+	pattern->pause_lo_count = off_steps;
+	pattern->pause_hi_count = 0;
+	pattern->ramp_dir_low_to_hi = true;
+	pattern->toggle = false;
+	pattern->pattern_repeat = true;
 
-	dev_info(led->chip->dev, "%s: breath pattern: %d %d %d %d\n",
-				led->cdev.name,
-				rise_steps, hold_steps, fall_steps, off_steps);
-
-	if (i == 0) {
-		for (i = 0; i < pwm->max_pattern_length; i++) {
-			percent = led->chip->lut_patterns[i] * brightness;
-			do_div(percent, LED_FULL);
-			duty_ns = percent * pwm->period_ns;
-			do_div(duty_ns, 100);
-			pwm->duty_pattern[i] = min(duty_ns, pwm->period_ns);
-			dev_dbg(led->chip->dev, "%s: duty_pattern[%d]=%d\n",
-				led->cdev.name, i, pwm->duty_pattern[i]);
-		}
-	}
-
+lut_update:
 	pattern->duty_pattern = pwm->duty_pattern;
 	pattern->num_entries = i;
 	pattern->cycles_per_duty = (u64)pwm->ramp_step_ms * NSEC_PER_MSEC;
@@ -256,6 +292,15 @@ static void qpnp_tri_led_update_pwm_pattern(struct qpnp_led_dev *led,
 	if (pwm->output_pattern)
 		kfree(pwm->output_pattern);
 	pwm->output_pattern = pattern;
+
+	dev_info(led->chip->dev, "%s: breath pattern: %dms, %d %d %d %d" \
+				" %d %d %d %d %d %d %d\n",
+				led->cdev.name, pwm->ramp_step_ms,
+				rise_steps, hold_steps, fall_steps, off_steps,
+				pattern->lo_idx, pattern->hi_idx,
+				pattern->pause_lo_count, pattern->pause_hi_count,
+				pattern->ramp_dir_low_to_hi, pattern->toggle,
+				pattern->pattern_repeat);
 
 updated:
 	pwm->changed = false;
@@ -268,6 +313,8 @@ static int __tri_led_config_pwm(struct qpnp_led_dev *led,
 	int rc;
 
 	pwm_get_state(led->pwm_dev, &pstate);
+	pstate.enabled = false;
+	pwm_apply_state(led->pwm_dev, &pstate);
 	pstate.enabled = !!(pwm->duty_ns != 0);
 	pstate.period = pwm->period_ns;
 	pstate.duty_cycle = pwm->duty_ns;
@@ -435,7 +482,7 @@ static int qpnp_tri_led_set_brightness(struct led_classdev *led_cdev,
 		brightness = LED_FULL;
 
 	if (brightness == led->led_setting.brightness &&
-			!led->blinking && !led->breathing) {
+			!led->blinking) {
 		mutex_unlock(&led->lock);
 		return 0;
 	}
@@ -526,8 +573,6 @@ static ssize_t breath_pattern_store(struct device *dev,
 					const char *buf, size_t count)
 {
 	int rc;
-	u32 breath_rate_ms;
-	u32 ramp_step_ms;
 	int rise_time, hold_time, fall_time, off_time;
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct qpnp_led_dev *led =
@@ -539,23 +584,12 @@ static ssize_t breath_pattern_store(struct device *dev,
 	if (rc != 4)
 		return -EINVAL;
 
-	if (led->pwm_setting.max_pattern_length <= 0)
+	if (led->pwm_setting.max_pattern_length < 1)
 		return -EPERM;
 
 	cancel_work_sync(&led_cdev->set_brightness_work);
 
 	mutex_lock(&led->lock);
-	breath_rate_ms = rise_time + hold_time + fall_time + off_time;
-	if (!breath_rate_ms) {
-		ramp_step_ms = RAMP_STEP_DEFAULT_MS;
-		breath_rate_ms = led->pwm_setting.max_pattern_length \
-				* led->pwm_setting.ramp_step_ms;
-	} else {
-		ramp_step_ms = breath_rate_ms \
-				/ led->pwm_setting.max_pattern_length;
-		if (!ramp_step_ms)
-			ramp_step_ms = 1;
-	}
 
 	if (pattern->rise_time == rise_time &&
 	    pattern->hold_time == hold_time &&
@@ -567,16 +601,17 @@ static ssize_t breath_pattern_store(struct device *dev,
 	pattern->hold_time = hold_time;
 	pattern->fall_time = fall_time;
 	pattern->off_time = off_time;
-	led->led_setting.breath_rate_ms = breath_rate_ms;
-
-	led->pwm_setting.ramp_step_ms = ramp_step_ms;
+	led->led_setting.breath_rate_ms =
+		rise_time + hold_time + fall_time + off_time;
+	if (!led->led_setting.breath_rate_ms)
+		led->led_setting.breath_rate_ms = RAMP_STEP_DEFAULT_MS \
+			* led->pwm_setting.max_pattern_length;
 	led->pwm_setting.changed = true;
 
 	dev_info(led->chip->dev,
-			"%s breath pattern: %d %d %d %d, ramp_step_ms=%d\n",
+			"%s breath pattern: %d %d %d %d\n",
 			led->label,
-			rise_time, hold_time, fall_time, off_time,
-			ramp_step_ms);
+			rise_time, hold_time, fall_time, off_time);
 
 	if (!led->led_setting.breath)
 		goto unlock;
@@ -611,7 +646,6 @@ static ssize_t breath_rate_ms_store(struct device *dev,
 {
 	int rc;
 	u32 breath_rate_ms;
-	u32 ramp_step_ms;
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct qpnp_led_dev *led =
 		container_of(led_cdev, struct qpnp_led_dev, cdev);
@@ -619,6 +653,9 @@ static ssize_t breath_rate_ms_store(struct device *dev,
 	rc = kstrtou32(buf, 10, &breath_rate_ms);
 	if (rc < 0)
 		return rc;
+
+	if (!breath_rate_ms)
+		return -EINVAL;
 
 	if (led->pwm_setting.max_pattern_length <= 0)
 		return -EPERM;
@@ -635,22 +672,7 @@ static ssize_t breath_rate_ms_store(struct device *dev,
 	if (led->led_setting.breath_rate_ms == breath_rate_ms)
 		goto unlock;
 
-	if (!breath_rate_ms) {
-		ramp_step_ms = RAMP_STEP_DEFAULT_MS;
-		breath_rate_ms = led->pwm_setting.max_pattern_length
-				* ramp_step_ms;
-	} else {
-		ramp_step_ms = breath_rate_ms
-				/ led->pwm_setting.max_pattern_length;
-		if (!ramp_step_ms)
-			ramp_step_ms = 1;
-	}
-
-	if (led->pwm_setting.ramp_step_ms == ramp_step_ms)
-		goto unlock;
-
 	led->led_setting.breath_rate_ms = breath_rate_ms;
-	led->pwm_setting.ramp_step_ms = ramp_step_ms;
 	led->pwm_setting.changed = true;
 	if (!led->led_setting.breath)
 		goto unlock;
