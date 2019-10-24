@@ -6798,6 +6798,7 @@ static void dcin_aicl_work(struct work_struct *work)
 static enum alarmtimer_restart dcin_aicl_alarm_cb(struct alarm *alarm,
 							ktime_t now)
 {
+#ifdef QCOM_BASE
 	struct smb_charger *chg = container_of(alarm, struct smb_charger,
 					dcin_aicl_alarm);
 
@@ -6805,10 +6806,12 @@ static enum alarmtimer_restart dcin_aicl_alarm_cb(struct alarm *alarm,
 
 	pm_stay_awake(chg->dev);
 	schedule_work(&chg->dcin_aicl_work);
+#endif
 
 	return ALARMTIMER_NORESTART;
 }
 
+#ifdef QCOM_BASE
 static void dcin_icl_decrement(struct smb_charger *chg)
 {
 	int rc, icl;
@@ -6844,6 +6847,7 @@ static void dcin_icl_decrement(struct smb_charger *chg)
 
 	chg->dcin_uv_last_time = now;
 }
+#endif
 
 irqreturn_t dcin_uv_irq_handler(int irq, void *data)
 {
@@ -6852,10 +6856,14 @@ irqreturn_t dcin_uv_irq_handler(int irq, void *data)
 
 	mutex_lock(&chg->dcin_aicl_lock);
 
+#ifdef QCOM_BASE
 	chg->dcin_uv_count++;
+#endif
 	smblib_dbg(chg, (PR_WLS | PR_INTERRUPT), "DCIN UV count: %d\n",
 			chg->dcin_uv_count);
+#ifdef QCOM_BASE
 	dcin_icl_decrement(chg);
+#endif
 
 	mutex_unlock(&chg->dcin_aicl_lock);
 
@@ -6894,6 +6902,7 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 		chg->cp_ilim_votable = find_votable("CP_ILIM");
 
 	if (dcin_present && !vbus_present) {
+#ifdef QCOM_BASE
 		cancel_work_sync(&chg->dcin_aicl_work);
 
 		/* Reset DCIN ICL to 100 mA */
@@ -6905,6 +6914,7 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 			return IRQ_HANDLED;
 
 		smblib_dbg(chg, (PR_WLS | PR_INTERRUPT), "reset: icl: 100 mA\n");
+#endif
 
 		/*
 		 * Remove USB's CP ILIM vote - inapplicable for wireless
@@ -6953,8 +6963,9 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 				dev_err(chg->dev, "Couldn't set dc voltage to 5 V rc=%d\n",
 					rc);
 		}
-
+#ifdef QCOM_BASE
 		schedule_work(&chg->dcin_aicl_work);
+#endif
 	} else {
 		if (chg->cp_reason == POWER_SUPPLY_CP_WIRELESS) {
 			sec_charger = chg->sec_pl_present ?
