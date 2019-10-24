@@ -494,15 +494,16 @@ static int msm_pcm_volume_ctl_put(struct snd_kcontrol *kcontrol,
 	int volume = ucontrol->value.integer.value[0];
 
 	pr_debug("%s: volume : 0x%x\n", __func__, volume);
-	mutex_lock(&loopback_session_lock);
 	if ((!substream) || (!substream->runtime)) {
 		pr_err("%s substream or runtime not found\n", __func__);
 		rc = -ENODEV;
 		goto exit;
 	}
+	mutex_lock(&loopback_session_lock);
 	prtd = substream->runtime->private_data;
 	if (!prtd) {
 		rc = -ENODEV;
+		mutex_unlock(&loopback_session_lock);
 		goto exit;
 	}
 	rc = pcm_loopback_set_volume(prtd, volume);
