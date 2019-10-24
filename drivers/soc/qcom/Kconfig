@@ -19,6 +19,14 @@ config SMITH_DTB
 	Only include SMITH specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config RACER_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "RACER DTBs"
+	help
+	Only include RACER specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
