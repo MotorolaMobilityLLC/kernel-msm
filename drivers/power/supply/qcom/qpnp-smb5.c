@@ -616,6 +616,10 @@ static int smb5_parse_dt(struct smb5 *chip)
 
 	chip->dt.disable_suspend_on_collapse = of_property_read_bool(node,
 					"qcom,disable-suspend-on-collapse");
+
+	chg->ext_ovp_greater_12v = of_property_read_bool(node,
+					"mmi,ext-ovp-greater-12v");
+
 	return 0;
 }
 
@@ -3312,7 +3316,7 @@ static int smb5_probe(struct platform_device *pdev)
 	chg->connector_health = -EINVAL;
 	chg->otg_present = false;
 	chg->main_fcc_max = -EINVAL;
-	chg->qc2_vbus_collapse_wa = false;
+	chg->qc_usbov = false;
 	mutex_init(&chg->adc_lock);
 
 	chg->regmap = dev_get_regmap(chg->dev->parent, NULL);
