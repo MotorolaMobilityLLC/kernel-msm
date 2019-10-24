@@ -1005,6 +1005,8 @@ void smblib_hvdcp_enable_mmi(struct smb_charger *chg, bool enable)
 	if (rc < 0)
 		smblib_err(chg, "MMI failed to write USBIN_OPTIONS_1_CFG rc=%d\n",
 				rc);
+	else
+		chg->hvdcp_is_disable = enable ? false : true;
 
 	return;
 }
@@ -5090,15 +5092,6 @@ unsuspend_input:
 	wdata = &chg->irq_info[SWITCHER_POWER_OK_IRQ].irq_data->storm_data;
 	reset_storm_count(wdata);
 
-	if (!chg->qc2_vbus_collapse_wa &&
-			apsd->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
-		smblib_err(chg, "QC2.0 vbus collapse disable HVDCP\n");
-		chg->qc2_vbus_collapse_wa = true;
-		smblib_hvdcp_enable_mmi(chg, false);
-		smblib_rerun_apsd(chg);
-		return IRQ_HANDLED;
-	}
-
 	/* Workaround for non-QC2.0-compliant chargers follows */
 	if (!chg->qc2_unsupported_voltage &&
 			apsd->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
@@ -5956,11 +5949,14 @@ static void typec_src_removal(struct smb_charger *chg)
 		chg->qc2_unsupported_voltage = QC2_COMPLIANT;
 	}
 
-	if (chg->qc2_vbus_collapse_wa) {
-		smblib_err(chg, "QC2.0 vbus collapse enable HVDCP\n");
-		chg->qc2_vbus_collapse_wa = false;
+	if (chg->hvdcp_is_disable &&
+		((!chg->ext_ovp_greater_12v && !chg->qc_usbov) ||
+		(chg->ext_ovp_greater_12v && chg->qc_usbov))) {
+		smblib_err(chg, "Re-enable HVDCP as type-c removal\n");
 		smblib_hvdcp_enable_mmi(chg, true);
 	}
+
+	chg->qc_usbov = false;
 
 	if (chg->use_extcon)
 		smblib_notify_device_mode(chg, false);
@@ -6654,6 +6650,16 @@ irqreturn_t usbin_ov_irq_handler(int irq, void *data)
 	vote(chg->awake_votable, USBOV_DBC_VOTER, true, 0);
 	schedule_delayed_work(&chg->usbov_dbc_work,
 			msecs_to_jiffies(USB_OV_DBC_PERIOD_MS));
+
+	if ((!chg->qc_usbov) &&
+	    (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP ||
+	    chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)) {
+		smblib_err(chg, "QC vbus OV disable HVDCP\n");
+		chg->qc_usbov = true;
+		smblib_hvdcp_enable_mmi(chg, false);
+		smblib_rerun_apsd(chg);
+		return IRQ_HANDLED;
+	}
 
 	power_supply_changed(chg->batt_psy);
 	smblib_dbg(chg, PR_MISC, "USBOV debounce status %d\n",
