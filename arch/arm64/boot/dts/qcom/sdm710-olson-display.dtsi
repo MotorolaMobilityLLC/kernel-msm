@@ -32,7 +32,9 @@
 	mot_csot_620_876x2142_cmd_v1: qcom,mdss_dsi_mot_csot_620_876x2142_cmd_v1 {
 		#include "dsi-panel-mot-csot-620-876x2142-olson-cmd-common.dtsi"
 	};
-
+	mot_csot_620_876x2142_cmd_v2: qcom,mdss_dsi_mot_csot_620_876x2142_cmd_v2 {
+		#include "dsi-panel-mot-csot-620-876x2142-olson-cmd-common.dtsi"
+	};
 	/* Primary Display:  BOE */
 	mot_boe_620_876x2142_cmd_v0: qcom,mdss_dsi_mot_boe_620_876x2142_cmd_v0 {
 		#include "dsi-panel-mot-boe-620-876x2142-olson-cmd-common.dtsi"
@@ -261,8 +263,31 @@
 		lab-supply = <&lab_regulator>;
 		ibb-supply = <&ibb_regulator>;
 		oledb-supply = <&pm660a_oledb>;
-};
+	};
 
+	dsi_csot_620_876x2142_cmd_display_v2: qcom,dsi-display@32 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_csot_620_876x2142_cmd_display_v2";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
+		qcom,platform-te-gpio = <&tlmm 10 0>;
+		qcom,dsi-panel = <&mot_csot_620_876x2142_cmd_v2>;
+		l11_disp-supply = <&pm660_l11>;
+		vci_disp-supply = <&vci_disp_vreg>;
+		vio_disp-supply = <&vio_disp_vreg>;
+		lab-supply = <&lab_regulator>;
+		ibb-supply = <&ibb_regulator>;
+		oledb-supply = <&pm660a_oledb>;
+	};
 	/* Please keep all the "secondary" panel nodes together */
 	dsi_auo_139_480x480_cmd_dvt1_display: qcom,dsi-display@22 {
 		compatible = "qcom,dsi-display";
@@ -610,6 +635,17 @@
 								08 05 03 04 00];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
+
+			qcom,mdss-dsi-on-command = [
+				15 00 00 00 00 00 02 FE 40 /*switch CMD2*/
+				15 00 00 00 00 00 02 9A 00 /*corner R function off, 0x00 for off, 0x01 for on*/
+				15 00 00 00 00 00 02 FE 00 /*return to CMD0*/
+				05 01 00 00 78 00 01 11
+				15 00 00 00 00 00 02 35 00
+				15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
+				15 00 00 00 00 00 02 51 00
+				15 00 00 00 00 00 02 55 00      /* ACL OFF */
+				05 01 00 00 00 00 01 29];	/* display on */
 		};
 	};
 };
@@ -681,6 +717,29 @@
 	};
 };
 
+&mot_csot_620_876x2142_cmd_v2 {
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0D>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
+
+	qcom,bklt-dcs-2bytes-enabled;
+	qcom,mdss-dsi-bl-min-level = <3>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+
+	qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
+	qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 07 FF];
+
+	qcom,mdss-dsi-panel-hbm-is-51cmd;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+								08 05 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
 
 /*
  * The CLI display of the DVT1 is a in-cell display which has one controller

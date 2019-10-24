@@ -86,14 +86,13 @@ qcom,mdss-dsi-display-timings {
 		qcom,mdss-dsi-panel-jitter = <0x20 0xa>;
 		qcom,mdss-dsi-on-command = [
 			15 00 00 00 00 00 02 FE 40 /*switch CMD2*/
-			15 00 00 00 00 00 02 9A 00 /*corner R function off, 0x00 for off, 0x01 for on*/
-			15 00 00 00 00 00 02 FE 00 /*return to CMD0*/
+			15 00 00 00 00 00 02 9A 00 /* corner R function off, 0x00 for off, 0x01 for on*/
+			15 00 00 00 00 00 02 FE 00
 			05 01 00 00 78 00 01 11
 			15 00 00 00 00 00 02 35 00
-			15 00 00 00 00 00 02 53 20 /* HBM off ,dimming=1frame*/
-			15 00 00 00 00 00 02 51 00
+			39 00 00 00 00 00 03 51 00 00
 			15 00 00 00 00 00 02 55 00      /* ACL OFF */
-			05 01 00 00 00 00 01 29];	/* display on */
+			05 01 00 00 00 00 01 29];       /* display on */
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 23 00 01 28		/* display_off */
 			05 01 00 00 78 00 01 10];	/* enter sleep mode */
