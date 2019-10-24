@@ -658,6 +658,8 @@ static int smb5_parse_dt(struct smb5 *chip)
 					&chg->chg_param.hvdcp3_max_icl_ua);
 	if (chg->chg_param.hvdcp3_max_icl_ua <= 0)
 		chg->chg_param.hvdcp3_max_icl_ua = MICRO_3PA;
+	chg->ext_ovp_greater_12v = of_property_read_bool(node,
+					"mmi,ext-ovp-greater-12v");
 
 	/* Used only in Adapter CV mode of operation */
 	of_property_read_u32(node, "qcom,qc4-max-icl-ua",
@@ -3525,7 +3527,7 @@ static int smb5_probe(struct platform_device *pdev)
 	chg->connector_health = -EINVAL;
 	chg->otg_present = false;
 	chg->main_fcc_max = -EINVAL;
-	chg->qc2_vbus_collapse_wa = false;
+	chg->qc_usbov = false;
 	mutex_init(&chg->adc_lock);
 
 	chg->regmap = dev_get_regmap(chg->dev->parent, NULL);
