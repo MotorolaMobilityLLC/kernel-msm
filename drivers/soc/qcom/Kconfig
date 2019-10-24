@@ -11,6 +11,14 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config SMITH_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "SMITH DTBs"
+	help
+	Only include SMITH specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
