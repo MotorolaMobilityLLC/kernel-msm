@@ -1360,13 +1360,6 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 		vote(chg->cp_disable_votable, SW_THERM_REGULATION_VOTER,
 								false, 0);
 
-	/* reconfigure allowed voltage for HVDCP */
-	rc = smblib_set_adapter_allowance(chg,
-			USBIN_ADAPTER_ALLOW_5V_TO_9V);
-	if (rc < 0)
-		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_TO_9V rc=%d\n",
-			rc);
-
 	/* reset USBOV votes and cancel work */
 	cancel_delayed_work_sync(&chg->usbov_dbc_work);
 	vote(chg->awake_votable, USBOV_DBC_VOTER, false, 0);
@@ -6322,12 +6315,6 @@ static void typec_src_removal(struct smb_charger *chg)
 		rc = smblib_usb_pd_adapter_allowance_override(chg, FORCE_NULL);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't set FORCE_NULL rc=%d\n", rc);
-	/* reconfigure allowed voltage for HVDCP */
-	rc = smblib_set_adapter_allowance(chg,
-			USBIN_ADAPTER_ALLOW_5V_TO_9V);
-	if (rc < 0)
-		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_TO_9V rc=%d\n",
-			rc);
 
 		rc = smblib_set_charge_param(chg,
 				&chg->param.aicl_cont_threshold,
@@ -11264,10 +11251,6 @@ void mmi_init(struct smb_charger *chg)
 			smblib_err(chg, "couldn't create force_chg_itrick\n");
 		}
 	}
-
-	/* reconfigure allowed voltage for HVDCP */
-	rc = smblib_set_adapter_allowance(chg,
-			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 
 	/* Set DCIN  adapter allowance */
 	rc = smblib_masked_write(chg, DCIN_ADAPTER_ALLOW_CFG_REG,
