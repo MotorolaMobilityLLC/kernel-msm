@@ -53,6 +53,10 @@
 
 &pmi632_charger {
 	qcom,battery-data = <&mtp_batterydata>;
+	qcom,thermal-mitigation = <3600000 2500000
+			2000000 1500000
+			1200000 900000
+			500000 300000>;
 	mmi,ext-ovp-greater-12v;
 };
 
