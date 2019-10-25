@@ -860,7 +860,7 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 {
 	int rc, aicl_threshold;
 	u8 vbus_allowance;
-	int rc;
+//	int rc;
 #ifdef QCOM_BASE
 	u8 allowed_voltage;
 
