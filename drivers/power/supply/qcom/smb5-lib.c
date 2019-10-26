@@ -858,11 +858,10 @@ static int smblib_set_usb_pd_fsw(struct smb_charger *chg, int voltage)
 static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 					int min_allowed_uv, int max_allowed_uv)
 {
-	int rc, aicl_threshold;
-	u8 vbus_allowance;
-//	int rc;
+	int rc;
 #ifdef QCOM_BASE
-	u8 allowed_voltage;
+	int aicl_threshold;
+	u8 vbus_allowance;
 
 	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
 		return 0;
