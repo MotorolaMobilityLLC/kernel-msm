@@ -1329,6 +1329,17 @@ static void pl_disable_forever_work(struct work_struct *work)
 		vote(chip->hvdcp_hw_inov_dis_votable, PL_VOTER, false, 0);
 }
 
+static bool is_batt_available(struct pl_data *chip)
+{
+	if (!chip->batt_psy)
+		chip->batt_psy = power_supply_get_by_name("battery");
+
+	if (!chip->batt_psy)
+		return false;
+
+	return true;
+}
+
 static int pl_disable_vote_callback(struct votable *votable,
 		void *data, int pl_disable, const char *client)
 {
@@ -1341,8 +1352,8 @@ static int pl_disable_vote_callback(struct votable *votable,
 	if (!is_main_available(chip))
 		return -ENODEV;
 
-//	if (!is_batt_available(chip))
-//		return -ENODEV;
+	if (!is_batt_available(chip))
+		return -ENODEV;
 
 	if (!chip->usb_psy)
 		chip->usb_psy = power_supply_get_by_name("usb");
@@ -1853,8 +1864,8 @@ static void status_change_work(struct work_struct *work)
 	if (!chip->main_psy)
 		return;
 
-//	if (!is_batt_available(chip))
-//		return;
+	if (!is_batt_available(chip))
+		return;
 
 	is_parallel_available(chip);
 
