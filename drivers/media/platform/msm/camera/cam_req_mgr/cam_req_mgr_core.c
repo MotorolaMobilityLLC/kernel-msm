@@ -357,7 +357,8 @@ static void __cam_req_mgr_reset_req_slot(struct cam_req_mgr_core_link *link,
 
 	/* Check if CSL has already pushed new request*/
 	if (slot->status == CRM_SLOT_STATUS_REQ_ADDED ||
-		in_q->last_applied_idx == idx)
+		in_q->last_applied_idx == idx ||
+		idx < 0)
 		return;
 
 	/* Reset input queue slot */
@@ -1292,10 +1293,6 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			if (slot->req_id > 0) {
 				last_app_idx = in_q->last_applied_idx;
 				in_q->last_applied_idx = idx;
-				if (abs(last_app_idx - idx) >=
-					reset_step + 1)
-					__cam_req_mgr_reset_req_slot(link,
-						last_app_idx);
 			}
 
 			__cam_req_mgr_dec_idx(
@@ -2110,6 +2107,35 @@ end:
 }
 
 /**
+ * cam_req_mgr_set_delay()
+ *
+ * @brief    : Set delay for pd table in case of sync link bubble
+ * @tbl      : cam_req_mgr_req_tbl
+ * @curr_idx : slot idx
+ *
+ * @return   : 0 for success, negative for failure
+ */
+int cam_req_mgr_set_delay(
+	struct cam_req_mgr_req_tbl  *tbl,
+	int32_t curr_idx)
+{
+	struct cam_req_mgr_tbl_slot *slot = NULL;
+	int rc = 0;
+
+	while (tbl) {
+		slot = &tbl->slot[curr_idx];
+		if (slot->inject_delay < 2) {
+			slot->inject_delay = 2;
+		}
+		__cam_req_mgr_dec_idx(&curr_idx, tbl->pd_delta,
+			tbl->num_slots);
+		tbl = tbl->next;
+	}
+
+	return rc;
+}
+
+/**
  * cam_req_mgr_process_error()
  *
  * @brief: This runs in workque thread context. bubble /err recovery.
@@ -2121,9 +2147,12 @@ end:
 int cam_req_mgr_process_error(void *priv, void *data)
 {
 	int                                  rc = 0, idx = -1, i;
+	int                                  sync_rd_idx = 0;
 	struct cam_req_mgr_error_notify     *err_info = NULL;
 	struct cam_req_mgr_core_link        *link = NULL;
+	struct cam_req_mgr_core_link        *sync_link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
+	struct cam_req_mgr_req_queue        *sync_in_q = NULL;
 	struct cam_req_mgr_slot             *slot = NULL;
 	struct cam_req_mgr_connected_device *device = NULL;
 	struct cam_req_mgr_link_evt_data     evt_data;
@@ -2143,6 +2172,7 @@ int cam_req_mgr_process_error(void *priv, void *data)
 		err_info->error);
 
 	in_q = link->req.in_q;
+	sync_link = link->sync_link;
 
 	mutex_lock(&link->req.lock);
 	if (err_info->error == CRM_KMD_ERR_BUBBLE) {
@@ -2155,6 +2185,10 @@ int cam_req_mgr_process_error(void *priv, void *data)
 			CAM_DBG(CAM_CRM, "req_id %lld found at idx %d",
 				err_info->req_id, idx);
 			slot = &in_q->slot[idx];
+			if (sync_link) {
+				sync_in_q = link->sync_link->req.in_q;
+				sync_rd_idx = sync_in_q->rd_idx;
+			}
 			if (!slot->recover) {
 				CAM_WARN(CAM_CRM,
 					"err recovery disabled req_id %lld",
@@ -2189,8 +2223,19 @@ int cam_req_mgr_process_error(void *priv, void *data)
 			__cam_req_mgr_tbl_set_all_skip_cnt(&link->req.l_tbl);
 			in_q->rd_idx = idx;
 			in_q->slot[idx].status = CRM_SLOT_STATUS_REQ_ADDED;
-			if (link->sync_link) {
+			if (sync_link) {
 				in_q->slot[idx].sync_mode = 0;
+				if (sync_in_q->slot[sync_rd_idx].status !=
+					CRM_SLOT_STATUS_REQ_APPLIED) {
+					cam_req_mgr_set_delay(sync_link->req.l_tbl,
+						sync_rd_idx);
+				} else {
+					 __cam_req_mgr_inc_idx(&sync_rd_idx, 1,
+						sync_link->req.l_tbl->num_slots);
+
+					cam_req_mgr_set_delay(sync_link->req.l_tbl,
+						sync_rd_idx);
+				}
 				__cam_req_mgr_inc_idx(&idx, 1,
 					link->req.l_tbl->num_slots);
 				in_q->slot[idx].sync_mode = 0;
@@ -2219,6 +2264,7 @@ end:
 static int cam_req_mgr_process_trigger(void *priv, void *data)
 {
 	int                                  rc = 0;
+	int32_t                              idx = -1;
 	struct cam_req_mgr_trigger_notify   *trigger_data = NULL;
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
@@ -2241,6 +2287,17 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 	in_q = link->req.in_q;
 
 	mutex_lock(&link->req.lock);
+
+	if (trigger_data->trigger == CAM_TRIGGER_POINT_SOF) {
+		idx = __cam_req_mgr_find_slot_for_req(in_q,
+			trigger_data->req_id);
+		if (idx >= 0) {
+			if (idx == in_q->last_applied_idx)
+				in_q->last_applied_idx = -1;
+			__cam_req_mgr_reset_req_slot(link, idx);
+		}
+	}
+
 	/*
 	 * Check if current read index is in applied state, if yes make it free
 	 *    and increment read index to next slot.
@@ -2548,6 +2605,7 @@ static int cam_req_mgr_cb_notify_trigger(
 	notify_trigger->link_hdl = trigger_data->link_hdl;
 	notify_trigger->dev_hdl = trigger_data->dev_hdl;
 	notify_trigger->trigger = trigger_data->trigger;
+	notify_trigger->req_id = trigger_data->req_id;
 	notify_trigger->sof_timestamp_val = trigger_data->sof_timestamp_val;
 	task->process_cb = &cam_req_mgr_process_trigger;
 	rc = cam_req_mgr_workq_enqueue_task(task, link, CRM_TASK_PRIORITY_0);
