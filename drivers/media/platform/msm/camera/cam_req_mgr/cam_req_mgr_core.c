@@ -357,8 +357,7 @@ static void __cam_req_mgr_reset_req_slot(struct cam_req_mgr_core_link *link,
 
 	/* Check if CSL has already pushed new request*/
 	if (slot->status == CRM_SLOT_STATUS_REQ_ADDED ||
-		in_q->last_applied_idx == idx ||
-		idx < 0)
+		in_q->last_applied_idx == idx)
 		return;
 
 	/* Reset input queue slot */
@@ -1293,6 +1292,10 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			if (slot->req_id > 0) {
 				last_app_idx = in_q->last_applied_idx;
 				in_q->last_applied_idx = idx;
+				if (abs(last_app_idx - idx) >=
+					reset_step + 1)
+					__cam_req_mgr_reset_req_slot(link,
+						last_app_idx);
 			}
 
 			__cam_req_mgr_dec_idx(
@@ -2216,7 +2219,6 @@ end:
 static int cam_req_mgr_process_trigger(void *priv, void *data)
 {
 	int                                  rc = 0;
-	int32_t                              idx = -1;
 	struct cam_req_mgr_trigger_notify   *trigger_data = NULL;
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
@@ -2239,18 +2241,6 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 	in_q = link->req.in_q;
 
 	mutex_lock(&link->req.lock);
-
-	if (trigger_data->trigger == CAM_TRIGGER_POINT_SOF &&
-		!link->sync_link) {
-		idx = __cam_req_mgr_find_slot_for_req(in_q,
-			trigger_data->req_id);
-		if (idx >= 0) {
-			if (idx == in_q->last_applied_idx)
-				in_q->last_applied_idx = -1;
-			__cam_req_mgr_reset_req_slot(link, idx);
-		}
-	}
-
 	/*
 	 * Check if current read index is in applied state, if yes make it free
 	 *    and increment read index to next slot.
@@ -2558,7 +2548,6 @@ static int cam_req_mgr_cb_notify_trigger(
 	notify_trigger->link_hdl = trigger_data->link_hdl;
 	notify_trigger->dev_hdl = trigger_data->dev_hdl;
 	notify_trigger->trigger = trigger_data->trigger;
-	notify_trigger->req_id = trigger_data->req_id;
 	notify_trigger->sof_timestamp_val = trigger_data->sof_timestamp_val;
 	task->process_cb = &cam_req_mgr_process_trigger;
 	rc = cam_req_mgr_workq_enqueue_task(task, link, CRM_TASK_PRIORITY_0);
