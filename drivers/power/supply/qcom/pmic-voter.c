@@ -565,7 +565,11 @@ int rerun_election(struct votable *votable)
 
 	lock_votable(votable);
 	effective_result = get_effective_result_locked(votable);
-	if (votable->callback)
+
+	pr_debug("%s: effective vote is %d ensure set\n",
+		 votable->name, effective_result);
+
+	if (votable->callback && !votable->force_active)
 		rc = votable->callback(votable,
 			votable->data,
 			effective_result,
