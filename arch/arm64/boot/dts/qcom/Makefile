@@ -32,7 +32,8 @@ dtbo-$(CONFIG_SOFIA_DTB) += \
 	trinket-sofia-evt-overlay.dtbo \
 	trinket-sofia-dvt1a-overlay.dtbo \
 	trinket-sofia-dvt1b-overlay.dtbo \
-	trinket-sofia-dvt2-overlay.dtbo
+	trinket-sofia-dvt2-overlay.dtbo \
+	trinket-sofia-pvt-overlay.dtbo
 
 dtbo-$(CONFIG_SOFIAP_DTB) += \
 	trinket-sofiap-evb-overlay.dtbo \
@@ -62,6 +63,7 @@ trinket-sofia-evt-overlay.dtbo-base :=  trinket-sofia-base.dtb
 trinket-sofia-dvt1a-overlay.dtbo-base :=  trinket-sofia-base.dtb
 trinket-sofia-dvt1b-overlay.dtbo-base :=  trinket-sofia-base.dtb
 trinket-sofia-dvt2-overlay.dtbo-base :=  trinket-sofia-base.dtb
+trinket-sofia-pvt-overlay.dtbo-base :=  trinket-sofia-base.dtb
 
 trinket-sofiap-evb-overlay.dtbo-base :=  trinket-sofiap-base.dtb
 trinket-sofiap-evt-overlay.dtbo-base :=  trinket-sofiap-base.dtb
