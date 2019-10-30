@@ -218,17 +218,6 @@
 		reg_array_len = <3>;
 		reg_array_val = <0x07 0x00 0x08 0x07 0xFB 0x01>;
 	};
-
-	tas2562:tas2562@4c {
-		compatible = "ti,tas2562";
-		reg = <0x4c>;
-		ti,channels = <1>;
-		ti,left-channel = <0x4c>;
-		ti,irq-gpio = <&tlmm 63 0>;
-		ti,reset-gpio = <&tlmm 94 0>;
-		ti,asi-format = <0>;   /* 0, i2S; 1, DSP; */
-		status = "ok";
-	};
 };
 
 &spi_7 {
@@ -502,7 +491,7 @@
 			"csr_gp_io_lpaif_pri_pcm_pri_mode_muxsel",
 			"csr_gp_io_mux_quin_ctl";
 
-		qcom,msm-ext-pa = "quinary";
+		qcom,msm-ext-pa = "primary";
 		qcom,msm-mclk-freq = <9600000>;
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <0>;
@@ -510,7 +499,6 @@
 		qcom,msm-micbias1-ext-cap;
 		qcom,msm-micbias2-ext-cap;
 		qcom,msm-mbhc-seperate-headphone-dtv;
-		ti,have-tas2562;
 
 		qcom,audio-routing =
 				"RX_BIAS", "MCLK",
