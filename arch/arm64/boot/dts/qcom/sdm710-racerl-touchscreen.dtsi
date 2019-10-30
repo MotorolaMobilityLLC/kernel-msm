@@ -110,7 +110,6 @@
 		goodix,power-on-delay-us = <300000>; /*300ms*/
 		goodix,power-off-delay-us = <5000>;
 		/*goodix,swap-axis;*/
-		goodix,y2y;
 		goodix,usb_charger;
 		goodix,cfg_bin_name = "goodix_cfg_group_boe_racerl.bin";
 		goodix,fw_name = "goodix-gtx8-01-14-racerl.bin";
