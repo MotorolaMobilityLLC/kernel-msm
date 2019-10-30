@@ -1,0 +1,47 @@
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/clock/msm-clocks-8953.h>
+
+#include "sdm632-ginna-common-overlay.dtsi"
+
+/ {
+	model = "ginna";
+	qcom,msm-id = <349 0x0>;
+	qcom,board-id = <0x4D 0xA300>, <0x4E 0xA300>;
+};
+
+/*
+ * Ginna HW rev EVT3 specific changes go here
+ */
+&soc {
+	sound {
+		qcom,msm-ext-pa = "quinary";
+		aw,have-aw882xx;
+	};
+};
+
+&i2c_2 {
+
+	aw882xx:aw882xx_smartpa@34 {
+		compatible = "awinic,aw882xx_smartpa";
+		reg = <0x34>;
+		reset-gpio = <&tlmm 94 0>;
+		irq-gpio = <&tlmm 63 0x2008>;
+		monitor-flag = <1>;
+		monitor-timer-val = <3000>;
+		status = "ok";
+	};
+};
