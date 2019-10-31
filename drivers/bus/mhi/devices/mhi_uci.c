@@ -136,7 +136,7 @@ static int mhi_queue_inbound(struct uci_dev *uci_dev)
 		uci_buf = buf + mtu;
 		uci_buf->data = buf;
 
-		MSG_VERB("Allocated buf %d of %d size %ld\n", i, nr_trbs, mtu);
+		MSG_VERB("Allocated buf %d of %d size %zx\n", i, nr_trbs, mtu);
 
 		ret = mhi_queue_transfer(mhi_dev, DMA_FROM_DEVICE, buf, mtu,
 					 MHI_EOT);
@@ -281,7 +281,7 @@ static ssize_t mhi_uci_write(struct file *file,
 		return -ERESTARTSYS;
 	}
 
-	MSG_VERB("Enter: to xfer:%lu bytes\n", count);
+	MSG_VERB("Enter: to xfer:%zx bytes\n", count);
 
 	while (count) {
 		size_t xfer_size;
@@ -304,7 +304,7 @@ static ssize_t mhi_uci_write(struct file *file,
 		xfer_size = min_t(size_t, count, uci_dev->mtu);
 		kbuf = kmalloc(xfer_size, GFP_KERNEL);
 		if (!kbuf) {
-			MSG_ERR("Failed to allocate memory %lu\n", xfer_size);
+			MSG_ERR("Failed to allocate memory %zx\n", xfer_size);
 			return -ENOMEM;
 		}
 
@@ -339,7 +339,7 @@ static ssize_t mhi_uci_write(struct file *file,
 	}
 
 	spin_unlock_bh(&uci_chan->lock);
-	MSG_VERB("Exit: Number of bytes xferred:%lu\n", bytes_xfered);
+	MSG_VERB("Exit: Number of bytes xferred:%zx\n", bytes_xfered);
 
 	return bytes_xfered;
 
@@ -365,7 +365,7 @@ static ssize_t mhi_uci_read(struct file *file,
 	if (!buf)
 		return -EINVAL;
 
-	MSG_VERB("Client provided buf len:%lu\n", count);
+	MSG_VERB("Client provided buf len:%zx\n", count);
 
 	/* confirm channel is active */
 	spin_lock_bh(&uci_chan->lock);
@@ -420,7 +420,7 @@ static ssize_t mhi_uci_read(struct file *file,
 	if (ret)
 		return ret;
 
-	MSG_VERB("Copied %lu of %lu bytes\n", to_copy, uci_chan->rx_size);
+	MSG_VERB("Copied %zx of %zx bytes\n", to_copy, uci_chan->rx_size);
 	uci_chan->rx_size -= to_copy;
 
 	/* we finished with this buffer, queue it back to hardware */
@@ -444,7 +444,7 @@ static ssize_t mhi_uci_read(struct file *file,
 		spin_unlock_bh(&uci_chan->lock);
 	}
 
-	MSG_VERB("Returning %lu bytes\n", to_copy);
+	MSG_VERB("Returning %zx bytes\n", to_copy);
 
 	return to_copy;
 
