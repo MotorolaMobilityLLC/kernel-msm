@@ -138,6 +138,8 @@
 			alloc-ranges = <0x0 0xc0100000 0x0 0x08200000>;
 			alignment = <0 0x400000>;
 			size = <0 0x800000>;
+			#reg = <0x0 0xc0100000 0x0 0x08200000>;
+			#label = "adsp_shmem_device_mem";
 		};
 
 		gpu_mem: gpu_region@0 {
