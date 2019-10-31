@@ -2927,18 +2927,20 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		pr_err("cpp_dev is null\n");
 		return -EINVAL;
 	}
+	mutex_lock(&cpp_dev->mutex);
 
 	if (_IOC_DIR(cmd) == _IOC_NONE) {
 		pr_err("Invalid ioctl/subdev cmd %u", cmd);
+		mutex_unlock(&cpp_dev->mutex);
 		return -EINVAL;
 	}
 
 	rc = msm_cpp_validate_ioctl_input(cmd, arg, &ioctl_ptr);
 	if (rc != 0) {
 		pr_err("input validation failed\n");
+		mutex_unlock(&cpp_dev->mutex);
 		return rc;
 	}
-	mutex_lock(&cpp_dev->mutex);
 
 	CPP_DBG("E cmd: 0x%x\n", cmd);
 	switch (cmd) {
