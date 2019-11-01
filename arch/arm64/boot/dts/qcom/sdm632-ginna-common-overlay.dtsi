@@ -236,11 +236,13 @@
 		chipone,irq-gpio = <&tlmm 65 0x00>;
 		chipone,x-res = <720>;
 		chipone,y-res = <1520>;
+		chipone,panel-supplier = "tianma";
 
 		focaltech,reset-gpio = <&tlmm 64 0x01>;
 		focaltech,irq-gpio = <&tlmm 65 0x02>;
 		focaltech,max-touch-number = <10>;
 		focaltech,display-coords =  <0 0 720 1520>;
+                focaltech,panel-supplier = "hlt";
 	};
 };
 
