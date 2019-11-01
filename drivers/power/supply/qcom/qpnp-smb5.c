@@ -1470,6 +1470,9 @@ static int smb5_init_vconn_regulator(struct smb5 *chip)
 	chg->vconn_vreg->rdesc.of_match = "qcom,smb5-vconn";
 	chg->vconn_vreg->rdesc.name = "qcom,smb5-vconn";
 
+	if (of_get_property(chg->dev->of_node, "vconn-parent-supply", NULL))
+		chg->vconn_vreg->rdesc.supply_name = "vconn-parent";
+
 	chg->vconn_vreg->rdev = devm_regulator_register(chg->dev,
 						&chg->vconn_vreg->rdesc, &cfg);
 	if (IS_ERR(chg->vconn_vreg->rdev)) {
