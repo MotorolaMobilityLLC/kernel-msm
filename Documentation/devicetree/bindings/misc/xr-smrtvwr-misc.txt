@@ -1,0 +1,12 @@
+XR-SMRTVWR-MISC
+
+XR-SMRTVWR-MISC provides a way to configure xrsmrtvwr-misc driver.
+
+Required properties:
+- compatible : should be "qcom,xr-smrtvwr-misc"
+
+Optional properties:
+Example:
+	qcom,xr-smrtvwr-misc {
+		compatible = "qcom,xr-smrtvwr-misc";
+	};
