@@ -2231,6 +2231,18 @@ static int smb5_configure_typec(struct smb_charger *chg)
 		}
 	}
 
+	 /* config 0x154A to 0x17
+	 Enable detection of debug accessory in sink mode*/
+	rc = smblib_masked_write(chg, TYPE_C_DEBUG_ACCESS_SINK_REG,
+					TYPEC_DEBUG_ACCESS_SINK_MASK,
+					0x17);
+	if (rc < 0) {
+		dev_err(chg->dev,
+			"Couldn't configure TYPE_C_DEBUG_ACCESS_SINK_REG rc=%d\n",
+				rc);
+		return rc;
+	}
+
 	/* Enable detection of unoriented debug accessory in source mode */
 	rc = smblib_masked_write(chg, DEBUG_ACCESS_SRC_CFG_REG,
 				 EN_UNORIENTED_DEBUG_ACCESS_SRC_BIT,
