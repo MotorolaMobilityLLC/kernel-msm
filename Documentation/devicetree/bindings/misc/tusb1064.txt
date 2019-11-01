@@ -1,0 +1,14 @@
+TUSB1064-MISC
+
+TUSB1064-MISC provides a way to configure TUSB1064 part.
+
+Required properties:
+- compatible : should be "ti,tubs1064"
+- reg : address of i2c of tusb1064.
+
+Optional properties:
+Example:
+	tusb1064@10 {
+		compatible = "ti,tusb1064";
+		reg = <0x10>;
+	};
