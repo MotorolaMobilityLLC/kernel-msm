@@ -327,7 +327,6 @@ int get_effective_result_locked(struct votable *votable)
 
 	return votable->effective_result;
 }
-EXPORT_SYMBOL(get_effective_result);
 
 int get_effective_result(struct votable *votable)
 {
