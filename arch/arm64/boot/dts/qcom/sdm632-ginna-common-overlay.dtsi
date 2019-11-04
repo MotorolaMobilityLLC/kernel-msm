@@ -250,12 +250,8 @@
 
 &mtp_batterydata {
 	qcom,batt-id-range-pct = <15>;
-	df-serialnum = "SB18C30735";
-	#include "batterydata-je40-scud-3000mah.dtsi"
-        #include "batterydata-je40-atl-3000mah.dtsi"
-        #include "batterydata-je40-atl-india-3000mah.dtsi"
-	#include "batterydata-je40-atl-unicoba-3000mah.dtsi"
-	#include "batterydata-je40-atl-flex-3000mah.dtsi"
+	df-serialnum = "SB18C66367";
+	#include "qg-batterydata-LC40-ATL-3550mAH.dtsi"
 };
 
 &pmi632_qg {
