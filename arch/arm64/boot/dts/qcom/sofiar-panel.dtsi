@@ -95,6 +95,7 @@
 	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-always-high;
+	qcom,mdss-dsi-reset-force-pull-low;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
@@ -141,6 +142,7 @@
 	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-always-high;
+	qcom,mdss-dsi-reset-force-pull-low;
 
 	qcom,mdss-dsi-display-timings {
 		timing@0{
