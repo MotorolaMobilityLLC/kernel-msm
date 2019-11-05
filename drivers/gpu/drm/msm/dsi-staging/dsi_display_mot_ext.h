@@ -33,6 +33,8 @@
 #include "dsi_display.h"
 #include <linux/alarmtimer.h>
 
+#define LCD_PARA_LINE_LEN 2*1024
+
 enum dsi_display_early_power_state {
 	DSI_EARLY_POWER_IDLE = 0,
 	DSI_EARLY_POWER_BEGIN,
@@ -42,7 +44,7 @@ enum dsi_display_early_power_state {
 	DSI_EARLY_POWER_STATE_NUM
 };
 
-struct dsi_display_early_power {
+struct dsi_mot_ext_feature {
 	struct dsi_display *display;
 	struct workqueue_struct *early_power_workq;
 	struct work_struct early_on_work;
