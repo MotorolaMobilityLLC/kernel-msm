@@ -20,6 +20,7 @@
 /* Registers Address */
 #define GEN_DEV_SET_REG			0x00
 #define CHIP_VERSION_REG		0x17
+#define AUX_SET_REG			0x09
 
 #define REDRIVER_REG_MAX		0x1f
 
@@ -213,8 +214,10 @@ static void ssusb_redriver_gen_dev_set(
 {
 	int ret;
 	u8 val, oldval;
+	u8 aux_val;
 
 	val = 0;
+	aux_val = 0;
 
 	switch (redriver->op_mode) {
 	case OP_MODE_USB:
@@ -299,6 +302,31 @@ static void ssusb_redriver_gen_dev_set(
 		on ? "ENABLE":"DISABLE", val);
 
 	redriver->gen_dev_val = val;
+	//Also set the aux mux for dp after a little bit
+	if(redriver->op_mode > OP_MODE_USB)
+	{
+		dev_dbg(redriver->dev, "We are using aux\n");
+		if (redriver->typec_orientation
+				== ORIENTATION_CC1)
+		{
+			aux_val = 0x00;
+		}
+		else if (redriver->typec_orientation
+				== ORIENTATION_CC2)
+		{
+			aux_val = 0x01;
+		}
+		else
+		{
+			dev_dbg(redriver->dev, "Weren't able to get the orientation so don't set aux\n");
+			goto err_exit;
+		}
+
+		ret = redriver_i2c_reg_set(redriver, AUX_SET_REG, aux_val);
+		if (ret < 0)
+			goto err_exit;
+	}
+
 	return;
 
 err_exit:
