@@ -940,7 +940,7 @@ static void p54u_load_firmware_cb(const struct firmware *firmware,
 	 * the "priv" context. Do not use it anymore!
 	 */
 	priv = NULL;
-
+	if (err) {
 	if (err) {
 		dev_err(&intf->dev, "failed to initialize device (%d)\n", err);
 
