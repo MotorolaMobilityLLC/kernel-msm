@@ -3289,6 +3289,20 @@ int smblib_set_prop_dc_reset(struct smb_charger *chg)
 	return rc;
 }
 
+int smblib_set_prop_dc_en(struct smb_charger *chg,
+				    const union power_supply_propval *val)
+{
+	int rc;
+
+	if (val->intval)
+		rc = smblib_masked_write(chg, DCIN_CMD_IL_REG, DCIN_EN_MASK,
+			DCIN_EN_OVERRIDE_BIT);
+	else
+		rc = smblib_masked_write(chg, DCIN_CMD_IL_REG, DCIN_EN_MASK, 0);
+
+	return rc;
+}
+
 /*******************
  * USB PSY GETTERS *
  *******************/
