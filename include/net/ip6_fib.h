@@ -227,10 +227,6 @@ static inline void rt6_hold(struct rt6_info *rt)
 static inline void rt6_release(struct rt6_info *rt)
 {
 	if (atomic_dec_and_test(&rt->rt6i_ref)) {
-		/* MMI_STOPSHIP - sofia: debug patch from QCom for IKSWQ-15553 */
-		if (strstr(rt->dst.dev->name, "wlan"))
-			pr_err("%s(): destroyed route. Prefix: %pI6/%u, GW: %pI6, dev: %s, proto: %u\n",
-					__func__, &rt->rt6i_dst.addr, rt->rt6i_dst.plen, &rt->rt6i_gateway, rt->dst.dev->name, rt->rt6i_protocol);
 		rt6_free_pcpu(rt);
 		dst_dev_put(&rt->dst);
 		dst_release(&rt->dst);
