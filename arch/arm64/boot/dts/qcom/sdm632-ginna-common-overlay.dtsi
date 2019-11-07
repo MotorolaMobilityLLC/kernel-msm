@@ -319,6 +319,21 @@
 	};
 };
 
+
+&pmi632_vadc {
+        chan@10 {
+                label = "host_det";
+                reg = <0x10>;
+                qcom,decimation = <0>;
+                qcom,pre-div-channel-scaling = <1>;
+                qcom,calibration-type = "absolute";
+                qcom,scale-function = <0>;
+                qcom,hw-settle-time = <0>;
+                qcom,fast-avg-setup = <0>;
+        };
+};
+
+
 &pm8953_vadc {
 	pinctrl-0 = <&chg_therm_default &msm_therm_default>;
 	/delete-node/ chan@11;
