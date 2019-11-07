@@ -319,7 +319,7 @@ int qg_get_battery_temp(struct qpnp_qg *chip, int *temp)
 		return 0;
 	}
 
-#ifdef CONFIG_BAT_TEMP_30K_PULL
+#if (defined(CONFIG_BAT_TEMP_30K_PULL) || defined (CONFIG_BAT_TEMP_30K_PULL_B3435K))
 	rc = qpnp_vadc_read(chip->vadc_dev, VADC_BAT_THERM_PU1, &result);
 #else
 	rc = qpnp_vadc_read(chip->vadc_dev, VADC_BAT_THERM_PU2, &result);
