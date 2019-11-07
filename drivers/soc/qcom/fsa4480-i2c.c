@@ -357,6 +357,8 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	struct fsa4480_priv *fsa_priv;
 	int rc = 0;
 
+	return 0;
+
 	fsa_priv = devm_kzalloc(&i2c->dev, sizeof(*fsa_priv),
 				GFP_KERNEL);
 	if (!fsa_priv)
