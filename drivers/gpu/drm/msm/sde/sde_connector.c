@@ -1276,6 +1276,9 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 		if ((idx == CONNECTOR_PROP_OUT_FB) && rc)
 			_sde_connector_destroy_fb(c_conn, c_state);
 	}
+
+	if ((idx == CONNECTOR_PROP_HBM) || (idx == CONNECTOR_PROP_CABC) ||(idx == CONNECTOR_PROP_ACL))
+		rc = 0xFF;
 end:
 	return rc;
 }
