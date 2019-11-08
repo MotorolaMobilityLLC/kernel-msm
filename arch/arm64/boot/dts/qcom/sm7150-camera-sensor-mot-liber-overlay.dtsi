@@ -1,0 +1,142 @@
+/*
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm {
+	cam_sensor_mclk2_active: cam_sensor_mclk2_active {
+		/* MCLK2 */
+		mux {
+			pins = "gpio15";
+			function = "cam_mclk";
+		};
+
+		config {
+			pins = "gpio15";
+			bias-disable; /* No PULL */
+			drive-strength = <4>; /* 4 MA */
+		};
+	};
+
+	cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
+		/* MCLK2 */
+		mux {
+			pins = "gpio15";
+			function = "cam_mclk";
+		};
+
+		config {
+			pins = "gpio15";
+			bias-pull-down; /* PULL DOWN */
+			drive-strength = <4>; /* 4 MA */
+		};
+	};
+
+	cam_sensor_main_active: cam_sensor_main_active {
+		/* RESET  */
+		mux {
+			pins = "gpio26";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio26";
+			bias-disable; /* No PULL */
+			drive-strength = <2>; /* 2 MA */
+		};
+	};
+
+	cam_sensor_main_suspend: cam_sensor_main_suspend {
+		/* RESET */
+		mux {
+			pins = "gpio26";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio26";
+			bias-pull-down; /* PULL DOWN */
+			drive-strength = <2>; /* 2 MA */
+			output-low;
+		};
+	};
+};
+
+&soc {
+	camera_main_front_macro_avdd_ldo: gpio-regulator@0 {
+		compatible = "regulator-fixed";
+		reg = <0x00 0x00>;
+		regulator-name = "camera_main_front_macro_avdd_ldo";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		regulator-enable-ramp-delay = <233>;
+		enable-active-high;
+		gpio = <&tlmm 63 0>;
+	};
+
+	camera_main_dvdd_ldo: gpio-regulator@1 {
+		compatible = "regulator-fixed";
+		reg = <0x01 0x00>;
+		regulator-name = "camera_main_dvdd_ldo";
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1050000>;
+		regulator-enable-ramp-delay = <233>;
+		enable-active-high;
+		gpio = <&tlmm 64 0>;
+		vin-supply = <&pm6150l_s8>;
+	};
+};
+
+
+&cam_cci {
+	qcom,cam-res-mgr {
+		compatible = "qcom,cam-res-mgr";
+		status = "ok";
+	};
+
+	qcom,cam-sensor@0 {
+		cell-index = <0>;
+		compatible = "qcom,cam-sensor";
+		reg = <0x0>;
+		csiphy-sd-index = <0>;
+		sensor-position-roll = <90>;
+		sensor-position-pitch = <0>;
+		sensor-position-yaw = <180>;
+		cam_vio-supply = <&pm6150_l13>;
+		cam_vana-supply = <&camera_main_front_macro_avdd_ldo>;
+		cam_vdig-supply = <&camera_main_dvdd_ldo>;
+		cam_clk-supply = <&titan_top_gdsc>;
+		regulator-names = "cam_vio", "cam_vana", "cam_vdig", "cam_clk";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000 2800000 1050000 0>;
+		rgltr-max-voltage = <1800000 2800000 1050000 0>;
+		rgltr-load-current = <0 80000 105000 0>;
+		gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active
+				&cam_sensor_main_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend
+				&cam_sensor_main_suspend>;
+		gpios = <&tlmm 15 0>,
+			<&tlmm 26 0>;
+		gpio-reset = <1>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <1 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK2", "CAM_RESET0";
+		cci-device = <0>;
+		cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "turbo";
+		clock-rates = <24000000>;
+	};
+};
