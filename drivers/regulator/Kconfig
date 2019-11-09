@@ -828,6 +828,11 @@ config REGULATOR_SC2731
 	  This driver provides support for the voltage regulators on the
 	  SC2731 PMIC.
 
+config REGULATOR_SLG51000
+        tristate "Dialog Semiconductor SLG51000 regulators"
+        depends on I2C
+        select REGMAP_I2C
+
 config REGULATOR_SKY81452
 	tristate "Skyworks Solutions SKY81452 voltage regulator"
 	depends on MFD_SKY81452
