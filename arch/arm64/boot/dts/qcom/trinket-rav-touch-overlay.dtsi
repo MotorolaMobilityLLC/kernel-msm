@@ -44,6 +44,7 @@
 		/* 672A, 525B, 675, 526 */
 		novatek,swrst-n8-addr = <0x03F0FE>;
 		novatek,spi-rd-fast-addr = <0x03F310>;
+		novatek,usb_charger;
 		status = "/chosen", "mmi,panel_name", "tm_nt36526_hd_vid";
 	};
 
