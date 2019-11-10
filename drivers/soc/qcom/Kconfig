@@ -565,7 +565,7 @@ config MSM_IPC_ROUTER_USB_XPRT
 	  with only one of them on a given platform.
 
 config MSM_IPC_ROUTER_MHI_XPRT
-	depends on MSM_MHI
+	depends on MHI_BUS
 	depends on IPC_ROUTER
 	bool "MSM MHI XPRT Layer"
 	help
