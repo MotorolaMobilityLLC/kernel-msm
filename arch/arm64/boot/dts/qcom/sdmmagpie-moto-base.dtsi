@@ -1,0 +1,48 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+/dts-v1/;
+
+#include "sdmmagpie.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDMMAGPIE SoC";
+	compatible = "qcom,sdmmagpie";
+	qcom,board-id = <0 0>;
+	channel-id-map = "";
+/*
+ * Some nodes need labels assigned to appear in __symbols__
+ */
+	chosen: chosen { };
+	aliases: aliases { };
+	reserved_memory: reserved-memory { };
+	mtp_batterydata: qcom,battery-data {};
+	utags: utags { };
+	hw: hw { };
+};
+
+
+&removed_region {
+	reg = <0 0x86200000 0 0x4100000>;
+};
+
+&qcom_seecom {
+	reg = <0x86d00000 0x2200000>;
+};
+
+
+&mdss_dsi0 {
+	/delete-property/ qcom,split-link-supported;
+};
+
