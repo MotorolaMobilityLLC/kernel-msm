@@ -34,6 +34,14 @@ config DEF_DTB
 	  Only include Def specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config LIBER_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Liber DTBs"
+	help
+	  Only include liber specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QTPRO_DTB
 	depends on ARCH_QCOM
 	default n
