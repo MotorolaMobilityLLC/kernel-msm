@@ -30,6 +30,7 @@
 		focaltech,display-coords = <0 0 719 1559>;
 		focaltech,max-touch-number = <10>;
 		focaltech,panel-supplier = "boe";
+		focaltech,always_on_vio;
 		status = "/chosen", "mmi,panel_name", "boe_ft8009_hd_vid";
 	};
 
@@ -97,6 +98,7 @@
 		focaltech,display-coords = <0 0 719 1559>;
 		focaltech,max-touch-number = <10>;
 		focaltech,panel-supplier = "boev";
+		focaltech,always_on_vio;
 		status = "/chosen", "mmi,panel_name", "boev_ft8009_hd_vid";
 	};
 };
