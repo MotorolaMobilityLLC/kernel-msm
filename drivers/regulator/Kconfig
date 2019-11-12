@@ -829,9 +829,13 @@ config REGULATOR_SC2731
 	  SC2731 PMIC.
 
 config REGULATOR_SLG51000
-        tristate "Dialog Semiconductor SLG51000 regulators"
+        tristate "Dialog Semiconductor SLG51000 regulator"
         depends on I2C
         select REGMAP_I2C
+        help
+	  Say y here to support for the Dialog Semiconductor SLG51000.
+	  The SLG51000 is seven compact and customizable low dropout
+	  regulators.
 
 config REGULATOR_SKY81452
 	tristate "Skyworks Solutions SKY81452 voltage regulator"
