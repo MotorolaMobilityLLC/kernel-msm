@@ -49,6 +49,9 @@ static const int required_gpios[] = {
 };
 
 void *ipc_log;
+static char sfr_buf[RD_BUF_SIZE];
+static char *mdm_restart_reason = sfr_buf;
+module_param(mdm_restart_reason, charp, S_IRUGO);
 
 static void mdm_debug_gpio_show(struct mdm_ctrl *mdm)
 {
@@ -366,7 +369,6 @@ static void mdm_status_fn(struct work_struct *work)
 static void mdm_get_restart_reason(struct work_struct *work)
 {
 	int ret, ntries = 0;
-	char sfr_buf[RD_BUF_SIZE];
 	struct mdm_ctrl *mdm =
 		container_of(work, struct mdm_ctrl, restart_reason_work);
 	struct device *dev = mdm->dev;
@@ -539,6 +541,7 @@ static irqreturn_t mdm_status_change(int irq, void *dev_id)
 	}
 	value = gpio_get_value(MDM_GPIO(mdm, MDM2AP_STATUS));
 	if (value == 0 && mdm->ready) {
+		memset(sfr_buf, 0, sizeof(sfr_buf));
 		esoc_mdm_log("Unexpected reset of external modem\n");
 		dev_err(dev, "unexpected reset external modem\n");
 		subsys_set_crash_status(esoc->subsys_dev, true);
