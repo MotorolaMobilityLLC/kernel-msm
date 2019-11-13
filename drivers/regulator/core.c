@@ -4971,6 +4971,154 @@ struct class regulator_class = {
 	.pm = &regulator_pm_ops,
 #endif
 };
+
+/* Add for vreg debug */
+#define VREG_NUM_MAX 100
+
+struct regulator_dump {
+	char *buf;
+	int pos;
+	int id;
+};
+
+int _vreg_dump_info(struct device *dev, void *data)
+{
+	struct regulator_dump *dump = data;
+	struct regulator_dev *rdev = dev_to_rdev(dev);
+	const struct regulator_ops *ops = rdev->desc->ops;
+	unsigned on, mv;
+	char *p = dump->buf + dump->pos;
+
+	p += snprintf(p, PAGE_SIZE, "[%2d]%s: ",
+		dump->id++, rdev->desc->name);
+
+	on = mv = 0;
+	mutex_lock(&rdev->mutex);
+
+	if (ops->is_enabled)
+		on = ops->is_enabled(rdev);
+	if (ops->get_voltage)
+		mv = ops->get_voltage(rdev) / 1000;
+
+	mutex_unlock(&rdev->mutex);
+
+	p += snprintf(p, PAGE_SIZE, "%s ", on ? "on " : "off");
+	p += snprintf(p, PAGE_SIZE, "%4d mv ", mv);
+	p += snprintf(p, PAGE_SIZE, "\n");
+
+	dump->pos = p - dump->buf;
+	return 0;
+}
+
+int vreg_dump_info(char *buf)
+{
+	struct regulator_dump data;
+
+	data.buf = buf;
+	data.pos = 0;
+	data.id = 0;
+	class_for_each_device(&regulator_class, NULL, &data,
+				     _vreg_dump_info);
+	return data.pos;
+}
+
+/* save vreg config before sleep */
+static unsigned before_sleep_fetched;
+static unsigned before_sleep_configs[VREG_NUM_MAX];
+int _vreg_before_sleep_save_configs(struct device *dev, void *data)
+{
+	struct regulator_dump *dump = data;
+	struct regulator_dev *rdev = dev_to_rdev(dev);
+	const struct regulator_ops *ops = rdev->desc->ops;
+	unsigned on, mv;
+
+	if (dump->id >= VREG_NUM_MAX)
+		return -EINVAL;
+
+	on = mv = 0;
+	mutex_lock(&rdev->mutex);
+
+	if (ops->is_enabled)
+		on = ops->is_enabled(rdev);
+	if (ops->get_voltage)
+		mv = ops->get_voltage(rdev) / 1000;
+
+	mutex_unlock(&rdev->mutex);
+
+	before_sleep_configs[dump->id++] = mv | (on << 31);
+	return 0;
+}
+
+void vreg_before_sleep_save_configs(void)
+{
+	struct regulator_dump data;
+
+	/* only save vreg configs when it has been fetched */
+	if (!before_sleep_fetched)
+		return;
+
+	pr_debug("%s(), before_sleep_fetched=%d\n",
+		__func__, before_sleep_fetched);
+
+	data.buf = NULL;
+	data.pos = 0;
+	data.id = 0;
+
+	class_for_each_device(&regulator_class, NULL, &data,
+				     _vreg_before_sleep_save_configs);
+	before_sleep_fetched = false;
+}
+
+int _vreg_before_sleep_dump_info(struct device *dev, void *data)
+{
+	struct regulator_dump *dump = data;
+	struct regulator_dev *rdev = dev_to_rdev(dev);
+	char *p = dump->buf + dump->pos;
+	unsigned on, mv;
+
+	if (dump->id >= VREG_NUM_MAX)
+		return -EINVAL;
+
+	p += snprintf(p, PAGE_SIZE, "[%2d]%s: ",
+		dump->id, rdev->desc->name);
+
+	mv = before_sleep_configs[dump->id];
+	on = (mv & 0x80000000) >> 31;
+	mv &= ~0x80000000;
+
+	p += snprintf(p, PAGE_SIZE, "%s ", on ? "on " : "off");
+	p += snprintf(p, PAGE_SIZE, "%4d mv ", mv);
+	p += snprintf(p, PAGE_SIZE, "\n");
+
+	dump->id++;
+	dump->pos = p - dump->buf;
+	return 0;
+}
+
+int vreg_before_sleep_dump_info(char *buf)
+{
+	struct regulator_dump data;
+	char *p = buf;
+
+	data.buf = p;
+	data.pos = 0;
+	data.id = 0;
+
+	p += snprintf(p, PAGE_SIZE, "vreg_before_sleep:\n");
+	data.pos = p - data.buf;
+
+	pr_debug("%s(), before_sleep_fetched=%d\n",
+		__func__, before_sleep_fetched);
+
+	if (!before_sleep_fetched) {
+		class_for_each_device(&regulator_class, NULL, &data,
+				     _vreg_before_sleep_dump_info);
+		before_sleep_fetched = true;
+	}
+
+	return data.pos;
+}
+
 /**
  * regulator_has_full_constraints - the system has fully specified constraints
  *
