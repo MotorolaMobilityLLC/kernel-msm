@@ -1,0 +1,340 @@
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&tlmm {
+	ter_i2s_sck_ws {
+		ter_i2s_sck_sleep: ter_i2s_sck_sleep {
+			mux {
+				pins = "gpio53", "gpio54";
+				function = "ter_mi2s";
+			};
+
+			config {
+				pins = "gpio53", "gpio54";
+				drive-strength = <2>;   /* 2 mA */
+				bias-disable;
+			};
+                };
+
+                ter_i2s_sck_active: ter_i2s_sck_active {
+			mux {
+				pins = "gpio53", "gpio54";
+				function = "ter_mi2s";
+			};
+
+			config {
+				pins = "gpio53", "gpio54";
+				drive-strength = <8>;   /* 8 mA */
+				bias-disable;
+			};
+		};
+        };
+
+	ter_i2s_data0 {
+		ter_i2s_data0_sleep: ter_i2s_data0_sleep {
+			mux {
+				pins = "gpio55";
+				function = "ter_mi2s";
+			};
+
+			config {
+				pins = "gpio55";
+				drive-strength = <2>;   /* 2 mA */
+				bias-disable;
+			};
+		};
+
+                ter_i2s_data0_active: ter_i2s_data0_active {
+			mux {
+				pins = "gpio55";
+				function = "ter_mi2s";
+			};
+
+			config {
+				pins = "gpio55";
+				drive-strength = <8>;   /* 8 mA */
+				bias-disable;
+			};
+		};
+        };
+
+        ter_i2s_data1 {
+                ter_i2s_data1_sleep: ter_i2s_data1_sleep {
+			mux {
+				pins = "gpio56";
+				function = "ter_mi2s";
+			};
+
+			config {
+				pins = "gpio56";
+				drive-strength = <2>;   /* 2 mA */
+				bias-disable;
+			};
+		};
+
+		ter_i2s_data1_active: ter_i2s_data1_active {
+			mux {
+				pins = "gpio56";
+				function = "ter_mi2s";
+			};
+
+			config {
+				pins = "gpio56";
+				drive-strength = <8>;   /* 8 mA */
+				bias-disable;
+			};
+                };
+        };
+};
+
+&soc {
+	cdc_ter_mi2s_gpios: msm_cdc_pinctrl_ter {
+		compatible = "qcom,msm-cdc-pinctrl";
+                pinctrl-names = "aud_active", "aud_sleep";
+                pinctrl-0 = <&ter_i2s_sck_active &ter_i2s_data0_active
+			     &ter_i2s_data1_active>;
+                pinctrl-1 = <&ter_i2s_sck_sleep &ter_i2s_data0_sleep
+			      &ter_i2s_data1_sleep>;
+
+	};
+
+        msm_dai_mi2s: qcom,msm-dai-mi2s {
+                compatible = "qcom,msm-dai-mi2s";
+
+                dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+                        status = "okay";
+                };
+
+                dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
+                        status = "okay";
+                };
+
+                dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+                        status = "okay";
+                        compatible = "qcom,msm-dai-q6-mi2s";
+                        qcom,msm-dai-q6-mi2s-dev-id = <2>;
+                        qcom,msm-mi2s-rx-lines = <1>;
+                        qcom,msm-mi2s-tx-lines = <2>;
+                };
+
+                dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+                        status = "okay";
+                };
+
+                dai_mi2s4: qcom,msm-dai-q6-mi2s-quin {
+                        status = "okay";
+                };
+
+                dai_mi2s5: qcom,msm-dai-q6-mi2s-senary {
+                        status = "okay";
+                };
+        };
+};
+
+
+&bolero {
+	status = "okay";
+	qcom,num-macros = <3>;
+
+	/delete-node/ wsa-macro@62f00000;
+};
+
+&wcd937x_codec {
+	status = "okay";
+};
+
+&wcd937x_rst_gpio {
+	status  = "okay";
+};
+
+&cdc_dmic01_gpios {
+	status = "disabled";
+};
+
+&cdc_dmic23_gpios {
+	status = "disabled";
+};
+
+&wsa_swr_gpios {
+	status = "disabled";
+};
+
+&rx_swr_gpios {
+	status = "okay";
+};
+
+&tx_swr_gpios {
+	status = "okay";
+};
+
+&wsa_spkr_en1 {
+	status = "disabled";
+};
+
+&wsa_spkr_en2 {
+	status = "disabled";
+};
+
+&wcd9xxx_intc {
+	status  = "disabled";
+};
+
+&wcd934x_rst_gpio {
+	status  = "disabled";
+};
+
+&tavil_glink {
+	status  = "disabled";
+};
+
+&tavil_wdsp {
+	status  = "disabled";
+};
+
+&dai_slim {
+	status  = "disabled";
+};
+
+&slim_aud {
+	status = "disabled";
+};
+
+&sm6150_snd {
+	status = "ok";
+	compatible = "qcom,sm6150-asoc-snd";
+	qcom,model = "sm6150-awinic-snd-card";
+        qcom,mi2s-audio-intf = <1>;
+        qcom,auxpcm-audio-intf = <1>;
+        qcom,wcn-btfm = <1>;
+	qcom,ext-disp-audio-rx = <1>;
+	qcom,msm-mi2s-master = <1>, <1>, <1>, <1>, <1>;
+
+	qcom,tert-mi2s-gpios = <&cdc_ter_mi2s_gpios>;
+
+/*	aw,have-882xx;*/
+
+	asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+                        <&loopback>, <&compress>, <&hostless>,
+                        <&afe>, <&lsm>, <&routing>, <&compr>,
+                        <&pcm_noirq>;
+        asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+                        "msm-pcm-dsp.2", "msm-voip-dsp",
+                        "msm-pcm-voice", "msm-pcm-loopback",
+                        "msm-compress-dsp", "msm-pcm-hostless",
+                        "msm-pcm-afe", "msm-lsm-client",
+                        "msm-pcm-routing", "msm-compr-dsp",
+                        "msm-pcm-dsp-noirq";
+        asoc-cpu = <&dai_dp>,
+                        <&dai_mi2s0>, <&dai_mi2s1>,
+                        <&dai_mi2s2>, <&dai_mi2s3>,
+                        <&dai_mi2s4>, <&dai_pri_auxpcm>,
+                        <&dai_sec_auxpcm>, <&dai_tert_auxpcm>,
+                        <&dai_quat_auxpcm>, <&dai_quin_auxpcm>,
+                        <&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
+                        <&afe_proxy_tx>, <&incall_record_rx>,
+                        <&incall_record_tx>, <&incall_music_rx>,
+                        <&incall_music_2_rx>,
+                        <&sb_7_rx>, <&sb_7_tx>, <&sb_8_tx>, <&sb_8_rx>,
+                        <&usb_audio_rx>, <&usb_audio_tx>,
+                        <&wsa_cdc_dma_0_rx>, <&wsa_cdc_dma_0_tx>,
+                        <&wsa_cdc_dma_1_rx>, <&wsa_cdc_dma_1_tx>,
+                        <&wsa_cdc_dma_2_tx>,
+                        <&rx_cdc_dma_0_rx>, <&tx_cdc_dma_0_tx>,
+                        <&rx_cdc_dma_1_rx>, <&tx_cdc_dma_1_tx>,
+                        <&rx_cdc_dma_2_rx>, <&tx_cdc_dma_2_tx>,
+                        <&rx_cdc_dma_3_rx>, <&tx_cdc_dma_3_tx>,
+                        <&rx_cdc_dma_4_rx>, <&tx_cdc_dma_4_tx>,
+                        <&rx_cdc_dma_5_rx>, <&tx_cdc_dma_5_tx>,
+                        <&rx_cdc_dma_6_rx>, <&rx_cdc_dma_7_rx>;
+        asoc-cpu-names = "msm-dai-q6-dp.24608",
+                        "msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+                        "msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+                        "msm-dai-q6-mi2s.4", "msm-dai-q6-auxpcm.1",
+                        "msm-dai-q6-auxpcm.2", "msm-dai-q6-auxpcm.3",
+                        "msm-dai-q6-auxpcm.4", "msm-dai-q6-auxpcm.5",
+                        "msm-dai-q6-dev.224",
+                        "msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+                        "msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+                        "msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+                        "msm-dai-q6-dev.32770", "msm-dai-q6-dev.16398",
+                        "msm-dai-q6-dev.16399", "msm-dai-q6-dev.16401",
+                        "msm-dai-q6-dev.16400",
+                        "msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
+                        "msm-dai-cdc-dma-dev.45056",
+                        "msm-dai-cdc-dma-dev.45057",
+                        "msm-dai-cdc-dma-dev.45058",
+                        "msm-dai-cdc-dma-dev.45059",
+                        "msm-dai-cdc-dma-dev.45061",
+                        "msm-dai-cdc-dma-dev.45104",
+                        "msm-dai-cdc-dma-dev.45105",
+                        "msm-dai-cdc-dma-dev.45106",
+                        "msm-dai-cdc-dma-dev.45107",
+                        "msm-dai-cdc-dma-dev.45108",
+                        "msm-dai-cdc-dma-dev.45109",
+                        "msm-dai-cdc-dma-dev.45110",
+                        "msm-dai-cdc-dma-dev.45111",
+                        "msm-dai-cdc-dma-dev.45112",
+                        "msm-dai-cdc-dma-dev.45113",
+                        "msm-dai-cdc-dma-dev.45114",
+                        "msm-dai-cdc-dma-dev.45115",
+                        "msm-dai-cdc-dma-dev.45116",
+                        "msm-dai-cdc-dma-dev.45118";
+
+	qcom,msm-mbhc-hphl-swh = <1>;
+        qcom,msm-mbhc-gnd-swh = <1>;
+        /delete-property/ qcom,cdc-dmic01-gpios;
+        /delete-property/ qcom,cdc-dmic23-gpios;
+	asoc-codec  = <&stub_codec>, <&bolero>, <&ext_disp_audio_codec>;
+        asoc-codec-names = "msm-stub-codec.1", "bolero_codec",
+                           "msm-ext-disp-audio-codec-rx";
+	qcom,wsa-max-devs = <0>;
+	/delete-property/ qcom,wsa-devs;
+        /delete-property/ qcom,wsa-aux-dev-prefix;
+        qcom,codec-max-aux-devs = <1>;
+        qcom,codec-aux-devs = <&wcd937x_codec>;
+	qcom,msm_audio_ssr_devs = <&audio_apr>, <&q6core>,
+                                <&lpi_tlmm>, <&bolero>;
+
+	qcom,audio-routing =
+		"AMIC1", "MIC BIAS1",
+                "MIC BIAS1", "Analog Mic1",
+                "AMIC2", "MIC BIAS2",
+                "MIC BIAS2", "Analog Mic2",
+                "TX_AIF1 CAP", "VA_MCLK",
+                "TX_AIF2 CAP", "VA_MCLK",
+                "RX AIF1 PB", "VA_MCLK",
+                "RX AIF2 PB", "VA_MCLK",
+                "RX AIF3 PB", "VA_MCLK",
+                "RX AIF4 PB", "VA_MCLK",
+                "HPHL_OUT", "VA_MCLK",
+                "HPHR_OUT", "VA_MCLK",
+                "AUX_OUT", "VA_MCLK",
+                "IN1_HPHL", "HPHL_OUT",
+                "IN2_HPHR", "HPHR_OUT",
+                "IN3_AUX", "AUX_OUT",
+                "TX SWR_ADC0", "ADC1_OUTPUT",
+                "TX SWR_ADC2", "ADC2_OUTPUT";
+};
+
+&qupv3_se9_i2c {
+        aw882xx:aw882xx_smartpa@34 {
+                compatible = "awinic,aw882xx_smartpa";
+                reg = <0x34>;
+                reset-gpio = <&tlmm 43 0>;
+                irq-gpio = <&tlmm 91 0x2008>;
+                monitor-flag = <1>;
+                monitor-timer-val = <3000>;
+                status = "disabled";
+        };
+};
