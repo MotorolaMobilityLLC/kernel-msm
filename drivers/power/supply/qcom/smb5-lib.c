@@ -818,7 +818,6 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 					int min_allowed_uv, int max_allowed_uv)
 {
 	int rc, aicl_threshold;
-#ifdef QCOM_BASE
 	u8 vbus_allowance;
 
 	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
@@ -847,15 +846,17 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 		return rc;
 	}
 
-	if (vbus_allowance != CONTINUOUS)
-		return 0;
-#else
+#ifndef QCOM_BASE
+	/* We need to run oem pd contract work to select pdo*/
 	if (chg->pd_active && (chg->pd_contract_uv <= 0)) {
 		cancel_delayed_work(&chg->pd_contract_work);
 		schedule_delayed_work(&chg->pd_contract_work,
 					msecs_to_jiffies(0));
 	}
 #endif
+
+	if (vbus_allowance != CONTINUOUS)
+		return 0;
 
 	aicl_threshold = min_allowed_uv / 1000 - CONT_AICL_HEADROOM_MV;
 	if (chg->adapter_cc_mode)
