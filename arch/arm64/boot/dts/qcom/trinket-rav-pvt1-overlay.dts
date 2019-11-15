@@ -22,3 +22,7 @@
 	qcom,msm-id = <394 0x0>;
 	qcom,board-id = <0x4E 0xC100>;
 };
+
+&pmi632_charger {
+	mmi,ext-ovp-greater-12v;
+};
