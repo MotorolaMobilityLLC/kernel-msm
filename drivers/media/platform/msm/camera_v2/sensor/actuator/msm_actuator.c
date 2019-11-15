@@ -26,9 +26,9 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 #endif
 
-#define PARK_LENS_LONG_STEP 12
-#define PARK_LENS_MID_STEP 11
-#define PARK_LENS_SMALL_STEP 1
+#define PARK_LENS_LONG_STEP 7
+#define PARK_LENS_MID_STEP 5
+#define PARK_LENS_SMALL_STEP 3
 #define MAX_QVALUE 4096
 
 static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
@@ -851,19 +851,11 @@ static int32_t msm_actuator_park_lens(struct msm_actuator_ctrl_t *a_ctrl)
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_LONG_STEP);
-			if (next_lens_pos < a_ctrl->park_lens.max_step *
-				PARK_LENS_LONG_STEP)
-				next_lens_pos = a_ctrl->park_lens.max_step *
-				PARK_LENS_LONG_STEP;
 		} else if (next_lens_pos > (a_ctrl->park_lens.max_step *
 			PARK_LENS_MID_STEP)) {
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_MID_STEP);
-			if (next_lens_pos < a_ctrl->park_lens.max_step *
-				PARK_LENS_MID_STEP)
-				next_lens_pos = a_ctrl->park_lens.max_step *
-				PARK_LENS_MID_STEP;
 		} else if (next_lens_pos > (a_ctrl->park_lens.max_step *
 			PARK_LENS_SMALL_STEP)) {
 			next_lens_pos = next_lens_pos -
@@ -893,7 +885,7 @@ static int32_t msm_actuator_park_lens(struct msm_actuator_ctrl_t *a_ctrl)
 		}
 		a_ctrl->i2c_tbl_index = 0;
 		/* Use typical damping time delay to avoid tick sound */
-		usleep_range(15000, 17000);
+		usleep_range(10000, 12000);
 	}
 
 	return 0;
