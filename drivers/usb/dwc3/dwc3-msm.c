@@ -330,6 +330,7 @@ struct dwc3_msm {
 	bool usb_compliance_mode;
 	struct mutex suspend_resume_mutex;
 	bool ss_compliance;
+	int host_id_state; //IKSWQ-34206, add host_id_state
 
 	enum usb_device_speed override_usb_speed;
 
@@ -3306,6 +3307,9 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 	if (mdwc->id_state != id) {
 		mdwc->id_state = id;
 		dbg_event(0xFF, "id_state", mdwc->id_state);
+
+		//IKSWQ-34206, update host_id_state
+                mdwc->host_id_state = mdwc->id_state == DWC3_ID_GROUND ? 1 : 0;
 		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
 	}
 
@@ -3575,12 +3579,15 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 	if (sysfs_streq(buf, "peripheral")) {
 		mdwc->vbus_active = true;
 		mdwc->id_state = DWC3_ID_FLOAT;
+		mdwc->host_id_state = 0; //IKSWQ-34206
 	} else if (sysfs_streq(buf, "host")) {
 		mdwc->vbus_active = false;
 		mdwc->id_state = DWC3_ID_GROUND;
+		mdwc->host_id_state = 1; //IKSWQ-34206
 	} else {
 		mdwc->vbus_active = false;
 		mdwc->id_state = DWC3_ID_FLOAT;
+		mdwc->host_id_state = 0; //IKSWQ-34206
 	}
 
 	dwc3_ext_event_notify(mdwc);
@@ -3663,6 +3670,29 @@ static ssize_t usb_compliance_mode_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(usb_compliance_mode);
 
+//IKSWQ-34206, add /sys/devices/platform/soc/7000000.ssusb/host_id_state for tcmd, start
+static ssize_t host_id_state_show(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", mdwc->host_id_state);
+}
+static ssize_t host_id_state_store(struct device *dev,
+                struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret = 0;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (sysfs_streq(buf, "0") || sysfs_streq(buf, "1")) {
+		ret = kstrtoint(buf, 0, &mdwc->host_id_state);
+	}
+	if (ret)
+		return ret;
+	return count;
+}
+static DEVICE_ATTR_RW(host_id_state);
+//IKSWQ-34206, end
 
 static ssize_t xhci_link_compliance_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -3737,6 +3767,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	mdwc->id_state = DWC3_ID_FLOAT;
+	mdwc->host_id_state = 0; //IKSWQ-43206
 	set_bit(ID, &mdwc->inputs);
 
 	mdwc->charging_disabled = of_property_read_bool(node,
@@ -4064,6 +4095,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		dwc3_ext_event_notify(mdwc);
 	}
 
+	//IKSWQ-34206, create host_id_state file, start
+	mdwc->host_id_state = mdwc->id_state == DWC3_ID_GROUND ? 1 : 0;
+	device_create_file(&pdev->dev, &dev_attr_host_id_state);
+	//IKSWQ-34206, end
+
 	if (mdwc->ss_compliance) {
 		device_create_file(&pdev->dev, &dev_attr_enable_ss_compliance);
 		device_create_file(&pdev->dev, &dev_attr_toggle_pattern);
@@ -4100,6 +4136,7 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 
 	device_remove_file(&pdev->dev, &dev_attr_mode);
 	device_remove_file(&pdev->dev, &dev_attr_xhci_link_compliance);
+	device_remove_file(&pdev->dev, &dev_attr_host_id_state); //IKSWQ-34206
 	if (mdwc->usb_psy)
 		power_supply_put(mdwc->usb_psy);
 
