@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Author: Brian Swetland <swetland@google.com>
- * Copyright (c) 2009-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2019, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -319,6 +319,7 @@ struct msm_otg {
 	struct work_struct notify_charger_work;
 	struct work_struct extcon_register_work;
 	struct notifier_block psy_nb;
+	bool enable_sdp_check_timer;
 };
 
 struct ci13xxx_platform_data {
