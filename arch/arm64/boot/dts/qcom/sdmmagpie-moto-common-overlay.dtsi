@@ -125,6 +125,10 @@
 	status = "ok";
 };
 
+&pm6150l_lcdb {
+	status = "ok";
+};
+
 &ufsphy_mem {
 	compatible = "qcom,ufs-phy-qmp-v3";
 
