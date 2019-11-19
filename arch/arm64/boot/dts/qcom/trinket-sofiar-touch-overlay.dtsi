@@ -78,6 +78,7 @@
 		focaltech,display-coords = <0 0 1079 2299>;
 		focaltech,max-touch-number = <10>;
 		focaltech,always_on_vio;
+		focaltech,rst_in_resume;
 		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
 	};
 
