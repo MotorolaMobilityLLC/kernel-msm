@@ -22,6 +22,7 @@
 		focaltech,max-touch-number = <10>;
 		focaltech,panel-supplier = "tianma";
 		focaltech,always_on_vio;
+		focaltech,rst_in_resume;
 		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
 	};
 
@@ -43,6 +44,7 @@
 		focaltech,max-touch-number = <10>;
 		focaltech,panel-supplier = "auo";
 		focaltech,always_on_vio;
+		focaltech,rst_in_resume;
 		status = "/chosen", "mmi,panel_name", "auo_ft8756_fhd_vid";
 	};
 };
