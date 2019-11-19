@@ -1,7 +1,7 @@
 /*
  * QTI CE device driver.
  *
- * Copyright (c) 2010-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2030,11 +2030,14 @@ err:
 	podev->mem_client = NULL;
 
 	misc_deregister(&podev->miscdevice);
+	if (msm_bus_scale_client_update_request(podev->bus_scale_handle, 1))
+		pr_err("%s Unable to set high bandwidth\n", __func__);
 exit_qce_close:
 	if (handle)
 		qce_close(handle);
 exit_scale_busbandwidth:
-	msm_bus_scale_client_update_request(podev->bus_scale_handle, 0);
+	if (msm_bus_scale_client_update_request(podev->bus_scale_handle, 0))
+		pr_err("%s Unable to set low bandwidth\n", __func__);
 exit_unregister_bus_scale:
 	if (podev->platform_support.bus_scale_table != NULL)
 		msm_bus_scale_unregister_client(podev->bus_scale_handle);
@@ -2064,8 +2067,14 @@ static int qcedev_remove(struct platform_device *pdev)
 	podev = platform_get_drvdata(pdev);
 	if (!podev)
 		return 0;
+	if (msm_bus_scale_client_update_request(podev->bus_scale_handle, 1))
+		pr_err("%s Unable to set high bandwidth\n", __func__);
+
 	if (podev->qce)
 		qce_close(podev->qce);
+
+	if (msm_bus_scale_client_update_request(podev->bus_scale_handle, 0))
+		pr_err("%s Unable to set low bandwidth\n", __func__);
 
 	if (podev->platform_support.bus_scale_table != NULL)
 		msm_bus_scale_unregister_client(podev->bus_scale_handle);
