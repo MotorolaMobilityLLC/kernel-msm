@@ -81,6 +81,20 @@
 			bias-pull-down; /* PULL DOWN */
 		};
 	};
+
+	sdc2_cmd_on: sdc2_cmd_on {
+		config {
+			pins = "sdc2_cmd";
+			drive-strength = <12>;	/* increase from 10 to 12 MA */
+		};
+	};
+
+	sdc2_data_on: sdc2_data_on {
+		config {
+			pins = "sdc2_data";
+			drive-strength = <12>;	/* increase from 10 to 12 MA */
+		};
+	};
 };
 
 /*&pmi632_gpios {
