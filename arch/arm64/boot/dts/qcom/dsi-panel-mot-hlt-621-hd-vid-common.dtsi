@@ -46,7 +46,7 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 78 00 01 11
 	05 01 00 00 0A 00 01 29
 	29 01 00 00 00 00 03 51 FF 0F
-	29 01 00 00 00 00 02 53 24
+	29 01 00 00 00 00 02 53 2C
 	29 01 00 00 00 00 02 55 00
 ];
 qcom,mdss-dsi-off-command = [
@@ -87,7 +87,7 @@ qcom,mdss-dsi-panel-timings-phy-v2 = [
 qcom,mdss-dsi-t-clk-post = <0x0A>;
 qcom,mdss-dsi-t-clk-pre = <0x21>;
 qcom,mdss-dsi-bl-min-level = <1>;
-qcom,mdss-dsi-bl-max-level = <4095>;
+qcom,mdss-dsi-bl-max-level = <255>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
