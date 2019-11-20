@@ -222,6 +222,7 @@
 	qcom,batt-id-range-pct = <15>;
 	df-serialnum = "SB18C66367";
 	#include "qg-batterydata-LC40-ATL-3550mAH.dtsi"
+        #include "qg-batterydata-LC40-SCUD-3550mah.dtsi"
 };
 
 &pmi632_qg {

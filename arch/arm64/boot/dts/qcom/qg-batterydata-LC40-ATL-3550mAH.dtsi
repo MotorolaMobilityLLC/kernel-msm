@@ -22,11 +22,6 @@ qcom,qg_batterydata_LC40_ATL_3550mAH {
    	qcom,battery-type = "qg_batterydata_LC40_ATL_3550mAH";
    	qcom,qg-batt-profile-ver = <100>;
 
-	/* COOL = 15 DegC, WARM = 45 DegC */
-	//qcom,jeita-soft-thresholds = <0x257D 0xFB3>;
-	/* COLD = -20 DegC, HOT = 60 DegC */
-	//qcom,jeita-hard-thresholds = <0x5164 0xA34>;
-
 	qcom,fcc1-temp-lut {
 		qcom,lut-col-legend = <0 10 25 40 50>;
 		qcom,lut-data = <3474 3549 3615 3645 3653>;
