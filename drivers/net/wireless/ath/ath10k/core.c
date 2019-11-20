@@ -91,6 +91,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA988X_HW_2_0_VERSION,
@@ -121,6 +122,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.target_64bit = false,
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA9887_HW_1_0_VERSION,
@@ -152,6 +154,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA6174_HW_2_1_VERSION,
@@ -182,6 +185,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA6174_HW_2_1_VERSION,
@@ -212,6 +216,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA6174_HW_3_0_VERSION,
@@ -242,6 +247,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA6174_HW_3_2_VERSION,
@@ -275,6 +281,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA99X0_HW_2_0_DEV_VERSION,
@@ -311,6 +318,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA9984_HW_1_0_DEV_VERSION,
@@ -352,6 +360,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA9888_HW_2_0_DEV_VERSION,
@@ -392,6 +401,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA9377_HW_1_0_DEV_VERSION,
@@ -422,6 +432,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA9377_HW_1_1_DEV_VERSION,
@@ -454,6 +465,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = QCA4019_HW_1_0_DEV_VERSION,
@@ -491,6 +503,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL,
 		.per_ce_irq = false,
 		.shadow_reg_support = false,
+		.rri_on_ddr = false,
 	},
 	{
 		.id = WCN3990_HW_1_0_DEV_VERSION,
@@ -513,6 +526,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 		.rx_ring_fill_level = HTT_RX_RING_FILL_LEVEL_DUAL_MAC,
 		.per_ce_irq = true,
 		.shadow_reg_support = true,
+		.rri_on_ddr = true,
 	},
 };
 
