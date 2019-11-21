@@ -3309,7 +3309,7 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 		dbg_event(0xFF, "id_state", mdwc->id_state);
 
 		//IKSWQ-34206, update host_id_state
-                mdwc->host_id_state = mdwc->id_state == DWC3_ID_GROUND ? 1 : 0;
+                mdwc->host_id_state = mdwc->id_state == DWC3_ID_GROUND ? 0 : 1;
 		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
 	}
 
@@ -3579,15 +3579,15 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 	if (sysfs_streq(buf, "peripheral")) {
 		mdwc->vbus_active = true;
 		mdwc->id_state = DWC3_ID_FLOAT;
-		mdwc->host_id_state = 0; //IKSWQ-34206
+		mdwc->host_id_state = 1; //IKSWQ-34206
 	} else if (sysfs_streq(buf, "host")) {
 		mdwc->vbus_active = false;
 		mdwc->id_state = DWC3_ID_GROUND;
-		mdwc->host_id_state = 1; //IKSWQ-34206
+		mdwc->host_id_state = 0; //IKSWQ-34206
 	} else {
 		mdwc->vbus_active = false;
 		mdwc->id_state = DWC3_ID_FLOAT;
-		mdwc->host_id_state = 0; //IKSWQ-34206
+		mdwc->host_id_state = 1; //IKSWQ-34206
 	}
 
 	dwc3_ext_event_notify(mdwc);
@@ -3767,7 +3767,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	mdwc->id_state = DWC3_ID_FLOAT;
-	mdwc->host_id_state = 0; //IKSWQ-43206
+	mdwc->host_id_state = 1; //IKSWQ-43206
 	set_bit(ID, &mdwc->inputs);
 
 	mdwc->charging_disabled = of_property_read_bool(node,
@@ -4096,7 +4096,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	//IKSWQ-34206, create host_id_state file, start
-	mdwc->host_id_state = mdwc->id_state == DWC3_ID_GROUND ? 1 : 0;
+	mdwc->host_id_state = mdwc->id_state == DWC3_ID_GROUND ? 0 : 1;
 	device_create_file(&pdev->dev, &dev_attr_host_id_state);
 	//IKSWQ-34206, end
 
