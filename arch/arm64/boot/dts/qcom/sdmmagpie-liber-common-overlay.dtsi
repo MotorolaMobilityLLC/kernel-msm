@@ -34,6 +34,181 @@
 
 &tlmm{
 
+	aw8646_gpios {
+		aw8646_mode0_low: aw8646_mode0_low{
+			mux {
+				pins = "gpio30";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio30";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_mode0_high: aw8646_mode0_high{
+			mux {
+				pins = "gpio30";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio30";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_mode0_disable: aw8646_mode0_disable {
+			mux {
+				pins = "gpio30";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio30";
+				input-enable;
+				bias-disable;
+			};
+		};
+
+		aw8646_mode1_low: aw8646_mode1_low {
+			mux {
+				pins = "gpio51";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio51";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_mode1_high: aw8646_mode1_high {
+			mux {
+				pins = "gpio51";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio51";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_mode1_disable: aw8646_mode1_disable {
+			mux {
+				pins = "gpio51";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio51";
+				input-enable;
+				bias-disable;
+			};
+		};
+
+		aw8646_t0_low: aw8646_t0_low {
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio49";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_t0_high: aw8646_t0_high {
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio49";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_t0_disable: aw8646_t0_disable {
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio49";
+				input-enable;
+				bias-disable;
+			};
+		};
+
+		aw8646_t1_low: aw8646_t1_low {
+			mux {
+				pins = "gpio33";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio33";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+		aw8646_t1_high: aw8646_t1_high {
+			mux {
+				pins = "gpio33";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio33";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		aw8646_t1_disable: aw8646_t1_disable {
+			mux {
+				pins = "gpio33";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio33";
+				input-enable;
+				bias-disable;
+			};
+		};
+
+		aw8646_int_default: aw8646_int_default {
+			mux {
+				pins = "gpio57";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio57";
+				drive-strength = <6>;
+				input-enable;
+				bias-disable;
+			};
+		};
+
+		aw8646_clk_active: aw8646_clk_active {
+			mux {
+				pins = "gpio21";
+				function = "gcc_gp2";
+			};
+			config {
+				pins = "gpio21";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-none;
+			};
+		};
+		aw8646_clk_sleep: aw8646_clk_sleep{
+			mux {
+				pins = "gpio21";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio21";
+				/* drive-strength = <2>; */ /* 2 MA */
+				/* bias-pull-down; */
+				input-enable;
+				bias-disable;
+			};
+		};
+	};
 };
 
 &soc {
@@ -43,10 +218,42 @@
 			"back_temp";
 		status = "ok";
 	};
+
+	moto_aw8646_support {
+		compatible = "moto,aw8646";
+		status = "ok";
+		pinctrl-names = "m0_low", "m0_high", "m0_disable",
+				"m1_low", "m1_high", "m1_disable",
+				"t0_low", "t0_high", "t0_disable",
+				"t1_low", "t1_high", "t1_disable",
+				"aw8646_int_default",
+				"aw8646_clk_active", "aw8646_clk_sleep";
+		pinctrl-0 = <&aw8646_mode0_low>;
+		pinctrl-1 = <&aw8646_mode0_high>;
+		pinctrl-2 = <&aw8646_mode0_disable>;
+		pinctrl-3 = <&aw8646_mode1_low>;
+		pinctrl-4 = <&aw8646_mode1_high>;
+		pinctrl-5 = <&aw8646_mode1_disable>;
+		pinctrl-6 = <&aw8646_t0_low>;
+		pinctrl-7 = <&aw8646_t0_high>;
+		pinctrl-8 = <&aw8646_t0_disable>;
+		pinctrl-9 = <&aw8646_t1_low>;
+		pinctrl-10 = <&aw8646_t1_high>;
+		pinctrl-11 = <&aw8646_t1_disable>;
+		pinctrl-12 = <&aw8646_int_default>;
+		pinctrl-13 = <&aw8646_clk_active>;
+		pinctrl-14 = <&aw8646_clk_sleep>;
+		clocks = <&clock_gcc 36>;
+		clock-names = "gcc_gp2";
+		vdd-supply = <&pm6150_l13>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <57 0x2002>;
+		aw8646-gpios = <52 57 21 32 30 51 29 50 49 33>;
+		aw8646-gpios-cells = <10>;
+		aw8646-max-freq = <250000>;
+		enable-hw-clock;
+	};
 };
-
-
-
 
 &thermal_zones {
 	xo_therm {
