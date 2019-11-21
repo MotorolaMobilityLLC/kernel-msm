@@ -39,6 +39,18 @@
 		bias-pull-up;
 	};
 
+	sar_irq_default: sar_irq_default {
+		mux {
+			pins = "gpio84";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio84";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
 	aw8646_gpios {
 		aw8646_mode0_low: aw8646_mode0_low{
 			mux {
@@ -410,6 +422,24 @@
 		magnachip,gpio_rst = <&tlmm 106 0>;
 		magnachip,power-always-on;
 		/* magnachip,use-hrtimer; */
+	};
+
+	abov_sar@20 {
+		status = "okay";
+		compatible = "abov,abov_sar";
+		reg = <0x20>;
+		cap_vdd-supply = <&pm6150l_l7>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <84 0x2002>;
+		gpios = <&tlmm 84 0x2002>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sar_irq_default>;
+		reg_array_len = <0x03>;
+		reg_array_val = <0x07 0x00 0x08 0x1B 0xFB 0x01>;
+		cap,use_channel_top = <0x01>;
+		cap,use_channel_bottom_left = <0x02>; /* don't use*/
+		cap,use_channel_bottom_right = <0x00>;
+		label = "AbovCapSense";
 	};
 };
 
