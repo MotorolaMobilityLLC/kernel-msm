@@ -33,6 +33,11 @@
 };
 
 &tlmm{
+	hall_irq_default: hall_irq_default {
+		pins = "gpio93";
+		drive-strength = <6>;
+		bias-pull-up;
+	};
 
 	aw8646_gpios {
 		aw8646_mode0_low: aw8646_mode0_low{
@@ -389,7 +394,23 @@
 };
 
 &qupv3_se9_i2c {
-	status = "ok";
+    status = "ok";
+
+    magnachip@d {
+		compatible = "magnachip,akm09970";
+		label = "akm09970";
+		reg = <0x0d>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hall_irq_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <93 0x2002>;
+		vdd-supply = <&pm6150_l10>;
+		magnachip,init-freq = <100>;
+		magnachip,gpio-int = <&tlmm 93 0x2002>;
+		magnachip,gpio_rst = <&tlmm 106 0>;
+		magnachip,power-always-on;
+		/* magnachip,use-hrtimer; */
+	};
 };
 
 &pm6150_vib {
