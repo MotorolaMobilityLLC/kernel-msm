@@ -5941,14 +5941,6 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 	if (chg->pd_active)
 		return IRQ_HANDLED;
 
-	/*
-	 * Prepared to run PD or PD is active. At this moment, APSD is disabled,
-	 * but there still can be irq on apsd_done from previously unfinished
-	 * APSD run, skip it.
-	 */
-	if (chg->ok_to_pd)
-		return IRQ_HANDLED;
-
 	rc = smblib_read(chg, APSD_STATUS_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read APSD_STATUS rc=%d\n", rc);
