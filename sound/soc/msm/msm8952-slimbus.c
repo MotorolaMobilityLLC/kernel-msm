@@ -1917,11 +1917,6 @@ int msm_quat_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 int msm_quin_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
-	struct snd_interval *rate = hw_param_interval(params,
-					SNDRV_PCM_HW_PARAM_RATE);
-
-	struct snd_interval *channels = hw_param_interval(params,
-					SNDRV_PCM_HW_PARAM_CHANNELS);
 	return msm_be_hw_params_fixup(rtd, params);
 }
 
