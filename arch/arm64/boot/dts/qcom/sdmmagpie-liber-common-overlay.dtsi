@@ -21,6 +21,7 @@
 #include "sdmmagpie-liber-charger-overlay.dtsi"
 **/
 #include "liber-panel.dtsi"
+#include "sdmmagpie-camera-sensor-mot-liber-overlay.dtsi"
 
 &soc {
 	qcom,tz_gpio {
