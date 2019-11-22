@@ -1926,18 +1926,6 @@ int msm_quin_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	pr_debug("%s()\n", __func__);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = 2;
-	bool albus_audio = of_property_read_bool(rtd->card->dev->of_node,
-					    "qcom,albus-audio");
-
-	/* Don't fix up be_hw params unless QUIN MI2S is used for mods audio */
-	if (albus_audio) {
-		pr_debug("%s: channel:%d\n", __func__, msm_quin_mi2s_ch);
-		rate->min = rate->max = msm_quin_mi2s_sample_rate;
-		channels->min = channels->max = msm_quin_mi2s_ch;
-		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
-					msm_quin_mi2s_bit_format);
-	} else
-		return msm_be_hw_params_fixup(rtd, params);
 
 	return 0;
 }
