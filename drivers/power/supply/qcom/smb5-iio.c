@@ -314,10 +314,14 @@ int smb5_iio_set_prop(struct smb_charger *chg, int channel, int val)
 		rc = smblib_set_prop_pr_swap_in_progress(chg, val);
 		break;
 	case PSY_IIO_PD_VOLTAGE_MAX:
+#ifdef QCOM_BASE
 		rc = smblib_set_prop_pd_voltage_max(chg, val);
+#endif
 		break;
 	case PSY_IIO_PD_VOLTAGE_MIN:
+#ifdef QCOM_BASE
 		rc = smblib_set_prop_pd_voltage_min(chg, val);
+#endif
 		break;
 	case PSY_IIO_CONNECTOR_HEALTH:
 		chg->connector_health = val;
