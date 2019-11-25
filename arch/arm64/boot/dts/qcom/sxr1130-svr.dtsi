@@ -491,3 +491,7 @@
 &dsi_dual_xrsmrtvwr_jdi_video_display {
 	qcom,dsi-display-active;
 };
+
+&pm660_charger {
+	qcom,ufp-only-mode;
+};
