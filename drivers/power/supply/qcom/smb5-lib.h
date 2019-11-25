@@ -600,6 +600,7 @@ struct smb_charger {
 	/* USB PD interactions */
 	struct usbpd		*pd;
 	int			pd_contract_uv;
+	int			pd_voltage_max_uv;
 	struct delayed_work	pd_contract_work;
 
 	/* battery profile */
