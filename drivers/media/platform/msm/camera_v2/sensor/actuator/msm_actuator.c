@@ -26,9 +26,12 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 #endif
 
-#define PARK_LENS_LONG_STEP 7
-#define PARK_LENS_MID_STEP 5
-#define PARK_LENS_SMALL_STEP 3
+#define PARK_LENS_LONG_STEP 12
+#define PARK_LENS_MID_STEP 11
+#define PARK_LENS_SMALL_STEP 1
+#define PARK_LENS_LONG_SAFE_BOUND 10
+#define PARK_LENS_MID_SAFE_BOUND 5
+#define PARK_LENS_BASE_BOUND 3
 #define MAX_QVALUE 4096
 
 static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
@@ -826,6 +829,9 @@ static int32_t msm_actuator_park_lens(struct msm_actuator_ctrl_t *a_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t next_lens_pos = 0;
+	uint16_t long_safe_lens_pos = 0;
+	uint16_t mid_safe_lens_pos = 0;
+	uint16_t base_safe_lens_pos = 0;
 	struct msm_camera_i2c_reg_setting reg_setting;
 
 	a_ctrl->i2c_tbl_index = 0;
@@ -844,26 +850,32 @@ static int32_t msm_actuator_park_lens(struct msm_actuator_ctrl_t *a_ctrl)
 		a_ctrl->park_lens.max_step = a_ctrl->max_code_size;
 
 	next_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
+	long_safe_lens_pos = a_ctrl->initial_code + a_ctrl->park_lens.max_step * PARK_LENS_LONG_SAFE_BOUND;
+	mid_safe_lens_pos = a_ctrl->initial_code + a_ctrl->park_lens.max_step * PARK_LENS_MID_SAFE_BOUND;
+	base_safe_lens_pos = a_ctrl->initial_code -a_ctrl->park_lens.max_step * PARK_LENS_BASE_BOUND;
 	while (next_lens_pos) {
 		/* conditions which help to reduce park lens time */
-		if (next_lens_pos > (a_ctrl->park_lens.max_step *
+		CDBG("next_lens_pos: %d, initial_code: %d, bound_pos(%d, %d, %d)",
+		    next_lens_pos, a_ctrl->initial_code,
+		    long_safe_lens_pos, mid_safe_lens_pos, base_safe_lens_pos);
+		if (next_lens_pos > long_safe_lens_pos + (a_ctrl->park_lens.max_step *
 			PARK_LENS_LONG_STEP)) {
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_LONG_STEP);
-		} else if (next_lens_pos > (a_ctrl->park_lens.max_step *
+		} else if (next_lens_pos > mid_safe_lens_pos + (a_ctrl->park_lens.max_step *
 			PARK_LENS_MID_STEP)) {
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_MID_STEP);
-		} else if (next_lens_pos > (a_ctrl->park_lens.max_step *
+		} else if (next_lens_pos > base_safe_lens_pos + (a_ctrl->park_lens.max_step *
 			PARK_LENS_SMALL_STEP)) {
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_SMALL_STEP);
 		} else {
 			next_lens_pos = (next_lens_pos >
-				a_ctrl->park_lens.max_step) ?
+				a_ctrl->park_lens.max_step + base_safe_lens_pos) ?
 				(next_lens_pos - a_ctrl->park_lens.max_step) :
 				0;
 		}
@@ -885,7 +897,7 @@ static int32_t msm_actuator_park_lens(struct msm_actuator_ctrl_t *a_ctrl)
 		}
 		a_ctrl->i2c_tbl_index = 0;
 		/* Use typical damping time delay to avoid tick sound */
-		usleep_range(10000, 12000);
+		usleep_range(13000, 15000);
 	}
 
 	return 0;
@@ -1572,9 +1584,8 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 			pr_err("move focus failed %d\n", rc);
 		break;
 	case CFG_ACTUATOR_POWERDOWN:
-		rc = msm_actuator_power_down(a_ctrl);
-		if (rc < 0)
-			pr_err("msm_actuator_power_down failed %d\n", rc);
+		schedule_work(&a_ctrl->park_lens_work);
+		rc = 0;
 		break;
 
 	case CFG_SET_POSITION:
@@ -1671,6 +1682,7 @@ static int msm_actuator_close(struct v4l2_subdev *sd,
 	kfree(a_ctrl->i2c_reg_tbl);
 	a_ctrl->i2c_reg_tbl = NULL;
 	if (a_ctrl->actuator_state == ACT_OPS_ACTIVE) {
+		/*Camera should have been closed before, so should never come here.*/
 		rc = msm_actuator_power_down(a_ctrl);
 		if (rc < 0) {
 			pr_err("%s:%d Actuator Power down failed\n",
@@ -1711,6 +1723,8 @@ static long msm_actuator_subdev_ioctl(struct v4l2_subdev *sd,
 			return -EINVAL;
 		}
 		mutex_lock(a_ctrl->actuator_mutex);
+		/*Due to next step is release CCI, we need call actuator power down in
+		sync mode, use actuator_mutex to avoid the conflicts*/
 		rc = msm_actuator_power_down(a_ctrl);
 		if (rc < 0) {
 			pr_err("%s:%d Actuator Power down failed\n",
@@ -2032,6 +2046,21 @@ probe_failure:
 	return rc;
 }
 
+static void msm_actuator_park_lens_work_routine(struct work_struct *work)
+{
+	int retval = 0;
+	struct msm_actuator_ctrl_t *actrl = container_of(work, struct msm_actuator_ctrl_t, park_lens_work);
+	CDBG("Enter\n");
+	mutex_lock(actrl->actuator_mutex);
+	retval = msm_actuator_power_down(actrl);
+	if (retval < 0) {
+		pr_err("%s:%d Actuator Power down failed\n",
+				__func__, __LINE__);
+	}
+	mutex_unlock(actrl->actuator_mutex);
+	CDBG("Exit\n");
+}
+
 static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
@@ -2135,6 +2164,8 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 #endif
 	msm_actuator_t->msm_sd.sd.devnode->fops =
 		&msm_actuator_v4l2_subdev_fops;
+
+	INIT_WORK(&msm_actuator_t->park_lens_work, msm_actuator_park_lens_work_routine);
 
 	CDBG("Exit\n");
 	return rc;
