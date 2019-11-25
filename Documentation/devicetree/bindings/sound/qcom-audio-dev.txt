@@ -2580,7 +2580,7 @@ Example:
 				<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
 				<&afe_proxy_tx>, <&incall_record_rx>,
 				<&incall_record_tx>, <&incall_music_rx>,
-				<&dai_sec_auxpcm>;
+				<&dai_sec_auxpcm>, <&incall_music_dl_rx>;
 		asoc-cpu-names = "msm-dai-q6-auxpcm.1",
 				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
 				"msm-dai-stub-dev.4", "msm-dai-stub-dev.5",
@@ -2589,7 +2589,7 @@ Example:
 				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
 				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
 				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
-				"msm-dai-q6-auxpcm.2";
+				"msm-dai-q6-auxpcm.2", "msm-dai-q6-dev.32774";
 	};
 
 * SDX ASoC Auto Machine driver

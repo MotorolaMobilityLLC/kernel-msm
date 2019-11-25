@@ -84,6 +84,7 @@ const char *ipa3_hdr_l2_type_name[] = {
 	__stringify(IPA_HDR_L2_NONE),
 	__stringify(IPA_HDR_L2_ETHERNET_II),
 	__stringify(IPA_HDR_L2_802_3),
+	__stringify(IPA_HDR_L2_802_1Q),
 };
 
 const char *ipa3_hdr_proc_type_name[] = {
@@ -94,6 +95,7 @@ const char *ipa3_hdr_proc_type_name[] = {
 	__stringify(IPA_HDR_PROC_802_3_TO_802_3),
 	__stringify(IPA_HDR_PROC_L2TP_HEADER_ADD),
 	__stringify(IPA_HDR_PROC_L2TP_HEADER_REMOVE),
+	__stringify(IPA_HDR_PROC_ETHII_TO_ETHII_EX),
 };
 
 static struct dentry *dent;
@@ -515,13 +517,15 @@ static int ipa3_attrib_dump(struct ipa_rule_attrib *attrib,
 		pr_err("frg ");
 
 	if ((attrib->attrib_mask & IPA_FLT_MAC_SRC_ADDR_ETHER_II) ||
-		(attrib->attrib_mask & IPA_FLT_MAC_SRC_ADDR_802_3)) {
+		(attrib->attrib_mask & IPA_FLT_MAC_SRC_ADDR_802_3) ||
+		(attrib->attrib_mask & IPA_FLT_MAC_SRC_ADDR_802_1Q)) {
 		pr_err("src_mac_addr:%pM ", attrib->src_mac_addr);
 	}
 
 	if ((attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_ETHER_II) ||
 		(attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_802_3) ||
-		(attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_L2TP)) {
+		(attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_L2TP) ||
+		(attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_802_1Q)) {
 		pr_err("dst_mac_addr:%pM ", attrib->dst_mac_addr);
 	}
 

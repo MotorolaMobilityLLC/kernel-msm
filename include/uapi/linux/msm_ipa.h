@@ -189,6 +189,8 @@
 #define IPA_FLT_L2TP_INNER_IPV4_DST_ADDR (1ul << 26)
 #define IPA_FLT_IS_PURE_ACK		(1ul << 27)
 #define IPA_FLT_VLAN_ID			(1ul << 28)
+#define IPA_FLT_MAC_SRC_ADDR_802_1Q	(1ul << 29)
+#define IPA_FLT_MAC_DST_ADDR_802_1Q	(1ul << 30)
 
 /**
  * maximal number of NAT PDNs in the PDN config table
@@ -608,6 +610,11 @@ enum ipa_gsb_event {
 #define IPA_GSB_EVENT_MAX IPA_GSB_EVENT_MAX
 };
 
+enum ipa_peripheral_event {
+	IPA_PERIPHERAL_CONNECT = ECM_CONNECT,
+	IPA_PERIPHERAL_DISCONNECT = ECM_DISCONNECT
+};
+
 #define WIGIG_CLIENT_CONNECT (IPA_GSB_EVENT_MAX)
 #define WIGIG_FST_SWITCH (WIGIG_CLIENT_CONNECT + 1)
 #define WIGIG_EVENT_MAX (WIGIG_FST_SWITCH + 1)
@@ -954,6 +961,8 @@ enum ipa_hdr_l2_type {
  * IPA_HDR_PROC_ETHII_TO_802_3: Process Ethernet II to 802_3
  * IPA_HDR_PROC_802_3_TO_ETHII: Process 802_3 to Ethernet II
  * IPA_HDR_PROC_802_3_TO_802_3: Process 802_3 to 802_3
+ * IPA_HDR_PROC_ETHII_TO_ETHII_EX: Process Ethernet II to Ethernet II with
+ *	generic lengths of src and dst headers
  */
 enum ipa_hdr_proc_type {
 	IPA_HDR_PROC_NONE,
@@ -962,9 +971,10 @@ enum ipa_hdr_proc_type {
 	IPA_HDR_PROC_802_3_TO_ETHII,
 	IPA_HDR_PROC_802_3_TO_802_3,
 	IPA_HDR_PROC_L2TP_HEADER_ADD,
-	IPA_HDR_PROC_L2TP_HEADER_REMOVE
+	IPA_HDR_PROC_L2TP_HEADER_REMOVE,
+	IPA_HDR_PROC_ETHII_TO_ETHII_EX
 };
-#define IPA_HDR_PROC_MAX (IPA_HDR_PROC_L2TP_HEADER_REMOVE + 1)
+#define IPA_HDR_PROC_MAX (IPA_HDR_PROC_ETHII_TO_ETHII_EX + 1)
 
 /**
  * struct ipa_rt_rule - attributes of a routing rule
@@ -1081,6 +1091,20 @@ struct ipa_l2tp_hdr_proc_ctx_params {
 	enum ipa_client_type dst_pipe;
 };
 
+/**
+ * struct ipa_eth_II_to_eth_II_ex_procparams -
+ * @input_ethhdr_negative_offset: Specifies where the ethernet hdr offset is
+ *	(in bytes) from the start of the input IP hdr
+ * @output_ethhdr_negative_offset: Specifies where the ethernet hdr offset is
+ *	(in bytes) from the end of the template hdr
+ * @reserved: for future use
+ */
+struct ipa_eth_II_to_eth_II_ex_procparams {
+	uint32_t input_ethhdr_negative_offset : 8;
+	uint32_t output_ethhdr_negative_offset : 8;
+	uint32_t reserved : 16;
+};
+
 #define L2TP_USER_SPACE_SPECIFY_DST_PIPE
 
 /**
@@ -1089,6 +1113,7 @@ struct ipa_l2tp_hdr_proc_ctx_params {
  * @type: processing context type
  * @hdr_hdl: in parameter, handle to header
  * @l2tp_params: l2tp parameters
+ * @generic_params: generic proc_ctx params
  * @proc_ctx_hdl: out parameter, handle to proc_ctx, valid when status is 0
  * @status:	out parameter, status of header add operation,
  *		0 for success,
@@ -1100,6 +1125,7 @@ struct ipa_hdr_proc_ctx_add {
 	uint32_t proc_ctx_hdl;
 	int status;
 	struct ipa_l2tp_hdr_proc_ctx_params l2tp_params;
+	struct ipa_eth_II_to_eth_II_ex_procparams generic_params;
 };
 
 #define IPA_L2TP_HDR_PROC_SUPPORT
