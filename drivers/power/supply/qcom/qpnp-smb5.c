@@ -1112,10 +1112,14 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		rc = smblib_set_prop_pr_swap_in_progress(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_PD_VOLTAGE_MAX:
+#ifdef QCOM_BASE
 		rc = smblib_set_prop_pd_voltage_max(chg, val);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_PD_VOLTAGE_MIN:
+#ifdef QCOM_BASE
 		rc = smblib_set_prop_pd_voltage_min(chg, val);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_SDP_CURRENT_MAX:
 		rc = smblib_set_prop_sdp_current_max(chg, val);

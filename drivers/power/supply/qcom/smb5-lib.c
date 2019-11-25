@@ -7400,6 +7400,23 @@ static void smblib_pd_contract_work(struct work_struct *work)
 	if (!chg->pd || !chg->pd_active)
 		return;
 
+	if (!chg->pd_voltage_max_uv) {
+		rc = of_property_read_u32(chg->dev->of_node,
+				"qcom,pd-voltage-max-uv",
+				&chg->pd_voltage_max_uv);
+		if (rc < 0) {
+			chg->pd_voltage_max_uv = MICRO_5V;
+			smblib_err(chg, "Failed to get pd_voltage_max_uv"
+						"from device tree, rc = %d\n", rc);
+		}
+
+		if (chg->pd_voltage_max_uv < MICRO_5V)
+			chg->pd_voltage_max_uv = MICRO_5V;
+		else if (chg->pd_voltage_max_uv > MICRO_12V)
+			chg->pd_voltage_max_uv = MICRO_12V;
+	}
+	chg->voltage_max_uv = chg->pd_voltage_max_uv;
+
 	chg->pd_contract_uv = usbpd_select_pdo_match(chg->pd);
 
 	if (chg->pd_contract_uv == -ENOTSUPP)
