@@ -4832,8 +4832,10 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 		}
 	}
 
+#ifdef QCOM_BASE
 	smblib_usb_pd_adapter_allowance_override(chg,
 			!!chg->pd_active ? FORCE_5V : FORCE_NULL);
+#endif
 	smblib_update_usb_type(chg);
 
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB &&
