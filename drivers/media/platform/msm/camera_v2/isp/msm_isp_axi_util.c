@@ -1898,9 +1898,14 @@ void msm_isp_halt_send_error(struct vfe_device *vfe_dev, uint32_t event)
 		pr_err("%s: ping pong mismatch on vfe%d recovery count %d\n",
 			__func__, vfe_dev->pdev->id,
 			vfe_dev->axi_data.recovery_count);
-		msm_isp_process_overflow_irq(vfe_dev,
-			&irq_status0, &irq_status1, 1);
-		vfe_dev->axi_data.recovery_count++;
+		if (2 > msm_isp_process_overflow_irq(vfe_dev,
+			&irq_status0, &irq_status1, 1)) {
+			pr_err("%s: Not fatal overflow\n", __func__);
+			vfe_dev->axi_data.recovery_count = 0;
+		} else {
+			pr_err("%s: Fatal overflow!\n", __func__);
+			vfe_dev->axi_data.recovery_count++;
+		}
 		return;
 	}
 	memset(&halt_cmd, 0, sizeof(struct msm_vfe_axi_halt_cmd));
