@@ -501,7 +501,22 @@
 	};
 };
 
+&mtp_batterydata {
+       qcom,batt-id-range-pct = <15>;
+       df-serialnum = "SB18C57587";
+       #include "qg-batterydata-kz50-scud-5000mah.dtsi"
+       #include "qg-batterydata-kz50-amperex-5000mah.dtsi"
+};
 
+&pm6150_charger {
+       /delete-property/qcom,support-mods;
+       qcom,iterm-ma = <194>;
+       qcom,mmi-temp-zones = <0 4200 776 0>,
+                               <10 4200 1940 776>,
+                               <15 0 1940 1940>,
+                               <45 4200 3600 2500>,
+                               <60 4200 1940 0>;
+};
 
 &sde_dp {
 	status = "disabled";
