@@ -174,17 +174,11 @@
 &spmi_bus {
 	qcom,pm8998@0 {
 		qcom,power-on@800 {
-			qcom,pon_1 {
+			qcom,pon_3 {
 				qcom,support-reset = <1>;
 				qcom,s1-timer = <6720>;
 				qcom,s2-timer = <2000>;
 				qcom,s2-type = <7>;
-			};
-			qcom,pon_3 {
-				qcom,support-reset = <1>;
-				qcom,s1-timer = <4480>;
-				qcom,s2-timer = <2000>;
-				qcom,s2-type = <1>;
 			};
 		};
 	};
