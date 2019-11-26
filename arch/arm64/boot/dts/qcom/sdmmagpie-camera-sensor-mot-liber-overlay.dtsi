@@ -216,6 +216,17 @@
 		enable-active-high;
 		gpio = <&tlmm 66 0>;
 	};
+
+	led_flash_rear: qcom,camera-flash@0 {
+		cell-index = <0>;
+		reg = <0x00 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm6150l_flash0>;
+		torch-source = <&pm6150l_torch0>;
+		switch-source = <&pm6150l_switch0>;
+		status = "ok";
+	};
+
 };
 
 &cam_cci0 {
@@ -232,6 +243,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_rear>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_main_front_macro_avdd_ldo>;
 		cam_vdig-supply = <&camera_main_dvdd_ldo>;
