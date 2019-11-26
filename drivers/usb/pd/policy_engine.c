@@ -4295,6 +4295,8 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 	int uv_diff = 0, max_uv_diff = 0, pdo = 0;
 	int pdo_max_uv = 0, pdo_min_uv = 0, pdo_ua = 0;
 	int uv_in, i;
+	int pdo_pos;
+	u8 type = -1;
 	int ret;
 	union power_supply_propval val;
 
@@ -4302,6 +4304,12 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 		return -EINVAL;
 
 	mutex_lock(&pd->swap_lock);
+
+	if (pd->current_pr == PR_SRC) {
+		usbpd_err(&pd->dev, "select_pdo: not support in source mode\n");
+		ret = -ENOTSUPP;
+		goto out;
+	}
 
 	/* Only allowed if we are already in explicit sink contract */
 	if (pd->current_state != PE_SNK_READY || !is_sink_tx_ok(pd)) {
@@ -4323,7 +4331,11 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 	/* start with 5 V */
 	max_uv_diff = 5000000;
 	for (i = 1; i < 8; i++) {
-		if (!pd_get_pdo(pd, i, &pdo_max_uv, &pdo_min_uv, &pdo_ua)) {
+		pdo_pos = pd->received_pdos[i - 1];
+		if (pdo_pos != 0)
+			type = PD_SRC_PDO_TYPE(pdo_pos);
+		if (type == PD_SRC_PDO_TYPE_FIXED &&
+			!pd_get_pdo(pd, i, &pdo_max_uv, &pdo_min_uv, &pdo_ua)) {
 			if (pdo_max_uv <= uv_in) {
 				//If there is a valid pdo we should default to choosing one
 				//even if it charges slower vs not setting a pdo
@@ -4343,7 +4355,7 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 
 	if (pdo < 1 || pdo > 7) {
 		usbpd_err(&pd->dev, "select_pdo: invalid PDO:%d\n", pdo);
-		ret = -EINVAL;
+		ret = pd->current_voltage;
 		goto out;
 	}
 
@@ -4383,6 +4395,7 @@ EXPORT_SYMBOL(usbpd_select_pdo_match);
 static ssize_t select_pdo_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+#ifdef QCOM_BASE
 	struct usbpd *pd = dev_get_drvdata(dev);
 	int src_cap_id;
 	int pdo, uv = 0, ua = 0;
@@ -4444,6 +4457,9 @@ out:
 	pd->send_request = false;
 	mutex_unlock(&pd->swap_lock);
 	return ret ? ret : size;
+#else
+	return size;
+#endif
 }
 
 static ssize_t select_pdo_show(struct device *dev,
