@@ -311,6 +311,8 @@
                 "MIC BIAS1", "Analog Mic1",
                 "AMIC2", "MIC BIAS2",
                 "MIC BIAS2", "Analog Mic2",
+                "AMIC3", "MIC BIAS3",
+                "MIC BIAS3", "Analog Mic3",
                 "TX_AIF1 CAP", "VA_MCLK",
                 "TX_AIF2 CAP", "VA_MCLK",
                 "RX AIF1 PB", "VA_MCLK",
