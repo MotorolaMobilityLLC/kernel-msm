@@ -301,7 +301,7 @@
 			};
 		};
 	};
-
+/*
 	conn_therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
@@ -315,7 +315,7 @@
 			};
 		};
 	};
-
+*/
 	msm_therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
@@ -329,7 +329,7 @@
 			};
 		};
 	};
-
+/*
 	bob_therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
@@ -343,7 +343,7 @@
 			};
 		};
 	};
-
+*/
 	pa_therm0 {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
@@ -445,13 +445,21 @@
 };
 
 &pm6150_vadc {
+	sdm_therm {
+                reg = <ADC_AMUX_THM2_PU2>;
+                label = "sdm_therm";
+                qcom,ratiometric;
+                qcom,hw-settle-time = <200>;
+                qcom,pre-scaling = <1 1>;
+        };
+
 	chg_therm {
-		reg = <ADC_AMUX_THM3_PU2>;
-		label = "chg_therm";
-		qcom,ratiometric;
-		qcom,hw-settle-time = <200>;
-		qcom,pre-scaling = <1 1>;
-	};
+                reg = <ADC_AMUX_THM3_PU2>;
+                label = "chg_therm";
+                qcom,ratiometric;
+                qcom,hw-settle-time = <200>;
+                qcom,pre-scaling = <1 1>;
+        };
 };
 
 &pm6150_adc_tm {
@@ -459,8 +467,12 @@
 			<&pm6150_vadc ADC_AMUX_THM2_PU2>,
 			<&pm6150_vadc ADC_AMUX_THM3_PU2>,
 			<&pm6150_vadc ADC_AMUX_THM4_PU2>;
+	sdm_therm {
+                reg = <ADC_AMUX_THM2_PU2>;
+                qcom,ratiometric;
+                qcom,hw-settle-time = <200>;
+        };
 
-	/* Channel nodes */
 	chg_therm {
 		reg = <ADC_AMUX_THM3_PU2>;
 		qcom,ratiometric;
@@ -469,14 +481,6 @@
 };
 
 &pm6150l_vadc {
-	msm_therm {
-		reg = <ADC_AMUX_THM1_PU2>;
-		label = "msm_therm";
-		qcom,ratiometric;
-		qcom,hw-settle-time = <200>;
-		qcom,pre-scaling = <1 1>;
-	};
-
 	pa_therm0 {
 		reg = <ADC_AMUX_THM2_PU2>;
 		label = "pa_therm0";
@@ -484,21 +488,33 @@
 		qcom,hw-settle-time = <200>;
 		qcom,pre-scaling = <1 1>;
 	};
+
+	quiet_therm {
+                reg = <ADC_GPIO4_PU2>;
+                label = "quiet_therm";
+                qcom,ratiometric;
+                qcom,hw-settle-time = <200>;
+                qcom,pre-scaling = <1 1>;
+        };
 };
 
 &pm6150l_adc_tm {
-	/* Channel nodes */
-	msm_therm {
-		reg = <ADC_AMUX_THM1_PU2>;
-		qcom,ratiometric;
-		qcom,hw-settle-time = <200>;
-	};
+	io-channels = <&pm6150l_vadc ADC_AMUX_THM1_PU2>,
+			<&pm6150l_vadc ADC_AMUX_THM2_PU2>,
+			<&pm6150l_vadc ADC_AMUX_THM3_PU2>,
+			<&pm6150l_vadc ADC_GPIO4_PU2>;
 
 	pa_therm0 {
 		reg = <ADC_AMUX_THM2_PU2>;
 		qcom,ratiometric;
 		qcom,hw-settle-time = <200>;
 	};
+
+	quiet_therm {
+                reg = <ADC_GPIO4_PU2>;
+                qcom,ratiometric;
+                qcom,hw-settle-time = <200>;
+        };
 };
 
 &mtp_batterydata {
