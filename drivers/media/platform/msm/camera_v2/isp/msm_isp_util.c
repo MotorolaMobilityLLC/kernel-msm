@@ -2061,7 +2061,11 @@ int msm_isp_process_overflow_irq(
 		spin_unlock_irqrestore(
 			&vfe_dev->common_data->common_dev_data_lock,
 			flags);
-		return 1;
+		if (overflow_mask) {
+			return 2;
+		} else {
+			return 1;
+		}
 	}
 	return 0;
 }
