@@ -32,19 +32,28 @@
 	/delete-node/ xo-therm;
 };
 
+
+&pm6150_vadc {
+	/delete-node/ rf_pa0_therm;
+	/delete-node/ rf_pa1_therm;
+};
 &pm6150_adc_tm {
 	/delete-node/ io-channels;
+	/delete-node/ rf_pa0_therm;
+	/delete-node/ rf_pa1_therm;
 };
 
 &pm6150l_vadc {
 	/delete-node/ emmc_ufs_therm;
 	/delete-node/ rf_pa0_therm;
+	/delete-node/ nvm_therm;
 };
 
 
 &pm6150l_adc_tm {
 	/delete-node/ emmc_ufs_therm;
 	/delete-node/ rf_pa0_therm;
+	/delete-node/ nvm_therm;
 };
 
 &tlmm {
