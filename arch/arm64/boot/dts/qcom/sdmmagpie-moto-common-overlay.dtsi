@@ -195,40 +195,89 @@
 };
 
 
-&pm6150_qg {
-	qcom,battery-data = <&mtp_batterydata>;
-	qcom,qg-iterm-ma = <100>;
-	qcom,hold-soc-while-full;
-	qcom,linearize-soc;
-	qcom,cl-feedback-on;
+&mtp_batterydata {
+       qcom,batt-id-range-pct = <15>;
+       df-serialnum = "SB18C41148";
+       #include "qg-batterydata-kz40-atl-3600mah.dtsi"
+       #include "qg-batterydata-kz40-swd-3600mah.dtsi"
 };
 
+
+&pm6150_qg {
+       qcom,battery-data = <&mtp_batterydata>;
+       qcom,qg-iterm-ma = <300>;
+       qcom,vbatt-cutoff-mv = <3000>;
+       qcom,vbatt-empty-mv = <2800>;
+       qcom,vbatt-low-mv = <3300>;
+       qcom,vbatt-empty-cold-mv = <2800>;
+       qcom,rbat-conn-mohm = <10>;
+       qcom,ignore-shutdown-soc-secs = <1800>;
+       qcom,cl-feedback-on;
+       qcom,cl-min-start-soc = <0>;
+       qcom,cl-max-start-soc = <5>;
+       qcom,cl-min-temp = <150>;
+       qcom,cl-max-temp = <450>;
+       qcom,cl-max-increment = <5>;
+       qcom,cl-max-decrement = <10>;
+       qcom,cl-min-limit = <200>;
+       qcom,cl-max-limit = <30>;
+       qcom,s3-entry-ibat-ua = <15000>;
+       qcom,s3-exit-ibat-ua = <35000>;
+};
+
+
 &pm6150_charger {
-	io-channels = <&pm6150_vadc ADC_USB_IN_V_16>,
-		<&pm6150_vadc ADC_USB_IN_I>,
-		<&pm6150_vadc ADC_CHG_TEMP>,
-		<&pm6150_vadc ADC_DIE_TEMP>,
-		<&pm6150l_vadc ADC_AMUX_THM1_PU2>,
-		<&pm6150_vadc ADC_SBUx>,
-		<&pm6150_vadc ADC_VPH_PWR>;
-	io-channel-names = "usb_in_voltage",
-		"usb_in_current",
-		"chg_temp",
-		"die_temp",
-		"conn_temp",
-		"sbux_res",
-		"vph_voltage";
-	qcom,battery-data = <&mtp_batterydata>;
-	qcom,auto-recharge-soc = <98>;
-	qcom,sw-jeita-enable;
-	qcom,fcc-stepping-enable;
-	qcom,suspend-input-on-debug-batt;
-	qcom,sec-charger-config = <1>;
-	qcom,thermal-mitigation = <4200000 3500000 3000000
-			2500000 2000000 1500000 1000000 500000>;
-	dpdm-supply = <&qusb_phy0>;
-	qcom,charger-temp-max = <800>;
-	qcom,smb-temp-max = <800>;
+       io-channels = <&pm6150_vadc ADC_USB_IN_V_16>,
+                     <&pm6150_vadc ADC_USB_IN_I>,
+                     <&pm6150_vadc ADC_CHG_TEMP>,
+                     <&pm6150_vadc ADC_VPH_PWR>,
+                     <&pm6150_vadc ADC_MID_CHG_DIV6>;
+       io-channel-names = "usb_in_voltage",
+                          "usb_in_current",
+                          "chg_temp",
+                          "vph_voltage",
+                          "dcin_v";
+       qcom,battery-data = <&mtp_batterydata>;
+       qcom,iterm-ma = <175>;
+       qcom,fcc-max-ua = <3600000>;
+       qcom,fv-max-uv = <4400000>;
+       qcom,usb-icl-ua = <3000000>;
+       qcom,dc-icl-ua = <1500000>;
+       qcom,eb-batt-psy-name = "gb_battery";
+       qcom,eb-pwr-psy-name = "gb_ptp";
+       qcom,dc-eb-icl-ma = <900>;
+       qcom,dc-eb-icl-eff-ma = <500>;
+       qcom,thermal-mitigation = <3600>,
+                                  <3000>,
+                                  <2500>,
+                                  <2000>,
+                                  <1500>,
+                                  <1200>,
+                                  <900>,
+                                  <700>,
+                                  <300>;
+       qcom,mmi-temp-zones = <0 4200 700 0>,
+                               <10 4200 1750 700>,
+                               <15 0 1750 1750>,
+                               <45 4200 3600 2500>,
+                               <60 4200 1750 0>;
+       qcom,enable-charging-limit;
+       qcom,upper-limit-capacity = <75>;
+       qcom,lower-limit-capacity = <60>;
+       qcom,usbpd-phandle = <&pm6150_pdphy>;
+       qcom,disable-suspend-on-collapse;
+       dpdm-supply = <&qusb_phy0>;
+};
+
+&pm6150_pdphy {
+       qcom,source-current = <900>;
+       qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
+                                <9000 2000>; /* 9V @ 2A */
+ };
+
+&pm6150_charger {
+        gpios = <&pm6150l_gpios 8 0x0>; /* GPIOF_OUT_INIT_LOW */
+        gpio-names = "eb_vbus_en";
 };
 
 &qusb_phy0 {
