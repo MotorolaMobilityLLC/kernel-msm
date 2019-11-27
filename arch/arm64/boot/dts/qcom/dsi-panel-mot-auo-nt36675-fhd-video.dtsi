@@ -102,8 +102,8 @@
 			qcom,panel-supply-entry@1 {
 				reg = <2>;
 				qcom,supply-name = "vsp_disp";
-				qcom,supply-min-voltage = <5500000>;
-				qcom,supply-max-voltage = <5500000>;
+				qcom,supply-min-voltage = <5800000>;
+				qcom,supply-max-voltage = <5800000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
 				qcom,supply-post-on-sleep = <3>;
@@ -112,8 +112,8 @@
 			qcom,panel-supply-entry@2 {
 				reg = <3>;
 				qcom,supply-name = "vsn_disp";
-				qcom,supply-min-voltage = <5500000>;
-				qcom,supply-max-voltage = <5500000>;
+				qcom,supply-min-voltage = <5800000>;
+				qcom,supply-max-voltage = <5800000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
 			};
