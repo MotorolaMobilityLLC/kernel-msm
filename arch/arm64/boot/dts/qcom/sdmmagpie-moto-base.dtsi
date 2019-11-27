@@ -46,3 +46,6 @@
 	/delete-property/ qcom,split-link-supported;
 };
 
+&fsa4480 {
+	status = "disabled";
+};
