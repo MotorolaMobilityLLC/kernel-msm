@@ -14,9 +14,9 @@
 #include "sdmmagpie-liber-touch-overlay.dtsi"
 #include "sdmmagpie-audio-overlay.dtsi"
 #include "sdmmagpie-liber-audio-overlay.dtsi"
+#include "sdmmagpie-liber-fps-overlay.dtsi"
 /**
 #include "sdmmagpie-camera-sensor-mot-liber-overlay.dtsi"
-#include "sdmmagpie-ilber-fps-overlay.dtsi"
 #include "liber-panel.dtsi"
 #include "sdmmagpie-liber-charger-overlay.dtsi"
 **/
