@@ -82,8 +82,8 @@
 	/delete-property/vddio-supply;
 
 	vddio-supply = <&pm6150_l15>;
+        qcom,platform-mot-ext-feature-enable;
 };
-
 
 &dsi_ft8756_focal_video {
 	qcom,mdss-dsi-t-clk-post = <0x0a>;
