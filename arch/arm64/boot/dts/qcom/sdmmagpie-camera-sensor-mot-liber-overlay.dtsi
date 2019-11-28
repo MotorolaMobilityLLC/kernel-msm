@@ -265,6 +265,21 @@
 		rgltr-load-current = <0 0>;
 	};
 
+	eeprom_main: qcom,eeprom@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <&pm6150_l13>;
+		cam_vaf-supply = <&pm6150_l5>;
+		regulator-names = "cam_vio","cam_vaf";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000 2800000>;
+		rgltr-max-voltage = <1800000 2800000>;
+		rgltr-load-current = <0 0>;
+		cci-device = <0>;
+		cci-master = <0>;
+	};
+
 	qcom,cam-sensor@0 {
 		cell-index = <0>;
 		compatible = "qcom,cam-sensor";
@@ -275,6 +290,7 @@
 		sensor-position-yaw = <180>;
 		led-flash-src = <&led_flash_rear>;
 		actuator-src = <&actuator_rear>;
+		eeprom-src = <&eeprom_main>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_main_front_macro_avdd_ldo>;
 		cam_vdig-supply = <&camera_main_dvdd_ldo>;
