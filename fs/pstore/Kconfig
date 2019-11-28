@@ -15,7 +15,6 @@ config PSTORE
 
 config PSTORE_DEFLATE_COMPRESS
 	tristate "DEFLATE (ZLIB) compression"
-	default y
 	depends on PSTORE
 	select CRYPTO_DEFLATE
 	help
