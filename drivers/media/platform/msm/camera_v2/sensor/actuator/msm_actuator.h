@@ -109,7 +109,6 @@ struct msm_actuator_ctrl_t {
 	struct msm_pinctrl_info pinctrl_info;
 	uint8_t cam_pinctrl_status;
 	struct msm_actuator_get_pos_cfg_t get_pos_cfg;
-	struct work_struct park_lens_work;
 };
 
 #endif
