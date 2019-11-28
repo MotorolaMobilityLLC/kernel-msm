@@ -119,8 +119,8 @@
 			serialnum = "SB18C54570";
 		};
 		battery_profile_1 {
-			chem_id = <5>;
-			serialnum = "SB18C54580";
+			chem_id = <9824>;
+			serialnum = "SB18C54572";
 		};
 	};
 
