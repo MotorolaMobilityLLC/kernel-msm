@@ -357,8 +357,7 @@ static void __cam_req_mgr_reset_req_slot(struct cam_req_mgr_core_link *link,
 
 	/* Check if CSL has already pushed new request*/
 	if (slot->status == CRM_SLOT_STATUS_REQ_ADDED ||
-		in_q->last_applied_idx == idx ||
-		idx < 0)
+		in_q->last_applied_idx == idx)
 		return;
 
 	/* Reset input queue slot */
@@ -1352,6 +1351,10 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			if (slot->req_id > 0) {
 				last_app_idx = in_q->last_applied_idx;
 				in_q->last_applied_idx = idx;
+				if (abs(last_app_idx - idx) >=
+					reset_step + 1)
+					__cam_req_mgr_reset_req_slot(link,
+						last_app_idx);
 			}
 
 			__cam_req_mgr_dec_idx(
@@ -2240,12 +2243,6 @@ int cam_req_mgr_process_error(void *priv, void *data)
 			__cam_req_mgr_tbl_set_all_skip_cnt(&link->req.l_tbl);
 			in_q->rd_idx = idx;
 			in_q->slot[idx].status = CRM_SLOT_STATUS_REQ_ADDED;
-			if (link->sync_link) {
-				in_q->slot[idx].sync_mode = 0;
-				__cam_req_mgr_inc_idx(&idx, 1,
-					link->req.l_tbl->num_slots);
-				in_q->slot[idx].sync_mode = 0;
-			}
 			spin_lock_bh(&link->link_state_spin_lock);
 			link->state = CAM_CRM_LINK_STATE_ERR;
 			spin_unlock_bh(&link->link_state_spin_lock);
@@ -2306,7 +2303,6 @@ static void cam_req_mgr_process_reset_for_dual_link(
 static int cam_req_mgr_process_trigger(void *priv, void *data)
 {
 	int                                  rc = 0;
-	int32_t                              idx = -1;
 	struct cam_req_mgr_trigger_notify   *trigger_data = NULL;
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
@@ -2633,7 +2629,6 @@ static int cam_req_mgr_cb_notify_trigger(
 	notify_trigger->link_hdl = trigger_data->link_hdl;
 	notify_trigger->dev_hdl = trigger_data->dev_hdl;
 	notify_trigger->trigger = trigger_data->trigger;
-	notify_trigger->req_id = trigger_data->req_id;
 	notify_trigger->sof_timestamp_val = trigger_data->sof_timestamp_val;
 	task->process_cb = &cam_req_mgr_process_trigger;
 	rc = cam_req_mgr_workq_enqueue_task(task, link, CRM_TASK_PRIORITY_0);
