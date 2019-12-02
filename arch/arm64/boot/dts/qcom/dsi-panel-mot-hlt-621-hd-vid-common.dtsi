@@ -18,8 +18,8 @@ qcom,mdss-dsi-panel-destination = "display_1";
 qcom,mdss-dsi-panel-framerate = <60>;
 qcom,mdss-dsi-virtual-channel-id = <0>;
 qcom,mdss-dsi-stream = <0>;
-qcom,mdss-pan-physical-width-dimension = <64>;
-qcom,mdss-pan-physical-height-dimension = <128>;
+qcom,mdss-pan-physical-width-dimension = <68>;
+qcom,mdss-pan-physical-height-dimension = <143>;
 qcom,mdss-dsi-panel-width = <720>;
 qcom,mdss-dsi-panel-height = <1520>;
 qcom,mdss-dsi-h-front-porch = <80>;
@@ -37,12 +37,6 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
-	29 01 00 00 00 00 03 41 5A 09
-	29 01 00 00 00 00 02 98 AF
-	29 01 00 00 00 00 03 41 5A 24
-	29 01 00 00 00 00 02 8D 5A
-	29 01 00 00 00 00 03 41 5A 2F
-	29 01 00 00 00 00 02 4C 03
 	05 01 00 00 78 00 01 11
 	05 01 00 00 0A 00 01 29
 	29 01 00 00 00 00 03 51 FF 0F
@@ -51,7 +45,10 @@ qcom,mdss-dsi-on-command = [
 ];
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 14 00 01 28		/* display_off  delay 50ms*/
-	05 01 00 00 78 00 01 10];	/* enter sleep mode delay 50ms*/
+	05 01 00 00 78 00 01 10		/* enter sleep mode delay 50ms*/
+	39 01 00 00 00 00 02 17 5A
+	39 01 00 00 96 00 02 18 5A
+];
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
@@ -97,7 +94,7 @@ qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <7000>;
 qcom,mdss-dsi-no-panel-on-read-support;
 //qcom,mdss-dsi-lp11-lcdb-reset;
-//qcom,mdss-panel-off-rst-disable;
+qcom,mdss-panel-off-rst-disable;
 //qcom,mdss-panel-reset-high;
 //qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 01 0A];
