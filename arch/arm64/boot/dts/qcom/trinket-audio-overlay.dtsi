@@ -178,7 +178,7 @@
 		qcom,cdc-vdd-buck-current = <650000>;
 
 		qcom,cdc-micbias1-mv = <2800>;
-		qcom,cdc-micbias2-mv = <2800>;
+		qcom,cdc-micbias2-mv = <1800>;
 		qcom,cdc-micbias3-mv = <2800>;
 
 		qcom,cdc-static-supplies = "cdc-vdd-ldo-rxtx",
