@@ -311,7 +311,8 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 		for (i=0; i < DIAG_TTY_MINOR_COUNT; i++) {
 			if(diag_tty[i].ch_name && diag_ch->name) {
 				if(strcmp(diag_tty[i].ch_name, diag_ch->name) == 0 &&
-						diag_tty[i].idx == 0) {
+						((diag_tty[i].idx == DIAG_MDM_START_IDX) ||
+						 (diag_tty[i].idx == DIAG_MSM_START_IDX))) {
 					tty_data = &diag_tty[i];
 					break;
 				}
