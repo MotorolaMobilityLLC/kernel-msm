@@ -3770,7 +3770,8 @@ static int fastrpc_getperf(struct fastrpc_ioctl_perf *ioctl_perf,
 
 		if (fperf) {
 			K_COPY_TO_USER(err, 0, (void *)ioctl_perf->data,
-				fperf, sizeof(*fperf));
+				fperf, sizeof(*fperf) -
+				sizeof(struct hlist_node));
 		}
 	}
 	K_COPY_TO_USER(err, 0, param, ioctl_perf, sizeof(*ioctl_perf));
