@@ -1,0 +1,59 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include "sdm710-astro-common-overlay.dtsi"
+
+/ {
+	qcom,msm-id = <360 0x0>;
+	qcom,board-id = <0 0xB300>;
+};
+
+/*
+ * Astro HW rev DVT3 specific changes go here
+ */
+&soc {
+	fpc_fpc1020 {
+		irq = <&tlmm 23 0>;
+	};
+};
+
+&inductive_power_key {
+        status = "ok";
+};
+
+&inductive_volume_keys {
+        status = "ok";
+};
+
+&dsi_smd_601_1080p_cmd_display {
+	l11_disp-supply = <&pm660_l11>;
+	vio_s_disp-supply = <&vio_disp_sub_vreg>;
+};
+
+&haptic_int_default {
+	mux {
+		pins = "gpio39";
+	};
+
+	config {
+		pins = "gpio39";
+	};
+};
+
+&qupv3_se10_i2c {
+	sx933x@28 {
+		cap_vdd-supply = <&pm660l_bob>;
+	};
+};
