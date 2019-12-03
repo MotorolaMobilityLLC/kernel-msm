@@ -1,0 +1,675 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * Including features only applicable to Astro here
+ */
+
+#include <dt-bindings/clock/mdss-10nm-pll-clk.h>
+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include "sdm670-sde-display.dtsi"
+#include "sdm710-moto-common-overlay.dtsi"
+#include "sdm710-astro-display.dtsi"
+
+/ {
+        model = "Astro";
+        compatible = "qcom,sdm670-astro", "qcom,sdm670-moto", "qcom,sdm670";
+};
+
+&soc {
+	vci_disp_vreg: vci_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vci_disp";
+		vin-supply = <&pm660l_l3>;
+		gpio = <&tlmm 107 0>;
+		enable-active-high;
+		startup-delay-us = <300>;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_v1_en_default>;
+	};
+
+	vio_disp_vreg: vio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vio_disp";
+		vin-supply = <&pm660_l11>;
+		gpio = <&tlmm 106 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_pwr_en_default>;
+	};
+
+	vci_disp_sub_vreg: vci_disp_sub_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vci_disp_sub";
+		vin-supply = <&pm660l_l3>;
+		gpio = <&tlmm 105 0>;
+		enable-active-high;
+		startup-delay-us = <300>;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_sub_avdd_en_default>;
+	};
+
+	vio_disp_sub_vreg: vio_disp_sub_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vio_disp_sub";
+		vin-supply = <&pm660_l11>;
+		gpio = <&tlmm 100 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&disp_sub_dvdd_en_default>;
+	};
+
+	tzlog_dump {
+		compatible = "mmi,tzlog-dump";
+		memory-region = <&tzlog_dump_mem>;
+	};
+
+	mmi_annotate {
+		compatible = "mmi,annotate";
+		memory-region = <&mmi_annotate_mem>;
+		mem-size = <0x20000>;
+	};
+
+	wdog_cputctx {
+		compatible = "mmi,watchdog_cpu_ctx";
+		memory-region = <&wdog_cpuctx_mem>;
+	};
+
+	fpc_fpc1020 {
+		status = "ok";
+		compatible = "fpc,fpc1020";
+		reg = <0>;
+		irq = <&tlmm 26 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fpc1020_reset_default>;
+	};
+
+	flip_detection: flip_detection {
+		compatible = "extcon-gpio";
+		extcon-id = <62>; /* EXTCON_MECHANICAL */
+		gpio = <&tlmm 133 GPIO_ACTIVE_HIGH>;
+		debounce-ms = <200>;
+		wakeup-source;
+		irq-flags = <IRQ_TYPE_EDGE_BOTH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&flip_det_default>;
+	};
+
+	key_swap {
+		compatible = "mmi,key_swap";
+		action-0 {
+			action-type = "swap";
+			code = <KEY_VOLUMEDOWN>;
+			swap = <KEY_VOLUMEUP>;
+		};
+		action-1 {
+			action-type = "swap";
+			code = <KEY_VOLUMEUP>;
+			swap = <KEY_VOLUMEDOWN>;
+		};
+	};
+};
+
+&vio_disp_sub_vreg {
+	regulator-boot-on;
+};
+
+&regulator_ldoa11 {
+	/* leave only LPM mode */
+	qcom,supported-modes = <RPMH_REGULATOR_MODE_LPM>;
+	qcom,mode-threshold-currents = <0>;
+};
+
+&pm660_l14 {
+	regulator-always-on;
+};
+
+&pm660l_l6 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	regulator-always-on;
+};
+
+&pm660l_l3 {
+	regulator-min-microvolt = <3200000>;
+	regulator-max-microvolt = <3200000>;
+	qcom,init-voltage = <3200000>;
+};
+
+&tlmm {
+	flip_det_default: flip_det_default {
+		mux {
+			pins = "gpio133";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio133";
+			drive-strength = <2>; /* 2 mA */
+			bias-no-pull;
+		};
+	};
+
+	fpc1020_reset_default: fpc1020_reset_default {
+		mux {
+			pins = "gpio91";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio91";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	disp_v1_en {
+		disp_v1_en_default: disp_v1_en_default {
+			mux {
+				pins = "gpio107";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio107";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-high;
+			};
+		};
+	};
+
+	disp_pwr_en {
+		disp_pwr_en_default: disp_pwr_en_default {
+			mux {
+				pins = "gpio106";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio106";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-high;
+			};
+		};
+	};
+
+	disp_sub_v1_en {
+		disp_sub_avdd_en_default: disp_sub_avdd_en_default {
+			mux {
+				pins = "gpio105";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio105";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-high;
+			};
+		};
+	};
+
+	disp_sub_v2_en {
+		disp_sub_dvdd_en_default: disp_sub_dvdd_en_default {
+			mux {
+				pins = "gpio100";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio100";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+				output-high;
+			};
+		};
+	};
+
+	ts_sub_rst_mux {
+		ts_sub_rst_active: ts-sub-rst-active {
+			mux {
+				pins = "gpio99";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio99";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		ts_sub_rst_suspend: ts-sub-rst-suspend {
+			mux {
+				pins = "gpio99";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio99";
+				drive-strength = <2>;
+				bias-pull-down;
+				output-low;
+			};
+		};
+	};
+
+	ts_sub_int_mux {
+		ts_sub_int_active: ts-sub-int-active {
+			mux {
+				pins = "gpio125";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio125";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		ts_sub_int_suspend: ts-sub-int-suspend {
+			mux {
+				pins = "gpio125";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio125";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		ts_sub_int_release: ts-sub-int-release {
+			mux {
+				pins = "gpio125";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio125";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
+	max17050_main_cc {
+		max17050_main_cc_default: max17050_main_cc_default{
+			mux {
+				pins = "gpio123";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio123";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+			};
+		};
+	};
+
+	max17050_flip_cc {
+		max17050_flip_cc_default: max17050_flip_cc_default{
+			mux {
+				pins = "gpio49";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio49";
+				drive-strength = <2>; /* 2 mA */
+				bias-no-pull;
+			};
+		};
+	};
+
+        ldc2112_irq { /* TI,LDC2112 */
+                ldc2112_default: default {
+                        mux {
+                                pins = "gpio43";
+                                function = "gpio";
+                        };
+                        config {
+                                pins = "gpio43";
+                                drive-strength = <2>;
+                                bias-pull-up;
+                        };
+                };
+        };
+
+        ldc2114_irq { /* TI,LDC2114 */
+                ldc2114_default: default {
+                        mux {
+                                pins = "gpio3";
+                                function = "gpio";
+                        };
+                        config {
+                                pins = "gpio3";
+                                drive-strength = <2>;
+                                bias-pull-up;
+                        };
+                };
+        };
+};
+
+&reserved_memory{
+	ramoops_mem {
+		compatible = "ramoops";
+		no-map;
+		reg = <0x0 0xaf000000 0x0 0xc0000>;
+		console-size = <0x40000>;
+		pmsg-size = <0x40000>;
+		record-size = <0x3f800>;
+	};
+
+	tzlog_dump_mem: tzlog_dump_mem_region {
+		no-map;
+		reg = <0x0 0xaefd0000 0x0 0x30000>;
+	};
+
+	mmi_annotate_mem: mmi_annotate_mem_region {
+		no-map;
+		reg = <0x0 0xaefcf800 0x0 0x800>;
+	};
+
+	wdog_cpuctx_mem: wdog_cpuctx_region {
+		no-map;
+		reg = <0x0 0xaefa1800 0x0 (0x5c00 * 8)>;
+	};
+
+	cont_splash_memory: cont_splash_region@9c000000 {
+		reg = <0x0 0x9c000000 0x0 0x01a00000>;
+		label = "cont_splash_region";
+	};
+
+	cont_splash_memory_secDisp: cont_splash_region_secDisp@9da00000 {
+		reg = <0x0 0x9da00000 0x0 0x00a00000>;
+		label = "cont_splash_region_secDisp";
+	};
+};
+
+&qupv3_se7_i2c {
+	synaptics_dsx_i2c@20 {
+		synaptics,splash-screen-mode;
+		pinctrl-0 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod";
+			config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
+	};
+
+	synaptics_dsx_i2c@38 {
+		synaptics,splash-screen-mode;
+		synaptics,control-dsi = <1>;
+		synaptics,bound-display = "dsi_boe_269_800x600_cmd_display";
+		synaptics,class-entry-name = "secondary";
+		pinctrl-0 = <&ts_sub_rst_active &ts_sub_int_active>;
+		config_modifier-names = "aod";
+			config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
+	};
+
+	raydium-ts@39 {
+		status = "disabled";
+		compatible = "raydium,raydium-ts";
+		reg = <0x39>;
+		/*raydium,reset-gpio = <&tlmm 99 0>;*/
+		raydium,irq-gpio = <&tlmm 125 0>;
+		vcc_i2c-supply = <&pm660_l11>;
+		pinctrl-names = "ts_sub_int_active", "ts_sub_int_suspend", "ts_sub_int_release";
+		pinctrl-0 = <&ts_sub_int_active>;
+		pinctrl-1 = <&ts_sub_int_suspend>;
+		pinctrl-2 = <&ts_sub_int_release>;
+		raydium,control-dsi = <1>;
+		raydium,bound-display = "dsi_auo_139_480x480_cmd_dvt1_display";
+		raydium,display-coords = <0 0 480 480>;
+		raydium,soft-reset-delay = <360>;
+		raydium,num-max-touches = <2>;
+/*		raydium,hard-reset-delay-ms = <>;*/
+	};
+};
+
+&qupv3_se4_i2c {
+	status = "ok";
+	max17050_main: max17050-battery-main@36 {
+ 		compatible = "maxim,max17050";
+ 		reg = <0x36>;
+ 		maxim,rsns-microohm = <5000>;
+
+ 		gpios = <&tlmm 123 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+ 		gpio-names = "cc-alert-main";
+ 		pinctrl-names = "default";
+		pinctrl-0 = <&max17050_main_cc_default>;
+
+ 		maxim,main-psy;
+ 		maxim,enable_por_init;
+ 		maxim,batt_undervoltage_zero_soc;
+ 		maxim,batt-psy-name = "battery";
+
+ 		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
+		maxim,df-read-battsn;
+		maxim,configuration {
+			df-serialnum    = "KV30";
+			/include/ "batterydata-kv30-atl-maxim.dtsi"
+		};
+		maxim,temp-conv {
+			start   = /bits/ 16 <(-20)>;    /* in degrees C */
+			result  = /bits/ 16 <
+				/* 1/10th C "real" temps corresponding start, start + 1, etc. fuel gauge temps in C */
+				(-302) (-271) (-246) (-222) (-202) (-180) (-162) (-147) (-129) (-114)   /* -20 C ... -11 C */
+				(-101) (-86)  (-72)  (-59)  (-48)  (-35)  (-23)  (-12)  (-2)   10       /* -10 C ... -1  C */
+				22     32     42     51     62     72     82     91     99     110      /*  0  C ...  9  C */
+				120    129    138    146    156    165    175    184    192    200      /*  10 C ...  19 C */
+				210    220    230    238    247    256    266    275    285    294      /*  20 C ...  29 C */
+				303    313    324    333    343    353    364    375    385    395      /*  30 C ...  39 C */
+				407    419    430    441    453    466    479    492    505    520      /*  40 C ...  49 C */
+				534    548    565    581    597    616    635    654    676    697      /*  50 C ...  59 C */
+				721    747    775    800                                                /*  60 C ...  63 C */
+			>;
+		};
+ 	};
+
+        inductive_power_key: ldc2114@2a {
+                status = "disable";
+                compatible = "ti,ldc2114";
+                reg = <0x2a>;
+                interrupt-parent = <&tlmm>;
+                interrupts = <43 0>;
+                gpios = <&tlmm 13 0>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&ldc2112_default>;
+                configs {
+                        config-ver = <4>;
+                        config-normal {
+                                config-data = [
+                                        0C 11 /*EN*/
+                                        0E 17 /*GAIN0*/
+                                        0F 01 /*LP_SCAN_RATE*/
+                                        13 01 /*LP_BASE_INC*/
+                                        15 01 /*NP_BASE_INC*/
+                                        16 00 /*BTPAUSE_MAXWIN*/
+                                        20 29 /*SENSOR0_CFG*/
+                                        28 00 /*FTF1_2*/
+                                ];
+                        };
+                };
+        };
+};
+
+&qupv3_se10_i2c {
+	status = "ok";
+	max17050_flip: max17050-battery-flip@36 {
+ 		compatible = "maxim,max17050";
+ 		reg = <0x36>;
+ 		maxim,rsns-microohm = <5000>;
+
+ 		gpios = <&tlmm 49 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+ 		gpio-names = "cc-alert-flip";
+ 		pinctrl-names = "default";
+		pinctrl-0 = <&max17050_flip_cc_default>;
+
+ 		maxim,enable_por_init;
+ 		maxim,batt_undervoltage_zero_soc;
+ 		maxim,batt-psy-name = "battery";
+
+ 		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
+		maxim,df-read-battsn;
+		maxim,configuration {
+			df-serialnum    = "KV40";
+			/include/ "batterydata-kv40-atl-maxim.dtsi"
+		};
+		maxim,temp-conv {
+			start   = /bits/ 16 <(-20)>;    /* in degrees C */
+			result  = /bits/ 16 <
+				/* 1/10th C "real" temps corresponding start, start + 1, etc. fuel gauge temps in C */
+				(-302) (-271) (-246) (-222) (-202) (-180) (-162) (-147) (-129) (-114)   /* -20 C ... -11 C */
+				(-101) (-86)  (-72)  (-59)  (-48)  (-35)  (-23)  (-12)  (-2)   10       /* -10 C ... -1  C */
+				22     32     42     51     62     72     82     91     99     110      /*  0  C ...  9  C */
+				120    129    138    146    156    165    175    184    192    200      /*  10 C ...  19 C */
+				210    220    230    238    247    256    266    275    285    294      /*  20 C ...  29 C */
+				303    313    324    333    343    353    364    375    385    395      /*  30 C ...  39 C */
+				407    419    430    441    453    466    479    492    505    520      /*  40 C ...  49 C */
+				534    548    565    581    597    616    635    654    676    697      /*  50 C ...  59 C */
+				721    747    775    800                                                /*  60 C ...  63 C */
+			>;
+		};
+ 	};
+
+        inductive_volume_keys: ldc2114@2a {
+                status = "disable";
+                compatible = "ti,ldc2114";
+                reg = <0x2a>;
+                interrupt-parent = <&tlmm>;
+                interrupts = <3 0>;
+                gpios = <&tlmm 16 0>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&ldc2114_default>;
+                configs {
+                        config-ver = <3>;
+                        config-normal {
+                                config-data = [
+                                        0C 33 /*EN*/
+                                        0E 13 /*GAIN0*/
+                                        0F 01 /*LP_SCAN_RATE*/
+                                        10 13 /*GAIN1*/
+                                        13 07 /*LP_BASE_INC*/
+                                        15 07 /*NP_BASE_INC*/
+                                        16 03 /*BTPAUSE_MAXWIN*/
+                                        20 59 /*SENSOR0_CFG*/
+                                        22 59 /*SENSOR1_CFG*/
+                                ];
+                        };
+                };
+        };
+};
+
+&qupv3_se9_2uart {
+	status = "ok";
+};
+
+&qupv3_se12_2uart {
+	status = "disabled";
+};
+
+&red_led {
+	linux,name = "charging";
+};
+
+&firmware {
+	android {
+		vbmeta {
+			parts = "vbmeta,boot,system,vendor,dtbo,oem";
+		};
+		fstab {
+			oem {
+				compatible = "android,oem";
+				dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/oem";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1";
+				/*MMI_STOPSHIP security: Remove until oem */
+				/*fsmgr_flags = "wait,slotselect,avb";*/
+				fsmgr_flags = "wait,slotselect";
+			};
+		};
+	};
+};
+
+&qusb_phy0 {
+	qcom,qusb-phy-host-init-seq =
+			/* <value reg_offset> */
+			   <0x23 0x210 /* PWR_CTRL1 */
+			    0x03 0x04  /* PLL_ANALOG_CONTROLS_TWO */
+			    0x7c 0x18c /* PLL_CLOCK_INVERTERS */
+			    0x80 0x2c  /* PLL_CMODE */
+			    0x0a 0x184 /* PLL_LOCK_DELAY */
+			    0x19 0xb4  /* PLL_DIGITAL_TIMERS_TWO */
+			    0x40 0x194 /* PLL_BIAS_CONTROL_1 */
+			    0x20 0x198 /* PLL_BIAS_CONTROL_2 */
+			    0x21 0x214 /* PWR_CTRL2 */
+			    0x08 0x220 /* IMP_CTRL1 */
+			    0x58 0x224 /* IMP_CTRL2 */
+			    0x73 0x240 /* TUNE1 */
+			    0x29 0x244 /* TUNE2 */
+			    0xca 0x248 /* TUNE3 */
+			    0x01 0x24c /* TUNE4 */
+			    0x03 0x250 /* TUNE5 */
+			    0x00 0x23c /* CHG_CTRL2 */
+			    0x22 0x210>; /* PWR_CTRL1 */
+	qcom,qusb-phy-init-seq =
+			/* <value reg_offset> */
+			   <0x23 0x210 /* PWR_CTRL1 */
+			    0x03 0x04  /* PLL_ANALOG_CONTROLS_TWO */
+			    0x7c 0x18c /* PLL_CLOCK_INVERTERS */
+			    0x80 0x2c  /* PLL_CMODE */
+			    0x0a 0x184 /* PLL_LOCK_DELAY */
+			    0x19 0xb4  /* PLL_DIGITAL_TIMERS_TWO */
+			    0x40 0x194 /* PLL_BIAS_CONTROL_1 */
+			    0x20 0x198 /* PLL_BIAS_CONTROL_2 */
+			    0x21 0x214 /* PWR_CTRL2 */
+			    0x08 0x220 /* IMP_CTRL1 */
+			    0x58 0x224 /* IMP_CTRL2 */
+			    0x73 0x240 /* TUNE1 */
+			    0x29 0x244 /* TUNE2 */
+			    0xca 0x248 /* TUNE3 */
+			    0x01 0x24c /* TUNE4 */
+			    0x03 0x250 /* TUNE5 */
+			    0x00 0x23c /* CHG_CTRL2 */
+			    0x22 0x210>; /* PWR_CTRL1 */
+};
+
+&pm660_0 {
+	qcom,power-on-mmi@800 {
+		compatible = "qcom,qpnp-power-on-mmi";
+		interrupts = <0x0 0x8 0x3 IRQ_TYPE_NONE>;
+		interrupt-names = "kpdpwr-bark";
+	};
+};
