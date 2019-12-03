@@ -636,6 +636,7 @@
 		sec,irq_gpio = <&tlmm 96 0>;
 		sec,irq_type = <0x2008>; /*IRQF_TRIGGER_LOW | IRQF_ONESHOT*/
 		sec,max_coords = <876 2142>;
+		sec,force-calibration;
 		sec,usb-charger-detection;
 		sec,regulator_dvdd = "pm660l_l3";
 		sec,regulator_avdd = "pm660_l11";
