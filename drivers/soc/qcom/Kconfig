@@ -17,6 +17,14 @@ config OLSON_DTB
 	Only include Olson specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config ASTRO_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "ASTRO DTBs"
+	help
+	Only include Olson specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config RACERL_DTB
 	depends on ARCH_QCOM
 	default n
