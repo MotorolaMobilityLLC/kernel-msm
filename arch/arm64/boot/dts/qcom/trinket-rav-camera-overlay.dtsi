@@ -26,12 +26,12 @@
 		rear_cam_sensor_active: rear_cam_sensor_active {
 			/* REAR CAMERA */
 			mux {
-				pins = "gpio48","gpio2";
+				pins = "gpio48";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio48","gpio2";
+				pins = "gpio48";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -40,12 +40,12 @@
 		rear_cam_sensor_suspend: rear_cam_sensor_suspend {
 			/* REAR CAMERA */
 			mux {
-				pins = "gpio48","gpio2";
+				pins = "gpio48";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio48","gpio2";
+				pins = "gpio48";
 				bias-pull-down; /* PULL DOWN */
 				drive-strength = <2>; /* 2 MA */
 				output-low;
@@ -55,12 +55,12 @@
 		front_cam_sensor_active: front_cam_sensor_active {
 			/* FRONT CAMERA */
 			mux {
-				pins = "gpio42","gpio84","gpio2";
+				pins = "gpio42","gpio84";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio42","gpio84","gpio2";
+				pins = "gpio42","gpio84";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -69,12 +69,12 @@
 		front_cam_sensor_suspend: front_cam_sensor_suspend {
 			/* FRONT CAMERA */
 			mux {
-				pins = "gpio42","gpio84","gpio2";
+				pins = "gpio42","gpio84";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio42","gpio84","gpio2";
+				pins = "gpio42","gpio84";
 				bias-pull-down; /* PULL DOWN */
 				drive-strength = <2>; /* 2 MA */
 				output-low;
@@ -337,19 +337,16 @@
 		gpios = <&tlmm 34 0>,
 			<&tlmm 48 0>,
 			<&pmi632_gpios 8 0>,
-			<&pmi632_gpios 5 0>,
-			<&tlmm 2 0>;
+			<&pmi632_gpios 5 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
 		qcom,gpio-vdig = <3>;
-		qcom,gpio-custom2 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 >;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 >;
 		qcom,gpio-req-tbl-label = "REAR_CAMIF_MCLK0",
 					"REAR_CAM_RESET",
 					"REAR_CAM_AVDD",
-					"REAR_CAM_DVDD",
-					"REAR_CAM_RESET1";
+					"REAR_CAM_DVDD";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
@@ -381,19 +378,16 @@
 		gpios = <&tlmm 35 0>,
 			<&tlmm 42 0>,
                         <&pmi632_gpios 8  0>,
-                        <&tlmm 84 0>,
-			<&tlmm 2 0>;
+                        <&tlmm 84 0>;
 		qcom,gpio-reset = <1>;
                 qcom,gpio-vana = <2>;
                 qcom,gpio-vdig = <3>;
-		qcom,gpio-custom2 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 >;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "FRONT_CAMIF_MCLK1",
 					   "FRONT_CAM_RESET1",
                                            "FRONT_CAM_VANA1",
-                                           "FRONT_CAM_VDIG1",
-					   "FRONT_CAM_RESET2";
+                                           "FRONT_CAM_VDIG1";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
@@ -522,19 +516,16 @@
 		gpios = <&tlmm 34 0>,
 			<&tlmm 48 0>,
 			<&pmi632_gpios 8 0>,
-			<&pmi632_gpios 5 0>,
-			<&tlmm 2 0>;
+			<&pmi632_gpios 5 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
 		qcom,gpio-vdig = <3>;
-		qcom,gpio-custom2 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 >;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 >;
 		qcom,gpio-req-tbl-label = "REAR_CAMIF_MCLK0",
 					"REAR_CAM_RESET",
 					"REAR_CAM_AVDD",
-					"REAR_CAM_DVDD",
-					"REAR_CAM_RESET1";
+					"REAR_CAM_DVDD";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
@@ -569,19 +560,16 @@
 		gpios = <&tlmm 35 0>,
 			<&tlmm 42 0>,
                         <&pmi632_gpios 8  0>,
-                        <&tlmm 84 0>,
-			<&tlmm 2 0>;
+                        <&tlmm 84 0>;
 		qcom,gpio-reset = <1>;
                 qcom,gpio-vana = <2>;
                 qcom,gpio-vdig = <3>;
-		qcom,gpio-custom2 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 >;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "FRONT_CAMIF_MCLK1",
 					   "FRONT_CAM_RESET1",
                                            "FRONT_CAM_VANA1",
-                                           "FRONT_CAM_VDIG1",
-					   "FRONT_CAM_RESET2";
+                                           "FRONT_CAM_VDIG1";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
