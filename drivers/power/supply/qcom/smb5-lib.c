@@ -5392,6 +5392,7 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 {
 	const struct apsd_result *apsd_result;
+	int typec_mode;
 
 	if (!rising)
 		return;
@@ -5408,8 +5409,11 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 			smblib_notify_device_mode(chg, true);
 		break;
 	case OCP_CHARGER_BIT:
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+		typec_mode = smblib_get_prop_typec_mode(chg);
+		if (!typec_rp_med_high(chg, typec_mode)) {
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					OCP_CURRENT_UA);
+		}
 		break;
 	case DCP_CHARGER_BIT:
 		break;
