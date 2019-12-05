@@ -397,7 +397,7 @@
 	};
 
 	cont_splash_memory_secDisp: cont_splash_region_secDisp@9da00000 {
-		reg = <0x0 0x9da00000 0x0 0x00a00000>;
+		reg = <0x0 0x9da00000 0x0 0x00900000>;
 		label = "cont_splash_region_secDisp";
 	};
 };
