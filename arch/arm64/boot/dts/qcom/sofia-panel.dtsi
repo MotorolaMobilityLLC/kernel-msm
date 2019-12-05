@@ -113,6 +113,9 @@
 			qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
 			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 A3];
 			qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
+
+			/delete-property/qcom,mdss-dsi-h-back-porch;
+			qcom,mdss-dsi-h-back-porch = <40>;
 		};
 	};
 };
@@ -160,6 +163,9 @@
 			qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
 			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 A3];
 			qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
+
+			/delete-property/qcom,mdss-dsi-h-back-porch;
+			qcom,mdss-dsi-h-back-porch = <40>;
 		};
 	};
 };
