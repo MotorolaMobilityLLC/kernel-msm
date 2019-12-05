@@ -1751,6 +1751,20 @@
 				output-high;
 			};
 		};
+
+		sensor_enable_default: sensor_enable_default {
+			mux {
+				pins = "gpio90";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio90";
+				bias-pull-up;
+				drive-strength = <16>;
+				output-high;
+			};
+		};
 	};
 };
 
