@@ -2145,6 +2145,8 @@ static int msm_isp_cfg_ping_pong_address(
 
 	if (!buf) {
 		msm_isp_cfg_stream_scratch(stream_info, pingpong_status);
+		if (stream_info->controllable_output)
+			return 1;
 		return 0;
 	}
 
@@ -3858,11 +3860,16 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 		if (rc) {
 			spin_unlock_irqrestore(&stream_info->lock, flags);
 			stream_info->undelivered_request_cnt--;
-			pr_err_ratelimited("%s:%d fail to cfg HAL buffer\n",
-				__func__, __LINE__);
-			queue_req->cmd_used = 0;
-			list_del(&queue_req->list);
-			stream_info->request_q_cnt--;
+			queue_req = list_first_entry_or_null(
+					&stream_info->request_q,
+					struct msm_vfe_frame_request_queue, list);
+			if (queue_req) {
+				queue_req->cmd_used = 0;
+				list_del(&queue_req->list);
+				stream_info->request_q_cnt--;
+			}
+			pr_err_ratelimited("%s:%d fail to cfg HAL buffer stream %x\n",
+					__func__, __LINE__, stream_info->stream_id);
 			return rc;
 		}
 
@@ -3897,11 +3904,16 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 			stream_info->undelivered_request_cnt--;
 			spin_unlock_irqrestore(&stream_info->lock,
 						flags);
-			pr_err_ratelimited("%s:%d fail to cfg HAL buffer\n",
-				__func__, __LINE__);
-			queue_req->cmd_used = 0;
-			list_del(&queue_req->list);
-			stream_info->request_q_cnt--;
+			queue_req = list_first_entry_or_null(
+					&stream_info->request_q,
+					struct msm_vfe_frame_request_queue, list);
+			if (queue_req) {
+				queue_req->cmd_used = 0;
+				list_del(&queue_req->list);
+				stream_info->request_q_cnt--;
+			}
+			pr_err_ratelimited("%s:%d fail to cfg HAL buffer stream %x\n",
+					__func__, __LINE__, stream_info->stream_id);
 			return rc;
 		}
 	} else {
