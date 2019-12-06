@@ -865,6 +865,9 @@ int bio_add_page(struct bio *bio, struct page *page,
 	bio->bi_vcnt++;
 done:
 	bio->bi_iter.bi_size += len;
+
+	if (!bio_flagged(bio, BIO_WORKINGSET) && unlikely(PageWorkingset(page)))
+		bio_set_flag(bio, BIO_WORKINGSET);
 	return len;
 }
 EXPORT_SYMBOL(bio_add_page);
