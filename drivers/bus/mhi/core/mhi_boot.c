@@ -17,6 +17,12 @@
 #include <linux/mhi.h>
 #include "mhi_internal.h"
 
+#define MAX_SSR_REASON_LEN	256U
+
+static char pil_wcnss_ssr_reason[MAX_SSR_REASON_LEN];
+static char *wcnss_ssr_reason = pil_wcnss_ssr_reason;
+module_param(wcnss_ssr_reason, charp, S_IRUGO);
+
 static void mhi_process_sfr(struct mhi_controller *mhi_cntrl,
 	struct file_info *info)
 {
@@ -59,6 +65,8 @@ static void mhi_process_sfr(struct mhi_controller *mhi_cntrl,
 
 	/* force sfr string to log in kernel msg */
 	MHI_ERR("%s\n", sfr_buf);
+	strlcpy(pil_wcnss_ssr_reason, sfr_buf, min((size_t)(file_size + 1),
+		sizeof(pil_wcnss_ssr_reason)));
 err:
 	kfree(sfr_buf);
 }
