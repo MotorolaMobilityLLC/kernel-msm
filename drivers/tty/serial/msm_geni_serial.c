@@ -302,10 +302,16 @@ static bool check_transfers_inflight(struct uart_port *uport)
 	return xfer_on;
 }
 
-static void wait_for_transfers_inflight(struct uart_port *uport)
+static int wait_for_transfers_inflight(struct uart_port *uport)
 {
 	int iter = 0;
 	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	unsigned int geni_status;
+
+	geni_status = geni_read_reg_nolog(uport->membase, SE_GENI_STATUS);
+	/* Possible stop rx is called before this. */
+	if (!(geni_status & S_GENI_CMD_ACTIVE))
+		goto exit;
 
 	while (iter < WAIT_XFER_MAX_ITER) {
 		if (check_transfers_inflight(uport)) {
@@ -329,6 +335,8 @@ static void wait_for_transfers_inflight(struct uart_port *uport)
 			"%s IOS 0x%x geni status 0x%x rx: fifo 0x%x dma 0x%x\n",
 		__func__, geni_ios, geni_status, rx_fifo_status, rx_dma);
 	}
+exit:
+	return 0;
 }
 
 static int vote_clock_on(struct uart_port *uport)
