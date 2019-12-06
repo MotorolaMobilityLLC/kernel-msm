@@ -39,3 +39,7 @@
 		pinctrl-0 = <&tps61280_en_default>;
 	};
 };
+
+&pmi632_charger {
+	mmi,ext-ovp-greater-12v;
+};
