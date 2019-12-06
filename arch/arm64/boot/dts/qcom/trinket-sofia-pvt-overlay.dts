@@ -20,6 +20,6 @@
 	model = "sofia";
 	compatible = "qcom,trinket-sofia", "qcom,trinket-moto", "qcom,trinket";
 	qcom,msm-id = <394 0x0>;
-	qcom,board-id = <0x46 0xC100>;
+	qcom,board-id = <0x46 0xC000>;
 };
 
