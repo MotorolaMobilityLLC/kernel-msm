@@ -20,6 +20,6 @@
 	model = "sofiap";
 	compatible = "qcom,trinket-sofiap", "qcom,trinket-moto", "qcom,trinket";
 	qcom,msm-id = <394 0x0>;
-	qcom,board-id = <0x47 0xC100>;
+	qcom,board-id = <0x47 0xC000>;
 };
 
