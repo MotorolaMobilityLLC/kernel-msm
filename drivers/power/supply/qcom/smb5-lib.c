@@ -2099,6 +2099,13 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	}
 	dc_online = (bool)pval.intval;
 
+#ifndef QCOM_BASE
+	if (dc_online) {
+		val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		return 0;
+	}
+#endif
+
 	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read BATTERY_CHARGER_STATUS_1 rc=%d\n",
@@ -3088,6 +3095,23 @@ int smblib_get_prop_dc_present(struct smb_charger *chg,
 		return 0;
 	}
 
+#ifndef QCOM_BASE
+	if (!chg->wls_psy)
+		chg->wls_psy = power_supply_get_by_name("wireless");
+
+	if (chg->wls_psy) {
+		rc = power_supply_get_property(chg->wls_psy,
+					POWER_SUPPLY_PROP_PRESENT,
+					val);
+		if (rc < 0) {
+			dev_err(chg->dev, "Couldn't get POWER_SUPPLY_PROP_PRESENT, rc=%d\n",
+					rc);
+			return rc;
+		} else
+			return 0;
+	}
+#endif
+
 	rc = smblib_read(chg, DCIN_BASE + INT_RT_STS_OFFSET, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read DCIN_RT_STS rc=%d\n", rc);
@@ -3119,6 +3143,23 @@ int smblib_get_prop_dc_online(struct smb_charger *chg,
 		rc = smblib_get_prop_dc_present(chg, val);
 		return rc;
 	}
+
+#ifndef QCOM_BASE
+	if (!chg->wls_psy)
+		chg->wls_psy = power_supply_get_by_name("wireless");
+
+	if (chg->wls_psy) {
+		rc = power_supply_get_property(chg->wls_psy,
+					POWER_SUPPLY_PROP_ONLINE,
+					val);
+		if (rc < 0) {
+			dev_err(chg->dev, "Couldn't get POWER_SUPPLY_PROP_ONLINE, rc=%d\n",
+					rc);
+			return rc;
+		} else
+			return 0;
+	}
+#endif
 
 	rc = smblib_read(chg, POWER_PATH_STATUS_REG, &stat);
 	if (rc < 0) {
