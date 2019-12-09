@@ -27,6 +27,8 @@
 #include <soc/qcom/secure_buffer.h>
 #include <msm_camera_tz_util.h>
 #include <linux/ion_kernel.h>
+#include <linux/sched.h>
+#include<linux/cpumask.h>
 #include "cam_smmu_api.h"
 
 #define SCRATCH_ALLOC_START SZ_128K
@@ -1884,6 +1886,13 @@ int cam_smmu_get_phy_addr(int handle, int ion_fd,
 	int idx, rc;
 	enum dma_data_direction dma_dir;
 	enum cam_smmu_buf_state buf_state;
+	struct cpumask  mask;
+	cpumask_clear(&mask);
+	cpumask_set_cpu(0, &mask);
+	cpumask_set_cpu(1, &mask);
+	cpumask_set_cpu(2, &mask);
+	cpumask_set_cpu(3, &mask);
+	sched_setaffinity(task_pid_vnr(current), &mask);
 
 	if (!paddr_ptr || !len_ptr) {
 		pr_err("Error: Input pointers are invalid\n");
@@ -1934,6 +1943,18 @@ int cam_smmu_get_phy_addr(int handle, int ion_fd,
 		pr_err("Error: mapping or add list fail\n");
 		goto get_addr_end;
 	}
+
+	cpumask_clear(&mask);
+	cpumask_set_cpu(0, &mask);
+	cpumask_set_cpu(1, &mask);
+	cpumask_set_cpu(2, &mask);
+	cpumask_set_cpu(3, &mask);
+	cpumask_set_cpu(4, &mask);
+	cpumask_set_cpu(5, &mask);
+	cpumask_set_cpu(6, &mask);
+	cpumask_set_cpu(7, &mask);
+	sched_setaffinity(task_pid_vnr(current), &mask);
+
 
 get_addr_end:
 	mutex_unlock(&iommu_cb_set.cb_info[idx].lock);
