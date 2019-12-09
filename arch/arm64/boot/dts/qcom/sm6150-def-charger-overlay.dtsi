@@ -238,6 +238,7 @@
 				   <700>,
 				   <500>,
 				   <300>;
+	qcom,upper-limit-capacity = <70>;
 };
 
 &thermal_zones {
