@@ -815,7 +815,7 @@ static int smblib_set_adapter_allowance(struct smb_charger *chg,
 	int rc = 0;
 
 	/* PMI632 only support max. 9V */
-	if (chg->smb_version == PMI632_SUBTYPE) {
+	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
 		switch (allowed_voltage) {
 		case USBIN_ADAPTER_ALLOW_12V:
 		case USBIN_ADAPTER_ALLOW_9V_TO_12V:
@@ -3570,7 +3570,7 @@ int smblib_get_prop_usb_voltage_max_design(struct smb_charger *chg,
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
 	case POWER_SUPPLY_TYPE_USB_PD:
 		if ((chg->chg_param.smb_version == PMI632_SUBTYPE) ||
-			(chg->smb_version == PM6150_SUBTYPE))
+			(chg->chg_param.smb_version == PM6150_SUBTYPE))
 			val->intval = MICRO_9V;
 		else
 			val->intval = MICRO_12V;
