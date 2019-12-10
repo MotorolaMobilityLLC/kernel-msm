@@ -51,6 +51,8 @@
 &i2c_4 {
 	asm330@6a {
 		reg = <0x6b>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sensor_enable_default>;
 	};
 };
 
