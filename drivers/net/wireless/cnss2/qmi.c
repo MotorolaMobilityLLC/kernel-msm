@@ -1446,8 +1446,8 @@ int cnss_wlfw_antenna_switch_send_sync(struct cnss_plat_data *plat_priv)
 	}
 
 	if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
-		cnss_pr_err("Antenna switch request failed, result: %d, err: %d\n",
-			    resp->resp.result, resp->resp.error);
+		cnss_pr_dbg("Antenna switch request failed, result: %d, err: %d\n",
+			    resp->resp.result, resp->resp.error); // MOT IKSWQ-39463 abhkumar Error logs cleanup
 		ret = -resp->resp.result;
 		goto out;
 	}
