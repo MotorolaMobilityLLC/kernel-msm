@@ -1392,6 +1392,7 @@ static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
 	struct ion_device *dev = s->private;
 	struct rb_node *n;
 	int i;
+	unsigned long total_len = 0;
 
 	seq_printf(s, "%16.s %16.s %12.s %12.s %20.s    %s\n", "heap",
 		"buffer", "size", "ref cnt", "allocator", "references");
@@ -1401,6 +1402,7 @@ static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
 	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
 		struct ion_buffer *buf = rb_entry(n, struct ion_buffer, node);
 		int buf_refcount = buf->ref_cnt;
+		total_len += buf->size;
 		seq_printf(s, "%16.s %16pK %12.x %12.d %20.d    %s",
 			buf->heap->name, buf, (int)buf->size,
 			buf_refcount, buf->pid, "");
@@ -1410,6 +1412,12 @@ static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
 
 		seq_puts(s, "\n");
 	}
+
+	if (s->file && s->file->f_path.dentry
+		&& !strcmp(s->file->f_path.dentry->d_iname, "check_all_bufs_total"))
+		seq_printf(s, "%16.s %s is: %lld(%lld KB)\n",
+			"heap", "total size", total_len, total_len/1024);
+
 	mutex_unlock(&dev->buffer_lock);
 	up_read(&dev->lock);
 	return 0;
@@ -1460,6 +1468,8 @@ struct ion_device *ion_device_create(void)
 	plist_head_init(&idev->heaps);
 	internal_dev = idev;
 	debugfs_create_file("check_all_bufs", 0664, idev->debug_root, idev,
+		&debug_allbufs_fops);
+	debugfs_create_file("check_all_bufs_total", 0664, idev->debug_root, idev,
 		&debug_allbufs_fops);
 	return idev;
 
