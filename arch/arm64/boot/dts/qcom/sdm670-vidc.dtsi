@@ -80,7 +80,7 @@
 				<&apps_smmu 0x10a0 0x8>,
 				<&apps_smmu 0x10b0 0x0>;
 			buffer-types = <0xfff>;
-			virtual-addr-pool = <0x79000000 0x87000000>;
+			virtual-addr-pool = <0x79000000 0x67000000>;
 		};
 
 		secure_bitstream_cb {
@@ -180,7 +180,7 @@
 				<&apps_smmu 0x10a0 0x8>,
 				<&apps_smmu 0x10b0 0x0>;
 			buffer-types = <0xfff>;
-			virtual-addr-pool = <0x79000000 0x87000000>;
+			virtual-addr-pool = <0x79000000 0x67000000>;
 		};
 
 		secure_bitstream_cb {
