@@ -69,10 +69,6 @@
 	status = "disabled";
 };
 
-&pm6150l_lcdb {
-	/delete-property/ qcom,voltage-step-ramp;
-};
-
 &qupv3_se3_4uart {
 	status = "ok";
 };
