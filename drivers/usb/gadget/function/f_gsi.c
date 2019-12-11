@@ -2429,9 +2429,12 @@ static int gsi_set_alt(struct usb_function *f, unsigned int intf,
 {
 	struct f_gsi	 *gsi = func_to_gsi(f);
 	struct f_gsi	 *gsi_rmnet_v2x = __gsi[USB_PROT_RMNET_V2X_IPA];
+	struct f_gsi	 *gsi_ecm = __gsi[USB_PROT_ECM_IPA];
 	struct usb_composite_dev *cdev = f->config->cdev;
 	struct net_device	*net;
 	int ret;
+	int in_intr_num = 0;
+	int out_intr_num = 0;
 
 	log_event_dbg("intf=%u, alt=%u", intf, alt);
 
@@ -2504,21 +2507,43 @@ static int gsi_set_alt(struct usb_function *f, unsigned int intf,
 			}
 
 			/*
-			 * Configure EPs for GSI. Note that when both RmNet LTE
-			 * (or ECM) and RmNet V2X instances are enabled in a
-			 * composition, configure HW accelerated EPs for V2X
-			 * instance and normal EPs for LTE (or ECM).
+			 * Configure EPs for GSI. Note that:
+			 * 1. In general, configure HW accelerated EPs for all
+			 *    instances.
+			 * 2. If both RmNet LTE and RmNet V2X instances are
+			 *    enabled in a composition, configure HW accelerated
+			 *    EPs for V2X and normal EPs for LTE.
+			 * 3. If RmNet V2X, ECM and ADPL instances are enabled
+			 *    in a composition, configure HW accelerated EPs in
+			 *    both directions for V2X and IN direction for ECM.
+			 *    Configure normal EPs for ECM OUT and ADPL.
 			 */
+			switch (gsi->prot_id) {
+			case USB_PROT_RMNET_IPA:
+				if (!gsi_rmnet_v2x->function.fs_descriptors) {
+					in_intr_num = 2;
+					out_intr_num = 1;
+				}
+				break;
+			case USB_PROT_ECM_IPA:
+				in_intr_num = 2;
+				if (!gsi_rmnet_v2x->function.fs_descriptors)
+					out_intr_num = 1;
+				break;
+			case USB_PROT_DIAG_IPA:
+				if (!(gsi_ecm->function.fs_descriptors &&
+					gsi_rmnet_v2x->function.fs_descriptors))
+					in_intr_num = 3;
+				break;
+			default:
+				in_intr_num = 2;
+				out_intr_num = 1;
+			}
+
+			/* gsi_configure_ep required only for GSI-IPA EPs */
 			if (gsi->d_port.in_ep &&
 				gsi->prot_id <= USB_PROT_RMNET_V2X_IPA) {
-				if (gsi->prot_id == USB_PROT_DIAG_IPA)
-					gsi->d_port.in_ep->ep_intr_num = 3;
-				else if ((gsi->prot_id == USB_PROT_RMNET_IPA ||
-					 gsi->prot_id == USB_PROT_ECM_IPA) &&
-					 gsi_rmnet_v2x->function.fs_descriptors)
-					gsi->d_port.in_ep->ep_intr_num = 0;
-				else
-					gsi->d_port.in_ep->ep_intr_num = 2;
+				gsi->d_port.in_ep->ep_intr_num = in_intr_num;
 				usb_gsi_ep_op(gsi->d_port.in_ep,
 					&gsi->d_port.in_request,
 						GSI_EP_OP_CONFIG);
@@ -2526,12 +2551,7 @@ static int gsi_set_alt(struct usb_function *f, unsigned int intf,
 
 			if (gsi->d_port.out_ep &&
 				gsi->prot_id <= USB_PROT_RMNET_V2X_IPA) {
-				if ((gsi->prot_id == USB_PROT_RMNET_IPA ||
-				     gsi->prot_id == USB_PROT_ECM_IPA) &&
-				     gsi_rmnet_v2x->function.fs_descriptors)
-					gsi->d_port.out_ep->ep_intr_num = 0;
-				else
-					gsi->d_port.out_ep->ep_intr_num = 1;
+				gsi->d_port.out_ep->ep_intr_num = out_intr_num;
 				usb_gsi_ep_op(gsi->d_port.out_ep,
 					&gsi->d_port.out_request,
 						GSI_EP_OP_CONFIG);
