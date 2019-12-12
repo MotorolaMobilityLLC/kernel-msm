@@ -30,21 +30,21 @@
 &pmx_mdss {
 	mdss_dsi_active {
 		mux {
-			pins = "gpio61", "gpio95";
+			pins = "gpio61";
 		};
 
 		config {
-			pins = "gpio61", "gpio95";
+			pins = "gpio61";
 		};
 	};
 
 	mdss_dsi_suspend {
 		mux {
-			pins = "gpio61", "gpio95";
+			pins = "gpio61";
 		};
 
 		config {
-			pins = "gpio61", "gpio95";
+			pins = "gpio61";
 		};
 	};
 
@@ -169,7 +169,8 @@
 		focaltech,irq-gpio = <&tlmm 65 0x02>;
 		focaltech,max-touch-number = <10>;
 		focaltech,display-coords =  <0 0 720 1520>;
-                focaltech,panel-supplier = "hlt";
+		focaltech,panel-supplier = "hlt";
+		focaltech,always_on_vio;
 	};
 };
 
