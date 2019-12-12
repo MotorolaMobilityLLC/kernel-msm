@@ -13,7 +13,7 @@
 #include <linux/usb/tty_diag.h>
 
 #define NUM_MDM_PORTS 2
-#define NUM_MSM_PORTS 1
+#define NUM_MSM_PORTS 2
 
 #define DIAG_MDM_START_IDX 0
 #define DIAG_MSM_START_IDX (DIAG_MDM_START_IDX + NUM_MDM_PORTS)
