@@ -722,6 +722,10 @@ int smblib_get_prop_dc_present(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_dc_online(struct smb_charger *chg,
 				union power_supply_propval *val);
+int smblib_get_prop_dc_current_now(struct smb_charger *chg,
+				union power_supply_propval *val);
+int smblib_set_prop_dc_current_now(struct smb_charger *chg,
+				const union power_supply_propval *val);
 int smblib_get_prop_dc_current_max(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_set_prop_dc_current_max(struct smb_charger *chg,
