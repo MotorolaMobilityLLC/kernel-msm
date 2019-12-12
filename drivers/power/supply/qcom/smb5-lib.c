@@ -3176,10 +3176,17 @@ int smblib_get_prop_dc_online(struct smb_charger *chg,
 	return rc;
 }
 
-int smblib_get_prop_dc_current_max(struct smb_charger *chg,
+int smblib_get_prop_dc_current_now(struct smb_charger *chg,
 				    union power_supply_propval *val)
 {
 	return smblib_get_charge_param(chg, &chg->param.dc_icl, &val->intval);
+}
+
+int smblib_get_prop_dc_current_max(struct smb_charger *chg,
+				    union power_supply_propval *val)
+{
+	val->intval = chg->wls_icl_ua;
+	return 0;
 }
 
 int smblib_get_prop_dc_voltage_max(struct smb_charger *chg,
@@ -3237,6 +3244,17 @@ int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
  *******************/
 
 int smblib_set_prop_dc_current_max(struct smb_charger *chg,
+				    const union power_supply_propval *val)
+{
+	if (val->intval < DCIN_ICL_MAX_UA)
+		chg->wls_icl_ua = val->intval;
+	else
+		chg->wls_icl_ua = DCIN_ICL_MAX_UA;
+
+	return 0;
+}
+
+int smblib_set_prop_dc_current_now(struct smb_charger *chg,
 				    const union power_supply_propval *val)
 {
 	chg->dcin_icl_user_set = true;
