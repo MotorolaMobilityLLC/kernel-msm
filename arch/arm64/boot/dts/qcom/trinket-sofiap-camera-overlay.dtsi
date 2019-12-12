@@ -596,7 +596,7 @@
 	cam_vdig {
 		cam_vdig_en_default: cam_vdig_en_default {
 			pins = "gpio5";
-			function = "func1";
+			function = "normal";
 			output-enable;
 			drive-push-pull;
 		};
@@ -605,7 +605,7 @@
 	cam_vana {
 		cam_vana_en_default: cam_vana_en_default {
 			pins = "gpio8";
-			function = "func1";
+			function = "normal";
 			output-enable;
 			drive-push-pull;
 		};
