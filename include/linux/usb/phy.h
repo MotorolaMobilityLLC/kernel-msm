@@ -266,15 +266,6 @@ usb_phy_reset(struct usb_phy *x)
 	return 0;
 }
 
-static inline int
-usb_phy_drive_dp_pulse(struct usb_phy *x, unsigned int pulse_width)
-{
-	if (x && x->drive_dp_pulse)
-		return x->drive_dp_pulse(x, pulse_width);
-
-	return 0;
-}
-
 /* for usb host and peripheral controller drivers */
 #if IS_ENABLED(CONFIG_USB_PHY)
 extern struct usb_phy *usb_get_phy(enum usb_phy_type type);
