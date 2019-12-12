@@ -1435,6 +1435,28 @@ static int dp_display_config_hdr(struct dp_display *dp_display,
 	return rc;
 }
 
+static int dp_display_get_display_type(struct dp_display *dp_display,
+		const char **display_type)
+{
+	struct dp_display_private *dp;
+
+	if (!dp_display || !display_type) {
+		pr_err("invalid input\n");
+		return -EINVAL;
+	}
+
+	dp = container_of(dp_display, struct dp_display_private, dp_display);
+
+	*display_type = dp->parser->display_type;
+
+	if (!strcmp(*display_type, "primary"))
+		dp_display->is_primary = true;
+	else
+		dp_display->is_primary = false;
+
+	return 0;
+}
+
 static int dp_display_create_workqueue(struct dp_display_private *dp)
 {
 	dp->wq = create_singlethread_workqueue("drm_dp");
@@ -1499,6 +1521,7 @@ static int dp_display_probe(struct platform_device *pdev)
 	g_dp_display->post_open     = dp_display_post_open;
 	g_dp_display->post_init     = dp_display_post_init;
 	g_dp_display->config_hdr    = dp_display_config_hdr;
+	g_dp_display->get_display_type = dp_display_get_display_type;
 
 	rc = component_add(&pdev->dev, &dp_display_comp_ops);
 	if (rc) {

@@ -439,6 +439,7 @@ int dp_connector_get_info(struct msm_display_info *info, void *data)
 	info->num_of_h_tiles = 1;
 	info->h_tile_instance[0] = 0;
 	info->is_connected = display->is_connected;
+	info->is_primary = display->is_primary;
 	info->capabilities = MSM_DISPLAY_CAP_VID_MODE | MSM_DISPLAY_CAP_EDID |
 		MSM_DISPLAY_CAP_HOT_PLUG;
 
@@ -595,6 +596,19 @@ int dp_connector_get_modes(struct drm_connector *connector,
 	kfree(dp_mode);
 
 	return rc;
+}
+
+int dp_connnector_set_info_blob(struct drm_connector *connector,
+		void *info, void *display, struct msm_mode_info *mode_info)
+{
+	struct dp_display *dp_display = display;
+	const char *display_type = NULL;
+
+	dp_display->get_display_type(dp_display, &display_type);
+	sde_kms_info_add_keystr(info,
+			"display type", display_type);
+
+	return 0;
 }
 
 int dp_drm_bridge_init(void *data, struct drm_encoder *encoder)

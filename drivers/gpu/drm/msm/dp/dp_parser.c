@@ -160,6 +160,11 @@ static int dp_parser_misc(struct dp_parser *parser)
 	parser->yuv_support = of_property_read_bool(of_node,
 			"qcom,yuv-support");
 
+	parser->display_type = of_get_property(of_node,
+			"qcom,display-type", NULL);
+	if (!parser->display_type)
+		parser->display_type = "unknown";
+
 	return 0;
 }
 

@@ -25,6 +25,7 @@ struct dp_display {
 	struct dp_bridge *bridge;
 	struct drm_connector *connector;
 	bool is_connected;
+	bool is_primary;
 	u32 max_pclk_khz;
 	bool yuv_support;
 
@@ -50,6 +51,8 @@ struct dp_display {
 	int (*config_hdr)(struct dp_display *dp_display,
 				struct drm_msm_ext_hdr_metadata *hdr_meta);
 	void (*post_init)(struct dp_display *dp_display);
+	int (*get_display_type)(struct dp_display *dp_display,
+			const char **display_type);
 };
 
 int dp_display_get_num_of_displays(void);
