@@ -14,10 +14,6 @@
 
 #include "sdm632-moto-base.dtsi"
 
-&firmware {
-	/delete-node/ android;
-};
-
 &mdss_dsi0 {
 	/delete-property/ vdd-supply;
 };
