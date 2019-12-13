@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,24 +17,10 @@
 
 / {
 	qcom,msm-id = <360 0x0>;
-	qcom,board-id = <0 0xB3C0>;
+	qcom,board-id = <0x43 0xB1A0>;
 };
 
 /*
- * Astro HW rev DVT3C specific changes go here
+ * Astro HW rev DVT1A specific changes go here
  */
 
-&dsi_smd_601_1080p_cmd_display {
-	l11_disp-supply = <&pm660_l11>;
-	vio_s_disp-supply = <&vio_disp_sub_vreg>;
-};
-
-&haptic_int_default {
-	mux {
-		pins = "gpio39";
-	};
-
-	config {
-		pins = "gpio39";
-	};
-};
