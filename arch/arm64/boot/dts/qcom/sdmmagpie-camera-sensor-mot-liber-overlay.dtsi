@@ -300,6 +300,20 @@
 		clock-rates = <24000000>;
 	};
 
+	eeprom_micro: qcom,eeprom@4 {
+		cell-index = <4>;
+		reg = <0x4>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <&pm6150_l13>;
+		regulator-names = "cam_vio";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000>;
+		rgltr-max-voltage = <1800000>;
+		rgltr-load-current = <0>;
+		cci-device = <0>;
+		cci-master = <1>;
+	};
+
 	actuator_rear: qcom,actuator@0 {
 		cell-index = <0>;
 		reg = <0x0>;
@@ -458,6 +472,7 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
 		actuator-src = <&actuator_micro>;
+		eeprom-src = <&eeprom_micro>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_main_front_micro_avdd_ldo>;
 		cam_vdig-supply = <&camera_wide_micro_dvdd_ldo>;
