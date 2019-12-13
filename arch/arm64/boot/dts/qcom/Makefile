@@ -13,10 +13,8 @@ dtbo-$(CONFIG_OLSON_DTB) += \
 		sdm710-monmouth-evt1-overlay.dtbo
 
 dtbo-$(CONFIG_ASTRO_DTB) += \
-		sdm710-astro-dvt3c-overlay.dtbo \
-		sdm710-astro-dvt3-overlay.dtbo \
-		sdm670-astro-dvt2-overlay.dtbo \
-		sdm710-astro-dvt1-overlay.dtbo
+		sdm710-astro-evb-overlay.dtbo \
+		sdm710-astro-dvt1a-overlay.dtbo
 
 dtbo-$(CONFIG_RACERL_DTB) += \
 		sdm710-racerl-evt1-overlay.dtbo \
@@ -28,10 +26,8 @@ sdm670-olson-dvt2-overlay.dtbo-base := sdm670-moto-base.dtb
 sdm710-olson-dvt3-overlay.dtbo-base := sdm710-moto-base.dtb
 sdm710-olson-dvt3c-overlay.dtbo-base := sdm710-moto-base.dtb
 
-sdm710-astro-dvt1-overlay.dtbo-base := sdm710-moto-base.dtb
-sdm670-astro-dvt2-overlay.dtbo-base := sdm670-moto-base.dtb
-sdm710-astro-dvt3-overlay.dtbo-base := sdm710-moto-base.dtb
-sdm710-astro-dvt3c-overlay.dtbo-base := sdm710-moto-base.dtb
+sdm710-astro-evb-overlay.dtbo-base := sdm710-astro-base.dtb
+sdm710-astro-dvt1a-overlay.dtbo-base := sdm710-astro-base.dtb
 
 sdm710-racerl-evt1-overlay.dtbo-base := sdm710-racerl-base.dtb
 sdm710-racerl-evt2-overlay.dtbo-base := sdm710-racerl-base.dtb
