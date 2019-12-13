@@ -146,8 +146,10 @@
 &bolero {
 	status = "okay";
 	qcom,num-macros = <3>;
+};
 
-	/delete-node/ wsa-macro@62f00000;
+&wsa_macro {
+	status = "disabled";
 };
 
 &wcd937x_codec {
