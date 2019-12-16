@@ -282,6 +282,36 @@ config QCOM_COINCELL
 	  to maintain PMIC register and RTC state in the absence of
 	  external power.
 
+config QCOM_XR_SMRTVWR_MISC
+	tristate "QTI XR SmartVwr Misc driver support"
+	default n
+	help
+	  This driver supports the misc chips power up such as
+	  USB bridge chip, Display Port bridgechip, MIPI switches etc.
+	  This driver initializes gpios, turns on and off gpios, and
+          enables/disables LDOs that are part of XR  Smart Viewer
+	  reference device.
+
+config TUSB1064_XR_MISC
+	tristate "I2C driver for TI TUSB1064 chip for XR"
+	default n
+	help
+	  This i2c driver allows applications to communicate with TI
+	  TUSB1064 USB redriver chip. This redriver chip could be configured
+	  to USB3.1 mode, Display Port 4lane and USB2.0 Mode, and Display Port
+	  2-lane and USB 3.1 modes. This driver allows the XR smart viewer to
+	  put in any one of the above three modes.
+
+config VXR200_XR_MISC
+	tristate "I2C driver for Synaptics VXR7200 chip for XR"
+	default n
+	help
+	  This i2c driver allows applications to communicate with Synaptics
+	  VXR7200 DP2DSI bridge chip. This driver enables the display data
+	  from Display Port and move the data to DSI data path. Thus enabling
+	  the display data from DP to be shown on the display of the XR smart
+	  viewer reference device.
+
 config SGI_GRU
 	tristate "SGI GRU driver"
 	depends on X86_UV && SMP
