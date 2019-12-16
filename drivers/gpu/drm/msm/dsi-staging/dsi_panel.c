@@ -570,6 +570,14 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 
 	pr_info("(%s)+\n", panel->name);
 
+	if(panel->reset_config.reset_before_power_on){
+		rc = dsi_panel_reset(panel);
+		if (rc) {
+			pr_err("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
+			goto error_disable_gpio;
+		}
+	}
+
 	if(panel->reset_config.tp_reset_enabled){
 		if (gpio_is_valid(panel->reset_config.tp_reset_gpio)) {
 			rc = gpio_direction_output(panel->reset_config.tp_reset_gpio, 0);
@@ -2402,6 +2410,11 @@ static int dsi_panel_parse_reset_sequence(struct dsi_panel *panel)
 
 	pr_debug("[%s] reset_always_high=%d\n", panel->name,
 					panel->reset_config.reset_always_high);
+
+	panel->reset_config.reset_before_power_on = utils->read_bool(utils->data,
+			"qcom,mdss-dsi-reset-before-power-on");
+	pr_debug("[%s] reset_before_power_on=%d\n", panel->name,
+					panel->reset_config.reset_before_power_on);
 
 	rc = utils->read_u32_array(utils->data, "qcom,mdss-dsi-reset-sequence",
 					arr_32, length);
