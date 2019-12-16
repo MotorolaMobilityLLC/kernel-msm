@@ -155,6 +155,7 @@ struct dsi_panel_reset_config {
 
 	bool reset_force_pull_low;
 	bool reset_always_high;
+	bool reset_before_power_on;
 	int tp_reset_gpio;
 	int reset_assert_time;
 	int reset_gpio;
