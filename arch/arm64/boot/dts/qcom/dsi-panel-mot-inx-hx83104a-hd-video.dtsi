@@ -42,6 +42,8 @@
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
 		qcom,bklt-dcs-2bytes-0x0fff-enabled;
+		qcom,mdss-dsi-reset-always-high;
+		qcom,mdss-dsi-reset-before-power-on;
 		qcom,mdss-dsi-reset-sequence = <1 1>, <0 1>, <1 15>;
 		qcom,mdss-dsi-panel-clockrate = <668000000>;
 		qcom,mdss-dsi-display-timings {
