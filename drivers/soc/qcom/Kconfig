@@ -27,6 +27,14 @@ config RACER_DTB
 	Only include RACER specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config NAIRO_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "NAIBO DTBs"
+	help
+	Only include NAIBO specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
