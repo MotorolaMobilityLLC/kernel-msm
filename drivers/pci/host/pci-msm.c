@@ -5545,7 +5545,7 @@ static void msm_pcie_config_link_pm_rc(struct msm_pcie_dev_t *dev,
 {
 	bool child_l0s_enable = 0, child_l1_enable = 0, child_l1ss_enable = 0;
 
-	if (!pdev->subordinate || !(&pdev->subordinate->devices)) {
+	if (!pdev->subordinate || list_empty(&pdev->subordinate->devices)) {
 		PCIE_DBG(dev,
 			"PCIe: RC%d: no device connected to root complex\n",
 			dev->rc_idx);
