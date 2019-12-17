@@ -16,7 +16,7 @@
 #include "sdm429-spyro.dtsi"
 #include "sdm429-spyro-qrd-evt.dtsi"
 / {
-	model = "Qualcomm Technologies, Inc. SDM429W BG 1GB WTP";
+	model = "Qualcomm Technologies, Inc. SDM429W BG IOT WTP";
 	compatible = "qcom,sdm429w-qrd", "qcom,sdm429w", "qcom,qrd";
 	qcom,msm-id = <416 0x0>;
 	qcom,board-id = <0x00010b 8>;
@@ -33,10 +33,6 @@
 
 &ext_smart_pa {
 	dvdd-supply = <&pm660_l11>;
-};
-
-&blsp1_uart2 {
-	status = "okay";
 };
 
 &thermal_zones {

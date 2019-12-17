@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, 2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -932,10 +932,6 @@ static unsigned int rpm_vreg_get_optimum_mode(struct regulator_dev *rdev,
 	load_mA = MICRO_TO_MILLI(load_uA);
 	if (load_mA > params[RPM_REGULATOR_PARAM_CURRENT].max)
 		load_mA = params[RPM_REGULATOR_PARAM_CURRENT].max;
-
-	rpm_vreg_lock(reg->rpm_vreg);
-	RPM_VREG_SET_PARAM(reg, CURRENT, load_mA);
-	rpm_vreg_unlock(reg->rpm_vreg);
 
 	return (load_uA >= reg->rpm_vreg->hpm_min_load)
 		? REGULATOR_MODE_NORMAL : REGULATOR_MODE_IDLE;
