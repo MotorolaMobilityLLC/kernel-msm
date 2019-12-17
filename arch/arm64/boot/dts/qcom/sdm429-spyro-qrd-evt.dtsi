@@ -190,37 +190,6 @@
 	status = "ok";
 };
 
-&firmware {
-	android {
-		compatible = "android,firmware";
-		vbmeta {
-			compatible = "android,vbmeta";
-			parts = "vbmeta,boot,system,vendor,dtbo,recovery";
-		};
-		fstab {
-			compatible = "android,fstab";
-			vendor {
-				compatible = "android,vendor";
-				dev =
-		"/dev/block/platform/soc/7824900.sdhci/by-name/vendor";
-				type = "ext4";
-				mnt_flags = "ro,barrier=1,discard";
-				fsmgr_flags = "wait";
-				status = "ok";
-			};
-			system {
-				compatible = "android,system";
-				dev =
-		"/dev/block/platform/soc/7824900.sdhci/by-name/system";
-				type = "ext4";
-				mnt_flags = "ro,barrier=1,discard";
-				fsmgr_flags = "wait";
-				status = "ok";
-			};
-		};
-	};
-};
-
 &soc {
 	qcom,ion {
 		qcom,ion-heap@8 { /* CP_MM HEAP */
@@ -967,7 +936,7 @@
 				type = "passive";
 			};
 
-			quiet_439_batt_trip6_mdm_trip3: quiet-bt-trp6-mdm-trp3 {
+			quiet_modem_439_trip3: quiet-modem-trp3 {
 				temperature = <48000>;
 				hysteresis = <2000>;
 				type = "passive";
@@ -985,8 +954,8 @@
 				type = "passive";
 			};
 
-			quiet_batt_439_trip7: quiet-batt-trip7 {
-				temperature = <50000>;
+			quiet_batt_439_trip6: quiet-batt-trip6 {
+				temperature = <55000>;
 				hysteresis = <2000>;
 				type = "passive";
 			};
@@ -1047,7 +1016,7 @@
 			};
 
 			modem_lvl2 {
-				trip = <&quiet_439_batt_trip6_mdm_trip3>;
+				trip = <&quiet_modem_439_trip3>;
 				cooling-device = <&modem_pa 2 2>;
 			};
 
@@ -1082,14 +1051,10 @@
 			};
 
 			battery_lvl6 {
-				trip = <&quiet_439_batt_trip6_mdm_trip3>;
+				trip = <&quiet_batt_439_trip6>;
 				cooling-device = <&pm660_charger 6 6>;
 			};
 
-			battery_lvl7 {
-				trip = <&quiet_batt_439_trip7>;
-				cooling-device = <&pm660_charger 7 7>;
-			};
 		};
 	};
 };
