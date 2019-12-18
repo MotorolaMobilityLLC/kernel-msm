@@ -62,7 +62,7 @@ qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
 
 qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 FF 0F];
 qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 FF 0D];
+qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 0D 0D];
 qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-type = "lcd-dcs-gpio";
 
