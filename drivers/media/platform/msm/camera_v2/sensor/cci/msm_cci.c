@@ -162,7 +162,7 @@ static int32_t msm_cci_set_clk_param(struct cci_device *cci_dev,
 	return 0;
 }
 
-static void msm_cci_flush_queue(struct cci_device *cci_dev,
+static int32_t msm_cci_flush_queue(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master)
 {
 	int32_t rc = 0;
@@ -194,6 +194,7 @@ static void msm_cci_flush_queue(struct cci_device *cci_dev,
 			pr_err("%s:%d wait failed %d\n", __func__, __LINE__,
 				rc);
 	}
+	return rc;
 }
 
 static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
@@ -245,7 +246,7 @@ static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
 				 __func__, __LINE__);
 			if (rc == 0)
 				rc = -ETIMEDOUT;
-			msm_cci_flush_queue(cci_dev, master);
+			rc = msm_cci_flush_queue(cci_dev, master);
 			return rc;
 		}
 		rc = cci_dev->cci_master_info[master].status;
@@ -306,7 +307,7 @@ static uint32_t msm_cci_wait(struct cci_device *cci_dev,
 			 __func__, __LINE__, queue);
 		if (rc == 0)
 			rc = -ETIMEDOUT;
-		msm_cci_flush_queue(cci_dev, master);
+		rc = msm_cci_flush_queue(cci_dev, master);
 		return rc;
 	}
 	rc = cci_dev->cci_master_info[master].status;
@@ -950,7 +951,7 @@ static int32_t msm_cci_i2c_read(struct v4l2_subdev *sd,
 			rc = -ETIMEDOUT;
 		pr_err("%s: %d wait_for_completion_timeout rc = %d\n",
 			 __func__, __LINE__, rc);
-		msm_cci_flush_queue(cci_dev, master);
+		rc = msm_cci_flush_queue(cci_dev, master);
 		goto ERROR;
 	} else {
 		rc = 0;
