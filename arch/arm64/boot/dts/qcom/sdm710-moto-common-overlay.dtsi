@@ -977,9 +977,9 @@
 	qcom,fcc-max-ua = <2500000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <3000000>;
-	qcom,hvdcp-disable;
 	qcom,float-option = <1>;
 	qcom,auto-recharge-soc = <99>;
+	qcom,usbpd-phandle = <&pm660_pdphy>;
 };
 
 &pm660_0 {
