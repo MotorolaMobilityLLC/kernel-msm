@@ -1,13 +1,13 @@
-qcom,kz50-amperex-5000mah {
-    /* 4130762_Lenovo_Sofia_5000mAH_PMI632_averaged_MasterSlave_Jul30th2019 */
-    serialnum = "SB18C57585";
+qcom,lg50-amperex-5000mah {
+    /* 4130762_Lenovo_Liber_5000mAH_PMI632_averaged_MasterSlave_Jul30th2019 */
+    serialnum = "SB18C71813";
     qcom,max-voltage-uv = <4400000>;
     qcom,fg-cc-cv-threshold-uv = <4390000>;
     qcom,fastchg-current-ma = <3600>;
     qcom,batt-id-kohm = <0>;
     qcom,battery-beta = <3440>;
     qcom,battery-therm-kohm = <10>;
-    qcom,battery-type = "KZ50-AMPEREX-5000mah";
+    qcom,battery-type = "LG50-AMPEREX-5000mah";
     qcom,qg-batt-profile-ver = <100>;
 
 	qcom,fcc1-temp-lut {
