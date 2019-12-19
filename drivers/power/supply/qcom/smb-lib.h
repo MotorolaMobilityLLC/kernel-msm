@@ -18,6 +18,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/extcon.h>
+#include <linux/usb/usbpd.h>
 #include "storm-watch.h"
 
 enum print_reason {
@@ -372,6 +373,11 @@ struct smb_charger {
 
 	/* extcon for VBUS / ID notification to USB for uUSB */
 	struct extcon_dev	*extcon;
+
+	/* USB PD interactions */
+	struct usbpd		*pd;
+	int			pd_contract_uv;
+	struct delayed_work	pd_contract_work;
 
 	/* battery profile */
 	int			batt_profile_fcc_ua;
