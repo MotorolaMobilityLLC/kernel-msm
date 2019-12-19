@@ -212,12 +212,12 @@
 	cam_sensor_tele_gpio_active: cam_sensor_tele_gpio_active {
 		/* RESET, AVDD, DVDD, MCLK_SEL, MIPI_SEL, MIPI_EN */
 		mux {
-			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126";
+			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126","gpio117";
 			function = "gpio";
 		};
 
 		config {
-			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126";
+			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126","gpio117";
 			bias-disable; /* No PULL */
 			drive-strength = <2>; /* 2 MA */
 		};
@@ -225,11 +225,11 @@
 	cam_sensor_tele_gpio_suspend: cam_sensor_tele_gpio_suspend {
 		/* RESET, AVDD, DVDD, MCLK_SEL, MIPI_SEL, MIPI_EN */
 		mux {
-			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126";
+			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126","gpio117";
 		};
 
 		config {
-			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126";
+			pins = "gpio41","gpio83","gpio125","gpio43","gpio129","gpio126","gpio117";
 			bias-pull-down; /* PULL DOWN */
 			drive-strength = <2>; /* 2 MA */
 		};
@@ -706,22 +706,25 @@
 			<&tlmm 125 0>,
 			<&tlmm 43 0>,
 			<&tlmm 129 0>,
-			<&tlmm 126 0>;
+			<&tlmm 126 0>,
+			<&tlmm 117 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
 		qcom,gpio-vdig = <3>;
 		qcom,gpio-custom1 = <4>;
 		qcom,gpio-custom2 = <5>;
 		qcom,gpio-custom3 = <6>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4 5 6>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0 0>;
+		qcom,gpio-standby = <7>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5 6 7>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAM_T_MCLK",
 					"CAM_T_RESET",
 					"CAM_T_AVDD",
 					"CAM_T_DVDD",
 					"CAM_MCLK_SEL",
 					"CAM_MIPI_SEL",
-					"CAM_MIPI_EN";
+					"CAM_MIPI_EN",
+					"CAM_T_STANDBY";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
