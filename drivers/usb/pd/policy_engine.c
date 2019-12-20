@@ -398,6 +398,7 @@ struct usbpd {
 	struct device		dev;
 	struct workqueue_struct	*wq;
 	struct work_struct	sm_work;
+	struct delayed_work	hard_reset_work;
 	struct hrtimer		timer;
 	bool			sm_queued;
 
@@ -489,6 +490,8 @@ struct usbpd {
 	bool			send_get_battery_status;
 	u32			battery_sts_dobj;
 };
+
+#define RESET_WORK_INTERVAL_MS 5000
 
 static LIST_HEAD(_usbpd);	/* useful for debugging */
 
@@ -2075,6 +2078,13 @@ static inline bool is_sink_tx_ok(struct usbpd *pd)
 	return true;
 }
 
+static void usbpd_hard_reset_work(struct work_struct *w)
+{
+	struct usbpd *pd = container_of(w, struct usbpd, hard_reset_work.work);
+
+	pd->hard_reset_count = 0;
+}
+
 /* Handles current state and determines transitions */
 static void usbpd_sm(struct work_struct *w)
 {
@@ -2120,7 +2130,9 @@ static void usbpd_sm(struct work_struct *w)
 		pd->in_explicit_contract = false;
 		pd->hard_reset_recvd = false;
 		pd->caps_count = 0;
-		pd->hard_reset_count = 0;
+		cancel_delayed_work(&pd->hard_reset_work);
+		schedule_delayed_work(&pd->hard_reset_work,
+			msecs_to_jiffies(RESET_WORK_INTERVAL_MS));
 		pd->requested_voltage = 0;
 		pd->requested_current = 0;
 		pd->selected_pdo = pd->requested_pdo = 0;
@@ -4058,6 +4070,7 @@ struct usbpd *usbpd_create(struct device *parent)
 		goto del_pd;
 	}
 	INIT_WORK(&pd->sm_work, usbpd_sm);
+	INIT_DELAYED_WORK(&pd->hard_reset_work, usbpd_hard_reset_work);
 	hrtimer_init(&pd->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	pd->timer.function = pd_timeout;
 	mutex_init(&pd->swap_lock);
