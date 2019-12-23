@@ -126,6 +126,12 @@ struct drm_display_info {
 	unsigned int bpc;
 
 	/**
+	 * @bpc: Maximum bits per color channel for YCbCr420 modes.
+	 * Used by HDMI and DP outputs.
+	 */
+	unsigned int y420_bpc;
+
+	/**
 	 * @subpixel_order: Subpixel order of LCD panels.
 	 */
 	enum subpixel_order subpixel_order;
@@ -133,6 +139,8 @@ struct drm_display_info {
 #define DRM_COLOR_FORMAT_RGB444		(1<<0)
 #define DRM_COLOR_FORMAT_YCRCB444	(1<<1)
 #define DRM_COLOR_FORMAT_YCRCB422	(1<<2)
+#define DRM_COLOR_FORMAT_DC_RGB444	(1<<3)
+#define DRM_COLOR_FORMAT_DC_YCRCB444	(1<<4)
 
 	/**
 	 * @color_formats: HDMI Color formats, selects between RGB and YCrCb
