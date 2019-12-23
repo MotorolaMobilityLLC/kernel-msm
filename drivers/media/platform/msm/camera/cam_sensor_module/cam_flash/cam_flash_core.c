@@ -11,6 +11,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/gpio.h>
 
 #include "cam_sensor_cmn_header.h"
 #include "cam_flash_core.h"
@@ -380,6 +381,45 @@ end:
 	return rc;
 }
 
+static void cam_flash_set_gpios(struct cam_flash_ctrl *flash_ctrl, bool enable)
+{
+
+	struct cam_flash_private_soc *soc_private =
+		(struct cam_flash_private_soc *) flash_ctrl->soc_info
+		.soc_private;
+	struct cam_soc_gpio_data *gpio_conf = soc_private->gpio_data;
+	int i;
+
+	if (gpio_conf != NULL && gpio_conf->cam_gpio_common_tbl_size > 0) {
+		struct gpio *gpio_tbl = gpio_conf->cam_gpio_req_tbl;
+		int size = (int) gpio_conf->cam_gpio_req_tbl_size;
+
+		if (enable) {
+			for (i = 0; i < size; i++) {
+				CAM_DBG(CAM_FLASH, "enabling gpio %d",
+					gpio_tbl[i].gpio);
+				gpio_set_value_cansleep(gpio_tbl[i].gpio, 1);
+				if (soc_private->gpio_delay_tbl_size > 0) {
+					CAM_DBG(CAM_FLASH, "sleeping for %d ms",
+						soc_private->gpio_delay_tbl[i]);
+					msleep(soc_private->gpio_delay_tbl[i]);
+				}
+			}
+		} else {
+			for (i = size-1; i >= 0; i--) {
+				CAM_DBG(CAM_FLASH, "disabling gpio %d",
+					gpio_tbl[i].gpio);
+				gpio_set_value_cansleep(gpio_tbl[i].gpio, 0);
+				if (soc_private->gpio_delay_tbl_size > 0) {
+					CAM_DBG(CAM_FLASH, "sleeping for %d ms",
+						soc_private->gpio_delay_tbl[i]);
+					msleep(soc_private->gpio_delay_tbl[i]);
+				}
+			}
+		}
+	}
+}
+
 static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 	struct cam_flash_frame_setting *flash_data, enum camera_flash_opcode op)
 {
@@ -396,6 +436,7 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 		flash_ctrl->soc_info.soc_private;
 
 	if (op == CAMERA_SENSOR_FLASH_OP_FIRELOW) {
+		cam_flash_set_gpios(flash_ctrl, true);
 		for (i = 0; i < flash_ctrl->torch_num_sources; i++) {
 			if (flash_ctrl->torch_trigger[i]) {
 				max_current = soc_private->torch_max_current[i];
@@ -455,6 +496,7 @@ int cam_flash_off(struct cam_flash_ctrl *flash_ctrl)
 		cam_res_mgr_led_trigger_event(flash_ctrl->switch_trigger,
 			(enum led_brightness)LED_SWITCH_OFF);
 
+	cam_flash_set_gpios(flash_ctrl, false);
 	flash_ctrl->flash_state = CAM_FLASH_STATE_START;
 	return 0;
 }
