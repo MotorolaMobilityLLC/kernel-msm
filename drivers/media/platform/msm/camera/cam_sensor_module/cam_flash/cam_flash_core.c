@@ -22,6 +22,10 @@
 static int cam_flash_prepare(struct cam_flash_ctrl *flash_ctrl,
 	bool regulator_enable)
 {
+	struct cam_flash_private_soc *soc_private =
+		(struct cam_flash_private_soc *) flash_ctrl->soc_info
+		.soc_private;
+	struct cam_soc_gpio_data *gpio_conf = soc_private->gpio_data;
 	int rc = 0;
 
 	if (!(flash_ctrl->switch_trigger)) {
@@ -49,6 +53,11 @@ static int cam_flash_prepare(struct cam_flash_ctrl *flash_ctrl,
 			return rc;
 		}
 		flash_ctrl->is_regulator_enabled = false;
+	} else if ((gpio_conf != NULL) &&
+		(gpio_conf->cam_gpio_common_tbl_size > 0)) {
+		CAM_INFO(CAM_FLASH,
+			"gpio based flash not need regulator");
+		return rc;
 	} else {
 		CAM_ERR(CAM_FLASH, "Wrong Flash State : %d",
 			flash_ctrl->flash_state);
