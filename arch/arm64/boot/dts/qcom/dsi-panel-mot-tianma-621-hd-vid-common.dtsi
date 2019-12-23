@@ -37,12 +37,18 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
-	 15 01 00 00 00 00 03 51 01 00
-	 15 01 00 00 00 00 02 53 2C
-	 15 01 00 00 00 00 02 55 00
-	 15 01 00 00 78 00 02 11 00
-	 15 01 00 00 0A 00 02 29 00
-	 15 01 00 00 01 00 02 26 01
+	15 01 00 00 00 00 03 51 01 00
+	15 01 00 00 00 00 02 53 2C
+	15 01 00 00 00 00 02 55 01
+	39 01 00 00 00 00 03 F0 5A 59
+	39 01 00 00 00 00 03 F1 A5 A6
+	39 01 00 00 00 00 1B E0 30 29 21 18 11 1F 02 62 DF A0 04 CC 00 FF F6 FF F0 FD FF FD F8 F5 FC FC FD FF
+	39 01 00 00 00 00 15 E1 EF FE FE FE FE EE F0 20 33 FF 00 00 6A 90 C0 0D 6A F0 3E FF
+	39 01 00 00 00 00 03 F1 5A 59
+	39 01 00 00 00 00 03 F0 A5 A6
+	15 01 00 00 78 00 02 11 00
+	15 01 00 00 0A 00 02 29 00
+	15 01 00 00 01 00 02 26 01
 ];
 qcom,mdss-dsi-off-command = [
 	15 01 00 00 01 00 02 26 08
@@ -53,9 +59,25 @@ qcom,mdss-dsi-off-command = [
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
-qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-cabc-ui-command = [
+	15 01 00 00 00 00 02 55 01
+	39 01 00 00 00 00 03 F0 5A 59
+	39 01 00 00 00 00 03 F1 A5 A6
+	39 01 00 00 00 00 1B E0 30 29 21 18 11 1F 02 62 DF A0 04 CC 00 FF F6 FF F0 FD FF FD F8 F5 FC FC FD FF
+	39 01 00 00 00 00 15 E1 EF FE FE FE FE EE F0 20 33 FF 00 00 6A 90 C0 0D 6A F0 3E FF
+	39 01 00 00 00 00 03 F1 5A 59
+	39 01 00 00 00 00 03 F0 A5 A6
+];
 qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-mv-command = [
+	15 01 00 00 00 00 02 55 03
+	39 01 00 00 00 00 03 F0 5A 59
+	39 01 00 00 00 00 03 F1 A5 A6
+	39 01 00 00 00 00 1B E0 30 29 21 18 11 1F 02 62 DF A0 04 CC 00 FF FA FF F0 FD FF FB F8 F5 FC FC FB FF
+	39 01 00 00 00 00 15 E1 BC F8 CC FA DB 9B F0 E7 F0 85 F0 70 00 50 00 9A FD F0 E0 FF
+	39 01 00 00 00 00 03 F1 5A 59
+	39 01 00 00 00 00 03 F0 A5 A6
+];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
