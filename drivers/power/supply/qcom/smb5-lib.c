@@ -3649,10 +3649,22 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 		 * Force re-run APSD to handle slow insertion related
 		 * charger-mis-detection.
 		 */
-		chg->uusb_apsd_rerun_done = true;
-		smblib_rerun_apsd_if_required(chg);
-		return IRQ_HANDLED;
+                const struct apsd_result *apsd_result =
+                             smblib_update_usb_type(chg);
+
+                smblib_dbg(chg, PR_MISC, "apsd_result bit =%d\n",
+                           apsd_result->bit);
+
+                if (apsd_result->bit == OCP_CHARGER_BIT ||
+                    apsd_result->bit == FLOAT_CHARGER_BIT) {
+                        smblib_dbg(chg, PR_INTERRUPT, "IRQ: rerun apsd for %s\n",
+                                   apsd_result->name);
+		        chg->uusb_apsd_rerun_done = true;
+		        smblib_rerun_apsd_if_required(chg);
+		        return IRQ_HANDLED;
+                }
 	}
+
 
 	smblib_handle_apsd_done(chg,
 		(bool)(stat & APSD_DTC_STATUS_DONE_BIT));
