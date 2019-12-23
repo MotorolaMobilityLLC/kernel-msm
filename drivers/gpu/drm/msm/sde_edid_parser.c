@@ -242,7 +242,7 @@ u32 video_format)
 		if ((cea_mode != 0) && (cea_mode == video_format)) {
 			SDE_EDID_DEBUG("%s found match for %d ", __func__,
 			video_format);
-			mode->flags |= DRM_MODE_FLAG_SUPPORTS_YUV;
+			mode->flags |= DRM_MODE_FLAG_SUPPORTS_YUV420;
 		}
 	}
 }
@@ -341,6 +341,7 @@ struct drm_connector *connector, struct sde_edid_ctrl *edid_ctrl)
 {
 	const u8 *db = NULL;
 	struct drm_display_mode *mode;
+	struct drm_display_info *info = &connector->display_info;
 
 	SDE_EDID_DEBUG("%s +\n", __func__);
 	/* Set YUV mode support flags for YCbcr420VDB */
@@ -353,8 +354,11 @@ struct drm_connector *connector, struct sde_edid_ctrl *edid_ctrl)
 
 	/* Set RGB supported on all modes where YUV is not set */
 	list_for_each_entry(mode, &connector->probed_modes, head) {
-		if (!(mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV))
+		if (!(mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV420)) {
 			mode->flags |= DRM_MODE_FLAG_SUPPORTS_RGB;
+			if (info->color_formats & DRM_COLOR_FORMAT_YCRCB422)
+				mode->flags |= DRM_MODE_FLAG_SUPPORTS_YUV422;
+		}
 	}
 
 
@@ -389,6 +393,7 @@ struct drm_connector *connector, struct sde_edid_ctrl *edid_ctrl)
 		if ((mode->clock > MIN_SCRAMBLER_REQ_RATE) &&
 			!connector->scdc_present) {
 			mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_RGB;
+			mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_YUV422;
 		}
 	}
 
@@ -411,6 +416,7 @@ struct drm_connector *connector, struct sde_edid_ctrl *edid_ctrl)
 	}
 
 	disp_info = &connector->display_info;
+	disp_info->y420_bpc = 8;
 
 	edid_ext = sde_find_cea_extension(edid_ctrl->edid);
 
@@ -431,16 +437,19 @@ struct drm_connector *connector, struct sde_edid_ctrl *edid_ctrl)
 				continue;
 
 			if (hdmi[7] & DRM_EDID_YCBCR420_DC_30) {
+				disp_info->y420_bpc = 10;
 				hdmi_dc_yuv_modes |= DRM_EDID_YCBCR420_DC_30;
 				SDE_EDID_DEBUG("Y420 30-bit supported\n");
 			}
 
 			if (hdmi[7] & DRM_EDID_YCBCR420_DC_36) {
+				disp_info->y420_bpc = 12;
 				hdmi_dc_yuv_modes |= DRM_EDID_YCBCR420_DC_36;
 				SDE_EDID_DEBUG("Y420 36-bit supported\n");
 			}
 
 			if (hdmi[7] & DRM_EDID_YCBCR420_DC_48) {
+				disp_info->y420_bpc = 16;
 				hdmi_dc_yuv_modes |= DRM_EDID_YCBCR420_DC_36;
 				SDE_EDID_DEBUG("Y420 48-bit supported\n");
 			}

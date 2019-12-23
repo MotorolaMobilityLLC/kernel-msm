@@ -792,6 +792,8 @@ static void sde_encoder_phys_vid_enable(struct sde_encoder_phys *phys_enc)
 
 	if (mode.private_flags & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420)
 		fmt = sde_get_sde_format(DRM_FORMAT_YUV420);
+	else if (mode.private_flags & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422)
+		fmt = sde_get_sde_format(DRM_FORMAT_NV61);
 
 	if (fmt) {
 		struct sde_rect hdmi_roi;
