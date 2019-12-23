@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1023,6 +1023,8 @@ static int dp_display_set_mode(struct dp_display *dp_display,
 {
 	const u32 num_components = 3, default_bpp = 24;
 	struct dp_display_private *dp;
+	u32 pixel_clk_khz = 0;
+	u32 rate_ratio = RGB_24BPP_TMDS_CHAR_RATE_RATIO;
 
 	if (!dp_display) {
 		pr_err("invalid input\n");
@@ -1031,13 +1033,43 @@ static int dp_display_set_mode(struct dp_display *dp_display,
 	dp = container_of(dp_display, struct dp_display_private, dp_display);
 
 	mutex_lock(&dp->session_lock);
-	mode->timing.bpp =
-		dp_display->connector->display_info.bpc * num_components;
+	if (mode->timing.out_format == MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420) {
+		mode->timing.bpp =
+			dp_display->connector->display_info.y420_bpc *
+			num_components;
+		rate_ratio = YUV420_24BPP_TMDS_CHAR_RATE_RATIO;
+	} else {
+		mode->timing.bpp =
+			dp_display->connector->display_info.bpc *
+			num_components;
+	}
+
+	pixel_clk_khz = mode->timing.pixel_clk_khz / rate_ratio;
+
 	if (!mode->timing.bpp)
 		mode->timing.bpp = default_bpp;
 
 	mode->timing.bpp = dp->panel->get_mode_bpp(dp->panel,
-			mode->timing.bpp, mode->timing.pixel_clk_khz);
+			mode->timing.bpp, pixel_clk_khz);
+
+	/* Refactor bits per pixel for YUV422 format */
+	if (mode->timing.out_format == MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422) {
+		switch (mode->timing.bpp) {
+		case 18:
+			mode->timing.bpp = 24;
+			break;
+		case 24:
+			mode->timing.bpp = 30;
+			break;
+		case 30:
+			mode->timing.bpp = 36;
+			break;
+		default:
+			mode->timing.bpp = 30;
+			break;
+		};
+		pr_debug("YCC422 bpp = %d\n", mode->timing.bpp);
+	}
 
 	dp->panel->pinfo = mode->timing;
 	dp->panel->init(dp->panel);
@@ -1287,12 +1319,14 @@ static int dp_display_unprepare(struct dp_display *dp)
 	return 0;
 }
 
-static int dp_display_validate_mode(struct dp_display *dp, u32 mode_pclk_khz)
+static int dp_display_get_dc_support(struct dp_display *dp,
+		u32 mode_pclk_khz, u32 out_format, bool dc_enable)
 {
-	const u32 num_components = 3, default_bpp = 24;
 	struct dp_display_private *dp_display;
 	struct drm_dp_link *link_info;
-	u32 mode_rate_khz = 0, supported_rate_khz = 0, mode_bpp = 0;
+	u32 mode_rate_khz = 0, supported_rate_khz = 0;
+	u32 default_bpp = 24, max_supported_bpp = 30;
+	u32 rate_ratio = RGB_24BPP_TMDS_CHAR_RATE_RATIO;
 
 	if (!dp || !mode_pclk_khz || !dp->connector) {
 		pr_err("invalid params\n");
@@ -1302,7 +1336,51 @@ static int dp_display_validate_mode(struct dp_display *dp, u32 mode_pclk_khz)
 	dp_display = container_of(dp, struct dp_display_private, dp_display);
 	link_info = &dp_display->panel->link_info;
 
-	mode_bpp = dp->connector->display_info.bpc * num_components;
+	if (out_format & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420)
+		rate_ratio = YUV420_24BPP_TMDS_CHAR_RATE_RATIO;
+
+	mode_pclk_khz /= rate_ratio;
+
+	mode_rate_khz = mode_pclk_khz * default_bpp;
+	if (dc_enable)
+		mode_rate_khz = mode_pclk_khz * max_supported_bpp;
+
+	supported_rate_khz = link_info->num_lanes * link_info->rate * 8;
+
+	if (mode_rate_khz > supported_rate_khz)
+		return false;
+
+	return true;
+}
+
+static int dp_display_validate_mode(struct dp_display *dp,
+		u32 mode_pclk_khz, u32 flags)
+{
+	const u32 num_components = 3, default_bpp = 24;
+	struct dp_display_private *dp_display;
+	struct drm_dp_link *link_info;
+	u32 mode_rate_khz = 0, supported_rate_khz = 0, mode_bpp = 0;
+
+	if (!dp || !dp->connector) {
+		pr_err("invalid params\n");
+		return -EINVAL;
+	}
+
+	if (!mode_pclk_khz) {
+		pr_err("invalid mode_pclk_khz\n");
+		return -EINVAL;
+	}
+
+	dp_display = container_of(dp, struct dp_display_private, dp_display);
+	link_info = &dp_display->panel->link_info;
+
+	if ((flags & SDE_DRM_MODE_FLAG_FMT_MASK) ==
+			DRM_MODE_FLAG_SUPPORTS_YUV420)
+		mode_bpp =
+			dp->connector->display_info.y420_bpc * num_components;
+	else
+		mode_bpp = dp->connector->display_info.bpc * num_components;
+
 	if (!mode_bpp)
 		mode_bpp = default_bpp;
 
@@ -1412,6 +1490,7 @@ static int dp_display_probe(struct platform_device *pdev)
 	g_dp_display->set_mode      = dp_display_set_mode;
 	g_dp_display->validate_mode = dp_display_validate_mode;
 	g_dp_display->get_modes     = dp_display_get_modes;
+	g_dp_display->get_dc_support = dp_display_get_dc_support;
 	g_dp_display->prepare       = dp_display_prepare;
 	g_dp_display->unprepare     = dp_display_unprepare;
 	g_dp_display->request_irq   = dp_request_irq;
