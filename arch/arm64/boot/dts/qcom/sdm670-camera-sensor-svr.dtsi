@@ -39,7 +39,16 @@
 		flash-source = <&pm660l_flash2>;
 		torch-source = <&pm660l_torch2>;
 		switch-source = <&pm660l_switch1>;
-		status = "disabled";
+		gpios = <&tlmm 0 0>,
+			<&tlmm 1 0>,
+			<&tlmm 23 0>;
+		gpio-req-tbl-num = <0 1 2>;
+		gpio-req-tbl-flags = <0 0 0>;
+		gpio-req-tbl-label = "TCKING_LED_3V3_EN",
+					"TCKING_LED_1V2_EN",
+					"TCKing_LED_EN";
+		gpio-req-tbl-delay = <20 20 20>;
+		status = "ok";
 	};
 
 	actuator_regulator: gpio-regulator@0 {
@@ -350,6 +359,7 @@
 		sensor-position-roll = <270>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_front>;
 		cam_vio-supply = <&pm660_l14>;
 		cam_vana-supply = <&pm660l_l3>;
 		cam_vdig-supply = <&pm660_l12>;
