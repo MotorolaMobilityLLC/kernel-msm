@@ -387,6 +387,10 @@
 	status = "okay";
 };
 
+&mdss_fb0 {
+	/delete-node/ qcom,cont-splash-memory;
+};
+
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 	status = "okay";
@@ -436,3 +440,5 @@
 		status = "okay";
 	};
 };
+
+/delete-node/ &cont_splash_mem;

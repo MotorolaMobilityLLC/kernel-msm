@@ -191,6 +191,8 @@ Optional properties :
 	both "USB" and "USB-HOST" events.
 - qcom,phy-id-high-as-peripheral: If present, specifies device to switch to device mode
 	if PHY ID state is high or host mode if PHY ID state is low.
+- qcom,enumeration-check-for-sdp: If present, start timer for SDP charger to check enumeration
+	happen or not.
 
 Example HSUSB OTG controller device node :
 	usb@f9690000 {
