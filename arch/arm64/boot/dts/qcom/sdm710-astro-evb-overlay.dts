@@ -16,6 +16,8 @@
 #include "sdm710-astro-common-overlay.dtsi"
 
 / {
+	model = "astro";
+	compatible = "qcom,sdm670-astro", "qcom,sdm670-moto", "qcom,astro";
 	qcom,msm-id = <360 0x0>;
 	qcom,board-id = <0x43 0xA100>;
 };
