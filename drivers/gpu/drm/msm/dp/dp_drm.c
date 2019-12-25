@@ -671,6 +671,11 @@ enum drm_mode_status dp_connector_mode_valid(struct drm_connector *connector,
 
 	mode->vrefresh = drm_mode_vrefresh(mode);
 
+	if (!dp_disp->yuv_support) {
+		mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_YUV420;
+		mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_YUV422;
+	}
+
 	if ((mode->flags & SDE_DRM_MODE_FLAG_FMT_MASK) ==
 			DRM_MODE_FLAG_SUPPORTS_YUV420) {
 		rate_ratio = YUV420_24BPP_TMDS_CHAR_RATE_RATIO;

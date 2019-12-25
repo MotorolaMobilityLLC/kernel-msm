@@ -522,6 +522,7 @@ static int dp_display_process_hpd_high(struct dp_display_private *dp)
 	dp->panel->handle_sink_request(dp->panel);
 
 	dp->dp_display.max_pclk_khz = dp->parser->max_pclk_khz;
+	dp->dp_display.yuv_support = dp->parser->yuv_support;
 notify:
 	dp_display_send_hpd_notification(dp, true);
 
