@@ -546,6 +546,17 @@ EXPORT_SYMBOL(usb_diag_alloc_req);
  */
 int usb_diag_request_size(struct usb_diag_ch *ch)
 {
+#ifdef CONFIG_DIAG_OVER_TTY
+	/*
+	 * Qcom will set priv_usb as diag_tty_data when diag_tty_write,
+	 * while moto will set priv_usb as diag_context in diag_function_set_alt.
+	 * They are different structure. Force convertion between these two
+	 * structures here result in unexpected NULL pointer kernel panic.
+	 * cdev might pointer to a mutex counter in tty_data, for example 0x1,
+	 * which pass the if check clause but result in panic in our case.
+	 */
+	return DWC3_MAX_REQUEST_SIZE;
+#else
 	struct diag_context *ctxt = ch ? ch->priv_usb : NULL;
 	struct usb_composite_dev *cdev = ctxt ? ctxt->cdev : NULL;
 
@@ -553,6 +564,7 @@ int usb_diag_request_size(struct usb_diag_ch *ch)
 		return CI_MAX_REQUEST_SIZE;
 
 	return DWC3_MAX_REQUEST_SIZE;
+#endif
 }
 EXPORT_SYMBOL(usb_diag_request_size);
 
