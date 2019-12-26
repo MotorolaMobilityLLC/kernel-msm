@@ -207,6 +207,7 @@ module_param_named(
 #define BITE_WDOG_TIMEOUT_8S		0x3
 #define BARK_WDOG_TIMEOUT_MASK		GENMASK(3, 2)
 #define BARK_WDOG_TIMEOUT_SHIFT		2
+#define DCP_CURRENT_UA			1500000
 static int smb2_parse_dt(struct smb2 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
@@ -346,8 +347,13 @@ static int smb2_parse_dt(struct smb2 *chip)
 
 	chg->ufp_only_mode = of_property_read_bool(node,
 					"qcom,ufp-only-mode");
+	rc = of_property_read_u32(node, "qcom,dcp-current-ua",
+					&chg->dcp_current_ua);
+	if (rc < 0)
+		chg->dcp_current_ua = DCP_CURRENT_UA;
 
 	return 0;
+
 }
 
 /************************
