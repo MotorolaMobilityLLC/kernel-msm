@@ -106,7 +106,7 @@
 #define PFM_CURRENT_SHIFT		2
 
 #define LCDB_PWRUP_PWRDN_CTL_REG	0x66
-#define PWRUP_DELAY_MASK		GENAMSK(3, 2)
+#define PWRUP_DELAY_MASK		GENMASK(3, 2)
 #define PWRDN_DELAY_MASK		GENMASK(1, 0)
 #define PWRDN_DELAY_MIN_MS		0
 #define PWRDN_DELAY_MAX_MS		8
@@ -224,6 +224,7 @@ struct qpnp_lcdb {
 	u32				wa_flags;
 	int				sc_irq;
 	int				pwrdn_delay_ms;
+	int				pwrup_delay_ms;
 
 	/* TTW params */
 	bool				ttw_enable;
@@ -2128,6 +2129,15 @@ static int qpnp_lcdb_hw_init(struct qpnp_lcdb *lcdb)
 			return rc;
 	}
 
+	if (lcdb->pwrup_delay_ms != -EINVAL) {
+		rc = qpnp_lcdb_masked_write(lcdb, lcdb->base +
+					    LCDB_PWRUP_PWRDN_CTL_REG,
+					    PWRUP_DELAY_MASK,
+					    lcdb->pwrup_delay_ms);
+		if (rc < 0)
+			return rc;
+	}
+
 	rc = qpnp_lcdb_init_bst(lcdb);
 	if (rc < 0) {
 		pr_err("Failed to initialize BOOST rc=%d\n", rc);
@@ -2263,6 +2273,23 @@ static int qpnp_lcdb_parse_dt(struct qpnp_lcdb *lcdb)
 		for (i = 0; i < ARRAY_SIZE(pwrup_pwrdn_ms); i++) {
 			if (tmp == pwrup_pwrdn_ms[i]) {
 				lcdb->pwrdn_delay_ms = i;
+				break;
+			}
+		}
+	}
+
+	lcdb->pwrup_delay_ms = -EINVAL;
+	rc = of_property_read_u32(node, "qcom,pwrup-delay-ms", &tmp);
+	if (!rc) {
+		if (!is_between(tmp, PWRDN_DELAY_MIN_MS, PWRDN_DELAY_MAX_MS)) {
+			pr_err("Invalid PWRUP_DLY val %d (min=%d max=%d)\n",
+				tmp, PWRDN_DELAY_MIN_MS, PWRDN_DELAY_MAX_MS);
+			return -EINVAL;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(pwrup_pwrdn_ms); i++) {
+			if (tmp == pwrup_pwrdn_ms[i]) {
+				lcdb->pwrup_delay_ms = i;
 				break;
 			}
 		}
