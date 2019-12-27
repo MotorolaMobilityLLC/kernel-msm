@@ -962,13 +962,13 @@ static int store_enable(struct device *pdev, struct device_attribute *attr,
 		return count;
 	}
 
+	rc = split_bg_work(dev, arr);
 	if (!dev->is_cnfgrd) {
 		bgrsb_handle_cmd_in_ssr(dev, arr);
 		kfree(arr);
 		return -ENOMEDIUM;
 	}
 
-	rc = split_bg_work(dev, arr);
 	if (rc != 0)
 		pr_err("Not able to process request\n");
 	kfree(arr);
