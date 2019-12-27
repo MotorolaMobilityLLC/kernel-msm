@@ -295,9 +295,9 @@
 
 &qusb_phy {
 	qcom,qusb-phy-init-seq = <0xf8 0x80
-				0xb5 0x84
+				0x95 0x84
 				0x83 0x88
-				0xc5 0x8c
+				0xcf 0x8c
 				0x14 0x9c
 				0x30 0x08
 				0x79 0x0c
@@ -305,6 +305,18 @@
 				0x00 0x90
 				0x9f 0x1c
 				0x00 0x18>;
+	qcom,tune2-efuse-correction = <(-2)>;
+};
+
+&usb3 {
+	dwc3@7000000 {
+		usb-phy = <&qusb_phy>, <&usb_nop_phy>;
+		maximum-speed = "high-speed";
+	};
+};
+
+&ssphy {
+	status = "disabled";
 };
 
 &thermal_zones {
@@ -487,6 +499,9 @@
 				<&pmic_analog_codec>;
 		asoc-codec-names = "msm-stub-codec.1", "msm-dig-codec",
 				"analog-codec";
+	};
+	usb_nop_phy: usb_nop_phy {
+		compatible = "usb-nop-xceiv";
 	};
 };
 
