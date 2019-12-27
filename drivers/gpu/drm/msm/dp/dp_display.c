@@ -1457,6 +1457,20 @@ static int dp_display_get_display_type(struct dp_display *dp_display,
 	return 0;
 }
 
+static bool dp_display_vsc_sdp_supported(struct dp_display *dp_display)
+{
+	struct dp_display_private *dp;
+
+	if (!dp_display) {
+		pr_err("invalid input\n");
+		return 0;
+	}
+
+	dp = container_of(dp_display, struct dp_display_private, dp_display);
+
+	return dp->panel->vsc_sdp_supported(dp->panel);
+}
+
 static int dp_display_create_workqueue(struct dp_display_private *dp)
 {
 	dp->wq = create_singlethread_workqueue("drm_dp");
@@ -1522,6 +1536,7 @@ static int dp_display_probe(struct platform_device *pdev)
 	g_dp_display->post_init     = dp_display_post_init;
 	g_dp_display->config_hdr    = dp_display_config_hdr;
 	g_dp_display->get_display_type = dp_display_get_display_type;
+	g_dp_display->vsc_sdp_supported = dp_display_vsc_sdp_supported;
 
 	rc = component_add(&pdev->dev, &dp_display_comp_ops);
 	if (rc) {

@@ -798,6 +798,20 @@ end:
 	return min_link_rate_khz;
 }
 
+static bool dp_panel_vsc_sdp_supported(struct dp_panel *dp_panel)
+{
+	struct dp_panel_private *panel;
+
+	if (!dp_panel) {
+		pr_err("invalid input\n");
+		return false;
+	}
+
+	panel = container_of(dp_panel, struct dp_panel_private, dp_panel);
+
+	return panel->major >= 1 && panel->minor >= 4 && panel->vsc_supported;
+}
+
 static bool dp_panel_hdr_supported(struct dp_panel *dp_panel)
 {
 	struct dp_panel_private *panel;
@@ -949,6 +963,7 @@ struct dp_panel *dp_panel_get(struct dp_panel_in *in)
 	dp_panel->spd_config = dp_panel_spd_config;
 	dp_panel->setup_hdr = dp_panel_setup_hdr;
 	dp_panel->hdr_supported = dp_panel_hdr_supported;
+	dp_panel->vsc_sdp_supported = dp_panel_vsc_sdp_supported;
 	dp_panel->get_pixel_clk = dp_panel_get_pixel_clk;
 
 	dp_panel_edid_register(panel);

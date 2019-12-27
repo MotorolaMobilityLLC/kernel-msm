@@ -53,6 +53,7 @@ struct dp_display {
 	void (*post_init)(struct dp_display *dp_display);
 	int (*get_display_type)(struct dp_display *dp_display,
 			const char **display_type);
+	bool (*vsc_sdp_supported)(struct dp_display *dp_display);
 };
 
 int dp_display_get_num_of_displays(void);

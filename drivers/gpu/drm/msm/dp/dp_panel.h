@@ -97,6 +97,7 @@ struct dp_panel {
 	void (*tpg_config)(struct dp_panel *dp_panel, bool enable);
 	int (*spd_config)(struct dp_panel *dp_panel);
 	bool (*hdr_supported)(struct dp_panel *dp_panel);
+	bool (*vsc_sdp_supported)(struct dp_panel *dp_panel);
 	u32 (*get_pixel_clk)(struct dp_panel *dp_panel);
 };
 
