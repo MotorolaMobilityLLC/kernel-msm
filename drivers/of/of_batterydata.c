@@ -314,6 +314,88 @@ static int64_t of_batterydata_convert_battery_id_kohm(int batt_id_uv,
 	return resistor_value_kohm;
 }
 
+static const char *get_battery_serialnumber(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *battsn_buf;
+	int retval;
+
+	battsn_buf = NULL;
+
+	if (np)
+		retval = of_property_read_string(np, "mmi,battid",
+						 &battsn_buf);
+	else
+		return NULL;
+
+	if ((retval == -EINVAL) || !battsn_buf) {
+		pr_err("Battsn unused\n");
+		of_node_put(np);
+		return NULL;
+
+	} else
+		pr_err("Battsn = %s\n", battsn_buf);
+
+	of_node_put(np);
+
+	return battsn_buf;
+}
+
+static struct device_node *get_profile_by_serialnumber(
+		const struct device_node *np)
+{
+	struct device_node *node, *df_node, *sn_node;
+	const char *sn_buf, *df_sn, *dev_sn;
+	int rc;
+
+	if (!np)
+		return NULL;
+
+	dev_sn = NULL;
+	df_sn = NULL;
+	sn_buf = NULL;
+	df_node = NULL;
+	sn_node = NULL;
+
+	dev_sn = get_battery_serialnumber();
+
+	rc = of_property_read_string(np, "df-serialnum",
+				     &df_sn);
+	if (rc)
+		pr_warn("No Default Serial Number defined\n");
+	else if (df_sn)
+		pr_info("Default Serial Number %s\n", df_sn);
+
+	for_each_child_of_node(np, node) {
+		rc = of_property_read_string(node, "serialnum",
+					     &sn_buf);
+		if (!rc && sn_buf) {
+			if (dev_sn)
+				if (strnstr(dev_sn, sn_buf, 32))
+					sn_node = node;
+			if (df_sn)
+				if (strnstr(df_sn, sn_buf, 32))
+					df_node = node;
+		}
+	}
+
+	if (sn_node) {
+		node = sn_node;
+		df_node = NULL;
+		pr_info("Battery Match Found using %s\n", sn_node->name);
+	} else if (df_node) {
+		node = df_node;
+		sn_node = NULL;
+		pr_info("Battery Match Found using default %s\n",
+				df_node->name);
+	} else {
+		pr_warn("No Battery Match Found!\n");
+		return NULL;
+	}
+
+	return node;
+}
+
 struct device_node *of_batterydata_get_best_profile(
 		const struct device_node *batterydata_container_node,
 		int batt_id_kohm, const char *batt_type)
@@ -337,6 +419,10 @@ struct device_node *of_batterydata_get_best_profile(
 			return ERR_PTR(-ENXIO);
 		}
 	}
+
+	best_node = get_profile_by_serialnumber(batterydata_container_node);
+	if (best_node)
+		return best_node;
 
 	/*
 	 * Find the battery data with a battery id resistor closest to this one
