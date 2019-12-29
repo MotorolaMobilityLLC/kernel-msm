@@ -11,15 +11,22 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
+#include "sdm429w-pm660.dtsi"
 
-#include "sdm429-spyro.dtsi"
-#include "sdm429w-bg-pm660.dtsi"
-
-/ {
-	model = "Qualcomm Technologies, Inc. SDM429 QRD DVT Spyro";
-	compatible = "qcom,sdm429w-qrd", "qcom,sdm429w", "qcom,qrd";
-	qcom,msm-id = <437 0x0>;
-	qcom,board-id = <0x00010b 8>;
-	qcom,pmic-id = <0x0002001b 0x0 0x0 0x0>;
+&pm660_misc {
+	qcom,support-twm-config;
 };
+
+&pm660_pbs {
+	status = "okay";
+};
+
+&pm660_pon {
+	qcom,support-twm-config;
+	qcom,pbs-client = <&pm660_pbs>;
+};
+
+&pm660_fg {
+	qcom,fg-disable-in-twm;
+};
+
