@@ -1,0 +1,72 @@
+qcom,jk50-scud {
+	qcom, = <24>;
+	/* #Ontim_VK_4050mAH_averaged_MasterSlave_Dec5th2018*/
+	serialnum = "SB18C28956";
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <4050>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3380>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,battery-type = "JK50-SCUD-4050mah";
+	qcom,checksum = <0x5A69>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 3E 1F F6 05
+		 39 0A 15 FD
+		 E1 1C D5 FB
+		 CD 0D 92 0A
+		 B5 17 01 2A
+		 1B 44 97 5A
+		 72 00 00 00
+		 10 00 00 00
+		 00 00 7E BD
+		 FC 07 BD BB
+		 28 00 08 00
+		 04 00 A4 DC
+		 30 05 D7 FB
+		 B1 15 B3 06
+		 72 CA A3 23
+		 37 06 09 20
+		 27 00 14 00
+		 1C 20 17 05
+		 E4 0A DE 05
+		 C8 1C EE 02
+		 10 0C 21 12
+		 8B 18 D1 23
+		 E9 4D 2B 5B
+		 6D 00 00 00
+		 0E 00 00 00
+		 00 00 CF D5
+		 62 C2 17 CA
+		 1A 00 00 00
+		 1E E3 A4 DC
+		 C7 FC B5 F3
+		 24 07 CA 02
+		 BF FC 45 1B
+		 A5 33 CC FF
+		 07 10 00 00
+		 D8 0F 66 46
+		 1A 00 40 00
+		 8B 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
