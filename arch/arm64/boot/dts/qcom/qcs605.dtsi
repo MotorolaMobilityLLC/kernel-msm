@@ -71,7 +71,7 @@
 };
 
 &secure_display_memory {
-	status = "disabled";
+	size = <0 0xa000000>;
 };
 
 &qcom_seecom {
