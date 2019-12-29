@@ -140,8 +140,8 @@
 
 &vendor {
         mot_batterydata: qcom,battery-data {
-                qcom,batt-id-range-pct = <1000>;
-                #include "batterydata-kv30kv40-atl.dtsi"
+                df-serialnum = "SB18C28956";
+                #include "batterydata-jk50-scud.dtsi"
         };
 };
 
