@@ -138,3 +138,40 @@
 	status = "disabled";
 };
 
+&vendor {
+        mot_batterydata: qcom,battery-data {
+                qcom,batt-id-range-pct = <1000>;
+                #include "batterydata-kv30kv40-atl.dtsi"
+        };
+};
+
+&pm660_0 {
+	pm660_mmi: qcom,qpnp-smb2-mmi {
+		status = "ok";
+		compatible = "qcom,qpnp-smbcharger-mmi";
+		qcom,pmic-revid = <&pm660_revid>;
+		qcom,enable-charging-limit;
+		qcom,upper-limit-capacity = <75>;
+		qcom,lower-limit-capacity = <60>;
+		qcom,mmi-temp-zones = <0 4200 1000 0>,
+				<15 0 1000 1000>,
+				<45 0 3000 3000>,
+				<60 4200 2500 0>;
+		qcom,iterm-ma = <150>;
+		qcom,vfloat-comp-uv = <20000>;
+		qcom,force-hvdcp-5v;
+	};
+};
+
+&pm660_fg {
+        qcom,battery-data = <&mot_batterydata>;
+        qcom,fg-force-load-profile = <1>;
+        qcom,fg-cutoff-voltage = <3400>;
+        qcom,fg-empty-voltage = <3200>;
+};
+
+&pm660_charger {
+	qcom,float-option = <1>;
+	qcom,auto-recharge-soc = <99>;
+	qcom,dcp-current-ua = <2000000>;
+};
