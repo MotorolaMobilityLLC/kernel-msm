@@ -117,6 +117,14 @@
 	};
 };
 
+&pm660_haptics {
+        qcom,vmax-mv = <3000>;
+        qcom,ilim-ma = <400>;
+        qcom,wave-play-rate-us = <20000>;
+        qcom,actuator-type = <1>;
+        status = "okay";
+};
+
 &red_led {
 	status = "ok";
 	linux,name = "charging";
