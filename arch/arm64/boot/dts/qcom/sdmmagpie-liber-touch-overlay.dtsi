@@ -10,6 +10,7 @@
 		focaltech,irq-gpio = <&tlmm 9 0x02>;
 		focaltech,max-touch-number = <10>;
 		focaltech,display-coords =  <0 0 1080 2340>;
+		focaltech,report_gesture_key;
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 		pinctrl-0 = <&ts_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
