@@ -13,10 +13,10 @@
 #include "sdmmagpie-moto-common-overlay.dtsi"
 #include "sdmmagpie-liber-touch-overlay.dtsi"
 #include "sdmmagpie-audio-overlay.dtsi"
-#include "sdmmagpie-liber-audio-overlay.dtsi"
 /**
-#include "sdmmagpie-liber-audio-prince-overlay.dtsi"
+#include "sdmmagpie-liber-audio-overlay.dtsi"
 **/
+#include "sdmmagpie-liber-audio-prince-overlay.dtsi"
 #include "sdmmagpie-liber-fps-overlay.dtsi"
 /**
 #include "sdmmagpie-camera-sensor-mot-liber-overlay.dtsi"
