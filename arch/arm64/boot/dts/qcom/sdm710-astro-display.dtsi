@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-moto-hx83102d-hlt-hdplus-video.dtsi"
 #include "pm660a.dtsi"
 
 &soc {
@@ -55,3 +56,74 @@
 	};
 };
 
+&pm660l_lcdb {
+        status = "ok";
+};
+
+&pmx_sde{
+	sde_dsi_active: sde_dsi_active {
+		mux {
+			pins = "gpio75";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio75";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable = <0>;   /* no pull */
+		};
+	};
+	sde_dsi_suspend: sde_dsi_suspend {
+		mux {
+			pins = "gpio75";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio75";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+		};
+	};
+};
+
+&soc {
+	dsi_hlt_hx83102d_video_display: qcom,dsi-display@21{
+		compatible = "qcom,dsi-display";
+		label = "dsi_hlt_hx83102d_video_display";
+		qcom,display-type = "primary";
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			 <&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active>;
+		pinctrl-1 = <&sde_dsi_suspend>;
+		qcom,platform-reset-gpio = <&tlmm 75 0>;
+		qcom,ext-pin-control;
+		qcom,dsi-panel = <&dsi_hlt_hx83102d_video>;
+		vddio-supply = <&pm660_l11>;
+		lab-supply = <&lcdb_ldo_vreg>;
+		ibb-supply = <&lcdb_ncp_vreg>;
+	};
+};
+
+&dsi_hlt_hx83102d_video {
+        qcom,mdss-dsi-t-clk-post = <0x0b>;
+        qcom,mdss-dsi-t-clk-pre = <0x22>;
+	qcom,mdss-dsi-no-panel-on-read-support;
+        qcom,mdss-dsi-display-timings {
+                timing@0{
+                        qcom,mdss-dsi-panel-phy-timings = [00 14 05 05 1F 1F 05 05 03 02 04 00];
+                        qcom,display-topology = <1 0 1>;
+                        qcom,default-topology-index = <0>;
+                };
+        };
+};
+
+&dsi_hlt_hx83102d_video {
+	qcom,platform-reset-gpio = <&tlmm 75 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+};
