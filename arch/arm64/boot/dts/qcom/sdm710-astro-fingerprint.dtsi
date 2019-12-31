@@ -1,0 +1,144 @@
+&tlmm {
+	ets {
+		ets_int_active: ets_int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio121";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio121";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+		ets_int_suspend: ets_int_suspend {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio121";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio121";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+	};
+
+	fps {
+		rst_active: rst_active {
+			/* RESET */
+			mux {
+				pins = "gpio134";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio134";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		rst_suspend: rst_suspend {
+			/* RESET */
+			mux {
+				pins = "gpio134";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio134";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+		rst_reset: rst_reset {
+			/* RESET */
+			mux {
+				pins = "gpio134";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio134";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+
+		int_active: int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio121";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio121";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		int_suspend: int_suspend {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio121";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio121";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		ldo33_en_active: ldo33_en_active {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio90";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio90";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		ldo33_en_suspend: ldo33_en_suspend {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio90";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio90";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+	};
+};
+
+&soc {
+	qcom,qbt1000 {
+		status = "disabled";
+	};
+	fpc_fpc1020 {
+		compatible = "fpc,fpc1020";
+		status = "ok";
+		irq = <&tlmm 121 0>;
+		rst = <&tlmm 134 0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&ldo33_en_active &int_active &rst_reset>;
+		pinctrl-1 = <&ldo33_en_suspend &int_suspend &rst_suspend>;
+	};
+};
