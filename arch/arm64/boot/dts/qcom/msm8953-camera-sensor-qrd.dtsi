@@ -33,7 +33,7 @@
 		qcom,cci-master = <0>;
 		reg = <0x0>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&pm8953_l23>;
+		cam_vdig-supply = <&pm8953_l2>;
 		cam_vaf-supply = <&pm8953_l17>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig", "cam_vaf";
 		qcom,cam-vreg-min-voltage = <0 1200000 2850000>;
@@ -111,7 +111,7 @@
 		qcom,eeprom-src = <&eeprom0>;
 		qcom,actuator-src = <&actuator0>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&pm8953_l23>;
+		cam_vdig-supply = <&pm8953_l2>;
 		cam_vaf-supply = <&pm8953_l17>;
 		cam_vana-supply = <&pm8953_l22>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig", "cam_vaf",
