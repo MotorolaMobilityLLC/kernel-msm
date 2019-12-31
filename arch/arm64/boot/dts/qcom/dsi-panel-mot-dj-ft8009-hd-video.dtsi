@@ -1,0 +1,113 @@
+/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	dsi_ft8009_dj_video: qcom,mdss_dsi_ft8009_dj_video {
+		qcom,mdss-dsi-panel-name =
+				"mipi_mot_vid_dj_720p_639";
+		qcom,mdss-dsi-panel-type = "dsi_video_mode";
+
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-h-sync-pulse = <0>;
+		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
+		qcom,mdss-dsi-lane-map = "lane_map_0123";
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-tx-eot-append;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-lane-2-state;
+		qcom,mdss-dsi-lane-3-state;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,bklt-dcs-2bytes-0xff0f-enabled;
+		qcom,mdss-dsi-reset-always-high;
+		qcom,mdss-dsi-reset-force-pull-low;
+		qcom,mdss-dsi-reset-assert-time = <10>;
+		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
+		/*
+		qcom,mdss-pan-physical-width-dimension = <65>;
+		qcom,mdss-pan-physical-height-dimension = <129>;
+		*/
+		qcom,mdss-dsi-display-timings {
+			timing@0 {
+				qcom,mdss-dsi-panel-width = <720>;
+				qcom,mdss-dsi-panel-height = <1560>;
+				qcom,mdss-dsi-h-front-porch = <184>;
+				qcom,mdss-dsi-h-back-porch = <104>;
+				qcom,mdss-dsi-h-pulse-width = <16>;
+				qcom,mdss-dsi-h-sync-skew = <0>;
+				qcom,mdss-dsi-v-back-porch = <21>;
+				qcom,mdss-dsi-v-front-porch = <209>;
+				qcom,mdss-dsi-v-pulse-width = <20>;
+				qcom,mdss-dsi-panel-framerate = <60>;
+				qcom,mdss-dsi-panel-clockrate = <668000000>;
+				qcom,mdss-dsi-on-command = [
+					15 00 00 00 00 00 02 00 00
+					39 00 00 00 00 00 04 FF 80 09 01
+					15 00 00 00 00 00 02 00 80
+					39 00 00 00 00 00 03 FF 80 09//cmd2 enable
+					15 00 00 00 00 00 02 00 B0
+					15 00 00 00 00 00 02 CA 01 //normal DBF=00
+					15 00 00 00 00 00 02 00 B2
+					15 00 00 00 00 00 02 CA 0C //pwm 15k 12 Bit
+					15 00 00 00 00 00 02 00 B5
+					15 00 00 00 00 00 02 CA 04 //16 frame
+					15 00 00 00 00 00 02 00 00
+					39 00 00 00 00 00 04 FF 00 00 00
+					15 00 00 00 00 00 02 00 80
+					39 00 00 00 00 00 03 FF 00 00 //CMD2 Disable
+					15 00 00 00 00 00 02 1C 03
+					15 00 00 00 00 00 02 36 08
+					05 01 00 00 5A 00 01 11
+					05 01 00 00 03 00 01 29
+					39 00 00 00 00 00 03 51 00 00
+					15 00 00 00 00 00 02 53 2C
+					15 01 00 00 00 00 02 55 01
+				];
+				qcom,mdss-dsi-off-command = [
+					05 01 00 00 14 00 01 28
+					05 01 00 00 78 00 01 10
+					15 00 00 00 00 00 02 00 00
+					39 01 00 00 78 00 05 F7 5A A5 95 27 //lcd deepsleep
+				];
+				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+				qcom,mdss-dsi-cabc-mv-command-state =  "dsi_hs_mode";
+				qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+				qcom,mdss-dsi-cabc-ui-command-state =  "dsi_hs_mode";
+				qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+				qcom,mdss-dsi-cabc-dis-command-state =  "dsi_hs_mode";
+				//acturlly hbm is impliemented by controlling gpio. add this commond just enable HBM feature.
+				qcom,mdss-dsi-hbm-on-command = [01];
+				qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
+				qcom,mdss-dsi-hbm-off-command = [00];
+				qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
+				qcom,mdss-dsi-hbm-type = "hbm_type_gpio";
+			};
+		};
+	};
+};
