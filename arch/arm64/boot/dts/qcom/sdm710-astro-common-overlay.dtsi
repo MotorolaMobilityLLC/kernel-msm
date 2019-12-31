@@ -15,6 +15,7 @@
 #include <dt-bindings/clock/qcom,dispcc-sdm845.h>
 #include <dt-bindings/clock/qcom,rpmh.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/input/input.h>
 
 #include "sdm710-moto-common-overlay-base.dtsi"
 #include "sdm710-astro-display.dtsi"
@@ -57,6 +58,51 @@
 	};
 };
 
+&sde_dp {
+	status = "disabled";
+};
+
+&mdss_mdp {
+	connectors = <&sde_rscc &sde_wb>;
+};
+
+&tlmm {
+       /* Pinctrl setting for assist key */
+	assist_key {
+		gpio_key_default: gpio_key_default {
+			mux {
+				pins = "gpio40";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio40";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
+};
+
+&soc {
+        gpio_keys {
+                compatible = "gpio-keys";
+                label = "gpio-keys";
+
+                pinctrl-names = "default";
+                pinctrl-0 = <&gpio_key_default
+				&key_vol_up_default>;
+
+                assist_key {
+                        label = "assist_key";
+                        gpios = <&tlmm 40 GPIO_ACTIVE_LOW>;
+                        linux,input-type = <1>;
+                        linux,code = <KEY_SEARCH>;
+                        gpio-key,wakeup;
+                        debounce-interval = <15>;
+                        linux,cddan-disable;
+                };
+        };
+};
 
 &usb_qmp_dp_phy {
 	status = "disabled";
