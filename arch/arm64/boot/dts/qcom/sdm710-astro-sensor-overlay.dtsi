@@ -1,0 +1,47 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&tlmm {
+	capsense_sar_gpio_pins: capsense_sar_gpio_pins {
+		mux {
+			pins = "gpio116";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio116";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+
+&qupv3_se3_i2c {
+	status = "ok";
+	/delete-node/ nq@28;
+	abov_sar@20 {
+		status = "ok";
+		compatible = "abov,abov_sar";
+		reg = <0x20>;
+		cap_vdd-supply = <&pm660l_l3>;
+		cap_svdd-supply =<&pm660_l13>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <116 0x2>;
+		gpios = <&tlmm 116 0x2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&capsense_sar_gpio_pins>;
+		reg_array_len = <0x03>;
+		reg_array_val = <0x07 0x00 0x08 0x1B 0xFB 0x01>;
+		cap,use_channel_bottom = <0x00>;
+		cap,use_channel_top = <0x01>;
+		label = "AbovCapSense";
+		cap,channel_number = <0x02>;
+		};
+};
