@@ -19,6 +19,7 @@
 
 #include "sdm710-moto-common-overlay-base.dtsi"
 #include "sdm710-astro-display.dtsi"
+#include "sdm710-astro-sensor-overlay.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
