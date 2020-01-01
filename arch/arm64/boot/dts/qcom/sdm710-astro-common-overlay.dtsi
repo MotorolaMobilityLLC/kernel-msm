@@ -19,6 +19,7 @@
 
 #include "sdm710-moto-common-overlay-base.dtsi"
 #include "sdm710-astro-display.dtsi"
+#include "sdm710-astro-touchscreen.dtsi"
 #include "sdm710-astro-sensor-overlay.dtsi"
 #include "sdm710-astro-audio-overlay.dtsi"
 
