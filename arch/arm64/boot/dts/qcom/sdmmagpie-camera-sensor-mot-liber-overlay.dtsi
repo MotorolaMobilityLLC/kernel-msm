@@ -227,6 +227,27 @@
 		status = "ok";
 	};
 
+	led_flash_wide: qcom,camera-flash@1 {
+		cell-index = <1>;
+		reg = <0x01 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm6150l_flash0>;
+		torch-source = <&pm6150l_torch0>;
+		switch-source = <&pm6150l_switch0>;
+		status = "ok";
+	};
+
+
+	led_flash_macro: qcom,camera-flash@2 {
+		cell-index = <2>;
+		reg = <0x02 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm6150l_flash0>;
+		torch-source = <&pm6150l_torch0>;
+		switch-source = <&pm6150l_switch0>;
+		status = "ok";
+	};
+
 };
 
 &cam_cci0 {
@@ -432,6 +453,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_wide>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_wide_depth_avdd_ldo>;
 		cam_vdig-supply = <&camera_wide_micro_dvdd_ldo>;
@@ -471,6 +493,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_macro>;
 		actuator-src = <&actuator_micro>;
 		eeprom-src = <&eeprom_micro>;
 		cam_vio-supply = <&pm6150_l13>;
