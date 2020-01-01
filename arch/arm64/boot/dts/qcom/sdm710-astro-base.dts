@@ -17,3 +17,17 @@
 &firmware {
        /delete-node/ android;
 };
+
+&soc {
+	/delete-node/ sound-tavil;
+	/delete-node/ sound-tasha;
+	/delete-node/ sound;
+};
+
+&tlmm {
+	/delete-node/ sdw_clk_pin;
+	/delete-node/ sdw_data_pin;
+	/delete-node/ spkr_1_sd_n;
+	/delete-node/ spkr_2_sd_n;
+	/delete-node/ aqt_intr;
+};

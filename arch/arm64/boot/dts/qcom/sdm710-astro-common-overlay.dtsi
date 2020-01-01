@@ -20,6 +20,7 @@
 #include "sdm710-moto-common-overlay-base.dtsi"
 #include "sdm710-astro-display.dtsi"
 #include "sdm710-astro-sensor-overlay.dtsi"
+#include "sdm710-astro-audio-overlay.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
@@ -85,24 +86,33 @@
 };
 
 &soc {
-        gpio_keys {
-                compatible = "gpio-keys";
-                label = "gpio-keys";
+	gpio_keys {
+		compatible = "gpio-keys";
+		label = "gpio-keys";
 
-                pinctrl-names = "default";
+		pinctrl-names = "default";
                 pinctrl-0 = <&gpio_key_default
 				&key_vol_up_default>;
 
-                assist_key {
-                        label = "assist_key";
-                        gpios = <&tlmm 40 GPIO_ACTIVE_LOW>;
-                        linux,input-type = <1>;
-                        linux,code = <KEY_SEARCH>;
-                        gpio-key,wakeup;
-                        debounce-interval = <15>;
-                        linux,cddan-disable;
-                };
-        };
+		assist_key {
+			label = "assist_key";
+			gpios = <&tlmm 40 GPIO_ACTIVE_LOW>;
+			linux,input-type = <1>;
+			linux,code = <KEY_SEARCH>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			linux,can-disable;
+		};
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm660l_gpios 7 GPIO_ACTIVE_LOW>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			linux,can-disable;
+		};
+	};
 };
 
 &usb_qmp_dp_phy {
