@@ -60,6 +60,10 @@
         status = "ok";
 };
 
+&pm660l_wled {
+       status = "ok";
+};
+
 &pmx_sde{
 	sde_dsi_active: sde_dsi_active {
 		mux {
@@ -125,5 +129,4 @@
 &dsi_hlt_hx83102d_video {
 	qcom,platform-reset-gpio = <&tlmm 75 0>;
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 };
