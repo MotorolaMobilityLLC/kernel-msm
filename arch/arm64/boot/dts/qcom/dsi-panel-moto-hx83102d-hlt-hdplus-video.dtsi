@@ -19,7 +19,7 @@
 
 &mdss_mdp {
 	dsi_hlt_hx83102d_video:qcom,mdss_dsi_hx83102d_hlt_video {
-		qcom,mdss-dsi-panel-name ="Hx83102d himax video mode dsi panel";
+		qcom,mdss-dsi-panel-name ="mipi_mot_vid_hlt_720p_652";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
@@ -58,15 +58,15 @@
 				qcom,mdss-dsi-panel-framerate = <60>;
 				qcom,mdss-dsi-panel-clockrate = <544000000>;
 				qcom,mdss-dsi-on-command = [
-        			39 01 00 00 00 00 02 51 00
-        			39 01 00 00 00 00 02 53 24
-        			39 01 00 00 00 00 02 55 00
-        	 		05 01 00 00 5a 00 02 11 00
-        	 		05 01 00 00 0a 00 02 29 00
+        			15 00 00 00 00 00 02 51 00
+        			15 00 00 00 00 00 02 53 2C
+        			15 00 00 00 00 00 02 55 01
+        	 		05 01 00 00 5a 00 01 11
+        	 		05 01 00 00 0a 00 01 29
 					];
 				qcom,mdss-dsi-off-command = [
-					05 01 00 00 0a 00 02 28 00
-					05 01 00 00 5a 00 02 10 00];
+					05 01 00 00 0a 00 01 28
+					05 01 00 00 5a 00 01 10];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 				qcom,mdss-dsi-h-sync-pulse = <0>;
