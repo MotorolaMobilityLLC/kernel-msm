@@ -61,6 +61,10 @@
 	};
 };
 
+&sdhc_2 {
+        cd-gpios = <&tlmm 96 0>;
+};
+
 &sde_dp {
 	status = "disabled";
 };
