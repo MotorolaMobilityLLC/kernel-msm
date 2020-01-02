@@ -23,11 +23,6 @@
 #include "sdmmagpie-camera-sensor-mot-liber-overlay.dtsi"
 
 
-&spmi_bus {
-/delete-node/ pm8009@a;
-/delete-node/ pm8009@b;
-};
-
 &soc {
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
