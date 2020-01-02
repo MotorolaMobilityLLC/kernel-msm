@@ -996,6 +996,15 @@ static int mhi_state_uevent(struct device *dev, struct kobj_uevent_env *env)
 	mhi_parse_state(buf, &nbytes, info);
 	add_uevent_var(env, "MHI_CHANNEL_STATE_12=%s", buf);
 
+	rc = mhi_ctrl_state_info(MHI_CLIENT_DCI_OUT, &info);
+	if (rc) {
+		pr_err("Failed to obtain channel 20 state\n");
+		return -EINVAL;
+	}
+	nbytes = 0;
+	mhi_parse_state(buf, &nbytes, info);
+	add_uevent_var(env, "MHI_CHANNEL_STATE_20=%s", buf);
+
 	return 0;
 }
 
