@@ -17,12 +17,12 @@
 #include <dt-bindings/clock/qcom,camcc-sdmmagpie.h>
 
 #include "sdmmagpie-liber-common-overlay.dtsi"
-#include "sdmmagpie-liber-audio-overlay.dtsi"
+#include "sdmmagpie-liber-audio-prince-overlay.dtsi"
 
 / {
 	model = "liber";
 	qcom,msm-id = <365 0x0>;
-	qcom,board-id = <0x41 0xA100>;
+	qcom,board-id = <0x41 0xB000>;
 };
 
 
