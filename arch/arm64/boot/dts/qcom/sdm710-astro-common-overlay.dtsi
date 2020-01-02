@@ -22,6 +22,7 @@
 #include "sdm710-astro-touchscreen.dtsi"
 #include "sdm710-astro-sensor-overlay.dtsi"
 #include "sdm710-astro-audio-overlay.dtsi"
+#include "sdm710-astro-fingerprint.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
