@@ -22,6 +22,11 @@
 	/delete-node/ android;
 };
 
+&spmi_bus {
+/delete-node/ qcom,pm8009@a;
+/delete-node/ qcom,pm8009@b;
+};
+
 &thermal_zones {
 	/delete-node/ rf_pa0_therm-therm;
 	/delete-node/ quiet-therm;
