@@ -16,7 +16,7 @@
 #include <dt-bindings/clock/qcom,rpmh.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/input/input.h>
-
+#include "sdm710-camera-sensor-mot-astro-overlay.dtsi"
 #include "sdm710-moto-common-overlay-base.dtsi"
 #include "sdm710-astro-display.dtsi"
 #include "sdm710-astro-touchscreen.dtsi"
