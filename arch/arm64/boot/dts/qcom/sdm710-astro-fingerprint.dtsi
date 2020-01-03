@@ -112,4 +112,13 @@
 		pinctrl-0 = <&ldo33_en_active &int_active &rst_reset>;
 		pinctrl-1 = <&ldo33_en_suspend &int_suspend &rst_suspend>;
 	};
+
+	goodix_fp {
+		compatible = "goodix,fingerprint";
+		interrupt-parent = <&tlmm>;
+		fp-gpio-irq = <&tlmm 121 0x00>;
+		fp-gpio-reset = <&tlmm 134 0x00>;
+		fp-gpio-ven = <&tlmm 90 0x0>;
+		status = "okay";
+	};
 };
