@@ -82,7 +82,7 @@
 		spi-cpha;
 		himax,panel-coords = <0 720 0 1600>;
 		himax,display-coords = <0 720 0 1600>;
-		himax,touch_info = <36 18 0 720 1600 10 0 1>;
+		himax,touch_info = <32 18 0 720 1600 10 0 1>;
 		himax,irq-gpio = <&tlmm 125 0x2008>;
 		himax,rst-gpio = <&tlmm 99  0x00>;
 		report_type = <1>;
