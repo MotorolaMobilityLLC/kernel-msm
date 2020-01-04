@@ -94,4 +94,23 @@
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 	};
+	nova_0flash_ts@1 {
+		compatible = "novatek,NVT-ts-spi";
+		reg = <1>;
+		spi-max-frequency = <9600000>;
+		novatek,swrst-n8-addr = <0x03F0FE>;
+		novatek,spi-rd-fast-addr = <0x03F310>;
+		spi-cpha;
+		novatek,irq-gpio = <&tlmm 125 0x2008>;
+		novatek,reset-gpio = <&tlmm 99  0x00>;
+		report_type = <1>;
+		novatek,def-max-resolution = <720 1600>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <125 0x02>;
+		lab-supply = <&lcdb_ldo_vreg>;
+		ibb-supply = <&lcdb_ncp_vreg>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+	};
 };
