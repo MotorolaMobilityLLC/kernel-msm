@@ -183,6 +183,61 @@ static const struct virtual_sensor_data qti_virtual_sensors[] = {
 				"cpuss-usr"},
 		.logic = VIRT_MAXIMUM,
 	},
+        {
+		/* Temp above rear qtm */
+		.virt_zone_name = "mmw0-surface-step",
+		.num_sensors = 1,
+		.sensor_names = {"modem-mmw0-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {1},
+		.avg_offset = -20000,
+		.avg_denominator = 1,
+	},
+	{
+		/* Temp above front qtm */
+		.virt_zone_name = "mmw1-surface-step",
+		.num_sensors = 1,
+		.sensor_names = {"modem-mmw1-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {1},
+		.avg_offset = -15000,
+		.avg_denominator = 1,
+	},
+	{
+		/* Temp above sdx55 */
+		.virt_zone_name = "sdx55-surface-step",
+		.num_sensors = 1,
+		.sensor_names = {"skin-therm-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {1},
+		.avg_offset = -13000,
+		.avg_denominator = 1,
+	},
+	{
+		/* Front temp estimate */
+		.virt_zone_name = "front-usr",
+		.num_sensors = 1,
+		.sensor_names = {"skin-msm-therm-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {65},
+		.avg_offset = 900000,
+		.avg_denominator = 100,
+	},
+	{
+		/* Back temp estimate */
+		.virt_zone_name = "back-usr",
+		.num_sensors = 1,
+		.sensor_names = {"chg-therm-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {1},
+		.avg_offset = -10000,
+		.avg_denominator = 1,
+	},
 };
 
 int qti_virtual_sensor_register(struct device *dev)
