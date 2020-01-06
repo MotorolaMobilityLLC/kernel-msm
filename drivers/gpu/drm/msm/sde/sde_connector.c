@@ -1999,6 +1999,9 @@ static int sde_connector_populate_mode_info(struct drm_connector *conn,
 
 		sde_kms_info_add_keystr(info, "mode_name", mode->name);
 
+		sde_kms_info_add_keyint(info, "VIC",
+					mode->vic_id);
+
 		sde_kms_info_add_keyint(info, "bit_clk_rate",
 					mode_info.clk_rate);
 

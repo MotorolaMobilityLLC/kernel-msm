@@ -405,6 +405,8 @@ struct drm_display_mode {
 	 * Field for setting the HDMI picture aspect ratio of a mode.
 	 */
 	enum hdmi_picture_aspect picture_aspect_ratio;
+
+	u32 vic_id;
 };
 
 #define obj_to_mode(x) container_of(x, struct drm_display_mode, base)
