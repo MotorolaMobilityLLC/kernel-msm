@@ -18,7 +18,8 @@
 		config {
 			pins = "gpio116";
 			drive-strength = <2>;
-			bias-disable;
+			bias-pull-up; /* PULL UP*/
+			input-enable;
 		};
 	};
 };
