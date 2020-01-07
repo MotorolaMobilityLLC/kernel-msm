@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -489,6 +489,7 @@ struct mdss_data_type {
 	u32 min_prefill_lines; /* this changes within different chipsets */
 	u32 props;
 
+	bool twm_en;
 	int handoff_pending;
 	bool idle_pc;
 	struct mdss_perf_tune perf_tune;
