@@ -111,7 +111,7 @@ static int bt_vreg_enable(struct bt_power_vreg_data *vreg)
 		vreg->is_enabled = true;
 	}
 
-	BT_PWR_ERR("vreg_en successful for : %s", vreg->name);
+	BT_PWR_DBG("vreg_en successful for : %s", vreg->name);
 out:
 	return rc;
 }
@@ -144,7 +144,7 @@ static int bt_vreg_unvote(struct bt_power_vreg_data *vreg)
 		}
 	}
 
-	BT_PWR_ERR("vreg_unvote successful for : %s", vreg->name);
+	BT_PWR_DBG("vreg_unvote successful for : %s", vreg->name);
 out:
 	return rc;
 }
@@ -185,7 +185,7 @@ static int bt_vreg_disable(struct bt_power_vreg_data *vreg)
 		}
 	}
 
-	BT_PWR_ERR("vreg_disable successful for : %s", vreg->name);
+	BT_PWR_DBG("vreg_disable successful for : %s", vreg->name);
 out:
 	return rc;
 }
@@ -319,7 +319,7 @@ static int bt_configure_gpios(int on)
 			bt_sw_ctrl_gpio,  gpio_get_value(bt_sw_ctrl_gpio));
 	}
 
-	BT_PWR_ERR("bt_gpio= %d on: %d is successful", bt_reset_gpio, on);
+	BT_PWR_DBG("bt_gpio= %d on: %d is successful", bt_reset_gpio, on);
 	return rc;
 }
 
@@ -866,20 +866,20 @@ static long bt_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	case BT_CMD_PWR_CTRL:
 		pwr_cntrl = (int)arg;
-		BT_PWR_ERR("BT_CMD_PWR_CTRL pwr_cntrl:%d", pwr_cntrl);
+		BT_PWR_DBG("BT_CMD_PWR_CTRL pwr_cntrl:%d", pwr_cntrl);
 		if (pwr_state != pwr_cntrl) {
 			ret = bluetooth_power(pwr_cntrl);
 			if (!ret)
 				pwr_state = pwr_cntrl;
 		} else {
-			BT_PWR_ERR("BT state already:%d no change done\n"
+			BT_PWR_INFO("BT state already:%d no change done\n"
 				, pwr_state);
 			ret = 0;
 		}
 		break;
 	case BT_CMD_CHIPSET_VERS:
 		chipset_version = (int)arg;
-		BT_PWR_ERR("BT_CMD_CHIP_VERS soc_version:%x", chipset_version);
+		BT_PWR_DBG("BT_CMD_CHIP_VERS soc_version:%x", chipset_version);
 		if (chipset_version) {
 			soc_id = chipset_version;
 		} else {
