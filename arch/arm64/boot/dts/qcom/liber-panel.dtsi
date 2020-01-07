@@ -120,6 +120,7 @@
 	//qcom,dsi-dyn-clk-list =
 	//	<1005903360 989138304 993329568 997520832 1001712096>;
 	qcom,mdss-dsi-reset-sequence = <1 3>, <0 1>, <1 10>;
+	qcom,mdss-brightness-max-level = <2047>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-h-front-porch = <32>;
