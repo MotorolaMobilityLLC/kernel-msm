@@ -1,0 +1,80 @@
+/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,fg-gen3-batterydata-goertek-1400mah {
+	qcom,max-voltage-uv = <4350000>;
+	qcom,fg-cc-cv-threshold-mv = <4340>;
+	qcom,nom-batt-capacity-mah = <1400>;
+	qcom,batt-id-kohm = <10>;
+	qcom,battery-beta = <3440>;
+	qcom,battery-type = "fg-gen3-batterydata-goertek-1400mah";
+	qcom,checksum = <0xF519>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 79 21 F3 0D
+		 6A 0B 99 05
+		 0B 1D 8D FA
+		 37 FC 4F 02
+		 D7 19 0E 22
+		 C0 3C 8C 4B
+		 9E 00 00 00
+		 13 00 00 00
+		 00 00 DD CD
+		 E1 C5 8D CA
+		 2F 00 08 00
+		 74 D3 AD 07
+		 42 06 B7 F2
+		 CB EC C9 03
+		 37 FC 39 32
+		 1E 06 09 20
+		 27 00 14 00
+		 AE 1F B4 05
+		 54 0A 6C 06
+		 D4 1C A8 02
+		 97 0C A5 0B
+		 DB 18 75 23
+		 59 44 AD 5A
+		 6E 00 00 00
+		 0E 00 00 00
+		 00 00 EB CC
+		 3E CA 02 B4
+		 2C 00 00 00
+		 62 F2 AD 07
+		 8F FC 9E 00
+		 99 CB C0 02
+		 B5 0D D8 23
+		 C6 33 CC FF
+		 07 10 00 00
+		 BD 05 99 45
+		 2C 00 40 00
+		 F4 00 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
