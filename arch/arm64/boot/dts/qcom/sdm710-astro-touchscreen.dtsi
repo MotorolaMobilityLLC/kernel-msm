@@ -73,8 +73,36 @@
 	};
 };
 
+&qupv3_se9_spi_pins {
+       qupv3_se9_spi_sleep: qupv3_se9_spi_sleep {
+               mux {
+                       pins = "gpio4", "gpio6","gpio7";
+                       function = "gpio";
+               };
+
+               config {
+                       pins = "gpio4", "gpio6","gpio7";
+                       drive-strength = <6>;
+                       bias-disable;
+               };
+       };
+       qupv3_se9_cs_sleep: qupv3_se9_cs_sleep {
+               mux {
+                       pins = "gpio5";
+                       function = "gpio";
+               };
+
+               config {
+                       pins = "gpio5";
+                       drive-strength = <6>;
+                       bias-pull-up;
+               };
+       };
+};
+
 &qupv3_se9_spi {
 	status = "ok";
+	pinctrl-1 = <&qupv3_se9_spi_sleep &qupv3_se9_cs_sleep>;
 	himax_0flash_ts@0 {
 		compatible = "himax,hxcommon";
 		reg = <0>;
