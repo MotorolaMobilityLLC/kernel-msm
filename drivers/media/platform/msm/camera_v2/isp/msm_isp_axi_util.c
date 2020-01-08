@@ -3389,6 +3389,16 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 	}
 
 	frame_src = SRC_TO_INTF(stream_info->stream_src);
+	if (vfe_dev->isp_page->drop_reconfig) {
+		pr_err("%s: MCT has not yet delayed %d drop request %d\n",
+			__func__, vfe_dev->isp_page->drop_reconfig, frame_id);
+		rc = msm_isp_return_empty_buffer(vfe_dev, stream_info,
+                        user_stream_id, frame_id, buf_index, frame_src);
+                if (rc < 0)
+                        pr_err("%s:%d failed: return_empty_buffer src %d\n",
+                                __func__, __LINE__, frame_src);
+                return 0;
+	}
 	trace_msm_cam_isp_bufcount("msm_isp_request_frame:",
 		vfe_dev->pdev->id, frame_id, frame_src);
 
@@ -3412,6 +3422,7 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 		if (rc < 0)
 			pr_err("%s:%d failed: return_empty_buffer src %d\n",
 				__func__, __LINE__, frame_src);
+		vfe_dev->isp_page->drop_reconfig = 1;
 		return 0;
 	}
 	if ((frame_src == VFE_PIX_0) && !stream_info->undelivered_request_cnt &&
@@ -3430,6 +3441,7 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 		stream_info->current_framedrop_period =
 			MSM_VFE_STREAM_STOP_PERIOD;
 		msm_isp_cfg_framedrop_reg(vfe_dev, stream_info);
+		vfe_dev->isp_page->drop_reconfig = 1;
 		return 0;
 	}
 

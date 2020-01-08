@@ -705,6 +705,7 @@ struct msm_vfe_common_subdev {
 
 struct isp_proc {
 	uint32_t  kernel_sofid;
+	uint32_t drop_reconfig;
 	uint32_t  vfeid;
 };
 
