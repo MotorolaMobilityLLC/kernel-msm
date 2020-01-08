@@ -63,6 +63,7 @@
 
 &pm660l_wled {
        status = "ok";
+       qcom,led-strings-list = [00 01];
 };
 
 &pmx_sde{
