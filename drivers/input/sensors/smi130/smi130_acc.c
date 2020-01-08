@@ -1609,6 +1609,7 @@ struct smi130_acc_data {
 	int max_buffer_time;
 	struct input_dev *accbuf_dev;
 	int report_evt_cnt;
+	struct mutex acc_sensor_buff;
 #endif
 #ifdef SMI130_HRTIMER
 	struct hrtimer smi130_hrtimer;
@@ -6553,8 +6554,9 @@ static int smi_acc_read_bootsampl(struct smi130_acc_data *client_data,
 {
 	int i = 0;
 
+	client_data->acc_buffer_smi130_samples = false;
+
 	if (enable_read) {
-		client_data->acc_buffer_smi130_samples = false;
 		for (i = 0; i < client_data->acc_bufsample_cnt; i++) {
 			if (client_data->debug_level & 0x08)
 				PINFO("acc=%d,x=%d,y=%d,z=%d,sec=%d,ns=%lld\n",
@@ -6621,7 +6623,9 @@ static ssize_t read_acc_boot_sample_store(struct device *dev,
 		PERR("Invalid value of input, input=%ld\n", enable);
 		return -EINVAL;
 	}
+	mutex_lock(&smi130_acc->acc_sensor_buff);
 	err = smi_acc_read_bootsampl(smi130_acc, enable);
+	mutex_unlock(&smi130_acc->acc_sensor_buff);
 	if (err)
 		return err;
 
@@ -7055,6 +7059,8 @@ static int smi130_acc_early_buff_init(struct i2c_client *client,
 
 	smi130_set_cpu_idle_state(true);
 
+	mutex_init(&client_data->acc_sensor_buff);
+
 	smi130_acc_set_mode(client, SMI_ACC2X2_MODE_NORMAL, 1);
 	smi130_acc_set_bandwidth(client, SMI_ACC2X2_BW_62_50HZ);
 	smi130_acc_set_range(client, SMI_ACC2X2_RANGE_2G);
@@ -7139,7 +7145,9 @@ static irqreturn_t smi130_acc_irq_work_func(int irq, void *handle)
 		smi130_acc->value = acc;
 		mutex_unlock(&smi130_acc->value_mutex);
 	}
+	mutex_lock(&smi130_acc->acc_sensor_buff);
 	store_acc_boot_sample(smi130_acc, acc.x, acc.y, acc.z, ts);
+	mutex_unlock(&smi130_acc->acc_sensor_buff);
 
 	smi130_set_cpu_idle_state(false);
 	return IRQ_HANDLED;

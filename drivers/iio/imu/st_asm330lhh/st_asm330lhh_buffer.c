@@ -282,7 +282,6 @@ static int st_asm330lhh_read_fifo(struct st_asm330lhh_hw *hw)
 					     word_len, buf);
 		if (err < 0)
 			return err;
-
 		for (i = 0; i < word_len; i += ST_ASM330LHH_FIFO_SAMPLE_SIZE) {
 			ptr = &buf[i + ST_ASM330LHH_TAG_SIZE];
 			tag = buf[i] >> 3;
@@ -329,7 +328,6 @@ static int st_asm330lhh_read_fifo(struct st_asm330lhh_hw *hw)
 					>= ST_ASM330LHH_SAMPLE_DISCHARD)) {
 					continue;
 				}
-
 				memcpy(iio_buf, ptr, ST_ASM330LHH_SAMPLE_SIZE);
 
 				hw->tsample = min_t(s64,
@@ -339,8 +337,10 @@ static int st_asm330lhh_read_fifo(struct st_asm330lhh_hw *hw)
 				iio_push_to_buffers_with_timestamp(iio_dev,
 								   iio_buf,
 								   hw->tsample);
+				mutex_lock(&sensor->sensor_buff);
 				store_acc_gyro_boot_sample(sensor,
 						iio_buf, hw->tsample);
+				mutex_unlock(&sensor->sensor_buff);
 			}
 		}
 		read_len += word_len;

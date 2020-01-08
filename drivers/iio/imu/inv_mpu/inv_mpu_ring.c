@@ -383,7 +383,9 @@ int inv_push_special_8bytes_buffer(struct inv_mpu_state *st,
 	memcpy(&buf[2], &d[0], sizeof(d[0]));
 	for (j = 0; j < 2; j++)
 		memcpy(&buf[4 + j * 2], &d[j + 1], sizeof(d[j]));
+	mutex_lock(&st->gyro_sensor_buff);
 	store_gyro_boot_sample(st, t, d[0], d[1], d[2]);
+	mutex_unlock(&st->gyro_sensor_buff);
 	iio_push_to_buffers(indio_dev, buf);
 	inv_push_timestamp(indio_dev, t);
 
@@ -474,7 +476,9 @@ int inv_push_8bytes_buffer(struct inv_mpu_state *st, u16 sensor, u64 t, s16 *d)
 				for (j = 0; j < 2; j++)
 					memcpy(&buf[4 + j * 2], &d[j + 1],
 					       sizeof(d[j]));
+				mutex_lock(&st->acc_sensor_buff);
 				store_acc_boot_sample(st, t, d[0], d[1], d[2]);
+				mutex_unlock(&st->acc_sensor_buff);
 				iio_push_to_buffers(indio_dev, buf);
 				inv_push_timestamp(indio_dev, t);
 				st->sensor_l[ii].counter = 0;
