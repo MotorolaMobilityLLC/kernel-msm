@@ -276,6 +276,7 @@
 		aw8646-gpios-cells = <10>;
 		aw8646-max-freq = <250000>;
 		enable-hw-clock;
+		power-default-off;
 	};
 };
 
