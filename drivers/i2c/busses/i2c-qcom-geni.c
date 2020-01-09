@@ -26,6 +26,7 @@
 #define SE_I2C_TX_TRANS_LEN		(0x26C)
 #define SE_I2C_RX_TRANS_LEN		(0x270)
 #define SE_I2C_SCL_COUNTERS		(0x278)
+#define SE_I2C_NOISE_CANCEL_CTL		(0x234)
 #define SE_GENI_IOS			(0x908)
 
 #define SE_I2C_ERR  (M_CMD_OVERRUN_EN | M_ILLEGAL_CMD_EN | M_CMD_FAILURE_EN |\
@@ -128,6 +129,8 @@ struct geni_i2c_dev {
 	bool is_shared;
 	u32 dbg_num;
 	struct dbg_buf_ctxt *dbg_buf_ptr;
+	u32 noise_rjct_scl;
+	u32 noise_rjct_sda;
 };
 
 static struct geni_i2c_dev *gi2c_dev_dbg[MAX_SE];
@@ -200,6 +203,9 @@ static inline void qcom_geni_i2c_conf(struct geni_i2c_dev *gi2c, int dfs)
 	geni_write_reg((itr->clk_div << 4) | 1, gi2c->base, GENI_SER_M_CLK_CFG);
 	geni_write_reg(((itr->t_high << 20) | (itr->t_low << 10) |
 			itr->t_cycle), gi2c->base, SE_I2C_SCL_COUNTERS);
+	if (gi2c->noise_rjct_scl || gi2c->noise_rjct_sda)
+		geni_write_reg(gi2c->noise_rjct_scl << 1 |
+		gi2c->noise_rjct_sda << 3, gi2c->base, SE_I2C_NOISE_CANCEL_CTL);
 
 	/*
 	 * Ensure Clk config completes before return.
@@ -1034,6 +1040,15 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	}
 	dev_info(&pdev->dev, "Bus frequency is set to %dHz\n",
 					gi2c->i2c_rsc.clk_freq_out);
+
+	gi2c->noise_rjct_scl = 0;
+	gi2c->noise_rjct_sda = 0;
+
+	of_property_read_u32(pdev->dev.of_node, "qcom,noise-rjct-scl",
+				&gi2c->noise_rjct_scl);
+
+	of_property_read_u32(pdev->dev.of_node, "qcom,noise-rjct-sda",
+				&gi2c->noise_rjct_sda);
 
 	gi2c->irq = platform_get_irq(pdev, 0);
 	if (gi2c->irq < 0) {
