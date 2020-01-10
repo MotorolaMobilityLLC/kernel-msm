@@ -124,7 +124,7 @@ static ssize_t debugfs_state_info_read(struct file *file,
 	if (len > count)
 		len = count;
 
-	/* TODO: make sure that this does not exceed 4K */
+	len = min_t(size_t, len, SZ_4K);
 	if (copy_to_user(buff, buf, len)) {
 		kfree(buf);
 		return -EFAULT;
@@ -182,7 +182,7 @@ static ssize_t debugfs_reg_dump_read(struct file *file,
 	if (len > count)
 		len = count;
 
-	/* TODO: make sure that this does not exceed 4K */
+	len = min_t(size_t, len, SZ_4K);
 	if (copy_to_user(buff, buf, len)) {
 		kfree(buf);
 		return -EFAULT;
