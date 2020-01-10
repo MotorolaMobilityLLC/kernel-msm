@@ -110,6 +110,7 @@
 #define IPA_IOCTL_GSB_DISCONNECT                62
 #define IPA_IOCTL_GET_PHERIPHERAL_EP_INFO       63
 #define IPA_IOCTL_GET_NAT_IN_SRAM_INFO          64
+#define IPA_IOCTL_APP_CLOCK_VOTE                65
 
 /**
  * max size of the header to be inserted
@@ -2309,6 +2310,10 @@ struct ipa_ioc_bridge_vlan_mapping_info {
 				IPA_IOCTL_GET_NAT_IN_SRAM_INFO, \
 				struct ipa_nat_in_sram_info)
 
+#define IPA_IOC_APP_CLOCK_VOTE _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_APP_CLOCK_VOTE, \
+				uint32_t)
+
 /*
  * unique magic number of the Tethering bridge ioctls
  */
@@ -2412,6 +2417,18 @@ struct ipa_nat_in_sram_info {
 	uint32_t sram_mem_available_for_nat;
 	uint32_t nat_table_offset_into_mmap;
 	uint32_t best_nat_in_sram_size_rqst;
+};
+
+/**
+ * enum ipa_app_clock_vote_type
+ *
+ * The types of votes that can be accepted by the
+ * IPA_IOC_APP_CLOCK_VOTE ioctl
+ */
+enum ipa_app_clock_vote_type {
+	IPA_APP_CLK_DEVOTE     = 0,
+	IPA_APP_CLK_VOTE       = 1,
+	IPA_APP_CLK_RESET_VOTE = 2,
 };
 
 #define TETH_BRIDGE_IOC_SET_BRIDGE_MODE _IOW(TETH_BRIDGE_IOC_MAGIC, \

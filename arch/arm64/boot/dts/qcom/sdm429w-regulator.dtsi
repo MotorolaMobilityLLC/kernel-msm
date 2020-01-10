@@ -265,6 +265,7 @@
 			regulator-min-microvolt = <1600000>;
 			regulator-max-microvolt = <2040000>;
 			qcom,init-voltage = <1600000>;
+			regulator-system-load = <20000>;
 			status = "okay";
 		};
 	};

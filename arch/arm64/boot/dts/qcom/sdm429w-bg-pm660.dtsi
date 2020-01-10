@@ -11,11 +11,22 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
-/plugin/;
+#include "sdm429w-pm660.dtsi"
 
-/ {
-	model = " SDM450 NOPMI MTP";
-	qcom,board-id = <8 3>;
+&pm660_misc {
+	qcom,support-twm-config;
+};
+
+&pm660_pbs {
+	status = "okay";
+};
+
+&pm660_pon {
+	qcom,support-twm-config;
+	qcom,pbs-client = <&pm660_pbs>;
+};
+
+&pm660_fg {
+	qcom,fg-disable-in-twm;
 };
 
