@@ -1591,7 +1591,6 @@ static int eeprom_init_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 	if (rc < 0) {
 		pr_err("%s:%d memory map parse failed\n",
 			__func__, __LINE__);
-		goto free_mem;
 	}
 
 	rc = msm_camera_power_down(power_info,
