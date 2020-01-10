@@ -234,13 +234,14 @@ static ssize_t panelId_show(struct device *device,
 			char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+	int written = 0;
 
 	mutex_lock(&connector->dev->mode_config.mutex);
-	snprintf(buf, PAGE_SIZE, "0x%016llx\n",
+	written = snprintf(buf, PAGE_SIZE, "0x%016llx\n",
 	connector->display_info.panel_id);
 	mutex_unlock(&connector->dev->mode_config.mutex);
 
-	return 20;
+	return written;
 }
 
 static ssize_t panelVer_show(struct device *device,
@@ -248,13 +249,14 @@ static ssize_t panelVer_show(struct device *device,
 			char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+	int written = 0;
 
 	mutex_lock(&connector->dev->mode_config.mutex);
-	snprintf(buf, PAGE_SIZE, "0x%016llx\n",
+	written = snprintf(buf, PAGE_SIZE, "0x%016llx\n",
 	connector->display_info.panel_ver);
 	mutex_unlock(&connector->dev->mode_config.mutex);
 
-	return 20;
+	return written;
 }
 
 static ssize_t panelName_show(struct device *device,
@@ -262,13 +264,29 @@ static ssize_t panelName_show(struct device *device,
 			char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+	int written = 0;
 
 	mutex_lock(&connector->dev->mode_config.mutex);
-	snprintf(buf, PAGE_SIZE, "%s\n", connector->display_info.panel_name);
+	written = snprintf(buf, PAGE_SIZE, "%s\n", connector->display_info.panel_name);
 	mutex_unlock(&connector->dev->mode_config.mutex);
 
-	return sizeof(connector->display_info.panel_name);
+	return written;
 }
+
+static ssize_t panelRegDA_show(struct device *device,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	int written = 0;
+
+	mutex_lock(&connector->dev->mode_config.mutex);
+	written = snprintf(buf, PAGE_SIZE, "0x%02x\n", connector->display_info.panel_regDA);
+	mutex_unlock(&connector->dev->mode_config.mutex);
+
+	return written;
+}
+
 
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
@@ -277,6 +295,7 @@ static DEVICE_ATTR_RO(modes);
 static DEVICE_ATTR_RO(panelId);
 static DEVICE_ATTR_RO(panelVer);
 static DEVICE_ATTR_RO(panelName);
+static DEVICE_ATTR_RO(panelRegDA);
 
 
 static struct attribute *connector_dev_attrs[] = {
@@ -287,6 +306,7 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_panelId.attr,
 	&dev_attr_panelVer.attr,
 	&dev_attr_panelName.attr,
+	&dev_attr_panelRegDA.attr,
 	NULL
 };
 
