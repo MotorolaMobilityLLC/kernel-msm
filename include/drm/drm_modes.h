@@ -290,6 +290,7 @@ struct drm_display_mode {
 
 	u64 panel_id;
 	u64 panel_ver;
+	u32 panel_regDA;
 	char panel_name[DRM_MODE_DISPLAY_NAME_LEN];
 	/**
 	 * @flags:
