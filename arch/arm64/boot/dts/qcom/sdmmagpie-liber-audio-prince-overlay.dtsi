@@ -157,6 +157,13 @@
                         status = "okay";
                 };
         };
+
+	msm-cirrus-playback {
+                compatible = "cirrus,msm-cirrus-playback";
+                usecase-names = "Normal", "Voice", "Ring", "Sonification";
+                usecase-indexes = <0 1 2 3>;
+                afe-port-id = <0x1004>;
+        };
 };
 
 &soc {
