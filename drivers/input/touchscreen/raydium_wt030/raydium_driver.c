@@ -1924,6 +1924,7 @@ static int raydium_parse_dt(struct device *dev,
 		pdata->num_max_touches = temp_val;
 	else
 		return rc;
+
 #ifdef FW_MAPPING_BYID_EN
 	rc = of_property_read_u32(np, "raydium,fw_id", &temp_val);
 	if (!rc)
@@ -2016,6 +2017,144 @@ exit_error:
 	return i32_ret;
 }
 
+static int raydium_get_regulators(struct raydium_ts_data *ts)
+{
+	struct device *dev = &ts->client->dev;
+	int rc;
+
+	ts->vdd = devm_regulator_get(dev, "vdd_ana");
+	if (IS_ERR(ts->vdd)) {
+		rc = PTR_ERR(ts->vdd);
+		dev_err(dev, "Failed to get 'vdd_ana' regulator: %d\n", rc);
+		return rc;
+	}
+
+	ts->vcc_i2c = devm_regulator_get(dev, "vcc_i2c");
+	if (IS_ERR(ts->vcc_i2c)) {
+		rc = PTR_ERR(ts->vcc_i2c);
+		dev_err(dev, "Failed to get 'vcc_i2c' regulator: %d\n", rc);
+		return rc;
+	}
+
+	return 0;
+}
+
+static int raydium_config_regulators(struct raydium_ts_data *ts, bool enable)
+{
+	int retval = 0;
+
+	if (!enable)
+		goto hw_shutdown;
+
+	if (ts->vdd) {
+		if (regulator_count_voltages(ts->vdd) > 0) {
+			retval = regulator_set_voltage(ts->vdd,
+					VDD_VTG_MIN_UV, VDD_VTG_MAX_UV);
+			if (retval) {
+				dev_err(&ts->client->dev,
+					"regulator set_vtg failed retval =%d\n",
+					retval);
+				return retval;
+			}
+		}
+	}
+
+	if (ts->vcc_i2c) {
+		if (regulator_count_voltages(ts->vcc_i2c) > 0) {
+			retval = regulator_set_voltage(ts->vcc_i2c,
+				I2C_VTG_MIN_UV, I2C_VTG_MAX_UV);
+			if (retval) {
+				dev_err(&ts->client->dev,
+					"regulator set_vtg failed retval =%d\n",
+					retval);
+				goto err_set_vtg_bus;
+			}
+		}
+	}
+
+	return 0;
+
+hw_shutdown:
+	if (ts->vcc_i2c &&
+		regulator_count_voltages(ts->vcc_i2c) > 0)
+		regulator_set_voltage(ts->vcc_i2c, 0, I2C_VTG_MAX_UV);
+err_set_vtg_bus:
+	if (ts->vdd &&
+		regulator_count_voltages(ts->vdd) > 0)
+		regulator_set_voltage(ts->vdd, 0, VDD_VTG_MAX_UV);
+
+	return retval;
+}
+
+static int raydium_enable_regulators(struct raydium_ts_data *ts, bool enable)
+{
+	int retval = 0;
+
+	if (!enable)
+		goto disable_vdd;
+
+	if (ts->vcc_i2c) {
+		retval = regulator_enable(ts->vcc_i2c);
+		if (retval < 0) {
+			dev_err(&ts->client->dev,
+					"%s: Failed to enable vcc regulator\n",
+					__func__);
+			return retval;
+		}
+	}
+
+	if (ts->vdd) {
+		retval = regulator_enable(ts->vdd);
+		if (retval < 0) {
+			dev_err(&ts->client->dev,
+					"%s: Failed to enable vdd regulator\n",
+					__func__);
+			goto disable_vcc_i2c;
+		}
+	}
+
+	return 0;
+disable_vdd:
+	if (ts->vdd)
+		regulator_disable(ts->vdd);
+disable_vcc_i2c:
+	if (ts->vcc_i2c)
+		regulator_disable(ts->vcc_i2c);
+
+	return retval;
+}
+
+static int raydium_power_on(struct raydium_ts_data *ts, bool on)
+{
+	int retval = 0;
+
+	if (!on)
+		goto disable_reg;
+
+	retval = raydium_config_regulators(ts, true);
+	if (retval) {
+		dev_err(&ts->client->dev,
+				"%s: Failed to config regulator\n",
+				__func__);
+		return retval;
+	}
+
+	retval = raydium_enable_regulators(ts, true);
+	if (retval) {
+		dev_err(&ts->client->dev,
+				"%s: Failed to enable regulator\n",
+				__func__);
+		goto err_config_reg;
+	}
+
+	return 0;
+disable_reg:
+	raydium_enable_regulators(ts, false);
+err_config_reg:
+	raydium_config_regulators(ts, false);
+	return retval;
+}
+
 static int raydium_ts_probe(struct i2c_client *client,
 			    const struct i2c_device_id *id)
 {
@@ -2097,6 +2236,18 @@ static int raydium_ts_probe(struct i2c_client *client,
 			pr_err("[touch]failed to set pin to active state\n");
 	}
 #endif /*end of MSM_NEW_VER*/
+
+	ret = raydium_get_regulators(g_raydium_ts);
+	if (ret < 0) {
+		pr_err("[touch]failed to get regulators\n");
+		return -EINVAL;
+	}
+
+	ret = raydium_power_on(g_raydium_ts, true);
+	if (ret < 0) {
+		pr_err("[touch]failed to power on\n");
+		goto err_reg_req;
+	}
 
 	ret = raydium_gpio_configure(true);
 	if (ret < 0) {
@@ -2229,6 +2380,8 @@ err_gpio_req:
 	}
 #endif/*end of MSM_NEW_VER*/
 
+err_reg_req:
+	raydium_power_on(g_raydium_ts, false);
 parse_dt_failed:
 exit_check_functionality_failed:
 	return ret;
