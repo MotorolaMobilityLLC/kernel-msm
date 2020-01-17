@@ -79,6 +79,7 @@
 		focaltech,max-touch-number = <10>;
 		focaltech,always_on_vio;
 		focaltech,dlfw_in_resume;
+		focaltech,report_gesture_key;
 		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
 	};
 
@@ -91,6 +92,7 @@
 		novatek,def-max-resolution = <1080 2300>;
 		novatek,swrst-n8-addr = <0x03F0FE>;
 		novatek,spi-rd-fast-addr = <0x03F310>;
+		novatek,report_gesture_key;
 		status = "/chosen", "mmi,panel_name", "auo_nt36675_fhd_vid";
 	};
 };
