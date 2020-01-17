@@ -23,6 +23,7 @@
 		focaltech,panel-supplier = "tianma";
 		focaltech,always_on_vio;
 		focaltech,dlfw_in_resume;
+		focaltech,report_gesture_key;
 		status = "/chosen", "mmi,panel_name", "tm_ft8756_fhd_vid";
 	};
 
@@ -45,6 +46,7 @@
 		focaltech,panel-supplier = "auo";
 		focaltech,always_on_vio;
 		focaltech,dlfw_in_resume;
+		focaltech,report_gesture_key;
 		status = "/chosen", "mmi,panel_name", "auo_ft8756_fhd_vid";
 	};
 };
