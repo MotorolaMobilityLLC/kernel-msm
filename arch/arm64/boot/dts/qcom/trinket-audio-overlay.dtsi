@@ -178,7 +178,7 @@
 		qcom,cdc-vdd-buck-current = <650000>;
 
 		qcom,cdc-micbias1-mv = <2800>;
-		qcom,cdc-micbias2-mv = <1800>;
+		qcom,cdc-micbias2-mv = <2800>;
 		qcom,cdc-micbias3-mv = <2800>;
 
 		qcom,cdc-static-supplies = "cdc-vdd-ldo-rxtx",
@@ -243,6 +243,9 @@
 	qcom,codec-aux-devs = <&wcd937x_codec>;
 	qcom,msm_audio_ssr_devs = <&audio_apr>, <&q6core>,
 				<&bolero>;
+
+	qcom,msm-mbhc-hs-mic-max-threshold-mv = <2700>;
+	qcom,msm-mbhc-hs-mic-min-threshold-mv = <116>;
 };
 
 &soc {
