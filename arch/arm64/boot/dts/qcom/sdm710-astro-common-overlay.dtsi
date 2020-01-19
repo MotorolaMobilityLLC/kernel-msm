@@ -148,6 +148,7 @@
 };
 
 &pm660_charger {
+	qcom,battery-data = <&mot_batterydata>;
 	qcom,float-option = <1>;
 	qcom,auto-recharge-soc = <99>;
 	qcom,dcp-current-ua = <2000000>;
