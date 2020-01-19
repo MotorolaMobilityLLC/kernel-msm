@@ -32,7 +32,7 @@
 		compatible = "abov,abov_sar";
 		reg = <0x20>;
 		cap_vdd-supply = <&pm660l_l3>;
-		cap_svdd-supply =<&pm660_l13>;
+		cap_svdd-supply =<&pm660_l14>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <116 0x2>;
 		gpios = <&tlmm 116 0x2>;
