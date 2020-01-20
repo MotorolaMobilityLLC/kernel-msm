@@ -3908,6 +3908,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->pm_qos_latency = 0;
 	}
 
+	of_property_read_u32(node, "qcom,gadget-imod-val",
+					&dwc3_gadget_imod_val);
+
 	mdwc->no_vbus_vote_type_c = of_property_read_bool(node,
 					"qcom,no-vbus-vote-with-type-C");
 
