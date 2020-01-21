@@ -81,6 +81,13 @@
 			linux,can-disable;
 		};
 	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
 };
 
 &usb_qmp_dp_phy {
