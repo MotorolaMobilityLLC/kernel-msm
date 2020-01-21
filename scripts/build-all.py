@@ -302,20 +302,10 @@ def scan_configs():
         r'sdm*_defconfig',
         r'sdx*_defconfig',
         )
-    arch64_pats = (
-        r'msm*_defconfig',
-        r'sdm*_defconfig',
-        r'sdx*_defconfig',
-        )
     for p in arch_pats:
         for n in glob.glob('arch/arm/configs/' + p):
             name = os.path.basename(n)[:-10]
             names.append(Builder(name, n))
-    if 'CROSS_COMPILE64' in os.environ:
-        for p in arch64_pats:
-            for n in glob.glob('arch/arm64/configs/' + p):
-                name = os.path.basename(n)[:-10] + "-llvm" + "-64"
-                names.append(Builder(name, n))
     for defconfig in glob.glob('arch/arm*/configs/vendor/*_defconfig'):
         target = os.path.basename(defconfig)[:-10]
         name = target + "-llvm"
