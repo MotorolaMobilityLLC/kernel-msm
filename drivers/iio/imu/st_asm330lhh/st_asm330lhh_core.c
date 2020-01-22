@@ -16,6 +16,7 @@
 #include <linux/pm.h>
 #include <linux/version.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 
 #include <linux/platform_data/st_sensors_pdata.h>
 
@@ -67,6 +68,9 @@
 #define ST_ASM330LHH_TEMP_GAIN			256
 #define ST_ASM330LHH_TEMP_FS_GAIN		(1000000 / ST_ASM330LHH_TEMP_GAIN)
 #define ST_ASM330LHH_OFFSET			(6400)
+
+/**Turn on of sensor in ms*/
+#define ST_ASM330LHH_TURN_ON_TIME		35
 
 struct st_asm330lhh_std_entry {
 	u16 odr;
@@ -1028,6 +1032,7 @@ int st_asm330lhh_probe(struct device *dev, int irq,
 		       const struct st_asm330lhh_transfer_function *tf_ops)
 {
 	struct st_asm330lhh_hw *hw;
+	struct device_node *np;
 	int i, err;
 
 	hw = devm_kzalloc(dev, sizeof(*hw), GFP_KERNEL);
@@ -1042,6 +1047,20 @@ int st_asm330lhh_probe(struct device *dev, int irq,
 	hw->dev = dev;
 	hw->irq = irq;
 	hw->tf = tf_ops;
+	np = hw->dev->of_node;
+
+	hw->enable_gpio = of_get_named_gpio(np, "asm330-enable-gpio", 0);
+	if (gpio_is_valid(hw->enable_gpio)) {
+		err = gpio_request(hw->enable_gpio, "asm330_enable");
+		if (err < 0) {
+			dev_err(hw->dev,
+					"failed to request gpio %d: %d\n",
+					hw->enable_gpio, err);
+			return err;
+		}
+		gpio_direction_output(hw->enable_gpio, 1);
+		msleep(ST_ASM330LHH_TURN_ON_TIME);
+	}
 
 	dev_info(hw->dev, "Ver: %s\n", ST_ASM330LHH_VERSION);
 	err = st_asm330lhh_check_whoami(hw);
