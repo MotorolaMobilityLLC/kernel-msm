@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3698,15 +3698,18 @@ static int fg_get_time_to_empty(struct fg_chip *chip, int *val)
 {
 	int rc, ibatt_avg, msoc, full_soc, act_cap_mah, divisor;
 
+	mutex_lock(&chip->ttf.lock);
 	rc = fg_circ_buf_median(&chip->ttf.ibatt, &ibatt_avg);
 	if (rc < 0) {
 		/* try to get instantaneous current */
 		rc = fg_get_battery_current(chip, &ibatt_avg);
 		if (rc < 0) {
 			pr_err("failed to get battery current, rc=%d\n", rc);
+			mutex_unlock(&chip->ttf.lock);
 			return rc;
 		}
 	}
+	mutex_unlock(&chip->ttf.lock);
 
 	ibatt_avg /= MILLI_UNIT;
 	/* clamp ibatt_avg to 100mA */
