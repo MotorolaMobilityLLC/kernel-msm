@@ -21,6 +21,7 @@
 #include <linux/skbuff.h>
 #include <linux/slab.h>
 #include <linux/mhi.h>
+#include <linux/types.h>
 #include "mhi_internal.h"
 
 static void __mhi_unprepare_channel(struct mhi_controller *mhi_cntrl,
@@ -2022,8 +2023,8 @@ int mhi_debugfs_mhi_event_show(struct seq_file *m, void *d)
 			seq_printf(m,
 				   " rp:0x%llx wp:0x%llx local_rp:0x%llx db:0x%llx\n",
 				   er_ctxt->rp, er_ctxt->wp,
-				   mhi_to_physical(ring, ring->rp),
-				   mhi_event->db_cfg.db_val);
+				   (u64)mhi_to_physical(ring, ring->rp),
+				   (u64)mhi_event->db_cfg.db_val);
 		}
 	}
 
@@ -2056,9 +2057,9 @@ int mhi_debugfs_mhi_chan_show(struct seq_file *m, void *d)
 				   " base:0x%llx len:0x%llx wp:0x%llx local_rp:0x%llx local_wp:0x%llx db:0x%llx\n",
 				   chan_ctxt->rbase, chan_ctxt->rlen,
 				   chan_ctxt->wp,
-				   mhi_to_physical(ring, ring->rp),
-				   mhi_to_physical(ring, ring->wp),
-				   mhi_chan->db_cfg.db_val);
+				   (u64)mhi_to_physical(ring, ring->rp),
+				   (u64)mhi_to_physical(ring, ring->wp),
+				   (u64)mhi_chan->db_cfg.db_val);
 		}
 	}
 

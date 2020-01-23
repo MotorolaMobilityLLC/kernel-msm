@@ -1,4 +1,5 @@
-/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+/*
+ * Copyright (c) 2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,39 +11,22 @@
  * GNU General Public License for more details.
  */
 
-#include "sdxpoorwills-cdp.dtsi"
+#include "sdm429w-pm660.dtsi"
 
-&vbus_detect {
+&pm660_misc {
+	qcom,support-twm-config;
+};
+
+&pm660_pbs {
 	status = "okay";
 };
 
-&qcom_seecom {
-	status = "okay";
+&pm660_pon {
+	qcom,support-twm-config;
+	qcom,pbs-client = <&pm660_pbs>;
 };
 
-&usb {
-	status = "okay";
-	qcom,connector-type-uAB;
-	extcon = <0>, <0>, <0>, <&vbus_detect>;
-	dwc3@a600000 {
-		normal-eps-in-gsi-mode;
-	};
+&pm660_fg {
+	qcom,fg-disable-in-twm;
 };
 
-&smb138x {
-	status = "disabled";
-};
-
-&thermal_zones {
-	mdm-core-step {
-		trips {
-			mdm-step-trip-0 {
-				temperature = <105000>;
-			};
-
-			mdm-step-trip-1 {
-				temperature = <115000>;
-			};
-		};
-	};
-};

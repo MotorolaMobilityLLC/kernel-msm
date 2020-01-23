@@ -1,7 +1,7 @@
 /*
  * QTI Secure Execution Environment Communicator (QSEECOM) driver
  *
- * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1814,6 +1814,16 @@ static int __qseecom_process_incomplete_cmd(struct qseecom_dev_handle *data,
 			if (ptr_svc->svc.listener_id == lstnr) {
 				ptr_svc->listener_in_use = true;
 				ptr_svc->rcv_req_flag = 1;
+				rc = msm_ion_do_cache_op(qseecom.ion_clnt,
+					ptr_svc->ihandle,
+					ptr_svc->sb_virt,
+					ptr_svc->sb_length,
+					ION_IOC_INV_CACHES);
+				if (rc) {
+					pr_err("cache opp failed %d\n", rc);
+					status = QSEOS_RESULT_FAILURE;
+					goto err_resp;
+				}
 				wake_up_interruptible(&ptr_svc->rcv_req_wq);
 				break;
 			}
@@ -2142,6 +2152,16 @@ static int __qseecom_reentrancy_process_incomplete_cmd(
 			if (ptr_svc->svc.listener_id == lstnr) {
 				ptr_svc->listener_in_use = true;
 				ptr_svc->rcv_req_flag = 1;
+				rc = msm_ion_do_cache_op(qseecom.ion_clnt,
+					ptr_svc->ihandle,
+					ptr_svc->sb_virt,
+					ptr_svc->sb_length,
+					ION_IOC_INV_CACHES);
+				if (rc) {
+					pr_err("cache opp failed %d\n", rc);
+					status = QSEOS_RESULT_FAILURE;
+					goto err_resp;
+				}
 				wake_up_interruptible(&ptr_svc->rcv_req_wq);
 				break;
 			}
@@ -5043,8 +5063,10 @@ int qseecom_send_command(struct qseecom_handle *handle, void *send_buf,
 		}
 		perf_enabled = true;
 	}
-	if (!strcmp(data->client.app_name, "securemm"))
+	if (!strcmp(data->client.app_name, "securemm") ||
+	    !strcmp(data->client.app_name, "bgapp")) {
 		data->use_legacy_cmd = true;
+	}
 
 	ret = __qseecom_send_cmd(data, &req);
 	data->use_legacy_cmd = false;
