@@ -139,5 +139,6 @@ const struct sched_class stop_sched_class = {
 	.update_curr		= update_curr_stop,
 #ifdef CONFIG_SCHED_WALT
 	.fixup_walt_sched_stats	= fixup_walt_sched_stats_common,
+	.fixup_cumulative_runnable_avg = walt_fixup_cumulative_runnable_avg,
 #endif
 };
