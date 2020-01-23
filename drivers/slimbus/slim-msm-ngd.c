@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2019, 2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -176,8 +176,7 @@ static int ngd_slim_qmi_new_server(struct qmi_handle *hdl,
 	qmi->svc_info.sq_family = AF_QIPCRTR;
 	qmi->svc_info.sq_node = service->node;
 	qmi->svc_info.sq_port = service->port;
-	atomic_set(&dev->ssr_in_progress, 0);
-	schedule_work(&dev->dsp.dom_up);
+	complete(&dev->qmi_up);
 
 	return 0;
 }
@@ -187,7 +186,10 @@ static void ngd_slim_qmi_del_server(struct qmi_handle *hdl,
 {
 	struct msm_slim_qmi *qmi =
 		container_of(hdl, struct msm_slim_qmi, svc_event_hdl);
+	struct msm_slim_ctrl *dev =
+		container_of(qmi, struct msm_slim_ctrl, qmi);
 
+	reinit_completion(&dev->qmi_up);
 	qmi->svc_info.sq_node = 0;
 	qmi->svc_info.sq_port = 0;
 }
@@ -263,7 +265,7 @@ static int dsp_domr_notify_cb(struct notifier_block *n, unsigned long code,
 	switch (code) {
 	case SUBSYS_BEFORE_SHUTDOWN:
 	case SERVREG_NOTIF_SERVICE_STATE_DOWN_V01:
-		SLIM_INFO(dev, "SLIM DSP SSR notify cb:%lu\n", code);
+		SLIM_INFO(dev, "SLIM DSP SSR notify cb:0x%lx\n", code);
 		atomic_set(&dev->ssr_in_progress, 1);
 		/* wait for current transaction */
 		mutex_lock(&dev->tx_lock);
@@ -274,6 +276,12 @@ static int dsp_domr_notify_cb(struct notifier_block *n, unsigned long code,
 		msm_slim_sps_exit(dev, false);
 		ngd_dom_down(dev);
 		mutex_unlock(&dev->tx_lock);
+		break;
+	case SUBSYS_AFTER_POWERUP:
+	case SERVREG_NOTIF_SERVICE_STATE_UP_V01:
+		SLIM_INFO(dev, "SLIM DSP SSR notify cb:0x%lx\n", code);
+		atomic_set(&dev->ssr_in_progress, 0);
+		schedule_work(&dev->dsp.dom_up);
 		break;
 	case LOCATOR_UP:
 		reg = _cmd;
@@ -1622,6 +1630,7 @@ static int ngd_notify_slaves(void *data)
 		pr_err("Slimbus QMI service registration failed:%d", ret);
 		return ret;
 	}
+	ngd_dom_init(dev);
 
 	while (!kthread_should_stop()) {
 		wait_for_completion_interruptible(&dev->qmi.slave_notify);
@@ -1637,7 +1646,6 @@ static int ngd_notify_slaves(void *data)
 			 * controller is up
 			 */
 			slim_ctrl_add_boarddevs(&dev->ctrl);
-			ngd_dom_init(dev);
 		} else {
 			slim_framer_booted(ctrl);
 		}
@@ -1683,6 +1691,10 @@ static void ngd_dom_up(struct work_struct *work)
 		container_of(work, struct msm_slim_ss, dom_up);
 	struct msm_slim_ctrl *dev =
 		container_of(dsp, struct msm_slim_ctrl, dsp);
+
+	/* Make sure qmi service is up before continuing */
+	wait_for_completion_interruptible(&dev->qmi_up);
+
 	mutex_lock(&dev->ssr_lock);
 	ngd_slim_enable(dev, true);
 	mutex_unlock(&dev->ssr_lock);
@@ -1922,6 +1934,7 @@ static int ngd_slim_probe(struct platform_device *pdev)
 
 	init_completion(&dev->reconf);
 	init_completion(&dev->ctrl_up);
+	init_completion(&dev->qmi_up);
 	mutex_init(&dev->tx_lock);
 	mutex_init(&dev->ssr_lock);
 	spin_lock_init(&dev->tx_buf_lock);
