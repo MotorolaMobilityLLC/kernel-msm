@@ -5419,13 +5419,13 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 			ipa3_ctx->ipa_tz_unlock_reg[i].size =
 				resource_p->ipa_tz_unlock_reg[i].size;
 		}
-	}
 
-	/* unlock registers for uc */
-	result = ipa3_tz_unlock_reg(ipa3_ctx->ipa_tz_unlock_reg,
-				    ipa3_ctx->ipa_tz_unlock_reg_num);
-	if (result)
-		IPAERR("Failed to unlock memory region using TZ\n");
+		/* unlock registers for uc */
+		result = ipa3_tz_unlock_reg(ipa3_ctx->ipa_tz_unlock_reg,
+					    ipa3_ctx->ipa_tz_unlock_reg_num);
+		if (result)
+			IPAERR("Failed to unlock memory region using TZ\n");
+	}
 
 	/* default aggregation parameters */
 	ipa3_ctx->aggregation_type = IPA_MBIM_16;
