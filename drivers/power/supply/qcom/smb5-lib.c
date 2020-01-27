@@ -6868,10 +6868,16 @@ static enum alarmtimer_restart dcin_aicl_alarm_cb(struct alarm *alarm,
 	return ALARMTIMER_NORESTART;
 }
 
+#define DCIN_DECREMENT_AICL_DELAY_MS 30000
 static void dcin_icl_decrement(struct smb_charger *chg)
 {
 	int rc, icl;
 	ktime_t now = ktime_get();
+
+	/* Re-run AICL in a little bit */
+	alarm_cancel(&chg->dcin_aicl_alarm);
+	alarm_start_relative(&chg->dcin_aicl_alarm,
+		ms_to_ktime(DCIN_DECREMENT_AICL_DELAY_MS));
 
 	rc = smblib_get_charge_param(chg, &chg->param.dc_icl, &icl);
 	if (rc < 0) {
@@ -6879,7 +6885,7 @@ static void dcin_icl_decrement(struct smb_charger *chg)
 		return;
 	}
 
-	if (icl == DCIN_ICL_MIN_UA) {
+	if (icl <= DCIN_ICL_MIN_UA) {
 		/* Cannot possibly decrease ICL any further - do nothing */
 		smblib_dbg(chg, PR_WLS, "hit min ICL: stop\n");
 		return;
