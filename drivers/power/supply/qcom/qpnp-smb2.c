@@ -513,8 +513,8 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 					      MOISTURE_VOTER);
 		break;
 	default:
-		pr_err("get prop %d is not supported in usb\n", psp);
-		rc = -EINVAL;
+		pr_debug("get prop %d is not supported in usb\n", psp);
+		val->intval = -EINVAL; /* soft fail */
 		break;
 	}
 	if (rc < 0) {
@@ -675,7 +675,7 @@ static int smb2_usb_port_get_prop(struct power_supply *psy,
 	default:
 		pr_err_ratelimited("Get prop %d is not supported in pc_port\n",
 				psp);
-		return -EINVAL;
+		val->intval = -EINVAL; /* soft fail */
 	}
 
 	if (rc < 0) {
@@ -785,7 +785,7 @@ static int smb2_usb_main_get_prop(struct power_supply *psy,
 		break;
 	default:
 		pr_debug("get prop %d is not supported in usb-main\n", psp);
-		rc = -EINVAL;
+		val->intval = -EINVAL; /* soft fail */
 		break;
 	}
 	if (rc < 0) {
@@ -907,7 +907,7 @@ static int smb2_dc_get_prop(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_TYPE_WIPOWER;
 		break;
 	default:
-		return -EINVAL;
+		val->intval = -EINVAL;
 	}
 	if (rc < 0) {
 		pr_debug("Couldn't get prop %d rc = %d\n", psp, rc);
@@ -1147,8 +1147,8 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		val->intval = chg->fcc_stepper_enable;
 		break;
 	default:
-		pr_err("batt power supply prop %d not supported\n", psp);
-		return -EINVAL;
+		pr_debug("batt power supply prop %d not supported\n", psp);
+		val->intval = -EINVAL; /* soft fail */
 	}
 
 	if (rc < 0) {
