@@ -427,6 +427,10 @@ static int pstore_decompress(void *in, void *out, size_t inlen, size_t outlen)
 		return -EIO;
 }
 
+/* Allocate and Free compression buffer is applicable only on compress enabled. */
+#if defined(CONFIG_PSTORE_ZLIB_COMPRESS) || \
+	defined(CONFIG_PSTORE_LZO_COMPRESS) || \
+	defined(CONFIG_PSTORE_LZ4_COMPRESS)
 static void allocate_buf_for_compression(void)
 {
 	if (zbackend) {
@@ -444,6 +448,7 @@ static void free_buf_for_compression(void)
 	else
 		pr_err("free compression buffer error!\n");
 }
+#endif
 
 /*
  * Called when compression fails, since the printk buffer
@@ -691,7 +696,12 @@ int pstore_register(struct pstore_info *psi)
 		return -EINVAL;
 	}
 
+	/* Allocate compression buffer only on compress enabled. */
+	#if defined(CONFIG_PSTORE_ZLIB_COMPRESS) || \
+		defined(CONFIG_PSTORE_LZO_COMPRESS) || \
+		defined(CONFIG_PSTORE_LZ4_COMPRESS)
 	allocate_buf_for_compression();
+	#endif
 
 	if (pstore_is_mounted())
 		pstore_get_records(0);
@@ -742,7 +752,12 @@ void pstore_unregister(struct pstore_info *psi)
 	if (psi->flags & PSTORE_FLAGS_DMESG)
 		pstore_unregister_kmsg();
 
+	/* Free compression buffer only on compress enabled. */
+	#if defined(CONFIG_PSTORE_ZLIB_COMPRESS) || \
+		defined(CONFIG_PSTORE_LZO_COMPRESS) || \
+		defined(CONFIG_PSTORE_LZ4_COMPRESS)
 	free_buf_for_compression();
+	#endif
 
 	psinfo = NULL;
 	backend = NULL;
