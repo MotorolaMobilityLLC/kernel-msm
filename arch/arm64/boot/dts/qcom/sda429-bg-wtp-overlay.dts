@@ -126,6 +126,8 @@
 	qcom,bg-rsb {
 		compatible = "qcom,bg-rsb";
 		vdd-ldo1-supply = <&pm660_l11>;
+		qcom,bg-rsb-gpio = <&tlmm 40 1>;
+		qcom,rsb-use-msm-gpio;
 	};
 
 	qcom,bg-daemon {
