@@ -1,0 +1,124 @@
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&cam_sensor_mclk0_active {
+	/* MCLK0 */
+	mux {
+		pins = "gpio13";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio13";
+		bias-disable; /* No PULL */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
+&cam_sensor_mclk0_suspend {
+	/* MCLK0 */
+	mux {
+		pins = "gpio13";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio13";
+		bias-pull-down; /* PULL DOWN */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
+&cam_sensor_mclk1_active {
+	/* MCLK1 */
+	mux {
+		pins = "gpio14";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio14";
+		bias-disable; /* No PULL */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
+&cam_sensor_mclk1_suspend {
+	/* MCLK1 */
+	mux {
+		pins = "gpio14";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio14";
+		bias-pull-down; /* PULL DOWN */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
+&cam_sensor_mclk2_active {
+	/* MCLK2 */
+	mux {
+		pins = "gpio15";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio15";
+		bias-disable; /* No PULL */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
+&cam_sensor_mclk2_suspend {
+	/* MCLK2 */
+	mux {
+		pins = "gpio15";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio15";
+		bias-pull-down; /* PULL DOWN */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
+&cam_sensor_mclk3_active {
+	/* MCLK3 */
+	mux {
+		pins = "gpio16";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio16";
+		bias-disable; /* No PULL */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
+&cam_sensor_mclk3_suspend {
+	/* MCLK3 */
+	mux {
+		pins = "gpio16";
+		function = "cam_mclk";
+	};
+
+	config {
+		pins = "gpio16";
+		bias-pull-down; /* PULL DOWN */
+		drive-strength = <16>; /* 16 MA */
+	};
+};
+
