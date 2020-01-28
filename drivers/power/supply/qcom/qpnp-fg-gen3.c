@@ -4114,7 +4114,7 @@ static int fg_psy_get_property(struct power_supply *psy,
 		rc = fg_get_prop_real_capacity(chip, &pval->intval);
 		break;
 	default:
-		pr_err("unsupported property %d\n", psp);
+		pr_debug("unsupported property %d\n", psp);
 		rc = -EINVAL;
 		break;
 	}
