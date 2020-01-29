@@ -1224,6 +1224,12 @@ static ssize_t ffs_epfile_write_iter(struct kiocb *kiocb, struct iov_iter *from)
 
 	ffs_log("enter");
 
+	if(ffs->func == NULL)
+	{
+		ffs_log("exit: func = NULL so we already set alt to -1");
+		return -ENOMEM;
+	}
+
 	if (!is_sync_kiocb(kiocb)) {
 		p = kzalloc(sizeof(io_data), GFP_KERNEL);
 		if (unlikely(!p))
@@ -1267,6 +1273,12 @@ static ssize_t ffs_epfile_read_iter(struct kiocb *kiocb, struct iov_iter *to)
 	ENTER();
 
 	ffs_log("enter");
+
+	if(ffs->func == NULL)
+	{
+		ffs_log("exit: func = NULL so we already set alt to -1");
+		return -ENOMEM;
+	}
 
 	if (!is_sync_kiocb(kiocb)) {
 		p = kzalloc(sizeof(io_data), GFP_KERNEL);
