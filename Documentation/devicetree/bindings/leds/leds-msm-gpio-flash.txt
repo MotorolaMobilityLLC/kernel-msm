@@ -1,0 +1,57 @@
+Qualcomm GPIO Flash Leds
+
+Qualcomm GPIO flash LEDs driver is used for
+controlling flash LEDs that are connected with 2 GPIOs.  The 2 GPIOs are name
+flash_en and flash now.
+
+
+The flash LEDs has torch mode and flash mode. The flash mode is used for camera.
+The torch mode is used for torch.
+
+
+Required properties for each node:
+- compatible        : should be "qcom,leds-gpio-flash"
+- qcom,flash-en     : the GPIO pin number of flash-en function
+- qcom,flash-now    : the GPIO pin number of flash-now function
+- linux,name        : name of the led that is used in led framework
+- linux,default-trigger : name of the led trigger event
+- qcom,op-seq       : GPIO config name
+- clocks            : A list of clk correspondence with the gpio pinfunc,
+  it is an optional property, it is needed when the flash need use clk
+  waveform to driver, and rcg clk is also optional, it is needed when
+  the used clk can't configure the duty cycle, we use the parent clk to
+  configure the duty cycle.
+- clock-names       : Names of the clocks in 1-1 correspondence with the
+  "clocks" property.
+- qcom,duty-cycle   : It is used to configure the duty cycle in clk mode.
+- qcom,clk-freq     : Frequence of clk
+- qcom,torch-seq-val: GPIO config value for torch mode
+- qcom,flash-seq-val: GPIO config value for flash mode
+- pinctrl-names     : pinctrl name
+- pinctrl-0         : default gpio stats
+
+No other optional properties for it.
+
+Example:
+
+	flashlight {
+		compatible = "leds-gpio-flash";
+		status = "okay";
+		pinctrl-names = "flash_default";
+		pinctrl-0 = <&flash_default>;
+		qcom,flash-en = <&msmgpio 31 0>;
+		qcom,flash-now = <&msmgpio 32 0>;
+		qcom,op-seq = "flash_en", "flash_now";
+		clocks = <&clock_gcc clk_camss_gp0_clk>,
+			<&clock_gcc clk_camss_gp0_clk_src>,
+			<&clock_gcc clk_camss_gp1_clk>,
+			<&clock_gcc clk_camss_gp1_clk_src>;
+		clock-names = "flash_en_clk", "flash_en_duty_cycle_clk",
+			"flash_now_clk", "flash_now_duty_cycle_clk";
+		qcom,duty-cycle = <40 30>;
+		qcom,clk-freq = <150000 150000>;
+		qcom,torch-seq-val = <1, 0>;
+		qcom,flash-seq-val = <0, 1>;
+		linux,name = "flashlight";
+		linux,default-trigger = "flashlight-trigger";
+	};
