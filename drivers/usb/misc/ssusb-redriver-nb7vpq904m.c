@@ -326,7 +326,18 @@ static void ssusb_redriver_gen_dev_set(
 		if (ret < 0)
 			goto err_exit;
 	}
+	else
+	{
+		//set aux value back to default when just using usb c config
+		aux_val = 0x11;
+		ret = redriver_i2c_reg_set(redriver, AUX_SET_REG, aux_val);
+		if (ret < 0)
+			goto err_exit;
+	}
 
+	dev_dbg(redriver->dev,
+		"successfully set the aux reg on the redriver chip, reg 0x09 = 0x%x\n",
+		aux_val);
 	return;
 
 err_exit:
