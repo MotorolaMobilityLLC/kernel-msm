@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -352,7 +352,7 @@ enum gsi_chan_use_db_eng {
  *
  * @err_cb:          error notification callback
  * @chan_user_data:  cookie used for notifications
- *
+ * @common_evt_ring: Boolean indicating common event ring.
  * All the callbacks are in interrupt context
  *
  */
@@ -373,6 +373,7 @@ struct gsi_chan_props {
 	void (*xfer_cb)(struct gsi_chan_xfer_notify *notify);
 	void (*err_cb)(struct gsi_chan_err_notify *notify);
 	void *chan_user_data;
+	bool common_evt_ring;
 };
 
 enum gsi_xfer_flag {
