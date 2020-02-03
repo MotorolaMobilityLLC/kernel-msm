@@ -20,6 +20,12 @@ enum flag_idn {
 	QUERY_FLAG_IDN_WB_EN                            = 0x0E,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN                 = 0x0F,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8     = 0x10,
+#if defined(CONFIG_UFSTW)
+        QUERY_FLAG_IDN_TW_EN                            = 0x0E,
+        QUERY_FLAG_IDN_TW_BUF_FLUSH_EN                  = 0x0F,
+        QUERY_FLAG_IDN_TW_FLUSH_DURING_HIBERN           = 0x10,
+#endif
+
 };
 
 /* Attribute idn for Query requests */
@@ -52,6 +58,14 @@ enum attr_idn {
 	QUERY_ATTR_IDN_AVAIL_WB_BUFF_SIZE       = 0x1D,
 	QUERY_ATTR_IDN_WB_BUFF_LIFE_TIME_EST    = 0x1E,
 	QUERY_ATTR_IDN_CURR_WB_BUFF_SIZE        = 0x1F,
+#if defined(CONFIG_UFSTW)
+       QUERY_ATTR_IDN_TW_FLUSH_STATUS          = 0x1C,
+       QUERY_ATTR_IDN_TW_BUF_SIZE              = 0x1D,
+       QUERY_ATTR_IDN_TW_BUF_LIFETIME_EST      = 0x1E,
+#endif
+#if defined(CONFIG_UFSFEATURE)
+       QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS       = 0xFF,
+#endif
 };
 
 #define QUERY_ATTR_IDN_BOOT_LU_EN_MAX	0x02
