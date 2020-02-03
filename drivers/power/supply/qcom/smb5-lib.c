@@ -6786,60 +6786,6 @@ static enum alarmtimer_restart dcin_aicl_alarm_cb(struct alarm *alarm,
 
 	return ALARMTIMER_NORESTART;
 }
-
-static void dcin_icl_decrement(struct smb_charger *chg)
-{
-	int rc, icl;
-	ktime_t now = ktime_get();
-
-	rc = smblib_get_charge_param(chg, &chg->param.dc_icl, &icl);
-	if (rc < 0) {
-		smblib_err(chg, "reading DCIN ICL failed: %d\n", rc);
-		return;
-	}
-
-	if (icl == DCIN_ICL_MIN_UA) {
-		/* Cannot possibly decrease ICL any further - do nothing */
-		smblib_dbg(chg, PR_WLS, "hit min ICL: stop\n");
-		return;
-	}
-
-	/* Reduce ICL by 100 mA if 3 UVs happen in a row */
-	if (ktime_us_delta(now, chg->dcin_uv_last_time) > (200 * 1000)) {
-		chg->dcin_uv_count = 0;
-	} else if (chg->dcin_uv_count == 3) {
-		icl -= DCIN_ICL_STEP_UA;
-
-		smblib_dbg(chg, PR_WLS, "icl: %d mA\n", (icl / 1000));
-		rc = smblib_set_charge_param(chg, &chg->param.dc_icl, icl);
-		if (rc < 0) {
-			smblib_err(chg, "setting DCIN ICL failed: %d\n", rc);
-			return;
-		}
-
-		chg->dcin_uv_count = 0;
-	}
-
-	chg->dcin_uv_last_time = now;
-}
-
-irqreturn_t dcin_uv_irq_handler(int irq, void *data)
-{
-	struct smb_irq_data *irq_data = data;
-	struct smb_charger *chg = irq_data->parent_data;
-
-	mutex_lock(&chg->dcin_aicl_lock);
-
-	chg->dcin_uv_count++;
-	smblib_dbg(chg, (PR_WLS | PR_INTERRUPT), "DCIN UV count: %d\n",
-			chg->dcin_uv_count);
-	dcin_icl_decrement(chg);
-
-	mutex_unlock(&chg->dcin_aicl_lock);
-
-	return IRQ_HANDLED;
-}
-
 irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
