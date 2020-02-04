@@ -397,6 +397,10 @@
 	#cooling-cells = <2>;
 };
 
+&bcl_sensor {
+	qcom,bcl-not-mitigate-cpu;
+};
+
 &thermal_zones {
 	xo-therm-step {
 		status = "disabled";
