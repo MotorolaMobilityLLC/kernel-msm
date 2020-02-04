@@ -167,7 +167,7 @@
 };
 
 &pmi632_qg {
-	qcom,qg-iterm-ma = <175>;
+	qcom,qg-iterm-ma = <172>;
 	qcom,vbatt-cutoff-mv = <3200>;
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-low-mv = <3300>;
