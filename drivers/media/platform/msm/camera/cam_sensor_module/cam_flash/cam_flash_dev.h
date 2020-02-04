@@ -136,6 +136,9 @@ struct cam_flash_frame_setting {
  * @torch_trigger_name  : Torch trigger name array
  * @torch_op_current    : Torch operational current
  * @torch_max_current   : Max supported current for LED in torch mode
+ * @gpio_data           : GPIO info
+ * @gpio_delay_tbl      : Sleep times after enabling/disabling GPIOs
+ * @gpio_delay_tbl_size : Number of elements in cam_gpio_delay_tbl
  */
 
 struct cam_flash_private_soc {
@@ -147,6 +150,9 @@ struct cam_flash_private_soc {
 	const char   *torch_trigger_name[CAM_FLASH_MAX_LED_TRIGGERS];
 	uint32_t     torch_op_current[CAM_FLASH_MAX_LED_TRIGGERS];
 	uint32_t     torch_max_current[CAM_FLASH_MAX_LED_TRIGGERS];
+	struct cam_soc_gpio_data *gpio_data;
+	uint32_t     *gpio_delay_tbl;
+	uint8_t      gpio_delay_tbl_size;
 };
 
 struct cam_flash_func_tbl {
