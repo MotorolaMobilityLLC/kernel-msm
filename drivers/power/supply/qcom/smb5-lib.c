@@ -3354,9 +3354,15 @@ int smblib_set_prop_dc_en(struct smb_charger *chg,
 {
 	int rc;
 
-	if (val->intval)
+	/* Set override on and value to 0 */
+	if (val->intval == 1)
 		rc = smblib_masked_write(chg, DCIN_CMD_IL_REG, DCIN_EN_MASK,
 			DCIN_EN_OVERRIDE_BIT);
+	/* Set override on and value to 1 */
+	else if (val->intval == 2)
+		rc = smblib_masked_write(chg, DCIN_CMD_IL_REG, DCIN_EN_MASK,
+			DCIN_EN_OVERRIDE_BIT | DCIN_EN_OVERRIDE_VAL_BIT);
+	/* Turn off the override */
 	else
 		rc = smblib_masked_write(chg, DCIN_CMD_IL_REG, DCIN_EN_MASK, 0);
 
