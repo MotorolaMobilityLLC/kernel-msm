@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2179,9 +2179,7 @@ static int mdp3_csc_config(struct mdp3_session_data *session,
 	struct mdp3_dma_ccs ccs;
 	int ret = -EINVAL;
 
-	if (!data->csc_data.csc_mv || !data->csc_data.csc_pre_bv ||
-		!data->csc_data.csc_post_bv || !data->csc_data.csc_pre_lv ||
-			!data->csc_data.csc_post_lv) {
+	if (!data) {
 		pr_err("%s : Invalid csc vectors", __func__);
 		return -EINVAL;
 	}
