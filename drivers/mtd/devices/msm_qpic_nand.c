@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3052,7 +3052,7 @@ static int msm_nand_scan(struct mtd_info *mtd)
 		for (i = 0; !flashman && nand_manuf_ids[i].id; ++i)
 			if (nand_manuf_ids[i].id == manid)
 				flashman = &nand_manuf_ids[i];
-		for (i = 0; !flashdev && nand_flash_ids[i].id; ++i) {
+		for (i = 0; !flashdev && (nand_flash_ids[i].id != NULL); ++i) {
 			/*
 			 * If id_len is specified for an entry in the nand ids
 			 * array, then at least 4 bytes of the nand id is
