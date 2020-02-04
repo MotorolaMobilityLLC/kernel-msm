@@ -91,6 +91,7 @@ struct bcl_device {
 	struct notifier_block		psy_nb;
 	struct work_struct		soc_eval_work;
 	struct bcl_peripheral_data	param[BCL_TYPE_MAX];
+	bool	bcl_not_mitigate_cpu_enalbe;
 };
 
 static struct bcl_device *bcl_perph;
@@ -502,13 +503,29 @@ unlock_and_exit:
 	return 0;
 }
 
+#define TURBO_CHRG_THRSH 2500
 static int bcl_read_soc(void *data, int *val)
 {
 	static struct power_supply *batt_psy;
+	static struct power_supply *usb_psy;
 	union power_supply_propval ret = {0,};
 	int err = 0;
 
 	*val = 100;
+
+	if (!usb_psy)
+		usb_psy = power_supply_get_by_name("usb");
+	if (usb_psy && bcl_perph->bcl_not_mitigate_cpu_enalbe) {
+		err = power_supply_get_property(usb_psy,
+			POWER_SUPPLY_PROP_HW_CURRENT_MAX, &ret);
+		if (err)
+			pr_err("HW current max read error:%d\n", err);
+		else if ((ret.intval /1000) >= TURBO_CHRG_THRSH) {
+			pr_debug("turbo charge connected\n");
+			return err;
+		}
+	}
+
 	if (!batt_psy)
 		batt_psy = power_supply_get_by_name("battery");
 	if (batt_psy) {
@@ -619,6 +636,11 @@ static void bcl_probe_soc(struct platform_device *pdev)
 		pr_err("Unable to register soc notifier. err:%d\n", ret);
 		return;
 	}
+	if (of_property_read_bool(pdev->dev.of_node,
+		"qcom,bcl-not-mitigate-cpu"))
+		bcl_perph->bcl_not_mitigate_cpu_enalbe = true;
+	else
+		bcl_perph->bcl_not_mitigate_cpu_enalbe = false;
 	soc_data->tz_dev = thermal_zone_of_sensor_register(&pdev->dev,
 				BCL_SOC_MONITOR, soc_data, &soc_data->ops);
 	if (IS_ERR(soc_data->tz_dev)) {
