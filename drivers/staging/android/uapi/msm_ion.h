@@ -42,6 +42,7 @@ enum ion_heap_ids {
 	ION_ADSP_HEAP_ID = 22,
 	ION_SYSTEM_HEAP_ID = 25,
 	ION_QSECOM_HEAP_ID = 27,
+	ION_MMNS_HEAP_ID = 30,
 	ION_HEAP_ID_RESERVED = 31 /** Bit reserved for ION_FLAG_SECURE flag */
 };
 
