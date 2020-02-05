@@ -38,6 +38,7 @@
 #define ION_SECURE_HEAP_NAME	"secure_heap"
 #define ION_SECURE_DISPLAY_HEAP_NAME "secure_display"
 #define ION_AUDIO_HEAP_NAME    "audio"
+#define ION_MMNS_HEAP_NAME    "mmns"
 
 #define ION_IS_CACHED(__flags)  ((__flags) & ION_FLAG_CACHED)
 
@@ -386,6 +387,8 @@ struct ion_heap *ion_secure_cma_heap_create(struct ion_platform_heap *data);
 void ion_secure_cma_heap_destroy(struct ion_heap *heap);
 
 struct ion_heap *ion_cma_heap_create(struct ion_platform_heap *data);
+struct ion_heap *ion_reserved_cma_heap_create(struct ion_platform_heap *data);
+void ion_cma_reserved_heap_destroy(struct ion_heap *heap);
 #else
 static inline struct ion_heap
 			*ion_secure_cma_heap_create(struct ion_platform_heap *h)
@@ -396,6 +399,10 @@ static inline struct ion_heap
 static inline void ion_cma_heap_destroy(struct ion_heap *h) {}
 
 static inline struct ion_heap *ion_cma_heap_create(struct ion_platform_heap *h)
+{
+	return NULL;
+}
+static inline struct ion_heap *ion_reserved_cma_heap_create(struct ion_platform_heap *h)
 {
 	return NULL;
 }
