@@ -694,6 +694,24 @@ static void ufstw_lu_init(struct ufsf_feature *ufsf, int lun)
 	if ((tw->tw_lifetime_est & ~MASK_UFSTW_LIFETIME_NOT_GUARANTEE)
 	    < UFSTW_MAX_LIFETIME_VALUE) {
 		atomic_set(&tw->tw_mode, TW_MODE_MANUAL);
+#if defined(CONFIG_UFSTW_ENABLE_BY_DEFAULT)
+		INFO_MSG("Trying to enable UFS Turbo Write");
+
+		if (ufstw_set_lu_flag(tw,
+				      QUERY_FLAG_IDN_WB_EN,
+				      &tw->tw_enable)) {
+			ERR_MSG("Cannot set tw_enable");
+		} else if (ufstw_set_lu_flag(tw,
+					     QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
+					     &tw->tw_flush_during_hibern_enter)) {
+			ERR_MSG("Cannot set tw_flush_during_hibern_enter");
+			ufstw_clear_lu_flag(tw,
+					    QUERY_FLAG_IDN_WB_EN,
+					    &tw->tw_enable);
+		} else {
+			INFO_MSG("Successfully enabled UFS Turbo Write");
+		}
+#endif
 		goto out;
 	} else
 		goto tw_disable;
