@@ -337,6 +337,9 @@ struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data)
 	case ION_HEAP_TYPE_DMA:
 		heap = ion_cma_heap_create(heap_data);
 		break;
+	case ION_HEAP_TYPE_DMA_RESERVED:
+		heap = ion_reserved_cma_heap_create(heap_data);
+		break;
 	case (enum ion_heap_type)ION_HEAP_TYPE_HYP_CMA:
 		heap = ion_cma_secure_heap_create(heap_data);
 		break;
