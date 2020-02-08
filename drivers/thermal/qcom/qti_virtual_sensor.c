@@ -223,8 +223,8 @@ static const struct virtual_sensor_data qti_virtual_sensors[] = {
 		.sensor_names = {"skin-msm-therm-usr"},
 		.logic = VIRT_WEIGHTED_AVG,
 		.coefficient_ct = 1,
-		.coefficients = {65},
-		.avg_offset = 900000,
+		.coefficients = {87},
+		.avg_offset = -125000,
 		.avg_denominator = 100,
 	},
 	{
