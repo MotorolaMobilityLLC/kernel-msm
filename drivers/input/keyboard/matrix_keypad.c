@@ -446,6 +446,8 @@ matrix_keypad_parse_dt(struct device *dev)
 	if (of_get_property(np, "gpio-activelow", NULL))
 		pdata->active_low = true;
 
+	pdata->name = of_get_property(np, "input-name", NULL);
+
 	of_property_read_u32(np, "debounce-delay-ms", &pdata->debounce_ms);
 	of_property_read_u32(np, "col-scan-delay-us",
 						&pdata->col_scan_delay_us);
@@ -511,7 +513,6 @@ static int matrix_keypad_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto err_free_mem;
 	}
-
 	keypad->input_dev = input_dev;
 	keypad->pdata = pdata;
 	keypad->row_shift = get_count_order(pdata->num_col_gpios);
@@ -519,7 +520,7 @@ static int matrix_keypad_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&keypad->work, matrix_keypad_scan);
 	spin_lock_init(&keypad->lock);
 
-	input_dev->name		= pdev->name;
+	input_dev->name		= pdata->name ? : pdev->name;
 	input_dev->id.bustype	= BUS_HOST;
 	input_dev->dev.parent	= &pdev->dev;
 	input_dev->open		= matrix_keypad_start;
