@@ -768,6 +768,28 @@ bool sde_connector_mode_needs_full_range(struct drm_connector *connector)
 	return c_conn->ops.mode_needs_full_range(c_conn->display);
 }
 
+bool sde_connector_mode_is_cea_mode(struct drm_connector *connector)
+{
+	struct sde_connector *c_conn;
+
+	if (!connector) {
+		SDE_ERROR("invalid argument\n");
+		return false;
+	}
+
+	c_conn = to_sde_connector(connector);
+
+	if (!c_conn->display) {
+		SDE_ERROR("invalid argument\n");
+		return false;
+	}
+
+	if (!c_conn->ops.mode_is_cea_mode)
+		return false;
+
+	return c_conn->ops.mode_is_cea_mode(c_conn->display);
+}
+
 static void sde_connector_destroy(struct drm_connector *connector)
 {
 	struct sde_connector *c_conn;

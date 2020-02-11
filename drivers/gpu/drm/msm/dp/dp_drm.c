@@ -134,6 +134,8 @@ static void convert_to_dp_mode(const struct drm_display_mode *drm_mode,
 		!!(drm_mode->flags & DRM_MODE_FLAG_NHSYNC);
 
 	dp_mode->flags = drm_mode->flags;
+
+	dp_mode->timing.par = drm_mode->picture_aspect_ratio;
 }
 
 static void convert_to_drm_mode(const struct dp_display_mode *dp_mode,
@@ -173,6 +175,8 @@ static void convert_to_drm_mode(const struct dp_display_mode *dp_mode,
 
 	drm_mode->flags = flags;
 	drm_mode->flags |= (dp_mode->flags & SDE_DRM_MODE_FLAG_FMT_MASK);
+
+	drm_mode->picture_aspect_ratio = dp_mode->timing.par;
 
 	drm_mode->type = 0x48;
 	drm_mode_set_name(drm_mode);
@@ -474,6 +478,45 @@ bool dp_connector_mode_needs_full_range(void *data)
 	return false;
 }
 
+bool dp_connector_mode_is_cea_mode(void *data)
+{
+	struct dp_display *display = data;
+	struct dp_bridge *bridge;
+	struct dp_display_mode *mode;
+	struct drm_display_mode drm_mode;
+	struct dp_panel_info *timing;
+	bool is_ce_mode = false;
+
+	if (!display) {
+		pr_err("invalid input\n");
+		return false;
+	}
+
+	bridge = display->bridge;
+	if (!bridge) {
+		pr_err("invalid bridge data\n");
+		return false;
+	}
+
+	mode = &bridge->dp_mode;
+	timing = &mode->timing;
+
+	if (timing->h_active == 640 &&
+	    timing->v_active == 480)
+		is_ce_mode = false;
+
+	convert_to_drm_mode(mode, &drm_mode);
+	drm_mode.flags &= ~SDE_DRM_MODE_FLAG_FMT_MASK;
+
+	if (drm_match_cea_mode(&drm_mode) || drm_match_hdmi_mode(&drm_mode))
+		is_ce_mode = true;
+
+	pr_debug("%s: %s : %s video format\n", __func__,
+			drm_mode.name, is_ce_mode ? "CE" : "IT");
+
+	return is_ce_mode;
+}
+
 enum sde_csc_type dp_connector_get_csc_type(struct drm_connector *conn,
 	void *data)
 {
@@ -500,10 +543,10 @@ enum sde_csc_type dp_connector_get_csc_type(struct drm_connector *conn,
 		return SDE_CSC_RGB2YUV_2020L;
 	else if (dp_connector_mode_needs_full_range(data)
 		|| conn->yuv_qs)
-		return SDE_CSC_RGB2YUV_601FR;
+		return SDE_CSC_RGB2YUV_709FR;
 
 error:
-	return SDE_CSC_RGB2YUV_601L;
+	return SDE_CSC_RGB2YUV_709L;
 }
 
 enum drm_connector_status dp_connector_detect(struct drm_connector *conn,

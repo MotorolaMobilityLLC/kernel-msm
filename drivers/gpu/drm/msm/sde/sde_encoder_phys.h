@@ -498,6 +498,8 @@ void sde_encoder_phys_setup_cdm(struct sde_encoder_phys *phys_enc,
 		const struct sde_format *format, u32 output_type,
 		struct sde_rect *roi);
 
+void sde_encoder_phys_destroy_cdm(struct sde_encoder_phys *phys_enc);
+
 /**
  * sde_encoder_helper_trigger_flush - control flush helper function
  *	This helper function may be optionally specified by physical
