@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,12 +14,12 @@
 &int_codec {
 	compatible = "qcom,msm8952-dig-asoc-snd";
 	status = "okay";
-	qcom,model = "sdm429-qrd-snd-card";
+	qcom,model = "sdm429w-snd-card";
 	qcom,msm-ext-pa = "quaternary";
 	/delete-property/ qcom,split-a2dp;
 	asoc-wsa-codec-names;
 	asoc-wsa-codec-prefixes;
-	ext_pa_aw8896;
+	ext_pa_tfa98xx;
 	qcom,audio-routing =
 		"CDC_CONN", "MCLK",
 		"QUAT_MI2S_RX", "DIGITAL_REGULATOR",
@@ -53,6 +53,42 @@
 	/delete-property/qcom,pri-mi2s-gpios;
 	/delete-property/qcom,cdc-us-eu-gpios;
 
+	asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&pcm_noirq>;
+	asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+				"msm-pcm-dsp.2", "msm-voip-dsp",
+				"msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless",
+				"msm-pcm-afe", "msm-lsm-client",
+				"msm-pcm-routing", "msm-pcm-dsp-noirq";
+	asoc-cpu = <&dai_pri_auxpcm>,
+		<&dai_mi2s0>, <&dai_mi2s1>,
+		<&dai_mi2s2>, <&dai_mi2s3>,
+		<&dai_mi2s4>, <&dai_mi2s5>,
+		<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+		<&sb_3_rx>, <&sb_3_tx>, <&sb_4_rx>, <&sb_4_tx>,
+		<&bt_sco_rx>, <&bt_sco_tx>,
+		<&int_fm_rx>, <&int_fm_tx>,
+		<&afe_pcm_rx>, <&afe_pcm_tx>,
+		<&afe_proxy_rx>, <&afe_proxy_tx>,
+		<&incall_record_rx>, <&incall_record_tx>,
+		<&incall_music_rx>, <&incall_music_2_rx>;
+
+	asoc-cpu-names = "msm-dai-q6-auxpcm.1",
+				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+				"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+				"msm-dai-q6-mi2s.4", "msm-dai-q6-mi2s.6",
+				"msm-dai-q6-dev.16384", "msmdai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
+				"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
+				"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
+				"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
+				"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
+				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
 	asoc-codec = <&stub_codec>, <&msm_dig_codec>, <&ext_smart_pa>;
 	asoc-codec-names = "msm-stub-codec.1", "msm-dig-codec", "ext-smart-pa";
 };
@@ -148,9 +184,9 @@
 };
 
 &i2c_2 {
-	ext_smart_pa: aw8896_smartpa@34 {
+	ext_smart_pa: nxp_smartpa@34 {
 		status = "okay";
-		compatible = "awinic,aw8896_smartpa";
+		compatible = "nxp,tfa98xx";
 		reg = <0x34>;
 		reset-gpio = <&tlmm 68 0>;
 		irq-gpio = <&tlmm 73 0>;
