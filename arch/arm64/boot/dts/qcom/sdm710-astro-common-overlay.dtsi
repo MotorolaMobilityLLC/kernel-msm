@@ -124,8 +124,10 @@
 
 &vendor {
         mot_batterydata: qcom,battery-data {
-                df-serialnum = "SB18C28956";
+                df-serialnum = "SB18C28957";
                 #include "batterydata-jk50-scud.dtsi"
+		#include "batterydata-jk50-77226-scud.dtsi"
+		#include "batterydata-jk50-atl.dtsi"
         };
 };
 

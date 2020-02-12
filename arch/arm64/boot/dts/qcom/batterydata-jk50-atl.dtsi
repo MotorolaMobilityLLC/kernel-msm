@@ -1,0 +1,73 @@
+
+qcom,jk50-atl {
+	qcom, = <24>;
+	/* #4338086_Ontim_Q7105_ATL_5000mAH_PM670_averaged_MasterSlave_Jan30th2020*/
+	serialnum = "SB18C28957";
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <5000>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3380>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,battery-type = "JK50-ATL-5000mah";
+	qcom,checksum = <0x8CC3>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 CF 1E 0F FD
+		 80 03 12 F4
+		 DE 1C 03 02
+		 96 0D D5 0A
+		 E1 17 DF 23
+		 3E 44 80 5A
+		 6B 00 00 00
+		 10 00 00 00
+		 00 00 0D A2
+		 CA CD 54 BB
+		 18 00 08 00
+		 8B D2 45 E5
+		 37 FC 57 01
+		 59 FA A3 13
+		 72 E5 DD 22
+		 36 06 09 20
+		 27 00 14 00
+		 F1 1F 66 05
+		 99 0A 2F 06
+		 D2 1C CD 02
+		 5E 0C E2 0B
+		 8D 18 B6 23
+		 13 44 E0 5A
+		 6F 00 00 00
+		 0E 00 00 00
+		 00 00 26 CC
+		 EC BA 03 CA
+		 12 00 00 00
+		 6A EA 45 E5
+		 EB FD BE F2
+		 36 DC C5 03
+		 B2 ED 98 1A
+		 A8 33 CC FF
+		 07 10 00 00
+		 3E 13 66 46
+		 12 00 40 00
+		 A8 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};

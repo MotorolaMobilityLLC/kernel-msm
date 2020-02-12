@@ -1,0 +1,72 @@
+qcom,jk50-77226-scud {
+	qcom, = <24>;
+	/* #4335470_Ontim_Q7103_SCUD_5000mAH_PM670_averaged_MasterSlave_Jan10th2020*/
+	serialnum = "SB18C77226";
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <5000>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3380>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,battery-type = "JK50-SCUD-77226-5000mah";
+	qcom,checksum = <0x7C29>;
+	qcom,gui-version = "PM660GUI - 0.0.0.45";
+	qcom,fg-profile-data = [
+		 65 20 CB 04
+		 F3 0A F5 05
+		 06 1D 73 01
+		 51 05 39 03
+		 E2 17 F3 23
+		 23 44 93 5A
+		 8B 00 00 00
+		 10 00 00 00
+		 00 00 A6 B5
+		 4D CD AA AA
+		 1E 00 08 00
+		 9B DA 23 E5
+		 AE 05 B1 01
+		 38 DA 23 13
+		 E5 F5 0D 23
+		 3A 06 09 20
+		 27 00 14 00
+		 E8 1F 58 05
+		 AC 0A 18 06
+		 BE 1C 1C 03
+		 D7 15 5B 12
+		 80 18 F7 23
+		 C1 4D 89 5B
+		 69 00 00 00
+		 0D 00 00 00
+		 00 00 8D D5
+		 44 CA EB C3
+		 15 00 00 00
+		 47 00 23 E5
+		 C5 FD F6 F2
+		 92 F5 66 02
+		 F5 FD 71 1A
+		 A4 33 CC FF
+		 07 10 00 00
+		 3E 13 66 46
+		 15 00 40 00
+		 6F 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
