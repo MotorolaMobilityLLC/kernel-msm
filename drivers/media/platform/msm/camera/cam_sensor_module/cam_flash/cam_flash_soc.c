@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,262 @@
 #include <linux/of_gpio.h>
 #include "cam_flash_soc.h"
 #include "cam_res_mgr_api.h"
+
+static int cam_flash_get_dt_gpio_req_tbl(struct device_node *of_node,
+	struct cam_soc_gpio_data *gconf,
+	uint16_t *gpio_array,
+	uint16_t gpio_array_size)
+{
+	int32_t rc = 0, i = 0;
+	uint32_t count = 0;
+	uint32_t *val_array = NULL;
+
+	if (!of_get_property(of_node, "gpio-req-tbl-num", &count))
+		return 0;
+
+	count /= sizeof(uint32_t);
+	if (!count) {
+		CAM_DBG(CAM_FLASH, "gpio-req-tbl-num 0");
+		return 0;
+	}
+
+	val_array = kcalloc(count, sizeof(uint32_t), GFP_KERNEL);
+	if (!val_array)
+		return -ENOMEM;
+
+	gconf->cam_gpio_req_tbl = kcalloc(count, sizeof(struct gpio),
+		GFP_KERNEL);
+	if (!gconf->cam_gpio_req_tbl) {
+		rc = -ENOMEM;
+		goto free_val_array;
+	}
+	gconf->cam_gpio_req_tbl_size = count;
+
+	rc = of_property_read_u32_array(of_node, "gpio-req-tbl-num",
+		val_array, count);
+	if (rc) {
+		CAM_ERR(CAM_FLASH,
+			"failed in reading gpio-req-tbl-num, rc = %d",
+			rc);
+		goto free_gpio_req_tbl;
+	}
+
+	for (i = 0; i < count; i++) {
+		if (val_array[i] >= gpio_array_size) {
+			CAM_ERR(CAM_FLASH, "gpio req tbl index %d invalid",
+				val_array[i]);
+			goto free_gpio_req_tbl;
+		}
+		gconf->cam_gpio_req_tbl[i].gpio = gpio_array[val_array[i]];
+		CAM_DBG(CAM_FLASH, "cam_gpio_req_tbl[%d].gpio = %d", i,
+			gconf->cam_gpio_req_tbl[i].gpio);
+	}
+
+	rc = of_property_read_u32_array(of_node, "gpio-req-tbl-flags",
+		val_array, count);
+	if (rc) {
+		CAM_ERR(CAM_FLASH, "Failed in gpio-req-tbl-flags, rc %d", rc);
+		goto free_gpio_req_tbl;
+	}
+
+	for (i = 0; i < count; i++) {
+		gconf->cam_gpio_req_tbl[i].flags = val_array[i];
+		CAM_DBG(CAM_FLASH, "cam_gpio_req_tbl[%d].flags = %ld", i,
+			gconf->cam_gpio_req_tbl[i].flags);
+	}
+
+	for (i = 0; i < count; i++) {
+		rc = of_property_read_string_index(of_node,
+			"gpio-req-tbl-label", i,
+			&gconf->cam_gpio_req_tbl[i].label);
+		if (rc) {
+			CAM_ERR(CAM_FLASH, "Failed rc %d", rc);
+			goto free_gpio_req_tbl;
+		}
+		CAM_DBG(CAM_FLASH, "cam_gpio_req_tbl[%d].label = %s", i,
+			gconf->cam_gpio_req_tbl[i].label);
+	}
+
+	kfree(val_array);
+
+	return rc;
+
+free_gpio_req_tbl:
+	kfree(gconf->cam_gpio_req_tbl);
+free_val_array:
+	kfree(val_array);
+	gconf->cam_gpio_req_tbl_size = 0;
+
+	return rc;
+}
+
+static int cam_flash_get_dt_gpio_delay_tbl(
+	struct device_node *of_node, struct cam_flash_private_soc *soc_private)
+{
+	int32_t rc = 0, i = 0;
+	uint32_t *val_array = NULL;
+	uint32_t count = 0;
+
+	soc_private->gpio_delay_tbl_size = 0;
+
+	if (!of_get_property(of_node, "gpio-req-tbl-delay", &count))
+		return 0;
+
+	count /= sizeof(uint32_t);
+	if (!count) {
+		CAM_ERR(CAM_FLASH, "gpio-req-tbl-delay 0");
+		return 0;
+	}
+
+	if (count != soc_private->gpio_data->cam_gpio_req_tbl_size) {
+		CAM_ERR(CAM_FLASH,
+			"Invalid number of gpio-req-tbl-delay entries: %d",
+			count);
+		return 0;
+	}
+
+	val_array = kcalloc(count, sizeof(uint32_t), GFP_KERNEL);
+	if (!val_array)
+		return -ENOMEM;
+
+	soc_private->gpio_delay_tbl_size = count;
+
+	rc = of_property_read_u32_array(of_node, "gpio-req-tbl-delay",
+		val_array, count);
+	if (rc) {
+		CAM_ERR(CAM_FLASH, "Failed in gpio-req-tbl-delay, rc %d", rc);
+		goto free_val_array;
+	}
+
+	soc_private->gpio_delay_tbl = val_array;
+
+	for (i = 0; i < count; i++) {
+		CAM_DBG(CAM_FLASH, "gpio_delay_tbl[%d] = %ld", i,
+			soc_private->gpio_delay_tbl[i]);
+	}
+
+	return 0;
+
+free_val_array:
+	kfree(val_array);
+	soc_private->gpio_delay_tbl_size = 0;
+	return rc;
+}
+
+static int cam_flash_get_gpio_info(
+	struct device_node *of_node,
+	struct cam_flash_private_soc *soc_private)
+{
+	int32_t rc = 0, i = 0;
+	uint16_t *gpio_array = NULL;
+	int16_t gpio_array_size = 0;
+	struct cam_soc_gpio_data *gconf = NULL;
+
+	gpio_array_size = of_gpio_count(of_node);
+
+	CAM_DBG(CAM_FLASH, "gpio count %d", gpio_array_size);
+	if (gpio_array_size <= 0)
+		return 0;
+
+	gpio_array = kcalloc(gpio_array_size, sizeof(uint16_t), GFP_KERNEL);
+	if (!gpio_array)
+		goto free_gpio_conf;
+
+	for (i = 0; i < gpio_array_size; i++) {
+		gpio_array[i] = of_get_gpio(of_node, i);
+		CAM_DBG(CAM_FLASH, "gpio_array[%d] = %d", i, gpio_array[i]);
+	}
+
+	gconf = kzalloc(sizeof(*gconf), GFP_KERNEL);
+	if (!gconf)
+		return -ENOMEM;
+
+	rc = cam_flash_get_dt_gpio_req_tbl(of_node, gconf, gpio_array,
+		gpio_array_size);
+	if (rc) {
+		CAM_ERR(CAM_FLASH, "failed in msm_camera_get_dt_gpio_req_tbl");
+		goto free_gpio_array;
+	}
+
+	gconf->cam_gpio_common_tbl = kcalloc(gpio_array_size,
+		sizeof(struct gpio), GFP_KERNEL);
+	if (!gconf->cam_gpio_common_tbl) {
+		rc = -ENOMEM;
+		goto free_gpio_array;
+	}
+
+	for (i = 0; i < gpio_array_size; i++)
+		gconf->cam_gpio_common_tbl[i].gpio = gpio_array[i];
+
+	gconf->cam_gpio_common_tbl_size = gpio_array_size;
+	soc_private->gpio_data = gconf;
+	kfree(gpio_array);
+
+	cam_flash_get_dt_gpio_delay_tbl(of_node, soc_private);
+
+	return rc;
+
+free_gpio_array:
+	kfree(gpio_array);
+free_gpio_conf:
+	kfree(gconf);
+	soc_private->gpio_data = NULL;
+
+	return rc;
+}
+
+static int cam_flash_request_gpio_table(
+	struct cam_flash_private_soc *soc_private, bool gpio_en)
+{
+	int rc = 0, i = 0;
+	uint8_t size = 0;
+	struct cam_soc_gpio_data *gpio_conf =
+		soc_private->gpio_data;
+	struct gpio *gpio_tbl = NULL;
+
+	if (!gpio_conf) {
+		CAM_DBG(CAM_FLASH, "No GPIO entry");
+		return 0;
+	}
+	if (gpio_conf->cam_gpio_common_tbl_size <= 0) {
+		CAM_ERR(CAM_FLASH, "GPIO table size is invalid");
+		return -EINVAL;
+	}
+	size = gpio_conf->cam_gpio_req_tbl_size;
+	gpio_tbl = gpio_conf->cam_gpio_req_tbl;
+
+	if (!gpio_tbl || !size) {
+		CAM_ERR(CAM_FLASH, "Invalid gpio_tbl %pK / size %d",
+			gpio_tbl, size);
+		return -EINVAL;
+	}
+	for (i = 0; i < size; i++) {
+		CAM_DBG(CAM_FLASH,
+			"cam_flash_request_gpio_table: i=%d, gpio=%d dir=%ld",
+			i,
+			gpio_tbl[i].gpio,
+			gpio_tbl[i].flags);
+	}
+	if (gpio_en) {
+		for (i = 0; i < size; i++) {
+			rc = gpio_request_one(gpio_tbl[i].gpio,
+				gpio_tbl[i].flags, gpio_tbl[i].label);
+			if (rc) {
+				/*
+				 * After GPIO request fails, contine to
+				 * apply new gpios, outout a error message
+				 * for driver bringup debug
+				 */
+				CAM_ERR(CAM_FLASH, "gpio %d:%s request fails",
+					gpio_tbl[i].gpio, gpio_tbl[i].label);
+			}
+		}
+	} else {
+		gpio_free_array(gpio_tbl, size);
+	}
+
+	return rc;
+}
 
 static int32_t cam_get_source_node_info(
 	struct device_node *of_node,
@@ -179,6 +435,15 @@ static int32_t cam_get_source_node_info(
 		}
 	}
 
+	(void) cam_flash_get_gpio_info(of_node, soc_private);
+	if (soc_private->gpio_data != NULL) {
+		rc = cam_flash_request_gpio_table(soc_private, true);
+		if (rc < 0)
+			CAM_ERR(CAM_FLASH,
+			"Failed in request gpio table, rc=%d",
+			rc);
+	}
+
 	return rc;
 }
 
@@ -216,6 +481,7 @@ int cam_flash_get_dt_data(struct cam_flash_ctrl *fctrl,
 	return rc;
 
 free_soc_private:
+	cam_flash_request_gpio_table(soc_info->soc_private, false);
 	kfree(soc_info->soc_private);
 	soc_info->soc_private = NULL;
 release_soc_res:

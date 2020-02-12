@@ -2526,11 +2526,17 @@ static int gsi_set_alt(struct usb_function *f, unsigned int intf,
 				}
 				break;
 			case USB_PROT_ECM_IPA:
-				in_intr_num = 2;
-				if (!gsi_rmnet_v2x->function.fs_descriptors)
+				/* If v2x is used then only IN/DL uses GSI EP */
+				if (gsi_rmnet_v2x->function.fs_descriptors) {
+					in_intr_num = 3;
+					out_intr_num = 0;
+				} else {
+					in_intr_num = 2;
 					out_intr_num = 1;
+				}
 				break;
 			case USB_PROT_DIAG_IPA:
+				/* DPL to use normal EP if used with ECM+cv2x */
 				if (!(gsi_ecm->function.fs_descriptors &&
 					gsi_rmnet_v2x->function.fs_descriptors))
 					in_intr_num = 3;

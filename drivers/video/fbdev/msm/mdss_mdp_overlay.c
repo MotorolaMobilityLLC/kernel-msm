@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -6566,6 +6566,13 @@ static void mdss_mdp_signal_retire_fence(struct msm_fb_data_type *mfd,
 	pr_debug("Signaled (%d) pending retire fence\n", retire_cnt);
 }
 
+static bool mdss_mdp_is_twm_en(void)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+	return (mdata && mdata->twm_en);
+}
+
 int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 {
 	struct device *dev = mfd->fbi->dev;
@@ -6613,7 +6620,7 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	mdp5_interface->configure_panel = mdss_mdp_update_panel_info;
 	mdp5_interface->input_event_handler = mdss_mdp_input_event_handler;
 	mdp5_interface->signal_retire_fence = mdss_mdp_signal_retire_fence;
-	mdp5_interface->is_twm_en = NULL;
+	mdp5_interface->is_twm_en = mdss_mdp_is_twm_en;
 
 	if (mfd->panel_info->type == WRITEBACK_PANEL) {
 		mdp5_interface->atomic_validate =

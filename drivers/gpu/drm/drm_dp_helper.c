@@ -990,6 +990,7 @@ static const struct i2c_lock_operations drm_dp_i2c_lock_ops = {
 void drm_dp_aux_init(struct drm_dp_aux *aux)
 {
 	mutex_init(&aux->hw_mutex);
+	mutex_init(&aux->cec.lock);
 
 	aux->ddc.algo = &drm_dp_i2c_algo;
 	aux->ddc.algo_data = aux;

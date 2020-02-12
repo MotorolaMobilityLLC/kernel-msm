@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -311,7 +311,7 @@ static const struct rsrc_min_max ipa3_rsrc_src_grp_config
 	[IPA_4_0_AUTO] = {
 		/*not-used  UL_DL    CV2X  not-used, other are invalid */
 		[IPA_v4_0_RSRC_GRP_TYPE_SRC_PKT_CONTEXTS] = {
-		{1, 63}, {1, 63}, {1, 1}, {0, 0}, {0, 0}, {0, 0} },
+		{1, 63}, {1, 63}, {2, 2}, {0, 0}, {0, 0}, {0, 0} },
 		[IPA_v4_0_RSRC_GRP_TYPE_SRS_DESCRIPTOR_LISTS] = {
 		{10, 10}, {10, 10}, {8, 8}, {0, 0}, {0, 0}, {0, 0} },
 		[IPA_v4_0_RSRC_GRP_TYPE_SRC_DESCRIPTOR_BUFF] = {
@@ -324,7 +324,7 @@ static const struct rsrc_min_max ipa3_rsrc_src_grp_config
 	[IPA_4_0_AUTO_MHI] = {
 		/* PCIE  DDR   DMA/CV2X not used, other are invalid */
 		[IPA_v4_0_RSRC_GRP_TYPE_SRC_PKT_CONTEXTS] = {
-		{4, 4}, {5, 5}, {1, 1}, {0, 0}, {0, 0}, {0, 0} },
+		{3, 3}, {5, 5}, {2, 2}, {0, 0}, {0, 0}, {0, 0} },
 		[IPA_v4_0_RSRC_GRP_TYPE_SRS_DESCRIPTOR_LISTS] = {
 		{10, 10}, {10, 10}, {8, 8}, {0, 0}, {0, 0}, {0, 0} },
 		[IPA_v4_0_RSRC_GRP_TYPE_SRC_DESCRIPTOR_BUFF] = {

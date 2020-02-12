@@ -39,6 +39,12 @@
 		flash-source = <&pmi8998_flash2>;
 		torch-source = <&pmi8998_torch2>;
 		switch-source = <&pmi8998_switch1>;
+		gpios = <&tlmm 90 0>,
+			<&tlmm 40 0>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <0 0>;
+		gpio-req-tbl-label = "FLASH_EN",
+			"FLASH_NOW";
 		status = "ok";
 	};
 
@@ -408,22 +414,16 @@
 		gpios = <&tlmm 13 0>,
 			<&tlmm 26 0>,
 			<&tlmm 132 0>,
-			<&tlmm 133 0>,
-			<&tlmm 90 0>,
-			<&tlmm 40 0>;
+			<&tlmm 133 0>;
 		gpio-reset = <1>;
 		gpio-vana = <2>;
 		gpio-vdig = <3>;
-		gpio-vio = <4>;
-		gpio-standby = <5>;
-		gpio-req-tbl-num = <0 1 2 3 4 5>;
-		gpio-req-tbl-flags = <1 0 0 0 0 0>;
+		gpio-req-tbl-num = <0 1 2 3>;
+		gpio-req-tbl-flags = <1 0 0 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK0",
 					"CAM_RESET2",
 					"CAM_VANA2",
-					"CAM_VDIG2",
-					"CAM_VIO2",
-					"CAM_STANDBY2";
+					"CAM_VDIG2";
 		sensor-mode = <0>;
 		cci-master = <0>;
 		status = "ok";

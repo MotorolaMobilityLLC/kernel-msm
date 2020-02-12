@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2018, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -41,7 +41,7 @@ struct msm_iommu_map {
 	struct list_head lnode;
 	struct rb_node node;
 	struct device *dev;
-	struct scatterlist sgl;
+	struct scatterlist *sgl;
 	unsigned int nents;
 	enum dma_data_direction dir;
 	struct msm_iommu_meta *meta;
@@ -148,6 +148,22 @@ static struct msm_iommu_meta *msm_iommu_meta_create(struct dma_buf *dma_buf)
 
 static void msm_iommu_meta_put(struct msm_iommu_meta *meta);
 
+static struct scatterlist *clone_sgl(struct scatterlist *sg, int nents)
+{
+	struct scatterlist *next, *s;
+	int i;
+	struct sg_table table;
+
+	if (sg_alloc_table(&table, nents, GFP_KERNEL))
+		return NULL;
+	next = table.sgl;
+	for_each_sg(sg, s, nents, i) {
+		*next = *s;
+		next = sg_next(next);
+	}
+	return table.sgl;
+}
+
 static inline int __msm_dma_map_sg(struct device *dev, struct scatterlist *sg,
 				   int nents, enum dma_data_direction dir,
 				   struct dma_buf *dma_buf,
@@ -191,20 +207,25 @@ static inline int __msm_dma_map_sg(struct device *dev, struct scatterlist *sg,
 		}
 
 		ret = dma_map_sg_attrs(dev, sg, nents, dir, attrs);
-		if (ret != nents) {
+		if (!ret) {
 			kfree(iommu_map);
 			goto out_unlock;
 		}
+
+		iommu_map->sgl = clone_sgl(sg, nents);
+		if (!iommu_map->sgl) {
+			kfree(iommu_map);
+			ret = -ENOMEM;
+			goto out_unlock;
+		}
+		iommu_map->nents = nents;
+		iommu_map->dev = dev;
 
 		kref_init(&iommu_map->ref);
 		if (late_unmap)
 			kref_get(&iommu_map->ref);
 		iommu_map->meta = iommu_meta;
-		iommu_map->sgl.dma_address = sg->dma_address;
-		iommu_map->sgl.dma_length = sg->dma_length;
-		iommu_map->dev = dev;
 		iommu_map->dir = dir;
-		iommu_map->nents = nents;
 		iommu_map->map_attrs = attrs;
 		iommu_map->buf_start_addr = sg_phys(sg);
 		msm_iommu_add(iommu_meta, iommu_map);
@@ -214,8 +235,8 @@ static inline int __msm_dma_map_sg(struct device *dev, struct scatterlist *sg,
 		    dir == iommu_map->dir &&
 		    attrs == iommu_map->map_attrs &&
 		    sg_phys(sg) == iommu_map->buf_start_addr) {
-			sg->dma_address = iommu_map->sgl.dma_address;
-			sg->dma_length = iommu_map->sgl.dma_length;
+			sg->dma_address = iommu_map->sgl->dma_address;
+			sg->dma_length = iommu_map->sgl->dma_length;
 
 			kref_get(&iommu_map->ref);
 			if (is_device_dma_coherent(dev))
@@ -315,9 +336,14 @@ static void msm_iommu_map_release(struct kref *kref)
 {
 	struct msm_iommu_map *map = container_of(kref, struct msm_iommu_map,
 						ref);
+	struct sg_table table;
 
+	table.nents = table.orig_nents = map->nents;
+	table.sgl = map->sgl;
 	list_del(&map->lnode);
-	dma_unmap_sg(map->dev, &map->sgl, map->nents, map->dir);
+
+	dma_unmap_sg(map->dev, map->sgl, map->nents, map->dir);
+	sg_free_table(&table);
 	kfree(map);
 }
 
