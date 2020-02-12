@@ -660,7 +660,7 @@ static int qcom_ice_get_device_tree_data(struct platform_device *pdev,
 	}
 
 	if (!of_parse_phandle(pdev->dev.of_node, "vdd-hba-supply", 0)) {
-		pr_err("%s: No vdd-hba-supply regulator, assuming not needed\n",
+		pr_info("%s: No vdd-hba-supply regulator, assuming not needed\n",
 								 __func__);
 		ice_dev->is_regulator_available = false;
 	} else {
