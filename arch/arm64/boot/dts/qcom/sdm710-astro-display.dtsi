@@ -64,6 +64,8 @@
 &pm660l_wled {
        status = "ok";
        qcom,led-strings-list = [00 01];
+       qcom,en-cabc;
+       qcom,fs-curr-ua = <25000>;
 };
 
 &pmx_sde{
