@@ -83,6 +83,8 @@ Optional properties :
 - qcom,no-vbus-vote-with-type-C: If present, then do not try to get and enable VBUS
 	regulator in type-C host mode from dwc3-msm driver.
 - qcom,connector-type-uAB: HW platform is using micro-AB USB connector type.
+- qcom,gadget-imod-val: If present, specifies default value of interrupt moderation in
+	usecs for normal EPs.
 
 Sub nodes:
 - Sub node for "DWC3- USB3 controller".

@@ -237,6 +237,7 @@ struct st_asm330lhh_hw {
 
 	const struct st_asm330lhh_transfer_function *tf;
 	struct st_asm330lhh_transfer_buffer tb;
+	int enable_gpio;
 };
 
 extern const struct dev_pm_ops st_asm330lhh_pm_ops;
