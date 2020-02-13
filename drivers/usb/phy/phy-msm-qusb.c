@@ -147,7 +147,6 @@ struct qusb_phy {
 	int			tune2_efuse_correction;
 
 	bool			power_enabled;
-	bool			clocks_enabled;
 	bool			cable_connected;
 	bool			suspended;
 	bool			ulpi_mode;
@@ -172,19 +171,15 @@ struct qusb_phy {
 
 static void qusb_phy_enable_clocks(struct qusb_phy *qphy, bool on)
 {
-	dev_dbg(qphy->phy.dev, "%s(): clocks_enabled:%d on:%d\n",
-			__func__, qphy->clocks_enabled, on);
+	dev_dbg(qphy->phy.dev, "%s(): on:%d\n", __func__, on);
 
-	if (!qphy->clocks_enabled && on) {
+	if (on) {
 		clk_prepare_enable(qphy->ref_clk_src);
 		clk_prepare_enable(qphy->ref_clk);
 		clk_prepare_enable(qphy->iface_clk);
 		clk_prepare_enable(qphy->core_clk);
 		clk_prepare_enable(qphy->cfg_ahb_clk);
-		qphy->clocks_enabled = true;
-	}
-
-	if (qphy->clocks_enabled && !on) {
+	} else {
 		clk_disable_unprepare(qphy->cfg_ahb_clk);
 		/*
 		 * FSM depedency beween iface_clk and core_clk.
@@ -194,11 +189,8 @@ static void qusb_phy_enable_clocks(struct qusb_phy *qphy, bool on)
 		clk_disable_unprepare(qphy->iface_clk);
 		clk_disable_unprepare(qphy->ref_clk);
 		clk_disable_unprepare(qphy->ref_clk_src);
-		qphy->clocks_enabled = false;
 	}
 
-	dev_dbg(qphy->phy.dev, "%s(): clocks_enabled:%d\n", __func__,
-						qphy->clocks_enabled);
 }
 
 static int qusb_phy_gdsc(struct qusb_phy *qphy, bool on)
@@ -441,8 +433,6 @@ static int qusb_phy_init(struct usb_phy *phy)
 	if (ret)
 		return ret;
 
-	qusb_phy_enable_clocks(qphy, true);
-
 	/*
 	 * ref clock is enabled by default after power on reset. Linux clock
 	 * driver will disable this clock as part of late init if peripheral
@@ -646,7 +636,7 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
 	u32 linestate = 0, intr_mask = 0;
 
-	if (qphy->suspended && suspend) {
+	if (qphy->suspended == suspend) {
 		dev_dbg(phy->dev, "%s: USB PHY is already suspended\n",
 			__func__);
 		return 0;
@@ -1227,6 +1217,8 @@ static int qusb_phy_probe(struct platform_device *pdev)
 	if (qphy->tcsr_clamp_dig_n)
 		writel_relaxed(0x0, qphy->tcsr_clamp_dig_n);
 
+	qphy->suspended = true;
+
 	return ret;
 }
 
@@ -1235,15 +1227,8 @@ static int qusb_phy_remove(struct platform_device *pdev)
 	struct qusb_phy *qphy = platform_get_drvdata(pdev);
 
 	usb_remove_phy(&qphy->phy);
-
-	if (qphy->clocks_enabled) {
-		clk_disable_unprepare(qphy->cfg_ahb_clk);
-		clk_disable_unprepare(qphy->ref_clk);
-		clk_disable_unprepare(qphy->ref_clk_src);
-		qphy->clocks_enabled = false;
-	}
-
-	qusb_phy_enable_power(qphy, false);
+	qphy->cable_connected = false;
+	qusb_phy_set_suspend(&qphy->phy, true);
 
 	return 0;
 }

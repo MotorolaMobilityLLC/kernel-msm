@@ -440,10 +440,11 @@ int extcon_sync(struct extcon_dev *edev, unsigned int id)
 		return index;
 
 	spin_lock_irqsave(&edev->lock, flags);
-
 	state = !!(edev->state & BIT(index));
+	spin_unlock_irqrestore(&edev->lock, flags);
 	raw_notifier_call_chain(&edev->nh[index], state, edev);
 
+	spin_lock_irqsave(&edev->lock, flags);
 	/* This could be in interrupt handler */
 	prop_buf = (char *)get_zeroed_page(GFP_ATOMIC);
 	if (!prop_buf) {

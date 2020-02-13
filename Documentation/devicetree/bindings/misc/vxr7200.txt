@@ -1,0 +1,14 @@
+VXR7200-MISC
+
+VXR7200-MISC provides a way to configure VXR7200 part.
+
+Required properties:
+- compatible : should be "synaptics,vxr7200"
+- reg : address of i2c of vxr7200.
+
+Optional properties:
+Example:
+	vxr7200@39 {
+		compatible = "synaptics,tvxr7200";
+		reg = <0x39>;
+	};

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019 - 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,10 +15,11 @@
 
 #include "sdm429-spyro.dtsi"
 #include "sdm429w-bg-pm660.dtsi"
+#include "sdm429-bg-memory.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. SDA429 QRD BG WDP Spyro";
-	compatible = "qcom,sdm429w-qrd","qcom,sdm429w","qcom,sda429w";
+	model = "Qualcomm Technologies, Inc. SDA429 BG WDP";
+	compatible = "qcom,sdm429w-qrd","qcom,sda429w";
 	qcom,msm-id = <437 0x0>;
 	qcom,board-id = <0x00010b 9>;
 	qcom,pmic-id = <0x0002001b 0x0 0x0 0x0>;

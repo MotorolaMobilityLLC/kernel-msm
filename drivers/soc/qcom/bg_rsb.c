@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019,2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,6 +26,9 @@
 #include <linux/delay.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <soc/qcom/subsystem_restart.h>
 #include <soc/qcom/subsystem_notif.h>
@@ -59,10 +62,10 @@ struct bgrsb_regulator {
 };
 
 enum ldo_task {
-	BGRSB_ENABLE_LDO11,
-	BGRSB_ENABLE_LDO15,
-	BGRSB_DISABLE_LDO11,
-	BGRSB_DISABLE_LDO15,
+	BGRSB_HW_TURN_ON,
+	BGRSB_ENABLE_WHEEL_EVENTS,
+	BGRSB_HW_TURN_OFF,
+	BGRSB_DISABLE_WHEEL_EVENTS,
 	BGRSB_NO_ACTION
 };
 
@@ -145,6 +148,8 @@ struct bgrsb_priv {
 static void *bgrsb_drv;
 static int bgrsb_enable(struct bgrsb_priv *dev, bool enable);
 static bool is_in_twm;
+static int msmrsb_gpio;
+static bool rsb_use_msm_gpio;
 
 int bgrsb_send_input(struct event *evnt)
 {
@@ -349,9 +354,10 @@ static int bgrsb_init_regulators(struct device *pdev)
 static int bgrsb_ldo_work(struct bgrsb_priv *dev, enum ldo_task ldo_action)
 {
 	int ret = 0;
+	bool value;
 
 	switch (ldo_action) {
-	case BGRSB_ENABLE_LDO11:
+	case BGRSB_HW_TURN_ON:
 		ret = regulator_set_voltage(dev->rgltr.regldo11,
 				BGRSB_LDO11_VTG_MIN_UV, BGRSB_LDO11_VTG_MAX_UV);
 		if (ret) {
@@ -365,20 +371,39 @@ static int bgrsb_ldo_work(struct bgrsb_priv *dev, enum ldo_task ldo_action)
 		}
 		break;
 
-	case BGRSB_ENABLE_LDO15:
-		ret = regulator_set_voltage(dev->rgltr.regldo15,
+	case BGRSB_ENABLE_WHEEL_EVENTS:
+		if (rsb_use_msm_gpio == true) {
+			if (!gpio_is_valid(msmrsb_gpio)) {
+				pr_err("gpio %d is not valid\n", msmrsb_gpio);
+				return -ENXIO;
+			}
+
+			/* Sleep 50ms for h/w to detect signal */
+			msleep(50);
+
+			gpio_set_value(msmrsb_gpio, 1);
+			value = gpio_get_value(msmrsb_gpio);
+			if (value == true)
+				pr_debug("gpio %d set properly\n", msmrsb_gpio);
+			else {
+				pr_err("gpio %d set failed\n", msmrsb_gpio);
+				return -ENXIO;
+			}
+		} else {
+			ret = regulator_set_voltage(dev->rgltr.regldo15,
 				BGRSB_LDO15_VTG_MIN_UV, BGRSB_LDO15_VTG_MAX_UV);
-		if (ret) {
-			pr_err("Failed to request LDO-15 voltage.\n");
-			goto err_ret;
-		}
-		ret = regulator_enable(dev->rgltr.regldo15);
-		if (ret) {
-			pr_err("Failed to enable LDO-15 %d\n", ret);
-			goto err_ret;
+			if (ret) {
+				pr_err("Failed to request LDO-15 voltage.\n");
+				goto err_ret;
+			}
+			ret = regulator_enable(dev->rgltr.regldo15);
+			if (ret) {
+				pr_err("Failed to enable LDO-15 %d\n", ret);
+				goto err_ret;
+			}
 		}
 		break;
-	case BGRSB_DISABLE_LDO11:
+	case BGRSB_HW_TURN_OFF:
 		ret = regulator_disable(dev->rgltr.regldo11);
 		if (ret) {
 			pr_err("Failed to disable LDO-11 %d\n", ret);
@@ -386,13 +411,23 @@ static int bgrsb_ldo_work(struct bgrsb_priv *dev, enum ldo_task ldo_action)
 		}
 		break;
 
-	case BGRSB_DISABLE_LDO15:
+	case BGRSB_DISABLE_WHEEL_EVENTS:
+		if (rsb_use_msm_gpio == true) {
+			if (!gpio_is_valid(msmrsb_gpio)) {
+				pr_err("gpio %d is not valid\n", msmrsb_gpio);
+				return -ENXIO;
+			}
+			/* Sleep 50ms for h/w to detect signal */
+			msleep(50);
+			gpio_set_value(msmrsb_gpio, 0);
+		} else {
 		ret = regulator_disable(dev->rgltr.regldo15);
-		if (ret) {
-			pr_err("Failed to disable LDO-15 %d\n", ret);
-			goto err_ret;
+			if (ret) {
+				pr_err("Failed to disable LDO-15 %d\n", ret);
+				goto err_ret;
+			}
+			regulator_set_load(dev->rgltr.regldo15, 0);
 		}
-		regulator_set_load(dev->rgltr.regldo15, 0);
 		break;
 	default:
 		ret = -EINVAL;
@@ -410,14 +445,14 @@ static void bgrsb_bgdown_work(struct work_struct *work)
 	mutex_lock(&dev->rsb_state_mutex);
 
 	if (dev->bgrsb_current_state == BGRSB_STATE_RSB_ENABLED) {
-		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO15) == 0)
+		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_WHEEL_EVENTS) == 0)
 			dev->bgrsb_current_state = BGRSB_STATE_RSB_CONFIGURED;
 		else
 			pr_err("Failed to unvote LDO-15 on BG down\n");
 	}
 
 	if (dev->bgrsb_current_state == BGRSB_STATE_RSB_CONFIGURED) {
-		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO11) == 0)
+		if (bgrsb_ldo_work(dev, BGRSB_HW_TURN_OFF) == 0)
 			dev->bgrsb_current_state = BGRSB_STATE_INIT;
 		else
 			pr_err("Failed to unvote LDO-11 on BG down\n");
@@ -451,7 +486,7 @@ static void bgrsb_glink_bgdown_work(struct work_struct *work)
 			goto unlock;
 		}
 
-		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO15) != 0) {
+		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_WHEEL_EVENTS) != 0) {
 			pr_err("Failed to un-vote LDO-15\n");
 			goto unlock;
 		}
@@ -461,7 +496,7 @@ static void bgrsb_glink_bgdown_work(struct work_struct *work)
 	}
 
 	if (dev->bgrsb_current_state == BGRSB_STATE_RSB_CONFIGURED) {
-		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO11) == 0)
+		if (bgrsb_ldo_work(dev, BGRSB_HW_TURN_OFF) == 0)
 			dev->bgrsb_current_state = BGRSB_STATE_INIT;
 		else
 			pr_err("Failed to unvote LDO-11 on BG Glink down\n");
@@ -487,7 +522,6 @@ static int bgrsb_tx_msg(struct bgrsb_priv *dev, void  *msg, size_t len)
 
 	if (!dev->chnl_state)
 		return -ENODEV;
-
 	__pm_stay_awake(&dev->bgrsb_ws);
 	mutex_lock(&dev->glink_mutex);
 	init_completion(&dev->tx_done);
@@ -569,7 +603,7 @@ static void bgrsb_bgup_work(struct work_struct *work)
 								bg_up_work);
 
 	mutex_lock(&dev->rsb_state_mutex);
-	if (bgrsb_ldo_work(dev, BGRSB_ENABLE_LDO11) == 0) {
+	if (bgrsb_ldo_work(dev, BGRSB_HW_TURN_ON) == 0) {
 
 		rc = wait_event_timeout(dev->link_state_wait,
 				(dev->chnl_state == true),
@@ -581,7 +615,7 @@ static void bgrsb_bgup_work(struct work_struct *work)
 		rc = bgrsb_configr_rsb(dev, true);
 		if (rc != 0) {
 			pr_err("BG failed to configure RSB %d\n", rc);
-			if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO11) == 0)
+			if (bgrsb_ldo_work(dev, BGRSB_HW_TURN_OFF) == 0)
 				dev->bgrsb_current_state = BGRSB_STATE_INIT;
 			goto unlock;
 		}
@@ -603,7 +637,7 @@ static void bgrsb_glink_bgup_work(struct work_struct *work)
 							rsb_glink_up_work);
 
 	mutex_lock(&dev->rsb_state_mutex);
-	if (bgrsb_ldo_work(dev, BGRSB_ENABLE_LDO11) == 0) {
+	if (bgrsb_ldo_work(dev, BGRSB_HW_TURN_ON) == 0) {
 
 		INIT_WORK(&dev->glink_work, bgrsb_glink_open_work);
 		queue_work(dev->bgrsb_event_wq, &dev->glink_work);
@@ -618,7 +652,7 @@ static void bgrsb_glink_bgup_work(struct work_struct *work)
 		rc = bgrsb_configr_rsb(dev, true);
 		if (rc != 0) {
 			pr_err("BG Glink failed to configure RSB %d\n", rc);
-			if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO11) == 0)
+			if (bgrsb_ldo_work(dev, BGRSB_HW_TURN_OFF) == 0)
 				dev->bgrsb_current_state = BGRSB_STATE_INIT;
 			goto unlock;
 		}
@@ -644,7 +678,6 @@ static int ssr_bgrsb_cb(struct notifier_block *this,
 {
 	struct bgrsb_priv *dev = container_of(bgrsb_drv,
 				struct bgrsb_priv, lhndl);
-
 	switch (opcode) {
 	case SUBSYS_BEFORE_SHUTDOWN:
 		if (dev->bgrsb_current_state == BGRSB_STATE_RSB_ENABLED)
@@ -703,12 +736,12 @@ static void bgrsb_enable_rsb(struct work_struct *work)
 		goto unlock;
 	}
 
-	if (bgrsb_ldo_work(dev, BGRSB_ENABLE_LDO15) == 0) {
+	if (bgrsb_ldo_work(dev, BGRSB_ENABLE_WHEEL_EVENTS) == 0) {
 
 		rc = bgrsb_enable(dev, true);
 		if (rc != 0) {
 			pr_err("Failed to send enable command to BG\n");
-			bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO15);
+			bgrsb_ldo_work(dev, BGRSB_DISABLE_WHEEL_EVENTS);
 			dev->bgrsb_current_state = BGRSB_STATE_RSB_CONFIGURED;
 			goto unlock;
 		}
@@ -742,7 +775,7 @@ static void bgrsb_disable_rsb(struct work_struct *work)
 			goto unlock;
 		}
 
-		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO15) != 0)
+		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_WHEEL_EVENTS) != 0)
 			goto unlock;
 
 		dev->bgrsb_current_state = BGRSB_STATE_RSB_CONFIGURED;
@@ -929,13 +962,13 @@ static int store_enable(struct device *pdev, struct device_attribute *attr,
 		return count;
 	}
 
+	rc = split_bg_work(dev, arr);
 	if (!dev->is_cnfgrd) {
 		bgrsb_handle_cmd_in_ssr(dev, arr);
 		kfree(arr);
 		return -ENOMEDIUM;
 	}
 
-	rc = split_bg_work(dev, arr);
 	if (rc != 0)
 		pr_err("Not able to process request\n");
 	kfree(arr);
@@ -1010,7 +1043,11 @@ static int bg_rsb_probe(struct platform_device *pdev)
 {
 	struct bgrsb_priv *dev;
 	struct input_dev *input;
+	struct device_node *node;
 	int rc;
+	unsigned int rsb_gpio;
+
+	node = pdev->dev.of_node;
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
 	if (!dev)
@@ -1057,13 +1094,40 @@ static int bg_rsb_probe(struct platform_device *pdev)
 		goto err_ret_inp;
 	}
 	dev_set_drvdata(&pdev->dev, dev);
+
+	rsb_use_msm_gpio = of_property_read_bool(node, "qcom,rsb-use-msm-gpio");
+
+	if (rsb_use_msm_gpio == true) {
+		rsb_gpio = of_get_named_gpio(node, "qcom,bg-rsb-gpio", 0);
+		pr_err("gpio %d is configured\n", rsb_gpio);
+
+		if (!gpio_is_valid(rsb_gpio)) {
+			pr_err("gpio %d found is not valid\n", rsb_gpio);
+			goto err_ret;
+		}
+
+		if (gpio_request(rsb_gpio, "msm_rsb_gpio")) {
+			pr_err("gpio %d request failed\n", rsb_gpio);
+			goto err_ret;
+		}
+
+		if (gpio_direction_output(rsb_gpio, 1)) {
+			pr_err("gpio %d direction not set\n", rsb_gpio);
+			goto err_ret;
+		}
+		pr_info("rsb gpio successfully requested\n");
+		msmrsb_gpio = rsb_gpio;
+	}
+
 	rc = bgrsb_init_regulators(&pdev->dev);
 	if (rc) {
 		pr_err("Failed to set regulators\n");
 		goto err_ret_inp;
 	}
+	pr_err("RSB probe successfully\n");
 	return 0;
-
+err_ret:
+	return 0;
 err_ret_inp:
 	input_free_device(input);
 
@@ -1095,7 +1159,7 @@ static int bg_rsb_resume(struct device *pldev)
 
 	if (dev->bgrsb_current_state == BGRSB_STATE_INIT) {
 		if (dev->is_cnfgrd &&
-			bgrsb_ldo_work(dev, BGRSB_ENABLE_LDO11) == 0) {
+			bgrsb_ldo_work(dev, BGRSB_HW_TURN_ON) == 0) {
 			dev->bgrsb_current_state = BGRSB_STATE_RSB_CONFIGURED;
 			pr_debug("RSB Cofigured\n");
 			goto ret_success;
@@ -1120,11 +1184,11 @@ static int bg_rsb_suspend(struct device *pldev)
 		goto ret_success;
 
 	if (dev->bgrsb_current_state == BGRSB_STATE_RSB_ENABLED) {
-		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO15) != 0)
+		if (bgrsb_ldo_work(dev, BGRSB_DISABLE_WHEEL_EVENTS) != 0)
 			goto ret_err;
 	}
 
-	if (bgrsb_ldo_work(dev, BGRSB_DISABLE_LDO11) == 0) {
+	if (bgrsb_ldo_work(dev, BGRSB_HW_TURN_OFF) == 0) {
 		dev->bgrsb_current_state = BGRSB_STATE_INIT;
 		pr_debug("RSB Init\n");
 		goto ret_success;
