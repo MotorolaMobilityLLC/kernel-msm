@@ -3292,12 +3292,15 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		case FLOAT_CHARGER_BIT:
 			current_ua = chg->dcp_current_ua;
 			break;
+		case SDP_CHARGER_BIT:
+			current_ua = SDP_CURRENT_UA;
+			break;
 		default:
 			current_ua = 0;
 			break;
 		}
 
-		*total_current_ua = max(current_ua, val.intval);
+		*total_current_ua = current_ua;
 		return 0;
 	}
 
@@ -3311,6 +3314,9 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		case OCP_CHARGER_BIT:
 		case FLOAT_CHARGER_BIT:
 			current_ua = chg->default_icl_ua;
+			break;
+		case SDP_CHARGER_BIT:
+			current_ua = SDP_CURRENT_UA;
 			break;
 		default:
 			current_ua = 0;
@@ -3330,7 +3336,7 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		break;
 	}
 
-	*total_current_ua = max(current_ua, val.intval);
+	*total_current_ua = current_ua;
 	return 0;
 }
 
