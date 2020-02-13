@@ -2178,7 +2178,8 @@ static int dm_init_inline_encryption(struct mapped_device *md)
 		   BLK_CRYPTO_FEATURE_WRAPPED_KEYS;
 	memset(mode_masks, 0xFF, sizeof(mode_masks));
 
-	md->queue->ksm = keyslot_manager_create_passthrough(&dm_ksm_ll_ops,
+	md->queue->ksm = keyslot_manager_create_passthrough(NULL,
+							    &dm_ksm_ll_ops,
 							    features,
 							    mode_masks, md);
 	if (!md->queue->ksm)
