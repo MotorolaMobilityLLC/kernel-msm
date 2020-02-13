@@ -655,6 +655,7 @@ error_put:
 static void ufstw_lu_init(struct ufsf_feature *ufsf, int lun)
 {
 	struct ufstw_lu *tw = ufsf->tw_lup[lun];
+	struct ufs_hba *hba = tw->ufsf->hba;
 
 	ufstw_lu_get(tw);
 	tw->ufsf = ufsf;
@@ -696,6 +697,7 @@ static void ufstw_lu_init(struct ufsf_feature *ufsf, int lun)
 	    < UFSTW_MAX_LIFETIME_VALUE) {
 		atomic_set(&tw->tw_mode, TW_MODE_MANUAL);
 #if defined(CONFIG_UFSTW_ENABLE_BY_DEFAULT)
+		pm_runtime_get_sync(hba->dev);
 		INFO_MSG("Trying to enable UFS Turbo Write");
 
 		if (ufstw_set_lu_flag(tw,
@@ -712,6 +714,8 @@ static void ufstw_lu_init(struct ufsf_feature *ufsf, int lun)
 		} else {
 			INFO_MSG("Successfully enabled UFS Turbo Write");
 		}
+
+		pm_runtime_put_sync(hba->dev);
 #endif
 		goto out;
 	} else
