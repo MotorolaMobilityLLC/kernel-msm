@@ -255,6 +255,24 @@ cam_sensor_rear_wide_active: cam_sensor_rear_wide_active {
 		switch-source = <&pm660l_switch0>;
 		status = "ok";
 	};
+	led_flash_macro: qcom,camera-flash@1 {
+		cell-index = <1>;
+		reg = <0x01 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm660l_flash0 &pm660l_flash1>;
+		torch-source = <&pm660l_torch0 &pm660l_torch1>;
+		switch-source = <&pm660l_switch0>;
+		status = "ok";
+	};
+	led_flash_wide: qcom,camera-flash@2 {
+		cell-index = <2>;
+		reg = <0x02 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm660l_flash0 &pm660l_flash1>;
+		torch-source = <&pm660l_torch0 &pm660l_torch1>;
+		switch-source = <&pm660l_switch0>;
+		status = "ok";
+	};
 	/*avdd*/
 	camera_rear_main_avdd_ldo: gpio-regulator@0 {
 		compatible = "regulator-fixed";
@@ -644,6 +662,7 @@ cam_sensor_rear_wide_active: cam_sensor_rear_wide_active {
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_wide>;
 		eeprom-src = <&eeprom_rear_wide>;
 		cam_vio-supply = <&camera_iovdd_ldo>;
 		cam_vana-supply = <&camera_rear_slave_avdd_ldo>;
@@ -690,6 +709,7 @@ cam_sensor_rear_wide_active: cam_sensor_rear_wide_active {
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		led-flash-src = <&led_flash_macro>;
 		actuator-src = <&actuator_rear_aux>;
 		eeprom-src = <&eeprom_rear_macro>;
 		cam_vio-supply = <&camera_iovdd_ldo>;
