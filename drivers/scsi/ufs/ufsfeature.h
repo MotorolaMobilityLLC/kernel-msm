@@ -206,4 +206,7 @@ void ufsf_tw_set_init_state(struct ufsf_feature *ufsf);
 void ufsf_tw_reset_lu(struct ufsf_feature *ufsf);
 void ufsf_tw_reset_host(struct ufsf_feature *ufsf);
 void ufsf_tw_ee_handler(struct ufsf_feature *ufsf);
+
+bool ufsf_tw_disable_lpm(struct ufsf_feature *ufsf);
+void ufsf_tw_disable_flush_hibern(struct ufsf_feature *ufsf);
 #endif /* End of Header */
