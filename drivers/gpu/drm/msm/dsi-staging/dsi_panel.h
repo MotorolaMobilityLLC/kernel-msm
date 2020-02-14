@@ -194,13 +194,6 @@ enum hbm_state {
 	HBM_STATE_NUM
 };
 
-enum cabc_state {
-	CABC_UI_STATE,
-	CABC_MV_STATE,
-	CABC_DIS_STATE,
-	CABC_STATE_NUM,
-};
-
 struct panel_param_val_map {
 	int state;
 	enum dsi_cmd_set_type type;
