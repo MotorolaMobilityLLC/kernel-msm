@@ -56,6 +56,7 @@
 #define UFSTW_MAX_LIFETIME_VALUE			0x0B
 #define MASK_UFSTW_LIFETIME_NOT_GUARANTEE		0x80000000
 
+#define UFSTW_AVAIL_BUF_SIZE_DISABLE_LPM		10
 /*
  * UFSTW DEBUG
  */
@@ -162,4 +163,7 @@ void ufstw_suspend(struct ufsf_feature *ufsf);
 void ufstw_resume(struct ufsf_feature *ufsf);
 void ufstw_release(struct kref *kref);
 
+bool ufstw_disable_lpm(struct ufsf_feature *ufsf);
+void ufstw_disable_flush_hibern(struct ufsf_feature *ufsf);
+void ufstw_enable_flush_hibern(struct ufsf_feature *ufsf);
 #endif /* End of Header */

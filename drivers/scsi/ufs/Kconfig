@@ -180,3 +180,16 @@ config UFSTW_ENABLE_BY_DEFAULT
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSTW
 	---help---
 	Activate UFS Turbo Write right after powering up
+
+config UFSTW_LPM_DISABLED_ON_HIBERN8_FLUSH
+	bool "Prevent LPM mode on flusing turbo write buffer during hibern8 state"
+	default y
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSTW
+	---help---
+	If fTurboWriteBufferFlushDuringHibnerEnter flag is set
+	and the value of bAvailbleTurboWriteBufferSize is less than
+	UFSTW_AVAIL_BUF_SIZE_DISABLE_LPM(defined in ufstw.h),
+	LPM mode will be disabled on runtime suspend.
+	In addtion, if not runtime suspend(shutdown and system suspend),
+	fTurboWriteBufferFlushDuringHibnerEnter flag will be disabled in
+	suspend routines.
