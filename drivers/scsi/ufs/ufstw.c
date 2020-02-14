@@ -1574,3 +1574,72 @@ static int ufstw_create_sysfs(struct ufsf_feature *ufsf, struct ufstw_lu *tw)
 	ufstw_lu_put(tw);
 	return err;
 }
+
+static inline bool ufstw_disable_lpm_needed(struct ufstw_lu *tw)
+{
+	int ret, val = 0;
+
+	INFO_MSG("Flush hibern (%d)\n", __func__, __LINE__,
+			tw->tw_flush_during_hibern_enter);
+	if (!tw->tw_flush_during_hibern_enter)
+		return false;
+
+	ret = ufsf_query_attr_retry(tw->ufsf->hba,
+					UPIU_QUERY_OPCODE_READ_ATTR,
+					QUERY_ATTR_IDN_AVAIL_WB_BUFF_SIZE,
+					(u8)tw->lun, &val);
+	INFO_MSG("READ ABS(%d) ret(%d)\n", val, ret);
+	if (unlikely(ret))
+		return false;
+
+	tw->tw_available_buffer_size = val;
+	if (tw->tw_available_buffer_size < UFSTW_AVAIL_BUF_SIZE_DISABLE_LPM)
+		return true;
+
+	return false;
+}
+
+bool ufstw_disable_lpm(struct ufsf_feature *ufsf)
+{
+	struct ufstw_lu *tw;
+	bool disable_lpm = false;
+	int lun;
+
+	seq_scan_lu(lun) {
+		tw = ufsf->tw_lup[lun];
+		if (!tw)
+			continue;
+
+		if (ufstw_disable_lpm_needed(tw)) {
+			disable_lpm = true;
+			INFO_MSG("ABS(%d/%d) disable lpm",
+					tw->tw_available_buffer_size,
+					UFSTW_AVAIL_BUF_SIZE_DISABLE_LPM);
+		}
+	}
+
+	return disable_lpm;
+}
+
+void ufstw_disable_flush_hibern(struct ufsf_feature *ufsf)
+{
+	struct ufstw_lu *tw;
+	int lun;
+
+	seq_scan_lu(lun) {
+		tw = ufsf->tw_lup[lun];
+		if (!tw)
+			continue;
+
+		INFO_MSG("Flush hibern (%d)\n", __func__, __LINE__,
+				tw->tw_flush_during_hibern_enter);
+		if (!tw->tw_flush_during_hibern_enter)
+			return;
+
+		INFO_MSG("tw_lup[%d] clear flush hibern", tw->lun);
+		ufsf_query_flag_retry(tw->ufsf->hba,
+					UPIU_QUERY_OPCODE_CLEAR_FLAG,
+					QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
+					(u8)tw->lun, NULL);
+	}
+}
