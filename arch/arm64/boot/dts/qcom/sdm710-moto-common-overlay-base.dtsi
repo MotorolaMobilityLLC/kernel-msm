@@ -199,6 +199,13 @@
 
 &pm660_fg {
 	qcom,battery-data = <&mtp_batterydata>;
+	qcom,cl-start-capacity = <5>;
+	qcom,cl-min-temp = <150>;
+	qcom,cl-max-temp = <450>;
+	qcom,cl-max-increment = <5>;
+	qcom,cl-max-decrement = <10>;
+	qcom,cl-min-limit = <200>;
+	qcom,cl-max-limit = <30>;
 };
 
 &pm660_charger {
