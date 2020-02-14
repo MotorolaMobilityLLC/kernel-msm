@@ -695,6 +695,20 @@ inline void ufsf_tw_ee_handler(struct ufsf_feature *ufsf)
 			ufstw_ee_handler(ufsf);
 	}
 }
+
+inline bool ufsf_tw_disable_lpm(struct ufsf_feature *ufsf)
+{
+	if (atomic_read(&ufsf->tw_state) == TW_PRESENT)
+		return ufstw_disable_lpm(ufsf);
+
+	return false;
+}
+
+inline void ufsf_tw_disable_flush_hibern(struct ufsf_feature *ufsf)
+{
+	if (atomic_read(&ufsf->tw_state) == TW_PRESENT)
+		return ufstw_disable_flush_hibern(ufsf);
+}
 #else
 inline void ufsf_tw_prep_fn(struct ufsf_feature *ufsf,
 			    struct ufshcd_lrb *lrbp) {}
@@ -707,4 +721,11 @@ inline void ufsf_tw_set_init_state(struct ufsf_feature *ufsf) {}
 inline void ufsf_tw_reset_lu(struct ufsf_feature *ufsf) {}
 inline void ufsf_tw_reset_host(struct ufsf_feature *ufsf) {}
 inline void ufsf_tw_ee_handler(struct ufsf_feature *ufsf) {}
+
+inline bool ufsf_tw_disable_lpm(struct ufsf_feature *ufsf)
+{
+	return false;
+}
+
+inline void ufsf_tw_disable_flush_hibern(struct ufsf_feature *ufsf) {}
 #endif
