@@ -125,13 +125,21 @@ static struct panel_param_val_map acl_map_s[ACL_STATE_NUM] = {
         {ACL_ON_STATE, DSI_CMD_SET_ACL_ON, NULL},
 };
 
+static struct panel_param_val_map cabc_map[CABC_STATE_NUM] = {
+	{CABC_UI_STATE, DSI_CMD_SET_CABC_UI, NULL},
+	{CABC_MV_STATE, DSI_CMD_SET_CABC_MV, NULL},
+	{CABC_DIS_STATE, DSI_CMD_SET_CABC_DIS, NULL},
+};
+
 
 static struct panel_param dsi_panel_param[PANEL_IDX_MAX][PARAM_ID_NUM] = {
 	{
 		{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE,
 				HBM_OFF_STATE, false},
 		{"ACL", acl_map, ACL_STATE_NUM, ACL_OFF_STATE,
-				ACL_OFF_STATE, false}
+				ACL_OFF_STATE, false},
+		{"CABC", cabc_map, CABC_STATE_NUM, CABC_UI_STATE,
+				CABC_UI_STATE, false},
 	},
 	{
 		{"HBM", hbm_map_s, HBM_STATE_NUM, HBM_OFF_STATE,
@@ -1059,6 +1067,18 @@ static int dsi_panel_set_acl(struct dsi_panel *panel,
         return rc;
 };
 
+static int dsi_panel_set_cabc(struct dsi_panel *panel,
+                        struct msm_param_info *param_info)
+{
+	int rc = 0;
+
+	pr_info("Set CABC to (%d)\n", param_info->value);
+	rc = dsi_panel_send_param_cmd(panel, param_info);
+	if (rc < 0)
+		pr_err("%s: failed to send param cmds. ret=%d\n", __func__, rc);
+
+        return rc;
+};
 int dsi_panel_set_param(struct dsi_panel *panel,
 				struct msm_param_info *param_info)
 {
@@ -1074,6 +1094,9 @@ int dsi_panel_set_param(struct dsi_panel *panel,
 	switch (param_info->param_idx) {
 		case PARAM_HBM_ID :
 			dsi_panel_set_hbm(panel, param_info);
+			break;
+		case PARAM_CABC_ID :
+			dsi_panel_set_cabc(panel, param_info);
 			break;
 		case PARAM_ACL_ID :
 			dsi_panel_set_acl(panel, param_info);
@@ -1980,6 +2003,9 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-hbm-off-command",
 	"qcom,mdss-dsi-acl-on-command",
 	"qcom,mdss-dsi-acl-off-command",
+	"qcom,mdss-dsi-cabc-ui-command",
+	"qcom,mdss-dsi-cabc-mv-command",
+	"qcom,mdss-dsi-cabc-dis-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -2008,6 +2034,9 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-hbm-off-command-state",
 	"qcom,mdss-dsi-acl-on-command-state",
 	"qcom,mdss-dsi-acl-off-command-state",
+	"qcom,mdss-dsi-cabc-ui-command-state",
+	"qcom,mdss-dsi-cabc-mv-command-state",
+	"qcom,mdss-dsi-cabc-dis-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
