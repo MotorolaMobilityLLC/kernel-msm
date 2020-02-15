@@ -987,6 +987,8 @@ static int dsi_panel_send_param_cmd(struct dsi_panel *panel,
 		if (param_map_state->cmds->state == DSI_CMD_SET_STATE_LP)
 			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM |
 						MIPI_DSI_MSG_LASTCOMMAND;
+		else
+			cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
 		len = ops->transfer(panel->host, &cmds->msg);
 		if (len < 0) {
 			rc = len;
@@ -3514,34 +3516,31 @@ static int dsi_panel_parse_param_prop(struct dsi_panel *panel,
 				pr_err("panel param cmd %s parsing failed\n",
 						param->param_name);
 				rc = -EINVAL;
-				goto parse_err;
+				break;
 			}
 		}
 
 		if (!rc) {
 			param->is_supported = true;
 			pr_info("%s: feature enabled.\n", param->param_name);
-		}
-	}
-
-	panel->is_hbm_using_51_cmd = of_property_read_bool(of_node,
+			if (i == PARAM_HBM_ID) {
+				panel->is_hbm_using_51_cmd = of_property_read_bool(of_node,
 					"qcom,mdss-dsi-panel-hbm-is-51cmd");
-	if (panel->is_hbm_using_51_cmd)
-		pr_info("HBM command is using 0x51 command\n");
-
-	return rc;
-
-parse_err:
-	for (i = 0; i < ARRAY_SIZE(dsi_panel_param); i++) {
-		param = &dsi_panel_param[param_idx][i];
-		for (j = 0; j < param->val_max; j++) {
-			if (param->val_map[j].cmds) {
-				kfree(param->val_map[j].cmds);
-				param->val_map[j].cmds= NULL;
+				if (panel->is_hbm_using_51_cmd)
+					pr_info("HBM command is using 0x51 command\n");
+			}
+		} else {
+			param->is_supported = false;
+			pr_info("%s: feature disabled.\n", param->param_name);
+			for (j = 0; j < param->val_max; j++) {
+				if (param->val_map[j].cmds) {
+					kfree(param->val_map[j].cmds);
+					param->val_map[j].cmds= NULL;
+				}
 			}
 		}
-		param->is_supported = false;
 	}
+
 err:
 	return rc;
 
