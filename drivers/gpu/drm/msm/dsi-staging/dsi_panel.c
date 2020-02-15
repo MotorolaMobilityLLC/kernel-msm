@@ -131,6 +131,11 @@ static struct panel_param_val_map cabc_map[CABC_STATE_NUM] = {
 	{CABC_DIS_STATE, DSI_CMD_SET_CABC_DIS, NULL},
 };
 
+static struct panel_param_val_map cabc_map_s[CABC_STATE_NUM] = {
+	{CABC_UI_STATE, DSI_CMD_SET_CABC_UI, NULL},
+	{CABC_MV_STATE, DSI_CMD_SET_CABC_MV, NULL},
+	{CABC_DIS_STATE, DSI_CMD_SET_CABC_DIS, NULL},
+};
 
 static struct panel_param dsi_panel_param[PANEL_IDX_MAX][PARAM_ID_NUM] = {
 	{
@@ -146,6 +151,8 @@ static struct panel_param dsi_panel_param[PANEL_IDX_MAX][PARAM_ID_NUM] = {
 				HBM_OFF_STATE, false},
 		{"ACL", acl_map_s, ACL_STATE_NUM, ACL_OFF_STATE,
 				ACL_OFF_STATE, false},
+		{"CABC", cabc_map_s, CABC_STATE_NUM, CABC_UI_STATE,
+				CABC_UI_STATE, false},
 	}
 };
 
