@@ -6880,6 +6880,15 @@ static enum alarmtimer_restart dcin_aicl_alarm_cb(struct alarm *alarm,
 	return ALARMTIMER_NORESTART;
 }
 
+int smblib_set_prop_dc_aicl_rerun(struct smb_charger *chg)
+{
+	alarm_cancel(&chg->dcin_aicl_alarm);
+	alarm_start_relative(&chg->dcin_aicl_alarm,
+		ms_to_ktime(0));
+
+	return 0;
+}
+
 #define DCIN_DECREMENT_AICL_DELAY_MS 30000
 static void dcin_icl_decrement(struct smb_charger *chg)
 {
