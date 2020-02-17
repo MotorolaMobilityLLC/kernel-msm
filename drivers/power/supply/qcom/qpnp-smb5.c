@@ -1577,6 +1577,7 @@ static enum power_supply_property smb5_dc_props[] = {
 	POWER_SUPPLY_PROP_DC_RESET,
 	POWER_SUPPLY_PROP_AICL_DONE,
 	POWER_SUPPLY_PROP_PIN_ENABLED,
+	POWER_SUPPLY_PROP_RERUN_AICL,
 };
 
 static int smb5_dc_get_prop(struct power_supply *psy,
@@ -1661,6 +1662,9 @@ static int smb5_dc_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PIN_ENABLED:
 		rc = smblib_set_prop_dc_en(chg, val);
+		break;
+	case POWER_SUPPLY_PROP_RERUN_AICL:
+		rc = smblib_set_prop_dc_aicl_rerun(chg);
 		break;
 	default:
 		return -EINVAL;

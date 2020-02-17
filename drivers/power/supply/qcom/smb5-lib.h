@@ -741,6 +741,7 @@ int smblib_set_prop_voltage_wls_output(struct smb_charger *chg,
 int smblib_set_prop_dc_reset(struct smb_charger *chg);
 int smblib_set_prop_dc_en(struct smb_charger *chg,
 				    const union power_supply_propval *val);
+int smblib_set_prop_dc_aicl_rerun(struct smb_charger *chg);
 int smblib_get_prop_usb_present(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_usb_online(struct smb_charger *chg,
