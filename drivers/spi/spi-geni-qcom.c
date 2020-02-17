@@ -1901,12 +1901,17 @@ static int spi_geni_suspend(struct device *dev)
 	struct spi_master *spi = get_spi_master(dev);
 	struct spi_geni_master *geni_mas = spi_master_get_devdata(spi);
 
+#if 0
 	if (!pm_runtime_status_suspended(dev)) {
 		GENI_SE_ERR(geni_mas->ipc, true, dev,
 			":%s: runtime PM is active\n", __func__);
 		ret = -EBUSY;
 		return ret;
 	}
+#else
+	if (!pm_runtime_status_suspended(dev))
+		ret = -EBUSY;
+#endif
 
 	GENI_SE_ERR(geni_mas->ipc, true, dev, ":%s: End\n", __func__);
 	return ret;
