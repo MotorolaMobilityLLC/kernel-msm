@@ -154,6 +154,7 @@
         qcom,fg-force-load-profile = <1>;
         qcom,fg-cutoff-voltage = <3400>;
         qcom,fg-empty-voltage = <3200>;
+	qcom,fg-sys-term-current = <(-250)>;
 };
 
 &pm660_charger {
