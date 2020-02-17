@@ -39,6 +39,7 @@
 
 #include "ufshcd.h"
 #include "ufstw.h"
+#include "ufs_quirks.h"
 
 static int ufstw_create_sysfs(struct ufsf_feature *ufsf, struct ufstw_lu *tw);
 static int ufstw_clear_lu_flag(struct ufstw_lu *tw, u8 idn, bool *flag_res);
@@ -509,14 +510,14 @@ static inline void ufstw_cancel_lu_jobs(struct ufstw_lu *tw)
 		  tw->lun, ret);
 }
 
-static inline int ufstw_version_check(struct ufstw_dev_info *tw_dev_info)
+static inline int ufstw_version_check(struct ufstw_dev_info *tw_dev_info, u16 id)
 {
 	INIT_INFO("Support TW Spec : Driver = %.4X, Device = %.4X",
 		  UFSTW_VER, tw_dev_info->tw_ver);
 
 	INIT_INFO("TW Driver Version : %.4X", UFSTW_DD_VER);
 
-	if (tw_dev_info->tw_ver != UFSTW_VER) {
+	if (id == UFS_VENDOR_SAMSUNG && tw_dev_info->tw_ver != UFSTW_VER) {
 		ERR_MSG("ERROR: TW Spec Version mismatch. So TW disabled.");
 		return -ENODEV;
 	}
@@ -540,7 +541,7 @@ void ufstw_get_dev_info(struct ufstw_dev_info *tw_dev_info, u8 *desc_buf)
 
 	tw_dev_info->tw_ver = LI_EN_16(&desc_buf[DEVICE_DESC_PARAM_TW_VER]);
 
-	if (!ufstw_version_check(tw_dev_info))
+	if (!ufstw_version_check(tw_dev_info, LI_EN_16(&desc_buf[DEVICE_DESC_PARAM_MANF_ID])))
 		tw_dev_info->tw_device = true;
 
 	INFO_MSG("tw_dev [53] bTurboWriteBufferNoUserSpaceReductionEn %u",
