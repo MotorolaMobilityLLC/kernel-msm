@@ -192,7 +192,7 @@ static int ufsf_read_desc(struct ufs_hba *hba, u8 desc_id, u8 desc_index,
 
 static int ufsf_read_dev_desc(struct ufsf_feature *ufsf, u8 selector)
 {
-	u8 desc_buf[UFSF_QUERY_DESC_DEVICE_MAX_SIZE];
+	u8 desc_buf[UFSF_QUERY_DESC_DEVICE_MAX_SIZE] = {0};
 	int ret;
 
 	ret = ufsf_read_desc(ufsf->hba, QUERY_DESC_IDN_DEVICE, 0, selector,
@@ -222,7 +222,7 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf, u8 selector)
 
 static int ufsf_read_geo_desc(struct ufsf_feature *ufsf, u8 selector)
 {
-	u8 geo_buf[UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE];
+	u8 geo_buf[UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE] = {0};
 	int ret;
 
 	ret = ufsf_read_desc(ufsf->hba, QUERY_DESC_IDN_GEOMETRY, 0, selector,
@@ -244,7 +244,7 @@ static int ufsf_read_geo_desc(struct ufsf_feature *ufsf, u8 selector)
 
 static int ufsf_read_unit_desc(struct ufsf_feature *ufsf, int lun, u8 selector)
 {
-	u8 unit_buf[UFSF_QUERY_DESC_UNIT_MAX_SIZE];
+	u8 unit_buf[UFSF_QUERY_DESC_UNIT_MAX_SIZE] = {0};
 	int lu_enable, ret = 0;
 
 	ret = ufsf_read_desc(ufsf->hba, QUERY_DESC_IDN_UNIT, lun, selector,
@@ -326,7 +326,7 @@ out_free_mem:
 
 static void ufsf_print_query_buf(unsigned char *field, int size)
 {
-	unsigned char buf[255];
+	unsigned char buf[255] = {0};
 	int count = 0;
 	int i;
 
