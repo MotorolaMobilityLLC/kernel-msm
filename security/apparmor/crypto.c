@@ -32,10 +32,7 @@ unsigned int aa_hash_size(void)
 int aa_calc_profile_hash(struct aa_profile *profile, u32 version, void *start,
 			 size_t len)
 {
-	struct {
-		struct shash_desc shash;
-		char ctx[crypto_shash_descsize(apparmor_tfm)];
-	} desc;
+	SHASH_DESC_ON_STACK(desc, apparmor_tfm);
 	int error = -ENOMEM;
 	u32 le32_version = cpu_to_le32(version);
 
@@ -49,19 +46,19 @@ int aa_calc_profile_hash(struct aa_profile *profile, u32 version, void *start,
 	if (!profile->hash)
 		goto fail;
 
-	desc.shash.tfm = apparmor_tfm;
-	desc.shash.flags = 0;
+	desc->tfm = apparmor_tfm;
+	desc->flags = 0;
 
-	error = crypto_shash_init(&desc.shash);
+	error = crypto_shash_init(desc);
 	if (error)
 		goto fail;
-	error = crypto_shash_update(&desc.shash, (u8 *) &le32_version, 4);
+	error = crypto_shash_update(desc, (u8 *) &le32_version, 4);
 	if (error)
 		goto fail;
-	error = crypto_shash_update(&desc.shash, (u8 *) start, len);
+	error = crypto_shash_update(desc, (u8 *) start, len);
 	if (error)
 		goto fail;
-	error = crypto_shash_final(&desc.shash, profile->hash);
+	error = crypto_shash_final(desc, profile->hash);
 	if (error)
 		goto fail;
 
