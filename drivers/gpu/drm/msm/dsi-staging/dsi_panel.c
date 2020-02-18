@@ -25,6 +25,10 @@
 #include "dsi_parser.h"
 #include "dsi_display.h"
 
+#if defined(CONFIG_PANEL_NOTIFICATIONS)
+#include <linux/panel_notifier.h>
+#endif
+
 /**
  * topology is currently defined by a set of following 3 values:
  * 1. num of layer mixers
@@ -470,6 +474,32 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 	return rc;
 }
 
+#if defined(CONFIG_PANEL_NOTIFICATIONS)
+static bool panel_power_is_alway_on(struct dsi_panel *panel)
+{
+	int touch_state = 0;
+	bool rc = 0;
+
+	struct dsi_display *dsi_display =
+		container_of(panel->host, struct dsi_display, host);
+
+	if (unlikely(dsi_display == NULL))
+		return rc;
+
+	if( check_touch_state(&touch_state, TOUCH_PANEL_IDX_PRIMARY) == 0)
+	{
+		panel->lcd_not_sleep = touch_state;
+		rc = touch_state ? 1: 0;
+	}
+
+	return rc;
+}
+#else
+static bool panel_power_is_alway_on(struct dsi_panel *panel)
+{
+	return 0;
+}
+#endif
 
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
@@ -527,11 +557,13 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
 	if(atomic_read(&panel->esd_recovery_pending)) {
-		panel->lcd_not_sleep = 0;
-		pr_info("(%s)esd recovery, ignore the lcd_not_sleep this time\n", panel->name);
+		if(panel->lcd_not_sleep) {
+			panel->lcd_not_sleep = 0;
+			pr_info("(%s)esd recovery, ignore the lcd_not_sleep this time\n", panel->name);
+		}
 	}
 
-	if(panel->tp_state_check && panel->lcd_not_sleep){
+	if(panel->tp_state_check && (panel_power_is_alway_on (panel) || panel->lcd_not_sleep)){
 		pr_info("(%s)+lcd not sleep \n", panel->name);
 	}else{
 		if (gpio_is_valid(panel->reset_config.reset_gpio)
