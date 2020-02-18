@@ -241,6 +241,11 @@ struct panel_hbm {
 	int hbm_en_gpio;
 };
 
+enum touch_state {
+	TOUCH_DEEP_SLEEP_STATE = 0,
+	TOUCH_LOW_POWER_STATE,
+};
+
 struct dsi_panel {
 	const char *name;
 	const char *type;
