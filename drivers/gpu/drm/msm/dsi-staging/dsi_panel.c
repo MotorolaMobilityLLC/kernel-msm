@@ -2113,6 +2113,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-cabc-ui-command",
 	"qcom,mdss-dsi-cabc-mv-command",
 	"qcom,mdss-dsi-cabc-dis-command",
+	"qcom,mdss-dsi-panel-display-off-command",
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -2148,6 +2149,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-cabc-ui-command-state",
 	"qcom,mdss-dsi-cabc-mv-command-state",
 	"qcom,mdss-dsi-cabc-dis-command-state",
+	"qcom,mdss-dsi-panel-display-off-command-state",
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -3755,6 +3757,9 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 	panel->tp_state_check= of_property_read_bool(of_node,
 				"qcom,tp_state_check_enable");
 
+	panel->panel_display_off_only = of_property_read_bool(of_node,
+				"qcom,mdss-dsi-panel-display-off-only");
+
 	return rc;
 }
 
@@ -5134,8 +5139,12 @@ int dsi_panel_disable(struct dsi_panel *panel)
 		       panel->power_mode == SDE_MODE_DPMS_LP2))
 			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 				"ibb", REGULATOR_MODE_STANDBY);
-
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
+		if(panel->tp_state_check && panel->lcd_not_sleep && panel->panel_display_off_only){
+			pr_info("(%s), tp gesture enable, just turn off panel display, not sleep.\n", panel->name);
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISPLAY_OFF);
+		} else {
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
+		}
 
 		if (rc) {
 			/*

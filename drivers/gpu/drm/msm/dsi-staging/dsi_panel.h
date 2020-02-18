@@ -290,6 +290,7 @@ struct dsi_panel {
 	struct panel_param *param_cmds;
 	bool lcd_not_sleep;
 	bool tp_state_check;
+	bool panel_display_off_only;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
