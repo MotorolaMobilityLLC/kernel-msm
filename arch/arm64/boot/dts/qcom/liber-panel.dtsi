@@ -113,7 +113,9 @@
                                 15800 13250 34450 7500 3000>;
         qcom,mdss-dsi-panel-peak-brightness = <5500000>;
         qcom,mdss-dsi-panel-blackness-level = <4961>;
-
+	qcom,mdss-dsi-panel-display-off-only;
+        qcom,mdss-dsi-panel-display-off-command = [15 01 00 00 32 00 02 28 00];
+        qcom,mdss-dsi-panel-display-off-command-state = "dsi_lp_mode";
         //qcom,dsi-dyn-clk-enable;
 	//qcom,dsi-dyn-clk-list =
 	//	<1005903360 989138304 993329568 997520832 1001712096>;
