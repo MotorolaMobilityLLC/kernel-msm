@@ -32,3 +32,28 @@ int panel_unregister_notifier(struct notifier_block *nb)
 	return blocking_notifier_chain_unregister(&panel_notifier_list, nb);
 }
 EXPORT_SYMBOL_GPL(panel_unregister_notifier);
+
+static int touch_state[TOUCH_PANEL_MAX_IDX] = {0};
+int touch_set_state(int state, int panel_idx)
+{
+	int rc = 0;
+
+	if (panel_idx >= TOUCH_PANEL_MAX_IDX)
+		rc = -EINVAL;
+	else
+		touch_state[panel_idx] = state;
+
+	return rc;
+}
+EXPORT_SYMBOL_GPL(touch_set_state);
+
+int check_touch_state(int *state, int panel_idx)
+{
+	int rc = 0;
+
+	if (panel_idx >= TOUCH_PANEL_MAX_IDX) rc = -EINVAL;
+	else *state = touch_state[panel_idx];
+
+	return rc;
+}
+EXPORT_SYMBOL_GPL(check_touch_state);
