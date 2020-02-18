@@ -271,6 +271,7 @@ enum dsi_dfps_type {
  * @DSI_CMD_SET_CABC_UI:			CABC UI mode
  * @DSI_CMD_SET_CABC_MV:			CABC MV mode
  * @DSI_CMD_SET_CABC_DIS:		CABC DIS mode
+ * @DSI_CMD_SET_DISPLAY_OFF:               Panel display off only, for touch tddi touch gesture
  * @DSI_CMD_SET_MAX
  */
 enum dsi_cmd_set_type {
@@ -306,6 +307,7 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_CABC_UI,
 	DSI_CMD_SET_CABC_MV,
 	DSI_CMD_SET_CABC_DIS,
+	DSI_CMD_SET_DISPLAY_OFF,
 	DSI_CMD_SET_MAX
 };
 
