@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1290,15 +1290,18 @@ int ipa3_disconnect_wdi_pipe(u32 clnt_hdl)
 
 	if (result) {
 		result = -EFAULT;
+		if (!ep->keep_ipa_awake)
+			IPA_ACTIVE_CLIENTS_DEC_EP(
+				ipa3_get_client_mapping(clnt_hdl));
 		goto uc_timeout;
 	}
 
 	ipa3_delete_dflt_flt_rules(clnt_hdl);
 	ipa_release_uc_smmu_mappings(ep->client);
 
+	if (!ep->keep_ipa_awake)
+		IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
 	memset(&ipa3_ctx->ep[clnt_hdl], 0, sizeof(struct ipa3_ep_context));
-	IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
-
 	IPADBG("client (ep: %d) disconnected\n", clnt_hdl);
 
 	/* for AP+STA stats update */
@@ -1364,7 +1367,8 @@ int ipa3_enable_wdi_pipe(u32 clnt_hdl)
 	if (rsrc_grp.rsrc_grp == -1) {
 		IPAERR("invalid group for client %d\n", ep->client);
 		WARN_ON(1);
-		return -EFAULT;
+		result = -EFAULT;
+		goto uc_timeout;
 	}
 
 	IPADBG("Setting group %d for pipe %d\n",
@@ -1378,11 +1382,11 @@ int ipa3_enable_wdi_pipe(u32 clnt_hdl)
 		holb_cfg.tmr_val = 0;
 		result = ipa3_cfg_ep_holb(clnt_hdl, &holb_cfg);
 	}
-	IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
 	ep->uc_offload_state |= IPA_WDI_ENABLED;
 	IPADBG("client (ep: %d) enabled\n", clnt_hdl);
 
 uc_timeout:
+	IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
 	return result;
 }
 
@@ -1475,12 +1479,12 @@ int ipa3_disable_wdi_pipe(u32 clnt_hdl)
 		ep_cfg_ctrl.ipa_ep_delay = true;
 		ipa3_cfg_ep_ctrl(clnt_hdl, &ep_cfg_ctrl);
 	}
-	IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
 	ep->uc_offload_state &= ~IPA_WDI_ENABLED;
 	IPADBG("client (ep: %d) disabled\n", clnt_hdl);
 
 
 uc_timeout:
+	IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
 	return result;
 }
 
@@ -1748,11 +1752,11 @@ int ipa3_write_qmapid_wdi_pipe(u32 clnt_hdl, u8 qmap_id)
 		result = -EFAULT;
 		goto uc_timeout;
 	}
-	IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
 
 	IPADBG("client (ep: %d) qmap_id %d updated\n", clnt_hdl, qmap_id);
 
 uc_timeout:
+	IPA_ACTIVE_CLIENTS_DEC_EP(ipa3_get_client_mapping(clnt_hdl));
 	return result;
 }
 
