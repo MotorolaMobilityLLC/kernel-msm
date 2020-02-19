@@ -40,6 +40,9 @@ dtbo-$(CONFIG_LIBER_DTB) += \
 	sdmmagpie-liber-dvt-overlay.dtbo \
 	sdmmagpie-liber-dvt2-overlay.dtbo
 
+dtbo-$(CONFIG_TACOMA_DTB) += \
+	sdmmagpie-tacoma-evt1-overlay.dtbo
+
 dtbo-$(CONFIG_QTPRO_DTB) += \
 	sm6150-qtpro-evt1-overlay.dtbo \
 	sm6150-qtpro-evt2-overlay.dtbo
@@ -112,6 +115,9 @@ sdmmagpie-liber-dvt-overlay.dtbo-base := \
 
 sdmmagpie-liber-dvt2-overlay.dtbo-base := \
         sdmmagpie-liber-base.dtb
+
+sdmmagpie-tacoma-evt1-overlay.dtbo-base := \
+	sdmmagpie-tacoma-base.dtb
 
 sm6150-def-evt1-overlay.dtbo-base := \
 	sm6150-def-base.dtb
