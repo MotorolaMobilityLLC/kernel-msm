@@ -934,6 +934,12 @@ static int spi_geni_prepare_transfer_hardware(struct spi_master *spi)
 			"%s: Error %d pinctrl_select_state\n", __func__, ret);
 	}
 
+	if (mas->dev->power.disable_depth > 0) {
+		dev_err(mas->dev, "%s:disable_depth not zero %d\n",
+					__func__, mas->dev->power.disable_depth);
+		pm_runtime_enable(mas->dev);
+	}
+
 	if (!mas->setup || !mas->shared_ee) {
 		ret = pm_runtime_get_sync(mas->dev);
 		if (ret < 0) {
