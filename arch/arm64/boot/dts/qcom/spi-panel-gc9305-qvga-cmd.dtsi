@@ -1,0 +1,71 @@
+/* Copyright (c) 2017, 2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	spi_gc9305_qvga_cmd: qcom,mdss_spi_gc9305_qvga_cmd {
+		qcom,mdss-spi-panel-name = "gc9305 qvga command mode spi panel";
+		qcom,mdss-spi-panel-destination = "display_1";
+		qcom,mdss-spi-panel-controller = <&mdss_spi>;
+		qcom,mdss-spi-panel-framerate = <30>;
+		qcom,mdss-spi-panel-width = <240>;
+		qcom,mdss-spi-panel-height = <320>;
+		qcom,mdss-spi-h-front-porch = <79>;
+		qcom,mdss-spi-h-back-porch = <59>;
+		qcom,mdss-spi-h-pulse-width = <60>;
+		qcom,mdss-spi-v-back-porch = <10>;
+		qcom,mdss-spi-v-front-porch = <7>;
+		qcom,mdss-spi-v-pulse-width = <2>;
+		qcom,mdss-spi-h-left-border = <0>;
+		qcom,mdss-spi-h-right-border = <0>;
+		qcom,mdss-spi-v-top-border = <0>;
+		qcom,mdss-spi-v-bottom-border = <0>;
+		qcom,mdss-spi-bpp = <16>;
+		qcom,mdss-spi-on-command = [00 01 FE
+			00 01 EF
+			00 02 36 48
+			00 02 3A 05
+			00 02 35 00
+			00 03 44 00 14
+			00 03 A4 44 44
+			00 03 A5 42 42
+			00 03 AA 88 88
+			00 03 E8 12 40
+			00 03 E3 01 10
+			00 02 FF 61
+			00 02 AC 00
+			00 03 A6 2A 2A
+			00 03 A7 2B 2B
+			00 03 A8 18 18
+			00 03 A9 2A 2A
+			00 02 AD 33
+			00 02 AF 55
+			00 02 AE 2B
+			00 05 2A 00 00 00 EF
+			00 05 2B 00 00 01 3F
+			00 01 2C
+			00 07 F0 02 02 00 08 0C 10
+			00 07 F1 01 00 00 14 1D 0E
+			00 07 F2 10 09 37 04 04 48
+			00 07 F3 10 0B 3F 05 05 4E
+			00 07 F4 0D 19 17 1D 1E 0F
+			00 07 F5 06 12 13 1A 1B 0F
+			78 01 11
+			00 01 29
+			00 01 2C];
+		qcom,mdss-spi-off-command = [20 01 28
+				 20 01 10];
+		qcom,mdss-spi-bl-min-level = <1>;
+		qcom,mdss-spi-bl-max-level = <4095>;
+		qcom,mdss-spi-bl-pmic-control-type = "bl_ctrl_wled";
+		qcom,mdss-spi-reset-sequence = <1 20>, <0 1>, <1 20>;
+	};
+};
