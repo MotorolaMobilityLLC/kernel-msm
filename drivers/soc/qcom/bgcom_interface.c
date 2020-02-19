@@ -130,6 +130,7 @@ static void bgcom_load_twm_bg_work(struct work_struct *work)
 		pr_err("bg-wear is already loaded\n");
 		subsystem_put(dev->pil_h);
 		dev->pil_h = NULL;
+		bg_soft_reset();
 	} else {
 		dev->pil_h = subsystem_get_with_fwname("bg-wear",
 							"bg-twm-wear");
@@ -440,6 +441,7 @@ static long bg_com_ioctl(struct file *filp,
 		if (dev->pil_h) {
 			subsystem_put(dev->pil_h);
 			dev->pil_h = NULL;
+			bg_soft_reset();
 		}
 		ret = 0;
 		break;
