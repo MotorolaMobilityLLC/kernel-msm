@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019,2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -548,7 +548,7 @@ int ipa3_send_msg(struct ipa_msg_meta *meta, void *buff,
 	mutex_lock(&ipa3_ctx->msg_lock);
 	list_add_tail(&msg->link, &ipa3_ctx->msg_list);
 	/* support for softap client event cache */
-	if (wlan_msg_process(meta, buff))
+	if (buff != NULL && wlan_msg_process(meta, buff))
 		IPAERR("wlan_msg_process failed\n");
 
 	/* unlock only after process */
