@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -190,6 +190,11 @@ struct gsi_generic_ee_cmd_debug_stats {
 	unsigned long halt_channel;
 };
 
+struct gsi_shared_chan_info {
+	uint8_t ch_id;
+	uint8_t evchid;
+};
+
 struct gsi_ctx {
 	void __iomem *base;
 	struct device *dev;
@@ -213,6 +218,8 @@ struct gsi_ctx {
 	struct completion gen_ee_cmd_compl;
 	void *ipc_logbuf;
 	void *ipc_logbuf_low;
+	struct gsi_shared_chan_info shared_ch_info;
+
 	/*
 	 * The following used only on emulation systems.
 	 */

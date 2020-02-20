@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -102,11 +102,14 @@ static int ipa_populate_tag_field(struct ipa3_desc *desc,
 		struct ipa3_tx_pkt_wrapper *tx_pkt,
 		struct ipahal_imm_cmd_pyld **tag_pyld_ret);
 static int ipa_poll_gsi_pkt(struct ipa3_sys_context *sys,
-	struct ipa_mem_buffer *mem_info);
+	struct ipa_mem_buffer *mem_info,
+	struct gsi_chan_xfer_notify *xfer_notify);
 static unsigned long tag_to_pointer_wa(uint64_t tag);
 static uint64_t pointer_to_tag_wa(struct ipa3_tx_pkt_wrapper *tx_pkt);
 
 static u32 ipa_adjust_ra_buff_base_sz(u32 aggr_byte_limit);
+static bool ipa_update_common_evt_ring(enum ipa_client_type src,
+	enum ipa_client_type dst);
 
 static void ipa3_wq_write_done_common(struct ipa3_sys_context *sys,
 				struct ipa3_tx_pkt_wrapper *tx_pkt)
@@ -710,20 +713,24 @@ static int ipa3_handle_rx_core(struct ipa3_sys_context *sys, bool process_all,
 	int ret;
 	int cnt = 0;
 	struct ipa_mem_buffer mem_info = { 0 };
+	struct gsi_chan_xfer_notify notify;
 
+	memset(&notify, 0, sizeof(struct gsi_chan_xfer_notify));
 	while ((in_poll_state ? atomic_read(&sys->curr_polling_state) :
 		!atomic_read(&sys->curr_polling_state))) {
 		if (cnt && !process_all)
 			break;
 
-		ret = ipa_poll_gsi_pkt(sys, &mem_info);
+		ret = ipa_poll_gsi_pkt(sys, &mem_info, &notify);
 		if (ret)
 			break;
 
 		if (IPA_CLIENT_IS_MEMCPY_DMA_CONS(sys->ep->client))
 			ipa3_dma_memcpy_notify(sys, &mem_info);
 		else if (IPA_CLIENT_IS_WLAN_CONS(sys->ep->client))
-			ipa3_wlan_wq_rx_common(sys, mem_info.size);
+			ipa3_wlan_wq_rx_common(
+			(struct ipa3_sys_context *)(notify.chan_user_data),
+			mem_info.size);
 		else
 			ipa3_wq_rx_common(sys, mem_info.size);
 
@@ -738,6 +745,8 @@ static int ipa3_handle_rx_core(struct ipa3_sys_context *sys, bool process_all,
 static void ipa3_rx_switch_to_intr_mode(struct ipa3_sys_context *sys)
 {
 	int ret;
+	u32 wlan_ep_idx;
+	struct ipa3_ep_context *wlan_ep;
 
 	if (!atomic_read(&sys->curr_polling_state)) {
 		IPAERR("already in intr mode\n");
@@ -750,6 +759,16 @@ static void ipa3_rx_switch_to_intr_mode(struct ipa3_sys_context *sys)
 	if (ret != GSI_STATUS_SUCCESS) {
 		IPAERR("Failed to switch to intr mode.\n");
 		goto fail;
+	}
+	if (IPA_CLIENT_IS_WLAN_CONS(sys->ep->client)) {
+		wlan_ep_idx = ipa3_get_ep_mapping(
+			((sys->ep->client == IPA_CLIENT_WLAN2_CONS) ?
+			IPA_CLIENT_WLAN3_CONS : IPA_CLIENT_WLAN2_CONS));
+		if (wlan_ep_idx != IPA_EP_NOT_ALLOCATED &&
+			ipa3_ctx->ep[wlan_ep_idx].valid == 1) {
+			wlan_ep = &ipa3_ctx->ep[wlan_ep_idx];
+			atomic_set(&wlan_ep->sys->curr_polling_state, 0);
+		}
 	}
 	return;
 
@@ -1182,6 +1201,12 @@ int ipa3_teardown_sys_pipe(u32 clnt_hdl)
 		ipa3_ctx->gsi_evt_comm_ring_rem +=
 			ep->gsi_mem_info.chan_ring_len;
 	} else if (ep->gsi_evt_ring_hdl != ~0) {
+		/* common event ring is used for WLAN2/WLAN3 pipes */
+		if (IPA_IS_4_0_AUTO_CONFIG() &&
+			ep->client == IPA_CLIENT_WLAN2_CONS) {
+			/* Skip resetting the channel. */
+			goto teardown;
+		}
 		result = gsi_reset_evt_ring(ep->gsi_evt_ring_hdl);
 		if (result != GSI_STATUS_SUCCESS) {
 			IPAERR("Failed to reset evt ring: %d.\n",
@@ -1201,6 +1226,8 @@ int ipa3_teardown_sys_pipe(u32 clnt_hdl)
 			return result;
 		}
 	}
+
+teardown:
 	if (ep->sys->repl_wq)
 		flush_workqueue(ep->sys->repl_wq);
 	if (IPA_CLIENT_IS_CONS(ep->client))
@@ -3412,8 +3439,21 @@ static void ipa_gsi_irq_tx_notify_cb(struct gsi_chan_xfer_notify *notify)
 void __ipa_gsi_irq_rx_scedule_poll(struct ipa3_sys_context *sys)
 {
 	bool clk_off;
+	u32 wlan_ep_idx;
+	struct ipa3_ep_context *wlan_ep;
 
 	atomic_set(&sys->curr_polling_state, 1);
+	if (IPA_CLIENT_IS_WLAN_CONS(sys->ep->client)) {
+		wlan_ep_idx = ipa3_get_ep_mapping(
+			((sys->ep->client == IPA_CLIENT_WLAN2_CONS) ?
+			IPA_CLIENT_WLAN3_CONS : IPA_CLIENT_WLAN2_CONS));
+		if (wlan_ep_idx != IPA_EP_NOT_ALLOCATED &&
+			ipa3_ctx->ep[wlan_ep_idx].valid == 1) {
+			wlan_ep = &ipa3_ctx->ep[wlan_ep_idx];
+			/* Set the polling state. */
+			atomic_set(&wlan_ep->sys->curr_polling_state, 1);
+		}
+	}
 	ipa3_inc_acquire_wakelock();
 
 	/*
@@ -3463,11 +3503,7 @@ static void ipa_gsi_irq_rx_notify_cb(struct gsi_chan_xfer_notify *notify)
 					   struct ipa3_rx_pkt_wrapper, link);
 	rx_pkt_rcvd = (struct ipa3_rx_pkt_wrapper *)notify->xfer_user_data;
 
-	if (rx_pkt_expected != rx_pkt_rcvd) {
-		IPAERR("Pkt was not filled in head of rx buffer.\n");
-		WARN_ON(1);
-		return;
-	}
+	sys->ep->xfer_notify = *notify;
 	sys->ep->bytes_xfered_valid = true;
 	sys->ep->bytes_xfered = notify->bytes_xfered;
 	sys->ep->phys_base = rx_pkt_rcvd->data.dma_addr;
@@ -3533,6 +3569,26 @@ static void ipa_dma_gsi_irq_rx_notify_cb(struct gsi_chan_xfer_notify *notify)
 		IPAERR("received unexpected event id %d\n", notify->evt_id);
 	}
 }
+
+static bool ipa_update_common_evt_ring(enum ipa_client_type src,
+	enum ipa_client_type dst)
+{
+	u32 src_ep_idx, dst_ep_idx;
+
+	src_ep_idx = ipa3_get_ep_mapping(src);
+	dst_ep_idx = ipa3_get_ep_mapping(dst);
+	if (src_ep_idx != IPA_EP_NOT_ALLOCATED &&
+		ipa3_ctx->ep[src_ep_idx].valid == 1 &&
+		dst_ep_idx != IPA_EP_NOT_ALLOCATED &&
+		ipa3_ctx->ep[dst_ep_idx].valid == 1) {
+		/* copy event ring handle */
+		ipa3_ctx->ep[dst_ep_idx].gsi_evt_ring_hdl =
+			ipa3_ctx->ep[src_ep_idx].gsi_evt_ring_hdl;
+		return true;
+	}
+	return false;
+}
+
 
 int ipa3_alloc_common_event_ring(void)
 {
@@ -3611,6 +3667,13 @@ static int ipa_gsi_setup_channel(struct ipa_sys_connect_params *in,
 		ep->gsi_evt_ring_hdl = ipa3_ctx->gsi_evt_comm_hdl;
 	} else if (ep->sys->policy != IPA_POLICY_NOINTR_MODE ||
 	     IPA_CLIENT_IS_CONS(ep->client)) {
+		/* Use common event ring in auto config for WLAN2/WLAN3 pipes */
+		if (IPA_IS_4_0_AUTO_CONFIG() &&
+			(ep->client == IPA_CLIENT_WLAN3_CONS) &&
+			ipa_update_common_evt_ring(IPA_CLIENT_WLAN2_CONS,
+				ep->client)) {
+			goto setup_channel;
+		}
 		gsi_evt_ring_props.intf = GSI_EVT_CHTYPE_GPI_EV;
 		gsi_evt_ring_props.intr = GSI_INTR_IRQ;
 		gsi_evt_ring_props.re_size =
@@ -3622,6 +3685,14 @@ static int ipa_gsi_setup_channel(struct ipa_sys_connect_params *in,
 		 * are 16B as opposed to 8B for BAM.
 		 */
 		gsi_evt_ring_props.ring_len = 2 * in->desc_fifo_sz;
+
+		/* In Auto config, common event ring is used for WLAN sys pipes.
+		 * Double the event ring size.
+		 */
+		if (IPA_IS_4_0_AUTO_CONFIG() &&
+		    IPA_CLIENT_IS_WLAN_CONS(ep->client))
+			gsi_evt_ring_props.ring_len =
+				2 * gsi_evt_ring_props.ring_len;
 
 		gsi_evt_ring_props.ring_base_vaddr =
 			dma_alloc_coherent(ipa3_ctx->pdev,
@@ -3659,6 +3730,7 @@ static int ipa_gsi_setup_channel(struct ipa_sys_connect_params *in,
 			goto fail_alloc_evt_ring;
 	}
 
+setup_channel:
 	memset(&gsi_channel_props, 0, sizeof(gsi_channel_props));
 	gsi_channel_props.prot = GSI_CHAN_PROT_GPI;
 	if (IPA_CLIENT_IS_PROD(ep->client)) {
@@ -3731,6 +3803,12 @@ static int ipa_gsi_setup_channel(struct ipa_sys_connect_params *in,
 		gsi_channel_props.xfer_cb = ipa_gsi_irq_rx_notify_cb;
 	if (IPA_CLIENT_IS_MEMCPY_DMA_CONS(ep->client))
 		gsi_channel_props.xfer_cb = ipa_dma_gsi_irq_rx_notify_cb;
+
+	/* In Auto config, common event ring is used for WLAN sys pipes.*/
+	if (IPA_IS_4_0_AUTO_CONFIG() &&
+	    IPA_CLIENT_IS_WLAN_CONS(ep->client))
+		gsi_channel_props.common_evt_ring = true;
+
 	result = gsi_alloc_channel(&gsi_channel_props, ipa3_ctx->gsi_dev_hdl,
 		&ep->gsi_chan_hdl);
 	if (result != GSI_STATUS_SUCCESS)
@@ -3814,21 +3892,22 @@ static int ipa_populate_tag_field(struct ipa3_desc *desc,
 }
 
 static int ipa_poll_gsi_pkt(struct ipa3_sys_context *sys,
-		struct ipa_mem_buffer *mem_info)
+		struct ipa_mem_buffer *mem_info,
+		struct gsi_chan_xfer_notify *xfer_notify)
 {
 	int ret;
-	struct gsi_chan_xfer_notify xfer_notify;
 	struct ipa3_rx_pkt_wrapper *rx_pkt;
 
 	if (sys->ep->bytes_xfered_valid) {
 		mem_info->phys_base = sys->ep->phys_base;
 		mem_info->size = (u32)sys->ep->bytes_xfered;
 		sys->ep->bytes_xfered_valid = false;
+		*xfer_notify = sys->ep->xfer_notify;
 		return GSI_STATUS_SUCCESS;
 	}
 
 	ret = gsi_poll_channel(sys->ep->gsi_chan_hdl,
-		&xfer_notify);
+		xfer_notify);
 	if (ret == GSI_STATUS_POLL_EMPTY)
 		return ret;
 	else if (ret != GSI_STATUS_SUCCESS) {
@@ -3837,9 +3916,9 @@ static int ipa_poll_gsi_pkt(struct ipa3_sys_context *sys,
 	}
 
 	rx_pkt = (struct ipa3_rx_pkt_wrapper *)
-		xfer_notify.xfer_user_data;
+		(xfer_notify->xfer_user_data);
 	mem_info->phys_base = rx_pkt->data.dma_addr;
-	mem_info->size = xfer_notify.bytes_xfered;
+	mem_info->size = xfer_notify->bytes_xfered;
 
 	return ret;
 }
@@ -3861,6 +3940,7 @@ int ipa3_rx_poll(u32 clnt_hdl, int weight)
 	struct ipa_mem_buffer mem_info = {0};
 	static int total_cnt;
 	struct ipa_active_client_logging_info log;
+	struct gsi_chan_xfer_notify notify;
 
 	IPA_ACTIVE_CLIENTS_PREP_SPECIAL(log, "NAPI");
 
@@ -3869,14 +3949,14 @@ int ipa3_rx_poll(u32 clnt_hdl, int weight)
 		IPAERR("bad parm 0x%x\n", clnt_hdl);
 		return cnt;
 	}
-
+	memset(&notify, 0, sizeof(struct gsi_chan_xfer_notify));
 	ep = &ipa3_ctx->ep[clnt_hdl];
 
 	while (cnt < weight &&
 		   atomic_read(&ep->sys->curr_polling_state)) {
 
 		atomic_set(&ipa3_ctx->transport_pm.eot_activity, 1);
-		ret = ipa_poll_gsi_pkt(ep->sys, &mem_info);
+		ret = ipa_poll_gsi_pkt(ep->sys, &mem_info, &notify);
 		if (ret)
 			break;
 
