@@ -12,4 +12,14 @@
 
 #include "sdmmagpie-moto-common-overlay.dtsi"
 #include "sdmmagpie-audio-overlay.dtsi"
+#include "liber-panel.dtsi"
 
+
+&sde_dp {
+	status = "disabled";
+};
+
+
+&mdss_mdp {
+	connectors = <&sde_rscc &sde_wb &sde_dsi>;
+};
