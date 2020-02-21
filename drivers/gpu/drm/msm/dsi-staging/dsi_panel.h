@@ -274,8 +274,12 @@ struct dsi_panel {
 	bool is_hbm_on;
 	u32  bl_lvl_during_hbm;
 
+	int panel_recovery_retry;
+
 	struct panel_param *param_cmds;
 };
+
+bool dsi_display_all_displays_dead(void);
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
 {

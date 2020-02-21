@@ -5485,6 +5485,30 @@ int dsi_display_get_num_of_displays(void)
 	return count;
 }
 
+bool dsi_display_all_displays_dead(void)
+{
+	struct dsi_display *pos;
+	int num_dead_displays = 0;
+	int num_displays = 0;
+
+	mutex_lock(&dsi_display_list_lock);
+
+	list_for_each_entry(pos, &dsi_display_list, list) {
+		if(pos->is_active) {
+			num_displays++;
+			if (pos->is_panel_dead)
+				num_dead_displays++;
+		}
+	}
+
+	mutex_unlock(&dsi_display_list_lock);
+
+	pr_info("%d Display Dead(%d)\n", num_dead_displays, num_displays);
+
+	return num_dead_displays == num_displays;
+}
+EXPORT_SYMBOL(dsi_display_all_displays_dead);
+
 int dsi_display_get_active_displays(void **display_array, u32 max_display_count)
 {
 	struct dsi_display *pos;
