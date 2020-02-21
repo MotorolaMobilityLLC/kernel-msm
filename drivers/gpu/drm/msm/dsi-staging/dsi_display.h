@@ -190,6 +190,7 @@ struct dsi_display {
 	/* panel info */
 	struct dsi_panel *panel;
 	struct device_node *panel_of;
+	bool is_panel_dead;
 
 	struct dsi_display_mode *modes;
 
