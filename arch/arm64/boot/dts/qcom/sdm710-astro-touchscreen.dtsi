@@ -73,6 +73,10 @@
 	};
 };
 
+&pm660_l11 {
+	regulator-always-on;
+};
+
 &qupv3_se9_spi_pins {
        qupv3_se9_spi_sleep: qupv3_se9_spi_sleep {
                mux {
