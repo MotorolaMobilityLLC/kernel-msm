@@ -385,17 +385,20 @@ static void sde_encoder_phys_vid_setup_timing_engine(
 	SDE_DEBUG_VIDENC(vid_enc, "enabling mode:\n");
 	drm_mode_debug_printmodeline(&mode);
 
-	if (phys_enc->split_role != ENC_ROLE_SOLO) {
+	if (phys_enc->split_role != ENC_ROLE_SOLO ||
+	    (mode.private_flags & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420)) {
 		mode.hdisplay >>= 1;
 		mode.htotal >>= 1;
 		mode.hsync_start >>= 1;
 		mode.hsync_end >>= 1;
+		mode.hskew >>= 1;
 
 		SDE_DEBUG_VIDENC(vid_enc,
-			"split_role %d, halve horizontal %d %d %d %d\n",
+			"split_role %d, halve horizontal %d %d %d %d %d\n",
 			phys_enc->split_role,
 			mode.hdisplay, mode.htotal,
-			mode.hsync_start, mode.hsync_end);
+			mode.hsync_start, mode.hsync_end,
+			mode.hskew);
 	}
 
 	if (!phys_enc->vfp_cached) {
@@ -590,6 +593,9 @@ static void sde_encoder_phys_vid_mode_set(
 		return;
 	}
 
+	phys_enc->hw_ctl = NULL;
+	phys_enc->hw_cdm = NULL;
+
 	rm = &phys_enc->sde_kms->rm;
 	vid_enc = to_sde_encoder_phys_vid(phys_enc);
 
@@ -615,6 +621,20 @@ static void sde_encoder_phys_vid_mode_set(
 	}
 
 	_sde_encoder_phys_vid_setup_irq_hw_idx(phys_enc);
+
+	/* CDM is optional */
+	sde_rm_init_hw_iter(&iter, phys_enc->parent->base.id, SDE_HW_BLK_CDM);
+	for (i = 0; i <= instance; i++) {
+		sde_rm_get_hw(rm, &iter);
+		if (i == instance)
+			phys_enc->hw_cdm = (struct sde_hw_cdm *) iter.hw;
+	}
+
+	if (IS_ERR(phys_enc->hw_cdm)) {
+		SDE_ERROR("CDM required but not allocated: %ld\n",
+				PTR_ERR(phys_enc->hw_cdm));
+		phys_enc->hw_cdm = NULL;
+	}
 }
 
 static int sde_encoder_phys_vid_control_vblank_irq(
@@ -713,6 +733,9 @@ static void sde_encoder_phys_vid_enable(struct sde_encoder_phys *phys_enc)
 	struct sde_encoder_phys_vid *vid_enc;
 	struct sde_hw_intf *intf;
 	struct sde_hw_ctl *ctl;
+	struct sde_hw_cdm *hw_cdm = NULL;
+	struct drm_display_mode mode;
+	const struct sde_format *fmt = NULL;
 	u32 flush_mask = 0;
 
 	if (!phys_enc || !phys_enc->parent || !phys_enc->parent->dev ||
@@ -721,7 +744,9 @@ static void sde_encoder_phys_vid_enable(struct sde_encoder_phys *phys_enc)
 		SDE_ERROR("invalid encoder/device\n");
 		return;
 	}
+	hw_cdm = phys_enc->hw_cdm;
 	priv = phys_enc->parent->dev->dev_private;
+	mode = phys_enc->cached_mode;
 
 	vid_enc = to_sde_encoder_phys_vid(phys_enc);
 	intf = vid_enc->hw_intf;
@@ -765,7 +790,21 @@ static void sde_encoder_phys_vid_enable(struct sde_encoder_phys *phys_enc)
 		goto skip_flush;
 	}
 
+	if (mode.private_flags & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420)
+		fmt = sde_get_sde_format(DRM_FORMAT_YUV420);
+
+	if (fmt) {
+		struct sde_rect hdmi_roi;
+
+		hdmi_roi.w = mode.hdisplay;
+		hdmi_roi.h = mode.vdisplay;
+		sde_encoder_phys_setup_cdm(phys_enc, fmt,
+			CDM_CDWN_OUTPUT_HDMI, &hdmi_roi);
+	}
+
 	ctl->ops.get_bitmask_intf(ctl, &flush_mask, intf->idx);
+	if (ctl->ops.get_bitmask_cdm && hw_cdm)
+		ctl->ops.get_bitmask_cdm(ctl, &flush_mask, hw_cdm->idx);
 	ctl->ops.update_pending_flush(ctl, flush_mask);
 
 skip_flush:
@@ -814,6 +853,8 @@ static void sde_encoder_phys_vid_get_hw_resources(
 
 	SDE_DEBUG_VIDENC(vid_enc, "\n");
 	hw_res->intfs[vid_enc->hw_intf->idx - INTF_0] = INTF_MODE_VIDEO;
+	hw_res->needs_cdm = true;
+	SDE_DEBUG_DRIVER("[vid] needs_cdm=%d\n", hw_res->needs_cdm);
 }
 
 static int _sde_encoder_phys_vid_wait_for_vblank(
@@ -986,6 +1027,11 @@ static void sde_encoder_phys_vid_disable(struct sde_encoder_phys *phys_enc)
 					SDE_EVTLOG_ERROR);
 		}
 		sde_encoder_phys_vid_control_vblank_irq(phys_enc, false);
+	}
+
+	if (phys_enc->hw_cdm && phys_enc->hw_cdm->ops.disable) {
+		SDE_DEBUG_DRIVER("[cdm_disable]\n");
+		phys_enc->hw_cdm->ops.disable(phys_enc->hw_cdm);
 	}
 exit:
 	phys_enc->vfp_cached = 0;
