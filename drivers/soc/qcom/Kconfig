@@ -58,6 +58,14 @@ config ODESSA_DTB
 	  Only include odessa specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config BORNR_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Borneo Row DTBs"
+	help
+	  Only include Borneo Row specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QTPRO_DTB
 	depends on ARCH_QCOM
 	default n
