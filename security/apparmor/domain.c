@@ -107,7 +107,7 @@ static struct file_perms change_profile_perms(struct aa_profile *profile,
 		return perms;
 	} else if (!profile->file.dfa) {
 		return nullperms;
-	} else if ((ns == profile->ns)) {
+	} else if (ns == profile->ns) {
 		/* try matching against rules with out namespace prepended */
 		aa_str_perms(profile->file.dfa, start, name, &cond, &perms);
 		if (COMBINED_PERM_MASK(perms) & request)
