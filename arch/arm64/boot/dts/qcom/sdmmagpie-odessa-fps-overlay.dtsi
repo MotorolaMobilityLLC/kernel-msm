@@ -1,0 +1,92 @@
+&tlmm {
+	fps {
+		fps_rst_active: fps_rst_active {
+			/* active state */
+			mux {
+				pins = "gpio4";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio4";
+				drive-strength = <2>; /* 2 MA */
+				output-high;
+			};
+		};
+
+		fps_rst_suspend: fps_rst_suspend {
+			/* sleep state */
+			mux {
+				pins = "gpio4";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio4";
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		fps_int_active: fps_int_active {
+			/* active state */
+			mux {
+				pins = "gpio90";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio90";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		fps_int_suspend: fps_int_suspend {
+			/* sleep state */
+			mux {
+				pins = "gpio90";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio90";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+				input-enable;
+			};
+		};
+	};
+};
+
+&pm6150_l18 {
+	regulator-boot-on;
+	regulator-always-on;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+	status = "ok";
+};
+
+&soc {
+	goodix_fingerprint{
+		compatible = "goodix,fingerprint";
+		fp-gpio-reset = <&tlmm 4 0x00>;
+		fp-gpio-irq = <&tlmm 90 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <90 0>;
+		interrupt-controller;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&fps_rst_active &fps_int_active>;
+		pinctrl-1 = <&fps_rst_suspend &fps_int_suspend>;
+	};
+
+	fpc: fpc_fpc1020 {
+		compatible = "fpc,fpc1020";
+		status = "ok";
+		irq = <&tlmm 90 0>;
+		rst = <&tlmm 4 0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&fps_rst_active &fps_int_active>;
+		pinctrl-1 = <&fps_rst_suspend &fps_int_suspend>;
+	};
+};
