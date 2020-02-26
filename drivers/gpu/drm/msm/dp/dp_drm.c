@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -354,6 +354,34 @@ int dp_connector_get_info(struct msm_display_info *info, void *data)
 		MSM_DISPLAY_CAP_HOT_PLUG;
 
 	return 0;
+}
+
+bool dp_connector_mode_needs_full_range(void *data)
+{
+	struct dp_display *display = data;
+	struct dp_bridge *bridge;
+	struct dp_display_mode *mode;
+	struct dp_panel_info *timing;
+
+	if (!display) {
+		pr_err("invalid input\n");
+		return false;
+	}
+
+	bridge = display->bridge;
+	if (!bridge) {
+		pr_err("invalid bridge data\n");
+		return false;
+	}
+
+	mode = &bridge->dp_mode;
+	timing = &mode->timing;
+
+	if (timing->h_active == 640 &&
+	    timing->v_active == 480)
+		return true;
+
+	return false;
 }
 
 enum drm_connector_status dp_connector_detect(struct drm_connector *conn,
