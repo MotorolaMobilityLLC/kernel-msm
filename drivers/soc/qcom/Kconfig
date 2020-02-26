@@ -50,6 +50,14 @@ config TACOMA_DTB
 	  Only include Tacoma specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config ODESSA_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Odessa DTBs"
+	help
+	  Only include odessa specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config QTPRO_DTB
 	depends on ARCH_QCOM
 	default n
