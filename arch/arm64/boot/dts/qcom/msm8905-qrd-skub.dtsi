@@ -77,6 +77,13 @@
 	};
 };
 
+&pm8909_chg {
+	status = "ok";
+};
+
+&usb_otg {
+	extcon = <&pm8909_chg>;
+};
 &msm_gpio {
 	tlmm_gpio_key {
 		qcom,pin-func = <0>;
@@ -106,18 +113,23 @@
 		pm8909_pon: qcom,power-on@800 {
 			compatible = "qcom,qpnp-power-on";
 			reg = <0x800 0x100>;
-			interrupts = <0x0 0x8 0x0>,
-					   <0x0 0x8 0x1>;
+			interrupts = <0x0 0x8 0x0 0x0>,
+					   <0x0 0x8 0x1 0x0>;
 			interrupt-names = "kpdpwr", "resin";
 			qcom,pon-dbc-delay = <15625>;
 			qcom,system-reset;
 			qcom,clear-warm-reset;
 
-		    qcom,pon_2 {
-			    qcom,pon-type = <1>;
-			    qcom,pull-up = <1>;
-			    linux,code = <108>;
-		    };
+			qcom,pon_1 {
+				qcom,pon-type = <0>;
+				qcom,pull-up = <1>;
+				linux,code = <116>;
+			};
+			qcom,pon_2 {
+				qcom,pon-type = <1>;
+				qcom,pull-up = <1>;
+				linux,code = <108>;
+			};
 		};
 	};
 };
@@ -214,7 +226,7 @@
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
-		qcom,vadc-thermal-node;
+		/*qcom,vadc-thermal-node;*/
 	};
 };
 
@@ -387,6 +399,9 @@
 	qcom,platform-te-gpio = <&msm_gpio 24 0>;
 	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
 	qcom,platform-spi-dc-gpio = <&msm_gpio 110 0>;
+
+	vdd-supply = <&pm8909_l17>;
+	vddio-supply = <&pm8909_l6>;
 };
 
 &pm8909_gpios {
@@ -420,4 +435,24 @@
 		clocks = <&clock_rpm clk_bb_clk2_pin>;
 		clock-names = "ref_clk";
 	};
+};
+
+&vendor_fstab {
+	status = "disabled";
+};
+
+&system_fstab {
+	status = "disabled";
+};
+
+&blsp1_uart1 {
+	status = "ok";
+};
+
+&blsp1_uart2 {
+	status = "ok";
+};
+
+&actuator0 {
+	status = "disabled";
 };

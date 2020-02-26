@@ -65,7 +65,12 @@
 				 20 01 10];
 		qcom,mdss-spi-bl-min-level = <1>;
 		qcom,mdss-spi-bl-max-level = <4095>;
-		qcom,mdss-spi-bl-pmic-control-type = "bl_ctrl_wled";
+		qcom,mdss-spi-bl-pmic-control-type = "bl_ctrl_pwm";
 		qcom,mdss-spi-reset-sequence = <1 20>, <0 1>, <1 20>;
+
+		qcom,mdss-spi-bl-pmic-pwm-frequency = <100>;
+		qcom,mdss-spi-bl-pmic-bank-select = <0>;
+		qcom,mdss-spi-pwm-gpio = <&pm8909_mpps 2 0>;
+		qcom,cont-splash-enabled;
 	};
 };
