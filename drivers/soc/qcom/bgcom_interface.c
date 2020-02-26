@@ -296,7 +296,7 @@ static int bgchar_read_cmd(struct bg_ui_data *fui_obj_msg,
 static int bgchar_write_cmd(struct bg_ui_data *fui_obj_msg, int type)
 {
 	void              *write_buf;
-	int               ret;
+	int               ret = -EINVAL;
 	void __user       *write     = (void *)
 			(uintptr_t)fui_obj_msg->write;
 
