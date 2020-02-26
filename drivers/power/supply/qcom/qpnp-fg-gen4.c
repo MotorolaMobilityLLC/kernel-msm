@@ -1339,7 +1339,7 @@ static int fg_gen4_store_learned_capacity(void *data, int64_t learned_cap_uah)
 		}
 	}
 
-	fg_dbg(fg, FG_CAP_LEARN, "learned capacity %llduah/%dmah stored\n",
+	pr_info("Learned capacity %llduah/%dmah stored\n",
 		chip->cl->learned_cap_uah, cc_mah);
 	return 0;
 }
