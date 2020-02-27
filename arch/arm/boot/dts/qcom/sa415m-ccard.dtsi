@@ -1,4 +1,4 @@
-/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -147,6 +147,15 @@
 		gpio = <&tlmm 23 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 	};
+
+	sdx_ext_ipc: qcom,sdx_ext_ipc {
+		compatible = "qcom,sdx-ext-ipc";
+		qcom,ap2mdm-status-gpio = <&tlmm 95 0x00>;
+		qcom,mdm2ap-status-gpio = <&tlmm 36 0x00>;
+		qcom,mdm2ap-status2-gpio = <&tlmm 88 0x00>;
+		status = "disabled";
+	};
+
 };
 
 &emac_hw {
