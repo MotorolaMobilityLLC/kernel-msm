@@ -399,6 +399,19 @@ int fts_ctpm_lcd_cfg_upgrade(struct i2c_client *client)
 	return i_ret;
 }
 
+static int check_chip_id(u8 chip_id1, u8 chip_id2)
+{
+#if FTS_CHIP_IDC
+	if ((chip_id1 == chip_types.chip_idh)
+			&& (chip_id2 == chip_types.chip_idl) {
+#else
+	if (chip_id1 == chip_types.chip_idh) {
+#endif
+		return 1;
+	}
+	return 0;
+}
+
 #if (!(FTS_UPGRADE_STRESS_TEST))
 /************************************************************************
  * Name: fts_ctpm_check_fw_status
@@ -431,11 +444,7 @@ static int fts_ctpm_check_fw_status(struct i2c_client *client)
 			continue;
 		}
 
-		if ((chip_id1 == chip_types.chip_idh)
-#if FTS_CHIP_IDC
-			&& (chip_id2 == chip_types.chip_idl)
-#endif
-		   ) {
+		if (check_chip_id(chip_id1, chip_id2)) {
 			fw_status = FTS_RUN_IN_APP;
 			break;
 		}
