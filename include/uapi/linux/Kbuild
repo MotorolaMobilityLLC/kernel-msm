@@ -15,6 +15,28 @@ ifeq ($(wildcard $(srctree)/arch/$(SRCARCH)/include/uapi/asm/kvm_para.h),)
 no-export-headers += kvm_para.h
 endif
 
+no-export-headers += auto_dev-ioctl.h
+no-export-headers += batman_adv.h
+no-export-headers += bcache.h
+no-export-headers += btrfs_tree.h
+no-export-headers += cryptouser.h
+no-export-headers += dma-buf.h
+no-export-headers += hash_info.h
+no-export-headers += kcm.h
+no-export-headers += kcov.h
+no-export-headers += kfd_ioctl.h
+no-export-headers += lightnvm.h
+no-export-headers += module.h
+no-export-headers += nilfs2_api.h
+no-export-headers += nilfs2_ondisk.h
+no-export-headers += nsfs.h
+no-export-headers += pr.h
+no-export-headers += qrtr.h
+no-export-headers += stm.h
+no-export-headers += tee.h
+no-export-headers += userio.h
+no-export-headers += wil6210_uapi.h
+
 header-y += mhi.h
 header-y += sockev.h
 header-y += nfc/

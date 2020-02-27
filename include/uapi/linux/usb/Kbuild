@@ -1,0 +1,3 @@
+# UAPI Header export list
+no-export-headers += f_accessory.h
+no-export-headers += f_mtp.h

@@ -1,0 +1,2 @@
+# UAPI Header export list
+no-export-headers += genwqe_card.h
