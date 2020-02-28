@@ -35,6 +35,10 @@ dtbo-$(CONFIG_DEF_DTB) += \
 	sm6150-def-evt1-overlay.dtbo \
 	sm6150-def-pvt-overlay.dtbo
 
+dtbo-$(CONFIG_BORNR_DTB) += \
+	sm6150-bornr-evt1-overlay.dtbo \
+	sm6150-bornr-evt1-nonca-overlay.dtbo
+
 dtbo-$(CONFIG_LIBER_DTB) += \
 	sdmmagpie-liber-evt1-overlay.dtbo \
 	sdmmagpie-liber-dvt-overlay.dtbo \
@@ -136,6 +140,12 @@ sm6150-qtpro-evt1-overlay.dtbo-base := \
 
 sm6150-qtpro-evt2-overlay.dtbo-base := \
 	sm6150-qtpro-base.dtb
+
+sm6150-bornr-evt1-overlay.dtbo-base := \
+	sm6150-bornr-base.dtb
+
+sm6150-bornr-evt1-nonca-overlay.dtbo-base := \
+	sm6150-bornr-base.dtb
 
 else
 # SPDX-License-Identifier: GPL-2.0
