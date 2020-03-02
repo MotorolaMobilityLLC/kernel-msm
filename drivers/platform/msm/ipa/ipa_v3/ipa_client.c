@@ -756,12 +756,13 @@ int ipa3_request_gsi_channel(struct ipa_request_gsi_channel_params *params,
 		if (ipa_ep_idx >= ipa3_ctx->ipa_num_pipes ||
 			ipa3_ctx->ep[ipa_ep_idx].valid == 0) {
 			IPAERR("bad parm.\n");
-			return -EINVAL;
+			result = -EINVAL;
+			goto ipa_cfg_ep_fail;
 		}
 		result = ipa3_cfg_ep_cfg(ipa_ep_idx, &params->ipa_ep_cfg.cfg);
 		if (result) {
 			IPAERR("fail to configure QMB.\n");
-			return result;
+			goto ipa_cfg_ep_fail;
 		}
 	}
 
@@ -903,6 +904,7 @@ int ipa3_set_usb_max_packet_size(
 		&dev_scratch);
 	if (gsi_res != GSI_STATUS_SUCCESS) {
 		IPAERR("Error writing device scratch: %d\n", gsi_res);
+		IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
 		return -EFAULT;
 	}
 	IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
