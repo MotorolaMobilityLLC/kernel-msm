@@ -152,6 +152,7 @@
 		focaltech,display-coords =  <0 0 720 1520>;
 		focaltech,panel-supplier = "hlt";
 		focaltech,always_on_vio;
+                focaltech,dlfw_in_resume;
 	};
 };
 
