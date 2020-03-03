@@ -198,6 +198,11 @@ enum attr_idn {
 	QUERY_ATTR_IDN_TW_BUF_LIFETIME_EST      = 0x1E,
 	QUERY_ATTR_IDN_TW_CURR_BUF_SIZE         = 0x1F,
 #endif
+#if defined(CONFIG_SCSI_SKHID)
+	/* use one reserved bit */
+	QUERY_ATTR_IDN_MANUAL_GC_CONT           = 0x12,
+	QUERY_ATTR_IDN_MANUAL_GC_STATUS         = 0x13,
+#endif
 #if defined(CONFIG_UFSFEATURE)
 	QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS       = 0xFF,
 #endif
@@ -384,6 +389,16 @@ enum geometry_desc_param {
 	GEOMETRY_DESC_TW_SUPPORT_BUF_TYPE		= 0x56,
 #endif
 };
+
+#if defined(CONFIG_SCSI_SKHID)
+enum {
+	MANUAL_GC_OFF = 0,
+	MANUAL_GC_ON,
+	MANUAL_GC_DISABLE,
+	MANUAL_GC_ENABLE,
+	MANUAL_GC_MAX,
+};
+#endif
 
 /* Health descriptor parameters offsets in bytes*/
 enum health_desc_param {
