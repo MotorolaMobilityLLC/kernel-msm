@@ -1625,6 +1625,9 @@ static int smb5_dc_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PIN_ENABLED:
 		val->intval = 0;
 		break;
+	case POWER_SUPPLY_PROP_RERUN_AICL:
+		val->intval = 0;
+		break;
 	default:
 		return -EINVAL;
 	}
