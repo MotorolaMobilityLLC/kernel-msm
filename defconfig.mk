@@ -37,8 +37,5 @@ endef
 #
 # make combined defconfig file
 #---------------------------------------
-$(TARGET_DEFCONFIG): FORCE $(PRODUCT_SPECIFIC_DEFCONFIGS)
+$(TARGET_DEFCONFIG): $(PRODUCT_SPECIFIC_DEFCONFIGS)
 	$(call do-make-defconfig,$@,$(PRODUCT_SPECIFIC_DEFCONFIGS))
-
-.PHONY: FORCE
-FORCE:
