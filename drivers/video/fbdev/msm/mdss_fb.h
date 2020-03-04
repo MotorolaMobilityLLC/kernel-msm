@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2018,2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -322,6 +322,7 @@ struct msm_fb_data_type {
 	struct mutex bl_lock;
 	struct mutex mdss_sysfs_lock;
 	bool ipc_resume;
+	bool allow_secure_bl_update;
 
 	struct platform_device *pdev;
 

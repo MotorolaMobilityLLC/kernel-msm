@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016, 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, 2018,2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -88,6 +88,8 @@ struct msmfb_metadata32 {
 		uint32_t video_info_code;
 		struct mdss_hw_caps caps;
 		uint8_t secure_en;
+		bool sec_bl_update_en;
+		bool sec_reg_on;
 	} data;
 };
 
