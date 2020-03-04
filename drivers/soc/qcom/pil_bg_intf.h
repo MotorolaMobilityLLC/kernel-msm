@@ -29,6 +29,7 @@ enum bg_tz_commands {
 /* tzapp bg request.*/
 struct tzapp_bg_req {
 	uint8_t tzapp_bg_cmd;
+	uint8_t padding[3];
 	phys_addr_t address_fw;
 	size_t size_fw;
 } __attribute__ ((__packed__));
