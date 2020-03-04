@@ -200,6 +200,17 @@ out:
 	return ret;
 }
 
+int cnss_pci_prevent_l1(struct device *dev)
+{
+	return 0;
+}
+EXPORT_SYMBOL(cnss_pci_prevent_l1);
+
+void cnss_pci_allow_l1(struct device *dev)
+{
+}
+EXPORT_SYMBOL(cnss_pci_allow_l1);
+
 int cnss_pci_link_down(struct device *dev)
 {
 	unsigned long flags;
