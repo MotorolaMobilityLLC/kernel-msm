@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019,2020 The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1382,7 +1382,7 @@ int mdp3_get_img(struct msmfb_data *img, struct mdp3_img_data *data, int client)
 {
 	struct fd f;
 	int ret = -EINVAL;
-	int fb_num;
+	int fb_num = 0;
 	struct ion_client *iclient = mdp3_res->ion_client;
 	int dom = (mdp3_res->domains + MDP3_IOMMU_DOMAIN_UNSECURE)->domain_idx;
 
