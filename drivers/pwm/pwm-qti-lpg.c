@@ -1147,13 +1147,6 @@ static int qpnp_lpg_pwm_set_output_pattern(struct pwm_chip *pwm_chip,
 	}
 
 	lpg->lut_written = true;
-	lpg->ramp_config.pause_hi_count = output_pattern->pause_hi_count;
-	lpg->ramp_config.pause_lo_count = output_pattern->pause_lo_count;
-	lpg->ramp_config.lo_idx = output_pattern->lo_idx;
-	lpg->ramp_config.hi_idx = output_pattern->hi_idx;
-	lpg->ramp_config.ramp_dir_low_to_hi = output_pattern->ramp_dir_low_to_hi;
-	lpg->ramp_config.pattern_repeat = output_pattern->pattern_repeat;
-	lpg->ramp_config.toggle = output_pattern->toggle;
 	memcpy(lpg->ramp_config.pattern, percentages,
 			output_pattern->num_entries);
 	lpg->ramp_config.hi_idx = lpg->ramp_config.lo_idx +
