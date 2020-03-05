@@ -69,13 +69,6 @@ struct pwm_output_pattern {
 	u64 *duty_pattern;
 	unsigned int num_entries;
 	u64 cycles_per_duty;
-	u8 pause_hi_count;
-	u8 pause_lo_count;
-	u8 hi_idx;
-	u8 lo_idx;
-	bool ramp_dir_low_to_hi;
-	bool pattern_repeat;
-	bool toggle;
 };
 
 /*
