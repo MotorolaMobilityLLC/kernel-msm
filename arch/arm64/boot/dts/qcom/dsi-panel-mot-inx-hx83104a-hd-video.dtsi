@@ -45,13 +45,13 @@
 		qcom,mdss-dsi-reset-always-high;
 		qcom,mdss-dsi-reset-before-power-on;
 		qcom,mdss-dsi-reset-sequence = <1 1>, <0 1>, <1 15>;
-		qcom,mdss-dsi-panel-clockrate = <668000000>;
+		qcom,mdss-dsi-panel-clockrate = <686000000>;
 		qcom,mdss-dsi-display-timings {
 			timing@0 {
 				qcom,mdss-dsi-panel-width = <720>;
 				qcom,mdss-dsi-panel-height = <1560>;
-				qcom,mdss-dsi-h-front-porch = <272>;
-				qcom,mdss-dsi-h-back-porch = <112>;
+				qcom,mdss-dsi-h-front-porch = <252>;
+				qcom,mdss-dsi-h-back-porch = <164>;
 				qcom,mdss-dsi-h-pulse-width = <40>;
 				qcom,mdss-dsi-h-sync-skew = <0>;
 				qcom,mdss-dsi-v-back-porch = <5>;

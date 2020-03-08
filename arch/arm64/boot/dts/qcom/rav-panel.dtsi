@@ -318,7 +318,7 @@
 
 &dsi_hx83104a_inx_video {
 	qcom,mdss-dsi-t-clk-post = <0x0C>;
-	qcom,mdss-dsi-t-clk-pre = <0x27>;
+	qcom,mdss-dsi-t-clk-pre = <0x28>;
 	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 	qcom,mdss-dsi-panel-status-command = [14 01 00 01 00 00 01 0a];
@@ -330,11 +330,11 @@
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
-				[21 1D 06 07 04 02 04 a0
-				21 1D 06 07 04 02 04 a0
-				21 1D 06 07 04 02 04 a0
-				21 1D 06 07 04 02 04 a0
-				21 14 06 07 04 02 04 a0];
+				[21 1E 06 08 04 02 04 a0
+				21 1E 06 08 04 02 04 a0
+				21 1E 06 08 04 02 04 a0
+				21 1E 06 08 04 02 04 a0
+				21 15 06 07 04 02 04 a0];
 
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
