@@ -22,7 +22,7 @@
 / {
 	model = "odessa";
 	qcom,msm-id = <365 0x0>;
-	qcom,board-id = <0x41 0xA100>;
+	qcom,board-id = <0x48 0xA100>;
 };
 
 
