@@ -464,6 +464,13 @@ config CHARGER_GPIO
 	  This driver can be build as a module. If so, the module will be
 	  called gpio-charger.
 
+config BAT_NTC_10K
+	bool "for ntc 10k"
+	default n
+	help
+	  Say Y to enable
+	  for battery ntc 10k
+
 config CHARGER_MANAGER
 	bool "Battery charger manager for multiple chargers"
 	depends on REGULATOR

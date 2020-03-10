@@ -97,6 +97,122 @@ static const char * const power_supply_usbc_pr_text[] = {
 static const char * const power_supply_typec_src_rp_text[] = {
 	"Rp-Default", "Rp-1.5A", "Rp-3A"
 };
+static char *charge_rate[] = {
+	"None", "Normal", "Weak", "Turbo", "Hyper"
+};
+
+static ssize_t power_supply_check_property(struct device *dev,
+					  struct device_attribute *attr,
+					  union power_supply_propval value) {
+	ssize_t ret = 0;
+	struct power_supply *psy = dev_get_drvdata(dev);
+	const ptrdiff_t off = attr - power_supply_attrs;
+
+	if (!psy ||!psy->desc) {
+		dev_err(dev, "no dev\n");
+		return -ENODEV;
+	}
+
+	if (off == POWER_SUPPLY_PROP_STATUS
+		&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_status_text))) {
+			dev_err(dev, "power_supply_status_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CHARGE_TYPE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_charge_type_text))) {
+			dev_err(dev, "power_supply_charge_type_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CHARGE_RATE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(charge_rate))) {
+			dev_err(dev, "charge_rate, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TECHNOLOGY
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_technology_text))) {
+			dev_err(dev, "power_supply_technology_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CAPACITY_LEVEL
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_capacity_level_text))) {
+			dev_err(dev, "power_supply_capacity_level_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if ((off == POWER_SUPPLY_PROP_TYPE ||
+			off == POWER_SUPPLY_PROP_REAL_TYPE)
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_type_text))) {
+			dev_err(dev, "power_supply_type_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_SCOPE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_scope_text))) {
+			dev_err(dev, "power_supply_scope_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TYPEC_MODE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_usbc_text))) {
+			dev_err(dev, "power_supply_usbc_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TYPEC_POWER_ROLE
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_usbc_pr_text))) {
+			dev_err(dev, "power_supply_usbc_pr_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_TYPEC_SRC_RP
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_typec_src_rp_text))) {
+			dev_err(dev, "power_supply_typec_src_rp_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_DIE_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_die_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_CONNECTOR_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_connector_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off == POWER_SUPPLY_PROP_SKIN_HEALTH
+			&& (value.intval < 0 ||
+			value.intval > ARRAY_SIZE(power_supply_health_text))) {
+			dev_err(dev, "power_supply_skin_health_text, invaid intval %d\n",
+						value.intval);
+			goto check_failed;
+	} else if (off >= POWER_SUPPLY_PROP_MODEL_NAME
+			&& !value.strval) {
+			dev_err(dev, "power_supply_mode_name is null\n");
+			goto check_failed;
+	}
+
+	return ret;
+
+check_failed:
+
+	if (psy->desc->name)
+		dev_err(dev, "psy : %s\n", psy->desc->name);
+	ret = -ENODATA;
+	return ret;
+}
 
 static ssize_t power_supply_show_usb_type(struct device *dev,
 					  enum power_supply_usb_type *usb_types,
@@ -158,6 +274,9 @@ static ssize_t power_supply_show_property(struct device *dev,
 		}
 	}
 
+	if (power_supply_check_property(dev, attr, value) < 0)
+		return ret;
+		
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
 		ret = sprintf(buf, "%s\n",
@@ -166,6 +285,10 @@ static ssize_t power_supply_show_property(struct device *dev,
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		ret = sprintf(buf, "%s\n",
 			      power_supply_charge_type_text[value.intval]);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_RATE:
+		ret = snprintf(buf, strlen(charge_rate[value.intval]) + 2,
+				"%s\n", charge_rate[value.intval]);
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		ret = sprintf(buf, "%s\n",
@@ -309,6 +432,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charge_empty),
 	POWER_SUPPLY_ATTR(charge_now),
 	POWER_SUPPLY_ATTR(charge_avg),
+	POWER_SUPPLY_ATTR(charge_rate),
 	POWER_SUPPLY_ATTR(charge_counter),
 	POWER_SUPPLY_ATTR(constant_charge_current),
 	POWER_SUPPLY_ATTR(constant_charge_current_max),
@@ -374,6 +498,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(temp_cold),
 	POWER_SUPPLY_ATTR(temp_hot),
 	POWER_SUPPLY_ATTR(system_temp_level),
+	POWER_SUPPLY_ATTR(num_system_temp_levels),
 	POWER_SUPPLY_ATTR(resistance),
 	POWER_SUPPLY_ATTR(resistance_capacitive),
 	POWER_SUPPLY_ATTR(resistance_id),
@@ -464,6 +589,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(comp_clamp_level),
 	POWER_SUPPLY_ATTR(adapter_cc_mode),
 	POWER_SUPPLY_ATTR(skin_health),
+	POWER_SUPPLY_ATTR(vbus_conflict),	
 	POWER_SUPPLY_ATTR(aicl_done),
 	POWER_SUPPLY_ATTR(voltage_step),
 	POWER_SUPPLY_ATTR(apsd_rerun),
@@ -484,6 +610,21 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cc_toggle_enable),
 	POWER_SUPPLY_ATTR(fg_type),
 	POWER_SUPPLY_ATTR(charger_status),
+	POWER_SUPPLY_ATTR(internal_send),
+	POWER_SUPPLY_ATTR(internal_receive),
+	POWER_SUPPLY_ATTR(external),
+	POWER_SUPPLY_ATTR(current_flow),
+	POWER_SUPPLY_ATTR(max_input_current),
+	POWER_SUPPLY_ATTR(max_output_current),
+	POWER_SUPPLY_ATTR(external_present),
+	POWER_SUPPLY_ATTR(power_required),
+	POWER_SUPPLY_ATTR(power_available),
+	POWER_SUPPLY_ATTR(power_source),
+	POWER_SUPPLY_ATTR(max_output_voltage),
+	POWER_SUPPLY_ATTR(output_voltage),
+	POWER_SUPPLY_ATTR(max_input_voltage),
+	POWER_SUPPLY_ATTR(input_voltage),
+	POWER_SUPPLY_ATTR(age),
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
