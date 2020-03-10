@@ -1447,6 +1447,11 @@ static int msm_gpio_init(struct msm_pinctrl *pctrl)
 
 	chip = &pctrl->chip;
 	chip->base = -1;
+	if (!of_property_read_u32(pctrl->dev->of_node, "qcom,base-value", &ret)) {
+		chip->base = ret;
+		dev_info(pctrl->dev, "set base value as %d\n", chip->base);
+	}
+
 	chip->ngpio = ngpio;
 	chip->label = dev_name(pctrl->dev);
 	chip->parent = pctrl->dev;
