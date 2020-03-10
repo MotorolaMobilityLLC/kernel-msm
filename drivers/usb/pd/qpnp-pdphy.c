@@ -74,7 +74,7 @@
 #define PD_MSG_HDR_REV(hdr)		(((hdr) >> 6) & 3)
 
 /* timers */
-#define RECEIVER_RESPONSE_TIME		15	/* tReceiverResponse */
+#define RECEIVER_RESPONSE_TIME		150	/* tReceiverResponse */
 #define HARD_RESET_COMPLETE_TIME	5	/* tHardResetComplete */
 
 struct usb_pdphy {
