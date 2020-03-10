@@ -4307,6 +4307,12 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 	if (pd->current_state != PE_SNK_READY || !is_sink_tx_ok(pd)) {
 		usbpd_err(&pd->dev, "select_pdo: Cannot select new PDO yet\n");
 		ret = -EBUSY;
+		if((pd->current_state >= PE_SRC_DISABLED) &&
+		(pd->current_state <= PE_SRC_TRANSITION_TO_DEFAULT))
+		{
+			usbpd_err(&pd->dev, "select_pdo: we are sourcing power so return not supported\n");
+			ret = -ENOTSUPP;
+		}
 		goto out;
 	}
 
