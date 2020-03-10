@@ -3940,6 +3940,11 @@ static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 	if (chg->pd_active)
 		return;
 
+	if (chg->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
+		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 500000);
+		return;
+	}
+
 	switch (pst) {
 	case POWER_SUPPLY_TYPE_USB:
 		/*
@@ -4564,8 +4569,11 @@ static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 		smblib_handle_typec_removal(chg);
 	}
 
+       if (chg->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
+		vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
+		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 500000);
 	/* suspend usb if sink */
-	if ((chg->typec_status[3] & UFP_DFP_MODE_STATUS_BIT)
+	} else if ((chg->typec_status[3] & UFP_DFP_MODE_STATUS_BIT)
 			&& chg->typec_present)
 		vote(chg->usb_icl_votable, OTG_VOTER, true, 0);
 	else
