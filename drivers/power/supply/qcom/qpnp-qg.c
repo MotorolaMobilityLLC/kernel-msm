@@ -36,8 +36,9 @@
 #include "qg-soc.h"
 #include "qg-battery-profile.h"
 #include "qg-defs.h"
+#include <dt-bindings/iio/qcom,spmi-vadc.h>
 
-static int qg_debug_mask;
+static int qg_debug_mask = 0xff;
 
 static int qg_esr_mod_count = 30;
 static ssize_t esr_mod_count_show(struct device *dev, struct device_attribute
@@ -2215,6 +2216,9 @@ static int qg_psy_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER_SHADOW:
 		pval->intval = chip->qg_charge_counter;
+                break;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+		pval->intval = chip->cl->init_cap_uah;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		if (!chip->dt.cl_disable && chip->dt.cl_feedback_on)
@@ -2289,7 +2293,12 @@ static int qg_psy_get_property(struct power_supply *psy,
 		break;
 	}
 
-	return rc;
+	if (rc < 0) {
+		pr_err("Failed to get property: %d\n", rc);
+		return rc;
+	}
+
+	return 0;
 }
 
 static int qg_property_is_writeable(struct power_supply *psy,
@@ -2333,6 +2342,7 @@ static enum power_supply_property qg_psy_props[] = {
 	POWER_SUPPLY_PROP_BATT_PROFILE_VERSION,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_CYCLE_COUNTS,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_AVG,
@@ -4706,8 +4716,11 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 		chip->batt_id_chan = NULL;
 		return rc;
 	}
-
+#ifdef CONFIG_BAT_NTC_10K
+	chip->batt_therm_chan = iio_channel_get(&pdev->dev, "batt-therm-ntc-10k");
+#else
 	chip->batt_therm_chan = iio_channel_get(&pdev->dev, "batt-therm");
+#endif
 	if (IS_ERR(chip->batt_therm_chan)) {
 		rc = PTR_ERR(chip->batt_therm_chan);
 		if (rc != -EPROBE_DEFER)
@@ -4717,6 +4730,8 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 	}
 
 	chip->dev = &pdev->dev;
+	qg_debug_mask |= QG_DEBUG_PON | QG_DEBUG_STATUS
+		| QG_DEBUG_IRQ | QG_DEBUG_PM | QG_DEBUG_ESR;
 	chip->debug_mask = &qg_debug_mask;
 	platform_set_drvdata(pdev, chip);
 	INIT_WORK(&chip->udata_work, process_udata_work);

@@ -30,6 +30,7 @@ enum usbpd_svdm_cmd_type {
 #define USBPD_SVDM_EXIT_MODE		0x5
 #define USBPD_SVDM_ATTENTION		0x6
 
+#define PD_MAX_PDO_NUM		7
 /*
  * Implemented by client
  */
@@ -57,6 +58,14 @@ struct usbpd_svid_handler {
 	/* client should leave these blank; private members used by PD driver */
 	struct list_head entry;
 	bool discovered;
+};
+
+struct usbpd_pdo_info {
+	int pdo_pos;
+	int uv_max;
+	int uv_min;
+	int ua;
+	int type;
 };
 
 enum plug_orientation {
@@ -94,6 +103,26 @@ int usbpd_send_svdm(struct usbpd *pd, u16 svid, u8 cmd,
 		const u32 *vdos, int num_vdos);
 
 /*
+ * Look for best match for PDO selection in Source Mode.
+ */
+int usbpd_select_pdo_match(struct usbpd *pd);
+
+/*
+ * Grab Data Role
+ */
+int usbpd_get_current_dr(struct usbpd *pd);
+
+/*
+* support that directly set pdo which is need in Source Mode.
+*/
+int usbpd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua);
+
+/*
+* Transmit all effective pdo info.
+*/
+int usbpd_get_pdo_info(struct usbpd *pd, struct usbpd_pdo_info *pdo_info);
+
+/*
  * Get current status of CC pin orientation.
  *
  * Return: ORIENTATION_CC1 or ORIENTATION_CC2 if attached,
@@ -129,6 +158,19 @@ static inline int usbpd_send_vdm(struct usbpd *pd, u32 vdm_hdr, const u32 *vdos,
 static inline int usbpd_send_svdm(struct usbpd *pd, u16 svid, u8 cmd,
 		enum usbpd_svdm_cmd_type cmd_type, int obj_pos,
 		const u32 *vdos, int num_vdos)
+{
+	return -EINVAL;
+}
+
+/*
+ * Look for best match for PDO selection in Source Mode.
+ */
+static inline int usbpd_select_pdo_match(struct usbpd *pd)
+{
+	return -EINVAL;
+}
+
+static inline int usbpd_get_current_dr(struct usbpd *pd)
 {
 	return -EINVAL;
 }

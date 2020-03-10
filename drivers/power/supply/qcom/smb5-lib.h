@@ -5,18 +5,24 @@
 
 #ifndef __SMB5_CHARGER_H
 #define __SMB5_CHARGER_H
+#include <linux/gpio.h>
 #include <linux/alarmtimer.h>
 #include <linux/ktime.h>
 #include <linux/types.h>
 #include <linux/timer.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
+#include <linux/reboot.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/extcon-provider.h>
 #include <linux/usb/typec.h>
 #include "storm-watch.h"
 #include "battery.h"
+#include <linux/alarmtimer.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/power_supply.h>
+#include <linux/usb/usbpd.h>
 
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
@@ -25,6 +31,7 @@ enum print_reason {
 	PR_PARALLEL	= BIT(3),
 	PR_OTG		= BIT(4),
 	PR_WLS		= BIT(5),
+	PR_MOTO		= BIT(7),
 };
 
 #define DEFAULT_VOTER			"DEFAULT_VOTER"
@@ -47,6 +54,7 @@ enum print_reason {
 #define CTM_VOTER			"CTM_VOTER"
 #define SW_QC3_VOTER			"SW_QC3_VOTER"
 #define AICL_RERUN_VOTER		"AICL_RERUN_VOTER"
+#define ICL_LIMIT_VOTER		"ICL_LIMIT_VOTER"
 #define SW_ICL_MAX_VOTER		"SW_ICL_MAX_VOTER"
 #define PL_QNOVO_VOTER			"PL_QNOVO_VOTER"
 #define QNOVO_VOTER			"QNOVO_VOTER"
@@ -85,6 +93,11 @@ enum print_reason {
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
+#define HEARTBEAT_VOTER			"HEARTBEAT_VOTER"
+#define EB_VOTER			"EB_VOTER"
+#define WIRELESS_VOTER			"WIRELESS_VOTER"
+#define DEMO_VOTER			"DEMO_VOTER"
+#define MMI_VOTER			"MMI_VOTER"
 
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
@@ -259,6 +272,10 @@ struct smb_irq_info {
 static const unsigned int smblib_extcon_cable[] = {
 	EXTCON_USB,
 	EXTCON_USB_HOST,
+#ifdef CONFIG_MODS_NEW_SW_ARCH
+	EXTCON_USB_CC,
+	EXTCON_USB_SPEED,
+#endif
 	EXTCON_NONE,
 };
 
@@ -371,6 +388,123 @@ struct smb_iio {
 	struct iio_channel	*die_temp_chan;
 	struct iio_channel	*skin_temp_chan;
 	struct iio_channel	*smb_temp_chan;
+	struct iio_channel	*dcin_v_chan;
+};
+
+struct mmi_temp_zone {
+	int		temp_c;
+	int		norm_mv;
+	int		fcc_max_ma;
+	int		fcc_norm_ma;
+};
+
+#define MAX_NUM_STEPS 10
+enum mmi_temp_zones {
+	ZONE_FIRST = 0,
+	/* states 0-9 are reserved for zones */
+	ZONE_LAST = MAX_NUM_STEPS + ZONE_FIRST - 1,
+	ZONE_HOT,
+	ZONE_COLD,
+	ZONE_NONE = 0xFF,
+};
+
+enum mmi_chrg_step {
+	STEP_MAX,
+	STEP_NORM,
+	STEP_EB,
+	STEP_FULL,
+	STEP_FLOAT,
+	STEP_DEMO,
+	STEP_STOP,
+	STEP_NONE = 0xFF,
+};
+
+enum ebchg_state {
+	EB_DISCONN = POWER_SUPPLY_EXTERN_STATE_DIS,
+	EB_SINK = POWER_SUPPLY_EXTERN_STATE_SINK,
+	EB_SRC = POWER_SUPPLY_EXTERN_STATE_SRC,
+	EB_OFF = POWER_SUPPLY_EXTERN_STATE_OFF,
+};
+
+enum charging_limit_modes {
+	CHARGING_LIMIT_OFF,
+	CHARGING_LIMIT_RUN,
+	CHARGING_LIMIT_UNKNOWN,
+};
+
+enum turbo_ebsrc {
+	TURBO_EBSRC_UNKNOWN,
+	TURBO_EBSRC_NOT_SUPPORTED,
+	TURBO_EBSRC_VALID,
+};
+
+struct mmi_params {
+	bool			factory_mode;
+	int			demo_mode;
+	struct gpio		ebchg_gpio;
+	struct notifier_block	smb_reboot;
+	/* thermal mitigation */
+	int			dc_system_temp_level;
+	int			dc_thermal_levels;
+	int			*dc_thermal_mitigation;
+	int			usb_system_temp_level;
+	int			usb_thermal_levels;
+	int			*usb_thermal_mitigation;
+	bool			factory_kill_armed;
+
+	/* Charge Profile */
+	int			num_temp_zones;
+	struct mmi_temp_zone	*temp_zones;
+	enum mmi_temp_zones	pres_temp_zone;
+	enum mmi_chrg_step	pres_chrg_step;
+	int			chrg_taper_cnt;
+	int			dc_ebmax_current_ma;
+	int			dc_ebmax_current_ma_default;
+	int			dc_eff_current_ma;
+	/* external battery params */
+	const char		*eb_batt_psy_name;
+	const char		*eb_pwr_psy_name;
+	const char		*extrn_fg_psy_name;
+	enum ebchg_state	ebchg_state;
+	bool			force_eb_chrg;
+	int			update_eb_params;
+	int			charger_debounce_cnt;
+	int			cl_ebchg;
+	int			cl_ebsrc;
+	int			vl_ebsrc;
+	int			vo_ebsrc;
+	int			vi_ebsrc;
+	bool			eb_rechrg;
+	bool			usbeb_present;
+	bool			wls_present;
+	int			temp_state;
+	int			chrg_iterm;
+	atomic_t		hb_ready;
+	struct alarm		heartbeat_alarm;
+	struct delayed_work	heartbeat_work;
+	struct power_supply	*wls_psy;
+	struct power_supply	*usbeb_psy;
+	struct pinctrl		*smb_pinctrl;
+	struct wakeup_source	smblib_mmi_hb_wake_source;
+	bool			apsd_done;
+	int			charger_rate;
+	bool			hvdcp3_con;
+	struct notifier_block	mmi_psy_notifier;
+	bool			init_done;
+	int			vbus_inc_cnt;
+	bool			enable_charging_limit;
+	bool			is_factory_image;
+	enum charging_limit_modes	charging_limit_modes;
+	int			upper_limit_capacity;
+	int			lower_limit_capacity;
+	int			base_fv_mv;
+	int			vfloat_comp_mv;
+	enum turbo_ebsrc	turbo_pwr_ebsrc;
+	bool			check_ebsrc_vl;
+	int			batt_health;
+	int			max_chrg_temp;
+	int			is_otg_enable;
+	bool			force_chg_suspend;
 };
 
 struct smb_charger {
@@ -398,7 +532,7 @@ struct smb_charger {
 	struct mutex		adc_lock;
 	struct mutex		dpdm_lock;
 	struct mutex		typec_lock;
-
+	struct mutex		otg_lock;
 	/* power supplies */
 	struct power_supply		*batt_psy;
 	struct power_supply		*usb_psy;
@@ -437,6 +571,7 @@ struct smb_charger {
 	struct votable		*fcc_main_votable;
 	struct votable		*fv_votable;
 	struct votable		*usb_icl_votable;
+	struct votable		*dc_icl_votable;
 	struct votable		*awake_votable;
 	struct votable		*pl_disable_votable;
 	struct votable		*chg_disable_votable;
@@ -509,6 +644,10 @@ struct smb_charger {
 	int			dcp_icl_ua;
 	int			fake_capacity;
 	int			fake_batt_status;
+	bool			extrn_fg;
+	bool			dc_unsupported;
+	bool			wireless_unsupported;
+	bool			usbeb_unsupported;
 	bool			step_chg_enabled;
 	bool			sw_jeita_enabled;
 	bool			jeita_arb_enable;
@@ -617,6 +756,19 @@ struct smb_charger {
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
+	/* mmi based params */
+	/* Place at end of struct smb_charger as it grows */
+	struct mmi_params	mmi;
+	void			*ipc_log;
+	void			*ipc_log_reg;
+	struct usbpd		*pd;
+	int			pd_contract_uv;
+	struct delayed_work	pd_contract_work;
+	bool			external_vbus;
+	bool			support_mods;
+	bool			suspended;
+	u32			source_current_ma;
+	bool			reverse_boost;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -657,6 +809,7 @@ int smblib_vconn_regulator_is_enabled(struct regulator_dev *rdev);
 
 irqreturn_t default_irq_handler(int irq, void *data);
 irqreturn_t smb_en_irq_handler(int irq, void *data);
+irqreturn_t smblib_handle_usbin_collapse(int irq, void *data);
 irqreturn_t chg_state_change_irq_handler(int irq, void *data);
 irqreturn_t batt_temp_changed_irq_handler(int irq, void *data);
 irqreturn_t batt_psy_changed_irq_handler(int irq, void *data);
@@ -676,11 +829,16 @@ irqreturn_t typec_or_rid_detection_change_irq_handler(int irq, void *data);
 irqreturn_t temp_change_irq_handler(int irq, void *data);
 irqreturn_t usbin_ov_irq_handler(int irq, void *data);
 irqreturn_t sdam_sts_change_irq_handler(int irq, void *data);
+
+irqreturn_t dcin_uv_irq_handler(int irq, void *data);
+
 int smblib_get_prop_input_suspend(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_present(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_capacity(struct smb_charger *chg,
+				union power_supply_propval *val);
+int smblib_get_prop_batt_age(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_status(struct smb_charger *chg,
 				union power_supply_propval *val);
@@ -841,4 +999,29 @@ int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
+
+int smblib_get_prop_dc_system_temp_level(struct smb_charger *chg,
+					 union power_supply_propval *val);
+int smblib_set_prop_dc_system_temp_level(struct smb_charger *chg,
+				const union power_supply_propval *val);
+int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
+					  union power_supply_propval *val);
+int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
+				const union power_supply_propval *val);
+void mmi_init(struct smb_charger *chg);
+void mmi_deinit(struct smb_charger *chg);
+void mmi_chrg_rate_check(struct smb_charger *chip);
+
+#define HEARTBEAT_EB_MS 1000
+extern struct smb_charger *mmi_chip;
+extern int eb_rechrg_start_soc;
+extern int eb_rechrg_stop_soc;
+extern int eb_attach_start_soc;
+extern int eb_attach_stop_soc;
+extern int eb_low_start_soc;
+extern int eb_low_stop_soc;
+extern int eb_on_sw;
+
+#define DEFAULT_SOURCE_CURRENT_MA 1500
+
 #endif /* __SMB5_CHARGER_H */
