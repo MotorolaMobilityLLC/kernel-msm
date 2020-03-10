@@ -1316,7 +1316,7 @@ static int usb_icl_vote_callback(struct votable *votable, void *data,
 	}
 
 	/* rerun AICL if new ICL is above settled ICL */
-	if (icl_ua > pval.intval)
+	if (icl_ua != INT_MAX && icl_ua > pval.intval)
 		rerun_aicl = true;
 
 	if (rerun_aicl && (chip->wa_flags & AICL_RERUN_WA_BIT)) {
