@@ -843,26 +843,7 @@ static int himax_common_resume(struct device *dev)
 	return 0;
 }
 #endif
-//temp solution for TP, tinno 20200229 start
-#include <linux/notifier.h>
-extern struct blocking_notifier_head backlight_state_notifier_list;
-struct notifier_block backlight_state_notif;
 
-static int backlight_state_notifier_callback(struct notifier_block *self,
-                                unsigned long backlight, void *data)
-{
-	struct himax_ts_data *ts = private_ts;
-
-	I("%s backlight = %d\n", __func__, backlight);
-
-	if (backlight > 0)
-		himax_common_resume(ts->dev);
-	else
-		himax_common_suspend(ts->dev);
-
-	return 0;
-}
-//temp solution for TP, tinno 20200229 end
 #if defined(HX_CONFIG_FB)
 int fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
@@ -907,26 +888,80 @@ int fb_notifier_callback(struct notifier_block *self,
 	return 0;
 }
 #elif defined(HX_CONFIG_DRM)
+struct drm_panel *himax_active_panel;
+static int check_dt(struct device_node *np)
+{
+	int i;
+	int count;
+	struct device_node *node;
+	struct drm_panel *panel;
+
+	count = of_count_phandle_with_args(np, "panel", NULL);
+	if (count <= 0)
+		return 0;
+
+	for (i = 0; i < count; i++) {
+		node = of_parse_phandle(np, "panel", i);
+		panel = of_drm_find_panel(node);
+		of_node_put(node);
+		if (!IS_ERR(panel)) {
+			himax_active_panel = panel;
+			return 0;
+		}
+	}
+
+	return -ENODEV;
+}
+
+static int check_default_tp(struct device_node *dt, const char *prop)
+{
+	const char *active_tp;
+	const char *compatible;
+	char *start;
+	int ret;
+
+	ret = of_property_read_string(dt->parent, prop, &active_tp);
+	if (ret) {
+		pr_err(" %s:fail to read %s %d\n", __func__, prop, ret);
+		return -ENODEV;
+	}
+
+	ret = of_property_read_string(dt, "compatible", &compatible);
+	if (ret < 0) {
+		pr_err(" %s:fail to read %s %d\n", __func__, "compatible", ret);
+		return -ENODEV;
+	}
+
+	start = strnstr(active_tp, compatible, strlen(active_tp));
+	if (start == NULL) {
+		pr_err(" %s:no match compatible, %s, %s\n",
+			__func__, compatible, active_tp);
+		ret = -ENODEV;
+	}
+
+	return ret;
+}
+
 int drm_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
 {
-	struct msm_drm_notifier *evdata = data;
+	struct drm_panel_notifier *evdata = data;
 	int *blank;
 	struct himax_ts_data *ts =
 		container_of(self, struct himax_ts_data, fb_notif);
 
-	if (!evdata || (evdata->id != 0))
+	if (!evdata)
 		return 0;
 
 	D("DRM  %s\n", __func__);
 
 	if (evdata->data
-	&& event == MSM_DRM_EARLY_EVENT_BLANK
+	&& event == DRM_PANEL_EARLY_EVENT_BLANK
 	&& ts != NULL
 	&& ts->dev != NULL) {
 		blank = evdata->data;
 		switch (*blank) {
-		case MSM_DRM_BLANK_POWERDOWN:
+		case DRM_PANEL_BLANK_POWERDOWN:
 			if (!ts->initialized)
 				return -ECANCELED;
 			himax_common_suspend(ts->dev);
@@ -935,13 +970,19 @@ int drm_notifier_callback(struct notifier_block *self,
 	}
 
 	if (evdata->data
-	&& event == MSM_DRM_EVENT_BLANK
+	&& event == DRM_PANEL_EVENT_BLANK
 	&& ts != NULL
 	&& ts->dev != NULL) {
 		blank = evdata->data;
 		switch (*blank) {
-		case MSM_DRM_BLANK_UNBLANK:
+		case DRM_PANEL_BLANK_UNBLANK:
+#if defined(HX_CONTAINER_SPEED_UP)
+			queue_delayed_work(ts->ts_int_workqueue,
+				&ts->ts_int_work,
+				msecs_to_jiffies(DELAY_TIME));
+#else
 			himax_common_resume(ts->dev);
+#endif
 			break;
 		}
 	}
@@ -962,7 +1003,19 @@ int himax_chip_common_probe(struct spi_device *spi)
 			__func__);
 		return -EIO;
 	}
+#ifdef HX_CONFIG_DRM
+{
+	struct device_node *dp = spi->dev.of_node;
+	if (check_dt(dp)) {
+		if (!check_default_tp(dp, "qcom,spi-touch-active"))
+			ret = -EPROBE_DEFER;
+		else
+			ret = -ENODEV;
 
+		return ret;
+	}
+}
+#endif
 	gBuffer = kzalloc(sizeof(uint8_t) * HX_MAX_WRITE_SZ, GFP_KERNEL);
 	if (gBuffer == NULL) {
 		E("%s: allocate gBuffer failed\n", __func__);
@@ -992,12 +1045,6 @@ int himax_chip_common_probe(struct spi_device *spi)
 	ret = himax_chip_common_init();
 	if (ret < 0)
 		goto err_common_init_failed;
-//temp solution for TP, tinno 20200229 start
-	backlight_state_notif.notifier_call = backlight_state_notifier_callback;
-	ret = blocking_notifier_chain_register(&backlight_state_notifier_list, &backlight_state_notif);
-	if (ret)
-		E("Unable to register backlight_state_notifier: %d", ret);
-//temp solution for TP, tinno 20200229 end
 
 	return ret;
 
