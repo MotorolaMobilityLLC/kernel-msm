@@ -49,11 +49,10 @@ struct msm_rpm_stats_data {
 	u64 last_entered_at;
 	u64 last_exited_at;
 	u64 accumulated;
-/* todo from voyager: fixing  error: 'struct msm_rpm_stats_data' has no member named 'reserved' */
-//#if defined(CONFIG_MSM_RPM_SMD)
+#if defined(CONFIG_MSM_RPM_SMD)
 	u32 client_votes;
 	u32 reserved[3];
-//#endif
+#endif
 
 };
 
@@ -181,6 +180,7 @@ static inline int msm_rpmstats_copy_stats(
 	return length;
 }
 
+#ifdef CONFIG_MSM_RPM_STATS_LOG
 #define MAX_MASTER_NUM 5
 
 enum {
@@ -196,6 +196,7 @@ static u32 reserved0[2][4];
 
 static void msm_rpmstats_get_reserved(u32 reserved[][4])
 {
+	#if defined(CONFIG_MSM_RPM_SMD)
 	void __iomem *reg_base;
 	int i;
 
@@ -226,16 +227,20 @@ static void msm_rpmstats_get_reserved(u32 reserved[][4])
 	}
 
 	iounmap(reg_base);
+	#endif
 }
 
 void msm_rpmstats_log_suspend_enter(void)
 {
+	#if defined(CONFIG_MSM_RPM_SMD)
 	if (debug_mask & DEBUG_RPM_SPM_LOG)
 	msm_rpmstats_get_reserved(reserved0);
+	#endif
 }
 
 void msm_rpmstats_log_suspend_exit(int error)
 {
+	#if defined(CONFIG_MSM_RPM_SMD)
 	uint32_t smem_value;
 	int i;
 
@@ -250,7 +255,9 @@ void msm_rpmstats_log_suspend_exit(int error)
 					i, smem_value);
 		}
 	}
+	#endif
 }
+#endif
 
 static ssize_t rpmstats_show(struct kobject *kobj,
 			struct kobj_attribute *attr, char *buf)
@@ -357,7 +364,9 @@ static int msm_rpmstats_probe(struct platform_device *pdev)
 
 	msm_rpmstats_create_sysfs(pdev, pdata);
 
+	#ifdef CONFIG_MSM_RPM_STATS_LOG
 	rpmstats = pdata;
+	#endif
 	return 0;
 }
 
