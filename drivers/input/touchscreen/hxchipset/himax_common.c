@@ -2713,9 +2713,10 @@ static int hx_chk_flash_sts(void)
 #endif
 
 #if defined(HX_CONFIG_FB) || defined(HX_CONFIG_DRM)
+extern struct drm_panel *himax_active_panel;
 static void himax_fb_register(struct work_struct *work)
 {
-	int ret = 0;
+	int ret = -1;
 
 	struct himax_ts_data *ts = container_of(work, struct himax_ts_data,
 			work_att.work);
@@ -2735,7 +2736,8 @@ static void himax_fb_register(struct work_struct *work)
 		E("hx_msm_drm_register_client is NULL\n");
 #else
 	ts->fb_notif.notifier_call = drm_notifier_callback;
-	ret = msm_drm_register_client(&ts->fb_notif);
+	if (himax_active_panel)
+		ret = drm_panel_notifier_register(himax_active_panel, &ts->fb_notif);
 #endif
 #endif
 	if (ret)
@@ -2748,8 +2750,8 @@ static void himax_resume_work_func(struct work_struct *work)
 {
 	himax_chip_common_resume(private_ts);
 }
-
 #endif
+
 int himax_chip_common_init(void)
 {
 
@@ -2879,7 +2881,6 @@ found_hx_chip:
 		goto FW_force_upgrade;
 #endif
 
-
 #if defined(HX_AUTO_UPDATE_FW)
 FW_force_upgrade:
 	ts->himax_update_wq =
@@ -2981,7 +2982,7 @@ FW_force_upgrade:
 
 	INIT_DELAYED_WORK(&ts->work_att, himax_fb_register);
 	queue_delayed_work(ts->himax_att_wq, &ts->work_att,
-			msecs_to_jiffies(15000));
+			msecs_to_jiffies(1500));
 #endif
 
 #if defined(HX_SMART_WAKEUP)
@@ -3110,8 +3111,9 @@ void himax_chip_common_deinit(void)
 	} else
 		E("hx_msm_drm_unregister_client is NULL\n");
 #else
-	if (msm_drm_unregister_client(&ts->fb_notif))
-		E("Error occurred while unregistering drm_notifier.\n");
+	if (himax_active_panel)
+		if (drm_panel_notifier_unregister(himax_active_panel, &ts->fb_notif))
+			E("Error occurred while unregistering drm_notifier.\n");
 #endif
 	cancel_delayed_work_sync(&ts->work_att);
 	destroy_workqueue(ts->himax_att_wq);
