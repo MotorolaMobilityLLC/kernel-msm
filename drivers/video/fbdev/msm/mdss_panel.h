@@ -720,6 +720,9 @@ struct mdss_panel_info {
 	u32 out_format;
 	u32 rst_seq[MDSS_DSI_RST_SEQ_LEN];
 	u32 rst_seq_len;
+	u32 panel_tp_rst_post_sleep;
+	u32 panel_tp_rst_gpio;
+	bool panel_on_tp_rst_enable;
 	bool panel_off_rst_disable;
 	bool panel_reg_read_lp_enable;
 	bool panel_reset_pull_high;
