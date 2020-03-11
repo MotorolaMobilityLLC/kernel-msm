@@ -614,9 +614,17 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			}
 
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
-				if(gpio_is_valid(ctrl_pdata->tp_rst_gpio))
+				if(gpio_is_valid(ctrl_pdata->tp_rst_gpio)) {
 					gpio_set_value((ctrl_pdata->tp_rst_gpio),
 						pdata->panel_info.rst_seq[i]);
+				} else if (pinfo->panel_on_tp_rst_enable && gpio_is_valid(pinfo->panel_tp_rst_gpio)) {
+					gpio_set_value(pinfo->panel_tp_rst_gpio, pdata->panel_info.rst_seq[i]);
+
+					if (pinfo->panel_tp_rst_post_sleep && pinfo->panel_tp_rst_post_sleep < 200) {
+						usleep_range(pinfo->panel_tp_rst_post_sleep*1000, (pinfo->panel_tp_rst_post_sleep*1000 + 10));
+					}
+				}
+
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
 				if (pdata->panel_info.rst_seq[++i])
@@ -3412,6 +3420,15 @@ static int mdss_panel_parse_dt(struct device_node *np,
 					"qcom,mdss-panel-reset-high");
 	pinfo->panel_reg_read_lp_enable = of_property_read_bool(np,
 					"qcom,mdss-panel-reg-read-lp-enable");
+	pinfo->panel_on_tp_rst_enable = of_property_read_bool(np,
+					"qcom,mdss-panel-on-tp-rst-enable");
+
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tp-rst-gpio", &tmp);
+	pinfo->panel_tp_rst_gpio = (!rc ? tmp : 0);
+
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tp-rst-post-ms", &tmp);
+	pinfo->panel_tp_rst_post_sleep = (!rc ? tmp : 0);
+
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-init-delay-us", &tmp);
 	pinfo->mipi.init_delay = (!rc ? tmp : 0);
 
