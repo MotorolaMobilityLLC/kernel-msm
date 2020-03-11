@@ -95,7 +95,7 @@
 #include <linux/notifier.h>
 #include <linux/fb.h>
 #elif defined(HX_CONFIG_DRM)
-#include <linux/msm_drm_notify.h>
+#include <drm/drm_panel.h>
 #endif
 
 #if defined(__HIMAX_MOD__)
@@ -113,7 +113,7 @@
 #define HX_CODE_OVERLAY
 /*Independent threads run the notification chain notification function resume
  */
-/*#define HX_CONTAINER_SPEED_UP*/
+#define HX_CONTAINER_SPEED_UP
 #else
 #define HX_TP_PROC_GUEST_INFO
 #endif
