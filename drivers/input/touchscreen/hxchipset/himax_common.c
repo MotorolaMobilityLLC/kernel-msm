@@ -2745,6 +2745,107 @@ static void himax_fb_register(struct work_struct *work)
 }
 #endif
 
+#include <linux/major.h>
+#include <linux/kdev_t.h>
+
+/* Attribute: path (RO) */
+static ssize_t path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *ts = dev_get_drvdata(dev);
+	ssize_t blen;
+	const char *path;
+
+	if (!ts) {
+		pr_err("cannot get himax_ts_data pointer\n");
+		return (ssize_t)0;
+	}
+	path = kobject_get_path(&ts->dev->kobj, GFP_KERNEL);
+	blen = scnprintf(buf, PAGE_SIZE, "%s", path ? path : "na");
+	kfree(path);
+	return blen;
+}
+
+/* Attribute: vendor (RO) */
+static ssize_t vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "himax");
+}
+
+static struct device_attribute touchscreen_attributes[] = {
+	__ATTR_RO(path),
+	__ATTR_RO(vendor),
+	__ATTR_NULL
+};
+
+#define TSDEV_MINOR_BASE 128
+#define TSDEV_MINOR_MAX 32
+
+static int himax_sysfs_touchscreen(
+	struct himax_ts_data *ts, bool create)
+{
+	struct device_attribute *attrs = touchscreen_attributes;
+	int i, error = 0;
+	static struct class *touchscreen_class;
+	static struct device *ts_class_dev;
+	static int minor;
+
+	if (create) {
+		minor = input_get_new_minor(0x90,
+						1, false);
+		if (minor < 0)
+			minor = input_get_new_minor(TSDEV_MINOR_BASE,
+					TSDEV_MINOR_MAX, true);
+		pr_info("assigned minor %d\n", minor);
+
+		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
+		if (IS_ERR(touchscreen_class)) {
+			error = PTR_ERR(touchscreen_class);
+			touchscreen_class = NULL;
+			return error;
+		}
+
+		ts_class_dev = device_create(touchscreen_class, NULL,
+				MKDEV(INPUT_MAJOR, minor),
+				ts, ts->chip_name);
+		if (IS_ERR(ts_class_dev)) {
+			error = PTR_ERR(ts_class_dev);
+			ts_class_dev = NULL;
+			return error;
+		}
+		for (i = 0; attrs[i].attr.name != NULL; ++i) {
+			error = device_create_file(ts_class_dev, &attrs[i]);
+			if (error)
+				break;
+		}
+
+		if (error)
+			goto device_destroy;
+	} else {
+		if (!touchscreen_class || !ts_class_dev)
+			return -ENODEV;
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i)
+			device_remove_file(ts_class_dev, &attrs[i]);
+
+		device_unregister(ts_class_dev);
+		class_unregister(touchscreen_class);
+	}
+
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		device_remove_file(ts_class_dev, &attrs[i]);
+	device_destroy(touchscreen_class, MKDEV(INPUT_MAJOR, minor));
+	ts_class_dev = NULL;
+	class_unregister(touchscreen_class);
+	pr_err("error creating touchscreen class\n");
+
+	return -ENODEV;
+}
+
 #if defined(HX_CONTAINER_SPEED_UP)
 static void himax_resume_work_func(struct work_struct *work)
 {
@@ -3003,6 +3104,7 @@ FW_force_upgrade:
 		E(" %s: himax_common proc_init failed!\n", __func__);
 		goto err_creat_proc_file_failed;
 	}
+	himax_sysfs_touchscreen(ts, true);
 
 	himax_ts_register_interrupt();
 
@@ -3081,6 +3183,8 @@ void himax_chip_common_deinit(void)
 	struct himax_ts_data *ts = private_ts;
 
 	himax_ts_unregister_interrupt();
+
+	himax_sysfs_touchscreen(ts, false);
 
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_INSPECT)
 	himax_inspect_data_clear();
