@@ -798,6 +798,13 @@ int ipa3_request_gsi_channel(struct ipa_request_gsi_channel_params *params,
 		IPADBG("ep configuration successful\n");
 	} else {
 		IPADBG("Skipping endpoint configuration.\n");
+		if (IPA_CLIENT_IS_PROD(ipa3_ctx->ep[ipa_ep_idx].client) &&
+			ipa3_ctx->ep[ipa_ep_idx].client == IPA_CLIENT_USB_PROD)
+			if (ipa3_cfg_ep_seq(ipa_ep_idx,
+						&params->ipa_ep_cfg.seq)) {
+				IPAERR("fail to configure USB pipe seq\n");
+				goto ipa_cfg_ep_fail;
+			}
 	}
 
 	out_params->clnt_hdl = ipa_ep_idx;
