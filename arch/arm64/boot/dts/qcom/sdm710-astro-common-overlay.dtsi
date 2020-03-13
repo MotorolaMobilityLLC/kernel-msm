@@ -198,7 +198,7 @@
         qcom,fg-cutoff-voltage = <3400>;
         qcom,fg-empty-voltage = <3200>;
 	qcom,fg-sys-term-current = <(-250)>;
-	qcom,battery-thermal-coefficients = [9d 50 ff];
+	qcom,battery-thermal-coefficients = [92 50 ff];
 };
 
 &pm660_charger {
