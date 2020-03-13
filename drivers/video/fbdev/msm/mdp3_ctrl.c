@@ -1831,8 +1831,13 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd)
 
 	mdp3_session->vsync_before_commit = 0;
 	if (!splash_done || mdp3_session->esd_recovery == true) {
-		if (panel && panel->set_backlight)
-			panel->set_backlight(panel, panel->panel_info.bl_max);
+		if (panel && panel->set_backlight) {
+			if (mfd->bl_level > 0)
+				panel->set_backlight(panel, mfd->bl_level);
+			else
+				panel->set_backlight(panel,
+						panel->panel_info.bl_max);
+		}
 		splash_done = true;
 		mdp3_session->esd_recovery = false;
 	}
