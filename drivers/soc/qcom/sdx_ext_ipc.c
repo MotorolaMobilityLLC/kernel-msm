@@ -1,4 +1,4 @@
-/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -240,6 +240,7 @@ static int sdx_ext_ipc_remove(struct platform_device *pdev)
 
 static const struct of_device_id sdx_ext_ipc_of_match[] = {
 	{ .compatible = "qcom,sdx-ext-ipc"},
+	{ .compatible = "qcom,sa415m-ccard"},
 	{},
 };
 
