@@ -1,0 +1,282 @@
+/* Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8909-qrd.dtsi"
+#include "msm8905.dtsi"
+#include "msm8905-256mb-memory.dtsi"
+#include "msm8905-camera-sensor-sku3.dtsi"
+
+&soc {
+	sound {
+		compatible = "qcom,msm8x16-audio-codec";
+		qcom,model = "msm8909-sku3-snd-card";
+		qcom,msm-snd-card-id = <0>;
+		qcom,msm-codec-type = "internal";
+		qcom,msm-ext-pa = "primary";
+		qcom,msm-mclk-freq = <9600000>;
+		qcom,msm-mbhc-hphl-swh = <1>;
+		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-hs-micbias-type = "internal";
+		qcom,msm-micbias1-ext-cap;
+		qcom,msm-micbias2-ext-cap;
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"SPK_RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS Internal1", "Handset Mic",
+			"MIC BIAS Internal2", "Headset Mic",
+			"AMIC1", "MIC BIAS Internal1",
+			"AMIC2", "MIC BIAS Internal2";
+		pinctrl-names = "cdc_lines_act",
+				"cdc_lines_sus";
+		pinctrl-0 = <&cdc_pdm_lines_act>;
+		pinctrl-1 = <&cdc_pdm_lines_sus>;
+		asoc-platform = <&pcm0>, <&pcm1>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&lpa>,
+				<&voice_svc>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+				"msm-voip-dsp", "msm-pcm-voice",
+				"msm-pcm-loopback", "msm-compress-dsp",
+				"msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing",
+				"msm-pcm-lpa", "msm-voice-svc";
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_hdmi>,
+				<&dai_mi2s0>, <&dai_mi2s1>,
+				<&dai_mi2s2>, <&dai_mi2s3>,
+				<&sb_0_rx>, <&sb_0_tx>,
+				<&sb_1_rx>, <&sb_1_tx>,
+				<&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>,
+				<&bt_sco_rx>, <&bt_sco_tx>, <&bt_a2dp_rx>,
+				<&int_fm_rx>, <&int_fm_tx>,
+				<&afe_pcm_rx>, <&afe_pcm_tx>,
+				<&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>,
+				<&incall_music_rx>,	<&incall_music_2_rx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-hdmi.8",
+				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+				"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+				"msm-dai-q6-dev.16384",	"msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392",	"msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
+				"msm-dai-q6-dev.12290",
+				"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
+				"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
+				"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
+				"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
+				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
+		asoc-codec = <&stub_codec>, <&pm8909_conga_dig>;
+		asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
+	};
+
+	spi@78b9000 { /* BLSP1 QUP5 */
+		status = "okay";
+		qcom,mdss_spi_client {
+			reg = <0>;
+			compatible = "qcom,mdss-spi-client";
+			label = "MDSS SPI QUP5 CLIENT";
+			spi-max-frequency = <50000000>;
+		};
+	};
+
+	i2c@78b9000 {/* BLSP1 QUP5 */
+		status = "disabled";
+	};
+
+	mdss_spi: qcom,mdss_spi {
+		compatible = "qcom,mdss-spi-display";
+		label = "mdss spi panel";
+
+		qcom,mdss-fb-map = <&mdss_fb0>;
+		qcom,mdss-mdp = <&mdss_mdp>;
+		vdd-supply = <&pm8909_l17>;
+		vddio-supply = <&pm8909_l6>;
+
+		qcom,panel-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,panel-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "vdd";
+				qcom,supply-min-voltage = <2850000>;
+				qcom,supply-max-voltage = <2850000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+
+			qcom,panel-supply-entry@1 {
+				reg = <1>;
+				qcom,supply-name = "vddio";
+				qcom,supply-min-voltage = <1800000>;
+				qcom,supply-max-voltage = <1800000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+		};
+	};
+
+	matrix_keypad: matrix_keypad@0 {
+		compatible = "gpio-matrix-keypad";
+		input-name = "matrix_keypad";
+		debounce-delay-ms = <5>;
+		col-scan-delay-us = <2>;
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
+
+		row-gpios = <&msm_gpio 97 0
+			&msm_gpio 96 0
+			&msm_gpio 95 0
+			&msm_gpio 94 0>;
+
+		col-gpios = <&msm_gpio 52 0
+			&msm_gpio 56 0
+			&msm_gpio 7 0
+			&msm_gpio 99 0
+			&msm_gpio 6 0>;
+		linux,keymap = <0x000000e7      /* (0,0) KEY_DIAL */
+			0x00010004      /* (1,0) KEY_3 */
+			0x00020007      /* (2,0) KEY_6 */
+			0x0003000a      /* (3,0) KEY_9 */
+			0x0004020b      /* (4,0) KEY_NUMERIC_POUND */
+
+			0x01000069      /* (0,1) KEY_LEFT */
+			0x01010003      /* (1,1) KEY_2 */
+			0x01020006      /* (2,1) KEY_5 */
+			0x01030009      /* (3,1) KEY_8 */
+			0x0104000b      /* (4,1) KEY_0 */
+
+			0x0200008b      /* (0,2) KEY_MENU */
+			0x02010002      /* (1,2) KEY_1 */
+			0x02020005      /* (2,2) KEY_4 */
+			0x02030008      /* (3,2) KEY_7 */
+			0x0204020a      /* (4,2) KEY_NUMERIC_STAR */
+
+			0x03000160      /* (0,3) KEY_OK */
+			0x0301006a      /* (1,3) KEY_RIGHT */
+			0x0302009e      /* (3,3) KEY_BACK */
+			0x03030067      /* (3,3) KEY_UP */
+			0x0304006c>;    /* (3,4) KEY_DOWN */
+
+	};
+};
+
+#include "spi-panel-st7789v2-qvga-cmd.dtsi"
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "spi";
+};
+
+&spi_st7789v2_qvga_cmd {
+	qcom,mdss-spi-bl-pmic-control-type = "bl_ctrl_pwm";
+	qcom,mdss-spi-bl-pmic-pwm-frequency = <100>;
+	qcom,mdss-spi-bl-pmic-bank-select = <0>;
+	qcom,mdss-spi-pwm-gpio = <&pm8909_mpps 2 0>;
+	qcom,cont-splash-enabled;
+};
+
+&msm_gpio {
+	pmx_mdss_te {
+		mdss_te_active: mdss_te_active {
+			mux {
+				pins = "gpio24";
+			};
+			config {
+				pins = "gpio24";
+			};
+		};
+		mdss_te_suspend: mdss_te_suspend {
+			mux {
+				pins = "gpio24";
+			};
+			config {
+				pins = "gpio24";
+			};
+		};
+	};
+};
+
+&mdss_spi {
+	qcom,spi-pref-prim-pan = <&spi_st7789v2_qvga_cmd>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_te_active>;
+	pinctrl-1 = <&mdss_te_suspend>;
+
+	qcom,platform-te-gpio = <&msm_gpio 24 0>;
+	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
+	qcom,platform-spi-dc-gpio = <&msm_gpio 110 0>;
+};
+
+&qnand_1 {
+	status = "ok";
+};
+
+&pm8909_chg {
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
+	qcom,vinmin-mv = <4470>;
+	qcom,batt-hot-percentage = <35>;
+	qcom,batt-cold-percentage = <70>;
+	qcom,tchg-mins = <360>;
+	qcom,chgr-led-support;
+	qcom,disable-vbatdet-based-recharge;
+	status = "okay";
+};
+
+/ {
+	qrd_batterydata: qcom,battery-data {
+		/* This need to be updated according to new battery */
+		qcom,rpull-up-kohm = <100>;
+		qcom,vref-batt-therm = <1800000>;
+
+		/* This need tobe updated according to new battery */
+		#include "batterydata-qrd-skua-4v35-2000mah.dtsi"
+	};
+};
+
+&pm8909_bms {
+	status = "okay";
+	qcom,force-bms-active-on-charger;
+	qcom,battery-data = <&qrd_batterydata>;
+};
+
+&pm8909_vib {
+	status = "okay";
+	qcom,vib-timeout-ms = <15000>;
+	qcom,vib-vtg-level-mV = <3100>;
+};
+
+&sdc2_cd_on {
+	/delete-property/ bias-pull-up;
+	bias-pull-down;
+};
+
+&sdc2_cd_off {
+	/delete-property/ bias-disable;
+	bias-pull-down;
+};
+
+&sdhc_2 {
+	qcom,nonhotplug;
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 221 0>;
+	interrupt-names = "hc_irq", "pwr_irq";
+	/delete-property/ cd-gpios;
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
+};

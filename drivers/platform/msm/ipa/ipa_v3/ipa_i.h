@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -385,6 +385,10 @@
 #define IPA_TZ_UNLOCK_ATTRIBUTE 0x0C0311
 #define TZ_MEM_PROTECT_REGION_ID 0x10
 
+#define IPA_IS_4_0_AUTO_CONFIG() \
+	((ipa3_ctx->ipa_hw_type == IPA_HW_v4_0) && \
+	(ipa3_ctx->ipa_config_is_auto))
+
 struct ipa3_active_client_htable_entry {
 	struct hlist_node list;
 	char id_string[IPA3_ACTIVE_CLIENTS_LOG_NAME_LEN];
@@ -728,6 +732,7 @@ struct ipa3_status_stats {
  * @gsi_evt_ring_hdl: EP's GSI channel event ring handle
  * @gsi_mem_info: EP's GSI channel rings info
  * @chan_scratch: EP's GSI channel scratch info
+ * @xfer_notify: transfer element
  * @cfg: EP cionfiguration
  * @dst_pipe_index: destination pipe index
  * @rt_tbl_idx: routing table index
@@ -752,6 +757,7 @@ struct ipa3_ep_context {
 	unsigned long gsi_evt_ring_hdl;
 	struct ipa_gsi_ep_mem_info gsi_mem_info;
 	union __packed gsi_channel_scratch chan_scratch;
+	struct gsi_chan_xfer_notify xfer_notify;
 	bool bytes_xfered_valid;
 	u16 bytes_xfered;
 	dma_addr_t phys_base;
