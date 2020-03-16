@@ -1,5 +1,65 @@
+&qupv3_se6_i2c {
+	status = "disabled";
+};
+
+&qupv3_se6_spi_pins {
+	qupv3_se6_spi_active: qupv3_se6_spi_active {
+		mux {
+			pins = "gpio59", "gpio60", "gpio61";
+			function = "qup10";
+		};
+
+		config {
+			pins = "gpio59", "gpio60", "gpio61";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se6_spi_sleep: qupv3_se6_spi_sleep {
+		mux {
+			pins = "gpio59", "gpio60", "gpio61";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio59", "gpio60", "gpio61";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se6_spi_cs_active: qupv3_se6_spi_cs_active {
+		mux {
+			pins = "gpio62";
+			function = "qup10";
+		};
+
+		config {
+			pins = "gpio62";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se6_spi_cs_sleep: qupv3_se6_spi_cs_sleep {
+		mux {
+			pins = "gpio62";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio62";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+};
+
 &qupv3_se6_spi {
 	status = "ok";
+	pinctrl-0 = <&qupv3_se6_spi_active &qupv3_se6_spi_cs_active>;
+	pinctrl-1 = <&qupv3_se6_spi_sleep &qupv3_se6_spi_cs_sleep>;
 	novatek@0 {
 		compatible = "novatek,NVT-ts-spi";
 		reg = <0x0>;
