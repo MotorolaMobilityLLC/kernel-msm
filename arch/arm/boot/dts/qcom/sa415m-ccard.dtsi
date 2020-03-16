@@ -146,6 +146,15 @@
 		gpio = <&tlmm 23 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 	};
+
+	sdx_ext_ipc: qcom,sdx_ext_ipc {
+		compatible = "qcom,sdx-ext-ipc";
+		qcom,ap2mdm-status-gpio = <&tlmm 95 0x00>;
+		qcom,mdm2ap-status-gpio = <&tlmm 36 0x00>;
+		qcom,mdm2ap-status2-gpio = <&tlmm 88 0x00>;
+		status = "disabled";
+	};
+
 };
 
 &emac_hw {
