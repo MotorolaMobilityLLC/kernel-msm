@@ -35,3 +35,43 @@
        connectors = <&sde_rscc &sde_wb &sde_dsi>;
 };
 
+&tlmm{
+	max17055_alert: max17055_alert {
+		mux {
+			pins = "gpio94";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio94";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
+&qupv3_se3_i2c {
+	max17055@36 {
+            status = "okay";
+            compatible = "maxim,max17055";
+            reg = <0x36>;
+
+            interrupt-parent = <&tlmm>;
+            interrupts = <94 IRQ_TYPE_LEVEL_LOW>;
+            pinctrl-names = "default";
+            pinctrl-0 = <&max17055_alert>;
+
+            maxim,rsns-microohm = <2000>;      /*Current sense resistance in micro Ohm*/
+            maxim,config-type = <3>;            /*EZ:1 SHORT: 2 FULL: 3*/
+            maxim,cold-temp = <(-200)>;         /*Temp is scaled by 10 to reserve more precise*/
+            maxim,over-heat-temp = <600>;      /*Temp is scaled by 10 to reserve more precise*/
+            maxim,dead-volt = <2800>;           /*Dead voltage in millivolts*/
+            maxim,over-volt = <4500>;           /*Over voltage in millivolts*/
+            maxim,enable-por-init;              /*Comment out this line to ignore the configuration data*/
+            maxim,configuration {
+		df-serialnum    = "SB18C77773";
+		/include/ "batterydata-lk50-atl-maxim.dtsi"
+	   };
+        };
+};
