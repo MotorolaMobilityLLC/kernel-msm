@@ -73,6 +73,7 @@ struct bgdaemon_priv {
 	bool pending_bg_twm_wear_load;
 	struct workqueue_struct *bgdaemon_wq;
 	struct work_struct bgdaemon_load_twm_bg_work;
+	bool bg_twm_wear_load;
 };
 
 struct bg_event {
@@ -132,6 +133,7 @@ static void bgcom_load_twm_bg_work(struct work_struct *work)
 		dev->pil_h = NULL;
 		bg_soft_reset();
 	} else {
+		dev->bg_twm_wear_load = true;
 		dev->pil_h = subsystem_get_with_fwname("bg-wear",
 							"bg-twm-wear");
 		if (!dev->pil_h)
@@ -425,7 +427,7 @@ static long bg_com_ioctl(struct file *filp,
 			ret = -EFAULT;
 			break;
 		}
-
+		dev->bg_twm_wear_load = false;
 		dev->pil_h = subsystem_get_with_fwname("bg-wear", "bg-wear");
 		if (!dev->pil_h) {
 			pr_err("failed to load bg-wear\n");
@@ -624,7 +626,10 @@ static int ssr_bg_cb(struct notifier_block *this,
 		}
 		break;
 	case SUBSYS_AFTER_POWERUP:
-		bge.e_type = BG_AFTER_POWER_UP;
+		if (dev->bg_twm_wear_load)
+			bge.e_type = TWM_BG_AFTER_POWER_UP;
+		else
+			bge.e_type = BG_AFTER_POWER_UP;
 		bgdaemon_ldowork(DISABLE_LDO03);
 		bgdaemon_ldowork(DISABLE_LDO09);
 		bgcom_set_spi_state(BGCOM_SPI_FREE);
