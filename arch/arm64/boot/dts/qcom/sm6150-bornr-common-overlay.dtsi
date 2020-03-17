@@ -11,6 +11,7 @@
  */
 
 #include "sm6150-moto-common-overlay.dtsi"
+#include "sm6150-camera-sensor-mot-bornr-overlay.dtsi"
 #include "defender-panel.dtsi"
 
 #define BORNR_NONCA_RADIO1 1
