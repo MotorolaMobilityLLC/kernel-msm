@@ -528,3 +528,7 @@
 	regulator-min-microvolt = <5700000>;
 	regulator-max-microvolt = <5700000>;
 };
+
+&pm660_pdphy {
+	qcom,sxr1130-sxr-dp-sink;
+};
