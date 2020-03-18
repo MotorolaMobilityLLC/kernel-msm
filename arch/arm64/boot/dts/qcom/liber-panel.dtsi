@@ -16,6 +16,7 @@
 
 &pm6150l_wled {
 	qcom,string-cfg= <7>;
+	qcom,ovp = <23500>;
 	status = "ok";
 };
 
