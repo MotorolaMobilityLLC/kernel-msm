@@ -14,50 +14,26 @@
 /dts-v1/;
 
 #include "sdm429-spyro.dtsi"
-#include "sdm429-spyro-qrd-evt.dtsi"
 #include "sdm429w-bg-pm660.dtsi"
 #include "sdm429-bg-memory.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. SDM429 BG IOT WTP";
+	model = "Qualcomm Technologies, Inc. SDM429 BG DVT2 WTP";
 	compatible = "qcom,sdm429w-qrd", "qcom,sdm429w", "qcom,qrd";
 	qcom,msm-id = <416 0x0>;
-	qcom,board-id = <0x00010b 8>,
-			<0x00010b 0xA>;
+	qcom,board-id = <0x00010b 0xA>;
 	qcom,pmic-id = <0x0002001b 0x0 0x0 0x0>;
 };
 
-&usb_otg {
-	HSUSB_3p3-supply = <&L16A>;
-};
+&msm_gpu {
+	/delete-property/qcom,enable-ca-jump;
+	/delete-property/qcom,ca-busy-penalty;
+	/delete-property/qcom,ca-target-pwrlevel;
 
-&msm_dig_codec {
-	cdc-vdd-digital-supply = <&pm660_l11>;
-};
-
-&ext_smart_pa {
-	dvdd-supply = <&pm660_l11>;
-};
-
-&thermal_zones {
-	/delete-node/ emmc-therm-adc;
-	/delete-node/ aoss0-lowf;
-	/delete-node/ mdm-core-lowf;
-	/delete-node/ lpass-lowf;
-	/delete-node/ camera-lowf;
-	/delete-node/ cpuss1-lowf;
-	/delete-node/ apc1-cpu0-lowf;
-	/delete-node/ apc1-cpu1-lowf;
-	/delete-node/ apc1-cpu2-lowf;
-	/delete-node/ apc1-cpu3-lowf;
-	/delete-node/ cpuss0-lowf;
-	/delete-node/ gpu-lowf;
-};
-
-&firmware {
-	android {
-		fstab {
-	/delete-node/ system ;
-		};
+	qcom,gpu-pwrlevels {
+		/delete-node/qcom,gpu-pwrlevel@2;
+		/delete-node/qcom,gpu-pwrlevel@3;
+		/delete-node/qcom,gpu-pwrlevel@4;
+		/delete-node/qcom,gpu-pwrlevel@5;
 	};
 };
