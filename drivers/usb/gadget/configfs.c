@@ -18,8 +18,6 @@
 #include <function/u_ncm.h>
 #endif
 
-#include <soc/qcom/boot_stats.h>
-
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
 extern int acc_ctrlrequest(struct usb_composite_dev *cdev,
 				const struct usb_ctrlrequest *ctrl);
@@ -1460,7 +1458,6 @@ static void android_work(struct work_struct *data)
 		kobject_uevent_env(&gi->dev->kobj,
 					KOBJ_CHANGE, configured);
 		pr_info("%s: sent uevent %s\n", __func__, configured[0]);
-		place_marker("M - USB enumeration complete");
 		uevent_sent = true;
 	}
 
