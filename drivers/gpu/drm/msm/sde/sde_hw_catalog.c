@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2348,7 +2348,7 @@ static int sde_cdm_parse_dt(struct device_node *np,
 
 		/* intf3 and wb2 for cdm block */
 		cdm->wb_connect = sde_cfg->wb_count ? BIT(WB_2) : BIT(31);
-		cdm->intf_connect = sde_cfg->intf_count ? BIT(INTF_3) : BIT(31);
+		cdm->intf_connect = sde_cfg->intf_count ? BIT(INTF_0) : BIT(31);
 	}
 
 end:
