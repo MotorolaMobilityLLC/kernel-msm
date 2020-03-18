@@ -13,6 +13,7 @@
 #include "sm6150-moto-common-overlay.dtsi"
 #include "sm6150-camera-sensor-mot-bornr-overlay.dtsi"
 #include "bornr-panel.dtsi"
+#include "bornr-touchscreen.dtsi"
 
 #define BORNR_NONCA_RADIO1 1
 #define BORNR_NONCA_RADIO2 2
