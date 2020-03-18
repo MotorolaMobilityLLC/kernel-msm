@@ -76,12 +76,23 @@ struct pm8941_pwrkey {
 	struct notifier_block reboot_notifier;
 
 	u32 code;
+	u32 swap_code;
 	u32 sw_debounce_time_us;
 	ktime_t last_release_time;
 	bool last_status;
 	bool log_kpd_event;
 	const struct pm8941_data *data;
 };
+
+#if IS_ENABLED(CONFIG_INPUT_MMI_KEY_SWAP_MODULE)
+extern unsigned int key_swap_algo(unsigned int code);
+#else
+unsigned int __attribute__((weak)) key_swap_algo(unsigned int code)
+{
+	pr_debug("%s(), code = %u\n", __func__, code);
+	return code;
+}
+#endif
 
 static int pm8941_reboot_notify(struct notifier_block *nb,
 				unsigned long code, void *unused)
@@ -193,13 +204,15 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 	 * corresponding press event.
 	 */
 	if (!pwrkey->last_status && !sts) {
-		input_report_key(pwrkey->input, pwrkey->code, 1);
+		input_report_key(pwrkey->input, key_swap_algo(pwrkey->code), 1);
 		input_sync(pwrkey->input);
+		pr_debug("key_swap (%s): code=%d, state=1\n", __func__, pwrkey->code);
 	}
 	pwrkey->last_status = sts;
 
-	input_report_key(pwrkey->input, pwrkey->code, sts);
+	input_report_key(pwrkey->input, key_swap_algo(pwrkey->code), sts);
 	input_sync(pwrkey->input);
+	pr_debug("key_swap (%s): code=%d, state=%d\n", __func__, pwrkey->code, sts);
 
 	return IRQ_HANDLED;
 }
@@ -347,6 +360,10 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 		pwrkey->code = KEY_POWER;
 	}
 
+	of_property_read_u32(pdev->dev.of_node, "mmi,key-swap-code", &pwrkey->swap_code);
+	if (pwrkey->swap_code)
+		dev_info(&pdev->dev, "Added swap keycode %d\n",pwrkey->swap_code);
+
 	pwrkey->input = devm_input_allocate_device(&pdev->dev);
 	if (!pwrkey->input) {
 		dev_dbg(&pdev->dev, "unable to allocate input device\n");
@@ -354,6 +371,8 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 	}
 
 	input_set_capability(pwrkey->input, EV_KEY, pwrkey->code);
+	if (pwrkey->swap_code)
+		input_set_capability(pwrkey->input, EV_KEY, pwrkey->swap_code);
 
 	pwrkey->input->name = pwrkey->data->name;
 	pwrkey->input->phys = pwrkey->data->phys;
