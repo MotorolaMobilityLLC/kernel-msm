@@ -58,6 +58,30 @@ struct gpio_keys_drvdata {
 	struct gpio_button_data data[];
 };
 
+int __bitmap_subset(const unsigned long *bitmap1,
+		    const unsigned long *bitmap2, unsigned int bits)
+{
+	unsigned int k, lim = bits/BITS_PER_LONG;
+	for (k = 0; k < lim; ++k)
+		if (bitmap1[k] & ~bitmap2[k])
+			return 0;
+
+	if (bits % BITS_PER_LONG)
+		if ((bitmap1[k] & ~bitmap2[k]) & BITMAP_LAST_WORD_MASK(bits))
+			return 0;
+	return 1;
+}
+
+#if IS_ENABLED(CONFIG_INPUT_MMI_KEY_SWAP_MODULE)
+extern unsigned int key_swap_algo(unsigned int code);
+#else
+unsigned int __attribute__((weak)) key_swap_algo(unsigned int code)
+{
+	pr_debug("%s(), code = %u\n", __func__, code);
+	return code;
+}
+#endif
+
 /*
  * SYSFS interface for enabling/disabling keys and switches:
  *
@@ -371,7 +395,8 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
-		input_event(input, type, *bdata->code, state);
+		input_event(input, type, key_swap_algo(*bdata->code), state);
+		pr_debug("key_swap (%s): code=%d, state=%d\n", __func__, *bdata->code, state);
 	}
 	input_sync(input);
 }
@@ -423,7 +448,8 @@ static void gpio_keys_irq_timer(struct timer_list *t)
 
 	spin_lock_irqsave(&bdata->lock, flags);
 	if (bdata->key_pressed) {
-		input_event(input, EV_KEY, *bdata->code, 0);
+		input_event(input, EV_KEY, key_swap_algo(*bdata->code), 0);
+		pr_debug("key_swap (%s): code=%d, state=0\n", __func__, *bdata->code);
 		input_sync(input);
 		bdata->key_pressed = false;
 	}
@@ -687,12 +713,13 @@ static void gpio_keys_close(struct input_dev *input)
  * Translate properties into platform_data
  */
 static struct gpio_keys_platform_data *
-gpio_keys_get_devtree_pdata(struct device *dev)
+gpio_keys_get_devtree_pdata(struct device *dev, unsigned int *swap_code)
 {
 	struct gpio_keys_platform_data *pdata;
 	struct gpio_keys_button *button;
 	struct fwnode_handle *child;
 	int nbuttons;
+	unsigned int value;
 
 	nbuttons = device_get_child_node_count(dev);
 	if (nbuttons == 0)
@@ -725,6 +752,14 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 			return ERR_PTR(-EINVAL);
 		}
 
+		if (!fwnode_property_read_u32(child, "mmi,key-swap-code",
+					     &value)) {
+			if (swap_code) {
+				*swap_code = value;
+				dev_info(dev, "Added swap keycode %u\n", *swap_code);
+			}
+		}
+
 		fwnode_property_read_string(child, "label", &button->desc);
 
 		if (fwnode_property_read_u32(child, "linux,input-type",
@@ -753,7 +788,7 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 }
 
 static const struct of_device_id gpio_keys_of_match[] = {
-	{ .compatible = "gpio-keys", },
+	{ .compatible = "gpio-keys-swap", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, gpio_keys_of_match);
@@ -766,10 +801,11 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	struct gpio_keys_drvdata *ddata;
 	struct input_dev *input;
 	int i, error;
+	unsigned int swap_code = 0;
 	int wakeup = 0;
 
 	if (!pdata) {
-		pdata = gpio_keys_get_devtree_pdata(dev);
+		pdata = gpio_keys_get_devtree_pdata(dev, &swap_code);
 		if (IS_ERR(pdata))
 			return PTR_ERR(pdata);
 	}
@@ -792,6 +828,9 @@ static int gpio_keys_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to allocate input device\n");
 		return -ENOMEM;
 	}
+
+	if (swap_code)
+		input_set_capability(input, EV_KEY, swap_code);
 
 	ddata->pdata = pdata;
 	ddata->input = input;
@@ -1010,7 +1049,7 @@ static struct platform_driver gpio_keys_device_driver = {
 	.probe		= gpio_keys_probe,
 	.shutdown	= gpio_keys_shutdown,
 	.driver		= {
-		.name	= "gpio-keys",
+		.name	= "gpio-keys-swap",
 		.pm	= &gpio_keys_pm_ops,
 		.of_match_table = gpio_keys_of_match,
 		.dev_groups	= gpio_keys_groups,
