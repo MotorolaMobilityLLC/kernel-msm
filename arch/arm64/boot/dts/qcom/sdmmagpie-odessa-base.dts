@@ -66,10 +66,6 @@
 	/delete-node/ fpc_reset_int;
 };
 
-&qupv3_se2_i2c {
-	status = "disabled";
-};
-
 &qupv3_se0_spi {
 	status = "disabled";
 };
