@@ -187,6 +187,7 @@ struct qpnp_pon_config {
 	bool			old_state;
 	bool			use_bark;
 	bool			config_reset;
+	u32			swap_code;
 };
 
 struct pon_regulator {
@@ -351,6 +352,16 @@ static bool is_pon_gen2(struct qpnp_pon *pon)
 	return pon->subtype == PON_GEN2_PRIMARY ||
 		pon->subtype == PON_GEN2_SECONDARY;
 }
+
+#if IS_ENABLED(CONFIG_INPUT_MMI_KEY_SWAP_MODULE)
+extern unsigned int key_swap_algo(unsigned int code);
+#else
+unsigned int __attribute__((weak)) key_swap_algo(unsigned int code)
+{
+	pr_debug("%s(), code = %u\n", __func__, code);
+	return code;
+}
+#endif
 
 static bool is_pon_gen3(struct qpnp_pon *pon)
 {
@@ -982,12 +993,14 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 			pon_rt_sts, (pon_rt_sts & QPNP_PON_KPDPWR_ON));
 
 	if (!cfg->old_state && !key_status) {
-		input_report_key(pon->pon_input, cfg->key_code, 1);
+		input_report_key(pon->pon_input, key_swap_algo(cfg->key_code), 1);
 		input_sync(pon->pon_input);
+		pr_debug("key_swap (%s): code=%d, state=1\n", __func__, cfg->key_code);
 	}
 
-	input_report_key(pon->pon_input, cfg->key_code, key_status);
+	input_report_key(pon->pon_input, key_swap_algo(cfg->key_code), key_status);
 	input_sync(pon->pon_input);
+	pr_debug("key_swap (%s): code=%d, state=%d\n", __func__, cfg->key_code, key_status);
 
 	cfg->old_state = !!key_status;
 
@@ -1364,6 +1377,8 @@ qpnp_pon_config_input(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 	}
 
 	input_set_capability(pon->pon_input, EV_KEY, cfg->key_code);
+	if (cfg->swap_code)
+		input_set_capability(pon->pon_input, EV_KEY, cfg->swap_code);
 
 	return 0;
 }
@@ -1668,6 +1683,9 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon,
 		 * specified if there is no key mapping on the reset line.
 		 */
 		of_property_read_u32(cfg_node, "linux,code", &cfg->key_code);
+		of_property_read_u32(cfg_node, "mmi,key-swap-code", &cfg->swap_code);
+		if (cfg->swap_code)
+			dev_info(pon->dev, "Added swap keycode %d\n",cfg->swap_code);
 
 		/* Register key configuration */
 		if (cfg->key_code) {
