@@ -17,8 +17,8 @@
 /**
 #include "sdmmagpie-camera-sensor-mot-odessa-overlay.dtsi"
 #include "odessa-panel.dtsi"
-#include "sdmmagpie-odessa-charger-overlay.dtsi"
 **/
+#include "sdmmagpie-odessa-charger-overlay.dtsi"
 #include "odessa-panel.dtsi"
 #include "sdmmagpie-camera-sensor-mot-odessa-overlay.dtsi"
 
