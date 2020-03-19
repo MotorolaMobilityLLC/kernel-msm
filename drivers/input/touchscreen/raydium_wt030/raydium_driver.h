@@ -25,7 +25,7 @@
 #define RAD_MINOR_VERSION	0x07
 #define RAD_CUSTOMER_VERSION	0x0100
 
-#if defined(CONFIG_TOUCHSCREEN_RM_TS)
+#if defined(CONFIG_TOUCHSCREEN_RAYDIUM_CHIPSET)
 /* IC timing control arguments */
 #define RAYDIUM_POWERON_DELAY_USEC    500
 #define RAYDIUM_RESET_INTERVAL_MSEC   5
@@ -163,6 +163,8 @@
 #define ACTIVE_MODE     0x00
 #define AMBIENT_MODE    0x01
 #define SLEEP_MODE      0x02
+
+#define RAD_20 0x2209
 
 /* Enable sysfs */
 #define CONFIG_RM_SYSFS_DEBUG
@@ -348,7 +350,6 @@ extern int raydium_do_selftest(void);
 int raydium_esd_check(void);
 
 extern struct attribute *raydium_attributes[];
-extern const struct attribute_group raydium_attr_group;
 
 extern unsigned char g_u8_raydium_flag;
 extern unsigned char g_u8_addr;
