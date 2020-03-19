@@ -140,7 +140,6 @@
         qcom,mdss-dsi-t-clk-post = <0x0b>;
         qcom,mdss-dsi-t-clk-pre = <0x22>;
 	qcom,mdss-dsi-no-panel-on-read-support;
-	qcom,mdss-brightness-max-level = <4095>;
         qcom,mdss-dsi-display-timings {
                 timing@0{
                         qcom,mdss-dsi-panel-phy-timings = [00 14 05 05 1F 1F 05 05 03 02 04 00];
@@ -154,7 +153,6 @@
         qcom,mdss-dsi-t-clk-post = <0x0a>;
         qcom,mdss-dsi-t-clk-pre = <0x20>;
 	qcom,mdss-dsi-no-panel-on-read-support;
-	qcom,mdss-brightness-max-level = <4095>;
         qcom,mdss-dsi-display-timings {
                 timing@0{
                         qcom,mdss-dsi-panel-phy-timings = [00 13 04 04 1F 1F 04 05 03 02 04 00];
