@@ -19,7 +19,6 @@
 #include "apq8009-audio-external_codec.dtsi"
 #include "msm8909-pm8916-camera.dtsi"
 #include "msm8909-pm8916-camera-sensor-robot-som.dtsi"
-#include "dsi-panel-osd-disp-fwvga-video.dtsi"
 #include "dsi-panel-ili9806e-fwvga-video.dtsi"
 
 / {
@@ -397,10 +396,6 @@
 	status = "okay";
 };
 
-&dsi_osd_disp_fwvga_video {
-	qcom,mdss-dsi-pwm-gpio = <&pm8916_mpps 4 0>;
-};
-
 &dsi_ili9806e_fwvga_video {
 	qcom,mdss-dsi-pwm-gpio = <&pm8916_mpps 4 0>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
@@ -427,15 +422,17 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_osd_disp_fwvga_video>;
+	qcom,dsi-pref-prim-pan = <&dsi_ili9806e_fwvga_video>;
 
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_dsi_select_gpio>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_dsi_select_gpio>;
 
+	qcom,platform-te-gpio = <&msm_gpio 24 0>;
 	qcom,platform-reset-gpio = <&msm_gpio 28 0>;
 	qcom,platform-bklight-en-gpio = <&msm_gpio 37 0>;
 
+	/delete-property/ qcom,platform-enable-gpio;
 	vdd-supply = <&pm8916_l17>;
 	vddio-supply = <&pm8916_l6>;
 	status = "okay";
