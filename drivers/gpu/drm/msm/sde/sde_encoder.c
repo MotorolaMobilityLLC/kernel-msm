@@ -199,6 +199,18 @@ static struct sde_csc_cfg sde_csc_10bit_convert[SDE_MAX_CSC] = {
 		{ 0x0040, 0x03ac, 0x0040, 0x03c0, 0x0040, 0x03c0,},
 	},
 
+	[SDE_CSC_RGB2YUV_709FR] = {
+		{
+			TO_S15D16(0x006d), TO_S15D16(0x016e), TO_S15D16(0x0025),
+			TO_S15D16(0xffc5), TO_S15D16(0xff3b), TO_S15D16(0x0100),
+			TO_S15D16(0x0100), TO_S15D16(0xff17), TO_S15D16(0xffe9),
+		},
+		{ 0x0, 0x0, 0x0,},
+		{ 0x0040, 0x0200, 0x0200,},
+		{ 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
+		{ 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
+	},
+
 	[SDE_CSC_RGB2YUV_2020L] = {
 		{
 			TO_S15D16(0x0073), TO_S15D16(0x0129), TO_S15D16(0x001a),
@@ -5318,12 +5330,12 @@ void sde_encoder_phys_setup_cdm(struct sde_encoder_phys *phys_enc,
 
 	if (output_type == CDM_CDWN_OUTPUT_HDMI) {
 		if (connector && connector->yuv_qs)
-			csc_type = SDE_CSC_RGB2YUV_601FR;
+			csc_type = SDE_CSC_RGB2YUV_709FR;
 		else if (connector &&
 			sde_connector_mode_needs_full_range(connector))
-			csc_type = SDE_CSC_RGB2YUV_601FR;
+			csc_type = SDE_CSC_RGB2YUV_709FR;
 		else
-			csc_type = SDE_CSC_RGB2YUV_601L;
+			csc_type = SDE_CSC_RGB2YUV_709L;
 	} else if (output_type == CDM_CDWN_OUTPUT_WB) {
 		csc_type = SDE_CSC_RGB2YUV_601L;
 	}
