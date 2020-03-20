@@ -1084,6 +1084,10 @@ err_nfcc_reset_failed:
 		dev_dbg(&client->dev,
 		"%s: ## NFCC == PN66T ##\n", __func__);
 		break;
+	case NFCC_PN557:
+		dev_info(&client->dev,
+		"%s: ## NFCC == PN557 ##\n", __func__);
+		break;
 	case NFCC_SN100_A:
 	case NFCC_SN100_B:
 		dev_dbg(&client->dev,
