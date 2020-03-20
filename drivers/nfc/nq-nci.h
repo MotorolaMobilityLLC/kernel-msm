@@ -79,6 +79,7 @@ enum nfcc_chip_variant {
 	NFCC_SN100_A			= 0xa3,	/**< NFCC SN100_A */
 	NFCC_SN100_B			= 0xa4,	/**< NFCC SN100_B */
 	NFCC_PN66T			= 0x18,	/**< NFCC PN66T */
+	NFCC_PN557			= 0x41,	/**< NFCC PN557 */
 	NFCC_NOT_SUPPORTED	        = 0xFF	/**< NFCC is not supported */
 };
 #endif
