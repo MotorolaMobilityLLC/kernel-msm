@@ -331,7 +331,8 @@
                 "TX SWR_ADC2", "ADC2_OUTPUT";
 };
 
-&qupv3_se9_i2c {
+&qupv3_se7_i2c {
+        status = "ok";
         aw882xx:aw882xx_smartpa@34 {
                 compatible = "awinic,aw882xx_smartpa";
                 reg = <0x34>;
