@@ -19,8 +19,10 @@
 #define __LINUX_RAYDIUM_H
 #define RAYDIUM_NAME "raydium_ts"
 #define COORDS_ARR_SIZE    4
-#define I2C_VTG_MIN_UV    1800000
-#define I2C_VTG_MAX_UV    1800000
+#define I2C_VTG_MIN_UV		1650000
+#define I2C_VTG_MAX_UV		1950000
+#define VDD_VTG_MIN_UV		1650000
+#define VDD_VTG_MAX_UV		1950000
 #define RAD_MAIN_VERSION	0x01
 #define RAD_MINOR_VERSION	0x07
 #define RAD_CUSTOMER_VERSION	0x0100
@@ -235,7 +237,7 @@ struct raydium_ts_data {
 	struct early_suspend early_suspend;
 #endif /*end of CONFIG_FB*/
 
-	/*struct regulator *vdd;*/
+	struct regulator *vdd;
 	struct regulator *vcc_i2c;
 	unsigned int fw_version;
 	unsigned short id;
