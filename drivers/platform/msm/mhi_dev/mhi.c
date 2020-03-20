@@ -1074,6 +1074,10 @@ static void mhi_dev_trigger_cb(enum mhi_client_channel ch_id)
 	struct mhi_dev_ready_cb_info *info;
 	enum mhi_ctrl_info state_data;
 
+	/* Currently no clients register for HW channel notify */
+	if (ch_id >= MHI_MAX_SOFTWARE_CHANNELS)
+		return;
+
 	list_for_each_entry(info, &mhi_ctx->client_cb_list, list)
 		if (info->cb && info->cb_data.channel == ch_id) {
 			mhi_ctrl_state_info(info->cb_data.channel, &state_data);
@@ -1590,7 +1594,7 @@ static void mhi_update_state_info_all(enum mhi_ctrl_info info)
 	struct mhi_dev_client_cb_reason reason;
 
 	mhi_ctx->ctrl_info = info;
-	for (i = 0; i < MHI_MAX_CHANNELS; ++i) {
+	for (i = 0; i < MHI_MAX_SOFTWARE_CHANNELS; ++i) {
 		channel_state_info[i].ctrl_info = info;
 		/* Notify kernel clients */
 		mhi_dev_trigger_cb(i);
@@ -2921,7 +2925,7 @@ int mhi_register_state_cb(void (*mhi_state_cb)
 		return -ENXIO;
 	}
 
-	if (channel > MHI_MAX_CHANNELS) {
+	if (channel >= MHI_MAX_SOFTWARE_CHANNELS) {
 		pr_err("Invalid channel :%d\n", channel);
 		return -EINVAL;
 	}
@@ -2961,6 +2965,10 @@ static void mhi_update_state_info(uint32_t uevent_idx, enum mhi_ctrl_info info)
 {
 	struct mhi_dev_client_cb_reason reason;
 
+	/* Currently no clients register for HW channel notify */
+	if (uevent_idx >= MHI_MAX_SOFTWARE_CHANNELS)
+		return;
+
 	if (uevent_idx == MHI_DEV_UEVENT_CTRL)
 		mhi_ctx->ctrl_info = info;
 
@@ -2980,7 +2988,10 @@ int mhi_ctrl_state_info(uint32_t idx, uint32_t *info)
 	if (idx == MHI_DEV_UEVENT_CTRL)
 		*info = mhi_ctx->ctrl_info;
 	else
-		*info = channel_state_info[idx].ctrl_info;
+		if (idx < MHI_MAX_SOFTWARE_CHANNELS)
+			*info = channel_state_info[idx].ctrl_info;
+		else
+			return -EINVAL;
 
 	mhi_log(MHI_MSG_VERBOSE, "idx:%d, ctrl:%d", idx, *info);
 
