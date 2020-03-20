@@ -705,6 +705,15 @@ config LEDS_QPNP_WLED
 	  variable brightness.  It also supports outputting the Avdd supply for
 	  AMOLED displays.
 
+config LEDS_MSM_GPIO_FLASH
+	tristate "Support for GPIO Flash LEDs"
+	help
+	  This driver supports the leds functionality of GPIO Flash LED. It
+	  includes flash mode and torch mode.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called leds-gpio-flash.
+
 config LEDS_QPNP_HAPTICS
 	tristate "Haptics support for QPNP PMIC"
 	depends on LEDS_CLASS && MFD_SPMI_PMIC
