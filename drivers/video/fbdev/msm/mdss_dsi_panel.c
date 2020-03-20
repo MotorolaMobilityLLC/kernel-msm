@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -423,6 +423,11 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		pr_debug("%s:%d, reset line not configured\n",
 			   __func__, __LINE__);
 		return rc;
+	}
+
+	if (pinfo->skip_panel_reset && !pinfo->cont_splash_enabled) {
+		pr_debug("%s: skip_panel_reset is set\n", __func__);
+		return 0;
 	}
 
 	pr_debug("%s: enable = %d\n", __func__, enable);
@@ -2941,6 +2946,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	pinfo->mipi.force_clk_lane_hs = of_property_read_bool(np,
 		"qcom,mdss-dsi-force-clock-lane-hs");
+
+	pinfo->skip_panel_reset =
+		of_property_read_bool(np, "qcom,mdss-skip-panel-reset");
 
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
 	if (rc) {
