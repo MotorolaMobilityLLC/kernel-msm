@@ -10244,9 +10244,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_usb = cl_cc;
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_DCP)
-		//	if (apsd_reg & OCP_CHARGER_BIT)
-		//		cl_usb = 1000;
-		//	else
+			if (apsd_reg & OCP_CHARGER_BIT)
+				cl_usb = 1000;
+			else
 				cl_usb = 1800;
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
@@ -11049,9 +11049,6 @@ static ssize_t force_chg_usb_suspend_store(struct device *dev,
 	}
 	mmi_chip->mmi.force_chg_suspend = (bool)mode;
 	r = smblib_set_usb_suspend(mmi_chip, (bool)mode);
-	if (r)
-		return r;
-	r = smblib_set_dc_suspend(mmi_chip, (bool)mode);
 
 	return r ? r : count;
 }
