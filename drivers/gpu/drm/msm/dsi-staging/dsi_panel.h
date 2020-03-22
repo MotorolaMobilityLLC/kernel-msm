@@ -91,6 +91,7 @@ struct dsi_pinctrl_info {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *active;
 	struct pinctrl_state *suspend;
+	struct pinctrl_state *pre_active;
 };
 
 struct dsi_panel_phy_props {

@@ -713,11 +713,29 @@ static void dsi_panel_exd_disable(struct dsi_panel *panel)
 		gpio_set_value(e_config->switch_power, 0);
 }
 
+static int dsi_panel_set_pinctrl_pre_active(struct dsi_panel *panel)
+{
+	int rc = 0;
+	struct pinctrl_state *state = NULL;
+
+	state = panel->pinctrl.pre_active;
+	if (state == NULL)
+		return 0;
+
+	rc = pinctrl_select_state(panel->pinctrl.pinctrl, state);
+        if (rc)
+                pr_err("[%s] failed to set pin pre_state state, rc=%d\n", panel->name,
+                       rc);
+
+        return rc;
+}
+
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
 
 	pr_info("(%s)+\n", panel->name);
+	dsi_panel_set_pinctrl_pre_active(panel);
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
 		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
@@ -854,6 +872,14 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 		rc = PTR_ERR(panel->pinctrl.suspend);
 		pr_err("failed to get pinctrl suspend state, rc=%d\n", rc);
 		goto error;
+	}
+
+	panel->pinctrl.pre_active =
+		pinctrl_lookup_state(panel->pinctrl.pinctrl, "panel_pre_active");
+
+	if (IS_ERR_OR_NULL(panel->pinctrl.pre_active)) {
+		panel->pinctrl.pre_active = NULL;
+		pr_debug("No pinctrl pre_active state, this is an option\n");
 	}
 
 error:
