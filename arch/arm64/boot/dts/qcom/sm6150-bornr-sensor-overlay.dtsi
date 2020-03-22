@@ -1,0 +1,61 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&tlmm {
+	capsense_sar_gpio_pins: capsense_sar_gpio_pins {
+		mux {
+			pins = "gpio83";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio83";
+			drive-strength = <2>;
+			bias-pull-up; /* PULL UP*/
+			input-enable;
+		};
+	};
+};
+
+
+&soc{
+	pm6150_l16{
+
+		qcom,init-voltage = <2970000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+};
+
+&qupv3_se1_i2c {
+	status = "ok";
+	abov_sar@20 {
+		status = "ok";
+		compatible = "abov,abov_sar_mmi_overlay";
+		reg = <0x20>;
+		cap_vdd-supply = <&pm6150_l16>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <83 0x2>;
+		gpios = <&tlmm 83 0x2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&capsense_sar_gpio_pins>;
+		reg_array_len = <0x03>;
+		reg_array_val = <0x07 0x00 0x08 0x1B 0xFB 0x01>;
+		cap,use_channel_ch0 = <0x00>;
+		cap,use_channel_ch1 = <0x01>;
+		cap,use_channel_ch2 = <0x02>;
+		ch0_name ="capsense_top_left";
+		ch1_name ="capsense_top_right";
+		ch2_name ="capsense_bottom";
+		label = "AbovCapSenseCA";
+		cap,channel_number = <0x03>;
+		};
+};

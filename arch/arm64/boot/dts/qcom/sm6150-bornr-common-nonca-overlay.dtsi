@@ -13,4 +13,14 @@
 #include "sm6150-bornr-common-overlay.dtsi"
 
 /* Add differences of NON-CA overlays base on CA here */
+&qupv3_se1_i2c {
+	abov_sar@20 {
+		cap,use_channel_ch0 = <0x00>;
+		cap,use_channel_ch1 = <0x01>;
+		ch0_name ="capsense_bottom";
+		ch1_name ="capsense_top";
+		label = "AbovCapSenseNOCA";
+		cap,channel_number = <0x02>;
+	};
+};
 
