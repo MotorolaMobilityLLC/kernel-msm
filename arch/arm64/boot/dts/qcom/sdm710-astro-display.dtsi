@@ -93,6 +93,33 @@
 			bias-pull-down;         /* PULL DOWN */
 		};
 	};
+	sde_dsi_suspend_rst_high: sde_dsi_suspend_rst_high {
+		mux {
+			pins = "gpio75";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio75";
+			drive-strength = <8>;   /* 2 mA */
+			bias-disable = <0>;   /* no pull */
+			output-high;
+		};
+	};
+
+	sde_dsi_pre_active: sde_dsi_pre_active {
+		mux {
+			pins = "gpio75";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio75";
+			drive-strength = <8>;   /* 2 mA */
+			bias-disable = <0>;   /* no pull */
+			output-low;
+		};
+	};
 };
 
 &soc {
@@ -105,9 +132,10 @@
 		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
 			 <&mdss_dsi0_pll PCLK_MUX_0_CLK>;
 		clock-names = "mux_byte_clk", "mux_pixel_clk";
-		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-names = "panel_active", "panel_suspend", "panel_pre_active";
 		pinctrl-0 = <&sde_dsi_active>;
-		pinctrl-1 = <&sde_dsi_suspend>;
+		pinctrl-1 = <&sde_dsi_suspend_rst_high>;
+		pinctrl-2 = <&sde_dsi_pre_active>;
 		qcom,platform-reset-gpio = <&tlmm 75 0>;
 		qcom,ext-pin-control;
 		qcom,dsi-panel = <&dsi_hlt_hx83102d_video>;
