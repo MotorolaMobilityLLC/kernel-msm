@@ -149,6 +149,7 @@
 	qcom,dsi-pref-prim-pan = <&dsi_auo_416p_amoled_cmd>;
 	/delete-property/ vdd-supply;
 	vddio-supply = <&L11A>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_te_active>;
 	pinctrl-1 = <&mdss_te_suspend>;
 	qcom,platform-enable-gpio = <&pm660_gpios 12 0>;
