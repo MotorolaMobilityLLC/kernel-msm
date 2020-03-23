@@ -220,6 +220,11 @@
 	status = "ok";
 };
 
+&pm6150l_rgb_led {
+	red {
+		label = "charging";
+	};
+};
 
 &mtp_batterydata {
        qcom,batt-id-range-pct = <15>;
