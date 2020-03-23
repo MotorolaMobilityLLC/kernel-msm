@@ -64,6 +64,22 @@
 			input-enable;
 		};
 	};
+
+       /* Pinctrl setting for assist key */
+	tlmm_gpio_key {
+		gpio_key_active: gpio_key_active {
+			mux {
+				pins = "gpio113";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio113";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
 };
 
 &soc {
@@ -75,6 +91,34 @@
 		startup-delay-us = <300>;
 		regulator-boot-on;
 		regulator-always-on;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		label = "gpio-keys";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&key_vol_up_default &gpio_key_active>;
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm6150l_gpios 2 GPIO_ACTIVE_LOW>;
+			linux,input-type = <1>;
+			linux,code = <KEY_VOLUMEUP>;
+			linux,can-disable;
+			debounce-interval = <15>;
+			gpio-key,wakeup;
+		};
+
+		assist_key{
+			label = "assist_key";
+			gpios = <&tlmm 113 GPIO_ACTIVE_LOW>;
+			linux,input-type = <1>;
+			linux,code = <KEY_SEARCH>;
+			debounce-interval = <15>;
+			linux,can-disable;
+			gpio-key,wakeup;
+		};
 	};
 };
 
