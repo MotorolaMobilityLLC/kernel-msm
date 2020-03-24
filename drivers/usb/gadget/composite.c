@@ -24,9 +24,6 @@
 #include <asm/unaligned.h>
 
 #include "u_os_desc.h"
-#define SSUSB_GADGET_VBUS_DRAW 900 /* in mA */
-#define SSUSB_GADGET_VBUS_DRAW_UNITS 8
-#define HSUSB_GADGET_VBUS_DRAW_UNITS 2
 
 /* disable LPM by default */
 static bool disable_l1_for_hs;
@@ -560,15 +557,19 @@ EXPORT_SYMBOL(usb_func_ep_queue);
 static u8 encode_bMaxPower(enum usb_device_speed speed,
 		struct usb_configuration *c)
 {
-	unsigned int val = CONFIG_USB_GADGET_VBUS_DRAW;
+	unsigned val;
 
+	if (c->MaxPower)
+		val = c->MaxPower;
+	else
+		val = CONFIG_USB_GADGET_VBUS_DRAW;
+	if (!val)
+		return 0;
 	switch (speed) {
 	case USB_SPEED_SUPER:
-		/* with super-speed report 900mA */
-		val = SSUSB_GADGET_VBUS_DRAW;
-		return (u8)(val / SSUSB_GADGET_VBUS_DRAW_UNITS);
+		return DIV_ROUND_UP(val, 8);
 	default:
-		return DIV_ROUND_UP(val, HSUSB_GADGET_VBUS_DRAW_UNITS);
+		return DIV_ROUND_UP(val, 2);
 	}
 }
 
@@ -977,12 +978,8 @@ static int set_config(struct usb_composite_dev *cdev,
 		}
 	}
 
-	/* Allow 900mA to draw with Super-Speed */
-	if (gadget->speed == USB_SPEED_SUPER)
-		power = SSUSB_GADGET_VBUS_DRAW;
-	else
-		power = CONFIG_USB_GADGET_VBUS_DRAW;
-
+	/* when we return, be sure our power usage is valid */
+	power = c->MaxPower ? c->MaxPower : CONFIG_USB_GADGET_VBUS_DRAW;
 done:
 	usb_gadget_vbus_draw(gadget, power);
 	if (result >= 0 && cdev->delayed_status)
