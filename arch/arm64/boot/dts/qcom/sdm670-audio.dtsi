@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -71,11 +71,12 @@
 			<&incall_music_2_rx>,
 			<&usb_audio_rx>, <&usb_audio_tx>,
 			<&dai_pri_tdm_rx_0>, <&dai_pri_tdm_tx_0>,
-			<&dai_sec_tdm_rx_0>, <&dai_sec_tdm_tx_0>,
-			<&dai_tert_tdm_rx_0>, <&dai_tert_tdm_tx_0>,
-			<&dai_quat_tdm_rx_0>, <&dai_quat_tdm_tx_0>,
-			<&dai_quin_tdm_rx_0>, <&dai_quin_tdm_tx_0>,
-			<&afe_loopback_tx>;
+			<&dai_pri_tdm_tx_1>, <&dai_pri_tdm_tx_2>,
+			<&dai_pri_tdm_tx_3>, <&dai_sec_tdm_rx_0>,
+			<&dai_sec_tdm_tx_0>, <&dai_tert_tdm_rx_0>,
+			<&dai_tert_tdm_tx_0>, <&dai_quat_tdm_rx_0>,
+			<&dai_quat_tdm_tx_0>, <&dai_quin_tdm_rx_0>,
+			<&dai_quin_tdm_tx_0>, <&afe_loopback_tx>;
 		asoc-cpu-names = "msm-dai-q6-dp.24608",
 			"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
 			"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
@@ -98,11 +99,12 @@
 			"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770",
 			"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
 			"msm-dai-q6-tdm.36864", "msm-dai-q6-tdm.36865",
-			"msm-dai-q6-tdm.36880", "msm-dai-q6-tdm.36881",
-			"msm-dai-q6-tdm.36896", "msm-dai-q6-tdm.36897",
-			"msm-dai-q6-tdm.36912", "msm-dai-q6-tdm.36913",
-			"msm-dai-q6-tdm.36928", "msm-dai-q6-tdm.36929",
-			"msm-dai-q6-dev.24577";
+			"msm-dai-q6-tdm.36867", "msm-dai-q6-tdm.36869",
+			"msm-dai-q6-tdm.36871", "msm-dai-q6-tdm.36880",
+			"msm-dai-q6-tdm.36881", "msm-dai-q6-tdm.36896",
+			"msm-dai-q6-tdm.36897", "msm-dai-q6-tdm.36912",
+			"msm-dai-q6-tdm.36913", "msm-dai-q6-tdm.36928",
+			"msm-dai-q6-tdm.36929", "msm-dai-q6-dev.24577";
 	};
 
 	tasha_snd: sound-tasha {
@@ -240,6 +242,40 @@
 	cpe3: qcom,msm-cpe-lsm@3 {
 		compatible = "qcom,msm-cpe-lsm";
 		qcom,msm-cpe-lsm-id = <3>;
+	};
+
+	pri_tdm_tx: qcom,msm-dai-tdm-pri-tx {
+		compatible = "qcom,msm-dai-tdm";
+		qcom,msm-cpudai-tdm-group-id = <37121>;
+		qcom,msm-cpudai-tdm-group-num-ports = <4>;
+		qcom,msm-cpudai-tdm-group-port-id = <36865 36867 36869 36871>;
+		qcom,msm-cpudai-tdm-clk-rate = <1536000>;
+		qcom,msm-cpudai-tdm-clk-internal = <1>;
+		qcom,msm-cpudai-tdm-sync-mode = <1>;
+		qcom,msm-cpudai-tdm-sync-src = <1>;
+		qcom,msm-cpudai-tdm-data-out = <0>;
+		qcom,msm-cpudai-tdm-invert-sync = <1>;
+		qcom,msm-cpudai-tdm-data-delay = <1>;
+		dai_pri_tdm_tx_0: qcom,msm-dai-q6-tdm-pri-tx-0 {
+			compatible = "qcom,msm-dai-q6-tdm";
+			qcom,msm-cpudai-tdm-dev-id = <36865>;
+			qcom,msm-cpudai-tdm-data-align = <0>;
+		};
+		dai_pri_tdm_tx_1: qcom,msm-dai-q6-tdm-pri-tx-1 {
+			compatible = "qcom,msm-dai-q6-tdm";
+			qcom,msm-cpudai-tdm-dev-id = <36867>;
+			qcom,msm-cpudai-tdm-data-align = <0>;
+		};
+		dai_pri_tdm_tx_2: qcom,msm-dai-q6-tdm-pri-tx-2 {
+			compatible = "qcom,msm-dai-q6-tdm";
+			qcom,msm-cpudai-tdm-dev-id = <36869>;
+			qcom,msm-cpudai-tdm-data-align = <0>;
+		};
+		dai_pri_tdm_tx_3: qcom,msm-dai-q6-tdm-pri-tx-3 {
+			compatible = "qcom,msm-dai-q6-tdm";
+			qcom,msm-cpudai-tdm-dev-id = <36871>;
+			qcom,msm-cpudai-tdm-data-align = <0>;
+		};
 	};
 };
 
