@@ -22,6 +22,13 @@
 #include "odessa-panel.dtsi"
 #include "sdmmagpie-camera-sensor-mot-odessa-overlay.dtsi"
 
+&qupv3_se0_spi {
+	status = "disabled";
+};
+
+&qupv3_se3_4uart {
+	status = "ok";
+};
 
 &soc {
 	qcom,tz_gpio {
