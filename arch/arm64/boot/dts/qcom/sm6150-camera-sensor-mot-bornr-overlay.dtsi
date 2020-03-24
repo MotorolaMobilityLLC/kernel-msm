@@ -426,16 +426,21 @@
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_active
-				&cam_main_active>;
+				&cam_main_active
+				&cam_front_active>;
 		pinctrl-1 = <&cam_sensor_mclk0_suspend
-				&cam_main_suspend>;
+				&cam_main_suspend
+				&cam_front_suspend>;
 		gpios = <&tlmm 28 0>,
-			<&tlmm 47 0>;
+			<&tlmm 47 0>,
+			<&tlmm 45 0>;
 		gpio-reset = <1>;
-		gpio-req-tbl-num = <0 1>;
-		gpio-req-tbl-flags = <1 0>;
+		gpio-standby = <2>;
+		gpio-req-tbl-num = <0 1 2>;
+		gpio-req-tbl-flags = <1 0 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK0",
-					"CAM_RESET0";
+					"CAM_RESET0",
+					"CAM_STANDBY0";
 		sensor-mode = <0>;
 		cci-master = <0>;
 		status = "ok";
