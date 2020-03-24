@@ -625,3 +625,12 @@
 	connectors = <&sde_rscc &sde_wb &sde_dsi>;
 };
 
+&spmi_bus {
+	qcom,pm6150@0 {
+		qpnp-power-on-mmi@800 {
+			compatible = "qcom,qpnp-power-on-mmi";
+			interrupts = <0x0 0x8 0x3 IRQ_TYPE_NONE>;
+			interrupt-names = "kpdpwr-bark";
+		};
+	};
+};
