@@ -65,11 +65,3 @@
 	/delete-node/ nfc;
 	/delete-node/ fpc_reset_int;
 };
-
-&qupv3_se0_spi {
-	status = "disabled";
-};
-
-&qupv3_se3_4uart {
-	status = "ok";
-};
