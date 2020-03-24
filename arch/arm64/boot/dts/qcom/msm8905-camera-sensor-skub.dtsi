@@ -17,8 +17,17 @@
 		qcom,pin-func = <2>;
 		label = "SY7807_pins";
 		SY7807_default: en_default {
-		drive-strength = <2>;
-		bias-pull-down;
+			mux {
+				pins = "gpio32";
+				function = "gpio";
+			};
+
+			configs {
+				pins = "gpio32";
+				drive-strength = <0x2>;
+				bias-pull-down;
+			};
+
 		};
 	};
 };
