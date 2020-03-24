@@ -159,10 +159,10 @@
 };
 
 &soc {
-	camera_main_front_micro_avdd_ldo: gpio-regulator@0 {
+	camera_main_avdd_ldo: gpio-regulator@0 {
 		compatible = "regulator-fixed";
 		reg = <0x00 0x00>;
-		regulator-name = "camera_main_front_micro_avdd_ldo";
+		regulator-name = "camera_main_avdd_ldo";
 		regulator-min-microvolt = <2800000>;
 		regulator-max-microvolt = <2800000>;
 		regulator-enable-ramp-delay = <233>;
@@ -228,6 +228,17 @@
 		gpio = <&tlmm 66 0>;
 	};
 
+	camera_main_afdd_ldo: gpio-regulator@6{
+		compatible = "regulator-fixed";
+		reg = <0x06 0x00>;
+		regulator-name = "camera_main_afdd_ldo";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		regulator-enable-ramp-delay = <233>;
+		enable-active-high;
+		gpio = <&tlmm 29 0>;
+	};
+
 	led_flash_rear: qcom,camera-flash@0 {
 		cell-index = <0>;
 		reg = <0x00 0x00>;
@@ -272,7 +283,7 @@
 		reg = <0x0>;
 		compatible = "qcom,eeprom";
 		cam_vio-supply = <&pm6150_l13>;
-		cam_vaf-supply = <&pm6150_l5>;
+		cam_vaf-supply = <&camera_main_afdd_ldo>;
 		regulator-names = "cam_vio","cam_vaf";
 		rgltr-cntrl-support;
 		rgltr-min-voltage = <1800000 2800000>;
@@ -352,7 +363,7 @@
 		compatible = "qcom,actuator";
 		cci-master = <0>;
 		cam_vio-supply = <&pm6150_l13>;
-		cam_vaf-supply = <&pm6150_l5>;
+		cam_vaf-supply = <&camera_main_afdd_ldo>;
 		regulator-names = "cam_vio","cam_vaf";
 		rgltr-cntrl-support;
 		rgltr-min-voltage = <1800000 2800000>;
@@ -387,7 +398,7 @@
 		actuator-src = <&actuator_rear>;
 		eeprom-src = <&eeprom_main>;
 		cam_vio-supply = <&pm6150_l13>;
-		cam_vana-supply = <&camera_main_front_micro_avdd_ldo>;
+		cam_vana-supply = <&camera_main_avdd_ldo>;
 		cam_vdig-supply = <&camera_main_dvdd_ldo>;
 		cam_clk-supply = <&titan_top_gdsc>;
 		regulator-names = "cam_vio", "cam_vana", "cam_vdig", "cam_clk";
@@ -508,7 +519,7 @@
 		actuator-src = <&actuator_micro>;
 		eeprom-src = <&eeprom_micro>;
 		cam_vio-supply = <&pm6150_l13>;
-		cam_vana-supply = <&camera_main_front_micro_avdd_ldo>;
+		cam_vana-supply = <&camera_wide_depth_avdd_ldo>;
 		cam_vdig-supply = <&camera_wide_micro_dvdd_ldo>;
 		cam_clk-supply = <&titan_top_gdsc>;
 		regulator-names = "cam_vio", "cam_vana", "cam_vdig", "cam_clk";
