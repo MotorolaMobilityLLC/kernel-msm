@@ -214,6 +214,7 @@
 	qcom,initial-pwrlevel = <0>;
 	qcom,gpu-pwrlevels {
 		qcom,gpu-pwrlevel@0 {
+			reg = <0>;
 			qcom,gpu-freq = <320000000>;
 			qcom,bus-freq = <2>;
 			qcom,bus-min = <2>;
@@ -238,12 +239,8 @@
 };
 &cpubw {
 	qcom,bw-tbl =
-		<   769 /*  100.8 MHz */ >,
 		<  1611 /*  211.2 MHz */ >,     /*Low SVS*/
-		<  2124 /*  278.4 MHz */ >,
 		<  2929 /*  384   MHz */ >,     /* SVS */
-		<  3221 /*  422.4 MHz */ >,
-		<  4248 /*  556.8 MHz */ >,
 		<  5053 /*  662.4 MHz */ >,     /* SVS+  */
 		<  5712 /*  748.8 MHz */ >;     /* NOM   */
 };
