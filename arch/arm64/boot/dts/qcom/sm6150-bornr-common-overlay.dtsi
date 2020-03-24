@@ -51,6 +51,98 @@
 };
 
 &tlmm{
+	nfc {
+		nfc_int_active: nfc_int_active {
+			/* active state */
+			mux {
+				/* GPIO86 NFC Read Interrupt */
+				pins = "gpio86";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86";
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		nfc_int_suspend: nfc_int_suspend {
+			/* sleep state */
+			mux {
+				/* GPIO 86 NFC Read Interrupt */
+				pins = "gpio86";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86";
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		nfc_enable_active: nfc_enable_active {
+			/* active state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio84";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio84";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+			};
+		};
+
+		nfc_enable_suspend: nfc_enable_suspend {
+			/* sleep state */
+			mux {
+				/* 84: NFC ENABLE */
+				pins = "gpio84";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio84";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+			};
+		};
+
+		nfc_clk_req_active: nfc_clk_req_active {
+			/* active state */
+			mux {
+				/* 50: NFC CLOCK REQUEST */
+				pins = "gpio50";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio50";
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		nfc_clk_req_suspend: nfc_clk_req_suspend {
+			/* sleep state */
+			mux {
+				/* 50: NFC CLOCK REQUEST */
+				pins = "gpio50";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio50";
+				bias-disable;
+				input-enable;
+			};
+		};
+	};
+
 	max17055_alert: max17055_alert {
 		mux {
 			pins = "gpio94";
@@ -119,6 +211,27 @@
 			linux,can-disable;
 			gpio-key,wakeup;
 		};
+	};
+};
+
+&qupv3_se5_i2c {
+	status = "ok";
+	nq@28 {
+		compatible = "qcom,nq-nci";
+		status = "ok";
+		reg = <0x28>;
+		qcom,nq-irq = <&tlmm 86 0x00>;
+		qcom,nq-ven = <&tlmm 84 0x00>;
+		qcom,nq-firm = <&tlmm 85 0x00>;
+		qcom,nq-clkreq = <&tlmm 50 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <86 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active
+				&nfc_clk_req_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend
+				&nfc_clk_req_suspend>;
 	};
 };
 
