@@ -159,6 +159,8 @@ static bool get_dload_mode(void)
 
 static void enable_emergency_dload_mode(void)
 {
+#if 0
+// MOTO: Disabled for security hardening
 	int ret;
 
 	if (emergency_dload_mode_addr) {
@@ -182,6 +184,9 @@ static void enable_emergency_dload_mode(void)
 	ret = scm_set_dload_mode(SCM_EDLOAD_MODE, 0);
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
+#else
+	pr_err("EDL mode disabled\n");
+#endif
 }
 
 static int dload_set(const char *val, const struct kernel_param *kp)
