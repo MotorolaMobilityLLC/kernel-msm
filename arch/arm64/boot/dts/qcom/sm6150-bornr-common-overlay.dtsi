@@ -17,6 +17,8 @@
 #include "sm6150-bornr-charger-overlay.dtsi"
 #include "sm6150-bornr-sensor-overlay.dtsi"
 #include "sm6150-bornr-fps-overlay.dtsi"
+#include "sm6150-audio-overlay.dtsi"
+#include "sm6150-bornr-audio-overlay.dtsi"
 
 #define BORNR_NONCA_RADIO1 1
 #define BORNR_NONCA_RADIO2 2
