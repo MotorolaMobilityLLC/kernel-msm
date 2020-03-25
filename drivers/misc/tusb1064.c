@@ -34,6 +34,7 @@ struct tusb1064 {
 };
 
 static struct tusb1064 *pdata;
+static bool standalone_mode;
 
 static int tusb1064_read(struct i2c_client *client, u8 reg, char *buf, u32 size)
 {
@@ -129,25 +130,30 @@ static int tusb1064_probe(struct i2c_client *client,
 	/*written usb sideEnable 4-lane DP with FLip and enable EQ_OVERRIDe */
 	/*tusb1064_write(pdata, 0x0A, 0x12); */
 
-	/*Enable 4-lane DP with FLip and enable EQ_OVERRIDe */
-	if (tusb1064_write(pdata->i2c_client, 0x0A, 0x02) < 0)
-		goto fail;
+	if (standalone_mode) {
+		/*Enable 3.1 USB, no DP */
+		if (tusb1064_write(pdata->i2c_client, 0x0A, 0x01) < 0)
+			goto fail;
+	} else {
+		/*Enable 4-lane DP with Flip and enable EQ_OVERRIDe */
+		if (tusb1064_write(pdata->i2c_client, 0x0A, 0x02) < 0)
+			goto fail;
 
-	pr_debug("%s setting SBU1 to AUXN and SBU2 to AUXP\n", __func__);
-	/*AUXn->SBU2, AUXp->SBU1 */
-	if (tusb1064_write(pdata->i2c_client, 0x13, 0x1F) < 0)
-		goto fail;
-	//tusb1064_write(pdata, 0x13, 0x01);//AUXn->SBU1, AUXp->SBU2
+		pr_debug("%s setting SBU1 to AUXN, SBU2 to AUXP\n", __func__);
+		/*AUXn->SBU2, AUXp->SBU1 */
+		if (tusb1064_write(pdata->i2c_client, 0x13, 0x1F) < 0)
+			goto fail;
+		//tusb1064_write(pdata, 0x13, 0x01);//AUXn->SBU1, AUXp->SBU2
 
-	/*Enable 4-lane DP */
-	if (tusb1064_write(pdata->i2c_client, 0x10, 0x55) < 0)
-		goto fail;
-	/*Enable 4-lane DP */
-	if (tusb1064_write(pdata->i2c_client, 0x11, 0x55) < 0)
-		goto fail;
-	//pr_err("setting SBU1 to AUXp and SBU2 to AUXN\n");
-	//tusb1064_write(pdata, 0x13, 0x8F);//Enable 4-lane DP
-
+		/*Enable 4-lane DP */
+		if (tusb1064_write(pdata->i2c_client, 0x10, 0x55) < 0)
+			goto fail;
+		/*Enable 4-lane DP */
+		if (tusb1064_write(pdata->i2c_client, 0x11, 0x55) < 0)
+			goto fail;
+		//pr_err("setting SBU1 to AUXp and SBU2 to AUXN\n");
+		//tusb1064_write(pdata, 0x13, 0x8F);//Enable 4-lane DP
+	}
 	tusb1064_read(pdata->i2c_client, 0x0A, buf, 2);
 	tusb1064_read(pdata->i2c_client, 0x13, buf, 2);
 	tusb1064_read(pdata->i2c_client, 0x10, buf, 2);
@@ -203,6 +209,28 @@ static struct i2c_driver tusb1064_i2c_driver = {
 	},
 	.id_table = tusb1064_id_table,
 };
+
+static int __init tusb1064_init(void)
+{
+	char *cmdline;
+
+	cmdline = strnstr(boot_command_line,
+			"msm_drm.dsi_display0=dsi_sim_vid_display",
+				strlen(boot_command_line));
+	if (cmdline) {
+		pr_debug("%s tethered mode cmdline:%s\n",
+				__func__, cmdline);
+		standalone_mode = false;
+	} else {
+		pr_debug("%s standalone mode cmdline:%s\n",
+				__func__, cmdline);
+		standalone_mode = true;
+	}
+
+	return 0;
+}
+
+device_initcall(tusb1064_init);
 module_i2c_driver(tusb1064_i2c_driver);
 MODULE_DEVICE_TABLE(i2c, tusb1064_id_table);
 MODULE_DESCRIPTION("TUSB1064 USB Bridge");
