@@ -56,6 +56,8 @@ struct vxr7200 {
 	bool power_on;
 };
 
+static bool dsi_way;
+
 static int vxr7200_read(struct vxr7200 *pdata, u8 *reg, u8 *buf, u32 size)
 {
 	struct i2c_client *client = pdata->i2c_client;
@@ -357,12 +359,11 @@ vddio_fail:
 	devm_regulator_put(pdata->vddio);
 }
 
-static __init int vxr7200_probe(struct i2c_client *client,
+static int vxr7200_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	int rc;
 	struct vxr7200 *pdata;
-	char *cmdline;
 	u8 reg[4] = {0x00, 0x20, 0x01, 0x60};
 	u8 buf[4] = {0x00, 0x0, 0x0, 0x0};
 
@@ -376,6 +377,9 @@ static __init int vxr7200_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	if (dsi_way)
+		return -EINVAL;
+
 	pdata = devm_kzalloc(&client->dev,
 		sizeof(struct vxr7200), GFP_KERNEL);
 	if (!pdata)
@@ -383,22 +387,6 @@ static __init int vxr7200_probe(struct i2c_client *client,
 
 	pdata->gpioInit = false;
 
-	cmdline = strnstr(boot_command_line, "msm_drm.dsi_display0=",
-					 strlen(boot_command_line));
-	if (cmdline) {
-		cmdline = strnstr(boot_command_line,
-			 "msm_drm.dsi_display0=dsi_sim_vid_display",
-						strlen(boot_command_line));
-		if (cmdline) {
-			pr_debug("%s DSI SIM, going to dp init cmdline:%s\n",
-					__func__, cmdline);
-			goto dp_init;
-		}
-	}
-	pr_debug("%s DSI way, cmdline:%s\n", __func__, cmdline);
-	goto dsi_display;
-
-dp_init:
 	rc = vxr7200_parse_dt(&client->dev, pdata);
 	if (rc) {
 		pr_err("%s failed to parse device tree\n", __func__);
@@ -414,9 +402,6 @@ dp_init:
 
 	//vxr7200_write(pdata, 0x0A, 0x02);//Enable 4-lane DP
 	vxr7200_read(pdata, reg, buf, 4);//Enable 4-lane DP
-
-dsi_display:
-	return rc;
 
 err_dt_parse:
 	devm_kfree(&client->dev, pdata);
@@ -502,6 +487,29 @@ static struct i2c_driver vxr7200_i2c_driver = {
 	},
 	.id_table = vxr7200_id_table,
 };
+
+static int __init vxr7200_init(void)
+{
+	char *cmdline;
+
+	cmdline = strnstr(boot_command_line,
+			 "msm_drm.dsi_display0=dsi_sim_vid_display",
+						strlen(boot_command_line));
+	if (cmdline) {
+		pr_debug("%s DSI SIM mode, going to dp init cmdline:%s\n",
+					__func__, cmdline);
+		dsi_way = false;
+	} else {
+		pr_debug("%s DSI WAY, going to dsi init cmdline:%s\n",
+					__func__, cmdline);
+		dsi_way = true;
+	}
+
+	return 0;
+
+}
+
+device_initcall(vxr7200_init);
 module_i2c_driver(vxr7200_i2c_driver);
 MODULE_DEVICE_TABLE(i2c, vxr7200_id_table);
 MODULE_DESCRIPTION("VXR7200 DP2DSI Bridge");
