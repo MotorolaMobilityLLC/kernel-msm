@@ -300,6 +300,7 @@ struct ion_heap *ion_reserved_cma_heap_create(struct ion_platform_heap *data)
 	rcma_heap->rcma.base_pfn = page_to_pfn(pages);
 	rcma_heap->rcma.count = nr_pages;
 	rcma_heap->rcma.order_per_bit = rcma_heap->cma_area->order_per_bit;
+	mutex_init(&(rcma_heap->rcma.lock));
 
 	bitmap_size = BITS_TO_LONGS(rcma_bitmap_maxno(&(rcma_heap->rcma))) *
 						sizeof(long);
