@@ -244,7 +244,7 @@ struct st_asm330lhh_hw {
 	const struct st_asm330lhh_transfer_function *tf;
 	struct st_asm330lhh_transfer_buffer tb;
 	int enable_gpio;
-	int asm330_hrtimer;
+	bool asm330_hrtimer;
 	struct hrtimer st_asm330lhh_hrtimer;
 };
 

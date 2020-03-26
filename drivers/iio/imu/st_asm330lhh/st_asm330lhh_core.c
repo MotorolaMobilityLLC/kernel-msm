@@ -1130,9 +1130,7 @@ int st_asm330lhh_probe(struct device *dev, int irq,
 	}
 
 	/* use hrtimer if property is enabled */
-	if (of_property_read_u32(np, "qcom,asm330_hrtimer",
-				&hw->asm330_hrtimer))
-		hw->asm330_hrtimer = 0; //force to 0 if not in dt
+	hw->asm330_hrtimer = of_property_read_bool(np, "qcom,asm330_hrtimer");
 
 	dev_info(hw->dev, "Ver: %s\n", ST_ASM330LHH_VERSION);
 	err = st_asm330lhh_check_whoami(hw);
