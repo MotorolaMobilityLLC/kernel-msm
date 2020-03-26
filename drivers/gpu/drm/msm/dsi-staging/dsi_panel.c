@@ -778,6 +778,18 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 		goto error;
 	}
 
+	panel->pinctrl.tp_int_default = pinctrl_lookup_state(panel->pinctrl.pinctrl,
+						       "default");
+	if (IS_ERR_OR_NULL(panel->pinctrl.tp_int_default)) {
+		pr_debug("failed to get pinctrl tp_int_default state, rc=%d\n", rc);
+	}
+
+	panel->pinctrl.tp_int_out_high = pinctrl_lookup_state(panel->pinctrl.pinctrl,
+						       "tp-int-output-high");
+	if (IS_ERR_OR_NULL(panel->pinctrl.tp_int_out_high)) {
+		pr_debug("failed to get pinctrl tp_int_out_high state, rc=%d\n", rc);
+	}
+
 error:
 	return rc;
 }
