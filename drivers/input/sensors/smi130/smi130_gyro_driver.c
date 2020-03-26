@@ -300,6 +300,7 @@ struct smi_gyro_client_data {
 	int max_buffer_time;
 	struct input_dev *gyrobuf_dev;
 	int report_evt_cnt;
+	struct mutex gyro_sensor_buff;
 #endif
 };
 
@@ -1521,8 +1522,8 @@ static int smi_gyro_read_bootsampl(struct smi_gyro_client_data *client_data,
 {
 	int i = 0;
 
+	client_data->gyro_buffer_smi130_samples = false;
 	if (enable_read) {
-		client_data->gyro_buffer_smi130_samples = false;
 		for (i = 0; i < client_data->gyro_bufsample_cnt; i++) {
 			if (client_data->debug_level & 0x08)
 				PINFO("gyro=%d,x=%d,y=%d,z=%d,sec=%d,ns=%lld\n",
@@ -1588,7 +1589,9 @@ static ssize_t read_gyro_boot_sample_store(struct device *dev,
 		PERR("Invalid value of input, input=%ld\n", enable);
 		return -EINVAL;
 	}
+	mutex_lock(&client_data->gyro_sensor_buff);
 	err = smi_gyro_read_bootsampl(client_data, enable);
+	mutex_unlock(&client_data->gyro_sensor_buff);
 	if (err)
 		return err;
 	client_data->read_gyro_boot_sample = enable;
@@ -1832,6 +1835,7 @@ static int smi130_gyro_early_buff_init(struct smi_gyro_client_data *client_data)
 	client_data->gyro_buffer_smi130_samples = true;
 	client_data->gyro_enable = false;
 
+	mutex_init(&client_data->gyro_sensor_buff);
 	smi130_gyro_set_mode(SMI130_GYRO_MODE_NORMAL);
 	smi130_gyro_delay(5);
 
@@ -1914,8 +1918,10 @@ static irqreturn_t smi130_gyro_irq_work_func(int irq, void *handle)
 	input_event(client_data->input, EV_MSC,
 		MSC_SCAN, gyro_data.dataz);
 	input_sync(client_data->input);
+	mutex_lock(&client_data->gyro_sensor_buff);
 	store_gyro_boot_sample(client_data, gyro_data.datax,
 			gyro_data.datay, gyro_data.dataz, ts);
+	mutex_unlock(&client_data->gyro_sensor_buff);
 	return IRQ_HANDLED;
 }
 
