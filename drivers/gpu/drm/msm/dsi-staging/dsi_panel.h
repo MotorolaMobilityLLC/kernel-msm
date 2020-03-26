@@ -102,6 +102,8 @@ struct dsi_pinctrl_info {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *active;
 	struct pinctrl_state *suspend;
+	struct pinctrl_state *tp_int_default;
+	struct pinctrl_state *tp_int_out_high;
 };
 
 struct dsi_panel_phy_props {
@@ -156,6 +158,7 @@ struct dsi_panel_reset_config {
 	bool reset_force_pull_low;
 	bool reset_always_high;
 	bool reset_before_power_on;
+	bool tpint_outhigh;
 	int tp_reset_gpio;
 	int reset_assert_time;
 	int reset_gpio;
