@@ -5892,6 +5892,12 @@ void dsi_display_dev_shutdown(struct platform_device *pdev)
 		display = platform_get_drvdata(pdev);
 		display->panel->reset_config.reset_force_pull_low = display->panel->utils.read_bool (
 			display->panel->utils.data, "qcom,mdss-dsi-reset-force-pull-low");
+		display->panel->reset_config.tpint_outhigh = display->panel->utils.read_bool(display->panel->utils.data,
+			"qcom,mdss-dsi-tpint-outhigh-shutdown");
+		if (display->panel->reset_config.tpint_outhigh) {
+			if (display->panel->pinctrl.pinctrl != NULL && display->panel->pinctrl.tp_int_out_high != NULL)
+				pinctrl_select_state(display->panel->pinctrl.pinctrl, display->panel->pinctrl.tp_int_out_high);
+		}
 	}
 }
 
