@@ -46,8 +46,8 @@
 #define DRIVER_MODE_AMB			2
 #define QUERY_FIRMWARE_TIMEOUT_MS	300
 #define EUPGRADE			140
-#define TIME_OFFSET_MAX_THD		5
-#define TIME_OFFSET_MIN_THD		-5
+#define TIME_OFFSET_MAX_THD		30
+#define TIME_OFFSET_MIN_THD		-30
 
 struct qti_can {
 	struct net_device	**netdev;
@@ -326,7 +326,7 @@ static void qti_can_receive_frame(struct qti_can *priv_data,
 	if (ts_offset_corrected > 0) {
 		if (disp_disc_cntr == 1) {
 			dev_info(&priv_data->spidev->dev,
-				 "No of buff frames discarded is %lld\n",
+				 "No of buff frames discarded is %d\n",
 				 buff_frames_disc_cntr);
 			disp_disc_cntr = 0;
 		}
