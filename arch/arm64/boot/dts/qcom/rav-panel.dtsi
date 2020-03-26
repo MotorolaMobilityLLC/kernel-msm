@@ -120,6 +120,11 @@
 };
 
 &sde_dsi {
+	pinctrl-names = "panel_active", "panel_suspend","default","tp-int-output-high";
+	pinctrl-0 = <&sde_dsi_active &sde_te_active>;
+	pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
+	pinctrl-2 = <&tp_int_default>;
+	pinctrl-3 = <&tp_int_output_high>;
 	qcom,dsi-display-list = <&dsi_ft8009_boe_vid_display
 				&dsi_nt36526_tm_vid_display
 				&dsi_hx83104a_inx_vid_display
@@ -129,6 +134,36 @@
 				&dsi_mot_dummy_qhd_video_display>;
 };
 
+&tlmm {
+	default {
+		tp_int_default: tp_int_default {
+			mux {
+				pins = "gpio88";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio88";
+				drive-strength = <8>;
+				input-enable;
+				bias-pull-up;
+			};
+		};
+	};
+	tp-int-output-high {
+		tp_int_output_high: tp_int_output_high {
+			mux {
+				pins = "gpio88";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio88";
+				drive-strength = <8>;
+				output-high;
+				bias-pull-up;
+			};
+		};
+	};
+};
 
 &mot_dummy_vid_qhd {
 	pwms = <&pm6125_pwm 0 0>;
