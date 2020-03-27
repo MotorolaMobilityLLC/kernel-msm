@@ -13,32 +13,11 @@
  */
 
 #include <linux/module.h>
-#include <uapi/linux/media.h>
+#include <linux/miscdevice.h>
+#include <linux/version.h>
 #include <media/cci_intf.h>
-#include <media/v4l2-dev.h>
 #include <media/v4l2-ioctl.h>
-#include <media/msmb_camera.h>
-#include <cam_subdev.h>
-#include <cam_sensor_cmn_header.h>
 #include <cam_cci_dev.h>
-
-#define CCI_INTF_NAME "msm_cci_intf"
-
-//#define CCI_INTF_DEBUG
-#ifdef CCI_INTF_DEBUG
-#ifdef pr_debug
-#undef pr_debug
-#endif
-#define pr_debug pr_err
-#endif
-
-struct msm_cci_intf_ctrl_t {
-	struct cam_subdev v4l2_dev_str;
-	struct platform_device *pdev;
-	char device_name[20];
-};
-
-static struct msm_cci_intf_ctrl_t fctrl;
 
 static enum camera_sensor_i2c_type cci_intf_xfer_addr_convert(unsigned short width)
 {
@@ -62,11 +41,12 @@ static enum camera_sensor_i2c_type cci_intf_xfer_addr_convert(unsigned short wid
 	return cci_width;
 }
 
-static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
+static int32_t cci_intf_xfer(
 		struct msm_cci_intf_xfer *xfer,
 		unsigned int cmd)
 {
 	int32_t rc=0, rc2=0;
+	uint16_t addr;
 	struct cam_sensor_cci_client cci_info = {
 		.cci_subdev     = cam_cci_get_subdev(0),
 		.cci_i2c_master = xfer->cci_bus,
@@ -132,8 +112,9 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			rc = -ENOMEM;
 			goto release;
 		}
-		reg_conf_tbl[0].reg_addr = xfer->reg.addr;
+		addr = xfer->reg.addr;
 		for (i = 0; i < xfer->data.count; i++) {
+			reg_conf_tbl[i].reg_addr = addr++;
 			reg_conf_tbl[i].reg_data = xfer->data.buf[i];
 			reg_conf_tbl[i].delay = 0;
 		}
@@ -174,37 +155,34 @@ release:
 	return rc;
 }
 
-static long msm_cci_intf_ioctl(struct v4l2_subdev *sd,
-		unsigned int cmd, void *arg)
+static long cci_intf_ioctl(struct file *file, unsigned int cmd,
+		unsigned long arg)
 {
-	pr_debug("%s cmd=%x\n", __func__, cmd);
+	struct msm_cci_intf_xfer xfer;
+	int rc;
+
+	pr_debug("%s cmd=%x arg=%lx\n", __func__, cmd, arg);
 
 	switch (cmd) {
 	case MSM_CCI_INTF_READ:
 	case MSM_CCI_INTF_WRITE:
 	case MSM_CCI_INTF_INIT:
 	case MSM_CCI_INTF_RELEASE:
-		return cci_intf_xfer(sd, (struct msm_cci_intf_xfer *)arg, cmd);
+		if (copy_from_user(&xfer, (void __user *)arg, sizeof(xfer)))
+			return -EFAULT;
+		rc = cci_intf_xfer(&xfer, cmd);
+		if (copy_to_user((void __user *)arg, &xfer, sizeof(xfer)))
+			return -EFAULT;
+		return rc;
 	default:
 		return -ENOIOCTLCMD;
 	}
 }
 
 #ifdef CONFIG_COMPAT
-static long msm_cci_intf_ioctl32(struct v4l2_subdev *sd,
-	unsigned int cmd, unsigned long arg)
+static long cci_intf_ioctl_compat(struct file *file, unsigned int cmd,
+		unsigned long arg)
 {
-	struct msm_cci_intf_xfer cmd_data;
-	int32_t rc = 0;
-
-	if (copy_from_user(&cmd_data, (void __user *)arg,
-		sizeof(cmd_data))) {
-		CAM_ERR(CAM_ACTUATOR,
-			"Failed to copy from user_ptr=%pK size=%zu",
-			(void __user *)arg, sizeof(cmd_data));
-		return -EFAULT;
-	}
-
 	pr_debug("%s cmd=%x\n", __func__, cmd);
 
 	switch (cmd) {
@@ -223,60 +201,35 @@ static long msm_cci_intf_ioctl32(struct v4l2_subdev *sd,
 	default:
 		return -ENOIOCTLCMD;
 	}
-
-	rc = msm_cci_intf_ioctl(sd, cmd, (void *)&cmd_data);
-
-	if (rc >= 0) {
-		if (copy_to_user((void __user *)arg, &cmd_data,
-			sizeof(cmd_data))) {
-			pr_err("Failed to copy to user_ptr=%pK size=%zu",
-				(void __user *)arg, sizeof(cmd_data));
-			rc = -EFAULT;
-		}
-	}
-	return rc;
+	return cci_intf_ioctl(file, cmd, arg);
 }
 #endif
 
-
-static struct v4l2_subdev_core_ops msm_cci_intf_subdev_core_ops = {
-	.ioctl = msm_cci_intf_ioctl,
+static const struct file_operations cci_intf_fops = {
+	.owner = THIS_MODULE,
+	.unlocked_ioctl = cci_intf_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl32 = msm_cci_intf_ioctl32,
+	.compat_ioctl = cci_intf_ioctl_compat,
 #endif
 };
 
-static struct v4l2_subdev_ops msm_cci_intf_subdev_ops = {
-	.core = &msm_cci_intf_subdev_core_ops,
+static struct miscdevice cci_intf_misc = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "cci_intf",
+	.fops = &cci_intf_fops,
 };
-
-static const struct v4l2_subdev_internal_ops msm_cci_intf_internal_ops;
-
-static int cci_intf_init_subdev(struct msm_cci_intf_ctrl_t *f_ctrl)
-{
-	int rc = 0;
-
-	f_ctrl->v4l2_dev_str.internal_ops = &msm_cci_intf_internal_ops;
-	f_ctrl->v4l2_dev_str.ops = &msm_cci_intf_subdev_ops;
-	strlcpy(f_ctrl->device_name, CCI_INTF_NAME, sizeof(f_ctrl->device_name));
-	f_ctrl->v4l2_dev_str.name = f_ctrl->device_name;
-	f_ctrl->v4l2_dev_str.sd_flags =
-		(V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS);
-	f_ctrl->v4l2_dev_str.ent_function = MSM_CAMERA_SUBDEV_CCI_INTF;
-	f_ctrl->v4l2_dev_str.token = f_ctrl;
-
-	rc = cam_register_subdev(&(f_ctrl->v4l2_dev_str));
-	if (rc)
-		CAM_ERR(CAM_SENSOR, "Fail with cam_register_subdev rc: %d", rc);
-
-	return rc;
-}
 
 static int __init cci_intf_init(void)
 {
+	int rc;
+
 	pr_debug("%s\n", __func__);
 
-	cci_intf_init_subdev(&fctrl);
+	rc = misc_register(&cci_intf_misc);
+	if (unlikely(rc)) {
+		pr_err("failed to register misc device %s\n", cci_intf_misc.name);
+		return rc;
+	}
 
 	return 0;
 }
@@ -285,7 +238,7 @@ static void __exit cci_intf_exit(void)
 {
 	pr_debug("%s\n", __func__);
 
-	cam_unregister_subdev(&fctrl.v4l2_dev_str);
+	misc_deregister(&cci_intf_misc);
 }
 
 module_init(cci_intf_init);
