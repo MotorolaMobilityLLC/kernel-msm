@@ -48,6 +48,9 @@
 /* Indicate support for including KEK length in rekey data */
 #define CFG80211_REKEY_DATA_KEK_LEN 1
 
+/* Indicate backport support for key configuration for Beacon protection*/
+#define CFG80211_BIGTK_CONFIGURATION_SUPPORT 1
+
 /**
  * Indicate backport support for the new cfg80211_roamed event which unifies the
  * old APIs cfg80211_roamed and cfg80211_roamed_bss and takes a structure to
@@ -2688,6 +2691,8 @@ struct cfg80211_update_owe_info {
  * @set_default_key: set the default key on an interface
  *
  * @set_default_mgmt_key: set the default management frame key on an interface
+
+ * @set_default_beacon_key: set the default Beacon frame key on an interface
  *
  * @set_rekey_data: give the data necessary for GTK rekeying to the driver
  *
@@ -2991,6 +2996,9 @@ struct cfg80211_ops {
 	int	(*set_default_mgmt_key)(struct wiphy *wiphy,
 					struct net_device *netdev,
 					u8 key_index);
+	int	(*set_default_beacon_key)(struct wiphy *wiphy,
+					  struct net_device *netdev,
+					  u8 key_index);
 
 	int	(*start_ap)(struct wiphy *wiphy, struct net_device *dev,
 			    struct cfg80211_ap_settings *settings);
