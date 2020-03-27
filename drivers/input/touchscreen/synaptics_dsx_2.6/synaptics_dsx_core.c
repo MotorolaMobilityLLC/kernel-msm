@@ -1471,7 +1471,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		input_mt_sync(rmi4_data->input_dev);
 #endif
 
-		if (rmi4_data->stylus_enable) {
+		if (rmi4_data->stylus_enable && rmi4_data->stylus_dev) {
 			stylus_presence = 0;
 			input_report_key(rmi4_data->stylus_dev,
 					BTN_TOUCH, 0);
@@ -3624,7 +3624,7 @@ static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data)
 #endif
 	input_sync(rmi4_data->input_dev);
 
-	if (rmi4_data->stylus_enable) {
+	if (rmi4_data->stylus_enable && rmi4_data->stylus_dev) {
 		input_report_key(rmi4_data->stylus_dev,
 				BTN_TOUCH, 0);
 		input_report_key(rmi4_data->stylus_dev,
