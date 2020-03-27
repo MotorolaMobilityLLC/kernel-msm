@@ -2,20 +2,6 @@
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 
 &tlmm{
-	max17050_irq_default: max17050_irq_default {
-		mux {
-			pins = "gpio89";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio89";
-			drive-strength = <2>; /* 2 MA */
-			bias-disable;
-			input-enable;
-		};
-	};
-
 	bq2597x_int_default: bq2597x_int_default {
 		mux {
 			pins = "gpio5";
@@ -53,10 +39,6 @@
 		mmi,batt-curr-boost = <300000>;
 		mmi,batt-ovp-lmt = <4500000>;
 		mmi,pl-chrg-vbatt-min = <3600000>;
-		mmi,use-batt-age;
-		mmi,extrn-fg;
-		mmi,extrn-fg-name = "max17_main_battery";
-		mmi,extrn-sense;
 		mmi,chrg-temp-zones-num = <5>;
 		mmi,mmi-chrg-temp-zones =
 					<0 4200 970 0 0 0 0 0 0>,
@@ -72,7 +54,7 @@
 					<2000000>;
 		charger_device_0 {
 			chrg-name = "pmic-sw";
-			psy-name = "qcom_battery";
+			psy-name = "battery";
 			charging-curr-limited = <500000>;
 		};
 		charger_device_1 {
@@ -85,33 +67,6 @@
 
 &qupv3_se9_i2c {
 	status = "okay";
-	max17050@36 {
-		status = "okay";
-		compatible = "maxim,max17050";
-		reg = <0x36>;
-		maxim,rsns-microohm = <5000>;
-
-		gpios = <&tlmm 89 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
-		gpio-names = "max17050_irq";
-		pinctrl-names = "default";
-		pinctrl-0 = <&max17050_irq_default>;
-
-		maxim,main-psy;
-		maxim,enable_por_init;
-		maxim,batt_undervoltage_zero_soc;
-		maxim,batt-psy-name = "battery";
-
-		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
-		maxim,warm-temp-c = <45>;
-		maxim,hot-temp-c = <60>;
-		maxim,cool-temp-c = <0>;
-		maxim,cold-temp-c = <(-20)>;
-		maxim,df-read-battsn;
-		maxim,configuration {
-			df-serialnum    = "LK50";
-			/include/ "batterydata-lk50-atl-maxim17050.dtsi"
-		};
-	};
 
 	bq2597x-standalone@65 {
 		compatible = "ti,bq2597x-standalone";
@@ -165,8 +120,6 @@
 &pm6150_charger {
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,iterm-ma = <243>;
-	qcom,extrn-fg;
-	qcom,extrn-fg-psy-name = "max17_main_battery";
 	qcom,dc-unsupported;
 	qcom,wireless-unsupported;
 	qcom,auto-recharge-soc = <99>;
