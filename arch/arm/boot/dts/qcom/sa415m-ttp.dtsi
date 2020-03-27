@@ -147,6 +147,7 @@
 	       interrupt-parent = <&tlmm>;
 	       interrupts = <78 IRQ_TYPE_EDGE_RISING>;
 	       st,drdy-int-pin= <2>;
+	       qcom,asm330_hrtimer;
 	};
 };
 
