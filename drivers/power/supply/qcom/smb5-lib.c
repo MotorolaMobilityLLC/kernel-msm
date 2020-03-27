@@ -1203,6 +1203,8 @@ void smblib_rerun_apsd(struct smb_charger *chg)
 				APSD_RERUN_BIT, APSD_RERUN_BIT);
 	if (rc < 0)
 		smblib_err(chg, "Couldn't re-run APSD rc=%d\n", rc);
+	else
+		chg->real_charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
 }
 
 static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
