@@ -556,13 +556,34 @@
 		reg = <0x2>;
 		compatible = "qcom,eeprom";
 		cam_vio-supply = <&pm6150_l13>;
-		regulator-names = "cam_vio";
+		cam_vana-supply = <&camera_wide_depth_avdd_ldo>;
+		cam_clk-supply = <&titan_top_gdsc>;
+		regulator-names = "cam_vio", "cam_vana", "cam_clk";
 		rgltr-cntrl-support;
-		rgltr-min-voltage = <1800000>;
-		rgltr-max-voltage = <1800000>;
-		rgltr-load-current = <0>;
+		rgltr-min-voltage = <1800000 2800000 0>;
+		rgltr-max-voltage = <1800000 2800000 0>;
+		rgltr-load-current = <0 80000 0>;
+		gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk3_active
+				&cam_sensor_rear_depth_active>;
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
+				&cam_sensor_rear_depth_suspend>;
+		gpios = <&tlmm 16 0>,
+			<&tlmm 23 0>,
+			<&tlmm 42 0>;
+		gpio-reset = <1>;
+		gpio-custom1= <2>;
+		gpio-req-tbl-num = <0 1 2>;
+		gpio-req-tbl-flags = <1 0 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK3", "CAM_RESET3", "CAM_SW3";
 		cci-device = <1>;
 		cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_camcc CAM_CC_MCLK3_CLK>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "turbo";
+		clock-rates = <24000000>;
 	};
 
 	qcom,cam-sensor@2 {	//depth ov02b1b
@@ -573,7 +594,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
-		//eeprom-src = <&eeprom_depth>;
+		eeprom-src = <&eeprom_depth>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_wide_depth_avdd_ldo>;
 		cam_clk-supply = <&titan_top_gdsc>;
