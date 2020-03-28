@@ -378,7 +378,7 @@
 		cci-device = <0>;
 		cci-master = <1>;
 		cam_vio-supply = <&pm6150_l13>;
-		cam_vaf-supply = <&pm6150_l5>;
+		cam_vaf-supply = <&camera_main_afdd_ldo>;
 		regulator-names = "cam_vio","cam_vaf";
 		rgltr-cntrl-support;
 		rgltr-min-voltage = <1800000 2800000>;
@@ -515,8 +515,8 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
-		//led-flash-src = <&led_flash_macro>;
-		//actuator-src = <&actuator_macro>;
+		led-flash-src = <&led_flash_macro>;
+		actuator-src = <&actuator_macro>;
 		//eeprom-src = <&eeprom_macro>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_macro_avdd_ldo>;
