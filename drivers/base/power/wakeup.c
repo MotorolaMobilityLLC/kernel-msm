@@ -20,6 +20,7 @@
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/irqdesc.h>
+#include <linux/wakeup_reason.h>
 
 #include "power.h"
 
@@ -937,6 +938,7 @@ void pm_system_irq_wakeup(unsigned int irq_number)
 					irq_number, name);
 
 		}
+		log_wakeup_reason(irq_number);
 		pm_wakeup_irq = irq_number;
 		pm_system_wakeup();
 	}
