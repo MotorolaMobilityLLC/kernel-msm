@@ -457,3 +457,6 @@
 		xhci-hw-lpm-disable;
 	};
 };
+&sdhc_2 {
+	cd-gpios = <&tlmm 99 0>;
+};
