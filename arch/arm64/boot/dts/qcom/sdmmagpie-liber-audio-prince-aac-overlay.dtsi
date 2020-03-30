@@ -389,7 +389,7 @@
                 cirrus,boost-cap-microfarad = <15>;
                 cirrus,asp-sdout-hiz = <0x1>;
                 cirrus,fast-switch="spk_fast_switch1.txt","spk_fast_switch2.txt";
-
+		cirrus,regs-patch = <0x0007400 0x00150000>;
                 cirrus,gpio-config2 {
                         cirrus,gpio-src-select = <0x4>;
                         cirrus,gpio-output-enable;
