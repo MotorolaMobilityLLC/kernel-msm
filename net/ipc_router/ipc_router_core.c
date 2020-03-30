@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2793,6 +2793,33 @@ static void do_read_data(struct kthread_work *work)
 				     hdr->control_flag, hdr->src_node_id,
 				     hdr->src_port_id, hdr->dst_node_id,
 				     hdr->dst_port_id);
+			/**
+			 * update forwarding port information as well in routing
+			 * table which will help to cleanup clients/services
+			 * running in modem when MSM goes down
+			 */
+			rport_ptr = ipc_router_get_rport_ref(hdr->src_node_id,
+							     hdr->src_port_id);
+			if (!rport_ptr) {
+				rport_ptr =
+				ipc_router_create_rport(hdr->src_node_id,
+							hdr->src_port_id,
+							xprt_info);
+				if (!rport_ptr) {
+					IPC_RTR_ERR(
+					"%s: Rmt Prt %08x:%08x create failed\n",
+					__func__, hdr->src_node_id,
+					hdr->src_port_id);
+				}
+			}
+			/**
+			 * just to fail safe check is added, if rport
+			 * allocation failed above we still forward the
+			 * packet to remote.
+			 */
+			if (rport_ptr)
+				kref_put(&rport_ptr->ref,
+					 ipc_router_release_rport);
 			forward_msg(xprt_info, pkt);
 			goto read_next_pkt1;
 		}
