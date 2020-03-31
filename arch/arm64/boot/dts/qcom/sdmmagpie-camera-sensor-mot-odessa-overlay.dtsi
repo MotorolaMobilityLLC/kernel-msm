@@ -517,7 +517,7 @@
 		sensor-position-yaw = <180>;
 		led-flash-src = <&led_flash_macro>;
 		actuator-src = <&actuator_macro>;
-		//eeprom-src = <&eeprom_macro>;
+		eeprom-src = <&eeprom_macro>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_macro_avdd_ldo>;
 		cam_clk-supply = <&titan_top_gdsc>;
