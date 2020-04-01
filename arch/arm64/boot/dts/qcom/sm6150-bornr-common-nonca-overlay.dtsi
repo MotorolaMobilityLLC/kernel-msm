@@ -15,6 +15,7 @@
 /* Add differences of NON-CA overlays base on CA here */
 &qupv3_se1_i2c {
 	abov_sar@20 {
+		reg_array_val = <0x07 0x00 0x08 0x1B 0xFB 0x01>;
 		cap,use_channel_ch0 = <0x00>;
 		cap,use_channel_ch1 = <0x01>;
 		ch0_name ="capsense_bottom";
