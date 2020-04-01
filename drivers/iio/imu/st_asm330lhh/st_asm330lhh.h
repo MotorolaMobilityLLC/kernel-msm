@@ -181,7 +181,6 @@ struct st_asm330lhh_sensor {
 	u16 watermark;
 	u8 batch_mask;
 	u8 batch_addr;
-	struct mutex sensor_buff;
 #ifdef CONFIG_ENABLE_ASM_ACC_GYRO_BUFFERING
 	bool read_boot_sample;
 	int bufsample_cnt;
@@ -192,6 +191,7 @@ struct st_asm330lhh_sensor {
 	int max_buffer_time;
 	struct input_dev *buf_dev;
 	int report_evt_cnt;
+	struct mutex sensor_buff;
 #endif
 };
 
