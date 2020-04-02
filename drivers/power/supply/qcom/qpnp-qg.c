@@ -960,6 +960,11 @@ static int qg_esr_estimate(struct qpnp_qg *chip)
 	int rc, i, ibat = 0;
 	u8 esr_done_count, reg0 = 0, reg1 = 0;
 	bool is_charging = false;
+	struct power_supply	*mmi_chrg_mgr_psy = NULL;
+	union power_supply_propval val;
+
+	if (chip->dt.cp_use_internal_qg)
+		mmi_chrg_mgr_psy = power_supply_get_by_name("mmi_chrg_manager");
 
 	if (chip->dt.esr_disable)
 		return 0;
@@ -1011,6 +1016,15 @@ static int qg_esr_estimate(struct qpnp_qg *chip)
 	if (rc < 0) {
 		pr_err("Failed to hold master, rc=%d\n", rc);
 		goto done;
+	}
+
+	if (mmi_chrg_mgr_psy) {
+		val.intval = 0;
+		rc = power_supply_set_property(mmi_chrg_mgr_psy,
+					POWER_SUPPLY_PROP_CP_ENABLE, &val);
+		if (rc < 0)
+			pr_err("Failed to disable charging pump, rc=%d\n", rc);
+		msleep(1000);
 	}
 
 	for (i = 0; i < qg_esr_count; i++) {
@@ -1099,6 +1113,14 @@ static int qg_esr_estimate(struct qpnp_qg *chip)
 		}
 		/* delay before the next ESR measurement */
 		msleep(200);
+	}
+
+	if (mmi_chrg_mgr_psy) {
+		val.intval = 1;
+		rc = power_supply_set_property(mmi_chrg_mgr_psy,
+					POWER_SUPPLY_PROP_CP_ENABLE, &val);
+		if (rc < 0)
+			pr_err("Failed to enable charging pump, rc=%d\n", rc);
 	}
 
 	rc = qg_process_esr_data(chip);
@@ -4031,6 +4053,9 @@ static int qg_parse_dt(struct qpnp_qg *chip)
 
 	chip->dt.esr_discharge_enable = of_property_read_bool(node,
 					"qcom,esr-discharge-enable");
+
+	chip->dt.cp_use_internal_qg = of_property_read_bool(node,
+					"mmi,cp-use-internal-qg");
 
 	rc = of_property_read_u32(node, "qcom,esr-qual-current-ua", &temp);
 	if (rc < 0)
