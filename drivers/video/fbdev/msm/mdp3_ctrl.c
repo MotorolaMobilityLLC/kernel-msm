@@ -1325,19 +1325,37 @@ int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 	/*Map the splash addr for VIDEO mode panel before smmu attach*/
 	if ((mfd->panel.type == MIPI_VIDEO_PANEL) &&
 				(mdp3_session->in_splash_screen)) {
+		rc = mdss_smmu_set_attribute(MDSS_IOMMU_DOMAIN_UNSECURE,
+							EARLY_MAP, 1);
+		if (rc) {
+			pr_err("mdp3 set attribute failed for early map\n");
+			goto reset_error;
+		}
+		rc = mdp3_iommu_enable(MDP3_CLIENT_DMA_P);
+		if (IS_ERR_VALUE((unsigned long)rc)) {
+			pr_err("mdp3 iommu attach failed\n");
+			goto reset_error;
+		}
 		rc = mdss_smmu_map(MDSS_IOMMU_DOMAIN_UNSECURE,
 				mdp3_res->splash_mem_addr,
 				mdp3_res->splash_mem_addr,
 				mdp3_res->splash_mem_size,
 				IOMMU_READ | IOMMU_NOEXEC);
-	}
+		if (rc)
+			pr_err("iommu memory mapping failed ret=%d\n", rc);
+		else
+			pr_info("iommu map passed for PA=VA\n");
 
-	rc = mdp3_iommu_enable(MDP3_CLIENT_DMA_P);
-	if (rc) {
-		pr_err("fail to attach dma iommu\n");
-		if (mdp3_res->idle_pc)
-			mdp3_clk_enable(0, 0);
-		goto reset_error;
+		rc = mdss_smmu_set_attribute(MDSS_IOMMU_DOMAIN_UNSECURE,
+							EARLY_MAP, 0);
+	} else {
+		rc = mdp3_iommu_enable(MDP3_CLIENT_DMA_P);
+		if (rc) {
+			pr_err("fail to attach dma iommu\n");
+			if (mdp3_res->idle_pc)
+				mdp3_clk_enable(0, 0);
+			goto reset_error;
+		}
 	}
 
 	vsync_client = mdp3_dma->vsync_client;
