@@ -200,6 +200,7 @@ static void store_acc_gyro_boot_sample(struct st_asm330lhh_sensor *sensor,
 {
 	int x, y, z;
 
+	mutex_lock(&sensor->sensor_buff);
 	if (false == sensor->buffer_asm_samples)
 		return;
 
@@ -225,6 +226,7 @@ static void store_acc_gyro_boot_sample(struct st_asm330lhh_sensor *sensor,
 				sensor->id, sensor->bufsample_cnt);
 		sensor->buffer_asm_samples = false;
 	}
+	mutex_unlock(&sensor->sensor_buff);
 }
 #else
 static void store_acc_gyro_boot_sample(struct st_asm330lhh_sensor *sensor,
@@ -337,10 +339,8 @@ static int st_asm330lhh_read_fifo(struct st_asm330lhh_hw *hw)
 				iio_push_to_buffers_with_timestamp(iio_dev,
 								   iio_buf,
 								   hw->tsample);
-				mutex_lock(&sensor->sensor_buff);
 				store_acc_gyro_boot_sample(sensor,
 						iio_buf, hw->tsample);
-				mutex_unlock(&sensor->sensor_buff);
 			}
 		}
 		read_len += word_len;

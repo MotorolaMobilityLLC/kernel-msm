@@ -1741,6 +1741,7 @@ static void smi_gyro_input_destroy(struct smi_gyro_client_data *client_data)
 static void store_gyro_boot_sample(struct smi_gyro_client_data *client_data,
 			int x, int y, int z, struct timespec ts)
 {
+	mutex_lock(&client_data->gyro_sensor_buff);
 	if (false == client_data->gyro_buffer_smi130_samples)
 		return;
 	if (ts.tv_sec <  client_data->max_buffer_time) {
@@ -1766,6 +1767,7 @@ static void store_gyro_boot_sample(struct smi_gyro_client_data *client_data,
 			smi130_gyro_delay(5);
 		}
 	}
+	mutex_unlock(&client_data->gyro_sensor_buff);
 }
 #else
 static void store_gyro_boot_sample(struct smi_gyro_client_data *client_data,
@@ -1918,10 +1920,8 @@ static irqreturn_t smi130_gyro_irq_work_func(int irq, void *handle)
 	input_event(client_data->input, EV_MSC,
 		MSC_SCAN, gyro_data.dataz);
 	input_sync(client_data->input);
-	mutex_lock(&client_data->gyro_sensor_buff);
 	store_gyro_boot_sample(client_data, gyro_data.datax,
 			gyro_data.datay, gyro_data.dataz, ts);
-	mutex_unlock(&client_data->gyro_sensor_buff);
 	return IRQ_HANDLED;
 }
 
