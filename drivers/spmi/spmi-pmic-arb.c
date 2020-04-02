@@ -595,6 +595,9 @@ static void pmic_arb_chained_irq(struct irq_desc *desc)
 			if (apid < pa->min_apid || apid > pa->max_apid) {
 				WARN_ONCE(true, "spurious spmi irq received for apid=%d\n",
 					apid);
+				dev_err_ratelimited(&pa->spmic->dev,
+				"spurious spmi irq apid=%d\n", apid);
+				cleanup_irq(pa, apid, id);
 				continue;
 			}
 			enable = readl_relaxed(pa->intr +
