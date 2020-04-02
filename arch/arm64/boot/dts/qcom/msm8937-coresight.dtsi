@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, 2018, 2020, The Linux Foundation. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -987,28 +987,30 @@
 	};
 
 	/* Venus CTI */
-	cti_video_cpu0: cti@6134000 {
+	cti_video_cpu0: cti@6035000 {
 		compatible = "arm,primecell";
 		arm,primecell-periphid = <0x0003b966>;
 
-		reg = <0x6134000 0x1000>;
+		reg = <0x6035000 0x1000>;
 		reg-names = "cti-base";
 		coresight-name = "coresight-cti-video-cpu0";
 
+		status = "disabled";
 		clocks = <&clock_gcc clk_qdss_clk>,
 			 <&clock_gcc clk_qdss_a_clk>;
 		clock-names = "apb_pclk";
 	};
 
 	/* Pronto CTI */
-	cti_wcn_cpu0: cti@6139000 {
+	cti_wcn_cpu0: cti@6039000 {
 		compatible = "arm,primecell";
 		arm,primecell-periphid = <0x0003b966>;
 
-		reg = <0x6139000 0x1000>;
+		reg = <0x6039000 0x1000>;
 		reg-names = "cti-base";
 		coresight-name = "coresight-cti-wcn-cpu0";
 
+		status = "disabled";
 		clocks = <&clock_gcc clk_qdss_clk>,
 			 <&clock_gcc clk_qdss_a_clk>;
 		clock-names = "apb_pclk";
