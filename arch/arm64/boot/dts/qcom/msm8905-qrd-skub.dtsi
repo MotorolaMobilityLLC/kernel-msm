@@ -514,12 +514,13 @@
 
 &pm8909_gpios {
 	/* GPIO 2 (NFC_CLK_REQ) */
-	gpio@c100 {
-		qcom,mode = <0>;
-		qcom,vin-sel = <1>;
-		qcom,src-sel = <0>;
-		qcom,master-en = <1>;
-		status = "okay";
+	nfc-clk {
+		nfc_clk_default: nfc_clk_default {
+			pins = "gpio2";
+			function = "normal";
+			input-enable;
+			power-source = <1>;
+		};
 	};
 };
 
@@ -538,7 +539,8 @@
 		interrupts = <21 0>;
 		interrupt-names = "nfc_irq";
 		pinctrl-names = "nfc_active", "nfc_suspend";
-		pinctrl-0 = <&nfc_int_active &nfc_disable_active>;
+		pinctrl-0 = <&nfc_int_active &nfc_disable_active
+				&nfc_clk_default>;
 		pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
 		clocks = <&clock_rpm clk_bb_clk2_pin>;
 		clock-names = "ref_clk";
