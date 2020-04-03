@@ -90,3 +90,11 @@ config USB_LEDS_TRIGGER_USBPORT
 	  This driver allows LEDs to be controlled by USB events. Enabling this
 	  trigger allows specifying list of USB ports that should turn on LED
 	  when some USB device gets connected.
+
+config USB_QUIRKS_LPM_R8153
+	bool "Add RTL8153 to QUIRKS_LPM List"
+	default n
+	help
+	  Some RTL8153 ethernet cards have problem of supporting LPM
+	  With USB2 host controller, enable this to disable its LPM
+	  So the probe of the cards could work
