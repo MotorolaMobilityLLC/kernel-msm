@@ -152,9 +152,12 @@
 		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
 			 <&mdss_dsi0_pll PCLK_MUX_0_CLK>;
 		clock-names = "mux_byte_clk", "mux_pixel_clk";
-		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-names = "panel_active", "panel_suspend", "panel_pre_active",
+				"panel_pre_active_rst_high";
 		pinctrl-0 = <&sde_dsi_active>;
-		pinctrl-1 = <&sde_dsi_suspend>;
+		pinctrl-1 = <&sde_dsi_suspend_rst_high>;
+		pinctrl-2 = <&sde_dsi_pre_active>;
+		pinctrl-3 = <&sde_dsi_suspend_rst_high>;
 		qcom,platform-reset-gpio = <&tlmm 75 0>;
 		qcom,ext-pin-control;
 		qcom,dsi-panel = <&dsi_djn_nt36525b_video>;
@@ -168,10 +171,11 @@
         qcom,mdss-dsi-t-clk-post = <0x0b>;
         qcom,mdss-dsi-t-clk-pre = <0x22>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,mdss-dsi-rst-high-poweroff;
 	qcom,mdss-brightness-max-level = <4095>;
         qcom,mdss-dsi-display-timings {
                 timing@0{
-                        qcom,mdss-dsi-panel-phy-timings = [00 14 05 05 1F 1F 05 05 03 02 04 00];
+                        qcom,mdss-dsi-panel-phy-timings = [00 14 05 05 1F 1E 05 05 03 02 04 00];
                         qcom,display-topology = <1 0 1>;
                         qcom,default-topology-index = <0>;
                 };
@@ -182,6 +186,7 @@
         qcom,mdss-dsi-t-clk-post = <0x0a>;
         qcom,mdss-dsi-t-clk-pre = <0x20>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,mdss-dsi-rst-high-poweroff;
 	qcom,mdss-brightness-max-level = <4095>;
         qcom,mdss-dsi-display-timings {
                 timing@0{
