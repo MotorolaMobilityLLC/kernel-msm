@@ -19,7 +19,7 @@
 
 &mdss_mdp {
 	dsi_djn_nt36525b_video:qcom,mdss_dsi_nt36525b_djn_video {
-		qcom,mdss-dsi-panel-name ="Nt36525B himax video mode dsi panel";
+		qcom,mdss-dsi-panel-name ="mipi_mot_vid_djn_720p_652";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
@@ -71,17 +71,17 @@
 				qcom,mdss-dsi-on-command = [
 				/* Use WLED+DCS to control bl, set WLED
 				   max current to 25mA, 51 to 80% for HBM */
-				39 01 00 00 00 00 02 51 CC
-        			39 01 00 00 00 00 02 53 2c
-        			39 01 00 00 00 00 02 55 01
-        	 		05 01 00 00 5a 00 02 11 00
-        	 		05 01 00 00 0a 00 02 29 00
+				15 00 00 00 00 00 02 51 CC
+        			15 00 00 00 00 00 02 53 2c
+        			15 00 00 00 00 00 02 55 01
+        	 		05 01 00 00 0a 00 01 11
+        	 		05 01 00 00 64 00 01 29
 					];
 				qcom,mdss-dsi-off-command = [
-					05 01 00 00 0a 00 02 28 00
-					05 01 00 00 5a 00 02 10 00];
+					05 01 00 00 4C 00 01 28
+					05 01 00 00 0A 00 01 10];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
-				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-h-sync-pulse = <0>;
 				qcom,mdss-dsi-panel-timings = [ 00 13 04 04 1F 1F 04 05 03 02 04 00];
                         };
