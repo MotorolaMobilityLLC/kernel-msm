@@ -46,7 +46,7 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
-#define CCI_TIMEOUT msecs_to_jiffies(1500)
+#define CCI_TIMEOUT msecs_to_jiffies(2000)
 
 #define NUM_MASTERS 2
 #define NUM_QUEUES 2
@@ -68,7 +68,7 @@
 /* Max bytes that can be read per CCI read transaction */
 #define CCI_READ_MAX 256
 #define CCI_I2C_READ_MAX_RETRIES 3
-#define CCI_I2C_MAX_READ 8192
+#define CCI_I2C_MAX_READ 16384
 #define CCI_I2C_MAX_WRITE 8192
 #define CCI_I2C_MAX_BYTE_COUNT 65535
 
@@ -172,6 +172,7 @@ enum cam_cci_state_t {
 };
 
 /**
+ * struct cci_device
  * @pdev:                       Platform device
  * @subdev:                     V4L2 sub device
  * @base:                       Base address of CCI device
@@ -236,6 +237,7 @@ struct cci_device {
 	bool is_burst_read;
 	uint32_t irqs_disabled;
 	struct mutex init_mutex;
+	atomic_t is_busy;
 };
 
 enum cam_cci_i2c_cmd_type {
