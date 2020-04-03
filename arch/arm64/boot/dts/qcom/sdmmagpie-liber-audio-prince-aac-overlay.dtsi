@@ -384,7 +384,7 @@
                 pinctrl-names = "default";
                 pinctrl-0 = <&cs35l41_irq_default &cs35l41_reset_default>;
 
-                cirrus,boost-peak-milliamp = <4500>;
+                cirrus,boost-peak-milliamp = <3900>;
                 cirrus,boost-ind-nanohenry = <1000>;
                 cirrus,boost-cap-microfarad = <15>;
                 cirrus,asp-sdout-hiz = <0x1>;
