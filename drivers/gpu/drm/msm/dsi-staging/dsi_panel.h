@@ -92,6 +92,7 @@ struct dsi_pinctrl_info {
 	struct pinctrl_state *active;
 	struct pinctrl_state *suspend;
 	struct pinctrl_state *pre_active;
+	struct pinctrl_state *pre_active_rst_high;
 };
 
 struct dsi_panel_phy_props {
@@ -270,6 +271,7 @@ struct dsi_panel {
 
 	u32 disp_on_chk_val;
 	bool no_panel_on_read_support;
+	bool rst_high_poweroff;
 
 	bool is_hbm_using_51_cmd;
 	bool is_hbm_on;

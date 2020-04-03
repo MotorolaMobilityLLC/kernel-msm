@@ -727,6 +727,15 @@ static int dsi_panel_set_pinctrl_pre_active(struct dsi_panel *panel)
                 pr_err("[%s] failed to set pin pre_state state, rc=%d\n", panel->name,
                        rc);
 
+	state = panel->pinctrl.pre_active_rst_high;
+	if (state != NULL) {
+		msleep(5);
+		rc = pinctrl_select_state(panel->pinctrl.pinctrl, state);
+		if (rc)
+			pr_err("[%s] failed to set pin pre_state state, rc=%d\n", panel->name,
+				rc);
+	}
+
         return rc;
 }
 
@@ -767,7 +776,7 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
-	if (gpio_is_valid(panel->reset_config.reset_gpio))
+	if ((!panel->rst_high_poweroff) && gpio_is_valid(panel->reset_config.reset_gpio))
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
@@ -880,6 +889,14 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 	if (IS_ERR_OR_NULL(panel->pinctrl.pre_active)) {
 		panel->pinctrl.pre_active = NULL;
 		pr_debug("No pinctrl pre_active state, this is an option\n");
+	}
+
+	panel->pinctrl.pre_active_rst_high=
+		pinctrl_lookup_state(panel->pinctrl.pinctrl, "panel_pre_active_rst_high");
+
+	if (IS_ERR_OR_NULL(panel->pinctrl.pre_active_rst_high)) {
+		panel->pinctrl.pre_active_rst_high = NULL;
+		pr_debug("No pinctrl pre_active_rst_high state, this is an option\n");
 	}
 
 error:
@@ -3637,6 +3654,8 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 
 	panel->no_panel_on_read_support = of_property_read_bool(of_node,
 				"qcom,mdss-dsi-no-panel-on-read-support");
+	panel->rst_high_poweroff = of_property_read_bool(of_node,
+				"qcom,mdss-dsi-rst-high-poweroff");
 	return rc;
 }
 
