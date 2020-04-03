@@ -61,6 +61,10 @@
 	qcom,num-macros = <3>;
 };
 
+&wsa_macro {
+	status = "disabled";
+};
+
 &wcd937x_codec {
 	status = "okay";
 };
@@ -178,12 +182,12 @@
 &sm6150_snd {
 	status = "ok";
 	compatible = "qcom,sm6150-asoc-snd";
-
-	qcom,ext-disp-audio-rx = <1>;
-	qcom,wcn-btfm;
-	qcom,mi2s-audio-intf;
-	qcom,auxpcm-audio-intf;
+	qcom,wcn-btfm = <1>;
 	qcom,msm-mi2s-master = <1>, <1>, <1>, <1>, <1>;
+	qcom,ext-disp-audio-rx = <0>;
+	qcom,mi2s-audio-intf = <0>;
+	qcom,auxpcm-audio-intf = <0>;
+
 	qcom,tert-mi2s-gpios = <&cdc_ter_mi2s_gpios>;
 
 	ti,tas2558-max-devs = <1>;
@@ -215,14 +219,10 @@
 		"TX SWR_ADC0", "ADC1_OUTPUT",
 		"TX SWR_ADC2", "ADC2_OUTPUT";
 
-	asoc-codec  = <&stub_codec>, <&bolero>, <&ext_disp_audio_codec>;
-	asoc-codec-names = "msm-stub-codec.1", "bolero_codec",
-			   "msm-ext-disp-audio-codec-rx";
+	asoc-codec  = <&stub_codec>, <&bolero>;
+	asoc-codec-names = "msm-stub-codec.1", "bolero_codec";
 
-		asoc-cpu = <&dai_dp>, <&dai_mi2s2>,
-				<&dai_pri_auxpcm>,
-				<&dai_sec_auxpcm>, <&dai_tert_auxpcm>,
-				<&dai_quat_auxpcm>, <&dai_quin_auxpcm>,
+	asoc-cpu = <&dai_mi2s2>,
 				<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
 				<&afe_proxy_tx>, <&incall_record_rx>,
 				<&incall_record_tx>, <&incall_music_rx>,
@@ -239,10 +239,7 @@
 				<&rx_cdc_dma_4_rx>, <&tx_cdc_dma_4_tx>,
 				<&rx_cdc_dma_5_rx>, <&tx_cdc_dma_5_tx>,
 				<&rx_cdc_dma_6_rx>, <&rx_cdc_dma_7_rx>;
-		asoc-cpu-names = "msm-dai-q6-dp.24608", "msm-dai-q6-mi2s.2", "msm-dai-q6-auxpcm.1",
-				"msm-dai-q6-auxpcm.2", "msm-dai-q6-auxpcm.3",
-				"msm-dai-q6-auxpcm.4", "msm-dai-q6-auxpcm.5",
-				"msm-dai-q6-dev.224",
+	asoc-cpu-names = "msm-dai-q6-mi2s.2", "msm-dai-q6-dev.224",
 				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
 				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
 				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
