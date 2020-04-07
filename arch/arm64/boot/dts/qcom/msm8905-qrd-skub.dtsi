@@ -522,6 +522,17 @@
 			power-source = <1>;
 		};
 	};
+
+	/* GPIO 4 (FLASH ENABLE GPIO CONFIG) */
+	flash_en {
+		flash_en_default: flash_en_default{
+			pins = "gpio4";
+			function = "normal";
+			input-disable;
+			output-enable;
+			status = "okay";
+		};
+	};
 };
 
 &i2c_2 {

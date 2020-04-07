@@ -37,7 +37,7 @@
 		compatible = "qcom,leds-gpio-flash";
 		status = "okay";
 		pinctrl-names = "flash_default";
-		pinctrl-0 = <&SY7807_default>;
+		pinctrl-0 = <&SY7807_default &flash_en_default>;
 		qcom,flash-en = <&pm8909_gpios 4 0>;
 		qcom,flash-now = <&msm_gpio 32 0>;
 		clocks = <&clock_gcc clk_gcc_camss_gp1_clk>,
