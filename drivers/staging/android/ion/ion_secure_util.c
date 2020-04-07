@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,6 +33,11 @@ bool is_secure_vmid_valid(int vmid)
 		vmid == VMID_CP_SPSS_HLOS_SHARED ||
 		vmid == VMID_CP_CDSP ||
 		vmid == VMID_CP_DSP_EXT);
+}
+
+bool is_secure_allocation(unsigned long flags)
+{
+	return !!(flags & (ION_FLAGS_CP_MASK | ION_FLAG_SECURE));
 }
 
 int get_secure_vmid(unsigned long flags)
