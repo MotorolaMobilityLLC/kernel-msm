@@ -155,6 +155,7 @@
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-low-mv = <3300>;
 	qcom,vbatt-empty-cold-mv = <3000>;
+	mmi,cp-use-internal-qg;
 };
 
 &thermal_zones {
