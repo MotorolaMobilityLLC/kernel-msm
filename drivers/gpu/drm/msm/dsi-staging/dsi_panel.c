@@ -549,6 +549,30 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	}
 	return rc;
 }
+static int dsi_panel_power_off_mode_one(struct dsi_panel *panel)
+{
+	int rc = 0;
+
+	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
+		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
+
+	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
+		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
+
+	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+	if (rc)
+		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+
+	if (gpio_is_valid(panel->reset_config.reset_gpio))
+		gpio_set_value(panel->reset_config.reset_gpio, 0);
+
+	rc = dsi_panel_set_pinctrl_state(panel, false);
+	if (rc) {
+		pr_err("[%s] failed set pinctrl state, rc=%d\n", panel->name,
+		       rc);
+	}
+	return rc;
+}
 static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 				enum dsi_cmd_set_type type)
 {
@@ -3863,6 +3887,16 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		panel->name = DSI_PANEL_DEFAULT_LABEL;
 
 	/*
+	 * Read dtsi set panel PowerOff mode.
+	 */
+	rc = utils->read_u32(utils->data,
+				"qcom,power_off_mode",
+				&panel->power_off_mode);
+	if(rc)
+		panel->power_off_mode = 0;
+	pr_info("Display dectected power_off_mode OK, Mode  = %d \n", panel->power_off_mode);
+
+	/*
 	 * Set panel type to LCD as default.
 	 */
 	panel->panel_type = DSI_DISPLAY_PANEL_TYPE_LCD;
@@ -5199,7 +5233,11 @@ int dsi_panel_post_unprepare(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
-	rc = dsi_panel_power_off(panel);
+	if(panel->power_off_mode == 1)
+		rc = dsi_panel_power_off_mode_one(panel);
+	else
+		rc = dsi_panel_power_off(panel);
+
 	if (rc) {
 		pr_err("[%s] panel power_Off failed, rc=%d\n",
 		       panel->name, rc);

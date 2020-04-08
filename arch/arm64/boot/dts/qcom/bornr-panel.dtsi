@@ -70,6 +70,8 @@
 
 	qcom,mdss-dsi-t-clk-post = <0x0B>;
 	qcom,mdss-dsi-t-clk-pre = <0x22>;
+
+	qcom,power_off_mode = <1>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
