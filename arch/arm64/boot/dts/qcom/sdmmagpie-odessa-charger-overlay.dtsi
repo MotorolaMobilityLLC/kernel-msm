@@ -117,7 +117,14 @@
 	};
 };
 
+&mtp_batterydata {
+       qcom,batt-id-range-pct = <15>;
+       df-serialnum = "KG50";
+       #include "qg-batterydata-kg50-4000mah.dtsi"
+};
+
 &pm6150_charger {
+	/delete-property/qcom,support-mods;
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,iterm-ma = <243>;
 	qcom,dc-unsupported;
@@ -140,6 +147,14 @@
 				   <500>,
 				   <300>;
 	qcom,upper-limit-capacity = <70>;
+};
+
+&pm6150_qg {
+	qcom,qg-iterm-ma = <300>;
+	qcom,vbatt-cutoff-mv = <3200>;
+	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-low-mv = <3300>;
+	qcom,vbatt-empty-cold-mv = <3000>;
 };
 
 &thermal_zones {
