@@ -8144,6 +8144,13 @@ int dsi_display_unprepare(struct dsi_display *display)
 		pr_err("[%s] panel unprepare failed, rc=%d\n",
 		       display->name, rc);
 
+	if(display->panel->power_off_mode == PANEL_POWER_OFF_MODE_ONE)
+	{
+		rc = dsi_panel_post_unprepare(display->panel);
+		if (rc)
+			pr_err("[%s] panel post-unprepare failed, rc=%d\n",
+		       display->name, rc);
+	}
 	rc = dsi_display_ctrl_host_disable(display);
 	if (rc)
 		pr_err("[%s] failed to disable DSI host, rc=%d\n",
@@ -8176,10 +8183,13 @@ int dsi_display_unprepare(struct dsi_display *display)
 	/* destrory dsi isr set up */
 	dsi_display_ctrl_isr_configure(display, false);
 
-	rc = dsi_panel_post_unprepare(display->panel);
-	if (rc)
-		pr_err("[%s] panel post-unprepare failed, rc=%d\n",
+	if(display->panel->power_off_mode != PANEL_POWER_OFF_MODE_ONE)
+	{
+		rc = dsi_panel_post_unprepare(display->panel);
+		if (rc)
+			pr_err("[%s] panel post-unprepare failed, rc=%d\n",
 		       display->name, rc);
+	}
 
 	dsi_display_set_clk_src(display, false);
 
