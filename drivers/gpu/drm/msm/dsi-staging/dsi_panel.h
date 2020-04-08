@@ -80,6 +80,14 @@ enum dsi_panel_physical_type {
 	DSI_DISPLAY_PANEL_TYPE_MAX,
 };
 
+enum dsi_panel_power_off_mode {
+	PANEL_POWER_OFF_MODE_DEFAULT = 0,
+	PANEL_POWER_OFF_MODE_ONE,
+	PANEL_POWER_OFF_MODE_TWO,
+	PANEL_POWER_OFF_MODE_THREE,
+	PANEL_POWER_OFF_MODE_FOUR,
+};
+
 struct dsi_dfps_capabilities {
 	enum dsi_dfps_type type;
 	u32 min_refresh_rate;
@@ -291,6 +299,7 @@ struct dsi_panel {
 	bool lcd_not_sleep;
 	bool tp_state_check;
 	bool panel_display_off_only;
+	enum dsi_panel_power_off_mode power_off_mode;
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
