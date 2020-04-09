@@ -1500,9 +1500,6 @@ int smblib_rerun_apsd_if_required(struct smb_charger *chg)
 	union power_supply_propval val;
 	int rc;
 
-	if (chg->mmi.factory_mode)
-		return 0;
-
 	rc = smblib_get_prop_usb_present(chg, &val);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
