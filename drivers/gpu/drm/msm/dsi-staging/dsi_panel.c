@@ -2675,6 +2675,15 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 		panel->bl_config.brightness_max_level = val;
 	}
 
+	rc = of_property_read_u32(of_node, "qcom,mdss-dsi-bl-default-level", &val);
+	if (rc) {
+		panel->bl_config.brightness_default_level =
+			panel->bl_config.brightness_max_level;
+		pr_debug("set default brightness to max level\n");
+	} else {
+		panel->bl_config.brightness_default_level = val;
+	}
+
 
 	panel->bl_config.bl_2bytes_enable = of_property_read_bool(of_node,
 					"qcom,bklt-dcs-2bytes-enabled");
