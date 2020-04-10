@@ -4717,6 +4717,13 @@ int dsi_panel_disable(struct dsi_panel *panel)
 			goto error;
 		}
 	}
+	if (true == panel->is_hbm_on) {
+		panel->is_hbm_on = false;
+		panel->bl_lvl_during_hbm = 0;
+
+		pr_warn("(%s) HBM is still enabled during panel off, clear is_hbm_on flag\n",
+				 panel->name);
+	}
 	panel->panel_initialized = false;
 
 error:
