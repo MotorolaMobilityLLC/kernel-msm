@@ -1972,9 +1972,9 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
 		blk_queue_flag_set(QUEUE_FLAG_NO_SG_MERGE, q);
 
 	if (dm_table_all_devices_attribute(t, queue_supports_inline_encryption))
-		queue_flag_set_unlocked(QUEUE_FLAG_INLINECRYPT, q);
+		blk_queue_flag_set(QUEUE_FLAG_INLINECRYPT, q);
 	else
-		queue_flag_clear_unlocked(QUEUE_FLAG_INLINECRYPT, q);
+		blk_queue_flag_clear(QUEUE_FLAG_INLINECRYPT, q);
 
 	dm_table_verify_integrity(t);
 
