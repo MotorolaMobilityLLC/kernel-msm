@@ -37,7 +37,7 @@
 		qcom,mdss-pan-physical-height-dimension = <151>;
         	qcom,mdss-dsi-bl-min-level = <18>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
-		qcom,mdss-dsi-bl-default-level = <127>;
+		qcom,mdss-dsi-bl-default-level = <2047>;
 		qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
 		qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
