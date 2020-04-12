@@ -150,6 +150,7 @@
 		irq-gpio = <&tlmm 79 0x2008>;
 		monitor-flag = <1>;
 		monitor-timer-val = <3000>;
+		monitor-sysctrl = <1>;
 		pinctrl-0 = <&amp_irq>;
 		status = "ok";
 	};
