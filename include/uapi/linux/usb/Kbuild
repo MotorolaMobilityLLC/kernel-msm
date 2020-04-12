@@ -1,13 +1,3 @@
 # UAPI Header export list
-header-y += audio.h
-header-y += cdc.h
-header-y += cdc-wdm.h
-header-y += ch11.h
-header-y += ch9.h
-header-y += functionfs.h
-header-y += g_printer.h
-header-y += gadgetfs.h
-header-y += midi.h
-header-y += tmc.h
-header-y += usb_ctrl_qti.h
-header-y += video.h
+no-export-headers += f_accessory.h
+no-export-headers += f_mtp.h
