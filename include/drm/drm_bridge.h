@@ -237,7 +237,7 @@ struct drm_bridge_funcs {
 	 */
 	void (*enable)(struct drm_bridge *bridge);
 
-	void (*tp_state_set)(struct drm_bridge *bridge, bool lcd_not_sleep);
+	void (*tp_state_set)(struct drm_bridge *bridge, u32 lcd_not_sleep);
 };
 
 /**
@@ -291,7 +291,7 @@ void drm_panel_bridge_remove(struct drm_bridge *bridge);
 struct drm_bridge *devm_drm_panel_bridge_add(struct device *dev,
 					     struct drm_panel *panel,
 					     u32 connector_type);
-void drm_bridge_tp_state_set(struct drm_bridge * bridge, bool lcd_not_sleep);
+void drm_bridge_tp_state_set(struct drm_bridge * bridge, u32 lcd_not_sleep);
 #endif
 
 #endif
