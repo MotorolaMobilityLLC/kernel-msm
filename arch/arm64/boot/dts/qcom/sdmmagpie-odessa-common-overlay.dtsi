@@ -326,6 +326,9 @@
 		compatible = "mmi,sys-temp";
 		mmi,temperature-names = "front_temp",
 			"back_temp";
+		mmi,sensor-listener-names = "msm_therm",
+			"pa_therm0", "xo_therm",
+			"quiet_therm", "chg_therm";
 		status = "ok";
 	};
 
