@@ -340,7 +340,7 @@ static void dsi_bridge_mode_set(struct drm_bridge *bridge,
 }
 
 static void dsi_bridge_tp_state_set(struct drm_bridge *bridge,
-				bool lcd_not_sleep)
+				u32 lcd_not_sleep)
 {
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
 
