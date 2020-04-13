@@ -212,6 +212,12 @@ enum panel_hbm_type {
 	HBM_TYPE_TIANMA_OLED_LHBM_DCS_GPIO,
 };
 
+enum panel_sleep_state {
+	PANEL_POWEROFF = 0,
+	PANEL_SLEEP,
+	PANEL_NOSLEEP,
+};
+
 struct panel_param_val_map {
 	int state;
 	enum dsi_cmd_set_type type;
@@ -296,9 +302,9 @@ struct dsi_panel {
 	struct panel_hbm hbm_config;
 
 	struct panel_param *param_cmds;
-	bool lcd_not_sleep;
+	u32 lcd_not_sleep;
 	bool tp_state_check;
-	bool panel_display_off_only;
+	u32 panel_off_nosleep_state;
 	enum dsi_panel_power_off_mode power_off_mode;
 };
 
