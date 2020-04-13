@@ -380,7 +380,7 @@ void drm_bridge_enable(struct drm_bridge *bridge)
 EXPORT_SYMBOL(drm_bridge_enable);
 
 void drm_bridge_tp_state_set(struct drm_bridge *bridge,
-			bool lcd_not_sleep)
+			u32 lcd_not_sleep)
 {
 	if (!bridge)
 		return;

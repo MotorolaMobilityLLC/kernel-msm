@@ -3752,6 +3752,7 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 					struct device_node *of_node)
 {
 	int rc;
+	u32 val = 0;
 	struct drm_panel_esd_config *esd_config = &panel->esd_config;
 
 	rc = of_property_read_u32(of_node,
@@ -3781,9 +3782,18 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 	panel->tp_state_check= of_property_read_bool(of_node,
 				"qcom,tp_state_check_enable");
 
-	panel->panel_display_off_only = of_property_read_bool(of_node,
-				"qcom,mdss-dsi-panel-display-off-only");
-
+	rc = of_property_read_u32(of_node,
+				  "qcom,mdss-dsi-panel-off-nosleep-state",
+				  &val);
+	if (rc) {
+		panel->panel_off_nosleep_state = PANEL_POWEROFF;
+		pr_err("[%s] panel off nosleep cmd state not defined rc:%d, default as %d\n",
+			panel->name, rc, panel->panel_off_nosleep_state);
+	} else {
+		panel->panel_off_nosleep_state = val;
+		pr_info("%s: panel_off_nosleep_state = 0x%x\n",
+					__func__, panel->panel_off_nosleep_state);
+	}
 	return rc;
 }
 
@@ -5173,7 +5183,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 		       panel->power_mode == SDE_MODE_DPMS_LP2))
 			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 				"ibb", REGULATOR_MODE_STANDBY);
-		if(panel->tp_state_check && panel->lcd_not_sleep && panel->panel_display_off_only){
+		if(panel->tp_state_check && panel->lcd_not_sleep && panel->lcd_not_sleep == panel->panel_off_nosleep_state){
 			pr_info("(%s), tp gesture enable, just turn off panel display, not sleep.\n", panel->name);
 			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISPLAY_OFF);
 		} else {
