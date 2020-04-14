@@ -41,10 +41,8 @@ struct vxr7200 {
 	u32 led_drive_en1;
 	u32 led_drive_en2;
 	u32 display_1v8_en;
-	u32 mipi_sw_1v8_en;
+	u32 mipi_switch_1v8_en;
 	u32 display_res1;
-	u32 selab_gpio;
-	u32 oenab_gpio;
 	bool gpioInit;
 
 	struct i2c_client *i2c_client;
@@ -104,6 +102,7 @@ static int turnGpio(struct vxr7200 *pdata, int gpio, char *name, bool on)
 			goto error;
 		}
 		gpio_set_value(gpio, 1);
+		msleep(20);
 		pr_debug("%s vxr7200 gpio:%d set to high\n", __func__, gpio);
 	} else {
 		ret = gpio_direction_output(gpio, 1);
@@ -112,6 +111,7 @@ static int turnGpio(struct vxr7200 *pdata, int gpio, char *name, bool on)
 			goto error;
 		}
 		gpio_set_value(gpio, 0);
+		msleep(20);
 		pr_debug("%s vxr7200 gpio:%d set to low\n", __func__, gpio);
 	}
 	return 0;
@@ -128,61 +128,53 @@ static void vxr7200_set_gpios(struct vxr7200 *pdata, bool turnOn)
 		rc = turnGpio(pdata, pdata->vxr_3v3_en, "vxr_3v3_en", turnOn);
 		if (rc)
 			goto gpio1Fail;
-		rc = turnGpio(pdata, pdata->led_5v_en, "led_5v_en", turnOn);
-		if (rc)
-			goto gpio2Fail;
-		rc = turnGpio(pdata, pdata->led_drive_en1,
-					"led_drive_en1", turnOn);
-		if (rc)
-			goto gpio3Fail;
-		rc = turnGpio(pdata, pdata->led_drive_en2,
-					 "led_drive_en2", turnOn);
-		if (rc)
-			goto gpio4Fail;
-		rc = turnGpio(pdata, pdata->display_1v8_en,
-					 "disp_1v8_en", turnOn);
-		if (rc)
-			goto gpio5Fail;
-		pdata->mipi_sw_1v8_en += 1100;
-		rc = turnGpio(pdata, pdata->mipi_sw_1v8_en,
-						 "mipi_sw1v8_en", turnOn);
-		if (rc)
-			goto gpio6Fail;
+
 		rc = turnGpio(pdata, pdata->display_res1,
 						 "display_res1", turnOn);
 		if (rc)
+			goto gpio2Fail;
+
+		rc = turnGpio(pdata, pdata->display_1v8_en,
+					 "disp_1v8_en", turnOn);
+		if (rc)
+			goto gpio3Fail;
+
+		rc = turnGpio(pdata, pdata->mipi_switch_1v8_en,
+						 "mipi_switch_1v8_en", turnOn);
+		if (rc)
+			goto gpio4Fail;
+
+		rc = turnGpio(pdata, pdata->led_5v_en, "led_5v_en", turnOn);
+		if (rc)
+			goto gpio5Fail;
+
+		rc = turnGpio(pdata, pdata->led_drive_en1,
+					"led_drive_en1", turnOn);
+		if (rc)
+			goto gpio6Fail;
+
+		rc = turnGpio(pdata, pdata->led_drive_en2,
+					 "led_drive_en2", turnOn);
+		if (rc)
 			goto gpio7Fail;
 	}
+	return;
 
 gpio7Fail:
-	gpio_free(pdata->display_res1);
-gpio6Fail:
-	gpio_free(pdata->mipi_sw_1v8_en);
-gpio5Fail:
-	gpio_free(pdata->display_1v8_en);
-gpio4Fail:
 	gpio_free(pdata->led_drive_en2);
-gpio3Fail:
+gpio6Fail:
 	gpio_free(pdata->led_drive_en1);
-gpio2Fail:
+gpio5Fail:
 	gpio_free(pdata->led_5v_en);
+gpio4Fail:
+	gpio_free(pdata->mipi_switch_1v8_en);
+gpio3Fail:
+	gpio_free(pdata->display_1v8_en);
+gpio2Fail:
+	gpio_free(pdata->display_res1);
 gpio1Fail:
 	gpio_free(pdata->vxr_3v3_en);
 }
-
-static void vxr7200_free_gpios(struct vxr7200 *pdata)
-{
-	if (pdata) {
-		gpio_free(pdata->vxr_3v3_en);
-		gpio_free(pdata->led_5v_en);
-		gpio_free(pdata->led_drive_en1);
-		gpio_free(pdata->led_drive_en2);
-		gpio_free(pdata->display_1v8_en);
-		gpio_free(pdata->mipi_sw_1v8_en);
-		gpio_free(pdata->display_res1);
-	}
-}
-
 
 static int vxr7200_parse_dt(struct device *dev,
 				struct vxr7200 *pdata)
@@ -225,10 +217,10 @@ static int vxr7200_parse_dt(struct device *dev,
 		rc = -EINVAL;
 	}
 
-	pdata->mipi_sw_1v8_en =
+	pdata->mipi_switch_1v8_en =
 		of_get_named_gpio(np, "qcom,switch-power-gpio", 0);
-	if (!gpio_is_valid(pdata->mipi_sw_1v8_en)) {
-		pr_err("mipi_sw_1v8_en gpio not specified\n");
+	if (!gpio_is_valid(pdata->mipi_switch_1v8_en)) {
+		pr_err("mipi_switch_1v8_en gpio not specified\n");
 		rc = -EINVAL;
 	}
 
@@ -242,39 +234,15 @@ static int vxr7200_parse_dt(struct device *dev,
 	if (!rc)
 		vxr7200_set_gpios(pdata, true);
 
-	pdata->selab_gpio = of_get_named_gpio(np, "qcom,selab-gpio", 0);
-	if (!gpio_is_valid(pdata->selab_gpio)) {
-		pr_err("selab_gpio gpio not specified\n");
-		rc = -EINVAL;
-		goto gpio_selab_fail;
-	} else
-		turnGpio(pdata, pdata->selab_gpio, "selab_gpio", 0);
-
-	pdata->oenab_gpio = of_get_named_gpio(np, "qcom,oenab-gpio", 0);
-	if (!gpio_is_valid(pdata->oenab_gpio)) {
-		pr_err("oenab_gpio gpio not specified\n");
-		rc = -EINVAL;
-		goto gpio_oenab_fail;
-	} else
-		turnGpio(pdata, pdata->oenab_gpio, "oenab_gpio", 0);
-
 	if (!pdata->gpioInit)
 		pdata->gpioInit = true;
 
-	return rc;
-
-gpio_oenab_fail:
-	gpio_free(pdata->oenab_gpio);
-gpio_selab_fail:
-	gpio_free(pdata->selab_gpio);
-	vxr7200_free_gpios(pdata);
 	return rc;
 }
 
 static void vxr7200_display_pwr_enable_vregs(struct vxr7200 *pdata)
 {
 	int rc = 0;
-
 	pdata->vddio = devm_regulator_get(pdata->dev, "pm660_l11");
 	rc = PTR_RET(pdata->vddio);
 	if (rc) {
@@ -286,12 +254,8 @@ static void vxr7200_display_pwr_enable_vregs(struct vxr7200 *pdata)
 		pr_err("Load setting failed for vddio %s\n", __func__);
 		goto vddio_fail;
 	}
-	rc = regulator_set_voltage(pdata->vddio, 1800000, 1800000);
-	if (rc) {
-		pr_err("Set voltage(vddio) fail, rc=%d %s\n", rc, __func__);
-		goto vddio_fail;
-	}
 	rc = regulator_enable(pdata->vddio);
+	msleep(20);
 	if (rc) {
 		pr_err("enable failed for vddio, rc=%d %s\n", rc, __func__);
 		goto vddio_fail;
@@ -308,16 +272,12 @@ static void vxr7200_display_pwr_enable_vregs(struct vxr7200 *pdata)
 		pr_err("Load Setting failed for lab %s\n", __func__);
 		goto lab_fail;
 	}
-	rc = regulator_set_voltage(pdata->lab, 4600000, 6000000);
-	if (rc) {
-		pr_err("Set voltage(lab) fail, rc=%d %s\n", rc, __func__);
-		goto lab_fail;
-	}
 	rc = regulator_enable(pdata->lab);
 	if (rc) {
 		pr_err("enable failed for lab, rc=%d %s\n", rc, __func__);
 		goto lab_fail;
 	}
+	msleep(20);
 
 	pdata->ibb = devm_regulator_get(pdata->dev, "lcdb_ncp");
 	rc = PTR_RET(pdata->ibb);
@@ -330,16 +290,12 @@ static void vxr7200_display_pwr_enable_vregs(struct vxr7200 *pdata)
 		pr_err("Load Setting failed for ibb %s\n", __func__);
 		goto ibb_fail;
 	}
-	rc = regulator_set_voltage(pdata->ibb, 4600000, 6000000);
-	if (rc) {
-		pr_err("Set voltage(ibb) fail, rc=%d %s\n", rc, __func__);
-		goto ibb_fail;
-	}
 	rc = regulator_enable(pdata->ibb);
 	if (rc) {
 		pr_err("enable failed for ibb, rc=%d %s\n", rc, __func__);
 		goto ibb_fail;
 	}
+	msleep(20);
 
 	return;
 
