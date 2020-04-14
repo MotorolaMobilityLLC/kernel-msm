@@ -536,7 +536,8 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 		pr_err("qcom,float-option is out of range [0, 4]\n");
 		return -EINVAL;
 	}
-
+	chg->dr_supported = of_property_read_bool(node,
+						"qcom,dr_supported");
 	chip->dt.hvdcp_disable = of_property_read_bool(node,
 						"qcom,hvdcp-disable");
 	chg->hvdcp_disable = chip->dt.hvdcp_disable;
@@ -3624,6 +3625,17 @@ static int smb5_post_init(struct smb5 *chip)
 	return 0;
 }
 
+static int smb5_typec_dr_init(struct smb5 *chip)
+{
+	struct smb_charger *chg = &chip->chg;
+	int rc = 0;
+
+	if (chg->dr_supported)
+		rc = smblib_typec_dual_role_init(chg);
+
+	return rc;
+}
+
 /****************************
  * DETERMINE INITIAL STATUS *
  ****************************/
@@ -4392,7 +4404,11 @@ static int smb5_probe(struct platform_device *pdev)
 		pr_err("Couldn't initialize batt psy rc=%d\n", rc);
 		goto cleanup;
 	}
-
+	rc = smb5_typec_dr_init(chip);
+	if (rc < 0) {
+		pr_err("Couldn't initialize dual role rc=%d\n", rc);
+		goto cleanup;
+	}
 	rc = smb5_init_typec_class(chip);
 	if (rc < 0) {
 		pr_err("Couldn't initialize typec class rc=%d\n", rc);
