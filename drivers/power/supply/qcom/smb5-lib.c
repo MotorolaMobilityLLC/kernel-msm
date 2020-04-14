@@ -389,6 +389,9 @@ static void smblib_notify_device_mode(struct smb_charger *chg, bool enable)
 		smblib_notify_extcon_props(chg, EXTCON_USB);
 
 	extcon_set_state_sync(chg->extcon, EXTCON_USB, enable);
+
+	if (chg->dr_inst)
+		dual_role_instance_changed(chg->dr_inst);
 }
 
 static void smblib_notify_usb_host(struct smb_charger *chg, bool enable)
@@ -419,6 +422,9 @@ static void smblib_notify_usb_host(struct smb_charger *chg, bool enable)
 	}
 
 	extcon_set_state_sync(chg->extcon, EXTCON_USB_HOST, enable);
+
+	if (chg->dr_inst)
+		dual_role_instance_changed(chg->dr_inst);
 }
 
 /********************
@@ -7149,6 +7155,8 @@ irqreturn_t typec_attach_detach_irq_handler(int irq, void *data)
 	if (rc < 0)
 		smblib_err(chg, "Couldn't configure pulldown on USB_IN rc=%d\n",
 				rc);
+	if (chg->dr_inst)
+		dual_role_instance_changed(chg->dr_inst);
 
 	power_supply_changed(chg->usb_psy);
 
@@ -11422,6 +11430,187 @@ int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
 
 	return 0;
 }
+
+enum dual_role_property smblib_typec_dr_properties[] = {
+	DUAL_ROLE_PROP_SUPPORTED_MODES,
+	DUAL_ROLE_PROP_MODE,
+	DUAL_ROLE_PROP_PR,
+	DUAL_ROLE_PROP_DR,
+};
+
+static int smblib_typec_dr_is_writeable(
+			struct dual_role_phy_instance *dual_role,
+			enum dual_role_property prop)
+{
+	int rc = 0;
+	struct smb_charger *chip = dual_role_get_drvdata(dual_role);
+
+	if (!chip || (chip->typec_mode == POWER_SUPPLY_TYPEC_NONE))
+		return 0;
+
+	if (chip->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB)
+		return 0;
+
+	/* FIXME:
+	 * How to decide the connected devices support the role swap ?
+	 */
+	switch (prop) {
+	case DUAL_ROLE_PROP_MODE:
+	case DUAL_ROLE_PROP_PR:
+		rc = 0;
+		break;
+	default:
+		rc = 0;
+	}
+	return rc;
+}
+
+static int smblib_typec_dr_set_property(
+			struct dual_role_phy_instance *dual_role,
+			enum dual_role_property prop,
+			const unsigned int *val)
+{
+	int rc = 0;
+	union power_supply_propval propval = {0,};
+	struct smb_charger *chip = dual_role_get_drvdata(dual_role);
+
+	if (!chip || (chip->typec_mode == POWER_SUPPLY_TYPEC_NONE))
+		return -EINVAL;
+
+	/* FIXME:
+	 * Need dual role state sync during swap
+	 */
+	switch (prop) {
+	case DUAL_ROLE_PROP_PR:
+		switch (*val) {
+		case DUAL_ROLE_PROP_PR_SRC:
+			propval.intval = POWER_SUPPLY_TYPEC_PR_SOURCE;
+			break;
+		case DUAL_ROLE_PROP_PR_SNK:
+			propval.intval = POWER_SUPPLY_TYPEC_PR_SINK;
+			break;
+		default:
+			propval.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
+		}
+		rc = smblib_set_prop_typec_power_role(chip, &propval);
+		break;
+	default:
+		pr_debug("Invalid DUAL ROLE request %d\n", prop);
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+static int smblib_typec_dr_get_property(
+			struct dual_role_phy_instance *dual_role,
+			enum dual_role_property prop,
+			unsigned int *val)
+{
+	int rc = 0;
+	struct smb_charger *chip = dual_role_get_drvdata(dual_role);
+	unsigned int mode, power_role, data_role;
+
+	if (!chip)
+		return -EINVAL;
+
+	if (chip->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
+		union power_supply_propval val;
+
+		rc = smblib_get_prop_usb_present(chip, &val);
+		if (rc < 0) {
+			smblib_err(chip, "Error getting USB Present rc = %d\n",
+				rc);
+			return rc;
+		}
+
+		if (chip->otg_present) {
+			mode = DUAL_ROLE_PROP_MODE_DFP;
+			power_role = DUAL_ROLE_PROP_PR_SRC;
+			data_role = DUAL_ROLE_PROP_DR_HOST;
+		} else if (val.intval > 0) {
+			mode = DUAL_ROLE_PROP_MODE_UFP;
+			power_role = DUAL_ROLE_PROP_PR_SNK;
+			data_role = DUAL_ROLE_PROP_DR_DEVICE;
+		} else {
+			mode = DUAL_ROLE_PROP_MODE_NONE;
+			power_role = DUAL_ROLE_PROP_PR_NONE;
+			data_role = DUAL_ROLE_PROP_DR_NONE;
+		}
+	} else {
+		switch (chip->typec_mode) {
+		case POWER_SUPPLY_TYPEC_SINK:
+		case POWER_SUPPLY_TYPEC_SINK_POWERED_CABLE:
+		case POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY:
+		case POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
+		case POWER_SUPPLY_TYPEC_POWERED_CABLE_ONLY:
+			mode = DUAL_ROLE_PROP_MODE_DFP;
+			power_role = DUAL_ROLE_PROP_PR_SRC;
+			data_role = DUAL_ROLE_PROP_DR_HOST;
+			break;
+		case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
+		case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
+		case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
+		case POWER_SUPPLY_TYPEC_NON_COMPLIANT:
+			mode = DUAL_ROLE_PROP_MODE_UFP;
+			power_role = DUAL_ROLE_PROP_PR_SNK;
+			data_role = DUAL_ROLE_PROP_DR_DEVICE;
+			break;
+		default:
+			mode = DUAL_ROLE_PROP_MODE_NONE;
+			power_role = DUAL_ROLE_PROP_PR_NONE;
+			data_role = DUAL_ROLE_PROP_DR_NONE;
+		}
+	}
+
+	switch (prop) {
+	case DUAL_ROLE_PROP_SUPPORTED_MODES:
+		*val = chip->dr_desc.supported_modes;
+		break;
+	case DUAL_ROLE_PROP_MODE:
+		*val = mode;
+		break;
+	case DUAL_ROLE_PROP_PR:
+		*val = power_role;
+		break;
+	case DUAL_ROLE_PROP_DR:
+		*val = data_role;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int smblib_typec_dual_role_init(struct smb_charger *chip)
+{
+	int rc = 0;
+
+	/* Register for android TypeC dual role framework */
+	chip->dr_desc.name		= "otg_default";
+	chip->dr_desc.properties	= smblib_typec_dr_properties;
+	chip->dr_desc.get_property	= smblib_typec_dr_get_property;
+	chip->dr_desc.set_property	= smblib_typec_dr_set_property;
+	chip->dr_desc.property_is_writeable =
+				smblib_typec_dr_is_writeable;
+	chip->dr_desc.supported_modes	=
+				DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+	chip->dr_desc.num_properties	=
+				ARRAY_SIZE(smblib_typec_dr_properties);
+
+	chip->dr_inst = devm_dual_role_instance_register(chip->dev,
+				&chip->dr_desc);
+	if (IS_ERR(chip->dr_inst)) {
+		pr_err("Failed to initialize dual role\n");
+		rc = PTR_ERR(chip->dr_inst);
+	} else {
+		chip->dr_inst->drv_data = chip;
+	}
+
+	return rc;
+}
+
 static bool mmi_factory_check(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
