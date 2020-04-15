@@ -61,13 +61,13 @@
 				qcom,mdss-dsi-panel-height = <1600>;
 				qcom,mdss-dsi-h-front-porch = <60>;
 				qcom,mdss-dsi-h-back-porch = <60>;
-				qcom,mdss-dsi-h-pulse-width = <4>;
+				qcom,mdss-dsi-h-pulse-width = <44>;
 				qcom,mdss-dsi-h-sync-skew = <0>;
 				qcom,mdss-dsi-v-back-porch = <4>;
 				qcom,mdss-dsi-v-front-porch = <8>;
 				qcom,mdss-dsi-v-pulse-width = <2>;
 				qcom,mdss-dsi-panel-framerate = <60>;
-				qcom,mdss-dsi-panel-clockrate = <490000000>;
+				qcom,mdss-dsi-panel-clockrate = <514000000>;
 				qcom,mdss-dsi-on-command = [
 				/* Use WLED+DCS to control bl, set WLED
 				   max current to 25mA, 51 to 80% for HBM */
@@ -83,7 +83,7 @@
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-h-sync-pulse = <0>;
-				qcom,mdss-dsi-panel-timings = [ 00 13 04 04 1F 1F 04 05 03 02 04 00];
+				qcom,mdss-dsi-panel-timings = [ 00 13 05 04 1F 1E 05 05 03 02 04 00];
                         };
                 };
 	};
