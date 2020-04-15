@@ -49,7 +49,7 @@
 		charger_device_1 {
 			chrg-name = "cp-master";
 			psy-name = "bq2597x-standalone";
-			charging-curr-min = <2500000>;
+			charging-curr-min = <2000000>;
 		};
 	};
 };
