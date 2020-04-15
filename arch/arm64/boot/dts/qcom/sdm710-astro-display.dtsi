@@ -184,13 +184,13 @@
 
 &dsi_djn_nt36525b_video {
         qcom,mdss-dsi-t-clk-post = <0x0a>;
-        qcom,mdss-dsi-t-clk-pre = <0x20>;
+        qcom,mdss-dsi-t-clk-pre = <0x21>;
 	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,mdss-dsi-rst-high-poweroff;
 	qcom,mdss-brightness-max-level = <4095>;
         qcom,mdss-dsi-display-timings {
                 timing@0{
-                        qcom,mdss-dsi-panel-phy-timings = [00 13 04 04 1F 1F 04 05 03 02 04 00];
+                        qcom,mdss-dsi-panel-phy-timings = [00 13 05 04 1F 1E 05 05 03 02 04 00];
                         qcom,display-topology = <1 0 1>;
                         qcom,default-topology-index = <0>;
                 };
