@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -64,6 +64,22 @@ struct dp_catalog_hdr_data {
 	struct drm_msm_ext_hdr_metadata hdr_meta;
 };
 
+struct dp_catalog_vsc_sdp_data {
+	u32 vsc_header_byte0;
+	u32 vsc_header_byte1;
+	u32 vsc_header_byte2;
+	u32 vsc_header_byte3;
+
+	u32 bpc;
+
+	u32 version;
+	u32 length;
+	u32 pixel_encoding;
+	u32 colorimetry;
+	u32 dynamic_range;
+	u32 content_type;
+};
+
 struct dp_catalog_aux {
 	u32 data;
 	u32 isr;
@@ -94,7 +110,7 @@ struct dp_catalog_ctrl {
 	void (*mainlink_ctrl)(struct dp_catalog_ctrl *ctrl, bool enable);
 	void (*config_misc)(struct dp_catalog_ctrl *ctrl, u32 cc, u32 tb);
 	void (*config_msa)(struct dp_catalog_ctrl *ctrl, u32 rate,
-				u32 stream_rate_khz);
+			u32 stream_rate_khz, u32 out_format);
 	void (*set_pattern)(struct dp_catalog_ctrl *ctrl, u32 pattern);
 	void (*reset)(struct dp_catalog_ctrl *ctrl);
 	void (*usb_reset)(struct dp_catalog_ctrl *ctrl, bool flip);
@@ -159,6 +175,7 @@ struct dp_catalog_panel {
 	u8 *spd_vendor_name;
 	u8 *spd_product_description;
 
+	struct dp_catalog_vsc_sdp_data vsc_sdp_data;
 	struct dp_catalog_hdr_data hdr_data;
 
 	/* TPG */
@@ -174,6 +191,7 @@ struct dp_catalog_panel {
 	void (*config_hdr)(struct dp_catalog_panel *panel, bool en);
 	void (*tpg_config)(struct dp_catalog_panel *panel, bool enable);
 	void (*config_spd)(struct dp_catalog_panel *panel);
+	void (*config_vsc_sdp)(struct dp_catalog_panel *panel, bool en);
 };
 
 struct dp_catalog {
