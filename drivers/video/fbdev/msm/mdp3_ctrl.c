@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -948,6 +948,7 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 	mutex_lock(&mdp3_session->lock);
 
 	MDSS_XLOG(XLOG_FUNC_ENTRY, __LINE__, mfd->panel_power_state);
+	mdp3_res->secure_update_bl = false;
 	panel = mdp3_session->panel;
 	/* make sure DSI host is initialized properly */
 	if (panel) {
@@ -1830,8 +1831,13 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd)
 
 	mdp3_session->vsync_before_commit = 0;
 	if (!splash_done || mdp3_session->esd_recovery == true) {
-		if (panel && panel->set_backlight)
-			panel->set_backlight(panel, panel->panel_info.bl_max);
+		if (panel && panel->set_backlight) {
+			if (mfd->bl_level > 0)
+				panel->set_backlight(panel, mfd->bl_level);
+			else
+				panel->set_backlight(panel,
+						panel->panel_info.bl_max);
+		}
 		splash_done = true;
 		mdp3_session->esd_recovery = false;
 	}
@@ -1865,6 +1871,24 @@ static int mdp3_set_metadata(struct msm_fb_data_type *mfd,
 			return ret;
 		}
 		break;
+	case metadata_op_secure_bl_set:
+		if (mdss_panel_is_power_off(mfd->panel_power_state) &&
+				mfd->panel.type == SPI_PANEL) {
+			mfd->allow_secure_bl_update =
+				metadata_ptr->data.sec_bl_update_en;
+			mdp3_res->secure_update_bl =
+				mfd->allow_secure_bl_update;
+		}
+		pr_debug("Secure backlight = %d,panel power state = %d\n",
+		mfd->allow_secure_bl_update, mfd->panel_power_state);
+		break;
+	case metadata_op_secure_reg:
+		if (mfd->panel.type == SPI_PANEL) {
+			mdp3_res->secure_reg_on = metadata_ptr->data.sec_reg_on;
+			pr_debug("Secure regulator_on flag is %d\n",
+					mdp3_res->secure_reg_on);
+		}
+	break;
 	default:
 		pr_warn("Unsupported request to MDP SET META IOCTL.\n");
 		ret = -EINVAL;
@@ -2179,9 +2203,7 @@ static int mdp3_csc_config(struct mdp3_session_data *session,
 	struct mdp3_dma_ccs ccs;
 	int ret = -EINVAL;
 
-	if (!data->csc_data.csc_mv || !data->csc_data.csc_pre_bv ||
-		!data->csc_data.csc_post_bv || !data->csc_data.csc_pre_lv ||
-			!data->csc_data.csc_post_lv) {
+	if (!data) {
 		pr_err("%s : Invalid csc vectors", __func__);
 		return -EINVAL;
 	}
@@ -2815,7 +2837,8 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 	req = &mdp3_session->req_overlay;
 
 	if (!mdp3_session->status && cmd != MSMFB_METADATA_GET &&
-		cmd != MSMFB_HISTOGRAM_STOP && cmd != MSMFB_HISTOGRAM) {
+		cmd != MSMFB_METADATA_SET && cmd != MSMFB_HISTOGRAM_STOP &&
+		cmd != MSMFB_HISTOGRAM) {
 		pr_err("mdp3_ctrl_ioctl_handler, display off!\n");
 		return -EPERM;
 	}

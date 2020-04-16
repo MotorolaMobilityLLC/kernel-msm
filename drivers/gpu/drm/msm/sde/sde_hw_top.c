@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -159,7 +159,7 @@ static void sde_hw_setup_cdm_output(struct sde_hw_mdp *mdp,
 	if (cfg->wb_en)
 		out_ctl |= BIT(24);
 	else if (cfg->intf_en)
-		out_ctl |= BIT(19);
+		out_ctl |= BIT(28);
 
 	SDE_REG_WRITE(c, MDP_OUT_CTL_0, out_ctl);
 }

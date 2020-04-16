@@ -11,6 +11,20 @@
  * GNU General Public License for more details.
  */
 
+&soc {
+	qcom,ion {
+		compatible = "qcom,msm-ion";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+			qcom,ion-heap@10 { /* SECURE DISPLAY HEAP */
+				reg = <10>;
+				memory-region = <&secure_display_memory>;
+				qcom,ion-heap-type = "SECURE_DMA";
+			};
+	};
+};
+
 &external_image_mem {
 	reg = <0x0 0x87900000 0x0 0x700000>;
 };
@@ -20,7 +34,7 @@
 };
 
 &peripheral_mem {
-	reg = <0x0 0x8D000000 0x0 0x0500000>;
+	reg = <0x0 0x8D000000 0x0 0x0700000>;
 };
 
 &reserved_mem {
@@ -35,11 +49,15 @@
 	reg = <0x87900000 0x300000>;
 };
 
-&mdss_dsi{
+&mdss_dsi {
 	vdda-supply = <&pm8909_l2>;
 	vddio-supply = <&pm8909_l6>;
 	qcom,mdss_dsi_ctrl0@1ac8000 {
 		vdd-supply = <&pm8909_l17>;
 		vddio-supply = <&pm8909_l6>;
 	};
+};
+
+&apps_iommu {
+	status = "okay";
 };

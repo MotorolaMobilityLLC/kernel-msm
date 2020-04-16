@@ -171,6 +171,7 @@ struct ipa_mhi_client_ctx {
 };
 
 static struct ipa_mhi_client_ctx *ipa_mhi_client_ctx;
+static DEFINE_MUTEX(mhi_client_general_mutex);
 
 #ifdef CONFIG_DEBUG_FS
 #define IPA_MHI_MAX_MSG_LEN 512
@@ -190,6 +191,18 @@ static char *ipa_mhi_channel_state_str[] = {
 	(((state) >= 0 && (state) <= IPA_HW_MHI_CHANNEL_STATE_ERROR) ? \
 	ipa_mhi_channel_state_str[(state)] : \
 	"INVALID")
+
+static int ipa_mhi_set_lock_unlock(bool is_lock)
+{
+	IPA_MHI_DBG("entry\n");
+	if (is_lock)
+		mutex_lock(&mhi_client_general_mutex);
+	else
+		mutex_unlock(&mhi_client_general_mutex);
+	IPA_MHI_DBG("exit\n");
+
+	return 0;
+}
 
 static int ipa_mhi_read_write_host(enum ipa_mhi_dma_dir dir, void *dev_addr,
 	u64 host_addr, int size)
@@ -1586,6 +1599,7 @@ int ipa_mhi_connect_pipe(struct ipa_mhi_connect_params *in, u32 *clnt_hdl)
 
 	IPA_ACTIVE_CLIENTS_INC_EP(in->sys.client);
 
+	mutex_lock(&mhi_client_general_mutex);
 	if (ipa_get_transport_type() == IPA_TRANSPORT_TYPE_GSI) {
 		struct ipa_mhi_connect_params_internal internal;
 
@@ -1631,6 +1645,8 @@ int ipa_mhi_connect_pipe(struct ipa_mhi_connect_params *in, u32 *clnt_hdl)
 				sizeof(((struct ipa_mhi_ch_ctx *)0)->chstate));
 		if (res) {
 			IPA_MHI_ERR("ipa_mhi_read_write_host failed\n");
+			mutex_unlock(&mhi_client_general_mutex);
+			IPA_ACTIVE_CLIENTS_DEC_EP(in->sys.client);
 			return res;
 
 		}
@@ -1650,6 +1666,8 @@ int ipa_mhi_connect_pipe(struct ipa_mhi_connect_params *in, u32 *clnt_hdl)
 		channel->state = IPA_HW_MHI_CHANNEL_STATE_RUN;
 	}
 
+	mutex_unlock(&mhi_client_general_mutex);
+
 	if (!in->sys.keep_ipa_awake)
 		IPA_ACTIVE_CLIENTS_DEC_EP(in->sys.client);
 
@@ -1657,6 +1675,7 @@ int ipa_mhi_connect_pipe(struct ipa_mhi_connect_params *in, u32 *clnt_hdl)
 
 	return 0;
 fail_connect_pipe:
+	mutex_unlock(&mhi_client_general_mutex);
 	ipa_mhi_reset_channel(channel);
 fail_start_channel:
 	IPA_ACTIVE_CLIENTS_DEC_EP(in->sys.client);
@@ -1711,19 +1730,24 @@ int ipa_mhi_disconnect_pipe(u32 clnt_hdl)
 		goto fail_reset_channel;
 	}
 
+	mutex_lock(&mhi_client_general_mutex);
 	res = ipa_disconnect_mhi_pipe(clnt_hdl);
 	if (res) {
 		IPA_MHI_ERR(
 			"IPA core driver failed to disconnect the pipe hdl %d, res %d"
 				, clnt_hdl, res);
-		return res;
+		goto fail_disconnect_pipe;
 	}
+
+	mutex_unlock(&mhi_client_general_mutex);
 
 	IPA_ACTIVE_CLIENTS_DEC_EP(ipa_get_client_mapping(clnt_hdl));
 
 	IPA_MHI_DBG("client (ep: %d) disconnected\n", clnt_hdl);
 	IPA_MHI_FUNC_EXIT();
 	return 0;
+fail_disconnect_pipe:
+	mutex_unlock(&mhi_client_general_mutex);
 fail_reset_channel:
 	IPA_ACTIVE_CLIENTS_DEC_EP(ipa_get_client_mapping(clnt_hdl));
 	return res;
@@ -2560,6 +2584,8 @@ void ipa_mhi_destroy(void)
 		IPA_MHI_DBG("IPA MHI was not initialized, already destroyed\n");
 		return;
 	}
+
+	ipa_deregister_client_callback(IPA_CLIENT_MHI_PROD);
 	/* reset all UL and DL acc channels and its accociated event rings */
 	if (ipa_get_transport_type() == IPA_TRANSPORT_TYPE_GSI) {
 		res = ipa_mhi_destroy_all_channels();
@@ -2830,6 +2856,8 @@ int ipa_mhi_init(struct ipa_mhi_init_params *params)
 	/* Initialize debugfs */
 	ipa_mhi_debugfs_init();
 
+	ipa_register_client_callback(&ipa_mhi_set_lock_unlock, NULL,
+				IPA_CLIENT_MHI_PROD);
 	IPA_MHI_FUNC_EXIT();
 	return 0;
 
@@ -2907,6 +2935,5 @@ const char *ipa_mhi_get_state_str(int state)
 	return MHI_STATE_STR(state);
 }
 EXPORT_SYMBOL(ipa_mhi_get_state_str);
-
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("IPA MHI client driver");

@@ -674,6 +674,9 @@ Example:
 		msm_audio_apr_dummy {
 			compatible = "qcom,msm-audio-apr-dummy";
 		};
+                q6core {
+                        compatible = "qcom,q6core-audio";
+		};
 
 		qcom,subsys-name = "apr_adsp";
 	};
@@ -2590,6 +2593,7 @@ Example:
 				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
 				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
 				"msm-dai-q6-auxpcm.2", "msm-dai-q6-dev.32774";
+		qcom,msm_audio_ssr_devs = <&audio_apr>, <&q6core>;
 	};
 
 * SDX ASoC Auto Machine driver

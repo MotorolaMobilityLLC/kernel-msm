@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014,2016 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014,2016,2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -104,7 +104,7 @@ EXPORT_SYMBOL(check_permissions);
 int msm_ipc_config_sec_rules(void *arg)
 {
 	struct config_sec_rules_args sec_rules_arg;
-	struct security_rule *rule, *temp_rule;
+	struct security_rule *rule;
 	int key;
 	size_t kgroup_info_sz;
 	int ret;
@@ -119,6 +119,10 @@ int msm_ipc_config_sec_rules(void *arg)
 			     sizeof(sec_rules_arg));
 	if (ret)
 		return -EFAULT;
+
+	/* Default rule change from config util not allowed */
+	if (sec_rules_arg.service_id == ALL_SERVICE)
+		return -EINVAL;
 
 	if (sec_rules_arg.num_group_info <= 0)
 		return -EINVAL;
@@ -173,21 +177,11 @@ int msm_ipc_config_sec_rules(void *arg)
 
 	key = rule->service_id & (SEC_RULES_HASH_SZ - 1);
 	down_write(&security_rules_lock_lha4);
-	if (rule->service_id == ALL_SERVICE) {
-		temp_rule = list_first_entry(&security_rules[key],
-					     struct security_rule, list);
-		list_del(&temp_rule->list);
-		kfree(temp_rule->group_id);
-		kfree(temp_rule);
-	}
 	list_add_tail(&rule->list, &security_rules[key]);
 	up_write(&security_rules_lock_lha4);
 
-	if (rule->service_id == ALL_SERVICE)
-		msm_ipc_sync_default_sec_rule((void *)rule);
-	else
-		msm_ipc_sync_sec_rule(rule->service_id, rule->instance_id,
-				      (void *)rule);
+	msm_ipc_sync_sec_rule(rule->service_id,
+			      rule->instance_id, (void *)rule);
 
 	return 0;
 }

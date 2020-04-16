@@ -265,6 +265,19 @@
 		};
 	};
 
+	quat_mi2s_gpios: quat_mi2s_pinctrl {
+		status = "ok";
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&quat_mi2s_sck_active
+				 &quat_mi2s_ws_active
+				 &quat_mi2s_d0_active>;
+		pinctrl-1 = <&quat_mi2s_sck_sleep
+				 &quat_mi2s_ws_sleep
+				 &quat_mi2s_d0_sleep>;
+		qcom,lpi-gpios;
+	};
+
 };
 
 
@@ -437,7 +450,7 @@
 };
 
 &tavil_snd {
-	qcom,msm-mi2s-master = <1>, <1>, <1>, <1>, <1>;
+	qcom,msm-mi2s-master = <1>, <1>, <1>, <0>, <1>;
 	qcom,audio-routing =
 		"AIF4 VI", "MCLK",
 		"RX_BIAS", "MCLK",
@@ -466,6 +479,8 @@
 		"MIC BIAS3", "Digital Mic5",
 		"SpkrLeft IN", "SPK1 OUT",
 		"SpkrRight IN", "SPK2 OUT";
+
+	qcom,quat-mi2s-gpios = <&quat_mi2s_gpios>;
 	qcom,msm-mbhc-hphl-swh = <1>;
 	qcom,msm-mbhc-gnd-swh = <1>;
 	qcom,hph-en0-gpio = <&tavil_hph_en0>;
@@ -492,4 +507,14 @@
 
 &pm660_charger {
 	qcom,ufp-only-mode;
+};
+
+&dai_mi2s3 {
+	qcom,msm-mi2s-rx-lines = <0>;
+	qcom,msm-mi2s-tx-lines = <1>;
+
+};
+
+&cdc_pdm_gpios {
+	status = "disabled";
 };

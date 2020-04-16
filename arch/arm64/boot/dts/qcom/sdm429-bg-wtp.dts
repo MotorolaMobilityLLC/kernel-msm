@@ -24,3 +24,16 @@
 	qcom,board-id = <0x00010b 8>;
 	qcom,pmic-id = <0x0002001b 0x0 0x0 0x0>;
 };
+
+&msm_gpu {
+	/delete-property/qcom,enable-ca-jump;
+	/delete-property/qcom,ca-busy-penalty;
+	/delete-property/qcom,ca-target-pwrlevel;
+
+	qcom,gpu-pwrlevels {
+		/delete-node/qcom,gpu-pwrlevel@2;
+		/delete-node/qcom,gpu-pwrlevel@3;
+		/delete-node/qcom,gpu-pwrlevel@4;
+		/delete-node/qcom,gpu-pwrlevel@5;
+	};
+};

@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -504,6 +504,57 @@
 				};
 				config {
 					pins = "gpio14";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+		};
+
+		spi5 {
+			spi5_default: spi5_default {
+				mux {
+					pins = "gpio16", "gpio17",
+						"gpio19";
+					function = "blsp_spi5";
+				};
+				config {
+					pins = "gpio16", "gpio17",
+						"gpio19";
+					drive-strength = <12>; /* 12 MA */
+					bias-disable; /* No PULL */
+				};
+			};
+			spi5_sleep: spi5_sleep {
+				mux {
+					pins = "gpio16", "gpio17",
+						"gpio19";
+					function = "gpio";
+				};
+				config {
+					pins = "gpio16", "gpio17",
+						"gpio19";
+					drive-strength = <2>; /* 2 MA */
+					bias-pull-down; /* pull down */
+				};
+			};
+			spi5_cs0_active: spi5_cs0_active {
+				mux {
+					pins = "gpio18";
+					function = "blsp_spi5";
+				};
+				config {
+					pins = "gpio18";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+			spi5_cs0_sleep: spi5_cs0_sleep {
+				mux {
+					pins = "gpio18";
+					function = "gpio";
+				};
+				config {
+					pins = "gpio18";
 					drive-strength = <2>;
 					bias-pull-up;
 				};

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,6 +25,11 @@
 #include "dp_debug.h"
 
 #define to_dp_bridge(x)     container_of((x), struct dp_bridge, base)
+
+enum dp_connector_hdr_state {
+	HDR_DISABLE,
+	HDR_ENABLE
+};
 
 static void convert_to_dp_mode(const struct drm_display_mode *drm_mode,
 			struct dp_display_mode *dp_mode, struct dp_display *dp)
@@ -354,6 +359,66 @@ int dp_connector_get_info(struct msm_display_info *info, void *data)
 		MSM_DISPLAY_CAP_HOT_PLUG;
 
 	return 0;
+}
+
+bool dp_connector_mode_needs_full_range(void *data)
+{
+	struct dp_display *display = data;
+	struct dp_bridge *bridge;
+	struct dp_display_mode *mode;
+	struct dp_panel_info *timing;
+
+	if (!display) {
+		pr_err("invalid input\n");
+		return false;
+	}
+
+	bridge = display->bridge;
+	if (!bridge) {
+		pr_err("invalid bridge data\n");
+		return false;
+	}
+
+	mode = &bridge->dp_mode;
+	timing = &mode->timing;
+
+	if (timing->h_active == 640 &&
+	    timing->v_active == 480)
+		return true;
+
+	return false;
+}
+
+enum sde_csc_type dp_connector_get_csc_type(struct drm_connector *conn,
+	void *data)
+{
+	struct dp_display *display = data;
+	struct sde_connector_state *c_state;
+	struct drm_msm_ext_hdr_metadata *hdr_meta;
+
+	if (!display || !conn) {
+		pr_err("invalid input\n");
+		goto error;
+	}
+
+	c_state = to_sde_connector_state(conn->state);
+
+	if (!c_state) {
+		pr_err("invalid input\n");
+		goto error;
+	}
+
+	hdr_meta = &c_state->hdr_meta;
+
+	if ((hdr_meta->hdr_state == HDR_ENABLE)
+		&& (hdr_meta->eotf != 0))
+		return SDE_CSC_RGB2YUV_2020L;
+	else if (dp_connector_mode_needs_full_range(data)
+		|| conn->yuv_qs)
+		return SDE_CSC_RGB2YUV_601FR;
+
+error:
+	return SDE_CSC_RGB2YUV_601L;
 }
 
 enum drm_connector_status dp_connector_detect(struct drm_connector *conn,

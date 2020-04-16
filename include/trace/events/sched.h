@@ -1793,6 +1793,27 @@ TRACE_EVENT(sched_get_nr_running_avg,
 		__field( int,	iowait_avg		)
 		__field( unsigned int,	max_nr		)
 		__field( unsigned int,	big_max_nr	)
+		__array(	char,	comm,   TASK_COMM_LEN	)
+		__field(	pid_t,	pid			)
+		__field(	pid_t,	cur_pid			)
+		__field(	u64,	wallclock		)
+		__field(	u64,	mark_start		)
+		__field(	u64,	delta_m			)
+		__field(	u64,	win_start		)
+		__field(	u64,	delta			)
+		__field(	u64,	irqtime			)
+		__field(        int,    evt			)
+		__field(unsigned int,	demand			)
+		__field(unsigned int,	sum			)
+		__field(	 int,	cpu			)
+		__field(	u64,	cs			)
+		__field(	u64,	ps			)
+		__field(	u64,	util			)
+		__field(	u32,	curr_window		)
+		__field(	u32,	prev_window		)
+		__field(	u64,	nt_cs			)
+		__field(	u64,	nt_ps			)
+		__field(	u32,	active_windows		)
 	),
 
 	TP_fast_assign(
@@ -1803,9 +1824,20 @@ TRACE_EVENT(sched_get_nr_running_avg,
 		__entry->big_max_nr	= big_max_nr;
 	),
 
-	TP_printk("avg=%d big_avg=%d iowait_avg=%d max_nr=%u big_max_nr=%u",
+	TP_printk("avg=%d big_avg=%d iowait_avg=%d max_nr=%u big_max_nr=%u"
+		" wc %llu ws %llu delta %llu event %d cpu %d cur_pid %d task %d (%s) ms %llu delta %llu demand %u sum %u irqtime %llu"
+		" cs %llu ps %llu util %llu cur_window %u prev_window %u active_wins %u",
 		__entry->avg, __entry->big_avg, __entry->iowait_avg,
-		__entry->max_nr, __entry->big_max_nr)
+		__entry->max_nr, __entry->big_max_nr,
+		__entry->wallclock, __entry->win_start, __entry->delta,
+		__entry->evt, __entry->cpu, __entry->cur_pid,
+		__entry->pid, __entry->comm, __entry->mark_start,
+		__entry->delta_m, __entry->demand,
+		__entry->sum, __entry->irqtime,
+		__entry->cs, __entry->ps, __entry->util,
+		__entry->curr_window, __entry->prev_window,
+		  __entry->active_windows
+		)
 );
 
 TRACE_EVENT(core_ctl_eval_need,

@@ -555,8 +555,10 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
 	}
 	/* ICE support */
 	if (bio && !fscrypt_mergeable_bio(bio, dun,
-				bio_encrypted, bi_crypt_skip))
+				bio_encrypted, bi_crypt_skip)) {
 		__submit_bio(fio->sbi, bio, fio->type);
+		bio = NULL;
+	}
 alloc_new:
 	if (!bio) {
 		bio = __bio_alloc(fio->sbi, fio->new_blkaddr, fio->io_wbc,
@@ -2116,7 +2118,7 @@ static int __write_data_page(struct page *page, bool *submitted,
 	loff_t i_size = i_size_read(inode);
 	const pgoff_t end_index = ((unsigned long long) i_size)
 							>> PAGE_SHIFT;
-	loff_t psize = (page->index + 1) << PAGE_SHIFT;
+	loff_t psize = (loff_t)(page->index + 1) << PAGE_SHIFT;
 	unsigned offset = 0;
 	bool need_balance_fs = false;
 	int err = 0;

@@ -1672,7 +1672,13 @@ static noinline void __init split_pmd(pmd_t *pmd, unsigned long addr,
 	pte = start_pte;
 
 	do {
-		set_pte_ext(pte, pfn_pte(pfn, type->prot_pte), 0);
+		if (((unsigned long)_stext <= addr) &&
+			(addr < (unsigned long)__init_end))
+			set_pte_ext(pte, pfn_pte(pfn,
+				mem_types[MT_MEMORY_RWX].prot_pte), 0);
+		else
+			set_pte_ext(pte, pfn_pte(pfn,
+				mem_types[MT_MEMORY_RW].prot_pte), 0);
 		pfn++;
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 

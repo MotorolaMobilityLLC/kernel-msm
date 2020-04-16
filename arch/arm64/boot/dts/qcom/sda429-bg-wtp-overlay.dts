@@ -72,6 +72,13 @@
 			qcom,glinkpkt-dev-name = "glink_pkt_bg_daemon";
 		};
 
+		qcom,glinkpkt-bg-daemon-ctrl {
+			qcom,glinkpkt-transport = "bgcom";
+			qcom,glinkpkt-edge = "bg";
+			qcom,glinkpkt-ch-name = "bg-daemon-ctl";
+			qcom,glinkpkt-dev-name = "glink_pkt_bg_daemon_ctrl";
+		};
+
 		qcom,glinkpkt-bg-display-ctrl {
 			qcom,glinkpkt-transport = "bgcom";
 			qcom,glinkpkt-edge = "bg";
@@ -141,12 +148,45 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_auo_416p_amoled_cmd>;
 	/delete-property/ vdd-supply;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_te_active>;
+	pinctrl-1 = <&mdss_te_suspend>;
 	vddio-supply = <&L11A>;
 	qcom,platform-enable-gpio = <&pm660_gpios 12 0>;
 };
 
 &dsi_pm660_panel_pwr_supply {
 	/delete-node/ qcom,panel-supply-entry@0;
+};
+
+&i2c_4 {
+	status = "ok";
+	tsc@24 {
+		status = "disabled";
+	};
+
+	raydium_ts@39 {
+		compatible = "raydium,raydium-ts";
+		reg = <0x39>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <13 0x2008>;
+		vdd_ana-supply = <&pm660_l11>;
+		vcc_i2c-supply = <&pm660_l13>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend",
+					"pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		raydium,reset-gpio = <&tlmm 64 0x00>;
+		raydium,irq-gpio = <&tlmm 65 0x00>;
+		raydium,num-max-touches = <2>;
+		raydium,soft-reset-delay-ms = <50>;
+		raydium,hard-reset-delay-ms = <100>;
+		raydium,x_max = <416>;
+		raydium,y_max = <416>;
+		raydium,display-coords= <0  0 416 416>;
+		raydium,fw_id = <0x2202>;
+	};
 };
 
 &usb_otg {
@@ -169,4 +209,40 @@
 			};
 		};
 	};
+};
+
+&msm_gpu {
+	qcom,initial-pwrlevel = <0>;
+	qcom,gpu-pwrlevels {
+		qcom,gpu-pwrlevel@0 {
+			reg = <0>;
+			qcom,gpu-freq = <320000000>;
+			qcom,bus-freq = <2>;
+			qcom,bus-min = <2>;
+			qcom,bus-max = <2>;
+		};
+		qcom,gpu-pwrlevel@1{
+			reg = <1>;
+			qcom,gpu-freq = <19200000>;
+			qcom,bus-freq = <0>;
+			qcom,bus-min = <0>;
+			qcom,bus-max = <0>;
+		};
+	};
+};
+
+&msm_cpufreq {
+	qcom,cpufreq-table =
+		<  960000 >,
+		< 1305600 >,
+		< 1497600 >,
+		< 1708800 >;
+};
+
+&cpubw {
+	qcom,bw-tbl =
+		<  1611 /*  211.2 MHz */ >,     /*Low SVS*/
+		<  2929 /*  384   MHz */ >,     /* SVS */
+		<  5053 /*  662.4 MHz */ >,     /* SVS+  */
+		<  5712 /*  748.8 MHz */ >;     /* NOM   */
 };

@@ -166,8 +166,17 @@ static void alloc_init_pte(pmd_t *pmd, unsigned long addr,
 
 	pte = pte_set_fixmap_offset(pmd, addr);
 	do {
+		pte_t old_pte = *pte;
+
 		set_pte(pte, pfn_pte(pfn, prot));
 		pfn++;
+
+		/*
+		 * After the PTE entry has been populated once, we
+		 * only allow updates to the permission attributes.
+		 */
+		BUG_ON(!pgattr_change_is_safe(pte_val(old_pte), pte_val(*pte)));
+
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 
 	pte_clear_fixmap();
@@ -197,28 +206,29 @@ static void alloc_init_pmd(pud_t *pud, unsigned long addr, unsigned long end,
 
 	pmd = pmd_set_fixmap_offset(pud, addr);
 	do {
+		pmd_t old_pmd = *pmd;
+
 		next = pmd_addr_end(addr, end);
+
 		/* try section mapping first */
 		if (((addr | next | phys) & ~SECTION_MASK) == 0 &&
 		      allow_block_mappings &&
 		      !dma_overlap(phys, phys + next - addr)) {
 			pmd_t old_pmd =*pmd;
 			pmd_set_huge(pmd, phys, prot);
+
 			/*
-			 * Check for previous table entries created during
-			 * boot (__create_page_tables) and flush them.
+			 * After the PMD entry has been populated once, we
+			 * only allow updates to the permission attributes.
 			 */
-			if (!pmd_none(old_pmd)) {
-				flush_tlb_all();
-				if (pmd_table(old_pmd)) {
-					phys_addr_t table = pmd_page_paddr(old_pmd);
-					if (!WARN_ON_ONCE(slab_is_available()))
-						memblock_free(table, PAGE_SIZE);
-				}
-			}
+			BUG_ON(!pgattr_change_is_safe(pmd_val(old_pmd),
+						      pmd_val(*pmd)));
 		} else {
 			alloc_init_pte(pmd, addr, next, __phys_to_pfn(phys),
 				       prot, pgtable_alloc);
+
+			BUG_ON(pmd_val(old_pmd) != 0 &&
+			       pmd_val(old_pmd) != pmd_val(*pmd));
 		}
 		phys += next - addr;
 	} while (pmd++, addr = next, addr != end);
@@ -256,6 +266,8 @@ static void alloc_init_pud(pgd_t *pgd, unsigned long addr, unsigned long end,
 
 	pud = pud_set_fixmap_offset(pgd, addr);
 	do {
+		pud_t old_pud = *pud;
+
 		next = pud_addr_end(addr, end);
 
 		/*
@@ -267,23 +279,17 @@ static void alloc_init_pud(pgd_t *pgd, unsigned long addr, unsigned long end,
 			pud_set_huge(pud, phys, prot);
 
 			/*
-			 * If we have an old value for a pud, it will
-			 * be pointing to a pmd table that we no longer
-			 * need (from swapper_pg_dir).
-			 *
-			 * Look up the old pmd table and free it.
+			 * After the PUD entry has been populated once, we
+			 * only allow updates to the permission attributes.
 			 */
-			if (!pud_none(old_pud)) {
-				flush_tlb_all();
-				if (pud_table(old_pud)) {
-					phys_addr_t table = pud_page_paddr(old_pud);
-					if (!WARN_ON_ONCE(slab_is_available()))
-						memblock_free(table, PAGE_SIZE);
-				}
-			}
+			BUG_ON(!pgattr_change_is_safe(pud_val(old_pud),
+						      pud_val(*pud)));
 		} else {
 			alloc_init_pmd(pud, addr, next, phys, prot,
 				       pgtable_alloc, allow_block_mappings);
+
+			BUG_ON(pud_val(old_pud) != 0 &&
+			       pud_val(old_pud) != pud_val(*pud));
 		}
 		phys += next - addr;
 	} while (pud++, addr = next, addr != end);
@@ -449,6 +455,9 @@ void mark_rodata_ro(void)
 	section_size = (unsigned long)__init_begin - (unsigned long)__start_rodata;
 	create_mapping_late(__pa_symbol(__start_rodata), (unsigned long)__start_rodata,
 			    section_size, PAGE_KERNEL_RO);
+
+	/* flush the TLBs after updating live kernel mappings */
+	flush_tlb_all();
 }
 
 static void __init map_kernel_segment(pgd_t *pgd, void *va_start, void *va_end,
@@ -532,8 +541,8 @@ static void __init map_kernel(pgd_t *pgd)
 		 * entry instead.
 		 */
 		BUG_ON(!IS_ENABLED(CONFIG_ARM64_16K_PAGES));
-		set_pud(pud_set_fixmap_offset(pgd, FIXADDR_START),
-			__pud(__pa_symbol(bm_pmd) | PUD_TYPE_TABLE));
+		pud_populate(&init_mm, pud_set_fixmap_offset(pgd, FIXADDR_START),
+			     lm_alias(bm_pmd));
 		pud_clear_fixmap();
 	} else {
 		BUG();
@@ -648,7 +657,7 @@ int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)
 			if (!p)
 				return -ENOMEM;
 
-			set_pmd(pmd, __pmd(__pa(p) | PROT_SECT_NORMAL));
+			pmd_set_huge(pmd, __pa(p), __pgprot(PROT_SECT_NORMAL));
 		} else
 			vmemmap_verify((pte_t *)pmd, node, addr, next);
 	} while (addr = next, addr != end);
@@ -840,35 +849,35 @@ int __init arch_ioremap_pmd_supported(void)
 	return !IS_ENABLED(CONFIG_ARM64_PTDUMP_DEBUGFS);
 }
 
-int pud_set_huge(pud_t *pud, phys_addr_t phys, pgprot_t prot)
+int pud_set_huge(pud_t *pudp, phys_addr_t phys, pgprot_t prot)
 {
 	pgprot_t sect_prot = __pgprot(PUD_TYPE_SECT |
 					pgprot_val(mk_sect_prot(prot)));
 	pud_t new_pud = pfn_pud(__phys_to_pfn(phys), sect_prot);
 
 	/* Only allow permission changes for now */
-	if (!pgattr_change_is_safe(READ_ONCE(pud_val(*pud)),
+	if (!pgattr_change_is_safe(READ_ONCE(pud_val(*pudp)),
 				   pud_val(new_pud)))
 		return 0;
 
 	BUG_ON(phys & ~PUD_MASK);
-	set_pud(pud, new_pud);
+	set_pud(pudp, new_pud);
 	return 1;
 }
 
-int pmd_set_huge(pmd_t *pmd, phys_addr_t phys, pgprot_t prot)
+int pmd_set_huge(pmd_t *pmdp, phys_addr_t phys, pgprot_t prot)
 {
 	pgprot_t sect_prot = __pgprot(PMD_TYPE_SECT |
 					pgprot_val(mk_sect_prot(prot)));
 	pmd_t new_pmd = pfn_pmd(__phys_to_pfn(phys), sect_prot);
 
 	/* Only allow permission changes for now */
-	if (!pgattr_change_is_safe(READ_ONCE(pmd_val(*pmd)),
+	if (!pgattr_change_is_safe(READ_ONCE(pmd_val(*pmdp)),
 				   pmd_val(new_pmd)))
 		return 0;
 
 	BUG_ON(phys & ~PMD_MASK);
-	set_pmd(pmd, new_pmd);
+	set_pmd(pmdp, new_pmd);
 	return 1;
 }
 

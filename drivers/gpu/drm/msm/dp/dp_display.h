@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -50,4 +50,7 @@ struct dp_display {
 
 int dp_display_get_num_of_displays(void);
 int dp_display_get_displays(void **displays, int count);
+bool dp_connector_mode_needs_full_range(void *display);
+enum sde_csc_type dp_connector_get_csc_type(struct drm_connector *conn,
+	void *data);
 #endif /* _DP_DISPLAY_H_ */

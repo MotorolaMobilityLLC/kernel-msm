@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -184,12 +184,29 @@ struct sde_connector_ops {
 			struct msm_display_kickoff_params *params);
 
 	/**
+	 * mode_needs_full_range - does the mode need full range
+	 * quantization
+	 * @display: Pointer to private display structure
+	 * Returns: true or false based on whether full range is needed
+	 */
+	bool (*mode_needs_full_range)(void *display);
+
+	/**
 	 * clk_ctrl - perform clk enable/disable on the connector
 	 * @handle: Pointer to clk handle
 	 * @type: Type of clks
 	 * @enable: State of clks
 	 */
 	int (*clk_ctrl)(void *handle, u32 type, u32 state);
+	/**
+	 * get_csc_type - returns the CSC type to be used
+	 * by the CDM block based on HDR state
+	 * @connector: Pointer to drm connector structure
+	 * @display: Pointer to private display structure
+	 * Returns: type of CSC matrix to be used
+	 */
+	enum sde_csc_type (*get_csc_type)(struct drm_connector *connector,
+		void *display);
 
 	/**
 	 * set_power - update dpms setting
@@ -701,6 +718,22 @@ static inline bool sde_connector_needs_offset(struct drm_connector *connector)
 	c_conn = to_sde_connector(connector);
 	return (c_conn->connector_type != DRM_MODE_CONNECTOR_VIRTUAL);
 }
+
+/**
+ * sde_connector_mode_needs_full_range - query quantization type
+ * for the connector mode
+ * @connector: Pointer to drm connector object
+ * Returns: true OR false based on connector mode
+ */
+bool sde_connector_mode_needs_full_range(struct drm_connector *connector);
+
+/**
+ * sde_connector_get_csc_type - query csc type
+ * to be used for the connector
+ * @connector: Pointer to drm connector object
+ * Returns: csc type based on connector HDR state
+ */
+enum sde_csc_type sde_connector_get_csc_type(struct drm_connector *conn);
 
 /**
  * sde_connector_get_dither_cfg - get dither property data

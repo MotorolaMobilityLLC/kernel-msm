@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016, 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, 2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -817,6 +817,7 @@ static struct rcg_clk blsp1_uart2_apps_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_camss_gp0_1_clk[] = {
+	F(   150000,	xo,	1,	1,	128),
 	F( 100000000,	gpll0,	8,	0,	0),
 	F( 200000000,	gpll0,	4,	0,	0),
 	F_END
@@ -1062,7 +1063,7 @@ static struct rcg_clk pclk0_clk_src = {
 	.c = {
 		.dbg_name = "pclk0_clk_src",
 		.ops = &clk_ops_pixel,
-		VDD_DIG_FMAX_MAP1(LOWER, 83333333.33),
+		VDD_DIG_FMAX_MAP1(LOWER, 83333333),
 		CLK_INIT(pclk0_clk_src.c),
 	},
 };

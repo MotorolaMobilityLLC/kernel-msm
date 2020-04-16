@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -439,9 +439,11 @@ static ssize_t ipa_ut_dbgfs_meta_test_read(struct file *file,
 		for (i = 0 ; i < suite->tests_cnt ; i++) {
 			if (!suite->tests[i].run_in_regression)
 				continue;
-			nbytes += scnprintf(buf + nbytes,
-				IPA_UT_DEBUG_READ_BUF_SIZE - nbytes,
-				"\t\t%s\n", suite->tests[i].name);
+			if (nbytes < IPA_UT_DEBUG_READ_BUF_SIZE) {
+				nbytes += scnprintf(buf + nbytes,
+					IPA_UT_DEBUG_READ_BUF_SIZE - nbytes,
+					"\t\t%s\n", suite->tests[i].name);
+			}
 		}
 	}
 

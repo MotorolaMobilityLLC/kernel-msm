@@ -12,11 +12,11 @@
 
 &spmi_bus {
 
-	qcom,pm8909@0 {
-		spmi-slave-container;
-		reg = <0x0>;
-		#address-cells = <1>;
-		#size-cells = <1>;
+	pm8909_0: qcom,pm8909@0 {
+		compatible ="qcom,spmi-pmic";
+		reg = <0x0 0>;
+		#address-cells = <2>;
+		#size-cells = <0>;
 
 		pm8909_revid: qcom,revid@100 {
 			compatible = "qcom,qpnp-revid";
@@ -26,17 +26,16 @@
 		pm8909_pon: qcom,power-on@800 {
 			compatible = "qcom,qpnp-power-on";
 			reg = <0x800 0x100>;
-			interrupts = <0x0 0x8 0x0>,
-				     <0x0 0x8 0x1>;
+			interrupts = <0x0 0x8 0x0 0x0>,
+				     <0x0 0x8 0x1 0x0>;
 			interrupt-names = "kpdpwr", "resin";
 			qcom,pon-dbc-delay = <15625>;
+			qcom,kpdpwr-sw-debounce;
 			qcom,system-reset;
-			qcom,clear-warm-reset;
 			qcom,store-hard-reset-reason;
 
 			qcom,pon_1 {
 				qcom,pon-type = <0>;
-				qcom,support-reset = <1>;
 				qcom,pull-up = <1>;
 				qcom,s1-timer = <10256>;
 				qcom,s2-timer = <2000>;
@@ -116,7 +115,7 @@
 			reg = <0x3100 0x100>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			interrupts = <0x0 0x31 0x0>;
+			interrupts = <0x0 0x31 0x0 0x0>;
 			interrupt-names = "eoc-int-en-set";
 			qcom,adc-bit-resolution = <15>;
 			qcom,adc-vdd-reference = <1800>;
@@ -162,9 +161,9 @@
 			reg = <0x3400 0x100>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			interrupts =	<0x0 0x34 0x0>,
-					<0x0 0x34 0x3>,
-					<0x0 0x34 0x4>;
+			interrupts =	<0x0 0x34 0x0 0x0>,
+					<0x0 0x34 0x3 0x0>,
+					<0x0 0x34 0x4 0x0>;
 			interrupt-names =	"eoc-int-en-set",
 						"high-thr-en-set",
 						"low-thr-en-set";
@@ -186,7 +185,7 @@
 			};
 			qcom,pm8909_rtc_alarm@6100 {
 				reg = <0x6100 0x100>;
-				interrupts = <0x0 0x61 0x1>;
+				interrupts = <0x0 0x61 0x1 0x0>;
 			};
 		};
 
@@ -219,14 +218,14 @@
 			qcom,chg-vadc = <&pm8909_vadc>;
 			qcom,chg-adc_tm = <&pm8909_adc_tm>;
 
-			status = "disabled";
+			status = "okay";
 
 			qcom,chgr@1000 {
 				reg = <0x1000 0x100>;
-				interrupts =	<0x0 0x10 0x7>,
-						<0x0 0x10 0x6>,
-						<0x0 0x10 0x5>,
-						<0x0 0x10 0x0>;
+				interrupts =	<0x0 0x10 0x7 0x1>,
+						<0x0 0x10 0x6 0x1>,
+						<0x0 0x10 0x5 0x3>,
+						<0x0 0x10 0x0 0x2>;
 				interrupt-names =	"chg-done",
 							"chg-failed",
 							"fast-chg-on",
@@ -235,17 +234,17 @@
 
 			qcom,bat-if@1200 {
 				reg = <0x1200 0x100>;
-				interrupts =	<0x0 0x12 0x1>,
-						<0x0 0x12 0x0>;
+				interrupts =	<0x0 0x12 0x1 0x3>,
+						<0x0 0x12 0x0 0x3>;
 				interrupt-names =	"bat-temp-ok",
 							"batt-pres";
 			};
 
 			qcom,usb-chgpth@1300 {
 				reg = <0x1300 0x100>;
-				interrupts =	<0 0x13 0x4>,
-						<0 0x13 0x2>,
-						<0 0x13 0x1>;
+				interrupts =	<0 0x13 0x4 0x3>,
+						<0 0x13 0x2 0x1>,
+						<0 0x13 0x1 0x3>;
 				interrupt-names =	"usb-over-temp",
 							"chg-gone",
 							"usbin-valid";
@@ -259,7 +258,7 @@
 		pm8909_tz: qcom,temp-alarm@2400 {
 			compatible = "qcom,qpnp-temp-alarm";
 			reg = <0x2400 0x100>;
-			interrupts = <0x0 0x24 0x0>;
+			interrupts = <0x0 0x24 0x0 0x1>;
 			label = "pm8909_tz";
 			qcom,channel-num = <8>;
 			qcom,threshold-set = <0>;
@@ -305,10 +304,10 @@
 
 			qcom,vm-bms@4000 {
 				reg = <0x4000 0x100>;
-				interrupts =	<0x0 0x40 0x0>,
-						<0x0 0x40 0x3>,
-						<0x0 0x40 0x4>,
-						<0x0 0x40 0x5>;
+				interrupts =	<0x0 0x40 0x0 0x0>,
+						<0x0 0x40 0x3 0x0>,
+						<0x0 0x40 0x4 0x0>,
+						<0x0 0x40 0x5 0x0>;
 
 				interrupt-names = "leave_cv",
 						  "ocv_thr",
@@ -318,11 +317,38 @@
 		};
 	};
 
-	qcom,pm8909@1 {
-		spmi-slave-container;
-		reg = <0x1>;
-		#address-cells = <1>;
-		#size-cells = <1>;
+
+	pm8909_temp_alarm: pm8909_tz {
+		polling-delay-passive = <0>;
+		polling-delay = <0>;
+		thermal-governor = "step_wise";
+		thermal-sensors = <&pm8909_tz>;
+		wake-capable-sensor;
+
+		trips {
+			pm8909_trip0: pm8909-trip0 {
+				temperature = <105000>;
+				hysteresis = <0>;
+				type = "passive";
+			};
+			pm8909_trip1: pm8909-trip1 {
+				temperature = <125000>;
+				hysteresis = <0>;
+				type = "passive";
+			};
+			pm8909_trip2: pm8909-trip2 {
+				temperature = <145000>;
+				hysteresis = <0>;
+				type = "critical";
+			};
+		};
+	};
+
+	pm8909_1: qcom,pm8909@1 {
+		compatible ="qcom,spmi-pmic";
+		reg = <0x1 0>;
+		#address-cells = <2>;
+		#size-cells = <0>;
 
 		regulator@1400 {
 			compatible = "qcom,qpnp-regulator";
@@ -494,14 +520,14 @@
 			compatible = "qcom,msm8x16_wcd_codec";
 			reg = <0xf000 0x100>;
 			interrupt-parent = <&spmi_bus>;
-			interrupts = <0x1 0xf0 0x0>,
-				     <0x1 0xf0 0x1>,
-				     <0x1 0xf0 0x2>,
-				     <0x1 0xf0 0x3>,
-				     <0x1 0xf0 0x4>,
-				     <0x1 0xf0 0x5>,
-				     <0x1 0xf0 0x6>,
-				     <0x1 0xf0 0x7>;
+			interrupts = <0x1 0xf0 0x0 0x0>,
+				     <0x1 0xf0 0x1 0x0>,
+				     <0x1 0xf0 0x2 0x0>,
+				     <0x1 0xf0 0x3 0x0>,
+				     <0x1 0xf0 0x4 0x0>,
+				     <0x1 0xf0 0x5 0x0>,
+				     <0x1 0xf0 0x6 0x0>,
+				     <0x1 0xf0 0x7 0x0>;
 			interrupt-names = "spk_cnp_int",
 					  "spk_clip_int",
 					  "spk_ocp_int",
@@ -545,12 +571,12 @@
 			compatible = "qcom,msm8x16_wcd_codec";
 			reg = <0xf100 0x100>;
 			interrupt-parent = <&spmi_bus>;
-			interrupts = <0x1 0xf1 0x0>,
-				     <0x1 0xf1 0x1>,
-				     <0x1 0xf1 0x2>,
-				     <0x1 0xf1 0x3>,
-				     <0x1 0xf1 0x4>,
-				     <0x1 0xf1 0x5>;
+			interrupts = <0x1 0xf1 0x0 0x0>,
+				     <0x1 0xf1 0x1 0x0>,
+				     <0x1 0xf1 0x2 0x0>,
+				     <0x1 0xf1 0x3 0x0>,
+				     <0x1 0xf1 0x4 0x0>,
+				     <0x1 0xf1 0x5 0x0>;
 			interrupt-names = "ear_ocp_int",
 					  "hphr_ocp_int",
 					  "hphl_ocp_det",

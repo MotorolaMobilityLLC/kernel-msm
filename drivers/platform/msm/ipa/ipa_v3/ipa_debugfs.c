@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +31,8 @@
 #define IPA_READ_ONLY_MODE  0444
 #define IPA_READ_WRITE_MODE 0664
 #define IPA_WRITE_ONLY_MODE 0220
+
+#define DEBUG_BUF_MAX_LEN(nbytes) (nbytes < IPA_MAX_MSG_LEN ? 1 : 0)
 
 struct ipa3_debugfs_file {
 	const char *name;
@@ -392,26 +394,34 @@ static ssize_t ipa3_read_hdr(struct file *file, char __user *ubuf, size_t count,
 			ipa3_hdr_l2_type_name[entry->type]);
 
 		if (entry->is_hdr_proc_ctx) {
-			nbytes += scnprintf(
-				dbg_buff + nbytes,
-				IPA_MAX_MSG_LEN - nbytes,
-				"phys_base=0x%pa ",
-				&entry->phys_base);
+			if (DEBUG_BUF_MAX_LEN(nbytes)) {
+				nbytes += scnprintf(
+					dbg_buff + nbytes,
+					IPA_MAX_MSG_LEN - nbytes,
+					"phys_base=0x%pa ",
+					&entry->phys_base);
+			}
 		} else {
-			nbytes += scnprintf(
-				dbg_buff + nbytes,
-				IPA_MAX_MSG_LEN - nbytes,
-				"ofst=%u ",
-				entry->offset_entry->offset >> 2);
+			if (DEBUG_BUF_MAX_LEN(nbytes)) {
+				nbytes += scnprintf(
+					dbg_buff + nbytes,
+					IPA_MAX_MSG_LEN - nbytes,
+					"ofst=%u ",
+					entry->offset_entry->offset >> 2);
+			}
 		}
 		for (i = 0; i < entry->hdr_len; i++) {
-			scnprintf(dbg_buff + nbytes + i * 2,
-				  IPA_MAX_MSG_LEN - nbytes - i * 2,
-				  "%02x", entry->hdr[i]);
+			if (DEBUG_BUF_MAX_LEN(nbytes + i * 2)) {
+				scnprintf(dbg_buff + nbytes + i * 2,
+					  IPA_MAX_MSG_LEN - nbytes - i * 2,
+					  "%02x", entry->hdr[i]);
+			}
 		}
-		scnprintf(dbg_buff + nbytes + entry->hdr_len * 2,
-			  IPA_MAX_MSG_LEN - nbytes - entry->hdr_len * 2,
-			  "\n");
+		if (DEBUG_BUF_MAX_LEN(nbytes + entry->hdr_len * 2)) {
+			scnprintf(dbg_buff + nbytes + entry->hdr_len * 2,
+				  IPA_MAX_MSG_LEN - nbytes - entry->hdr_len * 2,
+				  "\n");
+		}
 		pr_err("%s", dbg_buff);
 	}
 	mutex_unlock(&ipa3_ctx->lock);

@@ -218,6 +218,9 @@
 	qcom,platform-te-gpio = <&msm_gpio 24 0>;
 	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
 	qcom,platform-spi-dc-gpio = <&msm_gpio 110 0>;
+
+	vdd-supply = <&pm8909_l17>;
+	vddio-supply = <&pm8909_l6>;
 };
 
 &qnand_1 {

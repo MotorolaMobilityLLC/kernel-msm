@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -76,6 +76,12 @@
 		cam_vana-supply = <&pm8916_l10>;
 		cam_vio-supply = <&pm8916_l6>;
 	};
+};
+
+&dsi_hx8394d_720_vid {
+	qcom,cont-splash-enabled;
+	qcom,mdss-dsi-pwm-gpio = <&pm8916_mpps 4 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 };
 
 &spmi_bus {
@@ -184,4 +190,12 @@
 			status = "disabled";
 		};
 	};
+};
+
+&vendor_fstab {
+	status = "disabled";
+};
+
+&system_fstab {
+	status = "disabled";
 };

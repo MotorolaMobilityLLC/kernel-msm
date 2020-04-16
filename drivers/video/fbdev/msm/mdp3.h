@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, 2016-2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
  *
  * This program is free software; you can redistribute it and/or modify
@@ -211,6 +211,8 @@ struct mdp3_hw_resource {
 	struct mutex reg_bus_lock;
 	int bklt_level;
 	int bklt_update;
+	bool secure_update_bl;
+	bool secure_reg_on;
 	bool twm_en;
 	u32 max_bw;
 
