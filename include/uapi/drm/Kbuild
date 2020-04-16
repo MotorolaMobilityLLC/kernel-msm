@@ -1,0 +1,5 @@
+# UAPI Header export list
+no-export-headers += armada_drm.h
+no-export-headers += etnaviv_drm.h
+no-export-headers += omap_drm.h
+no-export-headers += vgem_drm.h

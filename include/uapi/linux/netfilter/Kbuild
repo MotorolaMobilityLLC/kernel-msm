@@ -1,0 +1,2 @@
+# UAPI Header export list
+no-export-headers += xt_HARDIDLETIMER.h
