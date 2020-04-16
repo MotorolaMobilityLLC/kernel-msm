@@ -794,6 +794,8 @@ static void sde_encoder_phys_vid_enable(struct sde_encoder_phys *phys_enc)
 		fmt = sde_get_sde_format(DRM_FORMAT_YUV420);
 	else if (mode.private_flags & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422)
 		fmt = sde_get_sde_format(DRM_FORMAT_NV61);
+	else if (mode.private_flags & MSM_MODE_FLAG_COLOR_FORMAT_RGB444)
+		fmt = sde_get_sde_format(DRM_FORMAT_RGB888);
 
 	if (fmt) {
 		struct sde_rect hdmi_roi;
@@ -830,6 +832,7 @@ static void sde_encoder_phys_vid_destroy(struct sde_encoder_phys *phys_enc)
 	}
 
 	vid_enc = to_sde_encoder_phys_vid(phys_enc);
+	sde_encoder_phys_destroy_cdm(phys_enc);
 	SDE_DEBUG_VIDENC(vid_enc, "\n");
 	kfree(vid_enc);
 }

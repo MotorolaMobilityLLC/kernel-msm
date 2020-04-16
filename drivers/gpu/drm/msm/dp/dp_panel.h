@@ -47,6 +47,7 @@ struct dp_panel_info {
 	u32 pixel_clk_khz;
 	u32 bpp;
 	u32 out_format;
+	enum hdmi_picture_aspect par;
 };
 
 struct dp_display_mode {
