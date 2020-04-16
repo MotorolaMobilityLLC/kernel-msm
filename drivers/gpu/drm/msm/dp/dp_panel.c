@@ -809,7 +809,7 @@ static bool dp_panel_vsc_sdp_supported(struct dp_panel *dp_panel)
 
 	panel = container_of(dp_panel, struct dp_panel_private, dp_panel);
 
-	return panel->major >= 1 && panel->minor >= 4 && panel->vsc_supported;
+	return panel->major >= 1 && panel->minor >= 3 && panel->vsc_supported;
 }
 
 static bool dp_panel_hdr_supported(struct dp_panel *dp_panel)
@@ -833,6 +833,7 @@ static int dp_panel_setup_hdr(struct dp_panel *dp_panel,
 	int rc = 0;
 	struct dp_panel_private *panel;
 	struct dp_catalog_hdr_data *hdr;
+	struct dp_panel_info *pinfo;
 
 	if (!dp_panel) {
 		pr_err("invalid input\n");
@@ -842,6 +843,7 @@ static int dp_panel_setup_hdr(struct dp_panel *dp_panel,
 
 	panel = container_of(dp_panel, struct dp_panel_private, dp_panel);
 	hdr = &panel->catalog->hdr_data;
+	pinfo = &panel->dp_panel.pinfo;
 
 	/* use cached meta data in case meta data not provided */
 	if (!hdr_meta) {
@@ -869,8 +871,16 @@ static int dp_panel_setup_hdr(struct dp_panel *dp_panel,
 	hdr->vscext_header_byte3 = 0x13 << 2;
 
 	/* VSC SDP Payload for DB16 */
-	hdr->pixel_encoding = RGB;
-	hdr->colorimetry = ITU_R_BT_2020_RGB;
+	if (pinfo->out_format & MSM_MODE_FLAG_COLOR_FORMAT_RGB444) {
+		hdr->pixel_encoding = RGB;
+		hdr->colorimetry = ITU_R_BT_2020_RGB;
+	} else if (pinfo->out_format & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422) {
+		hdr->pixel_encoding = YCbCr422;
+		hdr->colorimetry = ITU_R_BT_2020_YCBCR;
+	} else if (pinfo->out_format & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420) {
+		hdr->pixel_encoding = YCbCr420;
+		hdr->colorimetry = ITU_R_BT_2020_YCBCR;
+	}
 
 	/* VSC SDP Payload for DB17 */
 	hdr->dynamic_range = CEA;
@@ -888,8 +898,11 @@ static int dp_panel_setup_hdr(struct dp_panel *dp_panel,
 	else
 		memset(&hdr->hdr_meta, 0, sizeof(hdr->hdr_meta));
 cached:
-	if (panel->panel_on)
+	if (panel->panel_on) {
 		panel->catalog->config_hdr(panel->catalog, panel->hdr_state);
+		if (panel->hdr_state == HDR_DISABLED)
+			dp_panel_setup_vsc_sdp(dp_panel);
+	}
 end:
 	return rc;
 }
