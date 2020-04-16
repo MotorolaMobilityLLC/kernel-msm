@@ -3081,6 +3081,7 @@ drm_display_mode_from_vic_index(struct drm_connector *connector,
 	if (!newmode)
 		return NULL;
 
+	newmode->vic_id = vic;
 	newmode->vrefresh = 0;
 
 	return newmode;
