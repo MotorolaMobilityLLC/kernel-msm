@@ -173,6 +173,26 @@ static const struct virtual_sensor_data qti_virtual_sensors[] = {
 		.coefficients = {30, 70},
 		.avg_denominator = 100,
 	},
+	{
+		.virt_zone_name = "front-usr",
+		.num_sensors = 1,
+		.sensor_names = {"pcm-therm-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {77},
+		.avg_offset = 696000,
+		.avg_denominator = 100,
+	},
+	{
+		.virt_zone_name = "back-usr",
+		.num_sensors = 1,
+		.sensor_names = {"pcm-therm-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {77},
+		.avg_offset = 504000,
+		.avg_denominator = 100,
+	},
 };
 
 int qti_virtual_sensor_register(struct device *dev)
