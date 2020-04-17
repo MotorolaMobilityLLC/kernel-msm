@@ -2705,6 +2705,7 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 			dev_err(smmu->dev, "failed to request context IRQ %d (%u)\n",
 				cfg->irptndx, irq);
 			cfg->irptndx = INVALID_IRPTNDX;
+			BUG();
 			goto out_clear_smmu;
 		}
 	} else {
