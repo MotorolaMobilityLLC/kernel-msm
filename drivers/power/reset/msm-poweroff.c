@@ -431,7 +431,7 @@ static void msm_restart_prepare(const char *cmd)
 		pr_info("Forcing a warm reset of the system\n");
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (force_warm_reboot || in_panic)
+	if (force_warm_reboot || need_warm_reset || in_panic)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
@@ -490,6 +490,16 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_store_extra_reset_info(RESET_EXTRA_POST_REBOOT_MASK,
 			   RESET_EXTRA_POST_PANIC_REASON);
 			/* force cold reboot */
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+		} else if (!strncmp(cmd, "hw_warmreset", 13)) {
+			reason = PON_RESTART_REASON_HW_WARMRESET;
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+			pr_info("set system hw warmreset mode\n");
+		} else if (!strncmp(cmd, "post-hw_warmreset", 17)) {
+			/* set  flag in PMIC to nofity BL post hw_warmreset reboot */
+			qpnp_pon_store_extra_reset_info(RESET_EXTRA_POST_REBOOT_MASK,
+				RESET_EXTRA_POST_HWWARM_RESET_REASON);
+			 /* force cold reboot */
 			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
