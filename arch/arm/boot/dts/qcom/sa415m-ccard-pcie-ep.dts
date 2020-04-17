@@ -19,6 +19,16 @@
 	compatible = "qcom,sa415m-ccard",
 		"qcom,sdxpoorwills", "qcom,ccard";
 	qcom,board-id = <25 1>, <25 0x101>;
+
+	qcom_gadget {
+		compatible = "qcom,usb-gadget";
+		qcom,vid = <0x05c6>;
+
+		composition1 {
+			qcom,pid = <0x9105>;
+			qcom,composition = "diag.diag,gsi.dpl";
+		};
+	};
 };
 
 &usb {
