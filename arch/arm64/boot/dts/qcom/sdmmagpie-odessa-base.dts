@@ -52,6 +52,7 @@
 	/delete-node/ emmc_ufs_therm;
 	/delete-node/ rf_pa0_therm;
 	/delete-node/ nvm_therm;
+	/delete-node/ conn_therm;
 };
 
 
@@ -59,6 +60,7 @@
 	/delete-node/ emmc_ufs_therm;
 	/delete-node/ rf_pa0_therm;
 	/delete-node/ nvm_therm;
+	/delete-node/ conn_therm;
 };
 
 &tlmm {
