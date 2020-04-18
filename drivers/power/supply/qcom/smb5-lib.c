@@ -36,20 +36,6 @@
 				__func__, ##__VA_ARGS__);	\
 	} while (0)
 
-static bool mmi_factory_mode;
-static void smblib_mmi_factory_check(void)
-{
-	struct device_node *np = of_find_node_by_path("/chosen");
-
-	if (np)
-		mmi_factory_mode = of_property_read_bool(np,
-							 "mmi,factory-cable");
-
-	of_node_put(np);
-
-	return;
-}
-
 #define typec_rp_med_high(chg, typec_mode)			\
 	((typec_mode == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM	\
 	|| typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH)	\
@@ -998,11 +984,6 @@ void smblib_hvdcp_detect_enable(struct smb_charger *chg, bool enable)
 	u8 mask;
 
 	mask = HVDCP_AUTH_ALG_EN_CFG_BIT | HVDCP_EN_BIT;
-	if (mmi_factory_mode) {
-		mask = BC1P2_SRC_DETECT_BIT;
-		enable = true;
-	}
-
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG, mask,
 						enable ? mask : 0);
 	if (rc < 0)
@@ -1104,9 +1085,6 @@ void smblib_rerun_apsd(struct smb_charger *chg)
 	int rc;
 
 	smblib_dbg(chg, PR_MISC, "re-running APSD\n");
-
-	if (mmi_factory_mode)
-		return;
 
 	rc = smblib_masked_write(chg, CMD_APSD_REG,
 				APSD_RERUN_BIT, APSD_RERUN_BIT);
@@ -5758,9 +5736,6 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 	int rc = 0;
 	u8 stat;
 
-	if (mmi_factory_mode)
-		chg->ok_to_pd = false;
-
 	/* PD session is ongoing, ignore BC1.2 and QC detection */
 	if (chg->pd_active)
 		return IRQ_HANDLED;
@@ -7708,9 +7683,26 @@ relax:
 	pm_relax(chg->dev);
 }
 
+static bool mmi_factory_mode;
+static void smblib_mmi_factory_check(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+
+	if (np)
+		mmi_factory_mode = of_property_read_bool(np,
+							 "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return;
+}
+
 static int smblib_create_votables(struct smb_charger *chg)
 {
 	int rc = 0;
+
+	mmi_factory_mode = false;
+	smblib_mmi_factory_check();
 
 	chg->fcc_votable = find_votable("FCC");
 	if (chg->fcc_votable == NULL) {
@@ -7968,9 +7960,6 @@ int smblib_init(struct smb_charger *chg)
 	chg->thermal_status = TEMP_BELOW_RANGE;
 	chg->typec_irq_en = true;
 	chg->cp_topo = -EINVAL;
-
-	mmi_factory_mode = false;
-	smblib_mmi_factory_check();
 
 	switch (chg->mode) {
 	case PARALLEL_MASTER:
