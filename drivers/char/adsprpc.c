@@ -3370,6 +3370,7 @@ static int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
 			(unsigned int)ud->len);
 		err = -1;
 		mutex_unlock(&fl->map_mutex);
+		mutex_unlock(&fl->internal_map_mutex);
 		goto bail;
 	}
 	if (map && (map->attr & FASTRPC_ATTR_KEEP_MAP)) {
@@ -3377,6 +3378,7 @@ static int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
 		fastrpc_mmap_free(map, 0);
 	}
 	mutex_unlock(&fl->map_mutex);
+	mutex_unlock(&fl->internal_map_mutex);
 bail:
 	mutex_unlock(&fl->internal_map_mutex);
 	return err;
