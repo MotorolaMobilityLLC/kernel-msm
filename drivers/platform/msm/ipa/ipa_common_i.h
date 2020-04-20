@@ -21,6 +21,8 @@
 #include <linux/ipa_uc_offload.h>
 #include <linux/ipa_wdi3.h>
 #include <linux/ratelimit.h>
+#include <linux/swab.h>
+#include <linux/compiler.h>
 
 #define WARNON_RATELIMIT_BURST 1
 #define IPA_RATELIMIT_BURST 1
