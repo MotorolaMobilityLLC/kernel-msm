@@ -712,7 +712,7 @@ static int qpnp_haptics_play_control(struct hap_chip *chip,
 		return rc;
 	}
 
-	pr_debug("haptics play ctrl: %d\n", ctrl);
+	pr_info("%s haptics play ctrl: %d\n", __func__, ctrl);
 	return rc;
 }
 
@@ -803,7 +803,7 @@ static void qpnp_haptics_work(struct work_struct *work)
 	bool enable;
 
 	enable = atomic_read(&chip->state);
-	pr_debug("state: %d\n", enable);
+	pr_info("%s state: %d\n", __func__,enable);
 
 	if (chip->vcc_pon && enable && !chip->vcc_pon_enabled) {
 		rc = regulator_enable(chip->vcc_pon);
@@ -1495,6 +1495,8 @@ static ssize_t qpnp_haptics_store_duration(struct device *dev,
 	chip->play_time_ms = val;
 	mutex_unlock(&chip->param_lock);
 
+	pr_debug("%s val:%d\n", __func__, val);
+
 	return count;
 }
 
@@ -1519,6 +1521,8 @@ static ssize_t qpnp_haptics_store_activate(struct device *dev,
 
 	if (val != 0 && val != 1)
 		return count;
+
+	pr_info("%s val=%d\n", __func__, val);
 
 	if (val) {
 		hrtimer_cancel(&chip->stop_timer);
