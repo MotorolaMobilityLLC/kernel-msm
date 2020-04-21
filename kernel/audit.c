@@ -908,9 +908,9 @@ static int audit_receive_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 			}
 			if (audit_enabled != AUDIT_OFF)
 				audit_log_config_change("audit_pid", new_pid, audit_pid, 1);
+			mutex_lock(&audit_sock_mutex);
 			audit_pid = new_pid;
 			audit_nlk_portid = NETLINK_CB(skb).portid;
-			mutex_lock(&audit_sock_mutex);
 			audit_sock = skb->sk;
 			mutex_unlock(&audit_sock_mutex);
 		}
