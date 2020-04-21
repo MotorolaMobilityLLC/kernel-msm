@@ -71,5 +71,25 @@
 		novatek,spi-rd-fast-addr = <0x03F310>;
 		status = "/chosen", "mmi,panel_name", "auo_nt36675_fhd_vid";
 	};
+
+	focaltech@0 {
+		compatible = "focaltech,fts";
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <9 0x02>;
+		spi-max-frequency=<20000000>;
+		focaltech,reset-gpio = <&tlmm 8 0x01>;
+		focaltech,irq-gpio = <&tlmm 9 0x02>;
+		focaltech,max-touch-number = <10>;
+		focaltech,display-coords =  <0 0 1080 2400>;
+		focaltech,report_gesture_key;
+		focaltech,dlfw_in_resume;
+		focaltech,panel-supplier = "txd";
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
+		pinctrl-0 = <&ts_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		status = "/chosen", "mmi,panel_name", "txd_ft8756_fhd_vid";
+	};
 };
 
