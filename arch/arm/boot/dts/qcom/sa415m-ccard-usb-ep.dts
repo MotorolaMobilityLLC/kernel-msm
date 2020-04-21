@@ -30,11 +30,6 @@
 		};
 
 		composition2 {
-			qcom,pid = <0x9105>;
-			qcom,composition = "diag.diag,gsi.dpl";
-		};
-
-		composition3 {
 			qcom,pid = <0x9107>;
 			qcom,composition = "diag.diag,ipc.ipc,gsi.rmnet.v2x,gsi.ecm,gsi.dpl";
 		};
