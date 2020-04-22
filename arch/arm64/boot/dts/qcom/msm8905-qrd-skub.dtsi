@@ -585,3 +585,12 @@
 &pm8909_conga_analog {
 	status = "disabled";
 };
+
+&mdss_dsi {
+	vdda-supply = <&pm8909_l2>;
+	vddio-supply = <&pm8909_l6>;
+	qcom,mdss_dsi_ctrl0@1ac8000 {
+		vdd-supply = <&pm8909_l17>;
+		vddio-supply = <&pm8909_l6>;
+	};
+};

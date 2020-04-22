@@ -608,6 +608,8 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-pm8916-mtp.dtb \
 	sdw2500-apq8009w-wtp.dtb \
 	sdw2500-msm8909w-wtp.dtb \
 	msm8905-qrd-skub_qseev4.dtb \
+	msm8905-qrd-skub.dtb \
+	msm8905-qrd-sku3.dtb \
 	msm8909-mtp.dtb \
 	msm8909-1gb-mtp.dtb
 
