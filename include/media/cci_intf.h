@@ -31,6 +31,7 @@ struct msm_cci_intf_data {
 };
 
 struct msm_cci_intf_xfer {
+	unsigned short cci_device;  /* 0 = device_0, 1 = device_1 */
 	unsigned short cci_bus;     /* 0 = MASTER_0, 1 = MASTER_1 */
 	unsigned short slave_addr;  /* 7-bit addr of intended device */
 	struct msm_cci_intf_register  reg;
