@@ -2847,7 +2847,6 @@ static void smblib_hvdcp_adaptive_voltage_change(struct smb_charger *chg)
 
 int smblib_dp_dm(struct smb_charger *chg, int val)
 {
-#ifdef QCOM_BASE
 	int target_icl_ua, rc = 0;
 	union power_supply_propval pval;
 	u8 stat;
@@ -2980,9 +2979,6 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 	}
 
 	return rc;
-#else
-	return 0;
-#endif
 }
 
 int smblib_disable_hw_jeita(struct smb_charger *chg, bool disable)
@@ -6402,7 +6398,6 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 	chg->mmi.charging_limit_modes = CHARGING_LIMIT_OFF;
 	chg->mmi.hvdcp3_con = false;
-	chg->mmi.vbus_inc_cnt = 0;
 	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
 	cancel_delayed_work(&chg->mmi.heartbeat_work);
 	schedule_delayed_work(&chg->mmi.heartbeat_work,
@@ -9393,6 +9388,146 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 		chip->mmi.charging_limit_modes = charging_limit_modes;
 }
 
+#define CHARGER_POWER_15W 15000
+#define CHARGER_POWER_18W 18000
+#define CHARGER_POWER_20W 20000
+
+#define HVDCP_VOLTAGE_BASIC		(mmi_chip->mmi.hvdcp_power_max / 3)
+#define HVDCP_VOLTAGE_NOM		(HVDCP_VOLTAGE_BASIC - 200)
+#define HVDCP_VOLTAGE_MAX		(HVDCP_VOLTAGE_BASIC + 200)
+#define HVDCP_VOLTAGE_MIN		4000
+#define HVDCP_PULSE_COUNT_MAX 	((HVDCP_VOLTAGE_BASIC - 5000) / 200 + 2)
+static void mmi_charger_power_support(struct smb_charger *chg)
+{
+	struct device_node *np = chg->dev->of_node;
+	const char *charger_ability = NULL;
+	int retval;
+
+	if (of_property_read_bool(np, "qcom,force-hvdcp-5v")) {
+		chg->mmi.hvdcp_power_max = CHARGER_POWER_15W;
+		return;
+	}
+
+	retval = of_property_read_u32(np, "qcom,hvdcp-power-max",
+				  &chg->mmi.hvdcp_power_max);
+	if (retval) {
+		chg->mmi.hvdcp_power_max = CHARGER_POWER_15W;
+		return;
+	}
+
+	np = of_find_node_by_path("/chosen");
+
+	if (!np)
+		return;
+
+	retval = of_property_read_string(np, "mmi,charger",
+						 &charger_ability);
+
+	if ((retval == -EINVAL) || !charger_ability) {
+		pr_err("mmi,charger unused\n");
+		of_node_put(np);
+		return;
+
+	} else
+		pr_info("charger = %s\n", charger_ability);
+
+	if (strstr(charger_ability, "15W"))
+		chg->mmi.hvdcp_power_max = CHARGER_POWER_15W;
+	else if (strstr(charger_ability, "18W"))
+		chg->mmi.hvdcp_power_max = CHARGER_POWER_18W;
+	else if (strstr(charger_ability, "20W"))
+		chg->mmi.hvdcp_power_max = CHARGER_POWER_20W;
+
+	of_node_put(np);
+
+	return;
+}
+
+static int mmi_increase_vbus_power(struct smb_charger *chg, int cur_mv)
+{
+	int rc = -EINVAL;
+	union power_supply_propval val = {0, };
+
+	smblib_dbg(chg, PR_MOTO, "DP DM pulse count = %d\n", chg->pulse_cnt);
+
+	/* Maintain vbus voltage for QC3.0 power/3A charging */
+	if (chg->pulse_cnt == 0) {
+
+		vote(chg->chg_disable_votable, HEARTBEAT_VOTER, true, 0);
+
+		while (cur_mv < HVDCP_VOLTAGE_NOM
+				&& chg->pulse_cnt < chg->mmi.inc_hvdcp_cnt) {
+
+			val.intval = POWER_SUPPLY_DP_DM_DP_PULSE;
+			rc = smblib_dp_dm(chg, val.intval);
+			if (rc < 0) {
+				smblib_err(chg, "Couldn't set dpdm pulse rc=%d\n", rc);
+				break;
+			}
+
+			msleep(100);
+
+			rc = smblib_get_prop_usb_voltage_now(chg, &val);
+			if (rc < 0) {
+				smblib_err(chg, "Error getting USB Voltage rc = %d\n", rc);
+				break;
+			} else
+				cur_mv = val.intval / 1000;
+
+			smblib_dbg(chg, PR_MOTO, "pulse count = %d, cur_mv = %d\n",
+						chg->pulse_cnt, cur_mv);
+		}
+
+		rc = smblib_set_charge_param(chg, &chg->param.aicl_cont_threshold,
+					     HVDCP_VOLTAGE_NOM - 1000);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't set aicl cont threshold to 9V rc=%d\n", rc);
+		}
+
+		vote(chg->chg_disable_votable, HEARTBEAT_VOTER, false, 0);
+	}
+
+	return cur_mv;
+}
+
+static bool mmi_chrg_usb_vin_config(struct smb_charger *chg, int cur_mv)
+{
+	bool vbus_inc_now = false;
+	int rc;
+	union power_supply_propval val = {0, };
+
+	if ((cur_mv < HVDCP_VOLTAGE_MIN)
+		|| (chg->pd_active)
+		|| (!chg->mmi.hvdcp3_con))
+		return vbus_inc_now;
+
+	if (chg->mmi.hvdcp_power_max > CHARGER_POWER_15W) {
+		mmi_increase_vbus_power(chg, cur_mv);
+		return vbus_inc_now;
+	}
+
+	/* Maintain vbus voltage for QC3.0 5V/3A 15W charging */
+	smblib_dbg(chg, PR_MOTO, "DP DM pulse count = %d\n", chg->pulse_cnt);
+
+	if (cur_mv < HVDCP_VOLTAGE_NOM && chg->pulse_cnt < chg->mmi.inc_hvdcp_cnt)
+		val.intval = POWER_SUPPLY_DP_DM_DP_PULSE;
+	else if (cur_mv > HVDCP_VOLTAGE_MAX && chg->pulse_cnt > 0)
+		val.intval = POWER_SUPPLY_DP_DM_DM_PULSE;
+	else {
+		smblib_dbg(chg, PR_MOTO, "No need to change hvdcp voltage\n");
+		return vbus_inc_now;
+	}
+
+	rc = smblib_dp_dm(chg, val.intval);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't set dpdm pulse rc=%d\n", rc);
+	}
+
+	vbus_inc_now = true;
+
+	return vbus_inc_now;
+}
+
 /* For Testing 50/50 Turbo Charge Split with EB */
 static int force_eb_fifty;
 module_param(force_eb_fifty, int, 0644);
@@ -9406,11 +9541,6 @@ module_param(force_eb_fifty, int, 0644);
 #define EB_SPLIT_MA 500
 #define DEMO_MODE_HYS_SOC 5
 #define DEMO_MODE_VOLTAGE 4000
-#define VBUS_INPUT_VOLTAGE_TARGET 5200
-#define VBUS_INPUT_VOLTAGE_NOM ((VBUS_INPUT_VOLTAGE_TARGET) - 200)
-#define VBUS_INPUT_VOLTAGE_MAX ((VBUS_INPUT_VOLTAGE_TARGET) + 200)
-#define VBUS_INPUT_VOLTAGE_MIN 4000
-#define VBUS_INPUT_MAX_COUNT 4
 #define WARM_TEMP 45
 #define COOL_TEMP 0
 #define REV_BST_THRESH 4650
@@ -9431,7 +9561,6 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int dcin_mv;
 	u8 apsd_reg;
 	bool icl_override;
-	static int vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 	bool vbus_inc_now = false;
 	int vbus_present = 0;
 	int charger_present = 0;
@@ -9529,7 +9658,6 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vbus_present = val.intval;
 
 	if (!vbus_present) {
-		vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 		charger_present = 0;
 		mmi->charger_debounce_cnt = 0;
 		if (mmi->apsd_done &&
@@ -10066,27 +10194,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	vote(chip->dc_icl_votable, HEARTBEAT_VOTER,
 	     true, (target_dc >= 0) ? (target_dc * 1000) : 0);
 
-	if (charger_present && mmi->hvdcp3_con && !chip->pd_active &&
-	    (vbus_inc_mv > VBUS_INPUT_VOLTAGE_NOM)) {
-		if ((usb_mv < vbus_inc_mv) &&
-		    (usb_mv >= VBUS_INPUT_VOLTAGE_MIN) &&
-		    (mmi->vbus_inc_cnt < VBUS_INPUT_MAX_COUNT)) {
-			smblib_dbg(chip, PR_MOTO,
-				   "HVDCP Input %d mV Low, Increase\n",
-				   usb_mv);
-			smblib_dp_pulse(chip);
-			vbus_inc_now = true;
-			mmi->vbus_inc_cnt++;
-		} else if ((usb_mv > VBUS_INPUT_VOLTAGE_MAX)
-				&& (mmi->vbus_inc_cnt > 0)) {
-			smblib_dbg(chip, PR_MOTO,
-				   "HVDCP Input %d mV High, Decrease\n",
-				   usb_mv);
-			vbus_inc_mv -= 50;
-			smblib_dm_pulse(chip);
-			vbus_inc_now = true;
-			mmi->vbus_inc_cnt--;
-		}
+	if (charger_present) {
+		vbus_inc_now = mmi_chrg_usb_vin_config(chip, usb_mv);
 	}
 
 	if (chip->mmi.pres_temp_zone == ZONE_HOT) {
@@ -11106,6 +11215,13 @@ static int parse_mmi_dt(struct smb_charger *chg)
 		chg->mmi.vfloat_comp_mv = 0;
 	chg->mmi.vfloat_comp_mv /= 1000;
 
+	mmi_charger_power_support(chg);
+
+	rc = of_property_read_u32(node, "qcom,inc-hvdcp-cnt",
+				  &chg->mmi.inc_hvdcp_cnt);
+	if (rc)
+		chg->mmi.inc_hvdcp_cnt = HVDCP_PULSE_COUNT_MAX;
+
 	return rc;
 }
 
@@ -11262,6 +11378,19 @@ void mmi_init(struct smb_charger *chg)
 				 0x00);
 	if (rc)
 		smblib_err(chg, "couldn't set JEITA CFG\n");
+
+	/*
+	 * set pulse count max
+	 * accordingly to limit voltage increment.
+	 */
+	if (chg->mmi.hvdcp_power_max) {
+		rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					    HVDCP_PULSE_COUNT_MAX_QC2_MASK |
+					    HVDCP_PULSE_COUNT_MAX_QC3_MASK,
+					    chg->mmi.inc_hvdcp_cnt);
+		if (rc < 0)
+			smblib_err(chg, "Could not set HVDCP pulse count max\n");
+	}
 
 	/* Register the notifier for the psy updates*/
 	chg->mmi.mmi_psy_notifier.notifier_call = mmi_psy_notifier_call;
