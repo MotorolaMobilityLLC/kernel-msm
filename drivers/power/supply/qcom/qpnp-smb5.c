@@ -2176,8 +2176,11 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		rc = smblib_run_aicl(chg, RERUN_AICL);
 		break;
 	case POWER_SUPPLY_PROP_DP_DM:
+		/* Skip the hvdcp request from hvdcp daemon */
+		#ifdef QCOM_BASE
 		if (!chg->flash_active)
 			rc = smblib_dp_dm(chg, val->intval);
+		#endif
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:
 		rc = smblib_set_prop_input_current_limited(chg, val);
