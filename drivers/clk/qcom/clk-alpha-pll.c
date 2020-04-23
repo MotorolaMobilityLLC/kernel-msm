@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2017, 2020, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -554,11 +554,29 @@ void clk_fabia_pll_configure(struct clk_alpha_pll *pll, struct regmap *regmap,
 	pll->inited = true;
 }
 
-static int clk_fabia_pll_enable(struct clk_hw *hw)
+static int pll_is_enabled(struct clk_hw *hw, u32 mask)
 {
 	int ret;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	u32 val, off = pll->offset;
+
+	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+	if (ret)
+		return ret;
+
+	return !!(val & mask);
+}
+
+static int clk_alpha_pll_is_enabled(struct clk_hw *hw)
+{
+	return pll_is_enabled(hw, PLL_LOCK_DET);
+}
+
+static int clk_fabia_pll_enable(struct clk_hw *hw)
+{
+	int ret;
+	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
+	u32 val, opmode_val, off = pll->offset;
 
 	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
 	if (ret)
@@ -571,6 +589,14 @@ static int clk_fabia_pll_enable(struct clk_hw *hw)
 			return ret;
 		return wait_for_pll_enable(pll, PLL_ACTIVE_FLAG);
 	}
+
+	ret = regmap_read(pll->clkr.regmap, off + FABIA_OPMODE, &opmode_val);
+	if (ret)
+		return ret;
+
+	/* Skip If PLL is already running */
+	if ((opmode_val & PLL_RUN) && (val & PLL_OUTCTRL))
+		return 0;
 
 	if (unlikely(!pll->inited))
 		clk_fabia_pll_configure(pll, pll->clkr.regmap, pll->config);
@@ -751,6 +777,7 @@ EXPORT_SYMBOL_GPL(clk_alpha_pll_hwfsm_ops);
 const struct clk_ops clk_fabia_pll_ops = {
 	.enable = clk_fabia_pll_enable,
 	.disable = clk_fabia_pll_disable,
+	.is_enabled = clk_alpha_pll_is_enabled,
 	.recalc_rate = clk_fabia_pll_recalc_rate,
 	.round_rate = clk_alpha_pll_round_rate,
 	.set_rate = clk_fabia_pll_set_rate,
@@ -761,6 +788,7 @@ EXPORT_SYMBOL_GPL(clk_fabia_pll_ops);
 const struct clk_ops clk_fabia_fixed_pll_ops = {
 	.enable = clk_fabia_pll_enable,
 	.disable = clk_fabia_pll_disable,
+	.is_enabled = clk_alpha_pll_is_enabled,
 	.recalc_rate = clk_fabia_pll_recalc_rate,
 	.round_rate = clk_alpha_pll_round_rate,
 	.list_registers = clk_fabia_pll_list_registers,
