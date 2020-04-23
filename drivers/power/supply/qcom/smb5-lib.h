@@ -496,7 +496,8 @@ struct mmi_params {
 	bool			hvdcp3_con;
 	struct notifier_block	mmi_psy_notifier;
 	bool			init_done;
-	int			vbus_inc_cnt;
+	int			inc_hvdcp_cnt;
+	int			hvdcp_power_max;
 	bool			enable_charging_limit;
 	bool			is_factory_image;
 	enum charging_limit_modes	charging_limit_modes;
