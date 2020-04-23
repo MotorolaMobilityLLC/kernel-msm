@@ -158,6 +158,58 @@
 	};
 };
 
+&flash_led {
+	pm6150l_flash0: qcom,flash_0 {
+		label = "flash";
+		qcom,led-name = "led:flash_0";
+		qcom,max-current = <750>;
+		qcom,default-led-trigger = "flash0_trigger";
+		qcom,id = <0>;
+		qcom,current-ma = <500>;
+		qcom,duration-ms = <1280>;
+		qcom,ires-ua = <12500>;
+		qcom,hdrm-voltage-mv = <325>;
+		qcom,hdrm-vol-hi-lo-win-mv = <100>;
+	};
+
+	pm6150l_flash1: qcom,flash_1 {
+		label = "flash";
+		qcom,led-name = "led:flash_1";
+		qcom,max-current = <750>;
+		qcom,default-led-trigger = "flash1_trigger";
+		qcom,id = <1>;
+		qcom,current-ma = <500>;
+		qcom,duration-ms = <1280>;
+		qcom,ires-ua = <12500>;
+		qcom,hdrm-voltage-mv = <325>;
+		qcom,hdrm-vol-hi-lo-win-mv = <100>;
+	};
+
+	pm6150l_torch0: qcom,torch_0 {
+		label = "torch";
+		qcom,led-name = "led:torch_0";
+		qcom,max-current = <300>;
+		qcom,default-led-trigger = "torch0_trigger";
+		qcom,id = <0>;
+		qcom,current-ma = <150>;
+		qcom,ires-ua = <12500>;
+		qcom,hdrm-voltage-mv = <325>;
+		qcom,hdrm-vol-hi-lo-win-mv = <100>;
+	};
+
+	pm6150l_torch1: qcom,torch_1 {
+		label = "torch";
+		qcom,led-name = "led:torch_1";
+		qcom,max-current = <300>;
+		qcom,default-led-trigger = "torch1_trigger";
+		qcom,id = <1>;
+		qcom,current-ma = <150>;
+		qcom,ires-ua = <12500>;
+		qcom,hdrm-voltage-mv = <325>;
+		qcom,hdrm-vol-hi-lo-win-mv = <100>;
+	};
+};
+
 &soc {
 	camera_main_avdd_ldo: gpio-regulator@0 {
 		compatible = "regulator-fixed";
@@ -243,9 +295,9 @@
 		cell-index = <0>;
 		reg = <0x00 0x00>;
 		compatible = "qcom,camera-flash";
-		flash-source = <&pm6150l_flash0>;
-		torch-source = <&pm6150l_torch0>;
-		switch-source = <&pm6150l_switch0>;
+		flash-source = <&pm6150l_flash0 &pm6150l_flash1>;
+		torch-source = <&pm6150l_torch0 &pm6150l_torch1>;
+		switch-source = <&pm6150l_switch2>;
 		status = "ok";
 	};
 
@@ -253,9 +305,9 @@
 		cell-index = <1>;
 		reg = <0x01 0x00>;
 		compatible = "qcom,camera-flash";
-		flash-source = <&pm6150l_flash0>;
-		torch-source = <&pm6150l_torch0>;
-		switch-source = <&pm6150l_switch0>;
+		flash-source = <&pm6150l_flash0 &pm6150l_flash1>;
+		torch-source = <&pm6150l_torch0 &pm6150l_torch1>;
+		switch-source = <&pm6150l_switch2>;
 		status = "ok";
 	};
 
@@ -264,9 +316,9 @@
 		cell-index = <2>;
 		reg = <0x02 0x00>;
 		compatible = "qcom,camera-flash";
-		flash-source = <&pm6150l_flash0>;
-		torch-source = <&pm6150l_torch0>;
-		switch-source = <&pm6150l_switch0>;
+		flash-source = <&pm6150l_flash0 &pm6150l_flash1>;
+		torch-source = <&pm6150l_torch0 &pm6150l_torch1>;
+		switch-source = <&pm6150l_switch2>;
 		status = "ok";
 	};
 
