@@ -287,6 +287,19 @@ static ssize_t panelRegDA_show(struct device *device,
 	return written;
 }
 
+static ssize_t panelSupplier_show(struct device *device,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	int written = 0;
+
+	mutex_lock(&connector->dev->mode_config.mutex);
+	written = snprintf(buf, PAGE_SIZE, "%s\n", connector->display_info.panel_supplier);
+	mutex_unlock(&connector->dev->mode_config.mutex);
+
+	return written;
+}
 
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
@@ -296,6 +309,7 @@ static DEVICE_ATTR_RO(panelId);
 static DEVICE_ATTR_RO(panelVer);
 static DEVICE_ATTR_RO(panelName);
 static DEVICE_ATTR_RO(panelRegDA);
+static DEVICE_ATTR_RO(panelSupplier);
 
 
 static struct attribute *connector_dev_attrs[] = {
@@ -307,6 +321,7 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_panelVer.attr,
 	&dev_attr_panelName.attr,
 	&dev_attr_panelRegDA.attr,
+	&dev_attr_panelSupplier.attr,
 	NULL
 };
 
