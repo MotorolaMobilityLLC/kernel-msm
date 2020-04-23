@@ -27,6 +27,14 @@ config GUAMP_DTB
       Only include Guamp specific DTBs to limit the number that
       get built during kernel compilatio
 
+config GUAMNA_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "GuamNA DTBs"
+    help
+      Only include Guam NA specific DTBs to limit the number that
+      get built during kernel compilatio
+
 
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
