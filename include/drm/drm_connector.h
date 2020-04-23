@@ -272,6 +272,7 @@ struct drm_display_info {
 	u64 panel_ver;
 	u32 panel_regDA;
 	char panel_name[DRM_DISPLAY_NAME_LEN];
+	char panel_supplier[DRM_DISPLAY_NAME_LEN];
 
 
 	/**
