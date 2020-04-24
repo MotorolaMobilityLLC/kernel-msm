@@ -538,6 +538,7 @@ struct dwc3_msm {
 	bool			dual_port;
 
 	bool			perf_mode;
+	bool			ext_typec_switch;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -3002,6 +3003,9 @@ static void dwc3_set_ssphy_orientation_flag(struct dwc3_msm *mdwc)
 
 	if (mdwc->orientation_override) {
 		mdwc->ss_phy->flags |= mdwc->orientation_override;
+	} else if (mdwc->ext_typec_switch) {
+		dev_dbg(mdwc->dev, "%s: DWC3 ext_typec_switch set in device tree forcing PHY_LANE_A\n", __func__);
+		mdwc->ss_phy->flags |= PHY_LANE_A;
 	} else if (mdwc->ss_redriver_node) {
 		ret = redriver_orientation_get(mdwc->ss_redriver_node);
 		if (ret == 0)
@@ -4719,6 +4723,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	set_bit(ID, &mdwc->inputs);
 
 	mdwc->dual_port = of_property_read_bool(node, "qcom,dual-port");
+	mdwc->ext_typec_switch = of_property_read_bool(node, "mmi,ext-typec-switch");
 
 	ret = of_property_read_u32(node, "qcom,lpm-to-suspend-delay-ms",
 				&mdwc->lpm_to_suspend_delay);
