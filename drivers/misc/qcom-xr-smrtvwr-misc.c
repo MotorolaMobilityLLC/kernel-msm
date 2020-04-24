@@ -32,7 +32,6 @@ static int qcom_xr_smrtvwr_probe(struct platform_device *pdev)
 	struct regulator *reg1, *reg2, *reg3;
 	int dp3p3_en_gpio = 142;
 	int wcd_en_gpio = 93;
-	int switch_gpio = 112;
 	int rgb_tck_oe_en_gpio = 108;
 
 	reg1 = devm_regulator_get(&pdev->dev, "pm660l_l6");
@@ -91,19 +90,6 @@ static int qcom_xr_smrtvwr_probe(struct platform_device *pdev)
 	gpio_set_value(wcd_en_gpio, 1);
 	msleep(20);
 
-	rc = gpio_request(switch_gpio, "1p8_en_gpio");
-	if (rc) {
-		pr_err("%s 1p8_switch_gpio request failed\n", __func__);
-		goto gpio_switch_fail;
-	}
-	rc = gpio_direction_output(switch_gpio, 0);
-	if (rc) {
-		pr_err("%s 1p8_switch_gpio direction failed\n", __func__);
-		goto gpio_switch_fail;
-	}
-	gpio_set_value(switch_gpio, 1);
-	msleep(20);
-
 	rc = gpio_request(rgb_tck_oe_en_gpio, "rgb_tck_oe_en_gpio");
 	if (rc) {
 		pr_err("%s rgb_tck_oe_en_gpio request failed\n", __func__);
@@ -122,8 +108,6 @@ static int qcom_xr_smrtvwr_probe(struct platform_device *pdev)
 
 gpio_oe_en_fail:
 	gpio_free(rgb_tck_oe_en_gpio);
-gpio_switch_fail:
-	gpio_free(switch_gpio);
 gpiowcd_fail:
 	gpio_free(wcd_en_gpio);
 gpio3p3_fail:
