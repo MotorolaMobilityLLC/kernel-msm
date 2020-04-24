@@ -123,10 +123,11 @@
 	qcom,usbeb-unsupported;
 	qcom,mmi-temp-zones = <0 4200 970 0>,
 				<10 0 2425 2425>,
-				<15 0 3600 3600>,
-				<45 0 3600 3600>,
-				<60 4200 3600 0>;
-	qcom,thermal-mitigation = <3600>,
+				<15 0 4000 4000>,
+				<45 0 4000 4000>,
+				<60 4200 4000 0>;
+	qcom,thermal-mitigation = <4000>,
+				   <3500>,
 				   <3000>,
 				   <2500>,
 				   <2000>,
@@ -137,6 +138,9 @@
 				   <500>,
 				   <300>;
 	qcom,upper-limit-capacity = <70>;
+	qcom,fcc-max-ua = <4000000>;
+	qcom,hvdcp-power-max = <20000>;
+	qcom,disable-fcc-restriction;
 };
 
 &pm6150_qg {
