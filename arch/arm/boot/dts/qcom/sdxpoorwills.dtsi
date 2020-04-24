@@ -1172,7 +1172,7 @@
 		reg-names = "wdt-base";
 		interrupts = <1 3 0>, <1 2 0>;
 		qcom,bark-time = <11000>;
-		qcom,pet-time = <10000>;
+		qcom,pet-time = <9360>;
 	};
 
 	qcom_rng: qrng@793000{
