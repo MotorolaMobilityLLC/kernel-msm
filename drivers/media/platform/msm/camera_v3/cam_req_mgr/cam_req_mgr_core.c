@@ -937,7 +937,7 @@ static int __cam_req_mgr_check_sync_req_is_ready(
 	if (sync_link->initial_skip) {
 		link->initial_skip = false;
 		__cam_req_mgr_inject_delay(link->req.l_tbl, slot->idx);
-		CAM_DBG(CAM_CRM,
+		CAM_WARN(CAM_CRM,
 			"sync link %x not streamed on",
 			sync_link->link_hdl);
 		return -EAGAIN;
