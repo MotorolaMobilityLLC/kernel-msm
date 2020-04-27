@@ -261,7 +261,7 @@
 };
 
 &vendor_fstab {
-	status = "disabled";
+	status = "ok";
 };
 
 &system_fstab {
