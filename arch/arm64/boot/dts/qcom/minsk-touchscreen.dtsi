@@ -1,0 +1,104 @@
+/*
+ * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&qupv3_se6_i2c {
+	status = "disabled";
+};
+
+&qupv3_se6_spi_pins {
+	qupv3_se6_spi_active: qupv3_se6_spi_active {
+		mux {
+			pins = "gpio6", "gpio7", "gpio8";
+			function = "qup12";
+		};
+
+		config {
+			pins = "gpio6", "gpio7", "gpio8";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se6_spi_sleep: qupv3_se6_spi_sleep {
+		mux {
+			pins = "gpio6", "gpio7", "gpio8";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio6", "gpio7", "gpio8";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se6_spi_cs_active: qupv3_se6_spi_cs_active {
+		mux {
+			pins = "gpio9";
+			function = "qup12";
+		};
+
+		config {
+			pins = "gpio9";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	qupv3_se6_spi_cs_sleep: qupv3_se6_spi_cs_sleep {
+		mux {
+			pins = "gpio9";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio9";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+};
+
+&qupv3_se6_spi {
+	status = "ok";
+	pinctrl-0 = <&qupv3_se6_spi_active &qupv3_se6_spi_cs_active>;
+	pinctrl-1 = <&qupv3_se6_spi_sleep &qupv3_se6_spi_cs_sleep>;
+
+	ilitek@0{
+		compatible = "tchip,ilitek";
+		reg = <0x0>;
+		poll_mode = <0>;
+		spi-max-frequency = <12000000>;
+		touch,reset-gpio = <&tlmm 88 0x00>;
+		touch,irq-gpio = <&tlmm 89 0x2002>;
+		status = "/chosen", "mmi,panel_name", "dsi_ili9881x_tm_720P_vid_display";
+	};
+
+	novatek@0{
+		compatible = "novatek,NVT-ts-spi";
+		reg = <0x0>; //Same as CS ID
+		spi-max-frequency = <9600000>; //4800000,9600000,15000000,19200000
+		novatek,reset-gpio = <&tlmm 88 0x00>;
+		novatek,irq-gpio = <&tlmm 89 0x2001>;
+		novatek,def-max-resolution = <720 1600>;
+
+		/* 525 */
+		//novatek,swrst-n8-addr = <0x01F01A>;
+
+		/* 672A, 525B, 675, 526, 672C */
+		novatek,swrst-n8-addr = <0x03F0FE>;
+		novatek,spi-rd-fast-addr = <0x03F310>;
+		status = "/chosen", "mmi,panel_name", "dsi_nt36672a_djn_720P_vid_display";
+	};
+
+};
