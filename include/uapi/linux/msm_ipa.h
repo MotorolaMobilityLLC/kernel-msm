@@ -501,6 +501,7 @@ enum ipa_client_type {
 	((client) == IPA_CLIENT_MHI_CONS || \
 	(client) == IPA_CLIENT_MHI_PROD || \
 	(client) == IPA_CLIENT_MHI_DPL_CONS || \
+	(client) == IPA_CLIENT_MHI_LOW_LAT_CONS || \
 	(client) == IPA_CLIENT_MHI_LOW_LAT_PROD || \
 	(client) == IPA_CLIENT_MHI_QDSS_CONS)
 
