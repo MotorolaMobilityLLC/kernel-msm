@@ -1,0 +1,277 @@
+/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&tlmm{
+	amp_irq: amp_irq {
+		mux {
+			pins = "gpio112";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio112";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	amp_reset: amp_reset {
+		mux {
+			pins = "gpio103";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio103";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-up;
+		};
+	};
+};
+
+&qupv3_se5_i2c { /* gpio14,gpio15: qupv3_se5_i2c_* */
+	status = "okay";
+
+	tas2562:tas2562@4c {
+		compatible = "ti,tas2562";
+		reg = <0x4c>;
+		ti,channels = <1>;
+		ti,left-channel = <0x4c>;
+		ti,reset-gpio = <&tlmm 103 0>;
+		ti,irq-gpio = <&tlmm 112 0>;
+		ti,asi-format = <0>;   /* 0, i2S; 1, DSP; */
+		pinctrl-names = "default";
+		pinctrl-0 = <&amp_irq>;
+		status = "ok";
+	};
+};
+
+&bolero {
+	status = "okay";
+	qcom,num-macros = <3>;
+};
+
+&wsa_macro {
+	status = "disabled";
+};
+
+&wcd937x_codec {
+	status = "okay";
+};
+
+&wcd937x_rst_gpio {
+	status  = "okay";
+};
+
+&cdc_dmic01_gpios {
+	status = "disabled";
+};
+
+&cdc_dmic23_gpios {
+	status = "disabled";
+};
+
+&wsa_swr_gpios {
+	status = "disabled";
+};
+
+&rx_swr_gpios {
+	status = "okay";
+};
+
+&tx_swr_gpios {
+	status = "okay";
+};
+
+&wsa_spkr_en1 {
+	status = "disabled";
+};
+
+&wsa_spkr_en2 {
+	status = "disabled";
+};
+
+&clock_audio_wsa_1 {
+	status  = "disabled";
+};
+
+&clock_audio_wsa_2 {
+	status  = "disabled";
+};
+
+&wcd9xxx_intc {
+	status  = "disabled";
+};
+
+&wcd934x_rst_gpio {
+	status  = "disabled";
+};
+
+&tavil_glink {
+	status  = "disabled";
+};
+
+&tavil_wdsp {
+	status  = "disabled";
+};
+
+&dai_slim {
+	status  = "disabled";
+};
+
+&slim_aud {
+	status = "disabled";
+};
+
+&clock_audio {
+	status = "okay";
+};
+
+&soc {
+	cdc_ter_mi2s_gpios: msm_cdc_pinctrl_ter {
+		compatible = "qcom,msm-cdc-pinctrl";
+                pinctrl-names = "aud_active", "aud_sleep";
+                pinctrl-0 = <&ter_i2s_sck_active &ter_i2s_data0_active
+			     &ter_i2s_data1_active>;
+                pinctrl-1 = <&ter_i2s_sck_sleep &ter_i2s_data0_sleep
+			      &ter_i2s_data1_sleep>;
+	};
+
+	msm_dai_mi2s: qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+			status = "disabled";
+		};
+
+		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
+			status = "disabled";
+		};
+
+		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+			status = "ok";
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <2>;
+			qcom,msm-mi2s-rx-lines = <1>;
+			qcom,msm-mi2s-tx-lines = <2>;
+		};
+
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+
+		dai_mi2s4: qcom,msm-dai-q6-mi2s-quin {
+			status = "disabled";
+		};
+
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-senary {
+			status = "disabled";
+		};
+	};
+};
+
+&sm6150_snd {
+	status = "ok";
+	compatible = "qcom,sm6150-asoc-snd";
+	qcom,wcn-btfm = <1>;
+	qcom,msm-mi2s-master = <1>, <1>, <1>, <1>, <1>;
+	qcom,ext-disp-audio-rx = <0>;
+	qcom,mi2s-audio-intf = <0>;
+	qcom,auxpcm-audio-intf = <0>;
+
+	qcom,tert-mi2s-gpios = <&cdc_ter_mi2s_gpios>;
+
+	ti,tas2558-max-devs = <1>;
+
+	qcom,msm-mbhc-hphl-swh = <1>;
+	qcom,msm-mbhc-gnd-swh = <1>;
+	/delete-property/ qcom,cdc-dmic01-gpios;
+	/delete-property/ qcom,cdc-dmic23-gpios;
+
+	qcom,audio-routing =
+		"AMIC1", "MIC BIAS1",
+		"MIC BIAS1", "Analog Mic1",
+		"AMIC2", "MIC BIAS2",
+		"MIC BIAS2", "Analog Mic2",
+		"AMIC3", "MIC BIAS3",
+		"MIC BIAS3", "Analog Mic3",
+		"TX_AIF1 CAP", "VA_MCLK",
+		"TX_AIF2 CAP", "VA_MCLK",
+		"RX AIF1 PB", "VA_MCLK",
+		"RX AIF2 PB", "VA_MCLK",
+		"RX AIF3 PB", "VA_MCLK",
+		"RX AIF4 PB", "VA_MCLK",
+		"HPHL_OUT", "VA_MCLK",
+		"HPHR_OUT", "VA_MCLK",
+		"AUX_OUT", "VA_MCLK",
+		"IN1_HPHL", "HPHL_OUT",
+		"IN2_HPHR", "HPHR_OUT",
+		"IN3_AUX", "AUX_OUT",
+		"TX SWR_ADC0", "ADC1_OUTPUT",
+		"TX SWR_ADC2", "ADC2_OUTPUT";
+
+	asoc-codec  = <&stub_codec>, <&bolero>;
+	asoc-codec-names = "msm-stub-codec.1", "bolero_codec";
+
+	asoc-cpu = <&dai_mi2s2>,
+				<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
+				<&afe_proxy_tx>, <&incall_record_rx>,
+				<&incall_record_tx>, <&incall_music_rx>,
+				<&incall_music_2_rx>,
+				<&sb_7_rx>, <&sb_7_tx>, <&sb_8_tx>, <&sb_8_rx>,
+				<&usb_audio_rx>, <&usb_audio_tx>,
+				<&wsa_cdc_dma_0_rx>, <&wsa_cdc_dma_0_tx>,
+				<&wsa_cdc_dma_1_rx>, <&wsa_cdc_dma_1_tx>,
+				<&wsa_cdc_dma_2_tx>,
+				<&rx_cdc_dma_0_rx>, <&tx_cdc_dma_0_tx>,
+				<&rx_cdc_dma_1_rx>, <&tx_cdc_dma_1_tx>,
+				<&rx_cdc_dma_2_rx>, <&tx_cdc_dma_2_tx>,
+				<&rx_cdc_dma_3_rx>, <&tx_cdc_dma_3_tx>,
+				<&rx_cdc_dma_4_rx>, <&tx_cdc_dma_4_tx>,
+				<&rx_cdc_dma_5_rx>, <&tx_cdc_dma_5_tx>,
+				<&rx_cdc_dma_6_rx>, <&rx_cdc_dma_7_rx>;
+	asoc-cpu-names = "msm-dai-q6-mi2s.2", "msm-dai-q6-dev.224",
+				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16398",
+				"msm-dai-q6-dev.16399", "msm-dai-q6-dev.16401",
+				"msm-dai-q6-dev.16400",
+				"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
+				"msm-dai-cdc-dma-dev.45056",
+				"msm-dai-cdc-dma-dev.45057",
+				"msm-dai-cdc-dma-dev.45058",
+				"msm-dai-cdc-dma-dev.45059",
+				"msm-dai-cdc-dma-dev.45061",
+				"msm-dai-cdc-dma-dev.45104",
+				"msm-dai-cdc-dma-dev.45105",
+				"msm-dai-cdc-dma-dev.45106",
+				"msm-dai-cdc-dma-dev.45107",
+				"msm-dai-cdc-dma-dev.45108",
+				"msm-dai-cdc-dma-dev.45109",
+				"msm-dai-cdc-dma-dev.45110",
+				"msm-dai-cdc-dma-dev.45111",
+				"msm-dai-cdc-dma-dev.45112",
+				"msm-dai-cdc-dma-dev.45113",
+				"msm-dai-cdc-dma-dev.45114",
+				"msm-dai-cdc-dma-dev.45115",
+				"msm-dai-cdc-dma-dev.45116",
+				"msm-dai-cdc-dma-dev.45118";
+
+	qcom,wsa-max-devs = <0>;
+	/delete-property/ qcom,wsa-devs;
+	/delete-property/ qcom,wsa-aux-dev-prefix;
+	qcom,codec-max-aux-devs = <1>;
+	qcom,codec-aux-devs = <&wcd937x_codec>;
+	qcom,msm_audio_ssr_devs = <&audio_apr>, <&q6core>,
+				<&lpi_tlmm>, <&bolero>;
+};
