@@ -221,7 +221,7 @@
 /**
  * maximal number of NAT PDNs in the PDN config table
  */
-#define IPA_MAX_PDN_NUM 5
+#define IPA_MAX_PDN_NUM 16
 #define IPA_MAX_PDN_NUM_v4 5
 
 /**
