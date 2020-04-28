@@ -2772,7 +2772,7 @@ int smblib_get_prop_die_health(struct smb_charger *chg,
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
 #define HVDCP_CURRENT_UA		3000000
-#define TYPEC_DEFAULT_CURRENT_UA	900000
+#define TYPEC_DEFAULT_CURRENT_UA	500000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
 static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
@@ -2790,6 +2790,26 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 	/* fall through */
 	default:
 		rp_ua = chg->dcp_current_ua;
+	}
+
+	return rp_ua;
+}
+
+static int get_rp_based_usb_current(struct smb_charger *chg, int typec_mode)
+{
+	int rp_ua;
+
+	switch (typec_mode) {
+	case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
+		rp_ua = TYPEC_HIGH_CURRENT_UA;
+		break;
+	case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
+		rp_ua = TYPEC_MEDIUM_CURRENT_UA;
+		break;
+	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
+	/* fall through */
+	default:
+		rp_ua = TYPEC_DEFAULT_CURRENT_UA;
 	}
 
 	return rp_ua;
@@ -2817,6 +2837,9 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 {
 	int rc = 0, rp_ua, typec_mode;
 
+	typec_mode = smblib_get_prop_typec_mode(chg);
+	rp_ua = get_rp_based_usb_current(chg, typec_mode);
+
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT) {
 		if (usb_current == -ETIMEDOUT) {
 			/*
@@ -2836,21 +2859,40 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			 * real_charger_type
 			 */
 			chg->real_charger_type = POWER_SUPPLY_TYPE_USB;
-			rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+			if (rp_ua > TYPEC_DEFAULT_CURRENT_UA) {
+				rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+						false, 0);
+				if (rc < 0)
+					return rc;
+				rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER,
+							true, rp_ua);
+				if (rc < 0)
+					return rc;
+			} else {
+				rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
 						true, usb_current);
-			if (rc < 0)
-				return rc;
-			rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER,
+				if (rc < 0)
+					return rc;
+				rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER,
 							false, 0);
-			if (rc < 0)
-				return rc;
+				if (rc < 0)
+					return rc;
+			}
 		}
 	} else if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB &&
 		usb_current == -ETIMEDOUT) {
-		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+		if (rp_ua > TYPEC_DEFAULT_CURRENT_UA)
+			rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER,
+						true, rp_ua);
+		else
+			rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
 					true, USBIN_100MA);
 	} else {
-		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+		if (rp_ua > TYPEC_DEFAULT_CURRENT_UA)
+			rc = vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER,
+					true, rp_ua);
+		else
+			rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
 					true, usb_current);
 	}
 
@@ -3952,13 +3994,25 @@ static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 		 * enumeration is done. Ensure that USB_PSY has at least voted
 		 * for 100mA before releasing the LEGACY_UNKNOWN vote
 		 */
-		if (!is_client_vote_enabled(chg->usb_icl_votable,
+		typec_mode = smblib_get_prop_typec_mode(chg);
+		rp_ua = get_rp_based_usb_current(chg, typec_mode);
+		if (rp_ua > TYPEC_DEFAULT_CURRENT_UA) {
+			vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, rp_ua);
+			vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
+		} else {
+			if (!is_client_vote_enabled(chg->usb_icl_votable,
 								USB_PSY_VOTER))
-			vote(chg->usb_icl_votable, USB_PSY_VOTER, true, 100000);
-		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, false, 0);
+				vote(chg->usb_icl_votable, USB_PSY_VOTER, true, 100000);
+			vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, false, 0);
+		}
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
-		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 1500000);
+		typec_mode = smblib_get_prop_typec_mode(chg);
+		rp_ua = get_rp_based_usb_current(chg, typec_mode);
+		if (rp_ua > TYPEC_DEFAULT_CURRENT_UA)
+			vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, rp_ua);
+		else
+			vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 1500000);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
 		typec_mode = smblib_get_prop_typec_mode(chg);
