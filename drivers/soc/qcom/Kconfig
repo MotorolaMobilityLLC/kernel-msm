@@ -43,6 +43,14 @@ config NIO_DTB
     Only include NIO specific DTBs to limit the number that
     get built during kernel compilation.
 
+config KIEV_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "KIEV DTBs"
+	help
+	Only include KIEV specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
