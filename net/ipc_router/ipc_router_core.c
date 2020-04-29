@@ -3572,16 +3572,6 @@ int msm_ipc_router_close_port(struct msm_ipc_port *port_ptr)
 			ipc_router_destroy_rport(rport_ptr);
 		}
 
-		if (port_ptr->type == SERVER_PORT) {
-			memset(&msg, 0, sizeof(msg));
-			msg.cmd = IPC_ROUTER_CTRL_CMD_REMOVE_SERVER;
-			msg.srv.service = port_ptr->port_name.service;
-			msg.srv.instance = port_ptr->port_name.instance;
-			msg.srv.node_id = port_ptr->this_port.node_id;
-			msg.srv.port_id = port_ptr->this_port.port_id;
-			broadcast_ctl_msg(&msg);
-		}
-
 		/* Server port could have been a client port earlier.
 		 * Send REMOVE_CLIENT message in either case.
 		 */
@@ -3611,6 +3601,19 @@ int msm_ipc_router_close_port(struct msm_ipc_port *port_ptr)
 						  port_ptr->this_port.node_id,
 						  port_ptr->this_port.port_id);
 		}
+		/**
+		 * released server information from hash table, now
+		 * it is safe to broadcast remove server message so that
+		 * next call to lookup server will not succeed until
+		 * server open the port again
+		 */
+		memset(&msg, 0, sizeof(msg));
+		msg.cmd = IPC_ROUTER_CTRL_CMD_REMOVE_SERVER;
+		msg.srv.service = port_ptr->port_name.service;
+		msg.srv.instance = port_ptr->port_name.instance;
+		msg.srv.node_id = port_ptr->this_port.node_id;
+		msg.srv.port_id = port_ptr->this_port.port_id;
+		broadcast_ctl_msg(&msg);
 	}
 
 	mutex_lock(&port_ptr->port_lock_lhc3);
