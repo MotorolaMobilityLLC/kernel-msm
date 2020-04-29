@@ -35,6 +35,14 @@ config NAIRO_DTB
 	Only include NAIBO specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config KIEV_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "KIEV DTBs"
+	help
+	Only include KIEV specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_COMMAND_DB
 	bool "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
