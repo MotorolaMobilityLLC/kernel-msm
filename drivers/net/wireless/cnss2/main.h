@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,11 +27,14 @@
 #define QMI_WLFW_MAX_TIMESTAMP_LEN	32
 #define QMI_WLFW_MAX_NUM_MEM_SEG	32
 #define CNSS_RDDM_TIMEOUT_MS		20000
+#define RECOVERY_TIMEOUT		60000
 
 #define CNSS_EVENT_SYNC   BIT(0)
 #define CNSS_EVENT_UNINTERRUPTIBLE BIT(1)
 #define CNSS_EVENT_SYNC_UNINTERRUPTIBLE (CNSS_EVENT_SYNC | \
 				CNSS_EVENT_UNINTERRUPTIBLE)
+
+#define CNSS_FW_PATH_MAX_LEN 32
 
 enum cnss_dev_bus_type {
 	CNSS_BUS_NONE = -1,
@@ -39,8 +42,7 @@ enum cnss_dev_bus_type {
 	CNSS_BUS_USB,
 };
 
-struct cnss_vreg_info {
-	struct regulator *reg;
+struct cnss_vreg_cfg {
 	const char *name;
 	u32 min_uv;
 	u32 max_uv;
@@ -48,11 +50,19 @@ struct cnss_vreg_info {
 	u32 delay_us;
 };
 
+struct cnss_vreg_info {
+	struct list_head list;
+	struct regulator *reg;
+	struct cnss_vreg_cfg cfg;
+	u32 enabled;
+};
+
 struct cnss_pinctrl_info {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *bootstrap_active;
 	struct pinctrl_state *wlan_en_active;
 	struct pinctrl_state *wlan_en_sleep;
+	u32 activated;
 };
 
 struct cnss_subsys_info {
@@ -161,6 +171,11 @@ enum cnss_driver_event_type {
 	CNSS_DRIVER_EVENT_FORCE_FW_ASSERT,
 	CNSS_DRIVER_EVENT_POWER_UP,
 	CNSS_DRIVER_EVENT_POWER_DOWN,
+	CNSS_DRIVER_EVENT_IDLE_RESTART,
+	CNSS_DRIVER_EVENT_IDLE_SHUTDOWN,
+	CNSS_DRIVER_EVENT_QDSS_TRACE_REQ_MEM,
+	CNSS_DRIVER_EVENT_QDSS_TRACE_SAVE,
+	CNSS_DRIVER_EVENT_QDSS_TRACE_FREE,
 	CNSS_DRIVER_EVENT_CAL_UPDATE,
 	CNSS_DRIVER_EVENT_CAL_DOWNLOAD,
 	CNSS_DRIVER_EVENT_MAX,
@@ -173,11 +188,14 @@ enum cnss_driver_state {
 	CNSS_COLD_BOOT_CAL,
 	CNSS_DRIVER_LOADING,
 	CNSS_DRIVER_UNLOADING,
+	CNSS_DRIVER_IDLE_RESTART,
+	CNSS_DRIVER_IDLE_SHUTDOWN,
 	CNSS_DRIVER_PROBED,
 	CNSS_DRIVER_RECOVERY,
 	CNSS_FW_BOOT_RECOVERY,
 	CNSS_DEV_ERR_NOTIFY,
 	CNSS_DRIVER_DEBUG,
+	CNSS_IN_SUSPEND_RESUME,
 };
 
 struct cnss_recovery_data {
@@ -208,13 +226,49 @@ enum cnss_debug_quirks {
 	SKIP_DEVICE_BOOT,
 	USE_CORE_ONLY_FW,
 	SKIP_RECOVERY,
+	QMI_BYPASS,
+	ENABLE_WALTEST,
+	ENABLE_PCI_LINK_DOWN_PANIC,
+	FBC_BYPASS,
+	ENABLE_DAEMON_SUPPORT,
+	IGNORE_PCI_LINK_FAILURE,
+};
+
+enum cnss_bdf_type {
+	CNSS_BDF_BIN,
+	CNSS_BDF_ELF,
+	CNSS_BDF_REGDB = 4,
+	CNSS_BDF_DUMMY = 255,
+};
+
+struct cnss_control_params {
+	unsigned long quirks;
+	unsigned int mhi_timeout;
+	unsigned int qmi_timeout;
+	unsigned int bdf_type;
+};
+
+enum cnss_ce_index {
+	CNSS_CE_00,
+	CNSS_CE_01,
+	CNSS_CE_02,
+	CNSS_CE_03,
+	CNSS_CE_04,
+	CNSS_CE_05,
+	CNSS_CE_06,
+	CNSS_CE_07,
+	CNSS_CE_08,
+	CNSS_CE_09,
+	CNSS_CE_10,
+	CNSS_CE_11,
+	CNSS_CE_COMMON,
 };
 
 struct cnss_plat_data {
 	struct platform_device *plat_dev;
 	void *bus_priv;
 	enum cnss_dev_bus_type bus_type;
-	struct cnss_vreg_info *vreg_info;
+	struct list_head vreg_list;
 	struct cnss_pinctrl_info pinctrl_info;
 	struct cnss_subsys_info subsys_info;
 	struct cnss_ramdump_info ramdump_info;
@@ -224,6 +278,7 @@ struct cnss_plat_data {
 	struct notifier_block modem_nb;
 	struct cnss_platform_cap cap;
 	struct pm_qos_request qos_request;
+	struct cnss_device_version device_version;
 	unsigned long device_id;
 	enum cnss_driver_status driver_status;
 	u32 recovery_count;
@@ -242,6 +297,9 @@ struct cnss_plat_data {
 	u32 fw_mem_seg_len;
 	struct cnss_fw_mem fw_mem[QMI_WLFW_MAX_NUM_MEM_SEG];
 	struct cnss_fw_mem m3_mem;
+	u32 qdss_mem_seg_len;
+	struct cnss_fw_mem qdss_mem[QMI_WLFW_MAX_NUM_MEM_SEG];
+	u32 *qdss_reg;
 	struct cnss_pin_connect_result pin_result;
 	struct dentry *root_dentry;
 	atomic_t pm_count;
@@ -254,18 +312,23 @@ struct cnss_plat_data {
 	u32 diag_reg_read_len;
 	u8 *diag_reg_read_buf;
 	bool cal_done;
-	char firmware_name[13];
+	char firmware_name[CNSS_FW_PATH_MAX_LEN];
 	struct completion rddm_complete;
+	struct completion recovery_complete;
+	struct cnss_control_params ctrl_params;
+	u32 is_converged_dt;
+	struct device_node *dev_node;
+	u8 set_wlaon_pwr_ctrl;
 };
 
 struct cnss_plat_data *cnss_get_plat_priv(struct platform_device *plat_dev);
-bool *cnss_get_qmi_bypass(void);
-unsigned long *cnss_get_debug_quirks(void);
 int cnss_driver_event_post(struct cnss_plat_data *plat_priv,
 			   enum cnss_driver_event_type type,
 			   u32 flags, void *data);
 int cnss_get_vreg(struct cnss_plat_data *plat_priv);
 int cnss_get_pinctrl(struct cnss_plat_data *plat_priv);
+void cnss_put_vreg(struct cnss_plat_data *plat_priv);
+void cnss_put_pinctrl(struct cnss_plat_data *plat_priv);
 int cnss_power_on_device(struct cnss_plat_data *plat_priv);
 void cnss_power_off_device(struct cnss_plat_data *plat_priv);
 int cnss_register_subsys(struct cnss_plat_data *plat_priv);
@@ -273,7 +336,7 @@ void cnss_unregister_subsys(struct cnss_plat_data *plat_priv);
 int cnss_register_ramdump(struct cnss_plat_data *plat_priv);
 void cnss_unregister_ramdump(struct cnss_plat_data *plat_priv);
 void cnss_set_pin_connect_status(struct cnss_plat_data *plat_priv);
-u32 cnss_get_wake_msi(struct cnss_plat_data *plat_priv);
-bool *cnss_get_qmi_bypass(void);
-bool is_qcn7605_device(u16 device_id);
+const char *cnss_get_fw_path(struct cnss_plat_data *plat_priv);
+int cnss_dev_specific_power_on(struct cnss_plat_data *plat_priv);
+
 #endif /* _CNSS_MAIN_H */
