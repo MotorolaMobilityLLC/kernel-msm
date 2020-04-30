@@ -139,12 +139,14 @@
 				   <300>;
 	qcom,upper-limit-capacity = <70>;
 	qcom,fcc-max-ua = <4000000>;
+	qcom,fv-max-uv = <4450000>;
 	qcom,hvdcp-power-max = <20000>;
 	qcom,disable-fcc-restriction;
 };
 
 &pm6150_qg {
-	qcom,qg-iterm-ma = <300>;
+	/delete-property/qcom,rbat-conn-mohm;
+	qcom,qg-iterm-ma = <500>;
 	qcom,vbatt-cutoff-mv = <3200>;
 	qcom,vbatt-empty-mv = <3000>;
 	qcom,vbatt-low-mv = <3300>;
