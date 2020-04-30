@@ -1007,7 +1007,7 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 			(int) tm.tm_year + 1900, tm.tm_mon + 1,
 			tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-		pr_info("Report pwrkey %s event at: %s\n", pon_rt_bit &
+		pr_warn("Report pwrkey %s event at: %s\n", pon_rt_bit &
 			pon_rt_sts ? "press" : "release", buff);
 		break;
 	case PON_RESIN:
