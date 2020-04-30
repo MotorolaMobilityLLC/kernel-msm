@@ -112,6 +112,7 @@
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-sequence = <1 3>, <0 1>, <1 10>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
@@ -127,9 +128,9 @@
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
-			qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
+			qcom,mdss-dsi-hbm-on-command-state =  "dsi_hs_mode";
 			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
-			qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
+			qcom,mdss-dsi-hbm-off-command-state =  "dsi_hs_mode";
 		};
 	};
 };
@@ -145,6 +146,7 @@
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-sequence = <1 4>, <0 11>, <1 11>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
@@ -160,9 +162,9 @@
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
-			qcom,mdss-dsi-hbm-on-command-state =  "dsi_lp_mode";
+			qcom,mdss-dsi-hbm-on-command-state =  "dsi_hs_mode";
 			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
-			qcom,mdss-dsi-hbm-off-command-state =  "dsi_lp_mode";
+			qcom,mdss-dsi-hbm-off-command-state =  "dsi_hs_mode";
 		};
 	};
 };
