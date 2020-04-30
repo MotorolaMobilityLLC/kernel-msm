@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1029,7 +1029,7 @@ static int qusb_phy_probe(struct platform_device *pdev)
 			qphy->iface_clk = NULL;
 		if (ret == -EPROBE_DEFER)
 			return ret;
-			dev_err(dev, "couldn't get iface_clk(%d)\n", ret);
+		dev_err(dev, "couldn't get iface_clk(%d)\n", ret);
 		}
 	}
 
