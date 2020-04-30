@@ -1417,6 +1417,8 @@ Optional properties:
 - qcom,afe-rxtx-lb: AFE RX to TX loopback.
 - qcom,ext-mclk-gpio: pinctrl referring to external mclk
 - qcom,ext-mclk-src: Device tree node referring to external mclk clock
+- qcom,pri-spdiftx-gpios: Pinctrl referring to primary spdif output gpios
+- qcom,sec-spdiftx-gpios: Pinctrl referring to secondary spdif output gpios
 - #ext-mclk-1-cfg-cells: Number of cells in ext-mclk-1-cfg-* nodes. Must be 6.
 - ext-mclk-1 cfg-11p2896: Frequnency table for 11.2896MHz mclk frequnecy.
 			  Fields are clock rate, div2x, m, n, d and clock root.
