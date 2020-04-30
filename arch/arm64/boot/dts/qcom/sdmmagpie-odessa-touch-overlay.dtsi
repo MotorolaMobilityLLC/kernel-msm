@@ -69,6 +69,7 @@
 		novatek,def-max-resolution = <1080 2400>;
 		novatek,swrst-n8-addr = <0x03F0FE>;
 		novatek,spi-rd-fast-addr = <0x03F310>;
+		novatek,report_gesture_key;
 		status = "/chosen", "mmi,panel_name", "auo_nt36675_fhd_vid";
 	};
 
