@@ -13,6 +13,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include "sdm670-pmic-overlay.dtsi"
 #include "sdm670-sde-display.dtsi"
+#include "carrier-channel-ids.dtsi"
 
 &utags {
 	compatible = "mmi,utags";
