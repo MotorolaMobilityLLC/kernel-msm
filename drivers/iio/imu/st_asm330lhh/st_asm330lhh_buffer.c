@@ -538,6 +538,8 @@ int st_asm330lhh_fifo_setup(struct st_asm330lhh_hw *hw)
 	bool irq_active_low;
 	int i, err;
 
+	if (!irq_get_irq_data(hw->irq))
+		return -EINVAL;
 	irq_type = irqd_get_trigger_type(irq_get_irq_data(hw->irq));
 	if (irq_type == IRQF_TRIGGER_NONE)
 		irq_type = IRQF_TRIGGER_HIGH;
