@@ -1333,6 +1333,11 @@ static int mhi_hwc_chcmd(struct mhi_dev *mhi, uint chid,
 		connect_params.channel_id = chid;
 		connect_params.sys.skip_ep_cfg = true;
 
+		if (chid > HW_CHANNEL_END) {
+			pr_err("Channel DB for %d not enabled\n", chid);
+			return -EINVAL;
+		}
+
 		rc = ipa_mhi_connect_pipe(&connect_params,
 			&mhi->ipa_clnt_hndl[chid-HW_CHANNEL_BASE]);
 		if (rc)
