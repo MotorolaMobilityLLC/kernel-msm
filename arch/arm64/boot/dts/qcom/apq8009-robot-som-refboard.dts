@@ -77,7 +77,7 @@
 			"SpkrLeft IN", "SPK1 OUT",
 			"SpkrRight IN", "SPK2 OUT";
 
-		qcom,tdm-i2s-switch-enable = <&msm_gpio 88 0>;
+		qcom,pdm-i2s-switch-enable = <&msm_gpio 88 0>;
 		qcom,pri-mi2s-gpios = <&cdc_pri_mi2s_gpios>;
 		qcom,quat-mi2s-gpios = <&cdc_quat_tdm_gpios>;
 	};
