@@ -1771,7 +1771,7 @@
 &pmxpoorwills_gpios {
 	a2b_cdc_sel {
 		a2b_cdc_sel_default: a2b_cdc_sel_default {
-			pins = "gpio1";
+			pins = "gpio5";
 			power-source = <1>;
 			output-high;
 		};
