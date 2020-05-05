@@ -57,7 +57,7 @@
 		"opencl",	/* 40 */
 		"openmx",	/* 41 */
 		"altmx",	/* 42 */
-		"undefined",	/* 43 */
+		"openpe",	/* 43 */
 		"undefined",	/* 44 */
 		"undefined",	/* 45 */
 		"undefined",	/* 46 */
@@ -122,7 +122,7 @@
 		"vipeu",	/* 105 */
 		"veoneu",	/* 106 */
 		"openeu",	/* 107 */
-		"undefined",	/* 108 */
+		"reteu2",	/* 108 */
 		"undefined",	/* 109 */
 		"undefined",	/* 110 */
 		"undefined",	/* 111 */
@@ -167,7 +167,7 @@
 		"comcast",	/* 150 */
 		"fi",		/* 151 */
 		"vzwpre",	/* 152 */
-		"undefined",	/* 153 */
+		"boost",	/* 153 */
 		"undefined",	/* 154 */
 		"undefined",	/* 155 */
 		"undefined",	/* 156 */
