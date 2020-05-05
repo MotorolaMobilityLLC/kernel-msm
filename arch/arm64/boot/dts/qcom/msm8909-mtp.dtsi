@@ -193,39 +193,21 @@
 			"AMIC1", "MIC BIAS External",
 			"AMIC2", "MIC BIAS Internal2",
 			"AMIC3", "MIC BIAS External";
-		qcom,msm-gpios =
-			"pri_i2s",
-			"us_eu_gpio";
-		qcom,pinctrl-names =
-			"all_off",
-			"pri_i2s_act",
-			"us_eu_gpio_act",
-			"pri_i2s_us_eu_gpio_act";
-		pinctrl-names =
-			"all_off",
-			"pri_i2s_act",
-			"us_eu_gpio_act",
-			"pri_i2s_us_eu_gpio_act";
-		pinctrl-0 = <&cdc_pdm_lines_sus &cross_conn_det_sus
-							&vdd_spkdrv_sus>;
-		pinctrl-1 = <&cdc_pdm_lines_act &cross_conn_det_sus
-							&vdd_spkdrv_act>;
-		pinctrl-2 = <&cdc_pdm_lines_sus &cross_conn_det_act
-							&vdd_spkdrv_sus>;
-		pinctrl-3 = <&cdc_pdm_lines_act &cross_conn_det_act
-							&vdd_spkdrv_act>;
 		qcom,cdc-us-euro-gpios = <&msm_gpio 97 0>;
+		qcom,cdc-us-eu-gpios = <&cdc_us_euro_sw>;
+		qcom,pri-mi2s-gpios = <&cdc_pri_mi2s_gpios>;
+
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
 				<&afe>, <&lsm>, <&routing>, <&lpa>,
-				<&voice_svc>;
+				<&voice_svc>, <&pcm_noirq>;
 		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
 				"msm-pcm-dsp.2", "msm-voip-dsp",
 				"msm-pcm-voice", "msm-pcm-loopback",
 				"msm-compress-dsp", "msm-pcm-hostless",
 				"msm-pcm-afe", "msm-lsm-client",
 				"msm-pcm-routing", "msm-pcm-lpa",
-				"msm-voice-svc";
+				"msm-voice-svc", "msm-pcm-dsp-noirq";
 		asoc-cpu = <&dai_pri_auxpcm>,
 				<&dai_mi2s0>, <&dai_mi2s1>, <&dai_mi2s2>,
 				<&dai_mi2s3>, <&dai_mi2s4>, <&dai_mi2s5>,
@@ -245,8 +227,22 @@
 				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
 				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
 				"msm-dai-q6-dev.32770";
-		asoc-codec = <&stub_codec>, <&pm8909_conga_dig>;
-		asoc-codec-names = "msm-stub-codec.1", "cajon_codec";
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
+	};
+
+	cdc_us_euro_sw: msm_cdc_pinctrl_us_euro_sw {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&cross_conn_det_act>;
+		pinctrl-1 = <&cross_conn_det_sus>;
+	};
+
+	cdc_pri_mi2s_gpios: msm_cdc_pinctrl_pri {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&cdc_pdm_lines_act>;
+		pinctrl-1 = <&cdc_pdm_lines_sus>;
 	};
 };
 
