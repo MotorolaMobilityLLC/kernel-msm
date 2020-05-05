@@ -685,6 +685,14 @@ retry:
 			cnss_set_pci_link_status(pci_priv, PCI_DEF);
 	}
 
+	if (ret && link_up) {
+		cnss_pr_err("FAILED PCIe RECOVERY PANIC %s default option err  %d quirks %#lx\n",
+			link_up ? "resume" : "suspend", ret, pci_priv->ctrl_params.quirks);
+		cnss_pr_err("driver_state %#lx status %d power_on %d count %d recovery_count %d\n",
+			pci_priv->driver_state, pci_priv->driver_status, pci_priv->powered_on,
+			atomic_read(&pci_priv->pm_count), pci_priv->recovery_count);
+		BUG();
+	}
 	return ret;
 }
 
