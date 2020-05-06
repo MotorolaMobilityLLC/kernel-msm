@@ -35,6 +35,13 @@ config GUAMNA_DTB
       Only include Guam NA specific DTBs to limit the number that
       get built during kernel compilatio
 
+config BORNEO_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "BorneoNA DTBs"
+    help
+      Only include Borneo NA specific DTBs to limit the number that
+      get built during kernel compilatio
 
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
