@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -70,9 +70,11 @@ DEFINE_CLK_RPM_SMD_XO_BUFFER(bb_clk1, bb_clk1_a, BB_CLK1_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER(bb_clk2, bb_clk2_a, BB_CLK2_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER(rf_clk2, rf_clk2_a, RF_CLK2_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER(div_clk2, div_clk2_a, DIV_CLK2_ID);
+DEFINE_CLK_RPM_SMD_XO_BUFFER(bb_clk3, bb_clk3_a, BB_CLK3_ID);
 
 DEFINE_CLK_RPM_SMD_XO_BUFFER_PINCTRL(bb_clk1_pin, bb_clk1_a_pin, BB_CLK1_ID);
 DEFINE_CLK_RPM_SMD_XO_BUFFER_PINCTRL(bb_clk2_pin, bb_clk2_a_pin, BB_CLK2_ID);
+DEFINE_CLK_RPM_SMD_XO_BUFFER_PINCTRL(bb_clk3_pin, bb_clk3_a_pin, BB_CLK3_ID);
 
 /* Voter clocks */
 static DEFINE_CLK_VOTER(pnoc_msmbus_clk, &pnoc_clk.c, LONG_MAX);
@@ -4108,6 +4110,8 @@ static struct clk_lookup msm_clocks_lookup_8937[] = {
 };
 
 static struct clk_lookup msm_clocks_lookup_sdm429[] = {
+	CLK_LIST(bb_clk3),
+	CLK_LIST(bb_clk3_pin),
 	CLK_LIST(gpll0_clk_src_8937),
 	CLK_LIST(gpll0_ao_clk_src_8937),
 	CLK_LIST(gpll0_sleep_clk_src),
