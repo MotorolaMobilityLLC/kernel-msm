@@ -2,6 +2,7 @@
 qcom,mg50-atl-5000mah {
     /* 4560932_Lenovo_Odessa_MG50_5000mAH_PM7150_averaged_MasterSlave_Apr23th2020 */
     serialnum = "SB18C80753";
+    qcom,sdam-magic-number = <0x18c80753>;
     qcom,max-voltage-uv = <4450000>;
     qcom,fg-cc-cv-threshold-uv = <4440000>;
     qcom,fastchg-current-ma = <4000>;
