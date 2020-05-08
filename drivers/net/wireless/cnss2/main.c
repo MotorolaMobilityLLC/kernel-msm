@@ -1515,8 +1515,10 @@ static void cnss_driver_event_work(struct work_struct *work)
 							   event->data);
 			break;
 		case CNSS_DRIVER_EVENT_REGISTER_DRIVER:
+			cnss_pm_stay_awake(plat_priv);
 			ret = cnss_bus_register_driver_hdlr(plat_priv,
 							    event->data);
+			cnss_pm_relax(plat_priv);
 			break;
 		case CNSS_DRIVER_EVENT_UNREGISTER_DRIVER:
 			ret = cnss_bus_unregister_driver_hdlr(plat_priv);
