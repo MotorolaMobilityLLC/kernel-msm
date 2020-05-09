@@ -100,7 +100,7 @@
 			config {
 				pins = "gpio12";
 				drive-strength = <2>;
-				bias-pull-up;
+				bias-disable;
 			};
 		};
 
@@ -468,6 +468,7 @@
 		status = "ok";
 		qcom,nq-irq = <&tlmm 37 0x00>;
 		qcom,nq-ven = <&tlmm 12 0x00>;
+		qcom,nq-clkreq = <&tlmm 31 0x00>;
 		qcom,nq-firm = <&tlmm 36 0x00>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <37 0>;
