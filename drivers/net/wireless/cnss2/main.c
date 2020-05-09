@@ -113,12 +113,12 @@ static void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 
 static void cnss_pm_relax(struct cnss_plat_data *plat_priv)
 {
-	cnss_pr_err("ENTER PM relax, state: 0x%lx, count: %d\n",
-		    plat_priv->driver_state,
-		    atomic_read(&plat_priv->pm_count));
 	int r = atomic_dec_return(&plat_priv->pm_count);
 
 	WARN_ON(r < 0);
+	cnss_pr_err("ENTER PM relax, state: 0x%lx, count: %d\n",
+		    plat_priv->driver_state,
+		    atomic_read(&plat_priv->pm_count));
 
 	if (r != 0)
 		return;
