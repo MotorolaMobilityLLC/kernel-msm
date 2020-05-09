@@ -99,9 +99,6 @@ static struct notifier_block cnss_pm_notifier = {
 
 static void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 {
-	cnss_pr_err("ENTER PM stay awake, state: 0x%lx, count: %d\n",
-		    plat_priv->driver_state,
-		    atomic_read(&plat_priv->pm_count));
 	if (atomic_inc_return(&plat_priv->pm_count) != 1)
 		return;
 
@@ -113,9 +110,6 @@ static void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 
 static void cnss_pm_relax(struct cnss_plat_data *plat_priv)
 {
-	cnss_pr_err("ENTER PM relax, state: 0x%lx, count: %d\n",
-		    plat_priv->driver_state,
-		    atomic_read(&plat_priv->pm_count));
 	int r = atomic_dec_return(&plat_priv->pm_count);
 
 	WARN_ON(r < 0);
@@ -546,7 +540,6 @@ int cnss_driver_event_post(struct cnss_plat_data *plat_priv,
 	if (!event)
 		return -ENOMEM;
 
-	cnss_pr_err("%s Calling cnss_pm_stay_awake\n", __func__);
 	cnss_pm_stay_awake(plat_priv);
 
 	event->type = type;
@@ -585,7 +578,6 @@ int cnss_driver_event_post(struct cnss_plat_data *plat_priv,
 	kfree(event);
 
 out:
-	cnss_pr_err("%s Calling cnss_pm_relax\n", __func__);
 	cnss_pm_relax(plat_priv);
 	return ret;
 }
@@ -1481,7 +1473,6 @@ static void cnss_driver_event_work(struct work_struct *work)
 		return;
 	}
 
-	cnss_pr_err("%s Calling cnss_pm_stay_awake\n", __func__);
 	cnss_pm_stay_awake(plat_priv);
 
 	spin_lock_irqsave(&plat_priv->event_lock, flags);
@@ -1524,11 +1515,9 @@ static void cnss_driver_event_work(struct work_struct *work)
 							   event->data);
 			break;
 		case CNSS_DRIVER_EVENT_REGISTER_DRIVER:
-			cnss_pr_err("%s Calling cnss_pm_stay_awake\n", __func__);
 			cnss_pm_stay_awake(plat_priv);
 			ret = cnss_bus_register_driver_hdlr(plat_priv,
 							    event->data);
-			cnss_pr_err("%s Calling cnss_pm_relax\n", __func__);
 			cnss_pm_relax(plat_priv);
 			break;
 		case CNSS_DRIVER_EVENT_UNREGISTER_DRIVER:
@@ -1587,7 +1576,6 @@ static void cnss_driver_event_work(struct work_struct *work)
 	}
 	spin_unlock_irqrestore(&plat_priv->event_lock, flags);
 
-	cnss_pr_err("%s Calling cnss_pm_relax\n", __func__);
 	cnss_pm_relax(plat_priv);
 }
 
