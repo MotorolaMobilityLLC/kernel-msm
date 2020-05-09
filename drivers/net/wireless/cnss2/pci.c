@@ -651,6 +651,7 @@ static int cnss_set_pci_link(struct cnss_pci_data *pci_priv, bool link_up)
 {
 	int ret = 0;
 	struct pci_dev *pci_dev = pci_priv->pci_dev;
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	enum msm_pcie_pm_opt pm_ops;
 	int retry = 0;
 
@@ -687,10 +688,10 @@ retry:
 
 	if (ret && link_up) {
 		cnss_pr_err("FAILED PCIe RECOVERY PANIC %s default option err  %d quirks %#lx\n",
-			link_up ? "resume" : "suspend", ret, pci_priv->ctrl_params.quirks);
+			link_up ? "resume" : "suspend", ret, plat_priv->ctrl_params.quirks);
 		cnss_pr_err("driver_state %#lx status %d power_on %d count %d recovery_count %d\n",
-			pci_priv->driver_state, pci_priv->driver_status, pci_priv->powered_on,
-			atomic_read(&pci_priv->pm_count), pci_priv->recovery_count);
+			plat_priv->driver_state, plat_priv->driver_status, plat_priv->powered_on,
+			atomic_read(&plat_priv->pm_count), plat_priv->recovery_count);
 		BUG();
 	}
 	return ret;
