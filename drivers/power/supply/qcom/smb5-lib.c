@@ -3274,6 +3274,78 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 					vbus_rising ? "attached" : "detached");
 }
 
+#define ARB_VBUS_UV_THRESHOLD 4300000
+#define ARB_IBUS_UA_THRESHOLD 100000
+#define ARB_DELAY_MS 10000
+static void smblib_arb_monitor_work(struct work_struct *work)
+{
+        struct smb_charger *chg = container_of(work, struct smb_charger,
+        arb_monitor_work.work);
+        int rc = 0;
+        int ibus_current = 0, vbus_voltage = 0;
+        union power_supply_propval pval = {0, };
+
+        smblib_dbg(chg, PR_MISC,"it's arb monitor work\n");
+
+        rc = power_supply_get_property(chg->usb_psy,
+                 POWER_SUPPLY_PROP_INPUT_CURRENT_NOW,
+                 &pval);
+        if(rc < 0){
+                 smblib_err(chg,"Couldn't get ibus current rc=%d\n", rc);
+                 goto out;
+        }else{
+                 ibus_current = pval.intval;
+        }
+
+        rc = power_supply_get_property(chg->usb_psy,
+                 POWER_SUPPLY_PROP_VOLTAGE_NOW,
+                 &pval);
+        if(rc < 0){
+                 smblib_err(chg,"Couldn't get vbus voltage rc=%d\n", rc);
+                 goto out;
+        }else{
+                 vbus_voltage = pval.intval;
+        }
+
+        smblib_dbg(chg, PR_MISC, "it's arb monitor work, ibus_current:%d, vbus_voltage:%d\n",
+        ibus_current, vbus_voltage);
+        if(vbus_voltage < ARB_VBUS_UV_THRESHOLD
+                 && ibus_current < ARB_IBUS_UA_THRESHOLD)
+        {
+                 smblib_err(chg, "ARB is triggered now, ibus_current:%d, vbus_voltage:%d\n",
+                        ibus_current, vbus_voltage);
+		 if (chg->mmi.factory_mode)
+                        smblib_set_usb_suspend(chg, true);
+                 else {
+                        rc = vote(chg->usb_icl_votable, USER_VOTER, true, 0);
+                        if(rc < 0){
+                                smblib_err(chg, "Couldn't vote to suspend USB rc=%d\n", rc);
+                                goto out;
+                        }
+                 }
+
+                 mdelay(100);
+
+                 if (chg->mmi.factory_mode)
+                         smblib_set_usb_suspend(chg,
+                                chg->mmi.force_chg_suspend);
+                 else {
+                        rc = vote(chg->usb_icl_votable, USER_VOTER, false, 0);
+                        if(rc < 0){
+                                smblib_err(chg, "Couldn't vote to resume USB rc=%d\n", rc);
+                                goto out;
+                        }
+                 }
+         }
+
+         schedule_delayed_work(&chg->arb_monitor_work, msecs_to_jiffies(ARB_DELAY_MS));
+
+         return;
+out:
+         smblib_err(chg, "stop monitor arb.\n");
+}
+
+
 #define PL_DELAY_MS	30000
 static int factory_kill_disable;
 module_param(factory_kill_disable, int, 0644);
@@ -3308,6 +3380,9 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
 		schedule_delayed_work(&chg->pl_enable_work,
 					msecs_to_jiffies(PL_DELAY_MS));
+
+                if (chg->mmi.mmi_qc_arb_suspend_usb == true)
+                        schedule_delayed_work(&chg->arb_monitor_work, msecs_to_jiffies(ARB_DELAY_MS));
 
 		if (chg->mmi.factory_mode)
 			chg->mmi.factory_kill_armed = true;
@@ -3362,6 +3437,10 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 			smblib_err(chg, "Couldn't disable DPDM rc=%d\n", rc);
 
 		smblib_update_usb_type(chg);
+
+                if (chg->mmi.mmi_qc_arb_suspend_usb == true)
+                        cancel_delayed_work_sync(&chg->arb_monitor_work);
+
 		if (chg->mmi.factory_kill_armed && !factory_kill_disable) {
 			smblib_err(chg, "Factory kill power off\n");
 			kernel_power_off();
@@ -3377,6 +3456,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 	cancel_delayed_work(&chg->mmi.heartbeat_work);
 	schedule_delayed_work(&chg->mmi.heartbeat_work,
 			      msecs_to_jiffies(0));
+
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: usbin-plugin %s\n",
 					vbus_rising ? "attached" : "detached");
 }
@@ -4805,6 +4885,9 @@ int smblib_init(struct smb_charger *chg)
 	INIT_DELAYED_WORK(&chg->uusb_otg_work, smblib_uusb_otg_work);
 	INIT_DELAYED_WORK(&chg->bb_removal_work, smblib_bb_removal_work);
 	INIT_DELAYED_WORK(&chg->usbov_dbc_work, smblib_usbov_dbc_work);
+
+        if(chg->mmi.mmi_qc_arb_suspend_usb == true)
+                INIT_DELAYED_WORK(&chg->arb_monitor_work, smblib_arb_monitor_work);
 
 	if (chg->wa_flags & CHG_TERMINATION_WA) {
 		INIT_WORK(&chg->chg_termination_work,

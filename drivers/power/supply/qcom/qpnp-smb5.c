@@ -514,6 +514,8 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chg->fcc_stepper_enable = of_property_read_bool(node,
 					"qcom,fcc-stepping-enable");
 
+        chip->chg.mmi.mmi_qc_arb_suspend_usb = of_property_read_bool(node,
+                                        "qcom,mmi-qc-arb-suspend-usb");
 	return 0;
 }
 

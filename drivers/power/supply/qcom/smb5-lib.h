@@ -377,6 +377,7 @@ struct mmi_params {
 	bool                    test_mode;
 	int                     test_mode_soc;
 	int                     test_mode_temp;
+        bool                    mmi_qc_arb_suspend_usb;
 };
 
 struct smb_charger {
@@ -445,6 +446,7 @@ struct smb_charger {
 	struct delayed_work	uusb_otg_work;
 	struct delayed_work	bb_removal_work;
 	struct delayed_work	usbov_dbc_work;
+        struct delayed_work     arb_monitor_work;
 
 	/* alarm */
 	struct alarm		moisture_protection_alarm;
