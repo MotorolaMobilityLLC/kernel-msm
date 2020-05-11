@@ -10,34 +10,48 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#include "dsi-panel-mot-auo-nt36675-fhd-video.dtsi"
 
-#include "dsi-panel-mot-ili9881x-tm-720P-video.dtsi"
-#include "dsi-panel-mot-nt36672a-djn-720P-video.dtsi"
+
+&pm6150l_wled {
+	qcom,string-cfg= <7>;
+	status = "ok";
+};
+
+&dsi_panel_pwr_supply {
+	qcom,panel-supply-entry@0 {
+		reg = <0>;
+		qcom,supply-name = "vddio";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1904000>;
+		qcom,supply-enable-load = <32000>;
+		qcom,supply-disable-load = <80>;
+	};
+
+	qcom,panel-supply-entry@1 {
+		reg = <1>;
+		qcom,supply-name = "lab";
+		qcom,supply-min-voltage = <5500000>;
+		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <3>;
+	};
+
+	qcom,panel-supply-entry@2 {
+		reg = <2>;
+		qcom,supply-name = "ibb";
+		qcom,supply-min-voltage = <5500000>;
+		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-off-sleep = <3>;
+		qcom,supply-post-on-sleep = <3>;
+	};
+};
 
 &soc {
-	dsi_ili9881x_tm_720P_vid_display: qcom,dsi-display@10 {
-		label = "dsi_ili9881x_tm_720P_vid_display";
-		qcom,display-type = "primary";
-		qcom,dsi-ctrl-num = <0>;
-		qcom,dsi-phy-num = <0>;
-		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
-			"src_byte_clk0", "src_pixel_clk0",
-			"shadow_byte_clk0", "shadow_pixel_clk0";
-		qcom,dsi-panel = <&dsi_ili9881x_tm_hd_video>;
-	};
-
-	dsi_nt36672a_djn_720P_vid_display: qcom,dsi-display@11 {
-		label = "dsi_nt36672a_djn_720P_vid_display";
-		qcom,display-type = "primary";
-		qcom,dsi-ctrl-num = <0>;
-		qcom,dsi-phy-num = <0>;
-		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
-			"src_byte_clk0", "src_pixel_clk0",
-			"shadow_byte_clk0", "shadow_pixel_clk0";
-		qcom,dsi-panel = <&dsi_nt36672a_djn_hd_video>;
-	};
-
-	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@12 {
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@10 {
 		label = "dsi_mot_dummy_qhd_video_display";
 		qcom,display-type = "primary";
 
@@ -47,43 +61,78 @@
 
 		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
 	};
+	dsi_nt36675_auo_vid_display: qcom,dsi-display@11 {
+		label = "dsi_nt36675_auo_vid_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
+			"src_byte_clk0", "src_pixel_clk0",
+			"shadow_byte_clk0", "shadow_pixel_clk0";
+		lab-supply = <&lcdb_ldo_vreg>;
+		ibb-supply = <&lcdb_ncp_vreg>;
+		qcom,dsi-panel = <&dsi_nt36675_auo_video>;
+	};
 };
 
 &sde_dsi {
 	qcom,dsi-display-list = <
-				  &dsi_ili9881x_tm_720P_vid_display
-				  &dsi_nt36672a_djn_720P_vid_display
-                                  &dsi_mot_dummy_qhd_video_display>;
+		&dsi_mot_dummy_qhd_video_display
+		&dsi_nt36675_auo_vid_display>;
+
+        /delete-property/ qcom,platform-te-gpio;
+	/delete-property/ vddio-supply;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+	vddio-supply = <&pm6150_l13>;
 };
 
-&dsi_ili9881x_tm_hd_video {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-dsi-bl-default-level = <2047>;
-	qcom,platform-te-gpio = <&tlmm 90 0>;
-	qcom,platform-reset-gpio = <&tlmm 91 0>;
-	qcom,platform-tp-reset-gpio = <&tlmm 88 0>;
-	qcom,platform-en-gpio = <&tlmm 108 0>;
-	//qcom,tp-reset-enabled;
-
-	qcom,mdss-dsi-t-clk-post = <0x0B>;
-	qcom,mdss-dsi-t-clk-pre = <0x22>;
-
-	qcom,power_off_mode = <1>;
+&dsi_nt36675_auo_video {
+	qcom,mdss-dsi-t-clk-post = <0x0F>;
+	qcom,mdss-dsi-t-clk-pre = <0x36>;
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,tp_state_check_enable;
+	qcom,mdss-dsi-reset-sequence = <1 3>, <0 1>, <1 10>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
+			qcom,mdss-dsi-h-front-porch = <60>;
+			qcom,mdss-dsi-h-back-porch = <60>;
+			qcom,mdss-dsi-h-pulse-width = <10>;
+			qcom,mdss-dsi-v-back-porch = <10>;
+			qcom,mdss-dsi-v-front-porch = <20>;
+			qcom,mdss-dsi-v-pulse-width = <10>;
 			qcom,mdss-dsi-panel-phy-timings =
-				[1f 1c 05 06 03 02 04 a0
-				1f 1c 05 06 03 02 04 a0
-				1f 1c 05 06 03 02 04 a0
-				1f 1c 05 06 03 02 04 a0
-				1f 10 05 06 03 02 04 a0];
+				[26 21 09 0B 06 02 04 a0
+				26 21 09 0B 06 02 04 a0
+				26 21 09 0B 06 02 04 a0
+				26 21 09 0B 06 02 04 a0
+				26 20 09 0B 06 02 04 a0];
+
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
+			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+			qcom,mdss-dsi-hbm-on-command-state =  "dsi_hs_mode";
+			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+			qcom,mdss-dsi-hbm-off-command-state =  "dsi_hs_mode";
 		};
 	};
+};
+
+&dsi_nt36675_auo_video {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <18>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-dsi-bl-default-level = <2047>;
+	qcom,mdss-brightness-max-level = <255>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 };
 
 &mot_dummy_vid_qhd {
@@ -107,29 +156,12 @@
 	};
 };
 
-&dsi_nt36672a_djn_hd_video {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-dsi-bl-default-level = <2047>;
-	qcom,platform-te-gpio = <&tlmm 90 0>;
-	qcom,platform-reset-gpio = <&tlmm 91 0>;
-	qcom,platform-tp-reset-gpio = <&tlmm 88 0>;
-	qcom,platform-en-gpio = <&tlmm 108 0>;
+&pm6150l_wled {
+	qcom,fs-current-limit = <25000>;
+	qcom,en-cabc;
+	qcom,cabc-sel = <1>;
+};
 
-	qcom,mdss-dsi-t-clk-post = <0x0A>;
-	qcom,mdss-dsi-t-clk-pre = <0x20>;
-	qcom,mdss-dsi-display-timings {
-	timing@0{
-		qcom,mdss-dsi-panel-phy-timings =
-			[1f 1c 04 06 03 02 04 a0
-			1f 1c 04 06 03 02 04 a0
-			1f 1c 04 06 03 02 04 a0
-			1f 1c 04 06 03 02 04 a0
-			1f 0f 04 06 03 02 04 a0];
-			qcom,display-topology = <1 0 1>;
-			qcom,default-topology-index = <0>;
-		};
-	};
+&sde_dp {
+	status = "disable";
 };
