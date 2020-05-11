@@ -37,6 +37,7 @@
 
 #include "ufshcd.h"
 #include "ufshpb.h"
+#include "ufs_quirks.h"
 
 #define UFSHCD_REQ_SENSE_SIZE	18
 
@@ -2684,14 +2685,14 @@ out:
 	return ret;
 }
 
-static inline int ufshpb_version_check(struct ufshpb_dev_info *hpb_dev_info)
+static inline int ufshpb_version_check(struct ufshpb_dev_info *hpb_dev_info, u16 id)
 {
 	INIT_INFO("Support HPB Spec : Driver = %.4X  Device = %.4X",
 		  UFSHPB_VER, hpb_dev_info->hpb_ver);
 
 	INIT_INFO("HPB Driver Version : %.4X", UFSHPB_DD_VER);
 
-	if (hpb_dev_info->hpb_ver != UFSHPB_VER) {
+	if (id == UFS_VENDOR_SAMSUNG && hpb_dev_info->hpb_ver != UFSHPB_VER) {
 		ERR_MSG("ERROR: HPB Spec Version mismatch. So HPB disabled.");
 		return -ENODEV;
 	}
@@ -2713,7 +2714,7 @@ void ufshpb_get_dev_info(struct ufshpb_dev_info *hpb_dev_info, u8 *desc_buf)
 
 	hpb_dev_info->hpb_ver = LI_EN_16(desc_buf + DEVICE_DESC_PARAM_HPB_VER);
 
-	ret = ufshpb_version_check(hpb_dev_info);
+	ret = ufshpb_version_check(hpb_dev_info, LI_EN_16(&desc_buf[DEVICE_DESC_PARAM_MANF_ID]));
 	if (!ret)
 		hpb_dev_info->hpb_device = true;
 }
