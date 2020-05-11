@@ -209,6 +209,7 @@
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
 	qcom,mmi-disable-hvdcp;
+        qcom,mmi-qc-arb-suspend-usb;
 };
 
 &pmi632_rgb {
