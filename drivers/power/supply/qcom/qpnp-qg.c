@@ -2072,6 +2072,11 @@ static int qg_psy_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATT_AGE_LEVEL:
 		rc = qg_setprop_batt_age_level(chip, pval->intval);
 		break;
+	case POWER_SUPPLY_PROP_BATT_FULL_CURRENT:
+		chip->dt.iterm_ma = pval->intval;
+		qg_dbg(chip, QG_DEBUG_STATUS, "set bat full current =%d\n",
+			chip->dt.iterm_ma);
+		break;
 	default:
 		break;
 	}
@@ -2236,6 +2241,7 @@ static int qg_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SOH:
 	case POWER_SUPPLY_PROP_FG_RESET:
 	case POWER_SUPPLY_PROP_BATT_AGE_LEVEL:
+	case POWER_SUPPLY_PROP_BATT_FULL_CURRENT:
 		return 1;
 	default:
 		break;

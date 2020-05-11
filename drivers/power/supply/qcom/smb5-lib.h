@@ -396,6 +396,12 @@ struct smb_iio {
 	struct iio_channel	*dcin_v_chan;
 };
 
+struct mmi_ffc_zone  {
+	int		ffc_max_mv;
+	int		ffc_chg_iterm;
+	int		ffc_qg_iterm;
+};
+
 struct mmi_temp_zone {
 	int		temp_c;
 	int		norm_mv;
@@ -459,6 +465,7 @@ struct mmi_params {
 
 	/* Charge Profile */
 	int			num_temp_zones;
+	struct mmi_ffc_zone	*ffc_zones;
 	struct mmi_temp_zone	*temp_zones;
 	enum mmi_temp_zones	pres_temp_zone;
 	enum mmi_chrg_step	pres_chrg_step;
