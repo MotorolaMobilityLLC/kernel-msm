@@ -1112,6 +1112,20 @@ int smblib_get_prop_from_bms(struct smb_charger *chg,
 	return rc;
 }
 
+int smblib_set_prop_to_bms(struct smb_charger *chg,
+				enum power_supply_property psp,
+				union power_supply_propval *val)
+{
+	int rc;
+
+	if (!chg->bms_psy)
+		return -EINVAL;
+
+	rc = power_supply_set_property(chg->bms_psy, psp, val);
+
+	return rc;
+}
+
 void smblib_apsd_enable(struct smb_charger *chg, bool enable)
 {
 	int rc;
@@ -8429,6 +8443,34 @@ int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
 	return iio_read_channel_processed(chg->iio.dcin_v_chan, &val->intval);
 }
 
+static int mmi_get_ffc_fv(struct smb_charger *chip, int zone)
+{
+	union power_supply_propval prop = {0,};
+	int rc;
+	int ffc_max_fv;
+
+	if (chip->mmi.ffc_zones == NULL
+		|| zone >= chip->mmi.num_temp_zones)
+		return 0;
+
+	prop.intval = chip->mmi.ffc_zones[zone].ffc_qg_iterm;
+	rc = smblib_set_prop_to_bms(chip,
+			POWER_SUPPLY_PROP_BATT_FULL_CURRENT, &prop);
+	if (rc < 0) {
+		smblib_err(chip, "Set bat full curr fail rc=%d\n", rc);
+		return 0;
+	}
+
+	chip->mmi.chrg_iterm = chip->mmi.ffc_zones[zone].ffc_chg_iterm;
+	ffc_max_fv = chip->mmi.ffc_zones[zone].ffc_max_mv;
+	smblib_dbg(chip, PR_MOTO,
+		"FFC temp zone %d, fv %d mV, chg iterm %d mA, qg iterm %d mA\n",
+		  zone, ffc_max_fv, chip->mmi.chrg_iterm,
+		  chip->mmi.ffc_zones[zone].ffc_qg_iterm);
+
+	return ffc_max_fv;
+}
+
 #define MIN_TEMP_C -20
 #define MAX_TEMP_C 60
 #define MIN_MAX_TEMP_C 47
@@ -9927,7 +9969,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vote(chip->fv_votable,
 		     BATT_PROFILE_VOTER, false, 0);
 	}
-	max_fv_mv = mmi->base_fv_mv;
+
+	max_fv_mv = mmi_get_ffc_fv(chip, mmi->pres_temp_zone);
+	if (max_fv_mv == 0)
+		max_fv_mv = mmi->base_fv_mv;
 
 	rc = smblib_get_prop_dc_voltage_now(chip, &val);
 	if (rc == -EINVAL) {
@@ -11109,6 +11154,42 @@ static int parse_mmi_dt(struct smb_charger *chg)
 		}
 		chg->mmi.pres_temp_zone = ZONE_NONE;
 	}
+
+	if (of_find_property(node, "qcom,mmi-ffc-zones", &byte_len)) {
+		if ((byte_len / sizeof(struct mmi_ffc_zone)
+			!= chg->mmi.num_temp_zones)
+			|| ((byte_len / sizeof(u32)) % 3)) {
+			smblib_err(chg,
+				   "DT error wrong mmi ffc zones\n");
+			return -ENODEV;
+		}
+
+		chg->mmi.ffc_zones = (struct mmi_ffc_zone *)
+			devm_kzalloc(chg->dev, byte_len, GFP_KERNEL);
+
+		if (chg->mmi.ffc_zones == NULL)
+			return -ENOMEM;
+
+		rc = of_property_read_u32_array(node,
+				"qcom,mmi-ffc-zones",
+				(u32 *)chg->mmi.ffc_zones,
+				byte_len / sizeof(u32));
+		if (rc < 0) {
+			smblib_err(chg,
+				   "Couldn't read mmi ffc zones rc = %d\n",
+				   rc);
+			return rc;
+		}
+
+		for (i = 0; i < chg->mmi.num_temp_zones; i++) {
+			smblib_err(chg,
+				"FFC:Zone %d,Volt %d,Ich %d,Iqg %d", i,
+				 chg->mmi.ffc_zones[i].ffc_max_mv,
+				 chg->mmi.ffc_zones[i].ffc_chg_iterm,
+				 chg->mmi.ffc_zones[i].ffc_qg_iterm);
+		}
+	} else
+		chg->mmi.ffc_zones = NULL;
 
 	if (of_find_property(node, "qcom,usb-thermal-mitigation", &byte_len)) {
 		chg->mmi.usb_thermal_mitigation =
