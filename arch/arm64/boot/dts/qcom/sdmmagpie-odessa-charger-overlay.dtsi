@@ -26,7 +26,7 @@
 		mmi,pd-volt-max = <10000000>;
 		mmi,pd-curr-max = <3000000>;
 		mmi,batt-curr-boost = <300000>;
-		mmi,batt-ovp-lmt = <4500000>;
+		mmi,batt-ovp-lmt = <4550000>;
 		mmi,pl-chrg-vbatt-min = <3600000>;
 		mmi,dont-rerun-aicl;
 		mmi,chrg-temp-zones-num = <5>;
@@ -34,7 +34,7 @@
 					<0 4200 970 0 0 0 0 0 0>,
 					<10 4450 2425 0 0 0 0 0 0>,
 					<15 4450 4850 0 0 0 0 0 0>,
-					<45 4350 6000 4450 4000 0 0 0 0>,
+					<45 4350 6000 4480 4000 0 0 0 0>,
 					<60 4200 4850 0 0 0 0 0 0>;
 		mmi,thermal-mitigation =
 					<6000000>,
@@ -85,8 +85,8 @@
 		ti,bq2597x,bus-therm-disable;
 		ti,bq2597x,die-therm-disable;
 
-		ti,bq2597x,bat-ovp-threshold = <4525>;
-		ti,bq2597x,bat-ovp-alarm-threshold = <4400>;
+		ti,bq2597x,bat-ovp-threshold = <4575>;
+		ti,bq2597x,bat-ovp-alarm-threshold = <4450>;
 		ti,bq2597x,bat-ocp-threshold = <8000>;
 		ti,bq2597x,bat-ocp-alarm-threshold = <6500>;
 
@@ -124,8 +124,17 @@
 	qcom,mmi-temp-zones = <0 4200 970 0>,
 				<10 0 2425 2425>,
 				<15 0 4000 4000>,
+				<23 0 4000 4000>,
+				<35 0 4000 4000>,
 				<45 0 4000 4000>,
 				<60 4200 4000 0>;
+	qcom,mmi-ffc-zones = <4450 243 500>,
+				<4450 243 500>,
+				<4450 243 500>,
+				<4480 670 980>,
+				<4480 770 1045>,
+				<4480 840 1120>,
+				<4450 243 500>;
 	qcom,thermal-mitigation = <4000>,
 				   <3500>,
 				   <3000>,
@@ -139,7 +148,7 @@
 				   <300>;
 	qcom,upper-limit-capacity = <70>;
 	qcom,fcc-max-ua = <4000000>;
-	qcom,fv-max-uv = <4450000>;
+	qcom,fv-max-uv = <4480000>;
 	qcom,hvdcp-power-max = <20000>;
 	qcom,disable-fcc-restriction;
 };
