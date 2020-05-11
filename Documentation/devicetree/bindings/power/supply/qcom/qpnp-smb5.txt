@@ -258,6 +258,12 @@ Charger specific properties:
   Definition: Boolean flag which when present enables stepwise change in FCC.
 		The default stepping rate is 100mA/sec.
 
+- qcom,mmi-qc-arb-suspend-usb
+	Usage:  optional
+	Value type: <bool>
+	Definition: if defined , enable qcom work-round to resolve PMI 632 ARB HW issue.
+		    if not defined, disable by default.
+
 =============================================
 Second Level Nodes - SMB5 Charger Peripherals
 =============================================
