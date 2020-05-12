@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,6 +20,10 @@
 	(VFE_RAW_0 + src - RDI_INTF_0))
 
 #define HANDLE_TO_IDX(handle) (handle & 0xFF)
+
+#ifdef CONFIG_MSM_AVTIMER
+static struct avtimer_fptr_t avtimer_func;
+#endif
 
 int msm_isp_axi_create_stream(
 	struct msm_vfe_axi_shared_data *axi_data,
@@ -614,32 +618,57 @@ static void msm_isp_calculate_bandwidth(
 }
 
 #ifdef CONFIG_MSM_AVTIMER
+/**
+ * msm_isp_set_avtimer_fptr() - Set avtimer function pointer
+ * @avtimer: struct of type avtimer_fptr_t to hold function pointer.
+ *
+ * Initialize the function pointers sent by the avtimer driver
+ *
+ */
+void msm_isp_set_avtimer_fptr(struct avtimer_fptr_t avtimer)
+{
+	avtimer_func.fptr_avtimer_open   = avtimer.fptr_avtimer_open;
+	avtimer_func.fptr_avtimer_enable = avtimer.fptr_avtimer_enable;
+	avtimer_func.fptr_avtimer_get_time = avtimer.fptr_avtimer_get_time;
+}
+EXPORT_SYMBOL(msm_isp_set_avtimer_fptr);
+
 void msm_isp_start_avtimer(void)
 {
-	avcs_core_open();
-	avcs_core_disable_power_collapse(1);
+	if (avtimer_func.fptr_avtimer_open &&
+			avtimer_func.fptr_avtimer_enable) {
+		avtimer_func.fptr_avtimer_open();
+		avtimer_func.fptr_avtimer_enable(1);
+	}
+}
+void msm_isp_stop_avtimer(void)
+{
+	if (avtimer_func.fptr_avtimer_enable)
+		avtimer_func.fptr_avtimer_enable(0);
 }
 
-static inline void msm_isp_get_avtimer_ts(
+void msm_isp_get_avtimer_ts(
 		struct msm_isp_timestamp *time_stamp)
 {
 	int rc = 0;
 	uint32_t avtimer_usec = 0;
 	uint64_t avtimer_tick = 0;
 
-	rc = avcs_core_query_timer(&avtimer_tick);
-	if (rc < 0) {
-		pr_err("%s: Error: Invalid AVTimer Tick, rc=%d\n",
-			   __func__, rc);
-		/* In case of error return zero AVTimer Tick Value */
-		time_stamp->vt_time.tv_sec = 0;
-		time_stamp->vt_time.tv_usec = 0;
-	} else {
-		avtimer_usec = do_div(avtimer_tick, USEC_PER_SEC);
-		time_stamp->vt_time.tv_sec = (uint32_t)(avtimer_tick);
-		time_stamp->vt_time.tv_usec = avtimer_usec;
-		pr_debug("%s: AVTimer TS = %u:%u\n", __func__,
-			(uint32_t)(avtimer_tick), avtimer_usec);
+	if (avtimer_func.fptr_avtimer_get_time) {
+		rc = avtimer_func.fptr_avtimer_get_time(&avtimer_tick);
+		if (rc < 0) {
+			pr_err_ratelimited("%s: Error: Invalid AVTimer Tick, rc=%d\n",
+				   __func__, rc);
+			/* In case of error return zero AVTimer Tick Value */
+			time_stamp->vt_time.tv_sec = 0;
+			time_stamp->vt_time.tv_usec = 0;
+		} else {
+			avtimer_usec = do_div(avtimer_tick, USEC_PER_SEC);
+			time_stamp->vt_time.tv_sec = (uint32_t)(avtimer_tick);
+			time_stamp->vt_time.tv_usec = avtimer_usec;
+			pr_debug("%s: AVTimer TS = %u:%u\n", __func__,
+				(uint32_t)(avtimer_tick), avtimer_usec);
+		}
 	}
 }
 #else
