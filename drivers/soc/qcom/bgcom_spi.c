@@ -1050,6 +1050,7 @@ static int bg_spi_remove(struct spi_device *spi)
 {
 	struct bg_spi_priv *bg_spi = spi_get_drvdata(spi);
 
+	bg_com_drv = NULL;
 	mutex_destroy(&bg_spi->xfer_mutex);
 	devm_kfree(&spi->dev, bg_spi);
 	spi_set_drvdata(spi, NULL);
