@@ -129,8 +129,11 @@ static void update_passive_instance(struct thermal_zone_device *tz,
 	 * If value is +1, activate a passive instance.
 	 * If value is -1, deactivate a passive instance.
 	 */
-	if (type == THERMAL_TRIP_PASSIVE || type == THERMAL_TRIPS_NONE)
+	if (type == THERMAL_TRIP_PASSIVE || type == THERMAL_TRIPS_NONE) {
 		tz->passive += value;
+		dev_warn(&tz->device, "[%s] temp=%d, passive=%d\n",
+			tz->type, tz->temperature, tz->passive);
+	}
 }
 
 static void thermal_zone_trip_update(struct thermal_zone_device *tz, int trip)
