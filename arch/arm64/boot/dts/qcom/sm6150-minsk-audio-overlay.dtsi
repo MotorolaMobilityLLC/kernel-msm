@@ -13,26 +13,26 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 
 &tlmm{
-	amp_irq: amp_irq {
+	aw882xx_reset_default: aw882xx_reset_default {
 		mux {
-			pins = "gpio112";
+			pins = "gpio103";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio112";
+			pins = "gpio103";
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-up;
-			input-enable;
+			output-high;
 		};
 	};
 
-	amp_reset: amp_reset {
+	aw882xx_irq_default: aw882xx_irq_default {
 		mux {
-			pins = "gpio103";
+			pins = "gpio112";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio103";
+			pins = "gpio112";
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-up;
 		};
@@ -40,19 +40,62 @@
 };
 
 &qupv3_se5_i2c { /* gpio14,gpio15: qupv3_se5_i2c_* */
-	status = "okay";
+        status = "ok";
 
-	tas2562:tas2562@4c {
-		compatible = "ti,tas2562";
-		reg = <0x4c>;
-		ti,channels = <1>;
-		ti,left-channel = <0x4c>;
-		ti,reset-gpio = <&tlmm 103 0>;
-		ti,irq-gpio = <&tlmm 112 0>;
-		ti,asi-format = <0>;   /* 0, i2S; 1, DSP; */
-		pinctrl-names = "default";
-		pinctrl-0 = <&amp_irq>;
-		status = "ok";
+        aw882xx:aw882xx_smartpa@34 {
+                compatible = "awinic,aw882xx_smartpa";
+                reg = <0x34>;
+
+                pinctrl-names = "default";
+                pinctrl-0 = <&aw882xx_irq_default>, <&aw882xx_reset_default>;
+
+                reset-gpio = <&tlmm 103 0>;
+                irq-gpio = <&tlmm 112 0x2008>;
+                monitor-flag = <1>;
+                monitor-timer-val = <3000>;
+                status = "okay";
+        };
+};
+
+&soc {
+	cdc_ter_mi2s_gpios: msm_cdc_pinctrl_ter {
+		compatible = "qcom,msm-cdc-pinctrl";
+                pinctrl-names = "aud_active", "aud_sleep";
+                pinctrl-0 = <&ter_i2s_sck_active &ter_i2s_data0_active
+			     &ter_i2s_data1_active>;
+                pinctrl-1 = <&ter_i2s_sck_sleep &ter_i2s_data0_sleep
+			      &ter_i2s_data1_sleep>;
+	};
+
+	msm_dai_mi2s: qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+			status = "disabled";
+		};
+
+		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
+			status = "disabled";
+		};
+
+		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+			status = "ok";
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <2>;
+			qcom,msm-mi2s-rx-lines = <1>;
+			qcom,msm-mi2s-tx-lines = <2>;
+		};
+
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+
+		dai_mi2s4: qcom,msm-dai-q6-mi2s-quin {
+			status = "disabled";
+		};
+
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-senary {
+			status = "disabled";
+		};
 	};
 };
 
@@ -133,52 +176,6 @@
 	status = "disabled";
 };
 
-&clock_audio {
-	status = "okay";
-};
-
-&soc {
-	cdc_ter_mi2s_gpios: msm_cdc_pinctrl_ter {
-		compatible = "qcom,msm-cdc-pinctrl";
-                pinctrl-names = "aud_active", "aud_sleep";
-                pinctrl-0 = <&ter_i2s_sck_active &ter_i2s_data0_active
-			     &ter_i2s_data1_active>;
-                pinctrl-1 = <&ter_i2s_sck_sleep &ter_i2s_data0_sleep
-			      &ter_i2s_data1_sleep>;
-	};
-
-	msm_dai_mi2s: qcom,msm-dai-mi2s {
-		compatible = "qcom,msm-dai-mi2s";
-		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
-			status = "disabled";
-		};
-
-		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
-			status = "disabled";
-		};
-
-		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
-			status = "ok";
-			compatible = "qcom,msm-dai-q6-mi2s";
-			qcom,msm-dai-q6-mi2s-dev-id = <2>;
-			qcom,msm-mi2s-rx-lines = <1>;
-			qcom,msm-mi2s-tx-lines = <2>;
-		};
-
-		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
-			status = "disabled";
-		};
-
-		dai_mi2s4: qcom,msm-dai-q6-mi2s-quin {
-			status = "disabled";
-		};
-
-		dai_mi2s5: qcom,msm-dai-q6-mi2s-senary {
-			status = "disabled";
-		};
-	};
-};
-
 &sm6150_snd {
 	status = "ok";
 	compatible = "qcom,sm6150-asoc-snd";
@@ -190,7 +187,7 @@
 
 	qcom,tert-mi2s-gpios = <&cdc_ter_mi2s_gpios>;
 
-	ti,tas2558-max-devs = <1>;
+	aw,have-882xx = <1>;
 
 	qcom,msm-mbhc-hphl-swh = <1>;
 	qcom,msm-mbhc-gnd-swh = <1>;
