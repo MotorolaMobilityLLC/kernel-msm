@@ -550,7 +550,7 @@ static void process_rx_w(struct work_struct *work)
 	while ((skb = skb_dequeue(&dev->rx_frames))) {
 		if (status < 0
 				|| ETH_HLEN > skb->len
-				|| skb->len > ETH_FRAME_LEN) {
+				|| skb->len > GETHER_MAX_ETH_FRAME_LEN) {
 			dev->net->stats.rx_errors++;
 			dev->net->stats.rx_length_errors++;
 			DBG(dev, "rx length %d\n", skb->len);
