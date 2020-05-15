@@ -440,9 +440,9 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 		switch (chg->real_charger_type) {
 		case POWER_SUPPLY_TYPE_USB_CDP:
 		case POWER_SUPPLY_TYPE_USB_DCP:
+		case POWER_SUPPLY_TYPE_USB_FLOAT:
 			val->intval = max(DCP_CURRENT_UA, val->intval);
 			break;
-		case POWER_SUPPLY_TYPE_USB_FLOAT:
 		case POWER_SUPPLY_TYPE_USB:
 			val->intval = min(SDP_CURRENT_UA, val->intval);
 			break;
