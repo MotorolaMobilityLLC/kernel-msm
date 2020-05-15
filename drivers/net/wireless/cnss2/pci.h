@@ -86,6 +86,7 @@ struct cnss_pci_data {
 	struct timer_list dev_rddm_timer;
 	bool disable_pc;
 	struct cnss_pci_debug_reg *debug_reg;
+	u32 iommu_geometry;
 };
 
 static inline void cnss_set_pci_priv(struct pci_dev *pci_dev, void *data)
