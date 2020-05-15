@@ -1558,18 +1558,15 @@ static long process_accept_req(struct file *filp, unsigned int cmd,
 
 	mutex_lock(&g_smcinvoke_lock);
 	server_info = get_cb_server_locked(server_obj->server_id);
-
+	mutex_unlock(&g_smcinvoke_lock);
 	if (!server_info) {
 		pr_err("No matching server with server id : %u found\n",
-					server_obj->server_id);
-		mutex_unlock(&g_smcinvoke_lock);
+						server_obj->server_id);
 		return -EINVAL;
 	}
 
 	if (server_info->state == SMCINVOKE_SERVER_STATE_DEFUNCT)
 		server_info->state = 0;
-
-	mutex_unlock(&g_smcinvoke_lock);
 
 	/* First check if it has response otherwise wait for req */
 	if (user_args.has_resp) {
@@ -1949,6 +1946,7 @@ static int smcinvoke_probe(struct platform_device *pdev)
 		goto exit_destroy_device;
 	}
 	smcinvoke_pdev = pdev;
+	cb_reqs_inflight = 0;
 
 	return  0;
 
@@ -1975,15 +1973,12 @@ static int smcinvoke_remove(struct platform_device *pdev)
 static int __maybe_unused smcinvoke_suspend(struct platform_device *pdev,
 					pm_message_t state)
 {
-	int ret = 0;
-
-	mutex_lock(&g_smcinvoke_lock);
 	if (cb_reqs_inflight) {
 		pr_err("Failed to suspend smcinvoke driver\n");
-		ret = -EIO;
+		return -EIO;
 	}
-	mutex_unlock(&g_smcinvoke_lock);
-	return ret;
+
+	return 0;
 }
 
 static int __maybe_unused smcinvoke_resume(struct platform_device *pdev)
