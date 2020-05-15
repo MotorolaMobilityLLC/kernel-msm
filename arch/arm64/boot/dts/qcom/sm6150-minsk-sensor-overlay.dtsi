@@ -10,6 +10,32 @@
  * GNU General Public License for more details.
  */
 &tlmm {
+	pen_int_default: pen_int_default {
+			mux {
+				pins = "gpio96";
+				function =  "gpio";
+			};
+			config {
+				pins = "gpio94";
+				num-grp-pins = <1>;
+				drive-strength = <2>;
+				bias-no-pull;
+			};
+	};
+
+	pen_int_sleep: pen_int_sleep {
+			mux {
+				pins = "gpio96";
+				function =  "gpio";
+			};
+			config {
+				pins = "gpio94";
+				num-grp-pins = <1>;
+				drive-strength = <2>;
+				bias-no-pull;
+			};
+	};
+
 	capsense_sar_gpio_pins: capsense_sar_gpio_pins {
 		mux {
 			pins = "gpio83";
@@ -24,6 +50,15 @@
 	};
 };
 
+&soc {
+	pen_detect{
+		compatible = "rohm,bu520xx_pen_detect";
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&pen_int_default>;
+		pinctrl-1 = <&pen_int_sleep>;
+		rohm,nirq-gpio=<&tlmm 96 0x02>;
+	};
+};
 
 &soc{
 	pm6150_l16{
