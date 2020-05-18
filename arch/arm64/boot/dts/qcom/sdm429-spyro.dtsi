@@ -48,3 +48,7 @@
 		};
 	};
 };
+
+&usb_otg {
+	qcom,enumeration-check-for-sdp;
+};
