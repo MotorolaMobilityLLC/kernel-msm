@@ -238,14 +238,6 @@
 		};
 	};
 
-	qcom,avtimer@c0a300c {
-		compatible = "qcom,avtimer";
-		reg = <0x0c0a300c 0x4>,
-			<0x0c0a3010 0x4>;
-		reg-names = "avtimer_lsb_addr", "avtimer_msb_addr";
-		qcom,clk-div = <27>;
-	};
-
 	sound {
 		compatible = "qcom,msm8952-audio-codec";
 		qcom,model = "msm8909-skub-snd-card";
