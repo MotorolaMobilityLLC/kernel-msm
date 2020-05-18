@@ -18,6 +18,9 @@
 	qcom,string-cfg= <7>;
 	qcom,ovp = <20500>;
 	qcom,boost-current-limit = <1050>;
+	qcom,wled-pfm-issue-low-threshold = <255>;
+	qcom,wled-pfm-issue-high-threshold = <2048>;
+	qcom,wled-pfm-issue-workaround-enable;
 	status = "ok";
 };
 
