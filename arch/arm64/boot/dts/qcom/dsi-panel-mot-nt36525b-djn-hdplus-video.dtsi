@@ -71,15 +71,18 @@
 				qcom,mdss-dsi-on-command = [
 				/* Use WLED+DCS to control bl, set WLED
 				   max current to 25mA, 51 to 80% for HBM */
+				15 00 00 00 00 00 02 FF 10
+        			15 00 00 00 00 00 02 FB 01
 				15 00 00 00 00 00 02 51 CC
         			15 00 00 00 00 00 02 53 2c
         			15 00 00 00 00 00 02 55 01
-        	 		05 01 00 00 0a 00 01 11
-        	 		05 01 00 00 64 00 01 29
+        	 		05 01 00 00 64 00 01 11
+        	 		05 01 00 00 0a 00 01 29
 					];
 				qcom,mdss-dsi-off-command = [
-					05 01 00 00 4C 00 01 28
-					05 01 00 00 0A 00 01 10];
+					15 00 00 00 00 00 02 FF 10
+					05 01 00 00 0A 00 01 28
+					05 01 00 00 4C 00 01 10];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-h-sync-pulse = <0>;
