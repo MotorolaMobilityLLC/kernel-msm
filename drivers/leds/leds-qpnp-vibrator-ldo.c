@@ -162,7 +162,7 @@ static int qpnp_vibrator_play_on(struct vib_ldo_chip *chip)
 		pr_err("set voltage = %duV failed, ret=%d\n", volt_uV, ret);
 		return ret;
 	}
-	pr_debug("voltage set to %d uV\n", volt_uV);
+	pr_debug("%s voltage set to %d uV\n", __func__, volt_uV);
 
 	ret = qpnp_vib_ldo_enable(chip, true);
 	if (ret < 0) {
@@ -296,6 +296,8 @@ static ssize_t qpnp_vib_store_duration(struct device *dev,
 	if (val <= 0)
 		return count;
 
+	pr_debug("%s duration time = %llums\n", __func__, val);
+
 	if (val < QPNP_VIB_MIN_PLAY_MS)
 		val = QPNP_VIB_MIN_PLAY_MS;
 
@@ -335,7 +337,7 @@ static ssize_t qpnp_vib_store_activate(struct device *dev,
 	mutex_lock(&chip->lock);
 	hrtimer_cancel(&chip->stop_timer);
 	chip->state = val;
-	pr_debug("state = %d, time = %llums\n", chip->state, chip->vib_play_ms);
+	pr_info("%s state = %d, time = %llums\n", __func__, chip->state, chip->vib_play_ms);
 	mutex_unlock(&chip->lock);
 	schedule_work(&chip->vib_work);
 
