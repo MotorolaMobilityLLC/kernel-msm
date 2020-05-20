@@ -1333,27 +1333,8 @@ static int mhi_hwc_chcmd(struct mhi_dev *mhi, uint chid,
 		connect_params.channel_id = chid;
 		connect_params.sys.skip_ep_cfg = true;
 
-		switch (chid) {
-		case MHI_CLIENT_ADPL_IN:
-			connect_params.sys.client = IPA_CLIENT_MHI_DPL_CONS;
-			break;
-		case MHI_CLIENT_IP_HW_QDSS:
-			connect_params.sys.client = IPA_CLIENT_MHI_QDSS_CONS;
-			break;
-		case MHI_CLIENT_IP_HW_0_OUT:
-			connect_params.sys.client = IPA_CLIENT_MHI_PROD;
-			break;
-		case MHI_CLIENT_IP_HW_0_IN:
-			connect_params.sys.client = IPA_CLIENT_MHI_CONS;
-			break;
-		case MHI_CLIENT_QMAP_FLOW_CTRL_OUT:
-			connect_params.sys.client = IPA_CLIENT_MHI_LOW_LAT_PROD;
-			break;
-		case MHI_CLIENT_QMAP_FLOW_CTRL_IN:
-			connect_params.sys.client = IPA_CLIENT_MHI_LOW_LAT_CONS;
-			break;
-		default:
-			pr_err("Invalid channel = 0x%x\n", chid);
+		if (chid > HW_CHANNEL_END) {
+			pr_err("Channel DB for %d not enabled\n", chid);
 			return -EINVAL;
 		}
 
