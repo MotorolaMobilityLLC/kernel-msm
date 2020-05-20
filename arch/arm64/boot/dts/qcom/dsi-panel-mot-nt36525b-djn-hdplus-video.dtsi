@@ -71,9 +71,6 @@
 				qcom,mdss-dsi-on-command = [
 				/* Use WLED+DCS to control bl, set WLED
 				   max current to 25mA, 51 to 80% for HBM */
-				15 00 00 00 00 00 02 FF 23
-				15 00 00 00 00 00 02 FB 01
-				15 00 00 00 00 00 02 08 06
 				15 00 00 00 00 00 02 FF 10
         			15 00 00 00 00 00 02 FB 01
 				15 00 00 00 00 00 02 51 CC
