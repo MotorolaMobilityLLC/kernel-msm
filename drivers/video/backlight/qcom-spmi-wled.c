@@ -735,7 +735,7 @@ static int wled_get_ovp_fault_status(struct wled *wled, bool *fault_set)
 		*fault_set = true;
 
 	if (*fault_set)
-		pr_debug("WLED OVP fault detected, int_rt_sts=0x%x fault_sts=0x%x\n",
+		pr_err("WLED OVP fault detected, int_rt_sts=0x%x fault_sts=0x%x\n",
 			int_rt_sts, fault_sts);
 
 	return rc;
