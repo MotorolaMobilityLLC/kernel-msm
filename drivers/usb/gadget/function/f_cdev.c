@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2013-2020, The Linux Foundation. All rights reserved.
  * Linux Foundation chooses to take subject only to the GPLv2 license terms,
  * and distributes only under these terms.
  *
@@ -58,6 +58,7 @@
 #define BRIDGE_RX_BUF_SIZE	2048
 #define BRIDGE_TX_QUEUE_SIZE	8
 #define BRIDGE_TX_BUF_SIZE	2048
+#define BRIDGE_RX_BUF_SIZE_STANDALONE  (50 * 1024)
 
 #define GS_LOG2_NOTIFY_INTERVAL		5  /* 1 << 5 == 32 msec */
 #define GS_NOTIFY_MAXPACKET		10 /* notification + 2 bytes */
@@ -349,6 +350,9 @@ static struct usb_gadget_strings *usb_cser_strings[] = {
 	&cser_string_table,
 	NULL,
 };
+
+static bool standalone_mode;
+static unsigned int bridge_rx_buf_size = BRIDGE_RX_BUF_SIZE;
 
 static inline struct f_cdev *func_to_port(struct usb_function *f)
 {
@@ -952,7 +956,7 @@ static void usb_cser_start_rx(struct f_cdev *port)
 
 		req = list_entry(pool->next, struct usb_request, list);
 		list_del_init(&req->list);
-		req->length = BRIDGE_RX_BUF_SIZE;
+		req->length = bridge_rx_buf_size;
 		req->complete = usb_cser_read_complete;
 		spin_unlock_irqrestore(&port->port_lock, flags);
 		ret = usb_ep_queue(ep, req, GFP_KERNEL);
@@ -1046,7 +1050,7 @@ static void usb_cser_start_io(struct f_cdev *port)
 
 	ret = usb_cser_alloc_requests(port->port_usb.out,
 				&port->read_pool,
-				BRIDGE_RX_QUEUE_SIZE, BRIDGE_RX_BUF_SIZE, 0,
+				BRIDGE_RX_QUEUE_SIZE, bridge_rx_buf_size, 0,
 				usb_cser_read_complete);
 	if (ret) {
 		pr_err("unable to allocate out requests\n");
@@ -1247,6 +1251,8 @@ ssize_t f_cdev_read(struct file *file,
 			current_rx_req = NULL;
 			current_rx_buf = NULL;
 		}
+		if (standalone_mode)
+			break;
 	}
 
 	port->pending_rx_bytes = pending_rx_bytes;
@@ -2058,6 +2064,28 @@ static struct usb_function *cser_alloc(struct usb_function_instance *fi)
 
 	return &port->port_usb.func;
 }
+
+static int __init f_cdev_init(void)
+{
+	char *cmdline;
+
+	cmdline = strnstr(boot_command_line,
+			"msm_drm.dsi_display0=dsi_sim_vid_display",
+	strlen(boot_command_line));
+	if (cmdline) {
+		pr_debug("%s tethered mode cmdline:%s\n",
+				__func__, cmdline);
+		standalone_mode = false;
+		bridge_rx_buf_size = BRIDGE_RX_BUF_SIZE;
+	} else {
+		pr_debug("%s standalone mode cmdline:\n",
+				__func__);
+		standalone_mode = true;
+		bridge_rx_buf_size = BRIDGE_RX_BUF_SIZE_STANDALONE;
+	}
+	return 0;
+}
+device_initcall(f_cdev_init);
 
 DECLARE_USB_FUNCTION_INIT(cser, cser_alloc_inst, cser_alloc);
 MODULE_DESCRIPTION("USB Serial Character Driver");

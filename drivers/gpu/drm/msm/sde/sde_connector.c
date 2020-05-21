@@ -768,6 +768,28 @@ bool sde_connector_mode_needs_full_range(struct drm_connector *connector)
 	return c_conn->ops.mode_needs_full_range(c_conn->display);
 }
 
+bool sde_connector_mode_is_cea_mode(struct drm_connector *connector)
+{
+	struct sde_connector *c_conn;
+
+	if (!connector) {
+		SDE_ERROR("invalid argument\n");
+		return false;
+	}
+
+	c_conn = to_sde_connector(connector);
+
+	if (!c_conn->display) {
+		SDE_ERROR("invalid argument\n");
+		return false;
+	}
+
+	if (!c_conn->ops.mode_is_cea_mode)
+		return false;
+
+	return c_conn->ops.mode_is_cea_mode(c_conn->display);
+}
+
 static void sde_connector_destroy(struct drm_connector *connector)
 {
 	struct sde_connector *c_conn;
@@ -1998,6 +2020,9 @@ static int sde_connector_populate_mode_info(struct drm_connector *conn,
 		}
 
 		sde_kms_info_add_keystr(info, "mode_name", mode->name);
+
+		sde_kms_info_add_keyint(info, "VIC",
+					mode->vic_id);
 
 		sde_kms_info_add_keyint(info, "bit_clk_rate",
 					mode_info.clk_rate);

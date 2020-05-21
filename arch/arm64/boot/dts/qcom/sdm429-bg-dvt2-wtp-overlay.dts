@@ -1,0 +1,127 @@
+/*
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include "sdm429-spyro-qrd-evt.dtsi"
+#include "sdm429-bg-soc.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDM429 BG DVT2 WTP Overlay";
+	compatible = "qcom,sdm429w-qrd", "qcom,sdm429w", "qcom,qrd";
+	qcom,msm-id = <416 0x0>;
+	qcom,board-id = <0x00010b 0xA>;
+	qcom,pmic-id = <0x0002001b 0x0 0x0 0x0>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_auo_416p_amoled_cmd>;
+	/delete-property/ vdd-supply;
+	vddio-supply = <&L11A>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_te_active>;
+	pinctrl-1 = <&mdss_te_suspend>;
+	qcom,platform-enable-gpio = <&pm660_gpios 12 0>;
+};
+
+&dsi_pm660_panel_pwr_supply {
+	/delete-node/ qcom,panel-supply-entry@0;
+};
+
+&i2c_4 {
+	status = "ok";
+	tsc@24 {
+		status = "disabled";
+	};
+
+	raydium_ts@39 {
+		compatible = "raydium,raydium-ts";
+		reg = <0x39>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <13 0x2008>;
+		vdd_ana-supply = <&pm660_l11>;
+		vcc_i2c-supply = <&pm660_l13>;
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend",
+					"pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		raydium,reset-gpio = <&tlmm 64 0x00>;
+		raydium,irq-gpio = <&tlmm 65 0x00>;
+		raydium,num-max-touches = <2>;
+		raydium,soft-reset-delay-ms = <50>;
+		raydium,hard-reset-delay-ms = <100>;
+		raydium,x_max = <416>;
+		raydium,y_max = <416>;
+		raydium,display-coords= <0  0 416 416>;
+		raydium,fw_id = <0x2202>;
+	};
+};
+
+&usb_otg {
+	HSUSB_3p3-supply = <&L16A>;
+};
+
+&msm_dig_codec {
+	cdc-vdd-digital-supply = <&pm660_l11>;
+};
+
+&ext_smart_pa {
+	dvdd-supply = <&pm660_l11>;
+};
+
+&firmware {
+	android {
+		fstab {
+			system {
+				status = "disabled";
+			};
+		};
+	};
+};
+
+&msm_gpu {
+	qcom,initial-pwrlevel = <0>;
+	qcom,gpu-pwrlevels {
+		qcom,gpu-pwrlevel@0 {
+			reg = <0>;
+			qcom,gpu-freq = <320000000>;
+			qcom,bus-freq = <2>;
+			qcom,bus-min = <2>;
+			qcom,bus-max = <2>;
+		};
+		qcom,gpu-pwrlevel@1{
+			reg = <1>;
+			qcom,gpu-freq = <19200000>;
+			qcom,bus-freq = <0>;
+			qcom,bus-min = <0>;
+			qcom,bus-max = <0>;
+		};
+	};
+};
+
+&msm_cpufreq {
+	qcom,cpufreq-table =
+		<  960000 >,
+		< 1305600 >,
+		< 1497600 >,
+		< 1708800 >;
+};
+&cpubw {
+	qcom,bw-tbl =
+		<  1611 /*  211.2 MHz */ >,     /*Low SVS*/
+		<  2929 /*  384   MHz */ >,     /* SVS */
+		<  5053 /*  662.4 MHz */ >,     /* SVS+  */
+		<  5712 /*  748.8 MHz */ >;     /* NOM   */
+};

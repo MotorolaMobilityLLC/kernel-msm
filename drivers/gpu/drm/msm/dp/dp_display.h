@@ -25,7 +25,9 @@ struct dp_display {
 	struct dp_bridge *bridge;
 	struct drm_connector *connector;
 	bool is_connected;
+	bool is_primary;
 	u32 max_pclk_khz;
+	bool yuv_support;
 
 	int (*enable)(struct dp_display *dp_display);
 	int (*post_enable)(struct dp_display *dp_display);
@@ -35,9 +37,12 @@ struct dp_display {
 
 	int (*set_mode)(struct dp_display *dp_display,
 			struct dp_display_mode *mode);
-	int (*validate_mode)(struct dp_display *dp_display, u32 mode_pclk_khz);
+	int (*validate_mode)(struct dp_display *dp_display,
+			u32 mode_pclk_khz, u32 flags);
 	int (*get_modes)(struct dp_display *dp_display,
 		struct dp_display_mode *dp_mode);
+	int (*get_dc_support)(struct dp_display *dp_display,
+		u32 mode_pclk_khz, u32 out_format, bool dc_enable);
 	int (*prepare)(struct dp_display *dp_display);
 	int (*unprepare)(struct dp_display *dp_display);
 	int (*request_irq)(struct dp_display *dp_display);
@@ -46,11 +51,15 @@ struct dp_display {
 	int (*config_hdr)(struct dp_display *dp_display,
 				struct drm_msm_ext_hdr_metadata *hdr_meta);
 	void (*post_init)(struct dp_display *dp_display);
+	int (*get_display_type)(struct dp_display *dp_display,
+			const char **display_type);
+	bool (*vsc_sdp_supported)(struct dp_display *dp_display);
 };
 
 int dp_display_get_num_of_displays(void);
 int dp_display_get_displays(void **displays, int count);
 bool dp_connector_mode_needs_full_range(void *display);
+bool dp_connector_mode_is_cea_mode(void *display);
 enum sde_csc_type dp_connector_get_csc_type(struct drm_connector *conn,
 	void *data);
 #endif /* _DP_DISPLAY_H_ */

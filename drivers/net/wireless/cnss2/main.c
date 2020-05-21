@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -249,6 +249,8 @@ int cnss_wlan_enable(struct device *dev,
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
 	int ret = 0;
+	if (!plat_priv)
+		return -ENODEV;
 
 	if (plat_priv->device_id == QCA6174_DEVICE_ID)
 		return 0;
@@ -281,6 +283,8 @@ EXPORT_SYMBOL(cnss_wlan_enable);
 int cnss_wlan_disable(struct device *dev, enum cnss_driver_mode mode)
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+	if (!plat_priv)
+		return -ENODEV;
 
 	if (plat_priv->device_id == QCA6174_DEVICE_ID)
 		return 0;
@@ -369,6 +373,8 @@ EXPORT_SYMBOL(cnss_athdiag_write);
 int cnss_set_fw_log_mode(struct device *dev, u8 fw_log_mode)
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+	if (!plat_priv)
+		return -ENODEV;
 
 	if (plat_priv->device_id == QCA6174_DEVICE_ID)
 		return 0;

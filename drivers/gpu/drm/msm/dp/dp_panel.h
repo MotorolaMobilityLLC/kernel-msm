@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,7 @@ enum dp_lane_count {
 	DP_LANE_COUNT_4	= 4,
 };
 
+
 #define DP_MAX_DOWNSTREAM_PORTS 0x10
 
 struct dp_panel_info {
@@ -45,11 +46,14 @@ struct dp_panel_info {
 	u32 refresh_rate;
 	u32 pixel_clk_khz;
 	u32 bpp;
+	u32 out_format;
+	enum hdmi_picture_aspect par;
 };
 
 struct dp_display_mode {
 	struct dp_panel_info timing;
 	u32 capabilities;
+	u32 flags;
 };
 
 struct dp_panel_in {
@@ -94,6 +98,8 @@ struct dp_panel {
 	void (*tpg_config)(struct dp_panel *dp_panel, bool enable);
 	int (*spd_config)(struct dp_panel *dp_panel);
 	bool (*hdr_supported)(struct dp_panel *dp_panel);
+	bool (*vsc_sdp_supported)(struct dp_panel *dp_panel);
+	u32 (*get_pixel_clk)(struct dp_panel *dp_panel);
 };
 
 /**

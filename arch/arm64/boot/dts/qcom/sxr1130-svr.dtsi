@@ -518,3 +518,17 @@
 &cdc_pdm_gpios {
 	status = "disabled";
 };
+
+&lcdb_ldo_vreg {
+	regulator-min-microvolt = <5700000>;
+	regulator-max-microvolt = <5700000>;
+};
+
+&lcdb_ncp_vreg {
+	regulator-min-microvolt = <5700000>;
+	regulator-max-microvolt = <5700000>;
+};
+
+&pm660_pdphy {
+	qcom,sxr1130-sxr-dp-sink;
+};

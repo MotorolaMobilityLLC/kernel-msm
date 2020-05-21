@@ -415,7 +415,7 @@ static void enable_spi_panel_te_irq(struct spi_panel_data *ctrl_pdata,
 }
 
 int mdss_spi_panel_kickoff(struct mdss_panel_data *pdata,
-			char *buf, int len, int dma_stride)
+			char __iomem *buf, int len, int dma_stride)
 {
 	struct spi_panel_data *ctrl_pdata = NULL;
 	char *tx_buf;

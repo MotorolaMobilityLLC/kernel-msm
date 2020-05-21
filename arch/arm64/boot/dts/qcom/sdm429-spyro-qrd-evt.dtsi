@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -486,6 +486,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 0>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -520,6 +521,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 1>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -554,6 +556,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 2>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -588,6 +591,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 3>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -622,6 +626,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 4>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -656,6 +661,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 5>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -690,6 +696,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 6>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -724,6 +731,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 7>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -758,6 +766,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 8>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -792,6 +801,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 9>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -826,6 +836,7 @@
 		polling-delay = <0>;
 		thermal-governor = "low_limits_floor";
 		thermal-sensors = <&tsens0 10>;
+		wake-capable-sensor;
 		tracks-low;
 
 		trips {
@@ -892,6 +903,7 @@
 		polling-delay = <0>;
 		thermal-sensors = <&pm660_adc_tm 0x51>;
 		thermal-governor = "step_wise";
+		wake-capable-sensor;
 
 		trips {
 			quiet_batt_439_trip1: quiet-batt-trip1 {

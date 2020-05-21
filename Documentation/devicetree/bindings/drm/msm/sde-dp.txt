@@ -67,6 +67,7 @@ DP Controller: Required properties:
 					within DP AUX, while the remaining entries indicate the
 					programmable values.
 - qcom,max-pclk-frequency-khz:	An integer specifying the max. pixel clock in KHz supported by Display Port.
+- qcom,yuv-support:		A boolean specifying if any YUV formats are supported by Display Port.
 - qcom,dp-usbpd-detection:	Phandle for the PMI regulator node for USB PHY PD detection.
 - qcom,<type>-supply-entries:		A node that lists the elements of the supply used by the a particular "type" of DSI module. The module "types"
 					can be "core", "ctrl", and "phy". Within the same type,

@@ -1172,7 +1172,7 @@
 		reg-names = "wdt-base";
 		interrupts = <1 3 0>, <1 2 0>;
 		qcom,bark-time = <11000>;
-		qcom,pet-time = <10000>;
+		qcom,pet-time = <9360>;
 	};
 
 	qcom_rng: qrng@793000{
@@ -1390,7 +1390,7 @@
 			"eth_rgmii_clk", "eth_slave_ahb_clk";
 		qcom,phy-intr-redirect = <&tlmm 84 GPIO_ACTIVE_LOW>;
 		qcom,phy-reset = <&tlmm 85 GPIO_ACTIVE_LOW>;
-		qcom,phy-reset-delay-msecs = <10>;
+		qcom,phy-reset-delay-msecs = <11 70>;
 		vreg_rgmii-supply = <&vreg_rgmii>;
 		vreg_emac_phy-supply =  <&vreg_emac_phy>;
 		vreg_rgmii_io_pads-supply = <&vreg_rgmii_io_pads>;

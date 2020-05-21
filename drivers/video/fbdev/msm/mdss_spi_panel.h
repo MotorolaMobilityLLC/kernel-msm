@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -121,7 +121,7 @@ struct spi_panel_data {
 };
 
 int mdss_spi_panel_kickoff(struct mdss_panel_data *pdata,
-				char *buf, int len, int stride);
+				char __iomem *buf, int len, int stride);
 int is_spi_panel_continuous_splash_on(struct mdss_panel_data *pdata);
 void mdp3_spi_vsync_enable(struct mdss_panel_data *pdata,
 				struct mdp3_notification *vsync_client);
@@ -130,7 +130,7 @@ void mdp3_check_spi_panel_status(struct work_struct *work,
 
 #else
 static inline int mdss_spi_panel_kickoff(struct mdss_panel_data *pdata,
-				char *buf, int len, int stride){
+				char __iomem *buf, int len, int stride){
 	return 0;
 }
 static inline int is_spi_panel_continuous_splash_on(

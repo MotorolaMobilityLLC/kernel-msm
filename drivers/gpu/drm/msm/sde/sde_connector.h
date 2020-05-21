@@ -192,6 +192,14 @@ struct sde_connector_ops {
 	bool (*mode_needs_full_range)(void *display);
 
 	/**
+	 * mode_is_cea_mode - is this mode a CE video format
+	 * or IT video format.
+	 * @display: Pointer to private display structure
+	 * Returns: true or false based on CE or IT video format
+	 */
+	bool (*mode_is_cea_mode)(void *display);
+
+	/**
 	 * clk_ctrl - perform clk enable/disable on the connector
 	 * @handle: Pointer to clk handle
 	 * @type: Type of clks
@@ -726,6 +734,14 @@ static inline bool sde_connector_needs_offset(struct drm_connector *connector)
  * Returns: true OR false based on connector mode
  */
 bool sde_connector_mode_needs_full_range(struct drm_connector *connector);
+
+/**
+ * sde_connector_mode_is_cea_mode - query if this mode is
+ * CE or IT video format
+ * @connector: Pointer to drm connector object
+ * Returns: true OR false based on CE or IT video format mode
+ */
+bool sde_connector_mode_is_cea_mode(struct drm_connector *connector);
 
 /**
  * sde_connector_get_csc_type - query csc type

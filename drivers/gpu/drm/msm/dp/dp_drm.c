@@ -31,10 +31,81 @@ enum dp_connector_hdr_state {
 	HDR_ENABLE
 };
 
+static int get_sink_dc_support(struct dp_display *dp,
+		struct drm_display_mode *mode)
+{
+	int dc_format = 0;
+	struct drm_connector *connector = dp->connector;
+
+	if ((mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV420) &&
+			(connector->display_info.edid_hdmi_dc_modes
+			& DRM_EDID_YCBCR420_DC_30))
+		if (dp->get_dc_support(dp, mode->clock,
+				MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420, true))
+			dc_format |= MSM_MODE_FLAG_YUV420_DC_ENABLE;
+
+	if ((mode->flags & DRM_MODE_FLAG_SUPPORTS_RGB) &&
+			(connector->display_info.edid_hdmi_dc_modes
+			 & DRM_EDID_HDMI_DC_30))
+		if (dp->get_dc_support(dp, mode->clock,
+				MSM_MODE_FLAG_COLOR_FORMAT_RGB444, true))
+			dc_format |= MSM_MODE_FLAG_RGB444_DC_ENABLE;
+
+	if ((mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV422) &&
+			(connector->display_info.edid_hdmi_dc_modes
+			 & DRM_EDID_HDMI_DC_30))
+		if (dp->get_dc_support(dp, mode->clock,
+				MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422, false))
+			dc_format |= MSM_MODE_FLAG_YUV422_DC_ENABLE;
+
+	return dc_format;
+}
+
+static u32 choose_best_format(struct dp_display *dp,
+		struct drm_display_mode *mode)
+{
+	/*
+	 * choose priority:
+	 * 1. DC + RGB
+	 * 2. DC + YUV422
+	 * 3. DC + YUV420
+	 * 4. RGB
+	 * 5. YUV420
+	 */
+	int dc_format;
+
+	dc_format = get_sink_dc_support(dp, mode);
+	if (dc_format & MSM_MODE_FLAG_RGB444_DC_ENABLE)
+		return (MSM_MODE_FLAG_COLOR_FORMAT_RGB444
+				| MSM_MODE_FLAG_RGB444_DC_ENABLE);
+	else if (dc_format & MSM_MODE_FLAG_YUV422_DC_ENABLE)
+		return (MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422
+				| MSM_MODE_FLAG_YUV422_DC_ENABLE);
+	else if (dc_format & MSM_MODE_FLAG_YUV420_DC_ENABLE)
+		return (MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420
+				| MSM_MODE_FLAG_YUV420_DC_ENABLE);
+	else if (mode->flags & DRM_MODE_FLAG_SUPPORTS_RGB)
+		return MSM_MODE_FLAG_COLOR_FORMAT_RGB444;
+	else if (mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV420)
+		return MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420;
+
+	pr_err("Can't get available best display format\n");
+
+	return MSM_MODE_FLAG_COLOR_FORMAT_RGB444;
+}
+
 static void convert_to_dp_mode(const struct drm_display_mode *drm_mode,
 			struct dp_display_mode *dp_mode, struct dp_display *dp)
 {
 	memset(dp_mode, 0, sizeof(*dp_mode));
+
+	dp_mode->timing.out_format = MSM_MODE_FLAG_COLOR_FORMAT_RGB444;
+	if (drm_mode->private_flags & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422)
+		dp_mode->timing.out_format =
+			MSM_MODE_FLAG_COLOR_FORMAT_YCBCR422;
+	else if (drm_mode->private_flags & MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420)
+		dp_mode->timing.out_format =
+			MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420;
 
 	dp_mode->timing.h_active = drm_mode->hdisplay;
 	dp_mode->timing.h_back_porch = drm_mode->htotal - drm_mode->hsync_end;
@@ -61,6 +132,10 @@ static void convert_to_dp_mode(const struct drm_display_mode *drm_mode,
 
 	dp_mode->timing.h_active_low =
 		!!(drm_mode->flags & DRM_MODE_FLAG_NHSYNC);
+
+	dp_mode->flags = drm_mode->flags;
+
+	dp_mode->timing.par = drm_mode->picture_aspect_ratio;
 }
 
 static void convert_to_drm_mode(const struct dp_display_mode *dp_mode,
@@ -99,6 +174,9 @@ static void convert_to_drm_mode(const struct dp_display_mode *dp_mode,
 		flags |= DRM_MODE_FLAG_PVSYNC;
 
 	drm_mode->flags = flags;
+	drm_mode->flags |= (dp_mode->flags & SDE_DRM_MODE_FLAG_FMT_MASK);
+
+	drm_mode->picture_aspect_ratio = dp_mode->timing.par;
 
 	drm_mode->type = 0x48;
 	drm_mode_set_name(drm_mode);
@@ -153,6 +231,7 @@ static void dp_bridge_pre_enable(struct drm_bridge *drm_bridge)
 		       bridge->id, rc);
 		dp->unprepare(dp);
 	}
+
 }
 
 static void dp_bridge_enable(struct drm_bridge *drm_bridge)
@@ -272,6 +351,15 @@ static bool dp_bridge_mode_fixup(struct drm_bridge *drm_bridge,
 
 	convert_to_dp_mode(mode, &dp_mode, dp);
 	convert_to_drm_mode(&dp_mode, adjusted_mode);
+
+	/* Clear the private flags before assigning new one */
+	adjusted_mode->private_flags = 0;
+
+	adjusted_mode->private_flags |=
+		choose_best_format(dp, adjusted_mode);
+	SDE_DEBUG("Adjusted mode private flags: 0x%x\n",
+			adjusted_mode->private_flags);
+
 end:
 	return ret;
 }
@@ -355,6 +443,7 @@ int dp_connector_get_info(struct msm_display_info *info, void *data)
 	info->num_of_h_tiles = 1;
 	info->h_tile_instance[0] = 0;
 	info->is_connected = display->is_connected;
+	info->is_primary = display->is_primary;
 	info->capabilities = MSM_DISPLAY_CAP_VID_MODE | MSM_DISPLAY_CAP_EDID |
 		MSM_DISPLAY_CAP_HOT_PLUG;
 
@@ -389,6 +478,45 @@ bool dp_connector_mode_needs_full_range(void *data)
 	return false;
 }
 
+bool dp_connector_mode_is_cea_mode(void *data)
+{
+	struct dp_display *display = data;
+	struct dp_bridge *bridge;
+	struct dp_display_mode *mode;
+	struct drm_display_mode drm_mode;
+	struct dp_panel_info *timing;
+	bool is_ce_mode = false;
+
+	if (!display) {
+		pr_err("invalid input\n");
+		return false;
+	}
+
+	bridge = display->bridge;
+	if (!bridge) {
+		pr_err("invalid bridge data\n");
+		return false;
+	}
+
+	mode = &bridge->dp_mode;
+	timing = &mode->timing;
+
+	if (timing->h_active == 640 &&
+	    timing->v_active == 480)
+		is_ce_mode = false;
+
+	convert_to_drm_mode(mode, &drm_mode);
+	drm_mode.flags &= ~SDE_DRM_MODE_FLAG_FMT_MASK;
+
+	if (drm_match_cea_mode(&drm_mode) || drm_match_hdmi_mode(&drm_mode))
+		is_ce_mode = true;
+
+	pr_debug("%s: %s : %s video format\n", __func__,
+			drm_mode.name, is_ce_mode ? "CE" : "IT");
+
+	return is_ce_mode;
+}
+
 enum sde_csc_type dp_connector_get_csc_type(struct drm_connector *conn,
 	void *data)
 {
@@ -415,10 +543,10 @@ enum sde_csc_type dp_connector_get_csc_type(struct drm_connector *conn,
 		return SDE_CSC_RGB2YUV_2020L;
 	else if (dp_connector_mode_needs_full_range(data)
 		|| conn->yuv_qs)
-		return SDE_CSC_RGB2YUV_601FR;
+		return SDE_CSC_RGB2YUV_709FR;
 
 error:
-	return SDE_CSC_RGB2YUV_601L;
+	return SDE_CSC_RGB2YUV_709L;
 }
 
 enum drm_connector_status dp_connector_detect(struct drm_connector *conn,
@@ -513,6 +641,19 @@ int dp_connector_get_modes(struct drm_connector *connector,
 	return rc;
 }
 
+int dp_connnector_set_info_blob(struct drm_connector *connector,
+		void *info, void *display, struct msm_mode_info *mode_info)
+{
+	struct dp_display *dp_display = display;
+	const char *display_type = NULL;
+
+	dp_display->get_display_type(dp_display, &display_type);
+	sde_kms_info_add_keystr(info,
+			"display type", display_type);
+
+	return 0;
+}
+
 int dp_drm_bridge_init(void *data, struct drm_encoder *encoder)
 {
 	int rc = 0;
@@ -574,6 +715,8 @@ enum drm_mode_status dp_connector_mode_valid(struct drm_connector *connector,
 {
 	struct dp_display *dp_disp;
 	struct dp_debug *debug;
+	u32 pclk = 0;
+	u32 rate_ratio = RGB_24BPP_TMDS_CHAR_RATE_RATIO;
 
 	if (!mode || !display) {
 		pr_err("invalid params\n");
@@ -585,7 +728,34 @@ enum drm_mode_status dp_connector_mode_valid(struct drm_connector *connector,
 
 	mode->vrefresh = drm_mode_vrefresh(mode);
 
-	if (mode->clock > dp_disp->max_pclk_khz)
+	if (!dp_disp->yuv_support) {
+		mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_YUV420;
+		mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_YUV422;
+	}
+
+	if (!dp_disp->vsc_sdp_supported(dp_disp))
+		mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_YUV420;
+
+	if (!(mode->flags & SDE_DRM_MODE_FLAG_FMT_MASK))
+		return MODE_BAD;
+
+	if ((mode->flags & SDE_DRM_MODE_FLAG_FMT_MASK) ==
+			DRM_MODE_FLAG_SUPPORTS_YUV420) {
+		rate_ratio = YUV420_24BPP_TMDS_CHAR_RATE_RATIO;
+	} else if ((mode->flags & DRM_MODE_FLAG_SUPPORTS_RGB) &&
+			(mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV420)) {
+		if (mode->clock > dp_disp->max_pclk_khz) {
+			/* Clear RGB and YUV422 support flags */
+			mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_RGB;
+			mode->flags &= ~DRM_MODE_FLAG_SUPPORTS_YUV422;
+			/* Only YUV420 format is now supported */
+			rate_ratio = YUV420_24BPP_TMDS_CHAR_RATE_RATIO;
+		}
+	}
+
+	pclk = mode->clock / rate_ratio;
+
+	if (pclk > dp_disp->max_pclk_khz)
 		return MODE_BAD;
 
 	if (debug->debug_en && (mode->hdisplay != debug->hdisplay ||
@@ -594,5 +764,5 @@ enum drm_mode_status dp_connector_mode_valid(struct drm_connector *connector,
 			mode->picture_aspect_ratio != debug->aspect_ratio))
 		return MODE_BAD;
 
-	return dp_disp->validate_mode(dp_disp, mode->clock);
+	return dp_disp->validate_mode(dp_disp, pclk, mode->flags);
 }

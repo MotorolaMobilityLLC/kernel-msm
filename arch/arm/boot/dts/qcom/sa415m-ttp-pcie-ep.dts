@@ -20,6 +20,16 @@
 	compatible = "qcom,sa415m-ttp",
 			"qcom,sdxpoorwills", "qcom,ttp";
 	qcom,board-id = <30 0x101>;
+
+	qcom_gadget {
+		compatible = "qcom,usb-gadget";
+		qcom,vid = <0x05c6>;
+
+		composition1 {
+			qcom,pid = <0x9105>;
+			qcom,composition = "diag.diag,gsi.dpl";
+		};
+	};
 };
 
 &mss_mem {

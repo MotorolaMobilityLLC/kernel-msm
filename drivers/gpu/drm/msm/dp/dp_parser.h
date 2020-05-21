@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -161,6 +161,7 @@ static inline char *dp_phy_aux_config_type_to_string(u32 cfg_type)
  * @pinctrl: pin-control related data
  * @ctrl_resouce: controller's register address realated data
  * @disp_data: controller's display related data
+ * @display_type: display type as defined in device tree.
  * @parse: function to be called by client to parse device tree.
  * @get_io: function to be called by client to get io data.
  * @get_io_buf: function to be called by client to get io buffers.
@@ -177,6 +178,9 @@ struct dp_parser {
 	u8 l_map[4];
 	struct dp_aux_cfg aux_cfg[AUX_CFG_LEN];
 	u32 max_pclk_khz;
+	bool yuv_support;
+
+	const char *display_type;
 
 	int (*parse)(struct dp_parser *parser);
 	struct dp_io_data *(*get_io)(struct dp_parser *parser, char *name);

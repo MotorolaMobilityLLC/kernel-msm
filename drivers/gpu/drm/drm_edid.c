@@ -2960,7 +2960,7 @@ static u8 drm_match_hdmi_mode_clock_tolerance(const struct drm_display_mode *to_
  *
  * Returns the HDMI Video ID (VIC) of the mode or 0 if it isn't one.
  */
-static u8 drm_match_hdmi_mode(const struct drm_display_mode *to_match)
+u8 drm_match_hdmi_mode(const struct drm_display_mode *to_match)
 {
 	u8 vic;
 
@@ -2982,6 +2982,7 @@ static u8 drm_match_hdmi_mode(const struct drm_display_mode *to_match)
 	}
 	return 0;
 }
+EXPORT_SYMBOL(drm_match_hdmi_mode);
 
 static bool drm_valid_hdmi_vic(u8 vic)
 {
@@ -3081,6 +3082,7 @@ drm_display_mode_from_vic_index(struct drm_connector *connector,
 	if (!newmode)
 		return NULL;
 
+	newmode->vic_id = vic;
 	newmode->vrefresh = 0;
 
 	return newmode;

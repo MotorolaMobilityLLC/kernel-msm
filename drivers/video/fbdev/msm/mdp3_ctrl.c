@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1755,7 +1755,7 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd)
 	static bool splash_done;
 	struct mdss_panel_data *panel;
 
-	int rc;
+	int stride, rc;
 
 	pr_debug("mdp3_ctrl_pan_display\n");
 	if (!mfd || !mfd->mdp.private1)
@@ -1808,9 +1808,21 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd)
 			if (IS_ERR_VALUE(rc))
 				goto pan_error;
 		}
-		rc = mdp3_session->dma->update(mdp3_session->dma,
-				(void *)(int)(mfd->iova + offset),
-				mdp3_session->intf, NULL);
+		if (mdp3_ctrl_get_intf_type(mfd) ==
+				MDP3_DMA_OUTPUT_SEL_SPI_CMD) {
+			stride = fbi->fix.line_length;
+			pr_debug("addr = %x, smemlen = %d, stride = %d, offset = %x\n",
+				(int)mfd->iova, (int)fbi->fix.smem_len,
+					stride, (int)offset);
+			rc = mdss_spi_panel_kickoff(mdp3_session->panel,
+				(mfd->fbi->screen_base + offset),
+				(int)fbi->fix.smem_len,
+				stride);
+		} else {
+			rc = mdp3_session->dma->update(mdp3_session->dma,
+					(void *)(int)(mfd->iova + offset),
+					mdp3_session->intf, NULL);
+		}
 		/* This is for the previous frame */
 		if (rc < 0) {
 			mdp3_ctrl_notify(mdp3_session,

@@ -72,7 +72,9 @@ Optional properties:
  - qcom,en-rest-wait-val: Input value for EN_REST_WAIT controls state transition
 			  delay after receiving ack signal (gds_enr_ack) from the
 			  longest en_rest power switch chain.
-
+ - qcom,skip-disable-before-sw-enable: Presence denotes a hardware requirement
+					to leave the GDSC on that has been
+					enabled by an entity external to HLOS.
 Example:
 	gdsc_oxili_gx: qcom,gdsc@fd8c4024 {
 		compatible = "qcom,gdsc";

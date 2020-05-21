@@ -23,6 +23,7 @@
 #include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
+#include "tusb1064.h"
 
 struct tusb1064 {
 	struct device *dev;
@@ -80,21 +81,23 @@ static int tusb1064_write(struct i2c_client *client, u8 reg, u8 val)
 	return 0;
 }
 
-void tusb1064_flip(bool flip)
+void tusb1064_usb_event(bool flip)
 {
 	if (pdata) {
 		if (flip) {
-			pr_debug("%s flipping the switch\n", __func__);
-			/*AUXn->SBU2, AUXp->SBU1*/
-			tusb1064_write(pdata->i2c_client, 0x13, 0x2F);
+			if (standalone_mode)
+				tusb1064_write(pdata->i2c_client, 0x0A, 0x05);
+			else
+				tusb1064_write(pdata->i2c_client, 0x0A, 0x06);
 		} else {
-			pr_debug("%s not flipping the switch\n", __func__);
-			/*AUXn->SBU2, AUXp->SBU1*/
-			tusb1064_write(pdata->i2c_client, 0x13, 0x1F);
+			if (standalone_mode)
+				tusb1064_write(pdata->i2c_client, 0x0A, 0x01);
+			else
+				tusb1064_write(pdata->i2c_client, 0x0A, 0x02);
 		}
 	}
 }
-EXPORT_SYMBOL(tusb1064_flip);
+EXPORT_SYMBOL(tusb1064_usb_event);
 
 static int tusb1064_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
@@ -140,19 +143,6 @@ static int tusb1064_probe(struct i2c_client *client,
 			goto fail;
 
 		pr_debug("%s setting SBU1 to AUXN, SBU2 to AUXP\n", __func__);
-		/*AUXn->SBU2, AUXp->SBU1 */
-		if (tusb1064_write(pdata->i2c_client, 0x13, 0x1F) < 0)
-			goto fail;
-		//tusb1064_write(pdata, 0x13, 0x01);//AUXn->SBU1, AUXp->SBU2
-
-		/*Enable 4-lane DP */
-		if (tusb1064_write(pdata->i2c_client, 0x10, 0x55) < 0)
-			goto fail;
-		/*Enable 4-lane DP */
-		if (tusb1064_write(pdata->i2c_client, 0x11, 0x55) < 0)
-			goto fail;
-		//pr_err("setting SBU1 to AUXp and SBU2 to AUXN\n");
-		//tusb1064_write(pdata, 0x13, 0x8F);//Enable 4-lane DP
 	}
 	tusb1064_read(pdata->i2c_client, 0x0A, buf, 2);
 	tusb1064_read(pdata->i2c_client, 0x13, buf, 2);

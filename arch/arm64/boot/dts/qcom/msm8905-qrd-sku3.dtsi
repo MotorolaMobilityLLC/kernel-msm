@@ -283,3 +283,12 @@
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on>;
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
 };
+
+&mdss_dsi {
+	vdda-supply = <&pm8909_l2>;
+	vddio-supply = <&pm8909_l6>;
+	qcom,mdss_dsi_ctrl0@1ac8000 {
+		vdd-supply = <&pm8909_l17>;
+		vddio-supply = <&pm8909_l6>;
+	};
+};

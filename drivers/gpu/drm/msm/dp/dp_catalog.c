@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,6 +19,7 @@
 
 #include "dp_catalog.h"
 #include "dp_reg.h"
+#include "msm_kms.h"
 
 #define DP_GET_MSB(x)	(x >> 8)
 #define DP_GET_LSB(x)	(x & 0xff)
@@ -394,7 +395,8 @@ static u32 dp_catalog_ctrl_read_hdcp_status(struct dp_catalog_ctrl *ctrl)
 	return dp_read(catalog, io_data, DP_HDCP_STATUS);
 }
 
-static void dp_catalog_panel_setup_infoframe_sdp(struct dp_catalog_panel *panel)
+static void dp_catalog_panel_setup_hdr_infoframe_sdp(
+		struct dp_catalog_panel *panel)
 {
 	struct dp_catalog_private *catalog;
 	struct drm_msm_ext_hdr_metadata *hdr;
@@ -501,7 +503,7 @@ static void dp_catalog_panel_setup_infoframe_sdp(struct dp_catalog_panel *panel)
 			DUMP_PREFIX_NONE, 16, 4, buf, off, false);
 }
 
-static void dp_catalog_panel_setup_vsc_sdp(struct dp_catalog_panel *panel)
+static void dp_catalog_panel_setup_hdr_vsc_sdp(struct dp_catalog_panel *panel)
 {
 	struct dp_catalog_private *catalog;
 	struct dp_io_data *io_data;
@@ -627,8 +629,8 @@ static void dp_catalog_panel_config_hdr(struct dp_catalog_panel *panel, bool en)
 		cfg2 |= BIT(15) | BIT(16);
 		dp_write(catalog, io_data, MMSS_DP_SDP_CFG2, cfg2);
 
-		dp_catalog_panel_setup_vsc_sdp(panel);
-		dp_catalog_panel_setup_infoframe_sdp(panel);
+		dp_catalog_panel_setup_hdr_vsc_sdp(panel);
+		dp_catalog_panel_setup_hdr_infoframe_sdp(panel);
 
 		/* indicates presence of VSC (BIT(6) of MISC1) */
 		misc |= BIT(14);
@@ -772,6 +774,7 @@ static void dp_catalog_ctrl_config_misc(struct dp_catalog_ctrl *ctrl,
 	catalog = dp_catalog_get_priv(ctrl);
 	io_data = catalog->io.dp_link;
 
+	misc_val = cc;
 	misc_val |= (tb << 5);
 	misc_val |= BIT(0); /* Configure clock to synchronous mode */
 
@@ -780,7 +783,7 @@ static void dp_catalog_ctrl_config_misc(struct dp_catalog_ctrl *ctrl,
 }
 
 static void dp_catalog_ctrl_config_msa(struct dp_catalog_ctrl *ctrl,
-					u32 rate, u32 stream_rate_khz)
+			u32 rate, u32 stream_rate_khz, u32 out_format)
 {
 	u32 pixel_m, pixel_n;
 	u32 mvid, nvid;
@@ -814,6 +817,9 @@ static void dp_catalog_ctrl_config_msa(struct dp_catalog_ctrl *ctrl,
 	}
 
 	pr_debug("rate = %d\n", rate);
+
+	if (out_format == MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420)
+		mvid *= 2;
 
 	if (link_rate_hbr2 == rate)
 		nvid *= 2;
@@ -1319,6 +1325,158 @@ end:
 	return ret;
 }
 
+static void dp_catalog_panel_setup_vsc_sdp(struct dp_catalog_panel *panel)
+{
+	struct dp_catalog_private *catalog;
+	struct dp_io_data *io_data;
+	u32 header, parity, data;
+	u8 bpc, off = 0;
+	u8 buf[SZ_128];
+
+	if (!panel) {
+		pr_err("invalid input\n");
+		return;
+	}
+
+	catalog = dp_catalog_get_priv(panel);
+	io_data = catalog->io.dp_link;
+
+	/* HEADER BYTE 1 */
+	header = panel->vsc_sdp_data.vsc_header_byte1;
+	parity = dp_header_get_parity(header);
+	data   = ((header << HEADER_BYTE_1_BIT)
+			| (parity << PARITY_BYTE_1_BIT));
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_0, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	/* HEADER BYTE 2 */
+	header = panel->vsc_sdp_data.vsc_header_byte2;
+	parity = dp_header_get_parity(header);
+	data   = ((header << HEADER_BYTE_2_BIT)
+			| (parity << PARITY_BYTE_2_BIT));
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_1, data);
+
+	/* HEADER BYTE 3 */
+	header = panel->vsc_sdp_data.vsc_header_byte3;
+	parity = dp_header_get_parity(header);
+	data   = ((header << HEADER_BYTE_3_BIT)
+			| (parity << PARITY_BYTE_3_BIT));
+	data |= dp_read(catalog, io_data, MMSS_DP_GENERIC0_1);
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_1, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	data = 0;
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_2, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_3, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_4, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_5, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	switch (panel->vsc_sdp_data.bpc) {
+	case 10:
+		bpc = BIT(1);
+		break;
+	case 8:
+	default:
+		bpc = BIT(0);
+		break;
+	}
+
+	data = (panel->vsc_sdp_data.colorimetry & 0xF) |
+		((panel->vsc_sdp_data.pixel_encoding & 0xF) << 4) |
+		(bpc << 8) |
+		((panel->vsc_sdp_data.dynamic_range & 0x1) << 15) |
+		((panel->vsc_sdp_data.content_type & 0x7) << 16);
+
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_6, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	data = 0;
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_7, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_8, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	dp_write(catalog, io_data, MMSS_DP_GENERIC0_9, data);
+	memcpy(buf + off, &data, sizeof(data));
+	off += sizeof(data);
+
+	print_hex_dump(KERN_DEBUG, "[drm-dp] VSC: ",
+			DUMP_PREFIX_NONE, 16, 4, buf, off, false);
+}
+
+static void dp_catalog_panel_config_vsc_sdp(struct dp_catalog_panel *panel,
+		bool en)
+{
+	struct dp_catalog_private *catalog;
+	struct dp_io_data *io_data;
+	u32 cfg, cfg2, misc;
+
+	if (!panel) {
+		pr_err("invalid input\n");
+		return;
+	}
+
+	catalog = dp_catalog_get_priv(panel);
+	io_data = catalog->io.dp_link;
+
+	cfg = dp_read(catalog, io_data, MMSS_DP_SDP_CFG);
+	cfg2 = dp_read(catalog, io_data, MMSS_DP_SDP_CFG2);
+	misc = dp_read(catalog, io_data, DP_MISC1_MISC0);
+
+	if (en) {
+		/* GEN0_SDP_EN */
+		cfg |= BIT(17);
+		dp_write(catalog, io_data, MMSS_DP_SDP_CFG, cfg);
+
+		/* GENERIC0_SDPSIZE */
+		cfg2 |= BIT(16);
+		dp_write(catalog, io_data, MMSS_DP_SDP_CFG2, cfg2);
+
+		dp_catalog_panel_setup_vsc_sdp(panel);
+
+		/* indicates presence of VSC (BIT(6) of MISC1) */
+		misc |= BIT(14);
+
+		pr_debug("Enabled\n");
+	} else {
+		/* GEN0_SDP_EN */
+		cfg &= ~BIT(17);
+		dp_write(catalog, io_data, MMSS_DP_SDP_CFG, cfg);
+
+		/* GENERIC0_SDPSIZE */
+		cfg2 &= ~BIT(16);
+		dp_write(catalog, io_data, MMSS_DP_SDP_CFG2, cfg2);
+
+		/* switch back to MSA */
+		misc &= ~BIT(14);
+
+		pr_debug("Disabled\n");
+	}
+
+	pr_debug("misc settings = 0x%x\n", misc);
+	dp_write(catalog, io_data, DP_MISC1_MISC0, misc);
+
+	dp_write(catalog, io_data, MMSS_DP_SDP_CFG3, 0x01);
+	dp_write(catalog, io_data, MMSS_DP_SDP_CFG3, 0x00);
+}
+
 /* panel related catalog functions */
 static int dp_catalog_panel_timing_cfg(struct dp_catalog_panel *panel)
 {
@@ -1762,6 +1920,7 @@ struct dp_catalog *dp_catalog_get(struct device *dev, struct dp_parser *parser)
 		.config_hdr = dp_catalog_panel_config_hdr,
 		.tpg_config = dp_catalog_panel_tpg_cfg,
 		.config_spd = dp_catalog_panel_config_spd,
+		.config_vsc_sdp = dp_catalog_panel_config_vsc_sdp,
 	};
 
 	if (!dev || !parser) {

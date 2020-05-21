@@ -332,10 +332,10 @@ static int st_asm330lhh_read_fifo(struct st_asm330lhh_hw *hw)
 				}
 				memcpy(iio_buf, ptr, ST_ASM330LHH_SAMPLE_SIZE);
 
-				hw->tsample = min_t(s64,
-						    hw->ts,
-						    hw->tsample);
-
+				if ((i + (3*ST_ASM330LHH_FIFO_SAMPLE_SIZE)) >
+						word_len) {
+					hw->tsample = hw->ts;
+				}
 				iio_push_to_buffers_with_timestamp(iio_dev,
 								   iio_buf,
 								   hw->tsample);
@@ -538,6 +538,8 @@ int st_asm330lhh_fifo_setup(struct st_asm330lhh_hw *hw)
 	bool irq_active_low;
 	int i, err;
 
+	if (!irq_get_irq_data(hw->irq))
+		return -EINVAL;
 	irq_type = irqd_get_trigger_type(irq_get_irq_data(hw->irq));
 	if (irq_type == IRQF_TRIGGER_NONE)
 		irq_type = IRQF_TRIGGER_HIGH;

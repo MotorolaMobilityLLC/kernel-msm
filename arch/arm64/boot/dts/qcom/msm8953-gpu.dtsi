@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018,2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -76,7 +76,7 @@
 
 		qcom,highest-bank-bit = <14>;
 
-		qcom,snapshot-size = <1048576>; //bytes
+		qcom,snapshot-size = <0x200000>; //bytes
 
 		clocks = <&clock_gcc_gfx clk_gcc_oxili_gfx3d_clk>,
 			<&clock_gcc_gfx clk_gcc_oxili_ahb_clk>,
