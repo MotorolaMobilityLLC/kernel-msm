@@ -20,7 +20,7 @@
 
 #define FEATURE_SUPPORTED(x)	((feature_mask << (i * 8)) & (1 << x))
 #define DIAG_GET_MD_DEVICE_SIG_MASK(proc) (0x100000 * (1 << proc))
-uint16_t md_support;
+uint16_t md_support = 0;
 /* tracks which peripheral is undergoing SSR */
 static uint16_t reg_dirty[NUM_PERIPHERALS];
 static uint8_t diag_id = DIAG_ID_APPS;
@@ -109,7 +109,10 @@ void diag_notify_md_client(uint8_t proc, uint8_t peripheral, int data)
 	if (data == DIAG_STATUS_OPEN) {
 		md_support |= PERIPHERAL_MASK(peripheral);
 	} else if (data == DIAG_STATUS_CLOSED) {
-		md_support ^= PERIPHERAL_MASK(peripheral);
+		if((md_support & PERIPHERAL_MASK(peripheral)) == PERIPHERAL_MASK(peripheral))
+		{
+			md_support ^= PERIPHERAL_MASK(peripheral);
+		}
 	}
 	if (peripheral > NUM_PERIPHERALS)
 		return;

@@ -3095,6 +3095,8 @@ long diagchar_ioctl(struct file *filp,
 	} else if (iocmd >= DIAG_IOCTL_QUERY_PD_FEATUREMASK &&
 			iocmd <= DIAG_IOCTL_PASSTHRU_CONTROL) {
 		result = diagchar_ioctl_hw_accel(filp, iocmd, ioarg);
+	} else if (iocmd == DIAG_IOCTL_MD_SUPPORT_LIST) {
+		result = diagchar_ioctl_mdlog(filp, iocmd, ioarg);
 	} else {
 		result = -EINVAL;
 	}
