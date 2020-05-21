@@ -3125,6 +3125,8 @@ long diagchar_ioctl(struct file *filp,
 		}
 		mutex_unlock(&driver->md_session_lock);
 		result = 0;
+	} else if (iocmd == DIAG_IOCTL_MD_SUPPORT_LIST) {
+		result = diagchar_ioctl_mdlog(filp, iocmd, ioarg);
 	} else {
 		result = -EINVAL;
 	}
