@@ -1,0 +1,76 @@
+/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/clock/qcom,camcc-sm6150.h>
+
+#include "sm6150-minsk-common-overlay.dtsi"
+
+/ {
+	model = "minsk";
+	qcom,msm-id = <355 0x0>;
+	qcom,board-id = <0x4B 0xB200>;
+};
+
+&dsi_nt36675_auo_video {
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-on-command =
+			[
+				15 00 00 00 00 00 02 FF 24
+				15 00 00 00 00 00 02 FB 01
+				15 00 00 00 00 00 02 4E 75
+				15 00 00 00 00 00 02 4F 75
+				15 00 00 00 00 00 02 53 75
+				15 00 00 00 00 00 02 7D 05
+				15 00 00 00 00 00 02 80 05
+				15 00 00 00 00 00 02 81 05
+				15 00 00 00 00 00 02 A4 05
+				15 00 00 00 00 00 02 A5 05
+
+				15 00 00 00 00 00 02 FF 26
+				15 00 00 00 00 00 02 FB 01
+				15 00 00 00 00 00 02 01 F8
+				15 00 00 00 00 00 02 04 F8
+				15 00 00 00 00 00 02 06 21
+				15 00 00 00 00 00 02 08 21
+				15 00 00 00 00 00 02 84 04
+				15 00 00 00 00 00 02 86 04
+				15 00 00 00 00 00 02 88 0E
+				15 00 00 00 00 00 02 9B 04
+
+				15 00 00 00 00 00 02 FF 2A
+				15 00 00 00 00 00 02 FB 01
+				15 00 00 00 00 00 02 0C 09
+				15 00 00 00 00 00 02 0F 00
+				15 00 00 00 00 00 02 11 F0
+				15 00 00 00 00 00 02 16 8D
+				15 00 00 00 00 00 02 19 0F
+				15 00 00 00 00 00 02 1A 61
+				15 00 00 00 00 00 02 1E 81
+				15 00 00 00 00 00 02 1F 81
+				15 00 00 00 00 00 02 20 81
+
+				15 00 00 00 00 00 02 FF 10
+				15 00 00 00 00 00 02 FB 01
+				15 00 00 00 00 00 02 51 CC
+				15 00 00 00 00 00 02 53 2C
+				15 00 00 00 00 00 02 55 01
+				05 01 00 00 64 00 01 11
+				05 01 00 00 00 00 01 29
+			];
+		};
+	};
+};
