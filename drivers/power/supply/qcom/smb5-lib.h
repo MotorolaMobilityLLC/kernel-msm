@@ -419,6 +419,8 @@ struct smb_charger {
 	u32			wa_flags;
 	int			boost_current_ua;
 	bool			dbc_usbov;
+	int                     qc2_max_pulses;
+	bool                    non_compliant_chg_detected;
 
 	/* extcon for VBUS / ID notification to USB for uUSB */
 	struct extcon_dev	*extcon;
