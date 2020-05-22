@@ -40,7 +40,11 @@ dtbo-$(CONFIG_BORNR_DTB) += \
 	sm6150-bornr-evt1-nonca-overlay.dtbo
 
 dtbo-$(CONFIG_MINSK_DTB) += \
-	sm6150-minsk-evt1-overlay.dtbo
+	sm6150-minsk-evt1-overlay.dtbo \
+	sm6150-minsk-evt2-overlay.dtbo \
+	sm6150-minsk-dvt1-overlay.dtbo \
+	sm6150-minsk-dvt2-overlay.dtbo \
+	sm6150-minsk-pvt-overlay.dtbo
 
 dtbo-$(CONFIG_LIBER_DTB) += \
 	sdmmagpie-liber-evt1-overlay.dtbo \
@@ -151,6 +155,18 @@ sm6150-bornr-evt1-nonca-overlay.dtbo-base := \
 	sm6150-bornr-base.dtb
 
 sm6150-minsk-evt1-overlay.dtbo-base := \
+	sm6150-minsk-base.dtb
+
+sm6150-minsk-evt2-overlay.dtbo-base := \
+	sm6150-minsk-base.dtb
+
+sm6150-minsk-dvt1-overlay.dtbo-base := \
+	sm6150-minsk-base.dtb
+
+sm6150-minsk-dvt2-overlay.dtbo-base := \
+	sm6150-minsk-base.dtb
+
+sm6150-minsk-pvt-overlay.dtbo-base := \
 	sm6150-minsk-base.dtb
 
 else
