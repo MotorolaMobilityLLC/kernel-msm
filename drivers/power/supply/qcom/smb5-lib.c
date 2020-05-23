@@ -10111,9 +10111,15 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		}
 	} else if (mmi->pres_chrg_step == STEP_FLOAT) {
 		if ((zone->fcc_norm_ma) ||
-		    ((batt_mv + HYST_STEP_MV) < zone->norm_mv))
+		    ((batt_mv + HYST_STEP_MV) < zone->norm_mv)) {
+			if (smblib_charge_halted(chip)) {
+				vote(chip->chg_disable_votable,
+				     HEARTBEAT_VOTER, true, 0);
+				smblib_err(chip, "Charge halt at step float. Toggle\n");
+				msleep(50);
+			}
 			mmi->pres_chrg_step = STEP_MAX;
-
+		}
 	}
 
 	/* Take State actions */
