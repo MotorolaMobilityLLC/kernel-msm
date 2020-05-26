@@ -210,7 +210,7 @@
 	qcom,fs-current-limit = <25000>;
 	qcom,en-cabc;
 	qcom,cabc-sel = <1>;
-	qcom,ovp = <25000>;
+	qcom,ovp = <23500>;
 	qcom,boost-current-limit = <1050>;
 	qcom,wled-pfm-issue-low-threshold = <255>;
 	qcom,wled-pfm-issue-high-threshold = <2048>;
