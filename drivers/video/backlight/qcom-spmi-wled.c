@@ -2424,8 +2424,13 @@ static int wled_probe(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "qcom,wled-pfm-issue-high-threshold", &val);
 	wled->pfm_issue_high_threshold = val;
 
+#ifdef CONFIG_BL_STEP_DISABLE
+	wled->pfm_issue_workaround_enable = false;
+	dev_info(&pdev->dev, "wled: factory build disables backlight step up\n");
+#else
 	wled->pfm_issue_workaround_enable = of_property_read_bool(pdev->dev.of_node,
 					 "qcom,wled-pfm-issue-workaround-enable");
+#endif
 	dev_info(&pdev->dev, "wled pfm_issue_workaround_enable %d, threshold[%d--%d]\n",
 				wled->pfm_issue_workaround_enable,
 				wled->pfm_issue_low_threshold,
