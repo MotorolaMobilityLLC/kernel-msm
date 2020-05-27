@@ -520,7 +520,7 @@ static int wled_update_status(struct backlight_device *bl)
 				}
 
 			}
-			else if (wled->brightness < wled->low_bl_cfg.low_bl_threshold) {
+			else if ((wled->brightness < wled->low_bl_cfg.low_bl_threshold) && (wled->cabc_disabled)){
 				wled->cabc_disabled = false;
 				wled->cabc_config(wled, true);
 				pr_info("exit low brightness(%d), will enable cabc\n", brightness);
@@ -1123,6 +1123,9 @@ static int parse_low_bl_config(struct wled *wled)
 
 		pr_info(" low-bl-force-cabc-disbale enabled, low-bl-threshold %d low-bl-remap_percent %d\n",
 				wled->low_bl_cfg.low_bl_threshold, wled->low_bl_cfg.low_bl_remap_percent);
+
+		wled->cabc_disabled = false;
+
 	}
 	return  0;
 }
