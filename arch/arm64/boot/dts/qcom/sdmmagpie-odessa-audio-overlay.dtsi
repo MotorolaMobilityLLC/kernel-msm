@@ -346,6 +346,7 @@
                 reset-gpio = <&tlmm 43 0>;
                 irq-gpio = <&tlmm 91 0x2008>;
                 monitor-flag = <1>;
+                afe-profile = <1>;
                 monitor-timer-val = <3000>;
                 status = "okay";
         };
