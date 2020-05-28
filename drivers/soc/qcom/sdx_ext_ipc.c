@@ -196,7 +196,10 @@ static int sdx_ext_ipc_probe(struct platform_device *pdev)
 	atomic_notifier_chain_register(&panic_notifier_list, &mdm->panic_blk);
 
 	mutex_init(&mdm->policy_lock);
-	mdm->policy = SUBSYS_PANIC;
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,default-policy-nop"))
+		mdm->policy = SUBSYS_NOP;
+	else
+		mdm->policy = SUBSYS_PANIC;
 
 	ret = device_create_file(mdm->dev, &dev_attr_policy);
 	if (ret) {
