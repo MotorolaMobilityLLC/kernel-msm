@@ -1239,6 +1239,7 @@ int mhi_pm_fast_suspend(struct mhi_controller *mhi_cntrl, bool notify_client)
 	int ret;
 	enum MHI_PM_STATE new_state;
 	struct mhi_chan *itr, *tmp;
+	struct mhi_device *mhi_dev = mhi_cntrl->mhi_dev;
 
 	if (mhi_cntrl->pm_state == MHI_PM_DISABLE)
 		return -EINVAL;
@@ -1247,7 +1248,8 @@ int mhi_pm_fast_suspend(struct mhi_controller *mhi_cntrl, bool notify_client)
 		return -EIO;
 
 	/* do a quick check to see if any pending votes to keep us busy */
-	if (atomic_read(&mhi_cntrl->pending_pkts)) {
+	if (atomic_read(&mhi_cntrl->pending_pkts) ||
+	    atomic_read(&mhi_dev->bus_vote)) {
 		MHI_VERB("Busy, aborting M3\n");
 		return -EBUSY;
 	}
@@ -1266,7 +1268,8 @@ int mhi_pm_fast_suspend(struct mhi_controller *mhi_cntrl, bool notify_client)
 	 * Check the votes once more to see if we should abort
 	 * suspend.
 	 */
-	if (atomic_read(&mhi_cntrl->pending_pkts)) {
+	if (atomic_read(&mhi_cntrl->pending_pkts) ||
+	    atomic_read(&mhi_dev->bus_vote)) {
 		MHI_VERB("Busy, aborting M3\n");
 		ret = -EBUSY;
 		goto error_suspend;
