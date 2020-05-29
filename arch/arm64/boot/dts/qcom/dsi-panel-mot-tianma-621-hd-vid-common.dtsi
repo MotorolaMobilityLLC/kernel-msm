@@ -56,9 +56,12 @@ qcom,mdss-dsi-on-command = [
 	15 01 00 00 01 00 02 26 01
 ];
 qcom,mdss-dsi-off-command = [
+	39 01 00 00 01 00 03 F0 5A 59
+	39 01 00 00 01 00 03 F1 A5 A6
 	15 01 00 00 01 00 02 26 08
 	15 01 00 00 30 00 02 28 00
-	15 01 00 00 78 00 02 10 00
+	15 01 00 00 64 00 02 10 00
+	15 01 00 00 14 00 02 CC 01
 ];
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -122,7 +125,7 @@ qcom,mdss-dsi-post-init-delay = <1>;
 qcom,mdss-dsi-no-panel-on-read-support;
 qcom,bklt-dcs-2bytes-enabled;
 //qcom,mdss-dsi-lp11-lcdb-reset;
-//qcom,mdss-panel-off-rst-disable;
+qcom,mdss-panel-off-rst-disable;
 //qcom,mdss-panel-reset-high;
 
 qcom,esd-check-enabled;
