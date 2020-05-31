@@ -488,7 +488,6 @@ struct ath10k_debug {
 	/* protected by conf_mutex */
 	u64 fw_dbglog_mask;
 	u32 fw_dbglog_level;
-	u32 pktlog_filter;
 	u32 reg_addr;
 	u32 nf_cal_period;
 	void *cal_data;
@@ -611,6 +610,9 @@ enum ath10k_fw_features {
 	 * not creating monitor vdev while configuring mesh node.
 	 */
 	ATH10K_FW_FEATURE_ALLOWS_MESH_BCAST = 16,
+
+	/* Firmware does not support power save in station mode. */
+	ATH10K_FW_FEATURE_NO_PS = 17,
 
 	/* keep last */
 	ATH10K_FW_FEATURE_COUNT,
@@ -960,6 +962,7 @@ struct ath10k {
 	} spectral;
 #endif
 
+	u32 pktlog_filter;
 	struct {
 		/* protected by conf_mutex */
 		struct ath10k_fw_components utf_mode_fw;
