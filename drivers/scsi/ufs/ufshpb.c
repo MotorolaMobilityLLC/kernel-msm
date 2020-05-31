@@ -758,13 +758,7 @@ int ufshpb_prepare_add_lrbp(struct ufsf_feature *ufsf, int add_tag)
 	if (err)
 		goto map_err;
 
-	err = ufshcd_vops_crypto_engine_cfg_start(hba, add_tag);
-	if (err)
-		goto crypto_err;
-
 	return 0;
-crypto_err:
-	scsi_dma_unmap(pre_cmd);
 map_err:
 	ufshcd_vops_pm_qos_req_end(hba, pre_cmd->request, true);
 	ufshcd_release_all(hba);
