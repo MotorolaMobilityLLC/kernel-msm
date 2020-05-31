@@ -3939,7 +3939,6 @@ out:
 		clear_bit_unlock(add_tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
 		ufshcd_vops_pm_qos_req_end(hba, pre_cmd->request, true);
-		ufshcd_vops_crypto_engine_cfg_end(hba, lrbp, pre_cmd->request);
 		ufsf_hpb_end_pre_req(&hba->ufsf, pre_cmd->request);
 	}
 #endif
