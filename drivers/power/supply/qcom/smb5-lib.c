@@ -7439,6 +7439,9 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 		vote(chg->fcc_votable, FCC_STEPPER_VOTER, !dcin_present,
 				dcin_present ? 0 : 1500000);
 
+	chg->mmi.dc_ebmax_current_ma = chg->mmi.dc_ebmax_current_ma_default;
+	chg->mmi.cl_ebsrc = chg->mmi.dc_ebmax_current_ma_default;
+
 	if (chg->dc_psy)
 		power_supply_changed(chg->dc_psy);
 
@@ -11063,7 +11066,6 @@ static ssize_t force_chg_usb_suspend_store(struct device *dev,
 	}
 	mmi_chip->mmi.force_chg_suspend = (bool)mode;
 	r = smblib_set_usb_suspend(mmi_chip, (bool)mode);
-
 	return r ? r : count;
 }
 
