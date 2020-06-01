@@ -248,3 +248,13 @@
 		};
 	};
 };
+
+&thermal_zones {
+	gpu0-step {
+		trips {
+			gpu-step-trip {
+				temperature = <85000>;
+			};
+		};
+	};
+};
