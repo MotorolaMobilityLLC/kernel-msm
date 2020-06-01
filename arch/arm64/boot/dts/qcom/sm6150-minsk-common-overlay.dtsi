@@ -316,7 +316,7 @@
 	cd-gpios = <&tlmm 99 0>;
 };
 
-&qupv3_se3_i2c {
+&qupv3_se5_i2c {
 	status = "okay";
 
         tps61280@75 {
