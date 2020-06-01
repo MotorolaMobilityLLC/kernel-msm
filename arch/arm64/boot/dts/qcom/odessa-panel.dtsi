@@ -127,9 +127,9 @@
 
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
-			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+			qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
 			qcom,mdss-dsi-hbm-on-command-state =  "dsi_hs_mode";
-			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+			qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 0C CC];
 			qcom,mdss-dsi-hbm-off-command-state =  "dsi_hs_mode";
 		};
 	};
