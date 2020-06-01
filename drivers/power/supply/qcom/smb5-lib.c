@@ -10795,6 +10795,8 @@ static ssize_t factory_image_mode_store(struct device *dev,
 {
 	unsigned long r;
 	unsigned long mode;
+	union power_supply_propval val;
+	int rc;
 
 	r = kstrtoul(buf, 0, &mode);
 	if (r) {
@@ -10808,6 +10810,14 @@ static ssize_t factory_image_mode_store(struct device *dev,
 	}
 
 	mmi_chip->mmi.is_factory_image = (mode) ? true : false;
+	rc = smblib_get_prop_usb_present(mmi_chip,&val);
+	if(rc<0)
+		pr_err("Error getting USB present rc = %d\n", rc);
+
+	if((mmi_chip->mmi.is_factory_image == true)&&(val.intval)){
+		cancel_delayed_work(&mmi_chip->mmi.heartbeat_work);
+		schedule_delayed_work(&mmi_chip->mmi.heartbeat_work,msecs_to_jiffies(0));
+	}
 
 	return r ? r : count;
 }
