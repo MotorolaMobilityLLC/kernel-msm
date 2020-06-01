@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -4960,58 +4960,47 @@ static struct irq_chip pcie_msi_chip = {
 	.irq_unmask = unmask_msi_irq,
 };
 
-static int msm_pcie_create_irq(struct msm_pcie_dev_t *dev)
+static int msm_pcie_create_irq(struct irq_domain *domain, unsigned int irq_base,
+				irq_hw_number_t hwirq_base, int count)
 {
-	int irq, pos;
+	struct device_node *of_node;
+	int ret;
 
-	PCIE_DBG(dev, "RC%d\n", dev->rc_idx);
+	of_node = irq_domain_get_of_node(domain);
+	ret = __irq_alloc_descs(irq_base, hwirq_base, count,
+			of_node_to_nid(of_node), THIS_MODULE, NULL);
+	if (unlikely(ret < 0))
+		return ret;
 
-again:
-	pos = find_first_zero_bit(dev->msi_irq_in_use, PCIE_MSI_NR_IRQS);
-
-	if (pos >= PCIE_MSI_NR_IRQS)
-		return -ENOSPC;
-
-	PCIE_DBG(dev, "pos:%d msi_irq_in_use:%ld\n", pos, *dev->msi_irq_in_use);
-
-	if (test_and_set_bit(pos, dev->msi_irq_in_use))
-		goto again;
-	else
-		PCIE_DBG(dev, "test_and_set_bit is successful pos=%d\n", pos);
-
-	irq = irq_create_mapping(dev->irq_domain, pos);
-	if (!irq)
-		return -EINVAL;
-
-	return irq;
+	irq_domain_associate_many(domain, ret, hwirq_base, count);
+	return ret;
 }
 
 static int arch_setup_msi_irq_default(struct pci_dev *pdev,
 		struct msi_desc *desc, int nvec)
 {
-	int irq;
+	int irq, index, firstirq = 0;
 	struct msi_msg msg;
 	struct msm_pcie_dev_t *dev = PCIE_BUS_PRIV_DATA(pdev->bus);
 
 	PCIE_DBG(dev, "RC%d\n", dev->rc_idx);
 
-	irq = msm_pcie_create_irq(dev);
+	firstirq = msm_pcie_create_irq(dev->irq_domain, -1, 0, nvec);
 
-	PCIE_DBG(dev, "IRQ %d is allocated.\n", irq);
+	PCIE_DBG(dev, "%d IRQs are allocated.\n", nvec);
 
-	if (irq < 0)
+	if (firstirq < 0)
 		return irq;
 
-	PCIE_DBG(dev, "irq %d allocated\n", irq);
-
-	irq_set_chip_data(irq, pdev);
-	irq_set_msi_desc(irq, desc);
-
-	/* write msi vector and data */
-	msg.address_hi = 0;
-	msg.address_lo = MSM_PCIE_MSI_PHY;
-	msg.data = irq - irq_find_mapping(dev->irq_domain, 0);
-	write_msi_msg(irq, &msg);
+	for (index = 0, irq = firstirq ; index < nvec; index++, irq++) {
+		irq_set_chip_data(irq, pdev);
+		irq_set_msi_desc(irq, desc);
+		/* write msi vector and data */
+		msg.address_hi = 0;
+		msg.address_lo = MSM_PCIE_MSI_PHY;
+		msg.data = irq - irq_find_mapping(dev->irq_domain, 0);
+		write_msi_msg(irq, &msg);
+	}
 
 	return 0;
 }
@@ -5189,7 +5178,6 @@ static const struct irq_domain_ops msm_pcie_msi_ops = {
 static int32_t msm_pcie_irq_init(struct msm_pcie_dev_t *dev)
 {
 	int rc;
-	int msi_start =  0;
 	struct device *pdev = &dev->pdev->dev;
 
 	PCIE_DBG(dev, "RC%d\n", dev->rc_idx);
@@ -5320,7 +5308,6 @@ static int32_t msm_pcie_irq_init(struct msm_pcie_dev_t *dev)
 			return PTR_ERR(dev->irq_domain);
 		}
 
-		msi_start = irq_create_mapping(dev->irq_domain, 0);
 	}
 
 	return 0;

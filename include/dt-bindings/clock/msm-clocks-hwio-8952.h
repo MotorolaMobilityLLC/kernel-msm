@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016, 2018-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, 2018-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -243,6 +243,7 @@
 /* XO clock */
 #define BB_CLK1_ID		0x1
 #define BB_CLK2_ID		0x2
+#define BB_CLK3_ID		0x3
 #define RF_CLK2_ID		0x5
 #define LN_BB_CLK_ID		0x8
 #define DIV_CLK1_ID		0xb

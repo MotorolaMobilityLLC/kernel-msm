@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1427,6 +1427,16 @@ static void qpnp_lbc_set_appropriate_current(struct qpnp_lbc_chip *chip)
 
 	pr_debug("setting charger current %d mA\n", chg_current);
 	qpnp_lbc_ibatmax_set(chip, chg_current);
+}
+
+static void qpnp_batt_external_power_changed(struct power_supply *psy)
+{
+	struct qpnp_lbc_chip *chip = power_supply_get_drvdata(psy);
+
+	if (chip->bat_if_base && chip->batt_psy) {
+		pr_debug("power supply changed batt_psy\n");
+		power_supply_changed(chip->batt_psy);
+	}
 }
 
 static int qpnp_lbc_system_temp_level_set(struct qpnp_lbc_chip *chip,
@@ -3454,6 +3464,8 @@ static int qpnp_lbc_main_probe(struct platform_device *pdev)
 			ARRAY_SIZE(msm_batt_power_props);
 		chip->batt_psy_d.get_property = qpnp_batt_power_get_property;
 		chip->batt_psy_d.set_property = qpnp_batt_power_set_property;
+		chip->batt_psy_d.external_power_changed =
+			qpnp_batt_external_power_changed;
 		chip->batt_psy_d.property_is_writeable =
 			qpnp_batt_property_is_writeable;
 

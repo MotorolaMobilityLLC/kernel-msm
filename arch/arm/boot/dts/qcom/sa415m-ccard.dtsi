@@ -152,7 +152,7 @@
 		qcom,ap2mdm-status-gpio = <&tlmm 95 0x00>;
 		qcom,mdm2ap-status-gpio = <&tlmm 36 0x00>;
 		qcom,mdm2ap-status2-gpio = <&tlmm 88 0x00>;
-		status = "disabled";
+		status = "okay";
 	};
 
 };

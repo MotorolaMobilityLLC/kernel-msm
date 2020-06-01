@@ -77,7 +77,8 @@ static struct mhi_dev *mhi_ctx;
 static void mhi_hwc_cb(void *priv, enum ipa_mhi_event_type event,
 	unsigned long data);
 static void mhi_ring_init_cb(void *user_data);
-static void mhi_update_state_info(uint32_t uevent_idx, enum mhi_ctrl_info info);
+static void mhi_update_state_info(enum mhi_ctrl_info info);
+static void mhi_update_state_info_ch(uint32_t ch_id, enum mhi_ctrl_info info);
 static int mhi_deinit(struct mhi_dev *mhi);
 static void mhi_dev_resume_init_with_link_up(struct ep_pcie_notify *notify);
 static int mhi_dev_pcie_notify_event;
@@ -805,7 +806,7 @@ static void mhi_hwc_cb(void *priv, enum ipa_mhi_event_type event,
 			return;
 		}
 
-		mhi_update_state_info(MHI_DEV_UEVENT_CTRL, MHI_STATE_CONNECTED);
+		mhi_update_state_info(MHI_STATE_CONNECTED);
 		mhi_log(MHI_MSG_CRITICAL, "Device in M0 State\n");
 		place_marker("MHI - Device in M0 State\n");
 
@@ -1301,7 +1302,7 @@ send_start_completion_event:
 		if (rc)
 			pr_err("Error sending command completion event\n");
 
-		mhi_update_state_info(ch_id, MHI_STATE_CONNECTED);
+		mhi_update_state_info_ch(ch_id, MHI_STATE_CONNECTED);
 		/* Trigger callback to clients */
 		mhi_dev_trigger_cb(ch_id);
 		mhi_uci_chan_state_notify(mhi, ch_id, MHI_STATE_CONNECTED);
@@ -1357,7 +1358,7 @@ send_start_completion_event:
 				pr_err("stop event send failed\n");
 
 			mutex_unlock(&ch->ch_lock);
-			mhi_update_state_info(ch_id, MHI_STATE_DISCONNECTED);
+			mhi_update_state_info_ch(ch_id, MHI_STATE_DISCONNECTED);
 			/* Trigger callback to clients */
 			mhi_dev_trigger_cb(ch_id);
 			mhi_uci_chan_state_notify(mhi, ch_id,
@@ -1434,7 +1435,7 @@ send_start_completion_event:
 			if (rc)
 				pr_err("Error sending command completion event\n");
 			mutex_unlock(&ch->ch_lock);
-			mhi_update_state_info(ch_id, MHI_STATE_DISCONNECTED);
+			mhi_update_state_info_ch(ch_id, MHI_STATE_DISCONNECTED);
 			mhi_dev_trigger_cb(ch_id);
 			mhi_uci_chan_state_notify(mhi, ch_id,
 					MHI_STATE_DISCONNECTED);
@@ -2104,7 +2105,7 @@ int mhi_dev_resume(struct mhi_dev *mhi)
 		mhi_dev_write_to_host(mhi, &data_transfer, NULL,
 				MHI_DEV_DMA_SYNC);
 	}
-	mhi_update_state_info(MHI_DEV_UEVENT_CTRL, MHI_STATE_CONNECTED);
+	mhi_update_state_info(MHI_STATE_CONNECTED);
 
 	atomic_set(&mhi->is_suspended, 0);
 
@@ -2906,12 +2907,20 @@ static void mhi_dev_enable(struct work_struct *work)
 		enable_irq(mhi_ctx->mhi_irq);
 	}
 
-	mhi_update_state_info(MHI_DEV_UEVENT_CTRL, MHI_STATE_CONFIGURED);
+	/*
+	 * ctrl_info might already be set to CONNECTED state in the
+	 * callback function mhi_hwc_cb triggered from IPA when mhi_hwc_init
+	 * is called above, so set to CONFIGURED state only when it
+	 * is not already set to CONNECTED
+	 */
+	if (mhi_ctx->ctrl_info != MHI_STATE_CONNECTED)
+		mhi_update_state_info(MHI_STATE_CONFIGURED);
 
 	/*Enable MHI dev network stack Interface*/
 	rc = mhi_dev_net_interface_init();
 	if (rc)
 		pr_err("%s Failed to initialize mhi_dev_net iface\n", __func__);
+
 }
 
 static void mhi_ring_init_cb(void *data)
@@ -2973,28 +2982,28 @@ int mhi_register_state_cb(void (*mhi_state_cb)
 }
 EXPORT_SYMBOL(mhi_register_state_cb);
 
-static void mhi_update_state_info(uint32_t uevent_idx, enum mhi_ctrl_info info)
+static void mhi_update_state_info_ch(uint32_t ch_id, enum mhi_ctrl_info info)
 {
 	struct mhi_dev_client_cb_reason reason;
 
 	/* Currently no clients register for HW channel notify */
-	if (uevent_idx >= MHI_MAX_SOFTWARE_CHANNELS) {
-		mhi_log(MHI_MSG_ERROR, "Invalid channel :%d\n", uevent_idx);
+	if (ch_id >= MHI_MAX_SOFTWARE_CHANNELS) {
+		mhi_log(MHI_MSG_ERROR, "Invalid channel :%d\n", ch_id);
 		return;
 	}
 
-	if (uevent_idx == MHI_DEV_UEVENT_CTRL)
-		mhi_ctx->ctrl_info = info;
-
-	channel_state_info[uevent_idx].ctrl_info = info;
-
-	if (uevent_idx == MHI_CLIENT_QMI_OUT ||
-			uevent_idx == MHI_CLIENT_QMI_IN) {
+	channel_state_info[ch_id].ctrl_info = info;
+	if (ch_id == MHI_CLIENT_QMI_OUT || ch_id == MHI_CLIENT_QMI_IN) {
 		/* For legacy reasons for QTI client */
 		reason.reason = MHI_DEV_CTRL_UPDATE;
 		uci_ctrl_update(&reason);
 	}
+}
 
+
+static void mhi_update_state_info(enum mhi_ctrl_info info)
+{
+	mhi_ctx->ctrl_info = info;
 }
 
 int mhi_ctrl_state_info(uint32_t idx, uint32_t *info)
@@ -3500,8 +3509,7 @@ static int mhi_dev_probe(struct platform_device *pdev)
 		mutex_init(&mhi_ctx->mhi_lock);
 
 		mhi_uci_init();
-		mhi_update_state_info(MHI_DEV_UEVENT_CTRL,
-						MHI_STATE_CONFIGURED);
+		mhi_update_state_info(MHI_STATE_CONFIGURED);
 	}
 
 	INIT_WORK(&mhi_ctx->pcie_event, mhi_dev_pcie_handle_event);

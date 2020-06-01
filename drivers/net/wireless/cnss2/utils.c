@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,7 +31,7 @@ static struct cnss_dfs_nol_info {
 int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count)
 {
 	mutex_lock(&unsafe_channel_list_lock);
-	if ((!unsafe_ch_list) || (ch_count > CNSS_MAX_CH_NUM)) {
+	if (!unsafe_ch_list || ch_count > CNSS_MAX_CH_NUM) {
 		mutex_unlock(&unsafe_channel_list_lock);
 		return -EINVAL;
 	}

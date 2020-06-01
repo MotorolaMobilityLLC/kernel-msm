@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1886,7 +1886,7 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 #ifdef CONFIG_MSM_AVTIMER
 static void msm_isp_end_avtimer(void)
 {
-	avcs_core_disable_power_collapse(0);
+	msm_isp_stop_avtimer();
 }
 #else
 static void msm_isp_end_avtimer(void)
