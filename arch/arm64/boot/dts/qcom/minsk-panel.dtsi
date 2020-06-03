@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  */
 #include "dsi-panel-mot-auo-nt36675-fhd-video.dtsi"
+#include "dsi-panel-mot-boe-nt36675-fhd-video.dtsi"
 
 
 &pm6150l_wled {
@@ -74,12 +75,26 @@
 		ibb-supply = <&lcdb_ncp_vreg>;
 		qcom,dsi-panel = <&dsi_nt36675_auo_video>;
 	};
+	dsi_nt36675_boe_vid_display: qcom,dsi-display@12 {
+		label = "dsi_nt36675_boe_vid_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0",
+			"src_byte_clk0", "src_pixel_clk0",
+			"shadow_byte_clk0", "shadow_pixel_clk0";
+		lab-supply = <&lcdb_ldo_vreg>;
+		ibb-supply = <&lcdb_ncp_vreg>;
+		qcom,dsi-panel = <&dsi_nt36675_boe_video>;
+	};
 };
 
 &sde_dsi {
 	qcom,dsi-display-list = <
 		&dsi_mot_dummy_qhd_video_display
-		&dsi_nt36675_auo_vid_display>;
+		&dsi_nt36675_auo_vid_display
+		&dsi_nt36675_boe_vid_display>;
 
         /delete-property/ qcom,platform-te-gpio;
 	/delete-property/ vddio-supply;
@@ -97,7 +112,7 @@
 	qcom,mdss-dsi-panel-status-value = <0x9c>;
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
-	qcom,mdss-dsi-no-panel-on-read-support;
+	/*qcom,mdss-dsi-no-panel-on-read-support;*/
 	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-sequence = <1 3>, <0 1>, <1 10>;
 	qcom,mdss-dsi-display-timings {
@@ -130,7 +145,55 @@
 	qcom,mdss-dsi-bl-min-level = <18>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,mdss-dsi-bl-default-level = <2047>;
-	qcom,mdss-brightness-max-level = <255>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,platform-reset-gpio = <&tlmm 91 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_nt36675_boe_video {
+	qcom,mdss-dsi-t-clk-post = <0x0F>;
+	qcom,mdss-dsi-t-clk-pre = <0x36>;
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9c>;
+	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	/*qcom,mdss-dsi-no-panel-on-read-support;*/
+	qcom,tp_state_check_enable;
+	qcom,mdss-dsi-reset-sequence = <1 3>, <0 1>, <1 10>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-h-front-porch = <60>;
+			qcom,mdss-dsi-h-back-porch = <60>;
+			qcom,mdss-dsi-h-pulse-width = <10>;
+			qcom,mdss-dsi-v-back-porch = <10>;
+			qcom,mdss-dsi-v-front-porch = <20>;
+			qcom,mdss-dsi-v-pulse-width = <10>;
+			qcom,mdss-dsi-panel-phy-timings =
+				[26 21 09 0B 06 02 04 a0
+				26 21 09 0B 06 02 04 a0
+				26 21 09 0B 06 02 04 a0
+				26 21 09 0B 06 02 04 a0
+				26 20 09 0B 06 02 04 a0];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+			qcom,mdss-dsi-hbm-on-command-state =  "dsi_hs_mode";
+			qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+			qcom,mdss-dsi-hbm-off-command-state =  "dsi_hs_mode";
+		};
+	};
+};
+
+&dsi_nt36675_boe_video {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <18>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-dsi-bl-default-level = <2047>;
+	qcom,mdss-brightness-max-level = <4095>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 };
