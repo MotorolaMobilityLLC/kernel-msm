@@ -677,6 +677,8 @@ EXPORT_SYMBOL(mhi_dev_get_mhi_addr);
 
 int mhi_dev_mmio_init(struct mhi_dev *dev)
 {
+	int rc = 0;
+
 	if (WARN_ON(!dev))
 		return -EINVAL;
 
@@ -685,7 +687,14 @@ int mhi_dev_mmio_init(struct mhi_dev *dev)
 	mhi_dev_mmio_masked_read(dev, MHICFG, MHICFG_NER_MASK,
 				MHICFG_NER_SHIFT, &dev->cfg.event_rings);
 
-	mhi_dev_mmio_read(dev, CHDBOFF, &dev->cfg.chdb_offset);
+	rc = mhi_dev_mmio_masked_read(dev, MHICFG, MHICFG_NHWER_MASK,
+				MHICFG_NHWER_SHIFT, &dev->cfg.hw_event_rings);
+	if (rc)
+		return rc;
+
+	rc = mhi_dev_mmio_read(dev, CHDBOFF, &dev->cfg.chdb_offset);
+	if (rc)
+		return rc;
 
 	mhi_dev_mmio_read(dev, ERDBOFF, &dev->cfg.erdb_offset);
 
