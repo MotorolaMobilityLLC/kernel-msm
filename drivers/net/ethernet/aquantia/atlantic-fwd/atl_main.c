@@ -16,6 +16,7 @@
 #include <linux/rtnetlink.h>
 #include <linux/pm_runtime.h>
 #include "atl_macsec.h"
+#include "atl_ptp.h"
 
 #include "atl_qcom.h"
 
@@ -188,6 +189,90 @@ static int atl_change_mtu(struct net_device *ndev, int mtu)
 
 #endif
 
+static int atl_hwtstamp_config(struct atl_nic *nic, struct hwtstamp_config *config)
+{
+	if (config->flags)
+		return -EINVAL;
+
+	switch (config->tx_type) {
+	case HWTSTAMP_TX_OFF:
+	case HWTSTAMP_TX_ON:
+		break;
+	default:
+		return -ERANGE;
+	}
+
+	switch (config->rx_filter) {
+	case HWTSTAMP_FILTER_PTP_V2_L4_EVENT:
+	case HWTSTAMP_FILTER_PTP_V2_L4_SYNC:
+	case HWTSTAMP_FILTER_PTP_V2_L4_DELAY_REQ:
+	case HWTSTAMP_FILTER_PTP_V2_L2_EVENT:
+	case HWTSTAMP_FILTER_PTP_V2_L2_SYNC:
+	case HWTSTAMP_FILTER_PTP_V2_L2_DELAY_REQ:
+	case HWTSTAMP_FILTER_PTP_V2_SYNC:
+	case HWTSTAMP_FILTER_PTP_V2_DELAY_REQ:
+		config->rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
+		break;
+	case HWTSTAMP_FILTER_PTP_V2_EVENT:
+	case HWTSTAMP_FILTER_NONE:
+		break;
+	default:
+		return -ERANGE;
+	}
+
+	return atl_ptp_hwtstamp_config_set(nic, config);
+}
+
+static int atl_hwtstamp_set(struct atl_nic *nic, struct ifreq *ifr)
+{
+	struct hwtstamp_config config;
+	int err;
+
+	if (!nic->ptp)
+		return -EOPNOTSUPP;
+
+	if (copy_from_user(&config, ifr->ifr_data, sizeof(config)))
+		return -EFAULT;
+
+	err = atl_hwtstamp_config(nic, &config);
+	if (err)
+		return err;
+
+	return copy_to_user(ifr->ifr_data, &config, sizeof(config)) ?
+	       -EFAULT : 0;
+}
+
+static int atl_hwtstamp_get(struct atl_nic *nic, struct ifreq *ifr)
+{
+	struct hwtstamp_config config;
+
+	if (!nic->ptp)
+		return -EOPNOTSUPP;
+
+	atl_ptp_hwtstamp_config_get(nic, &config);
+	return copy_to_user(ifr->ifr_data, &config, sizeof(config)) ?
+	       -EFAULT : 0;
+}
+
+static int atl_ndo_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd)
+{
+	struct atl_nic *nic = netdev_priv(ndev);
+
+	pm_runtime_get_sync(&nic->hw.pdev->dev);
+
+	switch (cmd) {
+	case SIOCSHWTSTAMP:
+		return atl_hwtstamp_set(nic, ifr);
+
+	case SIOCGHWTSTAMP:
+		return atl_hwtstamp_get(nic, ifr);
+	}
+
+	pm_runtime_put(&nic->hw.pdev->dev);
+
+	return -EOPNOTSUPP;
+}
+
 static int atl_set_mac_address(struct net_device *ndev, void *priv)
 {
 	struct atl_nic *nic = netdev_priv(ndev);
@@ -220,6 +305,7 @@ static const struct net_device_ops atl_ndev_ops = {
 	.ndo_change_mtu = atl_change_mtu,
 #endif
 	.ndo_set_features = atl_set_features,
+	.ndo_do_ioctl = atl_ndo_ioctl,
 	.ndo_set_mac_address = atl_set_mac_address,
 #ifdef ATL_COMPAT_CAST_NDO_GET_STATS64
 	.ndo_get_stats64 = (void *)atl_get_stats64,
@@ -373,6 +459,8 @@ static void atl_work(struct work_struct *work)
 	struct atl_nic *nic = container_of(work, struct atl_nic, work);
 	struct atl_hw *hw = &nic->hw;
 	int ret;
+
+	atl_ptp_work(nic);
 
 	clear_bit(ATL_ST_WORK_SCHED, &hw->state);
 
@@ -600,9 +688,26 @@ static int atl_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (ret)
 		goto err_hwmon_init;
 
+	ret = atl_ptp_init(nic);
+	if (ret)
+		goto err_ptp_init;
+
+	ret = atl_ptp_ring_alloc(nic);
+	if (ret)
+		goto err_ptp_init;
+
+	if (test_bit(ATL_ST_CONFIGURED, &nic->hw.state)) {
+		/* Very first setup_datapath() is invoked a bit too early,
+		 * way before ptp rings are ready to be started,
+		 * make sure rings are started as they should here.
+		 */
+		ret = atl_ptp_ring_start(nic);
+		if (ret)
+			goto err_ptp_init;
+	}
+
 	if (hw->mcp.caps_low & atl_fw2_wake_on_link_force)
 		pm_runtime_put_noidle(&pdev->dev);
-
 
 	atl_intr_enable_non_ring(nic);
 	mod_timer(&nic->work_timer, jiffies + HZ);
@@ -613,6 +718,7 @@ static int atl_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	return 0;
 
+err_ptp_init:
 err_hwmon_init:
 	atl_stop(nic, true);
 	unregister_netdev(nic->ndev);
@@ -646,6 +752,16 @@ static void atl_remove(struct pci_dev *pdev)
 #if IS_ENABLED(CONFIG_ATLFWD_FWD_NETLINK)
 	atlfwd_nl_on_remove(nic->ndev);
 #endif
+
+	if (test_bit(ATL_ST_CONFIGURED, &nic->hw.state))
+		/* Last clear_datapath() is invoked a bit too late,
+		 * after ptp rings are already freed.
+		 * Make sure rings are stopped as they should here.
+		 */
+		atl_ptp_ring_stop(nic);
+	atl_ptp_unregister(nic);
+	atl_ptp_ring_free(nic);
+	atl_ptp_free(nic);
 
 	atl_stop(nic, true);
 	disable_needed = test_and_clear_bit(ATL_ST_ENABLED, &nic->hw.state);

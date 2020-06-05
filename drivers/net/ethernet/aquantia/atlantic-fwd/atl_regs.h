@@ -74,6 +74,8 @@ enum mcp_scratchpad {
 	FW2_LINK_RES_LOW = 29,	/* 0x370 */
 	FW1_EFUSE_SHADOW = 30,
 	FW2_LINK_RES_HIGH = 30,	/* 0x374 */
+	FW3_EXT_REQ = 31,	/* 0x378 */
+	FW3_EXT_RES = 32,	/* 0x37c */
 	RBL_STS = 35,		/* 0x388 */
 };
 
@@ -100,6 +102,8 @@ enum mcp_scratchpad {
 
 /* RX @ 0x5000 */
 #define ATL_RX_CTRL1 0x5000
+#define ATL_RX_SPARE_CTRL0 0x50A0
+#define ATL_RX_SPARE_CTRL1 0x50A4
 #define ATL2_RX_FLT_L2_BC_TAG 0x50F0
 #define ATL_RX_FLT_CTRL1 0x5100
 #define ATL_RX_FLT_CTRL2 0x5104

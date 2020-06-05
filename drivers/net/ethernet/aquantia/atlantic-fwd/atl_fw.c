@@ -882,6 +882,71 @@ static int atl_fw2_update_thermal(struct atl_hw *hw)
 	return ret;
 }
 
+static int atl_fw2_send_ptp_request(struct atl_hw *hw,
+				    struct ptp_msg_fw_request *msg)
+{
+	size_t size;
+	int ret = 0;
+
+	if (!msg)
+		return -EINVAL;
+
+	size = sizeof(msg->msg_id);
+	switch (msg->msg_id) {
+	case ptp_gpio_ctrl_msg:
+		size += sizeof(msg->gpio_ctrl);
+		break;
+	case ptp_adj_freq_msg:
+		size += sizeof(msg->adj_freq);
+		break;
+	case ptp_adj_clock_msg:
+		size += sizeof(msg->adj_clock);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	atl_lock_fw(hw);
+
+	/* Write macsec request to cfg memory */
+	ret = atl_write_mcp_mem(hw, 0, msg, (size + 3) & ~3, MCP_AREA_CONFIG);
+	if (ret) {
+		atl_dev_err("Failed to upload ptp request: %d\n", ret);
+		goto err_exit;
+	}
+
+	/* Toggle statistics bit for FW to update */
+	ret = atl_fw2_update_statistics(hw);
+
+err_exit:
+	atl_unlock_fw(hw);
+	return ret;
+}
+
+static void atl_fw3_set_ptp(struct atl_hw *hw, bool on)
+{
+	u32 all_ptp_features = atl_fw2_ex_caps_phy_ptp_en | atl_fw2_ex_caps_ptp_gpio_en;
+	u32 ptp_opts;
+
+	atl_lock_fw(hw);
+	ptp_opts = atl_read(hw, ATL_MCP_SCRATCH(FW3_EXT_RES));
+	if (on)
+		ptp_opts |= all_ptp_features;
+	else
+		ptp_opts &= ~all_ptp_features;
+
+	atl_write(hw, ATL_MCP_SCRATCH(FW3_EXT_REQ), ptp_opts);
+	atl_unlock_fw(hw);
+}
+
+static void atl_fw3_adjust_ptp(struct atl_hw *hw, uint64_t adj)
+{
+	atl_lock_fw(hw);
+	atl_write(hw, ATL_RX_SPARE_CTRL0, lower_32_bits(adj));
+	atl_write(hw, ATL_RX_SPARE_CTRL1, upper_32_bits(adj));
+	atl_unlock_fw(hw);
+}
+
 static struct atl_fw_ops atl_fw_ops[2] = {
 	[0] = {
 		.__wait_fw_init = __atl_fw1_wait_fw_init,
@@ -921,6 +986,9 @@ static struct atl_fw_ops atl_fw_ops[2] = {
 		.__get_hbeat = __atl_fw2_get_hbeat,
 		.get_mac_addr = atl_fw2_get_mac_addr,
 		.update_thermal = atl_fw2_update_thermal,
+		.send_ptp_req = atl_fw2_send_ptp_request,
+		.set_ptp = atl_fw3_set_ptp,
+		.adjust_ptp = atl_fw3_adjust_ptp,
 		.deinit = atl_fw1_unsupported,
 	},
 };

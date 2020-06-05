@@ -11,12 +11,15 @@
 
 #include <linux/ethtool.h>
 #include <linux/pm_runtime.h>
+#include <linux/ptp_clock_kernel.h>
 
+#include "atl_ethtool.h"
 #include "atl_common.h"
 #include "atl_mdio.h"
 #include "atl_ring.h"
 #include "atl_fwdnl.h"
 #include "atl_macsec.h"
+#include "atl_ptp.h"
 
 static uint32_t atl_ethtool_get_link(struct net_device *ndev)
 {
@@ -1182,6 +1185,38 @@ static int atl_set_coalesce(struct net_device *ndev,
 	nic->tx_intr_delay = ec->tx_coalesce_usecs;
 
 	atl_set_intr_mod(nic);
+
+	return 0;
+}
+
+static int atl_get_ts_info(struct net_device *ndev,
+			   struct ethtool_ts_info *info)
+{
+	struct atl_nic *nic = netdev_priv(ndev);
+	struct ptp_clock *ptp_clock;
+
+	ethtool_op_get_ts_info(ndev, info);
+
+	if (!nic->ptp)
+		return 0;
+
+	info->so_timestamping |=
+		SOF_TIMESTAMPING_TX_HARDWARE |
+		SOF_TIMESTAMPING_RX_HARDWARE |
+		SOF_TIMESTAMPING_RAW_HARDWARE;
+
+	info->tx_types = BIT(HWTSTAMP_TX_OFF) |
+			 BIT(HWTSTAMP_TX_ON);
+
+	info->rx_filters = BIT(HWTSTAMP_FILTER_NONE);
+
+	info->rx_filters |= BIT(HWTSTAMP_FILTER_PTP_V2_L4_EVENT) |
+			    BIT(HWTSTAMP_FILTER_PTP_V2_L2_EVENT) |
+			    BIT(HWTSTAMP_FILTER_PTP_V2_EVENT);
+
+	ptp_clock = atl_ptp_get_ptp_clock(nic);
+	if (ptp_clock)
+		info->phc_index = ptp_clock_index(ptp_clock);
 
 	return 0;
 }
@@ -2360,7 +2395,7 @@ static void atl_rxf_update_flex(struct atl_nic *nic, int idx)
 	}
 }
 
-static const struct atl_rxf_flt_desc atl_rxf_descs[] = {
+static struct atl_rxf_flt_desc atl_rxf_descs[] = {
 	{
 		.base = ATL_RXF_VLAN_BASE,
 		.max = ATL_RXF_VLAN_MAX,
@@ -2407,6 +2442,46 @@ static const struct atl_rxf_flt_desc atl_rxf_descs[] = {
 		.update_rxf = atl_rxf_update_flex,
 	},
 };
+
+s8 atl_reserve_filter(enum atl_rxf_type type)
+{
+	switch (type) {
+	case ATL_RXF_ETYPE:
+		WARN_ONCE(atl_rxf_descs[type].max != ATL_RXF_ETYPE_MAX,
+			  "already reserved");
+		atl_rxf_descs[type].max--;
+		return atl_rxf_descs[type].max;
+	case ATL_RXF_NTUPLE:
+		WARN_ONCE(atl_rxf_descs[type].max != ATL_RXF_NTUPLE_MAX,
+			  "already reserved");
+		atl_rxf_descs[type].max--;
+		return atl_rxf_descs[type].max;
+	default:
+		WARN_ONCE(true, "unexpected type");
+		break;
+	}
+
+	return -1;
+}
+
+void atl_release_filter(enum atl_rxf_type type)
+{
+	switch (type) {
+	case ATL_RXF_ETYPE:
+		WARN_ONCE(atl_rxf_descs[type].max == ATL_RXF_ETYPE_MAX,
+			  "already released");
+		atl_rxf_descs[type].max++;
+		break;
+	case ATL_RXF_NTUPLE:
+		WARN_ONCE(atl_rxf_descs[type].max == ATL_RXF_NTUPLE_MAX,
+			  "already released");
+		atl_rxf_descs[type].max++;
+		break;
+	default:
+		WARN_ONCE(true, "unexpected type");
+		break;
+	}
+}
 
 static uint32_t *atl_rxf_cmd(const struct atl_rxf_flt_desc *desc,
 	struct atl_nic *nic)
@@ -2863,6 +2938,7 @@ const struct ethtool_ops atl_ethtool_ops = {
 	.set_priv_flags = atl_set_priv_flags,
 	.get_coalesce = atl_get_coalesce,
 	.set_coalesce = atl_set_coalesce,
+	.get_ts_info = atl_get_ts_info,
 	.get_wol = atl_get_wol,
 	.set_wol = atl_set_wol,
 	.begin = atl_ethtool_begin,

@@ -20,7 +20,7 @@
 #include <linux/netdevice.h>
 #include <linux/moduleparam.h>
 
-#define ATL_VERSION "1.1.7"
+#define ATL_VERSION "1.1.8"
 
 struct atl_nic;
 
@@ -33,6 +33,8 @@ struct atl_nic;
 #define ATL_MAX_QUEUES 8
 
 #include "atl_fwd.h"
+
+struct atl_ptp;
 
 enum {
 	ATL_RXF_VLAN_BASE = 0,
@@ -192,7 +194,11 @@ struct atl_queue_vec;
 #define ATL_FWD_RING_BASE ATL_MAX_QUEUES /* Use TC 1 for offload
 					  * engine rings */
 #define ATL_NUM_MSI_VECS 32
-#define ATL_NUM_NON_RING_IRQS 1
+enum {
+	ATL_IRQ_LINK = 0,
+	ATL_IRQ_PTP,
+	ATL_NUM_NON_RING_IRQS,
+};
 
 #define ATL_RXF_RING_ANY 32
 
@@ -253,6 +259,9 @@ struct atl_nic {
 	struct atl_rxf_vlan rxf_vlan;
 	struct atl_rxf_etype rxf_etype;
 	struct atl_rxf_flex rxf_flex;
+
+	/* PTP support */
+	struct atl_ptp *ptp;
 };
 
 /* Flags only modified with RTNL lock held */
