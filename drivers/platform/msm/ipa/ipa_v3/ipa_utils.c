@@ -8340,3 +8340,31 @@ int ipa3_app_clk_vote(
 
 	return ret;
 }
+
+/**
+ * ipa3_get_max_pdn() - get max PDN number based on hardware version
+ *
+ * Returns:     IPA_MAX_PDN_NUM for IPAv4_5 and IPA_MAX_PDN_NUM_v4 for others
+ *
+ */
+
+int ipa3_get_max_pdn(void)
+{
+	int ipa_max_pdn = 0;
+
+	switch (ipa3_get_hw_type_index()) {
+	case IPA_4_1:
+	case IPA_4_1_APQ:
+	case IPA_4_2:
+	case IPA_4_5:
+	case IPA_4_5_MHI:
+	case IPA_4_5_APQ:
+		ipa_max_pdn = IPA_MAX_PDN_NUM_v4;
+		break;
+	default:
+		ipa_max_pdn = IPA_MAX_PDN_NUM;
+		break;
+
+	}
+	return ipa_max_pdn;
+}
