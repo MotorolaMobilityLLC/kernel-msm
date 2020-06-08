@@ -70,6 +70,5 @@
 };
 
 &sdx_ext_ipc {
-	qcom,default-policy-nop;
 	status = "okay";
 };
