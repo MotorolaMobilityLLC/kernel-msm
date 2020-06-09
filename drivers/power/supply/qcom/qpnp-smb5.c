@@ -1084,6 +1084,9 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		rc = smblib_set_prop_usb_system_temp_level(chg, val);
 		break;
+	case POWER_SUPPLY_PROP_CP_ENABLE:
+		smblib_set_prop_cp_enable(chg, val);
+		break;
 	default:
 		pr_err("set prop %d is not supported\n", psp);
 		rc = -EINVAL;
