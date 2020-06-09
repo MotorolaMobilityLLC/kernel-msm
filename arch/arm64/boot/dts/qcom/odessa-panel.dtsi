@@ -51,6 +51,24 @@
 	};
 };
 
+&tlmm {
+	tp-rst-output-high {
+		tp_rst_output_high: tp_rst_output_high {
+			mux {
+				pins = "gpio8";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio8";
+				drive-strength = <8>;
+				output-high;
+				bias-pull-up;
+			};
+		};
+	};
+};
+
 &soc {
 	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@22 {
 		label = "dsi_mot_dummy_qhd_video_display";
@@ -91,6 +109,8 @@
 };
 
 &sde_dsi {
+	pinctrl-names = "panel_active", "panel_suspend", "tp-rst-output-high";
+	pinctrl-2 = <&tp_rst_output_high>;
 	qcom,dsi-display-list = <
 		&dsi_mot_dummy_qhd_video_display
 		&dsi_nt36675_auo_vid_display
@@ -146,8 +166,9 @@
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,mdss-dsi-tprst-output-high-resume;
 	qcom,tp_state_check_enable;
-	qcom,mdss-dsi-reset-sequence = <1 4>, <0 11>, <1 11>;
+	qcom,mdss-dsi-reset-sequence = <1 4>, <0 1>, <1 12>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-h-front-porch = <16>;
