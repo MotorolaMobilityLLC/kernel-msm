@@ -773,6 +773,7 @@ struct smb_charger {
 	bool			suspended;
 	u32			source_current_ma;
 	bool			reverse_boost;
+	bool			cp_active;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -947,6 +948,8 @@ int smblib_set_prop_typec_select_rp(struct smb_charger *chg,
 int smblib_set_prop_pd_active(struct smb_charger *chg,
 				const union power_supply_propval *val);
 int smblib_set_prop_pd_in_hard_reset(struct smb_charger *chg,
+				const union power_supply_propval *val);
+void smblib_set_prop_cp_enable(struct smb_charger *chg,
 				const union power_supply_propval *val);
 int smblib_set_prop_ship_mode(struct smb_charger *chg,
 				const union power_supply_propval *val);
