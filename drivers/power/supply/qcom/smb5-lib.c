@@ -9430,6 +9430,8 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 		chip->mmi.charging_limit_modes = charging_limit_modes;
 }
 
+#define CHARGER_POWER_7p5W 7500
+#define CHARGER_POWER_10W 10000
 #define CHARGER_POWER_15W 15000
 #define CHARGER_POWER_18W 18000
 #define CHARGER_POWER_20W 20000
@@ -9442,33 +9444,59 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 static void mmi_charger_power_support(struct smb_charger *chg)
 {
 	struct device_node *np = chg->dev->of_node;
+	struct device_node *npoint = NULL;
 	const char *charger_ability = NULL;
 	int retval;
 
+	npoint = of_find_node_by_path("/chosen");
+
+	retval = of_property_read_u32(np, "qcom,dcp-power-max",
+				  &chg->mmi.dcp_power_max);
+	if (retval) {
+		chg->mmi.dcp_power_max = CHARGER_POWER_7p5W;
+		goto hvdcp;
+	}
+
+	if (!npoint)
+		goto hvdcp;
+
+	retval = of_property_read_string(npoint, "mmi,dcp_charger",
+						 &charger_ability);
+
+	if ((retval == -EINVAL) || !charger_ability) {
+		pr_err("mmi,dcp_charger unused\n");
+		goto hvdcp;
+
+	} else
+		pr_info("dcp_charger = %s\n", charger_ability);
+
+	if (strstr(charger_ability, "7p5W"))
+		chg->mmi.dcp_power_max = CHARGER_POWER_7p5W;
+	else if (strstr(charger_ability, "10W"))
+		chg->mmi.dcp_power_max = CHARGER_POWER_10W;
+
+hvdcp:
 	if (of_property_read_bool(np, "qcom,force-hvdcp-5v")) {
 		chg->mmi.hvdcp_power_max = CHARGER_POWER_15W;
-		return;
+		goto exit;
 	}
 
 	retval = of_property_read_u32(np, "qcom,hvdcp-power-max",
 				  &chg->mmi.hvdcp_power_max);
 	if (retval) {
 		chg->mmi.hvdcp_power_max = CHARGER_POWER_15W;
-		return;
+		goto exit;
 	}
 
-	np = of_find_node_by_path("/chosen");
+	if (!npoint)
+		goto exit;
 
-	if (!np)
-		return;
-
-	retval = of_property_read_string(np, "mmi,charger",
+	retval = of_property_read_string(npoint, "mmi,charger",
 						 &charger_ability);
 
 	if ((retval == -EINVAL) || !charger_ability) {
 		pr_err("mmi,charger unused\n");
-		of_node_put(np);
-		return;
+		goto exit;
 
 	} else
 		pr_info("charger = %s\n", charger_ability);
@@ -9479,8 +9507,9 @@ static void mmi_charger_power_support(struct smb_charger *chg)
 		chg->mmi.hvdcp_power_max = CHARGER_POWER_18W;
 	else if (strstr(charger_ability, "20W"))
 		chg->mmi.hvdcp_power_max = CHARGER_POWER_20W;
-
-	of_node_put(np);
+exit:
+	if (npoint)
+		of_node_put(npoint);
 
 	return;
 }
@@ -9871,7 +9900,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			if (apsd_reg & OCP_CHARGER_BIT)
 				cl_usb = 1000;
 			else
-				cl_usb = 1500;
+				cl_usb = chip->mmi.dcp_power_max/5;
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
 			cl_usb = 1500;
