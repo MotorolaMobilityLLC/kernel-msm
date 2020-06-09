@@ -47,7 +47,7 @@
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-off-sleep = <3>;
-		qcom,supply-post-on-sleep = <3>;
+		qcom,supply-post-on-sleep = <10>;
 	};
 };
 
@@ -114,7 +114,7 @@
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	/*qcom,mdss-dsi-no-panel-on-read-support;*/
 	qcom,tp_state_check_enable;
-	qcom,mdss-dsi-reset-sequence = <1 3>, <0 1>, <1 10>;
+	qcom,mdss-dsi-reset-sequence = <1 3>, <0 4>, <1 10>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-h-front-porch = <60>;
@@ -162,7 +162,7 @@
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	/*qcom,mdss-dsi-no-panel-on-read-support;*/
 	qcom,tp_state_check_enable;
-	qcom,mdss-dsi-reset-sequence = <1 3>, <0 1>, <1 10>;
+	qcom,mdss-dsi-reset-sequence = <1 3>, <0 4>, <1 10>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-h-front-porch = <60>;
