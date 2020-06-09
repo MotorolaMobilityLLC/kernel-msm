@@ -296,7 +296,24 @@
 	};
 };
 
+&mtp_batterydata {
+	df-serialnum = "SB18C57819";
+	#include "qg-batterydata-kx50-amperex-4000mah.dtsi"
+	#include "qg-batterydata-kx50-swd-4000mah.dtsi"
+};
+
+&pm6150_charger {
+	qcom,iterm-ma = <194>;
+	qcom,mmi-temp-zones = <0 4200 776 0>,
+				<10 4200 1940 776>,
+				<15 0 1940 1940>,
+				<45 4200 3600 2500>,
+				<60 4200 1940 0>;
+};
+
 &pm6150_qg {
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,qg-iterm-ma = <400>;
 	qcom,s3-entry-ibat-ua = <35000>;
 	qcom,s3-exit-ibat-ua = <50000>;
 };
