@@ -505,6 +505,7 @@ struct mmi_params {
 	bool			init_done;
 	int			inc_hvdcp_cnt;
 	int			hvdcp_power_max;
+	int			dcp_power_max;
 	bool			enable_charging_limit;
 	bool			is_factory_image;
 	enum charging_limit_modes	charging_limit_modes;
