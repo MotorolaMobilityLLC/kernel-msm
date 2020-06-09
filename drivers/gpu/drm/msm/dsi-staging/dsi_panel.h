@@ -110,6 +110,7 @@ struct dsi_pinctrl_info {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *active;
 	struct pinctrl_state *suspend;
+	struct pinctrl_state *tp_rst_output_high;
 };
 
 struct dsi_panel_phy_props {
@@ -305,6 +306,7 @@ struct dsi_panel {
 	u32 lcd_not_sleep;
 	bool tp_state_check;
 	u32 panel_off_nosleep_state;
+	bool tprst_outhigh_resume;
 	enum dsi_panel_power_off_mode power_off_mode;
 };
 

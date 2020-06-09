@@ -486,7 +486,8 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 			goto exit;
 		}
 	}
-
+	if (panel->tprst_outhigh_resume)
+			pinctrl_select_state(panel->pinctrl.pinctrl, panel->pinctrl.tp_rst_output_high);
 	rc = dsi_panel_set_pinctrl_state(panel, true);
 	if (rc) {
 		pr_err("[%s] failed to set pinctrl, rc=%d\n", panel->name, rc);
@@ -663,6 +664,12 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 		rc = PTR_ERR(panel->pinctrl.suspend);
 		pr_err("failed to get pinctrl suspend state, rc=%d\n", rc);
 		goto error;
+	}
+
+	panel->pinctrl.tp_rst_output_high = pinctrl_lookup_state(panel->pinctrl.pinctrl,
+						       "tp-rst-output-high");
+	if (IS_ERR_OR_NULL(panel->pinctrl.tp_rst_output_high)) {
+		pr_err("failed to get pinctrl tp_rst_output_high state, rc=%d\n", rc);
 	}
 
 error:
@@ -3778,6 +3785,9 @@ static int dsi_panel_parse_mot_panel_config(struct dsi_panel *panel,
 
 	panel->no_panel_on_read_support = of_property_read_bool(of_node,
 				"qcom,mdss-dsi-no-panel-on-read-support");
+
+	panel->tprst_outhigh_resume = of_property_read_bool(of_node,
+				"qcom,mdss-dsi-tprst-output-high-resume");
 
 	panel->tp_state_check= of_property_read_bool(of_node,
 				"qcom,tp_state_check_enable");
