@@ -8389,7 +8389,7 @@ int dsi_display_unprepare(struct dsi_display *display)
 	/* destrory dsi isr set up */
 	dsi_display_ctrl_isr_configure(display, false);
 
-	if(display->panel->power_off_mode == PANEL_POWER_OFF_MODE_ONE)
+	if(display->panel->power_off_mode != PANEL_POWER_OFF_MODE_ONE)
 	{	if (!display->poms_pending) {
 			rc = dsi_panel_post_unprepare(display->panel);
 			if (rc)
