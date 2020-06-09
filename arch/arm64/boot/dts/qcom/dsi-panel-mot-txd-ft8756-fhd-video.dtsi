@@ -41,7 +41,7 @@
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
-		qcom,mdss-dsi-reset-sequence = <0 6>, <1 11>, <0 4>, <1 11>;
+		qcom,mdss-dsi-reset-sequence = <1 4>, <0 1>, <1 12>;
 		qcom,mdss-dsi-display-timings {
 			timing@0 {
 				qcom,mdss-dsi-panel-width = <1080>;
@@ -56,15 +56,15 @@
 				qcom,mdss-dsi-panel-framerate = <60>;
 				qcom,mdss-dsi-on-command =
 				[
+					05 01 00 00 64 00 01 11
+					05 01 00 00 0A 00 01 29
 					15 00 00 00 00 00 02 51 CC
 					15 00 00 00 00 00 02 53 2C
-					15 00 00 00 00 00 02 55 01
-					05 01 00 00 64 00 01 11
-					05 01 00 00 00 00 01 29
+					15 01 00 00 00 00 02 55 01
 				];
 				qcom,mdss-dsi-off-command = [
-					05 00 00 00 00 00 01 28
-					05 01 00 00 44 00 01 10
+					05 01 00 00 0A 00 01 28
+					05 01 00 00 78 00 01 10
 				];
 				qcom,mdss-dsi-t-clk-post = <0x0E>;
 				qcom,mdss-dsi-t-clk-pre = <0x35>;
