@@ -4052,7 +4052,11 @@ static int smblib_get_prop_ufp_mode(struct smb_charger *chg)
 		return POWER_SUPPLY_TYPEC_SOURCE_MEDIUM;
 	case SNK_DAM_3000MA_BIT:
 	case SNK_RP_3P0_BIT:
-		return POWER_SUPPLY_TYPEC_SOURCE_HIGH;
+		if (chg->hvdcp_disable){
+			return POWER_SUPPLY_TYPEC_SOURCE_MEDIUM;
+		} else {
+			return POWER_SUPPLY_TYPEC_SOURCE_HIGH;
+		}
 	case SNK_RP_SHORT_BIT:
 		return POWER_SUPPLY_TYPEC_NON_COMPLIANT;
 	default:
