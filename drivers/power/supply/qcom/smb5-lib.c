@@ -10158,7 +10158,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	if (prev_vbus_mv == -1)
 		prev_vbus_mv = usb_mv;
 
-	smblib_dbg(chip, PR_MISC, "batt=%d mV, %d mA, %d C, USB= %d mV\n",
+	smblib_dbg(chip, PR_MOTO, "batt=%d mV, %d mA, %d C, USB= %d mV\n",
 		 batt_mv, batt_ma, batt_temp, usb_mv);
 
 	pok_irq = chip->irq_info[SWITCHER_POWER_OK_IRQ].irq;
@@ -10253,8 +10253,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			 POWER_SUPPLY_TYPE_USB_DCP)
 			if (apsd_reg & OCP_CHARGER_BIT)
 				cl_usb = 1000;
-			else
+			else if(chip->mmi.support_2a_dcp)
 				cl_usb = 1800;
+			else
+				cl_usb = 1500;
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
 			cl_usb = 1500;
@@ -11845,6 +11847,8 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	if (rc)
 		chg->mmi.vfloat_comp_mv = 0;
 	chg->mmi.vfloat_comp_mv /= 1000;
+
+	chg->mmi.support_2a_dcp = of_property_read_bool(node, "qcom,support-2a-dcp");
 
 	return rc;
 }
