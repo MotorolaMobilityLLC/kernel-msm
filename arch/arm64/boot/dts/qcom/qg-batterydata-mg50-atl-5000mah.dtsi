@@ -5,7 +5,7 @@ qcom,mg50-atl-5000mah {
     qcom,sdam-magic-number = <0x18c80753>;
     qcom,max-voltage-uv = <4450000>;
     qcom,fg-cc-cv-threshold-uv = <4440000>;
-    qcom,fastchg-current-ma = <4000>;
+    qcom,fastchg-current-ma = <3150>;
     qcom,batt-id-kohm = <0>;
     qcom,battery-beta = <3440>;
     qcom,battery-therm-kohm = <10>;
