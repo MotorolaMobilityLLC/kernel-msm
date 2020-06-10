@@ -38,7 +38,7 @@
 #include "qg-defs.h"
 #include <dt-bindings/iio/qcom,spmi-vadc.h>
 
-static int qg_debug_mask = 0xff;
+static int qg_debug_mask;
 
 static int qg_esr_mod_count = 30;
 static ssize_t esr_mod_count_show(struct device *dev, struct device_attribute
