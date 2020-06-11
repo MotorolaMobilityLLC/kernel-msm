@@ -206,6 +206,7 @@ struct drm_display_info {
 	u64 panel_id;
 	u64 panel_ver;
 	char panel_name[DRM_DISPLAY_NAME_LEN];
+	char panel_supplier[DRM_DISPLAY_NAME_LEN];
 
 	/**
 	 * @pixel_clock: Maximum pixel clock supported by the sink, in units of
