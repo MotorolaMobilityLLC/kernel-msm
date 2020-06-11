@@ -5070,7 +5070,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 
 	/* QC 2.0/3.0 adapter */
 	if (apsd_result->bit & QC_2P0_BIT) {
-		*total_current_ua = HVDCP_2_CURRENT_UA;
+		if (!chg->hvdcp2_current_override)
+			*total_current_ua = HVDCP_2_CURRENT_UA;
+		else
+			*total_current_ua = HVDCP_CURRENT_UA;
 		return 0;
 	} else if (apsd_result->bit & QC_3P0_BIT){
 		*total_current_ua = HVDCP_CURRENT_UA;
