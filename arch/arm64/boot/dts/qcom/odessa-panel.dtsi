@@ -132,6 +132,7 @@
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,mdss-dsi-panel-supplier = "djn";
 	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-sequence = <1 3>, <0 4>, <1 10>;
 	qcom,mdss-dsi-display-timings {
@@ -166,6 +167,7 @@
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
 	qcom,mdss-dsi-panel-status-read-length = <1>;
 	qcom,mdss-dsi-no-panel-on-read-support;
+	qcom,mdss-dsi-panel-supplier = "txd";
 	qcom,mdss-dsi-tprst-output-high-resume;
 	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-sequence = <1 4>, <0 1>, <1 12>;
