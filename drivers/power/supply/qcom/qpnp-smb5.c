@@ -622,6 +622,9 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 	if (chg->chg_param.qc4_max_icl_ua <= 0)
 		chg->chg_param.qc4_max_icl_ua = MICRO_4PA;
 
+	chg->hvdcp2_current_override = of_property_read_bool(node,
+					"qcom,hvdcp2-current-override");
+
 	return 0;
 }
 
