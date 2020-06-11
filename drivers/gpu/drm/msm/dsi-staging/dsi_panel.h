@@ -296,6 +296,7 @@ struct dsi_panel {
 	u64 panel_id;
 	u64 panel_ver;
 	char panel_name[DSI_PANEL_MAX_PANEL_LEN];
+	char panel_supplier[DSI_PANEL_MAX_PANEL_LEN];
 
 	u32 disp_on_chk_val;
 	bool no_panel_on_read_support;
