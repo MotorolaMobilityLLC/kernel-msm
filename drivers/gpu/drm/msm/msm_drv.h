@@ -536,6 +536,7 @@ struct msm_display_info {
 	uint64_t panel_id;
 	uint64_t panel_ver;
 	char panel_name[MSM_DISP_NAME_LEN_MAX];
+	char panel_supplier[MSM_DISP_NAME_LEN_MAX];
 
 	unsigned int width_mm;
 	unsigned int height_mm;
