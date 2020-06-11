@@ -6131,8 +6131,12 @@ int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 	int rc = 0;
 	unsigned long flags;
 
-	if (enable == chg->moisture_detection_enabled)
+	if (chg->lpd_disabled)
 		return 0;
+
+	mutex_lock(&chg->moisture_detection_enable);
+	if (enable == chg->moisture_detection_enabled)
+		goto exit;
 
 	cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 	alarm_cancel(&chg->lpd_recheck_timer);
