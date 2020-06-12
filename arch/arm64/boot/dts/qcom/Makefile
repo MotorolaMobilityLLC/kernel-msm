@@ -59,7 +59,9 @@ dtbo-$(CONFIG_QTPRO_DTB) += \
 	sm6150-qtpro-evt2-overlay.dtbo
 
 dtbo-$(CONFIG_ODESSA_DTB) += \
-	sdmmagpie-odessa-evt1-overlay.dtbo
+	sdmmagpie-odessa-evt1-overlay.dtbo \
+	sdmmagpie-odessa-dvt2-overlay.dtbo \
+	sdmmagpie-odessa-pvt-overlay.dtbo
 
 sm6150-foles-evt1-overlay.dtbo-base := \
 	sm6150-foles-base.dtb
@@ -134,6 +136,12 @@ sdmmagpie-tacoma-evt1-overlay.dtbo-base := \
 	sdmmagpie-tacoma-base.dtb
 
 sdmmagpie-odessa-evt1-overlay.dtbo-base := \
+	sdmmagpie-odessa-base.dtb
+
+sdmmagpie-odessa-dvt2-overlay.dtbo-base := \
+	sdmmagpie-odessa-base.dtb
+
+sdmmagpie-odessa-pvt-overlay.dtbo-base := \
 	sdmmagpie-odessa-base.dtb
 
 sm6150-def-evt1-overlay.dtbo-base := \
