@@ -10258,7 +10258,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			if (apsd_reg & OCP_CHARGER_BIT)
 				cl_usb = 1000;
 			else if(chip->mmi.support_2a_dcp)
-				cl_usb = 1800;
+				cl_usb = 2000;
 			else
 				cl_usb = 1500;
 		else if (chip->real_charger_type ==
