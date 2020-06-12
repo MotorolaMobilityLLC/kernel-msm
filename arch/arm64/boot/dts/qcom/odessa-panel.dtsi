@@ -143,6 +143,17 @@
 			qcom,mdss-dsi-v-back-porch = <10>;
 			qcom,mdss-dsi-v-front-porch = <20>;
 			qcom,mdss-dsi-v-pulse-width = <10>;
+			qcom,mdss-dsi-on-command =
+			[
+				15 00 00 00 00 00 02 FF 10
+				15 00 00 00 00 00 02 FB 01
+				39 00 00 00 00 00 03 68 02 01
+				39 00 00 00 00 00 03 51 0C CC
+				15 00 00 00 00 00 02 53 2C
+				15 00 00 00 00 00 02 55 01
+				05 01 00 00 64 00 01 11
+				05 01 00 00 00 00 01 29
+			];
 			qcom,mdss-dsi-panel-phy-timings = [00 2a 0b 0b 28 26 0b
 				0c 08 02 04 00];
 
@@ -179,6 +190,14 @@
 			qcom,mdss-dsi-v-back-porch = <32>;
 			qcom,mdss-dsi-v-front-porch = <8>;
 			qcom,mdss-dsi-v-pulse-width = <4>;
+			qcom,mdss-dsi-on-command =
+			[
+				05 01 00 00 64 00 01 11
+				05 01 00 00 0A 00 01 29
+				15 00 00 00 00 00 02 51 CC
+				15 00 00 00 00 00 02 53 2C
+				15 01 00 00 00 00 02 55 01
+			];
 			qcom,mdss-dsi-panel-phy-timings = [00 21 08 08 25 23 09
 				08 06 02 04 00];
 
