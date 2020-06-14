@@ -979,13 +979,28 @@ static int calc_tx_header_size(struct rr_packet *pkt,
  *
  * @return: valid header size on success, INT_MAX on failure.
  */
-static int calc_rx_header_size(struct msm_ipc_router_xprt_info *xprt_info)
+static int calc_rx_header_size(struct msm_ipc_router_xprt_info *xprt_info,
+			       struct rr_packet *pkt)
 {
 	int xprt_version = 0;
 	int hdr_size = INT_MAX;
+	struct sk_buff *temp_skb;
 
-	if (xprt_info)
+	if (xprt_info && xprt_info->initialized) {
 		xprt_version = xprt_info->xprt->get_version(xprt_info->xprt);
+	} else {
+		if (!pkt) {
+			IPC_RTR_ERR("%s: NULL PKT\n", __func__);
+			return -EINVAL;
+		}
+		temp_skb = skb_peek(pkt->pkt_fragment_q);
+		if (!temp_skb || !temp_skb->data) {
+			IPC_RTR_ERR("%s: No SKBs in skb_queue\n", __func__);
+			return -EINVAL;
+		}
+		xprt_version = temp_skb->data[0];
+		pr_err("app:%s version recv %d\n", __func__, xprt_version);
+	}
 
 	if (xprt_version == IPC_ROUTER_V1)
 		hdr_size = sizeof(struct rr_header_v1);
@@ -4173,6 +4188,7 @@ static int msm_ipc_router_add_xprt(struct msm_ipc_router_xprt *xprt)
 
 	xprt->priv = xprt_info;
 	send_hello_msg(xprt_info);
+	complete_all(&xprt->xprt_init_complete);
 
 	return 0;
 }
@@ -4264,7 +4280,9 @@ void msm_ipc_router_xprt_notify(struct msm_ipc_router_xprt *xprt,
 		if (xprt_work) {
 			xprt_work->xprt = xprt;
 			INIT_WORK(&xprt_work->work, xprt_open_worker);
+			init_completion(&xprt->xprt_init_complete);
 			queue_work(msm_ipc_router_workqueue, &xprt_work->work);
+			wait_for_completion(&xprt->xprt_init_complete);
 		} else {
 			IPC_RTR_ERR(
 			"%s: malloc failure - Couldn't notify OPEN event",
@@ -4298,7 +4316,7 @@ void msm_ipc_router_xprt_notify(struct msm_ipc_router_xprt *xprt,
 	if (!pkt)
 		return;
 
-	if (pkt->length < calc_rx_header_size(xprt_info) ||
+	if (pkt->length < calc_rx_header_size(xprt_info, pkt) ||
 	    pkt->length > MAX_IPC_PKT_SIZE) {
 		IPC_RTR_ERR("%s: Invalid pkt length %d\n",
 			    __func__, pkt->length);

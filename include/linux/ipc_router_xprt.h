@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2018,2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -149,6 +149,8 @@ struct msm_ipc_router_xprt {
 	void (*sft_close_done)(struct msm_ipc_router_xprt *xprt);
 	bool (*get_ws_info)(struct msm_ipc_router_xprt *xprt);
 	bool (*get_latency_info)(struct msm_ipc_router_xprt *xprt);
+
+	struct completion xprt_init_complete;
 };
 
 void msm_ipc_router_xprt_notify(struct msm_ipc_router_xprt *xprt,
