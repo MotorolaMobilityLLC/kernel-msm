@@ -315,6 +315,9 @@
 &pm6150_qg {
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,qg-iterm-ma = <400>;
+	qcom,vbatt-cutoff-mv = <3200>;
+	qcom,vbatt-empty-mv = <3000>;
+	qcom,vbatt-empty-cold-mv = <3000>;
 	qcom,s3-entry-ibat-ua = <35000>;
 	qcom,s3-exit-ibat-ua = <50000>;
 };
