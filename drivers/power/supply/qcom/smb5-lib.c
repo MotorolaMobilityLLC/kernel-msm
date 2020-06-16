@@ -6172,6 +6172,8 @@ int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 		chg->lpd_stage = LPD_STAGE_NONE;
 		chg->lpd_reason = LPD_NONE;
 		vote(chg->awake_votable, LPD_VOTER, false, 0);
+		chg->moisture_present = false;
+		vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
 		power_supply_changed(chg->usb_psy);
 	}
 
@@ -6751,6 +6753,8 @@ static void smblib_lpd_clear_ra_open_work(struct smb_charger *chg)
 	chg->lpd_stage = LPD_STAGE_FLOAT_CANCEL;
 	cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 	vote(chg->awake_votable, LPD_VOTER, false, 0);
+	chg->moisture_present = false;
+	vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
 }
 
 #define TYPEC_DETACH_DETECT_DELAY_MS 2000
