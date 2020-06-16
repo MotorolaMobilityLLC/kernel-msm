@@ -1067,6 +1067,7 @@
 		qcom,wlan-ramdump-dynamic = <0x400000>;
 		qcom,smmu-s1-enable;
 		qcom,set-wlaon-pwr-ctrl;
+		qcom,iommu-geometry;
 
 		mhi,max-channels = <30>;
 		mhi,buffer-len = <0x8000>;
@@ -1240,7 +1241,7 @@
 		qcom,pcie-active-config;
 		qcom,pcie-aggregated-irq;
 		qcom,pcie-mhi-a7-irq;
-		qcom,phy-status-reg = <0x814>;
+		qcom,phy-status-reg2 = <0x1214>;
 		qcom,mhi-soc-reset-offset = <0xb01b8>;
 
 		qcom,phy-init = <0x1240 0x001 0x0 0x1

@@ -207,6 +207,9 @@ int ath10k_htt_init(struct ath10k *ar)
 		WARN_ON(1);
 		return -EINVAL;
 	}
+	ath10k_htt_set_tx_ops(htt);
+	ath10k_htt_set_rx_ops(htt);
+
 	return 0;
 }
 
@@ -254,11 +257,11 @@ int ath10k_htt_setup(struct ath10k_htt *htt)
 		return status;
 	}
 
-	status = ath10k_htt_send_frag_desc_bank_cfg(htt);
+	status = htt->tx_ops->htt_send_frag_desc_bank_cfg(htt);
 	if (status)
 		return status;
 
-	status = ath10k_htt_send_rx_ring_cfg_ll(htt);
+	status = htt->tx_ops->htt_send_rx_ring_cfg(htt);
 	if (status) {
 		ath10k_warn(ar, "failed to setup rx ring: %d\n",
 			    status);
