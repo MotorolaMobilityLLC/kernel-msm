@@ -148,7 +148,6 @@
 	qcom,upper-limit-capacity = <70>;
 	qcom,fcc-max-ua = <3150000>;
 	qcom,fv-max-uv = <4480000>;
-	qcom,hvdcp-power-max = <20000>;
 	qcom,disable-fcc-restriction;
 };
 
