@@ -985,6 +985,12 @@ int mhi_dev_mmio_get_cmd_db(struct mhi_dev_ring *ring, uint64_t *wr_offset);
 int mhi_dev_mmio_set_env(struct mhi_dev *dev, uint32_t value);
 
 /**
+ * mhi_dev_mmio_clear_reset() - Clear the reset bit
+ * @dev:	MHI device structure.
+ */
+int mhi_dev_mmio_clear_reset(struct mhi_dev *dev);
+
+/**
  * mhi_dev_mmio_reset() - Reset the MMIO done as part of initialization.
  * @dev:	MHI device structure.
  */

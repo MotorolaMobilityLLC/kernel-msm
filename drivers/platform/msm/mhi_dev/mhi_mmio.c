@@ -583,6 +583,18 @@ int mhi_dev_mmio_set_env(struct mhi_dev *dev, uint32_t value)
 }
 EXPORT_SYMBOL(mhi_dev_mmio_set_env);
 
+int mhi_dev_mmio_clear_reset(struct mhi_dev *dev)
+{
+	if (WARN_ON(!dev))
+		return -EINVAL;
+
+	mhi_dev_mmio_masked_write(dev, MHICTRL,
+		MHICTRL_RESET_MASK, MHICTRL_RESET_SHIFT, 0);
+
+	return 0;
+}
+EXPORT_SYMBOL(mhi_dev_mmio_clear_reset);
+
 int mhi_dev_mmio_reset(struct mhi_dev *dev)
 {
 	if (WARN_ON(!dev))
