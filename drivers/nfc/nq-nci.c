@@ -1555,7 +1555,8 @@ static int nqx_probe(struct i2c_client *client,
 				platform_data->en_gpio);
 			goto err_mem;
 		}
-		r = gpio_direction_output(platform_data->en_gpio, 0);
+		/* Set ven pin mode as output and output high, reset process in nfcc_hw_check. */
+		r = gpio_direction_output(platform_data->en_gpio, 1/*0*/);
 		if (r) {
 			dev_err(&client->dev,
 				"%s: unable to set direction for nfc reset gpio [%d]\n",
@@ -1913,7 +1914,8 @@ static struct i2c_driver nqx = {
 static int nfcc_reboot(struct notifier_block *notifier, unsigned long val,
 			  void *v)
 {
-	gpio_set_value(disable_ctrl, 1);
+	/* 04649350 ven set to low before shutdown. */
+	gpio_set_value(disable_ctrl, 0/*1*/);
 	return NOTIFY_OK;
 }
 
