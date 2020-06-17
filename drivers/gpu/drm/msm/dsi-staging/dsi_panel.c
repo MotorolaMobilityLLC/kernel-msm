@@ -3814,6 +3814,7 @@ static int dsi_panel_get_pwr_mode(struct dsi_panel *panel, u8 *val)
 	struct dsi_cmd_desc cmd;
 	const struct mipi_dsi_host_ops *ops = panel->host->ops;
 	u8 payload = MIPI_DCS_GET_POWER_MODE;
+	u32 rx_buf;
 
 	if (!val) {
 		pr_err("%s: Invalid val\n", __func__);
@@ -3829,13 +3830,14 @@ static int dsi_panel_get_pwr_mode(struct dsi_panel *panel, u8 *val)
 	cmd.msg.tx_len = 1;
 	cmd.msg.tx_buf = &payload;
 	cmd.msg.rx_len = 1;
-	cmd.msg.rx_buf = val;
+	cmd.msg.rx_buf = &rx_buf;
 
 	len =  ops->transfer(panel->host, &cmd.msg);
 	if (len < 0) {
 		pr_err("failed to transfer pwr_mode cmd\n");
 		goto err;
 	}
+	*val = rx_buf & 0xFF;
 
 	pr_debug("%s: pwr_mode = 0x%x\n", __func__, *val);
 err:
