@@ -33,11 +33,6 @@
 
 &pm6150_adc_tm {
 	/delete-node/ io-channels;
-	/delete-node/ conn_therm;
-};
-
-&pm6150_adc_tm {
-	/delete-node/ conn_therm;
 };
 
 &pm6150l_vadc {
