@@ -135,6 +135,8 @@
 	qcom,mdss-dsi-panel-supplier = "djn";
 	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-sequence = <1 3>, <0 4>, <1 10>;
+	qcom,mdss-pan-physical-width-dimension = <71>;
+	qcom,mdss-pan-physical-height-dimension = <158>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-h-front-porch = <60>;
@@ -182,6 +184,8 @@
 	qcom,mdss-dsi-tprst-output-high-resume;
 	qcom,tp_state_check_enable;
 	qcom,mdss-dsi-reset-sequence = <1 4>, <0 1>, <1 12>;
+	qcom,mdss-pan-physical-width-dimension = <71>;
+	qcom,mdss-pan-physical-height-dimension = <158>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-h-front-porch = <16>;
