@@ -139,6 +139,7 @@ static struct {
 	bool present[IPA_SMMU_CB_MAX];
 	bool arm_smmu;
 	bool fast_map;
+	bool fast_map_arr[IPA_SMMU_CB_MAX];
 	bool s1_bypass_arr[IPA_SMMU_CB_MAX];
 	bool use_64_bit_dma_mask;
 	u32 ipa_base;
@@ -7526,6 +7527,9 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 							"dma-coherent");
 	cb->valid = true;
 
+	if (of_property_read_bool(dev->of_node,
+			"qcom,smmu-fast-map"))
+		smmu_info.fast_map_arr[IPA_SMMU_CB_WLAN] = true;
 	if (of_property_read_bool(dev->of_node, "qcom,smmu-s1-bypass") ||
 		ipa3_ctx->ipa_config_is_mhi) {
 		smmu_info.s1_bypass_arr[IPA_SMMU_CB_WLAN] = true;
@@ -7553,7 +7557,8 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 		}
 		IPADBG(" WLAN SMMU ATTR ATOMIC\n");
 
-		if (smmu_info.fast_map) {
+		if (smmu_info.fast_map_arr[IPA_SMMU_CB_WLAN] ||
+						smmu_info.fast_map) {
 			if (iommu_domain_set_attr(cb->iommu,
 						DOMAIN_ATTR_FAST,
 						&fast)) {
@@ -7566,7 +7571,8 @@ static int ipa_smmu_wlan_cb_probe(struct device *dev)
 	}
 
 	pr_info("IPA smmu_info.s1_bypass_arr[WLAN]=%d smmu_info.fast_map=%d\n",
-		smmu_info.s1_bypass_arr[IPA_SMMU_CB_WLAN], smmu_info.fast_map);
+		smmu_info.s1_bypass_arr[IPA_SMMU_CB_WLAN],
+				smmu_info.fast_map_arr[IPA_SMMU_CB_WLAN]);
 
 	ret = iommu_attach_device(cb->iommu, dev);
 	if (ret) {
@@ -7634,6 +7640,10 @@ static int ipa_smmu_uc_cb_probe(struct device *dev)
 		IPAERR("Fail to read UC start/size iova addresses\n");
 		return ret;
 	}
+
+	if (of_property_read_bool(dev->of_node,
+			"qcom,smmu-fast-map"))
+		smmu_info.fast_map_arr[IPA_SMMU_CB_UC] = true;
 	cb->va_start = iova_ap_mapping[0];
 	cb->va_size = iova_ap_mapping[1];
 	cb->va_end = cb->va_start + cb->va_size;
@@ -7698,7 +7708,8 @@ static int ipa_smmu_uc_cb_probe(struct device *dev)
 		}
 		IPADBG("SMMU atomic set\n");
 
-		if (smmu_info.fast_map) {
+		if (smmu_info.fast_map_arr[IPA_SMMU_CB_UC] ||
+						smmu_info.fast_map) {
 			if (iommu_domain_set_attr(cb->mapping->domain,
 				DOMAIN_ATTR_FAST,
 				&fast)) {
@@ -7712,7 +7723,8 @@ static int ipa_smmu_uc_cb_probe(struct device *dev)
 	}
 
 	pr_info("IPA smmu_info.s1_bypass_arr[UC]=%d smmu_info.fast_map=%d\n",
-		smmu_info.s1_bypass_arr[IPA_SMMU_CB_UC], smmu_info.fast_map);
+		smmu_info.s1_bypass_arr[IPA_SMMU_CB_UC],
+				smmu_info.fast_map_arr[IPA_SMMU_CB_UC]);
 
 	IPADBG("UC CB PROBE sub pdev=%pK attaching IOMMU device\n", dev);
 	ret = arm_iommu_attach_device(cb->dev, cb->mapping);
@@ -7761,6 +7773,8 @@ static int ipa_smmu_ap_cb_probe(struct device *dev)
 	u32 size_p;
 	phys_addr_t iova;
 	phys_addr_t pa;
+	u32 geometry_mapping[2];
+	struct iommu_domain_geometry geometry = {0};
 
 	IPADBG("AP CB probe: sub pdev=%pK\n", dev);
 
@@ -7775,6 +7789,9 @@ static int ipa_smmu_ap_cb_probe(struct device *dev)
 		IPAERR("Fail to read AP start/size iova addresses\n");
 		return result;
 	}
+	if (of_property_read_bool(dev->of_node,
+			"qcom,smmu-fast-map"))
+		smmu_info.fast_map_arr[IPA_SMMU_CB_AP] = true;
 	cb->va_start = iova_ap_mapping[0];
 	cb->va_size = iova_ap_mapping[1];
 	cb->va_end = cb->va_start + cb->va_size;
@@ -7835,7 +7852,8 @@ static int ipa_smmu_ap_cb_probe(struct device *dev)
 		}
 		IPADBG("AP/USB SMMU atomic set\n");
 
-		if (smmu_info.fast_map) {
+		if (smmu_info.fast_map_arr[IPA_SMMU_CB_AP] ||
+						smmu_info.fast_map) {
 			if (iommu_domain_set_attr(cb->mapping->domain,
 				DOMAIN_ATTR_FAST,
 				&fast)) {
@@ -7845,11 +7863,26 @@ static int ipa_smmu_ap_cb_probe(struct device *dev)
 				return -EIO;
 			}
 			IPADBG("SMMU fast map set\n");
+			result = of_property_read_u32_array(dev->of_node,
+					"qcom,geometry-mapping",
+					geometry_mapping, 2);
+			if (!result) {
+				IPAERR("AP Geometry start = %x size= %x\n",
+				geometry_mapping[0], geometry_mapping[1]);
+				geometry.aperture_start = geometry_mapping[0];
+				geometry.aperture_end = geometry_mapping[1];
+				if (iommu_domain_set_attr(cb->mapping->domain,
+					DOMAIN_ATTR_GEOMETRY,  &geometry)) {
+					IPAERR("Failed to set AP GEOMETRY\n");
+					return -EIO;
+				}
+			}
 		}
 	}
 
 	pr_info("IPA smmu_info.s1_bypass_arr[AP]=%d smmu_info.fast_map=%d\n",
-		smmu_info.s1_bypass_arr[IPA_SMMU_CB_AP], smmu_info.fast_map);
+		smmu_info.s1_bypass_arr[IPA_SMMU_CB_AP],
+					smmu_info.fast_map_arr[IPA_SMMU_CB_AP]);
 
 	result = arm_iommu_attach_device(cb->dev, cb->mapping);
 	if (result) {
