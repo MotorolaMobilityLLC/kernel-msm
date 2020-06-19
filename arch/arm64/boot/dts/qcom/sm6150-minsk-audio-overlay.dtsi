@@ -188,6 +188,7 @@
 	qcom,tert-mi2s-gpios = <&cdc_ter_mi2s_gpios>;
 
 	aw,have-882xx = <1>;
+	qcom,ext-hac-gpio = <&tlmm 121 0>;
 
 	qcom,msm-mbhc-hphl-swh = <1>;
 	qcom,msm-mbhc-gnd-swh = <1>;
