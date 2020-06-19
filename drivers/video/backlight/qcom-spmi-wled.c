@@ -263,6 +263,8 @@ struct wled {
 	u32 pfm_issue_low_threshold;
 	u32 pfm_issue_high_threshold;
 	bool pfm_issue_workaround_enable;
+
+	bool sleep_cabc_disable;
 };
 
 enum wled5_mod_sel {
@@ -558,6 +560,12 @@ static int wled_update_status(struct backlight_device *bl)
 		}
 
 		rc = wled_set_brightness(wled, brightness);
+		if (wled->cabc_disabled && wled->sleep_cabc_disable) {
+			msleep(30);
+			wled->cabc_disabled = false;
+			wled->cabc_config(wled, true);
+			pr_info("enable wled cabc\n");
+		}
 		if (rc < 0) {
 			pr_err("wled failed to set brightness rc:%d\n", rc);
 			goto unlock_mutex;
@@ -589,6 +597,11 @@ static int wled_update_status(struct backlight_device *bl)
 			}
 		}
 	} else {
+		if (!wled->cabc_disabled && wled->sleep_cabc_disable) {
+			wled->cabc_config(wled, false);
+			wled->cabc_disabled = true;
+			pr_info("disable wled cabc\n");
+		}
 		rc = wled_module_enable(wled, brightness);
 		if (rc < 0) {
 			pr_err("wled disable failed rc:%d\n", rc);
@@ -2432,6 +2445,11 @@ static int wled_probe(struct platform_device *pdev)
 				wled->pfm_issue_workaround_enable,
 				wled->pfm_issue_low_threshold,
 				wled->pfm_issue_high_threshold);
+
+	wled->sleep_cabc_disable= of_property_read_bool(pdev->dev.of_node,
+					 "qcom,wled-sleep-disable-cabc");
+	dev_info(&pdev->dev, "wled sleep-disable-cabc [%d]\n",
+				wled->sleep_cabc_disable);
 
 	/* For WLED5, when CABC is enabled, max brightness is 4095. */
 	if (is_wled5(wled) && wled->cfg.cabc_sel)
