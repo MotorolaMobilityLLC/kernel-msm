@@ -43,6 +43,14 @@ config BORNEO_DTB
       Only include Borneo NA specific DTBs to limit the number that
       get built during kernel compilatio
 
+config CEBU_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "Cebu DTBs"
+    help
+      Only include Cebu specific DTBs to limit the number that
+      get built during kernel compilatio
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
