@@ -3655,35 +3655,9 @@ err:
 
 static int mhi_deinit(struct mhi_dev *mhi)
 {
-	int i = 0, ring_id = 0;
-	struct mhi_dev_ring *ring;
 	struct platform_device *pdev = mhi->pdev;
 
-	ring_id = mhi->cfg.channels + mhi->cfg.event_rings + 1;
-
-	for (i = 0; i < ring_id; i++) {
-		ring = &mhi->ring[i];
-		if (ring->state == RING_STATE_UINT)
-			continue;
-
-		dma_free_coherent(mhi->dev, ring->ring_size *
-			sizeof(union mhi_dev_ring_element_type),
-			ring->ring_cache,
-			ring->ring_cache_dma_handle);
-		if (ring->type == RING_TYPE_ER) {
-			dma_free_coherent(mhi->dev, ring->ring_size *
-				sizeof(uint64_t),
-				ring->evt_rp_cache,
-				ring->evt_rp_cache_dma_handle);
-			dma_free_coherent(mhi->dev,
-				sizeof(uint32_t),
-				ring->msi_buf,
-				ring->msi_buf_dma_handle);
-		}
-	}
-
 	devm_kfree(&pdev->dev, mhi->mmio_backup);
-	devm_kfree(&pdev->dev, mhi->ring);
 
 	mhi_dev_sm_exit(mhi);
 
@@ -3703,10 +3677,11 @@ static int mhi_init(struct mhi_dev *mhi)
 		return rc;
 	}
 
-	mhi->ring = devm_kzalloc(&pdev->dev,
-			(sizeof(struct mhi_dev_ring) *
-			(mhi->cfg.channels + mhi->cfg.event_rings + 1)),
-			GFP_KERNEL);
+	if (!mhi->ring)
+		mhi->ring = devm_kzalloc(&pdev->dev,
+				(sizeof(struct mhi_dev_ring) *
+				(mhi->cfg.channels + mhi->cfg.event_rings + 1)),
+				GFP_KERNEL);
 	if (!mhi->ring)
 		return -ENOMEM;
 
