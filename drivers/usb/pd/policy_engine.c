@@ -490,6 +490,7 @@ struct usbpd {
 	u8			get_battery_status_db;
 	bool			send_get_battery_status;
 	u32			battery_sts_dobj;
+	bool			factory_mode;
 };
 
 static LIST_HEAD(_usbpd);	/* useful for debugging */
@@ -2712,7 +2713,8 @@ static void usbpd_sm(struct work_struct *w)
 
 		if (pd->current_pr == PR_SINK) {
 			usbpd_set_state(pd, PE_SNK_STARTUP);
-			kick_sm(pd, APSD_RECHECK_TIME);
+			if (pd->factory_mode)
+				kick_sm(pd, APSD_RECHECK_TIME);
 		} else if (pd->current_pr == PR_SRC) {
 			if (!pd->vconn_enabled &&
 					pd->typec_mode ==
@@ -4788,6 +4790,19 @@ static void usbpd_release(struct device *dev)
 
 static int num_pd_instances;
 
+static bool mmi_factory_check(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
 /**
  * usbpd_create - Create a new instance of USB PD protocol/policy engine
  * @parent - parent device to associate with
@@ -4980,6 +4995,7 @@ struct usbpd *usbpd_create(struct device *parent)
 
 	pd->current_pr = PR_NONE;
 	pd->current_dr = DR_NONE;
+	pd->factory_mode = mmi_factory_check();
 	list_add_tail(&pd->instance, &_usbpd);
 
 	spin_lock_init(&pd->rx_lock);
