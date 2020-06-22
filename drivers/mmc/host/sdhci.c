@@ -63,10 +63,19 @@ static void sdhci_enable_preset_value(struct sdhci_host *host, bool enable);
 static void sdhci_dump_state(struct sdhci_host *host)
 {
 	struct mmc_host *mmc = host->mmc;
+	char *comm = "none";
+
+	if (mmc->claimer != NULL) {
+		if (mmc->claimer->task != NULL) {
+			if (mmc->claimer->task->comm != NULL)
+				comm = mmc->claimer->task->comm;
+		}
+	}
 
 	pr_info("%s: clk: %d claimer: %s pwr: %d\n",
 		mmc_hostname(mmc), host->clock,
-		mmc->claimer->task->comm, host->pwr);
+		comm, host->pwr);
+
 	pr_info("%s: rpmstatus[pltfm](runtime-suspend:usage_count:disable_depth)(%d:%d:%d)\n",
 	mmc_hostname(mmc), mmc->parent->power.runtime_status,
 		atomic_read(&mmc->parent->power.usage_count),
