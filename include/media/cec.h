@@ -223,6 +223,12 @@ int cec_transmit_msg(struct cec_adapter *adap, struct cec_msg *msg,
 /* Called by the adapter */
 void cec_transmit_done(struct cec_adapter *adap, u8 status, u8 arb_lost_cnt,
 		       u8 nack_cnt, u8 low_drive_cnt, u8 error_cnt);
+/*
+ * Simplified version of cec_transmit_done for hardware that doesn't retry
+ * failed transmits. So this is always just one attempt in which case
+ * the status is sufficient.
+ */
+void cec_transmit_attempt_done(struct cec_adapter *adap, u8 status);
 void cec_received_msg(struct cec_adapter *adap, struct cec_msg *msg);
 
 #else
@@ -251,5 +257,18 @@ static inline void cec_s_phys_addr_from_edid(struct cec_adapter *adap,
 }
 
 #endif
+
+/**
+ * cec_phys_addr_invalidate() - set the physical address to INVALID
+ *
+ * @adap:	the CEC adapter
+ *
+ * This is a simple helper function to invalidate the physical
+ * address.
+ */
+static inline void cec_phys_addr_invalidate(struct cec_adapter *adap)
+{
+	cec_s_phys_addr(adap, CEC_PHYS_ADDR_INVALID, false);
+}
 
 #endif /* _MEDIA_CEC_H */
