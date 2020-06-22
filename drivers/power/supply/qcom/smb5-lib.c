@@ -7429,6 +7429,10 @@ static void smblib_pd_contract_work(struct work_struct *work)
 		smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
 
 	max_ua = (MAX_INPUT_PWR_UW / (chg->pd_contract_uv / 1000)) * 1000;
+
+	if (get_client_vote(chg->usb_icl_votable, PD_VOTER) > 0)
+		max_ua = min(max_ua, get_client_vote(chg->usb_icl_votable, PD_VOTER));
+
 	smblib_err(chg, "smblib_pd_contract_work: %d uV, %d uA\n",
 		   chg->pd_contract_uv, max_ua);
 
