@@ -47,7 +47,6 @@
 		qcom,torch-seq-val = <1 0>;
 		qcom,flash-seq-val = <0 1>;
 		qcom,duty-cycle = <0 30>;
-		qcom,clk-freq = <0 150000>;
 		linux,name = "flashlight";
 		linux,default-trigger = "flashlight-trigger";
 	};
