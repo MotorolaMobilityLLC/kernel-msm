@@ -110,6 +110,9 @@
 
 &wcd937x_codec {
 	status = "okay";
+	qcom,cdc-micbias1-mv = <2800>;
+	qcom,cdc-micbias2-mv = <2800>;
+	qcom,cdc-micbias3-mv = <2800>;
 };
 
 &wcd937x_rst_gpio {
@@ -194,6 +197,9 @@
 	qcom,msm-mbhc-gnd-swh = <1>;
 	/delete-property/ qcom,cdc-dmic01-gpios;
 	/delete-property/ qcom,cdc-dmic23-gpios;
+
+	qcom,msm-mbhc-hs-mic-max-threshold-mv = <2700>;
+	qcom,msm-mbhc-hs-mic-min-threshold-mv = <116>;
 
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
