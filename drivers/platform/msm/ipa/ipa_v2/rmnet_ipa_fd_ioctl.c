@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, 2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -327,6 +327,9 @@ long compat_wan_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	case WAN_IOC_QUERY_DL_FILTER_STATS32:
 		cmd = WAN_IOC_QUERY_DL_FILTER_STATS;
+		break;
+	case WAN_IOC_QUERY_TETHER_STATS_ALL32:
+		cmd = WAN_IOC_QUERY_TETHER_STATS_ALL;
 		break;
 	default:
 		return -ENOIOCTLCMD;

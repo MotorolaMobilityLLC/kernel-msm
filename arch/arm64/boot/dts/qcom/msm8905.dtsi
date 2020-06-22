@@ -20,3 +20,25 @@
 	/* Disable GPU snapshot dumping */
 	qcom,snapshot-size = <0>;
 };
+
+&thermal_zones {
+	pop-mem-step {
+		status = "disabled";
+	};
+
+	cpu0-2-step {
+		trips {
+			cpu0-2-step-trip {
+				temperature = <80000>;
+			};
+		};
+	};
+
+	cpu1-3-step {
+		trips {
+			cpu1-3-step-trip {
+				temperature = <80000>;
+			};
+		};
+	};
+};

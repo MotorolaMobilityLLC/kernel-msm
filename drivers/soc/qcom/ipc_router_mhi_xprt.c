@@ -50,7 +50,6 @@ struct ipc_router_mhi_pkt {
 	struct list_head node;
 	struct sk_buff *skb;
 	struct rr_packet *rr_pkt;
-	struct kref refcount;
 	struct completion done;
 };
 
@@ -70,8 +69,11 @@ static void qcom_mhi_ipc_router_dl_callback(struct mhi_device *mhi_dev,
 	struct sk_buff *skb;
 	void *dest_buf;
 
-	if (!mhi_xprtp || mhi_res->transaction_status)
+	if (!mhi_xprtp || mhi_res->transaction_status) {
+		D("%s: Transport error transaction_status %d\n",
+		__func__, mhi_res->transaction_status);
 		return;
+	}
 	/* Create a new rr_packet */
 	mhi_xprtp->in_pkt = create_pkt(NULL);
 	if (!mhi_xprtp->in_pkt) {
@@ -90,7 +92,7 @@ static void qcom_mhi_ipc_router_dl_callback(struct mhi_device *mhi_dev,
 	}
 	dest_buf = skb_put(skb, mhi_res->bytes_xferd);
 	memcpy(dest_buf, mhi_res->buf_addr, mhi_res->bytes_xferd);
-	mhi_xprtp->in_pkt->length += mhi_res->bytes_xferd;
+	mhi_xprtp->in_pkt->length = mhi_res->bytes_xferd;
 	skb_queue_tail(mhi_xprtp->in_pkt->pkt_fragment_q, skb);
 
 	msm_ipc_router_xprt_notify(&mhi_xprtp->xprt,
@@ -176,13 +178,18 @@ static int ipc_router_mhi_write_skb(struct ipc_router_mhi_xprt *mhi_xprtp,
 	} else if (rc == 0) {
 		rc = -ETIMEDOUT;
 		goto release_mhi;
-	} else if (rc > 0)
+	} else if (rc > 0) {
+		kfree(mhi_pkt);
 		rc = 0;
+	}
 
 	return rc;
 release_mhi:
+	D("%s: Transfer failed rc %d\n", __func__, rc);
+	spin_lock_bh(&mhi_xprtp->ul_lock);
 	list_del(&mhi_pkt->node);
 	kfree(mhi_pkt);
+	spin_unlock_bh(&mhi_xprtp->ul_lock);
 	return rc;
 }
 
@@ -255,16 +262,16 @@ static int ipc_router_mhi_write(void *data,
 	struct ipc_router_mhi_xprt *mhi_xprtp =
 		container_of(xprt, struct ipc_router_mhi_xprt, xprt);
 
-	if (!pkt)
-		return -EINVAL;
-
-	if (!len || pkt->length != len)
-		return -EINVAL;
+	if (!pkt || !len || pkt->length != len) {
+		rc = -EINVAL;
+		goto write_fail;
+	}
 
 	cloned_pkt = clone_pkt(pkt);
 	if (!cloned_pkt) {
 		pr_err("%s: Error in cloning packet while tx\n", __func__);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto write_fail;
 	}
 	D("%s: Ready to write %d bytes\n", __func__, len);
 	skb_queue_walk(cloned_pkt->pkt_fragment_q, ipc_rtr_pkt) {
@@ -277,9 +284,13 @@ static int ipc_router_mhi_write(void *data,
 	}
 	kref_put(&cloned_pkt->ref, ipc_router_mhi_pkt_release);
 	if (rc < 0)
-		return rc;
+		goto write_fail;
 	else
 		return len;
+
+write_fail:
+	D("%s: MHI Write failed rc=%d\n", __func__, rc);
+	return rc;
 }
 
 /**

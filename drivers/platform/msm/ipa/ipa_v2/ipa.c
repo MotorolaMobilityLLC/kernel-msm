@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -166,6 +166,9 @@
 				compat_uptr_t)
 #define IPA_IOC_MDFY_RT_RULE32 _IOWR(IPA_IOC_MAGIC, \
 				IPA_IOCTL_MDFY_RT_RULE, \
+				compat_uptr_t)
+#define IPA_IOC_GET_HW_VERSION32 _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_GET_HW_VERSION, \
 				compat_uptr_t)
 
 /**
@@ -3005,6 +3008,9 @@ ret:
 		break;
 	case IPA_IOC_MDFY_RT_RULE32:
 		cmd = IPA_IOC_MDFY_RT_RULE;
+		break;
+	case IPA_IOC_GET_HW_VERSION32:
+		cmd = IPA_IOC_GET_HW_VERSION;
 		break;
 	case IPA_IOC_COMMIT_HDR:
 	case IPA_IOC_RESET_HDR:

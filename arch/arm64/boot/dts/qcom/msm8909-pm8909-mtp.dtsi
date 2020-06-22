@@ -321,14 +321,6 @@
 		};
 	};
 
-	qcom,avtimer@c0a300c {
-		compatible = "qcom,avtimer";
-		reg = <0x0c0a300c 0x4>,
-			<0x0c0a3010 0x4>;
-		reg-names = "avtimer_lsb_addr", "avtimer_msb_addr";
-		qcom,clk-div = <27>;
-	};
-
 	cdc_pri_mi2s_gpios: msm_cdc_pinctrl_pri {
 		compatible = "qcom,msm-cdc-pinctrl";
 		pinctrl-names = "aud_active", "aud_sleep";

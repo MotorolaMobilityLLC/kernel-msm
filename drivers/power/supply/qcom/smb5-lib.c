@@ -1868,11 +1868,21 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 			pr_err("Failed to force 5V\n");
 		break;
 	case POWER_SUPPLY_DP_DM_FORCE_9V:
+		if (chg->qc2_unsupported_voltage == QC2_NON_COMPLIANT_9V) {
+			smblib_err(chg, "Couldn't set 9V: unsupported\n");
+			return -EINVAL;
+		}
+
 		rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT);
 		if (rc < 0)
 			pr_err("Failed to force 9V\n");
 		break;
 	case POWER_SUPPLY_DP_DM_FORCE_12V:
+		if (chg->qc2_unsupported_voltage == QC2_NON_COMPLIANT_12V) {
+			smblib_err(chg, "Couldn't set 12V: unsupported\n");
+			return -EINVAL;
+		}
+
 		rc = smblib_force_vbus_voltage(chg, FORCE_12V_BIT);
 		if (rc < 0)
 			pr_err("Failed to force 12V\n");
@@ -2030,6 +2040,15 @@ int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 {
 	switch (chg->real_charger_type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
+		if (chg->qc2_unsupported_voltage == QC2_NON_COMPLIANT_9V) {
+			val->intval = MICRO_5V;
+			break;
+		} else if (chg->qc2_unsupported_voltage ==
+				QC2_NON_COMPLIANT_12V) {
+			val->intval = MICRO_9V;
+			break;
+		}
+		/* else, fallthrough */
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
 		if (chg->smb_version == PMI632_SUBTYPE)
 			val->intval = MICRO_9V;
@@ -2875,7 +2894,9 @@ irqreturn_t usbin_uv_irq_handler(int irq, void *data)
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
 	struct storm_watch *wdata;
+	const struct apsd_result *apsd = smblib_get_apsd_result(chg);
 	int rc;
+	u8 stat = 0, max_pulses = 0;
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
 
@@ -2946,6 +2967,56 @@ unsuspend_input:
 
 	wdata = &chg->irq_info[SWITCHER_POWER_OK_IRQ].irq_data->storm_data;
 	reset_storm_count(wdata);
+
+	/* Workaround for non-QC2.0-compliant chargers follows */
+	if (!chg->qc2_unsupported_voltage &&
+			apsd->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
+		rc = smblib_read(chg, QC_CHANGE_STATUS_REG, &stat);
+		if (rc < 0)
+			smblib_err(chg,
+				"Couldn't read CHANGE_STATUS_REG rc=%d\n", rc);
+
+		if (stat & QC_5V_BIT)
+			return IRQ_HANDLED;
+
+		rc = smblib_read(chg, HVDCP_PULSE_COUNT_MAX_REG, &max_pulses);
+		if (rc < 0)
+			smblib_err(chg,
+				"Couldn't read QC2 max pulses rc=%d\n", rc);
+
+		chg->qc2_max_pulses = (max_pulses &
+				HVDCP_PULSE_COUNT_MAX_QC2_MASK);
+
+		if (stat & QC_12V_BIT) {
+			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_12V;
+			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					HVDCP_PULSE_COUNT_MAX_QC2_9V);
+			if (rc < 0)
+				smblib_err(chg, "Couldn't force max pulses to 9V rc=%d\n",
+						rc);
+
+		} else if (stat & QC_9V_BIT) {
+			chg->qc2_unsupported_voltage = QC2_NON_COMPLIANT_9V;
+			rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+					HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+					HVDCP_PULSE_COUNT_MAX_QC2_5V);
+			if (rc < 0)
+				smblib_err(chg, "Couldn't force max pulses to 5V rc=%d\n",
+						rc);
+
+		}
+
+		rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				SUSPEND_ON_COLLAPSE_USBIN_BIT,
+				0);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't turn off SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
+					rc);
+
+		smblib_rerun_apsd(chg);
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -3577,6 +3648,28 @@ static void typec_src_removal(struct smb_charger *chg)
 	if (rc < 0)
 		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V rc=%d\n",
 			rc);
+
+	/*
+	 * if non-compliant charger caused UV, restore original max pulses
+	 * and turn SUSPEND_ON_COLLAPSE_USBIN_BIT back on.
+	 */
+	if (chg->qc2_unsupported_voltage) {
+		rc = smblib_masked_write(chg, HVDCP_PULSE_COUNT_MAX_REG,
+				HVDCP_PULSE_COUNT_MAX_QC2_MASK,
+				chg->qc2_max_pulses);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't restore max pulses rc=%d\n",
+					rc);
+
+		rc = smblib_masked_write(chg, USBIN_AICL_OPTIONS_CFG_REG,
+				SUSPEND_ON_COLLAPSE_USBIN_BIT,
+				SUSPEND_ON_COLLAPSE_USBIN_BIT);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't turn on SUSPEND_ON_COLLAPSE_USBIN_BIT rc=%d\n",
+					rc);
+
+		chg->qc2_unsupported_voltage = QC2_COMPLIANT;
+	}
 
 	if (chg->use_extcon)
 		smblib_notify_device_mode(chg, false);

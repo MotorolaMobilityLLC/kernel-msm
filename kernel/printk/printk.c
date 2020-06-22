@@ -45,6 +45,7 @@
 #include <linux/utsname.h>
 #include <linux/ctype.h>
 #include <linux/uio.h>
+#include <soc/qcom/boot_stats.h>
 
 #include <asm/uaccess.h>
 #include <asm/sections.h>
@@ -2128,6 +2129,7 @@ void resume_console(void)
 {
 	if (!console_suspend_enabled)
 		return;
+	place_marker("M - System Resume Started");
 	down_console_sem();
 	console_suspended = 0;
 	console_unlock();
