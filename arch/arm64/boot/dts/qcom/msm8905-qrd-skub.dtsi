@@ -197,18 +197,20 @@
 };
 
 &pm8909_mpps {
-	mpp@a300 { /* MPP 4 */
-		 /* CASE_THERM config */
-		 qcom,mode = <4>; /* AIN input */
-		 qcom,invert = <1>; /* Enable MPP */
-		 qcom,ain-route = <3>; /* AMUX 8 */
-		 qcom,master-en = <1>;
-		 qcom,src-sel = <0>; /* Function constant */
+	case_therm {
+		cas_therm_default: cas_therm_default {
+			pins = "mpp4";
+			function = "analog";
+			input-enable;
+			qcom,amux-route = <3>;
+		};
 	};
 };
 
 &pm8909_vadc {
 	#thermal-sensor-cells = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&cas_therm_default>;
 	chan@30 {
 		qcom,scale-function = <12>;
 	};
