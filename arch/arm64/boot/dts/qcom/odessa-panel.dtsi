@@ -134,6 +134,11 @@
 	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,mdss-dsi-panel-supplier = "djn";
 	qcom,tp_state_check_enable;
+	qcom,mdss-dsi-panel-hdr-enabled;
+	qcom,mdss-dsi-panel-hdr-color-primaries = <15115 15895 32830
+				16770 15010 32385 7770 1830>;
+	qcom,mdss-dsi-panel-peak-brightness = <4500000>;
+	qcom,mdss-dsi-panel-blackness-level = <3000>;
 	qcom,mdss-dsi-reset-sequence = <1 3>, <0 4>, <1 10>;
 	qcom,mdss-pan-physical-width-dimension = <71>;
 	qcom,mdss-pan-physical-height-dimension = <158>;
@@ -183,6 +188,11 @@
 	qcom,mdss-dsi-panel-supplier = "txd";
 	qcom,mdss-dsi-tprst-output-high-resume;
 	qcom,tp_state_check_enable;
+	qcom,mdss-dsi-panel-hdr-enabled;
+	qcom,mdss-dsi-panel-hdr-color-primaries = <15115 15895 32830
+				16770 15010 32385 7770 1830>;
+	qcom,mdss-dsi-panel-peak-brightness = <4500000>;
+	qcom,mdss-dsi-panel-blackness-level = <3000>;
 	qcom,mdss-dsi-reset-sequence = <1 4>, <0 1>, <1 12>;
 	qcom,mdss-pan-physical-width-dimension = <71>;
 	qcom,mdss-pan-physical-height-dimension = <158>;
