@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -90,8 +90,8 @@
 #define PCIE20_CAP_LINKCTRLSTATUS      0x80
 #define PCIE20_DEVICE_CONTROL2_STATUS2 0x98
 #define PCIE20_LINK_CONTROL2_LINK_STATUS2 0xA0
-#define PCIE20_L1SUB_CAPABILITY        0x154
-#define PCIE20_L1SUB_CONTROL1          0x158
+#define PCIE20_L1SUB_CAPABILITY        0x1E0
+#define PCIE20_L1SUB_CONTROL1          0x1E4
 #define PCIE20_ACK_F_ASPM_CTRL_REG     0x70C
 #define PCIE20_MASK_ACK_N_FTS          0xff00
 #define PCIE20_MISC_CONTROL_1          0x8BC
