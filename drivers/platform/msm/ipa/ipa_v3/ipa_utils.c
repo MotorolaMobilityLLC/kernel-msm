@@ -2911,8 +2911,8 @@ static struct ipa3_mem_partition ipa_4_5_mem_part = {
 	.uc_descriptor_ram_ofst	= 0x3800,
 	.uc_descriptor_ram_size	= 0x1000,
 	.pdn_config_ofst	= 0x4800,
-	.pdn_config_size	= 0x50,
-	.end_ofst		= 0x4850,
+	.pdn_config_size	= 0x100,
+	.end_ofst		= 0x4900,
 };
 
 
@@ -8433,16 +8433,11 @@ int ipa3_get_max_pdn(void)
 	int ipa_max_pdn = 0;
 
 	switch (ipa3_get_hw_type_index()) {
-	case IPA_4_1:
-	case IPA_4_1_APQ:
-	case IPA_4_2:
 	case IPA_4_5:
-	case IPA_4_5_MHI:
-	case IPA_4_5_APQ:
-		ipa_max_pdn = IPA_MAX_PDN_NUM_v4;
+		ipa_max_pdn = IPA_MAX_PDN_NUM;
 		break;
 	default:
-		ipa_max_pdn = IPA_MAX_PDN_NUM;
+		ipa_max_pdn = IPA_MAX_PDN_NUM_v4;
 		break;
 
 	}
