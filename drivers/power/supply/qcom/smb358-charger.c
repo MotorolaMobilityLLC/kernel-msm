@@ -2568,7 +2568,9 @@ static int smb358_charger_remove(struct i2c_client *client)
 		regulator_disable(chip->vcc_i2c);
 
 	mutex_destroy(&chip->irq_complete);
+#if defined(CONFIG_DEBUG_FS)
 	debugfs_remove_recursive(chip->debug_root);
+#endif
 	return 0;
 }
 
