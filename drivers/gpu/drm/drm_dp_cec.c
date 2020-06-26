@@ -289,7 +289,7 @@ static void drm_dp_cec_unregister_work(struct work_struct *work)
  */
 void drm_dp_cec_set_edid(struct drm_dp_aux *aux, const struct edid *edid)
 {
-	u32 cec_caps = CEC_CAP_DEFAULTS | CEC_CAP_NEEDS_HPD;
+	u32 cec_caps = CEC_CAP_DEFAULTS;
 	unsigned int num_las = 1;
 	u8 cap;
 
@@ -335,12 +335,12 @@ void drm_dp_cec_set_edid(struct drm_dp_aux *aux, const struct edid *edid)
 	/* Create a new adapter */
 	aux->cec.adap = cec_allocate_adapter(&drm_dp_cec_adap_ops,
 					     aux, aux->cec.name, cec_caps,
-					     num_las);
+					     num_las, aux->cec.parent);
 	if (IS_ERR(aux->cec.adap)) {
 		aux->cec.adap = NULL;
 		goto unlock;
 	}
-	if (cec_register_adapter(aux->cec.adap, aux->cec.parent)) {
+	if (cec_register_adapter(aux->cec.adap)) {
 		cec_delete_adapter(aux->cec.adap);
 		aux->cec.adap = NULL;
 	} else {
@@ -403,7 +403,10 @@ EXPORT_SYMBOL(drm_dp_cec_unset_edid);
 void drm_dp_cec_register_connector(struct drm_dp_aux *aux, const char *name,
 				   struct device *parent)
 {
-	WARN_ON(aux->cec.adap);
+	if (aux->cec.adap) {
+		WARN_ON(aux->cec.adap);
+		return;
+	}
 	aux->cec.name = name;
 	aux->cec.parent = parent;
 	INIT_DELAYED_WORK(&aux->cec.unregister_work,
