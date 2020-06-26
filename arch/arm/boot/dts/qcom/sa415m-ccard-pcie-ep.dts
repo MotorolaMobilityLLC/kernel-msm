@@ -37,6 +37,7 @@
 
 &pcie_ep {
 	status = "okay";
+	qcom,pcie-perst-enum;
 };
 
 &ipa_hw {
