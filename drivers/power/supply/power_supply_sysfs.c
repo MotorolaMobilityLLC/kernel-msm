@@ -94,7 +94,7 @@ static const char * const power_supply_typec_src_rp_text[] = {
 };
 
 static char *charge_rate[] = {
-	"None", "Normal", "Weak", "Turbo", "Hyper"
+	"None", "Normal", "Weak", "Turbo", "Turbo_30W", "Hyper"
 };
 
 static ssize_t power_supply_check_property(struct device *dev,
