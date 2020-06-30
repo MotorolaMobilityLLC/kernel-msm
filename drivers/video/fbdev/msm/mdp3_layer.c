@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -236,7 +236,7 @@ static int __mdp3_map_layer_buffer(struct msm_fb_data_type *mfd,
 		pr_err("buf size(0x%lx) is smaller than dma config(0x%x)\n",
 			data.len, (dma->source_config.stride *
 			dma->source_config.height));
-		mdp3_put_img(&data, MDP3_CLIENT_DMA_P);
+		mdp3_put_img(&data, intf_type);
 		rc = -EINVAL;
 		goto err;
 	}
@@ -244,13 +244,13 @@ static int __mdp3_map_layer_buffer(struct msm_fb_data_type *mfd,
 	rc = mdp3_bufq_push(&mdp3_session->bufq_in, &data);
 	if (rc) {
 		pr_err("fail to queue the overlay buffer, buffer drop\n");
-		mdp3_put_img(&data, MDP3_CLIENT_DMA_P);
+		mdp3_put_img(&data, intf_type);
 		goto err;
 	}
 	rc = 0;
 err:
 	if (is_panel_type_cmd)
-		mdp3_iommu_disable(MDP3_CLIENT_DMA_P);
+		mdp3_iommu_disable(intf_type);
 	return rc;
 }
 
