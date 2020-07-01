@@ -10018,7 +10018,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		}
 	} else if ((mmi->pres_chrg_step == STEP_NONE) ||
 		   (mmi->pres_chrg_step == STEP_STOP)) {
-		if (zone->norm_mv && (batt_mv >= zone->norm_mv)) {
+		if (zone->norm_mv
+			&& ((batt_mv + HYST_STEP_MV) >= zone->norm_mv)) {
 			if (zone->fcc_norm_ma)
 				mmi->pres_chrg_step = STEP_NORM;
 			else
@@ -10051,7 +10052,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		}
 	} else if (mmi->pres_chrg_step == STEP_NORM) {
 		if (!zone->fcc_norm_ma)
-			mmi->pres_chrg_step = STEP_STOP;
+			mmi->pres_chrg_step = STEP_FLOAT;
 		else if ((batt_soc < 100) ||
 			 (batt_mv + HYST_STEP_MV) < max_fv_mv) {
 			mmi->chrg_taper_cnt = 0;
@@ -10085,7 +10086,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 				msleep(50);
 			}
 			mmi->pres_chrg_step = STEP_MAX;
-		}
+		} else if (mmi_has_current_tapered(chip, batt_ma,
+						   mmi->chrg_iterm))
+			mmi->pres_chrg_step = STEP_STOP;
 	}
 
 	/* Take State actions */
@@ -10110,9 +10113,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	case STEP_FLOAT:
 	case STEP_MAX:
 		if (!zone->norm_mv)
-			target_fv = max_fv_mv;
+			target_fv = max_fv_mv + mmi->vfloat_comp_mv;
 		else
-			target_fv = zone->norm_mv;
+			target_fv = zone->norm_mv + mmi->vfloat_comp_mv;
 		target_fcc = zone->fcc_max_ma;
 		mmi->cl_ebchg = 0;
 
