@@ -3088,7 +3088,7 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 	int i, j, sess_used = 0, ret = 0;
 	char *fileinfo = NULL;
 	char single_line[UL_SIZE] = "----------------";
-	char title[UL_SIZE] = "=========================";
+	char title[UL_SIZE] = "========================";
 
 	fileinfo = kzalloc(DEBUGFS_SIZE, GFP_KERNEL);
 	if (!fileinfo)
