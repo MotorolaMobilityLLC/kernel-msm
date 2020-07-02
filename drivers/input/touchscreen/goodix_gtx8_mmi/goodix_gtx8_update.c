@@ -1535,6 +1535,38 @@ static ssize_t goodix_sysfs_buildid_show(struct device *dev,
 	return cnt;
 }
 
+static ssize_t goodix_sysfs_ic_ver_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct fw_update_ctrl *fw_ctrl = goodix_module->priv_data;
+	struct goodix_ts_core *core_data = fw_ctrl->core_data;
+	struct goodix_ts_device *ts_dev = core_data->ts_dev;
+	struct goodix_ts_version chip_ver;
+	int r =0;
+	char str[5];
+	int cnt=0;
+	if (ts_dev->hw_ops->read_version) {
+		r = ts_dev->hw_ops->read_version(ts_dev, &chip_ver);
+		if (!r && chip_ver.valid) {
+			memcpy(str, chip_ver.pid, 4);
+			str[4] = '\0';
+			cnt += snprintf(buf + cnt, PAGE_SIZE,
+				"Product ID: %s\n", str);
+			cnt += snprintf(buf + cnt, PAGE_SIZE,
+					"Build ID: %02x-%02x\n",
+			chip_ver.vid[1],chip_ver.vid[3]);
+			cnt += scnprintf(buf + cnt, PAGE_SIZE,
+				"IC: %s\n",ts_dev->name);
+		}
+		else{
+			cnt += snprintf(buf + cnt, PAGE_SIZE,
+				"Failed to read version\n");
+		}
+	}
+        return cnt;
+}
+
+
 static struct device_attribute moto_attrs[] = {
 	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
 			NULL,
@@ -1553,6 +1585,9 @@ static struct device_attribute moto_attrs[] = {
 			NULL),
 	__ATTR(buildid, S_IRUGO,
 			goodix_sysfs_buildid_show,
+			NULL),
+	__ATTR(ic_ver, S_IRUGO,
+			goodix_sysfs_ic_ver_show,
 			NULL),
 };
 
