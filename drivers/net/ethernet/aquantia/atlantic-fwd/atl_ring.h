@@ -68,13 +68,13 @@
 #define bump_tail(ring, amount) do {					\
 	struct atl_desc_ring *__ring = (ring);				\
 	uint32_t __ptr = READ_ONCE(__ring->tail);			\
-	WRITE_ONCE(__ring->tail, offset_ptr(__ptr, &__ring->hw, amount));\
+	__ring->tail = offset_ptr(__ptr, &__ring->hw, amount);\
 	} while (0)
 
 #define bump_head(ring, amount) do {					\
 	struct atl_desc_ring *__ring = (ring);				\
 	uint32_t __ptr = READ_ONCE(__ring->head);			\
-	WRITE_ONCE(__ring->head, offset_ptr(__ptr, &__ring->hw, amount));\
+	__ring->head = offset_ptr(__ptr, &__ring->hw, amount);\
 	} while (0)
 
 struct atl_rxpage {
@@ -204,7 +204,7 @@ void atl_clear_rx_bufs(struct atl_desc_ring *ring);
 #define DECLARE_SCRATCH_DESC(_name) union atl_desc _name
 #define DESC_PTR(_ring, _idx, _scratch) (&(_scratch))
 #define COMMIT_DESC(_ring, _idx, _scratch)		\
-	WRITE_ONCE((_ring)->hw.descs[_idx], (_scratch))
+	(_ring)->hw.descs[_idx] = (_scratch)
 #define FETCH_DESC(_ring, _idx, _scratch)			\
 do {								\
 	(_scratch) = READ_ONCE((_ring)->hw.descs[_idx]);	\

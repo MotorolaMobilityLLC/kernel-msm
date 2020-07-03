@@ -124,7 +124,7 @@ static netdev_tx_t atl_map_xmit_skb(struct sk_buff *skb,
 		while (len > ATL_DATA_PER_TXD) {
 			desc->len = cpu_to_le16(ATL_DATA_PER_TXD);
 			trace_atl_tx_descr(ring->qvec->idx, idx, (u64 *)desc);
-			WRITE_ONCE(ring->hw.descs[idx].tx, *desc);
+			ring->hw.descs[idx].tx = *desc;
 			bump_ptr(idx, ring, 1);
 			daddr += ATL_DATA_PER_TXD;
 			len -= ATL_DATA_PER_TXD;
@@ -136,7 +136,7 @@ static netdev_tx_t atl_map_xmit_skb(struct sk_buff *skb,
 			break;
 
 		trace_atl_tx_descr(ring->qvec->idx, idx, (u64 *)desc);
-		WRITE_ONCE(ring->hw.descs[idx].tx, *desc);
+		ring->hw.descs[idx].tx = *desc;
 		bump_ptr(idx, ring, 1);
 		txbuf = &ring->txbufs[idx];
 		len = skb_frag_size(frag);
@@ -154,7 +154,7 @@ static netdev_tx_t atl_map_xmit_skb(struct sk_buff *skb,
 	desc->cmd |= tx_desc_cmd_wb;
 #endif
 	trace_atl_tx_descr(ring->qvec->idx, idx, (u64 *)desc);
-	WRITE_ONCE(ring->hw.descs[idx].tx, *desc);
+	ring->hw.descs[idx].tx = *desc;
 	first_buf->last = idx;
 	bump_ptr(idx, ring, 1);
 	ring->txbufs[idx].last = -1;
@@ -410,7 +410,7 @@ static bool atl_clean_tx(struct atl_desc_ring *ring)
 		u64_stats_update_end(&ring->syncp);
 	}
 
-	WRITE_ONCE(ring->head, first);
+	ring->head = first;
 
 	if (likely(ring->qvec->type != ATL_QUEUE_PTP) &&
 	    ring_space(ring) > atl_tx_free_high) {
@@ -1355,6 +1355,7 @@ void atl_clear_datapath(struct atl_nic *nic)
 	if (!test_and_clear_bit(ATL_ST_CONFIGURED, &nic->hw.state))
 		return;
 
+	atl_ptp_irq_free(nic);
 	atl_free_link_intr(nic);
 
 	if (nic->flags & ATL_FL_MULTIPLE_VECTORS) {
@@ -1457,13 +1458,17 @@ int atl_setup_datapath(struct atl_nic *nic)
 		}
 	}
 
-	ret = atl_ptp_ring_start(nic);
-	if (ret < 0)
-		goto err_ptp_ring;
-
 	ret = atl_alloc_link_intr(nic);
 	if (ret)
 		goto err_link_intr;
+
+	ret = atl_ptp_irq_alloc(nic);
+	if (ret < 0)
+		goto err_ptp_intr;
+
+	ret = atl_ptp_ring_start(nic);
+	if (ret < 0)
+		goto err_ptp_ring;
 
 	for (i = 0; i < nvecs; i++, qvec++) {
 		atl_init_qvec(nic, qvec, i);
@@ -1483,6 +1488,11 @@ int atl_setup_datapath(struct atl_nic *nic)
 	return 0;
 
 err_ptp_ring:
+	atl_ptp_irq_free(nic);
+
+err_ptp_intr:
+	atl_free_link_intr(nic);
+
 err_link_intr:
 	kfree(irq_work);
 
@@ -1684,8 +1694,6 @@ int atl_alloc_qvec(struct atl_queue_vec *qvec)
 		ret = atl_alloc_qvec_intr(qvec);
 		break;
 	case ATL_QUEUE_PTP:
-		ret = atl_ptp_irq_alloc(qvec->nic);
-		break;
 	case ATL_QUEUE_HWTS:
 		break;
 	default:
@@ -1721,9 +1729,6 @@ free_irq:
 	case ATL_QUEUE_REGULAR:
 		atl_free_qvec_intr(qvec);
 		break;
-	case ATL_QUEUE_PTP:
-		atl_ptp_irq_free(qvec->nic);
-		break;
 	default:
 		break;
 	}
@@ -1747,8 +1752,6 @@ void atl_free_qvec(struct atl_queue_vec *qvec)
 		atl_free_qvec_intr(qvec);
 		break;
 	case ATL_QUEUE_PTP:
-		atl_ptp_irq_free(qvec->nic);
-		break;
 	case ATL_QUEUE_HWTS:
 		break;
 	default:

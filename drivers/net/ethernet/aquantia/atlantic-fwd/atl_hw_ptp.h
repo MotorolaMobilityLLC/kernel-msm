@@ -18,7 +18,6 @@ struct atl_rx_desc_hwts_wb;
 
 void hw_atl_get_ptp_ts(struct atl_hw *hw, u64 *stamp);
 int hw_atl_adj_sys_clock(struct atl_hw *hw, s64 delta);
-int hw_atl_set_sys_clock(struct atl_hw *hw, u64 time, u64 ts);
 int hw_atl_ts_to_sys_clock(struct atl_hw *hw, u64 ts, u64 *time);
 int hw_atl_adj_clock_freq(struct atl_hw *hw, s32 ppb);
 int hw_atl_gpio_pulse(struct atl_hw *hw, u32 index, u64 start, u32 period);

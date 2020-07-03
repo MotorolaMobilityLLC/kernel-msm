@@ -111,9 +111,11 @@ struct atl_ethtool_compat {
 static int atl_ethtool_get_settings(struct net_device *ndev,
 				 struct ethtool_cmd *cmd)
 {
-	struct atl_ethtool_compat cmd_compat = {0};
 	struct atl_nic *nic = netdev_priv(ndev);
 	struct atl_link_state *lstate = &nic->hw.link_state;
+	struct atl_ethtool_compat cmd_compat;
+
+	memset(&cmd_compat, 0, sizeof(cmd_compat));
 
 	atl_ethtool_get_common(cmd, &cmd_compat, lstate, true);
 	cmd->supported = cmd_compat.link_modes.supported;

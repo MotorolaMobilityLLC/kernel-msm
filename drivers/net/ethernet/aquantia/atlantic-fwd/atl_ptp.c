@@ -9,15 +9,19 @@
  * published by the Free Software Foundation.
  */
 
+#include "atl_ptp.h"
+
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
 #include <linux/ptp_clock_kernel.h>
 #include <linux/ptp_classify.h>
 #include <linux/clocksource.h>
+#endif
 
-#include "atl_ptp.h"
+#include "atl_ring.h"
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
 #include "atl_common.h"
 #include "atl_ethtool.h"
 #include "atl_hw_ptp.h"
-#include "atl_ring.h"
 #include "atl_ring_desc.h"
 
 #define ATL_PTP_TX_TIMEOUT        (HZ *  10)
@@ -25,6 +29,10 @@
 #define POLL_SYNC_TIMER_MS 15
 
 #define MAX_PTP_GPIO_COUNT 4
+
+#define PTP_8TC_RING_IDX             8
+#define PTP_4TC_RING_IDX            16
+#define PTP_HWTS_RING_IDX           31
 
 enum ptp_speed_offsets {
 	ptp_offset_idx_10 = 0,
@@ -54,8 +62,6 @@ enum atl_ptp_queue {
 	ATL_PTPQ_HWTS = 1,
 	ATL_PTPQ_NUM,
 };
-
-#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
 
 struct atl_ptp {
 	struct atl_nic *nic;
@@ -98,29 +104,6 @@ struct ptp_tm_offset {
 };
 
 static struct ptp_tm_offset ptp_offset[6];
-
-void atl_ptp_tm_offset_set(struct atl_nic *nic, unsigned int mbps)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	int i, egress, ingress;
-
-	if (!ptp)
-		return;
-
-	egress = 0;
-	ingress = 0;
-
-	for (i = 0; i < ARRAY_SIZE(ptp_offset); i++) {
-		if (mbps == ptp_offset[i].mbps) {
-			egress = ptp_offset[i].egress;
-			ingress = ptp_offset[i].ingress;
-			break;
-		}
-	}
-
-	atomic_set(&ptp->offset_egress, egress);
-	atomic_set(&ptp->offset_ingress, ingress);
-}
 
 static int __atl_ptp_skb_put(struct ptp_skb_ring *ring, struct sk_buff *skb)
 {
@@ -522,34 +505,6 @@ static int atl_ptp_verify(struct ptp_clock_info *ptp, unsigned int pin,
 	return 0;
 }
 
-/* atl_ptp_tx_hwtstamp - utility function which checks for TX time stamp
- *
- * if the timestamp is valid, we convert it into the timecounter ns
- * value, then store that result into the hwtstamps structure which
- * is passed up the network stack
- */
-void atl_ptp_tx_hwtstamp(struct atl_nic *nic, u64 timestamp)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	struct sk_buff *skb = atl_ptp_skb_get(&ptp->skb_ring);
-	struct skb_shared_hwtstamps hwtstamp;
-
-	if (!skb) {
-		atl_nic_err("have timestamp but tx_queues empty\n");
-		return;
-	}
-
-	timestamp += atomic_read(&ptp->offset_egress);
-	atl_ptp_convert_to_hwtstamp(&hwtstamp, timestamp);
-	do {
-		skb_tstamp_tx(skb, &hwtstamp);
-		dev_kfree_skb_any(skb);
-		skb = atl_ptp_skb_get(&ptp->skb_ring);
-	} while (skb);
-
-	atl_ptp_tx_timeout_update(ptp);
-}
-
 /* atl_ptp_rx_hwtstamp - utility function which checks for RX time stamp
  * @skb: particular skb to send timestamp with
  *
@@ -564,62 +519,7 @@ static void atl_ptp_rx_hwtstamp(struct atl_ptp *ptp, struct sk_buff *skb,
 	atl_ptp_convert_to_hwtstamp(skb_hwtstamps(skb), timestamp);
 }
 
-void atl_ptp_hwtstamp_config_get(struct atl_nic *nic,
-				 struct hwtstamp_config *config)
-{
-	struct atl_ptp *ptp = nic->ptp;
-
-	*config = ptp->hwtstamp_config;
-}
-
-int atl_ptp_hwtstamp_config_set(struct atl_nic *nic,
-				struct hwtstamp_config *config)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	static u32 ntuple_cmd =
-		ATL_NTC_PROTO |
-		ATL_NTC_L4_UDP |
-		ATL_NTC_DP |
-		ATL_RXF_ACT_TOHOST |
-		ATL_NTC_RXQ;
-	u32 ntuple_vec_idx =
-		((ptp->qvec[ATL_PTPQ_PTP].idx << ATL_NTC_RXQ_SHIFT) & ATL_NTC_RXQ_MASK);
-	static u32 etype_cmd =
-		ETH_P_1588 |
-		ATL_RXF_ACT_TOHOST |
-		ATL_ETYPE_RXQ;
-	u32 etype_vec_idx =
-		((ptp->qvec[ATL_PTPQ_PTP].idx << ATL_ETYPE_RXQ_SHIFT) & ATL_ETYPE_RXQ_MASK);
-
-	if (config->tx_type == HWTSTAMP_TX_ON ||
-	    config->rx_filter == HWTSTAMP_FILTER_PTP_V2_EVENT) {
-		atl_write(&nic->hw, ATL_NTUPLE_DPORT(ptp->udp_filter_idx),
-			  PTP_EV_PORT);
-		atl_write(&nic->hw, ATL_NTUPLE_CTRL(ptp->udp_filter_idx),
-			  ATL_NTC_EN | ntuple_cmd | ntuple_vec_idx);
-
-		atl_write(&nic->hw, ATL_RX_ETYPE_FLT(ptp->eth_type_filter_idx),
-			  ATL_ETYPE_EN | etype_cmd | etype_vec_idx);
-
-		nic->hw.link_state.ptp_datapath_up = true;
-	} else {
-		atl_write(&nic->hw, ATL_NTUPLE_CTRL(ptp->udp_filter_idx), ntuple_cmd);
-
-		atl_write(&nic->hw, ATL_RX_ETYPE_FLT(ptp->eth_type_filter_idx), 0);
-
-		nic->hw.link_state.ptp_datapath_up = false;
-	}
-
-	ptp->hwtstamp_config = *config;
-
-	return 0;
-}
-
-#define PTP_8TC_RING_IDX             8
-#define PTP_4TC_RING_IDX            16
-#define PTP_HWTS_RING_IDX           31
-
-int atl_ptp_ring_index(enum atl_ptp_queue ptp_queue)
+static int atl_ptp_ring_index(enum atl_ptp_queue ptp_queue)
 {
 	switch (ptp_queue) {
 	case ATL_PTPQ_PTP:
@@ -635,44 +535,6 @@ int atl_ptp_ring_index(enum atl_ptp_queue ptp_queue)
 
 	WARN_ONCE(1, "Invalid ptp_queue");
 	return 0;
-}
-
-int atl_ptp_qvec_intr(struct atl_queue_vec *qvec)
-{
-	int i;
-
-	for (i = 0; i != ATL_PTPQ_NUM; i++) {
-		if (qvec->idx == atl_ptp_ring_index(i))
-			return ATL_NUM_NON_RING_IRQS - 1;
-	}
-
-	WARN_ONCE(1, "Not a PTP queue vector");
-	return ATL_NUM_NON_RING_IRQS;
-}
-
-bool atl_is_ptp_ring(struct atl_nic *nic, struct atl_desc_ring *ring)
-{
-	struct atl_ptp *ptp = nic->ptp;
-
-	if (!ptp)
-		return false;
-
-	return &ptp->qvec[ATL_PTPQ_PTP].tx == ring ||
-	       &ptp->qvec[ATL_PTPQ_PTP].rx == ring ||
-	       &ptp->qvec[ATL_PTPQ_HWTS].rx == ring;
-}
-
-u16 atl_ptp_extract_ts(struct atl_nic *nic, struct sk_buff *skb, u8 *p,
-		       unsigned int len)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	u64 timestamp = 0;
-	u16 ret = hw_atl_rx_extract_ts(&nic->hw, p, len, &timestamp);
-
-	if (ret > 0)
-		atl_ptp_rx_hwtstamp(ptp, skb, timestamp);
-
-	return ret;
 }
 
 static int atl_ptp_poll(struct napi_struct *napi, int budget)
@@ -709,170 +571,6 @@ static irqreturn_t atl_ptp_irq(int irq, void *private)
 
 err_exit:
 	return err >= 0 ? IRQ_HANDLED : IRQ_NONE;
-}
-
-netdev_tx_t atl_ptp_start_xmit(struct atl_nic *nic, struct sk_buff *skb)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	netdev_tx_t err = NETDEV_TX_OK;
-	struct atl_desc_ring *ring;
-	unsigned long irq_flags;
-
-	ring = &ptp->qvec[ATL_PTPQ_PTP].tx;
-
-	if (skb->len <= 0) {
-		dev_kfree_skb_any(skb);
-		goto err_exit;
-	}
-
-	if (atl_tx_full(ring, skb_shinfo(skb)->nr_frags + 4)) {
-		/* Drop packet because it doesn't make sence to delay it */
-		dev_kfree_skb_any(skb);
-		goto err_exit;
-	}
-
-	err = atl_ptp_skb_put(&ptp->skb_ring, skb);
-	if (err) {
-		atl_nic_err("SKB Ring is overflow!\n");
-		return NETDEV_TX_BUSY;
-	}
-	skb_shinfo(skb)->tx_flags |= SKBTX_IN_PROGRESS;
-	atl_ptp_tx_timeout_start(ptp);
-	skb_tx_timestamp(skb);
-
-	spin_lock_irqsave(&ptp->ptp_ring_lock, irq_flags);
-	err = atl_map_skb(skb, ring);
-	spin_unlock_irqrestore(&ptp->ptp_ring_lock, irq_flags);
-
-err_exit:
-	return err;
-}
-
-void atl_ptp_work(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-
-	if (!ptp)
-		return;
-
-	atl_ptp_tx_timeout_check(ptp);
-}
-
-int atl_ptp_irq_alloc(struct atl_nic *nic)
-{
-	struct pci_dev *pdev = nic->hw.pdev;
-	struct atl_ptp *ptp = nic->ptp;
-
-	if (!ptp)
-		return 0;
-
-	if (nic->flags & ATL_FL_MULTIPLE_VECTORS) {
-		return request_irq(pci_irq_vector(pdev, ptp->idx_vector),
-				  atl_ptp_irq, 0, nic->ndev->name, ptp);
-	}
-
-	return -EINVAL;
-}
-
-void atl_ptp_irq_free(struct atl_nic *nic)
-{
-	struct atl_hw *hw = &nic->hw;
-	struct atl_ptp *ptp = nic->ptp;
-
-	if (!ptp)
-		return;
-
-	atl_intr_disable(hw, BIT(ptp->idx_vector));
-	free_irq(pci_irq_vector(hw->pdev, ptp->idx_vector), ptp);
-}
-
-int atl_ptp_ring_alloc(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	struct atl_queue_vec *qvec;
-	int err = 0;
-	int i;
-
-	if (!ptp)
-		return 0;
-
-	for (i = 0; i != ATL_PTPQ_NUM; i++) {
-		qvec = &ptp->qvec[i];
-
-		atl_init_qvec(nic, qvec, atl_ptp_ring_index(i));
-	}
-
-	atl_for_each_ptp_qvec(ptp, qvec) {
-		err = atl_alloc_qvec(qvec);
-		if (err)
-			goto free;
-	}
-
-	err = atl_ptp_skb_ring_init(&ptp->skb_ring, nic->requested_rx_size);
-	if (err != 0) {
-		err = -ENOMEM;
-		goto free;
-	}
-
-	return 0;
-
-free:
-	while (--qvec >= &ptp->qvec[0])
-		atl_free_qvec(qvec);
-
-	return err;
-}
-
-int atl_ptp_ring_start(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	struct atl_queue_vec *qvec;
-	int err = 0;
-
-	if (!ptp)
-		return 0;
-
-	atl_for_each_ptp_qvec(ptp, qvec) {
-		err = atl_start_qvec(qvec);
-		if (err)
-			goto stop;
-	}
-
-	napi_enable(ptp->napi);
-
-	return 0;
-
-stop:
-	while (--qvec >= &ptp->qvec[0])
-		atl_stop_qvec(qvec);
-
-	return err;
-}
-
-void atl_ptp_ring_stop(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	struct atl_queue_vec *qvec;
-
-	if (!ptp)
-		return;
-
-	napi_disable(ptp->napi);
-
-	atl_for_each_ptp_qvec(ptp, qvec)
-		atl_stop_qvec(qvec);
-}
-
-void atl_ptp_ring_free(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-
-	if (!ptp)
-		return;
-
-	atl_free_qvec(&ptp->qvec[ATL_PTPQ_PTP]);
-
-	atl_ptp_skb_ring_release(&ptp->skb_ring);
 }
 
 static struct ptp_clock_info atl_ptp_clock = {
@@ -1005,139 +703,6 @@ static void atl_ptp_gpio_init(struct atl_nic *nic,
 	       sizeof(struct ptp_pin_desc) * info->n_pins);
 }
 
-void atl_ptp_clock_init(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	struct timespec64 ts;
-
-	ktime_get_real_ts64(&ts);
-	atl_ptp_settime(&ptp->ptp_info, &ts);
-}
-
-static void atl_ptp_poll_sync_work_cb(struct work_struct *w);
-
-int atl_ptp_init(struct atl_nic *nic)
-{
-	struct atl_ptp_offset_info ptp_offset_info;
-	enum atl_gpio_pin_function gpio_pin[3];
-	struct atl_mcp *mcp = &nic->hw.mcp;
-	struct ptp_clock *clock;
-	struct atl_ptp *ptp;
-	int err = 0;
-
-	if (!mcp->ops->set_ptp) {
-		nic->ptp = NULL;
-		return 0;
-	}
-
-	if (!(mcp->caps_ex & atl_fw2_ex_caps_phy_ptp_en)) {
-		nic->ptp = NULL;
-		return 0;
-	}
-
-	err = atl_read_mcp_mem(&nic->hw, mcp->fw_stat_addr + atl_fw2_stat_ptp_offset,
-		&ptp_offset_info, sizeof(ptp_offset_info));
-	if (err)
-		return err;
-
-	err = atl_read_mcp_mem(&nic->hw, mcp->fw_stat_addr + atl_fw2_stat_gpio_pin,
-		&gpio_pin, sizeof(gpio_pin));
-	if (err)
-		return err;
-
-	atl_ptp_offset_init(&ptp_offset_info);
-
-	ptp = kzalloc(sizeof(*ptp), GFP_KERNEL);
-	if (!ptp) {
-		err = -ENOMEM;
-		goto err_exit;
-	}
-
-	ptp->nic = nic;
-
-	ptp->qvec[ATL_PTPQ_PTP].type = ATL_QUEUE_PTP;
-	ptp->qvec[ATL_PTPQ_HWTS].type = ATL_QUEUE_HWTS;
-
-	spin_lock_init(&ptp->ptp_lock);
-	spin_lock_init(&ptp->ptp_ring_lock);
-
-	ptp->ptp_info = atl_ptp_clock;
-	atl_ptp_gpio_init(nic, &ptp->ptp_info, &gpio_pin[0]);
-	clock = ptp_clock_register(&ptp->ptp_info, &nic->ndev->dev);
-	if (IS_ERR_OR_NULL(clock)) {
-		netdev_err(nic->ndev, "ptp_clock_register failed\n");
-		err = PTR_ERR(clock);
-		goto err_exit;
-	}
-	ptp->ptp_clock = clock;
-	atl_ptp_tx_timeout_init(&ptp->ptp_tx_timeout);
-
-	atomic_set(&ptp->offset_egress, 0);
-	atomic_set(&ptp->offset_ingress, 0);
-
-	ptp->napi = &ptp->qvec[ATL_PTPQ_PTP].napi;
-	netif_napi_add(nic->ndev, ptp->napi, atl_ptp_poll, 64);
-
-	ptp->idx_vector = ATL_IRQ_PTP;
-
-	nic->ptp = ptp;
-
-	/* enable ptp counter */
-	nic->hw.link_state.ptp_available = true;
-	mcp->ops->set_ptp(&nic->hw, true);
-	atl_ptp_clock_init(nic);
-
-	INIT_DELAYED_WORK(&ptp->poll_sync, &atl_ptp_poll_sync_work_cb);
-	ptp->eth_type_filter_idx = atl_reserve_filter(ATL_RXF_ETYPE);
-	ptp->udp_filter_idx = atl_reserve_filter(ATL_RXF_NTUPLE);
-
-	return 0;
-
-err_exit:
-	if (ptp)
-		kfree(ptp->ptp_info.pin_config);
-	kfree(ptp);
-	nic->ptp = NULL;
-	return err;
-}
-
-void atl_ptp_unregister(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-
-	if (!ptp)
-		return;
-
-	ptp_clock_unregister(ptp->ptp_clock);
-}
-
-void atl_ptp_free(struct atl_nic *nic)
-{
-	struct atl_mcp *mcp = &nic->hw.mcp;
-	struct atl_ptp *ptp = nic->ptp;
-
-	if (!ptp)
-		return;
-
-	atl_release_filter(ATL_RXF_ETYPE);
-	atl_release_filter(ATL_RXF_NTUPLE);
-
-	cancel_delayed_work_sync(&ptp->poll_sync);
-	/* disable ptp */
-	mcp->ops->set_ptp(&nic->hw, false);
-
-	kfree(ptp->ptp_info.pin_config);
-
-	netif_napi_del(ptp->napi);
-	kfree(ptp);
-	nic->ptp = NULL;
-}
-
-struct ptp_clock *atl_ptp_get_ptp_clock(struct atl_nic *nic)
-{
-	return nic->ptp->ptp_clock;
-}
-
 /* PTP external GPIO nanoseconds count */
 static uint64_t atl_ptp_get_sync1588_ts(struct atl_nic *nic)
 {
@@ -1156,22 +721,6 @@ static void atl_ptp_start_work(struct atl_ptp *ptp)
 		schedule_delayed_work(&ptp->poll_sync,
 				      msecs_to_jiffies(ptp->poll_timeout_ms));
 	}
-}
-
-int atl_ptp_link_change(struct atl_nic *nic)
-{
-	struct atl_ptp *ptp = nic->ptp;
-	struct atl_hw *hw = &nic->hw;
-
-	if (!ptp)
-		return 0;
-
-	if (hw->mcp.ops->check_link(hw))
-		atl_ptp_start_work(ptp);
-	else
-		cancel_delayed_work_sync(&ptp->poll_sync);
-
-	return 0;
 }
 
 static bool atl_ptp_sync_ts_updated(struct atl_ptp *ptp, u64 *new_ts)
@@ -1225,7 +774,7 @@ static int atl_ptp_check_sync1588(struct atl_ptp *ptp)
 	return 0;
 }
 
-void atl_ptp_poll_sync_work_cb(struct work_struct *w)
+static void atl_ptp_poll_sync_work_cb(struct work_struct *w)
 {
 	struct delayed_work *dw = to_delayed_work(w);
 	struct atl_ptp *ptp = container_of(dw, struct atl_ptp, poll_sync);
@@ -1239,4 +788,523 @@ void atl_ptp_poll_sync_work_cb(struct work_struct *w)
 	}
 }
 
+#endif /* IS_REACHABLE(CONFIG_PTP_1588_CLOCK) */
+
+void atl_ptp_tm_offset_set(struct atl_nic *nic, unsigned int mbps)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	int i, egress, ingress;
+
+	if (!ptp)
+		return;
+
+	egress = 0;
+	ingress = 0;
+
+	for (i = 0; i < ARRAY_SIZE(ptp_offset); i++) {
+		if (mbps == ptp_offset[i].mbps) {
+			egress = ptp_offset[i].egress;
+			ingress = ptp_offset[i].ingress;
+			break;
+		}
+	}
+
+	atomic_set(&ptp->offset_egress, egress);
+	atomic_set(&ptp->offset_ingress, ingress);
 #endif
+}
+
+/* atl_ptp_tx_hwtstamp - utility function which checks for TX time stamp
+ *
+ * if the timestamp is valid, we convert it into the timecounter ns
+ * value, then store that result into the hwtstamps structure which
+ * is passed up the network stack
+ */
+void atl_ptp_tx_hwtstamp(struct atl_nic *nic, u64 timestamp)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	struct sk_buff *skb = atl_ptp_skb_get(&ptp->skb_ring);
+	struct skb_shared_hwtstamps hwtstamp;
+
+	if (!skb) {
+		atl_nic_err("have timestamp but tx_queues empty\n");
+		return;
+	}
+
+	timestamp += atomic_read(&ptp->offset_egress);
+	atl_ptp_convert_to_hwtstamp(&hwtstamp, timestamp);
+	do {
+		skb_tstamp_tx(skb, &hwtstamp);
+		dev_kfree_skb_any(skb);
+		skb = atl_ptp_skb_get(&ptp->skb_ring);
+	} while (skb);
+
+	atl_ptp_tx_timeout_update(ptp);
+#endif
+}
+
+void atl_ptp_hwtstamp_config_get(struct atl_nic *nic,
+				 struct hwtstamp_config *config)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+
+	*config = ptp->hwtstamp_config;
+#endif
+}
+
+int atl_ptp_hwtstamp_config_set(struct atl_nic *nic,
+				struct hwtstamp_config *config)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	static u32 ntuple_cmd =
+		ATL_NTC_PROTO |
+		ATL_NTC_L4_UDP |
+		ATL_NTC_DP |
+		ATL_RXF_ACT_TOHOST |
+		ATL_NTC_RXQ;
+	u32 ntuple_vec_idx =
+		((ptp->qvec[ATL_PTPQ_PTP].idx << ATL_NTC_RXQ_SHIFT) & ATL_NTC_RXQ_MASK);
+	static u32 etype_cmd =
+		ETH_P_1588 |
+		ATL_RXF_ACT_TOHOST |
+		ATL_ETYPE_RXQ;
+	u32 etype_vec_idx =
+		((ptp->qvec[ATL_PTPQ_PTP].idx << ATL_ETYPE_RXQ_SHIFT) & ATL_ETYPE_RXQ_MASK);
+
+	if (config->tx_type == HWTSTAMP_TX_ON ||
+	    config->rx_filter == HWTSTAMP_FILTER_PTP_V2_EVENT) {
+		atl_write(&nic->hw, ATL_NTUPLE_DPORT(ptp->udp_filter_idx),
+			  PTP_EV_PORT);
+		atl_write(&nic->hw, ATL_NTUPLE_CTRL(ptp->udp_filter_idx),
+			  ATL_NTC_EN | ntuple_cmd | ntuple_vec_idx);
+
+		atl_write(&nic->hw, ATL_RX_ETYPE_FLT(ptp->eth_type_filter_idx),
+			  ATL_ETYPE_EN | etype_cmd | etype_vec_idx);
+
+		nic->hw.link_state.ptp_datapath_up = true;
+	} else {
+		atl_write(&nic->hw, ATL_NTUPLE_CTRL(ptp->udp_filter_idx), ntuple_cmd);
+
+		atl_write(&nic->hw, ATL_RX_ETYPE_FLT(ptp->eth_type_filter_idx), 0);
+
+		nic->hw.link_state.ptp_datapath_up = false;
+	}
+
+	ptp->hwtstamp_config = *config;
+#endif
+
+	return 0;
+}
+
+int atl_ptp_qvec_intr(struct atl_queue_vec *qvec)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	int i;
+
+	for (i = 0; i != ATL_PTPQ_NUM; i++) {
+		if (qvec->idx == atl_ptp_ring_index(i))
+			return ATL_NUM_NON_RING_IRQS - 1;
+	}
+#endif
+
+	WARN_ONCE(1, "Not a PTP queue vector");
+	return ATL_NUM_NON_RING_IRQS;
+}
+
+bool atl_is_ptp_ring(struct atl_nic *nic, struct atl_desc_ring *ring)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+
+	if (!ptp)
+		return false;
+
+	return &ptp->qvec[ATL_PTPQ_PTP].tx == ring ||
+	       &ptp->qvec[ATL_PTPQ_PTP].rx == ring ||
+	       &ptp->qvec[ATL_PTPQ_HWTS].rx == ring;
+#else
+	return false;
+#endif
+}
+
+u16 atl_ptp_extract_ts(struct atl_nic *nic, struct sk_buff *skb, u8 *p,
+		       unsigned int len)
+{
+	u16 ret = 0;
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	u64 timestamp = 0;
+
+	ret = hw_atl_rx_extract_ts(&nic->hw, p, len, &timestamp);
+	if (ret > 0)
+		atl_ptp_rx_hwtstamp(ptp, skb, timestamp);
+#endif
+
+	return ret;
+}
+
+netdev_tx_t atl_ptp_start_xmit(struct atl_nic *nic, struct sk_buff *skb)
+{
+	netdev_tx_t err = NETDEV_TX_OK;
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	struct atl_desc_ring *ring;
+	unsigned long irq_flags;
+
+	ring = &ptp->qvec[ATL_PTPQ_PTP].tx;
+
+	if (skb->len <= 0) {
+		dev_kfree_skb_any(skb);
+		goto err_exit;
+	}
+
+	if (atl_tx_full(ring, skb_shinfo(skb)->nr_frags + 4)) {
+		/* Drop packet because it doesn't make sence to delay it */
+		dev_kfree_skb_any(skb);
+		goto err_exit;
+	}
+
+	err = atl_ptp_skb_put(&ptp->skb_ring, skb);
+	if (err) {
+		atl_nic_err("SKB Ring is overflow!\n");
+		return NETDEV_TX_BUSY;
+	}
+	skb_shinfo(skb)->tx_flags |= SKBTX_IN_PROGRESS;
+	atl_ptp_tx_timeout_start(ptp);
+	skb_tx_timestamp(skb);
+
+	spin_lock_irqsave(&ptp->ptp_ring_lock, irq_flags);
+	err = atl_map_skb(skb, ring);
+	spin_unlock_irqrestore(&ptp->ptp_ring_lock, irq_flags);
+
+err_exit:
+#endif
+	return err;
+}
+
+void atl_ptp_work(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+
+	if (!ptp)
+		return;
+
+	atl_ptp_tx_timeout_check(ptp);
+#endif
+}
+
+int atl_ptp_irq_alloc(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct pci_dev *pdev = nic->hw.pdev;
+	struct atl_ptp *ptp = nic->ptp;
+
+	if (!ptp)
+		return 0;
+
+	if (nic->flags & ATL_FL_MULTIPLE_VECTORS) {
+		return request_irq(pci_irq_vector(pdev, ptp->idx_vector),
+				  atl_ptp_irq, 0, nic->ndev->name, ptp);
+	}
+
+	return -EINVAL;
+#else
+	return 0;
+#endif
+}
+
+void atl_ptp_irq_free(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_hw *hw = &nic->hw;
+	struct atl_ptp *ptp = nic->ptp;
+
+	if (!ptp)
+		return;
+
+	atl_intr_disable(hw, BIT(ptp->idx_vector));
+	free_irq(pci_irq_vector(hw->pdev, ptp->idx_vector), ptp);
+#endif
+}
+
+int atl_ptp_ring_alloc(struct atl_nic *nic)
+{
+	int err = 0;
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	struct atl_queue_vec *qvec;
+	int i;
+
+	if (!ptp)
+		return 0;
+
+	for (i = 0; i != ATL_PTPQ_NUM; i++) {
+		qvec = &ptp->qvec[i];
+
+		atl_init_qvec(nic, qvec, atl_ptp_ring_index(i));
+	}
+
+	atl_for_each_ptp_qvec(ptp, qvec) {
+		err = atl_alloc_qvec(qvec);
+		if (err)
+			goto free;
+	}
+
+	err = atl_ptp_skb_ring_init(&ptp->skb_ring, nic->requested_rx_size);
+	if (err != 0) {
+		err = -ENOMEM;
+		goto free;
+	}
+
+	return 0;
+
+free:
+	while (--qvec >= &ptp->qvec[0])
+		atl_free_qvec(qvec);
+#endif
+
+	return err;
+}
+
+int atl_ptp_ring_start(struct atl_nic *nic)
+{
+	int err = 0;
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	struct atl_queue_vec *qvec;
+
+	if (!ptp)
+		return 0;
+
+	atl_for_each_ptp_qvec(ptp, qvec) {
+		err = atl_start_qvec(qvec);
+		if (err)
+			goto stop;
+	}
+
+	netif_napi_add(nic->ndev, ptp->napi, atl_ptp_poll, 64);
+	napi_enable(ptp->napi);
+
+	return 0;
+
+stop:
+	while (--qvec >= &ptp->qvec[0])
+		atl_stop_qvec(qvec);
+#endif
+
+	return err;
+}
+
+void atl_ptp_ring_stop(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	struct atl_queue_vec *qvec;
+
+	if (!ptp)
+		return;
+
+	napi_disable(ptp->napi);
+	netif_napi_del(ptp->napi);
+
+	atl_for_each_ptp_qvec(ptp, qvec)
+		atl_stop_qvec(qvec);
+#endif
+}
+
+void atl_ptp_ring_free(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+
+	if (!ptp)
+		return;
+
+	atl_free_qvec(&ptp->qvec[ATL_PTPQ_PTP]);
+
+	atl_ptp_skb_ring_release(&ptp->skb_ring);
+#endif
+}
+
+void atl_ptp_clock_init(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	struct timespec64 ts;
+
+	ktime_get_real_ts64(&ts);
+	atl_ptp_settime(&ptp->ptp_info, &ts);
+#endif
+}
+
+int atl_ptp_init(struct atl_nic *nic)
+{
+	int err = 0;
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_mcp *mcp = &nic->hw.mcp;
+	struct atl_ptp *ptp;
+
+	if (!mcp->ops->set_ptp) {
+		nic->ptp = NULL;
+		return 0;
+	}
+
+	if (!(mcp->caps_ex & atl_fw2_ex_caps_phy_ptp_en)) {
+		nic->ptp = NULL;
+		return 0;
+	}
+
+	ptp = kzalloc(sizeof(*ptp), GFP_KERNEL);
+	if (!ptp) {
+		err = -ENOMEM;
+		goto err_exit;
+	}
+
+	ptp->nic = nic;
+
+	ptp->qvec[ATL_PTPQ_PTP].type = ATL_QUEUE_PTP;
+	ptp->qvec[ATL_PTPQ_HWTS].type = ATL_QUEUE_HWTS;
+
+	spin_lock_init(&ptp->ptp_lock);
+	spin_lock_init(&ptp->ptp_ring_lock);
+
+	atl_ptp_tx_timeout_init(&ptp->ptp_tx_timeout);
+
+	atomic_set(&ptp->offset_egress, 0);
+	atomic_set(&ptp->offset_ingress, 0);
+
+	ptp->napi = &ptp->qvec[ATL_PTPQ_PTP].napi;
+
+	ptp->idx_vector = ATL_IRQ_PTP;
+
+	nic->ptp = ptp;
+
+	/* enable ptp counter */
+	nic->hw.link_state.ptp_available = true;
+	mcp->ops->set_ptp(&nic->hw, true);
+	atl_ptp_clock_init(nic);
+
+	INIT_DELAYED_WORK(&ptp->poll_sync, &atl_ptp_poll_sync_work_cb);
+	ptp->eth_type_filter_idx = atl_reserve_filter(ATL_RXF_ETYPE);
+	ptp->udp_filter_idx = atl_reserve_filter(ATL_RXF_NTUPLE);
+
+	return 0;
+
+err_exit:
+	if (ptp)
+		kfree(ptp->ptp_info.pin_config);
+	kfree(ptp);
+	nic->ptp = NULL;
+#endif
+
+	return err;
+}
+
+int atl_ptp_register(struct atl_nic *nic)
+{
+	int err = 0;
+
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp_offset_info ptp_offset_info;
+	enum atl_gpio_pin_function gpio_pin[3];
+	struct atl_mcp *mcp = &nic->hw.mcp;
+	struct atl_ptp *ptp = nic->ptp;
+	struct ptp_clock *clock;
+
+	if (!ptp)
+		return 0;
+
+	err = atl_read_mcp_mem(&nic->hw, mcp->fw_stat_addr + atl_fw2_stat_ptp_offset,
+		&ptp_offset_info, sizeof(ptp_offset_info));
+	if (err)
+		return err;
+
+	err = atl_read_mcp_mem(&nic->hw, mcp->fw_stat_addr + atl_fw2_stat_gpio_pin,
+		&gpio_pin, sizeof(gpio_pin));
+	if (err)
+		return err;
+
+	atl_ptp_offset_init(&ptp_offset_info);
+
+	ptp->ptp_info = atl_ptp_clock;
+	atl_ptp_gpio_init(nic, &ptp->ptp_info, &gpio_pin[0]);
+	clock = ptp_clock_register(&ptp->ptp_info, &nic->ndev->dev);
+	if (IS_ERR_OR_NULL(clock)) {
+		netdev_err(nic->ndev, "ptp_clock_register failed\n");
+		err = PTR_ERR(clock);
+		goto err_exit;
+	}
+	ptp->ptp_clock = clock;
+
+err_exit:
+#endif
+
+	return err;
+}
+
+void atl_ptp_unregister(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+
+	if (!ptp)
+		return;
+
+	ptp_clock_unregister(ptp->ptp_clock);
+#endif
+}
+
+void atl_ptp_free(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_mcp *mcp = &nic->hw.mcp;
+	struct atl_ptp *ptp = nic->ptp;
+
+	if (!ptp)
+		return;
+
+	atl_release_filter(ATL_RXF_ETYPE);
+	atl_release_filter(ATL_RXF_NTUPLE);
+
+	cancel_delayed_work_sync(&ptp->poll_sync);
+	/* disable ptp */
+	mcp->ops->set_ptp(&nic->hw, false);
+
+	kfree(ptp->ptp_info.pin_config);
+
+	kfree(ptp);
+	nic->ptp = NULL;
+#endif
+}
+
+struct ptp_clock *atl_ptp_get_ptp_clock(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	return nic->ptp->ptp_clock;
+#else
+	return NULL;
+#endif
+}
+
+int atl_ptp_link_change(struct atl_nic *nic)
+{
+#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
+	struct atl_ptp *ptp = nic->ptp;
+	struct atl_hw *hw = &nic->hw;
+
+	if (!ptp)
+		return 0;
+
+	if (hw->mcp.ops->check_link(hw))
+		atl_ptp_start_work(ptp);
+	else
+		cancel_delayed_work_sync(&ptp->poll_sync);
+#endif
+
+	return 0;
+}

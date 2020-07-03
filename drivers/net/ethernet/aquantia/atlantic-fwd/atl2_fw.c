@@ -498,8 +498,10 @@ static struct atl_link_type *atl2_fw_check_link(struct atl_hw *hw)
 {
 	struct atl_link_type *link;
 	struct atl_link_state *lstate = &hw->link_state;
-	struct phy_health_monitor_s phy_health_monitor = {0};
+	struct phy_health_monitor_s phy_health_monitor;
 	int ret = 0;
+
+	memset(&phy_health_monitor, 0, sizeof(phy_health_monitor));
 
 	atl_lock_fw(hw);
 
@@ -700,9 +702,11 @@ static int atl2_fw_enable_wol(struct atl_hw *hw, unsigned int wol_mode)
 static int atl2_fw_update_thermal(struct atl_hw *hw)
 {
 	bool enable = !!(hw->thermal.flags & atl_thermal_monitor);
-	struct phy_health_monitor_s phy_health_monitor = {0};
+	struct phy_health_monitor_s phy_health_monitor;
 	struct thermal_shutdown_s thermal_shutdown;
 	int ret = 0;
+
+	memset(&phy_health_monitor, 0, sizeof(phy_health_monitor));
 
 	atl_lock_fw(hw);
 

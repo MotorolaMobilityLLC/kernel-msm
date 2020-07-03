@@ -19,10 +19,9 @@
 struct atl_nic;
 struct atl_queue_vec;
 
-#if IS_REACHABLE(CONFIG_PTP_1588_CLOCK)
-
 /* Common functions */
 int atl_ptp_init(struct atl_nic *nic);
+int atl_ptp_register(struct atl_nic *nic);
 
 void atl_ptp_unregister(struct atl_nic *nic);
 void atl_ptp_free(struct atl_nic *nic);
@@ -62,81 +61,5 @@ u16 atl_ptp_extract_ts(struct atl_nic *nic, struct sk_buff *skb, u8 *p,
 struct ptp_clock *atl_ptp_get_ptp_clock(struct atl_nic *nic);
 
 int atl_ptp_link_change(struct atl_nic *nic);
-
-#else
-
-static inline int atl_ptp_init(struct atl_nic *nic)
-{
-	return 0;
-}
-
-static inline void atl_ptp_unregister(struct atl_nic *nic) {}
-static inline void atl_ptp_free(struct atl_nic *nic) {}
-
-static inline int atl_ptp_irq_alloc(struct atl_nic *nic)
-{
-	return 0;
-}
-
-static inline void atl_ptp_irq_free(struct atl_nic *nic) {}
-
-static inline int atl_ptp_ring_alloc(struct atl_nic *nic)
-{
-	return 0;
-}
-
-static inline void atl_ptp_ring_free(struct atl_nic *nic) {}
-
-static inline int atl_ptp_ring_start(struct atl_nic *nic)
-{
-	return 0;
-}
-
-static inline void atl_ptp_ring_stop(struct atl_nic *nic) {}
-
-static inline void atl_ptp_work(struct atl_nic *nic) {}
-
-static inline void atl_ptp_tm_offset_set(struct atl_nic *nic, unsigned int mbps) {}
-
-static inline void atl_ptp_clock_init(struct atl_nic *nic) {}
-
-static inline netdev_tx_t atl_ptp_start_xmit(struct atl_nic *nic, struct sk_buff *skb)
-{
-	return NETDEV_TX_OK;
-}
-
-static inline void atl_ptp_tx_hwtstamp(struct atl_nic *nic, u64 timestamp) {}
-
-static inline void atl_ptp_hwtstamp_config_get(struct atl_nic *nic,
-					       struct hwtstamp_config *config) {}
-
-static inline int atl_ptp_hwtstamp_config_set(struct atl_nic *nic,
-					      struct hwtstamp_config *config)
-{
-	return 0;
-}
-
-static inline bool atl_is_ptp_ring(struct atl_nic *nic, struct atl_desc_ring *ring)
-{
-	return false;
-}
-
-static inline u16 atl_ptp_extract_ts(struct atl_nic *nic, struct sk_buff *skb,
-				     u8 *p, unsigned int len)
-{
-	return 0;
-}
-
-static inline struct ptp_clock *atl_ptp_get_ptp_clock(struct atl_nic *nic)
-{
-	return NULL;
-}
-
-static inline int atl_ptp_link_change(struct atl_nic *nic)
-{
-	return 0;
-}
-
-#endif
 
 #endif /* ATL_PTP_H */

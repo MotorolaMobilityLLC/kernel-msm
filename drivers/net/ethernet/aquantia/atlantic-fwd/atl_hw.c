@@ -1226,13 +1226,15 @@ void atl_adjust_eth_stats(struct atl_ether_stats *stats,
 int atl_update_eth_stats(struct atl_nic *nic)
 {
 	struct atl_hw *hw = &nic->hw;
-	struct atl_ether_stats stats = {0};
+	struct atl_ether_stats stats;
 	uint32_t reg = 0, reg2 = 0;
 	int ret;
 
 	if (!test_bit(ATL_ST_ENABLED, &nic->hw.state) ||
 	    test_bit(ATL_ST_RESETTING, &nic->hw.state))
 		return 0;
+
+	memset(&stats, 0, sizeof(stats));
 
 	atl_lock_fw(hw);
 

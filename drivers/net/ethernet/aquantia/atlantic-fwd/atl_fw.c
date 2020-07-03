@@ -939,14 +939,6 @@ static void atl_fw3_set_ptp(struct atl_hw *hw, bool on)
 	atl_unlock_fw(hw);
 }
 
-static void atl_fw3_adjust_ptp(struct atl_hw *hw, uint64_t adj)
-{
-	atl_lock_fw(hw);
-	atl_write(hw, ATL_RX_SPARE_CTRL0, lower_32_bits(adj));
-	atl_write(hw, ATL_RX_SPARE_CTRL1, upper_32_bits(adj));
-	atl_unlock_fw(hw);
-}
-
 static struct atl_fw_ops atl_fw_ops[2] = {
 	[0] = {
 		.__wait_fw_init = __atl_fw1_wait_fw_init,
@@ -988,7 +980,6 @@ static struct atl_fw_ops atl_fw_ops[2] = {
 		.update_thermal = atl_fw2_update_thermal,
 		.send_ptp_req = atl_fw2_send_ptp_request,
 		.set_ptp = atl_fw3_set_ptp,
-		.adjust_ptp = atl_fw3_adjust_ptp,
 		.deinit = atl_fw1_unsupported,
 	},
 };

@@ -296,7 +296,6 @@ struct atl_fw_ops {
 	int (*update_thermal)(struct atl_hw *hw);
 	int (*send_ptp_req)(struct atl_hw *hw, struct ptp_msg_fw_request *msg);
 	void (*set_ptp)(struct atl_hw *hw, bool on);
-	void (*adjust_ptp)(struct atl_hw *hw, uint64_t adj);
 	int (*deinit)(struct atl_hw *hw);
 };
 
