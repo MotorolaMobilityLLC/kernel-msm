@@ -232,6 +232,12 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	cmd_buf += cmd_desc->offset / 4;
 	cam_cmd_csiphy_info = (struct cam_csiphy_info *)cmd_buf;
 
+	if (cam_cmd_csiphy_info->lane_mask == LANE_MASK_2PH) {
+		CAM_DBG(CAM_CSIPHY, "reset 4lane csiphy_info");
+		csiphy_dev->csiphy_info.lane_mask = 0;
+		csiphy_dev->csiphy_info.lane_cnt = 0;
+		csiphy_dev->csiphy_info.combo_mode = 0;
+	}
 	csiphy_dev->config_count++;
 	csiphy_dev->csiphy_info.lane_cnt += cam_cmd_csiphy_info->lane_cnt;
 	csiphy_dev->csiphy_info.lane_mask |= cam_cmd_csiphy_info->lane_mask;
