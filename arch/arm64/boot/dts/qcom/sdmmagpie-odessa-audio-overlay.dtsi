@@ -348,6 +348,14 @@
                 monitor-flag = <1>;
                 afe-profile = <1>;
                 monitor-timer-val = <3000>;
+
+		afe-rx-portid = <0x1004>;
+		afe-tx-portid = <0x1005>;
+
+		low-vol-table-down = <3650 9 3 3750 9 2 3900 9 1>;
+		low-vol-table-up = <4000 9 0 3800 9 1 3700 9 2>;
+		low-temp-table-down = <0xFFFFFFFB 0x4 0x10 0xFFBEAE7E 0x0 0x5 0x9 0xFFD80505 0x5 0x6 0x6 0xFFED714D>;
+		low-temp-table-up = <0x7 0x9 0x0 0x00000000 0x2 0x6 0x06 0xFFED714D 0xFFFFFFE 0x05 0x09 0xFFD80505>;
                 status = "okay";
         };
 };
