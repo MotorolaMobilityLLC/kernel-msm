@@ -29,6 +29,7 @@
 		mmi,batt-ovp-lmt = <4550000>;
 		mmi,pl-chrg-vbatt-min = <3600000>;
 		mmi,typec-middle-current = <1500000>;
+		mmi,step-first-current-comp = <0>;
 		mmi,dont-rerun-aicl;
 		mmi,chrg-temp-zones-num = <5>;
 		mmi,mmi-chrg-temp-zones =
