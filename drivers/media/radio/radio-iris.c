@@ -5271,6 +5271,58 @@ end:
 	return retval;
 }
 
+/**************************************************************************
+ * File Operations Interface
+ **************************************************************************
+ *
+ * iris_fops_read - read event data
+ */
+static ssize_t iris_fops_read(struct file *file, char __user *buffer,
+		size_t count, loff_t *ppos)
+{
+	struct iris_device  *radio = video_get_drvdata(video_devdata(file));
+	enum iris_buf_t buf_type = -1;
+	unsigned char buf_fifo[STD_BUF_SIZE] = {0};
+	struct kfifo *data_fifo = NULL;
+	unsigned char *buf = NULL;
+	unsigned int len = 0, retval = -1;
+	u32 bytesused = 0;
+
+	FMDBG("buffer %pK", buffer);
+
+	if ((radio == NULL) || (buffer == NULL)) {
+		FMDERR("radio/buffer is NULL\n");
+		return -ENXIO;
+	}
+	buf_type = count;
+	len = STD_BUF_SIZE;
+
+	if ((buf_type < IRIS_BUF_MAX) && (buf_type >= 0)) {
+		data_fifo = &radio->data_buf[buf_type];
+		if (buf_type == IRIS_BUF_EVENTS)
+			if (wait_event_interruptible(radio->event_queue,
+				kfifo_len(data_fifo)) < 0)
+				return -EINTR;
+	} else {
+		FMDERR("invalid buffer type\n");
+		return -EINVAL;
+	}
+	if (len <= STD_BUF_SIZE) {
+		bytesused = kfifo_out_locked(data_fifo, &buf_fifo[0],
+					len, &radio->buf_lock[buf_type]);
+	} else {
+		FMDERR("kfifo_out_locked can not use len more than 128\n");
+		return -EINVAL;
+	}
+	retval = copy_to_user(buffer, &buf_fifo[0], bytesused);
+	if (retval > 0) {
+		FMDERR("Failed to copy %d bytes of data\n", retval);
+		return -EAGAIN;
+	}
+	retval = bytesused;
+	return retval;
+}
+
 static int iris_vidioc_dqbuf(struct file *file, void *priv,
 				struct v4l2_buffer *buffer)
 {
@@ -5477,6 +5529,7 @@ static const struct v4l2_ioctl_ops iris_ioctl_ops = {
 static const struct v4l2_file_operations iris_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = video_ioctl2,
+	.read			= iris_fops_read,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl32 = v4l2_compat_ioctl32,
 #endif
