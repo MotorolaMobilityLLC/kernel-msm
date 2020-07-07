@@ -2198,6 +2198,12 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 {
 	int rc = -EINVAL;
 
+  	if (chg->mmi.test_mode && !(chg->mmi.test_mode_soc < 0)
+  	    && !(chg->mmi.test_mode_soc > 100)) {
+  		val->intval = chg->mmi.test_mode_soc;
+                  return 0;
+        }
+
 	if (chg->fake_capacity >= 0) {
 		val->intval = chg->fake_capacity;
 		return 0;
@@ -2703,6 +2709,9 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 int smblib_set_prop_batt_capacity(struct smb_charger *chg,
 				  const union power_supply_propval *val)
 {
+        if (chg->mmi.test_mode)
+          chg->mmi.test_mode_soc = val->intval;
+
 	chg->fake_capacity = val->intval;
 
 	power_supply_changed(chg->batt_psy);
@@ -8736,6 +8745,26 @@ static void smblib_iio_deinit(struct smb_charger *chg)
 		iio_channel_release(chg->iio.dcin_v_chan);
 }
 
+static bool smblib_test_mode(struct smb_charger *chg)
+{
+  	struct device_node *np = of_find_node_by_path("/chosen");
+  	const char *mode;
+  	int rc;
+  	bool test = false;
+
+  	if (!np)
+  		return test;
+
+  	rc = of_property_read_string(np, "mmi,battery", &mode);
+  	if ((rc >= 0) && mode) {
+  		if (strcmp(mode, "test") == 0)
+  			test = true;
+  	}
+  	of_node_put(np);
+
+  	return test;
+}
+
 int smblib_init(struct smb_charger *chg)
 {
 	union power_supply_propval prop_val;
@@ -8818,6 +8847,12 @@ int smblib_init(struct smb_charger *chg)
 	chg->typec_irq_en = true;
 	chg->cp_topo = -EINVAL;
 	chg->dr_mode = TYPEC_PORT_DRP;
+
+  	chg->mmi.test_mode_soc = DEFAULT_TEST_MODE_SOC;
+  	chg->mmi.test_mode_temp = DEFAULT_TEST_MODE_TEMP;
+  	chg->mmi.test_mode = smblib_test_mode(chg);
+  	if (chg->mmi.test_mode)
+  	        smblib_dbg(chg, PR_MISC, "Test Mode Enabled\n");
 
 	switch (chg->mode) {
 	case PARALLEL_MASTER:
@@ -10132,7 +10167,11 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		batt_soc = val.intval;
 
-	rc = smblib_get_prop_from_bms(chip,
+  	if (chip->mmi.test_mode && !(chip->mmi.test_mode_temp < -350)
+  		 && !(chip->mmi.test_mode_temp > 1250))
+  		val.intval = chip->mmi.test_mode_temp;
+  	else
+	        rc = smblib_get_prop_from_bms(chip,
 				POWER_SUPPLY_PROP_TEMP, &val);
 	if (rc < 0) {
 		smblib_err(chip,
