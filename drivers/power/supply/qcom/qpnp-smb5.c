@@ -2160,6 +2160,9 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP:
 		if (chg->typec_mode == POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY)
 			val->intval = DEBUG_ACCESSORY_TEMP_DECIDEGC;
+                else if (chg->mmi.test_mode && !(chg->mmi.test_mode_temp < -350)
+  		    && !(chg->mmi.test_mode_temp > 1250))
+  			val->intval = chg->mmi.test_mode_temp;
 		else
 			rc = smblib_get_prop_from_bms(chg,
 						POWER_SUPPLY_PROP_TEMP, val);
@@ -2361,6 +2364,13 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
 		vote(chg->chg_disable_votable, USER_VOTER, !!!val->intval, 0);
 		break;
+  	case POWER_SUPPLY_PROP_TEMP:
+  		if (chg->mmi.test_mode)
+  			chg->mmi.test_mode_temp = val->intval;
+  		cancel_delayed_work(&chg->mmi.heartbeat_work);
+  		schedule_delayed_work(&chg->mmi.heartbeat_work,
+  					msecs_to_jiffies(0));
+  		break;
 	default:
 		rc = -EINVAL;
 	}

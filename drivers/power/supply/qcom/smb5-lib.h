@@ -118,6 +118,9 @@ enum print_reason {
 #define DCIN_ICL_STEP_UA		100000
 #define ROLE_REVERSAL_DELAY_MS		500
 
+#define DEFAULT_TEST_MODE_SOC  52
+#define DEFAULT_TEST_MODE_TEMP  225
+
 enum smb_mode {
 	PARALLEL_MASTER = 0,
 	PARALLEL_SLAVE,
@@ -506,6 +509,9 @@ struct mmi_params {
 	int			is_otg_enable;
 	bool			force_chg_suspend;
 	bool                    support_2a_dcp;
+  	bool                    test_mode;
+  	int                     test_mode_soc;
+  	int                     test_mode_temp;
 };
 
 struct smb_charger {
