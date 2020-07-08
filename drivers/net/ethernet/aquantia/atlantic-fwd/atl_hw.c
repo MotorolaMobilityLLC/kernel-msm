@@ -84,14 +84,19 @@ static inline void atl_glb_soft_reset_full(struct atl_hw *hw)
 }
 
 static void atl2_hw_new_rx_filter_vlan_promisc(struct atl_hw *hw, bool promisc);
-static void atl2_hw_new_rx_filter_promisc(struct atl_hw *hw, bool promisc);
+static void atl2_hw_new_rx_filter_promisc(struct atl_hw *hw, bool promisc,
+					  bool allmulti);
 static void atl2_hw_init_new_rx_filters(struct atl_hw *hw);
 
-static void atl_set_promisc(struct atl_hw *hw, bool enabled)
+static void atl_set_promisc(struct atl_hw *hw, bool enabled, bool allmulti)
 {
 	atl_write_bit(hw, ATL_RX_FLT_CTRL1, 3, enabled);
 	if (hw->new_rpf)
-		atl2_hw_new_rx_filter_promisc(hw, enabled);
+		atl2_hw_new_rx_filter_promisc(hw, enabled, allmulti);
+	else {
+		atl_write_bit(hw, ATL_RX_MC_FLT_MSK, 14, allmulti);
+		atl_write(hw, ATL_RX_MC_FLT(0), allmulti ? 0x80010FFF : 0x00010FFF);
+	}
 }
 
 void atl_set_vlan_promisc(struct atl_hw *hw, int promisc)
@@ -106,7 +111,7 @@ static inline void atl_enable_dma_net_lpb_mode(struct atl_nic *nic)
 	struct atl_hw *hw = &nic->hw;
 
 	atl_set_vlan_promisc(hw, 1);
-	atl_set_promisc(hw, 1);
+	atl_set_promisc(hw, 1, 0);
 	atl_write_bit(hw, ATL_TX_PBUF_CTRL1, 4, 0);
 	atl_write_bit(hw, ATL_TX_CTRL1, 4, 1);
 	atl_write_bit(hw, ATL_RX_CTRL1, 4, 1);
@@ -764,9 +769,9 @@ void atl_start_hw_global(struct atl_nic *nic)
 	/* RPF */
 	/* Default RPF2 parser options */
 	atl_write(hw, ATL_RX_FLT_CTRL2, 0x0);
-	atl_set_uc_flt(hw, 0, hw->mac_addr);
+	atl_set_uc_flt(hw, nic->rxf_mac.base_index, hw->mac_addr);
 	/* BC action host */
-	atl_write_bits(hw, ATL_RX_FLT_CTRL1, 12, 3, 1);
+	atl_write_bits(hw, ATL_RX_FLT_CTRL1, 12, 1, 1);
 	/* Enable BC */
 	atl_write_bit(hw, ATL_RX_FLT_CTRL1, 0, 1);
 	/* BC thresh */
@@ -852,22 +857,16 @@ void atl_start_hw_global(struct atl_nic *nic)
 
 #define atl_vlan_flt_val(vid) ((uint32_t)(vid) | 1 << 16 | 1 << 31)
 
-static void atl_set_all_multi(struct atl_hw *hw, bool all_multi)
-{
-	atl_write_bit(hw, ATL_RX_MC_FLT_MSK, 14, all_multi);
-	atl_write(hw, ATL_RX_MC_FLT(0), all_multi ? 0x80010FFF : 0x00010FFF);
-}
-
 void atl_set_rx_mode(struct net_device *ndev)
 {
 	struct atl_nic *nic = netdev_priv(ndev);
 	struct atl_hw *hw = &nic->hw;
 	bool is_multicast_enabled = !!(ndev->flags & IFF_MULTICAST);
-	int all_multi_needed = !!(ndev->flags & IFF_ALLMULTI);
-	int promisc_needed = !!(ndev->flags & IFF_PROMISC);
+	bool all_multi_needed = !!(ndev->flags & IFF_ALLMULTI);
+	bool promisc_needed = !!(ndev->flags & IFF_PROMISC);
+	int i = nic->rxf_mac.base_index + 1; /* 1 reserved for MAC address */
 	int uc_count = netdev_uc_count(ndev);
 	int mc_count = 0;
-	int i = 1; /* UC filter 0 reserved for MAC address */
 	struct netdev_hw_addr *hwaddr;
 
 	if (!pm_runtime_active(&nic->hw.pdev->dev))
@@ -876,11 +875,10 @@ void atl_set_rx_mode(struct net_device *ndev)
 	if (is_multicast_enabled)
 		mc_count = netdev_mc_count(ndev);
 
-	if (uc_count > ATL_UC_FLT_NUM - 1)
-		promisc_needed |= 1;
-	else if (uc_count + mc_count > ATL_UC_FLT_NUM - 1)
-		all_multi_needed |= 1;
-
+	if (uc_count > nic->rxf_mac.available - 1)
+		promisc_needed = true;
+	else if (uc_count + mc_count > nic->rxf_mac.available - 1)
+		all_multi_needed = true;
 
 	/* Enable promisc VLAN mode if IFF_PROMISC explicitly
 	 * requested or too many VIDs registered
@@ -889,14 +887,17 @@ void atl_set_rx_mode(struct net_device *ndev)
 		ndev->flags & IFF_PROMISC || nic->rxf_vlan.promisc_count ||
 		!nic->rxf_vlan.vlans_active);
 
-	atl_set_promisc(hw, promisc_needed);
+	atl_set_promisc(hw, promisc_needed,
+			is_multicast_enabled && all_multi_needed);
+	if (hw->new_rpf)
+		atl2_fw_set_filter_policy(hw, promisc_needed,
+				  is_multicast_enabled && all_multi_needed);
+
 	if (promisc_needed)
 		return;
 
 	netdev_for_each_uc_addr(hwaddr, ndev)
 		atl_set_uc_flt(hw, i++, hwaddr->addr);
-
-	atl_set_all_multi(hw, is_multicast_enabled && all_multi_needed);
 
 	if (is_multicast_enabled && !all_multi_needed)
 		netdev_for_each_mc_addr(hwaddr, ndev)
@@ -1460,105 +1461,73 @@ int atl2_act_rslvr_table_set(struct atl_hw *hw, u8 location,
 /** Initialise new rx filters
  * L2 promisc OFF
  * VLAN promisc OFF
- *
- * VLAN
- * MAC
- * ALLMULTI
- * UT
- * VLAN promisc ON
- * L2 promisc ON
+ * user custom filtlers
+ * RSS TC0
  */
 static void atl2_hw_init_new_rx_filters(struct atl_hw *hw)
 {
-	atl_write(hw, ATL2_RPF_REC_TAB_EN, 0xFFFF);
-	atl_write_bits(hw, ATL_RX_UC_FLT_REG2(0), 22, 6, ATL2_RPF_TAG_BASE_UC);
-	atl_write_bits(hw, ATL2_RX_FLT_L2_BC_TAG, 0, 6, ATL2_RPF_TAG_BASE_UC);
-	atl_set_bits(hw, ATL2_RPF_L3_FLT(0), BIT(0x17));
+	struct atl_nic *nic = container_of(hw, struct atl_nic, hw);
+	uint32_t art_last_sec, art_first_sec, art_mask;
+	int index;
 
+	atl_write_bits(hw, ATL_RX_UC_FLT_REG2(nic->rxf_mac.base_index),
+		       22, 6, ATL2_RPF_TAG_BASE_UC);
+	atl_write_bits(hw, ATL2_RX_FLT_L2_BC_TAG, 0, 6, ATL2_RPF_TAG_BASE_BC);
+	atl_set_bits(hw, ATL2_RPF_L3_FLT(0), BIT(0x17));
+	atl_write_bit(hw, ATL_RX_MC_FLT_MSK, 14, 1);
+
+	art_last_sec = hw->art_base_index / 8 + hw->art_available / 8;
+	art_first_sec = hw->art_base_index / 8;
+	art_mask = (BIT(art_last_sec) - 1) - (BIT(art_first_sec) - 1);
+	atl_set_bits(hw, ATL2_RPF_REC_TAB_EN, art_mask);
+
+	index = hw->art_base_index + ATL2_RPF_L2_PROMISC_OFF_INDEX;
 	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_L2_PROMISC_OFF_INDEX,
+				 index,
 				 0,
 				 ATL2_RPF_TAG_UC_MASK | ATL2_RPF_TAG_ALLMC_MASK,
 				 ATL2_ACTION_DROP);
 
+	index = hw->art_base_index + ATL2_RPF_VLAN_PROMISC_OFF_INDEX;
 	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_VLAN_PROMISC_OFF_INDEX,
+				 index,
 				 0,
 				 ATL2_RPF_TAG_VLAN_MASK | ATL2_RPF_TAG_UNTAG_MASK,
 				 ATL2_ACTION_DROP);
 
-
+	index = hw->art_base_index + ATL2_RPF_DEFAULT_RULE_INDEX;
 	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_VLAN_INDEX,
-				 ATL2_RPF_TAG_BASE_VLAN,
-				 ATL2_RPF_TAG_VLAN_MASK,
-				 ATL2_ACTION_ASSIGN_TC(0));
-
-	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_MAC_INDEX,
-				 ATL2_RPF_TAG_BASE_UC,
-				 ATL2_RPF_TAG_UC_MASK,
-				 ATL2_ACTION_ASSIGN_TC(0));
-
-	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_ALLMC_INDEX,
-				 ATL2_RPF_TAG_BASE_ALLMC,
-				 ATL2_RPF_TAG_ALLMC_MASK,
-				 ATL2_ACTION_ASSIGN_TC(0));
-
-	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_UNTAG_INDEX,
-				 ATL2_RPF_TAG_UNTAG_MASK,
-				 ATL2_RPF_TAG_UNTAG_MASK,
-				 ATL2_ACTION_ASSIGN_TC(0));
-
-	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_VLAN_PROMISC_ON_INDEX,
+				 index,
 				 0,
-				 ATL2_RPF_TAG_VLAN_MASK,
-				 ATL2_ACTION_DISABLE);
-
-	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_L2_PROMISC_ON_INDEX,
 				 0,
-				 ATL2_RPF_TAG_UC_MASK,
-				 ATL2_ACTION_DISABLE);
+				 ATL2_ACTION_ASSIGN_TC(0));
 }
-
 
 static void atl2_hw_new_rx_filter_vlan_promisc(struct atl_hw *hw, bool promisc)
 {
-	u16 on_action = promisc ? ATL2_ACTION_ASSIGN_TC(0) : ATL2_ACTION_DISABLE;
 	u16 off_action = !promisc ? ATL2_ACTION_DROP : ATL2_ACTION_DISABLE;
+	int index = hw->art_base_index + ATL2_RPF_VLAN_PROMISC_OFF_INDEX;
 
 	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_VLAN_PROMISC_ON_INDEX,
-				 0,
-				 ATL2_RPF_TAG_VLAN_MASK,
-				 on_action);
-
-	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_VLAN_PROMISC_OFF_INDEX,
+				 index,
 				 0,
 				 ATL2_RPF_TAG_VLAN_MASK | ATL2_RPF_TAG_UNTAG_MASK,
 				 off_action);
 }
 
-static void atl2_hw_new_rx_filter_promisc(struct atl_hw *hw, bool promisc)
+static void atl2_hw_new_rx_filter_promisc(struct atl_hw *hw, bool promisc,
+					  bool allmulti)
 {
-	u16 on_action = promisc ? ATL2_ACTION_ASSIGN_TC(0) : ATL2_ACTION_DISABLE;
 	u16 off_action = promisc ? ATL2_ACTION_DISABLE : ATL2_ACTION_DROP;
+	u32 mask = allmulti ? (ATL2_RPF_TAG_UC_MASK | ATL2_RPF_TAG_ALLMC_MASK) :
+			      ATL2_RPF_TAG_UC_MASK;
+	int index = hw->art_base_index + ATL2_RPF_L2_PROMISC_OFF_INDEX;
 
 	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_L2_PROMISC_OFF_INDEX,
+				 index,
 				 0,
-				 ATL2_RPF_TAG_UC_MASK | ATL2_RPF_TAG_ALLMC_MASK,
+				 mask,
 				 off_action);
 
-	atl2_act_rslvr_table_set(hw,
-				 ATL2_RPF_L2_PROMISC_ON_INDEX,
-				 0,
-				 ATL2_RPF_TAG_UC_MASK,
-				 on_action);
 }
 

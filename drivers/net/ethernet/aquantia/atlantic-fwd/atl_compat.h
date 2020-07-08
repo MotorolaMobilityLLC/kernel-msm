@@ -113,7 +113,7 @@ static inline int skb_xmit_more(struct sk_buff *skb)
 {
 	return 0;
 }
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,2,0)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) || RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 2)
 static inline int skb_xmit_more(struct sk_buff *skb)
 {
 	return netdev_xmit_more();

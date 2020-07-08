@@ -286,7 +286,7 @@ static int atl_set_mac_address(struct net_device *ndev, void *priv)
 	ether_addr_copy(ndev->dev_addr, addr->sa_data);
 
 	if (netif_running(ndev) && pm_runtime_active(&nic->hw.pdev->dev))
-		atl_set_uc_flt(hw, 0, hw->mac_addr);
+		atl_set_uc_flt(hw, nic->rxf_mac.base_index, hw->mac_addr);
 
 	return 0;
 }
@@ -934,8 +934,12 @@ static int atl_pm_runtime_idle(struct device *dev)
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct atl_nic *nic = pci_get_drvdata(pdev);
 
+	/* pm_runtime_idle may be called during probe */
+	if (!nic || nic->hw.pdev != pdev)
+		return -EBUSY;
+
 	if (!netif_carrier_ok(nic->ndev)) {
-		pm_schedule_suspend(&nic->hw.pdev->dev, atl_sleep_delay);
+		pm_schedule_suspend(dev, atl_sleep_delay);
 	}
 
 	return -EBUSY;

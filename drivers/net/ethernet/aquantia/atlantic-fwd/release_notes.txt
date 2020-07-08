@@ -1,3 +1,9 @@
+Version 1.1.10
+==============
+[ATLDRV-1559] - Add support of icmp proto to the rx filters
+[ATLDRV-1401] - A2: Filtering
+[ATLDRV-1513] - PM runtime failure
+
 Version 1.1.9
 =============
 [ATLDRV-1505] - FWD: New dev ids

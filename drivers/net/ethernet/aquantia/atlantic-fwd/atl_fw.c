@@ -223,6 +223,7 @@ static int __atl_fw1_get_link_caps(struct atl_hw *hw)
 /* fw lock must be held */
 static int __atl_fw2_get_link_caps(struct atl_hw *hw)
 {
+	struct atl_nic *nic = container_of(hw, struct atl_nic, hw);
 	struct atl_mcp *mcp = &hw->mcp;
 	uint32_t fw_stat_addr = mcp->fw_stat_addr;
 	struct atl_link_type *rate;
@@ -261,6 +262,21 @@ static int __atl_fw2_get_link_caps(struct atl_hw *hw)
 	mcp->req_high_mask = ~mask;
 	hw->link_state.supported = supported;
 	hw->link_state.lp_lowest = fls(supported) - 1;
+
+	nic->rxf_flex.base_index = 0;
+	nic->rxf_flex.available = ATL_FLEX_FLT_NUM;
+	nic->rxf_mac.base_index = 0;
+	nic->rxf_mac.available = ATL_UC_FLT_NUM;
+	nic->rxf_etype.base_index = 0;
+	nic->rxf_etype.available = ATL_ETYPE_FLT_NUM - 1; /* 1 reserved by FW */
+	nic->rxf_vlan.base_index = 0;
+	nic->rxf_vlan.available = ATL_VLAN_FLT_NUM;
+	nic->rxf_ntuple.l3_v4_base_index = 0;
+	nic->rxf_ntuple.l3_v4_available = ATL_NTUPLE_FLT_NUM;
+	nic->rxf_ntuple.l3_v6_base_index = 0;
+	nic->rxf_ntuple.l3_v6_available = ATL_NTUPLE_V6_FLT_NUM;
+	nic->rxf_ntuple.l4_base_index = 0;
+	nic->rxf_ntuple.l4_available = ATL_NTUPLE_FLT_NUM;
 
 	return ret;
 }
