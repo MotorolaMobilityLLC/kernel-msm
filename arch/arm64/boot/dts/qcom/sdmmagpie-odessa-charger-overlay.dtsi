@@ -113,6 +113,7 @@
        qcom,batt-id-range-pct = <15>;
        df-serialnum = "SB18C80753";
        #include "qg-batterydata-mg50-atl-5000mah.dtsi"
+       #include "qg-batterydata-mg50-scud-5000mah.dtsi"
 };
 
 &pm6150_charger {
