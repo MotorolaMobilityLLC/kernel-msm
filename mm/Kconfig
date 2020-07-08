@@ -216,11 +216,17 @@ config MEMORY_HOTREMOVE
 # PA-RISC 7xxx's spinlock_t would enlarge struct page from 32 to 44 bytes.
 # DEBUG_SPINLOCK and DEBUG_LOCK_ALLOC spinlock_t also enlarge struct page.
 #
+# Moto huangzq2: disable SPLIT_RSS_COUNTING if we have ulmk.
+# ulmk fully relies on rss in proc/pid/statm, but rss in statm sometimes
+# is zero if we enabled SPLIT_RSS_COUNTING, checked with Google,
+# they agree to disalbe this. Also, our performance test didn't show any
+# performance downgrade.
 config SPLIT_PTLOCK_CPUS
 	int
 	default "999999" if !MMU
 	default "999999" if ARM && !CPU_CACHE_VIPT
 	default "999999" if PARISC && !PA20
+	default "999999" if HAVE_USERSPACE_LOW_MEMORY_KILLER
 	default "4"
 
 config ARCH_ENABLE_SPLIT_PMD_PTLOCK
