@@ -3873,6 +3873,11 @@ static int smblib_get_prop_typec_mode(struct smb_charger *chg)
 	int rc;
 	u8 stat;
 
+#ifndef QCOM_BASE
+	if (chg->moisture_present)
+		return POWER_SUPPLY_TYPEC_NONE;
+#endif
+
 	rc = smblib_read(chg, TYPE_C_MISC_STATUS_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read TYPE_C_MISC_STATUS_REG rc=%d\n",
@@ -6094,6 +6099,59 @@ enum alarmtimer_restart smblib_lpd_recheck_timer(struct alarm *alarm,
 	return ALARMTIMER_NORESTART;
 }
 
+#ifndef QCOM_BASE
+#define LPD_POST_RETRY_INTERVAL 3000
+#define LPD_POST_RETRY_CNT_MAX 5
+static bool lpd_post_recheck(struct smb_charger *chg)
+{
+	int rc;
+	u8 stat;
+	bool port_clear;
+	static int retry_count = 0;
+
+	if (chg->lpd_reason != LPD_NONE ||
+	    chg->power_role != POWER_SUPPLY_TYPEC_PR_DUAL) {
+		retry_count = 0;
+		return false;
+	}
+
+	rc = smblib_read(chg, TYPE_C_SNK_STATUS_REG, &stat);
+	if (rc < 0)
+		port_clear = true;
+	else if (stat & DETECTED_SRC_TYPE_MASK)
+		port_clear = false;
+	else {
+		rc = smblib_read(chg, TYPE_C_SRC_STATUS_REG, &stat);
+		if (rc < 0)
+			port_clear = true;
+		else if (stat & DETECTED_SNK_TYPE_MASK)
+			port_clear = false;
+		else
+			port_clear = true;
+	}
+
+	if (port_clear) {
+		retry_count++;
+	} else {
+		retry_count = 0;
+	}
+
+	if (retry_count >= LPD_POST_RETRY_CNT_MAX) {
+		retry_count = 0;
+		chg->moisture_present = false;
+		vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
+		power_supply_changed(chg->usb_psy);
+		smblib_err(chg, "Liquid on Type-C port gets clean\n");
+	} else {
+		vote(chg->usb_icl_votable, LPD_VOTER, true, 0);
+		alarm_start_relative(&chg->lpd_recheck_timer,
+				ms_to_ktime(LPD_POST_RETRY_INTERVAL));
+	}
+
+	return true;
+}
+#endif
+
 static void lpd_recheck_work(struct work_struct *work)
 {
 	union power_supply_propval pval;
@@ -6105,6 +6163,11 @@ static void lpd_recheck_work(struct work_struct *work)
 	if (!chg->moisture_detection_enabled)
 		goto disable;
 
+#ifndef QCOM_BASE
+	if (lpd_post_recheck(chg))
+		goto exit;
+#endif
+
 	if (chg->lpd_reason == LPD_MOISTURE_DETECTED) {
 		pval.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
 		rc = smblib_set_prop_typec_power_role(chg, &pval);
@@ -6113,8 +6176,13 @@ static void lpd_recheck_work(struct work_struct *work)
 				pval.intval, rc);
 			goto exit;
 		}
+#ifndef QCOM_BASE
+		alarm_start_relative(&chg->lpd_recheck_timer,
+				ms_to_ktime(LPD_POST_RETRY_INTERVAL));
+#else
 		chg->moisture_present = false;
 		power_supply_changed(chg->usb_psy);
+#endif
 	} else {
 		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
 					TYPEC_WATER_DETECTION_INT_EN_BIT,
@@ -6215,7 +6283,11 @@ static bool smblib_src_lpd(struct smb_charger *chg)
 
 	if (lpd_flag) {
 		chg->lpd_stage = LPD_STAGE_COMMIT;
+#ifdef QCOM_BASE
 		pval.intval = POWER_SUPPLY_TYPEC_PR_SINK;
+#else
+		pval.intval = POWER_SUPPLY_TYPEC_PR_NONE;
+#endif
 		rc = smblib_set_prop_typec_power_role(chg, &pval);
 		if (rc < 0)
 			smblib_err(chg, "Couldn't write 0x%02x to TYPE_C_INTRPT_ENB_SOFTWARE_CTRL rc=%d\n",
@@ -6753,8 +6825,6 @@ static void smblib_lpd_clear_ra_open_work(struct smb_charger *chg)
 	chg->lpd_stage = LPD_STAGE_FLOAT_CANCEL;
 	cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 	vote(chg->awake_votable, LPD_VOTER, false, 0);
-	chg->moisture_present = false;
-	vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
 }
 
 #define TYPEC_DETACH_DETECT_DELAY_MS 2000
@@ -8199,8 +8269,12 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	usleep_range(1500, 1510);
 
 	if (smblib_rsbux_low(chg, RSBU_K_300K_UV)) {
+#ifdef QCOM_BASE
 		/* Moisture detected, enable sink only mode */
 		pval.intval = POWER_SUPPLY_TYPEC_PR_SINK;
+#else
+		pval.intval = POWER_SUPPLY_TYPEC_PR_NONE;
+#endif
 		rc = smblib_set_prop_typec_power_role(chg, &pval);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't set typec sink only rc=%d\n",
