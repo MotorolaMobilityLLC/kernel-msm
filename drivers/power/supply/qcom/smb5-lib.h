@@ -509,6 +509,7 @@ struct mmi_params {
 	int			is_otg_enable;
 	bool			force_chg_suspend;
 	bool                    support_2a_dcp;
+	bool                    support_mb_dcp;
   	bool                    test_mode;
   	int                     test_mode_soc;
   	int                     test_mode_temp;
