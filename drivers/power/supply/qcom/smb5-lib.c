@@ -10298,6 +10298,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 				cl_usb = 1000;
 			else if(chip->mmi.support_2a_dcp)
 				cl_usb = 2000;
+			else if(chip->mmi.support_mb_dcp)
+				cl_usb = 1800;
 			else
 				cl_usb = 1500;
 		else if (chip->real_charger_type ==
@@ -11892,6 +11894,8 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	chg->mmi.vfloat_comp_mv /= 1000;
 
 	chg->mmi.support_2a_dcp = of_property_read_bool(node, "qcom,support-2a-dcp");
+
+	chg->mmi.support_mb_dcp = of_property_read_bool(node, "qcom,support-microb-dcp");
 
 	return rc;
 }
