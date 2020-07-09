@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  * Copyright(C) 2016 Linaro Limited. All rights reserved.
  * Author: Mathieu Poirier <mathieu.poirier@linaro.org>
  *
@@ -728,6 +728,15 @@ void usb_notifier(void *priv, unsigned int event, struct qdss_request *d_req,
 	int ret = 0;
 
 	mutex_lock(&drvdata->mem_lock);
+
+	if (drvdata->out_mode != TMC_ETR_OUT_MODE_USB
+			|| drvdata->mode == CS_MODE_DISABLED) {
+		dev_err(drvdata->dev,
+		"%s: ETR is not USB mode, or ETR is disabled.\n", __func__);
+		mutex_unlock(&drvdata->mem_lock);
+		return;
+	}
+
 	if (event == USB_QDSS_CONNECT) {
 		tmc_etr_fill_usb_bam_data(drvdata);
 		ret = tmc_etr_bam_enable(drvdata);
@@ -840,10 +849,10 @@ static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 		goto out;
 
 	if (drvdata->out_mode == TMC_ETR_OUT_MODE_MEM) {
-		drvdata->mode = CS_MODE_SYSFS;
 		tmc_etr_enable_hw(drvdata);
 	}
 
+	drvdata->mode = CS_MODE_SYSFS;
 	drvdata->enable = true;
 out:
 	spin_unlock_irqrestore(&drvdata->spinlock, flags);
@@ -922,7 +931,6 @@ static void tmc_disable_etr_sink(struct coresight_device *csdev)
 			goto out;
 		} else {
 			tmc_etr_disable_hw(drvdata);
-			drvdata->mode = CS_MODE_DISABLED;
 		}
 	}
 
@@ -934,6 +942,7 @@ static void tmc_disable_etr_sink(struct coresight_device *csdev)
 		tmc_etr_byte_cntr_stop(drvdata->byte_cntr);
 	}
 out:
+	drvdata->mode = CS_MODE_DISABLED;
 	mutex_unlock(&drvdata->mem_lock);
 	dev_info(drvdata->dev, "TMC-ETR disabled\n");
 }
