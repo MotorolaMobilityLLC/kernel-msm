@@ -28,6 +28,8 @@
 #include <linux/string.h>
 #include <linux/types.h>
 
+#include <drm/drm_edid.h>
+
 #include "cec-priv.h"
 
 static int cec_report_features(struct cec_adapter *adap, unsigned int la_idx);
@@ -539,6 +541,32 @@ unlock:
 	mutex_unlock(&adap->lock);
 }
 EXPORT_SYMBOL_GPL(cec_transmit_done);
+
+void cec_transmit_attempt_done(struct cec_adapter *adap, u8 status)
+{
+	switch (status) {
+	case CEC_TX_STATUS_OK:
+		cec_transmit_done(adap, status, 0, 0, 0, 0);
+		return;
+	case CEC_TX_STATUS_ARB_LOST:
+		cec_transmit_done(adap, status, 1, 0, 0, 0);
+		return;
+	case CEC_TX_STATUS_NACK:
+		cec_transmit_done(adap, status, 0, 1, 0, 0);
+		return;
+	case CEC_TX_STATUS_LOW_DRIVE:
+		cec_transmit_done(adap, status, 0, 0, 1, 0);
+		return;
+	case CEC_TX_STATUS_ERROR:
+		cec_transmit_done(adap, status, 0, 0, 0, 1);
+		return;
+	default:
+		/* Should never happen */
+		WARN(1, "cec-%s: invalid status 0x%02x\n", adap->name, status);
+		return;
+	}
+}
+EXPORT_SYMBOL_GPL(cec_transmit_attempt_done);
 
 /*
  * Called when waiting for a reply times out.
@@ -1168,6 +1196,18 @@ void cec_s_phys_addr(struct cec_adapter *adap, u16 phys_addr, bool block)
 	mutex_unlock(&adap->lock);
 }
 EXPORT_SYMBOL_GPL(cec_s_phys_addr);
+
+void cec_s_phys_addr_from_edid(struct cec_adapter *adap,
+			       const struct edid *edid)
+{
+	u16 pa = CEC_PHYS_ADDR_INVALID;
+
+	if (edid && edid->extensions)
+		pa = cec_get_edid_phys_addr((const u8 *)edid,
+				EDID_LENGTH * (edid->extensions + 1), NULL);
+	cec_s_phys_addr(adap, pa, false);
+}
+EXPORT_SYMBOL_GPL(cec_s_phys_addr_from_edid);
 
 /*
  * Called from either the ioctl or a driver to set the logical addresses.

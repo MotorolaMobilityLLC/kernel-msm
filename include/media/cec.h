@@ -186,6 +186,11 @@ struct cec_adapter {
 	char input_drv[32];
 };
 
+static inline void *cec_get_drvdata(const struct cec_adapter *adap)
+{
+	return adap->priv;
+}
+
 static inline bool cec_has_log_addr(const struct cec_adapter *adap, u8 log_addr)
 {
 	return adap->log_addrs.log_addr_mask & (1 << log_addr);
@@ -195,6 +200,8 @@ static inline bool cec_is_sink(const struct cec_adapter *adap)
 {
 	return adap->phys_addr == 0;
 }
+
+struct edid;
 
 #if IS_ENABLED(CONFIG_MEDIA_CEC)
 struct cec_adapter *cec_allocate_adapter(const struct cec_adap_ops *ops,
@@ -208,12 +215,20 @@ int cec_s_log_addrs(struct cec_adapter *adap, struct cec_log_addrs *log_addrs,
 		    bool block);
 void cec_s_phys_addr(struct cec_adapter *adap, u16 phys_addr,
 		     bool block);
+void cec_s_phys_addr_from_edid(struct cec_adapter *adap,
+			       const struct edid *edid);
 int cec_transmit_msg(struct cec_adapter *adap, struct cec_msg *msg,
 		     bool block);
 
 /* Called by the adapter */
 void cec_transmit_done(struct cec_adapter *adap, u8 status, u8 arb_lost_cnt,
 		       u8 nack_cnt, u8 low_drive_cnt, u8 error_cnt);
+/*
+ * Simplified version of cec_transmit_done for hardware that doesn't retry
+ * failed transmits. So this is always just one attempt in which case
+ * the status is sufficient.
+ */
+void cec_transmit_attempt_done(struct cec_adapter *adap, u8 status);
 void cec_received_msg(struct cec_adapter *adap, struct cec_msg *msg);
 
 #else
@@ -236,6 +251,24 @@ static inline void cec_s_phys_addr(struct cec_adapter *adap, u16 phys_addr,
 {
 }
 
+static inline void cec_s_phys_addr_from_edid(struct cec_adapter *adap,
+					     const struct edid *edid)
+{
+}
+
 #endif
+
+/**
+ * cec_phys_addr_invalidate() - set the physical address to INVALID
+ *
+ * @adap:	the CEC adapter
+ *
+ * This is a simple helper function to invalidate the physical
+ * address.
+ */
+static inline void cec_phys_addr_invalidate(struct cec_adapter *adap)
+{
+	cec_s_phys_addr(adap, CEC_PHYS_ADDR_INVALID, false);
+}
 
 #endif /* _MEDIA_CEC_H */
