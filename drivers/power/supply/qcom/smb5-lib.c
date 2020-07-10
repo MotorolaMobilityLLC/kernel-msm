@@ -4404,6 +4404,8 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 	/* fall through */
 	default:
 		rp_ua = DCP_CURRENT_UA;
+		if (chg->usb_dcp_curr_max > 0)
+			rp_ua = chg->usb_dcp_curr_max;
 	}
 
 	return rp_ua;
