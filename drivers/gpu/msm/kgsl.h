@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -233,7 +233,7 @@ struct kgsl_memdesc {
 	uint64_t gpuaddr;
 	phys_addr_t physaddr;
 	uint64_t size;
-	uint64_t mapsize;
+	atomic_long_t mapsize;
 	uint64_t pad_to;
 	unsigned int priv;
 	struct sg_table *sgt;
