@@ -92,6 +92,7 @@ enum ath10k_bus {
 	ATH10K_BUS_AHB,
 	ATH10K_BUS_SDIO,
 	ATH10K_BUS_USB,
+	ATH10K_BUS_SNOC,
 };
 
 static inline const char *ath10k_bus_str(enum ath10k_bus bus)
@@ -105,6 +106,8 @@ static inline const char *ath10k_bus_str(enum ath10k_bus bus)
 		return "sdio";
 	case ATH10K_BUS_USB:
 		return "usb";
+	case ATH10K_BUS_SNOC:
+		return "snoc";
 	}
 
 	return "unknown";
@@ -615,6 +618,9 @@ enum ath10k_fw_features {
 
 	/* Firmware allows management tx by reference instead of by value. */
 	ATH10K_FW_FEATURE_MGMT_TX_BY_REF = 18,
+
+	/* Firmware load is done externally, not by bmi */
+	ATH10K_FW_FEATURE_NON_BMI = 19,
 
 	/* keep last */
 	ATH10K_FW_FEATURE_COUNT,
