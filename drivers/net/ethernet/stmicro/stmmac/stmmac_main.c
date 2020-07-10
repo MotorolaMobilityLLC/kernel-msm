@@ -873,11 +873,11 @@ static void stmmac_adjust_link(struct net_device *dev)
 	mutex_unlock(&priv->lock);
 
 	if (new_state) {
-		if (phydev->link == 1 && priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
+		if (phydev->link == 1 && priv->hw_offload_enabled)
 			ethqos_ipa_offload_event_handler(priv,
 							 EV_PHY_LINK_UP);
 		else if (phydev->link == 0 &&
-			 priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
+			 priv->hw_offload_enabled)
 			ethqos_ipa_offload_event_handler(priv,
 							 EV_PHY_LINK_DOWN);
 	}
@@ -2174,6 +2174,13 @@ static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 
 		status = priv->hw->dma->dma_interrupt(priv->ioaddr,
 						      &priv->xstats, chan);
+		if (priv->rx_queue[chan].skip_sw && (status & handle_rx))
+			ethqos_ipa_offload_event_handler(
+				&chan, EV_IPA_HANDLE_RX_INTR);
+		if (priv->tx_queue[chan].skip_sw && (status & handle_tx))
+			ethqos_ipa_offload_event_handler(
+				&chan, EV_IPA_HANDLE_TX_INTR);
+
 		if ((likely((status & handle_rx)) || (status & handle_tx)) &&
 		    !rx_q->skip_sw) {
 			if (likely(napi_schedule_prep(&rx_q->napi))) {
@@ -2835,7 +2842,7 @@ static int stmmac_open(struct net_device *dev)
 
 	stmmac_enable_all_queues(priv);
 	stmmac_start_all_queues(priv);
-	if (priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
+	if (priv->hw_offload_enabled)
 		ethqos_ipa_offload_event_handler(priv, EV_DEV_OPEN);
 
 	if (priv->plat->mac2mac_en) {
@@ -2918,7 +2925,7 @@ static int stmmac_release(struct net_device *dev)
 
 	/* Release and free the Rx/Tx resources */
 	free_dma_desc_resources(priv);
-	if (priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
+	if (priv->hw_offload_enabled)
 		ethqos_ipa_offload_event_handler(priv, EV_DEV_CLOSE);
 
 	/* Disable the MAC Rx/Tx */
