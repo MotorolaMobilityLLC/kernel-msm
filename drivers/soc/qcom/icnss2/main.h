@@ -22,7 +22,7 @@
 #define WCN6750_DEVICE_ID 0x6750
 #define ADRASTEA_DEVICE_ID 0xabcd
 #define QMI_WLFW_MAX_NUM_MEM_SEG 32
-
+#define THERMAL_NAME_LENGTH 20
 extern uint64_t dynamic_feature_mask;
 
 enum icnss_bdf_type {
@@ -284,6 +284,15 @@ struct icnss_msi_config {
 	struct icnss_msi_user *users;
 };
 
+struct icnss_thermal_cdev {
+	struct list_head tcdev_list;
+	int tcdev_id;
+	unsigned long curr_thermal_state;
+	unsigned long max_thermal_state;
+	struct device_node *dev_node;
+	struct thermal_cooling_device *tcdev;
+};
+
 struct icnss_priv {
 	uint32_t magic;
 	struct platform_device *pdev;
@@ -373,9 +382,8 @@ struct icnss_priv {
 	void *get_info_cb_ctx;
 	int (*get_info_cb)(void *ctx, void *event, int event_len);
 	atomic_t soc_wake_ref_count;
-	struct thermal_cooling_device *tcdev;
-	unsigned long curr_thermal_state;
-	unsigned long max_thermal_state;
+	struct list_head icnss_tcdev_list;
+	struct mutex tcdev_lock;
 };
 
 struct icnss_reg_info {
