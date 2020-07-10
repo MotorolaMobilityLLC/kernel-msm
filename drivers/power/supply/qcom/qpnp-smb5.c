@@ -764,6 +764,40 @@ static int smb5_parse_sdam(struct smb5 *chip, struct device_node *node)
 	return 0;
 }
 
+#define DCP_CURRENT_1500MA			1500000
+#define DCP_CURRENT_2000MA			2000000
+static int smb5_parse_dt_mmi(struct smb5 *chip, struct device_node *node)
+{
+	struct smb_charger *chg = &chip->chg;
+	struct device_node *np;
+	const char *dcp_curr = NULL;
+	int retval;
+
+	np = of_find_node_by_path("/chosen");
+
+	if (!np)
+		return -EINVAL;
+
+	retval = of_property_read_string(np, "mmi,usb_dcp",
+						 &dcp_curr);
+
+	if ((retval == -EINVAL) || !dcp_curr) {
+		pr_err("mmi,usb_dcp unused\n");
+		of_node_put(np);
+		return -EINVAL;
+	} else
+		pr_err("usb_dcp = %s\n", dcp_curr);
+
+	if (strstr(dcp_curr, "1.5A"))
+		chg->usb_dcp_curr_max = DCP_CURRENT_1500MA;
+	else if (strstr(dcp_curr, "2A"))
+		chg->usb_dcp_curr_max = DCP_CURRENT_2000MA;
+
+	of_node_put(np);
+
+	return 0;
+}
+
 static int smb5_parse_dt(struct smb5 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
@@ -792,6 +826,10 @@ static int smb5_parse_dt(struct smb5 *chip)
 		return rc;
 
 	rc = smb5_parse_sdam(chip, node);
+	if (rc < 0)
+		return rc;
+
+	rc = smb5_parse_dt_mmi(chip, node);
 	if (rc < 0)
 		return rc;
 
