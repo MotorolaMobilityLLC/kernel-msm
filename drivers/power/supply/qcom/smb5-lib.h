@@ -631,6 +631,8 @@ struct smb_charger {
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
 
+	int			usb_dcp_curr_max;
+
 	/* lpd timer work */
 	struct workqueue_struct *wq;
 	struct work_struct	lpd_recheck_work;
