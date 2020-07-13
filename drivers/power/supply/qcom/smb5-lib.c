@@ -719,7 +719,12 @@ int smblib_set_opt_switcher_freq(struct smb_charger *chg, int fsw_khz)
 {
 	union power_supply_propval pval = {0, };
 	int rc = 0;
+	static int prev_fsw_khz = -EINVAL;
 
+	if (prev_fsw_khz == fsw_khz)
+		return rc;
+
+	prev_fsw_khz = fsw_khz;
 	rc = smblib_set_charge_param(chg, &chg->param.freq_switcher, fsw_khz);
 	if (rc < 0)
 		dev_err(chg->dev, "Error in setting freq_buck rc=%d\n", rc);
@@ -4856,6 +4861,24 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 #endif
 	smblib_update_usb_type(chg);
 	power_supply_changed(chg->usb_psy);
+	return rc;
+}
+
+int smblib_set_prop_pd_fsw(struct smb_charger *chg,
+				    const union power_supply_propval *val)
+{
+	int rc = 0;
+	int max_uv;
+
+	if (!chg->cp_active)
+		return rc;
+
+	max_uv = max(val->intval, chg->voltage_min_uv);
+	rc = smblib_set_usb_pd_fsw(chg, max_uv);
+	if (rc < 0)
+		smblib_err(chg, "Couldn't set PD FSW for voltage %duV rc=%d\n",
+			val->intval, rc);
+
 	return rc;
 }
 
