@@ -315,6 +315,8 @@
 	qcom,msm-mbhc-hs-mic-max-threshold-mv = <2700>;
 	qcom,msm-mbhc-hs-mic-min-threshold-mv = <116>;
 
+	qcom,msm-mbhc-hs-slow-insert = <1>;
+
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
                 "MIC BIAS1", "Analog Mic1",
