@@ -1,5 +1,5 @@
 /* Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2009-2015, 2017, 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, 2017, 2019-2020, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -37,7 +37,7 @@
 #define MODULE_NAME "msm_smdtty"
 #define MAX_SMD_TTYS 37
 #define MAX_TTY_BUF_SIZE 2048
-#define TTY_PUSH_WS_DELAY 500
+#define TTY_PUSH_WS_DELAY 100
 #define TTY_PUSH_WS_POST_SUSPEND_DELAY 100
 #define MAX_RA_WAKE_LOCK_NAME_LEN 32
 #define SMD_TTY_LOG_PAGES 2
