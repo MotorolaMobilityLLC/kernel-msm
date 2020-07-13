@@ -939,6 +939,8 @@ int smblib_set_prop_sdp_current_max(struct smb_charger *chg,
 				const union power_supply_propval *val);
 int smblib_set_prop_pd_voltage_max(struct smb_charger *chg,
 				const union power_supply_propval *val);
+int smblib_set_prop_pd_fsw(struct smb_charger *chg,
+				const union power_supply_propval *val);
 int smblib_set_prop_pd_voltage_min(struct smb_charger *chg,
 				const union power_supply_propval *val);
 int smblib_set_prop_typec_power_role(struct smb_charger *chg,
