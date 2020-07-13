@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005-2011 Atheros Communications Inc.
- * Copyright (c) 2011-2013 Qualcomm Atheros, Inc.
+ * Copyright (c) 2011-2017 Qualcomm Atheros, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,6 +32,7 @@
 #include "htt.h"
 #include "testmode.h"
 #include "wmi-ops.h"
+#include "coredump.h"
 
 unsigned int ath10k_debug_mask;
 static unsigned int ath10k_cryptmode_param;
@@ -39,17 +40,25 @@ static bool uart_print;
 static bool skip_otp;
 static bool rawmode;
 
+/* Enable ATH10K_FW_CRASH_DUMP_REGISTERS and ATH10K_FW_CRASH_DUMP_CE_DATA
+ * by default.
+ */
+unsigned long ath10k_coredump_mask = 0x3;
+
+/* FIXME: most of these should be readonly */
 module_param_named(debug_mask, ath10k_debug_mask, uint, 0644);
 module_param_named(cryptmode, ath10k_cryptmode_param, uint, 0644);
 module_param(uart_print, bool, 0644);
 module_param(skip_otp, bool, 0644);
 module_param(rawmode, bool, 0644);
+module_param_named(coredump_mask, ath10k_coredump_mask, ulong, 0444);
 
 MODULE_PARM_DESC(debug_mask, "Debugging mask");
 MODULE_PARM_DESC(uart_print, "Uart target debugging");
 MODULE_PARM_DESC(skip_otp, "Skip otp failure for calibration in testmode");
 MODULE_PARM_DESC(cryptmode, "Crypto mode: 0-hardware, 1-software");
 MODULE_PARM_DESC(rawmode, "Use raw 802.11 frame datapath");
+MODULE_PARM_DESC(coredump_mask, "Bitfield of what to include in firmware crash file");
 
 static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 	{
@@ -1864,7 +1873,7 @@ static void ath10k_core_restart(struct work_struct *work)
 
 	mutex_unlock(&ar->conf_mutex);
 
-	ret = ath10k_debug_fw_devcoredump(ar);
+	ret = ath10k_coredump_submit(ar);
 	if (ret)
 		ath10k_warn(ar, "failed to send firmware crash dump via devcoredump: %d",
 			    ret);
@@ -2554,10 +2563,16 @@ static void ath10k_core_register_work(struct work_struct *work)
 		goto err_release_fw;
 	}
 
+	status = ath10k_coredump_register(ar);
+	if (status) {
+		ath10k_err(ar, "unable to register coredump\n");
+		goto err_unregister_mac;
+	}
+
 	status = ath10k_debug_register(ar);
 	if (status) {
 		ath10k_err(ar, "unable to initialize debugfs\n");
-		goto err_unregister_mac;
+		goto err_unregister_coredump;
 	}
 
 	status = ath10k_spectral_create(ar);
@@ -2580,6 +2595,8 @@ err_spectral_destroy:
 	ath10k_spectral_destroy(ar);
 err_debug_destroy:
 	ath10k_debug_destroy(ar);
+err_unregister_coredump:
+	ath10k_coredump_unregister(ar);
 err_unregister_mac:
 	ath10k_mac_unregister(ar);
 err_release_fw:
@@ -2734,11 +2751,18 @@ struct ath10k *ath10k_core_create(size_t priv_size, struct device *dev,
 
 	init_dummy_netdev(&ar->napi_dev);
 
-	ret = ath10k_debug_create(ar);
+	ret = ath10k_coredump_create(ar);
 	if (ret)
 		goto err_free_aux_wq;
 
+	ret = ath10k_debug_create(ar);
+	if (ret)
+		goto err_free_coredump;
+
 	return ar;
+
+err_free_coredump:
+	ath10k_coredump_destroy(ar);
 
 err_free_aux_wq:
 	destroy_workqueue(ar->workqueue_aux);
@@ -2761,6 +2785,7 @@ void ath10k_core_destroy(struct ath10k *ar)
 	destroy_workqueue(ar->workqueue_aux);
 
 	ath10k_debug_destroy(ar);
+	ath10k_coredump_destroy(ar);
 	ath10k_htt_tx_destroy(&ar->htt);
 	ath10k_wmi_free_host_mem(ar);
 	ath10k_mac_destroy(ar);
