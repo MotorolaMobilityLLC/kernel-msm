@@ -104,7 +104,7 @@
 
 &dsi_nt36675_auo_video {
 	qcom,mdss-dsi-t-clk-post = <0x0F>;
-	qcom,mdss-dsi-t-clk-pre = <0x36>;
+	qcom,mdss-dsi-t-clk-pre = <0x37>;
 	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A
@@ -122,8 +122,8 @@
 	qcom,mdss-pan-physical-height-dimension = <158>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
-			qcom,mdss-dsi-h-front-porch = <60>;
-			qcom,mdss-dsi-h-back-porch = <60>;
+			qcom,mdss-dsi-h-front-porch = <80>;
+			qcom,mdss-dsi-h-back-porch = <80>;
 			qcom,mdss-dsi-h-pulse-width = <12>;
 			qcom,mdss-dsi-v-back-porch = <10>;
 			qcom,mdss-dsi-v-front-porch = <20>;
@@ -133,7 +133,7 @@
 				26 21 09 0B 06 02 04 a0
 				26 21 09 0B 06 02 04 a0
 				26 21 09 0B 06 02 04 a0
-				26 20 09 0B 06 02 04 a0];
+				26 20 0A 0B 06 02 04 a0];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
@@ -156,7 +156,7 @@
 
 &dsi_nt36675_boe_video {
 	qcom,mdss-dsi-t-clk-post = <0x0F>;
-	qcom,mdss-dsi-t-clk-pre = <0x36>;
+	qcom,mdss-dsi-t-clk-pre = <0x37>;
 	qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A
@@ -174,18 +174,18 @@
 	qcom,mdss-pan-physical-height-dimension = <158>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
-			qcom,mdss-dsi-h-front-porch = <60>;
-			qcom,mdss-dsi-h-back-porch = <60>;
-			qcom,mdss-dsi-h-pulse-width = <12>;
-			qcom,mdss-dsi-v-back-porch = <10>;
-			qcom,mdss-dsi-v-front-porch = <20>;
-			qcom,mdss-dsi-v-pulse-width = <10>;
+			qcom,mdss-dsi-h-front-porch = <80>;
+			qcom,mdss-dsi-h-back-porch = <80>;
+			qcom,mdss-dsi-h-pulse-width = <16>;
+			qcom,mdss-dsi-v-back-porch = <14>;
+			qcom,mdss-dsi-v-front-porch = <18>;
+			qcom,mdss-dsi-v-pulse-width = <3>;
 			qcom,mdss-dsi-panel-phy-timings =
-				[26 21 09 0B 06 02 04 a0
-				26 21 09 0B 06 02 04 a0
-				26 21 09 0B 06 02 04 a0
-				26 21 09 0B 06 02 04 a0
-				26 20 09 0B 06 02 04 a0];
+				[26 20 0A 0B 06 02 04 a0
+				26 20 0A 0B 06 02 04 a0
+				26 20 0A 0B 06 02 04 a0
+				26 20 0A 0B 06 02 04 a0
+				26 20 0A 0B 06 02 04 a0];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
 			qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
