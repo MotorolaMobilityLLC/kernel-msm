@@ -52,6 +52,7 @@ struct vib_ldo_chip {
 	int			ldo_uV;
 	int			state;
 	u64			vib_play_ms;
+	u32			ini_play_ms;
 	bool			vib_enabled;
 	bool			disable_overdrive;
 };
@@ -407,6 +408,10 @@ static int qpnp_vib_parse_dt(struct device *dev, struct vib_ldo_chip *chip)
 						QPNP_VIB_LDO_VMIN_UV);
 	}
 
+	chip->ini_play_ms = 1000;
+	of_property_read_u32(dev->of_node, "qcom,ini-play-ms",
+				&chip->ini_play_ms);
+
 	return ret;
 }
 
@@ -499,6 +504,14 @@ static int qpnp_vibrator_ldo_probe(struct platform_device *pdev)
 				ret);
 			goto sysfs_fail;
 		}
+	}
+
+	if (chip->ini_play_ms >= QPNP_VIB_MIN_PLAY_MS &&
+				chip->ini_play_ms <= QPNP_VIB_MAX_PLAY_MS) {
+		chip->vib_play_ms = chip->ini_play_ms;
+		chip->state = 1;
+		pr_info("state = %d, time = %llums\n", chip->state, chip->vib_play_ms);
+		schedule_work(&chip->vib_work);
 	}
 
 	pr_info("Vibrator LDO successfully registered: uV = %d, overdrive = %s\n",
