@@ -426,6 +426,32 @@ struct ethqos_io_macro {
 	bool rx_dll_bypass;
 };
 
+struct ethqos_extra_dma_stats {
+	/* DMA status registers for all channels [0-4] */
+	unsigned long dma_ch_status[MTL_MAX_TX_QUEUES];
+	unsigned long dma_ch_intr_enable[MTL_MAX_TX_QUEUES];
+	unsigned long dma_ch_intr_status;
+	unsigned long dma_debug_status0;
+	unsigned long dma_debug_status1;
+
+	/* RX DMA descriptor status registers for all channels [0-4] */
+	unsigned long dma_ch_rx_control[MTL_MAX_RX_QUEUES];
+	unsigned long dma_ch_rxdesc_list_addr[MTL_MAX_RX_QUEUES];
+	unsigned long dma_ch_rxdesc_ring_len[MTL_MAX_RX_QUEUES];
+	unsigned long dma_ch_curr_app_rxdesc[MTL_MAX_RX_QUEUES];
+	unsigned long dma_ch_rxdesc_tail_ptr[MTL_MAX_RX_QUEUES];
+	unsigned long dma_ch_curr_app_rxbuf[MTL_MAX_RX_QUEUES];
+	unsigned long dma_ch_miss_frame_count[MTL_MAX_RX_QUEUES];
+
+	/* TX DMA descriptors status for all channels [0-5] */
+	unsigned long dma_ch_tx_control[MTL_MAX_TX_QUEUES];
+	unsigned long dma_ch_txdesc_list_addr[MTL_MAX_TX_QUEUES];
+	unsigned long dma_ch_txdesc_ring_len[MTL_MAX_TX_QUEUES];
+	unsigned long dma_ch_curr_app_txdesc[MTL_MAX_TX_QUEUES];
+	unsigned long dma_ch_txdesc_tail_ptr[MTL_MAX_TX_QUEUES];
+	unsigned long dma_ch_curr_app_txbuf[MTL_MAX_TX_QUEUES];
+};
+
 struct qcom_ethqos {
 	struct platform_device *pdev;
 	void __iomem *rgmii_base;
@@ -437,6 +463,10 @@ struct qcom_ethqos {
 	struct clk *rgmii_clk;
 	unsigned int speed;
 	unsigned int vote_idx;
+
+	struct iommu_domain *iommu_domain;
+	unsigned int *emac_reg_base_address;
+	unsigned int *rgmii_reg_base_address;
 
 	int gpio_phy_intr_redirect;
 	u32 phy_intr;
@@ -504,6 +534,7 @@ struct qcom_ethqos {
 	bool ipa_enabled;
 	/* Key Performance Indicators */
 	bool print_kpi;
+
 	unsigned int emac_phy_off_suspend;
 	int loopback_speed;
 	enum loopback_mode current_loopback;
@@ -527,6 +558,8 @@ struct qcom_ethqos {
 	u32 cv2x_mode;
 	struct ethqos_vlan_info cv2x_vlan;
 	unsigned char cv2x_dev_addr[ETH_ALEN];
+
+	struct ethqos_extra_dma_stats xstats;
 };
 
 struct pps_cfg {

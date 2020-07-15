@@ -460,6 +460,8 @@ static char * const IPA_OFFLOAD_EVENT_string[] = {
 #define DMA_DSR0_RGRD(data) \
 	((data) = readl_relaxed(DMA_DSR0_RGOFFADDR))
 
+#define DMA_DSR1_RGOFFADDR ((BASE_ADDRESS + 0x1010))
+
 #define DMA_CHRDR_RGOFFADDR (BASE_ADDRESS + 0x114c)
 
 #define DMA_CHRDR_RGOFFADDRESS(i)\
@@ -502,6 +504,21 @@ static char * const IPA_OFFLOAD_EVENT_string[] = {
 
 #define DMA_CHTDR_RGRD(i, data) \
 		((data) = readl_relaxed(DMA_CHTDR_RGOFFADDRESS(i)))
+
+#define DMA_CHTBAR_RGOFFADDR (BASE_ADDRESS + 0x1154)
+
+#define DMA_CHTBAR_RGOFFADDRESS(i)\
+			((DMA_CHTBAR_RGOFFADDR + ((i - 0) * 128)))
+
+#define DMA_CHRBAR_RGOFFADDR (BASE_ADDRESS + 0x115c)
+
+#define DMA_CHRBAR_RGOFFADDRESS(i)\
+			((DMA_CHRBAR_RGOFFADDR + ((i - 0) * 128)))
+
+#define DMA_CH_MISS_FRAME_CNT_RGOFFADDR (BASE_ADDRESS + 0x1164)
+
+#define DMA_CH_MISS_FRAME_CNT_RGOFFADDRESS(i)\
+			((DMA_CH_MISS_FRAME_CNT_RGOFFADDR + ((i - 0) * 128)))
 
 #define DMA_TDTP_TPDR_RGOFFADDR (BASE_ADDRESS + 0x1120)
 
@@ -553,6 +570,8 @@ static char * const IPA_OFFLOAD_EVENT_string[] = {
 		DMA_IER_RGRD(i, data1);\
 		data = ((data1 >> 13) & DMA_IER_CDEE_MASK);\
 } while (0)
+
+#define DMA_ISR_RGOFFADDR ((BASE_ADDRESS + 0x1008))
 
 struct ethqos_tx_queue {
 	struct stmmac_tx_queue *tx_q;
