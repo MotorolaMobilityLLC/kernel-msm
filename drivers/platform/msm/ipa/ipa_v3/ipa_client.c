@@ -1521,6 +1521,7 @@ int ipa3_xdci_suspend(u32 ul_clnt_hdl, u32 dl_clnt_hdl,
 	struct gsi_chan_info ul_gsi_chan_info, dl_gsi_chan_info;
 	int aggr_active_bitmap = 0;
 	struct ipa_ep_cfg_ctrl ep_cfg_ctrl;
+	struct ipa_ep_cfg_holb holb_cfg;
 
 	/* In case of DPL, dl is the DPL channel/client */
 
@@ -1606,6 +1607,15 @@ int ipa3_xdci_suspend(u32 ul_clnt_hdl, u32 dl_clnt_hdl,
 		goto unsuspend_dl_and_exit;
 	}
 
+	/*enable holb to discard the packets*/
+	if (ipa3_ctx->ipa_hw_type == IPA_HW_v4_5 &&
+		IPA_CLIENT_IS_CONS(dl_ep->client) && !is_dpl) {
+		memset(&holb_cfg, 0, sizeof(holb_cfg));
+		holb_cfg.en = IPA_HOLB_TMR_EN;
+		holb_cfg.tmr_val = IPA_HOLB_TMR_VAL_4_5;
+		result = ipa3_cfg_ep_holb(dl_clnt_hdl, &holb_cfg);
+	}
+
 	/* Stop DL channel */
 	result = ipa3_stop_gsi_channel(dl_clnt_hdl);
 	if (result) {
@@ -1635,6 +1645,14 @@ int ipa3_xdci_suspend(u32 ul_clnt_hdl, u32 dl_clnt_hdl,
 start_dl_and_exit:
 	gsi_start_channel(dl_ep->gsi_chan_hdl);
 	ipa3_start_gsi_debug_monitor(dl_clnt_hdl);
+	/*disable holb to allow packets*/
+	if (ipa3_ctx->ipa_hw_type == IPA_HW_v4_5 &&
+		IPA_CLIENT_IS_CONS(dl_ep->client) && !is_dpl) {
+		memset(&holb_cfg, 0, sizeof(holb_cfg));
+		holb_cfg.en = IPA_HOLB_TMR_DIS;
+		holb_cfg.tmr_val = 0;
+		ipa3_cfg_ep_holb(dl_clnt_hdl, &holb_cfg);
+	}
 unsuspend_dl_and_exit:
 	if (ipa3_ctx->ipa_hw_type < IPA_HW_v4_0) {
 		/* Unsuspend the DL EP */
@@ -1691,6 +1709,7 @@ int ipa3_xdci_resume(u32 ul_clnt_hdl, u32 dl_clnt_hdl, bool is_dpl)
 	struct ipa3_ep_context *dl_ep = NULL;
 	enum gsi_status gsi_res;
 	struct ipa_ep_cfg_ctrl ep_cfg_ctrl;
+	struct ipa_ep_cfg_holb holb_cfg;
 
 	/* In case of DPL, dl is the DPL channel/client */
 
@@ -1720,6 +1739,15 @@ int ipa3_xdci_resume(u32 ul_clnt_hdl, u32 dl_clnt_hdl, bool is_dpl)
 	if (gsi_res != GSI_STATUS_SUCCESS)
 		IPAERR("Error starting DL channel: %d\n", gsi_res);
 	ipa3_start_gsi_debug_monitor(dl_clnt_hdl);
+
+	/*disable holb to allow packets*/
+	if (ipa3_ctx->ipa_hw_type == IPA_HW_v4_5 &&
+		IPA_CLIENT_IS_CONS(dl_ep->client) && !is_dpl) {
+		memset(&holb_cfg, 0, sizeof(holb_cfg));
+		holb_cfg.en = IPA_HOLB_TMR_DIS;
+		holb_cfg.tmr_val = 0;
+		ipa3_cfg_ep_holb(dl_clnt_hdl, &holb_cfg);
+	}
 
 	/* Start UL channel */
 	if (!is_dpl) {
