@@ -282,9 +282,38 @@ static ssize_t weak_chg_icl_ua_store(struct device *dev, struct device_attribute
 }
 static DEVICE_ATTR_RW(weak_chg_icl_ua);
 
+static ssize_t usb_dcp_icl_ua_show(struct device *dev, struct device_attribute
+				    *attr, char *buf)
+{
+	struct smb5 *chip = dev_get_drvdata(dev);
+	struct smb_charger *chg = &chip->chg;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", chg->usb_dcp_curr_max);
+}
+
+static ssize_t usb_dcp_icl_ua_store(struct device *dev, struct device_attribute
+				 *attr, const char *buf, size_t count)
+{
+	int val;
+	struct smb5 *chip = dev_get_drvdata(dev);
+	struct smb_charger *chg = &chip->chg;
+
+	if (kstrtos32(buf, 0, &val))
+		return -EINVAL;
+
+	chg->usb_dcp_curr_max = val;
+	pr_info("USB dcp icl was rewritten as %dua\n", chg->usb_dcp_curr_max);
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_DCP)
+		smblib_rerun_apsd_if_required(chg);
+
+	return count;
+}
+static DEVICE_ATTR_RW(usb_dcp_icl_ua);
+
 static struct attribute *smb5_attrs[] = {
 	&dev_attr_pd_disabled.attr,
 	&dev_attr_weak_chg_icl_ua.attr,
+	&dev_attr_usb_dcp_icl_ua.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(smb5);
