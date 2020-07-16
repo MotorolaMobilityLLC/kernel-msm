@@ -48,6 +48,13 @@ elif [ $TARGET_BUILD_VARIANT == "userdebug" ]; then
     if [ -e $MOTO_CONFIG_DIR/debug-${LOCAL_PLATFORM_NAME}.config ]; then
         MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/debug-${LOCAL_PLATFORM_NAME}.config"
     fi
+
+    if [ -e $MOTO_CONFIG_DIR/${LOCAL_PLATFORM_NAME}_debug.config ]; then
+        MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/${LOCAL_PLATFORM_NAME}_debug.config"
+        if [ -e $MOTO_CONFIG_DIR/${LOCAL_PLATFORM_NAME}_consolidate.config ]; then
+            MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/${LOCAL_PLATFORM_NAME}_consolidate.config"
+        fi
+    fi
 fi
 
 #merge moto product config
