@@ -221,7 +221,8 @@
 /**
  * maximal number of NAT PDNs in the PDN config table
  */
-#define IPA_MAX_PDN_NUM 5
+#define IPA_MAX_PDN_NUM 16
+#define IPA_MAX_PDN_NUM_v4 5
 
 /**
  * enum ipa_client_type - names for the various IPA "clients"
@@ -390,7 +391,7 @@ enum ipa_client_type {
 	/* RESERVERD CONS			= 103, */
 	IPA_CLIENT_MHI_LOW_LAT_PROD = 104,
 	IPA_CLIENT_MHI_LOW_LAT_CONS = 105,
-	/* RESERVERD PROD			= 106, */
+	IPA_CLIENT_QDSS_PROD			= 106,
 	IPA_CLIENT_MHI_QDSS_CONS	= 107,
 };
 

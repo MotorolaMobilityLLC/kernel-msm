@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,6 +13,7 @@
 #include <linux/ipa_mhi.h>
 #include <linux/ipa_uc_offload.h>
 #include <linux/ipa_wdi3.h>
+#include <linux/ipa_qdss.h>
 #include "ipa_common_i.h"
 
 #ifndef _IPA_API_H_
@@ -486,6 +487,11 @@ struct ipa_api_controller {
 		struct ipa_uc_dbg_ring_stats *stats);
 
 	int (*ipa_get_prot_id)(enum ipa_client_type client);
+
+	int (*ipa_conn_qdss_pipes)(struct ipa_qdss_conn_in_params *in,
+		struct ipa_qdss_conn_out_params *out);
+
+	int (*ipa_disconn_qdss_pipes)(void);
 };
 
 #ifdef CONFIG_IPA3

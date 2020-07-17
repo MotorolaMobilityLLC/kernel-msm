@@ -27,6 +27,7 @@
 #include <linux/msm-sps.h>
 #include <linux/usb/usb_qdss.h>
 #include <linux/coresight-cti.h>
+#include <linux/ipa_qdss.h>
 
 #include "coresight-byte-cntr.h"
 
@@ -165,6 +166,17 @@ static const char * const str_tmc_etr_mem_type[] = {
 	[TMC_ETR_MEM_TYPE_CONTIG]	= "contig",
 	[TMC_ETR_MEM_TYPE_SG]		= "sg",
 };
+
+enum tmc_etr_pcie_path {
+	TMC_ETR_PCIE_SW_PATH,
+	TMC_ETR_PCIE_HW_PATH,
+};
+
+static const char * const str_tmc_etr_pcie_path[] = {
+	[TMC_ETR_PCIE_SW_PATH]	= "sw",
+	[TMC_ETR_PCIE_HW_PATH]	= "hw",
+};
+
 enum tmc_etr_out_mode {
 	TMC_ETR_OUT_MODE_NONE,
 	TMC_ETR_OUT_MODE_MEM,
@@ -177,6 +189,11 @@ static const char * const str_tmc_etr_out_mode[] = {
 	[TMC_ETR_OUT_MODE_MEM]		= "mem",
 	[TMC_ETR_OUT_MODE_USB]		= "usb",
 	[TMC_ETR_OUT_MODE_PCIE]		= "pcie",
+};
+
+struct tmc_etr_ipa_data {
+	struct ipa_qdss_conn_out_params ipa_qdss_out;
+	struct ipa_qdss_conn_in_params  ipa_qdss_in;
 };
 
 struct tmc_etr_bam_data {
@@ -236,6 +253,7 @@ struct tmc_drvdata {
 	u32			delta_bottom;
 	int			sg_blk_num;
 	enum tmc_etr_out_mode	out_mode;
+	enum tmc_etr_pcie_path	pcie_path;
 	struct usb_qdss_ch	*usbch;
 	struct tmc_etr_bam_data	*bamdata;
 	bool			sticky_enable;
@@ -247,6 +265,7 @@ struct tmc_drvdata {
 	struct byte_cntr	*byte_cntr;
 	struct dma_iommu_mapping *iommu_mapping;
 	bool			force_reg_dump;
+	struct tmc_etr_ipa_data *ipa_data;
 };
 
 /* Generic functions */
@@ -274,6 +293,8 @@ void usb_notifier(void *priv, unsigned int event, struct qdss_request *d_req,
 		  struct usb_qdss_ch *ch);
 int tmc_etr_bam_init(struct amba_device *adev,
 		     struct tmc_drvdata *drvdata);
+int tmc_etr_ipa_init(struct amba_device *adev,
+			struct tmc_drvdata *drvdata);
 extern struct byte_cntr *byte_cntr_init(struct amba_device *adev,
 					struct tmc_drvdata *drvdata);
 extern const struct coresight_ops tmc_etr_cs_ops;

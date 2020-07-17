@@ -553,7 +553,6 @@
 		qcom,use-ipa-pm;
 		qcom,use-xbl-boot;
 		qcom,arm-smmu;
-		qcom,smmu-fast-map;
 		qcom,wlan-ce-db-over-pcie;
 		qcom,bandwidth-vote-for-ipa;
 		qcom,msm-bus,name = "ipa";
@@ -614,6 +613,8 @@
 				/* modem tables in IMEM */
 				<0x14688000 0x14688000 0x3000>;
 			qcom,ipa-q6-smem-size = <26624>;
+			qcom,smmu-fast-map;
+			qcom,geometry-mapping = <0x0 0xF0000000>;
 		};
 
 		ipa_smmu_wlan: ipa_smmu_wlan {
@@ -850,7 +851,6 @@
 				<125 512 0 0>,
 				<125 512 393600 393600>;
 		qcom,no-clock-support;
-		qcom,smmu-s1-enable;
 		iommus = <&apps_smmu 0x0066 0x0011>,
 			<&apps_smmu 0x0076 0x0011>;
 	};
@@ -879,7 +879,6 @@
 		qcom,use-sw-ahash-algo;
 		qcom,use-sw-hmac-algo;
 		qcom,no-clock-support;
-		qcom,smmu-s1-enable;
 		iommus = <&apps_smmu 0x0064 0x0011>,
 			<&apps_smmu 0x0074 0x0011>;
 	};

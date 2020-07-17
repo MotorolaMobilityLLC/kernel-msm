@@ -49,7 +49,7 @@ static struct csid_reg_parms_t csid_v3_5 = {
 	0xB8,
 	0xBC,
 	11,
-	0x7FFF,
+	0x7FFFF,
 	0x4,
 	17,
 	0x30050000,
