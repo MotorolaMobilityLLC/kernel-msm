@@ -404,7 +404,11 @@ static int cam_ois_bm24218tele_enable_servo_gyro(struct camera_io_master *io_mas
 		}
 
 		ret = camera_io_dev_write(io_master_info, &i2c_reg_setting);
-		if (i2c_reg_array[i].reg_addr == 0x602d && i2c_reg_array[i].reg_data == 0x0c) {
+		if ((i2c_reg_array[i].reg_addr == 0x602d && i2c_reg_array[i].reg_data == 0x0c) ||
+			((i+1<ARRAY_SIZE(i2c_reg_array))
+			&& (i2c_reg_array[i].reg_addr == 0x602c && i2c_reg_array[i].reg_data == 0x76)
+			&& (i2c_reg_array[i+1].reg_addr == 0x602d && i2c_reg_array[i+1].reg_data == 0x00))
+		) {
 			usleep_range(20*1000, 21*1000);
 			CAM_DBG(CAM_OIS, "Delay for 20ms");
 		}
