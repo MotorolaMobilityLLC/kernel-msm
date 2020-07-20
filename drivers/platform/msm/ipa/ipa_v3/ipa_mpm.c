@@ -3534,8 +3534,9 @@ int ipa3_qmi_reg_dereg_for_bw(bool bw_reg, int bw_reg_dereg_type)
 			}
 			IPA_MPM_DBG("QMI BW regst success from %d",
 				ipa_mpm_ctx->bw_reg_dereg_cache[
-					ipa_mpm_ctx->cache_index -
-					1].bw_reg_dereg_type);
+					(ipa_mpm_ctx->cache_index -
+					1) % IPA_MAX_BW_REG_DEREG_CACHE].
+					bw_reg_dereg_type);
 		} else {
 			IPA_MPM_DBG("bw_change to %d no-op, teth_count = %d",
 				bw_reg,
@@ -3556,8 +3557,9 @@ int ipa3_qmi_reg_dereg_for_bw(bool bw_reg, int bw_reg_dereg_type)
 			}
 			IPA_MPM_DBG("QMI BW De-regst success %d",
 				ipa_mpm_ctx->bw_reg_dereg_cache[
-					ipa_mpm_ctx->cache_index -
-					1].bw_reg_dereg_type);
+					(ipa_mpm_ctx->cache_index -
+					1) % IPA_MAX_BW_REG_DEREG_CACHE].
+					bw_reg_dereg_type);
 		} else {
 			IPA_MPM_DBG("bw_change to %d no-op, teth_count = %d",
 				bw_reg,
