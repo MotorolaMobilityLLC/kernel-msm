@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -449,6 +449,65 @@
 					pins = "gpio5";
 					drive-strength = <2>;
 					bias-bus-hold;
+				};
+			};
+		};
+
+		pri_spdiftx_pin {
+			pri_spdiftx_sleep: pri_spdiftx_sleep {
+				mux {
+					pins = "gpio6";
+					function = "func1";
+				};
+
+				config {
+					pins = "gpio6";
+					drive-strength = <2>;
+					bias-pull-down;
+					output-low;
+				};
+			};
+
+			pri_spdiftx_active: pri_spdiftx_active {
+				mux {
+					pins = "gpio6";
+					function = "func1";
+				};
+
+				config {
+					pins = "gpio6";
+					drive-strength = <8>;
+					bias-pull-down;
+					output-low;
+				};
+			};
+		};
+
+		sec_spdiftx_pin {
+			sec_spdiftx_sleep: sec_spdiftx_sleep {
+				mux {
+					pins = "gpio7";
+					function = "func1";
+				};
+
+				config {
+					pins = "gpio7";
+					drive-strenght = <2>;
+					bias-bus-hold;
+					output-high;
+				};
+			};
+
+			sec_spdiftx_active: sec_spdiftx_active {
+				mux {
+					pins = "gpio7";
+					function = "func1";
+				};
+
+				config {
+					pins = "gpio7";
+					drive-strength = <8>;
+					output-low;
 				};
 			};
 		};
