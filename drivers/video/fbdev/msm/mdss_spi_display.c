@@ -284,10 +284,14 @@ int mdss_spi_display_pre_commit(struct msm_fb_data_type *mfd,
 
 	/* remove padding and copy to continuous buffer */
 	while (scan_count < panel_yres) {
-		memcpy((ctrl_pdata->back_buf + scan_count * actual_stride),
-			(ctrl_pdata->image_data.addr + scan_count *
-			(actual_stride + padding_length)), actual_stride);
-		scan_count++;
+		if (!(ctrl_pdata->back_buf) || !(ctrl_pdata->image_data.addr)) {
+			pr_err("Null Pointer, return\n");
+			return 0;
+		}
+		memcpy((ctrl_pdata->back_buf + (scan_count * actual_stride)),
+			(ctrl_pdata->image_data.addr + (scan_count *
+			(actual_stride + padding_length))), actual_stride);
+				scan_count++;
 	}
 
 	mdss_spi_put_img(ctrl_pdata);
@@ -334,7 +338,7 @@ int mdss_spi_display_atomic_validate(struct msm_fb_data_type *mfd,
 	return 0;
 }
 
-int mdss_spi_panel_kickoff(struct msm_fb_data_type *mfd,
+int mdss_spi_display_kickoff(struct msm_fb_data_type *mfd,
 			struct mdp_display_commit *data)
 {
 	struct spi_panel_data *ctrl_pdata = NULL;
@@ -361,10 +365,11 @@ int mdss_spi_panel_kickoff(struct msm_fb_data_type *mfd,
 		mutex_unlock(&ctrl_pdata->spi_tx_mutex);
 		return rc;
 	}
-
+#ifndef TARGET_HW_MDSS_MDP3
 	rc = mdss_spi_tx_pixel(ctrl_pdata->front_buf,
 				ctrl_pdata->byte_per_frame,
 				mdss_spi_tx_fb_complete, ctrl_pdata);
+#endif
 	mdss_spi_display_notify(ctrl_pdata, MDP_NOTIFY_FRAME_FLUSHED);
 
 	mutex_unlock(&ctrl_pdata->spi_tx_mutex);
@@ -629,7 +634,7 @@ int mdss_spi_overlay_init(struct msm_fb_data_type *mfd)
 	spi_display_interface->cursor_update = NULL;
 
 	spi_display_interface->ioctl_handler = spi_display_ioctl_handler;
-	spi_display_interface->kickoff_fnc = mdss_spi_panel_kickoff;
+	spi_display_interface->kickoff_fnc = mdss_spi_display_kickoff;
 	spi_display_interface->pre_commit = mdss_spi_display_pre_commit;
 	spi_display_interface->atomic_validate =
 				mdss_spi_display_atomic_validate;
