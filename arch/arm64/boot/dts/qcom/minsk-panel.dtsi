@@ -113,7 +113,7 @@
 	qcom,mdss-dsi-panel-status-valid-params = <1 1>;
 	qcom,mdss-dsi-panel-status-value = <0x9c 0x00>;
 	qcom,mdss-dsi-panel-on-check-value = <0x9c>;
-	qcom,mdss-dsi-panel-status-read-length = <1>;
+	qcom,mdss-dsi-panel-status-read-length = <1 1>;
 	/*qcom,mdss-dsi-no-panel-on-read-support;*/
 	qcom,mdss-dsi-panel-supplier = "djn";
 	qcom,tp_state_check_enable;
