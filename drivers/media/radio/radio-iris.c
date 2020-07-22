@@ -5284,7 +5284,6 @@ static ssize_t iris_fops_read(struct file *file, char __user *buffer,
 	enum iris_buf_t buf_type = -1;
 	unsigned char buf_fifo[STD_BUF_SIZE] = {0};
 	struct kfifo *data_fifo = NULL;
-	unsigned char *buf = NULL;
 	unsigned int len = 0, retval = -1;
 	u32 bytesused = 0;
 
