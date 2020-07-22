@@ -125,6 +125,8 @@
 
 	aliases {
 		sdhc2 = &sdhc_2; /* SDC2 SD Card slot */
+		hsuart0 = &qupv3_se13_4uart;
+		hsuart1 = &qupv3_se4_4uart;
 	};
 };
 
