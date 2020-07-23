@@ -3516,8 +3516,8 @@ static int memcg_stat_show(struct seq_file *m, void *v)
 		pg_data_t *pgdat;
 		struct mem_cgroup_per_node *mz;
 		struct zone_reclaim_stat *rstat;
-		unsigned long recent_rotated[2] = {0, 0};
-		unsigned long recent_scanned[2] = {0, 0};
+		unsigned long recent_rotated[ANON_AND_FILE] = {};
+		unsigned long recent_scanned[ANON_AND_FILE] = {};
 
 		for_each_online_pgdat(pgdat) {
 			mz = mem_cgroup_nodeinfo(memcg, pgdat->node_id);
