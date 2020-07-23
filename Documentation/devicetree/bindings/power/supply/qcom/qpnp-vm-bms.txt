@@ -57,9 +57,6 @@ Parent node required properties:
 - qcom,calculate-soc-ms : The time period between subsequent SoC
 			recalculations when the current SoC is above or equal
 			qcom,low-soc-calculate-soc-threshold.
-- qcom,volatge-soc-timeout-ms : The timeout period after which the module starts
-			reporting volage based SOC and does not use the VMBMS
-			algorithm for SOC calculation.
 - qcom,bms-vadc: Corresponding VADC device's phandle.
 - qcom,bms-adc_tm: Corresponding ADC_TM device's phandle to set recurring
                         measurements and receive notifications for vbatt.
