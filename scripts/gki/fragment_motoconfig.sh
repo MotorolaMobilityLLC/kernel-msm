@@ -4,13 +4,13 @@
 # Script to merge all Moto kernel config
 
 usage() {
-	echo "Usage: $0 <input_platform_name>"
-	echo "For example $0 lahaina"
+	echo "Usage: $0 <input_platform_name> $1<required defconfig>"
+	echo "For example $0 lahaina $1 qgki_defconfig"
 	echo "Note: The output is all valid moto kernel config files"
 	exit 1
 }
 
-if [ "$#" -ne 1 ]; then
+if [ "$#" -ne 2 ]; then
 	echo "Error: Invalid number of arguments"
 	usage
 fi
@@ -20,6 +20,7 @@ fi
 TARGET_PRODUCT_NAME=${TARGET_PRODUCT%%_*}
 TARGET_PRODUCT_TYPE=${TARGET_PRODUCT#*_}
 LOCAL_PLATFORM_NAME=${1}
+REQUIRED_DEFCONFIG=${2}
 echo "moto framgement config: LOCAL_PLATFORM_NAME=${LOCAL_PLATFORM_NAME} TARGET_PRODUCT_NAME=$TARGET_PRODUCT_NAME TARGET_PRODUCT_TYPE=$TARGET_PRODUCT_TYPE"
 
 #skip msi products
@@ -40,7 +41,7 @@ if [ $TARGET_PRODUCT_TYPE == "factory" ]; then
     if [ -e $MOTO_CONFIG_DIR/factory-${LOCAL_PLATFORM_NAME}.config ]; then
         MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/factory-${LOCAL_PLATFORM_NAME}.config"
     fi
-elif [ $TARGET_BUILD_VARIANT == "userdebug" ]; then
+elif [ $TARGET_BUILD_VARIANT == "userdebug" ] && [ $REQUIRED_DEFCONFIG != ${LOCAL_PLATFORM_NAME}-gki_defconfig ]; then
     if [ -e $MOTO_CONFIG_DIR/debug-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}.config ]; then
         MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/debug-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}.config"
     fi
