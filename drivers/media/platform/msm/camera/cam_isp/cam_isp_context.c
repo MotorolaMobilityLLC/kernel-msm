@@ -36,6 +36,9 @@ static const char isp_dev_name[] = "cam-isp";
 static int cam_isp_context_dump_active_request(void *data, unsigned long iova,
 	uint32_t buf_info);
 
+static void __cam_isp_ctx_send_sof_timestamp(struct cam_isp_context *ctx_isp,
+		uint64_t request_id, uint32_t sof_event_status);
+
 static const char *__cam_isp_evt_val_to_type(
 	uint32_t evt_id)
 {
@@ -592,6 +595,7 @@ static int __cam_isp_ctx_handle_buf_done_in_activated_state(
 	struct cam_ctx_request  *req;
 	struct cam_isp_ctx_req  *req_isp;
 	struct cam_context *ctx = ctx_isp->base;
+	uint64_t buf_done_req_id;
 
 	if (list_empty(&ctx->active_req_list)) {
 		CAM_WARN(CAM_ISP, "Buf done with no active request!");
@@ -705,6 +709,7 @@ static int __cam_isp_ctx_handle_buf_done_in_activated_state(
 		return rc;
 
 	ctx_isp->active_req_cnt--;
+	buf_done_req_id = req->request_id;
 
 	if (req_isp->bubble_detected && req_isp->bubble_report) {
 		req_isp->num_acked = 0;
@@ -723,17 +728,12 @@ static int __cam_isp_ctx_handle_buf_done_in_activated_state(
 			ctx_isp->substate_activated);
 		__cam_isp_ctx_update_event_record(ctx_isp,
 			CAM_ISP_CTX_EVENT_BUFDONE, req);
-	} else if (req->request_id > ctx_isp->req_info.reported_req_id) {
-		CAM_INFO_RATE_LIMIT(CAM_ISP,
-			"Not moving req_id %lld to free list. rep_req %lld",
-			req->request_id, ctx_isp->req_info.reported_req_id);
-		__cam_isp_ctx_update_state_monitor_array(ctx_isp,
-			CAM_ISP_HW_EVENT_DONE,
-			ctx_isp->substate_activated,
-			ctx_isp->substate_activated);
-		__cam_isp_ctx_update_event_record(ctx_isp,
-			CAM_ISP_CTX_EVENT_BUFDONE, req);
 	} else {
+		if (ctx_isp->req_info.reported_req_id < buf_done_req_id) {
+			ctx_isp->req_info.reported_req_id = buf_done_req_id;
+			__cam_isp_ctx_send_sof_timestamp(ctx_isp,
+			buf_done_req_id, CAM_REQ_MGR_SOF_EVENT_SUCCESS);
+		}
 		list_del_init(&req->list);
 		list_add_tail(&req->list, &ctx->free_req_list);
 		req_isp->reapply = false;
@@ -1024,8 +1024,6 @@ static int __cam_isp_ctx_notify_sof_in_activated_state(
 			if (req->request_id >
 				ctx_isp->req_info.reported_req_id) {
 				request_id = req->request_id;
-				req_isp =
-					(struct cam_isp_ctx_req *)req->req_priv;
 				ctx_isp->req_info.reported_req_id = request_id;
 				ctx_isp->req_info.last_reported_id_time_stamp =
 					jiffies_to_msecs(jiffies);
@@ -1056,14 +1054,6 @@ static int __cam_isp_ctx_notify_sof_in_activated_state(
 			"Can not notify SOF to CRM for ctx %u",
 			ctx->ctx_id);
 		rc = -EFAULT;
-	}
-
-	if ((req_isp) && (req_isp->num_acked == req_isp->num_fence_map_out)) {
-		CAM_INFO_RATE_LIMIT(CAM_REQ,
-			"Move active req %lld to free [all fences done] ctx %u",
-			req->request_id, ctx_isp->active_req_cnt, ctx->ctx_id);
-		list_del_init(&req->list);
-		list_add_tail(&req->list, &ctx->free_req_list);
 	}
 
 	return 0;
