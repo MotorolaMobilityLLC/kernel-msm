@@ -785,7 +785,7 @@ int mhi_queue_disable_transition(struct mhi_controller *mhi_cntrl,
 	list_add_tail(&item->node, &mhi_cntrl->transition_list);
 	spin_unlock_irqrestore(&mhi_cntrl->transition_lock, flags);
 
-	schedule_work(&mhi_cntrl->st_worker);
+	queue_work(mhi_cntrl->wq, &mhi_cntrl->st_worker);
 
 	return 0;
 }
@@ -805,7 +805,7 @@ int mhi_queue_state_transition(struct mhi_controller *mhi_cntrl,
 	list_add_tail(&item->node, &mhi_cntrl->transition_list);
 	spin_unlock_irqrestore(&mhi_cntrl->transition_lock, flags);
 
-	schedule_work(&mhi_cntrl->st_worker);
+	queue_work(mhi_cntrl->wq, &mhi_cntrl->st_worker);
 
 	return 0;
 }
@@ -821,8 +821,7 @@ static void mhi_special_events_pending(struct mhi_controller *mhi_cntrl)
 
 		spin_lock_bh(&mhi_event->lock);
 		if (ev_ring->rp != mhi_to_virtual(ev_ring, er_ctxt->rp)) {
-			queue_work(mhi_cntrl->special_wq,
-				   &mhi_cntrl->special_work);
+			queue_work(mhi_cntrl->wq, &mhi_cntrl->special_work);
 			spin_unlock_bh(&mhi_event->lock);
 			break;
 		}
@@ -856,7 +855,7 @@ void mhi_process_sys_err(struct mhi_controller *mhi_cntrl)
 	 * if controller supports rddm, we do not process sys error state,
 	 * instead we will jump directly to rddm state
 	 */
-	if (mhi_cntrl->rddm_image) {
+	if (mhi_cntrl->rddm_supported) {
 		MHI_CNTRL_LOG(
 			"Controller supports RDDM, skipping SYS_ERR_PROCESS\n");
 		return;
@@ -1725,6 +1724,10 @@ int mhi_force_rddm_mode(struct mhi_controller *mhi_cntrl)
 	MHI_CNTRL_LOG("Enter with pm_state:%s ee:%s\n",
 			to_mhi_pm_state_str(mhi_cntrl->pm_state),
 			TO_MHI_EXEC_STR(mhi_cntrl->ee));
+
+	/* device does not support RDDM */
+	if (!mhi_cntrl->rddm_supported)
+		return -EINVAL;
 
 	/* device already in rddm */
 	if (mhi_cntrl->ee == MHI_EE_RDDM)
