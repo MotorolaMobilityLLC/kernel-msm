@@ -55,7 +55,7 @@ fi
 
 FINAL_DEFCONFIG_BLEND=""
 
-source ${SCRIPTS_ROOT}/fragment_motoconfig.sh  ${PLATFORM_NAME}
+source ${SCRIPTS_ROOT}/fragment_motoconfig.sh  ${PLATFORM_NAME} ${REQUIRED_DEFCONFIG}
 FINAL_DEFCONFIG_BLEND+=${MOTO_REQUIRED_CONFIG}
 
 case "$REQUIRED_DEFCONFIG" in
