@@ -833,6 +833,8 @@ static int __init early_mem(char *p)
 	u64 size;
 	u64 start;
 	char *endp;
+	struct memblock_region *r;
+	phys_addr_t region_end;
 
 	/*
 	 * If the user specifies memory size, we
@@ -841,8 +843,8 @@ static int __init early_mem(char *p)
 	 */
 	if (usermem == 0) {
 		usermem = 1;
-		memblock_remove(memblock_start_of_DRAM(),
-			memblock_end_of_DRAM() - memblock_start_of_DRAM());
+		//memblock_remove(memblock_start_of_DRAM(),
+		//	memblock_end_of_DRAM() - memblock_start_of_DRAM() + 1);
 	}
 
 	start = PHYS_OFFSET;
@@ -850,7 +852,16 @@ static int __init early_mem(char *p)
 	if (*endp == '@')
 		start = memparse(endp + 1, NULL);
 
-	arm_add_memory(start, size);
+	for_each_memblock(memory, r) {
+		region_end = r->base - 1 + r->size;
+	}
+	//memblock_mem_limit_remove_map(size);
+	memblock_cap_memory_range(0, start + size);
+	for_each_memblock(memory, r) {
+		region_end = r->base - 1 + r->size;
+	}
+	//arm_add_memory(start, size);
+	//memblock_remove(0x7e280000, 0x80000000 - 0x7e280000);
 
 	return 0;
 }
