@@ -68,4 +68,11 @@ if [ -e $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}.config ]; then
     MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}.config"
 fi
 
+#merge moto platform config that depended on -QGKI.config
+if [ $REQUIRED_DEFCONFIG != ${LOCAL_PLATFORM_NAME}-gki_defconfig ]; then
+    if [ -e $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}-depQGKI.config ]; then
+        MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}-depQGKI.config"
+    fi
+fi
+
 echo "require moto blend configs:$MOTO_REQUIRED_CONFIG"
