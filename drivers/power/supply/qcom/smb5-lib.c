@@ -6108,7 +6108,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 						!vbus_rising, 0);
 
 	power_supply_changed(chg->usb_psy);
-	__pm_stay_awake(&chg->mmi.smblib_mmi_hb_wake_source);
+	__pm_stay_awake(chg->mmi.smblib_mmi_hb_wake_source);
 	cancel_delayed_work(&chg->mmi.heartbeat_work);
 	schedule_delayed_work(&chg->mmi.heartbeat_work,
 			      msecs_to_jiffies(0));
@@ -6714,7 +6714,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	struct storm_watch *wdata;
 	int sec_charger;
 	u8 val[2] = {0};
-	union power_supply_propval val;
+	union power_supply_propval propval;
 
 	sec_charger = chg->sec_pl_present ? POWER_SUPPLY_CHARGER_SEC_PL :
 				POWER_SUPPLY_CHARGER_SEC_NONE;
@@ -6761,12 +6761,12 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
 	vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
 	vote(chg->usb_icl_votable, ICL_LIMIT_VOTER, false, 0);
-	rc = smblib_get_prop_usb_present(chg, &val);
+	rc = smblib_get_prop_usb_present(chg, &propval);
 	if (rc < 0) {
 		smblib_err(chg, "Error getting USB Present rc = %d\n", rc);
 		chg->mmi.apsd_done = false;
 		chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
-	} else if (!val.intval) {
+	} else if (!propval.intval) {
 		chg->mmi.apsd_done = false;
 		chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 	}
@@ -10748,7 +10748,7 @@ end_hb:
 				ns_to_ktime(SMBCHG_HEARTBEAT_INTERVAL_NS));
 	}
 
-	__pm_relax(&mmi->smblib_mmi_hb_wake_source);
+	__pm_relax(mmi->smblib_mmi_hb_wake_source);
 	if (!vbus_present)
 		vote(chip->awake_votable, HEARTBEAT_VOTER, false, 0);
 }
@@ -11908,7 +11908,7 @@ static enum alarmtimer_restart mmi_heartbeat_alarm_cb(struct alarm *alarm,
 
 	smblib_dbg(chip, PR_MOTO, "SMB: HB alarm fired\n");
 
-	__pm_stay_awake(&chip->mmi.smblib_mmi_hb_wake_source);
+	__pm_stay_awake(chip->mmi.smblib_mmi_hb_wake_source);
 	cancel_delayed_work(&chip->mmi.heartbeat_work);
 	/* Delay by 500 ms to allow devices to resume. */
 	schedule_delayed_work(&chip->mmi.heartbeat_work,
@@ -11952,8 +11952,14 @@ void mmi_init(struct smb_charger *chg)
 	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
 	INIT_DELAYED_WORK(&chg->mmi.heartbeat_work, mmi_heartbeat_work);
-	wakeup_source_init(&chg->mmi.smblib_mmi_hb_wake_source,
+	/*wakeup_source_init(&chg->mmi.smblib_mmi_hb_wake_source,
+			   "smblib_mmi_hb_wake");*/
+	chg->mmi.smblib_mmi_hb_wake_source = wakeup_source_register(chg->dev,
 			   "smblib_mmi_hb_wake");
+	if(!chg->mmi.smblib_mmi_hb_wake_source) {
+		smblib_err(chg, "Failed to allocate wakeup source\n");
+		return;
+	}
 	alarm_init(&chg->mmi.heartbeat_alarm, ALARM_BOOTTIME,
 		   mmi_heartbeat_alarm_cb);
 
@@ -12087,6 +12093,6 @@ void mmi_deinit(struct smb_charger *chg)
 		device_remove_file(chg->dev,
 				   &dev_attr_force_chg_itrick);
 	}
-	wakeup_source_trash(&chg->mmi.smblib_mmi_hb_wake_source);
+	wakeup_source_unregister(chg->mmi.smblib_mmi_hb_wake_source);
 	power_supply_unreg_notifier(&chg->mmi.mmi_psy_notifier);
 }
