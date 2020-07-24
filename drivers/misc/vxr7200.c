@@ -29,6 +29,12 @@
 #include <linux/regulator/consumer.h>
 #include <linux/rwlock.h>
 #include <linux/leds.h>
+#include "vxr7200.h"
+
+enum power_state {
+	POWER_STATE_POWERKEY = 0,
+	POWER_STATE_ENABLE = 1,
+};
 
 struct vxr7200 {
 	struct device *dev;
@@ -43,7 +49,6 @@ struct vxr7200 {
 	u32 display_1v8_en;
 	u32 mipi_switch_1v8_en;
 	u32 display_res1;
-	bool gpioInit;
 
 	struct i2c_client *i2c_client;
 
@@ -52,9 +57,13 @@ struct vxr7200 {
 	struct regulator *ibb;
 
 	bool power_on;
+	bool enable;
+	bool usb_plugged;
+	enum power_state state;
 };
 
 static bool dsi_way;
+static struct vxr7200 *pdata;
 
 static int vxr7200_read(struct vxr7200 *pdata, u8 *reg, u8 *buf, u32 size)
 {
@@ -75,106 +84,122 @@ static int vxr7200_read(struct vxr7200 *pdata, u8 *reg, u8 *buf, u32 size)
 	};
 
 	if (i2c_transfer(client->adapter, msg, 2) != 2) {
-		pr_err("i2c read failed\n");
+		pr_err("%s i2c read failed\n", __func__);
 		return -EIO;
 	}
 
 	return 0;
 }
 
-static int turnGpio(struct vxr7200 *pdata, int gpio, char *name, bool on)
+static void turn_gpio(struct vxr7200 *pdata, int gpio, bool on)
 {
-	int ret = -1;
 
-	pr_info("%s vxr7200 gpio:%d, name:%s, on:%d\n", __func__, gpio,
-						name, on);
-	if (!pdata->gpioInit) {
-		ret = gpio_request(gpio, name);
-		if (ret) {
-			pr_err("vxr7200 %s gpio request failed\n", name);
-			goto error;
-		}
-	}
+	pr_debug("%s vxr7200_turn_gpio gpio:%d, on:%d\n", __func__, gpio, on);
+
 	if (on) {
-		ret = gpio_direction_output(gpio, 0);
-		if (ret) {
-			pr_err("vxr7200 gpio direction failed\n");
-			goto error;
-		}
+		gpio_direction_output(gpio, 0);
 		gpio_set_value(gpio, 1);
-		msleep(20);
 		pr_debug("%s vxr7200 gpio:%d set to high\n", __func__, gpio);
 	} else {
-		ret = gpio_direction_output(gpio, 1);
-		if (ret) {
-			pr_err("vxr7200 gpio direction failed\n");
-			goto error;
-		}
+		gpio_direction_output(gpio, 1);
 		gpio_set_value(gpio, 0);
-		msleep(20);
 		pr_debug("%s vxr7200 gpio:%d set to low\n", __func__, gpio);
 	}
-	return 0;
-error:
-	return -EINVAL;
 }
 
-static void vxr7200_set_gpios(struct vxr7200 *pdata, bool turnOn)
+static void vxr7200_set_gpios(struct vxr7200 *pdata, bool turn_on)
 {
-	int rc;
-
-	pr_debug("%s, turnOn:%d\n", __func__, turnOn);
+	pr_debug("%s, turn_on:%d\n", __func__, turn_on);
 	if (pdata) {
-		rc = turnGpio(pdata, pdata->vxr_3v3_en, "vxr_3v3_en", turnOn);
-		if (rc)
-			goto gpio1Fail;
-
-		rc = turnGpio(pdata, pdata->display_res1,
-						 "display_res1", turnOn);
-		if (rc)
-			goto gpio2Fail;
-
-		rc = turnGpio(pdata, pdata->display_1v8_en,
-					 "disp_1v8_en", turnOn);
-		if (rc)
-			goto gpio3Fail;
-
-		rc = turnGpio(pdata, pdata->mipi_switch_1v8_en,
-						 "mipi_switch_1v8_en", turnOn);
-		if (rc)
-			goto gpio4Fail;
-
-		rc = turnGpio(pdata, pdata->led_5v_en, "led_5v_en", turnOn);
-		if (rc)
-			goto gpio5Fail;
-
-		rc = turnGpio(pdata, pdata->led_drive_en1,
-					"led_drive_en1", turnOn);
-		if (rc)
-			goto gpio6Fail;
-
-		rc = turnGpio(pdata, pdata->led_drive_en2,
-					 "led_drive_en2", turnOn);
-		if (rc)
-			goto gpio7Fail;
+		if (pdata->state == POWER_STATE_POWERKEY) {
+			turn_gpio(pdata, pdata->vxr_3v3_en, turn_on);
+			turn_gpio(pdata, pdata->display_res1, turn_on);
+			turn_gpio(pdata, pdata->display_1v8_en, turn_on);
+			turn_gpio(pdata, pdata->mipi_switch_1v8_en, turn_on);
+			if (!pdata->enable && turn_on)
+				return;
+		}
+		turn_gpio(pdata, pdata->led_5v_en, turn_on);
+		turn_gpio(pdata, pdata->led_drive_en1, turn_on);
+		turn_gpio(pdata, pdata->led_drive_en2, turn_on);
 	}
 	return;
-
-gpio7Fail:
-	gpio_free(pdata->led_drive_en2);
-gpio6Fail:
-	gpio_free(pdata->led_drive_en1);
-gpio5Fail:
-	gpio_free(pdata->led_5v_en);
-gpio4Fail:
-	gpio_free(pdata->mipi_switch_1v8_en);
-gpio3Fail:
-	gpio_free(pdata->display_1v8_en);
-gpio2Fail:
-	gpio_free(pdata->display_res1);
-gpio1Fail:
-	gpio_free(pdata->vxr_3v3_en);
 }
+
+static ssize_t vxr7200_enable_show(struct device *dev,
+				 struct device_attribute *attr,
+				char *buf)
+{
+	int ret;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct vxr7200 *pdata = i2c_get_clientdata(client);
+
+
+	if (pdata->enable)
+		ret = scnprintf(buf, PAGE_SIZE, "display on\n");
+	else
+		ret = scnprintf(buf, PAGE_SIZE, "display off\n");
+
+	return ret;
+}
+
+static ssize_t vxr7200_enable_store(struct device *dev,
+				 struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct vxr7200 *pdata = i2c_get_clientdata(client);
+	long val;
+	int ret;
+
+	ret = kstrtol(buf, 0, &val);
+	pr_debug("%s, count:%d  val:%lx, buf:%s\n",
+				__func__, (int)count, val, buf);
+
+	if (val == 0x1) {
+		pr_debug("%s Turning on Display\n", __func__);
+		pdata->enable = true;
+		pdata->state = POWER_STATE_ENABLE;
+		vxr7200_set_gpios(pdata, true);
+	} else if (val == 0x0) {
+		pr_debug("%s Turning off Display\n",
+						 __func__);
+		pdata->state = POWER_STATE_ENABLE;
+		pdata->enable = false;
+		vxr7200_set_gpios(pdata, false);
+	} else
+		pr_err("%s Invalid value. Valid vals(1-on,0-off)\n",
+				__func__);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(vxr7200_enable);
+
+static struct attribute *vxr7200_fs_attrs[] = {
+	&dev_attr_vxr7200_enable.attr,
+	NULL
+};
+
+static struct attribute_group vxr7200_fs_attr_group = {
+	.attrs = vxr7200_fs_attrs,
+};
+
+void vxr7200_usb_event(bool cable_plug)
+{
+	pr_debug("%s, cable_plug:%d\n", __func__, cable_plug);
+	if (pdata) {
+		pdata->state = POWER_STATE_POWERKEY;
+		if (cable_plug) {
+			pdata->usb_plugged = true;
+			vxr7200_set_gpios(pdata, true);
+		} else {
+			pdata->usb_plugged = false;
+			vxr7200_set_gpios(pdata, false);
+		}
+	}
+}
+EXPORT_SYMBOL(vxr7200_usb_event);
 
 static int vxr7200_parse_dt(struct device *dev,
 				struct vxr7200 *pdata)
@@ -185,57 +210,102 @@ static int vxr7200_parse_dt(struct device *dev,
 	pdata->vxr_3v3_en =
 		of_get_named_gpio(np, "qcom,vxr_3v3_en", 0);
 	if (!gpio_is_valid(pdata->vxr_3v3_en)) {
-		pr_err("vxr_3v3_en gpio not specified\n");
+		pr_err("vxr7200_3v3_en gpio not specified\n");
 		rc = -EINVAL;
+	}
+	if (gpio_request(pdata->vxr_3v3_en, "vxr_3v3_en")) {
+		pr_err("vxr7200_3v3_en request gpio failed\n");
+		rc = -EINVAL;
+		goto gpio1Fail;
 	}
 
 	pdata->led_5v_en =
 		of_get_named_gpio(np, "qcom,led-5v-en-gpio", 0);
 	if (!gpio_is_valid(pdata->led_5v_en)) {
-		pr_err("led_5v_en gpio not specified\n");
+		pr_err("vxr7200_led_5v_en gpio not specified\n");
 		rc = -EINVAL;
+	}
+	if (gpio_request(pdata->led_5v_en, "led_5v_en")) {
+		pr_err("vxr7200_led_5v_en request gpio failed\n");
+		rc = -EINVAL;
+		goto gpio2Fail;
 	}
 
 	pdata->led_drive_en1 =
 		of_get_named_gpio(np, "qcom,led-driver-en1-gpio", 0);
 	if (!gpio_is_valid(pdata->led_drive_en1)) {
-		pr_err("led_drive_en1 gpio not specified\n");
+		pr_err("vxr7200_led_drive_en1 gpio not specified\n");
 		rc = -EINVAL;
+	}
+	if (gpio_request(pdata->led_drive_en1, "led_drive_en1")) {
+		pr_err("vxr7200_led_drive_en1 request gpio failed\n");
+		rc = -EINVAL;
+		goto gpio3Fail;
 	}
 
 	pdata->led_drive_en2 =
 		of_get_named_gpio(np, "qcom,led-driver-en2-gpio", 0);
 	if (!gpio_is_valid(pdata->led_drive_en2)) {
-		pr_err("led_drive_en2 gpio not specified\n");
+		pr_err("vxr7200_led_drive_en2 gpio not specified\n");
 		rc = -EINVAL;
+	}
+	if (gpio_request(pdata->led_drive_en2, "led_drive_en2")) {
+		pr_err("vxr7200_led_drive_en2 request gpio failed\n");
+		rc = -EINVAL;
+		goto gpio4Fail;
 	}
 
 	pdata->display_1v8_en =
 		of_get_named_gpio(np, "qcom,1p8-en-gpio", 0);
 	if (!gpio_is_valid(pdata->display_1v8_en)) {
-		pr_err("display_1v8_en gpio not specified\n");
+		pr_err("vxr7200_display_1v8_en gpio not specified\n");
 		rc = -EINVAL;
+	}
+	if (gpio_request(pdata->display_1v8_en, "display_1v8_en")) {
+		pr_err("vxr7200_display_1v8_en request gpio failed\n");
+		rc = -EINVAL;
+		goto gpio5Fail;
 	}
 
 	pdata->mipi_switch_1v8_en =
 		of_get_named_gpio(np, "qcom,switch-power-gpio", 0);
 	if (!gpio_is_valid(pdata->mipi_switch_1v8_en)) {
-		pr_err("mipi_switch_1v8_en gpio not specified\n");
+		pr_err("vxr7200_mipi_switch_1v8_en gpio not specified\n");
 		rc = -EINVAL;
+	}
+	if (gpio_request(pdata->mipi_switch_1v8_en, "mipi_switch_1v8_en")) {
+		pr_err("vxr7200_mipi_switch_1v8_en request gpio failed\n");
+		rc = -EINVAL;
+		goto gpio6Fail;
 	}
 
 	pdata->display_res1 =
 		of_get_named_gpio(np, "qcom,platform-reset-gpio", 0);
 	if (!gpio_is_valid(pdata->display_res1)) {
-		pr_err("display_res1 gpio not specified\n");
+		pr_err("vxr7200_display_res1 gpio not specified\n");
 		rc = -EINVAL;
 	}
+	if (gpio_request(pdata->display_res1, "display_res1")) {
+		pr_err("vxr7200_display_res1 request gpio failed\n");
+		rc = -EINVAL;
+		goto gpio7Fail;
+	}
+	return rc;
 
-	if (!rc)
-		vxr7200_set_gpios(pdata, true);
-
-	if (!pdata->gpioInit)
-		pdata->gpioInit = true;
+gpio7Fail:
+	gpio_free(pdata->display_res1);
+gpio6Fail:
+	gpio_free(pdata->mipi_switch_1v8_en);
+gpio5Fail:
+	gpio_free(pdata->display_1v8_en);
+gpio4Fail:
+	gpio_free(pdata->led_drive_en2);
+gpio3Fail:
+	gpio_free(pdata->led_drive_en1);
+gpio2Fail:
+	gpio_free(pdata->led_5v_en);
+gpio1Fail:
+	gpio_free(pdata->vxr_3v3_en);
 
 	return rc;
 }
@@ -319,7 +389,6 @@ static int vxr7200_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	int rc;
-	struct vxr7200 *pdata;
 	u8 reg[4] = {0x00, 0x20, 0x01, 0x60};
 	u8 buf[4] = {0x00, 0x0, 0x0, 0x0};
 
@@ -341,7 +410,8 @@ static int vxr7200_probe(struct i2c_client *client,
 	if (!pdata)
 		return -ENOMEM;
 
-	pdata->gpioInit = false;
+	pdata->state = POWER_STATE_POWERKEY;
+	pdata->enable = true;
 
 	rc = vxr7200_parse_dt(&client->dev, pdata);
 	if (rc) {
@@ -351,6 +421,14 @@ static int vxr7200_probe(struct i2c_client *client,
 	pdata->dev = &client->dev;
 	pdata->i2c_client = client;
 
+	rc = sysfs_create_group(&pdata->dev->kobj, &vxr7200_fs_attr_group);
+	if (rc) {
+		pr_err("%s unable to register vxr7200 sysfs nodes\n",
+					 __func__);
+		goto err_dt_parse;
+	}
+
+
 	vxr7200_display_pwr_enable_vregs(pdata);
 
 	i2c_set_clientdata(client, pdata);
@@ -358,6 +436,8 @@ static int vxr7200_probe(struct i2c_client *client,
 
 	//vxr7200_write(pdata, 0x0A, 0x02);//Enable 4-lane DP
 	vxr7200_read(pdata, reg, buf, 4);//Enable 4-lane DP
+
+	return rc;
 
 err_dt_parse:
 	devm_kfree(&client->dev, pdata);
@@ -369,8 +449,10 @@ static int vxr7200_remove(struct i2c_client *client)
 {
 	struct vxr7200 *pdata = i2c_get_clientdata(client);
 
-	if (pdata)
+	if (pdata) {
+		sysfs_remove_group(&pdata->dev->kobj, &vxr7200_fs_attr_group);
 		devm_kfree(&client->dev, pdata);
+	}
 	return 0;
 }
 
@@ -380,30 +462,13 @@ static void vxr7200_shutdown(struct i2c_client *client)
 	dev_info(&(client->dev), "shutdown");
 }
 
-static int vxr7200_pm_freeze(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct vxr7200 *pdata = i2c_get_clientdata(client);
-
-	dev_info(dev, "freeze");
-	vxr7200_set_gpios(pdata, false);
-	return 0;
-}
-static int vxr7200_pm_restore(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct vxr7200 *pdata = i2c_get_clientdata(client);
-
-	dev_info(dev, "restore");
-	vxr7200_set_gpios(pdata, true);
-	return 0;
-}
 static int vxr7200_pm_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct vxr7200 *pdata = i2c_get_clientdata(client);
 
 	dev_info(dev, "suspend");
+	pdata->state = POWER_STATE_POWERKEY;
 	vxr7200_set_gpios(pdata, false);
 	return 0;
 }
@@ -414,6 +479,7 @@ static int vxr7200_pm_resume(struct device *dev)
 	struct vxr7200 *pdata = i2c_get_clientdata(client);
 
 	dev_info(dev, "resume");
+	pdata->state = POWER_STATE_POWERKEY;
 	vxr7200_set_gpios(pdata, true);
 	return 0;
 }
@@ -421,10 +487,7 @@ static int vxr7200_pm_resume(struct device *dev)
 static const struct dev_pm_ops vxr7200_dev_pm_ops = {
 	.suspend	= vxr7200_pm_suspend,
 	.resume	 = vxr7200_pm_resume,
-	.freeze	 = vxr7200_pm_freeze,
-	.restore	= vxr7200_pm_restore,
-	.thaw	   = vxr7200_pm_restore,
-	.poweroff       = vxr7200_pm_suspend,
+	.poweroff	= vxr7200_pm_suspend,
 };
 
 static const struct i2c_device_id vxr7200_id_table[] = {

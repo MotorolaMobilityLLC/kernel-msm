@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, 2018-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, 2018-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2416,6 +2416,7 @@ static int qpnp_vm_bms_power_set_property(struct power_supply *psy,
 		pr_debug("IBATT = %d\n", val->intval);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
+		pm_relax(chip->dev);
 		cancel_delayed_work_sync(&chip->monitor_soc_work);
 		chip->last_ocv_uv = val->intval;
 		pr_debug("OCV = %d\n", val->intval);

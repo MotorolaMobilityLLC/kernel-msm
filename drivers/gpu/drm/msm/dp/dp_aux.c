@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -608,6 +608,8 @@ static void dp_aux_init(struct dp_aux *dp_aux, struct dp_aux_cfg *aux_cfg)
 	aux->catalog->enable(aux->catalog, true);
 	atomic_set(&aux->aborted, 0);
 	aux->retry_cnt = 0;
+
+	drm_dp_cec_register_connector(&aux->drm_aux, "sde_dp_cec", aux->dev);
 }
 
 static void dp_aux_deinit(struct dp_aux *dp_aux)
@@ -623,6 +625,7 @@ static void dp_aux_deinit(struct dp_aux *dp_aux)
 
 	atomic_set(&aux->aborted, 1);
 	aux->catalog->enable(aux->catalog, false);
+	drm_dp_cec_unregister_connector(&aux->drm_aux);
 }
 
 static int dp_aux_register(struct dp_aux *dp_aux)

@@ -1403,6 +1403,15 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 				ep_pcie_core_init(dev, true);
 				dev->link_status = EP_PCIE_LINK_UP;
 				dev->l23_ready = false;
+
+				/* enable pipe clock for early link init case*/
+				ret = ep_pcie_pipe_clk_init(dev);
+				if (ret) {
+					EP_PCIE_ERR(dev,
+					"PCIe V%d: failed to enable pipe clock\n",
+					dev->rev);
+					goto pipe_clk_fail;
+				}
 				goto checkbme;
 			} else {
 				ltssm_en = readl_relaxed(dev->parf
@@ -1652,6 +1661,13 @@ int ep_pcie_core_disable_endpoint(void)
 	ep_pcie_vreg_deinit(dev);
 out:
 	mutex_unlock(&dev->setup_mtx);
+
+	if (atomic_read(&dev->ep_pcie_dev_wake)) {
+		EP_PCIE_DBG(dev, "PCIe V%d: Released wakelock\n", dev->rev);
+		atomic_set(&dev->ep_pcie_dev_wake, 0);
+		pm_relax(&dev->pdev->dev);
+	}
+
 	return rc;
 }
 
@@ -1961,6 +1977,17 @@ static irqreturn_t ep_pcie_handle_perst_irq(int irq, void *data)
 		EP_PCIE_DBG(dev,
 			"PCIe V%d: No. %ld PERST assertion.\n",
 			dev->rev, dev->perst_ast_counter);
+
+		if (dev->in_d3hot_sleep) {
+			/*
+			 * Perst was asserted when device was in d3hot sleep,
+			 * disable clkreq irq
+			 */
+			EP_PCIE_DBG(dev,
+				"PCIe V%d: Disable clkreq irq\n", dev->rev);
+			disable_irq_nosync(clkreq_irq);
+			dev->in_d3hot_sleep = false;
+		}
 
 		if (dev->client_ready) {
 			ep_pcie_notify_event(dev, EP_PCIE_EVENT_PM_D3_COLD);

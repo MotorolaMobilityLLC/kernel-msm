@@ -186,6 +186,8 @@ gen_headers_out_arm64 = [
     "linux/cciss_defs.h",
     "linux/cciss_ioctl.h",
     "linux/cdrom.h",
+    "linux/cec-funcs.h",
+    "linux/cec.h",
     "linux/cgroupstats.h",
     "linux/chio.h",
     "linux/cm4000_cs.h",

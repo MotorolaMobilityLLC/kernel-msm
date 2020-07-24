@@ -21,3 +21,50 @@
 	compatible = "qcom,msm8909-qrd", "qcom,msm8909", "qcom,qrd";
 	qcom,board-id = <0x1010b 0x100>;
 };
+
+&msm_gpu {
+	/delete-node/qcom,gpu-pwrlevels;
+
+	/* Power levels */
+	qcom,gpu-pwrlevels {
+
+		compatible = "qcom,gpu-pwrlevels";
+
+		qcom,gpu-pwrlevel@0 {
+			reg = <0>;
+			qcom,gpu-freq = <307200000>;
+			qcom,bus-freq = <3>;
+			qcom,bus-min = <2>;
+			qcom,bus-max = <4>;
+		};
+
+		qcom,gpu-pwrlevel@1 {
+			reg = <1>;
+			qcom,gpu-freq = <200000000>;
+			qcom,bus-freq = <1>;
+			qcom,bus-min = <1>;
+			qcom,bus-max = <3>;
+		};
+
+		qcom,gpu-pwrlevel@2 {
+			reg = <2>;
+			qcom,gpu-freq = <19200000>;
+			qcom,bus-freq = <0>;
+			qcom,bus-min = <0>;
+			qcom,bus-max = <0>;
+		};
+	};
+};
+
+&gpubw {
+	/delete-property/qcom,bw-tbl;
+
+	/* Bus Bandwidth voting levels */
+	qcom,bw-tbl =
+		<    0 >,       /*   9.6 MHz */
+		<  381 >,       /*  50.0 MHz */
+		<  762 >,       /* 100.0 MHz */
+		< 1525 >,       /* 200.0 MHz */
+		< 3051 >,       /* 400.0 MHz */
+		< 4066 >;       /* 533.0 MHz */
+};

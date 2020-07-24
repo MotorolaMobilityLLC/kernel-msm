@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -789,6 +789,8 @@ static int dp_link_parse_request(struct dp_link_private *link)
 	data = bp;
 
 	pr_debug("device service irq vector = 0x%x\n", data);
+
+	drm_dp_cec_irq(link->aux->drm_aux);
 
 	if (!(data & DP_AUTOMATED_TEST_REQUEST)) {
 		pr_debug("no test requested\n");

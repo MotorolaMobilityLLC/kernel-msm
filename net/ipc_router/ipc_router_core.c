@@ -999,7 +999,6 @@ static int calc_rx_header_size(struct msm_ipc_router_xprt_info *xprt_info,
 			return -EINVAL;
 		}
 		xprt_version = temp_skb->data[0];
-		pr_err("app:%s version recv %d\n", __func__, xprt_version);
 	}
 
 	if (xprt_version == IPC_ROUTER_V1)
@@ -4187,8 +4186,8 @@ static int msm_ipc_router_add_xprt(struct msm_ipc_router_xprt *xprt)
 	up_write(&routing_table_lock_lha3);
 
 	xprt->priv = xprt_info;
-	send_hello_msg(xprt_info);
 	complete_all(&xprt->xprt_init_complete);
+	send_hello_msg(xprt_info);
 
 	return 0;
 }
