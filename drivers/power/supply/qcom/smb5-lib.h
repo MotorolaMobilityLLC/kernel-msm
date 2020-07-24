@@ -488,7 +488,7 @@ struct mmi_params {
 	struct power_supply	*wls_psy;
 	struct power_supply	*usbeb_psy;
 	struct pinctrl		*smb_pinctrl;
-	struct wakeup_source	smblib_mmi_hb_wake_source;
+	struct wakeup_source	*smblib_mmi_hb_wake_source;
 	bool			apsd_done;
 	int			charger_rate;
 	bool			hvdcp3_con;
