@@ -2632,8 +2632,7 @@ void dsi_ctrl_disable_status_interrupt(struct dsi_ctrl *dsi_ctrl,
 {
 	unsigned long flags;
 
-	if (!dsi_ctrl || dsi_ctrl->irq_info.irq_num == -1 ||
-			intr_idx >= DSI_STATUS_INTERRUPT_COUNT)
+	if (!dsi_ctrl || intr_idx >= DSI_STATUS_INTERRUPT_COUNT)
 		return;
 
 	spin_lock_irqsave(&dsi_ctrl->irq_info.irq_lock, flags);
@@ -2645,7 +2644,8 @@ void dsi_ctrl_disable_status_interrupt(struct dsi_ctrl *dsi_ctrl,
 					dsi_ctrl->irq_info.irq_stat_mask);
 
 			/* don't need irq if no lines are enabled */
-			if (dsi_ctrl->irq_info.irq_stat_mask == 0)
+			if (dsi_ctrl->irq_info.irq_stat_mask == 0 &&
+				dsi_ctrl->irq_info.irq_num != -1)
 				disable_irq_nosync(dsi_ctrl->irq_info.irq_num);
 		}
 
