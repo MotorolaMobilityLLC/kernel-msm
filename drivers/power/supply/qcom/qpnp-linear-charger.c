@@ -2799,11 +2799,11 @@ static irqreturn_t qpnp_lbc_fastchg_irq_handler(int irq, void *_chip)
 							kt);
 			}
 		}
+	}
 
-		if (chip->bat_if_base) {
-			pr_debug("power supply changed batt_psy\n");
-			power_supply_changed(chip->batt_psy);
-		}
+	if (chip->bat_if_base) {
+		pr_debug("power supply changed batt_psy\n");
+		power_supply_changed(chip->batt_psy);
 	}
 
 	return IRQ_HANDLED;
