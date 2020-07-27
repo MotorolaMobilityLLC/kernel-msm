@@ -75,7 +75,7 @@
 		interrupts = <83 0x02>;
 		Semtech,nirq-gpio = <&tlmm 83 0x02>;
 		cap_vdd-supply = <&pm6150l_l7>;
-		Semtech,button-flag = <0x07>;
+		Semtech,button-flag = <0x17>;
 		Semtech,reg-num = <85>;
 		Semtech,reg-init = <
 			0x8020 0x001F0000
