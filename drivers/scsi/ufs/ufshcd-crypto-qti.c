@@ -67,7 +67,6 @@ void ufshcd_crypto_qti_enable(struct ufs_hba *hba)
 	}
 
 	ufshcd_crypto_enable_spec(hba);
-
 }
 
 void ufshcd_crypto_qti_disable(struct ufs_hba *hba)
@@ -100,10 +99,12 @@ static int ufshcd_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 	      hba->crypto_cap_array[crypto_alg_id].sdus_mask))
 		return -EINVAL;
 
+	if (!hba->pm_op_in_progress)
+		pm_runtime_get_sync(hba->dev);
 	err = ufshcd_hold(hba, false);
 	if (err) {
 		pr_err("%s: failed to enable clocks, err %d\n", __func__, err);
-		return err;
+		goto out;
 	}
 
 	err = crypto_qti_keyslot_program(hba->crypto_vops->priv, key, slot,
@@ -113,6 +114,9 @@ static int ufshcd_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 
 	ufshcd_release(hba, false);
 
+out:
+	if (!hba->pm_op_in_progress)
+		pm_runtime_put_sync(hba->dev);
 	return err;
 }
 
