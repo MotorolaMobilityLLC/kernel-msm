@@ -574,12 +574,12 @@ static const struct apsd_result smblib_apsd_results[] = {
 	[HVDCP2] = {
 		.name	= "HVDCP2",
 		.bit	= DCP_CHARGER_BIT | QC_2P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_DCP
+		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP
 	},
 	[HVDCP3] = {
 		.name	= "HVDCP3",
 		.bit	= DCP_CHARGER_BIT | QC_3P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_DCP,
+		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP_3,
 	},
 };
 
@@ -1154,6 +1154,26 @@ void smblib_hvdcp_hw_inov_enable(struct smb_charger *chg, bool enable)
 	if (rc < 0)
 		smblib_err(chg, "failed to write USBIN_OPTIONS_1_CFG rc=%d\n",
 				rc);
+}
+
+void smblib_hvdcp_enable_mmi(struct smb_charger *chg, bool enable)
+{
+	int rc;
+	u8 mask;
+
+	if (chg->hvdcp_disable)
+		return;
+
+	mask = HVDCP_AUTH_ALG_EN_CFG_BIT | HVDCP_EN_BIT;
+	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG, mask,
+						enable ? mask : 0);
+	if (rc < 0)
+		smblib_err(chg, "MMI failed to write USBIN_OPTIONS_1_CFG rc=%d\n",
+				rc);
+	else
+		chg->hvdcp_is_disable = enable ? false : true;
+
+	return;
 }
 
 void smblib_hvdcp_exit_config(struct smb_charger *chg)
@@ -6875,6 +6895,14 @@ static void typec_src_removal(struct smb_charger *chg)
 		chg->qc2_unsupported_voltage = QC2_COMPLIANT;
 	}
 
+	if (chg->hvdcp_is_disable &&
+		((!chg->ext_ovp_greater_12v && !chg->qc_usbov) ||
+		(chg->ext_ovp_greater_12v && chg->qc_usbov))) {
+		smblib_err(chg, "Re-enable HVDCP as type-c removal\n");
+		smblib_hvdcp_enable_mmi(chg, true);
+	}
+	chg->qc_usbov = false;
+
 	if (chg->use_extcon)
 		smblib_notify_device_mode(chg, false);
 
@@ -7684,6 +7712,16 @@ irqreturn_t usbin_ov_irq_handler(int irq, void *data)
 
 	smblib_dbg(chg, PR_MISC, "USBOV debounce status %d\n",
 				chg->dbc_usbov);
+
+	if ((!chg->qc_usbov) &&
+	    (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP ||
+	    chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)) {
+		smblib_err(chg, "QC vbus OV disable HVDCP\n");
+		chg->qc_usbov = true;
+		smblib_hvdcp_enable_mmi(chg, false);
+		smblib_rerun_apsd(chg);
+	}
+
 	return IRQ_HANDLED;
 }
 
