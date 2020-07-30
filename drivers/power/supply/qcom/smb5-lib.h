@@ -738,7 +738,10 @@ struct smb_charger {
 	int                     qc2_max_pulses;
 	enum qc2_non_comp_voltage qc2_unsupported_voltage;
 	bool			dbc_usbov;
-
+	bool			qc_usbov;
+	bool			hvdcp_is_disable;
+	/*if external ovp threshold greater than 12V*/
+	bool			ext_ovp_greater_12v;
 	/* extcon for VBUS / ID notification to USB for uUSB */
 	struct extcon_dev	*extcon;
 
