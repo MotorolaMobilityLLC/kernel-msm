@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2018 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, 2018, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,6 +25,7 @@
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/regulator/driver.h>
 
 #include <media/rc-core.h>
 #include <linux/uaccess.h>
@@ -360,7 +361,7 @@ struct msm_geni_ir {
 	void __iomem		*base;
 
 	unsigned int             gpio_rx;
-
+	struct regulator       *vdda33;
 	struct clk              *ahb_clk;
 	struct clk		*serial_clk;
 	struct reset_control    *reset_core;
@@ -494,28 +495,6 @@ static void msm_geni_ir_load_firmware(struct msm_geni_ir *ir)
 }
 EXPORT_SYMBOL(msm_geni_ir_load_firmware);
 
-/* sets the RX filter table with wakeup commands */
-static void msm_geni_ir_set_rx_filter(struct msm_geni_ir *ir)
-{
-	u32 i, irq_enable = 0;
-
-	/* set the IRQ enable bit for non-zero RX wakeup commands */
-	for (i = 0; i < ir->num_wakeup_codes; i++) {
-		irq_enable |= ((ir->wakeup_codes[i]) ? (1 << i) : 0);
-
-		writel_relaxed(ir->wakeup_codes[i],
-			       ir->base + GENI_IR_RX_FILTER_TABLE(i));
-	}
-
-	/* set the filter mask */
-	writel_relaxed(ir->wakeup_mask, ir->base + IR_RX_FILTER_VAL_MASK);
-
-	/* set the IRQ enable bits */
-	writel_relaxed(irq_enable, ir->base + GENI_IR_IRQ_ENABLE);
-	/*write memory barrier*/
-	wmb();
-}
-
 /* stop GENI IR */
 static void msm_geni_ir_stop(struct msm_geni_ir *ir)
 {
@@ -541,76 +520,6 @@ static void msm_geni_ir_stop(struct msm_geni_ir *ir)
 	cnt = IR_GENI_RX_FIFO_STATUS_WC(status);
 	for (i = 0; i < cnt; ++i)
 		readl_relaxed(ir->base + IR_GENI_RX_FIFO(i));
-}
-
-/* configures geni IR to low power mode */
-static void msm_geni_ir_low_power_mode(struct msm_geni_ir *ir)
-{
-	u32 clk_cfg;
-
-	/* set the RX filter table for wakeup */
-	msm_geni_ir_set_rx_filter(ir);
-
-	/* disable interrupts */
-	writel_relaxed(0, ir->base + IR_GENI_IRQ_ENABLE);
-	synchronize_irq(ir->irq);
-
-	/* stop GENI IR */
-	msm_geni_ir_stop(ir);
-
-	/* disable TX path, enable RX path */
-	clk_cfg = RX_CLK_DIV_VALUE(RX_CLK_DIV_LP) | RX_SER_CLK_EN;
-	writel_relaxed(clk_cfg, ir->base + IR_GENI_SER_CLK_CFG);
-
-	/* switch clock mux output from hclk to sclk */
-	writel_relaxed(0x1, ir->base + GENI_IR_CLK_MUX);
-
-	/* read back clk_mux register to ensure output clk is active */
-	readl_relaxed(ir->base + GENI_IR_CLK_MUX);
-
-	/* select low power mode */
-	writel_relaxed(GENI_IR_LOW_POWER_MODE, ir->base + GENI_IR_AHB_MUX_SEL);
-
-	/* enable the RX filter */
-	writel_relaxed(0x1, ir->base + GENI_IR_RX_FILTER_EN);
-	/*write memory barrier*/
-	wmb();
-}
-
-/* configures geni IR to normal mode */
-static void msm_geni_ir_normal_mode(struct msm_geni_ir *ir)
-{
-	u32 clk_cfg;
-
-	/* ensure RX filter is disabled */
-	writel_relaxed(0x0, ir->base + GENI_IR_RX_FILTER_EN);
-
-	/* switch clock mux output from sclk to hclk */
-	writel_relaxed(0x0, ir->base + GENI_IR_CLK_MUX);
-
-	/* read back clk_mux register to ensure output clk is active */
-	readl_relaxed(ir->base + GENI_IR_CLK_MUX);
-
-	/* select normal mode */
-	writel_relaxed(GENI_IR_NORMAL_MODE, ir->base + GENI_IR_AHB_MUX_SEL);
-
-	/* stop GENI IR */
-	msm_geni_ir_stop(ir);
-
-	/* configure serial clock */
-	clk_cfg = RX_CLK_DIV_VALUE(RX_CLK_DIV) | RX_SER_CLK_EN;
-	writel_relaxed(clk_cfg, ir->base + IR_GENI_SER_CLK_CFG);
-
-	/* set rx polarization to active low */
-	writel_relaxed(RX_POL_LOW, ir->base + IR_GENI_GP_OUTPUT_REG);
-
-	/* enable interrupts */
-	writel_relaxed(GENI_IR_DEF_IRQ_EN, ir->base + IR_GENI_IRQ_ENABLE);
-
-	/* enable RX */
-	writel_relaxed(0, ir->base + IR_GENI_S_CMD0);
-	/*write memory barrier*/
-	wmb();
 }
 
 /* sets the core for the specified protocol */
@@ -883,6 +792,13 @@ static int msm_geni_ir_get_res(struct platform_device *pdev,
 		return -ENOMEM;
 	}
 	pr_debug("ir->base: 0x%lx\n", (unsigned long int)ir->base);
+
+	ir->vdda33 = devm_regulator_get(&pdev->dev, "vdda33");
+	if (IS_ERR(ir->vdda33)) {
+		pr_err("unable to get vdda33 supply\n");
+		return rc;
+	}
+
 	ir->ahb_clk = clk_get(&pdev->dev, "iface_clk");
 	ir->serial_clk = clk_get(&pdev->dev, "serial_clk");
 	if (IS_ERR(ir->ahb_clk)) {
@@ -974,6 +890,11 @@ int msm_geni_ir_probe(struct platform_device *pdev)
 		goto rc_register_err;
 	}
 
+	rc = regulator_enable(ir->vdda33);
+	if (rc) {
+		pr_err("Unable to enable vdda33:%d\n", rc);
+		return rc;
+	}
 
 #ifdef CONFIG_IR_MSM_GENI_TX
 	ir->misc.minor = MISC_DYNAMIC_MINOR;
@@ -1032,11 +953,6 @@ static int msm_geni_ir_suspend(struct device *dev)
 {
 	struct msm_geni_ir *ir = platform_get_drvdata(to_platform_device(dev));
 
-	if (ir->image_loaded != NULL) {
-		/* configure low power mode */
-		msm_geni_ir_low_power_mode(ir);
-		clk_disable_unprepare(ir->ahb_clk);
-	}
 	enable_irq_wake(ir->wakeup_irq);
 
 	return 0;
@@ -1046,26 +962,16 @@ static int msm_geni_ir_resume(struct device *dev)
 {
 	struct msm_geni_ir *ir = platform_get_drvdata(to_platform_device(dev));
 	u32 status;
-	int rc;
 
 	disable_irq_wake(ir->wakeup_irq);
 	if (ir->image_loaded == NULL)
 		return 0;
-
-	rc = clk_prepare_enable(ir->ahb_clk);
-	if (rc) {
-		pr_err("ahb clk enable failed %d\n", rc);
-		return rc;
-	}
 
 	/* clear wakeup irq */
 	status = readl_relaxed(ir->base + GENI_IR_IRQ_STATUS);
 	writel_relaxed(status, ir->base + GENI_IR_IRQ_CLEAR);
 	/*write memory barrier*/
 	wmb();
-
-	/* configure normal mode */
-	msm_geni_ir_normal_mode(ir);
 
 	return 0;
 }
