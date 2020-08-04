@@ -199,6 +199,7 @@ struct tmc_etr_bam_data {
 	struct sps_mem_buffer	desc_fifo;
 	struct sps_mem_buffer	data_fifo;
 	bool			enable;
+	enum usb_pipe_mem_type	mem_type;
 };
 
 enum etr_mode {
