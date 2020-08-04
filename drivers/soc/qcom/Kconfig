@@ -35,6 +35,14 @@ config NAIRO_DTB
 	Only include NAIBO specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config NIO_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "NIO DTBs"
+    help
+    Only include NIO specific DTBs to limit the number that
+    get built during kernel compilation.
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
