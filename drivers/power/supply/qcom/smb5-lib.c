@@ -10366,6 +10366,7 @@ end_hb:
 
 	if (eb_sink_to_off ||
 	    (!charger_present && mmi->charger_debounce_cnt) ||
+	    (charger_present && batt_ma >= 0) ||
 	    vbus_inc_now)
 		hb_resch_time = HEARTBEAT_EB_WAIT_MS;
 
