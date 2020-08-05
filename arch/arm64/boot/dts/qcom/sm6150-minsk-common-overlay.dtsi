@@ -115,8 +115,8 @@
 
 &thermal_zones {
 	xo_therm {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
+		polling-delay-passive = <5000>;
+		polling-delay = <20000>;
 		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150_adc_tm ADC_XO_THERM_PU2>;
 		wake-capable-sensor;
@@ -145,8 +145,8 @@
 	};
 
 	chg_therm {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
+		polling-delay-passive = <5000>;
+		polling-delay = <20000>;
 		thermal-governor = "user_space";
 		thermal-sensors = <&pm6150_adc_tm ADC_AMUX_THM3_PU2>;
 		wake-capable-sensor;
