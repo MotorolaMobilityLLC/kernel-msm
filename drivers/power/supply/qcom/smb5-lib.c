@@ -6101,6 +6101,7 @@ enum alarmtimer_restart smblib_lpd_recheck_timer(struct alarm *alarm,
 
 #ifndef QCOM_BASE
 #define LPD_POST_RETRY_INTERVAL 3000
+#define LPD_POST_RETRY_DELAY 300
 #define LPD_POST_RETRY_CNT_MAX 5
 static bool lpd_post_recheck(struct smb_charger *chg)
 {
@@ -6108,26 +6109,37 @@ static bool lpd_post_recheck(struct smb_charger *chg)
 	u8 stat;
 	bool port_clear;
 	static int retry_count = 0;
+	union power_supply_propval pval;
 
-	if (chg->lpd_reason != LPD_NONE ||
-	    chg->power_role != POWER_SUPPLY_TYPEC_PR_DUAL) {
+	if (chg->lpd_reason != LPD_NONE) {
 		retry_count = 0;
 		return false;
 	}
 
-	rc = smblib_read(chg, TYPE_C_SNK_STATUS_REG, &stat);
-	if (rc < 0)
-		port_clear = true;
-	else if (stat & DETECTED_SRC_TYPE_MASK)
+	if (chg->power_role != POWER_SUPPLY_TYPEC_PR_DUAL) {
+		pval.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
+		if (smblib_set_prop_typec_power_role(chg, &pval) < 0)
+			smblib_err(chg, "LPD: Couldn't enable DRP\n");
+		alarm_start_relative(&chg->lpd_recheck_timer,
+				ms_to_ktime(LPD_POST_RETRY_DELAY));
+		smblib_err(chg, "LPD: Enable DRP for lpd\n");
+		return true;
+	}
+
+	if (!smblib_read(chg, TYPE_C_SNK_STATUS_REG, &stat)
+	    && (stat & DETECTED_SRC_TYPE_MASK)) {
 		port_clear = false;
-	else {
-		rc = smblib_read(chg, TYPE_C_SRC_STATUS_REG, &stat);
-		if (rc < 0)
-			port_clear = true;
-		else if (stat & DETECTED_SNK_TYPE_MASK)
-			port_clear = false;
-		else
-			port_clear = true;
+		smblib_err(chg, "LPD: Source is still attached\n");
+	} else if (!smblib_read(chg, TYPE_C_SRC_STATUS_REG, &stat)
+		   && (stat & DETECTED_SNK_TYPE_MASK)) {
+		port_clear = false;
+		smblib_err(chg, "LPD: Sink is still attached\n");
+	} else if (!smblib_read(chg, TYPE_C_MISC_STATUS_REG, &stat)
+		   && (stat & TYPEC_WATER_DETECTION_STATUS_BIT)) {
+		port_clear = false;
+		smblib_err(chg, "LPD: Water still exist\n");
+	} else {
+		port_clear = true;
 	}
 
 	if (port_clear) {
@@ -6141,11 +6153,26 @@ static bool lpd_post_recheck(struct smb_charger *chg)
 		chg->moisture_present = false;
 		vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
 		power_supply_changed(chg->usb_psy);
-		smblib_err(chg, "Liquid on Type-C port gets clean\n");
+		smblib_err(chg, "LPD: Liquid on Type-C port gets clean\n");
 	} else {
+		pval.intval = POWER_SUPPLY_TYPEC_PR_NONE;
+		if (smblib_set_prop_typec_power_role(chg, &pval) < 0)
+			smblib_err(chg, "LPD: Couldn't disable DRP\n");
 		vote(chg->usb_icl_votable, LPD_VOTER, true, 0);
 		alarm_start_relative(&chg->lpd_recheck_timer,
 				ms_to_ktime(LPD_POST_RETRY_INTERVAL));
+		smblib_err(chg, "LPD: Disable DRP for lpd\n");
+	}
+
+	if (!smblib_read(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG, &stat)
+	    && !(stat & TYPEC_WATER_DETECTION_INT_EN_BIT)) {
+		retry_count = 0;
+		smblib_err(chg, "LPD: Re-enable water detection irq\n");
+		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
+				TYPEC_WATER_DETECTION_INT_EN_BIT,
+				TYPEC_WATER_DETECTION_INT_EN_BIT);
+		if (rc < 0)
+			smblib_err(chg, "LPD: Water detection irq enable failed, rc=%d\n", rc);
 	}
 
 	return true;
@@ -6178,7 +6205,8 @@ static void lpd_recheck_work(struct work_struct *work)
 		}
 #ifndef QCOM_BASE
 		alarm_start_relative(&chg->lpd_recheck_timer,
-				ms_to_ktime(LPD_POST_RETRY_INTERVAL));
+				ms_to_ktime(LPD_POST_RETRY_DELAY));
+		smblib_err(chg, "LPD: Enable DRP for lpd\n");
 #else
 		chg->moisture_present = false;
 		power_supply_changed(chg->usb_psy);
@@ -6576,7 +6604,8 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, HVDCP2_12V_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
 	vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
-	vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
+	if (!chg->moisture_present)
+		vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
 
 	/* reset usb irq voters */
 	vote(chg->limited_irq_disable_votable, CHARGER_TYPE_VOTER,
