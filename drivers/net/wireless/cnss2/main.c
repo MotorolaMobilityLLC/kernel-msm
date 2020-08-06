@@ -1199,7 +1199,7 @@ static int cnss_driver_recovery_hdlr(struct cnss_plat_data *plat_priv,
 
 	if (test_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state)) {
 		cnss_pr_err("Recovery is already in progress\n");
-		CNSS_ASSERT(0);
+		WARN_ON(1);
 		ret = -EINVAL;
 		goto out;
 	}
