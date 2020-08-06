@@ -55,6 +55,10 @@
 #include "xhci.h"
 
 #define SDP_CONNECTION_CHECK_TIME 10000 /* in ms */
+#undef dev_dbg
+#undef pr_debug
+#define dev_dbg dev_err
+#define pr_debug pr_err
 
 /* time out to wait for USB cable status notification (in ms)*/
 #define SM_INIT_TIMEOUT 30000
@@ -5049,7 +5053,14 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (!mdwc->role_switch && !mdwc->extcon) {
+	/*
+	 * MMI_STOPSHIP
+	 * start peripheral mode by default in case
+	 * there is no typec change event from ADSP
+	 * for ADSP crash or stuck, so as not to trigger
+	 * USB enumeration.
+	 */
+	if (mdwc->role_switch) {
 		switch (dwc->dr_mode) {
 		case USB_DR_MODE_OTG:
 			if (of_property_read_bool(node,
