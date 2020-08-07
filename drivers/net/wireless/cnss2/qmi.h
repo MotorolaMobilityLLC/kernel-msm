@@ -37,6 +37,7 @@ struct cnss_qmi_event_qdss_trace_save_data {
 	char file_name[QDSS_TRACE_FILE_NAME_MAX + 1];
 };
 
+#define FW_ID_BASE 7
 #ifdef CONFIG_CNSS2_QMI
 #include "wlan_firmware_service_v01.h"
 
