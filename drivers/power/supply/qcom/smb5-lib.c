@@ -574,12 +574,12 @@ static const struct apsd_result smblib_apsd_results[] = {
 	[HVDCP2] = {
 		.name	= "HVDCP2",
 		.bit	= DCP_CHARGER_BIT | QC_2P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP
+		.pst	= POWER_SUPPLY_TYPE_USB_DCP
 	},
 	[HVDCP3] = {
 		.name	= "HVDCP3",
 		.bit	= DCP_CHARGER_BIT | QC_3P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP_3,
+		.pst	= POWER_SUPPLY_TYPE_USB_DCP,
 	},
 };
 
@@ -7679,6 +7679,7 @@ irqreturn_t usbin_ov_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
+	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
 	u8 stat;
 	int rc;
 
@@ -7713,9 +7714,9 @@ irqreturn_t usbin_ov_irq_handler(int irq, void *data)
 	smblib_dbg(chg, PR_MISC, "USBOV debounce status %d\n",
 				chg->dbc_usbov);
 
+        /* QC 2.0/3.0 adapter */
 	if ((!chg->qc_usbov) &&
-	    (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP ||
-	    chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)) {
+	    (apsd_result->bit & (QC_3P0_BIT | QC_2P0_BIT))) {
 		smblib_err(chg, "QC vbus OV disable HVDCP\n");
 		chg->qc_usbov = true;
 		smblib_hvdcp_enable_mmi(chg, false);
