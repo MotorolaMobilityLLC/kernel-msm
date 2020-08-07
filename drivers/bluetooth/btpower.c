@@ -1088,10 +1088,6 @@ static long bt_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	int itr, num_vregs;
 	struct bt_power_vreg_data *vreg_info = NULL;
 
-	// MMI_STOPSHIP: btpower: skip bt_ioctl panic when pmr735a chip is removed
-	if (1)
-		return -ENOIOCTLCMD;
-
 	switch (cmd) {
 	case BT_CMD_SLIM_TEST:
 #if (defined CONFIG_BT_SLIM_QCA6390 || \
