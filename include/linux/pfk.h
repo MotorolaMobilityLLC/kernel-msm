@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef PFK_H_
@@ -24,6 +24,7 @@ struct ice_crypto_setting;
 
 struct blk_encryption_key {
 	u8 raw[BLK_ENCRYPTION_KEY_SIZE_AES_256_XTS];
+	size_t size;
 };
 
 int pfk_load_key_start(const struct bio *bio, struct ice_device *ice_dev,
