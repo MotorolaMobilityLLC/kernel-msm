@@ -20,7 +20,7 @@ struct ice_crypto_setting;
  * ever needed, this should be made variable-length with a 'mode' and 'size'.
  * (Remember to update pfk_allow_merge_bio() when doing so!)
  */
-#define BLK_ENCRYPTION_KEY_SIZE_AES_256_XTS 64
+#define BLK_ENCRYPTION_KEY_SIZE_AES_256_XTS 128
 
 struct blk_encryption_key {
 	u8 raw[BLK_ENCRYPTION_KEY_SIZE_AES_256_XTS];
