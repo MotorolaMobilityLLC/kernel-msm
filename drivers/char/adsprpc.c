@@ -2085,8 +2085,6 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 		if (err)
 			goto bail;
 	}
-	if (ctx->handle)
-		glink_rx_done(ctx->handle, ctx->ptr, true);
 	PERF(fl->profile, GET_COUNTER(perf_counter, PERF_INVARGS),
 	if (!fl->sctx->smmu.coherent)
 		inv_args(ctx);
@@ -2102,6 +2100,10 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	if (err)
 		goto bail;
  bail:
+	if (ctx->handle) {
+		glink_rx_done(ctx->handle, ctx->ptr, true);
+		ctx->handle = NULL;
+	}
 	if (ctx && interrupted == -ERESTARTSYS)
 		context_save_interrupted(ctx);
 	else if (ctx)
@@ -2950,8 +2952,10 @@ static void fastrpc_glink_notify_rx(void *handle, const void *priv,
 
 	context_notify_user(me->ctxtable[index], rsp->retval);
 bail:
-	if (err)
+	if (err) {
+		glink_rx_done(handle, ptr, true);
 		pr_err("adsprpc: invalid response or context\n");
+	}
 }
 
 static void fastrpc_glink_notify_state(void *handle, const void *priv,
