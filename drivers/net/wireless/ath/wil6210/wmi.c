@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: ISC
 /*
  * Copyright (c) 2012-2017 Qualcomm Atheros, Inc.
- * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/moduleparam.h>
@@ -4318,6 +4318,8 @@ wil_get_vr_profile_name(enum wmi_vr_profile profile)
 		return "COMMON_AP";
 	case WMI_VR_PROFILE_COMMON_STA:
 		return "COMMON_STA";
+	case WMI_VR_PROFILE_COMMON_STA_PS:
+		return "COMMON_STA_PS";
 	default:
 		return "unknown";
 	}
