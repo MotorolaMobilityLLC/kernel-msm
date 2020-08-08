@@ -62,7 +62,7 @@ static int default_key_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	}
 
 	key_size = strlen(argv[1]);
-	if (key_size != 2 * BLK_ENCRYPTION_KEY_SIZE_AES_256_XTS) {
+	if (key_size > 2 * BLK_ENCRYPTION_KEY_SIZE_AES_256_XTS) {
 		ti->error = "Unsupported key size";
 		err = -EINVAL;
 		goto bad;
@@ -74,6 +74,7 @@ static int default_key_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		err = -EINVAL;
 		goto bad;
 	}
+	dkc->key.size = key_size;
 
 	err = dm_get_device(ti, argv[2], dm_table_get_mode(ti->table),
 			    &dkc->dev);
