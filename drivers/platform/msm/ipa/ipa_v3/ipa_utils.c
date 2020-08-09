@@ -2068,6 +2068,12 @@ static const struct ipa_ep_configuration ipa3_ep_mapping
 			IPA_DPS_HPS_SEQ_TYPE_INVALID,
 			QMB_MASTER_SELECT_DDR,
 			{ 12, 4, 4, 4, IPA_EE_AP, GSI_ESCAPE_BUF_ONLY} },
+	[IPA_4_2][IPA_CLIENT_ODL_DPL_CONS]	= {
+			true, IPA_v4_2_GROUP_UL_DL,
+			false,
+			IPA_DPS_HPS_SEQ_TYPE_INVALID,
+			QMB_MASTER_SELECT_DDR,
+			{ 13, 10, 6, 6, IPA_EE_AP, GSI_ESCAPE_BUF_ONLY} },
 	[IPA_4_2][IPA_CLIENT_APPS_LAN_CONS]       = {
 			true, IPA_v4_2_GROUP_UL_DL,
 			false,
@@ -2092,12 +2098,6 @@ static const struct ipa_ep_configuration ipa3_ep_mapping
 			IPA_DPS_HPS_SEQ_TYPE_INVALID,
 			QMB_MASTER_SELECT_DDR,
 			{ 10, 2, 6, 6, IPA_EE_Q6,  GSI_ESCAPE_BUF_ONLY} },
-	[IPA_4_2][IPA_CLIENT_Q6_LTE_WIFI_AGGR_CONS] = {
-			true, IPA_v4_2_GROUP_UL_DL,
-			false,
-			IPA_DPS_HPS_SEQ_TYPE_INVALID,
-			QMB_MASTER_SELECT_DDR,
-			{ 13, 4, 6, 6, IPA_EE_Q6, GSI_ESCAPE_BUF_ONLY} },
 	[IPA_4_2][IPA_CLIENT_ETHERNET_CONS] = {
 			true, IPA_v4_2_GROUP_UL_DL,
 			false,
@@ -7596,13 +7596,9 @@ static bool ipa3_gsi_channel_is_quite(struct ipa3_ep_context *ep)
 	bool empty;
 
 	gsi_is_channel_empty(ep->gsi_chan_hdl, &empty);
-	if (!empty) {
+	if (!empty)
 		IPADBG("ch %ld not empty\n", ep->gsi_chan_hdl);
-		/* queue a work to start polling if don't have one */
-		atomic_set(&ipa3_ctx->transport_pm.eot_activity, 1);
-		if (!atomic_read(&ep->sys->curr_polling_state))
-			__ipa_gsi_irq_rx_scedule_poll(ep->sys);
-	}
+	/*Schedule NAPI only from interrupt context to avoid race conditions*/
 	return empty;
 }
 

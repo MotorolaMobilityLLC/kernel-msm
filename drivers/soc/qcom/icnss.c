@@ -1842,10 +1842,9 @@ int icnss_unregister_driver(struct icnss_driver_ops *ops)
 
 	icnss_pr_dbg("Unregistering driver, state: 0x%lx\n", penv->state);
 
-	if (!penv->ops || (!test_bit(ICNSS_DRIVER_PROBED, &penv->state))) {
-		icnss_pr_err("Driver not registered/probed\n");
+	if (!penv->ops) {
+		icnss_pr_err("Driver not registered\n");
 		ret = -ENOENT;
-		penv->ops = NULL;
 		goto out;
 	}
 
@@ -2290,6 +2289,9 @@ int icnss_trigger_recovery(struct device *dev)
 
 	if (!ret)
 		set_bit(ICNSS_HOST_TRIGGERED_PDR, &priv->state);
+
+	icnss_pr_warn("PD restart request completed, ret: %d state: 0x%lx\n",
+		      ret, priv->state);
 
 out:
 	return ret;

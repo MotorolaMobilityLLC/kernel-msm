@@ -1925,7 +1925,9 @@ static int ufshcd_devfreq_target(struct device *dev,
 	spin_unlock_irqrestore(hba->host->host_lock, irq_flags);
 
 	start = ktime_get();
+	pm_runtime_get_sync(hba->dev);
 	ret = ufshcd_devfreq_scale(hba, scale_up);
+	pm_runtime_put_sync(hba->dev);
 	trace_ufshcd_profile_clk_scaling(dev_name(hba->dev),
 		(scale_up ? "up" : "down"),
 		ktime_to_us(ktime_sub(ktime_get(), start)), ret);
@@ -2237,12 +2239,12 @@ start:
 		 * work and to enable clocks.
 		 */
 	case CLKS_OFF:
-		ufshcd_scsi_block_requests(hba);
 		hba->clk_gating.state = REQ_CLKS_ON;
 		trace_ufshcd_clk_gating(dev_name(hba->dev),
 					hba->clk_gating.state);
-		queue_work(hba->clk_gating.clk_gating_workq,
-			   &hba->clk_gating.ungate_work);
+		if (queue_work(hba->clk_gating.clk_gating_workq,
+			       &hba->clk_gating.ungate_work))
+			ufshcd_scsi_block_requests(hba);
 		/*
 		 * fall through to check if we should wait for this
 		 * work to be done or not.
@@ -10406,6 +10408,7 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 			goto enable_gating;
 	}
 
+	flush_work(&hba->eeh_work);
 	ret = ufshcd_link_state_transition(hba, req_link_state, 1);
 	if (ret)
 		goto set_dev_active;
@@ -10559,11 +10562,16 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 			 * we can proceed after checking the link and
 			 * dev state.
 			 */
-			if ((host_byte(ret) == DID_TIME_OUT) &&
-			    ufshcd_is_ufs_dev_active(hba) &&
+			if (ufshcd_is_ufs_dev_active(hba) &&
 			    ufshcd_is_link_active(hba))
 				ret = 0;
-			else
+
+			else if ((work_pending(&hba->eh_work)) ||
+				ufshcd_eh_in_progress(hba)) {
+				flush_work(&hba->eh_work);
+				ret = 0;
+				}
+			if (ret)
 				goto set_old_link_state;
 		}
 	}

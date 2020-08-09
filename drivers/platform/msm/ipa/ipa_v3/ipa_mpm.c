@@ -732,7 +732,6 @@ static void ipa_mpm_smmu_unmap(dma_addr_t carved_iova, int sz, int dir,
 
 	if (carved_iova <= 0) {
 		IPA_MPM_ERR("carved_iova is zero/negative\n");
-		WARN_ON(1);
 		return;
 	}
 
@@ -1568,9 +1567,8 @@ static int ipa_mpm_vote_unvote_pcie_clk(enum ipa_mpm_clk_vote_type vote,
 		if ((atomic_read(
 			&ipa_mpm_ctx->md[probe_id].clk_cnt.pcie_clk_cnt)
 								== 0)) {
-			IPA_MPM_DBG("probe_id %d PCIE clock already devoted\n",
+			IPA_MPM_ERR("probe_id %d PCIE clock already devoted\n",
 				probe_id);
-			WARN_ON(1);
 			*is_acted = true;
 			return 0;
 		}
@@ -1606,9 +1604,8 @@ static void ipa_mpm_vote_unvote_ipa_clk(enum ipa_mpm_clk_vote_type vote,
 		if ((atomic_read
 			(&ipa_mpm_ctx->md[probe_id].clk_cnt.ipa_clk_cnt)
 								== 0)) {
-			IPA_MPM_DBG("probe_id %d IPA clock count < 0\n",
+			IPA_MPM_ERR("probe_id %d IPA clock count < 0\n",
 				probe_id);
-			WARN_ON(1);
 			return;
 		}
 		IPA_ACTIVE_CLIENTS_DEC_SPECIAL(ipa_mpm_mhip_chan_str[probe_id]);
@@ -2363,7 +2360,6 @@ static int ipa_mpm_mhi_probe_cb(struct mhi_device *mhi_dev,
 	ret = mhi_prepare_for_transfer(ipa_mpm_ctx->md[probe_id].mhi_dev);
 	if (ret) {
 		IPA_MPM_ERR("mhi_prepare_for_transfer failed %d\n", ret);
-		WARN_ON(1);
 		/*
 		 * WA to handle prepare_for_tx failures.
 		 * Though prepare for transfer fails, indicate success
@@ -3534,8 +3530,9 @@ int ipa3_qmi_reg_dereg_for_bw(bool bw_reg, int bw_reg_dereg_type)
 			}
 			IPA_MPM_DBG("QMI BW regst success from %d",
 				ipa_mpm_ctx->bw_reg_dereg_cache[
-					ipa_mpm_ctx->cache_index -
-					1].bw_reg_dereg_type);
+					(ipa_mpm_ctx->cache_index -
+					1) % IPA_MAX_BW_REG_DEREG_CACHE].
+					bw_reg_dereg_type);
 		} else {
 			IPA_MPM_DBG("bw_change to %d no-op, teth_count = %d",
 				bw_reg,
@@ -3556,8 +3553,9 @@ int ipa3_qmi_reg_dereg_for_bw(bool bw_reg, int bw_reg_dereg_type)
 			}
 			IPA_MPM_DBG("QMI BW De-regst success %d",
 				ipa_mpm_ctx->bw_reg_dereg_cache[
-					ipa_mpm_ctx->cache_index -
-					1].bw_reg_dereg_type);
+					(ipa_mpm_ctx->cache_index -
+					1) % IPA_MAX_BW_REG_DEREG_CACHE].
+					bw_reg_dereg_type);
 		} else {
 			IPA_MPM_DBG("bw_change to %d no-op, teth_count = %d",
 				bw_reg,
