@@ -617,6 +617,8 @@ static int smb5_parse_dt(struct smb5 *chip)
 					"qcom,wireless-unsupported");
 	chg->usbeb_unsupported = of_property_read_bool(node,
 					"qcom,usbeb-unsupported");
+	chg->cp_use_internal_qg = of_property_read_bool(node,
+					"mmi,cp-use-internal-qg");
 
 	/* Extract ADC channels */
 	rc = smblib_get_iio_channel(chg, "mid_voltage", &chg->iio.mid_chan);
@@ -2090,8 +2092,12 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		val->intval = !get_effective_result(chg->chg_disable_votable);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_RATE:
-		mmi_chrg_rate_check(chg);
-		val->intval = chg->mmi.charger_rate;
+		if (chg->cp_use_internal_qg)
+			val->intval = chg->mmi.charger_rate;
+		else {
+			mmi_chrg_rate_check(chg);
+			val->intval = chg->mmi.charger_rate;
+		}
 		break;
 	case POWER_SUPPLY_PROP_AGE:
 		rc = smblib_get_prop_batt_age(chg, val);
@@ -2210,6 +2216,13 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
 		vote(chg->chg_disable_votable, USER_VOTER, !!!val->intval, 0);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_RATE:
+		if (chg->cp_use_internal_qg) {
+			chg->mmi.charger_rate = val->intval;
+			power_supply_changed(chg->batt_psy);
+			pr_debug("set prop charge rate %d \n", chg->mmi.charger_rate);
+		}
 		break;
 	default:
 		rc = -EINVAL;

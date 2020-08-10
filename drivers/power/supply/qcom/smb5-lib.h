@@ -774,6 +774,7 @@ struct smb_charger {
 	u32			source_current_ma;
 	bool			reverse_boost;
 	bool			cp_active;
+	bool			cp_use_internal_qg;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);

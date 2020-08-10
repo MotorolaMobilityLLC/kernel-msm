@@ -9947,7 +9947,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (cl_usb <= 0)
 			cl_usb = 500;
 
-		if (cl_usb >= TURBO_CHRG_THRSH)
+		if ((cl_usb >= TURBO_CHRG_THRSH) && !chip->cp_use_internal_qg)
 			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 	}
 
