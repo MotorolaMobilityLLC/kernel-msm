@@ -582,7 +582,7 @@ static int wled_update_status(struct backlight_device *bl)
 
 		rc = wled_set_brightness(wled, brightness);
 		if (wled->cabc_disabled && wled->sleep_cabc_disable) {
-			msleep(30);
+			msleep(50);
 			wled->cabc_disabled = false;
 			wled->cabc_config(wled, true);
 			pr_info("enable wled cabc\n");
