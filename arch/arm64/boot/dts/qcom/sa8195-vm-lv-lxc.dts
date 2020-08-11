@@ -12,13 +12,12 @@
 
 /dts-v1/;
 
-#include "sdxprairie-v2-mtp-cpe.dtsi"
+#include "sa8195-vm.dtsi"
+#include "sa8195-vm-lv-lxc.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. SDXPRAIRIE V2 TTP (CPE)";
-	compatible = "qcom,sdxprairie-ttp",
-		"qcom,sdxprairie", "qcom,ttp";
-	qcom,board-id = <0x08010008 0x0>;
+	model = "Qualcomm Technologies, Inc. SA8195 Single LV Virtual Machine";
+	compatible = "qcom,sa8195p";
+	qcom,pmic-name = "PM8195";
+	qcom,board-id = <0x1000002 0>;
 };
-
-
