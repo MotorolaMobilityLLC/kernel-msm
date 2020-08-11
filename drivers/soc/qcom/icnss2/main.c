@@ -3273,6 +3273,9 @@ static int icnss_pm_resume(struct device *dev)
 	    !test_bit(ICNSS_DRIVER_PROBED, &priv->state))
 		goto out;
 
+	if (test_bit(ICNSS_PD_RESTART, &priv->state))
+		return -EAGAIN;
+
 	if (priv->device_id == WCN6750_DEVICE_ID) {
 		ret = wlfw_exit_power_save_send_msg(priv);
 		if (ret) {
@@ -3386,13 +3389,17 @@ static int icnss_pm_runtime_resume(struct device *dev)
 	if (!priv->ops || !priv->ops->runtime_resume)
 		goto out;
 
+	icnss_pr_vdbg("Runtime resume, state: 0x%lx\n", priv->state);
+
+	if (test_bit(ICNSS_PD_RESTART, &priv->state))
+		return -EAGAIN;
+
 	ret = wlfw_exit_power_save_send_msg(priv);
 	if (ret) {
 		priv->stats.pm_resume_err++;
 		return ret;
 	}
 
-	icnss_pr_vdbg("Runtime resume\n");
 	ret = priv->ops->runtime_resume(dev);
 
 out:
