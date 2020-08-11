@@ -206,6 +206,7 @@ dtb-$(CONFIG_QTI_GVM) += sa8155-vm-la.dtb \
 	sa8195-vm-la.dtb \
 	sa8195-vm-la-mt.dtb \
 	sa8195-vm-lv.dtb \
+	sa8195-vm-lv-lxc.dtb \
 	sa8195-vm-lv-mt.dtb
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -444,7 +445,7 @@ dtb-$(CONFIG_ARCH_SDXPRAIRIE) += sdxprairie-rumi.dtb \
 	sdxprairie-v2-mtp-v1.1-cpe.dtb \
 	sdxprairie-v2-mtp-v1.1.dtb \
 	sdxprairie-v2-mtp-le-cpe.dtb \
-	sdxprairie-v2-ttp-cpe.dtb \
+	sdxprairie-v2-mtp-au-dsda.dtb \
 	sa515m-v2-ttp.dtb \
 	sa515m-v2-ttp-usb-ep.dtb \
 	sa515m-v2-ttp-pcie-ep.dtb \
