@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -594,11 +594,11 @@ static void sde_encoder_phys_vid_vblank_irq(void *arg, int irq_idx)
 	pend_ret_fence_cnt = atomic_read(&phys_enc->pending_retire_fence_cnt);
 
 	/* signal only for master, where there is a pending kickoff */
-	if (sde_encoder_phys_vid_is_master(phys_enc)) {
-		if (atomic_add_unless(&phys_enc->pending_retire_fence_cnt,
-					-1, 0))
-			event |= SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE |
-				SDE_ENCODER_FRAME_EVENT_SIGNAL_RELEASE_FENCE;
+	if (sde_encoder_phys_vid_is_master(phys_enc) &&
+		atomic_add_unless(&phys_enc->pending_retire_fence_cnt, -1, 0)) {
+		event = SDE_ENCODER_FRAME_EVENT_DONE |
+			SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE |
+			SDE_ENCODER_FRAME_EVENT_SIGNAL_RELEASE_FENCE;
 	}
 
 not_flushed:
@@ -616,9 +616,10 @@ not_flushed:
 				phys_enc);
 
 	SDE_EVT32_IRQ(DRMID(phys_enc->parent), phys_enc->hw_intf->idx - INTF_0,
-			old_cnt, new_cnt, reset_status ? SDE_EVTLOG_ERROR : 0,
+			old_cnt, atomic_read(&phys_enc->pending_kickoff_cnt),
+			reset_status ? SDE_EVTLOG_ERROR : 0,
 			flush_register, event,
-			pend_ret_fence_cnt);
+			atomic_read(&phys_enc->pending_retire_fence_cnt));
 
 	/* Signal any waiting atomic commit thread */
 	wake_up_all(&phys_enc->pending_kickoff_wq);
@@ -945,10 +946,11 @@ static void sde_encoder_phys_vid_get_hw_resources(
 static int _sde_encoder_phys_vid_wait_for_vblank(
 		struct sde_encoder_phys *phys_enc, bool notify)
 {
-	struct sde_encoder_wait_info wait_info;
+	struct sde_encoder_wait_info wait_info = {0};
 	int ret = 0;
-	u32 event = 0;
-	u32 event_helper = 0;
+	u32 event = SDE_ENCODER_FRAME_EVENT_ERROR |
+			SDE_ENCODER_FRAME_EVENT_SIGNAL_RELEASE_FENCE |
+			SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE;
 
 	if (!phys_enc) {
 		pr_err("invalid encoder\n");
@@ -959,40 +961,16 @@ static int _sde_encoder_phys_vid_wait_for_vblank(
 	wait_info.atomic_cnt = &phys_enc->pending_kickoff_cnt;
 	wait_info.timeout_ms = KICKOFF_TIMEOUT_MS;
 
-	if (!sde_encoder_phys_vid_is_master(phys_enc)) {
-		/* signal done for slave video encoder, unless it is pp-split */
-		if (!_sde_encoder_phys_is_ppsplit(phys_enc) && notify) {
-			event = SDE_ENCODER_FRAME_EVENT_DONE;
-			goto end;
-		}
-		return 0;
-	}
-
 	/* Wait for kickoff to complete */
 	ret = sde_encoder_helper_wait_for_irq(phys_enc, INTR_IDX_VSYNC,
 			&wait_info);
 
-	event_helper = SDE_ENCODER_FRAME_EVENT_SIGNAL_RELEASE_FENCE
-			| SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE;
-
-	if (notify) {
-		if (ret == -ETIMEDOUT) {
-			event = SDE_ENCODER_FRAME_EVENT_ERROR;
-			if (atomic_add_unless(
-				&phys_enc->pending_retire_fence_cnt, -1, 0))
-				event |= event_helper;
-		} else if (!ret) {
-			event = SDE_ENCODER_FRAME_EVENT_DONE;
-		}
-	}
-
-end:
-	SDE_EVT32(DRMID(phys_enc->parent), event, notify, ret,
-			ret ? SDE_EVTLOG_FATAL : 0);
-	if (phys_enc->parent_ops.handle_frame_done && event)
+	if (notify && (ret == -ETIMEDOUT) &&
+		atomic_add_unless(&phys_enc->pending_retire_fence_cnt, -1, 0) &&
+			phys_enc->parent_ops.handle_frame_done)
 		phys_enc->parent_ops.handle_frame_done(
-				phys_enc->parent, phys_enc,
-				event);
+			 phys_enc->parent, phys_enc, event);
+
 	return ret;
 }
 

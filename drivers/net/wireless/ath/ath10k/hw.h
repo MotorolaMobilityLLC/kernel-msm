@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005-2011 Atheros Communications Inc.
- * Copyright (c) 2011-2013 Qualcomm Atheros, Inc.
+ * Copyright (c) 2011-2017 Qualcomm Atheros, Inc.
+ * Copyright (c) 2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -22,6 +23,7 @@
 
 #define ATH10K_FW_DIR			"ath10k"
 
+#define QCA988X_2_0_DEVICE_ID_UBNT   (0x11ac)
 #define QCA988X_2_0_DEVICE_ID   (0x003c)
 #define QCA6164_2_1_DEVICE_ID   (0x0041)
 #define QCA6174_2_1_DEVICE_ID   (0x003e)
@@ -107,6 +109,7 @@ enum qca9377_chip_id_rev {
 #define QCA9984_HW_1_0_CHIP_ID_REV	0x0
 #define QCA9984_HW_1_0_FW_DIR		ATH10K_FW_DIR "/QCA9984/hw1.0"
 #define QCA9984_HW_1_0_BOARD_DATA_FILE "board.bin"
+#define QCA9984_HW_1_0_EBOARD_DATA_FILE "eboard.bin"
 #define QCA9984_HW_1_0_PATCH_LOAD_ADDR	0x1234
 
 /* QCA9888 2.0 defines */
@@ -130,7 +133,7 @@ enum qca9377_chip_id_rev {
 
 /* WCN3990 1.0 definitions */
 #define WCN3990_HW_1_0_DEV_VERSION	ATH10K_HW_WCN3990
-#define WCN3990_HW_1_0_FW_DIR		ATH10K_FW_DIR "/WCN3990/hw3.0"
+#define WCN3990_HW_1_0_FW_DIR		ATH10K_FW_DIR "/WCN3990/hw1.0"
 
 #define ATH10K_FW_FILE_BASE		"firmware"
 #define ATH10K_FW_API_MAX		6
@@ -219,6 +222,7 @@ enum ath10k_fw_htt_op_version {
 enum ath10k_bd_ie_type {
 	/* contains sub IEs of enum ath10k_bd_ie_board_type */
 	ATH10K_BD_IE_BOARD = 0,
+	ATH10K_BD_IE_BOARD_EXT = 1,
 };
 
 enum ath10k_bd_ie_board_type {
@@ -334,10 +338,18 @@ struct ath10k_hw_ce_dst_src_wm_regs {
 	struct ath10k_hw_ce_regs_addr_map *wm_low;
 	struct ath10k_hw_ce_regs_addr_map *wm_high; };
 
+struct ath10k_hw_ce_ctrl1_upd {
+	u32 shift;
+	u32 mask;
+	u32 enable;
+};
+
 struct ath10k_hw_ce_regs {
-	u32 sr_base_addr;
+	u32 sr_base_addr_lo;
+	u32 sr_base_addr_hi;
 	u32 sr_size_addr;
-	u32 dr_base_addr;
+	u32 dr_base_addr_lo;
+	u32 dr_base_addr_hi;
 	u32 dr_size_addr;
 	u32 ce_cmd_addr;
 	u32 misc_ie_addr;
@@ -356,7 +368,9 @@ struct ath10k_hw_ce_regs {
 	struct ath10k_hw_ce_cmd_halt *cmd_halt;
 	struct ath10k_hw_ce_host_ie *host_ie;
 	struct ath10k_hw_ce_dst_src_wm_regs *wm_srcr;
-	struct ath10k_hw_ce_dst_src_wm_regs *wm_dstr; };
+	struct ath10k_hw_ce_dst_src_wm_regs *wm_dstr;
+	struct ath10k_hw_ce_ctrl1_upd *upd;
+};
 
 struct ath10k_hw_values {
 	u32 rtc_state_val_on;
@@ -529,6 +543,8 @@ struct ath10k_hw_params {
 		const char *dir;
 		const char *board;
 		size_t board_size;
+		const char *eboard;
+		size_t ext_board_size;
 		size_t board_ext_size;
 	} fw;
 
@@ -567,6 +583,20 @@ struct ath10k_hw_params {
 
 	/* Target rx ring fill level */
 	u32 rx_ring_fill_level;
+
+	/* target supporting per ce IRQ */
+	bool per_ce_irq;
+
+	/* target supporting shadow register for ce write */
+	bool shadow_reg_support;
+
+	/* target supporting retention restore on ddr */
+	bool rri_on_ddr;
+
+	/* targets which require hw filter reset during boot up,
+	 * to avoid it sending spurious acks.
+	 */
+	bool hw_filter_reset_required;
 };
 
 struct htt_rx_desc;
@@ -888,6 +918,7 @@ ath10k_rx_desc_get_l3_pad_bytes(struct ath10k_hw_params *hw,
 #define PCIE_INTR_CLR_ADDRESS			ar->regs->pcie_intr_clr_address
 #define SCRATCH_3_ADDRESS			ar->regs->scratch_3_address
 #define CPU_INTR_ADDRESS			0x0010
+#define FW_RAM_CONFIG_ADDRESS			0x0018
 
 #define CCNT_TO_MSEC(ar, x) ((x) / ar->hw_params.channel_counters_freq_hz)
 

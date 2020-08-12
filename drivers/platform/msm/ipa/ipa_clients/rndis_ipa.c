@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -996,7 +996,8 @@ static netdev_tx_t rndis_ipa_start_xmit(struct sk_buff *skb,
 fail_tx_packet:
 	rndis_ipa_xmit_error(skb);
 out:
-	resource_release(rndis_ipa_ctx);
+	if (atomic_read(&rndis_ipa_ctx->outstanding_pkts) == 0)
+		resource_release(rndis_ipa_ctx);
 resource_busy:
 	RNDIS_IPA_DEBUG
 		("packet Tx done - %s\n",
@@ -1068,6 +1069,10 @@ static void rndis_ipa_tx_complete_notify(
 		netif_wake_queue(rndis_ipa_ctx->net);
 		RNDIS_IPA_DEBUG("send queue was awaken\n");
 	}
+
+	/*Release resource only when outstanding packets are zero*/
+	if (atomic_read(&rndis_ipa_ctx->outstanding_pkts) == 0)
+		resource_release(rndis_ipa_ctx);
 
 out:
 	dev_kfree_skb_any(skb);

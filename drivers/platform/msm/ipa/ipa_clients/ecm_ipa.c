@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -668,7 +668,8 @@ static netdev_tx_t ecm_ipa_start_xmit
 
 fail_tx_packet:
 out:
-	resource_release(ecm_ipa_ctx);
+	if (atomic_read(&ecm_ipa_ctx->outstanding_pkts) == 0)
+		resource_release(ecm_ipa_ctx);
 resource_busy:
 	return status;
 }
@@ -1339,6 +1340,9 @@ static void ecm_ipa_tx_complete_notify
 			ecm_ipa_ctx->outstanding_low);
 		netif_wake_queue(ecm_ipa_ctx->net);
 	}
+
+	if (atomic_read(&ecm_ipa_ctx->outstanding_pkts) == 0)
+		resource_release(ecm_ipa_ctx);
 
 out:
 	dev_kfree_skb_any(skb);

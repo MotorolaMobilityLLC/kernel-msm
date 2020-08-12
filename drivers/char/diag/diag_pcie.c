@@ -416,31 +416,39 @@ void diag_pcie_client_cb(struct mhi_dev_client_cb_data *cb_data)
 {
 	struct diag_pcie_info *pcie_info = NULL;
 
-	if (!cb_data)
+	if (!cb_data) {
+		pr_err("diag: %s: Invalid cb_data\n", __func__);
 		return;
-
+	}
 	pcie_info = cb_data->user_data;
-	if (!pcie_info)
+	if (!pcie_info) {
+		pr_err("diag: %s: Invalid pcie_info\n", __func__);
 		return;
-
+	}
 	switch (cb_data->ctrl_info) {
 	case  MHI_STATE_CONNECTED:
 		if (cb_data->channel == pcie_info->out_chan) {
 			DIAG_LOG(DIAG_DEBUG_MUX,
-				" Received connect event from MHI for %d",
+			"diag: Received connect event from MHI for %d\n",
 				pcie_info->out_chan);
-			if (atomic_read(&pcie_info->enabled))
+			if (atomic_read(&pcie_info->enabled)) {
+				DIAG_LOG(DIAG_DEBUG_MUX,
+				"diag: pcie channel is already enabled\n");
 				return;
+			}
 			queue_work(pcie_info->wq, &pcie_info->open_work);
 		}
 		break;
 	case MHI_STATE_DISCONNECTED:
 		if (cb_data->channel == pcie_info->out_chan) {
 			DIAG_LOG(DIAG_DEBUG_MUX,
-				" Received disconnect event from MHI for %d",
+			"diag: Received disconnect event from MHI for %d",
 				pcie_info->out_chan);
-			if (!atomic_read(&pcie_info->enabled))
+			if (!atomic_read(&pcie_info->enabled)) {
+				DIAG_LOG(DIAG_DEBUG_MUX,
+				"diag: pcie channel is already disabled\n");
 				return;
+			}
 			queue_work(pcie_info->wq, &pcie_info->close_work);
 		}
 		break;
@@ -679,6 +687,8 @@ int diag_pcie_register(int id, int ctxt, struct diag_mux_ops *ops)
 		return -EIO;
 	}
 
+	pr_info("diag: Pcie registration initiated for id: %d\n", id);
+
 	ch = &diag_pcie[id];
 	ch->ops = ops;
 	ch->ctxt = ctxt;
@@ -692,8 +702,12 @@ int diag_pcie_register(int id, int ctxt, struct diag_mux_ops *ops)
 	strlcpy(wq_name, "DIAG_PCIE_", sizeof(wq_name));
 	strlcat(wq_name, ch->name, sizeof(wq_name));
 	ch->wq = create_singlethread_workqueue(wq_name);
-	if (!ch->wq)
+	if (!ch->wq) {
+		pr_err("diag: %s: failed creating workqueue for wq_name: %s\n",
+		__func__, wq_name);
 		return -ENOMEM;
+	}
+	DIAG_LOG(DIAG_DEBUG_MUX, "diag: created wq: %s\n", wq_name);
 	diagmem_init(driver, ch->mempool);
 	mutex_init(&ch->in_chan_lock);
 	mutex_init(&ch->out_chan_lock);
@@ -702,7 +716,10 @@ int diag_pcie_register(int id, int ctxt, struct diag_mux_ops *ops)
 		if (ch->wq)
 			destroy_workqueue(ch->wq);
 		kfree(ch->in_chan_attr.read_buffer);
+		pr_err("diag: %s: failed registering pcie channels\n",
+		__func__);
 		return rc;
 	}
+	pr_info("diag: pcie channel with id: %d registered successfully\n", id);
 	return 0;
 }

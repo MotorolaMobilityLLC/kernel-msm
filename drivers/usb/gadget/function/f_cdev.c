@@ -57,7 +57,7 @@
 #define BRIDGE_RX_QUEUE_SIZE	8
 #define BRIDGE_RX_BUF_SIZE	2048
 #define BRIDGE_TX_QUEUE_SIZE	8
-#define BRIDGE_TX_BUF_SIZE	(50 * 1024)
+#define BRIDGE_TX_BUF_SIZE	2048
 
 #define GS_LOG2_NOTIFY_INTERVAL		5  /* 1 << 5 == 32 msec */
 #define GS_NOTIFY_MAXPACKET		10 /* notification + 2 bytes */
@@ -962,6 +962,9 @@ static void cser_free_inst(struct usb_function_instance *fi)
 static void usb_cser_unbind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct f_cdev *port = func_to_port(f);
+
+	/* Reset string id */
+	cser_string_defs[0].id = 0;
 
 	usb_free_all_descriptors(f);
 	usb_cser_free_req(port->port_usb.notify, port->port_usb.notify_req);
