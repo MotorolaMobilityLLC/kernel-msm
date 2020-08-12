@@ -634,6 +634,9 @@ struct smb_charger {
 	/* lpd timer work */
 	struct workqueue_struct *wq;
 	struct work_struct	lpd_recheck_work;
+#ifndef QCOM_BASE
+	u32			lpd_retry_count;
+#endif
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
