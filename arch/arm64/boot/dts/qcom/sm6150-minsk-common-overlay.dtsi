@@ -325,6 +325,9 @@
 };
 
 &qusb_phy0 {
+	qcom,tune2-efuse-bit-pos = <25>;
+	qcom,tune2-efuse-num-bits = <4>;
+	qcom,tune2-efuse-correction = <(-4)>;
 	qcom,qusb-phy-init-seq = <0xf8 0x80
 				0x83 0x84
 				0x81 0x88
