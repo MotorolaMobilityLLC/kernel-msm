@@ -16,7 +16,7 @@
 #define _SB_NOTIFICATION_H
 
 /* Indicates a system wake up event */
-#define EVT_WAKE_UP 0x01
+#define EVENT_REQUEST_WAKE_UP 0x01
 
 #ifdef CONFIG_QTI_NOTIFY_SIDEBAND
 /**
