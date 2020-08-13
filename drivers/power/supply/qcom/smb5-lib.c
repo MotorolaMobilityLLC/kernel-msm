@@ -1632,7 +1632,8 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't set SDP ICL rc=%d\n", rc);
 			goto out;
-		}
+		} else
+			goto unsuspend;
 	} else {
 		/*
 		 * Try USB 2.0/3,0 option first on USB path when maximum input
