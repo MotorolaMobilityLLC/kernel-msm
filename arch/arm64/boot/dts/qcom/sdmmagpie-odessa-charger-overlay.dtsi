@@ -152,6 +152,7 @@
 	qcom,fcc-max-ua = <3150000>;
 	qcom,fv-max-uv = <4480000>;
 	qcom,disable-fcc-restriction;
+	mmi,cp-use-internal-qg;
 };
 
 &pm6150_qg {
