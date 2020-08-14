@@ -31,7 +31,9 @@
 #define TIME_CLOCK_FREQ_HZ		19200000
 #define CNSS_RAMDUMP_MAGIC		0x574C414E
 #define CNSS_RAMDUMP_VERSION		0
-#define MAX_FIRMWARE_NAME_LEN		20
+// BEGIN IKSWR-1888 Support loading different bdwlan.elf
+#define MAX_FIRMWARE_NAME_LEN		32
+// END IKSWR-1888 Support loading different bdwlan.elf
 
 #define CNSS_EVENT_SYNC   BIT(0)
 #define CNSS_EVENT_UNINTERRUPTIBLE BIT(1)
