@@ -1146,9 +1146,11 @@
   input_ff_create
   input_ff_destroy
   input_free_device
+  input_mt_destroy_slots
   input_mt_init_slots
   input_mt_report_pointer_emulation
   input_mt_report_slot_state
+  input_mt_sync_frame
   input_open_device
   input_register_device
   input_register_handle
@@ -1285,6 +1287,8 @@
   keyslot_manager_reprogram_all_keys
   keyslot_manager_destroy
   bio_crypt_should_process
+  __kfifo_alloc
+  __kfifo_free
   __kfifo_in
   __kfifo_out
   kfree
@@ -1306,6 +1310,7 @@
   kmemdup_nul
   kobject_create_and_add
   kobject_del
+  kobject_get_path
   kobject_init_and_add
   kobject_put
   kobject_uevent
@@ -2399,6 +2404,7 @@
   strlcpy
   strlen
   strncasecmp
+  strncat
   strnchr
   strncmp
   strncpy
