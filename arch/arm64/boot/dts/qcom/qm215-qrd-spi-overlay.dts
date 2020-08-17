@@ -1,0 +1,172 @@
+/*
+ * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	model = "QRD SPI";
+	qcom,board-id = <0x01000b 5>;
+};
+
+&mdss_mdp {
+	status = "disabled";
+	/delete-node/ qcom,mdss_fb_primary;
+};
+
+&mdss_dsi {
+	status = "disabled";
+};
+
+&mdss_dsi0 {
+	status = "disabled";
+};
+
+&soc {
+	qcom,mdss_wb_panel {
+	status = "disabled";
+	};
+};
+
+&mdss_dsi0_pll {
+	status = "disabled";
+};
+
+&mdss_dsi1_pll {
+	status = "disabled";
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "spi";
+};
+
+&soc {
+	mdss_spi_panel: qcom,mdss_spi_panel {
+		compatible = "qcom,mdss-spi-panel";
+		label = "mdss spi panel";
+		mdss_fb0: qcom,mdss_fb_primary {
+			cell-index = <0>;
+			compatible = "qcom,mdss-fb";
+		};
+	};
+};
+
+#include "spi-panel-st7789v2-320p-cmd.dtsi"
+
+&soc {
+	mdss_spi: qcom,mdss_spi {
+		compatible = "qcom,mdss-spi-display";
+		label = "mdss spi display";
+		qcom,spi-pref-prim-pan = <&spi_st7789v2_320p_cmd>;
+		qcom,mdss-spi = <&mdss_spi_panel>;
+		qcom,mdss-fb-map = <&mdss_fb0>;
+	};
+
+	spi@78b7000 {  /* BLSP1 QUP3 */
+		status = "ok";
+		qcom,mdss_spi_client {
+			reg = <0>;
+			compatible = "qcom,mdss-spi-client";
+			label = "MDSS SPI QUP3 CLIENT";
+			spi-max-frequency = <50000000>;
+		};
+	};
+
+	i2c@78b7000 {  /* BLSP1 QUP3 */
+		status = "disabled";
+	};
+};
+
+&spi_st7789v2_320p_cmd {
+	qcom,mdss-spi-bl-pmic-control-type = "bl_ctrl_pwm";
+	qcom,mdss-spi-bl-pmic-pwm-frequency = <100>;
+	qcom,mdss-spi-bl-pmic-bank-select = <0>;
+	qcom,mdss-spi-pwm-gpio = <&pm8916_mpps 4 0>;
+	qcom,cont-splash-enabled;
+};
+
+&mdss_te_active {
+	mux {
+		pins = "gpio24";
+		function = "gpio";
+	};
+	config {
+		pins = "gpio24";
+		drive-strength = <2>; /* 2 mA */
+		bias-pull-down; /* pull down*/
+	};
+};
+
+&mdss_te_suspend {
+	mux {
+		pins = "gpio24";
+		function = "gpio";
+	};
+	config {
+		pins = "gpio24";
+		drive-strength = <2>; /* 2 mA */
+		bias-pull-down; /* pull down*/
+	};
+};
+
+&pmx_mdss {
+	mdss_spi_panel_active: mdss_spi_panel_active {
+		mux {
+			pins = "gpio64", "gpio60";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio64", "gpio60";
+			drive-strength = <8>; /* 8 mA */
+			bias-disable = <0>; /* no pull */
+			output-high;
+		};
+	};
+
+	mdss_spi_panel_suspend: mdss_spi_panel_suspend {
+		mux {
+			pins = "gpio64", "gpio60";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio64", "gpio60";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-down; /* pull down */
+		};
+	};
+};
+
+&mdss_spi {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_te_active &mdss_spi_panel_active>;
+	pinctrl-1 = <&mdss_te_suspend &mdss_spi_panel_suspend>;
+
+	qcom,platform-te-gpio = <&tlmm 24 0>;
+	qcom,platform-reset-gpio = <&tlmm 60 0>;
+	qcom,platform-spi-dc-gpio = <&tlmm 64 0>;
+
+	vddio-supply = <&pm8916_l6>;
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,panel-supply-entry@0 {
+			reg = <1>;
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1744000>;
+			qcom,supply-max-voltage = <1904000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+		};
+		/delete-node/ qcom,panel-supply-entry@1;
+		/delete-node/ qcom,panel-supply-entry@2;
+		/delete-node/ qcom,panel-supply-entry@3;
+	};
+};
