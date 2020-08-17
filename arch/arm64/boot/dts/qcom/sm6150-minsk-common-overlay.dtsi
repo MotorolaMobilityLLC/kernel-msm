@@ -293,6 +293,7 @@
 	qcom,dc-unsupported;
 	qcom,wireless-unsupported;
 	qcom,usbeb-unsupported;
+	qcom,otg-cl-ua = <2000000>;
 	qcom,dcp-power-max = <10000>;/*unit W*/
 	qcom,iterm-ma = <194>;
 	qcom,mmi-temp-zones = <0 4200 776 0>,
