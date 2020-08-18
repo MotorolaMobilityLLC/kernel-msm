@@ -10430,7 +10430,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		target_dc = mmi->dc_ebmax_current_ma;
 
 	mmi_find_temp_zone(chip, batt_temp);
-	zone = &mmi->temp_zones[mmi->pres_temp_zone];
+	if (mmi->pres_temp_zone >=  mmi->num_temp_zones)
+		zone = &mmi->temp_zones[0];
+	else
+		zone = &mmi->temp_zones[mmi->pres_temp_zone];
 
 	if (mmi->base_fv_mv == 0) {
 		mmi->base_fv_mv = get_client_vote(chip->fv_votable,
