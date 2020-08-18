@@ -2110,7 +2110,7 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	if (err)
 		goto bail;
  bail:
-	if (ctx->handle) {
+	if (ctx && ctx->handle) {
 		glink_rx_done(ctx->handle, ctx->ptr, true);
 		ctx->handle = NULL;
 	}
