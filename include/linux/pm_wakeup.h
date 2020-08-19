@@ -103,6 +103,7 @@ extern void __pm_relax(struct wakeup_source *ws);
 extern void pm_relax(struct device *dev);
 extern void pm_wakeup_ws_event(struct wakeup_source *ws, unsigned int msec, bool hard);
 extern void pm_wakeup_dev_event(struct device *dev, unsigned int msec, bool hard);
+extern int wakelock_dump_active_info(char *buf, int size);
 
 #else /* !CONFIG_PM_SLEEP */
 
