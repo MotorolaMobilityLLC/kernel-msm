@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -167,6 +167,8 @@ static struct lt9611_timing_info lt9611_supp_timing_cfg[] = {
 	{640, 480, 24, 60, 2, 1},
 	{0xffff, 0xffff, 0xff, 0xff, 0xff},
 };
+
+static int cont_splash_en;
 
 static struct lt9611 *bridge_to_lt9611(struct drm_bridge *bridge)
 {
@@ -480,7 +482,7 @@ static int lt9611_gpio_configure(struct lt9611 *pdata, bool on)
 			goto error;
 		}
 
-		ret = gpio_direction_output(pdata->reset_gpio, 0);
+		ret = gpio_direction_output(pdata->reset_gpio, 1);
 		if (ret) {
 			pr_err("lt9611 reset gpio direction failed\n");
 			goto reset_error;
@@ -1217,14 +1219,16 @@ static int lt9611_config_vreg(struct device *dev,
 				goto vreg_get_fail;
 			}
 
-			rc = regulator_set_voltage(
-					curr_vreg->vreg,
-					curr_vreg->min_voltage,
-					curr_vreg->max_voltage);
-			if (rc < 0) {
-				pr_err("%s set vltg fail\n",
-						curr_vreg->vreg_name);
-				goto vreg_set_voltage_fail;
+			if (!cont_splash_en) {
+				rc = regulator_set_voltage(
+						curr_vreg->vreg,
+						curr_vreg->min_voltage,
+						curr_vreg->max_voltage);
+				if (rc < 0) {
+					pr_err("%s set vltg fail\n",
+							curr_vreg->vreg_name);
+					goto vreg_set_voltage_fail;
+				}
 			}
 		}
 	} else {
@@ -2078,7 +2082,8 @@ static int lt9611_probe(struct i2c_client *client,
 		goto err_dt_supply;
 	}
 
-	lt9611_reset(pdata);
+	if (!cont_splash_en)
+		lt9611_reset(pdata);
 
 	ret = lt9611_read_device_rev(pdata);
 	if (ret) {
@@ -2195,6 +2200,9 @@ static void __exit lt9611_exit(void)
 	i2c_del_driver(&lt9611_driver);
 }
 
+module_param(cont_splash_en, int, 0600);
+MODULE_PARM_DESC(cont_splash_en,
+	"lt9611.cont_splash_en=1 or 0; where 1 represent enabled and 0 for disabled");
 module_init(lt9611_init);
 module_exit(lt9611_exit);
 

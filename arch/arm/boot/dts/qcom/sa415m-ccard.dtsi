@@ -448,6 +448,17 @@
 			};
 		};
 	};
+
+	/delete-node/ bt_qca6174;
+
+	bluetooth: bt_qca6174 {
+		compatible = "qca,qca6174";
+		qca,bt-reset-gpio = <&pmxpoorwills_gpios 4 0>; /* BT_EN */
+		/* PWR_CTR1_VDD_PA */
+		qca,bt-vdd-pa-supply = <&wlan_ctrl1>;
+		/* PWR_CTR2_VDD_1P8 */
+		qca,bt-chip-pwd-supply = <&wlan_ctrl2>;
+	};
 };
 
 &emac_hw {
