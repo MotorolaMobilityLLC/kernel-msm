@@ -2317,6 +2317,13 @@ struct v4l2_event_motion_det {
 	__u32 region_mask;
 };
 
+#ifndef _STRUCT_TIMESPEC
+struct timespec {
+	long tv_sec;
+	long tv_nsec;
+};
+#endif
+
 struct v4l2_event {
 	__u32				type;
 	union {
