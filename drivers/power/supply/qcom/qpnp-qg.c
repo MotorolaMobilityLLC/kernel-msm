@@ -4731,7 +4731,7 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 
 	chip->dev = &pdev->dev;
 	qg_debug_mask |= QG_DEBUG_PON | QG_DEBUG_STATUS
-		| QG_DEBUG_IRQ | QG_DEBUG_PM | QG_DEBUG_ESR;
+		| QG_DEBUG_IRQ | QG_DEBUG_PM | QG_DEBUG_ESR | QG_DEBUG_SOC;
 	chip->debug_mask = &qg_debug_mask;
 	platform_set_drvdata(pdev, chip);
 	INIT_WORK(&chip->udata_work, process_udata_work);
