@@ -15,6 +15,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/of_gpio.h>
 #include <linux/usb/redriver.h>
+#include <linux/regulator/consumer.h>
 
 /* priority: INT_MAX >= x >= 0 */
 #define NOTIFIER_PRIORITY		1
@@ -84,6 +85,7 @@ struct ssusb_redriver {
 	struct regmap		*regmap;
 	struct i2c_client	*client;
 
+	struct regulator *vcc;
 	int orientation_gpio;
 	enum plug_orientation typec_orientation;
 	enum operation_mode op_mode;
@@ -698,6 +700,15 @@ static int redriver_i2c_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	redriver->vcc = devm_regulator_get_optional(&client->dev, "vcc");
+	if (IS_ERR(redriver->vcc) || redriver->vcc == NULL) {
+		dev_err(&client->dev, "Could not get vcc power regulator\n");
+	} else {
+		ret = regulator_enable(redriver->vcc);
+		if (ret)
+			dev_err(&client->dev, "Could not enable vcc power regulator\n");
+	}
+
 	redriver->dev = &client->dev;
 	i2c_set_clientdata(client, redriver);
 
@@ -731,6 +742,12 @@ static int redriver_i2c_remove(struct i2c_client *client)
 
 	debugfs_remove(redriver->debug_root);
 	unregister_ucsi_glink_notifier(&redriver->ucsi_nb);
+
+	if (redriver->vcc) {
+		if (regulator_is_enabled(redriver->vcc))
+			regulator_disable(redriver->vcc);
+		devm_regulator_put(redriver->vcc);
+	}
 
 	return 0;
 }
