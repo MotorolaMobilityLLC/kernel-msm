@@ -991,6 +991,7 @@
   getboottime64
   get_cpu_device
   get_device
+  get_pid_task
   __get_free_pages
   gether_cleanup
   gether_connect
