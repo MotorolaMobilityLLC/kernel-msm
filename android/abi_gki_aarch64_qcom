@@ -458,6 +458,7 @@
   devm_regmap_field_alloc
   __devm_regmap_init
   __devm_regmap_init_i2c
+  __devm_regmap_init_spi
   __devm_regmap_init_mmio_clk
   devm_regulator_bulk_get
   devm_regulator_get
