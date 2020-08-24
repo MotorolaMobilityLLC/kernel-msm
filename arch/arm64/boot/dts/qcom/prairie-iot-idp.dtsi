@@ -401,3 +401,17 @@
 	qcom,platform-te-gpio = <&tlmm 90 0>;
 	qcom,platform-reset-gpio = <&tlmm 91 0>;
 };
+
+&soc {
+	qcom,rmnet-ipa {
+		status="okay";
+	};
+};
+
+&ipa_hw {
+	status="okay";
+};
+
+&pil_modem_mem {
+	reg = <0 0x8fd00000 0 0x3100000>;
+};
