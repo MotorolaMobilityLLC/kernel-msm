@@ -236,10 +236,6 @@
 	qcom,en-cabc;
 	qcom,cabc-sel = <1>;
 
-	qcom,wled-pfm-issue-low-threshold = <255>;
-	qcom,wled-pfm-issue-high-threshold = <2048>;
-	qcom,wled-pfm-issue-workaround-enable;
-
 	mmi,low-bl-force-cabc-disable;
 	mmi,low-bl-threshold = <200>;
 	mmi,low-bl-remap-percent = <80>;
