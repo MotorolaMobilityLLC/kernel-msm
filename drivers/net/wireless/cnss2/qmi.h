@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved. */
 
 #ifndef _CNSS_QMI_H
 #define _CNSS_QMI_H
@@ -68,6 +68,7 @@ int coex_antenna_switch_to_mdm_send_sync_msg(struct cnss_plat_data *plat_priv);
 int cnss_wlfw_qdss_trace_mem_info_send_sync(struct cnss_plat_data *plat_priv);
 int cnss_register_ims_service(struct cnss_plat_data *plat_priv);
 void cnss_unregister_ims_service(struct cnss_plat_data *plat_priv);
+int cnss_wlfw_send_pcie_gen_speed_sync(struct cnss_plat_data *plat_priv);
 #else
 #define QMI_WLFW_TIMEOUT_MS		10000
 
@@ -207,6 +208,9 @@ int cnss_register_ims_service(struct cnss_plat_data *plat_priv)
 
 static inline
 void cnss_unregister_ims_service(struct cnss_plat_data *plat_priv) {}
+
+static inline
+int cnss_wlfw_send_pcie_gen_speed_sync(struct cnss_plat_data *plat_priv) {}
 
 #endif /* CONFIG_CNSS2_QMI */
 
