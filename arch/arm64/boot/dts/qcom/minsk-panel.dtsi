@@ -17,7 +17,7 @@
 &pm6150l_wled {
 	qcom,string-cfg= <7>;
 	qcom,ovp = <23500>;
-	qcom,boost-current-limit = <1575>;
+	qcom,boost-current-limit = <1225>;
 	status = "ok";
 };
 
