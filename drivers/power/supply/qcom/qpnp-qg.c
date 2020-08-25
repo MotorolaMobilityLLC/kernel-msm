@@ -3148,6 +3148,14 @@ static int qg_load_battery_profile(struct qpnp_qg *chip)
 		}
 	}
 
+        rc = of_property_read_u32(profile_node, "qcom,oem-batt-profile-ver",
+                        &chip->bp.oem_profile_version);
+        if (rc < 0) {
+                        pr_err("Failed to read OEM profile version rc:%d\n", rc);
+                        chip->bp.oem_profile_version = -EINVAL;
+        }
+        qg_dbg(chip, QG_DEBUG_PROFILE, "oem_profile_version=%d\n", chip->bp.oem_profile_version);
+
 	qg_dbg(chip, QG_DEBUG_PROFILE, "profile=%s FV=%duV FCC=%dma\n",
 			chip->bp.batt_type_str, chip->bp.float_volt_uv,
 			chip->bp.fastchg_curr_ma);
@@ -3742,9 +3750,42 @@ static int qg_soh_batt_profile_init(struct qpnp_qg *chip)
 	return rc;
 }
 
+static int qg_profile_version_check(struct qpnp_qg *chip)
+{
+        int rc = 0;
+        u8 sdam_profile_version = 0;
+
+        qg_dbg(chip, QG_DEBUG_SOC, "profile_loaded = %d\n", chip->profile_loaded);
+        qg_dbg(chip, QG_DEBUG_SOC, "oem_profile_version = %d\n", chip->bp.oem_profile_version);
+
+        if (chip->profile_loaded &&
+                chip->bp.oem_profile_version > 0) {
+                rc = qg_sdam_multibyte_read(
+                     QG_SDAM_PROFILE_VERSION_OFFSET,
+                     &sdam_profile_version, 1);
+                qg_dbg(chip, QG_DEBUG_SOC, "sdam_profile_version = %d\n", sdam_profile_version);
+                if (rc < 0)
+                     pr_err("Failed to read SDAM rc=%d\n", rc);
+                else if (chip->bp.oem_profile_version
+                     != sdam_profile_version) {
+                     rc = qg_handle_battery_removal(chip);
+                     if (rc < 0)
+                           pr_err("Failed to clear SDAM rc=%d\n",
+                           rc);
+                     rc = qg_sdam_multibyte_write(
+                           QG_SDAM_PROFILE_VERSION_OFFSET,
+                           (u8 *)&chip->bp.oem_profile_version, 1);
+                     if (rc < 0)
+                           pr_err("Failed to write SDAM rc=%d\n",
+                           rc);
+                 }
+        }
+        return rc;
+}
+
 static int qg_post_init(struct qpnp_qg *chip)
 {
-	int rc = 0;
+        int rc = 0;
 
 	/* disable all IRQs if profile is not loaded */
 	if (!chip->profile_loaded) {
@@ -4807,6 +4848,13 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 		pr_err("Failed to sanitize SDAM, rc=%d\n", rc);
 		return rc;
 	}
+
+        rc = qg_profile_version_check(chip);
+        qg_dbg(chip, QG_DEBUG_SOC, "qg_profile_version_check\n");
+        if (rc < 0) {
+                pr_err("Failed to claer QG SDAM, rc=%d\n", rc);
+                return rc;
+        }
 
 	rc = qg_soc_init(chip);
 	if (rc < 0) {
