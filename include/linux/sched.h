@@ -827,6 +827,7 @@ struct task_struct {
 	bool misfit;
 	u32 unfilter;
 	bool low_latency;
+	bool rtg_high_prio;
 #endif
 
 #ifdef CONFIG_CGROUP_SCHED
