@@ -20,6 +20,7 @@
 #include "cmdq_hci-crypto-qti.h"
 #include <linux/crypto-qti-common.h>
 #include <linux/pm_runtime.h>
+#include <linux/atomic.h>
 
 #define RAW_SECRET_SIZE 32
 #define MINIMUM_DUN_SIZE 512
@@ -31,7 +32,11 @@ static struct cmdq_host_crypto_variant_ops cmdq_crypto_qti_variant_ops = {
 	.disable = cmdq_crypto_qti_disable,
 	.resume = cmdq_crypto_qti_resume,
 	.debug = cmdq_crypto_qti_debug,
+	.reset = cmdq_crypto_qti_reset,
+	.prepare_crypto_desc = cmdq_crypto_qti_prep_desc,
 };
+
+static atomic_t keycache;
 
 static bool ice_cap_idx_valid(struct cmdq_host *host,
 					unsigned int cap_idx)
@@ -69,10 +74,14 @@ void cmdq_crypto_qti_enable(struct cmdq_host *host)
 
 void cmdq_crypto_qti_disable(struct cmdq_host *host)
 {
-	/* cmdq_crypto_disable_spec(host) and
-	 * crypto_qti_disable(host->crypto_vops->priv)
-	 * are needed here?
-	 */
+	 cmdq_crypto_disable_spec(host);
+	 crypto_qti_disable(host->crypto_vops->priv);
+}
+
+int cmdq_crypto_qti_reset(struct cmdq_host *host)
+{
+	atomic_set(&keycache, 0);
+	return 0;
 }
 
 static int cmdq_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
@@ -119,6 +128,7 @@ static int cmdq_crypto_qti_keyslot_evict(struct keyslot_manager *ksm,
 					  unsigned int slot)
 {
 	int err = 0;
+	int val = 0;
 	struct cmdq_host *host = keyslot_manager_private(ksm);
 
 	pm_runtime_get_sync(&host->mmc->card->dev);
@@ -134,6 +144,8 @@ static int cmdq_crypto_qti_keyslot_evict(struct keyslot_manager *ksm,
 		pr_err("%s: failed with error %d\n", __func__, err);
 
 	pm_runtime_put_sync(&host->mmc->card->dev);
+	val = atomic_read(&keycache) & ~(1 << slot);
+	atomic_set(&keycache, val);
 
 	return err;
 }
@@ -291,6 +303,49 @@ int cmdq_crypto_qti_init_crypto(struct cmdq_host *host,
 					__func__, err);
 	}
 	return err;
+}
+
+int cmdq_crypto_qti_prep_desc(struct cmdq_host *host, struct mmc_request *mrq,
+			      u64 *ice_ctx)
+{
+	struct bio_crypt_ctx *bc;
+	struct request *req = mrq->req;
+	int ret;
+	int val = 0;
+
+	if (!req->bio || !bio_crypt_should_process(req)) {
+		*ice_ctx = 0;
+		return 0;
+	}
+	if (WARN_ON(!cmdq_is_crypto_enabled(host))) {
+		/*
+		 * Upper layer asked us to do inline encryption
+		 * but that isn't enabled, so we fail this request.
+		 */
+		return -EINVAL;
+	}
+
+	bc = req->bio->bi_crypt_context;
+
+	if (!cmdq_keyslot_valid(host, bc->bc_keyslot))
+		return -EINVAL;
+	if (!(atomic_read(&keycache) & (1 << bc->bc_keyslot)))  {
+		ret = cmdq_crypto_qti_keyslot_program(host->ksm, bc->bc_key,
+						      bc->bc_keyslot);
+		if (ret) {
+			pr_err("%s keyslot program failed %d\n", __func__, ret);
+			return ret;
+		}
+		val = atomic_read(&keycache) | (1 << bc->bc_keyslot);
+		atomic_set(&keycache, val);
+	}
+
+	if (ice_ctx) {
+		*ice_ctx = DATA_UNIT_NUM(bc->bc_dun[0]) |
+			   CRYPTO_CONFIG_INDEX(bc->bc_keyslot) |
+			   CRYPTO_ENABLE(true);
+	}
+	return 0;
 }
 
 int cmdq_crypto_qti_debug(struct cmdq_host *host)
