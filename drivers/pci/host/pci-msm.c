@@ -50,7 +50,6 @@
 #include <linux/compiler.h>
 #include <linux/ipc_logging.h>
 #include <linux/msm_pcie.h>
-#include <linux/kthread.h>
 
 #define PCIE_VENDOR_ID_QCOM		0x17cb
 
@@ -3725,7 +3724,7 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 		of_property_read_u32_array(pdev->dev.of_node, "qcom,bw-scale",
 				(u32 *)dev->bw_scale, size / sizeof(u32));
 
-		dev->bw_gen_max = size / sizeof(u32);
+		dev->bw_gen_max = size / sizeof(*dev->bw_scale);
 	} else {
 		PCIE_DBG(dev, "RC%d: bandwidth scaling is not supported\n",
 			dev->rc_idx);
@@ -5758,14 +5757,12 @@ static void msm_pcie_check_l1ss_support_all(struct msm_pcie_dev_t *dev)
 	pci_walk_bus(dev->dev->bus, msm_pcie_check_l1ss_support, dev);
 }
 
-static int __msm_pcie_probe(void *arg)
+static int msm_pcie_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	int rc_idx = -1;
 	int i, j;
-	struct platform_device *pdev;
 
-	pdev = (struct platform_device *)arg;
 	PCIE_GEN_DBG("%s\n", __func__);
 
 	mutex_lock(&pcie_drv.drv_lock);
@@ -6253,24 +6250,6 @@ out:
 	return ret;
 }
 
-static int msm_pcie_probe(struct platform_device *pdev)
-{
-#ifdef CONFIG_PLATFORM_AUTO
-	struct task_struct *msm_pcie_task =
-			kthread_run(__msm_pcie_probe, pdev,
-					"msm_pcie_probe");
-	if (IS_ERR(msm_pcie_task))
-		return PTR_ERR(msm_pcie_task);
-	else
-		return 0;
-#else
-	int ret = 0;
-
-	ret = __msm_pcie_probe(pdev);
-	return ret;
-#endif
-}
-
 static int msm_pcie_remove(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -6470,6 +6449,15 @@ int msm_pcie_set_link_bandwidth(struct pci_dev *pci_dev, u16 target_link_speed,
 		return -ENODEV;
 
 	pcie_dev = PCIE_BUS_PRIV_DATA(root_pci_dev->bus);
+
+	if (target_link_speed > pcie_dev->bw_gen_max ||
+		(pcie_dev->target_link_speed &&
+		target_link_speed > pcie_dev->target_link_speed)) {
+		PCIE_DBG(pcie_dev,
+			"PCIe: RC%d: invalid target link speed: %d\n",
+			pcie_dev->rc_idx, target_link_speed);
+		return -EINVAL;
+	}
 
 	pcie_capability_read_word(root_pci_dev, PCI_EXP_LNKSTA, &link_status);
 

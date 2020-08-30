@@ -188,7 +188,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&wakeup_gpio_default>;
 	};
-
 };
 
 &thermal_zones {
@@ -214,11 +213,39 @@
 	extcon = <&usb2_extcon>;
 };
 
+&mtl_rx_setup {
+	queue2 {
+		snps,dcb-algorithm;
+	};
+
+	queue3 {
+		snps,dcb-algorithm;
+	};
+};
+
+&mtl_tx_setup {
+	queue2 {
+		snps,dcb-algorithm;
+	};
+
+	queue3 {
+		snps,dcb-algorithm;
+	};
+};
+
 &ethqos_hw {
 	status = "okay";
 	vreg_emac_phy-supply = <&vreg_emac_phy>;
 	vreg_rgmii_io_pads-supply = <&vreg_rgmii_io_pads>;
 	rxc-skew-ps = <0>;
+	qcom,qoe_mode = <1>;
+	qcom,qoe-queue = <2>;
+	qcom,qoe-vlan-offset = <0>;
+	snps,mtl-rx-config = <&mtl_rx_setup>;
+	snps,mtl-tx-config = <&mtl_tx_setup>;
+	qcom,cv2x_mode = <2>;
+	qcom,cv2x-queue = <3>;
+	qcom,cv2x-vlan-offset = <1>;
 
 	pinctrl-names = "dev-emac-mdc", "dev-emac-mdio",
 		"dev-emac-rgmii_txd0_state", "dev-emac-rgmii_txd1_state",
@@ -272,22 +299,6 @@
 	status = "ok";
 };
 
-&gpu_bw_tbl {
-	status = "disabled";
-};
-
-&gpubw {
-	status = "disabled";
-};
-
-&msm_gpu {
-	status = "disabled";
-};
-
-&kgsl_msm_iommu {
-	status = "disabled";
-};
-
 &rpm_bus {
 	rpm-regulator-ldoa1 {
 		status = "disabled";
@@ -318,3 +329,20 @@
 	};
 };
 
+&pms405_vadc {
+	pa_therm1 {
+			/delete-property/ qcom,ratiometric;
+			/delete-property/ qcom,hw-settle-time;
+			label = "pa_therm1";
+			reg = <ADC_AMUX_THM1>;
+			qcom,pre-scaling = <1 1>;
+	};
+
+	pa_therm3 {
+			/delete-property/ qcom,ratiometric;
+			/delete-property/ qcom,hw-settle-time;
+			label = "pa_therm3";
+			reg = <ADC_AMUX_THM3>;
+			qcom,pre-scaling = <1 1>;
+	};
+};

@@ -46,6 +46,7 @@
 		hsuart0 = &qupv3_se13_4uart;
 		spi0 = &qupv3_se3_spi;
 		i2c0 = &qupv3_se4_i2c;
+		i2c2 = &qupv3_se2_i2c;
 	};
 
 	cpus {
@@ -719,7 +720,7 @@
 			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
 			reusable;
 			alignment = <0x0 0x400000>;
-			size = <0x0 0x2800000>;
+			size = <0x0 0x3c00000>;
 			linux,cma-default;
 		};
 	};
