@@ -20,8 +20,9 @@
 #include "ais_vfe_bus_ver2.h"
 #include "ais_vfe_top_ver2.h"
 
-#define AIS_VFE_WORKQ_NUM_TASK             16
+#define AIS_VFE_WORKQ_NUM_TASK             20
 #define AIS_VFE_MAX_BUF                    12
+#define AIS_VFE_MAX_SOF_INFO               8
 
 enum ais_vfe_hw_irq_event {
 	AIS_VFE_HW_IRQ_EVENT_SOF,
@@ -81,12 +82,22 @@ struct ais_vfe_buffer_t {
 	int32_t                    mem_handle;
 	uint64_t                   iova_addr;
 	uint32_t                   bufIdx;
+	struct ais_ife_rdi_timestamps    ts_hw;
+};
+
+struct ais_sof_info_t {
+	struct list_head        list;
+	uint64_t                frame_cnt;
+	uint64_t                sof_ts;
+	uint64_t                cur_sof_hw_ts;
+	uint64_t                prev_sof_hw_ts;
 };
 
 struct ais_vfe_rdi_output {
 	enum ais_isp_resource_state      state;
 
 	uint32_t                         en_cfg;
+	uint32_t                         secure_mode;
 
 	spinlock_t                       buffer_lock;
 	struct ais_vfe_buffer_t          buffers[AIS_VFE_MAX_BUF];
@@ -96,8 +107,12 @@ struct ais_vfe_rdi_output {
 	struct list_head                 free_buffer_list;
 
 	uint64_t                         frame_cnt;
-	uint64_t                         sof_ts;
-	uint64_t                         sof_hw_ts;
+
+	uint8_t                          num_sof_info_q;
+	struct ais_sof_info_t            sof_info[AIS_VFE_MAX_SOF_INFO];
+	struct list_head                 sof_info_q;
+	struct list_head                 free_sof_info_list;
+	struct ais_sof_info_t            last_sof_info;
 };
 
 struct ais_vfe_hw_core_info {

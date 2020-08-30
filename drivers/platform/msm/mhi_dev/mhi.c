@@ -41,6 +41,9 @@
 /* Wait time before suspend/resume is complete */
 #define MHI_SUSPEND_MIN			100
 #define MHI_SUSPEND_TIMEOUT		600
+/* Wait time on the device for Host to set BHI_INTVEC */
+#define MHI_BHI_INTVEC_MAX_CNT			200
+#define MHI_BHI_INTVEC_WAIT_MS		50
 #define MHI_WAKEUP_TIMEOUT_CNT		20
 #define MHI_MASK_CH_EV_LEN		32
 #define MHI_RING_CMD_ID			0
@@ -2045,6 +2048,14 @@ static void mhi_update_state_info_all(enum mhi_ctrl_info info)
 
 	mhi_ctx->ctrl_info = info;
 	for (i = 0; i < MHI_MAX_SOFTWARE_CHANNELS; ++i) {
+		/*
+		 * Skip channel state info change
+		 * if channel is already in the desired state.
+		 */
+		if (channel_state_info[i].ctrl_info == info ||
+		    (info == MHI_STATE_DISCONNECTED &&
+		    channel_state_info[i].ctrl_info == MHI_STATE_CONFIGURED))
+			continue;
 		channel_state_info[i].ctrl_info = info;
 		/* Notify kernel clients */
 		mhi_dev_trigger_cb(i);
@@ -3162,7 +3173,7 @@ EXPORT_SYMBOL(mhi_dev_write_channel);
 static int mhi_dev_recover(struct mhi_dev *mhi)
 {
 	int rc = 0;
-	uint32_t syserr, max_cnt = 0, bhi_intvec = 0;
+	uint32_t syserr, max_cnt = 0, bhi_intvec = 0, bhi_max_cnt = 0;
 	u32 mhi_reset;
 	enum mhi_dev_state state;
 
@@ -3186,6 +3197,26 @@ static int mhi_dev_recover(struct mhi_dev *mhi)
 		rc = mhi_dev_mmio_read(mhi, BHI_INTVEC, &bhi_intvec);
 		if (rc)
 			return rc;
+
+		while (bhi_intvec == 0xffffffff &&
+				bhi_max_cnt < MHI_BHI_INTVEC_MAX_CNT) {
+			/* Wait for Host to set the bhi_intvec */
+			msleep(MHI_BHI_INTVEC_WAIT_MS);
+			mhi_log(MHI_MSG_VERBOSE,
+					"Wait for Host to set BHI_INTVEC\n");
+			rc = mhi_dev_mmio_read(mhi, BHI_INTVEC, &bhi_intvec);
+			if (rc) {
+				pr_err("%s: Get BHI_INTVEC failed\n", __func__);
+				return rc;
+			}
+			bhi_max_cnt++;
+		}
+
+		if (bhi_max_cnt == MHI_BHI_INTVEC_MAX_CNT) {
+			mhi_log(MHI_MSG_ERROR,
+					"Host failed to set BHI_INTVEC\n");
+			return -EINVAL;
+		}
 
 		if (bhi_intvec != 0xffffffff) {
 			/* Indicate the host that the device is ready */
