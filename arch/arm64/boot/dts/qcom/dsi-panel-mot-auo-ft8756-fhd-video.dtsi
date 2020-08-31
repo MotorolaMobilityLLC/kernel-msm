@@ -44,10 +44,8 @@
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-reset-assert-time = <5>;
 		qcom,mdss-dsi-reset-sequence = <1 4>, <0 1>, <1 11>;
-		/*
-		qcom,mdss-pan-physical-width-dimension = <65>;
-		qcom,mdss-pan-physical-height-dimension = <129>;
-		*/
+		qcom,mdss-pan-physical-width-dimension = <69>;
+		qcom,mdss-pan-physical-height-dimension = <146>;
 		qcom,mdss-dsi-display-timings {
 			timing@0 {
 				qcom,mdss-dsi-panel-width = <1080>;
