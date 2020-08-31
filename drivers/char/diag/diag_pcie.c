@@ -429,11 +429,12 @@ void diag_pcie_client_cb(struct mhi_dev_client_cb_data *cb_data)
 	case  MHI_STATE_CONNECTED:
 		if (cb_data->channel == pcie_info->out_chan) {
 			DIAG_LOG(DIAG_DEBUG_MUX,
-			"diag: Received connect event from MHI for %d\n",
+				"diag: Received connect event from MHI for %d\n",
 				pcie_info->out_chan);
 			if (atomic_read(&pcie_info->enabled)) {
 				DIAG_LOG(DIAG_DEBUG_MUX,
-				"diag: pcie channel is already enabled\n");
+				"diag: Channel %d is already enabled\n",
+				pcie_info->out_chan);
 				return;
 			}
 			queue_work(pcie_info->wq, &pcie_info->open_work);
@@ -442,11 +443,12 @@ void diag_pcie_client_cb(struct mhi_dev_client_cb_data *cb_data)
 	case MHI_STATE_DISCONNECTED:
 		if (cb_data->channel == pcie_info->out_chan) {
 			DIAG_LOG(DIAG_DEBUG_MUX,
-			"diag: Received disconnect event from MHI for %d",
+				"diag: Received disconnect event from MHI for %d\n",
 				pcie_info->out_chan);
 			if (!atomic_read(&pcie_info->enabled)) {
 				DIAG_LOG(DIAG_DEBUG_MUX,
-				"diag: pcie channel is already disabled\n");
+				"diag: Channel %d is already disabled\n",
+				pcie_info->out_chan);
 				return;
 			}
 			queue_work(pcie_info->wq, &pcie_info->close_work);
@@ -498,12 +500,9 @@ static void diag_pcie_connect(struct diag_pcie_info *ch)
 	queue_work(ch->wq, &(ch->read_work));
 }
 
-void diag_pcie_open_work_fn(struct work_struct *work)
+static void diag_pcie_open_channels(struct diag_pcie_info *pcie_info)
 {
 	int rc = 0;
-	struct diag_pcie_info *pcie_info = container_of(work,
-						      struct diag_pcie_info,
-						      open_work);
 
 	if (!pcie_info || atomic_read(&pcie_info->enabled))
 		return;
@@ -546,6 +545,15 @@ handle_in_err:
 handle_not_rdy_err:
 	mutex_unlock(&pcie_info->in_chan_lock);
 	mutex_unlock(&pcie_info->out_chan_lock);
+}
+
+void diag_pcie_open_work_fn(struct work_struct *work)
+{
+	struct diag_pcie_info *pcie_info = container_of(work,
+						      struct diag_pcie_info,
+						      open_work);
+
+	diag_pcie_open_channels(pcie_info);
 }
 
 /*
@@ -712,7 +720,10 @@ int diag_pcie_register(int id, int ctxt, struct diag_mux_ops *ops)
 	mutex_init(&ch->in_chan_lock);
 	mutex_init(&ch->out_chan_lock);
 	rc = diag_register_pcie_channels(ch);
-	if (rc < 0) {
+	if (rc == -EEXIST) {
+		pr_err("diag: Handled -EEXIST error\n");
+		diag_pcie_open_channels(ch);
+	} else if (rc < 0 && rc != -EEXIST) {
 		if (ch->wq)
 			destroy_workqueue(ch->wq);
 		kfree(ch->in_chan_attr.read_buffer);
