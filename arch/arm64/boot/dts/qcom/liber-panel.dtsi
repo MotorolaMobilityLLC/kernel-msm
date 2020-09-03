@@ -18,6 +18,8 @@
 	qcom,string-cfg= <7>;
 	qcom,ovp = <20500>;
 	qcom,boost-current-limit = <1050>;
+        qcom,wled-bl-step-up;
+        qcom,wled-bl-step-sequence = <255 5>, <2048 6>;
 	status = "ok";
 };
 
