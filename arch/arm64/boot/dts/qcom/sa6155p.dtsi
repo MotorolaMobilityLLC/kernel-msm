@@ -12,7 +12,6 @@
 
 #include "sm6150.dtsi"
 #include "sa6155-pmic.dtsi"
-#include "sa6155-display.dtsi"
 #include "sa6155p-camera.dtsi"
 #include "sa6155p-camera-sensor.dtsi"
 

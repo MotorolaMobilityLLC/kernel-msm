@@ -12,6 +12,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/clock/qcom,gcc-sm6150.h>
 #include "sa6155-cnss.dtsi"
+#include "sa6155-display.dtsi"
 
 &qupv3_2 {
 	status = "ok";
