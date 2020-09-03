@@ -67,3 +67,5 @@
 	/delete-property/ size;
 	size = <0x0 0x3c00000>;
 };
+
+#include "sa8195-vm-lv-cnss-lxc.dtsi"
