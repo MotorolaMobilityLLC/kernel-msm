@@ -1567,6 +1567,15 @@
 		qcom,qsee-reentrancy-support = <2>;
 	};
 
+	mcd {
+		compatible = "qcom,mcd";
+		qcom,ce-hw-instance = <0>;
+		qcom,ce-device = <0>;
+		interrupts = <0 472 0>;
+		interrupt-names = "mcd_irq";
+		qcom,no-clock-support;
+	};
+
 	qcom_smcinvoke: smcinvoke@86d00000 {
 		compatible = "qcom,smcinvoke";
 		reg = <0x86d00000 0xe00000>;
