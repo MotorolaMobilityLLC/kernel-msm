@@ -150,6 +150,9 @@
 			      "csr_hclk";
 		number-of-rate-detectors = <2>;
 		rate-detector-interfaces = <0 1>;
+		iommus = <&apps_smmu 0x035C 0x1>;
+		qcom,smmu-s1-bypass;
+		qcom,iova-mapping = <0x0 0xFFFFFFFF>;
 
 		sdr0: qcom,hs0_i2s {
 			compatible = "qcom,hsi2s-interface";
