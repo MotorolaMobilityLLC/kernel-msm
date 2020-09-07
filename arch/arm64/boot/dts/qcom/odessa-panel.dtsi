@@ -269,9 +269,8 @@
 	qcom,cabc-sel = <1>;
 	qcom,ovp = <23500>;
 	qcom,boost-current-limit = <1050>;
-	qcom,wled-pfm-issue-low-threshold = <255>;
-	qcom,wled-pfm-issue-high-threshold = <2048>;
-	qcom,wled-pfm-issue-workaround-enable;
+	qcom,wled-bl-step-up;
+	qcom,wled-bl-step-sequence = <255 5>, <2048 6>;
 
 	mmi,low-bl-force-cabc-disable;
 	mmi,low-bl-threshold = <200>;
