@@ -98,6 +98,7 @@ static struct mdss_panel_intf pan_types[] = {
 	{"dsi", MDSS_PANEL_INTF_DSI},
 	{"edp", MDSS_PANEL_INTF_EDP},
 	{"hdmi", MDSS_PANEL_INTF_HDMI},
+	{"spi", MDSS_PANEL_INTF_SPI},
 };
 static char mdss_mdp_panel[MDSS_MAX_PANEL_LEN];
 
