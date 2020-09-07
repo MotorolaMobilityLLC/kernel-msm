@@ -37,7 +37,7 @@
 };
 
 &qcom_seecom {
-	reg = <0x86d00000 0x2D00000>;
+	reg = <0x86d00000 0x3500000>;
 };
 
 &mdss_dsi0 {
