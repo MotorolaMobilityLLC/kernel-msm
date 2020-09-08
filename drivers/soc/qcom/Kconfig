@@ -59,6 +59,14 @@ config CAPRI_DTB
       Only include Capri specific DTBs to limit the number that
       get built during kernel compilation
 
+config CAPRIP_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "Caprip DTBs"
+    help
+      Only include Caprip specific DTBs to limit the number that
+      get built during kernel compilation
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
