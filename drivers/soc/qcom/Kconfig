@@ -51,6 +51,14 @@ config CEBU_DTB
       Only include Cebu specific DTBs to limit the number that
       get built during kernel compilatio
 
+config CAPRI_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "Capri DTBs"
+    help
+      Only include Capri specific DTBs to limit the number that
+      get built during kernel compilation
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
