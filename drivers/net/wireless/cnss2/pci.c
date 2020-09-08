@@ -47,6 +47,8 @@
 #define DEFAULT_M3_FILE_NAME		"m3.bin"
 #define DEFAULT_FW_FILE_NAME		"amss.bin"
 #define FW_V2_FILE_NAME			"amss20.bin"
+#define DEFAULT_GENOA_FW_FTM_NAME	"genoaftm.bin"
+
 #define FW_V2_NUMBER			2
 
 #define WAKE_MSI_NAME			"WAKE"
@@ -145,6 +147,8 @@ static DEFINE_SPINLOCK(pci_reg_window_lock);
 #define POWER_ON_RETRY_DELAY_MS			200
 
 #define LINK_TRAINING_RETRY_MAX_TIMES		3
+
+static void cnss_pci_update_fw_name(struct cnss_pci_data *pci_priv);
 
 static struct cnss_pci_reg ce_src[] = {
 	{ "SRC_RING_BASE_LSB", QCA6390_CE_SRC_RING_BASE_LSB_OFFSET },
@@ -1319,6 +1323,11 @@ int cnss_wlan_register_driver(struct cnss_wlan_driver *driver_ops)
 	if (pci_priv->driver_ops) {
 		cnss_pr_err("Driver has already registered\n");
 		return -EEXIST;
+	}
+
+	if (driver_ops->get_driver_mode) {
+		plat_priv->driver_mode = driver_ops->get_driver_mode();
+		cnss_pci_update_fw_name(pci_priv);
 	}
 
 	if (!test_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state))
@@ -3059,7 +3068,21 @@ static void cnss_pci_update_fw_name(struct cnss_pci_data *pci_priv)
 			 "%s" FW_V2_FILE_NAME, cnss_get_fw_path(plat_priv));
 		mhi_ctrl->fw_image = plat_priv->firmware_name;
 	}
-
+	if (pci_priv->device_id == QCN7605_DEVICE_ID) {
+		if (plat_priv->driver_mode == CNSS_FTM) {
+			snprintf(plat_priv->firmware_name,
+				 sizeof(plat_priv->firmware_name),
+				 "%s" DEFAULT_GENOA_FW_FTM_NAME,
+				 cnss_get_fw_path(plat_priv));
+			mhi_ctrl->fw_image = plat_priv->firmware_name;
+		} else {
+			snprintf(plat_priv->firmware_name,
+				 sizeof(plat_priv->firmware_name),
+				 "%s" DEFAULT_FW_FILE_NAME,
+				 cnss_get_fw_path(plat_priv));
+			mhi_ctrl->fw_image = plat_priv->firmware_name;
+		}
+	}
 	cnss_pr_dbg("Firmware name is %s\n", mhi_ctrl->fw_image);
 }
 
