@@ -21,7 +21,7 @@
 #include "ais_vfe_top_ver2.h"
 
 #define AIS_VFE_WORKQ_NUM_TASK             20
-#define AIS_VFE_MAX_BUF                    12
+#define AIS_VFE_MAX_BUF                    20
 #define AIS_VFE_MAX_SOF_INFO               8
 
 enum ais_vfe_hw_irq_event {
