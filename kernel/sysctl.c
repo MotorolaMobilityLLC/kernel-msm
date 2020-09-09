@@ -147,6 +147,15 @@ static int __maybe_unused two_hundred_million = 200000000;
 const int sched_user_hint_max = 1000;
 static unsigned int ns_per_sec = NSEC_PER_SEC;
 static unsigned int one_hundred_thousand = 100000;
+/*
+ * CFS task prio range is [100 ... 139]
+ * 120 is the default prio.
+ * RTG boost range is [100 ... 119] because giving
+ * boost for [120 .. 139] does not make sense.
+ * 99 means disabled and it is the default value.
+ */
+static unsigned int min_cfs_boost_prio = 99;
+static unsigned int max_cfs_boost_prio = 119;
 #endif
 /* this is needed for the proc_doulongvec_minmax of vm_dirty_bytes */
 static unsigned long dirty_bytes_min = 2 * PAGE_SIZE;
@@ -559,6 +568,24 @@ static struct ctl_table kern_table[] = {
 		.proc_handler   = proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &two,
+	},
+	{
+		.procname	= "walt_rtg_cfs_boost_prio",
+		.data		= &sysctl_walt_rtg_cfs_boost_prio,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler   = proc_dointvec_minmax,
+		.extra1		= &min_cfs_boost_prio,
+		.extra2		= &max_cfs_boost_prio,
+	},
+	{
+		.procname	= "walt_low_latency_task_boost",
+		.data		= &sysctl_walt_low_latency_task_boost,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler   = proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &one,
 	},
 #endif
 #ifdef CONFIG_SCHED_DEBUG
