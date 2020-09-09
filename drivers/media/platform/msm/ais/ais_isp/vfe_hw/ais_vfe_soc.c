@@ -197,11 +197,12 @@ int ais_vfe_deinit_soc_resources(struct cam_hw_soc_info *soc_info)
 	if (rc)
 		CAM_ERR(CAM_ISP, "CPAS0 unregistration failed rc=%d", rc);
 
-	if (!rc && soc_private->cpas_version == CAM_CPAS_TITAN_175_V120)
+	if (!rc && soc_private->cpas_version == CAM_CPAS_TITAN_175_V120) {
 		rc = cam_cpas_unregister_client(soc_private->cpas_handle[1]);
 		if (rc)
 			CAM_ERR(CAM_ISP, "CPAS1 unregistration failed rc=%d",
 				rc);
+	}
 
 	rc = ais_vfe_release_platform_resource(soc_info);
 	if (rc < 0)

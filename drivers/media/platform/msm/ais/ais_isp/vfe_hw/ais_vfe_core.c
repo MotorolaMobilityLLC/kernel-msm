@@ -1083,7 +1083,11 @@ static int ais_vfe_handle_sof(
 		if (p_rdi->state != AIS_ISP_RESOURCE_STATE_STREAMING)
 			continue;
 
+		AIS_ATRACE_BEGIN("SOF_%u_%u_%lu",
+			core_info->vfe_idx, path, p_rdi->frame_cnt);
 		ais_vfe_handle_sof_rdi(core_info, work_data, path);
+		AIS_ATRACE_END("SOF_%u_%u_%lu",
+			core_info->vfe_idx, path, p_rdi->frame_cnt);
 
 		//enq buffers
 		spin_lock_bh(&p_rdi->buffer_lock);
@@ -1344,8 +1348,12 @@ static int ais_vfe_bus_handle_frame_done(
 
 		if (client_mask & (0x1 << client)) {
 			//process frame done
+			AIS_ATRACE_BEGIN("FD_%u_%u_%lu",
+				core_info->vfe_idx, client, p_rdi->frame_cnt);
 			ais_vfe_bus_handle_client_frame_done(core_info,
 				client, work_data->last_addr[client]);
+			AIS_ATRACE_END("FD_%u_%u_%lu",
+				core_info->vfe_idx, client, p_rdi->frame_cnt);
 		}
 	}
 
@@ -1417,8 +1425,11 @@ static int ais_vfe_handle_bus_wr_irq(struct cam_hw_info *vfe_hw,
 		work_data->bus_wr_status[1],
 		work_data->bus_wr_status[2]);
 
-	if (work_data->bus_wr_status[1])
+	if (work_data->bus_wr_status[1]) {
+		AIS_ATRACE_BEGIN("FD_%d", core_info->vfe_idx);
 		ais_vfe_bus_handle_frame_done(core_info, work_data);
+		AIS_ATRACE_END("FD_%d", core_info->vfe_idx);
+	}
 
 	if (work_data->bus_wr_status[0] & 0x7800) {
 		CAM_ERR(CAM_ISP, "VFE%d: WR BUS error occurred status = 0x%x",
@@ -1467,7 +1478,9 @@ static int ais_vfe_process_irq_bh(void *priv, void *data)
 
 	switch (work_data->evt_type) {
 	case AIS_VFE_HW_IRQ_EVENT_SOF:
+		AIS_ATRACE_BEGIN("SOF_%d", core_info->vfe_idx);
 		rc = ais_vfe_handle_sof(core_info, work_data);
+		AIS_ATRACE_END("SOF_%d", core_info->vfe_idx);
 		break;
 	case AIS_VFE_HW_IRQ_EVENT_BUS_WR:
 		rc = ais_vfe_handle_bus_wr_irq(vfe_hw, core_info, work_data);
