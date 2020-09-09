@@ -43,4 +43,11 @@ config DIAG_OVER_TTY
 	help
 	  This feature helps segregate code required for DIAG traffic to go over a TTY to userspace.
 
+config DIAG_MDM_DISABLED
+	bool "Disable DIAG MDM ports and keep DIAG MSM ports only"
+	depends on ARCH_QCOM && DIAG_OVER_TTY
+	default n
+	help
+	  This feature separates code required for models that use MSM ports only.
+
 endmenu
