@@ -12,7 +12,11 @@
 #include <linux/usb/usbdiag.h>
 #include <linux/usb/tty_diag.h>
 
+#ifdef CONFIG_DIAG_MDM_DISABLED
+#define NUM_MDM_PORTS 0
+#else
 #define NUM_MDM_PORTS 2
+#endif
 #define NUM_MSM_PORTS 2
 
 #define DIAG_MDM_START_IDX 0
