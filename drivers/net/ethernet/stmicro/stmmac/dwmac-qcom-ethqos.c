@@ -24,6 +24,7 @@
 #include <linux/ipv6.h>
 #include <linux/rtnetlink.h>
 #include <linux/if_vlan.h>
+#include <linux/msm_eth.h>
 
 #include "stmmac.h"
 #include "stmmac_platform.h"
@@ -159,6 +160,13 @@ u16 dwmac_qcom_select_queue(
 			txqueue_select = ALL_OTHER_TX_TRAFFIC_IPA_DISABLED;
 	}
 
+	/* use better macro, cannot afford function call here */
+	if (ipa_enabled && (txqueue_select == IPA_DMA_TX_CH_BE ||
+			    txqueue_select == IPA_DMA_TX_CH_CV2X)) {
+		ETHQOSERR("TX Channel [%d] is not a valid for SW path\n",
+			  txqueue_select);
+		WARN_ON(1);
+	}
 	ETHQOSDBG("tx_queue %d\n", txqueue_select);
 	return txqueue_select;
 }
@@ -1539,15 +1547,11 @@ static void setup_config_registers(struct qcom_ethqos *ethqos,
 	if (mode > DISABLE_LOOPBACK && !qcom_ethqos_is_phy_link_up(ethqos)) {
 		/*If Link is Down & need to enable Loopback*/
 		ETHQOSDBG("Link is down . manual ipa setting up\n");
-		if (priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
-			ethqos_ipa_offload_event_handler(priv,
-							 EV_PHY_LINK_UP);
+		ethqos_ipa_offload_event_handler(priv, EV_PHY_LINK_UP);
 	} else if (mode == DISABLE_LOOPBACK &&
 			  !qcom_ethqos_is_phy_link_up(ethqos)) {
 		ETHQOSDBG("Disable request since link was down disable ipa\n");
-		if (priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
-			ethqos_ipa_offload_event_handler(priv,
-							 EV_PHY_LINK_DOWN);
+		ethqos_ipa_offload_event_handler(priv, EV_PHY_LINK_DOWN);
 	}
 
 	if (priv->dev->phydev->speed != SPEED_UNKNOWN)
@@ -2358,12 +2362,23 @@ bool qcom_ethqos_ipa_enabled(void)
 static ssize_t ethqos_read_dev_emac(struct file *filp, char __user *buf,
 				    size_t count, loff_t *f_pos)
 {
-	unsigned int len = 0;
-	char *temp_buf;
-	ssize_t ret_cnt = 0;
+	struct eth_msg_meta msg;
+	u8 status = 0;
 
-	ret_cnt = simple_read_from_buffer(buf, count, f_pos, temp_buf, len);
-	return ret_cnt;
+	memset(&msg, 0,  sizeof(struct eth_msg_meta));
+
+	if (pethqos && pethqos->ipa_enabled)
+		ethqos_ipa_offload_event_handler(
+			&status, EV_QTI_GET_CONN_STATUS);
+
+	msg.msg_type = status;
+
+	ETHQOSDBG("status %02x\n", status);
+	ETHQOSDBG("msg.msg_type %02x\n", msg.msg_type);
+	ETHQOSDBG("msg.rsvd %02x\n", msg.rsvd);
+	ETHQOSDBG("msg.msg_len %d\n", msg.msg_len);
+
+	return copy_to_user(buf, &msg, sizeof(struct eth_msg_meta));
 }
 
 static ssize_t ethqos_write_dev_emac(struct file *file,
@@ -2385,6 +2400,7 @@ static ssize_t ethqos_write_dev_emac(struct file *file,
 		ETHQOSERR("emac string is too long - count=%u\n", count);
 		return -EFAULT;
 	}
+
 	memset(in_buf, 0,  sizeof(in_buf));
 	ret = copy_from_user(in_buf, user_buf, count);
 
@@ -2485,10 +2501,42 @@ static void ethqos_get_qoe_dt(struct qcom_ethqos *ethqos,
 	}
 }
 
+static DECLARE_WAIT_QUEUE_HEAD(dev_emac_wait);
+#ifdef CONFIG_ETH_IPA_OFFLOAD
+void ethqos_wakeup_dev_emac_queue(void)
+{
+	ETHQOSDBG("\n");
+	wake_up_interruptible(&dev_emac_wait);
+}
+#endif
+
+static unsigned int ethqos_poll_dev_emac(struct file *file, poll_table *wait)
+{
+	int mask = 0;
+	int update = 0;
+
+	ETHQOSDBG("\n");
+
+	poll_wait(file, &dev_emac_wait, wait);
+
+	if (pethqos && pethqos->ipa_enabled && pethqos->cv2x_mode)
+		ethqos_ipa_offload_event_handler(
+			&update, EV_QTI_CHECK_CONN_UPDATE);
+
+	if (update)
+		mask = POLLIN | POLLRDNORM;
+
+	ETHQOSDBG("mask %d\n", mask);
+
+	return mask;
+}
+
 static const struct file_operations emac_fops = {
 	.owner = THIS_MODULE,
+	.open = simple_open,
 	.read = ethqos_read_dev_emac,
 	.write = ethqos_write_dev_emac,
+	.poll = ethqos_poll_dev_emac,
 };
 
 static int ethqos_create_emac_device_node(dev_t *emac_dev_t,
@@ -2946,12 +2994,9 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 					       &ethqos->emac_class,
 					       "emac");
 	}
+
 #ifdef CONFIG_ETH_IPA_OFFLOAD
-	ethqos->ipa_enabled = true;
-	priv->rx_queue[IPA_DMA_RX_CH].skip_sw = true;
-	priv->tx_queue[IPA_DMA_TX_CH].skip_sw = true;
 	ethqos_ipa_offload_event_handler(ethqos, EV_PROBE_INIT);
-	priv->hw->mac->map_mtl_to_dma(priv->hw, 0, 1); //change
 #endif
 
 #ifdef CONFIG_MSM_BOOT_TIME_MARKER
