@@ -151,3 +151,9 @@ config QTI_CX_IPEAK_COOLING_DEVICE
 	  on the CX rail.
 
 	  If you want this support, you should say Y here.
+
+config QTI_VIRTUAL_SENSOR_MOTO_SMITH
+	bool "QTI Virtual Sensors for Smith"
+	depends on QTI_VIRTUAL_SENSOR
+	help
+	  Enable the virtual sensors for Smith
