@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -199,6 +199,8 @@ struct hfi_buffer_info {
 	(HFI_PROPERTY_SYS_COMMON_START + 0x006)
 #define  HFI_PROPERTY_SYS_CONFIG_COVERAGE    \
 	(HFI_PROPERTY_SYS_COMMON_START + 0x007)
+#define HFI_PROPERTY_SYS_FEATURE_CONFIG		\
+	(HFI_PROPERTY_SYS_COMMON_START + 0x009)
 
 #define HFI_PROPERTY_PARAM_COMMON_START	\
 	(HFI_DOMAIN_BASE_COMMON + HFI_ARCH_COMMON_OFFSET + 0x1000)
@@ -458,6 +460,20 @@ struct hfi_capability_supported_info {
 struct hfi_debug_config {
 	u32 debug_config;
 	u32 debug_mode;
+};
+struct hfi_feature_config {
+	/* Set 1 to enable max resolution (hardcoded in FW)
+	 * decoder support
+	 */
+	u32 enable_maxdec_resolution : 1;
+	/* Set 1 to enable max resolution (hardcoded in FW)
+	 * encoder support
+	 */
+	u32 enable_maxenc_resolution : 1;
+	/* Must be set to 0, otherwise other fields will
+	 * be ignored
+	 */
+	u32 reserved : 30;
 };
 
 struct hfi_enable {

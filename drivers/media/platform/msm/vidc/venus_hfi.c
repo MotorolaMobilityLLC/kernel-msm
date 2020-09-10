@@ -2093,6 +2093,7 @@ static int venus_hfi_session_init(void *device, void *session_id,
 		void **new_session)
 {
 	struct hfi_cmd_sys_session_init_packet pkt;
+	struct hfi_cmd_sys_set_property_packet feature_pkt;
 	struct venus_hfi_device *dev;
 	struct hal_session *s;
 
@@ -2122,6 +2123,22 @@ static int venus_hfi_session_init(void *device, void *session_id,
 	list_add_tail(&s->list, &dev->sess_head);
 
 	__set_default_sys_properties(device);
+	if (dev->res) {
+		if (dev->res->enable_max_resolution) {
+			if (call_hfi_pkt_op(dev, sys_feature_config,
+				&feature_pkt)) {
+				dprintk(VIDC_ERR,
+					"Failed to create feature config pkt\n");
+				goto err_session_init_fail;
+			}
+
+			if (__iface_cmdq_write(dev, &feature_pkt)) {
+				dprintk(VIDC_WARN,
+					"Failed to set max resolutionfeature in f/w\n");
+				goto err_session_init_fail;
+			}
+		}
+	}
 
 	if (call_hfi_pkt_op(dev, session_init, &pkt,
 			s, session_type, codec_type)) {
