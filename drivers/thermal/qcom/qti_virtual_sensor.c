@@ -173,6 +173,39 @@ static const struct virtual_sensor_data qti_virtual_sensors[] = {
 		.coefficients = {30, 70},
 		.avg_denominator = 100,
 	},
+#ifdef CONFIG_QTI_VIRTUAL_SENSOR_MOTO_SMITH
+	{
+		.virt_zone_name = "front-usr",
+		.num_sensors = 1,
+		.sensor_names = {"pa-therm2-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {97},
+		.avg_offset = 106200,
+		.avg_denominator = 100,
+	},
+	/* Duplicate rule, need one for user-space and one for thermal core controls */
+	{
+		.virt_zone_name = "front-step",
+		.num_sensors = 1,
+		.sensor_names = {"pa-therm2-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {97},
+		.avg_offset = 106200,
+		.avg_denominator = 100,
+	},
+	{
+		.virt_zone_name = "back-usr",
+		.num_sensors = 1,
+		.sensor_names = {"pa-therm2-usr"},
+		.logic = VIRT_WEIGHTED_AVG,
+		.coefficient_ct = 1,
+		.coefficients = {94},
+		.avg_offset = 102500,
+		.avg_denominator = 100,
+	},
+#else
 	{
 		.virt_zone_name = "penta-cpu-max-step",
 		.num_sensors = 5,
@@ -238,6 +271,7 @@ static const struct virtual_sensor_data qti_virtual_sensors[] = {
 		.avg_offset = -10000,
 		.avg_denominator = 1,
 	},
+#endif
 };
 
 int qti_virtual_sensor_register(struct device *dev)
