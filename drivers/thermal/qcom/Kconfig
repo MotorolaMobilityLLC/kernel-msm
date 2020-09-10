@@ -173,3 +173,9 @@ config QTI_THERMAL_QFPROM
 	  set or not. It supports to check multiple nvmem cell value for
 	  multiple condtion. In that case, if any of the nvmem-cell condition
 	  fails, driver just exits with default enabled thermal zones.
+
+config QTI_VIRTUAL_SENSOR_MOTO_SMITH
+	bool "QTI Virtual Sensors for Smith"
+	depends on QTI_VIRTUAL_SENSOR
+	help
+	  Enable the virtual sensors for Smith
