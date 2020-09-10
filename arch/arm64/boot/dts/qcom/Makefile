@@ -225,7 +225,8 @@ dtb-$(CONFIG_ARCH_SDMSHRIKE)	+= sdmshrike-rumi.dtb \
 	sdmshrike-mtp.dtb \
 	sdmshrike-cdp.dtb \
 	sdmshrike-v2-mtp.dtb \
-	sa8195p-adp-star.dtb
+	sa8195p-adp-star.dtb \
+	sa8195p-v2-adp-air-capture.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
