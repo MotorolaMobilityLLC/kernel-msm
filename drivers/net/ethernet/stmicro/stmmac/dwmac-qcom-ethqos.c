@@ -31,7 +31,6 @@
 #include "dwmac-qcom-ethqos.h"
 #include "stmmac_ptp.h"
 #include "dwmac-qcom-ipa-offload.h"
-#include "dwmac-qcom-ipa.h"
 
 #define PHY_LOOPBACK_1000 0x4140
 #define PHY_LOOPBACK_100 0x6100
@@ -2667,63 +2666,6 @@ inline u32 qcom_ethqos_rgmii_io_macro_num_of_regs(u32 emac_hw_version)
 	}
 }
 
-static void ethqos_dma_desc_stats_read(struct qcom_ethqos *ethqos)
-{
-	int qinx;
-
-	struct platform_device *pdev = ethqos->pdev;
-	struct net_device *dev = platform_get_drvdata(pdev);
-	struct stmmac_priv *priv = netdev_priv(dev);
-	u32 tx_count = priv->plat->tx_queues_to_use;
-	u32 rx_count = priv->plat->rx_queues_to_use;
-
-	ETHQOSDBG("Enter");
-	ethqos->xstats.dma_ch_intr_status = readl_relaxed(DMA_ISR_RGOFFADDR);
-	ethqos->xstats.dma_debug_status0 = readl_relaxed(DMA_DSR0_RGOFFADDR);
-	ethqos->xstats.dma_debug_status1 = readl_relaxed(DMA_DSR1_RGOFFADDR);
-
-	for (qinx = 0; qinx < tx_count; qinx++) {
-		if (ethqos->ipa_enabled && qinx == IPA_DMA_TX_CH)
-			continue;
-		ethqos->xstats.dma_ch_status[qinx] =
-		readl_relaxed(DMA_SR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_intr_enable[qinx] =
-		readl_relaxed(DMA_IER_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_tx_control[qinx] =
-		readl_relaxed(DMA_TCR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_txdesc_list_addr[qinx] =
-		readl_relaxed(DMA_TDLAR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_txdesc_ring_len[qinx] =
-		readl_relaxed(DMA_TDRLR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_curr_app_txdesc[qinx] =
-		readl_relaxed(DMA_CHTDR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_txdesc_tail_ptr[qinx] =
-		readl_relaxed(DMA_TDTP_TPDR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_curr_app_txbuf[qinx] =
-		readl_relaxed(DMA_CHTBAR_RGOFFADDRESS(qinx));
-	}
-
-	for (qinx = 0; qinx < rx_count; qinx++) {
-		if (ethqos->ipa_enabled && qinx == IPA_DMA_RX_CH)
-			continue;
-		ethqos->xstats.dma_ch_rx_control[qinx] =
-		readl_relaxed(DMA_RCR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_rxdesc_list_addr[qinx] =
-		readl_relaxed(DMA_RDLAR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_rxdesc_ring_len[qinx] =
-		readl_relaxed(DMA_RDRLR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_curr_app_rxdesc[qinx] =
-		readl_relaxed(DMA_CHRDR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_rxdesc_tail_ptr[qinx] =
-		readl_relaxed(DMA_RDTP_RPDR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_curr_app_rxbuf[qinx] =
-		readl_relaxed(DMA_CHRBAR_RGOFFADDRESS(qinx));
-		ethqos->xstats.dma_ch_miss_frame_count[qinx] =
-		readl_relaxed(DMA_CH_MISS_FRAME_CNT_RGOFFADDRESS(qinx));
-	}
-	ETHQOSDBG("Exit");
-}
-
 static int qcom_ethos_panic_notifier(struct notifier_block *this,
 				     unsigned long event, void *ptr)
 {
@@ -2733,7 +2675,6 @@ static int qcom_ethos_panic_notifier(struct notifier_block *this,
 		size_iomacro_regs =
 		qcom_ethqos_rgmii_io_macro_num_of_regs(pethqos->emac_ver) * 4;
 		ETHQOSINFO("pethqos 0x%p", pethqos);
-		ethqos_dma_desc_stats_read(pethqos);
 
 		pethqos->iommu_domain = stmmac_emb_smmu_ctx.iommu_domain;
 		ETHQOSINFO("emac iommu domain 0x%p", pethqos->iommu_domain);
