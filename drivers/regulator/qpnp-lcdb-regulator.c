@@ -2133,7 +2133,7 @@ static int qpnp_lcdb_hw_init(struct qpnp_lcdb *lcdb)
 		rc = qpnp_lcdb_masked_write(lcdb, lcdb->base +
 					    LCDB_PWRUP_PWRDN_CTL_REG,
 					    PWRUP_DELAY_MASK,
-					    lcdb->pwrup_delay_ms);
+					    lcdb->pwrup_delay_ms << 2);
 		if (rc < 0)
 			return rc;
 	}
