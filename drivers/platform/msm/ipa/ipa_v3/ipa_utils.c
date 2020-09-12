@@ -6505,6 +6505,7 @@ done:
 	memcpy(header, counter, sizeof(struct ipa_ioc_flt_rt_counter_alloc));
 	spin_unlock(&ipa3_ctx->flt_rt_counters.hdl_lock);
 	idr_preload_end();
+	memcpy(header, counter, sizeof(struct ipa_ioc_flt_rt_counter_alloc));
 	return 0;
 
 err:
