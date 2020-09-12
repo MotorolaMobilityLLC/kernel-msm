@@ -820,6 +820,7 @@ static int ssr_bg_cb(struct notifier_block *this,
 	case SUBSYS_AFTER_SHUTDOWN:
 		if (dev->pending_bg_twm_wear_load) {
 			bg_soft_reset();
+			bgcom_bgdown_handler();
 			/* Load bg-twm */
 			dev->pending_bg_twm_wear_load = false;
 			queue_work(dev->bgdaemon_wq,
