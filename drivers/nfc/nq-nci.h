@@ -17,12 +17,12 @@
 #include <linux/cdev.h>
 #include <linux/nfcinfo.h>
 
-#define NFC_SET_PWR			_IOW(0xE9, 0x01, unsigned int)
-#define ESE_SET_PWR			_IOW(0xE9, 0x02, unsigned int)
-#define ESE_GET_PWR			_IOR(0xE9, 0x03, unsigned int)
-#define SET_RX_BLOCK			_IOW(0xE9, 0x04, unsigned int)
-#define SET_EMULATOR_TEST_POINT		_IOW(0xE9, 0x05, unsigned int)
-#define NFCC_INITIAL_CORE_RESET_NTF	_IOW(0xE9, 0x10, unsigned int)
+#define NFC_SET_PWR			_IOW(0xE9, 0x01, long)
+#define ESE_SET_PWR			_IOW(0xE9, 0x02, long)
+#define ESE_GET_PWR			_IOR(0xE9, 0x03, long)
+#define SET_RX_BLOCK			_IOW(0xE9, 0x04, long)
+#define SET_EMULATOR_TEST_POINT		_IOW(0xE9, 0x05, long)
+#define NFCC_INITIAL_CORE_RESET_NTF	_IOW(0xE9, 0x10, long)
 
 #define DEV_COUNT			1
 #define DEVICE_NAME			"nq-nci"
