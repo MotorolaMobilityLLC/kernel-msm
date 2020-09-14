@@ -245,7 +245,7 @@ static void tty_enable_for_channel(const char *name)
 	else if(strcmp(DIAG_MDM, name) == 0)
 		tty_mode_enabled |= DIAG_MDM_BIT;
 }
-
+#if defined(CONFIG_DEBUG_FS)
 static void tty_disable_for_channel(const char *name)
 {
 	if (!name) {
@@ -258,6 +258,7 @@ static void tty_disable_for_channel(const char *name)
 	else if(strcmp(DIAG_MDM, name) == 0)
 		tty_mode_enabled &= ~DIAG_MDM_BIT;
 }
+#endif
 
 static void factory_cable_present(void)
 {
