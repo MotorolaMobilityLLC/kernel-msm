@@ -1289,7 +1289,7 @@ static void anx7625_bridge_enable(struct drm_bridge *bridge)
 #ifdef CONFIG_PM_SLEEP
 	if (anx7625->out_of_hibr) {
 		anx7625->out_of_hibr = false;
-		place_marker("Hiber: Display up");
+		update_marker("Hiber: Display up");
 	}
 #endif
 	if (!anx7625->powered)
