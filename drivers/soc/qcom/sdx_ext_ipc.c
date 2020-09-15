@@ -142,15 +142,13 @@ static int sideband_notify(struct notifier_block *nb,
 
 	switch (action) {
 
-	case EVT_WAKE_UP:
+	case EVENT_REQUEST_WAKE_UP:
 		gpio_set_value(mdm->gpios[WAKEUP_OUT], 1);
 		usleep_range(10000, 20000);
 		gpio_set_value(mdm->gpios[WAKEUP_OUT], 0);
 		break;
-	default:
-		dev_info(mdm->dev, "Invalid action passed %d\n",
-				action);
 	}
+
 	return NOTIFY_OK;
 }
 
