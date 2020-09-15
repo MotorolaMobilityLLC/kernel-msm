@@ -4081,11 +4081,7 @@ static int smblib_get_prop_ufp_mode(struct smb_charger *chg)
 		return POWER_SUPPLY_TYPEC_SOURCE_MEDIUM;
 	case SNK_DAM_3000MA_BIT:
 	case SNK_RP_3P0_BIT:
-		if (chg->hvdcp_disable){
-			return POWER_SUPPLY_TYPEC_SOURCE_MEDIUM;
-		} else {
-			return POWER_SUPPLY_TYPEC_SOURCE_HIGH;
-		}
+		return POWER_SUPPLY_TYPEC_SOURCE_HIGH;
 	case SNK_RP_SHORT_BIT:
 		return POWER_SUPPLY_TYPEC_NON_COMPLIANT;
 	default:
@@ -5443,7 +5439,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 		current_ua = TYPEC_MEDIUM_CURRENT_UA;
 		break;
 	case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
-		current_ua = TYPEC_HIGH_CURRENT_UA;
+		if(chg->hvdcp_disable)
+			current_ua = TYPEC_HIGH_CURRENT_UA_NON_HVDCP;
+		else
+			current_ua = TYPEC_HIGH_CURRENT_UA;
 		break;
 	case POWER_SUPPLY_TYPEC_NON_COMPLIANT:
 	case POWER_SUPPLY_TYPEC_NONE:
@@ -9943,7 +9942,10 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 
 	if (chip->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH ||
 		 mmi->hvdcp3_con) {
-		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		if(chip->hvdcp_disable)
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		else
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 		goto end_rate_check;
 	}
 
@@ -10295,7 +10297,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_cc = 1500;
 			break;
 		case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
-			cl_cc = 3000;
+			if(chip->hvdcp_disable)
+				cl_cc = 2000;
+			else
+				cl_cc = 3000;
 			break;
 		case POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
 			cl_cc = 500;
