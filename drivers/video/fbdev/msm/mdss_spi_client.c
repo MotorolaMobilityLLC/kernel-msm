@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -121,13 +121,14 @@ int mdss_spi_tx_parameter(const void *buf, size_t len)
 	return rc;
 }
 
-int mdss_spi_tx_pixel(const void *buf, size_t len)
+#ifdef TARGET_HW_MDSS_MDP3
+int mdp3_spi_tx_pixel(const void *buf, size_t len)
 {
 	int rc = 0;
 	struct spi_transfer t = {
-		.tx_buf = buf,
-		.len    = len,
-		};
+	.tx_buf = buf,
+	.len    = len,
+	};
 	struct spi_message m;
 
 	if (!mdss_spi_client) {
@@ -142,6 +143,35 @@ int mdss_spi_tx_pixel(const void *buf, size_t len)
 
 	return rc;
 }
+#else
+int mdss_spi_tx_pixel(const void *buf, size_t len,
+	void (*spi_tx_compelet)(void *), void *ctx)
+{
+	int rc = 0;
+	static struct spi_transfer t;
+	static struct spi_message m;
+
+	if (!mdss_spi_client) {
+		pr_err("%s: spi client not available\n", __func__);
+		return -EINVAL;
+	}
+
+	mdss_spi_client->bits_per_word = 16;
+	t.tx_buf = buf;
+	t.len = len;
+	spi_message_init(&m);
+	m.complete = spi_tx_compelet;
+	m.context = ctx;
+
+	spi_message_add_tail(&t, &m);
+	rc = spi_async(mdss_spi_client, &m);
+
+	if (rc)
+		pr_err("%s: send FrameBuffer data failed\n", __func__);
+
+	return rc;
+}
+#endif
 
 static int mdss_spi_client_probe(struct spi_device *spidev)
 {

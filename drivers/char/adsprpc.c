@@ -1635,9 +1635,10 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 	PERF_END);
 	for (i = bufs; i < bufs + handles; ++i) {
 		struct fastrpc_mmap *map = ctx->maps[i];
-
-		pages[i].addr = map->phys;
-		pages[i].size = map->size;
+		if (map) {
+			pages[i].addr = map->phys;
+			pages[i].size = map->size;
+		}
 	}
 	if (!me->legacy) {
 		fdlist = (uint64_t *)&pages[bufs + handles];
@@ -1718,7 +1719,8 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 	}
 	PERF_END);
 	for (i = bufs; rpra && lrpra && i < bufs + handles; i++) {
-		rpra[i].dma.fd = lrpra[i].dma.fd = ctx->fds[i];
+		if (ctx->fds)
+			rpra[i].dma.fd = lrpra[i].dma.fd = ctx->fds[i];
 		rpra[i].dma.len = lrpra[i].dma.len = (uint32_t)lpra[i].buf.len;
 		rpra[i].dma.offset = lrpra[i].dma.offset =
 			 (uint32_t)(uintptr_t)lpra[i].buf.pv;
