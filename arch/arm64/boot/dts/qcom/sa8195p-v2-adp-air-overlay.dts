@@ -15,6 +15,7 @@
 
 #include "sa8195p-adp-common.dtsi"
 #include "sa8195p-adp-star-display.dtsi"
+#include "sa8195p-adp-star-display-shd.dtsi"
 
 / {
 	model = "ADP-AIR";
