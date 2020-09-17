@@ -6,6 +6,7 @@ TARGET_DEFCONFIG		:= $(KERNEL_OUT)/mapphone_defconfig
 KERNEL_DEBUG_DEFCONFIG          := $(LJAPDEFCONFIGSRC)/debug-$(DEFCONFIG_BASENAME).config
 PRODUCT_KERNEL_DEBUG_DEFCONFIG  := $(LJAPDEFCONFIGSRC)/$(PRODUCT_DEBUG_DEFCONFIG)
 FACTORY_DEFCONFIG		:= $(LJAPDEFCONFIGSRC)/factory-$(DEFCONFIG_BASENAME).config
+KERNEL_DEBUG_FS_DEFCONFIG       := ${DEFCONFIGSRC}/vendor/debugfs.config
 
 # add debug config file for non-user build
 ifneq ($(TARGET_BUILD_VARIANT), user)
@@ -28,6 +29,14 @@ endif
 ifneq ($(KERNEL_EXTRA_CONFIG),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_EXTRA_CONFIG:%=$(LJAPDEFCONFIGSRC)/%.config)
 endif
+
+ifeq ($(TARGET_BUILD_VARIANT), user)
+ifeq (true,$(call math_gt_or_eq,$(SHIPPING_API_LEVEL),30))
+# disable debug fs
+PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_DEBUG_FS_DEFCONFIG)
+endif
+endif
+
 
 define do-make-defconfig
 	$(hide) mkdir -p $(dir $(1))
