@@ -1630,13 +1630,11 @@ static ssize_t loopback_handling_config(
 	}
 
 	/*Argument validation*/
-	if (config == DISABLE_LOOPBACK || config == ENABLE_IO_MACRO_LOOPBACK ||
+	if (config == ENABLE_IO_MACRO_LOOPBACK ||
 	    config == ENABLE_MAC_LOOPBACK || config == ENABLE_PHY_LOOPBACK) {
 		if (speed != SPEED_1000 && speed != SPEED_100 &&
 		    speed != SPEED_10)
 			return -EINVAL;
-	} else {
-		return -EINVAL;
 	}
 
 	if (config == ethqos->current_loopback) {
