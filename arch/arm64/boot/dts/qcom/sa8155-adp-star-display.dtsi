@@ -44,6 +44,7 @@
 	qcom,ext-disp = <&ext_disp>;
 	qcom,dp-hpd-gpio = <&ioexp 8 0>;
 	qcom,mst-fixed-topology-ports = <1 2>;
+	qcom,widebus-enable;
 
 	qcom,core-supply-entries {
 		#address-cells = <1>;
