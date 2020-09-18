@@ -296,6 +296,12 @@ static inline u32 stmmac_rx_dirty(struct stmmac_priv *priv, u32 queue)
 static inline void stmmac_hw_fix_mac_speed(struct stmmac_priv *priv)
 {
 	if (likely(priv->plat->fix_mac_speed)) {
+		if (priv->plat->mac2mac_en) {
+			priv->plat->fix_mac_speed(priv->plat->bsp_priv,
+					priv->speed);
+			return;
+		}
+
 		if (priv->phydev->link)
 			priv->plat->fix_mac_speed(priv->plat->bsp_priv,
 						  priv->speed);
