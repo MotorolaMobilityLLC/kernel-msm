@@ -14,6 +14,9 @@
 #include <linux/regmap.h>
 #include <linux/workqueue.h>
 
+#undef pr_debug
+#define pr_debug pr_info
+
 /* Vibrator-LDO register definitions */
 #define QPNP_VIB_LDO_REG_STATUS1	0x08
 #define QPNP_VIB_LDO_VREG_READY		BIT(7)
