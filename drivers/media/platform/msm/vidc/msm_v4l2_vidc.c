@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -505,6 +505,10 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 
 	core->platform_data = vidc_get_drv_data(&pdev->dev);
 	dev_set_drvdata(&pdev->dev, core);
+	if (core->platform_data) {
+		core->resources.enable_max_resolution =
+			core->platform_data->enable_max_resolution;
+	}
 	rc = msm_vidc_initialize_core(pdev, core);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to init core\n");

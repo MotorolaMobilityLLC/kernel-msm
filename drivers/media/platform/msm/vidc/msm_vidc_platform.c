@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -322,6 +322,10 @@ static const struct of_device_id msm_vidc_dt_match[] = {
 		.compatible = "qcom,sdm670-vidc",
 		.data = &sdm670_data,
 	},
+	{
+		.compatible = "qcom,qcs605-vidc",
+		.data = &sdm670_data,
+	},
 	{},
 };
 
@@ -399,6 +403,20 @@ void *vidc_get_drv_data(struct device *dev)
 			driver_data->common_data_length =
 					ARRAY_SIZE(sdm670_common_data_v1);
 		}
+	} else if (!strcmp(match->compatible, "qcom,qcs605-vidc")) {
+		rc = msm_vidc_read_efuse(driver_data, dev);
+		if (rc) {
+			dprintk(VIDC_ERR,
+				"msm_vidc_read_efuse failed\n");
+				goto exit;
+		}
+
+		if (driver_data->sku_version == SKU_VERSION_1) {
+			driver_data->common_data = sdm670_common_data_v1;
+			driver_data->common_data_length =
+			ARRAY_SIZE(sdm670_common_data_v1);
+		}
+		driver_data->enable_max_resolution = true;
 	}
 
 exit:
