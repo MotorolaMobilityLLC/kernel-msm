@@ -52,6 +52,7 @@
 	pinctrl-names = <0>;
 	qcom,mst-enable;
 	qcom,dp-aux-bridge-sim = <&sde_dp_mst_sim>;
+	qcom,widebus-enable;
 
 	qcom,core-supply-entries {
 		#address-cells = <1>;
