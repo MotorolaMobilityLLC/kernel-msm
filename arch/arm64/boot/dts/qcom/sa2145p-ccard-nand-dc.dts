@@ -56,7 +56,7 @@
 };
 
 &tlmm {
-	wakeup_gpio_default: wakeup_gpio_default {
+	sdx_ext_ipc_gpio_default: sdx_ext_ipc_gpio_default {
 		mux {
 			pins = "gpio77";
 			function = "gpio";
