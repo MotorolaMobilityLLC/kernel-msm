@@ -34,7 +34,9 @@
  * The Linux Foundation chooses to take subject only to the GPLv2
  * license terms, and distributes only under these terms.
  */
-
+#if defined(CONFIG_UFSFEATURE)
+#include "ufsfeature.h"
+#endif
 #include "ufshcd.h"
 #include "ufshpb.h"
 
@@ -765,7 +767,7 @@ map_err:
 hold_err:
 	add_lrbp->cmd = NULL;
 	clear_bit_unlock(add_tag, &hba->lrb_in_use);
-	ufsf_hpb_end_pre_req(&hba->ufsf, pre_cmd->request);
+	ufsf_hpb_end_pre_req(hba->ufsf, pre_cmd->request);
 	return -EIO;
 }
 
