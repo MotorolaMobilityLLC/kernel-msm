@@ -77,10 +77,6 @@
 #include "ufs.h"
 #include "ufshci.h"
 
-#if defined(CONFIG_UFSFEATURE)
-#include "ufsfeature.h"
-#endif
-
 #define UFSHCD "ufshcd"
 #define UFSHCD_DRIVER_VERSION "0.3"
 
@@ -1138,7 +1134,17 @@ struct ufs_hba {
 	ANDROID_KABI_RESERVE(4);
 
 #if defined(CONFIG_UFSFEATURE)
-       struct ufsf_feature ufsf;
+       struct ufsf_feature *ufsf;
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	   /* HPB support */
+	   u32 ufshpb_feat;
+	   int ufshpb_state;
+	   int ufshpb_max_regions;
+	   struct delayed_work ufshpb_init_work;
+	   struct ufshpb_lu *ufshpb_lup[UFS_UPIU_MAX_GENERAL_LUN];
+	   struct scsi_device *sdev_ufs_lu[UFS_UPIU_MAX_GENERAL_LUN];
+	   struct work_struct ufshpb_eh_work;
 #endif
 };
 
