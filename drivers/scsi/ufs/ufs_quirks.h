@@ -166,5 +166,11 @@ struct ufs_dev_fix {
  */
 #define UFS_DEVICE_QUIRK_PA_HIBER8TIME   (1 << 12)
 
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+/*
+ * TOSHIBA KIOXIA is using device controlled mode HPB
+ * so separate this from the rest of the HPB implementation
+ */
+#define UFS_DEVICE_QUIRK_HPB_DEVICECONTROL   (1 << 13)
+#endif
 #endif /* UFS_QUIRKS_H_ */
