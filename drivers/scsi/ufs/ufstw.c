@@ -36,7 +36,9 @@
  */
 
 #include <uapi/scsi/ufs/ufs.h>
-
+#if defined(CONFIG_UFSFEATURE)
+#include "ufsfeature.h"
+#endif
 #include "ufshcd.h"
 #include "ufstw.h"
 #include "ufs_quirks.h"
@@ -1019,7 +1021,7 @@ static void ufstw_active_turbo_write(struct request_queue *q, bool on)
 
 	shost = sdev->host;
 	hba = shost_priv(shost);
-	tw = hba->ufsf.tw_lup[lun];
+	tw = hba->ufsf->tw_lup[lun];
 	if (!tw)
 		return;
 
