@@ -279,7 +279,7 @@ out:
 
 void ufsf_device_check(struct ufs_hba *hba)
 {
-	struct ufsf_feature *ufsf = &hba->ufsf;
+	struct ufsf_feature *ufsf = hba->ufsf;
 	int ret, lun;
 	u32 status;
 

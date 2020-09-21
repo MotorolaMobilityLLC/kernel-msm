@@ -20,6 +20,10 @@ enum flag_idn {
 	QUERY_FLAG_IDN_WB_EN                            = 0x0E,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN                 = 0x0F,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8     = 0x10,
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	QUERY_FLAG_IDN_HPB_RESET  = 0x11,
+	QUERY_FLAG_IDN_HPB_ENABLE = 0x21,
+#endif
 };
 
 /* Attribute idn for Query requests */
