@@ -44,19 +44,25 @@
 #include <linux/bitfield.h>
 #include <linux/blkdev.h>
 #include <linux/suspend.h>
+#if defined(CONFIG_UFSFEATURE)
+#include "ufsfeature.h"
+#endif
 #include "ufshcd.h"
 #include "ufs_quirks.h"
 #include "unipro.h"
 #include "ufs-sysfs.h"
 #include "ufs-debugfs.h"
 #include "ufs-qcom.h"
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+#include "ufshpb_toshiba_if.h"
+#endif
 static bool ufshcd_wb_sup(struct ufs_hba *hba);
 static int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable);
 static int ufshcd_wb_buf_flush_enable(struct ufs_hba *hba);
 static int ufshcd_wb_buf_flush_disable(struct ufs_hba *hba);
 static bool ufshcd_wb_is_buf_flush_needed(struct ufs_hba *hba);
 static int ufshcd_wb_toggle_flush_during_h8(struct ufs_hba *hba, bool set);
+
 
 #ifdef CONFIG_DEBUG_FS
 
@@ -469,6 +475,10 @@ static struct ufs_dev_fix ufs_fixups[] = {
 		UFS_DEVICE_QUIRK_PA_HIBER8TIME),
 	UFS_FIX(UFS_VENDOR_SAMSUNG, "KLUDG4UHDB-B2D1",
 		UFS_DEVICE_QUIRK_PA_HIBER8TIME),
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	UFS_FIX(UFS_VENDOR_TOSHIBA, UFS_ANY_MODEL,
+	UFS_DEVICE_QUIRK_HPB_DEVICECONTROL),
+#endif
 	END_FIX
 };
 
@@ -3617,14 +3627,26 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		lrbp->command_type = UTP_CMD_TYPE_UFS_STORAGE;
 
 	if (likely(lrbp->cmd)) {
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+		if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE)
-		ufsf_hpb_change_lun(&hba->ufsf, lrbp);
-		ufsf_tw_prep_fn(&hba->ufsf, lrbp);
-		ufsf_hpb_prep_fn(&hba->ufsf, lrbp);
+		ufsf_hpb_change_lun(hba->ufsf, lrbp);
+		ufsf_tw_prep_fn(hba->ufsf, lrbp);
+		ufsf_hpb_prep_fn(hba->ufsf, lrbp);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
 #endif
 		ret = ufshcd_prepare_req_desc_hdr(hba, lrbp,
 				&upiu_flags, lrbp->cmd->sc_data_direction);
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+		if ( ufshcd_is_hpb_supported(hba) ){
+			if (hba->ufshpb_state == HPB_PRESENT)
+				ufshpb_prep_fn_toshiba(hba, lrbp);
+		}
+#endif
 	} else {
 		ret = -EINVAL;
 	}
@@ -3713,6 +3735,7 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	int tag;
 	int err = 0;
 	bool has_read_lock = false;
+
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
 	struct scsi_cmnd *pre_cmd;
 	struct ufshcd_lrb *add_lrbp;
@@ -3720,7 +3743,6 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	int pre_req_err = -EBUSY;
 	int lun = ufshcd_scsi_to_upiu_lun(cmd->device->lun);
 #endif
-
 	hba = shost_priv(host);
 
 	if (!cmd || !cmd->request || !hba)
@@ -3829,9 +3851,12 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	}
 	if (ufshcd_is_hibern8_on_idle_allowed(hba))
 		WARN_ON(hba->hibern8_on_idle.state != HIBERN8_EXITED);
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(hba) )
+		goto skip_ufsf;
+#endif
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
-	add_tag = ufsf_hpb_prepare_pre_req(&hba->ufsf, cmd, lun);
+	add_tag = ufsf_hpb_prepare_pre_req(hba->ufsf, cmd, lun);
 	if (add_tag == -EAGAIN) {
 		clear_bit_unlock(tag, &hba->lrb_in_use);
 		err = SCSI_MLQUEUE_HOST_BUSY;
@@ -3846,10 +3871,13 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 
 	add_lrbp = &hba->lrb[add_tag];
 
-	pre_req_err = ufsf_hpb_prepare_add_lrbp(&hba->ufsf, add_tag);
+	pre_req_err = ufsf_hpb_prepare_add_lrbp(hba->ufsf, add_tag);
 	if (pre_req_err)
 		hba->lrb[tag].hpb_ctx_id = MAX_HPB_CONTEXT_ID;
 send_orig_cmd:
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	skip_ufsf:
 #endif
 	/* Vote PM QoS for the request */
 	ufshcd_vops_pm_qos_req_start(hba, cmd->request);
@@ -3904,12 +3932,18 @@ send_orig_cmd:
 
 	/* issue command to the controller */
 	spin_lock_irqsave(hba->host->host_lock, flags);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
 	if (!pre_req_err) {
 		ufshcd_vops_setup_xfer_req(hba, add_tag, (add_lrbp->cmd ? true : false));
 		ufshcd_send_command(hba, add_tag);
 		pre_req_err = -EBUSY;
-		atomic64_inc(&hba->ufsf.ufshpb_lup[add_lrbp->lun]->pre_req_cnt);
+		atomic64_inc(&hba->ufsf->ufshpb_lup[add_lrbp->lun]->pre_req_cnt);
+	}
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
 	ufshcd_vops_setup_xfer_req(hba, tag, (lrbp->cmd ? true : false));
@@ -3931,6 +3965,9 @@ send_orig_cmd:
 out_unlock:
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 out:
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
 	if (!pre_req_err) {
 		pre_cmd = add_lrbp->cmd;
@@ -3939,7 +3976,10 @@ out:
 		clear_bit_unlock(add_tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
 		ufshcd_vops_pm_qos_req_end(hba, pre_cmd->request, true);
-		ufsf_hpb_end_pre_req(&hba->ufsf, pre_cmd->request);
+		ufsf_hpb_end_pre_req(hba->ufsf, pre_cmd->request);
+	}
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
 	if (has_read_lock)
@@ -6286,7 +6326,7 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 	struct ufs_hba *hba = shost_priv(sdev->host);
 	struct request_queue *q = sdev->request_queue;
 #if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature *ufsf = &hba->ufsf;
+	struct ufsf_feature *ufsf = hba->ufsf;
 
 	if (ufsf_is_valid_lun(sdev->lun)) {
 		ufsf->sdev_ufs_lu[sdev->lun] = sdev;
@@ -6307,7 +6347,12 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 	sdev->use_rpm_auto = 1;
 
 	ufshcd_crypto_setup_rq_keyslot_manager(hba, q);
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(hba) ){
+		if (sdev->lun < UFS_UPIU_MAX_GENERAL_LUN)
+			hba->sdev_ufs_lu[sdev->lun] = sdev;
+	}
+#endif
 	return 0;
 }
 
@@ -6467,10 +6512,19 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 							&hba->eeh_work))
 					pm_runtime_get_noresume(hba->dev);
 			}
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+			if ( ufshcd_is_hpb_supported(hba) ){
+				if (hba->ufshpb_state == HPB_PRESENT &&
+						scsi_status == SAM_STAT_GOOD)
+					ufshpb_rsp_upiu_toshiba(hba, lrbp);
+			} else {
+#endif
 #if defined(CONFIG_UFSFEATURE)
 			if (scsi_status == SAM_STAT_GOOD)
-				ufsf_hpb_noti_rb(&hba->ufsf, lrbp);
+				ufsf_hpb_noti_rb(hba->ufsf, lrbp);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+			}
 #endif
 			break;
 		case UPIU_TRANSACTION_REJECT_UPIU:
@@ -7215,9 +7269,14 @@ static void ufshcd_exception_event_handler(struct work_struct *work)
 
 	if (status & MASK_EE_URGENT_BKOPS)
 		ufshcd_bkops_exception_event_handler(hba);
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE)
-	ufsf_tw_ee_handler(&hba->ufsf);
+	ufsf_tw_ee_handler(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
 #endif
 out:
 	ufshcd_scsi_unblock_requests(hba);
@@ -8007,15 +8066,30 @@ static int ufshcd_eh_device_reset_handler(struct scsi_cmnd *cmd)
 		}
 	}
 	spin_lock_irqsave(host->host_lock, flags);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(hba) ){
+		if (hba->ufshpb_state == HPB_PRESENT)
+			hba->ufshpb_state = HPB_RESET;
+	}
+#endif
 	ufshcd_transfer_req_compl(hba);
 	spin_unlock_irqrestore(host->host_lock, flags);
 
 out:
 	hba->req_abort_count = 0;
 	if (!err) {
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+		if ( ufshcd_is_hpb_supported(hba) ){
+			schedule_delayed_work(&hba->ufshpb_init_work,
+								  msecs_to_jiffies(10));
+		} else {
+#endif
 #if defined(CONFIG_UFSFEATURE)
-		ufsf_hpb_reset_lu(&hba->ufsf);
-		ufsf_tw_reset_lu(&hba->ufsf);
+		ufsf_hpb_reset_lu(hba->ufsf);
+		ufsf_tw_reset_lu(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+		}
 #endif
 		err = SUCCESS;
 	} else {
@@ -8246,9 +8320,15 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 	ufshcd_hba_stop(hba, false);
 	hba->silence_err_logs = true;
 	ufshcd_complete_requests(hba);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE)
-	ufsf_hpb_reset_host(&hba->ufsf);
-	ufsf_tw_reset_host(&hba->ufsf);
+	ufsf_hpb_reset_host(hba->ufsf);
+	ufsf_tw_reset_host(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
 #endif
 	hba->silence_err_logs = false;
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
@@ -9124,7 +9204,11 @@ static inline bool ufshcd_needs_reinit(struct ufs_hba *hba)
 
 	return reinit;
 }
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+static unsigned int hpb_init_delay_ms = 0;
+module_param_named(hpb_init_delay_ms, hpb_init_delay_ms, uint, S_IRUGO);
+MODULE_PARM_DESC(hpb_init_delay_ms, "delay in milliseconds to initialize HPB");
+#endif
 /**
  * ufshcd_probe_hba - probe hba to detect device and initialize
  * @hba: per-adapter instance
@@ -9314,12 +9398,20 @@ reinit:
 			hba->clk_scaling.is_allowed = true;
 			hba->clk_scaling.is_suspended = false;
 		}
-
 		scsi_scan_host(hba->host);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+		if ( ufshcd_is_hpb_supported(hba) ){
+			schedule_delayed_work(&hba->ufshpb_init_work,
+								  msecs_to_jiffies(hpb_init_delay_ms));
+		} else {
+#endif
 #if defined(CONFIG_UFSFEATURE)
 		ufsf_device_check(hba);
-		ufsf_hpb_init(&hba->ufsf);
-		ufsf_tw_init(&hba->ufsf);
+		ufsf_hpb_init(hba->ufsf);
+		ufsf_tw_init(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
 #endif
 		pm_runtime_put_sync(hba->dev);
 	}
@@ -9329,12 +9421,16 @@ out:
 		ufshcd_set_ufs_dev_poweroff(hba);
 		ufshcd_set_link_off(hba);
 	}
-
-#if defined(CONFIG_UFSFEATURE)
-	ufsf_hpb_reset(&hba->ufsf);
-	ufsf_tw_reset(&hba->ufsf);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+if (!ufshcd_is_hpb_supported(hba) ){
 #endif
-
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_hpb_reset(hba->ufsf);
+	ufsf_tw_reset(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
+#endif
 	/*
 	 * If we failed to initialize the device or the device is not
 	 * present, turn off the power/clocks etc.
@@ -9441,15 +9537,19 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 			__func__, err);
 		goto out_release_mem;
 	}
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE)
 	if (ufsf_check_query(ioctl_data->opcode)) {
-		err = ufsf_query_ioctl(&hba->ufsf, lun, buffer, ioctl_data,
+		err = ufsf_query_ioctl(hba->ufsf, lun, buffer, ioctl_data,
 				       UFSFEATURE_SELECTOR);
 		goto out_release_mem;
 	}
 #endif
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
+#endif
 	/* verify legal parameters & send query */
 	switch (ioctl_data->opcode) {
 	case UPIU_QUERY_OPCODE_READ_DESC:
@@ -10512,12 +10612,16 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	ret = ufshcd_crypto_suspend(hba, pm_op);
 	if (ret)
 		goto out;
-
-#if defined(CONFIG_UFSFEATURE)
-	ufsf_hpb_suspend(&hba->ufsf);
-	ufsf_tw_suspend(&hba->ufsf);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
 #endif
-
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_hpb_suspend(hba->ufsf);
+	ufsf_tw_suspend(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
+#endif
 	/*
 	 * If we can't transition into any of the low power modes
 	 * just gate the clocks.
@@ -10547,13 +10651,18 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	if (!ufshcd_is_ufs_dev_active(hba) || !ufshcd_is_link_active(hba))
 		goto disable_clks;
 
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSTW_LPM_DISABLED_ON_HIBERN8_FLUSH)
 	if (req_link_state == UIC_LINK_OFF_STATE)
-		ufsf_tw_disable_flush_hibern(&hba->ufsf);
+		ufsf_tw_disable_flush_hibern(hba->ufsf);
 	else
-		disable_lpm = ufsf_tw_disable_lpm(&hba->ufsf);
+		disable_lpm = ufsf_tw_disable_lpm(hba->ufsf);
 #endif
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
+#endif
 	if (ufshcd_is_runtime_pm(pm_op)) {
 		if (ufshcd_can_autobkops_during_suspend(hba)) {
 			/*
@@ -10668,9 +10777,15 @@ enable_gating:
 	hba->clk_gating.is_suspended = false;
 	ufshcd_release_all(hba);
 	ufshcd_crypto_resume(hba, pm_op);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
+#endif
 #if defined(CONFIG_UFSFEATURE)
-	ufsf_hpb_resume(&hba->ufsf);
-	ufsf_tw_resume(&hba->ufsf);
+	ufsf_hpb_resume(hba->ufsf);
+	ufsf_tw_resume(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
 #endif
 out:
 	hba->pm_op_in_progress = 0;
@@ -10795,12 +10910,16 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 
 	if (hba->clk_scaling.is_allowed)
 		ufshcd_resume_clkscaling(hba);
-
-#if defined(CONFIG_UFSFEATURE)
-	ufsf_hpb_resume(&hba->ufsf);
-	ufsf_tw_resume(&hba->ufsf);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( !ufshcd_is_hpb_supported(hba) ){
 #endif
-
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_hpb_resume(hba->ufsf);
+	ufsf_tw_resume(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
+#endif
 	/* Set Auto-Hibernate timer if supported */
 	ufshcd_set_auto_hibern8_timer(hba);
 
@@ -11080,9 +11199,17 @@ EXPORT_SYMBOL(ufshcd_shutdown);
  */
 void ufshcd_remove(struct ufs_hba *hba)
 {
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(hba) ){
+		ufshpb_release_toshiba(hba, HPB_NEED_INIT);
+	} else {
+#endif
 #if defined(CONFIG_UFSFEATURE)
-	ufsf_hpb_release(&hba->ufsf);
-	ufsf_tw_release(&hba->ufsf);
+	ufsf_hpb_release(hba->ufsf);
+	ufsf_tw_release(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	}
 #endif
 	ufs_sysfs_remove_nodes(hba->dev);
 	scsi_remove_host(hba->host);
@@ -11109,6 +11236,12 @@ EXPORT_SYMBOL_GPL(ufshcd_remove);
  */
 void ufshcd_dealloc_host(struct ufs_hba *hba)
 {
+#if defined(CONFIG_UFSFEATURE)
+	if (hba->ufsf) {
+		kfree(hba->ufsf);
+		hba->ufsf = NULL;
+	}
+#endif
 	scsi_host_put(hba->host);
 }
 EXPORT_SYMBOL_GPL(ufshcd_dealloc_host);
@@ -11139,6 +11272,9 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 {
 	struct Scsi_Host *host;
 	struct ufs_hba *hba;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature *ufsf = NULL;
+#endif
 	int err = 0;
 
 	if (!dev) {
@@ -11169,6 +11305,15 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	hba->sg_entry_size = sizeof(struct ufshcd_sg_entry);
 
 	INIT_LIST_HEAD(&hba->clk_list_head);
+#if defined(CONFIG_UFSFEATURE)
+	ufsf = kzalloc(sizeof(struct ufsf_feature), GFP_KERNEL);
+	if (!ufsf) {
+		dev_err(dev, "ufsf_feature  allocation failed\n");
+		err = -ENOMEM;
+		goto out_error;
+	}	
+	hba->ufsf = ufsf;
+#endif
 
 out_error:
 	return err;
@@ -11374,12 +11519,15 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 * ufshcd_probe_hba().
 	 */
 	ufshcd_set_ufs_dev_active(hba);
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	/* initialize hpb structures */
+	ufshcd_init_hpb(hba);
+#endif
 	ufshcd_cmd_log_init(hba);
 
 #if defined(CONFIG_UFSFEATURE)
-	ufsf_hpb_set_init_state(&hba->ufsf);
-	ufsf_tw_set_init_state(&hba->ufsf);
+	ufsf_hpb_set_init_state(hba->ufsf);
+	ufsf_tw_set_init_state(hba->ufsf);
 #endif
 	async_schedule(ufshcd_async_scan, hba);
 
