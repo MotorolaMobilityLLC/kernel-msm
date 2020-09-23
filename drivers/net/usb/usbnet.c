@@ -121,6 +121,7 @@ int last_panel_state = -1;
 #endif
 struct usbnet *the_dev;
 /* user space override of autosuspend */
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 static int force_on;
 static int set_force_on_param(const char *val, const struct kernel_param *kp)
 {
@@ -163,6 +164,7 @@ static struct kernel_param_ops force_on_ops = {
 
 module_param_cb(force_on, &force_on_ops, &force_on, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC (force_on, "Override panel autosuspend decision");
+#endif
 
 static int rx_queue_len;
 static int set_rx_queue_len_param(const char *val, const struct kernel_param *kp)
@@ -1835,7 +1837,9 @@ void usbnet_disconnect (struct usb_interface *intf)
 #ifdef CONFIG_DRM_MSM
 	msm_drm_unregister_client(&dev->panel_usb_notifier);
 #endif
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 	the_dev = NULL;
+#endif
 
 	xdev = interface_to_usbdev (intf);
 
@@ -1894,13 +1898,13 @@ static void panel_usb_work(struct work_struct *work)
 {
 	struct usbnet *dev = container_of(work, struct usbnet,
 					  panel_update_work);
-
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 	if (force_on > 0) {
 		usb_disable_autosuspend(dev->udev);
 		last_panel_state = dev->panel_state;
 		return;
 	}
-
+#endif
 	if (last_panel_state == dev->panel_state)
 		return;
 
@@ -2166,8 +2170,11 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 	if (status)
 		pr_err("USBNET Probe: Panel Notifier Failure %d\n", status);
 #endif
+
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 	/* Store so that force_on can access */
 	the_dev = dev;
+#endif
 
 	return 0;
 out5:
