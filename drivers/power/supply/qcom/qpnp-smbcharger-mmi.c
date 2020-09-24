@@ -17,6 +17,7 @@
 #include "storm-watch.h"
 #include <linux/moduleparam.h>
 
+#ifdef CONFIG_MODS_NEW_SW_ARCH
 static int set_eb_param(const char *val, const struct kernel_param *kp)
 {
 	int prev_attach_stop_soc;
@@ -60,3 +61,12 @@ int eb_low_stop_soc = 100;
 module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
 int eb_on_sw = 1;
 module_param_cb(eb_on_sw, &eb_ops, &eb_on_sw, 0644);
+#else
+int eb_rechrg_start_soc = 70;
+int eb_rechrg_stop_soc = 80;
+int eb_attach_start_soc = 100;
+int eb_attach_stop_soc = 100;
+int eb_low_start_soc = 16;
+int eb_low_stop_soc = 100;
+int eb_on_sw = 1;
+#endif
