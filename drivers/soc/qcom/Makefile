@@ -71,6 +71,8 @@ obj-$(CONFIG_QCOM_SMCINVOKE) += smcinvoke.o
 obj-$(CONFIG_SDX_EXT_IPC) += sdx_ext_ipc.o
 obj-$(CONFIG_MSM_PIL_SSR_BG) += subsys-pil-bg.o
 obj-$(CONFIG_QTI_NOTIFY_SIDEBAND) += sideband_notify.o
+obj-$(CONFIG_MSM_BGRSB) += bg_rsb.o
+obj-$(CONFIG_MSM_BGRSB_RPMSG) += bgrsb_rpmsg.o
 
 ifdef CONFIG_MSM_SUBSYSTEM_RESTART
        obj-y += subsystem_notif.o
@@ -119,3 +121,5 @@ obj-$(CONFIG_CPU_V7) += idle-v7.o
 obj-$(CONFIG_MSM_BAM_DMUX) += bam_dmux.o
 obj-$(CONFIG_WCNSS_CORE) += wcnss/
 obj-$(CONFIG_RENAME_BLOCK_DEVICE) += rename_block_device.o
+obj-$(CONFIG_QTI_CRYPTO_COMMON) += crypto-qti-common.o
+obj-$(CONFIG_QTI_CRYPTO_TZ) += crypto-qti-tz.o

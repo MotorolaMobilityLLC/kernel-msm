@@ -183,6 +183,7 @@
 			compatible = "qcom,emac-smmu-embedded";
 			iommus = <&apps_smmu 0x1C0 0x0>;
 			qcom,iova-mapping = <0x80000000 0x40000000>;
+			qcom,smmu-geometry;
 		};
 	};
 
@@ -363,6 +364,12 @@
 	cd-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
 
 	status = "ok";
+};
+
+&usb0 {
+	dwc3@a600000 {
+		snps,usb3-u1u2-disable;
+	};
 };
 
 &L16A {
