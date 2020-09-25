@@ -35,7 +35,6 @@
 #include "dwmac-qcom-ipa-offload.h"
 #include <linux/udp.h>
 #include <linux/if_ether.h>
-#include <linux/if_arp.h>
 #include <linux/icmp.h>
 
 struct stmmac_resources {
@@ -83,6 +82,7 @@ struct stmmac_rx_queue {
 	u32 rx_tail_addr;
 	struct napi_struct napi ____cacheline_aligned_in_smp;
 	bool skip_sw;
+	bool en_fep;
 };
 
 struct stmmac_priv {
@@ -159,6 +159,7 @@ struct stmmac_priv {
 	struct dentry *dbgfs_rings_status;
 	struct dentry *dbgfs_dma_cap;
 #endif
+	bool hw_offload_enabled;
 };
 
 struct stmmac_emb_smmu_cb_ctx {
