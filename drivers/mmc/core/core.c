@@ -3271,8 +3271,14 @@ static int mmc_pm_notify(struct notifier_block *notify_block,
 		spin_lock_irqsave(&host->lock, flags);
 		host->rescan_disable = 1;
 		spin_unlock_irqrestore(&host->lock, flags);
-		cancel_delayed_work_sync(&host->detect);
+		dev_warn(mmc_dev(host), "Prepare cancel detect work");
 
+		if(wq_has_sleeper(&host->wq)) {
+			dev_warn(mmc_dev(host), "Try to wake up detect work");
+			wake_up(&host->wq);
+		}
+
+		cancel_delayed_work_sync(&host->detect);
 		if (!host->bus_ops)
 			break;
 
