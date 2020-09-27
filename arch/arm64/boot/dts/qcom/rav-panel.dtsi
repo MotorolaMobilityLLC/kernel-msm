@@ -231,6 +231,8 @@
 	qcom,platform-en-gpio = <&tlmm 86 0>;
 	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
 	qcom,platform-hbm-en-gpio = <&pmi632_gpios 2 0>;
+	qcom,mdss-pan-physical-width-dimension = <68>;
+	qcom,mdss-pan-physical-height-dimension = <147>;
 };
 
 
@@ -270,6 +272,8 @@
 	qcom,platform-en-gpio = <&tlmm 86 0>;
 	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
 	qcom,platform-hbm-en-gpio = <&pmi632_gpios 2 0>;
+	qcom,mdss-pan-physical-width-dimension = <68>;
+	qcom,mdss-pan-physical-height-dimension = <147>;
 };
 
 &dsi_ft8009_dj_video {
@@ -308,6 +312,8 @@
 	qcom,platform-en-gpio = <&tlmm 86 0>;
 	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
 	qcom,platform-hbm-en-gpio = <&pmi632_gpios 2 0>;
+	qcom,mdss-pan-physical-width-dimension = <68>;
+	qcom,mdss-pan-physical-height-dimension = <147>;
 };
 
 
@@ -347,6 +353,8 @@
 	qcom,platform-en-gpio = <&tlmm 86 0>;
 	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
 	qcom,platform-hbm-en-gpio = <&pmi632_gpios 2 0>;
+	qcom,mdss-pan-physical-width-dimension = <68>;
+	qcom,mdss-pan-physical-height-dimension = <147>;
 };
 
 
@@ -384,6 +392,8 @@
 	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
 	qcom,platform-hbm-en-gpio = <&pmi632_gpios 2 0>;
 	qcom,mdss-dsi-bl-default-level = <127>;
+	qcom,mdss-pan-physical-width-dimension = <68>;
+	qcom,mdss-pan-physical-height-dimension = <147>;
 };
 
 
@@ -420,4 +430,6 @@
 	qcom,platform-bklight-en-gpio = <&pmi632_gpios 6 0>;
 	qcom,platform-hbm-en-gpio = <&pmi632_gpios 2 0>;
 	qcom,mdss-dsi-bl-default-level = <127>;
+	qcom,mdss-pan-physical-width-dimension = <68>;
+	qcom,mdss-pan-physical-height-dimension = <147>;
 };
