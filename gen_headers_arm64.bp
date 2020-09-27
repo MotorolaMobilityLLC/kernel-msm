@@ -964,6 +964,9 @@ gen_headers_out_arm64 = [
     "asm/statfs.h",
     "asm/ucontext.h",
     "asm/unistd.h",
+    "video/v4l2_camera_ext_defs.h",
+    "video/v4l2_camera_ext_ctrls.h",
+    "video/v4l2_camera_ext_events.h",
 ]
 
 genrule {
