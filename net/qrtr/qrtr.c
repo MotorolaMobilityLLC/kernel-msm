@@ -212,6 +212,8 @@ static int qrtr_bcast_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 			      int type, struct sockaddr_qrtr *from,
 			      struct sockaddr_qrtr *to, unsigned int flags);
 static void qrtr_handle_del_proc(struct sk_buff *skb);
+static void qrtr_cleanup_flow_control(struct qrtr_node *node,
+				      struct sk_buff *skb);
 
 static void qrtr_log_tx_msg(struct qrtr_node *node, struct qrtr_hdr_v1 *hdr,
 			    struct sk_buff *skb)
@@ -1047,11 +1049,56 @@ static void qrtr_node_rx_work(struct kthread_work *work)
 			if (!ipc) {
 				kfree_skb(skb);
 			} else {
+				if (cb->type == QRTR_TYPE_DEL_SERVER ||
+				    cb->type == QRTR_TYPE_DEL_CLIENT) {
+					qrtr_cleanup_flow_control(node, skb);
+				}
 				qrtr_sock_queue_skb(node, skb, ipc);
 				qrtr_port_put(ipc);
 			}
 		}
 	}
+}
+
+static void qrtr_cleanup_flow_control(struct qrtr_node *node,
+				      struct sk_buff *skb)
+{
+	struct qrtr_ctrl_pkt *pkt;
+	unsigned long key;
+	struct sockaddr_qrtr src;
+	struct qrtr_tx_flow *flow;
+	struct qrtr_tx_flow_waiter *waiter;
+	struct qrtr_tx_flow_waiter *temp;
+	u32 cmd;
+
+	pkt = (void *)skb->data;
+	cmd = le32_to_cpu(pkt->cmd);
+
+	if (cmd == QRTR_TYPE_DEL_SERVER) {
+		src.sq_node = le32_to_cpu(pkt->server.node);
+		src.sq_port = le32_to_cpu(pkt->server.port);
+	} else {
+		src.sq_node = le32_to_cpu(pkt->client.node);
+		src.sq_port = le32_to_cpu(pkt->client.port);
+	}
+
+	key = (u64)src.sq_node << 32 | src.sq_port;
+
+	mutex_lock(&node->qrtr_tx_lock);
+	flow = radix_tree_lookup(&node->qrtr_tx_flow, key);
+	if (!flow) {
+		mutex_unlock(&node->qrtr_tx_lock);
+		return;
+	}
+
+	list_for_each_entry_safe(waiter, temp, &flow->waiters, node) {
+		list_del(&waiter->node);
+		sock_put(waiter->sk);
+		kfree(waiter);
+	}
+	kfree(flow);
+	radix_tree_delete(&node->qrtr_tx_flow, key);
+	mutex_unlock(&node->qrtr_tx_lock);
 }
 
 static void qrtr_handle_del_proc(struct sk_buff *skb)
