@@ -12,6 +12,14 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config DENVER_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "DENVER DTBs"
+	help
+		Only include DENVER specific DTBs to limit the number that
+		get built during kernel compilation.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
