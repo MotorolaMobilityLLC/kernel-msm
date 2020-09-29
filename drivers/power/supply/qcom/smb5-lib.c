@@ -6231,7 +6231,6 @@ int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 
 	cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 	alarm_cancel(&chg->lpd_recheck_timer);
-	mutex_lock(&chg->moisture_detection_enable);
 
 	rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
 				TYPEC_WATER_DETECTION_INT_EN_BIT,
