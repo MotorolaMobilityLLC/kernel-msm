@@ -150,7 +150,7 @@
 
 &dsi_nt36675_auo_video {
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <27>;
+	qcom,mdss-dsi-bl-min-level = <47>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,mdss-dsi-bl-default-level = <2047>;
 	qcom,mdss-brightness-max-level = <4095>;
@@ -202,7 +202,7 @@
 
 &dsi_nt36675_boe_video {
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <27>;
+	qcom,mdss-dsi-bl-min-level = <47>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,mdss-dsi-bl-default-level = <2047>;
 	qcom,mdss-brightness-max-level = <4095>;
