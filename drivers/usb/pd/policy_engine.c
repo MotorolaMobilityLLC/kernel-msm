@@ -890,6 +890,32 @@ static int pd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua)
 
 	pd->requested_current = curr;
 	pd->requested_pdo = pdo_pos;
+	usbpd_warn(&pd->dev, "select_pdo: PDO:%d, %d uV, %d uA\n",
+		   pdo_pos, uv, ua);
+
+	return 0;
+}
+
+static int pd_get_pdo(struct usbpd *pd, int pdo_pos, int *uv_max, int *uv_min, int *ua)
+{
+	u8 type;
+	u32 pdo = pd->received_pdos[pdo_pos - 1];
+
+	if (0 == pdo)
+		return -ENOTSUPP;
+
+	type = PD_SRC_PDO_TYPE(pdo);
+	if (type == PD_SRC_PDO_TYPE_FIXED) {
+		*ua = PD_SRC_PDO_FIXED_MAX_CURR(pdo) * 10;
+		*uv_max = *uv_min = PD_SRC_PDO_FIXED_VOLTAGE(pdo) * 50 * 1000;
+	} else if (type == PD_SRC_PDO_TYPE_AUGMENTED) {
+		*uv_max = PD_APDO_MAX_VOLT(pdo) * 100000;
+		*uv_min = PD_APDO_MIN_VOLT(pdo) *  100000;
+		*ua = PD_APDO_MAX_CURR(pdo) * 50000;
+	} else {
+		usbpd_err(&pd->dev, "Only Fixed or Programmable PDOs supported\n");
+		return -ENOTSUPP;
+	}
 
 	return 0;
 }
@@ -4201,6 +4227,83 @@ static ssize_t pdo_n_show(struct device *dev, struct device_attribute *attr,
 	usbpd_err(&pd->dev, "Invalid PDO index\n");
 	return -EINVAL;
 }
+
+int usbpd_select_pdo_match(struct usbpd *pd)
+{
+	int uv_diff = 0, max_uv_diff = 0, pdo = 0;
+	int pdo_max_uv = 0, pdo_min_uv = 0, pdo_ua = 0;
+	int uv_in, i;
+	int ret;
+	union power_supply_propval val;
+
+	if (!pd)
+		return -EINVAL;
+
+	mutex_lock(&pd->swap_lock);
+
+	/* Only allowed if we are already in explicit sink contract */
+	if (pd->current_state != PE_SNK_READY || !is_sink_tx_ok(pd)) {
+		usbpd_err(&pd->dev, "select_pdo: Cannot select new PDO yet\n");
+		ret = -EBUSY;
+		goto out;
+	}
+
+	/* Check the Max Input Voltage from USBPSY */
+	power_supply_get_property(pd->usb_psy,
+				  POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
+	uv_in = val.intval;
+	/* start with 5 V */
+	max_uv_diff = 5000000;
+	for (i = 1; i < 8; i++) {
+		if (!pd_get_pdo(pd, i, &pdo_max_uv, &pdo_min_uv, &pdo_ua)) {
+			if (pdo_max_uv <= uv_in) {
+				uv_diff = uv_in - pdo_max_uv;
+				if (uv_diff < max_uv_diff) {
+					max_uv_diff = uv_diff;
+					pdo = i;
+				}
+			}
+		}
+	}
+
+	if (pdo < 1 || pdo > 7) {
+		usbpd_err(&pd->dev, "select_pdo: invalid PDO:%d\n", pdo);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	pd_get_pdo(pd, pdo, &pdo_max_uv, &pdo_min_uv, &pdo_ua);
+	ret = pd_select_pdo(pd, pdo, pdo_max_uv, pdo_ua);
+	if (ret)
+		goto out;
+	else
+		ret = pdo_max_uv;
+
+	reinit_completion(&pd->is_ready);
+	pd->send_request = true;
+	kick_sm(pd, 0);
+
+	/* wait for operation to complete */
+	if (!wait_for_completion_timeout(&pd->is_ready,
+			msecs_to_jiffies(1000))) {
+		usbpd_err(&pd->dev, "select_pdo: request timed out\n");
+		ret = -ETIMEDOUT;
+		goto out;
+	}
+
+	/* determine if request was accepted/rejected */
+	if (pd->selected_pdo != pd->requested_pdo ||
+			pd->current_voltage != pd->requested_voltage) {
+		usbpd_err(&pd->dev, "select_pdo: request rejected\n");
+		ret = -EINVAL;
+	}
+
+out:
+	pd->send_request = false;
+	mutex_unlock(&pd->swap_lock);
+	return ret;
+}
+EXPORT_SYMBOL(usbpd_select_pdo_match);
 
 static ssize_t select_pdo_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
