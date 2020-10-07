@@ -330,13 +330,15 @@ int veth_set_ul_dl_smmu_ipa_params(struct veth_ipa_dev *pdata,
 		return -EINVAL;
 	}
 
+	/*Configure SGT for UL ring base*/
 	ul->ring_base_sgt = kzalloc(sizeof(ul->ring_base_sgt), GFP_KERNEL);
 	if (!ul->ring_base_sgt)
 		return -ENOMEM;
 
-	ret = dma_get_sgtable(&pdata->pdev->dev, ul->ring_base_sgt,
+	ret = dma_get_sgtable(&pdata->pdev->dev,
+		ul->ring_base_sgt,
 		veth_emac_mem->rx_desc_mem_va,
-		ul->ring_base_iova,
+		veth_emac_mem->rx_desc_mem_paddr,
 		(sizeof(struct s_RX_NORMAL_DESC) *
 			VETH_RX_DESC_CNT));
 	if (ret) {
@@ -346,8 +348,16 @@ int veth_set_ul_dl_smmu_ipa_params(struct veth_ipa_dev *pdata,
 		return -EAGAIN;
 	}
 
+	/*get pa*/
 	ul->ring_base_pa = sg_phys(ul->ring_base_sgt->sgl);
 
+	VETH_IPA_INFO(
+		"%s:\n ul->ring_base_sgt = 0x%px , ul->ring_base_pa =0x%lx\n",
+		__func__,
+		ul->ring_base_sgt,
+		ul->ring_base_pa);
+
+	/*configure SGT for UL buff pool base*/
 	ul->buff_pool_base_sgt = kzalloc(
 		sizeof(ul->buff_pool_base_sgt), GFP_KERNEL);
 
@@ -356,11 +366,14 @@ int veth_set_ul_dl_smmu_ipa_params(struct veth_ipa_dev *pdata,
 		return -ENOMEM;
 	}
 
-	ret = dma_get_sgtable(&pdata->pdev->dev, ul->buff_pool_base_sgt,
-		veth_emac_mem->rx_buf_mem_va,
-		ul->buff_pool_base_iova,
-		(sizeof(struct s_RX_NORMAL_DESC) *
-			VETH_RX_DESC_CNT));
+	ret = dma_get_sgtable(&pdata->pdev->dev,
+		ul->buff_pool_base_sgt,
+		veth_emac_mem->rx_buff_pool_base_va,
+		veth_emac_mem->rx_buff_pool_base_pa,
+		(sizeof(uint32_t) * VETH_RX_DESC_CNT * 4)
+		);
+	/*using ipa dev node for buff pool*/
+	/*overallocating to satisfy hab page alignment*/
 	if (ret) {
 		VETH_IPA_ERROR("Failed to get IPA UL buff pool sgtable.\n");
 		kfree(ul->ring_base_sgt);
@@ -370,12 +383,21 @@ int veth_set_ul_dl_smmu_ipa_params(struct veth_ipa_dev *pdata,
 	}
 
 	ul->buff_pool_base_pa = sg_phys(ul->buff_pool_base_sgt->sgl);
+	veth_emac_mem->rx_buff_pool_base_pa = ul->buff_pool_base_pa;
 
+	VETH_IPA_INFO(
+		"%s:\n ul->buff_pool_base_sgt = 0x%px,ul->buff_pool_base_pa =0x%lx\n",
+		__func__,
+		ul->buff_pool_base_sgt,
+		ul->buff_pool_base_pa);
+
+	/*Configure SGT for DL ring base*/
 	dl->ring_base_sgt = kzalloc(sizeof(dl->ring_base_sgt), GFP_KERNEL);
 	if (!dl->ring_base_sgt)
 		return -ENOMEM;
 
-	ret = dma_get_sgtable(&pdata->pdev->dev, dl->ring_base_sgt,
+	ret = dma_get_sgtable(&pdata->pdev->dev,
+		dl->ring_base_sgt,
 		veth_emac_mem->tx_desc_mem_va,
 		veth_emac_mem->tx_desc_mem_paddr,
 		(sizeof(struct s_TX_NORMAL_DESC) *
@@ -390,17 +412,24 @@ int veth_set_ul_dl_smmu_ipa_params(struct veth_ipa_dev *pdata,
 	}
 
 	dl->ring_base_pa = sg_phys(dl->ring_base_sgt->sgl);
+	VETH_IPA_INFO(
+		"%s:\n dl->ring_base_sgt = 0x%px , dl->ring_base_pa =0x%lx\n",
+		__func__,
+		dl->ring_base_sgt,
+		dl->ring_base_pa);
 
+	/*configure SGT for DL buff pool base*/
 	dl->buff_pool_base_sgt = kzalloc(
 		sizeof(dl->buff_pool_base_sgt), GFP_KERNEL);
 
 	if (!dl->buff_pool_base_sgt)
 		return -ENOMEM;
-	ret = dma_get_sgtable(&pdata->pdev->dev, dl->buff_pool_base_sgt,
-		veth_emac_mem->tx_buf_mem_va,
-		veth_emac_mem->tx_buf_mem_paddr,
-		(sizeof(struct s_TX_NORMAL_DESC) *
-			VETH_TX_DESC_CNT));
+	ret = dma_get_sgtable(&pdata->pdev->dev,
+		dl->buff_pool_base_sgt,
+		veth_emac_mem->tx_buff_pool_base_va,
+		veth_emac_mem->tx_buff_pool_base_pa,
+		(sizeof(uint32_t) * VETH_TX_DESC_CNT * 4)
+		);
 	if (ret) {
 		VETH_IPA_ERROR("Failed to get IPA DL buff pool sgtable.\n");
 		kfree(ul->ring_base_sgt);
@@ -412,6 +441,13 @@ int veth_set_ul_dl_smmu_ipa_params(struct veth_ipa_dev *pdata,
 	}
 
 	dl->buff_pool_base_pa = sg_phys(dl->buff_pool_base_sgt->sgl);
+	veth_emac_mem->tx_buff_pool_base_pa = dl->buff_pool_base_pa;
+
+	VETH_IPA_INFO(
+		"%s:dl->buff_pool_base_sgt = 0x%px , dl->buff_pool_base_pa =0x%lx",
+		__func__,
+		dl->buff_pool_base_sgt,
+		dl->buff_pool_base_pa);
 	return ret;
 }
 
@@ -433,24 +469,45 @@ static int veth_map_rx_tx_setup_info_params(
 	else
 		rx_setup_info->smmu_enabled = false;
 
-	rx_setup_info->smmu_enabled = false;
 	/* RX Descriptor Base Physical Address*/
 	if (!rx_setup_info->smmu_enabled)
 		rx_setup_info->ring_base_pa = veth_emac_mem->rx_desc_mem_paddr;
 
-	rx_setup_info->ring_base_pa = veth_emac_mem->rx_desc_mem_paddr;
-
 	/* RX Descriptor Base Virtual Address*/
-	rx_setup_info->ring_base_iova = veth_emac_mem->rx_desc_mem_paddr;
+	if (rx_setup_info->smmu_enabled)
+		rx_setup_info->ring_base_iova = veth_emac_mem->rx_desc_mem_iova;
 
 	/* RX Descriptor Count*/
 	rx_setup_info->ntn_ring_size = VETH_RX_DESC_CNT;
-	rx_setup_info->buff_pool_base_pa =
-		veth_emac_mem->rx_buff_pool_base_pa;
-	rx_setup_info->buff_pool_base_iova =
-		veth_emac_mem->rx_buff_pool_base_pa;
 
-	/* Assign IPA to pa*/
+	/* RX Buf pool base*/
+	if (!rx_setup_info->smmu_enabled) {
+		rx_setup_info->buff_pool_base_pa =
+			veth_emac_mem->rx_buff_pool_base_pa;
+	}
+
+/*this may cause issues after smmu?*/
+	rx_setup_info->buff_pool_base_iova =
+		veth_emac_mem->rx_buff_pool_base_iova;
+
+	/*Map TX Buff Pool*/
+	if (emac_emb_smmu_ctx.valid) {
+		/*store rx buf mem iova into buff pool addresses*/
+		veth_emac_mem->rx_buff_pool_base_va[0] =
+			veth_emac_mem->rx_buf_mem_iova;
+	} else {
+		/*store rx buf mem p addr into buff pool addresse*/
+		veth_emac_mem->rx_buff_pool_base_va[0] =
+			veth_emac_mem->rx_buf_mem_paddr;
+	}
+	for (i = 0; i < VETH_RX_DESC_CNT; i++) {
+		veth_emac_mem->rx_buff_pool_base_va[i] =
+			veth_emac_mem->rx_buff_pool_base_va[0] +
+			i*VETH_ETH_FRAME_LEN_IPA;
+		VETH_IPA_DEBUG(
+			"%s: veth_emac_mem->rx_buff_pool_base[%d] 0x%x\n",
+			__func__, i, veth_emac_mem->rx_buff_pool_base_va[i]);
+	}
 
 	/*RX buffer Count*/
 	rx_setup_info->num_buffers = VETH_RX_DESC_CNT - 1;
@@ -464,20 +521,26 @@ static int veth_map_rx_tx_setup_info_params(
 	else
 		tx_setup_info->smmu_enabled = false;
 
-	tx_setup_info->smmu_enabled = false;
-
-	tx_setup_info->ring_base_pa = veth_emac_mem->tx_desc_mem_paddr;
+	if (!tx_setup_info->smmu_enabled)
+		tx_setup_info->ring_base_pa =
+			veth_emac_mem->tx_desc_mem_paddr;
 
 	/* TX Descriptor Base Virtual Address*/
-	tx_setup_info->ring_base_iova = veth_emac_mem->tx_desc_mem_paddr;
+	if (tx_setup_info->smmu_enabled)
+		tx_setup_info->ring_base_iova =
+			veth_emac_mem->tx_desc_mem_iova;
 
 	/* TX Descriptor Count*/
 	tx_setup_info->ntn_ring_size = VETH_TX_DESC_CNT;
 
-	tx_setup_info->buff_pool_base_pa = veth_emac_mem->tx_buff_pool_base_pa;
+	/* Tx Buf pool base*/
+	if (!tx_setup_info->smmu_enabled) {
+		tx_setup_info->buff_pool_base_pa =
+			veth_emac_mem->tx_buff_pool_base_pa;
+	}
 
 	tx_setup_info->buff_pool_base_iova =
-		veth_emac_mem->tx_buff_pool_base_pa;
+		veth_emac_mem->tx_buff_pool_base_iova;
 
 	/* TX buffer Count*/
 	tx_setup_info->num_buffers = VETH_TX_DESC_CNT-1;
@@ -485,8 +548,27 @@ static int veth_map_rx_tx_setup_info_params(
 	/* TX Frame length */
 	tx_setup_info->data_buff_size = VETH_ETH_FRAME_LEN_IPA;
 
-	/* Allocate RX Buff List*/
-	//Todo: Free this correctly
+	/*Map TX Buff Pool*/
+	if (emac_emb_smmu_ctx.valid) {
+		/*store tx buf iova addr in buff pool addresses*/
+		/*store tx buf p addr in buff pool addresses*/
+		veth_emac_mem->tx_buff_pool_base_va[0] =
+			veth_emac_mem->tx_buf_mem_iova;
+	} else {
+		veth_emac_mem->tx_buff_pool_base_va[0] =
+			veth_emac_mem->tx_buf_mem_paddr;
+	}
+	for (i = 0; i < VETH_TX_DESC_CNT; i++) {
+		veth_emac_mem->tx_buff_pool_base_va[i] =
+			veth_emac_mem->tx_buff_pool_base_va[0] +
+			i*VETH_ETH_FRAME_LEN_IPA;
+		VETH_IPA_DEBUG(
+			"%s: veth_emac_mem->tx_buff_pool_base[%d] 0x%x\n",
+			__func__, i, veth_emac_mem->tx_buff_pool_base_va[i]);
+	}
+
+
+	/* Allocate and Populate RX Buff List*/
 	rx_setup_info->data_buff_list = kcalloc(rx_setup_info->num_buffers,
 		sizeof(struct ntn_buff_smmu_map), GFP_KERNEL);
 	if (rx_setup_info->data_buff_list == NULL) {
@@ -494,67 +576,65 @@ static int veth_map_rx_tx_setup_info_params(
 		return ret;
 	}
 
-	/* Allocate TX Buff List*/
-	//Todo: Free this correctly
+	if (!rx_setup_info->smmu_enabled) {
+		/* this case we use p addr in rx_buff_pool_base[0]*/
+		rx_setup_info->data_buff_list[0].pa =
+			veth_emac_mem->rx_buf_mem_paddr;
+	} else {
+		rx_setup_info->data_buff_list[0].pa =
+			veth_emac_mem->rx_buf_mem_paddr;
+
+		rx_setup_info->data_buff_list[0].iova =
+			veth_emac_mem->rx_buf_mem_iova;
+	}
+
+
+	for (i = 0; i <= rx_setup_info->num_buffers; i++) {
+		rx_setup_info->data_buff_list[i].iova =
+			rx_setup_info->data_buff_list[0].iova +
+			i*VETH_ETH_FRAME_LEN_IPA;
+		rx_setup_info->data_buff_list[i].pa =
+			rx_setup_info->data_buff_list[0].pa +
+			i*VETH_ETH_FRAME_LEN_IPA;
+		//	veth_emac_mem->rx_buf_mem_paddr[i];
+		VETH_IPA_INFO("rx_setup_info->data_buff_list[%d].iova = 0x%lx",
+			i, rx_setup_info->data_buff_list[i].iova);
+		VETH_IPA_INFO("rx_setup_info->data_buff_list[%d].pa = 0x%lx",
+			i, rx_setup_info->data_buff_list[i].pa);
+	}
+
+
+	/* Allocate and Populate TX Buff List*/
 	tx_setup_info->data_buff_list = kcalloc(tx_setup_info->num_buffers,
 		sizeof(struct ntn_buff_smmu_map), GFP_KERNEL);
 	if (tx_setup_info->data_buff_list == NULL) {
 		ret = -ENOMEM;
 		return ret;
 	}
-
-	/*Populate RX Buff list. */
-	rx_setup_info->data_buff_list[0].iova =
-		veth_emac_mem->rx_buff_pool_base[0];
-	if (!rx_setup_info->smmu_enabled) {
-		rx_setup_info->data_buff_list[0].pa =
-			rx_setup_info->data_buff_list[0].iova;
-		//VETH_IPA_DEBUG
-		//("rx_setup_info->data_buff_list[0].pa = 0x%lx",
-		//	rx_setup_info->data_buff_list[0].pa);
-	} else {
-		rx_setup_info->data_buff_list[0].pa =
-			veth_emac_mem->rx_buf_mem_paddr;
-		//VETH_IPA_DEBUG
-		//("rx_setup_info->data_buff_list[0].pa = 0x%lx",
-		//	rx_setup_info->data_buff_list[0].pa);
-	}
-
-	for (i = 0; i <= rx_setup_info->num_buffers; i++) {
-		rx_setup_info->data_buff_list[i].iova =
-			veth_emac_mem->rx_buff_pool_base[i];
-		rx_setup_info->data_buff_list[i].pa =
-			veth_emac_mem->rx_buff_pool_base[i];
-		//VETH_IPA_DEBUG
-		//("rx_setup_info->data_buff_list[%d].pa = 0x%lx",
-		//	 i, rx_setup_info->data_buff_list[i].pa);
-	}
-
-	/*Populate TX Buff list. */
-	tx_setup_info->data_buff_list[0].iova =
-		veth_emac_mem->tx_buff_pool_base[0];
 	if (!tx_setup_info->smmu_enabled) {
+		/* this case we use p addr in rx_buff_pool_base[0]*/
 		tx_setup_info->data_buff_list[0].pa =
-			tx_setup_info->data_buff_list[0].iova;
-		//VETH_IPA_DEBUG
-		//("tx_setup_info->data_buff_list[0].pa = 0x%lx",
-		//	 tx_setup_info->data_buff_list[0].pa);
+			veth_emac_mem->tx_buf_mem_paddr;
 	} else {
 		tx_setup_info->data_buff_list[0].pa =
 			veth_emac_mem->tx_buf_mem_paddr;
-		 //VETH_IPA_INFO
-		 //("tx_setup_info->data_buff_list[0].pa = 0x%lx",
-		//tx_setup_info->data_buff_list[0].pa);
-	}
 
+		tx_setup_info->data_buff_list[0].iova =
+			veth_emac_mem->tx_buf_mem_iova;
+	}
 	for (i = 0; i <= tx_setup_info->num_buffers; i++) {
 		tx_setup_info->data_buff_list[i].iova =
-			veth_emac_mem->tx_buff_pool_base[i];
+			tx_setup_info->data_buff_list[0].iova +
+			i*VETH_ETH_FRAME_LEN_IPA;
 		tx_setup_info->data_buff_list[i].pa =
-			veth_emac_mem->tx_buff_pool_base[i];
-		//VETH_IPA_DEBUG(
-		//"tx_setup_info->data_buff_list[%d].pa = 0x%lx",
-		// i,tx_setup_info->data_buff_list[i].pa);
+			tx_setup_info->data_buff_list[0].pa +
+			i*VETH_ETH_FRAME_LEN_IPA;
+		VETH_IPA_INFO("tx_setup_info->data_buff_list[%d].iova = 0x%lx",
+			i,
+			tx_setup_info->data_buff_list[i].iova);
+		VETH_IPA_INFO("tx_setup_info->data_buff_list[%d].pa = 0x%lx",
+			i,
+			tx_setup_info->data_buff_list[i].pa);
 	}
 
 	return ret;
@@ -572,10 +652,10 @@ int veth_ipa_offload_connect(struct veth_ipa_dev *pdata)
 
 	int ret = 0;
 
-	/* Hard code SMMU Disable for PHASE 1*/
-	emac_emb_smmu_ctx.valid = false;
-
-	VETH_IPA_DEBUG("%s - begin\n", __func__);
+	/* Hard code SMMU Enable for PHASE 1*/
+	emac_emb_smmu_ctx.valid = true;
+	VETH_IPA_DEBUG("%s - begin smmu_s2_enb=%d\n", __func__,
+		emac_emb_smmu_ctx.valid);
 
 	if (!pdata) {
 		VETH_IPA_ERROR("Null Param %s\n", __func__);
@@ -947,7 +1027,9 @@ static void veth_ipa_offload_event_handler(
 			VETH_IPA_DEBUG("%s - veth_emac_init\n",
 						   __func__);
 
-			ret = veth_emac_init(&(pdata->veth_emac_mem), pdata);
+			ret = veth_emac_init(&(pdata->veth_emac_mem),
+					pdata,
+					emac_emb_smmu_ctx.valid);
 			if (ret) {
 				pr_err("%s: veth_alloc_emac_export_mem failed error %d",
 						__func__,
@@ -1361,53 +1443,81 @@ static int veth_ipa_uc_ready(struct veth_ipa_dev *pdata)
  */
 static int veth_ipa_emac_evt_mgmt(void *arg)
 {
+	/*Wait on HAV receive here*/
 	int ret = 0;
 	int timeout_ms = 100;
-	int pdata_recv = 0;
-	int pdate_size = sizeof(pdata_recv);
+	struct emac_hab_mm_message pdata_recv;
+	//veth_emac_import_iova msg;
+	int pdata_size = sizeof(pdata_recv);
 	struct veth_ipa_dev *pdata = (struct veth_ipa_dev *)arg;
-
+	//memset(&msg, 0, sizeof(struct veth_emac_import_iova) );
 	VETH_IPA_INFO("%s: vc_id %d\n", __func__, pdata->veth_emac_mem.vc_id);
 	while (1) {
 		ret = habmm_socket_recv(pdata->veth_emac_mem.vc_id,
 				 &pdata_recv,
-				 &pdate_size,
+				 &pdata_size,
 				 timeout_ms,
-				 HABMM_SOCKET_RECV_FLAGS_NON_BLOCKING);
-		if (!ret) {
-			VETH_IPA_INFO("%s: pdata_recv %d\n", __func__,
-					pdata_recv);
-			switch (pdata_recv) {
-			case EV_IPA_EMAC_INIT:
-				if (!pdata->prv_ipa.emac_init) {
-					VETH_IPA_INFO("EMAC_INIT\n");
-					veth_ipa_emac_init_done_cb(pdata);
-					pdata->prv_ipa.emac_init = true;
-				}
-				break;
-			case EV_IPA_EMAC_SETUP:
-			VETH_IPA_INFO("EMAC_SETUP event received\n");
-			veth_ipa_emac_setup_done_cb(pdata);
-			break;
-			case EV_PHY_LINK_UP:
-			VETH_IPA_INFO("EMAC_PHY_LINK_UP event received\n");
-			veth_ipa_emac_link_up_cb(pdata);
-			break;
-			case EV_START_OFFLOAD:
-			VETH_IPA_INFO("EV_START_OFFLOAD event received\n");
-			veth_ipa_emac_start_offload_cb(pdata);
-			break;
-			case EV_EMAC_DEINIT:
-			VETH_IPA_INFO("EMAC_DEINIT event received\n");
-			veth_ipa_emac_deinit_cb(pdata);
-			pdata->prv_ipa.emac_init = false;
-			break;
-			default:
-			VETH_IPA_ERROR("Unknown event received\n");
-			break;
-			}
+				 0x0);
+		VETH_IPA_INFO("EVENT ID Received: %x", pdata_recv.event_id);
+	if (!ret) {
+		VETH_IPA_INFO("%s: msg->event_id %d\n", __func__, pdata_recv);
+		switch (pdata_recv.event_id) {
+		case EV_IPA_EMAC_INIT:
+		/* To avoid spurious events, possibly not required once state
+		 * machine is available
+		 */
+		if (!pdata->prv_ipa.emac_init) {
+			VETH_IPA_INFO("EMAC_INIT event received\n");
+			pr_info("%s: emac_init set to true ", __func__);
+			veth_ipa_emac_init_done_cb(pdata);
+			pdata->prv_ipa.emac_init = true;
+		}
+		break;
+		case EV_IPA_EMAC_SETUP:
+		/*use memcpy_s later instead*/
+		pdata->veth_emac_mem.tx_desc_mem_iova =
+			(dma_addr_t)
+			pdata_recv.msg_type.iova.tx_desc_mem_iova;
+		pdata->veth_emac_mem.rx_desc_mem_iova =
+			(dma_addr_t)
+			pdata_recv.msg_type.iova.rx_desc_mem_iova;
+		pdata->veth_emac_mem.tx_buf_mem_iova =
+			(dma_addr_t)
+			pdata_recv.msg_type.iova.tx_buf_mem_iova;
+		pdata->veth_emac_mem.rx_buf_mem_iova =
+			(dma_addr_t)
+			pdata_recv.msg_type.iova.rx_buf_mem_iova;
+		pdata->veth_emac_mem.tx_buff_pool_base_iova =
+			(dma_addr_t)
+			pdata_recv.msg_type.iova.tx_buf_pool_base_iova;
+		pdata->veth_emac_mem.rx_buff_pool_base_iova =
+			(dma_addr_t)
+			pdata_recv.msg_type.iova.rx_buf_pool_base_iova;
+		VETH_IPA_INFO("EMAC_SETUP event received\n");
+		VETH_IPA_INFO("union received: %x",
+			pdata->veth_emac_mem.tx_buff_pool_base_iova);
+		veth_ipa_emac_setup_done_cb(pdata);
+		break;
+		case EV_PHY_LINK_UP:
+		VETH_IPA_INFO("EMAC_PHY_LINK_UP event received\n");
+		veth_ipa_emac_link_up_cb(pdata);
+		break;
+		case EV_START_OFFLOAD:
+		VETH_IPA_INFO("EV_START_OFFLOAD event received\n");
+		veth_ipa_emac_start_offload_cb(pdata);
+		break;
+		case EV_EMAC_DEINIT:
+		VETH_IPA_INFO("EMAC_DEINIT event received\n");
+		veth_ipa_emac_deinit_cb(pdata);
+		pdata->prv_ipa.emac_init = false;
+		break;
+		default:
+		VETH_IPA_ERROR("Unknown event received\n");
+		break;
 		}
 	}
+}
+  //kfree(msg);
 	return 0;
 }
 /**
@@ -1817,7 +1927,7 @@ static int veth_ipa_stop(struct net_device *net)
 	VETH_IPA_DEBUG("network device stopped\n");
 
 	if (pdata->prv_ipa.ipa_uc_ready) {
-		pr_info("%s: veth_ipa_stop veth_disable_ipa_offload",
+		pr_info("%s: veth_disable_ipa_offload",
 				__func__);
 		veth_disable_ipa_offload(pdata);
 		ipa_uc_offload_dereg_rdyCB(IPA_UC_NTN);
@@ -1835,7 +1945,7 @@ static int veth_ipa_stop(struct net_device *net)
 	//HAB call for BE driver in the mutex lock causes a deadlock
 	ret = veth_emac_stop_offload(&(pdata->veth_emac_mem), pdata);
 	if (ret < 0) {
-		pr_err("%s: veth_emac_stop_offload failed", __func__);
+		pr_err("%s: failed", __func__);
 		return ret;
 	}
 

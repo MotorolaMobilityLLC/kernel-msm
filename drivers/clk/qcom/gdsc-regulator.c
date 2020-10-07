@@ -863,6 +863,8 @@ static int gdsc_probe(struct platform_device *pdev)
 		sc->mbox = mbox_request_channel(&sc->mbox_client, 0);
 		if (IS_ERR(sc->mbox)) {
 			ret = PTR_ERR(sc->mbox);
+			if (ret == -EAGAIN)
+				ret = -EPROBE_DEFER;
 			if (ret != -EPROBE_DEFER)
 				dev_err(&pdev->dev, "mailbox channel request failed, ret=%d\n",
 					ret);

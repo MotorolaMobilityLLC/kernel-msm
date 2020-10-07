@@ -115,6 +115,11 @@ EXPORT_SYMBOL(update_marker);
 
 static void set_bootloader_stats(bool hibernation_restore)
 {
+	if (IS_ERR_OR_NULL(boot_stats)) {
+		pr_err("boot_marker: imem not initialized!\n");
+		return;
+	}
+
 	spin_lock(&boot_marker_list.slock);
 	_create_boot_marker("M - APPSBL Start - ",
 		readl_relaxed(&boot_stats->bootloader_start));

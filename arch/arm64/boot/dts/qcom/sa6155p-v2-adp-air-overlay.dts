@@ -17,6 +17,7 @@
 #include <dt-bindings/clock/qcom,camcc-sm6150.h>
 
 #include "sa6155-adp-air.dtsi"
+#include "sa6155-display-shd.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. SA6155P ADP-AIR V2";

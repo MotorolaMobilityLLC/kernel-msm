@@ -1726,9 +1726,18 @@ int cnss_qmi_init(struct cnss_plat_data *plat_priv)
 		cnss_pr_err("Failed to initialize QMI handle, err: %d\n", ret);
 		goto out;
 	}
-
-	ret = qmi_add_lookup(&plat_priv->qmi_wlfw, WLFW_SERVICE_ID_V01,
-			     WLFW_SERVICE_VERS_V01, WLFW_SERVICE_INS_ID_V01);
+	/* In order to support dual wlan card attach case,
+	 * need separate qmi service instance id for each dev
+	 */
+	if (plat_priv->qrtr_node_id != 0 &&
+	    plat_priv->wlfw_service_instance_id != 0)
+		ret = qmi_add_lookup(&plat_priv->qmi_wlfw, WLFW_SERVICE_ID_V01,
+				     WLFW_SERVICE_VERS_V01,
+				     plat_priv->wlfw_service_instance_id);
+	else
+		ret = qmi_add_lookup(&plat_priv->qmi_wlfw, WLFW_SERVICE_ID_V01,
+				     WLFW_SERVICE_VERS_V01,
+				     WLFW_SERVICE_INS_ID_V01);
 	if (ret < 0)
 		cnss_pr_err("Failed to add QMI lookup, err: %d\n", ret);
 

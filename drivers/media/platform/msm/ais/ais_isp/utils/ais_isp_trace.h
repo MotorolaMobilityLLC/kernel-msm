@@ -223,6 +223,36 @@ TRACE_EVENT(ais_isp_vfe_error,
 	)
 );
 
+TRACE_EVENT(ais_tracing_mark_write,
+	TP_PROTO(char trace_type, const struct task_struct *task,
+			 const char *name, int value),
+	TP_ARGS(trace_type, task, name, value),
+	TP_STRUCT__entry(
+					__field(char, trace_type)
+					__field(int, pid)
+					__string(trace_name, name)
+					__field(int, value)
+	),
+	TP_fast_assign(
+					__entry->trace_type = trace_type;
+					__entry->pid = task ? task->tgid : 0;
+					__assign_str(trace_name, name);
+					__entry->value = value;
+	),
+	TP_printk("%c|%d|%s|%d", __entry->trace_type,
+			__entry->pid, __get_str(trace_name), __entry->value)
+);
+
+void ais_trace_print(char c, int value, const char *fmt, ...);
+
+#define AIS_ATRACE_BEGIN(fmt, args...) ais_trace_print('B', 0, fmt, ##args)
+
+#define AIS_ATRACE_END(fmt, args...) ais_trace_print('E', 0, fmt, ##args)
+
+#define AIS_ATRACE_INT(value, fmt, args...) \
+		ais_trace_print('C', value, fmt, ##args)
+
+
 #endif /* _AIS_ISP_TRACE_H */
 
 /* This part must be outside protection */

@@ -95,6 +95,7 @@ struct cnss_wlan_driver {
 	void (*update_status)(struct pci_dev *pdev, uint32_t status);
 	struct cnss_wlan_runtime_ops *runtime_ops;
 	const struct pci_device_id *id_table;
+	enum cnss_driver_mode (*get_driver_mode)(void);
 };
 
 struct cnss_usb_wlan_driver {
@@ -208,6 +209,7 @@ extern int cnss_get_platform_cap(struct device *dev,
 extern struct dma_iommu_mapping *cnss_smmu_get_mapping(struct device *dev);
 extern int cnss_smmu_map(struct device *dev,
 			 phys_addr_t paddr, uint32_t *iova_addr, size_t size);
+extern int cnss_smmu_unmap(struct device *dev, uint32_t iova_addr, size_t size);
 extern int cnss_get_soc_info(struct device *dev, struct cnss_soc_info *info);
 extern int cnss_request_bus_bandwidth(struct device *dev, int bandwidth);
 extern int cnss_power_up(struct device *dev);

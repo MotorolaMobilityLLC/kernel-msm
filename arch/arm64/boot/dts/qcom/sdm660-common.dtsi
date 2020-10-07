@@ -505,6 +505,10 @@
 			snps,is-utmi-l1-suspend;
 			snps,hird-threshold = /bits/ 8 <0x0>;
 			dr_mode = "host";
+			linux,sysdev_is_parent;
+			snps,dis_enblslpm_quirk;
+			snps,dis_u2_susphy_quirk;
+			usb-core-id = <1>;
 		};
 	};
 

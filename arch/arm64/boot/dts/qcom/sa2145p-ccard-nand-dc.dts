@@ -56,7 +56,7 @@
 };
 
 &tlmm {
-	wakeup_gpio_default: wakeup_gpio_default {
+	sdx_ext_ipc_gpio_default: sdx_ext_ipc_gpio_default {
 		mux {
 			pins = "gpio77";
 			function = "gpio";
@@ -110,4 +110,20 @@
 		"dev-emac-phy_intr", "dev-emac-phy_reset_state",
 		"dev-emac-rgmii_lvl_shift_state";
 	pinctrl-16 = <&rgmii_level_shifter>;
+};
+
+&gpu_bw_tbl {
+	status = "disabled";
+};
+
+&gpubw {
+	status = "disabled";
+};
+
+&msm_gpu {
+	status = "disabled";
+};
+
+&kgsl_msm_iommu {
+	status = "disabled";
 };

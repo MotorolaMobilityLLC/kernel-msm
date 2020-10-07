@@ -119,7 +119,7 @@ static void *ipa_veth_logbuf;
 #define VETH_TX_DESC_CNT   256    /*la uses 128*/
 /*IPA can support 2KB max pkt length*/
 
-#define VETH_ETH_FRAME_LEN_IPA	(1<<11)
+#define VETH_ETH_FRAME_LEN_IPA	(1<<12)
 #define VETH_IPA_LOCK() mutex_lock(&pdata->prv_ipa.ipa_lock)
 #define VETH_IPA_UNLOCK() mutex_unlock(&pdata->prv_ipa.ipa_lock)
 
@@ -154,11 +154,13 @@ struct s_TX_NORMAL_DESC {
 
 
 struct veth_emac_exp {
-	uint32_t     tx_desc_exp_id;
-	uint32_t     rx_desc_exp_id;
-	uint32_t     tx_buff_exp_id;
-	uint32_t     rx_buff_exp_id;
-	int          event_id;
+	uint32_t tx_desc_exp_id;
+	uint32_t rx_desc_exp_id;
+	uint32_t tx_buff_exp_id;
+	uint32_t rx_buff_exp_id;
+	uint32_t rx_buf_pool_exp_id;
+	uint32_t tx_buf_pool_exp_id;
+	int      event_id;
 };
 
 struct veth_emac_export_mem {
@@ -172,7 +174,7 @@ struct veth_emac_export_mem {
 	dma_addr_t   tx_buf_mem_paddr;
 	dma_addr_t   tx_buf_mem_iova;
 
-	uint32_t    *tx_buff_pool_base;
+	uint32_t    *tx_buff_pool_base_va;
 	dma_addr_t   tx_buff_pool_base_iova;
 	dma_addr_t   tx_buff_pool_base_pa;
 
@@ -186,7 +188,7 @@ struct veth_emac_export_mem {
 	dma_addr_t   rx_buf_mem_paddr;
 	dma_addr_t   rx_buf_mem_iova;
 
-	uint32_t    *rx_buff_pool_base;
+	uint32_t    *rx_buff_pool_base_va;
 	dma_addr_t   rx_buff_pool_base_iova;
 	dma_addr_t   rx_buff_pool_base_pa;
 
@@ -372,9 +374,9 @@ struct veth_ipa_dev {
 	enum veth_ipa_state state;
 	void (*device_ready_notify)(void);
 
-   #ifdef VETH_PM_ENB
+	#ifdef VETH_PM_ENB
 	u32 pm_hdl;
-   #endif
+	#endif
 	bool is_vlan_mode;
 
 	/* Status of EMAC Device*/
@@ -404,6 +406,26 @@ struct emac_emb_smmu_cb_ctx {
 	u32 va_end;
 	int ret;
 };
+
+
+/* Maintain Order same on FE*/
+struct emac_ipa_iovas {
+	/*iova addresses*/
+	void   *tx_desc_mem_iova;
+	void   *tx_buf_mem_iova;
+	void   *tx_buf_pool_base_iova;
+	void   *rx_desc_mem_iova;
+	void   *rx_buf_mem_iova;
+	void   *rx_buf_pool_base_iova;
+};
+
+struct emac_hab_mm_message {
+	int   event_id;
+	union msg_type {
+		struct emac_ipa_iovas iova;
+	} msg_type;
+};
+
 
 #define GET_MEM_PDEV_DEV (emac_emb_smmu_ctx.valid ? \
 			&emac_emb_smmu_ctx.smmu_pdev->dev : &params->pdev->dev)

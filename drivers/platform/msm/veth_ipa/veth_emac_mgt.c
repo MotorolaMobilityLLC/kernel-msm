@@ -123,26 +123,16 @@ int veth_alloc_emac_export_mem(
 	VETH_IPA_DEBUG("%s: physical addr: tx buf mem 0x%x\n",
 		__func__, veth_emac_mem->tx_buf_mem_paddr);
 
-	veth_emac_mem->tx_buff_pool_base =
-		(uint32_t *)dma_zalloc_coherent(&pdata->pdev->dev,
-			sizeof(uint32_t) * VETH_TX_DESC_CNT,
+	/*transport minimum 4k*/
+	veth_emac_mem->tx_buff_pool_base_va =
+		(uint32_t *)dma_alloc_coherent(&pdata->pdev->dev,
+			sizeof(uint32_t) * (VETH_TX_DESC_CNT * 4),
 			&tx_buf_pool_paddr,
-			GFP_KERNEL);
+			GFP_KERNEL | GFP_DMA);
 
-	if (!veth_emac_mem->tx_buff_pool_base) {
+	if (!veth_emac_mem->tx_buff_pool_base_va) {
 		VETH_IPA_DEBUG("%s: No memory for rx_buf_mem_va\n", __func__);
 		goto free_tx_buff_pool_base;
-	}
-
-	veth_emac_mem->tx_buff_pool_base[0] = veth_emac_mem->tx_buf_mem_paddr;
-
-	for (i = 0; i < VETH_TX_DESC_CNT; i++) {
-		veth_emac_mem->tx_buff_pool_base[i] =
-			veth_emac_mem->tx_buff_pool_base[0] +
-			i*VETH_ETH_FRAME_LEN_IPA;
-		VETH_IPA_DEBUG(
-			"%s: veth_emac_mem->tx_buff_pool_base[%d] 0x%x\n",
-			__func__, i, veth_emac_mem->tx_buff_pool_base[i]);
 	}
 
 	veth_emac_mem->tx_buff_pool_base_pa = tx_buf_pool_paddr;
@@ -166,28 +156,16 @@ int veth_alloc_emac_export_mem(
 	VETH_IPA_DEBUG("%s: physical addr: rx_buf_mem_addr 0x%x\n",
 		__func__, veth_emac_mem->rx_buf_mem_paddr);
 
-	veth_emac_mem->rx_buff_pool_base =
+	veth_emac_mem->rx_buff_pool_base_va =
 		(uint32_t *)dma_zalloc_coherent(&pdata->pdev->dev,
-			sizeof(uint32_t) * VETH_RX_DESC_CNT,
-			&rx_buf_pool_paddr,
-			GFP_KERNEL);
+			sizeof(uint32_t) * VETH_RX_DESC_CNT*4,
+			&veth_emac_mem->rx_buff_pool_base_pa,
+			GFP_KERNEL | GFP_DMA);
 
-	if (!veth_emac_mem->rx_buff_pool_base) {
+	if (!veth_emac_mem->rx_buff_pool_base_va) {
 		VETH_IPA_DEBUG("%s: No memory for rx_buf_mem_va\n", __func__);
 		goto free_rx_buff_pool_base;
 	}
-
-	veth_emac_mem->rx_buff_pool_base[0] = veth_emac_mem->rx_buf_mem_paddr;
-
-	for (i = 0; i < VETH_RX_DESC_CNT; i++) {
-		veth_emac_mem->rx_buff_pool_base[i] =
-			veth_emac_mem->rx_buff_pool_base[0] +
-			i*VETH_ETH_FRAME_LEN_IPA;
-		VETH_IPA_DEBUG(
-			"%s: veth_emac_mem->rx_buff_pool_base[%d] 0x%x\n",
-			__func__, i, veth_emac_mem->rx_buff_pool_base[i]);
-	}
-
 	veth_emac_mem->rx_buff_pool_base_pa = rx_buf_pool_paddr;
 	return 0;
 
@@ -196,7 +174,7 @@ int veth_alloc_emac_export_mem(
 free_rx_buff_pool_base:
 	dma_free_coherent(&pdata->pdev->dev,
 		VETH_ETH_FRAME_LEN_IPA * VETH_RX_DESC_CNT,
-		veth_emac_mem->rx_buff_pool_base,
+		veth_emac_mem->rx_buff_pool_base_va,
 		rx_buf_pool_paddr);
 free_rx_buf_mem_va:
 	dma_free_coherent(&pdata->pdev->dev,
@@ -206,7 +184,7 @@ free_rx_buf_mem_va:
 free_tx_buff_pool_base:
 	dma_free_coherent(&pdata->pdev->dev,
 		sizeof(uint32_t) * VETH_TX_DESC_CNT,
-		veth_emac_mem->tx_buff_pool_base,
+		veth_emac_mem->tx_buff_pool_base_va,
 		tx_buf_pool_paddr);
 free_tx_buf_mem_va:
 	dma_free_coherent(&pdata->pdev->dev,
@@ -239,12 +217,18 @@ free_tx_desc_mem_va:
 int veth_alloc_emac_dealloc_mem(
 	struct veth_emac_export_mem *veth_emac_mem, struct veth_ipa_dev *pdata)
 {
+	/*1. Send stop offload to the BE
+	 *2. Receive from BE
+	 *4. Free the memory
+	 *5. Close the HAB socket ?
+	 */
+
 	if (veth_emac_mem->rx_buf_mem_va) {
 		VETH_IPA_DEBUG("%s: Freeing RX buf mem", __func__);
 		dma_free_coherent(&pdata->pdev->dev,
-		VETH_ETH_FRAME_LEN_IPA * VETH_RX_DESC_CNT,
-		veth_emac_mem->rx_buf_mem_va,
-		veth_emac_mem->rx_buf_mem_paddr);
+			VETH_ETH_FRAME_LEN_IPA * VETH_RX_DESC_CNT,
+			veth_emac_mem->rx_buf_mem_va,
+			veth_emac_mem->rx_buf_mem_paddr);
 	} else {
 		VETH_IPA_ERROR("%s: RX buf not available", __func__);
 	}
@@ -252,9 +236,9 @@ int veth_alloc_emac_dealloc_mem(
 	if (veth_emac_mem->tx_buf_mem_va) {
 		VETH_IPA_DEBUG("%s: Freeing TX buf mem", __func__);
 		dma_free_coherent(&pdata->pdev->dev,
-		VETH_ETH_FRAME_LEN_IPA * VETH_TX_DESC_CNT,
-		veth_emac_mem->tx_buf_mem_va,
-		veth_emac_mem->tx_buf_mem_paddr);
+			VETH_ETH_FRAME_LEN_IPA * VETH_TX_DESC_CNT,
+			veth_emac_mem->tx_buf_mem_va,
+			veth_emac_mem->tx_buf_mem_paddr);
 	} else {
 		VETH_IPA_ERROR("%s: TX buf not available", __func__);
 	}
@@ -262,9 +246,9 @@ int veth_alloc_emac_dealloc_mem(
 	if (veth_emac_mem->rx_desc_mem_va) {
 		VETH_IPA_DEBUG("%s: Freeing RX desc mem", __func__);
 		dma_free_coherent(&pdata->pdev->dev,
-		sizeof(struct s_TX_NORMAL_DESC) * VETH_TX_DESC_CNT,
-		veth_emac_mem->rx_desc_mem_va,
-		veth_emac_mem->rx_desc_mem_paddr);
+			sizeof(struct s_TX_NORMAL_DESC) * VETH_TX_DESC_CNT,
+			veth_emac_mem->rx_desc_mem_va,
+			veth_emac_mem->rx_desc_mem_paddr);
 	} else {
 		VETH_IPA_ERROR("%s: RX desc mem not available", __func__);
 	}
@@ -272,29 +256,29 @@ int veth_alloc_emac_dealloc_mem(
 	if (veth_emac_mem->tx_desc_mem_va) {
 		VETH_IPA_DEBUG("%s: Freeing TX desc mem", __func__);
 		dma_free_coherent(&pdata->pdev->dev,
-		sizeof(struct s_RX_NORMAL_DESC) * VETH_RX_DESC_CNT,
-		veth_emac_mem->tx_desc_mem_va,
-		veth_emac_mem->tx_desc_mem_paddr);
+			sizeof(struct s_RX_NORMAL_DESC) * VETH_RX_DESC_CNT,
+			veth_emac_mem->tx_desc_mem_va,
+			veth_emac_mem->tx_desc_mem_paddr);
 	} else {
 		VETH_IPA_ERROR("%s: TX desc mem not available", __func__);
 	}
 
-	if (veth_emac_mem->rx_buff_pool_base) {
+	if (veth_emac_mem->rx_buff_pool_base_va) {
 		VETH_IPA_DEBUG("%s: Freeing RX buff pool mem", __func__);
 		dma_free_coherent(&pdata->pdev->dev,
-		sizeof(uint32_t) * VETH_RX_DESC_CNT,
-		veth_emac_mem->rx_buff_pool_base,
-		veth_emac_mem->rx_buff_pool_base_pa);
+			sizeof(uint32_t) * VETH_RX_DESC_CNT,
+			veth_emac_mem->rx_buff_pool_base_va,
+			veth_emac_mem->rx_buff_pool_base_pa);
 	} else {
 		VETH_IPA_ERROR("%s: RX buff pool base not available", __func__);
 	}
 
-	if (veth_emac_mem->tx_buff_pool_base) {
+	if (veth_emac_mem->tx_buff_pool_base_va) {
 		VETH_IPA_DEBUG("%s: Freeing TX buff pool mem", __func__);
 		dma_free_coherent(&pdata->pdev->dev,
-		sizeof(uint32_t) * VETH_TX_DESC_CNT,
-		veth_emac_mem->tx_buff_pool_base,
-		veth_emac_mem->tx_buff_pool_base_pa);
+			sizeof(uint32_t) * VETH_TX_DESC_CNT,
+			veth_emac_mem->tx_buff_pool_base_va,
+			veth_emac_mem->tx_buff_pool_base_pa);
 	} else {
 		VETH_IPA_ERROR("%s: TX buff pool base not available", __func__);
 	}
@@ -316,7 +300,7 @@ int veth_emac_ipa_hab_init(int mmid)
 	int ret = 0;
 	int vc_id = 0;
 	char *pdata_send;
-	char *pdata_recv;
+	uint32_t *pdata_recv;
 	uint32_t veth_hab_pdata_size = 32;
 
 	VETH_IPA_INFO("%s: Enter HAB init\n", __func__);
@@ -358,7 +342,7 @@ int veth_emac_ipa_hab_init(int mmid)
 	/*Receive ACK*/
 	memset(pdata_recv, 1, veth_hab_pdata_size);
 	VETH_IPA_INFO("%s: Receiving ACK\n", __func__);
-	ret = habmm_socket_recv(vc_id, pdata_recv, &veth_hab_pdata_size, 0, 0);
+	ret = habmm_socket_recv(vc_id, &pdata_recv, &veth_hab_pdata_size, 0, 0);
 
 	if (ret) {
 		VETH_IPA_ERROR("%s: receive failed! ret %d, recv size %d\n",
@@ -543,6 +527,99 @@ err:
 	return ret;
 }
 
+
+
+/** emac_ipa_hab_export_tx_buf_pool() - This API is called
+ *  for exporting the TX buf pool memory to BE driver in QNX host
+ *  @vcid: The virtual channel ID between BE and FE driver
+ *
+ *  @veth_emac_mem - Contains the virtual and physical addresses
+ *  of the exported memory
+ */
+int emac_ipa_hab_export_tx_buf_pool(
+	int vc_id, struct veth_emac_export_mem *veth_emac_mem,
+	struct veth_ipa_dev *pdata)
+{
+	int ret = 0;
+
+	VETH_IPA_DEBUG("%s: Export TX buf pool memory TO VC_ID %d\n",
+		__func__, vc_id);
+
+	ret = habmm_export(
+		vc_id,
+		veth_emac_mem->tx_buff_pool_base_va,
+		sizeof(uint32_t) * VETH_TX_DESC_CNT * 4,
+		&veth_emac_mem->exp_id.tx_buf_pool_exp_id,
+		0);
+
+	if (ret) {
+		VETH_IPA_ERROR("%s: Export failed %d returned, export id %d\n",
+			__func__,
+			ret,
+			veth_emac_mem->exp_id.tx_buf_pool_exp_id);
+		ret = -1;
+		goto err;
+	}
+
+	pr_info("%s: Export TX buf pool memory location %p %d\n",
+		__func__,
+		veth_emac_mem->tx_buff_pool_base_va,
+		veth_emac_mem->exp_id.tx_buf_pool_exp_id);
+	return ret;
+
+err:
+	veth_alloc_emac_dealloc_mem(veth_emac_mem, pdata);
+	return ret;
+}
+
+
+/** emac_ipa_hab_export_tx_buf_pool() - This API is called
+ *  for exporting the TX buf pool memory to BE driver in QNX host
+ *  @vcid: The virtual channel ID between BE and FE driver
+ *
+ *  @veth_emac_mem - Contains the virtual and physical addresses
+ *  of the exported memory
+ */
+int emac_ipa_hab_export_rx_buf_pool(
+	int vc_id, struct veth_emac_export_mem *veth_emac_mem,
+	struct veth_ipa_dev *pdata)
+{
+	int ret = 0;
+
+	VETH_IPA_DEBUG("%s: Export RX buf pool memory TO VC_ID %d\n",
+		__func__, vc_id);
+
+	ret = habmm_export(
+		vc_id,
+		veth_emac_mem->rx_buff_pool_base_va,
+		sizeof(uint32_t) * (VETH_RX_DESC_CNT * 4),
+		&veth_emac_mem->exp_id.rx_buf_pool_exp_id,
+		0);
+
+	if (ret) {
+		VETH_IPA_ERROR("%s: Export failed %d returned, export id %d\n",
+			__func__,
+			ret,
+			veth_emac_mem->exp_id.rx_buf_pool_exp_id);
+		ret = -1
+		;
+		goto err;
+	}
+
+	pr_info("%s: Export RX buf pool memory location %p , %d\n",
+		__func__,
+		veth_emac_mem->rx_buff_pool_base_va,
+		veth_emac_mem->exp_id.rx_buf_pool_exp_id);
+	return ret;
+
+err:
+	veth_alloc_emac_dealloc_mem(veth_emac_mem, pdata);
+	return ret;
+}
+
+
+
+
 /** veth_emac_ipa_send_exp_id() - This API is used to send the
  *  export IDs of all the exported memory to the BE driver in
  *  QNX host
@@ -551,19 +628,22 @@ err:
  *  @veth_emac_mem - Contains the virtual and physical addresses
  *  of the exported memory
  */
-static int veth_emac_ipa_send_exp_id(
+int veth_emac_ipa_send_exp_id(
 	int vc_id, struct veth_emac_export_mem *veth_emac_mem)
 {
 	int ret = 0;
 
 	ret = habmm_socket_send(vc_id,
-					&veth_emac_mem->exp_id,
-					sizeof(veth_emac_mem->exp_id),
-					NO_FLAGS);
-
+			&veth_emac_mem->exp_id,
+			sizeof(veth_emac_mem->exp_id),
+			NO_FLAGS);
+	VETH_IPA_INFO("Sent export ids to the backend driver");
+	VETH_IPA_INFO("TX Descriptor export id sent %x",
+			veth_emac_mem->exp_id.tx_desc_exp_id);
 	if (ret) {
 		VETH_IPA_ERROR("%s: Send failed failed %d returned\n",
-						__func__, ret);
+		__func__,
+		ret);
 		ret = -1;
 		return ret;
 	}
@@ -572,7 +652,7 @@ static int veth_emac_ipa_send_exp_id(
 }
 
 int veth_emac_init(struct veth_emac_export_mem *veth_emac_mem,
-				   struct veth_ipa_dev *pdata)
+				   struct veth_ipa_dev *pdata, bool smmu_s2_enb)
 {
 	int ret = 0;
 
@@ -613,6 +693,26 @@ int veth_emac_init(struct veth_emac_export_mem *veth_emac_mem,
 	if (ret < 0) {
 		VETH_IPA_ERROR(
 			"HAB export of RX buf mem failed, returning error");
+		return -ENOMEM;
+	}
+
+	ret = emac_ipa_hab_export_tx_buf_pool(veth_emac_mem->vc_id,
+						veth_emac_mem,
+						pdata);
+
+	if (ret < 0) {
+		VETH_IPA_ERROR(
+			"HAB export of TX buff pool mem failed, returning error");
+		return -ENOMEM;
+	}
+
+	ret = emac_ipa_hab_export_rx_buf_pool(veth_emac_mem->vc_id,
+						veth_emac_mem,
+						pdata);
+
+	if (ret < 0) {
+		VETH_IPA_ERROR(
+			"HAB export of RX buff pool mem failed, returning error");
 		return -ENOMEM;
 	}
 

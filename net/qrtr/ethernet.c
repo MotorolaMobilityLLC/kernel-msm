@@ -178,10 +178,10 @@ void qcom_ethernet_qrtr_dl_cb(struct eth_adapt_result *eth_res)
 	while (len > 0) {
 		if (dlbuf->needed > 0) {
 			pkt_len = dlbuf->pkt_len;
-			dlbuf->buf = dlbuf->buf + dlbuf->saved;
 			if (len >= dlbuf->needed) {
 				dlbuf->needed = set_cp_size(dlbuf->needed);
-				memcpy(dlbuf->buf, src, dlbuf->needed);
+				memcpy((dlbuf->buf + dlbuf->saved),
+				       src, dlbuf->needed);
 				rc = qrtr_endpoint_post(&qdev->ep, dlbuf->buf,
 							pkt_len);
 				if (rc == -EINVAL) {
@@ -189,13 +189,15 @@ void qcom_ethernet_qrtr_dl_cb(struct eth_adapt_result *eth_res)
 						"Invalid qrtr packet\n");
 					goto exit;
 				}
+				memset(dlbuf->buf, 0, MAX_BUFSIZE);
 				len = len - dlbuf->needed;
 				src = src + dlbuf->needed;
 				dlbuf->needed = 0;
+				dlbuf->pkt_len = 0;
 			} else {
 				/* Partial packet */
 				len = set_cp_size(len);
-				memcpy(dlbuf->buf, src, len);
+				memcpy(dlbuf->buf + dlbuf->saved, src, len);
 				dlbuf->saved = dlbuf->saved + len;
 				dlbuf->needed = dlbuf->needed - len;
 				break;
@@ -211,6 +213,12 @@ void qcom_ethernet_qrtr_dl_cb(struct eth_adapt_result *eth_res)
 			if ((int)pkt_len == 0) {
 				dlbuf->needed = 0;
 				dlbuf->pkt_len = 0;
+				break;
+			}
+
+			if (pkt_len > MAX_BUFSIZE) {
+				dev_err(qdev->dev,
+					"Unsupported pkt_len %zu\n", pkt_len);
 				break;
 			}
 
@@ -230,11 +238,11 @@ void qcom_ethernet_qrtr_dl_cb(struct eth_adapt_result *eth_res)
 				dev_err(qdev->dev, "Invalid qrtr packet\n");
 				goto exit;
 			}
-			pkt_len = set_cp_size(pkt_len);
-			memset(dlbuf->buf, 0, pkt_len);
+			memset(dlbuf->buf, 0, MAX_BUFSIZE);
 			len = len - pkt_len;
 			src = src + pkt_len;
 			dlbuf->needed = 0;
+			dlbuf->pkt_len = 0;
 		}
 	}
 exit:

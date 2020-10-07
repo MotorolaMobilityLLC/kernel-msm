@@ -125,6 +125,8 @@ int diag_pcie_register_ops(int proc, int ctx, struct diag_mux_ops *ops)
 		return 0;
 
 	pcie_logger.ops[proc] = ops;
+	DIAG_LOG(DIAG_DEBUG_MUX,
+	"diag: registering pcie for proc: %d\n", proc);
 	err = diag_pcie_register(proc, ctx, ops);
 	if (err) {
 		pr_err("diag: MUX: unable to register pcie operations for proc: %d, err: %d\n",

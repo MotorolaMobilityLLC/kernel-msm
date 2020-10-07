@@ -263,6 +263,7 @@
 		qcom,secure_align_mask = <0xfff>;
 		qcom,retention;
 		qcom,hyp_secure_alloc;
+		qcom,secure-size = <0x20000000>; /* 512MB */
 
 		gfx3d_user: gfx3d_user {
 			compatible = "qcom,smmu-kgsl-cb";

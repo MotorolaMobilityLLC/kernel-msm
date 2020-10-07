@@ -2053,6 +2053,10 @@ struct qcom_glink *qcom_glink_native_probe(struct device *dev,
 
 	glink->irq = irq;
 
+	ret = enable_irq_wake(irq);
+	if (ret < 0)
+		dev_err(dev, "enable_irq_wake() failed on %d\n", irq);
+
 	size = of_property_count_u32_elems(dev->of_node, "cpu-affinity");
 	if (size > 0) {
 		arr = kmalloc_array(size, sizeof(u32), GFP_KERNEL);

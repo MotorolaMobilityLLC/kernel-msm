@@ -24,6 +24,7 @@
 #include <linux/ipv6.h>
 #include <linux/rtnetlink.h>
 #include <linux/if_vlan.h>
+#include <linux/msm_eth.h>
 
 #include "stmmac.h"
 #include "stmmac_platform.h"
@@ -158,6 +159,13 @@ u16 dwmac_qcom_select_queue(
 			txqueue_select = ALL_OTHER_TX_TRAFFIC_IPA_DISABLED;
 	}
 
+	/* use better macro, cannot afford function call here */
+	if (ipa_enabled && (txqueue_select == IPA_DMA_TX_CH_BE ||
+			    txqueue_select == IPA_DMA_TX_CH_CV2X)) {
+		ETHQOSERR("TX Channel [%d] is not a valid for SW path\n",
+			  txqueue_select);
+		WARN_ON(1);
+	}
 	ETHQOSDBG("tx_queue %d\n", txqueue_select);
 	return txqueue_select;
 }
@@ -411,8 +419,10 @@ static int qcom_ethqos_add_ipv6addr(struct ip_params *ip_info,
 	struct net *net = dev_net(dev);
 	/*For valid IPv6 address*/
 
-	if (!net || !net->genl_sock || !net->genl_sock->sk_socket)
+	if (!net || !net->genl_sock || !net->genl_sock->sk_socket) {
 		ETHQOSERR("Sock is null, unable to assign ipv6 address\n");
+		return -EFAULT;
+	}
 
 	if (!net->ipv6.devconf_dflt) {
 		ETHQOSERR("ipv6.devconf_dflt is null, schedule wq\n");
@@ -547,7 +557,7 @@ static int qcom_ethqos_qmp_mailbox_init(struct qcom_ethqos *ethqos)
 	ethqos->qmp_mbox_client = devm_kzalloc(
 	&ethqos->pdev->dev, sizeof(*ethqos->qmp_mbox_client), GFP_KERNEL);
 
-	if (IS_ERR(ethqos->qmp_mbox_client)) {
+	if (!ethqos->qmp_mbox_client || IS_ERR(ethqos->qmp_mbox_client)) {
 		ETHQOSERR("qmp alloc client failed\n");
 		return -EINVAL;
 	}
@@ -1031,8 +1041,8 @@ static void ethqos_handle_phy_interrupt(struct qcom_ethqos *ethqos)
 	struct stmmac_priv *priv = netdev_priv(dev);
 	int micrel_intr_status = 0;
 
-	if ((dev->phydev->phy_id & dev->phydev->drv->phy_id_mask)
-		== MICREL_PHY_ID) {
+	if (dev->phydev && ((dev->phydev->phy_id &
+	    dev->phydev->drv->phy_id_mask) == MICREL_PHY_ID)) {
 		phy_intr_status = ethqos_mdio_read(
 			priv, priv->plat->phy_addr, DWC_ETH_QOS_BASIC_STATUS);
 		ETHQOSDBG(
@@ -1147,15 +1157,23 @@ static ssize_t read_phy_reg_dump(struct file *file, char __user *user_buf,
 				 size_t count, loff_t *ppos)
 {
 	struct qcom_ethqos *ethqos = file->private_data;
+	struct platform_device *pdev;
+	struct net_device *dev;
+	struct stmmac_priv *priv;
 	unsigned int len = 0, buf_len = 2000;
 	char *buf;
 	ssize_t ret_cnt;
 	int phydata = 0;
 	int i = 0;
 
-	struct platform_device *pdev = ethqos->pdev;
-	struct net_device *dev = platform_get_drvdata(pdev);
-	struct stmmac_priv *priv = netdev_priv(dev);
+	if (!ethqos) {
+		ETHQOSERR("NULL Pointer\n");
+		return -EINVAL;
+	}
+
+	pdev = ethqos->pdev;
+	dev = platform_get_drvdata(pdev);
+	priv = netdev_priv(dev);
 
 	if (!ethqos || !dev->phydev) {
 		ETHQOSERR("NULL Pointer\n");
@@ -1195,13 +1213,20 @@ static ssize_t read_rgmii_reg_dump(struct file *file,
 				   loff_t *ppos)
 {
 	struct qcom_ethqos *ethqos = file->private_data;
+	struct platform_device *pdev;
+	struct net_device *dev;
 	unsigned int len = 0, buf_len = 2000;
 	char *buf;
 	ssize_t ret_cnt;
 	int rgmii_data = 0;
-	struct platform_device *pdev = ethqos->pdev;
 
-	struct net_device *dev = platform_get_drvdata(pdev);
+	if (!ethqos) {
+		ETHQOSERR("NULL Pointer\n");
+		return -EINVAL;
+	}
+
+	pdev = ethqos->pdev;
+	dev = platform_get_drvdata(pdev);
 
 	if (!ethqos || !dev->phydev) {
 		ETHQOSERR("NULL Pointer\n");
@@ -1538,15 +1563,11 @@ static void setup_config_registers(struct qcom_ethqos *ethqos,
 	if (mode > DISABLE_LOOPBACK && !qcom_ethqos_is_phy_link_up(ethqos)) {
 		/*If Link is Down & need to enable Loopback*/
 		ETHQOSDBG("Link is down . manual ipa setting up\n");
-		if (priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
-			ethqos_ipa_offload_event_handler(priv,
-							 EV_PHY_LINK_UP);
+		ethqos_ipa_offload_event_handler(priv, EV_PHY_LINK_UP);
 	} else if (mode == DISABLE_LOOPBACK &&
 			  !qcom_ethqos_is_phy_link_up(ethqos)) {
 		ETHQOSDBG("Disable request since link was down disable ipa\n");
-		if (priv->tx_queue[IPA_DMA_TX_CH].skip_sw)
-			ethqos_ipa_offload_event_handler(priv,
-							 EV_PHY_LINK_DOWN);
+		ethqos_ipa_offload_event_handler(priv, EV_PHY_LINK_DOWN);
 	}
 
 	if (priv->dev->phydev->speed != SPEED_UNKNOWN)
@@ -1609,13 +1630,11 @@ static ssize_t loopback_handling_config(
 	}
 
 	/*Argument validation*/
-	if (config == DISABLE_LOOPBACK || config == ENABLE_IO_MACRO_LOOPBACK ||
+	if (config == ENABLE_IO_MACRO_LOOPBACK ||
 	    config == ENABLE_MAC_LOOPBACK || config == ENABLE_PHY_LOOPBACK) {
 		if (speed != SPEED_1000 && speed != SPEED_100 &&
 		    speed != SPEED_10)
 			return -EINVAL;
-	} else {
-		return -EINVAL;
 	}
 
 	if (config == ethqos->current_loopback) {
@@ -2324,7 +2343,8 @@ static void ethqos_set_early_eth_param(
 		priv->plat->mdio_bus_data->phy_mask =
 		 priv->plat->mdio_bus_data->phy_mask | DUPLEX_FULL | SPEED_100;
 
-	priv->plat->max_speed = SPEED_100;
+	if (priv->plat)
+		priv->plat->max_speed = SPEED_100;
 
 	if (pparams.is_valid_ipv4_addr) {
 		INIT_DELAYED_WORK(&ethqos->ipv4_addr_assign_wq,
@@ -2357,12 +2377,23 @@ bool qcom_ethqos_ipa_enabled(void)
 static ssize_t ethqos_read_dev_emac(struct file *filp, char __user *buf,
 				    size_t count, loff_t *f_pos)
 {
-	unsigned int len = 0;
-	char *temp_buf;
-	ssize_t ret_cnt = 0;
+	struct eth_msg_meta msg;
+	u8 status = 0;
 
-	ret_cnt = simple_read_from_buffer(buf, count, f_pos, temp_buf, len);
-	return ret_cnt;
+	memset(&msg, 0,  sizeof(struct eth_msg_meta));
+
+	if (pethqos && pethqos->ipa_enabled)
+		ethqos_ipa_offload_event_handler(
+			&status, EV_QTI_GET_CONN_STATUS);
+
+	msg.msg_type = status;
+
+	ETHQOSDBG("status %02x\n", status);
+	ETHQOSDBG("msg.msg_type %02x\n", msg.msg_type);
+	ETHQOSDBG("msg.rsvd %02x\n", msg.rsvd);
+	ETHQOSDBG("msg.msg_len %d\n", msg.msg_len);
+
+	return copy_to_user(buf, &msg, sizeof(struct eth_msg_meta));
 }
 
 static ssize_t ethqos_write_dev_emac(struct file *file,
@@ -2384,6 +2415,7 @@ static ssize_t ethqos_write_dev_emac(struct file *file,
 		ETHQOSERR("emac string is too long - count=%u\n", count);
 		return -EFAULT;
 	}
+
 	memset(in_buf, 0,  sizeof(in_buf));
 	ret = copy_from_user(in_buf, user_buf, count);
 
@@ -2484,10 +2516,42 @@ static void ethqos_get_qoe_dt(struct qcom_ethqos *ethqos,
 	}
 }
 
+static DECLARE_WAIT_QUEUE_HEAD(dev_emac_wait);
+#ifdef CONFIG_ETH_IPA_OFFLOAD
+void ethqos_wakeup_dev_emac_queue(void)
+{
+	ETHQOSDBG("\n");
+	wake_up_interruptible(&dev_emac_wait);
+}
+#endif
+
+static unsigned int ethqos_poll_dev_emac(struct file *file, poll_table *wait)
+{
+	int mask = 0;
+	int update = 0;
+
+	ETHQOSDBG("\n");
+
+	poll_wait(file, &dev_emac_wait, wait);
+
+	if (pethqos && pethqos->ipa_enabled && pethqos->cv2x_mode)
+		ethqos_ipa_offload_event_handler(
+			&update, EV_QTI_CHECK_CONN_UPDATE);
+
+	if (update)
+		mask = POLLIN | POLLRDNORM;
+
+	ETHQOSDBG("mask %d\n", mask);
+
+	return mask;
+}
+
 static const struct file_operations emac_fops = {
 	.owner = THIS_MODULE,
+	.open = simple_open,
 	.read = ethqos_read_dev_emac,
 	.write = ethqos_write_dev_emac,
+	.poll = ethqos_poll_dev_emac,
 };
 
 static int ethqos_create_emac_device_node(dev_t *emac_dev_t,
@@ -2575,6 +2639,100 @@ static void ethqos_get_cv2x_dt(struct qcom_ethqos *ethqos,
 	}
 }
 
+inline u32 qcom_ethqos_rgmii_io_macro_num_of_regs(u32 emac_hw_version)
+{
+	switch (emac_hw_version) {
+	case EMAC_HW_v2_0_0:
+		return 27;
+	case EMAC_HW_v2_1_0:
+		return 27;
+	case EMAC_HW_v2_1_1:
+		return 27;
+	case EMAC_HW_v2_1_2:
+		return 27;
+	case EMAC_HW_v2_2_0:
+		return 27;
+	case EMAC_HW_v2_3_0:
+		return 28;
+	case EMAC_HW_v2_3_1:
+		return 27;
+	case EMAC_HW_v2_3_2:
+		return 29;
+	case EMAC_HW_NONE:
+	default:
+		return 0;
+	}
+}
+
+static int qcom_ethos_panic_notifier(struct notifier_block *this,
+				     unsigned long event, void *ptr)
+{
+	u32 size_iomacro_regs;
+
+	if (pethqos) {
+		size_iomacro_regs =
+		qcom_ethqos_rgmii_io_macro_num_of_regs(pethqos->emac_ver) * 4;
+		ETHQOSINFO("pethqos 0x%p", pethqos);
+
+		pethqos->iommu_domain = stmmac_emb_smmu_ctx.iommu_domain;
+		ETHQOSINFO("emac iommu domain 0x%p", pethqos->iommu_domain);
+
+		pethqos->emac_reg_base_address =
+		kzalloc(pethqos->emac_mem_size, GFP_KERNEL);
+		ETHQOSINFO("emac register mem 0x%p", pethqos->emac_mem_base);
+		if (pethqos->emac_mem_base)
+			memcpy_fromio(pethqos->emac_reg_base_address,
+				      pethqos->ioaddr,
+				      pethqos->emac_mem_size);
+
+		pethqos->rgmii_reg_base_address =
+		kzalloc(size_iomacro_regs, GFP_KERNEL);
+		ETHQOSINFO
+		("rgmii register mem 0x%p", pethqos->rgmii_reg_base_address);
+		if (pethqos->rgmii_reg_base_address)
+			memcpy_fromio(pethqos->rgmii_reg_base_address,
+				      pethqos->rgmii_base,
+				      size_iomacro_regs);
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block qcom_ethqos_panic_blk = {
+	.notifier_call  = qcom_ethos_panic_notifier,
+};
+
+static void read_mac_addr_from_fuse_reg(struct device_node *np)
+{
+	int ret, i;
+	u32 mac_efuse_prop, efuse_size = 8;
+	void __iomem *mac_efuse_addr;
+	unsigned long mac_addr;
+
+	ret = of_property_read_u32(np, "mac-efuse-addr", &mac_efuse_prop);
+	if (!ret) {
+		mac_efuse_addr = ioremap(mac_efuse_prop, efuse_size);
+		if (!mac_efuse_addr) {
+			ETHQOSERR("unable to do ioremap\n");
+			return;
+		}
+		mac_addr = readq(mac_efuse_addr);
+		ETHQOSINFO("Mac address read: %llx\n", mac_addr);
+
+		/* create byte array out of value read from efuse */
+		for (i = 0; i < ETH_ALEN ; i++) {
+			pparams.mac_addr[ETH_ALEN - 1 - i] = mac_addr & 0xff;
+			mac_addr = mac_addr >> 8;
+		}
+
+		pparams.is_valid_mac_addr =
+			is_valid_ether_addr(pparams.mac_addr);
+		if (!pparams.is_valid_mac_addr) {
+			ETHQOSERR("Invalid Mac address set: %llx\n", mac_addr);
+			return;
+		}
+	}
+}
+
 static int qcom_ethqos_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -2607,8 +2765,7 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 
 	ethqos = devm_kzalloc(&pdev->dev, sizeof(*ethqos), GFP_KERNEL);
 	if (!ethqos) {
-		ret = -ENOMEM;
-		goto err_mem;
+		return -ENOMEM;
 	}
 
 	ethqos->pdev = pdev;
@@ -2658,6 +2815,9 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	ret = clk_prepare_enable(ethqos->rgmii_clk);
 	if (ret)
 		goto err_mem;
+
+	/* Read mac address from fuse register */
+	read_mac_addr_from_fuse_reg(np);
 
 	/*Initialize Early ethernet to false*/
 	ethqos->early_eth_enabled = false;
@@ -2769,6 +2929,8 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_clk;
 
+	atomic_notifier_chain_register(&panic_notifier_list,
+				       &qcom_ethqos_panic_blk);
 	rgmii_dump(ethqos);
 
 	if (ethqos->emac_ver == EMAC_HW_v2_3_2) {
@@ -2823,12 +2985,9 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 					       &ethqos->emac_class,
 					       "emac");
 	}
+
 #ifdef CONFIG_ETH_IPA_OFFLOAD
-	ethqos->ipa_enabled = true;
-	priv->rx_queue[IPA_DMA_RX_CH].skip_sw = true;
-	priv->tx_queue[IPA_DMA_TX_CH].skip_sw = true;
 	ethqos_ipa_offload_event_handler(ethqos, EV_PROBE_INIT);
-	priv->hw->mac->map_mtl_to_dma(priv->hw, 0, 1); //change
 #endif
 
 #ifdef CONFIG_MSM_BOOT_TIME_MARKER

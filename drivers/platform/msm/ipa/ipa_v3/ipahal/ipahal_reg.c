@@ -3751,6 +3751,12 @@ u32 ipahal_get_reg_mn_ofst(enum ipahal_reg_name reg, u32 m, u32 n)
 		return -EINVAL;
 	}
 
+	if (!ipahal_ctx) {
+		IPAHAL_ERR_RL("ipahal_ctx is NULL\n");
+		WARN_ON_RATELIMIT_IPA(1);
+		return -EINVAL;
+	}
+
 	IPAHAL_DBG_LOW("get offset of %s m=%u n=%u\n",
 		ipahal_reg_name_str(reg), m, n);
 	offset = ipahal_reg_objs[ipahal_ctx->hw_type][reg].offset;
