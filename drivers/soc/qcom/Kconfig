@@ -42,6 +42,14 @@ config LIBER_DTB
 	  Only include liber specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config HANOI_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Hanoi DTBs"
+	help
+	  Only include hanoi specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config TACOMA_DTB
 	depends on ARCH_QCOM
 	default n
