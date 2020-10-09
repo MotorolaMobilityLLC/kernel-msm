@@ -10,11 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-&pm6150_l5 {
-    regulator-boot-on;
-    regulator-always-on;
-    status = "ok";
-};
 
 &tlmm {
 	/delete-node/ cci0_suspend;
