@@ -5075,7 +5075,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 	typec_source_rd = smblib_get_prop_ufp_mode(chg);
 
 	/* QC 2.0/3.0 adapter */
-	if (apsd_result->bit & (QC_3P0_BIT | QC_2P0_BIT)) {
+	if (apsd_result->bit & QC_2P0_BIT) {
+		*total_current_ua = chg->chg_param.hvdcp2_max_icl_ua;
+		return 0;
+	} else if (apsd_result->bit & QC_3P0_BIT){
 		*total_current_ua = HVDCP_CURRENT_UA;
 		return 0;
 	}
