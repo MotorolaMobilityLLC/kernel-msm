@@ -51,6 +51,9 @@ dtbo-$(CONFIG_LIBER_DTB) += \
 	sdmmagpie-liber-dvt-overlay.dtbo \
 	sdmmagpie-liber-dvt2-overlay.dtbo
 
+dtbo-$(CONFIG_HANOI_DTB) += \
+	sdmmagpie-hanoi-evt1-overlay.dtbo
+
 dtbo-$(CONFIG_TACOMA_DTB) += \
 	sdmmagpie-tacoma-evt1-overlay.dtbo
 
@@ -131,6 +134,9 @@ sdmmagpie-liber-dvt-overlay.dtbo-base := \
 
 sdmmagpie-liber-dvt2-overlay.dtbo-base := \
         sdmmagpie-liber-base.dtb
+
+sdmmagpie-hanoi-evt1-overlay.dtbo-base := \
+	sdmmagpie-hanoi-base.dtb
 
 sdmmagpie-tacoma-evt1-overlay.dtbo-base := \
 	sdmmagpie-tacoma-base.dtb
