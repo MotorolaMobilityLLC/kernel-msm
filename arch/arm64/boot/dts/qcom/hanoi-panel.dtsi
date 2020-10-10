@@ -1,0 +1,54 @@
+/*
+ * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+&soc {
+	dsi_mot_dummy_qhd_video_display: qcom,dsi-display@22 {
+		label = "dsi_mot_dummy_qhd_video_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+
+		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
+	};
+};
+
+&sde_dsi {
+	qcom,dsi-display-list = <
+		&dsi_mot_dummy_qhd_video_display>;
+        /delete-property/ qcom,platform-te-gpio;
+	/delete-property/ vddio-supply;
+	qcom,platform-reset-gpio = <&pm6150l_gpios 9 0>;
+	//qcom,platform-reset-gpio = <&tlmm 91 0>;
+	vddio-supply = <&pm6150_l15>;
+};
+
+&mot_dummy_vid_qhd {
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-reset-gpio = <&pm6150l_gpios 9 0>;
+
+	qcom,mdss-dsi-t-clk-post = <0x0e>;
+	qcom,mdss-dsi-t-clk-pre = <0x31>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 2a 0b 0b 28 26 0b
+				0c 08 02 04 00];
+
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
