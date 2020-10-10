@@ -20,6 +20,14 @@ config DENVER_DTB
 		Only include DENVER specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config IBIZA_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "IBIZA DTBs"
+	help
+		Only include IBIZA specific DTBs to limit the number that
+		get built during kernel compilation.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
