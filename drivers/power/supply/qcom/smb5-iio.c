@@ -486,6 +486,7 @@ int smb5_iio_set_prop(struct smb_charger *chg, int channel, int val)
 		msleep(50);
 		vote(chg->chg_disable_votable, FORCE_RECHARGE_VOTER,
 				false, 0);
+		chg->chg_done = 0;
 		break;
 	case PSY_IIO_FCC_STEPPER_ENABLE:
 		chg->fcc_stepper_enable = val;
