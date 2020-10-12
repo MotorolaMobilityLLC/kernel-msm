@@ -17,6 +17,22 @@
 };
 
 &tlmm {
+	/delete-node/ cci0_suspend;
+
+	cci0_suspend: cci0_suspend {
+		mux {
+			/* CLK, DATA */
+			pins = "gpio17","gpio18";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio17","gpio18";
+			bias-disable; /* NO PULL */
+			drive-strength = <2>; /* 2 MA */
+		};
+	};
+
 	cam_sensor_front_active: cam_sensor_front_active {
 		/* RESET  */
 		mux {
@@ -256,6 +272,9 @@
 };
 
 &cam_cci0 {
+	pinctrl-0 = <&cci0_active &cci1_active>;
+	pinctrl-1 = <&cci0_suspend &cci1_suspend>;
+
 	qcom,cam-res-mgr {
 		compatible = "qcom,cam-res-mgr";
 		status = "ok";
