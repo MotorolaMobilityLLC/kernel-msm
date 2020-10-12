@@ -14,10 +14,6 @@
 
 #include "sdmmagpie-moto-base.dtsi"
 
-/ {
-	model = "hanoi";
-};
-
 &firmware {
     android {
         /delete-node/ fstab;
