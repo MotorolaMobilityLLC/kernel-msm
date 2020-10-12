@@ -50,6 +50,14 @@ config HANOI_DTB
 	  Only include hanoi specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config HANOIP_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "Hanoi plus DTBs"
+	help
+	  Only include hanoip specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config TACOMA_DTB
 	depends on ARCH_QCOM
 	default n
