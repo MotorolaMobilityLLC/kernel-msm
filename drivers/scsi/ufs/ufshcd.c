@@ -47,6 +47,9 @@
 #if defined(CONFIG_UFSFEATURE)
 #include "ufsfeature.h"
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+#include "ufsfeature31.h"
+#endif
 #include "ufshcd.h"
 #include "ufs_quirks.h"
 #include "unipro.h"
@@ -62,8 +65,10 @@ static int ufshcd_wb_buf_flush_enable(struct ufs_hba *hba);
 static int ufshcd_wb_buf_flush_disable(struct ufs_hba *hba);
 static bool ufshcd_wb_is_buf_flush_needed(struct ufs_hba *hba);
 static int ufshcd_wb_toggle_flush_during_h8(struct ufs_hba *hba, bool set);
-
-
+static unsigned int storage_mfrid;
+#define MANUFACTURER_SAMSUNG 0x1CE
+#define MANUFACTURER_TOSHIBA 0x198
+#define IS_SAMSUNG_DEVICE(mfrid)   (MANUFACTURER_SAMSUNG == mfrid)
 #ifdef CONFIG_DEBUG_FS
 
 static int ufshcd_tag_req_type(struct request *rq)
@@ -495,12 +500,12 @@ static int ufshcd_disable_clocks(struct ufs_hba *hba,
 				 bool is_gating_context);
 static int ufshcd_disable_clocks_keep_link_active(struct ufs_hba *hba,
 					      bool is_gating_context);
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE)||defined(CONFIG_UFSFEATURE_31)
 void ufshcd_hold_all(struct ufs_hba *hba);
 #else
 static void ufshcd_hold_all(struct ufs_hba *hba);
 #endif
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE)||defined(CONFIG_UFSFEATURE_31)
 void ufshcd_release_all(struct ufs_hba *hba);
 #else
 static void ufshcd_release_all(struct ufs_hba *hba);
@@ -3023,7 +3028,7 @@ static void ufshcd_exit_hibern8_on_idle(struct ufs_hba *hba)
 	device_remove_file(hba->dev, &hba->hibern8_on_idle.enable_attr);
 }
 
-#if defined (CONFIG_UFSFEATURE)
+#if defined (CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 void ufshcd_hold_all(struct ufs_hba *hba)
 #else
 static void ufshcd_hold_all(struct ufs_hba *hba)
@@ -3033,7 +3038,7 @@ static void ufshcd_hold_all(struct ufs_hba *hba)
 	ufshcd_hibern8_hold(hba, false);
 }
 
-#if defined (CONFIG_UFSFEATURE)
+#if defined (CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 void ufshcd_release_all(struct ufs_hba *hba)
 #else
 static void ufshcd_release_all(struct ufs_hba *hba)
@@ -3635,6 +3640,10 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		ufsf_tw_prep_fn(hba->ufsf, lrbp);
 		ufsf_hpb_prep_fn(hba->ufsf, lrbp);
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+		ufsf_change_lun(hba->ufsf, lrbp);
+		ufsf_prep_fn(hba->ufsf, lrbp);
+#endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
@@ -3904,6 +3913,16 @@ send_orig_cmd:
 	lrbp->req_abort_skip = false;
 
 	err = ufshcd_comp_scsi_upiu(hba, lrbp);
+#if defined(CONFIG_UFSFEATURE_31) && defined(CONFIG_UFSHPB_31)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid)) {
+		if (cmd->cmnd[0] != READ_10)
+			BUG_ON(lrbp->requeue_cnt);
+
+		if (lrbp->requeue_cnt) {
+			err = -EAGAIN;
+		}
+	}
+#endif
 	if (err) {
 		if (err != -EAGAIN)
 			dev_err(hba->dev,
@@ -4170,7 +4189,7 @@ static inline void ufshcd_put_dev_cmd_tag(struct ufs_hba *hba, int tag)
  * NOTE: Since there is only one available tag for device management commands,
  * it is expected you hold the hba->dev_cmd.lock mutex.
  */
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 			enum dev_cmd_type cmd_type, int timeout)
 #else
@@ -6335,6 +6354,10 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 		       __func__, (int)sdev->lun, sdev, sdev->request_queue);
 	}
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+	if(IS_SAMSUNG_DEVICE(storage_mfrid))
+		ufsf_slave_configure(hba->ufsf, sdev);
+#endif
 	blk_queue_update_dma_pad(q, PRDT_DATA_BYTE_COUNT_PAD - 1);
 	blk_queue_max_segment_size(q, PRDT_DATA_BYTE_COUNT_MAX);
 
@@ -6519,7 +6542,7 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 					ufshpb_rsp_upiu_toshiba(hba, lrbp);
 			} else {
 #endif
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 			if (scsi_status == SAM_STAT_GOOD)
 				ufsf_hpb_noti_rb(hba->ufsf, lrbp);
 #endif
@@ -6651,11 +6674,19 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	struct scsi_cmnd *cmd;
 	int result;
 	int index;
-
+#if defined (CONFIG_UFSFEATURE_31)
+	bool scsi_req = false;
+#endif
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
 		if (cmd) {
+#if defined(CONFIG_UFSFEATURE_31) && defined(CONFIG_UFSHPB_31)
+			trace_printk("%llu + %u cmd 0x%X comp tag[%d] out %X\n",
+				     (unsigned long long) blk_rq_pos(cmd->request),
+				     (unsigned int) blk_rq_sectors(cmd->request),
+				     cmd->cmnd[0], index, hba->outstanding_reqs);
+#endif
 			ufshcd_cond_add_cmd_trace(hba, index, "scsi_cmpl");
 			ufshcd_update_tag_stats_completion(hba, cmd);
 			result = ufshcd_transfer_rsp_status(hba, lrbp);
@@ -6692,6 +6723,9 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 
 			/* Do not touch lrbp after scsi done */
 			cmd->scsi_done(cmd);
+#if defined (CONFIG_UFSFEATURE_31)
+			scsi_req = true;
+#endif
 		} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
 			lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
 			lrbp->compl_time_stamp = ktime_get();
@@ -6712,6 +6746,10 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 
 	/* we might have free'd some tags above */
 	wake_up(&hba->dev_cmd.tag_wq);
+#if defined(CONFIG_UFSFEATURE_31)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		ufsf_on_idle(hba->ufsf, scsi_req);
+#endif
 }
 
 /**
@@ -7085,10 +7123,20 @@ out:
 
 static bool ufshcd_wb_sup(struct ufs_hba *hba)
 {
+#if defined(CONFIG_UFSTW_31)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		return false;
+	else
+		return ((hba->dev_info.d_ext_ufs_feature_sup &
+			 UFS_DEV_WRITE_BOOSTER_SUP) &&
+			(hba->dev_info.b_wb_buffer_type
+			 || hba->dev_info.wb_config_lun));
+#else
 	return ((hba->dev_info.d_ext_ufs_feature_sup &
 		   UFS_DEV_WRITE_BOOSTER_SUP) &&
 		  (hba->dev_info.b_wb_buffer_type
 		   || hba->dev_info.wb_config_lun));
+#endif
 }
 
 static int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable)
@@ -7935,8 +7983,13 @@ out:
  *
  * Returns non-zero value on error, zero on success.
  */
+#if defined(CONFIG_UFSFEATURE_31)
+int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
+                u8 tm_function, u8 *tm_response)
+#else
 static int ufshcd_issue_tm_cmd(struct ufs_hba *hba, int lun_id, int task_id,
 		u8 tm_function, u8 *tm_response)
+#endif
 {
 	struct utp_task_req_desc *task_req_descp;
 	struct utp_upiu_task_req *task_req_upiup;
@@ -8087,6 +8140,9 @@ out:
 #if defined(CONFIG_UFSFEATURE)
 		ufsf_hpb_reset_lu(hba->ufsf);
 		ufsf_tw_reset_lu(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSFEATURE_31)
+		ufsf_reset_lu(hba->ufsf);
 #endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 		}
@@ -8326,6 +8382,9 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 #if defined(CONFIG_UFSFEATURE)
 	ufsf_hpb_reset_host(hba->ufsf);
 	ufsf_tw_reset_host(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSFEATURE_31)
+	ufsf_reset_host(hba->ufsf);
 #endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
@@ -9410,6 +9469,10 @@ reinit:
 		ufsf_hpb_init(hba->ufsf);
 		ufsf_tw_init(hba->ufsf);
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+		ufsf_device_check(hba);
+		ufsf_init(hba->ufsf);
+#endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
@@ -9440,7 +9503,10 @@ if (!ufshcd_is_hpb_supported(hba) ){
 		ufshcd_exit_clk_scaling(hba);
 		ufshcd_hba_exit(hba);
 	}
-
+#if defined(CONFIG_UFSFEATURE_31)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		ufsf_reset(hba->ufsf);
+#endif
 	trace_ufshcd_init(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),
 		hba->curr_dev_pwr_mode, hba->uic_link_state);
@@ -9540,7 +9606,7 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	if ( !ufshcd_is_hpb_supported(hba) ){
 #endif
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 	if (ufsf_check_query(ioctl_data->opcode)) {
 		err = ufsf_query_ioctl(hba->ufsf, lun, buffer, ioctl_data,
 				       UFSFEATURE_SELECTOR);
@@ -10619,6 +10685,9 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	ufsf_hpb_suspend(hba->ufsf);
 	ufsf_tw_suspend(hba->ufsf);
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+	ufsf_suspend(hba->ufsf);
+#endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
@@ -10784,6 +10853,9 @@ enable_gating:
 	ufsf_hpb_resume(hba->ufsf);
 	ufsf_tw_resume(hba->ufsf);
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+	ufsf_resume(hba->ufsf);
+#endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
@@ -10916,6 +10988,9 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 #if defined(CONFIG_UFSFEATURE)
 	ufsf_hpb_resume(hba->ufsf);
 	ufsf_tw_resume(hba->ufsf);
+#endif
+#if defined(CONFIG_UFSFEATURE_31)
+	ufsf_resume(hba->ufsf);
 #endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
@@ -11208,6 +11283,9 @@ void ufshcd_remove(struct ufs_hba *hba)
 	ufsf_hpb_release(hba->ufsf);
 	ufsf_tw_release(hba->ufsf);
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+	ufsf_remove(hba->ufsf);
+#endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
@@ -11236,7 +11314,7 @@ EXPORT_SYMBOL_GPL(ufshcd_remove);
  */
 void ufshcd_dealloc_host(struct ufs_hba *hba)
 {
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 	if (hba->ufsf) {
 		kfree(hba->ufsf);
 		hba->ufsf = NULL;
@@ -11272,7 +11350,7 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 {
 	struct Scsi_Host *host;
 	struct ufs_hba *hba;
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 	struct ufsf_feature *ufsf = NULL;
 #endif
 	int err = 0;
@@ -11297,7 +11375,12 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	 * runtime pm.
 	 */
 	host->use_blk_mq = false;
-
+#if defined(CONFIG_UFSFEATURE_31)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		host->use_blk_mq = true;
+	else
+		host->use_blk_mq = false;
+#endif
 	hba = shost_priv(host);
 	hba->host = host;
 	hba->dev = dev;
@@ -11305,7 +11388,7 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	hba->sg_entry_size = sizeof(struct ufshcd_sg_entry);
 
 	INIT_LIST_HEAD(&hba->clk_list_head);
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE)||defined(CONFIG_UFSFEATURE_31)
 	ufsf = kzalloc(sizeof(struct ufsf_feature), GFP_KERNEL);
 	if (!ufsf) {
 		dev_err(dev, "ufsf_feature  allocation failed\n");
@@ -11319,6 +11402,35 @@ out_error:
 	return err;
 }
 EXPORT_SYMBOL(ufshcd_alloc_host);
+#if defined(CONFIG_UFSFEATURE_31)
+/* for Ringbuffer POC */
+struct device_attribute g_cmd_log;
+
+static ssize_t ufshcd_sysfs_cmd_log_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	int curr_len;
+
+	curr_len = snprintf(buf, PAGE_SIZE,
+			"command log printed through kernel message\n");
+
+	ufshcd_print_cmd_log(hba);
+
+	return curr_len;
+}
+
+static void ufshcd_add_sysfs_cmd_log(struct ufs_hba *hba)
+{
+	g_cmd_log.show = ufshcd_sysfs_cmd_log_show;
+	g_cmd_log.store = NULL;
+	sysfs_attr_init(&g_cmd_log.attr);
+	g_cmd_log.attr.name = "debug_cmd_log";
+	g_cmd_log.attr.mode = 0444;
+	if (device_create_file(hba->dev, &g_cmd_log))
+		dev_err(hba->dev, "Failed to create sysfs for debug_cmd_log\n");
+}
+#endif
 
 /**
  * ufshcd_init - Driver initialization routine
@@ -11529,12 +11641,18 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	ufsf_hpb_set_init_state(hba->ufsf);
 	ufsf_tw_set_init_state(hba->ufsf);
 #endif
+#if defined(CONFIG_UFSFEATURE_31)
+	ufsf_set_init_state(hba->ufsf);
+#endif
 	async_schedule(ufshcd_async_scan, hba);
 
 	ufsdbg_add_debugfs(hba);
 
 	ufs_sysfs_add_nodes(hba->dev);
-
+#if defined (CONFIG_UFSFEATURE_31)
+	/* for Ringbuffer POC */
+	ufshcd_add_sysfs_cmd_log(hba);
+#endif
 	return 0;
 
 out_remove_scsi_host:
@@ -11549,7 +11667,12 @@ out_error:
 	return err;
 }
 EXPORT_SYMBOL_GPL(ufshcd_init);
-
+static int __init storage_mfrid_setup(char *str)
+{
+	storage_mfrid = simple_strtol(str, NULL, 16);
+	return 1;
+}
+__setup("storage_mfrid=",storage_mfrid_setup);
 MODULE_AUTHOR("Santosh Yaragnavi <santosh.sy@samsung.com>");
 MODULE_AUTHOR("Vinayak Holikatti <h.vinayak@samsung.com>");
 MODULE_DESCRIPTION("Generic UFS host controller driver Core");

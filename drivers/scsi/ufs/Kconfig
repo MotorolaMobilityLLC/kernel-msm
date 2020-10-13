@@ -156,6 +156,77 @@ config UFSHPB_TOSHIBA
 	help
 	  Activate or deactive TOSHIBA UFSHPB v1.3.5 driver
 
+config UFSFEATURE_31
+	bool "UFS feature activate"
+	depends on SCSI_UFSHCD
+	---help---
+	UFS feature activate such as hpb, tw and etc.
+
+config UFSHPB_31
+	bool "UFS Host Performance Booster support"
+	depends on SCSI_UFSHCD && UFSFEATURE_31
+	---help---
+	UFS HPB Feature Enable
+
+config UFSTW_IGNORE_GUARANTEE_BIT_31
+       bool "Ignore UFS Turbo Write Life Time Guarantee bit for POC"
+       default n
+       depends on SCSI_UFSHCD && UFSFEATURE_31 && UFSTW_31
+       ---help---
+       ignore the guarantee bit[31] of dTurboWriteBufferLifeTimeEst for PoC
+
+config UFSTW_BOOT_ENABLED
+        bool "Turbo Write enabled at boot time"
+       default y
+       depends on SCSI_UFSHCD && UFSFEATURE_31 && UFSTW_31
+       ---help---
+       fTurboWriteEn and fTurboWriteBufferFlushDuringHibnerEnter flags
+       are enabled at boot time.
+
+
+config HPB_RELEASE_CHECK
+	bool "HPB Release Check for Mass Test"
+	depends on SCSI_UFSHCD && UFSFEATURE_31 && UFSHPB_31
+	default n
+	---help---
+	The kernel panic occurs when hpb feature disabled by abnormal behavior.
+
+
+config UFSTW_31
+	bool "UFS Turbo Write support"
+	depends on SCSI_UFSHCD && UFSFEATURE_31
+	---help---
+	UFS TW Feature Enable
+
+config UFSHID
+	bool "UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFSFEATURE_31
+	---help---
+	UFS HID Feature Enable
+
+config UFSHID_POC
+	bool "UFSHID_POC test"
+	depends on SCSI_UFSHCD && UFSFEATURE_31 && UFSHID
+	---help---
+	UFS HID POC test
+	1. block to enter suspend state
+	2. auto_hibern8 enable/disable (HCI)
+	3. set flag bDefragOperation
+	4. debug msg enable (default : disable)
+
+config UFSRINGBUF
+	bool "UFS RingBuffer support"
+	depends on SCSI_UFSHCD && UFSFEATURE_31
+	---help---
+	UFS RingBuffer Feature Enable
+
+config UFSRINGBUF_POC
+	bool "UFS RingBuffer POC test"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSRINGBUF
+	---help---
+	UFS RingBuffer POC test
+	1. set default vendor_signature & vendor_parameter for test
+	2. Set custom vender_parameter
 
 config UFSFEATURE
 	bool "UFS feature activate"
