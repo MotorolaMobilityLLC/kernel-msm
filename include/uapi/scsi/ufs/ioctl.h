@@ -10,7 +10,7 @@
  */
 #define UFS_IOCTL_QUERY			0x5388
 
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFSFEATURE_31)
 #define UFSFEATURE_QUERY_OPCODE		0x5500
 #endif
 
