@@ -998,7 +998,12 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 			clear_inode_flag(inode, FI_ACL_MODE);
 		}
 	}
-
+#ifdef CONFIG_FS_HPB
+		if (__is_hpb_file(dentry->d_name.name, inode))
+			set_inode_flag(inode, FI_HPB_INODE);
+		else
+			clear_inode_flag(inode, FI_HPB_INODE);
+#endif
 	/* file size may changed here */
 	f2fs_mark_inode_dirty_sync(inode, true);
 
