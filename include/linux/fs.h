@@ -3144,6 +3144,10 @@ enum {
 
 	/* filesystem does not support filling holes */
 	DIO_SKIP_HOLES	= 0x02,
+#ifdef CONFIG_FS_HPB
+	/* HPB FLAG */
+	DIO_HPB_IO	= 0x10,
+#endif
 };
 
 void dio_end_io(struct bio *bio);
