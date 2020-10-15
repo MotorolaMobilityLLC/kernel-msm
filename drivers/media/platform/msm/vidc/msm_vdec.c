@@ -542,7 +542,7 @@ struct msm_vidc_format vdec_formats[] = {
 		.type = OUTPUT_PORT,
 		.defer_outputs = true,
 		.input_min_count = 4,
-		.output_min_count = 9,
+		.output_min_count = 11,
 	},
 };
 
