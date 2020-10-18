@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2018,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1402,7 +1402,7 @@ static int gpu_ft_report_pos;
 #define pr_fault(_d, _c, fmt, args...) \
 		dev_err((_d)->dev, "%s[%d]: " fmt, \
 		_kgsl_context_comm((_c)->context), \
-		(_c)->context->proc_priv->pid, ##args); \
+		pid_nr((_c)->context->proc_priv->pid), ##args); \
 		pr_gpu_ft_report(fmt, ##args)
 
 
@@ -1774,7 +1774,7 @@ static void do_header_and_snapshot(struct kgsl_device *device,
 	gpu_ft_report_pos = 0;
 	pr_gpu_ft_report("GPU FT: fault = %d\n%s[%d]\n", fault,
 		cmdbatch ? _kgsl_context_comm(cmdbatch->context) : "NULL",
-		cmdbatch ? cmdbatch->context->proc_priv->pid : 0);
+		cmdbatch ? pid_nr(cmdbatch->context->proc_priv->pid) : 0);
 
 	path = kobject_get_path(&device->snapshot_kobj, GFP_KERNEL);
 	snprintf(sys_path, sizeof(sys_path), "/sys%s/dump", path);

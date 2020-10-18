@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2008-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2008-2016,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -326,7 +326,7 @@ void kgsl_process_init_debugfs(struct kgsl_process_private *private)
 	unsigned char name[16];
 	struct dentry *dentry;
 
-	snprintf(name, sizeof(name), "%d", private->pid);
+	snprintf(name, sizeof(name), "%d", pid_nr(private->pid));
 
 	private->debug_root = debugfs_create_dir(name, proc_d_debugfs);
 
@@ -346,7 +346,8 @@ void kgsl_process_init_debugfs(struct kgsl_process_private *private)
 	}
 
 	dentry = debugfs_create_file("mem", 0444, private->debug_root,
-		(void *) ((unsigned long) private->pid), &process_mem_fops);
+		(void *) ((unsigned long) pid_nr(private->pid)),
+		&process_mem_fops);
 
 	if (IS_ERR_OR_NULL(dentry))
 		WARN((dentry == NULL),
