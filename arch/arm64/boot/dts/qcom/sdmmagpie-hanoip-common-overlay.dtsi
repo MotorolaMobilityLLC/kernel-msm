@@ -15,6 +15,7 @@
 #include "hanoi-panel.dtsi"
 #include "sdmmagpie-camera-sensor-mot-hanoip-overlay.dtsi"
 #include "hanoi_battery_thermal_overlay.dtsi"
+#include "sdmmagpie-hanoi-sensor-overlay.dtsi"
 
 &soc {
 	qcom,tz_gpio {
@@ -24,23 +25,6 @@
 			<2>,
 			<3>;
 	};
-};
-
-
-&tlmm{
-
-	sar_irq_default: sar_irq_default {
-		mux {
-			pins = "gpio84";
-			function = "gpio";
-		};
-		config {
-			pins = "gpio84";
-			drive-strength = <8>;
-			bias-pull-up;
-		};
-	};
-
 };
 
 &sde_dp {
