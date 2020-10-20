@@ -19,6 +19,7 @@
 #define SE_I2C_TX_TRANS_LEN		0x26c
 #define SE_I2C_RX_TRANS_LEN		0x270
 #define SE_I2C_SCL_COUNTERS		0x278
+#define SE_I2C_NOISE_CANCEL_CTL		(0x234)
 
 #define SE_I2C_ERR  (M_CMD_OVERRUN_EN | M_ILLEGAL_CMD_EN | M_CMD_FAILURE_EN |\
 			M_GP_IRQ_1_EN | M_GP_IRQ_3_EN | M_GP_IRQ_4_EN)
@@ -90,6 +91,8 @@ struct geni_i2c_dev {
 	void *dma_buf;
 	size_t xfer_len;
 	dma_addr_t dma_addr;
+	u32 noise_rjct_scl;
+	u32 noise_rjct_sda;
 };
 
 struct geni_i2c_err_log {
@@ -164,6 +167,9 @@ static void qcom_geni_i2c_conf(struct geni_i2c_dev *gi2c)
 	val |= itr->t_low_cnt << LOW_COUNTER_SHFT;
 	val |= itr->t_cycle_cnt;
 	writel_relaxed(val, gi2c->se.base + SE_I2C_SCL_COUNTERS);
+	if (gi2c->noise_rjct_scl || gi2c->noise_rjct_sda)
+		geni_write_reg(gi2c->noise_rjct_scl << 1 |
+			gi2c->noise_rjct_sda << 3, gi2c->base, SE_I2C_NOISE_CANCEL_CTL);
 }
 
 static void geni_i2c_err_misc(struct geni_i2c_dev *gi2c)
@@ -558,6 +564,14 @@ static int geni_i2c_probe(struct platform_device *pdev)
 
 	if (has_acpi_companion(&pdev->dev))
 		ACPI_COMPANION_SET(&gi2c->adap.dev, ACPI_COMPANION(&pdev->dev));
+
+	gi2c->noise_rjct_scl = 0;
+	gi2c->noise_rjct_sda = 0;
+
+	of_property_read_u32(pdev->dev.of_node, "qcom,noise-rjct-scl",
+				&gi2c->noise_rjct_scl);
+	of_property_read_u32(pdev->dev.of_node, "qcom,noise-rjct-sda",
+				&gi2c->noise_rjct_sda);
 
 	gi2c->irq = platform_get_irq(pdev, 0);
 	if (gi2c->irq < 0) {
