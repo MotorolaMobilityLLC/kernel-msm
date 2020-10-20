@@ -398,6 +398,8 @@ EXPORT_SYMBOL(msm_set_restart_mode);
 #define DEBUG_SYS_RESETART_WARM 1
 #define DEBUG_SYS_RESETART_PANIC 2
 static int debug_sys_restart_mode;
+
+#ifdef CONFIG_QGKI
 static int __init set_sys_restart_mode(char *str)
 {
 	if (!strcmp(str, "warm"))
@@ -409,6 +411,7 @@ static int __init set_sys_restart_mode(char *str)
 }
 
 __setup("sys_restart_mode=", set_sys_restart_mode);
+#endif
 
 static void msm_restart_prepare(const char *cmd)
 {
