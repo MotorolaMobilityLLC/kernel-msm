@@ -13,6 +13,7 @@
 #include "sdmmagpie-moto-common-overlay.dtsi"
 #include "sdmmagpie-audio-overlay.dtsi"
 #include "hanoi-panel.dtsi"
+#include "sdmmagpie-camera-sensor-mot-hanoip-overlay.dtsi"
 #include "hanoi_battery_thermal_overlay.dtsi"
 
 &soc {
