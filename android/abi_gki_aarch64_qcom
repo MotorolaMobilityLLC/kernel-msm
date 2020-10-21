@@ -1326,6 +1326,7 @@
   kmemdup_nul
   kobject_create_and_add
   kobject_del
+  kobject_get_path
   kobject_init_and_add
   kobject_put
   kobject_uevent
