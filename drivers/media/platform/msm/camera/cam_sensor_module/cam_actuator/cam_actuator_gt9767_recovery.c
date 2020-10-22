@@ -55,8 +55,6 @@ static gt9767_recovery_state_e gt9767_recovery_state = GT9767_RECOVERY_IDLE;
 static struct regulator * afVdd = NULL;
 static struct regulator * ioVdd = NULL;
 
-
-
 static int32_t cam_sensor_gt9767_enter_test_mode(void)
 {
 	//Start-010-Stop -> Start-001-Stop
@@ -161,6 +159,71 @@ static int32_t cam_gt9767_recovery_handle_init(uint32_t arg)
 	return 0;
 }
 
+static int32_t cam_sensor_gt9767_exit_test_mode(void)
+{
+	//Start-0xB0-Stop
+	const uint8_t gt9767ExitCmd = 0xB0;
+	int i;
+	int exitCmdBits = sizeof(gt9767ExitCmd)*8;
+
+	pr_debug("Tring exit test mode");
+	gpio_direction_output(CCI_SCL0, 1);
+	gpio_direction_output(CCI_SDA0, 1);
+	usleep_range(100,150);
+
+	//Start
+	gpio_direction_output(CCI_SCL0, 1);
+	usleep_range(1,2);
+	gpio_direction_output(CCI_SDA0, 0);
+	usleep_range(2,5);
+
+	for (i=0; i< exitCmdBits; i++) {
+		gpio_direction_output(CCI_SCL0, 0);
+		usleep_range(2,3);
+		gpio_direction_output(CCI_SDA0, (gt9767ExitCmd >> (exitCmdBits-i-1))&0x01);
+		usleep_range(2,3);
+		gpio_direction_output(CCI_SCL0, 1);
+		usleep_range(4,6);
+	}
+	gpio_direction_output(CCI_SCL0, 0);
+	usleep_range(4,6);
+	gpio_direction_output(CCI_SCL0, 1);
+	usleep_range(4,6);
+	//Stop
+	gpio_direction_output(CCI_SDA0, 1);
+	usleep_range(2,5);
+
+	pr_debug("Enter test mode done!");
+
+	return 0;
+}
+
+static int32_t cam_gt9767_recovery_handle_exit(uint32_t arg)
+{
+	int rc = 0;
+
+	pr_debug("SCL:%d, SDA:%d", CCI_SDA0, CCI_SCL0);
+	rc = gpio_request(CCI_SDA0, "SDA0");
+	if (rc < 0) {
+		pr_err("FATAL: request SDA0 failure!!! rc=%d", rc);
+		//return rc;
+	}
+
+	rc = gpio_request(CCI_SCL0, "SCL0");
+	if (rc < 0) {
+		pr_err("FATAL: request SCL0 failure!!! rc=%d", rc);
+		gpio_free(CCI_SDA0);
+		//return rc;
+	}
+
+	cam_sensor_gt9767_exit_test_mode();
+
+	gpio_free(CCI_SDA0);
+	gpio_free(CCI_SCL0);
+
+	return 0;
+}
+
 static int32_t cam_gt9767_recovery_handle_write(uint32_t arg)
 {
 	int rc = 0;
@@ -212,6 +275,11 @@ static int32_t cam_gt9767_recovery_handle_cmd(
 		rc = cam_gt9767_recovery_handle_write(arg);
 		pr_debug("%s: CAM_GT9767_RECOVERY_WRITE ret:%d", __func__, rc);
 		break;
+	case CAM_GT9767_RECOVERY_EXIT:
+		/* write */
+		rc = cam_gt9767_recovery_handle_exit(arg);
+		pr_debug("%s: CAM_GT9767_RECOVERY_EXIT ret:%d", __func__, rc);
+		break;
 	case CAM_GT9767_RECOVERY_RELEASE:
 		/* release */
 		cam_gt9767_recovery_handle_release();
@@ -235,14 +303,16 @@ static long msm_cam_gt9767_recovery_ioctl(struct v4l2_subdev *sd,
 	case CAM_GT9767_RECOVERY_READ:
 	case CAM_GT9767_RECOVERY_WRITE:
 	case CAM_GT9767_RECOVERY_INIT:
+	case CAM_GT9767_RECOVERY_EXIT:
 	case CAM_GT9767_RECOVERY_RELEASE:
 		return cam_gt9767_recovery_handle_cmd(sd, *(int *)arg, cmd);
 	default:
 		pr_err("%s Unsupported cmd=%x, arg=%x\n", __func__, cmd, arg);
-		pr_debug("%s supported cmd: %x, %x, %x, %x\n", __func__,
+		pr_debug("%s supported cmd: %x, %x, %x, %x, %x\n", __func__,
 		        CAM_GT9767_RECOVERY_READ,
 		        CAM_GT9767_RECOVERY_WRITE,
 		        CAM_GT9767_RECOVERY_INIT,
+		        CAM_GT9767_RECOVERY_EXIT,
 		        CAM_GT9767_RECOVERY_RELEASE);
 		return -ENOIOCTLCMD;
 	}
@@ -273,15 +343,19 @@ static long msm_cam_gt9767_recovery_ioctl32(struct v4l2_subdev *sd,
 		case CAM_GT9767_RECOVERY_INIT32:
 			cmd = CAM_GT9767_RECOVERY_INIT;
 			break;
+		case CAM_GT9767_RECOVERY_EXIT32:
+			cmd = CAM_GT9767_RECOVERY_EXIT;
+			break;
 		case CAM_GT9767_RECOVERY_RELEASE32:
 			cmd = CAM_GT9767_RECOVERY_RELEASE;
 			break;
 		default:
 			pr_err("%s Unsupported cmd=%x, arg=%x\n", __func__, cmd, arg);
-			pr_debug("%s supported cmd: %x, %x, %x, %x\n", __func__,
+			pr_debug("%s supported cmd: %x, %x, %x, %x, %x\n", __func__,
 			        CAM_GT9767_RECOVERY_READ32,
 			        CAM_GT9767_RECOVERY_WRITE32,
 			        CAM_GT9767_RECOVERY_INIT32,
+			        CAM_GT9767_RECOVERY_EXIT32,
 			        CAM_GT9767_RECOVERY_RELEASE32);
 			return -ENOIOCTLCMD;
 	}
