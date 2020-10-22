@@ -25,6 +25,8 @@
 #include <linux/leds-qpnp-flash.h>
 #include "../../leds/leds.h"
 
+#define WLED5_CTRL_PBUS_WRITE_SYNC_CTL	0xef
+
 /* General definitions */
 #define WLED_DEFAULT_BRIGHTNESS		2048
 #define  WLED_MAX_BRIGHTNESS_12B	4095
