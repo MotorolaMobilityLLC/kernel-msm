@@ -568,17 +568,24 @@ static int wled_update_status(struct backlight_device *bl)
 		brightness = 0;
 
 	mutex_lock(&wled->lock);
-
-	if (wled->low_bl_force_cabc_disable && brightness <= wled->low_bl_cfg.low_bl_threshold) {
-		brightness = brightness * wled->low_bl_cfg.low_bl_remap_percent/100;
-		if (!wled->cabc_disabled) {
-			wled->cabc_config(wled, false);
-			wled->cabc_disabled = true;
-			pr_info("low brightness(%d), disable cabc\n", brightness);
-		}
-	}
-
 	if (brightness) {
+		if (wled->low_bl_force_cabc_disable && wled->brightness) {
+			if (brightness <= wled->low_bl_cfg.low_bl_threshold) {
+				brightness = brightness * wled->low_bl_cfg.low_bl_remap_percent/100;
+				if (!wled->cabc_disabled) {
+					wled->cabc_config(wled, false);
+					wled->cabc_disabled = true;
+					pr_info("under low brightness(%d), will disable cabc\n", brightness);
+				}
+
+			}
+			else if ((wled->brightness < wled->low_bl_cfg.low_bl_threshold) && (wled->cabc_disabled)) {
+				wled->cabc_disabled = false;
+				wled->cabc_config(wled, true);
+				pr_info("exit low brightness(%d), will enable cabc\n", brightness);
+			}
+		}
+
 		if (wled->bl_step_up_enable) {
 			rc = wled_set_brightness_step(wled, brightness);
 			if (rc < 0) {
@@ -592,12 +599,15 @@ static int wled_update_status(struct backlight_device *bl)
 			goto unlock_mutex;
 		}
 
-		if (wled->low_bl_force_cabc_disable && brightness > wled->low_bl_cfg.low_bl_threshold
-			&& wled->brightness <= wled->low_bl_cfg.low_bl_threshold && wled->cabc_disabled) {
-			msleep(wled->low_bl_cfg.low_bl_delay_ms);
-			wled->cabc_disabled = false;
-			wled->cabc_config(wled, true);
-			pr_info("enable wled cabc\n");
+		if (wled->cabc_disabled && wled->low_bl_force_cabc_disable && !wled->brightness) {
+			if (brightness <= wled->low_bl_cfg.low_bl_threshold)
+				pr_info("keep cabc disabled\n");
+			else {
+				msleep(wled->low_bl_cfg.low_bl_delay_ms);
+				wled->cabc_disabled = false;
+				wled->cabc_config(wled, true);
+				pr_info("enable wled cabc\n");
+			}
 		}
 
 		if (is_wled5(wled)) {
@@ -647,6 +657,11 @@ static int wled_update_status(struct backlight_device *bl)
 			}
 		}
 
+		if (!wled->cabc_disabled && wled->low_bl_force_cabc_disable) {
+			wled->cabc_config(wled, false);
+			wled->cabc_disabled = true;
+			pr_info("disable wled cabc\n");
+		}
 		rc = wled_module_enable(wled, brightness);
 		if (rc < 0) {
 			pr_err("wled disable failed rc:%d\n", rc);
