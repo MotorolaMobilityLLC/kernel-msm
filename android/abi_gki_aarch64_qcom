@@ -423,6 +423,7 @@
   devm_gpio_request_one
   devm_iio_channel_get
   devm_iio_device_alloc
+  devm_gpio_free
   __devm_iio_device_register
   devm_input_allocate_device
   devm_ioremap
