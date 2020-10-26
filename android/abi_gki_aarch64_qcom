@@ -476,6 +476,7 @@
   devm_rtc_allocate_device
   devm_rtc_device_register
   devm_snd_soc_register_card
+  devm_snd_soc_register_component
   devm_thermal_zone_of_sensor_register
   devm_usb_get_phy
   devm_usb_get_phy_by_phandle
@@ -2308,7 +2309,9 @@
   snd_soc_card_jack_new
   snd_soc_component_disable_pin
   snd_soc_component_exit_regmap
+  snd_soc_component_enable_pin
   snd_soc_component_force_enable_pin
+  snd_soc_component_get_pin_status
   snd_soc_component_init_regmap
   snd_soc_component_read32
   snd_soc_component_set_sysclk
@@ -2320,6 +2323,7 @@
   snd_soc_dai_set_sysclk
   snd_soc_dai_set_tdm_slot
   snd_soc_dapm_add_routes
+  snd_soc_dapm_del_routes
   snd_soc_dapm_disable_pin
   snd_soc_dapm_force_enable_pin
   snd_soc_dapm_get_enum_double
