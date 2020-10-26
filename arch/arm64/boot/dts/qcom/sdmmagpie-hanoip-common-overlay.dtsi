@@ -18,6 +18,7 @@
 #include "hanoi_battery_thermal_overlay.dtsi"
 #include "sdmmagpie-hanoi-sensor-overlay.dtsi"
 #include "sdmmagpie-hanoi-touchscreen.dtsi"
+#include "sdmmagpie-hanoi-audio-overlay.dtsi"
 
 &soc {
 	qcom,tz_gpio {
