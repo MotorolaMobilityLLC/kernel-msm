@@ -363,6 +363,21 @@
 		status = "ok";
 	};
 
+	actuator_main: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		cci-master = <0>;
+		cci-device = <0>;
+		cam_vio-supply = <&pm6150_l13>;
+		cam_vaf-supply = <&camera_rear_main_wide_afvdd_2p8>;
+		regulator-names = "cam_vio","cam_vaf";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000 2800000>;
+		rgltr-max-voltage = <1800000 2800000>;
+		rgltr-load-current = <0 0>;
+	};
+
 	qcom,cam-sensor@0 {
 		/*rear main ov64b*/
 		cell-index = <0>;
@@ -372,6 +387,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		actuator-src = <&actuator_main>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_rear_main_wide_avdd_2p8>;
 		cam_vdig-supply = <&pm6150_l6>;
