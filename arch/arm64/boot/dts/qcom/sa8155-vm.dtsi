@@ -142,6 +142,10 @@
 		interrupts = <GIC_SPI 267 0>;
 		number-of-rate-detectors = <2>;
 		rate-detector-interfaces = <0 1>;
+		iommus = <&apps_smmu 0x1B5C 0x1>,
+			 <&apps_smmu 0x1B5E 0x0>;
+		qcom,smmu-s1-bypass;
+		qcom,iova-mapping = <0x0 0xFFFFFFFF>;
 
 		sdr0: qcom,hs0_i2s {
 			compatible = "qcom,hsi2s-interface";

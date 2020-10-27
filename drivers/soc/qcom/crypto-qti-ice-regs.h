@@ -16,7 +16,11 @@
 #include <linux/io.h>
 
 /* Register bits for ICE version */
+#if IS_ENABLED(CONFIG_MMC_QTI_NONCMDQ_ICE)
+#define ICE_CORE_CURRENT_MAJOR_VERSION 0x02
+#else
 #define ICE_CORE_CURRENT_MAJOR_VERSION 0x03
+#endif
 
 #define ICE_CORE_STEP_REV_MASK		0xFFFF
 #define ICE_CORE_STEP_REV		0 /* bit 15-0 */

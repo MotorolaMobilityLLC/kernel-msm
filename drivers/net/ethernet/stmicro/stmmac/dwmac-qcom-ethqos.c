@@ -1630,13 +1630,11 @@ static ssize_t loopback_handling_config(
 	}
 
 	/*Argument validation*/
-	if (config == DISABLE_LOOPBACK || config == ENABLE_IO_MACRO_LOOPBACK ||
+	if (config == ENABLE_IO_MACRO_LOOPBACK ||
 	    config == ENABLE_MAC_LOOPBACK || config == ENABLE_PHY_LOOPBACK) {
 		if (speed != SPEED_1000 && speed != SPEED_100 &&
 		    speed != SPEED_10)
 			return -EINVAL;
-	} else {
-		return -EINVAL;
 	}
 
 	if (config == ethqos->current_loopback) {
@@ -2709,7 +2707,6 @@ static void read_mac_addr_from_fuse_reg(struct device_node *np)
 	u32 mac_efuse_prop, efuse_size = 8;
 	void __iomem *mac_efuse_addr;
 	unsigned long mac_addr;
-	bool valid_mac = false;
 
 	ret = of_property_read_u32(np, "mac-efuse-addr", &mac_efuse_prop);
 	if (!ret) {
@@ -2727,14 +2724,13 @@ static void read_mac_addr_from_fuse_reg(struct device_node *np)
 			mac_addr = mac_addr >> 8;
 		}
 
-		valid_mac = is_valid_ether_addr(pparams.mac_addr);
-		if (!valid_mac) {
+		pparams.is_valid_mac_addr =
+			is_valid_ether_addr(pparams.mac_addr);
+		if (!pparams.is_valid_mac_addr) {
 			ETHQOSERR("Invalid Mac address set: %llx\n", mac_addr);
 			return;
 		}
 	}
-
-	pparams.is_valid_mac_addr = true;
 }
 
 static int qcom_ethqos_probe(struct platform_device *pdev)

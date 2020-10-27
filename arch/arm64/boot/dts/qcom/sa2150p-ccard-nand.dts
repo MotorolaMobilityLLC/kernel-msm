@@ -1,4 +1,4 @@
-/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -99,3 +99,20 @@
 &sdhc_1 {
 	status = "disabled";
 };
+
+&gpu_bw_tbl {
+	status = "disabled";
+};
+
+&gpubw {
+	status = "disabled";
+};
+
+&msm_gpu {
+	status = "disabled";
+};
+
+&kgsl_msm_iommu {
+	status = "disabled";
+};
+

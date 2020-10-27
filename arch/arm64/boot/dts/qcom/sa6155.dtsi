@@ -12,7 +12,6 @@
 
 #include "sm6150.dtsi"
 #include "sa6155-pmic.dtsi"
-#include "sa6155-display.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. SA6155";

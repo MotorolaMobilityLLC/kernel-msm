@@ -95,6 +95,7 @@ struct cnss_wlan_driver {
 	void (*update_status)(struct pci_dev *pdev, uint32_t status);
 	struct cnss_wlan_runtime_ops *runtime_ops;
 	const struct pci_device_id *id_table;
+	enum cnss_driver_mode (*get_driver_mode)(void);
 };
 
 struct cnss_usb_wlan_driver {

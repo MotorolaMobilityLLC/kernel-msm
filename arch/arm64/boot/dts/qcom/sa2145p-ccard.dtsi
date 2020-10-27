@@ -25,14 +25,14 @@
 		};
 	};
 
-	wakeup_gpio_default: wakeup_gpio_default {
+	sdx_ext_ipc_gpio_default: sdx_ext_ipc_gpio_default {
 		mux {
-			pins = "gpio79";
+			pins = "gpio14", "gpio79";
 			function = "gpio";
 		};
 
 		config {
-			pins = "gpio79";
+			pins = "gpio14", "gpio79";
 			drive-strength = <2>;
 			bias-pull-down;
 		};
@@ -188,7 +188,7 @@
 		qcom,wakeup-gpio-in = <&tlmm 14 0x00>;
 		qcom,wakeup-gpio-out = <&tlmm 79 0x00>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&wakeup_gpio_default>;
+		pinctrl-0 = <&sdx_ext_ipc_gpio_default>;
 	};
 };
 

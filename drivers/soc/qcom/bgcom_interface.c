@@ -85,6 +85,7 @@ struct bgdaemon_priv {
 	unsigned long attrs;
 	u32 cmd_status;
 	struct device *platform_dev;
+	void *twm_data_buff;
 };
 
 struct bg_event {
@@ -524,30 +525,46 @@ error:
 }
 
 /**
+ * twm_data_fetch() - Called to fetch data saved by BG in TWM
+ *
+ * Return: 0 on success. Error code on failure.
+ */
+static int twm_data_fetch(struct bg_ui_data *fui_obj_msg)
+{
+	int ret;
+
+	dev->twm_data_buff = kmalloc_array(fui_obj_msg->num_of_words,
+			sizeof(uint32_t), GFP_KERNEL);
+
+	if (dev->twm_data_buff == NULL)
+		return -ENOMEM;
+
+	ret = tzapp_twm_data(fui_obj_msg->num_of_words, dev->twm_data_buff);
+	return ret;
+}
+
+/**
  * twm_data_read() - Called to read user data saved by BG in TWM
  *
  * Return: 0 on success. Error code on failure.
  */
 static int twm_data_read(struct bg_ui_data *fui_obj_msg)
 {
-	void *read_buf;
-	int ret;
+	int ret = 0;
 	void __user *result = (void *)
 			(uintptr_t)fui_obj_msg->buffer;
 
-	read_buf = kmalloc_array(fui_obj_msg->num_of_words, sizeof(uint32_t),
-			GFP_KERNEL);
-	if (read_buf == NULL)
-		return -ENOMEM;
-
-	ret = tzapp_twm_data(fui_obj_msg->num_of_words, read_buf);
-
-	if (!ret && copy_to_user(result, read_buf,
+	if (dev->twm_data_buff == NULL) {
+		pr_err("Empty user buffer\n");
+		return -EFAULT;
+	}
+	if (copy_to_user(result, dev->twm_data_buff,
 			fui_obj_msg->num_of_words * sizeof(uint32_t))) {
 		pr_err("copy to user failed\n");
 		ret = -EFAULT;
 	}
-	kfree(read_buf);
+	kfree(dev->twm_data_buff);
+	dev->twm_data_buff == NULL;
 	return ret;
 }
 
@@ -630,7 +647,7 @@ static long bg_com_ioctl(struct file *filp,
 		}
 		ret = 0;
 		break;
-	case BG_TWM_DATA:
+	case BG_FETCH_TWM_DATA:
 		ret = load_bg_tzapp();
 		if (ret) {
 			pr_err("%s: BG TZ app load failure\n", __func__);
@@ -641,9 +658,17 @@ static long bg_com_ioctl(struct file *filp,
 				pr_err("The copy from user failed\n");
 				ret = -EFAULT;
 			}
-			ret = twm_data_read(&ui_obj_msg);
+			ret = twm_data_fetch(&ui_obj_msg);
 			qseecom_shutdown_app(&dev->qseecom_handle);
 		}
+		break;
+	case BG_READ_TWM_DATA:
+		if (copy_from_user(&ui_obj_msg, (void __user *) arg,
+			sizeof(ui_obj_msg))) {
+			pr_err("The copy from user failed\n");
+			ret = -EFAULT;
+		}
+		ret = twm_data_read(&ui_obj_msg);
 		break;
 	default:
 		ret = -ENOIOCTLCMD;

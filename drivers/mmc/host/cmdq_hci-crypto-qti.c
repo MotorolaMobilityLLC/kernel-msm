@@ -41,6 +41,7 @@ static struct cmdq_host_crypto_variant_ops cmdq_crypto_qti_variant_ops = {
 };
 
 static atomic_t keycache;
+static bool cmdq_use_default_du_size;
 
 static bool ice_cap_idx_valid(struct cmdq_host *host,
 					unsigned int cap_idx)
@@ -50,12 +51,19 @@ static bool ice_cap_idx_valid(struct cmdq_host *host,
 
 static uint8_t get_data_unit_size_mask(unsigned int data_unit_size)
 {
+	unsigned int du_size;
+
 	if (data_unit_size < MINIMUM_DUN_SIZE ||
 		data_unit_size > MAXIMUM_DUN_SIZE ||
 	    !is_power_of_2(data_unit_size))
 		return 0;
 
-	return data_unit_size / MINIMUM_DUN_SIZE;
+	if (cmdq_use_default_du_size)
+		du_size = MINIMUM_DUN_SIZE;
+	else
+		du_size =  data_unit_size;
+
+	return du_size / MINIMUM_DUN_SIZE;
 }
 
 
@@ -185,6 +193,63 @@ enum blk_crypto_mode_num cmdq_blk_crypto_qti_mode_num_for_alg_dusize(
 	return BLK_ENCRYPTION_MODE_INVALID;
 }
 
+#if IS_ENABLED(CONFIG_MMC_QTI_NONCMDQ_ICE)
+int cmdq_host_init_crypto_qti_spec(struct cmdq_host *host,
+				    const struct keyslot_mgmt_ll_ops *ksm_ops)
+{
+	int err = 0;
+	unsigned int crypto_modes_supported[BLK_ENCRYPTION_MODE_MAX];
+	enum blk_crypto_mode_num blk_mode_num;
+
+	host->crypto_capabilities.reg_val = LEGACY_ICE_CAP_VAL;
+	host->crypto_cfg_register = (u32)host->icemmio;
+	host->crypto_cap_array =
+		devm_kcalloc(mmc_dev(host->mmc),
+				host->crypto_capabilities.num_crypto_cap,
+				sizeof(host->crypto_cap_array[0]), GFP_KERNEL);
+	if (!host->crypto_cap_array) {
+		err = -ENOMEM;
+		pr_err("%s failed to allocate memory\n", __func__);
+		goto out;
+	}
+	memset(crypto_modes_supported, 0, sizeof(crypto_modes_supported));
+
+	host->crypto_cap_array[CRYPTO_ICE_INDEX].algorithm_id =
+		CMDQ_CRYPTO_ALG_AES_XTS;
+	host->crypto_cap_array[CRYPTO_ICE_INDEX].key_size =
+		CMDQ_CRYPTO_KEY_SIZE_256;
+
+	blk_mode_num = cmdq_blk_crypto_qti_mode_num_for_alg_dusize(
+			host->crypto_cap_array[CRYPTO_ICE_INDEX].algorithm_id,
+			host->crypto_cap_array[CRYPTO_ICE_INDEX].key_size);
+
+	crypto_modes_supported[blk_mode_num] |= CRYPTO_CDU_SIZE * 512;
+
+	host->ksm = keyslot_manager_create(cmdq_num_keyslots(host), ksm_ops,
+			BLK_CRYPTO_FEATURE_STANDARD_KEYS |
+			BLK_CRYPTO_FEATURE_WRAPPED_KEYS,
+			crypto_modes_supported, host);
+
+	if (!host->ksm) {
+		err = -ENOMEM;
+		goto out;
+	}
+	keyslot_manager_set_max_dun_bytes(host->ksm, sizeof(u32));
+
+	/*
+	 * In case host controller supports cryptographic operations
+	 * then, it uses 128bit task descriptor. Upper 64 bits of task
+	 * descriptor would be used to pass crypto specific informaton.
+	 */
+	host->caps |= CMDQ_TASK_DESC_SZ_128;
+
+	return 0;
+out:
+	/* Indicate that init failed by setting crypto_capabilities to 0 */
+	host->crypto_capabilities.reg_val = 0;
+	return err;
+}
+#else
 int cmdq_host_init_crypto_qti_spec(struct cmdq_host *host,
 				    const struct keyslot_mgmt_ll_ops *ksm_ops)
 {
@@ -266,6 +331,7 @@ out:
 	host->crypto_capabilities.reg_val = 0;
 	return err;
 }
+#endif
 
 int cmdq_crypto_qti_init_crypto(struct cmdq_host *host,
 				const struct keyslot_mgmt_ll_ops *ksm_ops)
@@ -357,6 +423,9 @@ int cmdq_crypto_qti_prep_desc(struct cmdq_host *host, struct mmc_request *mrq,
 		return -EINVAL;
 
 	if (!(atomic_read(&keycache) & (1 << bc->bc_keyslot)))  {
+		if (bc->is_ext4)
+			cmdq_use_default_du_size = true;
+
 		ret = cmdq_crypto_qti_keyslot_program(host->ksm, bc->bc_key,
 						      bc->bc_keyslot);
 		if (ret) {
@@ -368,8 +437,12 @@ int cmdq_crypto_qti_prep_desc(struct cmdq_host *host, struct mmc_request *mrq,
 	}
 
 	if (ice_ctx) {
-		*ice_ctx = DATA_UNIT_NUM(bc->bc_dun[0]) |
-			   CRYPTO_CONFIG_INDEX(bc->bc_keyslot) |
+		if (bc->is_ext4)
+			*ice_ctx = DATA_UNIT_NUM(req->__sector);
+		else
+			*ice_ctx = DATA_UNIT_NUM(bc->bc_dun[0]);
+
+		*ice_ctx = *ice_ctx | CRYPTO_CONFIG_INDEX(bc->bc_keyslot) |
 			   CRYPTO_ENABLE(true);
 	}
 	return 0;
