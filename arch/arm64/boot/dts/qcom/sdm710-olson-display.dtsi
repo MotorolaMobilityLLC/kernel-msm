@@ -35,6 +35,9 @@
 	mot_csot_620_876x2142_cmd_v2: qcom,mdss_dsi_mot_csot_620_876x2142_cmd_v2 {
 		#include "dsi-panel-mot-csot-620-876x2142-olson-cmd-common.dtsi"
 	};
+	mot_csot_620_876x2142_cmd_v3: qcom,mdss_dsi_mot_csot_620_876x2142_cmd_v3 {
+		#include "dsi-panel-mot-csot-620-876x2142-olson-cmd-common.dtsi"
+	};
 	/* Primary Display:  BOE */
 	mot_boe_620_876x2142_cmd_v0: qcom,mdss_dsi_mot_boe_620_876x2142_cmd_v0 {
 		#include "dsi-panel-mot-boe-620-876x2142-olson-cmd-common.dtsi"
@@ -281,6 +284,29 @@
 		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
 		qcom,platform-te-gpio = <&tlmm 10 0>;
 		qcom,dsi-panel = <&mot_csot_620_876x2142_cmd_v2>;
+		l11_disp-supply = <&pm660_l11>;
+		vci_disp-supply = <&vci_disp_vreg>;
+		vio_disp-supply = <&vio_disp_vreg>;
+		lab-supply = <&lab_regulator>;
+		ibb-supply = <&ibb_regulator>;
+		oledb-supply = <&pm660a_oledb>;
+	};
+	dsi_csot_620_876x2142_cmd_display_v3: qcom,dsi-display@33 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_csot_620_876x2142_cmd_display_v3";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "mux_byte_clk", "mux_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
+		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
+		qcom,platform-te-gpio = <&tlmm 10 0>;
+		qcom,dsi-panel = <&mot_csot_620_876x2142_cmd_v3>;
 		l11_disp-supply = <&pm660_l11>;
 		vci_disp-supply = <&vci_disp_vreg>;
 		vio_disp-supply = <&vio_disp_vreg>;
@@ -737,6 +763,93 @@
 								08 05 03 04 00];
 			qcom,display-topology = <1 0 1>;
 			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&mot_csot_620_876x2142_cmd_v3 {
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
+	qcom,mdss-dsi-t-clk-post = <0x0D>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
+
+	qcom,bklt-dcs-2bytes-enabled;
+	qcom,mdss-dsi-bl-min-level = <3>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+
+	qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
+	qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 07 FF];
+
+	qcom,mdss-dsi-panel-hbm-is-51cmd;
+
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 1f 08 08 24 22 08
+								08 05 03 04 00];
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-dsi-on-command = [
+				15 00 00 00 00 00 02 FE 40 /*switch CMD2*/
+				15 00 00 00 00 00 02 9A 00 /* corner R function off, 0x00 for off, 0x01 for on*/
+				15 00 00 00 00 00 02 FE 50
+				15 00 00 00 00 00 02 E2 80
+				15 00 00 00 00 00 02 E3 80
+				15 00 00 00 00 00 02 E4 01
+				15 00 00 00 00 00 02 FE 52
+				15 00 00 00 00 00 02 E2 80
+				15 00 00 00 00 00 02 E3 80
+				15 00 00 00 00 00 02 E4 01
+				15 00 00 00 00 00 02 FE 74
+				15 00 00 00 00 00 02 00 00
+				15 00 00 00 00 00 02 01 00
+				15 00 00 00 00 00 02 02 11
+				15 00 00 00 00 00 02 03 07
+				15 00 00 00 00 00 02 04 0F
+				15 00 00 00 00 00 02 05 00
+				15 00 00 00 00 00 02 06 00
+				15 00 00 00 00 00 02 07 19
+				15 00 00 00 00 00 02 08 61
+				15 00 00 00 00 00 02 09 24
+				15 00 00 00 00 00 02 0A E7
+				15 00 00 00 00 00 02 0B FF
+				15 00 00 00 00 00 02 0C 00
+				15 00 00 00 00 00 02 0D FF
+				15 00 00 00 00 00 02 0E 7C
+				15 00 00 00 00 00 02 61 7C
+				15 00 00 00 00 00 02 0F 00
+				15 00 00 00 00 00 02 10 04
+				15 00 00 00 00 00 02 11 00
+				15 00 00 00 00 00 02 12 00
+				15 00 00 00 00 00 02 13 04
+				15 00 00 00 00 00 02 14 05
+				15 00 00 00 00 00 02 15 06
+				15 00 00 00 00 00 02 16 02
+				15 00 00 00 00 00 02 17 01
+				15 00 00 00 00 00 02 18 00
+				15 00 00 00 00 00 02 19 03
+				15 00 00 00 00 00 02 22 04
+				15 00 00 00 00 00 02 43 3C
+				15 00 00 00 00 00 02 44 00
+				15 00 00 00 00 00 02 45 F0
+				15 00 00 00 00 00 02 46 0F
+				15 00 00 00 00 00 02 47 93
+				15 00 00 00 00 00 02 48 FF
+				15 00 00 00 00 00 02 49 FF
+				15 00 00 00 00 00 02 4A CC
+				15 00 00 00 00 00 02 4B FF
+				15 00 00 00 00 00 02 4C FF
+				15 00 00 00 00 00 02 4D CC
+				15 00 00 00 00 00 02 4E 33
+				15 00 00 00 00 00 02 4F 99
+				15 00 00 00 00 00 02 50 FF
+				15 00 00 00 00 00 02 51 FF
+				15 00 00 00 00 00 02 52 FF
+				15 00 00 00 00 00 02 53 FF
+				15 00 00 00 00 00 02 FE 00
+				05 01 00 00 78 00 01 11
+				15 00 00 00 00 00 02 35 00
+				39 00 00 00 00 00 03 51 00 FF
+				15 00 00 00 00 00 02 55 00      /* ACL OFF */
+				05 01 00 00 00 00 01 29];       /* display on */
 		};
 	};
 };
