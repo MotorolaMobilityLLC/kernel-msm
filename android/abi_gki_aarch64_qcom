@@ -2056,6 +2056,7 @@
   remove_arg_zero
   __remove_inode_hash
   remove_proc_entry
+  remove_proc_subtree
   remove_wait_queue
   report_iommu_fault
   request_firmware
