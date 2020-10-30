@@ -1974,6 +1974,7 @@
   __rcu_read_lock
   __rcu_read_unlock
   rdev_get_drvdata
+  rdev_get_id
   reboot_mode
   refcount_dec_and_lock
   refcount_dec_and_test_checked
@@ -2025,17 +2026,22 @@
   regulator_count_voltages
   regulator_disable
   regulator_disable_deferred
+  regulator_disable_regmap
   regulator_enable
+  regulator_enable_regmap
   regulator_get
   regulator_get_current_limit
   regulator_get_drvdata
   regulator_get_mode
   regulator_get_voltage
+  regulator_get_voltage_sel_regmap
   regulator_is_enabled
+  regulator_is_enabled_regmap
   regulator_is_supported_voltage
   regulator_list_voltage
   regulator_list_voltage_linear
   regulator_lock
+  regulator_map_voltage_linear
   regulator_notifier_call_chain
   regulator_put
   regulator_register
@@ -2044,6 +2050,7 @@
   regulator_set_load
   regulator_set_mode
   regulator_set_voltage
+  regulator_set_voltage_sel_regmap
   regulator_unlock
   regulator_unregister
   regulator_unregister_notifier
