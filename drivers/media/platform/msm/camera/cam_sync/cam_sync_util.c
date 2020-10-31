@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -368,7 +368,7 @@ void cam_sync_util_send_v4l2_event(uint32_t id,
 	void *payload,
 	int len)
 {
-	struct v4l2_event event;
+	struct v4l2_event event = {0};
 	__u64 *payload_data = NULL;
 	struct cam_sync_ev_header *ev_header = NULL;
 
