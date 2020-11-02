@@ -94,8 +94,8 @@
 
 &dsi_tm_ili7807s_657_fhd_video {
 	qcom,dsi-display-active;
-	qcom,mdss-dsi-t-clk-post = <0x0E>;
-	qcom,mdss-dsi-t-clk-pre = <0x39>;
+	qcom,mdss-dsi-t-clk-post = <0x0C>;
+	qcom,mdss-dsi-t-clk-pre = <0x2F>;
 	//qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
@@ -117,10 +117,9 @@
 	qcom,mdss-pan-physical-height-dimension = <158>;
 	qcom,mdss-dsi-display-timings {
 		timing@0{
-			qcom,mdss-dsi-panel-phy-timings = [00 22 09 09
-				25 23 09 09 09 02 04 a0];
-
-			qcom,display-topology = <1 0 1>;
+			qcom,mdss-dsi-panel-phy-timings =
+				[00 1a 06 06 22 20 07 06 07 02 04 00];
+			qcom,display-topology = <2 2 1>;
 			qcom,default-topology-index = <0>;
 
 		};
