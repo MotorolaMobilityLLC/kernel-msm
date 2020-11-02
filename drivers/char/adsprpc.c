@@ -726,13 +726,16 @@ static void fastrpc_mmap_free(struct fastrpc_mmap *map, uint32_t flags)
 	if (!map)
 		return;
 	fl = map->fl;
-	cid = fl->cid;
-	VERIFY(err, cid >= ADSP_DOMAIN_ID && cid < NUM_CHANNELS);
-	if (err) {
-		err = -ECHRNG;
-		pr_err("adsprpc: ERROR:%s, Invalid channel id: %d, err:%d",
+	if (fl && !(map->flags == ADSP_MMAP_HEAP_ADDR ||
+				map->flags == ADSP_MMAP_REMOTE_HEAP_ADDR)) {
+		cid = fl->cid;
+		VERIFY(err, cid >= ADSP_DOMAIN_ID && cid < NUM_CHANNELS);
+		if (err) {
+			err = -ECHRNG;
+			pr_err("adsprpc: ERROR:%s, Invalid channel id: %d, err:%d",
 			__func__, cid, err);
 		return;
+		}
 	}
 	if (map->flags == ADSP_MMAP_HEAP_ADDR ||
 				map->flags == ADSP_MMAP_REMOTE_HEAP_ADDR) {
