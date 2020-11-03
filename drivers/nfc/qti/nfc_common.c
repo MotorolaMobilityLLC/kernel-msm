@@ -651,6 +651,40 @@ unsigned int nfc_ioctl_nfcc_info(struct file *filp, unsigned long arg)
  *
  *  @return 0 on success, error code for failures.
  */
+
+#ifdef CONFIG_COMPAT
+long nfc_compat_dev_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct nfc_dev *nfc_dev = pfile->private_data;
+
+	arg = (compat_u64)arg;
+	pr_debug("%s cmd = %x arg = %zx\n", __func__, cmd, arg);
+
+	switch (cmd) {
+	case NFC_SET_PWR:
+		ret = nfc_ioctl_power_states(nfc_dev, arg);
+		break;
+	case ESE_SET_PWR:
+		ret = nfc_ese_pwr(nfc_dev, arg);
+		break;
+	case ESE_GET_PWR:
+		ret = nfc_ese_pwr(nfc_dev, ESE_POWER_STATE);
+		break;
+	case NFCC_GET_INFO:
+		ret = nfc_ioctl_nfcc_info(pfile, arg);
+		break;
+	case NFC_GET_PLATFORM_TYPE:
+		ret = nfc_dev->interface;
+		break;
+	default:
+		pr_err("%s bad cmd %lu\n", __func__, arg);
+		ret = -ENOIOCTLCMD;
+	}
+	return ret;
+}
+#endif
+
 long nfc_dev_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
