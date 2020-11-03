@@ -18,6 +18,7 @@
 #include <linux/vmalloc.h>
 #include <linux/sched/types.h>
 #include <linux/sched.h>
+#include <linux/module.h>
 #include <soc/qcom/secure_buffer.h>
 #include "ion_system_heap.h"
 #include "ion.h"
@@ -440,6 +441,23 @@ err:
 	return ret;
 }
 
+/*
+ * Moto huangzq2: limit the system ion cache size.
+ * We often see lost ram is still very high even we close the camera app.
+ * That's because camera's ion memory goes into ion cache after use, not
+ * buddy system. And this cache was not counted in proc/meminfo/memAvailable,
+ * so it can not reflect the true memAvailable in this state. It may affects
+ * some components like camera or lmkd which need evaluate true memAvailable
+ * in system. Take camera as example, while launching camera, camera app needs
+ * calcuate the available memory then call framework api to kill processes,
+ * without this patch, we will see overkill.
+ *
+ * This patch is only for 4.14 & 4.19, on kernel 5.4, ion cache will
+ * be counted in memAvailable, so memAvailable is always trustable.
+ */
+static int max_page_pool_size = 24300;
+module_param(max_page_pool_size, int, 0600);
+
 void ion_system_heap_free(struct ion_buffer *buffer)
 {
 	struct ion_heap *heap = buffer->heap;
@@ -450,6 +468,16 @@ void ion_system_heap_free(struct ion_buffer *buffer)
 	struct scatterlist *sg;
 	int i;
 	int vmid = get_secure_vmid(buffer->flags);
+	unsigned int count = 0;
+
+	for (i = 0; i < NUM_ORDERS; i++) {
+		count += ion_page_pool_total(sys_heap->cached_pools[i], true);
+		count += ion_page_pool_total(sys_heap->uncached_pools[i], true);
+	}
+
+	if (count > max_page_pool_size)
+		buffer->private_flags |= ION_PRIV_FLAG_SHRINKER_FREE;
+
 
 	if (!(buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE) &&
 	    !(buffer->flags & ION_FLAG_POOL_FORCE_ALLOC)) {
