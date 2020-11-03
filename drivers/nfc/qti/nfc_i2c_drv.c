@@ -266,6 +266,9 @@ static const struct file_operations nfc_i2c_dev_fops = {
 	.open = nfc_dev_open,
 	.release = nfc_dev_close,
 	.unlocked_ioctl = nfc_dev_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = nfc_compat_dev_ioctl,
+#endif
 };
 
 int nfc_i2c_dev_probe(struct i2c_client *client, const struct i2c_device_id *id)
