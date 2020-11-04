@@ -598,7 +598,7 @@ static int __cam_isp_ctx_handle_buf_done_in_activated_state(
 	uint64_t buf_done_req_id;
 
 	if (list_empty(&ctx->active_req_list)) {
-		CAM_WARN(CAM_ISP, "Buf done with no active request!");
+		CAM_INFO(CAM_ISP, "Buf done with no active request!");
 		goto end;
 	}
 
