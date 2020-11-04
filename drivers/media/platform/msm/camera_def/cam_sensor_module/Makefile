@@ -1,0 +1,11 @@
+obj-$(CONFIG_DEF_CAMERA) += cam_res_mgr/
+obj-$(CONFIG_DEF_CAMERA) += cam_sensor_utils/
+obj-$(CONFIG_DEF_CAMERA) += cam_cci/
+obj-$(CONFIG_DEF_CAMERA) += cam_sensor_io/
+obj-$(CONFIG_DEF_CAMERA) += cam_csiphy/
+obj-$(CONFIG_DEF_CAMERA) += cam_actuator/
+obj-$(CONFIG_DEF_CAMERA) += cam_sensor/
+obj-$(CONFIG_DEF_CAMERA) += cam_flash/
+obj-$(CONFIG_DEF_CAMERA) += cam_eeprom/
+obj-$(CONFIG_DEF_CAMERA) += cam_ois/
+obj-$(CONFIG_DEF_CAMERA) += cam_ir_led/
