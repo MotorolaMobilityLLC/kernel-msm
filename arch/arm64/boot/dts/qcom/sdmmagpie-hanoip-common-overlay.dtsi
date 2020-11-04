@@ -16,7 +16,7 @@
 #include "hanoi-panel.dtsi"
 #include "sdmmagpie-camera-sensor-mot-hanoip-overlay.dtsi"
 #include "hanoi_battery_thermal_overlay.dtsi"
-#include "sdmmagpie-hanoi-sensor-overlay.dtsi"
+#include "sdmmagpie-hanoip-sensor-overlay.dtsi"
 #include "sdmmagpie-hanoi-touchscreen.dtsi"
 #include "sdmmagpie-hanoi-audio-overlay.dtsi"
 
