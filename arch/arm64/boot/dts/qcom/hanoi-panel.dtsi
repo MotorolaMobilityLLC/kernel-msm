@@ -10,11 +10,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include "dsi-panel-mot-tm-ili7807s-657-1080x2400-video.dtsi"
+#include "dsi-panel-mot-tianma-ili7807s-678-1080x2460-video.dtsi"
 
 &pm6150l_wled {
 	qcom,string-cfg= <7>;
-	qcom,leds-per-string = <8>;
+	qcom,leds-per-string = <7>;
 	status = "ok";
 };
 
@@ -61,8 +61,8 @@
 
 		qcom,dsi-panel = <&mot_dummy_vid_qhd>;
 	};
-	dsi_ili7807s_tm_657_vid_display: qcom,dsi-display@23 {
-		label = "dsi_ili7807s_tm_657_vid_display";
+	dsi_ili7807s_tm_678_vid_display: qcom,dsi-display@23 {
+		label = "dsi_ili7807s_tm_678_vid_display";
 		qcom,display-type = "primary";
 
 		qcom,dsi-ctrl-num = <0>;
@@ -72,18 +72,18 @@
 			"shadow_byte_clk0", "shadow_pixel_clk0";
 		lab-supply = <&lcdb_ldo_vreg>;
 		ibb-supply = <&lcdb_ncp_vreg>;
-		qcom,dsi-panel = <&dsi_tm_ili7807s_657_fhd_video>;
+		qcom,dsi-panel = <&dsi_tm_ili7807s_678_fhd_video>;
 	};
 };
 
-&dsi_ili7807s_tm_657_vid_display {
+&dsi_ili7807s_tm_678_vid_display {
 	qcom,dsi-display-active;
 };
 
 &sde_dsi {
 	qcom,dsi-display-list = <
 		&dsi_mot_dummy_qhd_video_display
-		&dsi_ili7807s_tm_657_vid_display>;
+		&dsi_ili7807s_tm_678_vid_display>;
         /delete-property/ qcom,platform-te-gpio;
 	/delete-property/ vddio-supply;
 	qcom,platform-reset-gpio = <&pm6150l_gpios 9 0>;
@@ -92,10 +92,10 @@
 };
 
 
-&dsi_tm_ili7807s_657_fhd_video {
+&dsi_tm_ili7807s_678_fhd_video {
 	qcom,dsi-display-active;
 	qcom,mdss-dsi-t-clk-post = <0x0C>;
-	qcom,mdss-dsi-t-clk-pre = <0x2F>;
+	qcom,mdss-dsi-t-clk-pre = <0x30>;
 	//qcom,esd-check-enabled;
 	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
@@ -118,7 +118,7 @@
 	qcom,mdss-dsi-display-timings {
 		timing@0{
 			qcom,mdss-dsi-panel-phy-timings =
-				[00 1a 06 06 22 20 07 06 07 02 04 00];
+				[00 1b 06 06 22 20 07 07 07 02 04 00];
 			qcom,display-topology = <2 2 1>;
 			qcom,default-topology-index = <0>;
 
@@ -126,7 +126,7 @@
 	};
 };
 
-&dsi_tm_ili7807s_657_fhd_video {
+&dsi_tm_ili7807s_678_fhd_video {
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,mdss-dsi-bl-min-level = <27>;
 	qcom,mdss-dsi-bl-max-level = <4095>;

@@ -11,9 +11,9 @@
  */
 
 &mdss_mdp {
-	dsi_tm_ili7807s_657_fhd_video: qcom,mdss_dsi_tm_ili7807s_657_fhd_video {
+	dsi_tm_ili7807s_678_fhd_video: qcom,mdss_dsi_tm_ili7807s_678_fhd_video {
 		qcom,mdss-dsi-panel-name =
-				"mipi_mot_vid_tm_ili7807s_fhd_657";
+				"mipi_mot_vid_tm_ili7807s_fhd_678";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
@@ -39,19 +39,19 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 50>, <1 100>;
-		qcom,mdss-pan-physical-width-dimension = <68>;
-		qcom,mdss-pan-physical-height-dimension = <152>;
+		qcom,mdss-pan-physical-width-dimension = <69>;
+		qcom,mdss-pan-physical-height-dimension = <158>;
 		qcom,mdss-dsi-display-timings {
 			timing@0 {
 			qcom,mdss-dsi-panel-width = <1080>;
-			qcom,mdss-dsi-panel-height = <2408>;
-			qcom,mdss-dsi-h-front-porch = <20>;
-			qcom,mdss-dsi-h-back-porch = <16>;
+			qcom,mdss-dsi-panel-height = <2460>;
+			qcom,mdss-dsi-h-front-porch = <28>;
+			qcom,mdss-dsi-h-back-porch = <24>;
 			qcom,mdss-dsi-h-pulse-width = <4>;
 			qcom,mdss-dsi-h-sync-skew = <0>;
-			qcom,mdss-dsi-v-back-porch = <62>;
-			qcom,mdss-dsi-v-front-porch = <60>;
-			qcom,mdss-dsi-v-pulse-width = <4>;
+			qcom,mdss-dsi-v-back-porch = <12>;
+			qcom,mdss-dsi-v-front-porch = <46>;
+			qcom,mdss-dsi-v-pulse-width = <2>;
 			qcom,mdss-dsi-panel-framerate = <120>;
 
 			qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
@@ -66,8 +66,6 @@
 			qcom,mdss-dsi-hbm-off-command-state =  "dsi_hs_mode";
 
 			qcom,mdss-dsi-on-command = [
-				39 01 00 00 00 00 04 FF 78 07 17
-				39 01 00 00 00 00 86 20 00 00 00 00 00 11 00 00 89 30 80 09 68 04 38 00 08 02 1c 02 1c 00 aa 02 0e 00 20 00 2b 00 07 00 0c 0d b7 0c b7 18 00 1b a0 03 0c 20 00 06 0b 0b 33 0e 1c 2a 38 46 54 62 69 70 77 79 7b 7d 7e 01 02 01 00 09 40 09 be 19 fc 19 fa 19 f8 1a 38 1a 78 1a b6 2a f6 2b 34 2b 74 3b 74 6b f4 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 				39 01 00 00 00 00 04 FF 78 07 06
 				15 01 00 00 00 00 02 3E E2
 				39 01 00 00 00 00 04 FF 78 07 08
@@ -87,7 +85,7 @@
 			qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 
 			qcom,compression-mode = "dsc";
-			qcom,mdss-dsc-slice-height = <8>;
+			qcom,mdss-dsc-slice-height = <10>;
 			qcom,mdss-dsc-slice-width = <540>;
 			qcom,mdss-dsc-slice-per-pkt = <2>;
 			qcom,mdss-dsc-bit-per-component = <8>;
