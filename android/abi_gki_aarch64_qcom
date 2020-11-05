@@ -928,6 +928,8 @@
   filemap_fdatawait_range
   filemap_fdatawrite_range
   file_path
+  filp_close
+  filp_open
   find_last_bit
   find_next_bit
   find_next_zero_bit
