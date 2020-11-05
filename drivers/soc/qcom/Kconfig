@@ -51,6 +51,14 @@ config KIEV_DTB
 	Only include KIEV specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config KYOTO_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "KYOTO DTBs"
+	help
+	Only include KYOTO specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
