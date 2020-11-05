@@ -378,6 +378,142 @@
 		rgltr-load-current = <0 0>;
 	};
 
+
+	eeprom_main: qcom,eeprom@0 {
+		cell-index = <0>;
+		reg = <0>;
+		compatible = "qcom,eeprom";
+		cci-master = <0>;
+		cam_vaf-supply = <&camera_rear_main_wide_afvdd_2p8>;
+		cam_vio-supply = <&pm6150_l13>;
+		regulator-names = "cam_vaf", "cam_vio";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <2800000 1800000>;
+		rgltr-max-voltage = <2800000 1800000>;
+		rgltr-load-current = <0 0>;
+		status = "ok";
+	};
+
+	eeprom_front: qcom,eeprom@1{
+		cell-index = <1>;
+		reg = <0x1>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <&pm6150_l13>;
+		regulator-names = "cam_vio";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000>;
+		rgltr-max-voltage = <1800000>;
+		cci-device = <0>;
+		cci-master = <0>;
+		rgltr-load-current = <0>;
+	};
+
+	eeprom_depth: qcom,eeprom@2{
+		cell-index = <2>;
+		reg = <0x2>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <&pm6150_l13>;
+		cam_vana-supply = <&camera_rear_depth_macro_avdd_2p8>;
+		cam_clk-supply = <&titan_top_gdsc>;
+		regulator-names = "cam_vio", "cam_vana", "cam_clk";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000 2800000 0>;
+		rgltr-max-voltage = <1800000 2800000 0>;
+		rgltr-load-current = <0 80000 0>;
+		gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk3_active
+				&cam_sensor_rear_depth_active>;
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
+				&cam_sensor_rear_depth_suspend>;
+		gpios = <&tlmm 16 0>,
+			<&tlmm 26 0>,
+			<&tlmm 42 0>; /*MIPI_SEL=0 for depth*/
+		gpio-reset = <1>;
+		gpio-custom1 = <2>;
+		gpio-req-tbl-num = <0 1 2>;
+		gpio-req-tbl-flags = <1 0 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK3", "CAM_RESET3", "CAM_MIPI_SEL";
+		cci-device = <0>;
+		cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_camcc CAM_CC_MCLK3_CLK>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "turbo";
+		clock-rates = <24000000>;
+	};
+
+	eeprom_wide: qcom,eeprom@3{
+		cell-index = <3>;
+		reg = <3>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <&pm6150_l13>;
+		cam_vana-supply = <&camera_front_rear_main_wide_avdd_2p8>;
+		cam_vdig-supply = <&camera_front_rear_wide_macro_dvdd_1p2>;
+		cam_clk-supply = <&titan_top_gdsc>;
+		regulator-names = "cam_vio", "cam_vana", "cam_vdig", "cam_clk";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000 2800000 1200000 0>;
+		rgltr-max-voltage = <1800000 2800000 1200000 0>;
+		rgltr-load-current = <0 80000 105000 0>;
+		gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active
+				&cam_sensor_rear_wide_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend
+				&cam_sensor_rear_wide_suspend>;
+		gpios = <&tlmm 14 0>,
+			<&tlmm 24 0>;
+		gpio-reset = <1>;
+		gpio-req-tbl-num = <0 1>;
+		gpio-req-tbl-flags = <1 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK1", "CAM_RESET1";
+		cci-device = <0>;
+		cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_camcc CAM_CC_MCLK1_CLK>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "turbo";
+		clock-rates = <24000000>;
+	};
+	eeprom_macro: qcom,eeprom@4{
+		cell-index = <4>;
+		reg = <0x4>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <&pm6150_l13>;
+		cam_vana-supply = <&camera_rear_depth_macro_avdd_2p8>;
+		cam_vdig-supply = <&camera_front_rear_wide_macro_dvdd_1p2>;
+		cam_clk-supply = <&titan_top_gdsc>;
+		regulator-names = "cam_vio", "cam_vana", "cam_vdig", "cam_clk";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000 2800000 1200000 0>;
+		rgltr-max-voltage = <1800000 2800000 1200000 0>;
+		rgltr-load-current = <0 80000 105000 0>;
+		gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk3_active
+				&cam_sensor_rear_macro_active>;
+		pinctrl-1 = <&cam_sensor_mclk3_suspend
+				&cam_sensor_rear_macro_suspend>;
+		gpios = <&tlmm 16 0>,
+			<&tlmm 32 0>,
+			<&tlmm 42 0>; /*MIPI_SEL=1 for macro*/
+		gpio-reset = <1>;
+		gpio-custom1= <2>;
+		gpio-req-tbl-num = <0 1 2>;
+		gpio-req-tbl-flags = <1 0 0>;
+		gpio-req-tbl-label = "CAMIF_MCLK3", "CAM_RESET4", "CAM_MIPI_SEL";
+		cci-device = <0>;
+		cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_camcc CAM_CC_MCLK3_CLK>;
+		clock-names = "cam_clk";
+		clock-cntl-level = "turbo";
+		clock-rates = <24000000>;
+	};
+
+
+
 	qcom,cam-sensor@0 {
 		/*rear main ov64b*/
 		cell-index = <0>;
@@ -388,6 +524,7 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
 		actuator-src = <&actuator_main>;
+		eeprom-src = <&eeprom_main>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_rear_main_wide_avdd_2p8>;
 		cam_vdig-supply = <&pm6150_l6>;
@@ -427,6 +564,7 @@
 		sensor-position-roll = <270>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
+		eeprom-src = <&eeprom_front>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_rear_main_wide_avdd_2p8>;
 		cam_vdig-supply = <&camera_front_rear_wide_macro_dvdd_1p2>;
@@ -467,6 +605,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		eeprom-src = <&eeprom_depth>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_rear_depth_macro_avdd_2p8>;
 		cam_clk-supply = <&titan_top_gdsc>;
@@ -507,6 +646,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		eeprom-src = <&eeprom_wide>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_rear_main_wide_avdd_2p8>;
 		cam_vdig-supply = <&camera_front_rear_wide_macro_dvdd_1p2>;
@@ -546,6 +686,7 @@
 		sensor-position-roll = <90>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
+		eeprom-src = <&eeprom_macro>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_rear_depth_macro_avdd_2p8>;
 		cam_vdig-supply = <&camera_front_rear_wide_macro_dvdd_1p2>;
