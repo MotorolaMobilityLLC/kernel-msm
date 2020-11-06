@@ -15,7 +15,7 @@
 #include <linux/mutex.h>
 #include <linux/power_supply.h>
 #include <linux/thermal.h>
-
+#include <linux/iio/consumer.h>
 #include "../thermal_core.h"
 
 #define BCL_DRIVER_NAME       "bcl_soc_peripheral"
@@ -30,9 +30,54 @@ struct bcl_device {
 	bool					irq_enabled;
 	struct thermal_zone_device		*tz_dev;
 	struct thermal_zone_of_device_ops	ops;
+	int					bcl_not_mitigate_icl;
+	struct iio_channel	**ext_iio_chans;
 };
 
 static struct bcl_device *bcl_perph;
+
+enum bcl_mmi_ext_iio_channels {
+	SMB5_HW_CURRENT_MAX = 0,
+};
+
+static const char * const bcl_mmi_ext_iio_chan_name[] = {
+	[SMB5_HW_CURRENT_MAX] = "usb_hw_current_max",
+};
+
+static bool is_chan_valid(enum bcl_mmi_ext_iio_channels chan)
+{
+	int rc;
+
+	if (IS_ERR(bcl_perph->ext_iio_chans[chan]))
+		return false;
+
+	if (!bcl_perph->ext_iio_chans[chan]) {
+		bcl_perph->ext_iio_chans[chan] = iio_channel_get(bcl_perph->dev,
+					bcl_mmi_ext_iio_chan_name[chan]);
+		if (IS_ERR(bcl_perph->ext_iio_chans[chan])) {
+			rc = PTR_ERR(bcl_perph->ext_iio_chans[chan]);
+			bcl_perph->ext_iio_chans[chan] = NULL;
+			pr_err("Failed to get IIO channel %s, rc=%d\n",
+				bcl_mmi_ext_iio_chan_name[chan], rc);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+int bcl_mmi_read_iio_chan(enum bcl_mmi_ext_iio_channels chan, int *val)
+{
+	int rc;
+
+	if (is_chan_valid(chan)) {
+		rc = iio_read_channel_processed(
+				bcl_perph->ext_iio_chans[chan], val);
+		return (rc < 0) ? rc : 0;
+	}
+
+	return -EINVAL;
+}
 
 static int bcl_set_soc(void *data, int low, int high)
 {
@@ -61,6 +106,18 @@ static int bcl_read_soc(void *data, int *val)
 	int err = 0;
 
 	*val = 0;
+
+	if (bcl_perph->bcl_not_mitigate_icl) {
+		err = bcl_mmi_read_iio_chan(SMB5_HW_CURRENT_MAX, &ret.intval);
+		if (err)
+			pr_err("HW current max read error:%d\n", err);
+		else if ((ret.intval /1000) >= bcl_perph->bcl_not_mitigate_icl) {
+			pr_debug("charger current more than bcl_not_mitigate_icl %dmA\n",
+				bcl_perph->bcl_not_mitigate_icl);
+			return err;
+		}
+	}
+
 	if (!batt_psy)
 		batt_psy = power_supply_get_by_name("battery");
 	if (batt_psy) {
@@ -127,6 +184,18 @@ static int bcl_soc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int bcl_mmi_init_iio_psy(struct platform_device *pdev)
+{
+	bcl_perph->ext_iio_chans = devm_kcalloc(bcl_perph->dev,
+				ARRAY_SIZE(bcl_mmi_ext_iio_chan_name),
+				sizeof(*bcl_perph->ext_iio_chans),
+				GFP_KERNEL);
+	if (!bcl_perph->ext_iio_chans)
+		return -ENOMEM;
+
+	return 0;
+}
+
 static int bcl_soc_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -157,6 +226,16 @@ static int bcl_soc_probe(struct platform_device *pdev)
 		bcl_perph->tz_dev = NULL;
 		goto bcl_soc_probe_exit;
 	}
+
+	bcl_mmi_init_iio_psy(pdev);
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"qcom,bcl-not-mitigate-icl",
+			&bcl_perph->bcl_not_mitigate_icl);
+	if (ret < 0) {
+		bcl_perph->bcl_not_mitigate_icl = 0;
+	}
+
 	thermal_zone_device_update(bcl_perph->tz_dev, THERMAL_DEVICE_UP);
 	schedule_work(&bcl_perph->soc_eval_work);
 
