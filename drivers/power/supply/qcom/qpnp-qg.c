@@ -2717,14 +2717,19 @@ static int qg_psy_get_property(struct power_supply *psy,
 			       enum power_supply_property psp,
 			       union power_supply_propval *pval)
 {
+	struct qpnp_qg *chip = power_supply_get_drvdata(psy);
+
 	if (psp == POWER_SUPPLY_PROP_TYPE)
 		pval->intval = POWER_SUPPLY_TYPE_MAINS;
+	else if (psp == POWER_SUPPLY_PROP_CHARGE_NOW)
+		pval->intval = chip->cl->init_cap_uah;
 
 	return 0;
 }
 
 static enum power_supply_property qg_psy_props[] = {
 	POWER_SUPPLY_PROP_TYPE,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
 };
 
 static const struct power_supply_desc qg_psy_desc = {
