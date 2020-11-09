@@ -920,6 +920,8 @@
   fd_install
   fget
   file_path
+  filp_close
+  filp_open
   find_last_bit
   find_next_bit
   find_next_zero_bit
