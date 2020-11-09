@@ -2043,6 +2043,8 @@
   rtc_tm_to_time64
   rtc_update_irq
   rtc_valid_tm
+  rt_mutex_lock
+  rt_mutex_unlock
   rtnl_is_locked
   rtnl_link_register
   rtnl_link_unregister
