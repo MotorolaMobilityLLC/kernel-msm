@@ -140,14 +140,14 @@ static void ufshpb_ppn_prep(struct ufshpb_lu *hpb,
 {
 	unsigned char cmd[16] = { 0 };
 
-	cmd[0] = UFSHPB_READ;
+	cmd[0] = READ_16;
 	cmd[2] = lrbp->cmd->cmnd[2];
 	cmd[3] = lrbp->cmd->cmnd[3];
 	cmd[4] = lrbp->cmd->cmnd[4];
 	cmd[5] = lrbp->cmd->cmnd[5];
 	memcpy(cmd+6,&ppn,8);
 	cmd[14] = 0x01;		// Transfer_len = 0x01
-
+	cmd[15] = 1;
 	memcpy(lrbp->cmd->cmnd, cmd, MAX_CDB_SIZE);
 	memcpy(lrbp->ucd_req_ptr->sc.cdb, cmd, MAX_CDB_SIZE);
 }
