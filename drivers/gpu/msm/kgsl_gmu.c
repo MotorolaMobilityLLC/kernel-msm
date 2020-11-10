@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018,2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1693,25 +1693,28 @@ int adreno_gmu_fenced_write(struct adreno_device *adreno_dev,
 		 * was successful
 		 */
 		if (!(status & fence_mask))
-			return 0;
+			break;
 		/* Wait a small amount of time before trying again */
 		udelay(GMU_WAKEUP_DELAY_US);
 
 		/* Try to write the fenced register again */
 		adreno_writereg(adreno_dev, offset, val);
+	}
 
-		if (i == GMU_SHORT_WAKEUP_RETRY_LIMIT)
-			dev_err(adreno_dev->dev.dev,
-				"Waited %d usecs to write fenced register 0x%x. Continuing to wait...\n",
-				(GMU_SHORT_WAKEUP_RETRY_LIMIT *
-				GMU_WAKEUP_DELAY_US),
-				reg_offset);
+	if (i < GMU_SHORT_WAKEUP_RETRY_LIMIT)
+		return 0;
+
+	if (i == GMU_LONG_WAKEUP_RETRY_LIMIT) {
+		dev_err(adreno_dev->dev.dev,
+			"Timed out waiting %d usecs to write fenced register 0x%x\n",
+			(i * GMU_WAKEUP_DELAY_US),
+			reg_offset);
+		return -ETIMEDOUT;
 	}
 
 	dev_err(adreno_dev->dev.dev,
-		"Timed out waiting %d usecs to write fenced register 0x%x\n",
-		GMU_LONG_WAKEUP_RETRY_LIMIT * GMU_WAKEUP_DELAY_US,
-		reg_offset);
+		"Waited %d usecs to write fenced register 0x%x\n",
+		i * GMU_WAKEUP_DELAY_US, reg_offset);
 
-	return -ETIMEDOUT;
+	return 0;
 }
