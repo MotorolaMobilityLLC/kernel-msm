@@ -165,7 +165,7 @@ bail:
 	kfree(buf);
 
 	if (!debug->dp_debug.sim_mode)
-		debug->panel->set_edid(debug->panel, edid);
+		debug->panel->set_edid(debug->panel, edid, debug->edid_size);
 
 	mutex_unlock(&debug->lock);
 	return rc;
