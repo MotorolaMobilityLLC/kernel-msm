@@ -3647,6 +3647,7 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	}
 #endif
+
 		ret = ufshcd_prepare_req_desc_hdr(hba, lrbp,
 				&upiu_flags, lrbp->cmd->sc_data_direction);
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
@@ -6368,14 +6369,13 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 
 	sdev->autosuspend_delay = UFSHCD_AUTO_SUSPEND_DELAY_MS;
 	sdev->use_rpm_auto = 1;
-
-	ufshcd_crypto_setup_rq_keyslot_manager(hba, q);
 #if defined(CONFIG_UFSHPB_TOSHIBA)
-	if ( ufshcd_is_hpb_supported(hba) ){
-		if (sdev->lun < UFS_UPIU_MAX_GENERAL_LUN)
-			hba->sdev_ufs_lu[sdev->lun] = sdev;
-	}
+        if ( ufshcd_is_hpb_supported(hba) ){
+                if (sdev->lun < UFS_UPIU_MAX_GENERAL_LUN)
+                        hba->sdev_ufs_lu[sdev->lun] = sdev;
+        }
 #endif
+	ufshcd_crypto_setup_rq_keyslot_manager(hba, q);
 	return 0;
 }
 
