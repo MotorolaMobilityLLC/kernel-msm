@@ -1086,8 +1086,6 @@ void __symbol_put(const char *symbol)
 	module_put(owner);
 	preempt_enable();
 }
-/* MMI_STOPSHIP: touchscreen: export the symbol for temp rebase */
-EXPORT_SYMBOL(__symbol_put);
 
 /* Note this assumes addr is a function, which it currently always is. */
 void symbol_put_addr(void *addr)
@@ -2322,8 +2320,6 @@ fail:
 	preempt_enable();
 	return NULL;
 }
-/* MMI_STOPSHIP: touchscreen: export the symbol for temp rebase */
-EXPORT_SYMBOL(__symbol_get);
 
 /*
  * Ensure that an exported symbol [global namespace] does not already exist
