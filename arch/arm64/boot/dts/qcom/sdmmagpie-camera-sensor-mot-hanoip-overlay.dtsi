@@ -300,8 +300,8 @@
 		compatible = "regulator-fixed";
 		reg = <0x04 0x00>;
 		regulator-name = "camera_front_dvdd_1p1";
-		regulator-min-microvolt = <1200000>;
-		regulator-max-microvolt = <1200000>;
+		regulator-min-microvolt = <1100000>;
+		regulator-max-microvolt = <1100000>;
 		regulator-enable-ramp-delay = <233>;
 		enable-active-high;
 		gpio = <&tlmm 93 0>; /* CAM_F_DVDD_EN*/
@@ -338,6 +338,16 @@
 		flash-source = <&pm6150l_flash0>;
 		torch-source = <&pm6150l_torch0>;
 		switch-source = <&pm6150l_switch0>;
+		status = "ok";
+	};
+
+	led_flash_front: qcom,camera-flash@2 {
+		cell-index = <2>;
+		reg = <0x02 0x00>;
+		compatible = "qcom,camera-flash";
+		flash-source = <&pm6150l_flash1>;
+		torch-source = <&pm6150l_torch1>;
+		switch-source = <&pm6150l_switch1>;
 		status = "ok";
 	};
 };
@@ -585,7 +595,7 @@
 
 &cam_cci1 {
 	qcom,cam-sensor@1 {
-		/*front ov16a1q not support ov32b*/
+		/*front compatabl ov16a1q and ov32b*/
 		cell-index = <1>;
 		compatible = "qcom,cam-sensor";
 		reg = <0x1>;
@@ -593,10 +603,11 @@
 		sensor-position-roll = <270>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
+		led-flash-src = <&led_flash_front>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_avdd_2p8>;
-		cam_vdig-supply = <&camera_front_dvdd_1p1>;
-		cam_v_custom1-supply = <&camera_rear_wide_dvdd_1p2>;
+		cam_vdig-supply = <&camera_front_dvdd_1p1>;/* For ov32b */
+		cam_v_custom1-supply = <&camera_rear_wide_dvdd_1p2>; /* For ov16a1q */
 		cam_clk-supply = <&titan_top_gdsc>;
 		regulator-names = "cam_vio", "cam_vana", "cam_vdig", "cam_v_custom1", "cam_clk";
 		rgltr-cntrl-support;
