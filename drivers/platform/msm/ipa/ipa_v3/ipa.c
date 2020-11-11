@@ -6356,7 +6356,12 @@ static void ipa3_load_ipa_fw(struct work_struct *work)
 	if (result) {
 		IPAERR("IPA FW loading process has failed result=%d\n",
 			result);
+#if defined(DEBUG)
+		IPAERR("IPA FW loading FAILED!!! SKIP ASSERT for debug build!!!");
+#else
 		ipa_assert();
+#endif
+
 		return;
 	}
 	pr_info("IPA FW loaded successfully\n");
