@@ -56,6 +56,17 @@ static inline struct f_uac1 *func_to_uac1(struct usb_function *f)
 /* Number of streaming interfaces */
 #define F_AUDIO_NUM_INTERFACES		2
 
+static struct usb_interface_assoc_descriptor iad_desc = {
+	.bLength = sizeof(iad_desc),
+	.bDescriptorType = USB_DT_INTERFACE_ASSOCIATION,
+
+	.bFirstInterface = 0,
+	.bInterfaceCount = 3,
+	.bFunctionClass = USB_CLASS_AUDIO,
+	.bFunctionSubClass = USB_SUBCLASS_AUDIOSTREAMING,
+	.bFunctionProtocol = UAC_VERSION_1,
+};
+
 /* B.3.1  Standard AC Interface Descriptor */
 static struct usb_interface_descriptor ac_interface_desc = {
 	.bLength =		USB_DT_INTERFACE_SIZE,
@@ -354,6 +365,7 @@ static struct uac_iso_endpoint_descriptor as_iso_in_desc = {
 };
 
 static struct usb_descriptor_header *f_audio_desc[] = {
+	(struct usb_descriptor_header *)&iad_desc,
 	(struct usb_descriptor_header *)&ac_interface_desc,
 	(struct usb_descriptor_header *)&ac_header_desc,
 
@@ -387,6 +399,7 @@ static struct usb_descriptor_header *f_audio_desc[] = {
 };
 
 static struct usb_descriptor_header *f_audio_ss_desc[] = {
+	(struct usb_descriptor_header *)&iad_desc,
 	(struct usb_descriptor_header *)&ac_interface_desc,
 	(struct usb_descriptor_header *)&ac_header_desc,
 
@@ -815,6 +828,7 @@ static int f_audio_bind(struct usb_configuration *c, struct usb_function *f)
 	if (status < 0)
 		goto fail;
 	ac_interface_desc.bInterfaceNumber = status;
+	iad_desc.bFirstInterface = status;
 	uac1->ac_intf = status;
 	uac1->ac_alt = 0;
 
