@@ -594,6 +594,22 @@
 };
 
 &cam_cci1 {
+
+	eeprom_front: qcom,eeprom@1 {
+		cell-index = <1>;
+		reg = <0x1>;
+		compatible = "qcom,eeprom";
+		cam_vio-supply = <&pm6150_l13>;
+		regulator-names = "cam_vio";
+		rgltr-cntrl-support;
+		rgltr-min-voltage = <1800000>;
+		rgltr-max-voltage = <1800000>;
+		rgltr-load-current = <0>;
+		cci-device = <1>;
+		cci-master = <0>;
+		status = "ok";
+	};
+
 	qcom,cam-sensor@1 {
 		/*front compatabl ov16a1q and ov32b*/
 		cell-index = <1>;
@@ -604,6 +620,7 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
 		led-flash-src = <&led_flash_front>;
+		eeprom-src = <&eeprom_front>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_avdd_2p8>;
 		cam_vdig-supply = <&camera_front_dvdd_1p1>;/* For ov32b */
