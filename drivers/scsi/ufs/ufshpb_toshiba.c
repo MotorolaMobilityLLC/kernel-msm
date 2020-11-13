@@ -206,7 +206,7 @@ static void ufshpb_set_dirty(struct ufshpb_lu *hpb,
 
 static inline bool ufshpb_is_read_lrbp(struct ufshcd_lrb *lrbp)
 {
-	if (lrbp->cmd->cmnd[0] == READ_10 || lrbp->cmd->cmnd[0] == READ_16)
+	if (lrbp->cmd->cmnd[0] == READ_10)
 		return true;
 
 	return false;
