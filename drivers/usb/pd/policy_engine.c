@@ -4267,7 +4267,7 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 		if (pdo_pos != 0)
 			type = PD_SRC_PDO_TYPE(pdo_pos);
 		if (type == PD_SRC_PDO_TYPE_FIXED &&
-			pd_get_pdo(pd, i, &pdo_max_uv, &pdo_min_uv, &pdo_ua)) {
+			!pd_get_pdo(pd, i, &pdo_max_uv, &pdo_min_uv, &pdo_ua)) {
 			if (pdo_max_uv <= uv_in) {
 				uv_diff = uv_in - pdo_max_uv;
 				if (uv_diff < max_uv_diff) {
