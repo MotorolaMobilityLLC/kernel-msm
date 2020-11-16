@@ -93,6 +93,7 @@ static void ufshpb_evict_region(struct ufshpb_lu *hpb,
 static void ufshpb_purge_active_block(struct ufshpb_lu *hpb);
 static void ufshpb_retrieve_rsp_info(struct ufshpb_lu *hpb);
 static void ufshpb_tasklet_fn(unsigned long private);
+static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba);
 
 static inline void ufshpb_get_bit_offset(
 		struct ufshpb_lu *hpb, int subregion_offset,
@@ -1220,7 +1221,37 @@ void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		break;
 	}
 }
+#define KIOXIA_FW_VERSION "1001"
+static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
+{
+	u8 index;
+	bool ret_val = false;
+	int desc_len = QUERY_DESC_MAX_SIZE;
+	u8 *desc_buf;
 
+	desc_buf = kzalloc(QUERY_DESC_MAX_SIZE, GFP_ATOMIC);
+	if (!desc_buf)
+		goto out;
+
+	if(ufshcd_query_descriptor_retry(hba,
+		UPIU_QUERY_OPCODE_READ_DESC, QUERY_DESC_IDN_DEVICE,
+		0, 0, desc_buf, &desc_len)) {
+		goto out;
+	}
+	index = desc_buf[DEVICE_DESC_PARAM_PRDCT_REV];
+	memset(desc_buf, 0, QUERY_DESC_MAX_SIZE);
+	if (ufshcd_read_string_desc(hba, index, desc_buf,
+		QUERY_DESC_MAX_SIZE, true)) {
+		goto out;
+	}
+	/*Only 1001 FW support HPB for now*/
+	if(strncmp(desc_buf + QUERY_DESC_HDR_SIZE,KIOXIA_FW_VERSION,
+		sizeof(KIOXIA_FW_VERSION))==0)
+		ret_val = true;
+out:
+	kfree(desc_buf);
+	return ret_val;
+}
 static int ufshpb_read_device_desc(struct ufs_hba *hba, u8 *desc_buf, u32 size)
 {
 	return ufshcd_query_descriptor_retry(hba, UPIU_QUERY_OPCODE_READ_DESC,
@@ -2117,6 +2148,12 @@ static int ufshpb_init(struct ufs_hba *hba)
 	int hpb_dev = 0;
 
 	pm_runtime_get_sync(hba->dev);
+
+	if(!ufshpb_is_fw_support_hpb(hba))
+	{
+		pr_info("UFSHPB: Not Latest FW, Don't support HPB");
+		goto out_state;
+	}
 
 	ret = ufshpb_read_dev_desc_support(hba, &func_desc);
 	if (ret)
