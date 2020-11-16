@@ -585,10 +585,12 @@ int tlmm_get_inout(unsigned gpio)
 		return -EINVAL;
 	if (gpio >= msm_pinctrl_data->chip.ngpio)
 		return -EINVAL;
+	if (!gpiochip_line_is_valid(&msm_pinctrl_data->chip, gpio))
+		return -EINVAL;
 
 	g = &msm_pinctrl_data->soc->groups[gpio];
 
-	val = readl_relaxed(msm_pinctrl_data->regs + g->io_reg);
+	val = readl_relaxed(msm_pinctrl_data->regs[g->tile] + g->io_reg);
 	return !!(val & BIT(g->in_bit));
 }
 
@@ -602,17 +604,19 @@ int tlmm_set_inout(unsigned gpio, unsigned value)
 		return -EINVAL;
 	if (gpio >= msm_pinctrl_data->chip.ngpio)
 		return -EINVAL;
+	if (!gpiochip_line_is_valid(&msm_pinctrl_data->chip, gpio))
+		return -EINVAL;
 
 	g = &msm_pinctrl_data->soc->groups[gpio];
 
 	raw_spin_lock_irqsave(&msm_pinctrl_data->lock, flags);
 
-	val = readl_relaxed(msm_pinctrl_data->regs + g->io_reg);
+	val = readl_relaxed(msm_pinctrl_data->regs[g->tile] + g->io_reg);
 	if (value)
 		val |= BIT(g->out_bit);
 	else
 		val &= ~BIT(g->out_bit);
-	writel_relaxed(val, msm_pinctrl_data->regs + g->io_reg);
+	writel_relaxed(val, msm_pinctrl_data->regs[g->tile] + g->io_reg);
 
 	raw_spin_unlock_irqrestore(&msm_pinctrl_data->lock, flags);
 	return 0;
@@ -627,9 +631,11 @@ int tlmm_get_config(unsigned gpio, unsigned *cfg)
 		return -EINVAL;
 	if (gpio >= msm_pinctrl_data->chip.ngpio)
 		return -EINVAL;
+	if (!gpiochip_line_is_valid(&msm_pinctrl_data->chip, gpio))
+		return -EINVAL;
 
 	g = &msm_pinctrl_data->soc->groups[gpio];
-	ctl_reg = readl_relaxed(msm_pinctrl_data->regs + g->ctl_reg);
+	ctl_reg = readl_relaxed(msm_pinctrl_data->regs[g->tile] + g->ctl_reg);
 	pr_debug("%s(), %d, ctl_reg=%x\n", __func__, __LINE__, ctl_reg);
 
 	*cfg = GPIO_CFG(gpio, (ctl_reg >> g->mux_bit) & 7,
@@ -652,10 +658,12 @@ int tlmm_set_config(unsigned config)
 		return -EINVAL;
 	if (gpio >= msm_pinctrl_data->chip.ngpio)
 		return -EINVAL;
+	if (!gpiochip_line_is_valid(&msm_pinctrl_data->chip, gpio))
+		return -EINVAL;
 
 	config = (config & ~0x40000000);
 	g = &msm_pinctrl_data->soc->groups[gpio];
-	ctl_reg = readl_relaxed(msm_pinctrl_data->regs + g->ctl_reg);
+	ctl_reg = readl_relaxed(msm_pinctrl_data->regs[g->tile] + g->ctl_reg);
 
 	pr_debug("%s(), %d, ctl_reg=%x\n", __func__, __LINE__, ctl_reg);
 
@@ -665,7 +673,7 @@ int tlmm_set_config(unsigned config)
 		((GPIO_FUNC(config) & 7) << g->mux_bit) |
 		((GPIO_PULL(config) & 3) << g->pull_bit));
 	pr_debug("%s(), %d, val=%x\n", __func__, __LINE__, val);
-	writel_relaxed(val, msm_pinctrl_data->regs + g->ctl_reg);
+	writel_relaxed(val, msm_pinctrl_data->regs[g->tile] + g->ctl_reg);
 	raw_spin_unlock_irqrestore(&msm_pinctrl_data->lock, flags);
 	return 0;
 }
