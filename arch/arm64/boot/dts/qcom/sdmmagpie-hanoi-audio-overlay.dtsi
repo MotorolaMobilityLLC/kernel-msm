@@ -358,6 +358,7 @@
 		irq-gpio = <&tlmm 91 0x2008>;
 		monitor-flag = <1>;
 		monitor-timer-val = <3000>;
+		fade-flag = <1>;
 
 		afe-rx-portid = <0x1002>;
 		afe-tx-portid = <0x1003>;
