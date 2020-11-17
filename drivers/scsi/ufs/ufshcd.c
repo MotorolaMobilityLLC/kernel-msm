@@ -11375,12 +11375,6 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	 * runtime pm.
 	 */
 	host->use_blk_mq = false;
-#if defined(CONFIG_UFSFEATURE_31)
-	if (IS_SAMSUNG_DEVICE(storage_mfrid))
-		host->use_blk_mq = true;
-	else
-		host->use_blk_mq = false;
-#endif
 	hba = shost_priv(host);
 	hba->host = host;
 	hba->dev = dev;
@@ -11402,35 +11396,6 @@ out_error:
 	return err;
 }
 EXPORT_SYMBOL(ufshcd_alloc_host);
-#if defined(CONFIG_UFSFEATURE_31)
-/* for Ringbuffer POC */
-struct device_attribute g_cmd_log;
-
-static ssize_t ufshcd_sysfs_cmd_log_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	int curr_len;
-
-	curr_len = snprintf(buf, PAGE_SIZE,
-			"command log printed through kernel message\n");
-
-	ufshcd_print_cmd_log(hba);
-
-	return curr_len;
-}
-
-static void ufshcd_add_sysfs_cmd_log(struct ufs_hba *hba)
-{
-	g_cmd_log.show = ufshcd_sysfs_cmd_log_show;
-	g_cmd_log.store = NULL;
-	sysfs_attr_init(&g_cmd_log.attr);
-	g_cmd_log.attr.name = "debug_cmd_log";
-	g_cmd_log.attr.mode = 0444;
-	if (device_create_file(hba->dev, &g_cmd_log))
-		dev_err(hba->dev, "Failed to create sysfs for debug_cmd_log\n");
-}
-#endif
 
 /**
  * ufshcd_init - Driver initialization routine
@@ -11649,10 +11614,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	ufsdbg_add_debugfs(hba);
 
 	ufs_sysfs_add_nodes(hba->dev);
-#if defined (CONFIG_UFSFEATURE_31)
-	/* for Ringbuffer POC */
-	ufshcd_add_sysfs_cmd_log(hba);
-#endif
+
 	return 0;
 
 out_remove_scsi_host:
