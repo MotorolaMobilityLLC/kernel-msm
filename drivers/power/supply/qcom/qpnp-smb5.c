@@ -796,12 +796,20 @@ static int smb5_parse_sdam(struct smb5 *chip, struct device_node *node)
 static int smb5_parse_dt_mmi(struct smb5 *chip, struct device_node *node)
 {
 	struct smb_charger *chg = &chip->chg;
+	struct device_node *npoint = chg->dev->of_node;
 	struct device_node *np;
 	const char *dcp_curr = NULL;
 	int retval;
 
 	chg->usb_dcp_curr_max = 0;
 	np = of_find_node_by_path("/chosen");
+
+	retval = of_property_read_u32(npoint, "qcom,dcp-curr-max",
+				  &chg->usb_dcp_curr_max);
+	if (retval) {
+		chg->usb_dcp_curr_max = 1500000;
+		goto out;
+	}
 
 	if (!np)
 		goto out;
@@ -811,7 +819,6 @@ static int smb5_parse_dt_mmi(struct smb5 *chip, struct device_node *node)
 
 	if ((retval == -EINVAL) || !dcp_curr) {
 		pr_info("mmi,usb_dcp unused\n");
-		of_node_put(np);
 		goto out;
 	} else
 		pr_info("usb_dcp = %s\n", dcp_curr);
@@ -821,9 +828,9 @@ static int smb5_parse_dt_mmi(struct smb5 *chip, struct device_node *node)
 	else if (strstr(dcp_curr, "2A"))
 		chg->usb_dcp_curr_max = 2000000;
 
-	of_node_put(np);
-
 out:
+	if (np)
+		of_node_put(np);
 	return 0;
 }
 
