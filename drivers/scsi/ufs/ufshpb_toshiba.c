@@ -1231,7 +1231,7 @@ static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
 
 	desc_buf = kzalloc(QUERY_DESC_MAX_SIZE, GFP_ATOMIC);
 	if (!desc_buf)
-		goto out;
+		return ret_val;
 
 	if(ufshcd_query_descriptor_retry(hba,
 		UPIU_QUERY_OPCODE_READ_DESC, QUERY_DESC_IDN_DEVICE,
