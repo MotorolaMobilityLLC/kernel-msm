@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+ifeq ($(TARGET_BUILD_VARIANT),userdebug)
+    ccflags-$(CONFIG_IPA3) += -DDEBUG
+endif
+
 obj-$(CONFIG_IPA3) += ipahal/
 
 obj-$(CONFIG_IPA3) += ipat.o
