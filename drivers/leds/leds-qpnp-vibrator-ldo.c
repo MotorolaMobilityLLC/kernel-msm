@@ -54,6 +54,10 @@ struct vib_ldo_chip {
 	u64			vib_play_ms;
 	bool			vib_enabled;
 	bool			disable_overdrive;
+
+	bool			dis_short_long;
+	int			dis_long_ms;
+	int			vmax_uV_long;
 };
 
 static inline int qpnp_vib_ldo_poll_status(struct vib_ldo_chip *chip)
@@ -144,6 +148,15 @@ static int qpnp_vibrator_play_on(struct vib_ldo_chip *chip)
 	int ret;
 
 	volt_uV = chip->vmax_uV;
+
+	if (chip->dis_short_long) {
+		pr_debug("vib in dis short and long, play ms=%d, dis_longms=%d, vmax_uV=%d, vmax_uV_long=%d\n",
+				chip->vib_play_ms, chip->dis_long_ms, chip->vmax_uV, chip->vmax_uV_long);
+		if (chip->vib_play_ms > chip->dis_long_ms) {
+			volt_uV = chip->vmax_uV_long;
+		}
+	}
+
 	if (!chip->disable_overdrive)
 		volt_uV = chip->overdrive_volt_uV ? chip->overdrive_volt_uV
 				: min(chip->vmax_uV * 2, QPNP_VIB_LDO_VMAX_UV);
@@ -384,6 +397,28 @@ static int qpnp_vib_parse_dt(struct device *dev, struct vib_ldo_chip *chip)
 		pr_err("qcom,vib-ldo-volt-uv property read failed, ret=%d\n",
 			ret);
 		return ret;
+	}
+
+	chip->dis_short_long = of_property_read_bool(dev->of_node,
+                                        "qcom,vib-dis-short-long");
+
+	if (chip->dis_short_long) {
+		pr_warn("read dis_short_long true");
+		ret = of_property_read_u32(dev->of_node, "qcom,vib-dis-short-long-val",
+			&chip->dis_long_ms);
+		if (ret < 0) {
+			pr_err("qcom,vib-dis-short-long-val property read failed, ret=%d\n", ret);
+			return ret;
+		}
+		pr_warn("read dis_long_ms=%d\n", chip->dis_long_ms);
+
+		ret = of_property_read_u32(dev->of_node, "qcom,vib-ldo-volt-uv-long",
+			&chip->vmax_uV_long);
+		if (ret < 0) {
+			pr_err("qcom,vib-ldo-volt-uv-long property read failed, ret=%d\n", ret);
+			return ret;
+		}
+		pr_warn("read vmax_uV_long=%d\n", chip->vmax_uV_long);
 	}
 
 	chip->disable_overdrive = of_property_read_bool(dev->of_node,
