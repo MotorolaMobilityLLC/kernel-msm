@@ -758,6 +758,7 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <0>;
 		led-flash-src = <&led_flash_front>;
+		eeprom-src = <&eeprom_front>;
 		cam_vio-supply = <&pm6150_l13>;
 		cam_vana-supply = <&camera_front_avdd_2p8>;
 		cam_vdig-supply = <&camera_front_dvdd_1p2>;
