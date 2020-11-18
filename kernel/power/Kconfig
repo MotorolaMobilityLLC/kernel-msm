@@ -332,3 +332,13 @@ config SUSPEND_DEBUG
 	  This allows you to dump the regulator state and tlmm configuration
 	  before suspend. It doesn't work only if you have read the system
 	  file node /sys/privae/tlmm_before_sleep and vreg_before_sleep
+
+config GPIO_VALID_ARRAY
+	bool "Check if a gpio is valid in an array"
+	depends on SUSPEND_DEBUG
+	default n
+	help
+	  This allows you to use an array maintained manually to indicate
+          if a GPIO can be accessed by APPS. It's only needed when the GPIO
+          is still unaccessible although gpiochip_line_is_valid() returns
+          true.
