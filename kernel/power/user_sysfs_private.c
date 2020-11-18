@@ -46,7 +46,7 @@
 #define GPIO_PULL(gpio_cfg)   (((gpio_cfg) >> 15) & 0x3)
 #define GPIO_DRVSTR(gpio_cfg) (((gpio_cfg) >> 17) & 0xf)
 
-#define TLMM_NUM_GPIO 200
+#define TLMM_NUM_GPIO 255
 
 #define HAL_OUTPUT_VAL(config) (((config)&0x40000000)>>30)
 
@@ -58,7 +58,9 @@ static int before_sleep_table_enabled;
 module_param(before_sleep_table_enabled, int, 0644);
 static unsigned before_sleep_table_configs[TLMM_NUM_GPIO];
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 static unsigned tz_configs[TLMM_NUM_GPIO];
+#endif
 
 #ifndef CONFIG_PINCTRL_MSM
 int tlmm_get_inout(unsigned gpio)
@@ -142,9 +144,10 @@ int tlmm_dump_info(char *buf, int size, int tlmm_num, int tlmm_count)
 		return p - buf;
 
 	if (tlmm_count == 1) {
+#ifdef CONFIG_GPIO_VALID_ARRAY
 		if (tz_configs[tlmm_num])
 			return p - buf;
-
+#endif
 		ret = tlmm_get_config(tlmm_num, &cfg);
 		if (ret == 0) {
 			output_val = tlmm_get_inout(tlmm_num);
@@ -167,9 +170,10 @@ int tlmm_dump_info(char *buf, int size, int tlmm_num, int tlmm_count)
 			if (i >= TLMM_NUM_GPIO)
 				break;
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 			if (tz_configs[i])
 				continue;
-
+#endif
 			ret = tlmm_get_config(i, &cfg);
 			if (ret == 0) {
 				output_val = tlmm_get_inout(i);
@@ -200,9 +204,10 @@ void tlmm_before_sleep_save_configs(void)
 		unsigned cfg;
 		int output_val = 0;
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 		if (tz_configs[i])
 			continue;
-
+#endif
 		ret = tlmm_get_config(i, &cfg);
 		if (ret < 0)
 			break;
@@ -227,9 +232,10 @@ int tlmm_before_sleep_dump_info(char *buf, int size)
 			unsigned cfg;
 			int output_val = 0;
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 			if (tz_configs[i])
 				continue;
-
+#endif
 			cfg = before_sleep_configs[i];
 			output_val = HAL_OUTPUT_VAL(cfg);
 			/* cfg &= ~0x40000000; */
@@ -259,9 +265,10 @@ void tlmm_before_sleep_set_configs(void)
 		int func;
 		int output_val = 0;
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 		if (tz_configs[i])
 			continue;
-
+#endif
 		cfg = before_sleep_table_configs[i];
 
 		gpio = GPIO_PIN(cfg);
@@ -285,6 +292,7 @@ void tlmm_before_sleep_set_configs(void)
 	}
 }
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 int tlmm_tz_dump_info(char *buf, int size)
 {
 	unsigned i;
@@ -302,6 +310,7 @@ int tlmm_tz_dump_info(char *buf, int size)
 	p += snprintf(p, size - (p - buf), "(%d)\n", (int)(p - buf));
 	return p - buf;
 }
+#endif
 
 int tlmm_before_sleep_table_set_cfg(unsigned gpio, unsigned cfg)
 {
@@ -344,9 +353,10 @@ int tlmm_before_sleep_table_dump_info(char *buf, int size)
 		unsigned cfg;
 		int output_val = 0;
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 		if (tz_configs[i])
 			continue;
-
+#endif
 		cfg = before_sleep_table_configs[i];
 		output_val = HAL_OUTPUT_VAL(cfg);
 		/* cfg &= ~0x40000000; */
@@ -510,9 +520,11 @@ static ssize_t tlmm_store(struct kobject *kobj, struct kobj_attribute *attr,
 
 	cfg = GPIO_CFG(gpio, func, dir, pull, drvstr);
 	if (gpio < TLMM_NUM_GPIO) {
+#ifdef CONFIG_GPIO_VALID_ARRAY
 		if (tz_configs[gpio])
 			res = -1;
 		else
+#endif
 			res = tlmm_set_config(cfg);
 		if (res < 0) {
 			pr_debug("Error: Config failed.\n");
@@ -545,6 +557,7 @@ tlmm_store_ok:
 	return n;
 }
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 static ssize_t tlmm_tz_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
@@ -582,6 +595,7 @@ tlmm_tz_store_wrong_para:
 tlmm_tz_store_ok:
 	return n;
 }
+#endif
 
 /* Set GPIO's sleep config from sysfs */
 static ssize_t tlmm_before_sleep_table_show(struct kobject *kobj,
@@ -732,7 +746,9 @@ static ssize_t wake_lock_store(struct kobject *kobj,
 private_attr(tlmm_num);
 private_attr(tlmm_count);
 private_attr(tlmm);
+#ifdef CONFIG_GPIO_VALID_ARRAY
 private_attr(tlmm_tz);
+#endif
 private_attr(tlmm_before_sleep_table);
 private_attr(tlmm_before_sleep);
 private_attr(vreg_before_sleep);
@@ -743,7 +759,9 @@ static struct attribute *g_private_attr[] = {
 	&tlmm_num_attr.attr,
 	&tlmm_count_attr.attr,
 	&tlmm_attr.attr,
+#ifdef CONFIG_GPIO_VALID_ARRAY
 	&tlmm_tz_attr.attr,
+#endif
 	&tlmm_before_sleep_table_attr.attr,
 	&tlmm_before_sleep_attr.attr,
 	&vreg_attr.attr,
@@ -758,6 +776,7 @@ static struct attribute_group private_attr_group = {
 
 static struct kobject *sysfs_private_kobj;
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 static const struct of_device_id msm_tz_gpio_match_table[] = {
 	{.compatible = "qcom,tz_gpio"},
 	{},
@@ -798,6 +817,7 @@ static int tlmm_tz_init(void)
 
 	return result;
 }
+#endif
 
 static int __init sysfs_private_init(void)
 {
@@ -812,8 +832,10 @@ static int __init sysfs_private_init(void)
 	result = sysfs_create_group(sysfs_private_kobj, &private_attr_group);
 	pr_debug("%s(), %d, result=%d\n", __func__, __LINE__, result);
 
+#ifdef CONFIG_GPIO_VALID_ARRAY
 	result = tlmm_tz_init();
 	pr_debug("%s(), %d, result=%d\n", __func__, __LINE__, result);
+#endif
 
 	return result;
 }
