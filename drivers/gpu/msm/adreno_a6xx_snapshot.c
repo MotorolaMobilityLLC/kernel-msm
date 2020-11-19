@@ -1684,6 +1684,8 @@ static void _a6xx_do_crashdump(struct kgsl_device *device)
 	kgsl_regwrite(device, A6XX_CP_CRASH_SCRIPT_BASE_HI,
 			upper_32_bits(a6xx_capturescript.gpuaddr));
 	kgsl_regwrite(device, A6XX_CP_CRASH_DUMP_CNTL, 1);
+	set_current_state(TASK_INTERRUPTIBLE);
+	schedule_timeout(msecs_to_jiffies(1000));
 
 	wait_time = jiffies + msecs_to_jiffies(CP_CRASH_DUMPER_TIMEOUT);
 	while (!time_after(jiffies, wait_time)) {
