@@ -15,6 +15,10 @@
 &pm6150l_wled {
 	qcom,string-cfg= <7>;
 	qcom,leds-per-string = <7>;
+	qcom,ovp = <26500>;
+	qcom,boost-current-limit = <1400>;
+	qcom,wled-bl-step-up;
+	qcom,wled-bl-step-sequence = <255 5>, <2048 6>;
 	status = "ok";
 };
 
