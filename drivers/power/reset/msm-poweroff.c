@@ -513,8 +513,7 @@ static void msm_restart_prepare(const char *cmd)
 			 /* force cold reboot */
 			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 		} else if (!strncmp(cmd, "hw_warmreset", 13)) {
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_HW_WARMRESET);
+			reason = PON_RESTART_REASON_HW_WARMRESET;
 			qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 			pr_info("set system hw warmreset mode\n");
 		} else if (!strncmp(cmd, "post-hw_warmreset", 17)) {
