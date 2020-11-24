@@ -132,6 +132,10 @@ static int panic_prep_restart(struct notifier_block *this,
 			      unsigned long event, void *ptr)
 {
 	in_panic = 1;
+	__raw_writel(0x77665505, restart_reason);
+	qpnp_pon_store_extra_reset_info(RESET_EXTRA_PANIC_REASON,
+		RESET_EXTRA_PANIC_REASON);
+	pr_info("panic_prep_restart store extra reset info\n");
 	return NOTIFY_DONE;
 }
 
