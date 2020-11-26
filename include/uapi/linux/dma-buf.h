@@ -39,6 +39,7 @@ struct dma_buf_sync {
 
 #define DMA_BUF_BASE		'b'
 #define DMA_BUF_IOCTL_SYNC	_IOW(DMA_BUF_BASE, 0, struct dma_buf_sync)
+#define DMA_BUF_IOCTL_IMPORT_BUF_ADD_BY_MOTO _IO(DMA_BUF_BASE, 0xCC)
 
 /* 32/64bitness of this uapi was botched in android, there's no difference
  * between them in actual uapi, they're just different numbers.
