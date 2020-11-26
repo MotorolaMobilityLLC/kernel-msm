@@ -259,6 +259,28 @@ static void *ion_dma_buf_map(struct dma_buf *dmabuf, unsigned long offset)
 	return ion_buffer_kmap_get(buffer) + offset * PAGE_SIZE;
 }
 
+static int ion_dma_buf_import_buf_add_by_moto(struct dma_buf *dmabuf)
+{
+	struct ion_buffer *buffer = dmabuf->priv;
+	int i;
+	int found_pid = 0;
+	pid_t task_pid = task_pid_nr(current->group_leader);
+
+	mutex_lock(&buffer->lock);
+	for (i = 0; i < buffer->ref_cnt && i < MAX_CLIENTS_NUM; i++) {
+		if (buffer->client_pids[i] == task_pid) {
+			found_pid = 1;
+			break;
+		}
+	}
+	if (!found_pid && buffer->ref_cnt < MAX_CLIENTS_NUM)
+		buffer->client_pids[buffer->ref_cnt++] = task_pid;
+
+	mutex_unlock(&buffer->lock);
+
+	return 0;
+}
+
 static int ion_dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
@@ -277,6 +299,8 @@ static int ion_dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 		ret = ion_heap_map_user(heap, buffer, vma);
 		mutex_unlock(&buffer->lock);
 	}
+
+	ion_dma_buf_import_buf_add_by_moto(dmabuf);
 
 	if (ret)
 		pr_err("%s: failure mapping buffer to userspace\n", __func__);
@@ -353,6 +377,7 @@ static const struct dma_buf_ops dma_buf_ops = {
 	.vmap = ion_dma_buf_vmap,
 	.vunmap = ion_dma_buf_vunmap,
 	.get_flags = ion_dma_buf_get_flags,
+	.import_buf_add_by_moto = ion_dma_buf_import_buf_add_by_moto,
 };
 
 struct dma_buf *ion_dmabuf_alloc(struct ion_device *dev, size_t len,
