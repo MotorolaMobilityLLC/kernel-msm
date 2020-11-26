@@ -481,6 +481,56 @@ static int ion_init_sysfs(void)
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
+static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
+{
+	struct ion_device *dev = s->private;
+	struct rb_node *n;
+	int i;
+	unsigned long total_len = 0;
+
+	seq_printf(s, "%16.s %16.s %12.s %12.s %20.s    %s\n", "heap",
+		"buffer", "size", "ref cnt", "allocator", "references");
+
+	down_read(&dev->lock);
+	mutex_lock(&dev->buffer_lock);
+	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
+		struct ion_buffer *buf = rb_entry(n, struct ion_buffer, node);
+		int buf_refcount = buf->ref_cnt;
+		total_len += buf->size;
+		seq_printf(s, "%16.s %16pK %12.x %12.d %20.d    %s",
+			buf->heap->name, buf, (int)buf->size,
+			buf_refcount, buf->pid, "");
+
+		for(i = 0; i < buf->ref_cnt && i < MAX_CLIENTS_NUM; i++)
+			seq_printf(s, "%u, ", buf->client_pids[i]);
+
+		seq_puts(s, "\n");
+	}
+
+	if (s->file && s->file->f_path.dentry
+		&& !strcmp(s->file->f_path.dentry->d_iname, "check_all_bufs_total"))
+		seq_printf(s, "%16.s %s is: %lld(%lld KB)\n",
+			"heap", "total size", total_len, total_len/1024);
+
+	mutex_unlock(&dev->buffer_lock);
+	up_read(&dev->lock);
+	return 0;
+}
+
+static int ion_debug_allbufs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ion_debug_allbufs_show, inode->i_private);
+}
+
+static const struct file_operations debug_allbufs_fops = {
+	.open = ion_debug_allbufs_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+#endif
+
 static int ion_device_create(void)
 {
 	struct ion_device *idev;
@@ -506,10 +556,22 @@ static int ion_device_create(void)
 		goto err_sysfs;
 	}
 
+	#ifdef CONFIG_DEBUG_FS
+	idev->buffers = RB_ROOT;
+	mutex_init(&idev->buffer_lock);
+	#endif
 	idev->debug_root = debugfs_create_dir("ion", NULL);
 	init_rwsem(&idev->lock);
 	plist_head_init(&idev->heaps);
 	internal_dev = idev;
+
+	#ifdef CONFIG_DEBUG_FS
+	debugfs_create_file("check_all_bufs", 0664, idev->debug_root, idev,
+		&debug_allbufs_fops);
+	debugfs_create_file("check_all_bufs_total", 0664, idev->debug_root, idev,
+		&debug_allbufs_fops);
+	#endif
+
 	return 0;
 
 err_sysfs:
