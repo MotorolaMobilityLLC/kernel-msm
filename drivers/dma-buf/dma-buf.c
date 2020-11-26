@@ -434,6 +434,10 @@ static long dma_buf_ioctl(struct file *file,
 
 		return ret;
 
+	case DMA_BUF_IOCTL_IMPORT_BUF_ADD_BY_MOTO:
+		dmabuf->ops->import_buf_add_by_moto(dmabuf);
+		return 0;
+
 	case DMA_BUF_SET_NAME_A:
 	case DMA_BUF_SET_NAME_B:
 		return dma_buf_set_name(dmabuf, (const char __user *)arg);

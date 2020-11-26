@@ -20,6 +20,8 @@
 
 /**
  * struct ion_device - the metadata of the ion device node
+ * @buffers:		an rb tree of all the existing buffers
+ * @buffer_lock:	lock protecting the tree of buffers
  * @dev:		the actual misc device
  * @lock:		rwsem protecting the tree of heaps, heap_bitmap and
  *			clients
@@ -32,6 +34,8 @@ struct ion_device {
 	struct plist_head heaps;
 	struct dentry *debug_root;
 	int heap_cnt;
+	struct rb_root buffers;
+	struct mutex buffer_lock;
 };
 
 /* ion_buffer manipulators */
