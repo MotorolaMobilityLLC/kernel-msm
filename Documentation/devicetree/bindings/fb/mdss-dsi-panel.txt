@@ -207,6 +207,8 @@ Optional properties:
 					0 = default value.
 - qcom,mdss-dsi-bl-max-level:		Specifies the max backlight level supported by the panel.
 					255 = default value.
+- qcom,mdss-dsi-bl-inverted-dbv:	A boolean to specify whether to invert the display brightness value.
+					When this boolean is set, will inverted display brightness value.
 - qcom,mdss-brightness-max-level:	Specifies the max brightness level supported.
 					255 = default value.
 - qcom,mdss-dsi-interleave-mode:	Specifies interleave mode.
