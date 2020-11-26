@@ -20,8 +20,13 @@
 #include <linux/types.h>
 #include <uapi/linux/ion.h>
 
+#ifdef CONFIG_DEBUG_FS
+#define MAX_CLIENTS_NUM 16
+#endif
+
 /**
  * struct ion_buffer - metadata for a particular buffer
+ * @node:		node in the ion_device buffers tree
  * @list:		element in list of deferred freeable buffers
  * @heap:		back pointer to the heap the buffer came from
  * @flags:		buffer specific flags
@@ -36,7 +41,14 @@
  * @attachments:	list of devices attached to this buffer
  */
 struct ion_buffer {
+	#ifdef CONFIG_DEBUG_FS
+	union {
+		struct rb_node node;
+		struct list_head list;
+	};
+	#else
 	struct list_head list;
+	#endif
 	struct ion_heap *heap;
 	unsigned long flags;
 	unsigned long private_flags;
@@ -47,6 +59,11 @@ struct ion_buffer {
 	void *vaddr;
 	struct sg_table *sg_table;
 	struct list_head attachments;
+	#ifdef CONFIG_DEBUG_FS
+	pid_t pid;
+	pid_t client_pids[MAX_CLIENTS_NUM];
+	int ref_cnt;
+	#endif
 };
 
 /**
