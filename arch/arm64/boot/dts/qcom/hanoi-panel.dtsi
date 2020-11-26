@@ -80,6 +80,10 @@
 	};
 };
 
+&mdss_mdp {
+       clock-rate = <0 0 0 0 344000000 19200000 200000000 200000000>;
+};
+
 &dsi_ili7807s_tm_678_vid_display {
 	qcom,dsi-display-active;
 };
@@ -97,7 +101,6 @@
 
 
 &dsi_tm_ili7807s_678_fhd_video {
-	qcom,dsi-display-active;
 	qcom,mdss-dsi-t-clk-post = <0x0C>;
 	qcom,mdss-dsi-t-clk-pre = <0x30>;
 	qcom,esd-check-enabled;
@@ -125,7 +128,6 @@
 				[00 1b 06 06 22 20 07 07 07 02 04 00];
 			qcom,display-topology = <2 2 1>;
 			qcom,default-topology-index = <0>;
-
 		};
 	};
 };
