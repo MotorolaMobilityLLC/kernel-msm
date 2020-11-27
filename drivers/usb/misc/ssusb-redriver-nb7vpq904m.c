@@ -484,7 +484,7 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 	if (redriver->op_mode == op_mode)
 		return NOTIFY_OK;
 
-	dev_dbg(redriver->dev, "op mode %s -> %s\n",
+	dev_info(redriver->dev, "op mode %s -> %s\n",
 		OPMODESTR(redriver->op_mode), OPMODESTR(op_mode));
 	redriver->op_mode = op_mode;
 
@@ -492,7 +492,7 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 			redriver->op_mode == OP_MODE_USB_AND_DP) {
 		ssusb_redriver_read_orientation(redriver);
 
-		dev_dbg(redriver->dev, "orientation %s\n",
+		dev_info(redriver->dev, "orientation %s\n",
 			redriver->typec_orientation == ORIENTATION_CC1 ?
 			"CC1" : "CC2");
 	}
@@ -608,7 +608,9 @@ int redriver_release_usb_lanes(struct device_node *node)
 	if (redriver->op_mode == OP_MODE_DP)
 		return 0;
 
-	dev_dbg(redriver->dev, "display notify 4 lane mode\n");
+	dev_info(redriver->dev, "display notify 4 lane mode\n");
+	dev_info(redriver->dev, "op mode %s -> %s\n",
+		OPMODESTR(redriver->op_mode), OPMODESTR(OP_MODE_DP));
 	redriver->op_mode = OP_MODE_DP;
 
 	ssusb_redriver_channel_update(redriver);
@@ -723,10 +725,11 @@ static int redriver_i2c_probe(struct i2c_client *client,
 		redriver->op_mode = OP_MODE_NONE;
 	else
 		redriver->op_mode = OP_MODE_DEFAULT;
-	ssusb_redriver_channel_update(redriver); /* a little expensive ??? */
-	ssusb_redriver_gen_dev_set(redriver);
 
 	ssusb_redriver_orientation_gpio_init(redriver);
+	ssusb_redriver_read_orientation(redriver);
+	ssusb_redriver_channel_update(redriver); /* a little expensive ??? */
+	ssusb_redriver_gen_dev_set(redriver);
 
 	redriver->ucsi_nb.notifier_call = ssusb_redriver_ucsi_notifier;
 	register_ucsi_glink_notifier(&redriver->ucsi_nb);
