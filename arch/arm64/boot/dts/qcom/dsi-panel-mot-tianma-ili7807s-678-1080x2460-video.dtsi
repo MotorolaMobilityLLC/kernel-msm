@@ -38,7 +38,7 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-lp11-init;
-		qcom,mdss-dsi-reset-sequence = <1 10>, <0 50>, <1 100>;
+		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
 		qcom,mdss-pan-physical-width-dimension = <69>;
 		qcom,mdss-pan-physical-height-dimension = <158>;
 		qcom,mdss-dsi-display-timings {
@@ -60,9 +60,9 @@
 			qcom,mdss-dsi-cabc-ui-command-state =  "dsi_hs_mode";
 			qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 			qcom,mdss-dsi-cabc-dis-command-state =  "dsi_hs_mode";
-			qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
+			qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 03 FF];
 			qcom,mdss-dsi-hbm-on-command-state =  "dsi_hs_mode";
-			qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 0F FF];
+			qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 03 32];
 			qcom,mdss-dsi-hbm-off-command-state =  "dsi_hs_mode";
 
 			qcom,mdss-dsi-on-command = [
@@ -77,7 +77,7 @@
 				15 01 00 00 00 00 02 E1 D9
 				39 01 00 00 00 00 03 FD 00 00
 				39 01 00 00 00 00 04 FF 78 07 00
-				39 01 00 00 00 00 03 51 0F FF
+				39 01 00 00 00 00 03 51 03 32
 				15 01 00 00 00 00 02 53 2C
 				15 01 00 00 00 00 02 55 01];
 			qcom,mdss-dsi-off-command = [
