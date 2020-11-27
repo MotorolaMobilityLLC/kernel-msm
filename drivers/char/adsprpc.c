@@ -2518,17 +2518,25 @@ static int fastrpc_release_current_dsp_process(struct fastrpc_file *fl)
 	int tgid = 0;
 
 	VERIFY(err, fl->cid >= 0 && fl->cid < NUM_CHANNELS);
-	if (err)
+	if (err) {
+		err = -ECHRNG;
 		goto bail;
+	}
 	VERIFY(err, fl->sctx != NULL);
-	if (err)
+	if (err) {
+		err = -EBADR;
 		goto bail;
+	}
 	VERIFY(err, fl->apps->channel[fl->cid].rpdev != NULL);
-	if (err)
+	if (err) {
+		err = -ENODEV;
 		goto bail;
+	}
 	VERIFY(err, fl->apps->channel[fl->cid].issubsystemup == 1);
-	if (err)
+	if (err) {
+		err = -ECONNRESET;
 		goto bail;
+	}
 	tgid = fl->tgid;
 	ra[0].buf.pv = (void *)&tgid;
 	ra[0].buf.len = sizeof(tgid);
@@ -2541,9 +2549,12 @@ static int fastrpc_release_current_dsp_process(struct fastrpc_file *fl)
 	VERIFY(err, 0 == (err = fastrpc_internal_invoke(fl,
 		FASTRPC_MODE_PARALLEL, 1, &ioctl)));
 	if (err && fl->dsp_proc_init)
-		pr_err("adsprpc: %s: releasing DSP process failed for %s, returned 0x%x",
-					__func__, current->comm, err);
+		pr_err("adsprpc: %s[%d]: releasing DSP process failed for %s (PID 0x%x), returned 0x%x",
+					__func__,__LINE__, current->comm, fl->tgid, err);
 bail:
+	if (err)
+		pr_err("adsprpc: %s[%d]: releasing DSP process failed-2 for %s (PID 0x%x), returned 0x%x",
+					__func__,__LINE__, current->comm, fl->tgid, err);
 	return err;
 }
 
