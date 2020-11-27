@@ -51,6 +51,14 @@ config KIEV_DTB
 	Only include KIEV specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config BERLIN_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "BERLIN DTBs"
+	help
+	Only include BERLIN specific DTBs to limit the number that
+	get built during kernel compilation.
+
 config KYOTO_DTB
 	depends on ARCH_QCOM
 	default n
