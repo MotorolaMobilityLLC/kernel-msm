@@ -305,6 +305,7 @@ static void ssusb_redriver_gen_dev_set(
 	dev_dbg(redriver->dev,
 		"successfully (%s) the redriver chip, reg 0x00 = 0x%x\n",
 		on ? "ENABLE":"DISABLE", val);
+	redriver->gen_dev_val = val;
 
 	redriver->gen_dev_val = val;
 
