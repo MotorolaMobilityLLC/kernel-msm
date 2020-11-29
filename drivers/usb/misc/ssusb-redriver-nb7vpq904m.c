@@ -300,6 +300,7 @@ static void ssusb_redriver_gen_dev_set(
 	dev_dbg(redriver->dev,
 		"successfully (%s) the redriver chip, reg 0x00 = 0x%x\n",
 		on ? "ENABLE":"DISABLE", val);
+	redriver->gen_dev_val = val;
 
 	//Also set the aux mux for dp after a little bit
 	if(redriver->op_mode > OP_MODE_USB)
