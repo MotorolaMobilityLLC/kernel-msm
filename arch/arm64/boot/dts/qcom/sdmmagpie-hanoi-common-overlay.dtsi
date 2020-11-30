@@ -155,3 +155,6 @@
 	connectors = <&sde_rscc &sde_wb &sde_dsi>;
 };
 
+&ufshc_mem {
+        spm-level = <3>;
+};
