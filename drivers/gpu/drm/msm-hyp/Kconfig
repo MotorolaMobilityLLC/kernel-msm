@@ -9,7 +9,7 @@ config DRM_MSM_HYP
 	depends on QTI_GVM
 	depends on OF
 	select SYNC_FILE
-	select SW_SYNC
+	select SW_SYNC if DEBUG_FS=y
 	help
 	  DRM/KMS HYP driver for MSM/snapdragon in Guest VM mode. This driver
 	  registers with DRM framework to create /dev/dri/card0 path and issue

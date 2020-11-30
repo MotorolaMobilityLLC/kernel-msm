@@ -1479,6 +1479,7 @@ int mhi_dev_sm_syserr(void)
 }
 EXPORT_SYMBOL(mhi_dev_sm_syserr);
 
+#ifdef CONFIG_DEBUG_FS
 static ssize_t mhi_sm_debugfs_read(struct file *file, char __user *ubuf,
 				size_t count, loff_t *ppos)
 {
@@ -1592,3 +1593,4 @@ static ssize_t mhi_sm_debugfs_write(struct file *file,
 
 	return count;
 }
+#endif
