@@ -12,6 +12,8 @@
        qcom,wireless-unsupported;
        qcom,usbeb-unsupported;
        qcom,iterm-ma = <290>;
+       qcom,upper-limit-capacity = <65>;
+       qcom,lower-limit-capacity = <60>;
        qcom,fv-max-uv = <4450000>;
        qcom,thermal-mitigation =  <3000>,
                                   <2800>,
