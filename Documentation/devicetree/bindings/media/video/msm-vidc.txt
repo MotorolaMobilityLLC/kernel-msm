@@ -8,6 +8,7 @@ Required properties:
 	- "qcom,msm-vidc"
         - "qcom,sdm845-vidc" : Invokes driver specific data for SDM845.
         - "qcom,sdm670-vidc" : Invokes driver specific data for SDM670.
+        - "qcom,qcs605-vidc" : Invokes driver specific data for QCS605.
 
 Optional properties:
 - reg : offset and length of the register set for the device.

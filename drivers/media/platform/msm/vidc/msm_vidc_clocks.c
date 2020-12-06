@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,6 +22,9 @@
 
 #define MSM_VIDC_MIN_UBWC_COMPRESSION_RATIO (1 << 16)
 #define MSM_VIDC_MAX_UBWC_COMPRESSION_RATIO (5 << 16)
+
+#define MAX_WIDTH_VALUE 7680
+#define MAX_HEIGHT_VALUE 3840
 
 static inline void msm_dcvs_print_dcvs_stats(struct clock_data *dcvs)
 {
@@ -1290,6 +1293,20 @@ int msm_vidc_decide_core_and_power_mode(struct msm_vidc_inst *inst)
 	hier_mode |= msm_comm_g_ctrl_for_id(inst,
 		V4L2_CID_MPEG_VIDC_VIDEO_HYBRID_HIERP_MODE);
 
+	if (inst->session_type == MSM_VIDC_ENCODER &&
+		((inst->prop.width[CAPTURE_PORT] *
+		inst->prop.height[CAPTURE_PORT]) >=
+		(MAX_WIDTH_VALUE * MAX_HEIGHT_VALUE)) &&
+		(inst->capability.max_video_cores.max >= VIDC_CORE_ID_3)) {
+		if (current_inst_load / 2 + core0_load <= max_freq &&
+			current_inst_load / 2 + core1_load <= max_freq) {
+			if (inst->clk_data.work_mode == VIDC_WORK_MODE_2) {
+				inst->clk_data.core_id = VIDC_CORE_ID_3;
+				msm_vidc_power_save_mode_enable(inst, false);
+				goto decision_done;
+			}
+		}
+	}
 	/* Try for preferred core based on settings. */
 	if (inst->session_type == MSM_VIDC_ENCODER && hier_mode &&
 		inst->capability.max_video_cores.max >= VIDC_CORE_ID_3) {

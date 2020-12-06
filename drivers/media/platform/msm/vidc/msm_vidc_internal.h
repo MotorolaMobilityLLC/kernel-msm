@@ -233,6 +233,7 @@ struct msm_vidc_platform_data {
 	struct msm_vidc_efuse_data *efuse_data;
 	unsigned int efuse_data_length;
 	unsigned int sku_version;
+	bool enable_max_resolution;
 };
 
 struct msm_vidc_format {

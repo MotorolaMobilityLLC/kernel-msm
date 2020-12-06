@@ -79,6 +79,10 @@
 	qcom,rmnet-ipa {
 		status = "disabled";
 	};
+
+	msm_vidc0: qcom,vidc0 {
+		compatible = "qcom,msm-vidc", "qcom,qcs605-vidc";
+	};
 };
 
 &llcc {

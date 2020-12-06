@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,6 +39,7 @@ struct hfi_packetization_ops {
 		void *resource_value);
 	int (*sys_debug_config)(struct hfi_cmd_sys_set_property_packet *pkt,
 			u32 mode);
+	int (*sys_feature_config)(struct hfi_cmd_sys_set_property_packet *pkt);
 	int (*sys_coverage_config)(struct hfi_cmd_sys_set_property_packet *pkt,
 			u32 mode);
 	int (*sys_release_resource)(
