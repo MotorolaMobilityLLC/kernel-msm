@@ -11,6 +11,9 @@
 #include <linux/of_irq.h>
 #include <linux/of_pci.h>
 #include <linux/pci.h>
+#include <linux/wakeup_reason.h>
+
+extern int gic_resume_irq;
 
 struct msm_msi_irq {
 	unsigned int hwirq; /* MSI controller hwirq */
@@ -49,6 +52,13 @@ static void msm_msi_handler(struct irq_desc *desc)
 
 	msi = irq_desc_get_handler_data(desc);
 	virq = irq_find_mapping(msi->inner_domain, irq_desc_get_irq(desc));
+
+	if (gic_resume_irq) {
+		if(irq_desc_get_irq(desc) == gic_resume_irq) {
+			log_irq_wakeup_reason(virq);
+		}
+		gic_resume_irq = 0;
+	}
 
 	generic_handle_irq(virq);
 
