@@ -232,9 +232,6 @@ struct ufshcd_lrb {
 #endif /* CONFIG_SCSI_UFS_CRYPTO */
 
 	bool req_abort_skip;
-#if defined(CONFIG_UFSFEATURE_31) && defined(CONFIG_UFSHPB_31)
-	u8 requeue_cnt;
-#endif
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
 	int hpb_ctx_id;
 #endif
