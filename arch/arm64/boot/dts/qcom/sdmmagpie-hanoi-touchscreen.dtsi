@@ -19,5 +19,6 @@
 		spi-max-frequency = <12000000>;
 		touch,reset-gpio = <&tlmm 8 0x00>;
 		touch,irq-gpio = <&tlmm 9 0x2002>;
+		ilitek,report_gesture_key;
 	};
 };
