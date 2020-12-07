@@ -113,7 +113,7 @@
 	qcom,mdss-dsi-no-panel-on-read-support;
 	qcom,mdss-dsi-panel-supplier = "tm";
 	//qcom,mdss-dsi-tprst-output-high-resume;
-	//qcom,tp_state_check_enable;
+	qcom,tp_state_check_enable;
 	qcom,platform-reset-gpio-always-on;
 
 	qcom,mdss-dsi-panel-hdr-enabled;
