@@ -732,9 +732,14 @@ static int ufshpb_issue_pre_req(struct ufshpb_lu *hpb, struct scsi_cmnd *cmd,
 	int ctx_id;
 	int ret = 0;
 
-	req = blk_get_request(cmd->device->request_queue,
-			      REQ_OP_SCSI_OUT | REQ_SYNC,
-			      BLK_MQ_REQ_PREEMPT | BLK_MQ_REQ_NOWAIT);
+	if (cmd->device->request_queue->mq_ops)
+			req = blk_get_request(cmd->device->request_queue,
+				REQ_OP_SCSI_OUT | REQ_SYNC,
+				BLK_MQ_REQ_PREEMPT | BLK_MQ_REQ_NOWAIT);
+	else
+			req = blk_old_get_request_no_ioc(cmd->device->request_queue,
+							REQ_OP_SCSI_OUT | REQ_SYNC,
+							BLK_MQ_REQ_PREEMPT | BLK_MQ_REQ_NOWAIT);
 	if (IS_ERR(req))
 		return -EAGAIN;
 
@@ -1000,8 +1005,7 @@ static inline void ufshpb_act_rsp_list_del(struct ufshpb_lu *hpb,
 	list_del_init(&srgn->list_act_srgn);
 #if defined(CONFIG_HPB_DEBUG)
 	trace_printk("[al.del]\t rgn %04d (%d)\n",
-		     srgn->rgn_idx, hpb->rgn_tbl[srgn->rgn_idx].rgn_state,
-		     srgn->srgn_idx);
+		     srgn->rgn_idx, hpb->rgn_tbl[srgn->rgn_idx].rgn_state);
 #endif
 }
 
@@ -1450,13 +1454,16 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 #endif
 
 	/* WKLU could not be HPB-LU */
-	if (!lrbp || !ufsf_is_valid_lun(lrbp->lun))
+	if (!lrbp || !ufsf_is_valid_lun(lrbp->lun)) {
+		if ((lrbp !=NULL) && (lrbp->cmd!=NULL))
+			lrbp->cmd->requeue_cnt = 0;
 		return;
+	}
 
 	cmd = lrbp->cmd;
 
 	if (!ufshpb_is_read_cmd(cmd))
-		lrbp->requeue_cnt = 0;
+		cmd->requeue_cnt = 0;
 
 	if (!ufshpb_is_read_cmd(cmd) && !ufshpb_is_write_cmd(cmd) &&
 	    !ufshpb_is_discard_cmd(cmd))
@@ -1472,8 +1479,10 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 
 	hpb = ufsf->hpb_lup[lrbp->lun];
 	ret = ufshpb_lu_get(hpb);
-	if (unlikely(ret))
+	if (unlikely(ret)) {
+		cmd->requeue_cnt = 0;
 		return;
+	}
 
 	if (hpb->force_disable) {
 #if defined(CONFIG_HPB_DEBUG)
@@ -1481,10 +1490,9 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 			TMSG(ufsf, hpb->lun, "%llu + %u READ_10",
 			     (unsigned long long) blk_rq_pos(rq),
 			     (unsigned int) blk_rq_sectors(rq));
-			trace_printk("[rd.nor]\t %llu + %u READ_10 rgn %04d (%d) (force_disable)\n",
+			trace_printk("[rd.nor]\t %llu + %u READ_10  (force_disable)\n",
 			     (unsigned long long) blk_rq_pos(rq),
-			     (unsigned int) blk_rq_sectors(rq),
-			     rgn_idx, rgn->rgn_state);
+			     (unsigned int) blk_rq_sectors(rq));
 		}
 #endif
 		goto put_hpb;
@@ -1512,8 +1520,8 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 		hint = '-';
 	ufshpb_blk_fill_rwbs(rwbs, cmd->request->cmd_flags);
 	if (rwbs[0] != 'N')
-		trace_printk("[%s]\t%u\t+%u\t<%c> rgn %04d (%d)\n",
-			     rwbs, blk_rq_pos(cmd->request)>>3,
+		trace_printk("[%s]\t%llu\t+%u\t<%c> rgn %05d (%d)\n",
+			     rwbs, (u64)blk_rq_pos(cmd->request)>>3,
 			     blk_rq_sectors(cmd->request)>>3, hint,
 			     rgn_idx, rgn->rgn_state);
 #endif
@@ -1614,11 +1622,9 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 		ret = ufshpb_issue_pre_req(hpb, cmd, &hpb_ctx_id);
 		if (ret) {
 			if (ret == -EAGAIN) {
-				if (cmd->request->internal_tag != -1 ||
-				    (cmd->request->internal_tag == -1 &&
-				    lrbp->requeue_cnt <
-				    hpb->pre_req_requeue_cnt)) {
-					lrbp->requeue_cnt++;
+				if (cmd->requeue_cnt <
+				    hpb->pre_req_requeue_cnt) {
+					cmd->requeue_cnt++;
 					goto requeue;
 				}
 			}
@@ -1644,7 +1650,7 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 	ufshpb_increase_hit_count(hpb, rgn, transfer_len);
 #endif
 put_hpb:
-	lrbp->requeue_cnt = 0;
+	cmd->requeue_cnt = 0;
 requeue:
 	ufshpb_lu_put(hpb);
 	return;
@@ -1723,7 +1729,7 @@ static void ufshpb_map_req_compl_fn(struct request *req, blk_status_t error)
 	unsigned long flags;
 	int ret;
 
-	if (ufshpb_get_state(hpb->ufsf) != HPB_PRESENT)
+	if (ufshpb_get_state(hpb->ufsf) == HPB_FAILED)
 		goto free_map_req;
 
 	if (error) {
@@ -1860,7 +1866,7 @@ static int ufshpb_execute_map_req(struct ufshpb_lu *hpb,
 
 	TMSG(hpb->ufsf, hpb->lun, "Noti: I RB %d - %d", map_req->rb.rgn_idx,
 	     map_req->rb.srgn_idx);
-	trace_printk("[rb.iss]\t rgn %04d (%d) (reason %d) act_rsp_list_cnt %d\n",
+	trace_printk("[rb.iss]\t rgn %04d (%d) (reason %d) act_rsp_list_cnt %lld\n",
 		     rgn->rgn_idx, rgn->rgn_state, atomic_read(&rgn->reason),
 		     atomic64_read(&hpb->act_rsp_list_cnt));
 #endif
@@ -2197,7 +2203,7 @@ static int ufshpb_execute_unset_hcm_req(struct ufshpb_lu *hpb,
 #if defined(CONFIG_HPB_DEBUG)
 	HPB_DEBUG(hpb, "ISSUE UNSET_HCM %d", pre_req->rb.rgn_idx);
 	TMSG(hpb->ufsf, hpb->lun, "ISSUE UNSET_HCM %d", pre_req->rb.rgn_idx);
-	trace_printk("[us.iss]\t rgn %04d (%d) inact_rsp_list_cnt %d\n",
+	trace_printk("[us.iss]\t rgn %04d (%d) inact_rsp_list_cnt %lld\n",
 		     pre_req->rb.rgn_idx, hpb->rgn_tbl[pre_req->rb.rgn_idx].rgn_state,
 		     atomic64_read(&hpb->inact_rsp_list_cnt));
 #endif
@@ -2234,7 +2240,8 @@ static int ufshpb_issue_unset_hcm_req(struct ufshpb_lu *hpb,
 	if (hpb->num_inflight_hcm_req >= hpb->throttle_hcm_req) {
 #if defined(CONFIG_HPB_DEBUG)
 		HPB_DEBUG(hpb, "hcm_req throttle. hcm inflight %d hcm throttle %d rgn (%04d)",
-			  hpb->num_inflight_hcm_req, hpb->throttle_hcm_req);
+			  hpb->num_inflight_hcm_req, hpb->throttle_hcm_req,
+			  rgn->rgn_idx);
 #endif
 		ret = -ENOMEM;
 		goto unlock_out;
@@ -2568,7 +2575,7 @@ static void ufshpb_rsp_req_region_update(struct ufshpb_lu *hpb,
 		 * to block HPB_READ
 		 */
 		spin_lock(&hpb->hpb_lock);
-		if (rgn->rgn_state == HPB_RGN_HCM) {
+		if (rgn->rgn_state != HPB_RGN_INACTIVE) {
 			for (srgn_idx = 0; srgn_idx < rgn->srgn_cnt; srgn_idx++) {
 				srgn = rgn->srgn_tbl + srgn_idx;
 				if (srgn->srgn_state == HPB_SRGN_CLEAN)
@@ -2583,15 +2590,6 @@ static void ufshpb_rsp_req_region_update(struct ufshpb_lu *hpb,
 		ufshpb_update_inactive_info(hpb, rgn_idx,
 					    HPB_UPDATE_FROM_DEV);
 		spin_unlock(&hpb->rsp_list_lock);
-
-		/*
-		 * Doesn't clean up lru info. It will be executed in worker.
-		 * It is just blocking HPB_READ.
-		 */
-		spin_lock(&hpb->hpb_lock);
-		if (rgn->rgn_state == HPB_RGN_ACTIVE)
-			rgn->rgn_state = HPB_RGN_INACTIVE;
-		spin_unlock(&hpb->hpb_lock);
 
 		atomic64_inc(&hpb->rb_inactive_cnt);
 	}
@@ -5037,54 +5035,54 @@ static ssize_t ufshpb_sysfs_region_stat_show(struct ufshpb_lu *hpb, char *buf)
 
 		act_cnt++;
 		if (act_cnt == 1)
-			ret += snprintf(buf+ret, PAGE_SIZE - ret, "ACT:\n", rgn_idx);
+			ret += snprintf(buf+ret, PAGE_SIZE - ret, "ACT:\n");
 
 		if ((act_cnt % 10) == 1)
-			ret += snprintf(buf+ret, PAGE_SIZE - ret, "\t", rgn_idx);
+			ret += snprintf(buf+ret, PAGE_SIZE - ret, "\t");
 
 		ret += snprintf(buf+ret, PAGE_SIZE - ret, "%05d   ", rgn_idx);
 
 		if ((act_cnt % 10) == 0)
-			ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n", rgn_idx);
+			ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n");
 
 		if (ret > PAGE_SIZE) {
 			ret = PAGE_SIZE - 10;
 			ret += snprintf(buf+ret, PAGE_SIZE - ret, "... ");
 			if (hcm_cnt % 10 == 0)
-				ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n", rgn_idx);
+				ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n");
 			break;
 		}
 	}
 	if (act_cnt % 10)
-		ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n", rgn_idx);
+		ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n");
 
 	for (rgn_idx = 0; rgn_idx < hpb->rgns_per_lu; rgn_idx++) {
 		state = hpb->rgn_tbl[rgn_idx].rgn_state;
 		if (state == HPB_RGN_HCM) {
 			hcm_cnt++;
 			if (hcm_cnt == 1)
-				ret += snprintf(buf+ret, PAGE_SIZE - ret, "HCM:\n", rgn_idx);
+				ret += snprintf(buf+ret, PAGE_SIZE - ret, "HCM:\n");
 
 			if ((hcm_cnt % 10) == 1)
-				ret += snprintf(buf+ret, PAGE_SIZE - ret, "\t", rgn_idx);
+				ret += snprintf(buf+ret, PAGE_SIZE - ret, "\t");
 
 			ret += snprintf(buf+ret, PAGE_SIZE - ret, "%05d   ", rgn_idx);
 
 			if ((hcm_cnt % 10) == 0)
-				ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n", rgn_idx);
+				ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n");
 
 			if (ret > PAGE_SIZE) {
 				ret = PAGE_SIZE - 10;
 				ret += snprintf(buf+ret, PAGE_SIZE - ret, "... ");
 				if (hcm_cnt % 10 == 0)
-					ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n", rgn_idx);
+					ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n");
 				break;
 			}
 		}
 	}
 
 	if (hcm_cnt % 10)
-		ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n", rgn_idx);
+		ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n");
 
 	spin_unlock_irqrestore(&hpb->hpb_lock, flags);
 
