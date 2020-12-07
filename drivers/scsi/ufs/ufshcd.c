@@ -3917,9 +3917,9 @@ send_orig_cmd:
 #if defined(CONFIG_UFSFEATURE_31) && defined(CONFIG_UFSHPB_31)
 	if (IS_SAMSUNG_DEVICE(storage_mfrid)) {
 		if (cmd->cmnd[0] != READ_10)
-			BUG_ON(lrbp->requeue_cnt);
+			BUG_ON(cmd->requeue_cnt);
 
-		if (lrbp->requeue_cnt) {
+		if (cmd->requeue_cnt) {
 			err = -EAGAIN;
 		}
 	}
@@ -6681,7 +6681,7 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
 		if (cmd) {
-#if defined(CONFIG_UFSFEATURE_31) && defined(CONFIG_UFSHPB_31)
+#if defined(CONFIG_UFSFEATURE_31) && defined(CONFIG_UFSHPB_31) && defined(CONFIG_HPB_DEBUG)
 			trace_printk("%llu + %u cmd 0x%X comp tag[%d] out %X\n",
 				     (unsigned long long) blk_rq_pos(cmd->request),
 				     (unsigned int) blk_rq_sectors(cmd->request),

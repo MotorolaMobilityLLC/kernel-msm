@@ -148,6 +148,9 @@ struct scsi_cmnd {
 	int flags;		/* Command flags */
 
 	unsigned char tag;	/* SCSI-II queued command tag */
+#if defined(CONFIG_UFSFEATURE_31) && defined(CONFIG_UFSHPB_31)
+       u8 requeue_cnt;
+#endif
 
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
