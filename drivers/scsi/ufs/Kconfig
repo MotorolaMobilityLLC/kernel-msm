@@ -184,13 +184,6 @@ config UFSTW_BOOT_ENABLED
        are enabled at boot time.
 
 
-config HPB_RELEASE_CHECK
-	bool "HPB Release Check for Mass Test"
-	depends on SCSI_UFSHCD && UFSFEATURE_31 && UFSHPB_31
-	default n
-	---help---
-	The kernel panic occurs when hpb feature disabled by abnormal behavior.
-
 
 config UFSTW_31
 	bool "UFS Turbo Write support"
