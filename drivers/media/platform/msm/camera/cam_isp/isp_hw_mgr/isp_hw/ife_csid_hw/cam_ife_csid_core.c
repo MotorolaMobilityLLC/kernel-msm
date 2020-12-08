@@ -2812,7 +2812,8 @@ static int cam_ife_csid_release(void *hw_priv,
 			csid_hw->ipp_path_config.measure_enabled = 0;
 		else if (res->res_id == CAM_IFE_PIX_PATH_RES_PPP)
 			csid_hw->ppp_path_config.measure_enabled = 0;
-		else
+		else if (res->res_id >= CAM_IFE_PIX_PATH_RES_RDI_0 &&
+			res->res_id <= CAM_IFE_PIX_PATH_RES_RDI_3)
 			csid_hw->rdi_path_config[res->res_id].measure_enabled
 				= 0;
 		break;
