@@ -340,7 +340,6 @@ int get_effective_result(struct votable *votable)
 	unlock_votable(votable);
 	return value;
 }
-EXPORT_SYMBOL(get_effective_result);
 
 /**
  * get_effective_client() -
@@ -499,7 +498,6 @@ out:
 	unlock_votable(votable);
 	return rc;
 }
-EXPORT_SYMBOL(vote);
 
 /**
  * vote_override() -
@@ -573,7 +571,6 @@ int rerun_election(struct votable *votable)
 	unlock_votable(votable);
 	return rc;
 }
-EXPORT_SYMBOL(rerun_election);
 
 struct votable *find_votable(const char *name)
 {
@@ -602,7 +599,6 @@ out:
 	else
 		return NULL;
 }
-EXPORT_SYMBOL(find_votable);
 
 static int force_active_get(void *data, u64 *val)
 {
@@ -657,7 +653,6 @@ int pmic_vote_force_val_set(struct votable *votable, u32 val) {
 
 	return -EINVAL;
 }
-EXPORT_SYMBOL(pmic_vote_force_val_set);
 
 int pmic_vote_force_active_get(struct votable *votable, u64 *val) {
 	if(votable)
@@ -665,7 +660,6 @@ int pmic_vote_force_active_get(struct votable *votable, u64 *val) {
 
 	return -EINVAL;
 }
-EXPORT_SYMBOL(pmic_vote_force_active_get);
 
 int pmic_vote_force_active_set(struct votable *votable, u64 val) {
 	if(votable)
@@ -673,7 +667,6 @@ int pmic_vote_force_active_set(struct votable *votable, u64 val) {
 
 	return -EINVAL;
 }
-EXPORT_SYMBOL(pmic_vote_force_active_set);
 
 static int show_votable_clients(struct seq_file *m, void *data)
 {
