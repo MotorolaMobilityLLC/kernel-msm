@@ -357,7 +357,9 @@ struct dma_buf_ops {
 	 *  Returns:
 	 *  always return 0
 	 */
+	#ifdef CONFIG_DEBUG_FS
 	int (*import_buf_add_by_moto)(struct dma_buf *);
+	#endif
 };
 
 /**
