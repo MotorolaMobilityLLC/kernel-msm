@@ -481,6 +481,7 @@ static int ion_init_sysfs(void)
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
 static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
 {
 	struct ion_device *dev = s->private;
@@ -528,6 +529,7 @@ static const struct file_operations debug_allbufs_fops = {
 	.llseek = seq_lseek,
 	.release = single_release,
 };
+#endif
 
 static int ion_device_create(void)
 {
@@ -554,17 +556,21 @@ static int ion_device_create(void)
 		goto err_sysfs;
 	}
 
+	#ifdef CONFIG_DEBUG_FS
 	idev->buffers = RB_ROOT;
 	mutex_init(&idev->buffer_lock);
+	#endif
 	idev->debug_root = debugfs_create_dir("ion", NULL);
 	init_rwsem(&idev->lock);
 	plist_head_init(&idev->heaps);
 	internal_dev = idev;
 
+	#ifdef CONFIG_DEBUG_FS
 	debugfs_create_file("check_all_bufs", 0664, idev->debug_root, idev,
 		&debug_allbufs_fops);
 	debugfs_create_file("check_all_bufs_total", 0664, idev->debug_root, idev,
 		&debug_allbufs_fops);
+	#endif
 
 	return 0;
 
