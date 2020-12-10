@@ -793,7 +793,36 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			rc = -EFAULT;
 			goto release_mutex;
 		}
+/*MOTO ADDED BEGIN*/
+		rc = cam_soc_util_get_dt_properties(&s_ctrl->soc_info);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR, "Failed to read DT properties rc %d", rc);
+			goto release_mutex;
+		}
+		/* Parse and fill vreg params for powerup settings */
+		rc = msm_camera_fill_vreg_params(
+			&s_ctrl->soc_info,
+			s_ctrl->sensordata->power_info.power_setting,
+			s_ctrl->sensordata->power_info.power_setting_size);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR,
+				"Fail in filling vreg params for PUP rc %d",
+				 rc);
+			goto free_power_settings;
+		}
 
+		/* Parse and fill vreg params for powerdown settings*/
+		rc = msm_camera_fill_vreg_params(
+			&s_ctrl->soc_info,
+			s_ctrl->sensordata->power_info.power_down_setting,
+			s_ctrl->sensordata->power_info.power_down_setting_size);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR,
+				"Fail in filling vreg params for PDOWN rc %d",
+				 rc);
+			goto free_power_settings;
+		}
+/*MOTO ADDED END*/
 		rc = cam_sensor_power_up(s_ctrl);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR, "Sensor Power up failed");
