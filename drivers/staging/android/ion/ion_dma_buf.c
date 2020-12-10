@@ -259,6 +259,7 @@ static void *ion_dma_buf_map(struct dma_buf *dmabuf, unsigned long offset)
 	return ion_buffer_kmap_get(buffer) + offset * PAGE_SIZE;
 }
 
+#ifdef CONFIG_DEBUG_FS
 static int ion_dma_buf_import_buf_add_by_moto(struct dma_buf *dmabuf)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
@@ -280,6 +281,7 @@ static int ion_dma_buf_import_buf_add_by_moto(struct dma_buf *dmabuf)
 
 	return 0;
 }
+#endif
 
 static int ion_dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 {
@@ -300,7 +302,9 @@ static int ion_dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 		mutex_unlock(&buffer->lock);
 	}
 
+	#ifdef CONFIG_DEBUG_FS
 	ion_dma_buf_import_buf_add_by_moto(dmabuf);
+	#endif
 
 	if (ret)
 		pr_err("%s: failure mapping buffer to userspace\n", __func__);
@@ -377,7 +381,9 @@ static const struct dma_buf_ops dma_buf_ops = {
 	.vmap = ion_dma_buf_vmap,
 	.vunmap = ion_dma_buf_vunmap,
 	.get_flags = ion_dma_buf_get_flags,
+	#ifdef CONFIG_DEBUG_FS
 	.import_buf_add_by_moto = ion_dma_buf_import_buf_add_by_moto,
+	#endif
 };
 
 struct dma_buf *ion_dmabuf_alloc(struct ion_device *dev, size_t len,
