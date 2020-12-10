@@ -31,6 +31,7 @@ static void track_buffer_destroyed(struct ion_buffer *buffer)
 	trace_ion_stat(buffer->sg_table, -buffer->size, total);
 }
 
+#ifdef CONFIG_DEBUG_FS
 /* this function should only be called while dev->buffer_lock is held */
 static void ion_buffer_add(struct ion_device *dev, struct ion_buffer *buffer)
 {
@@ -55,6 +56,7 @@ static void ion_buffer_add(struct ion_device *dev, struct ion_buffer *buffer)
 	rb_link_node(&buffer->node, parent, p);
 	rb_insert_color(&buffer->node, &dev->buffers);
 }
+#endif
 
 /* this function should only be called while dev->lock is held */
 static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
@@ -110,12 +112,14 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 	mutex_init(&buffer->lock);
 	track_buffer_created(buffer);
 
+	#ifdef CONFIG_DEBUG_FS
 	mutex_lock(&dev->buffer_lock);
 	ion_buffer_add(dev, buffer);
 	mutex_unlock(&dev->buffer_lock);
 
 	buffer->pid = task_pid_nr(current->group_leader);
 	buffer->client_pids[buffer->ref_cnt++] = buffer->pid;
+	#endif
 
 	return buffer;
 
@@ -273,9 +277,11 @@ int ion_buffer_destroy(struct ion_device *dev, struct ion_buffer *buffer)
 		return -EINVAL;
 	}
 
+	#ifdef CONFIG_DEBUG_FS
 	mutex_lock(&dev->buffer_lock);
 	rb_erase(&buffer->node, &dev->buffers);
 	mutex_unlock(&dev->buffer_lock);
+	#endif
 
 	heap = buffer->heap;
 	track_buffer_destroyed(buffer);
