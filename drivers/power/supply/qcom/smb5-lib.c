@@ -5945,7 +5945,11 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 	/* rp-std or legacy, USB BC 1.2 */
 	switch (pst) {
 	case POWER_SUPPLY_TYPE_USB:
-		vote(chg->usb_icl_votable, USB_PSY_VOTER, true, SDP_CURRENT_UA);
+		if (get_client_vote(chg->usb_icl_votable,
+				USB_PSY_VOTER) < SDP_CURRENT_UA) {
+			vote(chg->usb_icl_votable, USB_PSY_VOTER, true,
+					SDP_CURRENT_UA);
+		}
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
