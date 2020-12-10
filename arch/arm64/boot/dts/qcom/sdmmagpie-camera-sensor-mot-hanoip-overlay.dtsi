@@ -241,6 +241,11 @@
 	};
 };
 
+&L6A {
+	regulator-min-microvolt = <1050000>;
+	regulator-max-microvolt = <1304000>;
+};
+
 &flash_led {
 	pm6150l_flash0: qcom,flash_0 {
 		label = "flash";
@@ -498,7 +503,7 @@
 		clock-rates = <24000000>;
 	};
 	qcom,cam-sensor@0 {
-		/*rear main S5KHM2*/
+		/*rear main S5KHM2 compatable OV64B*/
 		cell-index = <0>;
 		compatible = "qcom,cam-sensor";
 		reg = <0x0>;
@@ -515,7 +520,7 @@
 		cam_clk-supply = <&titan_top_gdsc>;
 		regulator-names = "cam_vio", "cam_vana", "cam_vdig", "cam_clk";
 		rgltr-cntrl-support;
-		rgltr-min-voltage = <1800000 2800000 1100000 0>;
+		rgltr-min-voltage = <1800000 2800000 1050000 0>;
 		rgltr-max-voltage = <1800000 2800000 1100000 0>;
 		rgltr-load-current = <0 80000 105000 0>;
 		gpio-no-mux = <0>;
