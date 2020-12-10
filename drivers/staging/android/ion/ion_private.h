@@ -34,8 +34,10 @@ struct ion_device {
 	struct plist_head heaps;
 	struct dentry *debug_root;
 	int heap_cnt;
+	#ifdef CONFIG_DEBUG_FS
 	struct rb_root buffers;
 	struct mutex buffer_lock;
+	#endif
 };
 
 /* ion_buffer manipulators */
