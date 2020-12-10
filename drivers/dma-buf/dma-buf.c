@@ -433,10 +433,11 @@ static long dma_buf_ioctl(struct file *file,
 			ret = dma_buf_begin_cpu_access(dmabuf, direction);
 
 		return ret;
-
+	#ifdef CONFIG_DEBUG_FS
 	case DMA_BUF_IOCTL_IMPORT_BUF_ADD_BY_MOTO:
 		dmabuf->ops->import_buf_add_by_moto(dmabuf);
 		return 0;
+	#endif
 
 	case DMA_BUF_SET_NAME_A:
 	case DMA_BUF_SET_NAME_B:
