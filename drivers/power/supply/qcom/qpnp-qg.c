@@ -4710,6 +4710,10 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 	struct iio_dev *indio_dev;
 	struct qg_config *config;
 
+	if (!alarmtimer_get_rtcdev()) {
+		pr_err("Failed:qpnp qg probe failed, wait rtc prob\n");
+		return -EPROBE_DEFER;
+	}
 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*chip));
 	if (!indio_dev)
 		return -ENOMEM;
