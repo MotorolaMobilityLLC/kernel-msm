@@ -50,9 +50,9 @@
 			qcom,mdss-dsi-h-pulse-width = <4>;
 			qcom,mdss-dsi-h-sync-skew = <0>;
 			qcom,mdss-dsi-v-back-porch = <12>;
-			qcom,mdss-dsi-v-front-porch = <46>;
+			qcom,mdss-dsi-v-front-porch = <2565>;
 			qcom,mdss-dsi-v-pulse-width = <2>;
-			qcom,mdss-dsi-panel-framerate = <120>;
+			qcom,mdss-dsi-panel-framerate = <60>;
 
 			qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 			qcom,mdss-dsi-cabc-mv-command-state =  "dsi_hs_mode";

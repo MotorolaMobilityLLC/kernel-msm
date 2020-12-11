@@ -116,6 +116,10 @@
 	qcom,tp_state_check_enable;
 	qcom,platform-reset-gpio-always-on;
 
+	qcom,mdss-dsi-pan-enable-dynamic-fps;
+	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
+	qcom,dsi-supported-dfps-list = <60 120>;
+
 	qcom,mdss-dsi-panel-hdr-enabled;
 	qcom,mdss-dsi-panel-hdr-color-primaries = <15115 15895 32830
 				16770 15010 32385 7770 1830>;
