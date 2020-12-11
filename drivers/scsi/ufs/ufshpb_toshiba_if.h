@@ -31,5 +31,6 @@ void ufshcd_init_hpb(struct ufs_hba *hba);
 void ufshpb_prep_fn_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 void ufshpb_release_toshiba(struct ufs_hba *hba, int state);
-
+void ufshpb_suspend_toshiba(struct ufs_hba *hba);
+void ufshpb_resume_toshiba(struct ufs_hba *hba);
 #endif /* End of Header */
