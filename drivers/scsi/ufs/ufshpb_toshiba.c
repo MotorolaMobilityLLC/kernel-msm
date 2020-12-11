@@ -50,7 +50,7 @@
 
 #include "ufshpb_toshiba.h"
 #include "ufshpb_toshiba_if.h"
-#define UFSHPB_PANIC_ON_INVALID_REGION
+//#define UFSHPB_PANIC_ON_INVALID_REGION
 /*
  * UFSHPB DEBUG
  */
@@ -508,7 +508,9 @@ static void ufshpb_map_req_compl_fn(struct request *rq, blk_status_t status)
 	atomic64_inc(&hpb->rb_fail);
 
 	if (sshdr.sense_key == ILLEGAL_REQUEST) {
+#ifdef UFSHPB_PANIC_ON_INVALID_REGION
 		panic("Invalid inactive region %#x", map_req->region);
+#endif
 		spin_lock(&hpb->hpb_lock);
 		if (cb->region_state == HPBREGION_PINNED) {
 			if (sshdr.asc == 0x06 && sshdr.ascq == 0x01) {
@@ -644,7 +646,7 @@ static int ufshpb_map_req_issue(struct ufshpb_lu *hpb,
 	cmnd = container_of(req, struct scsi_cmnd, req);
 	scsi_req_init(req);
 	rq->cmd_flags = REQ_OP_SCSI_IN;
-	rq->rq_flags = RQF_SOFTBARRIER | RQF_QUIET | RQF_PREEMPT;
+	rq->rq_flags = RQF_PM | RQF_QUIET | RQF_PREEMPT;
 
 	req->cmd_len = COMMAND_SIZE(cmd[0]);
 	memcpy(req->cmd, cmd, req->cmd_len);
@@ -1481,6 +1483,35 @@ static void ufshpb_reset_lu(struct ufshpb_lu* hpb) {
 	ufshpb_purge_active_block(hpb);
 	dev_info(hba->dev, "UFSHPB lun %d reset\n", hpb->lun);
 	tasklet_init(&hpb->ufshpb_tasklet, ufshpb_tasklet_fn, (unsigned long) hpb);
+}
+void ufshpb_suspend_toshiba(struct ufs_hba *hba)
+{
+	struct ufshpb_lu *hpb;
+	int lun;
+	for (lun=0; lun < UFS_UPIU_MAX_GENERAL_LUN; lun++) {
+		hpb = hba->ufshpb_lup[lun];
+		if (!hpb) continue;
+		cancel_work_sync(&hpb->ufshpb_work);
+		cancel_delayed_work_sync(&hpb->ufshpb_retry_work);
+		tasklet_disable(&hpb->ufshpb_tasklet);
+	}
+}
+
+void ufshpb_resume_toshiba(struct ufs_hba *hba)
+{
+	struct ufshpb_lu *hpb;
+	int lun;
+	for (lun=0; lun < UFS_UPIU_MAX_GENERAL_LUN; lun++) {
+		hpb = hba->ufshpb_lup[lun];
+		if (!hpb) continue;
+		tasklet_enable(&hpb->ufshpb_tasklet);
+		if (!list_empty(&hpb->lh_subregion_req))
+			schedule_work(&hpb->ufshpb_work);
+		if (!list_empty(&hpb->lh_map_req_retry))
+			schedule_delayed_work(&hpb->ufshpb_retry_work,
+						msecs_to_jiffies(5000));
+
+	}
 }
 
 static void ufshpb_tasklet_fn(unsigned long private)
