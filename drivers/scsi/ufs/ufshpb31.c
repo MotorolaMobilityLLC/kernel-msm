@@ -702,7 +702,7 @@ static int ufshpb_execute_pre_req(struct ufshpb_lu *hpb, struct scsi_cmnd *cmd,
 
 	/* 1. request setup */
 	blk_rq_append_bio(req, &bio);
-	req->rq_flags |= RQF_QUIET;
+	req->rq_flags |= RQF_QUIET|RQF_PM;
 	req->timeout = 30 * HZ;
 	req->end_io_data = (void *)pre_req;
 
@@ -1842,7 +1842,7 @@ static int ufshpb_execute_map_req(struct ufshpb_lu *hpb,
 
 	/* 1. request setup */
 	blk_rq_append_bio(req, &bio); /* req->__data_len is setted */
-	req->rq_flags |= RQF_QUIET;
+	req->rq_flags |= RQF_QUIET|RQF_PM;
 	req->timeout = 30 * HZ;
 	req->end_io_data = (void *)map_req;
 
