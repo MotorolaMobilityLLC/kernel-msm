@@ -240,6 +240,9 @@ static inline loff_t ext4_readpage_limit(struct inode *inode)
 static void
 ext4_submit_bio_read(struct bio *bio)
 {
+#ifdef CONFIG_FS_HPB
+	struct inode *inode = bio->bi_io_vec[0].bv_page->mapping->host;
+#endif
 	if (trace_android_fs_dataread_start_enabled()) {
 		struct page *first_page = bio->bi_io_vec[0].bv_page;
 
@@ -258,6 +261,10 @@ ext4_submit_bio_read(struct bio *bio)
 				current->comm);
 		}
 	}
+#ifdef CONFIG_FS_HPB
+	if(ext4_test_inode_state(inode, EXT4_STATE_HPB))
+		bio->bi_opf |= REQ_HPB_PREFER;
+#endif
 	submit_bio(bio);
 }
 
