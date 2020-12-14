@@ -250,7 +250,7 @@
 	pm6150l_flash0: qcom,flash_0 {
 		label = "flash";
 		qcom,led-name = "led:flash_0";
-		qcom,max-current = <1000>;
+		qcom,max-current = <1150>;
 		qcom,default-led-trigger = "flash0_trigger";
 		qcom,id = <0>;
 		qcom,current-ma = <500>;
