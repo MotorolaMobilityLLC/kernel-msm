@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2016 Qualcomm Atheros, Inc.
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -558,6 +558,13 @@ static inline void wil_ring_advance_head(struct wil_ring *ring, int n)
 static inline int wil_ring_is_full(struct wil_ring *ring)
 {
 	return wil_ring_next_tail(ring) == ring->swhead;
+}
+
+static inline __be16 wil_skb_get_protocol(struct sk_buff *skb)
+{
+	struct ethhdr *eth = (void *)skb->data;
+
+	return eth->h_proto;
 }
 
 static inline bool wil_need_txstat(struct sk_buff *skb)

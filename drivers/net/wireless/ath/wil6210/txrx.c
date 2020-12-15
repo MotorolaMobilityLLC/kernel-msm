@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2012-2017 Qualcomm Atheros, Inc.
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -792,7 +792,9 @@ void wil_netif_rx_any(struct sk_buff *skb, struct net_device *ndev)
 			dev_kfree_skb(skb);
 			goto stats;
 		}
-	} else if (wdev->iftype == NL80211_IFTYPE_AP && !vif->ap_isolate) {
+	} else if (wdev->iftype == NL80211_IFTYPE_AP && !vif->ap_isolate &&
+		   /* pass EAPOL packets to local net stack only */
+		   (wil_skb_get_protocol(skb) != htons(ETH_P_PAE))) {
 		if (mcast) {
 			/* send multicast frames both to higher layers in
 			 * local net stack and back to the wireless medium
