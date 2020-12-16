@@ -730,6 +730,7 @@ static void app_msg_proc(struct npu_host_ctx *host_ctx, uint32_t *msg)
 	struct npu_kevent kevt;
 	struct npu_device *npu_dev = host_ctx->npu_dev;
 
+	memset(&kevt, 0, sizeof(kevt));
 	msg_id = msg[1];
 	switch (msg_id) {
 	case NPU_IPC_MSG_EXECUTE_DONE:
