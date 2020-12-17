@@ -17,12 +17,12 @@
 #include <dt-bindings/clock/qcom,camcc-sdmmagpie.h>
 
 #include "sdmmagpie-hanoip-common-overlay.dtsi"
-#include "sdmmagpie-camera-sensor-mot-hanoip-evt1-overlay.dtsi"
+#include "sdmmagpie-camera-sensor-mot-hanoip-dvt2-overlay.dtsi"
 
 / {
 	model = "hanoip";
 	qcom,msm-id = <365 0x0>;
-	qcom,board-id = <0x4C 0xA100>;
+	qcom,board-id = <0x4C 0xB200>;
 };
 
 
