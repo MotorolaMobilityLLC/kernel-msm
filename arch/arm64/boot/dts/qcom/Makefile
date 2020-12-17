@@ -55,7 +55,9 @@ dtbo-$(CONFIG_HANOI_DTB) += \
 	sdmmagpie-hanoi-evt1-overlay.dtbo
 
 dtbo-$(CONFIG_HANOIP_DTB) += \
-	sdmmagpie-hanoip-evt1-overlay.dtbo
+	sdmmagpie-hanoip-evt1-overlay.dtbo \
+	sdmmagpie-hanoip-dvt1-overlay.dtbo \
+	sdmmagpie-hanoip-dvt2-overlay.dtbo
 
 dtbo-$(CONFIG_TACOMA_DTB) += \
 	sdmmagpie-tacoma-evt1-overlay.dtbo
@@ -142,6 +144,12 @@ sdmmagpie-hanoi-evt1-overlay.dtbo-base := \
 	sdmmagpie-hanoi-base.dtb
 
 sdmmagpie-hanoip-evt1-overlay.dtbo-base := \
+	sdmmagpie-hanoi-base.dtb
+
+sdmmagpie-hanoip-dvt1-overlay.dtbo-base := \
+	sdmmagpie-hanoi-base.dtb
+
+sdmmagpie-hanoip-dvt2-overlay.dtbo-base := \
 	sdmmagpie-hanoi-base.dtb
 
 sdmmagpie-tacoma-evt1-overlay.dtbo-base := \
