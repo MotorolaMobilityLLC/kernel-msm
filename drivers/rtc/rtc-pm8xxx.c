@@ -63,13 +63,6 @@ struct pm8xxx_rtc {
 	spinlock_t ctrl_reg_lock;
 };
 
-/* MMI_STOPSHIP BSP: Debug unexpected RTC reset */
-
-#ifdef dev_dbg
-#undef dev_dbg
-#define dev_dbg dev_err
-#endif
-
 /*
  * Steps to write the RTC registers.
  * 1. Disable alarm if enabled.
@@ -368,9 +361,6 @@ static irqreturn_t pm8xxx_alarm_trigger(int irq, void *dev_id)
 	unsigned long irq_flags;
 
 	rtc_update_irq(rtc_dd->rtc, 1, RTC_IRQF | RTC_AF);
-
-	dev_dbg(rtc_dd->rtc_dev,
-			"motorola debug rtc : enter %s\n", __func__);
 
 	spin_lock_irqsave(&rtc_dd->ctrl_reg_lock, irq_flags);
 
