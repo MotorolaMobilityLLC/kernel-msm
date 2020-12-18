@@ -2130,6 +2130,7 @@
   scsi_device_put
   scsi_eh_prep_cmnd
   scsi_eh_restore_cmnd
+  __scsi_execute
   scsi_get_host_dev
   scsi_host_alloc
   scsi_host_put
