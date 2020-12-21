@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -142,7 +142,7 @@ struct rpmh_votes_t {
 	struct gmu_bw_votes cnoc_votes;
 };
 
-#define MAX_GMU_CLKS 6
+#define MAX_GMU_CLKS 7
 #define DEFAULT_GMU_FREQ_IDX 1
 
 /*
