@@ -42,6 +42,8 @@ struct msm_msi_client {
 	dma_addr_t msi_addr;
 };
 
+int resume_mhi_log_print = 0;
+
 static void msm_msi_handler(struct irq_desc *desc)
 {
 	struct irq_chip *chip = irq_desc_get_chip(desc);
@@ -56,8 +58,11 @@ static void msm_msi_handler(struct irq_desc *desc)
 	if (gic_resume_irq) {
 		if(irq_desc_get_irq(desc) == gic_resume_irq) {
 			log_irq_wakeup_reason(virq);
+			resume_mhi_log_print = 1;
 		}
 		gic_resume_irq = 0;
+	} else {
+		resume_mhi_log_print = 0;
 	}
 
 	generic_handle_irq(virq);
