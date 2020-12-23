@@ -584,6 +584,13 @@ static int ipa3_send_pdn_config_msg(unsigned long usr_param)
 
 	msg_meta.msg_type = pdn_info->pdn_cfg_type;
 
+	if ((pdn_info->pdn_cfg_type < IPA_PDN_DEFAULT_MODE_CONFIG) ||
+			(pdn_info->pdn_cfg_type >= IPA_PDN_CONFIG_EVENT_MAX)) {
+		IPAERR_RL("invalid pdn_cfg_type =%d", pdn_info->pdn_cfg_type);
+		kfree(pdn_info);
+		return -EINVAL;
+	}
+
 	IPADBG("type %d, interface name: %s, enable:%d\n", msg_meta.msg_type,
 		pdn_info->dev_name, pdn_info->enable);
 
