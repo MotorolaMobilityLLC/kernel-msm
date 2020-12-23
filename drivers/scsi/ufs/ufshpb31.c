@@ -649,6 +649,104 @@ static int ufshpb_insert_pre_req_directly(struct request *rq)
 	return -EPERM;
 }
 
+static void ufshpb_scsi_release_buffers_mimic(struct scsi_cmnd *cmd)
+{
+	if (cmd->sdb.table.nents)
+		sg_free_table_chained(&cmd->sdb.table, false);
+
+	memset(&cmd->sdb, 0, sizeof(cmd->sdb));
+
+	if (scsi_prot_sg_count(cmd))
+		sg_free_table_chained(&cmd->prot_sdb->table, false);
+}
+
+static void ufshpb_pre_req_done(struct scsi_cmnd *cmd)
+{
+	blk_complete_request(cmd->request);
+}
+
+static inline void ufshpb_scsi_dispatch_cmd_mimic(struct scsi_cmnd *cmd)
+{
+	atomic_inc(&cmd->device->iorequest_cnt);
+
+	scsi_log_send(cmd);
+
+	cmd->scsi_done = ufshpb_pre_req_done;
+}
+
+static void ufshpb_init_cmd_errh(struct scsi_cmnd *cmd)
+{
+	cmd->serial_number = 0;
+	scsi_set_resid(cmd, 0);
+	memset(cmd->sense_buffer, 0, SCSI_SENSE_BUFFERSIZE);
+	if (cmd->cmd_len == 0)
+		cmd->cmd_len = scsi_command_size(cmd->cmnd);
+}
+
+static int ufshpb_scsi_request_fn_mimic(struct request *req)
+{
+	struct request_queue *q = req->q;
+	struct scsi_device *sdev = q->queuedata;
+	struct Scsi_Host *shost = sdev->host;
+	struct scsi_cmnd *cmd;
+	unsigned long flags;
+	unsigned int busy;
+	int ret = 0;
+	LIST_HEAD(dummy);
+
+	req->rq_flags |= RQF_STARTED;
+
+	ret = q->prep_rq_fn(q, req);
+	if (unlikely(ret != BLKPREP_OK)) {
+		ret = -EIO;
+		goto prep_err;
+	}
+	cmd = req->special;
+	if (unlikely(!cmd))
+		BUG();
+
+	busy = atomic_inc_return(&sdev->device_busy) - 1;
+	if (busy >= sdev->queue_depth) {
+		ret = -EAGAIN;
+		goto finish_cmd;
+	}
+
+	/* lh_pre_req_free list is dummy head for blk_dequeue_request() */
+	list_add_tail(&req->queuelist, &dummy);
+	ret = blk_queue_start_tag(q, req);
+	if (ret) {
+		list_del_init(&req->queuelist);
+		ret = -EAGAIN;
+		goto finish_cmd;
+	}
+	spin_unlock_irqrestore(q->queue_lock, flags);
+
+	/*
+	 * UFS device has multi luns, so starget is not used.
+	 * In case of UFS, starget->can_queue <= 0.
+	 */
+	if (unlikely(scsi_target(sdev)->can_queue > 0))
+		atomic_inc(&scsi_target(sdev)->target_busy);
+	atomic_inc(&shost->host_busy);
+
+	ufshpb_init_cmd_errh(cmd);
+
+	ufshpb_scsi_dispatch_cmd_mimic(cmd);
+	ret = shost->hostt->queuecommand(shost, cmd);
+
+	return ret;
+
+finish_cmd:
+	ufshpb_scsi_release_buffers_mimic(cmd);
+	scsi_put_command(cmd);
+	put_device(&sdev->sdev_gendev);
+	req->special = NULL;
+	atomic_dec(&sdev->device_busy);
+prep_err:
+	spin_unlock_irqrestore(q->queue_lock, flags);
+	return ret;
+}
+
 static int ufshpb_blk_execute_rq_nowait_mimic(struct request_queue *q,
 					      struct request *rq,
 					      rq_end_io_fn *done)
@@ -674,9 +772,7 @@ static int ufshpb_blk_execute_rq_nowait_mimic(struct request_queue *q,
 		return -EPERM;
 	}
 
-	__elv_add_request(q, rq, ELEVATOR_INSERT_FRONT);
-	__blk_run_queue(q);
-	spin_unlock_irqrestore(q->queue_lock, flags);
+	ret = ufshpb_scsi_request_fn_mimic(rq);
 
 	return ret;
 }
@@ -720,6 +816,15 @@ static int ufshpb_execute_pre_req(struct ufshpb_lu *hpb, struct scsi_cmnd *cmd,
 		atomic64_inc(&hpb->pre_req_cnt);
 
 	return ret;
+}
+
+void ufshpb_end_pre_req(struct ufsf_feature *ufsf, struct request *req)
+{
+	struct scsi_cmnd *scmd = req->special;
+
+	set_host_byte(scmd, DID_OK);
+
+	scmd->scsi_done(scmd);
 }
 
 static int ufshpb_issue_pre_req(struct ufshpb_lu *hpb, struct scsi_cmnd *cmd,
@@ -787,8 +892,18 @@ static int ufshpb_issue_pre_req(struct ufshpb_lu *hpb, struct scsi_cmnd *cmd,
 
 	ret = ufshpb_execute_pre_req(hpb, cmd, pre_req, ctx_id);
 	if (ret) {
-		ufshpb_lu_put(hpb);
-		goto free_pre_req;
+		if (cmd->device->request_queue->mq_ops) {
+			ufshpb_lu_put(hpb);
+			goto free_pre_req;
+		} else {
+			struct scsi_cmnd *scmd = pre_req->req->special;
+
+			if (!scmd || !scmd->scsi_done)
+				goto free_pre_req;
+
+			ufshpb_end_pre_req(hpb->ufsf, pre_req->req);
+			return ret;
+		}
 	}
 
 	*hpb_ctx_id = ctx_id;
@@ -800,6 +915,8 @@ free_pre_req:
 unlock_out:
 	spin_unlock_irqrestore(&hpb->hpb_lock, flags);
 	bio_put(bio);
+	if (req->bio)
+		req->bio = NULL;
 	blk_put_request(req);
 	return ret;
 }
