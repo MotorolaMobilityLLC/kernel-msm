@@ -37,6 +37,11 @@
 #define QPNP_VIB_MAX_PLAY_MS		15000
 #define QPNP_VIB_OVERDRIVE_PLAY_MS	30
 
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+extern int mot_actuator_on_vibrate_start(void);
+extern int mot_actuator_on_vibrate_stop(void);
+#endif
+
 struct vib_ldo_chip {
 	struct led_classdev	cdev;
 	struct regmap		*regmap;
@@ -119,6 +124,14 @@ static inline int qpnp_vib_ldo_enable(struct vib_ldo_chip *chip, bool enable)
 	if (chip->vib_enabled == enable)
 		return 0;
 
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+	if (chip->vib_play_ms > 80) {
+		if (enable)
+			mot_actuator_on_vibrate_start();
+		else
+			mot_actuator_on_vibrate_stop();
+	}
+#endif
 	ret = regmap_update_bits(chip->regmap,
 				chip->base + QPNP_VIB_LDO_REG_EN_CTL,
 				QPNP_VIB_LDO_EN,
