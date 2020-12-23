@@ -1070,7 +1070,7 @@ void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct ufshpb_lu *hpb;
 	struct ufshpb_rsp_field *rsp_field;
 	struct ufshpb_rsp_info *rsp_info;
-	struct ufshpb_region *region;
+//	struct ufshpb_region *region;
 	int data_seg_len, num, blk_idx;
 	unsigned long flags;
 
@@ -1187,9 +1187,9 @@ void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 			rsp_info->active_cnt, rsp_info->inactive_cnt);
 		hpb_dbg(hpb->hba, "active cnt: %d, inactive cnt: %d\n",
 			  rsp_info->active_cnt, rsp_info->inactive_cnt);
-		list_for_each_entry(region, &hpb->lru_info.lru, list_region)
-			hpb_dbg(hpb->hba, "active list : %d (cnt: %d)\n",
-					region->region, region->hit_count);
+		//list_for_each_entry(region, &hpb->lru_info.lru, list_region)
+		//	hpb_dbg(hpb->hba, "active list : %d (cnt: %d)\n",
+		//			region->region, region->hit_count);
 		hpb_dbg(hpb->hba, "add_list %p -> %p\n",
 					rsp_info, &hpb->lh_rsp_info);
 
