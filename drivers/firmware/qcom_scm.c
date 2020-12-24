@@ -1065,6 +1065,12 @@ int qcom_scm_invoke_smc(phys_addr_t in_buf, size_t in_buf_size,
 }
 EXPORT_SYMBOL(qcom_scm_invoke_smc);
 
+int trustonic_smc_fastcall(void *fc_generic, size_t size)
+{
+	return __trustonic_smc_fastcall(fc_generic, size);
+}
+EXPORT_SYMBOL(trustonic_smc_fastcall);
+
 int qcom_scm_invoke_callback_response(phys_addr_t out_buf,
 	size_t out_buf_size, int32_t *result, u64 *response_type,
 	unsigned int *data)

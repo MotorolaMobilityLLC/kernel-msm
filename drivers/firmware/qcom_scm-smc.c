@@ -28,6 +28,10 @@
 #define MAX_QCOM_SCM_ARGS 10
 #define MAX_QCOM_SCM_RETS 3
 
+#define SCM_SVC_MOBICORE        250
+#define SCM_CMD_MOBICORE        1
+#define ARM_SMCCC_OWNER_MOBI_OS 51
+
 #define QCOM_SCM_ATOMIC		BIT(0)
 #define QCOM_SCM_NORETRY	BIT(1)
 
@@ -2384,6 +2388,69 @@ int __qcom_scm_invoke_smc(struct device *dev, phys_addr_t in_buf,
 
 	if (data)
 		*data = desc.res[2];
+
+	return ret;
+}
+
+int __trustonic_smc_fastcall(void *fc_generic, size_t size)
+{
+	int ret;
+	struct qcom_scm_desc desc = {
+		.svc = SCM_SVC_MOBICORE,
+		.cmd = SCM_CMD_MOBICORE,
+		.owner = ARM_SMCCC_OWNER_MOBI_OS
+	};
+
+	void *scm_buf_va = NULL;
+	phys_addr_t scm_buf_pa;
+	struct qtee_shm scm_shm = {0};
+
+	if (qtee_shmbridge_is_enabled()) {
+
+		ret = qtee_shmbridge_allocate_shm(PAGE_ALIGN(size), &scm_shm);
+		if (ret)
+			return ret;
+	}
+	else {
+		scm_shm.vaddr = kzalloc(PAGE_ALIGN(size), GFP_KERNEL);
+		if (!scm_shm.vaddr)
+			return -ENOMEM;
+
+		scm_shm.paddr = dma_map_single(NULL, scm_shm.vaddr, size, DMA_TO_DEVICE);
+		if (dma_mapping_error(NULL, scm_shm.paddr)) {
+			kfree(scm_shm.vaddr);
+			return -ENOMEM;
+		}
+	}
+
+	scm_buf_va = scm_shm.vaddr;
+	scm_buf_pa = scm_shm.paddr;
+
+	if (!scm_buf_va)
+		return -ENOMEM;
+
+	memset(scm_buf_va, 0, size);
+	memcpy(scm_buf_va, fc_generic, size);
+	qtee_shmbridge_flush_shm_buf(&scm_shm);
+
+	desc.args[0] = scm_buf_pa;
+	desc.args[1] = (u32)size;
+	desc.args[2] = scm_buf_pa;
+	desc.args[3] = (u32)size;
+	desc.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RW, QCOM_SCM_VAL, QCOM_SCM_RW, QCOM_SCM_VAL);
+
+	ret = qcom_scm_call(NULL, &desc);
+
+	qtee_shmbridge_flush_shm_buf(&scm_shm);
+	memcpy(fc_generic, scm_buf_va, size);
+
+	if (qtee_shmbridge_is_enabled()) {
+		qtee_shmbridge_free_shm(&scm_shm);
+	}
+	else {
+		dma_unmap_single(NULL, scm_shm.paddr, size, DMA_TO_DEVICE);
+		kfree(scm_shm.vaddr);
+	}
 
 	return ret;
 }
