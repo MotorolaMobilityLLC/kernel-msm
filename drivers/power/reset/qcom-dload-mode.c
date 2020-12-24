@@ -275,8 +275,10 @@ static int qcom_dload_reboot(struct notifier_block *this, unsigned long event,
 	struct qcom_dload *poweroff = container_of(this, struct qcom_dload,
 						     reboot_nb);
 
-	if (debug_sys_restart_mode == DEBUG_SYS_RESETART_PANIC)
+	if (debug_sys_restart_mode == DEBUG_SYS_RESETART_PANIC) {
 		poweroff->in_panic = 1;
+		msm_enable_dump_mode(true);
+	}
 
 	/* Clean shutdown, disable dump mode to allow normal restart */
 	if (!poweroff->in_panic)
