@@ -297,6 +297,7 @@ extern int __qcom_scm_invoke_smc_legacy(struct device *dev, phys_addr_t in_buf,
 extern int __qcom_scm_invoke_smc(struct device *dev, phys_addr_t in_buf,
 		size_t in_buf_size, phys_addr_t out_buf, size_t out_buf_size,
 		int32_t *result, u64 *response_type, unsigned int *data);
+extern int __trustonic_smc_fastcall(void *fc_generic, size_t size);
 extern int __qcom_scm_invoke_callback_response(struct device *dev,
 		phys_addr_t out_buf, size_t out_buf_size, int32_t *result,
 		u64 *response_type, unsigned int *data);
