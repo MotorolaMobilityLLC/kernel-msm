@@ -30,6 +30,14 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/qseecomi.h>
 
+
+#ifndef CONFIG_DEBUG_FS
+#include <linux/proc_fs.h>
+static struct proc_dir_entry *tzdbg_root;
+#define TZDBG_ROOT_DIR "tzdbg"
+#endif
+
+
 /* QSEE_LOG_BUF_SIZE = 32K */
 #define QSEE_LOG_BUF_SIZE 0x8000
 
@@ -808,7 +816,11 @@ static ssize_t tzdbgfs_read(struct file *file, char __user *buf,
 	size_t count, loff_t *offp)
 {
 	int len = 0;
+#ifdef DEBUG_DEBUG_FS
 	int *tz_id =  file->private_data;
+#else
+    int *tz_id = ((struct seq_file *)file->private_data)->private;
+#endif
 
 	if (*tz_id == TZDBG_BOOT || *tz_id == TZDBG_RESET ||
 		*tz_id == TZDBG_INTERRUPT || *tz_id == TZDBG_GENERAL ||
@@ -866,6 +878,7 @@ static ssize_t tzdbgfs_read(struct file *file, char __user *buf,
 	return simple_read_from_buffer(buf, len, offp,
 				tzdbg.stat[(*tz_id)].data, len);
 }
+#ifdef CONFIG_DEBUG_FS
 
 static int tzdbgfs_open(struct inode *inode, struct file *pfile)
 {
@@ -873,10 +886,22 @@ static int tzdbgfs_open(struct inode *inode, struct file *pfile)
 	return 0;
 }
 
+#else
+
+static int tzdbg_proc_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, NULL, PDE_DATA(inode));
+}
+#endif
+
 const struct file_operations tzdbg_fops = {
 	.owner   = THIS_MODULE,
 	.read    = tzdbgfs_read,
+#ifdef CONFIG_DEBUG_FS
 	.open    = tzdbgfs_open,
+#else
+    .open   = tzdbg_proc_open,
+#endif
 };
 
 
@@ -941,6 +966,7 @@ err:
 
 static int  tzdbgfs_init(struct platform_device *pdev)
 {
+#ifdef CONFIG_DEBUG_FS
 	int rc = 0;
 	int i;
 	struct dentry           *dent_dir;
@@ -973,10 +999,47 @@ err:
 	debugfs_remove_recursive(dent_dir);
 
 	return rc;
+#else
+    int rc = 0;
+    int i;
+    struct proc_dir_entry *proc_d_entry = NULL;
+
+    tzdbg_root = proc_mkdir(TZDBG_ROOT_DIR, NULL);
+    if (NULL == tzdbg_root) {
+        dev_err(&pdev->dev, "Created dir /proc/%s error!\n", TZDBG_ROOT_DIR);
+        return -1;
+    }
+
+    dev_info(&pdev->dev, "Created dir /proc/%s \n", TZDBG_ROOT_DIR);
+
+    for (i = 0; i < TZDBG_STATS_MAX; i++) {
+        tzdbg.debug_tz[i] = i;
+        proc_d_entry = proc_create_data(tzdbg.stat[i].name, 0666, tzdbg_root, &tzdbg_fops, &tzdbg.debug_tz[i]);
+        if (proc_d_entry == NULL) {
+            dev_err(&pdev->dev, "TZ proc_create_data %s failed\n", tzdbg.stat[i].name);
+            rc = -ENOMEM;
+            goto err;
+        }
+    }
+
+	tzdbg.disp_buf = kzalloc(max(debug_rw_buf_size,
+			tzdbg.hyp_debug_rw_buf_size), GFP_KERNEL);
+	if (tzdbg.disp_buf == NULL)
+		goto err;
+
+    platform_set_drvdata(pdev, tzdbg_root);
+
+    return 0;
+err:
+    remove_proc_subtree(TZDBG_ROOT_DIR, NULL);
+    return -1;
+
+#endif
 }
 
 static void tzdbgfs_exit(struct platform_device *pdev)
 {
+#ifdef CONFIG_DEBUG_FS
 	struct dentry           *dent_dir;
 
 	kzfree(tzdbg.disp_buf);
@@ -985,6 +1048,13 @@ static void tzdbgfs_exit(struct platform_device *pdev)
 	if (g_qsee_log)
 		dma_free_coherent(&pdev->dev, QSEE_LOG_BUF_SIZE,
 					 (void *)g_qsee_log, coh_pmem);
+#else
+	kzfree(tzdbg.disp_buf);
+    remove_proc_subtree(TZDBG_ROOT_DIR, NULL);
+	if (g_qsee_log)
+		dma_free_coherent(&pdev->dev, QSEE_LOG_BUF_SIZE,
+					 (void *)g_qsee_log, coh_pmem);
+#endif
 }
 
 static int __update_hypdbg_base(struct platform_device *pdev,
