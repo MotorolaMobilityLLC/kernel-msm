@@ -28,8 +28,17 @@
 #include "qrtr.h"
 
 #define QRTR_LOG_PAGE_CNT 4
+#ifdef CONFIG_MHI_DEBUG
+extern int resume_mhi_log_print;
+#define QRTR_INFO(ctx, x, ...)				\
+	do {						\
+		ipc_log_string(ctx, x, ##__VA_ARGS__);	\
+		pr_info(x, ##__VA_ARGS__);		\
+	} while(0)
+#else
 #define QRTR_INFO(ctx, x, ...)				\
 	ipc_log_string(ctx, x, ##__VA_ARGS__)
+#endif
 
 #define QRTR_PROTO_VER_1 1
 #define QRTR_PROTO_VER_2 3
@@ -565,7 +574,12 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 	hdr->size = cpu_to_le32(len);
 	hdr->confirm_rx = !!confirm_rx;
 
+#ifdef CONFIG_MHI_DEBUG
+	if (resume_mhi_log_print)
+		qrtr_log_tx_msg(node, hdr, skb);
+#else
 	qrtr_log_tx_msg(node, hdr, skb);
+#endif
 	rc = skb_put_padto(skb, ALIGN(len, 4) + sizeof(*hdr));
 	if (rc) {
 		pr_err("%s: failed to pad size %lu to %lu rc:%d\n", __func__,
@@ -849,7 +863,12 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	skb->data_len = size;
 	skb->len = size;
 	skb_store_bits(skb, 0, data + hdrlen, size);
+#ifdef CONFIG_MHI_DEBUG
+	if (resume_mhi_log_print)
+		qrtr_log_rx_msg(node, skb);
+#else
 	qrtr_log_rx_msg(node, skb);
+#endif
 
 	skb_queue_tail(&node->rx_queue, skb);
 	kthread_queue_work(&node->kworker, &node->read_data);
