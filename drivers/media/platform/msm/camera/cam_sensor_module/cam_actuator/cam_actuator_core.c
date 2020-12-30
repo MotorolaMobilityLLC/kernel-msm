@@ -18,6 +18,9 @@
 #include "cam_res_mgr_api.h"
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+#include "mot_actuator_policy.h"
+#endif
 
 int32_t cam_actuator_construct_default_power_setting(
 	struct cam_sensor_power_ctrl_t *power_info)
@@ -262,7 +265,13 @@ int32_t cam_actuator_apply_settings(struct cam_actuator_ctrl_t *a_ctrl,
 		CAM_ERR(CAM_ACTUATOR, " Invalid settings");
 		return -EINVAL;
 	}
-
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+	/*Usually actuator initial setting will execute power down reset(PD), actuator can't respond
+	  CCI access for a while after PD. Add lock to avoid access actuator while PD operation.*/
+	if (a_ctrl->is_multi_user_supported) {
+		mot_actuator_lock();
+	}
+#endif
 	list_for_each_entry(i2c_list,
 		&(i2c_set->list_head), list) {
 		rc = cam_actuator_i2c_modes_util(
@@ -278,6 +287,14 @@ int32_t cam_actuator_apply_settings(struct cam_actuator_ctrl_t *a_ctrl,
 				i2c_set->request_id);
 		}
 	}
+
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+	/*Usually actuator initial setting will execute power down reset(PD), actuator can't respond
+	  CCI access for a while after PD. Add lock to avoid access actuator while PD operation.*/
+	if (a_ctrl->is_multi_user_supported) {
+		mot_actuator_unlock();
+	}
+#endif
 
 	return rc;
 }
@@ -578,6 +595,13 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 					cmd_desc[i].mem_handle);
 		}
 
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+		if (a_ctrl->cam_act_state == CAM_ACTUATOR_ACQUIRE &&
+			a_ctrl->is_multi_user_supported == true) {
+			mot_actuator_get(ACTUATOR_CLIENT_CAMERA);
+		}
+#endif
+
 		if (a_ctrl->cam_act_state == CAM_ACTUATOR_ACQUIRE) {
 			rc = cam_actuator_power_up(a_ctrl);
 			if (rc < 0) {
@@ -817,6 +841,11 @@ int32_t cam_actuator_driver_cmd(struct cam_actuator_ctrl_t *a_ctrl,
 		}
 
 		if (a_ctrl->cam_act_state == CAM_ACTUATOR_CONFIG) {
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+			if (a_ctrl->is_multi_user_supported == true) {
+				mot_actuator_put(ACTUATOR_CLIENT_CAMERA);
+			}
+#endif
 			rc = cam_actuator_power_down(a_ctrl);
 			if (rc < 0) {
 				CAM_ERR(CAM_ACTUATOR,
