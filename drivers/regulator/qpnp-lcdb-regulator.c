@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1019,7 +1019,9 @@ static irqreturn_t qpnp_lcdb_sc_irq_handler(int irq, void *data)
 	int rc;
 	u8 val, val2[2] = {0};
 
+	mutex_lock(&lcdb->lcdb_mutex);
 	rc = qpnp_lcdb_read(lcdb, lcdb->base + INT_RT_STATUS_REG, &val, 1);
+	mutex_unlock(&lcdb->lcdb_mutex);
 	if (rc < 0)
 		goto irq_handled;
 
@@ -1059,8 +1061,15 @@ static irqreturn_t qpnp_lcdb_sc_irq_handler(int irq, void *data)
 			/* blanking time */
 			usleep_range(2000, 2100);
 			/* Read the SC status again to confirm true SC */
+			mutex_lock(&lcdb->lcdb_mutex);
+			/*
+			 * Wait for the completion of LCDB module enable,
+			 * which could be initiated in a previous SC event,
+			 * to avoid multiple module disable/enable calls.
+			 */
 			rc = qpnp_lcdb_read(lcdb,
 				lcdb->base + INT_RT_STATUS_REG, &val, 1);
+			mutex_unlock(&lcdb->lcdb_mutex);
 			if (rc < 0)
 				goto irq_handled;
 

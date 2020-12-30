@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, 2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -211,6 +211,7 @@
 #define IPA2_ACTIVE_CLIENTS_LOG_LINE_LEN 96
 #define IPA2_ACTIVE_CLIENTS_LOG_HASHTABLE_SIZE 50
 #define IPA2_ACTIVE_CLIENTS_LOG_NAME_LEN 40
+#define IPA_RULE_CNT_MAX 512
 
 struct ipa2_active_client_htable_entry {
 	struct hlist_node list;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1087,7 +1087,10 @@ static int __ipa_add_rt_rule(enum ipa_ip_type ip, const char *name,
 		list_add_tail(&entry->link, &tbl->head_rt_rule_list);
 	else
 		list_add(&entry->link, &tbl->head_rt_rule_list);
-	tbl->rule_cnt++;
+	if (tbl->rule_cnt < IPA_RULE_CNT_MAX)
+		tbl->rule_cnt++;
+	else
+		return -EINVAL;
 	if (entry->hdr)
 		entry->hdr->ref_cnt++;
 	else if (entry->proc_ctx)
