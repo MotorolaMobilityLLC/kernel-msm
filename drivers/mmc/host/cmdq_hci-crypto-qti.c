@@ -29,8 +29,6 @@
 #define MINIMUM_DUN_SIZE 512
 #define MAXIMUM_DUN_SIZE 65536
 
-static struct mmc_host *mmc_host;
-
 static struct cmdq_host_crypto_variant_ops cmdq_crypto_qti_variant_ops = {
 	.host_init_crypto = cmdq_crypto_qti_init_crypto,
 	.enable = cmdq_crypto_qti_enable,
@@ -122,14 +120,14 @@ static int cmdq_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 		return -EINVAL;
 	}
 
-	mmc_host_clk_hold(mmc_host);
+	mmc_host_clk_hold(host->mmc);
 
 	err = crypto_qti_keyslot_program(host->crypto_vops->priv, key,
 					 slot, data_unit_mask, crypto_alg_id);
 	if (err)
 		pr_err("%s: failed with error %d\n", __func__, err);
 
-	mmc_host_clk_release(mmc_host);
+	mmc_host_clk_release(host->mmc);
 
 	return err;
 }
@@ -147,15 +145,15 @@ static int cmdq_crypto_qti_keyslot_evict(struct keyslot_manager *ksm,
 		return -EINVAL;
 	}
 
-	mmc_host_clk_hold(mmc_host);
+	mmc_host_clk_hold(host->mmc);
 
 	err = crypto_qti_keyslot_evict(host->crypto_vops->priv, slot);
 	if (err) {
 		pr_err("%s: failed with error %d\n", __func__, err);
-		mmc_host_clk_release(mmc_host);
+		mmc_host_clk_release(host->mmc);
 		return err;
 	}
-	mmc_host_clk_release(mmc_host);
+	mmc_host_clk_release(host->mmc);
 
 	val = atomic_read(&keycache) & ~(1 << slot);
 	atomic_set(&keycache, val);
@@ -244,11 +242,6 @@ int cmdq_host_init_crypto_qti_spec(struct cmdq_host *host,
 	 * descriptor would be used to pass crypto specific informaton.
 	 */
 	host->caps |= CMDQ_TASK_DESC_SZ_128;
-	mmc_host = host->mmc;
-	if (!mmc_host) {
-		err = -ENODEV;
-		goto out;
-	}
 
 	return 0;
 out:
@@ -331,11 +324,6 @@ int cmdq_host_init_crypto_qti_spec(struct cmdq_host *host,
 	 * descriptor would be used to pass crypto specific informaton.
 	 */
 	host->caps |= CMDQ_TASK_DESC_SZ_128;
-	mmc_host = host->mmc;
-	if (!mmc_host) {
-		err = -ENODEV;
-		goto out;
-	}
 
 	return 0;
 
