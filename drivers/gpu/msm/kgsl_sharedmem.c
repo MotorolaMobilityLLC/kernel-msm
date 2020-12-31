@@ -417,6 +417,7 @@ int kgsl_allocate_user(struct kgsl_device *device,
 	int ret;
 
 	memdesc->flags = flags;
+	spin_lock_init(&memdesc->lock);
 
 	if (kgsl_mmu_get_mmutype(device) == KGSL_MMU_TYPE_NONE)
 		ret = kgsl_sharedmem_alloc_contig(device, memdesc, size);
