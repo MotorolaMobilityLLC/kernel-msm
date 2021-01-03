@@ -103,6 +103,11 @@ static const struct of_device_id msm_dsi_phy_of_match[] = {
 	{}
 };
 
+int dsi_phy_get_version(struct msm_dsi_phy *phy)
+{
+	return phy->ver_info->version;
+}
+
 static int dsi_phy_regmap_init(struct platform_device *pdev,
 			       struct msm_dsi_phy *phy)
 {
