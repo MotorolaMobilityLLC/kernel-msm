@@ -4883,6 +4883,20 @@ int smblib_set_prop_pd_in_hard_reset(struct smb_charger *chg,
 	return rc;
 }
 
+void smblib_set_prop_cp_enable(struct smb_charger *chg,
+				const union power_supply_propval *val)
+{
+	if (!chg->cp_active && val->intval) {
+		chg->pd_contract_uv = MICRO_9V;
+		chg->cp_active = true;
+	} else if (chg->cp_active && !val->intval) {
+		chg->pd_contract_uv = 0;
+		chg->cp_active = false;
+	}
+	smblib_dbg(chg, PR_MISC, "Set cp pd_contract_uv=%d, cp enalbe =%d\n",
+		chg->pd_contract_uv, chg->cp_active);
+}
+
 #define JEITA_SOFT			0
 #define JEITA_HARD			1
 static int smblib_update_jeita(struct smb_charger *chg, u32 *thresholds,
@@ -7608,7 +7622,7 @@ static void smblib_pd_contract_work(struct work_struct *work)
 			chg->pd = NULL;
 		}
 	}
-	if (!chg->pd || !chg->pd_active)
+	if (!chg->pd || !chg->pd_active || chg->pd_contract_uv > 0)
 		return;
 
 	if (!chg->pd_voltage_max_uv) {
