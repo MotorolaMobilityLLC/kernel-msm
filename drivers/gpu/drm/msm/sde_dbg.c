@@ -4166,7 +4166,7 @@ void sde_dbg_ctrl(const char *name, ...)
 	va_end(args);
 }
 
-
+#ifdef CONFIG_DEBUG_FS
 /*
  * sde_dbg_debugfs_open - debugfs open handler for evtlog dump
  * @inode: debugfs inode
@@ -5131,6 +5131,15 @@ int sde_dbg_debugfs_register(struct device *dev)
 
 	return 0;
 }
+
+#else
+
+int sde_dbg_debugfs_register(struct device *dev)
+{
+	return 0;
+}
+
+#endif
 
 static void _sde_dbg_debugfs_destroy(void)
 {
