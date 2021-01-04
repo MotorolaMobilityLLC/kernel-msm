@@ -227,7 +227,7 @@ struct smb5 {
 	struct smb_dt_props	dt;
 };
 
-static int __debug_mask = PR_MISC | PR_INTERRUPT;
+static int __debug_mask = 0xff;// PR_MISC | PR_INTERRUPT;
 
 static ssize_t pd_disabled_show(struct device *dev, struct device_attribute
 				*attr, char *buf)
@@ -1235,6 +1235,9 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		chg->apsd_ext_timeout = false;
 		smblib_rerun_apsd(chg);
 		break;
+	case POWER_SUPPLY_PROP_CP_ENABLE:
+		smblib_set_prop_cp_enable(chg, val);
+		break;
 	default:
 		pr_err("set prop %d is not supported\n", psp);
 		rc = -EINVAL;
@@ -2138,7 +2141,7 @@ static int smb5_batt_prop_is_writeable(struct power_supply *psy,
 }
 
 static const struct power_supply_desc batt_psy_desc = {
-	.name = "qcom_battery",
+	.name = "battery",
 	.type = POWER_SUPPLY_TYPE_MAIN,
 	.properties = smb5_batt_props,
 	.num_properties = ARRAY_SIZE(smb5_batt_props),
