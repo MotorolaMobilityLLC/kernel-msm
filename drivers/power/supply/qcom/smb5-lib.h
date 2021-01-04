@@ -644,8 +644,10 @@ struct smb_charger {
 #ifndef QCOM_BASE
 	u32			lpd_retry_count;
 #endif
+	bool			cp_active;
 };
-
+void smblib_set_prop_cp_enable(struct smb_charger *chg,
+				const union power_supply_propval *val);
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
 int smblib_masked_write(struct smb_charger *chg, u16 addr, u8 mask, u8 val);
 int smblib_write(struct smb_charger *chg, u16 addr, u8 val);
