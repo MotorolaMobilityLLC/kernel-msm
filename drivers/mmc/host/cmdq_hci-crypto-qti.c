@@ -108,12 +108,9 @@ static int cmdq_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 	crypto_alg_id = cmdq_crypto_cap_find(host, key->crypto_mode,
 					       key->data_unit_size);
 
-	pm_runtime_get_sync(&host->mmc->card->dev);
-
 	if (!cmdq_is_crypto_enabled(host) ||
 	    !cmdq_keyslot_valid(host, slot) ||
 	    !ice_cap_idx_valid(host, crypto_alg_id)) {
-		pm_runtime_put_sync(&host->mmc->card->dev);
 		return -EINVAL;
 	}
 
@@ -121,7 +118,6 @@ static int cmdq_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 
 	if (!(data_unit_mask &
 	      host->crypto_cap_array[crypto_alg_id].sdus_mask)) {
-		pm_runtime_put_sync(&host->mmc->card->dev);
 		return -EINVAL;
 	}
 
@@ -129,8 +125,6 @@ static int cmdq_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 					 slot, data_unit_mask, crypto_alg_id);
 	if (err)
 		pr_err("%s: failed with error %d\n", __func__, err);
-
-	pm_runtime_put_sync(&host->mmc->card->dev);
 
 	return err;
 }
@@ -225,10 +219,11 @@ int cmdq_host_init_crypto_qti_spec(struct cmdq_host *host,
 
 	crypto_modes_supported[blk_mode_num] |= CRYPTO_CDU_SIZE * 512;
 
-	host->ksm = keyslot_manager_create(cmdq_num_keyslots(host), ksm_ops,
-			BLK_CRYPTO_FEATURE_STANDARD_KEYS |
-			BLK_CRYPTO_FEATURE_WRAPPED_KEYS,
-			crypto_modes_supported, host);
+	host->ksm = keyslot_manager_create(host->mmc->parent,
+					   cmdq_num_keyslots(host), ksm_ops,
+					   BLK_CRYPTO_FEATURE_STANDARD_KEYS |
+					   BLK_CRYPTO_FEATURE_WRAPPED_KEYS,
+					   crypto_modes_supported, host);
 
 	if (!host->ksm) {
 		err = -ENOMEM;
@@ -306,7 +301,8 @@ int cmdq_host_init_crypto_qti_spec(struct cmdq_host *host,
 				host->crypto_cap_array[cap_idx].sdus_mask * 512;
 	}
 
-	host->ksm = keyslot_manager_create(cmdq_num_keyslots(host), ksm_ops,
+	host->ksm = keyslot_manager_create(host->mmc->parent,
+					   cmdq_num_keyslots(host), ksm_ops,
 					   BLK_CRYPTO_FEATURE_STANDARD_KEYS |
 					   BLK_CRYPTO_FEATURE_WRAPPED_KEYS,
 					   crypto_modes_supported, host);
