@@ -7630,8 +7630,11 @@ static void smblib_pd_contract_work(struct work_struct *work)
 
 	chg->pd_contract_uv = usbpd_select_pdo_match(chg->pd);
 
-	if (chg->pd_contract_uv == -ENOTSUPP)
+	if (chg->pd_contract_uv == -ENOTSUPP){
+		schedule_delayed_work(&chg->pd_contract_work,
+                                      msecs_to_jiffies(2000));
 		return;
+	}
 
 	if (chg->pd_contract_uv <= 0) {
 		schedule_delayed_work(&chg->pd_contract_work,
