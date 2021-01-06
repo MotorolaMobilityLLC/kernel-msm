@@ -67,6 +67,14 @@ config BERLNA_DTB
 	Only include BERLNA specific DTBs to limit the number that
 	get built during kernel compilation.
 
+config KIEVV_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "KIEVV DTBs"
+        help
+        Only include KIEVV specific DTBs to limit the number that
+        get built during kernel compilation
+
 config KYOTO_DTB
 	depends on ARCH_QCOM
 	default n
