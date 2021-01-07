@@ -425,7 +425,7 @@ void kgsl_mmu_put_gpuaddr(struct kgsl_memdesc *memdesc)
 		return;
 
 	if (!kgsl_memdesc_is_global(memdesc) &&
-			!kgsl_memdesc_is_reclaimed(memdesc))
+			(KGSL_MEMDESC_MAPPED & memdesc->priv))
 		unmap_fail = kgsl_mmu_unmap(pagetable, memdesc);
 
 	/*
