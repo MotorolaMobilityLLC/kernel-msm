@@ -927,7 +927,9 @@ static int pd_eval_src_caps(struct usbpd *pd)
 		return -EINVAL;
 	}
 
+	usbpd_info(&pd->dev,"%s peer_usb_comm=%d\n", __func__, pd->peer_usb_comm);
 	pd->peer_usb_comm = PD_SRC_PDO_FIXED_USB_COMM(first_pdo);
+
 	pd->peer_pr_swap = PD_SRC_PDO_FIXED_PR_SWAP(first_pdo);
 	pd->peer_dr_swap = PD_SRC_PDO_FIXED_DR_SWAP(first_pdo);
 
@@ -2374,6 +2376,7 @@ static void enter_state_src_negotiate_capability(struct usbpd *pd)
 	int ret;
 
 	log_decoded_request(pd, pd->rdo);
+	usbpd_info(&pd->dev,"%s peer_usb_comm=%d\n", __func__, PD_RDO_USB_COMM(pd->rdo));
 	pd->peer_usb_comm = PD_RDO_USB_COMM(pd->rdo);
 
 	if (PD_RDO_OBJ_POS(pd->rdo) != 1 ||
@@ -2428,12 +2431,11 @@ static void enter_state_src_negotiate_capability(struct usbpd *pd)
 static void enter_state_src_ready(struct usbpd *pd)
 {
 	/*
-	 * USB Host stack was started at PE_SRC_STARTUP but if peer
-	 * doesn't support USB communication, we can turn it off
+	 * USB Host stack was started at PE_SRC_STARTUP. Ignore peer
+	 * device support of USB communication bit to enable some extended
+	 * displays and Hubs. Host will anyway enter low power
+	 * mode if no devices connected.
 	 */
-	if (pd->current_dr == DR_DFP && !pd->peer_usb_comm &&
-			!pd->in_explicit_contract)
-		stop_usb_host(pd);
 
 	pd->in_explicit_contract = true;
 
