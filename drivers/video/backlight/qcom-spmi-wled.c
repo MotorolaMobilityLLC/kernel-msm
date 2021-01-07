@@ -541,25 +541,15 @@ static int wled_update_status(struct backlight_device *bl)
 		brightness = 0;
 
 	mutex_lock(&wled->lock);
-	if (brightness) {
-		if (wled->low_bl_force_cabc_disable && wled->brightness) {
-			if (brightness <= wled->low_bl_cfg.low_bl_threshold) {
-				brightness = brightness * wled->low_bl_cfg.low_bl_remap_percent/100;
-				if (!wled->cabc_disabled) {
-					wled->cabc_config(wled, false);
-					wled->cabc_disabled = true;
-					pr_info("under low brightness(%d), will disable cabc\n", brightness);
-				}
-
-			}
-			else if ((wled->brightness < wled->low_bl_cfg.low_bl_threshold) && (wled->cabc_disabled)) {
-				wled->cabc_disabled = false;
-				wled->cabc_config(wled, true);
-				pr_info("exit low brightness(%d), will enable cabc\n", brightness);
-			}
+	if (wled->low_bl_force_cabc_disable && brightness <= wled->low_bl_cfg.low_bl_threshold) {
+		brightness = brightness * wled->low_bl_cfg.low_bl_remap_percent/100;
+		if (!wled->cabc_disabled) {
+			wled->cabc_config(wled, false);
+			wled->cabc_disabled = true;
+			pr_info("low brightness(%d), disable cabc\n", brightness);
 		}
 
-		/* This is workaround for pmic 6150/7150/8250 wled boost current issue, QC HW team confirm that
+		/* This is workaround for pmic 6150/7150 wled boost current issue, QC HW team confirm that
 		   PMIC WLED low brightness(<255) is pfm mode, high brightness(>255) is pwm mode, when
 		   brightness from pfm mode to pwm mode transfer fastly, this mode switch will caused
 		   a higher boost current, in Liberty, it may reach 1.7A, this is a risk for hardware,
@@ -581,7 +571,6 @@ static int wled_update_status(struct backlight_device *bl)
 						pr_err("wled enable failed rc:%d\n", rc);
 						goto unlock_mutex;
 					}
-
 					wled->prev_state = !!brightness;
 				}
 
@@ -611,15 +600,12 @@ static int wled_update_status(struct backlight_device *bl)
                         wled->cabc_config(wled, true);
                         pr_info("enable wled cabc\n");
                 }
-		if (wled->cabc_disabled && wled->low_bl_force_cabc_disable && !wled->brightness) {
-			if (brightness <= wled->low_bl_cfg.low_bl_threshold)
-				pr_info("keep cabc disabled\n");
-			else {
-				msleep(wled->low_bl_cfg.low_bl_delay_ms);
-				wled->cabc_disabled = false;
-				wled->cabc_config(wled, true);
-				pr_info("enable wled cabc\n");
-			}
+		if (wled->low_bl_force_cabc_disable && brightness > wled->low_bl_cfg.low_bl_threshold
+			&& wled->brightness <= wled->low_bl_cfg.low_bl_threshold && wled->cabc_disabled) {
+			msleep(wled->low_bl_cfg.low_bl_delay_ms);
+			wled->cabc_disabled = false;
+			wled->cabc_config(wled, true);
+			pr_info("enable wled cabc\n");
 		}
 		if (rc < 0) {
 			pr_err("wled failed to set brightness rc:%d\n", rc);
@@ -652,8 +638,7 @@ static int wled_update_status(struct backlight_device *bl)
 			}
 		}
 	} else {
-		if ((!wled->cabc_disabled && wled->sleep_cabc_disable) ||
-		    (!wled->cabc_disabled && wled->low_bl_force_cabc_disable)) {
+		if (!wled->cabc_disabled && wled->sleep_cabc_disable) {
 			wled->cabc_config(wled, false);
 			wled->cabc_disabled = true;
 			pr_info("disable wled cabc\n");
