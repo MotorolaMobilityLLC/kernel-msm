@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1291,10 +1291,6 @@ void msm_vfe47_cfg_fetch_engine(struct vfe_device *vfe_dev,
 		case V4L2_PIX_FMT_P16GBRG10:
 		case V4L2_PIX_FMT_P16GRBG10:
 		case V4L2_PIX_FMT_P16RGGB10:
-		case V4L2_PIX_FMT_P16BGGR12:
-		case V4L2_PIX_FMT_P16GBRG12:
-		case V4L2_PIX_FMT_P16GRBG12:
-		case V4L2_PIX_FMT_P16RGGB12:
 			main_unpack_pattern = 0xB210;
 			break;
 		default:
