@@ -1267,10 +1267,20 @@ SYSCALL_DEFINE5(process_madvise, int, pidfd,
 		goto release_task;
 	}
 
-	mm = mm_access(task, PTRACE_MODE_ATTACH_FSCREDS);
+	/* Require PTRACE_MODE_READ to avoid leaking ASLR metadata. */
+	mm = mm_access(task, PTRACE_MODE_READ_FSCREDS);
 	if (IS_ERR_OR_NULL(mm)) {
 		ret = IS_ERR(mm) ? PTR_ERR(mm) : -ESRCH;
 		goto release_task;
+	}
+
+	/*
+	 * Require CAP_SYS_NICE for influencing process performance. Note that
+	 * only non-destructive hints are currently supported.
+	 */
+	if (!capable(CAP_SYS_NICE)) {
+		ret = -EPERM;
+		goto release_mm;
 	}
 
 	ret = import_iovec(READ, vec, vlen, ARRAY_SIZE(iovstack), &iov, &iter);
@@ -1282,6 +1292,8 @@ SYSCALL_DEFINE5(process_madvise, int, pidfd,
 			ret = total_len - iov_iter_count(&iter);
 		kfree(iov);
 	}
+
+release_mm:
 	mmput(mm);
 release_task:
 	put_task_struct(task);
