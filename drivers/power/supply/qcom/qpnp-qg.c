@@ -2718,18 +2718,22 @@ static int qg_psy_get_property(struct power_supply *psy,
 			       union power_supply_propval *pval)
 {
 	struct qpnp_qg *chip = power_supply_get_drvdata(psy);
+	int rc = 0;
 
 	if (psp == POWER_SUPPLY_PROP_TYPE)
 		pval->intval = POWER_SUPPLY_TYPE_MAINS;
 	else if (psp == POWER_SUPPLY_PROP_CHARGE_NOW)
 		pval->intval = chip->cl->init_cap_uah;
+	else if (psp == POWER_SUPPLY_PROP_VOLTAGE_OCV)
+		rc = qg_sdam_read(SDAM_OCV_UV, &pval->intval);
 
-	return 0;
+	return rc;
 }
 
 static enum power_supply_property qg_psy_props[] = {
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_CHARGE_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_OCV,
 };
 
 static const struct power_supply_desc qg_psy_desc = {
