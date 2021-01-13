@@ -120,7 +120,7 @@ int usbpd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua);
 /*
 * Transmit all effective pdo info.
 */
-int usbpd_get_pdo_info(struct usbpd *pd, struct usbpd_pdo_info *pdo_info);
+int usbpd_get_pdo_info(struct usbpd *pd, struct usbpd_pdo_info *pdo_info, int length);
 
 /*
  * Get current status of CC pin orientation.
