@@ -2432,6 +2432,32 @@ int smblib_get_prop_batt_iterm(struct smb_charger *chg,
 	return rc;
 }
 
+static bool is_mmi_charge_full(struct smb_charger *chg)
+{	int rc = 0;
+	union power_supply_propval prop = {0, };
+	static struct power_supply *mmi_batt_psy = NULL;
+
+	if (!mmi_batt_psy) {
+		mmi_batt_psy = power_supply_get_by_name("battery");
+		if (!mmi_batt_psy) {
+			smblib_err(chg, "Couldn't get mmi batt prop\n");
+			return false;
+		}
+	}
+
+	rc = power_supply_get_property(mmi_batt_psy,
+				POWER_SUPPLY_PROP_STATUS, &prop);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get mmi batt status, rc=%d\n", rc);
+		return false;
+	}
+
+	if (POWER_SUPPLY_STATUS_FULL == prop.intval)
+		return true;
+	else
+		return false;
+}
+
 int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 					int *val)
 {
@@ -2447,6 +2473,9 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 	*val = (stat == TERMINATE_CHARGE);
+
+	if (is_mmi_charge_full(chg))
+		*val = true;
 	return 0;
 }
 
@@ -5269,7 +5298,7 @@ static void smblib_eval_chg_termination(struct smb_charger *chg, u8 batt_status)
 	 * battery. Trigger the charge termination WA once charging is completed
 	 * to prevent overcharing.
 	 */
-	if ((batt_status == TERMINATE_CHARGE) && (pval.intval == 100) &&
+	if (((batt_status == TERMINATE_CHARGE) || is_mmi_charge_full(chg)) && (pval.intval == 100) &&
 		(ktime_to_ms(alarm_expires_remaining(/* alarm not pending */
 				&chg->chg_termination_alarm)) <= 0)) {
 		chg->cc_soc_ref = 0;
