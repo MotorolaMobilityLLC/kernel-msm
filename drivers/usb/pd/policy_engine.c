@@ -196,19 +196,19 @@ static void *usbpd_ipc_log;
 #define usbpd_dbg(dev, fmt, ...) do { \
 	ipc_log_string(usbpd_ipc_log, "%s: %s: " fmt, dev_name(dev), __func__, \
 			##__VA_ARGS__); \
-	dev_dbg(dev, fmt, ##__VA_ARGS__); \
+	dev_err(dev, fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define usbpd_info(dev, fmt, ...) do { \
 	ipc_log_string(usbpd_ipc_log, "%s: %s: " fmt, dev_name(dev), __func__, \
 			##__VA_ARGS__); \
-	dev_info(dev, fmt, ##__VA_ARGS__); \
+	dev_err(dev, fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define usbpd_warn(dev, fmt, ...) do { \
 	ipc_log_string(usbpd_ipc_log, "%s: %s: " fmt, dev_name(dev), __func__, \
 			##__VA_ARGS__); \
-	dev_warn(dev, fmt, ##__VA_ARGS__); \
+	dev_err(dev, fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define usbpd_err(dev, fmt, ...) do { \
@@ -950,6 +950,7 @@ static int pd_eval_src_caps(struct usbpd *pd)
 	val.intval = pps_found ?
 			POWER_SUPPLY_PD_PPS_ACTIVE :
 			POWER_SUPPLY_PD_ACTIVE;
+	printk(KERN_ERR " %s,pd_active:%d\n",__func__,val.intval);
 	power_supply_set_property(pd->usb_psy,
 			POWER_SUPPLY_PROP_PD_ACTIVE, &val);
 
@@ -2331,6 +2332,7 @@ static void handle_state_src_send_capabilities(struct usbpd *pd,
 			usbpd_set_state(pd, PE_SRC_DISABLED);
 
 			val.intval = POWER_SUPPLY_PD_INACTIVE;
+			 printk(KERN_ERR " %s,pd_active:%d\n",__func__,val.intval);
 			power_supply_set_property(pd->usb_psy,
 					POWER_SUPPLY_PROP_PD_ACTIVE,
 					&val);
@@ -2351,6 +2353,7 @@ static void handle_state_src_send_capabilities(struct usbpd *pd,
 	kick_sm(pd, SENDER_RESPONSE_TIME);
 
 	val.intval = POWER_SUPPLY_PD_ACTIVE;
+	 printk(KERN_ERR " %s,1 pd_active:%d\n",__func__,val.intval);
 	power_supply_set_property(pd->usb_psy,
 			POWER_SUPPLY_PROP_PD_ACTIVE, &val);
 }
@@ -2772,6 +2775,7 @@ static void handle_state_snk_wait_for_capabilities(struct usbpd *pd,
 				&val);
 
 		val.intval = POWER_SUPPLY_PD_INACTIVE;
+		 printk(KERN_ERR " %s,pd_active:%d\n",__func__,val.intval);
 		power_supply_set_property(pd->usb_psy,
 				POWER_SUPPLY_PROP_PD_ACTIVE, &val);
 	}
@@ -3533,7 +3537,7 @@ static void handle_disconnect(struct usbpd *pd)
 	power_supply_set_property(pd->usb_psy,
 			POWER_SUPPLY_PROP_PD_USB_SUSPEND_SUPPORTED,
 			&val);
-
+	 printk(KERN_ERR " %s,pd_active:%d\n",__func__,val.intval);
 	power_supply_set_property(pd->usb_psy,
 			POWER_SUPPLY_PROP_PD_ACTIVE, &val);
 
