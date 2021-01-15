@@ -29,6 +29,7 @@
 #define REDRIVER_REG_MAX		0x1f
 
 enum plug_orientation {
+	ORIENTATION_NONE,
 	ORIENTATION_CC1,
 	ORIENTATION_CC2,
 };
@@ -209,7 +210,9 @@ static int ssusb_redriver_read_orientation(struct ssusb_redriver *redriver)
 		return ret;
 	}
 
-	if (ret == 0)
+	if (redriver->op_mode == OP_MODE_NONE)
+		redriver->typec_orientation = ORIENTATION_NONE;
+	else if (ret == 0)
 		redriver->typec_orientation = ORIENTATION_CC1;
 	else
 		redriver->typec_orientation = ORIENTATION_CC2;
@@ -392,6 +395,23 @@ static const struct regmap_config redriver_regmap = {
 	.val_bits = 8,
 };
 
+static ssize_t typec_cc_orientation_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ssusb_redriver *redriver = dev_get_drvdata(dev);
+
+	ssusb_redriver_read_orientation(redriver);
+
+	if (redriver->typec_orientation == ORIENTATION_CC1)
+		return scnprintf(buf, PAGE_SIZE, "CC1\n");
+	if (redriver->typec_orientation == ORIENTATION_CC2)
+		return scnprintf(buf, PAGE_SIZE, "CC2\n");
+
+	return scnprintf(buf, PAGE_SIZE, "NONE\n");
+}
+
+static DEVICE_ATTR_RO(typec_cc_orientation);
+
 static int redriver_i2c_probe(struct i2c_client *client,
 			       const struct i2c_device_id *dev_id)
 {
@@ -449,6 +469,8 @@ static int redriver_i2c_probe(struct i2c_client *client,
 
 	ssusb_redriver_debugfs_entries(redriver);
 
+	device_create_file(redriver->dev, &dev_attr_typec_cc_orientation);
+
 	return 0;
 }
 
@@ -457,6 +479,7 @@ static int redriver_i2c_remove(struct i2c_client *client)
 	struct ssusb_redriver *redriver = i2c_get_clientdata(client);
 
 	debugfs_remove_recursive(redriver->debug_root);
+	device_remove_file(redriver->dev, &dev_attr_typec_cc_orientation);
 	redriver->debug_root = NULL;
 	unregister_ucsi_glink_notifier(&redriver->ucsi_nb);
 
