@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, 2021 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -76,12 +76,14 @@ struct cam_jpeg_hw_cdm_info_t {
  * @hw_cfg_args: Hw config args
  * @dev_type: Dev type for cfg request
  * @req_id: Request Id
+ * @num_hw_entry_processed: Cdm payloads already processed
  */
 struct cam_jpeg_hw_cfg_req {
 	struct list_head list;
 	struct cam_hw_config_args hw_cfg_args;
 	uint32_t dev_type;
 	uintptr_t req_id;
+	uint32_t num_hw_entry_processed;
 };
 
 /**

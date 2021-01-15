@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -351,6 +351,7 @@ int cam_jpeg_enc_start_hw(void *data,
 	}
 	spin_unlock(&jpeg_enc_dev->hw_lock);
 
+	CAM_DBG(CAM_JPEG, "Starting JPEG ENC");
 	cam_io_w_mb(hw_info->reg_val.hw_cmd_start,
 		mem_base + hw_info->reg_offset.hw_cmd);
 
