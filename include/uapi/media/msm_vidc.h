@@ -207,6 +207,14 @@ struct msm_vidc_roi_qp_payload {
 	unsigned int data[1];
 };
 
+struct msm_vidc_ipb_roi_qp_payload {
+	signed int nUpperQpOffset[3];
+	signed int nLowerQpOffset[3];
+	unsigned int b_roi_info;
+	int mbi_info_size;
+	unsigned int data[1];
+};
+
 struct msm_vidc_mastering_display_colour_sei_payload {
 	unsigned int nDisplayPrimariesX[3];
 	unsigned int nDisplayPrimariesY[3];
@@ -255,6 +263,7 @@ enum msm_vidc_extradata_type {
 	MSM_VIDC_EXTRADATA_FRAME_BITS_INFO = 0x00000010,
 	MSM_VIDC_EXTRADATA_VQZIP_SEI = 0x00000011,
 	MSM_VIDC_EXTRADATA_ROI_QP = 0x00000013,
+	MSM_VIDC_EXTRADATA_IPB_ROI_QP = 0x0000001A,
 #define MSM_VIDC_EXTRADATA_VPX_COLORSPACE_INFO \
 	MSM_VIDC_EXTRADATA_VPX_COLORSPACE_INFO
 	MSM_VIDC_EXTRADATA_VPX_COLORSPACE_INFO = 0x00000014,
