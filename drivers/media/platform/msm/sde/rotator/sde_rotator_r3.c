@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3282,6 +3282,7 @@ static int sde_hw_rotator_wait4done(struct sde_rot_hw_resource *hw,
 	struct sde_hw_rotator *rot;
 	struct sde_hw_rotator_resource_info *resinfo;
 	struct sde_hw_rotator_context *ctx;
+	struct sde_rot_mgr *mgr;
 	int ret;
 
 	if (!hw || !entry) {
@@ -3291,6 +3292,7 @@ static int sde_hw_rotator_wait4done(struct sde_rot_hw_resource *hw,
 
 	resinfo = container_of(hw, struct sde_hw_rotator_resource_info, hw);
 	rot = resinfo->rot;
+	mgr = entry->private->mgr;
 
 	/* Lookup rotator context from session-id */
 	ctx = sde_hw_rotator_get_ctx(rot, entry->item.session_id,
@@ -3309,7 +3311,9 @@ static int sde_hw_rotator_wait4done(struct sde_rot_hw_resource *hw,
 	}
 
 	/* Current rotator context job is finished, time to free up*/
+	sde_rot_mgr_lock(mgr);
 	sde_hw_rotator_free_rotctx(rot, ctx);
+	sde_rot_mgr_unlock(mgr);
 
 	return ret;
 }
