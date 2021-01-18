@@ -461,6 +461,9 @@ int mhi_queue_skb(struct mhi_device *mhi_dev,
 	/* toggle wake to exit out of M2 */
 	mhi_cntrl->wake_toggle(mhi_cntrl);
 
+	if(mhi_cntrl->pm_state != MHI_PM_M0)
+		mhi_trigger_resume(mhi_cntrl);
+
 	/* generate the tre */
 	buf_info = buf_ring->wp;
 	buf_info->v_addr = skb->data;
