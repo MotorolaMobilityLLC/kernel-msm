@@ -4072,7 +4072,7 @@ static void _dsi_display_calc_pipe_delay(struct dsi_display *display,
 	else
 		delay->pll_delay = 25;
 
-	delay->pll_delay = ((delay->pll_delay * esc_clk_rate_hz) / 1000000) * 2;
+	delay->pll_delay = (delay->pll_delay * esc_clk_rate_hz) / 1000000;
 }
 
 static int _dsi_display_dyn_update_clks(struct dsi_display *display,
