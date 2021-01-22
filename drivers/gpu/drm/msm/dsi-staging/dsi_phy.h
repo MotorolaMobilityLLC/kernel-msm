@@ -130,6 +130,14 @@ struct msm_dsi_phy *dsi_phy_get(struct device_node *of_node);
 void dsi_phy_put(struct msm_dsi_phy *dsi_phy);
 
 /**
+ * dsi_phy_get_version() - returns dsi phy version
+ * @dsi_phy:         DSI PHY handle.
+ *
+ * Return: phy version
+ */
+int dsi_phy_get_version(struct msm_dsi_phy *phy);
+
+/**
  * dsi_phy_drv_init() - initialize dsi phy driver
  * @dsi_phy:         DSI PHY handle.
  *

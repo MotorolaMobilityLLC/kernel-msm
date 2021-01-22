@@ -175,8 +175,6 @@ extern struct sde_dbg_evtlog *sde_dbg_base_evtlog;
 #define SDE_DBG_CTRL(...) sde_dbg_ctrl(__func__, ##__VA_ARGS__, \
 		SDE_DBG_DUMP_DATA_LIMITER)
 
-#if defined(CONFIG_DEBUG_FS)
-
 /**
  * sde_evtlog_init - allocate a new event log object
  * Returns:	evtlog or -ERROR
@@ -372,112 +370,5 @@ void sde_rsc_debug_dump(u32 mux_sel);
  * @size:	size of the debug bus control array
  */
 void dsi_ctrl_debug_dump(u32 *entries, u32 size);
-
-#else
-static inline
-int sde_dbg_reg_register_cb(const char *name, void (*cb)(void *), void *ptr)
-{
-	return 0;
-}
-static inline
-void sde_dbg_reg_unregister_cb(const char *name, void (*cb)(void *), void *ptr)
-{
-}
-static inline struct sde_dbg_evtlog *sde_evtlog_init(void)
-{
-	return NULL;
-}
-
-static inline void sde_evtlog_destroy(struct sde_dbg_evtlog *evtlog)
-{
-}
-
-static inline void sde_evtlog_log(struct sde_dbg_evtlog *evtlog,
-		const char *name, int line, int flag, ...)
-{
-}
-
-static inline void sde_evtlog_dump_all(struct sde_dbg_evtlog *evtlog)
-{
-}
-
-static inline bool sde_evtlog_is_enabled(struct sde_dbg_evtlog *evtlog,
-		u32 flag)
-{
-	return false;
-}
-
-static inline ssize_t sde_evtlog_dump_to_buffer(struct sde_dbg_evtlog *evtlog,
-		char *evtlog_buf, ssize_t evtlog_buf_size,
-		bool update_last_entry)
-{
-	return 0;
-}
-
-static inline void sde_dbg_init_dbg_buses(u32 hwversion)
-{
-}
-
-static inline int sde_dbg_init(struct device *dev,
-		struct sde_dbg_power_ctrl *power_ctrl)
-{
-	return 0;
-}
-
-static inline int sde_dbg_debugfs_register(struct device *dev)
-{
-	return 0;
-}
-
-static inline void sde_dbg_destroy(void)
-{
-}
-
-static inline void sde_dbg_dump(enum sde_dbg_dump_context mode,
-	const char *name, ...)
-{
-}
-
-static inline void sde_dbg_ctrl(const char *name, ...)
-{
-}
-
-static inline int sde_dbg_reg_register_base(const char *name,
-		void __iomem *base, size_t max_offset)
-{
-	return 0;
-}
-
-static inline void sde_dbg_reg_register_dump_range(const char *base_name,
-		const char *range_name, u32 offset_start, u32 offset_end,
-		uint32_t xin_id)
-{
-}
-
-static inline void sde_dbg_set_sde_top_offset(u32 blk_off)
-{
-}
-
-static inline void sde_evtlog_set_filter(
-		struct sde_dbg_evtlog *evtlog, char *filter)
-{
-}
-
-static inline int sde_evtlog_get_filter(struct sde_dbg_evtlog *evtlog,
-		int index, char *buf, size_t bufsz)
-{
-	return -EINVAL;
-}
-
-static inline void sde_rsc_debug_dump(u32 mux_sel)
-{
-}
-
-static inline void dsi_ctrl_debug_dump(u32 *entries, u32 size)
-{
-}
-
-#endif /* defined(CONFIG_DEBUG_FS) */
-
 
 #endif /* SDE_DBG_H_ */

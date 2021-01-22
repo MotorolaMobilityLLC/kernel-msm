@@ -50,7 +50,9 @@ struct keyslot_mgmt_ll_ops {
 				 u8 *secret, unsigned int secret_size);
 };
 
-struct keyslot_manager *keyslot_manager_create(unsigned int num_slots,
+struct keyslot_manager *keyslot_manager_create(
+	struct device *dev,
+	unsigned int num_slots,
 	const struct keyslot_mgmt_ll_ops *ksm_ops,
 	unsigned int features,
 	const unsigned int crypto_mode_supported[BLK_ENCRYPTION_MODE_MAX],
@@ -82,6 +84,7 @@ void *keyslot_manager_private(struct keyslot_manager *ksm);
 void keyslot_manager_destroy(struct keyslot_manager *ksm);
 
 struct keyslot_manager *keyslot_manager_create_passthrough(
+	struct device *dev,
 	const struct keyslot_mgmt_ll_ops *ksm_ops,
 	unsigned int features,
 	const unsigned int crypto_mode_supported[BLK_ENCRYPTION_MODE_MAX],
