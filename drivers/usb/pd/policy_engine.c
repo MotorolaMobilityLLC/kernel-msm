@@ -236,7 +236,8 @@ static void *usbpd_ipc_log;
 #define SINK_TX_TIME		16
 
 /* tPSHardReset + tSafe0V */
-#define SNK_HARD_RESET_VBUS_OFF_TIME	(35 + 650)
+/* Increase the tSfe0V up to 850 to handle some slow hdmi cable*/
+#define SNK_HARD_RESET_VBUS_OFF_TIME	(35 + 850)
 
 /* tSrcRecover + tSrcTurnOn */
 #define SNK_HARD_RESET_VBUS_ON_TIME	(1000 + 275)
