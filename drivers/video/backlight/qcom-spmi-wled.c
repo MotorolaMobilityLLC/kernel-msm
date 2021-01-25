@@ -224,6 +224,7 @@ struct wled_flash_config {
 struct low_bl_config {
 	int low_bl_threshold;
 	int low_bl_remap_percent;
+	int low_bl_delay_ms;
 };
 
 struct bl_step_seq {
@@ -541,8 +542,8 @@ static int wled_update_status(struct backlight_device *bl)
 
 	mutex_lock(&wled->lock);
 	if (brightness) {
-		if (wled->low_bl_force_cabc_disable) {
-			if (brightness < wled->low_bl_cfg.low_bl_threshold) {
+		if (wled->low_bl_force_cabc_disable && wled->brightness) {
+			if (brightness <= wled->low_bl_cfg.low_bl_threshold) {
 				brightness = brightness * wled->low_bl_cfg.low_bl_remap_percent/100;
 				if (!wled->cabc_disabled) {
 					wled->cabc_config(wled, false);
@@ -551,7 +552,7 @@ static int wled_update_status(struct backlight_device *bl)
 				}
 
 			}
-			else if ((wled->brightness < wled->low_bl_cfg.low_bl_threshold) && (wled->cabc_disabled)){
+			else if ((wled->brightness < wled->low_bl_cfg.low_bl_threshold) && (wled->cabc_disabled)) {
 				wled->cabc_disabled = false;
 				wled->cabc_config(wled, true);
 				pr_info("exit low brightness(%d), will enable cabc\n", brightness);
@@ -603,11 +604,15 @@ static int wled_update_status(struct backlight_device *bl)
 		}
 
 		rc = wled_set_brightness(wled, brightness);
-		if (wled->cabc_disabled && wled->sleep_cabc_disable) {
-			msleep(50);
-			wled->cabc_disabled = false;
-			wled->cabc_config(wled, true);
-			pr_info("enable wled cabc\n");
+		if (wled->cabc_disabled && wled->low_bl_force_cabc_disable && !wled->brightness) {
+			if (brightness <= wled->low_bl_cfg.low_bl_threshold)
+				pr_info("keep cabc disabled\n");
+			else {
+				msleep(wled->low_bl_cfg.low_bl_delay_ms);
+				wled->cabc_disabled = false;
+				wled->cabc_config(wled, true);
+				pr_info("enable wled cabc\n");
+			}
 		}
 		if (rc < 0) {
 			pr_err("wled failed to set brightness rc:%d\n", rc);
@@ -640,7 +645,7 @@ static int wled_update_status(struct backlight_device *bl)
 			}
 		}
 	} else {
-		if (!wled->cabc_disabled && wled->sleep_cabc_disable) {
+		if (!wled->cabc_disabled && wled->low_bl_force_cabc_disable) {
 			wled->cabc_config(wled, false);
 			wled->cabc_disabled = true;
 			pr_info("disable wled cabc\n");
@@ -1207,10 +1212,13 @@ static int parse_low_bl_config(struct wled *wled)
 		of_property_read_u32(dev->of_node, "mmi,low-bl-remap-percent", &val);
 		wled->low_bl_cfg.low_bl_remap_percent = val;
 
-		pr_info(" low-bl-force-cabc-disbale enabled, low-bl-threshold %d low-bl-remap_percent %d\n",
-				wled->low_bl_cfg.low_bl_threshold, wled->low_bl_cfg.low_bl_remap_percent);
-		wled->cabc_disabled = false;
+		of_property_read_u32(dev->of_node, "mmi,low-bl-delay-ms", &val);
+		wled->low_bl_cfg.low_bl_delay_ms = val;
 
+		pr_info(" low-bl-force-cabc-disbale enabled, low-bl-threshold %d low-bl-remap_percent %d low_bl_delay_ms %d\n",
+				wled->low_bl_cfg.low_bl_threshold, wled->low_bl_cfg.low_bl_remap_percent, wled->low_bl_cfg.low_bl_delay_ms);
+
+		wled->cabc_disabled = false;
 	}
 	return  0;
 }
