@@ -465,15 +465,6 @@ union power_supply_propval {
 	int64_t int64val;
 };
 
-enum {
- 	POWER_SUPPLY_CHARGE_RATE_NONE = 0,
- 	POWER_SUPPLY_CHARGE_RATE_NORMAL,
- 	POWER_SUPPLY_CHARGE_RATE_WEAK,
- 	POWER_SUPPLY_CHARGE_RATE_TURBO,
- 	POWER_SUPPLY_CHARGE_RATE_TURBO_30W,
- 	POWER_SUPPLY_CHARGE_RATE_HYPER,
-};
-
 struct device_node;
 struct power_supply;
 
