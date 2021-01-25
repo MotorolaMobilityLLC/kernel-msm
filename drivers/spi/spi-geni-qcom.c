@@ -1443,7 +1443,7 @@ static void geni_spi_handle_rx(struct spi_geni_master *mas)
 	int rx_wc = 0;
 	u8 *rx_buf = NULL;
 
-	if (!mas->cur_xfer)
+	if (!mas->cur_xfer && !(mas->cur_xfer->rx_buf))
 		return;
 
 	rx_buf = mas->cur_xfer->rx_buf;
