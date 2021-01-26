@@ -937,8 +937,6 @@ static void drm_dp_destroy_port(struct kref *kref)
 	struct drm_dp_mst_topology_mgr *mgr = port->mgr;
 
 	if (!port->input) {
-		port->vcpi.num_slots = 0;
-
 		kfree(port->cached_edid);
 
 		/*
@@ -3166,12 +3164,6 @@ static void drm_dp_destroy_connector_work(struct work_struct *work)
 
 		drm_dp_port_teardown_pdt(port, port->pdt);
 		port->pdt = DP_PEER_DEVICE_NONE;
-
-		if (!port->input && port->vcpi.vcpi > 0) {
-			drm_dp_mst_reset_vcpi_slots(mgr, port);
-			drm_dp_update_payload_part1(mgr);
-			drm_dp_mst_put_payload_id(mgr, port->vcpi.vcpi);
-		}
 
 		kref_put(&port->kref, drm_dp_free_mst_port);
 		send_hotplug = true;
