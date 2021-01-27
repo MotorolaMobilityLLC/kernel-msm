@@ -318,6 +318,7 @@ static int dm_blk_open(struct block_device *bdev, fmode_t mode)
 
 	dm_get(md);
 	atomic_inc(&md->open_count);
+	pr_info("dm_blk_open [%d,%s],[%d,%s]\n",md->open_count, md->disk->disk_name, current->pid, current->comm);
 out:
 	spin_unlock(&_minor_lock);
 
@@ -339,6 +340,7 @@ static void dm_blk_close(struct gendisk *disk, fmode_t mode)
 		queue_work(deferred_remove_workqueue, &deferred_remove_work);
 
 	dm_put(md);
+	pr_info("dm_blk_close [%d,%s],[%d,%s]\n",md->open_count, md->disk->disk_name, current->pid, current->comm);
 out:
 	spin_unlock(&_minor_lock);
 }
@@ -361,6 +363,7 @@ int dm_lock_for_deletion(struct mapped_device *md, bool mark_deferred, bool only
 		r = -EBUSY;
 		if (mark_deferred)
 			set_bit(DMF_DEFERRED_REMOVE, &md->flags);
+		pr_info("dm_lock_for_deletion [%d,%s],[%d,%s]\n",md->open_count, md->disk->disk_name, current->pid, current->comm);
 	} else if (only_deferred && !test_bit(DMF_DEFERRED_REMOVE, &md->flags))
 		r = -EEXIST;
 	else

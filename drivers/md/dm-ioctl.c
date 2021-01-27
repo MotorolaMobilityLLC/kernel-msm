@@ -864,6 +864,7 @@ static int dev_remove(struct file *filp, struct dm_ioctl *param, size_t param_si
 			return 0;
 		}
 		DMDEBUG_LIMIT("unable to remove open device %s", hc->name);
+		pr_err("unable to remove open device %s,%d\n", hc->name, r);
 		up_write(&_hash_lock);
 		dm_put(md);
 		return r;
