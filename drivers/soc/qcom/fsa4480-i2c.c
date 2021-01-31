@@ -12,6 +12,7 @@
 
 #define FSA4480_I2C_NAME	"fsa4480-driver"
 
+#define FSA4480_DEVICE_ID       0x00
 #define FSA4480_SWITCH_SETTINGS 0x04
 #define FSA4480_SWITCH_CONTROL  0x05
 #define FSA4480_SWITCH_STATUS1  0x07
@@ -356,8 +357,8 @@ static int fsa4480_probe(struct i2c_client *i2c,
 {
 	struct fsa4480_priv *fsa_priv;
 	int rc = 0;
+	u32 device_id;
 
-	return 0;
 
 	fsa_priv = devm_kzalloc(&i2c->dev, sizeof(*fsa_priv),
 				GFP_KERNEL);
@@ -386,6 +387,13 @@ static int fsa4480_probe(struct i2c_client *i2c,
 		rc = PTR_ERR(fsa_priv->regmap);
 		goto err_supply;
 	}
+
+	rc = regmap_read(fsa_priv->regmap, FSA4480_DEVICE_ID, &device_id);
+	if (rc != 0) {
+		dev_err(fsa_priv->dev, "%s,device id read failed:%d", __func__, rc);
+		goto err_supply;
+	}
+	dev_err(fsa_priv->dev, "%s,device_id=0x%x\n", __func__, device_id);
 
 	fsa4480_update_reg_defaults(fsa_priv->regmap);
 
