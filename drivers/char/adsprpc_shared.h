@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -246,6 +246,7 @@ enum fastrpc_control_type {
 	FASTRPC_CONTROL_SMMU		=	2,
 	FASTRPC_CONTROL_KALLOC		=	3,
 	FASTRPC_CONTROL_WAKELOCK	=	4,
+	FASTRPC_CONTROL_PM			=	5,
 };
 
 struct fastrpc_ctrl_latency {
@@ -258,7 +259,11 @@ struct fastrpc_ctrl_kalloc {
 };
 
 struct fastrpc_ctrl_wakelock {
-	uint32_t enable;	/* wakelock control enable */
+	uint32_t enable;	/* timeout(in ms) for PM to keep system awake */
+};
+
+struct fastrpc_ctrl_pm {
+	uint32_t timeout;	/* wakelock control enable */
 };
 
 struct fastrpc_ioctl_control {
@@ -267,6 +272,7 @@ struct fastrpc_ioctl_control {
 		struct fastrpc_ctrl_latency lp;
 		struct fastrpc_ctrl_kalloc kalloc;
 		struct fastrpc_ctrl_wakelock wp;
+		struct fastrpc_ctrl_pm pm;
 	};
 };
 
