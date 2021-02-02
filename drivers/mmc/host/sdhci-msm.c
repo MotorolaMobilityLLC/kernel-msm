@@ -1716,11 +1716,11 @@ static void sdhci_msm_set_uhs_signaling(struct sdhci_host *host,
 /*
  * Ensure larger discard size by always setting max_busy_timeout to zero.
  * This will always return max_busy_timeout as zero to the sdhci layer.
- */
+*/
 
-static unsigned int sdhci_msm_get_max_timeout_count(struct sdhci_host *host)
-{
-	return 0;
+static unsigned int sdhci_msm_get_max_timeout_count(struct sdhci_host
+*host) {
+ return 0;
 }
 
 #define MAX_PROP_SIZE 32
@@ -3562,6 +3562,7 @@ static const struct sdhci_ops sdhci_msm_ops = {
 	.set_bus_width = sdhci_set_bus_width,
 	.set_uhs_signaling = sdhci_msm_set_uhs_signaling,
 	.get_max_timeout_count = sdhci_msm_get_max_timeout_count,
+
 #if defined(CONFIG_SDC_QTI)
 	.dump_vendor_regs = sdhci_msm_dump_vendor_regs,
 #endif
