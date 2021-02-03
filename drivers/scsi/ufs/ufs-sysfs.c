@@ -869,6 +869,9 @@ UFS_ATTRIBUTE(wb_flush_status, _WB_FLUSH_STATUS);
 UFS_ATTRIBUTE(wb_avail_buf, _AVAIL_WB_BUFF_SIZE);
 UFS_ATTRIBUTE(wb_life_time_est, _WB_BUFF_LIFE_TIME_EST);
 UFS_ATTRIBUTE(wb_cur_buf, _CURR_WB_BUFF_SIZE);
+#if defined(CONFIG_SCSI_SKHID)
+UFS_ATTRIBUTE(manual_gc_status, _MANUAL_GC_STATUS);
+#endif
 
 
 static struct attribute *ufs_sysfs_attributes[] = {
@@ -892,6 +895,9 @@ static struct attribute *ufs_sysfs_attributes[] = {
 	&dev_attr_wb_avail_buf.attr,
 	&dev_attr_wb_life_time_est.attr,
 	&dev_attr_wb_cur_buf.attr,
+#if defined(CONFIG_SCSI_SKHID)
+	&dev_attr_manual_gc_status.attr,
+#endif
 	NULL,
 };
 
