@@ -3141,11 +3141,6 @@ static int ufshcd_query_flag_retry(struct ufs_hba *hba,
 	int ret;
 	int retries;
 
-#if defined(CONFIG_SCSI_SKHID)
-	if (ufshcd_eh_in_progress(hba))
-		return -EBUSY;
-#endif
-
 	for (retries = 0; retries < QUERY_REQ_RETRIES; retries++) {
 		ret = ufshcd_query_flag(hba, opcode, idn, index, flag_res);
 		if (ret)
@@ -3322,11 +3317,6 @@ static int ufshcd_query_attr_retry(struct ufs_hba *hba,
 {
 	int ret = 0;
 	u32 retries;
-
-#if defined(CONFIG_SCSI_SKHID)
-	if (ufshcd_eh_in_progress(hba))
-		return -EBUSY;
-#endif
 
 	for (retries = QUERY_REQ_RETRIES; retries > 0; retries--) {
 		ret = ufshcd_query_attr(hba, opcode, idn, index,
@@ -5666,11 +5656,6 @@ static int ufshcd_bkops_ctrl(struct ufs_hba *hba,
 {
 	int err;
 	u32 curr_status = 0;
-
-#if defined(CONFIG_SCSI_SKHID)
-	if (ufshcd_eh_in_progress(hba))
-		return -EBUSY;
-#endif
 
 	err = ufshcd_get_bkops_status(hba, &curr_status);
 	if (err) {
