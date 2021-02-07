@@ -300,6 +300,7 @@ struct wled {
 	u32 leds_per_string;
 	u32 exp_map[EXP_DIMMING_TABLE_SIZE];
 	bool low_bl_force_cabc_disable;
+	bool only_low_bl_force_cabc_disable;
 	struct low_bl_config low_bl_cfg;
 	bool bl_step_up_enable;
 	struct bl_step_config bl_step_cfg;
@@ -584,6 +585,23 @@ static int wled_update_status(struct backlight_device *bl)
 			}
 		}
 
+		if (wled->only_low_bl_force_cabc_disable && wled->brightness) {
+			if (brightness < wled->low_bl_cfg.low_bl_threshold) {
+				brightness = brightness * wled->low_bl_cfg.low_bl_remap_percent/100;
+				if (!wled->cabc_disabled) {
+					wled->cabc_config(wled, false);
+					wled->cabc_disabled = true;
+					pr_info("under low brightness(%d), will disable cabc\n", brightness);
+				}
+
+			}
+			else if ((wled->brightness < wled->low_bl_cfg.low_bl_threshold) && (wled->cabc_disabled)){
+				wled->cabc_disabled = false;
+				wled->cabc_config(wled, true);
+				pr_info("exit low brightness(%d), will enable cabc\n", brightness);
+			}
+		}
+
 		if (wled->bl_step_up_enable) {
 			rc = wled_set_brightness_step(wled, brightness);
 			if (rc < 0) {
@@ -659,6 +677,11 @@ static int wled_update_status(struct backlight_device *bl)
 			wled->cabc_config(wled, false);
 			wled->cabc_disabled = true;
 			pr_info("disable wled cabc\n");
+		}
+		if (wled->only_low_bl_force_cabc_disable && wled->cabc_disabled ) {
+			wled->cabc_disabled = false;
+			wled->cabc_config(wled, true);
+			pr_info("screen off, enable wled cabc\n");
 		}
 		rc = wled_module_enable(wled, brightness);
 		if (rc < 0) {
@@ -1317,8 +1340,10 @@ static int parse_low_bl_config(struct wled *wled)
 
 	if (of_property_read_bool(dev->of_node, "mmi,low-bl-force-cabc-disable"))
 			wled->low_bl_force_cabc_disable = true;
+	if (of_property_read_bool(dev->of_node, "mmi,only-low-bl-force-cabc-disable"))
+			wled->only_low_bl_force_cabc_disable = true;
 
-	if (wled->low_bl_force_cabc_disable) {
+	if (wled->low_bl_force_cabc_disable || wled->only_low_bl_force_cabc_disable) {
 		of_property_read_u32(dev->of_node, "mmi,low-bl-threshold", &val);
 		wled->low_bl_cfg.low_bl_threshold = val;
 
@@ -1399,6 +1424,7 @@ static int wled5_setup(struct wled *wled)
 		return rc;
 
 	wled->low_bl_force_cabc_disable = false;
+	wled->only_low_bl_force_cabc_disable = false;
 	if (wled->cfg.cabc_sel) parse_low_bl_config(wled);
 
 	/* Enable one of the modulators A or B based on mod_sel */
