@@ -16,6 +16,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/suspend.h>
 #include <linux/thermal.h>
 
 #include "../thermal_core.h"
@@ -888,9 +889,27 @@ static int qpnp_tm_freeze(struct device *dev)
 	return 0;
 }
 
+static int qpnp_tm_suspend(struct device *dev)
+{
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return qpnp_tm_freeze(dev);
+
+	return 0;
+}
+
+static int qpnp_tm_resume(struct device *dev)
+{
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return qpnp_tm_restore(dev);
+
+	return 0;
+}
+
 static const struct dev_pm_ops qpnp_tm_pm_ops = {
 	.freeze = qpnp_tm_freeze,
 	.restore = qpnp_tm_restore,
+	.suspend = qpnp_tm_suspend,
+	.resume = qpnp_tm_resume,
 };
 
 static void qpnp_tm_shutdown(struct platform_device *pdev)
