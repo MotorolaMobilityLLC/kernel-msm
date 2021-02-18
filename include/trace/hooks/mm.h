@@ -50,6 +50,12 @@ DECLARE_HOOK(android_vh_slab_free,
 DECLARE_RESTRICTED_HOOK(android_rvh_mapping_shrinkable,
 			TP_PROTO(bool *shrinkable),
 			TP_ARGS(shrinkable), 1);
+DECLARE_HOOK(android_vh_rmqueue,
+	TP_PROTO(struct zone *preferred_zone, struct zone *zone,
+		unsigned int order, gfp_t gfp_flags,
+		unsigned int alloc_flags, int migratetype),
+	TP_ARGS(preferred_zone, zone, order,
+		gfp_flags, alloc_flags, migratetype));
 DECLARE_HOOK(android_vh_meminfo_cache_adjust,
 	TP_PROTO(unsigned long *cached),
 	TP_ARGS(cached));
