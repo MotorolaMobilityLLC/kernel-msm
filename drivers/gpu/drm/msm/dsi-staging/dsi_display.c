@@ -7245,6 +7245,12 @@ int dsi_display_set_mode(struct dsi_display *display,
 		goto error;
 	}
 
+	pr_err("mdp_transfer_time_us=%d us\n",
+			adj_mode.priv_info->mdp_transfer_time_us);
+	pr_err("hactive= %d,vactive= %d,fps=%d\n",
+			adj_mode.timing.h_active, adj_mode.timing.v_active,
+			adj_mode.timing.refresh_rate);
+
 	if (!display->panel->cur_mode) {
 		display->panel->cur_mode =
 			kzalloc(sizeof(struct dsi_display_mode), GFP_KERNEL);
