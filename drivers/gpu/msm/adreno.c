@@ -28,6 +28,12 @@
 /* Include the master list of GPU cores that are supported */
 #include "adreno-gpulist.h"
 
+#ifdef CONFIG_QCOM_KGSL_TURBO
+static unsigned int gputurbo = 1;
+module_param(gputurbo, uint, 0600);
+MODULE_PARM_DESC(gputurbo, "GPU Turbo Mode Try Enable Flag");
+#endif
+
 static void adreno_input_work(struct work_struct *work);
 static unsigned int counter_delta(struct kgsl_device *device,
 	unsigned int reg, unsigned int *counter);
@@ -1129,8 +1135,16 @@ static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
 		struct device_node *parent)
 {
 	struct device_node *node, *child;
-	unsigned int bin = 0;
+	unsigned int bin;
+#ifdef CONFIG_QCOM_KGSL_TURBO
+	unsigned int turbo;
+	unsigned int loops = 0;
 
+again:
+	turbo = 0;
+#endif
+	bin = 0;
+	
 	node = of_find_node_by_name(parent, "qcom,gpu-pwrlevel-bins");
 	if (node == NULL)
 		return adreno_of_get_legacy_pwrlevels(adreno_dev, parent);
@@ -1140,6 +1154,19 @@ static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
 		if (of_property_read_u32(child, "qcom,speed-bin", &bin))
 			continue;
 
+#ifdef CONFIG_QCOM_KGSL_TURBO
+		/* check turbo node exist or not */
+		if (of_property_read_u32(child, "qcom,turbo", &turbo)) {
+			/* if NOT exist, see if we should go on */
+			if (gputurbo)
+				continue;
+		}
+
+		/* if exist, check turbo node is set or not */
+		if ((gputurbo && !turbo) ||
+				(!gputurbo && turbo))
+			continue;
+#endif
 		if (bin == adreno_dev->speed_bin) {
 			int ret;
 
@@ -1165,6 +1192,13 @@ static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
 	dev_err(KGSL_DEVICE(adreno_dev)->dev,
 		"GPU speed_bin:%d mismatch for efused bin:%d\n",
 		adreno_dev->speed_bin, bin);
+
+#ifdef CONFIG_QCOM_KGSL_TURBO
+	gputurbo = 0;
+	if (loops++ < 1)
+		goto again;
+#endif
+
 	return -ENODEV;
 }
 
