@@ -152,6 +152,14 @@ enum flag_idn {
 	QUERY_FLAG_IDN_WB_EN                            = 0x0E,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN                 = 0x0F,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8     = 0x10,
+#if defined(CONFIG_UFSHPB) || defined(CONFIG_SCSI_SKHPB)
+	QUERY_FLAG_IDN_HPB_RESET                        = 0x11,
+#endif
+#if defined(CONFIG_UFSTW)
+	QUERY_FLAG_IDN_TW_EN                            = 0x0E,
+	QUERY_FLAG_IDN_TW_BUF_FLUSH_EN                  = 0x0F,
+	QUERY_FLAG_IDN_TW_FLUSH_DURING_HIBERN           = 0x10,
+#endif
 };
 
 /* Attribute idn for Query requests */
@@ -184,7 +192,18 @@ enum attr_idn {
 	QUERY_ATTR_IDN_AVAIL_WB_BUFF_SIZE       = 0x1D,
 	QUERY_ATTR_IDN_WB_BUFF_LIFE_TIME_EST    = 0x1E,
 	QUERY_ATTR_IDN_CURR_WB_BUFF_SIZE        = 0x1F,
+#if defined(CONFIG_UFSTW)
+	QUERY_ATTR_IDN_TW_FLUSH_STATUS          = 0x1C,
+	QUERY_ATTR_IDN_TW_AVAIL_BUF_SIZE        = 0x1D,
+	QUERY_ATTR_IDN_TW_BUF_LIFETIME_EST      = 0x1E,
+	QUERY_ATTR_IDN_TW_CURR_BUF_SIZE         = 0x1F,
+#endif
+#if defined(CONFIG_UFSFEATURE)
+	QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS       = 0xFF,
+#endif
 };
+
+#define QUERY_ATTR_IDN_BOOT_LU_EN_MAX  0x02
 
 /* Descriptor idn for Query requests */
 enum desc_idn {
@@ -207,11 +226,11 @@ enum desc_header_offset {
 };
 
 enum ufs_desc_def_size {
-	QUERY_DESC_DEVICE_DEF_SIZE		= 0x59,
-	QUERY_DESC_CONFIGURATION_DEF_SIZE	= 0x90,
+	QUERY_DESC_DEVICE_DEF_SIZE		= 0x5F,
+	QUERY_DESC_CONFIGURATION_DEF_SIZE	= 0xE6,
 	QUERY_DESC_UNIT_DEF_SIZE		= 0x2D,
 	QUERY_DESC_INTERCONNECT_DEF_SIZE	= 0x06,
-	QUERY_DESC_GEOMETRY_DEF_SIZE		= 0x48,
+	QUERY_DESC_GEOMETRY_DEF_SIZE		= 0x59,
 	QUERY_DESC_POWER_DEF_SIZE		= 0x62,
 	QUERY_DESC_HEALTH_DEF_SIZE		= 0x25,
 };
@@ -236,6 +255,15 @@ enum unit_desc_param {
 	UNIT_DESC_PARAM_CTX_CAPABILITIES	= 0x20,
 	UNIT_DESC_PARAM_LARGE_UNIT_SIZE_M1	= 0x22,
 	UNIT_DESC_PARAM_WB_BUF_ALLOC_UNITS	= 0x29,
+#if defined(CONFIG_UFSHPB) || defined(CONFIG_SCSI_SKHPB)
+	UNIT_DESC_HPB_LU_MAX_ACTIVE_REGIONS		= 0x23,
+	UNIT_DESC_HPB_LU_PIN_REGION_START_OFFSET	= 0x25,
+	UNIT_DESC_HPB_LU_NUM_PIN_REGIONS		= 0x27,
+#endif
+#if defined(CONFIG_UFSTW)
+	UNIT_DESC_TW_LU_WRITE_BUFFER_ALLOC_UNIT		= 0x29,
+
+#endif
 };
 
 /* Device descriptor parameters offsets in bytes*/
@@ -279,6 +307,19 @@ enum device_desc_param {
 	DEVICE_DESC_PARAM_WB_PRESRV_USRSPC_EN	= 0x53,
 	DEVICE_DESC_PARAM_WB_TYPE		= 0x54,
 	DEVICE_DESC_PARAM_WB_SHARED_ALLOC_UNITS = 0x55,
+#if defined(CONFIG_UFSHPB) || defined(CONFIG_SCSI_SKHPB)
+	DEVICE_DESC_PARAM_HPB_VER		= 0x40,
+	DEVICE_DESC_PARAM_HPB_CONTROL		= 0x42,
+#endif
+#if defined(CONFIG_UFSFEATURE)
+	DEVICE_DESC_PARAM_EX_FEAT_SUP		= 0x4F,
+#endif
+#if defined(CONFIG_UFSTW)
+	DEVICE_DESC_PARAM_TW_VER		= 0x4D,
+	DEVICE_DESC_PARAM_TW_RETURN_TO_USER	= 0x53,
+	DEVICE_DESC_PARAM_TW_BUF_TYPE		= 0x54,
+	DEVICE_DESC_PARAM_TW_SHARED_BUF_ALLOC_UNITS	= 0x55,
+#endif
 };
 
 /* Interconnect descriptor parameters offsets in bytes*/
@@ -328,6 +369,20 @@ enum geometry_desc_param {
 	GEOMETRY_DESC_PARAM_WB_BUFF_CAP_ADJ	= 0x54,
 	GEOMETRY_DESC_PARAM_WB_SUP_RED_TYPE	= 0x55,
 	GEOMETRY_DESC_PARAM_WB_SUP_WB_TYPE	= 0x56,
+#if defined(CONFIG_UFSHPB) || defined(CONFIG_SCSI_SKHPB)
+	GEOMETRY_DESC_HPB_REGION_SIZE			= 0x48,
+	GEOMETRY_DESC_HPB_NUMBER_LU			= 0x49,
+	GEOMETRY_DESC_HPB_SUBREGION_SIZE		= 0x4A,
+	GEOMETRY_DESC_HPB_DEVICE_MAX_ACTIVE_REGIONS	= 0x4B,
+#endif
+#if defined(CONFIG_UFSTW)
+	GEOMETRY_DESC_TW_GROUP_NUM_CAP			= 0x4E,
+	GEOMETRY_DESC_TW_MAX_SIZE			= 0x4F,
+	GEOMETRY_DESC_TW_NUMBER_LU			= 0x53,
+	GEOMETRY_DESC_TW_CAP_ADJ_FAC			= 0x54,
+	GEOMETRY_DESC_TW_SUPPORT_USER_REDUCTION_TYPES	= 0x55,
+	GEOMETRY_DESC_TW_SUPPORT_BUF_TYPE		= 0x56,
+#endif
 };
 
 /* Health descriptor parameters offsets in bytes*/
@@ -391,6 +446,9 @@ enum power_desc_param_offset {
 enum {
 	MASK_EE_STATUS		= 0xFFFF,
 	MASK_EE_URGENT_BKOPS	= (1 << 2),
+#if defined(CONFIG_UFSTW)
+	MASK_EE_TW		= (1 << 5),
+#endif
 };
 
 /* Background operation status */
@@ -469,6 +527,9 @@ enum {
 	MASK_RSP_EXCEPTION_EVENT        = 0x10000,
 	MASK_TM_SERVICE_RESP		= 0xFF,
 	MASK_TM_FUNC			= 0xFF,
+#if defined(CONFIG_SCSI_SKHPB)
+	MASK_RSP_UPIU_HPB_UPDATE_ALERT		= 0x20000,
+#endif
 };
 
 /* Task management service response */
