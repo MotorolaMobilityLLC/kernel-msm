@@ -147,6 +147,9 @@ struct scsi_cmnd {
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
+#if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
+        u8 requeue_cnt;
+#endif
 };
 
 /*
