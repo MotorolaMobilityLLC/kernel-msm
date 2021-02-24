@@ -1,7 +1,7 @@
 /*
  * QTI Secure Execution Environment Communicator (QSEECOM) driver
  *
- * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -94,7 +94,7 @@
 #define TWO 2
 #define QSEECOM_UFS_ICE_CE_NUM 10
 #define QSEECOM_SDCC_ICE_CE_NUM 20
-#define QSEECOM_ICE_FDE_KEY_INDEX 0
+#define QSEECOM_ICE_FDE_KEY_INDEX 31
 
 #define PHY_ADDR_4G	(1ULL<<32)
 
