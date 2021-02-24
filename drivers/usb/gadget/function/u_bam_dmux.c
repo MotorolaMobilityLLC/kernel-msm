@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2018, 2020, Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2018, 2020-2021, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -274,7 +274,7 @@ static void gbam_free_rx_skb_idle_list(struct gbam_port *port)
 		return;
 	d = &port->data_ch;
 
-	gadget = port->port_usb->cdev->gadget;
+	gadget = port->gadget;
 
 	while (d->rx_skb_idle.qlen > 0) {
 		skb = __skb_dequeue(&d->rx_skb_idle);
@@ -1028,6 +1028,7 @@ static void gbam_port_free(enum bam_dmux_func_type func)
 	if (port) {
 		platform_driver_unregister(pdrv);
 
+		gbam_free_rx_skb_idle_list(port);
 		kfree(port);
 		bam_ports[func].port = NULL;
 	}
