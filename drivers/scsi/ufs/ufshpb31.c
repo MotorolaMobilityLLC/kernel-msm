@@ -798,7 +798,7 @@ static int ufshpb_execute_pre_req(struct ufshpb_lu *hpb, struct scsi_cmnd *cmd,
 
 	/* 1. request setup */
 	blk_rq_append_bio(req, &bio);
-	req->rq_flags |= RQF_QUIET|RQF_PM;
+	req->rq_flags |= RQF_QUIET;
 	req->timeout = 30 * HZ;
 	req->end_io_data = (void *)pre_req;
 
@@ -848,6 +848,7 @@ static int ufshpb_issue_pre_req(struct ufshpb_lu *hpb, struct scsi_cmnd *cmd,
 	if (IS_ERR(req))
 		return -EAGAIN;
 
+	req->rq_flags |= RQF_PM;
 	bio = bio_alloc(GFP_ATOMIC, 1);
 	if (!bio) {
 		blk_put_request(req);
@@ -1959,7 +1960,7 @@ static int ufshpb_execute_map_req(struct ufshpb_lu *hpb,
 
 	/* 1. request setup */
 	blk_rq_append_bio(req, &bio); /* req->__data_len is setted */
-	req->rq_flags |= RQF_QUIET|RQF_PM;
+	req->rq_flags |= RQF_QUIET;
 	req->timeout = 30 * HZ;
 	req->end_io_data = (void *)map_req;
 
@@ -2480,6 +2481,7 @@ static int ufshpb_issue_map_req(struct ufshpb_lu *hpb,
 	if (IS_ERR(req))
 		return -EAGAIN;
 
+	req->rq_flags |= RQF_PM;
 	bio = bio_alloc(GFP_KERNEL, hpb->mpages_per_srgn);
 	if (!bio) {
 		blk_put_request(req);
