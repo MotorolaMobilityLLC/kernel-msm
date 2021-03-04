@@ -607,6 +607,7 @@
   down
   down_read
   down_write
+  d_path
   dput
   drain_workqueue
   driver_find_device
@@ -1030,6 +1031,8 @@
   get_random_bytes
   get_random_u32
   __get_task_comm
+  get_task_exe_file
+  get_task_mm
   get_task_pid
   __getblk_gfp
   get_tree_single
@@ -1403,6 +1406,7 @@
   kthread_worker_fn
   ktime_get
   ktime_get_mono_fast_ns
+  ktime_get_raw_ts64
   ktime_get_real_seconds
   ktime_get_real_ts64
   ktime_get_ts64
@@ -1506,6 +1510,7 @@
   mmc_cqe_request_done
   mmc_of_parse
   mmc_send_tuning
+  mmput
   mod_delayed_work_on
   mod_node_page_state
   mod_timer
@@ -2059,6 +2064,7 @@
   regulator_unregister_notifier
   regulatory_set_wiphy_regd
   release_firmware
+  release_pages
   __release_region
   release_sock
   remap_pfn_range
