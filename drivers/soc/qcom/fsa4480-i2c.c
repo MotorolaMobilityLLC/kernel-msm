@@ -389,11 +389,10 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	}
 
 	rc = regmap_read(fsa_priv->regmap, FSA4480_DEVICE_ID, &device_id);
-	if (rc != 0) {
+	if (rc != 0)
 		dev_err(fsa_priv->dev, "%s,device id read failed:%d", __func__, rc);
-		goto err_supply;
-	}
-	dev_err(fsa_priv->dev, "%s,device_id=0x%x\n", __func__, device_id);
+	else
+                dev_err(fsa_priv->dev, "%s,device_id=0x%x\n", __func__, device_id);
 
 	fsa4480_update_reg_defaults(fsa_priv->regmap);
 
