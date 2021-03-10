@@ -7338,18 +7338,25 @@ static void ufshcd_wb_probe(struct ufs_hba *hba, u8 *desc_buf)
 	 */
 	if (!(dev_info->wspecversion >= 0x310 ||
 	      dev_info->wspecversion == 0x220 ||
-	     (hba->dev_quirks & UFS_DEVICE_QUIRK_SUPPORT_EXTENDED_FEATURES)))
+	     (hba->dev_quirks & UFS_DEVICE_QUIRK_SUPPORT_EXTENDED_FEATURES))) {
+		dev_err(hba->dev, "%s: vendor quirks don't support wb, wb_disable\n",__func__);
 		goto wb_disabled;
+	}
 
-	if (hba->desc_size.dev_desc < DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 4)
+	if (hba->desc_size.dev_desc < DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP + 4) {
+		dev_err(hba->dev, "%s: ufs device don't support ext ufs feature, wb_disable\n",
+			__func__);
 		goto wb_disabled;
+	}
 
 	dev_info->d_ext_ufs_feature_sup =
 		get_unaligned_be32(desc_buf +
 				   DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP);
 
-	if (!(dev_info->d_ext_ufs_feature_sup & UFS_DEV_WRITE_BOOSTER_SUP))
+	if (!(dev_info->d_ext_ufs_feature_sup & UFS_DEV_WRITE_BOOSTER_SUP)) {
+		dev_err(hba->dev, "%s: ufs device don't support write booster feature, wb_disable\n",__func__);
 		goto wb_disabled;
+	}
 
 	/*
 	 * WB may be supported but not configured while provisioning.
@@ -7367,8 +7374,10 @@ static void ufshcd_wb_probe(struct ufs_hba *hba, u8 *desc_buf)
 		dev_info->d_wb_alloc_units =
 		get_unaligned_be32(desc_buf +
 				   DEVICE_DESC_PARAM_WB_SHARED_ALLOC_UNITS);
-		if (!dev_info->d_wb_alloc_units)
+		if (!dev_info->d_wb_alloc_units) {
+			dev_err(hba->dev, "%s: read wb_share_alloc_units is 0 , wb_disable\n",__func__);
 			goto wb_disabled;
+		}
 	} else {
 		for (lun = 0; lun < UFS_UPIU_MAX_WB_LUN_ID; lun++) {
 			d_lu_wb_buf_alloc = 0;
@@ -7383,8 +7392,10 @@ static void ufshcd_wb_probe(struct ufs_hba *hba, u8 *desc_buf)
 			}
 		}
 
-		if (!d_lu_wb_buf_alloc)
+		if (!d_lu_wb_buf_alloc) {
+			dev_err(hba->dev, "%s: read wb_share_alloc_units is 0 , wb_disable\n",__func__);
 			goto wb_disabled;
+		}
 	}
 	return;
 
