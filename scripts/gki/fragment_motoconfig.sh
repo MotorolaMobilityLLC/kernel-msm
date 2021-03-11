@@ -58,6 +58,11 @@ elif [ $TARGET_BUILD_VARIANT == "userdebug" ] && [ $REQUIRED_DEFCONFIG != ${LOCA
     fi
 fi
 
+#merge moto product extra config
+if [ -e $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}-$TARGET_PRODUCT_TYPE-extra.config ]; then
+    MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}-$TARGET_PRODUCT_TYPE-extra.config"
+fi
+
 #merge moto product config
 if [ -e $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}.config ]; then
     MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/moto-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}.config"
