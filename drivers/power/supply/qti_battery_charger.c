@@ -1899,6 +1899,8 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 	bcdev->num_thermal_levels = len;
 	bcdev->thermal_fcc_ua = pst->prop[BATT_CHG_CTRL_LIM_MAX];
 
+	usb_psy_desc.no_thermal = of_property_read_bool(node, "no-conn-therm");
+
 	return 0;
 }
 
