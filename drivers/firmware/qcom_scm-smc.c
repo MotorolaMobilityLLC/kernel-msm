@@ -2394,7 +2394,8 @@ int __qcom_scm_invoke_smc(struct device *dev, phys_addr_t in_buf,
 
 int __trustonic_smc_fastcall(void *fc_generic, size_t size)
 {
-	int ret;
+	int ret = 0;
+
 	struct qcom_scm_desc desc = {
 		.svc = SCM_SVC_MOBICORE,
 		.cmd = SCM_CMD_MOBICORE,
@@ -2402,7 +2403,7 @@ int __trustonic_smc_fastcall(void *fc_generic, size_t size)
 	};
 
 	void *scm_buf_va = NULL;
-	phys_addr_t scm_buf_pa;
+	phys_addr_t scm_buf_pa = 0;
 	struct qtee_shm scm_shm = {0};
 
 	if (qtee_shmbridge_is_enabled()) {
@@ -2439,9 +2440,9 @@ int __trustonic_smc_fastcall(void *fc_generic, size_t size)
 	desc.args[3] = (u32)size;
 	desc.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RW, QCOM_SCM_VAL, QCOM_SCM_RW, QCOM_SCM_VAL);
 
-	ret = qcom_scm_call(NULL, &desc);
-
-	qtee_shmbridge_flush_shm_buf(&scm_shm);
+	ret = qcom_scm_call_atomic(NULL, &desc);
+	qtee_shmbridge_inv_shm_buf(&scm_shm);
+	memset(fc_generic, 0x00, size);
 	memcpy(fc_generic, scm_buf_va, size);
 
 	if (qtee_shmbridge_is_enabled()) {
