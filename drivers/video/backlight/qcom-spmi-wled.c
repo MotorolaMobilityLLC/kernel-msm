@@ -1212,6 +1212,7 @@ static int parse_low_bl_config(struct wled *wled)
 		of_property_read_u32(dev->of_node, "mmi,low-bl-remap-percent", &val);
 		wled->low_bl_cfg.low_bl_remap_percent = val;
 
+		val = 0;
 		of_property_read_u32(dev->of_node, "mmi,low-bl-delay-ms", &val);
 		wled->low_bl_cfg.low_bl_delay_ms = val;
 
