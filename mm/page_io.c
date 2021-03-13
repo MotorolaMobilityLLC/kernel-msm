@@ -397,6 +397,12 @@ int swap_readpage(struct page *page, bool synchronous)
 
 	ret = bdev_read_page(sis->bdev, swap_page_sector(page), page);
 	if (!ret) {
+		/*
+		 * Moto huangzq2: We either remove the trylock_page or use lock_page
+		 * here, becuase trylock will always return false due to page_endio
+		 * in zram_rw_page.
+		 */
+		swap_slot_free_notify(page);
 		count_vm_event(PSWPIN);
 		goto out;
 	}
