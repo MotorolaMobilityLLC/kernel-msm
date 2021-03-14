@@ -166,6 +166,8 @@ static bool get_dload_mode(void)
 
 static void enable_emergency_dload_mode(void)
 {
+#if 0
+// MOTO: Disabled for security hardening
 	if (emergency_dload_mode_addr) {
 		__raw_writel(EMERGENCY_DLOAD_MAGIC1,
 				emergency_dload_mode_addr);
@@ -185,6 +187,9 @@ static void enable_emergency_dload_mode(void)
 	}
 
 	qcom_scm_set_download_mode(SCM_EDLOAD_MODE, tcsr_boot_misc_detect ?: 0);
+#else
+	pr_err("EDL mode disabled\n");
+#endif
 }
 
 static int dload_set(const char *val, const struct kernel_param *kp)
