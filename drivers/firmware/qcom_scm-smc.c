@@ -2440,7 +2440,7 @@ int __trustonic_smc_fastcall(void *fc_generic, size_t size)
 	desc.args[3] = (u32)size;
 	desc.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RW, QCOM_SCM_VAL, QCOM_SCM_RW, QCOM_SCM_VAL);
 
-	ret = qcom_scm_call_atomic(NULL, &desc);
+	ret = qcom_scm_call(NULL, &desc);
 	qtee_shmbridge_inv_shm_buf(&scm_shm);
 	memset(fc_generic, 0x00, size);
 	memcpy(fc_generic, scm_buf_va, size);
