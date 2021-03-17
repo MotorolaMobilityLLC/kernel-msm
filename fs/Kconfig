@@ -324,7 +324,4 @@ source "fs/nls/Kconfig"
 source "fs/dlm/Kconfig"
 source "fs/unicode/Kconfig"
 
-config FS_HPB
-	bool "Support HPB on Filesystem"
-	default y
 endmenu
