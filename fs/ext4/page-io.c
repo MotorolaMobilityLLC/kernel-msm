@@ -344,10 +344,6 @@ void ext4_io_submit(struct ext4_io_submit *io)
 		int io_op_flags = io->io_wbc->sync_mode == WB_SYNC_ALL ?
 				  REQ_SYNC : 0;
 		io->io_bio->bi_write_hint = io->io_end->inode->i_write_hint;
-#ifdef CONFIG_FS_HPB
-		if(ext4_test_inode_state(io->io_end->inode, EXT4_STATE_HPB))
-			io_op_flags |= REQ_HPB_PREFER;
-#endif
 		bio_set_op_attrs(io->io_bio, REQ_OP_WRITE, io_op_flags);
 		submit_bio(io->io_bio);
 	}
