@@ -66,6 +66,7 @@
 #define UIC_CMD_TIMEOUT	500
 #endif
 
+unsigned int storage_mfrid;
 /* NOP OUT retries waiting for NOP IN response */
 #define NOP_OUT_RETRIES    10
 /* Timeout after 30 msecs if NOP OUT hangs without response */
@@ -9565,6 +9566,12 @@ out_disable:
 out_error:
 	return err;
 }
+static int __init storage_mfrid_setup(char *str)
+{
+	storage_mfrid = simple_strtol(str, NULL, 16);
+	return 1;
+}
+__setup("storage_mfrid=",storage_mfrid_setup);
 EXPORT_SYMBOL_GPL(ufshcd_init);
 
 MODULE_AUTHOR("Santosh Yaragnavi <santosh.sy@samsung.com>");
