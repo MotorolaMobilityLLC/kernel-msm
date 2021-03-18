@@ -77,6 +77,9 @@
 #define UFSHCD_DRIVER_VERSION "0.2"
 
 #define UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8                0x40000
+extern unsigned int storage_mfrid;
+#define IS_SAMSUNG_DEVICE(mfrid)   (UFS_VENDOR_SAMSUNG == (mfrid))
+#define IS_SKHYNIX_DEVICE(mfrid)   (UFS_VENDOR_SKHYNIX == (mfrid))
 
 struct ufs_hba;
 
