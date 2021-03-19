@@ -85,6 +85,9 @@ static void fsa4480_usbc_update_settings(struct fsa4480_priv *fsa_priv,
 		return;
 	}
 
+	dev_info(fsa_priv->dev, "%s: switch_control: 0x%x, switch_enable: 0x%x\n",
+		__func__, switch_control, switch_enable);
+
 	regmap_write(fsa_priv->regmap, FSA4480_SWITCH_SETTINGS, 0x80);
 	regmap_write(fsa_priv->regmap, FSA4480_SWITCH_CONTROL, switch_control);
 	/* FSA4480 chip hardware requirement */
@@ -124,7 +127,7 @@ static int fsa4480_usbc_event_changed_ucsi(struct fsa4480_priv *fsa_priv,
 	if (!dev)
 		return -EINVAL;
 
-	dev_dbg(dev, "%s: USB change event received, supply mode %d, usbc mode %ld, expected %d\n",
+	dev_info(dev, "%s: USB change event received, supply mode %d, usbc mode %ld, expected %d\n",
 			__func__, acc, fsa_priv->usbc_mode.counter,
 			TYPEC_ACCESSORY_AUDIO);
 
@@ -387,6 +390,8 @@ int fsa4480_switch_event(struct device_node *node,
 	if (!fsa_priv->regmap)
 		return -EINVAL;
 
+	dev_info(fsa_priv->dev, "%s: event: %d\n",
+		__func__, event);
 	switch (event) {
 	case FSA_MIC_GND_SWAP:
 		regmap_read(fsa_priv->regmap, FSA4480_SWITCH_CONTROL,
