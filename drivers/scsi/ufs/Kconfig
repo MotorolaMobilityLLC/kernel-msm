@@ -196,3 +196,49 @@ config SCSI_UFS_CRYPTO_QTI
 	 Enable Vendor Crypto Engine Support in UFS
 	 Enabling this allows kernel to use UFS crypto operations defined
 	 and implemented by QTI.
+
+config UFSFEATURE
+	bool "UFS feature activate"
+	depends on SCSI_UFSHCD
+	---help---
+	UFS feature activate such as hpb, tw and etc.
+
+config UFSHPB
+	bool "UFS Host Performance Booster support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	---help---
+	UFS HPB Feature Enable
+
+config HPB_DEBUG
+	bool "HPB Debug Log Enable"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHPB
+	default n
+	---help---
+	UFS HPB Debug Enable (dmesg log[=if set debug sysfs] & BLK_TRACE msg)
+
+config HPB_ERR_INJECTION
+	bool "HPB ERROR INJECTION"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHPB
+	---help---
+	error injection for checking HPB entry integrity
+
+config UFSTW
+	bool "UFS Turbo Write support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	---help---
+	UFS TW Feature Enable
+
+config UFSTW_IGNORE_GUARANTEE_BIT
+	bool "Ignore UFS Turbo Write Life Time Guarantee bit for POC"
+	default n
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSTW
+	---help---
+	ignore the guarantee bit[31] of dTurboWriteBufferLifeTimeEst for PoC
+
+config UFSTW_BOOT_ENABLED
+	bool "Turbo Write enabled at boot time"
+	default y
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSTW
+	---help---
+	fTurboWriteEn and fTurboWriteBufferFlushDuringHibnerEnter flags
+	are enabled at boot time.
