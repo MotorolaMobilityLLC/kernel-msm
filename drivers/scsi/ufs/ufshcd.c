@@ -2564,6 +2564,12 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		lrbp->command_type = UTP_CMD_TYPE_UFS_STORAGE;
 
 	if (likely(lrbp->cmd)) {
+#if defined(CONFIG_UFSFEATURE)
+        if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+		   ufsf_change_lun(&hba->ufsf, lrbp);
+		   ufsf_prep_fn(&hba->ufsf, lrbp);
+        }
+#endif
 		ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags,
 						lrbp->cmd->sc_data_direction);
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
@@ -2656,6 +2662,22 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	lrbp->req_abort_skip = false;
 
 	ufshcd_comp_scsi_upiu(hba, lrbp);
+#if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+	    if (cmd->cmnd[0] != 0x28)
+		    BUG_ON(cmd->requeue_cnt);
+
+	    if (cmd->requeue_cnt)
+		    err = -EAGAIN;
+
+	    if (err) {
+		    ufshcd_release(hba);
+		    lrbp->cmd = NULL;
+		    clear_bit_unlock(tag, &hba->lrb_in_use);
+		    goto out;
+	   }
+    }
+#endif
 
 	err = ufshcd_map_sg(hba, lrbp);
 	if (err) {
@@ -2898,8 +2920,13 @@ static inline void ufshcd_put_dev_cmd_tag(struct ufs_hba *hba, int tag)
  * NOTE: Since there is only one available tag for device management commands,
  * it is expected you hold the hba->dev_cmd.lock mutex.
  */
+#if defined(CONFIG_UFSFEATURE)
+int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
+			enum dev_cmd_type cmd_type, int timeout)
+#else
 static int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 		enum dev_cmd_type cmd_type, int timeout)
+#endif
 {
 	struct ufshcd_lrb *lrbp;
 	int err;
@@ -4953,6 +4980,11 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 	struct request_queue *q = sdev->request_queue;
 	struct ufs_hba *hba = shost_priv(sdev->host);
 
+#if defined(CONFIG_UFSFEATURE)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+	    ufsf_slave_configure(&hba->ufsf, sdev);
+    }
+#endif
 	blk_queue_update_dma_pad(q, PRDT_DATA_BYTE_COUNT_PAD - 1);
 
 	ufshcd_crypto_setup_rq_keyslot_manager(hba, q);
@@ -5088,6 +5120,13 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 				if (schedule_work(&hba->eeh_work))
 					pm_runtime_get_noresume(hba->dev);
 			}
+
+#if defined(CONFIG_UFSFEATURE)
+           if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+			   if (scsi_status == SAM_STAT_GOOD)
+				   ufsf_hpb_noti_rb(&hba->ufsf, lrbp);
+            }
+#endif
 			break;
 		case UPIU_TRANSACTION_REJECT_UPIU:
 			/* TODO: handle Reject UPIU Response */
@@ -5189,6 +5228,13 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 		cmd = lrbp->cmd;
 		ufshcd_vops_compl_xfer_req(hba, index, (cmd) ? true : false);
 		if (cmd) {
+#if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB) && defined(CONFIG_HPB_DEBUG)
+            if (IS_SAMSUNG_DEVICE(storage_mfrid))
+			    trace_printk("%llu + %u cmd 0x%X comp tag[%d] out %lX\n",
+				     (unsigned long long) blk_rq_pos(cmd->request),
+				     (unsigned int) blk_rq_sectors(cmd->request),
+				     cmd->cmnd[0], index, hba->outstanding_reqs);
+#endif
 			ufshcd_add_command_trace(hba, index, "complete");
 			result = ufshcd_transfer_rsp_status(hba, lrbp);
 			scsi_dma_unmap(cmd);
@@ -6733,6 +6779,10 @@ out:
 	hba->req_abort_count = 0;
 	ufshcd_update_reg_hist(&hba->ufs_stats.dev_reset, (u32)err);
 	if (!err) {
+#if defined(CONFIG_UFSFEATURE)
+        if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		    ufsf_reset_lu(&hba->ufsf);
+#endif
 		err = SUCCESS;
 	} else {
 		dev_err(hba->dev, "%s: failed with err %d\n", __func__, err);
@@ -6942,6 +6992,12 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 {
 	int err;
 	unsigned long flags;
+
+#if defined(CONFIG_UFSFEATURE)
+       if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+           ufsf_reset_host(&hba->ufsf);
+       }
+#endif
 
 	/*
 	 * Stop the host controller and complete the requests
@@ -7811,6 +7867,13 @@ static int ufshcd_add_lus(struct ufs_hba *hba)
 	ufs_bsg_probe(hba);
 	scsi_scan_host(hba->host);
 
+#if defined(CONFIG_UFSFEATURE)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+        ufsf_device_check(hba);
+        ufsf_init(&hba->ufsf);
+    }
+#endif
+
 out:
 	return ret;
 }
@@ -7934,6 +7997,11 @@ reinit:
 	ufshcd_auto_hibern8_enable(hba);
 
 out:
+#if defined(CONFIG_UFSFEATURE)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid))
+	    ufsf_reset(&hba->ufsf);
+#endif
+
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	if (ret)
 		hba->ufshcd_state = UFSHCD_STATE_ERROR;
@@ -8795,6 +8863,11 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		req_link_state = UIC_LINK_OFF_STATE;
 	}
 
+#if defined(CONFIG_UFSFEATURE)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid))
+	    ufsf_suspend(&hba->ufsf);
+#endif
+
 	ret = ufshcd_crypto_suspend(hba, pm_op);
 	if (ret)
 		goto out;
@@ -8929,6 +9002,11 @@ enable_gating:
 	hba->dev_info.b_rpm_dev_flush_capable = false;
 	ufshcd_release(hba);
 	ufshcd_crypto_resume(hba, pm_op);
+#if defined(CONFIG_UFSFEATURE)
+   if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+	   ufsf_resume(&hba->ufsf);
+   }
+#endif
 out:
 	if (hba->dev_info.b_rpm_dev_flush_capable) {
 		schedule_delayed_work(&hba->rpm_dev_flush_recheck_work,
@@ -9070,6 +9148,11 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		hba->dev_info.b_rpm_dev_flush_capable = false;
 		cancel_delayed_work(&hba->rpm_dev_flush_recheck_work);
 	}
+
+#if defined(CONFIG_UFSFEATURE)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid))
+	    ufsf_resume(&hba->ufsf);
+#endif
 
 	/* Schedule clock gating in case of no access to UFS device yet */
 	ufshcd_release(hba);
@@ -9325,6 +9408,11 @@ EXPORT_SYMBOL(ufshcd_shutdown);
  */
 void ufshcd_remove(struct ufs_hba *hba)
 {
+#if defined(CONFIG_UFSFEATURE)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+	    ufsf_remove(&hba->ufsf);
+    }
+#endif
 	ufs_bsg_remove(hba);
 	ufs_sysfs_remove_nodes(hba->dev);
 	scsi_remove_host(hba->host);
@@ -9598,6 +9686,11 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 */
 	ufshcd_set_ufs_dev_active(hba);
 
+#if defined(CONFIG_UFSFEATURE)
+    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+	    ufsf_set_init_state(&hba->ufsf);
+    }
+#endif
 	async_schedule(ufshcd_async_scan, hba);
 	ufs_sysfs_add_nodes(hba->dev);
 
