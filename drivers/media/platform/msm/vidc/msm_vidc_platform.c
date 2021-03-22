@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -199,6 +199,65 @@ static struct msm_vidc_common_data atoll_common_data[] = {
 	{
 		.key = "qcom,max-hw-load",
 		.value = 1944000,
+	},
+	{
+		.key = "qcom,max-hq-mbs-per-frame",
+		.value = 8160,
+	},
+	{
+		.key = "qcom,max-hq-mbs-per-sec",
+		.value = 244800,  /* 1920 x 1088 @ 30 fps */
+	},
+	{
+		.key = "qcom,max-b-frame-size",
+		.value = 8160,
+	},
+	{
+		.key = "qcom,max-b-frames-per-sec",
+		.value = 60,
+	},
+	{
+		.key = "qcom,power-collapse-delay",
+		.value = 1500,
+	},
+	{
+		.key = "qcom,hw-resp-timeout",
+		.value = 1000,
+	},
+	{
+		.key = "qcom,dcvs",
+		.value = 1,
+	},
+	{
+		.key = "qcom,fw-cycles",
+		.value = 733003,
+	},
+	{
+		.key = "qcom,fw-vpp-cycles",
+		.value = 225975,
+	},
+};
+
+static struct msm_vidc_common_data atoll_common_data_v1[] = {
+	{
+		.key = "qcom,never-unload-fw",
+		.value = 1,
+	},
+	{
+		.key = "qcom,sw-power-collapse",
+		.value = 1,
+	},
+	{
+		.key = "qcom,domain-attr-non-fatal-faults",
+		.value = 1,
+	},
+	{
+		.key = "qcom,max-secure-instances",
+		.value = 3,
+	},
+	{
+		.key = "qcom,max-hw-load",
+		.value = 1216800, /* UHD@30 +1080@30 */
 	},
 	{
 		.key = "qcom,max-hq-mbs-per-frame",
@@ -743,6 +802,10 @@ static struct msm_vidc_efuse_data sdmmagpie_efuse_data[] = {
 	EFUSE_ENTRY(0x00786018, 4, 0x00000400, 0x0a, SKU_VERSION),
 };
 
+static struct msm_vidc_efuse_data atoll_efuse_data[] = {
+	EFUSE_ENTRY(0x007801D4, 4, 0x08000000, 0x1b, SKU_VERSION),
+};
+
 static struct msm_vidc_ubwc_config trinket_ubwc_data[] = {
 	UBWC_CONFIG(sizeof(struct msm_vidc_ubwc_config_v1),
 		HFI_PROPERTY_SYS_UBWC_CONFIG, 0, 1, 0, 0, 0, 64, 0, 0),
@@ -789,8 +852,8 @@ static struct msm_vidc_platform_data atoll_data = {
 	.csc_data.vpe_csc_custom_bias_coeff = vpe_csc_custom_bias_coeff,
 	.csc_data.vpe_csc_custom_matrix_coeff = vpe_csc_custom_matrix_coeff,
 	.csc_data.vpe_csc_custom_limit_coeff = vpe_csc_custom_limit_coeff,
-	.efuse_data = NULL,
-	.efuse_data_length = 0,
+	.efuse_data = atoll_efuse_data,
+	.efuse_data_length = ARRAY_SIZE(atoll_efuse_data),
 	.heic_image_capability = &default_heic_image_capability,
 	.hevc_image_capability = &default_hevc_image_capability,
 	.sku_version = 0,
@@ -1042,6 +1105,21 @@ void *vidc_get_drv_data(struct device *dev)
 			driver_data->common_data = sdmmagpie_common_data_v1;
 			driver_data->common_data_length =
 					ARRAY_SIZE(sdmmagpie_common_data_v1);
+		}
+	} else if (!strcmp(match->compatible, "qcom,atoll-vidc")) {
+		rc = msm_vidc_read_efuse(driver_data, dev);
+		if (rc)
+			goto exit;
+
+		if (driver_data->sku_version == SKU_VERSION_1) {
+			/* atoll SKU does not differentiate for any param in
+			 * devicetree.Keeping the same index for different SKU
+			 * so as to parse same DT node.
+			 */
+			driver_data->sku_version = 0;
+			driver_data->common_data = atoll_common_data_v1;
+			driver_data->common_data_length =
+					ARRAY_SIZE(atoll_common_data_v1);
 		}
 	}
 
