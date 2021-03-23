@@ -90,7 +90,8 @@ static int num_of_products(moto_product *list)
 	return num;
 }
 
-static int get_moto_device(char *str)
+//MMI_STOPSHIP:WIFI:Pass build for user version GKI build, WIFI team will fix it formally.
+static int __maybe_unused get_moto_device(char *str)
 {
 	if (sizeof(str) > MOTO_STRING_LEN) {
 		icnss_pr_dbg("%s: string is too large", __func__);
@@ -102,7 +103,8 @@ static int get_moto_device(char *str)
 }
 __setup("androidboot.device=", get_moto_device);
 
-static int get_moto_radio(char *str)
+//MMI_STOPSHIP:WIFI:Pass build for user version sss build, WIFI team will fix it formally.
+static int __maybe_unused get_moto_radio(char *str)
 {
 	if (sizeof(str) > MOTO_STRING_LEN) {
 		icnss_pr_dbg("%s: string is too large", __func__);
