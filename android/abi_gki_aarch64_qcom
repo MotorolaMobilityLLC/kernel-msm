@@ -1949,6 +1949,7 @@
   __rcu_read_lock
   __rcu_read_unlock
   rdev_get_drvdata
+  rdev_get_id
   reboot_mode
   refcount_dec_and_lock
   refcount_dec_and_test_checked
@@ -2505,6 +2506,7 @@
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_zone_device_register
+  thermal_zone_device_unregister
   thermal_zone_device_update
   thermal_zone_get_temp
   thermal_zone_get_zone_by_name
