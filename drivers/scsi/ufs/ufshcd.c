@@ -201,7 +201,16 @@ struct ufs_pm_lvl_states ufs_pm_lvl_states[] = {
 	{UFS_POWERDOWN_PWR_MODE, UIC_LINK_HIBERN8_STATE},
 	{UFS_POWERDOWN_PWR_MODE, UIC_LINK_OFF_STATE},
 };
-
+#if defined(CONFIG_SCSI_SKHPB)
+static inline int  is_support_hpb_100_device(unsigned int mfrid){
+        return IS_SKHYNIX_DEVICE(mfrid);
+}
+#endif
+#if defined(CONFIG_UFSFEATURE)
+static inline int  is_support_hpb_200_device(unsigned int mfrid){
+        return IS_SAMSUNG_DEVICE(mfrid);
+}
+#endif
 static inline enum ufs_dev_pwr_mode
 ufs_get_pm_lvl_to_dev_pwr_mode(enum ufs_pm_level lvl)
 {
@@ -256,7 +265,36 @@ static struct ufs_dev_fix ufs_fixups[] = {
 	UFS_FIX(UFS_VENDOR_SAMSUNG, "KLUDG4UHDB-B2D1",
 		UFS_DEVICE_QUIRK_PA_HIBER8TIME),
 #endif
+#if defined(CONFIG_SCSI_SKHPB)
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H28S",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
 
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15ACPMA",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15AECMA",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15AECMM",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15AFAMA",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15AFAMM",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ15AJAMM",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AECMM",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AECMZ",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AFAMM",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AFAMZ",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AJAMM",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+	UFS_FIX(UFS_VENDOR_SKHYNIX, "H9HQ21AHDMM",
+		SKHPB_QUIRK_PURGE_HINT_INFO_WHEN_SLEEP),
+#endif
 	END_FIX
 };
 
@@ -2565,7 +2603,7 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 
 	if (likely(lrbp->cmd)) {
 #if defined(CONFIG_UFSFEATURE)
-        if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+        if (is_support_hpb_200_device(storage_mfrid)){
 		   ufsf_change_lun(&hba->ufsf, lrbp);
 		   ufsf_prep_fn(&hba->ufsf, lrbp);
         }
@@ -2573,6 +2611,14 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags,
 						lrbp->cmd->sc_data_direction);
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
+#if defined(CONFIG_SCSI_SKHPB)
+        if (is_support_hpb_100_device(storage_mfrid)){
+			if (hba->skhpb_state == SKHPB_PRESENT &&
+				hba->issue_ioctl == false) {
+				skhpb_prep_fn(hba, lrbp);
+			}
+		}
+#endif
 	} else {
 		ret = -EINVAL;
 	}
@@ -2663,7 +2709,7 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 
 	ufshcd_comp_scsi_upiu(hba, lrbp);
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+    if (is_support_hpb_200_device(storage_mfrid)){
 	    if (cmd->cmnd[0] != 0x28)
 		    BUG_ON(cmd->requeue_cnt);
 
@@ -2995,8 +3041,13 @@ static inline void ufshcd_init_query(struct ufs_hba *hba,
 	(*request)->upiu_req.selector = selector;
 }
 
+#if defined(CONFIG_SCSI_SKHPB)
+int ufshcd_query_flag_retry(struct ufs_hba *hba,
+	enum query_opcode opcode, enum flag_idn idn, u8 index, bool *flag_res)
+#else
 static int ufshcd_query_flag_retry(struct ufs_hba *hba,
 	enum query_opcode opcode, enum flag_idn idn, u8 index, bool *flag_res)
+#endif
 {
 	int ret;
 	int retries;
@@ -4981,7 +5032,7 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 	struct ufs_hba *hba = shost_priv(sdev->host);
 
 #if defined(CONFIG_UFSFEATURE)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+    if (is_support_hpb_200_device(storage_mfrid)){
 	    ufsf_slave_configure(&hba->ufsf, sdev);
     }
 #endif
@@ -4991,7 +5042,12 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 
 	if (ufshcd_is_rpm_autosuspend_allowed(hba))
 		sdev->rpm_autosuspend = 1;
-
+#if defined(CONFIG_SCSI_SKHPB)
+    if (is_support_hpb_100_device(storage_mfrid)){
+		if (sdev->lun < UFS_UPIU_MAX_GENERAL_LUN)
+			hba->sdev_ufs_lu[sdev->lun] = sdev;
+	}
+#endif
 	return 0;
 }
 
@@ -5122,10 +5178,17 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 			}
 
 #if defined(CONFIG_UFSFEATURE)
-           if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+           if (is_support_hpb_200_device(storage_mfrid)){
 			   if (scsi_status == SAM_STAT_GOOD)
 				   ufsf_hpb_noti_rb(&hba->ufsf, lrbp);
             }
+#endif
+#if defined(CONFIG_SCSI_SKHPB)
+            if (is_support_hpb_100_device(storage_mfrid)){
+				if (hba->skhpb_state == SKHPB_PRESENT &&
+						scsi_status == SAM_STAT_GOOD)
+					skhpb_rsp_upiu(hba, lrbp);
+			}
 #endif
 			break;
 		case UPIU_TRANSACTION_REJECT_UPIU:
@@ -5229,7 +5292,7 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 		ufshcd_vops_compl_xfer_req(hba, index, (cmd) ? true : false);
 		if (cmd) {
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB) && defined(CONFIG_HPB_DEBUG)
-            if (IS_SAMSUNG_DEVICE(storage_mfrid))
+            if (is_support_hpb_200_device(storage_mfrid))
 			    trace_printk("%llu + %u cmd 0x%X comp tag[%d] out %lX\n",
 				     (unsigned long long) blk_rq_pos(cmd->request),
 				     (unsigned int) blk_rq_sectors(cmd->request),
@@ -6780,8 +6843,16 @@ out:
 	ufshcd_update_reg_hist(&hba->ufs_stats.dev_reset, (u32)err);
 	if (!err) {
 #if defined(CONFIG_UFSFEATURE)
-        if (IS_SAMSUNG_DEVICE(storage_mfrid))
+        if (is_support_hpb_200_device(storage_mfrid))
 		    ufsf_reset_lu(&hba->ufsf);
+#endif
+#if defined(CONFIG_SCSI_SKHPB)
+    if (is_support_hpb_100_device(storage_mfrid)){
+		if (hba->skhpb_state == SKHPB_PRESENT)
+			hba->skhpb_state = SKHPB_RESET;
+		schedule_delayed_work(&hba->skhpb_init_work,
+							  msecs_to_jiffies(10));
+     }
 #endif
 		err = SUCCESS;
 	} else {
@@ -6994,7 +7065,7 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 	unsigned long flags;
 
 #if defined(CONFIG_UFSFEATURE)
-       if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+       if (is_support_hpb_200_device(storage_mfrid)){
            ufsf_reset_host(&hba->ufsf);
        }
 #endif
@@ -7868,7 +7939,7 @@ static int ufshcd_add_lus(struct ufs_hba *hba)
 	scsi_scan_host(hba->host);
 
 #if defined(CONFIG_UFSFEATURE)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+    if (is_support_hpb_200_device(storage_mfrid)){
         ufsf_device_check(hba);
         ufsf_init(&hba->ufsf);
     }
@@ -7993,12 +8064,17 @@ reinit:
 	ufshcd_set_active_icc_lvl(hba);
 
 	ufshcd_wb_config(hba);
+
+#if defined(CONFIG_SCSI_SKHPB)
+     if (is_support_hpb_100_device(storage_mfrid))
+		schedule_delayed_work(&hba->skhpb_init_work, 0);
+#endif
 	/* Enable Auto-Hibernate if configured */
 	ufshcd_auto_hibern8_enable(hba);
 
 out:
 #if defined(CONFIG_UFSFEATURE)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid))
+    if (is_support_hpb_200_device(storage_mfrid))
 	    ufsf_reset(&hba->ufsf);
 #endif
 
@@ -8864,8 +8940,8 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	}
 
 #if defined(CONFIG_UFSFEATURE)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid))
-	    ufsf_suspend(&hba->ufsf);
+    if (is_support_hpb_200_device(storage_mfrid))
+        ufsf_suspend(&hba->ufsf);
 #endif
 
 	ret = ufshcd_crypto_suspend(hba, pm_op);
@@ -8878,6 +8954,10 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	 */
 	ufshcd_hold(hba, false);
 	hba->clk_gating.is_suspended = true;
+#if defined(CONFIG_SCSI_SKHPB)
+    if(is_support_hpb_100_device(storage_mfrid))
+    	skhpb_suspend(hba);
+#endif
 
 	if (hba->clk_scaling.is_allowed) {
 		cancel_work_sync(&hba->clk_scaling.suspend_work);
@@ -9003,7 +9083,7 @@ enable_gating:
 	ufshcd_release(hba);
 	ufshcd_crypto_resume(hba, pm_op);
 #if defined(CONFIG_UFSFEATURE)
-   if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+   if (is_support_hpb_200_device(storage_mfrid)){
 	   ufsf_resume(&hba->ufsf);
    }
 #endif
@@ -9150,8 +9230,12 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	}
 
 #if defined(CONFIG_UFSFEATURE)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid))
+    if (is_support_hpb_200_device(storage_mfrid))
 	    ufsf_resume(&hba->ufsf);
+#endif
+#if defined(CONFIG_SCSI_SKHPB)
+    if (is_support_hpb_100_device(storage_mfrid))
+        skhpb_resume(hba);
 #endif
 
 	/* Schedule clock gating in case of no access to UFS device yet */
@@ -9409,12 +9493,19 @@ EXPORT_SYMBOL(ufshcd_shutdown);
 void ufshcd_remove(struct ufs_hba *hba)
 {
 #if defined(CONFIG_UFSFEATURE)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+    if (is_support_hpb_200_device(storage_mfrid)){
 	    ufsf_remove(&hba->ufsf);
     }
 #endif
 	ufs_bsg_remove(hba);
 	ufs_sysfs_remove_nodes(hba->dev);
+
+#if defined(CONFIG_SCSI_SKHPB)
+    if (is_support_hpb_100_device(storage_mfrid)){
+	     skhpb_release(hba, SKHPB_NEED_INIT);
+	}
+#endif
+
 	scsi_remove_host(hba->host);
 	destroy_workqueue(hba->eh_wq);
 	/* disable interrupts */
@@ -9687,9 +9778,15 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	ufshcd_set_ufs_dev_active(hba);
 
 #if defined(CONFIG_UFSFEATURE)
-    if (IS_SAMSUNG_DEVICE(storage_mfrid)){
+    if (is_support_hpb_200_device(storage_mfrid)){
 	    ufsf_set_init_state(&hba->ufsf);
     }
+#endif
+#if defined(CONFIG_SCSI_SKHPB)
+    if (is_support_hpb_100_device(storage_mfrid)){
+		/* initialize hpb structures */
+		ufshcd_init_hpb(hba);
+	}
 #endif
 	async_schedule(ufshcd_async_scan, hba);
 	ufs_sysfs_add_nodes(hba->dev);
