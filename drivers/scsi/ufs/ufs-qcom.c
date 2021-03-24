@@ -2256,7 +2256,7 @@ ufs_qcom_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 
 #if defined(CONFIG_UFSFEATURE)
 	if (ufsf_check_query(ioctl_data->opcode)) {
-		err = ufsf_query_ioctl(&hba->ufsf, lun, buffer, ioctl_data,
+		err = ufsf_query_ioctl(hba, lun, buffer, ioctl_data,
 				       UFSFEATURE_SELECTOR);
 		goto out_release_mem;
 	}
