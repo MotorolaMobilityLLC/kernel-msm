@@ -94,6 +94,7 @@ struct mmc_ext_csd {
 	bool			boot_ro_lockable;
 	u8			raw_ext_csd_cmdq;	/* 15 */
 	u8			raw_ext_csd_cache_ctrl;	/* 33 */
+	bool			ffu_mode_op;	/* FFU mode operation */
 	bool			ffu_capable;	/* Firmware upgrade support */
 	bool			cmdq_en;	/* Command Queue enabled */
 	bool			cmdq_support;	/* Command Queue supported */
