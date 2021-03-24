@@ -392,7 +392,7 @@ static inline void ufsf_set_read10_debug_cmd(unsigned char *cdb, int lba,
 	cdb[8] = GET_BYTE_0(len);
 }
 
-int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
+int ufsf_query_ioctl(struct ufs_hba *hba, int lun, void __user *buffer,
 		     struct ufs_ioctl_query_data *ioctl_data, u8 selector)
 {
 	unsigned char *kernel_buf;
@@ -438,7 +438,7 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 			index = lun;
 			INFO_MSG("read lu desc lun: %d", index);
 			break;
-
+#if 0
 		case QUERY_DESC_IDN_STRING:
 			if (!ufs_is_valid_unit_desc_lun(lun)) {
 				ERR_MSG("No unit descriptor for lun 0x%x", lun);
@@ -451,6 +451,7 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 				goto out_release_mem;
 
 			goto copy_buffer;
+#endif
 		case QUERY_DESC_IDN_DEVICE:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_CONFIGURATION:
@@ -470,13 +471,15 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 
 	length = ioctl_data->buf_size;
 
-	err = ufshcd_query_descriptor_retry(ufsf->hba, opcode, ioctl_data->idn,
+	err = ufshcd_query_descriptor_retry(hba, opcode, ioctl_data->idn,
 					    index, selector, kernel_buf,
 					    &length);
 	if (err)
 		goto out_release_mem;
-
+#if 0
 copy_buffer:
+#endif
+
 	if (opcode == UPIU_QUERY_OPCODE_READ_DESC) {
 		err = copy_to_user(buffer, ioctl_data,
 				   sizeof(struct ufs_ioctl_query_data));
