@@ -2827,18 +2827,23 @@ out:
 	return ret;
 }
 
-static inline int ufshpb_version_check(struct ufshpb_dev_info *hpb_dev_info)
+static inline int ufshpb_version_check(struct ufshpb_dev_info *hpb_dev_info, int oem_id)
 {
-	INFO_MSG("Support HPB Spec : Driver = (%.4X)  Device = (%.4X)",
-		 UFSHPB_VER, hpb_dev_info->version);
+    INFO_MSG("Support HPB Spec : Driver = (%.4X)  Device = (%.4X) Vendor = (%.2x)",
+		 UFSHPB_VER, hpb_dev_info->version,oem_id);
 
 	INFO_MSG("HPB Driver Version : (%.6X%s)",
 		 UFSHPB_DD_VER, UFSHPB_DD_VER_POST);
 
-	if (hpb_dev_info->version != UFSHPB_VER) {
+	if (hpb_dev_info->version != UFSHPB_VER && oem_id == 0x1ce) {
 		ERR_MSG("ERROR: HPB Spec Version mismatch. So HPB disabled.");
 		return -ENODEV;
 	}
+    if (hpb_dev_info->version != 0x200 && oem_id == 0x12c){
+        ERR_MSG("ERROR: micron devices  HPB Spec Version mismatch. So HPB disabled.");
+        return -ENODEV;
+
+    }
 	return 0;
 }
 
@@ -2846,6 +2851,7 @@ void ufshpb_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf)
 {
 	struct ufshpb_dev_info *hpb_dev_info = &ufsf->hpb_dev_info;
 	int ret;
+    int manufacturer = 0;
 
 	if (desc_buf[DEVICE_DESC_PARAM_UFS_FEAT] & UFS_FEATURE_SUPPORT_HPB_BIT)
 		INFO_MSG("bUFSFeaturesSupport: HPB is set");
@@ -2857,7 +2863,9 @@ void ufshpb_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf)
 
 	hpb_dev_info->version = LI_EN_16(desc_buf + DEVICE_DESC_PARAM_HPB_VER);
 
-	ret = ufshpb_version_check(hpb_dev_info);
+        manufacturer = LI_EN_16(desc_buf + DEVICE_DESC_PARAM_OEM_ID);
+
+	ret = ufshpb_version_check(hpb_dev_info,manufacturer);
 	if (ret)
 		ufshpb_set_state(ufsf, HPB_FAILED);
 }

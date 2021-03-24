@@ -242,3 +242,9 @@ config UFSTW_BOOT_ENABLED
 	---help---
 	fTurboWriteEn and fTurboWriteBufferFlushDuringHibnerEnter flags
 	are enabled at boot time.
+
+config SCSI_SKHPB
+	bool "Activate HPB Host-aware Performance Booster"
+	depends on (SCSI_UFSHCD || SCSI_UFSHCD_QTI)
+	help
+	  Activate or deactive SKHPB driver
