@@ -4605,6 +4605,9 @@ static int fg_psy_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CALIBRATE:
 		pval->intval = chip->calib_level;
 		break;
+	case POWER_SUPPLY_PROP_BATT_FULL_CURRENT:
+		pval->intval = chip->dt.sys_term_curr_ma;
+		break;
 	default:
 		pr_err("unsupported property %d\n", psp);
 		rc = -EINVAL;
@@ -4614,6 +4617,24 @@ static int fg_psy_get_property(struct power_supply *psy,
 	if (rc < 0)
 		return -ENODATA;
 
+	return 0;
+}
+
+static int mmi_fg_set_qg_iterm(struct fg_gen4_chip *chip )
+{
+	struct fg_dev *fg = &chip->fg;
+	u8 buf[4];
+	int rc;
+
+	fg_encode(fg->sp, FG_SRAM_SYS_TERM_CURR, chip->dt.sys_term_curr_ma,
+		buf);
+	rc = fg_sram_write(fg, fg->sp[FG_SRAM_SYS_TERM_CURR].addr_word,
+			fg->sp[FG_SRAM_SYS_TERM_CURR].addr_byte, buf,
+			fg->sp[FG_SRAM_SYS_TERM_CURR].len, FG_IMA_DEFAULT);
+	if (rc < 0) {
+		pr_err("Error in writing sys_term_curr, rc=%d\n", rc);
+		return rc;
+	}
 	return 0;
 }
 
@@ -4699,6 +4720,12 @@ static int fg_psy_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CALIBRATE:
 		rc = fg_gen4_set_calibrate_level(chip, pval->intval);
 		break;
+	case POWER_SUPPLY_PROP_BATT_FULL_CURRENT:
+		chip->dt.sys_term_curr_ma = pval->intval;
+		fg_dbg(fg, FG_STATUS, "set bat full current =%d\n",
+			chip->dt.sys_term_curr_ma);
+		mmi_fg_set_qg_iterm(chip);
+		break;
 	default:
 		break;
 	}
@@ -4719,6 +4746,7 @@ static int fg_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CLEAR_SOH:
 	case POWER_SUPPLY_PROP_BATT_AGE_LEVEL:
 	case POWER_SUPPLY_PROP_CALIBRATE:
+	case POWER_SUPPLY_PROP_BATT_FULL_CURRENT:
 		return 1;
 	default:
 		break;
