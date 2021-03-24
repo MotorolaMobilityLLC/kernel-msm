@@ -77,6 +77,10 @@
 #include "ufsfeature.h"
 #endif
 
+#if defined(CONFIG_SCSI_SKHPB)
+#include "ufshpb_skh.h"
+#endif
+
 #define UFSHCD "ufshcd"
 #define UFSHCD_DRIVER_VERSION "0.2"
 
@@ -84,6 +88,7 @@
 extern unsigned int storage_mfrid;
 #define IS_SAMSUNG_DEVICE(mfrid)   (UFS_VENDOR_SAMSUNG == (mfrid))
 #define IS_SKHYNIX_DEVICE(mfrid)   (UFS_VENDOR_SKHYNIX == (mfrid))
+#define IS_MICRON_DEVICE(mfrid)    (UFS_VENDOR_MICRON == (mfrid))
 
 struct ufs_hba;
 
@@ -1023,6 +1028,24 @@ struct ufs_hba {
 	struct device		bsg_dev;
 	struct request_queue	*bsg_queue;
 
+#if defined(CONFIG_SCSI_SKHPB)
+	/* HPB support */
+	u32 skhpb_feat;
+	int skhpb_state;
+	int skhpb_max_regions;
+	struct delayed_work skhpb_init_work;
+	bool issue_ioctl;
+	struct skhpb_lu *skhpb_lup[UFS_UPIU_MAX_GENERAL_LUN];
+	struct work_struct skhpb_eh_work;
+	u32 skhpb_quirk;
+	u8 hpb_control_mode;
+#define SKHPB_U8_MAX 0xFF
+	u8 skhpb_quicklist_lu_enable[UFS_UPIU_MAX_GENERAL_LUN];
+#endif
+
+#if defined(CONFIG_SCSI_SKHPB)
+	struct scsi_device *sdev_ufs_lu[UFS_UPIU_MAX_GENERAL_LUN];
+#endif
 #ifdef CONFIG_SCSI_UFS_CRYPTO
 	/* crypto */
 	union ufs_crypto_capabilities crypto_capabilities;
@@ -1514,6 +1537,10 @@ static inline u8 ufshcd_scsi_to_upiu_lun(unsigned int scsi_lun)
 		return scsi_lun & UFS_UPIU_MAX_UNIT_NUM_ID;
 }
 
+#if defined(CONFIG_SCSI_SKHPB)
+int ufshcd_query_flag_retry(struct ufs_hba *hba,
+	enum query_opcode opcode, enum flag_idn idn, u8 index, bool *flag_res);
+#endif
 
 int ufshcd_dump_regs(struct ufs_hba *hba, size_t offset, size_t len,
 		     const char *prefix);
