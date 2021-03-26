@@ -935,7 +935,12 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 
 		goto put_hpb;
 	}
-
+#if defined(CONFIG_MICRON_HPB)
+	if (IS_MICRON_DEVICE(storage_mfrid) && transfer_len >= hpb->pre_req_min_tr_len &&
+	    transfer_len <= hpb->pre_req_max_tr_len) {
+            goto put_hpb;
+        }
+#endif
 	spin_lock_irqsave(&hpb->hpb_lock, flags);
 	if (ufshpb_ppn_dirty_check(hpb, lpn, transfer_len)) {
 		atomic64_inc(&hpb->miss);
