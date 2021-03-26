@@ -248,3 +248,9 @@ config SCSI_SKHPB
 	depends on (SCSI_UFSHCD || SCSI_UFSHCD_QTI)
 	help
 	  Activate or deactive SKHPB driver
+
+config MICRON_HPB
+	bool "Activate micron HPB Host-aware Performance Booster"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHPB
+	help
+	  Activate or deactive micron HPB driver
