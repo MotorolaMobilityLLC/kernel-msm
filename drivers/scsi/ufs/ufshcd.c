@@ -203,7 +203,12 @@ static inline int  is_support_hpb_100_device(unsigned int mfrid){
 #endif
 #if defined(CONFIG_UFSFEATURE)
 static inline int  is_support_hpb_200_device(unsigned int mfrid){
-        return IS_SAMSUNG_DEVICE(mfrid);
+#if defined(CONFIG_MICRON_HPB)
+        return  (IS_SAMSUNG_DEVICE(mfrid) || IS_MICRON_DEVICE(mfrid));
+#else
+        return  IS_SAMSUNG_DEVICE(mfrid);
+#endif
+        return 0;
 }
 #endif
 static inline enum ufs_dev_pwr_mode
