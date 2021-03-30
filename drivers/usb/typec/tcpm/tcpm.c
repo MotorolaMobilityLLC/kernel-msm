@@ -31,6 +31,7 @@
 #include <linux/usb/tcpm.h>
 #include <linux/usb/typec_altmode.h>
 
+#include <trace/hooks/typec.h>
 #include <uapi/linux/sched/types.h>
 
 #define FOREACH_STATE(S)			\
@@ -2544,6 +2545,8 @@ static void tcpm_pd_data_request(struct tcpm_port *port,
 
 		tcpm_register_source_caps(port);
 
+		trace_android_vh_typec_store_partner_src_caps(&port->nr_source_caps,
+							      &port->source_caps);
 		/*
 		 * Adjust revision in subsequent message headers, as required,
 		 * to comply with 6.2.1.1.5 of the USB PD 3.0 spec. We don't
