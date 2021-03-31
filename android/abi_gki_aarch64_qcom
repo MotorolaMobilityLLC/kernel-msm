@@ -2358,6 +2358,7 @@
   snd_soc_new_compress
   snd_soc_of_parse_audio_routing
   snd_soc_of_parse_card_name
+  snd_soc_params_to_bclk
   snd_soc_pm_ops
   snd_soc_put_enum_double
   snd_soc_put_volsw
