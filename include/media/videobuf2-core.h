@@ -290,6 +290,7 @@ struct vb2_buffer {
 
 	/* This counts the number of calls to vb2_buffer_done() */
 	u32		cnt_buf_done;
+	u32     glass_timestamp;
 #endif
 };
 
