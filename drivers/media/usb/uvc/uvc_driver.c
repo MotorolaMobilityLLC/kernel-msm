@@ -2389,6 +2389,10 @@ static const struct uvc_device_info uvc_quirk_stream_no_fid = {
 	.quirks = UVC_QUIRK_STREAM_NO_FID,
 };
 
+static const struct uvc_device_info uvc_quirk_override_timestamps = {
+	.quirks = UVC_QUIRK_OVERRIDE_TIMESTAMPS,
+};
+
 static const struct uvc_device_info uvc_quirk_force_y8 = {
 	.quirks = UVC_QUIRK_FORCE_Y8,
 };
@@ -2748,6 +2752,15 @@ static const struct usb_device_id uvc_ids[] = {
 	  .bInterfaceSubClass	= 1,
 	  .bInterfaceProtocol	= 0,
 	  .driver_info		= (kernel_ulong_t)&uvc_quirk_stream_no_fid },
+	/* Lenovo ThinkReality A3 */
+	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+				| USB_DEVICE_ID_MATCH_INT_INFO,
+	  .idVendor		= 0x17ef,
+	  .idProduct		= 0xb813,
+	  .bInterfaceClass	= USB_CLASS_VIDEO,
+	  .bInterfaceSubClass	= 1,
+	  .bInterfaceProtocol	= 1,
+	  .driver_info		= (kernel_ulong_t)&uvc_quirk_override_timestamps },
 	/* Aveo Technology USB 2.0 Camera */
 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
 				| USB_DEVICE_ID_MATCH_INT_INFO,
