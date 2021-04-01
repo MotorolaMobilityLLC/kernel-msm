@@ -203,7 +203,10 @@ static void __fill_v4l2_buffer(struct vb2_buffer *vb, void *pb)
 	b->timecode = vbuf->timecode;
 	b->sequence = vbuf->sequence;
 	b->reserved2 = 0;
-	b->reserved = 0;
+	if (vb->glass_timestamp != 0)
+		b->reserved = vb->glass_timestamp;
+	else
+		b->reserved = 0;
 
 	if (q->is_multiplanar) {
 		/*
