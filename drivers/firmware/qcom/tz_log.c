@@ -18,7 +18,9 @@
 #include <linux/of.h>
 #include <linux/dma-buf.h>
 #include <linux/ion_kernel.h>
-
+#ifdef CONFIG_MSM_TZ_QSEE_LOG
+#include <linux/vmalloc.h>
+#endif
 #include <soc/qcom/scm.h>
 #include <soc/qcom/qseecomi.h>
 #include <soc/qcom/qtee_shmbridge.h>
@@ -408,7 +410,16 @@ struct tzdbg_stat {
 	char *name;
 	char *data;
 };
-
+//print qsee log to kernel log
+#ifdef CONFIG_MSM_TZ_QSEE_LOG
+#ifdef CONFIG_DEBUG_FS
+static bool enable_printk_qseelog = false;
+#else
+static bool enable_printk_qseelog = false;
+#endif
+#define PRINTK_LIMIT 1024
+static char     *b_str = NULL;
+#endif
 struct tzdbg {
 	void __iomem *virt_iobase;
 	void __iomem *hyp_virt_iobase;
@@ -422,6 +433,10 @@ struct tzdbg {
 	uint32_t tz_version;
 	bool is_encrypted_log_enabled;
 	bool is_enlarged_buf;
+#ifdef CONFIG_MSM_TZ_QSEE_LOG
+	struct workqueue_struct		*heartbeat_work_q;
+	struct work_struct		heartbeat_work;
+#endif
 };
 
 struct tzbsp_encr_log_t {
@@ -1622,7 +1637,120 @@ static void tzdbg_encrypted_log_init(void)
 		tzdbg.is_encrypted_log_enabled = desc.ret[0];
 	}
 }
+#ifdef CONFIG_MSM_TZ_QSEE_LOG
+static int splitline_printk(const char *str, int len)
+{
+	int cnt = 0;
+	char *s = "\n";
+	char *b_str_tmp = NULL;
+	char *buf = NULL;
 
+	if (b_str == NULL && debug_rw_buf_size >0 ) {
+		b_str = (char *)vmalloc(debug_rw_buf_size +1);
+	}
+	if(len> debug_rw_buf_size) {
+		pr_err("[TEE-AP]:log is more than max len. trancate  \n");
+		len = debug_rw_buf_size;
+	}
+	b_str_tmp = b_str;
+	memcpy(b_str_tmp, str, len);
+	b_str_tmp[len] = 0;
+
+
+	buf = strstr(b_str_tmp, s);
+
+	while (buf != NULL) {
+		cnt++;
+		buf[0] = '\0';
+		pr_err("[TEE]: %s \n",b_str_tmp);
+		b_str_tmp = buf + strlen(s);
+		buf = strstr(b_str_tmp, s);
+	}
+
+	return 0;
+}
+
+static int _print_qsee_log_stats(struct tzdbg_log_t *log,
+						   struct tzdbg_log_pos_t *log_start, uint32_t log_len
+			)
+{
+	uint32_t wrap_start;
+	uint32_t wrap_end;
+	uint32_t wrap_cnt;
+	int max_len;
+	int len = 0;
+	int i = 0;
+
+	wrap_start = log_start->wrap;
+	wrap_end = log->log_pos.wrap;
+
+	/* Calculate difference in # of buffer wrap-arounds */
+	if (wrap_end >= wrap_start) {
+		wrap_cnt = wrap_end - wrap_start;
+	} else {
+		/* wrap counter has wrapped around, invalidate start position */
+		wrap_cnt = 2;
+	}
+
+	if (wrap_cnt > 1) {
+		/* end position has wrapped around more than once, */
+		/* current start no longer valid                   */
+		log_start->wrap = log->log_pos.wrap - 1;
+		log_start->offset = (log->log_pos.offset + 1) % log_len;
+	} else if ((wrap_cnt == 1) &&
+			   (log->log_pos.offset > log_start->offset)) {
+		/* end position has overwritten start */
+		log_start->offset = (log->log_pos.offset + 1) % log_len;
+	}
+
+	while (log_start->offset == log->log_pos.offset) {
+		/*
+		 * No data in ring buffer,
+		 * so we'll hang around until something happens
+		 */
+		unsigned long t = msleep_interruptible(50);
+
+		if (t != 0) {
+			/* Some event woke us up, so let's quit */
+			return 0;
+		}
+	}
+
+	max_len = debug_rw_buf_size;
+
+	/*
+	 *  Read from ring buff while there is data and space in return buff
+	 */
+	while ((log_start->offset != log->log_pos.offset) && (len < max_len)) {
+		tzdbg.disp_buf[i++] = log->log_buf[log_start->offset];
+		log_start->offset = (log_start->offset + 1) % log_len;
+		if (log_start->offset == 0)
+			++log_start->wrap;
+		++len;
+	}
+	tzdbg.stat[TZDBG_QSEE_LOG].data= tzdbg.disp_buf;
+	/*
+	 * print the display buffer
+	 */
+	splitline_printk(tzdbg.stat[TZDBG_QSEE_LOG].data,len);
+	return len;
+}
+
+
+static void tzdbg_heartbeat_work(struct work_struct *work)
+{
+	static struct tzdbg_log_pos_t log_start = {0};
+
+	pr_debug("[TEE] qsee log -------------begin---\n");
+	_print_qsee_log_stats(g_qsee_log, &log_start,
+						 QSEE_LOG_BUF_SIZE - sizeof(struct tzdbg_log_pos_t)
+						 );
+	pr_debug("[TEE] qsee log -------------end---\n");
+	queue_work(tzdbg.heartbeat_work_q ,
+			&tzdbg.heartbeat_work
+			);
+}
+#endif
 /*
  * Driver functions
  */
@@ -1741,6 +1869,16 @@ static int tz_log_probe(struct platform_device *pdev)
 
 	if (tzdbgfs_init(pdev))
 		goto exit_free_disp_buf;
+
+#ifdef CONFIG_MSM_TZ_QSEE_LOG
+	if(enable_printk_qseelog) {
+		tzdbg.heartbeat_work_q = create_singlethread_workqueue("tz_heartbeat");
+		INIT_WORK(&tzdbg.heartbeat_work,
+						tzdbg_heartbeat_work);
+		queue_work(tzdbg.heartbeat_work_q, &tzdbg.heartbeat_work);
+		dev_err(&pdev->dev, "%s: enable_printk_qseelog is set\n", __func__);
+	}
+#endif
 	return 0;
 
 exit_free_disp_buf:
@@ -1792,7 +1930,14 @@ static void __exit tz_log_exit(void)
 {
 	platform_driver_unregister(&tz_log_driver);
 }
-
+#ifdef CONFIG_MSM_TZ_QSEE_LOG
+static int __init setup_enable_printk_qseelog(char *buf)
+{
+	enable_printk_qseelog = true;
+	return 0;
+}
+early_param("printk_qseelog", setup_enable_printk_qseelog);
+#endif
 module_init(tz_log_init);
 module_exit(tz_log_exit);
 
