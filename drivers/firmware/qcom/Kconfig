@@ -5,3 +5,8 @@ config MSM_TZ_LOG
           This option enables a driver with a debugfs interface for messages
           produced by the Secure code (Trust zone). These messages provide
           diagnostic information about TZ operation.
+config MSM_TZ_QSEE_LOG
+	bool "enable print QSEE log to kernel log"
+	depends on MSM_TZ_LOG
+	help
+	  Set to enable print MSM Trust Zone (TZ) QSEE log to kernel log
