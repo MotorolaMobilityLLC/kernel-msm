@@ -21,6 +21,12 @@
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
 #include "schgm-flash.h"
+#ifdef CONFIG_QCOM_FSA4480_LPD
+extern bool fsa4480_rsbux_low(int r_thr);
+extern int fsa4480_enable_lpd(bool enable);
+#endif
+
+#define RSBU_K_300K_UV	3000000
 
 #define smblib_err(chg, fmt, ...)		\
 	pr_err("%s: %s: " fmt, chg->name,	\
@@ -6150,8 +6156,12 @@ static bool lpd_post_recheck(struct smb_charger *chg)
 		port_clear = false;
 		delay = LPD_RETRY_INTERVAL;
 		smblib_err(chg, "LPD: Sink is still attached\n");
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	} else if ( fsa4480_rsbux_low(RSBU_K_300K_UV)) {
+#else
 	} else if (!smblib_read(chg, TYPE_C_MISC_STATUS_REG, &stat)
 		   && (stat & TYPEC_WATER_DETECTION_STATUS_BIT)) {
+#endif
 		port_clear = false;
 		delay = LPD_RETRY_INTERVAL;
 		smblib_err(chg, "LPD: Water still exist\n");
@@ -6252,6 +6262,13 @@ int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 	cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 	alarm_cancel(&chg->lpd_recheck_timer);
 
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	rc = fsa4480_enable_lpd(enable);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't set fsa4480_enable_lpd rc=%d\n", rc);
+		goto exit;
+	}
+#endif
 	rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
 				TYPEC_WATER_DETECTION_INT_EN_BIT,
 				enable ?
@@ -6287,7 +6304,6 @@ exit:
 	return rc;
 }
 
-#define RSBU_K_300K_UV	3000000
 static bool smblib_src_lpd(struct smb_charger *chg)
 {
 	union power_supply_propval pval;
@@ -6318,7 +6334,11 @@ static bool smblib_src_lpd(struct smb_charger *chg)
 
 	switch (stat & DETECTED_SNK_TYPE_MASK) {
 	case SRC_DEBUG_ACCESS_BIT:
+#ifdef CONFIG_QCOM_FSA4480_LPD
+		if (fsa4480_rsbux_low(RSBU_K_300K_UV))
+#else
 		if (smblib_rsbux_low(chg, RSBU_K_300K_UV))
+#endif
 			lpd_flag = true;
 		break;
 	case SRC_RD_RA_VCONN_BIT:
@@ -8286,7 +8306,9 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 							lpd_ra_open_work.work);
 	union power_supply_propval pval;
+#ifndef CONFIG_QCOM_FSA4480_LPD
 	u8 stat;
+#endif
 	int rc;
 
 	mutex_lock(&chg->moisture_detection_enable);
@@ -8300,6 +8322,12 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	if (chg->lpd_stage != LPD_STAGE_FLOAT)
 		goto out;
 
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	if(!fsa4480_rsbux_low(RSBU_K_300K_UV)) {
+		chg->lpd_stage = LPD_STAGE_NONE;
+		goto out;
+	}
+#else
 	rc = smblib_read(chg, TYPE_C_MISC_STATUS_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read TYPE_C_MISC_STATUS_REG rc=%d\n",
@@ -8313,7 +8341,7 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 		chg->lpd_stage = LPD_STAGE_NONE;
 		goto out;
 	}
-
+#endif
 	chg->lpd_stage = LPD_STAGE_COMMIT;
 
 	/* Enable source only mode */
@@ -8327,8 +8355,11 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 
 	/* Wait 1.5ms to get SBUx ready */
 	usleep_range(1500, 1510);
-
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	if (fsa4480_rsbux_low(RSBU_K_300K_UV)) {
+#else
 	if (smblib_rsbux_low(chg, RSBU_K_300K_UV)) {
+#endif
 #ifdef QCOM_BASE
 		/* Moisture detected, enable sink only mode */
 		pval.intval = POWER_SUPPLY_TYPEC_PR_SINK;
