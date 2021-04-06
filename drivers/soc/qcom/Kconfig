@@ -686,6 +686,15 @@ config QCOM_FSA4480_I2C
 	  for accessing the device, switching between USB and Audio
 	  modes, changing orientation.
 
+config QCOM_FSA4480_LPD
+	bool "Fairchild FSA4480 chip with I2C LPD"
+	select REGMAP_I2C
+	depends on I2C
+	help
+	  Support for the Fairchild FSA4480 IC LPD detection function controlled
+	  using I2C. This driver provides common support of resistance detection
+	  for accessing the device
+
 config QCOM_WATCHDOG_V2
 	bool "QTI Watchdog Support"
 	depends on ARCH_QCOM
