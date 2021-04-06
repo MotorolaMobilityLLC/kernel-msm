@@ -10,6 +10,7 @@
 #include <linux/mutex.h>
 #include <linux/soc/qcom/fsa4480-i2c.h>
 
+
 #define FSA4480_I2C_NAME	"fsa4480-driver"
 
 #define FSA4480_DEVICE_ID       0x00
@@ -37,6 +38,10 @@ struct fsa4480_priv {
 	struct blocking_notifier_head fsa4480_notifier;
 	struct mutex notification_lock;
 };
+
+#ifdef CONFIG_QCOM_FSA4480_LPD
+struct fsa4480_priv *g_fsa4480_priv = NULL;
+#endif
 
 struct fsa4480_reg_val {
 	u16 reg;
@@ -352,6 +357,163 @@ static void fsa4480_update_reg_defaults(struct regmap *regmap)
 				   fsa_reg_i2c_defaults[i].val);
 }
 
+#ifdef CONFIG_QCOM_FSA4480_LPD
+#define FSA4480_RES_ENABLE                            0x12
+#define FSA4480_RES_ENABLE_BIT                          BIT(1)
+#define FSA4480_RES_ENABLE_RES_RANGE                          BIT(5)
+#define FSA4480_RES_DETECT_PIN                    0x13
+#define FSA4480_RES_DETECT_PIN_SELECT      GENMASK(2, 0)
+#define FSA4480_RES_VALUE                              0x14
+#define FSA4480_RES_DETECT_THRESHOLD       0x15
+#define FSA4480_RES_DETECT_INTERVAL          0x16
+#define FSA4480_RES_DETECT_INTERVAL_SELECT          GENMASK(1, 0)
+#define FSA4480_RES_DETECT_STATUS              0x18
+#define FSA4480_RES_DETECT_STATUS_BIT              GENMASK(1, 0)
+
+bool fsa4480_get_lpd_triggered(void)
+{
+	unsigned int stat1;
+	int ret;
+	int flag = 0;
+	struct fsa4480_priv *bq = g_fsa4480_priv;
+
+	if(bq == NULL) {
+		dev_err(bq->dev,"%s bq is NULL \n",__func__);
+		return false;
+	}
+
+	ret = regmap_read(bq->regmap, FSA4480_RES_DETECT_STATUS, &stat1);
+	if (ret)
+		return ret;
+
+	dev_err(bq->dev,"%s detect status :%d \n",__func__, stat1);
+
+	flag = (stat1 & 0x3);
+
+	if(flag == 0x3)
+		return true;
+	else
+		return false;
+
+}
+EXPORT_SYMBOL(fsa4480_get_lpd_triggered);
+
+int fsa4480_enable_lpd(bool enable)
+{
+	int ret;
+//	int val;
+//	bool lpd_triggered = false;
+	struct fsa4480_priv *bq = g_fsa4480_priv;
+
+	if(bq == NULL) {
+		dev_err(bq->dev,"%s bq is NULL \n",__func__);
+		return 0;
+	}
+
+	dev_err(bq->dev,"%s  enable:%d\n",__func__,enable);
+
+	if(enable) {
+		//sub1
+		ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_PIN, FSA4480_RES_DETECT_PIN_SELECT, 0x3);
+		if (ret)
+			return ret;
+
+		//Res detect range 10k to 2560k for 300k detection
+		ret = regmap_update_bits(bq->regmap, FSA4480_RES_ENABLE, FSA4480_RES_ENABLE_RES_RANGE, FSA4480_RES_ENABLE_RES_RANGE);
+		if (ret)
+			return ret;
+
+		//Res threshold 200K
+//		ret = regmap_write(bq->regmap, FSA4480_RES_DETECT_THRESHOLD, 0x64 /*0x14*/);
+//		if (ret)
+//			return ret;
+
+		//detect interval single
+		ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_INTERVAL, FSA4480_RES_DETECT_INTERVAL_SELECT,0x1/*0x3*/);
+		if (ret)
+			return ret;
+
+		//enable res detect
+		ret = regmap_update_bits(bq->regmap, FSA4480_RES_ENABLE, FSA4480_RES_ENABLE_BIT, FSA4480_RES_ENABLE_BIT);
+		if (ret)
+			return ret;
+	}else {
+
+		ret = regmap_update_bits(bq->regmap, FSA4480_RES_ENABLE, FSA4480_RES_ENABLE_BIT, 0);
+		if (ret)
+			return ret;
+
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(fsa4480_enable_lpd);
+
+bool fsa4480_rsbux_low(int r_thr)
+{
+	struct fsa4480_priv *bq = g_fsa4480_priv;
+	unsigned int stat1,stat2;
+	int ret;
+
+	if(bq == NULL) {
+		dev_err(bq->dev,"%s bq is NULL \n",__func__);
+		return false;
+	}
+
+	fsa4480_enable_lpd(true);
+
+	//sub1
+//	ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_PIN, FSA4480_RES_DETECT_PIN_SELECT, 0x3);
+//	if (ret)
+//		goto disable_lpd;
+//		return false;
+
+	ret = regmap_read(bq->regmap, FSA4480_RES_VALUE, &stat1);
+	if (ret)
+		goto disable_lpd;
+
+	dev_err(bq->dev,"%s Res Sbu1: %d K\n",__func__, stat1*10);
+
+	if(stat1*10 < r_thr/10000) {
+		fsa4480_enable_lpd(false);
+		return true;
+	}
+
+	//sub2
+	ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_PIN, FSA4480_RES_DETECT_PIN_SELECT, 0x4);
+	if (ret)
+		goto disable_lpd;
+
+	//detect interval single
+	ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_INTERVAL, FSA4480_RES_DETECT_INTERVAL_SELECT,0x1/*0x3*/);
+	if (ret)
+		goto disable_lpd;
+
+	ret = regmap_update_bits(bq->regmap, FSA4480_RES_ENABLE, FSA4480_RES_ENABLE_BIT, FSA4480_RES_ENABLE_BIT);
+	if (ret)
+		goto disable_lpd;
+
+	ret = regmap_read(bq->regmap, FSA4480_RES_VALUE, &stat2);
+	if (ret)
+		goto disable_lpd;
+
+	dev_err(bq->dev,"%s Res Sbu2: %d K\n",__func__, stat2*10);
+
+	fsa4480_enable_lpd(false);
+
+	if(stat2*10 < r_thr/10000)
+		return true;
+	else
+		return false;
+
+disable_lpd:
+	fsa4480_enable_lpd(false);
+	return false;
+}
+
+EXPORT_SYMBOL(fsa4480_rsbux_low);
+#endif
+
 static int fsa4480_probe(struct i2c_client *i2c,
 			 const struct i2c_device_id *id)
 {
@@ -416,6 +578,9 @@ static int fsa4480_probe(struct i2c_client *i2c,
 		((fsa_priv->fsa4480_notifier).rwsem);
 	fsa_priv->fsa4480_notifier.head = NULL;
 
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	g_fsa4480_priv = fsa_priv;
+#endif
 	return 0;
 
 err_supply:
