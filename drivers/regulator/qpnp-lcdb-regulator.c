@@ -4,6 +4,7 @@
  */
 
 #define pr_fmt(fmt)	"LCDB: %s: " fmt, __func__
+#define DEBUG
 
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -1180,6 +1181,7 @@ static int qpnp_lcdb_disable(struct qpnp_lcdb *lcdb)
 		if (rc < 0)
 			return rc;
 	}
+	pr_debug("lcdb disabled successfully!\n");
 
 	return rc;
 }
@@ -2677,6 +2679,8 @@ static int qpnp_lcdb_parse_dt(struct qpnp_lcdb *lcdb)
 			lcdb->pwrup_config, PWRUP_CONFIG_MAX);
 		return -EINVAL;
 	}
+	pr_info("%s: label: %s, ttw_enable=%d, sc_irq=%d, voltage_step_ramp=%d, ncp_symmetry=%d, pwrup_config=%d\n",
+		__func__, label, lcdb->ttw_enable, lcdb->sc_irq, lcdb->voltage_step_ramp, lcdb->ncp_symmetry, lcdb->pwrup_config);
 
 	rc = of_property_read_u32(node, "qcom,high-p2-blank-time-ns", &tmp);
 	if (!rc) {
