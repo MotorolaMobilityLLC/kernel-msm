@@ -71,8 +71,11 @@ static int cnss_get_vreg_single(struct cnss_plat_data *plat_priv,
 	reg = devm_regulator_get_optional(dev, vreg->cfg.name);
 	if (IS_ERR(reg)) {
 		ret = PTR_ERR(reg);
-		if (ret == -ENODEV)
+		if (ret == -ENODEV) {
+			cnss_pr_err("Failed to get regulator %s, no such device\n",
+				    vreg->cfg.name);
 			return ret;
+		}
 		else if (ret == -EPROBE_DEFER)
 			cnss_pr_info("EPROBE_DEFER for regulator: %s\n",
 				     vreg->cfg.name);
