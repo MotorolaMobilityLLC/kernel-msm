@@ -282,7 +282,7 @@ static int sde_rsc_mode2_entry_trigger(struct sde_rsc_priv *rsc)
 			rc = 0;
 			break;
 		}
-		usleep_range(10, 100);
+		usleep_range(50, 100);
 	}
 
 	return rc;
@@ -346,6 +346,13 @@ static int sde_rsc_mode2_entry_v3(struct sde_rsc_priv *rsc)
 
 	dss_reg_w(&rsc->drv_io, SDE_RSC_SOLVER_SOLVER_MODES_ENABLED_DRV0,
 						0x7, rsc->debug_mode);
+
+	/**
+	 * increase delay time to wait before mode2 entry,
+	 * longer time required subsequent to panel mode change
+	 */
+	if (rsc->post_poms)
+		usleep_range(750, 1000);
 
 	for (i = 0; i <= MAX_MODE2_ENTRY_TRY; i++) {
 		rc = sde_rsc_mode2_entry_trigger(rsc);
