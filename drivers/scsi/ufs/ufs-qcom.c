@@ -910,12 +910,17 @@ out:
 static int ufs_qcom_full_reset(struct ufs_hba *hba)
 {
 	int ret = -ENOTSUPP;
+	bool reenable_intr = false;
 
 	if (!hba->core_reset) {
 		dev_err(hba->dev, "%s: failed, err = %d\n", __func__,
 				ret);
 		goto out;
 	}
+
+        reenable_intr = hba->is_irq_enabled;
+        disable_irq(hba->irq);
+        hba->is_irq_enabled = false;
 
 	ret = reset_control_assert(hba->core_reset);
 	if (ret) {
@@ -935,6 +940,13 @@ static int ufs_qcom_full_reset(struct ufs_hba *hba)
 	if (ret)
 		dev_err(hba->dev, "%s: core_reset deassert failed, err = %d\n",
 				__func__, ret);
+
+	usleep_range(1000, 1100);
+
+	if (reenable_intr) {
+                enable_irq(hba->irq);
+                hba->is_irq_enabled = true;
+        }
 
 out:
 	return ret;
