@@ -47,6 +47,9 @@ enum print_reason {
 #define PL_DELAY_VOTER			"PL_DELAY_VOTER"
 #define CTM_VOTER			"CTM_VOTER"
 #define SW_QC3_VOTER			"SW_QC3_VOTER"
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+#define SW_QC3P_AUTHEN_VOTER		"SW_QC3P_AUTHEN_VOTER"
+#endif
 #define AICL_RERUN_VOTER		"AICL_RERUN_VOTER"
 #define SW_ICL_MAX_VOTER		"SW_ICL_MAX_VOTER"
 #define PL_QNOVO_VOTER			"PL_QNOVO_VOTER"
@@ -91,7 +94,9 @@ enum print_reason {
 #define WIRELESS_VOTER			"WIRELESS_VOTER"
 #define DEMO_VOTER			"DEMO_VOTER"
 #define MMI_VOTER			"MMI_VOTER"
-
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+#define MMI_QC3P_VOTER			"MMI_QC3P_VOTER"
+#endif
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
 #define ITERM_LIMITS_PMI632_MA		5000
@@ -112,7 +117,25 @@ enum print_reason {
 #define DCIN_ICL_MAX_UA			1500000
 #define DCIN_ICL_STEP_UA		100000
 #define ROLE_REVERSAL_DELAY_MS		500
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+enum qc3p_authen_stage {
+	/* initial stage */
+	QC3P_AUTHEN_STAGE_NONE,
+	/* started and ongoing */
+	QC3P_AUTHEN_STAGE_START,
+	/* cancel if started,  or don't start */
+	QC3P_AUTHEN_STAGE_CANCEL,
+	/* confirmed and mitigation measures taken for 60 s */
+	QC3P_AUTHEN_STAGE_COMMIT,
+};
 
+enum qc3p_power {
+	QC3P_POWER_NONE,
+	QC3P_POWER_18W,
+	QC3P_POWER_27W,
+	QC3P_POWER_45W,
+};
+#endif
 enum smb_mode {
 	PARALLEL_MASTER = 0,
 	PARALLEL_SLAVE,
@@ -480,7 +503,9 @@ struct smb_charger {
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
 	struct delayed_work	role_reversal_check;
-
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	struct delayed_work	qc3p_authen_work;
+#endif
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
 	struct alarm		chg_termination_alarm;
@@ -554,6 +579,10 @@ struct smb_charger {
 	enum lpd_stage		lpd_stage;
 	bool			lpd_disabled;
 	enum lpd_reason		lpd_reason;
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	enum qc3p_authen_stage	qc3p_authen_stage;
+	enum qc3p_power		qc3p_power;
+#endif
 	bool			fcc_stepper_enable;
 	int			die_temp;
 	int			smb_temp;
