@@ -458,7 +458,6 @@
   devm_regmap_field_alloc
   __devm_regmap_init
   __devm_regmap_init_i2c
-  __devm_regmap_init_spi
   __devm_regmap_init_mmio_clk
   devm_regulator_bulk_get
   devm_regulator_get
@@ -2315,9 +2314,7 @@
   snd_soc_card_jack_new
   snd_soc_component_disable_pin
   snd_soc_component_exit_regmap
-  snd_soc_component_enable_pin
   snd_soc_component_force_enable_pin
-  snd_soc_component_get_pin_status
   snd_soc_component_init_regmap
   snd_soc_component_read32
   snd_soc_component_set_sysclk
