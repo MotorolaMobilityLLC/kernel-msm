@@ -963,6 +963,9 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_CHARGER_STATUS,
 	POWER_SUPPLY_PROP_INPUT_VOLTAGE_SETTLED,
 	POWER_SUPPLY_PROP_MOISTURE_DETECTION_ENABLE,
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	POWER_SUPPLY_PROP_HVDCP_POWER,
+#endif
 };
 
 static int smb5_usb_get_prop(struct power_supply *psy,
@@ -1134,6 +1137,13 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 				val->intval = (buff[1] << 8 | buff[0]) * 1038;
 		}
 		break;
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	case POWER_SUPPLY_PROP_HVDCP_POWER:
+		if( chg->qc3p_power <QC3P_POWER_NONE || chg->qc3p_power > QC3P_POWER_45W )
+			chg->qc3p_power = QC3P_POWER_NONE;
+		val->intval = chg->qc3p_power;
+		break;
+#endif
 	default:
 		pr_err("get prop %d is not supported in usb\n", psp);
 		rc = -EINVAL;
@@ -2082,12 +2092,29 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		} else
 			vote(chg->fcc_votable, MMI_VOTER, true, val->intval);
 		break;
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	case POWER_SUPPLY_PROP_QC3P_CURRENT_MAX:
+		if (val->intval < 0) {
+			vote(chg->fcc_votable, MMI_QC3P_VOTER, false, 0);
+		} else
+			vote(chg->fcc_votable, MMI_QC3P_VOTER, true, val->intval);
+		break;
+#endif
 	case POWER_SUPPLY_PROP_RERUN_AICL:
 		rc = smblib_run_aicl(chg, RERUN_AICL);
 		break;
 	case POWER_SUPPLY_PROP_DP_DM:
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3P5)
+			rc = smblib_dp_dm(chg, val->intval);
+		else if ((!chg->flash_active)
+			&& (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
+			     &&chg->qc3p_authen_stage != QC3P_AUTHEN_STAGE_START))
+			rc = smblib_dp_dm(chg, val->intval);
+#else
 		if (!chg->flash_active)
 			rc = smblib_dp_dm(chg, val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:
 		rc = smblib_set_prop_input_current_limited(chg, val);
