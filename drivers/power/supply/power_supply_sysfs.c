@@ -496,6 +496,10 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charger_status),
 	POWER_SUPPLY_ATTR(moisture_detection_enabled),
 	POWER_SUPPLY_ATTR(age),
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	POWER_SUPPLY_ATTR(hvdcp_power),
+	POWER_SUPPLY_ATTR(qc3p_current_max),
+#endif
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
