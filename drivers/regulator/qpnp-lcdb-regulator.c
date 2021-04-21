@@ -1192,6 +1192,8 @@ static int qpnp_lcdb_handle_sc_event(struct qpnp_lcdb *lcdb)
 {
 	int rc = 0;
 	s64 elapsed_time_us;
+	static int total_count = 0;
+	pr_err("in qpnp_lcdb_handle_sc_event func. sc_count=%d, total_count=%d\n", lcdb->sc_count, total_count++);
 
 	mutex_lock(&lcdb->lcdb_mutex);
 	rc = qpnp_lcdb_disable(lcdb);
@@ -1235,6 +1237,7 @@ static irqreturn_t qpnp_lcdb_sc_irq_handler(int irq, void *data)
 	mutex_lock(&lcdb->lcdb_mutex);
 	rc = qpnp_lcdb_read(lcdb, lcdb->base + INT_RT_STATUS_REG, &val, 1);
 	mutex_unlock(&lcdb->lcdb_mutex);
+	pr_err("Rt status register= 0x%x\n", val);
 	if (rc < 0)
 		goto irq_handled;
 
@@ -2679,8 +2682,8 @@ static int qpnp_lcdb_parse_dt(struct qpnp_lcdb *lcdb)
 			lcdb->pwrup_config, PWRUP_CONFIG_MAX);
 		return -EINVAL;
 	}
-	pr_info("%s: label: %s, ttw_enable=%d, sc_irq=%d, voltage_step_ramp=%d, ncp_symmetry=%d, pwrup_config=%d\n",
-		__func__, label, lcdb->ttw_enable, lcdb->sc_irq, lcdb->voltage_step_ramp, lcdb->ncp_symmetry, lcdb->pwrup_config);
+	pr_info("label: %s, ttw_enable=%d, sc_irq=%d, voltage_step_ramp=%d, ncp_symmetry=%d, pwrup_config=%d\n",
+		label, lcdb->ttw_enable, lcdb->sc_irq, lcdb->voltage_step_ramp, lcdb->ncp_symmetry, lcdb->pwrup_config);
 
 	rc = of_property_read_u32(node, "qcom,high-p2-blank-time-ns", &tmp);
 	if (!rc) {
