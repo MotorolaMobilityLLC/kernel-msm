@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -149,13 +149,16 @@ static const char * const cam_cc_parent_names_6[] = {
 	"core_bi_pll_test_se",
 };
 
+static struct pll_vco cam_cc_pll0_vco[] = {
+	{ 500000000, 1000000000, 2 },
+};
+
 static struct pll_vco cam_cc_pll2_vco[] = {
 	{ 500000000, 1250000000, 0 },
 };
 
-static struct pll_vco cam_cc_pll_vco[] = {
+static struct pll_vco cam_cc_pll3_vco[] = {
 	{ 1000000000, 2000000000, 0 },
-	{ 500000000, 1000000000, 2 },
 };
 
 /* 600MHz configuration */
@@ -173,15 +176,15 @@ static struct alpha_pll_config cam_cc_pll0_config = {
 
 static struct clk_alpha_pll cam_cc_pll0_out_aux = {
 	.offset = 0x0,
-	.vco_table = cam_cc_pll_vco,
-	.num_vco = ARRAY_SIZE(cam_cc_pll_vco),
+	.vco_table = cam_cc_pll0_vco,
+	.num_vco = ARRAY_SIZE(cam_cc_pll0_vco),
 	.config = &cam_cc_pll0_config,
 	.clkr = {
 		.hw.init = &(struct clk_init_data){
 			.name = "cam_cc_pll0_out_aux",
 			.parent_names = (const char *[]){ "bi_tcxo" },
 			.num_parents = 1,
-			.ops = &clk_alpha_pll_ops,
+			.ops = &clk_alpha_pll_slew_ops,
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
@@ -207,15 +210,15 @@ static struct alpha_pll_config cam_cc_pll1_config = {
 
 static struct clk_alpha_pll cam_cc_pll1_out_aux = {
 	.offset = 0x1000,
-	.vco_table = cam_cc_pll_vco,
-	.num_vco = ARRAY_SIZE(cam_cc_pll_vco),
+	.vco_table = cam_cc_pll0_vco,
+	.num_vco = ARRAY_SIZE(cam_cc_pll0_vco),
 	.config = &cam_cc_pll1_config,
 	.clkr = {
 		.hw.init = &(struct clk_init_data){
 			.name = "cam_cc_pll1_out_aux",
 			.parent_names = (const char *[]){ "bi_tcxo" },
 			.num_parents = 1,
-			.ops = &clk_alpha_pll_ops,
+			.ops = &clk_alpha_pll_slew_ops,
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
@@ -284,15 +287,15 @@ static struct alpha_pll_config cam_cc_pll3_config = {
 
 static struct clk_alpha_pll cam_cc_pll3_out_main = {
 	.offset = 0x3000,
-	.vco_table = cam_cc_pll_vco,
-	.num_vco = ARRAY_SIZE(cam_cc_pll_vco),
+	.vco_table = cam_cc_pll3_vco,
+	.num_vco = ARRAY_SIZE(cam_cc_pll3_vco),
 	.config = &cam_cc_pll3_config,
 	.clkr = {
 		.hw.init = &(struct clk_init_data){
 			.name = "cam_cc_pll3_out_main",
 			.parent_names = (const char *[]){ "bi_tcxo" },
 			.num_parents = 1,
-			.ops = &clk_alpha_pll_ops,
+			.ops = &clk_alpha_pll_slew_ops,
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_MX_NUM,
 			.rate_max = (unsigned long[VDD_MX_NUM]) {

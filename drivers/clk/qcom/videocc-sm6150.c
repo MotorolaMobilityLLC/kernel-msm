@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -98,18 +98,6 @@ static struct alpha_pll_config video_pll0_config = {
 	.test_ctl_hi_mask = 0x1,
 };
 
-static struct clk_init_data video_pll0_out_main_sa6155 = {
-	.name = "video_pll0_out_main",
-	.parent_names = (const char *[]){ "bi_tcxo" },
-	.num_parents = 1,
-	.ops = &clk_alpha_pll_slew_ops,
-	.vdd_class = &vdd_cx,
-	.num_rate_max = VDD_NUM,
-	.rate_max = (unsigned long[VDD_NUM]) {
-		[VDD_MIN] = 1000000000,
-		[VDD_NOMINAL] = 2000000000},
-};
-
 static struct clk_alpha_pll video_pll0_out_main = {
 	.offset = 0x42c,
 	.vco_table = video_cc_pll_vco,
@@ -121,7 +109,7 @@ static struct clk_alpha_pll video_pll0_out_main = {
 			.name = "video_pll0_out_main",
 			.parent_names = (const char *[]){ "bi_tcxo" },
 			.num_parents = 1,
-			.ops = &clk_alpha_pll_ops,
+			.ops = &clk_alpha_pll_slew_ops,
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
@@ -369,7 +357,6 @@ static void videocc_sm6150_fixup_sa6155(struct platform_device *pdev)
 	vdd_cx.num_levels = VDD_NUM_SA6155;
 	vdd_cx.cur_level = VDD_NUM_SA6155;
 
-	video_pll0_out_main.clkr.hw.init = &video_pll0_out_main_sa6155,
 	pdev->dev.driver->pm =  &video_cc_sa6150_pm_ops;
 }
 

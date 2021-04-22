@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018, 2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -689,6 +689,7 @@ static const struct freq_tbl ftbl_cam_cc_fd_core_clk_src[] = {
 	F(19200000, P_BI_TCXO, 1, 0, 0),
 	F(380000000, P_CAM_CC_PLL4_OUT_EVEN, 1, 0, 0),
 	F(384000000, P_CAM_CC_PLL2_OUT_EARLY, 2.5, 0, 0),
+	F(400000000, P_CAM_CC_PLL0_OUT_MAIN, 3, 0, 0),
 	F(480000000, P_CAM_CC_PLL2_OUT_EARLY, 2, 0, 0),
 	F(600000000, P_CAM_CC_PLL0_OUT_MAIN, 2, 0, 0),
 	{ }
