@@ -2031,6 +2031,8 @@ static int sde_kms_set_crtc_for_conn(struct drm_device *dev,
 	if (ret)
 		SDE_ERROR("error %d setting the crtc\n", ret);
 
+	_sde_crtc_clear_dim_layers_v1(crtc_state);
+
 	return 0;
 }
 
