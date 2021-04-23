@@ -1111,6 +1111,12 @@ static int qpnp_lcdb_enable(struct qpnp_lcdb *lcdb)
 		}
 	}
 
+	rc = qpnp_lcdb_read(lcdb, lcdb->base + LCDB_ENABLE_CTL1_REG, &val, 1);
+	if (rc < 0) {
+	    pr_err("Failed to read LCDB_ENABLE_CTL1_REG rc= %d\n", rc);
+	}
+	pr_debug("lcdb LCDB_ENABLE_CTL1_REG value= %d \n", val);
+
 	pr_debug("lcdb enabled successfully!\n");
 
 	return 0;
