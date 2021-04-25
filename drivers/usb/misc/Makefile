@@ -32,3 +32,4 @@ obj-$(CONFIG_USB_SISUSBVGA)		+= sisusbvga/
 obj-$(CONFIG_USB_LINK_LAYER_TEST)	+= lvstest.o
 obj-$(CONFIG_USB_REDRIVER_NB7VPQ904M)	+= ssusb-redriver-nb7vpq904m.o
 obj-$(CONFIG_USB_REDRIVER_PS5169)	+= ps5169.o
+obj-$(CONFIG_USB_REDRIVER_PI2DPX1217)	+= pi2dpx1217.o
