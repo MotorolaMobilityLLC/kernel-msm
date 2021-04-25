@@ -57,13 +57,18 @@ FINAL_DEFCONFIG_BLEND=""
 
 source ${SCRIPTS_ROOT}/fragment_motoconfig.sh  ${PLATFORM_NAME} ${REQUIRED_DEFCONFIG}
 FINAL_DEFCONFIG_BLEND+=${MOTO_REQUIRED_CONFIG}
+TARGET_PRODUCT_TYPE=${TARGET_PRODUCT#*_}
 
 case "$REQUIRED_DEFCONFIG" in
 	${PLATFORM_NAME}-qgki-debug_defconfig )
-		FINAL_DEFCONFIG_BLEND+=" $QCOM_DEBUG_FRAG"
+		if [ $TARGET_PRODUCT_TYPE != "factory" ]; then
+			FINAL_DEFCONFIG_BLEND+=" $QCOM_DEBUG_FRAG"
+		fi
 		;&	# Intentional fallthrough
 	${PLATFORM_NAME}-qgki-consolidate_defconfig )
-		FINAL_DEFCONFIG_BLEND+=" $QCOM_CONSOLIDATE_FRAG"
+		if [ $TARGET_PRODUCT_TYPE != "factory" ]; then
+			FINAL_DEFCONFIG_BLEND+=" $QCOM_CONSOLIDATE_FRAG"
+		fi
 		;&	# Intentional fallthrough
 	${PLATFORM_NAME}-qgki_defconfig )
 		# DEBUG_FS fragment.
@@ -77,7 +82,9 @@ case "$REQUIRED_DEFCONFIG" in
 		FINAL_DEFCONFIG_BLEND+=" $QCOM_GKI_FRAG "
 		;;
 	${PLATFORM_NAME}-debug_defconfig )
-		FINAL_DEFCONFIG_BLEND+=" $QCOM_GENERIC_DEBUG_FRAG "
+		if [ $TARGET_PRODUCT_TYPE != "factory" ]; then
+			FINAL_DEFCONFIG_BLEND+=" $QCOM_GENERIC_DEBUG_FRAG "
+		fi
 		;&
 	${PLATFORM_NAME}_defconfig )
 		FINAL_DEFCONFIG_BLEND+=" $QCOM_GENERIC_PERF_FRAG "
