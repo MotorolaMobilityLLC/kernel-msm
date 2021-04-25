@@ -31,7 +31,8 @@
 #define PM7325B_ADC7_USB_IN_V_16		(PM7325B_SID << 8 | 0x11)
 #define PM7325B_ADC7_CC1_ID			(PM7325B_SID << 8 | 0x13)
 #define PM7325B_ADC7_VREF_BAT_THERM		(PM7325B_SID << 8 | 0x15)
-#define PM7325B_ADC7_IIN_FB                    (PM7325B_SID << 8 | 0x17)
+#define PM7325B_ADC7_SMB_IIN_IN			(PM7325B_SID << 8 | 0x17)
+#define PM7325B_ADC7_IIN_FB                     (PM7325B_SID << 8 | 0x17)
 #define PM7325B_ADC7_ICHG_FB			(PM7325B_SID << 8 | 0xa1)
 
 /* 30k pull-up1 */
