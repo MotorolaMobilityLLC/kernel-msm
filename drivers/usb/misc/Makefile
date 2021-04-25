@@ -36,3 +36,4 @@ obj-$(CONFIG_USB_QTI_KS_BRIDGE)		+= ks_bridge.o
 obj-$(CONFIG_USB_QCOM_DIAG_BRIDGE)	+= diag_ipc_bridge.o
 obj-$(CONFIG_USB_VBUS_EXTCON_GENOA)	+= vbus-extcon-genoa.o
 obj-$(CONFIG_USB_REDRIVER_PS5169)	+= ps5169.o
+obj-$(CONFIG_USB_REDRIVER_PI2DPX1217)	+= pi2dpx1217.o
