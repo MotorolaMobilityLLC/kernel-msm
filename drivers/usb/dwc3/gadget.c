@@ -323,6 +323,9 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 					(list_empty(&dep->started_list))) {
 		dep->flags |= DWC3_EP_PENDING_REQUEST;
 		dbg_event(dep->number, "STARTEDLISTEMPTY", 0);
+		dbg_log_string("%s(%d): Give back reqhere1 %p len(%d) actual(%d))",
+			dep->name, dep->number, &req->request,
+			req->request.length, req->request.actual);
 	}
 
 	spin_unlock(&dwc->lock);
@@ -1062,6 +1065,8 @@ static int dwc3_gadget_ep_disable(struct usb_ep *ep)
 	dbg_event(dep->number, "DISABLE", ret);
 	dbg_event(dep->number, "MISSEDISOCPKTS", dep->missed_isoc_packets);
 	dep->missed_isoc_packets = 0;
+	dbg_event(dep->number, "DISABLEFAILPKT", dep->failedpkt_counter);
+	dep->failedpkt_counter = 0;
 	spin_unlock_irqrestore(&dwc->lock, flags);
 	pm_runtime_mark_last_busy(dwc->sysdev);
 	pm_runtime_put_sync_autosuspend(dwc->sysdev);
@@ -1417,6 +1422,7 @@ static void dwc3_prepare_one_trb_linear(struct dwc3_ep *dep,
 	unsigned int length = req->request.length;
 	unsigned int maxp = usb_endpoint_maxp(dep->endpoint.desc);
 	unsigned int rem = length % maxp;
+	struct dwc3	*dwc = dep->dwc;
 
 	if ((!length || rem) && usb_endpoint_dir_out(dep->endpoint.desc)) {
 		struct dwc3	*dwc = dep->dwc;
@@ -1465,6 +1471,11 @@ static void dwc3_prepare_one_trb_linear(struct dwc3_ep *dep,
 	} else {
 		dwc3_prepare_one_trb(dep, req, length, false, 0);
 	}
+
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc))
+		dbg_log_string("%s(%d): req queue %p len(%d))",
+			dep->name, dep->number,
+			&req->request, req->request.length);
 }
 
 /*
@@ -1524,6 +1535,14 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep)
 	}
 }
 
+static int __dwc3_gadget_get_frame(struct dwc3 *dwc)
+{
+	u32			reg;
+
+	reg = dwc3_readl(dwc->regs, DWC3_DSTS);
+	return DWC3_DSTS_SOFFN(reg);
+}
+
 static void dwc3_gadget_ep_cleanup_cancelled_requests(struct dwc3_ep *dep);
 
 static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep)
@@ -1534,6 +1553,7 @@ static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep)
 	int				starting;
 	int				ret;
 	u32				cmd;
+	u32 microframe;
 
 	if (!dwc3_calc_trbs_left(dep))
 		return 0;
@@ -1606,20 +1626,18 @@ static int __dwc3_gadget_kick_transfer(struct dwc3_ep *dep)
 		return ret;
 	}
 
+	microframe = __dwc3_gadget_get_frame(dwc);
+	if (starting)
+		dbg_event(dep->number, "STARTDONEFR", microframe);
+	else
+		dbg_event(dep->number, "UPDATEDONEFR", microframe);
 	return 0;
-}
-
-static int __dwc3_gadget_get_frame(struct dwc3 *dwc)
-{
-	u32			reg;
-
-	reg = dwc3_readl(dwc->regs, DWC3_DSTS);
-	return DWC3_DSTS_SOFFN(reg);
 }
 
 static void __dwc3_gadget_start_isoc(struct dwc3_ep *dep)
 {
 	u16 wraparound_bits;
+	struct dwc3	*dwc = dep->dwc;
 
 	if (list_empty(&dep->pending_list)) {
 		dev_info(dep->dwc->dev, "%s: ran out of requests\n",
@@ -1642,6 +1660,7 @@ static void __dwc3_gadget_start_isoc(struct dwc3_ep *dep)
 	dep->frame_number = (wraparound_bits | dep->frame_number) &
 				~(dep->interval - 1);
 
+	dbg_event(dep->number, "KICKTRANFER", dep->frame_number);
 	__dwc3_gadget_kick_transfer(dep);
 }
 
@@ -3181,6 +3200,7 @@ static void dwc3_gadget_endpoint_transfer_in_progress(struct dwc3_ep *dep,
 	struct dwc3		*dwc = dep->dwc;
 	unsigned		status = 0;
 	bool			stop = false;
+	u32 microframe;
 
 	dwc3_gadget_endpoint_frame_from_event(dep, event);
 
@@ -3192,6 +3212,10 @@ static void dwc3_gadget_endpoint_transfer_in_progress(struct dwc3_ep *dep,
 
 		dep->missed_isoc_packets++;
 		dbg_event(dep->number, "MISSEDISOC", 0);
+		microframe = __dwc3_gadget_get_frame(dwc);
+		dep->failedpkt_counter++;
+		dbg_event(dep->number, "CURRFRAME", microframe);
+		dbg_event(dep->number, "MISSEDISOC", dep->frame_number);
 	}
 
 	dwc3_gadget_ep_cleanup_completed_requests(dep, event, status);

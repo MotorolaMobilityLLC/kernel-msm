@@ -782,6 +782,7 @@ struct dwc3_ep {
 	u8			resource_index;
 	u32			frame_number;
 	u32			interval;
+	u32			failedpkt_counter;
 
 	char			name[20];
 
