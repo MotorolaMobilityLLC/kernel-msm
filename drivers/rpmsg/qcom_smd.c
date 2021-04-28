@@ -244,6 +244,7 @@ struct qcom_smd_channel {
 	void *extended_buf;
 	void *ext_buf;
 	int ext_pkt_size;
+	bool is_pkt_ch;
 };
 
 /*
@@ -712,6 +713,13 @@ static bool qcom_smd_channel_intr(struct qcom_smd_channel *channel)
 	for (;;) {
 		avail = qcom_smd_channel_get_rx_avail(channel);
 
+		if (!channel->is_pkt_ch) {
+			if (avail > 0)
+				channel->pkt_size = avail;
+			else
+				break;
+		}
+
 		if (!channel->pkt_size && avail >= SMD_PACKET_HEADER_LEN) {
 			qcom_smd_channel_peek(channel, &pktlen, sizeof(pktlen));
 			qcom_smd_channel_advance(channel, SMD_PACKET_HEADER_LEN);
@@ -861,7 +869,7 @@ static int __qcom_smd_send(struct qcom_smd_channel *channel, const void *data,
 			   int len, bool wait)
 {
 	__le32 hdr[5] = { cpu_to_le32(len), };
-	int tlen = sizeof(hdr) + len;
+	int tlen = (channel->is_pkt_ch) ? sizeof(hdr) + len : len;
 	unsigned long flags;
 	int ret;
 
@@ -908,7 +916,9 @@ static int __qcom_smd_send(struct qcom_smd_channel *channel, const void *data,
 
 	SET_TX_CHANNEL_FLAG(channel, fTAIL, 0);
 
-	qcom_smd_write_fifo(channel, hdr, sizeof(hdr));
+	if (channel->is_pkt_ch)
+		qcom_smd_write_fifo(channel, hdr, sizeof(hdr));
+
 	qcom_smd_write_fifo(channel, data, len);
 
 	SET_TX_CHANNEL_FLAG(channel, fHEAD, 1);
@@ -1346,7 +1356,8 @@ static void qcom_channel_scan_worker(struct work_struct *work)
 			if (!entry->name[0])
 				continue;
 
-			if (!(eflags & SMD_CHANNEL_FLAGS_PACKET))
+			if (!(eflags & SMD_CHANNEL_FLAGS_PACKET) &&
+				!(eflags & SMD_CHANNEL_FLAGS_STREAM))
 				continue;
 
 			if ((eflags & SMD_CHANNEL_FLAGS_EDGE_MASK) != edge->edge_id)
@@ -1359,6 +1370,10 @@ static void qcom_channel_scan_worker(struct work_struct *work)
 			channel = qcom_smd_create_channel(edge, info_id, fifo_id, entry->name);
 			if (IS_ERR(channel))
 				continue;
+
+			channel->is_pkt_ch =
+				(eflags & SMD_CHANNEL_FLAGS_PACKET) ? true
+					: false;
 
 			spin_lock_irqsave(&edge->channels_lock, flags);
 			list_add(&channel->list, &edge->channels);

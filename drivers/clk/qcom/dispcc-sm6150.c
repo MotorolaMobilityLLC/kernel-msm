@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -139,18 +139,6 @@ static struct alpha_pll_config disp_cc_pll0_config = {
 	.test_ctl_hi_mask = 0x1,
 };
 
-static struct clk_init_data disp_cc_pll0_out_main_sa6155 = {
-	.name = "disp_cc_pll0_out_main",
-	.parent_names = (const char *[]){ "bi_tcxo" },
-	.num_parents = 1,
-	.ops = &clk_alpha_pll_slew_ops,
-	.vdd_class = &vdd_cx,
-	.num_rate_max = VDD_NUM,
-	.rate_max = (unsigned long[VDD_NUM]) {
-		[VDD_MIN] = 1000000000,
-		[VDD_NOMINAL] = 2000000000},
-};
-
 static struct clk_alpha_pll disp_cc_pll0_out_main = {
 	.offset = 0x0,
 	.vco_table = disp_cc_pll_vco,
@@ -162,7 +150,7 @@ static struct clk_alpha_pll disp_cc_pll0_out_main = {
 			.name = "disp_cc_pll0_out_main",
 			.parent_names = (const char *[]){ "bi_tcxo" },
 			.num_parents = 1,
-			.ops = &clk_alpha_pll_ops,
+			.ops = &clk_alpha_pll_slew_ops,
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
@@ -837,7 +825,6 @@ static void dispcc_sm6150_fixup_sa6155(struct platform_device *pdev)
 {
 	vdd_cx.num_levels = VDD_NUM_SA6155;
 	vdd_cx.cur_level = VDD_NUM_SA6155;
-	disp_cc_pll0_out_main.clkr.hw.init = &disp_cc_pll0_out_main_sa6155;
 }
 
 static int disp_cc_sm6150_probe(struct platform_device *pdev)
