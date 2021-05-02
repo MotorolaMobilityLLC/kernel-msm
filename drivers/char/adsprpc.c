@@ -113,10 +113,10 @@
 
 #define PERF(enb, cnt, ff) \
 	{\
-		struct timespec startT = {0};\
+		struct timespec64 startT = {0};\
 		int64_t *counter = cnt;\
 		if (enb && counter) {\
-			getnstimeofday(&startT);\
+			ktime_get_real_ts64(&startT);\
 		} \
 		ff ;\
 		if (enb && counter) {\
@@ -312,6 +312,9 @@ struct fastrpc_apps {
 	spinlock_t ctxlock;
 	struct smq_invoke_ctx *ctxtable[FASTRPC_CTX_MAX];
 	bool legacy_remote_heap;
+	/* Secure subsystems like ADSP/SLPI will use secure client */
+	struct wakeup_source *wake_source_secure;
+	/* Non-secure subsystem like CDSP will use regular client */
 	struct wakeup_source *wake_source;
 };
 
@@ -455,16 +458,18 @@ static struct fastrpc_channel_ctx gcinfo[NUM_CHANNELS] = {
 static int hlosvm[1] = {VMID_HLOS};
 static int hlosvmperm[1] = {PERM_READ | PERM_WRITE | PERM_EXEC};
 
-static void fastrpc_pm_awake(int fl_wake_enable, bool *pm_awake_voted);
-static void fastrpc_pm_relax(bool *pm_awake_voted);
-static inline int64_t getnstimediff(struct timespec *start)
+static void fastrpc_pm_awake(int fl_wake_enable, bool *pm_awake_voted,
+			int channel_type);
+static void fastrpc_pm_relax(bool *pm_awake_voted, int channel_type);
+
+static inline int64_t getnstimediff(struct timespec64 *start)
 {
 	int64_t ns;
-	struct timespec ts, b;
+	struct timespec64 ts, b;
 
-	getnstimeofday(&ts);
-	b = timespec_sub(ts, *start);
-	ns = timespec_to_ns(&b);
+	ktime_get_real_ts64(&ts);
+	b = timespec64_sub(ts, *start);
+	ns = timespec64_to_ns(&b);
 	return ns;
 }
 
@@ -1340,7 +1345,8 @@ static void context_free(struct smq_invoke_ctx *ctx)
 static void context_notify_user(struct smq_invoke_ctx *ctx, int retval)
 {
 	ctx->retval = retval;
-	fastrpc_pm_awake(ctx->fl->wake_enable, &ctx->pm_awake_voted);
+	fastrpc_pm_awake(ctx->fl->wake_enable, &ctx->pm_awake_voted,
+		gcinfo[ctx->fl->cid].secure);
 	complete(&ctx->work);
 }
 
@@ -1704,10 +1710,7 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 					DMA_TO_DEVICE);
 				dma_buf_end_cpu_access(map->buf,
 					DMA_TO_DEVICE);
-			} else
-				dmac_flush_range(uint64_to_ptr(rpra[i].buf.pv),
-					uint64_to_ptr(rpra[i].buf.pv
-						+ rpra[i].buf.len));
+			}
 		}
 	}
 	PERF_END);
@@ -1811,10 +1814,7 @@ static void inv_args_pre(struct smq_invoke_ctx *ctx)
 					DMA_BIDIRECTIONAL);
 				dma_buf_end_cpu_access(map->buf,
 					DMA_BIDIRECTIONAL);
-			} else
-				dmac_flush_range(
-					uint64_to_ptr(rpra[i].buf.pv), (char *)
-					uint64_to_ptr(rpra[i].buf.pv + 1));
+			}
 		}
 
 		end = (uintptr_t)uint64_to_ptr(rpra[i].buf.pv +
@@ -1825,9 +1825,7 @@ static void inv_args_pre(struct smq_invoke_ctx *ctx)
 					DMA_BIDIRECTIONAL);
 				dma_buf_end_cpu_access(map->buf,
 					DMA_BIDIRECTIONAL);
-			} else
-				dmac_flush_range((char *)end,
-					(char *)end + 1);
+			}
 		}
 	}
 }
@@ -1862,10 +1860,7 @@ static void inv_args(struct smq_invoke_ctx *ctx)
 				DMA_FROM_DEVICE);
 			dma_buf_end_cpu_access(map->buf,
 				DMA_FROM_DEVICE);
-		} else
-			dmac_inv_range((char *)uint64_to_ptr(rpra[i].buf.pv),
-				(char *)uint64_to_ptr(rpra[i].buf.pv
-						 + rpra[i].buf.len));
+		}
 	}
 
 }
@@ -1941,23 +1936,30 @@ static void fastrpc_init(struct fastrpc_apps *me)
 	me->channel[CDSP_DOMAIN_ID].secure = NON_SECURE_CHANNEL;
 }
 
-static inline void fastrpc_pm_awake(int fl_wake_enable, bool *pm_awake_voted)
+static inline void fastrpc_pm_awake(int fl_wake_enable, bool *pm_awake_voted,
+				int channel_type)
 {
 	struct fastrpc_apps *me = &gfa;
 
 	if (!fl_wake_enable || *pm_awake_voted)
 		return;
-	__pm_stay_awake(me->wake_source);
+	if (channel_type == SECURE_CHANNEL)
+		__pm_stay_awake(me->wake_source_secure);
+	else if (channel_type == NON_SECURE_CHANNEL)
+		__pm_stay_awake(me->wake_source);
 	*pm_awake_voted = true;
 }
 
-static inline void fastrpc_pm_relax(bool *pm_awake_voted)
+static inline void fastrpc_pm_relax(bool *pm_awake_voted, int channel_type)
 {
 	struct fastrpc_apps *me = &gfa;
 
 	if (!(*pm_awake_voted))
 		return;
-	__pm_relax(me->wake_source);
+	if (channel_type == SECURE_CHANNEL)
+		__pm_relax(me->wake_source_secure);
+	else if (channel_type == NON_SECURE_CHANNEL)
+		__pm_relax(me->wake_source);
 	*pm_awake_voted = false;
 }
 
@@ -1968,7 +1970,7 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	struct smq_invoke_ctx *ctx = NULL;
 	struct fastrpc_ioctl_invoke *invoke = &inv->inv;
 	int err = 0, cid = -1, interrupted = 0;
-	struct timespec invoket = {0};
+	struct timespec64 invoket = {0};
 	int64_t *perf_counter = NULL;
 	bool pm_awake_voted;
 
@@ -1985,9 +1987,11 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	}
 	perf_counter = getperfcounter(fl, PERF_COUNT);
 	pm_awake_voted = false;
-	fastrpc_pm_awake(fl->wake_enable, &pm_awake_voted);
+	if (interrupted != -ERESTARTSYS)
+		fastrpc_pm_awake(fl->wake_enable, &pm_awake_voted,
+			gcinfo[cid].secure);
 	if (fl->profile)
-		getnstimeofday(&invoket);
+		ktime_get_real_ts64(&invoket);
 
 	if (!kernel) {
 		VERIFY(err, invoke->handle != FASTRPC_STATIC_HANDLE_KERNEL);
@@ -1999,8 +2003,7 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	}
 
 	if (!kernel) {
-		VERIFY(err, 0 == context_restore_interrupted(fl, inv,
-								&ctx));
+		err = context_restore_interrupted(fl, inv, &ctx);
 		if (err)
 			goto bail;
 		if (fl->sctx->smmu.faults)
@@ -2036,7 +2039,7 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	if (err)
 		goto bail;
  wait:
-	fastrpc_pm_relax(&pm_awake_voted);
+	fastrpc_pm_relax(&pm_awake_voted, gcinfo[cid].secure);
 	if (kernel)
 		wait_for_completion(&ctx->work);
 	else
@@ -2046,7 +2049,6 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	VERIFY(err, 0 == (err = interrupted));
 	if (err)
 		goto bail;
-
 
 	PERF(fl->profile, GET_COUNTER(perf_counter, PERF_INVARGS),
 	if (!fl->sctx->smmu.coherent)
@@ -2084,7 +2086,7 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 				*count = *count+1;
 		}
 	}
-	fastrpc_pm_relax(&pm_awake_voted);
+	fastrpc_pm_relax(&pm_awake_voted, gcinfo[cid].secure);
 	return err;
 }
 
@@ -4561,11 +4563,21 @@ static int __init fastrpc_device_init(void)
 	}
 	me->rpmsg_register = 1;
 
-	me->wake_source = wakeup_source_register(dev, "adsprpc");
+	me->wake_source = wakeup_source_register(dev, "adsprpc-non_secure");
 	VERIFY(err, !IS_ERR_OR_NULL(me->wake_source));
 	if (err) {
-		pr_err("adsprpc: Error: %s: wakeup_source_register failed with err %d\n",
-					__func__, PTR_ERR(me->wake_source));
+		pr_err("adsprpc: Error: %s: wakeup_source_register failed for %s with err %ld\n",
+			__func__, dev_name(dev), PTR_ERR(me->wake_source));
+		goto device_create_bail;
+	}
+
+	me->wake_source_secure = wakeup_source_register(secure_dev,
+							"adsprpc-secure");
+	VERIFY(err, !IS_ERR_OR_NULL(me->wake_source_secure));
+	if (err) {
+		pr_err("adsprpc: Error: %s: wakeup_source_register failed for %s with err %ld\n",
+			__func__, dev_name(secure_dev),
+			PTR_ERR(me->wake_source_secure));
 		goto device_create_bail;
 	}
 	return 0;
@@ -4618,6 +4630,8 @@ static void __exit fastrpc_device_exit(void)
 		unregister_rpmsg_driver(&fastrpc_rpmsg_client);
 	if (me->wake_source)
 		wakeup_source_unregister(me->wake_source);
+	if (me->wake_source_secure)
+		wakeup_source_unregister(me->wake_source_secure);
 	debugfs_remove_recursive(debugfs_root);
 }
 
