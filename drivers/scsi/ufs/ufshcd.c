@@ -55,6 +55,36 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/ufs.h>
 
+#if defined(CONFIG_SCSI_SKHPB) || defined(CONFIG_UFSHPB)
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+#include <linux/soc/qcom/smem.h>
+#define SMEM_SDRAM_INFO 135
+#else
+#include <soc/qcom/smsm.h>
+#define SMEM_SDRAM_INFO SMEM_ID_VENDOR1
+#endif
+
+struct {
+	unsigned int mr5;
+	unsigned int mr6;
+	unsigned int mr7;
+	unsigned int mr8;
+	unsigned int ramsize;
+} *smem_ddr_info;
+
+struct storage_info {
+      char type[16]; /* UFS or eMMC */
+     char size[16]; /* size in GB */
+     char card_manufacturer[32];
+      char product_name[32]; /* model ID */
+      char firmware_version[32];
+};
+unsigned int ram_size;
+#endif
+
 #define UFSHCD_ENABLE_INTRS	(UTP_TRANSFER_REQ_COMPL |\
 				 UTP_TASK_REQ_COMPL |\
 				 UFSHCD_ERROR_MASK)
@@ -298,6 +328,10 @@ static struct ufs_dev_fix ufs_fixups[] = {
 	END_FIX
 };
 
+#if defined(CONFIG_SCSI_SKHPB) || defined(CONFIG_UFSHPB)
+static int get_dram_info(struct ufs_hba *hba);
+static int get_storage_info(struct ufs_hba *hba);
+#endif
 static irqreturn_t ufshcd_tmc_handler(struct ufs_hba *hba);
 static void ufshcd_async_scan(void *data, async_cookie_t cookie);
 static int ufshcd_reset_and_restore(struct ufs_hba *hba);
@@ -9733,13 +9767,18 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 */
 	ufshcd_set_ufs_dev_active(hba);
 
+#if defined(CONFIG_UFSHPB)  || defined(CONFIG_SCSI_SKHPB)
+    get_storage_info(hba);
+    get_dram_info(hba);
+#endif
+
 #if defined(CONFIG_UFSFEATURE)
-    if (is_support_hpb_200_device(storage_mfrid)){
+    if (is_support_hpb_200_device(storage_mfrid)) {
 	    ufsf_set_init_state(&hba->ufsf);
     }
 #endif
 #if defined(CONFIG_SCSI_SKHPB)
-    if (is_support_hpb_100_device(storage_mfrid)){
+    if (is_support_hpb_100_device(storage_mfrid) && IS_RAM_SIZE_GREATER_THAN_4G(ram_size)) {
 		/* initialize hpb structures */
 		ufshcd_init_hpb(hba);
 	}
@@ -9767,6 +9806,81 @@ static int __init storage_mfrid_setup(char *str)
 	return 1;
 }
 __setup("storage_mfrid=",storage_mfrid_setup);
+
+#if defined(CONFIG_SCSI_SKHPB) || defined(CONFIG_UFSHPB)
+static int get_storage_info(struct ufs_hba *hba)
+{
+    int ret = 0;
+    struct property *p;
+    struct device_node *n;
+    struct storage_info *info;
+    unsigned int mfrid;
+
+    n = of_find_node_by_path("/chosen/mmi,storage");
+    if (n == NULL) {
+        ret = 1;
+        goto err;
+    }
+
+    info = kzalloc(sizeof(struct storage_info), GFP_KERNEL);
+    if (!info) {
+        dev_err(hba->dev,"%s: failed to allocate space for mmi_storage_info\n",
+           __func__);
+        ret = 1;
+        goto err;
+    }
+
+    for_each_property_of_node(n, p) {
+        if (!strcmp(p->name, "type") && p->value)
+            strlcpy(info->type, (char *)p->value, sizeof(info->type));
+        if (!strcmp(p->name, "size") && p->value)
+            strlcpy(info->size, (char *)p->value, sizeof(info->size));
+        if (!strcmp(p->name, "manufacturer") && p->value)
+            strlcpy(info->card_manufacturer, (char *)p->value, sizeof(info->card_manufacturer));
+        if (!strcmp(p->name, "product") && p->value)
+            strlcpy(info->product_name, (char *)p->value, sizeof(info->product_name));
+        if (!strcmp(p->name, "firmware") && p->value)
+            strlcpy(info->firmware_version, (char *)p->value, sizeof(info->firmware_version));
+    }
+
+    of_node_put(n);
+
+	mfrid = simple_strtol(info->card_manufacturer, NULL, 16);
+    dev_info(hba->dev, "manufacturer parsed from choosen is %s\n",mfrid);
+err:
+	return ret;
+}
+
+static int get_dram_info(struct ufs_hba *hba)
+{
+	 int ret = -1;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+	ssize_t ddr_info_size = 0;
+	smem_ddr_info = qcom_smem_get(QCOM_SMEM_HOST_ANY,
+		SMEM_SDRAM_INFO,
+		&ddr_info_size);
+
+	if(smem_ddr_info) {
+		if(ddr_info_size < sizeof(*smem_ddr_info)) {
+			dev_err(hba->dev,"%s: Invalid SMEM size, cannot get RAM info\n", __func__);
+			goto err;
+		}
+	}
+#endif
+	if (smem_ddr_info == NULL) {
+		dev_err(hba->dev,"%s: failed to access RAM info in SMEM\n", __func__);
+		goto err;
+	}
+
+	ram_size = (smem_ddr_info->ramsize / 1024);
+	dev_info(hba->dev, "ram_size parsed from SMEM is %d\n",ram_size);
+	return ram_size;
+err:
+	return ret;
+}
+#endif
+
 EXPORT_SYMBOL_GPL(ufshcd_init);
 
 MODULE_AUTHOR("Santosh Yaragnavi <santosh.sy@samsung.com>");
