@@ -212,7 +212,8 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf, u8 selector)
 
 
 #if defined(CONFIG_UFSHPB)
-	ufshpb_get_dev_info(ufsf, desc_buf);
+    if (IS_RAM_SIZE_GREATER_THAN_4G(ram_size))
+	    ufshpb_get_dev_info(ufsf, desc_buf);
 #endif
 #if defined(CONFIG_UFSTW)
 	ufstw_get_dev_info(ufsf, desc_buf);
@@ -231,7 +232,7 @@ static int ufsf_read_geo_desc(struct ufsf_feature *ufsf, u8 selector)
 		return ret;
 
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_NEED_INIT)
+	if ((ufshpb_get_state(ufsf) == HPB_NEED_INIT) && IS_RAM_SIZE_GREATER_THAN_4G(ram_size))
 		ufshpb_get_geo_info(ufsf, geo_buf);
 #endif
 
@@ -259,7 +260,7 @@ static void ufsf_read_unit_desc(struct ufsf_feature *ufsf, int lun, u8 selector)
 		return;
 
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_NEED_INIT)
+	if ((ufshpb_get_state(ufsf) == HPB_NEED_INIT) && IS_RAM_SIZE_GREATER_THAN_4G(ram_size))
 		ufshpb_get_lu_info(ufsf, lun, unit_buf);
 #endif
 
@@ -531,7 +532,7 @@ inline void ufsf_slave_configure(struct ufsf_feature *ufsf,
 			 ufsf->slave_conf_cnt, ufsf->num_lu);
 
 #if defined(CONFIG_UFSHPB)
-		if (ufsf->num_lu == ufsf->slave_conf_cnt) {
+		if (ufsf->num_lu == ufsf->slave_conf_cnt && IS_RAM_SIZE_GREATER_THAN_4G(ram_size)) {
 			if (ufshpb_get_state(ufsf) == HPB_NEED_INIT) {
 				INFO_MSG("wakeup ufshpb_init_handler");
 				wake_up(&ufsf->hpb_wait);
@@ -546,7 +547,7 @@ inline void ufsf_prep_fn(struct ufsf_feature *ufsf,
 {
 #if defined(CONFIG_UFSHPB)
 	if (ufshpb_get_state(ufsf) == HPB_PRESENT &&
-	    ufsf->issue_ioctl == false)
+	    ufsf->issue_ioctl == false && IS_RAM_SIZE_GREATER_THAN_4G(ram_size))
 		ufshpb_prep_fn(ufsf, lrbp);
 #endif
 
@@ -569,10 +570,12 @@ inline void ufsf_reset_lu(struct ufsf_feature *ufsf)
 inline void ufsf_reset_host(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
-	INFO_MSG("run reset_host.. hpb_state(%d) -> HPB_RESET",
-		 ufshpb_get_state(ufsf));
-	if (ufshpb_get_state(ufsf) == HPB_PRESENT)
-		ufshpb_reset_host(ufsf);
+    if (IS_RAM_SIZE_GREATER_THAN_4G(ram_size)) {
+	    INFO_MSG("run reset_host.. hpb_state(%d) -> HPB_RESET",
+		     ufshpb_get_state(ufsf));
+	    if (ufshpb_get_state(ufsf) == HPB_PRESENT)
+		    ufshpb_reset_host(ufsf);
+    }
 #endif
 
 #if defined(CONFIG_UFSTW)
@@ -586,7 +589,7 @@ inline void ufsf_reset_host(struct ufsf_feature *ufsf)
 inline void ufsf_init(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_NEED_INIT) {
+	if ((ufshpb_get_state(ufsf) == HPB_NEED_INIT) && IS_RAM_SIZE_GREATER_THAN_4G(ram_size)) {
 		INFO_MSG("init start.. hpb_state (%d)", HPB_NEED_INIT);
 		schedule_work(&ufsf->hpb_init_work);
 	}
@@ -601,7 +604,7 @@ inline void ufsf_init(struct ufsf_feature *ufsf)
 inline void ufsf_reset(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_RESET) {
+	if ((ufshpb_get_state(ufsf) == HPB_RESET) && IS_RAM_SIZE_GREATER_THAN_4G(ram_size)) {
 		INFO_MSG("reset start.. hpb_state %d", HPB_RESET);
 		ufshpb_reset(ufsf);
 	}
@@ -620,7 +623,7 @@ inline void ufsf_reset(struct ufsf_feature *ufsf)
 inline void ufsf_remove(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_PRESENT)
+	if ((ufshpb_get_state(ufsf) == HPB_PRESENT) && IS_RAM_SIZE_GREATER_THAN_4G(ram_size))
 		ufshpb_remove(ufsf, HPB_NEED_INIT);
 #endif
 
@@ -635,9 +638,13 @@ inline void ufsf_set_init_state(struct ufsf_feature *ufsf)
 	ufsf->slave_conf_cnt = 0;
 	ufsf->issue_ioctl = false;
 #if defined(CONFIG_UFSHPB)
-	ufshpb_set_state(ufsf, HPB_NEED_INIT);
-	INIT_WORK(&ufsf->hpb_init_work, ufshpb_init_handler);
-	init_waitqueue_head(&ufsf->hpb_wait);
+    if (IS_RAM_SIZE_GREATER_THAN_4G(ram_size)) {
+        INFO_MSG("enable HPB feature, init start!");
+        INFO_MSG("ram size is %d", ram_size);
+	    ufshpb_set_state(ufsf, HPB_NEED_INIT);
+	    INIT_WORK(&ufsf->hpb_init_work, ufshpb_init_handler);
+	    init_waitqueue_head(&ufsf->hpb_wait);
+	}
 #endif
 #if defined(CONFIG_UFSTW)
 	ufstw_set_state(ufsf, TW_NEED_INIT);
@@ -652,7 +659,7 @@ inline void ufsf_suspend(struct ufsf_feature *ufsf)
 	 * in this case, ufshpb state already had been changed to SUSPEND state.
 	 * so, we will not call ufshpb_suspend.
 	 */
-	if (ufshpb_get_state(ufsf) == HPB_PRESENT)
+	if ((ufshpb_get_state(ufsf) == HPB_PRESENT) && IS_RAM_SIZE_GREATER_THAN_4G(ram_size))
 		ufshpb_suspend(ufsf);
 #endif
 }
@@ -660,8 +667,9 @@ inline void ufsf_suspend(struct ufsf_feature *ufsf)
 inline void ufsf_resume(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_SUSPEND ||
-	    ufshpb_get_state(ufsf) == HPB_PRESENT) {
+	if ((ufshpb_get_state(ufsf) == HPB_SUSPEND ||
+	    ufshpb_get_state(ufsf) == HPB_PRESENT) &&
+	    IS_RAM_SIZE_GREATER_THAN_4G(ram_size)) {
 		if (ufshpb_get_state(ufsf) == HPB_PRESENT)
 			WARN_MSG("warning.. hpb state PRESENT in resuming");
 		ufshpb_resume(ufsf);
