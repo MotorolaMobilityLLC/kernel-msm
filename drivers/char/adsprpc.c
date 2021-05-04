@@ -2003,13 +2003,15 @@ static int fastrpc_internal_munmap(struct fastrpc_file *fl,
 	if (!fastrpc_mmap_remove(fl, ud->vaddrout, ud->size,
 				 &map)) {
 		mutex_unlock(&fl->fl_map_mutex);
-		VERIFY(err, !fastrpc_munmap_on_dsp(fl, map->raddr,
-				map->phys, map->size, map->flags));
-		if (err)
-			goto bail;
-		mutex_lock(&fl->fl_map_mutex);
-		fastrpc_mmap_free(map);
-		mutex_unlock(&fl->fl_map_mutex);
+		if (map) {
+			VERIFY(err, !fastrpc_munmap_on_dsp(fl, map->raddr,
+					map->phys, map->size, map->flags));
+			if (err)
+				goto bail;
+			mutex_lock(&fl->fl_map_mutex);
+			fastrpc_mmap_free(map);
+			mutex_unlock(&fl->fl_map_mutex);
+		}
 	} else {
 		mutex_unlock(&fl->fl_map_mutex);
 	}
