@@ -1559,8 +1559,8 @@ static struct config_group *uvcg_uncompressed_make(struct config_group *group,
 						   const char *name)
 {
 	static char guid[] = {
-		'Y',  'U',  'Y',  '2', 0x00, 0x00, 0x10, 0x00,
-		 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+		'N',  'V',  '1',  '2', 0x00, 0x00, 0x10, 0x00,
+		0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 	};
 	struct uvcg_uncompressed *h;
 
@@ -1572,7 +1572,7 @@ static struct config_group *uvcg_uncompressed_make(struct config_group *group,
 	h->desc.bDescriptorType		= USB_DT_CS_INTERFACE;
 	h->desc.bDescriptorSubType	= UVC_VS_FORMAT_UNCOMPRESSED;
 	memcpy(h->desc.guidFormat, guid, sizeof(guid));
-	h->desc.bBitsPerPixel		= 16;
+	h->desc.bBitsPerPixel		= 12;
 	h->desc.bDefaultFrameIndex	= 1;
 	h->desc.bAspectRatioX		= 0;
 	h->desc.bAspectRatioY		= 0;
