@@ -1,0 +1,45 @@
+# Common Moto configuration for building GKI-based kernels
+# Copyright (c) 2021, Motorola. All rights reserved.
+
+TARGET_PRODUCT_NAME=${TARGET_PRODUCT%%_*}
+TARGET_PRODUCT_TYPE=${TARGET_PRODUCT#*_}
+echo "moto fragment config: TARGET_PRODUCT=$TARGET_PRODUCT TARGET_PRODUCT_NAME=$TARGET_PRODUCT_NAME TARGET_PRODUCT_TYPE=$TARGET_PRODUCT_TYPE"
+
+function add_moto_defconfig_fragments() {
+	if [[ "${VARIANT}" =~ ^(gki|consolidate)$ ]]; then
+		if [ -e ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/moto-${MSM_ARCH}.config ]; then
+			apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/moto-${MSM_ARCH}.config
+		fi
+		if [ -e ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/moto-${MSM_ARCH}-${TARGET_PRODUCT_NAME}.config ]; then
+			apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/moto-${MSM_ARCH}-${TARGET_PRODUCT_NAME}.config
+		fi
+
+		# factory config takes effect in both gki and consolidate varaints
+		if [ "$TARGET_PRODUCT_TYPE" == "factory" ]; then
+			if [ -e ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/factory-${MSM_ARCH}.config ]; then
+				apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/factory-${MSM_ARCH}.config
+			fi
+
+			if [ -e ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/factory-${MSM_ARCH}-${TARGET_PRODUCT_NAME}.config ]; then
+				apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/factory-${MSM_ARCH}-${TARGET_PRODUCT_NAME}.config
+			fi
+		fi
+
+		if [ "${VARIANT}" = gki ]; then
+			return
+		fi
+
+		if [ -e ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/debug-${MSM_ARCH}.config ]; then
+			apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/debug-${MSM_ARCH}.config
+		fi
+		if [ -e ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/debug-${MSM_ARCH}-${TARGET_PRODUCT_NAME}.config ]; then
+			apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/debug-${MSM_ARCH}-${TARGET_PRODUCT_NAME}.config
+		fi
+	fi
+}
+
+#skip msi products
+if [ "$TARGET_PRODUCT_NAME" != "msi" ]; then
+	add_moto_defconfig_fragments
+fi
+
