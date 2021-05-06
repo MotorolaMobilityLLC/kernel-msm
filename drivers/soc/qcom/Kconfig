@@ -36,12 +36,12 @@ config CORFUP_DTB
 		Only include CORFUP specific DTBs to limit the number that
 		get built during kernel compilation.
 
-config CYPRUS_DTB
+config CYPFG_DTB
 	depends on ARCH_QCOM
 	default n
-	bool "CYPRUS DTBs"
+	bool "CYPFG DTBs"
 	help
-		Only include CYPRUS specific DTBs to limit the number that
+		Only include CYPFG specific DTBs to limit the number that
 		get built during kernel compilation.
 
 config QCOM_AOSS_QMP
