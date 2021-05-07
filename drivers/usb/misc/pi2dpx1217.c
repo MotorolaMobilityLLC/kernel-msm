@@ -223,6 +223,7 @@ static int pi2dpx1217_enable_chip(struct pi2dpx1217_redriver *redriver, bool en)
 	else
 		pinctrl_name = "disable_gpio";
 
+	dev_info(redriver->dev, "%s, en=%d,  %s state\n", __func__, en, pinctrl_name);
 	state = pinctrl_lookup_state(pinctrl, pinctrl_name);
 	if (IS_ERR_OR_NULL(state)) {
 		dev_err(redriver->dev, "fail to get %s state\n", pinctrl_name);
@@ -253,7 +254,7 @@ static int pi2dpx1217_config_work_mode(struct pi2dpx1217_redriver *redriver,
 
 	dev_info(redriver->dev, "%s op_mode=%d\n", __func__, op_mode);
 
-	if (redriver->op_mode == op_mode) {
+	if (op_mode && redriver->op_mode == op_mode) {
 		dev_info(redriver->dev, "%s: USB SS redriver config work mode %d already\n",
 			__func__, op_mode);
 
@@ -261,8 +262,6 @@ static int pi2dpx1217_config_work_mode(struct pi2dpx1217_redriver *redriver,
 	}
 
 	redriver->op_mode = op_mode;
-
-
 
 	if (redriver->op_mode == OP_MODE_NONE) {
 		pi2dpx1217_enable_chip(redriver, false);
@@ -397,8 +396,8 @@ static int pi2dpx1217_dp_notifier(struct notifier_block *nb,
 	dev_info(redriver->dev, "%s: dp:%lu event received\n", __func__, dp_lane);
 
 	switch (dp_lane) {
-	case 0: /* cable disconnected ??????? */
-		op_mode = OP_MODE_USB;
+	case 0: /* cable disconnected */
+		op_mode = OP_MODE_NONE;
 		break;
 	case 2:
 		op_mode = OP_MODE_USB_AND_DP;
@@ -547,6 +546,7 @@ static int pi2dpx1217_i2c_probe(struct i2c_client *client,
 	struct device_node *of = dev->of_node;
 	struct extcon_dev *edev;
 	u32 device_id;
+	enum operation_mode op_mode = OP_MODE_NONE;
 	int ret;
 
 	if (!of_property_read_bool(of, "extcon")) {
@@ -613,20 +613,19 @@ static int pi2dpx1217_i2c_probe(struct i2c_client *client,
 		}
 	}
 
-	if (of_property_read_bool(redriver->dev->of_node, "init-none"))
-		redriver->op_mode = OP_MODE_NONE;
-	else {
-		redriver->op_mode = OP_MODE_DEFAULT;
+	if (of_property_read_bool(redriver->dev->of_node, "init-none")) {
+		op_mode = OP_MODE_NONE;
 		redriver->chan_mode[CHAN_TYPE_RX2] = CHAN_MODE_USB;
 		redriver->chan_mode[CHAN_TYPE_TX2] = CHAN_MODE_USB;
 		redriver->chan_mode[CHAN_TYPE_TX1] = CHAN_MODE_USB;
 		redriver->chan_mode[CHAN_TYPE_RX1] = CHAN_MODE_USB;
+	} else {
+		op_mode = OP_MODE_DEFAULT;
 	}
 
-	pi2dpx1217_eq_fg_configure(redriver);
-	pi2dpx1217_gen_dev_set(redriver);
-
 	pi2dpx1217_extcon_register(redriver, edev);
+
+	pi2dpx1217_config_work_mode(redriver, op_mode);
 
 	pi2dpx1217_debugfs_entries(redriver);
 
