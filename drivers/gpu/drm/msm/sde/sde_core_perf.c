@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,8 +26,12 @@
 #include "sde_trace.h"
 #include "sde_crtc.h"
 #include "sde_core_perf.h"
+#include "sde_connector.h"
 
 #define SDE_PERF_MODE_STRING_SIZE	128
+
+#define GET_H32(val) (val >> 32)
+#define GET_L32(val) (val & 0xffffffff)
 
 static DEFINE_MUTEX(sde_core_perf_lock);
 
@@ -84,6 +88,69 @@ static bool _sde_core_perf_crtc_is_power_on(struct drm_crtc *crtc)
 	return sde_crtc_is_enabled(crtc);
 }
 
+static void _sde_core_perf_calc_doze_suspend(struct drm_crtc *crtc,
+		struct drm_crtc_state *state,
+		struct sde_core_perf_params *perf)
+{
+	struct sde_crtc_state *new_cstate, *old_cstate;
+	struct sde_core_perf_params *old_perf;
+	struct drm_connector *conn = NULL;
+	struct sde_connector *c_conn = NULL;
+	bool is_doze_suspend = false;
+	int i;
+
+	if (!crtc || !crtc->state || !state)
+		return;
+
+	old_cstate = to_sde_crtc_state(crtc->state);
+	new_cstate = to_sde_crtc_state(state);
+	old_perf = &old_cstate->new_perf;
+
+	if (!old_perf)
+		return;
+
+	if (!perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_MNOC] &&
+		!perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_MNOC] &&
+		state->plane_mask) {
+
+		perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_MNOC] =
+			old_perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_MNOC];
+		perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_MNOC] =
+			old_perf->max_per_pipe_ib
+					[SDE_POWER_HANDLE_DBUS_ID_MNOC];
+		perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_LLCC] =
+			old_perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_LLCC];
+		perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_LLCC] =
+		  old_perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_LLCC];
+		perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_EBI] =
+			old_perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_EBI];
+		perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_EBI] =
+		  old_perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_EBI];
+
+		if (!old_perf->core_clk_rate)
+			perf->core_clk_rate = old_perf->core_clk_rate;
+
+		for (i = 0; i < new_cstate->num_connectors; i++) {
+			conn = new_cstate->connectors[i];
+			if (!conn)
+				continue;
+			c_conn = to_sde_connector(conn);
+			if ((c_conn->dpms_mode == DRM_MODE_DPMS_ON) &&
+			   (sde_connector_get_lp(conn) == SDE_MODE_DPMS_LP2))
+				is_doze_suspend = true;
+		}
+
+		if (!is_doze_suspend && conn && c_conn)
+			SDE_ERROR("No BW, planes:%x dpms_mode:%d lpmode:%d\n",
+				state->plane_mask, c_conn->dpms_mode,
+				sde_connector_get_lp(conn));
+		if (conn && c_conn)
+			SDE_EVT32(state->plane_mask, c_conn->dpms_mode,
+				sde_connector_get_lp(conn), is_doze_suspend,
+				SDE_EVTLOG_ERROR);
+	}
+}
+
 static void _sde_core_perf_calc_crtc(struct sde_kms *kms,
 		struct drm_crtc *crtc,
 		struct drm_crtc_state *state,
@@ -128,6 +195,8 @@ static void _sde_core_perf_calc_crtc(struct sde_kms *kms,
 	perf->core_clk_rate =
 			sde_crtc_get_property(sde_cstate, CRTC_PROP_CORE_CLK);
 
+	_sde_core_perf_calc_doze_suspend(crtc, state, perf);
+
 	if (!sde_cstate->bw_control) {
 		for (i = 0; i < SDE_POWER_HANDLE_DBUS_ID_MAX; i++) {
 			perf->bw_ctl[i] = kms->catalog->perf.max_bw_high *
@@ -143,13 +212,30 @@ static void _sde_core_perf_calc_crtc(struct sde_kms *kms,
 		perf->core_clk_rate = 0;
 	} else if (kms->perf.perf_tune.mode == SDE_PERF_MODE_FIXED) {
 		for (i = 0; i < SDE_POWER_HANDLE_DBUS_ID_MAX; i++) {
-			perf->bw_ctl[i] = kms->perf.fix_core_ab_vote;
-			perf->max_per_pipe_ib[i] = kms->perf.fix_core_ib_vote;
+			perf->bw_ctl[i] = max(kms->perf.fix_core_ab_vote,
+						perf->bw_ctl[i]);
+			perf->max_per_pipe_ib[i] = max(
+						kms->perf.fix_core_ib_vote,
+						perf->max_per_pipe_ib[i]);
 		}
-		perf->core_clk_rate = kms->perf.fix_core_clk_rate;
+		perf->core_clk_rate = max(kms->perf.fix_core_clk_rate,
+						perf->core_clk_rate);
 	}
 
-	SDE_EVT32(crtc->base.id, perf->core_clk_rate);
+	SDE_EVT32(DRMID(crtc), perf->core_clk_rate,
+		GET_H32(perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_MNOC]),
+		GET_L32(perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_MNOC]),
+		GET_H32(perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_LLCC]),
+		GET_L32(perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_LLCC]),
+		GET_H32(perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_EBI]),
+		GET_L32(perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_EBI]));
+	SDE_EVT32(DRMID(crtc),
+		GET_H32(perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_MNOC]),
+		GET_L32(perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_MNOC]),
+		GET_H32(perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_LLCC]),
+		GET_L32(perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_LLCC]),
+		GET_H32(perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_EBI]),
+		GET_L32(perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_EBI]));
 	trace_sde_perf_calc_crtc(crtc->base.id,
 			perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_MNOC],
 			perf->bw_ctl[SDE_POWER_HANDLE_DBUS_ID_LLCC],
