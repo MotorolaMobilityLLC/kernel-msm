@@ -706,13 +706,19 @@ static int ps5169_dp_notifier(struct notifier_block *nb,
 		break;
 	case OP_MODE_USB3_AND_DP:
 		state = extcon_get_state(ps5169->edev, EXTCON_USB_HOST);
-		BUG_ON(!state);
-
-		extcon_get_property(ps5169->edev, EXTCON_USB_HOST,
-				EXTCON_PROP_USB_TYPEC_POLARITY, &val);
-		ps5169->typec_orientation =
-			val.intval ? ORIENTATION_CC2 : ORIENTATION_CC1;
-		ps5169_config_work_mode(ps5169, OP_MODE_USB3_AND_DP);
+		if(state) {
+			extcon_get_property(ps5169->edev, EXTCON_USB_HOST,
+					EXTCON_PROP_USB_TYPEC_POLARITY, &val);
+			ps5169->typec_orientation =
+				val.intval ? ORIENTATION_CC2 : ORIENTATION_CC1;
+			ps5169_config_work_mode(ps5169, OP_MODE_USB3_AND_DP);
+		} else {
+			op_mode = OP_MODE_NONE;
+			ps5169_config_work_mode(ps5169, OP_MODE_NONE);
+			dev_err(&ps5169->client->dev,
+				"%s: unexpected EXTCON_USB_HOST state %d, force OP_MODE_NONE\n",
+				__func__, state);
+		}
 		break;
 	case OP_MODE_DP:
 		ps5169_config_work_mode(ps5169, OP_MODE_DP);
