@@ -4,6 +4,21 @@
 #
 menu "Qualcomm SoC drivers"
 
+config MMI_DEVICE_DTBS
+	depends on ARCH_QCOM
+	default n
+	bool "Motorola Mobility Device DTBs"
+	help
+		Only include Motorola device specific DTBs to limit the number that
+		get built during kernel compilation.
+
+config RTWO_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Rtwo Device DTB"
+	help
+		Only include Motorola Rtwo device specific device tree.
+
 config SPS
 	tristate "SPS support"
 	select GENERIC_ALLOCATOR
