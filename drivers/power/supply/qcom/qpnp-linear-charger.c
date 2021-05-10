@@ -369,6 +369,8 @@ struct qpnp_lbc_chip {
 	unsigned int			therm_lvl_sel;
 	unsigned int			*thermal_mitigation;
 	unsigned int			cfg_safe_current;
+	unsigned int			cfg_volt_cutoff_mv;
+	unsigned int			cutoff_threshold_uv;
 	unsigned int			cfg_tchg_mins;
 	unsigned int			chg_failed_count;
 	unsigned int			supported_feature_flag;
@@ -391,6 +393,8 @@ struct qpnp_lbc_chip {
 	int				parallel_charging_enabled;
 	int				lbc_max_chg_current;
 	int				ichg_now;
+	int				current_soc;
+	int				cutoff_count;
 
 	struct alarm			vddtrim_alarm;
 	struct work_struct		vddtrim_work;
@@ -1286,27 +1290,6 @@ static int get_prop_charge_type(struct qpnp_lbc_chip *chip)
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
-static int get_prop_batt_status(struct qpnp_lbc_chip *chip)
-{
-	int rc;
-	u8 reg_val;
-
-	if (qpnp_lbc_is_usb_chg_plugged_in(chip) && chip->chg_done)
-		return POWER_SUPPLY_STATUS_FULL;
-
-	rc = qpnp_lbc_read(chip, chip->chgr_base + INT_RT_STS_REG,
-				&reg_val, 1);
-	if (rc) {
-		pr_err("Failed to read interrupt sts\n");
-		return POWER_SUPPLY_CHARGE_TYPE_NONE;
-	}
-
-	if (reg_val & FAST_CHG_ON_IRQ)
-		return POWER_SUPPLY_STATUS_CHARGING;
-
-	return POWER_SUPPLY_STATUS_DISCHARGING;
-}
-
 static int get_prop_current_now(struct qpnp_lbc_chip *chip)
 {
 	union power_supply_propval ret = {0,};
@@ -1353,6 +1336,47 @@ static int get_prop_capacity(struct qpnp_lbc_chip *chip)
 	 * from shutting down unecessarily
 	 */
 	return DEFAULT_CAPACITY;
+}
+
+#define CUTOFF_COUNT	3
+static int get_prop_batt_status(struct qpnp_lbc_chip *chip)
+{
+	int rc, curr_now, soc_now, curr_volt;
+	u8 reg_val;
+
+	/*
+	 * If SOC = 0 and we are discharging with input connected, report
+	 * the battery status as DISCHARGING.
+	 */
+	soc_now = chip->current_soc;
+	curr_now = get_prop_current_now(chip);
+	curr_volt = get_prop_battery_voltage_now(chip);
+	if (qpnp_lbc_is_usb_chg_plugged_in(chip) && soc_now == 0) {
+		if ((curr_now > 0) && (curr_volt < chip->cutoff_threshold_uv)) {
+			if (chip->cutoff_count > CUTOFF_COUNT)
+				return POWER_SUPPLY_STATUS_DISCHARGING;
+			chip->cutoff_count++;
+		} else {
+			chip->cutoff_count = 0;
+		}
+	} else {
+		chip->cutoff_count = 0;
+	}
+
+	if (qpnp_lbc_is_usb_chg_plugged_in(chip) && chip->chg_done)
+		return POWER_SUPPLY_STATUS_FULL;
+
+	rc = qpnp_lbc_read(chip, chip->chgr_base + INT_RT_STS_REG,
+				&reg_val, 1);
+	if (rc) {
+		pr_err("Failed to read interrupt sts\n");
+		return POWER_SUPPLY_CHARGE_TYPE_NONE;
+	}
+
+	if (reg_val & FAST_CHG_ON_IRQ)
+		return POWER_SUPPLY_STATUS_CHARGING;
+
+	return POWER_SUPPLY_STATUS_DISCHARGING;
 }
 
 static int get_bms_property(struct qpnp_lbc_chip *chip,
@@ -1746,6 +1770,7 @@ static int qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = get_prop_capacity(chip);
+		chip->current_soc = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_current_now(chip);
@@ -2405,6 +2430,7 @@ do {									\
 				" property rc = %d\n", rc);		\
 } while (0)
 
+#define DEFAULT_CUTOFF_MV 3400
 static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 {
 	int rc = 0;
@@ -2414,8 +2440,14 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 	OF_PROP_READ(chip, cfg_safe_voltage_mv, "vddsafe-mv", rc, 0);
 	OF_PROP_READ(chip, cfg_min_voltage_mv, "vinmin-mv", rc, 0);
 	OF_PROP_READ(chip, cfg_safe_current, "ibatsafe-ma", rc, 0);
+	OF_PROP_READ(chip, cfg_volt_cutoff_mv, "v-cutoff-mv", rc, 0);
 	if (rc)
 		pr_err("Error reading required property rc=%d\n", rc);
+
+	if (!chip->cfg_volt_cutoff_mv)
+		chip->cfg_volt_cutoff_mv = DEFAULT_CUTOFF_MV;
+
+	chip->cutoff_threshold_uv = (chip->cfg_volt_cutoff_mv - 100) * 1000;
 
 	OF_PROP_READ(chip, cfg_tchg_mins, "tchg-mins", rc, 1);
 	OF_PROP_READ(chip, cfg_warm_bat_decidegc, "warm-bat-decidegc", rc, 1);
@@ -2537,10 +2569,11 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 		}
 	}
 
-	pr_debug("vddmax-mv=%d, vddsafe-mv=%d, vinmin-mv=%d, ibatsafe-ma=$=%d\n",
+	pr_debug("vddmax-mv=%d, vddsafe-mv=%d, vinmin-mv=%d, v-cutoff-mv=%d, ibatsafe-ma=$=%d\n",
 			chip->cfg_max_voltage_mv,
 			chip->cfg_safe_voltage_mv,
 			chip->cfg_min_voltage_mv,
+			chip->cfg_volt_cutoff_mv,
 			chip->cfg_safe_current);
 	pr_debug("warm-bat-decidegc=%d, cool-bat-decidegc=%d, batt-hot-percentage=%d, batt-cold-percentage=%d\n",
 			chip->cfg_warm_bat_decidegc,
@@ -3354,6 +3387,7 @@ static int qpnp_lbc_main_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, chip);
 	device_init_wakeup(&pdev->dev, 1);
 	chip->fake_battery_soc = -EINVAL;
+	chip->current_soc = DEFAULT_CAPACITY;
 	chip->usb_supply_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
 	chip->extcon = devm_extcon_dev_allocate(chip->dev,
