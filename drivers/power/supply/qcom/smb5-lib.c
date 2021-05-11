@@ -3490,7 +3490,7 @@ int smblib_get_prop_usb_voltage_max_design(struct smb_charger *chg,
 {
 	switch (chg->real_charger_type) {
 	case QTI_POWER_SUPPLY_TYPE_USB_HVDCP:
-#ifdef QCOM_BASE
+
 		if (chg->qc2_unsupported_voltage == QC2_NON_COMPLIANT_9V) {
 			val->intval = MICRO_5V;
 			break;
@@ -3521,6 +3521,7 @@ int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 {
 	switch (chg->real_charger_type) {
 	case QTI_POWER_SUPPLY_TYPE_USB_HVDCP:
+#ifdef QCOM_BASE
 		if (chg->qc2_unsupported_voltage == QC2_NON_COMPLIANT_9V) {
 			val->intval = MICRO_5V;
 			break;
