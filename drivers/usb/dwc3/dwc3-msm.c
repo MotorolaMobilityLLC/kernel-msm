@@ -5205,8 +5205,6 @@ static int dwc3_msm_pm_freeze(struct device *dev)
 	dev_dbg(dev, "dwc3-msm PM freeze\n");
 	dbg_event(0xFF, "PM Freeze", 0);
 
-	flush_workqueue(mdwc->dwc3_wq);
-
 	/*
 	 * Check if pm_freeze can proceed irrespective of runtimePM state of
 	 * host.
@@ -5252,8 +5250,6 @@ static int dwc3_msm_pm_restore(struct device *dev)
 	dev_dbg(dev, "dwc3-msm PM restore\n");
 	dbg_event(0xFF, "PM Restore", 0);
 
-	/* flush to avoid race in read/write of pm_suspended */
-	flush_workqueue(mdwc->dwc3_wq);
 	atomic_set(&mdwc->pm_suspended, 0);
 
 	if (!dwc->ignore_wakeup_src_in_hostmode || !mdwc->in_host_mode) {
