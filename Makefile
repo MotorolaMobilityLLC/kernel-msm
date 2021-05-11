@@ -1418,7 +1418,9 @@ endif
 
 uts_len := 64
 ifneq (,$(BUILD_NUMBER))
-	UTS_RELEASE=$(KERNELRELEASE)-ab$(BUILD_NUMBER)
+#	UTS_RELEASE=$(KERNELRELEASE)-ab$(BUILD_NUMBER)
+# MMI_STOPSHIP: kernel: walkaround the kernel version length check
+	UTS_RELEASE=$(KERNELRELEASE)-ab
 else
 	UTS_RELEASE=$(KERNELRELEASE)
 endif
