@@ -67,3 +67,14 @@
 	/delete-node/ nfc;
 	/delete-node/ fpc_reset_int;
 };
+
+&reserved_memory {
+	secure_display_memory: secure_display_region {
+		compatible = "shared-dma-pool";
+		alloc-ranges = <0 0x00000000 0 0xffffffff>;
+		reusable;
+		alignment = <0 0x400000>;
+		size = <0 0x6800000>;
+	};
+};
+
