@@ -1849,3 +1849,9 @@ config AF_NOISE_ELIMINATION
 	default n
 	help
 	Enable it only for produts that suffering AF resonance noise.
+
+config MULTI_CAM_FLASH_STATUS
+	bool "For multi camera flash turn to dark issue"
+	default n
+	help
+	Enable it only for multi camera flash turn to dark issue.
