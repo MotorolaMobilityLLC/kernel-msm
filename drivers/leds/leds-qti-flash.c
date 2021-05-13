@@ -743,11 +743,13 @@ static void qti_flash_led_switch_brightness_set(
 
 	snode = container_of(led_cdev, struct flash_switch_data, cdev);
 
+#if !defined(CONFIG_MULTI_CAM_FLASH_STATUS)
 	if (snode->enabled == state) {
 		pr_debug("Switch  is already %s!\n",
 			state ? "enabled" : "disabled");
 		return;
 	}
+#endif
 
 	if (state) {
 		if (snode->on_time_ms) {
