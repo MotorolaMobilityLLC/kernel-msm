@@ -183,6 +183,12 @@ static int ufshcd_populate_vreg(struct device *dev, const char *name,
 			if (of_property_read_bool(np, "vcc-low-voltage-sup"))
 				vreg->low_voltage_sup = true;
  #endif
+
+#if !defined(CONFIG_SCSI_UFSHCD_QTI)
+                               dev_err(dev, "setting vcc=2.7v for gki build \n");
+                               vreg->max_uV = UFS_VREG_VCC_MIN_UV;
+                               vreg->min_uV = UFS_VREG_VCC_MIN_UV;
+#endif
 		}
 	} else if (!strcmp(name, "vccq")) {
 		vreg->min_uV = UFS_VREG_VCCQ_MIN_UV;
