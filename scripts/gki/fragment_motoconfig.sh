@@ -42,6 +42,8 @@ if [ $TARGET_PRODUCT_TYPE == "factory" ]; then
         MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/factory-${LOCAL_PLATFORM_NAME}.config"
     fi
 elif [ $TARGET_BUILD_VARIANT == "userdebug" ] && [ $REQUIRED_DEFCONFIG != ${LOCAL_PLATFORM_NAME}-gki_defconfig ]; then
+    #MMI_STOPSHIP : kernel: skip all userdebug config
+    if [ ${TARGET_PRODUCT_NAME} != "berlin" ] && [ ${TARGET_PRODUCT_NAME} != "berlna" ]; then
     if [ -e $MOTO_CONFIG_DIR/debug-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}.config ]; then
         MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/debug-${LOCAL_PLATFORM_NAME}-${TARGET_PRODUCT_NAME}.config"
     fi
@@ -55,6 +57,7 @@ elif [ $TARGET_BUILD_VARIANT == "userdebug" ] && [ $REQUIRED_DEFCONFIG != ${LOCA
         if [ -e $MOTO_CONFIG_DIR/${LOCAL_PLATFORM_NAME}_consolidate.config ]; then
             MOTO_REQUIRED_CONFIG+=" $MOTO_CONFIG_DIR/${LOCAL_PLATFORM_NAME}_consolidate.config"
         fi
+    fi
     fi
 fi
 
