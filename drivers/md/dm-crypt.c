@@ -2879,16 +2879,17 @@ static int crypt_map(struct dm_target *ti, struct bio *bio)
 	 * - for REQ_PREFLUSH device-mapper core ensures that no IO is in-flight
 	 * - for REQ_OP_DISCARD caller must use flush if IO ordering matters
 	 */
+// BEGIN IKSWR-71527 lutcho@motorola.com 2021/05/11
+// bio_should_skip_dm_default_key(bio) reverted
 	if (unlikely(bio->bi_opf & REQ_PREFLUSH ||
-	    bio_op(bio) == REQ_OP_DISCARD ||
-	    bio_should_skip_dm_default_key(bio))) {
+	    bio_op(bio) == REQ_OP_DISCARD )){
 		bio_set_dev(bio, cc->dev->bdev);
 		if (bio_sectors(bio))
 			bio->bi_iter.bi_sector = cc->start +
 				dm_target_offset(ti, bio->bi_iter.bi_sector);
 		return DM_MAPIO_REMAPPED;
 	}
-
+// END IKSWR-71527
 	/*
 	 * Check if bio is too large, split as needed.
 	 */
