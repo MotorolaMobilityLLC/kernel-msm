@@ -4794,6 +4794,7 @@ static enum power_supply_property fg_psy_props[] = {
 	POWER_SUPPLY_PROP_POWER_AVG,
 	POWER_SUPPLY_PROP_SCALE_MODE_EN,
 	POWER_SUPPLY_PROP_CALIBRATE,
+	POWER_SUPPLY_PROP_BATT_FULL_CURRENT,
 };
 
 static const struct power_supply_desc fg_psy_desc = {
