@@ -429,7 +429,7 @@ int fsa4480_enable_lpd(bool enable)
 //			return ret;
 
 		//detect interval single
-		ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_INTERVAL, FSA4480_RES_DETECT_INTERVAL_SELECT,0x1/*0x3*/);
+		ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_INTERVAL, FSA4480_RES_DETECT_INTERVAL_SELECT,0x0/*0x3*/);
 		if (ret)
 			return ret;
 
@@ -468,6 +468,9 @@ bool fsa4480_rsbux_low(int r_thr)
 //		goto disable_lpd;
 //		return false;
 
+	//delay 10ms
+	usleep_range(10000, 10100);
+
 	ret = regmap_read(bq->regmap, FSA4480_RES_VALUE, &stat1);
 	if (ret)
 		goto disable_lpd;
@@ -485,13 +488,16 @@ bool fsa4480_rsbux_low(int r_thr)
 		goto disable_lpd;
 
 	//detect interval single
-	ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_INTERVAL, FSA4480_RES_DETECT_INTERVAL_SELECT,0x1/*0x3*/);
+	ret = regmap_update_bits(bq->regmap, FSA4480_RES_DETECT_INTERVAL, FSA4480_RES_DETECT_INTERVAL_SELECT,0x0/*0x3*/);
 	if (ret)
 		goto disable_lpd;
 
 	ret = regmap_update_bits(bq->regmap, FSA4480_RES_ENABLE, FSA4480_RES_ENABLE_BIT, FSA4480_RES_ENABLE_BIT);
 	if (ret)
 		goto disable_lpd;
+
+	//delay 10ms
+	usleep_range(10000, 10100);
 
 	ret = regmap_read(bq->regmap, FSA4480_RES_VALUE, &stat2);
 	if (ret)
