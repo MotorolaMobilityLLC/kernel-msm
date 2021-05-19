@@ -857,6 +857,7 @@ static int mmi_suspend_dbg_resume(struct device *device)
 	pm_suspend_marker("resume");
 
 	show_subsystem_sleep_stats();
+	qrtr_first_msg = 1;
 
 	return 0;
 }
