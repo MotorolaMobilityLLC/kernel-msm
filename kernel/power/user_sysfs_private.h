@@ -21,4 +21,7 @@ extern int tlmm_set_inout(unsigned gpio, unsigned val);
 extern int tlmm_set_config(unsigned config);
 extern int tlmm_get_config(unsigned gpio, unsigned *cfg);
 
+/* net/qrtr/qrtr.c */
+extern int qrtr_first_msg;
+
 #endif
