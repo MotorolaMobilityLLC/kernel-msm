@@ -24,7 +24,14 @@
 
 #define QRTR_LOG_PAGE_CNT 4
 #define QRTR_INFO(ctx, x, ...)				\
-	ipc_log_string(ctx, x, ##__VA_ARGS__)
+	do {						\
+		ipc_log_string(ctx, x, ##__VA_ARGS__); 	\
+		if (qrtr_first_msg)			\
+		{					\
+			qrtr_first_msg = 0;		\
+			pr_info(x, ##__VA_ARGS__);	\
+		}					\
+	} while(0)
 
 #define QRTR_PROTO_VER_1 1
 #define QRTR_PROTO_VER_2 3
