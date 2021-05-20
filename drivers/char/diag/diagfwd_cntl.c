@@ -106,14 +106,19 @@ void diag_notify_md_client(uint8_t proc, uint8_t peripheral, int data)
 	struct pid *pid_struct;
 	struct task_struct *result;
 
-	if (data == DIAG_STATUS_OPEN) {
-		md_support |= PERIPHERAL_MASK(peripheral);
-	} else if (data == DIAG_STATUS_CLOSED) {
-		if((md_support & PERIPHERAL_MASK(peripheral)) == PERIPHERAL_MASK(peripheral))
-		{
-			md_support ^= PERIPHERAL_MASK(peripheral);
+	// Moto huangzq2: ignore mdm2 for md_support because mdm2 has same peripheral may
+	// override mdm's md_support state.
+	if (peripheral != 0 || proc != 2 /*BRIDGE_TO_MUX(DIAGFWD_MDM2)*/ ) {
+		if (data == DIAG_STATUS_OPEN) {
+			md_support |= PERIPHERAL_MASK(peripheral);
+		} else if (data == DIAG_STATUS_CLOSED) {
+			if((md_support & PERIPHERAL_MASK(peripheral)) == PERIPHERAL_MASK(peripheral))
+			{
+				md_support ^= PERIPHERAL_MASK(peripheral);
+			}
 		}
 	}
+
 	if (peripheral > NUM_PERIPHERALS)
 		return;
 
