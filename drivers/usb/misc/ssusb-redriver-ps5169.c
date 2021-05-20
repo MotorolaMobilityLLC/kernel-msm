@@ -210,6 +210,7 @@ static int ssusb_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 	else
 		pinctrl_name = "disable_gpio";
 
+
 	state = pinctrl_lookup_state(pinctrl, pinctrl_name);
 	if (IS_ERR_OR_NULL(state)) {
 		dev_err(ps5169->dev, "fail to get %s state\n", pinctrl_name);
@@ -223,6 +224,9 @@ static int ssusb_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 		ret = -EINVAL;
 		goto put_pinctrl;
 	}
+
+	if(en)
+		mdelay(10);
 
 	ret = 0;
 
