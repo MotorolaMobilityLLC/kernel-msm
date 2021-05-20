@@ -46,7 +46,7 @@
 #define GPIO_PULL(gpio_cfg)   (((gpio_cfg) >> 15) & 0x3)
 #define GPIO_DRVSTR(gpio_cfg) (((gpio_cfg) >> 17) & 0xf)
 
-#define TLMM_NUM_GPIO 150
+#define TLMM_NUM_GPIO 200
 
 #define HAL_OUTPUT_VAL(config) (((config)&0x40000000)>>30)
 
