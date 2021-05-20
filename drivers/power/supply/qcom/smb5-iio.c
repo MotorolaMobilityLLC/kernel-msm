@@ -266,6 +266,9 @@ int smb5_iio_get_prop(struct smb_charger *chg, int channel, int *val)
 	case PSY_IIO_TYPEC_ACCESSORY_MODE:
 		rc = smblib_get_usb_prop_typec_accessory_mode(chg, val);
 		break;
+	case PSY_IIO_CHARGING_ENABLED:
+		*val = !get_effective_result(chg->chg_disable_votable);
+		break;
 	default:
 		pr_err("get prop %d is not supported\n", channel);
 		rc = -EINVAL;
@@ -494,6 +497,9 @@ int smb5_iio_set_prop(struct smb_charger *chg, int channel, int val)
 		break;
 	case PSY_IIO_FCC_STEPPER_ENABLE:
 		chg->fcc_stepper_enable = val;
+		break;
+	case PSY_IIO_CHARGING_ENABLED:
+		vote(chg->chg_disable_votable, USER_VOTER, !!!val, 0);
 		break;
 	default:
 		pr_err("get prop %d is not supported\n", channel);
