@@ -30,6 +30,7 @@ struct f_uac1_opts {
 	int				p_srate;
 	int				p_ssize;
 	int				req_number;
+	unsigned int			ep_maxp_size;
 	unsigned			bound:1;
 
 	struct mutex			lock;
