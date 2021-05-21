@@ -66,10 +66,7 @@ case "$REQUIRED_DEFCONFIG" in
 		fi
 		;&	# Intentional fallthrough
 	${PLATFORM_NAME}-qgki-consolidate_defconfig )
-		#MMI_STOPSHIP : kernel: skip all userdebug config
-		if [ ${TARGET_PRODUCT_NAME} != "berlin" ] && [ ${TARGET_PRODUCT_NAME} != "berlna" ]; then
 		FINAL_DEFCONFIG_BLEND+=" $QCOM_CONSOLIDATE_FRAG"
-		fi
 		;&	# Intentional fallthrough
 	${PLATFORM_NAME}-qgki_defconfig )
 		# DEBUG_FS fragment.
