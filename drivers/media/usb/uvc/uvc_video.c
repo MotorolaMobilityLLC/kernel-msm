@@ -805,6 +805,17 @@ static void uvc_video_stats_decode(struct uvc_streaming *stream,
 		return;
 	}
 
+        /*  BEGIN IKSWR-85387  Lenovo liangsk2, 2021/05/21  If device is ThinkReality A3,
+         *  check for invalid headers.  if the data[0] is not equal to header_size, will
+         *  get the wrong pts.
+         */
+        if ((len < header_size || data[0] < header_size || data[0] != header_size) &&
+	    (stream->dev->quirks & UVC_QUIRK_OVERRIDE_TIMESTAMPS)) {
+                stream->stats.frame.nb_invalid++;
+                return;
+        }
+	//  END IKSWR-85387
+
 	/* Extract the timestamps. */
 	if (has_pts)
 		pts = get_unaligned_le32(&data[2]);
