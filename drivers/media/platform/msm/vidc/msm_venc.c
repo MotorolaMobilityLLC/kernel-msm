@@ -1185,6 +1185,16 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		),
 		.qmenu = roi_map_type,
 	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VENC_COMPLEXITY,
+		.name = "Encoder complexity",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 0,
+		.maximum = 100,
+		.default_value = 100,
+		.step = 1,
+		.qmenu = NULL,
+	},
 };
 
 #define NUM_CTRLS ARRAY_SIZE(msm_venc_ctrls)
@@ -1442,6 +1452,11 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		property_id = HAL_CONFIG_VENC_REQUEST_IFRAME;
 		request_iframe.enable = true;
 		pdata = &request_iframe;
+		break;
+	case V4L2_CID_MPEG_VIDC_VENC_COMPLEXITY:
+		if (is_realtime_session(inst))
+			dprintk(VIDC_DBG,
+				"Client is setting complexity for RT session\n");
 		break;
 	case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
 	{
