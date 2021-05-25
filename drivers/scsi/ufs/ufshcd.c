@@ -7461,6 +7461,13 @@ static void ufshcd_wb_probe(struct ufs_hba *hba, u8 *desc_buf)
 		goto wb_disabled;
 	}
 
+#if defined(CONFIG_UFSTW)
+        //disable write booster for samsung ufs. turbo write feature is used on samsung v6 or v5 ufs.
+	if (dev_info->wmanufacturerid == UFS_VENDOR_SAMSUNG) {
+		dev_err(hba->dev, "%s: it is samsung ufs, just disable wb, will enable TW.wb_disable \n",__func__);
+		goto wb_disabled;
+	}
+#endif
 	/*
 	 * WB may be supported but not configured while provisioning.
 	 * The spec says, in dedicated wb buffer mode,
@@ -9814,7 +9821,6 @@ static int get_storage_info(struct ufs_hba *hba)
     struct property *p;
     struct device_node *n;
     struct storage_info *info;
-    unsigned int mfrid;
 
     n = of_find_node_by_path("/chosen/mmi,storage");
     if (n == NULL) {
@@ -9845,8 +9851,7 @@ static int get_storage_info(struct ufs_hba *hba)
 
     of_node_put(n);
 
-	mfrid = simple_strtol(info->card_manufacturer, NULL, 16);
-    dev_info(hba->dev, "manufacturer parsed from choosen is %s\n",mfrid);
+    dev_info(hba->dev, "manufacturer parsed from choosen is %s\n",info->card_manufacturer);
 err:
 	return ret;
 }
