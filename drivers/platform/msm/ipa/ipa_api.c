@@ -42,9 +42,8 @@
 			if (ipa_api_ctrl->api) { \
 				ret = ipa_api_ctrl->api(p); \
 			} else { \
-				pr_err("%s not implemented for IPA ver %d\n", \
+				pr_debug("%s not implemented for IPA ver %d\n", \
 						__func__, ipa_api_hw_type); \
-				WARN_ON(1); \
 				ret = -EPERM; \
 			} \
 		} \
