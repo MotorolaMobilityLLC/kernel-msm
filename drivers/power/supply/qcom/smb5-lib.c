@@ -1268,7 +1268,7 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 			chg->real_charger_type == POWER_SUPPLY_TYPE_USB))
 			chg->real_charger_type = apsd_result->pst;
 		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT)
-			chg->real_charger_type = POWER_SUPPLY_TYPE_USB;
+			chg->real_charger_type = POWER_SUPPLY_TYPE_USB_FLOAT;
 	}
 
 	smblib_dbg(chg, PR_MOTO, "APSD=%s PD=%d\n",
@@ -10185,6 +10185,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
 			cl_usb = 1500;
+		else if (chip->real_charger_type ==
+			 POWER_SUPPLY_TYPE_USB_FLOAT)
+			cl_usb = 1000;
 		else if ((cl_cc == 500) &&
 			 (cl_usb <= 500))
 			cl_usb = cl_cc;
