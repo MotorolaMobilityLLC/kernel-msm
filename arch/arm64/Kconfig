@@ -1855,3 +1855,9 @@ config MULTI_CAM_FLASH_STATUS
 	default n
 	help
 	Enable it only for multi camera flash turn to dark issue.
+
+config SND_PRI_MI2S_AW882XX
+	bool "For aw882xx smartpa pri mi2s config"
+	default n
+	help
+	Enable it only aw882xx smartpa is connected on pri mi2s.
