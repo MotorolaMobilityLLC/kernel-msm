@@ -60,10 +60,7 @@ FINAL_DEFCONFIG_BLEND+=${MOTO_REQUIRED_CONFIG}
 
 case "$REQUIRED_DEFCONFIG" in
 	${PLATFORM_NAME}-qgki-debug_defconfig )
-		#MMI_STOPSHIP : kernel: skip all userdebug config
-		if [ ${TARGET_PRODUCT_NAME} != "berlin" ] && [ ${TARGET_PRODUCT_NAME} != "berlna" ]; then
 		FINAL_DEFCONFIG_BLEND+=" $QCOM_DEBUG_FRAG"
-		fi
 		;&	# Intentional fallthrough
 	${PLATFORM_NAME}-qgki-consolidate_defconfig )
 		FINAL_DEFCONFIG_BLEND+=" $QCOM_CONSOLIDATE_FRAG"
