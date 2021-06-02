@@ -128,8 +128,10 @@ static inline int qpnp_vib_ldo_enable(struct vib_ldo_chip *chip, bool enable)
 	if (chip->vib_play_ms > 80) {
 		if (enable)
 			mot_actuator_on_vibrate_start();
-		else
-			mot_actuator_on_vibrate_stop();
+	}
+	if(!enable)
+	{
+		mot_actuator_on_vibrate_stop();
 	}
 #endif
 	ret = regmap_update_bits(chip->regmap,
