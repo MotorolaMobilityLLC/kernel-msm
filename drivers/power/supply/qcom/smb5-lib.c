@@ -27,6 +27,7 @@ extern int fsa4480_enable_lpd(bool enable);
 #endif
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
 #define QC3P_AUTHEN_TIMEOUT_MS	30
+#define QC3P_AUTHEN_USB_ICL_MA	500000
 #endif
 #define RSBU_K_300K_UV	3000000
 
@@ -1126,7 +1127,7 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 	if ((apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3)
 		&& chg->qc3p_authen_stage == QC3P_AUTHEN_STAGE_NONE) {
 		chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_START;
-		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, true, 0);
+		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, true, QC3P_AUTHEN_USB_ICL_MA);
 		cancel_delayed_work(&chg->qc3p_authen_work);
 		smblib_err(chg, "trigger qc3+ detection work\n");
 		schedule_delayed_work(&chg->qc3p_authen_work,
@@ -6215,7 +6216,7 @@ static void smblib_qc3p_authen_work(struct work_struct *work)
 
 	if(chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3){
 		smblib_err(chg,"charger type not HVDCP3,skip qc3p detection\n");
-		 vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
 		chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_NONE;
 		return;
 	}
