@@ -26,7 +26,7 @@ extern bool fsa4480_rsbux_low(int r_thr);
 extern int fsa4480_enable_lpd(bool enable);
 #endif
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
-#define QC3P_AUTHEN_TIMEOUT_MS	500
+#define QC3P_AUTHEN_TIMEOUT_MS	30
 #endif
 #define RSBU_K_300K_UV	3000000
 
@@ -6223,7 +6223,9 @@ static void smblib_qc3p_authen_work(struct work_struct *work)
 	smblib_err(chg,"enter\n");
 	vbus = smblib_get_vbus(chg);
 	smblib_err(chg, "begin read qc35 vol=%d\n",vbus);
-
+//sm8250 have done the qc3+ detection.
+//only need qc3+ power detection part.
+#if 0
 	for (i = 0; i < 16; i++) {
 		smblib_dp_pulse_qc3p(chg);
 		udelay(5000);
@@ -6240,6 +6242,7 @@ static void smblib_qc3p_authen_work(struct work_struct *work)
 
 	smblib_err(chg, "start sleep 200\n");
 	mdelay(200);
+#endif
 
 	retry_cnt = 0;  //loop wait 500ms per spec
 	for(retry_cnt = 0;retry_cnt < 5;retry_cnt++) {
