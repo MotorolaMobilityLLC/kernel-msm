@@ -120,18 +120,21 @@ static int qpnp_vib_ldo_set_voltage(struct vib_ldo_chip *chip, int new_uV)
 static inline int qpnp_vib_ldo_enable(struct vib_ldo_chip *chip, bool enable)
 {
 	int ret;
+#ifdef CONFIG_AF_NOISE_ELIMINATION
+	static int mot_actuator_started = 0;
+#endif
 
 	if (chip->vib_enabled == enable)
 		return 0;
 
 #ifdef CONFIG_AF_NOISE_ELIMINATION
-	if (chip->vib_play_ms > 80) {
-		if (enable)
-			mot_actuator_on_vibrate_start();
+	if ((chip->vib_play_ms > 80) && (enable)) {
+		mot_actuator_on_vibrate_start();
+		mot_actuator_started = 1;
 	}
-	if(!enable)
-	{
+	if(!enable && (mot_actuator_started == 1 )) {
 		mot_actuator_on_vibrate_stop();
+		mot_actuator_started = 0;
 	}
 #endif
 	ret = regmap_update_bits(chip->regmap,
