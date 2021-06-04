@@ -15,6 +15,7 @@ enum iio_type {
 	QG,
 	CP,
 	SMB_PARALLEL,
+	MMI_CP,
 };
 
 /* For qpnp-smb5.c and smb5-lib.c */
@@ -38,6 +39,10 @@ enum qg_chg_iio_channels {
 	SMB5_QG_LEARNED_CAPACITY,
 	SMB5_QG_SOH,
 	SMB5_QG_MAX,
+};
+
+enum mmi_cp_iio_channels {
+	SC8549_INPUT_VOLTAGE_NOW,
 };
 
 enum cp_iio_channels {
@@ -211,6 +216,7 @@ static const struct smb5_iio_prop_channels smb5_chans_pmic[] = {
 	SMB5_CHAN_INDEX("usb_typec_accessory_mode", TYPEC_ACCESSORY_MODE)
 	SMB5_CHAN_ACTIVITY("battery_sys_soc", SYS_SOC)
 	SMB5_CHAN_INDEX("charging_enabled", CHARGING_ENABLED)
+	SMB5_CHAN_INDEX("usb_qc3p_power", MMI_QC3P_POWER)
 };
 
 struct iio_channel **get_ext_channels(struct device *dev,
