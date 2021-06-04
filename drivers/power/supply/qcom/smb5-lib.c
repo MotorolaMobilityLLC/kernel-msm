@@ -23,6 +23,9 @@
 #include "storm-watch.h"
 #include "smb5-iio.h"
 #include "battery-profile-loader.h"
+#include <uapi/linux/sched/types.h>
+#include <linux/kthread.h>
+
 
 #define smblib_err(chg, fmt, ...)		\
 	pr_err("%s: %s: " fmt, chg->name,	\
@@ -884,6 +887,10 @@ int smblib_set_aicl_cont_threshold(struct smb_chg_param *param,
 /********************
  * HELPER FUNCTIONS *
  ********************/
+/* MMI CP channels */
+static const char * const smblib_mmi_cp_ext_iio_chan[] = {
+	[SC8549_INPUT_VOLTAGE_NOW] = "sc8549_input_voltage_now",
+};
 
 /* CP channels */
 static const char * const smblib_cp_ext_iio_chan[] = {
@@ -940,6 +947,11 @@ static int smblib_read_iio_prop(struct smb_charger *chg,
 			return -ENODEV;
 		iio_chan_list = chg->iio_chan_list_smb_parallel[iio_chan];
 		break;
+	case MMI_CP:
+		if (IS_ERR_OR_NULL(chg->iio_chan_list_mmi_cp))
+			return -ENODEV;
+		iio_chan_list = chg->iio_chan_list_mmi_cp[iio_chan];
+		break;
 	default:
 		pr_err_ratelimited("iio_type %d is not supported\n", type);
 		return -EINVAL;
@@ -970,12 +982,44 @@ static int smblib_write_iio_prop(struct smb_charger *chg,
 			return -ENODEV;
 		iio_chan_list = chg->iio_chan_list_smb_parallel[iio_chan];
 		break;
+	case MMI_CP:
+		if (IS_ERR_OR_NULL(chg->iio_chan_list_mmi_cp))
+			return -ENODEV;
+		iio_chan_list = chg->iio_chan_list_mmi_cp[iio_chan];
+		break;
 	default:
 		pr_err_ratelimited("iio_type %d is not supported\n", type);
 		return -EINVAL;
 	}
 
 	return iio_write_channel_raw(iio_chan_list, val);
+}
+
+static bool is_mmi_cp_available(struct smb_charger *chg)
+{
+	int rc;
+	struct iio_channel **iio_list;
+
+	if (IS_ERR(chg->iio_chan_list_mmi_cp))
+		return false;
+
+	if (!chg->iio_chan_list_mmi_cp) {
+		iio_list = get_ext_channels(chg->dev,
+			smblib_mmi_cp_ext_iio_chan,
+			ARRAY_SIZE(smblib_mmi_cp_ext_iio_chan));
+		if (IS_ERR(iio_list)) {
+			rc = PTR_ERR(iio_list);
+			if (rc != -EPROBE_DEFER) {
+				dev_err(chg->dev, "Failed to get channels, rc=%d\n",
+						rc);
+				chg->iio_chan_list_mmi_cp = ERR_PTR(-EINVAL);
+			}
+			return false;
+		}
+		chg->iio_chan_list_mmi_cp = iio_list;
+	}
+
+	return true;
 }
 
 static bool is_cp_available(struct smb_charger *chg)
@@ -1304,6 +1348,7 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 			is_flash_active(chg) ? SDP_CURRENT_UA : SDP_100_MA);
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
+	vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
 	vote(chg->usb_icl_votable, THERMAL_THROTTLE_VOTER, false, 0);
@@ -2865,8 +2910,10 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 			pr_err("Failed to force 12V\n");
 		break;
 	case QTI_POWER_SUPPLY_DP_DM_CONFIRMED_HVDCP3P5:
-		chg->qc3p5_detected = true;
-		smblib_update_usb_type(chg);
+		if (!chg->mmi_qc3p_support) {
+			chg->qc3p5_detected = true;
+			smblib_update_usb_type(chg);
+		}
 		break;
 	case QTI_POWER_SUPPLY_DP_DM_ICL_UP:
 	default:
@@ -5858,6 +5905,113 @@ static void smblib_handle_sdp_enumeration_done(struct smb_charger *chg,
 		   rising ? "rising" : "falling");
 }
 
+static int mmi_get_vbus(struct smb_charger *chg)
+{
+	int rc = 0, val;
+
+	if (!is_mmi_cp_available(chg))
+		return 0;
+
+	rc = smblib_read_iio_prop(chg, MMI_CP, SC8549_INPUT_VOLTAGE_NOW,
+				&val);
+	if (!rc)
+		return val;
+	else {
+		smblib_err(chg, "Couldn't read mmi cp vbus rc=%d\n", rc);
+		return 0;
+	}
+}
+
+#define QC3P_AUTHEN_LOW_THR_MV 5500
+#define QC3P_AUTHEN_HIGH_THR_MV 6500
+#define QC3P_AUTHEN_NONE_THR_MV 9500
+#define QC3P_AUTHEN_45W_THR_MV 8500
+#define QC3P_AUTHEN_27W_THR_MV 7500
+#define QC3P_AUTHEN_18W_THR_MV 6500
+static int mmi_qc3p_kthread_handler(void *param)
+{
+	struct smb_charger *chg = param;
+	int i;
+	int v_aut,v_power;
+	unsigned long j1,j2;
+	struct sched_param sch_param = {.sched_priority = MAX_RT_PRIO-1};
+
+	sched_setscheduler(current, SCHED_FIFO, &sch_param);
+	do {
+		wait_event_interruptible(chg->mmi_timer_wait_que, chg->mmi_timer_trig_flag || kthread_should_stop());
+		if (kthread_should_stop())
+			break;
+		chg->mmi_timer_trig_flag = false;
+
+		for (i = 0; i < 16; i++) {
+			smblib_dp_pulse(chg);
+			udelay(5000);
+		}
+		mdelay(95);
+		for (i = 0; i < 16; i++) {
+			smblib_dm_pulse(chg);
+			udelay(5000);
+		}
+		mdelay(100);
+
+		j1 = jiffies;
+		v_aut = mmi_get_vbus(chg);
+		j1 = jiffies - j1;
+		if (v_aut < QC3P_AUTHEN_LOW_THR_MV || v_aut > QC3P_AUTHEN_HIGH_THR_MV) {
+			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_NONE;
+			smblib_err(chg, "is qc3.0 charge adatper vbus=%d\n",v_aut);
+			goto out;
+		}
+
+		for (i = 0;i < 3; i++) {
+			smblib_dp_pulse(chg);
+			udelay(5000);
+			smblib_dm_pulse(chg);
+			udelay(5000);
+		}
+		mdelay(30);
+
+		j2 = jiffies;
+		v_power = mmi_get_vbus(chg);
+		j2 = jiffies - j2;
+
+		for (i = 0; i < 2; i++) {
+			smblib_dp_pulse(chg);
+			udelay(5000);
+		}
+		for (i = 0; i < 2; i++) {
+			smblib_dm_pulse(chg);
+			udelay(5000);
+		}
+		msleep(30);
+
+		if (v_power > QC3P_AUTHEN_NONE_THR_MV)
+			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_NONE;
+		else if (v_power > QC3P_AUTHEN_45W_THR_MV)
+			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_45W;
+		else if (v_power > QC3P_AUTHEN_27W_THR_MV)
+			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_27W;
+		else if (v_power > QC3P_AUTHEN_18W_THR_MV)
+			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_18W;
+		else
+			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_NONE;
+
+		if (chg->mmi_qc3p_power != QTI_POWER_SUPPLY_QC3P_NONE)
+			chg->qc3p5_detected = true;
+		smblib_update_usb_type(chg);
+		power_supply_changed(chg->usb_psy);
+
+		smblib_dbg(chg, PR_MISC, "V_aut:%dms %dmV,V_power=%dms %dmV,Power =%d\n",
+			jiffies_to_msecs(j1), v_aut, jiffies_to_msecs(j2),  v_power, chg->mmi_qc3p_power);
+	out:
+		chg->mmi_is_qc3p_authen = false;
+		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+	}while (!kthread_should_stop());
+
+	smblib_dbg(chg, PR_MISC, "qc3p kthread stop\n");
+	return 0;
+}
+
 #define APSD_EXTENDED_TIMEOUT_MS	400
 /* triggers when HVDCP 3.0 authentication has finished */
 static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
@@ -5893,6 +6047,13 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 			smblib_dbg(chg, PR_MISC,
 				"APSD Extented timer started at %lld\n",
 				jiffies_to_msecs(jiffies));
+
+			if (chg->mmi_qc3p_support) {
+				chg->mmi_is_qc3p_authen = true;
+				chg->qc3p5_detected = false;
+				chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_NONE;
+				vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, true, 500000);
+			}
 
 			mod_timer(&chg->apsd_timer,
 				msecs_to_jiffies(APSD_EXTENDED_TIMEOUT_MS)
@@ -6473,6 +6634,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 	vote(chg->usb_icl_votable, DCP_VOTER, false, 0);
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
+	vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CTM_VOTER, false, 0);
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, CHG_TERMINATION_VOTER, false, 0);
@@ -7978,6 +8140,11 @@ static void apsd_timer_cb(struct timer_list *tm)
 			jiffies_to_msecs(jiffies));
 
 	chg->apsd_ext_timeout = true;
+
+	if (chg->mmi_qc3p_support) {
+		chg->mmi_timer_trig_flag = true;
+		wake_up_interruptible(&chg->mmi_timer_wait_que);
+	}
 }
 
 #define SOFT_JEITA_HYSTERESIS_OFFSET	0x200
@@ -8549,6 +8716,17 @@ int smblib_init(struct smb_charger *chg)
 	INIT_DELAYED_WORK(&chg->pr_lock_clear_work,
 					smblib_pr_lock_clear_work);
 	INIT_DELAYED_WORK(&chg->pd_contract_work, smblib_pd_contract_work);
+	 if (chg->mmi_qc3p_support) {
+		chg->mmi_qc3p_authen_task = kthread_create(mmi_qc3p_kthread_handler, chg,
+			"mmi_qc3p_authen", "mmi_qc3p_authen_task", chg);
+		if (IS_ERR(chg->mmi_qc3p_authen_task)) {
+			rc = PTR_ERR(chg->mmi_qc3p_authen_task);
+			smblib_err(chg, "Failed to create mmi_qc3p_authen_task rc = %d\n", rc);
+			return rc;
+		}
+		init_waitqueue_head(&chg->mmi_timer_wait_que);
+		wake_up_process(chg->mmi_qc3p_authen_task);
+	}
 	timer_setup(&chg->apsd_timer, apsd_timer_cb, 0);
 
 	INIT_DELAYED_WORK(&chg->role_reversal_check,
@@ -8719,6 +8897,8 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->usbov_dbc_work);
 		cancel_delayed_work_sync(&chg->role_reversal_check);
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
+		if (chg->mmi_qc3p_support && chg->mmi_qc3p_authen_task)
+			kthread_stop(chg->mmi_qc3p_authen_task);
 		power_supply_unreg_notifier(&chg->nb);
 		smblib_destroy_votables(chg);
 		qcom_step_chg_deinit();

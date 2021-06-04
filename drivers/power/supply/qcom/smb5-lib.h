@@ -84,6 +84,7 @@ enum print_reason {
 #define ICL_CHANGE_VOTER		"ICL_CHANGE_VOTER"
 #define OVERHEAT_LIMIT_VOTER		"OVERHEAT_LIMIT_VOTER"
 #define TYPEC_SWAP_VOTER		"TYPEC_SWAP_VOTER"
+#define SW_QC3P_AUTHEN_VOTER		"SW_QC3P_AUTHEN_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
@@ -638,6 +639,15 @@ struct smb_charger {
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
 	int			usb_dcp_curr_max;
+
+	/* mmi qc3p */
+	struct iio_channel	**iio_chan_list_mmi_cp;
+	struct task_struct	*mmi_qc3p_authen_task;
+	wait_queue_head_t	mmi_timer_wait_que;
+	enum mmi_qc3p_power	mmi_qc3p_power;
+	bool			mmi_is_qc3p_authen;
+	bool			mmi_qc3p_support;
+	bool			mmi_timer_trig_flag;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);

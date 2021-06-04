@@ -627,6 +627,8 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 					&chg->chg_param.qc4_max_icl_ua);
 	if (chg->chg_param.qc4_max_icl_ua <= 0)
 		chg->chg_param.qc4_max_icl_ua = MICRO_4PA;
+	chg->mmi_qc3p_support = of_property_read_bool(node,
+				"mmi,qc3p-support");
 
 	return 0;
 }
