@@ -113,4 +113,10 @@ enum power_supply_typec_power_role {
 	QTI_POWER_SUPPLY_TYPEC_PR_SOURCE,
 };
 
+enum mmi_qc3p_power {
+	QTI_POWER_SUPPLY_QC3P_NONE,
+	QTI_POWER_SUPPLY_QC3P_18W,
+	QTI_POWER_SUPPLY_QC3P_27W,
+	QTI_POWER_SUPPLY_QC3P_45W,
+};
 #endif /* __QTI_POWER_SUPPLY_H_ */
