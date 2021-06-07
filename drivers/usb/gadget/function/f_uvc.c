@@ -402,11 +402,10 @@ uvc_function_connect(struct uvc_device *uvc)
 void
 uvc_function_disconnect(struct uvc_device *uvc)
 {
-	struct usb_composite_dev *cdev = uvc->func.config->cdev;
 	int ret;
 
 	if ((ret = usb_function_deactivate(&uvc->func)) < 0)
-		INFO(cdev, "UVC disconnect failed with %d\n", ret);
+		pr_err("UVC disconnect failed with %d\n", ret);
 }
 
 /* --------------------------------------------------------------------------
