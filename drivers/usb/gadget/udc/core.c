@@ -752,6 +752,9 @@ int usb_gadget_deactivate(struct usb_gadget *gadget)
 {
 	int ret = 0;
 
+	if (!gadget)
+		return -ENODEV;
+
 	if (gadget->deactivated)
 		goto out;
 
@@ -787,6 +790,9 @@ EXPORT_SYMBOL_GPL(usb_gadget_deactivate);
 int usb_gadget_activate(struct usb_gadget *gadget)
 {
 	int ret = 0;
+
+	if (!gadget)
+		return -ENODEV;
 
 	if (!gadget->deactivated)
 		goto out;
