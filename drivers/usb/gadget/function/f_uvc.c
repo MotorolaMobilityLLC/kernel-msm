@@ -393,7 +393,7 @@ uvc_function_disconnect(struct uvc_device *uvc)
 	int ret;
 
 	if ((ret = usb_function_deactivate(&uvc->func)) < 0)
-		uvcg_info(&uvc->func, "UVC disconnect failed with %d\n", ret);
+		pr_err("UVC disconnect failed with %d\n", ret);
 }
 
 /* --------------------------------------------------------------------------
