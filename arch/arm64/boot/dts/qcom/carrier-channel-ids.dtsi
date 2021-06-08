@@ -228,7 +228,7 @@
 		"retjp",	/* 211 */
 		"softbank",	/* 212 */
 		"optus",	/* 213 */
-		"undefined",	/* 214 */
+		"retkr",	/* 214 */
 		"undefined",	/* 215 */
 		"undefined",	/* 216 */
 		"undefined",	/* 217 */
