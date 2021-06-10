@@ -7113,8 +7113,13 @@ static void smblib_lpd_launch_ra_open_work(struct smb_charger *chg)
 		mutex_lock(&chg->moisture_detection_enable);
 		if (chg->moisture_detection_enabled) {
 			vote(chg->awake_votable, LPD_VOTER, true, 0);
+#ifdef CONFIG_QCOM_FSA4480_LPD
+			schedule_delayed_work(&chg->lpd_ra_open_work,
+						msecs_to_jiffies(800));
+#else
 			schedule_delayed_work(&chg->lpd_ra_open_work,
 						msecs_to_jiffies(300));
+#endif
 		} else {
 			chg->lpd_stage = LPD_STAGE_NONE;
 		}
