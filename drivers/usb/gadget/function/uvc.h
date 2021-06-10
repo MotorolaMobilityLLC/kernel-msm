@@ -137,6 +137,9 @@ struct uvc_device {
 	/* Events */
 	unsigned int event_length;
 	unsigned int event_setup_out : 1;
+
+	struct delayed_work free_work;
+	int open_count;
 };
 
 static inline struct uvc_device *to_uvc(struct usb_function *f)
