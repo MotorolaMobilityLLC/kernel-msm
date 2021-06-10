@@ -295,6 +295,8 @@ uvc_v4l2_open(struct file *file)
 	handle->device = &uvc->video;
 	file->private_data = &handle->vfh;
 
+	uvc->open_count++;
+
 	uvc_function_connect(uvc);
 	return 0;
 }
@@ -318,6 +320,8 @@ uvc_v4l2_release(struct file *file)
 	v4l2_fh_del(&handle->vfh);
 	v4l2_fh_exit(&handle->vfh);
 	kfree(handle);
+
+	uvc->open_count--;
 
 	return 0;
 }
