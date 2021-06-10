@@ -1737,7 +1737,16 @@ static int diag_send_dci_pkt_remote(unsigned char *data, int len, int tag,
 	write_len += dci_header_size;
 	*(int *)(buf + write_len) = tag;
 	write_len += sizeof(int);
-	memcpy(buf + write_len, data, len);
+	if ((write_len + len) < DIAG_MDM_BUF_SIZE) {
+		memcpy(buf + write_len, data, len);
+	} else {
+		pr_err("diag: skip writing invalid length packet, token: %d, pkt_len: %d\n",
+			token, (write_len + len));
+		spin_lock_irqsave(&driver->dci_mempool_lock, flags);
+		diagmem_free(driver, buf, dci_ops_tbl[token].mempool);
+		spin_unlock_irqrestore(&driver->dci_mempool_lock, flags);
+		return -EAGAIN;
+	}
 	write_len += len;
 	*(buf + write_len) = CONTROL_CHAR; /* End Terminator */
 	write_len += sizeof(uint8_t);
