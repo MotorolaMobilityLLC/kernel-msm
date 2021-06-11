@@ -5,6 +5,8 @@
 #include <linux/module.h>
 #include <linux/soc/qcom/qmi.h>
 
+#include <linux/of.h> //IKSWR-95990
+
 #include "bus.h"
 #include "debug.h"
 #include "main.h"
@@ -76,6 +78,49 @@ static moto_product products_list[] = {
 	{{0}, {0}, {0}},
 };
 
+static char *bootargs_str;
+
+static int cnss_get_bootarg(char *key, char **value)
+{
+	const char *bootargs_ptr = NULL;
+	char *idx = NULL;
+	char *kvpair = NULL;
+	int err = 1;
+	struct device_node *n = of_find_node_by_path("/chosen");
+	size_t bootargs_ptr_len = 0;
+
+	if (n == NULL)
+		goto err;
+
+	if (of_property_read_string(n, "bootargs", &bootargs_ptr) != 0)
+		goto err_putnode;
+
+	bootargs_ptr_len = strlen(bootargs_ptr);
+	if (!bootargs_str) {
+		/* Following operations need a non-const version of bootargs */
+		bootargs_str = kzalloc(bootargs_ptr_len + 1, GFP_KERNEL);
+		if (!bootargs_str)
+			goto err_putnode;
+	}
+	strlcpy(bootargs_str, bootargs_ptr, bootargs_ptr_len + 1);
+
+	idx = strnstr(bootargs_str, key, strlen(bootargs_str));
+	if (idx) {
+		kvpair = strsep(&idx, " ");
+		if (kvpair)
+			if (strsep(&kvpair, "=")) {
+				*value = strsep(&kvpair, " ");
+				if (*value)
+					err = 0;
+			}
+	}
+
+err_putnode:
+	of_node_put(n);
+err:
+	return err;
+}
+
 static int is_void_product(moto_product *entry)
 {
 	return entry && !strlen(entry->hw_device) && !strlen(entry->hw_radio);
@@ -89,34 +134,41 @@ static int num_of_products(moto_product *list)
 	return num;
 }
 
-static int get_moto_device(char *str)
+static int get_moto_device()
 {
-	if (sizeof(str) > MOTO_STRING_LEN) {
-		cnss_pr_dbg("%s: string is too large", __func__);
+	char *bootdevice = NULL;
+	int rc = 0;
+	rc = cnss_get_bootarg("androidboot.device=", &bootdevice);
+	if (rc || !bootdevice){
+		cnss_pr_dbg("string is error");
 		return -ENOMEM;
+	}else{
+		strlcpy(device_ptr, bootdevice,MOTO_STRING_LEN);
+		return 0;
 	}
-	strcpy(device_ptr, str);
-	cnss_pr_dbg("%s: device [%s]", __func__, device_ptr);
-	return 0;
 }
-__setup("androidboot.device=", get_moto_device);
 
-static int get_moto_radio(char *str)
+
+static int get_moto_radio()
 {
-	if (sizeof(str) > MOTO_STRING_LEN) {
-		cnss_pr_dbg("%s: string is too large", __func__);
+	char *radiodevice = NULL;
+	int rc = 0;
+	rc = cnss_get_bootarg("androidboot.radio=", &radiodevice);
+	if (rc || !radiodevice){
+		cnss_pr_dbg("string is error");
 		return -ENOMEM;
+	}else{
+		strlcpy(radio_ptr, radiodevice,MOTO_STRING_LEN);
+		return 0;
 	}
-	strcpy(radio_ptr, str);
-	cnss_pr_dbg("%s: radio [%s]", __func__, radio_ptr);
-	return 0;
 }
-__setup("androidboot.radio=", get_moto_radio);
 
 static int selectFileNameByProduct(char *filename)
 {
 	int i, num, ret = 0;
-
+	if(get_moto_radio() != 0 || get_moto_device() != 0){
+		cnss_pr_dbg("device or radio not present ");
+	}
 
 	if ((device_ptr == NULL) || (radio_ptr == NULL)) {
 		cnss_pr_dbg("%s: device or radio not present cmd line argc",__func__);
