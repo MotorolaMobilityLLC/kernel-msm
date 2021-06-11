@@ -57,6 +57,91 @@ void cnss_ignore_qmi_failure(bool ignore)
 void cnss_ignore_qmi_failure(bool ignore) { }
 #endif
 
+// BEGIN IKSWR-1888 Support loading different bdwlan.elf
+#define NV_EPA "epa"
+#define NV_IPA "ipa"
+#define MOTO_STRING_LEN 32
+static char device_ptr[MOTO_STRING_LEN] = {0};
+static char radio_ptr[MOTO_STRING_LEN] = {0};
+
+typedef struct moto_product {
+	char hw_device[32];
+	char hw_radio[32];
+	char nv_name[64];
+} moto_product;
+
+static moto_product products_list[] = {
+	{"xpeng",	"all",	NV_EPA},
+	/* Terminator */
+	{{0}, {0}, {0}},
+};
+
+static int is_void_product(moto_product *entry)
+{
+	return entry && !strlen(entry->hw_device) && !strlen(entry->hw_radio);
+}
+
+static int num_of_products(moto_product *list)
+{
+	int num = 0;
+	if (!list) return 0;
+	while (!is_void_product(list + num)) num++;
+	return num;
+}
+
+static int get_moto_device(char *str)
+{
+	if (sizeof(str) > MOTO_STRING_LEN) {
+		cnss_pr_dbg("%s: string is too large", __func__);
+		return -ENOMEM;
+	}
+	strcpy(device_ptr, str);
+	cnss_pr_dbg("%s: device [%s]", __func__, device_ptr);
+	return 0;
+}
+__setup("androidboot.device=", get_moto_device);
+
+static int get_moto_radio(char *str)
+{
+	if (sizeof(str) > MOTO_STRING_LEN) {
+		cnss_pr_dbg("%s: string is too large", __func__);
+		return -ENOMEM;
+	}
+	strcpy(radio_ptr, str);
+	cnss_pr_dbg("%s: radio [%s]", __func__, radio_ptr);
+	return 0;
+}
+__setup("androidboot.radio=", get_moto_radio);
+
+static int selectFileNameByProduct(char *filename)
+{
+	int i, num, ret = 0;
+
+
+	if ((device_ptr == NULL) || (radio_ptr == NULL)) {
+		cnss_pr_dbg("%s: device or radio not present cmd line argc",__func__);
+		return -ENODEV;
+	} else {
+		cnss_pr_dbg("device:%s, radio:%s \n", device_ptr, radio_ptr);
+	}
+
+	num = num_of_products(products_list);
+	for (i = 0; i < num; i++) {
+		if (strncmp(device_ptr, (products_list+i)->hw_device, strlen((products_list+i)->hw_device)) == 0) {
+			if(strncmp(radio_ptr, (products_list+i)->hw_radio, strlen((products_list+i)->hw_radio)) == 0 ||
+				strncmp((products_list+i)->hw_radio, "all", strlen((products_list+i)->hw_radio)) == 0) {
+				sprintf(filename, "%s.%s.%s", ELF_BDF_FILE_NAME,
+					(products_list+i)->hw_device, (products_list+i)->nv_name);
+				ret = 1;
+				break;
+			}
+		}
+	}
+
+        return ret;
+}
+// END IKSWR-1888 Support loading different bdwlan.elf
+
 static char *cnss_qmi_mode_to_str(enum cnss_driver_mode mode)
 {
 	switch (mode) {
@@ -519,8 +604,12 @@ static int cnss_get_bdf_file_name(struct cnss_plat_data *plat_priv,
 
 	switch (bdf_type) {
 	case CNSS_BDF_ELF:
+		// BEGIN IKSWR-1888 Support loading different bdwlan.elf
+		if (selectFileNameByProduct(filename_tmp) > 0) {
+			break;
 		/* Board ID will be equal or less than 0xFF in GF mask case */
-		if (plat_priv->board_info.board_id == 0xFF) {
+		} else if (plat_priv->board_info.board_id == 0xFF) {
+		// END IKSWR-1888 Support loading different bdwlan.elf
 			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
 				snprintf(filename_tmp, filename_len,
 					 ELF_BDF_FILE_NAME_GF);
