@@ -81,6 +81,7 @@ struct qg_dt {
 	bool			multi_profile_load;
 	bool			tcss_enable;
 	bool			bass_enable;
+	bool			cp_use_internal_qg;
 };
 
 struct qg_esr_data {
