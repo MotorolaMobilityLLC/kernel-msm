@@ -1103,6 +1103,15 @@ static int qg_esr_estimate(struct qpnp_qg *chip)
 		goto done;
 	}
 
+	if (chip->dt.cp_use_internal_qg) {
+		rc = qg_write_iio_chan(chip, CP_CHARGING_ENABLED, 0);
+		if (rc < 0)
+			pr_err("Failed to force disable cp rc=%d\n", rc);
+		else
+			qg_dbg(chip, QG_DEBUG_STATUS, "disable cp\n");
+		msleep(1000);
+	}
+
 	for (i = 0; i < qg_esr_count; i++) {
 		/* Fire ESR measurement */
 		rc = qg_masked_write(chip,
@@ -1189,6 +1198,14 @@ static int qg_esr_estimate(struct qpnp_qg *chip)
 		}
 		/* delay before the next ESR measurement */
 		msleep(200);
+	}
+
+	if (chip->dt.cp_use_internal_qg) {
+		rc = qg_write_iio_chan(chip, CP_CHARGING_ENABLED, 1);
+		if (rc < 0)
+			pr_err("Failed to force enable cp rc=%d\n", rc);
+		else
+			qg_dbg(chip, QG_DEBUG_STATUS, "enable cp\n");
 	}
 
 	rc = qg_process_esr_data(chip);
@@ -4369,7 +4386,8 @@ static int qg_parse_dt(struct qpnp_qg *chip)
 
 	chip->dt.esr_discharge_enable = of_property_read_bool(node,
 					"qcom,esr-discharge-enable");
-
+	chip->dt.cp_use_internal_qg = of_property_read_bool(node,
+					"mmi,cp-use-internal-qg");
 	rc = of_property_read_u32(node, "qcom,esr-qual-current-ua", &temp);
 	if (rc < 0)
 		chip->dt.esr_qual_i_ua = DEFAULT_ESR_QUAL_CURRENT_UA;
