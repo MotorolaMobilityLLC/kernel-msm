@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -866,7 +866,7 @@ bool rsc_hw_is_amc_mode(struct sde_rsc_priv *rsc)
 int rsc_hw_tcs_wait(struct sde_rsc_priv *rsc)
 {
 	int rc = -EBUSY;
-	int count, seq_status;
+	int count, seq_status, loop_counter;
 
 	dss_reg_w(&rsc->wrapper_io, SDE_RSCC_WRAPPER_CTRL,
 						0x0, rsc->debug_mode);
@@ -881,15 +881,28 @@ int rsc_hw_tcs_wait(struct sde_rsc_priv *rsc)
 						0x0, rsc->debug_mode);
 	}
 
+	if (rsc->version >= SDE_RSC_REV_3)
+		loop_counter = MAX_CHECK_LOOPS / 4;
+	else
+		loop_counter = MAX_CHECK_LOOPS;
 	/* check for sequence running status before exiting */
-	for (count = MAX_CHECK_LOOPS; count > 0; count--) {
+	for (count = loop_counter; count > 0; count--) {
 		seq_status = dss_reg_r(&rsc->wrapper_io, SDE_RSCC_WRAPPER_CTRL,
 				rsc->debug_mode) & BIT(1);
 		if (!seq_status) {
 			rc = 0;
 			break;
 		}
-		usleep_range(1, 2);
+
+		if (rsc->version >= SDE_RSC_REV_3) {
+			dss_reg_w(&rsc->wrapper_io, SDE_RSCC_WRAPPER_CTRL,
+						0x1, rsc->debug_mode);
+			usleep_range(3, 4);
+			dss_reg_w(&rsc->wrapper_io, SDE_RSCC_WRAPPER_CTRL,
+						0x0, rsc->debug_mode);
+		} else {
+			usleep_range(1, 2);
+		}
 	}
 
 	return rc;

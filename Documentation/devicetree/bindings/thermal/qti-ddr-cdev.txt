@@ -1,0 +1,65 @@
+QTI DDR cooling device.
+
+The DDR cooling device will be used to place a DDR frequency vote. This
+cooling device will be used in those cases where all the subsystem's are
+thermally throttled and DDR has to be operated with a minimum performance
+level. This cooling device vote can ensure the same.
+
+Properties:
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: should be "qcom,ddr-cooling-device".
+
+Bus Scaling Data:
+- qcom,msm-bus,name:
+	Usage: required
+	Value type: <string>
+	Definition: String describing DDR cooling device client. It is defined
+		at Documentation/devicetree/bindings/arm/msm/msm_bus.txt.
+- qcom,msm-bus,num-cases:
+	Usage: required
+	Value type: <integer>
+	Definition: This is the number of Bus Scaling use cases
+		defined in the vectors property. This must be set to more than
+		one for DDR cooling device based on different levels of DDR
+		frequency cooling support required. The use-case0 always should
+		be a vote to take off DDR cdev votes from the system. It is
+		defined at Documentation/devicetree/bindings/arm/msm/msm_bus.txt.
+- qcom,msm-bus,active-only:
+	Usage: optional
+	Value type: <None>
+	Definition: A boolean flag indicating if it is active only
+		bandwidth vote. It is defined at
+		Documentation/devicetree/bindings/arm/msm/msm_bus.txt.
+- qcom,msm-bus,num-paths:
+	Usage: required
+	Value type: <integer>
+	Definition: This represents total number of master-slave pairs for
+		different usecases. It is defined at
+		Documentation/devicetree/bindings/arm/msm/msm_bus.txt.
+- qcom,msm-bus,vectors-KBps:
+	Usage: required
+	Value type: <array>
+	Definition: A series of 4 cell properties, with a format of
+		(src, dst, ab, ib). It is defined at
+		Documentation/devicetree/bindings/arm/msm/msm_bus.txt.
+
+Cooling Device Property:
+- #cooling-cells:
+	Usage: required
+	Value type: <integer>
+	Definition: Must be 2. Needed for of_thermal as cooling device
+			identifier. Please refer to
+			<devicetree/bindings/thermal/thermal.txt> for more
+			details.
+Example:
+	qcom,ddr-cdev {
+		compatible = "qcom,ddr-cooling-device";
+		qcom,msm-bus,name = "ddr-cdev";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps = <1 512 0 0>,
+					<1 512 0 366000>;
+		#cooling-cells = <2>;
+        };
