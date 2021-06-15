@@ -1880,6 +1880,12 @@ config HAPTIC_POWER_ON
 	help
 	Enable it when haptic power on.
 
+config SPI_SUSPEND
+	bool "set spi bus suspend"
+	default n
+	help
+	Enable it when need spi suspend.
+
 config AW882XX_DRIVER_V1
         bool "Use aw882xx driver version 1.*"
         default n
