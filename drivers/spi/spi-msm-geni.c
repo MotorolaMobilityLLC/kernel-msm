@@ -1003,13 +1003,14 @@ static int spi_geni_prepare_message(struct spi_master *spi,
 
 	if (mas->shared_ee) {
 		if (mas->setup) {
+#if 0
 			/* Client to respect system suspend */
 			if (!pm_runtime_enabled(mas->dev)) {
 				GENI_SE_ERR(mas->ipc, false, NULL,
 					"%s: System suspended\n", __func__);
 				return -EACCES;
 			}
-
+#endif
 			ret = pm_runtime_get_sync(mas->dev);
 			if (ret < 0) {
 				dev_err(mas->dev,
@@ -1017,8 +1018,10 @@ static int spi_geni_prepare_message(struct spi_master *spi,
 							__func__, ret);
 				WARN_ON_ONCE(1);
 				pm_runtime_put_noidle(mas->dev);
+#if 0
 				/* Set device in suspended since resume failed */
 				pm_runtime_set_suspended(mas->dev);
+#endif
 				goto exit_prepare_message;
 			}
 			ret = 0;
@@ -1339,12 +1342,14 @@ static int spi_geni_prepare_transfer_hardware(struct spi_master *spi)
 	if (mas->is_le_vm)
 		return 0;
 
+#if 0
 	/* Client to respect system suspend */
 	if (!pm_runtime_enabled(mas->dev)) {
 		GENI_SE_ERR(mas->ipc, false, NULL,
 			"%s: System suspended\n", __func__);
 		return -EACCES;
 	}
+#endif
 
 	if (mas->gsi_mode && !mas->shared_ee) {
 		struct se_geni_rsc *rsc;
@@ -1377,8 +1382,10 @@ static int spi_geni_prepare_transfer_hardware(struct spi_master *spi)
 							__func__, ret);
 			WARN_ON_ONCE(1);
 			pm_runtime_put_noidle(mas->dev);
+#if 0
 			/* Set device in suspended since resume failed */
 			pm_runtime_set_suspended(mas->dev);
+#endif
 			return ret;
 		}
 
@@ -1664,6 +1671,7 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 	GENI_SE_DBG(mas->ipc, false, mas->dev,
 			"current xfer_timeout:%lu ms.\n", xfer_timeout);
 
+#if 0
 	/* Double check PM status, client might have not taken wakelock and
 	 * continue to queue more transfers. Post auto-suspend, system suspend
 	 * can keep driver to forced suspend, hence it's client's responsibility
@@ -1674,6 +1682,7 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 			"%s: device is PM suspended\n", __func__);
 		return -EACCES;
 	}
+#endif
 
 	if (mas->cur_xfer_mode != GSI_DMA) {
 		reinit_completion(&mas->xfer_done);
