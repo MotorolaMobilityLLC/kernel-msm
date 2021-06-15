@@ -8,6 +8,7 @@
   alarm_cancel
   alarm_expires_remaining
   alarm_init
+  alarm_start
   alarm_start_relative
   alarmtimer_get_rtcdev
   alloc_chrdev_region
@@ -2431,6 +2432,7 @@
   __stack_chk_guard
   stack_trace_print
   strcasecmp
+  strcat
   strchr
   strchrnul
   strcmp
@@ -2456,6 +2458,7 @@
   strreplace
   strscpy
   strsep
+  strspn
   strstr
   __sw_hweight32
   __sw_hweight64
