@@ -1853,6 +1853,9 @@ static enum power_supply_property smb5_batt_props[] = {
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
 	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	POWER_SUPPLY_PROP_QC3P_AICL_THRESHOLD,
+#endif
 };
 
 #define DEBUG_ACCESSORY_TEMP_DECIDEGC	250
@@ -2008,6 +2011,11 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
 		val->intval = !get_effective_result(chg->chg_disable_votable);
 		break;
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	case POWER_SUPPLY_PROP_QC3P_AICL_THRESHOLD:
+		smblib_get_charge_param(chg, &chg->param.aicl_cont_threshold, &val->intval);
+		break;
+#endif
 	default:
 		pr_err("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
@@ -2096,8 +2104,14 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_QC3P_CURRENT_MAX:
 		if (val->intval < 0) {
 			vote(chg->fcc_votable, MMI_QC3P_VOTER, false, 0);
-		} else
+		} else{
 			vote(chg->fcc_votable, MMI_QC3P_VOTER, true, val->intval);
+		}
+		break;
+	case POWER_SUPPLY_PROP_QC3P_AICL_THRESHOLD:
+		if (val->intval > 0) {
+			smblib_set_charge_param(chg, &chg->param.aicl_cont_threshold, val->intval);
+		}
 		break;
 #endif
 	case POWER_SUPPLY_PROP_RERUN_AICL:
@@ -2164,6 +2178,9 @@ static int smb5_batt_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_DIE_HEALTH:
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	case POWER_SUPPLY_PROP_QC3P_AICL_THRESHOLD:
+#endif
 		return 1;
 	default:
 		break;

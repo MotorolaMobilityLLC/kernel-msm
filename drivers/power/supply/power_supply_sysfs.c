@@ -499,6 +499,7 @@ static struct device_attribute power_supply_attrs[] = {
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
 	POWER_SUPPLY_ATTR(hvdcp_power),
 	POWER_SUPPLY_ATTR(qc3p_current_max),
+	POWER_SUPPLY_ATTR(qc3p_aicl_threshold),
 #endif
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
