@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1462,6 +1462,8 @@ static int cam_icp_hw_mgr_create_debugfs_entry(void)
 		goto err;
 	}
 
+	/* Set default hang dump lvl */
+	icp_hw_mgr.a5_fw_dump_lvl = HFI_FW_DUMP_ON_FAILURE;
 	return rc;
 err:
 	debugfs_remove_recursive(icp_hw_mgr.dentry);
