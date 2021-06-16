@@ -2570,6 +2570,8 @@ UVCG_OPTS_ATTR(streaming_maxpacket, streaming_maxpacket, le16_to_cpu,
 	       kstrtou16, u16, le16_to_cpu, 3072);
 UVCG_OPTS_ATTR(streaming_maxburst, streaming_maxburst, identity_conv,
 	       kstrtou8, u8, identity_conv, 15);
+UVCG_OPTS_ATTR(streaming_txfifo_hint, streaming_txfifo_hint, identity_conv,
+	       kstrtou8, u8, identity_conv, 14);
 
 #undef identity_conv
 
@@ -2579,6 +2581,7 @@ static struct configfs_attribute *uvc_attrs[] = {
 	&f_uvc_opts_attr_streaming_interval,
 	&f_uvc_opts_attr_streaming_maxpacket,
 	&f_uvc_opts_attr_streaming_maxburst,
+	&f_uvc_opts_attr_streaming_txfifo_hint,
 	NULL,
 };
 
