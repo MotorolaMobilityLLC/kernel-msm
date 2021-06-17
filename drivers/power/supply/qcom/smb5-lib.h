@@ -504,7 +504,11 @@ struct smb_charger {
 	struct delayed_work	pr_lock_clear_work;
 	struct delayed_work	role_reversal_check;
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
-	struct delayed_work	qc3p_authen_work;
+ 	struct task_struct		*mmi_qc3p_authen_task;
+	wait_queue_head_t		mmi_timer_wait_que;
+	bool					mmi_is_qc3p_authen;
+	bool					mmi_timer_trig_flag;
+ 	enum qc3p_power		qc3p_power;
 #endif
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -579,10 +583,6 @@ struct smb_charger {
 	enum lpd_stage		lpd_stage;
 	bool			lpd_disabled;
 	enum lpd_reason		lpd_reason;
-#ifdef CONFIG_QC3P_PUMP_SUPPORT
-	enum qc3p_authen_stage	qc3p_authen_stage;
-	enum qc3p_power		qc3p_power;
-#endif
 	bool			fcc_stepper_enable;
 	int			die_temp;
 	int			smb_temp;
