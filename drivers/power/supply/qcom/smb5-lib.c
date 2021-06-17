@@ -21,6 +21,8 @@
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
 #include "schgm-flash.h"
+#include <uapi/linux/sched/types.h>
+#include <linux/kthread.h>
 #ifdef CONFIG_QCOM_FSA4480_LPD
 extern bool fsa4480_rsbux_low(int r_thr);
 extern int fsa4480_enable_lpd(bool enable);
@@ -1122,18 +1124,7 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 			chg->real_charger_type == POWER_SUPPLY_TYPE_USB))
 			chg->real_charger_type = apsd_result->pst;
 	}
-#ifdef CONFIG_QC3P_PUMP_SUPPORT
-	smblib_dbg(chg, PR_MISC, "qc3p stat:%d,qc3p_authen_stage:%d\n",apsd_result->pst,chg->qc3p_authen_stage);
-	if ((apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3)
-		&& chg->qc3p_authen_stage == QC3P_AUTHEN_STAGE_NONE) {
-		chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_START;
-		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, true, QC3P_AUTHEN_USB_ICL_MA);
-		cancel_delayed_work(&chg->qc3p_authen_work);
-		smblib_err(chg, "trigger qc3+ detection work\n");
-		schedule_delayed_work(&chg->qc3p_authen_work,
-					msecs_to_jiffies(QC3P_AUTHEN_TIMEOUT_MS));
-	}
-#endif
+
 	smblib_dbg(chg, PR_MISC, "APSD=%s PD=%d QC3P5=%d\n",
 			apsd_result->name, chg->pd_active, chg->qc3p5_detected);
 	return apsd_result;
@@ -5898,7 +5889,15 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 			smblib_dbg(chg, PR_MISC,
 				"APSD Extented timer started at %lld\n",
 				jiffies_to_msecs(jiffies));
-
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+			printk(KERN_ERR "HVDCP3 detected and begin to trigger qc3p detection\n");
+			chg->mmi_is_qc3p_authen = true;
+			chg->qc3p5_detected = false;
+			chg->qc3p_power = QC3P_POWER_NONE;
+			vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, true, QC3P_AUTHEN_USB_ICL_MA);
+			chg->mmi_timer_trig_flag = true;
+			wake_up_interruptible(&chg->mmi_timer_wait_que);
+#endif
 			mod_timer(&chg->apsd_timer,
 				msecs_to_jiffies(APSD_EXTENDED_TIMEOUT_MS)
 				+ jiffies);
@@ -6049,6 +6048,7 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		   apsd_result->name);
 }
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
+#if 0
 static int smblib_get_ibus_ua(struct smb_charger *chg)
 {
 	union power_supply_propval val = {0,};
@@ -6063,7 +6063,7 @@ static int smblib_get_ibus_ua(struct smb_charger *chg)
 	smblib_err(chg, "getting usbin curr ua value = %d\n", val.intval);
 	return val.intval;
 }
-
+#endif
 static int smblib_get_vbus(struct smb_charger *chg)
 {
 	union power_supply_propval val = {0,};
@@ -6087,7 +6087,7 @@ static int smblib_get_vbus(struct smb_charger *chg)
 	return val.intval / 1000;
 }
 
-
+#if 0
 static int smblib_get_vbus_uv(struct smb_charger *chg)
 {
 	union power_supply_propval val = {0,};
@@ -6110,6 +6110,7 @@ static int smblib_get_vbus_uv(struct smb_charger *chg)
 	smblib_err(chg, "getting charge pump usbin Voltage uv value = %d\n", val.intval);
 	return val.intval;
 }
+#endif
 int smblib_dp_pulse_qc3p(struct smb_charger *chg){
 	union power_supply_propval val = {0,};
 
@@ -6125,7 +6126,7 @@ int smblib_dm_pulse_qc3p(struct smb_charger *chg){
 	smblib_dp_dm(chg,val.intval);
 	return 0;
 }
-
+#if 0
 void test_qc35_dp_dm_function(struct smb_charger *chg){
 	int i = 0;
 	int vbus = 0,ibus=0;
@@ -6199,141 +6200,154 @@ void test_qc35_dp_dm_function(struct smb_charger *chg){
 	smblib_err(chg,"exit\n");
 
 }
-
+#endif
 #define QC3P_AUTHEN_LOW_THR_MV 5500
 #define QC3P_AUTHEN_HIGH_THR_MV 6500
 #define QC3P_AUTHEN_NONE_THR_MV 9500
 #define QC3P_AUTHEN_45W_THR_MV 8500
 #define QC3P_AUTHEN_27W_THR_MV 7500
 #define QC3P_AUTHEN_18W_THR_MV 6500
-static void smblib_qc3p_authen_work(struct work_struct *work)
+static int smblib_qc3p_authen_work(void *param)
 {
-	struct smb_charger *chg = container_of(work, struct smb_charger,
-							qc3p_authen_work.work);
+	struct smb_charger *chg = param;
 	int i;
 	int vbus;
 	int retry_cnt = 0;
+	struct sched_param sch_param = {.sched_priority = MAX_RT_PRIO-1};
 
-	if(chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3){
-		smblib_err(chg,"charger type not HVDCP3,skip qc3p detection\n");
-		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
-		chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_NONE;
-		return;
-	}
+	sched_setscheduler(current, SCHED_FIFO, &sch_param);
 
-	smblib_err(chg,"enter\n");
-	vbus = smblib_get_vbus(chg);
-	smblib_err(chg, "begin read qc35 vol=%d\n",vbus);
-//sm8250 have done the qc3+ detection.
-//only need qc3+ power detection part.
+	do {
+		wait_event_interruptible(chg->mmi_timer_wait_que, chg->mmi_timer_trig_flag || kthread_should_stop());
+		if (kthread_should_stop())
+			break;
+		chg->mmi_timer_trig_flag = false;
+
+
+	//	if(chg->real_charger_type != POWER_SUPPLY_TYPE_USB_HVDCP_3){
+	//		smblib_err(chg,"charger type not HVDCP3,skip qc3p detection\n");
+	//		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+	//		chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_NONE;
+	//		return;
+	//	}
+
+		smblib_err(chg,"enter\n");
+		vbus = smblib_get_vbus(chg);
+		smblib_err(chg, "begin read qc35 vol=%d\n",vbus);
+	//sm8250 have done the qc3+ detection.
+	//only need qc3+ power detection part.
 #if 0
-	for (i = 0; i < 16; i++) {
-		smblib_dp_pulse_qc3p(chg);
-		udelay(5000);
-	}
+		for (i = 0; i < 16; i++) {
+			smblib_dp_pulse_qc3p(chg);
+			udelay(5000);
+		}
 
-	vbus = smblib_get_vbus(chg);
-	smblib_err(chg, "read qc35 16 dp pluse vol=%d\n",vbus);
+		vbus = smblib_get_vbus(chg);
+		smblib_err(chg, "read qc35 16 dp pluse vol=%d\n",vbus);
 
-	mdelay(95);
-	for (i = 0; i < 16; i++) {
-		smblib_dm_pulse_qc3p(chg);
-		udelay(5000);
-	}
+		mdelay(95);
+		for (i = 0; i < 16; i++) {
+			smblib_dm_pulse_qc3p(chg);
+			udelay(5000);
+		}
 
-	smblib_err(chg, "start sleep 200\n");
-	mdelay(200);
+		smblib_err(chg, "start sleep 200\n");
+		mdelay(200);
 #endif
 
-	retry_cnt = 0;  //loop wait 500ms per spec
-	for(retry_cnt = 0;retry_cnt < 5;retry_cnt++) {
-		vbus = smblib_get_vbus(chg);
-		smblib_err(chg, "after 16 times dp/dm read qc35 vol=%d\n",vbus);
+		retry_cnt = 0;  //loop wait 500ms per spec
+		for(retry_cnt = 0;retry_cnt < 10;retry_cnt++) {
+			vbus = smblib_get_vbus(chg);
+			smblib_err(chg, "after 16 times dp/dm read qc35 vol=%d\n",vbus);
 
-		if (vbus >= QC3P_AUTHEN_LOW_THR_MV &&  vbus <=  QC3P_AUTHEN_HIGH_THR_MV) {
-			smblib_err(chg, "1st qc3+ voltage detected\n");
-			break;
-		}
+			if (vbus >= QC3P_AUTHEN_LOW_THR_MV &&  vbus <=  QC3P_AUTHEN_HIGH_THR_MV) {
+				smblib_err(chg, "1st qc3+ voltage detected\n");
+				break;
+			}
 
-		if(retry_cnt >= 4){
-			goto detect_fail;
-	        }
-		mdelay(100);
-	}
-
-	for (i = 0;i < 3;i++) {
-		smblib_dp_pulse(chg);
-		udelay(5000);
-		smblib_dm_pulse(chg);
-		udelay(5000);
-	}
-	smblib_err(chg, "start sleep 50\n");
-	mdelay(100);
-
-	retry_cnt = 0;  //loop wait 250ms per spec
-	for(retry_cnt = 0;retry_cnt < 5;retry_cnt++) {
-		vbus = smblib_get_vbus(chg);
-		smblib_err(chg, "after 3 times dp/dm read qc35 vol=%d\n",vbus);
-
-		if(vbus <= QC3P_AUTHEN_NONE_THR_MV && vbus >= QC3P_AUTHEN_18W_THR_MV) {
-
-			if (vbus > QC3P_AUTHEN_NONE_THR_MV)
+			if(retry_cnt >= 9){
 				chg->qc3p_power = QC3P_POWER_NONE;
-			else if (vbus > QC3P_AUTHEN_45W_THR_MV)
-		      		chg->qc3p_power = QC3P_POWER_45W;
-		      	else if (vbus > QC3P_AUTHEN_27W_THR_MV)
-		      		chg->qc3p_power = QC3P_POWER_27W;
-			else if (vbus > QC3P_AUTHEN_18W_THR_MV)
-		      		chg->qc3p_power = QC3P_POWER_18W;
-			else
-				chg->qc3p_power = QC3P_POWER_NONE;
-			smblib_err(chg, "detected qc35 power =%d\n",chg->qc3p_power);
-			break;
+				goto detect_fail;
+		        }
+			mdelay(50);
 		}
 
-		if(retry_cnt >= 4){
-			goto detect_fail;
+		for (i = 0;i < 3;i++) {
+			smblib_dp_pulse(chg);
+			udelay(5000);
+			smblib_dm_pulse(chg);
+			udelay(5000);
 		}
+		smblib_err(chg, "start sleep 30\n");
 		mdelay(50);
-	}
 
-	for (i = 0; i < 2; i++) {
-		smblib_dp_pulse(chg);
-		udelay(3500);
-	}
+		retry_cnt = 0;  //loop wait 250ms per spec
+		for(retry_cnt = 0;retry_cnt < 5;retry_cnt++) {
+			vbus = smblib_get_vbus(chg);
+			smblib_err(chg, "after 3 times dp/dm read qc35 vol=%d\n",vbus);
 
-	for (i = 0; i < 2; i++) {
-		smblib_dm_pulse(chg);
-		udelay(3500);
-	}
+			if(vbus <= QC3P_AUTHEN_NONE_THR_MV && vbus >= QC3P_AUTHEN_18W_THR_MV) {
 
-	msleep(100);
-	smblib_err(chg, "start read qc35 continue vbus\n");
-	vbus = smblib_get_vbus(chg);
-	smblib_err(chg, "read qc35 continue vbus=%d\n",vbus);
+				if (vbus > QC3P_AUTHEN_NONE_THR_MV)
+					chg->qc3p_power = QC3P_POWER_NONE;
+				else if (vbus > QC3P_AUTHEN_45W_THR_MV)
+			      		chg->qc3p_power = QC3P_POWER_45W;
+			      	else if (vbus > QC3P_AUTHEN_27W_THR_MV)
+			      		chg->qc3p_power = QC3P_POWER_27W;
+				else if (vbus > QC3P_AUTHEN_18W_THR_MV)
+			      		chg->qc3p_power = QC3P_POWER_18W;
+				else
+					chg->qc3p_power = QC3P_POWER_NONE;
+				smblib_err(chg, "detected qc35 power =%d\n",chg->qc3p_power);
+				break;
+			}
 
-	//current not support 45W
-	if(chg->qc3p_power > QC3P_POWER_27W)
-		chg->qc3p_power = QC3P_POWER_27W;
+			if(retry_cnt >= 4){
+				chg->qc3p_power = QC3P_POWER_NONE;
+				goto detect_fail;
+			}
+			mdelay(40);
+		}
 
-	chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_COMMIT;
-	vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+		if (chg->qc3p_power == QC3P_POWER_18W) {
+			chg->qc3p_power = QC3P_POWER_NONE;
+			smblib_err(chg, "qc3p 18w detected, goto hvdcp3 charging\n");
+			goto detect_fail;
+		}
 
-//	test_qc35_dp_dm_function(chg);
-	chg->qc3p5_detected = true;
-	smblib_update_usb_type(chg);
+		for (i = 0; i < 2; i++) {
+			smblib_dp_pulse(chg);
+			udelay(3500);
+		}
 
-	smblib_err(chg,"exit\n");
-	return;
+		for (i = 0; i < 2; i++) {
+			smblib_dm_pulse(chg);
+			udelay(3500);
+		}
+
+		msleep(50);
+		smblib_err(chg, "start read qc35 continue vbus\n");
+		vbus = smblib_get_vbus(chg);
+		smblib_err(chg, "read qc35 continue vbus=%d\n",vbus);
+
+		//current not support 45W
+		if(chg->qc3p_power == QC3P_POWER_27W)
+			chg->qc3p_power = QC3P_POWER_27W;
+
+		if (chg->qc3p_power != QC3P_POWER_NONE)
+			chg->qc3p5_detected = true;
+
+	//	test_qc35_dp_dm_function(chg);
+ 		smblib_update_usb_type(chg);
+		power_supply_changed(chg->usb_psy);
 
 detect_fail:
-	chg->qc3p_power = QC3P_POWER_NONE;
-   	vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
-	if(chg->qc3p_authen_stage != QC3P_AUTHEN_STAGE_NONE)
-   		chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_CANCEL;
-	chg->qc3p5_detected = false;
-	smblib_update_usb_type(chg);
-	smblib_err(chg,"detect qc3+ fail exit\n");
+		chg->mmi_is_qc3p_authen = false;
+		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+ 	}while(!kthread_should_stop());
+
+	smblib_err(chg, "qc3p kthread stop\n");
+	return 0;
 }
 #endif
 
@@ -7132,7 +7146,7 @@ irqreturn_t typec_or_rid_detection_change_irq_handler(int irq, void *data)
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
 
-	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
+ 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
 
 	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
 		if (chg->uusb_moisture_protection_enabled) {
@@ -7310,9 +7324,6 @@ irqreturn_t typec_attach_detach_irq_handler(int irq, void *data)
 		}
 
 		mutex_unlock(&chg->typec_lock);
-#ifdef CONFIG_QC3P_PUMP_SUPPORT
-		chg->qc3p_authen_stage = QC3P_AUTHEN_STAGE_NONE;
-#endif
 		if (chg->lpd_stage == LPD_STAGE_FLOAT_CANCEL)
 			schedule_delayed_work(&chg->lpd_detach_work,
 					msecs_to_jiffies(1000));
@@ -8983,8 +8994,16 @@ int smblib_init(struct smb_charger *chg)
 					smblib_pr_lock_clear_work);
 	INIT_DELAYED_WORK(&chg->pd_contract_work, smblib_pd_contract_work);
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
-	INIT_DELAYED_WORK(&chg->qc3p_authen_work, smblib_qc3p_authen_work);
-#endif
+ 	chg->mmi_qc3p_authen_task = kthread_create(smblib_qc3p_authen_work, chg,
+		"mmi_qc3p_authen", "mmi_qc3p_authen_task", chg);
+	if (IS_ERR(chg->mmi_qc3p_authen_task)) {
+		rc = PTR_ERR(chg->mmi_qc3p_authen_task);
+		smblib_err(chg, "Failed to create mmi_qc3p_authen_task rc = %d\n", rc);
+		return rc;
+	}
+	init_waitqueue_head(&chg->mmi_timer_wait_que);
+	wake_up_process(chg->mmi_qc3p_authen_task);
+ #endif
 	timer_setup(&chg->apsd_timer, apsd_timer_cb, 0);
 
 	INIT_DELAYED_WORK(&chg->role_reversal_check,
@@ -9150,6 +9169,10 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->usbov_dbc_work);
 		cancel_delayed_work_sync(&chg->role_reversal_check);
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+		if (chg->mmi_qc3p_authen_task)
+			kthread_stop(chg->mmi_qc3p_authen_task);
+#endif
 		power_supply_unreg_notifier(&chg->nb);
 		smblib_destroy_votables(chg);
 		qcom_step_chg_deinit();
