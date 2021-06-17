@@ -2123,7 +2123,7 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 			rc = smblib_dp_dm(chg, val->intval);
 		else if ((!chg->flash_active)
 			&& (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
-			     &&chg->qc3p_authen_stage != QC3P_AUTHEN_STAGE_START))
+			     &&!chg->mmi_is_qc3p_authen))
 			rc = smblib_dp_dm(chg, val->intval);
 #else
 		if (!chg->flash_active)
