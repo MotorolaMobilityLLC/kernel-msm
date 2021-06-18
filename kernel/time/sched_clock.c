@@ -20,6 +20,7 @@
 #include "timekeeping.h"
 
 #ifdef CONFIG_SUSPEND_DEBUG
+extern ssize_t show_msm_rpmh_master_stats(void);
 extern qrtr_first_msg;
 #endif
 
@@ -314,6 +315,7 @@ void sched_clock_resume(void)
 	pr_info("resume cycles:%17llu\n", rd->epoch_cyc);
 #endif
 #ifdef CONFIG_SUSPEND_DEBUG
+	show_msm_rpmh_master_stats();
 	qrtr_first_msg = 1;
 #endif
 	rd->read_sched_clock = cd.actual_read_sched_clock;
