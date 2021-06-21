@@ -26,6 +26,7 @@
 #include "cam_cci_dev.h"
 #include "mot_actuator.h"
 #include "mot_actuator_policy.h"
+#include "linux/pm_wakeup.h"
 
 /*=================ACTUATOR HW INFO====================*/
 #define DEVICE_NAME_LEN 32
@@ -208,6 +209,7 @@ struct mot_actuator_ctrl_t {
 	struct workqueue_struct *mot_actuator_wq;
 	struct delayed_work delay_work;
 	struct mutex actuator_lock;
+	struct wakeup_source actuator_wakelock;
 };
 
 enum mot_actuator_state_e {
@@ -499,6 +501,7 @@ int mot_actuator_on_vibrate_start(void)
 {
 	ktime_t start,end,duration;
 	start = ktime_get();
+	__pm_stay_awake(&mot_actuator_fctrl.actuator_wakelock);
 	cancel_delayed_work(&mot_actuator_fctrl.delay_work);
 	mutex_lock(&mot_actuator_fctrl.actuator_lock);
 	mot_actuator_vib_move_lens(0);
@@ -713,6 +716,7 @@ static void mot_actuator_delayed_process(struct work_struct *work)
 	}
 	mot_actuator_state = MOT_ACTUATOR_RELEASED;
 	mutex_unlock(&actuator_fctrl->actuator_lock);
+	__pm_relax(&actuator_fctrl->actuator_wakelock);
 }
 
 static inline ssize_t msm_actuator_show(struct device *dev,
@@ -903,6 +907,9 @@ static int mot_actuator_init_subdev(struct mot_actuator_ctrl_t *f_ctrl)
 
 	INIT_DELAYED_WORK(&f_ctrl->delay_work, mot_actuator_delayed_process);
 	mutex_init(&f_ctrl->actuator_lock);
+	memset(&f_ctrl->actuator_wakelock, 0, sizeof(f_ctrl->actuator_wakelock));
+	f_ctrl->actuator_wakelock.name = "actuator_hold_wl";
+	wakeup_source_add(&f_ctrl->actuator_wakelock);
 
 	{//Debug/tuning interfaces
 		int i;
@@ -939,6 +946,8 @@ static void __exit mot_actuator_exit(void)
 		mot_actuator_fctrl.mot_actuator_wq = NULL;
 	}
 	cam_unregister_subdev(&mot_actuator_fctrl.v4l2_dev_str);
+	__pm_relax(&mot_actuator_fctrl.actuator_wakelock);
+	wakeup_source_remove(&mot_actuator_fctrl.actuator_wakelock);
 }
 
 module_init(mot_actuator_init);
