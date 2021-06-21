@@ -12,6 +12,13 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config IRONMN_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Ironmn Device DTB"
+	help
+		Only include Motorola Ironmn device specific DTB.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
