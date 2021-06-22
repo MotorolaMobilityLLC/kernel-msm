@@ -2939,7 +2939,9 @@
   __wake_up
   __wake_up_locked
   wake_up_process
+  wakeup_source_add
   wakeup_source_register
+  wakeup_source_remove
   wakeup_source_unregister
   __warn_printk
   wiphy_free
