@@ -44,6 +44,14 @@ config CYPFG_DTB
 		Only include CYPFG specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config CYPFQ_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "CYPFQ DTBs"
+	help
+		Only include CYPFQ specific DTBs to limit the number that
+		get built during kernel compilation.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
