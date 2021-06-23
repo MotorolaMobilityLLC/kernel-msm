@@ -966,7 +966,7 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	struct ps5169_redriver *ps5169;
 	int ret, size = 0;
-	u32 device_id;
+	u16 device_id;
 
 
 
