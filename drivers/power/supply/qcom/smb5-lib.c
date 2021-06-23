@@ -23,7 +23,9 @@
 #include "schgm-flash.h"
 #include <uapi/linux/sched/types.h>
 #include <linux/kthread.h>
+
 #ifdef CONFIG_QCOM_FSA4480_LPD
+static int lpd_repeat_flag = 0;
 extern bool fsa4480_rsbux_low(int r_thr);
 extern int fsa4480_enable_lpd(bool enable);
 #endif
@@ -7129,7 +7131,7 @@ static void smblib_lpd_launch_ra_open_work(struct smb_charger *chg)
 			vote(chg->awake_votable, LPD_VOTER, true, 0);
 #ifdef CONFIG_QCOM_FSA4480_LPD
 			schedule_delayed_work(&chg->lpd_ra_open_work,
-						msecs_to_jiffies(800));
+						msecs_to_jiffies(1200));
 #else
 			schedule_delayed_work(&chg->lpd_ra_open_work,
 						msecs_to_jiffies(300));
@@ -7146,7 +7148,7 @@ irqreturn_t typec_or_rid_detection_change_irq_handler(int irq, void *data)
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
 
- 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
+	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
 
 	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
 		if (chg->uusb_moisture_protection_enabled) {
@@ -7231,6 +7233,9 @@ irqreturn_t typec_attach_detach_irq_handler(int irq, void *data)
 	bool attached = false;
 	int rc;
 
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	lpd_repeat_flag = 0;
+#endif
 	/* IRQ not expected to be executed for uUSB, return */
 	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB)
 		return IRQ_HANDLED;
@@ -8625,7 +8630,10 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	union power_supply_propval pval;
 	u8 stat;
 	int rc;
-
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	u8 sensor_stat = 0;
+	smblib_err(chg, "lpd ra open check triggered\n");
+#endif
 	mutex_lock(&chg->moisture_detection_enable);
 
 	if (chg->pr_swap_in_progress || chg->pd_hard_reset
@@ -8636,6 +8644,10 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 
 	if (chg->lpd_stage != LPD_STAGE_FLOAT)
 		goto out;
+
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	smblib_read(chg, TYPE_C_SENSOR_SM_STATUS_REG, &sensor_stat);
+#endif
 
 	rc = smblib_read(chg, TYPE_C_MISC_STATUS_REG, &stat);
 	if (rc < 0) {
@@ -8651,6 +8663,23 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 		goto out;
 	}
 
+#ifdef CONFIG_QCOM_FSA4480_LPD
+	if(lpd_repeat_flag == 0) {
+		lpd_repeat_flag = 1;
+		smblib_err(chg, "lpd trigger cable type re-detection\n");
+		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,TYPEC_DISABLE_CMD_BIT,1);
+		mdelay(100);
+		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,TYPEC_DISABLE_CMD_BIT,0);
+		chg->lpd_stage = LPD_STAGE_NONE;
+		goto out;
+	}else if (lpd_repeat_flag == 1) {
+		smblib_err(chg, "LPD re-detection still fail with 0x150a:%x\n",sensor_stat);
+		if((sensor_stat & TYPE_C_SENSOR_SM_MASK) == TYPE_C_SNK_CRUDE_CC1 ||(sensor_stat & TYPE_C_SENSOR_SM_MASK) == TYPE_C_SNK_CRUDE_CC2 ) {
+			chg->lpd_stage = LPD_STAGE_NONE;
+			goto out;
+		}
+	}
+#endif
 	chg->lpd_stage = LPD_STAGE_COMMIT;
 
 	/* Enable source only mode */
@@ -8709,7 +8738,7 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 		chg->lpd_reason = LPD_FLOATING_CABLE;
 	}
 #ifdef CONFIG_QCOM_FSA4480_LPD
-	alarm_start_relative(&chg->lpd_recheck_timer, ms_to_ktime(120000));
+	alarm_start_relative(&chg->lpd_recheck_timer, ms_to_ktime(60000));
 #else
 	/* recheck in 60 seconds */
 	alarm_start_relative(&chg->lpd_recheck_timer, ms_to_ktime(60000));
