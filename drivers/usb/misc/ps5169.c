@@ -161,6 +161,7 @@ struct ps5169_redriver {
 	bool vbus_active;
 	enum plug_orientation typec_orientation;
 	enum operation_mode op_mode;
+	unsigned long current_dp_mode;
 };
 
 static inline int ps5169_redriver_write_reg_bits(struct ps5169_redriver *ps5169,
@@ -626,7 +627,9 @@ static int ps5169_vbus_notifier(struct notifier_block *nb,
 		return NOTIFY_DONE;
 
 	ps5169->vbus_active = event;
-
+	/*Ignore USB notification if DP is in usage*/
+	if(ps5169->current_dp_mode !=0)
+		return NOTIFY_DONE;
 	state = extcon_get_state(ps5169->edev, EXTCON_USB);
 	if (state) {
 		extcon_get_property(ps5169->edev, EXTCON_USB,
@@ -656,7 +659,9 @@ static int ps5169_id_notifier(struct notifier_block *nb,
 		return NOTIFY_DONE;
 
 	ps5169->host_active = event;
-
+	/*Ignore id notification if DP is in usage*/
+	if(ps5169->current_dp_mode !=0)
+		return NOTIFY_DONE;
 	state = extcon_get_state(ps5169->edev, EXTCON_USB_HOST);
 	if (state) {
 		extcon_get_property(ps5169->edev, EXTCON_USB_HOST,
@@ -682,7 +687,7 @@ static int ps5169_dp_notifier(struct notifier_block *nb,
 	int state;
 
 	dev_dbg(&client->dev, "dp:%lu event received\n", dp_lane);
-
+	ps5169->current_dp_mode  = dp_lane;
 	switch (dp_lane) {
 	case 0: /* cable disconnected ??????? */
 		op_mode = OP_MODE_USB3;
@@ -702,7 +707,7 @@ static int ps5169_dp_notifier(struct notifier_block *nb,
 
 	switch (op_mode) {
 	case OP_MODE_USB3:
-		ps5169_config_work_mode(ps5169, OP_MODE_NONE);
+		ps5169_config_work_mode(ps5169, OP_MODE_USB3);
 		break;
 	case OP_MODE_USB3_AND_DP:
 		state = extcon_get_state(ps5169->edev, EXTCON_USB_HOST);
@@ -777,7 +782,7 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	struct ps5169_redriver *ps5169;
 	struct extcon_dev *edev;
 	int ret, size = 0;
-	u32 device_id;
+	u16 device_id;
 
 	if (!of_property_read_bool(of, "extcon")) {
 		dev_err(dev, "need extcon property\n");
@@ -845,6 +850,7 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 
 	ps5169_debugfs_create(ps5169);
 
+	ps5169 ->current_dp_mode = 0;
 	dev_info(dev, "ps5169 probe done.\n");
 
 	return 0;
