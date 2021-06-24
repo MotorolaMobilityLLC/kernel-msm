@@ -5169,7 +5169,10 @@ int smblib_get_charge_current(struct smb_charger *chg,
 	typec_source_rd = smblib_get_prop_ufp_mode(chg);
 
 	/* QC 2.0/3.0 adapter */
-	if (apsd_result->bit & QC_2P0_BIT) {
+	if (chg->mmi_qc3p_rerun_done){
+		*total_current_ua = HVDCP_CURRENT_UA;
+		return 0;
+	} else if (apsd_result->bit & QC_2P0_BIT) {
 		*total_current_ua = chg->chg_param.hvdcp2_max_icl_ua;
 		return 0;
 	} else if (apsd_result->bit & QC_3P0_BIT){
@@ -5808,6 +5811,7 @@ static void smblib_usb_plugin_locked(struct smb_charger *chg)
 		schedule_delayed_work(&chg->pl_enable_work,
 					msecs_to_jiffies(PL_DELAY_MS));
 	} else {
+		chg->mmi_qc3p_rerun_done = false;
 		/* Disable SW Thermal Regulation */
 		rc = smblib_set_sw_thermal_regulation(chg, false);
 		if (rc < 0)
@@ -5922,6 +5926,42 @@ static int mmi_get_vbus(struct smb_charger *chg)
 	}
 }
 
+bool mmi_rerun_qc3p_det(struct smb_charger *chg)
+{
+	union power_supply_propval val;
+	int rc;
+
+	if (!chg->mmi_qc3p_rerun_done) {
+		rc = smblib_get_prop_usb_present(chg, &val);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
+			return false;
+		} else if (!val.intval) {
+			smblib_err(chg, "usb is not present\n");
+			return false;
+		}
+
+		smblib_dbg(chg, PR_MISC, "rerun qcep detect\n");
+		rc = smblib_request_dpdm(chg, true);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't to enable DPDM rc=%d\n", rc);
+			return false;
+		}
+		rc = smblib_masked_write(chg, CMD_APSD_REG,
+				APSD_RERUN_BIT, APSD_RERUN_BIT);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't re-run APSD rc=%d\n", rc);
+			return false;
+		}
+		chg->mmi_qc3p_rerun_done = true;
+		chg->apsd_ext_timeout = false;
+
+		return true;
+	}else
+		return false;
+}
+
+
 #define QC3P_AUTHEN_LOW_THR_MV 5500
 #define QC3P_AUTHEN_HIGH_THR_MV 6500
 #define QC3P_AUTHEN_NONE_THR_MV 9500
@@ -5938,6 +5978,7 @@ static int mmi_qc3p_kthread_handler(void *param)
 
 	sched_setscheduler(current, SCHED_FIFO, &sch_param);
 	do {
+	start:
 		wait_event_interruptible(chg->mmi_timer_wait_que, chg->mmi_timer_trig_flag || kthread_should_stop());
 		if (kthread_should_stop())
 			break;
@@ -5958,9 +5999,12 @@ static int mmi_qc3p_kthread_handler(void *param)
 		v_aut = mmi_get_vbus(chg);
 		j1 = jiffies - j1;
 		if (v_aut < QC3P_AUTHEN_LOW_THR_MV || v_aut > QC3P_AUTHEN_HIGH_THR_MV) {
-			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_NONE;
 			smblib_err(chg, "is qc3.0 charge adatper vbus=%d\n",v_aut);
-			goto out;
+			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_NONE;
+			if (mmi_rerun_qc3p_det(chg))
+				goto start;
+			else
+				goto out;
 		}
 
 		for (i = 0;i < 3; i++) {

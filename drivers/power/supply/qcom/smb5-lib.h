@@ -648,6 +648,7 @@ struct smb_charger {
 	bool			mmi_is_qc3p_authen;
 	bool			mmi_qc3p_support;
 	bool			mmi_timer_trig_flag;
+	bool			mmi_qc3p_rerun_done;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
