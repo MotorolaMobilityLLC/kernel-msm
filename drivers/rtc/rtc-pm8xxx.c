@@ -754,6 +754,10 @@ static int pm8xxx_rtc_resume(struct device *dev)
 {
 	struct pm8xxx_rtc *rtc_dd = dev_get_drvdata(dev);
 
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware())
+		return pm8xxx_rtc_restore(dev);
+#endif
 	if (device_may_wakeup(dev))
 		disable_irq_wake(rtc_dd->rtc_alarm_irq);
 
@@ -764,6 +768,10 @@ static int pm8xxx_rtc_suspend(struct device *dev)
 {
 	struct pm8xxx_rtc *rtc_dd = dev_get_drvdata(dev);
 
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware())
+		return pm8xxx_rtc_freeze(dev);
+#endif
 	if (device_may_wakeup(dev))
 		enable_irq_wake(rtc_dd->rtc_alarm_irq);
 
