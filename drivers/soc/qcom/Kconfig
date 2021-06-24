@@ -36,6 +36,22 @@ config CORFUP_DTB
 		Only include CORFUP specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config CORFUQ_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "CORFUQ DTBs"
+    help
+        Only include CORFUQ specific DTBs to limit the number that
+        get built during kernel compilation.
+
+config CORFUR_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "CORFUR DTBs"
+    help
+        Only include CORFUR specific DTBs to limit the number that
+        get built during kernel compilation.
+
 config CYPFG_DTB
 	depends on ARCH_QCOM
 	default n
