@@ -71,7 +71,7 @@ struct pi2dpx1217_redriver {
 	bool vbus_active;
 	enum plug_orientation typec_orientation;
 	enum operation_mode op_mode;
-
+	unsigned long current_dp_mode;
 	struct extcon_dev	*extcon_usb;
 	struct notifier_block	vbus_nb;
 	struct notifier_block	id_nb;
@@ -321,14 +321,16 @@ static int pi2dpx1217_vbus_notifier(struct notifier_block *nb,
 	union extcon_property_value val;
 	int state;
 
-	dev_info(redriver->dev, "%s: vbus:%ld event received\n", __func__, event);
+	dev_info(redriver->dev, "%s: vbus:%ld event received cur_dp %ld\n", __func__, event,
+	redriver->current_dp_mode);
 
 	if (redriver->vbus_active == event)
 		return NOTIFY_DONE;
 
 	redriver->vbus_active = event;
 	edev = redriver->extcon_usb;
-
+	if(redriver->current_dp_mode !=0)
+		return NOTIFY_DONE;
 	if(edev) {
 		state = extcon_get_state(edev, EXTCON_USB);
 		if (state) {
@@ -356,14 +358,16 @@ static int pi2dpx1217_id_notifier(struct notifier_block *nb,
 	union extcon_property_value val;
 	int state;
 
-	dev_info(redriver->dev, "%s: id:%ld event received\n", __func__, event);
+	dev_info(redriver->dev, "%s: id:%ld event received curr_dp %ld\n", __func__, event,
+	redriver->current_dp_mode);
 
 	if (redriver->host_active == event)
 		return NOTIFY_DONE;
 
 	redriver->host_active = event;
 	edev = redriver->extcon_usb;
-
+	if(redriver->current_dp_mode !=0)
+		return NOTIFY_DONE;
 	if(edev) {
 		state = extcon_get_state(edev, EXTCON_USB_HOST);
 		if (state) {
@@ -394,10 +398,10 @@ static int pi2dpx1217_dp_notifier(struct notifier_block *nb,
 	int state;
 
 	dev_info(redriver->dev, "%s: dp:%lu event received\n", __func__, dp_lane);
-
+	redriver->current_dp_mode = dp_lane;
 	switch (dp_lane) {
 	case 0: /* cable disconnected */
-		op_mode = OP_MODE_NONE;
+		op_mode = OP_MODE_USB;
 		break;
 	case 2:
 		op_mode = OP_MODE_USB_AND_DP;
@@ -545,7 +549,7 @@ static int pi2dpx1217_i2c_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	struct device_node *of = dev->of_node;
 	struct extcon_dev *edev;
-	u32 device_id;
+	u8 device_id;
 	enum operation_mode op_mode = OP_MODE_NONE;
 	int ret;
 
@@ -630,7 +634,7 @@ static int pi2dpx1217_i2c_probe(struct i2c_client *client,
 	pi2dpx1217_debugfs_entries(redriver);
 
 	device_create_file(redriver->dev, &dev_attr_typec_cc_orientation);
-
+	redriver->current_dp_mode = 0;
 	return 0;
 
 err_detect:
