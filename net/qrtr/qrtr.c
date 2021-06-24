@@ -951,7 +951,7 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 			goto err;
 
 		/* Force wakeup for all packets except for sensors */
-		if (node->nid != 9)
+		if (node->nid != 9 && node->nid != 5)
 			pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
 
 		qrtr_port_put(ipc);
