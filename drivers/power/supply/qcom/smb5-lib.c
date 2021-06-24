@@ -6072,20 +6072,30 @@ static int smblib_get_vbus(struct smb_charger *chg)
 	int rc;
 	struct power_supply *chargepump_psy;
 
-	chargepump_psy = power_supply_get_by_name("bq25960-standalone");
+	if(chg->usb_psy) {
+		rc = power_supply_get_property(chg->usb_psy,
+					POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't read usb psy voltage rc=%d\n", rc);
+			return 0;
+		}
+		smblib_err(chg, "getting usb_psy usbin Voltage value = %d\n", val.intval / 1000);
+	}else {
+		chargepump_psy = power_supply_get_by_name("bq25960-standalone");
 
-	if (!chargepump_psy){
-		smblib_err(chg, "charge pump psy not avaliabe\n");
-		return 0;
-	}
+		if (!chargepump_psy){
+			smblib_err(chg, "charge pump psy not avaliabe\n");
+			return 0;
+		}
 
-	rc = power_supply_get_property(chargepump_psy,
-				POWER_SUPPLY_PROP_INPUT_VOLTAGE_SETTLED, &val);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't read cp topo rc=%d\n", rc);
-		return 0;
+		rc = power_supply_get_property(chargepump_psy,
+					POWER_SUPPLY_PROP_INPUT_VOLTAGE_SETTLED, &val);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't read cp topo rc=%d\n", rc);
+			return 0;
+		}
+		smblib_err(chg, "getting charge pump usbin Voltage value = %d\n", val.intval / 1000);
 	}
-	smblib_err(chg, "getting charge pump usbin Voltage value = %d\n", val.intval / 1000);
 	return val.intval / 1000;
 }
 
