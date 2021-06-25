@@ -1675,7 +1675,8 @@ static int __dwc3_gadget_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 		return -ESHUTDOWN;
 	}
 
-	if (dep->flags & DWC3_EP_END_TRANSFER_PENDING) {
+	if (!usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
+		dep->flags & DWC3_EP_END_TRANSFER_PENDING) {
 		dev_err_ratelimited(dwc->dev, "%s: can't queue while ENDXFER Pending\n",
 				dep->name);
 		return -ESHUTDOWN;
@@ -1699,6 +1700,12 @@ static int __dwc3_gadget_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 	list_add_tail(&req->list, &dep->pending_list);
 
 	dbg_ep_queue(dep->number, req);
+
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
+		dep->flags & DWC3_EP_END_TRANSFER_PENDING) {
+		return 0;
+	}
+
 	/*
 	 * NOTICE: Isochronous endpoints should NEVER be prestarted. We must
 	 * wait for a XferNotReady event so we will know what's the current
