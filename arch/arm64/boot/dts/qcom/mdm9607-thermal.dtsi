@@ -40,6 +40,16 @@
 			};
 		};
 	};
+
+	ddr_cdev: qcom,ddr-cdev {
+		compatible = "qcom,ddr-cooling-device";
+		qcom,msm-bus,name = "ddr-cdev";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps = <1 512 0 0>,
+					<1 512 0 366000>;
+		#cooling-cells = <2>;
+	};
 };
 
 &thermal_zones {
@@ -174,6 +184,12 @@
 		thermal-governor = "step_wise";
 		wake-capable-sensor;
 		trips {
+			cdev_trip: cdev-trip {
+				temperature = <78000>;
+				hysteresis = <8000>;
+				type = "passive";
+			};
+
 			modem_pa_trip0: modem_pa_trip0 {
 				temperature = <95000>;
 				hysteresis = <5000>;
@@ -202,6 +218,11 @@
 		};
 
 		cooling-maps {
+			ddr_cdev0 {
+				trip = <&cdev_trip>;
+				cooling-device = <&ddr_cdev 1 1>;
+			};
+
 			modem_pa0_cdev {
 				trip = <&modem_pa_trip0>;
 				cooling-device = <&modem_pa 1 1>;

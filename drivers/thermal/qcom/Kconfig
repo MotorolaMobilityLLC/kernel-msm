@@ -134,3 +134,12 @@ config QTI_RPM_SMD_COOLING_DEVICE
 	  railway at predefined voltage corner using RPM hardware.
 
 	  If you want this support, you should say Y here.
+
+config QTI_BUS_SCALING_COOLING_DEVICE
+	tristate "QTI DDR bus scaling cooling device driver"
+	depends on THERMAL_OF && QCOM_BUS_SCALING
+	help
+	   This enables the QTI DDR bus scaling cooling devices. These cooling
+	   devices will be used by QTI chipset to place a DDR state request
+	   to meet the performance requirement under thermally constrained
+	   conditions.

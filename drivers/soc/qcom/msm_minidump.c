@@ -1,4 +1,4 @@
-/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -172,6 +172,7 @@ EXPORT_SYMBOL(msm_minidump_enabled);
 int msm_minidump_add_region(const struct md_region *entry)
 {
 	u32 entries;
+	u32 toc_init;
 	struct md_region *mdr;
 	int ret = 0;
 
@@ -197,6 +198,19 @@ int msm_minidump_add_region(const struct md_region *entry)
 		return -ENOMEM;
 	}
 
+	toc_init = 0;
+	if (minidump_table.md_ss_toc &&
+		(minidump_table.md_ss_toc->md_ss_enable_status ==
+		MD_SS_ENABLED)) {
+		toc_init = 1;
+		if (minidump_table.md_ss_toc->ss_region_count >=
+			MAX_NUM_ENTRIES) {
+			spin_unlock(&mdt_lock);
+			pr_err("Maximum regions in minidump table reached.\n");
+			return -ENOMEM;
+		}
+	}
+
 	mdr = &minidump_table.entry[entries];
 	strlcpy(mdr->name, entry->name, sizeof(mdr->name));
 	mdr->virt_addr = entry->virt_addr;
@@ -206,9 +220,7 @@ int msm_minidump_add_region(const struct md_region *entry)
 
 	minidump_table.num_regions = entries + 1;
 
-	if (minidump_table.md_ss_toc &&
-		(minidump_table.md_ss_toc->md_ss_enable_status ==
-		MD_SS_ENABLED))
+	if (toc_init)
 		md_update_ss_toc(entry);
 	else
 		pendings++;
