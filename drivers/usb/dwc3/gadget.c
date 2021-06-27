@@ -27,6 +27,7 @@
 #include "gadget.h"
 #include "io.h"
 
+#define DWC3_FRNUMBER_MASK 0x3fff
 #define DWC3_ALIGN_FRAME(d, n)	(((d)->frame_number + ((d)->interval * (n))) \
 					& ~((d)->interval - 1))
 
@@ -307,6 +308,12 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 
 	dwc3_gadget_del_and_unmap_request(dep, req, status);
 	req->status = DWC3_REQUEST_STATUS_COMPLETED;
+
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
+		if (list_empty(&dep->started_list)) {
+			dep->flags |= DWC3_EP_PENDING_REQUEST;
+		}
+	}
 
 	spin_unlock(&dwc->lock);
 	usb_gadget_giveback_request(&dep->endpoint, &req->request);
@@ -812,8 +819,11 @@ out:
 
 static void dwc3_remove_requests(struct dwc3 *dwc, struct dwc3_ep *dep)
 {
+	int retries = 40;
 	struct dwc3_request		*req;
 	int ret = -EINVAL;
+
+	ret = dwc3_stop_active_transfer(dep, true, false);
 
 	if (dep->number == 0) {
 		unsigned int dir;
@@ -829,17 +839,18 @@ static void dwc3_remove_requests(struct dwc3 *dwc, struct dwc3_ep *dep)
 		dwc->eps[1]->trb_enqueue = 0;
 	}
 
-	ret = dwc3_stop_active_transfer(dep, true, false);
+
 	if (ret < 0) {
 		dbg_log_string("transfer not stopped for %s(%d), status:%d",
 				dep->name, dep->number, ret);
 		return;
 	}
 
-	if (dep->flags & DWC3_EP_END_TRANSFER_PENDING)
-		udelay(2000);
+	do {
+		udelay(50);
+	} while ((dep->flags & DWC3_EP_END_TRANSFER_PENDING) && --retries);
 
-	if (dep->flags & DWC3_EP_END_TRANSFER_PENDING)
+	if (!retries)
 		dbg_log_string("ep end_xfer cmd completion timeout for %d",
 				dep->number);
 
@@ -1647,7 +1658,8 @@ static int __dwc3_gadget_start_isoc(struct dwc3_ep *dep)
 	int ret;
 	int i;
 
-	if (list_empty(&dep->pending_list)) {
+	if (list_empty(&dep->pending_list) &&
+	    list_empty(&dep->started_list)) {
 		dep->flags |= DWC3_EP_PENDING_REQUEST;
 		return -EAGAIN;
 	}
@@ -1663,11 +1675,54 @@ static int __dwc3_gadget_start_isoc(struct dwc3_ep *dep)
 	}
 
 	for (i = 0; i < DWC3_ISOC_MAX_RETRIES; i++) {
-		dep->frame_number = DWC3_ALIGN_FRAME(dep, i + 1);
+		if (dep->endpoint.desc->bInterval <= 14 &&
+			dwc->gadget.speed >= USB_SPEED_HIGH) {
+			u32 frame = __dwc3_gadget_get_frame(dwc);
+			bool rollover = frame <
+					(dep->frame_number & DWC3_FRNUMBER_MASK);
+
+			/*
+			 * frame_number is set from XferNotReady and may be already
+			 * out of date. DSTS only provides the lower 14 bit of the
+			 * current frame number. So add the upper two bits of
+			 * frame_number and handle a possible rollover.
+			 * This will provide the correct frame_number unless more than
+			 * rollover has happened since XferNotReady.
+			 */
+
+			dep->frame_number = (dep->frame_number & ~DWC3_FRNUMBER_MASK) |
+						frame;
+			if (rollover)
+				dep->frame_number += BIT(14);
+		}
+
+		dep->frame_number += max_t(u32, 16, (dep->interval * (i + 1)));
+		dep->frame_number = DWC3_ALIGN_FRAME(dep, 0);
 
 		ret = __dwc3_gadget_kick_transfer(dep);
 		if (ret != -EAGAIN)
 			break;
+	}
+
+	/*
+	 * After a number of unsuccessful start attempts due to bus-expiry
+	 * status, issue END_TRANSFER command and retry on the next XferNotReady
+	 * event.
+	 */
+	if (ret == -EAGAIN) {
+		struct dwc3_gadget_ep_cmd_params params;
+		u32 cmd;
+
+		cmd = DWC3_DEPCMD_ENDTRANSFER |
+			DWC3_DEPCMD_CMDIOC |
+			DWC3_DEPCMD_PARAM(dep->resource_index);
+
+		dep->resource_index = 0;
+		memset(&params, 0, sizeof(params));
+
+		ret = dwc3_send_gadget_ep_cmd(dep, cmd, &params);
+		if (!ret)
+			dep->flags |= DWC3_EP_END_TRANSFER_PENDING;
 	}
 
 	return ret;
@@ -1729,8 +1784,10 @@ static int __dwc3_gadget_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 
 		if ((dep->flags & DWC3_EP_PENDING_REQUEST)) {
 			if (!(dep->flags & DWC3_EP_TRANSFER_STARTED)) {
-				return __dwc3_gadget_start_isoc(dep);
+				(void) __dwc3_gadget_start_isoc(dep);
+				dep->flags &= ~DWC3_EP_PENDING_REQUEST;
 			}
+			return 0;
 		}
 	}
 
@@ -3368,11 +3425,16 @@ static void dwc3_gadget_endpoint_transfer_in_progress(struct dwc3_ep *dep,
 
 	dwc3_gadget_ep_cleanup_completed_requests(dep, event, status);
 
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) && (list_empty(&dep->started_list))) {
+		stop = true;
+	}
+
 	if (dep->flags & DWC3_EP_END_TRANSFER_PENDING)
 		goto out;
 
-	if (stop)
+	if (stop) {
 		dwc3_stop_active_transfer(dep, true, true);
+	}
 	else if (dwc3_gadget_ep_should_continue(dep))
 		__dwc3_gadget_kick_transfer(dep);
 
