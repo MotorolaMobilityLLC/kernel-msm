@@ -655,6 +655,10 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 	chg->hvdcp2_current_override = of_property_read_bool(node,
 					"qcom,hvdcp2-current-override");
 
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	chg->mmi_qc3p_support = of_property_read_bool(node, "mmi,qc3p-support");
+	pr_err("mmi_qc3p_support:%d\n",chg->mmi_qc3p_support);
+#endif
 	return 0;
 }
 
