@@ -1245,7 +1245,9 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 			is_flash_active(chg) ? SDP_CURRENT_UA : SDP_100_MA);
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
-	vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+	if(chg->mmi_qc3p_support) {
+		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+	}
 #endif
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
 	vote(chg->usb_icl_votable, HVDCP2_12V_ICL_VOTER, false, 0);
@@ -2768,8 +2770,10 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 		break;
 	case POWER_SUPPLY_DP_DM_CONFIRMED_HVDCP3P5:
 #ifndef CONFIG_QC3P_PUMP_SUPPORT
-		chg->qc3p5_detected = true;
-		smblib_update_usb_type(chg);
+		if(!chg->mmi_qc3p_support) {
+			chg->qc3p5_detected = true;
+			smblib_update_usb_type(chg);
+		}
 #endif
 		break;
 	case POWER_SUPPLY_DP_DM_ICL_UP:
@@ -5892,6 +5896,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 				"APSD Extented timer started at %lld\n",
 				jiffies_to_msecs(jiffies));
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
+		if(chg->mmi_qc3p_support) {
 			printk(KERN_ERR "HVDCP3 detected and begin to trigger qc3p detection\n");
 			chg->mmi_is_qc3p_authen = true;
 			chg->qc3p5_detected = false;
@@ -5899,6 +5904,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 			vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, true, QC3P_AUTHEN_USB_ICL_MA);
 			chg->mmi_timer_trig_flag = true;
 			wake_up_interruptible(&chg->mmi_timer_wait_que);
+		}
 #endif
 			mod_timer(&chg->apsd_timer,
 				msecs_to_jiffies(APSD_EXTENDED_TIMEOUT_MS)
@@ -6961,7 +6967,9 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, DCP_VOTER, false, 0);
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
-	vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+	if(chg->mmi_qc3p_support) {
+		vote(chg->usb_icl_votable, SW_QC3P_AUTHEN_VOTER, false, 0);
+	}
 #endif
 	vote(chg->usb_icl_votable, CTM_VOTER, false, 0);
 	vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, false, 0);
@@ -9033,16 +9041,18 @@ int smblib_init(struct smb_charger *chg)
 					smblib_pr_lock_clear_work);
 	INIT_DELAYED_WORK(&chg->pd_contract_work, smblib_pd_contract_work);
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
- 	chg->mmi_qc3p_authen_task = kthread_create(smblib_qc3p_authen_work, chg,
-		"mmi_qc3p_authen", "mmi_qc3p_authen_task", chg);
-	if (IS_ERR(chg->mmi_qc3p_authen_task)) {
-		rc = PTR_ERR(chg->mmi_qc3p_authen_task);
-		smblib_err(chg, "Failed to create mmi_qc3p_authen_task rc = %d\n", rc);
-		return rc;
+	if(chg->mmi_qc3p_support) {
+		chg->mmi_qc3p_authen_task = kthread_create(smblib_qc3p_authen_work, chg,
+			"mmi_qc3p_authen", "mmi_qc3p_authen_task", chg);
+		if (IS_ERR(chg->mmi_qc3p_authen_task)) {
+			rc = PTR_ERR(chg->mmi_qc3p_authen_task);
+			smblib_err(chg, "Failed to create mmi_qc3p_authen_task rc = %d\n", rc);
+			return rc;
+		}
+		init_waitqueue_head(&chg->mmi_timer_wait_que);
+		wake_up_process(chg->mmi_qc3p_authen_task);
 	}
-	init_waitqueue_head(&chg->mmi_timer_wait_que);
-	wake_up_process(chg->mmi_qc3p_authen_task);
- #endif
+#endif
 	timer_setup(&chg->apsd_timer, apsd_timer_cb, 0);
 
 	INIT_DELAYED_WORK(&chg->role_reversal_check,
@@ -9209,7 +9219,7 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->role_reversal_check);
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
-		if (chg->mmi_qc3p_authen_task)
+		if (chg->mmi_qc3p_support && chg->mmi_qc3p_authen_task)
 			kthread_stop(chg->mmi_qc3p_authen_task);
 #endif
 		power_supply_unreg_notifier(&chg->nb);
