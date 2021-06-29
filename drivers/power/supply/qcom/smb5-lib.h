@@ -509,6 +509,7 @@ struct smb_charger {
 	bool					mmi_is_qc3p_authen;
 	bool					mmi_timer_trig_flag;
  	enum qc3p_power		qc3p_power;
+	bool					mmi_qc3p_support;
 #endif
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
