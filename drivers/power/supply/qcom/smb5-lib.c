@@ -5110,7 +5110,14 @@ int smblib_get_charge_current(struct smb_charger *chg,
 	typec_source_rd = smblib_get_prop_ufp_mode(chg);
 
 	/* QC 2.0/3.0 adapter */
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+	if (chg->mmi_qc3p_rerun_done){
+		*total_current_ua = HVDCP_CURRENT_UA;
+		return 0;
+	} else if (apsd_result->bit & QC_2P0_BIT) {
+#else
 	if (apsd_result->bit & QC_2P0_BIT) {
+#endif
 		if (!chg->hvdcp2_current_override)
 			*total_current_ua = HVDCP_2_CURRENT_UA;
 		else
@@ -5761,6 +5768,9 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		schedule_delayed_work(&chg->pl_enable_work,
 					msecs_to_jiffies(PL_DELAY_MS));
 	} else {
+#ifdef CONFIG_QC3P_PUMP_SUPPORT
+		chg->mmi_qc3p_rerun_done = false;
+#endif
 		/* Disable SW Thermal Regulation */
 		rc = smblib_set_sw_thermal_regulation(chg, false);
 		if (rc < 0)
@@ -5895,7 +5905,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 				jiffies_to_msecs(jiffies));
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
 		if(chg->mmi_qc3p_support) {
-			printk(KERN_ERR "HVDCP3 detected and begin to trigger qc3p detection\n");
+			smblib_err(chg, "HVDCP3 detected and begin to trigger qc3p detection\n");
 			chg->mmi_is_qc3p_authen = true;
 			chg->qc3p5_detected = false;
 			chg->qc3p_power = QC3P_POWER_NONE;
@@ -6054,6 +6064,40 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		   apsd_result->name);
 }
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
+bool mmi_rerun_qc3p_det(struct smb_charger *chg)
+{
+	union power_supply_propval val;
+	int rc;
+
+	if (!chg->mmi_qc3p_rerun_done) {
+		rc = smblib_get_prop_usb_present(chg, &val);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
+			return false;
+		} else if (!val.intval) {
+			smblib_err(chg, "usb is not present\n");
+			return false;
+		}
+
+		smblib_dbg(chg, PR_MISC, "rerun qc3p detect\n");
+		rc = smblib_request_dpdm(chg, true);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't to enable DPDM rc=%d\n", rc);
+			return false;
+		}
+		rc = smblib_masked_write(chg, CMD_APSD_REG,
+				APSD_RERUN_BIT, APSD_RERUN_BIT);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't re-run APSD rc=%d\n", rc);
+			return false;
+		}
+		chg->mmi_qc3p_rerun_done = true;
+		chg->apsd_ext_timeout = false;
+
+		return true;
+	}else
+		return false;
+}
 #if 0
 static int smblib_get_ibus_ua(struct smb_charger *chg)
 {
@@ -6282,6 +6326,7 @@ static int smblib_qc3p_authen_work(void *param)
 			}
 
 			if(retry_cnt >= 9){
+				mmi_rerun_qc3p_det(chg);
 				chg->qc3p_power = QC3P_POWER_NONE;
 				goto detect_fail;
 		        }
