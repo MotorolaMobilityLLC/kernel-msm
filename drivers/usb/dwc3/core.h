@@ -29,6 +29,9 @@
 #include <linux/ulpi/interface.h>
 
 #include <linux/phy/phy.h>
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+#include <linux/kthread.h>
+#endif
 
 #define DWC3_MSG_MAX	500
 
@@ -1378,8 +1381,14 @@ struct dwc3 {
 	u16			imod_interval;
 	u32			xhci_imod_value;
 
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+	struct kthread_worker	kt_worker;
+	struct kthread_work	kt_bh_work;
+	struct task_struct	*kt_workthread;
+#else
 	struct workqueue_struct *dwc_wq;
 	struct work_struct      bh_work;
+#endif
 
 	unsigned long		ep_cmd_timeout_cnt;
 
