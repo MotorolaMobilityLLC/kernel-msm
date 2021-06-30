@@ -3287,7 +3287,11 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse,
 	if (dwc->irq)
 		disable_irq(dwc->irq);
 
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+	if (!list_empty(&dwc->kt_worker.work_list))
+#else
 	if (work_busy(&dwc->bh_work))
+#endif
 		dbg_event(0xFF, "pend evt", 0);
 
 	/* disable power event irq, hs and ss phy irq is used as wake up src */
