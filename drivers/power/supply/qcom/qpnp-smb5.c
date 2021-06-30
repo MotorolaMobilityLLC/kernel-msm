@@ -659,6 +659,10 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 	chg->mmi_qc3p_support = of_property_read_bool(node, "mmi,qc3p-support");
 	pr_err("mmi_qc3p_support:%d\n",chg->mmi_qc3p_support);
 #endif
+
+	chg->afvc_enable = of_property_read_bool(node, "qcom,afvc_enable");
+	pr_info("afvc_enable:%d\n",chg->afvc_enable);
+
 	return 0;
 }
 
@@ -3142,6 +3146,16 @@ static int smb5_init_hw(struct smb5 *chip)
 			dev_err(chg->dev,
 				"Couldn't configure SMB pull-up rc=%d\n",
 				rc);
+			return rc;
+		}
+	}
+
+	if(chg->afvc_enable) {
+		//set comp resistance 20mOum
+		rc = smblib_masked_write(chg, 0x118b, 0xff, 0xa);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't configure AFVC rc=%d\n", rc);
 			return rc;
 		}
 	}
