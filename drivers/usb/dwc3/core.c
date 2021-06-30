@@ -33,6 +33,15 @@
 #include <linux/usb/otg.h>
 #include <linux/irq.h>
 
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+#include <asm/cputype.h>
+#include <asm/cpu.h>
+#include <linux/cpumask.h>
+#include <linux/percpu.h>
+#include <linux/sched.h>
+#include <uapi/linux/sched/types.h>
+#endif
+
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
@@ -1598,6 +1607,42 @@ static void dwc3_check_params(struct dwc3 *dwc)
 	}
 }
 
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+#define QCOM_CPU_PART_KRYO4XX_GOLD 0x804
+#define QCOM_CPU_PART_KRYO5XX_GOLD 0xD0D
+#define QCOM_CPU_PART_KRYO6XX_GOLD 0xD41
+#define QCOM_CPU_PART_KRYO6XX_GOLDPLUS 0xD44
+
+static void dwc3_handle_affinity_quirks(struct dwc3 *dwc)
+{
+	int cpu;
+	struct cpumask mask;
+
+	cpumask_clear(&mask);
+	for_each_possible_cpu(cpu) {
+#if defined(__ARM_EABI__)
+		struct cpuinfo_arm *cpuinfo = &per_cpu(cpu_data, cpu);
+#else
+		struct cpuinfo_arm64 *cpuinfo = &per_cpu(cpu_data, cpu);
+#endif
+		u32 midr = cpuinfo->reg_midr;
+		switch (MIDR_PARTNUM(midr)) {
+			case QCOM_CPU_PART_KRYO4XX_GOLD:
+			case QCOM_CPU_PART_KRYO5XX_GOLD:
+			case QCOM_CPU_PART_KRYO6XX_GOLD:
+			case QCOM_CPU_PART_KRYO6XX_GOLDPLUS:
+				cpumask_set_cpu(cpu, &mask);
+				break;
+			default:
+				break;
+		}
+	}
+	if (!cpumask_empty(&mask)) {
+		kthread_bind_mask(dwc->kt_workthread, &mask);
+	}
+}
+#endif //CONFIG_USB_DWC3_RT_AFFINITY
+
 static int dwc3_probe(struct platform_device *pdev)
 {
 	struct device		*dev = &pdev->dev;
@@ -1661,6 +1706,29 @@ static int dwc3_probe(struct platform_device *pdev)
 	if (IS_ERR(regs))
 		return PTR_ERR(regs);
 
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+	kthread_init_work(&dwc->kt_bh_work, dwc3_ktbh_work);
+	kthread_init_worker(&dwc->kt_worker);
+
+	dwc->kt_workthread = kthread_create(kthread_worker_fn,
+		&dwc->kt_worker, "dwc_kt_worker");
+	if (IS_ERR(dwc->kt_workthread)) {
+		dev_err(dev,
+			"%s: Unable to create kthread dwc_kt_worker\n", __func__);
+		dwc->kt_workthread = NULL;
+		goto err0;
+	} else {
+		struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
+
+		if (sched_setscheduler(dwc->kt_workthread, SCHED_FIFO, &param) != 0) {
+			dev_warn(dev,
+				"%s: could not set scheduler: ret=%d\n", __func__, ret);
+		}
+
+		dwc3_handle_affinity_quirks(dwc);
+		wake_up_process(dwc->kt_workthread);
+	}
+#else
 	dwc->dwc_wq = alloc_ordered_workqueue("dwc_wq", WQ_HIGHPRI);
 	if (!dwc->dwc_wq) {
 		dev_err(dev,
@@ -1669,6 +1737,8 @@ static int dwc3_probe(struct platform_device *pdev)
 	}
 
 	INIT_WORK(&dwc->bh_work, dwc3_bh_work);
+#endif
+
 	dwc->regs	= regs;
 	dwc->regs_size	= resource_size(&dwc_res);
 
@@ -1787,7 +1857,11 @@ err1:
 	clk_bulk_disable_unprepare(dwc->num_clks, dwc->clks);
 assert_reset:
 	reset_control_assert(dwc->reset);
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+	kthread_destroy_worker(&dwc->kt_worker);
+#else
 	destroy_workqueue(dwc->dwc_wq);
+#endif
 err0:
 	return ret;
 }

@@ -59,8 +59,12 @@ struct dwc3;
 #define to_dwc3_request(r)	(container_of(r, struct dwc3_request, request))
 
 irqreturn_t dwc3_interrupt(int irq, void *_dwc);
-void dwc3_bh_work(struct work_struct *w);
 
+#ifdef CONFIG_USB_DWC3_RT_AFFINITY
+void dwc3_ktbh_work(struct kthread_work *w);
+#else
+void dwc3_bh_work(struct work_struct *w);
+#endif
 /**
  * next_request - gets the next request on the given list
  * @list: the request list to operate on
