@@ -493,13 +493,15 @@ static void ucsi_partner_change(struct ucsi_connector *con)
 	case UCSI_CONSTAT_PARTNER_TYPE_UFP:
 	case UCSI_CONSTAT_PARTNER_TYPE_CABLE:
 	case UCSI_CONSTAT_PARTNER_TYPE_CABLE_AND_UFP:
-	case UCSI_CONSTAT_PARTNER_TYPE_AUDIO:
 		u_role = USB_ROLE_HOST;
 		typec_set_data_role(con->port, TYPEC_HOST);
 		break;
 	case UCSI_CONSTAT_PARTNER_TYPE_DFP:
-	case UCSI_CONSTAT_PARTNER_TYPE_DEBUG:
 		u_role = USB_ROLE_DEVICE;
+		typec_set_data_role(con->port, TYPEC_DEVICE);
+		break;
+	case UCSI_CONSTAT_PARTNER_TYPE_DEBUG:
+	case UCSI_CONSTAT_PARTNER_TYPE_AUDIO:
 		typec_set_data_role(con->port, TYPEC_DEVICE);
 		break;
 	default:
@@ -570,13 +572,15 @@ static void ucsi_handle_connector_change(struct work_struct *work)
 		case UCSI_CONSTAT_PARTNER_TYPE_UFP:
 		case UCSI_CONSTAT_PARTNER_TYPE_CABLE:
 		case UCSI_CONSTAT_PARTNER_TYPE_CABLE_AND_UFP:
-		case UCSI_CONSTAT_PARTNER_TYPE_AUDIO:
 			u_role = USB_ROLE_HOST;
 			typec_set_data_role(con->port, TYPEC_HOST);
 			break;
 		case UCSI_CONSTAT_PARTNER_TYPE_DFP:
-		case UCSI_CONSTAT_PARTNER_TYPE_DEBUG:
 			u_role = USB_ROLE_DEVICE;
+			typec_set_data_role(con->port, TYPEC_DEVICE);
+			break;
+		case UCSI_CONSTAT_PARTNER_TYPE_DEBUG:
+		case UCSI_CONSTAT_PARTNER_TYPE_AUDIO:
 			typec_set_data_role(con->port, TYPEC_DEVICE);
 			break;
 		default:
@@ -887,13 +891,15 @@ static int ucsi_register_port(struct ucsi *ucsi, int index)
 	case UCSI_CONSTAT_PARTNER_TYPE_UFP:
 	case UCSI_CONSTAT_PARTNER_TYPE_CABLE:
 	case UCSI_CONSTAT_PARTNER_TYPE_CABLE_AND_UFP:
-	case UCSI_CONSTAT_PARTNER_TYPE_AUDIO:
 		role = USB_ROLE_HOST;
 		typec_set_data_role(con->port, TYPEC_HOST);
 		break;
 	case UCSI_CONSTAT_PARTNER_TYPE_DFP:
-	case UCSI_CONSTAT_PARTNER_TYPE_DEBUG:
 		role = USB_ROLE_DEVICE;
+		typec_set_data_role(con->port, TYPEC_DEVICE);
+		break;
+	case UCSI_CONSTAT_PARTNER_TYPE_DEBUG:
+	case UCSI_CONSTAT_PARTNER_TYPE_AUDIO:
 		typec_set_data_role(con->port, TYPEC_DEVICE);
 		break;
 	default:
