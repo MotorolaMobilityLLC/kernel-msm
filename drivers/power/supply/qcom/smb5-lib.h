@@ -676,6 +676,7 @@ struct smb_charger {
 	u32			lpd_retry_count;
 #endif
 	bool			cp_active;
+	bool			afvc_enable;
 };
 void smblib_set_prop_cp_enable(struct smb_charger *chg,
 				const union power_supply_propval *val);
