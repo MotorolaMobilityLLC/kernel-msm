@@ -147,4 +147,11 @@ config USB_DWC3_MSM
 	  Driver supports host, device and dual-role modes of operation.
 	  Say 'Y' or 'M' if you have one such device.
 
+config USB_DWC3_RT_AFFINITY
+	tristate "Bind RT Thread to QCOM Gold Cores"
+	depends on USB_DWC3_MSM
+	help
+	  Select this when you want to set affinity on RT thread for gadget mode only,
+	  please say 'Y' or 'M' here.
+
 endif
