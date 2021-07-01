@@ -267,8 +267,8 @@
 	qcom,fs-current-limit = <25000>;
 	qcom,en-cabc;
 	qcom,cabc-sel = <1>;
-	qcom,ovp = <23500>;
-	qcom,boost-current-limit = <1050>;
+	qcom,ovp = <26500>;
+	qcom,boost-current-limit = <1225>;
 	qcom,wled-bl-step-up;
 	qcom,wled-bl-step-sequence = <255 5>, <2048 6>;
 
