@@ -601,7 +601,6 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 	opts->streaming_interval = clamp(opts->streaming_interval, 1U, 16U);
 	opts->streaming_maxpacket = clamp(opts->streaming_maxpacket, 1U, 3072U);
 	opts->streaming_maxburst = min(opts->streaming_maxburst, 15U);
-	opts->streaming_txfifo_hint = min(opts->streaming_txfifo_hint, 14U);
 
 	/* For SS, wMaxPacketSize has to be 1024 if bMaxBurst is not 0 */
 	if (opts->streaming_maxburst &&
@@ -670,9 +669,6 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 		goto error;
 	}
 	uvc->video.ep = ep;
-
-	if (gadget_is_superspeed(c->cdev->gadget))
-		uvc->video.ep->txfifo_hint = opts->streaming_txfifo_hint;
 
 	uvc_fs_streaming_ep.bEndpointAddress = uvc->video.ep->address;
 	uvc_hs_streaming_ep.bEndpointAddress = uvc->video.ep->address;
@@ -868,7 +864,6 @@ static struct usb_function_instance *uvc_alloc_inst(void)
 
 	opts->streaming_interval = 1;
 	opts->streaming_maxpacket = 1024;
-	opts->streaming_txfifo_hint = 0;
 
 	ret = uvcg_attach_configfs(opts);
 	if (ret < 0) {
