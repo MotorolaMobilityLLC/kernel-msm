@@ -32,6 +32,7 @@ extern int fsa4480_enable_lpd(bool enable);
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
 #define QC3P_AUTHEN_TIMEOUT_MS	30
 #define QC3P_AUTHEN_USB_ICL_MA	500000
+#define FSA4480_RSBU_K_300K_UV	13000000
 #endif
 #define RSBU_K_300K_UV	3000000
 
@@ -6706,7 +6707,7 @@ static bool smblib_src_lpd(struct smb_charger *chg)
 	switch (stat & DETECTED_SNK_TYPE_MASK) {
 	case SRC_DEBUG_ACCESS_BIT:
 #ifdef CONFIG_QCOM_FSA4480_LPD
-		if (fsa4480_rsbux_low(RSBU_K_300K_UV))
+		if (fsa4480_rsbux_low(FSA4480_RSBU_K_300K_UV))
 #else
 		if (smblib_rsbux_low(chg, RSBU_K_300K_UV))
 #endif
@@ -8755,7 +8756,7 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	/* Wait 1.5ms to get SBUx ready */
 	usleep_range(1500, 1510);
 #ifdef CONFIG_QCOM_FSA4480_LPD
-	if (fsa4480_rsbux_low(RSBU_K_300K_UV)) {
+	if (fsa4480_rsbux_low(FSA4480_RSBU_K_300K_UV)) {
 #else
 	if (smblib_rsbux_low(chg, RSBU_K_300K_UV)) {
 #endif
