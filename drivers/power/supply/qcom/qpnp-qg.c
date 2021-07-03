@@ -2167,6 +2167,10 @@ static int qg_iio_write_raw(struct iio_dev *indio_dev,
 	case PSY_IIO_BATT_AGE_LEVEL:
 		rc = qg_setprop_batt_age_level(chip, val1);
 		break;
+	case PSY_IIO_BATT_FULL_CURRENT:
+               chip->dt.iterm_ma = val1;
+               qg_dbg(chip, QG_DEBUG_STATUS, "set bat full current = %d\n", chip->dt.iterm_ma);
+               break;
 	default:
 		pr_debug("Unsupported QG IIO chan %d\n", chan->channel);
 		rc = -EINVAL;
