@@ -1861,3 +1861,9 @@ config SND_PRI_MI2S_AW882XX
 	default n
 	help
 	Enable it only aw882xx smartpa is connected on pri mi2s.
+
+config SND_ENABLE_QCOM_PMIC_HAPTIC
+	bool "Enable qcom pmic haptic"
+	default n
+	help
+	Enable it when qcom pmic haptic is used.
