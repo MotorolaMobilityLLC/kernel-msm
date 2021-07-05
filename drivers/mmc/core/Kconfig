@@ -108,12 +108,3 @@ config MMC_CRYPTO
 	  Enabling this makes it possible for the kernel to use the crypto
 	  capabilities of the MMC device (if present) to perform crypto
 	  operations on data being transferred to/from the device.
-
-config MMC_FFU
-	bool "FFU SUPPORT"
-	depends on MMC != n
-	help
-	This is an option to run firmware update on eMMC 5.0.
-	Field firmware updates (FFU) enables features enhancment
-	in the field.
-
