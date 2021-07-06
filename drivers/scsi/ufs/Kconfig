@@ -243,6 +243,22 @@ config UFSTW_BOOT_ENABLED
 	fTurboWriteEn and fTurboWriteBufferFlushDuringHibnerEnter flags
 	are enabled at boot time.
 
+config UFSHID
+	bool "UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	---help---
+	UFS HID Feature Enable
+
+config UFSHID_POC
+	bool "UFSHID_POC test"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
+	---help---
+	UFS HID POC test
+	1. block to enter suspend state
+	2. auto_hibern8 enable/disable (HCI)
+	3. set flag bDefragOperation
+	4. debug msg enable (default : disable)
+
 config SCSI_SKHPB
 	bool "Activate HPB Host-aware Performance Booster"
 	depends on (SCSI_UFSHCD || SCSI_UFSHCD_QTI)
@@ -250,7 +266,7 @@ config SCSI_SKHPB
 	  Activate or deactive SKHPB driver
 
 config SCSI_SKHID
-	bool "Activate HPB Host-aware Performance Booster"
+	bool "UFS Host Initiated Defrag supportr"
 	depends on (SCSI_UFSHCD || SCSI_UFSHCD_QTI)
 	help
 	  Activate or deactive SKHPB driver
