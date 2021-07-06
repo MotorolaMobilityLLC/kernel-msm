@@ -8,6 +8,7 @@ obj-$(CONFIG_SCSI_UFSHCD) += ufshcd-core.o
 obj-$(CONFIG_UFSFEATURE) += ufsfeature.o
 obj-$(CONFIG_UFSHPB) += ufshpb.o
 obj-$(CONFIG_UFSTW) += ufstw.o
+obj-$(CONFIG_UFSHID) += ufshid.o
 ufshcd-core-y				+= ufshcd.o ufs-sysfs.o
 ufshcd-core-$(CONFIG_SCSI_UFS_BSG)	+= ufs_bsg.o
 obj-$(CONFIG_SCSI_SKHPB) += ufshpb_skh.o
