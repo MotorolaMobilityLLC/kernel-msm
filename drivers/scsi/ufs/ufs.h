@@ -198,6 +198,10 @@ enum attr_idn {
 	QUERY_ATTR_IDN_TW_BUF_LIFETIME_EST      = 0x1E,
 	QUERY_ATTR_IDN_TW_CURR_BUF_SIZE         = 0x1F,
 #endif
+#if defined(CONFIG_UFSHID)
+	QUERY_ATTR_IDN_HID_OPERATION		= 0x20,
+	QUERY_ATTR_IDN_HID_FRAG_LEVEL		= 0x21,
+#endif
 #if defined(CONFIG_SCSI_SKHID)
 	/* use one reserved bit */
 	QUERY_ATTR_IDN_MANUAL_GC_CONT           = 0x12,
@@ -324,6 +328,9 @@ enum device_desc_param {
 	DEVICE_DESC_PARAM_TW_RETURN_TO_USER	= 0x53,
 	DEVICE_DESC_PARAM_TW_BUF_TYPE		= 0x54,
 	DEVICE_DESC_PARAM_TW_SHARED_BUF_ALLOC_UNITS	= 0x55,
+#endif
+#if defined(CONFIG_UFSHID)
+	DEVICE_DESC_PARAM_HID_VER		= 0x59,
 #endif
 };
 
