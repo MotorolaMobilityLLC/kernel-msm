@@ -418,13 +418,21 @@ static inline void ufshcd_wb_config(struct ufs_hba *hba)
 	ufshcd_wb_toggle_flush(hba, true);
 }
 
+#if defined(CONFIG_UFSFEATURE)
+void ufshcd_scsi_unblock_requests(struct ufs_hba *hba)
+#else
 static void ufshcd_scsi_unblock_requests(struct ufs_hba *hba)
+#endif
 {
 	if (atomic_dec_and_test(&hba->scsi_block_reqs_cnt))
 		scsi_unblock_requests(hba->host);
 }
 
+#if defined(CONFIG_UFSFEATURE)
+void ufshcd_scsi_block_requests(struct ufs_hba *hba)
+#else
 static void ufshcd_scsi_block_requests(struct ufs_hba *hba)
+#endif
 {
 	if (atomic_inc_return(&hba->scsi_block_reqs_cnt) == 1)
 		scsi_block_requests(hba->host);
@@ -1204,8 +1212,12 @@ static bool ufshcd_is_devfreq_scaling_required(struct ufs_hba *hba,
 	return false;
 }
 
+#if defined(CONFIG_UFSFEATURE)
+int ufshcd_wait_for_doorbell_clr(struct ufs_hba *hba, u64 wait_timeout_us)
+#else
 static int ufshcd_wait_for_doorbell_clr(struct ufs_hba *hba,
 					u64 wait_timeout_us)
+#endif
 {
 	unsigned long flags;
 	int ret = 0;
@@ -5375,6 +5387,9 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	struct scsi_cmnd *cmd;
 	int result;
 	int index;
+#if defined(CONFIG_UFSFEATURE)
+	bool scsi_req = false;
+#endif
 
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
 		lrbp = &hba->lrb[index];
@@ -5400,6 +5415,10 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 			/* Do not touch lrbp after scsi done */
 			cmd->scsi_done(cmd);
 			__ufshcd_release(hba);
+#if defined(CONFIG_UFSFEATURE)
+			if (IS_SAMSUNG_DEVICE(storage_mfrid))
+				scsi_req = true;
+#endif
 		} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
 			lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
 			lrbp->compl_time_stamp = ktime_get();
@@ -5420,6 +5439,10 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 
 	/* we might have free'd some tags above */
 	wake_up(&hba->dev_cmd.tag_wq);
+#if defined(CONFIG_UFSFEATURE)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		ufsf_on_idle(&hba->ufsf, scsi_req);
+#endif
 }
 
 /**
@@ -9576,7 +9599,8 @@ void ufshcd_remove(struct ufs_hba *hba)
 	ufshcd_disable_intr(hba, hba->intr_mask);
 	ufshcd_hba_stop(hba, true);
 #if defined(CONFIG_SCSI_SKHID)
-	ufshcd_exit_manual_gc(hba);
+	if (IS_SKHYNIX_DEVICE(storage_mfrid))
+		ufshcd_exit_manual_gc(hba);
 #endif
 	ufshcd_exit_clk_scaling(hba);
 	ufshcd_exit_clk_gating(hba);
@@ -9756,7 +9780,8 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 
 	ufshcd_init_clk_scaling(hba);
 #if defined(CONFIG_SCSI_SKHID)
-	ufshcd_init_manual_gc(hba);
+	if (IS_SKHYNIX_DEVICE(storage_mfrid))
+		ufshcd_init_manual_gc(hba);
 #endif
 	/*
 	 * In order to avoid any spurious interrupt immediately after
@@ -9863,7 +9888,8 @@ out_remove_scsi_host:
 	scsi_remove_host(hba->host);
 exit_gating:
 #if defined(CONFIG_SCSI_SKHID)
-	ufshcd_exit_manual_gc(hba);
+	if (IS_SKHYNIX_DEVICE(storage_mfrid))
+		ufshcd_exit_manual_gc(hba);
 #endif
 	ufshcd_exit_clk_scaling(hba);
 	ufshcd_exit_clk_gating(hba);
