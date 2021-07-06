@@ -1351,6 +1351,9 @@ void ufshcd_fixup_dev_quirks(struct ufs_hba *hba, struct ufs_dev_fix *fixups);
 #define SD_RAW false
 
 #if defined(CONFIG_UFSFEATURE)
+void ufshcd_scsi_unblock_requests(struct ufs_hba *hba);
+void ufshcd_scsi_block_requests(struct ufs_hba *hba);
+int ufshcd_wait_for_doorbell_clr(struct ufs_hba *hba, u64 wait_timeout_us);
 int ufshcd_exec_dev_cmd(struct ufs_hba *hba,
 			enum dev_cmd_type cmd_type, int timeout);
 #endif
