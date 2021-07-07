@@ -183,6 +183,8 @@
   __class_create
   class_destroy
   class_find_device
+  class_create_file_ns
+  class_remove_file_ns
   class_interface_unregister
   __class_register
   class_unregister
