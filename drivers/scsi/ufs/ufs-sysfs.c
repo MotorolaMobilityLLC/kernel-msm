@@ -318,6 +318,16 @@ static DEVICE_ATTR_RW(auto_hibern8);
 #if defined(CONFIG_SCSI_SKHID)
 static DEVICE_ATTR_RW(manual_gc);
 static DEVICE_ATTR_RW(manual_gc_hold);
+
+static struct attribute *ufs_sysfs_ufshcd_hagc_attrs[] = {
+	&dev_attr_manual_gc.attr,
+	&dev_attr_manual_gc_hold.attr,
+	NULL
+};
+
+static const struct attribute_group ufs_sysfs_hagc_default_group = {
+	.attrs = ufs_sysfs_ufshcd_hagc_attrs,
+};
 #endif
 
 static struct attribute *ufs_sysfs_ufshcd_attrs[] = {
@@ -328,10 +338,6 @@ static struct attribute *ufs_sysfs_ufshcd_attrs[] = {
 	&dev_attr_spm_target_dev_state.attr,
 	&dev_attr_spm_target_link_state.attr,
 	&dev_attr_auto_hibern8.attr,
-#if defined(CONFIG_SCSI_SKHID)
-	&dev_attr_manual_gc.attr,
-	&dev_attr_manual_gc_hold.attr,
-#endif
 	NULL
 };
 
@@ -871,6 +877,16 @@ UFS_ATTRIBUTE(wb_life_time_est, _WB_BUFF_LIFE_TIME_EST);
 UFS_ATTRIBUTE(wb_cur_buf, _CURR_WB_BUFF_SIZE);
 #if defined(CONFIG_SCSI_SKHID)
 UFS_ATTRIBUTE(manual_gc_status, _MANUAL_GC_STATUS);
+
+static struct attribute *ufs_sysfs_hagc_attributes[] = {
+	&dev_attr_manual_gc_status.attr,
+	NULL,
+};
+
+static const struct attribute_group ufs_sysfs_hagc_attributes_group = {
+	.name = "attributes_hid",
+	.attrs = ufs_sysfs_hagc_attributes,
+};
 #endif
 
 
@@ -895,9 +911,6 @@ static struct attribute *ufs_sysfs_attributes[] = {
 	&dev_attr_wb_avail_buf.attr,
 	&dev_attr_wb_life_time_est.attr,
 	&dev_attr_wb_cur_buf.attr,
-#if defined(CONFIG_SCSI_SKHID)
-	&dev_attr_manual_gc_status.attr,
-#endif
 	NULL,
 };
 
@@ -918,6 +931,14 @@ static const struct attribute_group *ufs_sysfs_groups[] = {
 	&ufs_sysfs_attributes_group,
 	NULL,
 };
+
+#if defined(CONFIG_SCSI_SKHID)
+static const struct attribute_group *ufs_sysfs_hagc_groups[] = {
+	&ufs_sysfs_hagc_default_group,
+        &ufs_sysfs_hagc_attributes_group,
+	NULL,
+};
+#endif
 
 #define UFS_LUN_DESC_PARAM(_pname, _puname, _duname, _size)		\
 static ssize_t _pname##_show(struct device *dev,			\
@@ -1013,9 +1034,25 @@ void ufs_sysfs_add_nodes(struct device *dev)
 		dev_err(dev,
 			"%s: sysfs groups creation failed (err = %d)\n",
 			__func__, ret);
+
+	#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_DEVICE(storage_mfrid)) {
+		ret = sysfs_create_groups(&dev->kobj, ufs_sysfs_hagc_groups);
+		if (ret)
+			dev_err(dev,
+				"%s: sysfs hagc groups creation failed (err = %d)\n",
+				__func__, ret);
+	}
+	#endif
 }
 
 void ufs_sysfs_remove_nodes(struct device *dev)
 {
 	sysfs_remove_groups(&dev->kobj, ufs_sysfs_groups);
+
+	#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_DEVICE(storage_mfrid)) {
+		sysfs_remove_groups(&dev->kobj, ufs_sysfs_hagc_groups);
+	}
+	#endif
 }
