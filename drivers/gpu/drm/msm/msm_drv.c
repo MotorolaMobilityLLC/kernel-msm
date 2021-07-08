@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, 2020-2021, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -57,6 +57,8 @@
 #define MSM_VERSION_MAJOR	1
 #define MSM_VERSION_MINOR	2
 #define MSM_VERSION_PATCHLEVEL	0
+
+static DEFINE_MUTEX(msm_release_lock);
 
 static void msm_fb_output_poll_changed(struct drm_device *dev)
 {
@@ -1453,13 +1455,25 @@ void msm_mode_object_event_notify(struct drm_mode_object *obj,
 static int msm_release(struct inode *inode, struct file *filp)
 {
 	struct drm_file *file_priv = filp->private_data;
-	struct drm_minor *minor = file_priv->minor;
-	struct drm_device *dev = minor->dev;
-	struct msm_drm_private *priv = dev->dev_private;
+	struct drm_minor *minor;
+	struct drm_device *dev;
+	struct msm_drm_private *priv;
 	struct msm_drm_event *node, *temp, *tmp_node;
 	u32 count;
 	unsigned long flags;
 	LIST_HEAD(tmp_head);
+	int ret = 0;
+
+	mutex_lock(&msm_release_lock);
+
+	if (!file_priv) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	minor = file_priv->minor;
+	dev = minor->dev;
+	priv = dev->dev_private;
 
 	spin_lock_irqsave(&dev->event_lock, flags);
 	list_for_each_entry_safe(node, temp, &priv->client_event_list,
@@ -1487,7 +1501,11 @@ static int msm_release(struct inode *inode, struct file *filp)
 		kfree(node);
 	}
 
-	return drm_release(inode, filp);
+	ret = drm_release(inode, filp);
+	filp->private_data = NULL;
+end:
+	mutex_unlock(&msm_release_lock);
+	return ret;
 }
 
 /**
