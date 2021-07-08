@@ -25,7 +25,8 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/qpnp/qpnp-pbs.h>
-
+#undef dev_dbg
+#define dev_dbg dev_err
 /* status register definitions in HAPTICS_CFG module */
 #define HAP_CFG_REVISION2_REG			0x01
 #define HAP_CFG_V1				0x1
@@ -285,6 +286,7 @@
 #define HW_BRAKE_CYCLES				5
 #define F_LRA_VARIATION_HZ			5
 #define NON_HBOOST_MAX_VMAX_MV			4000
+#define DEFAULT_TIME				500
 
 #define is_between(val, min, max)	\
 	(((min) <= (max)) && ((min) <= (val)) && ((val) <= (max)))
@@ -511,6 +513,8 @@ struct haptics_chip {
 	struct device_node		*pbs_node;
 	struct class			hap_class;
 	struct regulator		*hpwr_vreg;
+	struct hrtimer			stop_timer;
+	struct work_struct		play_work;
 	int				fifo_empty_irq;
 	u32				hpwr_voltage_mv;
 	u32				effects_count;
@@ -518,6 +522,7 @@ struct haptics_chip {
 	u32				ptn_addr_base;
 	u32				hbst_addr_base;
 	u32				wa_flags;
+	u32				play_time;
 	u8				cfg_revision;
 	u8				ptn_revision;
 	u8				hpwr_intf_ctl;
@@ -3405,6 +3410,28 @@ DEFINE_DEBUGFS_ATTRIBUTE(preload_effect_idx_dbgfs_ops,
 		preload_effect_idx_dbgfs_read,
 		preload_effect_idx_dbgfs_write, "%llu\n");
 
+static int play_dbgfs_read(void *data, u64 *val)
+{
+	struct haptics_chip *chip = data;
+
+	*val = chip->play_time;
+
+	return 0;
+}
+
+static int play_dbgfs_write(void *data, u64 val)
+{
+	struct haptics_chip *chip = data;
+
+	chip->play_time = (u32) val;
+	pr_info("time = %llums\n", chip->play_time);
+	schedule_work(&chip->play_work);
+
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(play_debugfs_ops, play_dbgfs_read,
+		play_dbgfs_write, "%llu\n");
+
 static int haptics_add_effects_debugfs(struct haptics_effect *effect,
 		struct dentry *dir)
 {
@@ -3520,6 +3547,15 @@ static int haptics_create_debugfs(struct haptics_chip *chip)
 	if (IS_ERR(file)) {
 		rc = PTR_ERR(file);
 		dev_err(chip->dev, "create preload_effect_idx debugfs failed, rc=%d\n",
+				rc);
+		goto exit;
+	}
+
+	file = debugfs_create_file_unsafe("play", 0644, hap_dir,
+			chip, &play_debugfs_ops);
+	if (IS_ERR(file)) {
+		rc = PTR_ERR(file);
+		dev_err(chip->dev, "create play debugfs failed, rc=%d\n",
 				rc);
 		goto exit;
 	}
@@ -4023,7 +4059,10 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 		goto free_pbs;
 	}
 
-	config->fifo_empty_thresh = get_fifo_empty_threshold(chip);
+	chip->play_time = DEFAULT_TIME;
+	of_property_read_u32(node, "qcom,time-ms", &chip->play_time);
+
+        config->fifo_empty_thresh = get_fifo_empty_threshold(chip);
 	of_property_read_u32(node, "qcom,fifo-empty-threshold",
 			&config->fifo_empty_thresh);
 	if (config->fifo_empty_thresh >= get_max_fifo_samples(chip)) {
@@ -4582,6 +4621,42 @@ static bool is_swr_supported(struct haptics_chip *chip)
 	return true;
 }
 
+static void haptics_play_work(struct work_struct *work)
+{
+	struct haptics_chip *chip = container_of(work, struct haptics_chip,
+						play_work);
+	u8 amplitude;
+
+	if (haptics_enable_hpwr_vreg(chip, true) >= 0) {
+		amplitude = get_direct_play_max_amplitude(chip);
+
+		if (haptics_load_constant_effect(chip, amplitude) >= 0) {
+			if (haptics_enable_play(chip, true) >= 0) {
+				hrtimer_start(&chip->stop_timer,
+				      ms_to_ktime(chip->play_time),
+				      HRTIMER_MODE_REL);
+			}
+		}
+	}
+}
+
+static enum hrtimer_restart haptics_stop_timer(struct hrtimer *timer)
+{
+	struct haptics_chip *chip = container_of(timer, struct haptics_chip,
+					     stop_timer);
+	int rc;
+
+	rc = haptics_enable_play(chip, false);
+	if (rc < 0)
+		dev_err(chip->dev, "disable play failed, rc=%d\n");
+
+	rc = haptics_enable_hpwr_vreg(chip, false);
+	if (rc < 0)
+		dev_err(chip->dev, "disable hpwr_vreg failed, rc=%d\n");
+
+	return HRTIMER_NORESTART;
+}
+
 static int haptics_probe(struct platform_device *pdev)
 {
 	struct haptics_chip *chip;
@@ -4673,6 +4748,11 @@ static int haptics_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	INIT_WORK(&chip->play_work, haptics_play_work);
+
+	hrtimer_init(&chip->stop_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	chip->stop_timer.function = haptics_stop_timer;
+
 	ff_dev = input_dev->ff;
 	ff_dev->upload = haptics_upload_effect;
 	ff_dev->playback = haptics_playback;
@@ -4699,6 +4779,11 @@ static int haptics_probe(struct platform_device *pdev)
 	if (rc < 0)
 		dev_err(chip->dev, "Creating debugfs failed, rc=%d\n", rc);
 #endif
+
+#ifdef CONFIG_HAPTIC_POWER_ON
+	schedule_work(&chip->play_work);
+#endif
+
 	return 0;
 destroy_ff:
 	input_ff_destroy(chip->input_dev);
