@@ -1867,3 +1867,9 @@ config SND_ENABLE_QCOM_PMIC_HAPTIC
 	default n
 	help
 	Enable it when qcom pmic haptic is used.
+
+config HAPTIC_POWER_ON
+	bool "haptic when power on"
+	default n
+	help
+	Enable it when haptic power on.
