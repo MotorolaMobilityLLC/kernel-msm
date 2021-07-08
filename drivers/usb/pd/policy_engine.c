@@ -4438,7 +4438,7 @@ int usbpd_get_pdo_info(struct usbpd *pd, struct usbpd_pdo_info *pdo_info, int le
 		pdo_info[i].pdo_pos = i + 1;
 		pdo_info[i].type = PD_SRC_PDO_TYPE(pdo);
 		if (pdo_info[i].type == PD_SRC_PDO_TYPE_FIXED) {
-			pdo_info[i].ua = PD_SRC_PDO_FIXED_MAX_CURR(pdo) * 10;
+			pdo_info[i].ua = PD_SRC_PDO_FIXED_MAX_CURR(pdo) * 10*1000;
 			pdo_info[i].uv_max = PD_SRC_PDO_FIXED_VOLTAGE(pdo) * 50 * 1000;
 			pdo_info[i].uv_min = PD_SRC_PDO_FIXED_VOLTAGE(pdo) * 50 * 1000;
 
