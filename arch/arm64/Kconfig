@@ -1873,3 +1873,9 @@ config HAPTIC_POWER_ON
 	default n
 	help
 	Enable it when haptic power on.
+
+config AW882XX_DRIVER_V1
+        bool "Use aw882xx driver version 1.*"
+        default n
+        help
+        Enable it only use aw882xx driver version 1.*.
