@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1457,6 +1457,7 @@ static inline int msm_vidc_power_save_mode_enable(struct msm_vidc_inst *inst,
 	u32 hq_mbs_per_sec = 0;
 	struct msm_vidc_core *core;
 	struct msm_vidc_inst *instance = NULL;
+	int complexity;
 
 	core = inst->core;
 	hdev = inst->core->device;
@@ -1492,6 +1493,10 @@ static inline int msm_vidc_power_save_mode_enable(struct msm_vidc_inst *inst,
 	if (rc_mode == V4L2_MPEG_VIDEO_BITRATE_MODE_CQ)
 		enable = false;
 
+	complexity = msm_comm_g_ctrl_for_id(inst,
+		V4L2_CID_MPEG_VIDC_VENC_COMPLEXITY);
+	if (!is_realtime_session(inst) && !complexity)
+		enable = true;
 	prop_id = HAL_CONFIG_VENC_PERF_MODE;
 	venc_mode = enable ? HAL_PERF_MODE_POWER_SAVE :
 		HAL_PERF_MODE_POWER_MAX_QUALITY;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1575,9 +1575,32 @@ static const struct msm_pinctrl_soc_data atoll_pinctrl = {
 	.dir_conn_irq_base = 216,
 };
 
+/* By default, all the gpios that are mpm wake capable are enabled.
+ * The following list disables the gpios explicitly
+ */
+static const unsigned int config_mpm_wake_disable_gpios[] = { };
+
+static void atoll_pinctrl_config_mpm_wake_disable_gpios(void)
+{
+	unsigned int i;
+	unsigned int n_gpios = ARRAY_SIZE(config_mpm_wake_disable_gpios);
+
+	for (i = 0; i < n_gpios; i++)
+		msm_gpio_mpm_wake_set(config_mpm_wake_disable_gpios[i], false);
+}
+
+
 static int atoll_pinctrl_probe(struct platform_device *pdev)
 {
-	return msm_pinctrl_probe(pdev, &atoll_pinctrl);
+	int ret;
+
+	ret = msm_pinctrl_probe(pdev, &atoll_pinctrl);
+	if (ret)
+		return ret;
+
+	atoll_pinctrl_config_mpm_wake_disable_gpios();
+
+	return 0;
 }
 
 static const struct of_device_id atoll_pinctrl_of_match[] = {
