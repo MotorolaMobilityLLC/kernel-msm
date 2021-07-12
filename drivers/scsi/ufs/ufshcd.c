@@ -8043,7 +8043,8 @@ static int ufshcd_add_lus(struct ufs_hba *hba)
 
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid)){
-        ufsf_device_check(hba);
+        if (ufsf_device_check(hba))
+		goto out;
         ufsf_init(&hba->ufsf);
     }
 #endif
