@@ -168,7 +168,7 @@ struct ufs_hba;
 struct ufshcd_lrb;
 struct ufs_ioctl_query_data;
 
-void ufsf_device_check(struct ufs_hba *hba);
+int ufsf_device_check(struct ufs_hba *hba);
 int ufsf_check_query(__u32 opcode);
 int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 		     struct ufs_ioctl_query_data *ioctl_data,
