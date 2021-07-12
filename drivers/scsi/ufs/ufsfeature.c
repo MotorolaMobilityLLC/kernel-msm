@@ -276,7 +276,7 @@ out:
 	return;
 }
 
-void ufsf_device_check(struct ufs_hba *hba)
+int ufsf_device_check(struct ufs_hba *hba)
 {
 	struct ufsf_feature *ufsf = &hba->ufsf;
 	int ret, lun;
@@ -291,14 +291,15 @@ void ufsf_device_check(struct ufs_hba *hba)
 
 	ret = ufsf_read_dev_desc(ufsf, UFSFEATURE_SELECTOR);
 	if (ret)
-		return;
+		return ret;
 
 	ret = ufsf_read_geo_desc(ufsf, UFSFEATURE_SELECTOR);
 	if (ret)
-		return;
+		return ret;
 
 	seq_scan_lu(lun)
 		ufsf_read_unit_desc(ufsf, lun, UFSFEATURE_SELECTOR);
+	return 0;
 }
 
 static int ufsf_execute_dev_ctx_req(struct ufsf_feature *ufsf,
