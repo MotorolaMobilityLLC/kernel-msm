@@ -487,6 +487,7 @@ static int ipa3_qmi_send_req_wait(struct qmi_handle *client_handle,
 		return ret;
 	}
 
+	mutex_lock(&ipa3_qmi_lock);
 	ret = qmi_send_request(client_handle,
 		&ipa3_qmi_ctx->server_sq,
 		&txn,
@@ -494,6 +495,13 @@ static int ipa3_qmi_send_req_wait(struct qmi_handle *client_handle,
 		req_desc->max_msg_len,
 		req_desc->ei_array,
 		req);
+
+	if (unlikely(!ipa_q6_clnt)) {
+		mutex_unlock(&ipa3_qmi_lock);
+		return -EINVAL;
+	}
+
+	mutex_unlock(&ipa3_qmi_lock);
 
 	if (ret < 0) {
 		qmi_txn_cancel(&txn);
@@ -1934,6 +1942,7 @@ void ipa3_qmi_service_exit(void)
 
 	/* qmi-client */
 
+	mutex_lock(&ipa3_qmi_lock);
 	/* Release client handle */
 	if (ipa_q6_clnt != NULL) {
 		qmi_handle_release(ipa_q6_clnt);
@@ -1946,7 +1955,6 @@ void ipa3_qmi_service_exit(void)
 	}
 
 	/* clean the QMI msg cache */
-	mutex_lock(&ipa3_qmi_lock);
 	if (ipa3_qmi_ctx != NULL) {
 		vfree(ipa3_qmi_ctx);
 		ipa3_qmi_ctx = NULL;
