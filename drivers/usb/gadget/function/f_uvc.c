@@ -320,10 +320,8 @@ uvc_function_set_alt(struct usb_function *f, unsigned interface, unsigned alt)
 		if (uvc->state != UVC_STATE_STREAMING)
 			return 0;
 
-		if (uvc->video.ep) {
-			uvcg_video_enable(&uvc->video, 0);
+		if (uvc->video.ep)
 			usb_ep_disable(uvc->video.ep);
-		}
 
 		memset(&v4l2_event, 0, sizeof(v4l2_event));
 		v4l2_event.type = UVC_EVENT_STREAMOFF;
@@ -340,7 +338,6 @@ uvc_function_set_alt(struct usb_function *f, unsigned interface, unsigned alt)
 			return -EINVAL;
 
 		uvcg_info(f, "reset UVC\n");
-		uvcg_video_enable(&uvc->video, 0);
 		usb_ep_disable(uvc->video.ep);
 
 		ret = config_ep_by_speed(f->config->cdev->gadget,
@@ -366,8 +363,6 @@ uvc_function_disable(struct usb_function *f)
 	struct v4l2_event v4l2_event;
 
 	uvcg_info(f, "%s()\n", __func__);
-
-	uvcg_video_enable(&uvc->video, 0);
 
 	memset(&v4l2_event, 0, sizeof(v4l2_event));
 	v4l2_event.type = UVC_EVENT_DISCONNECT;
