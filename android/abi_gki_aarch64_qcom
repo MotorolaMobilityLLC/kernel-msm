@@ -455,6 +455,7 @@
   devm_platform_ioremap_resource
   devm_power_supply_get_by_phandle
   devm_power_supply_register
+  devm_pwm_get
   devm_pwm_put
   devm_regmap_add_irq_chip
   devm_regmap_del_irq_chip
@@ -1469,6 +1470,8 @@
   __memset_io
   memunmap
   memweight
+  mfd_add_devices
+  mfd_remove_devices
   mii_check_media
   mii_ethtool_get_link_ksettings
   mii_ethtool_gset
