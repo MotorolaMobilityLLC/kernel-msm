@@ -135,7 +135,7 @@ static int uvcg_video_ep_queue(struct uvc_video *video, struct usb_request *req)
 			 ret);
 
 		/* Isochronous endpoints can't be halted. */
-		if (usb_endpoint_xfer_bulk(video->ep->desc))
+		if (video->ep->desc && usb_endpoint_xfer_bulk(video->ep->desc))
 			usb_ep_set_halt(video->ep);
 	}
 
@@ -280,8 +280,11 @@ static void uvcg_video_pump(struct work_struct *work)
 
 		video->encode(req, video, buf);
 
-		/* Queue the USB request */
-		ret = uvcg_video_ep_queue(video, req);
+		ret = -EINVAL;
+		if (video->ep->enabled) {
+			/* Queue the USB request */
+			ret = uvcg_video_ep_queue(video, req);
+		}
 		spin_unlock_irqrestore(&queue->irqlock, flags);
 
 		if (ret < 0) {
