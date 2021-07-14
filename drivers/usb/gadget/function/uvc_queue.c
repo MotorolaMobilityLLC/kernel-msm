@@ -171,7 +171,6 @@ int uvcg_queue_buffer(struct uvc_video_queue *queue, struct v4l2_buffer *buf)
 		return ret;
 
 	spin_lock_irqsave(&queue->irqlock, flags);
-	ret = (queue->flags & UVC_QUEUE_PAUSED) != 0;
 	queue->flags &= ~UVC_QUEUE_PAUSED;
 	spin_unlock_irqrestore(&queue->irqlock, flags);
 	return ret;
