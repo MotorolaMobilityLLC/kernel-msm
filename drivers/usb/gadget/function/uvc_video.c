@@ -279,13 +279,13 @@ static void uvcg_video_pump(struct work_struct *work)
 		}
 
 		video->encode(req, video, buf);
+		spin_unlock_irqrestore(&queue->irqlock, flags);
 
 		ret = -EINVAL;
 		if (video->ep->enabled) {
 			/* Queue the USB request */
 			ret = uvcg_video_ep_queue(video, req);
 		}
-		spin_unlock_irqrestore(&queue->irqlock, flags);
 
 		if (ret < 0) {
 			uvcg_queue_cancel(queue, 0);
