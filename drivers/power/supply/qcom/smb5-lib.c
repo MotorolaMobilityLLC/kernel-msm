@@ -6024,10 +6024,14 @@ static int mmi_qc3p_kthread_handler(void *param)
 		else
 			chg->mmi_qc3p_power = QTI_POWER_SUPPLY_QC3P_NONE;
 
-		if (chg->mmi_qc3p_power != QTI_POWER_SUPPLY_QC3P_NONE)
+		if (chg->mmi_qc3p_power != QTI_POWER_SUPPLY_QC3P_NONE) {
 			chg->qc3p5_detected = true;
-		smblib_update_usb_type(chg);
-		power_supply_changed(chg->usb_psy);
+			smblib_update_usb_type(chg);
+			power_supply_changed(chg->usb_psy);
+		} else {
+			smblib_err(chg, "qc3p power is invalid, rerun qc3p detect\n");
+			mmi_rerun_qc3p_det(chg);
+		}
 
 		smblib_dbg(chg, PR_MISC, "V_aut:%dms %dmV,V_power=%dms %dmV,Power =%d\n",
 			jiffies_to_msecs(j1), v_aut, jiffies_to_msecs(j2),  v_power, chg->mmi_qc3p_power);
