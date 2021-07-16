@@ -706,11 +706,13 @@ static int adsp_probe(struct platform_device *pdev)
 				      &fw_name);
 	if (ret < 0 && ret != -EINVAL)
 		return ret;
-
+/*
 	if (desc->minidump_id)
 		ops = &adsp_minidump_ops;
+*/
 
 	rproc = rproc_alloc(&pdev->dev, pdev->name, ops, fw_name, sizeof(*adsp));
+	rproc->dump_conf = RPROC_COREDUMP_ENABLED;
 
 	if (!rproc) {
 		dev_err(&pdev->dev, "unable to allocate remoteproc\n");
