@@ -178,6 +178,7 @@ static int
 uvc_video_free_requests(struct uvc_video *video)
 {
 	unsigned int i;
+	unsigned long flags;
 
 	for (i = 0; i < UVC_NUM_REQUESTS; ++i) {
 		if (video->req[i]) {
@@ -191,7 +192,9 @@ uvc_video_free_requests(struct uvc_video *video)
 		}
 	}
 
+	spin_lock_irqsave(&video->req_lock, flags);
 	INIT_LIST_HEAD(&video->req_free);
+	spin_unlock_irqrestore(&video->req_lock, flags);
 	video->req_size = 0;
 	return 0;
 }
@@ -202,6 +205,7 @@ uvc_video_alloc_requests(struct uvc_video *video)
 	unsigned int req_size;
 	unsigned int i;
 	int ret = -ENOMEM;
+	unsigned long flags;
 
 	BUG_ON(video->req_size);
 
@@ -223,7 +227,9 @@ uvc_video_alloc_requests(struct uvc_video *video)
 		video->req[i]->complete = uvc_video_complete;
 		video->req[i]->context = video;
 
+		spin_lock_irqsave(&video->req_lock, flags);
 		list_add_tail(&video->req[i]->list, &video->req_free);
+		spin_unlock_irqrestore(&video->req_lock, flags);
 	}
 
 	video->req_size = req_size;
