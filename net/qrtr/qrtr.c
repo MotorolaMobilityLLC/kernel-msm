@@ -155,6 +155,7 @@ static DEFINE_SPINLOCK(qrtr_port_lock);
 #define QRTR_BACKUP_HI_SIZE	SZ_16K
 #define QRTR_BACKUP_LO_NUM	20
 #define QRTR_BACKUP_LO_SIZE	SZ_1K
+
 static struct sk_buff_head qrtr_backup_lo;
 static struct sk_buff_head qrtr_backup_hi;
 static struct work_struct qrtr_backup_work;
@@ -203,6 +204,8 @@ struct qrtr_node {
 
 	struct wakeup_source *ws;
 	void *ilc;
+
+	u32 nonwake_svc[MAX_NON_WAKE_SVC_LEN];
 };
 
 struct qrtr_tx_flow_waiter {
@@ -851,7 +854,9 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	size_t size;
 	unsigned int ver;
 	size_t hdrlen;
-	int errcode;
+	int errcode, i;
+	bool wake = true;
+	int svc_id;
 
 	if (len == 0 || len & 3)
 		return -EINVAL;
@@ -954,6 +959,19 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 		if (node->nid != 9 && node->nid != 5)
 			pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
 
+		if (node->nid == 5) {
+			svc_id = qrtr_get_service_id(cb->src_node, cb->src_port);
+			if (svc_id > 0) {
+				for (i = 0; i < MAX_NON_WAKE_SVC_LEN; i++) {
+					if (svc_id == node->nonwake_svc[i]) {
+						wake = false;
+						break;
+					}
+				}
+			}
+			if (wake)
+				pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
+		}
 		qrtr_port_put(ipc);
 	}
 
@@ -1162,7 +1180,7 @@ static void qrtr_hello_work(struct kthread_work *work)
  * The specified endpoint must have the xmit function pointer set on call.
  */
 int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
-			   bool rt)
+			   bool rt, u32 *svc_arr)
 {
 	struct qrtr_node *node;
 	struct sched_param param = {.sched_priority = 1};
@@ -1192,6 +1210,9 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
 	}
 	if (rt)
 		sched_setscheduler(node->task, SCHED_FIFO, &param);
+
+	if (svc_arr)
+		memcpy(node->nonwake_svc, svc_arr, MAX_NON_WAKE_SVC_LEN * sizeof(int));
 
 	mutex_init(&node->qrtr_tx_lock);
 	INIT_RADIX_TREE(&node->qrtr_tx_flow, GFP_KERNEL);
