@@ -31,7 +31,7 @@
 
 #include "peripheral-loader.h"
 #include "../../misc/qseecom_kernel.h"
-//#include "pil_slate_intf.h"
+#include "slatecom_rpmsg.h"
 
 #define SLATECOM "slate_com_dev"
 
@@ -95,7 +95,14 @@ struct slatedaemon_priv {
 	unsigned long attrs;
 	u32 cmd_status;
 	struct device *platform_dev;
+	bool slatecom_rpmsg;
+	bool slate_resp_cmplt;
+	void *lhndl;
+	wait_queue_head_t link_state_wait;
+	char rx_buf[20];
+	struct mutex glink_mutex;
 };
+static void *slatecom_intf_drv;
 
 struct slate_event {
 	enum slate_event_type e_type;
@@ -180,6 +187,104 @@ static int send_uevent(struct slate_event *pce)
 	snprintf(event_string, ARRAY_SIZE(event_string),
 			"SLATE_EVENT=%d", pce->e_type);
 	return kobject_uevent_env(&dev_ret->kobj, KOBJ_CHANGE, envp);
+}
+
+void slatecom_intf_notify_glink_channel_state(bool state)
+{
+	struct slatedaemon_priv *dev =
+		container_of(slatecom_intf_drv, struct slatedaemon_priv, lhndl);
+
+	pr_debug("%s: slate_ctrl channel state: %d\n", __func__, state);
+	dev->slatecom_rpmsg = state;
+}
+EXPORT_SYMBOL(slatecom_intf_notify_glink_channel_state);
+
+void slatecom_rx_msg(void *data, int len)
+{
+	struct slatedaemon_priv *dev =
+		container_of(slatecom_intf_drv, struct slatedaemon_priv, lhndl);
+
+	dev->slate_resp_cmplt = true;
+	wake_up(&dev->link_state_wait);
+	memcpy(dev->rx_buf, data, len);
+}
+EXPORT_SYMBOL(slatecom_rx_msg);
+
+static int slatecom_tx_msg(struct slatedaemon_priv *dev, void  *msg, size_t len)
+{
+	int rc = 0;
+	uint8_t resp = 0;
+
+	mutex_lock(&dev->glink_mutex);
+	if (!dev->slatecom_rpmsg) {
+		pr_err("slatecom-rpmsg is not probed yet, waiting for it to be probed\n");
+		goto err_ret;
+	}
+	rc = slatecom_rpmsg_tx_msg(msg, len);
+
+	/* wait for sending command to SLATE */
+	rc = wait_event_timeout(dev->link_state_wait,
+			(rc == 0), msecs_to_jiffies(TIMEOUT_MS));
+	if (rc == 0) {
+		pr_err("failed to send command to SLATE %d\n", rc);
+		goto err_ret;
+	}
+
+	/* wait for getting response from SLATE */
+	rc = wait_event_timeout(dev->link_state_wait,
+			dev->slate_resp_cmplt,
+				 msecs_to_jiffies(TIMEOUT_MS));
+	if (rc == 0) {
+		pr_err("failed to get SLATE response %d\n", rc);
+		goto err_ret;
+	}
+	dev->slate_resp_cmplt = false;
+	/* check SLATE response */
+	resp = *(uint8_t *)dev->rx_buf;
+	if (!(resp == 0x01)) {
+		pr_err("Bad SLATE response\n");
+		rc = -EINVAL;
+		goto err_ret;
+	}
+	rc = 0;
+
+err_ret:
+	mutex_unlock(&dev->glink_mutex);
+	return rc;
+}
+
+/**
+ * send_state_change_cmd send state transition event to Slate
+ * and wait for the response.
+ * The response is returned to the caller.
+ */
+static int send_state_change_cmd(struct slate_ui_data *ui_obj_msg)
+{
+	int ret = 0;
+	struct wear_header wear_header_t = {0, 0};
+	struct slatedaemon_priv *dev = container_of(slatecom_intf_drv,
+					struct slatedaemon_priv,
+					lhndl);
+	uint32_t state = ui_obj_msg->cmd;
+
+	switch (state) {
+	case STATE_TWM_ENTER:
+		wear_header_t.opcode = GMI_WEAR_MGR_ENTER_TWM;
+		break;
+	case STATE_DS_ENTER:
+		wear_header_t.opcode = GMI_WEAR_MGR_ENTER_TRACKER_DS;
+		break;
+	case STATE_DS_EXIT:
+		wear_header_t.opcode = GMI_WEAR_MGR_EXIT_TRACKER_DS;
+		break;
+	default:
+		pr_err("Invalid MSM State transtion cmd\n");
+		break;
+	}
+	ret = slatecom_tx_msg(dev, &wear_header_t.opcode, sizeof(wear_header_t.opcode));
+	if (ret < 0)
+		pr_err("MSM State transtion event cmd failed\n");
+	return ret;
 }
 
 static int slatecom_char_open(struct inode *inode, struct file *file)
@@ -381,6 +486,16 @@ static long slate_com_ioctl(struct file *filp,
 			slate_soft_reset();
 		}
 		ret = 0;
+		break;
+	case DEVICE_STATE_TRANSITION:
+		if (copy_from_user(&ui_obj_msg, (void __user *)arg,
+					sizeof(ui_obj_msg))) {
+			pr_err("The copy from user failed for state transition cmd\n");
+			ret = -EFAULT;
+		}
+		ret = send_state_change_cmd(&ui_obj_msg);
+		if (ret < 0)
+			pr_err("device state transition cmd failed\n");
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
