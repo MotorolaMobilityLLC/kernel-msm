@@ -65,3 +65,5 @@ blocklist rcutorture
 blocklist mmrm_test_module
 blocklist q5drv_linux
 blocklist limits_stat
+blocklist fpc1020_mmi
+blocklist goodix_fod_mmi
