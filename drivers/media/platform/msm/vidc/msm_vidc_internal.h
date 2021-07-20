@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -500,6 +500,7 @@ struct msm_vidc_inst {
 	struct work_struct batch_work;
 	bool decode_batching;
 	u32 max_filled_length;
+	bool operating_rate_set;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
