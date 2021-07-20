@@ -176,7 +176,7 @@ static int qcom_mhi_qrtr_probe(struct mhi_device *mhi_dev,
 
 	dev_set_drvdata(&mhi_dev->dev, qdev);
 
-	rc = qrtr_endpoint_register(&qdev->ep, net_id, rt);
+	rc = qrtr_endpoint_register(&qdev->ep, net_id, rt, NULL);
 	if (rc)
 		return rc;
 
