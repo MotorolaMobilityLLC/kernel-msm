@@ -64,6 +64,7 @@ function sanity_check_abi() {
 }
 append_cmd POST_DEFCONFIG_CMDS 'sanity_check_abi'
 
+TARGET_PRODUCT_TYPE=${TARGET_PRODUCT#*_}
 function build_defconfig_fragments() {
 	if [[ "${VARIANT}" =~ ^(gki|consolidate)$ ]]; then
 		apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/${MSM_ARCH}_GKI.config vendor/${MSM_ARCH}-gki_defconfig
@@ -71,6 +72,9 @@ function build_defconfig_fragments() {
 			return
 		fi
 		GKI_BUILD_CONFIG=common/build.config.gki-debug.aarch64
+		if [ "$TARGET_PRODUCT_TYPE" = "factory" ]; then
+			return
+		fi
 		GKI_GKI_DEFCONFIG_FRAGMENT=common/build.config.gki_consolidate.aarch64
 		# ABI comparison isn't applicable on consolidate variant
 		unset ABI_DEFINITION
