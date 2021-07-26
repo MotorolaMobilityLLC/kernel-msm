@@ -25,7 +25,7 @@ function add_moto_defconfig_fragments() {
 			fi
 		fi
 
-		if [ "${VARIANT}" = gki ]; then
+		if [ "${VARIANT}" = gki -o "$TARGET_PRODUCT_TYPE" = "factory" ]; then
 			return
 		fi
 
