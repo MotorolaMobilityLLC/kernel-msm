@@ -889,7 +889,7 @@ int smblib_set_aicl_cont_threshold(struct smb_chg_param *param,
  ********************/
 /* MMI CP channels */
 static const char * const smblib_mmi_cp_ext_iio_chan[] = {
-	[SC8549_INPUT_VOLTAGE_NOW] = "sc8549_input_voltage_now",
+	[CP_INPUT_VOLTAGE_NOW] = "cp_input_voltage_now",
 };
 
 /* CP channels */
@@ -5916,7 +5916,7 @@ static int mmi_get_vbus(struct smb_charger *chg)
 	if (!is_mmi_cp_available(chg))
 		return 0;
 
-	rc = smblib_read_iio_prop(chg, MMI_CP, SC8549_INPUT_VOLTAGE_NOW,
+	rc = smblib_read_iio_prop(chg, MMI_CP, CP_INPUT_VOLTAGE_NOW,
 				&val);
 	if (!rc)
 		return val;
