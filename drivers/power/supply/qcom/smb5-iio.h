@@ -42,7 +42,7 @@ enum qg_chg_iio_channels {
 };
 
 enum mmi_cp_iio_channels {
-	SC8549_INPUT_VOLTAGE_NOW,
+	CP_INPUT_VOLTAGE_NOW,
 };
 
 enum cp_iio_channels {
