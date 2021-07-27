@@ -3102,6 +3102,11 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 		goto unload_exit;
 	}
 
+	if (!memcmp(data->client.app_name, "prov", strlen("prov"))) {
+		pr_debug("Do not unload prov app from tz\n");
+		goto unload_exit;
+	}
+
 	ret = __qseecom_cleanup_app(data);
 	if (ret && !app_crash) {
 		pr_err("cleanup app failed, pending ioctl:%d\n", data->ioctl_count);
