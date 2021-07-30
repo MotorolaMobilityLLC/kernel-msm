@@ -800,7 +800,6 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 	int rc, aicl_threshold;
 	u8 vbus_allowance = FORCE_NULL;
 
-#ifdef QCOM_BASE
 	if (chg->chg_param.smb_version == PMI632)
 		return 0;
 
@@ -834,14 +833,6 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 				rc);
 		return rc;
 	}
-
-#else
-	if (chg->pd_active && (chg->pd_contract_uv <= 0)) {
-		cancel_delayed_work(&chg->pd_contract_work);
-		schedule_delayed_work(&chg->pd_contract_work,
-					msecs_to_jiffies(0));
-	}
-#endif
 
 	if (vbus_allowance != CONTINUOUS)
 		return 0;
@@ -4823,8 +4814,6 @@ int smblib_set_prop_pd_voltage_max(struct smb_charger *chg,
 	max_uv = max(val, chg->voltage_min_uv);
 	if (chg->voltage_max_uv == max_uv)
 		return 0;
-	else if (chg->pd_active)
-		chg->pd_contract_uv = 0;
 
 	rc = smblib_set_usb_pd_fsw(chg, max_uv);
 	if (rc < 0) {
@@ -4894,11 +4883,6 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 			if (rc < 0)
 				dev_err(chg->dev, "Couldn't enable secondary charger rc=%d\n",
 					rc);
-		}
-		if (chg->pd_contract_uv <= 0) {
-			cancel_delayed_work(&chg->pd_contract_work);
-			schedule_delayed_work(&chg->pd_contract_work,
-						msecs_to_jiffies(0));
 		}
 	} else {
 		vote(chg->usb_icl_votable, PD_VOTER, false, 0);
@@ -6718,7 +6702,6 @@ static void typec_src_removal(struct smb_charger *chg)
 	chg->voltage_max_uv = MICRO_5V;
 	chg->usbin_forced_max_uv = 0;
 	chg->chg_param.forced_main_fcc = 0;
-	chg->pd_contract_uv = 0;
 	chg->typec_apsd_rerun_done = false;
 
 	/* Reset all CC mode votes */
@@ -7617,72 +7600,6 @@ int smblib_set_prop_pr_swap_in_progress(struct smb_charger *chg,
 /***************
  * Work Queues *
  ***************/
-#define MAX_INPUT_PWR_UW 18000000
-static void smblib_pd_contract_work(struct work_struct *work)
-{
-	struct smb_charger *chg = container_of(work, struct smb_charger,
-					       pd_contract_work.work);
-	int rc, max_ua;
-
-	if (!chg->pd) {
-		chg->pd = devm_usbpd_get_by_phandle(chg->dev,
-						    "qcom,usbpd-phandle");
-		if (IS_ERR_OR_NULL(chg->pd)) {
-			pr_err("Error getting the pd phandle %ld\n",
-				PTR_ERR(chg->pd));
-			chg->pd = NULL;
-		}
-	}
-	if (!chg->pd || !chg->pd_active)
-		return;
-
-	if (!chg->pd_voltage_max_uv) {
-		rc = of_property_read_u32(chg->dev->of_node,
-				"qcom,pd-voltage-max-uv",
-				&chg->pd_voltage_max_uv);
-		if (rc < 0) {
-			chg->pd_voltage_max_uv = MICRO_5V;
-			smblib_err(chg, "Failed to get pd_voltage_max_uv"
-						"from device tree, rc = %d\n", rc);
-		}
-
-		if (chg->pd_voltage_max_uv < MICRO_5V)
-			chg->pd_voltage_max_uv = MICRO_5V;
-		else if (chg->pd_voltage_max_uv > MICRO_12V)
-			chg->pd_voltage_max_uv = MICRO_12V;
-	}
-	chg->voltage_max_uv = chg->pd_voltage_max_uv;
-
-	chg->pd_contract_uv = usbpd_select_pdo_match(chg->pd);
-
-	if (chg->pd_contract_uv == -ENOTSUPP)
-		return;
-
-	if (chg->pd_contract_uv <= 0) {
-		schedule_delayed_work(&chg->pd_contract_work,
-				      msecs_to_jiffies(100));
-		return;
-	} else
-		power_supply_changed(chg->usb_psy);
-
-	if (chg->pd_contract_uv >= MICRO_9V)
-		smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_9V);
-	else
-		smblib_set_opt_switcher_freq(chg, chg->chg_freq.freq_5V);
-
-	max_ua = (MAX_INPUT_PWR_UW / (chg->pd_contract_uv / 1000)) * 1000;
-
-	if (get_client_vote(chg->usb_icl_votable, PD_VOTER) > 0)
-		max_ua = min(max_ua, get_client_vote(chg->usb_icl_votable, PD_VOTER));
-
-	smblib_err(chg, "smblib_pd_contract_work: %d uV, %d uA\n",
-		   chg->pd_contract_uv, max_ua);
-
-	rc = vote(chg->usb_icl_votable, PD_VOTER, true, max_ua);
-	if (rc < 0)
-		smblib_err(chg, "Error setting %d uA rc=%d\n", max_ua, rc);
-}
-
 static void smblib_pr_lock_clear_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -8759,7 +8676,6 @@ int smblib_init(struct smb_charger *chg)
 					smblib_pr_swap_detach_work);
 	INIT_DELAYED_WORK(&chg->pr_lock_clear_work,
 					smblib_pr_lock_clear_work);
-	INIT_DELAYED_WORK(&chg->pd_contract_work, smblib_pd_contract_work);
 	 if (chg->mmi_qc3p_support) {
 		chg->mmi_qc3p_authen_task = kthread_create(mmi_qc3p_kthread_handler, chg,
 			"mmi_qc3p_authen", "mmi_qc3p_authen_task", chg);
