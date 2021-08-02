@@ -7427,6 +7427,8 @@ static void ufshcd_wb_probe(struct ufs_hba *hba, u8 *desc_buf)
 		goto wb_disabled;
 	}
 
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		goto wb_disabled;
 	/*
 	 * WB may be supported but not configured while provisioning.
 	 * The spec says, in dedicated wb buffer mode,
