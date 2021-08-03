@@ -45,16 +45,22 @@
 #include <linux/blk-pm.h>
 #include <asm/unaligned.h>
 #include <linux/blkdev.h>
+#if defined(CONFIG_UFSFEATURE)
+#include "ufsfeature.h"
+#endif
 #include "ufshcd.h"
 #include "ufs_quirks.h"
 #include "unipro.h"
 #include "ufs-sysfs.h"
 #include "ufs_bsg.h"
+
 #include "ufshcd-crypto.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/ufs.h>
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+#include "ufshpb_toshiba_if.h"
+#endif
 #define UFSHCD_ENABLE_INTRS	(UTP_TRANSFER_REQ_COMPL |\
 				 UTP_TASK_REQ_COMPL |\
 				 UFSHCD_ERROR_MASK)
@@ -2605,13 +2611,19 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	if (likely(lrbp->cmd)) {
 #if defined(CONFIG_UFSFEATURE)
         if (is_support_hpb_200_device(storage_mfrid)){
-		   ufsf_change_lun(&hba->ufsf, lrbp);
-		   ufsf_prep_fn(&hba->ufsf, lrbp);
+		   ufsf_change_lun(hba->ufsf, lrbp);
+		   ufsf_prep_fn(hba->ufsf, lrbp);
         }
 #endif
 		ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags,
 						lrbp->cmd->sc_data_direction);
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+			if (hba->ufshpb_state == HPB_PRESENT)
+				ufshpb_prep_fn_toshiba(hba, lrbp);
+		}
+#endif
 #if defined(CONFIG_SCSI_SKHPB)
         if (is_support_hpb_100_device(storage_mfrid)){
 			if (hba->skhpb_state == SKHPB_PRESENT &&
@@ -5034,7 +5046,7 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid)){
-	    ufsf_slave_configure(&hba->ufsf, sdev);
+	    ufsf_slave_configure(hba->ufsf, sdev);
     }
 #endif
 	blk_queue_update_dma_pad(q, PRDT_DATA_BYTE_COUNT_PAD - 1);
@@ -5043,8 +5055,9 @@ static int ufshcd_slave_configure(struct scsi_device *sdev)
 
 	if (ufshcd_is_rpm_autosuspend_allowed(hba))
 		sdev->rpm_autosuspend = 1;
-#if defined(CONFIG_SCSI_SKHPB)
-    if (is_support_hpb_100_device(storage_mfrid)){
+#if defined(CONFIG_SCSI_SKHPB) || defined(CONFIG_UFSHPB_TOSHIBA)
+    if (is_support_hpb_100_device(storage_mfrid)
+	||  ufshcd_is_hpb_supported(storage_mfrid)){
 		if (sdev->lun < UFS_UPIU_MAX_GENERAL_LUN)
 			hba->sdev_ufs_lu[sdev->lun] = sdev;
 	}
@@ -5181,8 +5194,15 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 #if defined(CONFIG_UFSFEATURE)
            if (is_support_hpb_200_device(storage_mfrid)){
 			   if (scsi_status == SAM_STAT_GOOD)
-				   ufsf_hpb_noti_rb(&hba->ufsf, lrbp);
+				   ufsf_hpb_noti_rb(hba->ufsf, lrbp);
             }
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+		if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+			if (hba->ufshpb_state == HPB_PRESENT &&
+				scsi_status == SAM_STAT_GOOD)
+				ufshpb_rsp_upiu_toshiba(hba, lrbp);
+		}
 #endif
 #if defined(CONFIG_SCSI_SKHPB)
             if (is_support_hpb_100_device(storage_mfrid)){
@@ -6821,6 +6841,12 @@ static int ufshcd_eh_device_reset_handler(struct scsi_cmnd *cmd)
 		}
 	}
 	spin_lock_irqsave(host->host_lock, flags);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+		if (hba->ufshpb_state == HPB_PRESENT)
+			hba->ufshpb_state = HPB_RESET;
+	}
+#endif
 	ufshcd_transfer_req_compl(hba);
 	spin_unlock_irqrestore(host->host_lock, flags);
 
@@ -6828,9 +6854,15 @@ out:
 	hba->req_abort_count = 0;
 	ufshcd_update_reg_hist(&hba->ufs_stats.dev_reset, (u32)err);
 	if (!err) {
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if (ufshcd_is_hpb_supported(storage_mfrid)){
+		schedule_delayed_work(&hba->ufshpb_init_work,
+			msecs_to_jiffies(10));
+	}
+#endif
 #if defined(CONFIG_UFSFEATURE)
         if (is_support_hpb_200_device(storage_mfrid))
-		    ufsf_reset_lu(&hba->ufsf);
+		    ufsf_reset_lu(hba->ufsf);
 #endif
 #if defined(CONFIG_SCSI_SKHPB)
     if (is_support_hpb_100_device(storage_mfrid)){
@@ -7045,7 +7077,7 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 
 #if defined(CONFIG_UFSFEATURE)
        if (is_support_hpb_200_device(storage_mfrid)){
-           ufsf_reset_host(&hba->ufsf);
+           ufsf_reset_host(hba->ufsf);
        }
 #endif
 
@@ -7922,13 +7954,16 @@ static int ufshcd_add_lus(struct ufs_hba *hba)
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid)){
         ufsf_device_check(hba);
-        ufsf_init(&hba->ufsf);
+        ufsf_init(hba->ufsf);
     }
 #endif
 
 out:
 	return ret;
 }
+static unsigned int hpb_init_delay_ms = 0;
+module_param_named(hpb_init_delay_ms, hpb_init_delay_ms, uint, S_IRUGO);
+MODULE_PARM_DESC(hpb_init_delay_ms, "delay in milliseconds to initialize HPB");
 
 /**
  * ufshcd_probe_hba - probe hba to detect device and initialize
@@ -7968,7 +8003,6 @@ reinit:
 	ret = ufshcd_verify_dev_init(hba);
 	if (ret)
 		goto out;
-
 	/* Initiate UFS initialization, and waiting until completion */
 	ret = ufshcd_complete_dev_init(hba);
 	if (ret)
@@ -8045,7 +8079,12 @@ reinit:
 	ufshcd_set_active_icc_lvl(hba);
 
 	ufshcd_wb_config(hba);
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+		schedule_delayed_work(&hba->ufshpb_init_work,
+				msecs_to_jiffies(hpb_init_delay_ms));
+	}
+#endif
 #if defined(CONFIG_SCSI_SKHPB)
      if (is_support_hpb_100_device(storage_mfrid))
 		schedule_delayed_work(&hba->skhpb_init_work, 0);
@@ -8056,7 +8095,7 @@ reinit:
 out:
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid))
-	    ufsf_reset(&hba->ufsf);
+	    ufsf_reset(hba->ufsf);
 #endif
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
@@ -8919,10 +8958,14 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		req_dev_pwr_mode = UFS_POWERDOWN_PWR_MODE;
 		req_link_state = UIC_LINK_OFF_STATE;
 	}
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+		ufshpb_suspend_toshiba(hba);
+	}
+#endif
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid))
-        ufsf_suspend(&hba->ufsf);
+        ufsf_suspend(hba->ufsf);
 #endif
 
 	ret = ufshcd_crypto_suspend(hba, pm_op);
@@ -9063,9 +9106,14 @@ enable_gating:
 	hba->dev_info.b_rpm_dev_flush_capable = false;
 	ufshcd_release(hba);
 	ufshcd_crypto_resume(hba, pm_op);
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+		ufshpb_resume_toshiba(hba);
+	}
+#endif
 #if defined(CONFIG_UFSFEATURE)
    if (is_support_hpb_200_device(storage_mfrid)){
-	   ufsf_resume(&hba->ufsf);
+	   ufsf_resume(hba->ufsf);
    }
 #endif
 out:
@@ -9185,7 +9233,11 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 
 	if (hba->clk_scaling.is_allowed)
 		ufshcd_resume_clkscaling(hba);
-
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+		ufshpb_resume_toshiba(hba);
+	}
+#endif
 	/* Enable Auto-Hibernate if configured */
 	ufshcd_auto_hibern8_enable(hba);
 
@@ -9196,7 +9248,7 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid))
-	    ufsf_resume(&hba->ufsf);
+	    ufsf_resume(hba->ufsf);
 #endif
 #if defined(CONFIG_SCSI_SKHPB)
     if (is_support_hpb_100_device(storage_mfrid))
@@ -9457,9 +9509,14 @@ EXPORT_SYMBOL(ufshcd_shutdown);
  */
 void ufshcd_remove(struct ufs_hba *hba)
 {
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
+		ufshpb_release_toshiba(hba, HPB_NEED_INIT);
+	}
+#endif
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid)){
-	    ufsf_remove(&hba->ufsf);
+	    ufsf_remove(hba->ufsf);
     }
 #endif
 	ufs_bsg_remove(hba);
@@ -9737,8 +9794,12 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid)){
-	    ufsf_set_init_state(&hba->ufsf);
+	    ufsf_set_init_state(hba->ufsf);
     }
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	if(ufshcd_is_hpb_supported(storage_mfrid))
+		ufshcd_init_hpb_toshiba(hba);
 #endif
 #if defined(CONFIG_SCSI_SKHPB)
     if (is_support_hpb_100_device(storage_mfrid)){
