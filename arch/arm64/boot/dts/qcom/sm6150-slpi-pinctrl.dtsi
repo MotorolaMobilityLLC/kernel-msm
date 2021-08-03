@@ -40,7 +40,7 @@
 				config {
 					pins = "gpio0", "gpio1";
 					drive-strength = <2>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -68,7 +68,7 @@
 				config {
 					pins = "gpio2", "gpio3";
 					drive-strength = <2>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -96,7 +96,7 @@
 				config {
 					pins = "gpio8", "gpio9";
 					drive-strength = <2>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -124,7 +124,7 @@
 				config {
 					pins = "gpio16", "gpio17";
 					drive-strength = <2>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -152,7 +152,7 @@
 				config {
 					pins = "gpio16", "gpio17";
 					drive-strength = <2>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -180,7 +180,7 @@
 				config {
 					pins = "gpio14", "gpio15";
 					drive-strength = <2>;
-					bias-pull-down;
+					bias-pull-up;
 				};
 			};
 		};
@@ -211,8 +211,8 @@
 				config {
 					pins = "gpio2", "gpio3", "gpio4",
 								"gpio5";
-					drive-strength = <2>;
-					bias-pull-down;
+					drive-strength = <6>;
+					bias-disable;
 				};
 			};
 		};
@@ -243,8 +243,8 @@
 				config {
 					pins = "gpio8", "gpio9", "gpio10",
 								"gpio11";
-					drive-strength = <2>;
-					bias-pull-down;
+					drive-strength = <6>;
+					bias-disable;
 				};
 			};
 		};
@@ -271,7 +271,7 @@
 			config {
 				pins = "gpio23";
 				drive-strength = <2>;
-				bias-pull-down;
+				bias-disable;
 			};
 		};
 
@@ -297,7 +297,7 @@
 			config {
 				pins = "gpio24";
 				drive-strength = <2>;
-				bias-pull-down;
+				bias-disable;
 			};
 		};
 
@@ -375,7 +375,7 @@
 			config {
 				pins = "gpio26";
 				drive-strength = <2>;
-				bias-pull-down;
+				bias-disable;
 			};
 		};
 
@@ -505,7 +505,7 @@
 			config {
 				pins = "gpio22";
 				drive-strength = <2>;
-				bias-pull-down;
+				bias-disable;
 			};
 		};
 
