@@ -29,6 +29,8 @@ static int lpd_repeat_flag = 0;
 extern bool fsa4480_rsbux_low(int r_thr);
 extern int fsa4480_enable_lpd(bool enable);
 #endif
+void send_vbus_present_uevent(struct smb_charger *chg, bool enable);
+void send_lpd_present_uevent(struct smb_charger *chg, bool present);
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
 #define QC3P_AUTHEN_TIMEOUT_MS	30
 #define QC3P_AUTHEN_USB_ICL_MA	500000
@@ -1590,6 +1592,7 @@ static int smblib_set_moisture_protection(struct smb_charger *chg,
 
 	if (enable) {
 		chg->moisture_present = true;
+		send_lpd_present_uevent(chg,chg->moisture_present);
 
 		/* Disable uUSB factory mode detection */
 		rc = smblib_masked_write(chg, TYPEC_U_USB_CFG_REG,
@@ -1630,6 +1633,7 @@ static int smblib_set_moisture_protection(struct smb_charger *chg,
 		vote(chg->usb_icl_votable, MOISTURE_VOTER, true, 0);
 	} else {
 		chg->moisture_present = false;
+		send_lpd_present_uevent(chg,chg->moisture_present);
 		vote(chg->usb_icl_votable, MOISTURE_VOTER, false, 0);
 
 		/* Enable moisture detection and uUSB state change interrupt */
@@ -5747,6 +5751,8 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 	smblib_set_opt_switcher_freq(chg, vbus_rising ? chg->chg_freq.freq_5V :
 						chg->chg_freq.freq_removal);
 
+	smblib_err(chg, "battery supply smblib_usb_plugin_locked\n");
+
 	if (vbus_rising) {
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
 		vote(chg->awake_votable, DETACH_DETECT_VOTER, false, 0);
@@ -5764,6 +5770,8 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER, false, 0);
 
+		send_vbus_present_uevent(chg, true);
+
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
 		schedule_delayed_work(&chg->pl_enable_work,
@@ -5772,6 +5780,8 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 #ifdef CONFIG_QC3P_PUMP_SUPPORT
 		chg->mmi_qc3p_rerun_done = false;
 #endif
+		send_vbus_present_uevent(chg, false);
+
 		/* Disable SW Thermal Regulation */
 		rc = smblib_set_sw_thermal_regulation(chg, false);
 		if (rc < 0)
@@ -6413,6 +6423,140 @@ detect_fail:
 }
 #endif
 
+static bool __mmi_ps_is_supplied_by(struct power_supply *supplier,
+                                        struct power_supply *supply)
+{
+        int i;
+
+        if (!supply->supplied_from && !supplier->supplied_to)
+                return false;
+
+        /* Support both supplied_to and supplied_from modes */
+        if (supply->supplied_from) {
+                if (!supplier->desc->name)
+                        return false;
+                for (i = 0; i < supply->num_supplies; i++)
+                        if (!strcmp(supplier->desc->name,
+                                    supply->supplied_from[i]))
+                                return true;
+        } else {
+                if (!supply->desc->name)
+                        return false;
+                for (i = 0; i < supplier->num_supplicants; i++)
+                        if (!strcmp(supplier->supplied_to[i],
+                                    supply->desc->name))
+                                return true;
+        }
+
+        return false;
+}
+
+static int __mmi_ps_changed(struct device *dev, void *data)
+{
+        struct power_supply *psy = data;
+        struct power_supply *pst = dev_get_drvdata(dev);
+
+        if (__mmi_ps_is_supplied_by(psy, pst)) {
+                if (pst->desc->external_power_changed)
+                        pst->desc->external_power_changed(pst);
+        }
+
+        return 0;
+}
+
+static void mmi_power_supply_changed(struct power_supply *psy,
+                                         char *envp_ext[])
+{
+        dev_err(&psy->dev, "%s: %s\n", __func__, envp_ext[0]);
+
+        class_for_each_device(power_supply_class, NULL, psy,
+                              __mmi_ps_changed);
+        atomic_notifier_call_chain(&power_supply_notifier,
+                        PSY_EVENT_PROP_CHANGED, psy);
+        kobject_uevent_env(&psy->dev.kobj, KOBJ_CHANGE, envp_ext);
+}
+
+#define CHG_SHOW_MAX_SIZE 50
+static char *present_status[] = {"false","true"};
+
+void send_vbus_present_uevent(struct smb_charger *chg, bool enable)
+{
+	struct power_supply *batt_psy;
+	char *chrg_rate_string = NULL;
+	char *envp[2];
+
+
+	batt_psy = power_supply_get_by_name("battery");
+	if(!batt_psy){
+		smblib_err(chg, "battery supply get fail\n");
+		return;
+	}
+
+	chrg_rate_string = kmalloc(CHG_SHOW_MAX_SIZE, GFP_KERNEL);
+        if (!chrg_rate_string) {
+                smblib_err(chg,  "usb_source_change_irq_handler: Failed to Get Uevent Mem\n");
+                envp[0] = NULL;
+			return;
+        }
+
+	if(enable) {
+                        scnprintf(chrg_rate_string, CHG_SHOW_MAX_SIZE,
+                                  "POWER_SUPPLY_VBUS_PRESENT=%s",
+                                  present_status[1]);
+                        envp[0] = chrg_rate_string;
+                        envp[1] = NULL;
+	}else {
+                        scnprintf(chrg_rate_string, CHG_SHOW_MAX_SIZE,
+                                  "POWER_SUPPLY_VBUS_PRESENT=%s",
+                                  present_status[0]);
+                        envp[0] = chrg_rate_string;
+                        envp[1] = NULL;
+	}
+	smblib_err(chg, "vbus_present:%d \n", enable);
+
+	mmi_power_supply_changed(batt_psy, envp);
+	kfree(chrg_rate_string);
+}
+
+void send_lpd_present_uevent(struct smb_charger *chg, bool present)
+{
+	struct power_supply *batt_psy;
+	char *lpd_state_string = NULL;
+	char *envp[2];
+
+	smblib_err(chg, "lpd_present:%d\n",present);
+
+	batt_psy = power_supply_get_by_name("battery");
+	if(!batt_psy){
+		smblib_err(chg, "battery supply get fail\n");
+		return;
+	}
+
+	lpd_state_string = kmalloc(CHG_SHOW_MAX_SIZE, GFP_KERNEL);
+        if (!lpd_state_string) {
+                smblib_err(chg,  "usb_source_change_irq_handler: Failed to Get Uevent Mem\n");
+                envp[0] = NULL;
+			return;
+        }
+
+	if(present) {
+                        scnprintf(lpd_state_string, CHG_SHOW_MAX_SIZE,
+                                  "POWER_SUPPLY_LPD_PRESENT=%s",
+                                  present_status[1]);
+                        envp[0] = lpd_state_string;
+                        envp[1] = NULL;
+	}else {
+                        scnprintf(lpd_state_string, CHG_SHOW_MAX_SIZE,
+                                  "POWER_SUPPLY_LPD_PRESENT=%s",
+                                  present_status[0]);
+                        envp[0] = lpd_state_string;
+                        envp[1] = NULL;
+	}
+
+	mmi_power_supply_changed(batt_psy, envp);
+	kfree(lpd_state_string);
+}
+
 irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
@@ -6558,6 +6702,7 @@ static bool lpd_post_recheck(struct smb_charger *chg)
 	if (chg->lpd_retry_count >= LPD_POST_RETRY_CNT_MAX) {
 		chg->lpd_retry_count = 0;
 		chg->moisture_present = false;
+		send_lpd_present_uevent(chg,chg->moisture_present);
 		chg->lpd_stage = LPD_STAGE_NONE;
 		chg->lpd_reason = LPD_NONE;
 		vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
@@ -6663,6 +6808,7 @@ int smblib_enable_moisture_detection(struct smb_charger *chg, bool enable)
 		chg->lpd_reason = LPD_NONE;
 		vote(chg->awake_votable, LPD_VOTER, false, 0);
 		chg->moisture_present = false;
+		send_lpd_present_uevent(chg,chg->moisture_present);
 		vote(chg->usb_icl_votable, LPD_VOTER, false, 0);
 #ifndef QCOM_BASE
 		chg->lpd_retry_count = 0;
@@ -6733,6 +6879,7 @@ static bool smblib_src_lpd(struct smb_charger *chg)
 				pval.intval, rc);
 		chg->lpd_reason = LPD_MOISTURE_DETECTED;
 		chg->moisture_present =  true;
+		send_lpd_present_uevent(chg,chg->moisture_present);
 		vote(chg->usb_icl_votable, LPD_VOTER, true, 0);
 		alarm_start_relative(&chg->lpd_recheck_timer,
 						ms_to_ktime(60000));
@@ -7335,6 +7482,7 @@ irqreturn_t typec_attach_detach_irq_handler(int irq, void *data)
 		} else {
 			chg->sink_src_mode = SINK_MODE;
 			typec_src_insertion(chg);
+			send_vbus_present_uevent(chg, true);
 		}
 
 		rc = typec_partner_register(chg);
@@ -7342,6 +7490,7 @@ irqreturn_t typec_attach_detach_irq_handler(int irq, void *data)
 			smblib_err(chg, "failed to register partner rc =%d\n",
 					rc);
 	} else {
+		send_vbus_present_uevent(chg, false);
 		switch (chg->sink_src_mode) {
 		case SRC_MODE:
 			typec_sink_removal(chg);
@@ -8775,6 +8924,7 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 
 		chg->lpd_reason = LPD_MOISTURE_DETECTED;
 		chg->moisture_present =  true;
+		send_lpd_present_uevent(chg,chg->moisture_present);
 		vote(chg->usb_icl_votable, LPD_VOTER, true, 0);
 		power_supply_changed(chg->usb_psy);
 
