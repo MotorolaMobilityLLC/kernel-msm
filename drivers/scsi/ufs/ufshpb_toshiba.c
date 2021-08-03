@@ -270,7 +270,7 @@ void ufshpb_prep_fn_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	unsigned int rq_sectors = blk_rq_sectors(rq);
 	unsigned long flags;
 
-	if (hba->ufshpb_state != HPB_PRESENT)
+	if (hba->ufshpb_state != TOSHIBA_HPB_PRESENT)
 		return;
 	/* WKLU could not be HPB-LU */
 	if (lrbp->lun >= UFS_UPIU_MAX_GENERAL_LUN)
@@ -495,7 +495,7 @@ static void ufshpb_map_req_compl_fn(struct request *rq, blk_status_t status)
 	cb = hpb->region_tbl + map_req->region;
 	map_req->RSP_endio = ktime_to_ns(ktime_get());
 
-	if (hba->ufshpb_state != HPB_PRESENT)
+	if (hba->ufshpb_state != TOSHIBA_HPB_PRESENT)
 		goto free_map_req;
 
 	if (!status) {
@@ -1028,7 +1028,7 @@ static void ufshpb_rsp_map_cmd_req(struct ufshpb_lu *hpb,
 	return;
 
 wakeup_ee_worker:
-	hpb->hba->ufshpb_state = HPB_FAILED;
+	hpb->hba->ufshpb_state = TOSHIBA_HPB_FAILED;
 	schedule_work(&hpb->hba->ufshpb_eh_work);
 }
 
@@ -1079,7 +1079,7 @@ void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	int data_seg_len, num, blk_idx;
 	unsigned long flags;
 
-	if (hba->ufshpb_state != HPB_PRESENT)
+	if (hba->ufshpb_state != TOSHIBA_HPB_PRESENT)
 		return;
 	data_seg_len = be32_to_cpu(lrbp->ucd_rsp_ptr->header.dword_2)
 		& MASK_RSP_UPIU_DATA_SEG_LEN;
@@ -1474,7 +1474,7 @@ static void ufshpb_retry_work_handler(struct work_struct *work)
 
 wakeup_ee_worker:
 	ufshpb_autopm_put_device(hpb);
-	hpb->hba->ufshpb_state = HPB_FAILED;
+	hpb->hba->ufshpb_state = TOSHIBA_HPB_FAILED;
 	schedule_work(&hpb->hba->ufshpb_eh_work);
 }
 
@@ -2055,7 +2055,7 @@ static int ufshpb_get_hpb_lu_desc(struct ufs_hba *hba,
 		SHIFT_BYTE_0(
 			logical_buf[UNIT_DESC_PARAM_LOGICAL_BLK_COUNT + 7]);
 
-	if (logical_buf[UNIT_DESC_PARAM_LU_ENABLE] == LU_HPB_ENABLE)
+	if (logical_buf[UNIT_DESC_PARAM_LU_ENABLE] == TOSHIBA_LU_HPB_ENABLE)
 		lu_desc->lu_hpb_enable = true;
 	else
 		lu_desc->lu_hpb_enable = false;
@@ -2250,16 +2250,16 @@ static int ufshpb_init(struct ufs_hba *hba)
 
 	if (hpb_dev) {
 		INIT_WORK(&hba->ufshpb_eh_work, ufshpb_error_handler);
-		hba->ufshpb_state = HPB_PRESENT;
+		hba->ufshpb_state = TOSHIBA_HPB_PRESENT;
 		pm_runtime_mark_last_busy(hba->dev);
 		pm_runtime_put_noidle(hba->dev);
 		return 0;
 	}
 
 out_free_mem:
-	ufshpb_release_toshiba(hba, HPB_NOT_SUPPORTED);
+	ufshpb_release_toshiba(hba, TOSHIBA_HPB_NOT_SUPPORTED);
 out_state:
-	hba->ufshpb_state = HPB_NOT_SUPPORTED;
+	hba->ufshpb_state = TOSHIBA_HPB_NOT_SUPPORTED;
 	pm_runtime_mark_last_busy(hba->dev);
 	pm_runtime_put_noidle(hba->dev);
 	return ret;
@@ -2383,7 +2383,7 @@ static void ufshpb_probe(struct ufs_hba *hba)
 	}
 	ufshpb_inform_host_reset(hba);
 
-	hba->ufshpb_state = HPB_PRESENT;
+	hba->ufshpb_state = TOSHIBA_HPB_PRESENT;
 }
 
 static void ufshpb_destroy_subregion_tbl(struct ufshpb_lu *hpb,
@@ -2429,7 +2429,7 @@ void ufshpb_release_toshiba(struct ufs_hba *hba, int state)
 {
 	int lun;
 
-	hba->ufshpb_state = HPB_FAILED;
+	hba->ufshpb_state = TOSHIBA_HPB_FAILED;
 
 	for (lun = 0 ; lun < UFS_UPIU_MAX_GENERAL_LUN ; lun++) {
 		struct ufshpb_lu *hpb = hba->ufshpb_lup[lun];
@@ -2472,7 +2472,7 @@ void ufshpb_init_handler_toshiba(struct work_struct *work)
 
 	hba = container_of(dwork, struct ufs_hba, ufshpb_init_work);
 
-	if (hba->ufshpb_state == HPB_NOT_SUPPORTED)
+	if (hba->ufshpb_state == TOSHIBA_HPB_NOT_SUPPORTED)
 		return;
 
 #if defined(CONFIG_SCSI_SCAN_ASYNC)
@@ -2488,13 +2488,13 @@ void ufshpb_init_handler_toshiba(struct work_struct *work)
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 	mutex_unlock(&hba->host->scan_mutex);
 #endif
-	if (hba->ufshpb_state == HPB_NEED_INIT) {
+	if (hba->ufshpb_state == TOSHIBA_HPB_NEED_INIT) {
 		int err = ufshpb_init(hba);
-		if (hba->ufshpb_state == HPB_NOT_SUPPORTED)
+		if (hba->ufshpb_state == TOSHIBA_HPB_NOT_SUPPORTED)
 			pr_info("UFSHPB: run without HPB - err=%d\n", err);
 		else
 			pr_info("UFSHPB: running\n");
-	} else if (hba->ufshpb_state == HPB_RESET) {
+	} else if (hba->ufshpb_state == TOSHIBA_HPB_RESET) {
 		ufshpb_probe(hba);
 	}
 }
@@ -2504,7 +2504,7 @@ void ufshcd_init_hpb_toshiba(struct ufs_hba *hba)
 {
 	int lun;
 
-	hba->ufshpb_state = HPB_NEED_INIT;
+	hba->ufshpb_state = TOSHIBA_HPB_NEED_INIT;
 	for (lun = 0 ; lun < UFS_UPIU_MAX_GENERAL_LUN ; lun++) {
 		hba->ufshpb_lup[lun] = NULL;
 		hba->sdev_ufs_lu[lun] = NULL;
@@ -2527,7 +2527,7 @@ static void ufshpb_error_handler(struct work_struct *work)
 	dev_warn(hba->dev, "UFSHPB driver runs without UFSHPB\n");
 	dev_warn(hba->dev, "UFSHPB will be removed from the kernel\n");
 
-	ufshpb_release_toshiba(hba, HPB_FAILED);
+	ufshpb_release_toshiba(hba, TOSHIBA_HPB_FAILED);
 }
 
 static void ufshpb_stat_init(struct ufshpb_lu *hpb)
