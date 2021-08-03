@@ -206,13 +206,19 @@ struct ufs_pm_lvl_states ufs_pm_lvl_states[] = {
 static inline int  is_support_hpb_100_device(unsigned int mfrid){
         return IS_SKHYNIX_DEVICE(mfrid);
 }
+
+#else
+static inline int  is_support_hpb_100_device(unsigned int mfrid){
+        return false;
+}
+
 #endif
 #if defined(CONFIG_UFSFEATURE)
 static inline int  is_support_hpb_200_device(unsigned int mfrid){
 #if defined(CONFIG_MICRON_HPB)
-        return  (IS_SAMSUNG_DEVICE(mfrid) || IS_MICRON_DEVICE(mfrid));
+        return  (IS_SAMSUNG_DEVICE(mfrid) || IS_MICRON_DEVICE(mfrid))||IS_TOSHIBA_DEVICE(mfrid);
 #else
-        return  IS_SAMSUNG_DEVICE(mfrid);
+        return  IS_SAMSUNG_DEVICE(mfrid)|| IS_TOSHIBA_DEVICE(mfrid);
 #endif
         return 0;
 }
@@ -325,7 +331,7 @@ static void ufshcd_hba_vreg_set_lpm(struct ufs_hba *hba);
 static void ufshcd_hba_vreg_set_hpm(struct ufs_hba *hba);
 #endif
 static irqreturn_t ufshcd_intr(int irq, void *__hba);
-static int ufshcd_change_power_mode(struct ufs_hba *hba,
+int ufshcd_change_power_mode(struct ufs_hba *hba,
 			     struct ufs_pa_layer_attr *pwr_mode);
 static void ufshcd_schedule_eh_work(struct ufs_hba *hba);
 static int ufshcd_setup_hba_vreg(struct ufs_hba *hba, bool on);
@@ -385,18 +391,19 @@ static inline void ufshcd_wb_config(struct ufs_hba *hba)
 	ufshcd_wb_toggle_flush(hba, true);
 }
 
-static void ufshcd_scsi_unblock_requests(struct ufs_hba *hba)
+void ufshcd_scsi_unblock_requests(struct ufs_hba *hba)
 {
 	if (atomic_dec_and_test(&hba->scsi_block_reqs_cnt))
 		scsi_unblock_requests(hba->host);
 }
+EXPORT_SYMBOL(ufshcd_scsi_unblock_requests);
 
-static void ufshcd_scsi_block_requests(struct ufs_hba *hba)
+void ufshcd_scsi_block_requests(struct ufs_hba *hba)
 {
 	if (atomic_inc_return(&hba->scsi_block_reqs_cnt) == 1)
 		scsi_block_requests(hba->host);
 }
-
+EXPORT_SYMBOL(ufshcd_scsi_block_requests);
 static void ufshcd_add_cmd_upiu_trace(struct ufs_hba *hba, unsigned int tag,
 		const char *str)
 {
@@ -1171,7 +1178,7 @@ static bool ufshcd_is_devfreq_scaling_required(struct ufs_hba *hba,
 	return false;
 }
 
-static int ufshcd_wait_for_doorbell_clr(struct ufs_hba *hba,
+int ufshcd_wait_for_doorbell_clr(struct ufs_hba *hba,
 					u64 wait_timeout_us)
 {
 	unsigned long flags;
@@ -1229,7 +1236,7 @@ out:
 	ufshcd_release(hba);
 	return ret;
 }
-
+EXPORT_SYMBOL(ufshcd_wait_for_doorbell_clr);
 /**
  * ufshcd_scale_gear - scale up/down UFS gear
  * @hba: per adapter instance
@@ -2620,7 +2627,7 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 if ( ufshcd_is_hpb_supported(storage_mfrid) ){
-			if (hba->ufshpb_state == HPB_PRESENT)
+			if (hba->ufshpb_state == TOSHIBA_HPB_PRESENT)
 				ufshpb_prep_fn_toshiba(hba, lrbp);
 		}
 #endif
@@ -4407,7 +4414,7 @@ static int ufshcd_get_max_pwr_mode(struct ufs_hba *hba)
 	return 0;
 }
 
-static int ufshcd_change_power_mode(struct ufs_hba *hba,
+int ufshcd_change_power_mode(struct ufs_hba *hba,
 			     struct ufs_pa_layer_attr *pwr_mode)
 {
 	int ret;
@@ -4491,7 +4498,7 @@ static int ufshcd_change_power_mode(struct ufs_hba *hba,
 
 	return ret;
 }
-
+EXPORT_SYMBOL(ufshcd_change_power_mode);
 /**
  * ufshcd_config_pwr_mode - configure a new power mode
  * @hba: per-adapter instance
@@ -5199,7 +5206,7 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 #endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 		if ( ufshcd_is_hpb_supported(storage_mfrid) ){
-			if (hba->ufshpb_state == HPB_PRESENT &&
+			if (hba->ufshpb_state == TOSHIBA_HPB_PRESENT &&
 				scsi_status == SAM_STAT_GOOD)
 				ufshpb_rsp_upiu_toshiba(hba, lrbp);
 		}
@@ -5903,7 +5910,6 @@ static bool ufshcd_quirk_dl_nac_errors(struct ufs_hba *hba)
 {
 	unsigned long flags;
 	bool err_handling = true;
-
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	/*
 	 * UFS_DEVICE_QUIRK_RECOVERY_FROM_DL_NAC_ERRORS only workaround the
@@ -6843,8 +6849,8 @@ static int ufshcd_eh_device_reset_handler(struct scsi_cmnd *cmd)
 	spin_lock_irqsave(host->host_lock, flags);
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
-		if (hba->ufshpb_state == HPB_PRESENT)
-			hba->ufshpb_state = HPB_RESET;
+		if (hba->ufshpb_state == TOSHIBA_HPB_PRESENT)
+			hba->ufshpb_state = TOSHIBA_HPB_RESET;
 	}
 #endif
 	ufshcd_transfer_req_compl(hba);
@@ -8003,6 +8009,7 @@ reinit:
 	ret = ufshcd_verify_dev_init(hba);
 	if (ret)
 		goto out;
+
 	/* Initiate UFS initialization, and waiting until completion */
 	ret = ufshcd_complete_dev_init(hba);
 	if (ret)
@@ -9511,7 +9518,7 @@ void ufshcd_remove(struct ufs_hba *hba)
 {
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	if ( ufshcd_is_hpb_supported(storage_mfrid) ){
-		ufshpb_release_toshiba(hba, HPB_NEED_INIT);
+		ufshpb_release_toshiba(hba, TOSHIBA_HPB_NEED_INIT);
 	}
 #endif
 #if defined(CONFIG_UFSFEATURE)
@@ -9549,6 +9556,12 @@ EXPORT_SYMBOL_GPL(ufshcd_remove);
 void ufshcd_dealloc_host(struct ufs_hba *hba)
 {
 	scsi_host_put(hba->host);
+#if defined(CONFIG_UFSFEATURE)
+	if (hba->ufsf) {
+		kfree(hba->ufsf);
+		hba->ufsf = NULL;
+	}
+#endif
 }
 EXPORT_SYMBOL_GPL(ufshcd_dealloc_host);
 
@@ -9578,6 +9591,9 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 {
 	struct Scsi_Host *host;
 	struct ufs_hba *hba;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature *ufsf = NULL;
+#endif
 	int err = 0;
 
 	if (!dev) {
@@ -9602,7 +9618,15 @@ int ufshcd_alloc_host(struct device *dev, struct ufs_hba **hba_handle)
 	hba->sg_entry_size = sizeof(struct ufshcd_sg_entry);
 
 	INIT_LIST_HEAD(&hba->clk_list_head);
-
+#if defined(CONFIG_UFSFEATURE)
+	ufsf = kzalloc(sizeof(struct ufsf_feature), GFP_KERNEL);
+	if (!ufsf) {
+		dev_err(dev, "ufsf_feature allocation failed");
+		err = -ENOMEM;
+		goto out_error;
+	}
+	hba->ufsf = ufsf;
+#endif
 out_error:
 	return err;
 }

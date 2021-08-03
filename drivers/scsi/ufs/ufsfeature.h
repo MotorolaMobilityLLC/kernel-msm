@@ -44,6 +44,9 @@
 
 #include "ufshpb.h"
 #include "ufstw.h"
+#if defined(CONFIG_UFSHID)
+#include "ufshid.h"
+#endif
 
 /* Version info */
 #define UFSFEATURE_DD_VER			0x010100
@@ -77,7 +80,7 @@
 #define UFSF_QUERY_DESC_UNIT_MAX_SIZE		0x2D
 #define UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE	0x59
 
-#define UFSFEATURE_SELECTOR			0x01
+extern u8 UFSFEATURE_SELECTOR;
 
 /* query_flag  */
 #define MASK_QUERY_UPIU_FLAG_LOC		0xFF
@@ -157,12 +160,17 @@ struct ufsf_feature {
 	struct ufstw_lu *tw_lup[UFS_UPIU_MAX_GENERAL_LUN];
 	atomic_t tw_state;
 #endif
+#if defined(CONFIG_UFSHID)
+	atomic_t hid_state;
+	struct ufshid_dev *hid_dev;
+#endif
 };
 
 struct ufs_hba;
 struct ufshcd_lrb;
 struct ufs_ioctl_query_data;
 
+int is_kioxia_ufs(struct ufs_hba *hba);
 void ufsf_device_check(struct ufs_hba *hba);
 int ufsf_check_query(__u32 opcode);
 int ufsf_query_ioctl(struct ufs_hba *hba, int lun, void __user *buffer,
@@ -186,6 +194,7 @@ void ufsf_remove(struct ufsf_feature *ufsf);
 void ufsf_set_init_state(struct ufsf_feature *ufsf);
 void ufsf_suspend(struct ufsf_feature *ufsf);
 void ufsf_resume(struct ufsf_feature *ufsf);
+void ufsf_on_idle(struct ufsf_feature *ufsf, bool scsi_req);
 
 /* for hpb */
 void ufsf_hpb_noti_rb(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp);
