@@ -152,13 +152,16 @@ enum flag_idn {
 	QUERY_FLAG_IDN_WB_EN                            = 0x0E,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN                 = 0x0F,
 	QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8     = 0x10,
-#if defined(CONFIG_UFSHPB) || defined(CONFIG_SCSI_SKHPB)
+#if defined(CONFIG_UFSHPB) || defined(CONFIG_SCSI_SKHPB)|| defined(CONFIG_UFSHPB_TOSHIBA)
 	QUERY_FLAG_IDN_HPB_RESET                        = 0x11,
 #endif
 #if defined(CONFIG_UFSTW)
 	QUERY_FLAG_IDN_TW_EN                            = 0x0E,
 	QUERY_FLAG_IDN_TW_BUF_FLUSH_EN                  = 0x0F,
 	QUERY_FLAG_IDN_TW_FLUSH_DURING_HIBERN           = 0x10,
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	QUERY_FLAG_IDN_HPB_ENABLE                  = 0x21,
 #endif
 };
 
@@ -529,6 +532,9 @@ enum {
 	MASK_TM_FUNC			= 0xFF,
 #if defined(CONFIG_SCSI_SKHPB)
 	MASK_RSP_UPIU_HPB_UPDATE_ALERT		= 0x20000,
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	MASK_RSP_HPB_UPDATE_ALERT       = 0x20000,
 #endif
 };
 

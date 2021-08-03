@@ -197,6 +197,21 @@ config SCSI_UFS_CRYPTO_QTI
 	 Enabling this allows kernel to use UFS crypto operations defined
 	 and implemented by QTI.
 
+config UFSHPB_TOSHIBA
+	bool "Activate TOSHIBA HPB Host-aware Performance Booster"
+	depends on SCSI_UFSHCD
+	default n
+	help
+	  Activate or deactive TOSHIBA UFSHPB v1.3.5 driver
+
+
+config UFSHID
+	bool "UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	---help---
+	UFS HID Feature Enable
+
+
 config UFSFEATURE
 	bool "UFS feature activate"
 	depends on SCSI_UFSHCD
