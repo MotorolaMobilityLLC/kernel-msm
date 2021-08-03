@@ -14,6 +14,20 @@
 #ifndef _UFSHPB_TOSHIBA_IF_H_
 #define _UFSHPB_TOSHIBA_IF_H_
 #if defined(CONFIG_UFSHPB_TOSHIBA)
+enum UFSHPB_TOSHIBA_STATE {
+        TOSHIBA_HPB_PRESENT = 1,
+        TOSHIBA_HPB_NOT_SUPPORTED = -1,
+        TOSHIBA_HPB_FAILED = -2,
+        TOSHIBA_HPB_NEED_INIT = 0,
+        TOSHIBA_HPB_RESET = -3,
+};
+enum ufshpb_toshiba_lu_set {
+        TOSHIBA_LU_DISABLE      = 0x00,
+        TOSHIBA_LU_ENABLE       = 0x01,
+        TOSHIBA_LU_HPB_ENABLE   = 0x02,
+        TOSHIBA_LU_SET_MAX,
+};
+
 static inline bool ufshcd_is_hpb_supported(unsigned int mfrid){
         return (IS_TOSHIBA_DEVICE(mfrid)) ;
 }
