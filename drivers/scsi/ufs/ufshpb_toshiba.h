@@ -144,13 +144,6 @@ struct ufshpb_config_desc {
 		(u16) SHIFT_BYTE_0(*((u8 *)(p) + (i + 1))))
 #define REGION_UNIT_SIZE(bit_offset)		(0x01 << (bit_offset))
 
-enum UFSHPB_STATE {
-	HPB_PRESENT = 1,
-	HPB_NOT_SUPPORTED = -1,
-	HPB_FAILED = -2,
-	HPB_NEED_INIT = 0,
-	HPB_RESET = -3,
-};
 
 enum HPBREGION_STATE {
 	HPBREGION_INACTIVE,

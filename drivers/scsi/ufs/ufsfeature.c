@@ -38,9 +38,8 @@
 #include "ufsfeature.h"
 #include "ufshcd.h"
 #include "ufs-qcom.h"
-
+u8 UFSFEATURE_SELECTOR = 0x01;
 #define QUERY_REQ_TIMEOUT				1500 /* msec */
-
 static inline void ufsf_init_query(struct ufs_hba *hba,
 				   struct ufs_query_req **request,
 				   struct ufs_query_res **response,
@@ -71,7 +70,8 @@ static int ufsf_query_flag(struct ufs_hba *hba, enum query_opcode opcode,
 
 	ufshcd_hold(hba, false);
 	mutex_lock(&hba->dev_cmd.lock);
-
+	if(IS_TOSHIBA_DEVICE(storage_mfrid))
+		UFSFEATURE_SELECTOR = 0;
 	/*
 	 * Init the query response and request parameters
 	 */
@@ -138,10 +138,13 @@ int ufsf_query_flag_retry(struct ufs_hba *hba, enum query_opcode opcode,
 		else
 			break;
 	}
-	if (ret)
+	if (ret) {
 		dev_err(hba->dev,
 			"%s: query flag, opcode %d, idn %d, failed with error %d after %d retires\n",
 			__func__, opcode, idn, ret, retries);
+		dev_err(hba->dev, "%s: UFS state (POWER = %d LINK = %d)",
+			hba->curr_dev_pwr_mode, hba->uic_link_state);
+	}
 	return ret;
 }
 
@@ -150,7 +153,8 @@ int ufsf_query_attr_retry(struct ufs_hba *hba, enum query_opcode opcode,
 {
 	int ret;
 	int retries;
-
+	if(IS_TOSHIBA_DEVICE(storage_mfrid))
+		UFSFEATURE_SELECTOR = 0;
 	for (retries = 0; retries < UFSF_QUERY_REQ_RETRIES; retries++) {
 		ret = ufshcd_query_attr(hba, opcode, idn, idx,
 					UFSFEATURE_SELECTOR, attr_val);
@@ -161,10 +165,13 @@ int ufsf_query_attr_retry(struct ufs_hba *hba, enum query_opcode opcode,
 		else
 			break;
 	}
-	if (ret)
+	if (ret) {
 		dev_err(hba->dev,
 			"%s: query attr, opcode %d, idn %d, failed with error %d after %d retires\n",
 			__func__, opcode, idn, ret, retries);
+		dev_err(hba->dev, "%s: UFS state (POWER = %d LINK = %d)",
+			hba->curr_dev_pwr_mode, hba->uic_link_state);
+	}
 	return ret;
 }
 
@@ -212,10 +219,16 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf, u8 selector)
 
 
 #if defined(CONFIG_UFSHPB)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid))
 	ufshpb_get_dev_info(ufsf, desc_buf);
 #endif
 #if defined(CONFIG_UFSTW)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid))
 	ufstw_get_dev_info(ufsf, desc_buf);
+#endif
+#if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid))
+	ufshid_get_dev_info(ufsf, desc_buf);
 #endif
 	return 0;
 }
@@ -231,12 +244,12 @@ static int ufsf_read_geo_desc(struct ufsf_feature *ufsf, u8 selector)
 		return ret;
 
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_NEED_INIT)
+	if ((ufshpb_get_state(ufsf) == HPB_NEED_INIT) && (!IS_TOSHIBA_DEVICE(storage_mfrid)))
 		ufshpb_get_geo_info(ufsf, geo_buf);
 #endif
 
 #if defined(CONFIG_UFSTW)
-	if (ufstw_get_state(ufsf) == TW_NEED_INIT)
+	if ((ufstw_get_state(ufsf) == TW_NEED_INIT) &&  (!IS_TOSHIBA_DEVICE(storage_mfrid)))
 		ufstw_get_geo_info(ufsf, geo_buf);
 #endif
 	return 0;
@@ -259,18 +272,23 @@ static void ufsf_read_unit_desc(struct ufsf_feature *ufsf, int lun, u8 selector)
 		return;
 
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_NEED_INIT)
+	if ((ufshpb_get_state(ufsf) == HPB_NEED_INIT) && (!IS_TOSHIBA_DEVICE(storage_mfrid)))
 		ufshpb_get_lu_info(ufsf, lun, unit_buf);
 #endif
 
 #if defined(CONFIG_UFSTW)
-	if (ufstw_get_state(ufsf) == TW_NEED_INIT)
+	if ((ufstw_get_state(ufsf) == TW_NEED_INIT) && (!IS_TOSHIBA_DEVICE(storage_mfrid)))
 		ufstw_alloc_lu(ufsf, lun, unit_buf);
 #endif
 out:
 	return;
 }
 
+int is_kioxia_ufs(struct ufs_hba *hba)
+{
+	printk("hba->dev_info.wmanufacturerid = %x UFS_VENDOR_TOSHIBA = %x\n",hba->dev_info.wmanufacturerid,UFS_VENDOR_TOSHIBA);
+	return (hba->dev_info.wmanufacturerid == UFS_VENDOR_TOSHIBA);
+}
 void ufsf_device_check(struct ufs_hba *hba)
 {
 	struct ufsf_feature *ufsf = hba->ufsf;
@@ -278,7 +296,8 @@ void ufsf_device_check(struct ufs_hba *hba)
 	u32 status;
 
 	ufsf->hba = hba;
-
+	if(IS_TOSHIBA_DEVICE(storage_mfrid))
+		UFSFEATURE_SELECTOR = 0;
 	ufshcd_query_attr(ufsf->hba, UPIU_QUERY_OPCODE_READ_ATTR,
 			  QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS, 0, 0, &status);
 	INFO_MSG("UFS FEATURE SELECTOR Dev %d - D/D %d", status,
@@ -545,13 +564,13 @@ inline void ufsf_prep_fn(struct ufsf_feature *ufsf,
 			 struct ufshcd_lrb *lrbp)
 {
 #if defined(CONFIG_UFSHPB)
-	if (ufshpb_get_state(ufsf) == HPB_PRESENT &&
-	    ufsf->issue_ioctl == false)
+	if ((ufshpb_get_state(ufsf) == HPB_PRESENT &&
+	    ufsf->issue_ioctl == false) &&  (!IS_TOSHIBA_DEVICE(storage_mfrid)))
 		ufshpb_prep_fn(ufsf, lrbp);
 #endif
 
 #if defined(CONFIG_UFSTW)
-	if (ufstw_get_state(ufsf) == TW_PRESENT)
+	if ((ufstw_get_state(ufsf) == TW_PRESENT)&&  (!IS_TOSHIBA_DEVICE(storage_mfrid)))
 		ufstw_prep_fn(ufsf, lrbp);
 #endif
 }
@@ -559,6 +578,8 @@ inline void ufsf_prep_fn(struct ufsf_feature *ufsf,
 inline void ufsf_reset_lu(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSTW)
+if(IS_TOSHIBA_DEVICE(storage_mfrid))
+	return;
 	INFO_MSG("run reset_lu.. tw_state(%d) -> TW_RESET",
 		 ufstw_get_state(ufsf));
 	ufstw_set_state(ufsf, TW_RESET);
@@ -569,64 +590,106 @@ inline void ufsf_reset_lu(struct ufsf_feature *ufsf)
 inline void ufsf_reset_host(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)) {
 	INFO_MSG("run reset_host.. hpb_state(%d) -> HPB_RESET",
 		 ufshpb_get_state(ufsf));
 	if (ufshpb_get_state(ufsf) == HPB_PRESENT)
 		ufshpb_reset_host(ufsf);
+}
 #endif
 
 #if defined(CONFIG_UFSTW)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)) {
 	INFO_MSG("run reset_host.. tw_state(%d) -> TW_RESET",
 		 ufstw_get_state(ufsf));
 	if (ufstw_get_state(ufsf) == TW_PRESENT)
 		ufstw_reset_host(ufsf);
+}
+#endif
+#if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid)) {
+	INFO_MSG("run reset_host.. hid_state(%d) -> HID_RESET",
+		 ufshid_get_state(ufsf));
+	if (ufshid_get_state(ufsf) == HID_PRESENT)
+		ufshid_reset_host(ufsf);
+}
 #endif
 }
 
 inline void ufsf_init(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufshpb_get_state(ufsf) == HPB_NEED_INIT) {
 		INFO_MSG("init start.. hpb_state (%d)", HPB_NEED_INIT);
 		schedule_work(&ufsf->hpb_init_work);
 	}
+}
 #endif
 
 #if defined(CONFIG_UFSTW)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufstw_get_state(ufsf) == TW_NEED_INIT)
 		ufstw_init(ufsf);
+}
+#endif
+#if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+	if (ufshid_get_state(ufsf) == HID_NEED_INIT)
+		ufshid_init(ufsf);
+}
 #endif
 }
 
 inline void ufsf_reset(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufshpb_get_state(ufsf) == HPB_RESET) {
 		INFO_MSG("reset start.. hpb_state %d", HPB_RESET);
 		ufshpb_reset(ufsf);
 	}
+}
 #endif
 
 #if defined(CONFIG_UFSTW)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufstw_get_state(ufsf) == TW_RESET &&
 	    !ufsf->hba->pm_op_in_progress) {
 		INFO_MSG("reset start.. tw_state %d",
 			 ufstw_get_state(ufsf));
 		ufstw_reset(ufsf, false);
 	}
+}
+#endif
+#if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+	if (ufshid_get_state(ufsf) == HID_RESET)
+		ufshid_reset(ufsf);
+}
 #endif
 }
 
 inline void ufsf_remove(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufshpb_get_state(ufsf) == HPB_PRESENT)
 		ufshpb_remove(ufsf, HPB_NEED_INIT);
+}
 #endif
 
 #if defined(CONFIG_UFSTW)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufstw_get_state(ufsf) == TW_PRESENT)
 		ufstw_remove(ufsf);
+}
+#endif
+#if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+	if (ufshid_get_state(ufsf) == HID_PRESENT)
+		ufshid_remove(ufsf);
+}
 #endif
 }
 
@@ -635,12 +698,19 @@ inline void ufsf_set_init_state(struct ufsf_feature *ufsf)
 	ufsf->slave_conf_cnt = 0;
 	ufsf->issue_ioctl = false;
 #if defined(CONFIG_UFSHPB)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	ufshpb_set_state(ufsf, HPB_NEED_INIT);
 	INIT_WORK(&ufsf->hpb_init_work, ufshpb_init_handler);
 	init_waitqueue_head(&ufsf->hpb_wait);
+}
 #endif
 #if defined(CONFIG_UFSTW)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid))
 	ufstw_set_state(ufsf, TW_NEED_INIT);
+#endif
+#if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid))
+	ufshid_set_state(ufsf, HID_NEED_INIT);
 #endif
 }
 
@@ -652,28 +722,51 @@ inline void ufsf_suspend(struct ufsf_feature *ufsf)
 	 * in this case, ufshpb state already had been changed to SUSPEND state.
 	 * so, we will not call ufshpb_suspend.
 	 */
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufshpb_get_state(ufsf) == HPB_PRESENT)
 		ufshpb_suspend(ufsf);
+}
+#endif
+#if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+	if (ufshid_get_state(ufsf) == HID_PRESENT){
+		ufshid_suspend(ufsf);
+	}
+}
 #endif
 }
 
 inline void ufsf_resume(struct ufsf_feature *ufsf)
 {
 #if defined(CONFIG_UFSHPB)
+if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 	if (ufshpb_get_state(ufsf) == HPB_SUSPEND ||
 	    ufshpb_get_state(ufsf) == HPB_PRESENT) {
 		if (ufshpb_get_state(ufsf) == HPB_PRESENT)
 			WARN_MSG("warning.. hpb state PRESENT in resuming");
 		ufshpb_resume(ufsf);
 	}
+}
 #endif
 
 #if defined(CONFIG_UFSTW)
-	if (ufstw_get_state(ufsf) == TW_RESET)
+	if ((ufstw_get_state(ufsf) == TW_RESET) && (!IS_TOSHIBA_DEVICE(storage_mfrid)))
 		ufstw_reset(ufsf, true);
+#endif
+#if defined(CONFIG_UFSHID)
+	if((ufshid_get_state(ufsf) == HID_SUSPEND)&& (IS_TOSHIBA_DEVICE(storage_mfrid)))
+		ufshid_resume(ufsf);
 #endif
 }
 
+inline void ufsf_on_idle(struct ufsf_feature *ufsf, bool scsi_req)
+{
+#if defined(CONFIG_UFSHID)
+	if (ufshid_get_state(ufsf) == HID_PRESENT &&
+	    !ufsf->hba->outstanding_reqs && scsi_req)
+		ufshid_on_idle(ufsf);
+#endif
+}
 
 inline void ufsf_change_lun(struct ufsf_feature *ufsf,
 			    struct ufshcd_lrb *lrbp)
