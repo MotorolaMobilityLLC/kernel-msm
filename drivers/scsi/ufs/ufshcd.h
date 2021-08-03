@@ -73,9 +73,6 @@
 #include "ufs_quirks.h"
 #include "ufshci.h"
 
-#if defined(CONFIG_UFSFEATURE)
-#include "ufsfeature.h"
-#endif
 
 #if defined(CONFIG_SCSI_SKHPB)
 #include "ufshpb_skh.h"
@@ -89,6 +86,7 @@ extern unsigned int storage_mfrid;
 #define IS_SAMSUNG_DEVICE(mfrid)   (UFS_VENDOR_SAMSUNG == (mfrid))
 #define IS_SKHYNIX_DEVICE(mfrid)   (UFS_VENDOR_SKHYNIX == (mfrid))
 #define IS_MICRON_DEVICE(mfrid)    (UFS_VENDOR_MICRON == (mfrid))
+#define IS_TOSHIBA_DEVICE(mfrid)   (UFS_VENDOR_TOSHIBA == (mfrid))
 
 struct ufs_hba;
 
@@ -1043,7 +1041,7 @@ struct ufs_hba {
 	u8 skhpb_quicklist_lu_enable[UFS_UPIU_MAX_GENERAL_LUN];
 #endif
 
-#if defined(CONFIG_SCSI_SKHPB)
+#if defined(CONFIG_SCSI_SKHPB)|| defined(CONFIG_UFSHPB_TOSHIBA)
 	struct scsi_device *sdev_ufs_lu[UFS_UPIU_MAX_GENERAL_LUN];
 #endif
 #ifdef CONFIG_SCSI_UFS_CRYPTO
@@ -1060,7 +1058,16 @@ struct ufs_hba {
 	struct delayed_work rpm_dev_flush_recheck_work;
 
 #if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature ufsf;
+		struct ufsf_feature *ufsf;
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)
+	   /* HPB support */
+	   u32 ufshpb_feat;
+	   int ufshpb_state;
+	   int ufshpb_max_regions;
+	   struct delayed_work ufshpb_init_work;
+	   struct ufshpb_lu *ufshpb_lup[UFS_UPIU_MAX_GENERAL_LUN];
+	   struct work_struct ufshpb_eh_work;
 #endif
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
