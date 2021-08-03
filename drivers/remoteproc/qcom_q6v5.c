@@ -19,6 +19,10 @@
 
 #define Q6V5_PANIC_DELAY_MS	200
 
+static char qcom_ssr_reason[256];
+static char *ssr_reason = qcom_ssr_reason;
+module_param(ssr_reason, charp, S_IRUGO);
+
 /**
  * qcom_q6v5_prepare() - reinitialize the qcom_q6v5 context before start
  * @q6v5:	reference to qcom_q6v5 context to be reinitialized
@@ -112,6 +116,8 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 		dev_err(q6v5->dev, "watchdog without message\n");
 
 	q6v5->running = false;
+	strlcpy(qcom_ssr_reason, msg, min((size_t)len, (size_t)sizeof(qcom_ssr_reason)));
+
 	if (q6v5->rproc->recovery_disabled) {
 		schedule_work(&q6v5->crash_handler);
 	} else {
@@ -140,6 +146,8 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 		dev_err(q6v5->dev, "fatal error received: %s\n", msg);
 	else
 		dev_err(q6v5->dev, "fatal error without message\n");
+
+	strlcpy(qcom_ssr_reason, msg, min((size_t)len, (size_t)sizeof(qcom_ssr_reason)));
 
 	q6v5->running = false;
 	if (q6v5->rproc->recovery_disabled) {
