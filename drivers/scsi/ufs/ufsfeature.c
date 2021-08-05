@@ -227,7 +227,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid))
 	ufstw_get_dev_info(ufsf, desc_buf);
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid))
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid))
 	ufshid_get_dev_info(ufsf, desc_buf);
 #endif
 	return 0;
@@ -607,7 +607,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)) {
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)) {
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)) {
 	INFO_MSG("run reset_host.. hid_state(%d) -> HID_RESET",
 		 ufshid_get_state(ufsf));
 	if (ufshid_get_state(ufsf) == HID_PRESENT)
@@ -634,7 +634,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_NEED_INIT)
 		ufshid_init(ufsf);
 }
@@ -663,7 +663,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_RESET)
 		ufshid_reset(ufsf);
 }
@@ -686,7 +686,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_PRESENT)
 		ufshid_remove(ufsf);
 }
@@ -709,7 +709,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid))
 	ufstw_set_state(ufsf, TW_NEED_INIT);
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid))
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid))
 	ufshid_set_state(ufsf, HID_NEED_INIT);
 #endif
 }
@@ -728,7 +728,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_PRESENT){
 		ufshid_suspend(ufsf);
 	}
@@ -754,7 +754,9 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 		ufstw_reset(ufsf, true);
 #endif
 #if defined(CONFIG_UFSHID)
-	if((ufshid_get_state(ufsf) == HID_SUSPEND)&& (IS_TOSHIBA_DEVICE(storage_mfrid)))
+	if((ufshid_get_state(ufsf) == HID_SUSPEND)&& (
+		IS_TOSHIBA_DEVICE(storage_mfrid) ||IS_MICRON_DEVICE(storage_mfrid)
+		))
 		ufshid_resume(ufsf);
 #endif
 }
@@ -762,9 +764,11 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 inline void ufsf_on_idle(struct ufsf_feature *ufsf, bool scsi_req)
 {
 #if defined(CONFIG_UFSHID)
+if(IS_TOSHIBA_DEVICE(storage_mfrid) ||IS_MICRON_DEVICE(storage_mfrid)) {
 	if (ufshid_get_state(ufsf) == HID_PRESENT &&
 	    !ufsf->hba->outstanding_reqs && scsi_req)
 		ufshid_on_idle(ufsf);
+}
 #endif
 }
 
