@@ -162,8 +162,9 @@ enum flag_idn {
 #endif
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 	QUERY_FLAG_IDN_HPB_ENABLE                  = 0x12,
+#endif
+#if defined(CONFIG_UFSHPB_TOSHIBA)  || defined(CONFIG_UFSHID)
 	QUERY_FLAG_IDN_HID_EN               = 0x13
-
 #endif
 };
 
@@ -209,6 +210,10 @@ enum attr_idn {
 #endif
 #if defined(CONFIG_UFSFEATURE)
 	QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS       = 0xFF,
+#endif
+#if defined(CONFIG_UFSHID)
+	QUERY_ATTR_IDN_HID_FRAG_STATUS            = 0x31,
+	QUERY_ATTR_IDN_HID_PROGRESS           = 0x32,
 #endif
 };
 
