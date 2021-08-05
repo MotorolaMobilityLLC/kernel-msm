@@ -118,18 +118,18 @@ static int ufshid_set_flag(struct ufshid_dev *hid, u8 idn)
 {
 	struct ufs_hba *hba = hid->ufsf->hba;
 	int ret = 0;
-
+	bool flag_result;
 	pm_runtime_get_sync(hba->dev);
 
 	ret = ufsf_query_flag_retry(hba, UPIU_QUERY_OPCODE_SET_FLAG, idn, 0,
-				    NULL);
+				    &flag_result);
 
 	if (ret) {
 		ERR_MSG("set flag [0x%.2X] fail. (%d)", idn, ret);
 		goto err_out;
 	}
 
-	HID_DEBUG(hid, "hid_flag set [0x%.2X] ", idn);
+	HID_DEBUG(hid, "hid_flag set [0x%.2X] result [0x%.2X] ", idn, flag_result);
 err_out:
 	pm_runtime_mark_last_busy(hba->dev);
 	pm_runtime_put_noidle(hba->dev);
@@ -216,7 +216,18 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 	u32 attr_val;
 	bool flag_val;
 	int frag_level;
-
+if(IS_MICRON_DEVICE(storage_mfrid)){
+	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &frag_level))
+		return -EINVAL;
+	if (frag_level!= HID_LEV_GREEN){
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+			return -EINVAL;
+		if(attr_val != HID_PROG_ONGOING)
+			ufshid_set_flag(hid, QUERY_FLAG_IDN_HID_EN);
+		return HID_REQUIRED;
+	}else
+		return HID_NOT_REQUIRED;
+} else if(IS_TOSHIBA_DEVICE(storage_mfrid)) {
 	if (ufshid_read_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN,&flag_val))
 		return -EINVAL;
 
@@ -241,14 +252,20 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 				return HID_NOT_REQUIRED;
 		}
 	}
+}
 	return -EINVAL;
 }
 
 static int ufshid_issue_disable(struct ufshid_dev *hid)
 {
+if(IS_MICRON_DEVICE(storage_mfrid)){
+	if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_HID_EN))
+		return -EINVAL;
+	return 0;
+} else if(IS_TOSHIBA_DEVICE(storage_mfrid)) {
 	if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
 		return -EINVAL;
-
+}
 	return 0;
 }
 
@@ -766,8 +783,24 @@ static ssize_t ufshid_sysfs_store_debug(struct ufshid_dev *hid, const char *buf,
 static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 {
 	u32 attr_val;
+	bool flag_val;
 	int frag_level;
-
+if(IS_MICRON_DEVICE(storage_mfrid)){
+	if (ufshid_read_flag(hid, QUERY_FLAG_IDN_HID_EN,&flag_val))
+		return -EINVAL;
+	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &attr_val))
+		return -EINVAL;
+	frag_level = attr_val;
+	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+		return -EINVAL;
+		/*Micron only has two levels GRAY & GREEN*/
+	return snprintf(buf, PAGE_SIZE, "%s\n",
+		((frag_level == HID_LEV_GREEN)) ? "GREEN" :
+		((frag_level ==HID_LEV_GRAY)&& (flag_val==0))?"RED":
+		((frag_level == HID_LEV_GRAY) && ((attr_val== HID_PROG_IDLE)||(attr_val== HID_PROG_COMPLETE))) ? "GREEN" :
+		((frag_level == HID_LEV_GRAY) && ((attr_val== HID_PROG_ONGOING)||(attr_val== HID_PROG_STOP))) ? "YELLOW" : "UNKNOWN");
+	return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+} else if(IS_TOSHIBA_DEVICE(storage_mfrid)) {
 	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
 		return -EINVAL;
 
@@ -786,6 +819,8 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 			frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
 
 	return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+}else
+	return -EINVAL;
 }
 
 #if defined(CONFIG_UFSHID_POC)
