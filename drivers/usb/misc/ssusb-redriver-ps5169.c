@@ -177,6 +177,7 @@ struct ps5169_redriver {
 	int ucsi_i2c_write_err;
 	int orientation_gpio;
 	int dp_aux_gpio;
+	int dp_aux_gpio_en;
 };
 
 static const char * const opmode_string[] = {
@@ -310,17 +311,27 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 		 * after dp start link training.
 		 * it should only set alternate_mode flag ???
 		 */
-		if (ps5169->op_mode == OP_MODE_DP)
+		if (ps5169->op_mode == OP_MODE_DP) {
+			gpio_set_value(ps5169->dp_aux_gpio_en, 0);
 			return NOTIFY_OK;
+		}
 		op_mode = OP_MODE_USB3_AND_DP;
 	} else if (info->partner_usb) {
-		if (ps5169->op_mode == OP_MODE_DP)
+		if (ps5169->op_mode == OP_MODE_DP) {
+			gpio_set_value(ps5169->dp_aux_gpio_en, 0);
 			return NOTIFY_OK;
+		}
 		op_mode = OP_MODE_USB3;
 	} else if (info->partner_alternate_mode) {
 		op_mode = OP_MODE_DP;
 	} else
 		op_mode = OP_MODE_NONE;
+
+	if (op_mode == OP_MODE_DP || op_mode == OP_MODE_USB3_AND_DP) {
+		gpio_set_value(ps5169->dp_aux_gpio_en, 0);
+	} else {
+		gpio_set_value(ps5169->dp_aux_gpio_en, 1);
+	}
 
 	if (ps5169->op_mode == op_mode)
 		return NOTIFY_OK;
@@ -526,12 +537,23 @@ static void ssusb_redriver_dp_aux_flip_gpio_init(
 	struct device *dev = ps5169->dev;
 	int rc;
 
+	ps5169->dp_aux_gpio_en = of_get_named_gpio(dev->of_node, "redriver,aux-gpio-en", 0);
+	if (!gpio_is_valid(ps5169->dp_aux_gpio_en)) {
+		dev_err(dev, "Failed to get dp aux gpio en\n");
+		return;
+	}
 	ps5169->dp_aux_gpio = of_get_named_gpio(dev->of_node, "redriver,aux-gpio", 0);
 	if (!gpio_is_valid(ps5169->dp_aux_gpio)) {
 		dev_err(dev, "Failed to get dp aux gpio\n");
 		return;
 	}
 
+	rc = devm_gpio_request(dev, ps5169->dp_aux_gpio_en, "redriver-aux-gpio-en");
+	if (rc < 0) {
+		dev_err(dev, "Failed to request dp aux gpio en\n");
+		ps5169->dp_aux_gpio_en = -EINVAL;
+		return;
+	}
 	rc = devm_gpio_request(dev, ps5169->dp_aux_gpio, "redriver-aux-gpio");
 	if (rc < 0) {
 		dev_err(dev, "Failed to request dp aux gpio\n");
@@ -539,6 +561,12 @@ static void ssusb_redriver_dp_aux_flip_gpio_init(
 		return;
 	}
 
+	rc = gpio_direction_output(ps5169->dp_aux_gpio_en, 1);
+	if (rc < 0) {
+		dev_err(dev, "GPIO %d not set to 1: %d\n",
+			ps5169->dp_aux_gpio_en, rc);
+		return;
+	}
 	rc = gpio_direction_output(ps5169->dp_aux_gpio, 0);
 	if (rc < 0) {
 		dev_err(dev, "GPIO %d not set to 0: %d\n",
