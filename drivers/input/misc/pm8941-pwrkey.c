@@ -20,6 +20,7 @@
 #include <linux/reboot.h>
 #include <linux/regmap.h>
 #include <linux/suspend.h>
+#include <linux/time64.h>
 
 #define PON_REV2			0x01
 
@@ -156,7 +157,20 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 	struct pm8941_pwrkey *pwrkey = _data;
 	unsigned int sts;
 	int err;
+	struct timespec64 timestamp;
+	struct tm tm;
+	char buff[255];
 
+	/* get the time stamp in readable format to print*/
+	ktime_get_real_ts64(&timestamp);
+	time64_to_tm(timestamp.tv_sec, 0, &tm);
+	snprintf(buff, sizeof(buff),
+		"%u-%02d-%02d %02d:%02d:%02d.%06ld UTC",
+		(int) tm.tm_year + 1900, tm.tm_mon + 1,
+		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+		timestamp.tv_nsec);
+
+	pr_info("Enter %s at: %s\n", __func__, buff);
 	if (pwrkey->sw_debounce_time_us) {
 		if (ktime_before(ktime_get(), pwrkey->sw_debounce_end_time)) {
 			dev_dbg(pwrkey->dev,
@@ -171,6 +185,8 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 		return IRQ_HANDLED;
 
 	sts &= pwrkey->data->status_bit;
+	pr_info("pwrkey->code=%d, pwrkey->last_status=0x%02X, sts=0x%02X\n", pwrkey->code,
+		pwrkey->last_status, sts);
 
 	if (pwrkey->sw_debounce_time_us && !sts)
 		pwrkey->sw_debounce_end_time = ktime_add_us(ktime_get(),
