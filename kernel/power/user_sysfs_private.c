@@ -834,9 +834,10 @@ static void pm_suspend_marker(char *annotation)
 	ktime_get_real_ts64(&timestamp);
 	time64_to_tm(timestamp.tv_sec, 0, &tm);
 	snprintf(buff, sizeof(buff),
-		"%u-%02d-%02d %02d:%02d:%02d UTC",
+		"%u-%02d-%02d %02d:%02d:%02d.%06ld UTC",
 		(int) tm.tm_year + 1900, tm.tm_mon + 1,
-		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+		timestamp.tv_nsec);
 
 	pr_info("mmi_suspend_dbg_%s at: %s\n", annotation, buff);
 }
