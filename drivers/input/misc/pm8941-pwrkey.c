@@ -18,6 +18,7 @@
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/regmap.h>
+#include <linux/time64.h>
 
 #define PON_REV2			0x01
 
@@ -146,7 +147,19 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 	unsigned int sts;
 	int error;
 	u64 elapsed_us;
+	struct timespec64 timestamp;
+	struct tm tm;
+	char buff[255];
 
+	/* get the time stamp in readable format to print*/
+	ktime_get_real_ts64(&timestamp);
+	time64_to_tm(timestamp.tv_sec, 0, &tm);
+	snprintf(buff, sizeof(buff),
+		"%u-%02d-%02d %02d:%02d:%02d UTC",
+		(int) tm.tm_year + 1900, tm.tm_mon + 1,
+		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	pr_info("Enter %s at: %s\n", __func__, buff);
 	if (pwrkey->sw_debounce_time_us) {
 		elapsed_us = ktime_us_delta(ktime_get(),
 					    pwrkey->last_release_time);
@@ -163,6 +176,8 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 		return IRQ_HANDLED;
 
 	sts &= pwrkey->data->status_bit;
+	pr_info("pwrkey->code=%d, pwrkey->last_status=0x%02X, sts=0x%02X\n", pwrkey->code,
+		pwrkey->last_status, sts);
 
 	if (pwrkey->sw_debounce_time_us && !sts)
 		pwrkey->last_release_time = ktime_get();
