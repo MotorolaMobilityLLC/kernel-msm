@@ -120,7 +120,7 @@ static int ddr_cdev_probe(struct platform_device *pdev)
 	struct ddr_cdev *ddr_cdev = NULL;
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
-	char cdev_name[THERMAL_NAME_LENGTH] = DDR_CDEV_NAME;
+	char cdev_name[THERMAL_NAME_LENGTH] = "ddr-cdev";
 
 	ddr_cdev = devm_kzalloc(dev, sizeof(*ddr_cdev), GFP_KERNEL);
 	if (!ddr_cdev)
