@@ -186,6 +186,7 @@
   __class_create
   class_destroy
   class_find_device
+  class_for_each_device
   class_create_file_ns
   class_remove_file_ns
   class_interface_unregister
@@ -390,6 +391,7 @@
   device_property_read_u8_array
   device_register
   device_remove_file
+  device_set_of_node_from_dev
   device_set_wakeup_capable
   device_show_int
   device_store_int
@@ -2577,6 +2579,7 @@
   typec_altmode_vdm
   typec_get_drvdata
   typec_partner_register_altmode
+  typec_partner_set_identity
   typec_port_register_altmode
   typec_register_partner
   typec_register_port
