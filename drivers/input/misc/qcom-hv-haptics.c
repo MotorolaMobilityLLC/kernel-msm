@@ -4781,7 +4781,11 @@ static int haptics_probe(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_HAPTIC_POWER_ON
-	schedule_work(&chip->play_work);
+	rc = haptics_start_lra_calibrate(chip);
+	if (rc < 0) {
+		dev_err(chip->dev, "start lra_calibrate failed, rc=%d\n", rc);
+		return rc;
+	}
 #endif
 
 	return 0;
