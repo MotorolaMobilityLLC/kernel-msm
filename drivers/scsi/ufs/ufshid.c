@@ -219,7 +219,7 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 if(IS_MICRON_DEVICE(storage_mfrid)){
 	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &frag_level))
 		return -EINVAL;
-	if (frag_level!= HID_LEV_GREEN){
+	if (frag_level!= HID_LEV_GREEN_MICRON){
 		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
 			return -EINVAL;
 		if(attr_val != HID_PROG_ONGOING)
@@ -783,22 +783,16 @@ static ssize_t ufshid_sysfs_store_debug(struct ufshid_dev *hid, const char *buf,
 static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 {
 	u32 attr_val;
-	bool flag_val;
 	int frag_level;
 if(IS_MICRON_DEVICE(storage_mfrid)){
-	if (ufshid_read_flag(hid, QUERY_FLAG_IDN_HID_EN,&flag_val))
-		return -EINVAL;
 	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &attr_val))
 		return -EINVAL;
 	frag_level = attr_val;
-	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
-		return -EINVAL;
-		/*Micron only has two levels GRAY & GREEN*/
+		/*Micron only has two levels RED & GREEN*/
 	return snprintf(buf, PAGE_SIZE, "%s\n",
-		((frag_level == HID_LEV_GREEN)) ? "GREEN" :
-		((frag_level ==HID_LEV_GRAY)&& (flag_val==0))?"RED":
-		((frag_level == HID_LEV_GRAY) && ((attr_val== HID_PROG_IDLE)||(attr_val== HID_PROG_COMPLETE))) ? "GREEN" :
-		((frag_level == HID_LEV_GRAY) && ((attr_val== HID_PROG_ONGOING)||(attr_val== HID_PROG_STOP))) ? "YELLOW" : "UNKNOWN");
+		((frag_level == HID_LEV_GREEN_MICRON)) ? "GREEN" :
+		((frag_level ==HID_LEV_RED_MICRON))?"RED":"UNKNOWN");
+
 	return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
 } else if(IS_TOSHIBA_DEVICE(storage_mfrid)) {
 	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
