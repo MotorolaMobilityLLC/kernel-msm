@@ -1133,10 +1133,12 @@
   i2c_smbus_read_byte_data
   i2c_smbus_read_byte_data
   i2c_smbus_read_i2c_block_data
+  i2c_smbus_read_word_data
   i2c_smbus_write_byte
   i2c_smbus_write_byte_data
   i2c_smbus_write_byte_data
   i2c_smbus_write_i2c_block_data
+  i2c_smbus_write_word_data
   __i2c_smbus_xfer
   i2c_smbus_xfer
   __i2c_transfer
