@@ -104,6 +104,12 @@ enum {
 };
 
 enum {
+	HID_LEV_GREEN_MICRON  = 0,
+	HID_LEV_RED_MICRON   = 1,
+};
+
+
+enum {
 	HID_LEV_GREEN_KIOXIA	= 0,
 	HID_LEV_YELLOW_KIOXIA	= 1,
 	HID_LEV_RED_KIOXIA	= 2,
