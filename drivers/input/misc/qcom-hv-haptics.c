@@ -2367,6 +2367,7 @@ static int haptics_upload_effect(struct input_dev *dev,
 	switch (effect->type) {
 	case FF_CONSTANT:
 		length_us = effect->replay.length * USEC_PER_MSEC;
+		chip->play_time = effect->replay.length;
 		level = effect->u.constant.level;
 		tmp = get_direct_play_max_amplitude(chip);
 		tmp *= level;
@@ -2474,10 +2475,14 @@ static int haptics_playback(struct input_dev *dev, int effect_id, int val)
 	int rc;
 
 	dev_dbg(chip->dev, "playback val = %d\n", val);
+	hrtimer_cancel(&chip->stop_timer);
 	if (!!val) {
 		rc = haptics_enable_play(chip, true);
 		if (rc < 0)
 			return rc;
+		hrtimer_start(&chip->stop_timer,
+				ms_to_ktime(chip->play_time),
+				HRTIMER_MODE_REL);
 	} else {
 		if (play->pattern_src == FIFO &&
 				atomic_read(&play->fifo_status.is_busy)) {
@@ -4646,6 +4651,7 @@ static enum hrtimer_restart haptics_stop_timer(struct hrtimer *timer)
 					     stop_timer);
 	int rc;
 
+	dev_dbg(chip->dev, "haptics_stop_timer \n");
 	rc = haptics_enable_play(chip, false);
 	if (rc < 0)
 		dev_err(chip->dev, "disable play failed, rc=%d\n");
@@ -4801,6 +4807,9 @@ static int haptics_remove(struct platform_device *pdev)
 	if (chip->pbs_node)
 		of_node_put(chip->pbs_node);
 
+	hrtimer_cancel(&chip->stop_timer);
+	cancel_work_sync(&chip->play_work);
+
 	class_unregister(&chip->hap_class);
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(chip->debugfs_dir);
@@ -4843,6 +4852,7 @@ static int haptics_suspend(struct device *dev)
 		}
 	}
 	mutex_unlock(&play->lock);
+	hrtimer_cancel(&chip->stop_timer);
 
 	rc = haptics_enable_hpwr_vreg(chip, false);
 	if (rc < 0)
