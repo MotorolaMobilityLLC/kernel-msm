@@ -37,7 +37,11 @@ struct qcom_dload {
 
 #define QCOM_DOWNLOAD_BOTHDUMP (QCOM_DOWNLOAD_FULLDUMP | QCOM_DOWNLOAD_MINIDUMP)
 
-static int enable_dump =
+#define DUMP_MODE_NAME_LEN 8
+
+static char dump_mode_name[DUMP_MODE_NAME_LEN];
+
+static bool enable_dump =
 	IS_ENABLED(CONFIG_POWER_RESET_QCOM_DOWNLOAD_MODE_DEFAULT);
 static enum qcom_download_mode current_download_mode = QCOM_DOWNLOAD_NODUMP;
 static enum qcom_download_mode dump_mode = QCOM_DOWNLOAD_BOTHDUMP;
@@ -112,6 +116,8 @@ static int param_set_download_mode(const char *val,
 }
 module_param_call(download_mode, param_set_download_mode, param_get_int,
 			&enable_dump, 0644);
+
+module_param_string(name, dump_mode_name, DUMP_MODE_NAME_LEN, 0644);
 
 /* interface for exporting attributes */
 struct reset_attribute {
@@ -322,6 +328,16 @@ static int qcom_dload_probe(struct platform_device *pdev)
 	}
 
 	poweroff->dload_dest_addr = map_prop_mem("qcom,msm-imem-dload-type");
+
+	if (!strncmp("full", dump_mode_name, DUMP_MODE_NAME_LEN))
+		dump_mode = QCOM_DOWNLOAD_FULLDUMP;
+	else if (!strncmp("mini", dump_mode_name, DUMP_MODE_NAME_LEN))
+		dump_mode = QCOM_DOWNLOAD_MINIDUMP;
+	else if (!strncmp("both", dump_mode_name, DUMP_MODE_NAME_LEN))
+		dump_mode = QCOM_DOWNLOAD_BOTHDUMP;
+	else
+		dump_mode = QCOM_DOWNLOAD_NODUMP;
+
 	msm_enable_dump_mode(enable_dump);
 	dump_mode = qcom_scm_get_download_mode(&temp) ? dump_mode : temp;
 	pr_info("%s: Current dump mode: 0x%x\n", __func__, dump_mode);
