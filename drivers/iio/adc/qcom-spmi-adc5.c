@@ -990,6 +990,8 @@ static const struct adc5_channels adc5_chans_pmic[ADC5_MAX_CHANNEL] = {
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ADC5_GPIO4_100K_PU]	= ADC5_CHAN_TEMP("gpio4_100k_pu", 0,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+	[ADC5_GPIO3_DIV3]		= ADC5_CHAN_VOLT("gpio3_div3", 1,
+					SCALE_HW_CALIB_DEFAULT)
 };
 
 static const struct adc5_channels adc7_chans_pmic[ADC5_MAX_CHANNEL] = {
