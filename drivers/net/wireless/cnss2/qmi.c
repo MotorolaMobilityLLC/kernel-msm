@@ -84,6 +84,7 @@ typedef struct moto_product {
 static moto_product products_list[] = {
 	{"hiphic",	"PRC",	NV_IPA},
 	{"hiphi",	"all",	NV_EPA},
+	{"ironmn",	"all",	NV_EPA}, //IKSWS-2923 Ironmn bdwlan
 	/* Terminator */
 	{{0}, {0}, {0}},
 };
