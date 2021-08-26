@@ -635,6 +635,7 @@ int ipa_pm_init(struct ipa_pm_init_params *params)
 	if (!ipa_pm_ctx->wq) {
 		IPA_PM_ERR("create workqueue failed\n");
 		kfree(ipa_pm_ctx);
+		ipa_pm_ctx = NULL;
 		return -ENOMEM;
 	}
 

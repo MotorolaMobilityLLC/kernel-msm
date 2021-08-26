@@ -356,6 +356,7 @@ static int ipa_uc_ntn_alloc_conn_smmu_info(struct ipa_ntn_setup_info *dest,
 		source->buff_pool_base_sgt);
 	if (result) {
 		kfree(dest->data_buff_list);
+		dest->data_buff_list = NULL;
 		return result;
 	}
 
@@ -363,6 +364,7 @@ static int ipa_uc_ntn_alloc_conn_smmu_info(struct ipa_ntn_setup_info *dest,
 		source->ring_base_sgt);
 	if (result) {
 		kfree(dest->data_buff_list);
+		dest->data_buff_list = NULL;
 		ipa_smmu_free_sgt(&dest->buff_pool_base_sgt);
 		return result;
 	}
@@ -373,6 +375,7 @@ static int ipa_uc_ntn_alloc_conn_smmu_info(struct ipa_ntn_setup_info *dest,
 static void ipa_uc_ntn_free_conn_smmu_info(struct ipa_ntn_setup_info *params)
 {
 	kfree(params->data_buff_list);
+	params->data_buff_list = NULL;
 	ipa_smmu_free_sgt(&params->buff_pool_base_sgt);
 	ipa_smmu_free_sgt(&params->ring_base_sgt);
 }
