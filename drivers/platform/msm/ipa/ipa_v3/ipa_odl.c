@@ -777,6 +777,7 @@ alloc_chrdev0_region_fail:
 	class_destroy(odl_cdev[0].class);
 create_char_dev0_fail:
 	kfree(ipa3_odl_ctx);
+	ipa3_odl_ctx = NULL;
 fail_mem_ctx:
 	return result;
 }
