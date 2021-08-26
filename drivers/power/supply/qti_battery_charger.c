@@ -125,6 +125,11 @@ enum wireless_property_id {
 	WLS_PROP_MAX,
 };
 
+enum wireless_vendor {
+	WLS_IDT,
+	WLS_CPS,
+};
+
 enum {
 	QTI_POWER_SUPPLY_USB_TYPE_HVDCP = 0x80,
 	QTI_POWER_SUPPLY_USB_TYPE_HVDCP_3,
@@ -243,6 +248,7 @@ struct battery_chg_dev {
 	bool				wls_not_supported;
 	bool				wls_fw_update_reqd;
 	u32				wls_fw_version;
+	u32				wls_fw_vendor;
 	u16				wls_fw_crc;
 	u32				wls_fw_update_time_ms;
 	struct notifier_block		reboot_notifier;
@@ -1390,6 +1396,8 @@ static int wireless_fw_check_for_update(struct battery_chg_dev *bcdev,
 
 #define IDT_FW_MAJOR_VER_OFFSET		0x94
 #define IDT_FW_MINOR_VER_OFFSET		0x96
+#define CPS_FW_MAJOR_VER_OFFSET		0xc4
+#define CPS_FW_MINOR_VER_OFFSET		0xc5
 static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 {
 	const struct firmware *fw;
@@ -1445,9 +1453,18 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		goto release_fw;
 	}
 
-	maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
-	min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MINOR_VER_OFFSET));
-	version = maj_ver << 16 | min_ver;
+	if (bcdev->wls_fw_vendor == WLS_CPS) {
+		maj_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MAJOR_VER_OFFSET));
+		maj_ver = maj_ver >> 8;
+		min_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MINOR_VER_OFFSET));
+		min_ver = min_ver >> 8;
+		pr_info("maj_var %#x, min_ver %#x\n", maj_ver, min_ver);
+		version = maj_ver << 16 | min_ver;
+	} else {
+		maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
+		min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MINOR_VER_OFFSET));
+		version = maj_ver << 16 | min_ver;
+	}
 
 	if (force)
 		version = UINT_MAX;
@@ -1947,6 +1964,8 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 	of_property_read_u32(node, "qcom,shutdown-voltage",
 				&bcdev->shutdown_volt_mv);
 
+	if (strstr(bcdev->wls_fw_name, "cps"))
+		bcdev->wls_fw_vendor = WLS_CPS;
 
 	rc = read_property_id(bcdev, pst, BATT_CHG_CTRL_LIM_MAX);
 	if (rc < 0) {
