@@ -12,6 +12,7 @@
 #include "kgsl_device.h"
 #include "kgsl_sharedmem.h"
 #include "kgsl_timeline.h"
+#include "kgsl_trace.h"
 
 struct kgsl_timeline_fence {
 	struct dma_fence base;
@@ -100,6 +101,8 @@ void kgsl_timeline_destroy(struct kref *kref)
 
 	WARN_ON(!list_empty(&timeline->fences));
 
+	trace_kgsl_timeline_destroy(timeline->id);
+
 	kfree(timeline);
 }
 
@@ -145,6 +148,8 @@ static struct kgsl_timeline *kgsl_timeline_alloc(
 	snprintf((char *) timeline->name, sizeof(timeline->name),
 		"kgsl-sw-timeline-%d", id);
 
+	trace_kgsl_timeline_alloc(id, initial);
+
 	spin_lock_init(&timeline->lock);
 	spin_lock_init(&timeline->fence_lock);
 
@@ -176,6 +181,8 @@ static void timeline_fence_release(struct dma_fence *fence)
 		break;
 	}
 	spin_unlock_irqrestore(&timeline->fence_lock, flags);
+
+	trace_kgsl_timeline_fence_release(f->timeline->id, fence->seqno);
 
 	kgsl_timeline_put(f->timeline);
 	dma_fence_free(fence);
@@ -258,6 +265,8 @@ void kgsl_timeline_signal(struct kgsl_timeline *timeline, u64 seqno)
 	if (seqno < timeline->value)
 		goto unlock;
 
+	trace_kgsl_timeline_signal(timeline->id, seqno);
+
 	timeline->value = seqno;
 
 	spin_lock(&timeline->fence_lock);
@@ -307,6 +316,7 @@ struct dma_fence *kgsl_timeline_fence_alloc(struct kgsl_timeline *timeline,
 	if (!dma_fence_is_signaled_locked(&fence->base))
 		kgsl_timeline_add_fence(timeline, fence);
 
+	trace_kgsl_timeline_fence_alloc(timeline->id, seqno);
 	spin_unlock_irq(&timeline->lock);
 
 	return &fence->base;
@@ -377,6 +387,8 @@ long kgsl_ioctl_timeline_wait(struct kgsl_device_private *dev_priv,
 
 		timeout = msecs_to_jiffies(ktime_to_ms(time));
 	}
+
+	trace_kgsl_timeline_wait(param->flags, param->tv_sec, param->tv_nsec);
 
 	/* secs.nsecs to jiffies */
 	if (!timeout)
