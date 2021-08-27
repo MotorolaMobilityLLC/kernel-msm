@@ -3015,6 +3015,9 @@ static void msm_geni_serial_cons_pm(struct uart_port *uport,
 {
 	struct msm_geni_serial_port *msm_port = GET_DEV_PORT(uport);
 
+	if (unlikely(!uart_console(uport)))
+		return;
+
 	if (new_state == UART_PM_STATE_ON && old_state == UART_PM_STATE_OFF) {
 		se_geni_resources_on(&msm_port->serial_rsc);
 		atomic_set(&msm_port->is_clock_off, 0);
