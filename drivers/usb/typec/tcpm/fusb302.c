@@ -1117,8 +1117,6 @@ static int init_tcpc_dev(struct tcpc_dev *fusb302_tcpc_dev)
 	int ret = 0;
 	struct fusb302_chip *chip = container_of(fusb302_tcpc_dev, struct fusb302_chip,
 						 tcpc_dev);
-	struct device *dev = chip->dev;
-
 	/* Check for fusb302 present */
 	ret = fusb302_sw_reset(chip);
 	if (ret < 0 ) {
