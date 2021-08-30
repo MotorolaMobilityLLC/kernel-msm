@@ -1112,8 +1112,20 @@ done:
 	mutex_unlock(&chip->lock);
 }
 
-static void init_tcpc_dev(struct tcpc_dev *fusb302_tcpc_dev)
+static int init_tcpc_dev(struct tcpc_dev *fusb302_tcpc_dev)
 {
+	int ret = 0;
+	struct fusb302_chip *chip = container_of(fusb302_tcpc_dev, struct fusb302_chip,
+						 tcpc_dev);
+	struct device *dev = chip->dev;
+
+	/* Check for fusb302 present */
+	ret = fusb302_sw_reset(chip);
+	if (ret < 0 ) {
+		fusb302_log(chip, "tcpc_init:fusb302 reset Error, ret=%d", ret);
+		return ret;
+	}
+
 	fusb302_tcpc_dev->init = tcpm_init;
 	fusb302_tcpc_dev->get_vbus = tcpm_get_vbus;
 	fusb302_tcpc_dev->get_current_limit = tcpm_get_current_limit;
@@ -1126,6 +1138,8 @@ static void init_tcpc_dev(struct tcpc_dev *fusb302_tcpc_dev)
 	fusb302_tcpc_dev->set_roles = tcpm_set_roles;
 	fusb302_tcpc_dev->start_toggling = tcpm_start_toggling;
 	fusb302_tcpc_dev->pd_transmit = tcpm_pd_transmit;
+
+	return ret;
 }
 
 static const char * const cc_polarity_name[] = {
@@ -1720,7 +1734,15 @@ static int fusb302_probe(struct i2c_client *client,
 	spin_lock_init(&chip->irq_lock);
 	INIT_WORK(&chip->irq_work, fusb302_irq_work);
 	INIT_DELAYED_WORK(&chip->bc_lvl_handler, fusb302_bc_lvl_handler_work);
-	init_tcpc_dev(&chip->tcpc_dev);
+
+	ret = init_tcpc_dev(&chip->tcpc_dev);
+	if (ret < 0) {
+		ret = -ENODEV;
+		destroy_workqueue(chip->wq);
+		fusb302_log(chip, "fusb302 init ERROR, no device?? ret=%d", ret);
+		return ret;
+	}
+
 	fusb302_debugfs_init(chip);
 
 	if (client->irq) {
