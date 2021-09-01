@@ -2152,7 +2152,6 @@ static int qg_psy_get_property(struct power_supply *psy,
 	int64_t temp = 0;
 
 	pval->intval = 0;
-
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CAPACITY:
 		rc = qg_get_battery_capacity(chip, &pval->intval);
@@ -2183,8 +2182,13 @@ static int qg_psy_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_RESISTANCE:
 		rc = qg_sdam_read(SDAM_RBAT_MOHM, &pval->intval);
-		if (!rc)
-			pval->intval *= 1000;
+		if (!rc) {
+			/* Devices without SDRAM write support,
+			 * will return the fixed resistance value.
+			 */
+			pval->intval ? (pval->intval *= 1000) :
+				(pval->intval = 266000);
+		}
 		break;
 	case POWER_SUPPLY_PROP_RESISTANCE_NOW:
 		pval->intval = chip->esr_last;
