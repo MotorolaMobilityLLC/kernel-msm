@@ -209,7 +209,7 @@ void tlmm_before_sleep_save_configs(void)
 			continue;
 #endif
 		ret = tlmm_get_config(i, &cfg);
-		if (ret < 0)
+		if (ret == -ENODEV)
 			break;
 		output_val = tlmm_get_inout(i);
 
@@ -283,7 +283,7 @@ void tlmm_before_sleep_set_configs(void)
 		pr_debug("%s(), [%d]: 0x%x\n", __func__, i, cfg);
 		if (gpio < TLMM_NUM_GPIO)
 			res = tlmm_set_config(cfg & ~0x40000000);
-		if (res < 0) {
+		if (res == -ENODEV) {
 			pr_debug("Error: Config failed.\n");
 			break;
 		}
@@ -822,6 +822,47 @@ static int tlmm_tz_init(void)
 }
 #endif
 
+#ifdef CONFIG_PM_SLEEP
+static int mmi_suspend_dbg_suspend(struct device *device)
+{
+	pr_debug("%s()...\n", __func__);
+
+	vreg_before_sleep_save_configs();
+	tlmm_before_sleep_set_configs();
+	tlmm_before_sleep_save_configs();
+
+	return 0;
+}
+
+static int mmi_suspend_dbg_resume(struct device *device)
+{
+	pr_debug("%s()...\n", __func__);
+	return 0;
+}
+#else
+#define mmi_suspend_dbg_suspend NULL
+#define mmi_suspend_dbg_resume NULL
+#endif
+
+static const struct dev_pm_ops mmi_dev_pm_ops = {
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(mmi_suspend_dbg_suspend, mmi_suspend_dbg_resume)
+};
+
+static const struct of_device_id mmi_suspend_dbg_match_table[] = {
+	{.compatible = "mmi,suspend_dbg"},
+	{},
+};
+MODULE_DEVICE_TABLE(of, mmi_suspend_dbg_match_table);
+
+static struct platform_driver mmi_suspend_dbg_driver = {
+	.driver = {
+		.name = "mmi_suspend_dbg",
+		.owner = THIS_MODULE,
+		.pm = &mmi_dev_pm_ops,
+		.of_match_table = mmi_suspend_dbg_match_table,
+	},
+};
+
 static int __init sysfs_private_init(void)
 {
 	int result;
@@ -839,7 +880,9 @@ static int __init sysfs_private_init(void)
 	result = tlmm_tz_init();
 	pr_debug("%s(), %d, result=%d\n", __func__, __LINE__, result);
 #endif
-
+	result = platform_driver_register(&mmi_suspend_dbg_driver);
+	if (result)
+		pr_err("mmi_suspend_dbg failed to register driver\n");
 	return result;
 }
 
@@ -849,6 +892,7 @@ static void __exit sysfs_private_exit(void)
 	sysfs_remove_group(sysfs_private_kobj, &private_attr_group);
 
 	kobject_put(sysfs_private_kobj);
+	platform_driver_unregister(&mmi_suspend_dbg_driver);
 }
 
 module_init(sysfs_private_init);
