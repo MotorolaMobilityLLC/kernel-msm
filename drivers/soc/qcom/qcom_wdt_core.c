@@ -104,6 +104,7 @@ out:
 	return pivot;
 }
 
+#ifdef DEBUG
 static void print_irq_stat(struct msm_watchdog_data *wdog_dd)
 {
 	int index;
@@ -130,6 +131,9 @@ static void print_irq_stat(struct msm_watchdog_data *wdog_dd)
 	}
 	pr_cont("\n");
 }
+#else
+static void print_irq_stat(struct msm_watchdog_data *wdog_dd) { }
+#endif
 
 static void compute_irq_stat(struct work_struct *work)
 {
