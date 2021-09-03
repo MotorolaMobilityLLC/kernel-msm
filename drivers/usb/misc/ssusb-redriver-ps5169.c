@@ -194,7 +194,7 @@ static inline int ps5169_redriver_write_reg_bits(struct ps5169_redriver *ps5169,
 		unsigned int reg, unsigned int val, unsigned int mask);
 static void ps5169_config_work_mode(struct ps5169_redriver *ps5169,
 		enum operation_mode mode);
-static void ps5169_config_seqs_init(struct ps5169_redriver *ps5169);
+static int ps5169_config_seqs_init(struct ps5169_redriver *ps5169);
 
 static int ssusb_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 {
@@ -296,6 +296,7 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 		container_of(nb, struct ps5169_redriver, ucsi_nb);
 	struct ucsi_glink_constat_info *info = data;
 	enum operation_mode op_mode;
+	int ret;
 
 	if (info->connect && !info->partner_change)
 		return NOTIFY_DONE;
@@ -354,7 +355,12 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 				 "CC1" : "CC2");
 	}
 	ssusb_redriver_enable_chip(ps5169, true);
-	ps5169_config_seqs_init(ps5169);
+	ret = ps5169_config_seqs_init(ps5169);
+	if (ret) {
+		dev_info(ps5169->dev, "i2c bus may not resume(%d)\n", ret);
+		ps5169->ucsi_i2c_write_err = ret;
+		return NOTIFY_DONE;
+	}
 	ps5169_config_work_mode(ps5169, ps5169->op_mode);
 	return NOTIFY_OK;
 }
@@ -950,13 +956,17 @@ static void ps5169_debugfs_create(struct ps5169_redriver *ps5169)
 			ps5169->debug_root, ps5169, &config_seqs_fops);
 }
 
-static void ps5169_config_seqs_init(struct ps5169_redriver *ps5169)
+static int ps5169_config_seqs_init(struct ps5169_redriver *ps5169)
 {
+	int ret = 0;
+
 	regmap_register_patch(ps5169->regmap,
 		ps5169->config_seqs, ps5169->config_seqs_cnt);
 
-	ps5169_redriver_write_reg_bits(ps5169, PS5169_CONFIG_REG,
+	ret = ps5169_redriver_write_reg_bits(ps5169, PS5169_CONFIG_REG,
 					PS5169_PD_ACTIVE, PS5169_PD_ACTIVE);
+
+	return ret;
 }
 
 static void ps5169_config_work_mode(struct ps5169_redriver *ps5169,
