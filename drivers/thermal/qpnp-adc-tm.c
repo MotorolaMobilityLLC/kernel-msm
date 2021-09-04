@@ -36,6 +36,8 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/thermal.h>
 #include <linux/platform_device.h>
+#include <linux/iio/iio.h>
+#include <linux/iio/consumer.h>
 #include "thermal_core.h"
 
 /* QPNP VADC TM register definition */
@@ -222,6 +224,7 @@ struct qpnp_adc_tm_sensor {
 	uint32_t			high_thr;
 	uint32_t			btm_channel_num;
 	uint32_t			vadc_channel_num;
+	struct iio_channel		*sen_adc;
 	struct workqueue_struct		*req_wq;
 	struct work_struct		work;
 	bool				thermal_node;
@@ -238,7 +241,10 @@ struct qpnp_adc_tm_chip {
 	bool				adc_tm_initialized;
 	bool				adc_tm_recalib_check;
 	int				max_channels_available;
-	struct qpnp_vadc_chip           *vadc_dev;
+	struct iio_channel		*ref_1250v;
+	struct iio_channel		*ref_625mv;
+	struct iio_channel		*ref_vdd;
+	struct iio_channel		*ref_gnd;
 	struct workqueue_struct		*high_thr_wq;
 	struct workqueue_struct		*low_thr_wq;
 	struct workqueue_struct		*thr_wq;
@@ -1313,7 +1319,7 @@ static int qpnp_adc_tm_set_trip_temp(void *data, int low_temp, int high_temp)
 
 	pr_debug("requested a high - %d and low - %d\n",
 			tm_config.high_thr_temp, tm_config.low_thr_temp);
-	rc = qpnp_adc_tm_scale_therm_voltage_pu2(chip->vadc_dev,
+	rc = qpnp_adc_tm_scale_therm_voltage_pu2(chip->adc,
 				chip->adc->adc_prop, &tm_config);
 	if (rc < 0) {
 		pr_err("Failed to lookup the adc-tm thresholds\n");
@@ -1503,6 +1509,7 @@ static int qpnp_adc_tm_recalib_request_check(struct qpnp_adc_tm_chip *chip,
 	uint32_t channel, btm_chan_num, scale_type;
 	struct qpnp_adc_thr_client_info *client_info = NULL;
 	struct list_head *thr_list;
+	struct iio_channel *chan_adc;
 	bool status = false;
 
 	if (!chip->adc_tm_recalib_check) {
@@ -1516,12 +1523,11 @@ static int qpnp_adc_tm_recalib_request_check(struct qpnp_adc_tm_chip *chip,
 		channel = client_info->btm_param->channel;
 		btm_chan_num = chip->sensor[sensor_num].btm_channel_num;
 		sensor_mask = 1 << sensor_num;
+		chan_adc = chip->sensor[sensor_num].sen_adc;
 
-		/*
-		 *rc = qpnp_vadc_read(chip->vadc_dev,channel,&result);
-		 */
+		rc = iio_read_channel_processed(chan_adc, &new_thr);
 		if (rc < 0) {
-			pr_err("failure to read VADC channel=%d\n",
+			pr_err("failure to read IIO channel=%d\n",
 					client_info->btm_param->channel);
 			goto fail;
 		}
@@ -1608,7 +1614,7 @@ static int qpnp_adc_tm_recalib_request_check(struct qpnp_adc_tm_chip *chip,
 			chip->adc->adc_channels[sensor_num].fast_avg_setup;
 		chip->adc->amux_prop->mode_sel =
 			ADC_OP_MEASUREMENT_INTERVAL << QPNP_OP_MODE_SHIFT;
-		adc_tm_rscale_fn[scale_type].chan(chip->vadc_dev,
+		adc_tm_rscale_fn[scale_type].chan(chip->adc,
 				client_info->btm_param,
 				&chip->adc->amux_prop->chan_prop->low_thr,
 				&chip->adc->amux_prop->chan_prop->high_thr);
@@ -2067,17 +2073,17 @@ static irqreturn_t qpnp_adc_tm_low_thr_isr(int irq, void *data)
 
 static int qpnp_adc_read_temp(void *data, int *temp)
 {
-	int rc = 0;
+	struct qpnp_adc_tm_sensor *adc_tm_sensor = data;
+	int rc = 0, degcel = 0;
 
-	/*
-	 *struct qpnp_adc_tm_chip *chip = adc_tm_sensor->chip;
-	 *rc = qpnp_vadc_read(chip->vadc_dev,
-	 *		adc_tm_sensor->vadc_channel_num, &result);
-	 */
-	if (rc)
+	rc = iio_read_channel_processed(adc_tm_sensor->sen_adc, &degcel);
+	if (rc < 0) {
+		pr_err("IIO channel read failed with %d\n", rc);
 		return rc;
+	}
 
-	return rc;
+	*temp = degcel;
+	return 0;
 }
 
 static struct thermal_zone_of_device_ops qpnp_adc_tm_thermal_ops = {
@@ -2142,7 +2148,6 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 		goto fail_unlock;
 	}
 
-
 	amux_prescaling =
 		chip->adc->adc_channels[dt_index].chan_path_prescaling;
 
@@ -2155,7 +2160,6 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 					channel, scale_type, dt_index);
 	param->gain_num = qpnp_vadc_amux_scaling_ratio[amux_prescaling].num;
 	param->gain_den = qpnp_vadc_amux_scaling_ratio[amux_prescaling].den;
-	param->full_scale_code = chip->adc->adc_prop->full_scale_code;
 	chip->adc->amux_prop->amux_channel = channel;
 	chip->adc->amux_prop->decimation =
 			chip->adc->adc_channels[dt_index].adc_decimation;
@@ -2165,7 +2169,7 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 			chip->adc->adc_channels[dt_index].fast_avg_setup;
 	chip->adc->amux_prop->mode_sel =
 		ADC_OP_MEASUREMENT_INTERVAL << QPNP_OP_MODE_SHIFT;
-	adc_tm_rscale_fn[scale_type].chan(chip->vadc_dev, param,
+	adc_tm_rscale_fn[scale_type].chan(chip->adc, param,
 			&chip->adc->amux_prop->chan_prop->low_thr,
 			&chip->adc->amux_prop->chan_prop->high_thr);
 	qpnp_adc_tm_add_to_list(chip, dt_index, param,
@@ -2319,12 +2323,81 @@ static const struct of_device_id qpnp_adc_tm_match_table[] = {
 	{}
 };
 
+
+static int qpnp_adc_tm_measure_ref_points(struct qpnp_adc_tm_chip *chip)
+{
+	int read_1 = 0, read_2 = 0;
+	int ret;
+	struct qpnp_adc_drv *adc = chip->adc;
+
+	ret = iio_read_channel_processed(chip->ref_1250v, &read_1);
+	if (ret < 0)
+		goto err;
+
+	ret = iio_read_channel_processed(chip->ref_625mv, &read_2);
+	if (ret < 0)
+		goto err;
+
+	if (read_1 == read_2) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].dy =
+		read_1 - read_2;
+
+	adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].dx =
+		QPNP_ADC_625_UV;
+
+	adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].adc_vref = read_1;
+	adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].adc_gnd = read_2;
+
+	/* For Ratiometric calibration */
+	read_1 = 0;
+	read_2 = 0;
+
+	ret = iio_read_channel_processed(chip->ref_vdd, &read_1);
+	if (ret < 0)
+		goto err;
+
+	ret = iio_read_channel_processed(chip->ref_gnd, &read_2);
+	if (ret < 0)
+		goto err;
+
+	if (read_1 == read_2) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].dy =
+		read_1 - read_2;
+
+	adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].dx =
+		adc->adc_prop->adc_vdd_reference;
+
+	adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].adc_vref =
+		read_1;
+
+	adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].adc_gnd =
+		read_2;
+
+	pr_debug("Measuring reference points okay\n");
+	return 0;
+
+err:
+	pr_err("Measuring reference points failed\n");
+	return ret;
+}
+
 static int qpnp_adc_tm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node, *child;
+	struct device *dev = &pdev->dev;
 	struct qpnp_adc_tm_chip *chip;
 	struct qpnp_adc_drv *adc_qpnp;
+	struct iio_channel *channels;
 	int32_t count_adc_channel_list = 0, rc, sen_idx = 0, i = 0;
+	int indio_chan_count = 0;
 	bool thermal_node = false;
 	const struct of_device_id *id;
 
@@ -2333,6 +2406,18 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 
 	if (!count_adc_channel_list) {
 		pr_err("No channel listing\n");
+		return -EINVAL;
+	}
+
+	channels = iio_channel_get_all(dev);
+	if (IS_ERR(channels))
+		return PTR_ERR(channels);
+
+	while (channels[indio_chan_count].indio_dev)
+		indio_chan_count++;
+
+	if (indio_chan_count < 4) {
+		dev_err(dev, "Calibration IIO channels missing in main node\n");
 		return -EINVAL;
 	}
 
@@ -2352,6 +2437,35 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 	list_add(&chip->list, &qpnp_adc_tm_device_list);
 	chip->max_channels_available = count_adc_channel_list;
 
+	/* Get all calibration channels */
+	chip->ref_625mv = iio_channel_get(&pdev->dev, "ref_625mv");
+	if (IS_ERR(chip->ref_625mv)) {
+		pr_err("Calib channel ref_625mv unavailable %ld\n",
+					PTR_ERR(chip->ref_625mv));
+		return PTR_ERR(chip->ref_625mv);
+	}
+
+	chip->ref_1250v = iio_channel_get(&pdev->dev, "ref_1250v");
+	if (IS_ERR(chip->ref_1250v)) {
+		pr_err("Calib channel ref_1250v unavailable %ld\n",
+					PTR_ERR(chip->ref_1250v));
+		return PTR_ERR(chip->ref_1250v);
+	}
+
+	chip->ref_vdd = iio_channel_get(&pdev->dev, "ref_vdd");
+	if (IS_ERR(chip->ref_vdd)) {
+		pr_err("Calib channel ref_vdd unavailable %ld\n",
+					PTR_ERR(chip->ref_vdd));
+		return PTR_ERR(chip->ref_vdd);
+	}
+
+	chip->ref_gnd = iio_channel_get(&pdev->dev, "ref_gnd");
+	if (IS_ERR(chip->ref_gnd)) {
+		pr_err("Calib channel ref_gnd unavailable %ld\n",
+					PTR_ERR(chip->ref_gnd));
+		return PTR_ERR(chip->ref_gnd);
+	}
+
 	adc_qpnp = devm_kzalloc(&pdev->dev, sizeof(struct qpnp_adc_drv),
 			GFP_KERNEL);
 	if (!adc_qpnp) {
@@ -2370,9 +2484,10 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 
 	rc = qpnp_adc_get_devicetree_data(pdev, chip->adc);
 	if (rc) {
-		dev_err(&pdev->dev, "failed to read device tree\n");
+		dev_err(&pdev->dev, "Failed to read device tree\n");
 		goto fail;
 	}
+
 	mutex_init(&chip->adc->adc_lock);
 
 	/* Register the ADC peripheral interrupt */
@@ -2398,6 +2513,8 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 	for_each_child_of_node(node, child) {
 		char name[25];
 		int btm_channel_num, timer_select = 0;
+		struct iio_channel *chan_child;
+		const char *name_channel;
 
 		rc = of_property_read_u32(child,
 				"qcom,btm-channel-number", &btm_channel_num);
@@ -2430,6 +2547,26 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 						ADC_MEAS2_INTERVAL_1S;
 		}
 
+		name_channel = of_get_property(child, "label", NULL);
+
+		rc = of_property_match_string(child, "io-channel-names",
+							name_channel);
+		if (rc < 0) {
+			pr_err("IIO channel mismatch with ADC channel name\n");
+			goto fail;
+		}
+
+		/* Get IIO channel for ADC channel node */
+		pdev->dev.of_node = child;
+		chan_child = iio_channel_get(&pdev->dev, name_channel);
+		pdev->dev.of_node = node;
+
+		if (IS_ERR(chan_child)) {
+			pr_err("IIO channel for child unavailable %ld\n",
+							PTR_ERR(chan_child));
+			return PTR_ERR(chan_child);
+		}
+
 		chip->sensor[sen_idx].btm_channel_num = btm_channel_num;
 		chip->sensor[sen_idx].vadc_channel_num =
 				chip->adc->adc_channels[sen_idx].channel_num;
@@ -2437,6 +2574,19 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 		chip->sensor[sen_idx].chip = chip;
 		pr_debug("btm_chan:%x, vadc_chan:%x\n", btm_channel_num,
 			chip->adc->adc_channels[sen_idx].channel_num);
+
+		/* Assign IIO channel to respective sensor */
+		if (chan_child->channel->channel ==
+				chip->adc->adc_channels[sen_idx].channel_num) {
+			chip->sensor[sen_idx].sen_adc = chan_child;
+		} else {
+			pr_err("%s:ADC channel number:%x, IIO channel number:%x, IIO channel doesn't match with ADC sensor\n",
+				__func__,
+				chip->adc->adc_channels[sen_idx].channel_num,
+				chan_child->channel->channel);
+			return -EINVAL;
+		}
+
 		thermal_node = of_property_read_bool(child,
 					"qcom,thermal-node");
 		if (thermal_node) {
@@ -2520,10 +2670,18 @@ static int qpnp_adc_tm_probe(struct platform_device *pdev)
 
 	chip->adc_vote_enable = false;
 	dev_set_drvdata(&pdev->dev, chip);
+
+	/* Read all calibration channels and ref points */
+	rc = qpnp_adc_tm_measure_ref_points(chip);
+	if (rc < 0) {
+		pr_err("Error measuring ref points\n");
+		goto fail;
+	}
+
 	spin_lock_init(&chip->th_info.adc_tm_low_lock);
 	spin_lock_init(&chip->th_info.adc_tm_high_lock);
 
-	pr_debug("OK\n");
+	pr_debug("QPNP ADC TM driver probe OK\n");
 	return 0;
 fail:
 	for_each_child_of_node(node, child) {
