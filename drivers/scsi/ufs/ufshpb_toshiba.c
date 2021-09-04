@@ -1504,7 +1504,6 @@ void ufshpb_suspend_toshiba(struct ufs_hba *hba)
 		if (!hpb) continue;
 		cancel_work_sync(&hpb->ufshpb_work);
 		cancel_delayed_work_sync(&hpb->ufshpb_retry_work);
-		cancel_work_sync(&hpb->ufshpb_map_work);
 	}
 }
 
@@ -1512,9 +1511,6 @@ void ufshpb_resume_toshiba(struct ufs_hba *hba)
 {
 	struct ufshpb_lu *hpb;
 	int lun;
-	unsigned long flags;
-	bool do_map_work;
-
 	for (lun=0; lun < UFS_UPIU_MAX_GENERAL_LUN; lun++) {
 		hpb = hba->ufshpb_lup[lun];
 		if (!hpb) continue;
@@ -1523,11 +1519,6 @@ void ufshpb_resume_toshiba(struct ufs_hba *hba)
 		if (!list_empty_careful(&hpb->lh_map_req_retry))
 			schedule_delayed_work(&hpb->ufshpb_retry_work,
 						msecs_to_jiffies(5000));
-		spin_lock_irqsave(&hpb->rsp_list_lock, flags);
-		do_map_work = !list_empty(&hpb->lh_rsp_info);
-		spin_unlock_irqrestore(&hpb->rsp_list_lock, flags);
-		if (do_map_work)
-			queue_work(hpb->ufshpb_map_work_q, &hpb->ufshpb_map_work);
 	}
 }
 
@@ -1656,7 +1647,7 @@ static inline void ufshpb_init_jobs(struct ufshpb_lu *hpb)
 	INIT_DELAYED_WORK(&hpb->ufshpb_retry_work, ufshpb_retry_work_handler);
 	INIT_WORK(&hpb->ufshpb_map_work, ufshpb_map_work_fn);
 	hpb->ufshpb_map_work_q =
-		alloc_ordered_workqueue("hpb_mapwq_%d_%d", WQ_MEM_RECLAIM,
+		alloc_ordered_workqueue("hpb_mapwq_%d_%d", WQ_MEM_RECLAIM|WQ_FREEZABLE,
 			       	(hpb->hba && hpb->hba->host)?hpb->hba->host->host_no:0,
 				hpb->lun);
 }
