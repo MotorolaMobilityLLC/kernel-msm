@@ -16,6 +16,8 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/qpnp/qpnp-adc.h>
+#include <linux/iio/iio.h>
+#include <linux/iio/consumer.h>
 
 #define KELVINMIL_DEGMIL	273160
 /*
@@ -293,46 +295,36 @@ static const struct qpnp_vadc_map_pt adcmap_batt_therm_qrd_215[] = {
 	{558,	800}
 };
 
-/* Added for resolving compilation */
-struct qpnp_vadc_mode_state {
-	bool				meas_int_mode;
-	bool				meas_int_request_in_queue;
-	bool				vadc_meas_int_enable;
-	struct qpnp_adc_tm_btm_param	*param;
-	struct qpnp_adc_amux		vadc_meas_amux;
-};
+static int32_t qpnp_get_vadc_gain_and_offset(struct qpnp_adc_drv *adc,
+				struct qpnp_vadc_linear_graph *param,
+				enum qpnp_adc_calib_type calib_type)
+{
+	int rc = 0;
 
-struct qpnp_vadc_thermal_data {
-	bool thermal_node;
-	int thermal_chan;
-	enum qpnp_vadc_channels vadc_channel;
-	struct thermal_zone_device *tz_dev;
-	struct qpnp_vadc_chip *vadc_dev;
-};
-
-struct qpnp_vadc_chip {
-	struct device			*dev;
-	struct qpnp_adc_drv		*adc;
-	struct list_head		list;
-	struct device			*vadc_hwmon;
-	bool				vadc_init_calib;
-	int				max_channels_available;
-	bool				vadc_iadc_sync_lock;
-	u8				id;
-	struct work_struct		trigger_completion_work;
-	bool				vadc_poll_eoc;
-	bool				vadc_recalib_check;
-	u8				revision_ana_minor;
-	u8				revision_dig_major;
-	struct work_struct		trigger_high_thr_work;
-	struct work_struct		trigger_low_thr_work;
-	struct qpnp_vadc_mode_state	*state_copy;
-	struct qpnp_vadc_thermal_data	*vadc_therm_chan;
-	struct power_supply		*vadc_chg_vote;
-	int				vadc_debug_count;
-	struct pmic_revid_data		*pmic_rev_id;
-};
-/* Added for compilation */
+	switch (calib_type) {
+	case CALIB_RATIOMETRIC:
+		param->dy =
+		adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].dy;
+		param->dx =
+		adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].dx;
+		param->adc_vref = adc->adc_prop->adc_vdd_reference;
+		param->adc_gnd =
+		adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].adc_gnd;
+		break;
+	case CALIB_ABSOLUTE:
+		param->dy =
+		adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].dy;
+		param->dx =
+		adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].dx;
+		param->adc_vref = adc->adc_prop->adc_vdd_reference;
+		param->adc_gnd =
+		adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].adc_gnd;
+		break;
+	default:
+		rc = -EINVAL;
+	}
+	return rc;
+}
 
 static int32_t qpnp_adc_map_voltage_temp(const struct qpnp_vadc_map_pt *pts,
 		uint32_t tablesize, int32_t input, int64_t *output)
@@ -427,16 +419,16 @@ static int32_t qpnp_adc_map_temp_voltage(const struct qpnp_vadc_map_pt *pts,
 	return 0;
 }
 
-int32_t qpnp_adc_tm_scale_therm_voltage_pu2(struct qpnp_vadc_chip *chip,
+int32_t qpnp_adc_tm_scale_therm_voltage_pu2(struct qpnp_adc_drv *adc,
 			const struct qpnp_adc_properties *adc_properties,
 				struct qpnp_adc_tm_config *param)
 {
 	struct qpnp_vadc_linear_graph param1;
-	int rc;
+	int rc = 0;
 
-	/* TODO: modify as per iio functions
-	 * qpnp_get_vadc_gain_and_offset(chip, &param1, CALIB_RATIOMETRIC);
-	 */
+	rc = qpnp_get_vadc_gain_and_offset(adc, &param1, CALIB_RATIOMETRIC);
+	if (rc < 0)
+		return rc;
 
 	rc = qpnp_adc_map_temp_voltage(adcmap_100k_104ef_104fb,
 		ARRAY_SIZE(adcmap_100k_104ef_104fb),
@@ -464,15 +456,16 @@ int32_t qpnp_adc_tm_scale_therm_voltage_pu2(struct qpnp_vadc_chip *chip,
 }
 EXPORT_SYMBOL(qpnp_adc_tm_scale_therm_voltage_pu2);
 
-int32_t qpnp_adc_usb_scaler(struct qpnp_vadc_chip *chip,
+int32_t qpnp_adc_usb_scaler(struct qpnp_adc_drv *adc,
 		struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 {
 	struct qpnp_vadc_linear_graph usb_param;
+	int rc = 0;
 
-	/* TODO:modify to suit iio functions
-	 * qpnp_get_vadc_gain_and_offset(chip, &usb_param, CALIB_RATIOMETRIC);
-	 */
+	rc = qpnp_get_vadc_gain_and_offset(adc, &usb_param, CALIB_RATIOMETRIC);
+	if (rc < 0)
+		return rc;
 
 	*low_threshold = param->low_thr * usb_param.dy;
 	*low_threshold = div64_s64(*low_threshold, usb_param.adc_vref);
@@ -488,7 +481,7 @@ int32_t qpnp_adc_usb_scaler(struct qpnp_vadc_chip *chip,
 }
 EXPORT_SYMBOL(qpnp_adc_usb_scaler);
 
-int32_t qpnp_adc_absolute_rthr(struct qpnp_vadc_chip *chip,
+int32_t qpnp_adc_absolute_rthr(struct qpnp_adc_drv *adc,
 		struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 {
@@ -496,10 +489,8 @@ int32_t qpnp_adc_absolute_rthr(struct qpnp_vadc_chip *chip,
 	int rc = 0, sign = 0;
 	int64_t low_thr = 0, high_thr = 0;
 
-	/* TODO:modify to suit iio functions
-	 * rc = qpnp_get_vadc_gain_and_offset(chip, &vbatt_param,
-	 *					CALIB_ABSOLUTE);
-	 */
+	rc = qpnp_get_vadc_gain_and_offset(adc, &vbatt_param,
+						CALIB_ABSOLUTE);
 	if (rc < 0)
 		return rc;
 
@@ -536,16 +527,16 @@ int32_t qpnp_adc_absolute_rthr(struct qpnp_vadc_chip *chip,
 }
 EXPORT_SYMBOL(qpnp_adc_absolute_rthr);
 
-int32_t qpnp_adc_vbatt_rscaler(struct qpnp_vadc_chip *chip,
+int32_t qpnp_adc_vbatt_rscaler(struct qpnp_adc_drv *adc,
 		struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 {
-	return qpnp_adc_absolute_rthr(chip, param, low_threshold,
+	return qpnp_adc_absolute_rthr(adc, param, low_threshold,
 							high_threshold);
 }
 EXPORT_SYMBOL(qpnp_adc_vbatt_rscaler);
 
-int32_t qpnp_adc_qrd_215_btm_scaler(struct qpnp_vadc_chip *chip,
+int32_t qpnp_adc_qrd_215_btm_scaler(struct qpnp_adc_drv *adc,
 			struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 {
@@ -553,9 +544,9 @@ int32_t qpnp_adc_qrd_215_btm_scaler(struct qpnp_vadc_chip *chip,
 	int64_t low_output = 0, high_output = 0;
 	int rc = 0;
 
-	/* TODO:modify to suit iio function
-	 * qpnp_get_vadc_gain_and_offset(chip, &btm_param, CALIB_RATIOMETRIC);
-	 */
+	rc = qpnp_get_vadc_gain_and_offset(adc, &btm_param, CALIB_RATIOMETRIC);
+	if (rc < 0)
+		return rc;
 
 	pr_debug("warm_temp:%d and cool_temp:%d\n", param->high_temp,
 				param->low_temp);
@@ -600,7 +591,7 @@ int32_t qpnp_adc_qrd_215_btm_scaler(struct qpnp_vadc_chip *chip,
 }
 EXPORT_SYMBOL(qpnp_adc_qrd_215_btm_scaler);
 
-int32_t qpnp_adc_smb_btm_rscaler(struct qpnp_vadc_chip *chip,
+int32_t qpnp_adc_smb_btm_rscaler(struct qpnp_adc_drv *adc,
 		struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 {
@@ -608,9 +599,9 @@ int32_t qpnp_adc_smb_btm_rscaler(struct qpnp_vadc_chip *chip,
 	int64_t low_output = 0, high_output = 0;
 	int rc = 0;
 
-	/* TODO:modify as per iio function
-	 * qpnp_get_vadc_gain_and_offset(chip, &btm_param, CALIB_RATIOMETRIC);
-	 */
+	rc = qpnp_get_vadc_gain_and_offset(adc, &btm_param, CALIB_RATIOMETRIC);
+	if (rc < 0)
+		return rc;
 
 	pr_debug("warm_temp:%d and cool_temp:%d\n", param->high_temp,
 				param->low_temp);
@@ -822,6 +813,7 @@ int32_t qpnp_adc_get_devicetree_data(struct platform_device *pdev,
 
 		channel_name = of_get_property(child,
 				"label", NULL) ? : child->name;
+
 		if (!channel_name) {
 			pr_err("Invalid channel name\n");
 			return -EINVAL;
