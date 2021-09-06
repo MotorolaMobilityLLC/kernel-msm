@@ -23,6 +23,8 @@
 #include <linux/regulator/driver.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <linux/uaccess.h>
 #include <linux/qpnp/qpnp-pbs.h>
 #undef dev_dbg
@@ -541,6 +543,8 @@ struct haptics_reg_info {
 	u8 val;
 };
 
+int haptic_gpio;
+u32 long_gain_reduced;
 static inline int get_max_fifo_samples(struct haptics_chip *chip)
 {
 	int val = 0;
@@ -1982,6 +1986,23 @@ static int haptics_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 	return 0;
 }
 
+static int haptics_set_reduced_gain(struct haptics_chip *chip, u8 amplitude)
+{
+	int need_reduce = 0;
+
+	if (gpio_is_valid(haptic_gpio)) {
+		need_reduce = gpio_get_value(haptic_gpio);
+		if (need_reduce) {
+			if (amplitude > long_gain_reduced) {
+				amplitude = long_gain_reduced;
+			}
+		}
+	}
+	dev_info(chip->dev, "haptic reduce %d\n", amplitude);
+
+	return amplitude;
+}
+
 static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 {
 	struct haptics_play_info *play = &chip->play;
@@ -2020,6 +2041,7 @@ static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 			goto unlock;
 	}
 
+	amplitude = haptics_set_reduced_gain(chip, amplitude);
 	rc = haptics_set_direct_play(chip, amplitude);
 	if (rc < 0)
 		goto unlock;
@@ -2548,6 +2570,7 @@ static void haptics_set_gain(struct input_dev *dev, u16 gain)
 		amplitude *= gain;
 		amplitude /= 0x7fff;
 
+		amplitude = haptics_set_reduced_gain(chip, (u8)amplitude);
 		dev_dbg(chip->dev, "Set amplitude: %#x\n", amplitude);
 		haptics_set_direct_play(chip, (u8)amplitude);
 		return;
@@ -4066,6 +4089,15 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 
 	chip->play_time = DEFAULT_TIME;
 	of_property_read_u32(node, "qcom,time-ms", &chip->play_time);
+
+	haptic_gpio = of_get_named_gpio(node, "haptic-gpio", 0);
+	dev_info(chip->dev, "haptic haptic_gpio %d\n", haptic_gpio);
+
+	of_property_read_u32(node, "long-gain-reduced", &long_gain_reduced);
+	if(0 == long_gain_reduced)
+		long_gain_reduced = DIRECT_PLAY_MAX_AMPLITUDE;
+
+	dev_info(chip->dev, "haptic long_gain_reduced %d\n", long_gain_reduced);
 
         config->fifo_empty_thresh = get_fifo_empty_threshold(chip);
 	of_property_read_u32(node, "qcom,fifo-empty-threshold",
