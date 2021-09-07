@@ -1128,6 +1128,29 @@ int mipi_dsi_dcs_set_display_brightness_2bytes(struct mipi_dsi_device *dsi,
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_set_display_brightness_2bytes);
 
+/**
+ * mipi_dsi_dcs_set_display_brightness_2bytes_2th_low4bit() - sets the brightness value of
+ *    the display with 2bytes and low 4bit at 2th byte value
+ * @dsi: DSI peripheral device
+ * @brightness: brightness value
+ *
+ * Return: 0 on success or a negative error code on failure.
+ */
+int mipi_dsi_dcs_set_display_brightness_2bytes_2th_low4bit(struct mipi_dsi_device *dsi,
+					u16 brightness)
+{
+	u8 payload[2] = { brightness >> 0x04, brightness & 0x0f };
+	ssize_t err;
+
+	err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
+				payload, sizeof(payload));
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+EXPORT_SYMBOL(mipi_dsi_dcs_set_display_brightness_2bytes_2th_low4bit);
+
 static int mipi_dsi_drv_probe(struct device *dev)
 {
 	struct mipi_dsi_driver *drv = to_mipi_dsi_driver(dev->driver);
