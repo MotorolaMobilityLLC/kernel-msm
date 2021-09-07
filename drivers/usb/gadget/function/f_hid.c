@@ -298,11 +298,16 @@ static ssize_t f_hidg_read(struct file *file, char __user *buffer,
 	if (list->pos == req->actual) {
 		kfree(list);
 
-		req->length = hidg->report_length;
-		ret = usb_ep_queue(hidg->out_ep, req, GFP_KERNEL);
-		if (ret < 0) {
-			free_ep_req(hidg->out_ep, req);
-			return ret;
+		if (req->context ==
+		    (void *)hidg->func.config->cdev->gadget->ep0) {
+			free_ep_req(hidg->func.config->cdev->gadget->ep0, req);
+		} else {
+			req->length = hidg->report_length;
+			ret = usb_ep_queue(hidg->out_ep, req, GFP_KERNEL);
+			if (ret < 0) {
+				free_ep_req(hidg->out_ep, req);
+				return ret;
+			}
 		}
 	} else {
 		spin_lock_irqsave(&hidg->read_spinlock, flags);
@@ -473,6 +478,20 @@ static void hidg_set_report_complete(struct usb_ep *ep, struct usb_request *req)
 			goto free_req;
 		}
 
+		if (req == cdev->req) {
+			/*
+			 * control request buffer can be overwritten before
+			 * userspace reads from buffer. So we allocate new
+			 * request, copy from original request and enqueue
+			 * new request to read queue.
+			 */
+			req = alloc_ep_req(ep, cdev->req->length);
+			memcpy(req->buf, cdev->req->buf, cdev->req->actual);
+			req->length = cdev->req->length;
+			req->actual = cdev->req->actual;
+			req->context = ep;
+		}
+
 		req_list->req = req;
 
 		spin_lock_irqsave(&hidg->read_spinlock, flags);
@@ -488,7 +507,8 @@ static void hidg_set_report_complete(struct usb_ep *ep, struct usb_request *req)
 	case -ECONNRESET:		/* request dequeued */
 	case -ESHUTDOWN:		/* disconnect from host */
 free_req:
-		free_ep_req(ep, req);
+		if (req != cdev->req)
+			free_ep_req(ep, req);
 		return;
 	}
 }
@@ -532,7 +552,9 @@ static int hidg_setup(struct usb_function *f,
 	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
 		  | HID_REQ_SET_REPORT):
 		VDBG(cdev, "set_report | wLength=%d\n", ctrl->wLength);
-		goto stall;
+		req->context = hidg;
+		req->complete = hidg_set_report_complete;
+		goto respond;
 		break;
 
 	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
