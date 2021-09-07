@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2019-2020, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved. */
 
 #ifndef _CNSS_REG_H
 #define _CNSS_REG_H
@@ -267,7 +267,7 @@
 #define QCA6390_SYSPM_DBG_BUS_SEL_REG 0x1F82008
 #define QCA6390_SYSPM_WCSSAON_SR_STATUS 0x1F8200C
 
-#define QCA6490_DEBUG_PBL_LOG_SRAM_START 0x1403D58
+#define QCA6490_DEBUG_PBL_LOG_SRAM_START 0x01403DA0
 #define QCA6490_DEBUG_PBL_LOG_SRAM_MAX_SIZE 40
 #define QCA6490_V1_SBL_DATA_START 0x143b000
 #define QCA6490_V1_SBL_DATA_END (0x143b000 + 0x00011000)
