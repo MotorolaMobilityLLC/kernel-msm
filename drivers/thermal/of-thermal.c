@@ -611,6 +611,16 @@ static int of_thermal_get_crit_temp(struct thermal_zone_device *tz,
 	return -EINVAL;
 }
 
+static int of_thermal_set_polling_delay(struct thermal_zone_device *tz,
+				    int delay)
+{
+	struct __thermal_zone *data = tz->devdata;
+
+	data->polling_delay = delay;
+
+	return 0;
+}
+
 #ifdef CONFIG_QTI_THERMAL
 static int of_thermal_aggregate_trip_types(struct thermal_zone_device *tz,
 		struct __sensor_param *senps, unsigned int trip_type_mask,
@@ -818,6 +828,7 @@ static struct thermal_zone_device_ops of_thermal_ops = {
 
 	.bind = of_thermal_bind,
 	.unbind = of_thermal_unbind,
+	.set_polling_delay = of_thermal_set_polling_delay,
 };
 
 /***   sensor API   ***/
