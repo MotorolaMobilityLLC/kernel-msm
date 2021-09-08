@@ -27,6 +27,9 @@
 #if IS_ENABLED(CONFIG_MSM_TMECOM_QMP)
 #include <linux/tmelog.h>
 #endif
+#if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
+#include <soc/qcom/minidump.h>
+#endif
 
 /* QSEE_LOG_BUF_SIZE = 32K */
 #define QSEE_LOG_BUF_SIZE 0x8000
@@ -1766,6 +1769,10 @@ static int tz_log_probe(struct platform_device *pdev)
 	phys_addr_t tzdiag_phy_iobase;
 	uint32_t *ptr = NULL;
 	int ret = 0, i;
+#if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
+	struct md_region md_entry;
+	phys_addr_t md_paddr;
+#endif
 
 	/*
 	 * By default all nodes will be created.
@@ -1902,6 +1909,22 @@ static int tz_log_probe(struct platform_device *pdev)
 
 	if (tzdbg_fs_init(pdev))
 		goto exit_free_disp_buf;
+
+#if IS_ENABLED(CONFIG_QCOM_MINIDUMP)
+	if (!tzdbg.is_encrypted_log_enabled)
+		md_paddr = coh_pmem;
+	else
+		md_paddr = enc_qseelog_info.paddr;
+
+	/*Register annotate to minidump */
+	strlcpy(md_entry.name, "QSEELOG", sizeof(md_entry.name));
+	md_entry.virt_addr = (uintptr_t)phys_to_virt(md_paddr);
+	md_entry.phys_addr = md_paddr;
+	md_entry.size = qseelog_buf_size;
+	if (msm_minidump_add_region(&md_entry) < 0)
+		pr_err("Failed to add qseelog in Minidump\n");
+#endif
+
 	return 0;
 
 exit_free_disp_buf:
