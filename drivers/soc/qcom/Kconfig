@@ -1364,6 +1364,12 @@ config SDX_EXT_IPC
 
       If unsure, say N.
 
+config RPMH_STATS_DBG
+	tristate "Qualcomm Technologies RPMH Stats Debug"
+	default n
+	help
+	  This option enables a panic when subsystem can't sleep.
+
 source "drivers/soc/qcom/icnss2/Kconfig"
 
 source "drivers/soc/qcom/gnsssirf/Kconfig"
