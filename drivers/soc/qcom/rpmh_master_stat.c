@@ -91,12 +91,26 @@ static void __iomem *rpmh_unit_base;
 
 static DEFINE_MUTEX(rpmh_stats_mutex);
 
+#ifdef CONFIG_RPMH_STATS_DBG
+struct msm_rpmh_master_dbg {
+	char *name;
+	uint32_t counts;
+};
+
+static struct msm_rpmh_master_dbg rpmh_masters_dbg[] = {
+	{"ADSP", 0},
+};
+#endif
+
 static ssize_t print_msm_rpmh_master_stats(int i, struct msm_rpmh_master_stats *record,
 				const char *name)
 {
 	static uint64_t prev_duration[ARRAY_SIZE(rpmh_masters)];
 	uint64_t accumulated_duration = record->accumulated_duration;
 	uint64_t delta_duration;
+#ifdef CONFIG_RPMH_STATS_DBG
+	int idx;
+#endif
 
 	if (record->last_entered > record->last_exited)
 		accumulated_duration +=
@@ -105,6 +119,19 @@ static ssize_t print_msm_rpmh_master_stats(int i, struct msm_rpmh_master_stats *
 
 	delta_duration = accumulated_duration - prev_duration[i];
 	prev_duration[i] = accumulated_duration;
+
+#ifdef CONFIG_RPMH_STATS_DBG
+	if (delta_duration == 0) {
+		for (idx = 0; idx < ARRAY_SIZE(rpmh_masters_dbg); idx++) {
+			if (strncmp(name, rpmh_masters_dbg[idx].name, strlen(name)) == 0) {
+				printk("%s: %s subsystem sleep debug\n", __func__, name);
+				rpmh_masters_dbg[idx].counts++;
+				if (rpmh_masters_dbg[idx].counts > 20)
+					panic("%s: %s subsystem long time can't goto sleep!!!\n", __func__, name);
+			}
+		}
+	}
+#endif
 	return printk("%s:\tSleep Accumulated Duration:0x%llx, %lu.%03lu\n\n",
 			name, accumulated_duration, delta_duration / 19200000L, delta_duration % 19200000L * 1000 / 19200000L);
 }
