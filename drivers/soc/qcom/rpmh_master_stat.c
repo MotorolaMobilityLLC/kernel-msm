@@ -91,7 +91,6 @@ static void __iomem *rpmh_unit_base;
 
 static DEFINE_MUTEX(rpmh_stats_mutex);
 
-#ifdef CONFIG_SUSPEND_DEBUG
 static ssize_t print_msm_rpmh_master_stats(int i, struct msm_rpmh_master_stats *record,
 				const char *name)
 {
@@ -144,7 +143,6 @@ ssize_t show_msm_rpmh_master_stats(void)
 
 	return length;
 }
-#endif
 
 static ssize_t msm_rpmh_master_stats_print_data(char *prvbuf, ssize_t length,
 				struct msm_rpmh_master_stats *record,
