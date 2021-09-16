@@ -177,6 +177,7 @@ struct recon_buf {
 struct eos_buf {
 	struct list_head list;
 	struct msm_smem smem;
+	u32 is_queued;
 };
 
 struct internal_buf {
