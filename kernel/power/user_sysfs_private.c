@@ -28,6 +28,7 @@
 #ifdef CONFIG_PINCTRL_MSM_MODULE
 #include "../../drivers/pinctrl/qcom/pinctrl-msm.h"
 #endif
+#include <linux/time64.h>
 #include "user_sysfs_private.h"
 
 #define GPIO_CFG(gpio, func, dir, pull, drvstr) \
@@ -823,9 +824,26 @@ static int tlmm_tz_init(void)
 #endif
 
 #ifdef CONFIG_PM_SLEEP
+static void pm_suspend_marker(char *annotation)
+{
+	struct timespec64 timestamp;
+	struct tm tm;
+	char buff[255];
+
+	/* get the time stamp in readable format to print*/
+	ktime_get_real_ts64(&timestamp);
+	time64_to_tm(timestamp.tv_sec, 0, &tm);
+	snprintf(buff, sizeof(buff),
+		"%u-%02d-%02d %02d:%02d:%02d UTC",
+		(int) tm.tm_year + 1900, tm.tm_mon + 1,
+		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	pr_info("mmi_suspend_dbg_%s at: %s\n", annotation, buff);
+}
+
 static int mmi_suspend_dbg_suspend(struct device *device)
 {
-	pr_debug("%s()...\n", __func__);
+	pm_suspend_marker("suspend");
 
 	vreg_before_sleep_save_configs();
 	tlmm_before_sleep_set_configs();
@@ -836,7 +854,7 @@ static int mmi_suspend_dbg_suspend(struct device *device)
 
 static int mmi_suspend_dbg_resume(struct device *device)
 {
-	pr_debug("%s()...\n", __func__);
+	pm_suspend_marker("resume");
 	return 0;
 }
 #else
