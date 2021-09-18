@@ -98,7 +98,8 @@ struct msm_rpmh_master_dbg {
 };
 
 static struct msm_rpmh_master_dbg rpmh_masters_dbg[] = {
-	{"ADSP", 0},
+	{"MPSS", 0},
+	{"ADSP", 0}, /* can't to change the sequence*/
 };
 #endif
 
@@ -126,10 +127,14 @@ static ssize_t print_msm_rpmh_master_stats(int i, struct msm_rpmh_master_stats *
 			if (strncmp(name, rpmh_masters_dbg[idx].name, strlen(name)) == 0) {
 				printk("%s: %s subsystem sleep debug\n", __func__, name);
 				rpmh_masters_dbg[idx].counts++;
-				if (rpmh_masters_dbg[idx].counts > 20)
-					panic("%s: %s subsystem long time can't goto sleep!!!\n", __func__, name);
+				/* Avoid call case will be to trigger ramdump */
+				if (idx == 0)
+					rpmh_masters_dbg[1].counts = 0;
+				break;
 			}
 		}
+		if (rpmh_masters_dbg[1].counts > 20)
+			panic("%s: %s subsystem long time can't goto sleep!!!\n", __func__, name);
 	}
 #endif
 	return printk("%s:\tSleep Accumulated Duration:0x%llx, %lu.%03lu\n\n",
