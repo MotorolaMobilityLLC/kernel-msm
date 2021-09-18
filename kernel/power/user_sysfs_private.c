@@ -855,6 +855,9 @@ static int mmi_suspend_dbg_suspend(struct device *device)
 static int mmi_suspend_dbg_resume(struct device *device)
 {
 	pm_suspend_marker("resume");
+
+	show_subsystem_sleep_stats();
+
 	return 0;
 }
 #else
