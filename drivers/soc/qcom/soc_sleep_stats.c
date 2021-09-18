@@ -45,6 +45,9 @@ struct subsystem_data {
 	const char *name;
 	u32 smem_item;
 	u32 pid;
+#ifdef CONFIG_SUSPEND_DEBUG_MODULE
+	bool debugfs;
+#endif
 };
 
 static struct subsystem_data subsystems[] = {
@@ -102,6 +105,55 @@ struct appended_stats {
 };
 
 struct ddr_stats_g_data *ddr_gdata;
+
+#ifdef CONFIG_SUSPEND_DEBUG_MODULE
+static ssize_t print_supsystem_sleep_stats(int i, struct sleep_stats *stat,
+				const char *name)
+{
+	static uint64_t prev_duration[ARRAY_SIZE(subsystems)];
+	u64 accumulated = stat->accumulated;
+	uint64_t delta_duration;
+	/*
+	 * If a subsystem is in sleep when reading the sleep stats adjust
+	 * the accumulated sleep duration to show actual sleep time.
+	 */
+	if (stat->last_entered_at > stat->last_exited_at)
+		accumulated += arch_timer_read_counter()
+			       - stat->last_entered_at;
+
+	delta_duration = accumulated - prev_duration[i];
+	prev_duration[i] = accumulated;
+	return printk("%s:\tAccumulated Duration:0x%llx, %lu.%03lu\n\n",
+			name, accumulated, delta_duration / 19200000L, delta_duration % 19200000L * 1000 / 19200000L);
+}
+
+ssize_t show_subsystem_sleep_stats(void)
+{
+	ssize_t length = 0;
+#if IS_ENABLED(CONFIG_QCOM_SMEM)
+	int i = 0;
+	struct subsystem_data *subsystem;
+	struct sleep_stats *stat;
+
+	for (i = 0; i < ARRAY_SIZE(subsystems); i++) {
+		subsystem = &subsystems[i];
+		if (!subsystem->debugfs)
+			continue;
+
+		stat = qcom_smem_get(subsystem->pid, subsystem->smem_item, NULL);
+		if (IS_ERR(stat))
+			continue;
+
+		length += print_supsystem_sleep_stats(i, stat,
+				subsystem->name);
+	}
+#endif
+
+	return length;
+}
+
+EXPORT_SYMBOL_GPL(show_subsystem_sleep_stats);
+#endif
 
 static void print_sleep_stats(struct seq_file *s, struct sleep_stats *stat)
 {
@@ -326,6 +378,9 @@ static struct dentry *create_debugfs_entries(void __iomem *reg,
 
 		for (j = 0; j < ARRAY_SIZE(subsystems); j++) {
 			if (!strcmp(subsystems[j].name, name)) {
+#ifdef CONFIG_SUSPEND_DEBUG_MODULE
+				subsystems[j].debugfs = true;
+#endif
 				debugfs_create_file(subsystems[j].name, 0444,
 						    root, &subsystems[j],
 						    &subsystem_sleep_stats_fops);
