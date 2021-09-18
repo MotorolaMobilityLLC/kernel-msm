@@ -12,6 +12,9 @@ extern void vreg_before_sleep_save_configs(void);
 extern int vreg_dump_info(char *buf);
 extern int vreg_before_sleep_dump_info(char *buf);
 
+/* drivers/soc/qcom/soc_sleep_stats.c */
+extern ssize_t show_subsystem_sleep_stats(void);
+
 /* drivers/pinctrl/qcom/pinctrl-msm.c */
 extern int tlmm_get_inout(unsigned gpio);
 extern int tlmm_set_inout(unsigned gpio, unsigned val);
