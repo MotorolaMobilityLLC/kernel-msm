@@ -75,6 +75,11 @@
 #define QUERY_ATTR_IDN_HID_PROGRESS           	0x32
 
 
+// for micron HID level
+enum {
+	HID_LEV_GREEN_MICRON  = 0,
+	HID_LEV_RED_MICRON   = 1,
+};
 
 enum {
 	HID_PROG_IDLE		= 0,
@@ -165,6 +170,7 @@ struct ufshid_sysfs_entry {
 	ssize_t (*show)(struct ufshid_dev *hid, char *buf);
 	ssize_t (*store)(struct ufshid_dev *hid, const char *buf, size_t count);
 };
+int is_vendor_device(struct ufshid_dev *hid, u16 vendor_id);
 int ufshid_get_state(struct ufshid_dev *hid);
 void ufshid_set_state(struct ufshid_dev *hid, int state);
 struct ufshid_dev *ufshid_get_dev_info(struct ufshid_dev *hid_dev);
