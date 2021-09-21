@@ -211,3 +211,10 @@ config SCSI_UFS_HPB
 	  L2P (logical to physical) map of UFS to host DRAM. The driver uses HPB
 	  read command by piggybacking physical page number for bypassing FTL (flash
 	  translation layer)'s L2P address translation.
+
+config SCSI_UFS_HID
+	bool "Support UFS Host Initiated Defragmentation"
+	depends on SCSI_UFSHCD
+	help
+	  The UFS HID feature can kepp IO performance after long time using. It allows
+	  Host invoke a command to UFS for defragmentation.
