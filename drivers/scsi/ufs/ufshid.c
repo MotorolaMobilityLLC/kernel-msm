@@ -41,9 +41,13 @@
 #include "ufshid.h"
 //#include "ufsfeature.h"
 
-#define UFSHID_SELECTOR 0
+#define UFSHID_SELECTOR 1
 
 static struct ufshid_dev *hid_local;
+
+int is_vendor_device(struct ufshid_dev *hid, u16 vendor_id){
+	return (hid->hba->dev_info.wmanufacturerid == vendor_id);
+}
 
 //static int ufshid_device_reset(struct ufs_hba *hba);
 static int ufshid_create_sysfs(struct ufshid_dev *hid);
@@ -256,39 +260,55 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 	bool flag_val;
 	int frag_level;
 
-
-	if (ufshid_read_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN,&flag_val))
-		return -EINVAL;
-
-	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
-		return -EINVAL;
-
-	if ( flag_val == 1){
-		frag_level = attr_val;
-		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_WB_FLUSH_STATUS, &attr_val))
+	if(is_vendor_device(hid, UFS_VENDOR_MICRON)) {
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &frag_level))
 			return -EINVAL;
-		if ( frag_level == 0 && ( attr_val != 0x01 ) ){
-			return HID_NOT_REQUIRED;
-		} else{
-			return HID_REQUIRED;
-		}
-	} else {
-		if (attr_val > 0){
-			if (ufshid_set_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
+		if (frag_level!= HID_LEV_GREEN_MICRON){
+			if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
 				return -EINVAL;
+			if(attr_val != HID_PROG_ONGOING)
+				ufshid_set_flag(hid, QUERY_FLAG_IDN_HID_EN);
 			return HID_REQUIRED;
-		} else {
+		}else
+			return HID_NOT_REQUIRED;
+	} else if (is_vendor_device(hid, UFS_VENDOR_TOSHIBA)) {
+		if (ufshid_read_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN,&flag_val))
+			return -EINVAL;
+
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
+			return -EINVAL;
+
+		if ( flag_val == 1){
+			frag_level = attr_val;
+			if (ufshid_read_attr(hid, QUERY_ATTR_IDN_WB_FLUSH_STATUS, &attr_val))
+				return -EINVAL;
+			if ( frag_level == 0 && ( attr_val != 0x01 ) ){
 				return HID_NOT_REQUIRED;
+			} else{
+				return HID_REQUIRED;
+			}
+		} else {
+			if (attr_val > 0){
+				if (ufshid_set_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
+					return -EINVAL;
+				return HID_REQUIRED;
+			} else {
+					return HID_NOT_REQUIRED;
+			}
 		}
 	}
-
 	return -EINVAL;
 }
 
 static int ufshid_issue_disable(struct ufshid_dev *hid)
 {
-	if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
-		return -EINVAL;
+	if(is_vendor_device(hid,UFS_VENDOR_MICRON)){
+		if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_HID_EN))
+			return -EINVAL;
+	}else if (is_vendor_device(hid,UFS_VENDOR_TOSHIBA)){
+		if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
+			return -EINVAL;
+	}
 	return 0;
 }
 
@@ -655,7 +675,7 @@ void ufshid_init(struct ufshid_dev *hid)
 
 	INFO_MSG("UFS HID create sysfs finished");
 
-	//ufshid_set_state(hid, HID_NEED_INIT);
+	ufshid_set_state(hid, HID_NEED_INIT);
 }
 
 void ufshid_reset_host(struct ufshid_dev *hid)
@@ -918,24 +938,36 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 	u32 attr_val;
 	int frag_level;
 
-	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
-		return -EINVAL;
+	if( is_vendor_device(hid,UFS_VENDOR_MICRON)){
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &attr_val))
+			return -EINVAL;
+		frag_level = attr_val;
+			/*Micron only has two levels RED & GREEN*/
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+			((frag_level == HID_LEV_GREEN_MICRON)) ? "GREEN" :
+			((frag_level ==HID_LEV_RED_MICRON))?"RED":"UNKNOWN");
 
-	frag_level = attr_val;
-	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_WB_FLUSH_STATUS, &attr_val))
-		return -EINVAL;
+		return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+	}else if(is_vendor_device(hid, UFS_VENDOR_TOSHIBA)){
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
+			return -EINVAL;
 
-	INFO_MSG("Frag_lv %d Freg_stat %d HID_need_exec %d", frag_level,
-		attr_val,
-		( attr_val == HID_EXE_OPERATION ) );
+		frag_level = attr_val;
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_WB_FLUSH_STATUS, &attr_val))
+			return -EINVAL;
 
-	return snprintf(buf, PAGE_SIZE, "%s\n",
-		((frag_level == HID_LEV_RED_KIOXIA) && ( attr_val == HID_EXE_OPERATION ) ) ? "RED" :
-		((frag_level != HID_LEV_RED_KIOXIA) && ( attr_val == HID_EXE_OPERATION ) ) ? "YELLOW" :
-		((frag_level == HID_LEV_GREEN_KIOXIA) && ( ( attr_val == HID_EXE_IDLE ) || ( attr_val == HID_EXE_COMPLETE )) ) ? "GREEN" :
-			frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
+		INFO_MSG("Frag_lv %d Freg_stat %d HID_need_exec %d", frag_level,
+			attr_val,
+			( attr_val == HID_EXE_OPERATION ) );
 
-	return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+			((frag_level == HID_LEV_RED_KIOXIA) && ( attr_val == HID_EXE_OPERATION ) ) ? "RED" :
+			((frag_level != HID_LEV_RED_KIOXIA) && ( attr_val == HID_EXE_OPERATION ) ) ? "YELLOW" :
+			((frag_level == HID_LEV_GREEN_KIOXIA) && ( ( attr_val == HID_EXE_IDLE ) || ( attr_val == HID_EXE_COMPLETE )) ) ? "GREEN" :
+				frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
+
+		return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+	}
 	return -EINVAL;
 }
 
