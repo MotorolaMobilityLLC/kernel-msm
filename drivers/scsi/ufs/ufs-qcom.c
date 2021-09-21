@@ -31,6 +31,9 @@
 #include "ufs_quirks.h"
 #include "ufshcd-crypto-qti.h"
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+#include "ufshid.h"
+#endif
 #define UFS_QCOM_DEFAULT_DBG_PRINT_EN	\
 	(UFS_QCOM_DBG_PRINT_REGS_EN | UFS_QCOM_DBG_PRINT_TEST_BUS_EN)
 
@@ -61,6 +64,25 @@ static char android_boot_dev[ANDROID_BOOT_DEV_MAX];
 static DEFINE_PER_CPU(struct freq_qos_request, qos_min_req);
 static bool no_defer;
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+// yuedl1, for HID feature
+static struct ufshid_dev *hid;
+
+static inline bool ufs_kic_fDevInit_finished(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
+{
+	if (unlikely(le32_to_cpu(lrbp->utr_descriptor_ptr->header.dword_2) & MASK_OCS))
+		return false;
+	if ((be32_to_cpu(lrbp->ucd_rsp_ptr->header.dword_0) >> 24) != UPIU_TRANSACTION_QUERY_RSP)
+		return false;
+	if (unlikely((be32_to_cpu(lrbp->ucd_rsp_ptr->header.dword_1) & MASK_RSP_UPIU_RESULT)))
+		return false;
+	if (lrbp->ucd_rsp_ptr->qr.opcode != UPIU_QUERY_OPCODE_READ_FLAG)
+		return false;
+	if (lrbp->ucd_rsp_ptr->qr.idn != QUERY_FLAG_IDN_FDEVICEINIT)
+		return false;
+	return !(be32_to_cpu(lrbp->ucd_rsp_ptr->qr.value) & 1);
+}
+#endif
 enum {
 	TSTBUS_UAWM,
 	TSTBUS_UARM,
@@ -2945,6 +2967,12 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	host->dbg_en = true;
 #endif
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+	hid = ufshid_get_dev_info(hid);
+	hid->hba = hba;
+	ufshid_set_state(hid, HID_NEED_INIT);
+#endif
+
 	/* Setup the reset control of HCI */
 	host->core_reset = devm_reset_control_get(hba->dev, "rst");
 	if (IS_ERR(host->core_reset)) {
@@ -3142,6 +3170,11 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_save_host_ptr(hba);
 
 	ufs_qcom_qos_init(hba);
+
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+	ufshid_init(hid);
+#endif
+
 	host->ufs_ipc_log_ctx = ipc_log_context_create(UFS_QCOM_MAX_LOG_SZ,
 							"ufs-qcom", 0);
 	if (!host->ufs_ipc_log_ctx)
@@ -3711,6 +3744,10 @@ static int ufs_qcom_device_reset(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+	ufshid_reset_host(hid);
+#endif
+
 	/* reset gpio is optional */
 	if (!host->device_reset)
 		return -EOPNOTSUPP;
@@ -4030,6 +4067,14 @@ static void ufs_qcom_hook_compl_command(void *param, struct ufs_hba *hba,
 					REG_UTP_TRANSFER_REQ_DOOR_BELL),
 				sz);
 	}
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+	else {
+		if (ufs_kic_fDevInit_finished(hba, lrbp)) {
+			ufshid_reset(hid);
+		}
+	}
+#endif
+
 }
 
 static void ufs_qcom_hook_send_uic_command(void *param, struct ufs_hba *hba,
@@ -4073,6 +4118,15 @@ static void ufs_qcom_hook_check_int_errors(void *param, struct ufs_hba *hba,
 					hba->errors, hba->uic_error);
 }
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+static void ufs_vh_update_sdev(void *data, struct scsi_device *sdev)
+{
+	if(!hid->checked_init){
+		ufshid_set_state(hid, HID_PRESENT);
+		hid->checked_init = true;
+	}
+}
+#endif
 /*
  * Refer: common/include/trace/hooks/ufshcd.h for available hooks
  */
@@ -4088,6 +4142,9 @@ static void ufs_qcom_register_hooks(void)
 				ufs_qcom_hook_send_tm_command, NULL);
 	register_trace_android_vh_ufs_check_int_errors(
 				ufs_qcom_hook_check_int_errors, NULL);
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+	register_trace_android_vh_ufs_update_sdev(ufs_vh_update_sdev, NULL);
+#endif
 }
 
 
@@ -4161,6 +4218,10 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 	struct qos_cpu_group *qcg = r->qcg;
 	int i;
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+	ufshid_remove(hid);
+#endif
+
 	pm_runtime_get_sync(&(pdev)->dev);
 	for (i = 0; i < r->num_groups; i++, qcg++)
 		remove_group_qos(qcg);
@@ -4200,18 +4261,91 @@ static const struct acpi_device_id ufs_qcom_acpi_match[] = {
 MODULE_DEVICE_TABLE(acpi, ufs_qcom_acpi_match);
 #endif
 
+int ufsf_pltfrm_suspend(struct device *dev)
+{
+        int ret;
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+        ufshid_suspend();
+#endif
+        ret = ufshcd_pltfrm_suspend(dev);
+
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+        /* We assume link is off */
+        if (ret)
+                ufshid_resume();
+#endif
+
+        return ret;
+}
+
+int ufsf_pltfrm_resume(struct device *dev)
+{
+        int ret;
+
+        ret = ufshcd_pltfrm_resume(dev);
+
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+        if (!ret)
+                ufshid_resume();
+#endif
+
+        return ret;
+}
+
+
+int ufsf_pltfrm_runtime_suspend(struct device *dev)
+{
+        int ret;
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+        ufshid_suspend();
+#endif
+
+        ret = ufshcd_pltfrm_runtime_suspend(dev);
+
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+        /* We assume link is off */
+        if (ret)
+                ufshid_resume();
+#endif
+
+        return ret;
+}
+
+int ufsf_pltfrm_runtime_resume(struct device *dev)
+{
+        int ret;
+
+        ret = ufshcd_pltfrm_runtime_resume(dev);
+
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+        if (!ret)
+                ufshid_resume();
+#endif
+
+        return ret;
+}
+
+void ufsf_pltfrm_shutdown(struct platform_device *pdev)
+{
+#if IS_ENABLED(CONFIG_SCSI_UFS_HID)
+	ufshid_suspend();
+#endif
+	/* Alaways shutdown even in case of error */
+	ufs_qcom_shutdown(pdev);
+}
+
 static const struct dev_pm_ops ufs_qcom_pm_ops = {
-	.suspend	= ufshcd_pltfrm_suspend,
-	.resume		= ufshcd_pltfrm_resume,
-	.runtime_suspend = ufshcd_pltfrm_runtime_suspend,
-	.runtime_resume  = ufshcd_pltfrm_runtime_resume,
+	.suspend	= ufsf_pltfrm_suspend,
+	.resume		= ufsf_pltfrm_resume,
+	.runtime_suspend = ufsf_pltfrm_runtime_suspend,
+	.runtime_resume  = ufsf_pltfrm_runtime_resume,
 	.runtime_idle    = ufshcd_pltfrm_runtime_idle,
 };
 
 static struct platform_driver ufs_qcom_pltform = {
 	.probe	= ufs_qcom_probe,
 	.remove	= ufs_qcom_remove,
-	.shutdown = ufs_qcom_shutdown,
+	.shutdown = ufsf_pltfrm_shutdown,
 	.driver	= {
 		.name	= "ufshcd-qcom",
 		.pm	= &ufs_qcom_pm_ops,
