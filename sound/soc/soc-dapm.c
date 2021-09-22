@@ -1714,8 +1714,7 @@ static void dapm_seq_run(struct snd_soc_card *card,
 		 * Add this debug log to keep track of widgets being
 		 * powered-up and powered-down.
 		 */
-		/* MMI_STOPSHIP audio: IKSWR-135337 enable the log */
-		dev_err(w->dapm->dev, "dapm: powering %s widget %s\n",
+		dev_dbg(w->dapm->dev, "dapm: powering %s widget %s\n",
 			power_up ? "up" : "down", w->name);
 #endif
 
