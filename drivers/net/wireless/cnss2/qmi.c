@@ -18,7 +18,6 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #define BOOTCONFIG_FULLPATH "/proc/bootconfig"
-static char bootconfig_tmp[256];
 //END Support loading different bdwlan.elf
 
 #define WLFW_SERVICE_INS_ID_V01		1
@@ -74,6 +73,7 @@ void cnss_ignore_qmi_failure(bool ignore) { }
 #define MOTO_STRING_LEN 32
 static char device_ptr[MOTO_STRING_LEN] = {0};
 static char radio_ptr[MOTO_STRING_LEN] = {0};
+static char *bootargs_str;
 
 typedef struct moto_product {
 	char hw_device[32];
@@ -82,7 +82,7 @@ typedef struct moto_product {
 } moto_product;
 
 static moto_product products_list[] = {
-	{"hiphic",	"PRC",	NV_IPA},
+	{"hiphic",	"all",	NV_IPA},
 	{"hiphi",	"all",	NV_EPA},
 	{"ironmn",	"all",	NV_EPA}, //IKSWS-2923 Ironmn bdwlan
 	/* Terminator */
@@ -90,66 +90,47 @@ static moto_product products_list[] = {
 };
 
 
-static inline ssize_t kernel_read_stub(struct file *file, void *addr, size_t count)
+static int cnss_get_bootarg_dt(char *key, char **value, char *prop, char *spl_flag)
 {
-	loff_t pos = 0;
-	return kernel_read(file, addr, count, &pos);
-}
+	const char *bootargs_tmp = NULL;
+	char *idx = NULL;
+	char *kvpair = NULL;
+	int err = 1;
+	struct device_node *n = of_find_node_by_path("/chosen");
+	size_t bootargs_tmp_len = 0;
 
-static int cnss_get_bootarg(const char *bootconfig_key, char **bootconfig_val)
-{
-	struct file *filep = NULL;
-	char *xbc_buf = NULL;
-	int bytes = 0;
-	char *start_bootdevice = NULL;
-	int rc = 0;
+	if (n == NULL)
+		goto err;
 
-	filep = filp_open(BOOTCONFIG_FULLPATH, O_RDONLY, 0600);
-	if (IS_ERR_OR_NULL(filep)) {
-		rc = PTR_ERR(filep);
-		pr_err("opening (%s) errno=%d\n", BOOTCONFIG_FULLPATH, rc);
-		return rc;
+	if (of_property_read_string(n, prop, &bootargs_tmp) != 0)
+		goto putnode;
+
+	bootargs_tmp_len = strlen(bootargs_tmp);
+	if (!bootargs_str) {
+		/* The following operations need a non-const
+		 * version of bootargs
+		 */
+		bootargs_str = kzalloc(bootargs_tmp_len + 1, GFP_KERNEL);
+		if (!bootargs_str)
+			goto putnode;
+	}
+	strlcpy(bootargs_str, bootargs_tmp, bootargs_tmp_len + 1);
+
+	idx = strnstr(bootargs_str, key, strlen(bootargs_str));
+	if (idx) {
+		kvpair = strsep(&idx, " ");
+		if (kvpair)
+			if (strsep(&kvpair, "=")) {
+				*value = strsep(&kvpair, spl_flag);
+				if (*value)
+					err = 0;
+			}
 	}
 
-	xbc_buf = kzalloc(XBC_DATA_MAX, GFP_KERNEL);
-	if (!xbc_buf) {
-		pr_err("alloc len %d memory fail\n", XBC_DATA_MAX);
-		filp_close(filep, NULL);
-		return -ENOMEM;
-	}
-
-	bytes = kernel_read_stub(filep, (void *) xbc_buf, XBC_DATA_MAX);
-	pr_debug("read bootconfig bytes %d\n", bytes);
-	if (bytes <= 0) {
-		pr_err("fail read bytes %d\n", bytes);
-		kfree(xbc_buf);
-		filp_close(filep, NULL);
-		return -EIO;
-	}
-
-	start_bootdevice = strstr(xbc_buf, bootconfig_key);
-	if (start_bootdevice) {
-		char *p = start_bootdevice + strlen(bootconfig_key);
-		int i = 0;
-
-		memset(bootconfig_tmp, 0, sizeof(bootconfig_tmp));
-		while (p && *p && (*p != '\n') && (*p != '"')
-				&& (i < sizeof(bootconfig_tmp))) {
-			bootconfig_tmp[i] = *p;
-			i++;
-			p++;
-		}
-		*bootconfig_val = bootconfig_tmp;
-		pr_info("bootconfig key %s%s\"\n", bootconfig_key, *bootconfig_val);
-	} else {
-		pr_err("cannot find key %s\n", bootconfig_key);
-		rc = -ENOENT;
-	}
-
-	kfree(xbc_buf);
-	filp_close(filep, NULL);
-
-	return rc;
+putnode:
+	of_node_put(n);
+err:
+	return err;
 }
 
 static int is_void_product(moto_product *entry)
@@ -169,7 +150,7 @@ static int get_moto_device()
 {
         char *bootdevice = NULL;
         int rc = 0;
-        rc = cnss_get_bootarg("androidboot.device = \"", &bootdevice);
+	rc = cnss_get_bootarg_dt("androidboot.device=", &bootdevice, "mmi,bootconfig", "\n");
         if (rc || !bootdevice){
             cnss_pr_err("device string is error");
             return -ENOMEM;
@@ -183,7 +164,7 @@ static int get_moto_radio()
 {
         char *radiodevice = NULL;
         int rc = 0;
-        rc = cnss_get_bootarg("androidboot.radio = \"", &radiodevice);
+	rc = cnss_get_bootarg_dt("androidboot.radio=", &radiodevice, "mmi,bootconfig", "\n");
         if (rc || !radiodevice){
             cnss_pr_err("radio string is error");
             return -ENOMEM;
