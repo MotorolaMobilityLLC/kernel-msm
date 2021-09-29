@@ -4225,6 +4225,9 @@ static enum usb_role dwc3_msm_usb_get_role(struct device *dev)
 	return role;
 }
 
+
+bool dp_state = false;
+struct device	*g_dev = NULL;
 static int dwc3_msm_usb_set_role(struct device *dev, enum usb_role role)
 {
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
@@ -4233,6 +4236,11 @@ static int dwc3_msm_usb_set_role(struct device *dev, enum usb_role role)
 
 	cur_role = dwc3_msm_usb_get_role(dev);
 
+	printk("dwc3 msm usb set role cur role = %d, state = %d, role = %d.\n",cur_role, dp_state,role);
+	if(cur_role == USB_ROLE_HOST && dp_state) { //see if dp is active?
+		pr_info("%s:dp is active", __func__);
+		return 0;
+	}
 	switch (role) {
 	case USB_ROLE_HOST:
 		mdwc->vbus_active = false;
@@ -4275,6 +4283,18 @@ static int dwc3_msm_usb_set_role(struct device *dev, enum usb_role role)
 	dwc3_ext_event_notify(mdwc);
 	return 0;
 }
+
+void set_dp_state(bool state){
+	dp_state = state;
+	if (IS_ERR_OR_NULL(g_dev)){
+		pr_err("%s:g_dev is null", __func__);
+		return;
+	}
+	if (!state)
+		dwc3_msm_usb_set_role(g_dev, USB_ROLE_NONE);
+	pr_info("%s:dp_state=%d", __func__, dp_state);
+};
+EXPORT_SYMBOL(set_dp_state);
 
 static struct usb_role_switch_desc role_desc = {
 	.set = dwc3_msm_usb_set_role,
@@ -4689,6 +4709,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, mdwc);
 	mdwc->dev = &pdev->dev;
+
+	g_dev = dev;
+	pr_info("%s:get g_dev=%p", __func__, g_dev);
 
 	INIT_LIST_HEAD(&mdwc->req_complete_list);
 	INIT_WORK(&mdwc->resume_work, dwc3_resume_work);
