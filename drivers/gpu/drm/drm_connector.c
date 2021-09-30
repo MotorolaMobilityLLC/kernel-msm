@@ -1309,7 +1309,7 @@ int drm_mode_getconnector(struct drm_device *dev, void *data,
 	if (!connector)
 		return -ENOENT;
 
-	for (i = 0; i < DRM_CONNECTOR_MAX_ENCODER; i++)
+	drm_connector_for_each_possible_encoder(connector, encoder, i)
 		if (connector->encoder_ids[i] != 0)
 			encoders_count++;
 
