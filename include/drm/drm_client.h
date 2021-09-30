@@ -154,6 +154,9 @@ int drm_client_modeset_create(struct drm_client_dev *client);
 void drm_client_modeset_free(struct drm_client_dev *client);
 void drm_client_modeset_release(struct drm_client_dev *client);
 struct drm_mode_set *drm_client_find_modeset(struct drm_client_dev *client, struct drm_crtc *crtc);
+int drm_client_modeset_commit_force(struct drm_client_dev *client);
+int drm_client_modeset_commit(struct drm_client_dev *client);
+int drm_client_modeset_dpms(struct drm_client_dev *client, int mode);
 
 /**
  * drm_client_for_each_modeset() - Iterate over client modesets
