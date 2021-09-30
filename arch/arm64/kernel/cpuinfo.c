@@ -24,6 +24,10 @@
 #include <linux/sched.h>
 #include <linux/smp.h>
 #include <linux/delay.h>
+#include <linux/of_fdt.h>
+
+
+static const char *machine_name;
 
 /*
  * In case the boot CPU is hotpluggable, we record its initial state and
@@ -179,6 +183,9 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "CPU revision\t: %d\n\n", MIDR_REVISION(midr));
 	}
 
+	if ((machine_name) && (strlen(machine_name) > 0))
+		seq_printf(m, "Hardware\t: %s\n", machine_name);
+
 	return 0;
 }
 
@@ -195,6 +202,27 @@ static void *c_next(struct seq_file *m, void *v, loff_t *pos)
 
 static void c_stop(struct seq_file *m, void *v)
 {
+}
+
+static const char *of_flat_dt_get_plat_name(void)
+{
+	static char internal_machine_name[80] = "";
+	static bool string_updated = false;
+	const char *name;
+	unsigned long dt_root;
+
+	if (string_updated)
+		return internal_machine_name;
+
+	dt_root = of_get_flat_dt_root();
+	name = of_get_flat_dt_prop(dt_root, "platinfo", NULL);
+	if (name)
+	{
+		snprintf(internal_machine_name, sizeof(internal_machine_name), "%s", name);
+	}
+
+	string_updated = true;
+	return internal_machine_name;
 }
 
 const struct seq_operations cpuinfo_op = {
@@ -393,6 +421,7 @@ void __init cpuinfo_store_boot_cpu(void)
 
 	boot_cpu_data = *info;
 	init_cpu_features(&boot_cpu_data);
+	machine_name = of_flat_dt_get_plat_name();
 }
 
 device_initcall(cpuinfo_regs_init);
