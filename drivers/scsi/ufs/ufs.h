@@ -160,6 +160,9 @@ enum flag_idn {
 	QUERY_FLAG_IDN_TW_BUF_FLUSH_EN                  = 0x0F,
 	QUERY_FLAG_IDN_TW_FLUSH_DURING_HIBERN           = 0x10,
 #endif
+#if defined(CONFIG_MICRON_UFSHID)
+	QUERY_FLAG_IDN_HID_EN               = 0x13
+#endif
 };
 
 /* Attribute idn for Query requests */
@@ -209,6 +212,10 @@ enum attr_idn {
 #endif
 #if defined(CONFIG_UFSFEATURE)
 	QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS       = 0xFF,
+#endif
+#if defined(CONFIG_MICRON_UFSHID)
+	QUERY_ATTR_IDN_HID_FRAG_STATUS        = 0x31,
+	QUERY_ATTR_IDN_HID_PROGRESS           = 0x32,
 #endif
 };
 
