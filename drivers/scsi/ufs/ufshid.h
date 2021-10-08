@@ -103,6 +103,20 @@ enum {
 	HID_LEV_RED	= 3,
 };
 
+#if defined(CONFIG_MICRON_UFSHID)
+enum {
+	HID_LEV_GREEN_MICRON  = 0,
+	HID_LEV_RED_MICRON   = 1,
+};
+
+enum {
+	HID_PROG_IDLE		= 0,
+	HID_PROG_ONGOING	= 1,
+	HID_PROG_STOP	= 2, //stopped by Host
+	HID_PROG_COMPLETE	= 3,
+};
+#endif
+
 struct ufshid_dev {
 	struct ufsf_feature *ufsf;
 
