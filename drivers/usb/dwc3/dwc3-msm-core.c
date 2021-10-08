@@ -5237,13 +5237,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		}
 	}
 
-	/*
-	 * MMI_STOPSHIP dwc3-msm: Start peripheral mode by default in case
-	 * there is no typec change event from ADSP
-	 * for ADSP crash or stuck, so as not to trigger
-	 * USB enumeration.
-	 */
-	if (mdwc->role_switch) {
+	if (!mdwc->role_switch && !mdwc->extcon) {
 		switch (mdwc->dr_mode) {
 		case USB_DR_MODE_OTG:
 			if (of_property_read_bool(node,
