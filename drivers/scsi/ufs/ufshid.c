@@ -113,6 +113,54 @@ err_out:
 	return ret;
 }
 
+#if defined(CONFIG_MICRON_UFSHID)
+static int ufshid_set_flag(struct ufshid_dev *hid, u8 idn)
+{
+	struct ufs_hba *hba = hid->ufsf->hba;
+	int ret = 0;
+	bool flag_result;
+	pm_runtime_get_sync(hba->dev);
+
+	ret = ufsf_query_flag_retry(hba, UPIU_QUERY_OPCODE_SET_FLAG, idn, 0,
+				    &flag_result);
+
+	if (ret) {
+		ERR_MSG("set flag [0x%.2X] fail. (%d)", idn, ret);
+		goto err_out;
+	}
+
+	HID_DEBUG(hid, "hid_flag set [0x%.2X] result [0x%.2X] ", idn, flag_result);
+err_out:
+	pm_runtime_mark_last_busy(hba->dev);
+	pm_runtime_put_noidle(hba->dev);
+
+	return ret;
+}
+
+static int ufshid_clear_flag(struct ufshid_dev *hid, u8 idn)
+{
+	struct ufs_hba *hba = hid->ufsf->hba;
+	int ret = 0;
+
+	pm_runtime_get_sync(hba->dev);
+
+	ret = ufsf_query_flag_retry(hba, UPIU_QUERY_OPCODE_CLEAR_FLAG, idn, 0,
+				    NULL);
+	if (ret) {
+		ERR_MSG("clear flag [0x%.2X] fail. (%d)", idn, ret);
+		goto err_out;
+	}
+
+	HID_DEBUG(hid, "hid_flag set [0x%.2X] ", idn);
+err_out:
+	pm_runtime_mark_last_busy(hba->dev);
+	pm_runtime_put_noidle(hba->dev);
+
+	return ret;
+}
+#endif
+
+
 static inline int ufshid_version_check(int spec_version)
 {
 	INFO_MSG("Support HID Spec : Driver = (%.4x), Device = (%.4x)",
@@ -133,18 +181,27 @@ void ufshid_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf)
 
 	ufsf->hid_dev = NULL;
 
-	if (!(LI_EN_32(&desc_buf[DEVICE_DESC_PARAM_EX_FEAT_SUP]) &
-	      UFS_FEATURE_SUPPORT_HID_BIT)) {
-		INFO_MSG("bUFSExFeaturesSupport: HID not support");
-		goto err_out;
+	if(IS_SAMSUNG_DEVICE(storage_mfrid)) {
+		if (!(LI_EN_32(&desc_buf[DEVICE_DESC_PARAM_EX_FEAT_SUP]) &
+		      UFS_FEATURE_SUPPORT_HID_BIT)) {
+			INFO_MSG("bUFSExFeaturesSupport: HID not support");
+			goto err_out;
+		}
+
+		INFO_MSG("bUFSExFeaturesSupport: HID support");
+		spec_version =
+			LI_EN_16(&desc_buf[DEVICE_DESC_PARAM_HID_VER]);
+		ret = ufshid_version_check(spec_version);
+		if (ret)
+			goto err_out;
 	}
 
-	INFO_MSG("bUFSExFeaturesSupport: HID support");
-	spec_version =
-		LI_EN_16(&desc_buf[DEVICE_DESC_PARAM_HID_VER]);
-	ret = ufshid_version_check(spec_version);
-	if (ret)
+#ifndef CONFIG_MICRON_UFSHID
+	if(IS_MICRON_DEVICE(storage_mfrid)){
+		INFO_MSG("micron: HID not support");
 		goto err_out;
+	}
+#endif
 
 	ufsf->hid_dev = kzalloc(sizeof(struct ufshid_dev), GFP_KERNEL);
 	if (!ufsf->hid_dev) {
@@ -163,39 +220,79 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 	u32 attr_val;
 	int frag_level;
 
-	if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION,
-			      HID_OP_EXECUTE))
+	if(IS_MICRON_DEVICE(storage_mfrid)) {
+	#if defined(CONFIG_MICRON_UFSHID)
+		//get micron ufs frag level
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &frag_level))
+			return -EINVAL;
+		//get micron ufs hid execution progress
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+			return -EINVAL;
+		HID_DEBUG(hid, "micron frag_level= %d attr_val= %d",frag_level,attr_val);
+
+		if (attr_val != HID_PROG_ONGOING) {
+			if(frag_level!= HID_LEV_GREEN_MICRON) {
+				ufshid_set_flag(hid, QUERY_FLAG_IDN_HID_EN);
+				return HID_REQUIRED;
+			} else {
+				return HID_NOT_REQUIRED;
+			}
+		} else {
+			return HID_REQUIRED;
+		}
+	#else
+		return HID_NOT_REQUIRED;
+	#endif
+	} else if(IS_SAMSUNG_DEVICE(storage_mfrid)) {
+		if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION,
+					  HID_OP_EXECUTE))
+			return -EINVAL;
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL, &attr_val))
+			return -EINVAL;
+
+		frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+		HID_DEBUG(hid, "Frag_lv %d Freg_stat %d HID_need_exec %d",
+			  frag_level, HID_FRAG_UPDATE_STAT(attr_val),
+			  HID_EXECUTE_REQ_STAT(attr_val));
+
+		if (frag_level == HID_LEV_GRAY)
+			return -EAGAIN;
+
+		return (HID_EXECUTE_REQ_STAT(attr_val)) ?
+			HID_REQUIRED : HID_NOT_REQUIRED;
+	} else {
 		return -EINVAL;
-	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL, &attr_val))
-		return -EINVAL;
-
-	frag_level = attr_val & HID_FRAG_LEVEL_MASK;
-	HID_DEBUG(hid, "Frag_lv %d Freg_stat %d HID_need_exec %d",
-		  frag_level, HID_FRAG_UPDATE_STAT(attr_val),
-		  HID_EXECUTE_REQ_STAT(attr_val));
-
-	if (frag_level == HID_LEV_GRAY)
-		return -EAGAIN;
-
-	return (HID_EXECUTE_REQ_STAT(attr_val)) ?
-		HID_REQUIRED : HID_NOT_REQUIRED;
+	}
 }
 
 static int ufshid_issue_disable(struct ufshid_dev *hid)
 {
 	u32 attr_val;
 
-	if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION,
-			      HID_OP_DISABLE))
-		return -EINVAL;
-	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL, &attr_val))
-		return -EINVAL;
+	if(IS_MICRON_DEVICE(storage_mfrid)) {
+	#if defined(CONFIG_MICRON_UFSHID)
+		//get micron ufs hid execution progress
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+			return -EINVAL;
+		HID_DEBUG(hid, "micron hid progress = %d",attr_val);
 
-	HID_DEBUG(hid, "Frag_lv %d Freg_stat %d HID_need_exec %d",
-		  attr_val & HID_FRAG_LEVEL_MASK,
-		  HID_FRAG_UPDATE_STAT(attr_val),
-		  HID_EXECUTE_REQ_STAT(attr_val));
+		if(attr_val == HID_PROG_ONGOING) {
+			if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_HID_EN))
+				return -EINVAL;
+		}
+	#endif
+	}else if(IS_SAMSUNG_DEVICE(storage_mfrid)) {
+		if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION,
+					  HID_OP_DISABLE))
+			return -EINVAL;
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL, &attr_val))
+			return -EINVAL;
 
+		HID_DEBUG(hid, "Frag_lv %d Freg_stat %d HID_need_exec %d",
+			  attr_val & HID_FRAG_LEVEL_MASK,
+			  HID_FRAG_UPDATE_STAT(attr_val),
+			  HID_EXECUTE_REQ_STAT(attr_val));
+	}
 	return 0;
 }
 
@@ -706,27 +803,42 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 	u32 attr_val;
 	int frag_level;
 
-	if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION,
-			      HID_OP_ANALYZE)) {
-		ERR_MSG("query HID_OPERATION fail");
-		return -EINVAL;
+	if(IS_MICRON_DEVICE(storage_mfrid)){
+	#if defined(CONFIG_MICRON_UFSHID)
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &attr_val))
+			return -EINVAL;
+		frag_level = attr_val;
+			/*Micron only has two levels RED & GREEN*/
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+			((frag_level == HID_LEV_GREEN_MICRON)) ? "GREEN" :
+			((frag_level ==HID_LEV_RED_MICRON))?"RED":"UNKNOWN");
+
+		return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+	#endif
+	} else if(IS_SAMSUNG_DEVICE(storage_mfrid)) {
+		if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION,
+					  HID_OP_ANALYZE)) {
+			ERR_MSG("query HID_OPERATION fail");
+			return -EINVAL;
+		}
+
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL, &attr_val)) {
+			ERR_MSG("query HID_FRAG_LEVEL fail");
+			return -EINVAL;
+		}
+
+		frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+		INFO_MSG("Frag_lv %d Freg_stat %d HID_need_exec %d", frag_level,
+			 HID_FRAG_UPDATE_STAT(attr_val),
+			 HID_EXECUTE_REQ_STAT(attr_val));
+
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+				frag_level == HID_LEV_RED ? "RED" :
+				frag_level == HID_LEV_YELLOW ? "YELLOW" :
+				frag_level == HID_LEV_GREEN ? "GREEN" :
+				frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
 	}
-
-	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL, &attr_val)) {
-		ERR_MSG("query HID_FRAG_LEVEL fail");
-		return -EINVAL;
-	}
-
-	frag_level = attr_val & HID_FRAG_LEVEL_MASK;
-	INFO_MSG("Frag_lv %d Freg_stat %d HID_need_exec %d", frag_level,
-		 HID_FRAG_UPDATE_STAT(attr_val),
-		 HID_EXECUTE_REQ_STAT(attr_val));
-
-	return snprintf(buf, PAGE_SIZE, "%s\n",
-			frag_level == HID_LEV_RED ? "RED" :
-			frag_level == HID_LEV_YELLOW ? "YELLOW" :
-			frag_level == HID_LEV_GREEN ? "GREEN" :
-			frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
+	return -EINVAL;
 }
 
 #if defined(CONFIG_UFSHID_POC)
