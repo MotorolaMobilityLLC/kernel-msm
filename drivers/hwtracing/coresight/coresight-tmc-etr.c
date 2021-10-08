@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  * Copyright(C) 2016 Linaro Limited. All rights reserved.
  * Author: Mathieu Poirier <mathieu.poirier@linaro.org>
  *
@@ -20,6 +20,7 @@
 #include <linux/coresight.h>
 #include <linux/dma-mapping.h>
 #include <linux/iommu.h>
+#include <asm/dma-iommu.h>
 #include <linux/idr.h>
 #include <linux/mutex.h>
 #include <linux/refcount.h>
@@ -1132,19 +1133,67 @@ static void tmc_etr_disable_hw(struct tmc_drvdata *drvdata)
 	drvdata->etr_buf = NULL;
 }
 
+static int usb_bam_sysmem_iommu_map(struct device *dev,
+		struct sps_mem_buffer *fifo, bool is_desc_fifo)
+{
+	enum dma_data_direction dir = (is_desc_fifo ?
+				DMA_BIDIRECTIONAL : DMA_FROM_DEVICE);
+
+	/*
+	 * USB BAM driver allocates contiguous physical memory for data and
+	 * desc fifo buffer which would result into virtual memory being
+	 * allocated using vmalloc(). Hence use phys_to_virt(fifo->phys_base)
+	 * instead of available virtual address with sps_mem_buffer structure
+	 * as dma_map_single() API can't work with vmalloc() based virtual
+	 * address.
+	 */
+	fifo->iova = dma_map_single(dev, phys_to_virt(fifo->phys_base),
+							fifo->size, dir);
+	if (dma_mapping_error(dev, fifo->iova)) {
+		dev_err(dev, "err mapping :%s fifo\n",
+			is_desc_fifo ? "desc" : "data");
+		return -EINVAL;
+	}
+
+	dev_dbg(dev, "map %s fifo: pa:%pa iova:%pad va:%pK size:0x%x\n",
+			is_desc_fifo ? "desc" : "data", &fifo->phys_base,
+			&fifo->iova, phys_to_virt(fifo->phys_base), fifo->size);
+	return 0;
+}
+
+static void usb_bam_sysmem_iommu_unmap(struct device *dev,
+		struct sps_mem_buffer *fifo, bool is_desc_fifo)
+{
+	enum dma_data_direction dir = (is_desc_fifo ?
+				DMA_BIDIRECTIONAL : DMA_FROM_DEVICE);
+
+	if (fifo->iova) {
+		dev_dbg(dev, "unmap %s fifo iova:%pad size:%x\n",
+			is_desc_fifo ? "desc" : "data", &fifo->iova,
+			fifo->size);
+		dma_unmap_single(dev, fifo->iova, fifo->size, dir);
+		fifo->iova = 0;
+	}
+}
+
 static int tmc_etr_fill_usb_bam_data(struct tmc_drvdata *drvdata)
 {
 	struct tmc_etr_bam_data *bamdata = drvdata->bamdata;
 	dma_addr_t data_fifo_iova, desc_fifo_iova;
+	int ret;
 
 	get_qdss_bam_connection_info(&bamdata->dest,
 				    &bamdata->dest_pipe_idx,
 				    &bamdata->src_pipe_idx,
 				    &bamdata->desc_fifo,
 				    &bamdata->data_fifo,
-				    NULL);
+				    &bamdata->mem_type);
 
-	if (bamdata->props.options & SPS_BAM_SMMU_EN) {
+	if (!(bamdata->props.options & SPS_BAM_SMMU_EN))
+		return 0;
+
+	dev_dbg(drvdata->dev, "mem_type:%d\n", bamdata->mem_type);
+	if (bamdata->mem_type == OCI_MEM) {
 		data_fifo_iova = dma_map_resource(drvdata->dev,
 			bamdata->data_fifo.phys_base, bamdata->data_fifo.size,
 			DMA_BIDIRECTIONAL, 0);
@@ -1163,8 +1212,46 @@ static int tmc_etr_fill_usb_bam_data(struct tmc_drvdata *drvdata)
 			__func__, &(bamdata->desc_fifo.phys_base),
 			&desc_fifo_iova, bamdata->desc_fifo.size);
 		bamdata->desc_fifo.iova = desc_fifo_iova;
+	} else if (bamdata->mem_type == SYSTEM_MEM) {
+
+		if (!bamdata->data_fifo.phys_base || !bamdata->data_fifo.size ||
+				!bamdata->desc_fifo.phys_base ||
+				!bamdata->desc_fifo.size) {
+			dev_err(drvdata->dev, "usb data/desc fifo not proper");
+			return -EINVAL;
+		}
+
+		ret = usb_bam_sysmem_iommu_map(drvdata->dev,
+				&bamdata->data_fifo, false);
+		if (ret) {
+			bamdata->data_fifo.iova = 0;
+			return ret;
+		}
+
+		ret = usb_bam_sysmem_iommu_map(drvdata->dev,
+				&bamdata->desc_fifo, true);
+		if (ret) {
+			bamdata->desc_fifo.iova = 0;
+			usb_bam_sysmem_iommu_unmap(drvdata->dev,
+				&bamdata->data_fifo, false);
+			return ret;
+		}
 	}
+
 	return 0;
+}
+
+static void tmc_etr_unmap_usb_bam_data(struct tmc_drvdata *drvdata)
+{
+	struct tmc_etr_bam_data *bamdata = drvdata->bamdata;
+
+	if ((bamdata->props.options & SPS_BAM_SMMU_EN) &&
+			bamdata->mem_type == SYSTEM_MEM) {
+		usb_bam_sysmem_iommu_unmap(drvdata->dev, &bamdata->data_fifo,
+								false);
+		usb_bam_sysmem_iommu_unmap(drvdata->dev, &bamdata->desc_fifo,
+								true);
+	}
 }
 
 static int __tmc_etr_enable_to_bam(struct tmc_drvdata *drvdata)
@@ -1427,6 +1514,7 @@ void usb_notifier(void *priv, unsigned int event, struct qdss_request *d_req,
 		__tmc_etr_disable_to_bam(drvdata);
 		spin_unlock_irqrestore(&drvdata->spinlock, flags);
 		tmc_etr_bam_disable(drvdata);
+		tmc_etr_unmap_usb_bam_data(drvdata);
 	}
 	mutex_unlock(&drvdata->mem_lock);
 }
