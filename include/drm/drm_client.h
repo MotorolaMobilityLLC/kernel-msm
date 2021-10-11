@@ -158,6 +158,10 @@ int drm_client_modeset_commit_force(struct drm_client_dev *client);
 int drm_client_modeset_commit(struct drm_client_dev *client);
 int drm_client_modeset_dpms(struct drm_client_dev *client, int mode);
 
+#ifdef CONFIG_DRM_CLIENT_BOOTSPLASH
+void drm_bootsplash_client_register(struct drm_device *dev);
+#endif
+
 /**
  * drm_client_for_each_modeset() - Iterate over client modesets
  * @modeset: &drm_mode_set loop cursor
