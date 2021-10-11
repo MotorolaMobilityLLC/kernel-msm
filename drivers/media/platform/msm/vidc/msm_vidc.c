@@ -1083,6 +1083,7 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 	int rc = 0;
 	struct hfi_device *hdev;
 	struct hal_buffer_size_minimum b;
+	struct hal_buffer_requirements *bufreq;
 	u32 rc_mode;
 	int value = 0;
 
@@ -1196,6 +1197,27 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 		dprintk(VIDC_ERR,
 			"This session has mis-match buffer counts%pK\n", inst);
 		goto fail_start;
+	}
+
+	if (inst->session_type == MSM_VIDC_DECODER &&
+		msm_comm_get_stream_output_mode(inst) ==
+			HAL_VIDEO_DECODER_SECONDARY) {
+		bufreq = get_buff_req_buffer(inst,
+			HAL_BUFFER_OUTPUT);
+		if (!bufreq) {
+			dprintk(VIDC_ERR, "Buffer requirements failed\n");
+			goto fail_start;
+		}
+		/* For DPB buffers, Always use min count */
+		rc = msm_comm_set_buffer_count(inst,
+			bufreq->buffer_count_min,
+			bufreq->buffer_count_min,
+			HAL_BUFFER_OUTPUT);
+		if (rc) {
+			dprintk(VIDC_ERR,
+			"failed to set buffer count\n");
+			goto fail_start;
+		}
 	}
 
 	rc = msm_comm_set_scratch_buffers(inst);
