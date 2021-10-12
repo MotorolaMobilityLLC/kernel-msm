@@ -1602,9 +1602,16 @@ static void ipa3_q6_clnt_svc_arrive(struct work_struct *work)
 	if ((rc == -ENETRESET) || (rc == -ENODEV) || (rc == -ECONNRESET)) {
 		IPAWANERR(
 		"ipa3_qmi_init_modem_send_sync_msg failed due to SSR!\n");
+
 		/* Cleanup when ipa3_wwan_remove is called */
-		vfree(ipa_q6_clnt);
-		ipa_q6_clnt = NULL;
+		mutex_lock(&ipa3_qmi_lock);
+		if (ipa_q6_clnt != NULL) {
+			qmi_handle_release(ipa_q6_clnt);
+			vfree(ipa_q6_clnt);
+			ipa_q6_clnt = NULL;
+		}
+		mutex_unlock(&ipa3_qmi_lock);
+		IPAWANERR("Exit from service arrive fun\n");
 		return;
 	}
 
@@ -2279,6 +2286,8 @@ int ipa3_qmi_enable_per_client_stats(
 
 	IPAWANDBG("Sending QMI_IPA_ENABLE_PER_CLIENT_STATS_REQ_V01\n");
 
+	if (unlikely(!ipa_q6_clnt))
+		return -ETIMEDOUT;
 	rc = ipa3_qmi_send_req_wait(ipa_q6_clnt,
 		&req_desc, req,
 		&resp_desc, resp,
@@ -2315,6 +2324,9 @@ int ipa3_qmi_get_per_client_packet_stats(
 	resp_desc.ei_array = ipa3_get_stats_per_client_resp_msg_data_v01_ei;
 
 	IPAWANDBG("Sending QMI_IPA_GET_STATS_PER_CLIENT_REQ_V01\n");
+
+	if (unlikely(!ipa_q6_clnt))
+		return -ETIMEDOUT;
 
 	rc = ipa3_qmi_send_req_wait(ipa_q6_clnt,
 		&req_desc, req,
@@ -2372,6 +2384,9 @@ int ipa3_qmi_send_mhi_cleanup_request(struct ipa_mhi_cleanup_req_msg_v01 *req)
 	resp_desc.max_msg_len = IPA_MHI_CLK_VOTE_RESP_MSG_V01_MAX_MSG_LEN;
 	resp_desc.msg_id = QMI_IPA_MHI_CLEANUP_RESP_V01;
 	resp_desc.ei_array = ipa_mhi_cleanup_resp_msg_v01_ei;
+
+	if (unlikely(!ipa_q6_clnt))
+		return -ETIMEDOUT;
 
 	rc = ipa3_qmi_send_req_wait(ipa_q6_clnt,
 		&req_desc, req,

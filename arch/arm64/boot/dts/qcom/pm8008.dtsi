@@ -57,7 +57,7 @@ pm8008_9: qcom,pm8008@9 {
 			regulator-min-microvolt = <528000>;
 			regulator-max-microvolt = <1504000>;
 			qcom,min-dropout-voltage = <225000>;
-			qcom,hpm-min-load = <10000>;
+			qcom,hpm-min-load = <0>;
 		};
 
 		L2P: qcom,pm8008-l2@4100 {
@@ -66,7 +66,7 @@ pm8008_9: qcom,pm8008@9 {
 			regulator-min-microvolt = <528000>;
 			regulator-max-microvolt = <1504000>;
 			qcom,min-dropout-voltage = <225000>;
-			qcom,hpm-min-load = <10000>;
+			qcom,hpm-min-load = <0>;
 		};
 
 		L3P: qcom,pm8008-l3@4200 {
@@ -75,7 +75,7 @@ pm8008_9: qcom,pm8008@9 {
 			regulator-min-microvolt = <1500000>;
 			regulator-max-microvolt = <3400000>;
 			qcom,min-dropout-voltage = <200000>;
-			qcom,hpm-min-load = <10000>;
+			qcom,hpm-min-load = <0>;
 		};
 
 		L4P: qcom,pm8008-l4@4300 {
@@ -84,7 +84,7 @@ pm8008_9: qcom,pm8008@9 {
 			regulator-min-microvolt = <1500000>;
 			regulator-max-microvolt = <3400000>;
 			qcom,min-dropout-voltage = <200000>;
-			qcom,hpm-min-load = <10000>;
+			qcom,hpm-min-load = <0>;
 		};
 
 		L5P: qcom,pm8008-l5@4400 {
@@ -93,7 +93,7 @@ pm8008_9: qcom,pm8008@9 {
 			regulator-min-microvolt = <1500000>;
 			regulator-max-microvolt = <3400000>;
 			qcom,min-dropout-voltage = <300000>;
-			qcom,hpm-min-load = <10000>;
+			qcom,hpm-min-load = <0>;
 		};
 
 		L6P: qcom,pm8008-l6@4400 {
@@ -102,7 +102,7 @@ pm8008_9: qcom,pm8008@9 {
 			regulator-min-microvolt = <1500000>;
 			regulator-max-microvolt = <3400000>;
 			qcom,min-dropout-voltage = <300000>;
-			qcom,hpm-min-load = <10000>;
+			qcom,hpm-min-load = <0>;
 		};
 
 		L7P: qcom,pm8008-l7@4400 {
@@ -111,7 +111,7 @@ pm8008_9: qcom,pm8008@9 {
 			regulator-min-microvolt = <1500000>;
 			regulator-max-microvolt = <3400000>;
 			qcom,min-dropout-voltage = <300000>;
-			qcom,hpm-min-load = <10000>;
+			qcom,hpm-min-load = <0>;
 		};
 	};
 };
