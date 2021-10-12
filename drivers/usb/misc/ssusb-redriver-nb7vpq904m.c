@@ -662,25 +662,12 @@ static void ssusb_redriver_orientation_gpio_init(
 {
 	struct device *dev = redriver->dev;
 	int rc;
-	const char *orient_gpio_name = "null";
-	long gpio_num;
 
-	rc = of_property_read_string(dev->of_node, "redriver,orientation_gpio", &orient_gpio_name);
-	if (rc < 0) {
-		dev_err(dev, "GPIO %s not available from dt\r\n", orient_gpio_name);
-		redriver->orientation_gpio = -EINVAL;
-		return;
-	} else {
-		rc |= kstrtol(orient_gpio_name, 0, &gpio_num);
-		redriver->orientation_gpio = (int)gpio_num;
-		dev_err(dev, "Found Orientation_GPIO: %d\r\n", redriver->orientation_gpio);
-	}
-	if (!gpio_is_valid(redriver->orientation_gpio)) {
-		dev_err(dev, "Failed to get gpio\n");
-		return;
-	}
+	redriver->orientation_gpio = of_get_named_gpio(redriver->dev->of_node,
+			"redriver,orientation_gpio", 0);
+	dev_dbg(dev, "Orientation_GPIO: %d\r\n", redriver->orientation_gpio);
 
-	rc |= devm_gpio_request(dev, redriver->orientation_gpio, "redriver");
+	rc = devm_gpio_request(dev, redriver->orientation_gpio, "redriver");
 	if (rc < 0) {
 		dev_err(dev, "Failed to request gpio\n");
 		redriver->orientation_gpio = -EINVAL;
