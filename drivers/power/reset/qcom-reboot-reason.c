@@ -18,6 +18,7 @@
 #define RESET_EXTRA_SW_BOOT_REASON     BIT(7)
 #define RESET_EXTRA_PANIC_REASON       BIT(3)
 #define RESET_EXTRA_REBOOT_BL_REASON   BIT(2)
+#define RESET_EXTRA_SW_REBOOT_REASON   BIT(0)
 
 struct qcom_reboot_reason {
 	struct device *dev;
@@ -67,6 +68,10 @@ static int qcom_reboot_reason_reboot(struct notifier_block *this,
 	struct qcom_reboot_reason *reboot = container_of(this,
 		struct qcom_reboot_reason, reboot_nb);
 	struct poweroff_reason *reason;
+	unsigned char val = RESET_EXTRA_SW_REBOOT_REASON;
+
+	nvmem_cell_write(reboot->nvmem_oem_cell, &val,
+			sizeof(val));
 
 	if (!cmd)
 		return NOTIFY_OK;
