@@ -19,6 +19,13 @@ config IRONMN_DTB
 	help
 		Only include Motorola Ironmn device specific DTB.
 
+config LI_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Li Device DTB"
+	help
+		Only include Motorola Li device specific DTB.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
