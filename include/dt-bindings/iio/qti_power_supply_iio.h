@@ -161,4 +161,7 @@
 #define PSY_IIO_MMI_CP_STATUS1 0x102
 #define PSY_IIO_MMI_CP_CLEAR_ERROR 0x103
 #define PSY_IIO_MMI_QC3P_POWER 0x104
+
+/*MMI add PSY_IIO properties for discrete charging*/
+#define PSY_IIO_MMI_OTG_ENABLE 0x105
 #endif /* __QTI_POWER_SUPPLY_IIO_H__ */
