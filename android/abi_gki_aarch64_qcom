@@ -1497,6 +1497,7 @@
   mempool_free_slab
   memremap
   memset
+  memset32
   __memset_io
   memunmap
   memweight
@@ -2034,6 +2035,7 @@
   regmap_irq_get_virq
   regmap_mmio_detach_clk
   regmap_raw_read
+  regmap_raw_write
   regmap_read
   regmap_register_patch
   regmap_update_bits_base
