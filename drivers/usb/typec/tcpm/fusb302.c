@@ -76,7 +76,9 @@ struct fusb302_chip {
 	struct tcpm_port *tcpm_port;
 	struct tcpc_dev tcpc_dev;
 
+	struct regulator *vdd;
 	struct regulator *vbus;
+	struct regulator *vconn;
 
 	spinlock_t irq_lock;
 	struct work_struct irq_work;
@@ -734,16 +736,20 @@ static int tcpm_set_vconn(struct tcpc_dev *dev, bool on)
 		goto done;
 	}
 	if (on) {
+		ret = chip->vconn ? regulator_enable(chip->vconn) : 0;
 		switches0_data = (chip->cc_polarity == TYPEC_POLARITY_CC1) ?
 				 FUSB_REG_SWITCHES0_VCONN_CC2 :
 				 FUSB_REG_SWITCHES0_VCONN_CC1;
-	}
+	} else
+		ret = chip->vconn ? regulator_disable(chip->vconn) : 0;
 	ret = fusb302_i2c_mask_write(chip, FUSB_REG_SWITCHES0,
 				     switches0_mask, switches0_data);
 	if (ret < 0)
 		goto done;
 	chip->vconn_on = on;
 	fusb302_log(chip, "vconn := %s", on ? "On" : "Off");
+	if (chip->vconn)
+		fusb302_log(chip, "VCONN is %s", regulator_is_enabled(chip->vconn) ? "On" : "Off");
 done:
 	mutex_unlock(&chip->lock);
 
@@ -761,9 +767,11 @@ static int tcpm_set_vbus(struct tcpc_dev *dev, bool on, bool charge)
 		fusb302_log(chip, "vbus is already %s", on ? "On" : "Off");
 	} else {
 		if (on)
-			ret = regulator_enable(chip->vbus);
+			ret = chip->vbus ? regulator_enable(chip->vbus) : 0;
 		else
-			ret = regulator_disable(chip->vbus);
+			ret = chip->vbus ? regulator_disable(chip->vbus) : 0;
+		if (chip->vbus)
+			fusb302_log(chip, "VBUS is %s", regulator_is_enabled(chip->vbus) ? "On" : "Off");
 		if (ret < 0) {
 			fusb302_log(chip, "cannot %s vbus regulator, ret=%d",
 				    on ? "enable" : "disable", ret);
@@ -1721,9 +1729,23 @@ static int fusb302_probe(struct i2c_client *client,
 			return -EPROBE_DEFER;
 	}
 
+	chip->vdd = devm_regulator_get(chip->dev, "vdd");
+	if (IS_ERR(chip->vdd)) {
+		fusb302_log(chip, "VDD not loaded");
+		return PTR_ERR(chip->vdd);
+	}
+	regulator_enable(chip->vdd);
+	fusb302_log(chip, "VDD is %s", regulator_is_enabled(chip->vdd) ? "On" : "Off");
+
 	chip->vbus = devm_regulator_get(chip->dev, "vbus");
-	if (IS_ERR(chip->vbus))
-		return PTR_ERR(chip->vbus);
+	if (IS_ERR(chip->vbus)) {
+		fusb302_log(chip, "VBUS not loaded");
+	}
+
+	chip->vconn = devm_regulator_get(chip->dev, "vconn");
+	if (IS_ERR(chip->vconn)) {
+		fusb302_log(chip, "VCONN not loaded");
+	}
 
 	chip->wq = create_singlethread_workqueue(dev_name(chip->dev));
 	if (!chip->wq)
