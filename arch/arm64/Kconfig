@@ -1891,3 +1891,9 @@ config AW882XX_DRIVER_V1
         default n
         help
         Enable it only use aw882xx driver version 1.*.
+
+config AW882XX_DUAL_SMARTPA
+        bool "Use dual smartpa"
+        default n
+        help
+        Enable it only use dual smartpa.
