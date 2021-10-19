@@ -229,10 +229,17 @@ static int
 uvc_v4l2_subscribe_event(struct v4l2_fh *fh,
 			 const struct v4l2_event_subscription *sub)
 {
+	struct uvc_device *uvc = video_get_drvdata(fh->vdev);
+	int ret;
+
 	if (sub->type < UVC_EVENT_FIRST || sub->type > UVC_EVENT_LAST)
 		return -EINVAL;
 
-	return v4l2_event_subscribe(fh, sub, 2, NULL);
+	ret = v4l2_event_subscribe(fh, sub, 2, NULL);
+	if (!ret && sub->type == UVC_EVENT_UNBIND)
+		uvc->wait_for_close = true;
+
+	return ret;
 }
 
 static int
