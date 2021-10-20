@@ -23,6 +23,7 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/qpnp/qpnp-pbs.h>
+#include <linux/workqueue.h>
 
 /* status register definitions in HAPTICS_CFG module */
 #define HAP_CFG_REVISION2_REG			0x01
@@ -276,6 +277,8 @@
 	((chip)->hbst_revision == HAP_BOOST_V0P0 ? \
 	 HAP_BOOST_V0P0_CLAMP_REG : HAP_BOOST_V0P1_CLAMP_REG)
 
+#define VIBRATE_TIMEMS_ON_BOOTING 	1000
+
 enum hap_status_sel_v2 {
 	CAL_TLRA_CL_STS = 0x00,
 	T_WIND_STS,
@@ -486,6 +489,7 @@ struct haptics_chip {
 	struct device_node		*pbs_node;
 	struct class			hap_class;
 	struct regulator		*hpwr_vreg;
+	struct delayed_work		vibrate_work;
 	int				fifo_empty_irq;
 	u32				hpwr_voltage_mv;
 	u32				effects_count;
@@ -4266,6 +4270,62 @@ restore:
 	return rc;
 }
 
+static void haptics_vibrate_work_routine(struct work_struct *work)
+{
+	struct haptics_chip *chip = container_of(work, struct haptics_chip, vibrate_work.work);
+
+	haptics_enable_play(chip, false);
+	haptics_enable_hpwr_vreg(chip, false);
+}
+
+static int haptics_produce_vibration(struct haptics_chip *chip)
+{
+	int rc;
+	u8 amplitude;
+	u32 vmax_mv = chip->config.vmax_mv;
+	bool unlock_flag = 0;
+
+	mutex_lock(&chip->play.lock);
+
+	/* Stop other mode playing if there is any */
+	rc = haptics_enable_play(chip, false);
+	if (rc < 0) {
+		dev_err(chip->dev, "Stop playing failed, rc=%d\n", rc);
+		goto unlock;
+	}
+
+	rc = haptics_set_vmax_mv(chip, vmax_mv);
+	if (rc < 0)
+		goto unlock;
+
+	amplitude = get_direct_play_max_amplitude(chip);
+	rc = haptics_set_direct_play(chip, amplitude);
+	if (rc < 0)
+		goto unlock;
+
+	rc = haptics_enable_hpwr_vreg(chip, true);
+	if (rc < 0)
+		goto unlock;
+
+	chip->play.pattern_src = DIRECT_PLAY;
+	rc = haptics_enable_play(chip, true);
+	if (rc < 0)
+		goto unlock;
+
+	schedule_delayed_work(&chip->vibrate_work, msecs_to_jiffies(VIBRATE_TIMEMS_ON_BOOTING));
+	unlock_flag = 1;
+
+unlock:
+	/* Disable play in case it's not been disabled */
+	if( !unlock_flag) {
+		haptics_enable_play(chip, false);
+		rc = haptics_enable_hpwr_vreg(chip, false);
+	}
+	mutex_unlock(&chip->play.lock);
+
+	return rc;
+}
+
 static int haptics_start_lra_calibrate(struct haptics_chip *chip)
 {
 	int rc;
@@ -4485,6 +4545,12 @@ static int haptics_probe(struct platform_device *pdev)
 	if (rc < 0)
 		dev_err(chip->dev, "Creating debugfs failed, rc=%d\n", rc);
 #endif
+
+	INIT_DELAYED_WORK(&chip->vibrate_work, haptics_vibrate_work_routine);
+	rc = haptics_produce_vibration(chip);
+	if(rc < 0)
+		dev_err(chip->dev, "haptics produce vibration failed, rc=%d\n", rc);
+
 	return 0;
 destroy_ff:
 	input_ff_destroy(chip->input_dev);
