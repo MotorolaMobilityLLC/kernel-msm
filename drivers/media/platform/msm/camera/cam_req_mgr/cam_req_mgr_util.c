@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019,2021 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -128,21 +128,6 @@ static int32_t cam_get_free_handle_index(void)
 	return idx;
 }
 
-void cam_dump_tbl_info(void)
-{
-	int i;
-
-	for (i = 0; i < CAM_REQ_MGR_MAX_HANDLES; i++)
-		CAM_INFO(CAM_CRM, "session_hdl=%x hdl_value=%x\n"
-			"type=%d state=%d dev_id=%lld",
-			hdl_tbl->hdl[i].session_hdl,
-			hdl_tbl->hdl[i].hdl_value,
-			hdl_tbl->hdl[i].type,
-			hdl_tbl->hdl[i].state,
-			hdl_tbl->hdl[i].dev_id);
-
-}
-
 int32_t cam_create_session_hdl(void *priv)
 {
 	int idx;
@@ -159,7 +144,6 @@ int32_t cam_create_session_hdl(void *priv)
 	idx = cam_get_free_handle_index();
 	if (idx < 0) {
 		CAM_ERR(CAM_CRM, "Unable to create session handle");
-		cam_dump_tbl_info();
 		spin_unlock_bh(&hdl_tbl_lock);
 		return idx;
 	}
@@ -193,7 +177,6 @@ int32_t cam_create_device_hdl(struct cam_create_dev_hdl *hdl_data)
 	idx = cam_get_free_handle_index();
 	if (idx < 0) {
 		CAM_ERR(CAM_CRM, "Unable to create device handle");
-		cam_dump_tbl_info();
 		spin_unlock_bh(&hdl_tbl_lock);
 		return idx;
 	}
