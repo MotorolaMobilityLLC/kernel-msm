@@ -1849,3 +1849,9 @@ config AF_NOISE_ELIMINATION
 	default n
 	help
 	Enable it only for produts that suffering AF resonance noise.
+
+config AW882XX_PARAMS_FROM_BIN
+        bool "params is stored in bin file"
+        default n
+        help
+        Enable it only for params of smartPA is stored in bin file.
