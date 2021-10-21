@@ -58,6 +58,7 @@ struct ipa_odl_context {
 	bool odl_ctl_msg_wq_flag;
 	struct ipa3_odlstats stats;
 	u32 odl_pm_hdl;
+	wait_queue_head_t adpl_msg_waitq;
 };
 
 struct ipa3_push_msg_odl {
