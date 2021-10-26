@@ -3234,7 +3234,7 @@ static int __qseecom_unload_app_kthread_func(void *data)
 			qseecom.unload_app_kthread_wq,
 			atomic_read(&qseecom.unload_app_kthread_state)
 				== UNLOAD_APP_KT_WAKEUP);
-		pr_err("kthread to unload app is called, state %d\n",
+		pr_debug("kthread to unload app is called, state %d\n",
 			atomic_read(&qseecom.unload_app_kthread_state));
 		__qseecom_processing_pending_unload_app();
 		atomic_set(&qseecom.unload_app_kthread_state,
