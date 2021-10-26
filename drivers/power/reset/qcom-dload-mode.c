@@ -364,6 +364,8 @@ static int qcom_dload_probe(struct platform_device *pdev)
 		dump_mode = QCOM_DOWNLOAD_MINIDUMP;
 	else if (!strncmp("both", dump_mode_name, DUMP_MODE_NAME_LEN))
 		dump_mode = QCOM_DOWNLOAD_BOTHDUMP;
+	else
+		dump_mode = QCOM_DOWNLOAD_NODUMP;
 
 	msm_enable_dump_mode(enable_dump);
 	dump_mode = qcom_scm_get_download_mode(&temp, 0) ? dump_mode : temp;
