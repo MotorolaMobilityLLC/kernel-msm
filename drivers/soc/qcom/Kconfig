@@ -68,6 +68,16 @@ config CYPFQ_DTB
 		Only include CYPFQ specific DTBs to limit the number that
 		get built during kernel compilation.
 
+
+config RHODEC_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "RHODEC DTBs"
+        help
+                Only include RHODEC specific DTBs to limit the number that
+                get built during kernel compilation.
+
+
 config CYPFR_DTB
 	depends on ARCH_QCOM
 	default n
