@@ -24,6 +24,7 @@
 #include <linux/uaccess.h>
 #include <linux/qpnp/qpnp-pbs.h>
 #include <linux/workqueue.h>
+#include <linux/of_gpio.h>
 
 /* status register definitions in HAPTICS_CFG module */
 #define HAP_CFG_REVISION2_REG			0x01
@@ -278,6 +279,7 @@
 	 HAP_BOOST_V0P0_CLAMP_REG : HAP_BOOST_V0P1_CLAMP_REG)
 
 #define VIBRATE_TIMEMS_ON_BOOTING 	1000
+#define HAPTIC_SHOW_MAX_SIZE		50
 
 enum hap_status_sel_v2 {
 	CAL_TLRA_CL_STS = 0x00,
@@ -491,6 +493,8 @@ struct haptics_chip {
 	struct regulator		*hpwr_vreg;
 	struct delayed_work		vibrate_work;
 	int				fifo_empty_irq;
+	int             		haptic_context_gpio;
+	u32				long_gain_reduced;
 	u32				hpwr_voltage_mv;
 	u32				effects_count;
 	u32				cfg_addr_base;
@@ -499,6 +503,7 @@ struct haptics_chip {
 	u8				cfg_revision;
 	u8				ptn_revision;
 	u16				hbst_revision;
+	bool				factory_mode;
 	bool				fifo_empty_irq_en;
 	bool				swr_slave_enabled;
 	bool				clamp_at_5v;
@@ -2400,6 +2405,7 @@ static void haptics_set_gain(struct input_dev *dev, u16 gain)
 	struct haptics_hw_config *config = &chip->config;
 	struct haptics_play_info *play = &chip->play;
 	u32 vmax_mv, amplitude;
+	int t_top = 0;
 
 	if (gain == 0)
 		return;
@@ -2407,7 +2413,14 @@ static void haptics_set_gain(struct input_dev *dev, u16 gain)
 	if (gain > 0x7fff)
 		gain = 0x7fff;
 
-	dev_dbg(chip->dev, "Set gain: %#x\n", gain);
+	if (gpio_is_valid(chip->haptic_context_gpio) && !chip->factory_mode) {
+		t_top = gpio_get_value(chip->haptic_context_gpio);
+		if(t_top) {
+			if(gain > chip->long_gain_reduced)
+				gain = chip->long_gain_reduced;
+		}
+	}
+	dev_info(chip->dev, "Set gain: %#x, t_top = %d, chip->factory_mode = %d\n", gain, t_top, chip->factory_mode);
 
 	/* scale amplitude when playing in DIRECT_PLAY mode */
 	if (chip->play.pattern_src == DIRECT_PLAY) {
@@ -3818,6 +3831,20 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 		goto free_pbs;
 	}
 
+	chip->haptic_context_gpio = of_get_named_gpio(node, "haptic-context-gpio", 0);
+	if (chip->haptic_context_gpio < 0) {
+		dev_err(chip->dev, "no haptic context gpio provided.\n");
+	} else {
+		dev_info(chip->dev, "haptic context gpio provided ok. gpio_num = %d\n", chip->haptic_context_gpio);
+	}
+
+	rc = of_property_read_u32(node, "long-gain-reduced", &chip->long_gain_reduced);
+	if (chip->haptic_context_gpio >= 0 && rc < 0) {
+		dev_err(chip->dev, "Failed to read long-gain-reduced, rc=%d\n",rc);
+		rc = -EINVAL;
+		goto free_pbs;
+	}
+
 	config->vmax_mv = DEFAULT_VMAX_MV;
 	of_property_read_u32(node, "qcom,vmax-mv", &config->vmax_mv);
 	if (config->vmax_mv >= MAX_VMAX_MV) {
@@ -4425,10 +4452,43 @@ static ssize_t lra_impedance_show(struct class *c,
 }
 static CLASS_ATTR_RO(lra_impedance);
 
+static ssize_t factory_mode_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+	    dev_err(chip->dev, "Invalid factory mode value \n");
+	    return -EINVAL;
+	}
+
+	chip->factory_mode = (mode) ? true : false;
+
+	return r ? r : count;
+}
+
+static ssize_t factory_mode_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int state;
+
+	state = (chip->factory_mode) ? 1 : 0;
+
+	return scnprintf(buf, HAPTIC_SHOW_MAX_SIZE, "%d\n", state);
+}
+static CLASS_ATTR_RW(factory_mode);
+
 static struct attribute *hap_class_attrs[] = {
 	&class_attr_lra_calibration.attr,
 	&class_attr_lra_frequency_hz.attr,
 	&class_attr_lra_impedance.attr,
+	&class_attr_factory_mode.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(hap_class);
