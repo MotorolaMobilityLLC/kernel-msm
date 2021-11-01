@@ -15,6 +15,7 @@
 #include <linux/nvmem-consumer.h>
 #include <linux/panic_notifier.h>
 
+#define RESET_EXTRA_SW_BOOT_REASON     BIT(7)
 #define RESET_EXTRA_PANIC_REASON       BIT(3)
 #define RESET_EXTRA_REBOOT_BL_REASON   BIT(2)
 
@@ -93,6 +94,8 @@ static int qcom_reboot_reason_reboot(struct notifier_block *this,
 static int qcom_reboot_reason_probe(struct platform_device *pdev)
 {
 	struct qcom_reboot_reason *reboot;
+	unsigned char val = RESET_EXTRA_SW_BOOT_REASON;
+	int ret;
 
 	reboot = devm_kzalloc(&pdev->dev, sizeof(*reboot), GFP_KERNEL);
 	if (!reboot)
@@ -120,6 +123,9 @@ static int qcom_reboot_reason_probe(struct platform_device *pdev)
 	register_reboot_notifier(&reboot->reboot_nb);
 
 	platform_set_drvdata(pdev, reboot);
+
+	ret = nvmem_cell_write(reboot->nvmem_oem_cell, &val, sizeof(val));
+	pr_err("update sw boot flag, ret = %d\n", ret);
 
 	return 0;
 }
@@ -152,5 +158,6 @@ static struct platform_driver qcom_reboot_reason_driver = {
 
 module_platform_driver(qcom_reboot_reason_driver);
 
+MODULE_INFO(depends, "nvmem_qcom_spmi_sdam,spmi_pmic_arb");
 MODULE_DESCRIPTION("MSM Reboot Reason Driver");
 MODULE_LICENSE("GPL v2");
