@@ -174,7 +174,7 @@ static int get_moto_radio()
         }
 }
 
-static int selectFileNameByProduct(char *filename)
+static int selectFileNameByProduct(struct cnss_plat_data *plat_priv, char *filename)
 {
 	int i, num, ret = 0;
         if(get_moto_radio() != 0 || get_moto_device() != 0){
@@ -186,8 +186,16 @@ static int selectFileNameByProduct(char *filename)
 		if (strncmp(device_ptr, (products_list+i)->hw_device, strlen((products_list+i)->hw_device)) == 0) {
 			if(strncmp(radio_ptr, (products_list+i)->hw_radio, strlen((products_list+i)->hw_radio)) == 0 ||
 				strncmp((products_list+i)->hw_radio, "all", strlen((products_list+i)->hw_radio)) == 0) {
-				sprintf(filename, "%s.%s.%s", ELF_BDF_FILE_NAME,
+				if(0x400c1211 == plat_priv->soc_info.soc_id)  //GF chip
+				{
+					sprintf(filename, "%s.%s.%s", ELF_BDF_FILE_NAME_GF,
 					(products_list+i)->hw_device, (products_list+i)->nv_name);
+				}
+				else{
+					sprintf(filename, "%s.%s.%s", ELF_BDF_FILE_NAME,
+					(products_list+i)->hw_device, (products_list+i)->nv_name);
+				}
+
 				ret = 1;
 				break;
 			}
@@ -684,7 +692,7 @@ static int cnss_get_bdf_file_name(struct cnss_plat_data *plat_priv,
 	switch (bdf_type) {
 	case CNSS_BDF_ELF:
 			// Support loading different bdwlan.elf
-		if (selectFileNameByProduct(filename) > 0)
+		if (selectFileNameByProduct(plat_priv,filename) > 0)
 			return ret;
 		/* Board ID will be equal or less than 0xFF in GF mask case */
 		else if (plat_priv->board_info.board_id == 0xFF) {
