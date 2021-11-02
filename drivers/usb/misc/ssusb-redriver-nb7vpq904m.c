@@ -15,6 +15,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/of_gpio.h>
 #include <linux/usb/redriver.h>
+#include <linux/gpio/consumer.h>
 
 /* priority: INT_MAX >= x >= 0 */
 #define NOTIFIER_PRIORITY		1
@@ -157,7 +158,8 @@ static int ssusb_redriver_gen_dev_set(struct ssusb_redriver *redriver)
 			val |= (CHNA_EN | CHNB_EN);
 			val &= ~(CHNC_EN | CHND_EN);
 		}
-
+		dev_err(redriver->dev, "ssusb:: OpModeUSB-:CC %d\n",
+				redriver->typec_orientation);
 		/* Set to default USB Mode */
 		val |= (0x5 << OP_MODE_SHIFT);
 		val |= CHIP_EN;
@@ -170,6 +172,8 @@ static int ssusb_redriver_gen_dev_set(struct ssusb_redriver *redriver)
 		/* Set to DP 4 Lane Mode (OP Mode 2) */
 		val |= (0x2 << OP_MODE_SHIFT);
 		val |= CHIP_EN;
+		dev_err(redriver->dev, "ssusb:: OpModeDP- 4-LN: %d\n",
+				redriver->typec_orientation);
 		break;
 	case OP_MODE_USB_AND_DP:
 		/* Enable channel A, B, C and D */
@@ -184,6 +188,8 @@ static int ssusb_redriver_gen_dev_set(struct ssusb_redriver *redriver)
 				== ORIENTATION_CC2)
 			val |= (0x0 << OP_MODE_SHIFT);
 
+		dev_err(redriver->dev, "ssusb:: OpModeUSB+DP: CC %d\n",
+				redriver->typec_orientation);
 		break;
 	default:
 		val &= ~CHIP_EN;
@@ -274,10 +280,45 @@ static int ssusb_redriver_loss_match_config(
 			redriver->loss_match);
 }
 
+static int ssusb_redriver_read_orientation(struct ssusb_redriver *redriver)
+{
+	int ret;
+
+	if (!gpio_is_valid(redriver->orientation_gpio))
+		return -EINVAL;
+
+	ret = gpio_get_value(redriver->orientation_gpio);
+	if (ret < 0) {
+		dev_err(redriver->dev, "ssusb::fail to read cc-gpio[%d] retVal: %d\n",
+				redriver->orientation_gpio, ret);
+		return -EINVAL;
+	}
+
+	/*
+	 * Support some board layouts in which the channels are reversed.
+	 * i.e. channels C&D are used for the USB CC1 orientation and
+	 * channels A&B are used for USB CC2
+	 */
+	if (redriver->lane_channel_swap)
+		ret = !ret;
+
+	if (ret == 0)
+		redriver->typec_orientation = ORIENTATION_CC1;
+	else
+		redriver->typec_orientation = ORIENTATION_CC2;
+
+	dev_err(redriver->dev, "ssusb::typec_orient: %d, lane_swap: %d\n",
+				redriver->typec_orientation, redriver->lane_channel_swap);
+
+	return 0;
+}
 static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver)
 {
 	int ret;
 	u8 i, chan_mode;
+
+	// To update cc status from fusb302
+	ssusb_redriver_read_orientation(redriver);
 
 	switch (redriver->op_mode) {
 	case OP_MODE_DEFAULT:
@@ -298,6 +339,8 @@ static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver)
 			redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_DISABLE;
 			redriver->chan_mode[CHND_INDEX] = CHAN_MODE_DISABLE;
 		}
+		dev_err(redriver->dev, "ssusb:: OpModeUSB:CC %d\n",
+				redriver->typec_orientation);
 		break;
 	case OP_MODE_USB_AND_DP:
 		if (redriver->typec_orientation == ORIENTATION_CC1) {
@@ -311,12 +354,17 @@ static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver)
 			redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_DP;
 			redriver->chan_mode[CHND_INDEX] = CHAN_MODE_DP;
 		}
+		dev_err(redriver->dev, "ssusb:: OpModeUSB+DP:CC %d\n",
+				redriver->typec_orientation);
+
 		break;
 	case OP_MODE_DP:
 		redriver->chan_mode[CHNA_INDEX] = CHAN_MODE_DP;
 		redriver->chan_mode[CHNB_INDEX] = CHAN_MODE_DP;
 		redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_DP;
 		redriver->chan_mode[CHND_INDEX] = CHAN_MODE_DP;
+		dev_err(redriver->dev, "ssusb:: OpModeDP: CC%d\n",
+					redriver->typec_orientation);
 		break;
 	default:
 		return 0;
@@ -400,39 +448,11 @@ err:
 	return ret;
 }
 
-static int ssusb_redriver_read_orientation(struct ssusb_redriver *redriver)
-{
-	int ret;
-
-	if (!gpio_is_valid(redriver->orientation_gpio))
-		return -EINVAL;
-
-	ret = gpio_get_value(redriver->orientation_gpio);
-	if (ret < 0) {
-		dev_err(redriver->dev, "fail to read gpio value\n");
-		return -EINVAL;
-	}
-
-	/*
-	 * Support some board layouts in which the channels are reversed.
-	 * i.e. channels C&D are used for the USB CC1 orientation and
-	 * channels A&B are used for USB CC2
-	 */
-	if (redriver->lane_channel_swap)
-		ret = !ret;
-
-	if (ret == 0)
-		redriver->typec_orientation = ORIENTATION_CC1;
-	else
-		redriver->typec_orientation = ORIENTATION_CC2;
-
-	return 0;
-}
-
 int redriver_orientation_get(struct device_node *node)
 {
 	struct ssusb_redriver *redriver;
 	struct i2c_client *client;
+	int orient_val;
 
 	if (!node)
 		return -ENODEV;
@@ -445,10 +465,14 @@ int redriver_orientation_get(struct device_node *node)
 	if (!redriver)
 		return -EINVAL;
 
-	if (!gpio_is_valid(redriver->orientation_gpio))
+	if (!gpio_is_valid(redriver->orientation_gpio)) {
+		dev_err(redriver->dev, "ssusb::redriver_orientn_get: gpio not Valid: [%d]\n",
+				redriver->orientation_gpio);
 		return -EINVAL;
-
-	return gpio_get_value(redriver->orientation_gpio);
+	}
+	orient_val = gpio_get_value(redriver->orientation_gpio);
+	dev_err(redriver->dev, "ssusb::redriver_orientn_get Val: [%d]\n", orient_val);
+	return orient_val;
 }
 EXPORT_SYMBOL(redriver_orientation_get);
 
@@ -661,18 +685,15 @@ static void ssusb_redriver_orientation_gpio_init(
 		struct ssusb_redriver *redriver)
 {
 	struct device *dev = redriver->dev;
-	int rc;
+	int orient_state;
 
 	redriver->orientation_gpio = of_get_named_gpio(redriver->dev->of_node,
 			"redriver,orientation_gpio", 0);
-	dev_dbg(dev, "Orientation_GPIO: %d\r\n", redriver->orientation_gpio);
 
-	rc = devm_gpio_request(dev, redriver->orientation_gpio, "redriver");
-	if (rc < 0) {
-		dev_err(dev, "Failed to request gpio\n");
-		redriver->orientation_gpio = -EINVAL;
-		return;
-	}
+	orient_state = gpio_get_value(redriver->orientation_gpio);
+	dev_err(dev, "ssusb::INIT CC-Orientn gpio:[%d] RD val: [%d]\n",
+			redriver->orientation_gpio, orient_state);
+
 }
 
 static const struct regmap_config redriver_regmap = {
