@@ -82,6 +82,7 @@ struct msm_memory_dump {
 };
 
 static struct msm_memory_dump memdump;
+static struct msm_mem_dump_vaddr_tbl vaddr_tbl;
 
 /**
  * update_reg_dump_table - update the register dump table
@@ -699,6 +700,28 @@ int msm_dump_data_register_nominidump(enum msm_dump_table_ids id,
 }
 EXPORT_SYMBOL(msm_dump_data_register_nominidump);
 
+struct dump_vaddr_entry *get_msm_dump_ptr(enum msm_dump_data_ids id)
+{
+	int i;
+
+	if (!vaddr_tbl.entries)
+		return NULL;
+
+	if (id > MSM_DUMP_DATA_MAX)
+		return NULL;
+
+	for (i = 0; i < vaddr_tbl.num_node; i++) {
+		if (vaddr_tbl.entries[i].id == id)
+			break;
+	}
+
+	if (i == vaddr_tbl.num_node)
+		return NULL;
+
+	return &vaddr_tbl.entries[i];
+}
+EXPORT_SYMBOL(get_msm_dump_ptr);
+
 #define MSM_DUMP_TOTAL_SIZE_OFFSET	0x724
 static int init_memory_dump(void *dump_vaddr, phys_addr_t phys_addr,
 					size_t size)
@@ -787,6 +810,14 @@ static int mem_dump_alloc(struct platform_device *pdev)
 	uint32_t ns_vmids[] = {VMID_HLOS};
 	uint32_t ns_vm_perms[] = {PERM_READ | PERM_WRITE};
 	u64 shm_bridge_handle;
+	int i = 0;
+
+	vaddr_tbl.num_node = of_get_child_count(node);
+	vaddr_tbl.entries = devm_kcalloc(&pdev->dev, vaddr_tbl.num_node,
+				 sizeof(struct dump_vaddr_entry),
+				 GFP_KERNEL);
+	if (!vaddr_tbl.entries)
+		dev_err(&pdev->dev, "Unable to allocate mem for ptr addr\n");
 
 	total_size = size = ret = no_of_nodes = 0;
 	/* For dump table registration with IMEM */
@@ -862,9 +893,16 @@ static int mem_dump_alloc(struct platform_device *pdev)
 		dump_entry.addr = phys_addr;
 		ret = msm_dump_data_register_nominidump(MSM_DUMP_TABLE_APPS,
 					&dump_entry);
-		if (ret)
+		if (ret) {
 			dev_err(&pdev->dev, "Data dump setup failed, id = %d\n",
 				id);
+		} else if (vaddr_tbl.entries) {
+			vaddr_tbl.entries[i].id = id;
+			vaddr_tbl.entries[i].dump_vaddr =
+					 dump_vaddr + MSM_DUMP_DATA_SIZE;
+			vaddr_tbl.entries[i].dump_data_vaddr = dump_data;
+			i++;
+		}
 
 		md_entry.phys_addr = dump_data->addr;
 		md_entry.virt_addr = (uintptr_t)dump_vaddr + MSM_DUMP_DATA_SIZE;
