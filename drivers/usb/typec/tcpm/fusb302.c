@@ -30,8 +30,13 @@
 #include <linux/usb/tcpm.h>
 #include <linux/usb/pd.h>
 #include <linux/workqueue.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
 
 #include "fusb302_reg.h"
+
+#define fusb302_log(a, fmt, ...) pr_err("MMI_DETECT: FUSB302[%s]: " fmt "\n", __func__, ##__VA_ARGS__)
 
 /*
  * When the device is SNK, BC_LVL interrupt is used to monitor cc pins
@@ -86,6 +91,7 @@ struct fusb302_chip {
 	bool irq_while_suspended;
 	struct gpio_desc *gpio_int_n;
 	int gpio_int_n_irq;
+	int gpio_ccdir;
 	struct extcon_dev *extcon;
 
 	struct workqueue_struct *wq;
@@ -125,6 +131,7 @@ struct fusb302_chip {
  * Logging
  */
 
+#if 0
 #ifdef CONFIG_DEBUG_FS
 static bool fusb302_log_full(struct fusb302_chip *chip)
 {
@@ -231,6 +238,11 @@ static void fusb302_log(const struct fusb302_chip *chip,
 static void fusb302_debugfs_init(const struct fusb302_chip *chip) { }
 static void fusb302_debugfs_exit(const struct fusb302_chip *chip) { }
 
+#endif
+
+#else /* if 0 */
+static void fusb302_debugfs_init(const struct fusb302_chip *chip) { }
+static void fusb302_debugfs_exit(const struct fusb302_chip *chip) { }
 #endif
 
 static int fusb302_i2c_write(struct fusb302_chip *chip,
@@ -1197,7 +1209,7 @@ static int fusb302_set_cc_polarity_and_pull(struct fusb302_chip *chip,
 static int fusb302_handle_togdone_snk(struct fusb302_chip *chip,
 				      u8 togdone_result)
 {
-	int ret = 0;
+	int ret = 0, readval;
 	u8 status0;
 	u8 bc_lvl;
 	enum typec_cc_polarity cc_polarity;
@@ -1207,6 +1219,9 @@ static int fusb302_handle_togdone_snk(struct fusb302_chip *chip,
 	cc_polarity = (togdone_result == FUSB_REG_STATUS1A_TOGSS_SNK1) ?
 		      TYPEC_POLARITY_CC1 : TYPEC_POLARITY_CC2;
 	ret = fusb302_set_cc_polarity_and_pull(chip, cc_polarity, false, true);
+
+	fusb302_log(chip, "fusb302::togdone_result: %d\n", togdone_result);
+
 	if (ret < 0) {
 		fusb302_log(chip, "cannot set cc polarity %s, ret=%d",
 			    cc_polarity_name[cc_polarity], ret);
@@ -1252,6 +1267,25 @@ static int fusb302_handle_togdone_snk(struct fusb302_chip *chip,
 	fusb302_log(chip, "detected cc1=%s, cc2=%s",
 		    typec_cc_status_name[cc1],
 		    typec_cc_status_name[cc2]);
+
+	//Set ccdir to ssredrv:
+	gpio_set_value(chip->gpio_ccdir, cc_polarity);
+	fusb302_log(chip,"fusb302::SET GPIO CCdir=%d, CC1:%d, CC2: %d\n",
+				cc_polarity, cc1, cc2);
+
+	readval = gpio_get_value(chip->gpio_ccdir);
+	if (readval != cc_polarity) {
+		fusb302_log(chip,"fusb302::FAIL set CCdir-ctrl gpio[%d], wrote:%d, read:%d\n",
+				chip->gpio_ccdir,
+				cc_polarity,
+				readval);
+		return -EINVAL;
+	} else {
+		fusb302_log(chip,"fusb302::SET CCdir-ctrl gpio[%d], wrote:%d, read:%d\n",
+				chip->gpio_ccdir,
+				cc_polarity,
+				readval);
+	}
 
 	return ret;
 }
@@ -1356,9 +1390,11 @@ static int fusb302_handle_togdone_src(struct fusb302_chip *chip,
 	if (cc1 == TYPEC_CC_RD &&
 			(cc2 == TYPEC_CC_OPEN || cc2 == TYPEC_CC_RA)) {
 		cc_polarity = TYPEC_POLARITY_CC1;
+		fusb302_log(chip, "HOST mode CC NORMAL");
 	} else if (cc2 == TYPEC_CC_RD &&
 		    (cc1 == TYPEC_CC_OPEN || cc1 == TYPEC_CC_RA)) {
 		cc_polarity = TYPEC_POLARITY_CC2;
+		fusb302_log(chip, "HOST mode CC REVERSED");
 	} else {
 		fusb302_log(chip, "unexpected CC status cc1=%s, cc2=%s, restarting toggling",
 			    typec_cc_status_name[cc1],
@@ -1394,6 +1430,9 @@ static int fusb302_handle_togdone_src(struct fusb302_chip *chip,
 	fusb302_log(chip, "detected cc1=%s, cc2=%s",
 		    typec_cc_status_name[cc1],
 		    typec_cc_status_name[cc2]);
+
+	//Set ccdir to ss-redrv:
+	gpio_set_value(chip->gpio_ccdir, cc_polarity);
 
 	return ret;
 }
@@ -1662,6 +1701,36 @@ static int init_gpio(struct fusb302_chip *chip)
 	return 0;
 }
 
+static int init_gpio_cc_orient(struct fusb302_chip *chip)
+{
+	struct device *dev = chip->dev;
+	int ret = 0;
+
+	chip->gpio_ccdir = of_get_named_gpio(dev->of_node,
+			"fusb302,orientation_gpio", 0);
+	if (!gpio_is_valid(chip->gpio_ccdir)) {
+		dev_err(dev, "fusb302:: INITGpio:usb-cc orientation_gpio is not valid!\n");
+		chip->gpio_ccdir = 0;
+		return -EINVAL;
+	}
+
+	ret = gpio_request(chip->gpio_ccdir, "fusb302,orientation_gpio");
+	if (ret < 0) {
+		dev_err(dev, "fusb302:: INITGpio:Failed to request gpio\n");
+		//chip->gpio_ccdir = -ENODEV;
+		//return ret;
+	} else
+		dev_err(dev, "fusb302:: INITGpio:usb-cc orientation_gpio is REQUESTED...\n");
+
+	ret = gpio_direction_output(chip->gpio_ccdir, 0);	// Dflt to TYPEC_POLARITY_CC1
+	if (ret) {
+		dev_err(dev,"fusb302:: Unable to set DIR gpio_ccdir [%d]\n", chip->gpio_ccdir);
+		return ret;
+	}
+
+	return ret;
+}
+
 #define PDO_FIXED_FLAGS \
 	(PDO_FIXED_DUAL_ROLE | PDO_FIXED_DATA_SWAP | PDO_FIXED_USB_COMM)
 
@@ -1759,11 +1828,24 @@ static int fusb302_probe(struct i2c_client *client,
 	if (ret < 0) {
 		ret = -ENODEV;
 		destroy_workqueue(chip->wq);
-		fusb302_log(chip, "fusb302 init ERROR, no device?? ret=%d", ret);
+		fusb302_log(chip, "fusb302 init ERROR, no device?? ret=%d\n", ret);
 		return ret;
 	}
 
 	fusb302_debugfs_init(chip);
+
+	dev_err(dev, "fusb302::gpio_orientn INIT: %d", chip->gpio_ccdir);
+	if (chip->gpio_ccdir == 499) {
+		dev_err(dev, "fusb302::gpio_orientation already set: %d", chip->gpio_ccdir);
+	} else {
+		dev_err(dev, "fusb302::gpio_orientation SETTING... %d", chip->gpio_ccdir);
+		ret = init_gpio_cc_orient(chip);
+		if (ret < 0) {
+			dev_err(dev, "fusb302::gpio_orientation FAIL INIT GPIO: %d, ret= %d",
+					chip->gpio_ccdir, ret);
+			//goto destroy_workqueue;
+		}
+	}
 
 	if (client->irq) {
 		chip->gpio_int_n_irq = client->irq;
