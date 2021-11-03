@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2019,2021 The Linux Foundation. All rights reserved.
  */
 
 #include "ipa_i.h"
@@ -90,6 +90,15 @@ static int ipa3_hdr_proc_ctx_to_hw_format(struct ipa_mem_buffer *mem,
 					0 : 1;
 			}
 		}
+		/* Check the pointer and header length to avoid
+		 *	 dangerous overflow in HW
+		 */
+		if (unlikely(!entry->hdr || !entry->hdr->offset_entry ||
+				!entry->offset_entry ||
+				entry->hdr->hdr_len == 0 ||
+				entry->hdr->hdr_len >
+				ipa_hdr_bin_sz[IPA_HDR_BIN_MAX - 1]))
+			return -EINVAL;
 
 		ret = ipahal_cp_proc_ctx_to_hw_buff(entry->type, mem->base,
 				entry->offset_entry->offset,
@@ -747,7 +756,7 @@ int __ipa3_del_hdr(u32 hdr_hdl, bool by_user)
 		return 0;
 	}
 
-	if (entry->is_hdr_proc_ctx) {
+	if (entry->is_hdr_proc_ctx || entry->proc_ctx) {
 		dma_unmap_single(ipa3_ctx->pdev,
 			entry->phys_base,
 			entry->hdr_len,
@@ -1076,6 +1085,7 @@ int ipa3_reset_hdr(bool user_only)
 
 		if (ipa3_id_find(entry->id) == NULL) {
 			mutex_unlock(&ipa3_ctx->lock);
+			IPAERR_RL("Invalid header ID\n");
 			WARN_ON_RATELIMIT_IPA(1);
 			return -EFAULT;
 		}
@@ -1086,6 +1096,7 @@ int ipa3_reset_hdr(bool user_only)
 					entry->phys_base,
 					entry->hdr_len,
 					DMA_TO_DEVICE);
+				entry->proc_ctx->hdr = NULL;
 				entry->proc_ctx = NULL;
 			} else {
 				/* move the offset entry to free list */
@@ -1143,6 +1154,7 @@ int ipa3_reset_hdr(bool user_only)
 
 		if (ipa3_id_find(ctx_entry->id) == NULL) {
 			mutex_unlock(&ipa3_ctx->lock);
+			IPAERR_RL("Invalid proc header ID\n");
 			WARN_ON_RATELIMIT_IPA(1);
 			return -EFAULT;
 		}
