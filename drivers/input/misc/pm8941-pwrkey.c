@@ -159,7 +159,7 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 		(int) tm.tm_year + 1900, tm.tm_mon + 1,
 		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-	pr_info("Enter %s at: %s\n", __func__, buff);
+	pr_err("Enter %s at: %s\n", __func__, buff);
 	if (pwrkey->sw_debounce_time_us) {
 		elapsed_us = ktime_us_delta(ktime_get(),
 					    pwrkey->last_release_time);
@@ -176,7 +176,7 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 		return IRQ_HANDLED;
 
 	sts &= pwrkey->data->status_bit;
-	pr_info("pwrkey->code=%d, pwrkey->last_status=0x%02X, sts=0x%02X\n", pwrkey->code,
+	pr_err("pwrkey->code=%d, pwrkey->last_status=0x%02X, sts=0x%02X\n", pwrkey->code,
 		pwrkey->last_status, sts);
 
 	if (pwrkey->sw_debounce_time_us && !sts)
