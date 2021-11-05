@@ -1681,6 +1681,7 @@
   of_usb_host_tpl_support
   oops_in_progress
   override_creds
+  orderly_poweroff
   pagecache_get_page
   panic
   panic_notifier_list
