@@ -44,7 +44,7 @@ MODULE_PARM_DESC(trace, "Trace level bitmask");
 #define UVC_STRING_STREAMING_IDX		1
 
 static struct usb_string uvc_en_us_strings[] = {
-	[UVC_STRING_CONTROL_IDX].s = "Motorola UVC Camera",
+	[UVC_STRING_CONTROL_IDX].s = "Moto Webcam",
 	[UVC_STRING_STREAMING_IDX].s = "Video Streaming",
 	{  }
 };
