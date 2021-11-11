@@ -12,12 +12,13 @@
 #include <linux/uaccess.h>
 #include <linux/regmap.h>
 #include <linux/ctype.h>
-#include <linux/usb/ucsi_glink.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/redriver.h>
 #include <linux/gpio/consumer.h>
+
+#define MOTO_ALTMODE(fmt, ...) pr_debug("MMI_DETECT: REDRIVER[%s]: " fmt "\n", __func__, ##__VA_ARGS__)
 
 /* priority: INT_MAX >= x >= 0 */
 #define NOTIFIER_PRIORITY		1
@@ -25,6 +26,7 @@
 /* Registers Address */
 #define GEN_DEV_SET_REG			0x00
 #define CHIP_VERSION_REG		0x17
+#define AUX_ORIENTATION_REG		0x09
 
 #define REDRIVER_REG_MAX		0x1f
 
@@ -191,7 +193,7 @@ static int ssusb_redriver_gen_dev_set(struct ssusb_redriver *redriver)
 			val |= (CHNA_EN | CHNB_EN);
 			val &= ~(CHNC_EN | CHND_EN);
 		}
-		dev_err(redriver->dev, "ssusb:: OpModeUSB-:CC %d\n",
+		dev_dbg(redriver->dev, "ssusb:: OpModeUSB-:CC %d\n",
 				redriver->typec_orientation);
 		/* Set to default USB Mode */
 		val |= (0x5 << OP_MODE_SHIFT);
@@ -205,7 +207,7 @@ static int ssusb_redriver_gen_dev_set(struct ssusb_redriver *redriver)
 		/* Set to DP 4 Lane Mode (OP Mode 2) */
 		val |= (0x2 << OP_MODE_SHIFT);
 		val |= CHIP_EN;
-		dev_err(redriver->dev, "ssusb:: OpModeDP- 4-LN: %d\n",
+		dev_dbg(redriver->dev, "ssusb:: OpModeDP- 4-LN: %d\n",
 				redriver->typec_orientation);
 		break;
 	case OP_MODE_USB_AND_DP:
@@ -219,7 +221,7 @@ static int ssusb_redriver_gen_dev_set(struct ssusb_redriver *redriver)
 			val |= (0x1 << OP_MODE_SHIFT);
 		/* it is mode 0 when ORIENTATION_CC2 */
 
-		dev_err(redriver->dev, "ssusb:: OpModeUSB+DP: CC %d\n",
+		dev_dbg(redriver->dev, "ssusb:: OpModeUSB+DP: CC %d\n",
 				redriver->typec_orientation);
 		break;
 	default:
@@ -338,7 +340,7 @@ static int ssusb_redriver_read_orientation(struct ssusb_redriver *redriver)
 	else
 		redriver->typec_orientation = ORIENTATION_CC2;
 
-	dev_err(redriver->dev, "ssusb::typec_orient: %d, lane_swap: %d\n",
+	dev_dbg(redriver->dev, "ssusb::typec_orient: %d, lane_swap: %d\n",
 				redriver->typec_orientation, redriver->lane_channel_swap);
 
 	return 0;
@@ -348,7 +350,7 @@ static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver)
 	int ret;
 	u8 i, chan_mode;
 
-	// To update cc status from fusb302
+	/* CC orientation is updated fusb302 */
 	ssusb_redriver_read_orientation(redriver);
 
 	switch (redriver->op_mode) {
@@ -370,7 +372,7 @@ static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver)
 			redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_DISABLE;
 			redriver->chan_mode[CHND_INDEX] = CHAN_MODE_DISABLE;
 		}
-		dev_err(redriver->dev, "ssusb:: OpModeUSB:CC %d\n",
+		dev_dbg(redriver->dev, "ssusb:: OpModeUSB:CC %d\n",
 				redriver->typec_orientation);
 		break;
 	case OP_MODE_USB_AND_DP:
@@ -385,7 +387,7 @@ static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver)
 			redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_DP;
 			redriver->chan_mode[CHND_INDEX] = CHAN_MODE_DP;
 		}
-		dev_err(redriver->dev, "ssusb:: OpModeUSB+DP:CC %d\n",
+		dev_dbg(redriver->dev, "ssusb:: OpModeUSB+DP:CC %d\n",
 				redriver->typec_orientation);
 
 		break;
@@ -394,7 +396,7 @@ static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver)
 		redriver->chan_mode[CHNB_INDEX] = CHAN_MODE_DP;
 		redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_DP;
 		redriver->chan_mode[CHND_INDEX] = CHAN_MODE_DP;
-		dev_err(redriver->dev, "ssusb:: OpModeDP: CC%d\n",
+		dev_dbg(redriver->dev, "ssusb:: OpModeDP: CC%d\n",
 					redriver->typec_orientation);
 		break;
 	default:
@@ -503,15 +505,90 @@ int redriver_orientation_get(struct device_node *node)
 		return -EINVAL;
 
 	if (!gpio_is_valid(redriver->orientation_gpio)) {
-		dev_err(redriver->dev, "ssusb::redriver_orientn_get: gpio not Valid: [%d]\n",
-				redriver->orientation_gpio);
+		dev_err(redriver->dev, "%s: invalid gpio: %d\n",
+			__func__, redriver->orientation_gpio);
 		return -EINVAL;
 	}
 	orient_val = gpio_get_value(redriver->orientation_gpio);
-	dev_err(redriver->dev, "ssusb::redriver_orientn_get Val: [%d]\n", orient_val);
+	dev_dbg(redriver->dev, "%s: %d\n", __func__, orient_val);
+
 	return orient_val;
 }
 EXPORT_SYMBOL(redriver_orientation_get);
+
+#if IS_ENABLED(CONFIG_TYPEC_QTI_ALTMODE)
+#include <linux/usb/typec_dp.h>
+
+static int redriver_i2c_reg_get(struct ssusb_redriver *redriver,
+		u8 reg, u8 *val)
+{
+	int ret;
+
+	ret = regmap_read(redriver->regmap, (unsigned int)reg,
+			(unsigned int *)val);
+	if (ret < 0) {
+		dev_err(redriver->dev, "reading reg 0x%02x failure\n", reg);
+		return ret;
+	}
+
+	dev_dbg(redriver->dev, "reading reg 0x%02x=0x%02x\n", reg, *val);
+
+	return 0;
+}
+
+static int ssusb_redriver_mux_set(void *priv, u8 state)
+{
+	struct ssusb_redriver *redriver = priv;
+	int ret;
+	u8 val;
+
+	switch (state) {
+	case TYPEC_DP_STATE_C:
+	case TYPEC_DP_STATE_E:
+		redriver->op_mode = OP_MODE_DP;
+			break;
+	case TYPEC_DP_STATE_D:
+		redriver->op_mode = OP_MODE_USB_AND_DP;
+			break;
+	default:
+		redriver->op_mode = OP_MODE_NONE;
+		MOTO_ALTMODE("DP state %d", state);
+	}
+
+	ret = redriver_i2c_reg_get(redriver, AUX_ORIENTATION_REG, &val);
+	if (ret)
+		dev_err(redriver->dev, "AUX orientation read failed; rc=%d", ret);
+
+	/* AUX connected, normal */
+	val &= ~0x03;
+	if (redriver->op_mode == OP_MODE_DP ||
+		redriver->op_mode == OP_MODE_USB_AND_DP) {
+		/* Set AUX lines to flipped state */
+		if (redriver->typec_orientation == ORIENTATION_CC2)
+			val |= 0x01;
+	} else {
+		/* Isolate AUX lines for non-DP modes */
+		val |= 0x02;
+	}
+	MOTO_ALTMODE("AUX orientation reg(0x%02x)=0x%02x", AUX_ORIENTATION_REG, val);
+
+	ret = redriver_i2c_reg_set(redriver, AUX_ORIENTATION_REG, val);
+	if (ret)
+		dev_err(redriver->dev, "AUX orientation write failed; rc=%d", ret);
+	ssusb_redriver_channel_update(redriver);
+
+	return ssusb_redriver_gen_dev_set(redriver);
+}
+
+extern int register_dp_altmode_mux_control(void *priv, int (*set)(void *, u8));
+
+/* stubs */
+static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
+		unsigned long action, void *data) { return -ENOTSUPP; }
+static int register_ucsi_glink_notifier(struct notifier_block *nb) { return -ENOTSUPP; }
+static void unregister_ucsi_glink_notifier(struct notifier_block *nb) { }
+#else
+#include <linux/usb/ucsi_glink.h>
 
 static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 		unsigned long action, void *data)
@@ -581,6 +658,11 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 
 	return NOTIFY_OK;
 }
+
+/* stubs */
+static int ssusb_redriver_mux_set(void *priv, u8 orient) { return -ENOTSUPP; }
+static int register_dp_altmode_mux_control(void *priv, int (*set)(void *, u8)) { return -ENOTSUPP; }
+#endif
 
 int redriver_notify_connect(struct device_node *node, enum plug_orientation orientation)
 {
@@ -666,7 +748,7 @@ int redriver_release_usb_lanes(struct device_node *node)
 
 	redriver_vdd_enable(redriver, true);
 
-	dev_dbg(redriver->dev, "display notify 4 lane mode\n");
+	MOTO_ALTMODE("display notify 4 lane mode");
 	redriver->op_mode = OP_MODE_DP;
 
 	ssusb_redriver_channel_update(redriver);
@@ -858,6 +940,9 @@ static int redriver_i2c_probe(struct i2c_client *client,
 
 	redriver->ucsi_nb.notifier_call = ssusb_redriver_ucsi_notifier;
 	register_ucsi_glink_notifier(&redriver->ucsi_nb);
+
+	MOTO_ALTMODE("registering mux control");
+	register_dp_altmode_mux_control(redriver, ssusb_redriver_mux_set);
 
 	ssusb_redriver_debugfs_entries(redriver);
 
