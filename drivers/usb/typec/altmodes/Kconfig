@@ -22,4 +22,16 @@ config TYPEC_NVIDIA_ALTMODE
 	  To compile this driver as a module, choose M here: the
 	  module will be called typec_nvidia.
 
+config TYPEC_QTI_ALTMODE
+	tristate "DisplayPort Alternate Mode QTI DP display bridge"
+	depends on TYPEC_DP_ALTMODE
+	help
+	  Select this option to integrate QTI DP display driver with
+          generic TypeC altmode displayport implementation that may
+          work with any 3rd party PD controller integrated with
+          generic TypeC Policy Manager (tcpm).
+
+	  Choose the same option as in TYPEC_DP_ALTMODE. This option
+	  will only add a bridging capabilities into typec displayport.
+
 endmenu
