@@ -10,10 +10,14 @@
 
 #include <linux/delay.h>
 #include <linux/mutex.h>
+#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/usb/pd_vdo.h>
+#include <linux/usb/typec.h>
 #include <linux/usb/typec_dp.h>
 #include "displayport.h"
+
+#define MOTO_ALTMODE(fmt,...) pr_debug("MMI_DETECT: D-PORT[%s]: " fmt "\n", __func__, ##__VA_ARGS__)
 
 #define DP_HEADER(_dp, ver, cmd)	(VDO((_dp)->alt->svid, 1, ver, cmd)	\
 					 | VDO_OPOS(USB_TYPEC_DP_MODE))
@@ -45,6 +49,15 @@ enum {
 					 BIT(DP_PIN_ASSIGN_D) | \
 					 BIT(DP_PIN_ASSIGN_F))
 
+struct dp_typec_bridge {
+	void *dp_priv;
+	void *redriver_dev;
+	int (*set_mux)(void *priv, u8 state);
+	int (*notifier_cb)(void *priv, void *data, size_t len);
+};
+
+static struct dp_typec_bridge bridge;
+
 enum dp_state {
 	DP_STATE_IDLE,
 	DP_STATE_ENTER,
@@ -62,11 +75,128 @@ struct dp_altmode {
 	struct work_struct work;
 	struct typec_altmode *alt;
 	const struct typec_altmode *port;
+	struct dp_typec_bridge *typec_bridge;
 };
+
+#if IS_ENABLED(CONFIG_TYPEC_QTI_ALTMODE)
+int register_dp_altmode_mux_control(void *redriver_dev, int (*set)(void *, u8))
+{
+	bridge.redriver_dev = redriver_dev;
+	bridge.set_mux = set;
+	MOTO_ALTMODE("called");
+	return 0;
+}
+
+static int dp_altmode_mux(struct dp_altmode *dp, u8 state)
+{
+	struct dp_typec_bridge *bridge = dp->typec_bridge;
+
+	if (bridge->set_mux) {
+		bridge->set_mux(bridge->redriver_dev, state);
+		MOTO_ALTMODE("redriver mux called with state=%d", state);
+	}
+	return 0;
+}
+
+extern unsigned int typec_get_portid(struct typec_port *port);
+
+int dp_altmode_bridge(struct dp_altmode *dp)
+{
+	struct dp_typec_bridge *bridge = dp->typec_bridge;
+	struct typec_port *port = typec_altmode2port(dp->alt);
+	int orientation = typec_get_orientation(port);
+	u8 state = 0, payload[10];
+
+	if (orientation == TYPEC_ORIENTATION_NONE) {
+		/* leave the state at 0 then,
+                to avoid calling anything but disconnect_cb */
+		dev_warn(&dp->alt->dev, "TYPEC_ORIENTATION_NONE!!!\n");
+	} else {
+		/* DP states are matching DP ping configurations, but
+		 * offset by  TYPEC_STATE_MODAL (2) */
+		if (DP_CONF_GET_PIN_ASSIGN(dp->data.conf))
+		  state = TYPEC_MODAL_STATE(get_count_order(DP_CONF_GET_PIN_ASSIGN(dp->data.conf)));
+        }
+
+	/* emulate data from QTI glink message */
+	memset(payload, 0, sizeof(payload));
+	payload[0] = typec_get_portid(port);
+	payload[1] = orientation ? orientation - 1 : 2;
+
+	MOTO_ALTMODE("con-ed=%d, conf-ed=%d, orientation=%d, state=%d",
+                     DP_STATUS_CONNECTION(dp->data.status),
+                     DP_CONF_CURRENTLY(dp->data.conf), orientation, state);
+
+	/* Since we are not registering a proper mux driver, need to explicitly
+           inform the re-driver (that also acts as USB/DP mux) about new pin config
+           and orientation. Use the same "state" argument as a proper mux driver
+           would get via the "normal chain" of
+               dp_altmode_notify()->typec_altmode_notify()->typec_altmode_set_mux(),
+           to avoid confusion
+
+ 	   TODO: Register the redriver with typec mux driver.
+                 Then we don't need to register redriver with this code, and don't
+                 need to sprinkle calls to set redriver mode here and there. It will
+                 just get automatically called for us from all the right places.
+ */
+	dp_altmode_mux(dp, state);
+
+	/* QTI enumerates DP configurations from 1, with 0 indicating HPD_OUT.
+           PD, DP, and MUX drivers enumerate DP configurations from 2, with
+           0 indicating SAFE_MODE and 1 indicating USB mode.
+           Subtract 1 here to make DP configuration indexes match */
+
+	/* QC driver enumerates DP configurations from 1 */
+	payload[8] |= (state ? state - 1 : 0) & 0x3f; // pin
+
+	/* these will come with ATTENTION after CONFIGURE */
+	payload[8] |= (dp->data.status & DP_STATUS_HPD_STATE) >> 1; // hpd_state
+	payload[8] |= (dp->data.status & DP_STATUS_IRQ_HPD) >> 2;   // hpd_irq
+
+	MOTO_ALTMODE("calling bridge; [8]=%02x", payload[8]);
+	/* Call QTI's dp_altmode driver, looking like glink interface */
+	bridge->notifier_cb(bridge->dp_priv, (void *)payload, sizeof(payload));
+
+	return 0;
+}
+
+int dp_altmode_typec_bridge_register(void *priv, int (cb)(void *, void *, size_t))
+{
+	bridge.dp_priv = priv;
+	bridge.notifier_cb = cb;
+
+	return 0;
+}
+#else
+static int dp_altmode_mux(struct dp_altmode *dp, u8 state) { return -ENOTSUPP; }
+int register_dp_altmode_mux_control(void *redriver_dev, int (*set)(void *, u8)) { return -ENOTSUPP; }
+int dp_altmode_bridge(struct dp_altmode *dp) { return -ENOTSUPP; }
+int dp_altmode_typec_bridge_register(void *priv, int (cb)(void *, void *, size_t)) { return -ENOTSUPP; }
+#endif /* CONFIG_TYPEC_QTI_ALTMODE */
+
+EXPORT_SYMBOL_GPL(register_dp_altmode_mux_control);
+EXPORT_SYMBOL_GPL(dp_altmode_typec_bridge_register);
 
 static int dp_altmode_notify(struct dp_altmode *dp)
 {
 	u8 state = get_count_order(DP_CONF_GET_PIN_ASSIGN(dp->data.conf));
+
+	/* QTI DP driver (dp_displayport.c) needs notifications in form
+           of specific callbacks (configure_cb, attention_cbm, and disconnect_cb)
+           that rely on a bunch of DP driver specific fields in a private structure that
+           need to be populated. This job is done by QTI altmode driver (dp_altmode.c),
+           and we cam "translate" the data in our "bridge" and call it (incidentally,
+           the function to call is also called dp_altmode_notify in that driver).
+
+           We can call configure_cb after we get ACK for CONFIGURE VDM, and for
+           attentio_cb we have corresponding .attention callback. Things get trickier
+           for disconnect_cb, since tcpm is not informing us about that. We're adding
+           abother typec notification into the tcpm's port detach handler to resove that.
+
+           TODO: Just call the bridge from .notify() callback for all scenarios. That
+                 will make this code cleaner and will fit into the arhitecture better.
+           */
+	dp_altmode_bridge(dp);
 
 	return typec_altmode_notify(dp->alt, TYPEC_MODAL_STATE(state),
 				   &dp->data);
@@ -77,6 +207,7 @@ static int dp_altmode_configure(struct dp_altmode *dp, u8 con)
 	u32 conf = DP_CONF_SIGNALING_DP; /* Only DP signaling supported */
 	u8 pin_assign = 0;
 
+	MOTO_ALTMODE("enter; con=%02x", con);
 	switch (con) {
 	case DP_STATUS_CON_DISABLED:
 		return 0;
@@ -95,6 +226,7 @@ static int dp_altmode_configure(struct dp_altmode *dp, u8 con)
 		break;
 	}
 
+	MOTO_ALTMODE("pin from conf %d", DP_CONF_GET_PIN_ASSIGN(dp->data.conf));
 	/* Determining the initial pin assignment. */
 	if (!DP_CONF_GET_PIN_ASSIGN(dp->data.conf)) {
 		/* Is USB together with DP preferred */
@@ -104,8 +236,11 @@ static int dp_altmode_configure(struct dp_altmode *dp, u8 con)
 		else if (pin_assign & DP_PIN_ASSIGN_DP_ONLY_MASK)
 			pin_assign &= DP_PIN_ASSIGN_DP_ONLY_MASK;
 
-		if (!pin_assign)
+		MOTO_ALTMODE("pin assign %d", pin_assign);
+		if (!pin_assign) {
+			MOTO_ALTMODE("!!! return error !!!");
 			return -EINVAL;
+		}
 
 		conf |= DP_CONF_SET_PIN_ASSIGN(pin_assign);
 	}
@@ -128,6 +263,7 @@ static int dp_altmode_status_update(struct dp_altmode *dp)
 		dp->state = DP_STATE_EXIT;
 	} else if (!(con & DP_CONF_CURRENTLY(dp->data.conf))) {
 		ret = dp_altmode_configure(dp, con);
+		MOTO_ALTMODE("dp_altmode_configure rc=%d", ret);
 		if (!ret)
 			dp->state = DP_STATE_CONFIGURE;
 	}
@@ -141,9 +277,14 @@ static int dp_altmode_configured(struct dp_altmode *dp)
 
 	sysfs_notify(&dp->alt->dev.kobj, "displayport", "configuration");
 
-	if (!dp->data.conf)
+	if (!dp->data.conf) {
+		/* There is no specific VDM for "disconnect" case, so we
+		need to call it here as that is how QTI dp_altmode_notify()
+		will detect it */
+          	dp_altmode_bridge(dp);
 		return typec_altmode_notify(dp->alt, TYPEC_STATE_USB,
 					    &dp->data);
+        }
 
 	ret = dp_altmode_notify(dp);
 	if (ret)
@@ -160,10 +301,17 @@ static int dp_altmode_configure_vdm(struct dp_altmode *dp, u32 conf)
 	u32 header;
 	int ret;
 
+	MOTO_ALTMODE("enter; conf=%04x", conf);
 	if (svdm_version < 0)
 		return svdm_version;
 
 	header = DP_HEADER(dp, svdm_version, DP_CMD_CONFIGURE);
+
+	/* Pin config must be changed while they are disconnected.
+        Since we don't have our redriver registered with mux driver,
+        need to request the disconnect explicitly */
+	dp_altmode_mux(dp, TYPEC_STATE_SAFE);
+
 	ret = typec_altmode_notify(dp->alt, TYPEC_STATE_SAFE, &dp->data);
 	if (ret) {
 		dev_err(&dp->alt->dev,
@@ -172,12 +320,17 @@ static int dp_altmode_configure_vdm(struct dp_altmode *dp, u32 conf)
 	}
 
 	ret = typec_altmode_vdm(dp->alt, header, &conf, 2);
+	MOTO_ALTMODE("typec_altmode_vdm rc=%d", ret);
 	if (ret) {
-		if (DP_CONF_GET_PIN_ASSIGN(dp->data.conf))
+		if (DP_CONF_GET_PIN_ASSIGN(dp->data.conf)) {
+			MOTO_ALTMODE("failed to send VDM, with pin!=0, pin=%d",
+                                     DP_CONF_GET_PIN_ASSIGN(dp->data.conf));
 			dp_altmode_notify(dp);
-		else
+                } else {
+                  	dp_altmode_mux(dp, TYPEC_STATE_USB);
 			typec_altmode_notify(dp->alt, TYPEC_STATE_USB,
 					     &dp->data);
+                }
 	}
 
 	return ret;
@@ -196,16 +349,19 @@ static void dp_altmode_work(struct work_struct *work)
 	switch (dp->state) {
 	case DP_STATE_ENTER:
 		ret = typec_altmode_enter(dp->alt, NULL);
+		MOTO_ALTMODE("typec_altmode_enter: rc=%d", ret);
 		if (ret && ret != -EBUSY)
 			dev_err(&dp->alt->dev, "failed to enter mode\n");
 		break;
 	case DP_STATE_UPDATE:
 		svdm_version = typec_altmode_get_svdm_version(dp->alt);
+		MOTO_ALTMODE("typec_altmode_get_svdm_version: rc=%d", svdm_version);
 		if (svdm_version < 0)
 			break;
 		header = DP_HEADER(dp, svdm_version, DP_CMD_STATUS_UPDATE);
 		vdo = 1;
 		ret = typec_altmode_vdm(dp->alt, header, &vdo, 2);
+		MOTO_ALTMODE("typec_altmode_vdm: rc=%d", ret);
 		if (ret)
 			dev_err(&dp->alt->dev,
 				"unable to send Status Update command (%d)\n",
@@ -213,6 +369,7 @@ static void dp_altmode_work(struct work_struct *work)
 		break;
 	case DP_STATE_CONFIGURE:
 		ret = dp_altmode_configure_vdm(dp, dp->data.conf);
+		MOTO_ALTMODE("dp_altmode_configure_vdm: rc=%d", ret);
 		if (ret)
 			dev_err(&dp->alt->dev,
 				"unable to send Configure command (%d)\n", ret);
@@ -235,6 +392,7 @@ static void dp_altmode_attention(struct typec_altmode *alt, const u32 vdo)
 	struct dp_altmode *dp = typec_altmode_get_drvdata(alt);
 	u8 old_state;
 
+	MOTO_ALTMODE("enter; vdo=%04x", vdo);
 	mutex_lock(&dp->lock);
 
 	old_state = dp->state;
@@ -264,6 +422,7 @@ static int dp_altmode_vdm(struct typec_altmode *alt,
 	int cmd = PD_VDO_CMD(hdr);
 	int ret = 0;
 
+	MOTO_ALTMODE("enter; cmt_type=%d, cmd=%d, vdo=%x, cnt=%d", cmd_type, cmd, *vdo, count);
 	mutex_lock(&dp->lock);
 
 	if (dp->state != DP_STATE_IDLE) {
@@ -273,6 +432,7 @@ static int dp_altmode_vdm(struct typec_altmode *alt,
 
 	switch (cmd_type) {
 	case CMDT_RSP_ACK:
+		MOTO_ALTMODE("CMDT_RSP_ACK");
 		switch (cmd) {
 		case CMD_ENTER_MODE:
 			dp->state = DP_STATE_UPDATE;
@@ -293,6 +453,7 @@ static int dp_altmode_vdm(struct typec_altmode *alt,
 		}
 		break;
 	case CMDT_RSP_NAK:
+		MOTO_ALTMODE("CMDT_RSP_NACK");
 		switch (cmd) {
 		case DP_CMD_CONFIGURE:
 			dp->data.conf = 0;
@@ -316,14 +477,32 @@ err_unlock:
 
 static int dp_altmode_activate(struct typec_altmode *alt, int activate)
 {
+	MOTO_ALTMODE("enter; activate=%d", activate);
 	return activate ? typec_altmode_enter(alt, NULL) :
 			  typec_altmode_exit(alt);
+}
+
+static int dp_altmode_state_notify(struct typec_altmode *alt,
+		unsigned long conf, void *data)
+{
+	struct dp_altmode *dp = typec_altmode_get_drvdata(alt);
+
+	MOTO_ALTMODE("conf=%lu, data=%p, status=%d", conf, data, dp->data.status);
+	if (!data && conf == TYPEC_STATE_SAFE) {
+		dp->data.conf = 0;
+		dp->data.status = 0;
+		MOTO_ALTMODE("forced conf & status to 0; calling bridge");
+		dp_altmode_bridge(dp);
+	}
+
+	return 0;
 }
 
 static const struct typec_altmode_ops dp_altmode_ops = {
 	.attention = dp_altmode_attention,
 	.vdm = dp_altmode_vdm,
 	.activate = dp_altmode_activate,
+	.notify = dp_altmode_state_notify,
 };
 
 static const char * const configurations[] = {
@@ -545,6 +724,8 @@ int dp_altmode_probe(struct typec_altmode *alt)
 	mutex_init(&dp->lock);
 	dp->port = port;
 	dp->alt = alt;
+	dp->typec_bridge = &bridge;
+	MOTO_ALTMODE("bridge pointer assigned");
 
 	alt->desc = "DisplayPort";
 	alt->ops = &dp_altmode_ops;
