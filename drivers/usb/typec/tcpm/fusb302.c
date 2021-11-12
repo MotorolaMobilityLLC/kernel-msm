@@ -36,7 +36,7 @@
 
 #include "fusb302_reg.h"
 
-#define fusb302_log(a, fmt, ...) pr_err("MMI_DETECT: FUSB302[%s]: " fmt "\n", __func__, ##__VA_ARGS__)
+#define MOTO_ALTMODE(fmt, ...) pr_debug("MMI_DETECT: FUSB302[%s]: " fmt "\n", __func__, ##__VA_ARGS__)
 
 /*
  * When the device is SNK, BC_LVL interrupt is used to monitor cc pins
@@ -131,7 +131,7 @@ struct fusb302_chip {
  * Logging
  */
 
-#if 0
+
 #ifdef CONFIG_DEBUG_FS
 static bool fusb302_log_full(struct fusb302_chip *chip)
 {
@@ -238,11 +238,6 @@ static void fusb302_log(const struct fusb302_chip *chip,
 static void fusb302_debugfs_init(const struct fusb302_chip *chip) { }
 static void fusb302_debugfs_exit(const struct fusb302_chip *chip) { }
 
-#endif
-
-#else /* if 0 */
-static void fusb302_debugfs_init(const struct fusb302_chip *chip) { }
-static void fusb302_debugfs_exit(const struct fusb302_chip *chip) { }
 #endif
 
 static int fusb302_i2c_write(struct fusb302_chip *chip,
@@ -749,6 +744,7 @@ static int tcpm_set_vconn(struct tcpc_dev *dev, bool on)
 		fusb302_log(chip, "vconn is already %s", on ? "On" : "Off");
 		goto done;
 	}
+
 	if (on) {
 		ret = chip->vconn ? regulator_enable(chip->vconn) : 0;
 		switches0_data = (chip->cc_polarity == TYPEC_POLARITY_CC1) ?
@@ -1392,11 +1388,11 @@ static int fusb302_handle_togdone_src(struct fusb302_chip *chip,
 	if (cc1 == TYPEC_CC_RD &&
 			(cc2 == TYPEC_CC_OPEN || cc2 == TYPEC_CC_RA)) {
 		cc_polarity = TYPEC_POLARITY_CC1;
-		fusb302_log(chip, "HOST mode CC NORMAL");
+		MOTO_ALTMODE("HOST mode CC NORMAL");
 	} else if (cc2 == TYPEC_CC_RD &&
 		    (cc1 == TYPEC_CC_OPEN || cc1 == TYPEC_CC_RA)) {
 		cc_polarity = TYPEC_POLARITY_CC2;
-		fusb302_log(chip, "HOST mode CC REVERSED");
+		MOTO_ALTMODE("HOST mode CC REVERSED");
 	} else {
 		fusb302_log(chip, "unexpected CC status cc1=%s, cc2=%s, restarting toggling",
 			    typec_cc_status_name[cc1],
@@ -1711,24 +1707,21 @@ static int init_gpio_cc_orient(struct fusb302_chip *chip)
 	chip->gpio_ccdir = of_get_named_gpio(dev->of_node,
 			"fusb302,orientation_gpio", 0);
 	if (!gpio_is_valid(chip->gpio_ccdir)) {
-		dev_err(dev, "fusb302:: INITGpio:usb-cc orientation_gpio is not valid!\n");
+		dev_err(dev, "invalid orientation gpio!\n");
 		chip->gpio_ccdir = 0;
 		return -EINVAL;
 	}
 
 	ret = gpio_request(chip->gpio_ccdir, "fusb302,orientation_gpio");
 	if (ret < 0) {
-		dev_err(dev, "fusb302:: INITGpio:Failed to request gpio\n");
-		//chip->gpio_ccdir = -ENODEV;
-		//return ret;
+		dev_err(dev, "failed to request orientation gpio: %d\n", chip->gpio_ccdir);
+		return -EBUSY;
 	} else
-		dev_err(dev, "fusb302:: INITGpio:usb-cc orientation_gpio is REQUESTED...\n");
-
-	ret = gpio_direction_output(chip->gpio_ccdir, 0);	// Dflt to TYPEC_POLARITY_CC1
-	if (ret) {
-		dev_err(dev,"fusb302:: Unable to set DIR gpio_ccdir [%d]\n", chip->gpio_ccdir);
-		return ret;
-	}
+		dev_dbg(dev, "orientation gpio: %d REQUESTED...\n", chip->gpio_ccdir);
+	/* set default polarity CC1 */
+	ret = gpio_direction_output(chip->gpio_ccdir, 0);
+	if (ret)
+		dev_err(dev, "unable to set orientation gpio: %d\n", chip->gpio_ccdir);
 
 	return ret;
 }
@@ -1764,6 +1757,56 @@ static struct fwnode_handle *fusb302_fwnode_get(struct device *dev)
 
 	return fwnode;
 }
+
+#if IS_ENABLED(CONFIG_TYPEC_QTI_ALTMODE)
+#include <linux/usb/typec_dp.h>
+
+static struct typec_altmode_desc supported_modes[] = {
+	{
+		.svid = USB_TYPEC_DP_SID,
+		.mode = USB_TYPEC_DP_MODE,
+		.roles = TYPEC_PORT_DFP,
+	},
+	{ },
+};
+
+extern int tcpm_set_port_altmode(struct tcpm_port *port, int idx, struct typec_altmode *alt);
+extern struct typec_port *tcpm_typec_port_get(struct tcpm_port *port);
+
+static int fusb302_register_altmodes(struct fusb302_chip *chip)
+{
+	struct tcpm_port *port = chip->tcpm_port;
+	struct typec_altmode_desc *desc;
+	unsigned char all_assignments = BIT(DP_PIN_ASSIGN_C) |
+			BIT(DP_PIN_ASSIGN_D) | BIT(DP_PIN_ASSIGN_E);
+	struct typec_altmode *alt;
+	int i, ret;
+
+	for (i = 0;; i++) {
+		desc = &supported_modes[i];
+		if (!desc->svid)
+			break;
+		/* We can't rely on the firmware with the capabilities. */
+		desc->vdo |= DP_CAP_DP_SIGNALING | DP_CAP_RECEPTACLE;
+		/* Claiming that we support all pin assignments */
+		desc->vdo |= all_assignments << 8;
+		desc->vdo |= all_assignments << 16;
+		MOTO_ALTMODE("registering altmode[%d]: svid%04Xm%02X", i, desc->svid, desc->mode);
+		alt = typec_port_register_altmode(tcpm_typec_port_get(port), desc);
+		if (IS_ERR(alt))
+			return -EINVAL;
+		desc++;
+		ret = tcpm_set_port_altmode(port, i, alt);
+		if (ret)
+			dev_err(chip->dev, "error adding altmode[%d]", i);
+		typec_altmode_set_drvdata(alt, port);
+	}
+
+	return 0;
+}
+#else
+static int fusb302_register_altmodes(struct fusb302_chip *chip) { return -ENOTSUPP; }
+#endif
 
 static int fusb302_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
@@ -1802,20 +1845,21 @@ static int fusb302_probe(struct i2c_client *client,
 
 	chip->vdd = devm_regulator_get(chip->dev, "vdd");
 	if (IS_ERR(chip->vdd)) {
-		fusb302_log(chip, "VDD not loaded");
+		dev_err(&client->dev, "VDD not loaded\n");
 		return PTR_ERR(chip->vdd);
 	}
 	regulator_enable(chip->vdd);
-	fusb302_log(chip, "VDD is %s", regulator_is_enabled(chip->vdd) ? "On" : "Off");
+	dev_dbg(&client->dev, "VDD is %si\n",
+		regulator_is_enabled(chip->vdd) ? "On" : "Off");
 
 	chip->vbus = devm_regulator_get(chip->dev, "vbus");
 	if (IS_ERR(chip->vbus)) {
-		fusb302_log(chip, "VBUS not loaded");
+		dev_warn(&client->dev, "VBUS not loaded\n");
 	}
 
 	chip->vconn = devm_regulator_get(chip->dev, "vconn");
 	if (IS_ERR(chip->vconn)) {
-		fusb302_log(chip, "VCONN not loaded");
+		dev_warn(&client->dev, "VCONN not loaded\n");
 	}
 
 	chip->wq = create_singlethread_workqueue(dev_name(chip->dev));
@@ -1830,24 +1874,16 @@ static int fusb302_probe(struct i2c_client *client,
 	if (ret < 0) {
 		ret = -ENODEV;
 		destroy_workqueue(chip->wq);
-		fusb302_log(chip, "fusb302 init ERROR, no device?? ret=%d\n", ret);
+		dev_err(&client->dev, "init ERROR, no device?? ret=%d\n", ret);
 		return ret;
 	}
 
 	fusb302_debugfs_init(chip);
 
-	dev_err(dev, "fusb302::gpio_orientn INIT: %d", chip->gpio_ccdir);
-	if (chip->gpio_ccdir == 499) {
-		dev_err(dev, "fusb302::gpio_orientation already set: %d", chip->gpio_ccdir);
-	} else {
-		dev_err(dev, "fusb302::gpio_orientation SETTING... %d", chip->gpio_ccdir);
-		ret = init_gpio_cc_orient(chip);
-		if (ret < 0) {
-			dev_err(dev, "fusb302::gpio_orientation FAIL INIT GPIO: %d, ret= %d",
+	ret = init_gpio_cc_orient(chip);
+	if (ret < 0)
+		dev_err(dev, "failed to init orientation gpio: %d, ret=%d\n",
 					chip->gpio_ccdir, ret);
-			//goto destroy_workqueue;
-		}
-	}
 
 	if (client->irq) {
 		chip->gpio_int_n_irq = client->irq;
@@ -1871,6 +1907,10 @@ static int fusb302_probe(struct i2c_client *client,
 			dev_err(dev, "cannot register tcpm port, ret=%d", ret);
 		goto destroy_workqueue;
 	}
+
+	ret = fusb302_register_altmodes(chip);
+	if (ret)
+		dev_warn(dev, "error registering altmodes, ret=%d", ret);
 
 	ret = request_irq(chip->gpio_int_n_irq, fusb302_irq_intn,
 			  IRQF_ONESHOT | IRQF_TRIGGER_LOW,
@@ -1915,6 +1955,9 @@ static int fusb302_pm_suspend(struct device *dev)
 	struct fusb302_chip *chip = dev->driver_data;
 	unsigned long flags;
 
+	//MOTO_ALTMODE("stub");
+	//return 0;
+
 	spin_lock_irqsave(&chip->irq_lock, flags);
 	chip->irq_suspended = true;
 	spin_unlock_irqrestore(&chip->irq_lock, flags);
@@ -1928,6 +1971,9 @@ static int fusb302_pm_resume(struct device *dev)
 {
 	struct fusb302_chip *chip = dev->driver_data;
 	unsigned long flags;
+
+	//MOTO_ALTMODE("stub");
+	//return 0;
 
 	spin_lock_irqsave(&chip->irq_lock, flags);
 	if (chip->irq_while_suspended) {
