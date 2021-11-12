@@ -1855,3 +1855,9 @@ config AW882XX_PARAMS_FROM_BIN
         default n
         help
         Enable it only for params of smartPA is stored in bin file.
+
+config AW882XX_STEREO_SMARTPA
+        bool "aw dual smart pa"
+        default n
+        help
+        Enable it only for params of smartPA is stored in bin file.
