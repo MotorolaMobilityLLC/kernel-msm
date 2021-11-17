@@ -484,8 +484,11 @@ static int ipa3_qmi_send_req_wait(struct qmi_handle *client_handle,
 		req_desc->ei_array,
 		req);
 
-	if (unlikely(!ipa_q6_clnt))
+	if (unlikely(!ipa_q6_clnt)) {
+		mutex_unlock(&ipa3_qmi_lock);
 		return -EINVAL;
+	}
+
 	mutex_unlock(&ipa3_qmi_lock);
 
 	if (ret < 0) {
