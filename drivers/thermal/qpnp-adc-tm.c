@@ -2330,11 +2330,11 @@ static int qpnp_adc_tm_measure_ref_points(struct qpnp_adc_tm_chip *chip)
 	int ret;
 	struct qpnp_adc_drv *adc = chip->adc;
 
-	ret = iio_read_channel_processed(chip->ref_1250v, &read_1);
+	ret = iio_read_channel_raw(chip->ref_1250v, &read_1);
 	if (ret < 0)
 		goto err;
 
-	ret = iio_read_channel_processed(chip->ref_625mv, &read_2);
+	ret = iio_read_channel_raw(chip->ref_625mv, &read_2);
 	if (ret < 0)
 		goto err;
 
@@ -2356,11 +2356,11 @@ static int qpnp_adc_tm_measure_ref_points(struct qpnp_adc_tm_chip *chip)
 	read_1 = 0;
 	read_2 = 0;
 
-	ret = iio_read_channel_processed(chip->ref_vdd, &read_1);
+	ret = iio_read_channel_raw(chip->ref_vdd, &read_1);
 	if (ret < 0)
 		goto err;
 
-	ret = iio_read_channel_processed(chip->ref_gnd, &read_2);
+	ret = iio_read_channel_raw(chip->ref_gnd, &read_2);
 	if (ret < 0)
 		goto err;
 
