@@ -18,7 +18,7 @@
 #include "drm_internal.h"
 #include "drm_splash.h"
 
-static bool drm_bootsplash_enabled = true;
+static bool drm_bootsplash_enabled;
 module_param_named(bootsplash_enabled, drm_bootsplash_enabled, bool, 0664);
 
 static void drm_bootsplash_client_unregister(struct drm_client_dev *client);
@@ -34,6 +34,12 @@ struct drm_bootsplash {
 	bool started;
 	bool stop;
 };
+
+static void is_drm_bootsplash_enabled(struct device *dev)
+{
+	drm_bootsplash_enabled = of_property_read_bool(dev->of_node,
+		"qcom,sde-drm-fb-splash-logo-enabled");
+}
 
 static void drm_bootsplash_buffer_delete(struct drm_bootsplash *splash)
 {
@@ -314,6 +320,8 @@ void drm_bootsplash_client_register(struct drm_device *dev)
 {
 	struct drm_bootsplash *splash;
 	int ret;
+
+	is_drm_bootsplash_enabled(dev->dev);
 
 	if (!drm_bootsplash_enabled)
 		return;
