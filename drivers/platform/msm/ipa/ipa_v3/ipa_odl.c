@@ -250,6 +250,7 @@ int ipa3_send_adpl_msg(unsigned long skb_data)
 	list_add_tail(&msg->link, &ipa3_odl_ctx->adpl_msg_list);
 	atomic_inc(&ipa3_odl_ctx->stats.numer_in_queue);
 	mutex_unlock(&ipa3_odl_ctx->adpl_msg_lock);
+	wake_up(&ipa3_odl_ctx->adpl_msg_waitq);
 	IPA_STATS_INC_CNT(ipa3_odl_ctx->stats.odl_rx_pkt);
 
 	return 0;
@@ -534,7 +535,9 @@ static ssize_t ipa_adpl_read(struct file *filp, char __user *buf, size_t count,
 	int ret =  0;
 	char __user *start = buf;
 	struct ipa3_push_msg_odl *msg;
+	DEFINE_WAIT_FUNC(wait, woken_wake_function);
 
+	add_wait_queue(&ipa3_odl_ctx->adpl_msg_waitq, &wait);
 	while (1) {
 		IPADBG_LOW("Writing message to adpl pipe\n");
 		if (!ipa3_odl_ctx->odl_state.odl_open)
@@ -579,9 +582,6 @@ static ssize_t ipa_adpl_read(struct file *filp, char __user *buf, size_t count,
 			IPA_STATS_INC_CNT(ipa3_odl_ctx->stats.odl_tx_diag_pkt);
 			kfree(msg);
 			msg = NULL;
-		} else {
-			ret = -EAGAIN;
-			break;
 		}
 
 		ret = -EAGAIN;
@@ -594,9 +594,9 @@ static ssize_t ipa_adpl_read(struct file *filp, char __user *buf, size_t count,
 
 		if (start != buf)
 			break;
-
+		wait_woken(&wait, TASK_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
 	}
-
+	remove_wait_queue(&ipa3_odl_ctx->adpl_msg_waitq, &wait);
 	if (start != buf && ret != -EFAULT)
 		ret = buf - start;
 
@@ -672,6 +672,7 @@ int ipa_odl_init(void)
 
 	odl_cdev = ipa3_odl_ctx->odl_cdev;
 	INIT_LIST_HEAD(&ipa3_odl_ctx->adpl_msg_list);
+	init_waitqueue_head(&ipa3_odl_ctx->adpl_msg_waitq);
 	mutex_init(&ipa3_odl_ctx->adpl_msg_lock);
 	mutex_init(&ipa3_odl_ctx->pipe_lock);
 
