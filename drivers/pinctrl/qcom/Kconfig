@@ -343,4 +343,7 @@ config PINCTRL_BLAIR
 	  Say Y here to compile statically, or M here to compile it as a module.
 	  If unsure, say N.
 
+config QUP0_SE2_AP
+        bool "Set GPIO of QUP0_SE2 as AP side"
+
 endif
