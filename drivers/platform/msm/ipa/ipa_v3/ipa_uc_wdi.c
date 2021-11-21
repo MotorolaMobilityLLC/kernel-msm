@@ -759,6 +759,7 @@ static void ipa_release_ap_smmu_mappings(enum ipa_client_type client)
 				ipa3_ctx->wdi_map_cnt--;
 			}
 			kfree(wdi_res[i].res);
+			wdi_res[i].res = NULL;
 			wdi_res[i].valid = false;
 		}
 	}
@@ -795,6 +796,7 @@ static void ipa_release_uc_smmu_mappings(enum ipa_client_type client)
 				ipa3_ctx->wdi_map_cnt--;
 			}
 			kfree(wdi_res[i].res);
+			wdi_res[i].res = NULL;
 			wdi_res[i].valid = false;
 		}
 	}
@@ -946,6 +948,7 @@ void ipa3_release_wdi3_gsi_smmu_mappings(u8 dir)
 				ipa3_ctx->wdi_map_cnt--;
 			}
 			kfree(wdi_res[i].res);
+			wdi_res[i].res = NULL;
 			wdi_res[i].valid = false;
 		}
 	}
