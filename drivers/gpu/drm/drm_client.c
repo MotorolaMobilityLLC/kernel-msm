@@ -160,6 +160,13 @@ void drm_client_release(struct drm_client_dev *client)
 }
 EXPORT_SYMBOL(drm_client_release);
 
+void drm_client_dev_register(struct drm_device *dev)
+{
+#ifdef CONFIG_DRM_CLIENT_BOOTSPLASH
+	drm_bootsplash_client_register(dev);
+#endif
+}
+
 void drm_client_dev_unregister(struct drm_device *dev)
 {
 	struct drm_client_dev *client, *tmp;

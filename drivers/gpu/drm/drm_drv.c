@@ -839,6 +839,7 @@ err_minors:
 	drm_minor_unregister(dev, DRM_MINOR_CONTROL);
 out_unlock:
 	mutex_unlock(&drm_global_mutex);
+
 	return ret;
 }
 EXPORT_SYMBOL(drm_dev_register);

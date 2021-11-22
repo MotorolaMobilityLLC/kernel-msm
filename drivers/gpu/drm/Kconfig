@@ -64,6 +64,13 @@ config DRM_DEBUG_MM_SELFTEST
 
 	  If in doubt, say "N".
 
+config DRM_CLIENT_BOOTSPLASH
+	bool "DRM Bootsplash"
+	help
+	  Choose this option to enable DRM bootsplash. This option needs to be
+	  selected only if UEFI bootsplash is disabled. Choosing this option
+	  will render splash logo in display panel during boot up.
+
 config DRM_KMS_HELPER
 	tristate
 	depends on DRM
