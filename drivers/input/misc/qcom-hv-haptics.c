@@ -4546,6 +4546,11 @@ static int haptics_probe(struct platform_device *pdev)
 	if (rc < 0)
 		dev_err(chip->dev, "Creating debugfs failed, rc=%d\n", rc);
 #endif
+	rc = haptics_start_lra_calibrate(chip);
+	if (rc < 0) {
+		dev_err(chip->dev, "start lra_calibrate failed, rc=%d\n");
+		return rc;
+	}
 	return 0;
 destroy_ff:
 	input_ff_destroy(chip->input_dev);
