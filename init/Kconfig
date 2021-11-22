@@ -1805,7 +1805,7 @@ config VM_EVENT_COUNT_CLEAN_PAGE_RECLAIM
 	  view of what is happening during memory reclaim.
 
 config SLUB_DEBUG
-	default y
+	default n
 	bool "Enable SLUB debugging support" if EXPERT
 	depends on SLUB && SYSFS
 	help
