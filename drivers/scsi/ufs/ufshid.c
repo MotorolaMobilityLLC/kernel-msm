@@ -1076,7 +1076,7 @@ static ssize_t ufshid_sysfs_store_auto_hibern8_enable(struct ufshid_dev *hid,
 /* SYSFS DEFINE */
 #define define_sysfs_ro(_name) __ATTR(_name, 0444,			\
 				      ufshid_sysfs_show_##_name, NULL)
-#define define_sysfs_rw(_name) __ATTR(_name, 0644,			\
+#define define_sysfs_rw(_name) __ATTR(_name, 0664,			\
 				      ufshid_sysfs_show_##_name,	\
 				      ufshid_sysfs_store_##_name)
 
