@@ -211,6 +211,9 @@ static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 static int qrtr_bcast_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 			      int type, struct sockaddr_qrtr *from,
 			      struct sockaddr_qrtr *to, unsigned int flags);
+static void qrtr_handle_del_proc(struct sk_buff *skb);
+static void qrtr_cleanup_flow_control(struct qrtr_node *node,
+				      struct sk_buff *skb);
 
 static void qrtr_log_tx_msg(struct qrtr_node *node, struct qrtr_hdr_v1 *hdr,
 			    struct sk_buff *skb)
@@ -1039,16 +1042,78 @@ static void qrtr_node_rx_work(struct kthread_work *work)
 		} else if (cb->dst_node != qrtr_local_nid &&
 			   cb->type == QRTR_TYPE_DATA) {
 			qrtr_fwd_pkt(skb, cb);
+		} else if (cb->type == QRTR_TYPE_DEL_PROC) {
+			qrtr_handle_del_proc(skb);
 		} else {
 			ipc = qrtr_port_lookup(cb->dst_port);
 			if (!ipc) {
 				kfree_skb(skb);
 			} else {
+				if (cb->type == QRTR_TYPE_DEL_SERVER ||
+				    cb->type == QRTR_TYPE_DEL_CLIENT) {
+					qrtr_cleanup_flow_control(node, skb);
+				}
 				qrtr_sock_queue_skb(node, skb, ipc);
 				qrtr_port_put(ipc);
 			}
 		}
 	}
+}
+
+static void qrtr_cleanup_flow_control(struct qrtr_node *node,
+				      struct sk_buff *skb)
+{
+	struct qrtr_ctrl_pkt *pkt;
+	unsigned long key;
+	struct sockaddr_qrtr src;
+	struct qrtr_tx_flow *flow;
+	struct qrtr_tx_flow_waiter *waiter;
+	struct qrtr_tx_flow_waiter *temp;
+	u32 cmd;
+
+	pkt = (void *)skb->data;
+	cmd = le32_to_cpu(pkt->cmd);
+
+	if (cmd == QRTR_TYPE_DEL_SERVER) {
+		src.sq_node = le32_to_cpu(pkt->server.node);
+		src.sq_port = le32_to_cpu(pkt->server.port);
+	} else {
+		src.sq_node = le32_to_cpu(pkt->client.node);
+		src.sq_port = le32_to_cpu(pkt->client.port);
+	}
+
+	key = (u64)src.sq_node << 32 | src.sq_port;
+
+	mutex_lock(&node->qrtr_tx_lock);
+	flow = radix_tree_lookup(&node->qrtr_tx_flow, key);
+	if (!flow) {
+		mutex_unlock(&node->qrtr_tx_lock);
+		return;
+	}
+
+	list_for_each_entry_safe(waiter, temp, &flow->waiters, node) {
+		list_del(&waiter->node);
+		sock_put(waiter->sk);
+		kfree(waiter);
+	}
+	kfree(flow);
+	radix_tree_delete(&node->qrtr_tx_flow, key);
+	mutex_unlock(&node->qrtr_tx_lock);
+}
+
+static void qrtr_handle_del_proc(struct sk_buff *skb)
+{
+	struct sockaddr_qrtr src = {AF_QIPCRTR, 0, QRTR_PORT_CTRL};
+	struct sockaddr_qrtr dst = {AF_QIPCRTR, qrtr_local_nid, QRTR_PORT_CTRL};
+	struct qrtr_ctrl_pkt pkt = {0,};
+
+	skb_copy_bits(skb, 0, &pkt, sizeof(pkt));
+	src.sq_node = le32_to_cpu(pkt.proc.node);
+
+	memset(&pkt, 0, sizeof(pkt));
+	pkt.cmd = cpu_to_le32(QRTR_TYPE_BYE);
+	skb_store_bits(skb, 0, &pkt, sizeof(pkt));
+	qrtr_local_enqueue(NULL, skb, QRTR_TYPE_BYE, &src, &dst, 0);
 }
 
 static void qrtr_hello_work(struct kthread_work *work)
