@@ -135,6 +135,10 @@ struct ipa_core_data {
 		void *user_data3);
 
 	int (*ipa_unregister_rmnet_ll_cb)(void);
+	int (*ipa_register_notifier)(void *fn_ptr);
+	int (*ipa_unregister_notifier)(void *fn_ptr);
+	int (*ipa_add_socksv5_conn)(struct ipa_socksv5_info *info);
+	int (*ipa_del_socksv5_conn)(uint32_t handle);
 };
 
 struct ipa_usb_data {
