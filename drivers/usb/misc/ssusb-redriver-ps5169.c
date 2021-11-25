@@ -176,8 +176,6 @@ struct ps5169_redriver {
 	struct notifier_block ucsi_nb;
 	int ucsi_i2c_write_err;
 	int orientation_gpio;
-	int dp_aux_gpio;
-	int dp_aux_gpio_en;
 };
 
 static const char * const opmode_string[] = {
@@ -254,13 +252,10 @@ static int ssusb_redriver_read_orientation(struct ps5169_redriver *ps5169)
 
 	if (ps5169->op_mode == OP_MODE_NONE) {
 		ps5169->typec_orientation = ORIENTATION_NONE;
-		gpio_set_value(ps5169->dp_aux_gpio, 0);
 	} else if (ret == 0) {
 		ps5169->typec_orientation = ORIENTATION_CC1;
-		gpio_set_value(ps5169->dp_aux_gpio, 0);
 	} else {
 		ps5169->typec_orientation = ORIENTATION_CC2;
-		gpio_set_value(ps5169->dp_aux_gpio, 1);
 	}
 
 	return 0;
@@ -313,13 +308,11 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 		 * it should only set alternate_mode flag ???
 		 */
 		if (ps5169->op_mode == OP_MODE_DP) {
-			gpio_set_value(ps5169->dp_aux_gpio_en, 0);
 			return NOTIFY_OK;
 		}
 		op_mode = OP_MODE_USB3_AND_DP;
 	} else if (info->partner_usb) {
 		if (ps5169->op_mode == OP_MODE_DP) {
-			gpio_set_value(ps5169->dp_aux_gpio_en, 0);
 			return NOTIFY_OK;
 		}
 		op_mode = OP_MODE_USB3;
@@ -327,12 +320,6 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 		op_mode = OP_MODE_DP;
 	} else
 		op_mode = OP_MODE_NONE;
-
-	if (op_mode == OP_MODE_DP || op_mode == OP_MODE_USB3_AND_DP) {
-		gpio_set_value(ps5169->dp_aux_gpio_en, 0);
-	} else {
-		gpio_set_value(ps5169->dp_aux_gpio_en, 1);
-	}
 
 	if (ps5169->op_mode == op_mode)
 		return NOTIFY_OK;
@@ -533,50 +520,6 @@ static void ssusb_redriver_orientation_gpio_init(
 	if (rc < 0) {
 		dev_err(dev, "Failed to request gpio\n");
 		ps5169->orientation_gpio = -EINVAL;
-		return;
-	}
-}
-
-static void ssusb_redriver_dp_aux_flip_gpio_init(
-	struct ps5169_redriver *ps5169)
-{
-	struct device *dev = ps5169->dev;
-	int rc;
-
-	ps5169->dp_aux_gpio_en = of_get_named_gpio(dev->of_node, "redriver,aux-gpio-en", 0);
-	if (!gpio_is_valid(ps5169->dp_aux_gpio_en)) {
-		dev_err(dev, "Failed to get dp aux gpio en\n");
-		return;
-	}
-	ps5169->dp_aux_gpio = of_get_named_gpio(dev->of_node, "redriver,aux-gpio", 0);
-	if (!gpio_is_valid(ps5169->dp_aux_gpio)) {
-		dev_err(dev, "Failed to get dp aux gpio\n");
-		return;
-	}
-
-	rc = devm_gpio_request(dev, ps5169->dp_aux_gpio_en, "redriver-aux-gpio-en");
-	if (rc < 0) {
-		dev_err(dev, "Failed to request dp aux gpio en\n");
-		ps5169->dp_aux_gpio_en = -EINVAL;
-		return;
-	}
-	rc = devm_gpio_request(dev, ps5169->dp_aux_gpio, "redriver-aux-gpio");
-	if (rc < 0) {
-		dev_err(dev, "Failed to request dp aux gpio\n");
-		ps5169->dp_aux_gpio = -EINVAL;
-		return;
-	}
-
-	rc = gpio_direction_output(ps5169->dp_aux_gpio_en, 1);
-	if (rc < 0) {
-		dev_err(dev, "GPIO %d not set to 1: %d\n",
-			ps5169->dp_aux_gpio_en, rc);
-		return;
-	}
-	rc = gpio_direction_output(ps5169->dp_aux_gpio, 0);
-	if (rc < 0) {
-		dev_err(dev, "GPIO %d not set to 0: %d\n",
-			ps5169->dp_aux_gpio, rc);
 		return;
 	}
 }
@@ -1047,7 +990,6 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	ps5169->dev = dev;
 	ps5169->client = client;
 	ssusb_redriver_orientation_gpio_init(ps5169);
-	ssusb_redriver_dp_aux_flip_gpio_init(ps5169);
 
 	of_get_property(dev->of_node, "config-seq", &size);
 	if (!size || size % (3 * sizeof(unsigned int))) {
