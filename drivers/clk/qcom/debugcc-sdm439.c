@@ -156,7 +156,6 @@ static const char *const gcc_debug_mux_parent_names[] = {
 	"gcc_oxili_ahb_clk",
 	"gcc_oxili_aon_clk",
 	"gcc_oxili_gfx3d_clk",
-	"gcc_pcnoc_mpu_cfg_ahb_clk",
 	"gcc_pdm2_clk",
 	"gcc_pdm_ahb_clk",
 	"gcc_pdm_xo4_clk",
@@ -298,7 +297,6 @@ static int gcc_debug_mux_sels[] = {
 	0x1EB,		/* gcc_oxili_ahb_clk */
 	0xEE,		/* gcc_oxili_aon_clk */
 	0x1EA,		/* gcc_oxili_gfx3d_clk */
-	0xC9,		/* gcc_pcnoc_mpu_cfg_ahb_clk */
 	0xD2,		/* gcc_pdm2_clk */
 	0xD0,		/* gcc_pdm_ahb_clk */
 	0xD1,		/* gcc_pdm_xo4_clk */
