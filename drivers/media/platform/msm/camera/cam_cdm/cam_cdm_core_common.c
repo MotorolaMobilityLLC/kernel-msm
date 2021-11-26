@@ -243,35 +243,34 @@ int cam_cdm_stream_ops_internal(void *hw_priv,
 		return -EINVAL;
 
 	core = (struct cam_cdm *)cdm_hw->core_info;
+	mutex_lock(&cdm_hw->hw_mutex);
 	client_idx = CAM_CDM_GET_CLIENT_IDX(*handle);
 	client = core->clients[client_idx];
 	if (!client) {
 		CAM_ERR(CAM_CDM, "Invalid client %pK hdl=%x", client, *handle);
+		mutex_unlock(&cdm_hw->hw_mutex);
 		return -EINVAL;
 	}
 	cam_cdm_get_client_refcount(client);
 	if (*handle != client->handle) {
 		CAM_ERR(CAM_CDM, "client id given handle=%x invalid", *handle);
-		cam_cdm_put_client_refcount(client);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto end;
 	}
 	if (operation == true) {
 		if (true == client->stream_on) {
 			CAM_ERR(CAM_CDM,
 				"Invalid CDM client is already streamed ON");
-			cam_cdm_put_client_refcount(client);
-			return rc;
+			goto end;
 		}
 	} else {
 		if (client->stream_on == false) {
 			CAM_ERR(CAM_CDM,
 				"Invalid CDM client is already streamed Off");
-			cam_cdm_put_client_refcount(client);
-			return rc;
+			goto end;
 		}
 	}
 
-	mutex_lock(&cdm_hw->hw_mutex);
 	if (operation == true) {
 		if (!cdm_hw->open_count) {
 			struct cam_ahb_vote ahb_vote;
