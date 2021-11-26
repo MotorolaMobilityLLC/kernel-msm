@@ -158,17 +158,8 @@ struct drm_file *drm_file_alloc(struct drm_minor *minor)
 			goto out_prime_destroy;
 	}
 
-	if (drm_is_primary_client(file)) {
-		ret = drm_master_open(file);
-		if (ret)
-			goto out_close;
-	}
-
 	return file;
 
-out_close:
-	if (dev->driver->postclose)
-		dev->driver->postclose(dev, file);
 out_prime_destroy:
 	if (drm_core_check_feature(dev, DRIVER_PRIME))
 		drm_prime_destroy_file_private(&file->prime);
@@ -373,6 +364,7 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 {
 	struct drm_device *dev = minor->dev;
 	struct drm_file *priv;
+	int ret = 0;
 
 	if (filp->f_flags & O_EXCL)
 		return -EBUSY;	/* No exclusive opens */
@@ -386,6 +378,14 @@ static int drm_open_helper(struct file *filp, struct drm_minor *minor)
 	priv = drm_file_alloc(minor);
 	if (IS_ERR(priv))
 		return PTR_ERR(priv);
+
+	if (drm_is_primary_client(priv)) {
+		ret = drm_master_open(priv);
+		if (ret) {
+			drm_file_free(priv);
+			return ret;
+		}
+	}
 
 	filp->private_data = priv;
 	filp->f_mode |= FMODE_UNSIGNED_OFFSET;
