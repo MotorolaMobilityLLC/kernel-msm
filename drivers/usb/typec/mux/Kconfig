@@ -19,4 +19,10 @@ config TYPEC_MUX_INTEL_PMC
 	  control the USB role switch and also the multiplexer/demultiplexer
 	  switches used with USB Type-C Alternate Modes.
 
+config TYPEC_MUX_ONSEMI_REDRIVER
+	tristate "OnSemi DP ALT Mode redriver mux"
+	depends on USB_REDRIVER_NB7VPQ904M
+	help
+	  Driver for OnSemi TypeC DP ALT Mode Linear Redriver with integrated
+	  AUX switch. Say Y or M if your system has OnSemi redriver.
 endmenu
