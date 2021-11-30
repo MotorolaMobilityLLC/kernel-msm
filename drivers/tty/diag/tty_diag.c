@@ -346,8 +346,9 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 	diag_ch->priv_usb = NULL;
 
 	memcpy(tty_buf, d_req->buf, d_req->length);
+	spin_unlock_irqrestore(&diag_tty_lock, flags);
 	tty_flip_buffer_push(&tty_data->port);
-
+	spin_lock_irqsave(&diag_tty_lock, flags);
 	d_req->actual = d_req->length;
 	spin_unlock_irqrestore(&diag_tty_lock, flags);
 
