@@ -303,6 +303,7 @@ struct dwc3_msm {
 	struct workqueue_struct *dwc3_wq;
 	struct workqueue_struct *sm_usb_wq;
 	struct delayed_work	sm_work;
+	struct delayed_work	extcon_work;
 	unsigned long		inputs;
 	unsigned int		max_power;
 	bool			charging_disabled;
@@ -384,7 +385,7 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 						unsigned int value);
 static int dwc3_usb_blocking_sync(struct notifier_block *nb,
 					unsigned long event, void *ptr);
-
+static void dwc3_extcon_reg_work(struct work_struct *w);
 /**
  *
  * Read register with debug info.
@@ -3377,6 +3378,7 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 		if (mdwc->vbus_active == event)
 			return NOTIFY_DONE;
 		mdwc->vbus_active = event;
+		mdwc->check_eud_state = false;
 	}
 
 	/*
@@ -3712,6 +3714,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	INIT_WORK(&mdwc->restart_usb_work, dwc3_restart_usb_work);
 	INIT_WORK(&mdwc->vbus_draw_work, dwc3_msm_vbus_draw_work);
 	INIT_DELAYED_WORK(&mdwc->sm_work, dwc3_otg_sm_work);
+	INIT_DELAYED_WORK(&mdwc->extcon_work, dwc3_extcon_reg_work);
 	INIT_DELAYED_WORK(&mdwc->perf_vote_work, msm_dwc3_perf_vote_work);
 	INIT_DELAYED_WORK(&mdwc->sdp_check, check_for_sdp_connection);
 
@@ -4003,33 +4006,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mutex_init(&mdwc->suspend_resume_mutex);
 
 	if (of_property_read_bool(node, "extcon")) {
-		ret = dwc3_msm_extcon_register(mdwc);
-		if (ret)
-			goto put_dwc3;
-
-		/*
-		 * dpdm regulator will be turned on to perform apsd
-		 * (automatic power source detection). dpdm regulator is
-		 * used to float (or high-z) dp/dm lines. Do not reset
-		 * controller/phy if regulator is turned on.
-		 * if dpdm is not present controller can be reset
-		 * as this controller may not be used for charger detection.
-		 */
-		mdwc->dpdm_reg = devm_regulator_get_optional(&pdev->dev,
-				"dpdm");
-		if (IS_ERR(mdwc->dpdm_reg)) {
-			dev_dbg(mdwc->dev, "assume cable is not connected\n");
-			mdwc->dpdm_reg = NULL;
-		}
-
-		if (!mdwc->vbus_active && mdwc->dpdm_reg &&
-				regulator_is_enabled(mdwc->dpdm_reg)) {
-			mdwc->dpdm_nb.notifier_call = dwc_dpdm_cb;
-			regulator_register_notifier(mdwc->dpdm_reg,
-					&mdwc->dpdm_nb);
-		} else {
-			queue_delayed_work(mdwc->sm_usb_wq, &mdwc->sm_work, 0);
-		}
+		/* sm work only can be triggerred after extcon register successfully */
+		queue_delayed_work(mdwc->sm_usb_wq, &mdwc->extcon_work, 0);
+		queue_delayed_work(mdwc->sm_usb_wq, &mdwc->sm_work, 0);
 	} else {
 		switch (dwc->dr_mode) {
 		case USB_DR_MODE_DRD:
@@ -4610,6 +4589,71 @@ set_prop:
 	return 0;
 }
 
+static void dwc3_extcon_reg_work(struct work_struct *w)
+{
+	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm, extcon_work.work);	
+	struct device_node *node = mdwc->dev->of_node;
+	struct extcon_dev *edev;
+	int idx, extcon_cnt;
+
+	/* check if related extcon has been installed */
+
+	extcon_cnt = of_count_phandle_with_args(node, "extcon", NULL);
+	if (extcon_cnt < 0) {
+		dev_err(mdwc->dev, "of_count_phandle_with_args failed\n");
+		return;
+	}
+
+	for (idx = 0; idx < extcon_cnt; idx++) {
+		edev = extcon_get_edev_by_phandle(mdwc->dev, idx);
+		if (IS_ERR(edev) && PTR_ERR(edev) != -ENODEV) {
+			dev_err(mdwc->dev, "get device failed at:%d, delay and retry\n", idx);
+			break;
+		}
+
+		if (IS_ERR_OR_NULL(edev))
+			continue;
+	}
+
+	if (idx != extcon_cnt) {
+		dev_dbg(mdwc->dev, "sched another extcon work\n");
+		queue_delayed_work(mdwc->sm_usb_wq, &mdwc->extcon_work, HZ);
+		return;
+	}
+	else {
+		if (dwc3_msm_extcon_register(mdwc)) {
+			dev_err(mdwc->dev, "extcon register failed, delayed work stopped\n");
+			return;
+		}
+
+		/*
+			* dpdm regulator will be turned on to perform apsd
+			* (automatic power source detection). dpdm regulator is
+			* used to float (or high-z) dp/dm lines. Do not reset
+			* controller/phy if regulator is turned on.
+			* if dpdm is not present controller can be reset
+			* as this controller may not be used for charger detection.
+			*/
+		mdwc->dpdm_reg = devm_regulator_get_optional(mdwc->dev,
+				"dpdm");
+		if (IS_ERR(mdwc->dpdm_reg)) {
+			dev_dbg(mdwc->dev, "assume cable is not connected\n");
+			mdwc->dpdm_reg = NULL;
+		}
+
+		if (!mdwc->vbus_active && mdwc->dpdm_reg &&
+				regulator_is_enabled(mdwc->dpdm_reg)) {
+			dev_dbg(mdwc->dev, "dpdm on\n");
+
+			mdwc->dpdm_nb.notifier_call = dwc_dpdm_cb;
+			regulator_register_notifier(mdwc->dpdm_reg,
+					&mdwc->dpdm_nb);
+		} else {
+			dev_dbg(mdwc->dev, "dpdm off\n");
+		}
+	}
+
+}
 
 /**
  * dwc3_otg_sm_work - workqueue function.
