@@ -28,7 +28,7 @@ struct drm_bootsplash {
 	struct drm_client_dev client;
 	struct mutex lock;
 	struct drm_client_display *display;
-	struct drm_client_buffer *buffer[2];
+	struct drm_client_buffer *buffer;
 	struct work_struct worker;
 	struct completion xref;
 	bool started;
@@ -43,35 +43,26 @@ static void is_drm_bootsplash_enabled(struct device *dev)
 
 static void drm_bootsplash_buffer_delete(struct drm_bootsplash *splash)
 {
-	unsigned int i;
-
-	for (i = 0; i < 2; i++) {
-		if (!IS_ERR_OR_NULL(splash->buffer[i]))
-			drm_client_framebuffer_delete(splash->buffer[i]);
-		splash->buffer[i] = NULL;
-	}
+	if (!IS_ERR_OR_NULL(splash->buffer))
+		drm_client_framebuffer_delete(splash->buffer);
+	splash->buffer = NULL;
 }
 
 static int drm_bootsplash_buffer_create(
 			struct drm_bootsplash *splash, u32 width, u32 height)
 {
-	unsigned int i;
-
-	for (i = 0; i < 2; i++) {
-		splash->buffer[i] =
-			drm_client_framebuffer_create(&splash->client,
-					width, height, SPLASH_IMAGE_FORMAT);
-		if (IS_ERR(splash->buffer[i])) {
-			drm_bootsplash_buffer_delete(splash);
-			return PTR_ERR(splash->buffer[i]);
-		}
-
-		splash->buffer[i]->vaddr =
-			drm_client_buffer_vmap(splash->buffer[i]);
-		if (!(splash->buffer[i]->vaddr))
-			DRM_ERROR("drm_client_buffer_vmap fail\n");
-
+	splash->buffer =
+		drm_client_framebuffer_create(&splash->client,
+				width, height, SPLASH_IMAGE_FORMAT);
+	if (IS_ERR(splash->buffer)) {
+		drm_bootsplash_buffer_delete(splash);
+		return PTR_ERR(splash->buffer);
 	}
+
+	splash->buffer->vaddr =
+		drm_client_buffer_vmap(splash->buffer);
+	if (!splash->buffer->vaddr)
+		DRM_ERROR("drm_client_buffer_vmap fail\n");
 
 	return 0;
 }
@@ -163,9 +154,9 @@ trim:
 		modeset->num_connectors = 0;
 	}
 
-	if (!splash->buffer[0] ||
-	    splash->buffer[0]->fb->width != width ||
-	    splash->buffer[0]->fb->height != height) {
+	if (!splash->buffer ||
+	    splash->buffer->fb->width != width ||
+	    splash->buffer->fb->height != height) {
 		drm_bootsplash_buffer_delete(splash);
 		ret = drm_bootsplash_buffer_create(splash, width, height);
 	}
@@ -177,7 +168,7 @@ out:
 }
 
 static int drm_bootsplash_display_commit_buffer(
-			struct drm_bootsplash *splash, unsigned int num)
+			struct drm_bootsplash *splash)
 {
 	struct drm_client_dev *client = &splash->client;
 	struct drm_mode_set *modeset;
@@ -185,7 +176,7 @@ static int drm_bootsplash_display_commit_buffer(
 	mutex_lock(&client->modeset_mutex);
 	drm_client_for_each_modeset(modeset, client) {
 		if (modeset->mode)
-			modeset->fb = splash->buffer[num]->fb;
+			modeset->fb = splash->buffer->fb;
 	}
 	mutex_unlock(&client->modeset_mutex);
 
@@ -212,15 +203,14 @@ static void drm_bootsplash_draw_box(struct drm_client_buffer *buffer)
 	}
 }
 
-static int drm_bootsplash_draw(struct drm_bootsplash *splash,
-							unsigned int buffer_num)
+static int drm_bootsplash_draw(struct drm_bootsplash *splash)
 {
-	if (!splash->buffer[buffer_num])
+	if (!splash->buffer)
 		return -ENOENT;
 
-	drm_bootsplash_draw_box(splash->buffer[buffer_num]);
+	drm_bootsplash_draw_box(splash->buffer);
 
-	return drm_bootsplash_display_commit_buffer(splash, buffer_num);
+	return drm_bootsplash_display_commit_buffer(splash);
 }
 
 static void drm_bootsplash_worker(struct work_struct *work)
@@ -229,34 +219,21 @@ static void drm_bootsplash_worker(struct work_struct *work)
 		container_of(work, struct drm_bootsplash, worker);
 	struct drm_client_dev *client = &splash->client;
 	struct drm_device *dev = client->dev;
-	unsigned int buffer_num = 0;
 	bool stop = false;
-	int ret = 0, times = 0;
+	int ret = 0;
 
-	while (!splash->stop) {
-		mutex_lock(&splash->lock);
+	mutex_lock(&splash->lock);
+	stop = splash->stop;
+	ret = drm_bootsplash_draw(splash);
+	mutex_unlock(&splash->lock);
 
-		stop = splash->stop;
+	if (stop || ret == -ENOENT || ret == -EBUSY)
+		goto skip;
 
-		buffer_num = !buffer_num;
-
-		ret = drm_bootsplash_draw(splash, buffer_num);
-
-		mutex_unlock(&splash->lock);
-
-		if (stop || ret == -ENOENT || ret == -EBUSY)
-			break;
-
-		if (times == 10)
-			splash->stop = true;
-		else
-			times++;
-
-		msleep(500);
-	}
-
-	if ((times == 10) && splash->stop)
-		drm_lastclose(dev);
+	msleep(5000);
+	splash->stop = true;
+skip:
+	drm_lastclose(dev);
 
 	drm_bootsplash_buffer_delete(splash);
 
