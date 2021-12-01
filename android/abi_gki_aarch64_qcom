@@ -2466,6 +2466,7 @@
   __stack_chk_guard
   stack_trace_print
   strcasecmp
+  strcat
   strchr
   strchrnul
   strcmp
