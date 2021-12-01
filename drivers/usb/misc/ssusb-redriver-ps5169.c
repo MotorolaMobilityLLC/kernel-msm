@@ -153,6 +153,7 @@ struct ps5169_redriver {
 	struct device		*dev;
 	struct i2c_client	*client;
 	struct regulator *vcc;
+	struct regulator *vio;
 	struct regmap		*regmap;
 	struct reg_sequence *config_seqs;
 	unsigned int config_seqs_cnt;
@@ -1021,6 +1022,14 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 		if (ret)
 			dev_err(&client->dev, "Could not enable vcc power regulator\n");
 	}
+	ps5169->vio = devm_regulator_get_optional(&client->dev, "vio");
+	if (IS_ERR(ps5169->vio) || ps5169->vio == NULL) {
+		dev_err(&client->dev, "Could not get vio power regulator\n");
+	} else {
+		ret = regulator_enable(ps5169->vio);
+		if (ret)
+			dev_err(&client->dev, "Could not enable vio power regulator\n");
+	}
 
 	ssusb_redriver_enable_chip(ps5169, true);
 	ssusb_redriver_read_orientation(ps5169);
@@ -1058,6 +1067,11 @@ err_detect:
 			regulator_disable(ps5169->vcc);
 		devm_regulator_put(ps5169->vcc);
 	}
+	if (ps5169->vio) {
+		if (regulator_is_enabled(ps5169->vio))
+			regulator_disable(ps5169->vio);
+		devm_regulator_put(ps5169->vio);
+	}
 	return ret;
 }
 
@@ -1071,6 +1085,11 @@ static int ps5169_i2c_remove(struct i2c_client *client)
 		if (regulator_is_enabled(ps5169->vcc))
 			regulator_disable(ps5169->vcc);
 		devm_regulator_put(ps5169->vcc);
+	}
+	if (ps5169->vio) {
+		if (regulator_is_enabled(ps5169->vio))
+			regulator_disable(ps5169->vio);
+		devm_regulator_put(ps5169->vio);
 	}
 
 	return 0;
