@@ -244,6 +244,12 @@ static int qpnp_tm_get_temp(void *data, int *temp)
 		ret = iio_read_channel_processed(chip->adc, &mili_celsius);
 		if (ret < 0)
 			return ret;
+		/* MMI_STOPSHIP <debug abnormal QC sensor> : tsens report abnormal value. */
+		pr_info("%s: %s last=%d, temp=%d, ret=%d\n", __func__,
+			chip->tz_dev->type, chip->temp, mili_celsius, ret);
+		if (mili_celsius / 1000 >= 100) {
+			panic("THERMAL_TRIP_CRITICAL");
+		}
 
 		chip->temp = mili_celsius;
 	}
