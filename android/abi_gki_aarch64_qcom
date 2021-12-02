@@ -2036,6 +2036,7 @@
   regmap_field_read
   regmap_field_update_bits_base
   __regmap_init
+  __regmap_init_i2c
   regmap_irq_get_virq
   regmap_mmio_detach_clk
   regmap_raw_read
