@@ -23,6 +23,8 @@ menuconfig REGULATOR
 
 if REGULATOR
 
+source "drivers/regulator/wl2868c/Kconfig"
+
 config REGULATOR_DEBUG
 	bool "Regulator debug support"
 	help
