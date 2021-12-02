@@ -1,0 +1,6 @@
+config REGULATOR_WL2868C
+	tristate "Maxim wl2868c voltage regulator"
+	depends on I2C
+	help
+	  This driver controls a Maxim  voltage output
+	  regulator via I2C bus.
