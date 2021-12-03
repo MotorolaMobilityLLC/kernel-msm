@@ -1205,6 +1205,7 @@
   input_mt_init_slots
   input_mt_report_pointer_emulation
   input_mt_report_slot_state
+  input_mt_sync_frame
   input_open_device
   input_register_device
   input_register_handle
@@ -2481,6 +2482,7 @@
   strlcpy
   strlen
   strncasecmp
+  strncat
   strnchr
   strncmp
   strncpy
