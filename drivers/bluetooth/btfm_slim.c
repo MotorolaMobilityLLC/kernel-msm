@@ -194,13 +194,31 @@ int btfm_slim_disable_ch(struct btfmslim *btfmslim, struct btfmslim_ch *ch,
 	}
 
 	btfm_is_port_opening_delayed = false;
+	if (rxport && (btfmslim->sample_rate == 44100 ||
+			btfmslim->sample_rate == 88200)) {
+		BTFMSLIM_INFO("disconnecting the ports, removing the channel");
+		ret = slim_stream_unprepare_disconnect_port(ch->dai.sruntime);
+		if (ret != 0)
+			BTFMSLIM_ERR("slim_stream_unprepare_disconnect failed returned val = %d", ret);
+	}
 
 	ret = slim_stream_disable(ch->dai.sruntime);
-	if (ret != 0)
+	if (ret != 0) {
 		BTFMSLIM_ERR("slim_stream_disable failed returned val = %d", ret);
-	ret = slim_stream_unprepare(ch->dai.sruntime);
+		if ((btfmslim->sample_rate != 44100) && (btfmslim->sample_rate != 88200)) {
+			ret = slim_stream_unprepare_disconnect_port(ch->dai.sruntime);
+			if (ret != 0)
+				BTFMSLIM_ERR("slim_stream_unprepare_disconnect failed returned val = %d", ret);
+
+			ret = slim_stream_unprepare_free_mem(ch->dai.sruntime);
+			if (ret != 0)
+				BTFMSLIM_ERR("slim_stream_unprepare_free_mem failed returned val = %d", ret);
+		}
+	}
+
+	ret = slim_stream_unprepare_free_mem(ch->dai.sruntime);
 	if (ret != 0)
-		BTFMSLIM_ERR("slim_stream_unprepare failed returned val = %d", ret);
+		BTFMSLIM_ERR("slim_stream_unprepare_free_mem failed returned val = %d", ret);
 
 	/* Disable port through registration setting */
 	for (i = 0; i < nchan; i++, ch++) {

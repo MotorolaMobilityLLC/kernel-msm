@@ -482,6 +482,46 @@ int slim_stream_unprepare(struct slim_stream_runtime *stream)
 }
 EXPORT_SYMBOL_GPL(slim_stream_unprepare);
 
+int slim_stream_unprepare_disconnect_port(struct slim_stream_runtime *stream)
+{
+       int i;
+       if (!stream) {
+               pr_err("%s: Stream is NULL, Check from client side\n", __func__);
+               return -EINVAL;
+       }
+
+       if (!stream->ports || !stream->num_ports) {
+               pr_err("%s: Stream port is NULL %d\n", __func__, stream->num_ports);
+               return -EINVAL;
+       }
+
+
+       for (i = 0; i < stream->num_ports; i++)
+               slim_disconnect_port(stream, &stream->ports[i]);
+
+       return 0;
+}
+EXPORT_SYMBOL_GPL(slim_stream_unprepare_disconnect_port);
+
+int slim_stream_unprepare_free_mem(struct slim_stream_runtime *stream)
+{
+       if (!stream) {
+               pr_err("%s: Stream is NULL, Check from client side\n", __func__);
+               return -EINVAL;
+       }
+
+       if (!stream->ports || !stream->num_ports) {
+               pr_err("%s: Stream port is NULL %d\n", __func__, stream->num_ports);
+               return -EINVAL;
+       }
+       kfree(stream->ports);
+       stream->ports = NULL;
+       stream->num_ports = 0;
+
+       return 0;
+}
+EXPORT_SYMBOL_GPL(slim_stream_unprepare_free_mem);
+
 /**
  * slim_stream_free() - Free a SLIMbus Stream
  *
