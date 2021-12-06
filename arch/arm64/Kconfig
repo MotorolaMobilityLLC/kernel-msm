@@ -1861,3 +1861,9 @@ config AW882XX_STEREO_SMARTPA
         default n
         help
         Enable it only for params of smartPA is stored in bin file.
+
+config CAMERA_FLASH_PWM
+        bool "control flash"
+        default n
+        help
+        Enable it only for produts that control flash.
