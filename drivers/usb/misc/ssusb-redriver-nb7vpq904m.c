@@ -513,6 +513,9 @@ static int ssusb_redriver_mux_set(void *priv, u8 state)
 	case TYPEC_DP_STATE_D:
 		redriver->op_mode = OP_MODE_USB_AND_DP;
 			break;
+	case TYPEC_STATE_USB:
+		redriver->op_mode = OP_MODE_USB;
+			break;
 	default:
 		redriver->op_mode = OP_MODE_NONE;
 		MOTO_ALTMODE("DP state %d", state);
