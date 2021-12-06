@@ -143,7 +143,13 @@ config I2C_DEBUG_BUS
 	  debug messages to the system log.  Select this if you are having
 	  a problem with I2C support and want to see more of what is going
 	  on.
-
+config QCOM_I2C_NACK_ERR_WA
+	bool "I2C Bus nack err"
+	help
+	  Say Y here if you want the I2C bus drivers to produce a bunch of
+	  debug messages to the system log.  Select this if you are having
+	  a problem with I2C support and want to see more of what is going
+	  on.
 endif # I2C
 
 endmenu
