@@ -1156,7 +1156,7 @@ static int diag_cmd_set_msg_mask(unsigned char *src_buf, int src_len,
 			mask_size = MAX_SSID_PER_RANGE;
 			mask->range_tools = MAX_SSID_PER_RANGE;
 			mask->ssid_last_tools =
-				mask->ssid_first + mask->range_tools;
+				mask->ssid_first + mask->range_tools - 1;
 		}
 		if (ssid_range.ssid_last > mask->ssid_last_tools) {
 			pr_debug("diag: Msg SSID range mismatch\n");
