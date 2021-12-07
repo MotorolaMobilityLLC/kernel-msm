@@ -1511,6 +1511,7 @@ error_ctrl:
 error_panel:
 	dp_link_put(dp->link);
 error_link:
+	dp->aux->drm_aux_deregister(dp->aux);
 	dp_aux_put(dp->aux);
 error_aux:
 	dp_power_put(dp->power);
