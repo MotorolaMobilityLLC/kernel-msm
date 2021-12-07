@@ -1676,3 +1676,9 @@ config AF_NOISE_ELIMINATION
 	default n
 	help
 	Enable it only for produts that suffering AF resonance noise.
+
+config CAMERA_FLASH_PWM
+        bool "control flash"
+        default n
+        help
+        Enable it only for produts that control flash.
