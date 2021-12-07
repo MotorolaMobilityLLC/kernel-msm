@@ -1098,7 +1098,17 @@ struct snd_soc_pcm_runtime {
 
 	int num_components;
 
-	ANDROID_KABI_RESERVE(1);
+	/* Android KABI preservation.
+	 *
+	 * dpcm_be_start[2] is the backport version of be_start from
+	 * 848aedfdc6ba ("ASoC: soc-pcm: test refcount before triggering")
+	 * which is originally in struct snd_soc_dpcm_runtime. Since we don't
+	 * have ABI reserve fields there, we are adding this refcount variable
+	 * here as an array for each BE stream.
+	 *
+	 * refcount protected by BE stream pcm lock
+	 */
+	ANDROID_KABI_USE(1, u32 dpcm_be_start[2]);
 
 	struct snd_soc_component *components[]; /* CPU/Codec/Platform */
 };
