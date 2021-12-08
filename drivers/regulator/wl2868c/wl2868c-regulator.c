@@ -20,7 +20,17 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include "wl2868c-regulator.h"
+
 static int ldo_chipid = -1;
+static int first_init_flag = 0;
+static int ldo_driver_id = 0;
+
+enum ldo_device_id {
+	WL2868C_ID = 0,
+	FAN53870_ID,
+	ET5907_ID,
+};
+
 enum slg51000_regulators {
 	WL2868C_REGULATOR_LDO1 = 0,
 	WL2868C_REGULATOR_LDO2,
@@ -96,19 +106,19 @@ static int wl2868c_get_error_flags(struct regulator_dev *rdev, unsigned int *fla
 	uint8_t reg_idx;
 	unsigned int val = 0;
 
-	printk("************ start dump wl2868c register ************\n");
-	printk("register 0x00:      chip version\n");
-	printk("register 0x01:      LDO CL\n");
-	printk("register 0x03~0x09: LDO1~LDO7 OUT Voltage\n");
-	printk("register 0x0e:      Bit[6:0] LDO7~LDO1 EN\n");
+	dev_err(chip->dev, "************ start dump wl2868c register ************\n");
+	dev_err(chip->dev, "register 0x00:      chip version\n");
+	dev_err(chip->dev, "register 0x01:      LDO CL\n");
+	dev_err(chip->dev, "register 0x03~0x09: LDO1~LDO7 OUT Voltage\n");
+	dev_err(chip->dev, "register 0x0e:      Bit[6:0] LDO7~LDO1 EN\n");
 
 	for (reg_idx = 0; reg_idx < WL2868C_REG_NUM; reg_idx++) {
 		regmap_read(chip->regmap, reg_idx, &val);
 		reg_dump[reg_idx] = val;
-		printk("Reg[0x%02x] = 0x%x", reg_idx, reg_dump[reg_idx]);
-		printk("Reg[0x%02x] = 0x%x", reg_idx, reg_dump[reg_idx]);
+		dev_err(chip->dev, "Reg[0x%02x] = 0x%x", reg_idx, reg_dump[reg_idx]);
 	}
-	printk("************ end dump wl2868c register ************\n");
+	dev_err(chip->dev, "************ end dump wl2868c register ************\n");
+
 	if (flags != NULL) {
 		*flags = 0;
 	}
@@ -124,8 +134,7 @@ static int wl2868c_get_status(struct regulator_dev *rdev)
 
 	ret = regulator_is_enabled_regmap(rdev);
 	if (ret < 0) {
-		printk("Failed to read enable register(%d)\n", ret);
-		
+		dev_err(chip->dev, "Failed to read enable register(%d)\n", ret);
 		return ret;
 	}
 
@@ -139,7 +148,7 @@ static int wl2868c_get_status(struct regulator_dev *rdev)
 	}
 	ret = regmap_read(chip->regmap, wl2868c_status_reg, &status);
 	if (ret < 0) {
-		printk("Failed to read status register(%d)\n", ret);
+		dev_err(chip->dev, "Failed to read status register(%d)\n", ret);
 		return ret;
 	}
 
@@ -225,29 +234,47 @@ static int wl2868c_regulator_init(struct wl2868c *chip)
 		WL2868C_LDO7_VOUT,
 	};
 
-	unsigned int initial_voltage[WL2868C_MAX_REGULATORS] = {
-		0x24,//LDO1 1.05V
+	unsigned int initial_voltage[LDO_DEVICE_MAX][WL2868C_MAX_REGULATORS] = {
+		{0x24,//LDO1 1.05V
 		0x5D,//LDO2 1.24V
 		0x80,//LDO3 2.8V
 		0x80,//LDO4 2.8V
 		0x80,//LDO5 2.8V
-		0xA2,//LDO6 2.8V
+		0xA2,//LDO6 3.0V
 		0x30,//LDO7 1.8V
+		},//wl2868c init voltage
+		{0x24,//LDO1 1.05V
+		0x9A,//LDO2 1.24V
+		0x80,//LDO3 2.8V
+		0x80,//LDO4 2.8V
+		0x80,//LDO5 2.8V
+		0xB2,//LDO6 3.0V
+		0x30,//LDO7 1.8V
+		},//fan53870 init voltage
+		{0x24,//LDO1 1.05V
+		0x6A,//LDO2 1.24V
+		0x80,//LDO3 2.8V
+		0x80,//LDO4 2.8V
+		0x80,//LDO5 2.8V
+		0xA0,//LDO6 3.0V
+		0x30,//LDO7 1.8V
+		},//et5907 init voltage
 	};
-
 	/*Disable all ldo output by default*/
-	if (ldo_chipid == 0x33)
-	{
-		ret = regmap_write(chip->regmap, WL2868C_LDO_EN, 0x80);
-	}
-	else if((ldo_chipid == 0x01) ||(ldo_chipid == 0x00))
-	{
-		ret = regmap_write(chip->regmap, fan53870_LDO_EN, 0);
-	}
+	if (first_init_flag == 1) {
+		if (ldo_chipid == 0x33)
+		{
+			ret = regmap_write(chip->regmap, WL2868C_LDO_EN, 0x80);
+		}
+		else if((ldo_chipid == 0x01) ||(ldo_chipid == 0x00))
+		{
+			ret = regmap_write(chip->regmap, fan53870_LDO_EN, 0);
+		}
 
-	if (ret < 0) {
-		printk("Disable all LDO output failed!!!\n");
-		return ret;
+		if (ret < 0) {
+			dev_err(chip->dev, "Disable all LDO output failed!!!\n");
+			return ret;
+		}
 	}
 
 	//ET5907 chipid is 0x00,Fan53870 chipid is 0x01.for change min_uV and step by chip
@@ -303,23 +330,23 @@ static int wl2868c_regulator_init(struct wl2868c *chip)
 		ret = regmap_bulk_read(chip->regmap, ldo_regs[id], vsel_range, 1);
 		pr_err("wl2868c_regulator_init: LDO%d, ldo_regs=0x%x default value:0x%x", (id+1),ldo_regs[id],vsel_range[0]);
 		if (ret < 0) {
-			printk("Failed to read the ldo register\n");
+			dev_err(chip->dev, "Failed to read the ldo register\n");
 			return ret;
 		}
 
 		pr_err("wl2868c_regulator_init: enable_reg0x%x, enable_mask:0x%x", wl2868c_regls_desc[id].enable_reg, wl2868c_regls_desc[id].enable_mask);
 
-		ret = regmap_write(chip->regmap, ldo_regs[id], initial_voltage[id]);
+		ret = regmap_write(chip->regmap, ldo_regs[id], initial_voltage[ldo_driver_id][id]);
 		if (ret < 0) {
-			printk("Failed to write inital voltage register\n");
+			dev_err(chip->dev, "Failed to write inital voltage register\n");
 			return ret;
 		}
-		pr_err("wl2868c_regulator_init: LDO%d, initial value:0x%x", (id+1), initial_voltage[id]);
+		pr_err("wl2868c_regulator_init: ldo_driver_id=%d LDO%d, initial value:0x%x", ldo_driver_id, (id+1), initial_voltage[ldo_driver_id][id]);
 
 		chip->rdev[id] = devm_regulator_register(chip->dev, rdesc, &config);
 		if (IS_ERR(chip->rdev[id])) {
 			ret = PTR_ERR(chip->rdev[id]);
-			printk("Failed to register regulator(%s):%d\n", chip->rdesc[id]->name, ret);
+			dev_err(chip->dev, "Failed to register regulator(%s):%d\n", chip->rdesc[id]->name, ret);
 			return ret;
 		}
 	}
@@ -334,7 +361,7 @@ static int wl2868c_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	int error, cs_gpio, ret;
 	chip = devm_kzalloc(dev, sizeof(struct wl2868c), GFP_KERNEL);
 	if (!chip) {
-		printk("wl2868c_i2c_probe Memory error...\n");
+		dev_err(chip->dev, "wl2868c_i2c_probe Memory error...\n");
 		return -ENOMEM;
 	}
 
@@ -343,13 +370,13 @@ static int wl2868c_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	cs_gpio = of_get_named_gpio(dev->of_node, "semi,cs-gpios", 0);
 	if (cs_gpio > 0) {
 		if (!gpio_is_valid(cs_gpio)) {
-			printk("Invalid chip select pin\n");
+			dev_err(dev, "Invalid chip select pin\n");
 			return -EPERM;
 		}
 
 		ret = devm_gpio_request_one(dev, cs_gpio, GPIOF_OUT_INIT_HIGH, "wl2868c_cs_pin");
 		if (ret) {
-			printk("GPIO(%d) request failed(%d)\n", cs_gpio, ret);
+			dev_err(dev, "GPIO(%d) request failed(%d)\n", cs_gpio, ret);
 			return ret;
 		}
 
@@ -377,7 +404,7 @@ static int wl2868c_i2c_probe(struct i2c_client *client, const struct i2c_device_
 		regmap_read(chip->regmap, WL2868C_CHIP_REV, &ldo_chipid);
 		if (IS_ERR(chip->regmap)) {
 			error = PTR_ERR(chip->regmap);
-			printk("Failed to allocate register map: %d\n",
+			dev_err(dev, "Failed to allocate register map: %d\n",
 			error);
 			return error;
 		}
@@ -386,19 +413,22 @@ static int wl2868c_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	ret = regmap_read(chip->regmap, WL2868C_CHIP_REV, &ldo_chipid);
 	if (0x33 == ldo_chipid)
 	{
+		ldo_driver_id = WL2868C_ID;
 		dev_info(chip->dev, "wl2868c chipid=:0x%x\n", ldo_chipid);
 	}
 	else if (0x01 == ldo_chipid)
 	{
+		ldo_driver_id = FAN53870_ID;
 		dev_info(chip->dev, "fan53870 chipid=:0x%x\n", ldo_chipid);
 	}
 	else if (0x00 == ldo_chipid)
 	{
+		ldo_driver_id = ET5907_ID;
 		dev_info(chip->dev, "et5907 chipid=:0x%x\n", ldo_chipid);
 	}
 	else
 	{
-		printk("ldo read chipid error...chipid=:0x%x\n",ldo_chipid);
+		dev_err(chip->dev, "ldo read chipid error...chipid=:0x%x\n",ldo_chipid);
 		return -ENOMEM;
 	}
 
@@ -411,10 +441,11 @@ static int wl2868c_i2c_probe(struct i2c_client *client, const struct i2c_device_
 
 	ret = wl2868c_regulator_init(chip);
 	if (ret < 0) {
-		printk("Failed to init regulator(%d)\n", ret);
+		dev_err(chip->dev, "Failed to init regulator(%d)\n", ret);
 		return ret;
 	}
 	dev_info(chip->dev, "wl2868c_i2c_probe Exit...\n");
+	first_init_flag = 1;
 
 	return ret;
 }
