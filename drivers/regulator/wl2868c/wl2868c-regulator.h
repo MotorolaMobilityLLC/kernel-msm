@@ -59,4 +59,5 @@
 #define  WL2868C_VSEL_SHIFT                     0
 #define  WL2868C_VSEL_MASK                      (0xff << 0)
 
+#define LDO_DEVICE_MAX 3
 #endif /* __WL2868C_REGISTERS_H__ */
