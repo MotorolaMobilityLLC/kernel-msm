@@ -4351,7 +4351,7 @@ int smblib_set_prop_typec_power_role(struct smb_charger *chg,
 		power_role = TYPEC_DISABLE_CMD_BIT;
 		break;
 	case POWER_SUPPLY_TYPEC_PR_DUAL:
-		power_role = chg->typec_try_mode;
+		power_role = 0;
 		break;
 	case POWER_SUPPLY_TYPEC_PR_SINK:
 		power_role = EN_SNK_ONLY_BIT;
@@ -7468,7 +7468,7 @@ int smblib_force_dr_mode(struct smb_charger *chg, int mode)
 	case DUAL_ROLE_PROP_MODE_NONE:
 		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
 				TYPEC_POWER_ROLE_CMD_MASK | EN_TRY_SNK_BIT,
-				EN_TRY_SNK_BIT);
+				0);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't enable try.snk, rc=%d\n", rc);
 			return rc;
