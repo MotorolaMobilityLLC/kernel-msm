@@ -26,6 +26,9 @@ function add_moto_defconfig_fragments() {
 		fi
 
 		if [ "${VARIANT}" = gki -o "$TARGET_PRODUCT_TYPE" = "factory" ]; then
+			if [ -e ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/moto-${MSM_ARCH}-gki.config ]; then
+				apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/moto-${MSM_ARCH}-gki.config
+			fi
 			return
 		fi
 
