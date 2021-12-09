@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -251,18 +251,9 @@ struct npu_device {
 	uint32_t hw_version;
 };
 
-struct npu_kevent {
-	struct list_head list;
-	struct msm_npu_event evt;
-	uint64_t reserved[4];
-};
-
 struct npu_client {
 	struct npu_device *npu_dev;
-	wait_queue_head_t wait;
-
 	struct mutex list_lock;
-	struct list_head evt_list;
 	struct list_head mapped_buffer_list;
 };
 
