@@ -1853,6 +1853,7 @@
   platform_get_irq
   platform_get_irq_byname
   platform_get_irq_byname_optional
+  platform_get_irq_optional
   platform_get_resource
   platform_get_resource_byname
   platform_irq_count
