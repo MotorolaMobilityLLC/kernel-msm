@@ -292,18 +292,9 @@ struct npu_device {
 	uint32_t hw_version;
 };
 
-struct npu_kevent {
-	struct list_head list;
-	struct msm_npu_event evt;
-	uint64_t reserved[4];
-};
-
 struct npu_client {
 	struct npu_device *npu_dev;
-	wait_queue_head_t wait;
-
 	struct mutex list_lock;
-	struct list_head evt_list;
 	struct list_head mapped_buffer_list;
 };
 
@@ -341,7 +332,6 @@ void disable_fw(struct npu_device *npu_dev);
 int load_fw(struct npu_device *npu_dev);
 int unload_fw(struct npu_device *npu_dev);
 int npu_set_bw(struct npu_device *npu_dev, int new_ib, int new_ab);
-int npu_process_kevent(struct npu_client *client, struct npu_kevent *kevt);
 int npu_notify_cdsprm_cxlimit_activity(struct npu_device *npu_dev, bool enable);
 int npu_bridge_mbox_send_data(struct npu_host_ctx *host_ctx,
 	struct npu_mbox *mbox, void *data);
