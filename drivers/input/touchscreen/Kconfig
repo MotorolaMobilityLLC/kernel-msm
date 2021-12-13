@@ -1353,6 +1353,8 @@ source "drivers/input/touchscreen/synaptics_tcm/Kconfig"
 
 source "drivers/input/touchscreen/focaltech_touch/Kconfig"
 
+source "drivers/input/touchscreen/ft3519/Kconfig"
+
 source "drivers/input/touchscreen/nt36xxx/Kconfig"
 
 config TOUCHSCREEN_HIMAX_CHIPSET
