@@ -18,6 +18,8 @@ obj-$(CONFIG_I2C_STUB)		+= i2c-stub.o
 obj-$(CONFIG_I2C_SLAVE_EEPROM)	+= i2c-slave-eeprom.o
 
 ccflags-$(CONFIG_I2C_DEBUG_CORE) := -DDEBUG
-ifeq ($(CONFIG_QCOM_I2C_NACK_ERR_WA), y)
+
+ifeq ($(CONFIG_QCOM_I2C_NACK_ERR_WA_FAC), y)
 subdir-ccflags-y += -DQCOM_I2C_NACK_ERR_WA
 endif
+
