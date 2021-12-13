@@ -1,1 +1,0 @@
-obj-$(CONFIG_TOUCHSCREEN_FTS) += focaltech_test_ft5452i.o
