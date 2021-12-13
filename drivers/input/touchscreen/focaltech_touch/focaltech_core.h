@@ -2,7 +2,7 @@
  *
  * FocalTech TouchScreen driver.
  *
- * Copyright (c) 2012-2020, Focaltech Ltd. All rights reserved.
+ * Copyright (c) 2012-2019, Focaltech Ltd. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -46,7 +46,7 @@
 #include <linux/vmalloc.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include <linux/firmware.h>
 #include <linux/debugfs.h>
 #include <linux/mutex.h>
@@ -98,139 +98,99 @@
 #define EVENT_UP(flag)                      (FTS_TOUCH_UP == flag)
 #define EVENT_NO_DOWN(data)                 (!data->point_num)
 
-#define FTS_MAX_COMPATIBLE_TYPE             4
-#define FTS_MAX_COMMMAND_LENGTH             16
-
-
-/*****************************************************************************
-*  Alternative mode (When something goes wrong, the modules may be able to solve the problem.)
-*****************************************************************************/
-/*
- * For commnication error in PM(deep sleep) state
- */
-#define FTS_PATCH_COMERR_PM                     0
-#define FTS_TIMEOUT_COMERR_PM                   700
-
-#define FTS_HIGH_REPORT                         0
-#define FTS_SIZE_DEFAULT                        15
+#define FTX_MAX_COMPATIBLE_TYPE             4
+#define FTX_MAX_COMMMAND_LENGTH             16
 
 
 /*****************************************************************************
 * Private enumerations, structures and unions using typedef
 *****************************************************************************/
 struct ftxxxx_proc {
-    struct proc_dir_entry *proc_entry;
-    u8 opmode;
-    u8 cmd_len;
-    u8 cmd[FTS_MAX_COMMMAND_LENGTH];
+	struct proc_dir_entry *proc_entry;
+	u8 opmode;
+	u8 cmd_len;
+	u8 cmd[FTX_MAX_COMMMAND_LENGTH];
 };
 
 struct fts_ts_platform_data {
-    u32 irq_gpio;
-    u32 irq_gpio_flags;
-    u32 reset_gpio;
-    u32 reset_gpio_flags;
-    bool have_key;
-    u32 key_number;
-    u32 keys[FTS_MAX_KEYS];
-    u32 key_y_coords[FTS_MAX_KEYS];
-    u32 key_x_coords[FTS_MAX_KEYS];
-    u32 x_max;
-    u32 y_max;
-    u32 x_min;
-    u32 y_min;
-    u32 max_touch_number;
+	u32 irq_gpio;
+	u32 irq_gpio_flags;
+	u32 reset_gpio;
+	u32 reset_gpio_flags;
+	bool have_key;
+	u32 key_number;
+	u32 keys[FTS_MAX_KEYS];
+	u32 key_y_coords[FTS_MAX_KEYS];
+	u32 key_x_coords[FTS_MAX_KEYS];
+	u32 x_max;
+	u32 y_max;
+	u32 x_min;
+	u32 y_min;
+	u32 max_touch_number;
 };
 
 struct ts_event {
-    int x;      /*x coordinate */
-    int y;      /*y coordinate */
-    int p;      /* pressure */
-    int flag;   /* touch event flag: 0 -- down; 1-- up; 2 -- contact */
-    int id;     /*touch ID */
-    int area;
-};
-
-struct pen_event {
-    int inrange;
-    int tip;
-    int x;      /*x coordinate */
-    int y;      /*y coordinate */
-    int p;      /* pressure */
-    int flag;   /* touch event flag: 0 -- down; 1-- up; 2 -- contact */
-    int id;     /*touch ID */
-    int tilt_x;
-    int tilt_y;
-    int tool_type;
+	int x;      /*x coordinate */
+	int y;      /*y coordinate */
+	int p;      /* pressure */
+	int flag;   /* touch event flag: 0 -- down; 1-- up; 2 -- contact */
+	int id;     /*touch ID */
+	int area;
 };
 
 struct fts_ts_data {
-    struct i2c_client *client;
-    struct spi_device *spi;
-    struct device *dev;
-    struct input_dev *input_dev;
-    struct input_dev *pen_dev;
-    struct fts_ts_platform_data *pdata;
-    struct ts_ic_info ic_info;
-    struct workqueue_struct *ts_workqueue;
-    struct work_struct fwupg_work;
-    struct delayed_work esdcheck_work;
-    struct delayed_work prc_work;
-    struct work_struct resume_work;
-    struct ftxxxx_proc proc;
-    spinlock_t irq_lock;
-    struct mutex report_mutex;
-    struct mutex bus_lock;
-    unsigned long intr_jiffies;
-    int irq;
-    int log_level;
-    int fw_is_running;      /* confirm fw is running when using spi:default 0 */
-    int dummy_byte;
-#if defined(CONFIG_PM) && FTS_PATCH_COMERR_PM
-    struct completion pm_completion;
-    bool pm_suspend;
-#endif
-    bool suspended;
-    bool fw_loading;
-    bool irq_disabled;
-    bool power_disabled;
-    bool glove_mode;
-    bool cover_mode;
-    bool charger_mode;
-    bool gesture_mode;      /* gesture enable or disable, default: disable */
-    bool prc_mode;
-    struct pen_event pevent;
-    /* multi-touch */
-    struct ts_event *events;
-    u8 *bus_tx_buf;
-    u8 *bus_rx_buf;
-    int bus_type;
-    u8 *point_buf;
-    int pnt_buf_size;
-    int touchs;
-    int key_state;
-    int touch_point;
-    int point_num;
-    struct regulator *vdd;
-    struct regulator *vcc_i2c;
+	struct i2c_client *client;
+	struct spi_device *spi;
+	struct device *dev;
+	struct input_dev *input_dev;
+	struct fts_ts_platform_data *pdata;
+	struct ts_ic_info ic_info;
+	struct workqueue_struct *ts_workqueue;
+	struct work_struct fwupg_work;
+	struct delayed_work esdcheck_work;
+	struct delayed_work prc_work;
+	struct work_struct resume_work;
+	struct ftxxxx_proc proc;
+	spinlock_t irq_lock;
+	struct mutex report_mutex;
+	struct mutex bus_lock;
+	int irq;
+	int log_level;
+	int fw_is_running; /* confirm fw is running when using spi:default 0 */
+	int dummy_byte;
+	bool suspended;
+	bool fw_loading;
+	bool irq_disabled;
+	bool power_disabled;
+	bool glove_mode;
+	bool cover_mode;
+	bool charger_mode;
+	bool gesture_mode; /* gesture enable or disable, default: disable */
+	int report_rate;
+
+	/* multi-touch */
+	struct ts_event *events;
+	u8 *bus_tx_buf;
+	u8 *bus_rx_buf;
+	u8 *point_buf;
+	int pnt_buf_size;
+	int touchs;
+	int key_state;
+	int touch_point;
+	int point_num;
+	struct regulator *vdd;
+	struct regulator *vcc_i2c;
 #if FTS_PINCTRL_EN
-    struct pinctrl *pinctrl;
-    struct pinctrl_state *pins_active;
-    struct pinctrl_state *pins_suspend;
-    struct pinctrl_state *pins_release;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pins_active;
+	struct pinctrl_state *pins_suspend;
+	struct pinctrl_state *pins_release;
 #endif
 #if defined(CONFIG_FB) || defined(CONFIG_DRM)
-    struct notifier_block fb_notif;
+	struct notifier_block fb_notif;
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
-    struct early_suspend early_suspend;
+	struct early_suspend early_suspend;
 #endif
-};
-
-enum _FTS_BUS_TYPE {
-    BUS_TYPE_NONE,
-    BUS_TYPE_I2C,
-    BUS_TYPE_SPI,
-    BUS_TYPE_SPI_V2,
 };
 
 /*****************************************************************************
@@ -274,11 +234,6 @@ int fts_esdcheck_suspend(void);
 int fts_esdcheck_resume(void);
 #endif
 
-/* Production test */
-#if FTS_TEST_EN
-int fts_test_init(struct fts_ts_data *ts_data);
-int fts_test_exit(struct fts_ts_data *ts_data);
-#endif
 
 /* Point Report Check*/
 #if FTS_POINT_REPORT_CHECK_EN
@@ -295,7 +250,6 @@ int fts_enter_test_environment(bool test_state);
 
 /* Other */
 int fts_reset_proc(int hdelayms);
-int fts_check_cid(struct fts_ts_data *ts_data, u8 id_h);
 int fts_wait_tp_to_valid(void);
 void fts_release_all_finger(void);
 void fts_tp_state_recovery(struct fts_ts_data *ts_data);
