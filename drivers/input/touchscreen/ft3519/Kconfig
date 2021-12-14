@@ -1,7 +1,6 @@
 #
 # Focaltech Touchscreen driver configuration
 #
-# MMI_STOPSHIP <kernel>: Product hawao touch bringup
 
 config TOUCHSCREEN_FT3519
     bool "Focaltech Touchscreen"
