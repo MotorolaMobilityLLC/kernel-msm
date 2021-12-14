@@ -79,6 +79,10 @@
 
 #define MAX_SE	20
 
+#if IS_ENABLED(CONFIG_QCOM_I2C_NACK_ERR_WA)
+u8 i2c_wt6670_dl_mode = 0;
+#endif
+
 enum i2c_se_mode {
 	UNINITIALIZED,
 	FIFO_SE_DMA,
@@ -346,6 +350,15 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 	u32 dma = readl_relaxed(gi2c->base + SE_GENI_DMA_MODE_EN);
 	struct i2c_msg *cur = gi2c->cur;
 
+#if IS_ENABLED(CONFIG_QCOM_I2C_NACK_ERR_WA)
+	//wt6670 download mode i2c addr
+	if(cur[0].addr == 0x2B){
+		i2c_wt6670_dl_mode = 1;
+	} else if(cur[0].addr == 0x35){
+		i2c_wt6670_dl_mode = 0;
+	}
+#endif
+
 	if (!cur) {
 		geni_se_dump_dbg_regs(&gi2c->i2c_rsc, gi2c->base, gi2c->ipcl);
 		GENI_SE_ERR(gi2c->ipcl, false, gi2c->dev, "Spurious irq\n");
@@ -358,8 +371,15 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 		    (m_stat & M_CMD_ABORT_EN) ||
 		    (m_stat & M_GP_IRQ_1_EN)) {
 
+#if IS_ENABLED(CONFIG_QCOM_I2C_NACK_ERR_WA)
+		if(i2c_wt6670_dl_mode == 0){
+			if (m_stat & M_GP_IRQ_1_EN)
+				geni_i2c_err(gi2c, I2C_NACK);
+		}
+#else
 		if (m_stat & M_GP_IRQ_1_EN)
 			geni_i2c_err(gi2c, I2C_NACK);
+#endif
 		if (m_stat & M_GP_IRQ_3_EN)
 			geni_i2c_err(gi2c, I2C_BUS_PROTO);
 		if (m_stat & M_GP_IRQ_4_EN)
@@ -1057,6 +1077,14 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 	gi2c->err = 0;
 	atomic_set(&gi2c->is_xfer_in_progress, 1);
 
+#if IS_ENABLED(CONFIG_QCOM_I2C_NACK_ERR_WA)
+	//wt6670 download mode i2c addr
+	if(msgs[0].addr == 0x2B){
+		i2c_wt6670_dl_mode = 1;
+	} else if( msgs[0].addr == 0x35){
+		i2c_wt6670_dl_mode = 0;
+	}
+#endif
 	/* Client to respect system suspend */
 	if (!pm_runtime_enabled(gi2c->dev)) {
 		GENI_SE_ERR(gi2c->ipcl, false, gi2c->dev,
@@ -1264,6 +1292,15 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 		if (gi2c->err) {
 			GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
 				"i2c error :%d\n", gi2c->err);
+#if IS_ENABLED(CONFIG_QCOM_I2C_NACK_ERR_WA)
+			if(i2c_wt6670_dl_mode == 1){
+				if(gi2c->err == gi2c_log[I2C_NACK].err) {
+					GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,"wt6670 nack continue! :%d\n", gi2c->err);
+					continue;
+				}
+			}
+
+#endif
 			break;
 		}
 	}
