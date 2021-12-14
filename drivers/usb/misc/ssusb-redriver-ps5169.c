@@ -1061,17 +1061,17 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 
 err_detect:
 	dev_err(dev, "%s,probe failed.\n", __func__);
-	devm_kfree(&client->dev, ps5169);
-	if (ps5169->vcc) {
+	if (!IS_ERR_OR_NULL(ps5169->vcc)) {
 		if (regulator_is_enabled(ps5169->vcc))
 			regulator_disable(ps5169->vcc);
 		devm_regulator_put(ps5169->vcc);
 	}
-	if (ps5169->vio) {
+	if (!IS_ERR_OR_NULL(ps5169->vio)) {
 		if (regulator_is_enabled(ps5169->vio))
 			regulator_disable(ps5169->vio);
 		devm_regulator_put(ps5169->vio);
 	}
+	devm_kfree(&client->dev, ps5169);
 	return ret;
 }
 
@@ -1081,12 +1081,12 @@ static int ps5169_i2c_remove(struct i2c_client *client)
 
 	debugfs_remove(ps5169->debug_root);
 	unregister_ucsi_glink_notifier(&ps5169->ucsi_nb);
-	if (ps5169->vcc) {
+	if (!IS_ERR_OR_NULL(ps5169->vcc)) {
 		if (regulator_is_enabled(ps5169->vcc))
 			regulator_disable(ps5169->vcc);
 		devm_regulator_put(ps5169->vcc);
 	}
-	if (ps5169->vio) {
+	if (!IS_ERR_OR_NULL(ps5169->vio)) {
 		if (regulator_is_enabled(ps5169->vio))
 			regulator_disable(ps5169->vio);
 		devm_regulator_put(ps5169->vio);
