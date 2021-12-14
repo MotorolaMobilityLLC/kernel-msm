@@ -441,6 +441,10 @@ static struct clk_regmap *gpu_cc_blair_clocks[] = {
 	[GPU_CC_SLEEP_CLK] = &gpu_cc_sleep_clk.clkr,
 };
 
+static const struct qcom_reset_map gpu_cc_blair_resets[] = {
+	[GPU_CC_FREQUENCY_LIMITER_IRQ_CLEAR] = { 0x153c, 0 },
+};
+
 static const struct regmap_config gpu_cc_blair_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
@@ -455,6 +459,8 @@ static const struct qcom_cc_desc gpu_cc_blair_desc = {
 	.num_clks = ARRAY_SIZE(gpu_cc_blair_clocks),
 	.clk_regulators = gpu_cc_blair_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gpu_cc_blair_regulators),
+	.resets = gpu_cc_blair_resets,
+	.num_resets = ARRAY_SIZE(gpu_cc_blair_resets),
 };
 
 static const struct of_device_id gpu_cc_blair_match_table[] = {
@@ -490,6 +496,8 @@ static int gpu_cc_blair_probe(struct platform_device *pdev)
 
 	clk_lucid_pll_configure(&gpu_cc_pll0, regmap, &gpu_cc_pll0_config);
 	clk_lucid_pll_configure(&gpu_cc_pll1, regmap, &gpu_cc_pll1_config);
+
+	regmap_write(regmap, 0x1538, 0x0);
 
 	ret = qcom_cc_really_probe(pdev, &gpu_cc_blair_desc, regmap);
 	if (ret) {
