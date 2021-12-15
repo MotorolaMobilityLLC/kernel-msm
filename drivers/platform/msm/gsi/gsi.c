@@ -2952,7 +2952,8 @@ int gsi_stop_channel(unsigned long chan_hdl)
 
 	if (ctx->state != GSI_CHAN_STATE_STARTED &&
 		ctx->state != GSI_CHAN_STATE_STOP_IN_PROC &&
-		ctx->state != GSI_CHAN_STATE_ERROR) {
+		ctx->state != GSI_CHAN_STATE_ERROR &&
+		ctx->state != GSI_CHAN_STATE_FLOW_CONTROL) {
 		GSIERR("bad state %d\n", ctx->state);
 		return -GSI_STATUS_UNSUPPORTED_OP;
 	}
