@@ -39,6 +39,7 @@ static struct cqhci_host_crypto_variant_ops cqhci_crypto_qti_variant_ops = {
 	.debug = cqhci_crypto_qti_debug,
 	.reset = cqhci_crypto_qti_reset,
 	.prepare_crypto_desc = cqhci_crypto_qti_prep_desc,
+	.recovery_finish = cqhci_crypto_qti_recovery_finish,
 };
 
 static atomic_t keycache;
@@ -410,4 +411,10 @@ void cqhci_crypto_qti_set_vops(struct cqhci_host *host)
 int cqhci_crypto_qti_resume(struct cqhci_host *host)
 {
 	return crypto_qti_resume(host->crypto_vops->priv);
+}
+
+int cqhci_crypto_qti_recovery_finish(struct cqhci_host *host)
+{
+	keyslot_manager_reprogram_all_keys(host->ksm);
+	return 0;
 }
