@@ -137,7 +137,6 @@ static const char *const gcc_debug_mux_parent_names[] = {
 	"gcc_gp1_clk",
 	"gcc_gp2_clk",
 	"gcc_gp3_clk",
-	"gcc_im_sleep_clk",
 	"gcc_lpass_mport_axi_clk",
 	"gcc_lpass_q6_axi_clk",
 	"gcc_lpass_sway_clk",
@@ -182,7 +181,6 @@ static const char *const gcc_debug_mux_parent_names[] = {
 	"gcc_venus0_core0_vcodec0_clk",
 	"gcc_venus0_vcodec0_clk",
 	"gcc_xo_clk",
-	"gcc_xo_div4_clk",
 	"gcc_gfx_tbu_clk",
 	"gcc_gfx_tcu_clk",
 	"gcc_gtcu_ahb_clk",
@@ -270,7 +268,6 @@ static int gcc_debug_mux_sels[] = {
 	0x10,		/* gcc_gp1_clk */
 	0x11,		/* gcc_gp2_clk */
 	0x12,		/* gcc_gp3_clk */
-	0x14B,		/* gcc_im_sleep_clk */
 	0x162,		/* gcc_lpass_mport_axi_clk */
 	0x160,		/* gcc_lpass_q6_axi_clk */
 	0x163,		/* gcc_lpass_sway_clk */
@@ -315,7 +312,6 @@ static int gcc_debug_mux_sels[] = {
 	0x1B8,		/* gcc_venus0_core0_vcodec0_clk */
 	0x1F1,		/* gcc_venus0_vcodec0_clk */
 	0x149,		/* gcc_xo_clk */
-	0x14A,		/* gcc_xo_div4_clk */
 	0x52,		/* gcc_gfx_tbu_clk */
 	0x53,		/* gcc_gfx_tcu_clk */
 	0x58,		/* gcc_gtcu_ahb_clk */
