@@ -286,20 +286,15 @@ static int qpnp_tm_get_temp(void *data, int *temp)
 		stage_temp_min = qpnp_tm_decode_temp(chip, stage);
 		mutex_unlock(&chip->lock);
 
-		static int debug_count = 0;
-
 		ret = iio_read_channel_processed(chip->adc, &mili_celsius);
 		if (ret < 0)
 			return ret;
 		/* MMI_STOPSHIP <debug abnormal QC sensor> : tsens report abnormal value. */
-		pr_info("%s: %s last=%d, temp=%d, ret=%d\n", __func__,
-			chip->tz_dev->type, chip->temp, mili_celsius, ret);
-		if (mili_celsius / 1000 > 100) {
-			WARN(1, "Abnormal thermal sensor value: %d", debug_count);
-			debug_count++;
+		if (mili_celsius / 1000 > 145) {
+			pr_info("%s: %s last=%d, temp=%d, ret=%d\n", __func__,
+				chip->tz_dev->type, chip->temp, mili_celsius, ret);
 		} else {
 			chip->temp = mili_celsius;
-			debug_count = 0;
 		}
 
 		if (stage_temp_min > mili_celsius && stage_temp_min > 0) {
