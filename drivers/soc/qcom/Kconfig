@@ -12,6 +12,20 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config MMI_FACTORY_BUILD
+	depends on ARCH_QCOM
+	default n
+	bool "Motorola Factory Build"
+	help
+	  kernel config item in common kernel of Moto factory build.
+
+config MMI_NON_GKI_DEBUG
+	depends on ARCH_QCOM
+	default n
+	bool "Motorola consolidate feature generic config"
+	help
+	  kernel config item in common kernel of Moto consolidate build.
+
 config IRONMN_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
