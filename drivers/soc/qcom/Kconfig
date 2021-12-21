@@ -19,6 +19,20 @@ config RTWO_DTB
 	help
 		Only include Motorola Rtwo device specific device tree.
 
+config MMI_FACTORY_BUILD
+	depends on ARCH_QCOM
+	default n
+	bool "Motorola Factory Build"
+	help
+	  kernel config item in common kernel of Moto factory build.
+
+config MMI_NON_GKI_DEBUG
+	depends on ARCH_QCOM
+	default n
+	bool "Motorola consolidate feature generic config"
+	help
+	  kernel config item in common kernel of Moto consolidate build.
+
 config SPS
 	tristate "SPS support"
 	select GENERIC_ALLOCATOR
