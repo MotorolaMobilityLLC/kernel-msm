@@ -73,6 +73,8 @@ function build_defconfig_fragments() {
 		fi
 		GKI_BUILD_CONFIG=common/build.config.gki-debug.aarch64
 		if [ "$TARGET_PRODUCT_TYPE" = "factory" ]; then
+			GKI_GKI_DEFCONFIG_FRAGMENT=common/build.config.gki_consolidate.moto_factory.aarch64
+			apply_defconfig_fragment common/arch/arm64/configs/consolidate-moto_factory.fragment
 			return
 		fi
 		GKI_GKI_DEFCONFIG_FRAGMENT=common/build.config.gki_consolidate.aarch64
