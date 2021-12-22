@@ -61,6 +61,7 @@
 #if defined(CONFIG_UFSHPB_TOSHIBA)
 #include "ufshpb_toshiba_if.h"
 #endif
+
 #define UFSHCD_ENABLE_INTRS	(UTP_TRANSFER_REQ_COMPL |\
 				 UTP_TASK_REQ_COMPL |\
 				 UFSHCD_ERROR_MASK)
@@ -115,6 +116,10 @@ unsigned int storage_mfrid;
 
 /* Polling time to wait for fDeviceInit  */
 #define FDEVICEINIT_COMPL_TIMEOUT 5000 /* millisecs */
+#if defined(CONFIG_SCSI_SKHID)
+/* for manual gc */
+#define UFSHCD_MANUAL_GC_HOLD_HIBERN8		2000	/* 2 seconds */
+#endif
 
 #define ufshcd_toggle_vreg(_dev, _vreg, _on)				\
 	({                                                              \
@@ -309,6 +314,7 @@ static struct ufs_dev_fix ufs_fixups[] = {
 #endif
 	END_FIX
 };
+
 
 static irqreturn_t ufshcd_tmc_handler(struct ufs_hba *hba);
 static void ufshcd_async_scan(void *data, async_cookie_t cookie);
@@ -1672,6 +1678,51 @@ static void ufshcd_clkscaling_init_sysfs(struct ufs_hba *hba)
 	if (device_create_file(hba->dev, &hba->clk_scaling.enable_attr))
 		dev_err(hba->dev, "Failed to create sysfs for clkscale_enable\n");
 }
+
+#if defined(CONFIG_SCSI_SKHID)
+static enum hrtimer_restart ufshcd_mgc_hrtimer_handler(struct hrtimer *timer)
+{
+	struct ufs_hba *hba = container_of(timer, struct ufs_hba,
+					manual_gc.hrtimer);
+
+	queue_work(hba->manual_gc.mgc_workq, &hba->manual_gc.hibern8_work);
+	return HRTIMER_NORESTART;
+}
+
+static void ufshcd_mgc_hibern8_work(struct work_struct *work)
+{
+	struct ufs_hba *hba = container_of(work, struct ufs_hba,
+						manual_gc.hibern8_work);
+	pm_runtime_mark_last_busy(hba->dev);
+	pm_runtime_put_noidle(hba->dev);
+	/* bkops will be disabled when power down */
+}
+
+static void ufshcd_init_manual_gc(struct ufs_hba *hba)
+{
+	struct ufs_manual_gc *mgc = &hba->manual_gc;
+	char wq_name[sizeof("ufs_mgc_hibern8_work")];
+
+	mgc->state = MANUAL_GC_ENABLE;
+	mgc->hagc_support = true;
+	mgc->delay_ms = UFSHCD_MANUAL_GC_HOLD_HIBERN8;
+
+	hrtimer_init(&mgc->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	mgc->hrtimer.function = ufshcd_mgc_hrtimer_handler;
+
+	INIT_WORK(&mgc->hibern8_work, ufshcd_mgc_hibern8_work);
+	snprintf(wq_name, ARRAY_SIZE(wq_name), "ufs_mgc_hibern8_work_%d",
+			hba->host->host_no);
+	hba->manual_gc.mgc_workq = create_singlethread_workqueue(wq_name);
+}
+
+static void ufshcd_exit_manual_gc(struct ufs_hba *hba)
+{
+	hrtimer_cancel(&hba->manual_gc.hrtimer);
+	cancel_work_sync(&hba->manual_gc.hibern8_work);
+	destroy_workqueue(hba->manual_gc.mgc_workq);
+}
+#endif
 
 static void ufshcd_ungate_work(struct work_struct *work)
 {
@@ -3061,7 +3112,7 @@ static inline void ufshcd_init_query(struct ufs_hba *hba,
 	(*request)->upiu_req.selector = selector;
 }
 
-#if defined(CONFIG_SCSI_SKHPB)
+#if defined(CONFIG_SCSI_SKHPB) || defined(CONFIG_SCSI_SKHID)
 int ufshcd_query_flag_retry(struct ufs_hba *hba,
 	enum query_opcode opcode, enum flag_idn idn, u8 index, bool *flag_res)
 #else
@@ -3236,9 +3287,15 @@ EXPORT_SYMBOL_GPL(ufshcd_query_attr);
  *
  * Returns 0 for success, non-zero in case of failure
 */
+#if defined(CONFIG_SCSI_SKHID)
+int ufshcd_query_attr_retry(struct ufs_hba *hba,
+	enum query_opcode opcode, enum attr_idn idn, u8 index, u8 selector,
+	u32 *attr_val)
+#else
 static int ufshcd_query_attr_retry(struct ufs_hba *hba,
 	enum query_opcode opcode, enum attr_idn idn, u8 index, u8 selector,
 	u32 *attr_val)
+#endif
 {
 	int ret = 0;
 	u32 retries;
@@ -5312,6 +5369,9 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	struct scsi_cmnd *cmd;
 	int result;
 	int index;
+#if defined(CONFIG_UFSFEATURE)
+	bool scsi_req = false;
+#endif
 
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
 		lrbp = &hba->lrb[index];
@@ -5337,6 +5397,10 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 			/* Do not touch lrbp after scsi done */
 			cmd->scsi_done(cmd);
 			__ufshcd_release(hba);
+#if defined(CONFIG_UFSFEATURE)
+			if (IS_SAMSUNG_DEVICE(storage_mfrid))
+				scsi_req = true;
+#endif
 		} else if (lrbp->command_type == UTP_CMD_TYPE_DEV_MANAGE ||
 			lrbp->command_type == UTP_CMD_TYPE_UFS_STORAGE) {
 			lrbp->compl_time_stamp = ktime_get();
@@ -5357,6 +5421,10 @@ static void __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 
 	/* we might have free'd some tags above */
 	wake_up(&hba->dev_cmd.tag_wq);
+#if defined(CONFIG_UFSFEATURE)
+	if (IS_SAMSUNG_DEVICE(storage_mfrid))
+		ufsf_on_idle(hba->ufsf, scsi_req);
+#endif
 }
 
 /**
@@ -5579,8 +5647,12 @@ static inline int ufshcd_get_bkops_status(struct ufs_hba *hba, u32 *status)
  * to know whether auto bkops is enabled or disabled after this function
  * returns control to it.
  */
+#if defined(CONFIG_SCSI_SKHID)
+int ufshcd_bkops_ctrl(struct ufs_hba *hba, enum bkops_status status)
+#else
 static int ufshcd_bkops_ctrl(struct ufs_hba *hba,
 			     enum bkops_status status)
+#endif
 {
 	int err;
 	u32 curr_status = 0;
@@ -9540,7 +9612,10 @@ void ufshcd_remove(struct ufs_hba *hba)
 	/* disable interrupts */
 	ufshcd_disable_intr(hba, hba->intr_mask);
 	ufshcd_hba_stop(hba, true);
-
+#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_DEVICE(storage_mfrid))
+		ufshcd_exit_manual_gc(hba);
+#endif
 	ufshcd_exit_clk_scaling(hba);
 	ufshcd_exit_clk_gating(hba);
 	if (ufshcd_is_clkscaling_supported(hba))
@@ -9735,7 +9810,10 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	ufshcd_init_clk_gating(hba);
 
 	ufshcd_init_clk_scaling(hba);
-
+#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_DEVICE(storage_mfrid))
+		ufshcd_init_manual_gc(hba);
+#endif
 	/*
 	 * In order to avoid any spurious interrupt immediately after
 	 * registering UFS controller interrupt handler, clear any pending UFS
@@ -9816,6 +9894,8 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 */
 	ufshcd_set_ufs_dev_active(hba);
 
+
+
 #if defined(CONFIG_UFSFEATURE)
     if (is_support_hpb_200_device(storage_mfrid)){
 	    ufsf_set_init_state(hba->ufsf);
@@ -9839,6 +9919,10 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 out_remove_scsi_host:
 	scsi_remove_host(hba->host);
 exit_gating:
+#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_DEVICE(storage_mfrid))
+		ufshcd_exit_manual_gc(hba);
+#endif
 	ufshcd_exit_clk_scaling(hba);
 	ufshcd_exit_clk_gating(hba);
 	destroy_workqueue(hba->eh_wq);
@@ -9854,6 +9938,9 @@ static int __init storage_mfrid_setup(char *str)
 	return 1;
 }
 __setup("storage_mfrid=",storage_mfrid_setup);
+
+
+
 EXPORT_SYMBOL_GPL(ufshcd_init);
 
 MODULE_AUTHOR("Santosh Yaragnavi <santosh.sy@samsung.com>");
