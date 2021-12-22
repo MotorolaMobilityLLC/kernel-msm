@@ -227,7 +227,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid))
 	ufstw_get_dev_info(ufsf, desc_buf);
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid))
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)
+	||IS_SAMSUNG_DEVICE(storage_mfrid))
 	ufshid_get_dev_info(ufsf, desc_buf);
 #endif
 	return 0;
@@ -457,20 +458,19 @@ int ufsf_query_ioctl(struct ufs_hba *hba, int lun, void __user *buffer,
 			index = lun;
 			INFO_MSG("read lu desc lun: %d", index);
 			break;
-#if 0
 		case QUERY_DESC_IDN_STRING:
 			if (!ufs_is_valid_unit_desc_lun(lun)) {
 				ERR_MSG("No unit descriptor for lun 0x%x", lun);
 				err = -EINVAL;
 				goto out_release_mem;
 			}
-			err = ufsf_issue_req_dev_ctx(ufsf, lun, kernel_buf,
+			err = ufsf_issue_req_dev_ctx(hba->ufsf, lun, kernel_buf,
 					ioctl_data->buf_size);
 			if (err < 0)
 				goto out_release_mem;
 
 			goto copy_buffer;
-#endif
+
 		case QUERY_DESC_IDN_DEVICE:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_CONFIGURATION:
@@ -495,9 +495,7 @@ int ufsf_query_ioctl(struct ufs_hba *hba, int lun, void __user *buffer,
 					    &length);
 	if (err)
 		goto out_release_mem;
-#if 0
 copy_buffer:
-#endif
 
 	if (opcode == UPIU_QUERY_OPCODE_READ_DESC) {
 		err = copy_to_user(buffer, ioctl_data,
@@ -607,7 +605,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)) {
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)) {
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)
+||IS_SAMSUNG_DEVICE(storage_mfrid)) {
 	INFO_MSG("run reset_host.. hid_state(%d) -> HID_RESET",
 		 ufshid_get_state(ufsf));
 	if (ufshid_get_state(ufsf) == HID_PRESENT)
@@ -634,7 +633,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid) ||
+	IS_SAMSUNG_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_NEED_INIT)
 		ufshid_init(ufsf);
 }
@@ -663,7 +663,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)
+	||IS_SAMSUNG_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_RESET)
 		ufshid_reset(ufsf);
 }
@@ -686,7 +687,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)
+	||IS_SAMSUNG_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_PRESENT)
 		ufshid_remove(ufsf);
 }
@@ -709,7 +711,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid))
 	ufstw_set_state(ufsf, TW_NEED_INIT);
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid))
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)
+	||IS_SAMSUNG_DEVICE(storage_mfrid))
 	ufshid_set_state(ufsf, HID_NEED_INIT);
 #endif
 }
@@ -728,7 +731,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 }
 #endif
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)){
+if(IS_TOSHIBA_DEVICE(storage_mfrid)||IS_MICRON_DEVICE(storage_mfrid)
+	||IS_SAMSUNG_DEVICE(storage_mfrid)){
 	if (ufshid_get_state(ufsf) == HID_PRESENT){
 		ufshid_suspend(ufsf);
 	}
@@ -756,7 +760,7 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 #if defined(CONFIG_UFSHID)
 	if((ufshid_get_state(ufsf) == HID_SUSPEND)&& (
 		IS_TOSHIBA_DEVICE(storage_mfrid) ||IS_MICRON_DEVICE(storage_mfrid)
-		))
+		||IS_SAMSUNG_DEVICE(storage_mfrid)))
 		ufshid_resume(ufsf);
 #endif
 }
@@ -764,7 +768,8 @@ if(!IS_TOSHIBA_DEVICE(storage_mfrid)){
 inline void ufsf_on_idle(struct ufsf_feature *ufsf, bool scsi_req)
 {
 #if defined(CONFIG_UFSHID)
-if(IS_TOSHIBA_DEVICE(storage_mfrid) ||IS_MICRON_DEVICE(storage_mfrid)) {
+if(IS_TOSHIBA_DEVICE(storage_mfrid) ||IS_MICRON_DEVICE(storage_mfrid)
+	||IS_SAMSUNG_DEVICE(storage_mfrid)) {
 	if (ufshid_get_state(ufsf) == HID_PRESENT &&
 	    !ufsf->hba->outstanding_reqs && scsi_req)
 		ufshid_on_idle(ufsf);
