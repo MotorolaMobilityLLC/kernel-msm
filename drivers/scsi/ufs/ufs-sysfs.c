@@ -7,6 +7,9 @@
 #include <asm/unaligned.h>
 
 #include "ufs.h"
+#if defined(CONFIG_SCSI_SKHID)
+#include "ufshcd.h"
+#endif
 #include "ufs-sysfs.h"
 
 static const char *ufschd_uic_link_state_to_string(
@@ -182,6 +185,129 @@ static ssize_t auto_hibern8_store(struct device *dev,
 	return count;
 }
 
+#if defined(CONFIG_SCSI_SKHID)
+static ssize_t manual_gc_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	u32 status = MANUAL_GC_OFF;
+
+	if (hba->manual_gc.state == MANUAL_GC_DISABLE)
+		return scnprintf(buf, PAGE_SIZE, "%s", "disabled\n");
+
+	pm_runtime_get_sync(hba->dev);
+
+	//down_read(&hba->query_lock);
+	if (hba->manual_gc.hagc_support) {
+		int err = ufshcd_query_attr_retry(hba,
+			UPIU_QUERY_OPCODE_READ_ATTR,
+			QUERY_ATTR_IDN_MANUAL_GC_STATUS, 0, 0, &status);
+
+		hba->manual_gc.hagc_support = err ? false: true;
+	}
+	//up_read(&hba->query_lock);
+	pm_runtime_mark_last_busy(hba->dev);
+	pm_runtime_put_noidle(hba->dev);
+
+	if (!hba->manual_gc.hagc_support)
+		return scnprintf(buf, PAGE_SIZE, "%s", "bkops\n");
+	return scnprintf(buf, PAGE_SIZE, "%s",
+			status == MANUAL_GC_OFF ? "off\n" : "on\n");
+}
+
+static int manual_gc_enable(struct ufs_hba *hba, u32 *value)
+{
+	return ufshcd_query_attr_retry(hba,
+				UPIU_QUERY_OPCODE_WRITE_ATTR,
+				QUERY_ATTR_IDN_MANUAL_GC_CONT, 0, 0,
+				value);
+}
+
+static ssize_t manual_gc_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	u32 value;
+	int err = 0;
+
+	if (kstrtou32(buf, 0, &value))
+		return -EINVAL;
+
+	if (value >= MANUAL_GC_MAX)
+		return -EINVAL;
+
+	if (value == MANUAL_GC_DISABLE || value == MANUAL_GC_ENABLE) {
+		hba->manual_gc.state = value;
+		return count;
+	}
+	if (hba->manual_gc.state == MANUAL_GC_DISABLE)
+		return count;
+
+	pm_runtime_get_sync(hba->dev);
+
+	if (hba->manual_gc.hagc_support)
+		hba->manual_gc.hagc_support =
+			manual_gc_enable(hba, &value) ? false : true;
+
+	if (!hba->manual_gc.hagc_support) {
+		enum query_opcode opcode = (value == MANUAL_GC_ON) ?
+						UPIU_QUERY_OPCODE_SET_FLAG:
+						UPIU_QUERY_OPCODE_CLEAR_FLAG;
+
+		err = ufshcd_bkops_ctrl(hba, (value == MANUAL_GC_ON) ?
+					BKOPS_STATUS_NON_CRITICAL:
+					BKOPS_STATUS_CRITICAL);
+		if (!hba->auto_bkops_enabled)
+			err = -EAGAIN;
+
+		/* flush wb buffer */
+		if (hba->dev_info.wspecversion >= 0x0310) {
+			u8 index = ufshcd_wb_get_query_index(hba);
+
+			ufshcd_query_flag_retry(hba, opcode,
+				QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
+				index, NULL);
+			ufshcd_query_flag_retry(hba, opcode,
+				QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN, index, NULL);
+		}
+	}
+
+	if (err || hrtimer_active(&hba->manual_gc.hrtimer)) {
+		pm_runtime_mark_last_busy(hba->dev);
+		pm_runtime_put_noidle(hba->dev);
+		return count;
+	} else {
+		/* pm_runtime_put_sync in delay_ms */
+		hrtimer_start(&hba->manual_gc.hrtimer,
+			ms_to_ktime(hba->manual_gc.delay_ms),
+			HRTIMER_MODE_REL);
+	}
+	return count;
+}
+
+static ssize_t manual_gc_hold_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%lu\n", hba->manual_gc.delay_ms);
+}
+
+static ssize_t manual_gc_hold_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	unsigned long value;
+
+	if (kstrtoul(buf, 0, &value))
+		return -EINVAL;
+
+	hba->manual_gc.delay_ms = value;
+	return count;
+}
+#endif
+
 static DEVICE_ATTR_RW(rpm_lvl);
 static DEVICE_ATTR_RO(rpm_target_dev_state);
 static DEVICE_ATTR_RO(rpm_target_link_state);
@@ -189,6 +315,20 @@ static DEVICE_ATTR_RW(spm_lvl);
 static DEVICE_ATTR_RO(spm_target_dev_state);
 static DEVICE_ATTR_RO(spm_target_link_state);
 static DEVICE_ATTR_RW(auto_hibern8);
+#if defined(CONFIG_SCSI_SKHID)
+static DEVICE_ATTR_RW(manual_gc);
+static DEVICE_ATTR_RW(manual_gc_hold);
+
+static struct attribute *ufs_sysfs_ufshcd_hagc_attrs[] = {
+	&dev_attr_manual_gc.attr,
+	&dev_attr_manual_gc_hold.attr,
+	NULL
+};
+
+static const struct attribute_group ufs_sysfs_hagc_default_group = {
+	.attrs = ufs_sysfs_ufshcd_hagc_attrs,
+};
+#endif
 
 static struct attribute *ufs_sysfs_ufshcd_attrs[] = {
 	&dev_attr_rpm_lvl.attr,
@@ -735,6 +875,19 @@ UFS_ATTRIBUTE(wb_flush_status, _WB_FLUSH_STATUS);
 UFS_ATTRIBUTE(wb_avail_buf, _AVAIL_WB_BUFF_SIZE);
 UFS_ATTRIBUTE(wb_life_time_est, _WB_BUFF_LIFE_TIME_EST);
 UFS_ATTRIBUTE(wb_cur_buf, _CURR_WB_BUFF_SIZE);
+#if defined(CONFIG_SCSI_SKHID)
+UFS_ATTRIBUTE(manual_gc_status, _MANUAL_GC_STATUS);
+
+static struct attribute *ufs_sysfs_hagc_attributes[] = {
+	&dev_attr_manual_gc_status.attr,
+	NULL,
+};
+
+static const struct attribute_group ufs_sysfs_hagc_attributes_group = {
+	.name = "attributes_hid",
+	.attrs = ufs_sysfs_hagc_attributes,
+};
+#endif
 
 
 static struct attribute *ufs_sysfs_attributes[] = {
@@ -778,6 +931,14 @@ static const struct attribute_group *ufs_sysfs_groups[] = {
 	&ufs_sysfs_attributes_group,
 	NULL,
 };
+
+#if defined(CONFIG_SCSI_SKHID)
+static const struct attribute_group *ufs_sysfs_hagc_groups[] = {
+	&ufs_sysfs_hagc_default_group,
+        &ufs_sysfs_hagc_attributes_group,
+	NULL,
+};
+#endif
 
 #define UFS_LUN_DESC_PARAM(_pname, _puname, _duname, _size)		\
 static ssize_t _pname##_show(struct device *dev,			\
@@ -873,9 +1034,25 @@ void ufs_sysfs_add_nodes(struct device *dev)
 		dev_err(dev,
 			"%s: sysfs groups creation failed (err = %d)\n",
 			__func__, ret);
+
+	#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_DEVICE(storage_mfrid)) {
+		ret = sysfs_create_groups(&dev->kobj, ufs_sysfs_hagc_groups);
+		if (ret)
+			dev_err(dev,
+				"%s: sysfs hagc groups creation failed (err = %d)\n",
+				__func__, ret);
+	}
+	#endif
 }
 
 void ufs_sysfs_remove_nodes(struct device *dev)
 {
 	sysfs_remove_groups(&dev->kobj, ufs_sysfs_groups);
+
+	#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_DEVICE(storage_mfrid)) {
+		sysfs_remove_groups(&dev->kobj, ufs_sysfs_hagc_groups);
+	}
+	#endif
 }
