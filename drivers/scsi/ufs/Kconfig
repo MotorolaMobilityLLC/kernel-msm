@@ -264,6 +264,11 @@ config SCSI_SKHPB
 	help
 	  Activate or deactive SKHPB driver
 
+config SCSI_SKHID
+	bool "UFS Host Initiated Defrag supportr"
+	depends on (SCSI_UFSHCD || SCSI_UFSHCD_QTI)
+	help
+	  Activate or deactive SKHID driver
 config MICRON_HPB
 	bool "Activate micron HPB Host-aware Performance Booster"
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSHPB
