@@ -35,6 +35,8 @@
 #include <linux/kallsyms.h>
 #include <linux/math64.h>
 #endif
+#include <linux/console.h>
+#include <linux/kmsg_dump.h>
 
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
@@ -715,10 +717,44 @@ static int msm_watchdog_remove(struct platform_device *pdev)
 	return 0;
 }
 
+inline void kmsg_dump_wdog_bite(void)
+{
+	static char buf[1024];
+	/*
+	 * Disable local interrupts. This will prevent panic_smp_self_stop
+	 * from deadlocking the first cpu that invokes the panic, since
+	 * there is nothing to prevent an interrupt handler (that runs
+	 * after setting panic_cpu) from invoking panic() again.
+	 */
+	local_irq_disable();
+	preempt_disable_notrace();
+
+	console_verbose();
+	bust_spinlocks(1);
+	dump_stack_minidump(0);
+	/*
+	* Run any panic handlers, including those that might need to
+	* add information to the kmsg dump output.
+	*/
+	atomic_notifier_call_chain(&panic_notifier_list, 0, buf);
+	/* Call flush even twice. It tries harder with a single online CPU */
+	printk_safe_flush_on_panic();
+	kmsg_dump(KMSG_DUMP_PANIC);
+	console_unblank();
+	debug_locks_off();
+	console_flush_on_panic();
+	pr_emerg("---[ end Watch dog bit - not syncing: %s ]---\n", buf);
+	local_irq_enable();
+}
+
 void msm_trigger_wdog_bite(void)
 {
 	if (!wdog_data)
 		return;
+
+	/* Dump kmsg buffer to pstore before watchdog bite */
+	/* helps to dump data to dontpanic logs */
+	kmsg_dump_wdog_bite();
 
 	compute_irq_stat(&wdog_data->irq_counts_work);
 	pr_info("Causing a watchdog bite!");
