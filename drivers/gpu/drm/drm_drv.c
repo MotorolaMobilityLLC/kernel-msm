@@ -839,6 +839,7 @@ err_minors:
 	drm_minor_unregister(dev, DRM_MINOR_CONTROL);
 out_unlock:
 	mutex_unlock(&drm_global_mutex);
+
 	return ret;
 }
 EXPORT_SYMBOL(drm_dev_register);
@@ -865,8 +866,6 @@ void drm_dev_unregister(struct drm_device *dev)
 		drm_lastclose(dev);
 
 	dev->registered = false;
-
-	drm_client_dev_unregister(dev);
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET))
 		drm_modeset_unregister_all(dev);

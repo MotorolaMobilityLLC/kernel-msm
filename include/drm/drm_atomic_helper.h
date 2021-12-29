@@ -36,6 +36,7 @@ struct drm_atomic_state;
 struct drm_private_obj;
 struct drm_private_state;
 
+#ifdef CONFIG_DRM_KMS_HELPER
 int drm_atomic_helper_check_modeset(struct drm_device *dev,
 				struct drm_atomic_state *state);
 int drm_atomic_helper_check_planes(struct drm_device *dev,
@@ -179,6 +180,29 @@ int drm_atomic_helper_legacy_gamma_set(struct drm_crtc *crtc,
 				       struct drm_modeset_acquire_ctx *ctx);
 void __drm_atomic_helper_private_obj_duplicate_state(struct drm_private_obj *obj,
 						     struct drm_private_state *state);
+#else
+int drm_atomic_helper_disable_plane(struct drm_plane *plane,
+		struct drm_modeset_acquire_ctx *ctx)
+{
+	return 0;
+}
+int __drm_atomic_helper_disable_plane(struct drm_plane *plane,
+		struct drm_plane_state *plane_state)
+{
+	return 0;
+}
+
+int drm_atomic_helper_set_config(struct drm_mode_set *set,
+		struct drm_modeset_acquire_ctx *ctx)
+{
+	return 0;
+}
+int __drm_atomic_helper_set_config(struct drm_mode_set *set,
+		struct drm_atomic_state *state)
+{
+	return 0;
+}
+#endif
 
 /**
  * drm_atomic_crtc_for_each_plane - iterate over planes currently attached to CRTC

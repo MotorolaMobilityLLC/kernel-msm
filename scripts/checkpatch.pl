@@ -2654,7 +2654,7 @@ sub process {
 					     "email address '$email' might be better as '$suggested_email$comment'\n" . $herecurr);
 				}
 			}
-			if ($chk_author && $line =~ /^\s*signed-off-by:.*(quicinc|qualcomm)\.com/i) {
+			if ($chk_author && $line =~ /^\s*signed-off-by:.*(qualcomm)\.com/i) {
 				WARN("BAD_SIGN_OFF",
 				     "invalid Signed-off-by identity\n" . $line );
 			}			
@@ -2787,7 +2787,7 @@ sub process {
 		}
 
 #check the patch for invalid author credentials
-		if ($chk_author && $line =~ /^From:.*(quicinc|qualcomm)\.com/) {
+		if ($chk_author && $line =~ /^From:.*(qualcomm)\.com/) {
 			WARN("BAD_AUTHOR", "invalid author identity\n" . $line );
 		}
 

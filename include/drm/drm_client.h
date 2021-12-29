@@ -17,8 +17,6 @@ struct drm_gem_object;
 struct drm_minor;
 struct module;
 
-#define DRM_CLIENT_MAX_CLONED_CONNECTORS	8
-
 /**
  * struct drm_client_funcs - DRM client callbacks
  */
@@ -106,7 +104,9 @@ struct drm_client_dev {
 int drm_client_init(struct drm_device *dev, struct drm_client_dev *client,
 		    const char *name, const struct drm_client_funcs *funcs);
 void drm_client_register(struct drm_client_dev *client);
+void drm_client_release(struct drm_client_dev *client);
 
+void drm_client_dev_register(struct drm_device *dev);
 void drm_client_dev_unregister(struct drm_device *dev);
 void drm_client_dev_hotplug(struct drm_device *dev);
 void drm_client_dev_restore(struct drm_device *dev);
@@ -149,11 +149,19 @@ struct drm_client_buffer {
 struct drm_client_buffer *
 drm_client_framebuffer_create(struct drm_client_dev *client, u32 width, u32 height, u32 format);
 void drm_client_framebuffer_delete(struct drm_client_buffer *buffer);
+void *drm_client_buffer_vmap(struct drm_client_buffer *buffer);
+void drm_client_buffer_vunmap(struct drm_client_buffer *buffer);
 
 int drm_client_modeset_create(struct drm_client_dev *client);
 void drm_client_modeset_free(struct drm_client_dev *client);
-void drm_client_modeset_release(struct drm_client_dev *client);
-struct drm_mode_set *drm_client_find_modeset(struct drm_client_dev *client, struct drm_crtc *crtc);
+int drm_client_modeset_probe(struct drm_client_dev *client, unsigned int width, unsigned int height);
+int drm_client_modeset_commit_force(struct drm_client_dev *client);
+int drm_client_modeset_commit(struct drm_client_dev *client);
+int drm_client_modeset_dpms(struct drm_client_dev *client, int mode);
+
+#ifdef CONFIG_DRM_CLIENT_BOOTSPLASH
+void drm_bootsplash_client_register(struct drm_device *dev);
+#endif
 
 /**
  * drm_client_for_each_modeset() - Iterate over client modesets
@@ -163,6 +171,21 @@ struct drm_mode_set *drm_client_find_modeset(struct drm_client_dev *client, stru
 #define drm_client_for_each_modeset(modeset, client) \
 	for (({ lockdep_assert_held(&(client)->modeset_mutex); }), \
 	     modeset = (client)->modesets; modeset->crtc; modeset++)
+
+/**
+ * drm_client_for_each_connector_iter - connector_list iterator macro
+ * @connector: &struct drm_connector pointer used as cursor
+ * @iter: &struct drm_connector_list_iter
+ *
+ * This iterates the connectors that are useable for internal clients (excludes
+ * writeback connectors).
+ *
+ * For more info see drm_for_each_connector_iter().
+ */
+#define drm_client_for_each_connector_iter(connector, iter) \
+        drm_for_each_connector_iter(connector, iter) \
+                if ((connector->connector_type != DRM_MODE_CONNECTOR_WRITEBACK)\
+		&& (connector->connector_type != DRM_MODE_CONNECTOR_VIRTUAL))
 
 int drm_client_debugfs_init(struct drm_minor *minor);
 

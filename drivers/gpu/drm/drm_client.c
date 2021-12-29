@@ -59,7 +59,6 @@ static void drm_client_close(struct drm_client_dev *client)
 
 	drm_file_free(client->file);
 }
-EXPORT_SYMBOL(drm_client_close);
 
 /**
  * drm_client_init - Initialise a DRM client
@@ -161,6 +160,13 @@ void drm_client_release(struct drm_client_dev *client)
 }
 EXPORT_SYMBOL(drm_client_release);
 
+void drm_client_dev_register(struct drm_device *dev)
+{
+#ifdef CONFIG_DRM_CLIENT_BOOTSPLASH
+	drm_bootsplash_client_register(dev);
+#endif
+}
+
 void drm_client_dev_unregister(struct drm_device *dev)
 {
 	struct drm_client_dev *client, *tmp;
@@ -180,6 +186,7 @@ void drm_client_dev_unregister(struct drm_device *dev)
 	}
 	mutex_unlock(&dev->clientlist_mutex);
 }
+EXPORT_SYMBOL(drm_client_dev_unregister);
 
 /**
  * drm_client_dev_hotplug - Send hotplug event to clients
@@ -253,7 +260,6 @@ drm_client_buffer_create(struct drm_client_dev *client, u32 width, u32 height, u
 	struct drm_device *dev = client->dev;
 	struct drm_client_buffer *buffer;
 	struct drm_gem_object *obj;
-	void *vaddr;
 	int ret;
 
 	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
@@ -280,6 +286,40 @@ drm_client_buffer_create(struct drm_client_dev *client, u32 width, u32 height, u
 
 	buffer->gem = obj;
 
+	return buffer;
+
+err_delete:
+	drm_client_buffer_delete(buffer);
+
+	return ERR_PTR(ret);
+}
+
+/**
+ * drm_client_buffer_vmap - Map DRM client buffer into address space
+ * @buffer: DRM client buffer
+ *
+ * This function maps a client buffer into kernel address space. If the
+ * buffer is already mapped, it returns the mapping's address.
+ *
+ * Client buffer mappings are not ref'counted. Each call to
+ * drm_client_buffer_vmap() should be followed by a call to
+ * drm_client_buffer_vunmap(); or the client buffer should be mapped
+ * throughout its lifetime. The latter is the default.
+ *
+ * Returns:
+ *	The mapped memory's address
+ */
+void *drm_client_buffer_vmap(struct drm_client_buffer *buffer)
+{
+	struct drm_device *dev = buffer->client->dev;
+	void *vaddr;
+
+	if (buffer->vaddr)
+		return buffer->vaddr;
+
+	if (!dev->driver->gem_prime_vmap)
+		return ERR_PTR(-ENOTSUPP);
+
 	/*
 	 * FIXME: The dependency on GEM here isn't required, we could
 	 * convert the driver handle to a dma-buf instead and use the
@@ -288,21 +328,35 @@ drm_client_buffer_create(struct drm_client_dev *client, u32 width, u32 height, u
 	 * fd_install step out of the driver backend hooks, to make that
 	 * final step optional for internal users.
 	 */
-	vaddr = dev->driver->gem_prime_vmap(obj);
-	if (!vaddr) {
-		ret = -ENOMEM;
-		goto err_delete;
+	vaddr = dev->driver->gem_prime_vmap(buffer->gem);
+	if (IS_ERR(vaddr)) {
+		return vaddr;
 	}
 
 	buffer->vaddr = vaddr;
 
-	return buffer;
-
-err_delete:
-	drm_client_buffer_delete(buffer);
-
-	return ERR_PTR(ret);
+	return vaddr;
 }
+EXPORT_SYMBOL(drm_client_buffer_vmap);
+
+/**
+ * drm_client_buffer_vunmap - Unmap DRM client buffer
+ * @buffer: DRM client buffer
+ *
+ * This function removes a client buffer's memory mapping. This
+ * function is only required by clients that manage their buffers
+ * by themselves. By default, DRM client buffers are mapped throughout
+ * their entire lifetime.
+ */
+void drm_client_buffer_vunmap(struct drm_client_buffer *buffer)
+{
+	struct drm_device *dev = buffer->client->dev;
+
+	if (buffer->vaddr && dev->driver->gem_prime_vunmap)
+		dev->driver->gem_prime_vunmap(buffer->gem, buffer->vaddr);
+	buffer->vaddr = NULL;
+}
+EXPORT_SYMBOL(drm_client_buffer_vunmap);
 
 static void drm_client_buffer_rmfb(struct drm_client_buffer *buffer)
 {

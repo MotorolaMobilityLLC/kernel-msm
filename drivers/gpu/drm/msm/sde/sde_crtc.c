@@ -2944,7 +2944,8 @@ static void sde_crtc_vblank_cb(void *data)
 		sde_crtc->vblank_cb_count++;
 
 	sde_crtc->vblank_last_cb_time = ktime_get();
-	sysfs_notify_dirent(sde_crtc->vsync_event_sf);
+	if (sde_crtc->vsync_event_sf)
+		sysfs_notify_dirent(sde_crtc->vsync_event_sf);
 
 	drm_crtc_handle_vblank(crtc);
 	DRM_DEBUG_VBL("crtc%d\n", crtc->base.id);
