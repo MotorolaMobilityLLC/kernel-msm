@@ -67,7 +67,6 @@ static int npu_send_network_cmd(struct npu_device *npu_dev,
 	struct npu_network_cmd *cmd);
 static int npu_send_misc_cmd(struct npu_device *npu_dev, uint32_t q_idx,
 	void *cmd_ptr, struct npu_misc_cmd *cmd);
-static int npu_queue_event(struct npu_client *client, struct npu_kevent *evt);
 static int npu_notify_aop(struct npu_device *npu_dev, bool on);
 static int npu_notify_fw_pwr_state(struct npu_device *npu_dev,
 	uint32_t pwr_level, bool post);
@@ -290,7 +289,6 @@ int load_fw(struct npu_device *npu_dev)
 static void complete_pending_commands(struct npu_host_ctx *host_ctx)
 {
 	struct npu_network *network = NULL;
-	struct npu_kevent kevt;
 	struct npu_network_cmd *cmd;
 	struct npu_misc_cmd *misc_cmd;
 	int i;
@@ -301,26 +299,10 @@ static void complete_pending_commands(struct npu_host_ctx *host_ctx)
 		if (!network->is_valid || !network->fw_error)
 			continue;
 
-		if (network->is_async) {
-			NPU_DBG("async cmd, queue ssr event\n");
-			kevt.evt.type = MSM_NPU_EVENT_TYPE_SSR;
-			kevt.evt.u.ssr.network_hdl =
-				network->network_hdl;
-			if (npu_queue_event(network->client, &kevt))
-				NPU_ERR("queue npu event failed\n");
-
-			while (!list_empty(&network->cmd_list)) {
-				cmd = list_first_entry(&network->cmd_list,
-					struct npu_network_cmd, list);
-				npu_dequeue_network_cmd(network, cmd);
-				npu_free_network_cmd(host_ctx, cmd);
-			}
-		} else {
-			list_for_each_entry(cmd, &network->cmd_list, list) {
-				NPU_INFO("complete network %llx trans_id %d\n",
-					network->id, cmd->trans_id);
-				complete(&cmd->cmd_done);
-			}
+		list_for_each_entry(cmd, &network->cmd_list, list) {
+			NPU_INFO("complete network %llx trans_id %d\n",
+				network->id, cmd->trans_id);
+			complete(&cmd->cmd_done);
 		}
 	}
 
@@ -1539,23 +1521,6 @@ static void npu_free_network_cmd(struct npu_host_ctx *ctx,
 	kmem_cache_free(ctx->network_cmd_cache, cmd);
 }
 
-static int npu_queue_event(struct npu_client *client, struct npu_kevent *evt)
-{
-	struct npu_kevent *kevt = kmalloc(sizeof(*kevt), GFP_KERNEL);
-
-	if (!kevt)
-		return -ENOMEM;
-
-	*kevt = *evt;
-	INIT_LIST_HEAD(&kevt->list);
-	mutex_lock(&client->list_lock);
-	list_add_tail(&kevt->list, &client->evt_list);
-	mutex_unlock(&client->list_lock);
-	wake_up_interruptible(&client->wait);
-
-	return 0;
-}
-
 static void npu_queue_network_cmd(struct npu_network *network,
 	struct npu_network_cmd *cmd)
 {
@@ -1633,65 +1598,10 @@ static struct npu_misc_cmd *npu_find_misc_cmd(struct npu_host_ctx *ctx,
 	return NULL;
 }
 
-int npu_process_kevent(struct npu_client *client, struct npu_kevent *kevt)
-{
-	struct npu_device *npu_dev = client->npu_dev;
-	struct npu_host_ctx *host_ctx = &npu_dev->host_ctx;
-	int ret = 0;
-
-	mutex_lock(&host_ctx->lock);
-
-	switch (kevt->evt.type) {
-	case MSM_NPU_EVENT_TYPE_EXEC_V2_DONE:
-	{
-		struct npu_network_cmd *cmd = NULL;
-		struct npu_network *network;
-
-		network = get_network_by_hdl(host_ctx,
-			client, kevt->reserved[0]);
-		if (!network) {
-			NPU_ERR("Can't find network %x\n", kevt->reserved[0]);
-			ret = -EINVAL;
-			break;
-		}
-
-		cmd = npu_find_network_cmd(network, kevt->reserved[1]);
-		if (!cmd) {
-			NPU_ERR("can't find exec cmd with trans_id:%d\n",
-				kevt->reserved[1]);
-			network_put(network);
-			ret = -EINVAL;
-			break;
-		}
-
-		kevt->evt.reserved[0] = cmd->cmd_id;
-		ret = copy_to_user((void __user *)cmd->stats_buf_u,
-			(void *)cmd->stats_buf,
-			kevt->evt.u.exec_v2_done.stats_buf_size);
-		if (ret) {
-			NPU_ERR("fail to copy to user\n");
-			kevt->evt.u.exec_v2_done.stats_buf_size = 0;
-			ret = -EFAULT;
-		}
-
-		npu_dequeue_network_cmd(network, cmd);
-		npu_free_network_cmd(host_ctx, cmd);
-		network_put(network);
-		break;
-	}
-	default:
-		break;
-	}
-	mutex_unlock(&host_ctx->lock);
-
-	return ret;
-}
-
 static int app_msg_proc(struct npu_host_ctx *host_ctx, uint32_t *msg)
 {
 	uint32_t msg_id;
 	struct npu_network *network = NULL;
-	struct npu_kevent kevt;
 	struct npu_device *npu_dev = host_ctx->npu_dev;
 	struct npu_network_cmd *network_cmd = NULL;
 	struct npu_misc_cmd *misc_cmd = NULL;
@@ -1727,18 +1637,7 @@ static int app_msg_proc(struct npu_host_ctx *host_ctx, uint32_t *msg)
 
 		network_cmd->ret_status = exe_rsp_pkt->header.status;
 
-		if (!network_cmd->async) {
-			complete(&network_cmd->cmd_done);
-		} else {
-			NPU_DBG("async cmd, queue event\n");
-			kevt.evt.type = MSM_NPU_EVENT_TYPE_EXEC_DONE;
-			kevt.evt.u.exec_done.network_hdl =
-				exe_rsp_pkt->network_hdl;
-			kevt.evt.u.exec_done.exec_result =
-				exe_rsp_pkt->header.status;
-			if (npu_queue_event(network->client, &kevt))
-				NPU_ERR("queue npu event failed\n");
-		}
+		complete(&network_cmd->cmd_done);
 		network_put(network);
 		need_ctx_switch = 1;
 		break;
@@ -1784,21 +1683,7 @@ static int app_msg_proc(struct npu_host_ctx *host_ctx, uint32_t *msg)
 		network_cmd->stats_buf_size = stats_size;
 		network_cmd->ret_status = exe_rsp_pkt->header.status;
 
-		if (network_cmd->async) {
-			NPU_DBG("async cmd, queue event\n");
-			kevt.evt.type = MSM_NPU_EVENT_TYPE_EXEC_V2_DONE;
-			kevt.evt.u.exec_v2_done.network_hdl =
-				exe_rsp_pkt->network_hdl;
-			kevt.evt.u.exec_v2_done.exec_result =
-				exe_rsp_pkt->header.status;
-			kevt.evt.u.exec_v2_done.stats_buf_size = stats_size;
-			kevt.reserved[0] = (uint64_t)network->network_hdl;
-			kevt.reserved[1] = (uint64_t)network_cmd->trans_id;
-			if (npu_queue_event(network->client, &kevt))
-				NPU_ERR("queue npu event failed\n");
-		} else {
-			complete(&network_cmd->cmd_done);
-		}
+		complete(&network_cmd->cmd_done);
 		network_put(network);
 		need_ctx_switch = 1;
 		break;
@@ -2800,7 +2685,6 @@ int32_t npu_host_exec_network_v2(struct npu_client *client,
 	struct npu_network *network;
 	struct npu_host_ctx *host_ctx = &npu_dev->host_ctx;
 	uint32_t num_patch_params, pkt_size;
-	bool async_ioctl = !!exec_ioctl->async;
 	int i, retry_cnt = 1;
 
 	mutex_lock(&host_ctx->lock);
@@ -2829,14 +2713,6 @@ int32_t npu_host_exec_network_v2(struct npu_client *client,
 		ret = -EIO;
 		goto exec_v2_done;
 	}
-
-	if (network->is_async && !async_ioctl) {
-		NPU_ERR("network is in async mode\n");
-		ret = -EINVAL;
-		goto exec_v2_done;
-	}
-
-	network->is_async = async_ioctl;
 
 	NPU_DBG("execute_v2 network %lld\n", network->id);
 	num_patch_params = exec_ioctl->patch_buf_info_num;
@@ -2884,10 +2760,10 @@ int32_t npu_host_exec_network_v2(struct npu_client *client,
 	}
 
 	exec_cmd->stats_buf_u = (void __user *)exec_ioctl->stats_buf_addr;
-	exec_cmd->cmd_id = exec_ioctl->async;
+	exec_cmd->cmd_id = 0;
 	exec_cmd->cmd_type = NPU_IPC_CMD_EXECUTE_V2;
 	exec_cmd->trans_id = exec_packet->header.trans_id;
-	exec_cmd->async = async_ioctl;
+	exec_cmd->async = false;
 	npu_queue_network_cmd(network, exec_cmd);
 
 	NPU_DBG("Execute_v2 flags %x stats_buf_size %d\n",
@@ -2898,11 +2774,6 @@ int32_t npu_host_exec_network_v2(struct npu_client *client,
 	if (ret) {
 		NPU_ERR("NPU_IPC_CMD_EXECUTE_V2 sent failed: %d\n", ret);
 		goto free_exec_cmd;
-	}
-
-	if (async_ioctl) {
-		NPU_DBG("Async ioctl, return now\n");
-		goto free_exec_packet;
 	}
 
 	mutex_unlock(&host_ctx->lock);
