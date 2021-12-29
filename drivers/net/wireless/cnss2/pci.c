@@ -404,7 +404,7 @@ int cnss_pci_check_link_status(struct cnss_pci_data *pci_priv)
 	if (pci_priv->pci_link_state == PCI_LINK_DOWN) {
 		cnss_pr_dbg("%ps: PCIe link is in suspend state\n",
 			    (void *)_RET_IP_);
-		return -EIO;
+		return -EACCES;
 	}
 
 	if (pci_priv->pci_link_down_ind) {
@@ -2199,7 +2199,8 @@ static int cnss_qca6290_shutdown(struct cnss_pci_data *pci_priv)
 	if ((test_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state) ||
 	     test_bit(CNSS_DRIVER_UNLOADING, &plat_priv->driver_state) ||
 	     test_bit(CNSS_DRIVER_IDLE_RESTART, &plat_priv->driver_state) ||
-	     test_bit(CNSS_DRIVER_IDLE_SHUTDOWN, &plat_priv->driver_state)) &&
+	     test_bit(CNSS_DRIVER_IDLE_SHUTDOWN, &plat_priv->driver_state) ||
+	     test_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state)) &&
 	    test_bit(CNSS_DEV_ERR_NOTIFY, &plat_priv->driver_state)) {
 		del_timer(&pci_priv->dev_rddm_timer);
 		cnss_pci_collect_dump(pci_priv);
@@ -4388,8 +4389,29 @@ void cnss_pci_collect_dump_info(struct cnss_pci_data *pci_priv, bool in_panic)
 		return;
 	}
 
-	if (cnss_pci_check_link_status(pci_priv))
+	if (!cnss_is_device_powered_on(plat_priv)) {
+		cnss_pr_dbg("Device is already powered off, skip\n");
 		return;
+	}
+
+	if (!in_panic) {
+		mutex_lock(&pci_priv->bus_lock);
+		ret = cnss_pci_check_link_status(pci_priv);
+		if (ret) {
+			if (ret != -EACCES) {
+				mutex_unlock(&pci_priv->bus_lock);
+				return;
+			}
+			if (cnss_pci_resume_bus(pci_priv)) {
+				mutex_unlock(&pci_priv->bus_lock);
+				return;
+			}
+		}
+		mutex_unlock(&pci_priv->bus_lock);
+	} else {
+		if (cnss_pci_check_link_status(pci_priv))
+			return;
+	}
 
 	cnss_pci_dump_misc_reg(pci_priv);
 	cnss_pci_dump_shadow_reg(pci_priv);
