@@ -584,6 +584,10 @@ struct page *swap_cluster_readahead(swp_entry_t entry, gfp_t gfp_mask,
 	struct vm_area_struct *vma = vmf->vma;
 	unsigned long addr = vmf->address;
 
+	/* Moto lulei1: don't readahead sync io pages */
+	if (swap_slot_has_sync_io(entry))
+		goto skip;
+
 	mask = swapin_nr_pages(offset) - 1;
 	if (!mask)
 		goto skip;
@@ -599,6 +603,9 @@ struct page *swap_cluster_readahead(swp_entry_t entry, gfp_t gfp_mask,
 
 	blk_start_plug(&plug);
 	for (offset = start_offset; offset <= end_offset ; offset++) {
+		/* Moto lulei1: don't readahead sync io pages */
+		if (swap_slot_has_sync_io(swp_entry(swp_type(entry), offset)))
+			continue;
 		/* Ok, do the async read-ahead now */
 		page = __read_swap_cache_async(
 			swp_entry(swp_type(entry), offset),
@@ -747,6 +754,11 @@ static struct page *swap_vma_readahead(swp_entry_t fentry, gfp_t gfp_mask,
 	unsigned int i;
 	bool page_allocated;
 	struct vma_swap_readahead ra_info = {0,};
+	/* Moto lulei1: don't readahead sync io pages */
+	if (swap_slot_has_sync_io(fentry)) {
+		ra_info.win = 1;
+		goto skip;
+	}
 
 	swap_ra_info(vmf, &ra_info);
 	if (ra_info.win == 1)
@@ -762,6 +774,9 @@ static struct page *swap_vma_readahead(swp_entry_t fentry, gfp_t gfp_mask,
 			continue;
 		entry = pte_to_swp_entry(pentry);
 		if (unlikely(non_swap_entry(entry)))
+			continue;
+		/* Moto lulei1: don't readahead sync io pages */
+		if (swap_slot_has_sync_io(entry))
 			continue;
 		page = __read_swap_cache_async(entry, gfp_mask, vma,
 					       vmf->address, &page_allocated);
