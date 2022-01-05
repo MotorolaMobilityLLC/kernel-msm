@@ -70,6 +70,8 @@ static unsigned int *log_buf_size;
 static dma_addr_t log_buf_paddr;
 #endif
 
+ATOMIC_NOTIFIER_HEAD(wdt_notifier_list);
+
 static struct msm_watchdog_data *wdog_data;
 
 static int cpu_idle_pc_state[NR_CPUS];
@@ -247,6 +249,8 @@ static void wdog_disable(struct msm_watchdog_data *wdog_dd)
 	/*Ensure all cpus see update to enable*/
 	smp_mb();
 	atomic_notifier_chain_unregister(&panic_notifier_list,
+						&wdog_dd->panic_blk);
+	atomic_notifier_chain_unregister(&wdt_notifier_list,
 						&wdog_dd->panic_blk);
 	del_timer_sync(&wdog_dd->pet_timer);
 	/* may be suspended after the first write above */
@@ -732,11 +736,13 @@ inline void kmsg_dump_wdog_bite(void)
 	console_verbose();
 	bust_spinlocks(1);
 	dump_stack_minidump(0);
+	/* Dump stack for call trace on wdt */
+	dump_stack();
 	/*
-	* Run any panic handlers, including those that might need to
+	* Run any wdt panic handler, including those that might need to
 	* add information to the kmsg dump output.
 	*/
-	atomic_notifier_call_chain(&panic_notifier_list, 0, buf);
+	atomic_notifier_call_chain(&wdt_notifier_list, 0, buf);
 	/* Call flush even twice. It tries harder with a single online CPU */
 	printk_safe_flush_on_panic();
 	kmsg_dump(KMSG_DUMP_PANIC);
@@ -771,6 +777,7 @@ void msm_trigger_wdog_bite(void)
 		__raw_readl(wdog_data->base + WDT0_EN),
 		__raw_readl(wdog_data->base + WDT0_BARK_TIME),
 		__raw_readl(wdog_data->base + WDT0_BITE_TIME));
+
 	/*
 	 * This function induces the non-secure bite and control
 	 * should not return to the calling function. Non-secure
@@ -937,6 +944,8 @@ static void init_watchdog_data(struct msm_watchdog_data *wdog_dd)
 
 	wdog_dd->panic_blk.notifier_call = panic_wdog_handler;
 	atomic_notifier_chain_register(&panic_notifier_list,
+				       &wdog_dd->panic_blk);
+	atomic_notifier_chain_register(&wdt_notifier_list,
 				       &wdog_dd->panic_blk);
 	mutex_init(&wdog_dd->disable_lock);
 	init_waitqueue_head(&wdog_dd->pet_complete);
