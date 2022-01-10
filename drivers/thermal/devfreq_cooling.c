@@ -3,6 +3,7 @@
  *                  devfreq
  *
  * Copyright (C) 2014-2015 ARM Limited
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -140,13 +141,13 @@ static int devfreq_cooling_set_min_state(struct thermal_cooling_device *cdev,
 	struct device *dev = df->dev.parent;
 	int ret;
 
+	if (state >= dfc->freq_table_size)
+		return -EINVAL;
+
 	if (state == dfc->cooling_min_state)
 		return 0;
 
 	dev_dbg(dev, "Setting cooling min state %lu\n", state);
-
-	if (state >= dfc->freq_table_size)
-		state = dfc->freq_table_size - 1;
 
 	ret = partition_enable_opps(dfc, dfc->cooling_state, state);
 	if (ret)

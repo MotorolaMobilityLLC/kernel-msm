@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s:%s " fmt, KBUILD_MODNAME, __func__
@@ -270,11 +271,11 @@ static int qmi_set_cur_state(struct thermal_cooling_device *cdev,
 	if (!qmi_cdev)
 		return -EINVAL;
 
-	if (qmi_cdev->type == QMI_CDEV_MIN_LIMIT_TYPE)
-		return 0;
-
 	if (state > qmi_cdev->max_level)
 		return -EINVAL;
+
+	if (qmi_cdev->type == QMI_CDEV_MIN_LIMIT_TYPE)
+		return 0;
 
 	return qmi_set_cur_or_min_state(qmi_cdev, state);
 }
@@ -287,11 +288,11 @@ static int qmi_set_min_state(struct thermal_cooling_device *cdev,
 	if (!qmi_cdev)
 		return -EINVAL;
 
+	if (state > qmi_cdev->max_level)
+		return -EINVAL;
+
 	if (qmi_cdev->type == QMI_CDEV_MAX_LIMIT_TYPE)
 		return 0;
-
-	if (state > qmi_cdev->max_level)
-		state = qmi_cdev->max_level;
 
 	/* Convert state into QMI client expects for min state */
 	state = qmi_cdev->max_level - state;
