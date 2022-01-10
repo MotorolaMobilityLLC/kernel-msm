@@ -1824,6 +1824,12 @@ void diag_process_non_hdlc_pkt(unsigned char *buf, int len, int pid)
 	if (partial_pkt->remaining == 0) {
 		actual_pkt = (struct diag_pkt_frame_t *)(partial_pkt->data);
 		data_ptr = partial_pkt->data + header_len;
+		if ((header_len + actual_pkt->length + 1) >
+				partial_pkt->capacity) {
+			mutex_unlock(&driver->hdlc_recovery_mutex);
+			return;
+		}
+
 		if (*(uint8_t *)(data_ptr + actual_pkt->length) !=
 						CONTROL_CHAR) {
 			mutex_unlock(&driver->hdlc_recovery_mutex);
@@ -1872,6 +1878,11 @@ start:
 						 partial_pkt->read_len;
 			partial_pkt->processing = 1;
 			memcpy(partial_pkt->data, buf, partial_pkt->read_len);
+			mutex_unlock(&driver->hdlc_recovery_mutex);
+			break;
+		}
+		if ((header_len + actual_pkt->length + 1) >
+				partial_pkt->capacity) {
 			mutex_unlock(&driver->hdlc_recovery_mutex);
 			break;
 		}
