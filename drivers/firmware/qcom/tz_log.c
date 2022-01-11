@@ -1140,7 +1140,7 @@ static ssize_t tzdbgfs_read_unencrypted(struct file *file, char __user *buf,
 #ifdef CONFIG_DEBUG_FS
 	int tz_id = *(int *)(file->private_data);	
 #else
-    int *tz_id = ((struct seq_file *)file->private_data)->private;
+	int tz_id = *(int *)((struct seq_file *)file->private_data)->private;
 #endif
 
 	if (tz_id == TZDBG_BOOT || tz_id == TZDBG_RESET ||
