@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2015, 2017, 2019, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #ifndef __QCOM_RPM_SMD_REGULATOR_H
 #define __QCOM_RPM_SMD_REGULATOR_H
@@ -15,6 +16,7 @@
 #define RPM_SMD_REGULATOR_LEVEL_NOM_PLUS	320
 #define RPM_SMD_REGULATOR_LEVEL_TURBO		384
 #define RPM_SMD_REGULATOR_LEVEL_TURBO_NO_CPR	416
+#define RPM_SMD_REGULATOR_LEVEL_SUPER_TURBO	464
 #define RPM_SMD_REGULATOR_LEVEL_BINNING		512
 
 #endif
