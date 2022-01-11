@@ -21,7 +21,9 @@
 
 struct qcom_reboot_reason {
 	struct device *dev;
+	int reboot_notify_status;
 	struct notifier_block reboot_nb;
+	struct notifier_block restart_nb;
 	struct nvmem_cell *nvmem_cell;
 	struct notifier_block panic_nb;
 	struct nvmem_cell *nvmem_oem_cell;
@@ -72,6 +74,8 @@ static int qcom_reboot_reason_reboot(struct notifier_block *this,
 	nvmem_cell_write(reboot->nvmem_oem_cell, &val,
 			sizeof(val));
 
+	reboot->reboot_notify_status = 1;
+
 	if (!cmd)
 		return NOTIFY_OK;
 	for (reason = reasons; reason->cmd; reason++) {
@@ -92,6 +96,23 @@ static int qcom_reboot_reason_reboot(struct notifier_block *this,
 		}
 	}
 
+	return NOTIFY_OK;
+}
+
+static int qcom_reboot_reason_restart(struct notifier_block *this,
+				     unsigned long event, void *ptr)
+{
+	struct qcom_reboot_reason *reboot = container_of(this,
+		struct qcom_reboot_reason, restart_nb);
+	unsigned char val = RESET_EXTRA_SW_REBOOT_REASON;
+
+	if (reboot->reboot_notify_status)
+		return NOTIFY_OK;
+
+	nvmem_cell_write(reboot->nvmem_oem_cell, &val,
+			sizeof(val));
+
+	pr_warn("record sw reboot flag during restart\n");
 	return NOTIFY_OK;
 }
 
@@ -122,9 +143,15 @@ static int qcom_reboot_reason_probe(struct platform_device *pdev)
 	atomic_notifier_chain_register(&panic_notifier_list,
 				       &reboot->panic_nb);
 
+	reboot->reboot_notify_status = 0;
+
 	reboot->reboot_nb.notifier_call = qcom_reboot_reason_reboot;
 	reboot->reboot_nb.priority = 255;
 	register_reboot_notifier(&reboot->reboot_nb);
+
+	reboot->restart_nb.notifier_call = qcom_reboot_reason_restart;
+	reboot->restart_nb.priority = 255;
+	register_restart_handler(&reboot->restart_nb);
 
 	platform_set_drvdata(pdev, reboot);
 
@@ -141,6 +168,7 @@ static int qcom_reboot_reason_remove(struct platform_device *pdev)
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 					 &reboot->panic_nb);
 	unregister_reboot_notifier(&reboot->reboot_nb);
+	unregister_restart_handler(&reboot->restart_nb);
 
 	return 0;
 }
