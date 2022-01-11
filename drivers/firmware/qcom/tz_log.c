@@ -1206,7 +1206,11 @@ static ssize_t tzdbgfs_read_encrypted(struct file *file, char __user *buf,
 				      size_t count, loff_t *offp)
 {
 	int len = 0, ret = 0;
-	int tz_id = *(int *)(file->private_data);
+#ifdef CONFIG_DEBUG_FS
+        int tz_id = *(int *)(file->private_data);
+#else
+        int tz_id = *(int *)((struct seq_file *)file->private_data)->private;
+#endif
 	struct tzdbg_stat *stat = &(tzdbg.stat[tz_id]);
 
 	pr_debug("%s: tz_id = %d\n", __func__, tz_id);
