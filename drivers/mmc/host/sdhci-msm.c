@@ -473,6 +473,7 @@ struct sdhci_msm_host {
 	int sdiowakeup_irq;
 	bool is_sdiowakeup_enabled;
 	bool sdio_pending_processing;
+	bool first_power_on;
 };
 
 static struct sdhci_msm_host *sdhci_slot[2];
@@ -2263,14 +2264,23 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_host *msm_host,
 
 	for (i = 0; i < ARRAY_SIZE(vreg_table); i++) {
 		if (vreg_table[i]) {
-			if (enable)
+			if (enable) {
 				ret = sdhci_msm_vreg_enable(vreg_table[i]);
+				if (msm_host->first_power_on && !(mmc->caps & MMC_CAP_NONREMOVABLE)) {
+					ret = sdhci_msm_vreg_disable(vreg_table[i]);
+					msleep(1);
+					ret = sdhci_msm_vreg_enable(vreg_table[i]);
+				}
+			}
 			else
 				ret = sdhci_msm_vreg_disable(vreg_table[i]);
 			if (ret)
 				goto out;
 		}
 	}
+
+	if (enable && !(mmc->caps & MMC_CAP_NONREMOVABLE))
+		msm_host->first_power_on = false;
 
 	if (enable && !(mmc->caps & MMC_CAP_NONREMOVABLE)) {
 
@@ -4295,6 +4305,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host = sdhci_pltfm_priv(pltfm_host);
 	msm_host->mmc = host->mmc;
 	msm_host->pdev = pdev;
+	msm_host->first_power_on = true;
 
 	ret = mmc_of_parse(host->mmc);
 	if (ret)
