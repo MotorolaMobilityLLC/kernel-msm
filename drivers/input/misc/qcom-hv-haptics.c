@@ -1080,6 +1080,7 @@ static int haptics_get_closeloop_lra_period(
 					HAP_STATUS_DATA_MSB_SDAM_OFFSET, rc);
 			return rc;
 		}
+		dev_info(chip->dev, "read calibration result from SDAM 0x%x, 0x%x\n", val[0], val[1]);
 	} else {
 		rc = haptics_get_status_data(chip, CAL_TLRA_CL_STS, val);
 		if (rc < 0)
@@ -2992,6 +2993,10 @@ static int haptics_init_lra_period_config(struct haptics_chip *chip)
 
 	/* Config T_LRA */
 	t_lra_us = chip->config.t_lra_us;
+	if (t_lra_us != 0) {
+		dev_info(chip->dev, "show lra frequency %d Hz\n", USEC_PER_SEC / t_lra_us);
+	}
+
 	rc = haptics_get_closeloop_lra_period(chip, true);
 	if (!rc && chip->config.cl_t_lra_us != 0)
 		t_lra_us = chip->config.cl_t_lra_us;
