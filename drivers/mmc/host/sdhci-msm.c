@@ -3194,7 +3194,7 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 
 	sdhci_msm_clear_pwrctl_status(host, irq_status);
 
-	if (mmc->ops->get_cd && !mmc->ops->get_cd(mmc) &&
+	if (mmc->card && mmc->ops->get_cd && !mmc->ops->get_cd(mmc) &&
 		irq_status & CORE_PWRCTL_BUS_ON) {
 		irq_ack = CORE_PWRCTL_BUS_FAIL;
 		sdhci_msm_writeb_relaxed(irq_ack, host,
@@ -3436,7 +3436,7 @@ static void sdhci_msm_check_power_status(struct sdhci_host *host, u32 req_type)
 		sdhci_msm_dump_pwr_ctrl_regs(host);
 	}
 
-	if (mmc->ops->get_cd && !mmc->ops->get_cd(mmc) &&
+	if (mmc->card && mmc->ops->get_cd && !mmc->ops->get_cd(mmc) &&
 			(req_type & REQ_BUS_ON)) {
 		host->pwr = 0;
 		sdhci_writeb(host, 0, SDHCI_POWER_CONTROL);
