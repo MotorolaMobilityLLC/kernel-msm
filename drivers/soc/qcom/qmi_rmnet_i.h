@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _RMNET_QMI_I_H
@@ -73,6 +73,7 @@ struct svc_info {
 
 struct mq_map {
 	struct rmnet_bearer_map *bearer;
+	bool drop_on_remove;
 };
 
 struct qos_info {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <soc/qcom/qmi_rmnet.h>
@@ -214,21 +214,6 @@ int qmi_rmnet_flow_control(struct net_device *dev, u32 mq_idx, int enable)
 	return 0;
 }
 
-static void qmi_rmnet_reset_txq(struct net_device *dev, unsigned int txq)
-{
-	struct Qdisc *qdisc;
-
-	if (unlikely(txq >= dev->num_tx_queues))
-		return;
-
-	qdisc = rtnl_dereference(netdev_get_tx_queue(dev, txq)->qdisc);
-	if (qdisc) {
-		spin_lock_bh(qdisc_lock(qdisc));
-		qdisc_reset(qdisc);
-		spin_unlock_bh(qdisc_lock(qdisc));
-	}
-}
-
 /**
  * qmi_rmnet_watchdog_fn - watchdog timer func
  */
@@ -354,15 +339,16 @@ static void __qmi_rmnet_bearer_put(struct net_device *dev,
 				continue;
 
 			mq->bearer = NULL;
-			if (reset) {
-				qmi_rmnet_reset_txq(dev, i);
-				qmi_rmnet_flow_control(dev, i, 1);
+			mq->drop_on_remove = reset;
+			/* Let other CPU's see this update so that packets are
+			 * dropped, instead of further processing packets
+			 */
+			smp_mb();
 
-				if (dfc_mode == DFC_MODE_SA) {
-					j = i + ACK_MQ_OFFSET;
-					qmi_rmnet_reset_txq(dev, j);
-					qmi_rmnet_flow_control(dev, j, 1);
-				}
+			qmi_rmnet_flow_control(dev, i, 1);
+			if (dfc_mode == DFC_MODE_SA) {
+				j = i + ACK_MQ_OFFSET;
+				qmi_rmnet_flow_control(dev, j, 1);
 			}
 		}
 
@@ -386,6 +372,11 @@ static void __qmi_rmnet_update_mq(struct net_device *dev,
 	mq = &qos_info->mq[itm->mq_idx];
 	if (!mq->bearer) {
 		mq->bearer = bearer;
+		mq->drop_on_remove = false;
+		/* Let other CPU's see this update so that packets are
+		 * dropped, instead of further processing packets
+		 */
+		smp_mb();
 
 		if (dfc_mode == DFC_MODE_SA) {
 			bearer->mq_idx = itm->mq_idx;
@@ -862,6 +853,27 @@ bool qmi_rmnet_all_flows_enabled(struct net_device *dev)
 EXPORT_SYMBOL(qmi_rmnet_all_flows_enabled);
 
 #ifdef CONFIG_QCOM_QMI_DFC
+bool qmi_rmnet_get_flow_state(struct net_device *dev, struct sk_buff *skb,
+			      bool *drop)
+{
+	struct qos_info *qos = rmnet_get_qos_pt(dev);
+	int txq = skb->queue_mapping;
+
+	if (txq > ACK_MQ_OFFSET)
+		txq -= ACK_MQ_OFFSET;
+
+	if (unlikely(!qos || txq >= MAX_MQ_NUM))
+		return false;
+
+	/* If the bearer is gone, packets may need to be dropped */
+	*drop = (txq != DEFAULT_MQ_NUM && !READ_ONCE(qos->mq[txq].bearer) &&
+		 READ_ONCE(qos->mq[txq].drop_on_remove));
+
+	return true;
+}
+EXPORT_SYMBOL(qmi_rmnet_get_flow_state);
+
+
 void qmi_rmnet_burst_fc_check(struct net_device *dev,
 			      int ip_type, u32 mark, unsigned int len)
 {
