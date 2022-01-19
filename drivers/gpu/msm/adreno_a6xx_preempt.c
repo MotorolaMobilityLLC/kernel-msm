@@ -1,4 +1,5 @@
 /* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -548,13 +549,27 @@ unsigned int a6xx_preemption_pre_ibsubmit(
 	if (context) {
 		struct adreno_context *drawctxt = ADRENO_CONTEXT(context);
 		struct adreno_ringbuffer *rb = drawctxt->rb;
-		uint64_t dest = adreno_dev->preempt.scratch.gpuaddr +
-			sizeof(u64) * rb->id;
+		uint64_t dest = PREEMPT_SCRATCH_ADDR(adreno_dev, rb->id);
 
 		*cmds++ = cp_mem_packet(adreno_dev, CP_MEM_WRITE, 2, 2);
 		cmds += cp_gpuaddr(adreno_dev, cmds, dest);
 		*cmds++ = lower_32_bits(gpuaddr);
 		*cmds++ = upper_32_bits(gpuaddr);
+
+		/*
+		 * Add a KMD post amble to clear the perf counters during
+		 * preemption
+		 */
+		if (!adreno_dev->perfcounter) {
+			u64 kmd_postamble_addr =
+			PREEMPT_SCRATCH_ADDR(adreno_dev, KMD_POSTAMBLE_IDX);
+
+			*cmds++ = cp_type7_packet(CP_SET_AMBLE, 3);
+			*cmds++ = lower_32_bits(kmd_postamble_addr);
+			*cmds++ = upper_32_bits(kmd_postamble_addr);
+			*cmds++ = ((CP_KMD_AMBLE_TYPE << 20) | GENMASK(22, 20))
+			| (adreno_dev->preempt.postamble_len | GENMASK(19, 0));
+		}
 	}
 
 	return (unsigned int) (cmds - cmds_orig);
@@ -567,8 +582,7 @@ unsigned int a6xx_preemption_post_ibsubmit(struct adreno_device *adreno_dev,
 	struct adreno_ringbuffer *rb = adreno_dev->cur_rb;
 
 	if (rb) {
-		uint64_t dest = adreno_dev->preempt.scratch.gpuaddr +
-			sizeof(u64) * rb->id;
+		uint64_t dest = PREEMPT_SCRATCH_ADDR(adreno_dev, rb->id);
 
 		*cmds++ = cp_mem_packet(adreno_dev, CP_MEM_WRITE, 2, 2);
 		cmds += cp_gpuaddr(adreno_dev, cmds, dest);
@@ -789,6 +803,33 @@ int a6xx_preemption_init(struct adreno_device *adreno_dev)
 			goto err;
 
 		addr += A6XX_CP_CTXRECORD_PREEMPTION_COUNTER_SIZE;
+	}
+
+	/*
+	 * First 8 dwords of the preemption scratch buffer is used to store the
+	 * address for CP to save/restore VPC data. Reserve 11 dwords in the
+	 * preemption scratch buffer from index KMD_POSTAMBLE_IDX for KMD
+	 * postamble pm4 packets
+	 */
+	if (!adreno_dev->perfcounter) {
+		u32 *postamble = preempt->scratch.hostptr +
+					(KMD_POSTAMBLE_IDX * sizeof(u64));
+		u32 count = 0;
+
+		postamble[count++] = cp_type7_packet(CP_REG_RMW, 3);
+		postamble[count++] = A6XX_RBBM_PERFCTR_SRAM_INIT_CMD;
+		postamble[count++] = 0x0;
+		postamble[count++] = 0x1;
+
+		postamble[count++] = cp_type7_packet(CP_WAIT_REG_MEM, 6);
+		postamble[count++] = 0x3;
+		postamble[count++] = A6XX_RBBM_PERFCTR_SRAM_INIT_STATUS;
+		postamble[count++] = 0x0;
+		postamble[count++] = 0x1;
+		postamble[count++] = 0x1;
+		postamble[count++] = 0x0;
+
+		preempt->postamble_len = count;
 	}
 
 	ret = a6xx_preemption_iommu_init(adreno_dev);
