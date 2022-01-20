@@ -7,7 +7,7 @@
 #include <linux/types.h>
 #include <linux/workqueue.h>
 
-#ifdef CONFIG_QCOM_RUN_QUEUE_STATS
+#if IS_ENABLED(CONFIG_QCOM_RUN_QUEUE_STATS)
 
 struct rq_data {
 	unsigned long def_timer_jiffies;
