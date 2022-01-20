@@ -30,6 +30,7 @@
 #include <uapi/linux/mount.h>
 #include <linux/fs_context.h>
 #include <linux/shmem_fs.h>
+#include <linux/types.h>
 
 #include "pnode.h"
 #include "internal.h"
@@ -3095,6 +3096,62 @@ char *copy_mount_string(const void __user *data)
 	return data ? strndup_user(data, PATH_MAX) : NULL;
 }
 
+#ifdef CONFIG_FELICA_MOUNT_BLOCK
+/*
+ * Felica requirement:
+ * Mounts on "/system", "/system_ext", "/product", "/vendor" should be blocked
+ * e.g.
+ * adb root
+ * adb shell mount -r -w sdcard /system
+ * adb shell mount -r -w sdcard /system_ext
+ * adb shell mount -r -w sdcard /product
+ * adb shell mount -r -w sdcard /vendor
+*/
+static bool mount_block_check(unsigned long flags, const char __user *dir_name)
+{
+	int i;
+	u32 secid, su_secid;
+	const char *su_secctx = "u:r:su:s0";
+	struct filename *dir_filename = getname(dir_name);
+	const char *blocklist[] = {"/system", "/system_ext", "/product", "/vendor", "/odm", "/oem"};
+	int len = ARRAY_SIZE(blocklist);
+	bool ret = false;
+
+	/* These commands would mount with "bind" flag */
+	if (!(flags & MS_BIND))
+		return ret;
+
+	/* Check mount point */
+	dir_filename = getname(dir_name);
+	if (IS_ERR(dir_filename))
+		return ret;
+
+	if (!dir_filename->name)
+		goto out_putname;
+
+	for (i = 0; i < len; i++) {
+		if (!strncmp(dir_filename->name, blocklist[i], strlen(blocklist[i])) ||
+		    !strncmp(dir_filename->name, blocklist[i] + 1, strlen(blocklist[i]) - 1))
+			break;
+	}
+	if (i == len)
+		goto out_putname;
+
+	security_secctx_to_secid(su_secctx, strlen(su_secctx), &su_secid);
+	security_task_getsecid(current, &secid);
+
+	/* "su" should be blocked */
+	if (secid == su_secid) {
+		pr_warn("Mount on %s is not allowed\n", dir_filename->name);
+		ret = true;
+	}
+
+out_putname:
+	putname(dir_filename);
+	return ret;
+}
+#endif
+
 /*
  * Flags is a 32-bit value that allows up to 31 non-fs dependent flags to
  * be given to the mount() call (ie: read-only, no-dev, no-suid etc).
@@ -3115,6 +3172,11 @@ long do_mount(const char *dev_name, const char __user *dir_name,
 	struct path path;
 	unsigned int mnt_flags = 0, sb_flags;
 	int retval = 0;
+
+#ifdef CONFIG_FELICA_MOUNT_BLOCK
+	if (mount_block_check(flags, dir_name))
+		return -EPERM;
+#endif
 
 	/* Discard magic */
 	if ((flags & MS_MGC_MSK) == MS_MGC_VAL)
