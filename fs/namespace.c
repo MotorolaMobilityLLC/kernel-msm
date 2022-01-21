@@ -3112,7 +3112,7 @@ static bool mount_block_check(unsigned long flags, const char __user *dir_name)
 	int i;
 	u32 secid, su_secid;
 	const char *su_secctx = "u:r:su:s0";
-	struct filename *dir_filename = getname(dir_name);
+	struct filename *dir_filename;
 	const char *blocklist[] = {"/system", "/system_ext", "/product", "/vendor", "/odm", "/oem"};
 	int len = ARRAY_SIZE(blocklist);
 	bool ret = false;
