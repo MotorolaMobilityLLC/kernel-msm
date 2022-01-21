@@ -25,7 +25,7 @@
 #define CX_GMU_CBCR_WAKE_MASK		0xf
 #define CX_GMU_CBCR_WAKE_SHIFT		8
 
-static DEFINE_VDD_REGULATORS(vdd_cx, VDD_HIGH_L2 + 1, 1, vdd_corner);
+static DEFINE_VDD_REGULATORS(vdd_cx, VDD_L2_HIGH_L2 + 1, 1, vdd_l2_corner);
 static DEFINE_VDD_REGULATORS(vdd_mx, VDD_HIGH_L1 + 1, 1, vdd_corner);
 
 enum {
@@ -190,9 +190,9 @@ static struct clk_rcg2 gpu_cc_gmu_clk_src = {
 		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_rcg2_ops,
 		.vdd_class = &vdd_cx,
-		.num_rate_max = VDD_NUM,
-		.rate_max = (unsigned long[VDD_NUM]) {
-			[VDD_LOWER] = 200000000},
+		.num_rate_max = VDD_L2_NUM,
+		.rate_max = (unsigned long[VDD_L2_NUM]) {
+			[VDD_L2_LOWER] = 200000000},
 	},
 };
 
@@ -223,15 +223,15 @@ static struct clk_rcg2 gpu_cc_gx_gfx3d_clk_src = {
 		.flags = CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE,
 		.ops = &clk_rcg2_ops,
 		.vdd_class = &vdd_cx,
-		.num_rate_max = VDD_NUM,
-		.rate_max = (unsigned long[VDD_NUM]) {
-			[VDD_LOWER] = 320000097,
-			[VDD_LOW] = 465000000,
-			[VDD_LOW_L1] = 600000000,
-			[VDD_NOMINAL] = 785088000,
-			[VDD_HIGH] = 1025088000,
-			[VDD_HIGH_L1] = 1114800000,
-			[VDD_HIGH_L2] = 1260000000},
+		.num_rate_max = VDD_L2_NUM,
+		.rate_max = (unsigned long[VDD_L2_NUM]) {
+			[VDD_L2_LOWER] = 320000097,
+			[VDD_L2_LOW] = 465000000,
+			[VDD_L2_LOW_L1] = 600000000,
+			[VDD_L2_NOMINAL] = 785088000,
+			[VDD_L2_HIGH] = 1025088000,
+			[VDD_L2_HIGH_L1] = 1114800000,
+			[VDD_L2_HIGH_L2] = 1260000000},
 	},
 };
 
