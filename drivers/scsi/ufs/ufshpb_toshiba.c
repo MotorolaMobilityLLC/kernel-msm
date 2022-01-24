@@ -1218,6 +1218,8 @@ void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	}
 }
 #define KIOXIA_FW_VERSION "1001"
+#define KIOXIA_GEN95_FW_VERSION "0200"
+
 static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
 {
 	u8 index;
@@ -1238,9 +1240,11 @@ static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
 	if (ufshcd_read_string_desc(hba, index, &desc_buf,true) <0 ) {
 		goto out;
 	}
-	/*Only 1001 FW support HPB for now*/
-	if(strncmp(desc_buf,KIOXIA_FW_VERSION,
-		sizeof(KIOXIA_FW_VERSION))==0)
+	/*KioXia Gen9 1001 and Gen95 0200 FW both support HPB*/
+	if((strncmp(desc_buf,KIOXIA_FW_VERSION,
+		sizeof(KIOXIA_FW_VERSION))==0) ||
+		(strncmp(desc_buf,KIOXIA_GEN95_FW_VERSION,
+                sizeof(KIOXIA_GEN95_FW_VERSION))==0))
 		ret_val = true;
 out:
 	kfree(desc_buf);
