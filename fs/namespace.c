@@ -3107,12 +3107,12 @@ char *copy_mount_string(const void __user *data)
  * adb shell mount -r -w sdcard /product
  * adb shell mount -r -w sdcard /vendor
 */
-static bool mount_block_check(unsigned long flags, const char __user *dir_name)
+static bool mount_block_check(unsigned long flags, struct path *path)
 {
 	int i;
 	u32 secid, su_secid;
 	const char *su_secctx = "u:r:su:s0";
-	struct filename *dir_filename;
+	char *buf, *pathname;
 	const char *blocklist[] = {"/system", "/system_ext", "/product", "/vendor", "/odm", "/oem"};
 	int len = ARRAY_SIZE(blocklist);
 	bool ret = false;
@@ -3121,17 +3121,17 @@ static bool mount_block_check(unsigned long flags, const char __user *dir_name)
 	if (!(flags & MS_BIND))
 		return ret;
 
-	/* Check mount point */
-	dir_filename = getname(dir_name);
-	if (IS_ERR(dir_filename))
+	buf = (char *)__get_free_page(GFP_KERNEL);
+	if (!buf)
 		return ret;
 
-	if (!dir_filename->name)
+	pathname = d_path(path, buf, PAGE_SIZE);
+	if (IS_ERR(pathname))
 		goto out_putname;
 
+	/* Check mount point */
 	for (i = 0; i < len; i++) {
-		if (!strncmp(dir_filename->name, blocklist[i], strlen(blocklist[i])) ||
-		    !strncmp(dir_filename->name, blocklist[i] + 1, strlen(blocklist[i]) - 1))
+		if (!strncmp(pathname, blocklist[i], strlen(blocklist[i])))
 			break;
 	}
 	if (i == len)
@@ -3142,12 +3142,12 @@ static bool mount_block_check(unsigned long flags, const char __user *dir_name)
 
 	/* "su" should be blocked */
 	if (secid == su_secid) {
-		pr_warn("Mount on %s is not allowed\n", dir_filename->name);
+		pr_warn("Mount on %s is not allowed\n", pathname);
 		ret = true;
 	}
 
 out_putname:
-	putname(dir_filename);
+	free_page((unsigned long)buf);
 	return ret;
 }
 #endif
@@ -3173,11 +3173,6 @@ long do_mount(const char *dev_name, const char __user *dir_name,
 	unsigned int mnt_flags = 0, sb_flags;
 	int retval = 0;
 
-#ifdef CONFIG_FELICA_MOUNT_BLOCK
-	if (mount_block_check(flags, dir_name))
-		return -EPERM;
-#endif
-
 	/* Discard magic */
 	if ((flags & MS_MGC_MSK) == MS_MGC_VAL)
 		flags &= ~MS_MGC_MSK;
@@ -3200,6 +3195,10 @@ long do_mount(const char *dev_name, const char __user *dir_name,
 		retval = -EPERM;
 	if (!retval && (flags & SB_MANDLOCK) && !may_mandlock())
 		retval = -EPERM;
+#ifdef CONFIG_FELICA_MOUNT_BLOCK
+	if (mount_block_check(flags, &path))
+		retval = -EPERM;
+#endif
 	if (retval)
 		goto dput_out;
 
