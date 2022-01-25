@@ -450,6 +450,23 @@ static int wl2868c_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	return ret;
 }
 
+static void wl2868c_i2c_shutdown(struct i2c_client *client)
+{
+	struct wl2868c *chip = i2c_get_clientdata(client);
+	if (chip) {
+		/* Disable all regulator to avoid current leak */
+		if (ldo_driver_id == WL2868C_ID)
+		{
+			regmap_write(chip->regmap, WL2868C_LDO_EN, 0x00);;
+		}
+		else if ((ldo_driver_id == FAN53870_ID) || (ldo_driver_id == ET5907_ID))
+		{
+			regmap_write(chip->regmap, fan53870_LDO_EN, 0x00);
+		}
+		dev_info(chip->dev, "wl2868c_i2c_shutdown");
+	}
+}
+
 static int wl2868c_i2c_remove(struct i2c_client *client)
 {
 	struct wl2868c *chip = i2c_get_clientdata(client);
@@ -476,6 +493,7 @@ static struct i2c_driver wl2868c_regulator_driver = {
 	},
 	.probe = wl2868c_i2c_probe,
 	.remove = wl2868c_i2c_remove,
+	.shutdown = wl2868c_i2c_shutdown,
 	.id_table = wl2868c_i2c_id,
 };
 
