@@ -1,4 +1,5 @@
 /* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -229,6 +230,14 @@ static long adreno_ioctl_perfcounter_read_compat(
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(dev_priv->device);
 	struct kgsl_perfcounter_read_compat *read32 = data;
 	struct kgsl_perfcounter_read read;
+
+	/*
+	 * When performance counter zapping is enabled, the counters are cleared
+	 * across context switches. Reading the counters when they are zapped is
+	 * not permitted.
+	 */
+	if (!adreno_dev->perfcounter)
+		return -EPERM;
 
 	read.reads = (struct kgsl_perfcounter_read_group __user *)
 		(uintptr_t)read32->reads;
