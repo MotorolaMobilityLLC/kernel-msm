@@ -1867,3 +1867,9 @@ config CAMERA_FLASH_PWM
         default n
         help
         Enable it only for produts that control flash.
+
+config CAMERA_DISABLE_VSYNC_IRQ
+	bool "For cam disable vsync irq"
+	default n
+	help
+	Enable it to disable cam vsync irq.
