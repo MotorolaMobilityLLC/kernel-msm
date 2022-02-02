@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2021, Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #define pr_fmt(fmt) "PM8008: %s: " fmt, __func__
 
@@ -113,6 +114,7 @@ struct pm8008_regulator {
 	int			step_rate;
 	bool			enable_ocp_broadcast;
 	enum pmic_subtype       pmic_subtype;
+	struct work_struct	notify_clients_work;
 };
 
 static const struct regulator_data pm8008_reg_data[PM8008_MAX_LDO] = {
@@ -601,18 +603,26 @@ static int pm8008_ldo_cb(struct notifier_block *nb, ulong event, void *data)
 		goto error;
 	}
 
-	/* Notify the consumers about the OCP event */
-	mutex_lock(&pm8008_reg->rdev->mutex);
-	regulator_notifier_call_chain(pm8008_reg->rdev,
-				REGULATOR_EVENT_OVER_CURRENT, NULL);
-	mutex_unlock(&pm8008_reg->rdev->mutex);
+	schedule_work(&pm8008_reg->notify_clients_work);
 
 error:
 	return NOTIFY_OK;
 }
 
+static void notify_clients_work(struct work_struct *work)
+{
+	struct pm8008_regulator *pm8008_reg = container_of(work,
+			struct pm8008_regulator, notify_clients_work);
+
+	/* Notify the consumers about the OCP event */
+	mutex_lock(&pm8008_reg->rdev->mutex);
+	regulator_notifier_call_chain(pm8008_reg->rdev,
+				REGULATOR_EVENT_OVER_CURRENT, NULL);
+	mutex_unlock(&pm8008_reg->rdev->mutex);
+}
+
 static int pm8008_regulator_register_init(struct pm8008_regulator *pm8008_reg,
-					  const struct regulator_data *reg_data)
+			const struct regulator_data *reg_data)
 {
 	int i, rc;
 
@@ -789,6 +799,8 @@ static int pm8008_register_ldo(struct pm8008_regulator *pm8008_reg,
 				rc);
 			return rc;
 		}
+		INIT_WORK(&pm8008_reg->notify_clients_work,
+				notify_clients_work);
 	}
 
 	pr_debug("%s regulator registered\n", name);
