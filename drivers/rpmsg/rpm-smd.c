@@ -1715,6 +1715,7 @@ int qcom_smd_rpm_quickboot(struct rpmsg_device *rpdev, int status)
 {
 	struct rpmsg_channel_info chinfo = {};
 	struct rpmsg_endpoint *ept = NULL;
+	struct rb_node *t;
 
 	if (!probe_status)
 		return 0;
@@ -1733,6 +1734,14 @@ int qcom_smd_rpm_quickboot(struct rpmsg_device *rpdev, int status)
 	rpdev->src = ept->addr;
 	rpm->dev = &rpdev->dev;
 	rpm->rpm_channel = rpdev->ept;
+
+	for (t = rb_first(&tr_root); t; t = rb_next(t)) {
+
+		struct slp_buf *s = rb_entry(t, struct slp_buf, node);
+
+		rb_erase(&s->node, &tr_root);
+	}
+
 	quickboot_done = 1;
 	probe_status = 0;
 	/*
