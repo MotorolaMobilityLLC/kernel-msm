@@ -372,8 +372,8 @@ static void mhi_dev_event_msi_cb(void *req)
 		ch->pend_flush_cnt = 0;
 	mhi = ch->ring->mhi_dev;
 
-	mhi_log(MHI_MSG_VERBOSE, "MSI completed for flush req %d\n",
-		ereq->flush_num);
+	mhi_log(MHI_MSG_VERBOSE, "MSI completed for %s flush req %d\n",
+			ereq->is_stale ? "stale" : "", ereq->flush_num);
 
 	/* Add back the flushed events space to the event buffer */
 	ch->evt_buf_wp = ereq->start + ereq->num_events;
@@ -383,8 +383,11 @@ static void mhi_dev_event_msi_cb(void *req)
 	spin_lock_irqsave(&mhi->lock, flags);
 	if (ch->curr_ereq == NULL)
 		ch->curr_ereq = ereq;
-	else
+	else {
+		if (ereq->is_stale)
+			ereq->is_stale = false;
 		list_add_tail(&ereq->list, &ch->event_req_buffers);
+	}
 	spin_unlock_irqrestore(&mhi->lock, flags);
 }
 
@@ -3256,6 +3259,7 @@ void mhi_dev_close_channel(struct mhi_dev_client *handle)
 	struct mhi_dev_channel *ch;
 	int count = 0;
 	int rc = 0;
+	struct event_req *itr, *tmp;
 	if (!handle) {
 		mhi_log(MHI_MSG_ERROR, "Invalid channel access:%d\n", -ENODEV);
 		return;
@@ -3291,20 +3295,14 @@ void mhi_dev_close_channel(struct mhi_dev_client *handle)
 				"Trying to close an active channel (%d)\n",
 				ch->ch_id);
 
+	if (!list_empty(&ch->flush_event_req_buffers)) {
+		list_for_each_entry_safe(itr, tmp, &ch->flush_event_req_buffers, list) {
+			itr->is_stale = true;
+		}
+	}
+
 	ch->state = MHI_DEV_CH_CLOSED;
 	ch->active_client = NULL;
-	kfree(ch->ereqs);
-	mhi_log(MHI_MSG_INFO,
-		"MEM_DEALLOC:ch:%d size:%d EREQ\n",
-		ch->ch_id, ch->evt_req_size);
-	kfree(ch->tr_events);
-	mhi_log(MHI_MSG_INFO,
-		"MEM_DEALLOC:ch:%d size:%d TR_EVENTS\n",
-		ch->ch_id, ch->evt_buf_size);
-	ch->evt_buf_size = 0;
-	ch->evt_req_size = 0;
-	ch->ereqs = NULL;
-	ch->tr_events = NULL;
 	kfree(handle);
 	mhi_log(MHI_MSG_INFO,
 		"MEM_ALLOC:ch:%d size:%d CLNT_HANDLE\n",
@@ -3535,13 +3533,16 @@ int mhi_dev_write_channel(struct mhi_req *wreq)
 		 * Expected usage is when there is a write
 		 * to the MHI core -> notify SM.
 		 */
+		mutex_lock(&mhi_ctx->mhi_lock);
 		mhi_log(MHI_MSG_CRITICAL, "Wakeup by chan:%d\n", ch->ch_id);
 		rc = mhi_dev_notify_sm_event(MHI_DEV_EVENT_CORE_WAKEUP);
 		if (rc) {
 			pr_err("error sending core wakeup event\n");
+			mutex_unlock(&mhi_ctx->mhi_lock);
 			mutex_unlock(&mhi_ctx->mhi_write_test);
 			return rc;
 		}
+		mutex_unlock(&mhi_ctx->mhi_lock);
 	}
 
 	while (atomic_read(&mhi_ctx->is_suspended) &&
