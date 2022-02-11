@@ -261,6 +261,7 @@ struct battery_chg_dev {
 	/* To track the driver initialization status */
 	bool				initialized;
 	bool				notify_en;
+	struct power_supply		*combo_batt_psy;
 };
 
 static const int battery_prop_map[BATT_PROP_MAX] = {
@@ -1184,6 +1185,10 @@ static int battery_psy_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		pval->intval = DIV_ROUND_CLOSEST(pst->prop[prop_id], 100);
+		if (bcdev->combo_batt_psy) {
+			power_supply_get_property(bcdev->combo_batt_psy,
+						prop, pval);
+		}
 		if (IS_ENABLED(CONFIG_QTI_PMIC_GLINK_CLIENT_DEBUG) &&
 		   (bcdev->fake_soc >= 0 && bcdev->fake_soc <= 100))
 			pval->intval = bcdev->fake_soc;
@@ -1197,6 +1202,17 @@ static int battery_psy_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
 		pval->intval = bcdev->num_thermal_levels;
 		break;
+	case POWER_SUPPLY_PROP_STATUS:
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		if (bcdev->combo_batt_psy) {
+			pval->intval = pst->prop[prop_id];
+			power_supply_get_property(bcdev->combo_batt_psy,
+						prop, pval);
+			break;
+		}
 	default:
 		pval->intval = pst->prop[prop_id];
 		break;
@@ -1307,6 +1323,18 @@ static int battery_chg_init_psy(struct battery_chg_dev *bcdev)
 		return rc;
 	}
 
+	if (of_find_property(bcdev->dev->of_node, "mmi,combo-batt-psy", NULL)) {
+		bcdev->combo_batt_psy = devm_power_supply_get_by_phandle(
+						bcdev->dev,
+						"mmi,combo-batt-psy");
+		if (IS_ERR_OR_NULL(bcdev->combo_batt_psy)) {
+			pr_err("Couldn't get the combo-batt-psy\n");
+			if (!bcdev->combo_batt_psy)
+				return -ENODEV;
+			else
+				return PTR_ERR(bcdev->combo_batt_psy);
+		}
+	}
 	return 0;
 }
 
