@@ -435,13 +435,13 @@ static int i2c_msm_set_mstr_clk_ctl(struct i2c_msm_ctrl *ctrl, int fs_div,
 
 	/*
 	 * find matching freq and set divider values unless they are forced
-	 * from parametr list
+	 * from parameter list
 	 */
 	for (i = 0; i < ARRAY_SIZE(i2c_msm_clk_div_map); ++i, ++itr) {
 		if (ctrl->rsrcs.clk_freq_out == itr->clk_freq_out) {
-			if (!fs_div)
+			if (fs_div < 0)
 				fs_div = itr->fs_div;
-			if (!ht_div)
+			if (ht_div < 0)
 				ht_div = itr->ht_div;
 			break;
 		}
@@ -450,7 +450,7 @@ static int i2c_msm_set_mstr_clk_ctl(struct i2c_msm_ctrl *ctrl, int fs_div,
 	/* For non-standard clock freq, clk divider value
 	 * fs_div should be supplied by client through device tree
 	 */
-	if (!fs_div) {
+	if (fs_div < 0) {
 		dev_err(ctrl->dev, "Missing clk divider value in DT for %dKHz\n",
 			(ctrl->rsrcs.clk_freq_out / 1000));
 		return -EINVAL;
@@ -2484,7 +2484,7 @@ static int i2c_msm_dt_to_pdata_populate(struct i2c_msm_ctrl *ctrl,
 static int i2c_msm_rsrcs_process_dt(struct i2c_msm_ctrl *ctrl,
 					struct platform_device *pdev)
 {
-	u32 fs_clk_div, ht_clk_div, noise_rjct_scl, noise_rjct_sda;
+	int fs_clk_div, ht_clk_div, noise_rjct_scl, noise_rjct_sda;
 	int ret;
 
 	struct i2c_msm_dt_to_pdata_map map[] = {
@@ -2502,9 +2502,9 @@ static int i2c_msm_rsrcs_process_dt(struct i2c_msm_ctrl *ctrl,
 	{"qcom,noise-rjct-sda",		&noise_rjct_sda,
 							DT_OPT,  DT_U32,  0},
 	{"qcom,high-time-clk-div",	&ht_clk_div,
-							DT_OPT,  DT_U32,  0},
+							DT_OPT,  DT_U32,  -1},
 	{"qcom,fs-clk-div",		&fs_clk_div,
-							DT_OPT,  DT_U32,  0},
+							DT_OPT,  DT_U32,  -1},
 	{NULL,  NULL,					0,       0,       0},
 	};
 
