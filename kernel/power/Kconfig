@@ -351,6 +351,14 @@ config GPIO_VALID_ARRAY
 	default n
 	help
 	  This allows you to use an array maintained manually to indicate
-          if a GPIO can be accessed by APPS. It's only needed when the GPIO
-          is still unaccessible although gpiochip_line_is_valid() returns
-          true.
+	  if a GPIO can be accessed by APPS. It's only needed when the GPIO
+	  is still unaccessible although gpiochip_line_is_valid() returns
+	  true.
+
+config WAKEUP_SOURCES
+	tristate "Provide /sys/kernel/wakeup_sources for Battery Tracer"
+	depends on SUSPEND
+	default n
+	help
+	  This allows Battery Tracer to check wakeup_sources in /sys/kernel/
+	  instead of /sys/kernel/debug/.
