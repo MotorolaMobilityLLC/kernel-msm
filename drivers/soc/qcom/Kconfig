@@ -102,6 +102,14 @@ config RHODEP_DTB
         Only include RHODEP specific DTBs to limit the number that
         get built during kernel compilation.
 
+config RHODEI_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "RHODEI DTBs"
+    help
+        Only include RHODEI specific DTBs to limit the number that
+        get built during kernel compilation.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
