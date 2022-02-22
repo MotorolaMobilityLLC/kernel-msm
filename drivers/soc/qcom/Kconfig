@@ -83,6 +83,14 @@ config HAWAO_DTB
       Only include Hawao specific DTBs to limit the number that
       get built during kernel compilation
 
+config DEVON_DTB
+    depends on ARCH_QCOM
+    default n
+    bool "Devon DTBs"
+    help
+      Only include Devon specific DTBs to limit the number that
+      get built during kernel compilation
+
 config QCOM_COMMAND_DB
 	tristate "Qualcomm Command DB"
 	depends on ARCH_QCOM || COMPILE_TEST
