@@ -125,7 +125,6 @@ struct cgroup_sb_opts {
 	bool none;
 };
 
-extern struct mutex cgroup_mutex;
 extern spinlock_t css_set_lock;
 extern struct cgroup_subsys *cgroup_subsys[];
 extern struct list_head cgroup_roots;
