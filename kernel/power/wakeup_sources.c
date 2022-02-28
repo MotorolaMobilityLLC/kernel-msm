@@ -71,7 +71,6 @@ static void *wakeup_sources_stats_seq_start(struct seq_file *m,
 	struct wakeup_source *ws;
 	loff_t n = *pos;
 
-	pr_debug("%s(), *pos=%d\n", __func__, *pos);
 	if (n == 0) {
 		seq_puts(m, "name\t\tactive_count\tevent_count\twakeup_count\t"
 			"expire_count\tactive_since\ttotal_time\tmax_time\t"
@@ -94,7 +93,6 @@ static void *wakeup_sources_stats_seq_next(struct seq_file *m,
 	struct wakeup_source *next_ws = NULL;
 
 	++(*pos);
-	pr_debug("%s(), *pos=%d\n", __func__, *pos);
 	next_ws = wakeup_sources_walk_next(ws);
 
 	return next_ws;
@@ -102,7 +100,6 @@ static void *wakeup_sources_stats_seq_next(struct seq_file *m,
 
 static void wakeup_sources_stats_seq_stop(struct seq_file *m, void *v)
 {
-	pr_debug("%s(), %d\n", __func__, __LINE__);
 	wakeup_sources_read_unlock(g_lock_wakeup_sources);
 }
 
@@ -115,7 +112,6 @@ static int wakeup_sources_stats_seq_show(struct seq_file *m, void *v)
 {
 	struct wakeup_source *ws = v;
 
-	pr_debug("%s(), ws=%p\n", __func__, ws);
 	print_wakeup_source_stats(m, ws);
 
 	return 0;
