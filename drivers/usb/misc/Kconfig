@@ -271,3 +271,13 @@ config USB_REDRIVER_NB7VPQ904M
 	depends on USB_PHY
 	help
 	  Say Y here if you want to support USB super speed re-driver NB7VPQ904M.
+
+config USB_QTI_KS_BRIDGE
+	tristate "USB QTI kick start bridge"
+	depends on USB
+	help
+	  Say Y here if you have a QTI modem device connected via USB that
+	  will be bridged in kernel space. This driver works as a bridge to pass
+	  boot images, ram-dumps and efs sync.
+	  To compile this driver as a module, choose M here: the module
+	  will be called ks_bridge. If unsure, choose N.
