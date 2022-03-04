@@ -26,6 +26,13 @@ config MMI_NON_GKI_DEBUG
 	help
 	  kernel config item in common kernel of Moto consolidate build.
 
+config HIPHI_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Hiphi/Hiphic/Hiphid Device DTB"
+	help
+		Only include Motorola Hiphi/Hiphic/Hiphid device specific DTB.
+
 config IRONMN_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
