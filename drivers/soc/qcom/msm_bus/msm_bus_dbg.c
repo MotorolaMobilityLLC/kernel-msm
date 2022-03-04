@@ -562,7 +562,8 @@ static ssize_t  msm_bus_dbg_update_request_write(struct file *file,
 
 	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
 	list_for_each_entry(cldata, &cl_list, list) {
-		if (strnstr(chid, cldata->pdata->name, cnt)) {
+		if (cldata->pdata &&
+			strnstr(chid, cldata->pdata->name, cnt)) {
 			found = 1;
 			strsep(&chid, " ");
 			if (chid) {
