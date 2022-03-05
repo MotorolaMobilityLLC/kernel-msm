@@ -945,4 +945,11 @@ config SXR_CAMCC_ANORAK
 	  Say Y if you want to support camera devices and functionality such as
 	  capturing pictures.
 
+config HIPHI_ACTIVE_PEN_CLK
+	depends on QCOM_CLK_RPM
+	default n
+	bool "enable LNBBCLK3 on hiphi for active pen"
+	help
+	  enable LNBBCLK3 on hiphi for active pen.
+
 endif
