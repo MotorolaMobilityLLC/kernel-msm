@@ -946,7 +946,6 @@ config SXR_CAMCC_ANORAK
 	  capturing pictures.
 
 config HIPHI_ACTIVE_PEN_CLK
-	depends on QCOM_CLK_RPM
 	default n
 	bool "enable LNBBCLK3 on hiphi for active pen"
 	help
