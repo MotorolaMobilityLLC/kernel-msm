@@ -156,9 +156,10 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 	ktime_get_real_ts64(&timestamp);
 	time64_to_tm(timestamp.tv_sec, 0, &tm);
 	snprintf(buff, sizeof(buff),
-		"%u-%02d-%02d %02d:%02d:%02d UTC",
+		"%u-%02d-%02d %02d:%02d:%02d.%06ld UTC",
 		(int) tm.tm_year + 1900, tm.tm_mon + 1,
-		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+		timestamp.tv_nsec);
 
 	pr_err("Enter %s at: %s\n", __func__, buff);
 	if (pwrkey->sw_debounce_time_us) {
