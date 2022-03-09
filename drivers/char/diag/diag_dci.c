@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -1625,7 +1626,6 @@ static int diag_send_dci_pkt(struct diag_cmd_reg_t *entry,
 		return -EIO;
 	}
 
-	mutex_lock(&driver->dci_mutex);
 	/* prepare DCI packet */
 	header.start = CONTROL_CHAR;
 	header.version = 1;
@@ -1644,7 +1644,6 @@ static int diag_send_dci_pkt(struct diag_cmd_reg_t *entry,
 		diag_update_pkt_buffer(driver->apps_dci_buf, write_len,
 				       DCI_PKT_TYPE);
 		diag_update_sleeping_process(entry->pid, DCI_PKT_TYPE);
-		mutex_unlock(&driver->dci_mutex);
 		return DIAG_DCI_NO_ERROR;
 	}
 
@@ -1664,7 +1663,6 @@ static int diag_send_dci_pkt(struct diag_cmd_reg_t *entry,
 		       entry->proc);
 		status = DIAG_DCI_SEND_DATA_FAIL;
 	}
-	mutex_unlock(&driver->dci_mutex);
 	return status;
 }
 
@@ -1989,12 +1987,13 @@ static int diag_process_dci_pkt_rsp(unsigned char *buf, int len)
 {
 	int ret = DIAG_DCI_TABLE_ERR;
 	int common_cmd = 0, header_len = 0;
+	int req_tag = 0;
 	struct diag_pkt_header_t *header = NULL;
 	unsigned char *temp = buf;
 	unsigned char *req_buf = NULL;
 	uint8_t retry_count = 0, max_retries = 3;
 	uint32_t read_len = 0, req_len = len;
-	struct dci_pkt_req_entry_t *req_entry = NULL;
+	struct dci_pkt_req_entry_t *req_entry = NULL, *test_entry = NULL;
 	struct diag_dci_client_tbl *dci_entry = NULL;
 	struct dci_pkt_req_t req_hdr;
 	struct diag_cmd_reg_t *reg_item;
@@ -2099,6 +2098,7 @@ static int diag_process_dci_pkt_rsp(unsigned char *buf, int len)
 		mutex_unlock(&driver->dci_mutex);
 		return DIAG_DCI_NO_REG;
 	}
+	req_tag = req_entry->tag;
 	mutex_unlock(&driver->dci_mutex);
 
 	/*
@@ -2106,14 +2106,14 @@ static int diag_process_dci_pkt_rsp(unsigned char *buf, int len)
 	 * remote processor
 	 */
 	if (dci_entry->client_info.token > 0) {
-		ret = diag_send_dci_pkt_remote(req_buf, req_len, req_entry->tag,
+		ret = diag_send_dci_pkt_remote(req_buf, req_len, req_tag,
 					       dci_entry->client_info.token);
 		return ret;
 	}
 
 	/* Check if it is a dedicated Apps command */
 	ret = diag_dci_process_apps_pkt(header, req_buf, req_len,
-					req_entry->tag, header_len);
+					req_tag, header_len);
 	if ((ret == DIAG_DCI_NO_ERROR && !common_cmd) || ret < 0)
 		return ret;
 
@@ -2136,8 +2136,14 @@ static int diag_process_dci_pkt_rsp(unsigned char *buf, int len)
 	if (temp_entry) {
 		reg_item = container_of(temp_entry, struct diag_cmd_reg_t,
 								entry);
-		ret = diag_send_dci_pkt(reg_item, req_buf, req_len,
-					req_entry->tag);
+		mutex_lock(&driver->dci_mutex);
+		test_entry = diag_dci_get_request_entry(req_tag);
+		if (test_entry)
+			ret = diag_send_dci_pkt(reg_item, req_buf, req_len,
+					test_entry->tag);
+		else
+			ret = -EIO;
+		mutex_unlock(&driver->dci_mutex);
 	} else {
 		DIAG_LOG(DIAG_DEBUG_DCI, "Command not found: %02x %02x %02x\n",
 				reg_entry.cmd_code, reg_entry.subsys_id,
