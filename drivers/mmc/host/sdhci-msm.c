@@ -1716,11 +1716,11 @@ static void sdhci_msm_set_uhs_signaling(struct sdhci_host *host,
 /*
  * Ensure larger discard size by always setting max_busy_timeout to zero.
  * This will always return max_busy_timeout as zero to the sdhci layer.
-*/
+ */
 
-static unsigned int sdhci_msm_get_max_timeout_count(struct sdhci_host
-*host) {
- return 0;
+static unsigned int sdhci_msm_get_max_timeout_count(struct sdhci_host *host)
+{
+	return 0;
 }
 
 #define MAX_PROP_SIZE 32
@@ -2748,6 +2748,23 @@ static void sdhci_msm_registers_restore(struct sdhci_host *host)
 			msm_offset->core_pwrctl_mask));
 }
 
+static void sdhci_msm_set_timeout(struct sdhci_host *host, struct mmc_command *cmd)
+{
+	u32 count, start = 15;
+
+	__sdhci_set_timeout(host, cmd);
+	count = sdhci_readb(host, SDHCI_TIMEOUT_CONTROL);
+	/*
+	 * Update software timeout value if its value is less than hardware data
+	 * timeout value. Qcom SoC hardware data timeout value was calculated
+	 * using 4 * MCLK * 2^(count + 13). where MCLK = 1 / host->clock.
+	 */
+	if (cmd && cmd->data && host->clock > 400000 &&
+	    host->clock <= 50000000 &&
+	    ((1 << (count + start)) > (10 * host->clock)))
+		host->data_timeout = 22LL * NSEC_PER_SEC;
+}
+
 /*
  * Platform specific register write functions. This is so that, if any
  * register write needs to be followed up by platform specific actions,
@@ -3545,7 +3562,6 @@ static const struct sdhci_ops sdhci_msm_ops = {
 	.set_bus_width = sdhci_set_bus_width,
 	.set_uhs_signaling = sdhci_msm_set_uhs_signaling,
 	.get_max_timeout_count = sdhci_msm_get_max_timeout_count,
-
 #if defined(CONFIG_SDC_QTI)
 	.dump_vendor_regs = sdhci_msm_dump_vendor_regs,
 #endif
@@ -3558,6 +3574,7 @@ static const struct sdhci_ops sdhci_msm_ops = {
 	.notify_load = sdhci_msm_notify_load,
 #endif
 	.hw_reset = sdhci_msm_hw_reset,
+	.set_timeout = sdhci_msm_set_timeout,
 };
 
 static const struct sdhci_pltfm_data sdhci_msm_pdata = {
