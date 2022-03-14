@@ -1219,12 +1219,15 @@ void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 }
 #define KIOXIA_FW_VERSION "1001"
 #define KIOXIA_GEN95_FW_VERSION "0200"
+#define KIOXIA_GEN100_FW_VERSION "0100"
+#define KIOXIA_GEN100_MODEL "THGJFGT1E45BAILB"
 
 static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
 {
 	u8 index;
 	bool ret_val = false;
 	int desc_len = QUERY_DESC_MAX_SIZE;
+	struct ufs_dev_info *dev_info = &hba->dev_info;
 	u8 *desc_buf;
 
 	desc_buf = kzalloc(QUERY_DESC_MAX_SIZE, GFP_ATOMIC);
@@ -1244,8 +1247,13 @@ static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
 	if((strncmp(desc_buf,KIOXIA_FW_VERSION,
 		sizeof(KIOXIA_FW_VERSION))==0) ||
 		(strncmp(desc_buf,KIOXIA_GEN95_FW_VERSION,
-                sizeof(KIOXIA_GEN95_FW_VERSION))==0))
+                sizeof(KIOXIA_GEN95_FW_VERSION))==0) ||
+		((strncmp(desc_buf,KIOXIA_GEN100_FW_VERSION,
+                sizeof(KIOXIA_GEN100_FW_VERSION))==0) &&
+			strncmp(dev_info->model,KIOXIA_GEN100_MODEL,
+			sizeof(KIOXIA_GEN100_MODEL))==0))
 		ret_val = true;
+	pr_info("UFSHPB: FW %s, model %s\n",desc_buf, dev_info->model);
 out:
 	kfree(desc_buf);
 	return ret_val;
