@@ -1350,8 +1350,8 @@ void spectre_bhb_enable_mitigation(const struct arm64_cpu_capabilities *entry)
 	if (get_spectre_v2_workaround_state() == ARM64_BP_HARDEN_UNKNOWN) {
 		/* No point mitigating Spectre-BHB alone. */
 	} else if (!IS_ENABLED(CONFIG_MITIGATE_SPECTRE_BRANCH_HISTORY)) {
-		pr_info_once("spectre-bhb mitigation disabled by compile time option\n");
 	} else if (cpu_mitigations_off()) {
+		pr_info_once("spectre-bhb mitigation disabled by compile time option\n");
 		pr_info_once("spectre-bhb mitigation disabled by command line option\n");
 	} else if (supports_ecbhb(SCOPE_LOCAL_CPU)) {
 		state = SPECTRE_MITIGATED;
