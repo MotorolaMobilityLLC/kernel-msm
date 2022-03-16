@@ -929,6 +929,7 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	/* All control packets and non-local destined data packets should be
 	 * queued to the worker for forwarding handling.
 	 */
+	svc_id = qrtr_get_service_id(cb->src_node, cb->src_port);
 	if (cb->type != QRTR_TYPE_DATA || cb->dst_node != qrtr_local_nid) {
 		skb_queue_tail(&node->rx_queue, skb);
 		kthread_queue_work(&node->kworker, &node->read_data);
@@ -942,7 +943,6 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 
 
 		if (node->nid == 5) {
-			svc_id = qrtr_get_service_id(cb->src_node, cb->src_port);
 			if (svc_id > 0){
 				for (i = 0; i < node->no_wake_svc.size; i++) {
 					if (svc_id == node->no_wake_svc.arr[i]) {
