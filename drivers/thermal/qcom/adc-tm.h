@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __QCOM_ADC_TM_H__
@@ -140,6 +141,8 @@ struct adc_tm_ops {
 	void (*notify)(struct adc_tm_sensor *adc_tm);
 	int (*interrupts_reg)(struct adc_tm_chip *chip);
 	int (*shutdown)(struct adc_tm_chip *chip);
+	int (*freeze)(struct adc_tm_chip *chip);
+	int (*restore)(struct adc_tm_chip *chip);
 };
 
 struct adc_tm_chip {
@@ -155,6 +158,7 @@ struct adc_tm_chip {
 	unsigned int			dt_channels;
 	struct pmic_revid_data		*pmic_rev_id;
 	struct adc_tm_sensor		sensor[0];
+	int				threshold_irq;
 };
 
 struct adc_tm_data {

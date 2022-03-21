@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -965,21 +966,24 @@ fail:
 static int adc_tm5_register_interrupts(struct adc_tm_chip *chip)
 {
 	struct platform_device *pdev;
-	int ret, irq;
+	int ret;
 
 	if (!chip)
 		return -EINVAL;
 
 	pdev = to_platform_device(chip->dev);
 
-	irq = platform_get_irq_byname(pdev, "threshold");
-	if (irq < 0) {
-		dev_err(&pdev->dev, "failed to get irq %s\n",
-			"threshold");
-		return irq;
+	if (chip->threshold_irq <= 0) {
+		chip->threshold_irq = platform_get_irq_byname(pdev, "threshold");
+
+		if (chip->threshold_irq < 0) {
+			dev_err(&pdev->dev, "failed to get irq %s\n",
+				"threshold");
+			return chip->threshold_irq;
+		}
 	}
 
-	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+	ret = devm_request_threaded_irq(&pdev->dev, chip->threshold_irq, NULL,
 			adc_tm5_handler,
 			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"threshold", chip);
@@ -989,9 +993,21 @@ static int adc_tm5_register_interrupts(struct adc_tm_chip *chip)
 		return ret;
 	}
 
-	enable_irq_wake(irq);
+	enable_irq_wake(chip->threshold_irq);
 
 	return ret;
+}
+
+static int adc_tm5_free_interrupts(struct adc_tm_chip *chip)
+{
+	if (!chip)
+		return -EINVAL;
+
+	disable_irq_wake(chip->threshold_irq);
+	disable_irq(chip->threshold_irq);
+	devm_free_irq(chip->dev, chip->threshold_irq, chip);
+
+	return 0;
 }
 
 static int adc_tm5_init(struct adc_tm_chip *chip, uint32_t dt_chans)
@@ -1065,6 +1081,16 @@ static int adc_tm5_init(struct adc_tm_chip *chip, uint32_t dt_chans)
 	return ret;
 }
 
+static int adc_tm5_freeze(struct adc_tm_chip *chip)
+{
+	return adc_tm5_free_interrupts(chip);
+}
+
+static int adc_tm5_restore(struct adc_tm_chip *chip)
+{
+	return adc_tm5_register_interrupts(chip);
+}
+
 static const struct adc_tm_ops ops_adc_tm5 = {
 	.init		= adc_tm5_init,
 	.set_trips	= adc_tm5_set_trip_temp,
@@ -1073,6 +1099,8 @@ static const struct adc_tm_ops ops_adc_tm5 = {
 	.channel_measure = adc_tm5_channel_measure,
 	.disable_chan = adc_tm5_disable_chan_meas,
 	.notify = notify_adc_tm5_fn,
+	.freeze = adc_tm5_freeze,
+	.restore = adc_tm5_restore,
 };
 
 const struct adc_tm_data data_adc_tm5 = {
