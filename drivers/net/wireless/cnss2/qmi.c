@@ -94,6 +94,7 @@ static moto_product products_list[] = {
 	{"hiphi",	"all",	NV_EPA},
 	{"li",		"all",	NV_EPA}, //IKSWS-67882 Maven bdwlan
 	{"oneli",	"all",	NV_EPA}, //IKSWS-74085 oneli bdwlan
+	{"eqs",	        "all",	NV_EPA}, //IKSWS-81765 eqs bdwlan
 	{"ironmn",	"all",	NV_EPA}, //IKSWS-2923 Ironmn bdwlan
 	/* Terminator */
 	{{0}, {0}, {0}},
