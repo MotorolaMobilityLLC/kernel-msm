@@ -513,6 +513,13 @@ static void gi2c_gsi_rx_cb(void *ptr)
 	struct msm_gpi_dma_async_tx_cb_param *rx_cb = ptr;
 	struct geni_i2c_dev *gi2c = rx_cb->userdata;
 
+	if (gi2c->cur == NULL) {
+		GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
+			"%s: Error: unexpected callback\n", __func__);
+		WARN_ON(1);
+		return;
+	}
+
 	if (gi2c->cur->flags & I2C_M_RD) {
 		gi2c_gsi_cb_err(rx_cb, "RX");
 		complete(&gi2c->xfer);
