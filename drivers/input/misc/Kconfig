@@ -898,4 +898,10 @@ config INPUT_MMI_KEY_SWAP
 	  To compile this driver as a module, choose M here: the
 	  module will be called key_swap.
 
+config RICHTAP_FOR_PMIC_ENABLE
+	bool "Decide whether need enable AAC moto driver"
+	depends on INPUT_QCOM_HV_HAPTICS
+	help
+	  Say Y here if your device support AAC RichTap moto device.
+
 endif
