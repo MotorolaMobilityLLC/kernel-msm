@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"%s: " fmt, __func__
@@ -142,6 +143,11 @@ static void sde_rot_fence_release(struct dma_fence *fence)
 {
 	struct sde_rot_fence *f = to_sde_rot_fence(fence);
 	unsigned long flags;
+
+	if (fence->ops->get_driver_name != &sde_rot_fence_get_driver_name) {
+		pr_debug("invalid parameters\n");
+		return;
+	}
 
 	spin_lock_irqsave(fence->lock, flags);
 	if (!list_empty(&f->fence_list))
