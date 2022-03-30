@@ -1871,6 +1871,12 @@ config CAMERA_VOLTAGE_COMPATIBLE
 	help
 	Enable it only for produts that need voltage compatible.
 
+config CAM_SENSOR_PROBE_RETRY
+        bool "For sensor probe fail"
+        default n
+        help
+        Add retries for sensor id matching.
+
 config SND_PRI_MI2S_AW882XX
 	bool "For aw882xx smartpa pri mi2s config"
 	default n
