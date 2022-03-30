@@ -1897,9 +1897,3 @@ config CAMERA_DISABLE_VSYNC_IRQ
 	default n
 	help
 	Enable it to disable cam vsync irq.
-
-config CAMERA_CCI_ADDR_SWITCH
-	bool "For cam switch i2c address"
-	default n
-	help
-Enable it to switch i2c address.
