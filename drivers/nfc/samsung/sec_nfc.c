@@ -810,13 +810,20 @@ static const struct file_operations sec_nfc_fops = {
 static int sec_nfc_suspend(struct device *dev)
 {
     struct sec_nfc_info *info = SEC_NFC_GET_INFO(dev);
+    struct sec_nfc_platform_data *pdata = info->pdata;
     int ret = 0;
+    int value = 0;
 
     mutex_lock(&info->mutex);
 
     if (info->mode == SEC_NFC_MODE_BOOTLOADER)
         ret = -EPERM;
 
+    value = gpio_get_value(pdata->wake);
+    if(value > 0){
+	pr_info("%s: hal is still active, block suspend.\n", __func__);
+	ret = -EPERM;
+    }
     mutex_unlock(&info->mutex);
 
     return ret;
