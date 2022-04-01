@@ -2188,7 +2188,7 @@ long kgsl_ioctl_gpu_aux_command(struct kgsl_device_private *dev_priv,
 	cmdlist = u64_to_user_ptr(param->cmdlist);
 
 	/* Create a draw object for KGSL_GPU_AUX_COMMAND_TIMELINE */
-	if (kgsl_copy_struct_from_user(&generic, sizeof(generic),
+	if (copy_struct_from_user(&generic, sizeof(generic),
 		cmdlist, param->cmdsize)) {
 		ret = -EFAULT;
 		goto err;
