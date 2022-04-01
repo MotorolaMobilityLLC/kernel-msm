@@ -52,6 +52,7 @@ static ssize_t synx_table_read(struct file *file,
 	int i = 0;
 	int state = SYNX_STATE_INVALID;
 	ssize_t len = 0;
+	s32 index;
 
 	dbuf = kzalloc(MAX_DBG_BUF_SIZE, GFP_KERNEL);
 	if (!dbuf)
@@ -68,10 +69,14 @@ static ssize_t synx_table_read(struct file *file,
 	for (i = 0; i < SYNX_MAX_OBJS; i++) {
 		row = &dev->synx_table[i];
 
-		if (!row->index)
+		index = row->index;
+		mutex_lock(&dev->row_locks[index]);
+		if (!row->index) {
+			mutex_unlock(&dev->row_locks[index]);
+			pr_warn("synx obj at %d invalid\n", index);
 			continue;
+		}
 
-		mutex_lock(&dev->row_locks[row->index]);
 		if (columns & NAME_COLUMN)
 			cur += scnprintf(cur, end - cur,
 				"|%10s|", row->name);
@@ -91,7 +96,7 @@ static ssize_t synx_table_read(struct file *file,
 				cur,
 				end);
 		}
-		mutex_unlock(&dev->row_locks[row->index]);
+		mutex_unlock(&dev->row_locks[index]);
 		cur += scnprintf(cur, end - cur, "\n");
 	}
 	if (columns & ERROR_CODES && !list_empty(
