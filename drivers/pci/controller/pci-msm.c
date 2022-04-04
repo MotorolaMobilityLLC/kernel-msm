@@ -926,6 +926,7 @@ struct pcie_i2c_ctrl {
 	u32 reg_update_count;
 	u32 version_reg;
 	bool force_i2c_setting;
+	bool ep_reset_postlinkup;
 	struct pcie_i2c_reg_update *switch_reg_update;
 	u32 switch_reg_update_count;
 	/* client specific callbacks */
@@ -5540,7 +5541,8 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 		msleep(20);
 	}
 	/* bring eps out of reset */
-	if (dev->i2c_ctrl.client && dev->i2c_ctrl.client_i2c_reset) {
+	if (dev->i2c_ctrl.client && dev->i2c_ctrl.client_i2c_reset
+			 && !dev->i2c_ctrl.ep_reset_postlinkup) {
 		dev->i2c_ctrl.client_i2c_reset(&dev->i2c_ctrl, false);
 		msleep(100);
 	}
@@ -5598,6 +5600,12 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 		msm_pcie_config_link_pm(dev, true);
 	}
 
+	/* Bring pine EP out of reset*/
+	if (dev->i2c_ctrl.client && dev->i2c_ctrl.client_i2c_reset
+			 && dev->i2c_ctrl.ep_reset_postlinkup) {
+		dev->i2c_ctrl.client_i2c_reset(&dev->i2c_ctrl, false);
+		msleep(100);
+	}
 	goto out;
 
 link_fail:
@@ -7437,6 +7445,8 @@ static int msm_pcie_i2c_ctrl_init(struct msm_pcie_dev_t *pcie_dev)
 				 &i2c_ctrl->version_reg);
 	i2c_ctrl->force_i2c_setting = of_property_read_bool(i2c_client_node,
 				 "force-i2c-setting");
+	i2c_ctrl->ep_reset_postlinkup = of_property_read_bool(i2c_client_node,
+				 "ep_reset_postlinkup");
 	of_get_property(i2c_client_node, "dump-regs", &size);
 
 	if (size) {
