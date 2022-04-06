@@ -17,7 +17,7 @@
 #define UAC1_DEF_PCHMASK	0x3
 #define UAC1_DEF_PSRATE		48000
 #define UAC1_DEF_PSSIZE		2
-#define UAC1_DEF_REQ_NUM	2
+#define UAC1_DEF_REQ_NUM	32
 
 
 struct f_uac1_opts {
