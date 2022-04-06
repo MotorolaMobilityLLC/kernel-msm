@@ -88,7 +88,7 @@ struct eusb2_repeater {
 
 	struct gpio_desc		*reset_gpiod;
 	u32				*param_override_seq;
-	u8				param_override_seq_cnt;
+	u32				param_override_seq_cnt;
 };
 
 static const struct regmap_config eusb2_i2c_regmap = {
@@ -129,13 +129,13 @@ static int eusb2_i2c_write_reg(struct eusb2_repeater *er, u8 reg, u8 val)
 	return 0;
 }
 
-static void eusb2_repeater_update_seq(struct eusb2_repeater *er, u32 *seq, u8 cnt)
+static void eusb2_repeater_update_seq(struct eusb2_repeater *er, u32 *seq, u32 cnt)
 {
 	int i;
 
-	dev_dbg(er->ur.dev, "param override seq count:%d\n", cnt);
+	dev_info(er->ur.dev, "param override seq count:%d\n", cnt);
 	for (i = 0; i < cnt; i = i+2) {
-		dev_dbg(er->ur.dev, "write 0x%02x to 0x%02x\n", seq[i], seq[i+1]);
+		dev_info(er->ur.dev, "write 0x%02x to 0x%02x\n", seq[i], seq[i+1]);
 		eusb2_i2c_write_reg(er, seq[i+1], seq[i]);
 	}
 }
