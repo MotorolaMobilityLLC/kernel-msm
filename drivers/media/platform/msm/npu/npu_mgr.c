@@ -1845,6 +1845,13 @@ static int app_msg_proc(struct npu_host_ctx *host_ctx, uint32_t *msg)
 			break;
 		}
 
+		if (prop_rsp_pkt->header.size <
+			sizeof(struct ipc_msg_header_pkt)) {
+			NPU_ERR("Invalid rsp pkt size %d\n",
+				prop_rsp_pkt->header.size);
+			break;
+		}
+
 		misc_cmd->ret_status = prop_rsp_pkt->header.status;
 
 		if (prop_rsp_pkt->num_params > 0) {
