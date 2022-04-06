@@ -116,8 +116,8 @@ struct eusb2_repeater {
 
 	u32			*param_override_seq;
 	u32			*host_param_override_seq;
-	u8			param_override_seq_cnt;
-	u8			host_param_override_seq_cnt;
+	u32			param_override_seq_cnt;
+	u32			host_param_override_seq_cnt;
 };
 
 /* Perform one or more register read */
@@ -170,13 +170,13 @@ static int eusb2_repeater_masked_write(struct eusb2_repeater *er,
 }
 
 static void eusb2_repeater_update_seq(struct eusb2_repeater *er,
-						u32 *seq, u8 cnt)
+						u32 *seq, u32 cnt)
 {
 	int i;
 
-	dev_dbg(er->ur.dev, "param override seq count:%d\n", cnt);
+	dev_info(er->ur.dev, "param override seq count:%d\n", cnt);
 	for (i = 0; i < cnt; i = i+2) {
-		dev_dbg(er->ur.dev, "write 0x%02x to 0x%02x\n",
+		dev_info(er->ur.dev, "write 0x%02x to 0x%02x\n",
 						seq[i], seq[i+1]);
 		eusb2_repeater_reg_write(er, seq[i+1], seq[i]);
 	}
@@ -457,7 +457,7 @@ static int eusb2_repeater_powerdown(struct usb_repeater *ur)
 }
 
 static int eusb2_repeater_read_overrides(struct device *dev, const char *prop,
-		u32 **seq, u8 *seq_cnt)
+		u32 **seq, u32 *seq_cnt)
 {
 	int num_elem, ret;
 
