@@ -494,10 +494,10 @@ static int fsa4480_probe(struct i2c_client *i2c,
 			goto err_data;
 		}
 
-		fsa_priv->iio_ch = iio_channel_get(fsa_priv->dev, "typec_mode");
+		fsa_priv->iio_ch = iio_channel_get(fsa_priv->dev, "typec_accessory_mode");
 		if (!fsa_priv->iio_ch) {
 			dev_err(fsa_priv->dev,
-				"%s: iio_channel_get failed for typec_mode\n",
+				"%s: iio_channel_get failed for typec_accessory_mode\n",
 				__func__);
 			goto err_supply;
 		}
