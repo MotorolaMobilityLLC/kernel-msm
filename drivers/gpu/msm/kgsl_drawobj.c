@@ -45,8 +45,7 @@ static void syncobj_destroy_object(struct kgsl_drawobj *drawobj)
 		struct kgsl_drawobj_sync_event *event = &syncobj->synclist[i];
 
 		if (event->type == KGSL_CMD_SYNCPOINT_TYPE_FENCE) {
-			struct event_fence_info *priv = event ?
-					event->priv : NULL;
+			struct event_fence_info *priv = event->priv;
 
 			if (priv) {
 				kfree(priv->fences);
@@ -113,8 +112,7 @@ void kgsl_dump_syncpoints(struct kgsl_device *device,
 		}
 		case KGSL_CMD_SYNCPOINT_TYPE_FENCE: {
 			int j;
-			struct event_fence_info *info = event ?
-					event->priv : NULL;
+			struct event_fence_info *info = event->priv;
 
 			for (j = 0; info && j < info->num_fences; j++)
 				dev_err(device->dev, "[%d]  fence: %s\n",
@@ -180,8 +178,7 @@ static void syncobj_timer(struct timer_list *t)
 			break;
 		case KGSL_CMD_SYNCPOINT_TYPE_FENCE: {
 			int j;
-			struct event_fence_info *info = event ?
-					event->priv : NULL;
+			struct event_fence_info *info = event->priv;
 
 			for (j = 0; info && j < info->num_fences; j++)
 				dev_err(device->dev, "       [%u] FENCE %s\n",
@@ -421,7 +418,7 @@ EXPORT_SYMBOL(kgsl_drawobj_destroy);
 static bool drawobj_sync_fence_func(void *priv)
 {
 	struct kgsl_drawobj_sync_event *event = priv;
-	struct event_fence_info *info = event ? event->priv : NULL;
+	struct event_fence_info *info = event->priv;
 	int i;
 
 	for (i = 0; info && i < info->num_fences; i++)
