@@ -1892,6 +1892,12 @@ config CAM_SENSOR_PROBE_RETRY
         help
         Add retries for sensor id matching.
 
+config CAMERA_DISABLE_VSYNC_IRQ
+	bool "For cam disable vsync irq"
+	default n
+	help
+	Enable it to disable cam vsync irq.
+
 config SND_PRI_MI2S_AW882XX
 	bool "For aw882xx smartpa pri mi2s config"
 	default n
