@@ -43,6 +43,9 @@
 #define AX_ACCESS_PHY				0x02
 #define AX_ACCESS_EEPROM			0x04
 #define AX_ACCESS_EFUS				0x05
+#define AX_RELOAD_EEPROM_EFUSE		0x06
+#define AX_WRITE_EFUSE_EN		0x09
+#define AX_WRITE_EFUSE_DIS		0x0A
 #define AX_PAUSE_WATERLVL_HIGH			0x54
 #define AX_PAUSE_WATERLVL_LOW			0x55
 
@@ -195,6 +198,29 @@ static const struct {
 	{7, 0xae, 7,	0x18, 0xff},
 	{7, 0xcc, 0x4c, 0x18, 8},
 };
+
+/****************Start******************/
+struct AX_IOCTL_COMMAND {
+	unsigned short	ioctl_cmd;
+	unsigned char	sig[16];
+	unsigned char	type;
+	unsigned short *buf;
+	unsigned short size;
+	unsigned char delay;
+};
+
+/* NAMING CONSTANT DECLARATIONS */
+#define AX8817XX_SIGNATURE	"AX88179_178A"
+#define AX8817XX_DRV_NAME	"AX88179_178A"
+
+/* ioctl Command Definition */
+#define AX_PRIVATE		SIOCDEVPRIVATE
+
+/* private Command Definition */
+#define AX_SIGNATURE			0
+#define AX_READ_EEPROM			1
+#define AX_WRITE_EEPROM			2
+/****************end******************/
 
 static int __ax88179_read_cmd(struct usbnet *dev, u8 cmd, u16 value, u16 index,
 			      u16 size, void *data, int in_pm)
@@ -820,10 +846,252 @@ static int ax88179_set_eee(struct net_device *net, struct ethtool_eee *edata)
 	return ret;
 }
 
+/****************Start******************/
+int ioctl_signature(struct usbnet *dev, struct AX_IOCTL_COMMAND *info)
+{
+	strlcpy(info->sig, AX8817XX_SIGNATURE, strlen(AX8817XX_SIGNATURE));
+	return 0;
+}
+
+int ioctl_read_eeprom(struct usbnet *dev, struct AX_IOCTL_COMMAND *info)
+{
+	u8 i;
+	u16 tmp;
+	u8 value;
+	unsigned short *buf;
+	int ret = -1;
+
+	// check userspace buf
+	if (info->buf) {
+		buf = kmalloc_array(info->size, sizeof(unsigned short),
+				    GFP_KERNEL);
+		if (!buf)
+			return -ENOMEM;
+	} else {
+		netdev_info(dev->net, "The EEPROM buffer cannot be NULL.");
+		return -EINVAL;
+	}
+
+	if (info->type == 0) {
+		for (i = 0; i < info->size; i++) {
+			ret = ax88179_write_cmd(dev, AX_ACCESS_MAC,
+						AX_SROM_ADDR, 1, 1, &i);
+			if (ret < 0) {
+				kfree(buf);
+				return -EINVAL;
+			}
+
+			value = EEP_RD;
+			ret = ax88179_write_cmd(dev, AX_ACCESS_MAC,
+						AX_SROM_CMD, 1, 1, &value);
+			if (ret < 0) {
+				kfree(buf);
+				return -EINVAL;
+			}
+
+			do {
+				ax88179_read_cmd(dev, AX_ACCESS_MAC,
+						 AX_SROM_CMD, 1, 1, &value);
+			} while (value & EEP_BUSY);
+
+			ret = ax88179_read_cmd(dev, AX_ACCESS_MAC,
+					       AX_SROM_DATA_LOW, 2, 2, &tmp);
+			if (ret < 0) {
+				kfree(buf);
+				return -EINVAL;
+			}
+
+			*(buf + i) = be16_to_cpu(tmp);
+
+			if (i == (info->size - 1))
+				break;
+		}
+	} else { //eFuse
+		for (i = 0; i < info->size; i++) {
+			ret = ax88179_read_cmd(dev, AX_ACCESS_EFUS, i, 1, 2,
+					       &tmp);
+			if (ret < 0) {
+				kfree(buf);
+				return -EINVAL;
+			}
+			*(buf + i) = be16_to_cpu(tmp);
+
+			if (i == (info->size - 1))
+				break;
+		}
+	}
+
+	if (copy_to_user(info->buf, buf, sizeof(unsigned short) * info->size)) {
+		kfree(buf);
+		return -EFAULT;
+	}
+
+	kfree(buf);
+	return 0;
+}
+
+int ioctl_write_eeprom(struct usbnet *dev, struct AX_IOCTL_COMMAND *info)
+{
+	int i;
+	int ret = -1;
+	u16 data, csum = 0;
+	unsigned short *buf;
+
+	// check userspace buf
+	if (info->buf) {
+		buf = kmalloc_array(info->size, sizeof(unsigned short),
+				    GFP_KERNEL);
+		if (!buf)
+			return -ENOMEM;
+
+		if (copy_from_user(buf, info->buf, sizeof(unsigned short)
+				* info->size)) {
+			kfree(buf);
+			return -EFAULT;
+		}
+	} else {
+		netdev_err(dev->net, "The EEPROM buffer cannot be NULL. \r\n");
+		return -EINVAL;
+	}
+
+	if (info->type == 0) { //EEPROM
+		if ((*(buf) >> 8) & 0x01) {
+			netdev_err(dev->net, "Cannot set to muliticast MAC.");
+			netdev_err(dev->net, "bit0 of ID0 cannot be set to 1");
+			kfree(buf);
+			return -EINVAL;
+		}
+
+		// checksum
+		csum = (*(buf + 3) & 0xff) + ((*(buf + 3) >> 8) & 0xff) +
+			(*(buf + 4) & 0xff) + ((*(buf + 4) >> 8) & 0xff);
+		csum = 0xff - ((csum >> 8) + (csum & 0xff));
+		data = ((*(buf + 5)) & 0xff) | (csum << 8);
+		*(buf + 5) = data;
+
+		for (i = 0; i < info->size; i++) {
+			data = cpu_to_be16(*(buf + i));
+			ret = ax88179_write_cmd(dev, AX_ACCESS_EEPROM, i, 1, 2,
+						&data);
+			if (ret < 0) {
+				kfree(buf);
+				return -EINVAL;
+			}
+
+			msleep(info->delay);
+		}
+	} else if (info->type == 1) { //eFuse
+		if ((*(buf) >> 8) & 0x01) {
+			netdev_err(dev->net, "Cannot set to muliticast MAC.");
+			netdev_err(dev->net, "bit0 of ID0 cannot be set to 1");
+			kfree(buf);
+			return -EINVAL;
+		}
+
+		// checksum
+		for (i = 0; i < info->size; i++)
+			csum += (*(buf + i) & 0xff) + ((*(buf + i) >> 8)
+				 & 0xff);
+
+		csum -= ((*(buf + 0x19) >> 8) & 0xff);
+		while (csum > 255)
+			csum = (csum & 0x00FF) + ((csum >> 8) & 0x00FF);
+		csum = 0xFF - csum;
+
+		data = ((*(buf + 0x19)) & 0xff) | (csum << 8);
+		*(buf + 0x19) = data;
+
+		ret = ax88179_write_cmd(dev, AX_WRITE_EFUSE_EN, 0, 0, 0, NULL);
+		if (ret < 0) {
+			kfree(buf);
+			return -EINVAL;
+		}
+
+		msleep(info->delay);
+
+		for (i = 0; i < info->size; i++) {
+			data = cpu_to_be16(*(buf + i));
+			ret = ax88179_write_cmd(dev, AX_ACCESS_EFUS, i, 1, 2,
+						&data);
+			if (ret < 0) {
+				kfree(buf);
+				return -EINVAL;
+			}
+
+			msleep(info->delay);
+		}
+
+		ret = ax88179_write_cmd(dev, AX_WRITE_EFUSE_DIS, 0, 0, 0,
+					NULL);
+		if (ret < 0) {
+			kfree(buf);
+			return -EINVAL;
+		}
+
+		msleep(info->delay);
+	} else if (info->type == 2) { //check efuse existed or not
+		//printk(KERN_INFO "CHECK efuse empty or not?");
+		ret = ax88179_read_cmd(dev, AX_ACCESS_EFUS, 0, 1, 2, &data);
+		if (ret < 0) {
+			kfree(buf);
+			return -EINVAL;
+		}
+
+		if (data == 0xFFFF)
+			info->type = 0;
+		else
+			info->type = 1;
+	} else {
+		kfree(buf);
+		return -EINVAL;
+	}
+
+	kfree(buf);
+	return 0;
+}
+
+typedef int (*IOCTRL_TABLE)(struct usbnet *dev, struct AX_IOCTL_COMMAND *info);
+
+IOCTRL_TABLE ioctl_tbl[] = {
+	ioctl_signature,        //AX_SIGNATURE
+	ioctl_read_eeprom,
+	ioctl_write_eeprom,
+};
+
+/****************end******************/
+
 static int ax88179_ioctl(struct net_device *net, struct ifreq *rq, int cmd)
 {
 	struct usbnet *dev = netdev_priv(net);
-	return generic_mii_ioctl(&dev->mii, if_mii(rq), cmd, NULL);
+	struct AX_IOCTL_COMMAND info;
+	struct AX_IOCTL_COMMAND *uptr = (struct AX_IOCTL_COMMAND *)rq->ifr_data;
+	int private_cmd;
+	int ret = -1;
+
+	switch (cmd) {
+	case AX_PRIVATE:
+		ret = copy_from_user(&info, uptr, sizeof(struct
+					AX_IOCTL_COMMAND));
+		if (ret < 0)
+			return -EFAULT;
+
+		private_cmd = info.ioctl_cmd;
+		if ((*ioctl_tbl[private_cmd])(dev, &info) < 0) {
+			netdev_err(net, "ioctl_tbl, return -EFAULT");
+			return -EFAULT;
+		}
+
+		ret = copy_to_user(uptr, &info, sizeof(struct
+				   AX_IOCTL_COMMAND));
+		if (ret < 0)
+			return -EFAULT;
+
+		break;
+
+	default:
+		return generic_mii_ioctl(&dev->mii, if_mii(rq), cmd, NULL);
+	}
+	return 0;
 }
 
 static const struct ethtool_ops ax88179_ethtool_ops = {
