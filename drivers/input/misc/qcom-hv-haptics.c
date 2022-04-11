@@ -2103,6 +2103,9 @@ static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 		goto unlock;
 
 	/* Always enable LRA auto resonance for DIRECT_PLAY */
+	rc = haptics_masked_write(chip, chip->cfg_addr_base,
+			HAP_CFG_AUTORES_CFG_REG, AUTORES_EN_DLY_MASK,
+			AUTORES_EN_DLY_6_CYCLES << AUTORES_EN_DLY_SHIFT);
 	rc = haptics_enable_autores(chip, !chip->config.is_erm);
 	if (rc < 0)
 		goto unlock;
