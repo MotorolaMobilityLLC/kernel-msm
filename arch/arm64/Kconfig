@@ -1897,3 +1897,9 @@ config CAMERA_DISABLE_VSYNC_IRQ
 	default n
 	help
 	Enable it to disable cam vsync irq.
+
+config CAM_SENSOR_PROBE_RETRY
+        bool "For sensor probe fail"
+        default n
+        help
+        Add retries for sensor id matching
