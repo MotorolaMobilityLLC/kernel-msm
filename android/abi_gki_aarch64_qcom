@@ -1732,6 +1732,7 @@
   param_get_int
   param_get_string
   param_get_ullong
+  param_get_uint
   param_ops_bool
   param_ops_byte
   param_ops_charp
@@ -1744,6 +1745,7 @@
   param_set_bool
   param_set_copystring
   param_set_int
+  param_set_uint
   passthru_features_check
   path_get
   path_put
@@ -2994,6 +2996,7 @@
   __wake_up_locked
   wake_up_process
   wakeup_source_add
+  wakeup_source_create
   wakeup_source_remove
   wakeup_source_register
   wakeup_source_unregister
