@@ -108,3 +108,6 @@ config MMC_CRYPTO
 	  Enabling this makes it possible for the kernel to use the crypto
 	  capabilities of the MMC device (if present) to perform crypto
 	  operations on data being transferred to/from the device.
+config SD_INSERT_DEBOUNCE_DELAY_LONGER
+       bool "add the debounce time when sdcard insert"
+       default n
