@@ -1190,6 +1190,7 @@
   in_group_p
   __init_rwsem
   init_srcu_struct
+  init_task
   init_timer_key
   init_uts_ns
   init_wait_entry
@@ -2420,6 +2421,7 @@
   sock_diag_save_cookie
   sock_diag_unregister
   sock_efree
+  sock_from_file
   sock_gettstamp
   sock_i_ino
   sock_init_data
