@@ -2421,7 +2421,6 @@
   sock_diag_save_cookie
   sock_diag_unregister
   sock_efree
-  sock_from_file
   sock_gettstamp
   sock_i_ino
   sock_init_data
