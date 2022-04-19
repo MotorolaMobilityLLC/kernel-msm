@@ -1903,3 +1903,9 @@ config CAM_SENSOR_PROBE_RETRY
         default n
         help
         Add retries for sensor id matching
+
+config CAMERA_CCI_ADDR_SWITCH
+	bool "For cam switch i2c address"
+	default n
+	help
+	Enable it to switch i2c address.
