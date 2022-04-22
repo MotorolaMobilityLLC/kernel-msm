@@ -5690,18 +5690,17 @@ static void richtap_erase_work_proc(struct work_struct *work)
 {
 	struct haptics_chip *chip  = container_of(work,
 			struct haptics_chip, richtap_erase_work);
-	int rc;
+
 	u8 count = 5;
 	u32 fill;
 
 	while (count--) {
-		rc = haptics_get_fifo_fill_status(chip, &fill);
-		if (rc < 0)
+		haptics_get_fifo_fill_status(chip, &fill);
+		if ((atomic_read(&chip->play.fifo_status.is_busy) == 0) ||
+				(fill > MAX_FIFO_SAMPLES(chip)))
 			return;
-		if (fill == 0)
+		if (fill < 24)
 			break;
-		if (atomic_read(&chip->play.fifo_status.is_busy) == 0)
-			return;
 		fill /= 24; //24k play_rate_hz
 		fill *= 1000;
 		usleep_range((fill + 25), (fill + 30));
@@ -5785,6 +5784,10 @@ static int richtap_load_prebake(struct haptics_chip *chip, u8 *data, u32 length)
 	play->effect = chip->custom_effect;
 	play->brake = NULL;
 
+	rc = haptics_enable_autores(chip, false);
+	if (rc < 0)
+		goto cleanup;
+
 	//Toggle HAPTICS_EN for a clear start point of FIFO playing
 	rc = haptics_toggle_module_enable(chip);
 	if (rc < 0)
@@ -5826,6 +5829,7 @@ static void richtap_work_proc(struct work_struct *work)
 		dev_err(chip->dev, "first length invalid %d %d ",
 		chip->start_buf->status, chip->start_buf->length);
 		schedule_work(&chip->richtap_erase_work);
+		return;
 	}
 
 	chip->pos = 0;
