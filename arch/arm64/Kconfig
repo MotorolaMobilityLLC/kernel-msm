@@ -216,6 +216,12 @@ config ARCH_MMAP_RND_BITS_MAX
        default 16 if ARM64_16K_PAGES
        default 18
 
+config DEVON_CAMERA_FLASH
+    bool "For devon flashlight"
+    default n
+    help
+    Add for fix up devon flashlight brightness to low
+
 config ARCH_MMAP_RND_COMPAT_BITS_MIN
        default 7 if ARM64_64K_PAGES
        default 9 if ARM64_16K_PAGES
