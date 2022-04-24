@@ -549,6 +549,7 @@ struct haptics_reg_info {
 
 int haptic_gpio;
 u32 long_gain_reduced;
+static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude);
 static inline int get_max_fifo_samples(struct haptics_chip *chip)
 {
 	int val = 0;
@@ -1427,6 +1428,7 @@ static int haptics_wait_hboost_ready(struct haptics_chip *chip)
 
 	if (i == HBOOST_WAIT_READY_COUNT) {
 		dev_err(chip->dev, "hboost is not ready for haptics play\n");
+		haptics_load_constant_effect(chip, 255);
 		return -EBUSY;
 	}
 
