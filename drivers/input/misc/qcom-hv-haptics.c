@@ -3328,6 +3328,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 					dev_err(chip->dev, "length error , pos = %d, length = %d\n",
 							chip->pos, chip->current_buf->length);
 					schedule_work(&chip->richtap_erase_work);
+					goto unlock;
 				}
 				if ((chip->current_buf->status == MMAP_BUF_DATA_VALID)
 					&& (num_rt >= num_val)) {
@@ -5642,14 +5643,13 @@ static void richtap_erase_work_proc(struct work_struct *work)
 {
 	struct haptics_chip *chip  = container_of(work,
 			struct haptics_chip, richtap_erase_work);
-
+	int rc;
 	u8 count = 5;
 	u32 fill;
 
 	while (count--) {
-		haptics_get_fifo_fill_status(chip, &fill);
-		if ((atomic_read(&chip->play.fifo_status.is_busy) == 0) ||
-				(fill > MAX_FIFO_SAMPLES(chip)))
+		rc = haptics_get_fifo_fill_status(chip, &fill);
+		if ((rc < 0) || (atomic_read(&chip->play.fifo_status.is_busy) == 0))
 			return;
 		if (fill < 24)
 			break;
@@ -5658,6 +5658,8 @@ static void richtap_erase_work_proc(struct work_struct *work)
 		usleep_range((fill + 25), (fill + 30));
 		dev_dbg(chip->dev, "aac fill time %d\n", fill);
 	}
+
+	dev_dbg(chip->dev, "aac richtap 0424 fill=%d，count = %d\n", fill, count);
 	mutex_lock(&chip->play.lock);
 	richtap_clean_buf(chip, MMAP_BUF_DATA_FINISHED);
 	atomic_set(&chip->play.fifo_status.written_done, 1);
