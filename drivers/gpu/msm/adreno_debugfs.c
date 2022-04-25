@@ -147,8 +147,7 @@ static void sync_event_print(struct seq_file *s,
 		break;
 	}
 	case KGSL_CMD_SYNCPOINT_TYPE_FENCE: {
-		struct event_fence_info *info = sync_event ?
-				sync_event->priv : NULL;
+		struct event_fence_info *info = sync_event->priv;
 		int i;
 
 		for (i = 0; info && i < info->num_fences; i++)
