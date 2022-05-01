@@ -912,4 +912,10 @@ config INPUT_STPMIC1_ONKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called stpmic1_onkey.
 
+config RICHTAP_FOR_PMIC_ENABLE
+	bool "Decide whether need enable AAC moto driver"
+	depends on INPUT_QCOM_HV_HAPTICS
+	help
+	  Say Y here if your device support AAC RichTap moto device.
+
 endif
