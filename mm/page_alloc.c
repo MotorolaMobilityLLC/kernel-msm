@@ -84,6 +84,17 @@
 /* Free Page Internal flags: for internal, non-pcp variants of free_pages(). */
 typedef int __bitwise fpi_t;
 
+static inline struct per_cpu_pages_ext *pcp_to_pcpext(struct per_cpu_pages *pcp)
+{
+	return container_of(pcp, struct per_cpu_pages_ext, pcp);
+}
+
+static inline
+struct per_cpu_pages_ext __percpu *zone_per_cpu_pageset(struct zone *zone)
+{
+	return (struct per_cpu_pages_ext __percpu *)zone->per_cpu_pageset;
+}
+
 /* No special request */
 #define FPI_NONE		((__force fpi_t)0)
 
@@ -164,7 +175,7 @@ static DEFINE_MUTEX(pcp_batch_high_lock);
 	pcpu_task_pin();						\
 	_ret = this_cpu_ptr(ptr);					\
 	spin_lock(&_ret->member);					\
-	_ret;								\
+	&_ret->pcp;							\
 })
 
 #define pcpu_spin_lock_irqsave(type, member, ptr, flags)		\
@@ -173,7 +184,7 @@ static DEFINE_MUTEX(pcp_batch_high_lock);
 	pcpu_task_pin();						\
 	_ret = this_cpu_ptr(ptr);					\
 	spin_lock_irqsave(&_ret->member, flags);			\
-	_ret;								\
+	&_ret->pcp;							\
 })
 
 #define pcpu_spin_trylock_irqsave(type, member, ptr, flags)		\
@@ -185,7 +196,7 @@ static DEFINE_MUTEX(pcp_batch_high_lock);
 		pcpu_task_unpin();					\
 		_ret = NULL;						\
 	}								\
-	_ret;								\
+	_ret ? &_ret->pcp : NULL;					\
 })
 
 #define pcpu_spin_unlock(member, ptr)					\
@@ -200,21 +211,21 @@ static DEFINE_MUTEX(pcp_batch_high_lock);
 	pcpu_task_unpin();						\
 })
 
-/* struct per_cpu_pages specific helpers. */
+/* struct per_cpu_pages_ext specific helpers. */
 #define pcp_spin_lock(ptr)						\
-	pcpu_spin_lock(struct per_cpu_pages, lock, ptr)
+	pcpu_spin_lock(struct per_cpu_pages_ext, lock, ptr)
 
 #define pcp_spin_lock_irqsave(ptr, flags)				\
-	pcpu_spin_lock_irqsave(struct per_cpu_pages, lock, ptr, flags)
+	pcpu_spin_lock_irqsave(struct per_cpu_pages_ext, lock, ptr, flags)
 
 #define pcp_spin_trylock_irqsave(ptr, flags)				\
-	pcpu_spin_trylock_irqsave(struct per_cpu_pages, lock, ptr, flags)
+	pcpu_spin_trylock_irqsave(struct per_cpu_pages_ext, lock, ptr, flags)
 
 #define pcp_spin_unlock(ptr)						\
 	pcpu_spin_unlock(lock, ptr)
 
 #define pcp_spin_unlock_irqrestore(ptr, flags)				\
-	pcpu_spin_unlock_irqrestore(lock, ptr, flags)
+	pcpu_spin_unlock_irqrestore(lock, pcp_to_pcpext(ptr), flags)
 #ifdef CONFIG_USE_PERCPU_NUMA_NODE_ID
 DEFINE_PER_CPU(int, numa_node);
 EXPORT_PER_CPU_SYMBOL(numa_node);
@@ -3270,15 +3281,16 @@ void drain_zone_pages(struct zone *zone, struct per_cpu_pages *pcp)
 	to_drain = min(pcp->count, batch);
 	if (to_drain > 0) {
 		unsigned long flags;
+		struct per_cpu_pages_ext *pcp_ext = pcp_to_pcpext(pcp);
 
 		/*
 		 * free_pcppages_bulk expects IRQs disabled for zone->lock
 		 * so even though pcp->lock is not intended to be IRQ-safe,
 		 * it's needed in this context.
 		 */
-		spin_lock_irqsave(&pcp->lock, flags);
+		spin_lock_irqsave(&pcp_ext->lock, flags);
 		free_pcppages_bulk(zone, to_drain, pcp);
-		spin_unlock_irqrestore(&pcp->lock, flags);
+		spin_unlock_irqrestore(&pcp_ext->lock, flags);
 	}
 }
 #endif
@@ -3289,15 +3301,17 @@ void drain_zone_pages(struct zone *zone, struct per_cpu_pages *pcp)
 static void drain_pages_zone(unsigned int cpu, struct zone *zone)
 {
 	struct per_cpu_pages *pcp;
+	struct per_cpu_pages_ext *pcp_ext;
 
-	pcp = per_cpu_ptr(zone->per_cpu_pageset, cpu);
+	pcp_ext = per_cpu_ptr(zone_per_cpu_pageset(zone), cpu);
+	pcp = &pcp_ext->pcp;
 	if (pcp->count) {
 		unsigned long flags;
 
 		/* See drain_zone_pages on why this is disabling IRQs */
-		spin_lock_irqsave(&pcp->lock, flags);
+		spin_lock_irqsave(&pcp_ext->lock, flags);
 		free_pcppages_bulk(zone, pcp->count, pcp);
-		spin_unlock_irqrestore(&pcp->lock, flags);
+		spin_unlock_irqrestore(&pcp_ext->lock, flags);
 	}
 }
 
@@ -3375,12 +3389,12 @@ static void __drain_all_pages(struct zone *zone, bool force_all_cpus)
 			 */
 			has_pcps = true;
 		} else if (zone) {
-			pcp = per_cpu_ptr(zone->per_cpu_pageset, cpu);
+			pcp = &per_cpu_ptr(zone_per_cpu_pageset(zone), cpu)->pcp;
 			if (pcp->count)
 				has_pcps = true;
 		} else {
 			for_each_populated_zone(z) {
-				pcp = per_cpu_ptr(z->per_cpu_pageset, cpu);
+				pcp = &per_cpu_ptr(zone_per_cpu_pageset(z), cpu)->pcp;
 				if (pcp->count) {
 					has_pcps = true;
 					break;
@@ -3579,7 +3593,7 @@ void free_unref_page(struct page *page, unsigned int order)
 
 	zone = page_zone(page);
 	pcp_trylock_prepare(UP_flags);
-	pcp = pcp_spin_trylock_irqsave(zone->per_cpu_pageset, flags);
+	pcp = pcp_spin_trylock_irqsave(zone_per_cpu_pageset(zone), flags);
 	if (pcp) {
 		free_unref_page_commit(zone, pcp, page, pfn, migratetype, order);
 		pcp_spin_unlock_irqrestore(pcp, flags);
@@ -3636,7 +3650,7 @@ void free_unref_page_list(struct list_head *list)
 				pcp_spin_unlock_irqrestore(pcp, flags);
 
 			locked_zone = zone;
-			pcp = pcp_spin_lock_irqsave(locked_zone->per_cpu_pageset, flags);
+			pcp = pcp_spin_lock_irqsave(zone_per_cpu_pageset(locked_zone), flags);
 		}
 
 		pfn = page_private(page);
@@ -3660,7 +3674,7 @@ void free_unref_page_list(struct list_head *list)
 		if (++batch_count == SWAP_CLUSTER_MAX) {
 			pcp_spin_unlock_irqrestore(pcp, flags);
 			batch_count = 0;
-			pcp = pcp_spin_lock_irqsave(locked_zone->per_cpu_pageset, flags);
+			pcp = pcp_spin_lock_irqsave(zone_per_cpu_pageset(locked_zone), flags);
 		}
 	}
 
@@ -3882,7 +3896,7 @@ static struct page *rmqueue_pcplist(struct zone *preferred_zone,
 	 * trylock will also protect against IRQ reentrancy.
 	 */
 	pcp_trylock_prepare(UP_flags);
-	pcp = pcp_spin_trylock_irqsave(zone->per_cpu_pageset, flags);
+	pcp = pcp_spin_trylock_irqsave(zone_per_cpu_pageset(zone), flags);
 	if (!pcp) {
 		pcp_trylock_finish(UP_flags);
 		return NULL;
@@ -5551,7 +5565,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
 
 	/* Is a parallel drain in progress? */
 	pcp_trylock_prepare(UP_flags);
-	pcp = pcp_spin_trylock_irqsave(zone->per_cpu_pageset, flags);
+	pcp = pcp_spin_trylock_irqsave(zone_per_cpu_pageset(zone), flags);
 	if (!pcp)
 		goto failed_irq;
 
@@ -6174,7 +6188,7 @@ void show_free_areas(unsigned int filter, nodemask_t *nodemask)
 			continue;
 
 		for_each_online_cpu(cpu)
-			free_pcp += per_cpu_ptr(zone->per_cpu_pageset, cpu)->count;
+			free_pcp += per_cpu_ptr(zone_per_cpu_pageset(zone), cpu)->pcp.count;
 	}
 
 	printk("active_anon:%lu inactive_anon:%lu isolated_anon:%lu\n"
@@ -6269,7 +6283,7 @@ void show_free_areas(unsigned int filter, nodemask_t *nodemask)
 
 		free_pcp = 0;
 		for_each_online_cpu(cpu)
-			free_pcp += per_cpu_ptr(zone->per_cpu_pageset, cpu)->count;
+			free_pcp += per_cpu_ptr(zone_per_cpu_pageset(zone), cpu)->pcp.count;
 
 		show_node(zone);
 		printk(KERN_CONT
@@ -6310,7 +6324,7 @@ void show_free_areas(unsigned int filter, nodemask_t *nodemask)
 			K(zone_page_state(zone, NR_MLOCK)),
 			K(zone_page_state(zone, NR_BOUNCE)),
 			K(free_pcp),
-			K(this_cpu_read(zone->per_cpu_pageset->count)),
+			K(this_cpu_read((zone_per_cpu_pageset(zone))->pcp.count)),
 			K(zone_page_state(zone, NR_FREE_CMA_PAGES)));
 		printk("lowmem_reserve[]:");
 		for (i = 0; i < MAX_NR_ZONES; i++)
@@ -6641,7 +6655,7 @@ static void per_cpu_pages_init(struct per_cpu_pages *pcp, struct per_cpu_zonesta
 /* These effectively disable the pcplists in the boot pageset completely */
 #define BOOT_PAGESET_HIGH	0
 #define BOOT_PAGESET_BATCH	1
-static DEFINE_PER_CPU(struct per_cpu_pages, boot_pageset);
+static DEFINE_PER_CPU(struct per_cpu_pages_ext, boot_pageset);
 static DEFINE_PER_CPU(struct per_cpu_zonestat, boot_zonestats);
 static DEFINE_PER_CPU(struct per_cpu_nodestat, boot_nodestats);
 
@@ -6708,7 +6722,7 @@ build_all_zonelists_init(void)
 	 * (a chicken-egg dilemma).
 	 */
 	for_each_possible_cpu(cpu)
-		per_cpu_pages_init(&per_cpu(boot_pageset, cpu), &per_cpu(boot_zonestats, cpu));
+		per_cpu_pages_init(&per_cpu(boot_pageset, cpu).pcp, &per_cpu(boot_zonestats, cpu));
 
 	mminit_verify_zonelist();
 	cpuset_init_current_mems_allowed();
@@ -7168,12 +7182,13 @@ static void pageset_update(struct per_cpu_pages *pcp, unsigned long high,
 
 static void per_cpu_pages_init(struct per_cpu_pages *pcp, struct per_cpu_zonestat *pzstats)
 {
+	struct per_cpu_pages_ext *pcp_ext = pcp_to_pcpext(pcp);
 	int pindex;
 
 	memset(pcp, 0, sizeof(*pcp));
 	memset(pzstats, 0, sizeof(*pzstats));
 
-	spin_lock_init(&pcp->lock);
+	spin_lock_init(&pcp_ext->lock);
 	for (pindex = 0; pindex < NR_PCP_LISTS; pindex++)
 		INIT_LIST_HEAD(&pcp->lists[pindex]);
 
@@ -7195,7 +7210,7 @@ static void __zone_set_pageset_high_and_batch(struct zone *zone, unsigned long h
 	int cpu;
 
 	for_each_possible_cpu(cpu) {
-		pcp = per_cpu_ptr(zone->per_cpu_pageset, cpu);
+		pcp = &per_cpu_ptr(zone_per_cpu_pageset(zone), cpu)->pcp;
 		pageset_update(pcp, high, batch);
 	}
 }
@@ -7229,12 +7244,13 @@ void __meminit setup_zone_pageset(struct zone *zone)
 	if (sizeof(struct per_cpu_zonestat) > 0)
 		zone->per_cpu_zonestats = alloc_percpu(struct per_cpu_zonestat);
 
-	zone->per_cpu_pageset = alloc_percpu(struct per_cpu_pages);
+	zone->per_cpu_pageset = (struct per_cpu_pages __percpu *)
+					alloc_percpu(struct per_cpu_pages_ext);
 	for_each_possible_cpu(cpu) {
 		struct per_cpu_pages *pcp;
 		struct per_cpu_zonestat *pzstats;
 
-		pcp = per_cpu_ptr(zone->per_cpu_pageset, cpu);
+		pcp = &per_cpu_ptr(zone_per_cpu_pageset(zone), cpu)->pcp;
 		pzstats = per_cpu_ptr(zone->per_cpu_zonestats, cpu);
 		per_cpu_pages_init(pcp, pzstats);
 	}
@@ -7281,7 +7297,7 @@ static __meminit void zone_pcp_init(struct zone *zone)
 	 * relies on the ability of the linker to provide the
 	 * offset of a (static) per cpu variable into the per cpu area.
 	 */
-	zone->per_cpu_pageset = &boot_pageset;
+	zone->per_cpu_pageset = (struct per_cpu_pages __percpu *)&boot_pageset;
 	zone->per_cpu_zonestats = &boot_zonestats;
 	zone->pageset_high = BOOT_PAGESET_HIGH;
 	zone->pageset_batch = BOOT_PAGESET_BATCH;
@@ -9614,14 +9630,14 @@ void zone_pcp_reset(struct zone *zone)
 	int cpu;
 	struct per_cpu_zonestat *pzstats;
 
-	if (zone->per_cpu_pageset != &boot_pageset) {
+	if (zone_per_cpu_pageset(zone) != &boot_pageset) {
 		for_each_online_cpu(cpu) {
 			pzstats = per_cpu_ptr(zone->per_cpu_zonestats, cpu);
 			drain_zonestat(zone, pzstats);
 		}
 		free_percpu(zone->per_cpu_pageset);
 		free_percpu(zone->per_cpu_zonestats);
-		zone->per_cpu_pageset = &boot_pageset;
+		zone->per_cpu_pageset = (struct per_cpu_pages __percpu *)&boot_pageset;
 		zone->per_cpu_zonestats = &boot_zonestats;
 	}
 }

@@ -571,7 +571,6 @@ enum zone_watermarks {
 
 /* Fields and list protected by pagesets local_lock in page_alloc.c */
 struct per_cpu_pages {
-	spinlock_t lock;	/* Protects lists field */
 	int count;		/* number of pages in the list */
 	int high;		/* high watermark, emptying needed */
 	int batch;		/* chunk size for buddy add/remove */
@@ -582,6 +581,11 @@ struct per_cpu_pages {
 
 	/* Lists of pages, one per migrate type stored on the pcp-lists */
 	struct list_head lists[NR_PCP_LISTS];
+};
+
+struct per_cpu_pages_ext {
+	spinlock_t lock;	/* Protects pcp.lists field */
+	struct per_cpu_pages pcp;
 };
 
 struct per_cpu_zonestat {
