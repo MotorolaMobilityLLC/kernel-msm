@@ -61,6 +61,13 @@ config EQS_DTB
 	help
 		Only include Motorola EQS device specific DTB.
 
+config FELIX_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Felix Device DTB"
+	help
+		Only include Motorola Felix device specific DTB.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
