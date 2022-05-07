@@ -1884,7 +1884,13 @@ config AW882XX_STEREO_SMARTPA
         bool "aw dual smart pa"
         default n
         help
-        Enable it only for params of smartPA is stored in bin file.
+        Enable it only for dual smart pa.
+
+config AW882XX_MAPSIZE_16K
+        bool "aw afe mapsize 16k"
+        default n
+        help
+        Enable it only for use 16k mapsize.
 
 config CAMERA_FLASH_PWM
         bool "control flash"
