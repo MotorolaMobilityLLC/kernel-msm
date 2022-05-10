@@ -70,6 +70,7 @@
 enum eusb2_repeater_type {
 	TI_REPEATER,
 	NXP_REPEATER,
+	DIODES_REPEATER,
 };
 
 struct i2c_repeater_chip {
@@ -307,6 +308,9 @@ static struct i2c_repeater_chip repeater_chip[] = {
 	},
 	[TI_REPEATER] = {
 		.repeater_type = TI_REPEATER,
+	},
+	[DIODES_REPEATER] = {
+		.repeater_type = DIODES_REPEATER,
 	}
 };
 
@@ -318,6 +322,10 @@ static const struct of_device_id eusb2_repeater_id_table[] = {
 	{
 		.compatible = "ti,eusb2-repeater",
 		.data = &repeater_chip[TI_REPEATER]
+	},
+	{
+		.compatible = "diodes,eusb2-repeater",
+		.data = &repeater_chip[DIODES_REPEATER]
 	},
 	{ },
 };
