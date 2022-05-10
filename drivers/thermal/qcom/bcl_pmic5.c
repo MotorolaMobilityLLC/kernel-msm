@@ -525,7 +525,7 @@ static irqreturn_t bcl_handle_irq(int irq, void *data)
 		bcl_read_vbat_tz(bcl_perph->param[BCL_VBAT_LVL0].tz_dev, &vbat);
 
 	if (irq_status & perph_data->status_bit_idx) {
-		pr_debug(
+		pr_err(
 		"Irq:%d triggered for bcl type:%s. status:%u ibat=%d vbat=%d\n",
 			irq, bcl_int_names[perph_data->type],
 			irq_status, ibat, vbat);
