@@ -259,7 +259,11 @@ static int eusb2_repeater_init(struct usb_repeater *ur)
 	case NXP_REPEATER:
 		eusb2_i2c_read_reg(er, REVISION_ID, &reg_val);
 		break;
+	case DIODES_REPEATER:
+		reg_val = 0;
+		break;
 	default:
+		reg_val = 0;
 		dev_err(er->ur.dev, "Invalid repeater\n");
 	}
 
