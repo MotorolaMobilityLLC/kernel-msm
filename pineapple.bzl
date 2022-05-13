@@ -299,6 +299,7 @@ def define_pineapple():
         "drivers/usb/misc/ehset.ko",
         "drivers/usb/misc/lvstest.ko",
         "kernel/locking/locktorture.ko",
+        "kernel/power/user_sysfs_private.ko",
         "kernel/rcu/rcutorture.ko",
         "kernel/torture.ko",
         "lib/atomic64_test.ko",
