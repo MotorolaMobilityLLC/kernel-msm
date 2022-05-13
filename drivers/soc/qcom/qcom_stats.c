@@ -98,6 +98,9 @@ struct subsystem_data {
 	u32 smem_item;
 	u32 pid;
 	bool not_present;
+#ifdef CONFIG_SUSPEND_DEBUG_MODULE
+	bool debugfs;
+#endif
 };
 
 static struct subsystem_data subsystems[] = {
@@ -735,6 +738,55 @@ int cx_stats_get_ss_vote_info(int ss_count,
 }
 EXPORT_SYMBOL(cx_stats_get_ss_vote_info);
 
+#ifdef CONFIG_SUSPEND_DEBUG_MODULE
+static ssize_t print_supsystem_sleep_stats(int i, struct sleep_stats *stat,
+				const char *name)
+{
+	static uint64_t prev_duration[ARRAY_SIZE(subsystems)];
+	u64 accumulated = stat->accumulated;
+	uint64_t delta_duration;
+	/*
+	 * If a subsystem is in sleep when reading the sleep stats adjust
+	 * the accumulated sleep duration to show actual sleep time.
+	 */
+	if (stat->last_entered_at > stat->last_exited_at)
+		accumulated += arch_timer_read_counter()
+			       - stat->last_entered_at;
+
+	delta_duration = accumulated - prev_duration[i];
+	prev_duration[i] = accumulated;
+	return printk("%s:\tAccumulated Duration:0x%llx, %lu.%03lu\n\n",
+			name, accumulated, delta_duration / 19200000L, delta_duration % 19200000L * 1000 / 19200000L);
+}
+
+ssize_t show_subsystem_sleep_stats(void)
+{
+	ssize_t length = 0;
+	int i = 0;
+	struct subsystem_data *subsystem;
+	struct sleep_stats *stat;
+
+	for (i = 0; i < ARRAY_SIZE(subsystems); i++) {
+		subsystem = &subsystems[i];
+		if (!subsystem->debugfs)
+			continue;
+
+		stat = qcom_smem_get(subsystem->pid, subsystem->smem_item, NULL);
+		if (IS_ERR(stat))
+			continue;
+
+		length += print_supsystem_sleep_stats(i, stat,
+				subsystem->name);
+	}
+
+	return length;
+}
+
+EXPORT_SYMBOL_GPL(show_subsystem_sleep_stats);
+#endif
+
+
+
 static void qcom_print_stats(struct seq_file *s, const struct sleep_stats *stat)
 {
 	u64 accumulated = stat->accumulated;
@@ -996,6 +1048,9 @@ static void qcom_create_subsystem_stat_files(struct dentry *root,
 
 		for (j = 0; j < ARRAY_SIZE(subsystems); j++) {
 			if (!strcmp(subsystems[j].name, name)) {
+#ifdef CONFIG_SUSPEND_DEBUG_MODULE
+				subsystems[j].debugfs = true;
+#endif
 				debugfs_create_file(subsystems[j].name, 0400, root,
 						    (void *)&subsystems[j],
 						    &qcom_subsystem_sleep_stats_fops);
