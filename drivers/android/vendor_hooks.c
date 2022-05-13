@@ -616,3 +616,5 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_copy_page_from_user);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_destroy_inode);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rmqueue);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_filemap_get_folio);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_compaction_begin);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_compaction_end);
