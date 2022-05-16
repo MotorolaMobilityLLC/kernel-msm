@@ -234,13 +234,23 @@ static int wl2868c_regulator_init(struct wl2868c *chip)
 		WL2868C_LDO7_VOUT,
 	};
 
+        unsigned int ldo_regs_fan53870[WL2868C_MAX_REGULATORS] = {
+                 fan53870_LDO1_VOUT,
+                 fan53870_LDO2_VOUT,
+                 fan53870_LDO3_VOUT,
+                 fan53870_LDO4_VOUT,
+                 fan53870_LDO5_VOUT,
+                 fan53870_LDO6_VOUT,
+                 fan53870_LDO7_VOUT,
+	};
+
 	unsigned int initial_voltage[LDO_DEVICE_MAX][WL2868C_MAX_REGULATORS] = {
 		{0x24,//LDO1 1.05V
 		0x5D,//LDO2 1.24V
 		0x80,//LDO3 2.8V
 		0x80,//LDO4 2.8V
 		0x80,//LDO5 2.8V
-		0xA2,//LDO6 3.0V
+		0xBB,//LDO6 3.0V
 		0x30,//LDO7 1.8V
 		},//wl2868c init voltage
 		{0x24,//LDO1 1.05V
@@ -248,7 +258,7 @@ static int wl2868c_regulator_init(struct wl2868c *chip)
 		0x80,//LDO3 2.8V
 		0x80,//LDO4 2.8V
 		0x80,//LDO5 2.8V
-		0xB2,//LDO6 3.0V
+		0xCB,//LDO6 3.0V
 		0x30,//LDO7 1.8V
 		},//fan53870 init voltage
 		{0x24,//LDO1 1.05V
@@ -256,7 +266,7 @@ static int wl2868c_regulator_init(struct wl2868c *chip)
 		0x80,//LDO3 2.8V
 		0x80,//LDO4 2.8V
 		0x80,//LDO5 2.8V
-		0xA0,//LDO6 3.0V
+		0xB4,//LDO6 3.0V
 		0x30,//LDO7 1.8V
 		},//et5907 init voltage
 	};
@@ -326,22 +336,42 @@ static int wl2868c_regulator_init(struct wl2868c *chip)
 		config.regmap      = chip->regmap;
 		config.dev         = chip->dev;
 		config.driver_data = chip;
+		if (0x33 == ldo_chipid)
+		{
+			ret = regmap_bulk_read(chip->regmap, ldo_regs[id], vsel_range, 1);
+			pr_err("wl2868c_regulator_init: LDO%d, ldo_regs=0x%x default value:0x%x", (id+1),ldo_regs[id],vsel_range[0]);
+			if (ret < 0) {
+				dev_err(chip->dev, "Failed to read the ldo register\n");
+				return ret;
+			}
 
-		ret = regmap_bulk_read(chip->regmap, ldo_regs[id], vsel_range, 1);
-		pr_err("wl2868c_regulator_init: LDO%d, ldo_regs=0x%x default value:0x%x", (id+1),ldo_regs[id],vsel_range[0]);
-		if (ret < 0) {
-			dev_err(chip->dev, "Failed to read the ldo register\n");
-			return ret;
+			pr_err("wl2868c_regulator_init: enable_reg0x%x, enable_mask:0x%x", wl2868c_regls_desc[id].enable_reg, wl2868c_regls_desc[id].enable_mask);
+
+			ret = regmap_write(chip->regmap, ldo_regs[id], initial_voltage[ldo_driver_id][id]);
+			if (ret < 0) {
+				dev_err(chip->dev, "Failed to write inital voltage register\n");
+				return ret;
+			}
+			pr_err("wl2868c_regulator_init: ldo_driver_id=%d LDO%d, initial value:0x%x", ldo_driver_id, (id+1), initial_voltage[ldo_driver_id][id]);
 		}
+		else if((0x01 == ldo_chipid) || (0x00 == ldo_chipid))
+		{
+			ret = regmap_bulk_read(chip->regmap, ldo_regs_fan53870[id], vsel_range, 1);
+			pr_err("fan53870_regulator_init: LDO%d, ldo_regs_fan53870=0x%x default value:0x%x", (id+1),ldo_regs_fan53870[id],vsel_range[0]);
+			if (ret < 0) {
+				dev_err(chip->dev, "Failed to read the ldo register\n");
+				return ret;
+			}
 
-		pr_err("wl2868c_regulator_init: enable_reg0x%x, enable_mask:0x%x", wl2868c_regls_desc[id].enable_reg, wl2868c_regls_desc[id].enable_mask);
+			pr_err("fan53870_regulator_init: enable_reg0x%x, enable_mask:0x%x", wl2868c_regls_desc[id].enable_reg, wl2868c_regls_desc[id].enable_mask);
 
-		ret = regmap_write(chip->regmap, ldo_regs[id], initial_voltage[ldo_driver_id][id]);
-		if (ret < 0) {
-			dev_err(chip->dev, "Failed to write inital voltage register\n");
-			return ret;
+			ret = regmap_write(chip->regmap, ldo_regs_fan53870[id], initial_voltage[ldo_driver_id][id]);
+			if (ret < 0) {
+				dev_err(chip->dev, "Failed to write inital voltage register\n");
+				return ret;
+			}
+			pr_err("fan53870_regulator_init: ldo_driver_id=%d LDO%d, initial value:0x%x", ldo_driver_id, (id+1), initial_voltage[ldo_driver_id][id]);
 		}
-		pr_err("wl2868c_regulator_init: ldo_driver_id=%d LDO%d, initial value:0x%x", ldo_driver_id, (id+1), initial_voltage[ldo_driver_id][id]);
 
 		chip->rdev[id] = devm_regulator_register(chip->dev, rdesc, &config);
 		if (IS_ERR(chip->rdev[id])) {
@@ -349,6 +379,7 @@ static int wl2868c_regulator_init(struct wl2868c *chip)
 			dev_err(chip->dev, "Failed to register regulator(%s):%d\n", chip->rdesc[id]->name, ret);
 			return ret;
 		}
+
 	}
 
 	return 0;
