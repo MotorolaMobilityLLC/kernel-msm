@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * RMNET configuration engine
  *
@@ -716,6 +717,36 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL(rmnet_all_flows_enabled);
+
+void rmnet_prepare_ps_bearers(void *port, u8 *num_bearers, u8 *bearer_id)
+{
+	struct rmnet_endpoint *ep;
+	unsigned long bkt;
+	u8 current_num_bearers = 0;
+	u8 number_bearers_left = 0;
+	u8 num_bearers_in_out;
+
+	if (unlikely(!port || !num_bearers))
+		return;
+
+	number_bearers_left = *num_bearers;
+
+	rcu_read_lock();
+	hash_for_each_rcu(((struct rmnet_port *)port)->muxed_ep,
+			  bkt, ep, hlnode) {
+		num_bearers_in_out = number_bearers_left;
+		qmi_rmnet_prepare_ps_bearers(ep->egress_dev,
+					     &num_bearers_in_out,
+					     bearer_id ? bearer_id +
+						current_num_bearers : NULL);
+		current_num_bearers += num_bearers_in_out;
+		number_bearers_left -= num_bearers_in_out;
+	}
+	rcu_read_unlock();
+
+	*num_bearers = current_num_bearers;
+}
+EXPORT_SYMBOL(rmnet_prepare_ps_bearers);
 
 int rmnet_get_powersave_notif(void *port)
 {
