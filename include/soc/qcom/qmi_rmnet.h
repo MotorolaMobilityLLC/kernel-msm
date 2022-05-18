@@ -22,6 +22,8 @@ void qmi_rmnet_qmi_exit(void *qmi_pt, void *port);
 void qmi_rmnet_change_link(struct net_device *dev, void *port, void *tcm_pt);
 void qmi_rmnet_enable_all_flows(struct net_device *dev);
 bool qmi_rmnet_all_flows_enabled(struct net_device *dev);
+void qmi_rmnet_prepare_ps_bearers(struct net_device *dev, u8 *num_bearers,
+				  u8 *bearer_id);
 #else
 static inline void qmi_rmnet_qmi_exit(void *qmi_pt, void *port)
 {
@@ -42,6 +44,14 @@ qmi_rmnet_all_flows_enabled(struct net_device *dev)
 {
 	return true;
 }
+
+static inline void qmi_rmnet_prepare_ps_bearers(struct net_device *dev,
+						u8 *num_bearers, u8 *bearer_id)
+{
+	if (num_bearers)
+		*num_bearers = 0;
+}
+
 #endif
 
 #ifdef CONFIG_QCOM_QMI_DFC

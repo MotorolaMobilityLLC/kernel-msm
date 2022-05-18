@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/dma-fence.h>
@@ -41,7 +42,7 @@ struct dma_fence *kgsl_timelines_to_fence_array(struct kgsl_device *device,
 		struct kgsl_timeline_val val;
 		struct kgsl_timeline *timeline;
 
-		if (kgsl_copy_struct_from_user(&val, sizeof(val),
+		if (copy_struct_from_user(&val, sizeof(val),
 				uptr, usize)) {
 			ret = -EFAULT;
 			goto err;
@@ -489,7 +490,7 @@ long kgsl_ioctl_timeline_signal(struct kgsl_device_private *dev_priv,
 		struct kgsl_timeline *timeline;
 		struct kgsl_timeline_val val;
 
-		if (kgsl_copy_struct_from_user(&val, sizeof(val),
+		if (copy_struct_from_user(&val, sizeof(val),
 			u64_to_user_ptr(timelines), param->timelines_size))
 			return -EFAULT;
 

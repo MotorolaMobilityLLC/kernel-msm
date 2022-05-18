@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #undef TRACE_SYSTEM
@@ -301,6 +302,24 @@ TRACE_EVENT(dfc_watchdog,
 
 	TP_printk("mid=%u bid=%u event=%u",
 		__entry->mux_id, __entry->bearer_id, __entry->event)
+);
+
+TRACE_EVENT(dfc_set_powersave_mode,
+
+	TP_PROTO(int enable),
+
+	TP_ARGS(enable),
+
+	TP_STRUCT__entry(
+		__field(int, enable)
+	),
+
+	TP_fast_assign(
+		__entry->enable = enable;
+	),
+
+	TP_printk("set powersave mode to %s",
+		__entry->enable ? "enable" : "disable")
 );
 
 #endif /* _TRACE_DFC_H */

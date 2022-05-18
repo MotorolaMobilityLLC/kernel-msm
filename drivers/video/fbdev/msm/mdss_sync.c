@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015-2018, 2020, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #define pr_fmt(fmt)	"%s: " fmt, __func__
 
@@ -121,6 +122,13 @@ static void mdss_fence_release(struct dma_fence *fence)
 	struct mdss_timeline *tl = to_mdss_timeline(fence);
 
 	pr_debug("%s for fence %s\n", __func__, f->name);
+
+	if (!fence || (fence->ops->get_driver_name !=
+			&mdss_fence_get_driver_name)) {
+		pr_debug("invalid parameters\n");
+		return;
+	}
+
 	spin_lock(&tl->list_lock);
 	if (!list_empty(&f->fence_list))
 		list_del(&f->fence_list);
@@ -412,7 +420,10 @@ int mdss_wait_sync_fence(struct mdss_fence *fence,
  */
 struct mdss_fence *mdss_get_fd_sync_fence(int fd)
 {
-	return (struct mdss_fence *) sync_file_get_fence(fd);
+	struct dma_fence *fence = NULL;
+
+	fence = sync_file_get_fence(fd);
+	return to_mdss_fence(fence);
 }
 
 /*
@@ -455,10 +466,17 @@ int mdss_get_sync_fence_fd(struct mdss_fence *fence)
  */
 const char *mdss_get_sync_fence_name(struct mdss_fence *fence)
 {
+	struct dma_fence *input_fence = NULL;
+
 	if (!fence) {
 		pr_err("invalid parameters\n");
 		return NULL;
 	}
+
+	input_fence = (struct dma_fence *) &fence->base;
+
+	if (input_fence->ops->get_driver_name != &mdss_fence_get_driver_name)
+		return input_fence->ops->get_driver_name(input_fence);
 
 	return fence->name;
 }
