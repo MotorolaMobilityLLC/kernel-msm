@@ -74,23 +74,6 @@ void end_swap_bio_write(struct bio *bio)
 	bio_put(bio);
 }
 
-/* Moto lulei1: check sync_io state on swap entry */
-bool swap_slot_has_sync_io(swp_entry_t entry)
-{
-	struct swap_info_struct *sis;
-	struct gendisk *disk;
-
-	sis = swp_swap_info(entry);
-	disk = sis->bdev->bd_disk;
-	if (disk->fops->ioctl) {
-		return disk->fops->ioctl(sis->bdev, 0,
-			SWP_SYNCHRONOUS_IO, swp_offset(entry)) == 1;
-	}
-
-        return (sis->flags & SWP_SYNCHRONOUS_IO) == SWP_SYNCHRONOUS_IO;
-}
-
-
 static void end_swap_bio_read(struct bio *bio)
 {
 	struct page *page = bio_first_page_all(bio);
@@ -326,7 +309,6 @@ int swap_readpage(struct page *page, bool synchronous)
 	blk_qc_t qc;
 	struct gendisk *disk;
 	unsigned long pflags;
-	swp_entry_t entry;
 
 	VM_BUG_ON_PAGE(!PageSwapCache(page) && !synchronous, page);
 	VM_BUG_ON_PAGE(!PageLocked(page), page);
@@ -353,22 +335,6 @@ int swap_readpage(struct page *page, bool synchronous)
 		if (!ret)
 			count_vm_event(PSWPIN);
 		goto out;
-	}
-
-	/* Moto lulei1: Use rw_page for zram page but submit_bio for zram wb page.
-	 * Since reading zram wb page is an async operation, we can not immediately
-	 * free the slot here. So we need to read the page via submit_bio and free
-	 * the slot in end_swap_bio_read. (bio chain will be used to handle bio here
-	 * and bio in zram driver for wb page).
-	 */
-	entry.val = page_private(page);
-	if (swap_slot_has_sync_io(entry)) {
-		ret = bdev_read_page(sis->bdev, swap_page_sector(page), page);
-		if (!ret) {
-
-			count_vm_event(PSWPIN);
-			goto out;
-		}
 	}
 
 	ret = 0;

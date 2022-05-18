@@ -3298,13 +3298,7 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 	 * and can then take the readahead path instead of SWP_SYNCHRONOUS_IO.
 	 */
 	si = swp_swap_info(entry);
-	/* Moto lulei1: check sync_io on each page if we enabled Zram wb.
-	 * Zram writeback will remove SWP_SYNCHRONOUS_IO flag as it has disk
-	 * IO operation on writeback page during swap in.
-	 */
 	if (si->flags & SWP_SYNCHRONOUS_IO && __swap_count(si, entry) == 1)
-		skip_swapcache = true;
-	else if (__swap_count(si, entry) == 1 && swap_slot_has_sync_io(entry))
 		skip_swapcache = true;
 
 	page = lookup_swap_cache(entry, vma, vmf->address);
@@ -3334,7 +3328,7 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 			ret = VM_FAULT_RETRY;
 			goto out;
 		} else {
-			page = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE | __GFP_CMA,
+			page = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE,
 						vmf);
 			swapcache = page;
 		}
