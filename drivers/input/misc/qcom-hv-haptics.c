@@ -5911,9 +5911,10 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 
 		mutex_lock(&chip->play.lock);
 		haptics_stop_fifo_play(chip);
+		atomic_set(&chip->play.fifo_status.written_done, 1);
+		atomic_set(&chip->richtap_mode, false);
 		mutex_unlock(&chip->play.lock);
 		richtap_rc_clk_disable(chip);
-		atomic_set(&chip->richtap_mode, false);
 
 		ret = richtap_load_prebake(chip, &chip->rtp_ptr[4], tmp);
 		if (ret < 0) {
