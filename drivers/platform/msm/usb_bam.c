@@ -866,6 +866,7 @@ error:
 	sps_disconnect(*pipe);
 free_sps_endpoint:
 	sps_free_endpoint(*pipe);
+	*pipe = NULL;
 	return ret;
 }
 
