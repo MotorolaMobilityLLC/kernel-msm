@@ -28,7 +28,8 @@
 #include <linux/workqueue.h>
 #include <linux/of_gpio.h>
 
-
+#undef dev_dbg
+#define dev_dbg dev_info
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
 #include <linux/miscdevice.h>
 #include <linux/mman.h>
