@@ -74,6 +74,7 @@ void end_swap_bio_write(struct bio *bio)
 	bio_put(bio);
 }
 
+
 static void end_swap_bio_read(struct bio *bio)
 {
 	struct page *page = bio_first_page_all(bio);
@@ -334,6 +335,13 @@ int swap_readpage(struct page *page, bool synchronous)
 		ret = mapping->a_ops->readpage(swap_file, page);
 		if (!ret)
 			count_vm_event(PSWPIN);
+		goto out;
+	}
+
+	ret = bdev_read_page(sis->bdev, swap_page_sector(page), page);
+	if (!ret) {
+
+		count_vm_event(PSWPIN);
 		goto out;
 	}
 
