@@ -1898,6 +1898,12 @@ config CAMERA_DISABLE_VSYNC_IRQ
 	help
 	Enable it to disable cam vsync irq.
 
+config CAM_DISTINGUISH_SENSOR_VERSION
+        bool "For distinguish sensor version"
+        default n
+        help
+        Add for distinguish sensor version.
+
 config SND_PRI_MI2S_AW882XX
 	bool "For aw882xx smartpa pri mi2s config"
 	default n
