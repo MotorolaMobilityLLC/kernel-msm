@@ -927,10 +927,8 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	ret = regmap_raw_read(ps5169->regmap, PS5169_CHIPID_REG, &device_id, 2);
 	if (ret != 0) {
 		dev_err(dev, "%s,device id read failed:%d\n", __func__, ret);
-		goto err_detect;
 	} else if (device_id != PS5169_CHIP_ID) {
 		dev_err(dev, "%s,device id unknown: 0x%x\n", __func__, device_id);
-		goto err_detect;
 	}
 	dev_info(dev, "%s,device_id=0x%x\n", __func__, device_id);
 
@@ -960,21 +958,6 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	dev_info(dev, "%s,ps5169 probe done.\n", __func__);
 
 	return 0;
-
-err_detect:
-	dev_err(dev, "%s,probe failed.\n", __func__);
-	if (!IS_ERR_OR_NULL(ps5169->vcc)) {
-		if (regulator_is_enabled(ps5169->vcc))
-			regulator_disable(ps5169->vcc);
-		devm_regulator_put(ps5169->vcc);
-	}
-	if (!IS_ERR_OR_NULL(ps5169->vio)) {
-		if (regulator_is_enabled(ps5169->vio))
-			regulator_disable(ps5169->vio);
-		devm_regulator_put(ps5169->vio);
-	}
-	devm_kfree(&client->dev, ps5169);
-	return ret;
 }
 
 static int ps5169_i2c_remove(struct i2c_client *client)
