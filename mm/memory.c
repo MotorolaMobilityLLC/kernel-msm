@@ -4785,9 +4785,7 @@ int __handle_speculative_fault(struct mm_struct *mm, unsigned long address,
 	}
 
 	mem_cgroup_enter_user_fault();
-	lru_gen_enter_fault(vmf.vma);
 	ret = handle_pte_fault(&vmf);
-	lru_gen_exit_fault();
 	mem_cgroup_exit_user_fault();
 
 	/*
