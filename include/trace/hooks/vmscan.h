@@ -86,6 +86,9 @@ DECLARE_HOOK(android_vh_do_folio_trylock,
 	TP_PROTO(struct folio *folio, struct rw_semaphore *sem,
 		bool *got_lock, bool *skip),
 	TP_ARGS(folio, sem, got_lock, skip));
+DECLARE_HOOK(android_vh_shrink_node_memcgs,
+	TP_PROTO(struct mem_cgroup *memcg, bool *skip),
+	TP_ARGS(memcg, skip));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
