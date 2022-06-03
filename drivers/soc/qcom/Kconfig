@@ -61,6 +61,13 @@ config EQS_DTB
 	help
 		Only include Motorola EQS device specific DTB.
 
+config BRONCO_DTB
+        depends on MMI_DEVICE_DTBS
+        default n
+        bool "Motorola Mobility OneLi Device DTB"
+        help
+                Only include Motorola EQS device specific DTB.
+
 config FELIX_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
