@@ -156,7 +156,7 @@ struct compat_fastrpc_ioctl_dsp_capabilities {
 static int compat_get_fastrpc_ioctl_invoke(
 			struct compat_fastrpc_ioctl_invoke_crc __user *inv32,
 			struct fastrpc_ioctl_invoke_crc __user **inva,
-			unsigned int cmd, unsigned int sc)
+			unsigned int cmd, compat_uint_t sc)
 {
 	compat_uint_t u;
 	compat_size_t s;
@@ -520,14 +520,14 @@ long compat_fastrpc_device_ioctl(struct file *filp, unsigned int cmd,
 	case COMPAT_FASTRPC_IOCTL_INVOKE_ATTRS:
 	case COMPAT_FASTRPC_IOCTL_INVOKE_CRC:
 	{
-		struct compat_fastrpc_ioctl_invoke_crc __user *inv32;
-		struct fastrpc_ioctl_invoke_crc __user *inv;
+		struct compat_fastrpc_ioctl_invoke_crc __user *inv32 = NULL;
+		struct fastrpc_ioctl_invoke_crc __user *inv = NULL;
 
+		inv32 = compat_ptr(arg);
 		err = get_user(sc, &inv32->inv.sc);
 		if (err)
 			return err;
 
-		inv32 = compat_ptr(arg);
 		VERIFY(err, 0 == compat_get_fastrpc_ioctl_invoke(inv32,
 							&inv, cmd, sc));
 		if (err)
