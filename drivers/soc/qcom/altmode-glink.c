@@ -37,7 +37,7 @@
 #define altmode_dbg(fmt, ...) \
 	do { \
 		ipc_log_string(altmode_ipc_log, fmt, ##__VA_ARGS__); \
-		pr_debug(fmt, ##__VA_ARGS__); \
+		pr_info(fmt, ##__VA_ARGS__); \
 	} while (0)
 
 struct usbc_notify_ind_msg {
@@ -408,6 +408,8 @@ struct altmode_client *altmode_register_client(struct device *client_dev,
 
 	list_add(&amclient->c_node, &amdev->client_list);
 	mutex_unlock(&amdev->client_lock);
+	pr_info("success allocated idr for client %s. key=0x%x\n",
+				client_data->name, key);
 
 	if (!atomic_read(&amdev->pan_en_sent))
 		schedule_delayed_work(&amdev->send_pan_en_work,
@@ -444,6 +446,8 @@ int altmode_deregister_client(struct altmode_client *client)
 
 	mutex_lock(&amdev->client_lock);
 	idr_remove(&amdev->client_idr, IDR_KEY(client));
+	pr_info("success removed idr for client %s. key=0x%x\n",
+				client->data.name, IDR_KEY(client));
 
 	list_for_each_entry_safe(pos, tmp, &amdev->client_list, c_node) {
 		if (pos == client)
