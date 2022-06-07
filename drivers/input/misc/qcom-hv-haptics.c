@@ -686,6 +686,7 @@ struct haptics_chip {
 	int16_t pos;
 	atomic_t richtap_mode;
 	bool f0_flag;
+	uint32_t lower_mv;
 #endif //CONFIG_RICHTAP_FOR_PMIC_ENABLE
 	bool				hboost_enabled;
 };
@@ -5951,7 +5952,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 	case RICHTAP_SETTING_GAIN:
 		if (arg > 0x80)
 			arg = 0x80;
-		tmp = 9000;
+		tmp = chip->lower_mv;
 		chip->play.vmax_mv = ((u32)(arg * tmp)) / 128;
 		haptics_set_vmax_mv(chip, chip->play.vmax_mv);
 		break;
@@ -6311,6 +6312,13 @@ static int haptics_probe(struct platform_device *pdev)
 	chip->hboost_nb.notifier_call = haptics_boost_notifier;
 	register_hboost_event_notifier(&chip->hboost_nb);
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
+	rc = of_property_read_u32(chip->dev->of_node, "moto,wf-vmax-mv",
+			&chip->lower_mv);
+	if (rc < 0)
+	{
+		dev_info(chip->dev, "No voltage config,use default value:7500mV\n");
+		chip->lower_mv = 7500;
+	}
 	chip->rtp_ptr = kmalloc(RICHTAP_MMAP_BUF_SIZE * RICHTAP_MMAP_BUF_SUM, GFP_KERNEL);
 	if (chip->rtp_ptr == NULL)
 		goto destroy_ff;
