@@ -94,6 +94,14 @@ config MILANF_DTB
 		Only include MILANF specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config PENANG_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "PENANG DTBs"
+	help
+		Only include PENANG specific DTBs to limit the number that
+		get built during kernel compilation.
+
 config RHODEP_DTB
     depends on ARCH_QCOM
     default n
