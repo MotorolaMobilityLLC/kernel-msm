@@ -653,7 +653,7 @@ struct haptics_chip {
 	struct notifier_block		hboost_nb;
 	struct delayed_work		vibrate_work;
 	int				fifo_empty_irq;
-	int             		haptic_context_gpio;
+	int				haptic_context_gpio;
 	u32				long_gain_reduced;
 	u32				hpwr_voltage_mv;
 	u32				effects_count;
@@ -3304,14 +3304,6 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 			goto unlock;
 		}
 
-		if (!chip->play.effect)
-			goto unlock;
-
-		fifo = chip->play.effect->fifo;
-		if (!fifo || !fifo->samples) {
-			dev_err(chip->dev, "no FIFO samples available\n");
-			goto unlock;
-		}
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
 		if (atomic_read(&chip->richtap_mode)) {
 			num_rt = (int16_t)haptics_get_available_fifo_memory(chip);
@@ -3380,6 +3372,15 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 			goto unlock;
 		}
 #endif	//CONFIG_RICHTAP_FOR_PMIC_ENABLE
+
+		if (!chip->play.effect)
+			goto unlock;
+
+		fifo = chip->play.effect->fifo;
+		if (!fifo || !fifo->samples) {
+			dev_err(chip->dev, "no FIFO samples available\n");
+			goto unlock;
+		}
 		samples_left = fifo->num_s - status->samples_written;
 		num = haptics_get_available_fifo_memory(chip);
 		if (num < 0)
@@ -5604,6 +5605,13 @@ static int richtap_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 	if (rc < 0)
 		return rc;
 
+	if (fifo->period_per_s >= F_8KHZ) {
+		/* Set manual RC CLK CAL when playing FIFO */
+		rc = haptics_set_manual_rc_clk_cal(chip);
+		if (rc < 0)
+			return rc;
+	}
+
 	atomic_set(&status->written_done, 0);
 	atomic_set(&status->cancelled, 0);
 	status->samples_written = 0;
@@ -5741,7 +5749,7 @@ static int richtap_load_prebake(struct haptics_chip *chip, u8 *data, u32 length)
 	play->effect = chip->custom_effect;
 	play->brake = NULL;
 
-	rc = haptics_enable_autores(chip, false);
+	rc = haptics_set_vmax_mv(chip, play->vmax_mv);
 	if (rc < 0)
 		goto cleanup;
 
@@ -5750,7 +5758,7 @@ static int richtap_load_prebake(struct haptics_chip *chip, u8 *data, u32 length)
 	if (rc < 0)
 		goto cleanup;
 
-	rc = haptics_set_vmax_mv(chip, play->vmax_mv);
+	rc = haptics_enable_autores(chip, false);
 	if (rc < 0)
 		goto cleanup;
 
@@ -5954,7 +5962,6 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 			arg = 0x80;
 		tmp = chip->lower_mv;
 		chip->play.vmax_mv = ((u32)(arg * tmp)) / 128;
-		haptics_set_vmax_mv(chip, chip->play.vmax_mv);
 		break;
 	case RICHTAP_STREAM_MODE:
 		richtap_clean_buf(chip, MMAP_BUF_DATA_INVALID);
