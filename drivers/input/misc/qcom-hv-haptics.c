@@ -6316,8 +6316,8 @@ static int haptics_probe(struct platform_device *pdev)
 			&chip->lower_mv);
 	if (rc < 0)
 	{
-		dev_info(chip->dev, "No voltage config,use default value:7500mV\n");
-		chip->lower_mv = 7500;
+		dev_info(chip->dev, "No voltage config,use default value:9000mV\n");
+		chip->lower_mv = 9000;
 	}
 	chip->rtp_ptr = kmalloc(RICHTAP_MMAP_BUF_SIZE * RICHTAP_MMAP_BUF_SUM, GFP_KERNEL);
 	if (chip->rtp_ptr == NULL)
