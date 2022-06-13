@@ -20,10 +20,6 @@
 
 #include "rtimd-i2c.h"
 
-#ifndef UPPERCASE
-#define UPPERCASE(c) (((c) >= 'a' && (c) <= 'z') ? ((c) - 0x20) : (c))
-#endif
-
 #define SYSFS_BURST_DATA_BUF_SIZE		1024
 
 #define SYSFS_BWR_DATA_OFFSET		11
@@ -467,8 +463,8 @@ static void hex_string_to_digit(uint8_t *out, const char *in, int len)
 	char msb_ch, lsb_ch;
 
 	for (t = 0, i = 0; i < len; i += 2, t++) {
-		msb_ch = UPPERCASE(in[i]);
-		lsb_ch = UPPERCASE(in[i + 1]);
+		msb_ch = toupper(in[i]);
+		lsb_ch = toupper(in[i + 1]);
 
 		hn = (msb_ch > '9') ? (msb_ch - 'A' + 10) : (msb_ch - '0');
 		ln = (lsb_ch > '9') ? (lsb_ch - 'A' + 10) : (lsb_ch - '0');
