@@ -547,7 +547,6 @@ struct haptics_chip {
 	struct class			hap_class;
 	struct regulator		*hpwr_vreg;
 	struct hrtimer			hbst_off_timer;
-	struct delayed_work		vibrate_work;
 	int				fifo_empty_irq;
 	int				haptic_context_gpio;
 	u32				long_gain_reduced;
@@ -4534,14 +4533,6 @@ restore:
 	return rc;
 }
 
-static void haptics_vibrate_work_routine(struct work_struct *work)
-{
-	struct haptics_chip *chip = container_of(work, struct haptics_chip, vibrate_work.work);
-
-	haptics_enable_play(chip, false);
-	haptics_enable_hpwr_vreg(chip, false);
-}
-
 static int haptics_start_play(struct haptics_chip *chip, bool enable)
 {
 	int rc;
@@ -5440,9 +5431,6 @@ static int haptics_probe(struct platform_device *pdev)
 	if (rc < 0)
 		dev_err(chip->dev, "Creating debugfs failed, rc=%d\n", rc);
 #endif
-
-	INIT_DELAYED_WORK(&chip->vibrate_work, haptics_vibrate_work_routine);
-
 	return 0;
 
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
