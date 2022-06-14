@@ -1466,8 +1466,8 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		if (rc < 0)
 			goto out;
 
-		if ((pst->prop[BATT_CAPACITY] / 100) < 50) {
-			pr_err("Battery SOC should be at least 50%% or connect charger\n");
+		if ((pst->prop[BATT_CAPACITY] / 100) < 20) {
+			pr_err("Battery SOC should be at least 20%% or connect charger\n");
 			rc = -EINVAL;
 			goto out;
 		}
