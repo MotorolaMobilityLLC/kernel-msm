@@ -5710,7 +5710,6 @@ static int richtap_load_prebake(struct haptics_chip *chip, u8 *data, u32 length)
 	custom_data.play_rate_hz = 24000; //24000;
 	custom_data.data = data;
 
-	usleep_range(5000, 5001);
 	dev_dbg(chip->dev, "aac RichTap data %d length\n", length);
 
 	rc = haptics_convert_sample_period(chip, custom_data.play_rate_hz);
@@ -5854,6 +5853,12 @@ play_rate:
 		return;
 	}
 
+	ret = haptics_wait_hboost_ready(chip);
+	if (ret < 0) {
+		schedule_work(&chip->richtap_erase_work);
+		return;
+	}
+
 	ret = richtap_playback(chip, true);
 	if (ret < 0)
 		dev_err(chip->dev, "aac RichTap richtap_playback fail, rc=%d\n", ret);
@@ -5927,6 +5932,12 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		ret = haptics_enable_hpwr_vreg(chip, true);
 		if (ret < 0) {
 			dev_err(chip->dev, "aac RichTap en hpwr_vreg fail, rc=%d\n", ret);
+			break;
+		}
+
+		ret = haptics_wait_hboost_ready(chip);
+		if (ret < 0) {
+			schedule_work(&chip->richtap_erase_work);
 			break;
 		}
 
