@@ -392,6 +392,7 @@ int nfc_i2c_dev_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	device_init_wakeup(&client->dev, true);
+	enable_irq_wake(client->irq);
 	i2c_dev->irq_wake_up = false;
 	nfc_dev->is_ese_session_active = false;
 
@@ -497,8 +498,9 @@ int nfc_i2c_dev_suspend(struct device *device)
 							i2c_dev->irq_enabled);
 
 	if (device_may_wakeup(&client->dev) && i2c_dev->irq_enabled) {
-		if (!enable_irq_wake(client->irq))
-			i2c_dev->irq_wake_up = true;
+		//if (!enable_irq_wake(client->irq))
+		//	i2c_dev->irq_wake_up = true;
+		i2c_dev->irq_wake_up = true;
 	}
 	return 0;
 }
@@ -520,8 +522,9 @@ int nfc_i2c_dev_resume(struct device *device)
 							i2c_dev->irq_wake_up);
 
 	if (device_may_wakeup(&client->dev) && i2c_dev->irq_wake_up) {
-		if (!disable_irq_wake(client->irq))
-			i2c_dev->irq_wake_up = false;
+		//if (!disable_irq_wake(client->irq))
+		//	i2c_dev->irq_wake_up = false;
+		i2c_dev->irq_wake_up = false;
 	}
 	return 0;
 }
