@@ -68,6 +68,7 @@ int ipa_rm_peers_list_create(int max_peers,
 
 list_alloc_fail:
 	kfree(*peers_list);
+	*peers_list = NULL;
 bail:
 	return result;
 }
