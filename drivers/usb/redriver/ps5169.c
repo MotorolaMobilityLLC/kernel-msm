@@ -194,7 +194,7 @@ static int ps5169_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 	const char *pinctrl_name;
 	int ret;
 
-	pinctrl = pinctrl_get(ps5169->dev);
+	pinctrl = devm_pinctrl_get(ps5169->dev);
 	if (IS_ERR_OR_NULL(pinctrl)) {
 		dev_err(ps5169->dev, "Failed to get pinctrl\n");
 		return -EINVAL;
@@ -226,7 +226,7 @@ static int ps5169_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 	ret = 0;
 
 put_pinctrl:
-	pinctrl_put(pinctrl);
+	devm_pinctrl_put(pinctrl);
 
 	return ret;
 }
@@ -423,7 +423,7 @@ static inline int ps5169_redriver_write_reg_bits(struct ps5169_redriver *ps5169,
 	int ret = regmap_update_bits(ps5169->regmap, reg, mask, val);
 
 	if (ret < 0)
-		dev_err(&ps5169->client->dev, "error update reg %u\n", reg);
+		dev_err(&ps5169->client->dev, "error update reg %u, ret=%d\n", reg, ret);
 
 	dev_dbg(&ps5169->client->dev, "update reg[%u]=[%x], %x\n", reg, val, mask);
 	return ret;
