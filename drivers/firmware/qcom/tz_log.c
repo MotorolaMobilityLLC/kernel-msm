@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/debugfs.h>
 #include <linux/errno.h>
@@ -1238,8 +1239,15 @@ static ssize_t tzdbgfs_read(struct file *file, char __user *buf,
 	struct seq_file *seq = file->private_data;
 	int tz_id = TZDBG_STATS_MAX;
 
-	if (seq)
-		tz_id = *(int *)(seq->private);
+	if (seq) {
+		if (seq->private)
+			tz_id = *(int *)(seq->private);
+		else {
+			pr_err("%s: Seq data private null unable to proceed\n",
+				 __func__);
+			return 0;
+		}
+	}
 	else {
 		pr_err("%s: Seq data null unable to proceed\n", __func__);
 		return 0;

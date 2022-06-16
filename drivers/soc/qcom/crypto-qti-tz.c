@@ -126,7 +126,7 @@ int crypto_qti_tz_raw_secret(const u8 *wrapped_key,
 	memset(shm_secret.vaddr, 0, secret_size);
 	dmac_flush_range(shm_secret.vaddr, shm_secret.vaddr + secret_size);
 
-	err = scm_call2_noretry(smc_id, &desc);
+	err = scm_call2(smc_id, &desc);
 	if (err) {
 		pr_err("%s failed to retrieve raw secret\n", __func__, err);
 		return err;
