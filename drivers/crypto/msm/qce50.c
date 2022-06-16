@@ -3378,6 +3378,7 @@ static inline int qce_alloc_req_info(struct qce_device *pce_dev)
 static inline void qce_free_req_info(struct qce_device *pce_dev, int req_info,
 		bool is_complete)
 {
+	pr_info("+++ %s(): pce_dev: %px - freeing %px\n", __func__, pce_dev, &pce_dev->ce_request_info[req_info]);
 	pce_dev->ce_request_info[req_info].xfer_type = QCE_XFER_TYPE_LAST;
 	if (atomic_xchg(&pce_dev->ce_request_info[req_info].in_use,
 						false)) {
