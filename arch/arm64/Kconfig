@@ -1904,6 +1904,12 @@ config CAM_DISTINGUISH_SENSOR_VERSION
         help
         Add for distinguish sensor version.
 
+config CAM_CTLE_ENABLE
+	bool "For cam enable ctle"
+	default n
+	help
+	Enable it to slove signal interference.
+
 config SND_PRI_MI2S_AW882XX
 	bool "For aw882xx smartpa pri mi2s config"
 	default n
