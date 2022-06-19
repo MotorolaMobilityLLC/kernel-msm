@@ -1983,6 +1983,7 @@
   sdhci_set_power_noreg
   __sdhci_set_timeout
   sdhci_setup_host
+  send_sig_info
   select_fallback_rq
   seq_buf_printf
   seq_file_path
@@ -2604,6 +2605,7 @@
   usb_function_unregister
   usb_gadget_connect
   usb_gadget_disconnect
+  usb_gadget_unregister_driver
   usb_gadget_wakeup
   usb_ifnum_to_if
   usb_interface_id
