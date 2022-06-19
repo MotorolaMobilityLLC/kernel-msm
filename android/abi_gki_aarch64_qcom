@@ -113,6 +113,7 @@
   blk_rq_unmap_user
   blk_sync_queue
   blkdev_compat_ptr_ioctl
+  blkdev_get_by_path
   blocking_notifier_call_chain
   blocking_notifier_chain_register
   blocking_notifier_chain_unregister
