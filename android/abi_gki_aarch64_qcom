@@ -145,6 +145,7 @@
   blk_set_stacking_limits
   blk_start_plug
   blk_sync_queue
+  blkdev_get_by_path
   blocking_notifier_call_chain
   blocking_notifier_chain_register
   blocking_notifier_chain_unregister
