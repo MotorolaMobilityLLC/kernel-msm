@@ -2419,6 +2419,7 @@ static irqreturn_t msm_geni_wakeup_isr(int isr, void *dev)
             port->edge_count = 0;
             first_irq_ts = 0;
             last_irq_ts = 0;
+            return IRQ_HANDLED;
           }
         }
 
