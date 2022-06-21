@@ -75,6 +75,13 @@ config FELIX_DTB
 	help
 		Only include Motorola Felix device specific DTB.
 
+config GENEVA_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Geneva Device DTB"
+	help
+		Only include Motorola Geneva device specific DTB.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on ARCH_QCOM || COMPILE_TEST
