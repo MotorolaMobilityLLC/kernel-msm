@@ -101,7 +101,7 @@ err_out:
 	return ret;
 }
 
-#if defined(CONFIG_UFSHID_POC)
+// #if defined(CONFIG_UFSHID_POC)
 static int ufshid_write_attr(struct ufshid_dev *hid, u8 idn, u32 val)
 {
 	struct ufs_hba *hba = hid->hba;
@@ -128,7 +128,7 @@ err_out:
 
 	return ret;
 }
-#endif
+// #endif
 static int ufshid_set_flag(struct ufshid_dev *hid, u8 idn)
 {
 	struct ufs_hba *hba = hid->hba;
@@ -302,18 +302,46 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 					return HID_NOT_REQUIRED;
 			}
 		}
+	} else if (is_vendor_device(hid, UFS_VENDOR_SAMSUNG)) {
+		if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION_SS,HID_OP_EXECUTE))
+			return -EINVAL;
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL_SS, &attr_val))
+			return -EINVAL;
+
+		frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+		HID_DEBUG(hid, "Frag_lv %d Freg_stat %d HID_need_exec %d",
+			  frag_level, HID_FRAG_UPDATE_STAT(attr_val),
+			  HID_EXECUTE_REQ_STAT(attr_val));
+
+		if (frag_level == HID_LEV_GRAY)
+			return -EAGAIN;
+
+		return (HID_EXECUTE_REQ_STAT(attr_val)) ?
+			HID_REQUIRED : HID_NOT_REQUIRED;
 	}
 	return -EINVAL;
 }
 
 static int ufshid_issue_disable(struct ufshid_dev *hid)
 {
+	u32 attr_val = 0;
 	if(is_vendor_device(hid,UFS_VENDOR_MICRON)){
 		if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_HID_EN))
 			return -EINVAL;
 	}else if (is_vendor_device(hid,UFS_VENDOR_TOSHIBA)){
 		if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
 			return -EINVAL;
+	}else if (is_vendor_device(hid,UFS_VENDOR_SAMSUNG)) {
+		if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION_SS,
+					HID_OP_DISABLE))
+			return -EINVAL;
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL_SS, &attr_val))
+			return -EINVAL;
+
+		INFO_MSG("Frag_lv %d Freg_stat %d HID_need_exec %d",
+			  attr_val & HID_FRAG_LEVEL_MASK,
+			  HID_FRAG_UPDATE_STAT(attr_val),
+			  HID_EXECUTE_REQ_STAT(attr_val));
 	}
 	return 0;
 }
@@ -973,6 +1001,28 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 				frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
 
 		return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+	} else if (is_vendor_device(hid, UFS_VENDOR_SAMSUNG)){
+		if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION_SS,
+					  HID_OP_ANALYZE)) {
+			ERR_MSG("query HID_OPERATION fail");
+			return -EINVAL;
+		}
+
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL_SS, &attr_val)) {
+			ERR_MSG("query HID_FRAG_LEVEL fail");
+			return -EINVAL;
+		}
+
+		frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+		INFO_MSG("Frag_lv %d Freg_stat %d HID_need_exec %d", frag_level,
+			 HID_FRAG_UPDATE_STAT(attr_val),
+			 HID_EXECUTE_REQ_STAT(attr_val));
+
+			return snprintf(buf, PAGE_SIZE, "%s\n",
+					frag_level == HID_LEV_RED ? "RED" :
+					frag_level == HID_LEV_YELLOW ? "YELLOW" :
+					frag_level == HID_LEV_GREEN ? "GREEN" :
+					frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
 	}
 	return -EINVAL;
 }
