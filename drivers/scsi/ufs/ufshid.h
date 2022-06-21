@@ -74,6 +74,9 @@
 #define QUERY_ATTR_IDN_HID_FRAG_STATUS          0x31
 #define QUERY_ATTR_IDN_HID_PROGRESS           	0x32
 
+#define QUERY_ATTR_IDN_HID_OPERATION_SS			0x20
+#define QUERY_ATTR_IDN_HID_FRAG_LEVEL_SS		0x21
+
 
 // for micron HID level
 enum {
