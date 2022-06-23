@@ -67,6 +67,8 @@ static const struct fsa4480_reg_val fsa_reg_i2c_defaults[] = {
 	{FSA4480_SWITCH_SETTINGS, 0x98},
 };
 
+static bool fsa_reg_notifier;
+
 static void fsa4480_usbc_update_settings(struct fsa4480_priv *fsa_priv,
 		u32 switch_control, u32 switch_enable)
 {
@@ -103,7 +105,7 @@ static int fsa4480_usbc_event_changed_psupply(struct fsa4480_priv *fsa_priv,
 	dev = fsa_priv->dev;
 	if (!dev)
 		return -EINVAL;
-	dev_dbg(dev, "%s: queueing usbc_analog_work\n",
+	dev_info(dev, "%s: queueing usbc_analog_work\n",
 		__func__);
 	pm_stay_awake(fsa_priv->dev);
 	queue_work(system_freezable_wq, &fsa_priv->usbc_analog_work);
@@ -190,9 +192,14 @@ static int fsa4480_usbc_analog_setup_switches_psupply(
 		goto done;
 	}
 
-	dev_dbg(dev, "%s: setting GPIOs active = %d rcvd intval 0x%X\n",
+	dev_info(dev, "%s: setting GPIOs active = %d rcvd intval 0x%X\n",
 		__func__, mode.intval != TYPEC_ACCESSORY_NONE, mode.intval);
-	atomic_set(&(fsa_priv->usbc_mode), mode.intval);
+	if ((atomic_read(&(fsa_priv->usbc_mode)) != mode.intval) || fsa_reg_notifier) {
+		atomic_set(&(fsa_priv->usbc_mode), mode.intval);
+		fsa_reg_notifier = false;
+	} else {
+		goto done;
+	}
 
 	switch (mode.intval) {
 	/* add all modes FSA should notify for in here */
@@ -308,8 +315,9 @@ int fsa4480_reg_notifier(struct notifier_block *nb,
 	 * as part of the init sequence check if there is a connected
 	 * USB C analog adapter
 	 */
-	dev_dbg(fsa_priv->dev, "%s: verify if USB adapter is already inserted\n",
+	dev_info(fsa_priv->dev, "%s: verify if USB adapter is already inserted\n",
 		__func__);
+	fsa_reg_notifier = true;
 	rc = fsa4480_usbc_analog_setup_switches(fsa_priv);
 	regmap_update_bits(fsa_priv->regmap, FSA4480_SWITCH_CONTROL, 0x07,
 			   fsa_priv->switch_control);
