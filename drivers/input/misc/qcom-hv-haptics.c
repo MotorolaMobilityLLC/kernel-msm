@@ -5964,6 +5964,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 			arg = 0x80;
 		tmp = chip->lower_mv;
 		chip->play.vmax_mv = ((u32)(arg * tmp)) / 128;
+		haptics_set_vmax_mv(chip, chip->play.vmax_mv);
 		break;
 	case RICHTAP_STREAM_MODE:
 		richtap_clean_buf(chip, MMAP_BUF_DATA_INVALID);
