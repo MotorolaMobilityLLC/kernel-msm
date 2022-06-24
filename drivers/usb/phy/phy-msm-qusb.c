@@ -1058,7 +1058,7 @@ static int qusb_phy_dpdm_regulator_disable(struct regulator_dev *rdev)
 		 * reset is to bring out the PHY from high-Z state
 		 * and avoid extra current consumption.
 		 */
-		qusb_phy_reset(qphy);
+		/*qusb_phy_reset(qphy); IKSWS-85445 brunosoe@motorola.com jun 24th 2022*/
 		ret = qusb_phy_enable_power(qphy, false);
 		if (ret < 0) {
 			dev_dbg(qphy->phy.dev,
