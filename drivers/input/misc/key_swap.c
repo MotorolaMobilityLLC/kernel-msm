@@ -37,8 +37,6 @@
 struct filter_action {
 	unsigned int code;		/* trigger key code */
 	unsigned int swap_code;		/* swap key code; if swap code is 0, then suppress */
-	unsigned int last_code;		/* cache last key code */
-	unsigned int last_status;	/* cache key status */
 	bool (*condition)(void); 	/* check condition func returns true/false */
 					/* True - do action, False - ignore */
 	struct list_head link;
@@ -75,7 +73,7 @@ static irqreturn_t signal_gpio_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-unsigned int key_swap_algo(unsigned int code, unsigned int status)
+unsigned int key_swap_algo(unsigned int code)
 {
 	struct filter_action *act;
 	bool condvar = true;
@@ -94,30 +92,14 @@ unsigned int key_swap_algo(unsigned int code, unsigned int status)
 			pr_debug("swap condition: %d\n", condvar);
 		}
 
-		if (!condvar && act->last_code == code) {
-			act->last_status = status;
+		if (!condvar)
 			continue;
-		}
-
-		if (act->swap_code && act->last_status && !status) {
-			pr_debug("Avoid to miss up event\n");
-			act->last_status = status;
-			if (act->last_code != code) {
-				act->last_code = code;
-				pr_debug("swapping: %u -> %u\n", code, act->swap_code);
-				code = act->swap_code;
-			}
-			break;
-		}
 
 		if (act->swap_code) {
 			pr_debug("swapping: %u -> %u\n", code, act->swap_code);
 			code = act->swap_code;
-			act->last_code = code;
-			act->last_status = status;
 			break;
 		}
-		act->last_status = status;
 	}
 pass_thru:
 	return code;
@@ -213,7 +195,6 @@ read_actions:
 		rc = of_property_read_u32(np, "code", &fa->code);
 		if (rc)
 			break;
-		fa->last_code = fa->code;
 #if 0
 	const char *tname = NULL;
 		rc = of_property_read_string(np, "action-type", &tname);
