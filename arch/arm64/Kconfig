@@ -1892,6 +1892,12 @@ config AW882XX_MAPSIZE_16K
         help
         Enable it only for use 16k mapsize.
 
+config SND_SOC_AW87XXX
+        tristate "SoC Audio for awinic AW87XXX Smart K PA"
+        depends on I2C
+        help
+          This option enables support for AW87XXX Smart K PA.
+
 config CAMERA_FLASH_PWM
         bool "control flash"
         default n
