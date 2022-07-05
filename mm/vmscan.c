@@ -4434,8 +4434,9 @@ static int evict_pages(struct lruvec *lruvec, struct scan_control *sc, int swapp
 }
 
 static long get_nr_to_scan(struct lruvec *lruvec, struct scan_control *sc, bool can_swap,
-			   bool *need_aging)
+		unsigned long reclaimed, bool *need_aging)
 {
+	int priority;
 	long nr_to_scan;
 	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
 	DEFINE_MAX_SEQ(lruvec);
@@ -4445,24 +4446,27 @@ static long get_nr_to_scan(struct lruvec *lruvec, struct scan_control *sc, bool 
 	if (!nr_to_scan)
 		return 0;
 
-	/* reset the priority if the target has been met */
-	nr_to_scan >>= sc->nr_reclaimed < sc->nr_to_reclaim ? sc->priority : DEF_PRIORITY;
 
 	if (!mem_cgroup_online(memcg))
-		nr_to_scan++;
+		priority = 0;
+	else if (sc->nr_reclaimed - reclaimed >= sc->nr_to_reclaim)
+		priority = DEF_PRIORITY;
+	else
+		priority = sc->priority;
 
+	nr_to_scan >>= priority;
 	if (!nr_to_scan)
 		return 0;
 
 	if (!*need_aging)
 		return nr_to_scan;
 
+	/* skip the aging path at the default priority */
+	if (priority == DEF_PRIORITY)
+		return nr_to_scan;
+
 	/* leave the work to lru_gen_age_node() */
 	if (current_is_kswapd())
-		return 0;
-
-	/* try other memcgs before going to the aging path */
-	if (sc->priority == DEF_PRIORITY)
 		return 0;
 
 	if (try_to_inc_max_seq(lruvec, max_seq, sc, can_swap, false))
@@ -4477,9 +4481,8 @@ static void lru_gen_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc
 	long scanned = 0;
 	bool need_aging = false;
 	bool swapped = false;
+	unsigned long reclaimed = sc->nr_reclaimed;
 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
-
-	lru_add_drain();
 
 	blk_start_plug(&plug);
 
@@ -4498,7 +4501,7 @@ static void lru_gen_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc
 		else
 			swappiness = 0;
 
-		nr_to_scan = get_nr_to_scan(lruvec, sc, swappiness, &need_aging);
+		nr_to_scan = get_nr_to_scan(lruvec, sc, swappiness, reclaimed, &need_aging);
 		if (!nr_to_scan)
 			goto done;
 
