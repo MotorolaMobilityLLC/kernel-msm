@@ -1538,7 +1538,7 @@ static const struct msm_pingroup holi_groups[] = {
 };
 
 static const int holi_reserved_gpios[] = {
-#ifdef CONFIG_RHODEC_DTB
+#if defined(CONFIG_RHODEC_DTB) || defined(CONFIG_PENANG_DTB)
 	13, 14, 15, 16, -1
 #else
 	13, 14, 15, 16, 45, 46, 56, 57, -1
