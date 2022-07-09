@@ -31,3 +31,4 @@ fi
 ## Inheriting MSM configs
 . ${KERNEL_DIR}/build.config.msm.common
 . ${KERNEL_DIR}/build.config.msm.gki
+. ${KERNEL_DIR}/build.config.moto
