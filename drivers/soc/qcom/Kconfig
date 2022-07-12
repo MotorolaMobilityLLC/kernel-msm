@@ -54,6 +54,13 @@ config ONELI_DTB
 	help
 		Only include Motorola OneLi device specific DTB.
 
+config ZEEKR_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility ZEEKR Device DTB"
+	help
+		Only include Motorola ZEEKR device specific DTB.
+
 config EQS_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
