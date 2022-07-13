@@ -73,9 +73,9 @@ int __bitmap_subset(const unsigned long *bitmap1,
 }
 
 #if IS_ENABLED(CONFIG_INPUT_MMI_KEY_SWAP_MODULE)
-extern unsigned int key_swap_algo(unsigned int code);
+extern unsigned int key_swap_algo(unsigned int code, unsigned state);
 #else
-unsigned int __attribute__((weak)) key_swap_algo(unsigned int code)
+unsigned int __attribute__((weak)) key_swap_algo(unsigned int code, unsigned state)
 {
 	pr_debug("%s(), code = %u\n", __func__, code);
 	return code;
@@ -395,7 +395,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
-		input_event(input, type, key_swap_algo(*bdata->code), state);
+		input_event(input, type, key_swap_algo(*bdata->code, state), state);
 		pr_debug("key_swap (%s): code=%d, state=%d\n", __func__, *bdata->code, state);
 	}
 	input_sync(input);
@@ -448,7 +448,7 @@ static void gpio_keys_irq_timer(struct timer_list *t)
 
 	spin_lock_irqsave(&bdata->lock, flags);
 	if (bdata->key_pressed) {
-		input_event(input, EV_KEY, key_swap_algo(*bdata->code), 0);
+		input_event(input, EV_KEY, key_swap_algo(*bdata->code, 0), 0);
 		pr_debug("key_swap (%s): code=%d, state=0\n", __func__, *bdata->code);
 		input_sync(input);
 		bdata->key_pressed = false;
