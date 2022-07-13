@@ -85,9 +85,9 @@ struct pm8941_pwrkey {
 };
 
 #if IS_ENABLED(CONFIG_INPUT_MMI_KEY_SWAP_MODULE)
-extern unsigned int key_swap_algo(unsigned int code);
+extern unsigned int key_swap_algo(unsigned int code, unsigned state);
 #else
-unsigned int __attribute__((weak)) key_swap_algo(unsigned int code)
+unsigned int __attribute__((weak)) key_swap_algo(unsigned int code, unsigned state)
 {
 	pr_debug("%s(), code = %u\n", __func__, code);
 	return code;
@@ -204,13 +204,13 @@ static irqreturn_t pm8941_pwrkey_irq(int irq, void *_data)
 	 * corresponding press event.
 	 */
 	if (!pwrkey->last_status && !sts) {
-		input_report_key(pwrkey->input, key_swap_algo(pwrkey->code), 1);
+		input_report_key(pwrkey->input, key_swap_algo(pwrkey->code, 1), 1);
 		input_sync(pwrkey->input);
 		pr_debug("key_swap (%s): code=%d, state=1\n", __func__, pwrkey->code);
 	}
 	pwrkey->last_status = sts;
 
-	input_report_key(pwrkey->input, key_swap_algo(pwrkey->code), sts);
+	input_report_key(pwrkey->input, key_swap_algo(pwrkey->code, sts), sts);
 	input_sync(pwrkey->input);
 	pr_debug("key_swap (%s): code=%d, state=%d\n", __func__, pwrkey->code, sts);
 
