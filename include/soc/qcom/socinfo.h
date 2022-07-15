@@ -54,6 +54,8 @@
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,sa8150")
 #define early_machine_is_kona()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,kona")
+#define early_machine_is_kona_7230_iot()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,kona-7230-iot")
 #define early_machine_is_lito()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,lito")
 #define early_machine_is_orchid()	\
@@ -177,6 +179,7 @@ enum msm_cpu {
 	MSM_CPU_SM8150,
 	MSM_CPU_SA8150,
 	MSM_CPU_KONA,
+	MSM_CPU_KONA_IOT,
 	MSM_CPU_LITO,
 	MSM_CPU_ORCHID,
 	MSM_CPU_BENGAL,
