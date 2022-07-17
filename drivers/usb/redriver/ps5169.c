@@ -345,7 +345,10 @@ static int ps5169_gadget_pullup_enter(struct usb_redriver *r, int is_on)
 
 	while (ps5169->work_ongoing) {
 		udelay(1);
-		time++;
+		if (time++ > 500000) {
+			dev_warn(ps5169->dev, "pullup timeout\n");
+			break;
+		}
 	}
 
 	dev_info(ps5169->dev, "pull-up disable work took %llu us\n", time);
@@ -415,6 +418,7 @@ static void ps5169_redriver_orientation_gpio_init(
 		ps5169->orientation_gpio = -EINVAL;
 		return;
 	}
+	ps5169->r.has_orientation = true;
 }
 
 static inline int ps5169_redriver_write_reg_bits(struct ps5169_redriver *ps5169,
