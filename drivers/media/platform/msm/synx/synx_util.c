@@ -592,7 +592,7 @@ void *synx_from_handle(s32 synx_obj)
 		return NULL;
 	}
 
-	base = current->tgid << 16;
+	base = (current->tgid << 16) & 0x7FFFFFFF;
 
 	if ((base >> 16) != (synx_obj >> 16)) {
 		pr_err("current client: %d, base: %d, synx_obj: 0x%x\n",
@@ -619,7 +619,7 @@ void synx_release_handle(void *pObj)
 
 s32 synx_create_handle(void *pObj)
 {
-	s32 base = current->tgid << 16;
+	s32 base = (current->tgid << 16) & 0x7FFFFFFF;
 	s32 id;
 	struct synx_handle_entry *entry;
 	unsigned long flags;
