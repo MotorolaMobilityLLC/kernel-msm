@@ -21,7 +21,11 @@
 #include <linux/thermal.h>
 #include <linux/cpufreq.h>
 #include <linux/debugfs.h>
+
+#ifndef CONFIG_UFSFEATURE
 #include <trace/hooks/ufshcd.h>
+#endif
+
 #include <linux/ipc_logging.h>
 
 #include "ufshcd.h"
@@ -31,6 +35,13 @@
 #include "ufshci.h"
 #include "ufs_quirks.h"
 #include "ufshcd-crypto-qti.h"
+
+#ifdef CONFIG_UFSFEATURE
+#define CREATE_TRACE_POINTS
+#include <trace/events/ufs.h>
+#undef CREATE_TRACE_POINTS
+#endif
+
 #include <trace/hooks/ufshcd.h>
 
 #if IS_ENABLED(CONFIG_SCSI_UFS_HID)
@@ -989,6 +1000,50 @@ static int ufs_qcom_set_dme_vs_core_clk_ctrl_max_freq_mode(struct ufs_hba *hba)
 
 	return err;
 }
+
+#if defined(CONFIG_UFSFEATURE)
+static void ufs_vh_prep_fn(void *data, struct ufs_hba *hba,
+			struct request *rq, struct ufshcd_lrb *lrbp, int *err)
+{
+	ufsf_change_lun(ufs_qcom_get_ufsf(hba), lrbp);
+	*err = ufsf_prep_fn(ufs_qcom_get_ufsf(hba), lrbp);
+}
+
+static void ufs_vh_compl_command(void *data, struct ufs_hba *hba,
+			struct ufshcd_lrb *lrbp)
+{
+	//struct utp_upiu_header *header = &lrbp->ucd_rsp_ptr->header;
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+	struct scsi_cmnd *cmd = lrbp->cmd;
+	//int scsi_status, result, ocs;
+
+	if (!cmd)
+		return;
+
+#if defined(CONFIG_UFSHID)
+	/* Check if it is the last request to be completed */
+	if (!hba->outstanding_tasks &&
+	    (hba->outstanding_reqs == (1 << lrbp->task_tag)))
+		schedule_work(&ufsf->on_idle_work);
+#endif
+}
+
+static void ufs_vh_update_sdev(void *data, struct scsi_device *sdev)
+{
+	struct ufs_hba *hba = shost_priv(sdev->host);
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	ufsf_slave_configure(ufsf, sdev);
+}
+
+static void ufs_vh_send_command(void *data, struct ufs_hba *hba,
+				struct ufshcd_lrb *lrbp)
+{
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	ufsf_hid_acc_io_stat(ufsf, lrbp);
+}
+#endif
 
 /**
  * ufs_qcom_bypass_cfgready_signal - Tunes PA_VS_CONFIG_REG1 and
@@ -2588,6 +2643,14 @@ ufs_qcom_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 		goto out_release_mem;
 	}
 
+#if defined(CONFIG_UFSFEATURE)
+	if (ufsf_check_query(ioctl_data->opcode)) {
+		err = ufsf_query_ioctl(ufs_qcom_get_ufsf(hba), lun, buffer,
+				       ioctl_data, UFSFEATURE_SELECTOR);
+		goto out_release_mem;
+	}
+#endif
+
 	/* verify legal parameters & send query */
 	switch (ioctl_data->opcode) {
 	case UPIU_QUERY_OPCODE_READ_DESC:
@@ -3405,6 +3468,9 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	if (!host->ufs_ipc_log_ctx)
 		dev_warn(dev, "IPC Log init - failed\n");
 
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_set_init_state(hba);
+#endif
 	goto out;
 
 out_disable_vccq_parent:
@@ -4395,6 +4461,10 @@ static int ufs_qcom_device_reset(struct ufs_hba *hba)
 	ufshid_reset_host(hid);
 #endif
 
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_reset_host(ufs_qcom_get_ufsf(hba));
+#endif
+
 	/* reset gpio is optional */
 	if (!host->device_reset)
 		return -EOPNOTSUPP;
@@ -4902,6 +4972,20 @@ static void ufs_qcom_register_hooks(void)
 #endif
 }
 
+#if defined(CONFIG_UFSFEATURE)
+static void ufs_samsung_register_hooks(void)
+{
+	register_trace_android_vh_ufs_prepare_command(
+				ufs_vh_prep_fn, NULL);
+	register_trace_android_vh_ufs_compl_command(
+				ufs_vh_compl_command, NULL);
+	register_trace_android_vh_ufs_update_sdev(
+				ufs_vh_update_sdev, NULL);
+	register_trace_android_vh_ufs_send_command(
+				ufs_vh_send_command, NULL);
+}
+#endif
+
 #ifdef CONFIG_ARM_QCOM_CPUFREQ_HW
 static int ufs_cpufreq_status(void)
 {
@@ -4970,6 +5054,11 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 		dev_err(dev, "ufshcd_pltfrm_init() failed %d\n", err);
 
 	ufs_qcom_register_hooks();
+
+#if defined(CONFIG_UFSFEATURE)
+	/* Register hook for samsung feature */
+	ufs_samsung_register_hooks();
+#endif
 	return err;
 }
 
@@ -4992,6 +5081,10 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 #endif
 
 	pm_runtime_get_sync(&(pdev)->dev);
+
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_remove(ufs_qcom_get_ufsf(hba));
+#endif
 	for (i = 0; i < r->num_groups; i++, qcg++)
 		remove_group_qos(qcg);
 	ufshcd_remove(hba);
@@ -5003,10 +5096,14 @@ static void ufs_qcom_shutdown(struct platform_device *pdev)
 	struct ufs_hba *hba =  platform_get_drvdata(pdev);
 	struct scsi_device *sdev;
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
-
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+#endif
 	ufs_qcom_log_str(host, "0xdead\n");
 	pm_runtime_get_sync(hba->dev);
-
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_suspend(ufsf);
+#endif
 	shost_for_each_device(sdev, hba->host) {
 		if (sdev == hba->sdev_ufs_device)
 			scsi_device_quiesce(sdev);
@@ -5042,6 +5139,14 @@ int ufsf_pltfrm_suspend(struct device *dev)
 #if IS_ENABLED(CONFIG_SCSI_UFS_HID)
         ufshid_suspend();
 #endif
+
+#if defined(CONFIG_UFSFEATURE)
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	ufsf_suspend(ufsf);
+#endif
+
         ret = ufshcd_pltfrm_suspend(dev);
 
 #if IS_ENABLED(CONFIG_SCSI_UFS_HID)
@@ -5050,18 +5155,33 @@ int ufsf_pltfrm_suspend(struct device *dev)
                 ufshid_resume();
 #endif
 
+#if defined(CONFIG_UFSFEATURE)
+        /* We assume link is off */
+        if (ret)
+		ufsf_resume(ufsf, true);
+#endif
+
         return ret;
 }
 
 int ufsf_pltfrm_resume(struct device *dev)
 {
         int ret;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+	bool is_link_off = ufshcd_is_link_off(hba);
+#endif
 
         ret = ufshcd_pltfrm_resume(dev);
 
 #if IS_ENABLED(CONFIG_SCSI_UFS_HID)
         if (!ret)
                 ufshid_resume();
+#endif
+#if defined(CONFIG_UFSFEATURE)
+        if (!ret)
+		ufsf_resume(ufsf, is_link_off);
 #endif
 
         return ret;
@@ -5074,6 +5194,12 @@ int ufsf_pltfrm_runtime_suspend(struct device *dev)
 #if IS_ENABLED(CONFIG_SCSI_UFS_HID)
         ufshid_suspend();
 #endif
+#if defined(CONFIG_UFSFEATURE)
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	ufsf_suspend(ufsf);
+#endif
 
         ret = ufshcd_pltfrm_runtime_suspend(dev);
 
@@ -5082,6 +5208,11 @@ int ufsf_pltfrm_runtime_suspend(struct device *dev)
         if (ret)
                 ufshid_resume();
 #endif
+#if defined(CONFIG_UFSFEATURE)
+        /* We assume link is off */
+        if (ret)
+		ufsf_resume(ufsf, true);
+#endif
 
         return ret;
 }
@@ -5089,6 +5220,11 @@ int ufsf_pltfrm_runtime_suspend(struct device *dev)
 int ufsf_pltfrm_runtime_resume(struct device *dev)
 {
         int ret;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+	bool is_link_off = ufshcd_is_link_off(hba);
+#endif
 
         ret = ufshcd_pltfrm_runtime_resume(dev);
 
@@ -5096,6 +5232,11 @@ int ufsf_pltfrm_runtime_resume(struct device *dev)
         if (!ret)
                 ufshid_resume();
 #endif
+#if defined(CONFIG_UFSFEATURE)
+        if (!ret)
+		ufsf_resume(ufsf, is_link_off);
+#endif
+
 
         return ret;
 }
@@ -5120,7 +5261,11 @@ static const struct dev_pm_ops ufs_qcom_pm_ops = {
 static struct platform_driver ufs_qcom_pltform = {
 	.probe	= ufs_qcom_probe,
 	.remove	= ufs_qcom_remove,
+#if defined(CONFIG_UFSFEATURE)
+	.shutdown = ufs_qcom_shutdown,
+#else
 	.shutdown = ufsf_pltfrm_shutdown,
+#endif
 	.driver	= {
 		.name	= "ufshcd-qcom",
 		.pm	= &ufs_qcom_pm_ops,
