@@ -253,3 +253,9 @@ config UFSSID
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
 	help
 	  Enable Stream ID Feature for Streamed-HID
+
+config MICRON_UFSHID
+	bool "Micron UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	help
+	  Micron UFS HID Feature Enable
