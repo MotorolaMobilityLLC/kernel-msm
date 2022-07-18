@@ -14,6 +14,9 @@
 #include "ufshcd.h"
 #include "unipro.h"
 
+#ifdef CONFIG_UFSFEATURE
+#include "ufsfeature.h"
+#endif
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
 #define MPHY_TX_FSM_STATE       0x41
@@ -483,6 +486,9 @@ struct ufs_qcom_host {
 	cpumask_t perf_mask;
 	cpumask_t def_mask;
 	bool irq_affinity_support;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature ufsf;
+#endif
 };
 
 static inline u32
@@ -598,6 +604,15 @@ struct ufs_ioctl_query_data {
 	 */
 	__u8 buffer[0];
 };
+
+#if defined(CONFIG_UFSFEATURE)
+static inline struct ufsf_feature *ufs_qcom_get_ufsf(struct ufs_hba *hba)
+{
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+
+	return &host->ufsf;
+}
+#endif
 
 /* ufs-qcom-ice.c */
 
