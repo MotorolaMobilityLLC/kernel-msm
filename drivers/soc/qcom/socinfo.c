@@ -187,6 +187,9 @@ static struct socinfo {
 #define SMEM_IMAGE_VERSION_OEM_OFFSET 95
 #define SMEM_IMAGE_VERSION_PARTITION_APPS 10
 
+int softsku_id;
+module_param_named(softsku_id, softsku_id, int, 0644);
+
 /* Version 2 */
 static uint32_t socinfo_get_raw_id(void)
 {
