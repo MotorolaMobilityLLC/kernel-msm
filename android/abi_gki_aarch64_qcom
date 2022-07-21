@@ -695,7 +695,6 @@
   flush_dcache_page
   flush_delayed_fput
   flush_delayed_work
-  flush_signals
   flush_work
   flush_workqueue
   fput
@@ -1861,7 +1860,6 @@
   sdhci_set_power_noreg
   __sdhci_set_timeout
   sdhci_setup_host
-  send_sig_info
   select_fallback_rq
   seq_buf_printf
   seq_lseek
@@ -2459,7 +2457,6 @@
   usb_free_coherent
   usb_function_register
   usb_function_unregister
-  usb_gadget_unregister_driver
   usb_gadget_wakeup
   usb_ifnum_to_if
   usb_interface_id
@@ -2502,7 +2499,6 @@
   vchan_tx_desc_free
   vchan_tx_submit
   vfree
-  vfs_fsync
   vhost_add_used_and_signal
   vhost_dev_check_owner
   vhost_dev_cleanup
