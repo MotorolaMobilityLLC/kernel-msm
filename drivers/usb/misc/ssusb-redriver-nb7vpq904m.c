@@ -28,6 +28,11 @@
 #define OUT_COMP_AND_POL_REG_BASE	0x02
 #define LOSS_MATCH_REG_BASE		0x19
 
+#define AUX_SWITCH_REG			0x09
+#define AUX_NORMAL_VAL			0
+#define AUX_FLIP_VAL			1
+#define AUX_DISABLE_VAL			2
+
 /* Default Register Value */
 #define GEN_DEV_SET_REG_DEFAULT		0xFB
 
@@ -135,6 +140,7 @@ struct ssusb_redriver {
 	bool host_active;
 	bool vbus_active;
 	bool is_usb3;
+	bool is_set_aux;
 	enum plug_orientation typec_orientation;
 	enum operation_mode op_mode;
 
@@ -213,7 +219,7 @@ static void ssusb_redriver_gen_dev_set(
 {
 	int ret;
 	u8 val, oldval;
-
+	u8 aux_val = AUX_DISABLE_VAL;
 	val = 0;
 
 	switch (redriver->op_mode) {
@@ -247,6 +253,12 @@ static void ssusb_redriver_gen_dev_set(
 		/* Set to DP 4 Lane Mode (OP Mode 2) */
 		val |= (0x2 << OP_MODE_SHIFT);
 
+		if (redriver->typec_orientation
+			== ORIENTATION_CC1) {
+			aux_val = AUX_NORMAL_VAL;
+		} else {
+			aux_val = AUX_FLIP_VAL;
+		}
 		break;
 	case OP_MODE_USB_AND_DP:
 		/* Enable channel A, B, C and D */
@@ -254,20 +266,15 @@ static void ssusb_redriver_gen_dev_set(
 		val |= (CHNC_EN | CHND_EN);
 
 		if (redriver->typec_orientation
-				== ORIENTATION_CC1)
+				== ORIENTATION_CC1) {
 			/* Set to DP 4 Lane Mode (OP Mode 1) */
 			val |= (0x1 << OP_MODE_SHIFT);
-		else if (redriver->typec_orientation
-				== ORIENTATION_CC2)
+			aux_val = AUX_NORMAL_VAL;
+		} else {
 			/* Set to DP 4 Lane Mode (OP Mode 0) */
 			val |= (0x0 << OP_MODE_SHIFT);
-		else {
-			dev_err(redriver->dev,
-				"can't get orientation, op mode %d\n",
-				redriver->op_mode);
-			goto err_exit;
+			aux_val = AUX_FLIP_VAL;
 		}
-
 		break;
 	default:
 		dev_err(redriver->dev,
@@ -299,6 +306,21 @@ static void ssusb_redriver_gen_dev_set(
 		on ? "ENABLE":"DISABLE", val);
 
 	redriver->gen_dev_val = val;
+
+	if (redriver->is_set_aux) {
+		ret = redriver_i2c_reg_set(redriver, AUX_SWITCH_REG, aux_val);
+		if (ret < 0) {
+			dev_err(redriver->dev,
+			"failure to %s set AUX, aux_val = 0x%x\n",
+			on ? "ENABLE":"DISABLE", val, aux_val);
+			return;
+		}
+
+		dev_dbg(redriver->dev,
+		"successfully (%s) set AUX, aux_val = 0x%x\n",
+		on ? "ENABLE":"DISABLE", aux_val);
+	}
+
 	return;
 
 err_exit:
@@ -745,6 +767,8 @@ static int ssusb_redriver_default_config(struct ssusb_redriver *redriver)
 		if (ret)
 			goto err;
 	}
+
+	redriver->is_set_aux = of_property_read_bool(node, "set-aux-enable");
 
 	ret = ssusb_redriver_channel_update(redriver);
 	if (ret)
