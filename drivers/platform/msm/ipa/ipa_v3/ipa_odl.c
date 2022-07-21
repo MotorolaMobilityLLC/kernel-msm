@@ -469,6 +469,12 @@ void ipa3_odl_pipe_cleanup(bool is_ssr)
 		IPAERR("adpl pipe not configured\n");
 		return;
 	}
+
+	if (!ipa3_odl_ctx->odl_state.odl_ep_setup) {
+		IPAERR("adpl pipe setup not done\n");
+		return;
+	}
+
 	if (ipa3_odl_ctx->odl_state.odl_open)
 		ipa_odl_opened = true;
 
