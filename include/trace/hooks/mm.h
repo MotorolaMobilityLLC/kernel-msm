@@ -70,6 +70,12 @@ DECLARE_HOOK(android_vh_show_mem,
 	TP_ARGS(filter, nodemask));
 struct slabinfo;
 struct dirty_throttle_control;
+DECLARE_HOOK(android_vh_alloc_pages_slowpath_begin,
+	     TP_PROTO(gfp_t gfp_mask, unsigned int order, unsigned long *pdata),
+	     TP_ARGS(gfp_mask, order, pdata));
+DECLARE_HOOK(android_vh_alloc_pages_slowpath_end,
+	     TP_PROTO(gfp_t gfp_mask, unsigned int order, unsigned long data),
+	     TP_ARGS(gfp_mask, order, data));
 DECLARE_HOOK(android_vh_mm_dirty_limits,
 	TP_PROTO(struct dirty_throttle_control *const gdtc, bool strictlimit,
 		unsigned long dirty, unsigned long bg_thresh,
