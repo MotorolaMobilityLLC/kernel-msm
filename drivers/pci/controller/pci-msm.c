@@ -72,6 +72,7 @@
 #define PCIE20_PARF_PHY_CTRL (0x40)
 #define PCIE20_PARF_TEST_BUS (0xe4)
 #define PCIE20_PARF_MHI_CLOCK_RESET_CTRL (0x174)
+#define PCIE20_PARF_AXI_MSTR_RD_ADDR_HALT (0x1a4)
 #define PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT (0x1a8)
 #define PCIE20_PARF_LTSSM (0x1b0)
 #define PCIE20_PARF_INT_ALL_STATUS (0x224)
@@ -845,6 +846,7 @@ struct msm_pcie_dev_t {
 	uint32_t aux_clk_freq;
 	bool linkdown_panic;
 	uint32_t boot_option;
+	bool pcie_halt_feature_dis;
 
 	uint32_t rc_idx;
 	uint32_t phy_ver;
@@ -1680,6 +1682,8 @@ static void msm_pcie_show_status(struct msm_pcie_dev_t *dev)
 		dev->wr_halt_size);
 	PCIE_DBG_FS(dev, "slv_addr_space_size: 0x%x\n",
 		dev->slv_addr_space_size);
+	PCIE_DBG_FS(dev, "PCIe: halt_feature_dis is %d\n",
+		dev->pcie_halt_feature_dis);
 	PCIE_DBG_FS(dev, "phy_status_offset: 0x%x\n",
 		dev->phy_status_offset);
 	PCIE_DBG_FS(dev, "phy_status_bit: %u\n",
@@ -4740,10 +4744,22 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE,
 				dev->slv_addr_space_size);
 
-	val = dev->wr_halt_size ? dev->wr_halt_size :
-		readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT);
-	msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT,
+	if (dev->pcie_halt_feature_dis) {
+		/* Disable PCIe Wr halt window */
+		val = readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT);
+		msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT,
+				(~BIT(31)) & val);
+
+		/* Disable PCIe Rd halt window */
+		val = readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_RD_ADDR_HALT);
+		msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_RD_ADDR_HALT,
+			(~BIT(0)) & val);
+	} else {
+		val = dev->wr_halt_size ? dev->wr_halt_size :
+			readl_relaxed(dev->parf + PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT);
+		msm_pcie_write_reg(dev->parf, PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT,
 				BIT(31) | val);
+	}
 
 	/* init tcsr */
 	if (dev->tcsr_config)
@@ -6290,6 +6306,11 @@ static int msm_pcie_probe(struct platform_device *pdev)
 				&pcie_dev->num_parf_testbus_sel);
 	PCIE_DBG(pcie_dev, "RC%d: num-parf-testbus-sel: 0x%x.\n",
 		pcie_dev->rc_idx, pcie_dev->num_parf_testbus_sel);
+
+	pcie_dev->pcie_halt_feature_dis = of_property_read_bool(of_node,
+			"qcom,pcie-halt-feature-dis");
+	PCIE_DBG(pcie_dev, "PCIe halt feature is %s enabled.\n",
+			pcie_dev->pcie_halt_feature_dis ? "not" : "");
 
 	of_property_read_u32(of_node, "qcom,phy-status-offset",
 				&pcie_dev->phy_status_offset);
