@@ -156,9 +156,9 @@ struct adc_tm_chip {
 	const struct adc_tm_ops		*ops;
 	const struct adc_tm_data	*data;
 	unsigned int			dt_channels;
+	int				threshold_irq;
 	struct pmic_revid_data		*pmic_rev_id;
 	struct adc_tm_sensor		sensor[0];
-	int				threshold_irq;
 };
 
 struct adc_tm_data {
