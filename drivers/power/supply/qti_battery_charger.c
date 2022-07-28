@@ -51,9 +51,9 @@
 
 /* Generic definitions */
 #define MAX_STR_LEN			128
-#define BC_WAIT_TIME_MS			1000
-#define WLS_FW_PREPARE_TIME_MS		1000
-#define WLS_FW_WAIT_TIME_MS		500
+#define BC_WAIT_TIME_MS			2000
+#define WLS_FW_PREPARE_TIME_MS		2000
+#define WLS_FW_WAIT_TIME_MS		2000
 #define WLS_FW_UPDATE_TIME_MS		1000
 #define WLS_FW_BUF_SIZE			128
 #define DEFAULT_RESTRICT_FCC_UA		1000000
@@ -63,6 +63,8 @@ enum usb_port_id {
 	USB_2_PORT_ID,
 	NUM_USB_PORTS,
 };
+
+static bool wls_fw_udating = false;
 
 enum psy_type {
 	PSY_TYPE_BATTERY,
@@ -144,6 +146,11 @@ enum wireless_property_id {
 	WLS_ADAP_TYPE,
 	WLS_CONN_TEMP,
 	WLS_PROP_MAX,
+};
+
+enum wireless_vendor {
+	WLS_IDT,
+	WLS_CPS,
 };
 
 enum {
@@ -272,6 +279,7 @@ struct battery_chg_dev {
 	bool				wls_not_supported;
 	bool				wls_fw_update_reqd;
 	u32				wls_fw_version;
+	u32				wls_fw_vendor;
 	u16				wls_fw_crc;
 	u32				wls_fw_update_time_ms;
 	struct notifier_block		reboot_notifier;
@@ -378,7 +386,7 @@ static int battery_chg_fw_write(struct battery_chg_dev *bcdev, void *data,
 
 	down_read(&bcdev->state_sem);
 	if (atomic_read(&bcdev->state) == PMIC_GLINK_STATE_DOWN) {
-		pr_debug("glink state is down\n");
+		pr_err("glink state is down\n");
 		up_read(&bcdev->state_sem);
 		return -ENOTCONN;
 	}
@@ -459,6 +467,11 @@ static int write_property_id(struct battery_chg_dev *bcdev,
 {
 	struct battery_charger_req_msg req_msg = { { 0 } };
 
+	if (wls_fw_udating) {
+		pr_debug("wireless doing fw update, refuse to  write_property_id");
+		return -ETIMEDOUT;
+	}
+
 	req_msg.property_id = prop_id;
 	req_msg.battery_id = 0;
 	req_msg.value = val;
@@ -477,6 +490,11 @@ static int read_property_id(struct battery_chg_dev *bcdev,
 			struct psy_state *pst, u32 prop_id)
 {
 	struct battery_charger_req_msg req_msg = { { 0 } };
+
+	if (wls_fw_udating) {
+		pr_debug("wireless doing fw update, refuse to  read_property_id");
+		return -ETIMEDOUT;
+	}
 
 	req_msg.property_id = prop_id;
 	req_msg.battery_id = 0;
@@ -1010,8 +1028,18 @@ static int wls_psy_get_prop(struct power_supply *psy,
 		return prop_id;
 
 	rc = read_property_id(bcdev, pst, prop_id);
+#ifdef QCOM_BASE
 	if (rc < 0)
 		return rc;
+#else
+	if (rc == -ETIMEDOUT) {
+		pr_err("read prop:%d timeout, use old prop value\n", prop_id);
+		rc = 0;
+	} else if (rc < 0) {
+		pr_err("read prop:%d error, rc = %d", prop_id, rc);
+		return rc;
+	}
+#endif
 
 	pval->intval = pst->prop[prop_id];
 
@@ -1151,8 +1179,18 @@ static int usb_psy_get_prop(struct power_supply *psy,
 		return prop_id;
 
 	rc = read_property_id(bcdev, pst, prop_id);
+#ifdef QCOM_BASE
 	if (rc < 0)
 		return rc;
+#else
+	if (rc == -ETIMEDOUT) {
+		pr_err("read prop:%d timeout, use old prop value\n", prop_id);
+		rc = 0;
+	} else if (rc < 0) {
+		pr_err("read prop:%d error, rc = %d", prop_id, rc);
+		return rc;
+	}
+#endif
 
 	pval->intval = pst->prop[prop_id];
 	if (prop == POWER_SUPPLY_PROP_TEMP)
@@ -1437,8 +1475,18 @@ static int battery_psy_get_prop(struct power_supply *psy,
 		return prop_id;
 
 	rc = read_property_id(bcdev, pst, prop_id);
+#ifdef QCOM_BASE
 	if (rc < 0)
 		return rc;
+#else
+	if (rc == -ETIMEDOUT) {
+		pr_err("read prop:%d timeout, use old prop value\n", prop_id);
+		rc = 0;
+	} else if (rc < 0) {
+		pr_err("read prop:%d error, rc = %d", prop_id, rc);
+		return rc;
+	}
+#endif
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_MODEL_NAME:
@@ -1725,6 +1773,8 @@ static int wireless_fw_check_for_update(struct battery_chg_dev *bcdev,
 #define IDT9415_FW_MINOR_VER_OFFSET		0x86
 #define IDT_FW_MAJOR_VER_OFFSET		0x94
 #define IDT_FW_MINOR_VER_OFFSET		0x96
+#define CPS_FW_MAJOR_VER_OFFSET		0xc4
+#define CPS_FW_MINOR_VER_OFFSET		0xc5
 static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 {
 	const struct firmware *fw;
@@ -1762,8 +1812,8 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		if (rc < 0)
 			goto out;
 
-		if ((pst->prop[BATT_CAPACITY] / 100) < 50) {
-			pr_err("Battery SOC should be at least 50%% or connect charger\n");
+		if ((pst->prop[BATT_CAPACITY] / 100) < 20) {
+			pr_err("Battery SOC should be at least 20%% or connect charger\n");
 			rc = -EINVAL;
 			goto out;
 		}
@@ -1787,20 +1837,29 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		goto release_fw;
 	}
 
-	if (strstr(bcdev->wls_fw_name, "9412")) {
-		maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
-		min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MINOR_VER_OFFSET));
+	if (bcdev->wls_fw_vendor == WLS_CPS) {
+		maj_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MAJOR_VER_OFFSET));
+		maj_ver = maj_ver >> 8;
+		min_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MINOR_VER_OFFSET));
+		min_ver = min_ver >> 8;
+		pr_info("maj_var %#x, min_ver %#x\n", maj_ver, min_ver);
+		version = maj_ver << 16 | min_ver;
 	} else {
-		maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT9415_FW_MAJOR_VER_OFFSET));
-		min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT9415_FW_MINOR_VER_OFFSET));
+		if (strstr(bcdev->wls_fw_name, "9412")) {
+			maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
+			min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MINOR_VER_OFFSET));
+		} else {
+			maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT9415_FW_MAJOR_VER_OFFSET));
+			min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT9415_FW_MINOR_VER_OFFSET));
+		}
+		version = maj_ver << 16 | min_ver;
 	}
-	version = maj_ver << 16 | min_ver;
 
 	if (force)
 		version = UINT_MAX;
 
-	pr_debug("FW size: %zu version: %#x\n", fw->size, version);
-
+	pr_info("FW size: %zu version: %#x\n", fw->size, version);
+	wls_fw_udating = true;
 	rc = wireless_fw_check_for_update(bcdev, version, fw->size);
 	if (rc < 0) {
 		pr_err("Wireless FW update not needed, rc=%d\n", rc);
@@ -1842,7 +1901,7 @@ release_fw:
 	release_firmware(fw);
 out:
 	pm_relax(bcdev->dev);
-
+	wls_fw_udating = false;
 	return rc;
 }
 
@@ -2347,6 +2406,9 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 		bcdev->num_usb_ports = 2;
 	else
 		bcdev->num_usb_ports = 1;
+
+	if (strstr(bcdev->wls_fw_name, "cps"))
+		bcdev->wls_fw_vendor = WLS_CPS;
 
 	rc = read_property_id(bcdev, pst, BATT_CHG_CTRL_LIM_MAX);
 	if (rc < 0) {
