@@ -97,6 +97,7 @@ static moto_product products_list[] = {
 	{"eqs",	        "all",	NV_EPA}, //IKSWS-81765 eqs bdwlan
 	{"ironmn",	"all",	NV_EPA}, //IKSWS-2923 Ironmn bdwlan
 	{"bronco",	"all",	NV_IPA},
+	{"felix",       "all",  NV_EPA}, //IKSWS-148700 Felix bdwlan
 	/* Terminator */
 	{{0}, {0}, {0}},
 };
