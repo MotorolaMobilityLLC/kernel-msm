@@ -88,6 +88,9 @@ DECLARE_HOOK(android_vh_oom_check_panic,
 DECLARE_HOOK(android_vh_save_vmalloc_stack,
 	TP_PROTO(unsigned long flags, struct vm_struct *vm),
 	TP_ARGS(flags, vm));
+DECLARE_HOOK(android_vh_remove_vmalloc_stack,
+	TP_PROTO(struct vm_struct *vm),
+	TP_ARGS(vm));
 DECLARE_HOOK(android_vh_show_stack_hash,
 	TP_PROTO(struct seq_file *m, struct vm_struct *v),
 	TP_ARGS(m, v));
