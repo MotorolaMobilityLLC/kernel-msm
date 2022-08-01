@@ -1585,6 +1585,7 @@ err:
 	if (of_find_matching_node(dev->of_node, adreno_gmu_match))
 		component_unbind_all(dev, NULL);
 
+	idr_destroy(&device->context_idr);
 	kgsl_bus_close(device);
 
 	return status;
