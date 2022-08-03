@@ -5796,9 +5796,9 @@ static void richtap_work_proc(struct work_struct *work)
 
 	chip->pos = 0;
 	first = chip->start_buf;
-	if (first->length >= get_max_fifo_samples(chip)) {
-		if (first->length > get_max_fifo_samples(chip)) {
-			chip->pos = get_max_fifo_samples(chip);
+	if (first->length >= MMAP_FIFO_MIN_SIZE) {
+		if (first->length > MMAP_FIFO_MIN_SIZE) {
+			chip->pos = MMAP_FIFO_MIN_SIZE;
 			chip->current_buf = first;
 		} else {
 			chip->current_buf = first->kernel_next;
@@ -5809,7 +5809,7 @@ static void richtap_work_proc(struct work_struct *work)
 	}
 
 	count = 0;
-	while (first->length < get_max_fifo_samples(chip)) {
+	while (first->length < MMAP_FIFO_MIN_SIZE) {
 		if ((chip->current_buf->status == MMAP_BUF_DATA_FINISHED) ||
 				(count > 30))
 			break;
@@ -5821,7 +5821,7 @@ static void richtap_work_proc(struct work_struct *work)
 			continue;
 		}
 		if ((first->length + chip->current_buf->length) <=
-		get_max_fifo_samples(chip)) {
+		MMAP_FIFO_MIN_SIZE) {
 			memcpy(&first->data[first->length], chip->current_buf->data,
 			chip->current_buf->length);
 			chip->current_buf->status = MMAP_BUF_DATA_INVALID;
@@ -5831,9 +5831,9 @@ static void richtap_work_proc(struct work_struct *work)
 			count = 0;
 		} else {
 			memcpy(&first->data[first->length], chip->current_buf->data,
-			(get_max_fifo_samples(chip) - first->length));
-			chip->pos = get_max_fifo_samples(chip) - first->length;
-			first->length = get_max_fifo_samples(chip);
+			(MMAP_FIFO_MIN_SIZE - first->length));
+			chip->pos = MMAP_FIFO_MIN_SIZE - first->length;
+			first->length = MMAP_FIFO_MIN_SIZE;
 			dev_err(chip->dev, "first full\n");
 		}
 	}
@@ -5844,12 +5844,12 @@ play_rate:
 	dev_dbg(chip->dev, "pos %d,first %d,current %d\n",
 			chip->pos, first->length, chip->current_buf->length);
 	ret = richtap_load_prebake(chip, first->data, first->length <=
-		get_max_fifo_samples(chip) ? first->length : get_max_fifo_samples(chip));
+		MMAP_FIFO_MIN_SIZE ? first->length : MMAP_FIFO_MIN_SIZE);
 	if (ret < 0) {
 		dev_err(chip->dev, "aac RichTap Upload FIFO data fail\n", ret);
 		return;
 	}
-	if (first->length <= get_max_fifo_samples(chip)) {
+	if (first->length <= MMAP_FIFO_MIN_SIZE) {
 		first->status = MMAP_BUF_DATA_INVALID;
 		first->length = 0;
 	}
