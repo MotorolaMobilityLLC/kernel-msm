@@ -1847,8 +1847,8 @@ static int f2fs_setflags_common(struct inode *inode, u32 iflags, u32 mask)
 		if (iflags & F2FS_COMPR_FL) {
 			if (!f2fs_may_compress(inode))
 				return -EINVAL;
-
-			set_compress_context(inode);
+			if (set_compress_context(inode))
+				return -EOPNOTSUPP;
 		}
 	}
 	if ((iflags ^ masked_flags) & F2FS_NOCOMP_FL) {
