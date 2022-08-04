@@ -5499,6 +5499,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			.allow_userspace_control = true,
 		};
 
+		dwc3_msm_set_role(mdwc, USB_ROLE_NONE);
 		role_desc.fwnode = dev_fwnode(&pdev->dev);
 		mdwc->role_switch = usb_role_switch_register(mdwc->dev,
 								&role_desc);
