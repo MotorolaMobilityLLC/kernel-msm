@@ -102,6 +102,14 @@ config PENANG_DTB
 		Only include PENANG specific DTBs to limit the number that
 		get built during kernel compilation.
 
+config PNANGN_DTB
+	depends on ARCH_QCOM
+	default n
+	bool "PNANGN DTBs"
+	help
+		Only include PNANGN specific DTBs to limit the number that
+		get built during kernel compilation.
+
 config RHODEP_DTB
     depends on ARCH_QCOM
     default n
