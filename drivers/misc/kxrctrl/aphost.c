@@ -6,110 +6,15 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
  
 #include "aphost.h"
 
-#define A11B_NRF
+static struct js_spi_client *gspi_client;
+static cp_buffer_t *u_packet;
 
-
-#define CMD_DATA_TAG  0xA6
-#define CMD_CLR_BOND_TAG  0xA7
-#define CMD_REQUEST_TAG   (0xA8)
-#define CMD_EXTDATA_RLEDTAG  0xB6
-
-//#define  INTERFACE_ADD
-
-#define YC_START_HOST		_IO('q', 1)
-#define YC_STOP_HOST		_IO('q', 2)
-#define YC_DATA_NOTIFY	    _IO('q',3)
-#define YC_START_VIB		_IO('q', 4)
-#define YC_STOP_VIB		    _IO('q', 5)
-
-#define YC_GET_DATA
-
-struct jspinctrl_info {
-	struct pinctrl *pinctrl;
-	struct pinctrl_state *active;
-	struct pinctrl_state *suspend;
-};
-
-struct js_spi_client {
-	struct spi_device *spi_client;
-	struct task_struct   *kthread;
-	struct mutex js_mutex;    /* power mutex*/
-	struct mutex js_sm_mutex; /*dma alloc and free mutex*/
-
-	struct jspinctrl_info pinctrl_info;
-
-	/*int js_lfen_gpio; *//*level shift en gpio*/
-	int js_irq_gpio;
-	/*A11B used as all rled trig ,but v02a used as left rled */
-	int js_rled_en_gpio;
-	int js_tst2_gpio;   /*just old test gpio ,not used in a11b and v02a*/
-	int js_dfu_en_gpio; /*dfu enable gpio ,low enable dfu */
-	/* A11B not used  , V02A useed for right rled */
-	int js_v02a_rled_right_en_gpio;
-	int js_v1p8en_gpio;
-	int js_ledl_gpio; /*old test ,not used now*/
-	int js_ledr_gpio; /*old test ,not used now*/
-	int js_irq;
-
-	atomic_t dataflag;
-	atomic_t rledchg;
-	atomic_t userRequest; //request from userspace
-	atomic_t nordicAcknowledge; //ack from nordic52832 master
-	unsigned char JoyStickBondState; //1:left JoyStick 2:right JoyStick
-	bool suspend;
-
-	wait_queue_head_t  wait_queue;
-	void	*vaddr;
-	size_t vsize;
-	struct dma_buf *js_buf;
-	spinlock_t smem_lock;
-
-	struct miscdevice miscdev;
-	uint64_t tss;
-	uint64_t ts_offset;
-
-	unsigned char txbuffer[255];
-	unsigned char rxbuffer[255];
-
-	uint64_t tsHost; /*linux boottime */
-	uint64_t tsoffset; /*time offset between two cpu*/
-	uint64_t tsoffsetmono;/*linux monotime ,need by app */
-	uint64_t tsSyncPt;
-	uint64_t tsSyncPtmono;
-	uint32_t tshmd_tmp;/*get the time from hmd*/
-	unsigned char SyncPtFlag;
-	unsigned char powerstate;
-	bool     irqstate;
-	unsigned char  js_lstate;
-	unsigned char  js_rstate;
-
-	struct hrtimer hr_timer;
-	ktime_t ktime;
-
-	struct usb_device *udev;
-	struct usb_host_interface *desc;
-	struct usb_endpoint_descriptor *endpoint;
-	struct usb_interface *intf;
-	struct urb *urb;
-	unsigned int pipe;
-	u8 ubuffer[128];
-	struct work_struct work;
-
-	int memfd;
-	atomic_t urbstate;
-};
-
-struct js_spi_client *gspi_client = NULL;
-
-cp_buffer_t *u_packet;
-
-static char checkoutpoint;
-
-void d_packet_set_instance(cp_buffer_t *in )
+static void d_packet_set_instance(cp_buffer_t *in)
 {
 
 	if (gspi_client == NULL)
@@ -128,20 +33,20 @@ void d_packet_set_instance(cp_buffer_t *in )
 	spin_unlock(&gspi_client->smem_lock);
 
 	if (in == NULL)
-		pr_info("js %s:  release mem\n", __func__);
+		pr_debug("js %s:  release mem\n", __func__);
 	else
-		pr_info("js %s:  alloc mem\n", __func__);
+		pr_debug("js %s:  alloc mem\n", __func__);
 
 }
 
 void js_irq_enable(struct js_spi_client   *spi_client, bool enable)
 {
 	if (spi_client->irqstate == enable) {
-		pr_info("js irq already =%d\n", enable);
+		pr_debug("js irq already =%d\n", enable);
 		return;
 	}
 
-	pr_info("js irq en =%d\n", enable);
+	pr_debug("js irq en =%d\n", enable);
 	if (enable)
 		enable_irq(spi_client->js_irq);
 	else
@@ -150,64 +55,28 @@ void js_irq_enable(struct js_spi_client   *spi_client, bool enable)
 	spi_client->irqstate = enable;
 }
 
-void js_set_power(int jspower)
+static void js_set_power(int jspower)
 {
 	if (gspi_client) {
-		mutex_lock(&gspi_client->js_mutex);
 		if (gspi_client->powerstate != jspower) {
-			if (jspower == 0) { /*off */
+			if (jspower == 0) { /* off */
+				gpio_set_value(gspi_client->js_v1p8en_gpio, 0);
 				gspi_client->powerstate = 0;
 				js_irq_enable(gspi_client, false);
-				gpio_set_value(gspi_client->js_dfu_en_gpio, 1);
-				gpio_set_value(gspi_client->js_v1p8en_gpio, 0);
-			} else if (jspower == 1) { /*normal on*/
-				gpio_set_value(gspi_client->js_dfu_en_gpio, 1);
+			} else if (jspower == 1) { /* normal on */
 				gpio_set_value(gspi_client->js_v1p8en_gpio, 1);
 				gspi_client->powerstate = 1;
 				js_irq_enable(gspi_client, true);
-			} else if (jspower == 2) { /*dfu*/
-				gspi_client->powerstate = 2;
-				js_irq_enable(gspi_client, false);
-				gpio_set_value(gspi_client->js_dfu_en_gpio, 0);
-				gpio_set_value(gspi_client->js_v1p8en_gpio, 1);
-				msleep(100);
 			}
 		}
-		mutex_unlock(&gspi_client->js_mutex);
 	}
 }
-
-static ssize_t jspower_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE,
-		"%d\n", (unsigned int)gspi_client->powerstate);
-}
-
-static ssize_t jspower_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	int ctl = 0;
-
-	if (!kstrtoint(buf, 10, &ctl)) {
-		pr_info("[%s]set power:%d\n", __func__, ctl);
-		if (gspi_client) {
-			if (ctl == 0)
-				js_set_power(0);
-			else if (ctl == 1)
-				js_set_power(1);
-			else if (ctl == 2)
-				js_set_power(2);
-		}
-	}
-	return size;
-}
-static DEVICE_ATTR_RW(jspower);
 
 static ssize_t jsmem_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%d\n", gspi_client->memfd);
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+					gspi_client->memfd);
 }
 
 static ssize_t jsmem_store(struct device *dev,
@@ -275,48 +144,51 @@ __end:
 }
 static DEVICE_ATTR_RW(jsmem);
 
-static ssize_t jsoffset_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%llu,%llu\n",
-		gspi_client->tsoffset, gspi_client->tsoffsetmono);
-}
-static DEVICE_ATTR_RO(jsoffset);
-
 static ssize_t jsrequest_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char *buf)
 {
 	unsigned int input = 0;
 	acknowledge_t nordicAck;
 	int size = 0;
 
+	if (gspi_client == NULL) {
+		pr_err("invalid gspi_client\n");
+		return size;
+	}
+
 	mutex_lock(&gspi_client->js_mutex);
 	memset(&nordicAck, 0, sizeof(acknowledge_t));
 	input = atomic_read(&gspi_client->nordicAcknowledge);
 	atomic_set(&gspi_client->nordicAcknowledge, 0);
-	nordicAck.acknowledgeHead.requestType = ((input & 0x7f000000) >> 24);
-	nordicAck.acknowledgeHead.ack = ((input & 0x80000000) >> 31);
-	nordicAck.acknowledgeData[0] = (input & 0x000000ff);
-	nordicAck.acknowledgeData[1] = ((input & 0x0000ff00) >> 8);
-	nordicAck.acknowledgeData[2] = ((input & 0x00ff0000) >> 16);
+	nordicAck.acknowledgeHead.requestType =
+			((input & 0x7f000000) >> 24);
+	nordicAck.acknowledgeHead.ack =
+			((input & 0x80000000) >> 31);
+	nordicAck.acknowledgeData[0] =
+			(input & 0x000000ff);
+	nordicAck.acknowledgeData[1] =
+			((input & 0x0000ff00) >> 8);
+	nordicAck.acknowledgeData[2] =
+			((input & 0x00ff0000) >> 16);
 
 	if (nordicAck.acknowledgeHead.ack == 1)	{
 		switch (nordicAck.acknowledgeHead.requestType) {
-			case getMasterNordicVersionRequest:
+		case getMasterNordicVersionRequest:
 				size = scnprintf(buf, PAGE_SIZE,
-				"masterNordic fwVersion:%d.%d\n",
-		nordicAck.acknowledgeData[1], nordicAck.acknowledgeData[0]);
+					"masterNordic fwVersion:%d.%d\n",
+					nordicAck.acknowledgeData[1],
+					nordicAck.acknowledgeData[0]);
 				break;
-			case bondJoyStickRequest:
-			case disconnectJoyStickRequest:
-			case setVibStateRequest:
-			case hostEnterDfuStateRequest:
+		case bondJoyStickRequest:
+		case disconnectJoyStickRequest:
+		case setVibStateRequest:
+		case hostEnterDfuStateRequest:
 				size = scnprintf(buf, PAGE_SIZE,
-				 "requestType:%d ack:%d\n",
-				nordicAck.acknowledgeHead.requestType,
-				 nordicAck.acknowledgeHead.ack);
+					"requestType:%d ack:%d\n",
+					nordicAck.acknowledgeHead.requestType,
+					nordicAck.acknowledgeHead.ack);
 				break;
-			case getJoyStickBondStateRequest:
+		case getJoyStickBondStateRequest:
 				gspi_client->JoyStickBondState =
 					(nordicAck.acknowledgeData[0] & 0x03);
 				size = scnprintf(buf, PAGE_SIZE,
@@ -324,111 +196,179 @@ static ssize_t jsrequest_show(struct device *dev,
 				 (gspi_client->JoyStickBondState & 0x01),
 				((gspi_client->JoyStickBondState & 0x02) >> 1));
 				break;
-			case getLeftJoyStickProductNameRequest:
+		case getLeftJoyStickProductNameRequest:
 				size = scnprintf(buf, PAGE_SIZE,
 					"leftJoyStick productNameID:%d\n",
-						 nordicAck.acknowledgeData[0]);
+					nordicAck.acknowledgeData[0]);
 				break;
-			case getRightJoyStickProductNameRequest:
+		case getRightJoyStickProductNameRequest:
 				size = scnprintf(buf, PAGE_SIZE,
 					"rightJoyStick productNameID:%d\n",
-					 nordicAck.acknowledgeData[0]);
+					nordicAck.acknowledgeData[0]);
 				break;
-			case getLeftJoyStickFwVersionRequest:
+		case getLeftJoyStickFwVersionRequest:
 				size = scnprintf(buf, PAGE_SIZE,
 					"leftJoyStick fwVersion:%d.%d\n",
 					 nordicAck.acknowledgeData[1],
 					 nordicAck.acknowledgeData[0]);
 				break;
-			case getRightJoyStickFwVersionRequest:
+		case getRightJoyStickFwVersionRequest:
 				size = scnprintf(buf, PAGE_SIZE,
 					"rightJoyStick fwVersion:%d.%d\n",
 					nordicAck.acknowledgeData[1],
-					 nordicAck.acknowledgeData[0]);
+					nordicAck.acknowledgeData[0]);
 				break;
-			default:
+		default:
 				size = scnprintf(buf, PAGE_SIZE,
-						 "invalid requestType\n");
+					"invalid requestType\n");
 				break;
 		}
-	}
-	else
+	} else {
 		size = scnprintf(buf, PAGE_SIZE, "no need to ack\n");
-
+	}
 	mutex_unlock(&gspi_client->js_mutex);
+
 	return size;
 }
 
 static ssize_t jsrequest_store(struct device *dev,
 		 struct device_attribute *attr, const char *buf, size_t size)
 {
-
 	unsigned int input = 0;
 	request_t request;
 	int vibState = 0;
+	int err = 0;
+
+	if (gspi_client == NULL) {
+		pr_err("invalid gspi_client\n");
+		return size;
+	}
 
 	mutex_lock(&gspi_client->js_mutex);
-	if (!kstrtouint(buf, 16, &input)) {
+	err = kstrtouint(buf, 16, &input);
+	if (err) {
+		pr_err("invalid param\n");
+	} else {
 		memset(&request, 0, sizeof(request_t));
-		request.requestHead.requestType = ((input & 0x7f000000) >> 24);
+		request.requestHead.requestType =
+				((input & 0x7f000000) >> 24);
 		request.requestData[0] = (input & 0x000000ff);
 		request.requestData[1] = (input & 0x0000ff00);
 		request.requestData[2] = (input & 0x00ff0000);
 
 		switch (request.requestHead.requestType) {
-			case setVibStateRequest:
+		case setVibStateRequest:
 				vibState =
-		((request.requestData[1] << 8) | request.requestData[0]);
-				if (vibState >= 0 && vibState <= 0xffff) {
-					if (gspi_client) {
-						atomic_set(
-					&gspi_client->userRequest, input);
-						atomic_inc(
+					((request.requestData[1] << 8) |
+					request.requestData[0]);
+				if (vibState >= 0 &&
+					vibState <= 0xffff) {
+					atomic_set(
+						&gspi_client->userRequest,
+						input);
+					atomic_inc(
 						&gspi_client->dataflag);
-						wake_up_interruptible(
+					wake_up_interruptible(
 						&gspi_client->wait_queue);
-					}
 				} else {
 					pr_err("invalid vibState\n");
 					memset(&gspi_client->userRequest, 0,
-					 sizeof(gspi_client->userRequest));
+					sizeof(gspi_client->userRequest));
 				}
 				break;
-			case getMasterNordicVersionRequest:
-			case bondJoyStickRequest:
-			case disconnectJoyStickRequest:
-			case getJoyStickBondStateRequest:
-			case hostEnterDfuStateRequest:
-			case getLeftJoyStickProductNameRequest:
-			case getRightJoyStickProductNameRequest:
-			case getLeftJoyStickFwVersionRequest:
-			case getRightJoyStickFwVersionRequest:
-				if (gspi_client) {
-					atomic_set(&gspi_client->userRequest,
-								 input);
-					atomic_inc(&gspi_client->dataflag);
-					wake_up_interruptible(
-						&gspi_client->wait_queue);
-				}
+		case getMasterNordicVersionRequest:
+		case bondJoyStickRequest:
+		case disconnectJoyStickRequest:
+		case getJoyStickBondStateRequest:
+		case hostEnterDfuStateRequest:
+		case getLeftJoyStickProductNameRequest:
+		case getRightJoyStickProductNameRequest:
+		case getLeftJoyStickFwVersionRequest:
+		case getRightJoyStickFwVersionRequest:
+				atomic_set(&gspi_client->userRequest,
+					input);
+				atomic_inc(&gspi_client->dataflag);
+				wake_up_interruptible(
+					&gspi_client->wait_queue);
 				break;
-			default:
+		default:
 				pr_err("invalid requestType\n");
 				memset(&gspi_client->userRequest, 0,
-					 sizeof(gspi_client->userRequest));
-				return size;
+					sizeof(gspi_client->userRequest));
 		}
 	}
 	mutex_unlock(&gspi_client->js_mutex);
+
 	return size;
 }
 static DEVICE_ATTR_RW(jsrequest);
 
-static int js_spi_txfr(struct spi_device *spi, char *txbuf, char *rxbuf,
-				 int num_byte, uint64_t *tts)
+#ifdef MANUL_CONTROL_JOYSTICK_RLED
+static void js_rled_enable(u8 mask)
 {
+	if (gspi_client) {
+		mask = (3 - mask);
+		switch (mask) {
+		case 0:
+			if ((gspi_client->js_ledr_state == 0) ||
+				(gspi_client->js_ledl_state == 0)) {
+				pr_debug("enable\n");
+				pinctrl_select_state(
+					gspi_client->pinctrl_info.pinctrl,
+					gspi_client->pinctrl_info.active);
+				gspi_client->js_ledr_state = 1;
+				gspi_client->js_ledl_state = 0;
+			}
+			break;
+		case 3:
+			if ((gspi_client->js_ledr_state == 1) ||
+				(gspi_client->js_ledl_state == 1)) {
+				pr_debug("disable\n");
+				pinctrl_select_state(
+					gspi_client->pinctrl_info.pinctrl,
+					gspi_client->pinctrl_info.suspend);
+				gspi_client->js_ledr_state = 0;
+				gspi_client->js_ledl_state = 0;
+			}
+			break;
+		}
+	}
+}
 
+static ssize_t jsrled_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+		((gspi_client->js_ledr_state << 1) |
+		(gspi_client->js_ledl_state)));
+}
+
+static ssize_t jsrled_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int  rledflag = 0;
+	int err = 0;
+
+	mutex_lock(&gspi_client->js_rled_mutex);
+	err = kstrtouint(buf, 16, &rledflag);
+	if (err) {
+		pr_err("invalid param\n");
+		mutex_unlock(&gspi_client->js_rled_mutex);
+		return err;
+	}
+
+	js_rled_enable(rledflag);
+	mutex_unlock(&gspi_client->js_rled_mutex);
+	return count;
+}
+
+static DEVICE_ATTR_RW(jsrled);
+#endif
+
+static int js_spi_txfr(struct spi_device *spi, char *txbuf,
+				char *rxbuf, int num_byte, uint64_t *tts)
+{
 	int ret = 0;
-
 	struct spi_transfer txfr;
 	struct spi_message msg;
 
@@ -448,9 +388,7 @@ static int js_spi_txfr(struct spi_device *spi, char *txbuf, char *rxbuf,
 	return ret;
 }
 
-#define XFR_SIZE  188
-
-int js_thread(void *data)
+static int js_thread(void *data)
 {
 	int ret;
 	unsigned char *pbuf;
@@ -473,10 +411,8 @@ int js_thread(void *data)
 		.sched_priority = 88
 	};
 
-	sched_setscheduler(current, SCHED_RR, &param);
-	//set_current_state(TASK_INTERRUPTIBLE);
-
-	pr_info(" %s start\n", __func__);
+	sched_setscheduler(current, SCHED_FIFO, &param);
+	pr_debug("%s: start\n", __func__);
 
 	do {
 		skiprport = false;
@@ -498,7 +434,8 @@ int js_thread(void *data)
 
 		val = gpio_get_value(spi_client->js_irq_gpio);
 
-		if (val == 0 && input == 0) //Filter out the exception trigger
+		/* Filter out the exception trigger */
+		if (val == 0 && input == 0)
 			continue;
 
 		memset(&currentRequest, 0, sizeof(request_t));
@@ -518,18 +455,18 @@ int js_thread(void *data)
 				| currentRequest.requestHead.requestType);
 
 		switch (currentRequest.requestHead.requestType) {
-			case setVibStateRequest:
+		case setVibStateRequest:
 				spi_client->txbuffer[2] =
 					currentRequest.requestData[0];
 				spi_client->txbuffer[3] =
 					 currentRequest.requestData[1];
 				break;
-			case bondJoyStickRequest:
-			case disconnectJoyStickRequest:
+		case bondJoyStickRequest:
+		case disconnectJoyStickRequest:
 				spi_client->txbuffer[2] =
 					 (currentRequest.requestData[0]&0x01);
 				break;
-			default:
+		default:
 				break;
 		}
 		if (spi_client->powerstate == 1) {
@@ -541,7 +478,8 @@ int js_thread(void *data)
 		} else
 			continue;
 
-		if (spi_client->rxbuffer[4] == 0xff) //Filtering dirty Data
+		/* Filtering dirty Data */
+		if (spi_client->rxbuffer[4] == 0xff)
 			continue;
 
 		if (lastRequest.requestHead.needAck == 1) {
@@ -558,8 +496,8 @@ int js_thread(void *data)
 				unsigned int input = 0;
 
 				input = ((spi_client->rxbuffer[0] << 24)
-				 | (spi_client->rxbuffer[3] << 16)
-				 | (spi_client->rxbuffer[2] << 8)
+				| (spi_client->rxbuffer[3] << 16)
+				| (spi_client->rxbuffer[2] << 8)
 				| spi_client->rxbuffer[1]);
 				atomic_set(&spi_client->nordicAcknowledge,
 							 input);
@@ -567,21 +505,21 @@ int js_thread(void *data)
 			memset(&lastRequest, 0, sizeof(lastRequest));
 		}
 
-		/*left or right joyStick are bound */
+		/* left or right joyStick are bound */
 		if ((gspi_client->JoyStickBondState & 0x3) != 0 && input == 0) {
-		//if ((gspi_client->JoyStickBondState&0x03) != 0) //left or right joyStick are bound
+
 			pksz = spi_client->rxbuffer[4];
 			num = spi_client->rxbuffer[5];
 
-			if (num == 0 || pksz != 30)
-				//pr_err("wjx no joystick data\n");
+			if (num == 0 || pksz != 30) {
+				pr_err("invalid joystick data\n");
 				skiprport = true;
+			}
 			memcpy(&hosttime, &spi_client->rxbuffer[6], 4);
 			tts = spi_client->tsHost;
 
 			pbuf = &spi_client->rxbuffer[10];
 			if (!skiprport) {
-				/*add Protection if someone release the memory*/
 				spin_lock(&gspi_client->smem_lock);
 				for (index = 0; index < num; index++) {
 					memcpy(&tth[index], pbuf, 4);
@@ -645,8 +583,17 @@ static int js_pinctrl_init(struct js_spi_client   *spi_client)
 		pr_err("failed  pinctrl suspend state, rc=%d\n", rc);
 		goto error;
 	}
-	pr_info("%s ok\n", __func__);
+	pr_debug("%s ok\n", __func__);
 
+	rc = pinctrl_select_state(spi_client->pinctrl_info.pinctrl,
+			spi_client->pinctrl_info.active);
+	if (rc) {
+		pr_err("pinctrl_select_state failed:%d\n", rc);
+	} else {
+		spi_client->js_ledl_state = 1;
+		spi_client->js_ledr_state = 1;
+	}
+	pr_debug("%s init successfully\n", __func__);
 error:
 	return rc;
 }
@@ -654,10 +601,8 @@ error:
 static int js_parse_gpios(struct js_spi_client   *spi_client)
 {
 	int rc = 0;
-
 	struct device_node *of_node = spi_client->spi_client->dev.of_node;
 
-#ifdef A11B_NRF
 	spi_client->js_v1p8en_gpio =
 		 of_get_named_gpio(of_node, "nordic,v1p8en-gpio", 0);
 	if (!gpio_is_valid(spi_client->js_v1p8en_gpio)) {
@@ -665,7 +610,7 @@ static int js_parse_gpios(struct js_spi_client   *spi_client)
 		rc = -EINVAL;
 		goto error;
 	}
-#endif
+
 
 	spi_client->js_irq_gpio = of_get_named_gpio(of_node,
 				 "nordic,irq-gpio", 0);
@@ -675,38 +620,16 @@ static int js_parse_gpios(struct js_spi_client   *spi_client)
 		goto error;
 	}
 
-	/*not used now*/
-	spi_client->js_ledl_gpio = of_get_named_gpio(of_node, "nordic,ledl", 0);
+	spi_client->js_ledl_gpio = of_get_named_gpio(of_node,
+			"nordic,ledl-gpio", 0);
 	if (!gpio_is_valid(spi_client->js_ledl_gpio))
 		pr_err("failed get   js_ledl_gpio gpio, rc=%d\n", rc);
 
-	spi_client->js_ledr_gpio = of_get_named_gpio(of_node, "nordic,ledr", 0);
+	spi_client->js_ledr_gpio = of_get_named_gpio(of_node,
+			"nordic,ledr-gpio", 0);
 	if (!gpio_is_valid(spi_client->js_ledr_gpio))
 		pr_err("failed get   js_ledr_gpio gpio, rc=%d\n", rc);
 
-	spi_client->js_rled_en_gpio = of_get_named_gpio(of_node,
-						 "nordic,tst1", 0);
-	if (!gpio_is_valid(spi_client->js_rled_en_gpio)) {
-		pr_err("failed get	 js_rled_en_gpio gpio, rc=%d\n", rc);
-		rc = -EINVAL;
-		goto error;
-	}
-
-	spi_client->js_tst2_gpio = of_get_named_gpio(of_node, "nordic,tst2", 0);
-	if (!gpio_is_valid(spi_client->js_tst2_gpio))
-		pr_err("failed get	 js_tst2_gpio gpio, rc=%d\n", rc);
-
-	spi_client->js_dfu_en_gpio = of_get_named_gpio(of_node,
-						 "nordic,tst3", 0);
-	if (!gpio_is_valid(spi_client->js_dfu_en_gpio))
-		pr_err("failed get	 js_dfu_en_gpio gpio, rc=%d\n", rc);
-
-	spi_client->js_v02a_rled_right_en_gpio =
-			of_get_named_gpio(of_node, "nordic,tst4", 0);
-	if (!gpio_is_valid(spi_client->js_v02a_rled_right_en_gpio))
-		pr_err("failed get js_v02a_rled_right_en_gpio, rc=%d\n", rc);
-
-	pr_info("%s ok\n", __func__);
 error:
 	return rc;
 }
@@ -714,108 +637,28 @@ error:
 static int js_gpio_request(struct js_spi_client   *spi_client)
 {
 	int rc = 0;
-/*
-	if (gpio_is_valid(spi_client->js_lfen_gpio)) {
-		pr_info("request for js_lfen_gpio  =%d\n",
-				 spi_client->js_lfen_gpio);
-		rc = gpio_request(spi_client->js_lfen_gpio, "js_lfen_gpio");
-		if (rc) {
-			pr_err("request for js_lfen_gpio failed, rc=%d\n", rc);
-			goto error;
-		}
-	}
-*/
 
-#ifdef A11B_NRF
 	if (gpio_is_valid(spi_client->js_v1p8en_gpio)) {
-		pr_info("request for js_v1p8en_gpio  =%d\n",
-				 spi_client->js_v1p8en_gpio);
-		rc = gpio_request(spi_client->js_v1p8en_gpio, "js_v1p8en_gpio");
+		rc = gpio_request(spi_client->js_v1p8en_gpio,
+				"nordic_v1p8en_gpio");
 		if (rc) {
-			pr_err("req for js_v1p8en_gpio failed, rc=%d\n", rc);
+			pr_err("req for noric_v1p8en_gpio failed, rc=%d\n", rc);
 			goto error;
 		}
 	}
-#endif
 
 	if (gpio_is_valid(spi_client->js_irq_gpio)) {
-		pr_info("request for js_irq_gpio  =%d\n",
+		pr_debug("request for js_irq_gpio  =%d\n",
 				 spi_client->js_irq_gpio);
-		rc = gpio_request(spi_client->js_irq_gpio, "js_irq_gpio");
+		rc = gpio_request(spi_client->js_irq_gpio, "nordic_irq_gpio");
 		if (rc) {
+			gpio_free(spi_client->js_v1p8en_gpio);
 			pr_err("request for js_irq_gpio failed, rc=%d\n", rc);
 			goto error;
 		}
 	}
 
-	if (gpio_is_valid(spi_client->js_ledl_gpio)) {
-		pr_info("request for js_ledl_gpio  =%d\n",
-					 spi_client->js_ledl_gpio);
-		rc = gpio_request(spi_client->js_ledl_gpio, "js_ledl_gpio");
-		if (rc)
-			pr_err("request for js_ledl_gpio failed, rc=%d\n", rc);
-		else
-			gpio_direction_output(spi_client->js_ledl_gpio, 1);
-	}
-
-	if (gpio_is_valid(spi_client->js_ledr_gpio)) {
-		pr_info("request for js_ledr_gpio  =%d\n",
-					 spi_client->js_ledr_gpio);
-		rc = gpio_request(spi_client->js_ledr_gpio, "js_ledr_gpio");
-		if (rc)
-			pr_err("request for js_ledr_gpio failed, rc=%d\n", rc);
-		else
-			gpio_direction_output(spi_client->js_ledr_gpio, 1);
-	}
-
-	if (gpio_is_valid(spi_client->js_rled_en_gpio)) {
-		pr_info("request for js_rled_en_gpio  =%d\n",
-					 spi_client->js_rled_en_gpio);
-		rc = gpio_request(spi_client->js_rled_en_gpio,
-						 "js_rled_en_gpio");
-		if (rc) {
-			pr_err("request for js_rled_en_gpio failed, rc=%d\n",
-									 rc);
-			goto error;
-		}
-		gpio_direction_output(spi_client->js_rled_en_gpio, 0);
-	}
-
-	if (gpio_is_valid(spi_client->js_tst2_gpio)) {
-		pr_info("request for js_tst2_gpio  =%d\n",
-					 spi_client->js_tst2_gpio);
-		rc = gpio_request(spi_client->js_tst2_gpio, "js_tst2_gpio");
-		if (rc)
-			pr_err("request for js_tst2_gpio failed, rc=%d\n", rc);
-		else
-			gpio_direction_input(spi_client->js_tst2_gpio);
-	}
-
-	if (gpio_is_valid(spi_client->js_dfu_en_gpio)) {
-		pr_info("request for js_dfu_en_gpio  =%d\n",
-					 spi_client->js_dfu_en_gpio);
-		rc = gpio_request(spi_client->js_dfu_en_gpio, "js_dfu_en_gpio");
-		if (rc)
-			pr_err("request for js_dfu_en_gpio failed, rc=%d\n",
-									 rc);
-		else
-			gpio_direction_output(spi_client->js_dfu_en_gpio, 0);
-	}
-
-	if (gpio_is_valid(spi_client->js_v02a_rled_right_en_gpio)) {
-		pr_info("request for js_v02a_rled_right_en_gpio  =%d\n",
-				 spi_client->js_v02a_rled_right_en_gpio);
-		rc = gpio_request(spi_client->js_v02a_rled_right_en_gpio,
-					 "js_v02a_rled_right_en_gpio");
-		if (rc)
-			pr_err("js_v02a_rled_right_en_gpio failed, rc%d\n", rc);
-		else
-			gpio_direction_output(
-				spi_client->js_v02a_rled_right_en_gpio, 0);
-			//gpio_direction_input(spi_client->js_v02a_rled_right_en_gpio);
-	}
-
-	pr_info("%s ok\n", __func__);
+	pr_debug("%s ok\n", __func__);
 
 error:
 	return rc;
@@ -829,7 +672,6 @@ static irqreturn_t  js_irq_handler(int irq, void *dev_id)
 	if (spi_client->powerstate == 1) {
 		val = gpio_get_value(spi_client->js_irq_gpio);
 		if (val == 1) {
-			//disable_irq_nosync(spi_client->js_irq);
 			spi_client->tsHost = ktime_to_ns(ktime_get_boottime());
 			atomic_inc(&spi_client->dataflag);
 			wake_up_interruptible(&spi_client->wait_queue);
@@ -848,202 +690,29 @@ static int js_io_init(struct js_spi_client   *spi_client)
 	if (rc)
 		pr_err("js failed to set pin state, rc=%d\n", rc);
 
-	gpio_direction_output(spi_client->js_dfu_en_gpio, 1);
-	gpio_direction_output(spi_client->js_v02a_rled_right_en_gpio, 0);
 	gpio_direction_input(spi_client->js_irq_gpio);
-	/*gpio_direction_output(spi_client->js_lfen_gpio, 0);*/
-
-#ifdef A11B_NRF
 	gpio_direction_output(spi_client->js_v1p8en_gpio, 0);
-#endif
-	/*gpio_direction_output(spi_client->js_lfen_gpio, 0);*/
-
 	spi_client->powerstate = 0;
-	spi_client->js_lstate = 1;
-	spi_client->js_rstate = 1;
-
 	spi_client->js_irq = gpio_to_irq(spi_client->js_irq_gpio);
 
 	if (spi_client->js_irq < 0) {
 		spi_client->js_irq = -1;
+		ret = -EINVAL;
 		pr_err(" js  gpio_to_irq err\n");
+		goto failed;
 	} else {
-		//IRQF_TRIGGER_FALLING
+		/* IRQF_TRIGGER_FALLING */
 		ret = request_irq(spi_client->js_irq,
-		js_irq_handler, IRQF_TRIGGER_RISING, "js", spi_client);
+		js_irq_handler, IRQF_TRIGGER_RISING, "nordic", spi_client);
 		disable_irq_nosync(spi_client->js_irq);
 		if (ret < 0)
 			pr_err("js request_irq err=%d\n", spi_client->js_irq);
-		else
-			pr_info("js request_irq =%d\n", spi_client->js_irq);
 	}
-	pr_info("%s ok\n", __func__);
+	pr_debug("%s ok\n", __func__);
 	return 0;
-}
 
-/*
-note:
-this fuction used for :
-1    notify to JoyStick the trig rled 
-2 .  sync offset for android user space used to synctime .
-*/
-static void glass_private_ep_callback(struct urb *urb)
-{
-	struct js_spi_client *client;
-
-	client = urb->context;
-
-	if (urb->status == 0) {
-		if (gspi_client->js_lstate)
-			gpio_set_value(client->js_rled_en_gpio, 1);
-
-		if (gspi_client->js_rstate)
-			gpio_set_value(client->js_v02a_rled_right_en_gpio, 1);
-
-		if (checkoutpoint == 0) {
-			gspi_client->tsSyncPt =
-				 ktime_to_ns(ktime_get_boottime());
-			gspi_client->tsSyncPtmono = ktime_to_ns(ktime_get());
-
-			memcpy(&(gspi_client->tshmd_tmp),
-				(void *)(client->ubuffer), 4);
-			gspi_client->SyncPtFlag = 1;
-		}
-		hrtimer_start(&client->hr_timer, client->ktime,
-			 HRTIMER_MODE_REL);
-	} else
-		pr_err("js notify_pri_callback err\n");
-
-	schedule_work(&client->work);
-}
-
-enum hrtimer_restart timecallback(struct hrtimer *timer)
-{
-	struct js_spi_client   *spi_client;
-
-	spi_client = container_of(timer, struct js_spi_client, hr_timer);
-	gpio_set_value(spi_client->js_rled_en_gpio, 0);
-	gpio_set_value(spi_client->js_v02a_rled_right_en_gpio, 0);
-
-	return HRTIMER_NORESTART;
-}
-
-static int glass_private_chanel_probe(struct usb_interface *intf,
-				const struct usb_device_id *id)
-{
-	int ret = 0;
-	struct js_spi_client *client;
-	int maxpacket;
-
-	if (gspi_client == NULL)
-		return -ENOMEM;
-
-	client = gspi_client;
-	client->udev = interface_to_usbdev(intf);
-	client->desc = intf->cur_altsetting;
-	if (client->desc->desc.bNumEndpoints != 1) {
-		pr_err("js bNumEndpoints err\n");
-		return -EINVAL;
-	}
-	client->endpoint = &client->desc->endpoint[0].desc;
-	if (!usb_endpoint_is_int_in(client->endpoint)) {
-		pr_err("js not ep\n");
-		return -EINVAL;
-	}
-	usb_set_intfdata(intf, client);
-	client->intf = intf;
-	client->urb = usb_alloc_urb(0, GFP_KERNEL);
-	if (!client->urb)
-		return -ENOMEM;
-
-	client->pipe = usb_rcvintpipe(client->udev,
-				client->endpoint->bEndpointAddress);
-	maxpacket = usb_maxpacket(client->udev, client->pipe,
-					usb_pipeout(client->pipe));
-	usb_fill_int_urb(client->urb, client->udev, client->pipe,
-		client->ubuffer, maxpacket, glass_private_ep_callback, client,
-		client->endpoint->bInterval);
-	atomic_set(&client->urbstate, 1);
-
-	ret = usb_submit_urb(client->urb, GFP_KERNEL);
-	if (ret < 0) {
-		pr_err("js usb_submit_urb err =%d\n", ret);
-		usb_free_urb(client->urb);
-		return  ret;
-	}
-	client->tsoffset = 0;
-	client->tsoffsetmono = 0;
-	checkoutpoint = 0;
+failed:
 	return ret;
-}
-
-static void glass_private_chanel_disconnect(struct usb_interface *intf)
-{
-	struct js_spi_client *client;
-
-	client = usb_get_intfdata(intf);
-	client->tsoffset = 0;
-	client->tsoffsetmono = 0;
-	atomic_set(&client->urbstate, 0);
-	usb_poison_urb(client->urb); 
-	usb_free_urb(client->urb);
-	checkoutpoint = 0;
-}
-
-static int glass_private_chanel_ioctl(struct usb_interface *intf,
-				 unsigned int code, void *user_data)
-{
-// todo if need
-	return -ENOMSG;
-}
-
-static const struct usb_device_id yc_id_table[] = {
-	{ .match_flags =
-		USB_DEVICE_ID_MATCH_DEVICE|USB_DEVICE_ID_MATCH_INT_CLASS,
-	.idVendor  = 0x045e,
-	.idProduct = 0x0659,
-	.bInterfaceClass = 0xfe},
-
-	{ }
-};
-
-MODULE_DEVICE_TABLE(usb, hub_id_table);
-
-static struct usb_driver pri_driver = {
-	.name =		"yc",
-	.probe =	glass_private_chanel_probe,
-	.disconnect =	glass_private_chanel_disconnect,
-	.unlocked_ioctl = glass_private_chanel_ioctl,
-	.id_table =	yc_id_table,
-};
-
-/*note : used to calculate  time offset for app use
-move from irq to work for irq perfermance.
-*/
-static void ts_offset_update_event(struct work_struct *pwork)
-{
-	struct js_spi_client *client = container_of(pwork,
-				 struct js_spi_client, work);
-	int  check = atomic_read(&client->urbstate);
-
-	if (check == 0)
-		return;
-
-	usb_submit_urb(client->urb, GFP_KERNEL);
-	if (gspi_client->SyncPtFlag == 1) {
-		gspi_client->SyncPtFlag = 0;
-		gspi_client->tsoffset =
-		gspi_client->tsSyncPt - 300000 -
-			 (uint64_t)(gspi_client->tshmd_tmp) * 1000000;
-		gspi_client->tsoffsetmono =
-		gspi_client->tsSyncPtmono - 300000 -
-		(uint64_t)(gspi_client->tshmd_tmp) * 1000000;
-		//pr_err("js: offset:=%llu adr =%llu, hmdts=%d\n",
-	//gspi_client->tsoffset,gspi_client->tsSyncPt,gspi_client->tshmd_tmp);
-	}
-	checkoutpoint++;
-	if (checkoutpoint == 30)
-		checkoutpoint = 0;
 }
 
 static int js_spi_setup(struct spi_device *spi)
@@ -1051,73 +720,66 @@ static int js_spi_setup(struct spi_device *spi)
 	struct js_spi_client   *spi_client;
 	int rc = 0;
 
-	pr_info("js js_spi_setup 1\n");
 	if ((spi->dev.of_node) == NULL) {
 		pr_err("js failed to check of_node\n");
 		return -ENOMEM;
 	}
-	pr_info("js js_spi_setup 2\n");
+
 	spi_client = kzalloc(sizeof(*spi_client), GFP_KERNEL);
 	if (!spi_client) {
 		pr_err("js failed to malloc\n");
 		return -ENOMEM;
 	}
-	pr_info("js js_spi_setup 3\n");
-	spi_client->spi_client = spi;
 
+	spi_client->spi_client = spi;
 	rc = js_parse_gpios(spi_client);
 	if (rc) {
 		pr_err("js failed to parse gpio, rc=%d\n", rc);
 		goto spi_free;
 	}
+
 	rc = js_pinctrl_init(spi_client);
 	if (rc) {
 		pr_err("js failed to init pinctrl, rc=%d\n", rc);
 		goto spi_free;
 	}
+
 	rc = js_gpio_request(spi_client);
 	if (rc) {
 		pr_err("js failed to request gpios, rc=%d\n", rc);
 		goto spi_free;
 	}
+
 	atomic_set(&spi_client->dataflag, 0);
 	atomic_set(&spi_client->userRequest, 0);
 	atomic_set(&spi_client->nordicAcknowledge, 0);
 	mutex_init(&(spi_client->js_mutex));
 	mutex_init(&(spi_client->js_sm_mutex));
+#ifdef MANUL_CONTROL_JOYSTICK_RLED
+	mutex_init(&(spi_client->js_rled_mutex));
+#endif
 	spin_lock_init(&spi_client->smem_lock);
 	init_waitqueue_head(&spi_client->wait_queue);
 	dev_set_drvdata(&spi->dev, spi_client);
 
 	device_create_file(&spi->dev, &dev_attr_jsmem);
-	device_create_file(&spi->dev, &dev_attr_jspower);
-	device_create_file(&spi->dev, &dev_attr_jsoffset);
 	device_create_file(&spi->dev, &dev_attr_jsrequest);
-
+#ifdef MANUL_CONTROL_JOYSTICK_RLED
+	device_create_file(&spi->dev, &dev_attr_jsrled);
+#endif
 	spi_client->suspend = false;
 	spi_client->vaddr = NULL;
-	spi_client->tsoffset = 0;
-	spi_client->tsoffsetmono = 0;
 
 	gspi_client = spi_client;
-	spi_client->kthread = kthread_run(js_thread, spi_client, "jsthread");
+	spi_client->kthread = kthread_run(js_thread, spi_client,
+			"nordicthread");
 	if (IS_ERR(spi_client->kthread))
 		pr_err("js kernel_thread failed\n");
 
 	js_io_init(spi_client);
-
-	spi_client->ktime = ktime_set(0, 200000);
-	hrtimer_init(&spi_client->hr_timer, CLOCK_BOOTTIME, HRTIMER_MODE_REL);
-	spi_client->hr_timer.function = timecallback;
-
-	INIT_WORK(&spi_client->work, ts_offset_update_event); 
-
-	atomic_set(&spi_client->urbstate, 0);
-	usb_register(&pri_driver);
-
 	js_set_power(1);
-	pr_info("end of %s\n", __func__);
 	return rc;
+
 spi_free:
 	kfree(spi_client);
 	return rc;
@@ -1125,7 +787,7 @@ spi_free:
 
 static int js_spi_suspend(struct device *dev)
 {
-	struct js_spi_client   *spi_client;
+	struct js_spi_client *spi_client = NULL;
 
 	if (!dev)
 		return -EINVAL;
@@ -1133,38 +795,17 @@ static int js_spi_suspend(struct device *dev)
 	spi_client = dev_get_drvdata(dev);
 	if (!spi_client)
 		return -EINVAL;
-	spi_client->suspend = true;
+
 	js_set_power(0);
-	pr_info("js_spi_suspend\n");
+	spi_client->suspend = true;
+
+	pr_debug("%s exit\n", __func__);
 	return 0;
-}
-
-/* v02a  called by external module to trig the joystick rled */
-void external_ctl_gpio(u8 mask)
-{
-	if (gspi_client) {
-		if (gpio_is_valid(gspi_client->js_rled_en_gpio)) {
-			if (mask & 0x01)
-				gpio_set_value(gspi_client->js_rled_en_gpio, 1);
-			else
-				gpio_set_value(gspi_client->js_rled_en_gpio, 0);
-		}
-
-		if (gpio_is_valid(gspi_client->js_v02a_rled_right_en_gpio)) {
-			if (mask & 0x02)
-				gpio_set_value(
-				gspi_client->js_v02a_rled_right_en_gpio, 1);
-			else
-				gpio_set_value(
-				gspi_client->js_v02a_rled_right_en_gpio, 0);
-		}
-	}
 }
 
 static int js_spi_resume(struct device *dev)
 {
-	struct js_spi_client   *spi_client;
-
+	struct js_spi_client *spi_client = NULL;
 	if (!dev)
 		return -EINVAL;
 
@@ -1174,15 +815,15 @@ static int js_spi_resume(struct device *dev)
 
 	js_set_power(1);
 	spi_client->suspend = false;
-	pr_info("[%s] exit\n", __func__);
+	pr_debug("[%s] exit\n", __func__);
 	return 0;
 }
 
 static int js_spi_driver_probe(struct spi_device *spi)
 {
-	int ret;
+	int ret = 0;
 
-	pr_info("js_spi_driver_probe start\n");
+	pr_debug("%s start\n", __func__);
 	spi->bits_per_word = 8;
 	spi->mode = SPI_MODE_0;
 
@@ -1193,13 +834,46 @@ static int js_spi_driver_probe(struct spi_device *spi)
 		pr_err("js spi_setup failed ret=%d\n", ret);
 		return ret;
 	}
-	pr_info("js_spi_driver_probe ok\n");
+	pr_debug("%s ok\n", __func__);
 
 	return js_spi_setup(spi);
 }
 
-static int js_spi_driver_remove(struct spi_device *sdev)
+static int js_spi_driver_remove(struct spi_device *spi)
 {
+	struct js_spi_client *spi_client = NULL;
+
+	js_set_power(0);
+	d_packet_set_instance(NULL);
+
+	spi_client = dev_get_drvdata(&spi->dev);
+	if (!IS_ERR_OR_NULL(spi_client->vaddr)) {
+		dma_buf_end_cpu_access(spi_client->js_buf,
+				DMA_BIDIRECTIONAL);
+		dma_buf_put(spi_client->js_buf);
+		spi_client->js_buf = NULL;
+	}
+
+	if (gpio_is_valid(spi_client->js_v1p8en_gpio))
+		gpio_free(spi_client->js_v1p8en_gpio);
+
+	if (gpio_is_valid(spi_client->js_irq_gpio))
+		gpio_free(spi_client->js_irq_gpio);
+
+	mutex_destroy(&(spi_client->js_mutex));
+	mutex_destroy(&(spi_client->js_sm_mutex));
+#ifdef MANUL_CONTROL_JOYSTICK_RLED
+	mutex_destroy(&(spi_client->js_rled_mutex));
+#endif
+
+	device_remove_file(&spi->dev, &dev_attr_jsmem);
+	device_remove_file(&spi->dev, &dev_attr_jsrequest);
+#ifdef MANUL_CONTROL_JOYSTICK_RLED
+	device_remove_file(&spi->dev, &dev_attr_jsrled);
+#endif
+
+	kfree(spi_client);
+	gspi_client = NULL;
 	return 0;
 }
 
@@ -1229,7 +903,7 @@ static int __init js_driver_init(void)
 {
 	int rc = 0;
 
-	pr_info("js_driver_init\n");
+	pr_debug("%s start\n", __func__);
 
 	rc = spi_register_driver(&js_spi_driver);
 	if (rc < 0) {
@@ -1245,7 +919,7 @@ static void __exit js_driver_exit(void)
 	spi_unregister_driver(&js_spi_driver);
 }
 
-module_init(js_driver_init); //late_initcall
+module_init(js_driver_init);
 module_exit(js_driver_exit);
 MODULE_DESCRIPTION("kinetics nordic52832 driver");
 MODULE_LICENSE("GPL v2");
