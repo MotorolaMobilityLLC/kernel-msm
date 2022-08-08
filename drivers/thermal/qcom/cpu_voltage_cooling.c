@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt) "%s:%s " fmt, KBUILD_MODNAME, __func__
 
@@ -282,8 +283,7 @@ static int cc_init(struct device_node *np, int *cpus)
 		}
 	}
 	snprintf(cc_cdev->cdev_name, THERMAL_NAME_LENGTH,
-			"thermal-cluster-%d-%d", cc_cdev->cpu_map[0],
-			cc_cdev->cpu_map[1]);
+			np->name);
 	cc_cdev->cdev = thermal_of_cooling_device_register(
 					np, cc_cdev->cdev_name, cc_cdev,
 					&cc_cooling_ops);
@@ -307,21 +307,53 @@ static int cc_cooling_probe(struct platform_device *pdev)
 	struct device_node *np = dev->of_node;
 	struct device_node *dev_phandle, *subsys_np = NULL;
 	struct device *cpu_dev;
-	int ret = 0, idx = 0, cpu;
+	int ret = 0, idx = 0, count = 0, cpu;
+	int cpu_count = 0;
 	u32 cpu_map[CPU_MAP_CT];
 
 	for_each_available_child_of_node(np, subsys_np) {
-		for (idx = 0; idx < CPU_MAP_CT; idx++) {
-			dev_phandle = of_parse_phandle(subsys_np, "qcom,cpus",
+		cpu_count = of_count_phandle_with_args(subsys_np, "qcom,cluster0",
+							NULL);
+		for (idx = 0; idx < cpu_count; idx++) {
+			dev_phandle = of_parse_phandle(subsys_np, "qcom,cluster0",
 							idx);
 			for_each_possible_cpu(cpu) {
 				cpu_dev = get_cpu_device(cpu);
 				if (cpu_dev && cpu_dev->of_node ==
 						dev_phandle) {
-					cpu_map[idx] = cpu;
+					cpu_map[count] = cpu;
+					count++;
 					break;
 				}
 			}
+			if (count)
+				break;
+		}
+		if (!count) {
+			pr_debug("Disabled as no core on cluster 0\n");
+			return ret;
+		}
+
+		cpu_count = of_count_phandle_with_args(subsys_np, "qcom,cluster1",
+							NULL);
+		for (idx = 0; idx < cpu_count; idx++) {
+			dev_phandle = of_parse_phandle(subsys_np, "qcom,cluster1",
+							idx);
+			for_each_possible_cpu(cpu) {
+				cpu_dev = get_cpu_device(cpu);
+				if (cpu_dev && cpu_dev->of_node ==
+						dev_phandle) {
+					cpu_map[count] = cpu;
+					count++;
+					break;
+				}
+			}
+			if (count == 2)
+				break;
+		}
+		if (count != 2) {
+			pr_debug("Disabled as no core on cluster 1\n");
+			return ret;
 		}
 		ret = cc_init(subsys_np, cpu_map);
 	}
