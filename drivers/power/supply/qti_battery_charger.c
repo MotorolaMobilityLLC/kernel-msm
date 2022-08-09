@@ -251,6 +251,7 @@ struct battery_chg_dev {
 	u32				wls_fw_vendor;
 	u16				wls_fw_crc;
 	u32				wls_fw_update_time_ms;
+	int				wls_fw_size_min;
 	struct notifier_block		reboot_notifier;
 	u32				thermal_fcc_ua;
 	u32				restrict_fcc_ua;
@@ -1485,8 +1486,8 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		goto release_fw;
 	}
 
-	if (fw->size < SZ_16K) {
-		pr_err("Invalid firmware size %zu\n", fw->size);
+	if (fw->size < bcdev->wls_fw_size_min) {
+		pr_err("Invalid firmware size (%zu < %zu)\n", fw->size, bcdev->wls_fw_size_min);
 		rc = -EINVAL;
 		goto release_fw;
 	}
@@ -1507,7 +1508,7 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 	if (force)
 		version = UINT_MAX;
 
-	pr_debug("FW size: %zu version: %#x\n", fw->size, version);
+	pr_info("FW size: %zu version: %#x\n", fw->size, version);
 
 	rc = wireless_fw_check_for_update(bcdev, version, fw->size);
 	if (rc < 0) {
@@ -2001,6 +2002,14 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 
 	of_property_read_u32(node, "qcom,shutdown-voltage",
 				&bcdev->shutdown_volt_mv);
+
+	rc = of_property_read_u32(node, "qcom,wireless-fw-size_min",
+				&bcdev->wls_fw_size_min);
+	if (rc < 0) {
+		bcdev->wls_fw_size_min = SZ_16K;
+		pr_info("fw size min do not defined, use 16k as default (%d)\n",
+			__func__, bcdev->wls_fw_size_min);
+	}
 
 	if (strstr(bcdev->wls_fw_name, "cps"))
 		bcdev->wls_fw_vendor = WLS_CPS;
