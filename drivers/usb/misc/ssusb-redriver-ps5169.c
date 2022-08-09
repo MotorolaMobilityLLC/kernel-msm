@@ -289,7 +289,7 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 	struct ucsi_glink_constat_info *info = data;
 	enum operation_mode op_mode;
 
-	if (info->connect && !info->partner_change)
+	if (info->connect && !info->partner_change && !info->partner_alternate_mode)
 		return NOTIFY_DONE;
 
 	if (!info->connect) {
@@ -415,7 +415,7 @@ int redriver_notify_disconnect(struct device_node *node)
 			(ps5169->op_mode == OP_MODE_NONE))
 		return 0;
 
-	dev_dbg(ps5169->dev, "op mode %s -> %s\n",
+	dev_info(ps5169->dev, "op mode %s -> %s\n",
 			OPMODESTR(ps5169->op_mode), OPMODESTR(OP_MODE_NONE));
 
 	ps5169->op_mode = OP_MODE_NONE;
