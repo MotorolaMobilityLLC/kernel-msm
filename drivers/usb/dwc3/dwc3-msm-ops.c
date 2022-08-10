@@ -16,6 +16,8 @@
 #include "debug-ipc.h"
 #include "gadget.h"
 
+#define DWC3_ALIGN_FRAME(d, n)	(((d)->frame_number + ((d)->interval * (n))) \
+					& ~((d)->interval - 1))
 struct kprobe_data {
 	struct dwc3 *dwc;
 	int xi0;
@@ -230,6 +232,15 @@ static int entry_trace_dwc3_prepare_trb(struct kretprobe_instance *ri,
 	struct dwc3_ep *dep = (struct dwc3_ep *)regs->regs[0];
 	struct dwc3_trb *trb = (struct dwc3_trb *)regs->regs[1];
 
+	/*
+	 * Allow more transfer schedule time for usb2 devices that use isoc,
+	 * increasing on the value used in __dwc3_gadget_start_isoc
+	 */
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
+			dep->dwc->gadget->speed <= USB_SPEED_HIGH &&
+			!(dep->flags & DWC3_EP_TRANSFER_STARTED)) {
+		dep->frame_number = DWC3_ALIGN_FRAME(dep, 6);
+	}
 	dbg_trace_trb_prepare(dep, trb);
 
 	return 0;
