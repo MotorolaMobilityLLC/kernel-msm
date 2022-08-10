@@ -227,6 +227,7 @@
   ktime_get_mono_fast_ns
   __list_add_valid
   __list_del_entry_valid
+  __local_bh_enable_ip
   mbox_client_txdone
   mbox_free_channel
   mbox_request_channel
@@ -366,8 +367,7 @@
   _raw_spin_unlock_irq
   _raw_spin_unlock_irqrestore
   rdev_get_drvdata
-  refcount_dec_and_test_checked
-  refcount_inc_checked
+  refcount_warn_saturate
   register_reboot_notifier
   __register_rpmsg_driver
   regmap_bulk_read
@@ -584,7 +584,6 @@
   __kfifo_free
   kmalloc_order_trace
   ktime_get_with_offset
-  __local_bh_enable_ip
   memmove
   param_ops_ulong
   pskb_expand_head
@@ -1129,8 +1128,9 @@
   usb_create_hcd
 
 # required by phy-qcom-qmp.ko
-  of_clk_get_by_name
+  devm_get_clk_from_child
   __of_reset_control_get
+  reset_control_put
 
 # required by phy-qcom-qusb2.ko
   devm_nvmem_cell_get
@@ -1307,7 +1307,6 @@
   _raw_write_lock_bh
   _raw_write_unlock_bh
   refcount_dec_and_mutex_lock
-  refcount_dec_checked
   release_sock
   rtnl_is_locked
   rtnl_register_module
