@@ -29,6 +29,7 @@
 
 /* Generic definitions */
 #define CMD_PENDING			1
+#define CMD_COMPLETE_PENDING		2
 #define UCSI_LOG_BUF_SIZE		256
 #define NUM_LOG_PAGES			10
 #define UCSI_WAIT_TIME_MS		5000
@@ -223,6 +224,10 @@ static int handle_ucsi_notify(struct ucsi_dev *udev, void *data, size_t len)
 		cci & (UCSI_CCI_ACK_COMPLETE | UCSI_CCI_COMMAND_COMPLETE)) {
 		pr_debug("received ack\n");
 		complete(&udev->sync_write_ack);
+	} else if(test_bit(CMD_COMPLETE_PENDING, &udev->flags) &&
+		cci & (UCSI_CCI_COMMAND_COMPLETE)) {
+		pr_debug("received CMD_COMPLETE_PENDING ack\n");
+		complete(&udev->sync_write_ack);
 	}
 
 	con_num = UCSI_CCI_CONNECTOR(cci);
@@ -296,7 +301,11 @@ static int ucsi_qti_glink_write(struct ucsi_dev *udev, unsigned int offset,
 	reinit_completion(&udev->write_ack);
 
 	if (sync) {
-		set_bit(CMD_PENDING, &udev->flags);
+		if (((u8 *)val)[0] == UCSI_GET_CONNECTOR_STATUS) {
+			pr_debug("set CMD_COMPLETE_PENDING flag\n");
+			set_bit(CMD_COMPLETE_PENDING, &udev->flags);
+		} else
+			set_bit(CMD_PENDING, &udev->flags);
 		reinit_completion(&udev->sync_write_ack);
 	}
 
@@ -339,8 +348,10 @@ static int ucsi_qti_glink_write(struct ucsi_dev *udev, unsigned int offset,
 	}
 
 out:
-	if (sync)
+	if (sync) {
 		clear_bit(CMD_PENDING, &udev->flags);
+		clear_bit(CMD_COMPLETE_PENDING, &udev->flags);
+	}
 
 	mutex_unlock(&udev->write_lock);
 	return rc;
