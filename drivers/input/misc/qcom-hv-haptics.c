@@ -5965,6 +5965,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 	case RICHTAP_STREAM_MODE:
 		richtap_clean_buf(chip, MMAP_BUF_DATA_INVALID);
 		mutex_lock(&chip->play.lock);
+		cancel_work_sync(&chip->richtap_stream_work);
 		haptics_stop_fifo_play(chip);
 		mutex_unlock(&chip->play.lock);
 		richtap_rc_clk_disable(chip);
@@ -5974,6 +5975,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 	case RICHTAP_STOP_MODE:
 		mutex_lock(&chip->play.lock);
 		richtap_clean_buf(chip, MMAP_BUF_DATA_FINISHED);
+		cancel_work_sync(&chip->richtap_stream_work);
 		atomic_set(&chip->play.fifo_status.written_done, 1);
 		haptics_set_fifo_empty_threshold(chip, 0);
 		haptics_stop_fifo_play(chip);
