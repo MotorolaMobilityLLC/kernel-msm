@@ -3532,12 +3532,12 @@ int ipahal_fltrt_init(enum ipa_hw_type ipa_hw_type)
 		if (!IPA_IS_RULE_EQ_VALID(i))
 			continue;
 
-		if (eq_bits & IPA_GET_RULE_EQ_BIT_PTRN(eq_bitfield[i])) {
+		if (eq_bits & IPA_GET_RULE_EQ_BIT_PTRN(i)) {
 			IPAHAL_ERR("more than eq with same bit. eq=%d\n", i);
 			WARN_ON(1);
 			return -EFAULT;
 		}
-		eq_bits |= IPA_GET_RULE_EQ_BIT_PTRN(eq_bitfield[i]);
+		eq_bits |= IPA_GET_RULE_EQ_BIT_PTRN(i);
 	}
 
 	mem = &ipahal_ctx->empty_fltrt_tbl;
