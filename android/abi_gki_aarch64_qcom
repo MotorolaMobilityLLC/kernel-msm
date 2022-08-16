@@ -2870,6 +2870,7 @@
   vmalloc_to_page
   vmalloc_user
   vmap
+  vmemdup_user
   vmemmap
   vmf_insert_mixed
   vmf_insert_pfn

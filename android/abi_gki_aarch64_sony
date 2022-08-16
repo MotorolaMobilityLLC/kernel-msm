@@ -158,3 +158,6 @@
 
 # required by ledtrig_transient.ko
   led_set_brightness_nosleep
+
+# required by sec_touchscreen.ko
+  input_set_timestamp
