@@ -106,9 +106,24 @@ static int cqhci_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 	int err = 0;
 	u8 data_unit_mask;
 	int crypto_alg_id;
+	struct sdhci_host *sdhci = mmc_priv(host->mmc);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
 
 	crypto_alg_id = cqhci_crypto_cap_find(host, key->crypto_mode,
 					       key->data_unit_size);
+
+	if (!IS_ERR(msm_host->pclk) && !IS_ERR(msm_host->ice_clk)) {
+		err = clk_prepare_enable(msm_host->pclk);
+		if (err)
+			return err;
+		err = clk_prepare_enable(msm_host->ice_clk);
+		if (err)
+			return err;
+	} else {
+		pr_err("%s: Invalid clock value\n", __func__);
+		return -EINVAL;
+	}
 
 	pm_runtime_get_sync(&host->mmc->card->dev);
 
@@ -132,6 +147,8 @@ static int cqhci_crypto_qti_keyslot_program(struct keyslot_manager *ksm,
 	if (err)
 		pr_err("%s: failed with error %d\n", __func__, err);
 
+	clk_disable_unprepare(msm_host->pclk);
+	clk_disable_unprepare(msm_host->ice_clk);
 	pm_runtime_put_sync(&host->mmc->card->dev);
 	return err;
 }
@@ -143,6 +160,21 @@ static int cqhci_crypto_qti_keyslot_evict(struct keyslot_manager *ksm,
 	int err = 0;
 	int val = 0;
 	struct cqhci_host *host = keyslot_manager_private(ksm);
+	struct sdhci_host *sdhci = mmc_priv(host->mmc);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+
+	if (!IS_ERR(msm_host->pclk) && !IS_ERR(msm_host->ice_clk)) {
+		err = clk_prepare_enable(msm_host->pclk);
+		if (err)
+			return err;
+		err = clk_prepare_enable(msm_host->ice_clk);
+		if (err)
+			return err;
+	} else {
+		pr_err("%s: Invalid clock value\n", __func__);
+		return -EINVAL;
+	}
 	pm_runtime_get_sync(&host->mmc->card->dev);
 
 	if (!cqhci_is_crypto_enabled(host) ||
@@ -155,6 +187,8 @@ static int cqhci_crypto_qti_keyslot_evict(struct keyslot_manager *ksm,
 	if (err)
 		pr_err("%s: failed with error %d\n", __func__, err);
 
+	clk_disable_unprepare(msm_host->pclk);
+	clk_disable_unprepare(msm_host->ice_clk);
 	pm_runtime_put_sync(&host->mmc->card->dev);
 	val = atomic_read(&keycache) & ~(1 << slot);
 	atomic_set(&keycache, val);
