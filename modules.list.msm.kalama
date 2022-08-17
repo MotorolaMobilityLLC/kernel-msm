@@ -91,7 +91,6 @@ tmecom-intf.ko
 ufs_qcom.ko
 ufshcd-crypto-qti.ko
 arm_smmu.ko
-mem-offline.ko
 sdhci-msm.ko
 qcom_rimps.ko
 c1dcvs_vendor.ko
