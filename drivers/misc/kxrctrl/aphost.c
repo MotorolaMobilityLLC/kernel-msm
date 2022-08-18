@@ -512,7 +512,6 @@ static int js_thread(void *data)
 			num = spi_client->rxbuffer[5];
 
 			if (num == 0 || pksz != 30) {
-				pr_err("invalid joystick data\n");
 				skiprport = true;
 			}
 			memcpy(&hosttime, &spi_client->rxbuffer[6], 4);
