@@ -141,12 +141,6 @@ enum operation_mode {
 	OP_MODE_DEFAULT,	/* 4 lanes USB */
 };
 
-enum plug_orientation {
-	ORIENTATION_NONE,
-	ORIENTATION_CC1,
-	ORIENTATION_CC2,
-};
-
 #define NOTIFIER_PRIORITY		1
 
 struct ps5169_redriver {
@@ -177,6 +171,13 @@ struct ps5169_redriver {
 	struct notifier_block ucsi_nb;
 	int ucsi_i2c_write_err;
 	int orientation_gpio;
+
+	struct workqueue_struct *pullup_wq;
+	struct work_struct	pullup_work;
+	int			pullup_req;
+	bool			work_ongoing;
+
+	struct work_struct	host_work;
 };
 
 static const char * const opmode_string[] = {
@@ -252,7 +253,7 @@ static int ssusb_redriver_read_orientation(struct ps5169_redriver *ps5169)
 	}
 
 	if (ps5169->op_mode == OP_MODE_NONE) {
-		ps5169->typec_orientation = ORIENTATION_NONE;
+		ps5169->typec_orientation = ORIENTATION_UNKNOWN;
 	} else if (ret == 0) {
 		ps5169->typec_orientation = ORIENTATION_CC1;
 	} else {
@@ -262,20 +263,26 @@ static int ssusb_redriver_read_orientation(struct ps5169_redriver *ps5169)
 	return 0;
 }
 
-int redriver_orientation_get(struct device_node *node)
+static inline void *check_devnode(struct device_node *node)
 {
-	struct ps5169_redriver *ps5169;
 	struct i2c_client *client;
 
 	if (!node)
-		return -ENODEV;
+		return ERR_PTR(-ENODEV);
 
 	client = of_find_i2c_device_by_node(node);
 	if (!client)
-		return -ENODEV;
+		return ERR_PTR(-ENODEV);
 
-	ps5169 = i2c_get_clientdata(client);
-	if (!ps5169)
+	return i2c_get_clientdata(client);
+}
+
+int redriver_orientation_get(struct device_node *node)
+{
+	struct ps5169_redriver *ps5169;
+
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
 		return -EINVAL;
 
 	if (!gpio_is_valid(ps5169->orientation_gpio))
@@ -353,20 +360,12 @@ static int ssusb_redriver_ucsi_notifier(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
-int redriver_notify_connect(struct device_node *node)
+int redriver_notify_connect(struct device_node *node, enum plug_orientation orientation)
 {
 	struct ps5169_redriver *ps5169;
-	struct i2c_client *client;
 
-	if (!node)
-		return -ENODEV;
-
-	client = of_find_i2c_device_by_node(node);
-	if (!client)
-		return -ENODEV;
-
-	ps5169 = i2c_get_clientdata(client);
-	if (!ps5169)
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
 		return -EINVAL;
 
 	/* 1. no operation in recovery mode.
@@ -402,17 +401,9 @@ EXPORT_SYMBOL(redriver_notify_connect);
 int redriver_notify_disconnect(struct device_node *node)
 {
 	struct ps5169_redriver *ps5169;
-	struct i2c_client *client;
 
-	if (!node)
-		return -ENODEV;
-
-	client = of_find_i2c_device_by_node(node);
-	if (!client)
-		return -ENODEV;
-
-	ps5169 = i2c_get_clientdata(client);
-	if (!ps5169)
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
 		return -EINVAL;
 
 	/* 1. no operation in recovery mode.
@@ -440,17 +431,9 @@ EXPORT_SYMBOL(redriver_notify_disconnect);
 int redriver_release_usb_lanes(struct device_node *node)
 {
 	struct ps5169_redriver *ps5169;
-	struct i2c_client *client;
 
-	if (!node)
-		return -ENODEV;
-
-	client = of_find_i2c_device_by_node(node);
-	if (!client)
-		return -ENODEV;
-
-	ps5169 = i2c_get_clientdata(client);
-	if (!ps5169)
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
 		return -EINVAL;
 
 	if (ps5169->op_mode == OP_MODE_DP)
@@ -467,43 +450,101 @@ int redriver_release_usb_lanes(struct device_node *node)
 }
 EXPORT_SYMBOL(redriver_release_usb_lanes);
 
-/* NOTE: DO NOT change mode in this funciton */
-int redriver_gadget_pullup(struct device_node *node, int is_on)
+static void redriver_gadget_pullup_work(struct work_struct *w)
+{
+	struct ps5169_redriver *ps5169 =
+		container_of(w, struct ps5169_redriver, pullup_work);
+
+	ssusb_redriver_enable_chip(ps5169, false);
+	usleep_range(1000, 1500);
+	ssusb_redriver_enable_chip(ps5169, true);
+	ps5169_config_seqs_init(ps5169);
+	ps5169_config_work_mode(ps5169, ps5169->op_mode);
+
+	ps5169->work_ongoing = false;
+}
+
+int redriver_gadget_pullup_enter(struct device_node *node, int is_on)
 {
 	struct ps5169_redriver *ps5169;
-	struct i2c_client *client;
+	u64 time = 0;
 
-	if (!node)
-		return -ENODEV;
+	if (!is_on)
+		return 0;
 
-	client = of_find_i2c_device_by_node(node);
-	if (!client)
-		return -ENODEV;
-
-	ps5169 = i2c_get_clientdata(client);
-	if (!ps5169)
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
 		return -EINVAL;
 
-	/*
-	 * when redriver connect to a USB hub, and do adb root operation,
-	 * due to redriver rx termination detection issue,
-	 * hub will not detct device logical removal.
-	 * workaround to temp disable/enable redriver when usb pullup operation.
-	 */
 	if (ps5169->op_mode != OP_MODE_USB3)
 		return 0;
 
-	if (is_on) {
-		ssusb_redriver_enable_chip(ps5169, true);
-		ps5169_config_seqs_init(ps5169);
-		ps5169_config_work_mode(ps5169, OP_MODE_USB3);
-	} else {
-		ssusb_redriver_enable_chip(ps5169, false);
+	while (ps5169->work_ongoing) {
+		udelay(1);
+		if (time++ > 500000) {
+			dev_warn(ps5169->dev, "pullup timeout\n");
+			break;
+		}
 	}
+
+	dev_info(ps5169->dev, "pull-up disable work took %llu us\n", time);
+	return 0;
+}
+EXPORT_SYMBOL(redriver_gadget_pullup_enter);
+
+int redriver_gadget_pullup_exit(struct device_node *node, int is_on)
+{
+	struct ps5169_redriver *ps5169;
+
+	if (is_on)
+		return 0;
+
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
+		return -EINVAL;
+
+	ps5169->pullup_req = is_on;
+
+	dev_info(ps5169->dev, "%s: mode %s, %d, %d\n", __func__,
+		OPMODESTR(ps5169->op_mode), is_on, ps5169->work_ongoing);
+	if (ps5169->op_mode != OP_MODE_USB3)
+		return 0;
+
+	ps5169->work_ongoing = true;
+	queue_work(ps5169->pullup_wq, &ps5169->pullup_work);
 
 	return 0;
 }
-EXPORT_SYMBOL(redriver_gadget_pullup);
+EXPORT_SYMBOL(redriver_gadget_pullup_exit);
+
+static void redriver_host_work(struct work_struct *w)
+{
+	struct ps5169_redriver *ps5169 =
+			container_of(w, struct ps5169_redriver, host_work);
+
+	ssusb_redriver_enable_chip(ps5169, false);
+	usleep_range(2000, 2500);
+	ssusb_redriver_enable_chip(ps5169, true);
+	ps5169_config_seqs_init(ps5169);
+	ps5169_config_work_mode(ps5169, ps5169->op_mode);
+}
+
+int redriver_powercycle(struct device_node *node)
+{
+	struct ps5169_redriver *ps5169;
+
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
+		return -EINVAL;
+
+	if (ps5169->op_mode != OP_MODE_USB3)
+		return -EINVAL;
+
+	schedule_work(&ps5169->host_work);
+
+	return 0;
+}
+EXPORT_SYMBOL(redriver_powercycle);
 
 static void ssusb_redriver_orientation_gpio_init(
 	struct ps5169_redriver *ps5169)
@@ -992,6 +1033,14 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	ps5169->client = client;
 	ssusb_redriver_orientation_gpio_init(ps5169);
 
+	ps5169->pullup_wq = alloc_workqueue("%s:pullup",
+				WQ_UNBOUND | WQ_HIGHPRI, 0,
+				dev_name(&client->dev));
+	if (!ps5169->pullup_wq) {
+		dev_err(&client->dev, "Failed to create pullup workqueue\n");
+		return -ENOMEM;
+	}
+
 	of_get_property(dev->of_node, "config-seq", &size);
 	if (!size || size % (3 * sizeof(unsigned int))) {
 		dev_err(dev, "no config-seq or size is wrong\n");
@@ -1030,6 +1079,9 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 		if (ret)
 			dev_err(&client->dev, "Could not enable vio power regulator\n");
 	}
+
+	INIT_WORK(&ps5169->pullup_work, redriver_gadget_pullup_work);
+	INIT_WORK(&ps5169->host_work, redriver_host_work);
 
 	ssusb_redriver_enable_chip(ps5169, true);
 	ssusb_redriver_read_orientation(ps5169);
@@ -1081,6 +1133,7 @@ static int ps5169_i2c_remove(struct i2c_client *client)
 
 	debugfs_remove(ps5169->debug_root);
 	unregister_ucsi_glink_notifier(&ps5169->ucsi_nb);
+	destroy_workqueue(ps5169->pullup_wq);
 	if (!IS_ERR_OR_NULL(ps5169->vcc)) {
 		if (regulator_is_enabled(ps5169->vcc))
 			regulator_disable(ps5169->vcc);
