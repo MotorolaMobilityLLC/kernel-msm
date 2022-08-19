@@ -14,7 +14,6 @@ rpmh-regulator.ko
 bwmon.ko
 qcom-cpufreq-hw.ko
 sched-walt.ko
-sched-walt-debug.ko
 thermal_pause.ko
 cpu_hotplug.ko
 clk-dummy.ko
