@@ -208,14 +208,14 @@ static int selectFileNameByProduct(struct cnss_plat_data *plat_priv, char *filen
 					}
 					else{
 						sprintf(filename, "%s.%s.%s", ELF_BDF_FILE_NAME,
-						products_list+i)->hw_device, (products_list+i)->nv_name);
+						(products_list+i)->hw_device, (products_list+i)->nv_name);
 					}
 					ret = 1;
 					break;
 				}
 				else if (CNSS_BDF_BIN == bdf_type) {
 					sprintf(filename, "%s_%s_%s.bin", BDF_FILE_NAME_PREFIX,
-					products_list+i)->hw_device, (products_list+i)->nv_name);
+					(products_list+i)->hw_device, (products_list+i)->nv_name);
 					ret = 1;
 					break;
 				}
