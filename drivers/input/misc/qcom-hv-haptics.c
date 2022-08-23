@@ -3369,6 +3369,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 
 					if (num_rt >= num_val) {
 						samples_left = (u32)num_val;
+						samples_left -= (samples_left % HAP_PTN_FIFO_DIN_NUM);
 						memcpy(&chip->rtp_ptr[pos],
 								&chip->current_buf->data[chip->pos],
 								samples_left);
@@ -3398,13 +3399,22 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				}
 			} while (num_rt > 0 && atomic_read(&chip->richtap_mode));
 
-			dev_err(chip->dev, "update fifo len %d\n", pos);
-			rc = haptics_update_fifo_samples(chip, chip->rtp_ptr, (u32)pos, true);
-			if (rc < 0) {
-				dev_err(chip->dev,
-					"richtap Update FIFO fail, rc=%d\n", rc);
-				goto unlock;
+			dev_info(chip->dev, "update fifo len %d\n", pos);
+			if (pos != 0) {
+				rc = haptics_update_fifo_samples(chip, chip->rtp_ptr, (u32)pos, true);
+				if (rc < 0) {
+					dev_err(chip->dev,
+						"richtap Update FIFO fail, rc=%d\n", rc);
+					schedule_work(&chip->richtap_erase_work);
+					goto unlock;
+				}
 			}
+
+			if (chip->current_buf->status != MMAP_BUF_DATA_VALID) {
+				schedule_work(&chip->richtap_erase_work);
+				dev_dbg(chip->dev, "richtap stream mode is done\n");
+			}
+
 			goto unlock;
 		}
 #endif	//CONFIG_RICHTAP_FOR_PMIC_ENABLE
@@ -5820,10 +5830,12 @@ static int richtap_load_prebake(struct haptics_chip *chip, u8 *data, u32 length)
 	if (rc < 0)
 		goto cleanup;
 
-	//Toggle HAPTICS_EN for a clear start point of FIFO playing
-	rc = haptics_toggle_module_enable(chip);
-	if (rc < 0)
-		goto cleanup;
+	/* Toggle HAPTICS_EN for a clear start point of FIFO playing */
+	if (chip->wa_flags & TOGGLE_EN_TO_FLUSH_FIFO) {
+		rc = haptics_toggle_module_enable(chip);
+		if (rc < 0)
+			goto cleanup;
+	}
 
 	rc = haptics_enable_autores(chip, false);
 	if (rc < 0)
