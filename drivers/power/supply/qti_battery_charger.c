@@ -1452,6 +1452,22 @@ static int battery_psy_set_charge_current(struct battery_chg_dev *bcdev,
 	return rc;
 }
 
+static int battery_psy_set_cycle_count(struct battery_chg_dev *bcdev,
+					int CycleCount)
+{
+	int rc;
+
+	rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_BATTERY],
+				BATT_CYCLE_COUNT, CycleCount);
+	if (rc < 0) {
+		pr_err("Failed to set cycle count %d, rc=%d\n", CycleCount, rc);
+	} else {
+		pr_err("Set CycleCount to %d\n", CycleCount);
+	}
+
+	return rc;
+}
+
 static int battery_psy_get_prop(struct power_supply *psy,
 		enum power_supply_property prop,
 		union power_supply_propval *pval)
@@ -1513,6 +1529,7 @@ static int battery_psy_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_STATUS:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		if (bcdev->combo_batt_psy) {
@@ -1545,6 +1562,13 @@ static int battery_psy_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD:
 		return battery_psy_set_charge_end_threshold(bcdev,
 								pval->intval);
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+		if (bcdev->combo_batt_psy) {
+			return power_supply_set_property(bcdev->combo_batt_psy,
+						prop, pval);
+		} else {
+			return battery_psy_set_cycle_count(bcdev, pval->intval);
+		}
 	default:
 		return -EINVAL;
 	}
@@ -1559,6 +1583,7 @@ static int battery_psy_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD:
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD:
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 		return 1;
 	default:
 		break;
