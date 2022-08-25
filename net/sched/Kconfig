@@ -975,6 +975,32 @@ config NET_TC_SKB_EXT
 
 	  Say N here if you won't be using tc<->ovs offload or tc chains offload.
 
+config NET_SCHED_ACT_VLAN_QGKI
+	bool "VLAN pop_eth/push_eth patch"
+	depends on NET_ACT_VLAN
+	depends on QGKI
+	help
+	  Say Y here to support tc VLAN pop_eth/push_eth actions. Macro guards the
+	  code against ABI breakage. When this flag is enabled, it is safe to assume
+	  that the build is a Non GKI build.
+
+	  Say N to exclude this support.
+
+	  If unsure, say Y.
+
+config NET_SCHED_ACT_MPLS_QGKI
+	bool "MPLS mac_push patch"
+	depends on NET_ACT_MPLS
+	depends on QGKI
+	help
+	  Say Y here to support tc MPLS mac_push actions. Macro guards the code
+	  against ABI breakage. When this flag is enabled, it is safe to assume
+	  that the build is a Non GKI build.
+
+	  Say N to exclude this support.
+
+	  If unsure, say Y.
+
 endif # NET_SCHED
 
 config NET_SCH_FIFO
