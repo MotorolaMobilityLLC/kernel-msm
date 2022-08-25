@@ -3,3 +3,6 @@
 waipio-*_defconfig
 # lahaina uses config fragments and gki_defconfig as base
 lahaina-*_defconfig
+# parrot uses config fragments and gki_defconfig as base
+parrot-*_defconfig
+
