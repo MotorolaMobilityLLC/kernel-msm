@@ -102,7 +102,7 @@ static int fsa4480_usbc_event_changed(struct notifier_block *nb,
 	if (!dev)
 		return -EINVAL;
 
-	dev_dbg(dev, "%s: USB change event received, supply mode %d, usbc mode %ld, expected %d\n",
+	dev_info(dev, "%s: USB change event received, supply mode %d, usbc mode %ld, expected %d\n",
 			__func__, acc, fsa_priv->usbc_mode.counter,
 			TYPEC_ACCESSORY_AUDIO);
 
@@ -141,7 +141,7 @@ static int fsa4480_usbc_analog_setup_switches(struct fsa4480_priv *fsa_priv)
 	/* get latest mode again within locked context */
 	mode = atomic_read(&(fsa_priv->usbc_mode));
 
-	dev_dbg(dev, "%s: setting GPIOs active = %d\n",
+	dev_info(dev, "%s: setting GPIOs active = %d\n",
 		__func__, mode != TYPEC_ACCESSORY_NONE);
 
 	switch (mode) {
