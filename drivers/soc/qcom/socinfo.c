@@ -340,6 +340,7 @@ static struct msm_soc_info cpu_of_id[] = {
 
 	/* Khaje ID */
 	[518] = {MSM_CPU_KHAJE, "KHAJE"},
+	[586] = {MSM_CPU_KHAJE, "KHAJE"},
 
 	/* Khajep ID */
 	[561] = {MSM_CPU_KHAJEP, "KHAJEP"},
