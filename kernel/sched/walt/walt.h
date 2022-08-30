@@ -1076,6 +1076,63 @@ static inline int walt_find_and_choose_cluster_packing_cpu(int start_cpu, struct
 	return packing_cpu;
 }
 
+struct cluster_freq_relation {
+	int src_freq_scale;
+	int dst_cpu;
+	int tgt_freq_scale;
+};
+
+extern struct cluster_freq_relation cluster_arr[3][6];
+extern int sched_ignore_cluster_handler(struct ctl_table *table, int write,
+			void __user *buffer, size_t *lenp, loff_t *ppos);
+
+/* To ensure if we can ignore cluster for process p */
+static inline bool ignore_cluster_valid(struct task_struct *p, struct rq *rq)
+{
+	cpumask_t tmp;
+	int i;
+	struct walt_rq *wrq = (struct walt_rq *)rq->android_vendor_data1;
+	int cluster = wrq->cluster->id;
+	int src_cpu = cpumask_first(&wrq->cluster->cpus);
+	int src_freq_scale = arch_scale_freq_capacity(src_cpu);
+	int tgt_scale, tgt_cpu;
+
+	/* if src cluster has no relationship */
+	if (cluster_arr[cluster][0].src_freq_scale <= 0)
+		return false;
+
+	/* if src cluster is below its threshold frequency */
+	if (src_freq_scale < cluster_arr[cluster][0].src_freq_scale)
+		return false;
+
+	/* if p is only affine to src cluster */
+	if (p) {
+		cpumask_andnot(&tmp, cpu_active_mask, &wrq->cluster->cpus);
+		if (!cpumask_intersects(&tmp, &p->cpus_mask))
+			return false;
+	}
+
+	for (i = 0; i < 5; i++)
+		if (cluster_arr[cluster][i].src_freq_scale > src_freq_scale)
+			break;
+	tgt_cpu = cpumask_first(&sched_cluster[cluster_arr[cluster][i - 1].dst_cpu]->cpus);
+	tgt_scale = cluster_arr[cluster][i - 1].tgt_freq_scale;
+
+	/*
+	 * In case target cluster is frequency limited to a frequency below target
+	 * scale then skip ignoring src cluster.
+	 */
+	if (capacity_orig_of(tgt_cpu) < tgt_scale)
+		return false;
+
+	/* Target cluster is above target scale */
+	if (arch_scale_freq_capacity(tgt_cpu) >= tgt_scale)
+		return false;
+
+	/* We reach here, means we need to ignore src cluster for placement */
+	return true;
+}
+
 extern int add_pipeline(struct walt_task_struct *wts);
 extern int remove_pipeline(struct walt_task_struct *wts);
 
