@@ -2021,7 +2021,7 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 	of_property_read_u32(node, "qcom,shutdown-voltage",
 				&bcdev->shutdown_volt_mv);
 
-	if (strstr(bcdev->wls_fw_name, "cps"))
+	if (bcdev->wls_fw_name && strstr(bcdev->wls_fw_name, "cps"))
 		bcdev->wls_fw_vendor = WLS_CPS;
 
 	rc = read_property_id(bcdev, pst, BATT_CHG_CTRL_LIM_MAX);
