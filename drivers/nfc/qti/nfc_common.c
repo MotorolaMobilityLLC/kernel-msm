@@ -733,6 +733,9 @@ static enum chip_types get_nfcc_chip_type_dl(struct nfc_dev *nfc_dev)
 		else if (rsp[FW_ROM_CODE_VER_OFFSET] == SN220_ROM_VER &&
 			rsp[FW_MAJOR_VER_OFFSET] == SN220_MAJOR_VER)
 			chip_type = CHIP_SN220;
+		else if (rsp[FW_ROM_CODE_VER_OFFSET] == NXP557_ROM_VER &&
+			rsp[FW_MAJOR_VER_OFFSET] == NXP557_MAJOR_VER)
+			chip_type = CHIP_NXP557;
 
 		pr_debug("%s:NFC Chip Type 0x%02x Rom Version 0x%02x FW Minor 0x%02x Major 0x%02x\n",
 			__func__, rsp[GET_VERSION_RSP_CHIP_TYPE_OFFSET],
@@ -924,6 +927,8 @@ static bool validate_download_gpio(struct nfc_dev *nfc_dev, enum chip_types chip
 		gpio_free(nfc_gpio->dwl_req);
 		nfc_gpio->dwl_req = -EINVAL;
 		status = true;
+	}  else if (chip_type == CHIP_NXP557) {
+		status = gpio_is_valid(nfc_gpio->dwl_req);
 	}
 	return status;
 }
