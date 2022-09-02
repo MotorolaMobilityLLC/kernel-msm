@@ -31,6 +31,14 @@
 #define FENCE_MIN	1
 #define FENCE_MAX	32
 
+#define DUMMY_CONTEXT	0xfafadadafafadada
+#define DUMMY_SEQNO	0xefa9ce00efa9ce00
+
+struct dummy_spec_fence {
+	struct dma_fence fence;
+	spinlock_t lock;
+};
+
 struct sync_device {
 	/* device info */
 	struct class *dev_class;
@@ -38,6 +46,7 @@ struct sync_device {
 	struct device *dev;
 	struct cdev *cdev;
 	struct mutex lock;
+	struct dummy_spec_fence *dummy_fence;
 
 	/* device drv data */
 	atomic_t device_available;
@@ -54,6 +63,16 @@ struct fence_array_node {
 
 /* Speculative Sync Device Driver State */
 static struct sync_device sync_dev;
+
+static const char *spec_fence_get_name_dummy(struct dma_fence *fence)
+{
+	return "dummy_fence";
+}
+
+static const struct dma_fence_ops dummy_spec_fence_ops = {
+	.get_driver_name = spec_fence_get_name_dummy,
+	.get_timeline_name = spec_fence_get_name_dummy,
+};
 
 static bool sanitize_fence_array(struct dma_fence_array *fence)
 {
@@ -182,8 +201,10 @@ static int spec_sync_create_array(struct fence_create_data *f)
 	struct sync_file *sync_file;
 	struct dma_fence_array *fence_array;
 	struct fence_array_node *node;
+	struct dma_fence **fences;
+	struct dummy_spec_fence *dummy_fence_p = sync_dev.dummy_fence;
 	bool signal_any;
-	int ret = 0;
+	int i, ret = 0;
 
 	if (fd < 0) {
 		pr_err("failed to get_unused_fd_flags\n");
@@ -196,13 +217,37 @@ static int spec_sync_create_array(struct fence_create_data *f)
 		goto error_args;
 	}
 
+	fences = kmalloc_array(f->num_fences, sizeof(void *), GFP_KERNEL|__GFP_ZERO);
+	if (!fences) {
+		ret = -ENOMEM;
+		goto error_args;
+	}
+
+	for (i = 0; i < f->num_fences; i++) {
+		fences[i] = &dummy_fence_p->fence;
+		/*
+		 * Increase dummy-fences refcount here, we must do this since any call to
+		 * fence-array release while dummy-fences are the children of the fence-array
+		 * will decrement the dummy_fence refcount. Therefore, to prevent the release
+		 * of the dummy_fence fences, we must keep an extra refcount for every time that
+		 * the fence-array->release can decrement its children's refcount. the extra
+		 * refcount will be decreased impilictly when dma_fence_put(&fence_array->base)
+		 * called.
+		 */
+		dma_fence_get(&dummy_fence_p->fence);
+	}
+
 	signal_any = f->flags & SPEC_FENCE_SIGNAL_ALL ? false : true;
 
-	fence_array = dma_fence_array_create(f->num_fences, NULL,
+	fence_array = dma_fence_array_create(f->num_fences, fences,
 				dma_fence_context_alloc(1), 0, signal_any);
 	if (!fence_array) {
-		pr_err("dma fence_array allocation failure\n");
-		ret = -ENOMEM;
+		/* fence-array create failed,  remove extra refcounts */
+		for (i = 0; i < f->num_fences; i++)
+			dma_fence_put(&dummy_fence_p->fence);
+
+		kfree(fences);
+		ret = -EINVAL;
 		goto error_args;
 	}
 
@@ -266,14 +311,20 @@ static int spec_sync_bind_array(struct fence_bind_data *sync_bind_info)
 	struct dma_fence_array *fence_array;
 	struct dma_fence *fence = NULL;
 	struct dma_fence *user_fence = NULL;
-	struct dma_fence **fence_list;
 	int *user_fds, ret = 0, i;
-	u32 num_fences, counter;
+	u32 num_fences;
 
 	fence = sync_file_get_fence(sync_bind_info->out_bind_fd);
 	if (!fence) {
 		pr_err("dma fence failure out_fd:%d\n", sync_bind_info->out_bind_fd);
 		return -EINVAL;
+	}
+
+	if (dma_fence_is_signaled(fence)) {
+		pr_err("spec fence is already signaled, out_fd:%d\n",
+				sync_bind_info->out_bind_fd);
+		ret = -EINVAL;
+		goto end;
 	}
 
 	fence_array = container_of(fence, struct dma_fence_array, base);
@@ -284,14 +335,18 @@ static int spec_sync_bind_array(struct fence_bind_data *sync_bind_info)
 		goto end;
 	}
 
-	if (fence_array->fences) {
-		pr_err("fence array already populated, spec fd:%d status:%d flags:0x%x\n",
-			sync_bind_info->out_bind_fd, dma_fence_get_status(fence), fence->flags);
-		goto end;
-	}
-
 	num_fences = fence_array->num_fences;
-	counter = num_fences;
+
+	for (i = 0; i < num_fences; i++) {
+		if (!(fence_array->fences[i]->context == DUMMY_CONTEXT &&
+			fence_array->fences[i]->seqno == DUMMY_SEQNO)) {
+			pr_err("fence array already populated, spec fd:%d status:%d flags:0x%x\n",
+				sync_bind_info->out_bind_fd, dma_fence_get_status(fence),
+				fence->flags);
+			ret = -EINVAL;
+			goto end;
+		}
+	}
 
 	user_fds = kzalloc(num_fences * (sizeof(int)), GFP_KERNEL);
 	if (!user_fds) {
@@ -299,31 +354,28 @@ static int spec_sync_bind_array(struct fence_bind_data *sync_bind_info)
 		goto end;
 	}
 
-	fence_list = kmalloc_array(num_fences, sizeof(void *), GFP_KERNEL|__GFP_ZERO);
-	if (!fence_list) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
 	if (copy_from_user(user_fds, (void __user *)sync_bind_info->fds,
 						num_fences * sizeof(int))) {
-		kfree(fence_list);
 		ret = -EFAULT;
 		goto out;
 	}
 
 	spin_lock(fence->lock);
-	fence_array->fences = fence_list;
 	for (i = 0; i < num_fences; i++) {
 		user_fence = sync_file_get_fence(user_fds[i]);
 		if (!user_fence) {
 			pr_warn("bind fences are invalid !! user_fd:%d out_bind_fd:%d\n",
 				user_fds[i], sync_bind_info->out_bind_fd);
-			counter = i;
 			ret = -EINVAL;
 			goto bind_invalid;
 		}
 		fence_array->fences[i] = user_fence;
+		/*
+		 * At this point the fence-array fully contains valid fences and no more the
+		 * dummy-fence, therefore, we must release the extra refcount that the
+		 * creation of the speculative fence added to the dummy-fence.
+		 */
+		dma_fence_put(&sync_dev.dummy_fence->fence);
 		pr_debug("spec fd:%d i:%d bind fd:%d error:%d\n", sync_bind_info->out_bind_fd,
 			 i, user_fds[i], fence_array->fences[i]->error);
 	}
@@ -338,12 +390,6 @@ static int spec_sync_bind_array(struct fence_bind_data *sync_bind_info)
 
 bind_invalid:
 	if (ret) {
-		for (i = counter - 1; i >= 0; i--)
-			dma_fence_put(fence_array->fences[i]);
-
-		kfree(fence_list);
-		fence_array->fences = NULL;
-		fence_array->num_fences = 0;
 		dma_fence_set_error(fence, -EINVAL);
 		spin_unlock(fence->lock);
 		dma_fence_signal(fence);
@@ -403,6 +449,7 @@ const struct file_operations spec_sync_fops = {
 
 static int spec_sync_register_device(void)
 {
+	struct dummy_spec_fence *dummy_fence_p = NULL;
 	int ret;
 
 	sync_dev.dev_class = class_create(THIS_MODULE, CLASS_NAME);
@@ -444,6 +491,17 @@ static int spec_sync_register_device(void)
 	mutex_init(&sync_dev.l_lock);
 	INIT_LIST_HEAD(&sync_dev.fence_array_list);
 
+	dummy_fence_p = kzalloc(sizeof(struct dummy_spec_fence), GFP_KERNEL);
+	if (!dummy_fence_p) {
+		ret = -ENOMEM;
+		goto cdev_add_err;
+	}
+
+	spin_lock_init(&dummy_fence_p->lock);
+	dma_fence_init(&dummy_fence_p->fence, &dummy_spec_fence_ops, &dummy_fence_p->lock,
+		DUMMY_CONTEXT, DUMMY_SEQNO);
+	sync_dev.dummy_fence = dummy_fence_p;
+
 	return 0;
 
 cdev_add_err:
@@ -476,6 +534,7 @@ static void __exit spec_sync_deinit(void)
 	device_destroy(sync_dev.dev_class, sync_dev.dev_num);
 	unregister_chrdev_region(sync_dev.dev_num, 1);
 	class_destroy(sync_dev.dev_class);
+	dma_fence_put(&sync_dev.dummy_fence->fence);
 }
 
 module_init(spec_sync_init);
