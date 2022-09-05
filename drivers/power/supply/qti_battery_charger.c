@@ -51,7 +51,7 @@
 #define MAX_STR_LEN			128
 #define BC_WAIT_TIME_MS			2000
 #define WLS_FW_PREPARE_TIME_MS		2000
-#define WLS_FW_WAIT_TIME_MS		2000
+#define WLS_FW_WAIT_TIME_MS		5000
 #define WLS_FW_UPDATE_TIME_MS		1000
 #define WLS_FW_BUF_SIZE			128
 #define DEFAULT_RESTRICT_FCC_UA		1000000
@@ -360,7 +360,7 @@ static int battery_chg_fw_write(struct battery_chg_dev *bcdev, void *data,
 		rc = wait_for_completion_timeout(&bcdev->fw_buf_ack,
 					msecs_to_jiffies(WLS_FW_WAIT_TIME_MS));
 		if (!rc) {
-			pr_err("Error, timed out sending message\n");
+			pr_err("Error, timed out sending message, tims_ms %d\n", WLS_FW_WAIT_TIME_MS);
 			return -ETIMEDOUT;
 		}
 
