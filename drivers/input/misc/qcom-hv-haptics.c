@@ -5865,6 +5865,10 @@ static void richtap_work_proc(struct work_struct *work)
 	uint32_t count = 100, tmp_len = 0, retry_count = 30;
 	int ret;
 
+	cancel_work_sync(&chip->richtap_erase_work);
+	richtap_rc_clk_disable(chip);
+	atomic_set(&chip->richtap_mode, true);
+
 	while ((count--) && (chip->start_buf->status != MMAP_BUF_DATA_VALID))
 		usleep_range(1000, 1001);
 
@@ -6039,13 +6043,11 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		break;
 	case RICHTAP_STREAM_MODE:
 		cancel_work_sync(&chip->richtap_stream_work);
-		richtap_clean_buf(chip, MMAP_BUF_DATA_INVALID);
 		mutex_lock(&chip->play.lock);
 		haptics_stop_fifo_play(chip);
-		richtap_rc_clk_disable(chip);
-		atomic_set(&chip->richtap_mode, true);
 		mutex_unlock(&chip->play.lock);
 		schedule_work(&chip->richtap_stream_work);
+		richtap_clean_buf(chip, MMAP_BUF_DATA_INVALID);
 		break;
 	case RICHTAP_STOP_MODE:
 		cancel_work_sync(&chip->richtap_stream_work);
