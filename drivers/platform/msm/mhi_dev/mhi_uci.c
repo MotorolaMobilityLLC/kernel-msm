@@ -1327,7 +1327,7 @@ static int __mhi_uci_client_read(struct uci_client *uci_handle,
 {
 	int ret_val = 0;
 
-	do {
+	while (!uci_handle->pkt_loc) {
 		if (!mhi_uci_are_channels_connected(uci_handle)) {
 			uci_log(UCI_DBG_ERROR, "Channels are not connected\n");
 			return -ENODEV;
@@ -1371,7 +1371,7 @@ static int __mhi_uci_client_read(struct uci_client *uci_handle,
 				uci_handle->in_chan);
 			break;
 		}
-	} while (!uci_handle->pkt_loc);
+	}
 
 	return ret_val;
 }

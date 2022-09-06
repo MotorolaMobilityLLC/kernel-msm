@@ -205,5 +205,6 @@ struct plat_stmmacenet_data {
 				int cmd);
 	void (*request_phy_wol)(void *plat);
 	int (*init_pps)(void *priv);
+	bool sph_disable;
 };
 #endif
