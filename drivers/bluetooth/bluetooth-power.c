@@ -372,7 +372,7 @@ static int bt_configure_gpios(int on)
 		}
 		bt_power_src_status[BT_RESET_GPIO] =
 			gpio_get_value(bt_reset_gpio);
-		msleep(50);
+		msleep(200);
 		BT_PWR_INFO("BTON:Turn Bt Off bt-reset-gpio(%d) value(%d)",
 				bt_reset_gpio, gpio_get_value(bt_reset_gpio));
 		if (bt_sw_ctrl_gpio >= 0) {
