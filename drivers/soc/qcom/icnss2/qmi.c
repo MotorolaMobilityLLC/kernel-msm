@@ -32,6 +32,13 @@
 #include "debug.h"
 #include "genl.h"
 
+// BEGIN Support loading different bdwlan.elf
+#include <linux/bootconfig.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#define BOOTCONFIG_FULLPATH "/proc/bootconfig"
+//END Support loading different bdwlan.elf
+
 #define WLFW_SERVICE_WCN_INS_ID_V01	3
 #define WLFW_SERVICE_INS_ID_V01		0
 #define WLFW_CLIENT_ID			0x4b4e454c
@@ -39,9 +46,13 @@
 
 #define BDF_FILE_NAME_PREFIX		"bdwlan"
 #define ELF_BDF_FILE_NAME		"bdwlan.elf"
+#define ELF_BDF_FILE_NAME_GF		"bdwlang.elf"
 #define ELF_BDF_FILE_NAME_PREFIX	"bdwlan.e"
+#define ELF_BDF_FILE_NAME_GF_PREFIX	"bdwlang.e"
 #define BIN_BDF_FILE_NAME		"bdwlan.bin"
+#define BIN_BDF_FILE_NAME_GF		"bdwlang.bin"
 #define BIN_BDF_FILE_NAME_PREFIX	"bdwlan."
+#define BIN_BDF_FILE_NAME_GF_PREFIX	"bdwlang.b"
 #define REGDB_FILE_NAME			"regdb.bin"
 
 #define QDSS_TRACE_CONFIG_FILE "qdss_trace_config.cfg"
@@ -74,6 +85,149 @@ void icnss_ignore_fw_timeout(bool ignore) { }
 	icnss_pr_err("fatal: "_fmt, ##__VA_ARGS__);	\
 	ICNSS_QMI_ASSERT();				\
 	} while (0)
+
+// BEGIN Support loading different bdwlan.elf
+#define NV_EPA "epa"
+#define NV_IPA "ipa"
+#define MOTO_STRING_LEN 32
+static char device_ptr[MOTO_STRING_LEN] = {0};
+static char radio_ptr[MOTO_STRING_LEN] = {0};
+static char *bootargs_str;
+
+typedef struct moto_product {
+	char hw_device[32];
+	char hw_radio[32];
+	char nv_name[64];
+} moto_product;
+
+static moto_product products_list[] = {
+	{"geneva",      "all",  NV_IPA},
+	/* Terminator */
+	{{0}, {0}, {0}},
+};
+
+
+static int cnss_get_bootarg_dt(char *key, char **value, char *prop, char *spl_flag)
+{
+	const char *bootargs_tmp = NULL;
+	char *idx = NULL;
+	char *kvpair = NULL;
+	int err = 1;
+	struct device_node *n = of_find_node_by_path("/chosen");
+	size_t bootargs_tmp_len = 0;
+
+	if (n == NULL)
+		goto err;
+
+	if (of_property_read_string(n, prop, &bootargs_tmp) != 0)
+		goto putnode;
+
+	bootargs_tmp_len = strlen(bootargs_tmp);
+	if (!bootargs_str) {
+		/* The following operations need a non-const
+		 * version of bootargs
+		 */
+		bootargs_str = kzalloc(bootargs_tmp_len + 1, GFP_KERNEL);
+		if (!bootargs_str)
+			goto putnode;
+	}
+	strlcpy(bootargs_str, bootargs_tmp, bootargs_tmp_len + 1);
+
+	idx = strnstr(bootargs_str, key, strlen(bootargs_str));
+	if (idx) {
+		kvpair = strsep(&idx, " ");
+		if (kvpair)
+			if (strsep(&kvpair, "=")) {
+				*value = strsep(&kvpair, spl_flag);
+				if (*value)
+					err = 0;
+			}
+	}
+
+putnode:
+	of_node_put(n);
+err:
+	return err;
+}
+
+static int is_void_product(moto_product *entry)
+{
+	return entry && !strlen(entry->hw_device) && !strlen(entry->hw_radio);
+}
+
+static int num_of_products(moto_product *list)
+{
+	int num = 0;
+	if (!list) return 0;
+	while (!is_void_product(list + num)) num++;
+	return num;
+}
+
+static int get_moto_device()
+{
+	char *bootdevice = NULL;
+	int rc = 0;
+	rc = cnss_get_bootarg_dt("androidboot.device=", &bootdevice, "mmi,bootconfig", "\n");
+	if (rc || !bootdevice){
+		icnss_pr_err("device string is error");
+		return -ENOMEM;
+	}else{
+		strlcpy(device_ptr, bootdevice,MOTO_STRING_LEN);
+		return 0;
+	}
+}
+
+static int get_moto_radio()
+{
+	char *radiodevice = NULL;
+	int rc = 0;
+	rc = cnss_get_bootarg_dt("androidboot.radio=", &radiodevice, "mmi,bootconfig", "\n");
+	if (rc || !radiodevice){
+		icnss_pr_err("radio string is error");
+		return -ENOMEM;
+	}else{
+		strlcpy(radio_ptr, radiodevice,MOTO_STRING_LEN);
+		return 0;
+	}
+}
+
+static int selectFileNameByProduct(struct icnss_priv *plat_priv, char *filename, u32 bdf_type)
+{
+	int i, num, ret = 0;
+	if(get_moto_radio() != 0 || get_moto_device() != 0){
+		icnss_pr_err("device or radio not present ");
+	}
+
+	num = num_of_products(products_list);
+	for (i = 0; i < num; i++) {
+		if (strncmp(device_ptr, (products_list+i)->hw_device, strlen((products_list+i)->hw_device)) == 0) {
+			if(strncmp(radio_ptr, (products_list+i)->hw_radio, strlen((products_list+i)->hw_radio)) == 0 ||
+				strncmp((products_list+i)->hw_radio, "all", strlen((products_list+i)->hw_radio)) == 0) {
+				if(ICNSS_BDF_ELF == bdf_type) {
+					if(0x400c1211 == plat_priv->soc_id)  //GF chip
+					{
+						sprintf(filename, "%s.%s.%s", ELF_BDF_FILE_NAME_GF,
+						(products_list+i)->hw_device, (products_list+i)->nv_name);
+					}
+					else{
+						sprintf(filename, "%s.%s.%s", ELF_BDF_FILE_NAME,
+						(products_list+i)->hw_device, (products_list+i)->nv_name);
+					}
+					ret = 1;
+					break;
+				} else if (ICNSS_BDF_BIN == bdf_type) {
+					sprintf(filename, "adrastea/%s_%s_%s.bin", BDF_FILE_NAME_PREFIX,
+					(products_list+i)->hw_device, (products_list+i)->nv_name);
+					ret = 1;
+					break;
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+// END Support loading different bdwlan.elf
 
 int wlfw_msa_mem_info_send_sync_msg(struct icnss_priv *priv)
 {
@@ -1009,6 +1163,11 @@ static int icnss_get_bdf_file_name(struct icnss_priv *priv,
 	char filename_tmp[ICNSS_MAX_FILE_NAME];
 	char foundry_specific_filename[ICNSS_MAX_FILE_NAME];
 	int ret = 0;
+
+	// Support loading different bdwlan.elf
+	if (selectFileNameByProduct(priv, filename, bdf_type) > 0)
+		return ret;
+	/* Board ID will be equal or less than 0xFF in GF mask case */
 
 	switch (bdf_type) {
 	case ICNSS_BDF_ELF:
