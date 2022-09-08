@@ -347,6 +347,9 @@ static struct msm_soc_info cpu_of_id[] = {
 	/* Khajeq ID */
 	[562] = {MSM_CPU_KHAJEQ, "KHAJEQ"},
 
+	/* Khajeg ID */
+	[585] = {MSM_CPU_KHAJEG, "KAHJEG"},
+
 	/* Lagoon ID */
 	[434] = {MSM_CPU_LAGOON, "LAGOON"},
 	[459] = {MSM_CPU_LAGOON, "LAGOON"},
@@ -1284,6 +1287,10 @@ static void * __init setup_dummy_socinfo(void)
 	} else if (early_machine_is_khajeq()) {
 		dummy_socinfo.id = 562;
 		strlcpy(dummy_socinfo.build_id, "khajeq - ",
+		sizeof(dummy_socinfo.build_id));
+	} else if (early_machine_is_khajeg()) {
+		dummy_socinfo.id = 585;
+		strlcpy(dummy_socinfo.build_id, "khajeg - ",
 		sizeof(dummy_socinfo.build_id));
 	} else if (early_machine_is_bengalp()) {
 		dummy_socinfo.id = 445;

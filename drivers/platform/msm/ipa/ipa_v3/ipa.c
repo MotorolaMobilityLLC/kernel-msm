@@ -7269,8 +7269,10 @@ fail_mem_ctrl:
 	kfree(ipa3_ctx->ipa_tz_unlock_reg);
 	ipa3_ctx->ipa_tz_unlock_reg = NULL;
 fail_tz_unlock_reg:
-	if (ipa3_ctx->logbuf)
+	if (ipa3_ctx->logbuf) {
 		ipc_log_context_destroy(ipa3_ctx->logbuf);
+		ipa3_ctx->logbuf = NULL;
+	}
 fail_uc_file_alloc:
 	kfree(ipa3_ctx->gsi_fw_file_name);
 fail_gsi_file_alloc:

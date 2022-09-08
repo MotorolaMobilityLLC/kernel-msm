@@ -3091,7 +3091,7 @@ bail:
 
 static int fastrpc_mmap_on_dsp(struct fastrpc_file *fl, uint32_t flags,
 					uintptr_t va, uint64_t phys,
-					size_t size, uintptr_t *raddr)
+					size_t size, int refs, uintptr_t *raddr)
 {
 	struct fastrpc_ioctl_invoke_crc ioctl;
 	struct fastrpc_apps *me = &gfa;
@@ -3153,7 +3153,7 @@ static int fastrpc_mmap_on_dsp(struct fastrpc_file *fl, uint32_t flags,
 		}
 	}
 	if (flags == ADSP_MMAP_REMOTE_HEAP_ADDR
-				&& me->channel[cid].rhvm.vmid) {
+				&& me->channel[cid].rhvm.vmid && refs == 1) {
 		err = hyp_assign_phys(phys, (uint64_t)size,
 				hlosvm, 1, me->channel[cid].rhvm.vmid,
 				me->channel[cid].rhvm.vmperm,
@@ -3527,7 +3527,7 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 		if (err)
 			goto bail;
 		err = fastrpc_mmap_on_dsp(fl, ud->flags, 0,
-				rbuf->phys, rbuf->size, &raddr);
+				rbuf->phys, rbuf->size, 0, &raddr);
 		if (err)
 			goto bail;
 		rbuf->raddr = raddr;
@@ -3548,7 +3548,7 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 		else
 			va_to_dsp = (uintptr_t)map->va;
 		VERIFY(err, 0 == fastrpc_mmap_on_dsp(fl, ud->flags, va_to_dsp,
-				map->phys, map->size, &raddr));
+				map->phys, map->size, map->refs, &raddr));
 		if (err)
 			goto bail;
 		map->raddr = raddr;
