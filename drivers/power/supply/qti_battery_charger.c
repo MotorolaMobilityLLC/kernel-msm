@@ -49,12 +49,14 @@
 
 /* Generic definitions */
 #define MAX_STR_LEN			128
-#define BC_WAIT_TIME_MS			1000
-#define WLS_FW_PREPARE_TIME_MS		1000
-#define WLS_FW_WAIT_TIME_MS		500
+#define BC_WAIT_TIME_MS			2000
+#define WLS_FW_PREPARE_TIME_MS		2000
+#define WLS_FW_WAIT_TIME_MS		5000
 #define WLS_FW_UPDATE_TIME_MS		1000
 #define WLS_FW_BUF_SIZE			128
 #define DEFAULT_RESTRICT_FCC_UA		1000000
+
+static bool wls_fw_udating = false;
 
 enum psy_type {
 	PSY_TYPE_BATTERY,
@@ -340,7 +342,7 @@ static int battery_chg_fw_write(struct battery_chg_dev *bcdev, void *data,
 	int rc;
 
 	if (atomic_read(&bcdev->state) == PMIC_GLINK_STATE_DOWN) {
-		pr_debug("glink state is down\n");
+		pr_err("glink state is down\n");
 		return -ENOTCONN;
 	}
 
@@ -350,7 +352,7 @@ static int battery_chg_fw_write(struct battery_chg_dev *bcdev, void *data,
 		rc = wait_for_completion_timeout(&bcdev->fw_buf_ack,
 					msecs_to_jiffies(WLS_FW_WAIT_TIME_MS));
 		if (!rc) {
-			pr_err("Error, timed out sending message\n");
+			pr_err("Error, timed out sending message, tims_ms %d\n", WLS_FW_WAIT_TIME_MS);
 			return -ETIMEDOUT;
 		}
 
@@ -402,6 +404,11 @@ static int write_property_id(struct battery_chg_dev *bcdev,
 {
 	struct battery_charger_req_msg req_msg = { { 0 } };
 
+	if (wls_fw_udating) {
+		pr_debug("wireless doing fw update, refuse to  write_property_id");
+		return -ETIMEDOUT;
+	}
+
 	req_msg.property_id = prop_id;
 	req_msg.battery_id = 0;
 	req_msg.value = val;
@@ -420,6 +427,11 @@ static int read_property_id(struct battery_chg_dev *bcdev,
 			struct psy_state *pst, u32 prop_id)
 {
 	struct battery_charger_req_msg req_msg = { { 0 } };
+
+	if (wls_fw_udating) {
+		pr_debug("wireless doing fw update, refuse to  read_property_id");
+		return -ETIMEDOUT;
+	}
 
 	req_msg.property_id = prop_id;
 	req_msg.battery_id = 0;
@@ -886,8 +898,18 @@ static int wls_psy_get_prop(struct power_supply *psy,
 		return prop_id;
 
 	rc = read_property_id(bcdev, pst, prop_id);
+#ifdef QCOM_BASE
 	if (rc < 0)
 		return rc;
+#else
+	if (rc == -ETIMEDOUT) {
+		pr_debug("read prop:%d timeout, use old prop value\n", prop_id);
+		rc = 0;
+	} else if (rc < 0) {
+		pr_err("read prop:%d error, rc = %d", prop_id, rc);
+		return rc;
+	}
+#endif
 
 	pval->intval = pst->prop[prop_id];
 
@@ -1006,8 +1028,18 @@ static int usb_psy_get_prop(struct power_supply *psy,
 		return prop_id;
 
 	rc = read_property_id(bcdev, pst, prop_id);
+#ifdef QCOM_BASE
 	if (rc < 0)
 		return rc;
+#else
+	if (rc == -ETIMEDOUT) {
+		pr_debug("read prop:%d timeout, use old prop value\n", prop_id);
+		rc = 0;
+	} else if (rc < 0) {
+		pr_err("read prop:%d error, rc = %d", prop_id, rc);
+		return rc;
+	}
+#endif
 
 	pval->intval = pst->prop[prop_id];
 	if (prop == POWER_SUPPLY_PROP_TEMP)
@@ -1396,7 +1428,7 @@ static int wireless_fw_send_firmware(struct battery_chg_dev *bcdev,
 		msg.fw_chunk_id = i + 1;
 		memcpy(msg.buf, ptr, WLS_FW_BUF_SIZE);
 
-		pr_debug("sending FW chunk %u\n", i + 1);
+		pr_info("sending FW chunk %u\n", i + 1);
 		rc = battery_chg_fw_write(bcdev, &msg, sizeof(msg));
 		if (rc < 0)
 			return rc;
@@ -1407,7 +1439,7 @@ static int wireless_fw_send_firmware(struct battery_chg_dev *bcdev,
 		memset(msg.buf, 0, WLS_FW_BUF_SIZE);
 		memcpy(msg.buf, ptr, partial_chunk_size);
 
-		pr_debug("sending partial FW chunk %u\n", i + 1);
+		pr_info("sending partial FW chunk %u\n", i + 1);
 		rc = battery_chg_fw_write(bcdev, &msg, sizeof(msg));
 		if (rc < 0)
 			return rc;
@@ -1509,7 +1541,7 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		version = UINT_MAX;
 
 	pr_info("FW size: %zu version: %#x\n", fw->size, version);
-
+	wls_fw_udating = true;
 	rc = wireless_fw_check_for_update(bcdev, version, fw->size);
 	if (rc < 0) {
 		pr_err("Wireless FW update not needed, rc=%d\n", rc);
@@ -1551,7 +1583,7 @@ release_fw:
 	release_firmware(fw);
 out:
 	pm_relax(bcdev->dev);
-
+	wls_fw_udating = false;
 	return rc;
 }
 
@@ -2011,7 +2043,7 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 			__func__, bcdev->wls_fw_size_min);
 	}
 
-	if (strstr(bcdev->wls_fw_name, "cps"))
+	if (bcdev->wls_fw_name && strstr(bcdev->wls_fw_name, "cps"))
 		bcdev->wls_fw_vendor = WLS_CPS;
 
 	rc = read_property_id(bcdev, pst, BATT_CHG_CTRL_LIM_MAX);
