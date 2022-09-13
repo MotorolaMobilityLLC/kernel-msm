@@ -446,6 +446,10 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_use_cma_first_check);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_slab_page_alloced);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_kmalloc_order_alloced);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_compact_finished);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_check_page_look_around_ref);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_look_around);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_look_around_migrate_page);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_test_clear_look_around_ref);
 /*
  * For type visibility
  */

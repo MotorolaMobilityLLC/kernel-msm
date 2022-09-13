@@ -30,6 +30,7 @@ struct oom_control;
 struct slabinfo;
 struct track;
 struct address_space;
+struct page_vma_mapped_walk;
 
 DECLARE_RESTRICTED_HOOK(android_rvh_set_skip_swapcache_flags,
 			TP_PROTO(gfp_t *flags),
@@ -229,6 +230,16 @@ DECLARE_HOOK(android_vh_alloc_flags_cma_adjust,
 DECLARE_HOOK(android_vh_rmqueue_cma_fallback,
 	TP_PROTO(struct zone *zone, unsigned int order, struct page **page),
 	TP_ARGS(zone, order, page));
+DECLARE_HOOK(android_vh_test_clear_look_around_ref,
+	TP_PROTO(struct page *page),
+	TP_ARGS(page));
+DECLARE_HOOK(android_vh_look_around_migrate_page,
+	TP_PROTO(struct page *old_page, struct page *new_page),
+	TP_ARGS(old_page, new_page));
+DECLARE_HOOK(android_vh_look_around,
+	TP_PROTO(struct page_vma_mapped_walk *pvmw, struct page *page,
+		struct vm_area_struct *vma, int *referenced),
+	TP_ARGS(pvmw, page, vma, referenced));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
