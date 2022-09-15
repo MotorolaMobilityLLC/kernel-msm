@@ -29,6 +29,7 @@
 #include <linux/nvmem-consumer.h>
 #include <linux/ipc_logging.h>
 #include <linux/pinctrl/qcom-pinctrl.h>
+#include <linux/suspend.h>
 
 #include <trace/hooks/mmc.h>
 #include "../core/mmc_ops.h"
@@ -4068,6 +4069,7 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
 	struct platform_device *pdev = msm_host->pdev;
 	int ret = -EOPNOTSUPP;
+	bool deepsleep = (pm_suspend_target_state == PM_SUSPEND_MEM);
 
 	if (!msm_host->core_reset) {
 		dev_err(&pdev->dev, "%s: failed, err = %d\n", __func__,
@@ -4077,7 +4079,7 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 
 	msm_host->reg_store = true;
 	sdhci_msm_registers_save(host);
-	if (host->mmc->caps2 & MMC_CAP2_CQE) {
+	if ((host->mmc->caps2 & MMC_CAP2_CQE) && !deepsleep) {
 		host->mmc->cqe_ops->cqe_disable(host->mmc);
 		host->mmc->cqe_enabled = false;
 	}
@@ -4089,7 +4091,7 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 
 	sdhci_msm_log_str(msm_host, "HW reset done\n");
 #if defined(CONFIG_SDC_QTI)
-	if (host->mmc->card)
+	if (host->mmc->card && !deepsleep)
 		mmc_power_cycle(host->mmc, host->mmc->card->ocr);
 #endif
 }
@@ -4396,6 +4398,11 @@ static int mmc_partial_init(struct mmc_host *mmc)
 	struct sdhci_host *shost = mmc_priv(mmc);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(shost);
 	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
+		shost->ops->hw_reset(shost);
+		return -EOPNOTSUPP;
+	}
 
 	if (msm_host->is_partial_init_broken)
 		return -EOPNOTSUPP;
