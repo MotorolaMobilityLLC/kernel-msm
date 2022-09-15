@@ -38,6 +38,7 @@
 #include "../core/core.h"
 #include <linux/qtee_shmbridge.h>
 #include <linux/crypto-qti-common.h>
+#include <linux/suspend.h>
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
 #include "sdhci-msm-scaling.h"
@@ -4019,11 +4020,10 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 
 	msm_host->reg_store = true;
 	sdhci_msm_registers_save(host);
-	if (host->mmc->caps2 & MMC_CAP2_CQE) {
+	if ((host->mmc->caps2 & MMC_CAP2_CQE) && !pm_suspend_via_firmware()) {
 		host->mmc->cqe_ops->cqe_disable(host->mmc);
 		host->mmc->cqe_enabled = false;
 	}
-
 
 	sdhci_msm_gcc_reset(&pdev->dev, host);
 	sdhci_msm_registers_restore(host);
@@ -4031,7 +4031,7 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 
 	sdhci_msm_log_str(msm_host, "HW reset done\n");
 #if defined(CONFIG_SDC_QTI)
-	if (host->mmc->card)
+	if (host->mmc->card && !pm_suspend_via_firmware())
 		mmc_power_cycle(host->mmc, host->mmc->card->ocr);
 #endif
 	return;
@@ -4935,6 +4935,15 @@ static int mmc_can_sleep(struct mmc_card *card)
 static void partial_init(void *unused, struct mmc_host *host, bool *partial_init)
 {
 	int err;
+	bool deepsleep = pm_suspend_via_firmware();
+
+	if (deepsleep) {
+		host->ops->hw_reset(host);
+		*partial_init = false;
+		pr_debug("%s: %s: deepsleep %d\n", mmc_hostname(host),
+		 __func__, deepsleep);
+		return;
+	}
 
 	if (mmc_can_sleep(host->card)) {
 		err = mmc_sleepawake(host);
