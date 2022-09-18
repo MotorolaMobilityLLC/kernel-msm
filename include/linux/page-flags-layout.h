@@ -96,7 +96,10 @@
 #error "Not enough bits in page flags"
 #endif
 
-#define LRU_REFS_WIDTH	0
+/* see the comment on MAX_NR_TIERS */
+#define LRU_REFS_WIDTH	min(__LRU_REFS_WIDTH, BITS_PER_LONG - NR_PAGEFLAGS - \
+			    ZONES_WIDTH - LRU_GEN_WIDTH - SECTIONS_WIDTH - \
+			    NODES_WIDTH - KASAN_TAG_WIDTH - LAST_CPUPID_WIDTH)
 
 /*
  * We are going to use the flags for the page to node mapping if its in
