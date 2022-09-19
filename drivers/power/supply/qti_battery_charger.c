@@ -436,7 +436,7 @@ static int read_property_id(struct battery_chg_dev *bcdev,
 {
 	struct battery_charger_req_msg req_msg = { { 0 } };
 
-	if (wls_fw_udating) {
+	if (wls_fw_udating && prop_id != USB_ADAP_TYPE) {
 		pr_debug("wireless doing fw update, refuse to  read_property_id");
 		return -ETIMEDOUT;
 	}
@@ -1527,7 +1527,6 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		version = UINT_MAX;
 
 	pr_info("FW size: %zu version: %#x\n", fw->size, version);
-	wls_fw_udating = true;
 	rc = wireless_fw_check_for_update(bcdev, version, fw->size);
 	if (rc < 0) {
 		pr_err("Wireless FW update not needed, rc=%d\n", rc);
@@ -1541,6 +1540,7 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 
 	/* Wait for IDT to be setup by charger firmware */
 	msleep(WLS_FW_PREPARE_TIME_MS);
+	wls_fw_udating = true;
 
 	reinit_completion(&bcdev->fw_update_ack);
 	rc = wireless_fw_send_firmware(bcdev, fw);
