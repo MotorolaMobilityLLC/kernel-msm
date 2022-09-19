@@ -130,6 +130,7 @@ enum wireless_property_id {
 enum wireless_vendor {
 	WLS_IDT,
 	WLS_CPS,
+	WLS_CPS4019,
 };
 
 enum {
@@ -428,7 +429,7 @@ static int read_property_id(struct battery_chg_dev *bcdev,
 {
 	struct battery_charger_req_msg req_msg = { { 0 } };
 
-	if (wls_fw_udating) {
+	if (wls_fw_udating && prop_id != USB_ADAP_TYPE) {
 		pr_debug("wireless doing fw update, refuse to  read_property_id");
 		return -ETIMEDOUT;
 	}
@@ -1488,12 +1489,16 @@ static int wireless_fw_check_for_update(struct battery_chg_dev *bcdev,
 #define IDT_FW_MINOR_VER_OFFSET		0x96
 #define CPS_FW_MAJOR_VER_OFFSET		0xc4
 #define CPS_FW_MINOR_VER_OFFSET		0xc5
+#define CPS4019_FW_MAJOR_VER_OFFSET1		0xc4
+#define CPS4019_FW_MAJOR_VER_OFFSET2		0xc5
+#define CPS4019_FW_MINOR_VER_OFFSET1		0xc6
+#define CPS4019_FW_MINOR_VER_OFFSET2		0xc7
 static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 {
 	const struct firmware *fw;
 	struct psy_state *pst;
 	u32 version;
-	u16 maj_ver, min_ver;
+	u16 maj_ver, min_ver, maj_ver1, maj_ver2, min_ver1, min_ver2;
 	int rc;
 
 	if (!bcdev->wls_fw_name) {
@@ -1543,12 +1548,25 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		goto release_fw;
 	}
 
-	if (bcdev->wls_fw_vendor == WLS_CPS) {
+	if (bcdev->wls_fw_vendor == WLS_CPS4019) {
+		maj_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET1));
+		maj_ver = maj_ver1 >> 8;
+		maj_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET2));
+		maj_ver2 = maj_ver2 & 0xFF00;
+		maj_ver = maj_ver + maj_ver2;
+		min_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET1));
+		min_ver = min_ver1 >> 8;
+		min_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET2));
+		min_ver2 = min_ver2 & 0xFF00;
+		min_ver = min_ver + min_ver2;
+		pr_info("WLS_CPS 4019 maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
+		version = maj_ver << 16 | min_ver;
+	} else if (bcdev->wls_fw_vendor == WLS_CPS) {
 		maj_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MAJOR_VER_OFFSET));
 		maj_ver = maj_ver >> 8;
 		min_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MINOR_VER_OFFSET));
 		min_ver = min_ver >> 8;
-		pr_info("maj_var %#x, min_ver %#x\n", maj_ver, min_ver);
+		pr_info("WLS_CPS maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
 		version = maj_ver << 16 | min_ver;
 	} else {
 		maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
@@ -1560,7 +1578,6 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		version = UINT_MAX;
 
 	pr_info("FW size: %zu version: %#x\n", fw->size, version);
-	wls_fw_udating = true;
 	rc = wireless_fw_check_for_update(bcdev, version, fw->size);
 	if (rc < 0) {
 		pr_err("Wireless FW update not needed, rc=%d\n", rc);
@@ -1574,7 +1591,7 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 
 	/* Wait for IDT to be setup by charger firmware */
 	msleep(WLS_FW_PREPARE_TIME_MS);
-
+        wls_fw_udating = true;
 	reinit_completion(&bcdev->fw_update_ack);
 	rc = wireless_fw_send_firmware(bcdev, fw);
 	if (rc < 0) {
@@ -2062,7 +2079,9 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 			__func__, bcdev->wls_fw_size_min);
 	}
 
-	if (bcdev->wls_fw_name && strstr(bcdev->wls_fw_name, "cps"))
+	if (bcdev->wls_fw_name && strstr(bcdev->wls_fw_name, "cps4019"))
+		bcdev->wls_fw_vendor = WLS_CPS4019;
+	else if (bcdev->wls_fw_name && strstr(bcdev->wls_fw_name, "cps"))
 		bcdev->wls_fw_vendor = WLS_CPS;
 
 	rc = read_property_id(bcdev, pst, BATT_CHG_CTRL_LIM_MAX);
