@@ -38,6 +38,9 @@
 #include "kgsl_sync.h"
 #include "kgsl_sysfs.h"
 #include "kgsl_trace.h"
+/* Instantiate tracepoints */
+#define CREATE_TRACE_POINTS
+#include "kgsl_power_trace.h"
 
 #ifndef arch_mmap_check
 #define arch_mmap_check(addr, len, flags)	(0)
@@ -958,6 +961,97 @@ struct kgsl_process_private *kgsl_process_private_find(pid_t pid)
 	return private;
 }
 
+static void _defer_process_put(struct work_struct *work)
+{
+	struct kgsl_process_private *private =
+		container_of(work, struct kgsl_process_private, defer_ws);
+
+	/* Put back the refcount that was taken in kgsl_drawobj_cmd_create() */
+	kgsl_process_private_put(private);
+}
+
+void kgsl_proc_work_period_update(struct kgsl_device *device,
+				  struct kgsl_process_private *priv, u64 active)
+{
+	spin_lock(&device->proc_period_lock);
+	if (test_bit(KGSL_PROCESS_STATS_GPU_BUSY, &priv->flags)) {
+		priv->period.active += active;
+		priv->period.cmds++;
+	}
+	spin_unlock(&device->proc_period_lock);
+}
+
+#define KGSL_GPU_ID 1
+static void _log_gpu_work_events(struct work_struct *work)
+{
+	struct kgsl_device *device = container_of(work, struct kgsl_device,
+							proc_period_work);
+	struct kgsl_process_private *private;
+	u64 active_time;
+	bool restart = false;
+
+	spin_lock(&device->proc_period_lock);
+	device->gpu_period.end = ktime_get_ns();
+
+	read_lock(&kgsl_driver.proclist_lock);
+	list_for_each_entry(private, &kgsl_driver.process_list, list) {
+		if (!test_bit(KGSL_PROCESS_STATS_GPU_BUSY, &private->flags))
+			continue;
+
+		/* Active time in XO cycles(19.2MHz), convert to nanoseconds */
+		active_time = private->period.active * 10000;
+		do_div(active_time, 192);
+
+		/* Ensure active_time is within work period */
+		active_time = min_t(u64, active_time,
+			       device->gpu_period.end - device->gpu_period.begin);
+		/*
+		 * Emit GPU work period events via a kernel tracepoint
+		 * to provide information to the Android OS about how
+		 * apps are using the GPU.
+		 */
+		if (active_time)
+			trace_gpu_work_period(KGSL_GPU_ID, private->uid,
+					      device->gpu_period.begin,
+					      device->gpu_period.end,
+					      active_time);
+		/* Reset process work stats */
+		memset(&private->period, 0, sizeof(private->period));
+
+		if (atomic_read(&private->cmd_count)) {
+			restart = true;
+		} else {
+			__clear_bit(KGSL_PROCESS_STATS_GPU_BUSY, &private->flags);
+			queue_work(kgsl_driver.lockless_workqueue, &private->defer_ws);
+		}
+	}
+	read_unlock(&kgsl_driver.proclist_lock);
+
+	if (restart) {
+		/*
+		 * GPU work period duration (end time - begin time) must be at
+		 * most 1 second. The event for a period must be emitted within
+		 * 1 second of the end time of the period. Restart timer within
+		 * 1 second to emit gpu work period events.
+		 */
+		mod_timer(&device->proc_period_timer,
+			  jiffies + msecs_to_jiffies(KGSL_PROC_GPU_WORK_PERIOD_MS));
+		device->gpu_period.begin = device->gpu_period.end;
+	} else {
+		memset(&device->gpu_period, 0, sizeof(device->gpu_period));
+		__clear_bit(KGSL_PROCESS_STATS_GPU_BUSY, &device->flags);
+	}
+	spin_unlock(&device->proc_period_lock);
+
+}
+
+static void kgsl_process_gpu_work_timer(struct timer_list *t)
+{
+	struct kgsl_device *device = from_timer(device, t, proc_period_timer);
+
+	queue_work(kgsl_driver.lockless_workqueue, &device->proc_period_work);
+}
+
 static struct kgsl_process_private *kgsl_process_private_new(
 		struct kgsl_device *device)
 {
@@ -1035,6 +1129,8 @@ static struct kgsl_process_private *kgsl_process_private_new(
 	write_lock(&kgsl_driver.proclist_lock);
 	list_add(&private->list, &kgsl_driver.process_list);
 	write_unlock(&kgsl_driver.proclist_lock);
+	private->uid = task_pid_nr(current);
+	INIT_WORK(&private->defer_ws, _defer_process_put);
 
 	return private;
 }
@@ -2497,7 +2593,7 @@ static bool gpuobj_free_fence_func(void *priv)
 			entry->memdesc.flags);
 
 	INIT_WORK(&entry->work, _deferred_put);
-	queue_work(kgsl_driver.mem_workqueue, &entry->work);
+	queue_work(kgsl_driver.lockless_workqueue, &entry->work);
 	return true;
 }
 
@@ -4954,6 +5050,10 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	/* Initialize common sysfs entries */
 	kgsl_pwrctrl_init_sysfs(device);
 
+	timer_setup(&device->proc_period_timer, kgsl_process_gpu_work_timer, 0);
+	spin_lock_init(&device->proc_period_lock);
+	INIT_WORK(&device->proc_period_work, _log_gpu_work_events);
+
 	return 0;
 
 error_pwrctrl_close:
@@ -4970,6 +5070,8 @@ error:
 
 void kgsl_device_platform_remove(struct kgsl_device *device)
 {
+	del_timer(&device->proc_period_timer);
+
 	if (device->events_wq) {
 		destroy_workqueue(device->events_wq);
 		device->events_wq = NULL;
@@ -5005,9 +5107,9 @@ void kgsl_core_exit(void)
 		kgsl_driver.workqueue = NULL;
 	}
 
-	if (kgsl_driver.mem_workqueue) {
-		destroy_workqueue(kgsl_driver.mem_workqueue);
-		kgsl_driver.mem_workqueue = NULL;
+	if (kgsl_driver.lockless_workqueue) {
+		destroy_workqueue(kgsl_driver.lockless_workqueue);
+		kgsl_driver.lockless_workqueue = NULL;
 	}
 
 	kgsl_events_exit();
@@ -5114,11 +5216,15 @@ int __init kgsl_core_init(void)
 		goto err;
 	}
 
-	kgsl_driver.mem_workqueue = alloc_workqueue("kgsl-mementry",
+	/*
+	 * The lockless workqueue is used to perform work which doesn't need to
+	 * take the device mutex
+	 */
+	kgsl_driver.lockless_workqueue = alloc_workqueue("kgsl-lockless-work",
 		WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
 
-	if (!kgsl_driver.mem_workqueue) {
-		pr_err("kgsl: Failed to allocate mem workqueue\n");
+	if (!kgsl_driver.lockless_workqueue) {
+		pr_err("kgsl: Failed to allocate lockless workqueue\n");
 		result = -ENOMEM;
 		goto err;
 	}
