@@ -3,6 +3,8 @@
 
 # The link order is important here. ufshcd-core must initialize
 # before vendor drivers.
+ccflags-y += -I$(srctree)/drivers/scsi/ufs/vendor
+
 obj-$(CONFIG_SCSI_UFSHCD)		+= ufshcd-core.o
 ufshcd-core-y				+= ufshcd.o ufs-sysfs.o
 ufshcd-core-$(CONFIG_DEBUG_FS)		+= ufs-debugfs.o
@@ -17,6 +19,9 @@ obj-$(CONFIG_SCSI_UFS_DWC_TC_PLATFORM) += tc-dwc-g210-pltfrm.o ufshcd-dwc.o tc-d
 obj-$(CONFIG_SCSI_UFS_CDNS_PLATFORM) += cdns-pltfrm.o
 obj-$(CONFIG_SCSI_UFS_QCOM) += ufs_qcom.o
 ufs_qcom-y += ufs-qcom.o
+ufs_qcom-$(CONFIG_UFSFEATURE) += vendor/ufsfeature.o vendor/ufsfeature-mimic.o
+ufs_qcom-$(CONFIG_UFSHID) += vendor/ufshid.o
+ufs_qcom-$(CONFIG_UFSSID) += vendor/ufssid.o
 ufs_qcom-$(CONFIG_SCSI_UFS_CRYPTO) += ufs-qcom-ice.o
 obj-$(CONFIG_SCSI_UFS_EXYNOS) += ufs-exynos.o
 obj-$(CONFIG_SCSI_UFSHCD_PCI) += ufshcd-pci.o
