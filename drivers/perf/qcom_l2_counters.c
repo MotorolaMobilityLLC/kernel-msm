@@ -1037,8 +1037,8 @@ static int l2_cache_pmu_probe_cluster(struct device *parent,
 	struct cluster_pmu *cluster;
 	u32 fw_cluster_id;
 	struct resource res;
-	int ret;
-	int irq;
+	int ret = 0;
+	int irq, cpu, cpu_count = 0;
 
 	cluster = kzalloc(sizeof(*cluster), GFP_KERNEL);
 	if (!cluster) {
@@ -1064,6 +1064,14 @@ static int l2_cache_pmu_probe_cluster(struct device *parent,
 		goto err_put_dev;
 	}
 
+	for_each_possible_cpu(cpu) {
+		if (topology_physical_package_id(cpu) == fw_cluster_id) {
+			cpu_count++;
+			break;
+		}
+	}
+	if (cpu_count == 0)
+		goto err_put_dev;
 	ret = of_address_to_resource(cn, 0, &res);
 	if (ret) {
 		pr_err(L2_COUNTERS_BUG "not able to find the resource\n");
