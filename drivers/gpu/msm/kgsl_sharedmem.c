@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/cacheflush.h>
@@ -199,7 +200,7 @@ static ssize_t memtype_sysfs_show(struct kobject *kobj,
 	}
 	spin_unlock(&priv->mem_lock);
 
-	queue_work(kgsl_driver.mem_workqueue, &work->work);
+	queue_work(kgsl_driver.lockless_workqueue, &work->work);
 
 	return scnprintf(buf, PAGE_SIZE, "%llu\n", size);
 }
@@ -274,7 +275,7 @@ imported_mem_show(struct kgsl_process_private *priv,
 	}
 	spin_unlock(&priv->mem_lock);
 
-	queue_work(kgsl_driver.mem_workqueue, &work->work);
+	queue_work(kgsl_driver.lockless_workqueue, &work->work);
 
 	return scnprintf(buf, PAGE_SIZE, "%llu\n", imported_mem);
 }
