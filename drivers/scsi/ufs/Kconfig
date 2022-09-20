@@ -228,3 +228,38 @@ config SCSI_UFS_HWMON
 	  a hardware monitoring device will be created for the UFS device.
 
 	  If unsure, say N.
+
+config UFSFEATURE
+	bool "UFS feature activate"
+	depends on SCSI_UFSHCD
+	help
+	  UFS feature activate such as hpb, tw and etc.
+
+config UFSHID
+	bool "UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	help
+	  UFS HID Feature Enable
+
+config UFSHID_POC
+	bool "UFSHID_POC test"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
+	help
+	  UFS HID POC test
+	  1. block to enter suspend state
+	  2. auto_hibern8 enable/disable (HCI)
+	  3. set flag bDefragOperation
+	  4. debug msg enable (default : disable)
+
+config UFSHID_DEBUG
+	bool "HID Debug Enable"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
+	default n
+	help
+	UFS HID Debug Enable (for check io stat during trigger)
+
+config UFSSID
+	bool "UFS Stream ID support"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
+	help
+	  Enable Stream ID Feature for Streamed-HID
