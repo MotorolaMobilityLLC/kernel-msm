@@ -13,6 +13,9 @@
 #include <linux/notifier.h>
 #include "ufshcd.h"
 #include "unipro.h"
+#ifdef CONFIG_UFSFEATURE
+#include "ufsfeature.h"
+#endif
 
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
@@ -504,6 +507,10 @@ struct ufs_qcom_host {
 
 	struct gpio_desc *device_reset;
 
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature ufsf;
+#endif
+
 	int max_hs_gear;
 	int limit_tx_hs_gear;
 	int limit_rx_hs_gear;
@@ -555,6 +562,15 @@ struct ufs_qcom_host {
 	cpumask_t def_mask;
 	u32 vccq_lpm_uV;
 };
+
+#if defined(CONFIG_UFSFEATURE)
+static inline struct ufsf_feature *ufs_qcom_get_ufsf(struct ufs_hba *hba)
+{
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+
+	return &host->ufsf;
+}
+#endif
 
 static inline u32
 ufs_qcom_get_debug_reg_offset(struct ufs_qcom_host *host, u32 reg)
