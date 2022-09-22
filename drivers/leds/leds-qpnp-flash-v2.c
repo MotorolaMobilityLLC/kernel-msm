@@ -319,6 +319,7 @@ struct flash_led_platform_data {
 	bool			hdrm_auto_mode_en;
 	bool			thermal_derate_en;
 	bool			otst_ramp_bkup_en;
+	bool			torch_realtime_brightness_control;
 };
 
 /*
@@ -1338,7 +1339,7 @@ static void qpnp_flash_led_aggregate_max_current(struct flash_node_data *fnode)
 
 static void qpnp_flash_led_node_set(struct flash_node_data *fnode, int value)
 {
-	int i = 0;
+	int i = 0, val, rc = 0, addr_offset;
 	int prgm_current_ma = value;
 	int min_ma = fnode->ires_ua / 1000;
 	struct qpnp_flash_led *led = dev_get_drvdata(&fnode->pdev->dev);
@@ -1383,6 +1384,31 @@ static void qpnp_flash_led_node_set(struct flash_node_data *fnode, int value)
 		led->trigger_chgr = false;
 		if (led->total_current_ma >= 1000)
 			led->trigger_chgr = true;
+	}
+
+	if (led->pdata->torch_realtime_brightness_control) {
+		val = 0;
+		for (i = 0; i < led->num_fnodes; i++)
+			if (led->fnode[i].led_on)
+				val |= led->fnode[i].ires_idx <<
+					(led->fnode[i].id * 2);
+
+		rc = qpnp_flash_led_masked_write(led,
+					FLASH_LED_REG_IRES(led->base),
+						FLASH_LED_CURRENT_MASK, val);
+		if (rc < 0)
+			return;
+		for (i = 0; i < led->num_fnodes; i++) {
+			if (led->fnode[i].led_on) {
+				addr_offset = led->fnode[i].id;
+				rc = qpnp_flash_led_masked_write(led,
+					FLASH_LED_REG_TGR_CURRENT(led->base +
+					addr_offset), FLASH_LED_CURRENT_MASK,
+					led->fnode[i].current_reg_val);
+				if (rc < 0)
+					return;
+			}
+		}
 	}
 }
 
@@ -2919,6 +2945,9 @@ static int qpnp_flash_led_parse_common_dt(struct qpnp_flash_led *led,
 
 	led->pdata->hdrm_auto_mode_en = of_property_read_bool(node,
 							"qcom,hdrm-auto-mode");
+	led->pdata->torch_realtime_brightness_control = of_property_read_bool(
+					node,
+					"qcom,torch-realtime-brightness-control");
 	rc = qpnp_flash_led_isc_delay_dt(led, node);
 	if (rc < 0)
 		return rc;
