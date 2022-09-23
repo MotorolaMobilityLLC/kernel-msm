@@ -826,8 +826,18 @@ static int wls_psy_get_prop(struct power_supply *psy,
 		return prop_id;
 
 	rc = read_property_id(bcdev, pst, prop_id);
+#ifdef QCOM_BASE
 	if (rc < 0)
 		return rc;
+#else
+	if (rc == -ETIMEDOUT) {
+		pr_debug("read prop:%d timeout, use old prop value\n", prop_id);
+		rc = 0;
+	} else if (rc < 0) {
+		pr_err("read prop:%d error, rc = %d", prop_id, rc);
+		return rc;
+	}
+#endif
 
 	pval->intval = pst->prop[prop_id];
 
@@ -940,9 +950,19 @@ static int usb_psy_get_prop(struct power_supply *psy,
 	if (prop_id < 0)
 		return prop_id;
 
+#ifdef QCOM_BASE
 	rc = read_property_id(bcdev, pst, prop_id);
 	if (rc < 0)
 		return rc;
+#else
+	if (rc == -ETIMEDOUT) {
+		pr_debug("read prop:%d timeout, use old prop value\n", prop_id);
+		rc = 0;
+	} else if (rc < 0) {
+		pr_err("read prop:%d error, rc = %d", prop_id, rc);
+		return rc;
+	}
+#endif
 
 	pval->intval = pst->prop[prop_id];
 	if (prop == POWER_SUPPLY_PROP_TEMP)
@@ -1916,7 +1936,7 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 	of_property_read_u32(node, "qcom,shutdown-voltage",
 				&bcdev->shutdown_volt_mv);
 
-	if (strstr(bcdev->wls_fw_name, "cps"))
+	if (bcdev->wls_fw_name && strstr(bcdev->wls_fw_name, "cps"))
 		bcdev->wls_fw_vendor = WLS_CPS;
 
 	rc = of_property_count_elems_of_size(node, "qcom,thermal-mitigation",
