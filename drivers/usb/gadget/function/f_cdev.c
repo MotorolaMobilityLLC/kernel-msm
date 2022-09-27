@@ -573,7 +573,9 @@ static void usb_cser_resume(struct usb_function *f)
 	if (port->setup_pending) {
 		pr_info("%s: start_rx called due to rx_out error.\n", __func__);
 		port->setup_pending = false;
+		spin_unlock_irqrestore(&port->port_lock, flags);
 		usb_cser_start_rx(port);
+		spin_lock_irqsave(&port->port_lock, flags);
 	}
 	in = port->port_usb.in;
 	/* process any pending requests */
