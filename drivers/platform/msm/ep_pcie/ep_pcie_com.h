@@ -94,6 +94,8 @@
 #define PCIE20_SUBSYSTEM               0x2c
 #define PCIE20_CAP_ID_NXT_PTR          0x40
 #define PCIE20_CON_STATUS              0x44
+#define PCIE20_MASK_PME_EN             BIT(8)
+#define PCIE20_MASK_PME_STATUS         BIT(15)
 #define PCIE20_MSI_CAP_ID_NEXT_CTRL    0x50
 #define PCIE20_MSI_LOWER               0x54
 #define PCIE20_MSI_UPPER               0x58
@@ -360,6 +362,7 @@ struct ep_pcie_dev_t {
 	bool			     mhi_soc_reset_en;
 	bool			     aoss_rst_clear;
 	bool			     avoid_reboot_in_d3hot;
+	bool			     pme_in_wake_from_d3cold;
 	u32                          dbi_base_reg;
 	u32                          slv_space_reg;
 	u32                          phy_status_reg;
@@ -411,6 +414,8 @@ struct ep_pcie_dev_t {
 	int                          perst_irq;
 	atomic_t                     host_wake_pending;
 	bool			     conf_ipa_msi_iatu;
+	bool			     wake_from_d3cold;
+	bool			     pme_en_d3;
 
 	struct ep_pcie_register_event *event_reg;
 	struct work_struct           handle_bme_work;
