@@ -950,8 +950,8 @@ static int usb_psy_get_prop(struct power_supply *psy,
 	if (prop_id < 0)
 		return prop_id;
 
-#ifdef QCOM_BASE
 	rc = read_property_id(bcdev, pst, prop_id);
+#ifdef QCOM_BASE
 	if (rc < 0)
 		return rc;
 #else
