@@ -431,6 +431,7 @@ cfg80211_add_nontrans_list(struct cfg80211_bss *trans_bss,
 	if (!list_empty(&nontrans_bss->nontrans_list))
 		return -EINVAL;
 
+
 	/* add to the list */
 	list_add_tail(&nontrans_bss->nontrans_list, &trans_bss->nontrans_list);
 	return 0;
