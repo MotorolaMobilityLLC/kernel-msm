@@ -92,8 +92,11 @@ enum {
 /* Description */
 #define UFSF_QUERY_DESC_DEVICE_MAX_SIZE		0xFF
 #define UFSF_QUERY_DESC_CONFIGURAION_MAX_SIZE	0xE6
+#define UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE	0xFE
+
 /* Descriptor idn for Query Request */
 #define UFSF_QUERY_DESC_IDN_DEVICE		0xF0
+#define UFSF_QUERY_DESC_IDN_GEOMETRY		0xF7
 
 /* query_flag  */
 #define MASK_QUERY_UPIU_FLAG_LOC		0xFF
@@ -191,6 +194,12 @@ void ufsf_hid_acc_io_stat(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp);
 #endif
 #if defined(CONFIG_UFSSID)
 #define DEVICE_DESC_PARAM_SID_VER			0xEF
+#endif
+
+/* Geometry descriptor parameters offsets in bytes*/
+#if defined(CONFIG_UFSHID)
+#define GEOMETRY_DESC_HID_MAX_LBA_RANGE_CNT		0xF8
+#define GEOMETRY_DESC_HID_MAX_LBA_RANGE_SIZE		0xF9
 #endif
 
 /**
