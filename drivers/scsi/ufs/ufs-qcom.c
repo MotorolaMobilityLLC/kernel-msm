@@ -295,8 +295,8 @@ check_last_req:
 	if (hba->outstanding_tasks ||
 	    !(hba->outstanding_reqs == (1 << lrbp->task_tag)))
 		return;
-
-	schedule_work(&ufsf->on_idle_work);
+	if (!ufshid_is_hid_req(cmd))
+		schedule_work(&ufsf->on_idle_work);
 #endif
 	;
 }
