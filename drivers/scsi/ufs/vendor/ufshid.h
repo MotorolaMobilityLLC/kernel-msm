@@ -48,7 +48,7 @@
 #include "../../../block/blk.h"
 
 #define UFSHID_VER					0x0201
-#define UFSHID_DD_VER					0x010400
+#define UFSHID_DD_VER					0x020200
 #define UFSHID_DD_VER_POST				""
 
 #define UFS_FEATURE_SUPPORT_HID_BIT			(1 << 0)
@@ -62,11 +62,15 @@
 #define HID_ON_IDLE_DELAY_MS_MAX		10000
 
 #define HID_FRAG_LEVEL_MASK		0xF
-#define HID_GET_FRAG_LEVEL(val)		(val & HID_FRAG_LEVEL_MASK)
+#define HID_FRAG_UPDATE_MODE_SHIFT	29
 #define HID_FRAG_UPDATE_STAT_SHIFT	30
 #define HID_EXECUTE_REQ_STAT_SHIFT	31
+#define HID_FRAG_UPDATE_MODE(val)	((val >> HID_FRAG_UPDATE_MODE_SHIFT) & 0x1)
 #define HID_FRAG_UPDATE_STAT(val)	((val >> HID_FRAG_UPDATE_STAT_SHIFT) & 0x1)
 #define HID_EXECUTE_REQ_STAT(val)	((val >> HID_EXECUTE_REQ_STAT_SHIFT) & 0x1)
+
+#define HID_WB_TIMEOUT			(10 * HZ)
+#define HID_MAX_RANGE_CNT		(1 << 8)
 
 #define HID_DEBUG(hid, msg, args...)					\
 	do { if (hid->hid_debug)					\
@@ -93,6 +97,11 @@ enum UFSHID_OP {
 };
 
 enum {
+	HID_NO_PARAM	= 0,
+	HID_WITH_PARAM	= 1,
+};
+
+enum {
 	HID_NOT_REQUIRED	= 0,
 	HID_REQUIRED		= 1
 };
@@ -102,6 +111,30 @@ enum {
 	HID_LEV_GREEN	= 1,
 	HID_LEV_YELLOW	= 2,
 	HID_LEV_RED	= 3,
+	HID_LEV_UNKNOWN	= 4,
+};
+
+enum REQ_STAT {
+	HID_WB_FREE	= 0,
+	HID_WB_INFLIGHT	= 1,
+};
+
+struct ufshid_blk_desc {
+	__be64 lba;
+	__be32 blk_cnt;
+} __packed;
+
+struct ufshid_blk_desc_header {
+	__u8 hid_blk_desc_cnt;
+	__u8 reserved[7];
+};
+
+struct ufshid_req {
+	atomic_t req_stat;
+	int lun;
+	u8 buf[PAGE_SIZE];
+	size_t buf_size;
+	struct completion complete;
 };
 
 struct ufshid_dev {
@@ -114,6 +147,12 @@ struct ufshid_dev {
 
 	u32 ahit;			/* to restore ahit value */
 	bool is_auto_enabled;
+
+	struct ufshid_req hid_req;
+	bool lba_trigger_mode;
+	u32 max_lba_range_size;		/* 4K block size */
+	u8 max_lba_range_cnt;
+	bool is_need_param;
 
 	/* for sysfs */
 	struct kobject kobj;
@@ -142,12 +181,10 @@ struct ufshid_sysfs_entry {
 
 struct ufshcd_lrb;
 
-int ufshid_trigger_on(struct ufshid_dev *hid);
-int ufshid_trigger_off(struct ufshid_dev *hid);
-
 int ufshid_get_state(struct ufsf_feature *ufsf);
 void ufshid_set_state(struct ufsf_feature *ufsf, int state);
 void ufshid_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf);
+void ufshid_get_geo_info(struct ufsf_feature *ufsf, u8 *geo_buf);
 void ufshid_set_init_state(struct ufsf_feature *ufsf);
 void ufshid_init(struct ufsf_feature *ufsf);
 void ufshid_reset(struct ufsf_feature *ufsf);
@@ -156,6 +193,9 @@ void ufshid_remove(struct ufsf_feature *ufsf);
 void ufshid_suspend(struct ufsf_feature *ufsf);
 void ufshid_resume(struct ufsf_feature *ufsf);
 void ufshid_on_idle(struct ufsf_feature *ufsf);
+int ufshid_is_hid_req(struct scsi_cmnd *scmd);
+int ufshid_send_file_info(struct ufshid_dev *hid, int lun, unsigned char *buf,
+			  __u16 size, __u8 idn);
 void ufshid_acc_io_stat_during_trigger(struct ufsf_feature *ufsf,
 				       struct ufshcd_lrb *lrbp);
 #endif /* End of Header */
