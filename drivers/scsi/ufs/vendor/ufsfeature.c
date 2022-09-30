@@ -64,7 +64,6 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf)
 
 	ret = ufsf_read_desc(ufsf->hba, UFSF_QUERY_DESC_IDN_DEVICE, 0,
 			     desc_buf, UFSF_QUERY_DESC_DEVICE_MAX_SIZE);
-
 	if (ret)
 		return ret;
 
@@ -94,11 +93,32 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf)
 	return 0;
 }
 
+static int ufsf_read_geo_desc(struct ufsf_feature *ufsf)
+{
+	u8 geo_buf[UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE];
+	int ret;
+
+	ret = ufsf_read_desc(ufsf->hba, UFSF_QUERY_DESC_IDN_GEOMETRY, 0,
+			     geo_buf, UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE);
+	if (ret)
+		return ret;
+
+#if defined(CONFIG_UFSHID)
+	if (ufshid_get_state(ufsf) == HID_NEED_INIT)
+		ufshid_get_geo_info(ufsf, geo_buf);
+#endif
+
+	return 0;
+}
+
 void ufsf_device_check(struct ufs_hba *hba)
 {
 	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
 
-	ufsf_read_dev_desc(ufsf);
+	if (ufsf_read_dev_desc(ufsf))
+		return;
+
+	ufsf_read_geo_desc(ufsf);
 }
 
 static int ufsf_execute_dev_ctx_req(struct ufsf_feature *ufsf,
@@ -197,8 +217,20 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 	INFO_MSG("op %u idn %u size %u(0x%X)", opcode, ioctl_data->idn,
 		 ioctl_data->buf_size, ioctl_data->buf_size);
 
-	buf_len = (ioctl_data->idn == QUERY_DESC_IDN_STRING) ?
-		IOCTL_DEV_CTX_MAX_SIZE : QUERY_DESC_MAX_SIZE;
+	switch (ioctl_data->idn) {
+	case QUERY_DESC_IDN_STRING:
+		buf_len = IOCTL_DEV_CTX_MAX_SIZE;
+		break;
+#if defined(CONFIG_UFSHID)
+	case QUERY_ATTR_IDN_HID_OPERATION:
+	case QUERY_ATTR_IDN_HID_FRAG_LEVEL:
+		buf_len = ioctl_data->buf_size;
+		break;
+#endif
+	default:
+		buf_len = QUERY_DESC_MAX_SIZE;
+		break;
+	}
 
 	kernel_buf = kzalloc(buf_len, GFP_KERNEL);
 	if (!kernel_buf) {
@@ -244,6 +276,9 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 		case QUERY_DESC_IDN_DEVICE:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_CONFIGURATION:
+		case UFSF_QUERY_DESC_IDN_DEVICE:
+		case UFSF_QUERY_DESC_IDN_GEOMETRY:
+
 			break;
 
 		default:
@@ -252,6 +287,55 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 			goto out_release_mem;
 		}
 		break;
+
+	case UPIU_QUERY_OPCODE_WRITE_ATTR:
+		switch (ioctl_data->idn) {
+#if defined(CONFIG_UFSHID)
+		case QUERY_ATTR_IDN_HID_OPERATION:
+			err = copy_from_user(kernel_buf, buffer +
+				     sizeof(struct ufs_ioctl_query_data),
+				     ioctl_data->buf_size);
+			if (err)
+				goto out_release_mem;
+
+			err = ufshid_send_file_info(ufsf->hid_dev, lun,
+						    kernel_buf, buf_len,
+						    ioctl_data->idn);
+			if (err)
+				ERR_MSG("HID LBA Trigger fail. (%d)", err);
+
+			goto out_release_mem;
+#endif
+		default:
+			break;
+		}
+		break;
+
+	case UPIU_QUERY_OPCODE_READ_ATTR:
+		switch (ioctl_data->idn) {
+#if defined(CONFIG_UFSHID)
+		case QUERY_ATTR_IDN_HID_FRAG_LEVEL:
+			err = copy_from_user(kernel_buf, buffer +
+				     sizeof(struct ufs_ioctl_query_data),
+				     ioctl_data->buf_size);
+			if (err)
+				goto out_release_mem;
+
+			err = ufshid_send_file_info(ufsf->hid_dev, lun,
+						    kernel_buf, buf_len,
+						    ioctl_data->idn);
+			if (err) {
+				ERR_MSG("HID LBA Trigger fail. (%d)", err);
+				goto out_release_mem;
+			}
+
+			goto copy_buffer;
+#endif
+		default:
+			break;
+		}
+		break;
+
 	default:
 		ERR_MSG("invalid opcode %d", opcode);
 		err = -EINVAL;

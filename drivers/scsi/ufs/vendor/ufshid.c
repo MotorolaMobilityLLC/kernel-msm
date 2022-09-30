@@ -136,6 +136,21 @@ static inline int ufshid_version_check(int spec_version)
 	return 0;
 }
 
+void ufshid_get_geo_info(struct ufsf_feature *ufsf, u8 *geo_buf)
+{
+	struct ufshid_dev *hid = ufsf->hid_dev;
+
+	hid->max_lba_range_size = get_unaligned_be32(geo_buf +
+					GEOMETRY_DESC_HID_MAX_LBA_RANGE_SIZE);
+	hid->max_lba_range_cnt = geo_buf[GEOMETRY_DESC_HID_MAX_LBA_RANGE_CNT];
+	INFO_MSG("[0x%.2x] dMaxHIDLBARangeSize (%u)",
+			GEOMETRY_DESC_HID_MAX_LBA_RANGE_SIZE,
+			hid->max_lba_range_size);
+	INFO_MSG("[0x%.2x] bMaxHIDLBARangeCount (%u)",
+			GEOMETRY_DESC_HID_MAX_LBA_RANGE_CNT,
+			hid->max_lba_range_cnt);
+}
+
 void ufshid_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf)
 {
 	int ret = 0, spec_version;
@@ -166,9 +181,146 @@ err_out:
 	ufshid_set_state(ufsf, HID_FAILED);
 }
 
+static inline void ufshid_set_wb_cmd(unsigned char *cdb, size_t len)
+{
+	cdb[0] = WRITE_BUFFER;
+	cdb[1] = 0x1D;
+	put_unaligned_be24(len, cdb + 6);
+}
+
+static void ufshid_wb_end_io(struct request *req, blk_status_t error)
+{
+	struct ufshid_req *hid_req = (struct ufshid_req *)req->end_io_data;
+	struct scsi_request *rq = scsi_req(req);
+	struct scsi_sense_hdr sshdr;
+
+	if (error) {
+		scsi_normalize_sense(rq->sense, SCSI_SENSE_BUFFERSIZE, &sshdr);
+		ERR_MSG("error %d code %x sense_key %x asc %x ascq %x",
+			error, sshdr.response_code,
+			sshdr.sense_key, sshdr.asc, sshdr.ascq);
+	}
+
+	blk_put_request(req);
+	atomic_set(&hid_req->req_stat, HID_WB_FREE);
+	complete(&hid_req->complete);
+}
+
+static int ufshid_issue_lba_list(struct ufshid_dev *hid)
+{
+	struct ufsf_feature *ufsf = hid->ufsf;
+	struct ufshid_req *hid_req = &hid->hid_req;
+	struct scsi_device *sdev;
+	struct request_queue *q;
+	struct request *req = NULL;
+	struct scsi_request *rq;
+	int ret = 0;
+
+	if (!hid->lba_trigger_mode || !hid->is_need_param){
+		INFO_MSG("just return from ufshid_issue_lba_list");
+		return 0;
+	}
+
+	if (!hid_req->buf_size) {
+		ERR_MSG("buf_size is 0. check it (%lu)", hid_req->buf_size);
+		return -EINVAL;
+	}
+
+	sdev = ufsf->sdev_ufs_lu[hid_req->lun];
+	if (!sdev) {
+		ERR_MSG("cannot find scsi_device [%d]", hid_req->lun);
+		return -ENODEV;
+	}
+
+	q = sdev->request_queue;
+
+	req = blk_get_request(q, REQ_OP_DRV_OUT | REQ_SYNC,
+			      BLK_MQ_REQ_PM | BLK_MQ_REQ_NOWAIT);
+	if (IS_ERR(req)) {
+		ERR_MSG("cannot get request");
+		return -EIO;
+	}
+
+	ret = blk_rq_map_kern(q, req, hid_req->buf, hid_req->buf_size,
+			      GFP_KERNEL | __GFP_ZERO);
+	if (ret) {
+		ERR_MSG("fail to map. (%d)", ret);
+		goto req_put_out;
+	}
+
+	req->rq_flags |= RQF_QUIET;
+	req->timeout = HID_WB_TIMEOUT;
+	req->end_io_data = (void *)hid_req;
+
+	rq = scsi_req(req);
+	rq->retries = 1;
+	ufshid_set_wb_cmd(rq->cmd, hid_req->buf_size);
+	rq->cmd_len = scsi_command_size(rq->cmd);
+
+	atomic_set(&hid_req->req_stat, HID_WB_INFLIGHT);
+	init_completion(&hid_req->complete);
+
+	blk_execute_rq_nowait(NULL, req, 1, ufshid_wb_end_io);
+
+	return ret;
+req_put_out:
+	blk_put_request(req);
+	return ret;
+}
+
+static int ufshid_wait_hid_req(struct ufshid_dev *hid)
+{
+	if (hid->lba_trigger_mode &&
+	    atomic_read(&hid->hid_req.req_stat) != HID_WB_FREE) {
+		if (!wait_for_completion_timeout(&hid->hid_req.complete,
+						 HID_WB_TIMEOUT)) {
+			ERR_MSG("write buffer timeout!");
+			return -EIO;
+		}
+	}
+	return 0;
+}
+
+static inline void ufshid_init_lba_trigger_mode(struct ufshid_dev *hid)
+{
+	hid->lba_trigger_mode = false;
+	atomic_set(&hid->hid_req.req_stat, HID_WB_FREE);
+	init_completion(&hid->hid_req.complete);
+	hid->is_need_param = false;
+}
+
+static inline void ufshid_set_lba_trigger_mode(struct ufshid_dev *hid,
+					       int lun, unsigned char *buf,
+					       __u16 size)
+{
+	struct ufshid_req *hid_req = &hid->hid_req;
+
+	hid_req->lun = lun;
+	memcpy(hid_req->buf, buf, size);
+	hid_req->buf_size = size;
+	hid->lba_trigger_mode = true;
+	hid->is_need_param = true;
+}
+
+static inline void ufshid_clear_lba_trigger_mode(struct ufshid_dev *hid)
+{
+	if (!ufshid_wait_hid_req(hid))
+		ufshid_init_lba_trigger_mode(hid);
+}
+
 static int ufshid_execute_query_op(struct ufshid_dev *hid, enum UFSHID_OP op,
 				   u32 *attr_val)
 {
+	int ret;
+
+	ret = ufshid_wait_hid_req(hid);
+	if (ret)
+		return -EBUSY;
+
+	ret = ufshid_issue_lba_list(hid);
+	if (ret)
+		return ret;
+
 	if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION, op))
 		return -EINVAL;
 
@@ -177,24 +329,53 @@ static int ufshid_execute_query_op(struct ufshid_dev *hid, enum UFSHID_OP op,
 	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_LEVEL, attr_val))
 		return -EINVAL;
 
-	HID_DEBUG(hid, "Frag_lv %d Frag_stat %d HID_need_exec %d",
-		  HID_GET_FRAG_LEVEL(*attr_val),
+	HID_DEBUG(hid, "Frag_lv %d Frag_mode %d Frag_stat %d HID_need_exec %d",
+		  *attr_val & HID_FRAG_LEVEL_MASK,
+		  HID_FRAG_UPDATE_MODE(*attr_val),
 		  HID_FRAG_UPDATE_STAT(*attr_val),
 		  HID_EXECUTE_REQ_STAT(*attr_val));
 
 	return 0;
 }
 
+static int ufshid_get_color_of_file(struct ufshid_dev *hid, unsigned char *buf)
+{
+	u32 attr_val;
+	int frag_level;
+	bool param_mode;
+	int ret;
+
+	ret = ufshid_execute_query_op(hid, HID_OP_ANALYZE, &attr_val);
+	if (ret)
+		return ret;
+
+	frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+	param_mode = HID_FRAG_UPDATE_MODE(attr_val);
+	if (param_mode != HID_WITH_PARAM)
+		frag_level = HID_LEV_UNKNOWN;
+
+	buf[0] = frag_level;
+	return 0;
+}
+
 static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 {
 	u32 attr_val;
+	int frag_level;
+	bool param_mode;
 	int ret;
 
 	ret = ufshid_execute_query_op(hid, HID_OP_EXECUTE, &attr_val);
 	if (ret)
 		return ret;
 
-	if (HID_GET_FRAG_LEVEL(attr_val) == HID_LEV_GRAY)
+	frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+	param_mode = HID_FRAG_UPDATE_MODE(attr_val);
+
+	hid->is_need_param =
+		hid->lba_trigger_mode && param_mode == HID_NO_PARAM;
+
+	if (frag_level == HID_LEV_GRAY || hid->is_need_param)
 		return -EAGAIN;
 
 	return (HID_EXECUTE_REQ_STAT(attr_val)) ?
@@ -226,7 +407,6 @@ static void ufshid_auto_hibern8_enable(struct ufshid_dev *hid,
 
 	ufshcd_rpm_get_sync(hba);
 	ufshcd_hold(hba, false);
-	down_write(&hba->clk_scaling_lock);
 	ufsf_scsi_block_requests(hba);
 	/* wait for all the outstanding requests to finish */
 	ufsf_wait_for_doorbell_clr(hba, U64_MAX);
@@ -266,7 +446,6 @@ static void ufshid_auto_hibern8_enable(struct ufshid_dev *hid,
 
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 	ufsf_scsi_unblock_requests(hba);
-	up_write(&hba->clk_scaling_lock);
 	ufshcd_release(hba);
 	ufshid_rpm_put_noidle(hba);
 }
@@ -295,40 +474,23 @@ static void ufshid_block_enter_suspend(struct ufshid_dev *hid)
 }
 
 /*
- * The HID feature can be executed in the SPM by using a kernel thread.
- * By strongly checking the conditions,
- * it constraints to be performed only in the RPM.
- *
- * If the return value is not err, pm_runtime_put_noidle() must be called later.
- *
+ * If the return value is not err, pm_runtime_put_noidle() must be called once.
  * IMPORTANT : ufshid_hold_runtime_pm() & ufshid_release_runtime_pm() pair.
  */
 static int ufshid_hold_runtime_pm(struct ufshid_dev *hid)
 {
-	struct ufsf_feature *ufsf = hid->ufsf;
-	struct ufs_hba *hba = ufsf->hba;
-	struct device *dev = &hba->sdev_ufs_device->sdev_gendev;
+	struct ufs_hba *hba = hid->ufsf->hba;
 
-	if (ufshid_get_state(ufsf) == HID_SUSPEND) {
-		/*
-		 * Check that device was suspended by System PM
-		 */
-		if (!hba->pm_op_in_progress && dev->power.is_suspended)
-			return -EACCES;
-
-		/*
-		 * Double Check for safe (SPM vs RPM)
-		 * If it success, device was suspended by Runtime PM
-		 */
+	if (ufshid_get_state(hid->ufsf) == HID_SUSPEND) {
+		/* Check that device was suspended by System PM */
 		ufshcd_rpm_get_sync(hba);
 
-		/*
-		 * Guaranteed that ufsf_resume() is completed
-		 */
+		/* Guaranteed that ufsf_resume() is completed */
 		down(&hba->host_sem);
 		up(&hba->host_sem);
 
-		if (ufshid_get_state(ufsf) == HID_PRESENT &&
+		/* If it success, device was suspended by Runtime PM */
+		if (ufshid_get_state(hid->ufsf) == HID_PRESENT &&
 		    hba->curr_dev_pwr_mode == UFS_ACTIVE_PWR_MODE &&
 		    hba->uic_link_state == UIC_LINK_ACTIVE_STATE)
 			goto resume_success;
@@ -338,7 +500,7 @@ static int ufshid_hold_runtime_pm(struct ufshid_dev *hid)
 			 hba->curr_dev_pwr_mode, hba->uic_link_state);
 
 		ufshid_rpm_put_noidle(hba);
-		return -EACCES;
+		return -ENODEV;
 	}
 
 	if (ufshid_is_not_present(hid))
@@ -357,16 +519,12 @@ static inline void ufshid_release_runtime_pm(struct ufshid_dev *hid)
 }
 
 /*
- *  The method using HID for each vendor may be different.
- *  So, the functions were exposed to direct control in other kernel processes.
- *
- *  Lock status: hid->sysfs_lock was held when called.
+ * Lock status: hid_sysfs lock was held when called.
  */
-int ufshid_trigger_on(struct ufshid_dev *hid) __must_hold(&hid->sysfs_lock)
+static int ufshid_trigger_on(struct ufshid_dev *hid)
+	__must_hold(&hid->sysfs_lock)
 {
 	int ret;
-
-	lockdep_assert_held(&hid->sysfs_lock);
 
 	if (hid->hid_trigger)
 		return 0;
@@ -413,16 +571,12 @@ static void ufshid_allow_enter_suspend(struct ufshid_dev *hid)
 }
 
 /*
- *  The method using HID for each vendor may be different.
- *  So, the functions were exposed to direct control in other kernel processes.
- *
- *  Lock status: hid->sysfs_lock was held when called.
+ * Lock status: hid_sysfs lock was held when called.
  */
-int ufshid_trigger_off(struct ufshid_dev *hid) __must_hold(&hid->sysfs_lock)
+static int ufshid_trigger_off(struct ufshid_dev *hid)
+	__must_hold(&hid->sysfs_lock)
 {
 	int ret;
-
-	lockdep_assert_held(&hid->sysfs_lock);
 
 	if (!hid->hid_trigger)
 		return 0;
@@ -434,6 +588,10 @@ int ufshid_trigger_off(struct ufshid_dev *hid) __must_hold(&hid->sysfs_lock)
 	hid->hid_trigger = false;
 	HID_DEBUG(hid, "hid_trigger 1 -> 0");
 
+	/*
+	 * disable param mode before issue hid off operation
+	 */
+	ufshid_clear_lba_trigger_mode(hid);
 	ufshid_issue_disable(hid);
 
 	ufshid_auto_hibern8_enable(hid, 1);
@@ -443,6 +601,12 @@ int ufshid_trigger_off(struct ufshid_dev *hid) __must_hold(&hid->sysfs_lock)
 	ufshid_release_runtime_pm(hid);
 
 	return 0;
+}
+
+inline int ufshid_is_hid_req(struct scsi_cmnd *scmd)
+{
+	return scmd->cmnd && scmd->cmnd[0] == WRITE_BUFFER &&
+		scmd->cmnd[1] == 0x1D;
 }
 
 #if defined(CONFIG_UFSHID_DEBUG)
@@ -467,15 +631,12 @@ static void ufshid_print_hid_info(struct ufshid_dev *hid)
  */
 void ufshid_acc_io_stat_during_trigger(struct ufsf_feature *ufsf,
 				       struct ufshcd_lrb *lrbp)
-				       __must_hold(ufsf->hba->host->host_lock)
 {
 	struct ufs_hba *hba = ufsf->hba;
 	struct scsi_cmnd *scmd = lrbp->cmd;
 	struct ufshid_dev *hid = ufsf->hid_dev;
 	struct ufs_query_req *request;
 	struct request *req;
-
-	lockdep_assert_held(hba->host->host_lock);
 
 	if (!hid || !hid->hid_trigger)
 		return;
@@ -486,6 +647,8 @@ void ufshid_acc_io_stat_during_trigger(struct ufsf_feature *ufsf,
 			hid->read_cnt++;
 			hid->read_sec += blk_rq_sectors(req);
 		} else {
+			if (ufshid_is_hid_req(scmd))
+				return;
 			hid->write_cnt++;
 			hid->write_sec += blk_rq_sectors(req);
 		}
@@ -511,6 +674,102 @@ void ufshid_acc_io_stat_during_trigger(struct ufsf_feature *ufsf,
 }
 #endif
 
+static int ufshid_check_file_info_buf(struct ufshid_dev *hid,
+				      unsigned char *buf, __u16 size)
+{
+	struct ufshid_blk_desc_header *desc_header;
+	struct ufshid_blk_desc *desc, *comp_desc;
+	const char *p = buf;
+	int desc_cnt, total_desc, comp_cnt, desc_size, header_size;
+	u64 lba, comp_lba;
+	u32 blk_cnt, comp_blk_cnt;
+
+	INFO_MSG("buf size %d", size);
+
+	desc_header = (struct ufshid_blk_desc_header *)p;
+	total_desc = desc_header->hid_blk_desc_cnt;
+	if (!total_desc || total_desc > hid->max_lba_range_cnt ||
+	    total_desc > HID_MAX_RANGE_CNT) {
+		ERR_MSG("total_desc (%d). so check it", total_desc);
+		return -EINVAL;
+	}
+
+	header_size = sizeof(struct ufshid_blk_desc_header);
+	desc_size = sizeof(struct ufshid_blk_desc);
+
+	p += header_size;
+	for (desc_cnt = 0; desc_cnt < total_desc; desc_cnt++, p += desc_size) {
+		const char *comp_p;
+
+		desc = (struct ufshid_blk_desc *)p;
+		lba = get_unaligned_be64(&desc->lba);
+		blk_cnt = get_unaligned_be32(&desc->blk_cnt);
+
+		INFO_MSG("desc_cnt[%d] lba %lld blk_cnt %d",
+			 desc_cnt, lba, blk_cnt);
+
+		if (!lba || !blk_cnt) {
+			ERR_MSG("desc[%d] info is not valid", desc_cnt);
+			return -EINVAL;
+		}
+
+		if (blk_cnt > hid->max_lba_range_size) {
+			ERR_MSG("desc[%d] blk_cnt (%d) is wrong. max %d",
+				desc_cnt, blk_cnt, hid->max_lba_range_size);
+			return -EINVAL;
+		}
+
+		comp_p = buf + header_size;
+		for (comp_cnt = 0; comp_cnt < desc_cnt;
+		     comp_cnt++, comp_p += desc_size) {
+			comp_desc = (struct ufshid_blk_desc *)comp_p;
+			comp_lba = get_unaligned_be64(&comp_desc->lba);
+			comp_blk_cnt = get_unaligned_be32(&comp_desc->blk_cnt);
+
+			if (lba + blk_cnt - 1 >= comp_lba &&
+			    lba <= comp_lba + comp_blk_cnt - 1) {
+				ERR_MSG("Overlapped: lba %llu blk_cnt %u comp_lba %llu comp_blk_cnt %u",
+					lba, blk_cnt, comp_lba, comp_blk_cnt);
+				return -EINVAL;
+			}
+		}
+	}
+
+	return 0;
+}
+
+int ufshid_send_file_info(struct ufshid_dev *hid, int lun, unsigned char *buf,
+			  __u16 size, __u8 idn)
+{
+	int ret;
+
+	ret = ufshid_check_file_info_buf(hid, buf, size);
+	if (ret)
+		return ret;
+
+	mutex_lock(&hid->sysfs_lock);
+	ufshid_set_lba_trigger_mode(hid, lun, buf, size);
+
+	switch (idn) {
+	case QUERY_ATTR_IDN_HID_OPERATION:
+		ret = ufshid_trigger_on(hid);
+		if (ret)
+			INFO_MSG("trigger on is fail (%d)", ret);
+		break;
+
+	case QUERY_ATTR_IDN_HID_FRAG_LEVEL:
+		ret = ufshid_get_color_of_file(hid, buf);
+		ufshid_clear_lba_trigger_mode(hid);
+		break;
+
+	default:
+		break;
+	}
+	mutex_unlock(&hid->sysfs_lock);
+
+	return ret;
+}
+
 static void ufshid_trigger_work_fn(struct work_struct *dwork)
 {
 	struct ufshid_dev *hid;
@@ -531,7 +790,7 @@ static void ufshid_trigger_work_fn(struct work_struct *dwork)
 
 	ret = ufshid_get_analyze_and_issue_execute(hid);
 	if (ret == HID_REQUIRED || ret == -EAGAIN) {
-		HID_DEBUG(hid, "REQUIRED or AGAIN (%d), so re-sched (%u ms)",
+		HID_DEBUG(hid, "REQUIRED or AGAIN (%d), so re-sched (%d ms)",
 			  ret, hid->hid_trigger_delay);
 	} else {
 		HID_DEBUG(hid, "NOT_REQUIRED or err (%d), so trigger off", ret);
@@ -572,6 +831,9 @@ void ufshid_init(struct ufsf_feature *ufsf)
 	hid->hid_on_idle_delay = HID_ON_IDLE_DELAY_MS_DEFAULT;
 	INIT_DELAYED_WORK(&hid->hid_trigger_work, ufshid_trigger_work_fn);
 
+	/* for HID 2.0 */
+	ufshid_init_lba_trigger_mode(hid);
+
 	hid->hid_debug = false;
 #if defined(CONFIG_UFSHID_POC)
 	hid->hid_debug = true;
@@ -579,7 +841,10 @@ void ufshid_init(struct ufsf_feature *ufsf)
 #endif
 
 	/* If HCI supports auto hibern8, UFS Driver use it default */
-	hid->is_auto_enabled = ufshcd_is_auto_hibern8_supported(ufsf->hba);
+	if (ufshcd_is_auto_hibern8_supported(ufsf->hba))
+		hid->is_auto_enabled = true;
+	else
+		hid->is_auto_enabled = false;
 
 	/* Save default Auto-Hibernate Idle Timer register value */
 	hid->ahit = ufsf->hba->ahit;
@@ -659,6 +924,10 @@ void ufshid_remove(struct ufsf_feature *ufsf)
 
 	cancel_delayed_work_sync(&hid->hid_trigger_work);
 
+	ret = ufshid_wait_hid_req(hid);
+	if (ret)
+		ERR_MSG("hid req is not completed");
+
 	kfree(hid);
 
 	INFO_MSG("end HID release");
@@ -727,32 +996,35 @@ static ssize_t ufshid_sysfs_show_version(struct ufshid_dev *hid, char *buf)
 
 static ssize_t ufshid_sysfs_show_trigger(struct ufshid_dev *hid, char *buf)
 {
-	INFO_MSG("hid_trigger %u", hid->hid_trigger);
+	INFO_MSG("hid_trigger %d", hid->hid_trigger);
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", hid->hid_trigger);
+	return snprintf(buf, PAGE_SIZE, "%d\n", hid->hid_trigger);
 }
 
 static ssize_t ufshid_sysfs_store_trigger(struct ufshid_dev *hid,
 					  const char *buf, size_t count)
 {
-	unsigned int val;
+	unsigned long val;
 	ssize_t ret;
 
-	if (kstrtouint(buf, 0, &val))
+	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val != 0 && val != 1)
 		return -EINVAL;
 
-	INFO_MSG("HID_trigger %u", val);
+	INFO_MSG("HID_trigger %lu", val);
 
 	if (val == hid->hid_trigger)
 		return count;
 
-	ret = val ? ufshid_trigger_on(hid) : ufshid_trigger_off(hid);
+	if (val)
+		ret = ufshid_trigger_on(hid);
+	else
+		ret = ufshid_trigger_off(hid);
 
 	if (ret) {
-		INFO_MSG("Changing trigger val %u is fail (%ld)", val, ret);
+		INFO_MSG("Changing trigger val %lu is fail (%ld)", val, ret);
 		return ret;
 	}
 
@@ -762,9 +1034,9 @@ static ssize_t ufshid_sysfs_store_trigger(struct ufshid_dev *hid,
 static ssize_t ufshid_sysfs_show_trigger_interval(struct ufshid_dev *hid,
 						  char *buf)
 {
-	INFO_MSG("hid_trigger_interval %u", hid->hid_trigger_delay);
+	INFO_MSG("hid_trigger_interval %d", hid->hid_trigger_delay);
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", hid->hid_trigger_delay);
+	return snprintf(buf, PAGE_SIZE, "%d\n", hid->hid_trigger_delay);
 }
 
 static ssize_t ufshid_sysfs_store_trigger_interval(struct ufshid_dev *hid,
@@ -785,7 +1057,7 @@ static ssize_t ufshid_sysfs_store_trigger_interval(struct ufshid_dev *hid,
 	}
 
 	hid->hid_trigger_delay = val;
-	INFO_MSG("hid_trigger_interval %u", hid->hid_trigger_delay);
+	INFO_MSG("hid_trigger_interval %d", hid->hid_trigger_delay);
 
 	return count;
 }
@@ -793,9 +1065,9 @@ static ssize_t ufshid_sysfs_store_trigger_interval(struct ufshid_dev *hid,
 static ssize_t ufshid_sysfs_show_on_idle_delay(struct ufshid_dev *hid,
 					       char *buf)
 {
-	INFO_MSG("hid_on_idle_delay %u", hid->hid_on_idle_delay);
+	INFO_MSG("hid_on_idle_delay %d", hid->hid_on_idle_delay);
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", hid->hid_on_idle_delay);
+	return snprintf(buf, PAGE_SIZE, "%d\n", hid->hid_on_idle_delay);
 }
 
 static ssize_t ufshid_sysfs_store_on_idle_delay(struct ufshid_dev *hid,
@@ -815,7 +1087,7 @@ static ssize_t ufshid_sysfs_store_on_idle_delay(struct ufshid_dev *hid,
 	}
 
 	hid->hid_on_idle_delay = val;
-	INFO_MSG("hid_on_idle_delay %u", hid->hid_on_idle_delay);
+	INFO_MSG("hid_on_idle_delay %d", hid->hid_on_idle_delay);
 
 	return count;
 }
@@ -830,9 +1102,9 @@ static ssize_t ufshid_sysfs_show_debug(struct ufshid_dev *hid, char *buf)
 static ssize_t ufshid_sysfs_store_debug(struct ufshid_dev *hid, const char *buf,
 					size_t count)
 {
-	unsigned int val;
+	unsigned long val;
 
-	if (kstrtouint(buf, 0, &val))
+	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val != 0 && val != 1)
@@ -849,19 +1121,41 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 {
 	u32 attr_val;
 	int frag_level;
+	bool param_mode;
 	int ret;
 
 	ret = ufshid_execute_query_op(hid, HID_OP_ANALYZE, &attr_val);
 	if (ret)
 		return ret;
 
-	frag_level = HID_GET_FRAG_LEVEL(attr_val);
+	frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+	param_mode = HID_FRAG_UPDATE_MODE(attr_val);
+
+	if ((hid->lba_trigger_mode && param_mode == HID_NO_PARAM) ||
+	    (!hid->lba_trigger_mode && param_mode == HID_WITH_PARAM))
+		frag_level = HID_LEV_UNKNOWN;
 
 	return snprintf(buf, PAGE_SIZE, "%s\n",
 			frag_level == HID_LEV_RED ? "RED" :
 			frag_level == HID_LEV_YELLOW ? "YELLOW" :
 			frag_level == HID_LEV_GREEN ? "GREEN" :
 			frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
+}
+
+static ssize_t ufshid_sysfs_show_max_lba_range_size(struct ufshid_dev *hid,
+						    char *buf)
+{
+	INFO_MSG("max_lba_range_size %d", hid->max_lba_range_size);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hid->max_lba_range_size);
+}
+
+static ssize_t ufshid_sysfs_show_max_lba_range_cnt(struct ufshid_dev *hid,
+						   char *buf)
+{
+	INFO_MSG("max_lba_range_cnt %d", hid->max_lba_range_cnt);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hid->max_lba_range_cnt);
 }
 
 #if defined(CONFIG_UFSHID_POC)
@@ -872,17 +1166,17 @@ static ssize_t ufshid_sysfs_show_debug_op(struct ufshid_dev *hid, char *buf)
 	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_OPERATION, &attr_val))
 		return -EINVAL;
 
-	INFO_MSG("hid_op %u", attr_val);
+	INFO_MSG("hid_op %d", attr_val);
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", attr_val);
+	return snprintf(buf, PAGE_SIZE, "%d\n", attr_val);
 }
 
 static ssize_t ufshid_sysfs_store_debug_op(struct ufshid_dev *hid,
 					   const char *buf, size_t count)
 {
-	unsigned int val;
+	unsigned long val;
 
-	if (kstrtouint(buf, 0, &val))
+	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val >= HID_OP_MAX)
@@ -896,7 +1190,7 @@ static ssize_t ufshid_sysfs_store_debug_op(struct ufshid_dev *hid,
 	if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION, val))
 		return -EINVAL;
 
-	INFO_MSG("hid_op %u is set!", val);
+	INFO_MSG("hid_op %ld is set!", val);
 	return count;
 }
 
@@ -911,26 +1205,25 @@ static ssize_t ufshid_sysfs_show_block_suspend(struct ufshid_dev *hid,
 static ssize_t ufshid_sysfs_store_block_suspend(struct ufshid_dev *hid,
 						const char *buf, size_t count)
 {
-	unsigned int val;
+	unsigned long val;
 
-	if (kstrtouint(buf, 0, &val))
+	if (kstrtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val != 0 && val != 1)
 		return -EINVAL;
 
-	INFO_MSG("HID_block_suspend %u", val);
+	INFO_MSG("HID_block_suspend %lu", val);
 
 	if (val == hid->block_suspend)
 		return count;
 
-	if (val) {
+	if (val)
 		ufshid_block_enter_suspend(hid);
-		hid->block_suspend = true;
-	} else {
+	else
 		ufshid_allow_enter_suspend(hid);
-		hid->block_suspend = false;
-	}
+
+	hid->block_suspend = val ? true : false;
 
 	return count;
 }
@@ -971,6 +1264,8 @@ static ssize_t ufshid_sysfs_store_auto_hibern8_enable(struct ufshid_dev *hid,
 static struct ufshid_sysfs_entry ufshid_sysfs_entries[] = {
 	define_sysfs_ro(version),
 	define_sysfs_ro(color),
+	define_sysfs_ro(max_lba_range_size),
+	define_sysfs_ro(max_lba_range_cnt),
 
 	define_sysfs_rw(trigger),
 	define_sysfs_rw(trigger_interval),
