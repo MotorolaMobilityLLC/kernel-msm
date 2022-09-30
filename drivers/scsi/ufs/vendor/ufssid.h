@@ -37,7 +37,7 @@
 #ifndef _UFSSID_H_
 #define _UFSSID_H_
 
-#define UFSSID_VER					0x0201
+#define UFSSID_VER					0x0101
 #define UFSSID_DD_VER					0x010400
 #define UFSSID_DD_VER_POST				""
 
