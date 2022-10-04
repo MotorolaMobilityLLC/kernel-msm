@@ -3305,7 +3305,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
 		if (atomic_read(&chip->richtap_mode)) {
 			num_rt = (int16_t)haptics_get_available_fifo_memory(chip);
-			if (num_rt == MAX_FIFO_SAMPLES(chip)) {
+			if (num_rt == get_max_fifo_samples(chip)) {
 				dev_dbg(chip->dev, "aacrichtap fifo stopped, wait next vibrator %d\n",
 						num_rt);
 				goto unlock;
@@ -3326,10 +3326,10 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				if ((chip->current_buf->status == MMAP_BUF_DATA_VALID)
 					&& (num_rt >= num_val)) {
 					samples_left = (u32)num_val;
-					samples_left -= (samples_left % HAP_PTN_V2_FIFO_DIN_NUM);
+					samples_left -= (samples_left % HAP_PTN_FIFO_DIN_NUM);
 
 					rc = haptics_update_fifo_samples(chip,
-						&chip->current_buf->data[chip->pos], samples_left);
+						&chip->current_buf->data[chip->pos], samples_left, true);
 					if (rc < 0) {
 						dev_err(chip->dev,
 						"richtap Update FIFO fail, rc=%d\n", rc);
@@ -3345,11 +3345,10 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 
 				if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
 					if ((chip->ptn_revision >= HAP_PTN_V2)
-						&& (num_rt % HAP_PTN_V2_FIFO_DIN_NUM))
-						num_rt -= (num_rt % HAP_PTN_V2_FIFO_DIN_NUM);
-
+						&& (num_rt % HAP_PTN_FIFO_DIN_NUM))
+						num_rt -= (num_rt % HAP_PTN_FIFO_DIN_NUM);
 					rc = haptics_update_fifo_samples(chip,
-						&chip->current_buf->data[chip->pos], (u32)num_rt);
+						&chip->current_buf->data[chip->pos], (u32)num_rt, true);
 					if (rc < 0) {
 						dev_err(chip->dev,
 							"richtap Update FIFO fail, rc=%d\n", rc);
@@ -5589,7 +5588,7 @@ static int richtap_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 
 	if (chip->ptn_revision == HAP_PTN_V1 &&
 			fifo->period_per_s > F_8KHZ &&
-			fifo->num_s > MAX_FIFO_SAMPLES(chip)) {
+			fifo->num_s > get_max_fifo_samples(chip)) {
 		dev_err(chip->dev, "PM8350B v1 not play long pattern higher than 8 KHz play rate\n");
 		return -EINVAL;
 	}
@@ -5615,13 +5614,13 @@ static int richtap_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 	 * more than MAX_FIFO_SAMPLES samples, the rest will be
 	 * written if any FIFO memory is available after playing.
 	 */
-	num = min_t(u32, fifo->num_s, MAX_FIFO_SAMPLES(chip));
+	num = min_t(u32, fifo->num_s, get_max_fifo_samples(chip));
 	available = haptics_get_available_fifo_memory(chip);
 	if (available < 0)
 		return available;
 
 	num = min_t(u32, available, num);
-	rc = haptics_update_fifo_samples(chip, fifo->samples, num);
+	rc = haptics_update_fifo_samples(chip, fifo->samples, num, false);
 	if (rc < 0) {
 		dev_err(chip->dev, "write FIFO samples failed, rc=%d\n", rc);
 		return rc;
@@ -5791,9 +5790,9 @@ static void richtap_work_proc(struct work_struct *work)
 
 	chip->pos = 0;
 	first = chip->start_buf;
-	if (first->length >= MAX_FIFO_SAMPLES(chip)) {
-		if (first->length > MAX_FIFO_SAMPLES(chip)) {
-			chip->pos = MAX_FIFO_SAMPLES(chip);
+	if (first->length >= get_max_fifo_samples(chip)) {
+		if (first->length > get_max_fifo_samples(chip)) {
+			chip->pos = get_max_fifo_samples(chip);
 			chip->current_buf = first;
 		} else {
 			chip->current_buf = first->kernel_next;
@@ -5804,7 +5803,7 @@ static void richtap_work_proc(struct work_struct *work)
 	}
 
 	count = 0;
-	while (first->length < MAX_FIFO_SAMPLES(chip)) {
+	while (first->length < get_max_fifo_samples(chip)) {
 		if ((chip->current_buf->status == MMAP_BUF_DATA_FINISHED) ||
 				(count > 30))
 			break;
@@ -5816,7 +5815,7 @@ static void richtap_work_proc(struct work_struct *work)
 			continue;
 		}
 		if ((first->length + chip->current_buf->length) <=
-		MAX_FIFO_SAMPLES(chip)) {
+		get_max_fifo_samples(chip)) {
 			memcpy(&first->data[first->length], chip->current_buf->data,
 			chip->current_buf->length);
 			chip->current_buf->status = MMAP_BUF_DATA_INVALID;
@@ -5826,9 +5825,9 @@ static void richtap_work_proc(struct work_struct *work)
 			count = 0;
 		} else {
 			memcpy(&first->data[first->length], chip->current_buf->data,
-			(MAX_FIFO_SAMPLES(chip) - first->length));
-			chip->pos = MAX_FIFO_SAMPLES(chip) - first->length;
-			first->length = MAX_FIFO_SAMPLES(chip);
+			(get_max_fifo_samples(chip) - first->length));
+			chip->pos = get_max_fifo_samples(chip) - first->length;
+			first->length = get_max_fifo_samples(chip);
 			dev_err(chip->dev, "first full\n");
 		}
 	}
@@ -5839,12 +5838,12 @@ play_rate:
 	dev_dbg(chip->dev, "pos %d,first %d,current %d\n",
 			chip->pos, first->length, chip->current_buf->length);
 	ret = richtap_load_prebake(chip, first->data, first->length <=
-		MAX_FIFO_SAMPLES(chip) ? first->length : MAX_FIFO_SAMPLES(chip));
+		get_max_fifo_samples(chip) ? first->length : get_max_fifo_samples(chip));
 	if (ret < 0) {
 		dev_err(chip->dev, "aac RichTap Upload FIFO data fail\n", ret);
 		return;
 	}
-	if (first->length <= MAX_FIFO_SAMPLES(chip)) {
+	if (first->length <= get_max_fifo_samples(chip)) {
 		first->status = MMAP_BUF_DATA_INVALID;
 		first->length = 0;
 	}
