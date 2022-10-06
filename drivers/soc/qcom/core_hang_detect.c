@@ -238,10 +238,11 @@ static int msm_hang_detect_probe(struct platform_device *pdev)
 	struct device_node *cpu_node;
 	struct device_node *node = pdev->dev.of_node;
 	struct hang_detect *hang_det = NULL;
-	int cpu, ret, cpu_count = 0;
+	int cpu, ret, cpu_count = 0, cluster_cpu_count = 0;
 	const char *name;
 	u32 treg[NR_CPUS] = {0}, creg[NR_CPUS] = {0};
 	u32 num_reg = 0;
+	u32 fw_cluster_id;
 
 	if (!pdev->dev.of_node || !enable)
 		return -ENODEV;
@@ -277,6 +278,27 @@ static int msm_hang_detect_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_err("%s: Can't get qcom,config-arr property\n", __func__);
 		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(node, "cluster-id", &fw_cluster_id);
+	if (ret) {
+		pr_err("%s: Missing cluster-id.\n", __func__);
+	} else {
+
+		for_each_possible_cpu(cpu) {
+			if (topology_physical_package_id(cpu)
+					== fw_cluster_id) {
+				cluster_cpu_count++;
+				break;
+			}
+		}
+
+		if (cluster_cpu_count == 0) {
+			pr_err("%s: Unable to find any CPU for cluster:%d\n",
+					__func__, fw_cluster_id);
+			return -EINVAL;
+		}
+
 	}
 
 	for_each_possible_cpu(cpu) {
