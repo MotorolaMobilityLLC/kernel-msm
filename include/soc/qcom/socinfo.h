@@ -233,6 +233,30 @@ enum pmic_model {
 	PMIC_MODEL_UNKNOWN	= 0xFFFFFFFF
 };
 
+enum defective_part_type {
+	PART_UNKNOWN      = 0,
+	PART_GPU          = 1,
+	PART_VIDEO        = 2,
+	PART_CAMERA       = 3,
+	PART_DISPLAY      = 4,
+	PART_AUDIO        = 5,
+	PART_MODEM        = 6,
+	PART_WLAN         = 7,
+	PART_COMP         = 8,
+	PART_SENSORS      = 9,
+	PART_NPU          = 10,
+	PART_SPSS         = 11,
+	PART_NAV          = 12,
+	PART_COMP1        = 13,
+	PART_DISPLAY1     = 14,
+	NUM_PARTS_MAX,
+};
+
+enum defective_cluster_type {
+	CLUSTER_CPUSS      = 0,
+	NUM_CLUSTERS_MAX,
+};
+
 enum msm_cpu socinfo_get_msm_cpu(void);
 uint32_t socinfo_get_id(void);
 uint32_t socinfo_get_version(void);
@@ -243,6 +267,8 @@ uint32_t socinfo_get_platform_type(void);
 uint32_t socinfo_get_platform_subtype(void);
 uint32_t socinfo_get_platform_version(void);
 uint32_t socinfo_get_serial_number(void);
+uint32_t socinfo_get_cluster_info(enum defective_cluster_type cluster);
+bool socinfo_get_part_info(enum defective_part_type part);
 enum pmic_model socinfo_get_pmic_model(void);
 uint32_t socinfo_get_pmic_die_revision(void);
 int __init socinfo_init(void) __must_check;
