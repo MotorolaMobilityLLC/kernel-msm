@@ -1515,6 +1515,8 @@ void adreno_writereg64(struct adreno_device *adreno_dev,
 
 unsigned int adreno_get_rptr(struct adreno_ringbuffer *rb);
 
+void adreno_touch_wake(struct kgsl_device *device);
+
 static inline bool adreno_rb_empty(struct adreno_ringbuffer *rb)
 {
 	return (adreno_get_rptr(rb) == rb->wptr);
