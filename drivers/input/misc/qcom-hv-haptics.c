@@ -1092,7 +1092,7 @@ static int haptics_get_status_data(struct haptics_chip *chip,
 	else if (sel == FIFO_REAL_TIME_STS)
 		name = "FIFO_REAL_TIME_STS";
 
-	dev_dbg(chip->dev, "Get status data[%s] = (%#x, %#x)\n", name, data[0], data[1]);
+	dev_info(chip->dev, "Get status data[%s] = (%#x, %#x)\n", name, data[0], data[1]);
 	trace_qcom_haptics_status(name, data[0], data[1]);
 	return 0;
 }
@@ -1461,7 +1461,7 @@ static int haptics_set_vmax_mv(struct haptics_chip *chip, u32 vmax_mv)
 		return rc;
 	}
 
-	dev_dbg(chip->dev, "Set Vmax to %u mV\n", vmax_mv);
+	dev_info(chip->dev, "Set Vmax to %u mV\n", vmax_mv);
 
 	rc = haptics_check_hpwr_status(chip);
 	if (rc < 0)
@@ -2733,7 +2733,7 @@ static int haptics_stop_fifo_play(struct haptics_chip *chip)
 	u8 val;
 
 	if (atomic_read(&chip->play.fifo_status.is_busy) == 0) {
-		dev_dbg(chip->dev, "FIFO playing is not in progress\n");
+		dev_info(chip->dev, "FIFO playing is not in progress\n");
 		return 0;
 	}
 
@@ -2763,7 +2763,7 @@ static int haptics_stop_fifo_play(struct haptics_chip *chip)
 	if (rc < 0)
 		return rc;
 
-	dev_dbg(chip->dev, "stopped FIFO playing successfully\n");
+	dev_info(chip->dev, "stopped FIFO playing successfully\n");
 	return 0;
 }
 
@@ -3456,7 +3456,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 		 */
 		num = haptics_get_available_fifo_memory(chip);
 		if (num != get_max_fifo_samples(chip)) {
-			dev_dbg(chip->dev, "%d FIFO samples still in playing\n",
+			dev_info(chip->dev, "%d FIFO samples still in playing\n",
 					get_max_fifo_samples(chip) - num);
 			goto unlock;
 		}
@@ -3470,7 +3470,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 		if (rc < 0)
 			goto unlock;
 
-		dev_dbg(chip->dev, "FIFO playing is done\n");
+		dev_info(chip->dev, "FIFO playing is done\n");
 	} else {
 		if (atomic_read(&status->cancelled) == 1) {
 			dev_dbg(chip->dev, "FIFO programming got cancelled\n");
@@ -3481,7 +3481,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 		if (atomic_read(&chip->richtap_mode)) {
 			num_rt = (int16_t)haptics_get_available_fifo_memory(chip);
 			if (num_rt == get_max_fifo_samples(chip)) {
-				dev_info(chip->dev, "aacrichtap fifo stopped, wait next vibrator %d\n",
+				dev_info(chip->dev, "aac richtap fifo stopped, wait next vibrator %d\n",
 						num_rt);
 				goto unlock;
 			}
@@ -3547,7 +3547,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 
 			if (chip->current_buf->status != MMAP_BUF_DATA_VALID) {
 				schedule_work(&chip->richtap_erase_work);
-				dev_dbg(chip->dev, "richtap stream mode is done\n");
+				dev_info(chip->dev, "richtap stream mode is done\n");
 			}
 
 			goto unlock;
@@ -5306,7 +5306,7 @@ static int richtap_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 		return rc;
 	}
 
-	dev_dbg(chip->dev, "aac Richtap set busy to 1\n");
+	dev_info(chip->dev, "aac Richtap set busy to 1\n");
 	atomic_set(&status->is_busy, 1);
 	status->samples_written = num;
 
@@ -5340,7 +5340,7 @@ static void richtap_erase_work_proc(struct work_struct *work)
 		fill /= 24; //24k play_rate_hz
 		fill *= 1000;
 		usleep_range((fill + 25), (fill + 30));
-		dev_dbg(chip->dev, "aac fill time %d\n", fill);
+		dev_info(chip->dev, "aac fill time %d\n", fill);
 	}
 
 	mutex_lock(&chip->play.lock);
@@ -5439,7 +5439,7 @@ static int richtap_load_prebake(struct haptics_chip *chip, u8 *data, u32 length)
 	rc = richtap_set_fifo(chip, play->effect->fifo);
 	if (rc < 0)
 		goto cleanup;
-	dev_dbg(chip->dev, "aac RichTap haptics_set_fifo success\n");
+	dev_info(chip->dev, "aac RichTap haptics_set_fifo success\n");
 
 	mutex_unlock(&chip->play.lock);
 
@@ -5565,7 +5565,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 	uint32_t tmp;
 	int ret = 0;
 
-	dev_dbg(chip->dev, "%s: cmd=0x%x, arg=0x%lx\n",
+	dev_info(chip->dev, "%s: cmd=0x%x, arg=0x%lx\n",
 			  __func__, cmd, arg);
 
 	switch (cmd) {
@@ -5621,7 +5621,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		break;
 	case RICHTAP_GET_F0:
 		ret = richtap_get_lra_frequency_hz(chip, &tmp);
-		dev_dbg(chip->dev, "aac RichTap get f0 =%d\n", tmp);
+		dev_info(chip->dev, "aac RichTap get f0 =%d\n", tmp);
 		if (ret < 0) {
 			dev_err(chip->dev, "aac RichTap get f0 error, ret=%d\n", ret);
 			break;
