@@ -263,3 +263,16 @@ config UFSSID
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
 	help
 	  Enable Stream ID Feature for Streamed-HID
+
+config UFSFBO
+        bool "UFS File Base Optimization support"
+        depends on SCSI_UFSHCD && UFSFEATURE
+        help
+          Enable UFS FBO Feature
+
+config UFSFBO_POC
+        bool "UFSFBO_POC test"
+        depends on SCSI_UFSHCD && UFSFEATURE && UFSFBO
+        default n
+        help
+          UFS FBO POC test
