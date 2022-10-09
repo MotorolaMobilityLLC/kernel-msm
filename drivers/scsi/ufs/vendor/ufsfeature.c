@@ -39,6 +39,10 @@
 #include "ufshcd.h"
 #include "ufs-qcom.h"
 
+inline int is_vendor_device(struct ufs_hba *hba, int id)
+{
+	return (hba != NULL && hba->dev_info.wmanufacturerid == id);
+}
 static int ufsf_read_desc(struct ufs_hba *hba, u8 desc_id, u8 desc_index,
 			  u8 *desc_buf, u32 size)
 {
@@ -61,8 +65,12 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf)
 {
 	u8 desc_buf[UFSF_QUERY_DESC_DEVICE_MAX_SIZE];
 	int ret;
+	u8 idn = 0;
 
-	ret = ufsf_read_desc(ufsf->hba, UFSF_QUERY_DESC_IDN_DEVICE, 0,
+	if (is_vendor_device(ufsf->hba, UFS_VENDOR_SAMSUNG))
+		idn = UFSF_QUERY_DESC_IDN_DEVICE;
+
+	ret = ufsf_read_desc(ufsf->hba, idn, 0,
 			     desc_buf, UFSF_QUERY_DESC_DEVICE_MAX_SIZE);
 	if (ret)
 		return ret;
@@ -90,6 +98,10 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf)
 #if defined(CONFIG_UFSSID)
 	ufssid_get_dev_info(ufsf, desc_buf);
 #endif
+
+#if defined(CONFIG_UFSFBO)
+	ufsfbo_get_dev_info(ufsf);
+#endif
 	return 0;
 }
 
@@ -98,7 +110,11 @@ static int ufsf_read_geo_desc(struct ufsf_feature *ufsf)
 	u8 geo_buf[UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE];
 	int ret;
 
-	ret = ufsf_read_desc(ufsf->hba, UFSF_QUERY_DESC_IDN_GEOMETRY, 0,
+	u8 idn = QUERY_DESC_IDN_GEOMETRY;
+
+	if (is_vendor_device(ufsf->hba, UFS_VENDOR_SAMSUNG))
+		idn = UFSF_QUERY_DESC_IDN_GEOMETRY;
+	ret = ufsf_read_desc(ufsf->hba, idn, 0,
 			     geo_buf, UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE);
 	if (ret)
 		return ret;
@@ -118,6 +134,9 @@ void ufsf_device_check(struct ufs_hba *hba)
 	if (ufsf_read_dev_desc(ufsf))
 		return;
 
+#if defined(CONFIG_UFSFBO)
+	ufsfbo_read_fbo_desc(ufsf);
+#endif
 	ufsf_read_geo_desc(ufsf);
 }
 
@@ -227,6 +246,12 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 		buf_len = ioctl_data->buf_size;
 		break;
 #endif
+
+#if defined(CONFIG_UFSFBO)
+	case QUERY_ATTR_IDN_FBO_CONTROL:
+		buf_len = ioctl_data->buf_size;
+		break;
+#endif
 	default:
 		buf_len = QUERY_DESC_MAX_SIZE;
 		break;
@@ -306,6 +331,23 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 
 			goto out_release_mem;
 #endif
+
+#if defined(CONFIG_UFSFBO)
+		case QUERY_ATTR_IDN_FBO_CONTROL:
+			err = copy_from_user(kernel_buf, buffer +
+					sizeof(struct ufs_ioctl_query_data),
+					ioctl_data->buf_size);
+			if (err)
+				goto out_release_mem;
+
+			err = ufsfbo_send_file_info(ufsf->fbo_dev, lun,
+						    kernel_buf, buf_len,
+						    ioctl_data->idn, opcode);
+			if (err)
+				ERR_MSG("FBO LBA Trigger failed. (%d)", err);
+
+			goto out_release_mem;
+#endif
 		default:
 			break;
 		}
@@ -330,6 +372,22 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 			}
 
 			goto copy_buffer;
+#endif
+#if defined(CONFIG_UFSFBO)
+		case QUERY_ATTR_IDN_FBO_CONTROL:
+			err = copy_from_user(kernel_buf, buffer +
+					sizeof(struct ufs_ioctl_query_data),
+					ioctl_data->buf_size);
+			if (err)
+				goto out_release_mem;
+
+			err = ufsfbo_send_file_info(ufsf->fbo_dev, lun,
+						    kernel_buf, buf_len,
+						    ioctl_data->idn, opcode);
+			if (err)
+				ERR_MSG("FBO LBA Trigger failed. (%d)", err);
+
+			goto out_release_mem;
 #endif
 		default:
 			break;
@@ -507,6 +565,13 @@ inline void ufsf_reset_host(struct ufsf_feature *ufsf)
 	if (ufshid_get_state(ufsf) == HID_PRESENT)
 		ufshid_reset_host(ufsf);
 #endif
+
+#if defined(CONFIG_UFSFBO)
+	INFO_MSG("run reset_host.. fbo_state(%d) -> FBO_RESET",
+		 ufsfbo_get_state(ufsf));
+	if (ufsfbo_get_state(ufsf) == FBO_PRESENT)
+		ufsfbo_reset_host(ufsf);
+#endif
 	schedule_work(&ufsf->reset_wait_work);
 }
 
@@ -520,7 +585,10 @@ inline void ufsf_init(struct ufsf_feature *ufsf)
 	if (ufsf->sid_dev)
 		ufssid_init(ufsf);
 #endif
-
+#if defined(CONFIG_UFSFBO)
+	if (ufsfbo_get_state(ufsf) == FBO_NEED_INIT)
+		ufsfbo_init(ufsf);
+#endif
 	ufsf->check_init = true;
 }
 
@@ -529,6 +597,10 @@ inline void ufsf_reset(struct ufsf_feature *ufsf)
 #if defined(CONFIG_UFSHID)
 	if (ufshid_get_state(ufsf) == HID_RESET)
 		ufshid_reset(ufsf);
+#endif
+#if defined(CONFIG_UFSFBO)
+	if (ufsfbo_get_state(ufsf) == FBO_RESET)
+		ufsfbo_reset(ufsf);
 #endif
 }
 
@@ -541,6 +613,10 @@ inline void ufsf_remove(struct ufsf_feature *ufsf)
 #if defined(CONFIG_UFSSID)
 	if (ufsf->sid_dev)
 		ufssid_remove(ufsf);
+#endif
+#if defined(CONFIG_UFSFBO)
+	if (ufsfbo_get_state(ufsf) == FBO_PRESENT)
+		ufsfbo_remove(ufsf);
 #endif
 }
 
@@ -641,6 +717,9 @@ inline void ufsf_set_init_state(struct ufs_hba *hba)
 	INIT_WORK(&ufsf->on_idle_work, ufsf_on_idle);
 	ufshid_set_state(ufsf, HID_NEED_INIT);
 #endif
+#if defined(CONFIG_UFSFBO)
+	ufsfbo_set_state(ufsf, FBO_NEED_INIT);
+#endif
 }
 
 inline void ufsf_suspend(struct ufsf_feature *ufsf)
@@ -658,6 +737,11 @@ inline void ufsf_suspend(struct ufsf_feature *ufsf)
 	if (ufshid_get_state(ufsf) == HID_PRESENT)
 		ufshid_suspend(ufsf);
 #endif
+
+#if defined(CONFIG_UFSFBO)
+	if (ufsfbo_get_state(ufsf) == FBO_PRESENT)
+		ufsfbo_suspend(ufsf);
+#endif
 }
 
 inline void ufsf_resume(struct ufsf_feature *ufsf, bool is_link_off)
@@ -665,6 +749,11 @@ inline void ufsf_resume(struct ufsf_feature *ufsf, bool is_link_off)
 #if defined(CONFIG_UFSHID)
 	if (ufshid_get_state(ufsf) == HID_SUSPEND)
 		ufshid_resume(ufsf);
+#endif
+#if defined(CONFIG_UFSFBO)
+	if (ufsfbo_get_state(ufsf) == FBO_SUSPEND) {
+		ufsfbo_resume(ufsf, is_link_off);
+	}
 #endif
 }
 
