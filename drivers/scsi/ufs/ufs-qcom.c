@@ -2603,6 +2603,14 @@ ufs_qcom_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 			__func__, err);
 		goto out_release_mem;
 	}
+#if defined(CONFIG_UFSFEATURE)
+        if (ufsf_check_query(ioctl_data->opcode)) {
+                err = ufsf_query_ioctl(ufs_qcom_get_ufsf(hba), lun, buffer,
+                                       ioctl_data);
+                goto out_release_mem;
+        }
+#endif
+
 
 	/* verify legal parameters & send query */
 	switch (ioctl_data->opcode) {

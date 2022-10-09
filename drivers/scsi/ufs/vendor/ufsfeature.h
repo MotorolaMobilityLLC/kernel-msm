@@ -45,6 +45,7 @@
 
 #include "ufshid.h"
 #include "ufssid.h"
+#include "ufsfbo.h"
 
 #define UFS_UPIU_MAX_GENERAL_LUN		8
 
@@ -93,11 +94,13 @@ enum {
 #define UFSF_QUERY_DESC_DEVICE_MAX_SIZE		0xFF
 #define UFSF_QUERY_DESC_CONFIGURAION_MAX_SIZE	0xE6
 #define UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE	0xFE
+#define UFSF_QUERY_DESC_FBO_MAX_SIZE		0x12
 
 /* Descriptor idn for Query Request */
 #define UFSF_QUERY_DESC_IDN_DEVICE		0xF0
 #define UFSF_QUERY_DESC_IDN_GEOMETRY		0xF7
 
+#define UFSF_QUERY_DESC_IDN_FBO			0x0A
 /* query_flag  */
 #define MASK_QUERY_UPIU_FLAG_LOC		0xFF
 
@@ -141,12 +144,19 @@ struct ufsf_feature {
 #if defined(CONFIG_UFSSID)
 	struct ufssid_dev *sid_dev;
 #endif
+
+#if defined(CONFIG_UFSFBO)
+	atomic_t fbo_state;
+	struct ufsfbo_dev *fbo_dev;
+#endif
+
 };
 
 struct ufs_hba;
 struct ufshcd_lrb;
 struct ufs_ioctl_query_data;
 
+inline int is_vendor_device(struct ufs_hba *hba, int id);
 void ufsf_device_check(struct ufs_hba *hba);
 int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 		     struct ufs_ioctl_query_data *ioctl_data);
@@ -202,6 +212,11 @@ void ufsf_hid_acc_io_stat(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp);
 #define GEOMETRY_DESC_HID_MAX_LBA_RANGE_SIZE		0xF9
 #endif
 
+#if defined(CONFIG_UFSFBO)
+#define QUERY_ATTR_IDN_FBO_CONTROL			0x31
+#define QUERY_ATTR_IDN_FBO_EXECUTE_THRESHOLD		0x32
+#define QUERY_ATTR_IDN_FBO_PROGRESS_STATE		0x33
+#endif
 /**
  * struct utp_upiu_task_req - Task request UPIU structure
  * @header - UPIU header structure DW0 to DW-2
@@ -218,6 +233,18 @@ struct utp_upiu_task_req {
 	__be32 reserved[2];
 };
 
+#if defined(CONFIG_UFSFBO)
+/* File Based Optimization (FBO) descriptor parameters offsets in bytes */
+enum fbo_desc_param {
+	FBO_DESC_PARAM_LEN				= 0x0,
+	FBO_DESC_PARAM_FBO_VERSION			= 0x1,
+	FBO_DESC_PARAM_FBO_RECOMMENDED_LBA_RANGE_SIZE	= 0x3,
+	FBO_DESC_PARAM_FBO_MAX_LBA_RANGE_SIZE		= 0x7,
+	FBO_DESC_PARAM_FBO_MIN_LBA_RANGE_SIZE		= 0xB,
+	FBO_DESC_PARAM_FBO_MAX_LBA_RANGE_COUNT		= 0xF,
+	FBO_DESC_PARAM_FBO_LBA_RANGE_ALIGNMENT		= 0x10,
+};
+#endif
 static inline int ufsf_check_query(__u32 opcode)
 {
 	return (opcode & 0xffff0000) >> 16 == UFSFEATURE_QUERY_OPCODE;
