@@ -22,6 +22,7 @@ ufs_qcom-y += ufs-qcom.o
 ufs_qcom-$(CONFIG_UFSFEATURE) += vendor/ufsfeature.o vendor/ufsfeature-mimic.o
 ufs_qcom-$(CONFIG_UFSHID) += vendor/ufshid.o
 ufs_qcom-$(CONFIG_UFSSID) += vendor/ufssid.o
+ufs_qcom-$(CONFIG_UFSFBO) += vendor/ufsfbo.o
 ufs_qcom-$(CONFIG_SCSI_UFS_CRYPTO) += ufs-qcom-ice.o
 obj-$(CONFIG_SCSI_UFS_EXYNOS) += ufs-exynos.o
 obj-$(CONFIG_SCSI_UFSHCD_PCI) += ufshcd-pci.o
