@@ -639,6 +639,10 @@ void *hh_rm_call(hh_rm_msgid_t message_id,
 		goto out;
 	}
 
+	mutex_lock(&hh_rm_call_idr_lock);
+	idr_remove(&hh_rm_call_idr, connection->seq);
+	mutex_unlock(&hh_rm_call_idr_lock);
+
 	*rm_error = connection->rm_error;
 	if (connection->rm_error) {
 		pr_err("%s: Reply for seq:%d failed with RM err: %d\n",
@@ -662,10 +666,6 @@ void *hh_rm_call(hh_rm_msgid_t message_id,
 	*resp_buff_size = connection->size;
 
 out:
-	mutex_lock(&hh_rm_call_idr_lock);
-	idr_remove(&hh_rm_call_idr, connection->seq);
-	mutex_unlock(&hh_rm_call_idr_lock);
-
 	kfree(connection);
 	return ret;
 }
