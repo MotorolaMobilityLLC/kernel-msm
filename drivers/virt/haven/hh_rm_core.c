@@ -48,7 +48,6 @@ struct hh_rm_connection {
 
 	u8 num_fragments;
 	u8 fragments_received;
-	void *current_recv_buff;
 };
 
 static struct task_struct *hh_rm_drv_recv_task;
@@ -92,6 +91,9 @@ hh_rm_init_connection_buff(struct hh_rm_connection *connection,
 	struct hh_rm_rpc_hdr *hdr = recv_buff;
 	size_t max_buf_size;
 
+	connection->num_fragments = hdr->fragments;
+	connection->fragments_received = 0;
+
 	/* Some of the 'reply' types doesn't contain any payload */
 	if (!payload_size)
 		return 0;
@@ -107,15 +109,12 @@ hh_rm_init_connection_buff(struct hh_rm_connection *connection,
 	/* If the data is split into multiple fragments, allocate a large
 	 * enough buffer to hold the payloads for all the fragments.
 	 */
-	connection->recv_buff = connection->current_recv_buff =
-				kzalloc(max_buf_size, GFP_KERNEL);
+	connection->recv_buff = kzalloc(max_buf_size, GFP_KERNEL);
 	if (!connection->recv_buff)
 		return -ENOMEM;
 
 	memcpy(connection->recv_buff, recv_buff + hdr_size, payload_size);
-	connection->current_recv_buff += payload_size;
 	connection->recv_buff_size = payload_size;
-	connection->num_fragments = hdr->fragments;
 
 	return 0;
 }
@@ -352,9 +351,8 @@ static int hh_rm_process_cont(void *recv_buff, size_t recv_buff_size)
 	payload_size = recv_buff_size - sizeof(*hdr);
 
 	/* Keep appending the data to the previous fragment's end */
-	memcpy(connection->current_recv_buff,
+	memcpy(connection->recv_buff + connection->recv_buff_size,
 		recv_buff + sizeof(*hdr), payload_size);
-	connection->current_recv_buff += payload_size;
 	connection->recv_buff_size += payload_size;
 
 	connection->fragments_received++;
