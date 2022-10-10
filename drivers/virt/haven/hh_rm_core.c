@@ -37,17 +37,28 @@
 #define HH_RM_MAX_MSG_SIZE_BYTES \
 	(HH_MSGQ_MAX_MSG_SIZE_BYTES - sizeof(struct hh_rm_rpc_hdr))
 
+/**
+ * struct hh_rm_connection - Represents a complete message from resource manager
+ * @payload: Combined payload of all the fragments without any RPC headers
+ * @size: Size of the payload.
+ * @msg_id: Message ID from the header.
+ * @num_fragments: total number of fragments expected to be received for this connection.
+ * @fragments_received: fragments received so far.
+ * @rm_error: For request/reply sequences with standard replies.
+ * @seq: Sequence ID for the main message.
+ */
 struct hh_rm_connection {
+	void *payload;
+	size_t size;
 	u32 msg_id;
-	u16 seq;
-	void *recv_buff;
-	u32 reply_err_code;
-	size_t recv_buff_size;
-
-	struct completion seq_done;
 
 	u8 num_fragments;
 	u8 fragments_received;
+
+	 /* only for req/reply sequence */
+	u32 rm_error;
+	u16 seq;
+	struct completion seq_done;
 };
 
 static struct task_struct *hh_rm_drv_recv_task;
@@ -109,12 +120,12 @@ hh_rm_init_connection_buff(struct hh_rm_connection *connection,
 	/* If the data is split into multiple fragments, allocate a large
 	 * enough buffer to hold the payloads for all the fragments.
 	 */
-	connection->recv_buff = kzalloc(max_buf_size, GFP_KERNEL);
-	if (!connection->recv_buff)
+	connection->payload = kzalloc(max_buf_size, GFP_KERNEL);
+	if (!connection->payload)
 		return -ENOMEM;
 
-	memcpy(connection->recv_buff, recv_buff + hdr_size, payload_size);
-	connection->recv_buff_size = payload_size;
+	memcpy(connection->payload, recv_buff + hdr_size, payload_size);
+	connection->size = payload_size;
 
 	return 0;
 }
@@ -157,8 +168,8 @@ static int hh_rm_process_notif(void *msg, size_t msg_size)
 	if (hdr->fragments)
 		return PTR_ERR(connection);
 
-	payload = connection->recv_buff;
-	payload_size = connection->recv_buff_size;
+	payload = connection->payload;
+	payload_size = connection->size;
 	notification = connection->msg_id;
 	pr_debug("Notification received from RM-VM: %x\n", notification);
 
@@ -303,7 +314,7 @@ static int hh_rm_process_rply(void *recv_buff, size_t recv_buff_size)
 	if (ret < 0)
 		return ret;
 
-	connection->reply_err_code = reply_hdr->err_code;
+	connection->rm_error = reply_hdr->err_code;
 
 	/*
 	 * If the data is composed of a single message, wakeup the
@@ -351,9 +362,9 @@ static int hh_rm_process_cont(void *recv_buff, size_t recv_buff_size)
 	payload_size = recv_buff_size - sizeof(*hdr);
 
 	/* Keep appending the data to the previous fragment's end */
-	memcpy(connection->recv_buff + connection->recv_buff_size,
+	memcpy(connection->payload + connection->size,
 		recv_buff + sizeof(*hdr), payload_size);
-	connection->recv_buff_size += payload_size;
+	connection->size += payload_size;
 
 	connection->fragments_received++;
 	if (connection->fragments_received == connection->num_fragments) {
@@ -546,7 +557,7 @@ static int hh_rm_send_request(u32 message_id,
  * @req_buff: Request buffer that contains the payload
  * @req_buff_size: Total size of the payload
  * @resp_buff_size: Size of the response buffer
- * @reply_err_code: Returns Haven standard error code for the response
+ * @rm_error: Returns Haven standard error code for the response
  *
  * Make a request to the RM-VM and expect a reply back. For a successful
  * response, the function returns the payload and its size for the response.
@@ -558,13 +569,13 @@ static int hh_rm_send_request(u32 message_id,
  */
 void *hh_rm_call(hh_rm_msgid_t message_id,
 			void *req_buff, size_t req_buff_size,
-			size_t *resp_buff_size, int *reply_err_code)
+			size_t *resp_buff_size, int *rm_error)
 {
 	struct hh_rm_connection *connection;
 	int req_ret;
 	void *ret;
 
-	if (!message_id || !req_buff || !resp_buff_size || !reply_err_code)
+	if (!message_id || !req_buff || !resp_buff_size || !rm_error)
 		return ERR_PTR(-EINVAL);
 
 	connection = hh_rm_alloc_connection(message_id);
@@ -599,21 +610,21 @@ void *hh_rm_call(hh_rm_msgid_t message_id,
 		goto out;
 	}
 
-	*reply_err_code = connection->reply_err_code;
-	if (connection->reply_err_code) {
+	*rm_error = connection->rm_error;
+	if (connection->rm_error) {
 		pr_err("%s: Reply for seq:%d failed with RM err: %d\n",
-			__func__, connection->seq, connection->reply_err_code);
-		ret = ERR_PTR(hh_remap_error(connection->reply_err_code));
-		kfree(connection->recv_buff);
+			__func__, connection->seq, connection->rm_error);
+		ret = ERR_PTR(hh_remap_error(connection->rm_error));
+		kfree(connection->payload);
 		goto out;
 	}
 
 	print_hex_dump_debug("hh_rm_call RX: ", DUMP_PREFIX_OFFSET, 4, 1,
-			     connection->recv_buff, connection->recv_buff_size,
+			     connection->payload, connection->size,
 			     false);
 
-	ret = connection->recv_buff;
-	*resp_buff_size = connection->recv_buff_size;
+	ret = connection->payload;
+	*resp_buff_size = connection->size;
 
 out:
 	mutex_lock(&hh_rm_call_idr_lock);
