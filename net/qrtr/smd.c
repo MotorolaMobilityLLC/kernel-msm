@@ -93,6 +93,7 @@ static int qcom_smd_qrtr_probe(struct rpmsg_device *rpdev)
 					   svc_arr, size);
 	}
 	rc = qrtr_endpoint_register(&qdev->ep, net_id, rt, svc_arr);
+	kfree(svc_arr);
 
 	if (rc)
 		return rc;
