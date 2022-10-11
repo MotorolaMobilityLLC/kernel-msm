@@ -73,6 +73,70 @@ static inline int ufshid_is_not_present(struct ufshid_dev *hid)
 	return 0;
 }
 
+static int ufshid_set_flag(struct ufshid_dev *hid, u8 idn)
+{
+        struct ufs_hba *hba = hid->ufsf->hba;
+        int ret = 0;
+
+        ufshcd_rpm_get_sync(hba);
+
+        ret = ufshcd_query_flag(hba, UPIU_QUERY_OPCODE_SET_FLAG, idn, 0,
+                                    NULL);
+
+        if (ret) {
+                ERR_MSG("set flag [0x%.2X] fail. (%d)", idn, ret);
+                goto err_out;
+        }
+
+        INFO_MSG("hid_flag set [0x%.2X] ", idn);
+err_out:
+	    ufshid_rpm_put_noidle(hba);
+
+        return ret;
+}
+
+static int ufshid_clear_flag(struct ufshid_dev *hid, u8 idn)
+{
+        struct ufs_hba *hba = hid->ufsf->hba;
+        int ret = 0;
+
+	    ufshcd_rpm_get_sync(hba);
+
+        ret = ufshcd_query_flag(hba, UPIU_QUERY_OPCODE_CLEAR_FLAG, idn, 0,
+                                    NULL);
+        if (ret) {
+                ERR_MSG("clear flag [0x%.2X] fail. (%d)", idn, ret);
+                goto err_out;
+        }
+
+        INFO_MSG("hid_flag set [0x%.2X] ", idn);
+err_out:
+	    ufshid_rpm_put_noidle(hba);
+        return ret;
+}
+
+static int ufshid_read_flag(struct ufshid_dev *hid, u8 idn,bool *flag_val)
+{
+        struct ufs_hba *hba = hid->ufsf->hba;
+        int ret = 0;
+
+        ufshcd_rpm_get_sync(hba);
+
+        ret = ufshcd_query_flag(hba, UPIU_QUERY_OPCODE_READ_FLAG, idn, 0,
+                                 flag_val );
+        if (ret) {
+                ERR_MSG("read flag [0x%.2X] fail. (%d)", idn, ret);
+                goto err_out;
+        }
+
+        INFO_MSG("hid_flag set [0x%.2X] ", idn);
+err_out:
+	    ufshid_rpm_put_noidle(hba);
+
+        return ret;
+}
+
+
 static int ufshid_read_attr(struct ufshid_dev *hid, u8 idn, u32 *attr_val)
 {
 	struct ufs_hba *hba = hid->ufsf->hba;
@@ -157,18 +221,21 @@ void ufshid_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf)
 
 	ufsf->hid_dev = NULL;
 
-	if (!(get_unaligned_be32(desc_buf + DEVICE_DESC_PARAM_SAMSUNG_SUP) &
-	      UFS_FEATURE_SUPPORT_HID_BIT)) {
-		INFO_MSG("bUFSExFeaturesSupport: HID not support");
-		goto err_out;
+    if(is_vendor_device(ufsf->hba, UFS_VENDOR_SAMSUNG)){
+		if (!(get_unaligned_be32(desc_buf + DEVICE_DESC_PARAM_SAMSUNG_SUP) &
+				UFS_FEATURE_SUPPORT_HID_BIT)) {
+			INFO_MSG("bUFSExFeaturesSupport: HID not support");
+			goto err_out;
+		}
+
+		INFO_MSG("bUFSExFeaturesSupport: HID support");
+		spec_version = get_unaligned_be16(desc_buf + DEVICE_DESC_PARAM_HID_VER);
+		ret = ufshid_version_check(spec_version);
+		if (ret)
+			goto err_out;
+	}else if(is_vendor_device(ufsf->hba, UFS_VENDOR_TOSHIBA)){
+		INFO_MSG("kioxia ufs support HID by default");
 	}
-
-	INFO_MSG("bUFSExFeaturesSupport: HID support");
-	spec_version = get_unaligned_be16(desc_buf + DEVICE_DESC_PARAM_HID_VER);
-	ret = ufshid_version_check(spec_version);
-	if (ret)
-		goto err_out;
-
 	ufsf->hid_dev = kzalloc(sizeof(struct ufshid_dev), GFP_KERNEL);
 	if (!ufsf->hid_dev) {
 		ERR_MSG("hid_dev memalloc fail");
@@ -364,29 +431,67 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 	int frag_level;
 	bool param_mode;
 	int ret;
+    struct ufsf_feature *ufsf = hid->ufsf;
 
-	ret = ufshid_execute_query_op(hid, HID_OP_EXECUTE, &attr_val);
-	if (ret)
-		return ret;
+	if (is_vendor_device(ufsf->hba,UFS_VENDOR_SAMSUNG)) {
+		ret = ufshid_execute_query_op(hid, HID_OP_EXECUTE, &attr_val);
+		if (ret)
+			return ret;
 
-	frag_level = attr_val & HID_FRAG_LEVEL_MASK;
-	param_mode = HID_FRAG_UPDATE_MODE(attr_val);
+		frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+		param_mode = HID_FRAG_UPDATE_MODE(attr_val);
 
-	hid->is_need_param =
-		hid->lba_trigger_mode && param_mode == HID_NO_PARAM;
+		hid->is_need_param =
+			hid->lba_trigger_mode && param_mode == HID_NO_PARAM;
 
-	if (frag_level == HID_LEV_GRAY || hid->is_need_param)
-		return -EAGAIN;
+		if (frag_level == HID_LEV_GRAY || hid->is_need_param)
+			return -EAGAIN;
 
-	return (HID_EXECUTE_REQ_STAT(attr_val)) ?
-		HID_REQUIRED : HID_NOT_REQUIRED;
+		return (HID_EXECUTE_REQ_STAT(attr_val)) ?
+			HID_REQUIRED : HID_NOT_REQUIRED;
+	}else if(is_vendor_device(ufsf->hba, UFS_VENDOR_TOSHIBA)){
+        bool flag_val;
+        int frag_level;
+        if (ufshid_read_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN,&flag_val))
+               return -EINVAL;
+        if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
+               return -EINVAL;
+        if ( flag_val == 1){
+               frag_level = attr_val;
+               if (ufshid_read_attr(hid, QUERY_ATTR_IDN_WB_FLUSH_STATUS, &attr_val))
+                       return -EINVAL;
+               if ( frag_level == 0 && ( attr_val != 0x01 ) ){
+                       return HID_NOT_REQUIRED;
+               } else{
+                       return HID_REQUIRED;
+               }
+        } else {
+               if (attr_val > 0){
+                       if (ufshid_set_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
+                               return -EINVAL;
+                       return HID_REQUIRED;
+               } else {
+                               return HID_NOT_REQUIRED;
+               }
+        }
+    }
+    return -EAGAIN;
 }
 
 static inline void ufshid_issue_disable(struct ufshid_dev *hid)
 {
 	u32 attr_val;
-
-	ufshid_execute_query_op(hid, HID_OP_DISABLE, &attr_val);
+	struct ufsf_feature *ufsf = hid->ufsf;
+	if (ufsf == NULL){
+		ERR_MSG("the ufsf is NULL !!!");
+		return;
+	}
+    if (is_vendor_device(ufsf->hba,UFS_VENDOR_SAMSUNG)) {
+		ufshid_execute_query_op(hid, HID_OP_DISABLE, &attr_val);
+	}else if(is_vendor_device(ufsf->hba,UFS_VENDOR_TOSHIBA)){
+       if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
+                       return;
+    }
 }
 
 /*
@@ -1123,23 +1228,45 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 	int frag_level;
 	bool param_mode;
 	int ret;
+	struct ufsf_feature *ufsf = hid->ufsf;
+	if (ufsf == NULL){
+		ERR_MSG("the ufsf is NULL !!!");
+		return -EINVAL;
+	}
 
-	ret = ufshid_execute_query_op(hid, HID_OP_ANALYZE, &attr_val);
-	if (ret)
-		return ret;
+	if (is_vendor_device(ufsf->hba,  UFS_VENDOR_SAMSUNG)) {
+		ret = ufshid_execute_query_op(hid, HID_OP_ANALYZE, &attr_val);
+		if (ret)
+			return ret;
+		frag_level = attr_val & HID_FRAG_LEVEL_MASK;
+		param_mode = HID_FRAG_UPDATE_MODE(attr_val);
 
-	frag_level = attr_val & HID_FRAG_LEVEL_MASK;
-	param_mode = HID_FRAG_UPDATE_MODE(attr_val);
+		if ((hid->lba_trigger_mode && param_mode == HID_NO_PARAM) ||
+			(!hid->lba_trigger_mode && param_mode == HID_WITH_PARAM))
+			frag_level = HID_LEV_UNKNOWN;
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+				frag_level == HID_LEV_RED ? "RED" :
+				frag_level == HID_LEV_YELLOW ? "YELLOW" :
+				frag_level == HID_LEV_GREEN ? "GREEN" :
+				frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
+	}else if (is_vendor_device(ufsf->hba, UFS_VENDOR_TOSHIBA)) {
+        if (ufshid_read_attr(hid, QUERY_ATTR_IDN_BKOPS_STATUS, &attr_val))
+                return -EINVAL;
 
-	if ((hid->lba_trigger_mode && param_mode == HID_NO_PARAM) ||
-	    (!hid->lba_trigger_mode && param_mode == HID_WITH_PARAM))
-		frag_level = HID_LEV_UNKNOWN;
+        frag_level = attr_val;
+        if (ufshid_read_attr(hid, QUERY_ATTR_IDN_WB_FLUSH_STATUS, &attr_val))
+                return -EINVAL;
 
-	return snprintf(buf, PAGE_SIZE, "%s\n",
-			frag_level == HID_LEV_RED ? "RED" :
-			frag_level == HID_LEV_YELLOW ? "YELLOW" :
-			frag_level == HID_LEV_GREEN ? "GREEN" :
-			frag_level == HID_LEV_GRAY ? "GRAY" : "UNKNOWN");
+        INFO_MSG("Frag_lv %d Freg_stat %d HID_need_exec %d", frag_level,
+                 attr_val,
+                ( attr_val == HID_KIOXIA_EXE_OPERATION ) );
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+                ((frag_level == HID_KIOXIA_LEV_RED_KIOXIA) && ( attr_val == HID_KIOXIA_EXE_OPERATION ) ) ? "RED" :
+                ((frag_level != HID_KIOXIA_LEV_RED_KIOXIA) && ( attr_val == HID_KIOXIA_EXE_OPERATION ) ) ? "YELLOW" :
+                ((frag_level == HID_KIOXIA_LEV_GREEN_KIOXIA) && ( ( attr_val == HID_KIOXIA_EXE_IDLE ) || ( attr_val == HID_KIOXIA_EXE_COMPLETE )) ) ? "GREEN" :
+                        frag_level == HID_KIOXIA_LEV_GRAY ? "GRAY" : "UNKNOWN");
+	}
+	return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
 }
 
 static ssize_t ufshid_sysfs_show_max_lba_range_size(struct ufshid_dev *hid,
