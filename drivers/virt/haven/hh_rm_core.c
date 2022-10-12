@@ -42,6 +42,8 @@
  * @payload: Combined payload of all the fragments without any RPC headers
  * @size: Size of the payload.
  * @msg_id: Message ID from the header.
+ * @ret: Linux return code, set in case there was an error processing the connection.
+ * @type: HH_RM_RPC_TYPE_RPLY or HH_RM_RPC_TYPE_NOTIF.
  * @num_fragments: total number of fragments expected to be received for this connection.
  * @fragments_received: fragments received so far.
  * @rm_error: For request/reply sequences with standard replies.
@@ -51,6 +53,8 @@ struct hh_rm_connection {
 	void *payload;
 	size_t size;
 	u32 msg_id;
+	int ret;
+	u8 type;
 
 	u8 num_fragments;
 	u8 fragments_received;
@@ -104,6 +108,7 @@ hh_rm_init_connection_buff(struct hh_rm_connection *connection,
 
 	connection->num_fragments = hdr->fragments;
 	connection->fragments_received = 0;
+	connection->type = hdr->type;
 
 	/* Some of the 'reply' types doesn't contain any payload */
 	if (!payload_size)
@@ -381,6 +386,21 @@ struct hh_rm_msgq_data {
 	struct work_struct recv_work;
 };
 
+static void hh_rm_abort_connection(struct hh_rm_connection *connection)
+{
+	switch (connection->type) {
+	case HH_RM_RPC_TYPE_RPLY:
+		connection->ret = -EIO;
+		complete(&connection->seq_done);
+		break;
+	case HH_RM_RPC_TYPE_NOTIF:
+		fallthrough;
+	default:
+		kfree(connection->payload);
+		kfree(connection);
+	}
+}
+
 static void hh_rm_process_recv_work(struct work_struct *work)
 {
 	struct hh_rm_msgq_data *msgq_data;
@@ -392,12 +412,27 @@ static void hh_rm_process_recv_work(struct work_struct *work)
 
 	switch (hdr->type) {
 	case HH_RM_RPC_TYPE_NOTIF:
+		if (curr_connection) {
+			/* Not possible per protocol. Do something better than BUG_ON */
+			pr_warn("Received start of new notification without finishing existing message series.\n");
+			hh_rm_abort_connection(curr_connection);
+		}
 		hh_rm_process_notif(recv_buff, msgq_data->recv_buff_size);
 		break;
 	case HH_RM_RPC_TYPE_RPLY:
+		if (curr_connection) {
+			/* Not possible per protocol. Do something better than BUG_ON */
+			pr_warn("Received start of new reply without finishing existing message series.\n");
+			hh_rm_abort_connection(curr_connection);
+		}
 		hh_rm_process_rply(recv_buff, msgq_data->recv_buff_size);
 		break;
 	case HH_RM_RPC_TYPE_CONT:
+		if (!curr_connection) {
+			/* Not possible per protocol. Do something better than BUG_ON */
+			pr_warn("Received a continuation message without receiving initial message\n");
+			break;
+		}
 		hh_rm_process_cont(recv_buff, msgq_data->recv_buff_size);
 		break;
 	default:
@@ -615,6 +650,12 @@ void *hh_rm_call(hh_rm_msgid_t message_id,
 		pr_err("%s: Reply for seq:%d failed with RM err: %d\n",
 			__func__, connection->seq, connection->rm_error);
 		ret = ERR_PTR(hh_remap_error(connection->rm_error));
+		kfree(connection->payload);
+		goto out;
+	}
+
+	if (connection->ret) {
+		ret = ERR_PTR(connection->ret);
 		kfree(connection->payload);
 		goto out;
 	}
