@@ -393,4 +393,10 @@ ENTRY(__spectre_bhb_loop_k32_start)
 	add	sp, sp, #(8 * 2)
 ENTRY(__spectre_bhb_loop_k32_end)
 
+ENTRY(__spectre_bhb_clearbhb_start)
+	esb
+	clearbhb
+	isb
+ENTRY(__spectre_bhb_clearbhb_end)
+
 #endif
