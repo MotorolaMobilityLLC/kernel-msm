@@ -1072,7 +1072,7 @@ static int haptics_get_status_data(struct haptics_chip *chip,
 	else if (sel == FIFO_REAL_TIME_STS)
 		name = "FIFO_REAL_TIME_STS";
 
-	dev_dbg(chip->dev, "Get status data[%s] = (%#x, %#x)\n", name, data[0], data[1]);
+	dev_info(chip->dev, "Get status data[%s] = (%#x, %#x)\n", name, data[0], data[1]);
 	trace_qcom_haptics_status(name, data[0], data[1]);
 	return 0;
 }
