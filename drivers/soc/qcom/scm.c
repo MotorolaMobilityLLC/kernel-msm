@@ -662,6 +662,40 @@ EXPORT_SYMBOL(scm_is_secure_device);
 
 #ifdef CONFIG_ARM64
 
+#define TZ_HLOS_NOTIFY_CORE_KERNEL_BOOTUP 0x7
+int  scm_mem_protection_init_do_qrks(void)
+{
+	uint32_t pid_offset = 0;
+	uint32_t task_name_offset = 0;
+	struct scm_desc desc = {0};
+	int ret = 0, resp;
+
+	pid_offset = offsetof(struct task_struct, pid);
+	task_name_offset = offsetof(struct task_struct, comm);
+	pr_debug("offset of pid is %zu, offset of comm is %zu\n",
+		pid_offset, task_name_offset);
+	desc.args[0] = pid_offset;
+	desc.args[1] = task_name_offset;
+	desc.arginfo = 2;
+	ret = scm_call2(SCM_SIP_FNID(SCM_SVC_RTIC,
+			TZ_HLOS_NOTIFY_CORE_KERNEL_BOOTUP),
+			&desc);
+	resp = desc.ret[0];
+
+	if (ret == -1) {
+		pr_err("%s: SCM call not supported\n", __func__);
+		return ret;
+	} else if (ret || resp) {
+		pr_err("%s: SCM call failed\n", __func__);
+		if (ret)
+			return ret;
+		else
+			return resp;
+	}
+
+	return resp;
+}
+
 /*
  * SCM call command ID to protect kernel memory
  * in Hyp Stage 2 page tables.
@@ -675,6 +709,7 @@ static int __init scm_mem_protection_init(void)
 	struct scm_desc desc = {0};
 	int ret = 0, resp;
 
+	scm_mem_protection_init_do_qrks();
 	desc.args[0] = 0;
 	desc.arginfo = 0;
 	ret = scm_call2(SCM_SIP_FNID(SCM_SVC_RTIC,
