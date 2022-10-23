@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/interconnect.h>
@@ -224,6 +225,7 @@ void kgsl_bus_close(struct kgsl_device *device)
 	kfree(device->pwrctrl.ddr_table);
 	device->pwrctrl.ddr_table = NULL;
 	icc_put(device->pwrctrl.icc_path);
+	device->pwrctrl.icc_path = NULL;
 	if (device->pwrctrl.ddr_qos_devfreq)
 		put_device(&device->pwrctrl.ddr_qos_devfreq->dev);
 }
