@@ -78,3 +78,19 @@
 
 # required by sdhci-msm.ko
   mmc_gpio_set_cd_wake
+
+# required by max77729.ko
+  i2c_new_dummy_device
+  __irq_alloc_descs
+  i2c_smbus_write_word_data
+  i2c_smbus_write_i2c_block_data
+  i2c_smbus_read_i2c_block_data
+  i2c_smbus_read_word_data
+  power_supply_register
+  power_supply_unregister
+  mfd_add_devices
+  mfd_remove_devices
+
+# required by sec.ko
+  strncat
+  input_mt_destroy_slots
