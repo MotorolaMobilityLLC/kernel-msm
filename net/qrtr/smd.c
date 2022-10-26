@@ -64,8 +64,9 @@ static int qcom_smd_qrtr_probe(struct rpmsg_device *rpdev)
 	struct qrtr_smd_dev *qdev;
 	u32 net_id;
 	bool rt;
-	int rc, size;
-	u32 *svc_arr = NULL;
+	int rc;
+	size_t size;
+	struct qrtr_array svc_arr = {NULL, 0};
 	pr_info("%s:Entered\n", __func__);
 
 	qdev = devm_kzalloc(&rpdev->dev, sizeof(*qdev), GFP_KERNEL);
@@ -87,13 +88,16 @@ static int qcom_smd_qrtr_probe(struct rpmsg_device *rpdev)
 	if (size > 0) {
 		if (size > MAX_NON_WAKE_SVC_LEN)
 			size = MAX_NON_WAKE_SVC_LEN;
-		svc_arr = kmalloc_array(size, sizeof(u32), GFP_KERNEL);
+		svc_arr.size = size;
+		svc_arr.arr = kmalloc_array(size, sizeof(u32), GFP_KERNEL);
+		if (!svc_arr.arr)
+			return -ENOMEM;
 
 		of_property_read_u32_array(rpdev->dev.of_node, "qcom,non-wake-svc",
-					   svc_arr, size);
+				svc_arr.arr, size);
 	}
-	rc = qrtr_endpoint_register(&qdev->ep, net_id, rt, svc_arr);
-	kfree(svc_arr);
+	rc = qrtr_endpoint_register(&qdev->ep, net_id, rt, &svc_arr);
+	kfree(svc_arr.arr);
 
 	if (rc)
 		return rc;

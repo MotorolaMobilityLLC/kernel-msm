@@ -28,8 +28,20 @@ struct qrtr_endpoint {
 	struct qrtr_node *node;
 };
 
+/**
+ * struct qrtr_array - array with size
+ * @arr: elements in the array
+ * @size: number of elements
+ *
+ * An array with its size provided.
+ */
+struct qrtr_array {
+	u32 *arr;
+	size_t size;
+};
+
 int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
-			   bool rt, u32 *svc_arr);
+			   bool rt, struct qrtr_array *svc_arr);
 
 void qrtr_endpoint_unregister(struct qrtr_endpoint *ep);
 
