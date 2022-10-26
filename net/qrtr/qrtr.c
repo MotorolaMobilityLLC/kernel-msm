@@ -193,6 +193,7 @@ struct qrtr_node {
 	void *ilc;
 
 	u32 nonwake_svc[MAX_NON_WAKE_SVC_LEN];
+	struct qrtr_array no_wake_svc;
 };
 
 struct qrtr_tx_flow_waiter {
@@ -421,6 +422,7 @@ static void __qrtr_node_release(struct kref *kref)
 	kthread_stop(node->task);
 
 	skb_queue_purge(&node->rx_queue);
+	kfree(node->no_wake_svc.arr);
 	kfree(node);
 }
 
@@ -944,8 +946,12 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 			if (svc_id > 0) {
 				for (i = 0; i < MAX_NON_WAKE_SVC_LEN; i++) {
 					if (svc_id == node->nonwake_svc[i]) {
-						wake = false;
-						break;
+						for (i = 0; i < node->no_wake_svc.size; i++) {
+							if (svc_id == node->no_wake_svc.arr[i]) {
+								wake = false;
+								break;
+							}
+						}
 					}
 				}
 			}
@@ -964,7 +970,6 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 
 		qrtr_port_put(ipc);
 	}
-
 	return 0;
 
 err:
@@ -1170,7 +1175,7 @@ static void qrtr_hello_work(struct kthread_work *work)
  * The specified endpoint must have the xmit function pointer set on call.
  */
 int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
-			   bool rt, u32 *svc_arr)
+			   bool rt, struct qrtr_array *svc_arr)
 {
 	struct qrtr_node *node;
 	struct sched_param param = {.sched_priority = 1};
@@ -1203,7 +1208,12 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
 
 	if (svc_arr)
 		memcpy(node->nonwake_svc, svc_arr, MAX_NON_WAKE_SVC_LEN * sizeof(int));
-
+	if(svc_arr && svc_arr->size) {
+		node->no_wake_svc.arr = kmalloc_array(svc_arr->size, sizeof(u32), GFP_KERNEL);
+		memcpy((void *)node->no_wake_svc.arr, (void *)svc_arr->arr,
+				svc_arr->size * sizeof(u32));
+		node->no_wake_svc.size = svc_arr->size;
+	}
 	mutex_init(&node->qrtr_tx_lock);
 	INIT_RADIX_TREE(&node->qrtr_tx_flow, GFP_KERNEL);
 	init_waitqueue_head(&node->resume_tx);
