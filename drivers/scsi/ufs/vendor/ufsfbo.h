@@ -176,6 +176,7 @@ struct ufsfbo_dev {
 	struct mutex sysfs_lock;
 	struct ufsfbo_sysfs_entry *sysfs_entries;
 
+	int transfer_len;
 	/* for debug */
 	bool fbo_debug;
 };
