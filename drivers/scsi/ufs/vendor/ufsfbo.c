@@ -150,7 +150,8 @@ void ufsfbo_read_fbo_desc(struct ufsf_feature *ufsf)
 
 	ufsf->fbo_dev = NULL;
 
-	if (!is_vendor_device(ufsf->hba, UFS_VENDOR_SAMSUNG)){
+	if (!is_vendor_device(ufsf->hba, UFS_VENDOR_SAMSUNG) &&
+		    !is_vendor_device(ufsf->hba, UFS_VENDOR_TOSHIBA)){
 		INFO_MSG("this fbo driver is not support");
 		return;
 	}
@@ -753,6 +754,12 @@ void ufsfbo_init(struct ufsf_feature *ufsf)
 #endif
 	fbo->fbo_debug = false;
 
+    //kioxia have different understand of length of LBARange.so just adjust to kioxia UFS.
+	if(is_vendor_device(ufsf->hba,UFS_VENDOR_TOSHIBA)){
+		fbo->transfer_len = 0;
+	}else{
+		fbo->transfer_len = BYTE_TO_BLK_SHIFT;
+	}
 	/* If HCI supports auto hibern8, UFS Driver use it default */
 	if (ufshcd_is_auto_hibern8_supported(ufsf->hba))
 		fbo->is_auto_enabled = true;
@@ -815,7 +822,7 @@ static int ufsfbo_check_lba_range_info_buf(struct ufsfbo_dev *fbo,
 		entry = (struct ufsfbo_wb_entry *)p;
 		length = (__be32)entry->length;
 		lba = get_unaligned_be32(&entry->start_lba);
-		len = get_unaligned_be24(&length) >> BYTE_TO_BLK_SHIFT;
+		len = get_unaligned_be24(&length) >> fbo->transfer_len;
 
 		if (!lba || !len) {
 			ERR_MSG("entry[%d] info is not valid", entry_cnt);
@@ -839,7 +846,7 @@ static int ufsfbo_check_lba_range_info_buf(struct ufsfbo_dev *fbo,
 			comp_entry = (struct ufsfbo_wb_entry *)comp_p;
 			comp_length = (__be32)comp_entry->length;
 			comp_lba = get_unaligned_be32(&comp_entry->start_lba);
-			comp_len = get_unaligned_be24(&comp_length) >> BYTE_TO_BLK_SHIFT;
+			comp_len = get_unaligned_be24(&comp_length) >> fbo->transfer_len;
 
 			if (lba + len - 1 >= comp_lba &&
 			    lba <= comp_lba + comp_len - 1) {
