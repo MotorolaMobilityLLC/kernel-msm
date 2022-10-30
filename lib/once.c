@@ -88,6 +88,6 @@ void __do_once_slow_done(bool *done, struct static_key_true *once_key,
 {
 	*done = true;
 	mutex_unlock(&once_mutex);
-	once_disable_jump(once_key, mod);
+	once_disable_jump(once_key);
 }
 EXPORT_SYMBOL(__do_once_slow_done);
