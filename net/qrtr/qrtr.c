@@ -965,7 +965,7 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 		 * from adsp side
 		 */
 		if ((node->nid != 9 && node->nid != 5) ||
-		    (node->nid == 5 && wake))
+				(node->nid == 5 && wake))
 			pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
 
 		qrtr_port_put(ipc);
