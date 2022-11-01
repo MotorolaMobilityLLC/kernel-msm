@@ -956,16 +956,14 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 				}
 			}
 		}
-
 		if (sock_queue_rcv_skb(&ipc->sk, skb))
 			goto err;
-
 		/**
 		 * Force wakeup for all packets except for sensors and blacklisted services
 		 * from adsp side
 		 */
 		if ((node->nid != 9 && node->nid != 5) ||
-		    (node->nid == 5 && wake))
+				(node->nid == 5 && wake))
 			pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
 
 		qrtr_port_put(ipc);
