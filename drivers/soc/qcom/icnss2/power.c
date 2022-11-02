@@ -29,6 +29,14 @@ static struct icnss_vreg_cfg icnss_adrestea_vreg_list[] = {
 	{"vdd-smps", 984000, 984000, 0, 0, 0, false, true},
 };
 
+static struct icnss_battery_level icnss_battery_level[] = {
+	{70, 3300000},
+	{60, 3200000},
+	{50, 3100000},
+	{25, 3000000},
+	{0, 2850000},
+};
+
 static struct icnss_clk_cfg icnss_clk_list[] = {
 	{"rf_clk", 0, 0},
 };
@@ -54,6 +62,9 @@ static struct icnss_clk_cfg icnss_adrestea_clk_list[] = {
 #define MAX_TCS_NUM			8
 #define MAX_TCS_CMD_NUM			5
 #define BT_CXMX_VOLTAGE_MV		950
+
+#define ICNSS_BATTERY_LEVEL_COUNT	ARRAY_SIZE(icnss_battery_level)
+#define ICNSS_MAX_BATTERY_LEVEL		100
 
 static int icnss_get_vreg_single(struct icnss_priv *priv,
 				 struct icnss_vreg_info *vreg)
@@ -817,6 +828,110 @@ int icnss_init_vph_monitor(struct icnss_priv *priv)
 	ret = icnss_setup_vph_monitor(priv);
 	if (ret)
 		goto out;
+out:
+	return ret;
+}
+
+static int icnss_get_battery_level(struct icnss_priv *priv)
+{
+	int err = 0, battery_percentage = 0;
+	union power_supply_propval psp = {0,};
+
+	if (!priv->batt_psy)
+		priv->batt_psy = power_supply_get_by_name("battery");
+
+	if (priv->batt_psy) {
+		err = power_supply_get_property(priv->batt_psy,
+						POWER_SUPPLY_PROP_CAPACITY,
+						&psp);
+		if (err) {
+			icnss_pr_err("battery percentage read error:%d\n", err);
+			goto out;
+		}
+		battery_percentage = psp.intval;
+	}
+
+	icnss_pr_info("Battery Percentage: %d\n", battery_percentage);
+out:
+	return battery_percentage;
+}
+
+static void icnss_update_soc_level(struct work_struct *work)
+{
+	int battery_percentage = 0, current_updated_voltage = 0, err = 0;
+	int level_count;
+	struct icnss_priv *priv = container_of(work, struct icnss_priv, soc_update_work);
+
+	battery_percentage = icnss_get_battery_level(priv);
+	if (!battery_percentage ||
+	    battery_percentage > ICNSS_MAX_BATTERY_LEVEL) {
+		icnss_pr_err("Battery percentage read failure\n");
+		return;
+	}
+
+	for (level_count = 0; level_count < ICNSS_BATTERY_LEVEL_COUNT;
+	     level_count++) {
+		if (battery_percentage >=
+		    icnss_battery_level[level_count].lower_battery_threshold) {
+			current_updated_voltage =
+				icnss_battery_level[level_count].ldo_voltage;
+			break;
+		}
+	}
+
+	if (level_count != ICNSS_BATTERY_LEVEL_COUNT &&
+	    priv->last_updated_voltage != current_updated_voltage) {
+		err = icnss_send_vbatt_update(priv, current_updated_voltage);
+		if (err < 0) {
+			icnss_pr_err("Unable to update ldo voltage");
+			return;
+		}
+		priv->last_updated_voltage = current_updated_voltage;
+	}
+}
+
+static int icnss_battery_supply_callback(struct notifier_block *nb,
+					 unsigned long event, void *data)
+{
+	struct power_supply *psy = data;
+	struct icnss_priv *priv = container_of(nb, struct icnss_priv,
+					       psf_nb);
+	if (strcmp(psy->desc->name, "battery"))
+		return NOTIFY_OK;
+
+	if (test_bit(ICNSS_WLFW_CONNECTED, &priv->state) &&
+	    !test_bit(ICNSS_FW_DOWN, &priv->state))
+		queue_work(priv->soc_update_wq, &priv->soc_update_work);
+
+	return NOTIFY_OK;
+}
+
+int icnss_get_psf_info(struct icnss_priv *priv)
+{
+	int ret = 0;
+
+	priv->soc_update_wq = alloc_workqueue("icnss_soc_update",
+					      WQ_UNBOUND, 1);
+	if (!priv->soc_update_wq) {
+		icnss_pr_err("Workqueue creation failed for soc update\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	priv->psf_nb.notifier_call = icnss_battery_supply_callback;
+	ret = power_supply_reg_notifier(&priv->psf_nb);
+	if (ret < 0) {
+		icnss_pr_err("Power supply framework registration err: %d\n",
+			     ret);
+		goto err_psf_registration;
+	}
+
+	INIT_WORK(&priv->soc_update_work, icnss_update_soc_level);
+
+	return 0;
+
+err_psf_registration:
+	destroy_workqueue(priv->soc_update_wq);
 out:
 	return ret;
 }
