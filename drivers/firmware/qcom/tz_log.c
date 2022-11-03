@@ -16,6 +16,11 @@
 #include <linux/uaccess.h>
 #include <linux/of.h>
 #include <linux/dma-buf.h>
+
+#if IS_ENABLED(CONFIG_MOTO_TZ_QSEE_LOG)
+#include <linux/vmalloc.h>
+#endif
+
 #include <linux/qcom_scm.h>
 #include <soc/qcom/qseecomi.h>
 #include <linux/qtee_shmbridge.h>
@@ -401,6 +406,12 @@ struct tzdbg_stat {
 	char *data;
 };
 
+#if IS_ENABLED(CONFIG_MOTO_TZ_QSEE_LOG)
+//print qsee log to kernel log
+#define PRINTK_LIMIT 1024
+static char     *b_str = NULL;
+#endif
+
 struct tzdbg {
 	void __iomem *virt_iobase;
 	void __iomem *hyp_virt_iobase;
@@ -421,6 +432,11 @@ struct tzdbg {
 	bool is_full_encrypted_tz_logs_enabled;
 	int tz_diag_minor_version;
 	int tz_diag_major_version;
+
+#if IS_ENABLED(CONFIG_MOTO_TZ_QSEE_LOG)
+	struct workqueue_struct		*heartbeat_work_q;
+	struct work_struct		heartbeat_work;
+#endif
 };
 
 struct tzbsp_encr_log_t {
@@ -1547,6 +1563,66 @@ static int __update_hypdbg_base(struct platform_device *pdev,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MOTO_TZ_QSEE_LOG)
+static int splitline_printk(const char *str, int len)
+{
+	int cnt = 0;
+	char *s = "\n";
+	char *b_str_tmp = NULL;
+	char *buf = NULL;
+
+	if (b_str == NULL && debug_rw_buf_size >0 ) {
+		b_str = (char *)vmalloc(debug_rw_buf_size +1);
+	}
+	if(len> debug_rw_buf_size) {
+		pr_err("[TEE-AP]:log is more than max len. trancate  \n");
+		len = debug_rw_buf_size;
+	}
+	b_str_tmp = b_str;
+	memcpy(b_str_tmp, str, len);
+	b_str_tmp[len] = 0;
+
+
+	buf = strstr(b_str_tmp, s);
+
+	while (buf != NULL) {
+		cnt++;
+		buf[0] = '\0';
+		pr_err("[TEE]: %s \n",b_str_tmp);
+		b_str_tmp = buf + strlen(s);
+		buf = strstr(b_str_tmp, s);
+	}
+
+	return 0;
+}
+
+static void tzdbg_heartbeat_work(struct work_struct *work)
+{
+	int len = 0;
+    //should refer to implemention from tzdbg_fs_read_unencrypted.
+	len = _disp_qsee_log_stats(debug_rw_buf_size);
+	// print the display buffer
+	splitline_printk(tzdbg.stat[TZDBG_QSEE_LOG].data,len);
+	pr_warn("[TEE] qsee log ----------len: %d---\n", len);
+
+	memcpy_fromio((void *)tzdbg.diag_buf, tzdbg.virt_iobase, debug_rw_buf_size);
+
+	if (TZBSP_DIAG_MAJOR_VERSION_LEGACY <
+				(tzdbg.diag_buf->version >> 16)) {
+		len = _disp_tz_log_stats(debug_rw_buf_size);
+	} else {
+		len = _disp_tz_log_stats_legacy();
+	}
+	// print the display buffer
+	splitline_printk(tzdbg.stat[TZDBG_LOG].data,len);
+	pr_warn("[TEE] tz log ----------len: %d---\n", len);
+
+	queue_work(tzdbg.heartbeat_work_q ,
+			&tzdbg.heartbeat_work
+			);
+}
+#endif
+
 static int __update_rmlog_base(struct platform_device *pdev,
 			       void __iomem *virt_iobase)
 {
@@ -1802,6 +1878,16 @@ static int tz_log_probe(struct platform_device *pdev)
 	md_entry.size = qseelog_buf_size;
 	if (msm_minidump_add_region(&md_entry) < 0)
 		pr_err("Failed to add qseelog in Minidump\n");
+#endif
+
+#if IS_ENABLED(CONFIG_MOTO_TZ_QSEE_LOG)
+	if(1) {
+		tzdbg.heartbeat_work_q = create_singlethread_workqueue("tz_heartbeat");
+		INIT_WORK(&tzdbg.heartbeat_work,
+						tzdbg_heartbeat_work);
+		queue_work(tzdbg.heartbeat_work_q, &tzdbg.heartbeat_work);
+		pr_info("enable_printk_qseelog\n");
+	}
 #endif
 
 	return 0;
