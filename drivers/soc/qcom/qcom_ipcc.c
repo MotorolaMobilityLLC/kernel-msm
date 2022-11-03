@@ -9,7 +9,6 @@
 #include <linux/irqdomain.h>
 #include <linux/platform_device.h>
 #include <linux/mailbox_controller.h>
-#include <linux/ipc_logging.h>
 #include <dt-bindings/soc/qcom,ipcc.h>
 
 /* IPCC Register offsets */
@@ -25,14 +24,6 @@
 #define IPCC_CLIENT_ID_SHIFT		16
 
 #define IPCC_NO_PENDING_IRQ		(~(u32)0)
-
-//MMI_STOPSHIP <debug PMIC_RTP_ADSP_APPS>: apply Qcom's patch to enable IPCC_DEBUG
-#define IPC_LOG_PAGE_CNT		4096
-
-static void *ipcc_ipclog;
-
-#define IPCC_INFO(ctx, x, ...)	\
-	ipc_log_string(ctx, x, ##__VA_ARGS__)
 
 /**
  * struct ipcc_protocol_data - Per-protocol data
@@ -51,7 +42,6 @@ struct ipcc_protocol_data {
 	struct device *dev;
 	int num_chans;
 	int irq;
-	void *ilc;
 };
 
 /**
@@ -98,7 +88,7 @@ static irqreturn_t qcom_ipcc_irq_fn(int irq, void *data)
 
 		virq = irq_find_mapping(proto_data->irq_domain, packed_id);
 
-		IPCC_INFO(ipcc_ipclog,
+		dev_dbg(proto_data->dev,
 			"IRQ for client_id: %u; signal_id: %u; virq: %d\n",
 			qcom_ipcc_get_client_id(packed_id),
 			qcom_ipcc_get_signal_id(packed_id), virq);
@@ -121,7 +111,7 @@ static void qcom_ipcc_mask_irq(struct irq_data *irqd)
 
 	proto_data = irq_data_get_irq_chip_data(irqd);
 
-	IPCC_INFO(ipcc_ipclog,
+	dev_dbg(proto_data->dev,
 		"%s: Disabling interrupts for: client_id: %u; signal_id: %u\n",
 		__func__, sender_client_id, sender_signal_id);
 
@@ -137,7 +127,7 @@ static void qcom_ipcc_unmask_irq(struct irq_data *irqd)
 
 	proto_data = irq_data_get_irq_chip_data(irqd);
 
-	IPCC_INFO(ipcc_ipclog,
+	dev_dbg(proto_data->dev,
 		"%s: Enabling interrupts for: client_id: %u; signal_id: %u\n",
 		__func__, sender_client_id, sender_signal_id);
 
@@ -193,7 +183,7 @@ static int qcom_ipcc_mbox_send_data(struct mbox_chan *chan, void *data)
 	struct ipcc_protocol_data *proto_data = ipcc_mbox_chan->proto_data;
 	u32 packed_id;
 
-	IPCC_INFO(ipcc_ipclog,
+	dev_dbg(proto_data->dev,
 		"%s: Generating IRQ for client_id: %u; signal_id: %u\n",
 		__func__, ipcc_mbox_chan->client_id, ipcc_mbox_chan->signal_id);
 
@@ -371,8 +361,6 @@ static int qcom_ipcc_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, proto_data);
-
-	ipcc_ipclog = ipc_log_context_create(IPC_LOG_PAGE_CNT, "ipcc", 0);
 
 	return 0;
 
