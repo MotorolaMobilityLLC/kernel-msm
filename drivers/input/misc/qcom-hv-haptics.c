@@ -370,6 +370,11 @@
 
 #define is_between(val, min, max)	\
 	(((min) <= (max)) && ((min) <= (val)) && ((val) <= (max)))
+/*
+ * rc_clk_cal_count default value if caliration failed and dts not set
+ * this value get from haptics_get_closeloop_lra_period()
+ */
+#define LRA_F0_CAL_COUNT		0x244
 
 enum hap_status_sel {
 	CAL_TLRA_CL_STS = 0x00,
@@ -706,7 +711,7 @@ struct haptics_chip {
 	struct work_struct richtap_erase_work;
 	int16_t pos;
 	atomic_t richtap_mode;
-	bool f0_flag;
+	bool erase_working;
 	uint32_t lower_mv;
 #endif //CONFIG_RICHTAP_FOR_PMIC_ENABLE
 };
@@ -1281,7 +1286,7 @@ static int haptics_get_closeloop_lra_period(
 		chip->config.rc_clk_cal_count = 0;
 	}
 
-	dev_dbg(chip->dev, "OL_TLRA %u us, CL_TLRA %u us, RC_CLK_CAL_COUNT %#x\n",
+	dev_info(chip->dev, "OL_TLRA %u us, CL_TLRA %u us, RC_CLK_CAL_COUNT %#x\n",
 		chip->config.t_lra_us, chip->config.cl_t_lra_us,
 		chip->config.rc_clk_cal_count);
 	return 0;
@@ -3504,7 +3509,6 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 
 					if (num_rt >= num_val) {
 						samples_left = (u32)num_val;
-						samples_left -= (samples_left % HAP_PTN_FIFO_DIN_NUM);
 						memcpy(&chip->rtp_ptr[pos],
 								&chip->current_buf->data[chip->pos],
 								samples_left);
@@ -3545,7 +3549,8 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				}
 			}
 
-			if (chip->current_buf->status != MMAP_BUF_DATA_VALID) {
+			if (chip->current_buf->status != MMAP_BUF_DATA_VALID && chip->erase_working) {
+				chip->erase_working = false;
 				schedule_work(&chip->richtap_erase_work);
 				dev_info(chip->dev, "richtap stream mode is done\n");
 			}
@@ -5828,6 +5833,7 @@ static int haptics_probe(struct platform_device *pdev)
 	struct input_dev *input_dev;
 	struct ff_device *ff_dev;
 	int rc, count;
+	u32 t_lra_us_min, t_lra_us_max, f0_cal_count;
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -5983,6 +5989,52 @@ static int haptics_probe(struct platform_device *pdev)
 	rc = haptics_create_debugfs(chip);
 	if (rc < 0)
 		dev_err(chip->dev, "Creating debugfs failed, rc=%d\n", rc);
+
+	if (of_property_read_bool(chip->dev->of_node, "moto,cal_again")) {
+		dev_err(chip->dev, "In XBL cal F0 is %d Hz\n", (USEC_PER_SEC / chip->config.cl_t_lra_us));
+		rc = of_property_read_u32(chip->dev->of_node, "moto,lra-period-us-min", &t_lra_us_min);
+		if (rc < 0) {
+			dev_err(chip->dev, "Read T-LRA-min failed, rc=%d\n", rc);
+			goto continue_on;
+		}
+		rc = of_property_read_u32(chip->dev->of_node, "moto,lra-period-us-max", &t_lra_us_max);
+		if (rc < 0) {
+			dev_err(chip->dev, "Read T-LRA-max failed, rc=%d\n", rc);
+			goto continue_on;
+		}
+		/* If calibration failed in XBL,will be calibrate again */
+		if (chip->config.cl_t_lra_us < t_lra_us_min || chip->config.cl_t_lra_us > t_lra_us_max) {
+			dev_err(chip->dev, "The start up cal fail, cal again in kernel\n");
+			rc = haptics_start_lra_calibrate(chip);
+			if (rc < 0) {
+				dev_err(chip->dev, "Cal again failed in kernel\n");
+				goto continue_on;
+			}
+			dev_err(chip->dev, "Latest cal F0 is %d Hz\n", (USEC_PER_SEC / chip->config.cl_t_lra_us));
+
+			/* If cal failed in kernel, force set manual freq */
+			if (chip->config.cl_t_lra_us < t_lra_us_min || chip->config.cl_t_lra_us > t_lra_us_max) {
+				rc = of_property_read_u32(chip->dev->of_node, "moto,lra-period-cal-count", &f0_cal_count);
+				if (rc < 0) {
+					dev_err(chip->dev, "Read cal-count failed, rc=%d\n", rc);
+					f0_cal_count = LRA_F0_CAL_COUNT;
+				}
+				dev_err(chip->dev, "Failure of all cal, set manual freq to %dHz, f0_count to %d\n",
+						USEC_PER_SEC / chip->config.t_lra_us, f0_cal_count);
+
+				chip->config.cl_t_lra_us = chip->config.t_lra_us;
+				chip->config.rc_clk_cal_count = f0_cal_count;
+				rc = haptics_config_openloop_lra_period(chip, chip->config.cl_t_lra_us);
+				if (rc < 0)
+					dev_err(chip->dev, "Config manual freq failed, rc=%d\n", rc);
+				rc = haptics_set_manual_rc_clk_cal(chip);
+				if (rc < 0)
+					dev_err(chip->dev, "Config manual cal count failed, rc=%d\n", rc);
+			}
+		}
+	}
+
+continue_on:
 	return 0;
 
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
