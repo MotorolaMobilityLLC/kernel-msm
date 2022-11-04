@@ -686,7 +686,7 @@ struct haptics_chip {
 	struct work_struct richtap_erase_work;
 	int16_t pos;
 	atomic_t richtap_mode;
-	bool f0_flag;
+	bool erase_working;
 	uint32_t lower_mv;
 #endif //CONFIG_RICHTAP_FOR_PMIC_ENABLE
 };
@@ -1252,7 +1252,7 @@ static int haptics_get_closeloop_lra_period(
 		return -EINVAL;
 	}
 
-	dev_dbg(chip->dev, "OL_TLRA %u us, CL_TLRA %u us, RC_CLK_CAL_COUNT %#x\n",
+	dev_info(chip->dev, "OL_TLRA %u us, CL_TLRA %u us, RC_CLK_CAL_COUNT %#x\n",
 		chip->config.t_lra_us, chip->config.cl_t_lra_us,
 		chip->config.rc_clk_cal_count);
 	return 0;
@@ -3367,7 +3367,6 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 
 					if (num_rt >= num_val) {
 						samples_left = (u32)num_val;
-						samples_left -= (samples_left % HAP_PTN_FIFO_DIN_NUM);
 						memcpy(&chip->rtp_ptr[pos],
 								&chip->current_buf->data[chip->pos],
 								samples_left);
@@ -3408,7 +3407,8 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				}
 			}
 
-			if (chip->current_buf->status != MMAP_BUF_DATA_VALID) {
+			if (chip->current_buf->status != MMAP_BUF_DATA_VALID && chip->erase_working) {
+				chip->erase_working = false;
 				schedule_work(&chip->richtap_erase_work);
 				dev_info(chip->dev, "richtap stream mode is done\n");
 			}
@@ -5866,6 +5866,7 @@ static void richtap_work_proc(struct work_struct *work)
 	cancel_work_sync(&chip->richtap_erase_work);
 	richtap_rc_clk_disable(chip);
 	atomic_set(&chip->richtap_mode, true);
+	chip->erase_working = true;
 
 	while ((count--) && (chip->start_buf->status != MMAP_BUF_DATA_VALID))
 		usleep_range(1000, 1001);
