@@ -1812,7 +1812,7 @@ static int adc5_gen3_freeze(struct device *dev)
 
 	mutex_lock(&adc->lock);
 
-	for (i = 0; i < adc->num_sdams; i++)
+	for (i = 0; i < adc->num_interrupts; i++)
 		devm_free_irq(dev, adc->base[i].irq, adc);
 
 	mutex_unlock(&adc->lock);
@@ -1826,7 +1826,7 @@ static int adc5_gen3_restore(struct device *dev)
 	int i = 0;
 	int ret = 0;
 
-	for (i = 0; i < adc->num_sdams; i++) {
+	for (i = 0; i < adc->num_interrupts; i++) {
 		ret = devm_request_irq(dev, adc->base[i].irq, adc5_gen3_isr,
 				0, adc->base[i].irq_name, adc);
 		if (ret < 0)
