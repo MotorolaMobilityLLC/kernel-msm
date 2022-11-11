@@ -195,6 +195,7 @@ struct qusb_phy {
 	bool			is_gpio_active_low;
 	int			notifier_irq;
 	bool			is_port_valid;
+	bool			dcp_charger;
 
 	/* debugfs entries */
 	struct dentry		*root;
@@ -1514,13 +1515,14 @@ static void qusb_phy_port_state_work(struct work_struct *w)
 		if (status) {
 			qusb_phy_notify_charger(qphy,
 						POWER_SUPPLY_TYPE_USB_DCP);
+			qphy->dcp_charger = true;
 		} else {
 			qusb_phy_notify_charger(qphy,
 						POWER_SUPPLY_TYPE_USB_CDP);
+			qusb_phy_unprepare_chg_det(qphy);
 			qusb_phy_notify_extcon(qphy, EXTCON_USB, 1);
 		}
 
-		qusb_phy_unprepare_chg_det(qphy);
 		qphy->port_state = PORT_CHG_DET_DONE;
 		/*
 		 * Fall through to check if cable got disconnected
@@ -1528,6 +1530,10 @@ static void qusb_phy_port_state_work(struct work_struct *w)
 		 */
 	case PORT_CHG_DET_DONE:
 		if (!vbus_active) {
+			if (qphy->dcp_charger) {
+				qphy->dcp_charger = false;
+				qusb_phy_unprepare_chg_det(qphy);
+			}
 			qphy->port_state = PORT_UNKNOWN;
 			qusb_phy_notify_extcon(qphy, EXTCON_USB, 0);
 		}
