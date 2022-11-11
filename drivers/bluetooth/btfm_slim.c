@@ -145,7 +145,7 @@ int btfm_slim_enable_ch(struct btfmslim *btfmslim, struct btfmslim_ch *ch,
 	if (!btfmslim || !ch)
 		return -EINVAL;
 
-	BTFMSLIM_DBG("port: %d ch: %d", ch->port, ch->ch);
+	BTFMSLIM_INFO("port: %d ch: %d rxport: %d", ch->port, ch->ch, rxport);
 
 	/* Define the channel with below parameters */
 	prop.prot =  ((rates == 44100) || (rates == 88200)) ?
@@ -162,6 +162,7 @@ int btfm_slim_enable_ch(struct btfmslim *btfmslim, struct btfmslim_ch *ch,
 	 *	2. 44.1k, 88.2k rxports
 	 */
 	if (((rates == 8000 && btfm_feedback_ch_setting && rxport == 0) ||
+                (rates == 48000 && rxport == 0) ||
 		(rxport == 1 && (rates == 44100 || rates == 88200))) &&
 		btfm_slim_is_sb_reset_needed(chipset_ver)) {
 
