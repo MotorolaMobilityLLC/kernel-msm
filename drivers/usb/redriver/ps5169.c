@@ -165,6 +165,8 @@ struct ps5169_redriver {
 	enum operation_mode	op_mode;
 	int			orientation_gpio;
 
+	int			enable_gpio;
+
 	struct work_struct	pullup_work;
 	bool			work_ongoing;
 
@@ -189,46 +191,17 @@ static int ps5169_config_seqs_init(struct ps5169_redriver *ps5169);
 
 static int ps5169_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 {
-	struct pinctrl *pinctrl;
-	struct pinctrl_state *state;
-	const char *pinctrl_name;
-	int ret;
-
-	pinctrl = devm_pinctrl_get(ps5169->dev);
-	if (IS_ERR_OR_NULL(pinctrl)) {
-		dev_err(ps5169->dev, "Failed to get pinctrl\n");
+	if (!gpio_is_valid(ps5169->enable_gpio)) {
+		dev_err(ps5169->dev, "%s: Invalid enable_gpio: %d\n", __func__,
+				ps5169->enable_gpio);
 		return -EINVAL;
 	}
 
-	if (en)
-		pinctrl_name = "enable_gpio";
-	else
-		pinctrl_name = "disable_gpio";
-
-
-	state = pinctrl_lookup_state(pinctrl, pinctrl_name);
-	if (IS_ERR_OR_NULL(state)) {
-		dev_err(ps5169->dev, "fail to get %s state\n", pinctrl_name);
-		ret = -ENODEV;
-		goto put_pinctrl;
-	}
-
-	ret = pinctrl_select_state(pinctrl, state);
-	if (ret) {
-		dev_err(ps5169->dev, "fail to set %s state\n", pinctrl_name);
-		ret = -EINVAL;
-		goto put_pinctrl;
-	}
-
+	gpio_set_value(ps5169->enable_gpio, en);
 	if (en)
 		mdelay(10);
 
-	ret = 0;
-
-put_pinctrl:
-	devm_pinctrl_put(pinctrl);
-
-	return ret;
+	return 0;
 }
 
 static int ps5169_get_orientation(struct usb_redriver *r)
@@ -400,25 +373,38 @@ static int ps5169_host_powercycle(struct usb_redriver *r)
 	return 0;
 }
 
-static void ps5169_redriver_orientation_gpio_init(
-	struct ps5169_redriver *ps5169)
+static void ps5169_redriver_gpio_init(struct ps5169_redriver *ps5169)
 {
 	struct device *dev = ps5169->dev;
 	int rc;
 
 	ps5169->orientation_gpio = of_get_named_gpio(dev->of_node, "redriver,orientation-gpio", 0);
 	if (!gpio_is_valid(ps5169->orientation_gpio)) {
-		dev_err(dev, "Failed to get gpio\n");
+		dev_err(dev, "Failed to get orientation gpio\n");
 		return;
 	}
 
 	rc = devm_gpio_request(dev, ps5169->orientation_gpio, "redriver-orientation-gpio");
 	if (rc < 0) {
-		dev_err(dev, "Failed to request gpio\n");
+		dev_err(dev, "Failed to request orientation gpio\n");
 		ps5169->orientation_gpio = -EINVAL;
 		return;
 	}
 	ps5169->r.has_orientation = true;
+
+	ps5169->enable_gpio = of_get_named_gpio(dev->of_node, "redriver,enable-gpio", 0);
+	if (!gpio_is_valid(ps5169->enable_gpio)) {
+		dev_err(dev, "Failed to get enable gpio\n");
+		return;
+	}
+
+	rc = devm_gpio_request(dev, ps5169->enable_gpio, "redriver-enable-gpio");
+	if (rc < 0) {
+		dev_err(dev, "Failed to request enable gpio\n");
+		ps5169->enable_gpio = -EINVAL;
+		return;
+	}
+	gpio_direction_output(ps5169->enable_gpio, 0);
 }
 
 static inline int ps5169_redriver_write_reg_bits(struct ps5169_redriver *ps5169,
@@ -886,7 +872,7 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 
 	ps5169->dev = dev;
 	ps5169->client = client;
-	ps5169_redriver_orientation_gpio_init(ps5169);
+	ps5169_redriver_gpio_init(ps5169);
 
 	of_get_property(dev->of_node, "config-seq", &size);
 	if (!size || size % (3 * sizeof(unsigned int))) {
@@ -981,6 +967,16 @@ static int ps5169_i2c_remove(struct i2c_client *client)
 		if (regulator_is_enabled(ps5169->vio))
 			regulator_disable(ps5169->vio);
 		devm_regulator_put(ps5169->vio);
+	}
+
+	if (gpio_is_valid(ps5169->enable_gpio)) {
+		devm_gpio_free(ps5169->dev, ps5169->enable_gpio);
+		ps5169->enable_gpio = -EINVAL;
+	}
+
+	if (gpio_is_valid(ps5169->orientation_gpio)) {
+		devm_gpio_free(ps5169->dev, ps5169->orientation_gpio);
+		ps5169->orientation_gpio = -EINVAL;
 	}
 
 	return 0;
