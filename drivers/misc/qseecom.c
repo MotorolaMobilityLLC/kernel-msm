@@ -1180,9 +1180,9 @@ static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 	scm_resp->result = desc.ret[0];
 	scm_resp->resp_type = desc.ret[1];
 	scm_resp->data = desc.ret[2];
-	pr_debug("svc_id = 0x%x, tz_cmd_id = 0x%x, qseos_cmd_id = 0x%x, smc_id = 0x%x, param_id = 0x%x\n",
+	pr_info("svc_id = 0x%x, tz_cmd_id = 0x%x, qseos_cmd_id = 0x%x, smc_id = 0x%x, param_id = 0x%x\n",
 		svc_id, tz_cmd_id, qseos_cmd_id, smc_id, desc.arginfo);
-	pr_debug("scm_resp->result = 0x%x, scm_resp->resp_type = 0x%x, scm_resp->data = 0x%x\n",
+	pr_info("scm_resp->result = 0x%x, scm_resp->resp_type = 0x%x, scm_resp->data = 0x%x\n",
 		scm_resp->result, scm_resp->resp_type, scm_resp->data);
 	return ret;
 }
