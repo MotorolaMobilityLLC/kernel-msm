@@ -37,6 +37,7 @@
 #define WAN_IOCTL_RMV_OFFLOAD_CONNECTION     19
 #define WAN_IOCTL_GET_WAN_MTU                20
 #define WAN_IOCTL_NOTIFY_NAT_MOVE_RES        21
+#define WAN_IOCTL_NOTIFY_DUAL_BACKHAUL_INFO   22
 
 /* User space may not have this defined. */
 #ifndef IFNAMSIZ
@@ -194,6 +195,10 @@ struct wan_ioctl_query_per_client_stats {
 #define WAN_IOC_ADD_FLT_RULE _IOWR(WAN_IOC_MAGIC, \
 		WAN_IOCTL_ADD_FLT_RULE, \
 		struct ipa_install_fltr_rule_req_msg_v01 *)
+
+#define  WAN_IOC_NOTIFY_DUAL_BACKHAUL_INFO _IOWR(WAN_IOC_MAGIC, \
+		WAN_IOCTL_NOTIFY_DUAL_BACKHAUL_INFO, \
+		struct ipa_eth_backhaul_info_req_msg_v01 *)
 
 #define WAN_IOC_ADD_FLT_RULE_INDEX _IOWR(WAN_IOC_MAGIC, \
 		WAN_IOCTL_ADD_FLT_INDEX, \
