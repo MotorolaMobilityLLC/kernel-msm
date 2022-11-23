@@ -1492,6 +1492,21 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		}
 	}
 
+	/*
+	 * Check for Wireless presence. If Wireless charger is disconnected
+	 * before allowing FW update.
+	 */
+	pst = &bcdev->psy_list[PSY_TYPE_WLS];
+	rc = read_property_id(bcdev, pst, WLS_ONLINE);
+	if (rc < 0)
+		goto out;
+
+	if (pst->prop[WLS_ONLINE]) {
+		pr_err("Do not allow FW update when wireless charger is connected\n");
+		rc = -EINVAL;
+		goto out;
+	}
+
 	rc = firmware_request_nowarn(&fw, bcdev->wls_fw_name, bcdev->dev);
 	if (rc) {
 		pr_err("Couldn't get firmware rc=%d\n", rc);
@@ -1663,12 +1678,18 @@ static ssize_t wireless_fw_update_store(struct class *c,
 	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
 						battery_class);
 	bool val;
-	int rc;
+	int rc = 0, retry = 3;
 
 	if (kstrtobool(buf, &val) || !val)
 		return -EINVAL;
 
-	rc = wireless_fw_update(bcdev, false);
+	do{
+		rc = wireless_fw_update(bcdev, false);
+		if (rc != -ETIMEDOUT)
+			break;
+		retry--;
+	}while(retry);
+
 	if (rc < 0)
 		return rc;
 
