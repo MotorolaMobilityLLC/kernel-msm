@@ -1220,7 +1220,6 @@ void ufshpb_rsp_upiu_toshiba(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 #define KIOXIA_FW_VERSION "1001"
 #define KIOXIA_GEN95_FW_VERSION "0200"
 #define KIOXIA_GEN100_FW_VERSION "0100"
-#define KIOXIA_GEN100_MODEL "THGJFGT1E45BAILB"
 
 static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
 {
@@ -1249,9 +1248,8 @@ static bool ufshpb_is_fw_support_hpb(struct ufs_hba *hba)
 		(strncmp(desc_buf,KIOXIA_GEN95_FW_VERSION,
                 sizeof(KIOXIA_GEN95_FW_VERSION))==0) ||
 		((strncmp(desc_buf,KIOXIA_GEN100_FW_VERSION,
-                sizeof(KIOXIA_GEN100_FW_VERSION))==0) &&
-			strncmp(dev_info->model,KIOXIA_GEN100_MODEL,
-			sizeof(KIOXIA_GEN100_MODEL))==0))
+                sizeof(KIOXIA_GEN100_FW_VERSION))==0)
+		))
 		ret_val = true;
 	pr_info("UFSHPB: FW %s, model %s\n",desc_buf, dev_info->model);
 out:
