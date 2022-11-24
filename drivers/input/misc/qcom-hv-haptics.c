@@ -6230,6 +6230,7 @@ static int haptics_probe(struct platform_device *pdev)
 	struct input_dev *input_dev;
 	struct ff_device *ff_dev;
 	int rc, count;
+	u32 t_lra_us_min, t_lra_us_max;
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -6275,6 +6276,35 @@ static int haptics_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (of_property_read_bool(chip->dev->of_node, "moto,cal_again")) {
+		dev_info(chip->dev, "In XBL cal F0 is %d Hz\n", (USEC_PER_SEC / chip->config.cl_t_lra_us));
+		rc = of_property_read_u32(chip->dev->of_node, "moto,lra-period-us-min", &t_lra_us_min);
+		if (rc < 0) {
+			dev_err(chip->dev, "Read T-LRA-min failed, rc=%d\n", rc);
+			goto continue_on;
+		}
+		rc = of_property_read_u32(chip->dev->of_node, "moto,lra-period-us-max", &t_lra_us_max);
+		if (rc < 0) {
+			dev_err(chip->dev, "Read T-LRA-max failed, rc=%d\n", rc);
+			goto continue_on;
+		}
+		/* If calibration failed in XBL,will be calibrate again */
+		if (chip->config.cl_t_lra_us < t_lra_us_min || chip->config.cl_t_lra_us > t_lra_us_max) {
+			dev_err(chip->dev, "The start up cal fail, cal again in kernel\n");
+			rc = haptics_start_lra_calibrate(chip);
+			if (rc < 0) {
+				dev_err(chip->dev, "Cal again failed in kernel\n");
+				goto continue_on;
+			}
+			dev_info(chip->dev, "Latest cal F0 is %d Hz\n", (USEC_PER_SEC / chip->config.cl_t_lra_us));
+			if (chip->config.cl_t_lra_us < t_lra_us_min || chip->config.cl_t_lra_us > t_lra_us_max) {
+				chip->config.cl_t_lra_us = chip->config.t_lra_us;
+				haptics_config_openloop_lra_period(chip, chip->config.cl_t_lra_us);
+			}
+		}
+	}
+
+continue_on:
 	rc = devm_request_threaded_irq(chip->dev, chip->fifo_empty_irq,
 			NULL, fifo_empty_irq_handler,
 			IRQF_ONESHOT, "fifo-empty", chip);
