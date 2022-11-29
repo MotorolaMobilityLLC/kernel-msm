@@ -425,6 +425,7 @@
   strlen
   strncmp
   strncpy
+  strscpy_pad
   __sw_hweight32
   __sw_hweight64
   synchronize_irq
@@ -660,6 +661,7 @@
   of_usb_get_phy_mode
   phy_pm_runtime_get_sync
   phy_pm_runtime_put_sync
+  platform_device_add_data
   platform_get_irq_byname_optional
   pm_runtime_barrier
   system_freezable_wq
