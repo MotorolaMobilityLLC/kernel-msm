@@ -21,7 +21,7 @@
 
 #include "qrtr.h"
 
-#define QRTR_LOG_PAGE_CNT 4
+#define QRTR_LOG_PAGE_CNT 128
 #ifdef CONFIG_SUSPEND_DEBUG_MODULE
 int qrtr_first_msg = 0;
 EXPORT_SYMBOL_GPL(qrtr_first_msg);
