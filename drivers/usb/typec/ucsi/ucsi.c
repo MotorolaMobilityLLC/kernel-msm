@@ -739,6 +739,8 @@ static int ucsi_dr_swap(struct typec_port *port, enum typec_data_role role)
 	     role == TYPEC_HOST))
 		goto out_unlock;
 
+	reinit_completion(&con->complete);
+
 	UCSI_CMD_SET_UOR(ctrl, con, role);
 	ret = ucsi_role_cmd(con, &ctrl);
 	if (ret < 0)
@@ -773,6 +775,8 @@ static int ucsi_pr_swap(struct typec_port *port, enum typec_role role)
 
 	if (con->status.pwr_dir == role)
 		goto out_unlock;
+
+	reinit_completion(&con->complete);
 
 	UCSI_CMD_SET_PDR(ctrl, con, role);
 	ret = ucsi_role_cmd(con, &ctrl);
