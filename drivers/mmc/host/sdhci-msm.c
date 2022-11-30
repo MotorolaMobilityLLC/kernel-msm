@@ -3888,6 +3888,17 @@ static const struct sdhci_pltfm_data sdhci_msm_pdata = {
 	.ops = &sdhci_msm_ops,
 };
 
+static const struct sdhci_pltfm_data sdhci_msm_sdcard_pdata = {
+	.quirks = SDHCI_QUIRK_BROKEN_CARD_DETECTION |
+		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
+		  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
+		  SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12 |
+		  SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+
+	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
+	.ops = &sdhci_msm_ops,
+};
+
 static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 		struct sdhci_host *host)
 {
@@ -4590,7 +4601,13 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	struct mmc_pwrseq *pwrseq_scale;
 #endif
 
-	host = sdhci_pltfm_init(pdev, &sdhci_msm_pdata, sizeof(*msm_host));
+	if (device_property_read_bool(dev, "non-removable")) {
+		pr_info("Emmc config sdhci_msm_pdata\n");
+		host = sdhci_pltfm_init(pdev, &sdhci_msm_pdata, sizeof(*msm_host));
+	} else {
+		pr_info("SdCard config sdhci_msm_sdcard_pdata\n");
+		host = sdhci_pltfm_init(pdev, &sdhci_msm_sdcard_pdata, sizeof(*msm_host));
+	}
 	if (IS_ERR(host))
 		return PTR_ERR(host);
 
@@ -4907,6 +4924,11 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		ret = sdhci_add_host(host);
 	if (ret)
 		goto pm_runtime_disable;
+
+	if (mmc_card_is_removable(msm_host->mmc)) {
+		msm_host->mmc->max_busy_timeout = 270000;
+		pr_info("set sdcard max_busy_timeout %ds\n", msm_host->mmc->max_busy_timeout / 1000);
+	}
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
 	pwrseq_scale = kzalloc(sizeof(struct mmc_pwrseq), GFP_KERNEL);
