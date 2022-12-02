@@ -201,7 +201,9 @@ static void register_kernel_sections(void)
 	char *rodata_name = "KROAIDATA";
 	size_t static_size;
 	void __percpu *base;
+#ifdef QCOM_DESIGN
 	unsigned int cpu;
+#endif
 	void *_sdata, *__bss_stop;
 	void *start_ro, *end_ro;
 
@@ -226,6 +228,7 @@ static void register_kernel_sections(void)
 	if (msm_minidump_add_region(&ksec_entry) < 0)
 		pr_err("Failed to add rodata section in Minidump\n");
 
+#ifdef QCOM_DESIGN
 	/* Add percpu static sections */
 	for_each_possible_cpu(cpu) {
 		void *start = per_cpu_ptr(base, cpu);
@@ -239,6 +242,7 @@ static void register_kernel_sections(void)
 		if (msm_minidump_add_region(&ksec_entry) < 0)
 			pr_err("Failed to add percpu sections in Minidump\n");
 	}
+#endif
 }
 
 static inline bool in_stack_range(
@@ -569,7 +573,7 @@ static void register_suspend_context(void)
 }
 #endif
 
-#ifdef CONFIG_ARM64
+#if defined(CONFIG_ARM64) && defined(QCOM_DESIGN)
 static void register_irq_stack(void)
 {
 	int cpu;
