@@ -27,6 +27,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/interconnect.h>
+#include <linux/iopoll.h>
 
 #include "ep_pcie_com.h"
 #include <asm/dma-iommu.h>
@@ -46,6 +47,9 @@
 #define ICC_AVG_BW				500
 #define ICC_PEAK_BW				800
 #define PERST_RAW_RESET_STATUS			BIT(11)
+#define PCIE_PME_COUNT				2
+#define PCIE_PME_SLEEP_DELAY_US		10000
+#define PCIE_PME_RESEND_DELAY_US		100000
 
 /* debug mask sys interface */
 static int ep_pcie_debug_mask;
@@ -120,6 +124,7 @@ static const struct ep_pcie_irq_info_t ep_pcie_irq_info[EP_PCIE_MAX_IRQ] = {
 };
 
 static int ep_pcie_core_wakeup_host_internal(enum ep_pcie_event event);
+static void ep_pcie_core_issue_inband_pme(void);
 
 int ep_pcie_get_debug_mask(void)
 {
@@ -789,6 +794,17 @@ static void ep_pcie_core_init(struct ep_pcie_dev_t *dev, bool configured)
 		/* Set the PMC Register - to support PME in D0/D3hot/D3cold */
 		ep_pcie_write_mask(dev->dm_core + PCIE20_CAP_ID_NXT_PTR, 0,
 						BIT(31)|BIT(30)|BIT(27));
+
+		if (dev->pme_in_wake_from_d3cold && dev->pme_en_d3) {
+			/*
+			 * PME_ENABLE is cleared after d3cold state if
+			 * retention flops are not present in the target.
+			 * Set PME_ENABLE, if it is seen as set during
+			 * d3hot to send PME message
+			 */
+			ep_pcie_write_mask(dev->dm_core + PCIE20_CON_STATUS, 0, PCIE20_MASK_PME_EN);
+			dev->pme_en_d3 = false;
+		}
 
 		/* Set the Endpoint L0s Acceptable Latency to 1us (max) */
 		ep_pcie_write_reg_field(dev->dm_core,
@@ -1675,6 +1691,46 @@ static void ep_pcie_core_toggle_wake_gpio(bool is_on)
 
 }
 
+static void ep_pcie_core_issue_pme_for_wake_from_d3cold(void)
+{
+	struct ep_pcie_dev_t *dev = &ep_pcie_dev;
+	u32 pme_count = 0, pme_reg;
+	bool pme_en, pme_status;
+
+	pme_reg = readl_relaxed(dev->dm_core + PCIE20_CON_STATUS);
+	pme_en = pme_reg & PCIE20_MASK_PME_EN;
+	pme_status = pme_reg & PCIE20_MASK_PME_STATUS;
+
+	EP_PCIE_INFO(dev, "PCIe V%d: pme_reg: 0x%x, pme_en: %d, pme_status: %d\n",
+			dev->rev, pme_reg, pme_en, pme_status);
+
+	if (pme_en) {
+		do {
+			/* Sending PME for device initiated d3_cold exit */
+			ep_pcie_core_issue_inband_pme();
+			/*Polling for pme_status to be 0 for 100ms*/
+			readx_poll_timeout(readl_relaxed, dev->dm_core + PCIE20_CON_STATUS, pme_reg,
+				!(pme_reg & PCIE20_MASK_PME_STATUS), PCIE_PME_SLEEP_DELAY_US,
+				PCIE_PME_RESEND_DELAY_US);
+
+			pme_status = pme_reg & PCIE20_MASK_PME_STATUS;
+			EP_PCIE_DBG(dev, "PCIe V%d: pme_status:%d\n", dev->rev, pme_status);
+
+			pme_count++;
+
+			if (!pme_status)
+				break;
+
+		} while (pme_count < PCIE_PME_COUNT);
+
+		if (pme_status && pme_count == PCIE_PME_COUNT) {
+			EP_PCIE_INFO(dev,
+			"PCIe V%d: Host failed to acknowledge PME for device-initiated wake\n",
+			dev->rev);
+		}
+	}
+}
+
 int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 {
 	int ret = 0;
@@ -1949,6 +2005,16 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 		EP_PCIE_INFO(dev,
 			"PCIe V%d: link initialized for LE PCIe endpoint\n",
 			dev->rev);
+	}
+
+	if (dev->pme_in_wake_from_d3cold && dev->wake_from_d3cold) {
+		/*
+		 *  Sending PME after link training for device
+		 *  initiated D3cold to D0 transition, based on
+		 *  PCIe specification
+		 */
+		ep_pcie_core_issue_pme_for_wake_from_d3cold();
+		dev->wake_from_d3cold = false;
 	}
 
 checkbme:
@@ -2276,6 +2342,9 @@ static irqreturn_t ep_pcie_handle_dstate_change_irq(int irq, void *data)
 			"PCIe V%d: No. %ld change to D3 state\n",
 			dev->rev, dev->d3_counter);
 		ep_pcie_write_mask(dev->parf + PCIE20_PARF_PM_CTRL, 0, BIT(1));
+
+		dev->pme_en_d3 = readl_relaxed(dev->dm_core +
+						PCIE20_CON_STATUS) & PCIE20_MASK_PME_EN;
 
 		if (dev->enumerated)
 			ep_pcie_notify_event(dev, EP_PCIE_EVENT_PM_D3_HOT);
@@ -3147,6 +3216,13 @@ static int ep_pcie_core_wakeup_host_internal(enum ep_pcie_event event)
 	if (!atomic_read(&dev->perst_deast)) {
 		/*D3 cold handling*/
 		ep_pcie_core_toggle_wake_gpio(true);
+		if (dev->pme_in_wake_from_d3cold) {
+			/*
+			 * Set below flag for device initiated
+			 * d3cold wake to send PME message
+			 */
+			dev->wake_from_d3cold = true;
+		}
 	} else if (dev->l23_ready) {
 		EP_PCIE_ERR(dev,
 			"PCIe V%d: request to assert WAKE# when in D3hot\n",
@@ -3422,6 +3498,13 @@ static int ep_pcie_probe(struct platform_device *pdev)
 	EP_PCIE_DBG(&ep_pcie_dev,
 	"PCIe V%d: PME during reboot/panic (in D3hot) is %s needed\n",
 	ep_pcie_dev.rev, ep_pcie_dev.avoid_reboot_in_d3hot ? "" : "not");
+
+	ep_pcie_dev.pme_in_wake_from_d3cold =
+		of_property_read_bool((&pdev->dev)->of_node,
+				"qcom,pme-in-wake-from-d3cold");
+	EP_PCIE_DBG(&ep_pcie_dev,
+	"PCIe V%d: PME is%s sent during wake from d3cold\n",
+	ep_pcie_dev.rev, ep_pcie_dev.pme_in_wake_from_d3cold ? "" : " not");
 
 	ret = of_property_read_u32((&pdev->dev)->of_node,
 				"qcom,mhi-soc-reset-offset",
