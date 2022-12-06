@@ -29,6 +29,7 @@
   blkdev_issue_flush
   blkdev_put
   blk_finish_plug
+  blk_mq_queue_inflight
   blk_queue_flag_clear
   blk_queue_flag_set
   blk_queue_io_min
@@ -133,6 +134,7 @@
   init_wait_entry
   __init_waitqueue_head
   io_schedule
+  iov_iter_advance
   ip6_local_out
   ip6_route_me_harder
   ip_local_deliver
