@@ -529,9 +529,9 @@ int ax_check_ether_addr(struct ax_device *axdev);
 int ax_get_mac_pass(struct ax_device *axdev, u8 *mac);
 void ax_set_tx_qlen(struct ax_device *dev);
 
-inline void *__rx_buf_align(void *data);
-inline void *__tx_buf_align(void *data, u8 tx_align_len);
-inline struct net_device_stats *ax_get_stats(struct net_device *dev);
+void *__rx_buf_align(void *data);
+void *__tx_buf_align(void *data, u8 tx_align_len);
+struct net_device_stats *ax_get_stats(struct net_device *dev);
 void ax_write_bulk_callback(struct urb *urb);
 
 void ax_get_drvinfo(struct net_device *net, struct ethtool_drvinfo *info);
