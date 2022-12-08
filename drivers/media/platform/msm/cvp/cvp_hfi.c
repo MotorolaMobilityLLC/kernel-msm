@@ -2931,6 +2931,7 @@ skip_power_off:
 	dprintk(CVP_WARN, "Skip PC(%#x, %#x, %#x)\n",
 		wfi_status, idle_status, pc_ready);
 	__flush_debug_queue(device, device->raw_packet);
+	__dsp_resume(device, 0);
 	return -EAGAIN;
 }
 
