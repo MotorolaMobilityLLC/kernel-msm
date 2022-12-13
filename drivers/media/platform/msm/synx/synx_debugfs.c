@@ -66,12 +66,12 @@ static ssize_t synx_table_read(struct file *file,
 	if (columns & STATE_COLUMN)
 		cur += scnprintf(cur, end - cur, "|  Status  |");
 	cur += scnprintf(cur, end - cur, "\n");
-	for (i = 0; i < SYNX_MAX_OBJS; i++) {
+	for (i = 1; i < SYNX_MAX_OBJS; i++) {
 		row = &dev->synx_table[i];
 
 		index = row->index;
 		if (!index) {
-			pr_warn("synx obj at %d invalid\n", index);
+			pr_debug("synx obj at %d invalid\n", index);
 			continue;
 		}
 		mutex_lock(&dev->row_locks[index]);
