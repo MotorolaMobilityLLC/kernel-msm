@@ -4044,6 +4044,7 @@ skip_update:
 	if (mdwc->resume_pending) {
 		dwc3_msm_resume(mdwc);
 		mdwc->resume_pending = false;
+		dev_dbg(mdwc->dev, "%s: set resume_pending to false\n", __func__);
 	}
 
 	if (atomic_read(&mdwc->pm_suspended)) {
@@ -4150,6 +4151,10 @@ static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 		/* set this to call dwc3_msm_resume() */
 		mdwc->resume_pending = true;
 		return IRQ_WAKE_THREAD;
+	} else {
+		/* don't set this to call dwc3_msm_resume()when exit LPM */
+		dev_dbg(mdwc->dev, "%s resume_pending=%d, clean resume_pending\n", __func__, mdwc->resume_pending);
+		mdwc->resume_pending = false;
 	}
 
 	dwc3_pwr_event_handler(mdwc);
