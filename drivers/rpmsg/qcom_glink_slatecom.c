@@ -29,7 +29,7 @@
 #include "rpmsg_internal.h"
 #include "qcom_glink_native.h"
 
-#define GLINK_LOG_PAGE_CNT	2
+#define GLINK_LOG_PAGE_CNT	32
 #define GLINK_INFO(ctxt, x, ...)					       \
 	ipc_log_string(ctxt->ilc, "[%s]: "x, __func__, ##__VA_ARGS__)
 
@@ -50,7 +50,7 @@ do {									       \
 #define SLATECOM_ALIGNMENT	16
 #define TX_BLOCKED_CMD_RESERVE	16
 #define DEFAULT_FIFO_SIZE	1024
-#define SHORT_SIZE		16
+#define SHORT_SIZE		96
 #define XPRT_ALIGNMENT		4
 
 #define ACTIVE_TX		BIT(0)
@@ -488,23 +488,31 @@ static void glink_slatecom_tx_write(struct glink_slatecom *glink,
 					void *data, size_t dlen)
 {
 	int ret;
+	static uint32_t tx_short_cnt;
 
 	/* packet tx_counter 12 to 15 bytes: field "param4" in "glink_slatecom_msg"
 	 * is available to use Hence, using this (Last 4 bytes) field for tx_counter.
 	 */
 
-	*(uint32_t *)(data + 12) = ++(glink->tx_counter);
+	if (*(uint8_t *)(data) != SLATECOM_CMD_TX_SHORT_DATA)
+		*(uint32_t *)(data + 12) = ++(glink->tx_counter);
+	else
+		tx_short_cnt = tx_short_cnt + 1;
 
 	if (dlen) {
 		ret = glink_slatecom_tx_write_one(glink, data, dlen);
 
 		if (ret < 0) {
 			GLINK_ERR(glink, "Error %d writing tx data\n", ret);
-			glink->tx_counter = glink->tx_counter - 1;
+			if (*(uint8_t *)(data) != SLATECOM_CMD_TX_SHORT_DATA)
+				glink->tx_counter = glink->tx_counter - 1;
+			else
+				tx_short_cnt = tx_short_cnt - 1;
 			return;
 		}
 	}
-	GLINK_INFO(glink, "Packet tx_counter = %d\n", glink->tx_counter);
+	GLINK_INFO(glink, "Packet tx_counter = %d, tx_short_cnt = %d\n",
+				glink->tx_counter, tx_short_cnt);
 }
 
 static void glink_slatecom_send_read_notify(struct glink_slatecom *glink)
@@ -759,32 +767,51 @@ static int glink_slatecom_send_final(struct glink_slatecom_channel *channel,
 {
 	int rc;
 	struct glink_slatecom *glink = channel->glink;
+	u32 command_size = 0;
+
 	struct {
 		struct glink_slatecom_msg msg;
 		__le32 chunk_size;
 		__le32 left_size;
 		uint64_t addr;
-	} __packed req;
+	} __packed req_data;
 
-	memset(&req, 0, sizeof(req));
+	struct {
+		struct glink_slatecom_msg msg;
+		u8 data[SHORT_SIZE];
+	} __packed req_short;
 
-	CH_INFO(channel, "size:%d, wait:%d\n", len, wait);
+	memset(&req_data, 0, sizeof(req_data));
+	memset(&req_short, 0, sizeof(req_short));
 
-	if (len) {
+	CH_INFO(channel, "[lcid:id][%d:%d]size:%d, wait:%d\n",
+				cpu_to_le16(channel->lcid), cpu_to_le32(intent->id), len, wait);
+
+
+	if ((len <= SHORT_SIZE) && (glink->features & GLINK_FEATURE_SHORT_CMD)) {
+		req_short.msg.cmd = cpu_to_le16(SLATECOM_CMD_TX_SHORT_DATA);
+		req_short.msg.param1 = cpu_to_le16(channel->lcid);
+		req_short.msg.param2 = cpu_to_le32(intent->id);
+		req_short.msg.param3 = cpu_to_le32(len);
+		req_short.msg.param4 = cpu_to_be32(0);
+		memcpy(req_short.data, data, len);
+		command_size += (sizeof(req_short.msg) + ALIGN(len, XPRT_ALIGNMENT)) / WORD_SIZE;
+	} else {
 		if (intent->offset)
-			req.msg.cmd = cpu_to_le16(SLATECOM_CMD_TX_DATA_CONT);
+			req_data.msg.cmd = cpu_to_le16(SLATECOM_CMD_TX_DATA_CONT);
 		else
-			req.msg.cmd = cpu_to_le16(SLATECOM_CMD_TX_DATA);
+			req_data.msg.cmd = cpu_to_le16(SLATECOM_CMD_TX_DATA);
 
-		req.msg.param1 = cpu_to_le16(channel->lcid);
-		req.msg.param2 = cpu_to_le32(intent->id);
-		req.chunk_size = cpu_to_le32(len);
-		req.left_size = cpu_to_le32(0);
-		req.addr = 0;
+		req_data.msg.param1 = cpu_to_le16(channel->lcid);
+		req_data.msg.param2 = cpu_to_le32(intent->id);
+		req_data.chunk_size = cpu_to_le32(len);
+		req_data.left_size = cpu_to_le32(0);
+		req_data.addr = 0;
+		command_size += sizeof(req_data)/WORD_SIZE;
 	}
 
 	mutex_lock(&glink->tx_lock);
-	while (glink_slatecom_tx_avail(glink) < sizeof(req)/WORD_SIZE) {
+	while (glink_slatecom_tx_avail(glink) < command_size) {
 		if (!wait) {
 			mutex_unlock(&glink->tx_lock);
 			CH_INFO(channel, "failed, please retry size:%d, wait:%d\n", len, wait);
@@ -808,24 +835,29 @@ static int glink_slatecom_send_final(struct glink_slatecom_channel *channel,
 
 		mutex_lock(&glink->tx_lock);
 
-		if (glink_slatecom_tx_avail(glink) >= sizeof(req)/WORD_SIZE)
+		if (glink_slatecom_tx_avail(glink) >= command_size)
 			glink->sent_read_notify = false;
 	}
 
-	do {
-		rc = slatecom_ahb_write_bytes(glink->slatecom_handle,
-					(uint32_t)(size_t)(intent->addr + intent->offset),
-					len, data);
-		if (rc < 0) {
-			GLINK_ERR(glink, "%s: Error %d writing data\n",
+	if (len > SHORT_SIZE) {
+		do {
+			rc = slatecom_ahb_write_bytes(glink->slatecom_handle,
+				(uint32_t)(size_t)(intent->addr + intent->offset),
+				len, data);
+			if (rc < 0) {
+				GLINK_ERR(glink, "%s: Error %d writing data\n",
 							__func__, rc);
-			if (rc == -ECANCELED)
-				usleep_range(TX_WAIT_US, TX_WAIT_US + 1000);
-		}
-	} while (rc == -ECANCELED);
+				if (rc == -ECANCELED)
+					usleep_range(TX_WAIT_US, TX_WAIT_US + 1000);
+			}
+		} while (rc == -ECANCELED);
 
-	intent->offset += len;
-	glink_slatecom_tx_write(glink, &req, sizeof(req));
+		intent->offset += len;
+		glink_slatecom_tx_write(glink, &req_data, sizeof(req_data));
+	} else {
+		glink_slatecom_tx_write(glink, &req_short,
+					   sizeof(req_short.msg) + ALIGN(len, XPRT_ALIGNMENT));
+	}
 
 	mutex_unlock(&glink->tx_lock);
 	return 0;
@@ -1816,21 +1848,31 @@ static int glink_slatecom_rx_short_data(struct glink_slatecom *glink,
 {
 	struct glink_slatecom_rx_intent *intent;
 	struct glink_slatecom_channel *channel;
-	size_t msglen = SHORT_SIZE;
+	size_t msglen = chunk_size;
 	unsigned long flags;
+	static uint32_t rx_short_cnt;
+
+	if (!(glink->features & GLINK_FEATURE_SHORT_CMD)) {
+		dev_err(glink->dev, "Short command feature not supported\n");
+		return msglen;
+	}
 
 	if (avail < msglen) {
-		dev_dbg(glink->dev, "Not enough data in fifo\n");
+		dev_err(glink->dev, "Not enough data in fifo\n");
 		return avail;
 	}
 	mutex_lock(&glink->idr_lock);
 	channel = idr_find(&glink->rcids, rcid);
 	mutex_unlock(&glink->idr_lock);
+
+	rx_short_cnt = rx_short_cnt + 1;
+
 	if (!channel) {
 		dev_dbg(glink->dev, "Data on non-existing channel\n");
 		return msglen;
 	}
-	CH_INFO(channel, "chunk_size:%d left_size:%d\n", chunk_size, left_size);
+	CH_INFO(channel, "[rcid:liid][%d:%d] rx_short_cnt:%d chunk_size:%d left_size:%d\n",
+				rcid, liid, rx_short_cnt, chunk_size, left_size);
 
 	mutex_lock(&channel->intent_lock);
 	intent = idr_find(&channel->liids, liid);
@@ -1987,7 +2029,8 @@ static int glink_slatecom_process_cmd(struct glink_slatecom *glink, void *rx_dat
 	while (offset < rx_size) {
 		if (rx_size - offset < sizeof(struct glink_slatecom_msg)) {
 			ret = -EBADMSG;
-			GLINK_ERR(glink, "%s: Error %d process cmd\n", __func__, ret);
+			GLINK_ERR(glink, "%s: Error %d process cmd for offset:%d rx_size:%d\n",
+					__func__, ret, offset, rx_size);
 			return ret;
 		}
 
@@ -1999,10 +2042,12 @@ static int glink_slatecom_process_cmd(struct glink_slatecom *glink, void *rx_dat
 		param2 = le32_to_cpu(msg->param2);
 		param3 = le32_to_cpu(msg->param3);
 		param4 = le32_to_cpu(msg->param4);
-		glink->rx_counter = glink->rx_counter + 1;
 
-		GLINK_INFO(glink, "Packet count local %d remote %d\n",
-					glink->rx_counter, param3);
+		if (cmd != SLATECOM_CMD_TX_SHORT_DATA) {
+			glink->rx_counter = glink->rx_counter + 1;
+			GLINK_INFO(glink, "Packet count local %d remote %d\n",
+						glink->rx_counter, param3);
+		}
 
 		switch (cmd) {
 		case SLATECOM_CMD_VERSION:
@@ -2046,7 +2091,8 @@ static int glink_slatecom_process_cmd(struct glink_slatecom *glink, void *rx_dat
 						      param3, param4,
 						      rx_data + offset,
 						      rx_size - offset);
-			offset += ALIGN(ret, SLATECOM_ALIGNMENT);
+			/* 4 bytes alignment for short command */
+			offset += ALIGN(ret, XPRT_ALIGNMENT);
 			break;
 		case SLATECOM_CMD_READ_NOTIF:
 			break;
@@ -2346,7 +2392,7 @@ int glink_slatecom_probe(struct platform_device *pdev)
 	if (ret < 0)
 		glink->name = dev->of_node->name;
 
-	glink->features = GLINK_FEATURE_INTENT_REUSE;
+	glink->features = GLINK_FEATURE_INTENT_REUSE | GLINK_FEATURE_SHORT_CMD;
 
 	mutex_init(&glink->tx_lock);
 	mutex_init(&glink->tx_avail_lock);
