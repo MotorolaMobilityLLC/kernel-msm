@@ -5930,6 +5930,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	ret = dwc3_msm_parse_core_params(mdwc, dwc3_node);
+	of_node_put(dwc3_node);
 	if (ret < 0)
 		goto err;
 
