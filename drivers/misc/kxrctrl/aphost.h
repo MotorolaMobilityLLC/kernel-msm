@@ -109,6 +109,7 @@ typedef enum _requestType_t
 	getRightJoyStickProductNameRequest,
 	getLeftJoyStickFwVersionRequest,
 	getRightJoyStickFwVersionRequest,
+	setControllerSleepMode = 12,
 	invalidRequest,
 } requestType_t;
 
