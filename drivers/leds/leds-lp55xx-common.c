@@ -655,21 +655,31 @@ static int lp55xx_parse_logical_led(struct device_node *np,
 }
 
 struct lp55xx_platform_data *lp55xx_of_populate_pdata(struct device *dev,
-						      struct device_node *np,
-						      struct lp55xx_chip *chip)
+				      struct device_node *np,
+				      struct lp55xx_chip *chip)
 {
 	struct device_node *child;
 	struct lp55xx_platform_data *pdata;
 	struct lp55xx_led_config *cfg;
-	int num_channels;
-	int i = 0;
+	struct lp55xx_predef_pattern *pat = NULL;
+	int num_channels = 0;
+	int cfg_num = 0;
+	int num_patterns = 0;
+	int pat_num = 0;
+	int pat_size;
 	int ret;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
 
-	num_channels = of_get_available_child_count(np);
+	for_each_available_child_of_node(np, child) {
+		if (of_property_read_bool(child, "chan-name"))
+			num_channels++;
+		else if (of_property_read_bool(child, "pat-name"))
+			num_patterns++;
+	}
+
 	if (num_channels == 0) {
 		dev_err(dev, "no LED channels\n");
 		return ERR_PTR(-EINVAL);
@@ -679,18 +689,72 @@ struct lp55xx_platform_data *lp55xx_of_populate_pdata(struct device *dev,
 	if (!cfg)
 		return ERR_PTR(-ENOMEM);
 
-	pdata->led_config = &cfg[0];
-	pdata->num_channels = num_channels;
+	if (num_patterns) {
+		pat = devm_kcalloc(dev, num_patterns, sizeof(*pat), GFP_KERNEL);
+		if (!pat)
+			return ERR_PTR(-ENOMEM);
+	}
+
 	cfg->max_channel = chip->cfg->max_channel;
 
 	for_each_available_child_of_node(np, child) {
-		ret = lp55xx_parse_logical_led(child, cfg, i);
-		if (ret) {
-			of_node_put(child);
-			return ERR_PTR(-EINVAL);
+		if (of_property_read_bool(child, "chan-name")) {
+			ret = lp55xx_parse_logical_led(child, cfg, cfg_num);
+			if (ret) {
+				of_node_put(child);
+				return ERR_PTR(-EINVAL);
+			}
+			cfg_num++;
+		} else if (of_property_read_bool(child, "pat-name")) {
+			pat_size = of_property_count_elems_of_size(child,
+							"pat-r",sizeof((*pat[pat_num].r)));
+			if (pat_size <= 0) {
+				pat[pat_num].size_r = 0;
+			} else {
+				char *program = devm_kcalloc(dev, pat_size,
+									sizeof(*(pat[pat_num].r)), GFP_KERNEL);
+				if (!program)
+					return ERR_PTR(-ENOMEM);
+				of_property_read_u8_array(child, "pat-r",program,pat_size);
+				pat[pat_num].r = program;
+				pat[pat_num].size_r = pat_size;
+			}
+
+			pat_size = of_property_count_elems_of_size(child,
+							"pat-g",sizeof((*pat[pat_num].g)));
+			if (pat_size <= 0) {
+				pat[pat_num].size_g = 0;
+			} else {
+				char *program = devm_kcalloc(dev, pat_size,
+									sizeof(*(pat[pat_num].g)), GFP_KERNEL);
+				if (!program)
+					return ERR_PTR(-ENOMEM);
+				of_property_read_u8_array(child,"pat-g",program,pat_size);
+				pat[pat_num].g = program;
+				pat[pat_num].size_g = pat_size;
+			}
+
+			pat_size = of_property_count_elems_of_size(child,
+							"pat-b",sizeof((*pat[pat_num].b)));
+			if (pat_size <= 0) {
+				pat[pat_num].size_b = 0;
+			} else {
+				char *program = devm_kcalloc(dev, pat_size,
+									sizeof(*(pat[pat_num].b)), GFP_KERNEL);
+				if (!program)
+					return ERR_PTR(-ENOMEM);
+				of_property_read_u8_array(child,"pat-b",program,pat_size);
+				pat[pat_num].b = program;
+				pat[pat_num].size_b = pat_size;
+			}
+		pat_num++;
 		}
-		i++;
 	}
+
+	pdata->led_config = &cfg[0];
+	pdata->num_channels = num_channels;
+	pdata->patterns = &pat[0];
+	pdata->num_patterns = num_patterns;
 
 	of_property_read_string(np, "label", &pdata->label);
 	of_property_read_u8(np, "clock-mode", &pdata->clock_mode);
