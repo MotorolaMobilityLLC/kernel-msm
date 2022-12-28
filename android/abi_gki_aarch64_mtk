@@ -1562,6 +1562,7 @@
   register_shrinker
   register_syscore_ops
   register_sysctl_table
+  register_tracepoint_module_notifier
   register_virtio_device
   register_virtio_driver
   regmap_bulk_read
@@ -1962,6 +1963,7 @@
   __traceiter_android_rvh_override_creds
   __traceiter_android_rvh_prepare_prio_fork
   __traceiter_android_rvh_revert_creds
+  __traceiter_android_rvh_rmqueue_bulk
   __traceiter_android_rvh_rtmutex_prepare_setprio
   __traceiter_android_rvh_rto_next_cpu
   __traceiter_android_rvh_sched_newidle_balance
@@ -2038,6 +2040,7 @@
   __tracepoint_android_rvh_override_creds
   __tracepoint_android_rvh_prepare_prio_fork
   __tracepoint_android_rvh_revert_creds
+  __tracepoint_android_rvh_rmqueue_bulk
   __tracepoint_android_rvh_rtmutex_prepare_setprio
   __tracepoint_android_rvh_rto_next_cpu
   __tracepoint_android_rvh_sched_newidle_balance

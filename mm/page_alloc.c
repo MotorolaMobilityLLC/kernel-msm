@@ -479,8 +479,12 @@ unsigned long __get_pfnblock_flags_mask(const struct page *page,
 	bitidx = pfn_to_bitidx(page, pfn);
 	word_bitidx = bitidx / BITS_PER_LONG;
 	bitidx &= (BITS_PER_LONG-1);
-
-	word = bitmap[word_bitidx];
+	/*
+	 * This races, without locks, with set_pfnblock_flags_mask(). Ensure
+	 * a consistent read of the memory array, so that results, even though
+	 * racy, are not corrupted.
+	 */
+	word = READ_ONCE(bitmap[word_bitidx]);
 	return (word >> bitidx) & mask;
 }
 
@@ -3103,6 +3107,7 @@ static int rmqueue_bulk(struct zone *zone, unsigned int order,
 	for (i = 0; i < count; ++i) {
 		struct page *page;
 
+		trace_android_rvh_rmqueue_bulk(NULL);
 		if (is_migrate_cma(migratetype))
 			page = __rmqueue_cma(zone, order, migratetype,
 					     alloc_flags);
@@ -3839,6 +3844,8 @@ struct page *rmqueue(struct zone *preferred_zone,
 
 	__count_zid_vm_events(PGALLOC, page_zonenum(page), 1 << order);
 	zone_statistics(preferred_zone, zone, 1);
+	trace_android_vh_rmqueue(preferred_zone, zone, order,
+			gfp_flags, alloc_flags, migratetype);
 
 out:
 	/* Separate test+clear to avoid unnecessary atomics */
@@ -5171,6 +5178,12 @@ retry:
 	if (current->flags & PF_MEMALLOC)
 		goto nopage;
 
+	trace_android_vh_alloc_pages_reclaim_bypass(gfp_mask, order,
+		alloc_flags, ac->migratetype, &page);
+
+	if (page)
+		goto got_pg;
+
 	/* Try direct reclaim and then allocating */
 	page = __alloc_pages_direct_reclaim(gfp_mask, order, alloc_flags, ac,
 							&did_some_progress);
@@ -5286,6 +5299,11 @@ nopage:
 		goto retry;
 	}
 fail:
+	trace_android_vh_alloc_pages_failure_bypass(gfp_mask, order,
+		alloc_flags, ac->migratetype, &page);
+	if (page)
+		goto got_pg;
+
 	warn_alloc(gfp_mask, ac->nodemask,
 			"page allocation failure: order:%u", order);
 got_pg:

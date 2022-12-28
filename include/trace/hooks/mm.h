@@ -21,6 +21,7 @@
 #include <linux/mm.h>
 #include <linux/oom.h>
 #include <trace/hooks/vendor_hooks.h>
+#include <linux/rwsem.h>
 
 /* struct slabinfo */
 #include <../mm/slab.h>
@@ -33,6 +34,9 @@ DECLARE_RESTRICTED_HOOK(android_rvh_set_gfp_zone_flags,
 DECLARE_RESTRICTED_HOOK(android_rvh_set_readahead_gfp_mask,
 			TP_PROTO(gfp_t *flags),
 			TP_ARGS(flags), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_rmqueue_bulk,
+			TP_PROTO(void *unused),
+			TP_ARGS(unused), 1);
 DECLARE_HOOK(android_vh_meminfo_proc_show,
 	TP_PROTO(struct seq_file *m),
 	TP_ARGS(m));
@@ -91,6 +95,10 @@ DECLARE_HOOK(android_vh_mem_cgroup_css_offline,
 DECLARE_HOOK(android_vh_vmpressure,
 	TP_PROTO(struct mem_cgroup *memcg, bool *bypass),
 	TP_ARGS(memcg, bypass));
+DECLARE_HOOK(android_vh_do_page_trylock,
+	TP_PROTO(struct page *page, struct rw_semaphore *sem,
+		bool *got_lock, bool *success),
+	TP_ARGS(page, sem, got_lock, success));
 DECLARE_HOOK(android_vh_update_page_mapcount,
 	TP_PROTO(struct page *page, bool inc_size, bool compound,
 			bool *first_mapping, bool *success),
@@ -113,7 +121,26 @@ DECLARE_HOOK(android_vh_page_should_be_protected,
 DECLARE_HOOK(android_vh_mark_page_accessed,
 	TP_PROTO(struct page *page),
 	TP_ARGS(page));
-
+DECLARE_HOOK(android_vh_alloc_pages_reclaim_bypass,
+	TP_PROTO(gfp_t gfp_mask, int order, int alloc_flags,
+	int migratetype, struct page **page),
+	TP_ARGS(gfp_mask, order, alloc_flags, migratetype, page));
+DECLARE_HOOK(android_vh_alloc_pages_failure_bypass,
+	TP_PROTO(gfp_t gfp_mask, int order, int alloc_flags,
+	int migratetype, struct page **page),
+	TP_ARGS(gfp_mask, order, alloc_flags, migratetype, page));
+DECLARE_HOOK(android_vh_save_track_hash,
+	TP_PROTO(bool alloc, struct track *p),
+	TP_ARGS(alloc, p));
+DECLARE_HOOK(android_vh_rmqueue,
+	TP_PROTO(struct zone *preferred_zone, struct zone *zone,
+		unsigned int order, gfp_t gfp_flags,
+		unsigned int alloc_flags, int migratetype),
+	TP_ARGS(preferred_zone, zone, order,
+		gfp_flags, alloc_flags, migratetype));
+DECLARE_HOOK(android_vh_kmalloc_slab,
+	TP_PROTO(unsigned int index, gfp_t flags, struct kmem_cache **s),
+	TP_ARGS(index, flags, s));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

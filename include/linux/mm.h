@@ -685,9 +685,6 @@ static inline void vma_init(struct vm_area_struct *vma, struct mm_struct *mm)
 	memset(vma, 0, sizeof(*vma));
 	vma->vm_mm = mm;
 	vma->vm_ops = &dummy_vm_ops;
-#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
-        atomic_set(&vma->file_ref_count, 1);
-#endif
 	INIT_LIST_HEAD(&vma->anon_vma_chain);
 }
 
@@ -1611,8 +1608,13 @@ static inline unsigned long page_to_section(const struct page *page)
 #ifdef CONFIG_MIGRATION
 static inline bool is_pinnable_page(struct page *page)
 {
-	return !(is_zone_movable_page(page) || is_migrate_cma_page(page)) ||
-		is_zero_pfn(page_to_pfn(page));
+#ifdef CONFIG_CMA
+	int mt = get_pageblock_migratetype(page);
+
+	if (mt == MIGRATE_CMA || mt == MIGRATE_ISOLATE)
+		return false;
+#endif
+	return !is_zone_movable_page(page) || is_zero_pfn(page_to_pfn(page));
 }
 #else
 static inline bool is_pinnable_page(struct page *page)
@@ -3375,18 +3377,6 @@ static inline bool pte_spinlock(struct vm_fault *vmf)
 {
 	VM_BUG_ON(!vmf->pte);
 	return __pte_map_lock(vmf);
-}
-
-static inline bool vma_get_file_ref(struct vm_area_struct *vma)
-{
-        return atomic_inc_not_zero(&vma->file_ref_count);
-}
-
-extern void fput(struct file *);
-static inline void vma_put_file_ref(struct vm_area_struct *vma)
-{
-        if (vma && atomic_dec_and_test(&vma->file_ref_count))
-                fput(vma->vm_file);
 }
 
 #else	/* !CONFIG_SPECULATIVE_PAGE_FAULT */
