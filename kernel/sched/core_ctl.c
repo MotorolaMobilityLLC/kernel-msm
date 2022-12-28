@@ -883,10 +883,9 @@ int core_ctl_set_boost(bool boost)
 			if (!cluster->boost) {
 				ret = -EINVAL;
 				break;
-			} else {
-				--cluster->boost;
-				boost_state_changed = !cluster->boost;
 			}
+			--cluster->boost;
+			boost_state_changed = !cluster->boost;
 		}
 	}
 	spin_unlock_irqrestore(&state_lock, flags);
