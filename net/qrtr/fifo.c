@@ -125,6 +125,9 @@ static size_t fifo_tx_avail(struct fifo_pipe *pipe)
 	else
 		avail = tail - head;
 
+	if (WARN_ON_ONCE(avail > pipe->length))
+		avail = 0;
+
 	return avail;
 }
 
@@ -135,6 +138,8 @@ static void fifo_tx_write(struct fifo_pipe *pipe,
 	u32 head;
 
 	head = le32_to_cpu(*pipe->head);
+	if (WARN_ON_ONCE(head > pipe->length))
+		return;
 
 	len = min_t(size_t, count, pipe->length - head);
 	if (len)
