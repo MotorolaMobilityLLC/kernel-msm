@@ -100,6 +100,7 @@ static moto_product products_list[] = {
 	{"felix",       "all",  NV_EPA}, //IKSWS-148700 Felix bdwlan
 	{"geneva",      "all",  NV_IPA},
 	{"zeekr",       "all",  NV_EPA}, //IKSWT-13585,Juno bdwlan
+	{"lynkco",      "all",  NV_EPA}, //IKSWT-66390,Lynkco bdwlan
 	/* Terminator */
 	{{0}, {0}, {0}},
 };
