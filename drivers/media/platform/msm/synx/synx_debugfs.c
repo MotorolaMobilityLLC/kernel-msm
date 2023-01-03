@@ -21,7 +21,7 @@
 struct dentry *my_direc;
 const char delim[] = ",";
 int columns = NAME_COLUMN |
-	BOUND_COLUMN | STATE_COLUMN | ERROR_CODES;
+BOUND_COLUMN | ERROR_CODES;
 
 void populate_bound_rows(
 	struct synx_table_row *row,
@@ -29,14 +29,13 @@ void populate_bound_rows(
 	char *end)
 {
 	int j;
-	int state = SYNX_STATE_INVALID;
+
 
 	for (j = 0; j < row->num_bound_synxs;
 		j++) {
 		cur += scnprintf(cur, end - cur,
-			"\n\tID: %d State: %s",
-			row->bound_synxs[j].external_data->synx_obj,
-			state);
+			"\n\tID: %d ",
+			row->bound_synxs[j].external_data->synx_obj);
 	}
 }
 static ssize_t synx_table_read(struct file *file,
@@ -51,7 +50,6 @@ static ssize_t synx_table_read(struct file *file,
 	char *dbuf, *cur, *end;
 
 	int i = 0;
-	int state = SYNX_STATE_INVALID;
 	ssize_t len = 0;
 	s32 index;
 
@@ -64,8 +62,6 @@ static ssize_t synx_table_read(struct file *file,
 		cur += scnprintf(cur, end - cur, "|   Name   |");
 	if (columns & BOUND_COLUMN)
 		cur += scnprintf(cur, end - cur, "|   Bound   |");
-	if (columns & STATE_COLUMN)
-		cur += scnprintf(cur, end - cur, "|  Status  |");
 	cur += scnprintf(cur, end - cur, "\n");
 	for (i = 1; i < SYNX_MAX_OBJS; i++) {
 		row = &dev->synx_table[i];
@@ -84,11 +80,6 @@ static ssize_t synx_table_read(struct file *file,
 		if (columns & BOUND_COLUMN)
 			cur += scnprintf(cur, end - cur,
 				"|%11d|", row->num_bound_synxs);
-		if (columns & STATE_COLUMN) {
-			state = synx_status(row);
-			cur += scnprintf(cur, end - cur,
-				"|%10d|", state);
-		}
 		if ((columns & BOUND_COLUMN) &&
 			(row->num_bound_synxs > 0)) {
 			cur += scnprintf(

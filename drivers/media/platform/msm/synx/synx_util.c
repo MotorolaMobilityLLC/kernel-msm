@@ -252,9 +252,8 @@ int synx_deinit_object(struct synx_table_row *row)
 		}
 	}
 
-	mutex_lock(&synx_dev->row_locks[index]);
+
 	memset(row, 0, sizeof(*row));
-	mutex_unlock(&synx_dev->row_locks[index]);
 	clear_bit(index, synx_dev->bitmap);
 
 	pr_debug("destroying synx obj at %d successful\n", index);
