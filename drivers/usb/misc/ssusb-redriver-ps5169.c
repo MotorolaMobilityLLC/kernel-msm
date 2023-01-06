@@ -208,6 +208,8 @@ static int ssusb_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 	if (en)
 		mdelay(10);
 
+	dev_info(ps5169->dev, "%s: readback enable gpio status=:%d\n", __func__,
+				gpio_get_value(ps5169->enable_gpio));
 	return 0;
 }
 static int ssusb_redriver_read_orientation(struct ps5169_redriver *ps5169)
