@@ -1549,6 +1549,23 @@ static int rpm_smd_power_cb(struct notifier_block *nb, unsigned long action, voi
 	return NOTIFY_OK;
 }
 
+static int rpm_smd_pm_notifier(struct notifier_block *nb, unsigned long event, void *unused)
+{
+	int ret;
+
+	if (event == PM_SUSPEND_PREPARE) {
+		ret = msm_rpm_flush_requests();
+		pr_debug("ret = %d\n", ret);
+	}
+
+	/* continue to suspend */
+	return NOTIFY_OK;
+}
+
+static struct notifier_block rpm_smd_pm_nb = {
+	.notifier_call = rpm_smd_pm_notifier,
+};
+
 static int qcom_smd_rpm_suspend(struct device *dev)
 {
 	channel_status = CLOSED;
@@ -1652,6 +1669,13 @@ static int qcom_smd_rpm_probe(struct rpmsg_device *rpdev)
 	rpm = kzalloc(sizeof(*rpm), GFP_KERNEL);
 	if (!rpm) {
 		probe_status = -ENOMEM;
+		goto fail;
+	}
+
+	ret = register_pm_notifier(&rpm_smd_pm_nb);
+	if (ret) {
+		pr_err("%s: power state notif error %d\n", __func__, ret);
+		probe_status = -ENODEV;
 		goto fail;
 	}
 
