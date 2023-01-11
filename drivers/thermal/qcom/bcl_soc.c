@@ -55,6 +55,34 @@ unlock_and_exit:
 	return 0;
 }
 
+static bool bcl_is_valid_charger_present(void)
+{
+	static struct power_supply *usb_psy;
+	union power_supply_propval pval = {0,};
+	int err = 0;
+
+	if (!usb_psy)
+		usb_psy = power_supply_get_by_name("usb");
+	if (!usb_psy)
+		return false;
+
+	err = power_supply_get_property(usb_psy,
+			POWER_SUPPLY_PROP_USB_TYPE, &pval);
+	if (err) {
+		pr_err("bcl get usb type read error:%d\n", err);
+		return false;
+	}
+	pr_debug("bcl get usb type:%d\n", pval.intval);
+
+	if (pval.intval == POWER_SUPPLY_USB_TYPE_DCP ||
+		pval.intval == POWER_SUPPLY_USB_TYPE_PD ||
+		pval.intval == POWER_SUPPLY_USB_TYPE_PD_PPS)
+		return true;
+
+	return false;
+}
+
+#define MMI_NO_LIMIT_SOC	0
 static int bcl_read_soc(void *data, int *val)
 {
 	static struct power_supply *batt_psy;
@@ -65,6 +93,11 @@ static int bcl_read_soc(void *data, int *val)
 	if (!batt_psy)
 		batt_psy = power_supply_get_by_name("battery");
 	if (batt_psy) {
+		if(bcl_is_valid_charger_present()) {
+			*val = MMI_NO_LIMIT_SOC;
+			return err;
+		}
+
 		err = power_supply_get_property(batt_psy,
 				POWER_SUPPLY_PROP_CAPACITY, &ret);
 		if (err) {
