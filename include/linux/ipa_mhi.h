@@ -62,6 +62,7 @@ struct ipa_mhi_msi_info {
  * @notify: client callback
  * @priv: client private data to be provided in client callback
  * @test_mode: flag to indicate if IPA MHI is in unit test mode
+ * @disable_msi: flag to indicate if MSI is disabled.
  */
 struct ipa_mhi_init_params {
 	struct ipa_mhi_msi_info msi;
@@ -72,6 +73,7 @@ struct ipa_mhi_init_params {
 	mhi_client_cb notify;
 	void *priv;
 	bool test_mode;
+	bool disable_msi;
 };
 
 /**
