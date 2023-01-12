@@ -16,6 +16,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap.h"
 #include "clk-regmap-divider.h"
@@ -576,6 +577,14 @@ static struct clk_branch gpu_cc_sleep_clk = {
 	},
 };
 
+/*
+ * Keep the clocks always-ON
+ * GPU_CC_CB_CLK
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x93a4, .mask = BIT(0) },
+};
+
 static struct clk_regmap *gpu_cc_lemans_clocks[] = {
 	[GPU_CC_AHB_CLK] = &gpu_cc_ahb_clk.clkr,
 	[GPU_CC_CRC_AHB_CLK] = &gpu_cc_crc_ahb_clk.clkr,
@@ -611,12 +620,14 @@ static const struct regmap_config gpu_cc_lemans_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gpu_cc_lemans_desc = {
+static struct qcom_cc_desc gpu_cc_lemans_desc = {
 	.config = &gpu_cc_lemans_regmap_config,
 	.clks = gpu_cc_lemans_clocks,
 	.num_clks = ARRAY_SIZE(gpu_cc_lemans_clocks),
 	.clk_regulators = gpu_cc_lemans_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gpu_cc_lemans_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id gpu_cc_lemans_match_table[] = {
@@ -654,11 +665,12 @@ static int gpu_cc_lemans_probe(struct platform_device *pdev)
 	clk_lucid_evo_pll_configure(&gpu_cc_pll0, regmap, gpu_cc_pll0.config);
 	clk_lucid_evo_pll_configure(&gpu_cc_pll1, regmap, gpu_cc_pll1.config);
 
-	/*
-	 * Keep the clocks always-ON
-	 * GPU_CC_CB_CLK
-	 */
-	regmap_update_bits(regmap, 0x93a4, BIT(0), BIT(0));
+	ret = register_qcom_clks_pm(pdev, false, &gpu_cc_lemans_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed register gpu_cc_pm_rt_ops clocks\n");
+
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &gpu_cc_lemans_desc, regmap);
 	if (ret) {
