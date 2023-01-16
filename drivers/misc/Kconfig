@@ -514,6 +514,14 @@ config OPEN_DICE
 
 	  If unsure, say N.
 
+config PROFILER
+	tristate "Qualcomm Technologies, Inc. trustzone Communicator driver"
+	help
+	  Provides a communication interface between userspace and
+	  trustzone using Secure Channel Manager (SCM) interface.
+	  It exposes APIs for userspace to get system profiling
+	  information.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

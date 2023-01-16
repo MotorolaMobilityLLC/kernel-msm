@@ -229,6 +229,9 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 
 extern void __qcom_scm_init(void);
 extern void __qcom_scm_qcpe_exit(void);
+#define TZ_SVC_BW_PROF_ID		0x07 /* ddr profiler */
+extern int __qcom_scm_ddrbw_profiler(struct device *dev, phys_addr_t in_buf,
+	size_t in_buf_size, phys_addr_t out_buf, size_t out_buf_size);
 
 /* common error codes */
 #define QCOM_SCM_V2_EBUSY	-12

@@ -2576,6 +2576,34 @@ int qcom_scm_qseecom_call(u32 cmd_id, struct qseecom_scm_desc *desc, bool retry)
 }
 EXPORT_SYMBOL(qcom_scm_qseecom_call);
 
+int __qcom_scm_ddrbw_profiler(struct device *dev, phys_addr_t in_buf,
+	size_t in_buf_size, phys_addr_t out_buf, size_t out_buf_size)
+{
+	int ret;
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_INFO,
+		.cmd = TZ_SVC_BW_PROF_ID,
+		.owner = ARM_SMCCC_OWNER_SIP,
+	};
+
+	desc.args[0] = in_buf;
+	desc.args[1] = in_buf_size;
+	desc.args[2] = out_buf;
+	desc.args[3] = out_buf_size;
+	desc.arginfo = QCOM_SCM_ARGS(4, QCOM_SCM_RW, QCOM_SCM_VAL, QCOM_SCM_RW,
+								 QCOM_SCM_VAL);
+	ret = qcom_scm_call(dev, &desc, NULL);
+
+	return ret;
+}
+
+int qcom_scm_ddrbw_profiler(phys_addr_t in_buf,
+	size_t in_buf_size, phys_addr_t out_buf, size_t out_buf_size)
+{
+	return __qcom_scm_ddrbw_profiler(__scm ? __scm->dev : NULL, in_buf,
+			in_buf_size, out_buf, out_buf_size);
+}
+EXPORT_SYMBOL(qcom_scm_ddrbw_profiler);
 
 static int qcom_scm_find_dload_address(struct device *dev, u64 *addr)
 {
