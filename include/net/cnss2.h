@@ -92,6 +92,15 @@ enum cnss_bus_event_type {
 	BUS_EVENT_INVALID = 0xFFFF,
 };
 
+enum cnss_wfc_mode {
+	CNSS_WFC_MODE_OFF,
+	CNSS_WFC_MODE_ON,
+};
+
+struct cnss_wfc_cfg {
+	enum cnss_wfc_mode mode;
+};
+
 struct cnss_hang_event {
 	void *hang_event_data;
 	u16 hang_event_data_len;
@@ -281,4 +290,5 @@ extern int cnss_get_mem_segment_info(enum cnss_remote_mem_type type,
 extern int cnss_send_buffer_to_afcmem(struct device *dev, char *afcdb,
 				      uint32_t len, uint8_t slotid);
 extern int cnss_reset_afcmem(struct device *dev, uint8_t slotid);
+extern int cnss_set_wfc_mode(struct device *dev, struct cnss_wfc_cfg cfg);
 #endif /* _NET_CNSS2_H */
