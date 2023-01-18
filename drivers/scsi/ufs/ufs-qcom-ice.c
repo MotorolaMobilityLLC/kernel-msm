@@ -144,6 +144,17 @@ int ufs_qcom_ice_init(struct ufs_qcom_host *host)
 	if (!qcom_ice_supported(host))
 		goto disable;
 
+	/*
+	 * add support for FDE
+	 */
+#if IS_ENABLED(CONFIG_QTI_CRYPTO_FDE)
+	err = crypto_qti_ice_init_fde_node(dev);
+	if (err) {
+		dev_err(dev, "Failed to add fde node, err=%d\n", err);
+		return err;
+	}
+#endif
+
 	return 0;
 
 disable:

@@ -38,6 +38,9 @@
 #include "ufshci.h"
 #include "ufs_quirks.h"
 #include "ufshcd-crypto-qti.h"
+#if IS_ENABLED(CONFIG_QTI_CRYPTO_FDE)
+#include <linux/crypto-qti-common.h>
+#endif
 
 #define UFS_QCOM_DEFAULT_DBG_PRINT_EN	\
 	(UFS_QCOM_DBG_PRINT_REGS_EN | UFS_QCOM_DBG_PRINT_TEST_BUS_EN)
@@ -5273,6 +5276,24 @@ static void ufs_qcom_update_sdev(void *param, struct scsi_device *sdev)
 	sdev->broken_fua = 1;
 }
 
+static void ufs_qcom_hook_prepare_command(void *param, struct ufs_hba *hba,
+					   struct request *rq, struct ufshcd_lrb *lrbp, int *err)
+{
+#if IS_ENABLED(CONFIG_QTI_CRYPTO_FDE)
+	struct ice_data_setting setting;
+
+	if (!crypto_qti_ice_config_start(rq, &setting)) {
+		if ((rq_data_dir(rq) == WRITE) ? setting.encr_bypass : setting.decr_bypass) {
+			lrbp->crypto_key_slot = -1;
+		} else {
+			lrbp->crypto_key_slot = setting.crypto_data.key_index;
+			lrbp->data_unit_num = rq->bio->bi_iter.bi_sector >>
+					      ICE_CRYPTO_DATA_UNIT_4_KB;
+		}
+	}
+#endif
+}
+
 /*
  * Refer: common/include/trace/hooks/ufshcd.h for available hooks
  */
@@ -5289,6 +5310,8 @@ static void ufs_qcom_register_hooks(void)
 	register_trace_android_vh_ufs_check_int_errors(
 				ufs_qcom_hook_check_int_errors, NULL);
 	register_trace_android_vh_ufs_update_sdev(ufs_qcom_update_sdev, NULL);
+	register_trace_android_vh_ufs_prepare_command(
+				ufs_qcom_hook_prepare_command, NULL);
 }
 
 #ifdef CONFIG_ARM_QCOM_CPUFREQ_HW
