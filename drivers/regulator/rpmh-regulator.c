@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/suspend.h>
 #include <linux/regulator/debug-regulator.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
@@ -845,6 +846,25 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 	}
 
 	return 0;
+}
+
+static int rpmh_vreg_send_ds_requests(struct rpmh_aggr_vreg *aggr_vreg)
+{
+	int rc;
+
+	mutex_lock(&aggr_vreg->lock);
+
+	aggr_vreg->aggr_req_active.valid = 0;
+	aggr_vreg->aggr_req_sleep.valid = 0;
+
+	rc = rpmh_regulator_send_aggregate_requests(&aggr_vreg->vreg[0]);
+
+	if (rc)
+		aggr_vreg_err(aggr_vreg, "error while re-sending request, rc=%d\n",
+				rc);
+	mutex_unlock(&aggr_vreg->lock);
+
+	return rc;
 }
 
 /**
@@ -2022,11 +2042,56 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 	return rc;
 }
 
+static int rpmh_vreg_freeze(struct device *dev)
+{
+	pr_debug("Entering hibernation via Rpmh_regulator freeze\n");
+
+	return 0;
+}
+
+static int rpmh_vreg_restore(struct device *dev)
+{
+	struct rpmh_aggr_vreg *aggr_vreg = dev_get_drvdata(dev);
+
+	pr_debug("Resuming from hibernation via Rpmh_regulator restore\n");
+	rpmh_vreg_send_ds_requests(aggr_vreg);
+
+	return 0;
+}
+
+static int rpmh_vreg_suspend(struct device *dev)
+{
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware())
+		pr_debug("Entering Deepsleep via Rpmh_regulator suspend\n");
+#endif
+	return 0;
+}
+
+static int rpmh_vreg_resume(struct device *dev)
+{
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware()) {
+		pr_debug("Resuming Deepsleep via Rpmh_regulator resume\n");
+		rpmh_vreg_restore(dev);
+	}
+#endif
+	return 0;
+}
+
+static const struct dev_pm_ops rpmh_vreg_pm_ops = {
+	.suspend = rpmh_vreg_suspend,
+	.resume  = rpmh_vreg_resume,
+	.freeze  = rpmh_vreg_freeze,
+	.restore = rpmh_vreg_restore,
+};
+
 static struct platform_driver rpmh_regulator_driver = {
 	.driver = {
 		.name		= "qcom,rpmh-regulator",
 		.of_match_table	= rpmh_regulator_match_table,
 		.sync_state	= regulator_proxy_consumer_sync_state,
+		.pm		= &rpmh_vreg_pm_ops,
 	},
 	.probe = rpmh_regulator_probe,
 };
