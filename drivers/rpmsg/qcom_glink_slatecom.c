@@ -2225,7 +2225,6 @@ static int glink_slatecom_probe(struct platform_device *pdev)
 	dev = glink->dev;
 	dev->of_node = pdev->dev.of_node;
 	dev->release = glink_slatecom_release;
-	dev_set_name(dev, "%s", dev->of_node->name);
 	dev_set_drvdata(dev, glink);
 
 	ret = of_property_read_string(dev->of_node, "label", &glink->name);

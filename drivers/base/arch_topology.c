@@ -167,7 +167,7 @@ bool __init topology_parse_cpu_capacity(struct device_node *cpu_node, int cpu)
 				   &cpu_capacity);
 	if (!ret) {
 		if (!raw_capacity) {
-			raw_capacity = kcalloc(num_possible_cpus(),
+			raw_capacity = kcalloc(cpumask_last(cpu_possible_mask),
 					       sizeof(*raw_capacity),
 					       GFP_KERNEL);
 			if (!raw_capacity) {

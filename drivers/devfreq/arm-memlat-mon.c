@@ -907,7 +907,7 @@ static int memlat_mon_probe(struct platform_device *pdev, bool is_compute)
 		}
 	}
 
-	num_cpus = cpumask_weight(&mon->cpus);
+	num_cpus = (cpumask_last(&mon->cpus) - cpumask_first(&mon->cpus)) + 1;
 
 	hw = &mon->hw;
 	hw->of_node = of_parse_phandle(dev->of_node, "qcom,target-dev", 0);
