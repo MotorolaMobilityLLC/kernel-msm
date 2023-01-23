@@ -19,6 +19,7 @@
 
 # required by zram.ko
   __alloc_percpu
+  android_kmalloc_64_create
   bio_endio
   bio_end_io_acct_remapped
   bio_start_io_acct
@@ -81,7 +82,6 @@
   strcpy
   strlcpy
   strlen
-  __sysfs_match_string
   sysfs_streq
   unregister_blkdev
   up_read

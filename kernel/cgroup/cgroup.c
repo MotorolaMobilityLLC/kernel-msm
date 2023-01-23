@@ -2870,7 +2870,6 @@ int cgroup_attach_task(struct cgroup *dst_cgrp, struct task_struct *leader,
 struct task_struct *cgroup_procs_write_start(char *buf, bool threadgroup,
 					     bool *threadgroup_locked,
 					     struct cgroup *dst_cgrp)
-	__acquires(&cgroup_threadgroup_rwsem)
 {
 	struct task_struct *tsk;
 	pid_t pid;

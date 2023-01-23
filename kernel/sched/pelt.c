@@ -181,7 +181,7 @@ accumulate_sum(u64 delta, struct sched_avg *sa,
  *            = u_0 + u_1*y + u_2*y^2 + ... [re-labeling u_i --> u_{i+1}]
  */
 int ___update_load_sum(u64 now, struct sched_avg *sa,
-		       unsigned long load, unsigned long runnable, int running)
+		  unsigned long load, unsigned long runnable, int running)
 {
 	u64 delta;
 

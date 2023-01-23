@@ -12,6 +12,7 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/video.h>
+#include <asm/unaligned.h>
 
 #include <media/v4l2-dev.h>
 
@@ -27,13 +28,41 @@ static int
 uvc_video_encode_header(struct uvc_video *video, struct uvc_buffer *buf,
 		u8 *data, int len)
 {
-	data[0] = UVCG_REQUEST_HEADER_LEN;
+	struct uvc_device *uvc = container_of(video, struct uvc_device, video);
+	struct usb_composite_dev *cdev = uvc->func.config->cdev;
+	struct timespec64 ts = ns_to_timespec64(buf->buf.vb2_buf.timestamp);
+	int pos = 2;
+
 	data[1] = UVC_STREAM_EOH | video->fid;
 
-	if (buf->bytesused - video->queue.buf_used <= len - UVCG_REQUEST_HEADER_LEN)
+	if (video->queue.buf_used == 0 && ts.tv_sec) {
+		/* dwClockFrequency is 48 MHz */
+		u32 pts = ((u64)ts.tv_sec * USEC_PER_SEC + ts.tv_nsec / NSEC_PER_USEC) * 48;
+
+		data[1] |= UVC_STREAM_PTS;
+		put_unaligned_le32(pts, &data[pos]);
+		pos += 4;
+	}
+
+	if (cdev->gadget->ops->get_frame) {
+		u32 sof, stc;
+
+		sof = usb_gadget_frame_number(cdev->gadget);
+		ktime_get_ts64(&ts);
+		stc = ((u64)ts.tv_sec * USEC_PER_SEC + ts.tv_nsec / NSEC_PER_USEC) * 48;
+
+		data[1] |= UVC_STREAM_SCR;
+		put_unaligned_le32(stc, &data[pos]);
+		put_unaligned_le16(sof, &data[pos+4]);
+		pos += 6;
+	}
+
+	data[0] = pos;
+
+	if (buf->bytesused - video->queue.buf_used <= len - pos)
 		data[1] |= UVC_STREAM_EOF;
 
-	return UVCG_REQUEST_HEADER_LEN;
+	return pos;
 }
 
 static int
@@ -207,9 +236,12 @@ static int uvcg_video_ep_queue(struct uvc_video *video, struct usb_request *req)
 		uvcg_err(&video->uvc->func, "Failed to queue request (%d).\n",
 			 ret);
 
-		/* Isochronous endpoints can't be halted. */
-		if (usb_endpoint_xfer_bulk(video->ep->desc))
-			usb_ep_set_halt(video->ep);
+		/* If the endpoint is disabled the descriptor may be NULL. */
+		if (video->ep->desc) {
+			/* Isochronous endpoints can't be halted. */
+			if (usb_endpoint_xfer_bulk(video->ep->desc))
+				usb_ep_set_halt(video->ep);
+		}
 	}
 
 	return ret;
@@ -221,6 +253,7 @@ uvc_video_complete(struct usb_ep *ep, struct usb_request *req)
 	struct uvc_request *ureq = req->context;
 	struct uvc_video *video = ureq->video;
 	struct uvc_video_queue *queue = &video->queue;
+	struct uvc_device *uvc = video->uvc;
 	unsigned long flags;
 
 	switch (req->status) {
@@ -253,7 +286,8 @@ uvc_video_complete(struct usb_ep *ep, struct usb_request *req)
 	list_add_tail(&req->list, &video->req_free);
 	spin_unlock_irqrestore(&video->req_lock, flags);
 
-	schedule_work(&video->pump);
+	if (uvc->state == UVC_STATE_STREAMING)
+		queue_work(video->async_wq, &video->pump);
 }
 
 static int
@@ -348,13 +382,14 @@ static void uvcg_video_pump(struct work_struct *work)
 {
 	struct uvc_video *video = container_of(work, struct uvc_video, pump);
 	struct uvc_video_queue *queue = &video->queue;
-	struct usb_request *req;
+	struct usb_request *req = NULL;
 	struct uvc_buffer *buf;
 	unsigned long flags;
 	int ret;
 
-	while (1) {
-		/* Retrieve the first available USB request, protected by the
+	while (video->ep->enabled) {
+		/*
+		 * Retrieve the first available USB request, protected by the
 		 * request lock.
 		 */
 		spin_lock_irqsave(&video->req_lock, flags);
@@ -367,7 +402,8 @@ static void uvcg_video_pump(struct work_struct *work)
 		list_del(&req->list);
 		spin_unlock_irqrestore(&video->req_lock, flags);
 
-		/* Retrieve the first available video buffer and fill the
+		/*
+		 * Retrieve the first available video buffer and fill the
 		 * request, protected by the video queue irqlock.
 		 */
 		spin_lock_irqsave(&queue->irqlock, flags);
@@ -379,9 +415,11 @@ static void uvcg_video_pump(struct work_struct *work)
 
 		video->encode(req, video, buf);
 
-		/* With usb3 we have more requests. This will decrease the
+		/*
+		 * With usb3 we have more requests. This will decrease the
 		 * interrupt load to a quarter but also catches the corner
-		 * cases, which needs to be handled */
+		 * cases, which needs to be handled.
+		 */
 		if (list_empty(&video->req_free) ||
 		    buf->state == UVC_BUF_STATE_DONE ||
 		    !(video->req_int_count %
@@ -400,8 +438,15 @@ static void uvcg_video_pump(struct work_struct *work)
 			uvcg_queue_cancel(queue, 0);
 			break;
 		}
-		video->req_int_count++;
+
+		/* Endpoint now owns the request */
+		req = NULL;
+		if (buf->state != UVC_BUF_STATE_DONE)
+			video->req_int_count++;
 	}
+
+	if (!req)
+		return;
 
 	spin_lock_irqsave(&video->req_lock, flags);
 	list_add_tail(&req->list, &video->req_free);
@@ -451,7 +496,7 @@ int uvcg_video_enable(struct uvc_video *video, int enable)
 
 	video->req_int_count = 0;
 
-	schedule_work(&video->pump);
+	queue_work(video->async_wq, &video->pump);
 
 	return ret;
 }
@@ -464,6 +509,11 @@ int uvcg_video_init(struct uvc_video *video, struct uvc_device *uvc)
 	INIT_LIST_HEAD(&video->req_free);
 	spin_lock_init(&video->req_lock);
 	INIT_WORK(&video->pump, uvcg_video_pump);
+
+	/* Allocate a work queue for asynchronous video pump handler. */
+	video->async_wq = alloc_workqueue("uvcgadget", WQ_UNBOUND | WQ_HIGHPRI, 0);
+	if (!video->async_wq)
+		return -EINVAL;
 
 	video->uvc = uvc;
 	video->fcc = V4L2_PIX_FMT_YUYV;
