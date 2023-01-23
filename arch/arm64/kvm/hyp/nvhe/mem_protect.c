@@ -929,6 +929,9 @@ static int host_complete_share(u64 addr, const struct pkvm_mem_transition *tx,
 {
 	u64 size = tx->nr_pages * PAGE_SIZE;
 
+	if (tx->initiator.id == PKVM_ID_GUEST)
+		psci_mem_protect_dec();
+
 	return __host_set_page_state_range(addr, size, PKVM_PAGE_SHARED_BORROWED);
 }
 
@@ -936,6 +939,9 @@ static int host_complete_unshare(u64 addr, const struct pkvm_mem_transition *tx)
 {
 	u64 size = tx->nr_pages * PAGE_SIZE;
 	pkvm_id owner_id = initiator_owner_id(tx);
+
+	if (tx->initiator.id == PKVM_ID_GUEST)
+		psci_mem_protect_inc();
 
 	return host_stage2_set_owner_locked(addr, size, owner_id);
 }
@@ -1915,7 +1921,14 @@ static int hyp_zero_page(phys_addr_t phys)
 	if (!addr)
 		return -EINVAL;
 	memset(addr, 0, PAGE_SIZE);
-	__clean_dcache_guest_page(addr, PAGE_SIZE);
+	/*
+	 * Prefer kvm_flush_dcache_to_poc() over __clean_dcache_guest_page()
+	 * here as the latter may elide the CMO under the assumption that FWB
+	 * will be enabled on CPUs that support it. This is incorrect for the
+	 * host stage-2 and would otherwise lead to a malicious host potentially
+	 * being able to read the content of newly reclaimed guest pages.
+	 */
+	kvm_flush_dcache_to_poc(addr, PAGE_SIZE);
 
 	return hyp_fixmap_unmap();
 }

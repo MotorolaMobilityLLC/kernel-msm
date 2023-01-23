@@ -402,8 +402,8 @@ static int ieee80211_set_tx(struct ieee80211_sub_if_data *sdata,
 }
 
 static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
-			     u8 key_idx, bool pairwise, const u8 *mac_addr,
-			     struct key_params *params)
+			     int link_id, u8 key_idx, bool pairwise,
+			     const u8 *mac_addr, struct key_params *params)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 	struct ieee80211_local *local = sdata->local;
@@ -519,7 +519,8 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_del_key(struct wiphy *wiphy, struct net_device *dev,
-			     u8 key_idx, bool pairwise, const u8 *mac_addr)
+			     int link_id, u8 key_idx, bool pairwise,
+			     const u8 *mac_addr)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 	struct ieee80211_local *local = sdata->local;
@@ -560,8 +561,8 @@ static int ieee80211_del_key(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_get_key(struct wiphy *wiphy, struct net_device *dev,
-			     u8 key_idx, bool pairwise, const u8 *mac_addr,
-			     void *cookie,
+			     int link_id, u8 key_idx, bool pairwise,
+			     const u8 *mac_addr, void *cookie,
 			     void (*callback)(void *cookie,
 					      struct key_params *params))
 {
@@ -680,7 +681,7 @@ static int ieee80211_get_key(struct wiphy *wiphy, struct net_device *dev,
 
 static int ieee80211_config_default_key(struct wiphy *wiphy,
 					struct net_device *dev,
-					u8 key_idx, bool uni,
+					int link_id, u8 key_idx, bool uni,
 					bool multi)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
@@ -692,7 +693,7 @@ static int ieee80211_config_default_key(struct wiphy *wiphy,
 
 static int ieee80211_config_default_mgmt_key(struct wiphy *wiphy,
 					     struct net_device *dev,
-					     u8 key_idx)
+					     int link_id, u8 key_idx)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 
@@ -703,7 +704,7 @@ static int ieee80211_config_default_mgmt_key(struct wiphy *wiphy,
 
 static int ieee80211_config_default_beacon_key(struct wiphy *wiphy,
 					       struct net_device *dev,
-					       u8 key_idx)
+					       int link_id, u8 key_idx)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 
@@ -1647,43 +1648,35 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 	if (params->listen_interval >= 0)
 		sta->listen_interval = params->listen_interval;
 
-	if (params->sta_modify_mask & STATION_PARAM_APPLY_STA_TXPOWER) {
-		sta->sta.txpwr.type = params->txpwr.type;
-		if (params->txpwr.type == NL80211_TX_POWER_LIMITED)
-			sta->sta.txpwr.power = params->txpwr.power;
-		ret = drv_sta_set_txpwr(local, sdata, sta);
-		if (ret)
-			return ret;
-	}
-
-	if (params->supported_rates && params->supported_rates_len) {
+	if (params->link_sta_params.supported_rates &&
+	    params->link_sta_params.supported_rates_len) {
 		ieee80211_parse_bitrates(&sdata->vif.bss_conf.chandef,
-					 sband, params->supported_rates,
-					 params->supported_rates_len,
+					 sband, params->link_sta_params.supported_rates,
+					 params->link_sta_params.supported_rates_len,
 					 &sta->sta.supp_rates[sband->band]);
 	}
 
-	if (params->ht_capa)
+	if (params->link_sta_params.ht_capa)
 		ieee80211_ht_cap_ie_to_sta_ht_cap(sdata, sband,
-						  params->ht_capa, sta);
+						  params->link_sta_params.ht_capa, sta);
 
 	/* VHT can override some HT caps such as the A-MSDU max length */
-	if (params->vht_capa)
+	if (params->link_sta_params.vht_capa)
 		ieee80211_vht_cap_ie_to_sta_vht_cap(sdata, sband,
-						    params->vht_capa, sta);
+						    params->link_sta_params.vht_capa, sta);
 
-	if (params->he_capa)
+	if (params->link_sta_params.he_capa)
 		ieee80211_he_cap_ie_to_sta_he_cap(sdata, sband,
-						  (void *)params->he_capa,
-						  params->he_capa_len,
-						  (void *)params->he_6ghz_capa,
+						  (void *)params->link_sta_params.he_capa,
+						  params->link_sta_params.he_capa_len,
+						  (void *)params->link_sta_params.he_6ghz_capa,
 						  sta);
 
-	if (params->opmode_notif_used) {
+	if (params->link_sta_params.opmode_notif_used) {
 		/* returned value is only needed for rc update, but the
 		 * rc isn't initialized here yet, so ignore it
 		 */
-		__ieee80211_vht_handle_opmode(sdata, sta, params->opmode_notif,
+		__ieee80211_vht_handle_opmode(sdata, sta, params->link_sta_params.opmode_notif,
 					      sband->band);
 	}
 
@@ -3517,7 +3510,7 @@ __ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
 		ieee80211_stop_vif_queues(local, sdata,
 					  IEEE80211_QUEUE_STOP_REASON_CSA);
 
-	cfg80211_ch_switch_started_notify(sdata->dev, &sdata->csa_chandef,
+	cfg80211_ch_switch_started_notify(sdata->dev, &sdata->csa_chandef, 0,
 					  params->count, params->block_tx);
 
 	if (changed) {

@@ -722,7 +722,7 @@ void __cfg80211_connect_result(struct net_device *dev,
 			       bool wextev)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
-	const struct element *country_elem;
+	const struct element *country_elem = NULL;
 	const u8 *country_data;
 	u8 country_datalen;
 #ifdef CONFIG_CFG80211_WEXT
@@ -746,6 +746,9 @@ void __cfg80211_connect_result(struct net_device *dev,
 			if (WARN_ON(!cr->links[link].addr))
 				goto out;
 		}
+
+		if (WARN_ON(wdev->connect_keys))
+			goto out;
 	}
 
 	wdev->unprot_beacon_reported = 0;
@@ -781,12 +784,18 @@ void __cfg80211_connect_result(struct net_device *dev,
 #endif
 
 	if (cr->status == WLAN_STATUS_SUCCESS) {
-		for_each_valid_link(cr, link) {
-			if (WARN_ON_ONCE(!cr->links[link].bss))
-				break;
+		if (!wiphy_to_rdev(wdev->wiphy)->ops->connect) {
+			for_each_valid_link(cr, link) {
+				if (WARN_ON_ONCE(!cr->links[link].bss))
+					break;
+			}
 		}
 
 		for_each_valid_link(cr, link) {
+			/* don't do extra lookups for failures */
+			if (cr->links[link].status != WLAN_STATUS_SUCCESS)
+				continue;
+
 			if (cr->links[link].bss)
 				continue;
 
@@ -823,6 +832,16 @@ void __cfg80211_connect_result(struct net_device *dev,
 	}
 
 	memset(wdev->links, 0, sizeof(wdev->links));
+	for_each_valid_link(cr, link) {
+		if (cr->links[link].status == WLAN_STATUS_SUCCESS)
+			continue;
+		cr->valid_links &= ~BIT(link);
+		/* don't require bss pointer for failed links */
+		if (!cr->links[link].bss)
+			continue;
+		cfg80211_unhold_bss(bss_from_pub(cr->links[link].bss));
+		cfg80211_put_bss(wdev->wiphy, cr->links[link].bss);
+	}
 	wdev->valid_links = cr->valid_links;
 	for_each_valid_link(cr, link)
 		wdev->links[link].client.current_bss =
@@ -1235,7 +1254,8 @@ void __cfg80211_port_authorized(struct wireless_dev *wdev, const u8 *bssid)
 {
 	ASSERT_WDEV_LOCK(wdev);
 
-	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION))
+	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_STATION &&
+                    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT))
 		return;
 
 	if (WARN_ON(!wdev->connected) ||
@@ -1321,7 +1341,7 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 			    NL80211_EXT_FEATURE_BEACON_PROTECTION_CLIENT))
 			max_key_idx = 7;
 		for (i = 0; i <= max_key_idx; i++)
-			rdev_del_key(rdev, dev, i, false, NULL);
+			rdev_del_key(rdev, dev, -1, i, false, NULL);
 	}
 
 	rdev_set_qos_map(rdev, dev, NULL);

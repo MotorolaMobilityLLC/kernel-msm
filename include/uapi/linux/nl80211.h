@@ -377,14 +377,22 @@
  *	the non-transmitting interfaces are deleted as well.
  *
  * @NL80211_CMD_GET_KEY: Get sequence counter information for a key specified
- *	by %NL80211_ATTR_KEY_IDX and/or %NL80211_ATTR_MAC.
+ *	by %NL80211_ATTR_KEY_IDX and/or %NL80211_ATTR_MAC. %NL80211_ATTR_MAC
+ *	represents peer's MLD address for MLO pairwise key. For MLO group key,
+ *	the link is identified by %NL80211_ATTR_MLO_LINK_ID.
  * @NL80211_CMD_SET_KEY: Set key attributes %NL80211_ATTR_KEY_DEFAULT,
  *	%NL80211_ATTR_KEY_DEFAULT_MGMT, or %NL80211_ATTR_KEY_THRESHOLD.
+ *	For MLO connection, the link to set default key is identified by
+ *	%NL80211_ATTR_MLO_LINK_ID.
  * @NL80211_CMD_NEW_KEY: add a key with given %NL80211_ATTR_KEY_DATA,
  *	%NL80211_ATTR_KEY_IDX, %NL80211_ATTR_MAC, %NL80211_ATTR_KEY_CIPHER,
- *	and %NL80211_ATTR_KEY_SEQ attributes.
+ *	and %NL80211_ATTR_KEY_SEQ attributes. %NL80211_ATTR_MAC represents
+ *	peer's MLD address for MLO pairwise key. The link to add MLO
+ *	group key is identified by %NL80211_ATTR_MLO_LINK_ID.
  * @NL80211_CMD_DEL_KEY: delete a key identified by %NL80211_ATTR_KEY_IDX
- *	or %NL80211_ATTR_MAC.
+ *	or %NL80211_ATTR_MAC. %NL80211_ATTR_MAC represents peer's MLD address
+ *	for MLO pairwise key. The link to delete group key is identified by
+ *	%NL80211_ATTR_MLO_LINK_ID.
  *
  * @NL80211_CMD_GET_BEACON: (not used)
  * @NL80211_CMD_SET_BEACON: change the beacon on an access point interface
@@ -764,6 +772,13 @@
  *	%NL80211_ATTR_CSA_C_OFFSETS_TX is an array of offsets to CSA
  *	counters which will be updated to the current value. This attribute
  *	is used during CSA period.
+ *	For TX on an MLD, the frequency can be omitted and the link ID be
+ *	specified, or if transmitting to a known peer MLD (with MLD addresses
+ *	in the frame) both can be omitted and the link will be selected by
+ *	lower layers.
+ *	For RX notification, %NL80211_ATTR_RX_HW_TIMESTAMP may be included to
+ *	indicate the frame RX timestamp and %NL80211_ATTR_TX_HW_TIMESTAMP may
+ *	be included to indicate the ack TX timestamp.
  * @NL80211_CMD_FRAME_WAIT_CANCEL: When an off-channel TX was requested, this
  *	command may be used with the corresponding cookie to cancel the wait
  *	time if it is known that it is no longer necessary.  This command is
@@ -774,7 +789,9 @@
  *	transmitted with %NL80211_CMD_FRAME. %NL80211_ATTR_COOKIE identifies
  *	the TX command and %NL80211_ATTR_FRAME includes the contents of the
  *	frame. %NL80211_ATTR_ACK flag is included if the recipient acknowledged
- *	the frame.
+ *	the frame. %NL80211_ATTR_TX_HW_TIMESTAMP may be included to indicate the
+ *	tx timestamp and %NL80211_ATTR_RX_HW_TIMESTAMP may be included to
+ *	indicate the ack RX timestamp.
  * @NL80211_CMD_ACTION_TX_STATUS: Alias for @NL80211_CMD_FRAME_TX_STATUS for
  *	backward compatibility.
  *
@@ -1119,6 +1136,12 @@
  *	has been received. %NL80211_ATTR_FRAME is used to specify the
  *	frame contents.  The frame is the raw EAPoL data, without ethernet or
  *	802.11 headers.
+ *	For an MLD transmitter, the %NL80211_ATTR_MLO_LINK_ID may be given and
+ *	its effect will depend on the destination: If the destination is known
+ *	to be an MLD, this will be used as a hint to select the link to transmit
+ *	the frame on. If the destination is not an MLD, this will select both
+ *	the link to transmit on and the source address will be set to the link
+ *	address of that link.
  *	When used as an event indication %NL80211_ATTR_CONTROL_PORT_ETHERTYPE,
  *	%NL80211_ATTR_CONTROL_PORT_NO_ENCRYPT and %NL80211_ATTR_MAC are added
  *	indicating the protocol type of the received frame; whether the frame
@@ -1253,6 +1276,10 @@
  * @NL80211_CMD_REMOVE_LINK: Remove a link from an interface. This may come
  *	without %NL80211_ATTR_MLO_LINK_ID as an easy way to remove all links
  *	in preparation for e.g. roaming to a regular (non-MLO) AP.
+ *
+ * @NL80211_CMD_ADD_LINK_STA: Add a link to an MLD station
+ * @NL80211_CMD_MODIFY_LINK_STA: Modify a link of an MLD station
+ * @NL80211_CMD_REMOVE_LINK_STA: Remove a link of an MLD station
  *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
@@ -1498,11 +1525,13 @@ enum nl80211_commands {
 
 	NL80211_CMD_ASSOC_COMEBACK,
 
-	NL80211_CMD_RESERVED_DO_NOT_USE_1 = 148,
-	NL80211_CMD_RESERVED_DO_NOT_USE_2 = 149,
-	NL80211_CMD_RESERVED_DO_NOT_USE_3 = 150,
-	NL80211_CMD_RESERVED_DO_NOT_USE_4 = 151,
-	NL80211_CMD_RESERVED_DO_NOT_USE_5 = 152,
+	NL80211_CMD_ADD_LINK,
+	NL80211_CMD_REMOVE_LINK,
+
+	NL80211_CMD_ADD_LINK_STA,
+	NL80211_CMD_MODIFY_LINK_STA,
+	NL80211_CMD_REMOVE_LINK_STA,
+
 	NL80211_CMD_RESERVED_DO_NOT_USE_6 = 153,
 	NL80211_CMD_RESERVED_DO_NOT_USE_7 = 154,
 	NL80211_CMD_RESERVED_DO_NOT_USE_8 = 155,
@@ -1515,17 +1544,6 @@ enum nl80211_commands {
 	__NL80211_CMD_AFTER_LAST,
 	NL80211_CMD_MAX = __NL80211_CMD_AFTER_LAST - 1
 };
-
-/*
- * These are temporary definitions that will become permanent when the UAPI
- * changes lands into linux.git tree. These attributes must not be used in
- * production until the UAPI change lands into linux.git tree.
- */
-
-/* Link: https://git.kernel.org/pub/scm/linux/kernel/git/wireless/wireless-next.git/commit/?id=7b0a0e3c3a88260b6fcb017e49f198463aa62ed1 */
-#define NL80211_CMD_ADD_LINK NL80211_CMD_RESERVED_DO_NOT_USE_1
-#define NL80211_CMD_REMOVE_LINK NL80211_CMD_RESERVED_DO_NOT_USE_2
-
 
 /*
  * Allow user space programs to use #ifdef on new commands by defining them
@@ -2379,8 +2397,10 @@ enum nl80211_commands {
  *
  * @NL80211_ATTR_IFTYPE_EXT_CAPA: Nested attribute of the following attributes:
  *	%NL80211_ATTR_IFTYPE, %NL80211_ATTR_EXT_CAPA,
- *	%NL80211_ATTR_EXT_CAPA_MASK, to specify the extended capabilities per
- *	interface type.
+ *	%NL80211_ATTR_EXT_CAPA_MASK, to specify the extended capabilities and
+ *	other interface-type specific capabilities per interface type. For MLO,
+ *	%NL80211_ATTR_EML_CAPABILITY and %NL80211_ATTR_MLD_CAPA_AND_OPS are
+ *	present.
  *
  * @NL80211_ATTR_MU_MIMO_GROUP_DATA: array of 24 bytes that defines a MU-MIMO
  *	groupID for monitor mode.
@@ -2720,6 +2740,21 @@ enum nl80211_commands {
  *	connection. Used with %NL80211_CMD_CONNECT. If this attribute is not
  *	included in NL80211_CMD_CONNECT drivers must not perform MLO connection.
  *
+ * @NL80211_ATTR_EML_CAPABILITY: EML Capability information (u16)
+ * @NL80211_ATTR_MLD_CAPA_AND_OPS: MLD Capabilities and Operations (u16)
+ *
+ * @NL80211_ATTR_TX_HW_TIMESTAMP: Hardware timestamp for TX operation in
+ *	nanoseconds (u64). This is the device clock timestamp so it will
+ *	probably reset when the device is stopped or the firmware is reset.
+ *	When used with %NL80211_CMD_FRAME_TX_STATUS, indicates the frame TX
+ *	timestamp. When used with %NL80211_CMD_FRAME RX notification, indicates
+ *	the ack TX timestamp.
+ * @NL80211_ATTR_RX_HW_TIMESTAMP: Hardware timestamp for RX operation in
+ *	nanoseconds (u64). This is the device clock timestamp so it will
+ *	probably reset when the device is stopped or the firmware is reset.
+ *	When used with %NL80211_CMD_FRAME_TX_STATUS, indicates the ack RX
+ *	timestamp. When used with %NL80211_CMD_FRAME RX notification, indicates
+ *	the incoming frame RX timestamp.
  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
@@ -3234,15 +3269,20 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_DISABLE_EHT,
 
-	NL80211_ATTR_RESERVED_DO_NOT_USE_1 = 312,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_2 = 313,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_3 = 314,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_4 = 315,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_5 = 316,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_6 = 317,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_7 = 318,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_8 = 319,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_9 = 320,
+	NL80211_ATTR_MLO_LINKS,
+	NL80211_ATTR_MLO_LINK_ID,
+	NL80211_ATTR_MLD_ADDR,
+
+	NL80211_ATTR_MLO_SUPPORT,
+
+	NL80211_ATTR_MAX_NUM_AKM_SUITES,
+
+	NL80211_ATTR_EML_CAPABILITY,
+	NL80211_ATTR_MLD_CAPA_AND_OPS,
+
+	NL80211_ATTR_TX_HW_TIMESTAMP,
+	NL80211_ATTR_RX_HW_TIMESTAMP,
+
 	NL80211_ATTR_RESERVED_DO_NOT_USE_10 = 321,
 	NL80211_ATTR_RESERVED_DO_NOT_USE_11 = 322,
 	NL80211_ATTR_RESERVED_DO_NOT_USE_12 = 323,
@@ -3266,25 +3306,6 @@ enum nl80211_attrs {
 	NUM_NL80211_ATTR = __NL80211_ATTR_AFTER_LAST,
 	NL80211_ATTR_MAX = __NL80211_ATTR_AFTER_LAST - 1
 };
-
-/*
- * These are temporary definitions that will become permanent when the UAPI
- * changes lands into linux.git tree. These attributes must not be used in
- * production until the UAPI change lands into linux.git tree.
- */
-
-/* Link: https://git.kernel.org/pub/scm/linux/kernel/git/wireless/wireless-next.git/commit/?id=7b0a0e3c3a88260b6fcb017e49f198463aa62ed1 */
-#define NL80211_ATTR_MLO_LINKS NL80211_ATTR_RESERVED_DO_NOT_USE_1
-#define NL80211_ATTR_MLO_LINK_ID NL80211_ATTR_RESERVED_DO_NOT_USE_2
-
-/* Link: https://git.kernel.org/pub/scm/linux/kernel/git/wireless/wireless-next.git/commit/?id=d648c23024bd01333acd2fd5e34bcde0ffb66b16 */
-#define NL80211_ATTR_MLD_ADDR NL80211_ATTR_RESERVED_DO_NOT_USE_3
-
-/* Link: https://git.kernel.org/pub/scm/linux/kernel/git/wireless/wireless-next.git/commit/?id=efbabc11650040c64884ff3019b88c7bcc0ceb1d */
-#define NL80211_ATTR_MLO_SUPPORT NL80211_ATTR_RESERVED_DO_NOT_USE_4
-
-/* Link: https://git.kernel.org/pub/scm/linux/kernel/git/wireless/wireless-next.git/commit/?id=ecad3b0b99bff7247a11f8c7cb19ac9b0cb28b09 */
-#define NL80211_ATTR_MAX_NUM_AKM_SUITES NL80211_ATTR_RESERVED_DO_NOT_USE_5
 
 /* source-level API compatibility */
 #define NL80211_ATTR_SCAN_GENERATION NL80211_ATTR_GENERATION
@@ -4983,6 +5004,7 @@ enum nl80211_bss_scan_width {
  *	using the nesting index as the antenna number.
  * @NL80211_BSS_FREQUENCY_OFFSET: frequency offset in KHz
  * @NL80211_BSS_MLO_LINK_ID: MLO link ID of the BSS (u8).
+ * @NL80211_BSS_MLD_ADDR: MLD address of this BSS if connected to it.
  * @__NL80211_BSS_AFTER_LAST: internal
  * @NL80211_BSS_MAX: highest BSS attribute
  */
@@ -5008,8 +5030,8 @@ enum nl80211_bss {
 	NL80211_BSS_PARENT_BSSID,
 	NL80211_BSS_CHAIN_SIGNAL,
 	NL80211_BSS_FREQUENCY_OFFSET,
-	NL80211_BSS_RESERVED_DO_NOT_USE_1 = 21,
-	NL80211_BSS_RESERVED_DO_NOT_USE_2 = 22,
+	NL80211_BSS_MLO_LINK_ID,
+	NL80211_BSS_MLD_ADDR,
 	NL80211_BSS_RESERVED_DO_NOT_USE_3 = 23,
 	NL80211_BSS_RESERVED_DO_NOT_USE_4 = 24,
 	NL80211_BSS_RESERVED_DO_NOT_USE_5 = 25,
@@ -5018,14 +5040,6 @@ enum nl80211_bss {
 	__NL80211_BSS_AFTER_LAST,
 	NL80211_BSS_MAX = __NL80211_BSS_AFTER_LAST - 1
 };
-
-/*
- * These are temporary definitions that will become permanent when the UAPI
- * changes lands into linux.git tree. These attributes must not be used in
- * production until the UAPI change lands into linux.git tree.
- */
-
-#define NL80211_BSS_MLO_LINK_ID NL80211_BSS_RESERVED_DO_NOT_USE_1
 
 /**
  * enum nl80211_bss_status - BSS "status"
@@ -6327,6 +6341,14 @@ enum nl80211_feature_flags {
  * @NL80211_EXT_FEATURE_RADAR_BACKGROUND: Device supports background radar/CAC
  *	detection.
  *
+ * @NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE: Device can perform a MAC address
+ *	change without having to bring the underlying network device down
+ *	first. For example, in station mode this can be used to vary the
+ *	origin MAC address prior to a connection to a new AP for privacy
+ *	or other reasons. Note that certain driver specific restrictions
+ *	might apply, e.g. no scans in progress, no offchannel operations
+ *	in progress, and no active connections.
+ *
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
  */
@@ -6394,7 +6416,7 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_BSS_COLOR,
 	NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD,
 	NL80211_EXT_FEATURE_RADAR_BACKGROUND,
-	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_1 = 62,
+	NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_2 = 63,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_3 = 64,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_4 = 65,
