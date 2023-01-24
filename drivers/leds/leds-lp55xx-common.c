@@ -124,12 +124,48 @@ static ssize_t max_current_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", led->max_current);
 }
 
+static ssize_t blink_show(struct device *dev,
+			    struct device_attribute *attr,
+			    char *buf)
+{
+	struct lp55xx_led *led = dev_to_lp55xx_led(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", led->blink);
+}
+
+static ssize_t blink_store(struct device *dev,
+			     struct device_attribute *attr,
+			     const char *buf, size_t len)
+{
+	struct lp55xx_led *led = dev_to_lp55xx_led(dev);
+	struct lp55xx_chip *chip = led->chip;
+	unsigned long curr;
+
+	if (kstrtoul(buf, 0, &curr))
+		return -EINVAL;
+
+	if (curr > chip->pdata->num_patterns)
+		return -EINVAL;
+
+	if (!chip->cfg->set_led_blink)
+		return len;
+
+
+	chip->cfg->set_led_blink(led, (int)curr);
+
+	return len;
+}
+
+
 static DEVICE_ATTR_RW(led_current);
 static DEVICE_ATTR_RO(max_current);
+static DEVICE_ATTR_RW(blink);
+
 
 static struct attribute *lp55xx_led_attrs[] = {
 	&dev_attr_led_current.attr,
 	&dev_attr_max_current.attr,
+	&dev_attr_blink.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(lp55xx_led);
@@ -214,6 +250,7 @@ static int lp55xx_init_led(struct lp55xx_led *led,
 	led->led_current = pdata->led_config[chan].led_current;
 	led->max_current = pdata->led_config[chan].max_current;
 	led->chan_nr = pdata->led_config[chan].chan_nr;
+	led->blink = 0;
 
 	if (led->chan_nr >= max_channel) {
 		dev_err(dev, "Use channel numbers between 0 and %d\n",

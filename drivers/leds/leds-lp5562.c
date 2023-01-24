@@ -430,6 +430,52 @@ static ssize_t lp5562_store_pattern(struct device *dev,
 	return len;
 }
 
+static int lp5562_led_blink(struct lp55xx_led *led, int mode)
+{
+	struct lp55xx_chip *chip = led->chip;
+	struct lp55xx_predef_pattern *ptn = chip->pdata->patterns;
+	int num_patterns = chip->pdata->num_patterns;
+	u8 size_r,size_g,size_b;
+	int ret;
+
+	dev_err(&chip->cl->dev, "lp5562 led blink...\n");
+	if (mode > num_patterns || !ptn)
+		return -EINVAL;
+
+	size_r = ptn->size_r;
+	size_g = ptn->size_g;
+	size_b = ptn->size_b;
+
+	mutex_lock(&chip->lock);
+	switch (led->chan_nr)
+	  {
+	  case 0: /* Red*/
+		ptn->size_g = ptn->size_b = 0;
+		break;
+	  case 1: /*Green*/
+		ptn->size_r = ptn->size_b = 0;
+		break;
+	  case 2: /*Blue*/
+		ptn->size_g = ptn->size_r = 0;
+		break;
+	  case 3: /*white*/
+	  default:
+	    break;
+	  }
+	ret = lp5562_run_predef_led_pattern(chip, mode);
+
+	ptn->size_r = size_r;
+	ptn->size_g = size_g;
+	ptn->size_b = size_b;
+	mutex_unlock(&chip->lock);
+
+	if (ret)
+		return ret;
+
+	dev_err(&chip->cl->dev, "lp5562 led blink success!\n");
+  return ret;
+}
+
 static ssize_t lp5562_store_engine_mux(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t len)
@@ -506,6 +552,7 @@ static struct lp55xx_device_config lp5562_cfg = {
 	.post_init_device   = lp5562_post_init_device,
 	.set_led_current    = lp5562_set_led_current,
 	.brightness_fn      = lp5562_led_brightness,
+	.set_led_blink      = lp5562_led_blink,
 	.run_engine         = lp5562_run_engine,
 	.firmware_cb        = lp5562_firmware_loaded,
 	.dev_attr_group     = &lp5562_group,
