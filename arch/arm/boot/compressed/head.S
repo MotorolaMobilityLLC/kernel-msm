@@ -140,6 +140,13 @@
 #endif
 		.endm
 
+		.macro	be32tocpu, val, tmp
+#ifndef __ARMEB__
+		/* convert to little endian */
+		rev_l	\val, \tmp
+#endif
+		.endm
+
 		.section ".start", "ax"
 /*
  * sort out different calling conventions
@@ -344,13 +351,7 @@ restart:	adr	r0, LC0
 
 		/* Get the initial DTB size */
 		ldr	r5, [r6, #4]
-#ifndef __ARMEB__
-		/* convert to little endian */
-		eor	r1, r5, r5, ror #16
-		bic	r1, r1, #0x00ff0000
-		mov	r5, r5, ror #8
-		eor	r5, r5, r1, lsr #8
-#endif
+		be32tocpu r5, r1
 		/* 50% DTB growth should be good enough */
 		add	r5, r5, r5, lsr #1
 		/* preserve 64-bit alignment */
@@ -403,13 +404,7 @@ restart:	adr	r0, LC0
 
 		/* Get the current DTB size */
 		ldr	r5, [r6, #4]
-#ifndef __ARMEB__
-		/* convert r5 (dtb size) to little endian */
-		eor	r1, r5, r5, ror #16
-		bic	r1, r1, #0x00ff0000
-		mov	r5, r5, ror #8
-		eor	r5, r5, r1, lsr #8
-#endif
+		be32tocpu r5, r1
 
 		/* preserve 64-bit alignment */
 		add	r5, r5, #7
