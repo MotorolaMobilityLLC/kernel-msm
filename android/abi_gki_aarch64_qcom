@@ -1070,6 +1070,7 @@
   __hrtimer_get_remaining
   hrtimer_init
   hrtimer_init_sleeper
+  hrtimer_sleeper_start_expires
   hrtimer_start_range_ns
   hrtimer_try_to_cancel
   hvc_alloc
