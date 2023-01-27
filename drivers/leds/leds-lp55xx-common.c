@@ -23,6 +23,7 @@
 
 /* External clock rate */
 #define LP55XX_CLK_32K			32768
+#define BRIGHTNESS_MAX			255
 
 static struct lp55xx_led *cdev_to_lp55xx_led(struct led_classdev *cdev)
 {
@@ -144,28 +145,39 @@ static ssize_t blink_store(struct device *dev,
 	if (kstrtoul(buf, 0, &curr))
 		return -EINVAL;
 
-	if (curr > chip->pdata->num_patterns)
+	if (curr > BRIGHTNESS_MAX)
 		return -EINVAL;
 
 	if (!chip->cfg->set_led_blink)
 		return len;
 
-
+	led->blink =  (int) curr;
 	chip->cfg->set_led_blink(led, (int)curr);
 
 	return len;
+}
+
+static ssize_t led_time_show(struct device *dev,
+			    struct device_attribute *attr,
+			    char *buf)
+{
+	struct lp55xx_led *led = dev_to_lp55xx_led(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", led->blink);
 }
 
 
 static DEVICE_ATTR_RW(led_current);
 static DEVICE_ATTR_RO(max_current);
 static DEVICE_ATTR_RW(blink);
+static DEVICE_ATTR_RO(led_time);
 
 
 static struct attribute *lp55xx_led_attrs[] = {
 	&dev_attr_led_current.attr,
 	&dev_attr_max_current.attr,
 	&dev_attr_blink.attr,
+	&dev_attr_led_time.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(lp55xx_led);
