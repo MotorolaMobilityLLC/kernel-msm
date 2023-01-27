@@ -2173,6 +2173,19 @@ static struct clk_branch gcc_pcie_clkref_en = {
 	},
 };
 
+static struct clk_branch gcc_edp_clkref_en = {
+	.halt_reg = 0x8c008,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x8c008,
+		.enable_mask = BIT(0),
+		.hw.init = &(struct clk_init_data){
+			.name = "gcc_edp_clkref_en",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
 static struct clk_branch gcc_pcie_throttle_core_clk = {
 	.halt_reg = 0x90018,
 	.halt_check = BRANCH_HALT_SKIP,
@@ -3510,6 +3523,7 @@ static struct clk_regmap *gcc_yupik_clocks[] = {
 	[GCC_VIDEO_AXI0_CLK] = &gcc_video_axi0_clk.clkr,
 	[GCC_VIDEO_MVP_THROTTLE_CORE_CLK] =
 		&gcc_video_mvp_throttle_core_clk.clkr,
+	[GCC_EDP_CLKREF_EN] = &gcc_edp_clkref_en.clkr,
 };
 
 static const struct qcom_reset_map gcc_yupik_resets[] = {
