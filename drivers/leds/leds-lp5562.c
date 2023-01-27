@@ -99,6 +99,8 @@
 #define LP5562_CMD_DIRECT		0x3F
 #define LP5562_PATTERN_OFF		0
 
+#define LP5562_BRIGHTNESS_MAX		255
+
 static inline void lp5562_wait_opmode_done(void)
 {
 	/* operation mode change needs to be longer than 153 us */
@@ -324,6 +326,8 @@ static int lp5562_led_brightness(struct lp55xx_led *led)
 	int ret;
 
 	mutex_lock(&chip->lock);
+	/* Set Brightness needs to stop predef pattern which maybe running */
+	lp5562_run_engine(chip, false);
 	ret = lp55xx_write(chip, addr[led->chan_nr], led->brightness);
 	mutex_unlock(&chip->lock);
 
@@ -388,6 +392,8 @@ static int lp5562_run_predef_led_pattern(struct lp55xx_chip *chip, int mode)
 	lp55xx_write(chip, LP5562_REG_PROG_MEM_ENG3, 0);
 	lp55xx_write(chip, LP5562_REG_PROG_MEM_ENG3 + 1, 0);
 
+	dev_dbg(&chip->cl->dev, "lp5562 led blink...mode:%d\n", mode);
+
 	/* Program engines */
 	lp5562_write_program_memory(chip, LP5562_REG_PROG_MEM_ENG1,
 				ptn->r, ptn->size_r);
@@ -434,13 +440,20 @@ static int lp5562_led_blink(struct lp55xx_led *led, int mode)
 {
 	struct lp55xx_chip *chip = led->chip;
 	struct lp55xx_predef_pattern *ptn = chip->pdata->patterns;
-	int num_patterns = chip->pdata->num_patterns;
 	u8 size_r,size_g,size_b;
 	int ret;
 
-	dev_err(&chip->cl->dev, "lp5562 led blink...\n");
-	if (mode > num_patterns || !ptn)
+	dev_dbg(&chip->cl->dev, "lp5562 led blink...\n");
+
+	if ((mode > LP5562_BRIGHTNESS_MAX) || !ptn)
 		return -EINVAL;
+
+        /* mode is brightness value passed along from MotLight HAL*/
+	led->brightness = mode;
+	ret = lp5562_led_brightness(led);
+
+        /* non zero 'mode' value enables blink. */
+	ptn = chip->pdata->patterns + ((mode!=0) - 1);
 
 	size_r = ptn->size_r;
 	size_g = ptn->size_g;
@@ -450,19 +463,22 @@ static int lp5562_led_blink(struct lp55xx_led *led, int mode)
 	switch (led->chan_nr)
 	  {
 	  case 0: /* Red*/
+		dev_dbg(&chip->cl->dev, "lp5562 Red led blink ...\n");
 		ptn->size_g = ptn->size_b = 0;
 		break;
 	  case 1: /*Green*/
+		dev_dbg(&chip->cl->dev, "lp5562 Green led blink ...\n");
 		ptn->size_r = ptn->size_b = 0;
 		break;
 	  case 2: /*Blue*/
+		dev_dbg(&chip->cl->dev, "lp5562 Blue led blink ...\n");
 		ptn->size_g = ptn->size_r = 0;
 		break;
 	  case 3: /*white*/
 	  default:
 	    break;
 	  }
-	ret = lp5562_run_predef_led_pattern(chip, mode);
+	ret = lp5562_run_predef_led_pattern(chip, (mode!=0));
 
 	ptn->size_r = size_r;
 	ptn->size_g = size_g;
@@ -472,7 +488,7 @@ static int lp5562_led_blink(struct lp55xx_led *led, int mode)
 	if (ret)
 		return ret;
 
-	dev_err(&chip->cl->dev, "lp5562 led blink success!\n");
+	dev_dbg(&chip->cl->dev, "lp5562 led blink success!\n");
   return ret;
 }
 
