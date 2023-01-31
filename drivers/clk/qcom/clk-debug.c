@@ -276,9 +276,10 @@ static int clk_debug_measure_get(void *data, u64 *val)
 	enable_debug_clks(measure);
 	*val = clk_debug_mux_measure_rate(measure);
 
-	trace_clk_measure(clk_hw_get_name(hw), *val);
 	/* recursively calculate actual freq */
 	*val *= get_mux_divs(measure);
+	/* enable ftrace support */
+	trace_clk_measure(clk_hw_get_name(hw), *val);
 	disable_debug_clks(measure);
 exit:
 	if (meas->bus_cl_id)
