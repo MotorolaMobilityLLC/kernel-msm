@@ -3879,7 +3879,7 @@ static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 	if (mdwc->drd_state == DRD_STATE_PERIPHERAL_SUSPEND) {
 		dev_info(mdwc->dev, "USB Resume start\n");
 #ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
-		place_marker("M - USB device resume started");
+		update_marker("M - USB device resume started");
 #endif
 	}
 
@@ -5958,7 +5958,7 @@ static int dwc3_msm_pm_resume(struct device *dev)
 			mdwc->drd_state == DRD_STATE_PERIPHERAL_SUSPEND) {
 		dev_info(mdwc->dev, "USB Resume start\n");
 #ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
-		place_marker("M - USB device resume started");
+		update_marker("M - USB device resume started");
 #endif
 	}
 
