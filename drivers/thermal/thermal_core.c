@@ -918,8 +918,7 @@ __thermal_cooling_device_register(struct device_node *np,
 	cdev->device.class = &thermal_class;
 	cdev->devdata = devdata;
 
-	ret = cdev->ops->get_max_state(cdev, &cdev->max_state);
-	if (ret)
+	if (cdev->ops->get_max_state(cdev, &cdev->max_state))
 		goto out_kfree_type;
 
 	thermal_cooling_device_setup_sysfs(cdev);
