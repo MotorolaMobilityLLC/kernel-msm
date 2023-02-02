@@ -36,6 +36,14 @@ config QCOM_A7PLL
 	  Say Y if you want to support higher CPU frequencies on SDX55
 	  devices.
 
+config QCS_CMN_BLK_PLL
+	tristate "QCS405 CMN BLK PLL"
+	help
+	  Support for the CMN BLK PLL on Qualcomm Technologies, Inc QCS405
+	  devices.
+	  Common block PLL is required for USB and PCIE subsystems.
+	  Say Y if you want to support the Common Block PLL.
+
 config QCOM_CLK_APCS_MSM8916
 	tristate "MSM8916 APCS Clock Controller"
 	depends on QCOM_APCS_IPC || COMPILE_TEST
