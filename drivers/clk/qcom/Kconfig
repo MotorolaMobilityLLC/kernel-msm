@@ -332,6 +332,15 @@ config MSM_MMCC_8998
 	  Say Y if you want to support multimedia devices such as display,
 	  graphics, video encode/decode, camera, etc.
 
+config QCS_DEBUGCC_404
+	tristate "QCS404 Debug Clock Controller"
+	depends on QCS_GCC_404
+	help
+	  Support for the debug clock controller on Qualcomm Technologies, Inc.
+	  QCS404 devices.
+	  Say Y if you want to support the debug clocks such as clock measurement
+	  functionality.
+
 config QCS_GCC_404
 	tristate "QCS404 Global Clock Controller"
 	help
