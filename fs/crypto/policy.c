@@ -626,12 +626,13 @@ EXPORT_SYMBOL(fscrypt_has_permitted_context);
 
 #define SDHCI "sdhci"
 
-static int fscrypt_update_context(union fscrypt_context *ctx)
+static int fscrypt_update_context(union fscrypt_context *ctx,
+						const char *file_system_type)
 {
 	char *boot = "ufs";
 
 	if (!fscrypt_find_storage_type(&boot)) {
-		if (!strcmp(boot, SDHCI))
+		if (!strcmp(boot, SDHCI) && !strcmp(file_system_type, "f2fs"))
 			ctx->v1.flags |= FSCRYPT_POLICY_FLAG_IV_INO_LBLK_32;
 			return 0;
 	}
@@ -654,6 +655,7 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
 	int ctxsize;
 	struct fscrypt_info *ci;
 	int res;
+	const char *file_system_type;
 
 	res = fscrypt_get_encryption_info(parent);
 	if (res < 0)
@@ -663,10 +665,14 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
 	if (ci == NULL)
 		return -ENOKEY;
 
+	file_system_type = ci->ci_inode->i_sb->s_type->name;
+	if (!file_system_type)
+		return -EINVAL;
+
 	ctxsize = fscrypt_new_context_from_policy(&ctx, &ci->ci_policy);
 	if (fscrypt_policy_contents_mode(&ci->ci_policy) ==
 	    FSCRYPT_MODE_PRIVATE) {
-		res = fscrypt_update_context(&ctx);
+		res = fscrypt_update_context(&ctx, file_system_type);
 		if (res)
 			return res;
 	}
