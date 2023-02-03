@@ -59,7 +59,7 @@ static const struct fsa4480_reg_val fsa_reg_i2c_defaults[] = {
 	{FSA4480_DELAY_L_MIC, 0x00},
 	{FSA4480_DELAY_L_SENSE, 0x00},
 	{FSA4480_DELAY_L_AGND, 0x09},
-	{FSA4480_SWITCH_SETTINGS, 0x98},
+	{FSA4480_SWITCH_SETTINGS, 0xF8},
 };
 
 static void fsa4480_usbc_update_settings(struct fsa4480_priv *fsa_priv,
@@ -295,9 +295,11 @@ int fsa4480_switch_event(struct device_node *node,
 	case FSA_USBC_ORIENTATION_CC2:
 		fsa4480_usbc_update_settings(fsa_priv, 0x78, 0xF8);
 		return fsa4480_validate_display_port_settings(fsa_priv);
+	/*
 	case FSA_USBC_DISPLAYPORT_DISCONNECTED:
 		fsa4480_usbc_update_settings(fsa_priv, 0x18, 0x98);
 		break;
+	*/
 	default:
 		break;
 	}
