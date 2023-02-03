@@ -82,6 +82,8 @@ int cnss_wlfw_qdss_data_send_sync(struct cnss_plat_data *plat_priv, char *file_n
 				  u32 total_size);
 int wlfw_qdss_trace_send_start(struct cnss_plat_data *plat_priv);
 int wlfw_qdss_trace_send_stop(struct cnss_plat_data *plat_priv, unsigned long long option);
+int cnss_wlfw_send_host_wfc_call_status(struct cnss_plat_data *plat_priv,
+					struct cnss_wfc_cfg cfg);
 #else
 #define QMI_WLFW_TIMEOUT_MS		10000
 
@@ -282,6 +284,12 @@ int wlfw_qdss_trace_send_start(struct cnss_plat_data *plat_priv)
 }
 
 int wlfw_qdss_trace_send_stop(struct cnss_plat_data *plat_priv, unsigned long long option)
+{
+	return 0;
+}
+
+int cnss_wlfw_send_host_wfc_call_status(struct cnss_plat_data *plat_priv,
+					struct cnss_wfc_cfg cfg)
 {
 	return 0;
 }
