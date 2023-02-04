@@ -6377,6 +6377,9 @@ enum nl80211_feature_flags {
  *
  * @NL80211_EXT_FEATURE_PUNCT: Driver supports preamble puncturing in AP mode.
  *
+ * @NL80211_EXT_FEATURE_SECURE_NAN: Device supports NAN Pairing which enables
+ *	authentication, data encryption and message integrity.
+ *
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
  */
@@ -6446,7 +6449,7 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_RADAR_BACKGROUND,
 	NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE,
 	NL80211_EXT_FEATURE_PUNCT,
-	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_3 = 64,
+	NL80211_EXT_FEATURE_SECURE_NAN,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_4 = 65,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_5 = 66,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_6 = 67,
