@@ -113,3 +113,7 @@ type 'struct cgroup_root' changed
 type 'struct xhci_sideband' changed
   was fully defined, is now only declared
 
+type 'struct pkvm_module_ops' changed
+  member 'u64 android_kabi_reserved4' was removed
+  member 'union { int(* register_guest_smc_handler)(bool(*)(struct arm_smccc_1_2_regs*, struct arm_smccc_res*, pkvm_handle_t), pkvm_handle_t); struct { u64 android_kabi_reserved4; }; union { }; }' was added
+
