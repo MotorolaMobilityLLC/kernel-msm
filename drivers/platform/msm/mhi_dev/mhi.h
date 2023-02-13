@@ -527,6 +527,7 @@ struct mhi_dev {
 
 	uint32_t			*mmio_backup;
 	struct mhi_config		cfg;
+	bool				msi_disable;
 	u32				msi_data;
 	u32				msi_lower;
 	spinlock_t			msi_lock;
