@@ -3,7 +3,6 @@
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
-
 #include <linux/ion.h>
 #include <linux/sched.h>
 #include <linux/debugfs.h>
@@ -11,6 +10,8 @@
 #include "virtio_fastrpc_core.h"
 #include "virtio_fastrpc_mem.h"
 #include "virtio_fastrpc_queue.h"
+#define CREATE_TRACE_POINTS
+#include "virtio_fastrpc_trace.h"
 
 #define M_FDLIST			16
 #define M_CRCLIST			64
@@ -339,8 +340,11 @@ static void context_free(struct vfastrpc_invoke_ctx *ctx)
 
 	if (ctx->msg) {
 		rsp = ctx->msg->rxbuf;
-		if (rsp)
+		if (rsp) {
+			trace_fastrpc_rxbuf_send_start(ctx);
 			vfastrpc_rxbuf_send(vfl, rsp, me->buf_size);
+			trace_fastrpc_rxbuf_send_end(ctx);
+		}
 
 		virt_free_msg(vfl, ctx->msg);
 		ctx->msg = NULL;
@@ -596,7 +600,7 @@ static int context_restore_interrupted(struct vfastrpc_file *vfl,
 	return err;
 }
 
-static int context_alloc(struct vfastrpc_file *vfl,
+static int context_alloc(struct vfastrpc_file *vfl, s64 seq_num,
 			struct fastrpc_ioctl_invoke_async *invokefd,
 			struct vfastrpc_invoke_ctx **po)
 {
@@ -645,6 +649,7 @@ static int context_alloc(struct vfastrpc_file *vfl,
 	}
 	ctx->sc = invoke->sc;
 	ctx->handle = invoke->handle;
+	ctx->seq_num = seq_num;
 	ctx->pid = current->pid;
 	ctx->tgid = fl->tgid;
 	ctx->crc = (uint32_t *)invokefd->crc;
@@ -1119,7 +1124,9 @@ static int virt_fastrpc_invoke(struct vfastrpc_file *vfl, struct vfastrpc_invoke
 		goto bail;
 	}
 
+	trace_fastrpc_txbuf_send_start(ctx);
 	err = vfastrpc_txbuf_send(vfl, vmsg, ctx->size);
+	trace_fastrpc_txbuf_send_end(ctx);
 bail:
 	return err;
 }
@@ -1165,6 +1172,9 @@ int vfastrpc_internal_invoke(struct vfastrpc_file *vfl,
 	struct timespec64 invoket = {0};
 	uint64_t *perf_counter = NULL;
 	bool isasyncinvoke = false;
+	s64 lseq_num = atomic64_fetch_add(1, &vfl->seq_num);
+
+	trace_fastrpc_internal_invoke_start(invoke->handle, invoke->sc, lseq_num);
 
 	VERIFY(err, invoke->handle != FASTRPC_STATIC_HANDLE_KERNEL);
 	if (err) {
@@ -1190,7 +1200,7 @@ int vfastrpc_internal_invoke(struct vfastrpc_file *vfl,
 	if (ctx)
 		goto wait;
 
-	VERIFY(err, 0 == context_alloc(vfl, inv, &ctx));
+	VERIFY(err, 0 == context_alloc(vfl, lseq_num, inv, &ctx));
 	if (err)
 		goto bail;
 	isasyncinvoke = (ctx->asyncjob.isasyncjob ? true : false);
@@ -1214,6 +1224,7 @@ int vfastrpc_internal_invoke(struct vfastrpc_file *vfl,
 		goto invoke_end;
 wait:
 	interrupted = wait_for_completion_interruptible(&ctx->msg->work);
+	trace_wait_for_completion_end(ctx);
 	VERIFY(err, 0 == (err = interrupted));
 	if (err)
 		goto bail;
@@ -1240,6 +1251,7 @@ invoke_end:
 	if (fl->profile && !interrupted && isasyncinvoke)
 		vfastrpc_update_invoke_count(invoke->handle, perf_counter,
 				&invoket);
+	trace_fastrpc_internal_invoke_end(invoke->handle, invoke->sc, lseq_num);
 	return err;
 }
 
