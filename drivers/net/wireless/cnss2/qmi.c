@@ -80,6 +80,7 @@ void cnss_ignore_qmi_failure(bool ignore) { }
 #define MOTO_STRING_LEN 32
 static char device_ptr[MOTO_STRING_LEN] = {0};
 static char radio_ptr[MOTO_STRING_LEN] = {0};
+static char sku_ptr[MOTO_STRING_LEN] = {0};
 static char *bootargs_str;
 
 typedef struct moto_product {
@@ -87,6 +88,17 @@ typedef struct moto_product {
 	char hw_radio[32];
 	char nv_name[64];
 } moto_product;
+
+typedef struct {
+    char* sku;
+    char* hw_radio;
+} moto_sku_radio_map_t;
+
+/* Some cases, we have to get radio by sku(AKA model number) */
+static moto_sku_radio_map_t moto_sku_radio_map_list[] = {
+    {"XT2321-2",    "PRC"},
+    {NULL,          NULL},
+};
 
 static moto_product products_list[] = {
 	{"hiphic",	"all",	NV_IPA},
@@ -166,7 +178,7 @@ static int get_moto_device()
 {
         char *bootdevice = NULL;
         int rc = 0;
-	rc = cnss_get_bootarg_dt("androidboot.device=", &bootdevice, "mmi,bootconfig", "\n");
+        rc = cnss_get_bootarg_dt("androidboot.device=", &bootdevice, "mmi,bootconfig", "\n");
         if (rc || !bootdevice){
             cnss_pr_err("device string is error");
             return -ENOMEM;
@@ -176,18 +188,66 @@ static int get_moto_device()
         }
 }
 
+static int get_moto_sku()
+{
+    char *sku_val = NULL;
+    int rc = 0;
+
+    rc = cnss_get_bootarg_dt("androidboot.hardware.sku=", &sku_val, "mmi,bootconfig", "\n");
+    if (rc || !sku_val) {
+        cnss_pr_err("get hardware.sku string failed");
+        return -ENOMEM;
+    }else{
+        strlcpy(sku_ptr, sku_val, MOTO_STRING_LEN);
+        return 0;
+    }
+}
+
+static int find_radio_by_sku(char* sku_val)
+{
+    int i = 0;
+
+    while(moto_sku_radio_map_list[i].sku != NULL) {
+        if (!strncmp(moto_sku_radio_map_list[i].sku, sku_val, strlen(sku_val))) {
+            strlcpy(radio_ptr, moto_sku_radio_map_list[i].hw_radio, sizeof(radio_ptr) - 1);
+            return 0;
+        } else {
+            i++;
+            continue;
+        }
+    }
+
+    /* No matched sku string is found */
+    if (strlen(radio_ptr) == 0){
+        return -1;
+    }
+
+    return 0;
+}
+
 static int get_moto_radio()
 {
-        char *radiodevice = NULL;
-        int rc = 0;
-	rc = cnss_get_bootarg_dt("androidboot.radio=", &radiodevice, "mmi,bootconfig", "\n");
-        if (rc || !radiodevice){
-            cnss_pr_err("radio string is error");
-            return -ENOMEM;
-        }else{
-            strlcpy(radio_ptr, radiodevice,MOTO_STRING_LEN);
+    char *radiodevice = NULL;
+    int rc = 0;
+
+    if (!get_moto_sku()) {
+        if (find_radio_by_sku(sku_ptr) == 0)
+        {
+            cnss_pr_dbg("get radio by sku:%s", radio_ptr);
             return 0;
+        } else {
+            cnss_pr_dbg("sku&radio not listed!");
         }
+    }
+
+    rc = cnss_get_bootarg_dt("androidboot.radio=", &radiodevice, "mmi,bootconfig", "\n");
+    if (rc || !radiodevice) {
+        cnss_pr_err("radio string is error");
+        return -ENOMEM;
+    }else{
+        strlcpy(radio_ptr, radiodevice,MOTO_STRING_LEN);
+        return 0;
+    }
 }
 
 static int selectFileNameByProduct(struct cnss_plat_data *plat_priv, char *filename, u32 bdf_type)
