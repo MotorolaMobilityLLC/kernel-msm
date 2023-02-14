@@ -43,6 +43,9 @@
 #define PCIE20_PARF_INT_ALL_STATUS     0x224
 #define PCIE20_PARF_INT_ALL_CLEAR      0x228
 #define PCIE20_PARF_INT_ALL_MASK       0x22C
+#define PCIE20_PARF_INT_ALL_2_STATUS	0x500
+#define PCIE20_PARF_INT_ALL_2_CLEAR	0x504
+#define PCIE20_PARF_INT_ALL_2_MASK	0x508
 
 #define PCIE20_PARF_CLKREQ_OVERRIDE	0x2B0
 #define PCIE20_PARF_CLKREQ_IN_OVERRIDE_STS	BIT(5)
@@ -175,6 +178,7 @@
 #define MSI_EXIT_L1SS_WAIT_MAX_COUNT          100
 #define XMLH_LINK_UP                          0x400
 #define PARF_XMLH_LINK_UP                     0x40000000
+#define CFG_BUS_MASTER_EN_DEASSERT		BIT(24)
 
 #define MAX_PROP_SIZE 32
 #define MAX_MSG_LEN 80
@@ -363,6 +367,7 @@ struct ep_pcie_dev_t {
 	bool			     aoss_rst_clear;
 	bool			     avoid_reboot_in_d3hot;
 	bool			     pme_in_wake_from_d3cold;
+	bool			     bme_deassert_irq;
 	u32                          dbi_base_reg;
 	u32                          slv_space_reg;
 	u32                          phy_status_reg;
