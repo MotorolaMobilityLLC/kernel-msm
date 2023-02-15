@@ -63,3 +63,4 @@ blocklist xc4000
 blocklist xc5000
 blocklist limits_stat
 blocklist kunit
+blocklist ledtrig-sol
