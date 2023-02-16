@@ -492,6 +492,60 @@ static int lp5562_led_blink(struct lp55xx_led *led, int mode)
   return ret;
 }
 
+static int lp5562_led_breath(struct lp55xx_led *led, int mode)
+{
+	struct lp55xx_chip *chip = led->chip;
+	struct lp55xx_predef_pattern *ptn = chip->pdata->patterns;
+	u8 size_r,size_g,size_b;
+	int ret;
+
+	dev_dbg(&chip->cl->dev, "lp5562 led breath...\n");
+
+	if ((mode > LP5562_BRIGHTNESS_MAX) || !ptn)
+		return -EINVAL;
+
+        /* non zero 'mode' value enables breath. */
+	ptn = chip->pdata->patterns + ((mode!=0));
+
+	size_r = ptn->size_r;
+	size_g = ptn->size_g;
+	size_b = ptn->size_b;
+
+	mutex_lock(&chip->lock);
+	switch (led->chan_nr)
+	  {
+	  case 0: /* Red*/
+		dev_dbg(&chip->cl->dev, "lp5562 Red led breath ...\n");
+		ptn->size_g = ptn->size_b = 0;
+		break;
+	  case 1: /*Green*/
+		dev_dbg(&chip->cl->dev, "lp5562 Green led breath ...\n");
+		ptn->size_r = ptn->size_b = 0;
+		break;
+	  case 2: /*Blue*/
+		dev_dbg(&chip->cl->dev, "lp5562 Blue led breath ...\n");
+		ptn->size_g = ptn->size_r = 0;
+		break;
+	  case 3: /*white*/
+	  default:
+	    break;
+	  }
+
+        /* Enable Breath with the led predef pattern 2 */
+	ret = lp5562_run_predef_led_pattern(chip, (mode!=0? 2: 0));
+
+	ptn->size_r = size_r;
+	ptn->size_g = size_g;
+	ptn->size_b = size_b;
+	mutex_unlock(&chip->lock);
+
+	if (ret)
+		return ret;
+
+	dev_dbg(&chip->cl->dev, "lp5562 led breath success!\n");
+  return ret;
+}
+
 static ssize_t lp5562_store_engine_mux(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t len)
@@ -569,6 +623,7 @@ static struct lp55xx_device_config lp5562_cfg = {
 	.set_led_current    = lp5562_set_led_current,
 	.brightness_fn      = lp5562_led_brightness,
 	.set_led_blink      = lp5562_led_blink,
+	.set_led_breath	    = lp5562_led_breath,
 	.run_engine         = lp5562_run_engine,
 	.firmware_cb        = lp5562_firmware_loaded,
 	.dev_attr_group     = &lp5562_group,

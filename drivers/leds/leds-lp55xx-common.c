@@ -166,18 +166,50 @@ static ssize_t led_time_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", led->blink);
 }
 
+static ssize_t breath_show(struct device *dev,
+                           struct device_attribute *attr,
+                           char *buf)
+{
+       struct lp55xx_led *led = dev_to_lp55xx_led(dev);
+
+       return scnprintf(buf, PAGE_SIZE, "%d\n", led->breath);
+}
+
+static ssize_t breath_store(struct device *dev,
+                            struct device_attribute *attr,
+                            const char *buf, size_t len)
+{
+       struct lp55xx_led *led = dev_to_lp55xx_led(dev);
+       struct lp55xx_chip *chip = led->chip;
+       unsigned long curr;
+
+       if (kstrtoul(buf, 0, &curr))
+               return -EINVAL;
+
+       if (curr > BRIGHTNESS_MAX)
+               return -EINVAL;
+
+       if (!chip->cfg->set_led_breath)
+               return len;
+
+       led->blink =  (int) curr;
+       chip->cfg->set_led_breath(led, (int)curr);
+
+       return len;
+}
 
 static DEVICE_ATTR_RW(led_current);
 static DEVICE_ATTR_RO(max_current);
 static DEVICE_ATTR_RW(blink);
 static DEVICE_ATTR_RO(led_time);
-
+static DEVICE_ATTR_RW(breath);
 
 static struct attribute *lp55xx_led_attrs[] = {
 	&dev_attr_led_current.attr,
 	&dev_attr_max_current.attr,
 	&dev_attr_blink.attr,
 	&dev_attr_led_time.attr,
+	&dev_attr_breath.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(lp55xx_led);
