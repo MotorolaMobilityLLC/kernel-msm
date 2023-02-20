@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _UAPI_MSM_IPA_H_
@@ -1747,8 +1747,8 @@ struct IpaDscpVlanPcpMap_t {
 	uint8_t  pad3; /* for alignment */
 	uint8_t  num_mpls_val_sorted; /* num of elements in mpls_val_sorted */
 	uint32_t mpls_val_sorted[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
-	uint8_t  vlan_c[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
-	uint8_t  vlan_s[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
+	uint16_t  vlan_c[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
+	uint16_t  vlan_s[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
 } __packed;
 
 /**
