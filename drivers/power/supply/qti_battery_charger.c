@@ -1146,7 +1146,7 @@ static int __battery_psy_set_charge_current(struct battery_chg_dev *bcdev,
 static int battery_psy_set_charge_current(struct battery_chg_dev *bcdev,
 					int val)
 {
-	int rc;
+	int rc = 0;
 	u32 fcc_ua, prev_fcc_ua;
 
 	if (!bcdev->num_thermal_levels)
@@ -1169,11 +1169,13 @@ static int battery_psy_set_charge_current(struct battery_chg_dev *bcdev,
 	prev_fcc_ua = bcdev->thermal_fcc_ua;
 	bcdev->thermal_fcc_ua = fcc_ua;
 
-	rc = __battery_psy_set_charge_current(bcdev, fcc_ua);
-	if (!rc)
-		bcdev->curr_thermal_level = val;
-	else
-		bcdev->thermal_fcc_ua = prev_fcc_ua;
+	if (prev_fcc_ua != bcdev->thermal_fcc_ua) {
+		rc = __battery_psy_set_charge_current(bcdev, fcc_ua);
+		if (!rc)
+			bcdev->curr_thermal_level = val;
+		else
+			bcdev->thermal_fcc_ua = prev_fcc_ua;
+	}
 
 	return rc;
 }
