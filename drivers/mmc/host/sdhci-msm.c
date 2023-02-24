@@ -4926,7 +4926,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		goto pm_runtime_disable;
 
 	if (mmc_card_is_removable(msm_host->mmc)) {
-		msm_host->mmc->max_busy_timeout = 270000;
+		msm_host->mmc->max_busy_timeout = 600000;
 		pr_info("set sdcard max_busy_timeout %ds\n", msm_host->mmc->max_busy_timeout / 1000);
 	}
 
