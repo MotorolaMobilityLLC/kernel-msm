@@ -3098,8 +3098,7 @@ static int amd_iommu_attach_device(struct iommu_domain *dom,
 }
 
 static int amd_iommu_map(struct iommu_domain *dom, unsigned long iova,
-			 phys_addr_t paddr, size_t page_size, int iommu_prot,
-			 gfp_t gfp)
+			 phys_addr_t paddr, size_t page_size, int iommu_prot)
 {
 	struct protection_domain *domain = to_pdomain(dom);
 	int prot = 0;

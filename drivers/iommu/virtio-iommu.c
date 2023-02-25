@@ -715,7 +715,7 @@ static int viommu_attach_dev(struct iommu_domain *domain, struct device *dev)
 }
 
 static int viommu_map(struct iommu_domain *domain, unsigned long iova,
-		      phys_addr_t paddr, size_t size, int prot, gfp_t gfp)
+		      phys_addr_t paddr, size_t size, int prot)
 {
 	int ret;
 	u32 flags;

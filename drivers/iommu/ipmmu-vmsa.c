@@ -724,7 +724,7 @@ static void ipmmu_detach_device(struct iommu_domain *io_domain,
 }
 
 static int ipmmu_map(struct iommu_domain *io_domain, unsigned long iova,
-		     phys_addr_t paddr, size_t size, int prot, gfp_t gfp)
+		     phys_addr_t paddr, size_t size, int prot)
 {
 	struct ipmmu_vmsa_domain *domain = to_vmsa_domain(io_domain);
 
