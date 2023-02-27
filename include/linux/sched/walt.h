@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _LINUX_SCHED_WALT_H
@@ -140,6 +140,7 @@ struct walt_task_struct {
 	int				prev_cpu;
 	int				new_cpu;
 	u8				enqueue_after_migration;
+	int				pipeline_cpu;
 };
 
 /*

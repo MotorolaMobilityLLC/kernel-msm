@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <trace/hooks/sched.h>
@@ -213,6 +213,8 @@ static int sched_task_handler(struct ctl_table *table, int write,
 	int pid_and_val[2] = {-1, -1};
 	int val;
 	struct walt_task_struct *wts;
+	struct rq *rq;
+	struct rq_flags rf;
 
 	struct ctl_table tmp = {
 		.data	= &pid_and_val,
@@ -330,10 +332,24 @@ static int sched_task_handler(struct ctl_table *table, int write,
 			wts->low_latency &= ~WALT_LOW_LATENCY_PROCFS;
 		break;
 	case PIPELINE:
-		if (val)
+		rq = task_rq_lock(task, &rf);
+		if (READ_ONCE(task->__state) == TASK_DEAD) {
+			ret = -EINVAL;
+			task_rq_unlock(rq, task, &rf);
+			goto put_task;
+		}
+		if (val) {
+			ret = add_pipeline(wts);
+			if (ret < 0) {
+				task_rq_unlock(rq, task, &rf);
+				goto put_task;
+			}
 			wts->low_latency |= WALT_LOW_LATENCY_PIPELINE;
-		else
+		} else {
 			wts->low_latency &= ~WALT_LOW_LATENCY_PIPELINE;
+			remove_pipeline(wts);
+		}
+		task_rq_unlock(rq, task, &rf);
 		break;
 	case LOAD_BOOST:
 		if (pid_and_val[1] < -90 || pid_and_val[1] > 90) {
