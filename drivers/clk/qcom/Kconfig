@@ -384,6 +384,15 @@ config SC_GCC_7180
 	  Say Y if you want to use peripheral devices such as UART, SPI,
 	  I2C, USB, UFS, SDCC, etc.
 
+config CLOCK_CPU_SDXLEMUR
+        bool "CPU SDXLEMUR Clock Controller"
+        depends on COMMON_CLK_QCOM
+        help
+          Support for the cpu clock controller on SDXLEMUR
+          based devices.
+          Say Y if you want to support CPU clock scaling using
+          CPUfreq drivers for dynamic power management.
+
 config SC_GCC_7280
 	tristate "SC7280 Global Clock Controller"
 	select QCOM_GDSC

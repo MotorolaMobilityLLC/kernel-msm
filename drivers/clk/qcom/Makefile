@@ -110,6 +110,7 @@ obj-$(CONFIG_SDW_GPUCC_MONACO) += gpucc-monaco.o
 obj-$(CONFIG_SDX_DEBUGCC_BAAGHA) += debugcc-sdxbaagha.o
 obj-$(CONFIG_SDX_DEBUGCC_PINN) += debugcc-sdxpinn.o
 obj-$(CONFIG_SDX_GCC_55) += gcc-sdx55.o
+obj-$(CONFIG_CLOCK_CPU_SDXLEMUR) += clk-cpu-sdxlemur.o
 obj-$(CONFIG_SDX_GCC_BAAGHA) += gcc-sdxbaagha.o
 obj-$(CONFIG_SDX_GCC_PINN) += gcc-sdxpinn.o
 obj-$(CONFIG_SM_CAMCC_8150) += camcc-sm8150.o
