@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __MSM_MHI_DEV_H
@@ -158,7 +158,7 @@ struct mhi_dev_ready_cb_info {
 	struct mhi_dev_client_cb_data	cb_data;
 };
 
-#if defined(CONFIG_MSM_MHI_DEV)
+#if IS_ENABLED(CONFIG_MSM_MHI_DEV)
 /**
  * mhi_dev_open_channel() - Channel open for a given client done prior
  *		to read/write.
@@ -264,40 +264,41 @@ int mhi_vf_register_state_cb(void (*mhi_state_cb)
 			(struct mhi_dev_client_cb_data *cb_data), void *data,
 			enum mhi_client_channel channel,
 			unsigned int vf_id);
+
 #else
 static inline int mhi_dev_open_channel(uint32_t chan_id,
 		struct mhi_dev_client **handle_client,
 		void (*event_trigger)(struct mhi_dev_client_cb_reason *cb))
 {
 	return -EINVAL;
-};
+}
 
 static inline int mhi_dev_vf_open_channel(uint32_t vf_id, uint32_t chan_id,
 		struct mhi_dev_client **handle_client,
 		void (*event_trigger)(struct mhi_dev_client_cb_reason *cb))
 {
 	return -EINVAL;
-};
+}
 
 static inline int mhi_dev_close_channel(struct mhi_dev_client *handle_client)
 {
 	return -EINVAL;
-};
+}
 
 static inline int mhi_dev_read_channel(struct mhi_req *mreq)
 {
 	return -EINVAL;
-};
+}
 
 static inline int mhi_dev_write_channel(struct mhi_req *wreq)
 {
 	return -EINVAL;
-};
+}
 
 static inline int mhi_dev_channel_isempty(struct mhi_dev_client *handle)
 {
 	return -EINVAL;
-};
+}
 
 static inline bool mhi_dev_channel_has_pending_write
 	(struct mhi_dev_client *handle)
@@ -308,28 +309,29 @@ static inline bool mhi_dev_channel_has_pending_write
 static inline int mhi_ctrl_state_info(uint32_t idx, uint32_t *info)
 {
 	return -EINVAL;
-};
+}
 
 static inline int mhi_vf_ctrl_state_info(u32 vf_id, uint32_t idx, uint32_t *info)
 {
 	return -EINVAL;
-};
+}
 
 static inline int mhi_register_state_cb(void (*mhi_state_cb)
 			(struct mhi_dev_client_cb_data *cb_data), void *data,
 			enum mhi_client_channel channel)
 {
 	return -EINVAL;
-};
+}
 
 int mhi_vf_register_state_cb(void (*mhi_state_cb)
 			(struct mhi_dev_client_cb_data *cb_data), void *data,
 			enum mhi_client_channel channel,
-			unsigned int vf_id);
+			unsigned int vf_id)
 
 {
 	return -EINVAL;
-};
+}
+
 #endif
 
 #endif /* _MSM_MHI_DEV_H*/

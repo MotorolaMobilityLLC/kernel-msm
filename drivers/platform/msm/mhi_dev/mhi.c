@@ -4058,6 +4058,16 @@ exit:
 }
 EXPORT_SYMBOL(mhi_dev_write_channel);
 
+struct mhi_dev_ops dev_ops = {
+	.register_state_cb	= mhi_vf_register_state_cb,
+	.ctrl_state_info	= mhi_vf_ctrl_state_info,
+	.open_channel		= mhi_dev_vf_open_channel,
+	.close_channel		= mhi_dev_close_channel,
+	.write_channel		= mhi_dev_write_channel,
+	.read_channel		= mhi_dev_read_channel,
+	.is_channel_empty	= mhi_dev_channel_isempty,
+};
+
 static int mhi_dev_recover(struct mhi_dev *mhi)
 {
 	int rc = 0;
@@ -4248,7 +4258,7 @@ static void mhi_dev_enable(struct work_struct *work)
 		mhi_update_state_info(mhi, MHI_STATE_CONFIGURED);
 
 	/* Enable MHI dev network stack Interface */
-	rc = mhi_dev_net_interface_init(mhi->vf_id, mhi_hw_ctx->ep_cap.num_vfs);
+	rc = mhi_dev_net_interface_init(&dev_ops, mhi->vf_id, mhi_hw_ctx->ep_cap.num_vfs);
 	if (rc)
 		mhi_log(mhi->vf_id, MHI_MSG_ERROR,
 				"Failed to initialize mhi_dev_net iface\n");
