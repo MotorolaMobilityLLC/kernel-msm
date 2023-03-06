@@ -190,6 +190,18 @@ config R8125_IOSS
 	  To compile this driver as a module, choose M here. Module will be
 	  called r8125_ioss. If unsure, say N.
 
+config R8168_IOSS
+	tristate "Realtek R8168 IOSS glue driver"
+	depends on R8168
+	depends on IOSS
+	help
+	  Enables IPA Ethernet Offload path on Realtek R8168 NIC. It is
+	  designed to support generic HW processing of UL/DL IP packets for
+	  various use cases to reduce the CPU load during E2E IP traffic.
+
+	  To compile this driver as a module, choose M here. Module will be
+	  called r8168_ioss. If unsure, say N.
+
 config AQFWD_IOSS
 	tristate "AQC glue driver for IOSS v2"
 	depends on AQFWD
