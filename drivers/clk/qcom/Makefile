@@ -120,6 +120,7 @@ obj-$(CONFIG_SM_DEBUGCC_SCUBA) += debugcc-scuba.o
 obj-$(CONFIG_SM_GCC_8150) += gcc-sm8150.o
 obj-$(CONFIG_SM_GCC_8250) += gcc-sm8250.o
 obj-$(CONFIG_SM_GCC_8350) += gcc-sm8350.o
+obj-$(CONFIG_SM_GCC_CROW) += gcc-crow.o
 obj-$(CONFIG_SM_GCC_KALAMA) += gcc-kalama.o
 obj-$(CONFIG_SM_GCC_KHAJE) += gcc-khaje.o
 obj-$(CONFIG_SM_GCC_SCUBA) += gcc-scuba.o

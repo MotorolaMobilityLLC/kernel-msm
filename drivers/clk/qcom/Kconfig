@@ -1095,6 +1095,15 @@ config SDX_DEBUGCC_BAAGHA
 	  Say Y if you want to support the debug clocks such as
 	  clock measurement functionality.
 
+config SM_GCC_CROW
+	tristate "CROW Global Clock Controller"
+	depends on COMMON_CLK_QCOM
+	help
+	  Support for Global Clock Controller on Qualcomm Technologies, Inc.
+	  CROW devices.
+	  Say Y if you want to use peripheral devices such as UART, SPI, I2C,
+	  USB, UFS, SD/eMMC, PCIe, etc.
+
 endif
 
 config VIRTIO_CLK
