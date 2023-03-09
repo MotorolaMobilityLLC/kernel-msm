@@ -114,7 +114,10 @@ static moto_product products_list[] = {
 	{"zeekr",	"PRC",	"prc.epa"}, //IKSWT-13585,Juno bdwlan
 	{"zeekr",	"NA",	"na.epa"}, //IKSWT-97915,Juno NA bdwlan
 	{"zeekr",	"ROW",	"row.epa"}, //IKSWT-97915,Juno ROW bdwlan
-	{"lynkco",      "all",  NV_EPA}, //IKSWT-66390,Lynkco bdwlan
+	{"lynkco",  "PRC",  "prc.epa"}, //IKSWT-102203,Lynkco prc bdwlan
+	{"lynkco",  "NA",   "na.epa"}, //IKSWT-102203,Lynkco na bdwlan
+	{"lynkco",  "ROW",  "row.epa"}, //IKSWT-102203,Lynkco row bdwlan
+	{"lynkco",  "JPN",  "jpn.epa"}, //IKSWT-102203,Lynkco jpn bdwlan
 	/* Terminator */
 	{{0}, {0}, {0}},
 };
