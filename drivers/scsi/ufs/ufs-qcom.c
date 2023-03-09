@@ -2176,15 +2176,6 @@ static int ufs_qcom_bus_register(struct ufs_qcom_host *host)
 	return 0;
 }
 
-static void ufs_qcom_event_notify(struct ufs_hba *hba, enum ufs_event_type evt,
-				  void *data)
-{
-#if defined(CONFIG_UFSFEATURE)
-	if (evt == UFS_EVT_WL_SUSP_ERR)
-		ufsf_resume(ufs_qcom_get_ufsf(hba), true);
-#endif
-}
-
 static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 {
 	if (host->dev_ref_clk_ctrl_mmio &&
@@ -4615,6 +4606,11 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 		if (reg == UIC_DATA_LINK_LAYER_EC_PA_ERROR_IND_RECEIVED)
 			evt_valid = false;
 		break;
+#if defined(CONFIG_UFSFEATURE)
+	case UFS_EVT_WL_SUSP_ERR:
+		ufsf_resume(ufs_qcom_get_ufsf(hba), true);
+		break;
+#endif
 	default:
 		break;
 	}
@@ -5094,9 +5090,6 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 	.setup_xfer_req         = ufs_qcom_qos,
 	.program_key		= ufs_qcom_ice_program_key,
 	.fixup_dev_quirks       = ufs_qcom_fixup_dev_quirks,
-#if defined(CONFIG_UFSFEATURE)
-	.event_notify		= ufs_qcom_event_notify,
-#endif
 };
 
 /**
