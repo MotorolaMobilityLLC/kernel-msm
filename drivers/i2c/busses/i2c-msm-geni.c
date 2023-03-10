@@ -315,9 +315,9 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 	if ((m_stat & M_CMD_FAILURE_EN) ||
 		    (dm_rx_st & (DM_I2C_CB_ERR)) ||
 		    (m_stat & M_CMD_CANCEL_EN) ||
+			(m_stat & M_CMD_ABORT_EN) ||
 		    (m_stat & M_GP_IRQ_1_EN)) {
 
-		    (m_stat & M_CMD_ABORT_EN)) {
 #if IS_ENABLED(CONFIG_QCOM_I2C_NACK_ERR_WA)
 		if(i2c_wt6670_dl_mode == 0){
 			if (m_stat & M_GP_IRQ_1_EN)
