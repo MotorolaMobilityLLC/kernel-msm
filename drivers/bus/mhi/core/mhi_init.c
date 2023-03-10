@@ -1746,6 +1746,8 @@ void mhi_unregister_mhi_controller(struct mhi_controller *mhi_cntrl)
 	struct mhi_device *mhi_dev = mhi_cntrl->mhi_dev;
 	struct mhi_sfr_info *sfr_info = mhi_cntrl->mhi_sfr;
 
+	destroy_workqueue(mhi_cntrl->wq);
+
 	kfree(mhi_cntrl->mhi_cmd);
 	kfree(mhi_cntrl->mhi_event);
 	vfree(mhi_cntrl->mhi_chan);

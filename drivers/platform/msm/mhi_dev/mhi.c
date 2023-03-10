@@ -104,6 +104,38 @@ static DECLARE_COMPLETION(transfer_host_to_device);
 static DECLARE_COMPLETION(transfer_device_to_host);
 
 /*
+ * mhi_dev_get_msi_config () - Fetch the MSI config from
+ * PCIe and set the msi_disable flag accordingly
+ *
+ * @phandle : phandle structure
+ * @cfg :     PCIe MSI config structure
+ */
+static int mhi_dev_get_msi_config(struct ep_pcie_hw *phandle,
+					struct ep_pcie_msi_config *cfg)
+{
+	int rc;
+
+	/*
+	 * Fetching MSI config to read the MSI capability and setting the
+	 * msi_disable flag based on it.
+	 */
+	rc = ep_pcie_get_msi_config(phandle, cfg);
+	if (rc == -EOPNOTSUPP) {
+		mhi_log(MHI_MSG_VERBOSE, "MSI is disabled\n");
+		mhi_ctx->msi_disable = true;
+	} else if (!rc) {
+		mhi_ctx->msi_disable = false;
+	} else {
+		mhi_log(MHI_MSG_ERROR,
+			"Error retrieving pcie msi logic\n");
+		return rc;
+	}
+
+	mhi_log(MHI_MSG_VERBOSE, "msi_disable = %d\n", mhi_ctx->msi_disable);
+	return 0;
+}
+
+/*
  * mhi_dev_ring_cache_completion_cb () - Call back function called
  * by IPA driver when ring element cache is done
  *
@@ -280,15 +312,15 @@ static int mhi_dev_schedule_msi_ipa(struct mhi_dev *mhi, struct event_req *ereq)
 	union mhi_dev_ring_ctx *ctx;
 	int rc;
 
-	rc = ep_pcie_get_msi_config(mhi->phandle, &cfg);
-	if (rc == -EOPNOTSUPP) {
-		mhi_log(MHI_MSG_VERBOSE, "MSI is disabled\n");
-		mhi_ctx->msi_disable = true;
-		return 0;
-	} else if (rc) {
+	rc = mhi_dev_get_msi_config(mhi->phandle, &cfg);
+	if (rc) {
 		mhi_log(MHI_MSG_ERROR, "Error retrieving pcie msi logic\n");
 		return rc;
 	}
+
+	/* If MSI is disabled, bailing out */
+	if (mhi_ctx->msi_disable)
+		return 0;
 
 	ctx = (union mhi_dev_ring_ctx *)&mhi->ev_ctx_cache[ereq->event_ring];
 
@@ -436,16 +468,15 @@ static int mhi_trigger_msi_edma(struct mhi_dev_ring *ring, u32 idx)
 	unsigned long flags;
 
 	if (!mhi_ctx->msi_lower) {
-		rc = ep_pcie_get_msi_config(mhi_ctx->phandle, &cfg);
-		if (rc == -EOPNOTSUPP) {
-			mhi_log(MHI_MSG_VERBOSE, "MSI is disabled\n");
-			mhi_ctx->msi_disable = true;
-			return 0;
-		} else if (rc) {
-			mhi_log(MHI_MSG_ERROR,
-					"Error retrieving pcie msi logic\n");
+		rc = mhi_dev_get_msi_config(mhi_ctx->phandle, &cfg);
+		if (rc) {
+			mhi_log(MHI_MSG_ERROR, "Error retrieving pcie msi logic\n");
 			return rc;
 		}
+
+		/* If MSI is disabled, bailing out */
+		if (mhi_ctx->msi_disable)
+			return 0;
 
 		mhi_ctx->msi_data = cfg.data;
 		mhi_ctx->msi_lower = cfg.lower;
@@ -1450,13 +1481,9 @@ static int mhi_hwc_init(struct mhi_dev *mhi)
 	}
 
 	/* Call IPA HW_ACC Init with MSI Address and db routing info */
-	rc = ep_pcie_get_msi_config(mhi_ctx->phandle, &cfg);
-	if (rc == -EOPNOTSUPP) {
-		mhi_log(MHI_MSG_VERBOSE, "MSI is disabled\n");
-		mhi_ctx->msi_disable = true;
-	} else if (rc) {
-		mhi_log(MHI_MSG_ERROR,
-			"Error retrieving pcie msi logic\n");
+	rc = mhi_dev_get_msi_config(mhi_ctx->phandle, &cfg);
+	if (rc) {
+		mhi_log(MHI_MSG_ERROR, "Error retrieving pcie msi logic\n");
 		return rc;
 	}
 
@@ -1671,11 +1698,8 @@ int mhi_dev_send_event(struct mhi_dev *mhi, int evnt_ring,
 	struct ep_pcie_msi_config cfg;
 	struct mhi_addr transfer_addr;
 
-	rc = ep_pcie_get_msi_config(mhi->phandle, &cfg);
-	if (rc == -EOPNOTSUPP) {
-		mhi_log(MHI_MSG_VERBOSE, "MSI is disabled\n");
-		mhi_ctx->msi_disable = true;
-	} else if (rc) {
+	rc = mhi_dev_get_msi_config(mhi->phandle, &cfg);
+	if (rc) {
 		mhi_log(MHI_MSG_ERROR, "Error retrieving pcie msi logic\n");
 		return rc;
 	}
@@ -4398,23 +4422,11 @@ static int mhi_dev_resume_mmio_mhi_init(struct mhi_dev *mhi_ctx)
 		return -EINVAL;
 	}
 
-	/*
-	 * Fetching MSI config to read the MSI capability and setting the
-	 * msi_disable flag based on it.
-	 */
-	rc = ep_pcie_get_msi_config(mhi_ctx->phandle, &cfg);
-	if (rc == -EOPNOTSUPP) {
-		mhi_log(MHI_MSG_VERBOSE, "MSI is disabled\n");
-		mhi_ctx->msi_disable = true;
-	} else if (!rc) {
-		mhi_ctx->msi_disable = false;
-	} else {
-		mhi_log(MHI_MSG_ERROR,
-			"Error retrieving pcie msi logic\n");
+	rc = mhi_dev_get_msi_config(mhi_ctx->phandle, &cfg);
+	if (rc) {
+		mhi_log(MHI_MSG_ERROR, "Error retrieving pcie msi logic\n");
 		return rc;
 	}
-
-	mhi_log(MHI_MSG_VERBOSE, "msi_disable = %d\n", mhi_ctx->msi_disable);
 
 	rc = mhi_dev_recover(mhi_ctx);
 	if (rc) {
