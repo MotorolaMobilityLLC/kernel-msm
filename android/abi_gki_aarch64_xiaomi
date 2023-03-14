@@ -14,6 +14,8 @@
 #required by memory module
   blk_execute_rq
   blk_rq_map_kern
+  nr_free_buffer_pages
+  mmc_set_blocklen
   scsi_device_lookup
   scsi_host_lookup
   scsi_host_put
