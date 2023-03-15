@@ -835,6 +835,7 @@
   gpiod_direction_input
   gpiod_direction_output
   gpiod_direction_output_raw
+  gpiod_get_direction
   gpiod_get_optional
   gpiod_get_raw_value
   gpiod_get_value
@@ -942,14 +943,21 @@
   iio_device_claim_direct_mode
   iio_device_id
   iio_device_release_direct_mode
+  iio_get_time_ns
   iio_kfifo_allocate
   iio_push_event
   iio_push_to_buffers
   iio_read_channel_processed
   iio_read_channel_raw
   iio_read_const_attr
+  iio_trigger_alloc
   iio_triggered_buffer_cleanup
   iio_triggered_buffer_setup_ext
+  iio_trigger_free
+  iio_trigger_notify_done
+  iio_trigger_poll
+  __iio_trigger_register
+  iio_trigger_unregister
   iio_update_buffers
   iio_validate_scan_mask_onehot
   iio_write_channel_raw
