@@ -2535,6 +2535,8 @@
   usb_free_coherent
   usb_function_register
   usb_function_unregister
+  usb_gadget_connect
+  usb_gadget_disconnect
   usb_gadget_wakeup
   usb_ifnum_to_if
   usb_interface_id
