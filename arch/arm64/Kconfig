@@ -1880,6 +1880,12 @@ config MULTI_CAM_FLASH_STATUS
 	help
 	Enable it only for multi camera flash turn to dark issue.
 
+config HDMI_YUV_TO_RGB
+	bool "For tundra to convert YUV to RGB when connected 4K TV with HDMI"
+	default n
+	help
+	Enable it only for 8350 tundra to fix can not select 4K when connect 4K TV.
+
 config CAMERA_VOLTAGE_COMPATIBLE
 	bool "For camera voltage compatible"
 	default n
