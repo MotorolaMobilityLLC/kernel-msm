@@ -1249,6 +1249,7 @@
   __netdev_alloc_skb
   netdev_err
   netdev_info
+  netdev_upper_get_next_dev_rcu
   netdev_warn
   netif_carrier_off
   netif_carrier_on
@@ -2307,6 +2308,7 @@
   usbnet_disconnect
   usbnet_get_drvinfo
   usbnet_get_endpoints
+  usbnet_get_ethernet_addr
   usbnet_get_link
   usbnet_get_link_ksettings_mii
   usbnet_get_msglevel
