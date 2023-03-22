@@ -1050,10 +1050,7 @@ static void mdp5_crtc_reset(struct drm_crtc *crtc)
 	if (crtc->state)
 		mdp5_crtc_destroy_state(crtc, crtc->state);
 
-	if (mdp5_cstate)
-		__drm_atomic_helper_crtc_reset(crtc, &mdp5_cstate->base);
-	else
-		__drm_atomic_helper_crtc_reset(crtc, NULL);
+	__drm_atomic_helper_crtc_reset(crtc, &mdp5_cstate->base);
 
 	drm_crtc_vblank_reset(crtc);
 }
