@@ -125,8 +125,7 @@ static void omap_encoder_mode_set(struct drm_encoder *encoder,
 	for (dssdev = output; dssdev; dssdev = dssdev->next)
 		omap_encoder_update_videomode_flags(&vm, dssdev->bus_flags);
 
-	for (bridge = output->bridge; bridge;
-	     bridge = drm_bridge_get_next_bridge(bridge)) {
+	for (bridge = output->bridge; bridge; bridge = bridge->next) {
 		if (!bridge->timings)
 			continue;
 
