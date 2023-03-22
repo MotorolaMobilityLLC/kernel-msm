@@ -172,8 +172,8 @@ void drm_bridge_detach(struct drm_bridge *bridge)
  */
 
 /**
- * drm_bridge_chain_mode_fixup - fixup proposed mode for all bridges in the
- *				 encoder chain
+ * drm_bridge_mode_fixup - fixup proposed mode for all bridges in the
+ *			   encoder chain
  * @bridge: bridge control structure
  * @mode: desired mode to be set for the bridge
  * @adjusted_mode: updated mode that works for this bridge
@@ -186,9 +186,9 @@ void drm_bridge_detach(struct drm_bridge *bridge)
  * RETURNS:
  * true on success, false on failure
  */
-bool drm_bridge_chain_mode_fixup(struct drm_bridge *bridge,
-				 const struct drm_display_mode *mode,
-				 struct drm_display_mode *adjusted_mode)
+bool drm_bridge_mode_fixup(struct drm_bridge *bridge,
+			const struct drm_display_mode *mode,
+			struct drm_display_mode *adjusted_mode)
 {
 	bool ret = true;
 
@@ -198,16 +198,15 @@ bool drm_bridge_chain_mode_fixup(struct drm_bridge *bridge,
 	if (bridge->funcs->mode_fixup)
 		ret = bridge->funcs->mode_fixup(bridge, mode, adjusted_mode);
 
-	ret = ret && drm_bridge_chain_mode_fixup(bridge->next, mode,
-						 adjusted_mode);
+	ret = ret && drm_bridge_mode_fixup(bridge->next, mode, adjusted_mode);
 
 	return ret;
 }
-EXPORT_SYMBOL(drm_bridge_chain_mode_fixup);
+EXPORT_SYMBOL(drm_bridge_mode_fixup);
 
 /**
- * drm_bridge_chain_mode_valid - validate the mode against all bridges in the
- *				 encoder chain.
+ * drm_bridge_mode_valid - validate the mode against all bridges in the
+ * 			   encoder chain.
  * @bridge: bridge control structure
  * @mode: desired mode to be validated
  *
@@ -220,9 +219,8 @@ EXPORT_SYMBOL(drm_bridge_chain_mode_fixup);
  * RETURNS:
  * MODE_OK on success, drm_mode_status Enum error code on failure
  */
-enum drm_mode_status
-drm_bridge_chain_mode_valid(struct drm_bridge *bridge,
-			    const struct drm_display_mode *mode)
+enum drm_mode_status drm_bridge_mode_valid(struct drm_bridge *bridge,
+					   const struct drm_display_mode *mode)
 {
 	enum drm_mode_status ret = MODE_OK;
 
@@ -235,12 +233,12 @@ drm_bridge_chain_mode_valid(struct drm_bridge *bridge,
 	if (ret != MODE_OK)
 		return ret;
 
-	return drm_bridge_chain_mode_valid(bridge->next, mode);
+	return drm_bridge_mode_valid(bridge->next, mode);
 }
-EXPORT_SYMBOL(drm_bridge_chain_mode_valid);
+EXPORT_SYMBOL(drm_bridge_mode_valid);
 
 /**
- * drm_bridge_chain_disable - disables all bridges in the encoder chain
+ * drm_bridge_disable - disables all bridges in the encoder chain
  * @bridge: bridge control structure
  *
  * Calls &drm_bridge_funcs.disable op for all the bridges in the encoder
@@ -249,21 +247,20 @@ EXPORT_SYMBOL(drm_bridge_chain_mode_valid);
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_bridge_chain_disable(struct drm_bridge *bridge)
+void drm_bridge_disable(struct drm_bridge *bridge)
 {
 	if (!bridge)
 		return;
 
-	drm_bridge_chain_disable(bridge->next);
+	drm_bridge_disable(bridge->next);
 
 	if (bridge->funcs->disable)
 		bridge->funcs->disable(bridge);
 }
-EXPORT_SYMBOL(drm_bridge_chain_disable);
+EXPORT_SYMBOL(drm_bridge_disable);
 
 /**
- * drm_bridge_chain_post_disable - cleans up after disabling all bridges in the
- *				   encoder chain
+ * drm_bridge_post_disable - cleans up after disabling all bridges in the encoder chain
  * @bridge: bridge control structure
  *
  * Calls &drm_bridge_funcs.post_disable op for all the bridges in the
@@ -272,7 +269,7 @@ EXPORT_SYMBOL(drm_bridge_chain_disable);
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_bridge_chain_post_disable(struct drm_bridge *bridge)
+void drm_bridge_post_disable(struct drm_bridge *bridge)
 {
 	if (!bridge)
 		return;
@@ -280,25 +277,25 @@ void drm_bridge_chain_post_disable(struct drm_bridge *bridge)
 	if (bridge->funcs->post_disable)
 		bridge->funcs->post_disable(bridge);
 
-	drm_bridge_chain_post_disable(bridge->next);
+	drm_bridge_post_disable(bridge->next);
 }
-EXPORT_SYMBOL(drm_bridge_chain_post_disable);
+EXPORT_SYMBOL(drm_bridge_post_disable);
 
 /**
- * drm_bridge_chain_mode_set - set proposed mode for all bridges in the
- *			       encoder chain
+ * drm_bridge_mode_set - set proposed mode for all bridges in the
+ *			 encoder chain
  * @bridge: bridge control structure
- * @mode: desired mode to be set for the encoder chain
- * @adjusted_mode: updated mode that works for this encoder chain
+ * @mode: desired mode to be set for the bridge
+ * @adjusted_mode: updated mode that works for this bridge
  *
  * Calls &drm_bridge_funcs.mode_set op for all the bridges in the
  * encoder chain, starting from the first bridge to the last.
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_bridge_chain_mode_set(struct drm_bridge *bridge,
-			       const struct drm_display_mode *mode,
-			       const struct drm_display_mode *adjusted_mode)
+void drm_bridge_mode_set(struct drm_bridge *bridge,
+			 const struct drm_display_mode *mode,
+			 const struct drm_display_mode *adjusted_mode)
 {
 	if (!bridge)
 		return;
@@ -306,13 +303,13 @@ void drm_bridge_chain_mode_set(struct drm_bridge *bridge,
 	if (bridge->funcs->mode_set)
 		bridge->funcs->mode_set(bridge, mode, adjusted_mode);
 
-	drm_bridge_chain_mode_set(bridge->next, mode, adjusted_mode);
+	drm_bridge_mode_set(bridge->next, mode, adjusted_mode);
 }
-EXPORT_SYMBOL(drm_bridge_chain_mode_set);
+EXPORT_SYMBOL(drm_bridge_mode_set);
 
 /**
- * drm_bridge_chain_pre_enable - prepares for enabling all bridges in the
- *				 encoder chain
+ * drm_bridge_pre_enable - prepares for enabling all
+ *			   bridges in the encoder chain
  * @bridge: bridge control structure
  *
  * Calls &drm_bridge_funcs.pre_enable op for all the bridges in the encoder
@@ -321,20 +318,20 @@ EXPORT_SYMBOL(drm_bridge_chain_mode_set);
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_bridge_chain_pre_enable(struct drm_bridge *bridge)
+void drm_bridge_pre_enable(struct drm_bridge *bridge)
 {
 	if (!bridge)
 		return;
 
-	drm_bridge_chain_pre_enable(bridge->next);
+	drm_bridge_pre_enable(bridge->next);
 
 	if (bridge->funcs->pre_enable)
 		bridge->funcs->pre_enable(bridge);
 }
-EXPORT_SYMBOL(drm_bridge_chain_pre_enable);
+EXPORT_SYMBOL(drm_bridge_pre_enable);
 
 /**
- * drm_bridge_chain_enable - enables all bridges in the encoder chain
+ * drm_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure
  *
  * Calls &drm_bridge_funcs.enable op for all the bridges in the encoder
@@ -343,7 +340,7 @@ EXPORT_SYMBOL(drm_bridge_chain_pre_enable);
  *
  * Note that the bridge passed should be the one closest to the encoder
  */
-void drm_bridge_chain_enable(struct drm_bridge *bridge)
+void drm_bridge_enable(struct drm_bridge *bridge)
 {
 	if (!bridge)
 		return;
@@ -351,12 +348,12 @@ void drm_bridge_chain_enable(struct drm_bridge *bridge)
 	if (bridge->funcs->enable)
 		bridge->funcs->enable(bridge);
 
-	drm_bridge_chain_enable(bridge->next);
+	drm_bridge_enable(bridge->next);
 }
-EXPORT_SYMBOL(drm_bridge_chain_enable);
+EXPORT_SYMBOL(drm_bridge_enable);
 
 /**
- * drm_atomic_bridge_chain_disable - disables all bridges in the encoder chain
+ * drm_atomic_bridge_disable - disables all bridges in the encoder chain
  * @bridge: bridge control structure
  * @state: atomic state being committed
  *
@@ -367,24 +364,24 @@ EXPORT_SYMBOL(drm_bridge_chain_enable);
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_atomic_bridge_chain_disable(struct drm_bridge *bridge,
-				     struct drm_atomic_state *state)
+void drm_atomic_bridge_disable(struct drm_bridge *bridge,
+			       struct drm_atomic_state *state)
 {
 	if (!bridge)
 		return;
 
-	drm_atomic_bridge_chain_disable(bridge->next, state);
+	drm_atomic_bridge_disable(bridge->next, state);
 
 	if (bridge->funcs->atomic_disable)
 		bridge->funcs->atomic_disable(bridge, state);
 	else if (bridge->funcs->disable)
 		bridge->funcs->disable(bridge);
 }
-EXPORT_SYMBOL(drm_atomic_bridge_chain_disable);
+EXPORT_SYMBOL(drm_atomic_bridge_disable);
 
 /**
- * drm_atomic_bridge_chain_post_disable - cleans up after disabling all bridges
- *					  in the encoder chain
+ * drm_atomic_bridge_post_disable - cleans up after disabling all bridges in the
+ *				    encoder chain
  * @bridge: bridge control structure
  * @state: atomic state being committed
  *
@@ -395,8 +392,8 @@ EXPORT_SYMBOL(drm_atomic_bridge_chain_disable);
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_atomic_bridge_chain_post_disable(struct drm_bridge *bridge,
-					  struct drm_atomic_state *state)
+void drm_atomic_bridge_post_disable(struct drm_bridge *bridge,
+				    struct drm_atomic_state *state)
 {
 	if (!bridge)
 		return;
@@ -406,13 +403,13 @@ void drm_atomic_bridge_chain_post_disable(struct drm_bridge *bridge,
 	else if (bridge->funcs->post_disable)
 		bridge->funcs->post_disable(bridge);
 
-	drm_atomic_bridge_chain_post_disable(bridge->next, state);
+	drm_atomic_bridge_post_disable(bridge->next, state);
 }
-EXPORT_SYMBOL(drm_atomic_bridge_chain_post_disable);
+EXPORT_SYMBOL(drm_atomic_bridge_post_disable);
 
 /**
- * drm_atomic_bridge_chain_pre_enable - prepares for enabling all bridges in
- *					the encoder chain
+ * drm_atomic_bridge_pre_enable - prepares for enabling all bridges in the
+ *				  encoder chain
  * @bridge: bridge control structure
  * @state: atomic state being committed
  *
@@ -423,23 +420,23 @@ EXPORT_SYMBOL(drm_atomic_bridge_chain_post_disable);
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_atomic_bridge_chain_pre_enable(struct drm_bridge *bridge,
-					struct drm_atomic_state *state)
+void drm_atomic_bridge_pre_enable(struct drm_bridge *bridge,
+				  struct drm_atomic_state *state)
 {
 	if (!bridge)
 		return;
 
-	drm_atomic_bridge_chain_pre_enable(bridge->next, state);
+	drm_atomic_bridge_pre_enable(bridge->next, state);
 
 	if (bridge->funcs->atomic_pre_enable)
 		bridge->funcs->atomic_pre_enable(bridge, state);
 	else if (bridge->funcs->pre_enable)
 		bridge->funcs->pre_enable(bridge);
 }
-EXPORT_SYMBOL(drm_atomic_bridge_chain_pre_enable);
+EXPORT_SYMBOL(drm_atomic_bridge_pre_enable);
 
 /**
- * drm_atomic_bridge_chain_enable - enables all bridges in the encoder chain
+ * drm_atomic_bridge_enable - enables all bridges in the encoder chain
  * @bridge: bridge control structure
  * @state: atomic state being committed
  *
@@ -450,8 +447,8 @@ EXPORT_SYMBOL(drm_atomic_bridge_chain_pre_enable);
  *
  * Note: the bridge passed should be the one closest to the encoder
  */
-void drm_atomic_bridge_chain_enable(struct drm_bridge *bridge,
-				    struct drm_atomic_state *state)
+void drm_atomic_bridge_enable(struct drm_bridge *bridge,
+			      struct drm_atomic_state *state)
 {
 	if (!bridge)
 		return;
@@ -461,9 +458,9 @@ void drm_atomic_bridge_chain_enable(struct drm_bridge *bridge,
 	else if (bridge->funcs->enable)
 		bridge->funcs->enable(bridge);
 
-	drm_atomic_bridge_chain_enable(bridge->next, state);
+	drm_atomic_bridge_enable(bridge->next, state);
 }
-EXPORT_SYMBOL(drm_atomic_bridge_chain_enable);
+EXPORT_SYMBOL(drm_atomic_bridge_enable);
 
 #ifdef CONFIG_OF
 /**
