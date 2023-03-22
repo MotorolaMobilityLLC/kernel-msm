@@ -266,6 +266,68 @@ static int ufs_qcom_get_pwr_dev_param(struct ufs_qcom_dev_params *qcom_param,
 	return 0;
 }
 
+#if defined(CONFIG_UFSFEATURE)
+static void ufs_vh_prep_fn(void *data, struct ufs_hba *hba,
+			struct request *rq, struct ufshcd_lrb *lrbp, int *err)
+{
+	ufsf_change_lun(ufs_qcom_get_ufsf(hba), lrbp);
+	*err = ufsf_prep_fn(ufs_qcom_get_ufsf(hba), lrbp);
+}
+
+static void ufs_vh_compl_command(void *data, struct ufs_hba *hba,
+				 struct ufshcd_lrb *lrbp)
+{
+	struct utp_upiu_header *header = &lrbp->ucd_rsp_ptr->header;
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+	struct scsi_cmnd *cmd = lrbp->cmd;
+	int scsi_status, result, ocs;
+
+	if (!cmd)
+		return;
+
+	ocs = le32_to_cpu(lrbp->utr_descriptor_ptr->header.dword_2) & MASK_OCS;
+	if (ocs != OCS_SUCCESS)
+		goto check_last_req;
+
+	result = be32_to_cpu(header->dword_0) >> 24;
+	if (result != UPIU_TRANSACTION_RESPONSE)
+		goto check_last_req;
+
+	scsi_status = be32_to_cpu(header->dword_1) & MASK_SCSI_STATUS;
+	if (scsi_status != SAM_STAT_GOOD)
+		goto check_last_req;
+
+	ufsf_upiu_check_for_ccd(lrbp);
+
+check_last_req:
+#if defined(CONFIG_UFSHID)
+	/* Check if it is the last request to be completed */
+	if (hba->outstanding_tasks ||
+	    !(hba->outstanding_reqs == (1 << lrbp->task_tag)))
+		return;
+	if (!ufshid_is_hid_req(cmd))
+		schedule_work(&ufsf->on_idle_work);
+#endif
+	;
+}
+
+static void ufs_vh_update_sdev(void *data, struct scsi_device *sdev)
+{
+	struct ufs_hba *hba = shost_priv(sdev->host);
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	ufsf_slave_configure(ufsf, sdev);
+}
+
+static void ufs_vh_send_command(void *data, struct ufs_hba *hba,
+				struct ufshcd_lrb *lrbp)
+{
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	ufsf_hid_acc_io_stat(ufsf, lrbp);
+}
+#endif
+
 static struct ufs_qcom_host *rcdev_to_ufs_host(struct reset_controller_dev *rcd)
 {
 	return container_of(rcd, struct ufs_qcom_host, rcdev);
@@ -1432,8 +1494,12 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err = 0;
 
-	if (status == PRE_CHANGE)
+	if (status == PRE_CHANGE) {
+#if defined(CONFIG_UFSFEATURE)
+		ufsf_suspend(ufs_qcom_get_ufsf(hba));
+#endif
 		return 0;
+	}
 
 	/*
 	 * If UniPro link is not active or OFF, PHY ref_clk, main PHY analog
@@ -1481,6 +1547,11 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	schedule_work(&ufsf->resume_work);
+#endif
 
 	if (host->vddp_ref_clk && (hba->rpm_lvl > UFS_PM_LVL_3 ||
 				   hba->spm_lvl > UFS_PM_LVL_3))
@@ -1853,6 +1924,15 @@ static int ufs_qcom_bus_register(struct ufs_qcom_host *host)
 		ufs_qcom_msg(ERR, dev, "Error: (%d) Failed to create sysfs entries\n",
 			err);
 	return 0;
+}
+
+static void ufs_qcom_event_notify(struct ufs_hba *hba, enum ufs_event_type evt,
+				  void *data)
+{
+#if defined(CONFIG_UFSFEATURE)
+	if (evt == UFS_EVT_WL_SUSP_ERR)
+		ufsf_resume(ufs_qcom_get_ufsf(hba), true);
+#endif
 }
 
 static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
@@ -2563,6 +2643,14 @@ ufs_qcom_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 			__func__, err);
 		goto out_release_mem;
 	}
+#if defined(CONFIG_UFSFEATURE)
+        if (ufsf_check_query(ioctl_data->opcode)) {
+                err = ufsf_query_ioctl(ufs_qcom_get_ufsf(hba), lun, buffer,
+                                       ioctl_data);
+                goto out_release_mem;
+        }
+#endif
+
 
 	/* verify legal parameters & send query */
 	switch (ioctl_data->opcode) {
@@ -3623,6 +3711,17 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 					sizeof(struct Scsi_Host), "UFS_SHOST", 0);
 	}
 
+	/* Provide SCSI host ioctl API */
+	hba->host->hostt->ioctl = (int (*)(struct scsi_device *, unsigned int,
+				   void __user *))ufs_qcom_ioctl;
+#ifdef CONFIG_COMPAT
+	hba->host->hostt->compat_ioctl = (int (*)(struct scsi_device *,
+					  unsigned int,
+					  void __user *))ufs_qcom_ioctl;
+#endif
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_set_init_state(hba);
+#endif
 	goto out;
 
 out_disable_vccq_parent:
@@ -4240,6 +4339,10 @@ static int ufs_qcom_device_reset(struct ufs_hba *hba)
 		ufs_qcom_msg(WARN, hba->dev, "%s: host reset returned %d\n",
 				 __func__, ret);
 
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_reset_host(ufs_qcom_get_ufsf(hba));
+#endif
+
 	/* reset gpio is optional */
 	if (!host->device_reset)
 		return -EOPNOTSUPP;
@@ -4325,6 +4428,9 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 	.setup_xfer_req         = ufs_qcom_qos,
 	.program_key		= ufs_qcom_ice_program_key,
 	.fixup_dev_quirks       = ufs_qcom_fixup_dev_quirks,
+#if defined(CONFIG_UFSFEATURE)
+	.event_notify		= ufs_qcom_event_notify,
+#endif
 };
 
 /**
@@ -4573,6 +4679,10 @@ static void ufs_qcom_hook_send_command(void *param, struct ufs_hba *hba,
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
+#if defined(CONFIG_UFSFEATURE)
+	ufs_vh_send_command(param, hba, lrbp);
+#endif
+
 	if (lrbp && lrbp->cmd && lrbp->cmd->cmnd[0]) {
 		struct request *rq = scsi_cmd_to_rq(lrbp->cmd);
 		int sz = rq ? blk_rq_sectors(rq) : 0;
@@ -4599,7 +4709,9 @@ static void ufs_qcom_hook_compl_command(void *param, struct ufs_hba *hba,
 {
 
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
-
+#if defined(CONFIG_UFSFEATURE)
+    ufs_vh_compl_command(param, hba, lrbp);
+#endif
 	if (lrbp && lrbp->cmd) {
 		int sz = scsi_cmd_to_rq(lrbp->cmd) ?
 				blk_rq_sectors(scsi_cmd_to_rq(lrbp->cmd)) : 0;
@@ -4672,6 +4784,9 @@ static void ufs_qcom_hook_check_int_errors(void *param, struct ufs_hba *hba,
 
 static void ufs_qcom_update_sdev(void *param, struct scsi_device *sdev)
 {
+#if defined(CONFIG_UFSFEATURE)
+	ufs_vh_update_sdev(param, sdev);
+#endif
 	sdev->broken_fua = 1;
 }
 
@@ -4680,6 +4795,9 @@ static void ufs_qcom_update_sdev(void *param, struct scsi_device *sdev)
  */
 static void ufs_qcom_register_hooks(void)
 {
+#if defined(CONFIG_UFSFEATURE)
+	register_trace_android_vh_ufs_prepare_command(ufs_vh_prep_fn, NULL);
+#endif
 	register_trace_android_vh_ufs_send_command(ufs_qcom_hook_send_command,
 						NULL);
 	register_trace_android_vh_ufs_compl_command(
@@ -4816,6 +4934,11 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 	pm_runtime_get_sync(&(pdev)->dev);
 	for (i = 0; i < r->num_groups; i++, qcg++)
 		remove_group_qos(qcg);
+
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_remove(ufs_qcom_get_ufsf(hba));
+#endif
+
 	ufshcd_remove(hba);
 	return 0;
 }

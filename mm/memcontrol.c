@@ -1279,6 +1279,16 @@ struct lruvec *lock_page_lruvec_irqsave(struct page *page, unsigned long *flags)
 	return lruvec;
 }
 
+struct lruvec *page_to_lruvec(struct page *page, pg_data_t *pgdat)
+{
+	struct lruvec *lruvec;
+
+	lruvec = mem_cgroup_page_lruvec(page);
+
+	return lruvec;
+}
+EXPORT_SYMBOL_GPL(page_to_lruvec);
+
 void do_traversal_all_lruvec(void)
 {
 	pg_data_t *pgdat;
@@ -6229,9 +6239,10 @@ static void mem_cgroup_move_task(void)
 #ifdef CONFIG_LRU_GEN
 static void mem_cgroup_attach(struct cgroup_taskset *tset)
 {
+	struct task_struct *task;
 	struct cgroup_subsys_state *css;
-	struct task_struct *task = NULL;
 
+	/* find the first leader if there is any */
 	cgroup_taskset_for_each_leader(task, css, tset)
 		break;
 
@@ -6239,7 +6250,7 @@ static void mem_cgroup_attach(struct cgroup_taskset *tset)
 		return;
 
 	task_lock(task);
-	if (task->mm && task->mm->owner == task)
+	if (task->mm && READ_ONCE(task->mm->owner) == task)
 		lru_gen_migrate_mm(task->mm);
 	task_unlock(task);
 }
