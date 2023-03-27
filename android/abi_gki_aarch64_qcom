@@ -89,6 +89,7 @@
   __blk_alloc_disk
   blk_cleanup_disk
   blk_cleanup_queue
+  blkdev_compat_ptr_ioctl
   blkdev_get_by_dev
   __blkdev_issue_discard
   blkdev_put
@@ -140,7 +141,6 @@
   blk_set_stacking_limits
   blk_start_plug
   blk_sync_queue
-  blkdev_compat_ptr_ioctl
   blocking_notifier_call_chain
   blocking_notifier_chain_register
   blocking_notifier_chain_unregister
@@ -258,6 +258,7 @@
   contig_page_data
   _copy_from_iter
   copy_from_kernel_nofault
+  copy_page
   __cpu_active_mask
   cpu_bit_bitmap
   cpufreq_cpu_get
@@ -320,6 +321,7 @@
   crypto_destroy_tfm
   crypto_enqueue_request
   crypto_has_alg
+  crypto_inc
   crypto_init_queue
   crypto_unregister_ahash
   crypto_unregister_skcipher
@@ -418,6 +420,7 @@
   devm_gpio_request_one
   devm_hwspin_lock_register
   devm_iio_channel_get
+  devm_iio_channel_get_all
   devm_iio_device_alloc
   __devm_iio_device_register
   devm_input_allocate_device
@@ -491,10 +494,10 @@
   dev_pm_opp_of_cpumask_remove_table
   dev_pm_opp_of_find_icc_paths
   dev_pm_opp_of_register_em
-  dev_pm_opp_remove
   dev_pm_opp_of_remove_table
   dev_pm_opp_put
   dev_pm_opp_put_clkname
+  dev_pm_opp_remove
   dev_pm_opp_remove_all_dynamic
   dev_pm_opp_set_clkname
   dev_pm_opp_set_opp
@@ -813,6 +816,7 @@
   get_unused_fd_flags
   get_user_ifreq
   get_zeroed_page
+  gf128mul_lle
   gic_cpu_init
   gic_dist_init
   gic_dist_wait_for_rwp
@@ -834,6 +838,7 @@
   gpiod_direction_input
   gpiod_direction_output
   gpiod_direction_output_raw
+  gpiod_get_direction
   gpiod_get_optional
   gpiod_get_raw_value
   gpiod_get_value
@@ -929,16 +934,35 @@
   idr_preload
   idr_remove
   idr_replace
+  iio_alloc_pollfunc
   iio_buffer_init
   iio_buffer_put
   iio_channel_get
+  iio_channel_get_all
   iio_channel_release
+  iio_channel_release_all
+  iio_dealloc_pollfunc
   iio_device_attach_buffer
   iio_device_claim_direct_mode
+  iio_device_id
   iio_device_release_direct_mode
+  iio_get_time_ns
+  iio_kfifo_allocate
   iio_push_event
   iio_push_to_buffers
   iio_read_channel_processed
+  iio_read_channel_raw
+  iio_read_const_attr
+  iio_trigger_alloc
+  iio_triggered_buffer_cleanup
+  iio_triggered_buffer_setup_ext
+  iio_trigger_free
+  iio_trigger_notify_done
+  iio_trigger_poll
+  __iio_trigger_register
+  iio_trigger_unregister
+  iio_update_buffers
+  iio_validate_scan_mask_onehot
   iio_write_channel_raw
   import_iovec
   in4_pton
@@ -973,6 +997,8 @@
   input_register_handler
   input_set_abs_params
   input_set_capability
+  input_set_poll_interval
+  input_setup_polling
   input_unregister_handle
   input_unregister_handler
   interval_tree_insert
@@ -1064,6 +1090,8 @@
   irq_set_chained_handler_and_data
   irq_set_chip_and_handler_name
   irq_set_chip_data
+  __irq_set_handler
+  irq_set_handler_data
   irq_set_irqchip_state
   irq_set_irq_type
   irq_set_irq_wake
@@ -1252,8 +1280,8 @@
   misc_register
   mmc_cqe_request_done
   mmc_execute_tuning
-  mmc_get_ext_csd
   mmc_get_card
+  mmc_get_ext_csd
   mmc_hs200_tuning
   mmc_issue_type
   mmc_of_parse
@@ -1265,8 +1293,8 @@
   mmc_regulator_set_vqmmc
   mmc_retune_hold
   mmc_retune_release
-  mmc_select_card
   mmc_select_bus_width
+  mmc_select_card
   mmc_select_hs
   mmc_select_hs400
   mmc_select_hs_ddr
@@ -1814,6 +1842,7 @@
   rpmsg_get_signals
   rpmsg_poll
   rpmsg_register_device
+  rpmsg_rx_done
   rpmsg_send
   rpmsg_set_signals
   rpmsg_trysend
@@ -2248,6 +2277,7 @@
   __traceiter_android_vh_save_cpu_resume
   __traceiter_android_vh_save_hib_resume_bdev
   __traceiter_android_vh_scheduler_tick
+  __traceiter_android_vh_sd_update_bus_speed_mode
   __traceiter_android_vh_show_resume_epoch_val
   __traceiter_android_vh_show_suspend_epoch_val
   __traceiter_android_vh_skip_swap_map_write
@@ -2268,6 +2298,8 @@
   __traceiter_ipi_raise
   __traceiter_irq_handler_entry
   __traceiter_map
+  __traceiter_rwmmio_read
+  __traceiter_rwmmio_write
   __traceiter_sched_overutilized_tp
   __traceiter_sched_switch
   __traceiter_suspend_resume
@@ -2367,6 +2399,7 @@
   __tracepoint_android_vh_save_cpu_resume
   __tracepoint_android_vh_save_hib_resume_bdev
   __tracepoint_android_vh_scheduler_tick
+  __tracepoint_android_vh_sd_update_bus_speed_mode
   __tracepoint_android_vh_show_resume_epoch_val
   __tracepoint_android_vh_show_suspend_epoch_val
   __tracepoint_android_vh_skip_swap_map_write
@@ -2390,6 +2423,8 @@
   tracepoint_probe_register
   tracepoint_probe_register_prio
   tracepoint_probe_unregister
+  __tracepoint_rwmmio_read
+  __tracepoint_rwmmio_write
   __tracepoint_sched_overutilized_tp
   __tracepoint_sched_switch
   __tracepoint_suspend_resume
@@ -2503,6 +2538,8 @@
   usb_free_coherent
   usb_function_register
   usb_function_unregister
+  usb_gadget_connect
+  usb_gadget_disconnect
   usb_gadget_wakeup
   usb_ifnum_to_if
   usb_interface_id
@@ -2630,3 +2667,4 @@
   xsk_tx_peek_desc
   xsk_tx_release
   xsk_uses_need_wakeup
+  zap_vma_ptes

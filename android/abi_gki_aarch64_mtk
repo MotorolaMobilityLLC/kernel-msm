@@ -1249,6 +1249,7 @@
   __netdev_alloc_skb
   netdev_err
   netdev_info
+  netdev_upper_get_next_dev_rcu
   netdev_warn
   netif_carrier_off
   netif_carrier_on
@@ -1419,6 +1420,7 @@
   perf_trace_run_bpf_submit
   pfn_is_map_memory
   phy_attached_info
+  phy_basic_features
   phy_connect
   phy_disconnect
   phy_do_ioctl_running
@@ -1426,6 +1428,7 @@
   phy_ethtool_nway_reset
   phy_ethtool_set_link_ksettings
   phy_exit
+  phy_gbit_features
   phy_get
   phy_init
   phy_loopback
@@ -2153,6 +2156,7 @@
   tty_chars_in_buffer
   tty_driver_flush_buffer
   tty_flip_buffer_push
+  tty_get_char_size
   tty_insert_flip_string_fixed_flag
   tty_ldisc_flush
   tty_register_ldisc
@@ -2304,6 +2308,7 @@
   usbnet_disconnect
   usbnet_get_drvinfo
   usbnet_get_endpoints
+  usbnet_get_ethernet_addr
   usbnet_get_link
   usbnet_get_link_ksettings_mii
   usbnet_get_msglevel
