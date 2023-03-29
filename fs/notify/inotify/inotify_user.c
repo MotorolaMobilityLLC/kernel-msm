@@ -712,7 +712,7 @@ SYSCALL_DEFINE3(inotify_add_watch, int, fd, const char __user *, pathname,
 	struct fsnotify_group *group;
 	struct inode *inode;
 	struct path path;
-	struct path alteredpath = {0};
+	struct path alteredpath = {};
 	struct path *canonical_path = &path;
 	struct fd f;
 	int ret;
