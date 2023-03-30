@@ -1884,6 +1884,16 @@ void __exit fuse_bpf_cleanup(void);
 
 ssize_t fuse_bpf_simple_request(struct fuse_mount *fm, struct fuse_bpf_args *args);
 
+static inline int fuse_bpf_run(struct bpf_prog *prog, struct fuse_bpf_args *fba)
+{
+	int ret;
+
+	migrate_disable();
+	ret = bpf_prog_run(prog, fba);
+	migrate_enable();
+	return ret;
+}
+
 /*
  * expression statement to wrap the backing filter logic
  * struct inode *inode: inode with bpf and backing inode
@@ -1935,7 +1945,7 @@ ssize_t fuse_bpf_simple_request(struct fuse_mount *fm, struct fuse_bpf_args *arg
 		fa.out_numargs = fa.in_numargs;				\
 									\
 		ext_flags = fuse_inode->bpf ?				\
-			bpf_prog_run(fuse_inode->bpf, &fa) :		\
+			fuse_bpf_run(fuse_inode->bpf, &fa) :		\
 			FUSE_BPF_BACKING;				\
 		if (ext_flags < 0) {					\
 			fer = (struct fuse_err_ret) {			\
@@ -1990,7 +2000,7 @@ ssize_t fuse_bpf_simple_request(struct fuse_mount *fm, struct fuse_bpf_args *arg
 					.size = fa.out_args[i].size,	\
 					.value = fa.out_args[i].value,	\
 				};					\
-		ext_flags = bpf_prog_run(fuse_inode->bpf, &fa);		\
+		ext_flags = fuse_bpf_run(fuse_inode->bpf, &fa);		\
 		if (ext_flags < 0) {					\
 			fer = (struct fuse_err_ret) {			\
 				ERR_PTR(ext_flags),			\
