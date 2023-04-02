@@ -17,6 +17,11 @@
 #ifdef CONFIG_UFSFEATURE
 #include "ufsfeature.h"
 #endif
+
+#if defined(CONFIG_SCSI_SKHID)
+#include "ufs-manual-gc.h"
+#endif
+
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
 #define MPHY_TX_FSM_STATE       0x41
@@ -34,6 +39,19 @@
 #define UFS_HW_VER_STEP_MASK	(0xFFFF << UFS_HW_VER_STEP_SHFT)
 
 #define UFS_VENDOR_MICRON	0x12C
+
+#if defined(CONFIG_SCSI_SKHID)
+#define IS_SKHYNIX_DEVICE(mfrid)   (0 == strcasecmp(mfrid,"SKHYNIX"))
+#define IS_HYNIX_DEVICE(mfrid)   (0 == strcasecmp(mfrid,"HYNIX"))
+
+/* UFSHCD error handling flags */
+enum {
+	UFSHCD_EH_IN_PROGRESS = (1 << 0),		/* ufshcd.c */
+};
+
+#define ufshcd_eh_in_progress(h) \
+        ((h)->eh_flags & UFSHCD_EH_IN_PROGRESS)         /* ufshcd.c */
+#endif
 
 /* vendor specific pre-defined parameters */
 #define UFS_HS_G4	4		/* HS Gear 4 */
@@ -488,6 +506,11 @@ struct ufs_qcom_host {
 	bool irq_affinity_support;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
+#endif
+#if defined(CONFIG_SCSI_SKHID)
+	struct work_struct update_sysfs_work;
+	/* manual_gc */
+	struct ufs_manual_gc manual_gc;
 #endif
 };
 
