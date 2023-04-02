@@ -43,6 +43,10 @@
 #undef CREATE_TRACE_POINTS
 #endif
 
+#if defined(CONFIG_SCSI_SKHID)
+char storage_mfrid[32];
+#endif
+
 #include <trace/hooks/ufshcd.h>
 
 #if IS_ENABLED(CONFIG_SCSI_UFS_HID)
@@ -155,6 +159,32 @@ static void ufs_qcom_parse_g4_workaround_flag(struct ufs_qcom_host *host);
 static int ufs_qcom_mod_min_cpufreq(unsigned int cpu, s32 new_val);
 static void ufs_qcom_hook_clock_scaling(void *used, struct ufs_hba *hba, bool *force_out,
 		bool *force_saling, bool *scale_up);
+
+#if defined(CONFIG_SCSI_SKHID)
+static int get_storage_info(struct ufs_hba *hba)
+{
+    int ret = 0;
+    struct property *p;
+    struct device_node *n;
+
+    n = of_find_node_by_path("/chosen/mmi,storage");
+    if (n == NULL) {
+        ret = 1;
+        goto err;
+    }
+
+    for_each_property_of_node(n, p) {
+        if (!strcmp(p->name, "manufacturer") && p->value)
+            strlcpy(storage_mfrid, (char *)p->value, sizeof(storage_mfrid));
+    }
+
+    of_node_put(n);
+
+    dev_info(hba->dev, "manufacturer parsed from choosen is %s\n", storage_mfrid);
+err:
+        return ret;
+}
+#endif
 
 static int ufs_qcom_get_pwr_dev_param(struct ufs_qcom_dev_params *qcom_param,
 				      struct ufs_pa_layer_attr *dev_max,
@@ -3557,6 +3587,19 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufshid_init(hid);
 #endif
 
+#if defined(CONFIG_SCSI_SKHID)
+	get_storage_info(hba);
+#endif
+
+#if defined(CONFIG_SCSI_SKHID)
+	if ((IS_SKHYNIX_DEVICE(storage_mfrid)) || (IS_HYNIX_DEVICE(storage_mfrid))) {
+		err = pixel_init(hba);
+		if (err) {
+			return err;
+		}
+		pixel_init_manual_gc(hba);
+	}
+#endif
 	host->ufs_ipc_log_ctx = ipc_log_context_create(UFS_QCOM_MAX_LOG_SZ,
 							"ufs-qcom", 0);
 	if (!host->ufs_ipc_log_ctx)
