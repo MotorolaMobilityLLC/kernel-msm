@@ -2506,7 +2506,7 @@ static int spcom_create_channel(const char *ch_name, bool is_sharable)
 		/* Channel is already created as sharable */
 		if (spcom_dev->channels[i].is_sharable) {
 			spcom_pr_err("already created channel as sharable\n");
-			return -EALREADY;
+			return 0;
 		}
 
 		/* Cannot create sharable channel if channel already created */
