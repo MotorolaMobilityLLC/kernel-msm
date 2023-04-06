@@ -168,10 +168,6 @@
   dev_pm_opp_put
   dev_pm_opp_set_opp
   dev_pm_opp_set_rate
-  devres_add
-  __devres_alloc_node
-  devres_free
-  devres_release
   dev_set_name
   _dev_warn
   disable_irq
@@ -1025,13 +1021,6 @@
 # required by icc-osm-l3.ko
   icc_std_aggregate
 
-# required by led-class-multicolor.ko
-  led_classdev_register_ext
-  led_classdev_unregister
-  led_colors
-  led_set_brightness
-  stpcpy
-
 # required by llcc-qcom.ko
   devm_platform_ioremap_resource_byname
 
@@ -1755,6 +1744,12 @@
   __xa_insert
   xa_load
 
+# required by reboot-mode.ko
+  devres_add
+  __devres_alloc_node
+  devres_free
+  devres_release
+
 # required by regmap-spmi.ko
   spmi_ext_register_read
   spmi_ext_register_readl
@@ -1927,8 +1922,11 @@
   ufshcd_runtime_resume
   ufshcd_runtime_suspend
   ufshcd_suspend_prepare
+  ufshcd_system_freeze
+  ufshcd_system_restore
   ufshcd_system_resume
   ufshcd_system_suspend
+  ufshcd_system_thaw
 
 # required by ulpi.ko
   of_device_modalias
@@ -2010,7 +2008,12 @@
 
 # preserved by --additions-only
   drm_connector_init_with_ddc
+  led_classdev_register_ext
+  led_classdev_unregister
+  led_colors
+  led_set_brightness
   of_clk_get_by_name
   snd_soc_get_volsw_sx
   snd_soc_info_volsw_sx
   snd_soc_put_volsw_sx
+  stpcpy
