@@ -434,21 +434,18 @@ static void spi_setup_word_len(struct spi_geni_master *mas, u32 mode,
 	 */
 	if (!(mas->tx_fifo_width % bits_per_word))
 		pack_words = mas->tx_fifo_width / bits_per_word;
-	/*
-	 * Don't configure SPI word length for SPI Slave it is an optional
-	 * property for SPI Slave. H/W will take care of SPI slave word
-	 * if SPI_SLAVE_EN bit is set.
-	 */
-	if (!spi->slave) {
-		word_len &= ~WORD_LEN_MSK;
+
+	word_len &= ~WORD_LEN_MSK;
+	if (spi->slave)
+		word_len |= (bits_per_word & WORD_LEN_MSK);
+	else
 		word_len |= ((bits_per_word - MIN_WORD_LEN) & WORD_LEN_MSK);
-		geni_write_reg(word_len, mas->base, SE_SPI_WORD_LEN);
-	}
+	geni_write_reg(word_len, mas->base, SE_SPI_WORD_LEN);
 
 	geni_se_config_packing(&mas->spi_rsc, bits_per_word, pack_words, msb_first, true, true);
 	SPI_LOG_DBG(mas->ipc, false, mas->dev,
-		"%s: %lu bpw %d pack_words %d\n", __func__,
-		bits_per_word, pack_words);
+		    "%s: SPI-slave: %d bpw: %d pack_words: %d word_len: %d\n",
+		    __func__, spi->slave, bits_per_word, pack_words, word_len);
 }
 
 static int setup_fifo_params(struct spi_device *spi_slv,
