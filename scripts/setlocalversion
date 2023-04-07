@@ -11,16 +11,21 @@
 #
 
 usage() {
-	echo "Usage: $0 [--save-scmversion] [srctree] [branch] [kmi-generation]" >&2
+	echo "Usage: $0 [--save-scmversion] [--save-tag] [srctree] [branch] [kmi-generation]" >&2
 	exit 1
 }
 
 scm_only=false
+save_tag=false
 srctree=.
 android_release=
 kmi_generation=
 if test "$1" = "--save-scmversion"; then
 	scm_only=true
+	shift
+fi
+if test "$1" = "--save-tag"; then
+	save_tag=true
 	shift
 fi
 if test $# -gt 0; then
@@ -69,11 +74,11 @@ scm_version()
 		elif [ -n "$android_release" ]; then
 			printf '%s' "-$android_release"
 		fi
-
-		# If we are at a tagged commit (like "v2.6.30-rc6"), we ignore
-		# it, because this version is defined in the top level Makefile.
-		if [ -z "$(git describe --exact-match 2>/dev/null)" ]; then
-
+		# If we are at a tagged commit (like "v2.6.30-rc6"), by default
+		# we ignore it and manually define VERSION in the top level
+		# Makefile. Alternatively, set --save-tag to keep the tag.
+		tag="$(git describe --exact-match 2>/dev/null)"
+		if [ -z "$tag" ]; then
 			# If only the short version is requested, don't bother
 			# running further git commands
 			if $short; then
@@ -88,6 +93,8 @@ scm_version()
 
 			# Add -g and exactly 12 hex chars.
 			printf '%s%s' -g "$(echo $head | cut -c1-12)"
+		elif $save_tag; then
+			printf '%s' - "$(echo $tag)"
 		fi
 
 		# Check for uncommitted changes.
