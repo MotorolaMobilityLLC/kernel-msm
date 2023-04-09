@@ -449,6 +449,7 @@ struct extcon_nb {
 	int			idx;
 	struct notifier_block	vbus_nb;
 	struct notifier_block	id_nb;
+	struct notifier_block	dp_nb;
 };
 
 /* Input bits to state machine (mdwc->inputs) */
@@ -534,6 +535,7 @@ struct dwc3_msm {
 	struct extcon_nb	*extcon;
 	int			ext_idx;
 	struct notifier_block	host_nb;
+	int			polarity_idx;
 
 	u32			ip;
 	atomic_t                in_p3;
@@ -3552,12 +3554,14 @@ static void dwc3_set_ssphy_orientation_flag(struct dwc3_msm *mdwc)
 		else
 			mdwc->ss_phy->flags |= PHY_LANE_B;
 	} else {
-		if (mdwc->extcon && mdwc->vbus_active && !mdwc->in_restart) {
-			extcon_id = EXTCON_USB;
-			edev = mdwc->extcon[mdwc->ext_idx].edev;
-		} else if (mdwc->extcon && mdwc->id_state == DWC3_ID_GROUND) {
-			extcon_id = EXTCON_USB_HOST;
-			edev = mdwc->extcon[mdwc->ext_idx].edev;
+		if (mdwc->extcon && mdwc->polarity_idx != -1) {
+			if (mdwc->vbus_active && !mdwc->in_restart) {
+				extcon_id = EXTCON_USB;
+				edev = mdwc->extcon[mdwc->polarity_idx].edev;
+			} else if (mdwc->id_state == DWC3_ID_GROUND) {
+				extcon_id = EXTCON_USB_HOST;
+				edev = mdwc->extcon[mdwc->polarity_idx].edev;
+			}
 		}
 
 		if (edev && extcon_get_state(edev, extcon_id)) {
@@ -4683,6 +4687,34 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+static void dwc3_msm_clear_dp_only_params(struct dwc3_msm *mdwc);
+
+static int dwc3_msm_dp_notifier(struct notifier_block *nb, unsigned long event, void *ptr)
+{
+	struct extcon_dev *edev = ptr;
+	struct extcon_nb *enb = container_of(nb, struct extcon_nb, dp_nb);
+	struct dwc3_msm *mdwc = enb->mdwc;
+	union extcon_property_value val;
+
+	if (event) {
+		extcon_get_property(mdwc->extcon[mdwc->polarity_idx].edev, EXTCON_USB_HOST,
+				EXTCON_PROP_USB_TYPEC_POLARITY, &val);
+		mdwc->ss_phy->flags &= ~(PHY_LANE_A | PHY_LANE_B);
+		mdwc->ss_phy->flags |= val.intval ? PHY_LANE_B : PHY_LANE_A;
+
+		extcon_get_property(edev, EXTCON_USB_HOST, EXTCON_PROP_USB_SS, &val);
+
+		if (val.intval)
+			dwc3_msm_set_dp_mode(mdwc->dev, true, 4);
+		else
+			dwc3_msm_set_dp_mode(mdwc->dev, true, 2);
+	} else {
+		dwc3_msm_clear_dp_only_params(mdwc);
+	}
+
+	return NOTIFY_DONE;
+}
+
 static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 {
 	struct device_node *node = mdwc->dev->of_node;
@@ -4692,7 +4724,7 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 
 	extcon_cnt = of_count_phandle_with_args(node, "extcon", NULL);
 	if (extcon_cnt < 0) {
-		dev_err(mdwc->dev, "of_count_phandle_with_args failed\n");
+		dev_info(mdwc->dev, "no extcon provide\n");
 		return -ENODEV;
 	}
 
@@ -4701,6 +4733,8 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 	if (!mdwc->extcon)
 		return -ENOMEM;
 
+	mdwc->polarity_idx = -1;
+
 	for (idx = 0; idx < extcon_cnt; idx++) {
 		edev = extcon_get_edev_by_phandle(mdwc->dev, idx);
 		if (IS_ERR(edev) && PTR_ERR(edev) != -ENODEV)
@@ -4708,6 +4742,15 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 
 		if (IS_ERR_OR_NULL(edev))
 			continue;
+
+		ret = extcon_get_property_capability(edev, EXTCON_USB,
+					EXTCON_PROP_USB_TYPEC_POLARITY);
+		if (ret) {
+			if (mdwc->polarity_idx != -1)
+				dev_err(mdwc->dev, "multiple extcon device provide polarity\n");
+
+			mdwc->polarity_idx = idx;
+		}
 
 		check_vbus_state = check_id_state = true;
 		phandle_found = true;
@@ -4728,6 +4771,9 @@ static int dwc3_msm_extcon_register(struct dwc3_msm *mdwc)
 						&mdwc->extcon[idx].id_nb);
 		if (ret < 0)
 			check_id_state = false;
+
+		mdwc->extcon[idx].dp_nb.notifier_call = dwc3_msm_dp_notifier;
+		extcon_register_notifier(edev, EXTCON_DISP_DP, &mdwc->extcon[idx].dp_nb);
 
 		/* Update initial VBUS/ID state */
 		if (check_vbus_state && extcon_get_state(edev, EXTCON_USB))
