@@ -32,6 +32,7 @@
 #define MHI_NET_DRIVER_NAME  "mhi_dev_net_drv"
 #define MHI_NET_DEV_NAME     "mhi_swip%d"
 #define MHI_NET_DEFAULT_MTU   16384
+#define MHI_NET_ETH_HEADER_SIZE	(18)
 #define MHI_NET_IPC_PAGES     (100)
 #define MHI_MAX_RX_REQ        (128)
 #define MHI_MAX_TX_REQ        (128)
@@ -121,6 +122,7 @@ struct mhi_dev_net_client {
 	/* read channel - always odd */
 	u32 in_chan;
 	bool eth_iface;
+	u32 max_skb_length;
 	struct mhi_dev_client *out_handle;
 	struct mhi_dev_client *in_handle;
 	struct mhi_dev_net_chan_attr *in_chan_attr;
@@ -334,7 +336,7 @@ static ssize_t mhi_dev_net_client_read(struct mhi_dev_net_client *mhi_handle)
 				struct mhi_req, list);
 		list_del_init(&req->list);
 		spin_unlock_irqrestore(&mhi_handle->rd_lock, flags);
-		skb = alloc_skb(mhi_handle->dev->mtu, GFP_KERNEL);
+		skb = alloc_skb(mhi_handle->max_skb_length, GFP_KERNEL);
 		if (skb == NULL) {
 			mhi_dev_net_log(mhi_handle->vf_id, MHI_ERROR, "skb alloc failed\n");
 			spin_lock_irqsave(&mhi_handle->rd_lock, flags);
@@ -348,7 +350,7 @@ static ssize_t mhi_dev_net_client_read(struct mhi_dev_net_client *mhi_handle)
 		req->vf_id = mhi_handle->vf_id;
 		req->chan = chan;
 		req->buf = skb->data;
-		req->len = mhi_handle->dev->mtu;
+		req->len = mhi_handle->max_skb_length;
 		req->context = skb;
 		req->mode = DMA_ASYNC;
 		req->snd_cmpl = 0;
@@ -479,9 +481,18 @@ static int mhi_dev_net_stop(struct net_device *dev)
 
 static int mhi_dev_net_change_mtu(struct net_device *dev, int new_mtu)
 {
+	struct mhi_dev_net_client *mhi_dev_net_ptr;
+
 	if (0 > new_mtu || MHI_NET_DEFAULT_MTU < new_mtu)
 		return -EINVAL;
+	mhi_dev_net_ptr = *((struct mhi_dev_net_client **)netdev_priv(dev));
 	dev->mtu = new_mtu;
+
+	if (mhi_dev_net_ptr->eth_iface)
+		mhi_dev_net_ptr->max_skb_length = dev->mtu + MHI_NET_ETH_HEADER_SIZE;
+	else
+		mhi_dev_net_ptr->max_skb_length = dev->mtu;
+
 	return 0;
 }
 
@@ -556,10 +567,12 @@ static int mhi_dev_net_enable_iface(struct mhi_dev_net_client *mhi_dev_net_ptr)
 	}
 
 	if (mhi_dev_net_ptr->eth_iface) {
+		mhi_dev_net_ptr->max_skb_length = netdev->mtu + MHI_NET_ETH_HEADER_SIZE;
 		eth_random_addr(netdev->dev_addr);
 		if (!is_valid_ether_addr(netdev->dev_addr))
 			return -EADDRNOTAVAIL;
-	}
+	} else
+		mhi_dev_net_ptr->max_skb_length = netdev->mtu;
 
 	mhi_dev_net_ctxt = netdev_priv(netdev);
 	mhi_dev_net_ptr->dev = netdev;
