@@ -1138,7 +1138,10 @@ int fastrpc_internal_mem_unmap(struct fastrpc_file *fl,
 				struct fastrpc_ioctl_mem_unmap *ud);
 
 int fastrpc_internal_mmap(struct fastrpc_file *fl,
-				 struct fastrpc_ioctl_mmap *ud);
+		struct fastrpc_ioctl_mmap *ud);
+
+int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
+				struct fastrpc_ioctl_munmap_fd *ud);
 
 int fastrpc_init_process(struct fastrpc_file *fl,
 				struct fastrpc_ioctl_init_attrs *uproc);

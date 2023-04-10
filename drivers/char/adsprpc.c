@@ -5001,7 +5001,7 @@ bail:
  *	mapped with persist attributes. This can only be called
  *	once for any persist buffer
  */
-static int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
+int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
 				struct fastrpc_ioctl_munmap_fd *ud)
 {
 	int err = 0;
