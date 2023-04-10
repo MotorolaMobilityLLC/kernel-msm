@@ -65,6 +65,7 @@ static char dspss_state[BUF_SIZE] = "offline";
 static void ssr_register(void);
 static int setup_pmic_gpio15(void);
 static unsigned int pmic_gpio15 = -1;
+static int slate_boot_status;
 
 /* tzapp command list.*/
 enum slate_tz_commands {
@@ -407,7 +408,7 @@ static int slatechar_write_cmd(struct slate_ui_data *fui_obj_msg, unsigned int t
 	return ret;
 }
 
-static int slatecom_fw_load(struct slatedaemon_priv *priv)
+static int slatecom_get_rproc_handle(struct slatedaemon_priv *priv)
 {
 	struct platform_device *pdev = NULL;
 	int ret;
@@ -437,7 +438,6 @@ static int slatecom_fw_load(struct slatedaemon_priv *priv)
 		if (of_property_read_u32(pdev->dev.of_node, "qcom,rproc-handle",
 					 &rproc_phandle)) {
 			pr_err("error reading rproc phandle\n");
-			goto fail;
 		}
 
 		priv->pil_h = rproc_get_by_phandle(rproc_phandle);
@@ -446,15 +446,30 @@ static int slatecom_fw_load(struct slatedaemon_priv *priv)
 			goto fail;
 		}
 	}
-	ret = rproc_boot(priv->pil_h);
-	if (ret) {
-		pr_err("%s: rproc boot failed, err: %d\n",
-			__func__, ret);
-		priv->pil_h = NULL;
-		goto fail;
-	}
+	return 0;
 
-	pr_err("%s: SLATE image is loaded\n", __func__);
+fail:
+	pr_err("%s: SLATE get handle failed\n", __func__);
+	return -EFAULT;
+}
+
+static int slatecom_fw_load(struct slatedaemon_priv *priv)
+{
+	int ret;
+
+	ret = slatecom_get_rproc_handle(priv);
+	if (ret == 0) {
+		ret = rproc_boot(priv->pil_h);
+		if (ret) {
+			pr_err("%s: rproc boot failed, err: %d\n",
+				__func__, ret);
+			priv->pil_h = NULL;
+			slate_boot_status = 0;
+			goto fail;
+		}
+		slate_boot_status = 1;
+	}
+	pr_info("%s: SLATE image is loaded\n", __func__);
 	return 0;
 
 fail:
@@ -468,13 +483,12 @@ static void slatecom_fw_unload(struct slatedaemon_priv *priv)
 		pr_err("%s: handle not found\n", __func__);
 		return;
 	}
-
 	if (priv->pil_h) {
 		pr_err("%s: calling subsystem put\n", __func__);
 		rproc_shutdown(priv->pil_h);
 		priv->pil_h = NULL;
+		slate_boot_status = 0;
 	}
-
 }
 
 /**
@@ -814,12 +828,12 @@ static long slate_com_ioctl(struct file *filp,
 		break;
 	case SLATECOM_SLATE_LOAD:
 		ret = 0;
-		if (dev->pil_h) {
-			pr_err("slate is already loaded\n");
+		if (!slate_boot_status)
+			ret = slatecom_fw_load(dev);
+		else {
+			pr_info("slate is already loaded\n");
 			ret = -EFAULT;
-			break;
 		}
-		ret = slatecom_fw_load(dev);
 		break;
 	case SLATECOM_SLATE_UNLOAD:
 		slatecom_fw_unload(dev);
@@ -839,6 +853,14 @@ static long slate_com_ioctl(struct file *filp,
 			return -ENODEV;
 		}
 		ret = send_ipc_cmd_to_slate(&ui_obj_msg);
+		break;
+	case SLATECOM_SEND_BOOT_CMD:
+		if (!dev->pil_h)
+			ret = slatecom_get_rproc_handle(dev);
+		if (ret == 0)
+			rproc_report_crash(dev->pil_h, RPROC_WATCHDOG);
+		else
+			pr_err("failed to get rproc_handle, skip RPROC_WATCHDOG\n");
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
