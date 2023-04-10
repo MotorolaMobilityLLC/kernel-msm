@@ -1122,6 +1122,15 @@ config SM_VIDEOCC_CROW
 	  Say Y if you want to support video devices and functionality such as
 	  video encode/decode.
 
+config SM_GPUCC_CROW
+	tristate "Crow Graphics Clock Controller"
+	depends on SM_GCC_CROW
+	help
+	  Support for the graphics clock controller on Qualcomm Technologies, Inc
+	  Crow devices.
+	  Say Y if you want to support graphics controller devices and
+	  functionality such as 3D graphics.
+
 endif
 
 config VIRTIO_CLK

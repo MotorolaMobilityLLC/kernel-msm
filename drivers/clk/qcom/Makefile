@@ -124,6 +124,7 @@ obj-$(CONFIG_SM_GCC_CROW) += gcc-crow.o
 obj-$(CONFIG_SM_GCC_KALAMA) += gcc-kalama.o
 obj-$(CONFIG_SM_GCC_KHAJE) += gcc-khaje.o
 obj-$(CONFIG_SM_GCC_SCUBA) += gcc-scuba.o
+obj-$(CONFIG_SM_GPUCC_CROW) += gpucc-crow.o
 obj-$(CONFIG_SM_GPUCC_SCUBA) += gpucc-scuba.o
 obj-$(CONFIG_SM_NPUCC_8150) += npucc-sm8150.o
 obj-$(CONFIG_SM_NPUCC_8250) += npucc-sm8250.o
