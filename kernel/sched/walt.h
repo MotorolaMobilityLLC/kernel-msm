@@ -104,14 +104,34 @@ fixup_cumulative_runnable_avg(struct walt_sched_stats *stats,
 			      s64 demand_scaled_delta,
 			      s64 pred_demand_scaled_delta)
 {
+	s64 cumulative_runnable_avg_scaled;
+	s64 pred_demands_sum_scaled;
+
 	if (sched_disable_window_stats)
 		return;
 
-	stats->cumulative_runnable_avg_scaled += demand_scaled_delta;
-	BUG_ON((s64)stats->cumulative_runnable_avg_scaled < 0);
+	cumulative_runnable_avg_scaled =
+		(s64)stats->cumulative_runnable_avg_scaled +
+		demand_scaled_delta;
+	pred_demands_sum_scaled =
+		(s64)stats->pred_demands_sum_scaled + pred_demand_scaled_delta;
 
-	stats->pred_demands_sum_scaled += pred_demand_scaled_delta;
-	BUG_ON((s64)stats->pred_demands_sum_scaled < 0);
+	if (cumulative_runnable_avg_scaled < 0) {
+		printk_deferred("WALT-BUG demand_scaled_delta=%lld cumulative_runnable_avg_scaled=%llu\n",
+				demand_scaled_delta,
+				stats->cumulative_runnable_avg_scaled);
+		cumulative_runnable_avg_scaled = 0;
+	}
+	stats->cumulative_runnable_avg_scaled =
+		(u64)cumulative_runnable_avg_scaled;
+
+	if (pred_demands_sum_scaled < 0) {
+		printk_deferred("WALT-BUG task pred_demand_scaled_delta=%lld pred_demands_sum_scaled=%llu\n",
+				pred_demand_scaled_delta,
+				stats->pred_demands_sum_scaled);
+		pred_demands_sum_scaled = 0;
+	}
+	stats->pred_demands_sum_scaled = (u64)pred_demands_sum_scaled;
 }
 
 static inline void
