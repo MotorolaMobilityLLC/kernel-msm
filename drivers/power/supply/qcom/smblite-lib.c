@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -193,7 +193,14 @@ static void smblite_lib_notify_extcon_props(struct smb_charger *chg, int id)
 		extcon_set_property(chg->extcon, id,
 				EXTCON_PROP_USB_SS, val);
 	} else if (chg->connector_type == QTI_POWER_SUPPLY_CONNECTOR_MICRO_USB) {
-		val.intval = false;
+		/*
+		 * To send extcon notification for SS mode for 10pin
+		 * Micro AB 3.0 connector type.
+		 */
+		if (chg->uusb_ss_mode_extcon_enable)
+			val.intval = true;
+		else
+			val.intval = false;
 		extcon_set_property(chg->extcon, id,
 				EXTCON_PROP_USB_SS, val);
 	}
