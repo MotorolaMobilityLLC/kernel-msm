@@ -2527,6 +2527,7 @@
   usb_control_msg_send
   usb_debug_root
   usb_decode_ctrl
+  usb_driver_set_configuration
   usb_ep_alloc_request
   usb_ep_autoconfig
   usb_ep_dequeue
