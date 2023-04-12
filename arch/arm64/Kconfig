@@ -1921,3 +1921,9 @@ config CAMERA_CCI_ADDR_SWITCH
 	default n
 	help
 	Enable it to switch i2c address.
+
+config CAMERA_FLASH_IIC_COMPATIBLE
+        bool "auto select iic flash suppliers"
+        default n
+        help
+        Enable it, this is automatically selected flash supplers.
