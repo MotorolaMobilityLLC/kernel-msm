@@ -374,42 +374,48 @@ struct vm_area_struct *vm_area_dup(struct vm_area_struct *orig)
 		 * will be reinitialized.
 		 */
 		*new = data_race(*orig);
-		INIT_LIST_HEAD(&new->anon_vma_chain);
+		INIT_VMA(new);
 		new->vm_next = new->vm_prev = NULL;
 		dup_anon_vma_name(orig, new);
 	}
 	return new;
 }
 
-static inline void ____vm_area_free(struct vm_area_struct *vma)
-{
-	kmem_cache_free(vm_area_cachep, vma);
-}
-
 #ifdef CONFIG_SPECULATIVE_PAGE_FAULT
-static void __vm_area_free(struct rcu_head *head)
+static void __free_vm_area_struct(struct rcu_head *head)
 {
 	struct vm_area_struct *vma = container_of(head, struct vm_area_struct,
 						  vm_rcu);
-	____vm_area_free(vma);
+	kmem_cache_free(vm_area_cachep, vma);
+}
+
+static inline void free_vm_area_struct(struct vm_area_struct *vma)
+{
+	call_rcu(&vma->vm_rcu, __free_vm_area_struct);
+}
+#else
+static inline void free_vm_area_struct(struct vm_area_struct *vma)
+{
+	kmem_cache_free(vm_area_cachep, vma);
 }
 #endif
 
-void vm_area_free(struct vm_area_struct *vma)
+void vm_area_free_no_check(struct vm_area_struct *vma)
 {
 	free_anon_vma_name(vma);
-#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
-	if (atomic_read(&vma->vm_mm->mm_users) > 1) {
-		if (vma->vm_file)
-			vma_put_file_ref(vma);
-
-		call_rcu(&vma->vm_rcu, __vm_area_free);
-		return;
-	}
-#endif
 	if (vma->vm_file)
 		fput(vma->vm_file);
-	____vm_area_free(vma);
+	free_vm_area_struct(vma);
+}
+
+void vm_area_free(struct vm_area_struct *vma)
+{
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	/* Free only after refcount dropped to negative */
+	if (atomic_dec_return(&vma->file_ref_count) >= 0)
+		return;
+#endif
+	vm_area_free_no_check(vma);
 }
 
 static void account_kernel_stack(struct task_struct *tsk, int account)
