@@ -597,6 +597,16 @@ const struct mpm_pin mpm_khaje_gic_chip_data[] = {
 	{-1},
 };
 
+const struct mpm_pin mpm_qcs405_gic_chip_data[] = {
+	{2, 184}, /*tsens0_tsens_upper_lower_int */
+	{35, 318}, /* dmse_hv, usb20 -> hs_phy_irq */
+	{36, 318}, /* dpse_hv, usb20 -> hs_phy_irq */
+	{38, 319}, /* dmse_hv, usb30 -> hs_phy_irq */
+	{39, 319}, /* dpse_hv, usb30 -> hs_phy_irq */
+	{62, 190}, /* mpm_wake,spmi_m */
+	{-1},
+};
+
 const struct mpm_pin mpm_sa410m_gic_chip_data[] = {
 	{2, 275}, /*tsens0_tsens_upper_lower_int */
 	{5, 296}, /* lpass_irq_out_sdc */
@@ -634,6 +644,10 @@ static const struct of_device_id mpm_gic_chip_data_table[] = {
 	{
 		.compatible = "qcom,mpm-monaco",
 		.data = mpm_monaco_gic_chip_data,
+	},
+	{
+		.compatible = "qcom,mpm-qcs405",
+		.data = mpm_qcs405_gic_chip_data,
 	},
 	{
 		.compatible = "qcom,mpm-sa410m",
