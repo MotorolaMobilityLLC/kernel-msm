@@ -493,6 +493,15 @@ config QSEECOM_PROXY
 	 These callback functions can be used to start, shutdown and
 	 send commands to the trusted apps.
 
+config QPNP_MISC
+	tristate "QPNP Misc Peripheral"
+	depends on MFD_SPMI_PMIC
+	help
+	  Say 'y' here to include support for the QTI QPNP MISC
+	  peripheral. The MISC peripheral holds the USB ID interrupt
+	  and the driver provides an API to check if this interrupt
+	  is available on the current PMIC chip.
+
 config OPEN_DICE
 	tristate "Open Profile for DICE driver"
 	depends on OF_RESERVED_MEM
