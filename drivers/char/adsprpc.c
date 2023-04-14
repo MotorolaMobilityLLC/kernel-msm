@@ -8035,11 +8035,14 @@ static int fastrpc_restore(struct device *dev)
 	struct fastrpc_apps *me = &gfa;
 	int cid;
 
-	pr_info("adsprpc: restore enter\n");
-	for (cid = 0; cid < NUM_CHANNELS; cid++)
-		me->channel[cid].in_hib = 1;
+	if (of_device_is_compatible(dev->of_node,
+					"qcom,msm-fastrpc-compute")) {
+		pr_info("adsprpc: restore enter\n");
+		for (cid = 0; cid < NUM_CHANNELS; cid++)
+			me->channel[cid].in_hib = 1;
 
-	pr_info("adsprpc: restore exit\n");
+		pr_info("adsprpc: restore exit\n");
+	}
 	return 0;
 }
 
