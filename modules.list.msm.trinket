@@ -3,6 +3,7 @@ qcom_soc_wdt.ko
 pinctrl-msm.ko
 pinctrl-trinket.ko
 qcom_cpu_vendor_hooks.ko
+qcom-mpm.ko
 qcom-reboot-reason.ko
 qcom-dload-mode.ko
 qcom-scm.ko
