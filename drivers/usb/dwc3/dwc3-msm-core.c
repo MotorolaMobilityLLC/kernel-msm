@@ -5285,7 +5285,8 @@ static void dwc3_msm_clear_dp_only_params(struct dwc3_msm *mdwc)
 
 static void dwc3_msm_set_dp_only_params(struct dwc3_msm *mdwc)
 {
-	usb_redriver_release_lanes(mdwc->redriver, 4);
+	usb_redriver_release_lanes(mdwc->redriver, mdwc->ss_phy->flags & PHY_LANE_A ?
+					ORIENTATION_CC1 : ORIENTATION_CC2, 4);
 
 	/* restart USB host mode into high speed */
 	mdwc->ss_release_called = true;
@@ -5346,7 +5347,8 @@ int dwc3_msm_set_dp_mode(struct device *dev, bool dp_connected, int lanes)
 		mdwc->dp_state = DP_2_LANE;
 		mdwc->refcnt_dp_usb++;
 		mutex_unlock(&mdwc->role_switch_mutex);
-		usb_redriver_release_lanes(mdwc->redriver, 2);
+		usb_redriver_release_lanes(mdwc->redriver, mdwc->ss_phy->flags & PHY_LANE_A ?
+						ORIENTATION_CC1 : ORIENTATION_CC2, 2);
 		pm_runtime_get_sync(&mdwc->dwc3->dev);
 		mdwc->ss_phy->flags |= PHY_USB_DP_CONCURRENT_MODE;
 		pm_runtime_put_sync(&mdwc->dwc3->dev);
