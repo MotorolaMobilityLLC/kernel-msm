@@ -2279,6 +2279,9 @@ static int spcom_send_message(void *arg, void *buffer, bool is_modified)
 		return -ENOMEM;
 	hdr = tx_buf;
 
+	if (ch->is_sharable)
+		mutex_lock(&ch->shared_sync_lock);
+
 	mutex_lock(&ch->lock);
 
 	/* For SPCOM server, get next request size must be called before sending a response
@@ -2294,11 +2297,10 @@ static int spcom_send_message(void *arg, void *buffer, bool is_modified)
 	if (ch->is_sharable) {
 
 		if (ch->is_server) {
+			mutex_unlock(&ch->shared_sync_lock);
 			spcom_pr_err("server spcom channel cannot be shared\n");
 			goto send_message_err;
 		}
-
-		mutex_lock(&ch->shared_sync_lock);
 		ch->active_pid = current_pid();
 	}
 
