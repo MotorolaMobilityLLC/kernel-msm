@@ -45,7 +45,9 @@
   atomic_notifier_chain_unregister
   autoremove_wake_function
   balance_push_callback
+  _bcd2bin
   bcmp
+  _bin2bcd
   bio_add_page
   bio_alloc_bioset
   bio_associate_blkg
@@ -66,6 +68,7 @@
   bitmap_print_to_pagebuf
   bitmap_release_region
   __bitmap_set
+  __bitmap_subset
   bitmap_to_arr32
   __bitmap_weight
   bitmap_zalloc
@@ -945,6 +948,7 @@
   init_wait_entry
   __init_waitqueue_head
   input_allocate_device
+  input_device_enabled
   input_event
   input_free_device
   input_mt_init_slots
