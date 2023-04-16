@@ -1704,7 +1704,7 @@ static int qti_flash_led_register_device(struct qti_flash_led *led,
 	const char *label;
 	int rc, i = 0, j = 0;
 	u32 val;
-	bool need_snode;
+	bool need_snode = false;
 
 	rc = of_property_read_u32(node, "reg", &val);
 	if (rc < 0) {
