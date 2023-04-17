@@ -1030,6 +1030,8 @@ drivers/i2c/i2c-core-smbus.c
 drivers/i3c/device.c
 drivers/i3c/internals.h
 drivers/i3c/master.c
+drivers/iio/buffer/industrialio-triggered-buffer.c
+drivers/iio/buffer/kfifo_buf.c
 drivers/iio/iio_core.h
 drivers/iio/iio_core_trigger.h
 drivers/iio/industrialio-buffer.c
@@ -1976,6 +1978,7 @@ fs/fs_struct.c
 fs/fs_types.c
 fs/fs-writeback.c
 fs/fuse/acl.c
+fs/fuse/backing.c
 fs/fuse/control.c
 fs/fuse/dev.c
 fs/fuse/dir.c
@@ -2853,9 +2856,11 @@ include/linux/iio/driver.h
 include/linux/iio/events.h
 include/linux/iio/iio.h
 include/linux/iio/iio-opaque.h
+include/linux/iio/kfifo_buf.h
 include/linux/iio/machine.h
 include/linux/iio/sysfs.h
 include/linux/iio/trigger_consumer.h
+include/linux/iio/triggered_buffer.h
 include/linux/iio/trigger.h
 include/linux/iio/types.h
 include/linux/ima.h
@@ -4094,6 +4099,7 @@ include/trace/hooks/power.h
 include/trace/hooks/preemptirq.h
 include/trace/hooks/printk.h
 include/trace/hooks/psci.h
+include/trace/hooks/psi.h
 include/trace/hooks/regmap.h
 include/trace/hooks/remoteproc.h
 include/trace/hooks/restore_incpath.h
@@ -4158,6 +4164,7 @@ include/uapi/linux/acct.h
 include/uapi/linux/aio_abi.h
 include/uapi/linux/android/binderfs.h
 include/uapi/linux/android/binder.h
+include/uapi/linux/android_fuse.h
 include/uapi/linux/arm_sdei.h
 include/uapi/linux/audit.h
 include/uapi/linux/auxvec.h
@@ -4635,6 +4642,7 @@ kernel/audit_tree.c
 kernel/audit_watch.c
 kernel/bounds.c
 kernel/bpf/arraymap.c
+kernel/bpf/bpf_fuse.c
 kernel/bpf/bpf_iter.c
 kernel/bpf/bpf_local_storage.c
 kernel/bpf/bpf_lru_list.c
