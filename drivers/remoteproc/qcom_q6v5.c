@@ -23,6 +23,12 @@
 
 static char qcom_ssr_reason[256];
 static char *ssr_reason = qcom_ssr_reason;
+#if defined(CONFIG_QCOM_ADSP_DEBUG)
+static bool is_debug_build = true;
+#else
+static bool is_debug_build = false;
+#endif
+
 module_param(ssr_reason, charp, S_IRUGO);
 
 /**
@@ -144,6 +150,7 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 	struct qcom_q6v5 *q6v5 = data;
 	size_t len;
 	char *msg;
+	bool modem_audio_issue = false;
 
 	if (!q6v5->running) {
 		dev_info(q6v5->dev, "received fatal irq while q6 is offline\n");
@@ -154,6 +161,8 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 	if (!IS_ERR(msg) && len > 0 && msg[0]) {
 		dev_err(q6v5->dev, "fatal error received: %s\n", msg);
 		trace_rproc_qcom_event(dev_name(q6v5->dev), "q6v5_fatal", msg);
+		if (strstr(msg, "vs.c 227"))
+			modem_audio_issue = true;
 	} else {
 		dev_err(q6v5->dev, "fatal error without message\n");
 	}
@@ -165,7 +174,11 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 	dev_err(q6v5->dev, "rproc recovery state: %s\n",
 		q6v5->rproc->recovery_disabled ? "disabled and lead to device crash" :
 		"enabled and kick reovery process");
-	if (q6v5->rproc->recovery_disabled) {
+	if (is_debug_build && strstr(dev_name(q6v5->dev), "remoteproc-adsp")) {
+		schedule_work(&q6v5->crash_handler);
+	} else if (is_debug_build && strstr(dev_name(q6v5->dev), "remoteproc-mss") && modem_audio_issue) {
+		schedule_work(&q6v5->crash_handler);
+	} else if (q6v5->rproc->recovery_disabled){
 		schedule_work(&q6v5->crash_handler);
 	} else {
 		if (q6v5->ssr_subdev)
