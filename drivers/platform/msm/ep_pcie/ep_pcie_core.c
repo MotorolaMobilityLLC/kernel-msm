@@ -908,7 +908,7 @@ static void ep_pcie_core_init(struct ep_pcie_dev_t *dev, bool configured)
 
 		if (!dev->tcsr_not_supported)
 			ep_pcie_write_reg_field(dev->tcsr_perst_en,
-					TCSR_PCIE_RST_SEPARATION, BIT(5), 0);
+					ep_pcie_dev.tcsr_reset_separation_offset, BIT(5), 0);
 	}
 
 	if (!dev->enumerated) {
@@ -2120,24 +2120,27 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 		if (!dev->tcsr_not_supported) {
 			EP_PCIE_DBG(dev,
 				"TCSR PERST_EN value before configure:0x%x\n",
-				readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
+				readl_relaxed(dev->tcsr_perst_en +
+						ep_pcie_dev.tcsr_perst_enable_offset));
 
 			/*
 			 * Delatch PERST_EN with TCSR to avoid device reset
 			 * during host reboot case.
 			 */
-			writel_relaxed(0, dev->tcsr_perst_en + TCSR_PCIE_PERST_EN);
+			writel_relaxed(0, dev->tcsr_perst_en +
+					ep_pcie_dev.tcsr_perst_enable_offset);
 
 			EP_PCIE_DBG(dev,
 				"TCSR PERST_EN value after configure:0x%x\n",
-				readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
+				readl_relaxed(dev->tcsr_perst_en +
+						ep_pcie_dev.tcsr_perst_enable_offset));
 
 			/*
 			 * Delatch PERST_SEPARATION_ENABLE with TCSR to avoid
 			 * device reset during host reboot and hibernate case.
 			 */
 			writel_relaxed(0, dev->tcsr_perst_en +
-						TCSR_PERST_SEPARATION_ENABLE);
+						ep_pcie_dev.tcsr_perst_separation_en_offset);
 		}
 
 		 /* check link status during initial bootup */
@@ -2210,17 +2213,17 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 	if (!dev->tcsr_not_supported) {
 		EP_PCIE_DBG(dev,
 			"TCSR PERST_EN value before configure:0x%x\n",
-			readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
+			readl_relaxed(dev->tcsr_perst_en + ep_pcie_dev.tcsr_perst_enable_offset));
 
 		/*
 		 * Delatch PERST_EN with TCSR to avoid device reset
 		 * during host reboot case.
 		 */
-		writel_relaxed(0, dev->tcsr_perst_en + TCSR_PCIE_PERST_EN);
+		writel_relaxed(0, dev->tcsr_perst_en + ep_pcie_dev.tcsr_perst_enable_offset);
 
 		EP_PCIE_DBG(dev,
 			"TCSR PERST_EN value after configure:0x%x\n",
-			readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
+			readl_relaxed(dev->tcsr_perst_en + ep_pcie_dev.tcsr_perst_enable_offset));
 	}
 
 	if (opt & EP_PCIE_OPT_AST_WAKE) {
@@ -2362,9 +2365,9 @@ checkbme:
 		return ret;
 	}
 
-	/* Clear AOSS_CC_RESET_STATUS::PERST_RAW_RESET_STATUS when linking up */
+	/* Clear PERST_RAW_RESET_STATUS when linking up */
 	if (dev->aoss_rst_clear && dev->aoss_rst_perst)
-		writel_relaxed(PERST_RAW_RESET_STATUS, dev->aoss_rst_perst);
+		writel_relaxed(ep_pcie_dev.perst_raw_rst_status_mask, dev->aoss_rst_perst);
 
 	/*
 	 * De-assert WAKE# GPIO following link until L2/3 and WAKE#
@@ -2481,7 +2484,7 @@ int ep_pcie_core_disable_endpoint(void)
 
 	if (!dev->tcsr_not_supported)
 		ep_pcie_write_reg_field(dev->tcsr_perst_en,
-					TCSR_PCIE_RST_SEPARATION, BIT(5), 1);
+					ep_pcie_dev.tcsr_reset_separation_offset, BIT(5), 1);
 
 	ep_pcie_pipe_clk_deinit(dev);
 	ep_pcie_clk_deinit(dev);
@@ -4033,6 +4036,81 @@ static int is_pcie_boot_config(struct platform_device *pdev)
 	return -EPERM;
 }
 
+static void ep_pcie_tcsr_aoss_data_dt(struct platform_device *pdev)
+{
+	int ret;
+
+	ep_pcie_dev.tcsr_not_supported = of_property_read_bool((&pdev->dev)->of_node,
+								"qcom,tcsr-not-supported");
+	EP_PCIE_DBG(&ep_pcie_dev,
+		"PCIe V%d: tcsr pcie perst is %s supported\n",
+		ep_pcie_dev.rev, ep_pcie_dev.tcsr_not_supported ? "not" : "");
+
+	if (!ep_pcie_dev.tcsr_not_supported) {
+		ret = of_property_read_u32((&pdev->dev)->of_node,
+					"qcom,tcsr-perst-separation-enable-offset",
+					&ep_pcie_dev.tcsr_perst_separation_en_offset);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: TCSR Perst Separation En Offset is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.tcsr_perst_separation_en_offset = TCSR_PERST_SEPARATION_ENABLE;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: TCSR Perst Separation En Offset: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.tcsr_perst_separation_en_offset);
+
+		ret = of_property_read_u32((&pdev->dev)->of_node,
+					"qcom,tcsr-reset-separation-offset",
+					&ep_pcie_dev.tcsr_reset_separation_offset);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: TCSR Reset Separation Offset is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.tcsr_reset_separation_offset = TCSR_PCIE_RST_SEPARATION;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: TCSR Reset Separation Offset: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.tcsr_reset_separation_offset);
+
+		ret = of_property_read_u32((&pdev->dev)->of_node, "qcom,tcsr-perst-enable-offset",
+					&ep_pcie_dev.tcsr_perst_enable_offset);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: TCSR Perst Enable Offset is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.tcsr_perst_enable_offset = TCSR_PCIE_PERST_EN;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: TCSR Perst Enable Offset: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.tcsr_perst_enable_offset);
+	}
+
+	ep_pcie_dev.aoss_rst_clear = of_property_read_bool((&pdev->dev)->of_node,
+								"qcom,aoss-rst-clr");
+
+	if (ep_pcie_dev.aoss_rst_clear) {
+		ret = of_property_read_u32((&pdev->dev)->of_node,
+					"qcom,perst-raw-rst-status-b",
+					&ep_pcie_dev.perst_raw_rst_status_mask);
+
+		ep_pcie_dev.perst_raw_rst_status_mask = BIT(ep_pcie_dev.perst_raw_rst_status_mask);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: Perst raw rst status bit is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.perst_raw_rst_status_mask = PERST_RAW_RESET_STATUS;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: Perset Raw Reset Status Bit: %d",
+			ep_pcie_dev.rev, BIT(ep_pcie_dev.perst_raw_rst_status_mask));
+	}
+}
+
 static int ep_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -4174,16 +4252,8 @@ static int ep_pcie_probe(struct platform_device *pdev)
 		"PCIe V%d: enum by PERST is %s enabled\n",
 		ep_pcie_dev.rev, ep_pcie_dev.perst_enum ? "" : "not");
 
-	ep_pcie_dev.tcsr_not_supported = of_property_read_bool
-		((&pdev->dev)->of_node,
-				"qcom,tcsr-not-supported");
-	EP_PCIE_DBG(&ep_pcie_dev,
-		"PCIe V%d: tcsr pcie perst is %s supported\n",
-		ep_pcie_dev.rev, ep_pcie_dev.tcsr_not_supported ? "not" : "");
+	ep_pcie_tcsr_aoss_data_dt(pdev);
 
-	ep_pcie_dev.aoss_rst_clear = of_property_read_bool
-		((&pdev->dev)->of_node,
-				"qcom,aoss-rst-clr");
 	EP_PCIE_DBG(&ep_pcie_dev,
 		"PCIe V%d: AOSS reset for perst needed\n", ep_pcie_dev.rev);
 	ep_pcie_dev.parf_msi_vf_indexed = of_property_read_bool((&pdev->dev)->of_node,
