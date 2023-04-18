@@ -1541,6 +1541,18 @@ static const struct msm_pingroup trinket_groups[] = {
 	[140] = UFS_RESET(ufs_reset, 0x190000),
 };
 
+static const struct msm_gpio_wakeirq_map trinket_mpm_map[] = {
+	{5, 43}, {6, 45}, {7, 59}, {8, 72}, {9, 83}, {13, 124}, {14, 1},
+	{15, 3}, {16, 4}, {17, 9}, {18, 13}, {19, 15}, {20, 17}, {21, 19},
+	{22, 21}, {23, 14}, {24, 25}, {25, 26}, {26, 27}, {27, 29}, {28, 33},
+	{29, 36}, {30, 42}, {31, 44}, {32, 47}, {33, 50}, {34, 70}, {35, 75},
+	{36, 79}, {37, 80}, {38, 81}, {39, 82}, {40, 85}, {41, 86}, {42, 88},
+	{43, 89}, {44, 91}, {45, 92}, {46, 93}, {47, 94}, {48, 95}, {49, 96},
+	{50, 98}, {51, 99}, {52, 101}, {53, 102}, {54, 105}, {55, 107}, {56, 110},
+	{57, 111}, {58, 112}, {59, 118}, {60, 122}, {61, 123}, {62, 126}, {63, 128},
+	{64, 100}, {65, 130}, {66, 131}, {67, 132}, {70, 97}, {71, 120}, {84, 22},
+};
+
 static const struct msm_pinctrl_soc_data trinket_pinctrl = {
 	.pins = trinket_pins,
 	.npins = ARRAY_SIZE(trinket_pins),
@@ -1549,6 +1561,8 @@ static const struct msm_pinctrl_soc_data trinket_pinctrl = {
 	.groups = trinket_groups,
 	.ngroups = ARRAY_SIZE(trinket_groups),
 	.ngpios = 133,
+	.wakeirq_map = trinket_mpm_map,
+	.nwakeirq_map = ARRAY_SIZE(trinket_mpm_map),
 };
 
 static int trinket_pinctrl_probe(struct platform_device *pdev)
