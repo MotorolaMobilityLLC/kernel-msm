@@ -1685,6 +1685,8 @@
   __stack_chk_fail
   stack_trace_print
   stack_trace_save
+  static_key_disable
+  static_key_enable
   static_key_slow_dec
   static_key_slow_inc
   stpcpy
@@ -1878,6 +1880,7 @@
   usleep_range_state
   utf16s_to_utf8s
   utf8_to_utf32
+  v4l2_ctrl_add_handler
   v4l2_ctrl_handler_free
   v4l2_ctrl_handler_init_class
   v4l2_ctrl_handler_setup
