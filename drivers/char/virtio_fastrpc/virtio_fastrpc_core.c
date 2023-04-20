@@ -315,6 +315,7 @@ struct vfastrpc_file *vfastrpc_file_alloc(void)
 	vfl->domain = -1;
 	fl->cid = -1;
 	fl->dsp_proc_init = 0;
+	fl->sessionid = 0;
 	mutex_init(&fl->internal_map_mutex);
 	mutex_init(&fl->map_mutex);
 	return vfl;
@@ -496,6 +497,8 @@ static int virt_fastrpc_close(struct vfastrpc_file *vfl)
 	vmsg = (struct virt_msg_hdr *)msg->txbuf;
 	vmsg->pid = fl->tgid;
 	vmsg->tid = current->pid;
+	if (fl->sessionid)
+		vmsg->tid |= (1 << SESSION_ID_INDEX);
 	vmsg->cid = fl->cid;
 	vmsg->cmd = VIRTIO_FASTRPC_CMD_CLOSE;
 	vmsg->len = sizeof(*vmsg);
@@ -851,6 +854,8 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 	vmsg = (struct virt_invoke_msg *)ctx->msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_INVOKE;
 	vmsg->hdr.len = size;
@@ -1435,6 +1440,8 @@ static int virt_fastrpc_munmap(struct vfastrpc_file *vfl, uintptr_t raddr,
 	vmsg = (struct virt_munmap_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_MUNMAP;
 	vmsg->hdr.len = sizeof(*vmsg);
@@ -1593,6 +1600,8 @@ static int virt_fastrpc_munmap_fd(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_munmap_fd_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_MUNMAP_FD;
 	vmsg->hdr.len = total_size;
@@ -1693,6 +1702,8 @@ static int virt_fastrpc_mmap(struct vfastrpc_file *vfl, uint32_t flags,
 	vmsg = (struct virt_mmap_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_MMAP;
 	vmsg->hdr.len = total_size;
@@ -2053,6 +2064,8 @@ static int virt_fastrpc_control(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_control_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_CONTROL;
 	vmsg->hdr.len = sizeof(*vmsg);
@@ -2234,6 +2247,8 @@ static int virt_fastrpc_open(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_open_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = -1;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_OPEN;
 	vmsg->hdr.len = sizeof(*vmsg);
@@ -2343,6 +2358,8 @@ static int virt_fastrpc_get_dsp_info(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_cap_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = -1;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_GET_DSP_INFO;
 	vmsg->hdr.len = sizeof(*vmsg);

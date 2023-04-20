@@ -71,6 +71,7 @@ struct vfastrpc_file {
 	struct vfastrpc_apps *apps;
 	int domain;
 	int procattrs;
+	int sessionid;
 	/*
 	 * List to store virtio fastrpc cmds interrupted by signal while waiting
 	 * for completion.
