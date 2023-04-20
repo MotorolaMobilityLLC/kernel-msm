@@ -258,6 +258,7 @@
   contig_page_data
   _copy_from_iter
   copy_from_kernel_nofault
+  copy_page
   __cpu_active_mask
   cpu_bit_bitmap
   cpufreq_cpu_get
@@ -320,6 +321,7 @@
   crypto_destroy_tfm
   crypto_enqueue_request
   crypto_has_alg
+  crypto_inc
   crypto_init_queue
   crypto_unregister_ahash
   crypto_unregister_skcipher
@@ -814,6 +816,7 @@
   get_unused_fd_flags
   get_user_ifreq
   get_zeroed_page
+  gf128mul_lle
   gic_cpu_init
   gic_dist_init
   gic_dist_wait_for_rwp
@@ -835,6 +838,7 @@
   gpiod_direction_input
   gpiod_direction_output
   gpiod_direction_output_raw
+  gpiod_get_direction
   gpiod_get_optional
   gpiod_get_raw_value
   gpiod_get_value
@@ -942,14 +946,21 @@
   iio_device_claim_direct_mode
   iio_device_id
   iio_device_release_direct_mode
+  iio_get_time_ns
   iio_kfifo_allocate
   iio_push_event
   iio_push_to_buffers
   iio_read_channel_processed
   iio_read_channel_raw
   iio_read_const_attr
+  iio_trigger_alloc
   iio_triggered_buffer_cleanup
   iio_triggered_buffer_setup_ext
+  iio_trigger_free
+  iio_trigger_notify_done
+  iio_trigger_poll
+  __iio_trigger_register
+  iio_trigger_unregister
   iio_update_buffers
   iio_validate_scan_mask_onehot
   iio_write_channel_raw
@@ -2142,6 +2153,7 @@
   task_may_not_preempt
   __task_pid_nr_ns
   __task_rq_lock
+  task_rq_lock
   tcp_hashinfo
   thermal_cooling_device_register
   thermal_cooling_device_unregister
@@ -2515,6 +2527,7 @@
   usb_control_msg_send
   usb_debug_root
   usb_decode_ctrl
+  usb_driver_set_configuration
   usb_ep_alloc_request
   usb_ep_autoconfig
   usb_ep_dequeue
@@ -2527,6 +2540,8 @@
   usb_free_coherent
   usb_function_register
   usb_function_unregister
+  usb_gadget_connect
+  usb_gadget_disconnect
   usb_gadget_wakeup
   usb_ifnum_to_if
   usb_interface_id

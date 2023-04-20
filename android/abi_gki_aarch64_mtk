@@ -37,6 +37,7 @@
   arm64_use_ng_mappings
   __arm_smccc_hvc
   __arm_smccc_smc
+  arp_create
   arp_tbl
   async_schedule_node
   atomic_notifier_call_chain
@@ -1249,6 +1250,8 @@
   __netdev_alloc_skb
   netdev_err
   netdev_info
+  netdev_stats_to_stats64
+  netdev_upper_get_next_dev_rcu
   netdev_warn
   netif_carrier_off
   netif_carrier_on
@@ -2155,6 +2158,7 @@
   tty_chars_in_buffer
   tty_driver_flush_buffer
   tty_flip_buffer_push
+  tty_get_char_size
   tty_insert_flip_string_fixed_flag
   tty_ldisc_flush
   tty_register_ldisc
@@ -2306,6 +2310,7 @@
   usbnet_disconnect
   usbnet_get_drvinfo
   usbnet_get_endpoints
+  usbnet_get_ethernet_addr
   usbnet_get_link
   usbnet_get_link_ksettings_mii
   usbnet_get_msglevel

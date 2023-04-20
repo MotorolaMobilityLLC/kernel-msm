@@ -186,8 +186,10 @@ static bool backing_data_changed(struct fuse_inode *fi, struct dentry *entry,
 	int err;
 	bool ret = true;
 
-	if (!entry)
-		return false;
+	if (!entry) {
+		ret = false;
+		goto put_backing_file;
+	}
 
 	get_fuse_backing_path(entry, &new_backing_path);
 	new_backing_inode = fi->backing_inode;
@@ -210,6 +212,9 @@ put_bpf:
 put_inode:
 	iput(new_backing_inode);
 	path_put(&new_backing_path);
+put_backing_file:
+	if (bpf_arg->backing_file)
+		fput(bpf_arg->backing_file);
 	return ret;
 }
 #endif
@@ -416,13 +421,18 @@ static void fuse_dentry_canonical_path(const struct path *path,
 			       fuse_canonical_path_backing,
 			       fuse_canonical_path_finalize, path,
 			       canonical_path);
-	if (fer.ret)
+	if (fer.ret) {
+		if (IS_ERR(fer.result))
+			canonical_path->dentry = fer.result;
 		return;
+	}
 #endif
 
 	path_name = (char *)get_zeroed_page(GFP_KERNEL);
-	if (!path_name)
-		goto default_path;
+	if (!path_name) {
+		canonical_path->dentry = ERR_PTR(-ENOMEM);
+		return;
+	}
 
 	args.opcode = FUSE_CANONICAL_PATH;
 	args.nodeid = get_node_id(inode);
@@ -437,10 +447,15 @@ static void fuse_dentry_canonical_path(const struct path *path,
 	free_page((unsigned long)path_name);
 	if (err > 0)
 		return;
-default_path:
+	if (err < 0) {
+		canonical_path->dentry = ERR_PTR(err);
+		return;
+	}
+
 	canonical_path->dentry = path->dentry;
 	canonical_path->mnt = path->mnt;
 	path_get(canonical_path);
+	return;
 }
 
 const struct dentry_operations fuse_dentry_operations = {
@@ -524,7 +539,7 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, const struct qstr *name
 		backing_inode = backing_file->f_inode;
 		*inode = fuse_iget_backing(sb, outarg->nodeid, backing_inode);
 		if (!*inode)
-			goto bpf_arg_out;
+			goto out;
 
 		err = fuse_handle_backing(&bpf_arg,
 				&get_fuse_inode(*inode)->backing_inode,
@@ -535,8 +550,6 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, const struct qstr *name
 		err = fuse_handle_bpf_prog(&bpf_arg, NULL, &get_fuse_inode(*inode)->bpf);
 		if (err)
 			goto out;
-bpf_arg_out:
-		fput(backing_file);
 	} else
 #endif
 	{
@@ -568,6 +581,8 @@ out_queue_forget:
  out_put_forget:
 	kfree(forget);
  out:
+	if (bpf_arg.backing_file)
+		fput(bpf_arg.backing_file);
 	return err;
 }
 
