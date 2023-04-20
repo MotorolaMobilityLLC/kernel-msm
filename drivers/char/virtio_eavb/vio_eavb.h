@@ -188,6 +188,8 @@ struct eavb_stream_info {
 
 	/* Max buffer size (Bytes) allowed */
 	unsigned int max_buffer_size;
+	/* qavb ring buffer size*/
+	uint32_t ring_buffer_size;
 } __packed;
 
 
@@ -239,6 +241,7 @@ struct eavb_buf_hdr {
 
 	uint32_t reserved;
 	uint32_t payload_size; /* Size of the payload (bytes) */
+	uint32_t buf_ele_count;
 } __packed;
 
 struct eavb_buf_data {
