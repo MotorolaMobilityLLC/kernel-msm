@@ -975,6 +975,7 @@ struct fastrpc_mmap {
 	/* Mapping for fastrpc shell */
 	bool is_filemap;
 	char *servloc_name;			/* Indicate which daemon mapped this */
+	unsigned int ctx_refs; /* Indicates reference count for context map */
 };
 
 enum fastrpc_perfkeys {
