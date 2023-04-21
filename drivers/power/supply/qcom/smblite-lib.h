@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __SMBLITE_LIB_H
@@ -352,6 +352,7 @@ struct smb_charger {
 	int			connector_type;
 	bool			suspend_input_on_debug_batt;
 	bool			fake_chg_status_on_debug_batt;
+	bool			uusb_ss_mode_extcon_enable;
 	int			typec_mode;
 	int			dr_mode;
 	int			term_vbat_uv;
