@@ -17,6 +17,7 @@ qcom_iommu_util.ko
 qcom_dma_heaps.ko
 qcom_hwspinlock.ko
 qti-regmap-debugfs.ko
+rpm-smd.ko
 secure_buffer.ko
 smem.ko
 socinfo.ko
