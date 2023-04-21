@@ -2361,6 +2361,21 @@ static void ufshcd_parse_pm_levels(struct ufs_hba *hba)
 	host->is_dt_pm_level_read = true;
 }
 
+/*
+ * ufs_qcom_parse_pbl_rst_workaround_flag - read bypass-pbl-rst-wa entry from DT
+ */
+static void ufs_qcom_parse_pbl_rst_workaround_flag(struct ufs_qcom_host *host)
+{
+	struct device_node *np = host->hba->dev->of_node;
+	const char *str  = "qcom,bypass-pbl-rst-wa";
+
+	if (!np)
+		return;
+
+	host->bypass_pbl_rst_wa = of_property_read_bool(np, str);
+}
+
+
 static void ufs_qcom_override_pa_tx_hsg1_sync_len(struct ufs_hba *hba)
 {
 #define PA_TX_HSG1_SYNC_LENGTH 0x1552
@@ -3785,6 +3800,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	if (err)
 		goto out_disable_vccq_parent;
 
+	ufs_qcom_parse_pbl_rst_workaround_flag(host);
 	ufs_qcom_parse_pm_level(hba);
 	ufs_qcom_parse_limits(host);
 	ufs_qcom_parse_g4_workaround_flag(host);
@@ -5374,7 +5390,8 @@ static void ufs_qcom_shutdown(struct platform_device *pdev)
 	 * reset, so deassert ufs device reset line after UFS device shutdown
 	 * to ensure the UFS_RESET TLMM register value is POR value
 	 */
-	ufs_qcom_device_reset_ctrl(hba, false);
+	if (!host->bypass_pbl_rst_wa)
+		ufs_qcom_device_reset_ctrl(hba, false);
 }
 
 static int ufs_qcom_system_suspend(struct device *dev)
