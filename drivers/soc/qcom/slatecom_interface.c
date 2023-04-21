@@ -45,6 +45,12 @@
 #define ADSP_DOWN_EVENT_TO_SLATE_TIMEOUT 3000
 #define MAX_APP_NAME_SIZE 100
 #define COMPAT_PTR(val) ((void *)((uint64_t)val & 0xffffffffUL))
+#define __QAPI_VERSION_MAJOR_SHIFT (24)
+#define __QAPI_VERSION_MINOR_SHIFT (16)
+#define __QAPI_VERSION_NIT_SHIFT (0)
+#define __QAPI_VERSION_MAJOR_MASK (0xff000000)
+#define __QAPI_VERSION_MINOR_MASK (0x00ff0000)
+#define __QAPI_VERSION_NIT_MASK (0x0000ffff)
 
 /*pil_slate_intf.h*/
 #define RESULT_SUCCESS 0
@@ -112,7 +118,7 @@ struct slatedaemon_priv {
 	bool slate_resp_cmplt;
 	void *lhndl;
 	wait_queue_head_t link_state_wait;
-	char rx_buf[20];
+	char rx_buf[308];
 	struct work_struct slatecom_up_work;
 	struct work_struct slatecom_down_work;
 	struct mutex glink_mutex;
@@ -272,14 +278,13 @@ err_ret:
  * and wait for the response.
  * The response is returned to the caller.
  */
-static int send_state_change_cmd(struct slate_ui_data *ui_obj_msg)
+static int send_state_change_cmd(uint64_t state)
 {
 	int ret = 0;
 	struct msg_header_t msg_header = {0, 0};
 	struct slatedaemon_priv *dev = container_of(slatecom_intf_drv,
 					struct slatedaemon_priv,
 					lhndl);
-	uint32_t state = ui_obj_msg->cmd;
 
 	switch (state) {
 	case STATE_TWM_ENTER:
@@ -303,7 +308,7 @@ static int send_state_change_cmd(struct slate_ui_data *ui_obj_msg)
 	}
 	ret = slatecom_tx_msg(dev, &msg_header.opcode, sizeof(msg_header.opcode));
 	if (ret < 0)
-		pr_err("MSM State transtion event cmd failed\n");
+		pr_err("MSM State transtion event:%d cmd failed\n", state);
 	return ret;
 }
 
@@ -658,14 +663,13 @@ static int send_time_sync(struct slate_ui_data *tui_obj_msg)
 return ret;
 }
 
-static int send_debug_config(struct slate_ui_data *tui_obj_msg)
+static int send_debug_config(uint64_t config)
 {
 	int ret = 0;
 	struct msg_header_t msg_header = {0, 0};
 	struct slatedaemon_priv *dev = container_of(slatecom_intf_drv,
 					struct slatedaemon_priv,
 					lhndl);
-	uint32_t config = tui_obj_msg->cmd;
 
 	switch (config) {
 	case ENABLE_PMIC_RTC:
@@ -681,13 +685,13 @@ static int send_debug_config(struct slate_ui_data *tui_obj_msg)
 		msg_header.opcode = GMI_MGR_DISABLE_QCLI;
 		break;
 	default:
-		pr_err("Invalid debug config cmd\n");
+		pr_err("Invalid debug config cmd:%d\n", config);
 		return -EINVAL;
 	}
 	ret = slatecom_tx_msg(dev, &msg_header.opcode, sizeof(msg_header.opcode));
 
 	if (ret < 0)
-		pr_err("failed to send debug config cmd\n");
+		pr_err("failed to send debug config cmd:%d\n", config);
 	return ret;
 }
 
@@ -714,6 +718,50 @@ int get_slate_boot_mode(void)
 }
 EXPORT_SYMBOL(get_slate_boot_mode);
 
+static int send_get_fw_version(struct slate_ui_data *ui_obj_msg)
+{
+	int ret = 0;
+	struct msg_header_t msg_header = {0, 0};
+	struct wear_firmware_info *fw_info = NULL;
+	void __user *read_buf = COMPAT_PTR(ui_obj_msg->buffer);
+	struct slatedaemon_priv *dev = container_of(slatecom_intf_drv,
+					struct slatedaemon_priv,
+					lhndl);
+
+	msg_header.opcode = GMI_WEAR_MGR_GET_FIRMWARE_DETAILS;
+	ret = slatecom_tx_msg(dev, &msg_header.opcode, sizeof(msg_header.opcode));
+	fw_info = (struct wear_firmware_info *)dev->rx_buf;
+	if (!ret && copy_to_user(read_buf, fw_info, sizeof(struct wear_firmware_info))) {
+		pr_err("copy to user failed\n");
+		ret = -EFAULT;
+	}
+	return ret;
+}
+static int send_ipc_cmd_to_slate(struct slate_ui_data *ui_obj_msg)
+{
+	int ret = 0;
+	uint32_t cmd = ui_obj_msg->cmd;
+
+	switch (cmd) {
+	case STATE_TRANSITION:
+		ret = send_state_change_cmd(ui_obj_msg->write);
+		break;
+	case TIME_SYNC:
+		ret = send_time_sync(ui_obj_msg);
+		break;
+	case DEBUG_CONFIG:
+		ret = send_debug_config(ui_obj_msg->write);
+		break;
+	case GET_VERSION:
+		ret = send_get_fw_version(ui_obj_msg);
+		break;
+	default:
+		pr_err("Invalid ipc cmd:%d\n", cmd);
+		return -EINVAL;
+	}
+	return ret;
+}
+
 static long slate_com_ioctl(struct file *filp,
 		unsigned int ui_slatecom_cmd, unsigned long arg)
 {
@@ -724,24 +772,21 @@ static long slate_com_ioctl(struct file *filp,
 	if (filp == NULL)
 		return -EINVAL;
 
-	switch (ui_slatecom_cmd) {
-	case SLATECOM_REG_READ:
-	case SLATECOM_AHB_READ:
+	if (arg != 0 && ui_slatecom_cmd != SLATECOM_SET_BOOT_MODE) {
 		if (copy_from_user(&ui_obj_msg, (void __user *) arg,
 				sizeof(ui_obj_msg))) {
 			pr_err("The copy from user failed\n");
 			ret = -EFAULT;
 		}
+	}
+	switch (ui_slatecom_cmd) {
+	case SLATECOM_REG_READ:
+	case SLATECOM_AHB_READ:
 		ret = slatechar_read_cmd(&ui_obj_msg,
 				ui_slatecom_cmd);
 		break;
 	case SLATECOM_AHB_WRITE:
 	case SLATECOM_REG_WRITE:
-		if (copy_from_user(&ui_obj_msg, (void __user *) arg,
-				sizeof(ui_obj_msg))) {
-			pr_err("The copy from user failed\n");
-			ret = -EFAULT;
-		}
 		ret = slatechar_write_cmd(&ui_obj_msg, ui_slatecom_cmd);
 		break;
 	case SLATECOM_SET_SPI_FREE:
@@ -788,43 +833,12 @@ static long slate_com_ioctl(struct file *filp,
 	case SLATECOM_GET_BOOT_MODE:
 		ret = get_slate_boot_mode();
 		break;
-	case SLATECOM_DEVICE_STATE_TRANSITION:
+	case SLATECOM_SEND_IPC_CMD:
 		if (dev->slatecom_current_state != SLATECOM_STATE_GLINK_OPEN) {
 			pr_err("driver not ready, glink is not open\n");
 			return -ENODEV;
 		}
-		if (copy_from_user(&ui_obj_msg, (void __user *)arg,
-					sizeof(ui_obj_msg))) {
-			pr_err("The copy from user failed-state transition\n");
-			ret = -EFAULT;
-		}
-		ret = send_state_change_cmd(&ui_obj_msg);
-		break;
-	case SLATE_SEND_TIME_DATA:
-		if (dev->slatecom_current_state != SLATECOM_STATE_GLINK_OPEN) {
-			pr_err("%s: driver not ready, current state: %d\n",
-			__func__, dev->slatecom_current_state);
-			return -ENODEV;
-		}
-		if (copy_from_user(&ui_obj_msg, (void __user *) arg,
-					sizeof(ui_obj_msg))) {
-			pr_err("The copy from user failed for time data\n");
-			ret = -EFAULT;
-		}
-		ret = send_time_sync(&ui_obj_msg);
-		break;
-	case SLATECOM_SEND_DEBUG_CONFIG:
-		if (dev->slatecom_current_state != SLATECOM_STATE_GLINK_OPEN) {
-			pr_err("%s: driver not ready, current state: %d\n",
-			__func__, dev->slatecom_current_state);
-			return -ENODEV;
-		}
-		if (copy_from_user(&ui_obj_msg, (void __user *) arg,
-					sizeof(ui_obj_msg))) {
-			pr_err("The copy from user failed for time data\n");
-			ret = -EFAULT;
-		}
-		ret = send_debug_config(&ui_obj_msg);
+		ret = send_ipc_cmd_to_slate(&ui_obj_msg);
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
