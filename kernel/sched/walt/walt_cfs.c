@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/seq_file.h>
@@ -226,12 +226,42 @@ enum fastpaths {
 	SYNC_WAKEUP,
 	PREV_CPU_FASTPATH,
 	CLUSTER_PACKING_FASTPATH,
+	PIPELINE_FASTPATH,
 };
 
 static inline bool is_complex_sibling_idle(int cpu)
 {
 	if (cpu_l2_sibling[cpu] != -1)
 		return available_idle_cpu(cpu_l2_sibling[cpu]);
+	return false;
+}
+
+static inline bool walt_should_reject_fbt_cpu(struct walt_rq *wrq, struct task_struct *p,
+						int cpu, int order_index,
+						struct find_best_target_env *fbt_env)
+{
+	if (!cpu_active(cpu))
+		return true;
+
+	if (cpu_halted(cpu))
+		return true;
+
+	/*
+	 * This CPU is the target of an active migration that's
+	 * yet to complete. Avoid placing another task on it.
+	 */
+	if (is_reserved(cpu))
+		return true;
+
+	if (sched_cpu_high_irqload(cpu))
+		return true;
+
+	if (fbt_env->skip_cpu == cpu)
+		return true;
+
+	if (wrq->num_mvp_tasks > 0 && per_task_boost(p) != TASK_BOOST_STRICT_MAX)
+		return true;
+
 	return false;
 }
 
@@ -324,27 +354,7 @@ static void walt_find_best_target(struct sched_domain *sd,
 			/* record the prss as we visit cpus in a cluster */
 			fbt_env->prs[i] = wrq->prev_runnable_sum + wrq->grp_time.prev_runnable_sum;
 
-			if (!cpu_active(i))
-				continue;
-
-			if (cpu_halted(i))
-				continue;
-
-			/*
-			 * This CPU is the target of an active migration that's
-			 * yet to complete. Avoid placing another task on it.
-			 */
-			if (is_reserved(i))
-				continue;
-
-			if (sched_cpu_high_irqload(i))
-				continue;
-
-			if (fbt_env->skip_cpu == i)
-				continue;
-
-			if (wrq->num_mvp_tasks > 0 &&
-				per_task_boost(p) != TASK_BOOST_STRICT_MAX)
+			if (walt_should_reject_fbt_cpu(wrq, p, i, order_index, fbt_env))
 				continue;
 
 			/*
@@ -802,12 +812,13 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	int delta = 0;
 	int task_boost = per_task_boost(p);
 	bool uclamp_boost = walt_uclamp_boosted(p);
-	int start_cpu, order_index, end_index;
+	int start_cpu = 0, order_index, end_index;
 	int first_cpu;
 	bool energy_eval_needed = true;
 	struct compute_energy_output output;
 	struct walt_rq *prev_wrq = (struct walt_rq *) cpu_rq(prev_cpu)->android_vendor_data1;
 	struct walt_rq *start_wrq;
+	struct walt_task_struct *wts;
 
 	if (walt_is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
 			cpumask_test_cpu(prev_cpu, p->cpus_ptr))
@@ -815,6 +826,21 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 	if (unlikely(!cpu_array))
 		return prev_cpu;
+
+	/* Pre-select a set of candidate CPUs. */
+	candidates = this_cpu_ptr(&energy_cpus);
+	cpumask_clear(candidates);
+
+	wts = (struct walt_task_struct *) p->android_vendor_data1;
+	if ((wts->low_latency == WALT_LOW_LATENCY_PIPELINE) &&
+			(wts->pipeline_cpu != -1) &&
+			walt_task_skip_min_cpu(p)) {
+		if (!walt_pipeline_low_latency_task(cpu_rq(wts->pipeline_cpu)->curr)) {
+			best_energy_cpu = wts->pipeline_cpu;
+			fbt_env.fastpath = PIPELINE_FASTPATH;
+			goto out;
+		}
+	}
 
 	walt_get_indicies(p, &order_index, &end_index, task_boost, uclamp_boost,
 								&energy_eval_needed);
@@ -827,9 +853,6 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	if (trace_sched_task_util_enabled())
 		start_t = sched_clock();
 
-	/* Pre-select a set of candidate CPUs. */
-	candidates = this_cpu_ptr(&energy_cpus);
-	cpumask_clear(candidates);
 
 	rcu_read_lock();
 	need_idle |= uclamp_latency_sensitive(p);
@@ -959,7 +982,7 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 unlock:
 	rcu_read_unlock();
-
+out:
 	if (best_energy_cpu < 0 || best_energy_cpu >= WALT_NR_CPUS)
 		best_energy_cpu = prev_cpu;
 
