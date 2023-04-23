@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __LINUX_USB_REDRIVER_H
@@ -52,7 +52,7 @@ struct usb_redriver {
 	struct list_head list;
 	struct device_node *of_node;
 
-	int (*release_usb_lanes)(struct usb_redriver *ur, int num);
+	int (*release_usb_lanes)(struct usb_redriver *ur, int ort, int num);
 	int (*notify_connect)(struct usb_redriver *ur, int ort);
 	int (*notify_disconnect)(struct usb_redriver *ur);
 	int (*get_orientation)(struct usb_redriver *ur);
@@ -73,7 +73,7 @@ struct usb_redriver *usb_get_redriver_by_phandle(
 		const struct device_node *np,
 		const char *phandle_name, int index);
 void usb_put_redriver(struct usb_redriver *ur);
-void usb_redriver_release_lanes(struct usb_redriver *ur, int num);
+void usb_redriver_release_lanes(struct usb_redriver *ur, int ort, int num);
 void usb_redriver_notify_connect(struct usb_redriver *ur, int ort);
 void usb_redriver_notify_disconnect(struct usb_redriver *ur);
 int usb_redriver_get_orientation(struct usb_redriver *ur);
@@ -107,7 +107,7 @@ static inline int usb_redriver_get_orientation(struct usb_redriver *ur)
 
 #define usb_put_redriver(ur) do {} while (0)
 
-#define usb_redriver_release_lanes(ur, num) do {} while (0)
+#define usb_redriver_release_lanes(ur, ort, num) do {} while (0)
 #define usb_redriver_notify_connect(ur, ort) do {} while (0)
 #define usb_redriver_notify_disconnect(ur) do {} while (0)
 #define usb_redriver_gadget_pullup_enter(ur, is_on) do {} while (0)

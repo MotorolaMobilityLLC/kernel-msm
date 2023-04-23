@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -29,6 +29,11 @@
 #define FLAT_GAIN_REG_BASE		0x18
 #define OUT_COMP_AND_POL_REG_BASE	0x02
 #define LOSS_MATCH_REG_BASE		0x19
+
+#define AUX_SWITCH_REG		0x09
+#define AUX_NORMAL_VAL		0
+#define AUX_FLIP_VAL		1
+#define AUX_DISABLE_VAL		2
 
 /* Default Register Value */
 #define GEN_DEV_SET_REG_DEFAULT		0xFB
@@ -93,6 +98,7 @@ struct nb7vpq904m_redriver {
 
 	u8	gen_dev_val;
 	bool	lane_channel_swap;
+	bool	is_set_aux;
 
 	struct workqueue_struct *pullup_wq;
 	struct work_struct	pullup_work;
@@ -130,6 +136,28 @@ static int nb7vpq904m_reg_set(struct nb7vpq904m_redriver *redriver,
 	dev_dbg(redriver->dev, "writing reg 0x%02x=0x%02x\n", reg, val);
 
 	return 0;
+}
+
+static void nb7vpq904m_dev_aux_set(struct nb7vpq904m_redriver *redriver)
+{
+	u8 aux_val = AUX_DISABLE_VAL;
+
+	if (!redriver->is_set_aux)
+		return;
+
+	switch (redriver->op_mode) {
+	case OP_MODE_DP:
+	case OP_MODE_USB_AND_DP:
+		if (redriver->typec_orientation == ORIENTATION_CC1)
+			aux_val = AUX_NORMAL_VAL;
+		else
+			aux_val = AUX_FLIP_VAL;
+		break;
+	default:
+		break;
+	}
+
+	nb7vpq904m_reg_set(redriver, AUX_SWITCH_REG, aux_val);
 }
 
 static int nb7vpq904m_gen_dev_set(struct nb7vpq904m_redriver *redriver)
@@ -392,6 +420,8 @@ static int nb7vpq904m_read_configuration(struct nb7vpq904m_redriver *redriver)
 			goto err;
 	}
 
+	redriver->is_set_aux = of_property_read_bool(node, "set-aux");
+
 	return 0;
 
 err:
@@ -455,20 +485,33 @@ static int nb7vpq904m_notify_disconnect(struct usb_redriver *r)
 	return 0;
 }
 
-static int nb7vpq904m_release_usb_lanes(struct usb_redriver *r, int num)
+static int nb7vpq904m_release_usb_lanes(struct usb_redriver *r, int ort, int num)
 {
 	struct nb7vpq904m_redriver *redriver =
 		container_of(r, struct nb7vpq904m_redriver, r);
 
-	dev_dbg(redriver->dev, "%s: mode %s, %d\n", __func__,
-		OPMODESTR(redriver->op_mode), num);
+	dev_dbg(redriver->dev, "%s: mode %s, orientation %s-%d, lanes %d\n", __func__,
+		OPMODESTR(redriver->op_mode), ort == ORIENTATION_CC1 ? "CC1" : "CC2",
+		redriver->lane_channel_swap, num);
 
 	if (num == 4)
 		redriver->op_mode = OP_MODE_DP;
 	else if (num == 2)
 		redriver->op_mode = OP_MODE_USB_AND_DP;
 
+	/* in case it need aux function from redriver and the first call is release lane */
+	redriver->typec_orientation = ort;
+	if (redriver->lane_channel_swap) {
+		if (redriver->typec_orientation == ORIENTATION_CC1)
+			redriver->typec_orientation = ORIENTATION_CC2;
+		else
+			redriver->typec_orientation = ORIENTATION_CC1;
+	}
+
 	nb7vpq904m_gen_dev_set(redriver);
+
+	nb7vpq904m_dev_aux_set(redriver);
+
 	nb7vpq904m_channel_update(redriver);
 
 	return 0;
