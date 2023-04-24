@@ -16,6 +16,8 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/sort.h>
+#include <linux/pm.h>
+#include <linux/suspend.h>
 
 #include "icc-rpmh.h"
 #include "qnoc-qos.h"
@@ -2931,6 +2933,18 @@ static int qnoc_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static int qnoc_kalama_restore(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct qcom_icc_provider *qp = platform_get_drvdata(pdev);
+
+	return qcom_icc_rpmh_configure_qos(qp);
+}
+
+static const struct dev_pm_ops qnoc_kalama_pm_ops = {
+	.restore = qnoc_kalama_restore,
+};
+
 static const struct of_device_id qnoc_of_match[] = {
 	{ .compatible = "qcom,kalama-aggre1_noc",
 	  .data = &kalama_aggre1_noc},
@@ -2970,6 +2984,7 @@ static struct platform_driver qnoc_driver = {
 	.driver = {
 		.name = "qnoc-kalama",
 		.of_match_table = qnoc_of_match,
+		.pm = &qnoc_kalama_pm_ops,
 		.sync_state = qcom_icc_rpmh_sync_state,
 	},
 };
