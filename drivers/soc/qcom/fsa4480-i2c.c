@@ -3,7 +3,6 @@
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/power_supply.h>
@@ -357,7 +356,7 @@ int fsa4480_unreg_notifier(struct notifier_block *nb,
 
 		rc = iio_read_channel_processed(fsa_priv->iio_ch, &mode.intval);
 
-		if (rc) {
+		if (rc < 0) {
 			dev_dbg(dev, "%s: Unable to read USB TYPEC_MODE: %d\n",
 				__func__, rc);
 			mutex_unlock(&fsa_priv->notification_lock);
