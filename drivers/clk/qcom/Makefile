@@ -128,6 +128,7 @@ obj-$(CONFIG_SM_GPUCC_SCUBA) += gpucc-scuba.o
 obj-$(CONFIG_SM_NPUCC_8150) += npucc-sm8150.o
 obj-$(CONFIG_SM_NPUCC_8250) += npucc-sm8250.o
 obj-$(CONFIG_SM_SCC_8150) += scc-sm8150.o
+obj-$(CONFIG_SM_VIDEOCC_CROW) += videocc-crow.o
 obj-$(CONFIG_SM_VIDEOCC_KALAMA) += videocc-kalama.o
 obj-$(CONFIG_SM_CAMCC_CROW) += camcc-crow.o
 obj-$(CONFIG_SM_CAMCC_KALAMA) += camcc-kalama.o
