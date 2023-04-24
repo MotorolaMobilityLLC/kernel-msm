@@ -25,9 +25,8 @@
 #include <linux/syscore_ops.h>
 #include <linux/sysfs.h>
 #include <linux/uaccess.h>
-#if IS_ENABLED(CONFIG_MSM_RPM_SMD)
 #include <soc/qcom/rpm-smd.h>
-#endif
+#include <linux/soc/qcom/qcom_aoss.h>
 
 #include "linux/power_state.h"
 
@@ -100,6 +99,8 @@ struct power_state_drvdata {
 	struct kobj_attribute ps_ka;
 	struct wakeup_source *ps_ws;
 	struct notifier_block ps_pm_nb;
+	struct qmp *qmp;
+	struct msm_rpm_kvp kvp_req;
 	struct syscore_ops ps_ops;
 	enum power_states current_state;
 	u32 subsys_count;
@@ -210,24 +211,35 @@ static int ps_open(struct inode *inode, struct file *file)
 }
 
 #if IS_ENABLED(CONFIG_MSM_RPM_SMD)
-static int send_deep_sleep_vote(int state)
+static int send_deep_sleep_vote(int state, struct power_state_drvdata *drv)
 {
 	u32 val;
-	struct msm_rpm_kvp req;
 
 	if (state == DS_ENTRY)
 		val = RPM_XO_DS_ENTER_VALUE;
 	else
 		val = RPM_XO_DS_EXIT_VALUE;
 
-	req.key = RPM_XO_DS_KEY;
-	req.data = (void *)&val;
-	req.length = sizeof(val);
+	drv->kvp_req.key = RPM_XO_DS_KEY;
+	drv->kvp_req.data = (void *)&val;
+	drv->kvp_req.length = sizeof(val);
 
-	return msm_rpm_send_message(MSM_RPM_CTX_SLEEP_SET, RPM_XO_DS_REQ, RPM_XO_DS_ID, &req, 1);
+	return msm_rpm_send_message(MSM_RPM_CTX_SLEEP_SET, RPM_XO_DS_REQ, RPM_XO_DS_ID, &drv->kvp_req, 1);
+}
+#elif IS_ENABLED(CONFIG_NOTIFY_AOP)
+static int send_deep_sleep_vote(int state, struct power_state_drvdata *drv)
+{
+	char buf[MAX_QMP_MSG_SIZE] = {};
+
+	if (state == DS_ENTRY)
+		scnprintf(buf, sizeof(buf), "{class: deep_sleep, res: 1}");
+	else
+		scnprintf(buf, sizeof(buf), "{class: deep_sleep, res: 0}");
+
+	return qmp_send(drv->qmp, buf, sizeof(buf));
 }
 #else
-static int send_deep_sleep_vote(int state)
+static int send_deep_sleep_vote(int state, struct power_state_drvdata *drv)
 {
 	return 0;
 }
@@ -361,7 +373,7 @@ static int ps_pm_cb(struct notifier_block *nb, unsigned long event, void *unused
 	case PM_SUSPEND_PREPARE:
 		if (drv->current_state == DEEPSLEEP) {
 			pr_info("Deep Sleep entry\n");
-			ret = send_deep_sleep_vote(DS_ENTRY);
+			ret = send_deep_sleep_vote(DS_ENTRY, drv);
 			if (ret)
 				return NOTIFY_BAD;
 			pm_set_suspend_via_firmware();
@@ -374,7 +386,7 @@ static int ps_pm_cb(struct notifier_block *nb, unsigned long event, void *unused
 		if (pm_suspend_via_firmware()) {
 			pr_info("Deep Sleep exit\n");
 
-			ret = send_deep_sleep_vote(DS_EXIT);
+			ret = send_deep_sleep_vote(DS_EXIT, drv);
 			if (ret)
 				BUG_ON(1);
 			__pm_stay_awake(drv->ps_ws);
@@ -566,6 +578,14 @@ static int power_state_probe(struct platform_device *pdev)
 		list_add_tail(&ss_data->list, &drv->sub_sys_list);
 	}
 
+#if IS_ENABLED(CONFIG_NOTIFY_AOP)
+	drv->qmp = qmp_get(&pdev->dev);
+	if (IS_ERR(drv->qmp)) {
+		ret = PTR_ERR(drv->qmp);
+		goto remove_ss;
+	}
+#endif
+
 	drv->ps_ops.suspend = power_state_suspend;
 	drv->ps_ops.resume = power_state_resume;
 	register_syscore_ops(&drv->ps_ops);
@@ -592,6 +612,9 @@ static int power_state_remove(struct platform_device *pdev)
 	struct subsystem_data *ss_data;
 
 	unregister_syscore_ops(&drv->ps_ops);
+#if IS_ENABLED(CONFIG_NOTIFY_AOP)
+	qmp_put(drv->qmp);
+#endif
 	list_for_each_entry(ss_data, &drv->sub_sys_list, list) {
 		qcom_unregister_ssr_notifier(ss_data->ssr_handle, &ss_data->ps_ssr_nb);
 		list_del(&ss_data->list);
