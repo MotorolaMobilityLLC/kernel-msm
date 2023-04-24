@@ -1160,6 +1160,16 @@ config MSM_PERFORMANCE
           fmin and fmax. The user space can request  the cpu freq change by
           writing cpu#:freq values
 
+config QCOM_WCD_USBSS_I2C
+        tristate "WCD USBSS chip with I2C"
+        select REGMAP
+        depends on I2C
+        help
+          Support for the WCD939X USBSS IC switch chip controlled
+          using I2C. This driver provides common support
+          for accessing the device, switching between USB and Audio
+          modes, changing orientation.
+
 config QCOM_MINIDUMP
 	tristate "QCOM Minidump Support"
 	depends on QCOM_SMEM || ARCH_QTI_VM
