@@ -3660,7 +3660,7 @@ static void ufs_qcom_register_minidump(uintptr_t vaddr, u64 size,
  */
 static int ufs_qcom_init(struct ufs_hba *hba)
 {
-	int err;
+	int err, host_id = 0;
 	struct device *dev = hba->dev;
 	struct ufs_qcom_host *host;
 	struct ufs_qcom_thermal *ut;
@@ -3879,12 +3879,19 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 
 	/* register minidump */
 	if (msm_minidump_enabled()) {
+		host_id = of_alias_get_id(hba->dev->of_node, "ufshc");
+
+		if ((host_id < 0) || (host_id > MAX_UFS_QCOM_HOSTS)) {
+			ufs_qcom_msg(ERR, hba->dev, "Failed to get host index %d\n", host_id);
+			host_id = 1;
+		}
+
 		ufs_qcom_register_minidump((uintptr_t)host,
-					sizeof(struct ufs_qcom_host), "UFS_QHOST", 0);
+					sizeof(struct ufs_qcom_host), "UFS_QHOST", host_id);
 		ufs_qcom_register_minidump((uintptr_t)hba,
-					sizeof(struct ufs_hba), "UFS_HBA", 0);
+					sizeof(struct ufs_hba), "UFS_HBA", host_id);
 		ufs_qcom_register_minidump((uintptr_t)hba->host,
-					sizeof(struct Scsi_Host), "UFS_SHOST", 0);
+					sizeof(struct Scsi_Host), "UFS_SHOST", host_id);
 	}
 
 	goto out;
