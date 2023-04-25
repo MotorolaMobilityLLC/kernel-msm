@@ -28,6 +28,7 @@
 #include "qcom_common.h"
 #include "remoteproc_internal.h"
 
+
 #define SECURE_APP		"slateapp"
 #define INVALID_GPIO		-1
 #define NUM_GPIOS		3
@@ -37,9 +38,9 @@
 
 /* Slate Ramdump Size 4 MB */
 #define SLATE_RAMDUMP_SZ SZ_8M
-#define SLATE_MINIRAMDUMP_SZ SZ_64K
+#define SLATE_MINIDUMP_SZ (0x400*40)
 #define SLATE_RAMDUMP		3
-
+#define SLATE_MINIDUMP		4
 
 #define SLATE_CRASH_IN_TWM	-2
 
@@ -116,6 +117,7 @@ struct pil_mdt {
  */
 struct qcom_slate {
 	struct device *dev;
+
 	struct rproc *rproc;
 
 	const char *firmware_name;
@@ -651,6 +653,8 @@ static void slate_coredump(struct rproc *rproc)
 
 	if (dump_info == SLATE_RAMDUMP)
 		size = SLATE_RAMDUMP_SZ;
+	else if (dump_info == SLATE_MINIDUMP)
+		size = SLATE_MINIDUMP_SZ;
 	else {
 		dev_err(slate_data->dev,
 			"%s: SLATE RPROC ramdump collection failed\n",
@@ -660,13 +664,13 @@ static void slate_coredump(struct rproc *rproc)
 
 	region = dma_alloc_attrs(slate_data->dev, size,
 			&start_addr, GFP_KERNEL, attr);
+
 	if (region == NULL) {
 		dev_dbg(slate_data->dev,
 			"fail to allocate ramdump region of size %zx\n",
 			size);
 		return;
 	}
-
 	slate_data->mem_phys = start_addr;
 	slate_data->mem_size = size;
 	slate_data->mem_region = region;
@@ -688,7 +692,7 @@ static void slate_coredump(struct rproc *rproc)
 		dev_dbg(slate_data->dev,
 			"%s: SLATE RPROC ramdmp collection failed\n",
 			__func__);
-		return;
+		goto shm_free;
 	}
 
 	dma_sync_single_for_cpu(slate_data->dev, slate_data->mem_phys, size, DMA_FROM_DEVICE);
@@ -704,7 +708,6 @@ static void slate_coredump(struct rproc *rproc)
 		goto shm_free;
 	}
 
-	/* Prepare coredump file */
 	rproc_coredump(rproc);
 
 shm_free:
@@ -954,13 +957,18 @@ static int slate_stop(struct rproc *rproc)
 {
 	struct qcom_slate *slate_data = rproc->priv;
 	struct tzapp_slate_req slate_tz_req;
-	int ret = RESULT_FAILURE;
+	int ret = 0;
 
 	if (!slate_data) {
 		dev_err(slate_data->dev, "%s Invalid slate pointer !!\n",
 			__func__);
 		return -EINVAL;
 	}
+
+	/* Dont send shutdown cmd if slate is crashed or offline state*/
+	if (!gpio_get_value(slate_data->gpios[0]))
+		goto out;
+
 	slate_data->cmd_status = 0;
 
 	if (!slate_data->is_ready) {
@@ -977,10 +985,13 @@ static int slate_stop(struct rproc *rproc)
 		pr_debug("Slate pil shutdown failed\n");
 		return ret;
 	}
+
+out:
 	if (slate_data->is_ready) {
 		disable_irq(slate_data->status_irq);
 		slate_data->is_ready = false;
 	}
+
 	return ret;
 }
 
@@ -1031,6 +1042,7 @@ static int rproc_slate_driver_probe(struct platform_device *pdev)
 	struct rproc *rproc;
 	const char *fw_name;
 	int ret;
+	char md_dev_name[32];
 
 	ret = of_property_read_string(pdev->dev.of_node,
 			"qcom,firmware-name", &fw_name);
@@ -1101,6 +1113,9 @@ static int rproc_slate_driver_probe(struct platform_device *pdev)
 
 	/* Initialize work queue for reset handler */
 	INIT_WORK(&slate->restart_work, slate_restart_work);
+
+	snprintf(md_dev_name, ARRAY_SIZE(md_dev_name),
+			"%s-md", pdev->dev.of_node->name);
 
 	/* Register with rproc */
 	ret = rproc_add(rproc);
