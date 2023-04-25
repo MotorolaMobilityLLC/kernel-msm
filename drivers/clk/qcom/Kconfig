@@ -1158,6 +1158,15 @@ config SM_VIDEOCC_TRINKET
 	  Say Y if you want to support video devices and functionality such as
 	  video encode/decode.
 
+config SM_DEBUGCC_TRINKET
+	tristate "TRINKET Debug Clock Controller"
+	depends on SM_GCC_TRINKET
+	help
+	  Support for the debug clock controller on Qualcomm Technologies, Inc
+	  TRINKET devices.
+	  Say Y if you want to support the debug clocks such as
+	  clock measurement functionality.
+
 config SM_GCC_CROW
 	tristate "CROW Global Clock Controller"
 	depends on COMMON_CLK_QCOM
