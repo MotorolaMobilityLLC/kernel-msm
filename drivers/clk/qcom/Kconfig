@@ -1149,6 +1149,15 @@ config SM_DISPCC_TRINKET
 	  Say Y if you want to support display devices and functionality such as
 	  splash screen.
 
+config SM_VIDEOCC_TRINKET
+	tristate "TRINKET Video Clock Controller"
+	depends on SM_GCC_TRINKET
+	help
+	  Support for the video clock controller on Qualcomm Technologies, Inc.
+	  TRINKET devices.
+	  Say Y if you want to support video devices and functionality such as
+	  video encode/decode.
+
 config SM_GCC_CROW
 	tristate "CROW Global Clock Controller"
 	depends on COMMON_CLK_QCOM

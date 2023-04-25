@@ -161,6 +161,7 @@ obj-$(CONFIG_MSM_DEBUGCC_WAIPIO) += debugcc-waipio.o
 obj-$(CONFIG_SM_DISPCC_TRINKET) += dispcc-trinket.o
 obj-$(CONFIG_SM_GCC_TRINKET) += gcc-trinket.o
 obj-$(CONFIG_SM_GPUCC_TRINKET) += gpucc-trinket.o
+obj-$(CONFIG_SM_VIDEOCC_TRINKET) += videocc-trinket.o
 obj-$(CONFIG_SPMI_PMIC_CLKDIV) += clk-spmi-pmic-div.o
 obj-$(CONFIG_KPSS_XCC) += kpss-xcc.o
 obj-$(CONFIG_QCOM_HFPLL) += hfpll.o
