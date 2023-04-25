@@ -158,6 +158,7 @@ obj-$(CONFIG_MSM_VIDEOCC_WAIPIO) += videocc-waipio.o
 obj-$(CONFIG_MSM_GPUCC_WAIPIO) += gpucc-waipio.o
 obj-$(CONFIG_MSM_DISPCC_WAIPIO) += dispcc-waipio.o
 obj-$(CONFIG_MSM_DEBUGCC_WAIPIO) += debugcc-waipio.o
+obj-$(CONFIG_SM_DISPCC_TRINKET) += dispcc-trinket.o
 obj-$(CONFIG_SM_GCC_TRINKET) += gcc-trinket.o
 obj-$(CONFIG_SM_GPUCC_TRINKET) += gpucc-trinket.o
 obj-$(CONFIG_SPMI_PMIC_CLKDIV) += clk-spmi-pmic-div.o
