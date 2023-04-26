@@ -18,6 +18,7 @@
 #include "virtio_fastrpc_core.h"
 #include "virtio_fastrpc_mem.h"
 #include "virtio_fastrpc_queue.h"
+#include "virtio_fastrpc_trace.h"
 
 /* Virtio ID of FASTRPC : 0xC004 */
 #define VIRTIO_ID_FASTRPC				49156
@@ -58,7 +59,7 @@
  * need to be matched with BE_MINOR_VER. And it will return to 0 when
  * FE_MAJOR_VER is increased.
  */
-#define FE_MINOR_VER 0x4
+#define FE_MINOR_VER 0x5
 #define FE_VERSION (FE_MAJOR_VER << 16 | FE_MINOR_VER)
 #define BE_MAJOR_VER(ver) (((ver) >> 16) & 0xffff)
 
@@ -731,6 +732,9 @@ static int recv_single(struct virt_msg_hdr *rsp, unsigned int len)
 	else
 		complete(&msg->work);
 
+	if (msg->ctx)
+		trace_recv_single_end(msg->ctx);
+
 	return 0;
 }
 
@@ -743,6 +747,7 @@ static void recv_done(struct virtqueue *rvq)
 	int err;
 	unsigned long flags;
 
+	trace_recv_done_start(0);
 	spin_lock_irqsave(&me->rvq.vq_lock, flags);
 	rsp = virtqueue_get_buf(rvq, &len);
 	if (!rsp) {
