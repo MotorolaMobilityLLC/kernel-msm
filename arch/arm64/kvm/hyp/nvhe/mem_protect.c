@@ -792,9 +792,6 @@ static int __check_page_state_visitor(u64 addr, u64 end, u32 level,
 	struct check_walk_data *d = arg;
 	kvm_pte_t pte = *ptep;
 
-	if (kvm_pte_valid(pte) && !addr_is_allowed_memory(kvm_pte_to_phys(pte)))
-		return -EINVAL;
-
 	return d->get_page_state(pte, addr) == d->desired ? 0 : -EPERM;
 }
 
@@ -812,6 +809,9 @@ static int check_page_state_range(struct kvm_pgtable *pgt, u64 addr, u64 size,
 
 static enum pkvm_page_state host_get_page_state(kvm_pte_t pte, u64 addr)
 {
+	if (!addr_is_allowed_memory(addr))
+		return PKVM_NOPAGE;
+
 	if (!kvm_pte_valid(pte) && pte)
 		return PKVM_NOPAGE;
 
