@@ -330,8 +330,8 @@ struct mhi_meminfo {
 
 struct mhi_addr {
 	uint64_t	host_pa;
-	size_t	device_pa;
-	size_t	device_va;
+	uint64_t	device_pa;
+	uint64_t	device_va;
 	size_t		size;
 	dma_addr_t	phy_addr;
 	void		*virt_addr;
@@ -594,7 +594,7 @@ struct mhi_dev {
 	atomic_t			mhi_dev_wake;
 	atomic_t			re_init_done;
 	struct mutex			mhi_write_test;
-	u32				device_local_pa_base;
+	u64				device_local_pa_base;
 	u32				mhi_ep_msi_num;
 	u32				mhi_version;
 	u32				mhi_chan_hw_base;
@@ -648,6 +648,8 @@ struct mhi_dev {
 	struct mhi_sm_dev		*mhi_sm_ctx;
 	/* MHI VF number */
 	uint32_t			vf_id;
+
+	bool				no_path_from_ipa_to_pcie;
 
 	int (*device_to_host)(uint64_t dst_pa, void *src, uint32_t len,
 				struct mhi_dev *mhi, struct mhi_req *req);
