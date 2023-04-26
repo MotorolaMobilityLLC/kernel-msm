@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -155,6 +155,7 @@ unsigned long long msm_timer_get_sclk_ticks(void)
 	}
 	return t1;
 }
+EXPORT_SYMBOL(msm_timer_get_sclk_ticks);
 
 static void _destroy_boot_marker(const char *name)
 {
