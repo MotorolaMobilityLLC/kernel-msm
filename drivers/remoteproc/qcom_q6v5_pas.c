@@ -1858,6 +1858,18 @@ static const struct adsp_data kona_slpi_resource = {
 	.ssctl_id = 0x16,
 };
 
+static const struct adsp_data crow_wpss_resource = {
+	.crash_reason_smem = 626,
+	.firmware_name = "wpss.mdt",
+	.pas_id = 6,
+	.minidump_id = 4,
+	.uses_elf64 = true,
+	.ssr_name = "wpss",
+	.sysmon_name = "wpss",
+	.qmp_name = "wpss",
+	.ssctl_id = 0x19,
+};
+
 static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,msm8974-adsp-pil", .data = &adsp_resource_init},
 	{ .compatible = "qcom,msm8996-adsp-pil", .data = &adsp_resource_init},
@@ -1911,6 +1923,7 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,kona-adsp-pas", .data = &kona_adsp_resource},
 	{ .compatible = "qcom,kona-cdsp-pas", .data = &kona_cdsp_resource},
 	{ .compatible = "qcom,kona-slpi-pas", .data = &kona_slpi_resource},
+	{ .compatible = "qcom,crow-wpss-pas", .data = &crow_wpss_resource},
 	{ .compatible = "qcom,crow-adsp-pas", .data = &crow_adsp_resource},
 	{ .compatible = "qcom,crow-cdsp-pas", .data = &crow_cdsp_resource},
 	{ .compatible = "qcom,crow-modem-pas", .data = &crow_mpss_resource},
