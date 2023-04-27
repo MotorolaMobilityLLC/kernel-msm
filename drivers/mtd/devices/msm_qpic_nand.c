@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2007 Google, Inc.
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "msm_qpic_nand.h"
@@ -4396,6 +4396,7 @@ static int msm_nand_bam_panic_notifier(struct notifier_block *this,
 	struct msm_nand_chip *chip = &info->nand_chip;
 	int err;
 
+	mutex_lock(&info->lock);
 	err = msm_nand_get_device(chip->dev);
 	if (err)
 		goto out;
@@ -4408,6 +4409,7 @@ static int msm_nand_bam_panic_notifier(struct notifier_block *this,
 			 0, 2);
 	err = msm_nand_put_device(chip->dev);
 out:
+	mutex_unlock(&info->lock);
 	if (err)
 		pr_err("Failed to get/put the device.\n");
 	return NOTIFY_DONE;
