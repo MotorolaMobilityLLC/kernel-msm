@@ -157,8 +157,6 @@ _TEST_OPERATOR(cp, char *, "%px")
 /* For testing a syscall that returns 0 on success and sets errno otherwise */
 #define TESTSYSCALL(statement) TESTCONDERR((statement) == 0)
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
-
 static inline void print_bytes(const void *data, size_t size)
 {
 	const char *bytes = data;
