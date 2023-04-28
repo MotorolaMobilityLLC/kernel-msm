@@ -65,6 +65,7 @@
   name_to_dev_t
   netlink_ack
   of_css
+  of_find_all_nodes
   phy_connect_direct
   phy_find_first
   phy_get_pause
@@ -80,6 +81,8 @@
   skb_copy_ubufs
   smpboot_unregister_percpu_thread
   snd_soc_add_card_controls
+  snd_soc_component_enable_pin
+  snd_soc_component_get_pin_status
   stack_trace_save_regs
   _trace_android_vh_record_pcpu_rwsem_starttime
   __traceiter_android_rvh_arm64_serror_panic
@@ -90,6 +93,7 @@
   __traceiter_android_rvh_do_sp_pc_abort
   __traceiter_android_rvh_do_undefinstr
   __traceiter_android_rvh_panic_unhandled
+  __traceiter_android_rvh_ufs_complete_init
   __traceiter_android_vh_meminfo_proc_show
   __traceiter_android_vh_ptype_head
   __traceiter_android_vh_rtmutex_wait_finish
@@ -117,6 +121,7 @@
   __tracepoint_android_rvh_do_sp_pc_abort
   __tracepoint_android_rvh_do_undefinstr
   __tracepoint_android_rvh_panic_unhandled
+  __tracepoint_android_rvh_ufs_complete_init
   __tracepoint_android_vh_meminfo_proc_show
   __tracepoint_android_vh_ptype_head
   __tracepoint_android_vh_rtmutex_wait_finish
