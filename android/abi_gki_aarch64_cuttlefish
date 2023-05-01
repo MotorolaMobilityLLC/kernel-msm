@@ -10,6 +10,7 @@
   arm64_const_caps_ready
   bcmp
   cancel_delayed_work_sync
+  cancel_work_sync
   capable
   cfg80211_inform_bss_data
   cfg80211_put_bss
@@ -28,6 +29,7 @@
   delayed_work_timer_fn
   destroy_workqueue
   _dev_err
+  device_create
   device_register
   device_unregister
   _dev_info
@@ -39,6 +41,7 @@
   dma_set_coherent_mask
   dma_set_mask
   down_write
+  ether_setup
   ethtool_op_get_link
   eth_validate_addr
   event_triggers_call
@@ -60,6 +63,7 @@
   init_wait_entry
   __init_waitqueue_head
   jiffies
+  jiffies_to_msecs
   kfree
   kfree_skb
   __kmalloc
@@ -72,6 +76,8 @@
   kmemdup
   kstrdup
   ktime_get
+  ktime_get_with_offset
+  kvfree
   __list_add_valid
   __list_del_entry_valid
   __local_bh_enable_ip
@@ -83,6 +89,7 @@
   __module_get
   module_layout
   module_put
+  __msecs_to_jiffies
   msleep
   __mutex_init
   mutex_lock
@@ -98,6 +105,7 @@
   netif_device_detach
   netif_tx_stop_all_queues
   netif_tx_wake_queue
+  nf_conntrack_destroy
   no_llseek
   nonseekable_open
   noop_llseek
@@ -141,9 +149,8 @@
   _raw_spin_unlock_irqrestore
   __rcu_read_lock
   __rcu_read_unlock
-  refcount_dec_and_test_checked
-  refcount_inc_checked
-  register_netdev
+  refcount_warn_saturate
+  register_netdevice
   register_netdevice_notifier
   register_virtio_device
   register_virtio_driver
@@ -158,9 +165,12 @@
   seq_printf
   sg_init_one
   sg_init_table
+  skb_add_rx_frag
   skb_clone
   skb_dequeue
+  skb_push
   skb_put
+  skb_queue_tail
   sk_free
   snd_device_new
   snd_pcm_alt_chmaps
@@ -195,8 +205,11 @@
   unregister_virtio_device
   unregister_virtio_driver
   up_write
+  virtio_break_device
   virtio_check_driver_offered_feature
   virtio_config_changed
+  virtio_device_freeze
+  virtio_device_restore
   virtio_max_dma_size
   virtqueue_add_inbuf
   virtqueue_add_outbuf
@@ -270,10 +283,8 @@
   hci_register_dev
   hci_unregister_dev
   skb_pull
-  skb_push
   skb_queue_head
   skb_queue_purge
-  skb_queue_tail
 
 # required by incrementalfs.ko
   bin2hex
@@ -303,7 +314,6 @@
   generic_file_read_iter
   generic_file_splice_read
   generic_read_dir
-  generic_shutdown_super
   __get_free_pages
   get_zeroed_page
   iget5_locked
@@ -315,6 +325,7 @@
   kernel_read
   kernel_write
   kern_path
+  kill_anon_super
   kobject_create_and_add
   kobject_put
   lockref_get
@@ -323,7 +334,6 @@
   LZ4_decompress_safe
   match_int
   match_token
-  __msecs_to_jiffies
   mutex_is_locked
   notify_change
   override_creds
@@ -357,6 +367,76 @@
   vfs_setxattr
   vfs_unlink
 
+# required by mac80211_hwsim.ko
+  alloc_netdev_mqs
+  __cfg80211_alloc_event_skb
+  __cfg80211_alloc_reply_skb
+  __cfg80211_send_event_skb
+  cfg80211_vendor_cmd_reply
+  dev_alloc_name
+  device_bind_driver
+  device_release_driver
+  dst_release
+  eth_mac_addr
+  genlmsg_put
+  genl_notify
+  genl_register_family
+  genl_unregister_family
+  hrtimer_cancel
+  hrtimer_forward
+  hrtimer_init
+  hrtimer_start_range_ns
+  ieee80211_alloc_hw_nm
+  ieee80211_beacon_get_tim
+  ieee80211_csa_finish
+  ieee80211_csa_is_complete
+  ieee80211_free_hw
+  ieee80211_free_txskb
+  ieee80211_get_tx_rates
+  ieee80211_iterate_active_interfaces_atomic
+  ieee80211_probereq_get
+  ieee80211_queue_delayed_work
+  ieee80211_ready_on_channel
+  ieee80211_register_hw
+  ieee80211_remain_on_channel_expired
+  ieee80211_rx_irqsafe
+  ieee80211_scan_completed
+  ieee80211_start_tx_ba_cb_irqsafe
+  ieee80211_stop_tx_ba_cb_irqsafe
+  ieee80211_tx_prepare_skb
+  ieee80211_tx_status_irqsafe
+  ieee80211_unregister_hw
+  init_net
+  kstrndup
+  __netdev_alloc_skb
+  netif_rx
+  netlink_broadcast
+  netlink_register_notifier
+  netlink_unicast
+  netlink_unregister_notifier
+  net_namespace_list
+  nla_memcpy
+  __nla_parse
+  nla_put_64bit
+  nla_put
+  param_ops_ushort
+  ___ratelimit
+  register_pernet_device
+  regulatory_hint
+  rhashtable_destroy
+  rhashtable_init
+  rhashtable_insert_slow
+  __rht_bucket_nested
+  rht_bucket_nested
+  rht_bucket_nested_insert
+  schedule_timeout_interruptible
+  skb_copy
+  skb_copy_expand
+  __skb_ext_put
+  skb_trim
+  unregister_pernet_device
+  wiphy_apply_custom_regulatory
+
 # required by nd_virtio.ko
   bio_alloc_bioset
   bio_chain
@@ -380,6 +460,7 @@
   netdev_lower_state_changed
   netdev_pick_tx
   pci_bus_type
+  register_netdev
 
 # required by rtc-test.ko
   add_timer
@@ -466,7 +547,6 @@
   idr_remove
   idr_replace
   __init_rwsem
-  jiffies_to_msecs
   jiffies_to_usecs
   krealloc
   memchr_inv
@@ -501,11 +581,8 @@
   cfg80211_scan_done
   __dev_get_by_index
   dev_printk
-  ether_setup
-  ktime_get_with_offset
   netdev_upper_dev_link
   netif_stacked_transfer_operstate
-  register_netdevice
   rtnl_link_register
   rtnl_link_unregister
   unregister_netdevice_many
@@ -612,7 +689,6 @@
   drm_universal_plane_init
   __get_task_comm
   kmalloc_order_trace
-  kvfree
   kvmalloc_node
   memdup_user
   mutex_trylock
@@ -701,11 +777,9 @@
   unregister_blkdev
 
 # required by virtio_console.ko
-  cancel_work_sync
   cdev_add
   cdev_alloc
   cdev_del
-  device_create
   device_destroy
   dma_alloc_attrs
   dma_free_attrs
@@ -789,12 +863,10 @@
   netif_set_real_num_tx_queues
   __netif_set_xps_queue
   net_ratelimit
-  nf_conntrack_destroy
   __num_online_cpus
   __pskb_pull_tail
   _raw_spin_trylock
   sched_clock
-  skb_add_rx_frag
   skb_coalesce_rx_frag
   __skb_flow_dissect
   skb_page_frag_refill
@@ -820,6 +892,7 @@
 # required by virtio_pci.ko
   irq_set_affinity_hint
   pci_alloc_irq_vectors_affinity
+  pci_device_is_present
   pci_find_capability
   pci_find_ext_capability
   pci_find_next_capability
@@ -831,8 +904,6 @@
   pci_release_region
   pci_release_selected_regions
   pci_request_selected_regions
-  virtio_device_freeze
-  virtio_device_restore
 
 # required by virtio_pmem.ko
   nvdimm_bus_register
@@ -852,6 +923,7 @@
 # required by vsock.ko
   autoremove_wake_function
   init_user_ns
+  mod_delayed_work_on
   ns_capable_noaudit
   prandom_u32
   prepare_to_wait
@@ -882,3 +954,8 @@
   sock_diag_save_cookie
   sock_diag_unregister
   sock_i_ino
+
+# preserved by --additions-only
+  generic_shutdown_super
+  refcount_dec_and_test_checked
+  refcount_inc_checked

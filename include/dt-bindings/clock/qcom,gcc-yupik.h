@@ -177,6 +177,7 @@
 #define GCC_AGGRE_NOC_PCIE_CENTER_SF_AXI_CLK			167
 #define GCC_AGGRE_NOC_PCIE_TBU_CLK				168
 #define GCC_PCIE_CLKREF_EN					169
+#define GCC_EDP_CLKREF_EN					170
 
 /* GCC power domains */
 #define GCC_PCIE_0_GDSC						0

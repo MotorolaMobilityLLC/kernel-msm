@@ -168,6 +168,16 @@ config R8125
 	  To compile this driver as a module, choose M here: the module
 	  will be called r8125.
 
+config R8168
+	tristate "Realtek R8168 driver"
+	depends on PCI
+	help
+	  This is a 1Gbps ethernet driver for the PCI network cards based on
+	  the Realtek RTL8111K chip. If you have one of those, say Y here.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called r8168.
+
 config R8125_IOSS
 	tristate "Realtek R8125 IOSS glue driver"
 	depends on R8125
