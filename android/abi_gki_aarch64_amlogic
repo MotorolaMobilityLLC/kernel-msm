@@ -688,9 +688,9 @@
   flow_rule_match_vlan
   flush_dcache_page
   flush_delayed_work
+  flush_signals
   flush_work
   flush_workqueue
-  flush_signals
   fpsimd_context_busy
   fput
   free_irq

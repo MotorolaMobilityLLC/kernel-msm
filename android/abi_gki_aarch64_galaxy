@@ -81,6 +81,7 @@
   smpboot_unregister_percpu_thread
   snd_soc_add_card_controls
   stack_trace_save_regs
+  _trace_android_vh_record_pcpu_rwsem_starttime
   __traceiter_android_rvh_die_kernel_fault
   __traceiter_android_rvh_do_mem_abort
   __traceiter_android_rvh_do_sp_pc_abort
@@ -115,7 +116,6 @@
   __tracepoint_irq_handler_exit
   __tracepoint_kfree_skb
   __tracepoint_workqueue_execute_start
-  _trace_android_vh_record_pcpu_rwsem_starttime
   usb_alloc_dev
   usb_deregister_dev
   usb_find_interface
