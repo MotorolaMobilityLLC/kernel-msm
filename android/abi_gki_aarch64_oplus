@@ -443,6 +443,10 @@
   __traceiter_android_vh_tune_scan_type
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_update_page_mapcount
+  __traceiter_net_dev_queue
+  __traceiter_net_dev_xmit
+  __traceiter_netif_receive_skb
+  __traceiter_netif_rx
   __traceiter_sched_stat_blocked
   __traceiter_sched_stat_iowait
   __traceiter_sched_stat_runtime
@@ -476,6 +480,7 @@
   __tracepoint_android_vh_binder_thread_release
   __tracepoint_android_vh_build_sched_domains
   __tracepoint_android_vh_cache_show
+  __tracepoint_android_vh_check_uninterruptible_tasks_dn
   __tracepoint_android_vh_cma_drain_all_pages_bypass
   __tracepoint_android_vh_cpufreq_acct_update_power
   __tracepoint_android_vh_del_page_from_lrulist

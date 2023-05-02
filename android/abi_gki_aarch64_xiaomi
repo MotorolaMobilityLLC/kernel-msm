@@ -92,6 +92,7 @@
   __tracepoint_android_vh_ufs_mcq_print_trs
   __tracepoint_android_vh_ufs_mcq_send_command
   __tracepoint_android_vh_ufs_mcq_set_sqid
+  __tracepoint_android_vh_ufs_update_sdev
   __tracepoint_android_vh_ufs_use_mcq_hooks
   ufshcd_alloc_host
   ufshcd_config_pwr_mode

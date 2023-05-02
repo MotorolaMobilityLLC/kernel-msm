@@ -2071,6 +2071,7 @@
   __traceiter_xhci_urb_giveback
   trace_output_call
   __tracepoint_android_rvh_after_enqueue_task
+  __tracepoint_android_rvh_audio_usb_offload_disconnect
   __tracepoint_android_rvh_can_migrate_task
   __tracepoint_android_rvh_commit_creds
   __tracepoint_android_rvh_cpu_overutilized

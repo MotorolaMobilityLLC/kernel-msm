@@ -1413,6 +1413,7 @@
   __traceiter_android_vh_dma_buf_release
   __traceiter_android_vh_map_util_freq
   __traceiter_android_vh_meminfo_proc_show
+  __traceiter_android_vh_page_cache_forced_ra
   __traceiter_android_vh_show_mem
   __traceiter_android_vh_tune_inactive_ratio
   __traceiter_android_vh_tune_swappiness

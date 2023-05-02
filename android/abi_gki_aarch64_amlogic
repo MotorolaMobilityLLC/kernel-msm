@@ -1790,10 +1790,12 @@
   __traceiter_mmap_lock_start_locking
   __traceiter_xdp_exception
   trace_output_call
+  __tracepoint_android_rvh_panic_unhandled
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
   __tracepoint_android_vh_do_traversal_lruvec
   __tracepoint_android_vh_dump_throttled_rt_tasks
+  __tracepoint_android_vh_ftrace_format_check
   __tracepoint_android_vh_mmc_sd_update_cmdline_timing
   __tracepoint_android_vh_mmc_sd_update_dataline_timing
   __tracepoint_android_vh_rmqueue
