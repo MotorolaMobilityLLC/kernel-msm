@@ -92,6 +92,9 @@
 /* Set FastRPC session ID to 1 */
 #define FASTRPC_MODE_SESSION     4
 
+/* Retrieves method index from the scalars parameter */
+#define REMOTE_SCALARS_METHOD(sc)        (((sc) >> 24) & 0x1f)
+
 /* Retrives number of input buffers from the scalars parameter */
 #define REMOTE_SCALARS_INBUFS(sc)        (((sc) >> 16) & 0x0ff)
 
@@ -1096,6 +1099,8 @@ struct fastrpc_file {
 	spinlock_t dspsignals_lock;
 	struct mutex signal_create_mutex;
 	struct completion shutdown;
+	/* Flag to indicate Notif feature to be enabled or no */
+	bool init_notif;
 	/* Flag to indicate notif thread exit requested*/
 	bool exit_notif;
 	/* Flag to indicate async thread exit requested*/

@@ -151,6 +151,8 @@
 #define FASTRPC_STATIC_HANDLE_PROCESS_GROUP (1)
 #define FASTRPC_STATIC_HANDLE_DSP_UTILITIES (2)
 #define FASTRPC_STATIC_HANDLE_LISTENER (3)
+#define FASTRPC_STATIC_HANDLE_CURRENT_PROCESS (4)
+#define FASTRPC_STATIC_MID_ENABLE_NOTIF (10)
 #define FASTRPC_STATIC_HANDLE_MAX (20)
 #define FASTRPC_LATENCY_CTRL_ENB  (1)
 
@@ -1959,6 +1961,9 @@ static void fastrpc_queue_pd_status(struct fastrpc_file *fl, int domain, int sta
 	unsigned long flags;
 	int err = 0;
 
+	/* Notif feature is not enabled, do not wait for event */
+	if (!fl->init_notif)
+		return;
 	VERIFY(err, NULL != (notif_rsp = kzalloc(sizeof(*notif_rsp), GFP_ATOMIC)));
 	if (err) {
 		ADSPRPC_ERR(
@@ -3119,7 +3124,7 @@ int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 {
 	struct smq_invoke_ctx *ctx = NULL;
 	struct fastrpc_ioctl_invoke *invoke = &inv->inv;
-	int err = 0, interrupted = 0, cid = -1, perfErr = 0;
+	int err = 0, interrupted = 0, cid = -1, perfErr = 0, mid = 0;
 	struct timespec64 invoket = {0};
 	uint64_t *perf_counter = NULL;
 	bool isasyncinvoke = false, isworkdone = false;
@@ -3149,6 +3154,16 @@ int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 				cid, invoke->handle);
 			goto bail;
 		}
+		//get method id of sc passed as inp param.
+		mid = REMOTE_SCALARS_METHOD(invoke->sc);
+		/*
+		 * If notif forward call come's before fastrpc_wait_on_notif_queue call than enable
+		 * init_notif to avoid memory leak in case of notif feature is disabled.
+		 */
+		if (!fl->init_notif
+			&& (invoke->handle == FASTRPC_STATIC_HANDLE_CURRENT_PROCESS)
+			&& (mid == FASTRPC_STATIC_MID_ENABLE_NOTIF))
+			fl->init_notif = true;
 	}
 
 	if (!kernel) {
@@ -3367,6 +3382,7 @@ static int fastrpc_wait_on_notif_queue(
 	struct smq_notif_rsp  *notif = NULL, *inotif = NULL, *n = NULL;
 
 read_notif_status:
+	fl->init_notif = true;
 	interrupted = wait_event_interruptible(fl->proc_state_notif.notif_wait_queue,
 				atomic_read(&fl->proc_state_notif.notif_queue_count));
 	if (!fl) {
