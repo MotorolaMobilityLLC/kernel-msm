@@ -24,10 +24,10 @@ PREFERRED_USERSPACE=le
 [ -z "${DT_OVERLAY_SUPPORT}" ] && DT_OVERLAY_SUPPORT=1
 
 if [ "${KERNEL_CMDLINE_CONSOLE_AUTO}" != "0" ]; then
-	KERNEL_CMDLINE+=' console=ttyMSM0,115200n8 earlycon=qcom_geni,0x78b1000 qcom_geni_serial.con_enabled=1 loglevel=8 androidboot.fstab_suffix=rdshell '
+	KERNEL_CMDLINE+=' msm_rtb.filter=0x237 ftrace_dump_on_oops lpm_levels.sleep_disabled=1 console=ttyMSM0,115200n8 earlycon=msm_serial_dm,0x78b1000 loglevel=8 '
 fi
 
 ################################################################################
 ## Inheriting MSM configs
 . ${KERNEL_DIR}/build.config.msm.common
-. ${KERNEL_DIR}/build.config.msm.csm
+. ${KERNEL_DIR}/build.config.msm.iot

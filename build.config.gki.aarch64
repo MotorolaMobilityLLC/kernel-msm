@@ -38,6 +38,7 @@ android/abi_gki_aarch64_amlogic
 android/abi_gki_aarch64_sunxi
 android/abi_gki_aarch64_pasa
 android/abi_gki_aarch64_zeku
+android/abi_gki_aarch64_lenovo
 "
 
 FILES="${FILES}

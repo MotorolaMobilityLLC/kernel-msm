@@ -3921,10 +3921,6 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 		return ret;
 	}
 
-	/* Disable core irq */
-	if (mdwc->core_irq)
-		disable_irq(mdwc->core_irq);
-
 	/* disable power event irq, hs and ss phy irq is used as wake up src */
 	disable_irq_nosync(mdwc->wakeup_irq[PWR_EVNT_IRQ].irq);
 
@@ -4178,10 +4174,6 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	}
 
 	dev_info(mdwc->dev, "DWC3 exited from low power mode\n");
-
-	/* Enable core irq */
-	if (mdwc->core_irq)
-		enable_irq(mdwc->core_irq);
 
 	/*
 	 * Handle other power events that could not have been handled during
@@ -5600,7 +5592,6 @@ static int dwc3_msm_parse_core_params(struct dwc3_msm *mdwc, struct device_node 
 	mdwc->dr_mode = (ret < 0) ? USB_DR_MODE_UNKNOWN : ret;
 
 	mdwc->core_irq = of_irq_get(dwc3_node, 0);
-	disable_irq(mdwc->core_irq);
 
 	return ret;
 }

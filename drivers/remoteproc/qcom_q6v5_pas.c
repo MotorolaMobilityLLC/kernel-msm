@@ -1708,7 +1708,7 @@ static const struct adsp_data scuba_auto_lpass_resource = {
 };
 
 static const struct adsp_data lemans_adsp_resource = {
-	.crash_reason_smem = 2,
+	.crash_reason_smem = 423,
 	.firmware_name = "adsp.mdt",
 	.pas_id = 1,
 	.uses_elf64 = true,

@@ -523,3 +523,7 @@
 
   __traceiter_android_rvh_ctl_dirty_rate
   __tracepoint_android_rvh_ctl_dirty_rate
+
+#required by io module
+  __traceiter_android_vh_psi_group
+  __tracepoint_android_vh_psi_group

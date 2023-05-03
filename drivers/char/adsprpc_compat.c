@@ -29,6 +29,8 @@
 		_IOWR('R', 11, struct compat_fastrpc_ioctl_invoke_crc)
 #define COMPAT_FASTRPC_IOCTL_CONTROL \
 		_IOWR('R', 12, struct compat_fastrpc_ioctl_control)
+#define COMPAT_FASTRPC_IOCTL_MUNMAP_FD \
+		_IOWR('R', 13, struct compat_fastrpc_ioctl_munmap_fd)
 #define COMPAT_FASTRPC_IOCTL_MMAP_64 \
 		_IOWR('R', 14, struct compat_fastrpc_ioctl_mmap_64)
 #define COMPAT_FASTRPC_IOCTL_MUNMAP_64 \
@@ -187,6 +189,13 @@ struct compat_fastrpc_ioctl_mmap_64 {
 struct compat_fastrpc_ioctl_munmap {
 	compat_uptr_t vaddrout;	/* address to unmap */
 	compat_size_t size;	/* size */
+};
+
+struct compat_fastrpc_ioctl_munmap_fd {
+	compat_int_t	fd;		/* fd */
+	compat_uint_t	flags;	/* control flags */
+	compat_uptr_t	va;		/* va */
+	compat_size_t	len;	/* length */
 };
 
 struct compat_fastrpc_ioctl_munmap_64 {
@@ -642,6 +651,27 @@ static int compat_get_fastrpc_ioctl_munmap(
 	return err;
 }
 
+static int compat_get_fastrpc_ioctl_munmap_fd(
+			struct compat_fastrpc_ioctl_munmap_fd __user *unmapfd32,
+			struct fastrpc_ioctl_munmap_fd __user *unmapfd)
+{
+	compat_uint_t u;
+	compat_int_t i;
+	compat_size_t s;
+	compat_uptr_t p;
+	int err;
+
+	err = get_user(i, &unmapfd32->fd);
+	memcpy(&unmapfd->fd, &i, sizeof(i));
+	err |= get_user(u, &unmapfd32->flags);
+	memcpy(&unmapfd->flags, &u, sizeof(u));
+	err |= get_user(p, &unmapfd32->va);
+	memcpy(&unmapfd->va, &p, sizeof(p));
+	err |= get_user(s, &unmapfd32->len);
+	memcpy(&unmapfd->len, &s, sizeof(s));
+
+	return err;
+}
 static int compat_get_fastrpc_ioctl_munmap_64(
 			struct compat_fastrpc_ioctl_munmap_64 __user *unmap32,
 			struct fastrpc_ioctl_munmap *unmap)
@@ -898,6 +928,23 @@ static inline long compat_fastrpc_mmap_device_ioctl(struct fastrpc_file *fl,
 							unmap)));
 		return err;
 	}
+	case COMPAT_FASTRPC_IOCTL_MUNMAP_FD:
+	{
+		struct compat_fastrpc_ioctl_munmap_fd __user *unmapfd32;
+		struct fastrpc_ioctl_munmap_fd *unmapfd;
+
+		unmapfd32 = compat_ptr(arg);
+		VERIFY(err, NULL != (unmapfd = kzalloc(
+						sizeof(*unmapfd), GFP_KERNEL)));
+		if (err)
+			return -EFAULT;
+		VERIFY(err, 0 == compat_get_fastrpc_ioctl_munmap_fd(unmapfd32, unmapfd));
+		if (err)
+			return err;
+		VERIFY(err, 0 == (err = fastrpc_internal_munmap_fd(fl,
+							unmapfd)));
+		return err;
+	}
 	default:
 		return -ENOIOCTLCMD;
 	}
@@ -1066,6 +1113,8 @@ long compat_fastrpc_device_ioctl(struct file *filp, unsigned int cmd,
 	case COMPAT_FASTRPC_IOCTL_MMAP_64:
 		fallthrough;
 	case COMPAT_FASTRPC_IOCTL_MUNMAP:
+		fallthrough;
+	case COMPAT_FASTRPC_IOCTL_MUNMAP_FD:
 		return compat_fastrpc_mmap_device_ioctl(fl, cmd, arg);
 	case COMPAT_FASTRPC_IOCTL_DSPSIGNAL_CREATE:
 		return compat_fastrpc_dspsignal_create(fl, arg);

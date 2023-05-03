@@ -5434,10 +5434,16 @@ MODULE_DEVICE_TABLE(acpi, ufs_qcom_acpi_match);
 #endif
 
 static const struct dev_pm_ops ufs_qcom_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(ufs_qcom_system_suspend, ufs_qcom_system_resume)
 	SET_RUNTIME_PM_OPS(ufshcd_runtime_suspend, ufshcd_runtime_resume, NULL)
-	.prepare	 = ufs_qcom_suspend_prepare,
-	.complete	 = ufs_qcom_resume_complete,
+	.prepare	= ufs_qcom_suspend_prepare,
+	.complete	= ufs_qcom_resume_complete,
+#ifdef CONFIG_PM_SLEEP
+	.suspend         = ufs_qcom_system_suspend,
+	.resume          = ufs_qcom_system_resume,
+	.freeze          = ufshcd_system_freeze,
+	.restore         = ufshcd_system_restore,
+	.thaw            = ufshcd_system_thaw,
+#endif
 };
 
 static struct platform_driver ufs_qcom_pltform = {

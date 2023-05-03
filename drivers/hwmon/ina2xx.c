@@ -18,6 +18,10 @@
  * Bi-directional Current/Power Monitor with I2C Interface
  * Datasheet: https://www.ti.com/product/ina230
  *
+ * INA234:
+ * Bi-directional Current/Power Monitor with I2C Interface
+ * Datasheet: https://www.ti.com/product/ina234
+ *
  * Copyright (C) 2012 Lothar Felten <lothar.felten@gmail.com>
  * Thanks to Jan Volkering
  */
@@ -61,6 +65,7 @@
 /* settings - depend on use case */
 #define INA219_CONFIG_DEFAULT		0x399F	/* PGA=8 */
 #define INA226_CONFIG_DEFAULT		0x4527	/* averages=16 */
+#define INA234_CONFIG_DEFAULT		0x0CDF	/* averages=512 */
 
 /* worst case is 68.10 ms (~14.6Hz, ina219) */
 #define INA2XX_CONVERSION_RATE		15
@@ -99,7 +104,7 @@ static struct regmap_config ina2xx_regmap_config = {
 	.val_bits = 16,
 };
 
-enum ina2xx_ids { ina219, ina226 };
+enum ina2xx_ids { ina219, ina226, ina234 };
 
 struct ina2xx_config {
 	u16 config_default;
@@ -107,6 +112,8 @@ struct ina2xx_config {
 	int registers;
 	int shunt_div;
 	int bus_voltage_shift;
+	int shunt_voltage_shift;
+	int current_shift;
 	int bus_voltage_lsb;	/* uV */
 	int power_lsb_factor;
 };
@@ -130,6 +137,8 @@ static const struct ina2xx_config ina2xx_config[] = {
 		.registers = INA219_REGISTERS,
 		.shunt_div = 100,
 		.bus_voltage_shift = 3,
+		.shunt_voltage_shift = 0,
+		.current_shift = 0,
 		.bus_voltage_lsb = 4000,
 		.power_lsb_factor = 20,
 	},
@@ -139,8 +148,21 @@ static const struct ina2xx_config ina2xx_config[] = {
 		.registers = INA226_REGISTERS,
 		.shunt_div = 400,
 		.bus_voltage_shift = 0,
+		.shunt_voltage_shift = 0,
+		.current_shift = 0,
 		.bus_voltage_lsb = 1250,
 		.power_lsb_factor = 25,
+	},
+	[ina234] = {
+		.config_default = INA234_CONFIG_DEFAULT,
+		.calibration_value = 1024,
+		.registers = INA226_REGISTERS,
+		.shunt_div = 12,
+		.bus_voltage_shift = 4,
+		.shunt_voltage_shift = 4,
+		.current_shift = 4,
+		.bus_voltage_lsb = 25600,
+		.power_lsb_factor = 2,
 	},
 };
 
@@ -270,7 +292,8 @@ static int ina2xx_get_value(struct ina2xx_data *data, u8 reg,
 	switch (reg) {
 	case INA2XX_SHUNT_VOLTAGE:
 		/* signed register */
-		val = DIV_ROUND_CLOSEST((s16)regval, data->config->shunt_div);
+		val = DIV_ROUND_CLOSEST((s16)(regval >> data->config->shunt_voltage_shift)
+			, data->config->shunt_div);
 		break;
 	case INA2XX_BUS_VOLTAGE:
 		val = (regval >> data->config->bus_voltage_shift)
@@ -282,7 +305,7 @@ static int ina2xx_get_value(struct ina2xx_data *data, u8 reg,
 		break;
 	case INA2XX_CURRENT:
 		/* signed register, result in mA */
-		val = (s16)regval * data->current_lsb_uA;
+		val = ((s16)(regval >> data->config->current_shift)) * data->current_lsb_uA;
 		val = DIV_ROUND_CLOSEST(val, 1000);
 		break;
 	case INA2XX_CALIBRATION:
@@ -683,6 +706,7 @@ static const struct i2c_device_id ina2xx_id[] = {
 	{ "ina226", ina226 },
 	{ "ina230", ina226 },
 	{ "ina231", ina226 },
+	{ "ina231", ina234 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, ina2xx_id);
@@ -707,6 +731,10 @@ static const struct of_device_id __maybe_unused ina2xx_of_match[] = {
 	{
 		.compatible = "ti,ina231",
 		.data = (void *)ina226
+	},
+	{
+		.compatible = "ti,ina234",
+		.data = (void *)ina234
 	},
 	{ },
 };

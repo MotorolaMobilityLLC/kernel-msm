@@ -1847,6 +1847,12 @@ static void qcom_ethqos_phy_suspend_clks(struct qcom_ethqos *ethqos)
 	if (ethqos->rgmii_clk)
 		clk_disable_unprepare(ethqos->rgmii_clk);
 
+	if (ethqos->phyaux_clk)
+		clk_disable_unprepare(ethqos->phyaux_clk);
+
+	if (ethqos->sgmiref_clk)
+		clk_disable_unprepare(ethqos->sgmiref_clk);
+
 	ETHQOSINFO("Exit\n");
 }
 
@@ -1880,6 +1886,12 @@ static void qcom_ethqos_phy_resume_clks(struct qcom_ethqos *ethqos)
 
 	if (priv->plat->clk_ptp_ref)
 		clk_prepare_enable(priv->plat->clk_ptp_ref);
+
+	if (ethqos->sgmiref_clk)
+		clk_prepare_enable(ethqos->sgmiref_clk);
+
+	if (ethqos->phyaux_clk)
+		clk_prepare_enable(ethqos->phyaux_clk);
 
 	if (ethqos->rgmii_clk)
 		clk_prepare_enable(ethqos->rgmii_clk);

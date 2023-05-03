@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __HAB_H
 #define __HAB_H
@@ -614,17 +614,17 @@ static inline void hab_spin_unlock(spinlock_t *lock, int irqs_disabled)
 		spin_unlock_bh(lock);
 }
 
-static inline void hab_write_lock(rwlock_t *lock, int irqs_disabled)
+static inline void hab_write_lock(rwlock_t *lock, int no_touch_bh)
 {
-	if (irqs_disabled)
+	if (no_touch_bh)
 		write_lock(lock);
 	else
 		write_lock_bh(lock);
 }
 
-static inline void hab_write_unlock(rwlock_t *lock, int irqs_disabled)
+static inline void hab_write_unlock(rwlock_t *lock, int no_touch_bh)
 {
-	if (irqs_disabled)
+	if (no_touch_bh)
 		write_unlock(lock);
 	else
 		write_unlock_bh(lock);

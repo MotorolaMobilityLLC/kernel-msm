@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -529,6 +529,9 @@ static int msm_restart_probe(struct platform_device *pdev)
 	struct resource *mem;
 	struct device_node *np;
 	int ret = 0;
+
+	if (!qcom_scm_is_available())
+		return -EPROBE_DEFER;
 
 	nvmem_cell = devm_nvmem_cell_get(dev, "restart_reason");
 	if (PTR_ERR(nvmem_cell) == -EPROBE_DEFER)

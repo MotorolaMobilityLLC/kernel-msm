@@ -471,6 +471,14 @@ int fastrpc_internal_mmap(struct fastrpc_file *fl,
 	return vfastrpc_internal_mmap(vfl, ud);
 }
 
+int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
+		struct fastrpc_ioctl_munmap_fd *ud)
+{
+	struct vfastrpc_file *vfl = to_vfastrpc_file(fl);
+
+	return vfastrpc_internal_munmap_fd(vfl, ud);
+}
+
 int fastrpc_init_process(struct fastrpc_file *fl,
 				struct fastrpc_ioctl_init_attrs *uproc)
 {

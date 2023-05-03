@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/of_device.h>
 #include "hab.h"
@@ -43,6 +43,12 @@ static int hab_release(struct inode *inodep, struct file *filep)
 
 	pr_debug("inode %pK, filep %pK ctx %pK\n", inodep, filep, ctx);
 
+	/*
+	 * This function will only be called for user-space clients,
+	 * so no need to disable bottom half here since there is no
+	 * potential dead lock issue among these clients racing for
+	 * a ctx_lock of any user-space context.
+	 */
 	write_lock(&ctx->ctx_lock);
 	/* notify remote side on vchan closing */
 	list_for_each_entry_safe(vchan, tmp, &ctx->vchannels, node) {

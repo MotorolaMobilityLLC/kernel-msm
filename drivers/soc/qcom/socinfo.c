@@ -1198,6 +1198,8 @@ static const struct soc_id soc_id[] = {
 	{ 453, "IPQ6005" },
 	{ 455, "QRB5165" },
 	{ 457, "WAIPIO" },
+	{ 467, "TRINKET-IOT" },
+	{ 468, "TRINKETP-IOT" },
 	{ 471, "QMP_SCUBA" },
 	{ 473, "QCM_SCUBA" },
 	{ 474, "QCS_SCUBA" },
