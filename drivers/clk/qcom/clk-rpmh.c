@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -695,6 +695,8 @@ static struct clk_hw *sdxpinn_rpmh_clocks[] = {
 	[RPMH_RF_CLK2_A]	= &sdm845_rf_clk2_ao.hw,
 	[RPMH_RF_CLK3]		= &sdm845_rf_clk3.hw,
 	[RPMH_RF_CLK3_A]	= &sdm845_rf_clk3_ao.hw,
+	[RPMH_RF_CLK5]		= &waipio_rf_clk5.hw,
+	[RPMH_RF_CLK5_A]	= &waipio_rf_clk5_ao.hw,
 	[RPMH_QPIC_CLK]		= &sdx55_qpic_clk.hw,
 	[RPMH_IPA_CLK]		= &sdx55_ipa.hw,
 };
