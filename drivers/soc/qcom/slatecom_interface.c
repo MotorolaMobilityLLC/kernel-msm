@@ -29,6 +29,7 @@
 #include <linux/compat.h>
 #include <linux/qseecom_kernel.h>
 #include <linux/soc/qcom/slatecom_interface.h>
+#include <linux/soc/qcom/slate_events_bridge_intf.h>
 
 #include <uapi/linux/slatecom_interface.h>
 
@@ -492,6 +493,38 @@ static void slatecom_fw_unload(struct slatedaemon_priv *priv)
 }
 
 /**
+ * send_slate_boot_status send state boot status event to clients
+ *
+ */
+static int send_slate_boot_status(enum boot_status event)
+{
+	int rc;
+	char *event_buf;
+	unsigned int event_buf_size;
+
+	event_buf_size = sizeof(enum boot_status);
+
+	event_buf = kmemdup((char *)&event, event_buf_size, GFP_KERNEL);
+	if (!event_buf)
+		return -ENOMEM;
+
+	rc = seb_send_event(SLATE_STATUS, event_buf,
+					event_buf_size);
+	if (rc < 0) {
+		pr_err("Failed to send SLATE_STATUS event, rc=%d\n",
+			rc);
+		goto free_event_buf;
+	}
+
+	pr_info("Send SLATE_STATUS event successful\n");
+
+free_event_buf:
+	kfree(event_buf);
+
+	return rc;
+}
+
+/**
  * load_slate_tzapp() - Called to load TZ app.
  * @pbd: struct containing private SLATE data.
  *
@@ -817,7 +850,7 @@ static int send_boot_cmd_to_slate(struct slate_ui_data *ui_obj_msg)
 			pr_err("failed to get rproc_handle, skip RPROC_WATCHDOG\n");
 		break;
 	case BOOT_STATUS:
-		pr_debug("Received boot_status command\n");
+		ret = send_slate_boot_status(ui_obj_msg->write);
 		break;
 	default:
 		pr_err("Invalid boot cmd:%d\n", cmd);
