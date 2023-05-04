@@ -24,6 +24,7 @@
 #define SLATECOM_SET_BOOT_MODE 13
 #define SLATECOM_GET_BOOT_MODE 14
 #define SLATECOM_SEND_IPC_CMD 15
+#define SLATECOM_SEND_BOOT_CMD 16
 #define EXCHANGE_CODE  'V'
 
 struct slate_ui_data {
@@ -76,6 +77,25 @@ enum ipc_cmd {
 	GET_VERSION,
 };
 
+enum boot_cmd_info {
+	SOFT_RESET,
+	TWM_EXIT,
+	AON_APP_RUNNING,
+	LOAD,
+	UNLOAD,
+	SET_BOOT_MODE,
+	GET_BOOT_MODE,
+	CMD_SAVE_AON_DUMP,
+	BOOT_STATUS,
+};
+
+enum boot_status {
+	SLATE_READY = 1,
+	SLATE_UPDATE_START,
+	SLATE_UPDATE_DONE,
+	SLATE_BOOT_HOST,
+	SLATE_BOOT_FLASH,
+};
 
 #define REG_READ \
 	_IOWR(EXCHANGE_CODE, SLATECOM_REG_READ, \
@@ -124,6 +144,9 @@ enum ipc_cmd {
 	NULL)
 #define SEND_IPC_CMD \
 	_IOWR(EXCHANGE_CODE, SLATECOM_SEND_IPC_CMD, \
+	struct slate_ui_data)
+#define SEND_BOOT_CMD \
+	_IOWR(EXCHANGE_CODE, SLATECOM_SEND_BOOT_CMD, \
 	struct slate_ui_data)
 
 #endif /* LINUX_SLATECOM_INTERFACE_H */
