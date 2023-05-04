@@ -4687,8 +4687,6 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
-static void dwc3_msm_clear_dp_only_params(struct dwc3_msm *mdwc);
-
 static int dwc3_msm_dp_notifier(struct notifier_block *nb, unsigned long event, void *ptr)
 {
 	struct extcon_dev *edev = ptr;
@@ -4709,7 +4707,7 @@ static int dwc3_msm_dp_notifier(struct notifier_block *nb, unsigned long event, 
 		else
 			dwc3_msm_set_dp_mode(mdwc->dev, true, 2);
 	} else {
-		dwc3_msm_clear_dp_only_params(mdwc);
+		dwc3_msm_set_dp_mode(mdwc->dev, false, 0);
 	}
 
 	return NOTIFY_DONE;
