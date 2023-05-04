@@ -211,7 +211,7 @@ static int cpufreq_cdev_probe(struct platform_device *pdev)
 			continue;
 		snprintf(cdev_data->cdev_name, THERMAL_NAME_LENGTH,
 				CPUFREQ_CDEV_NAME, cpu);
-		INIT_WORK(&cdev_data->register_work.work, cpufreq_cdev_register);
+		INIT_DEFERRABLE_WORK(&cdev_data->register_work, cpufreq_cdev_register);
 		list_add(&cdev_data->node, &qti_cpufreq_cdev_list);
 	}
 	mutex_unlock(&qti_cpufreq_cdev_lock);
