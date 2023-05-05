@@ -2680,7 +2680,7 @@ static bool mhi_dev_check_channel_interrupt(struct mhi_dev *mhi)
 			pending_work |= mhi_dev_queue_channel_db(mhi,
 							chintr_value, ch_num);
 			rc = mhi_dev_mmio_write(mhi, MHI_CHDB_INT_CLEAR_A7_n(i),
-							mhi->chdb[i].status);
+							chintr_value);
 			if (rc) {
 				mhi_log(mhi->vf_id, MHI_MSG_ERROR,
 					"Error writing interrupt clear for A7\n");
