@@ -20,6 +20,12 @@ qti-regmap-debugfs.ko
 rpm-smd.ko
 proxy-consumer.ko
 rpm-smd-regulator.ko
+gdsc-regulator.ko
+clk-dummy.ko
+clk-qcom.ko
+clk-smd-rpm.ko
+gcc-trinket.ko
+gpucc-trinket.ko
 secure_buffer.ko
 smem.ko
 socinfo.ko
@@ -40,3 +46,6 @@ qcom-spmi-pmic.ko
 nvmem_qcom-spmi-sdam.ko
 rtc-pm8xxx.ko
 qcom-cpufreq-hw.ko
+videocc-trinket.ko
+dispcc-trinket.ko
+debugcc-trinket.ko
