@@ -19,6 +19,13 @@ config RTWO_DTB
 	help
 		Only include Motorola Rtwo device specific device tree.
 
+config RHODE_DTB
+    depends on MMI_DEVICE_DTBS
+    default n
+    bool "Motorola Mobility Rtwo Device DTB"
+    help
+        Only include Motorola Rhode device specific device tree.
+
 config OBERON_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
