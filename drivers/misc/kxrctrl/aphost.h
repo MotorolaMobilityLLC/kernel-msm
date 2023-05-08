@@ -6,7 +6,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __APHOST_H__
@@ -70,12 +70,13 @@
 #include <linux/string.h>
 #include <linux/time.h>
 #include <linux/timer.h>
-
+#include <linux/delay.h>
 #include <uapi/linux/sched/types.h>
 
 #define MAX_PACK_SIZE 100 
 #define MAX_DATA_SIZE 32
 //#define MANUL_CONTROL_JOYSTICK_RLED
+#define COMPATIBLE_NOT_SUPPORT_DFU
 
 #define XFR_SIZE  190
 /* Protocol commands to interact with firmware */
@@ -154,6 +155,12 @@ struct js_spi_client {
 	atomic_t dataflag;
 	atomic_t userRequest; /* request from userspace */
 	atomic_t nordicAcknowledge; /* ack from nordic52832 master */
+
+#ifdef COMPATIBLE_NOT_SUPPORT_DFU
+	atomic_t probeGetNordicVersion; /* ack from nordic52832 master */
+	atomic_t probeGetNordicVersionFlag;
+#endif
+
 	unsigned char JoyStickBondState; /* 1:left JoyStick 2:right JoyStick */
 	bool suspend;
 	wait_queue_head_t  wait_queue;

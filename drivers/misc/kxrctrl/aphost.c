@@ -6,7 +6,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
  
 #include "aphost.h"
@@ -242,17 +242,36 @@ static ssize_t jsrequest_store(struct device *dev,
 	request_t request;
 	int vibState = 0;
 	int err = 0;
-
+#ifdef COMPATIBLE_NOT_SUPPORT_DFU
+	unsigned int getNorVersion = 0;
+#endif
 	if (gspi_client == NULL) {
 		pr_err("invalid gspi_client\n");
 		return size;
 	}
 
+#ifdef COMPATIBLE_NOT_SUPPORT_DFU
+	getNorVersion = (unsigned int)
+		atomic_read(&gspi_client->probeGetNordicVersion);
+	if (getNorVersion <= 0x81000101 && getNorVersion > 0) {
+		pr_debug("%s DFU not supported version number:%d.%d\n",
+			__func__, (getNorVersion >> 8) & 0xff,
+			getNorVersion & 0xff);
+	} else {
+		pinctrl_select_state(
+			gspi_client->pinctrl_info.pinctrl,
+			gspi_client->pinctrl_info.suspend);
+		gspi_client->js_ledl_state = 1;
+		pr_debug("%s DFU supported version number:%d.%d\n",
+			__func__, (getNorVersion >> 8) & 0xff,
+			getNorVersion & 0xff);
+	}
+#else
 	pinctrl_select_state(
 		gspi_client->pinctrl_info.pinctrl,
 		gspi_client->pinctrl_info.suspend);
 	gspi_client->js_ledl_state = 1;
-
+#endif
 	mutex_lock(&gspi_client->js_mutex);
 	err = kstrtouint(buf, 16, &input);
 	if (err) {
@@ -529,6 +548,18 @@ static int js_thread(void *data)
 				| spi_client->rxbuffer[1]);
 				atomic_set(&spi_client->nordicAcknowledge,
 							 input);
+#ifdef COMPATIBLE_NOT_SUPPORT_DFU
+			if ((unsigned int)
+				atomic_read(
+				&gspi_client->probeGetNordicVersionFlag)) {
+				atomic_set(
+					&spi_client->probeGetNordicVersion,
+					input);
+				atomic_set(
+					&spi_client->probeGetNordicVersionFlag,
+					0);
+			}
+#endif
 			}
 			memset(&lastRequest, 0, sizeof(lastRequest));
 		}
@@ -742,6 +773,59 @@ failed:
 	return ret;
 }
 
+#ifdef COMPATIBLE_NOT_SUPPORT_DFU
+static int probe_get_nordic_version(void)
+{
+	unsigned int getNorVersion = 0;
+
+	atomic_set(&gspi_client->probeGetNordicVersionFlag, 1);
+	atomic_set(&gspi_client->userRequest, 0x81000000);
+	atomic_inc(&gspi_client->dataflag);
+	wake_up_interruptible(&gspi_client->wait_queue);
+	pinctrl_select_state(
+		gspi_client->pinctrl_info.pinctrl,
+		gspi_client->pinctrl_info.suspend);
+	gspi_client->js_ledl_state = 1;
+	while (1) {
+		if (!((unsigned int)
+			atomic_read(&gspi_client->probeGetNordicVersionFlag))) {
+			pr_debug("nordic version flag %d userRequest 0x%x\n",
+			(unsigned int)atomic_read(
+				&gspi_client->probeGetNordicVersionFlag),
+			(unsigned int)atomic_read(
+				&gspi_client->userRequest));
+			getNorVersion = (unsigned int)atomic_read(
+				&gspi_client->probeGetNordicVersion);
+			pr_debug("nordic version %d.%d getNorVersion 0x%x\n",
+				(getNorVersion >> 8) & 0xff,
+				getNorVersion & 0xff, getNorVersion);
+			pinctrl_select_state(
+				gspi_client->pinctrl_info.pinctrl,
+				gspi_client->pinctrl_info.suspend);
+			gspi_client->js_ledl_state = 0;
+		} else {
+			atomic_set(&gspi_client->probeGetNordicVersionFlag, 1);
+			atomic_set(&gspi_client->userRequest, 0x81000000);
+			atomic_inc(&gspi_client->dataflag);
+			wake_up_interruptible(&gspi_client->wait_queue);
+			pinctrl_select_state(
+				gspi_client->pinctrl_info.pinctrl,
+				gspi_client->pinctrl_info.suspend);
+			gspi_client->js_ledl_state = 1;
+
+			pr_err("Failed to get version flag %d userRequest 0x%x\n",
+			(unsigned int)atomic_read(
+				&gspi_client->probeGetNordicVersionFlag),
+			(unsigned int)atomic_read(
+				&gspi_client->userRequest));
+
+		}
+		break;
+	}
+
+	return 0;
+}
+#endif
 static int js_spi_setup(struct spi_device *spi)
 {
 	struct js_spi_client   *spi_client;
@@ -805,6 +889,10 @@ static int js_spi_setup(struct spi_device *spi)
 
 	js_io_init(spi_client);
 	js_set_power(1);
+#ifdef COMPATIBLE_NOT_SUPPORT_DFU
+	msleep(5000);
+	probe_get_nordic_version();
+#endif
 	return rc;
 
 spi_free:

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2014-2015, 2017-2019, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -143,8 +144,11 @@ static int pmic_spmi_probe(struct spmi_device *sdev)
 
 MODULE_DEVICE_TABLE(of, pmic_spmi_id_table);
 
+static void pmic_spmi_remove(struct spmi_device *sdev) {}
+
 static struct spmi_driver pmic_spmi_driver = {
 	.probe = pmic_spmi_probe,
+	.remove = pmic_spmi_remove,
 	.driver = {
 		.name = "pmic-spmi",
 		.of_match_table = pmic_spmi_id_table,
