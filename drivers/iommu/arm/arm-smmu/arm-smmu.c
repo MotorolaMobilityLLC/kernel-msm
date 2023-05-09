@@ -96,6 +96,7 @@ static struct arm_smmu_option_prop arm_smmu_options[] = {
 	{ ARM_SMMU_OPT_DISABLE_ATOS, "qcom,disable-atos" },
 	{ ARM_SMMU_OPT_CONTEXT_FAULT_RETRY, "qcom,context-fault-retry" },
 	{ ARM_SMMU_OPT_MULTI_MATCH_HANDOFF_SMR, "qcom,multi-match-handoff-smr" },
+	{ ARM_SMMU_OPT_STATIC_CB, "qcom,enable-static-cb"},
 	{ 0, NULL},
 };
 
@@ -124,6 +125,8 @@ static inline void arm_smmu_rpm_put(struct arm_smmu_device *smmu)
 		pm_runtime_put_autosuspend(smmu->dev);
 	}
 }
+
+static bool arm_smmu_is_static_cb(struct arm_smmu_device *smmu);
 
 static struct arm_smmu_domain *to_smmu_domain(struct iommu_domain *dom)
 {
@@ -156,6 +159,11 @@ static bool is_iommu_pt_coherent(struct arm_smmu_domain *smmu_domain)
 	else if (smmu_domain->smmu && smmu_domain->smmu->dev)
 		return dev_is_dma_coherent(smmu_domain->smmu->dev);
 	return false;
+}
+
+static bool arm_smmu_is_static_cb(struct arm_smmu_device *smmu)
+{
+	return smmu->options & ARM_SMMU_OPT_STATIC_CB;
 }
 
 static bool arm_smmu_has_secure_vmid(struct arm_smmu_domain *smmu_domain)
@@ -412,13 +420,17 @@ static int __arm_smmu_alloc_cb(unsigned long *map, int start, int end,
 	struct arm_smmu_device *smmu = cfg->smmu;
 	int idx;
 	int i;
+	int cb = -EINVAL;
 
 	for_each_cfg_sme(cfg, fwspec, i, idx) {
 		if (smmu->s2crs[idx].pinned)
-			return smmu->s2crs[idx].cbndx;
+			cb = smmu->s2crs[idx].cbndx;
 	}
 
-	return __arm_smmu_alloc_bitmap(map, start, end);
+	if (cb < 0 && !arm_smmu_is_static_cb(smmu))
+		return __arm_smmu_alloc_bitmap(map, start, end);
+
+	return cb;
 }
 
 static void __arm_smmu_free_bitmap(unsigned long *map, int idx)
