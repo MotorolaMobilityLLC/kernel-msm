@@ -2696,7 +2696,7 @@ static int haptics_upload_effect(struct input_dev *dev,
 					effect->u.periodic.custom_len,
 					effect->u.periodic.magnitude);
 			if (rc < 0) {
-				dev_err(chip->dev, "Upload custom FIFO data failed\n",
+				dev_err(chip->dev, "Upload custom FIFO data failed, rc=%d\n",
 						rc);
 				return rc;
 			}
@@ -2707,7 +2707,7 @@ static int haptics_upload_effect(struct input_dev *dev,
 					effect->u.periodic.custom_len,
 					effect->u.periodic.magnitude);
 			if (rc < 0) {
-				dev_err(chip->dev, "Upload periodic effect failed\n",
+				dev_err(chip->dev, "Upload periodic effect failed, rc=%d\n",
 						rc);
 				return rc;
 			}
@@ -2790,7 +2790,7 @@ static int haptics_erase(struct input_dev *dev, int effect_id)
 
 	rc = haptics_enable_hpwr_vreg(chip, false);
 	if (rc < 0)
-		dev_err(chip->dev, "disable hpwr_vreg failed, rc=%d\n");
+		dev_err(chip->dev, "disable hpwr_vreg failed, rc=%d\n", rc);
 
 	return rc;
 }
@@ -2861,7 +2861,7 @@ static int haptics_store_cl_brake_settings(struct haptics_chip *chip)
 
 	rc = nvmem_cell_write(chip->cl_brake_nvmem, &val[1], 1);
 	if (rc < 0)
-		dev_err(chip->dev, "store RNAT/RCAL to SDAM failed, rc=%d\n");
+		dev_err(chip->dev, "store RNAT/RCAL to SDAM failed, rc=%d\n", rc);
 
 	return rc;
 }
@@ -2976,7 +2976,8 @@ static int haptics_mmap_preload_fifo_effect(struct haptics_chip *chip,
 	u32 length, fifo_length;
 
 	if (!effect->fifo->preload) {
-		dev_err(chip->dev, "effect %d doesn't support preload\n");
+		dev_err(chip->dev, "effect %d doesn't support preload\n",
+				effect->id);
 		return -EINVAL;
 	}
 
@@ -4376,7 +4377,7 @@ static int haptics_parse_primitives_dt(struct haptics_chip *chip)
 					&chip->primitives[i]);
 		if (rc < 0) {
 			dev_err(chip->dev, "parse primitive %d failed, rc=%d\n",
-					i);
+					i, rc);
 			of_node_put(child);
 			return rc;
 		}
@@ -4424,7 +4425,7 @@ static int haptics_parse_effects_dt(struct haptics_chip *chip)
 					&chip->effects[i]);
 		if (rc < 0) {
 			dev_err(chip->dev, "parse effect %d failed, rc=%d\n",
-					i);
+					i, rc);
 			of_node_put(child);
 			return rc;
 		}
@@ -5658,7 +5659,7 @@ static int haptics_probe(struct platform_device *pdev)
 	chip->hap_class.class_groups = hap_class_groups;
 	rc = class_register(&chip->hap_class);
 	if (rc < 0) {
-		dev_err(chip->dev, "register hap_class failed, rc=%d\n");
+		dev_err(chip->dev, "register hap_class failed, rc=%d\n", rc);
 		goto destroy_ff;
 	}
 
@@ -5746,7 +5747,7 @@ static int haptics_suspend_config(struct device *dev)
 
 		rc = haptics_stop_fifo_play(chip);
 		if (rc < 0) {
-			dev_err(chip->dev, "stop FIFO playing failed, rc=%d\n");
+			dev_err(chip->dev, "stop FIFO playing failed, rc=%d\n", rc);
 			mutex_unlock(&play->lock);
 			return rc;
 		}
