@@ -5567,7 +5567,7 @@ static int dwc3_msm_core_init(struct dwc3_msm *mdwc)
 		dev_err(mdwc->dev, "Failed to get dwc3 device\n");
 		mdwc->dwc3 = NULL;
 		ret = -ENODEV;
-		goto depopulate;
+		goto err;
 	}
 
 	if (mdwc->override_usb_speed &&
