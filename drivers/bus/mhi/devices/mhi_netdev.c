@@ -1145,7 +1145,7 @@ static const struct mhi_netdev_driver_data hw0_308_data = {
 	.interface_name = "rmnet_mhi",
 };
 
-static const struct mhi_netdev_driver_data hw1_308_data = {
+static const struct mhi_netdev_driver_data sw0_308_data = {
 	.mru = 0x4000,
 	.chain_skb = false,
 	.is_rsc_chan = false,
@@ -1164,7 +1164,7 @@ static const struct mhi_netdev_driver_data hw0_rsc_308_data = {
 static const struct mhi_device_id mhi_netdev_match_table[] = {
 	{ .chan = "IP_HW0", .driver_data = (kernel_ulong_t)&hw0_308_data },
 	{ .chan = "IP_HW0_RSC", .driver_data = (kernel_ulong_t)&hw0_rsc_308_data },
-	{ .chan = "IP_SW0", .driver_data = (kernel_ulong_t)&hw1_308_data },
+	{ .chan = "IP_SW0", .driver_data = (kernel_ulong_t)&sw0_308_data },
 	{},
 };
 
