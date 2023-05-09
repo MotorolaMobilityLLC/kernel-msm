@@ -155,18 +155,18 @@ static int subsystem_resume(struct power_state_drvdata *drv, u32 state)
 	struct rproc *rproc = NULL;
 
 	list_for_each_entry(ss_data, &drv->sub_sys_list, list) {
-		pr_debug("Subsystem %s resume start\n", ss_data->name);
+		pr_info("%s subsystem resume start\n", ss_data->name);
 		rproc = rproc_get_by_phandle(ss_data->rproc_handle);
 		if (!rproc)
 			return -ENODEV;
 
 		ret = subsys_resume(ss_data, rproc, state);
 		if (ret) {
-			pr_err("subsystem %s resume failed\n", ss_data->name);
+			pr_err("%s subsystem resume failed\n", ss_data->name);
 			BUG();
 		}
 		rproc_put(rproc);
-		pr_debug("Subsystem %s resume complete\n", ss_data->name);
+		pr_info("%s subsystem resume complete\n", ss_data->name);
 	}
 
 	return ret;
@@ -179,18 +179,18 @@ static int subsystem_suspend(struct power_state_drvdata *drv, u32 state)
 	struct rproc *rproc = NULL;
 
 	list_for_each_entry(ss_data, &drv->sub_sys_list, list) {
-		pr_debug("Subsystem %s suspend start\n", ss_data->name);
+		pr_info("%s subsystem suspend start\n", ss_data->name);
 		rproc = rproc_get_by_phandle(ss_data->rproc_handle);
 		if (!rproc)
 			return -ENODEV;
 
 		ret = subsys_suspend(ss_data, rproc, state);
 		if (ret) {
-			pr_err("subsystem %s suspend failed\n", ss_data->name);
+			pr_err("%s subsystem suspend failed\n", ss_data->name);
 			BUG();
 		}
 		rproc_put(rproc);
-		pr_debug("Subsystem %s suspend complete\n", ss_data->name);
+		pr_info("%s subsystem suspend complete\n", ss_data->name);
 	}
 
 	return ret;
@@ -247,6 +247,7 @@ static long ps_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			__pm_relax(drv->ps_ws);
 		}
 		drv->current_state = ACTIVE;
+		pr_info("low power mode exit complete\n");
 		break;
 
 	case ENTER_DEEPSLEEP:
@@ -359,7 +360,7 @@ static int ps_pm_cb(struct notifier_block *nb, unsigned long event, void *unused
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
 		if (drv->current_state == DEEPSLEEP) {
-			pr_debug("Deep Sleep entry\n");
+			pr_info("Deep Sleep entry\n");
 			ret = send_deep_sleep_vote(DS_ENTRY);
 			if (ret)
 				return NOTIFY_BAD;
@@ -371,7 +372,7 @@ static int ps_pm_cb(struct notifier_block *nb, unsigned long event, void *unused
 
 	case PM_POST_SUSPEND:
 		if (pm_suspend_via_firmware()) {
-			pr_debug("Deep Sleep exit\n");
+			pr_info("Deep Sleep exit\n");
 
 			ret = send_deep_sleep_vote(DS_EXIT);
 			if (ret)
@@ -384,7 +385,7 @@ static int ps_pm_cb(struct notifier_block *nb, unsigned long event, void *unused
 		break;
 
 	case PM_HIBERNATION_PREPARE:
-		pr_debug("Hibernate entry\n");
+		pr_info("Hibernate entry\n");
 
 		send_uevent(drv, PREPARE_FOR_HIBERNATION);
 		drv->current_state = HIBERNATE;
@@ -396,7 +397,7 @@ static int ps_pm_cb(struct notifier_block *nb, unsigned long event, void *unused
 
 	case PM_POST_HIBERNATION:
 	case PM_POST_RESTORE:
-		pr_debug("Hibernate exit\n");
+		pr_info("Hibernate exit\n");
 		send_uevent(drv, EXIT_HIBERNATE);
 		break;
 
