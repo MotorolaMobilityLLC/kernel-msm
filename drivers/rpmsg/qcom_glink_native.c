@@ -2153,7 +2153,8 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
 		if (ret)
 			goto rcid_remove;
 
-#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM) \
+	   && IS_ENABLED(CONFIG_MSM_RPM_SMD)
 		ret = !strcmp(glink->name, "rpm-glink") &&
 				!strcmp(channel->name, "rpm_requests");
 		if (quickboot && ret) {
