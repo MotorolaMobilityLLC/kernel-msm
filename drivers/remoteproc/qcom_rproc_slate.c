@@ -114,6 +114,10 @@ struct pil_mdt {
  * @status_irq: irq to indicate slate status
  * @slate_queue: private queue to schedule worker thread for bottom half
  * @restart_work: work struct for executing ssr
+ * @mem_phys: pa of DMA buffer for ramdump
+ * @mem_region: va of DMA buffer for ramdump
+ * @mem_size: DMA buffer size for ramdump
+ * @shutdown_only: exclusive slate shutdown request param
  */
 struct qcom_slate {
 	struct device *dev;
@@ -155,6 +159,8 @@ struct qcom_slate {
 	phys_addr_t mem_phys;
 	void *mem_region;
 	size_t mem_size;
+
+	bool shutdown_only;
 };
 
 static irqreturn_t slate_status_change(int irq, void *dev_id);
@@ -327,6 +333,12 @@ static irqreturn_t slate_status_change(int irq, void *dev_id)
 	} else if (!value && drvdata->is_ready) {
 		dev_err(drvdata->dev,
 			"SLATE got unexpected reset: irq state changed 1->0\n");
+		pr_err("Received shutdown_only request with value: %d\n", drvdata->shutdown_only);
+			/* skip dump collection and return with shutdown completion signal */
+			if (drvdata->shutdown_only) {
+				complete(&drvdata->err_ready);
+				return IRQ_HANDLED;
+			}
 		queue_work(drvdata->slate_queue, &drvdata->restart_work);
 	} else {
 		dev_err(drvdata->dev, "SLATE status irq: unknown status\n");
@@ -957,7 +969,7 @@ static int slate_stop(struct rproc *rproc)
 {
 	struct qcom_slate *slate_data = rproc->priv;
 	struct tzapp_slate_req slate_tz_req;
-	int ret = 0;
+	int ret = RESULT_FAILURE;
 
 	if (!slate_data) {
 		dev_err(slate_data->dev, "%s Invalid slate pointer !!\n",
@@ -965,17 +977,23 @@ static int slate_stop(struct rproc *rproc)
 		return -EINVAL;
 	}
 
-	/* Dont send shutdown cmd if slate is crashed or offline state*/
-	if (!gpio_get_value(slate_data->gpios[0]))
-		goto out;
-
-	slate_data->cmd_status = 0;
-
 	if (!slate_data->is_ready) {
 		dev_err(slate_data->dev, "%s: Slate is not up!\n", __func__);
 		return ret;
 	}
 
+	/* Dont send shutdown cmd if slate is crashed or offline state*/
+	if (!gpio_get_value(slate_data->gpios[0]))
+		goto out;
+
+	ret = load_slate_tzapp(slate_data);
+	if (ret) {
+		dev_err(slate_data->dev,
+			"%s: SLATE TZ app load failure\n",
+			__func__);
+		return ret;
+	}
+	slate_data->cmd_status = 0;
 	slate_tz_req.tzapp_slate_cmd = SLATE_RPROC_SHUTDOWN;
 	slate_tz_req.address_fw = 0;
 	slate_tz_req.size_fw = 0;
@@ -986,13 +1004,22 @@ static int slate_stop(struct rproc *rproc)
 		return ret;
 	}
 
-out:
-	if (slate_data->is_ready) {
-		disable_irq(slate_data->status_irq);
-		slate_data->is_ready = false;
+	/* wait for slate shutdown completion in exclusive slate shutdown request */
+	if (slate_data->shutdown_only) {
+		ret = wait_for_err_ready(slate_data);
+		if (ret) {
+			dev_err(slate_data->dev,
+			"[%s:%d]: Timed out waiting for error ready: %s!\n",
+			current->comm, current->pid, slate_data->firmware_name);
+			return ret;
+		}
+		slate_data->shutdown_only = false;
 	}
+out:
+	disable_irq(slate_data->status_irq);
+	slate_data->is_ready = false;
 
-	return ret;
+	return 0;
 }
 
 static void *slate_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iomem)
