@@ -200,3 +200,9 @@
   wakeup_sources_read_unlock
   wakeup_sources_walk_start
   wakeup_sources_walk_next
+
+#required by us_prox.ko module
+  iio_trigger_alloc
+  __iio_trigger_register
+  iio_trigger_free
+  iio_trigger_unregister
