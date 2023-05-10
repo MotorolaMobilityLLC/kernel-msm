@@ -2157,6 +2157,7 @@ void print_bam_pipe_desc_fifo(void *virt_addr, u32 pipe_index, u32 option)
 	int i;
 	char desc_info[MAX_MSG_LEN];
 	struct sps_bam *dev;
+	struct sps_pipe *pipe_indx;
 
 	if (base == NULL)
 		return;
@@ -2183,14 +2184,8 @@ void print_bam_pipe_desc_fifo(void *virt_addr, u32 pipe_index, u32 option)
 		"BAM_P_DESC_FIFO_SIZE: 0x%x (%d)\n\n",
 		desc_fifo_addr, desc_fifo_size, desc_fifo_size);
 
-	if (dev->props.options & SPS_BAM_SMMU_EN) {
-		struct sps_pipe *pipe_indx = dev->pipes[pipe_index];
-
-		SPS_DUMP("%s", "SMMU is enabled\n");
-		desc_fifo = pipe_indx->map->desc.base;
-	} else {
-		desc_fifo = (u32 __iomem *) phys_to_virt(desc_fifo_addr);
-	}
+	pipe_indx = dev->pipes[pipe_index];
+	desc_fifo = pipe_indx->map->desc.base;
 
 	if (option == 100) {
 		SPS_DUMP("%s",
