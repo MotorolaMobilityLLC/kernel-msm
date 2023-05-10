@@ -779,6 +779,8 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 		if (attrs && (attrs[i] & FASTRPC_ATTR_NOMAP))
 			dmaflags = FASTRPC_DMAHANDLE_NOMAP;
 		if (fds && (fds[i] != -1) && attrs) {
+			/* DMA handle already uses persistent memory map */
+			attrs[i] &= ~FASTRPC_ATTR_KEEP_MAP;
 			err = vfastrpc_mmap_create(vfl, fds[i], attrs[i],
 					0, 0, dmaflags, &maps[i]);
 			if (!err && maps[i])
@@ -1101,16 +1103,14 @@ static int put_args(struct vfastrpc_invoke_ctx *ctx)
 	}
 
 	mutex_lock(&fl->map_mutex);
-	if (total) {
-		for (i = 0; i < M_FDLIST; i++) {
-			if (!fdlist[i])
-				break;
-			if (!vfastrpc_mmap_find(vfl, (int)fdlist[i], 0, 0,
-						0, 0, &mmap)) {
-				if (mmap && mmap->ctx_refs)
-					mmap->ctx_refs--;
-				vfastrpc_mmap_free(vfl, mmap, 0);
-			}
+	for (i = 0; i < M_FDLIST; i++) {
+		if (!fdlist[i])
+			break;
+		if (!vfastrpc_mmap_find(vfl, (int)fdlist[i], 0, 0,
+					0, 0, &mmap)) {
+			if (mmap && mmap->ctx_refs)
+				mmap->ctx_refs--;
+			vfastrpc_mmap_free(vfl, mmap, 0);
 		}
 	}
 	mutex_unlock(&fl->map_mutex);
