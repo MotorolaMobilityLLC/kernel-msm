@@ -68,6 +68,7 @@ static DEFINE_IDA(glink_pkt_minor_ida);
  * @ch_open:	wait object for opening the glink channel
  * @refcount:	count how many userspace clients have handles
  * @rpdev:	underlaying rpmsg device
+ * @rx_done:	cache whether rpdev can support external rx done
  * @queue_lock:	synchronization of @queue operations
  * @queue:	incoming message queue
  * @readq:	wait object for incoming queue
@@ -90,6 +91,7 @@ struct glink_pkt_device {
 	struct completion ch_open;
 	refcount_t refcount;
 	struct rpmsg_device *rpdev;
+	bool rx_done;
 
 	spinlock_t queue_lock;
 	struct sk_buff_head queue;
@@ -157,12 +159,28 @@ static int glink_pkt_rpdev_probe(struct rpmsg_device *rpdev)
 
 	mutex_lock(&gpdev->lock);
 	gpdev->rpdev = rpdev;
+	gpdev->rx_done = (rpdev->ept->rx_done) ? true : false;
 	mutex_unlock(&gpdev->lock);
 
 	dev_set_drvdata(&rpdev->dev, gpdev);
 	complete_all(&gpdev->ch_open);
 
 	return 0;
+}
+
+static void glink_pkt_kfree_skb(struct glink_pkt_device *gpdev, struct sk_buff *skb)
+{
+	if (gpdev->rx_done) {
+		rpmsg_rx_done(gpdev->rpdev->ept, skb->data);
+		/*
+		 * Data memory is freed by rpmsg_rx_done(), reset the
+		 * skb data pointers so kfree_skb() does not try to free
+		 * a second time.
+		 */
+		skb->head = NULL;
+		skb->data = NULL;
+	}
+	kfree_skb(skb);
 }
 
 static int glink_pkt_rpdev_no_copy_cb(struct rpmsg_device *rpdev, void *buf,
@@ -327,7 +345,7 @@ static int glink_pkt_release(struct inode *inode, struct file *file)
 {
 	struct glink_pkt_device *gpdev = cdev_to_gpdev(inode->i_cdev);
 	struct device *dev = &gpdev->dev;
-	struct sk_buff *skb;
+	struct sk_buff *skb = NULL;
 	unsigned long flags;
 
 	GLINK_PKT_INFO("for %s by %s:%d ref_cnt[%d]\n",
@@ -339,24 +357,16 @@ static int glink_pkt_release(struct inode *inode, struct file *file)
 		spin_lock_irqsave(&gpdev->queue_lock, flags);
 
 		if (gpdev->rskb) {
-			kfree_skb(gpdev->rskb);
+			glink_pkt_kfree_skb(gpdev, gpdev->rskb);
 			gpdev->rskb = NULL;
 			gpdev->rdata = NULL;
 			gpdev->rdata_len = 0;
 		}
 
 		/* Discard all SKBs */
-		while (!skb_queue_empty(&gpdev->queue)) {
-			skb = skb_dequeue(&gpdev->queue);
+		while ((skb_queue_empty(&gpdev->queue)))
+			glink_pkt_kfree_skb(gpdev, skb);
 
-			if (gpdev->rpdev->ept->rx_done) {
-				rpmsg_rx_done(gpdev->rpdev->ept, skb->data);
-				skb->head = NULL;
-				skb->data = NULL;
-			}
-
-			kfree_skb(skb);
-		}
 		wake_up_interruptible(&gpdev->readq);
 		gpdev->sig_change = false;
 		spin_unlock_irqrestore(&gpdev->queue_lock, flags);
@@ -461,19 +471,8 @@ static ssize_t glink_pkt_read(struct file *file,
 	}
 	spin_unlock_irqrestore(&gpdev->queue_lock, flags);
 
-	if (skb) {
-		if (gpdev->rpdev->ept->rx_done) {
-			rpmsg_rx_done(gpdev->rpdev->ept, skb->data);
-			/*
-			 * Data memory is freed by rpmsg_rx_done(), reset the
-			 * skb data pointers so kfree_skb() does not try to free
-			 * a second time.
-			 */
-			skb->head = NULL;
-			skb->data = NULL;
-		}
-		kfree_skb(skb);
-	}
+	if (skb)
+		glink_pkt_kfree_skb(gpdev, skb);
 
 	ret = (ret < 0) ? ret : use;
 	GLINK_PKT_INFO("end for %s by %s:%d ret[%d], remaining[%d]\n", gpdev->ch_name,
@@ -660,7 +659,7 @@ static int glink_pkt_zerocopy_done(struct glink_pkt_device *gpdev,
 	if (!PAGE_ALIGNED(address) || address != zc->address)
 		return -EINVAL;
 
-	if (!gpdev->rpdev->ept->rx_done)
+	if (!gpdev->rx_done)
 		return -EINVAL;
 
 	mmap_read_lock(current->mm);
@@ -689,18 +688,11 @@ static int glink_pkt_zerocopy_done(struct glink_pkt_device *gpdev,
 	if (!skb)
 		return -EINVAL;
 
-	rpmsg_rx_done(gpdev->rpdev->ept, skb->data);
 	if (cb->trailing_page)
 		free_page(cb->trailing_page);
 	if (cb->leading_page)
 		free_page(cb->leading_page);
-	/*
-	 * Data memory is freed by rpmsg_rx_done(), reset the skb data
-	 * pointers so kfree_skb() does not try to free a second time.
-	 */
-	skb->head = NULL;
-	skb->data = NULL;
-	kfree_skb(skb);
+	glink_pkt_kfree_skb(gpdev, skb);
 
 	return 0;
 }
@@ -732,7 +724,7 @@ static int glink_pkt_zerocopy_receive(struct glink_pkt_device *gpdev,
 	if (!PAGE_ALIGNED(address) || address != zc->address)
 		return -EINVAL;
 
-	if (!gpdev->rpdev->ept->rx_done)
+	if (!gpdev->rx_done)
 		return -EINVAL;
 
 	zc->offset = 0;
@@ -1130,6 +1122,7 @@ static int glink_pkt_create_device(struct device *parent,
 	/* Default open timeout for open is 120 sec */
 	gpdev->open_tout = 120;
 	gpdev->sig_change = false;
+	gpdev->rx_done = false;
 
 	spin_lock_init(&gpdev->queue_lock);
 
