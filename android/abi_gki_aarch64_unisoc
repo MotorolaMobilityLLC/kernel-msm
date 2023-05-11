@@ -546,6 +546,7 @@
   kernel_kobj
   kernel_neon_begin
   kernel_neon_end
+  kernel_sock_shutdown
   kern_mount
   kern_unmount
   key_create_or_update
