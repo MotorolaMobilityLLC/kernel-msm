@@ -88,6 +88,7 @@ struct subsystem_data {
 	enum ps_event_type exit;
 	phandle rproc_handle;
 	void *ssr_handle;
+	struct notifier_block ps_ssr_nb;
 };
 
 struct power_state_drvdata {
@@ -99,7 +100,6 @@ struct power_state_drvdata {
 	struct kobj_attribute ps_ka;
 	struct wakeup_source *ps_ws;
 	struct notifier_block ps_pm_nb;
-	struct notifier_block ps_ssr_nb;
 	struct syscore_ops ps_ops;
 	enum power_states current_state;
 	u32 subsys_count;
@@ -320,7 +320,6 @@ static int send_uevent(struct power_state_drvdata *drv, enum ps_event_type event
 
 static int ps_ssr_cb(struct notifier_block *nb, unsigned long opcode, void *data)
 {
-	struct power_state_drvdata *drv = container_of(nb, struct power_state_drvdata, ps_ssr_nb);
 	struct qcom_ssr_notify_data *notify_data = data;
 	struct subsystem_data *ss_data;
 	bool ss_present = false;
@@ -524,8 +523,6 @@ static int power_state_probe(struct platform_device *pdev)
 	if (ret)
 		goto remove_ws;
 
-	drv->ps_ssr_nb.notifier_call = ps_ssr_cb;
-	drv->ps_ssr_nb.priority = PS_SSR_NOTIFIER_PRIORITY;
 	INIT_LIST_HEAD(&drv->sub_sys_list);
 
 	drv->subsys_count = of_property_count_strings(dn, "qcom,subsys-name");
@@ -544,7 +541,11 @@ static int power_state_probe(struct platform_device *pdev)
 
 		ss_data->name = name;
 		ss_data->rproc_handle = rproc_handle;
-		ss_data->ssr_handle = qcom_register_ssr_notifier(name, &drv->ps_ssr_nb);
+
+		ss_data->ps_ssr_nb.notifier_call = ps_ssr_cb;
+		ss_data->ps_ssr_nb.priority = PS_SSR_NOTIFIER_PRIORITY;
+		ss_data->ssr_handle = qcom_register_ssr_notifier(name, &ss_data->ps_ssr_nb);
+		ss_data->ignore_ssr = false;
 		if (IS_ERR(ss_data->ssr_handle)) {
 			ret = PTR_ERR(ss_data->ssr_handle);
 			goto remove_ss;
@@ -573,7 +574,7 @@ static int power_state_probe(struct platform_device *pdev)
 
 remove_ss:
 	list_for_each_entry(ss_data, &drv->sub_sys_list, list) {
-		qcom_unregister_ssr_notifier(ss_data->ssr_handle, &drv->ps_ssr_nb);
+		qcom_unregister_ssr_notifier(ss_data->ssr_handle, &ss_data->ps_ssr_nb);
 		list_del(&ss_data->list);
 	}
 	INIT_LIST_HEAD(&drv->sub_sys_list);
@@ -591,7 +592,7 @@ static int power_state_remove(struct platform_device *pdev)
 
 	unregister_syscore_ops(&drv->ps_ops);
 	list_for_each_entry(ss_data, &drv->sub_sys_list, list) {
-		qcom_unregister_ssr_notifier(ss_data->ssr_handle, &drv->ps_ssr_nb);
+		qcom_unregister_ssr_notifier(ss_data->ssr_handle, &ss_data->ps_ssr_nb);
 		list_del(&ss_data->list);
 	}
 
