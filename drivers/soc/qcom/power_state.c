@@ -25,19 +25,19 @@
 #include <linux/syscore_ops.h>
 #include <linux/sysfs.h>
 #include <linux/uaccess.h>
-#ifdef CONFIG_MSM_RPM_SMD
+#if IS_ENABLED(CONFIG_MSM_RPM_SMD)
 #include <soc/qcom/rpm-smd.h>
 #endif
 
 #include "linux/power_state.h"
 
-#ifdef CONFIG_ARCH_MONACO
+#if IS_ENABLED(CONFIG_ARCH_MONACO)
 #define DS_ENTRY_SMC_ID		0xC3000924
 #else
 #define DS_ENTRY_SMC_ID		0xC3000923
 #endif
 
-#ifdef CONFIG_MSM_RPM_SMD
+#if IS_ENABLED(CONFIG_MSM_RPM_SMD)
 #define RPM_XO_DS_REQ		0x73646f78
 #define RPM_XO_DS_ID		0x0
 #define RPM_XO_DS_KEY		0x62616e45
@@ -209,7 +209,7 @@ static int ps_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-#ifdef CONFIG_MSM_RPM_SMD
+#if IS_ENABLED(CONFIG_MSM_RPM_SMD)
 static int send_deep_sleep_vote(int state)
 {
 	u32 val;
@@ -220,9 +220,9 @@ static int send_deep_sleep_vote(int state)
 	else
 		val = RPM_XO_DS_EXIT_VALUE;
 
-	req.key = RPM_XO_DS_KEY,
-	req.data = (void *)&val,
-	req.length = sizeof(val),
+	req.key = RPM_XO_DS_KEY;
+	req.data = (void *)&val;
+	req.length = sizeof(val);
 
 	return msm_rpm_send_message(MSM_RPM_CTX_SLEEP_SET, RPM_XO_DS_REQ, RPM_XO_DS_ID, &req, 1);
 }
