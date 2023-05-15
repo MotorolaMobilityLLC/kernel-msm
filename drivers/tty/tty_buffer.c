@@ -170,12 +170,16 @@ static struct tty_buffer *tty_buffer_alloc(struct tty_port *port, size_t size)
 
 	/* Should possibly check if this fails for the largest buffer we
 	   have queued and recycle that ? */
-	if (atomic_read(&port->buf.mem_used) > port->buf.mem_limit)
+	if (atomic_read(&port->buf.mem_used) > port->buf.mem_limit) {
+                pr_err("tty_buffer_alloc mem_used:%ul > mem_limit:%ul", atomic_read(&port->buf.mem_used), port->buf.mem_limit);
 		return NULL;
+        }
 	p = kmalloc(sizeof(struct tty_buffer) + 2 * size,
 		    GFP_ATOMIC | __GFP_NOWARN);
-	if (p == NULL)
+	if (p == NULL) {
+                pr_err("tty_buffer_alloc p == NULL");
 		return NULL;
+        }
 
 found:
 	tty_buffer_reset(p, size);
@@ -289,6 +293,9 @@ static int __tty_buffer_request_room(struct tty_port *port, size_t size,
 		else
 			size = left;
 	}
+        if(size == 0){
+            pr_err("__tty_buffer_request_room change = %d, left = %d, n =%p, b->used = %d", change, left, n, b->used);
+        }
 	return size;
 }
 
@@ -318,8 +325,10 @@ int tty_insert_flip_string_fixed_flag(struct tty_port *port,
 		int flags = (flag == TTY_NORMAL) ? TTYB_NORMAL : 0;
 		int space = __tty_buffer_request_room(port, goal, flags);
 		struct tty_buffer *tb = port->buf.tail;
-		if (unlikely(space == 0))
+		if (unlikely(space == 0)) {
+                        pr_err("tty_insert_flip_string_fixed_flag space = %d", space);
 			break;
+                }
 		memcpy(char_buf_ptr(tb, tb->used), chars, space);
 		if (~tb->flags & TTYB_NORMAL)
 			memset(flag_buf_ptr(tb, tb->used), flag, space);
