@@ -133,6 +133,7 @@ obj-$(CONFIG_SM_VIDEOCC_CROW) += videocc-crow.o
 obj-$(CONFIG_SM_VIDEOCC_KALAMA) += videocc-kalama.o
 obj-$(CONFIG_SM_CAMCC_CROW) += camcc-crow.o
 obj-$(CONFIG_SM_CAMCC_KALAMA) += camcc-kalama.o
+obj-$(CONFIG_SM_DISPCC_CROW) += dispcc-crow.o
 obj-$(CONFIG_SM_DISPCC_KALAMA) += dispcc-kalama.o
 obj-$(CONFIG_SM_DISPCC_KHAJE) += dispcc-khaje.o
 obj-$(CONFIG_SM_DEBUGCC_KALAMA) += debugcc-kalama.o
