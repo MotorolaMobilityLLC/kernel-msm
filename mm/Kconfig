@@ -856,13 +856,6 @@ config OOM_TASK_PRIORITY_ADJ_LIMIT
 	  With this parameter you can limit the OOM killer to first kill
 	  tasks with an oom_score_adj value above a certain threshold
 	  before considering tasks with a lower oom_score_adj value.
-config LRU_GEN
-	bool "Multi-Gen LRU"
-	depends on MMU
-	# make sure page->flags has enough spare bits
-	depends on 64BIT || !SPARSEMEM || SPARSEMEM_VMEMMAP
-	help
-	  A high performance LRU implementation to overcommit memory.
 
 endmenu
 
