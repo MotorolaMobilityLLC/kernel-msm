@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright(c) 2020, Analogix Semiconductor. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 #include <linux/gcd.h>
@@ -1382,7 +1383,7 @@ static int anx7625_bridge_attach(struct drm_bridge *bridge,
 		if (err)
 			return err;
 	}
-	device_link_add(bridge->dev->dev, dev, DL_FLAG_PM_RUNTIME);
+	device_link_add(bridge->dev->dev, dev, DL_FLAG_STATELESS);
 	return 0;
 }
 
