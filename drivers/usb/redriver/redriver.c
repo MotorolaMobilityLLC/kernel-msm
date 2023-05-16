@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * USB Super Speed (Plus) redriver core module
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "redriver-core: " fmt
@@ -142,10 +142,10 @@ EXPORT_SYMBOL(usb_put_redriver);
 /* note: following exported symbol can be inlined in header file,
  * export here to avoid unexpected CFI(Clang Control Flow Integrity) issue.
  */
-void usb_redriver_release_lanes(struct usb_redriver *ur, int num)
+void usb_redriver_release_lanes(struct usb_redriver *ur, int ort, int num)
 {
 	if (ur && ur->release_usb_lanes)
-		ur->release_usb_lanes(ur, num);
+		ur->release_usb_lanes(ur, ort, num);
 }
 EXPORT_SYMBOL(usb_redriver_release_lanes);
 

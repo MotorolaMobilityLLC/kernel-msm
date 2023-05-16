@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2010-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -615,6 +615,15 @@ const struct mpm_pin mpm_monaco_gic_chip_data[] = {
 	{-1},
 };
 
+const struct mpm_pin mpm_trinket_gic_chip_data[] = {
+	{2, 190},
+	{12, 422}, /* b3_lfps_rxterm_irq */
+	{86, 183}, /* mpm_wake,spmi_m */
+	{90, 260}, /* eud_p0_dpse_int_mx */
+	{91, 260}, /* eud_p0_dmse_int_mx */
+	{-1},
+};
+
 static const struct of_device_id mpm_gic_chip_data_table[] = {
 	{
 		.compatible = "qcom,mpm-khaje",
@@ -627,6 +636,10 @@ static const struct of_device_id mpm_gic_chip_data_table[] = {
 	{
 		.compatible = "qcom,mpm-sa410m",
 		.data = mpm_sa410m_gic_chip_data,
+	},
+	{
+		.compatible = "qcom,mpm-trinket",
+		.data = mpm_trinket_gic_chip_data,
 	},
 	{}
 };
