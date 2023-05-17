@@ -5568,6 +5568,13 @@ static int dwc3_msm_core_init(struct dwc3_msm *mdwc)
 		goto err;
 	}
 
+	if (dwc->desired_dr_role == 0 && dwc->dr_mode == USB_DR_MODE_OTG) {
+		dev_err(mdwc->dev, "Failed to set mode\n");
+		mdwc->dwc3 = NULL;
+		ret = -EAGAIN;
+		goto err;
+	}
+
 	if (mdwc->override_usb_speed &&
 		mdwc->override_usb_speed <= dwc3_msm_get_max_speed(mdwc)) {
 		dwc3_msm_set_max_speed(mdwc, mdwc->override_usb_speed);
