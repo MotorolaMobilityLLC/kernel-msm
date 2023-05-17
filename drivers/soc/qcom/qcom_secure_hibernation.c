@@ -108,12 +108,12 @@ static void skip_swap_map_write(void *data, bool *skip)
 static void increment_iv(unsigned char *iv, u8 size)
 {
 	int i;
-	u16 num, carry = 0;
+	u16 num, carry = 1;
 
 	i = size - 1;
 	do {
 		num = (u8)iv[i];
-		num += 1 + carry;
+		num += carry;
 		iv[i] = num & 0xFF;
 		carry = (num > 0xFF) ? 1 : 0;
 		i--;
