@@ -314,8 +314,6 @@ err_no_vma:
 static inline void binder_alloc_set_vma(struct binder_alloc *alloc,
 		struct vm_area_struct *vma)
 {
-	if (vma)
-		alloc->vma_vm_mm = vma->vm_mm;
 	/*
 	 * If we see alloc->vma is not NULL, buffer data structures set up
 	 * completely. Look at smp_rmb side binder_alloc_get_vma.
