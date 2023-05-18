@@ -73,6 +73,10 @@ static const struct qcom_apcs_ipc_data bengal_apcs_data = {
 	.offset = 8, .clk_name = NULL
 };
 
+static const struct qcom_apcs_ipc_data trinket_apcs_data = {
+	.offset = 8, .clk_name = NULL
+};
+
 static const struct qcom_apcs_ipc_data scuba_apcs_data = {
 	.offset = 8, .clk_name = NULL
 };
@@ -193,6 +197,7 @@ static const struct of_device_id qcom_apcs_ipc_of_match[] = {
 	{ .compatible = "qcom,sdx55-apcs-gcc", .data = &sdx55_apcs_data },
 	{ .compatible = "qcom,bengal-apcs-hmss-global", .data = &bengal_apcs_data },
 	{ .compatible = "qcom,scuba-apcs-hmss-global", .data = &scuba_apcs_data },
+	{ .compatible = "qcom,trinket-apcs-hmss-global", .data = &trinket_apcs_data },
 	{}
 };
 MODULE_DEVICE_TABLE(of, qcom_apcs_ipc_of_match);
