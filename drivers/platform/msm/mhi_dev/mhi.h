@@ -709,6 +709,23 @@ enum mhi_msg_level {
 	MHI_MSG_reserved = 0x80000000
 };
 
+
+/* Structure for mhi device operations */
+struct mhi_dev_ops {
+	int	(*register_state_cb)(void (*mhi_state_cb)
+			(struct mhi_dev_client_cb_data *cb_data),
+			void *data, enum mhi_client_channel channel, uint32_t vf_id);
+	int	(*ctrl_state_info)(uint32_t vf_id, uint32_t idx, uint32_t *info);
+	int	(*open_channel)(uint32_t vf_id, uint32_t chan_id,
+			struct mhi_dev_client **handle,
+			void (*mhi_dev_client_cb_reason)
+				(struct mhi_dev_client_cb_reason *cb));
+	void	(*close_channel)(struct mhi_dev_client *handle);
+	int	(*write_channel)(struct mhi_req *mreq);
+	int	(*read_channel)(struct mhi_req *mreq);
+	int	(*is_channel_empty)(struct mhi_dev_client *handle);
+};
+
 extern uint32_t bhi_imgtxdb;
 extern enum mhi_msg_level mhi_msg_lvl;
 extern enum mhi_msg_level mhi_ipc_msg_lvl;
@@ -1186,16 +1203,6 @@ int mhi_pcie_config_db_routing(struct mhi_dev *mhi);
  */
 int mhi_uci_init(void);
 
-/**
- * mhi_dev_net_interface_init() - Initializes the mhi device network interface
- *		which exposes the virtual network interface (mhi_dev_net0).
- *		data packets will transfer between MHI host interface (mhi_swip)
- *		and mhi_dev_net interface using software path.
- * @vf_id       MHI instance (physical or virtual) id.
- * @num_vfs     Total number of vutual MHI instances supported on this target.
- */
-int mhi_dev_net_interface_init(u32 vf_id, u32 num_vfs);
-
 void mhi_dev_notify_a7_event(struct mhi_dev *mhi);
 
 void uci_ctrl_update(struct mhi_dev_client_cb_reason *reason);
@@ -1224,4 +1231,21 @@ void free_coherent(struct mhi_dev *mhi, size_t size, void *virt,
 		   dma_addr_t phys);
 void *alloc_coherent(struct mhi_dev *mhi, size_t size, dma_addr_t *phys,
 		     gfp_t gfp);
+/**
+ * mhi_dev_net_interface_init() - Initializes the mhi device network interface
+ *		which exposes the virtual network interface (mhi_dev_net0).
+ *		data packets will transfer between MHI host interface (mhi_swip)
+ *		and mhi_dev_net interface using software path.
+ * @dev_ops	MHI dev function pointers
+ * @vf_id       MHI instance (physical or virtual) id.
+ * @num_vfs     Total number of vutual MHI instances supported on this target.
+ */
+#if IS_ENABLED(CONFIG_MSM_MHI_NET_DEV)
+int mhi_dev_net_interface_init(struct mhi_dev_ops *dev_ops, u32 vf_id, u32 num_vfs);
+#else
+static inline int mhi_dev_net_interface_init(struct mhi_dev_ops *dev_ops, u32 vf_id, u32 num_vfs)
+{
+	return -EINVAL;
+}
+#endif
 #endif /* _MHI_H */
