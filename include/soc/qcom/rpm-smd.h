@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/platform_device.h>
+#include <linux/rpmsg.h>
 
 #ifndef __ARCH_ARM_MACH_MSM_RPM_SMD_H
 #define __ARCH_ARM_MACH_MSM_RPM_SMD_H
@@ -96,6 +98,8 @@ int msm_rpm_add_kvp_data_noirq(struct msm_rpm_request *handle,
  */
 
 void msm_rpm_free_request(struct msm_rpm_request *handle);
+
+int qcom_smd_rpm_quickboot(struct rpmsg_device *rpdev, int status);
 
 /**
  * msm_rpm_send_request() - Send the RPM messages using SMD. The function
