@@ -3822,7 +3822,10 @@ static void dwc3_clear_stall_all_ep(struct dwc3 *dwc)
 
 static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
 {
+	struct dwc3_vendor	*vdwc = container_of(dwc, struct dwc3_vendor, dwc);
 	int			reg;
+
+	vdwc->suspended = false;
 
 	dwc3_gadget_set_link_state(dwc, DWC3_LINK_STATE_RX_DET);
 
@@ -3844,7 +3847,10 @@ static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
 
 static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 {
+	struct dwc3_vendor	*vdwc = container_of(dwc, struct dwc3_vendor, dwc);
 	u32			reg;
+
+	vdwc->suspended = false;
 
 	/*
 	 * Ideally, dwc3_reset_gadget() would trigger the function
@@ -4062,6 +4068,10 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 
 static void dwc3_gadget_wakeup_interrupt(struct dwc3 *dwc)
 {
+	struct dwc3_vendor	*vdwc = container_of(dwc, struct dwc3_vendor, dwc);
+
+	vdwc->suspended = false;
+
 	/*
 	 * TODO take core out of low power mode when that's
 	 * implemented.
@@ -4175,10 +4185,13 @@ static void dwc3_gadget_linksts_change_interrupt(struct dwc3 *dwc,
 static void dwc3_gadget_suspend_interrupt(struct dwc3 *dwc,
 					  unsigned int evtinfo)
 {
+	struct dwc3_vendor	*vdwc = container_of(dwc, struct dwc3_vendor, dwc);
 	enum dwc3_link_state next = evtinfo & DWC3_LINK_STATE_MASK;
 
-	if (dwc->link_state != next && next == DWC3_LINK_STATE_U3)
+	if (!vdwc->suspended && next == DWC3_LINK_STATE_U3) {
+		vdwc->suspended = true;
 		dwc3_suspend_gadget(dwc);
+	}
 
 	dwc->link_state = next;
 }
