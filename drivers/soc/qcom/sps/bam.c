@@ -2153,12 +2153,16 @@ void print_bam_pipe_desc_fifo(void *virt_addr, u32 pipe_index, u32 option)
 	u32 pipe = pipe_index;
 	u32 desc_fifo_addr;
 	u32 desc_fifo_size;
-	u32 *desc_fifo;
+	u32 __iomem *desc_fifo;
 	int i;
 	char desc_info[MAX_MSG_LEN];
+	struct sps_bam *dev;
+	struct sps_pipe *pipe_indx;
 
 	if (base == NULL)
 		return;
+
+	dev = to_sps_bam_dev(virt_addr);
 
 	desc_fifo_addr = bam_read_reg(base, P_DESC_FIFO_ADDR, pipe);
 	desc_fifo_size = bam_read_reg_field(base, P_FIFO_SIZES, pipe,
@@ -2180,7 +2184,8 @@ void print_bam_pipe_desc_fifo(void *virt_addr, u32 pipe_index, u32 option)
 		"BAM_P_DESC_FIFO_SIZE: 0x%x (%d)\n\n",
 		desc_fifo_addr, desc_fifo_size, desc_fifo_size);
 
-	desc_fifo = (u32 *) phys_to_virt(desc_fifo_addr);
+	pipe_indx = dev->pipes[pipe_index];
+	desc_fifo = pipe_indx->map->desc.base;
 
 	if (option == 100) {
 		SPS_DUMP("%s",
