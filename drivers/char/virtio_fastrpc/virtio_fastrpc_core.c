@@ -147,6 +147,7 @@ struct virt_invoke_msg {
 	u32 handle;			/* remote handle */
 	u32 sc;				/* scalars describing the data */
 	u32 attrs;
+	s64 seq_num;			/* keep increasing for each invoke msg per process*/
 	struct virt_fastrpc_buf pra[0];	/* remote arguments list */
 } __packed;
 
@@ -858,6 +859,7 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 	vmsg->handle = ctx->handle;
 	vmsg->sc = ctx->sc;
 	vmsg->attrs = ctx->crc ? VIRTIO_FASTRPC_INVOKE_CRC : 0;
+	vmsg->seq_num = ctx->seq_num;
 	rpra = (struct virt_fastrpc_buf *)vmsg->pra;
 	fdlist = (uint64_t *)(&rpra[total]);
 	crclist = (uint32_t *)&fdlist[M_FDLIST];

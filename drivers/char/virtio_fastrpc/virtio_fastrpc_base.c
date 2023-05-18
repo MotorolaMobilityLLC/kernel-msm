@@ -54,12 +54,12 @@
  * cannot work properly. It increases when fundamental protocol is
  * changed between FE and BE.
  */
-#define FE_MAJOR_VER 0x5
+#define FE_MAJOR_VER 0x6
 /* FE_MINOR_VER is used to track patches in this driver. It does not
  * need to be matched with BE_MINOR_VER. And it will return to 0 when
  * FE_MAJOR_VER is increased.
  */
-#define FE_MINOR_VER 0x7
+#define FE_MINOR_VER 0x0
 #define FE_VERSION (FE_MAJOR_VER << 16 | FE_MINOR_VER)
 #define BE_MAJOR_VER(ver) (((ver) >> 16) & 0xffff)
 
