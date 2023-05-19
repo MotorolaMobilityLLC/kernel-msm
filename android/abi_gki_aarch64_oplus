@@ -385,12 +385,14 @@
   __traceiter_android_vh_build_sched_domains
   __traceiter_android_vh_cache_show
   __traceiter_android_vh_check_uninterruptible_tasks_dn
+  __traceiter_android_vh_cleanup_old_buffers_bypass
   __traceiter_android_vh_cma_drain_all_pages_bypass
   __traceiter_android_vh_cpufreq_acct_update_power
   __traceiter_android_vh_del_page_from_lrulist
   __traceiter_android_vh_do_futex
   __traceiter_android_vh_do_page_trylock
   __traceiter_android_vh_do_traversal_lruvec
+  __traceiter_android_vh_dm_bufio_shrink_scan_bypass
   __traceiter_android_vh_drain_all_pages_bypass
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_exit_mm
@@ -481,9 +483,11 @@
   __tracepoint_android_vh_build_sched_domains
   __tracepoint_android_vh_cache_show
   __tracepoint_android_vh_check_uninterruptible_tasks_dn
+  __tracepoint_android_vh_cleanup_old_buffers_bypass
   __tracepoint_android_vh_cma_drain_all_pages_bypass
   __tracepoint_android_vh_cpufreq_acct_update_power
   __tracepoint_android_vh_del_page_from_lrulist
+  __tracepoint_android_vh_dm_bufio_shrink_scan_bypass
   __tracepoint_android_vh_do_futex
   __tracepoint_android_vh_do_page_trylock
   __tracepoint_android_vh_do_traversal_lruvec
