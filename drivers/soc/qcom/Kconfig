@@ -598,7 +598,7 @@ config QTI_PLH_SCMI_CLIENT
 
 	  This driver deliver the PLH vendor protocol handle to interface
 	  driver, and interface driver will use this handle to communicate
-	  with RIMPS PLH.
+	  with CPUCP PLH.
 
 config MSM_JTAGV8
 	bool "Debug and ETM trace support across power collapse for ARMv8"
