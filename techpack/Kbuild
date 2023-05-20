@@ -1,5 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0-only
 TECHPACK?=y
 
-techpack-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*")
+ifeq ($(BOARD_CONFIG_CAMERA_KERNEL_NAME),)
+$(info "using default camera path")
+techpack-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*"\
+                 | grep -v legacy)
+else
+$(info "using camera-legacy/$(BOARD_CONFIG_CAMERA_KERNEL_NAME)")
+techpack-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*"\
+                 | grep -v camera)
+techpack-dirs += $(shell find $(srctree)/techpack -maxdepth 2 -mindepth 2 -name "$(BOARD_CONFIG_CAMERA_KERNEL_NAME)")
+endif
+
+$(info "techpack-dirs:=$(techpack-dirs)")
 obj-${TECHPACK} += stub/ $(addsuffix /,$(subst $(srctree)/techpack/,,$(techpack-dirs)))
