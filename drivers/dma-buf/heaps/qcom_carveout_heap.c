@@ -7,7 +7,7 @@
  *
  * Copyright (C) 2011 Google, Inc.
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/dma-mapping.h>
@@ -467,7 +467,6 @@ int qcom_secure_carveout_heap_restore(void)
 		ret = hyp_assign_from_flags(sc_heap->carveout_heap.base,
 				sc_heap->carveout_heap.size,
 				sc_heap->token);
-		BUG_ON(ret);
 	}
 	return 0;
 }
