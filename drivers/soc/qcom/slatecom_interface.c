@@ -67,6 +67,7 @@ static void ssr_register(void);
 static int setup_pmic_gpio15(void);
 static unsigned int pmic_gpio15 = -1;
 static int slate_boot_status;
+struct rproc *slatecom_rproc;
 
 /* tzapp command list.*/
 enum slate_tz_commands {
@@ -439,6 +440,7 @@ static int slatecom_get_rproc_handle(struct slatedaemon_priv *priv)
 		if (of_property_read_u32(pdev->dev.of_node, "qcom,rproc-handle",
 					 &rproc_phandle)) {
 			pr_err("error reading rproc phandle\n");
+			goto fail;
 		}
 
 		priv->pil_h = rproc_get_by_phandle(rproc_phandle);
@@ -446,8 +448,9 @@ static int slatecom_get_rproc_handle(struct slatedaemon_priv *priv)
 			pr_err("rproc not found\n");
 			goto fail;
 		}
+		slatecom_rproc = (struct rproc *)priv->pil_h;
+		return 0;
 	}
-	return 0;
 
 fail:
 	pr_err("%s: SLATE get handle failed\n", __func__);
@@ -845,9 +848,9 @@ static int send_boot_cmd_to_slate(struct slate_ui_data *ui_obj_msg)
 		if (!dev->pil_h)
 			ret = slatecom_get_rproc_handle(dev);
 		if (ret == 0)
-			rproc_report_crash(dev->pil_h, RPROC_WATCHDOG);
+			slatecom_rproc->ops->coredump(slatecom_rproc);
 		else
-			pr_err("failed to get rproc_handle, skip RPROC_WATCHDOG\n");
+			pr_err("failed to get rproc, skip coredump collection\n");
 		break;
 	case BOOT_STATUS:
 		ret = send_slate_boot_status(ui_obj_msg->write);
