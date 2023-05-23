@@ -1631,7 +1631,7 @@ static int mhi_hwc_init(struct mhi_dev *mhi_ctx)
 	struct ep_pcie_db_config erdb_cfg;
 	struct mhi_dma_function_params mhi_dma_fun_params;
 
-	if (mhi_ctx->use_edma) {
+	if (mhi_ctx->use_edma || !mhi_ctx->no_path_from_ipa_to_pcie) {
 		/*
 		 * Interrupts are enabled during the MHI DMA callback
 		 * once the MHI DMA HW is ready. Callback is not triggerred
@@ -4241,7 +4241,7 @@ static void mhi_dev_enable(struct work_struct *work)
 		return;
 	}
 
-	if (mhi->use_edma) {
+	if (mhi->use_edma || !mhi->no_path_from_ipa_to_pcie) {
 		if (mhi->config_iatu || mhi->mhi_int) {
 			mhi->mhi_int_en = true;
 			enable_irq(mhi->mhi_irq);
@@ -4443,6 +4443,9 @@ static int mhi_get_device_tree_data(struct mhi_dev_ctx *mhictx, int vf_id)
 	mhi->use_mhi_dma = of_property_read_bool((&pdev->dev)->of_node,
 					"qcom,use-mhi-dma-software-channel");
 
+	mhi->no_path_from_ipa_to_pcie = of_property_read_bool((&pdev->dev)->of_node,
+					"qcom,no-path-from-ipa-to-pcie");
+
 	rc = of_property_read_u32((&pdev->dev)->of_node,
 				"qcom,mhi-ifc-id",
 				&mhictx->ifc_id);
@@ -4493,7 +4496,7 @@ static int mhi_get_device_tree_data(struct mhi_dev_ctx *mhictx, int vf_id)
 				"qcom,mhi-config-iatu");
 
 	if (mhi->config_iatu) {
-		rc = of_property_read_u32((&pdev->dev)->of_node,
+		rc = of_property_read_u64((&pdev->dev)->of_node,
 				"qcom,mhi-local-pa-base",
 				&mhi->device_local_pa_base);
 		if (rc) {
