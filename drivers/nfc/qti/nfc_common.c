@@ -924,7 +924,10 @@ static bool validate_download_gpio(struct nfc_dev *nfc_dev, enum chip_types chip
 	} else if (chip_type == CHIP_SN220) {
 		/* gpio should not be configured for SN220 */
 		set_valid_gpio(nfc_gpio->dwl_req, 0);
-		gpio_free(nfc_gpio->dwl_req);
+		/* do not need free_gpio wile gpio is invalid */
+		if (gpio_is_valid(nfc_gpio->dwl_req)) {
+			gpio_free(nfc_gpio->dwl_req);
+		}
 		nfc_gpio->dwl_req = -EINVAL;
 		status = true;
 	}  else if (chip_type == CHIP_NXP557) {
