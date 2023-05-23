@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -25,11 +25,13 @@
 #include "vdd-level.h"
 
 static DEFINE_VDD_REGULATORS(vdd_cx, VDD_HIGH + 1, 1, vdd_corner);
+static DEFINE_VDD_REGULATORS(vdd_cx_ao, VDD_HIGH + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_mxa, VDD_NOMINAL + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_mxc, VDD_HIGH + 1, 1, vdd_corner);
 
 static struct clk_vdd_class *gcc_sdxbaagha_regulators[] = {
 	&vdd_cx,
+	&vdd_cx_ao,
 	&vdd_mxa,
 	&vdd_mxc,
 };
@@ -226,6 +228,13 @@ static const struct clk_parent_data gcc_parent_data_0[] = {
 	{ .hw = &gpll0_out_even.clkr.hw },
 };
 
+static const struct clk_parent_data gcc_parent_data_0_ao[] = {
+	{ .fw_name = "bi_tcxo_ao" },
+	{ .hw = &gpll0.clkr.hw },
+	{ .hw = &gpll4_out_even.clkr.hw },
+	{ .hw = &gpll0_out_even.clkr.hw },
+};
+
 static const struct parent_map gcc_parent_map_1[] = {
 	{ P_BI_TCXO, 0 },
 	{ P_GPLL0_OUT_MAIN, 1 },
@@ -343,6 +352,40 @@ static struct clk_regmap_mux gcc_pcie_pipe_clk_src = {
 			.num_parents = ARRAY_SIZE(gcc_parent_data_7),
 			.ops = &clk_regmap_mux_closest_ops,
 		},
+	},
+};
+
+static const struct freq_tbl ftbl_gcc_cpuss_ahb_clk_src[] = {
+	F(19200000, P_BI_TCXO, 1, 0, 0),
+	F(41666667, P_GPLL4_OUT_EVEN, 6, 0, 0),
+	F(50000000, P_GPLL0_OUT_EVEN, 6, 0, 0),
+	F(100000000, P_GPLL0_OUT_MAIN, 6, 0, 0),
+	F(133333333, P_GPLL0_OUT_MAIN, 4.5, 0, 0),
+	{ }
+};
+
+static struct clk_rcg2 gcc_cpuss_ahb_clk_src = {
+	.cmd_rcgr = 0x40008,
+	.mnd_width = 0,
+	.hid_width = 5,
+	.parent_map = gcc_parent_map_0,
+	.freq_tbl = ftbl_gcc_cpuss_ahb_clk_src,
+	.enable_safe_config = true,
+	.flags = HW_CLK_CTRL_MODE,
+	.clkr.hw.init = &(const struct clk_init_data){
+		.name = "gcc_cpuss_ahb_clk_src",
+		.parent_data = gcc_parent_data_0_ao,
+		.num_parents = ARRAY_SIZE(gcc_parent_data_0_ao),
+		.ops = &clk_rcg2_ops,
+	},
+	.clkr.vdd_data = {
+		.vdd_class = &vdd_cx_ao,
+		.num_rate_max = VDD_NUM,
+		.rate_max = (unsigned long[VDD_NUM]) {
+			[VDD_LOWER_D1] = 41666667,
+			[VDD_LOWER] = 50000000,
+			[VDD_NOMINAL] = 100000000,
+			[VDD_HIGH] = 133333333},
 	},
 };
 
@@ -828,6 +871,21 @@ static struct clk_rcg2 gcc_usb20_mock_utmi_clk_src = {
 	},
 };
 
+static struct clk_regmap_div gcc_cpuss_ahb_postdiv_clk_src = {
+	.reg = 0x40028,
+	.shift = 0,
+	.width = 4,
+	.clkr.hw.init = &(const struct clk_init_data) {
+		.name = "gcc_cpuss_ahb_postdiv_clk_src",
+		.parent_hws = (const struct clk_hw*[]){
+			&gcc_cpuss_ahb_clk_src.clkr.hw,
+		},
+		.num_parents = 1,
+		.flags = CLK_SET_RATE_PARENT,
+		.ops = &clk_regmap_div_ro_ops,
+	},
+};
+
 static struct clk_regmap_div gcc_usb20_mock_utmi_postdiv_clk_src = {
 	.reg = 0x27044,
 	.shift = 0,
@@ -853,6 +911,26 @@ static struct clk_branch gcc_boot_rom_ahb_clk = {
 		.enable_mask = BIT(26),
 		.hw.init = &(const struct clk_init_data){
 			.name = "gcc_boot_rom_ahb_clk",
+			.ops = &clk_branch2_ops,
+		},
+	},
+};
+
+static struct clk_branch gcc_cpuss_ahb_clk = {
+	.halt_reg = 0x40004,
+	.halt_check = BRANCH_HALT_VOTED,
+	.hwcg_reg = 0x40004,
+	.hwcg_bit = 1,
+	.clkr = {
+		.enable_reg = 0x7d008,
+		.enable_mask = BIT(21),
+		.hw.init = &(const struct clk_init_data){
+			.name = "gcc_cpuss_ahb_clk",
+			.parent_hws = (const struct clk_hw*[]){
+				&gcc_cpuss_ahb_postdiv_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -1513,6 +1591,9 @@ static struct clk_branch gcc_usb_phy_cfg_ahb2phy_clk = {
 
 static struct clk_regmap *gcc_sdxbaagha_clocks[] = {
 	[GCC_BOOT_ROM_AHB_CLK] = &gcc_boot_rom_ahb_clk.clkr,
+	[GCC_CPUSS_AHB_CLK] = &gcc_cpuss_ahb_clk.clkr,
+	[GCC_CPUSS_AHB_CLK_SRC] = &gcc_cpuss_ahb_clk_src.clkr,
+	[GCC_CPUSS_AHB_POSTDIV_CLK_SRC] = &gcc_cpuss_ahb_postdiv_clk_src.clkr,
 	[GCC_EMAC0_AXI_CLK] = &gcc_emac0_axi_clk.clkr,
 	[GCC_EMAC0_PHY_AUX_CLK] = &gcc_emac0_phy_aux_clk.clkr,
 	[GCC_EMAC0_PHY_AUX_CLK_SRC] = &gcc_emac0_phy_aux_clk_src.clkr,
@@ -1665,6 +1746,22 @@ static int gcc_sdxbaagha_probe(struct platform_device *pdev)
 
 	return ret;
 }
+
+static int __init gcc_sdxbaagha_late_init(void)
+{
+	int ret = 0;
+
+	ret = clk_set_rate(gcc_cpuss_ahb_clk.clkr.hw.clk, 19200000);
+	if (ret)
+		pr_err("Failed to set the cpuss ahb clock rate, ret: %d\n", ret);
+
+	ret = clk_prepare_enable(gcc_cpuss_ahb_clk.clkr.hw.clk);
+	if (ret)
+		pr_err("Failed to enable the cpuss ahb clock, ret: %d\n", ret);
+
+	return ret;
+}
+late_initcall_sync(gcc_sdxbaagha_late_init);
 
 static void gcc_sdxbaagha_sync_state(struct device *dev)
 {

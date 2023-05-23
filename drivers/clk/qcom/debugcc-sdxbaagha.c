@@ -62,6 +62,7 @@ static const char *const gcc_debug_mux_parent_names[] = {
 	"apss_cc_debug_mux",
 	"gcc_ahb_pcie_link_clk",
 	"gcc_boot_rom_ahb_clk",
+	"gcc_cpuss_ahb_clk",
 	"gcc_emac0_axi_clk",
 	"gcc_emac0_phy_aux_clk",
 	"gcc_emac0_ptp_clk",
@@ -113,6 +114,7 @@ static int gcc_debug_mux_sels[] = {
 	0x89,		/* apss_cc_debug_mux */
 	0x71,		/* gcc_ahb_pcie_link_clk */
 	0x59,		/* gcc_boot_rom_ahb_clk */
+	0x86,		/* gcc_cpuss_ahb_clk */
 	0xE2,		/* gcc_emac0_axi_clk */
 	0xE4,		/* gcc_emac0_phy_aux_clk */
 	0xE5,		/* gcc_emac0_ptp_clk */
