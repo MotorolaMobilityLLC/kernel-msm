@@ -32,6 +32,11 @@ struct bwmon_spec {
 	enum mon_reg_type reg_type;
 };
 
+struct bwmon_second_map {
+	u32 src_freq;
+	u32 dst_freq;
+};
+
 /**
  * struct bw_hwmon - dev BW HW monitor info
  * @start_hwmon:		Start the HW monitoring of the dev BW
@@ -60,6 +65,11 @@ struct bw_hwmon {
 	enum dcvs_hw_type	dcvs_hw;
 	enum dcvs_path_type	dcvs_path;
 	u32			dcvs_width;
+	enum dcvs_hw_type	second_dcvs_hw;
+	u32			second_dcvs_width;
+	bool			second_vote_supported;
+	bool			second_vote_en;
+	struct bwmon_second_map	*second_map;
 	struct hwmon_node	*node;
 	ktime_t			last_update_ts;
 	struct work_struct	work;
@@ -92,7 +102,7 @@ struct hwmon_node {
 	u32			hw_max_freq;
 	u32			min_freq;
 	u32			max_freq;
-	struct dcvs_freq	cur_freq;
+	struct dcvs_freq	cur_freqs[2];
 	u32			window_ms;
 	unsigned int		guard_band_mbps;
 	unsigned int		decay_rate;
