@@ -4647,8 +4647,11 @@ static int mhi_init(struct mhi_dev *mhi, bool init_state)
 			pr_err("MHI: mhi edma init failed, rc = %d\n", rc);
 			return rc;
 		}
+	}
 
-		rc = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (mhi->use_edma || mhi->no_path_from_ipa_to_pcie) {
+		rc = dma_set_mask_and_coherent(&pdev->dev,
+				DMA_BIT_MASK(DMA_SLAVE_BUSWIDTH_64_BYTES));
 		if (rc) {
 			pr_err("Error set MHI DMA mask: rc = %d\n", rc);
 			return rc;
