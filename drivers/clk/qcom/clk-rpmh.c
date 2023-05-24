@@ -736,6 +736,29 @@ static const struct clk_rpmh_desc clk_rpmh_lemans = {
 	.num_clks = ARRAY_SIZE(lemans_rpmh_clocks),
 };
 
+static struct clk_hw *crow_rpmh_clocks[] = {
+	[RPMH_CXO_PAD_CLK]	= &kalama_xo_pad.hw,
+	[RPMH_CXO_PAD_CLK_A]	= &kalama_xo_pad_ao.hw,
+	[RPMH_CXO_CLK]		= &kalama_bi_tcxo.hw,
+	[RPMH_CXO_CLK_A]	= &kalama_bi_tcxo_ao.hw,
+	[RPMH_LN_BB_CLK2]	= &kalama_ln_bb_clk2.hw,
+	[RPMH_LN_BB_CLK2_A]	= &kalama_ln_bb_clk2_ao.hw,
+	[RPMH_LN_BB_CLK3]	= &kalama_ln_bb_clk3.hw,
+	[RPMH_LN_BB_CLK3_A]	= &kalama_ln_bb_clk3_ao.hw,
+	[RPMH_RF_CLK1]		= &kalama_rf_clk1.hw,
+	[RPMH_RF_CLK1_A]	= &kalama_rf_clk1_ao.hw,
+	[RPMH_RF_CLK2]		= &kalama_rf_clk2.hw,
+	[RPMH_RF_CLK2_A]	= &kalama_rf_clk2_ao.hw,
+	[RPMH_RF_CLK3]		= &kalama_rf_clk3.hw,
+	[RPMH_RF_CLK3_A]	= &kalama_rf_clk3_ao.hw,
+	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
+};
+
+static const struct clk_rpmh_desc clk_rpmh_crow = {
+	.clks = crow_rpmh_clocks,
+	.num_clks = ARRAY_SIZE(crow_rpmh_clocks),
+};
+
 static struct clk_hw *of_clk_rpmh_hw_get(struct of_phandle_args *clkspec,
 					 void *data)
 {
@@ -843,6 +866,7 @@ static const struct of_device_id clk_rpmh_match_table[] = {
 	{ .compatible = "qcom,sdxpinn-rpmh-clk", .data = &clk_rpmh_sdxpinn},
 	{ .compatible = "qcom,sdxbaagha-rpmh-clk", .data = &clk_rpmh_sdxbaagha},
 	{ .compatible = "qcom,lemans-rpmh-clk", .data = &clk_rpmh_lemans},
+	{ .compatible = "qcom,crow-rpmh-clk", .data = &clk_rpmh_crow},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, clk_rpmh_match_table);
