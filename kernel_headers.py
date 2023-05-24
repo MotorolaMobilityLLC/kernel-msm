@@ -754,7 +754,7 @@ def gen_headers(
     verbose, header_arch, gen_dir, arch_asm_kbuild, asm_generic_kbuild, module_dir,
     old_gen_headers_bp, new_gen_headers_bp, version_makefile,
     arch_syscall_tool, arch_syscall_tbl, headers_install, unifdef, include_uapi,
-    arch_include_uapi, techpack_include_uapi):
+    arch_include_uapi, techpack_include_uapi, camera_legacy):
   """Generate the kernel headers.
 
   This script generates the version.h file, the arch-specific headers including
@@ -781,7 +781,6 @@ def gen_headers(
   Return:
     The number of errors encountered.
   """
-
   if headers_diff(old_gen_headers_bp, new_gen_headers_bp):
     print('error: gen_headers blueprints file is out of date, suggested fix:')
     print('#######Please add or remove the above mentioned headers from %s' % (old_gen_headers_bp))
@@ -812,6 +811,10 @@ def gen_headers(
         verbose, gen_dir, headers_install, unifdef,
         arch_uapi_include_prefix, h):
       error_count += 1
+
+  if camera_legacy == True:
+    legacy_product = os.getenv('TARGET_PRODUCT').split("_", 1)[0]
+    techpack_include_uapi = [i.replace('techpack/camera','techpack/camera-legacy/' + legacy_product) for i in techpack_include_uapi]
 
   for h in techpack_include_uapi:
     techpack_uapi_include_prefix = os.path.join(h.split('/include/uapi')[0], 'include', 'uapi') + os.sep
@@ -952,6 +955,11 @@ def main():
       required=True,
       nargs='*',
       help='The list of include/uapi header files.')
+  parser_headers.add_argument(
+      '--camera_legacy',
+      default=False,
+      action='store_true',
+      help='If set, define the camera legacy folder being used. By default, it\'s disabled.')
 
   args = parser.parse_args()
 
@@ -1002,7 +1010,7 @@ def main():
         args.asm_generic_kbuild, module_dir, args.old_gen_headers_bp, args.new_gen_headers_bp,
         args.version_makefile, args.arch_syscall_tool, args.arch_syscall_tbl,
         args.headers_install, args.unifdef, args.include_uapi, args.arch_include_uapi,
-        args.techpack_include_uapi)
+        args.techpack_include_uapi, args.camera_legacy)
 
   print('error: unknown mode: %s' % args.mode)
   return 1

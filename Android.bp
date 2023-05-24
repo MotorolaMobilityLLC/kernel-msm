@@ -28,6 +28,109 @@ kernel_headers_verbose = ""
 
 build = ["gen_headers_arm.bp", "gen_headers_arm64.bp"]
 
+soong_config_module_type {
+    name: "mmi_camera_legacy_genrule_defaults",
+    module_type: "genrule_defaults",
+    config_namespace: "mmi_camera_legacy",
+    variables: ["board_config_camera_legacy_kernel"],
+    properties: ["cmd"],
+}
+
+soong_config_string_variable {
+    name: "board_config_camera_legacy_kernel",
+    values: ["enabled", "disabled"],
+}
+
+mmi_camera_legacy_genrule_defaults {
+    name: "mmi_kernel_headers_cmdrules_arm",
+    soong_config_variables: {
+        board_config_camera_legacy_kernel: {
+            disabled: {
+                cmd: "python3 $(location kernel_headers.py) " +
+                    kernel_headers_verbose +
+                    "--header_arch arm " +
+                    "--gen_dir $(genDir) " +
+                    "--arch_asm_kbuild $(location arch/arm/include/uapi/asm/Kbuild) " +
+                    "--arch_include_uapi $(locations arch/arm/include/uapi/**/*.h) " +
+                    "--techpack_include_uapi $(locations techpack/*/include/uapi/*/**/*.h) " +
+                    "--asm_generic_kbuild $(location include/uapi/asm-generic/Kbuild) " +
+                    "headers " +
+                    "--old_gen_headers_bp $(location gen_headers_arm.bp) " +
+                    "--new_gen_headers_bp $(location :qti_generate_gen_headers_arm) " +
+                    "--version_makefile $(location Makefile) " +
+                    "--arch_syscall_tool $(location arch/arm/tools/syscallhdr.sh) " +
+                    "--arch_syscall_tbl $(location arch/arm/tools/syscall.tbl) " +
+                    "--headers_install $(location headers_install.sh) " +
+                    "--unifdef $(location unifdef) " +
+                    "--include_uapi $(locations include/uapi/**/*.h)",
+            },
+            enabled: {
+                cmd: "python3 $(location kernel_headers.py) " +
+                        kernel_headers_verbose +
+                        "--header_arch arm " +
+                        "--gen_dir $(genDir) " +
+                        "--arch_asm_kbuild $(location arch/arm/include/uapi/asm/Kbuild) " +
+                        "--arch_include_uapi $(locations arch/arm/include/uapi/**/*.h) " +
+                        "--techpack_include_uapi $(locations techpack/*/include/uapi/*/**/*.h) " +
+                        "--asm_generic_kbuild $(location include/uapi/asm-generic/Kbuild) " +
+                        "headers " +
+                        "--old_gen_headers_bp $(location gen_headers_arm.bp) " +
+                        "--new_gen_headers_bp $(location :qti_generate_gen_headers_arm) " +
+                        "--version_makefile $(location Makefile) " +
+                        "--arch_syscall_tool $(location arch/arm/tools/syscallhdr.sh) " +
+                        "--arch_syscall_tbl $(location arch/arm/tools/syscall.tbl) " +
+                        "--headers_install $(location headers_install.sh) " +
+                        "--unifdef $(location unifdef) " +
+                        "--include_uapi $(locations include/uapi/**/*.h) " +
+                        "--camera_legacy ",
+            },
+        },
+    },
+}
+
+mmi_camera_legacy_genrule_defaults {
+    name: "mmi_kernel_headers_cmdrules_arm64",
+    soong_config_variables: {
+        board_config_camera_legacy_kernel: {
+            disabled: {
+                cmd: "python3 $(location kernel_headers.py) " +
+                    kernel_headers_verbose +
+                    "--header_arch arm64 " +
+                    "--gen_dir $(genDir) " +
+                    "--arch_asm_kbuild $(location arch/arm64/include/uapi/asm/Kbuild) " +
+                    "--arch_include_uapi $(locations arch/arm64/include/uapi/**/*.h) " +
+                    "--techpack_include_uapi $(locations techpack/*/include/uapi/*/**/*.h) " +
+                    "--asm_generic_kbuild $(location include/uapi/asm-generic/Kbuild) " +
+                    "headers " +
+                    "--old_gen_headers_bp $(location gen_headers_arm64.bp) " +
+                    "--new_gen_headers_bp $(location :qti_generate_gen_headers_arm64) " +
+                    "--version_makefile $(location Makefile) " +
+                    "--headers_install $(location headers_install.sh) " +
+                    "--unifdef $(location unifdef) " +
+                    "--include_uapi $(locations include/uapi/**/*.h)",
+            },
+            enabled: {
+                cmd: "python3 $(location kernel_headers.py) " +
+                    kernel_headers_verbose +
+                    "--header_arch arm64 " +
+                    "--gen_dir $(genDir) " +
+                    "--arch_asm_kbuild $(location arch/arm64/include/uapi/asm/Kbuild) " +
+                    "--arch_include_uapi $(locations arch/arm64/include/uapi/**/*.h) " +
+                    "--techpack_include_uapi $(locations techpack/*/include/uapi/*/**/*.h) " +
+                    "--asm_generic_kbuild $(location include/uapi/asm-generic/Kbuild) " +
+                    "headers " +
+                    "--old_gen_headers_bp $(location gen_headers_arm64.bp) " +
+                    "--new_gen_headers_bp $(location :qti_generate_gen_headers_arm64) " +
+                    "--version_makefile $(location Makefile) " +
+                    "--headers_install $(location headers_install.sh) " +
+                    "--unifdef $(location unifdef) " +
+                    "--include_uapi $(locations include/uapi/**/*.h) " +
+                    "--camera_legacy ",
+            },
+        },
+    },
+}
+
 cc_library_headers {
     name: "qti_kernel_headers",
     arch: {
