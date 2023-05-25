@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __QCOM_TSENS_H__
@@ -175,6 +175,10 @@ struct tsens_irqs {
  * @num_sensors: Max number of sensors supported by platform
  * @ops: operations the tsens instance supports
  * @hw_ids: Subset of sensors ids supported by platform, if not the first n
+ * @mtc: Flag to control Multi Zone Temperature Control
+ * @valid_status_check: Flag for valid/invalid status check
+ * @ver_major: Major version number
+ * @ver_minor: Minor version number
  */
 struct tsens_data {
 	const u32			num_sensors;
@@ -185,6 +189,7 @@ struct tsens_data {
 	u32				cycle_compltn_monitor_mask;
 	bool				wd_bark;
 	u32				wd_bark_mask;
+	bool				mtc;
 	bool				valid_status_check;
 	u32				ver_major;
 	u32				ver_minor;
@@ -218,11 +223,13 @@ struct tsens_device {
 	struct tsens_sensor             sensor[0];
 };
 
-extern const struct tsens_data data_tsens2xxx, data_tsens23xx, data_tsens24xx,
+extern const struct tsens_data data_tsens2xxx, data_tsens23xx, data_tsens24xx, data_tsens14xx_405,
 		data_tsens26xx;
 extern struct list_head tsens_device_list;
 
 extern int tsens_2xxx_get_zeroc_status(
 		struct tsens_sensor *sensor, int *status);
-
+extern int calibrate_8937(struct tsens_device *tmdev);
+extern int calibrate_405(struct tsens_device *tmdev);
+extern int calibrate_405(struct tsens_device *tmdev);
 #endif /* __QCOM_TSENS_H__ */
