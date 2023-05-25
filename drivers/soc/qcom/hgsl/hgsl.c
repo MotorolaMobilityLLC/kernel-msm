@@ -68,7 +68,6 @@
 #define QHDR_STATUS_INACTIVE 0x00
 #define QHDR_STATUS_ACTIVE 0x01
 
-#define HGSL_CONTEXT_NUM                     (256)
 #define HGSL_SEND_MSG_MAX_RETRY_COUNT        (150)
 
 // Skip all commands from the bad context
@@ -1369,13 +1368,33 @@ err:
 	return ret;
 }
 
-static inline void _unmap_shadow(struct hgsl_context *ctxt)
+static void _cleanup_shadow(struct hgsl_hab_channel_t *hab_channel,
+				struct hgsl_context *ctxt)
 {
-	if (ctxt->shadow_ts) {
-		dma_buf_vunmap(ctxt->shadow_ts_node.dma_buf, &ctxt->map);
-		dma_buf_end_cpu_access(ctxt->shadow_ts_node.dma_buf, DMA_FROM_DEVICE);
-		ctxt->shadow_ts = NULL;
+	struct hgsl_mem_node *mem_node = ctxt->shadow_ts_node;
+
+	if (!mem_node)
+		return;
+
+	if (mem_node->dma_buf) {
+		if (ctxt->shadow_ts) {
+			dma_buf_vunmap(mem_node->dma_buf, &ctxt->map);
+			ctxt->shadow_ts = NULL;
+		}
+		dma_buf_end_cpu_access(mem_node->dma_buf, DMA_FROM_DEVICE);
 	}
+
+	if (ctxt->is_fe_shadow) {
+		hgsl_hyp_mem_unmap_smmu(hab_channel, mem_node);
+		hgsl_sharedmem_free(mem_node);
+	} else {
+		hgsl_hyp_put_shadowts_mem(hab_channel, mem_node);
+		kfree(mem_node);
+	}
+
+	ctxt->shadow_ts_flags = 0;
+	ctxt->is_fe_shadow = false;
+	ctxt->shadow_ts_node = NULL;
 }
 
 static inline void _destroy_context(struct kref *kref)
@@ -1397,10 +1416,10 @@ static inline void _destroy_context(struct kref *kref)
 					HGSL_DBQ_CONTEXT_DESTROY_OFFSET_IN_DWORD,
 					1);
 	}
-	_unmap_shadow(ctxt);
-	ctxt->destroyed = true;
-	/* ensure update is done before return */
+	/* ensure update dbq meta is done */
 	dma_wmb();
+
+	ctxt->destroyed = true;
 }
 
 static struct hgsl_context *hgsl_get_context(struct qcom_hgsl *hgsl,
@@ -1522,12 +1541,21 @@ static void hgsl_get_shadowts_mem(struct hgsl_hab_channel_t *hab_channel,
 	struct dma_buf *dma_buf = NULL;
 	int ret = 0;
 
+	if (ctxt->shadow_ts_node)
+		return;
+
+	ctxt->shadow_ts_node = hgsl_zalloc(sizeof(*ctxt->shadow_ts_node));
+	if (ctxt->shadow_ts_node == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
 	ret = hgsl_hyp_get_shadowts_mem(hab_channel, ctxt->context_id,
-				&ctxt->shadow_ts_flags, &ctxt->shadow_ts_node);
+				&ctxt->shadow_ts_flags, ctxt->shadow_ts_node);
 	if (ret)
 		goto out;
 
-	dma_buf = ctxt->shadow_ts_node.dma_buf;
+	dma_buf = ctxt->shadow_ts_node->dma_buf;
 	if (dma_buf) {
 		dma_buf_begin_cpu_access(dma_buf, DMA_FROM_DEVICE);
 		ret = dma_buf_vmap(dma_buf, &ctxt->map);
@@ -1538,13 +1566,8 @@ static void hgsl_get_shadowts_mem(struct hgsl_hab_channel_t *hab_channel,
 	LOGD("0x%llx, 0x%llx", (uint64_t)ctxt, (uint64_t)ctxt->map.vaddr);
 
 out:
-	if (ret) {
-		if (dma_buf)
-			dma_buf_end_cpu_access(dma_buf, DMA_FROM_DEVICE);
-		hgsl_hyp_put_shadowts_mem(hab_channel, &ctxt->shadow_ts_node);
-		ctxt->shadow_ts_flags = 0;
-		memset(&ctxt->shadow_ts_node, 0, sizeof(ctxt->shadow_ts_node));
-	}
+	if (ret)
+		_cleanup_shadow(hab_channel, ctxt);
 }
 
 static int hgsl_ioctl_get_shadowts_mem(struct file *filep, unsigned long arg)
@@ -1567,11 +1590,16 @@ static int hgsl_ioctl_get_shadowts_mem(struct file *filep, unsigned long arg)
 		goto out;
 	}
 
+	if (!ctxt->shadow_ts_node) {
+		ret = -ENODEV;
+		goto out;
+	}
+
 	params.flags = ctxt->shadow_ts_flags;
-	params.size = ctxt->shadow_ts_node.memdesc.size64;
+	params.size = ctxt->shadow_ts_node->memdesc.size64;
 	params.fd = -1;
 
-	dma_buf = ctxt->shadow_ts_node.dma_buf;
+	dma_buf = ctxt->shadow_ts_node->dma_buf;
 	if (dma_buf) {
 		params.fd = dma_buf_fd(dma_buf, O_CLOEXEC);
 		if (params.fd < 0) {
@@ -1612,16 +1640,16 @@ out:
 
 static int hgsl_ctxt_create_dbq(struct hgsl_priv *priv,
 	struct hgsl_hab_channel_t *hab_channel,
-	struct hgsl_context *ctxt)
+	struct hgsl_context *ctxt, uint32_t dbq_info, bool dbq_info_checked)
 {
 	struct qcom_hgsl *hgsl = priv->dev;
-	uint32_t dbq_info;
 	uint32_t dbq_idx;
 	uint32_t db_signal;
 	uint32_t queue_gmuaddr;
 	uint32_t irq_idx;
 	int ret;
 
+	/* if backend can support the latest context dbq, then use dbcq */
 	ret = hgsl_hyp_query_dbcq(hab_channel, ctxt->devhandle, ctxt->context_id,
 		HGSL_CTXT_QUEUE_TOTAL_SIZE, &db_signal, &queue_gmuaddr, &irq_idx);
 	if (!ret) {
@@ -1629,10 +1657,18 @@ static int hgsl_ctxt_create_dbq(struct hgsl_priv *priv,
 		return 0;
 	}
 
-	ret = hgsl_hyp_dbq_create(hab_channel,
-				ctxt->context_id, &dbq_info);
-	if (ret)
-		return ret;
+	/* otherwise, it may support RPC_CONTEXT_CREATE v1,
+	 * a valid dbq_info is already returned, then skip the query
+	 */
+	if (!dbq_info_checked) {
+		ret = hgsl_hyp_dbq_create(hab_channel,
+					ctxt->context_id, &dbq_info);
+		if (ret)
+			return ret;
+	}
+
+	if (dbq_info == -1)
+		return -EINVAL;
 
 	dbq_idx = dbq_info >> 16;
 	db_signal = dbq_info & 0xFFFF;
@@ -1684,12 +1720,17 @@ static int hgsl_ctxt_destroy(struct hgsl_priv *priv,
 		put_channel = true;
 	}
 
-	hgsl_hyp_put_shadowts_mem(hab_channel, &ctxt->shadow_ts_node);
+	if (!ctxt->is_fe_shadow)
+		_cleanup_shadow(hab_channel, ctxt);
 
 	ret = hgsl_hyp_ctxt_destroy(hab_channel,
 		ctxt->devhandle, ctxt->context_id, rval, ctxt->dbcq_export_id);
 
 	hgsl_dbcq_close(ctxt);
+
+	if (ctxt->is_fe_shadow)
+		_cleanup_shadow(hab_channel, ctxt);
+
 	hgsl_free(ctxt);
 
 out:
@@ -1722,6 +1763,9 @@ static int hgsl_ioctl_ctxt_create(struct file *filep, unsigned long arg)
 	int ret = 0;
 	struct hgsl_hab_channel_t *hab_channel = NULL;
 	bool ctxt_created = false;
+	bool dbq_off = (!hgsl->global_hyp_inited || hgsl->db_off);
+	uint32_t dbq_info = -1;
+	bool dbq_info_checked = false;
 
 	if (copy_from_user(&params, USRPTR(arg), sizeof(params))) {
 		LOGE("failed to copy params from user");
@@ -1749,21 +1793,27 @@ static int hgsl_ioctl_ctxt_create(struct file *filep, unsigned long arg)
 		params.flags |= GSL_CONTEXT_FLAG_USER_GENERATED_TS;
 	}
 
-	ret = hgsl_hyp_ctxt_create(hab_channel, &params);
-	if (ret)
-		goto out;
+	ret = hgsl_hyp_ctxt_create_v1(hgsl->dev, priv, hab_channel,
+			ctxt, &params, dbq_off, &dbq_info);
+	if (ret) {
+		/* fallback to legacy mode */
+		ret = hgsl_hyp_ctxt_create(hab_channel, &params);
+		if (ret)
+			goto out;
 
-	if (params.ctxthandle >= HGSL_CONTEXT_NUM) {
-		LOGE("invalid ctxt id %d", params.ctxthandle);
-		ret = -EINVAL;
-		goto out;
-	}
+		if (params.ctxthandle >= HGSL_CONTEXT_NUM) {
+			LOGE("invalid ctxt id %d", params.ctxthandle);
+			ret = -EINVAL;
+			goto out;
+		}
 
-	ctxt->context_id = params.ctxthandle;
-	ctxt->devhandle = params.devhandle;
-	ctxt->pid = priv->pid;
-	ctxt->priv = priv;
-	ctxt->flags = params.flags;
+		ctxt->context_id = params.ctxthandle;
+		ctxt->devhandle = params.devhandle;
+		ctxt->pid = priv->pid;
+		ctxt->priv = priv;
+		ctxt->flags = params.flags;
+	} else
+		dbq_info_checked = true;
 
 	kref_init(&ctxt->kref);
 	init_waitqueue_head(&ctxt->wait_q);
@@ -1783,8 +1833,8 @@ static int hgsl_ioctl_ctxt_create(struct file *filep, unsigned long arg)
 	ctxt_created = true;
 
 	hgsl_get_shadowts_mem(hab_channel, ctxt);
-	if (hgsl->global_hyp_inited && !hgsl->db_off)
-		hgsl_ctxt_create_dbq(priv, hab_channel, ctxt);
+	if (!dbq_off)
+		hgsl_ctxt_create_dbq(priv, hab_channel, ctxt, dbq_info, dbq_info_checked);
 
 	if (hgsl_ctxt_use_global_dbq(ctxt)) {
 		ret = hgsl_hsync_timeline_create(ctxt);
@@ -1808,11 +1858,13 @@ out:
 		if (ctxt_created)
 			hgsl_ctxt_destroy(priv, hab_channel, params.ctxthandle, NULL);
 		else if (ctxt && (params.ctxthandle < HGSL_CONTEXT_NUM)) {
-			_unmap_shadow(ctxt);
-			hgsl_hyp_put_shadowts_mem(hab_channel, &ctxt->shadow_ts_node);
+			if (!ctxt->is_fe_shadow)
+				_cleanup_shadow(hab_channel, ctxt);
 			hgsl_hyp_ctxt_destroy(hab_channel, ctxt->devhandle, ctxt->context_id,
-				NULL, ctxt->dbcq_export_id);
+						NULL, ctxt->dbcq_export_id);
 			hgsl_dbcq_close(ctxt);
+			if (ctxt->is_fe_shadow)
+				_cleanup_shadow(hab_channel, ctxt);
 			kfree(ctxt);
 		}
 		LOGE("failed to create context");
@@ -3076,7 +3128,8 @@ static int hgsl_cleanup(struct hgsl_priv *priv)
 	struct hgsl_mem_node *node_found = NULL;
 	struct hgsl_mem_node *tmp = NULL;
 	int ret;
-	bool need_notify = (!list_empty(&priv->mem_mapped) || !list_empty(&priv->mem_allocated));
+	bool need_notify = (!list_empty(&priv->mem_mapped) ||
+				!list_empty(&priv->mem_allocated));
 	struct hgsl_hab_channel_t *hab_channel = NULL;
 
 	if (need_notify) {
