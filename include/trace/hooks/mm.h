@@ -201,6 +201,16 @@ DECLARE_HOOK(android_vh_kmalloc_slab,
 DECLARE_HOOK(android_vh_madvise_cold_or_pageout,
 	TP_PROTO(struct vm_area_struct *vma, bool *allow_shared),
 	TP_ARGS(vma, allow_shared));
+DECLARE_HOOK(android_vh_meminfo_cache_adjust,
+	TP_PROTO(unsigned long *cached),
+	TP_ARGS(cached));
+DECLARE_HOOK(android_vh_si_mem_available_adjust,
+	TP_PROTO(unsigned long *available),
+	TP_ARGS(available));
+DECLARE_HOOK(android_vh_si_meminfo_adjust,
+	TP_PROTO(unsigned long *totalram, unsigned long *freeram),
+	TP_ARGS(totalram, freeram));
+
 DECLARE_RESTRICTED_HOOK(android_rvh_ctl_dirty_rate,
 	TP_PROTO(void *unused),
 	TP_ARGS(unused), 1);
