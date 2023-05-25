@@ -2337,6 +2337,7 @@
   unregister_netdev
 
 # required by sfp_core.ko
+  br_fdb_find_port
   csum_tcpudp_nofold
   dev_get_by_index_rcu
   ip_send_check
