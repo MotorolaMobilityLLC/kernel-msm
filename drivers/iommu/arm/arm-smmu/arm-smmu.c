@@ -40,11 +40,13 @@
 #include <linux/pm_runtime.h>
 #include <linux/ratelimit.h>
 #include <linux/slab.h>
+#include <linux/qcom_scm.h>
 #include <soc/qcom/secure_buffer.h>
 #include <linux/irq.h>
 #include <linux/wait.h>
 
 #include <linux/amba/bus.h>
+#include <soc/qcom/msm_tz_smmu.h>
 #include <linux/fsl/mc.h>
 
 #include "arm-smmu.h"
@@ -127,6 +129,7 @@ static inline void arm_smmu_rpm_put(struct arm_smmu_device *smmu)
 }
 
 static bool arm_smmu_is_static_cb(struct arm_smmu_device *smmu);
+static bool arm_smmu_is_slave_side_secure(struct arm_smmu_domain *smmu_domain);
 
 static struct arm_smmu_domain *to_smmu_domain(struct iommu_domain *dom)
 {
@@ -152,6 +155,22 @@ static void parse_driver_options(struct arm_smmu_device *smmu)
 	} while (arm_smmu_options[++i].opt);
 }
 
+static int arm_smmu_restore_sec_cfg(struct arm_smmu_device *smmu, u32 cb)
+{
+	int ret;
+	int scm_ret = 0;
+
+	if (!arm_smmu_is_static_cb(smmu))
+		return 0;
+
+	ret = qcom_scm_restore_sec_cfg(smmu->sec_id, cb);
+	if (ret || scm_ret) {
+		pr_err("scm call IOMMU_SECURE_CFG failed\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
 static bool is_iommu_pt_coherent(struct arm_smmu_domain *smmu_domain)
 {
 	if (smmu_domain->force_coherent_walk)
@@ -169,6 +188,12 @@ static bool arm_smmu_is_static_cb(struct arm_smmu_device *smmu)
 static bool arm_smmu_has_secure_vmid(struct arm_smmu_domain *smmu_domain)
 {
 	return (smmu_domain->secure_vmid != VMID_INVAL);
+}
+
+static bool arm_smmu_is_slave_side_secure(struct arm_smmu_domain *smmu_domain)
+{
+	return arm_smmu_has_secure_vmid(smmu_domain) &&
+			smmu_domain->slave_side_secure;
 }
 
 #ifdef CONFIG_ARM_SMMU_SELFTEST
@@ -426,6 +451,9 @@ static int __arm_smmu_alloc_cb(unsigned long *map, int start, int end,
 		if (smmu->s2crs[idx].pinned)
 			cb = smmu->s2crs[idx].cbndx;
 	}
+
+	if (cb >= 0 && arm_smmu_is_static_cb(smmu))
+		smmu_domain->slave_side_secure = true;
 
 	if (cb < 0 && !arm_smmu_is_static_cb(smmu))
 		return __arm_smmu_alloc_bitmap(map, start, end);
@@ -1042,6 +1070,21 @@ static irqreturn_t arm_smmu_global_fault(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
+static int arm_smmu_set_pt_format(struct arm_smmu_domain *smmu_domain,
+				  struct io_pgtable_cfg *pgtbl_cfg)
+{
+	struct arm_smmu_device *smmu = smmu_domain->smmu;
+	struct arm_smmu_cfg *cfg = &smmu_domain->cfg;
+	int ret = 0;
+
+	if ((smmu->version > ARM_SMMU_V1) &&
+	    (cfg->fmt == ARM_SMMU_CTX_FMT_AARCH64) &&
+	    !arm_smmu_has_secure_vmid(smmu_domain) &&
+	    arm_smmu_is_static_cb(smmu)) {
+		ret = msm_tz_set_cb_format(smmu->sec_id, cfg->cbndx);
+	}
+	return ret;
+}
 static void arm_smmu_init_context_bank(struct arm_smmu_domain *smmu_domain,
 				       struct io_pgtable_cfg *pgtbl_cfg)
 {
@@ -1459,14 +1502,34 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 
 	pgtbl_info->iommu_tlb_ops = &arm_smmu_iotlb_ops;
 	pgtbl_info->pgtable_log_ops = &arm_smmu_pgtable_log_ops;
-	pgtbl_info->cfg = (struct io_pgtable_cfg) {
-		.pgsize_bitmap	= smmu->pgsize_bitmap,
-		.ias		= ias,
-		.oas		= oas,
-		.coherent_walk	= is_iommu_pt_coherent(smmu_domain),
-		.tlb		= smmu_domain->flush_ops,
-		.iommu_dev	= smmu->dev,
-	};
+	if (arm_smmu_is_slave_side_secure(smmu_domain)) {
+		pgtbl_info->cfg = (struct io_pgtable_cfg) {
+			.pgsize_bitmap	= smmu->pgsize_bitmap,
+			.ias		= ias,
+			.oas		= oas,
+			.coherent_walk	= is_iommu_pt_coherent(smmu_domain),
+	#ifdef CONFIG_MSM_TZ_SMMU
+			.arm_msm_secure_cfg = {
+				.sec_id = smmu->sec_id,
+				.cbndx = cfg->cbndx,
+			},
+	#endif
+			.tlb		= smmu_domain->flush_ops,
+			.iommu_dev	= smmu->dev,
+		};
+	#ifdef CONFIG_MSM_TZ_SMMU
+		fmt = ARM_MSM_SECURE;
+	#endif
+	} else {
+		pgtbl_info->cfg = (struct io_pgtable_cfg) {
+			.pgsize_bitmap	= smmu->pgsize_bitmap,
+			.ias		= ias,
+			.oas		= oas,
+			.coherent_walk	= is_iommu_pt_coherent(smmu_domain),
+			.tlb		= smmu_domain->flush_ops,
+			.iommu_dev	= smmu->dev,
+		};
+	}
 
 	if (smmu->impl && smmu->impl->init_context) {
 		ret = smmu->impl->init_context(smmu_domain, pgtbl_cfg, dev);
@@ -1523,6 +1586,13 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 		smmu->impl->init_context_bank(smmu_domain, dev);
 	arm_smmu_write_context_bank(smmu, cfg->cbndx);
 
+	/* for slave side secure, we may have to force the pagetable
+	 * format to V8L.
+	 */
+	ret = arm_smmu_set_pt_format(smmu_domain,
+					     &pgtbl_info->cfg);
+	if (ret)
+		goto out_clear_smmu;
 	/*
 	 * Request context fault interrupt. Do this last to avoid the
 	 * handler seeing a half-initialised domain state.
@@ -1701,6 +1771,14 @@ static void arm_smmu_test_smr_masks(struct arm_smmu_device *smmu)
 
 	if (!smmu->smrs)
 		return;
+	/* For slave side secure targets, as we can't write to the
+	 * global space, set the sme mask values to default.
+	 */
+	if (arm_smmu_is_static_cb(smmu)) {
+		smmu->streamid_mask = SID_MASK;
+		smmu->smr_mask_mask = SMR_MASK_MASK;
+		return;
+	}
 	/*
 	 * If we've had to accommodate firmware memory regions, we may
 	 * have live SMRs by now; tread carefully...
@@ -3091,6 +3169,9 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
 	unsigned int num_mapping_groups_override = 0;
 	unsigned int num_context_banks_override = 0;
 
+	if (arm_smmu_restore_sec_cfg(smmu, 0))
+		return -ENODEV;
+
 	dev_notice(smmu->dev, "probing hardware configuration...\n");
 	dev_notice(smmu->dev, "SMMUv%d with:\n",
 			smmu->version == ARM_SMMU_V2 ? 2 : 1);
@@ -3341,6 +3422,24 @@ static const struct of_device_id arm_smmu_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, arm_smmu_of_match);
 
+#ifdef CONFIG_MSM_TZ_SMMU
+int register_iommu_sec_ptbl(void)
+{
+	struct device_node *np;
+
+	for_each_matching_node(np, arm_smmu_of_match)
+		if (of_find_property(np, "qcom,tz-device-id", NULL) &&
+				of_device_is_available(np))
+			break;
+	if (!np)
+		return -ENODEV;
+
+	of_node_put(np);
+
+	return msm_iommu_sec_pgtbl_init();
+}
+#endif
+
 #ifdef CONFIG_ACPI
 static int acpi_smmu_get_data(u32 model, struct arm_smmu_device *smmu)
 {
@@ -3573,7 +3672,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	err = arm_smmu_power_on(smmu->pwr);
 	if (err)
 		return err;
-
+	smmu->sec_id = msm_dev_to_device_id(dev);
 	err = arm_smmu_device_cfg_probe(smmu);
 	if (err)
 		goto out_power_off;
@@ -3909,6 +4008,7 @@ static int __init arm_smmu_init(void)
 		return ret;
 	}
 
+	ret = register_iommu_sec_ptbl();
 	trace_smmu_init(ktime_us_delta(ktime_get(), cur));
 	return ret;
 }

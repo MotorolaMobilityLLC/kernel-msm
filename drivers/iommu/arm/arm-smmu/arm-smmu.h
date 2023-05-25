@@ -107,7 +107,8 @@
 #define ARM_SMMU_SMR_VALID		BIT(31)
 #define ARM_SMMU_SMR_MASK		GENMASK(31, 16)
 #define ARM_SMMU_SMR_ID			GENMASK(15, 0)
-
+#define SID_MASK			0x7FFF
+#define SMR_MASK_MASK			0x7FFF
 #define ARM_SMMU_GR0_S2CR(n)		(0xc00 + ((n) << 2))
 #define ARM_SMMU_S2CR_PRIVCFG		GENMASK(25, 24)
 enum arm_smmu_s2cr_privcfg {
@@ -426,6 +427,7 @@ struct arm_smmu_device {
 	phys_addr_t                     phys_addr;
 
 	unsigned long			sync_timed_out;
+	enum tz_smmu_device_id		sec_id;
 };
 
 enum arm_smmu_context_fmt {
@@ -504,6 +506,7 @@ struct arm_smmu_domain {
 	struct arm_smmu_fault_model	fault_model;
 	struct arm_smmu_mapping_cfg	mapping_cfg;
 	bool				delayed_s1_trans_enable;
+	bool				slave_side_secure;
 	u32				secure_vmid;
 
 	/*
