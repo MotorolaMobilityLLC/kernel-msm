@@ -1325,6 +1325,10 @@ static void clk_pll_restore_context(struct clk_hw *hw)
 		clk_rivian_evo_pll_configure(pll, pll->clkr.regmap,
 					pll->config);
 		break;
+	case CLK_ALPHA_PLL_TYPE_LUCID_OLE:
+		clk_lucid_evo_pll_configure(pll, pll->clkr.regmap,
+					pll->config);
+		break;
 	default:
 		pr_err("Invalid pll type!\n");
 	}
