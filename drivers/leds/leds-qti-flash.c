@@ -1851,6 +1851,25 @@ unreg_led:
 	return rc;
 }
 
+static void qti_flash_led_free_interrupts(struct qti_flash_led *led)
+{
+	/* free irqs */
+	if (led->all_ramp_up_done_irq >= 0)
+		devm_free_irq(&led->pdev->dev,
+			led->all_ramp_up_done_irq,
+			led);
+
+	if (led->all_ramp_down_done_irq >= 0)
+		devm_free_irq(&led->pdev->dev,
+			led->all_ramp_down_done_irq,
+			led);
+
+	if (led->led_fault_irq >= 0)
+		devm_free_irq(&led->pdev->dev,
+			led->led_fault_irq,
+			led);
+}
+
 static int qti_flash_led_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -1919,6 +1938,38 @@ static int qti_flash_led_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int qti_flash_led_freeze(struct device *dev)
+{
+	struct qti_flash_led *led = dev_get_drvdata(dev);
+
+	qti_flash_led_free_interrupts(led);
+
+	return 0;
+}
+
+static int qti_flash_led_restore(struct device *dev)
+{
+	struct qti_flash_led *led = dev_get_drvdata(dev);
+	int rc = 0;
+
+	rc = qti_flash_led_setup(led);
+	if (rc < 0) {
+		pr_err("Failed to re-initialize flash LED in Restore, rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = qti_flash_led_register_interrupts(led);
+	if (rc < 0)
+		pr_err("Interrupt re-registration failed in Restore rc= %d\n", rc);
+
+	return rc;
+}
+
+static const struct dev_pm_ops qti_flash_led_pm_ops = {
+	.freeze = qti_flash_led_freeze,
+	.restore = qti_flash_led_restore,
+};
+
 static const struct of_device_id qti_flash_led_match_table[] = {
 	{ .compatible = "qcom,pm8350c-flash-led", .data = (void *)4, },
 	{ },
@@ -1928,6 +1979,7 @@ static struct platform_driver qti_flash_led_driver = {
 	.driver = {
 		.name = "leds-qti-flash",
 		.of_match_table = qti_flash_led_match_table,
+		.pm = &qti_flash_led_pm_ops,
 	},
 	.probe = qti_flash_led_probe,
 	.remove = qti_flash_led_remove,
