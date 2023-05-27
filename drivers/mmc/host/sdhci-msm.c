@@ -4884,10 +4884,11 @@ static int mmc_partial_init(struct mmc_host *mmc)
 	if (!mmc_card_hs400es(card) &&
 			(mmc_card_hs200(card) || mmc_card_hs400(card))) {
 		err = mmc_execute_tuning(card);
-		if (err)
+		if (err) {
 			pr_err("%s: tuning execution failed: %d\n",
 				mmc_hostname(mmc), err);
-		goto out;
+			goto out;
+		}
 	}
 
 	/*
