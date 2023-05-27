@@ -143,6 +143,7 @@ struct mhi_dev_net_client {
 	spinlock_t rd_lock;
 	struct mutex in_chan_lock;
 	struct mutex out_chan_lock;
+	spinlock_t net_tx_q_state;
 };
 
 struct mhi_dev_net_ctxt {
@@ -201,11 +202,15 @@ static void mhi_dev_net_process_queue_packets(struct work_struct *work)
 	struct sk_buff *skb = NULL;
 	struct mhi_req *wreq = NULL;
 
+	spin_lock(&client->net_tx_q_state);
 	if (mhi_net_ctxt.dev_ops->is_channel_empty(client->in_handle)) {
 		mhi_dev_net_log(client->vf_id, MHI_INFO, "stop network xmmit\n");
 		netif_stop_queue(client->dev);
+		spin_unlock(&client->net_tx_q_state);
 		return;
 	}
+	spin_unlock(&client->net_tx_q_state);
+
 	while (!((skb_queue_empty(&client->tx_buffers)) ||
 			(list_empty(&client->wr_req_buffers)))) {
 		spin_lock_irqsave(&client->wrt_lock, flags);
@@ -244,12 +249,15 @@ static void mhi_dev_net_process_queue_packets(struct work_struct *work)
 		client->dev->stats.tx_packets++;
 
 		/* Check if free buffers are available*/
+		spin_lock(&client->net_tx_q_state);
 		if (mhi_net_ctxt.dev_ops->is_channel_empty(client->in_handle)) {
 			mhi_dev_net_log(client->vf_id, MHI_INFO,
 					"buffers are full stop xmit\n");
 			netif_stop_queue(client->dev);
+			spin_unlock(&client->net_tx_q_state);
 			break;
 		}
+		spin_unlock(&client->net_tx_q_state);
 	} /* While TX queue is not empty */
 }
 
@@ -260,11 +268,13 @@ static void mhi_dev_net_event_notifier(struct mhi_dev_client_cb_reason *reason)
 
 	if (reason->reason == MHI_DEV_TRE_AVAILABLE) {
 		if (reason->ch_id % 2) {
+			spin_lock(&client_handle->net_tx_q_state);
 			if (netif_queue_stopped(client_handle->dev)) {
 				netif_wake_queue(client_handle->dev);
 				queue_work(client_handle->pending_pckt_wq,
 						&client_handle->xmit_work);
 			}
+			spin_unlock(&client_handle->net_tx_q_state);
 		} else
 			mhi_dev_net_client_read(client_handle);
 	}
@@ -715,6 +725,7 @@ static int mhi_dev_net_rgstr_client(struct mhi_dev_net_client *client, int idx)
 	mutex_init(&client->in_chan_lock);
 	mutex_init(&client->out_chan_lock);
 	spin_lock_init(&client->wrt_lock);
+	spin_lock_init(&client->net_tx_q_state);
 	spin_lock_init(&client->rd_lock);
 	mhi_dev_net_log(client->vf_id, MHI_INFO, "Registering OUT ch_id:%d\t"
 			"IN ch_id:%d channels\n",

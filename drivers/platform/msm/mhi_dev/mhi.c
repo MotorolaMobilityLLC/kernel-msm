@@ -3599,6 +3599,10 @@ int mhi_dev_channel_isempty(struct mhi_dev_client *handle)
 		return -EINVAL;
 
 	rc = ch->ring->rd_offset == ch->ring->wr_offset;
+	if (rc)
+		mhi_log(handle->vf_id, MHI_MSG_WARNING, "Chan_id=0x%x is empty rp/wp:%x\n",
+			ch->ch_id,
+			ch->ring->rd_offset);
 
 	return rc;
 }
