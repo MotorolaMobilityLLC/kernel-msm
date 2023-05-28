@@ -2,6 +2,7 @@
 /*
  * Copyright (C) 2007 Google, Inc.
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "msm_qpic_nand.h"
@@ -797,9 +798,15 @@ static int msm_nand_flash_onfi_probe(struct msm_nand_info *info)
 
 	memset(&data, 0, sizeof(struct msm_nand_flash_onfi_data));
 
-	/* Lookup the partition to which apps has access to */
+	/*
+	 * Lookup the partition to which apps has access to
+	 * As a part of FR53657, add support for boot_a
+	 * and boot_b partitions.
+	 */
 	for (i = 0; i < FLASH_PTABLE_MAX_PARTS_V4; i++) {
-		if (mtd_part[i].name && !strcmp("boot", mtd_part[i].name)) {
+		if (mtd_part[i].name && (!strcmp("boot", mtd_part[i].name) ||
+					!strcmp("boot_a", mtd_part[i].name) ||
+					!strcmp("boot_b", mtd_part[i].name))) {
 			page_address = mtd_part[i].offset << 6;
 			break;
 		}
