@@ -265,6 +265,8 @@ static void arm_smmu_interrupt_selftest(struct arm_smmu_device *smmu)
 				dev_err(smmu->dev, "SCTLR  = 0x%08x\n",
 					arm_smmu_cb_read(smmu, cb,
 							 ARM_SMMU_CB_SCTLR));
+			else
+				arm_smmu_cb_write(smmu, cb, ARM_SMMU_CB_FSR, fsr);
 		}
 
 		/* Make sure ARM_SMMU_CB_FSRRESTORE is written to */
