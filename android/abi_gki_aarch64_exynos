@@ -85,6 +85,7 @@
   bpf_trace_run8
   bpf_trace_run9
   bsearch
+  build_skb
   bus_find_device
   bus_for_each_dev
   bus_register
@@ -167,6 +168,7 @@
   __const_udelay
   consume_skb
   contig_page_data
+  copy_from_kernel_nofault
   __cpu_active_mask
   cpu_all_bits
   cpu_bit_bitmap
@@ -217,6 +219,7 @@
   cpu_subsys
   cpu_topology
   crc32_le
+  crc_ccitt
   crypto_alloc_base
   crypto_alloc_shash
   crypto_comp_compress
@@ -356,6 +359,7 @@
   devm_pinctrl_put
   devm_pinctrl_register
   devm_platform_ioremap_resource
+  devm_platform_ioremap_resource_byname
   __devm_regmap_init_i2c
   __devm_regmap_init_mmio_clk
   devm_regulator_bulk_get
@@ -504,6 +508,8 @@
   down_write
   down_write_trylock
   d_path
+  dql_completed
+  dql_reset
   drain_workqueue
   driver_register
   driver_unregister
@@ -951,6 +957,8 @@
   iio_device_free
   __iio_device_register
   iio_device_unregister
+  in4_pton
+  in6_pton
   inc_zone_page_state
   inet_csk_get_port
   init_dummy_netdev
@@ -988,6 +996,7 @@
   iommu_device_sysfs_remove
   iommu_device_unlink
   iommu_device_unregister
+  iommu_dma_enable_best_fit_algo
   iommu_fwspec_add_ids
   iommu_fwspec_free
   iommu_get_dma_cookie
@@ -1077,6 +1086,7 @@
   kmemdup
   kobject_add
   kobject_create_and_add
+  kobject_del
   kobject_get
   kobject_init
   kobject_init_and_add
@@ -1224,6 +1234,7 @@
   __netif_napi_del
   netif_receive_skb
   netif_rx_ni
+  netif_schedule_queue
   netif_tx_stop_all_queues
   netif_tx_wake_queue
   netlink_broadcast
@@ -1348,10 +1359,12 @@
   pci_bus_type
   pci_clear_master
   pci_disable_device
+  pcie_get_mps
   pci_enable_atomic_ops_to_root
   pci_enable_device
   pci_enable_pcie_error_reporting
   pci_enable_wake
+  pcie_set_mps
   pci_find_bus
   pci_find_ext_capability
   pci_free_irq_vectors
@@ -1703,6 +1716,7 @@
   skb_queue_purge
   skb_queue_tail
   skb_realloc_headroom
+  skb_split
   skb_trim
   smp_call_function
   smp_call_function_any
@@ -1741,6 +1755,7 @@
   snd_soc_component_force_enable_pin
   snd_soc_component_init_regmap
   snd_soc_component_read
+  snd_soc_component_set_pll
   snd_soc_component_set_sysclk
   snd_soc_component_update_bits
   snd_soc_component_update_bits_async
@@ -1752,6 +1767,7 @@
   snd_soc_dai_set_channel_map
   snd_soc_dai_set_sysclk
   snd_soc_dai_set_tdm_slot
+  snd_soc_dai_set_tristate
   snd_soc_dapm_add_routes
   snd_soc_dapm_disable_pin
   snd_soc_dapm_enable_pin
@@ -1961,6 +1977,7 @@
   __traceiter_android_rvh_tick_entry
   __traceiter_android_rvh_update_misfit_status
   __traceiter_android_rvh_wake_up_new_task
+  __traceiter_android_vh_arch_set_freq_scale
   __traceiter_android_vh_binder_restore_priority
   __traceiter_android_vh_binder_set_priority
   __traceiter_android_vh_binder_wakeup_ilocked
@@ -2032,11 +2049,13 @@
   __tracepoint_android_rvh_tick_entry
   __tracepoint_android_rvh_update_misfit_status
   __tracepoint_android_rvh_wake_up_new_task
+  __tracepoint_android_vh_arch_set_freq_scale
   __tracepoint_android_vh_binder_restore_priority
   __tracepoint_android_vh_binder_set_priority
   __tracepoint_android_vh_binder_wakeup_ilocked
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
+  __tracepoint_android_vh_do_wake_up_sync
   __tracepoint_android_vh_gic_set_affinity
   __tracepoint_android_vh_ipi_stop
   __tracepoint_android_vh_logbuf
@@ -2122,10 +2141,20 @@
   ttm_sg_tt_init
   ttm_tt_destroy_common
   ttm_tt_fini
+  tty_dev_name_to_number
   tty_flip_buffer_push
   tty_insert_flip_string_fixed_flag
+  tty_kclose
+  tty_kopen_exclusive
   tty_kref_put
+  tty_lock
+  tty_mode_ioctl
   tty_port_tty_get
+  tty_register_ldisc
+  tty_set_ldisc
+  tty_set_termios
+  tty_unlock
+  tty_unregister_ldisc
   typec_get_drvdata
   typec_register_partner
   typec_register_port

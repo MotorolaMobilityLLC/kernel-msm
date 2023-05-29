@@ -1,0 +1,15 @@
+I2c Slave test: Qualcomm Technologies Inc Universal Peripheral.
+
+Required properties:
+ - compatible: Should be: "qcom,i2c-slave-test".
+ - reg: Should contain slave address.
+
+Optional property:
+
+Example:
+
+i2c_slave_test {
+        compatible = "qcom,i2c-slave-test";
+        reg = <0x64>;
+        status = "ok";
+};

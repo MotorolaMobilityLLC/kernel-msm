@@ -1,0 +1,19 @@
+Qualcomm technologies, Inc. slatersb-rpmsg
+
+SLATERSB-RPMSG : slatersb-rpmsg is used as an interface between SLATE-RSB
+and slate for Glink communication.slate-rsb is used to communicate with
+Slate over Glink to configure the RSB events.
+
+Required properties:
+- compatible : should be "qcom,slatersb-rpmsg"
+- glink-channels : RSB_CTRL
+- glinkpkt-edge : slate
+- intents : <0x200 1>
+
+Example:
+	qcom,slatersb-rpmsg {
+		compatible = "qcom,slatersb-rpmsg";
+		qcom,glink-channels = "RSB_CTRL";
+		qcom,glinkpkt-edge = "slate";
+		intents = <0x200 1>;
+	};

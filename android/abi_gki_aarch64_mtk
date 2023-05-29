@@ -183,7 +183,9 @@
   contig_page_data
   _copy_from_iter
   copy_from_kernel_nofault
+  copy_from_user_toio
   _copy_to_iter
+  copy_to_user_fromio
   __cpu_active_mask
   cpu_all_bits
   cpu_bit_bitmap
@@ -350,8 +352,10 @@
   devm_clk_register
   devm_devfreq_add_device
   devm_devfreq_register_notifier
+  devm_devfreq_register_opp_notifier
   devm_devfreq_remove_device
   devm_devfreq_unregister_notifier
+  devm_devfreq_unregister_opp_notifier
   devm_extcon_dev_allocate
   devm_extcon_dev_register
   devm_extcon_register_notifier
@@ -616,6 +620,7 @@
   drm_dp_dpcd_write
   drm_dp_link_train_channel_eq_delay
   drm_dp_link_train_clock_recovery_delay
+  drm_dp_read_dpcd_caps
   drm_edid_duplicate
   drm_edid_to_sad
   drm_encoder_cleanup
@@ -661,6 +666,7 @@
   drm_mode_probed_add
   drm_mode_set_crtcinfo
   drm_mode_set_name
+  drm_mode_validate_size
   drm_mode_vrefresh
   drm_object_attach_property
   drm_open
@@ -679,6 +685,7 @@
   drm_property_create_blob
   drm_property_create_range
   drm_property_lookup_blob
+  drm_property_replace_global_blob
   drm_read
   drm_release
   drm_universal_plane_init
@@ -765,6 +772,8 @@
   fwnode_property_read_string
   fwnode_property_read_u32_array
   fwnode_property_read_u64_array
+  g_audio_cleanup
+  g_audio_setup
   gcd
   generic_file_llseek
   generic_handle_domain_irq
@@ -797,6 +806,21 @@
   get_each_dmabuf
   __get_free_pages
   get_governor_parent_kobj
+  gether_cleanup
+  gether_connect
+  gether_disconnect
+  gether_get_dev_addr
+  gether_get_host_addr
+  gether_get_host_addr_u8
+  gether_get_ifname
+  gether_get_qmult
+  gether_register_netdev
+  gether_set_dev_addr
+  gether_set_gadget
+  gether_set_host_addr
+  gether_set_ifname
+  gether_set_qmult
+  gether_setup_name_default
   get_kernel_pages
   get_pid_task
   get_random_bytes
@@ -840,8 +864,16 @@
   handle_nested_irq
   handle_simple_irq
   have_governor_per_policy
+  hdmi_spd_infoframe_init
+  hdmi_spd_infoframe_pack
   hex_asc
   hex_to_bin
+  hid_add_device
+  hid_allocate_device
+  hid_debug
+  hid_destroy_device
+  hid_input_report
+  hid_parse_report
   hrtimer_active
   hrtimer_cancel
   hrtimer_forward
@@ -1034,6 +1066,7 @@
   kstrtoint_from_user
   kstrtol_from_user
   kstrtoll
+  kstrtos16
   kstrtou16
   kstrtou8
   kstrtouint
@@ -1056,6 +1089,7 @@
   kthread_stop
   kthread_worker_fn
   ktime_get
+  ktime_get_coarse_ts64
   ktime_get_mono_fast_ns
   ktime_get_raw
   ktime_get_raw_ts64
@@ -1077,6 +1111,7 @@
   led_trigger_remove
   led_update_brightness
   led_update_flash_brightness
+  linear_range_get_max_value
   linear_range_get_selector_within
   linear_range_get_value
   __list_add_valid
@@ -1393,6 +1428,7 @@
   phy_exit
   phy_get
   phy_init
+  phy_loopback
   phy_power_off
   phy_power_on
   phy_print_status
@@ -1533,8 +1569,12 @@
   rb_next
   rb_prev
   rb_replace_node
+  rc_allocate_device
+  rc_free_device
+  rc_register_device
   rcu_idle_enter
   rcu_idle_exit
+  rc_unregister_device
   __rcu_read_lock
   __rcu_read_unlock
   rdev_get_dev
@@ -1562,6 +1602,7 @@
   register_shrinker
   register_syscore_ops
   register_sysctl_table
+  register_tracepoint_module_notifier
   register_virtio_device
   register_virtio_driver
   regmap_bulk_read
@@ -1962,6 +2003,7 @@
   __traceiter_android_rvh_override_creds
   __traceiter_android_rvh_prepare_prio_fork
   __traceiter_android_rvh_revert_creds
+  __traceiter_android_rvh_rmqueue_bulk
   __traceiter_android_rvh_rtmutex_prepare_setprio
   __traceiter_android_rvh_rto_next_cpu
   __traceiter_android_rvh_sched_newidle_balance
@@ -2038,6 +2080,7 @@
   __tracepoint_android_rvh_override_creds
   __tracepoint_android_rvh_prepare_prio_fork
   __tracepoint_android_rvh_revert_creds
+  __tracepoint_android_rvh_rmqueue_bulk
   __tracepoint_android_rvh_rtmutex_prepare_setprio
   __tracepoint_android_rvh_rto_next_cpu
   __tracepoint_android_rvh_sched_newidle_balance
@@ -2136,6 +2179,14 @@
   uart_get_baud_rate
   uart_get_divisor
   uart_update_timeout
+  u_audio_get_mute
+  u_audio_get_volume
+  u_audio_set_mute
+  u_audio_set_volume
+  u_audio_start_capture
+  u_audio_start_playback
+  u_audio_stop_capture
+  u_audio_stop_playback
   __ubsan_handle_cfi_check_fail_abort
   uclamp_eff_value
   __udelay

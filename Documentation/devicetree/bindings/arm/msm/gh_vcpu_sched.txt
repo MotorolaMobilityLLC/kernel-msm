@@ -1,0 +1,9 @@
+Qualcomm Technologies, Inc. VCPU Scheduling for Secondary VMs
+
+Required properties:
+- compatible: should be "qcom,gh_vcpu_sched"
+
+Example:
+	gh_vcpu_sched {
+		compatible = "qcom,gh_vcpu_sched";
+	};

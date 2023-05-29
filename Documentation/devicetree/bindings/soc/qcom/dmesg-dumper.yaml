@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: "http://devicetree.org/schemas/soc/qcom/dmesg-dumper.yaml#"
+$schema: "http://devicetree.org/meta-schemas/core.yaml#"
+
+title: Qualcomm Technologies, Inc. Dmesg dumper binding
+
+maintainers:
+  - Guru Das Srinagesh <quic_gurus@quicinc.com>
+
+description: |
+  Upon encountering a kernel panic in a Virtual machine or getting
+  Virtual machine's alive log trrigger by primary Virtual machine,
+  enable the dumping the dmesg log buffer to a reserved memory
+  section through the use of a Gunyah shared-memory doorbell object.
+
+properties:
+  compatible:
+    const: qcom,dmesg-dump
+
+  qcom,primary-vm:
+    description: Specify if this device is on the primary virtual machine.
+
+  gunyah-label:
+    $ref: '/schemas/types.yaml#/definitions/u32'
+    maxItems: 1
+    description: The label qrtr should request interrupts with this label from
+                 the gunyah doorbell driver.
+
+  shared-buffer:
+    $ref: '/schemas/types.yaml#/definitions/phandle'
+    maxItems: 1
+    description: phandle reference to a reserved memory region for sharing
+                 between vms
+
+   ddump-pubkey-size:
+    maxItems: 1
+    description: The size of public key used to encrypt the alive log.
+
+   ddump-pubkey:
+    maxItems: 1
+    description: The value of public key used to encrypt the alive log.
+
+required:
+  -compatible
+  -gunyah-label
+  -shared-buffer
+
+examples:
+  - |
+    trust_ui_vm_dump@e55f2000 {
+        no-map;
+        reg = <0x0 0xe55f2000 0x0 0x1000>;
+    };
+
+    dmesg-dump {
+        compatible = "qcom,dmesg-dump";
+        qcom,primary-vm;
+        gunyah-label = <6>;
+        shared-buffer = <&trust_ui_vm_dump>;
+    };

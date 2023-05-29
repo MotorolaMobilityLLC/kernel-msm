@@ -2090,7 +2090,11 @@ unsigned find_lock_entries(struct address_space *mapping, pgoff_t start,
 
 	rcu_read_lock();
 	while ((page = find_get_entry(&xas, end, XA_PRESENT))) {
+		unsigned long next_idx = xas.xa_index + 1;
+
 		if (!xa_is_value(page)) {
+			if (PageTransHuge(page))
+				next_idx = page->index + thp_nr_pages(page);
 			if (page->index < start)
 				goto put;
 			if (page->index + thp_nr_pages(page) - 1 > end)
@@ -2111,13 +2115,11 @@ unlock:
 put:
 		put_page(page);
 next:
-		if (!xa_is_value(page) && PageTransHuge(page)) {
-			unsigned int nr_pages = thp_nr_pages(page);
-
+		if (next_idx != xas.xa_index + 1) {
 			/* Final THP may cross MAX_LFS_FILESIZE on 32-bit */
-			xas_set(&xas, page->index + nr_pages);
-			if (xas.xa_index < nr_pages)
+			if (next_idx < xas.xa_index)
 				break;
+			xas_set(&xas, next_idx);
 		}
 	}
 	rcu_read_unlock();
@@ -3055,11 +3057,14 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
 
 	if (vmf->flags & FAULT_FLAG_SPECULATIVE) {
 		page = find_get_page(mapping, offset);
-		if (unlikely(!page) || unlikely(PageReadahead(page)))
+		if (unlikely(!page))
 			return VM_FAULT_RETRY;
 
+		if (unlikely(PageReadahead(page)))
+			goto page_put;
+
 		if (!trylock_page(page))
-			return VM_FAULT_RETRY;
+			goto page_put;
 
 		if (unlikely(compound_head(page)->mapping != mapping))
 			goto page_unlock;
@@ -3091,6 +3096,8 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
 		return VM_FAULT_LOCKED;
 page_unlock:
 		unlock_page(page);
+page_put:
+		put_page(page);
 		return VM_FAULT_RETRY;
 	}
 

@@ -1,0 +1,60 @@
+* Bluetooth Controller
+Bluetooth controller communicates with the Bluetooth Host using HCI Transport
+layer. HCI Transport layer can be based on UART or USB serial communication
+protocol.
+
+Required properties:
+- compatible: "qcom,<chip>"
+	chip: Should be set to one of the following:
+		qcom,qca6174
+		qcom,wcn3990
+		qcom,qca6390
+		qcom,qca6490
+		qcom,qcc5100
+	- qcom,bt-reset-gpio: GPIO pin to bring BT Controller out of reset
+
+Optional properties:
+	-	qcom,xo-clk-gpio: GPIO for enabling clock at bootstrap
+	- qcom,bt-vdd-pa-supply: Bluetooth VDD PA regulator handle
+	- qcom,bt-vdd-io-supply: Bluetooth VDD IO regulator handle
+	- qcom,bt-vdd-ldo-supply: Bluetooth VDD LDO regulator handle. Kept under
+		optional parameters as some of the chipsets doesn't require ldo
+		or it may use from same vddio.
+	- qcom,bt-vdd-xtal-supply: Bluetooth VDD XTAL regulator handle
+	- qcom,bt-vdd-core-supply: Bluetooth VDD CORE regulator handle
+	- qcom,bt-vdd-asd-supply: Bluetooth VDD regulator handle for antenna switch
+	- reg: Memory regions defined as starting address and size
+	- reg-names: Names of the memory regions defined in reg entry
+    diversity.
+	- qcom,bt-chip-pwd-supply: Chip power down gpio is required when bluetooth
+		module and other modules like wifi co-exist in a singe chip and
+		shares a common gpio to bring chip out of reset.
+  - qcom,<supply>-config: Specifies voltage/current levels for supply. Should specified
+                          in pairs (min, max), units uV.  There can be optional
+                          load in curr, unit uA. Last entry specifies if the retention
+                          mode is supported for the regulator.
+  - mboxes: Specifies mbox channel data for AOP messaging
+  - qcom,vreg_ipa: Specifies Voltage regulator used for QCA6490 Internal Power
+                   Amp config
+
+Example:
+	bluetooth: bt_qca6490 {
+		compatible = "qcom,qca6390", "qcom,qca6490";
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_en_sleep>;
+		qcom,bt-reset-gpio = <&tlmm 81 0>; /* BT_EN */
+		qcom,wl-reset-gpio = <&tlmm 80 0>; /* WL_EN */
+		qcom,bt-sw-ctrl-gpio = <&tlmm 82 0>; /* SW_CTRL */
+		qcom,bt-xo-clk-gpio = <&tlmm 204 0>; /* XO */
+		qcom,bt-vdd-aon-supply = <&S11B>;
+		qcom,bt-vdd-dig-supply = <&S11B>;
+		qcom,bt-vdd-rfa1-supply = <&S1C>;
+		qcom,bt-vdd-rfa2-supply = <&S12B>;
+		qcom,bt-vdd-asd-supply = <&L7E>;
+
+		qcom,bt-vdd-aon-config = <966000 966000 0  1>;
+		qcom,bt-vdd-dig-config = <966000 966000 0  1>;
+		qcom,bt-vdd-rfa1-config = <1880000 1880000 0  1>;
+		qcom,bt-vdd-rfa2-config = <1350000 1350000 0  1>;
+		qcom,bt-vdd-asd-config = <2800000 2800000 0  1>;
+	};

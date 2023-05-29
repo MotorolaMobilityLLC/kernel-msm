@@ -1,0 +1,34 @@
+Qualcomm Technologies, Inc. Camera Clock & Reset Controller Binding
+------------------------------------------------
+
+Required properties :
+- compatible : shall contain
+		"qcom,sdm845-camcc"
+		"qcom,lahaina-camcc"
+		"qcom,lahaina-camcc-v2"
+		"qcom,shima-camcc"
+		"qcom,waipio-camcc"
+		"qcom,waipio-camcc-v2"
+		"qcom,diwali-camcc"
+		"qcom,kalama-camcc"
+		"qcom,kalama-camcc-v2"
+		"qcom,sm8150-camcc"
+		"qcom,sm8150-camcc-v2"
+		"qcom,sa8155-camcc"
+		"qcom,sa8155-camcc-v2"
+		"qcom,sc8180x-camcc"
+		"qcom,lemans-camcc"
+
+- reg : shall contain base register location and length.
+- #clock-cells : from common clock binding, shall contain 1.
+- #reset-cells : from common reset binding, shall contain 1.
+- #power-domain-cells : from generic power domain binding, shall contain 1.
+
+Example:
+	camcc: clock-controller@ad00000 {
+		compatible = "qcom,sdm845-camcc";
+		reg = <0xad00000 0x10000>;
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+		#power-domain-cells = <1>;
+	};

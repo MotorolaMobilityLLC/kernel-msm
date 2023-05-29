@@ -1,0 +1,37 @@
+Qualcomm Technologies, Inc. BCL OFF cooling device
+
+The BCL OFF cooling device, will be used to disable PMIC bcl.
+This cooling device will be called when modem RF calibration
+is performed using external power supply.
+
+When external power supply is used for RF calibration, ibat current
+can cross the battery specs and can trigger batfet issues. So pmic bcl
+should be disabled as it is for protection for battery not external
+power supply.
+
+
+Required Parameters:
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: should be "qcom,bcl-off"
+
+- reg:
+	Usage: optional
+	Value type: <a b>
+	Definition: where 'a' is the starting register address of the PMIC
+	peripheral and 'b' is the size of the peripheral address space.
+
+- #cooling-cells:
+	Usage: required
+	Value type: <integer>
+	Definition: Must be 2. This is required by of-thermal and refer the doc
+		<devicetree/bindings/thermal/thermal.txt> for more details.
+
+Example:
+
+	bcl_off: bcl-off {
+		compatible = "qcom,bcl-off";
+		reg = <0x4700 0x100>;
+		#cooling-cells = <2>;
+	};

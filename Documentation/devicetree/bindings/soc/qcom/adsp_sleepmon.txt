@@ -1,0 +1,127 @@
+Qualcomm Technologies, Inc. ADSP Sleep Monitor
+
+The ADSP Sleep monitor driver tracks ADSP sleep statistics stored in SMEM region
+and establishes an interface with different userspace clients which make use of
+ADSP subsystem. Based on the activity notifications from the userspace clients
+for activity start and stop notifications, the driver detects and logs an error
+message in kernel logs and creates a kernel/ADSP panic (when enabled) upon detecting
+a violation in ADSP sleep/LPI state after the configured monitoring duration.
+By default the driver emits out kernel message on detecting these violations,
+optionally a kernel/ADSP panic can be enabled separately for ADSP sleep or LPI
+issues via this config. When enabled, corresponding panics can be
+disabled/re-enabled runtime via debugfs node exposed from the driver.
+
+"echo 0 > /d/adspsleepmon/panic-state" --> Disables kernel panic for ADSP sleep and LPI voilations.
+
+"echo 1 > /d/adspsleepmon/panic-state" --> Enables kernel panic for ADSP sleep voilations.
+
+"echo 2 > /d/adspsleepmon/panic-state" --> Enables kernel panic for ADSP LPI voilations.
+
+"echo 3 > /d/adspsleepmon/panic-state" --> Enables kernel panic for ADSP Sleep and LPI voilations.
+
+"cat /d/adspsleepmon/read_panic_state" --> Displays the current panic enablement status
+
+
+"echo 0 > /d/adspsleepmon/adsp_panic_state" --> Disables ADSP panic for ADSP sleep and LPI voilations.
+
+"echo 1 > /d/adspsleepmon/adsp_panic_state" --> Enables ADSP panic for ADSP sleep voilations.
+
+"echo 2 > /d/adspsleepmon/adsp_panic_state" --> Enables ADSP panic for ADSP LPI voilations.
+
+"echo 3 > /d/adspsleepmon/adsp_panic_state" --> Enables ADSP panic for ADSP Sleep and LPI voilations.
+
+"echo 4 > /d/adspsleepmon/adsp_panic_state" --> Enable ADSP panic on ADSP sleep monitor detecting
+				continuous ADSP sleep violation for qcom,wait_time_lpm_overall
+				duration over qcom,min_required_resumes CPU resumes when there
+				is no audio activity.
+
+"echo 7 > /d/adspsleepmon/adsp_panic_state" --> Enable ADSP panic on ADSP sleep monitor detecting
+				continuous ADSP sleep violation for qcom,wait_time_lpm_overall
+				duration over qcom,min_required_resumes CPU resumes when there
+				is no audio activity along with ADSP panic for ADSP sleep and LPI
+				voilations for audio clients.
+
+"cat /d/adspsleepmon/read_adsp_panic_state" --> Displays the current ADSP panic enablement status
+
+
+Examples:
+
+"cat /d/adspsleepmon/read_panic_state"
+
+ >Panic State: LPM and LPI panics Disabled
+
+"cat /d/adspsleepmon/read_panic_state"
+
+ >Panic State: LPI Panic enabled
+
+properties:
+- compatible: Must be "qcom,adsp-sleepmon".
+
+- qcom,wait_time_lpm: wait time in seconds for LPM violation detections.
+			The ADSP sleep monitor would wait for the specified
+			duration after all the activities are done
+			(based on user space clients activity notifications)
+			before checking ADSP state.
+
+- qcom,wait_time_lpi: wait time in seconds for LPI violation detections.
+			The ADSP sleep monitor would wait for the specified
+			duration after the start of an LPI only activity
+			(based on user space clients activity notifications)
+			before checking ADSP state.
+
+- qcom,wait_time_lpm_overall: Minimum monitoring duration in seconds required for sleep
+			violation detection when there is no audio activity.
+			ADSP sleep monitor raises ADSP panic (if enabled via
+			qcom,enable_adsp_panic_lpm_overall) on detecting sleep
+			violation continuously for a minimum of this specified
+			duration over qcom,min_required_resumes number of CPU resumes.
+
+-qcom,min_required_resumes: Minimum number of CPU resumes required for sleep violation detection
+			and action when there is no audio activity. ADSP sleep monitor raises
+			ADSP panic (if enabled via qcom,enable_adsp_panic_lpm_overall)
+			on detecting sleep violation continuously for a minimum of
+			qcom,wait_time_lpm_overall duration over the specified number
+			of CPU resumes.
+
+- qcom,enable_panic_lpm: Enables kernel panic on detecting ADSP sleep violations.
+
+- qcom,enable_panic_lpi: Enables kernel panic on detecting ADSP LPI violations.
+
+- qcom,enable_adsp_panic_lpm: Enables ADSP panic on detecting ADSP sleep violations.
+
+- qcom,enable_adsp_panic_lpi: Enables ADSP panic on detecting ADSP LPI violations.
+
+-qcom,enable_adsp_panic_lpm_overall: Enable ADSP panic on ADSP sleep monitor detecting
+				continuous ADSP sleep violation for qcom,wait_time_lpm_overall
+				duration over qcom,min_required_resumes CPU resumes when there
+				is no audio activity.
+				ADSP sleep monitor doesn't track non-audio activities on ADSP.
+				The panic can result in false positives if ADSP is kept active for
+				the specified duration by a non-audio entity
+				(sensors, camera, charger, wifi paging etc.). When enabling, the
+				minimum duration and number of CPU resumes should be fine tuned based
+				on the expected non-audio use case scenarios on ADSP.
+
+Example:
+adsp_sleepmon: adsp-sleepmon {
+		compatible = "qcom,adsp-sleepmon";
+		qcom,wait_time_lpm = <5>;
+		qcom,wait_time_lpi = <15>;
+		qcom,enable_adsp_panic_lpm;
+		qcom,enable_adsp_panic_lpi;
+		qcom,wait_time_lpm_overall = <60>;
+		qcom,enable_adsp_panic_lpm_overall;
+		qcom,min_required_resumes = <5>;
+	};
+
+Required properties:
+- compatible: Must be "qcom,msm-adspsleepmon-rpmsg"
+- qcom,glink-channels: Glink channel for communication with ADSP
+- qcom,intents: A list of <size of each intent, number of intents>
+
+Example:
+qcom,msm_adspsleepmon_rpmsg {
+	compatible = "qcom,msm-adspsleepmon-rpmsg";
+	qcom,glink-channels = "sleepmonglink-apps-adsp";
+	qcom,intents = <0x1000 8>;
+	};

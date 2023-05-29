@@ -1,0 +1,27 @@
+Binding for SPI slave to control si5518 clock and respective clock buffer.
+
+SPI includes two chip selects, CS0 is used for si5518 clock and CS1 is used for clock buffer.
+
+Required properties:
+- compatible:	  Should contain "qcom,si5518-clk"
+- reg:		  Should contain base register location and length
+- spi-max-frequency: Specifies maximum SPI clock frequency,
+		     Units - Hz. Definition as per
+		     Documentation/devicetree/bindings/spi/spi-bus.txt
+
+Example:
+
+	&qupv3_se14_spi {
+		status = "ok";
+		spidev@0 {
+			compatible = "qcom,si5518-clk";
+			spi-max-frequency = <1000000>;
+			reg = <0>;
+		};
+		spidev@1 {
+			compatible = "qcom,si5518-clk";
+			spi-max-frequency = <1000000>;
+			reg = <1>;
+		};
+
+	};

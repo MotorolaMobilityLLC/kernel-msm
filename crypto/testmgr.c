@@ -4330,30 +4330,6 @@ static const struct alg_test_desc alg_test_descs[] = {
 			.hash = __VECS(blake2b_512_tv_template)
 		}
 	}, {
-		.alg = "blake2s-128",
-		.test = alg_test_hash,
-		.suite = {
-			.hash = __VECS(blakes2s_128_tv_template)
-		}
-	}, {
-		.alg = "blake2s-160",
-		.test = alg_test_hash,
-		.suite = {
-			.hash = __VECS(blakes2s_160_tv_template)
-		}
-	}, {
-		.alg = "blake2s-224",
-		.test = alg_test_hash,
-		.suite = {
-			.hash = __VECS(blakes2s_224_tv_template)
-		}
-	}, {
-		.alg = "blake2s-256",
-		.test = alg_test_hash,
-		.suite = {
-			.hash = __VECS(blakes2s_256_tv_template)
-		}
-	}, {
 		.alg = "cbc(aes)",
 		.test = alg_test_skcipher,
 		.fips_allowed = 1,
@@ -5004,6 +4980,14 @@ static const struct alg_test_desc alg_test_descs[] = {
 			.hash = __VECS(ghash_tv_template)
 		}
 	}, {
+		.alg = "hctr2(aes)",
+		.generic_driver =
+		    "hctr2_base(xctr(aes-generic),polyval-generic)",
+		.test = alg_test_skcipher,
+		.suite = {
+			.cipher = __VECS(aes_hctr2_tv_template)
+		}
+	}, {
 		.alg = "hmac(md5)",
 		.test = alg_test_hash,
 		.suite = {
@@ -5258,6 +5242,12 @@ static const struct alg_test_desc alg_test_descs[] = {
 			.hash = __VECS(poly1305_tv_template)
 		}
 	}, {
+		.alg = "polyval",
+		.test = alg_test_hash,
+		.suite = {
+			.hash = __VECS(polyval_tv_template)
+		}
+	}, {
 		.alg = "rfc3686(ctr(aes))",
 		.test = alg_test_skcipher,
 		.fips_allowed = 1,
@@ -5463,6 +5453,12 @@ static const struct alg_test_desc alg_test_descs[] = {
 		.suite = {
 			.cipher = __VECS(xchacha20_tv_template)
 		},
+	}, {
+		.alg = "xctr(aes)",
+		.test = alg_test_skcipher,
+		.suite = {
+			.cipher = __VECS(aes_xctr_tv_template)
+		}
 	}, {
 		.alg = "xts(aes)",
 		.generic_driver = "xts(ecb(aes-generic))",

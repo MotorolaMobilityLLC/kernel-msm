@@ -1,0 +1,14 @@
+Qualcomm technologies, Inc. slate-rsb
+
+SALTE-RSB : slate-rsb is used to communicate with Slate over Glink
+to configure the RSB eventsslate-rsb send commands over glink to
+send configure, enable/disable RSB to Slate
+
+Required properties:
+- compatible : should be "qcom,slate-rsb"
+
+Example:
+	qcom,slate-rsb {
+		compatible = "qcom,slate-rsb";
+	};
+

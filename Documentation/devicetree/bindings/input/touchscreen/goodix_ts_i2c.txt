@@ -1,0 +1,68 @@
+Device tree binding for Goodix i2c touchdriver
+
+Required properties:
+ - compatible: device & driver matching.
+         * for berlin series touch device, souch as "goodix,gt9916", "goodix,gt9966"
+
+ - reg: i2c client address, value can be 0x14 or 0x5d. please refer to datasheet.
+ - goodix,reset-gpio: reset gpio.
+ - goodix,irq-gpio: interrupt gpio.
+ - goodix,irq-flags: irq trigger type config, value should be:
+                1 - rising edge,
+                2 - falling edge,
+                4 - high level,
+                5 - low level.
+ - goodix,panel-max-x: max resolution of x direction.
+ - goodix,panel-max-y: max resolution of y direction.
+ - goodix,panel-max-w: panel max width value.
+ - goodix,panel-max-p: pen device max pressure value.
+
+Optional properties:
+ - goodix,avdd-name: set name of regulator.
+ - avdd-supply: power supply for the touch device.
+   example of regulator:
+        goodix,avdd-name = "avdd";
+        avdd-supply = <&pm8916_l15>;
+ - iovdd-supply: power supply for digital io circuit
+   example of regulator:
+        goodix,iovdd-name = "iovdd";
+        iovdd-supply = <&pm8916_l16>;
+ - goodix,pen-enable: set this property if you want support stylus.
+        goodix,pen-enable;
+ - goodix,firmware-name: set firmware file name, if not configured, use the default name.
+ - goodix,config-name: set config file name, if not configured, use the default name.
+ - invert_xy: invert x and y in case of inversely mounted IC.
+
+Example 1:
+	goodix-berlin@5d {
+		compatible = "goodix,gt9916";
+		reg = <0x5d>;
+		goodix,reset-gpio = <&msm_gpio 12 0x0>;
+		goodix,irq-gpio = <&msm_gpio 13 0x2800>;
+		goodix,irq-flags = <2>; /* 1:trigger rising, 2:trigger falling;*/
+		goodix,panel-max-x = <720>;
+		goodix,panel-max-y = <1280>;
+		goodix,panel-max-w = <255>;
+	};
+
+Example 2:
+	goodix-berlin@5d {
+		compatible = "goodix,gt9966";
+		goodix,avdd-name = "avdd";
+		avdd-supply = <&pm8916_l15>;
+		goodix,iovdd-name = "iovdd";
+		iovdd-supply = <&pm8916_l16>;
+
+		reg = <0x5d>;
+		goodix,reset-gpio = <&msm_gpio 12 0x0>;
+		goodix,irq-gpio = <&msm_gpio 13 0x2800>;
+		goodix,irq-flags = <2>; /* 1:trigger rising, 2:trigger falling;*/
+		goodix,panel-max-x = <720>;
+		goodix,panel-max-y = <1280>;
+		goodix,panel-max-w = <255>;
+		goodix,panel-max-p = <4096>; /* max pressure that pen device supported */
+		goodix,pen-enable; /* support active stylus device*/
+		invert_xy;
+		goodix,firmware-name = "goodix_firmware.bin";
+		goodix,config-name = "goodix_cfg_group.bin";
+	};

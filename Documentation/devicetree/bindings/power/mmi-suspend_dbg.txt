@@ -1,0 +1,17 @@
+* MMI_SUSPEND_DBG (MMI Suspend Debug)
+
+The /sys/private/ is a sysfs interface added for showing and changing
+gpio's configuration. It's usefual to debug bottom-rock current by
+comparing and setting gpio's configuration before suspend. Because GKI
+has restricted the change of suspend.c in common, add a platform device
+and do the debugging work in noirq suspend callbacks.
+
+Required properties:
+- compatible : Should be "mmi,suspend_dbg"
+
+Example:
+
+	motorola, private {
+		compatible = "mmi,suspend_dbg";
+	};
+

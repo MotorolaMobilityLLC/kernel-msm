@@ -1,0 +1,22 @@
+Qualcomm Technologies, Inc. eUSB2 Repeater
+
+Required properties:
+ - compatible: Should be "qcom,pmic-eusb2-repeater"
+ - reg: Address and length of the register set for the device
+ - <supply-name>-supply: phandle to the regulator device tree node
+   Required "supply-name" examples are:
+	"vdd3" : 3.v supply for eUSB2 repeater
+	"vdd18" : 1.8v supply for eUSB2 repeater
+
+Optional properties:
+ - qcom,param-override-seq: parameter override sequence with value, reg offset
+   pair.
+
+Example:
+	eusb2_repeater@fd00 {
+		compatible = "qcom,pmic-eusb2-repeater";
+		reg = <0xfd00 0xff>;
+		vdd18-supply = <&pm8841_s2_corner>;
+		vdd3-supply = <&pm8941_l6>;
+		qcom,param-override-seq = <0x4 0x57>;
+	};

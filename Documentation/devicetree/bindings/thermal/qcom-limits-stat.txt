@@ -1,0 +1,55 @@
+Limits stats Driver
+
+Limits stats driver is used to collect stats. It collects CPU average and peak
+current, CPUs online mask, CPUs Load percentage, CPU temperature, BCL levels,
+PE current, PE thresholds etc..
+
+
+Properties:
+
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: shall be "qcom,limits-stat"
+
+- reg:
+	Usage: optional
+	Value type: <a b>
+	Definition: where 'a' is the starting register address of the RDPM PE
+			HW block and 'b' is the size of RDPM PE address space.
+
+- reg-names:
+	Usage: optional
+	Value type: <string>
+	Definition: user defined names for the register set. These
+		register names will be used by the drivers to identify the
+		RDPM PE HW block.
+		"rdpm_pe_mx",
+		"rdpm_pe_cx",
+
+-qcom,limits-stat-sensor-names
+	Usage: required
+	Value type: <string>
+	Definition: This contains list of sensors which needs to be
+		monitored as part of limits stat collection.
+
+Example:
+
+	limits_stat: limits-stat {
+		compatible = "qcom,limits-stat";
+		reg = <0x637000 0x1000>;
+		reg-names = "rdpm_pe_mx";
+		qcom,limits-stat-sensor-names = "cpu-0-0",
+						"cpu-0-1",
+						"cpu-0-2",
+						"cpu-0-3",
+						"cpu-1-0",
+						"cpu-1-1",
+						"cpu-1-2",
+						"cpu-1-3",
+						"gpuss-0",
+						"gpuss-1",
+						"nspss-0";
+						"nspss-1";
+						"nspss-2";
+	};

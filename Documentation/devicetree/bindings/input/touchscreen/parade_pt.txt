@@ -1,0 +1,34 @@
+* Parade pt touch controller
+
+Please add this description here: The Parade Touch controller is connected to the
+host processor via I2C. The controller generates interrupts when the user touches
+the panel. The host controller is expected to read the touch coordinates over I2C and
+pass the coordinates to the rest of the system.
+
+Required properties:
+ - compatible           : should be "parade,pt_i2c_adapter"
+ - reg                  : i2c slave address of the device.
+ - vdd-supply           : digital voltage power supply needed to power device.
+ - avdd-supply          : analog voltage power supply needed to power device.
+ - novatek,reset-gpio   : reset gpio.
+ - novatek,irq-gpio     : irq gpio.
+
+Example:
+        &i2c_1 {
+                status = "ok";
+
+                /* Parade device tree node */
+                tsc@24 {
+                        compatible = "parade,pt_i2c_adapter";
+                        reg = <0x24>;
+                        status = "ok";
+
+                        vdd-supply = <&L29A>;
+                        vcc_i2c-supply = <&L21A>;
+
+                        parade,core {
+                                parade,rst_gpio = <&tlmm 71 0x00>;
+                                parade,irq_gpio = <&tlmm 80 0x2008>;
+                        };
+                };
+        };

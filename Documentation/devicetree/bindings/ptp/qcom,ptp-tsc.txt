@@ -1,0 +1,57 @@
+* Qualcomm Technologies, Inc. Timestamp Counter(TSC) based PTP clock
+
+TSC module is a timestamp generator, which runs a 64 bit counter for
+system timekeeping.
+ETU is event timestamp module, which captures the timestamp from TSC
+and global counter bus for a given event. The event is selected from
+a set of GPIOs and SW triggered events. The design is parameterized
+to detect multiple events, using different “slices”.
+One slice is used for every event.
+
+Required properties:
+- compatible: should contain the compatibility string.
+                 "qcom,tsc"
+- reg: address and length of the TSC registers.
+	Address and length of the ETU registers(optional).
+- reg-names: must contain "tsc", "etu" (optional).
+- clocks: list of clock phandles required to access TSC/ETU.
+- clock-names: list of clock names for the above clock phandles.
+- assigned-clocks: clock phandles to assign clock rates.
+- assigned-clock-rates: clock rates in HZ.
+
+Optional properties:
+- qcom,tsc-nsec-update: boolean property to indicate the TSC counters
+			have values in nanoseconds, rather than in secs
+			and nanoseconds.
+- qcom,etu-event-sel: array of ETU slice numbers.
+- qcom,etu-event-names: ETU slice names for the corresponding
+			event slice numbers.
+- interrupts: interrupt numbers associated with the ETU slice.
+- interrupt-names: names corresponding to the above interrupt numbers.
+- pinctrl-<#> : pinctrl configurations
+- pinctrl-names: pinctrl names
+
+Example:
+
+        tsc@1da0000 {
+                compatible = "qcom,tsc";
+                reg = <0x1da0000 0x2000>, <0x01db0000 0x10000>;
+                reg-names = "tsc", "etu";
+
+                clocks = <&gcc GCC_TSC_CFG_AHB_CLK>, <&gcc GCC_TSC_CNTR_CLK >,
+                       <&gcc GCC_TSC_ETU_CLK>;
+                clock-names = "cfg_ahb", "cntr", "etu";
+                assigned-clocks = <&gcc GCC_TSC_CNTR_CLK>, <&gcc GCC_TSC_ETU_CLK>;
+                assigned-clock-rates = <500000000> , <500000000>;
+
+		qcom,etu-event-sel = <1 3>;
+		qcom,etu-event-names = "gps_pps", "tod_pps";
+
+	        interrupts = <GIC_SPI 331 IRQ_TYPE_EDGE_RISING>,
+                             <GIC_SPI 329 IRQ_TYPE_EDGE_RISING>;
+                interrupt-names = "tod_pps", "gps_pps";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&etu_tod_pps_active>, <&etu_gps_pps_active>;
+        };
+

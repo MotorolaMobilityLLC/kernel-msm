@@ -1750,6 +1750,7 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
 		ret += tcrypt_test("rfc3686(ctr(aes))");
 		ret += tcrypt_test("ofb(aes)");
 		ret += tcrypt_test("cfb(aes)");
+		ret += tcrypt_test("xctr(aes)");
 		break;
 
 	case 11:
@@ -1863,10 +1864,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
 		ret += tcrypt_test("rmd160");
 		break;
 
-	case 41:
-		ret += tcrypt_test("blake2s-256");
-		break;
-
 	case 42:
 		ret += tcrypt_test("blake2b-512");
 		break;
@@ -1921,6 +1918,10 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
 
 	case 56:
 		ret += tcrypt_test("ccm(sm4)");
+		break;
+
+	case 57:
+		ret += tcrypt_test("polyval");
 		break;
 
 	case 100:
@@ -2380,6 +2381,11 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
 				   16, 16, aead_speed_template_19, num_mb);
 		break;
 
+	case 226:
+		test_cipher_speed("hctr2(aes)", ENCRYPT, sec, NULL,
+				  0, speed_template_32);
+		break;
+
 	case 300:
 		if (alg) {
 			test_hash_speed(alg, sec, generic_hash_speed_template);
@@ -2432,10 +2438,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
 		fallthrough;
 	case 315:
 		test_hash_speed("rmd160", sec, generic_hash_speed_template);
-		if (mode > 300 && mode < 400) break;
-		fallthrough;
-	case 316:
-		test_hash_speed("blake2s-256", sec, generic_hash_speed_template);
 		if (mode > 300 && mode < 400) break;
 		fallthrough;
 	case 317:
@@ -2544,10 +2546,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
 		fallthrough;
 	case 415:
 		test_ahash_speed("rmd160", sec, generic_hash_speed_template);
-		if (mode > 400 && mode < 500) break;
-		fallthrough;
-	case 416:
-		test_ahash_speed("blake2s-256", sec, generic_hash_speed_template);
 		if (mode > 400 && mode < 500) break;
 		fallthrough;
 	case 417:

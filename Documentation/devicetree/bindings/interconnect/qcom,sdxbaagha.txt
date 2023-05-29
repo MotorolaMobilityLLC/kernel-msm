@@ -1,0 +1,26 @@
+Qualcomm Technologies, Inc. SDXBAAGHA Network-On-Chip interconnect driver binding
+-----------------------------------------------------------
+
+SDXBAAGHA interconnect providers support system bandwidth requirements through
+RPMh hardware accelerators known as Bus Clock Manager (BCM). The provider is
+able to communicate with the BCM through the Resource State Coordinator (RSC)
+associated with each execution environment. Provider nodes must point to at
+least one RPMh device child node pertaining to their RSC and each provider
+can map to multiple RPMh resources.
+
+Required properties :
+- compatible : shall contain only one of the following:
+			"qcom,sdxbaagha-aggre_noc",
+			"qcom,sdxbaagha-cnoc_main",
+			"qcom,sdxbaagha-dc_noc_dch",
+			"qcom,sdxbaagha-mc_virt",
+			"qcom,sdxbaagha-mem_noc",
+			"qcom,sdxbaagha-snoc",
+- #interconnect-cells : should contain 1
+
+Examples:
+
+snoc: interconnect@15C0000 {
+	compatible = "qcom,sdxbaagha-snoc";
+	#interconnect-cells = <1>;
+};

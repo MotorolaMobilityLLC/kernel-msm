@@ -1,0 +1,357 @@
+* Qualcomm Technologies, Inc. MSM
+
+MSM uses a combination of DTS and DTSI files to describe the hardware on various
+SoCs and boards. Typically, a SoC-specific DTSI file describes the devices
+present on a given SoC, and a board-specific DTSI file describes the devices
+external to the SoC, although some targets may follow a more simplified
+approach. Additionally, the SoC-specific DTSI files may further consist of a
+base chip-specific file and a version-specific DTSI file, to facilitate reuse
+of device definitions among multiple revisions of the same SoC.
+
+Required properties:
+- compatible: Every device present on the MSM SoC shall have a 'qcom,' prefix
+  in its compatible string
+
+Example:
+restart@fc4ab000 {
+	compatible = "qcom,pshold";
+	reg = <0xfc4ab000 0x4>;
+};
+
+
+* Compatible strings:
+
+SoCs:
+
+- APQ8016
+  compatible = "qcom,apq8016"
+
+- APQ8084
+  compatible = "qcom,apq8084"
+
+- APQ8096
+  compatible = "qcom,apq8096"
+
+- MSM8916
+  compatible = "qcom,msm8916"
+
+- MSM8960
+  compatible = "qcom,msm8960"
+
+- MSM8996
+  compatible = "qcom,msm8996"
+
+- SM8150
+  compatible = "qcom,sm8150"
+
+- KONA
+  compatible = "qcom,kona"
+
+- LAHAINA
+  compatible = "qcom,lahaina"
+
+- LAHAINAP
+  compatible = "qcom,lahainap"
+
+- SHIMA
+  compatible = "qcom,shima"
+
+- LITO
+  compatible = "qcom,lito"
+
+- BENGAL
+  compatible = "qcom,bengal"
+
+- KHAJE
+  compatible = "qcom,khaje"
+
+- KHAJEP
+  compatible = "qcom,khajep"
+
+- KHAJEQ
+  compatible = "qcom,khajeq"
+
+- KHAJEG
+  compatible = "qcom,khajeg"
+
+- SDMSHRIKE
+  compatible = "qcom,sdmshrike"
+
+- SM6150
+  compatible = "qcom,sm6150"
+
+- QCS405
+  compatible = "qcom,qcs405"
+
+- QCS403
+  compatible = "qcom,qcs403"
+
+- SDXPRAIRIE
+  compatible = "qcom,sdxprairie"
+
+- SDXLEMUR
+  compatible = "qcom,sdxlemur"
+
+- SDMMAGPIE
+  compatible = "qcom,sdmmagpie"
+
+- HOLI
+  compatible = "qcom,holi"
+
+- WAIPIO
+  compatible = "qcom,waipio", "qcom,waipiop"
+
+- KALAMA
+  compatible = "qcom,kalama", "qcom,kalamap"
+
+- KAKA
+  compatible = "qcom,kaka"
+
+- CINDER
+  compatible = "qcom,cinder"
+
+- DIWALI
+  compatible = "qcom,diwali"
+
+- SDXPINN
+  compatible = "qcom,sdxpinn"
+
+- SA410M
+  compatible = "qcom,sa410m"
+
+- LEMANS
+  compatible = "qcom,lemans"
+
+- MONACO
+  compatible = "qcom,monaco", "qcom,monacop"
+
+- SDXBAAGHA
+  compatible = "qcom,sdxbaagha"
+
+Generic board variants:
+
+- CDP device:
+  compatible = "qcom,cdp"
+
+- IDP device:
+  compatible = "qcom,idp"
+
+- MTP device:
+  compatible = "qcom,mtp"
+
+- ATP device:
+  compatible = "qcom,atp"
+
+- FLUID device:
+  compatible = "qcom,fluid"
+
+- LIQUID device:
+  compatible = "qcom,liquid"
+
+- Dragonboard device:
+  compatible = "qcom,dragonboard"
+
+- SBC device:
+  compatible = "qcom,sbc"
+
+- SURF device:
+  compatible = "qcom,surf"
+
+- QRD device:
+  compatible = "qcom,qrd"
+
+- ADP device:
+  compatible = "qcom,adp"
+
+- Simulator device:
+  compatible = "qcom,sim"
+
+- RUMI device:
+  compatible = "qcom,rumi"
+
+- IOT device:
+  compatible = "qcom,iot"
+
+- HDK device:
+  compatible = "qcom,hdk"
+
+- HHG device:
+  compatible = "qcom,hhg"
+
+- RCM device:
+  compatible = "qcom,rcm"
+
+- X100 device:
+  compatible = "qcom,x100"
+
+- CCARD device:
+  compatible = "qcom,ccard"
+
+Boards (SoC type + board variant):
+
+compatible = "qcom,apq8016"
+compatible = "qcom,apq8084-cdp"
+compatible = "qcom,apq8084-liquid"
+compatible = "qcom,apq8084-mtp"
+compatible = "qcom,apq8084-sbc"
+compatible = "qcom,apq8094-cdp"
+compatible = "qcom,apq8096-cdp"
+compatible = "qcom,apq8096-mtp"
+compatible = "qcom,apq8096-dragonboard"
+compatible = "qcom,apq8096-sbc"
+compatible = "qcom,apq8096-liquid"
+compatible = "qcom,msm8916-cdp"
+compatible = "qcom,msm8916-mtp"
+compatible = "qcom,msm8916-qrd-skuh"
+compatible = "qcom,msm8916-qrd-skuhf"
+compatible = "qcom,msm8916-qrd-skui"
+compatible = "qcom,msm8916-qrd-skuic"
+compatible = "qcom,msm8916-qrd-skuid"
+compatible = "qcom,msm8916-qrd-skut1"
+compatible = "qcom,msm8916-rumi"
+compatible = "qcom,msm8916-sim"
+compatible = "qcom,msm8960-cdp"
+compatible = "qcom,msm8974-cdp"
+compatible = "qcom,msm8974-fluid"
+compatible = "qcom,msm8974-liquid"
+compatible = "qcom,msm8974-mtp"
+compatible = "qcom,msm8974-rumi"
+compatible = "qcom,msm8974-sim"
+compatible = "qcom,msm8996-rumi"
+compatible = "qcom,msm8996-sim"
+compatible = "qcom,msm8996-cdp"
+compatible = "qcom,msm8996-dtp"
+compatible = "qcom,msm8996-fluid"
+compatible = "qcom,msm8996-liquid"
+compatible = "qcom,msm8996-mtp"
+compatible = "qcom,msm8996-adp"
+compatible = "qcom,sm8150-rumi"
+compatible = "qcom,sm8150-mtp"
+compatible = "qcom,sm8150-cdp"
+compatible = "qcom,sm8150-qrd"
+compatible = "qcom,sm8150p-cdp"
+compatible = "qcom,sm8150p-mtp"
+compatible = "qcom,sm8150p-qrd"
+compatible = "qcom,sa8155-adp"
+compatible = "qcom,sa8155p-adp"
+compatible = "qcom,sa8155-adp-star"
+compatible = "qcom,sa8155p-adp-star"
+compatible = "qcom,sa8155-adp-air"
+compatible = "qcom,sa8155-v2-adp-air"
+compatible = "qcom,sa8155p-v2-adp-air"
+compatible = "qcom,sa8195p-adp-star"
+compatible = "qcom,sa8195p-adp-star"
+compatible = "qcom,sa8195p-adp-air"
+compatible = "qcom,adp-air"
+compatible = "qcom,kona-rumi"
+compatible = "qcom,kona-mtp"
+compatible = "qcom,kona-cdp"
+compatible = "qcom,kona-qrd"
+compatible = "qcom,lahaina-rumi"
+compatible = "qcom,lahaina-atp"
+compatible = "qcom,lahaina-mtp"
+compatible = "qcom,lahaina-cdp"
+compatible = "qcom,lahaina-qrd"
+compatible = "qcom,lahaina-qrd-module"
+compatible = "qcom,lahaina-hdk"
+compatible = "qcom,lahainap-mtp"
+compatible = "qcom,lahainap-cdp"
+compatible = "qcom,lahainap-atp"
+compatible = "qcom,lahainap-qrd"
+compatible = "qcom,shima-rumi"
+compatible = "qcom,shima-idp"
+compatible = "qcom,shima-atp"
+compatible = "qcom,shima-qrd"
+compatible = "qcom,lito-rumi"
+compatible = "qcom,lito-mtp"
+compatible = "qcom,lito-cdp"
+compatible = "qcom,lito-atp"
+compatible = "qcom,lito-qrd"
+compatible = "qcom,bengal-rumi"
+compatible = "qcom,sdmshrike-rumi"
+compatible = "qcom,sdmshrike-mtp"
+compatible = "qcom,sdmshrike-cdp"
+compatible = "qcom,sm6150-rumi"
+compatible = "qcom,sm6150-mtp"
+compatible = "qcom,sm6150-cdp"
+compatible = "qcom,sm6150-qrd"
+compatible = "qcom,sm6150-idp"
+compatible = "qcom,qcs405-rumi"
+compatible = "qcom,qcs405-iot"
+compatible = "qcom,qcs403-iot"
+compatible = "qcom,sa8150-adp-star"
+compatible = "qcom,adp-star"
+compatible = "qcom,sdxprairie-rumi"
+compatible = "qcom,sdxprairie-mtp"
+compatible = "qcom,sdxprairie-cdp"
+compatible = "qcom,sdxlemur-rumi"
+compatible = "qcom,sdxlemur-mtp"
+compatible = "qcom,sdxlemur-cdp"
+compatible = "qcom,sdmmagpie-rumi"
+compatible = "qcom,sdmmagpie-idp"
+compatible = "qcom,sdmmagpie-qrd"
+compatible = "qcom,holi-rumi"
+compatible = "qcom,holi-mtp"
+compatible = "qcom,holi-cdp"
+compatible = "qcom,holi-qrd"
+compatible = "qcom,holi-atp"
+compatible = "qcom,waipio-rumi"
+compatible = "qcom,waipio-mtp"
+compatible = "qcom,waipio-atp"
+compatible = "qcom,waipio-cdp"
+compatible = "qcom,waipio-qrd"
+compatible = "qcom,waipiop-hdk"
+compatible = "qcom,waipiop-mtp"
+compatible = "qcom,waipiop-cdp"
+compatible = "qcom,waipiop-qrd"
+compatible = "qcom,diwali-rumi"
+compatible = "qcom,kalama-rumi"
+compatible = "qcom,kalama-mtp"
+compatible = "qcom,kalama-atp"
+compatible = "qcom,kalama-cdp"
+compatible = "qcom,kalama-qrd"
+compatible = "qcom,kalama-rcm"
+compatible = "qcom,kalamap-mtp"
+compatible = "qcom,kalamap-cdp"
+compatible = "qcom,kalamap-qrd"
+compatible = "qcom,kalamap-hdk"
+compatible = "qcom,kalamap-hhg"
+compatible = "qcom,kaka-rumi"
+compatible = "qcom,cinder-rumi"
+compatible = "qcom,cinder-idp"
+compatible = "qcom,cinder-x100"
+compatible = "qcom,sa6155"
+compatible = "qcom,sa6155p"
+compatible = "qcom,sa6155-adp-air"
+compatible = "qcom,sa6155-adp-star"
+compatible = "qcom,sa6155p-adp-air"
+compatible = "qcom,sa6155p-adp-star"
+compatible = "qcom,khaje-idp"
+compatible = "qcom,khaje-qrd"
+compatible = "qcom,khaje-atp"
+compatible = "qcom,khajep-idp"
+compatible = "qcom,khajep-qrd"
+compatible = "qcom,khajep-atp"
+compatible = "qcom,khajeq-idp"
+compatible = "qcom,khajeq-qrd"
+compatible = "qcom,khajeq-atp"
+compatible = "qcom,khajeg-idp"
+compatible = "qcom,khajeg-qrd"
+compatible = "qcom,khajeg-atp"
+compatible = "qcom,sdxpinn-rumi"
+compatible = "qcom,sdxpinn-idp"
+compatible = "qcom,sa410m-rumi"
+compatible = "qcom,quinvm"
+compatible = "qcom,sdxbaagha-rumi"
+compatible = "qcom,sdxbaagha-mtp"
+compatible = "qcom,sdxbaagha-cdp"
+compatible = "qcom,sa410m-idp"
+compatible = "qcom,sa410m-qrd"
+compatible = "qcom,sa410m-ccard"
+compatible = "qcom,lemans-rumi"
+compatible = "qcom,lemans-ivi"
+compatible = "qcom,lemans-ivi-adp-air"
+compatible = "qcom,lemans-ivi-adp-star"
+compatible = "qcom,lemans-adas-high"
+compatible = "qcom,lemans-adas-high-adp-air"
+compatible = "qcom,lemans-adas-high-adp-star"

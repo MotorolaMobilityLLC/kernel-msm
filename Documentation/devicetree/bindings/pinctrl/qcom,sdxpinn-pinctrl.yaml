@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/bindings/pinctrl/qcom,sdxpinn-pinctrl.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Qualcomm Technologies, Inc. SDXPINN TLMM block
+
+maintainers:
+  - Sayan Dey <sayand@qti.qualcomm.com>
+
+description: |
+  This binding describes the Top Level Mode Multiplexer block.
+
+properties:
+  compatible:
+    const: qcom,sdxpinn-pinctrl
+
+  reg:
+    items:
+      - description: Base address of TLMM register space
+      - description: Size of TLMM register space
+
+  interrupts:
+    minItems: 0
+    maxItems: 1
+    items:
+      - const: TLMM summary IRQ
+
+  interrupt-controller: true
+
+  '#interrupt-cells':
+    const: 2
+
+  gpio-controller: true
+
+  '#gpio-cells':
+    const: 2
+
+  wakeup-parent:
+    maxItems: 1
+    description:
+      Please refer to ../gpio/gpio.txt and ../interrupt-controller/interrupts.txt for
+      a general description of GPIO and interrupt bindings.
+
+      Please refer to pinctrl-bindings.txt in this directory for details of the
+      common pinctrl bindings used by client devices, including the meaning of the
+      phrase "pin configuration node".
+
+      The pin configuration nodes act as a container for an arbitrary number of
+      subnodes. Each of these subnodes represents some desired configuration for a
+      pin, a group, or a list of pins or groups. This configuration can include the
+      mux function to select on those pin(s)/group(s), and various pin configuration
+      parameters, such as pull-up, drive strength, etc.
+
+
+# PIN CONFIGURATION NODES
+patternPropetries:
+  '^.*$':
+    if:
+      type: object
+    then:
+      properties:
+        pins:
+          description:
+            List of gpio pins affected by the properties specified in
+            this subnode.
+          items:
+            oneOf:
+              - pattern: "^gpio([0-9]|[1-9][0-9]|1[0-9][0-9]|20[0-9])"
+              - enum: [ sdc2_clk, sdc2_cmd, sdc2_data, ufs_reset ]
+            minItems: 1
+            maxItems: 36
+        function:
+          description:
+            Specify the alternative function to be configured for the
+            specified pins. Functions are only valid for gpio pins.
+          enum: [gpio, ETH0_MDC, ETH0_MDIO, ETH1_MDC, ETH1_MDIO, QLINK0_WMSS_RESET,
+            QLINK1_WMSS_RESET, RGMII_RXC, RGMII_RXD0, RGMII_RXD1, RGMII_RXD2, RGMII_RXD3,
+            RGMII_RX_CTL, RGMII_TXC, RGMII_TXD0, RGMII_TXD1, RGMII_TXD2, RGMII_TXD3,
+            RGMII_TX_CTL, adsp_ext_vfr, atest_char_start, atest_char_status0, atest_char_status1,
+            atest_char_status2, atest_char_status3, audio_ref_clk, bimc_dte_test0, bimc_dte_test1,
+            char_exec_pending, char_exec_release, coex_uart2_rx, coex_uart2_tx, coex_uart_rx,
+            coex_uart_tx, cri_trng_rosc, cri_trng_rosc0, cri_trng_rosc1, dbg_out_clk,
+            ddr_bist_complete, ddr_bist_fail, ddr_bist_start, ddr_bist_stop, ddr_pxi0_test,
+            ebi0_wrcdc_dq2, ebi0_wrcdc_dq3, ebi2_a_d, ebi2_lcd_cs, ebi2_lcd_reset, ebi2_lcd_te,
+            emac0_mcg_pst0, emac0_mcg_pst1, emac0_mcg_pst2, emac0_mcg_pst3, emac0_ptp_aux,
+            emac0_ptp_pps, emac1_mcg_pst0, emac1_mcg_pst1, emac1_mcg_pst2, emac1_mcg_pst3,
+            emac1_ptp_aux0, emac1_ptp_aux1, emac1_ptp_aux2, emac1_ptp_aux3, emac1_ptp_pps0,
+            emac1_ptp_pps1, emac1_ptp_pps2, emac1_ptp_pps3, emac_cdc_dtest0, emac_cdc_dtest1,
+            emac_pps_in, ext_dbg_uart, gcc_125_clk, gcc_gp1_clk, gcc_gp2_clk, gcc_gp3_clk,
+            gcc_plltest_bypassnl, gcc_plltest_resetn, i2s_mclk, jitter_bist_ref, ldo_en,
+            ldo_update, m_voc_ext, mgpi_clk_req, native0, native1, native2, native3,
+            native_char_start, native_tsens_osc, native_tsense_pwm1, nav_dr_sync, nav_gpio_0,
+            nav_gpio_1, nav_gpio_2, nav_gpio_3, pa_indicator_1, pci_e_rst, pcie0_clkreq_n,
+            pcie1_clkreq_n, pcie2_clkreq_n, pll_bist_sync, pll_clk_aux, pll_ref_clk,
+            pri_mi2s_data0, pri_mi2s_data1, pri_mi2s_sck, pri_mi2s_ws, prng_rosc_test0,
+            prng_rosc_test1, prng_rosc_test2, prng_rosc_test3, qdss_cti_trig0, qdss_cti_trig1,
+            qdss_gpio_traceclk, qdss_gpio_tracectl, qdss_gpio_tracedata0, qdss_gpio_tracedata1,
+            qdss_gpio_tracedata10, qdss_gpio_tracedata11, qdss_gpio_tracedata12,
+            qdss_gpio_tracedata13, qdss_gpio_tracedata14, qdss_gpio_tracedata15,
+            qdss_gpio_tracedata2, qdss_gpio_tracedata3, qdss_gpio_tracedata4, qdss_gpio_tracedata5,
+            qdss_gpio_tracedata6, qdss_gpio_tracedata7, qdss_gpio_tracedata8, qdss_gpio_tracedata9,
+            qlink0_b_en, qlink0_b_req, qlink0_l_en, qlink0_l_req, qlink1_l_en, qlink1_l_req,
+            qup_se0_l0, qup_se0_l1, qup_se0_l2, qup_se0_l3, qup_se1_l2, qup_se1_l3, qup_se2_l0,
+            qup_se2_l1, qup_se2_l2, qup_se2_l3, qup_se3_l0, qup_se3_l1, qup_se3_l2, qup_se3_l3,
+            qup_se4_l2, qup_se4_l3, qup_se5_l0, qup_se5_l1, qup_se6_l0, qup_se6_l1, qup_se6_l2,
+            qup_se6_l3, qup_se7_l0, qup_se7_l1, qup_se7_l2, qup_se7_l3, qup_se8_l2, qup_se8_l3,
+            sdc1_tb_trig, sdc2_tb_trig, sec_mi2s_data0, sec_mi2s_data1, sec_mi2s_sck, sec_mi2s_ws,
+            sgmii_phy_intr0, sgmii_phy_intr1, spmi_coex_clk, spmi_coex_data, spmi_vgi_hwevent,
+            tgu_ch0_trigout, tri_mi2s_data0, tri_mi2s_data1, tri_mi2s_sck, tri_mi2s_ws, uim1_clk,
+            uim1_data, uim1_present, uim1_reset, uim2_clk, uim2_data, uim2_present, uim2_reset,
+            usb2phy_ac_en, vsense_trigger_mirnat]
+        drive-strength:
+          enum: [2, 4, 6, 8, 10, 12, 14, 16]
+          default: 2
+          description:
+            Selects the drive strength for the specified pins, in mA.
+        bias-pull-down: true
+        bias-pull-up: true
+        bias-disable: true
+        output-high: true
+        output-low: true
+      required:
+        - pins
+        - function
+      additionalProperties: false
+
+examples:
+  - |
+    tlmm: pinctrl@03000000 {
+      compatible = "qcom,sdxpinn-pinctrl";
+      reg = <0x03000000 0xdc2000>;
+      interrupts = <0 208 0>;
+      gpio-controller;
+      #gpio-cells = <2>;
+      interrupt-controller;
+      #interrupt-cells = <2>;
+      wakeup-parent = <&pdc>;
+    };
+

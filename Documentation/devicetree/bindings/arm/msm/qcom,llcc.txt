@@ -1,0 +1,100 @@
+== Introduction==
+
+LLCC (Last Level Cache Controller) provides last level of cache memory in SOC,
+that can be shared by multiple clients. Clients here are different cores in the
+SOC, the idea is to minimize the local caches at the clients and migrate to
+common pool of memory. Cache memory is divided into partitions called slices
+which are assigned to clients. Clients can query the slice details, activate
+and deactivate them.
+
+Properties:
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: must be "qcom,sdm845-llcc" or "qcom,sm8150-llcc" or
+                    "qcom,lahaina-llcc" or "qcom,shima-llcc" or "qcom,waipio-llcc"
+			or "qcom,sdxlemur-llcc" or "qcom,diwali-llcc"
+			or "qcom,kalama-llcc" or "qcom,cinder-llcc"
+			or "qcom,sdmshrike-llcc".
+		    "qcom,llcc-v2" must be appended for V2 hardware or
+		    "qcom,llcc-v21" for V2.1 or "qcom,llcc-v41" for V4.1.
+
+- reg:
+	Usage: required
+	Value Type: <prop-encoded-array>
+	Definition: The first element specifies the llcc base start address and
+		    the size of the register region. The second element specifies
+		    the llcc broadcast base address and size of the register region.
+		    The third element is optional and specifies the feature register
+		    used to decide which llcc configuration to use if multiple are
+		    available.
+
+- reg-names:
+        Usage: required
+        Value Type: <stringlist>
+        Definition: Register region names. Must be "llcc_base", "llcc_broadcast_base".
+		    The third element is needed only if multiple llcc configurations
+		    are available and must be "multi_ch_reg".
+
+- interrupts:
+	Usage: required
+	Definition: The interrupt is associated with the llcc edac device.
+			It's used for llcc cache single and double bit error detection
+			and reporting.
+
+- multi-ch-off:
+	Usage: optional
+	Value Type: <prop-encoded-array>
+	Definition: If this exists, then the device has the potential to be configured
+		    with different numbers of ddr channels at runtime. The value here
+		    specifies the offset in bits into the "multi_ch_reg" register and
+		    and the number of bits used to decied which llcc configuration to
+		    use.
+
+- max-banks
+	Usage: optional
+	Value Type: <prop-encoded-array>
+	Definition: If this exists, then the device has a potential to only use a
+		    certain number of banks. This caps the number of banks used
+		    at the value set.
+
+Example:
+
+	cache-controller@1100000 {
+		compatible = "qcom,sdm845-llcc";
+		reg = <0x1100000 0x200000>, <0x1300000 0x50000> ;
+		reg-names = "llcc_base", "llcc_broadcast_base";
+		interrupts = <GIC_SPI 582 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+LLCC Performance Monitor
+===
+
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: must be "qcom,llcc-perfom"
+
+- clocks:
+	Usage: required
+	Value type: <prop-encoded-array>
+	Definition:  List of phandles and clock specifier pairs for the llcc perfmon
+		     trace feature support.
+
+- clock-names:
+	Usage: required
+	Value type: <stringlist>
+	Definition: List of clock input name strings sorted in the same
+		    order as the clocks property. Definition must have
+		    "qdss_clk"
+Example:
+
+	cache-controller@1100000 {
+		...
+		llcc-perfmon {
+			compatible = "qcom,llcc-perfmon";
+			clocks = <&aoss_qmp QDSS_CLK>;
+			clock-names = "qdss_clk";
+		};
+		...
+	};

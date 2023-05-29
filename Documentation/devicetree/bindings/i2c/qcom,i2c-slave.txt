@@ -1,0 +1,29 @@
+I2c Slave: Qualcomm Technologies Inc Universal Peripheral.
+
+Required properties:
+ - compatible: Should be: "qcom,i2c-slave".
+ - reg: Should contain base register address and length.
+ - interrupts: Should contain I2C slave interrupt.
+ - clocks: AHB clock and XO clocks needed by the device.
+ - pinctrl-names/pinctrl-0/1: The GPIOs assigned to this core. The names
+   should be "active" and "sleep" for the pin confuguration when core is active
+   or when entering sleep state.
+
+Optional property:
+
+Child nodes should conform to i2c bus binding.
+
+Example:
+
+i2c_slave{
+        compatible = "qcom,i2c-slave";
+        reg = <0x088ca000 0x64>;
+        interrupt-names = "smbus_alert";
+        interrupts = <GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH>;
+        clock-names = "sm_bus_xo_clk", "sm_bus_ahb_clk";
+        clocks = <&gcc GCC_SM_BUS_XO_CLK>, <&gcc GCC_SM_BUS_AHB_CLK>;
+        pinctrl-names = "default", "sleep";
+        pinctrl-0 = <&i2c_slave_sda_active>, <&i2c_slave_scl_active>;
+        pinctrl-1 = <&i2c_slave_sleep>;
+        status = "ok";
+};

@@ -1,0 +1,136 @@
+/*
+ * Copyright (C) 2008 Shanghai awinic technology co.,ltd. All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS
+ * IN THE SOFTWARE.
+ */
+
+Awinic. AW2016 LED
+
+AW2016 LED device supports 3 LED channels and the driver
+register each channel as a single LED class device and
+exports interfaces to update brightness, set timer trigger
+and enable HW based blink functionalities.
+
+- compatible
+  Usage: required
+  Value type: <string>
+  Definition: Must be "awinic,aw2016_led"
+
+- reg
+  Usage: required
+  Value type: <u32>
+  Definition: The 7-bit I2C address for AW2016 chip.
+
+Properties for child properties:
+- awinic,name
+  Usage: required
+  Value type: <string>
+  Definition: Name of the LED which will be register as the LED class
+	device name.
+
+- awinic,id
+  Usage: required
+  Value type: <u32>
+  Definition: It represents the LED hardware channel index. The valid
+	values are: 0, 1, 2.
+
+- awinic,imax
+  Usage: required
+  Value type: <u32>
+  Definition: The setting of the maximum current for the given LED channel,
+	the valid values are: 0, 1, 2, 3, and the corresponding current
+	setting are: 15mA, 30mA, 5mA, 10mA.
+
+- awinic,led-current
+  Usage: required
+  Value type: <u32>
+  Definition: The setting of the current when the LED channel is enabled.
+
+- awinic,max-brightness
+  Usage: required
+  Value type: <u32>
+  Definition: The maximum brightness value for the LED class device.
+
+- awinic,rise-time-ms
+  Usage: required
+  Value type <u32>
+  Definition: The duration of the led ramping from 0 to maximum brightness
+	when breath function is enabled.
+
+- awinic,hold-time-ms
+  Usage: required
+  Value type: <u32>
+  Definition: The duration of the led staying at the maximum brightness
+	when breath function is enabled.
+
+- awinic,fall-time-ms
+  Usage: required
+  Value type: <u32>
+  Definition: The duration of the led ramping down from maximum brightness
+	to 0 when breath function is enabled.
+
+- awinic,off-time-ms
+  Usage: required
+  Value type: <u32>
+  Definition: The duration of the led staying at 0 brightness when breath
+	function is enabled.
+
+Example:
+	awinic@64 {
+		compatible = "awinic,aw2016_led";
+		reg = <0x64>;
+
+		awinic,red {
+			awinic,name = "red";
+			awinic,id = <0>;
+			awinic,imax = <2>;
+			awinic,led-current = <3>;
+			awinic,max-brightness = <255>;
+			awinic,rise-time-ms = <6>;
+			awinic,hold-time-ms = <0>;
+			awinic,fall-time-ms = <6>;
+			awinic,off-time-ms = <4>;
+		};
+
+		awinic,green {
+			awinic,name = "green";
+			awinic,id = <1>;
+			awinic,imax = <2>;
+			awinic,led-current = <3>;
+			awinic,max-brightness = <255>;
+			awinic,rise-time-ms = <6>;
+			awinic,hold-time-ms = <0>;
+			awinic,fall-time-ms = <6>;
+			awinic,off-time-ms = <4>;
+		};
+
+		awinic,blue {
+			awinic,name = "blue";
+			awinic,id = <2>;
+			awinic,imax = <2>;
+			awinic,led-current = <3>;
+			awinic,max-brightness = <255>;
+			awinic,rise-time-ms = <6>;
+			awinic,hold-time-ms = <0>;
+			awinic,fall-time-ms = <6>;
+			awinic,off-time-ms = <4>;
+		};
+	};
+

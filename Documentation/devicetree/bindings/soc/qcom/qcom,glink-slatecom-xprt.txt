@@ -1,0 +1,75 @@
+Qualcomm Technologies, Inc GLINK SLATECOM transport (glink_slatecom_xprt) binding
+
+This binding describes the Qualcomm Technologies, Inc glink slatecom transport
+driver, a slatecom-spi based communication channel for sending data between the
+various subsystems in Qualcomm Technologies, Inc platforms.
+
+- compatible:
+	Usage: required
+	Value type: <stringlist>
+	Definition: must be "qcom,glink-slatecom-xprt"
+
+- label:
+	Usage: required
+	Value type: <stringlist>
+	Definition: must be "slate"
+
+= EXAMPLE
+
+The following example reprsents a glink_slatecom node.
+
+	qcom,glink-slatecom-xprt-slate {
+		compatible = "qcom,glink-slatecom-xprt";
+		label = "slate";
+	};
+
+= AUDIO_CC_IPC_NODE
+Each subnode of the glink_slatecom_xprt is a device node exposed to user space
+by the audio-cc-ipc driver for sending ipc packets between the ipc clients.
+Maximum nodes supported is 2.
+- Each node defined should contain following property
+
+- compatible:
+	Usage: required
+	Value type: <stringlist>
+	Definition: must be "qcom,audio_cc_ipc"
+
+- qcom,glink-channels:
+	Usage: required
+	Value type: <stringlist>
+
+- reg:
+	Usage: required
+	Value type: <u32>
+
+- cdev_name:
+	Usage: required
+	Value type: <stringlist>
+
+= CC_CODEC_NODE
+Audio_cc_ipc nodes can have a cc_codec child node. This node will act as an
+interface for proxy codec, to manage the communication to its counter part
+through ipc.
+- Each node defined should contain following property
+
+- compatible:
+	Usage: required
+	Value type: <stringlist>
+	Definition: must be "qcom,cc-codec"
+
+= EXAMPLE
+The following example represents the audio-cc-ipc node having a codec child node
+
+	audio_ipc1: qcom,audio_cc_ipc1 {
+		compatible = "qcom,audio_cc_ipc";
+		qcom,glink-channels = "custom_cc_apps";
+		qcom,intents = <0x2000 2>;
+		reg = <GPR_DOMAIN_ADSP>;
+		cdev_name = "nongpr_channel";
+
+		cc_codec: qcom,cc-codec {
+			compatible = "qcom, cc-codec";
+		};
+	};
+
+

@@ -1,0 +1,59 @@
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/arm/msm/qcom,gh-secure-vm-loader.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Gunyah Secure Virtual Machine Loader
+
+maintainers:
+  - Prakruthi Deepak Heragu <pheragu@quicinc.com>
+  - Sreenad Menon <sreemeno@qti.qualcomm.com>
+
+description: |+
+  Secure VM loader driver is used for loading the Secure Virtual Machine
+  images into memory and conveying the memory details to Resource Manager.
+
+properties:
+  compatible:
+    const: qcom,gh-secure-vm-loader
+
+  qcom,vmid:
+    $ref: '/schemas/types.yaml#/definitions/uint32'
+    description: Virtual Machine ID of the current virtual machine.
+
+  qcom,pas-id:
+    $ref: '/schemas/types.yaml#/definitions/uint32'
+    description: Peripheral authentication ID of the subsystem.
+
+  qcom,firmware-name:
+    $ref: '/schemas/types.yaml#/definitions/string'
+    description: Virtual machine name.
+
+  memory-region:
+    $ref: '/schemas/types.yaml#/definitions/phandle'
+    description: Virtual machine memory region.
+
+  virtio-backends:
+    $ref: '/schemas/types.yaml#/definitions/phandle'
+    description: Virtio backend devices of VM.
+
+required:
+  - compatible
+  - qcom,pas-id
+  - qcom,vmid
+  - qcom,firmware-name
+  - memory-region
+  - virtio-backends
+
+additionalProperties: false
+
+examples:
+  - |
+    gh-secure-vm-loader@0 {
+      compatible = "qcom,gh-secure-vm-loader";
+      qcom,pas-id = <28>;
+      qcom,vmid = <45>;
+      qcom,firmware-name = "trustedvm";
+      memory-region = <&trust_ui_vm_mem>;
+      virtio-backends = <&trust_ui_vm_virt_be0>;
+    };

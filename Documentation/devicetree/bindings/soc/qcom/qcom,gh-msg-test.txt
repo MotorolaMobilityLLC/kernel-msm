@@ -1,0 +1,28 @@
+QCT Gunyah Hypervisor Message Queue Test Driver
+
+The Gunyah Hypervisor Test Driver is used to validate gunyah hypervisor
+functionality. It includes test nodes for transferring gunyah message
+queue between VMs.
+
+Required properties:
+- compatible:	"qcom,gh-msgq-test"
+- qcom,label:   The IDs of message queue which are defined in gh_msgq.h
+- qcom,primary: qcom,primary is required for the master device.
+                The client device should ignore this property.
+- affinity:     affinity is required for the client device.
+                The property is used to affine msgq to specific CPU ID.
+
+Example:
+	Master:
+	qcom,test-msgq {
+		compatible = "qcom,gh-msgq-test";
+		gunyah-label = <4>;
+		qcom,primary;
+	};
+
+	Client:
+	qcom,test-msgq {
+		compatible = "qcom,gh-msgq-test";
+		gunyah-label = <4>;
+		affinity = <0>;
+	};

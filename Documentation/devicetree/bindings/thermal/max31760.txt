@@ -1,0 +1,38 @@
+Bindings for the Maxim MAX31760 Intelligent Fan Controller
+==========================================================
+
+The Maxim MAX31760 is a i2c device providing closed-loop, multi-channel fan
+management with temperature. Various fan control features are provided,
+including PWM frequency control, temperature hysteresis, dual tachometer
+measurements, and fan health monitoring.
+
+Required properties:
+- compatible         : should be "maxim,max31760".
+- reg                : I2C address, 0xa0.
+
+Optional properties:
+- maxim,vdd-supply   : regulator supplying the vdd pin
+- maxim,vdd-max-uv   : regulator max voltage
+- maxim,vdd-min-uv   : regulator min voltage
+- maxim,vdd-load-ua  : regulator load current output
+- maxim,vcca-supply  : regulator supplying the vcca pin
+- maxim,vcca-max-uv  : regulator max voltage
+- maxim,vcca-min-uv  : regulator min voltage
+- maxim,vcca-load-ua : regulator load current output
+- maxim,pwr-en-gpio  : fan enable gpio
+
+Example:
+	max31760@50 {
+		compatible = "maxim,max31760";
+		reg = <0x50>;
+		maxim,vdd-supply = <&some_reg>;
+		regulator-names = "maxim,vdd";
+		maxim,vdd-max-uv = <3400000>;
+		maxim,vdd-min-uv = <3300000>;
+		maxim,vdd-load-ua = <300000>;
+		maxim,vcca-supply = <&some_reg>;
+		maxim,vcca-max-uv = <1800000>;
+		maxim,vcca-min-uv = <1800000>;
+		maxim,vcca-load-ua = <600000>;
+		maxim,pwr-en-gpio = <&some_gpio>;
+	};

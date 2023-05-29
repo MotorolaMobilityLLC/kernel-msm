@@ -1,0 +1,35 @@
+%YAML 1.2
+---
+$id: "http://devicetree.org/schemas/soc/qcom/qcom,secure-buffer.yaml#"
+$schema: "http://devicetree.org/meta-schemas/core.yaml#"
+
+title: Qualcomm Technologies, Inc. Virtio-Mem bindings
+
+description: |
+  QCOM virtio mem driver supports Guest initiated memory hotplug operations
+  which transfer memory from Host to Guest.
+
+properties:
+  compatible:
+    items:
+      - const: qcom,virtio-mem
+
+  reg:
+    description:
+      Physical address and size of hotpluggable region. Must be aligned
+      to memory_block_size_bytes() - 128 Mb on arm64.
+
+  qcom,block_size:
+    description:
+      Minimum transfer size in bytes. Should be multiple of PAGE_SIZE.
+
+required:
+  - compatible
+  - qcom,block-size
+
+example:
+	virtio_mem_device {
+		compatible = "qcom,virtio-mem";
+		reg = <0x60000000 0x10000000>;
+		qcom,block_size = <0x400000>;
+	};

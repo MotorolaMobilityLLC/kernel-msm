@@ -1,0 +1,25 @@
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/bindings/arm/msm/qcom,tlmm-vm-test.yaml#
+
+title: Qualcomm Technologies, Inc. TLMM VM test driver binding
+
+description: |+
+  The driver can be used to test memory lending to VM.
+
+properties:
+  compatible:
+    const: qcom,tlmm-vm-test
+
+  reg:
+    items:
+      - description: Base address of register space to be lent
+      - description: Size of the register space
+
+example:
+  - |
+    tlmm-vm-mem-test {
+       compatible = "qcom,tlmm-vm-test";
+       tlmm-vm-io-bases = <0xf140000 0xf141000>;
+       tlmm-vm-io-sizes = <0x1000 0x1000>;
+    };

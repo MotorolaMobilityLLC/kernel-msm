@@ -1,0 +1,33 @@
+Qualcomm Technologies, Inc. ECPRI Clock Controller Binding
+--------------------------------------------------------------------
+
+Required properties :
+- compatible : shall contain "qcom,cinder-ecpricc"
+
+- reg: shall contain base register offset and size.
+- reg-names: names of registers listed in the same order as in the reg property.
+		Must contain "cc_base".
+- vdd_cx-supply: The vdd_cx logic rail supply.
+- #clock-cells : from common clock binding, shall contain 1
+- #reset-cells : from common reset binding, shall contain 1
+
+Optional properties :
+- #power-domain-cells : from generic power domain binding, shall contain 1
+- clocks : shall contain the XO clock
+	   shall contain the gpll0/2/4/5 out main clock
+- clock-names : shall be "xo"
+		shall be "gpll0/2/4/5"
+
+Example:
+1.
+	ecpricc: clock-controller@280000 {
+		compatible = "qcom,cinder-ecpricc";
+		reg = <0x280000 0x40000>;
+		vdd_cx-supply = <VDD_CX_SUPPLY>;
+		#clock-cells = <1>;
+		#reset-cells = <1>;
+		#power-domain-cells = <1>;
+		clocks = <&rpmhcc RPMH_CXO_CLK>, <&gcc GCC_PLL0>,
+			 <&gcc GCC_PLL2>, <&gcc GCC_PLL4>, <&gcc GCC_PLL5>;
+		clock-names = "xo", "gpll0", "gpll2", "gpll4", "gpll5";
+	};

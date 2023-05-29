@@ -1,0 +1,20 @@
+* Qualcomm Technologies, Inc. Power State Driver
+
+This binding describes the Qualcomm Technologies, Inc. Power State Driver. Power
+State creates power_state device node for user space communication. User space
+client can open device node for communication and driver accordingly handles the
+request.
+
+Required Properties:
+
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: must be "qcom,power-state"
+
+Example:
+
+	qcom,power-state {
+		compatible = "qcom,power-state";
+	};
+

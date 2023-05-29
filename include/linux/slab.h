@@ -222,6 +222,18 @@ static inline void __check_heap_object(const void *ptr, unsigned long n,
 #endif
 
 /*
+ * Arches can define this function if they want to decide the minimum slab
+ * alignment at runtime. The value returned by the function must be a power
+ * of two and >= ARCH_SLAB_MINALIGN.
+ */
+#ifndef arch_slab_minalign
+static inline unsigned int arch_slab_minalign(void)
+{
+	return ARCH_SLAB_MINALIGN;
+}
+#endif
+
+/*
  * kmalloc and friends return ARCH_KMALLOC_MINALIGN aligned
  * pointers. kmem_cache_alloc and friends return ARCH_SLAB_MINALIGN
  * aligned pointers.
@@ -331,6 +343,8 @@ enum kmalloc_cache_type {
 extern struct kmem_cache *
 kmalloc_caches[NR_KMALLOC_TYPES][KMALLOC_SHIFT_HIGH + 1];
 
+extern bool android_kmalloc_64_create;
+
 /*
  * Define gfp bits that should not be set for KMALLOC_NORMAL.
  */
@@ -381,6 +395,9 @@ static __always_inline unsigned int __kmalloc_index(size_t size,
 {
 	if (!size)
 		return 0;
+
+	if (android_kmalloc_64_create && size <= 64)
+		return 6;
 
 	if (size <= KMALLOC_MIN_SIZE)
 		return KMALLOC_SHIFT_LOW;

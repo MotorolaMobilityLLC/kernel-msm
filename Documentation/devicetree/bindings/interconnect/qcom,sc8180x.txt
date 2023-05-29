@@ -1,0 +1,31 @@
+Qualcomm Technologies, Inc. SC8180X Network-On-Chip interconnect driver binding
+------------------------------------------------------------------------------
+
+SC8180X interconnect providers support system bandwidth requirements through
+RPMh hardware accelerators known as Bus Clock Manager (BCM). The provider is
+able to communicate with the BCM through the Resource State Coordinator (RSC)
+associated with each execution environment. Provider nodes must point to at
+least one RPMh device child node pertaining to their RSC and each provider
+can map to multiple RPMh resources.
+
+Required properties :
+- compatible : shall contain only one of the following:
+			"qcom,sc8180x-aggre1-noc";
+			"qcom,sc8180x-aggre2-noc";
+			"qcom,sc8180x-camnoc-virt";
+			"qcom,sc8180x-compute-noc";
+			"qcom,sc8180x-config-noc";
+			"qcom,sc8180x-dc-noc";
+			"qcom,sc8180x-gem-noc";
+			"qcom,sc8180x-ipa-virt";
+			"qcom,sc8180x-mc-virt";
+			"qcom,sc8180x-mmss-noc";
+			"qcom,sc8180x-system-noc";
+- #interconnect-cells : should contain 1
+
+Examples:
+
+aggre1_noc: interconnect@16e0000 {
+	"qcom,sc8180x-aggre1_noc";
+	interconnect-cells = <1>;
+};

@@ -1,0 +1,34 @@
+Qualcomm Technologies, Inc. kalama Network-On-Chip interconnect driver binding
+-----------------------------------------------------------
+
+kalama interconnect providers support system bandwidth requirements through
+RPMh hardware accelerators known as Bus Clock Manager (BCM). The provider is
+able to communicate with the BCM through the Resource State Coordinator (RSC)
+associated with each execution environment. Provider nodes must point to at
+least one RPMh device child node pertaining to their RSC and each provider
+can map to multiple RPMh resources.
+
+Required properties :
+- compatible : shall contain only one of the following:
+			"qcom,kalama-aggre1_noc",
+			"qcom,kalama-aggre2_noc",
+			"qcom,kalama-clk_virt",
+			"qcom,kalama-cnoc_cfg",
+			"qcom,kalama-cnoc_main",
+			"qcom,kalama-gem_noc",
+			"qcom,kalama-lpass_ag_noc",
+			"qcom,kalama-lpass_lpiaon_noc",
+			"qcom,kalama-lpass_lpicx_noc",
+			"qcom,kalama-mc_virt",
+			"qcom,kalama-mmss_noc",
+			"qcom,kalama-nsp_noc",
+			"qcom,kalama-system_noc",
+			"qcom,kalama-pcie_anoc",
+- #interconnect-cells : should contain 1
+
+Examples:
+
+system_noc: interconnect@1680000 {
+	compatible = "qcom,kalama-system_noc";
+	interconnect-cells = <1>;
+};

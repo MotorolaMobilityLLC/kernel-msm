@@ -1,0 +1,274 @@
+Qualcomm Technologies, Inc. SA410M TLMM block
+
+This binding describes the Top Level Mode Multiplexer block found in the
+SA410M platform.
+
+- compatible:
+	Usage: required
+	Value type: <string>
+	Definition: must be "qcom,sa410m-pinctrl"
+
+- reg:
+	Usage: required
+	Value type: <prop-encoded-array>
+	Definition: the base address and size of the normal and extended
+		    TLMM tiles.
+
+- reg-names:
+	Usage: required
+	Value type: <prop-encoded-array>
+	Defintiion: names for the cells of reg, must contain "normal", "extended".
+
+- interrupts:
+	Usage: required
+	Value type: <prop-encoded-array>
+	Definition: should specify the TLMM summary IRQ.
+
+- interrupt-controller:
+	Usage: required
+	Value type: <none>
+	Definition: identifies this node as an interrupt controller
+
+- #interrupt-cells:
+	Usage: required
+	Value type: <u32>
+	Definition: must be 2. Specifying the pin number and flags, as defined
+		    in <dt-bindings/interrupt-controller/irq.h>
+
+- gpio-controller:
+	Usage: required
+	Value type: <none>
+	Definition: identifies this node as a gpio controller
+
+- #gpio-cells:
+	Usage: required
+	Value type: <u32>
+	Definition: must be 2. Specifying the pin number and flags, as defined
+		    in <dt-bindings/gpio/gpio.h>
+
+- gpio-ranges:
+	Usage: required
+	Value type: <prop-encoded-array>
+	Definition:  see ../gpio/gpio.txt
+
+- gpio-reserved-ranges:
+	Usage: optional
+	Value type: <prop-encoded-array>
+	Definition: see ../gpio/gpio.txt
+
+Please refer to ../gpio/gpio.txt and ../interrupt-controller/interrupts.txt for
+a general description of GPIO and interrupt bindings.
+
+Please refer to pinctrl-bindings.txt in this directory for details of the
+common pinctrl bindings used by client devices, including the meaning of the
+phrase "pin configuration node".
+
+The pin configuration nodes act as a container for an arbitrary number of
+subnodes. Each of these subnodes represents some desired configuration for a
+pin, a group, or a list of pins or groups. This configuration can include the
+mux function to select on those pin(s)/group(s), and various pin configuration
+parameters, such as pull-up, drive strength, etc.
+
+
+PIN CONFIGURATION NODES:
+
+The name of each subnode is not important; all subnodes should be enumerated
+and processed purely based on their content.
+
+Each subnode only affects those parameters that are explicitly listed. In
+other words, a subnode that lists a mux function but no pin configuration
+parameters implies no information about any pin configuration parameters.
+Similarly, a pin subnode that describes a pullup parameter implies no
+information about e.g. the mux function.
+
+
+The following generic properties as defined in pinctrl-bindings.txt are valid
+to specify in a pin configuration subnode:
+
+- pins:
+	Usage: required
+	Value type: <string-array>
+	Definition: List of gpio pins affected by the properties specified in
+		    this subnode.
+
+		    Valid pins are:
+		      gpio0-gpio139
+		        Supports mux, bias and drive-strength
+
+		      sdc1_clk, sdc1_cmd, sdc1_data sdc2_clk, sdc2_cmd,
+		      sdc2_data sdc1_rclk
+		        Supports bias and drive-strength
+
+		      ufs_reset
+		        Supports bias and drive-strength
+
+- function:
+	Usage: required
+	Value type: <string>
+	Definition: Specify the alternative function to be configured for the
+		    specified pins. Functions are only valid for gpio pins.
+		    Valid values are:
+
+		  msm_mux_gpio, msm_mux_AGERA_PLL_REF, msm_mux_CRI_TRNG_ROSC,
+		  msm_mux_CRI_TRNG_ROSC0, msm_mux_CRI_TRNG_ROSC1, msm_mux_GCC_GP1_CLK,
+		  msm_mux_GCC_GP2_CLK, msm_mux_GCC_GP3_CLK, msm_mux_GP0,
+		  msm_mux_GP1, msm_mux_GP2, msm_mux_JITTER_BIST_REF,
+		  msm_mux_PA_INDICATOR_OR, msm_mux_PCIE0_CLK_REQ, msm_mux_PLL_BIST_SYNC,
+		  msm_mux_RGMII0_MDC, msm_mux_RGMII0_MDIO, msm_mux_RGMII0_RXC,
+		  msm_mux_RGMII0_RXD0, msm_mux_RGMII0_RXD1, msm_mux_RGMII0_RXD2,
+		  msm_mux_RGMII0_RXD3, msm_mux_RGMII0_RX_CTL, msm_mux_RGMII0_TXC,
+		  msm_mux_RGMII0_TXD0, msm_mux_RGMII0_TXD1, msm_mux_RGMII0_TXD2,
+		  msm_mux_RGMII0_TXD3, msm_mux_RGMII0_TX_CTL, msm_mux_SDC1_TB_TRIG,
+		  msm_mux_SDC2_TB_TRIG, msm_mux_SSBI_WTR1_RX, msm_mux_SSBI_WTR1_TX,
+		  msm_mux_adsp_ext_vfr, msm_mux_atest_bbrx_dtestout0,
+		  msm_mux_atest_bbrx_dtestout1, msm_mux_atest_char_start,
+		  msm_mux_atest_char_status0, msm_mux_atest_char_status1,
+		  msm_mux_atest_char_status2, msm_mux_atest_char_status3,
+		  msm_mux_atest_gpsadc0_dtest0, msm_mux_atest_gpsadc0_dtest1,
+		  msm_mux_atest_gpsadc1_dtest0, msm_mux_atest_gpsadc1_dtest1,
+		  msm_mux_atest_tsens2_osc, msm_mux_atest_tsens_osc,
+		  msm_mux_atest_usb1_atereset, msm_mux_atest_usb1_testdataout00,
+		  msm_mux_atest_usb1_testdataout01, msm_mux_atest_usb1_testdataout02,
+		  msm_mux_atest_usb1_testdataout03, msm_mux_atest_usb2_atereset,
+		  msm_mux_atest_usb2_testdataout00, msm_mux_atest_usb2_testdataout01,
+		  msm_mux_atest_usb2_testdataout02, msm_mux_atest_usb2_testdataout03,
+		  msm_mux_char_exec_pending, msm_mux_char_exec_release,
+		  msm_mux_dac_calib_data0, msm_mux_dac_calib_data1,
+		  msm_mux_dac_calib_data10, msm_mux_dac_calib_data11,
+		  msm_mux_dac_calib_data12, msm_mux_dac_calib_data13,
+		  msm_mux_dac_calib_data14, msm_mux_dac_calib_data15,
+		  msm_mux_dac_calib_data16, msm_mux_dac_calib_data17,
+		  msm_mux_dac_calib_data18, msm_mux_dac_calib_data19,
+		  msm_mux_dac_calib_data2, msm_mux_dac_calib_data20,
+		  msm_mux_dac_calib_data21, msm_mux_dac_calib_data22,
+		  msm_mux_dac_calib_data23, msm_mux_dac_calib_data24,
+		  msm_mux_dac_calib_data25, msm_mux_dac_calib_data3,
+		  msm_mux_dac_calib_data4, msm_mux_dac_calib_data5,
+		  msm_mux_dac_calib_data6, msm_mux_dac_calib_data7,
+		  msm_mux_dac_calib_data8, msm_mux_dac_calib_data9,
+		  msm_mux_dbg_out_clk, msm_mux_ddr_bist_complete,
+		  msm_mux_ddr_bist_fail, msm_mux_ddr_bist_start,
+		  msm_mux_ddr_bist_stop, msm_mux_ddr_pxi0_test,
+		  msm_mux_ddr_pxi1_test, msm_mux_ddr_pxi2_test,
+		  msm_mux_ddr_pxi3_test, msm_mux_emac0_dll_sdc4,
+		  msm_mux_emac0_mcg_pst0, msm_mux_emac0_mcg_pst1,
+		  msm_mux_emac0_mcg_pst2, msm_mux_emac0_mcg_pst3,
+		  msm_mux_emac0_phy_intr, msm_mux_emac0_ptp_aux,
+		  msm_mux_emac0_ptp_pps, msm_mux_gsm0_tx_phase,
+		  msm_mux_gsm1_tx_phase, msm_mux_m_voc_ext,
+		  msm_mux_mpm_pwr_cllps, msm_mux_mss_lte_coxm,
+		  msm_mux_nav_gpio0_mira, msm_mux_nav_gpio0_mirb,
+		  msm_mux_nav_gpio0_mirc, msm_mux_nav_gpio1_mira,
+		  msm_mux_nav_gpio1_mirb, msm_mux_nav_gpio1_mirc,
+		  msm_mux_nav_gpio2_mira, msm_mux_nav_gpio2_mirb,
+		  msm_mux_nav_gpio2_mirc, msm_mux_pbs0, msm_mux_pbs1,
+		  msm_mux_pbs10, msm_mux_pbs11,
+		  msm_mux_pbs12, msm_mux_pbs13, msm_mux_pbs14,
+		  msm_mux_pbs15, msm_mux_pbs2, msm_mux_pbs3,
+		  msm_mux_pbs4, msm_mux_pbs5, msm_mux_pbs6,
+		  msm_mux_pbs7, msm_mux_pbs8, msm_mux_pbs9,
+		  msm_mux_pbs_out_0, msm_mux_pbs_out_1,
+		  msm_mux_pbs_out_2, msm_mux_phase_flag_status0,
+		  msm_mux_phase_flag_status1, msm_mux_phase_flag_status10,
+		  msm_mux_phase_flag_status11, msm_mux_phase_flag_status12,
+		  msm_mux_phase_flag_status13, msm_mux_phase_flag_status14,
+		  msm_mux_phase_flag_status15, msm_mux_phase_flag_status16,
+		  msm_mux_phase_flag_status17, msm_mux_phase_flag_status18,
+		  msm_mux_phase_flag_status19, msm_mux_phase_flag_status2,
+		  msm_mux_phase_flag_status20, msm_mux_phase_flag_status21,
+		  msm_mux_phase_flag_status22, msm_mux_phase_flag_status23,
+		  msm_mux_phase_flag_status24, msm_mux_phase_flag_status25,
+		  msm_mux_phase_flag_status26, msm_mux_phase_flag_status27,
+		  msm_mux_phase_flag_status28, msm_mux_phase_flag_status29,
+		  msm_mux_phase_flag_status3, msm_mux_phase_flag_status30,
+		  msm_mux_phase_flag_status31, msm_mux_phase_flag_status4,
+		  msm_mux_phase_flag_status5, msm_mux_phase_flag_status6,
+		  msm_mux_phase_flag_status7, msm_mux_phase_flag_status8,
+		  msm_mux_phase_flag_status9, msm_mux_pll_bypassnl,
+		  msm_mux_pll_reset_n, msm_mux_prng_rosc_test0,
+		  msm_mux_prng_rosc_test1, msm_mux_prng_rosc_test2,
+		  msm_mux_prng_rosc_test3, msm_mux_pwm_0, msm_mux_pwm_1,
+		  msm_mux_pwm_2, msm_mux_pwm_3, msm_mux_pwm_4,
+		  msm_mux_pwm_5, msm_mux_pwm_6, msm_mux_pwm_7,
+		  msm_mux_pwm_8, msm_mux_pwm_9, msm_mux_qdss_cti_trig0,
+		  msm_mux_qdss_cti_trig1, msm_mux_qdss_gpio_traceclk,
+		  msm_mux_qdss_gpio_tracectl, msm_mux_qdss_gpio_tracedata0,
+		  msm_mux_qdss_gpio_tracedata1, msm_mux_qdss_gpio_tracedata10,
+		  msm_mux_qdss_gpio_tracedata11, msm_mux_qdss_gpio_tracedata12,
+		  msm_mux_qdss_gpio_tracedata13, msm_mux_qdss_gpio_tracedata14,
+		  msm_mux_qdss_gpio_tracedata15, msm_mux_qdss_gpio_tracedata2,
+		  msm_mux_qdss_gpio_tracedata3, msm_mux_qdss_gpio_tracedata4,
+		  msm_mux_qdss_gpio_tracedata5, msm_mux_qdss_gpio_tracedata6,
+		  msm_mux_qdss_gpio_tracedata7, msm_mux_qdss_gpio_tracedata8,
+		  msm_mux_qdss_gpio_tracedata9, msm_mux_qup0_se0_l0,
+		  msm_mux_qup0_se0_l1, msm_mux_qup0_se0_l2,
+		  msm_mux_qup0_se0_l3, msm_mux_qup0_se0_l4,
+		  msm_mux_qup0_se0_l5, msm_mux_qup0_se1_l0,
+		  msm_mux_qup0_se1_l1, msm_mux_qup0_se1_l2,
+		  msm_mux_qup0_se1_l3, msm_mux_qup0_se2_l0,
+		  msm_mux_qup0_se2_l1, msm_mux_qup0_se2_l2,
+		  msm_mux_qup0_se2_l3, msm_mux_qup0_se3_l0,
+		  msm_mux_qup0_se3_l1, msm_mux_qup0_se3_l2,
+		  msm_mux_qup0_se3_l3, msm_mux_qup0_se4_l0,
+		  msm_mux_qup0_se4_l1, msm_mux_qup0_se4_l2,
+		  msm_mux_qup0_se4_l3, msm_mux_qup0_se5_l0,
+		  msm_mux_qup0_se5_l1, msm_mux_qup0_se5_l2,
+		  msm_mux_qup0_se5_l3, msm_mux_sd_write_protect,
+		  msm_mux_tgu_ch0_trigout, msm_mux_tgu_ch1_trigout,
+		  msm_mux_tgu_ch2_trigout, msm_mux_tgu_ch3_trigout,
+		  msm_mux_tsense_pwm_out, msm_mux_uim1_clk,
+		  msm_mux_uim1_data, msm_mux_uim1_present,
+		  msm_mux_uim1_reset, msm_mux_uim2_clk,
+		  msm_mux_uim2_data, msm_mux_uim2_present,
+		  msm_mux_uim2_reset, msm_mux_usb0_phy_ps,
+		  msm_mux_vfr_1, msm_mux_vsense_trigger_mirnat,
+		  msm_mux_wlan1_adc_dtest0, msm_mux_wlan1_adc_dtest1,
+		  msm_mux_NA
+
+- bias-disable:
+	Usage: optional
+	Value type: <none>
+	Definition: The specified pins should be configured as no pull.
+
+- bias-pull-down:
+	Usage: optional
+	Value type: <none>
+	Definition: The specified pins should be configured as pull down.
+
+- bias-pull-up:
+	Usage: optional
+	Value type: <none>
+	Definition: The specified pins should be configured as pull up.
+
+- output-high:
+	Usage: optional
+	Value type: <none>
+	Definition: The specified pins are configured in output mode, driven
+		    high.
+		    Not valid for sdc pins.
+
+- output-low:
+	Usage: optional
+	Value type: <none>
+	Definition: The specified pins are configured in output mode, driven
+		    low.
+		    Not valid for sdc pins.
+
+- drive-strength:
+	Usage: optional
+	Value type: <u32>
+	Definition: Selects the drive strength for the specified pins, in mA.
+		    Valid values are: 2, 4, 6, 8, 10, 12, 14 and 16
+
+Example:
+
+    tlmm: pinctrl@500000 {
+      compatible = "qcom,sa410-pinctrl";
+      reg = <0x500000 0x300000>;
+      interrupts = <GIC_SPI 227 IRQ_TYPE_LEVEL_HIGH>;
+      gpio-controller;
+      #gpio-cells = <2>;
+      interrupt-controller;
+      #interrupt-cells = <2>;
+      wakeup-parent = <&pdc>;
+    };

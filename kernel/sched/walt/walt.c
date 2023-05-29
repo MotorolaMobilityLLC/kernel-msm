@@ -14,8 +14,10 @@
 #include <linux/qcom-cpufreq-hw.h>
 #include <linux/cpumask.h>
 #include <linux/arch_topology.h>
+#include <linux/cpu.h>
 
 #include <trace/hooks/sched.h>
+#include <trace/hooks/cgroup.h>
 #include <trace/hooks/cpufreq.h>
 #include <trace/hooks/topology.h>
 #include <trace/events/power.h>
