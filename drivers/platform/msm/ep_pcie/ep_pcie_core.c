@@ -42,6 +42,8 @@
 #define PCIE_MHI_STATUS(n)			((n) + 0x148)
 #define TCSR_PERST_SEPARATION_ENABLE		0x270
 #define TCSR_PCIE_RST_SEPARATION		0x3F8
+#define TCSR_PCIE_PERST_EN			0x258
+
 #define PCIE_ISSUE_WAKE				1
 #define PCIE_MHI_FWD_STATUS_MIN			5000
 #define PCIE_MHI_FWD_STATUS_MAX			5110
@@ -2118,17 +2120,17 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 		if (!dev->tcsr_not_supported) {
 			EP_PCIE_DBG(dev,
 				"TCSR PERST_EN value before configure:0x%x\n",
-				readl_relaxed(dev->tcsr_perst_en + 0x258));
+				readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
 
 			/*
 			 * Delatch PERST_EN with TCSR to avoid device reset
 			 * during host reboot case.
 			 */
-			writel_relaxed(0, dev->tcsr_perst_en + 0x258);
+			writel_relaxed(0, dev->tcsr_perst_en + TCSR_PCIE_PERST_EN);
 
 			EP_PCIE_DBG(dev,
 				"TCSR PERST_EN value after configure:0x%x\n",
-				readl_relaxed(dev->tcsr_perst_en + 0x258));
+				readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
 
 			/*
 			 * Delatch PERST_SEPARATION_ENABLE with TCSR to avoid
@@ -2208,17 +2210,17 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 	if (!dev->tcsr_not_supported) {
 		EP_PCIE_DBG(dev,
 			"TCSR PERST_EN value before configure:0x%x\n",
-			readl_relaxed(dev->tcsr_perst_en + 0x258));
+			readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
 
 		/*
 		 * Delatch PERST_EN with TCSR to avoid device reset
 		 * during host reboot case.
 		 */
-		writel_relaxed(0, dev->tcsr_perst_en + 0x258);
+		writel_relaxed(0, dev->tcsr_perst_en + TCSR_PCIE_PERST_EN);
 
 		EP_PCIE_DBG(dev,
 			"TCSR PERST_EN value after configure:0x%x\n",
-			readl_relaxed(dev->tcsr_perst_en));
+			readl_relaxed(dev->tcsr_perst_en + TCSR_PCIE_PERST_EN));
 	}
 
 	if (opt & EP_PCIE_OPT_AST_WAKE) {
