@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -1089,6 +1089,9 @@ static int gdsc_probe(struct platform_device *pdev)
 		regval |= clk_dis_wait_val;
 		sc->pm_ops = true;
 	}
+
+	if (sc->retain_ff_enable && !(regval & RETAIN_FF_ENABLE_MASK))
+		regval |= RETAIN_FF_ENABLE_MASK;
 
 	regmap_write(sc->regmap, REG_OFFSET, regval);
 
