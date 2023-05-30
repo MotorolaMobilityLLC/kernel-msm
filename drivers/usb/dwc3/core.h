@@ -1104,6 +1104,7 @@ struct dwc3_scratchpad_array {
  * @num_ep_resized: carries the current number endpoints which have had its tx
  *		    fifo resized.
  * @clear_stall_protocol: endpoint number that requires a delayed status phase.
+ * @debug_root: root debugfs directory for this device to put its files in.
  */
 struct dwc3 {
 	struct work_struct	drd_work;
@@ -1318,7 +1319,7 @@ struct dwc3 {
 	ANDROID_KABI_USE(1, struct{ u8 clear_stall_protocol; u8 padding1;
 				u8 padding2; u8 padding3; u8 padding4; u8 padding5;
 				u8 padding6; u8 padding7; });
-	ANDROID_KABI_RESERVE(2);
+	ANDROID_KABI_USE(2, struct dentry *debug_root);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
 };
