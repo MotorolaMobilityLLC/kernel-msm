@@ -491,6 +491,10 @@ struct ep_pcie_dev_t {
 
 	bool				override_disable_sriov;
 	bool				no_path_from_ipa_to_pcie;
+	u32				tcsr_perst_separation_en_offset;
+	u32				tcsr_reset_separation_offset;
+	u32				tcsr_perst_enable_offset;
+	u32				perst_raw_rst_status_mask;
 };
 
 extern struct ep_pcie_dev_t ep_pcie_dev;
