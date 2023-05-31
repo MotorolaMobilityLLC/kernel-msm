@@ -426,6 +426,7 @@
   devm_iio_channel_get_all
   devm_iio_device_alloc
   __devm_iio_device_register
+  devm_iio_triggered_buffer_setup_ext
   devm_input_allocate_device
   devm_ioremap
   devm_ioremap_resource
