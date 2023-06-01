@@ -6976,6 +6976,12 @@ static int msm_pcie_setup_drv(struct msm_pcie_dev_t *pcie_dev,
 
 	msm_pcie_setup_drv_msg(&drv_info->drv_enable, drv_info->dev_id,
 				MSM_PCIE_DRV_CMD_ENABLE);
+	if (pcie_dev->gdsc_clk_drv_ss_nonvotable) {
+		drv_info->drv_enable.pkt.dword[2] =
+					drv_info->l1ss_timeout_us / 1000;
+		PCIE_DBG(pcie_dev, "PCIe: RC%d: DRV L1ss timeout set to: %dus\n",
+			pcie_dev->rc_idx, drv_info->drv_enable.pkt.dword[2]);
+	}
 
 	msm_pcie_setup_drv_msg(&drv_info->drv_disable, drv_info->dev_id,
 				MSM_PCIE_DRV_CMD_DISABLE);
