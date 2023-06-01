@@ -101,6 +101,12 @@
 #define QMI_SDR6		84
 #define QMI_SDR7		85
 #define QMI_RF_CAL		86
+#define QMI_MODEM_CFG	87
+#define QMI_LTE_CC		88
+#define QMI_MCG_FR1_CC	89
+#define QMI_MCG_FR2_CC	90
+#define QMI_SCG_FR1_CC	91
+#define QMI_SCG_FR2_CC	92
 
 #define QMI_MODEM_INST_ID	0x0
 #define QMI_ADSP_INST_ID	0x1
