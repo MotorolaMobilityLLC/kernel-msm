@@ -38,7 +38,7 @@ static int hab_shmem_probe(struct platform_device *pdev)
 
 	/* hab in one GVM will not have pchans more than one VM could allowed */
 	if (qvm_priv_info.probe_cnt >= min(hab_driver.ndevices, qvm_priv_info.setting_size)) {
-		pr_err("no more channel, current %d, maximum %d\n",
+		pr_info("no more channel, current %d, maximum %d\n",
 			qvm_priv_info.probe_cnt,
 			min(hab_driver.ndevices, qvm_priv_info.setting_size));
 		return -ENODEV;
