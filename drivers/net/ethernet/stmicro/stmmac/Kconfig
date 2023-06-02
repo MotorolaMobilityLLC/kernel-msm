@@ -140,7 +140,7 @@ config DWMAC_QCOM_ETHQOS
 	  stmmac device driver.
 
 config DWMAC_QCOM_VER3
-	tristate "EMAC ETHQOS support for direwolf"
+	bool "EMAC ETHQOS support for direwolf"
 	default n
 	depends on OF && (ARCH_QCOM || COMPILE_TEST)
 	help
