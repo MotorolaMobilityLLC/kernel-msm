@@ -36,12 +36,28 @@ $(subdirs):
 skip-inst := $(if $(filter %/uapi,$(obj)),1)
 
 ifeq ($(skip-inst),)
+ifeq ($(BOARD_CONFIG_CAMERA_KERNEL_NAME),)
+skip-inst := $(if $(filter legacy,$(obj)),1)
+else
+ifneq (, $(findstring camera, $(obj)))
+ifeq (, $(findstring $(BOARD_CONFIG_CAMERA_KERNEL_NAME), $(obj)))
+skip-inst := 1
+endif
+endif
+endif
+endif
+
+ifeq ($(skip-inst),)
 
 # Kbuild file is optional
 kbuild-file := $(srctree)/$(obj)/Kbuild
 -include $(kbuild-file)
 
+ifeq (, $(findstring $(BOARD_CONFIG_CAMERA_KERNEL_NAME), $(obj)))
 installdir    := $(INSTALL_HDR_PATH)/$(dst)
+else
+installdir    := $(INSTALL_HDR_PATH)/$(subst camera-legacy/$(BOARD_CONFIG_CAMERA_KERNEL_NAME),camera,$(dst))
+endif
 gendir        := $(objtree)/$(subst include/,include/generated/,$(obj))
 header-files  := $(notdir $(wildcard $(srcdir)/*.h))
 header-files  += $(notdir $(wildcard $(srcdir)/*.agh))
