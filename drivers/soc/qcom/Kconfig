@@ -1351,6 +1351,15 @@ config DEEPSLEEP
 	  except for memory, so that exit from this state can happen in shorter
 	  duration.
 
+config NOTIFY_AOP
+	bool "Notify the Deep Sleep to AOP"
+	depends on MSM_POWER_STATE
+	help
+	  set this option to send the DeepSleep notification to AOP from
+	  APSS when APSS decided to go to the Deep Sleep. AOP once it
+	  recieves the notification, save the state and once all subsystems
+	  went to power collapse put the device to Deep Sleep.
+
 config RENAME_DEVICES
 	tristate "Rename  block and network device names"
 	depends on VIRTIO_BLK
