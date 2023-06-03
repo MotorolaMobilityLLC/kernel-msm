@@ -596,6 +596,10 @@ void seb_rx_msg(void *data, int len)
 
 	wake_up(&dev->link_state_wait);
 	if (dev->wait_for_resp) {
+		if (len > SEB_GLINK_INTENT_SIZE) {
+			pr_err("Invalid seb rx buffer length\n");
+			return;
+		}
 		memcpy(dev->rx_buf, data, len);
 	} else {
 		/* Handle the event received from Slate */
