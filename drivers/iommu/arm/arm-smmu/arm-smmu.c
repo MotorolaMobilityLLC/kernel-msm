@@ -690,6 +690,27 @@ static const struct iommu_flush_ops arm_smmu_s2_tlb_ops_v1 = {
 	.tlb_add_page	= arm_smmu_tlb_add_page_s2_v1,
 };
 
+static void msm_smmu_tlb_inv_context(void *cookie)
+{
+}
+
+static void msm_smmu_tlb_inv_walk(unsigned long iova, size_t size,
+					  size_t granule, void *cookie)
+{
+}
+
+static void msm_smmu_tlb_add_page(struct iommu_iotlb_gather *gather,
+				     unsigned long iova, size_t granule,
+				     void *cookie)
+{
+}
+
+static struct iommu_flush_ops msm_smmu_gather_ops = {
+	.tlb_flush_all	= msm_smmu_tlb_inv_context,
+	.tlb_flush_walk	= msm_smmu_tlb_inv_walk,
+	.tlb_add_page	= msm_smmu_tlb_add_page,
+};
+
 static void print_fault_regs(struct arm_smmu_domain *smmu_domain,
 		struct arm_smmu_device *smmu, int idx)
 {
@@ -1494,6 +1515,9 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 	} else if (arm_smmu_has_secure_vmid(smmu_domain)) {
 		pgtbl_info->vmid = smmu_domain->secure_vmid;
 	}
+
+	if (arm_smmu_is_slave_side_secure(smmu_domain))
+		smmu_domain->flush_ops = &msm_smmu_gather_ops;
 
 	ret = arm_smmu_alloc_context_bank(smmu_domain, smmu, dev, start);
 	if (ret < 0) {
