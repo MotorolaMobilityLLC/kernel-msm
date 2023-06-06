@@ -356,7 +356,7 @@ struct smem_image_version {
 #define MAX_SOCINFO_ATTRS 50
 /* sysfs attributes */
 #define ATTR_DEFINE(param)      \
-	static DEVICE_ATTR(param, (S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH ), \
+	static DEVICE_ATTR(param, 0444, \
 			msm_get_##param,     \
 			NULL)
 
