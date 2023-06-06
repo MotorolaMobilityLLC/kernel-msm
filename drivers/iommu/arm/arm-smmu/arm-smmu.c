@@ -131,6 +131,17 @@ static inline void arm_smmu_rpm_put(struct arm_smmu_device *smmu)
 static bool arm_smmu_is_static_cb(struct arm_smmu_device *smmu);
 static bool arm_smmu_is_slave_side_secure(struct arm_smmu_domain *smmu_domain);
 
+static int msm_secure_smmu_map_pages(struct io_pgtable_ops *ops, unsigned long iova,
+					phys_addr_t paddr, size_t pgsize, size_t pgcount,
+					int prot, gfp_t gfp, size_t *mapped);
+static size_t msm_secure_smmu_unmap(struct iommu_domain *domain,
+				    unsigned long iova,
+				    size_t size);
+static size_t msm_secure_smmu_map_sg(struct iommu_domain *domain,
+				     unsigned long iova,
+				     struct scatterlist *sg,
+				     unsigned int nents, int prot, gfp_t gfp, size_t *mapped);
+
 static struct arm_smmu_domain *to_smmu_domain(struct iommu_domain *dom)
 {
 	return container_of(dom, struct arm_smmu_domain, domain);
@@ -2257,6 +2268,10 @@ static int arm_smmu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	if (!ops)
 		return -ENODEV;
 
+	if (arm_smmu_is_slave_side_secure(smmu_domain))
+		return msm_secure_smmu_map_pages(ops, iova, paddr,
+					pgsize, pgcount, prot, gfp, mapped);
+
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret < 0)
 		return ret;
@@ -2283,6 +2298,9 @@ static int arm_smmu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	if (!ops)
 		return -ENODEV;
 
+	if (arm_smmu_is_slave_side_secure(smmu_domain))
+		return msm_secure_smmu_map_sg(domain, iova, sg, nents, prot, gfp, mapped);
+
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret < 0)
 		return ret;
@@ -2306,6 +2324,9 @@ static size_t arm_smmu_unmap_pages(struct iommu_domain *domain, unsigned long io
 
 	if (!ops)
 		return 0;
+
+	if (arm_smmu_is_slave_side_secure(smmu_domain))
+		return msm_secure_smmu_unmap(domain, iova, pgcount * pgsize);
 
 	ret = ops->unmap_pages(ops, iova, pgsize, pgcount, gather);
 	if (ret)
@@ -2504,6 +2525,77 @@ struct arm_smmu_device *arm_smmu_get_by_fwnode(struct fwnode_handle *fwnode)
 	put_device(dev);
 	return dev ? dev_get_drvdata(dev) : NULL;
 }
+
+#ifdef CONFIG_MSM_TZ_SMMU
+static int msm_secure_smmu_map_pages(struct io_pgtable_ops *ops, unsigned long iova,
+					phys_addr_t paddr, size_t pgsize, size_t pgcount,
+					int prot, gfp_t gfp, size_t *mapped)
+{
+	size_t ret;
+
+	ret = ops->map(ops, iova, paddr, pgsize * pgcount, prot, gfp);
+	if (!ret)
+		*mapped = pgsize * pgcount;
+
+	return ret;
+}
+
+static size_t msm_secure_smmu_unmap(struct iommu_domain *domain,
+				    unsigned long iova,
+				    size_t size)
+{
+	size_t ret;
+	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
+	struct io_pgtable_ops *ops = smmu_domain->pgtbl_ops;
+
+	ret = arm_smmu_power_on(smmu_domain->smmu->pwr);
+	if (ret)
+		return ret;
+
+	ret = ops->unmap(ops, iova, size, NULL);
+
+	arm_smmu_power_off(smmu_domain->smmu, smmu_domain->smmu->pwr);
+
+	return ret;
+}
+
+static size_t msm_secure_smmu_map_sg(struct iommu_domain *domain,
+				     unsigned long iova,
+				     struct scatterlist *sg,
+				     unsigned int nents, int prot, gfp_t gfp, size_t *mapped)
+{
+	int ret;
+	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
+	struct io_pgtable_ops *ops = smmu_domain->pgtbl_ops;
+
+	ret = ops->map_sg(ops, iova, sg, nents, prot, gfp, mapped);
+
+	if (!ret)
+		msm_secure_smmu_unmap(domain, iova, *mapped);
+
+	return ret;
+}
+#else
+static int msm_secure_smmu_map_pages(struct io_pgtable_ops *ops, unsigned long iova,
+					phys_addr_t paddr, size_t pgsize, size_t pgcount,
+					int prot, gfp_t gfp, size_t *mapped)
+{
+	return 0;
+}
+static size_t msm_secure_smmu_unmap(struct iommu_domain *domain,
+				    unsigned long iova,
+				    size_t size)
+{
+	return 0;
+}
+static size_t msm_secure_smmu_map_sg(struct iommu_domain *domain,
+				     unsigned long iova,
+				     struct scatterlist *sg,
+				     unsigned int nents, int prot, gfp_t gfp, size_t *mapped)
+{
+	return 0;
+}
+#endif
 
 static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 {

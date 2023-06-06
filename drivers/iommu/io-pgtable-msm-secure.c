@@ -211,9 +211,10 @@ static int msm_secure_map_sg(struct io_pgtable_ops *ops, unsigned long iova,
 					args[5], args[6]);
 	if (ret)
 		ret = -EINVAL;
-	else
+	else {
 		ret = len;
-
+		*size = len;
+	}
 	kfree(pa_list);
 	return ret;
 }
