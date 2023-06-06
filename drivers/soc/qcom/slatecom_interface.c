@@ -873,8 +873,10 @@ static long slate_com_ioctl(struct file *filp,
 	int ret = 0;
 	struct slate_ui_data ui_obj_msg;
 
-	if (filp == NULL)
+	if (!dev || (dev->slatecom_current_state == SLATECOM_STATE_UNKNOWN) || (filp == NULL)) {
+		pr_err("slatecom driver not initialized\n");
 		return -EINVAL;
+	}
 
 	if (arg != 0) {
 		if (copy_from_user(&ui_obj_msg, (void __user *) arg,
