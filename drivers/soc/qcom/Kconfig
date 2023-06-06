@@ -1057,6 +1057,25 @@ config QTI_CRYPTO_TZ
 	 programmed and managed through SCM calls to TZ where ICE driver
 	 will configure keys.
 
+config QTI_CRYPTO_FDE
+	tristate "Enable common crypto functionality used for FDE"
+	depends on QTI_CRYPTO_COMMON
+	help
+	 Say 'Y' to enable hardware Full Disk Encryption implementation to be used by
+	 different storage layers such as UFS or eMMC. Enabling the FDE will reserve
+	 one slot of KSM(Key Slot Manager) for the FDE. Making one less slot available
+	 for FBE(File based encryption) in case both encryption mechanism are enabled
+	 on device.
+
+config QTI_CRYPTO_LEGACY_KEY_FDE
+	tristate "Enable legacy single key for functionality to be used for FDE"
+	depends on QTI_CRYPTO_FDE
+	help
+	 Say 'Y' to enable hardware Full Disk Encryption implementation to use the
+	 legacy key generation.Keep using only single slot of KSM with
+	 the legacy key id for all the partitions.
+	 The Legacy support will be deprecated in the future versions.
+
 config QTI_CRYPTO_VIRTUALIZATION
 	tristate "Enable hypervysor to be used for FBE"
 	depends on FS_ENCRYPTION_INLINE_CRYPT
