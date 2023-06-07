@@ -31,6 +31,7 @@
 #include <linux/usb.h>
 #include <linux/usb/quirks.h>
 #include <linux/usb/hcd.h>
+#include <trace/hooks/usb.h>
 
 #include "usb.h"
 
@@ -341,8 +342,16 @@ static int usb_probe_interface(struct device *dev)
 	}
 
 	id = usb_match_dynamic_id(intf, driver);
-	if (!id)
+	if (!id) {
 		id = usb_match_id(intf, driver->id_table);
+		if (id) {
+			bool bypass = false;
+
+			trace_android_vh_usb_device_match_id_bypass(intf, driver, &bypass);
+			if (bypass)
+				id = NULL;
+		}
+	}
 	if (!id)
 		return error;
 
@@ -887,8 +896,13 @@ static int usb_device_match(struct device *dev, struct device_driver *drv)
 		usb_drv = to_usb_driver(drv);
 
 		id = usb_match_id(intf, usb_drv->id_table);
-		if (id)
-			return 1;
+		if (id) {
+			bool bypass = false;
+
+			trace_android_vh_usb_device_match_id_bypass(intf, usb_drv, &bypass);
+			if (!bypass)
+				return 1;
+		}
 
 		id = usb_match_dynamic_id(intf, usb_drv);
 		if (id)
