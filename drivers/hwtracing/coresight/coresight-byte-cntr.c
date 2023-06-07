@@ -64,14 +64,18 @@ static long tmc_etr_flush_remaining_bytes(struct tmc_drvdata *tmcdrvdata, long o
 	struct device *dev;
 	int rc = 0;
 
-	if (!tmcdrvdata)
+	pr_err("[%s][%d][%s] enter\n", current->comm, current->pid, __func__);
+	if (!tmcdrvdata) {
+		pr_err("[%s][%d][%s] invalid tmcdrvdata\n", current->comm, current->pid, __func__);
 		return -EINVAL;
+	}
 
 	etr_buf = tmcdrvdata->sysfs_buf;
 	dev = &tmcdrvdata->csdev->dev;
 
 	rc = pm_runtime_get_sync(dev->parent);
 	if (rc < 0) {
+		pr_err("[%s][%d][%s] pm runtime failed: %d\n", current->comm, current->pid, __func__, rc);
 		pm_runtime_put_noidle(dev->parent);
 		return rc;
 	}
@@ -83,6 +87,9 @@ static long tmc_etr_flush_remaining_bytes(struct tmc_drvdata *tmcdrvdata, long o
 
 	if (req_size > 0)
 		actual = tmc_etr_buf_get_data(etr_buf, offset, req_size, bufpp);
+
+	pr_err("[%s][%d][%s] rwp_offset 0x%llx offset 0x%llx req_size 0x%llx actual 0x%llx\n",
+		current->comm, current->pid, __func__, rwp_offset, offset, req_size, actual);
 
 	return actual;
 }
@@ -234,7 +241,8 @@ static int tmc_etr_byte_cntr_release(struct inode *in, struct file *fp)
 		pm_runtime_put(dev->parent);
 	}
 
-	dev_dbg(dev, "send data total size: %lld bytes, irq_cnt: %lld, offset: %lld\n",
+	dev_err(dev, "[%s][%d]send data total size: %lld bytes, irq_cnt: %lld, offset: %lld\n",
+		current->comm, current->pid,
 		byte_cntr_data->total_size, byte_cntr_data->total_irq, rwp_offset);
 	byte_cntr_data->total_irq = 0;
 	mutex_unlock(&byte_cntr_data->byte_cntr_lock);
