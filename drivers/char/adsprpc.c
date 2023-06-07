@@ -4915,10 +4915,10 @@ static int fastrpc_mmap_remove_ssr(struct fastrpc_file *fl, int locked)
 								__func__, ret);
 			}
 			if (!match->is_persistent) {
-				if (!locked)
+				if (!locked && fl)
 					mutex_lock(&fl->map_mutex);
 				fastrpc_mmap_free(match, 0);
-				if (!locked)
+				if (!locked && fl)
 					mutex_unlock(&fl->map_mutex);
 			}
 		}
@@ -4929,10 +4929,10 @@ bail:
 		lock = 0;
 	}
 	if (err && match) {
-		if (!locked)
+		if (!locked && fl)
 			mutex_lock(&fl->map_mutex);
 		fastrpc_mmap_add(match);
-		if (!locked)
+		if (!locked && fl)
 			mutex_unlock(&fl->map_mutex);
 	}
 	return err;
