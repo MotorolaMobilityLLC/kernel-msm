@@ -264,7 +264,6 @@ u16 dwmac_qcom_select_queue(struct net_device *dev,
 		txqueue_select = ALL_OTHER_TX_TRAFFIC_IPA_DISABLED;
 	}
 
-	ETHQOSDBG("tx_queue %d\n", txqueue_select);
 	return txqueue_select;
 }
 
