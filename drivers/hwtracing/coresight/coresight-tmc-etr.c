@@ -1348,7 +1348,7 @@ out:
 	if (!ret) {
 		if (drvdata->out_mode == TMC_ETR_OUT_MODE_MEM)
 			tmc_etr_byte_cntr_start(drvdata->byte_cntr);
-		dev_dbg(&csdev->dev, "TMC-ETR enabled\n");
+		dev_err(&csdev->dev, "[%s][%d]TMC-ETR enabled\n", current->comm, current->pid);
 	}
 
 	return ret;
@@ -1845,7 +1845,7 @@ static int _tmc_disable_etr_sink(struct coresight_device *csdev,
 	spin_unlock_irqrestore(&drvdata->spinlock, flags);
 	tmc_etr_byte_cntr_stop(drvdata->byte_cntr);
 
-	dev_dbg(&csdev->dev, "TMC-ETR disabled\n");
+	dev_err(&csdev->dev, "[%s][%d]TMC-ETR disabled\n", current->comm, current->pid);
 	return 0;
 }
 
