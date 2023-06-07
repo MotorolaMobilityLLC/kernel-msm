@@ -470,7 +470,7 @@ void geni_se_dump_dbg_regs(struct uart_port *uport)
 
 	if (device_pending_suspend(uport)) {
 		UART_LOG_DBG(port->ipc_log_misc, uport->dev,
-			     "%s: Device is suspended, Return\n");
+			     "%s: Device is suspended, Return\n", __func__);
 		return;
 	}
 
@@ -5223,6 +5223,7 @@ static int msm_geni_serial_sys_hib_resume(struct device *dev)
 		 */
 		port->port_setup = false;
 	}
+	UART_LOG_DBG(port->ipc_log_pwr, dev, "%s: End %d\n", __func__, true);
 	return 0;
 }
 
@@ -5233,6 +5234,9 @@ static int msm_geni_serial_sys_resume(struct device *dev)
 	struct uart_port *uport = &port->uport;
 
 #ifdef CONFIG_DEEPSLEEP
+	UART_LOG_DBG(port->ipc_log_pwr, dev, "%s: Deep Sleep Sys resume Start %d\n",
+		     __func__, true);
+
 	if (pm_suspend_via_firmware()) {
 		IPC_LOG_MSG(port->ipc_log_pwr, "deepsleep: %s\n",
 			    __func__);
@@ -5243,6 +5247,8 @@ static int msm_geni_serial_sys_resume(struct device *dev)
 		return msm_geni_serial_sys_hib_resume(dev);
 	}
 #endif
+	UART_LOG_DBG(port->ipc_log_pwr, dev, "%s: Start %d\n", __func__, true);
+
 	/* Platform driver is registered for console and when console
 	 * is disabled from cmdline simply return success.
 	 */
