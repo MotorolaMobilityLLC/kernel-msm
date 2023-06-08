@@ -463,8 +463,12 @@ static int __arm_smmu_alloc_cb(unsigned long *map, int start, int end,
 			cb = smmu->s2crs[idx].cbndx;
 	}
 
-	if (cb >= 0 && arm_smmu_is_static_cb(smmu))
+	if (cb >= 0 && arm_smmu_is_static_cb(smmu)) {
 		smmu_domain->slave_side_secure = true;
+
+		if (arm_smmu_is_slave_side_secure(smmu_domain))
+			bitmap_set(smmu->secure_context_map, cb, 1);
+	}
 
 	if (cb < 0 && !arm_smmu_is_static_cb(smmu))
 		return __arm_smmu_alloc_bitmap(map, start, end);
@@ -1680,6 +1684,8 @@ out_free_io_pgtable:
 	qcom_free_io_pgtable_ops(smmu_domain->pgtbl_ops);
 out_clear_smmu:
 	__arm_smmu_free_bitmap(smmu->context_map, cfg->cbndx);
+	if (arm_smmu_is_slave_side_secure(smmu_domain))
+		__arm_smmu_free_bitmap(smmu->secure_context_map, cfg->cbndx);
 	smmu_domain->smmu = NULL;
 out_unlock:
 	mutex_unlock(&smmu_domain->init_mutex);
@@ -2598,14 +2604,24 @@ EXPORT_SYMBOL(get_smmu_from_addr);
 bool arm_smmu_skip_write(void __iomem *addr)
 {
 	struct arm_smmu_device *smmu;
+	int cb;
 
 	smmu = arm_smmu_get_by_addr(addr);
 
-	if (smmu &&
-	    ((unsigned long)addr & (smmu->size - 1)) >= (smmu->size >> 1))
-		return false;
+	/* Skip write if smmu not available by now */
+	if (!smmu)
+		return true;
 
-	return true;
+	/* Do not write to global space */
+	if (((unsigned long)addr & (smmu->size - 1)) < (smmu->size >> 1))
+		return true;
+
+	/* Finally skip writing to secure CB */
+	cb = ((unsigned long)addr & ((smmu->size >> 1) - 1)) >> PAGE_SHIFT;
+	if (test_bit(cb, smmu->secure_context_map))
+		return true;
+
+	return false;
 }
 EXPORT_SYMBOL(arm_smmu_skip_write);
 #else
@@ -3954,7 +3970,8 @@ static int arm_smmu_device_remove(struct platform_device *pdev)
 	if (!smmu)
 		return -ENODEV;
 
-	if (!bitmap_empty(smmu->context_map, ARM_SMMU_MAX_CBS))
+	if (!bitmap_empty(smmu->context_map, ARM_SMMU_MAX_CBS) ||
+		!bitmap_empty(smmu->secure_context_map, ARM_SMMU_MAX_CBS))
 		dev_notice(&pdev->dev, "disabling translation\n");
 
 	arm_smmu_bus_init(NULL);
