@@ -1129,9 +1129,11 @@ tmc_etr_setup_sysfs_buf(struct tmc_drvdata *drvdata)
 			&& drvdata->byte_cntr->sw_usb)
 			new_buf = tmc_alloc_etr_buf(drvdata, TMC_ETR_SW_USB_BUF_SIZE,
 					 0, cpu_to_node(0), NULL);
-		else if (drvdata->out_mode == TMC_ETR_OUT_MODE_PCIE)
+		else if (drvdata->out_mode == TMC_ETR_OUT_MODE_PCIE) {
 			new_buf = tmc_alloc_etr_buf(drvdata, TMC_ETR_PCIE_MEM_SIZE,
 					 0, cpu_to_node(0), NULL);
+			drvdata->size = TMC_ETR_PCIE_MEM_SIZE;
+		}
 		else
 			new_buf = tmc_alloc_etr_buf(drvdata, drvdata->size,
 					 0, cpu_to_node(0), NULL);

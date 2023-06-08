@@ -95,7 +95,7 @@ void *qcom_mdt_read_metadata(const struct firmware *fw, size_t *data_len)
 	ehdr = (struct elf32_hdr *)fw->data;
 	phdrs = (struct elf32_phdr *)(ehdr + 1);
 
-	if (ehdr->e_phnum < 2)
+	if (ehdr->e_phnum < 2 || ehdr->e_phnum > PN_XNUM)
 		return ERR_PTR(-EINVAL);
 
 	if (phdrs[0].p_type == PT_LOAD)

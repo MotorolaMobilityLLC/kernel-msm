@@ -192,6 +192,7 @@ struct plat_stmmacenet_data {
 	int rss_en;
 	int mac_port_sel_speed;
 	bool en_tx_lpi_clockgating;
+	bool rx_clk_runs_in_lpi;
 	int has_xgmac;
 	u16	(*tx_select_queue)
 		(struct net_device *dev, struct sk_buff *skb,
