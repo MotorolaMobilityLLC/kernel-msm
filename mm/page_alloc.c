@@ -3878,13 +3878,21 @@ struct page *rmqueue_buddy(struct zone *preferred_zone, struct zone *zone,
 			 * allocating from CMA base on judging zone_watermark_ok again
 			 * to see if the latest check got pass via the help of CMA
 			 */
-			if (alloc_flags & ALLOC_CMA &&
-					use_cma_first(zone, order, alloc_flags))
-				page = __rmqueue_cma(zone, order, migratetype,
-						alloc_flags);			
+			if (alloc_flags & ALLOC_CMA) {
+				bool use_cma_first_check = false;
+				bool try_cma;
+
+				trace_android_vh_use_cma_first_check(&use_cma_first_check);
+				try_cma = use_cma_first_check ?
+					use_cma_first(zone, order, alloc_flags) :
+					migratetype == MIGRATE_MOVABLE;
+				if (try_cma)
+					page = __rmqueue_cma(zone, order, migratetype,
+							alloc_flags);
+			}
 			if (!page)
 				page = __rmqueue(zone, order, migratetype,
-						 alloc_flags);
+						alloc_flags);
 		}
 		if (!page) {
 			spin_unlock_irqrestore(&zone->lock, flags);

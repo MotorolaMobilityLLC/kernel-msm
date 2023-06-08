@@ -177,6 +177,9 @@ DECLARE_HOOK(android_vh_free_one_page_bypass,
 	TP_PROTO(struct page *page, struct zone *zone, int order, int migratetype,
 		int fpi_flags, bool *bypass),
 	TP_ARGS(page, zone, order, migratetype, fpi_flags, bypass));
+DECLARE_HOOK(android_vh_use_cma_first_check,
+	TP_PROTO(bool *use_cma_first_check),
+	TP_ARGS(use_cma_first_check));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
