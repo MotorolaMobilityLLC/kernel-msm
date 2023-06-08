@@ -1214,6 +1214,7 @@
   page_endio
   __page_mapcount
   page_mapping
+  __page_pinner_failure_detect
   page_pool_alloc_pages
   page_pool_create
   page_pool_destroy
@@ -1502,6 +1503,7 @@
   schedule
   schedule_timeout
   schedule_timeout_interruptible
+  schedule_timeout_killable
   scnprintf
   sdio_align_size
   sdio_claim_host
