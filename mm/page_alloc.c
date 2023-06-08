@@ -1161,6 +1161,13 @@ static inline void __free_one_page(struct page *page,
 	unsigned int max_order;
 	struct page *buddy;
 	bool to_tail;
+	bool bypass = false;
+
+	trace_android_vh_free_one_page_bypass(page, zone, order,
+		migratetype, (int)fpi_flags, &bypass);
+
+	if (bypass)
+		return;
 
 	max_order = min_t(unsigned int, MAX_ORDER - 1, pageblock_order);
 
@@ -3143,7 +3150,11 @@ static __always_inline struct page *
 __rmqueue(struct zone *zone, unsigned int order, int migratetype,
 						unsigned int alloc_flags)
 {
-	struct page *page;
+	struct page *page = NULL;
+
+	trace_android_vh_rmqueue_smallest_bypass(&page, zone, order, migratetype);
+	if (page)
+		return page;
 
 retry:
 	page = __rmqueue_smallest(zone, order, migratetype);

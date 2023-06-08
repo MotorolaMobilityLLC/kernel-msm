@@ -428,6 +428,8 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_direct_io_update_bio);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_loop_prepare_cmd);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_psi_event);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_psi_group);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rmqueue_smallest_bypass);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_free_one_page_bypass);
 /*
  * For type visibility
  */
