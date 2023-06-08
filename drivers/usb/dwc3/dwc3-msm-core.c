@@ -4655,7 +4655,7 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	dbg_event(0xFF, "extcon idx", enb->idx);
 	dev_dbg(mdwc->dev, "vbus:%ld event received\n", event);
 	edev_name = extcon_get_edev_name(edev);
-	dbg_log_string("edev:%s\n", edev_name);
+	dbg_log_string("edev:%s event:%ld\n", edev_name, event);
 
 	/* detect USB spoof disconnect/connect notification with EUD device */
 	eud_str = strnstr(edev_name, "eud", strlen(edev_name));
