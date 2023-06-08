@@ -2143,10 +2143,6 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 						ep_pcie_dev.tcsr_perst_separation_en_offset);
 		}
 
-		if (dev->pcie_cesta_clkreq_offset)
-			ep_pcie_write_reg_field(dev->parf,
-						dev->pcie_cesta_clkreq_offset, BIT(0), 0);
-
 		 /* check link status during initial bootup */
 		if (!dev->enumerated) {
 			val = readl_relaxed(dev->parf + PCIE20_PARF_PM_STTS);
@@ -2372,6 +2368,13 @@ checkbme:
 	/* Clear PERST_RAW_RESET_STATUS when linking up */
 	if (dev->aoss_rst_clear && dev->aoss_rst_perst)
 		writel_relaxed(ep_pcie_dev.perst_raw_rst_status_mask, dev->aoss_rst_perst);
+
+	/* Make sure clkreq control is with controller, not CESTA */
+	if (dev->pcie_cesta_clkreq_offset) {
+		ep_pcie_write_reg_field(dev->parf, dev->pcie_cesta_clkreq_offset, BIT(0), 0);
+		val = readl_relaxed(dev->parf + dev->pcie_cesta_clkreq_offset);
+		EP_PCIE_DBG(dev, "PCIe V%d: CESTA_CLKREQ_CTRL:0x%x.\n", dev->rev, val);
+	}
 
 	/*
 	 * De-assert WAKE# GPIO following link until L2/3 and WAKE#
