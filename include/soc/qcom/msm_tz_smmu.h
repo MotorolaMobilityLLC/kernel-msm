@@ -8,6 +8,7 @@
 #define __MSM_TZ_SMMU_H__
 
 #include <linux/device.h>
+#include <linux/iommu.h>
 
 enum tz_smmu_device_id {
 	TZ_DEVICE_START = 0,
@@ -43,6 +44,9 @@ enum tz_smmu_device_id {
 };
 
 #ifdef CONFIG_MSM_TZ_SMMU
+#ifdef CONFIG_CC_IS_CLANG
+#pragma clang diagnostic ignored "-Wincompatible-pointer-types"
+#endif
 
 int msm_tz_smmu_atos_start(struct device *dev, int cb_num);
 int msm_tz_smmu_atos_end(struct device *dev, int cb_num);
@@ -50,6 +54,9 @@ enum tz_smmu_device_id msm_dev_to_device_id(struct device *dev);
 int msm_tz_set_cb_format(enum tz_smmu_device_id sec_id, int cbndx);
 int msm_iommu_sec_pgtbl_init(void);
 int register_iommu_sec_ptbl(void);
+bool arm_smmu_skip_write(void __iomem *addr);
+extern void *get_smmu_from_addr(struct iommu_device *iommu, void __iomem *addr);
+extern void *arm_smmu_get_by_addr(void __iomem *addr);
 #else
 
 static inline int msm_tz_smmu_atos_start(struct device *dev, int cb_num)

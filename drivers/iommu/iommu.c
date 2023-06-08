@@ -26,6 +26,9 @@
 #include <linux/fsl/mc.h>
 #include <linux/module.h>
 #include <trace/events/iommu.h>
+#ifdef CONFIG_MSM_TZ_SMMU
+#include <soc/qcom/msm_tz_smmu.h>
+#endif
 
 static struct kset *iommu_group_kset;
 static DEFINE_IDA(iommu_group_ida);
@@ -187,6 +190,26 @@ void iommu_device_unregister(struct iommu_device *iommu)
 	spin_unlock(&iommu_device_lock);
 }
 EXPORT_SYMBOL_GPL(iommu_device_unregister);
+
+#ifdef CONFIG_MSM_TZ_SMMU
+void *arm_smmu_get_by_addr(void __iomem *addr)
+{
+	struct iommu_device *iommu;
+	unsigned long flags;
+	void *smmu = NULL;
+
+	spin_lock_irqsave(&iommu_device_lock, flags);
+	list_for_each_entry(iommu, &iommu_device_list, list) {
+		smmu = get_smmu_from_addr(iommu, addr);
+		if (!smmu)
+			continue;
+		break;
+	}
+	spin_unlock_irqrestore(&iommu_device_lock, flags);
+
+	return smmu;
+}
+#endif
 
 static struct dev_iommu *dev_iommu_get(struct device *dev)
 {

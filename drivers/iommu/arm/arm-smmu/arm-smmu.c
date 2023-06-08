@@ -46,10 +46,10 @@
 #include <linux/wait.h>
 
 #include <linux/amba/bus.h>
-#include <soc/qcom/msm_tz_smmu.h>
 #include <linux/fsl/mc.h>
 
 #include "arm-smmu.h"
+#include <soc/qcom/msm_tz_smmu.h>
 #include "../../iommu-logger.h"
 #include "../../qcom-dma-iommu-generic.h"
 #include "../../qcom-io-pgtable-alloc.h"
@@ -2575,6 +2575,39 @@ static size_t msm_secure_smmu_map_sg(struct iommu_domain *domain,
 
 	return ret;
 }
+
+void *get_smmu_from_addr(struct iommu_device *iommu, void __iomem *addr)
+{
+	struct arm_smmu_device *smmu = NULL;
+	unsigned long base, mask;
+
+	smmu = arm_smmu_get_by_fwnode(iommu->fwnode);
+	if (!smmu)
+		return NULL;
+
+	base = (unsigned long)smmu->base;
+	mask = ~(smmu->size - 1);
+
+	if ((base & mask) == ((unsigned long)addr & mask))
+		return (void *)smmu;
+
+	return NULL;
+}
+EXPORT_SYMBOL(get_smmu_from_addr);
+
+bool arm_smmu_skip_write(void __iomem *addr)
+{
+	struct arm_smmu_device *smmu;
+
+	smmu = arm_smmu_get_by_addr(addr);
+
+	if (smmu &&
+	    ((unsigned long)addr & (smmu->size - 1)) >= (smmu->size >> 1))
+		return false;
+
+	return true;
+}
+EXPORT_SYMBOL(arm_smmu_skip_write);
 #else
 static int msm_secure_smmu_map_pages(struct io_pgtable_ops *ops, unsigned long iova,
 					phys_addr_t paddr, size_t pgsize, size_t pgcount,
@@ -3853,6 +3886,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	if (!res)
 		goto out_power_off;
 	smmu->phys_addr = res->start;
+	smmu->size = resource_size(res);
 	parse_driver_options(smmu);
 	err = arm_smmu_handoff_cbs(smmu);
 	if (err)
