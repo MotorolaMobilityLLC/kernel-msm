@@ -1898,6 +1898,12 @@ config SND_SOC_AW87XXX
         help
           This option enables support for AW87XXX Smart K PA.
 
+config SND_SOC_FS1815
+        tristate "SoC Audio for fs1815 Smart K PA"
+        depends on I2C
+        help
+          This option enables support for fs1815 K PA.
+
 config CAMERA_FLASH_PWM
         bool "control flash"
         default n
