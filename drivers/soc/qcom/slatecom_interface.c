@@ -355,12 +355,12 @@ static int slatechar_read_cmd(struct slate_ui_data *fui_obj_msg,
 	if (read_buf == NULL)
 		return -ENOMEM;
 	switch (type) {
-	case REG_READ:
+	case SLATECOM_REG_READ:
 		ret = slatecom_reg_read(handle, fui_obj_msg->cmd,
 				fui_obj_msg->num_of_words,
 				read_buf);
 		break;
-	case AHB_READ:
+	case SLATECOM_AHB_READ:
 		ret = slatecom_ahb_read(handle,
 				fui_obj_msg->slate_address,
 				fui_obj_msg->num_of_words,
@@ -397,12 +397,12 @@ static int slatechar_write_cmd(struct slate_ui_data *fui_obj_msg, unsigned int t
 		return ret;
 	}
 	switch (type) {
-	case REG_WRITE:
+	case SLATECOM_REG_WRITE:
 		ret = slatecom_reg_write(handle, fui_obj_msg->cmd,
 				fui_obj_msg->num_of_words,
 				write_buf);
 		break;
-	case AHB_WRITE:
+	case SLATECOM_AHB_WRITE:
 		ret = slatecom_ahb_write(handle,
 				fui_obj_msg->slate_address,
 				fui_obj_msg->num_of_words,
