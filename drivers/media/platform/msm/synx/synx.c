@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt) "synx: " fmt
 
@@ -772,7 +772,6 @@ int synx_merge(struct synx_session session_id,
 clean_up:
 	kfree(synx_obj);
 fail:
-	synx_util_merge_error(client, h_synxs, count);
 	if (num_objs && num_objs <= count)
 		kfree(fences);
 	synx_put_client(client);
