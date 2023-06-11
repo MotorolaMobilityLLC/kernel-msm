@@ -19,8 +19,24 @@
 #define SMEM_AARM_PARTITION_TABLE 9
 #define SMEM_APPS 0
 #define ONE_CODEWORD_SIZE 516
+#define ACTIVE_BOOT_PART_MAX 30
 
 static struct device *dev_node;
+static char active_boot_part[ACTIVE_BOOT_PART_MAX] = "boot";
+
+/*
+ * Function to get the active boot partition information
+ * from kernel command line during system boot.
+ */
+#ifndef MODULE
+static int __init get_active_boot_part(char *str)
+{
+	strlcpy(active_boot_part, str, ACTIVE_BOOT_PART_MAX);
+	return 0;
+}
+
+__setup("part.activeboot=", get_active_boot_part);
+#endif
 
 /*
  * Get the DMA memory for requested amount of size. It returns the pointer
@@ -798,24 +814,25 @@ static int msm_nand_flash_onfi_probe(struct msm_nand_info *info)
 
 	memset(&data, 0, sizeof(struct msm_nand_flash_onfi_data));
 
-	/*
-	 * Lookup the partition to which apps has access to
-	 * As a part of FR53657, add support for boot_a
-	 * and boot_b partitions.
+	/* Lookup the partition to which apps has access to
+	 *
+	 * active_boot_part value gets updated to either kernel command line
+	 * parameter "part.activeboot=" value (if present) or hold the default
+	 * "boot" value.
 	 */
 	for (i = 0; i < FLASH_PTABLE_MAX_PARTS_V4; i++) {
-		if (mtd_part[i].name && (!strcmp("boot", mtd_part[i].name) ||
-					!strcmp("boot_a", mtd_part[i].name) ||
-					!strcmp("boot_b", mtd_part[i].name))) {
+		if (mtd_part[i].name && !strcmp(active_boot_part, mtd_part[i].name)) {
 			page_address = mtd_part[i].offset << 6;
 			break;
 		}
 	}
+
 	if (!page_address) {
 		pr_err("%s: no apps partition found in smem\n", __func__);
 		ret = -EPERM;
 		goto free_dma;
 	}
+
 	data.cfg.cmd = MSM_NAND_CMD_PAGE_READ_ONFI;
 	data.exec = 1;
 	data.cfg.addr0 = (page_address << 16) |

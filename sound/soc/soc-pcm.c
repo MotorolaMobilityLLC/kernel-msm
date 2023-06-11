@@ -1319,7 +1319,7 @@ static void dpcm_be_reparent(struct snd_soc_pcm_runtime *fe,
 		return;
 
 	be_substream = snd_soc_dpcm_get_substream(be, stream);
-	if (be_substream == NULL)
+	if (!be_substream)
 		return;
 
 	for_each_dpcm_fe(be, stream, dpcm) {
