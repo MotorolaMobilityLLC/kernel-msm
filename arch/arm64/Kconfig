@@ -1933,3 +1933,9 @@ config MOT_DONGWOON_OIS_AF_DRIFT
         default n
         help
         Enable it will support dongwoon ois af drift.
+
+config MOT_SENSOR_PRE_POWERUP
+        bool "For sensor power up and initialization early"
+        default n
+        help
+        Enable it to power up and initialise early.
