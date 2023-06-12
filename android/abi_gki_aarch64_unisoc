@@ -3143,6 +3143,12 @@
   __traceiter_android_vh_tune_swappiness
   __tracepoint_android_vh_tune_swappiness
 
+# required by unisoc_mm_cma.ko
+  __traceiter_android_vh_use_cma_first_check
+  __traceiter_android_vh_alloc_highpage_movable_gfp_adjust
+  __tracepoint_android_vh_use_cma_first_check
+  __tracepoint_android_vh_alloc_highpage_movable_gfp_adjust
+
 # required by unisoc_mm_emem.ko
   __traceiter_android_vh_oom_check_panic
   __tracepoint_android_vh_oom_check_panic
