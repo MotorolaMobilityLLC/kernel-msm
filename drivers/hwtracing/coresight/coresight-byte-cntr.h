@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021, 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CORESIGHT_BYTE_CNTR_H
@@ -36,7 +36,7 @@ struct byte_cntr {
 	unsigned long	offset;
 	uint64_t		total_size;
 	uint64_t		total_irq;
-
+	struct tmc_pcie_data	*pcie_data;
 };
 
 extern void tmc_etr_byte_cntr_start(struct byte_cntr *byte_cntr_data);
