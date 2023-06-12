@@ -20,15 +20,6 @@ struct usb_device;
 DECLARE_HOOK(android_vh_usb_new_device_added,
 	TP_PROTO(struct usb_device *udev, int *err),
 	TP_ARGS(udev, err));
-
-struct usb_interface;
-struct usb_driver;
-
-DECLARE_HOOK(android_vh_usb_device_match_id_bypass,
-	TP_PROTO(struct usb_interface *intf,
-		 struct usb_driver *usb_drv,
-		 bool *bypass),
-	TP_ARGS(intf, usb_drv, bypass));
 #endif /* _TRACE_HOOK_USB_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
