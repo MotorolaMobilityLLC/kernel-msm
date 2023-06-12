@@ -41,16 +41,31 @@
 #define MSM_HW_FENCE_RESET_WITHOUT_DESTROY  BIT(1)
 
 /**
+ * MSM_HW_FENCE_UPDATE_ERROR_WITH_MOVE: Updates client tx queue error by moving fence with error to
+ *                                      beginning of queue.
+ */
+#define MSM_HW_FENCE_UPDATE_ERROR_WITH_MOVE      BIT(0)
+
+/**
  * MSM_HW_FENCE_MAX_SIGNAL_PER_CLIENT - Maximum number of signals per client
  */
 #define MSM_HW_FENCE_MAX_SIGNAL_PER_CLIENT 64
+
+/**
+ * MSM_HW_FENCE_DBG_DUMP_QUEUES: Dumps queues information
+ * MSM_HW_FENCE_DBG_DUMP_TABLE: Dumps hwfence table
+ * MSM_HW_FENCE_DBG_DUMP_EVENTS: Dumps hwfence ctl events
+ */
+#define MSM_HW_FENCE_DBG_DUMP_QUEUES        BIT(0)
+#define MSM_HW_FENCE_DBG_DUMP_TABLE         BIT(1)
+#define MSM_HW_FENCE_DBG_DUMP_EVENTS        BIT(2)
 
 /**
  * struct msm_hw_fence_create_params - Creation parameters.
  *
  * @name : Optional parameter associating a name with the object for debug purposes.
  *         Only first 64 bytes are accepted, rest will be ignored.
- * @handle : Pointer to fence hash (filled by function).
+ * @handle : Pointer to fence handle (filled by function).
  * @fence : Pointer to fence.
  * @flags : flags for customization.
  */
@@ -132,6 +147,28 @@ struct msm_hw_fence_mem_addr {
 	u64 size;
 	void *mem_data;
 };
+
+/**
+ * struct msm_hw_fence_cb_data - Data passed back in fence error callback.
+ * @data: data registered with callback
+ * @fence: fence signaled with error
+ */
+struct msm_hw_fence_cb_data {
+	void *data;
+	struct dma_fence *fence;
+};
+
+/**
+ * msm_hw_fence_error_cb: Callback function registered by waiting clients.
+ *                        Dispatched when client is waiting on a fence
+ *                        signaled with error.
+ *
+ * @handle: handle of fence signaled with error
+ * @error: error signed for fence
+ * @cb_data: pointer to struct containing opaque pointer registered with callback
+ *           and fence information
+ */
+typedef void (*msm_hw_fence_error_cb_t)(u32 handle, int error, void *cb_data);
 
 /**
  * enum hw_fence_client_id - Unique identifier of the supported clients.
@@ -418,7 +455,7 @@ int msm_hw_fence_reset_client_by_id(enum hw_fence_client_id client_id, u32 reset
  * @client_handle: Hw fence driver client handle, this handle was returned
  *                 during the call 'msm_hw_fence_register' to register the
  *                 client.
- * @handle: hash for fence to update in the Tx Queue.
+ * @handle: handle for fence to update in the Tx Queue.
  * @flags: flags to set in the queue for the fence.
  * @error: error to set in the queue for the fence.
  *
@@ -428,6 +465,23 @@ int msm_hw_fence_reset_client_by_id(enum hw_fence_client_id client_id, u32 reset
  * Return: 0 on success or negative errno (-EINVAL)
  */
 int msm_hw_fence_update_txq(void *client_handle, u64 handle, u64 flags, u32 error);
+
+/**
+ * msm_hw_fence_update_txq_error() - Updates error field for fence already in Tx Queue.
+ * @client_handle: Hw fence driver client handle, this handle was returned
+ *                 during the call 'msm_hw_fence_register' to register the
+ *                 client.
+ * @handle: handle for existing fence in Tx Queue to update.
+ * @error: error to set in the queue for the fence.
+ * @update_flags: flags to choose the update type. See MSM_HW_FENCE_UPDATE_ERROR_*
+ *                definitions.
+ *
+ * This function should only be used by clients that cannot have the Tx Queue
+ * updated by the Firmware or the HW Core.
+ *
+ * Return: 0 on success or negative errno (-EINVAL)
+ */
+int msm_hw_fence_update_txq_error(void *client_handle, u64 handle, u32 error, u32 update_flags);
 
 /**
  * msm_hw_fence_trigger_signal() - Triggers signal for the tx/rx signal pair
@@ -442,6 +496,32 @@ int msm_hw_fence_update_txq(void *client_handle, u64 handle, u64 flags, u32 erro
  */
 int msm_hw_fence_trigger_signal(void *client_handle, u32 tx_client_id, u32 rx_client_id,
 	u32 signal_id);
+
+/**
+ * msm_hw_fence_register_error_cb() - Register callback to be dispatched when
+ *                                    HW Fence Client is waiting for a fence
+ *                                    that is signaled with error.
+ * @client_handle: Hw fence driver client handle, this handle was returned
+ *                 during the call 'msm_hw_fence_register' to register the
+ *                 client.
+ * @cb: pointer to callback function to be invoked
+ * @data: opaque pointer passed back with callback
+ *
+ * Return: 0 on success or negative errno (-EINVAL)
+ */
+int msm_hw_fence_register_error_cb(void *client_handle, msm_hw_fence_error_cb_t cb, void *data);
+
+/**
+ * msm_hw_fence_deregister_error_cb() - Deregister callback to be dispatched when
+ *                                      HW Fence Client is waiting for a fence
+ *                                      that is signaled with error.
+ * @client_handle: Hw fence driver client handle, this handle was returned
+ *                 during the call 'msm_hw_fence_register' to register the
+ *                 client.
+ *
+ * Return: 0 on success or negative errno (-EINVAL)
+ */
+int msm_hw_fence_deregister_error_cb(void *client_handle);
 
 #else
 static inline void *msm_hw_fence_register(enum hw_fence_client_id client_id,
@@ -499,12 +579,63 @@ static inline int msm_hw_fence_update_txq(void *client_handle, u64 handle, u64 f
 	return -EINVAL;
 }
 
+static inline int msm_hw_fence_update_txq_error(void *client_handle, u64 handle, u32 error,
+	u32 update_flags)
+{
+	return -EINVAL;
+}
+
 static inline int msm_hw_fence_trigger_signal(void *client_handle, u32 tx_client_id,
 	u32 rx_client_id, u32 signal_id)
 {
 	return -EINVAL;
 }
 
+static inline int msm_hw_fence_register_error_cb(void *client_handle, msm_hw_fence_error_cb_t cb,
+	void *data)
+{
+	return -EINVAL;
+}
+
+static inline int msm_hw_fence_deregister_error_cb(void *client_handle)
+{
+	return -EINVAL;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_DEBUG_FS) && IS_ENABLED(CONFIG_QTI_HW_FENCE)
+/**
+ * msm_hw_fence_dump_debug_data() - Dumps debug data information
+ * @client_handle: Hw fence driver client handle returned during 'msm_hw_fence_register'.
+ * @dump_flags: Flags to indicate which info to dump, see MSM_HW_FENCE_DBG_DUMP_** flags.
+ * @dump_clients_mask: Optional bitmask to indicate along with the caller of the api, which other
+ *                     clients to dump data from. E.g. a client like display might want to dump
+ *                     info of any all other clients from which it can receive fences, like gfx.
+ *
+ * Return: 0 on success or negative errno (-EINVAL)
+ */
+int msm_hw_fence_dump_debug_data(void *client_handle, u32 dump_flags, u32 dump_clients_mask);
+
+/**
+ * msm_hw_fence_dump_debug_data() - Dumps hw-fence information for dma-fence
+ * @client_handle: Hw fence driver client handle returned during 'msm_hw_fence_register'.
+ * @fence: dma_fence to dump hw-fence information
+ *
+ * Return: 0 on success or negative errno (-EINVAL)
+ */
+int msm_hw_fence_dump_fence(void *client_handle, struct dma_fence *fence);
+
+#else
+static inline int msm_hw_fence_dump_debug_data(void *client_handle, u32 dump_flags,
+	u32 dump_clients_mask)
+{
+	return -EINVAL;
+}
+
+static inline int msm_hw_fence_dump_fence(void *client_handle, struct dma_fence *fence)
+{
+	return -EINVAL;
+}
 #endif
 
 #endif

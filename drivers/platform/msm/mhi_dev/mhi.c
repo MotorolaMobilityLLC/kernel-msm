@@ -1631,7 +1631,7 @@ static int mhi_hwc_init(struct mhi_dev *mhi_ctx)
 	struct ep_pcie_db_config erdb_cfg;
 	struct mhi_dma_function_params mhi_dma_fun_params;
 
-	if (mhi_ctx->use_edma) {
+	if (mhi_ctx->use_edma || !mhi_ctx->no_path_from_ipa_to_pcie) {
 		/*
 		 * Interrupts are enabled during the MHI DMA callback
 		 * once the MHI DMA HW is ready. Callback is not triggerred
@@ -3599,6 +3599,10 @@ int mhi_dev_channel_isempty(struct mhi_dev_client *handle)
 		return -EINVAL;
 
 	rc = ch->ring->rd_offset == ch->ring->wr_offset;
+	if (rc)
+		mhi_log(handle->vf_id, MHI_MSG_WARNING, "Chan_id=0x%x is empty rp/wp:%x\n",
+			ch->ch_id,
+			ch->ring->rd_offset);
 
 	return rc;
 }
@@ -4058,6 +4062,16 @@ exit:
 }
 EXPORT_SYMBOL(mhi_dev_write_channel);
 
+struct mhi_dev_ops dev_ops = {
+	.register_state_cb	= mhi_vf_register_state_cb,
+	.ctrl_state_info	= mhi_vf_ctrl_state_info,
+	.open_channel		= mhi_dev_vf_open_channel,
+	.close_channel		= mhi_dev_close_channel,
+	.write_channel		= mhi_dev_write_channel,
+	.read_channel		= mhi_dev_read_channel,
+	.is_channel_empty	= mhi_dev_channel_isempty,
+};
+
 static int mhi_dev_recover(struct mhi_dev *mhi)
 {
 	int rc = 0;
@@ -4231,7 +4245,7 @@ static void mhi_dev_enable(struct work_struct *work)
 		return;
 	}
 
-	if (mhi->use_edma) {
+	if (mhi->use_edma || !mhi->no_path_from_ipa_to_pcie) {
 		if (mhi->config_iatu || mhi->mhi_int) {
 			mhi->mhi_int_en = true;
 			enable_irq(mhi->mhi_irq);
@@ -4248,7 +4262,7 @@ static void mhi_dev_enable(struct work_struct *work)
 		mhi_update_state_info(mhi, MHI_STATE_CONFIGURED);
 
 	/* Enable MHI dev network stack Interface */
-	rc = mhi_dev_net_interface_init(mhi->vf_id, mhi_hw_ctx->ep_cap.num_vfs);
+	rc = mhi_dev_net_interface_init(&dev_ops, mhi->vf_id, mhi_hw_ctx->ep_cap.num_vfs);
 	if (rc)
 		mhi_log(mhi->vf_id, MHI_MSG_ERROR,
 				"Failed to initialize mhi_dev_net iface\n");
@@ -4433,6 +4447,9 @@ static int mhi_get_device_tree_data(struct mhi_dev_ctx *mhictx, int vf_id)
 	mhi->use_mhi_dma = of_property_read_bool((&pdev->dev)->of_node,
 					"qcom,use-mhi-dma-software-channel");
 
+	mhi->no_path_from_ipa_to_pcie = of_property_read_bool((&pdev->dev)->of_node,
+					"qcom,no-path-from-ipa-to-pcie");
+
 	rc = of_property_read_u32((&pdev->dev)->of_node,
 				"qcom,mhi-ifc-id",
 				&mhictx->ifc_id);
@@ -4483,7 +4500,7 @@ static int mhi_get_device_tree_data(struct mhi_dev_ctx *mhictx, int vf_id)
 				"qcom,mhi-config-iatu");
 
 	if (mhi->config_iatu) {
-		rc = of_property_read_u32((&pdev->dev)->of_node,
+		rc = of_property_read_u64((&pdev->dev)->of_node,
 				"qcom,mhi-local-pa-base",
 				&mhi->device_local_pa_base);
 		if (rc) {
@@ -4634,8 +4651,11 @@ static int mhi_init(struct mhi_dev *mhi, bool init_state)
 			pr_err("MHI: mhi edma init failed, rc = %d\n", rc);
 			return rc;
 		}
+	}
 
-		rc = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (mhi->use_edma || mhi->no_path_from_ipa_to_pcie) {
+		rc = dma_set_mask_and_coherent(&pdev->dev,
+				DMA_BIT_MASK(DMA_SLAVE_BUSWIDTH_64_BYTES));
 		if (rc) {
 			pr_err("Error set MHI DMA mask: rc = %d\n", rc);
 			return rc;

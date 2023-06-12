@@ -373,6 +373,9 @@ static struct regmap *qcom_icc_rpmh_map(struct platform_device *pdev,
 
 static bool is_voter_disabled(char *voter)
 {
+	if (!voter)
+		return true;
+
 	if ((strnstr(voter, "disp", strlen(voter)) && socinfo_get_part_info(PART_DISPLAY)) ||
 	    (strnstr(voter, "cam", strlen(voter)) && socinfo_get_part_info(PART_CAMERA)))
 		return true;

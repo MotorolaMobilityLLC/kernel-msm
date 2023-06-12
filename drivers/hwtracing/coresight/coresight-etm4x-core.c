@@ -1585,7 +1585,11 @@ static int etm4_dying_cpu(unsigned int cpu)
 
 static void etm4_init_trace_id(struct etmv4_drvdata *drvdata)
 {
-	drvdata->trcid = coresight_get_trace_id(drvdata->cpu);
+	int cpu;
+
+	/* Use physical CPU id if it's configurated*/
+	cpu = (drvdata->pcpu < 0) ? drvdata->cpu : drvdata->pcpu;
+	drvdata->trcid = coresight_get_trace_id(cpu);
 }
 
 static int __etm4_cpu_save(struct etmv4_drvdata *drvdata)
@@ -1960,6 +1964,11 @@ static int etm4_probe(struct device *dev, void __iomem *base, u32 etm_pid)
 	if (drvdata->cpu < 0)
 		return drvdata->cpu;
 
+	ret = of_property_read_u32(dev->of_node, "phy-cpu",
+				&drvdata->pcpu);
+	if (ret)
+		drvdata->pcpu = -1;
+
 	init_arg.drvdata = drvdata;
 	init_arg.csa = &desc.access;
 	init_arg.pid = etm_pid;
@@ -1982,16 +1991,14 @@ static int etm4_probe(struct device *dev, void __iomem *base, u32 etm_pid)
 	minor = ETM_ARCH_MINOR_VERSION(drvdata->arch);
 
 	if (etm4x_is_ete(drvdata)) {
-		type_name = "ete";
+		type_name = "coresight-ete";
 		/* ETE v1 has major version == 0b101. Adjust this for logging.*/
 		major -= 4;
 	} else {
-		type_name = "etm";
+		type_name = "coresight-etm";
 	}
 
-	if (of_property_read_string(dev->of_node, "coresight-name", &desc.name))
-		desc.name = devm_kasprintf(dev, GFP_KERNEL,
-				   "%s%d", type_name, drvdata->cpu);
+	desc.name = devm_kasprintf(dev, GFP_KERNEL, "%s%d", type_name, drvdata->cpu);
 	if (!desc.name)
 		return -ENOMEM;
 

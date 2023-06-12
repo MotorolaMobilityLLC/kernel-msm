@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only
  *
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __VIRTIO_FASTRPC_CORE_H__
@@ -14,6 +14,14 @@
 #include "../adsprpc_compat.h"
 #include "../adsprpc_shared.h"
 #include "virtio_fastrpc_base.h"
+#if IS_ENABLED(CONFIG_MSM_BOOT_TIME_MARKER)
+#include <soc/qcom/boot_stats.h>
+#else
+static inline unsigned long long msm_timer_get_sclk_ticks(void)
+{
+	return 0;
+}
+#endif
 
 #define ADSP_MMAP_HEAP_ADDR		4
 #define ADSP_MMAP_REMOTE_HEAP_ADDR	8
@@ -63,11 +71,14 @@ struct vfastrpc_file {
 	struct vfastrpc_apps *apps;
 	int domain;
 	int procattrs;
+	int sessionid;
 	/*
 	 * List to store virtio fastrpc cmds interrupted by signal while waiting
 	 * for completion.
 	 */
 	struct hlist_head interrupted_cmds;
+	/* Unique sequence num inside a process to identify the invoke msg. */
+	atomic64_t seq_num;
 };
 
 struct vfastrpc_invoke_ctx {
@@ -86,6 +97,8 @@ struct vfastrpc_invoke_ctx {
 	int tgid;
 	uint32_t sc;
 	uint32_t handle;
+	/* Unique sequence num inside a process to identify the invoke msg. */
+	s64 seq_num;
 	uint32_t *crc;
 	struct fastrpc_perf *perf;
 	uint64_t *perf_kernel;

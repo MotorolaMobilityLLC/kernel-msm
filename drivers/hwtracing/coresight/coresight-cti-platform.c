@@ -55,7 +55,7 @@ static int of_cti_get_cpu_at_node(const struct device_node *node)
 	of_node_put(dn);
 
 	/* No Affinity  if no cpu nodes are found */
-	return (cpu < 0) ? -1 : cpu;
+	return cpu;
 }
 
 #else
@@ -392,8 +392,8 @@ static int cti_plat_create_connection(struct device *dev,
 
 	/* associated cpu ? */
 	cpuid = cti_plat_get_cpu_at_node(fwnode);
+	drvdata->ctidev.cpu = cpuid;
 	if (cpuid >= 0) {
-		drvdata->ctidev.cpu = cpuid;
 		scnprintf(cpu_name_str, sizeof(cpu_name_str), "cpu%d", cpuid);
 		assoc_name = cpu_name_str;
 	} else {

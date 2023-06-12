@@ -92,6 +92,9 @@
 /* Set FastRPC session ID to 1 */
 #define FASTRPC_MODE_SESSION     4
 
+/* Retrieves method index from the scalars parameter */
+#define REMOTE_SCALARS_METHOD(sc)        (((sc) >> 24) & 0x1f)
+
 /* Retrives number of input buffers from the scalars parameter */
 #define REMOTE_SCALARS_INBUFS(sc)        (((sc) >> 16) & 0x0ff)
 
@@ -699,11 +702,6 @@ struct gid_list {
 	unsigned int gidcount;
 };
 
-struct qos_cores {
-	int *coreno;
-	int corecount;
-};
-
 struct fastrpc_file;
 
 struct fastrpc_buf {
@@ -940,13 +938,16 @@ struct fastrpc_apps {
 	/* Non-secure subsystem like CDSP will use regular client */
 	struct wakeup_source *wake_source;
 	uint32_t duplicate_rsp_err_cnt;
-	struct qos_cores silvercores;
 	uint32_t max_size_limit;
 	struct hlist_head frpc_devices;
 	struct hlist_head frpc_drivers;
 	struct mutex mut_uid;
 	/* Indicates cdsp device status */
 	int fastrpc_cdsp_status;
+	/* Number of lowest capacity cores for given platform */
+	unsigned int lowest_capacity_core_count;
+	/* Flag to check if PM QoS vote needs to be done for only one core */
+	bool single_core_latency_vote;
 };
 
 struct fastrpc_mmap {
@@ -1096,6 +1097,8 @@ struct fastrpc_file {
 	spinlock_t dspsignals_lock;
 	struct mutex signal_create_mutex;
 	struct completion shutdown;
+	/* Flag to indicate Notif feature to be enabled or no */
+	bool init_notif;
 	/* Flag to indicate notif thread exit requested*/
 	bool exit_notif;
 	/* Flag to indicate async thread exit requested*/

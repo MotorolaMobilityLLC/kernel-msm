@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -338,6 +338,11 @@ static int eusb2_repeater_i2c_probe(struct i2c_client *client)
 
 	er->dev = dev;
 	match = of_match_node(eusb2_repeater_id_table, dev->of_node);
+	if (!match) {
+		dev_err(dev, "eUSB2 repeater node not found.\n");
+		return -EINVAL;
+	}
+
 	er->chip = match->data;
 
 	er->regmap = devm_regmap_init_i2c(client, &eusb2_i2c_regmap);

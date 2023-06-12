@@ -415,6 +415,18 @@ static const struct llcc_slice_config kalama_data[] =  {
 	{LLCC_VIDVSP,   28,  256, 4, 1, 0xFFFFFF,     0x0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
 
+static const struct llcc_slice_config crow_data[] =  {
+	{LLCC_CPUSS,     1, 640, 0, 0, 0xFF,     0x0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_VIDSC0,    2, 128, 3, 1, 0xFF,     0x0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_MDMHPGRW, 25, 512, 3, 0, 0xFF,     0x0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_GPUHTW,   11, 256, 1, 1, 0xFF,     0x0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_GPU,       9, 256, 1, 0, 0xFF,     0x0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_MMUHWT,   18, 128, 1, 1, 0xFF,     0x0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_MDMPNG,   27, 512, 0, 1,  0x0,     0x0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_MDMVPE,   29,  64, 1, 1, 0xF0,     0x0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1},
+	{LLCC_WRTCH,    31, 256, 1, 1, 0xFF,     0x0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
+
 static const struct llcc_slice_config kona_data[] =  {
 	{LLCC_CPUSS,     1, 3072, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 1},
 	{LLCC_VIDSC0,    2,  512, 3, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
@@ -527,6 +539,11 @@ static const struct qcom_llcc_config waipio_cfg = {
 static const struct qcom_llcc_config kalama_cfg = {
 	.sct_data	= kalama_data,
 	.size		= ARRAY_SIZE(kalama_data),
+};
+
+static const struct qcom_llcc_config crow_cfg = {
+	.sct_data   = crow_data,
+	.size       = ARRAY_SIZE(crow_data),
 };
 
 static const struct qcom_llcc_config kona_cfg = {
@@ -1293,6 +1310,7 @@ static const struct of_device_id qcom_llcc_of_match[] = {
 	{ .compatible = "qcom,kona-llcc", .data = &kona_cfg },
 	{ .compatible = "qcom,cinder-llcc", .data = &cinder_cfg },
 	{ .compatible = "qcom,lemans-llcc", .data = &lemans_cfg },
+	{ .compatible = "qcom,crow-llcc", .data = &crow_cfg },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, qcom_llcc_of_match);

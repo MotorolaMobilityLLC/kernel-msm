@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/scmi_protocol.h>
@@ -231,14 +231,14 @@ static int qcom_cpufreq_stats_init(struct scmi_handle *handle)
 	u32 stats_signature;
 	u16 num_clkdom = 0, revision, num_lvl = 0;
 	int i, j, ret;
-	struct cpufreq_stats_prot_attr prot_attr;
+	struct cpufreq_stats_prot_attr prot_attr = {0};
 
 	ret = ops->cpufreq_stats_info_get(ph, &prot_attr);
 	if (ret) {
 		pr_err("SCMI CPUFREQ Stats CPUFREQSTATS_GET_MEM_INFO error: %d\n", ret);
 		return ret;
 	}
-	if (prot_attr.statistics_len) {
+	if (prot_attr.statistics_len && prot_attr.statistics_address_low) {
 		pinfo = kcalloc(1, sizeof(struct stats_info), GFP_KERNEL);
 		if (!pinfo)
 			return -ENOMEM;
@@ -247,7 +247,7 @@ static int qcom_cpufreq_stats_init(struct scmi_handle *handle)
 			prot_attr.statistics_address_low |
 				(u64)prot_attr.statistics_address_high << 32,
 			prot_attr.statistics_len);
-		if (IS_ERR(pinfo->stats_iomem)) {
+		if (!pinfo->stats_iomem) {
 			kfree(pinfo);
 			return -ENOMEM;
 		}
@@ -278,7 +278,7 @@ static int qcom_cpufreq_stats_init(struct scmi_handle *handle)
 		}
 		pinfo->num_clkdom = num_clkdom;
 	} else {
-		pr_err("SCMI cpufreq stats length is zero\n");
+		pr_err("SCMI cpufreq stats length or base address is zero\n");
 		return -EPERM;
 	}
 	// allocate structures for each clkdom/entry pair

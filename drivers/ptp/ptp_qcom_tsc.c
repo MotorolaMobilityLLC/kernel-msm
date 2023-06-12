@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * QCOM TSC PTP : Linux driver for Time Stamp Counter Hardware.
  *
@@ -37,6 +37,8 @@
 #define TSCSS_TSC_FUSA_CFG_STAT			0xF54
 #define TSCSS_TSC_READ_CNTCV_LO			0x1000
 #define TSCSS_TSC_READ_CNTCV_HI			0x1004
+#define TSCSS_TSC_HW_PRELOAD_VAL_LO		0x0060
+#define TSCSS_TSC_HW_PRELOAD_VAL_HI		0x0064
 
 #define TSCSS_TSC_SLICE_ETU_CFG			0x0
 #define TSCSS_TSC_SLICE_ETU_STATUS		0x4
@@ -50,6 +52,7 @@
 #define TSCSS_ETU_SLICE_TIMER_TRIG_PERIOD	0x38
 #define MAX_ETU_SLICE				16
 
+#define TSC_PRELOAD_POLLING_DELAY_MS		100
 #define NSEC_SHFT				32
 #define NSEC					1000000000ULL
 #define XO_MHZ					19200000
@@ -91,8 +94,31 @@ struct qcom_ptp_tsc {
 	int total_etu_cnt;
 	u32 incval;
 	bool tsc_nsec_update;
+	bool tsc_hw_preload;
 	spinlock_t reg_lock;
+	struct delayed_work tsc_preload_poll_work;
 };
+
+static void tsc_preload_poll(struct work_struct *work)
+{
+	struct qcom_ptp_tsc *timer = container_of(work, struct qcom_ptp_tsc,
+						tsc_preload_poll_work.work);
+	u32 regval;
+
+	regval = readl_relaxed(timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+	/* Check for the HW_PRELOAD_STATUS and disable HW_PRELOAD */
+	if (!(regval & BIT(14))) {
+		regval &= ~BIT(2);
+		writel_relaxed(regval, timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+		pr_info("TSC CNTCR: 0x%x HW_PRELOAD is disabled\n",
+			readl_relaxed(timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR));
+		return;
+	}
+
+	pr_debug("TSC CNTCR: 0x%x HW_PRELOAD_STATUS is not cleared\n", regval);
+	mod_delayed_work(system_highpri_wq, &timer->tsc_preload_poll_work,
+			msecs_to_jiffies(TSC_PRELOAD_POLLING_DELAY_MS));
+}
 
 static int qcom_ptp_tsc_is_enabled(void __iomem *addr)
 {
@@ -127,6 +153,41 @@ static void qcom_tod_read(struct qcom_ptp_tsc *timer, struct timespec64 *ts)
 
 	ts->tv_sec = sec;
 	ts->tv_nsec = nsec;
+}
+
+static void qcom_ptp_enable_tsc_hw_preload(struct qcom_ptp_tsc *timer, struct timespec64 ts)
+{
+	u32 regval;
+	int timeout = 500;
+
+	/* Enable HW_PRELOAD */
+	regval = readl_relaxed(timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+	regval |= BIT(2);
+	writel_relaxed(regval, timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+
+	/* Program PRELOAD registers */
+	writel_relaxed(ts.tv_sec, timer->baseaddr + TSCSS_TSC_HW_PRELOAD_VAL_HI);
+	writel_relaxed(ts.tv_nsec, timer->baseaddr + TSCSS_TSC_HW_PRELOAD_VAL_LO);
+
+	pr_debug("HW_PRELOAD_VAL_HI: 0x%x\n",
+		readl_relaxed(timer->baseaddr + TSCSS_TSC_HW_PRELOAD_VAL_HI));
+	pr_debug("HW_PRELOAD_VAL_LO: 0x%x\n",
+		readl_relaxed(timer->baseaddr + TSCSS_TSC_HW_PRELOAD_VAL_LO));
+
+	/* Check for the HW_PRELOAD_STATUS and start poll thread */
+	while (timeout-- > 0) {
+		regval = readl_relaxed(timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+		if (regval & BIT(14)) {
+			pr_debug("TSC CNTR: 0x%x HW_PRELOAD is enabled\n", regval);
+			mod_delayed_work(system_highpri_wq, &timer->tsc_preload_poll_work,
+					msecs_to_jiffies(TSC_PRELOAD_POLLING_DELAY_MS));
+			return;
+		}
+		udelay(1);
+	}
+
+	pr_warn("TSC CNTR: 0x%x HW_PRELOAD enable failed\n",
+		readl_relaxed(timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR));
 }
 
 static int qcom_ptp_update_tsc_cntr(struct qcom_ptp_tsc *timer,
@@ -390,6 +451,7 @@ static int qcom_ptp_enable(struct ptp_clock_info *ptp,
 {
 	struct qcom_ptp_tsc *timer = container_of(ptp, struct qcom_ptp_tsc,
 							ptp_clock_info);
+	struct timespec64 ts;
 	int slice;
 
 	pr_debug("Request Type %d\n", rq->type);
@@ -420,6 +482,24 @@ static int qcom_ptp_enable(struct ptp_clock_info *ptp,
 
 		}
 		return 0;
+	case PTP_CLK_REQ_PEROUT:
+		if (timer->tsc_hw_preload) {
+			if (!rq->perout.period.sec) {
+				/* Get the current timer value */
+				qcom_tod_read(timer, &ts);
+			} else {
+				pr_debug("PTP_CLK_REQ_PEROUT: sec:%u nsec:%u\n",
+					rq->perout.period.sec, rq->perout.period.nsec);
+				ts.tv_sec = rq->perout.period.sec;
+				ts.tv_nsec = rq->perout.period.nsec;
+			}
+
+			/* Preload TSC with tv_sec += 1 and tv_nsec = 0 values */
+			ts.tv_sec += 1;
+			ts.tv_nsec = 0;
+			qcom_ptp_enable_tsc_hw_preload(timer, ts);
+		}
+		return 0;
 	default:
 		break;
 	}
@@ -433,6 +513,7 @@ static struct ptp_clock_info qcom_ptp_clock_info = {
 	.max_adj  = 999999999,
 	/* The number of external time stamp channels. */
 	.n_ext_ts = 1,
+	.n_per_out = 1,
 	.pps = 1,
 	.adjfreq  = qcom_ptp_adjfreq,
 	.adjtime  = qcom_ptp_adjtime,
@@ -534,6 +615,7 @@ static int qcom_ptp_tsc_probe(struct platform_device *pdev)
 {
 	struct qcom_ptp_tsc *timer;
 	struct resource *r_mem;
+	u32 cntr_val;
 	int ret;
 
 	timer = devm_kzalloc(&pdev->dev, sizeof(*timer), GFP_KERNEL);
@@ -597,8 +679,11 @@ static int qcom_ptp_tsc_probe(struct platform_device *pdev)
 	timer->tsc_nsec_update = of_property_read_bool(pdev->dev.of_node,
 							"qcom,tsc-nsec-update");
 
-	pr_info("TSC CNTR 0x%x tsc-update %d\n", readl_relaxed(timer->baseaddr),
-						timer->tsc_nsec_update);
+	timer->tsc_hw_preload = of_property_read_bool(pdev->dev.of_node,
+							"qcom,tsc-hw-preload");
+
+	if (timer->tsc_hw_preload)
+		INIT_DEFERRABLE_WORK(&timer->tsc_preload_poll_work, tsc_preload_poll);
 
 	timer->ptp_clock_info = qcom_ptp_clock_info;
 
@@ -612,12 +697,16 @@ static int qcom_ptp_tsc_probe(struct platform_device *pdev)
 	qcom_tsc_etu_get_data(pdev, timer);
 
 	if (!timer->tsc_nsec_update) {
-		writel_relaxed(0x1CC, timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+		cntr_val = (timer->tsc_hw_preload ? 0x1D8 : 0x1CC);
 		writel_relaxed(0x3B9AC9FF, timer->baseaddr + TSCSS_TSC_ROLLOVER_VAL);
 	} else {
-		writel_relaxed(0x18C, timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+		cntr_val = 0x18C;
 	}
 
+	writel_relaxed(cntr_val, timer->baseaddr + TSCSS_TSC_CONTROL_CNTCR);
+
+	pr_info("TSC CNTR 0x%x tsc-nsec-update %d tsc-hw-preload %d\n",
+		readl_relaxed(timer->baseaddr), timer->tsc_nsec_update, timer->tsc_hw_preload);
 
 	platform_set_drvdata(pdev, timer);
 

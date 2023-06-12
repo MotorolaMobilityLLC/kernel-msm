@@ -83,8 +83,8 @@ static struct qcom_icc_qosbox qnm_ecpri_dma_qos = {
 	.offsets = { 0xb7000, 0xb8000 },
 	.config = &(struct qos_config) {
 		.prio = 0,
-		.urg_fwd = 0,
-		.prio_fwd_disable = 1,
+		.urg_fwd = 1,
+		.prio_fwd_disable = 0,
 	},
 };
 
@@ -105,8 +105,8 @@ static struct qcom_icc_qosbox qnm_fec_2_gemnoc_qos = {
 	.offsets = { 0xaf000, 0xb0000 },
 	.config = &(struct qos_config) {
 		.prio = 0,
-		.urg_fwd = 0,
-		.prio_fwd_disable = 1,
+		.urg_fwd = 1,
+		.prio_fwd_disable = 0,
 	},
 };
 
@@ -127,8 +127,8 @@ static struct qcom_icc_qosbox qnm_pcie_qos = {
 	.offsets = { 0xb3000 },
 	.config = &(struct qos_config) {
 		.prio = 0,
-		.urg_fwd = 0,
-		.prio_fwd_disable = 1,
+		.urg_fwd = 1,
+		.prio_fwd_disable = 0,
 	},
 };
 
@@ -151,8 +151,8 @@ static struct qcom_icc_qosbox qnm_snoc_gc_qos = {
 	.offsets = { 0xb5000 },
 	.config = &(struct qos_config) {
 		.prio = 0,
-		.urg_fwd = 0,
-		.prio_fwd_disable = 1,
+		.urg_fwd = 1,
+		.prio_fwd_disable = 0,
 	},
 };
 
@@ -173,8 +173,8 @@ static struct qcom_icc_qosbox qnm_snoc_sf_qos = {
 	.offsets = { 0xb6000 },
 	.config = &(struct qos_config) {
 		.prio = 0,
-		.urg_fwd = 0,
-		.prio_fwd_disable = 1,
+		.urg_fwd = 1,
+		.prio_fwd_disable = 0,
 	},
 };
 

@@ -14,6 +14,7 @@ void qcom_glink_ssr_notify(const char *ssr_name);
 struct qcom_glink_mem_entry *
 qcom_glink_mem_entry_init(struct device *dev, void *va, dma_addr_t dma, size_t len, u32 da);
 void qcom_glink_mem_entry_free(struct qcom_glink_mem_entry *mem);
+void glink_ssr_notify_rpm(void);
 #else
 static inline void qcom_glink_ssr_notify(const char *ssr_name) {}
 static inline struct qcom_glink_mem_entry *

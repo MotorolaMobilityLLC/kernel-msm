@@ -3,7 +3,6 @@
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
-
 #include <linux/ion.h>
 #include <linux/sched.h>
 #include <linux/debugfs.h>
@@ -11,6 +10,8 @@
 #include "virtio_fastrpc_core.h"
 #include "virtio_fastrpc_mem.h"
 #include "virtio_fastrpc_queue.h"
+#define CREATE_TRACE_POINTS
+#include "virtio_fastrpc_trace.h"
 
 #define M_FDLIST			16
 #define M_CRCLIST			64
@@ -146,6 +147,7 @@ struct virt_invoke_msg {
 	u32 handle;			/* remote handle */
 	u32 sc;				/* scalars describing the data */
 	u32 attrs;
+	s64 seq_num;			/* keep increasing for each invoke msg per process*/
 	struct virt_fastrpc_buf pra[0];	/* remote arguments list */
 } __packed;
 
@@ -313,6 +315,7 @@ struct vfastrpc_file *vfastrpc_file_alloc(void)
 	vfl->domain = -1;
 	fl->cid = -1;
 	fl->dsp_proc_init = 0;
+	fl->sessionid = 0;
 	mutex_init(&fl->internal_map_mutex);
 	mutex_init(&fl->map_mutex);
 	return vfl;
@@ -333,14 +336,20 @@ static void context_free(struct vfastrpc_invoke_ctx *ctx)
 	spin_unlock(&fl->hlock);
 
 	mutex_lock(&fl->map_mutex);
-	for (i = 0; i < nbufs; i++)
+	for (i = 0; i < nbufs; i++) {
+		if (ctx->maps[i] && ctx->maps[i]->ctx_refs)
+			ctx->maps[i]->ctx_refs--;
 		vfastrpc_mmap_free(vfl, ctx->maps[i], 0);
+	}
 	mutex_unlock(&fl->map_mutex);
 
 	if (ctx->msg) {
 		rsp = ctx->msg->rxbuf;
-		if (rsp)
+		if (rsp) {
+			trace_fastrpc_rxbuf_send_start(ctx);
 			vfastrpc_rxbuf_send(vfl, rsp, me->buf_size);
+			trace_fastrpc_rxbuf_send_end(ctx);
+		}
 
 		virt_free_msg(vfl, ctx->msg);
 		ctx->msg = NULL;
@@ -488,6 +497,8 @@ static int virt_fastrpc_close(struct vfastrpc_file *vfl)
 	vmsg = (struct virt_msg_hdr *)msg->txbuf;
 	vmsg->pid = fl->tgid;
 	vmsg->tid = current->pid;
+	if (fl->sessionid)
+		vmsg->tid |= (1 << SESSION_ID_INDEX);
 	vmsg->cid = fl->cid;
 	vmsg->cmd = VIRTIO_FASTRPC_CMD_CLOSE;
 	vmsg->len = sizeof(*vmsg);
@@ -596,7 +607,7 @@ static int context_restore_interrupted(struct vfastrpc_file *vfl,
 	return err;
 }
 
-static int context_alloc(struct vfastrpc_file *vfl,
+static int context_alloc(struct vfastrpc_file *vfl, s64 seq_num,
 			struct fastrpc_ioctl_invoke_async *invokefd,
 			struct vfastrpc_invoke_ctx **po)
 {
@@ -645,6 +656,7 @@ static int context_alloc(struct vfastrpc_file *vfl,
 	}
 	ctx->sc = invoke->sc;
 	ctx->handle = invoke->handle;
+	ctx->seq_num = seq_num;
 	ctx->pid = current->pid;
 	ctx->tgid = fl->tgid;
 	ctx->crc = (uint32_t *)invokefd->crc;
@@ -715,7 +727,7 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 	struct virt_invoke_msg *vmsg;
 	int inbufs = REMOTE_SCALARS_INBUFS(ctx->sc);
 	int outbufs = REMOTE_SCALARS_OUTBUFS(ctx->sc);
-	int i, err = 0, bufs, handles, total;
+	int i, j, err = 0, bufs, handles, total;
 	remote_arg_t *lpra = ctx->lpra;
 	int *fds = ctx->fds;
 	struct virt_fastrpc_buf *rpra;
@@ -751,6 +763,8 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 			err = vfastrpc_mmap_create(vfl, fds[i], attrs[i],
 					(uintptr_t)lpra[i].buf.pv,
 					len, 0, &maps[i]);
+			if (maps[i])
+				maps[i]->ctx_refs++;
 			mutex_unlock(&fl->map_mutex);
 			if (err)
 				goto bail;
@@ -769,9 +783,18 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 		if (attrs && (attrs[i] & FASTRPC_ATTR_NOMAP))
 			dmaflags = FASTRPC_DMAHANDLE_NOMAP;
 		if (fds && (fds[i] != -1) && attrs) {
+			/* DMA handle already uses persistent memory map */
+			attrs[i] &= ~FASTRPC_ATTR_KEEP_MAP;
 			err = vfastrpc_mmap_create(vfl, fds[i], attrs[i],
 					0, 0, dmaflags, &maps[i]);
+			if (!err && maps[i])
+				maps[i]->ctx_refs++;
 			if (err) {
+				for (j = bufs; j < i; j++) {
+					if (maps[j] && maps[j]->ctx_refs)
+						maps[j]->ctx_refs--;
+					vfastrpc_mmap_free(vfl, maps[j], 0);
+				}
 				mutex_unlock(&fl->map_mutex);
 				goto bail;
 			}
@@ -831,6 +854,8 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 	vmsg = (struct virt_invoke_msg *)ctx->msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_INVOKE;
 	vmsg->hdr.len = size;
@@ -839,6 +864,7 @@ static int get_args(struct vfastrpc_invoke_ctx *ctx)
 	vmsg->handle = ctx->handle;
 	vmsg->sc = ctx->sc;
 	vmsg->attrs = ctx->crc ? VIRTIO_FASTRPC_INVOKE_CRC : 0;
+	vmsg->seq_num = ctx->seq_num;
 	rpra = (struct virt_fastrpc_buf *)vmsg->pra;
 	fdlist = (uint64_t *)(&rpra[total]);
 	crclist = (uint32_t *)&fdlist[M_FDLIST];
@@ -1060,6 +1086,8 @@ static int put_args(struct vfastrpc_invoke_ctx *ctx)
 	for (i = inbufs; i < bufs; i++) {
 		if (maps[i]) {
 			mutex_lock(&fl->map_mutex);
+			if (maps[i]->ctx_refs)
+				maps[i]->ctx_refs--;
 			vfastrpc_mmap_free(vfl, maps[i], 0);
 			mutex_unlock(&fl->map_mutex);
 			maps[i] = NULL;
@@ -1082,13 +1110,14 @@ static int put_args(struct vfastrpc_invoke_ctx *ctx)
 	}
 
 	mutex_lock(&fl->map_mutex);
-	if (total) {
-		for (i = 0; i < M_FDLIST; i++) {
-			if (!fdlist[i])
-				break;
-			if (!vfastrpc_mmap_find(vfl, (int)fdlist[i], 0, 0,
-						0, 0, &mmap))
-				vfastrpc_mmap_free(vfl, mmap, 0);
+	for (i = 0; i < M_FDLIST; i++) {
+		if (!fdlist[i])
+			break;
+		if (!vfastrpc_mmap_find(vfl, (int)fdlist[i], 0, 0,
+					0, 0, &mmap)) {
+			if (mmap && mmap->ctx_refs)
+				mmap->ctx_refs--;
+			vfastrpc_mmap_free(vfl, mmap, 0);
 		}
 	}
 	mutex_unlock(&fl->map_mutex);
@@ -1119,7 +1148,9 @@ static int virt_fastrpc_invoke(struct vfastrpc_file *vfl, struct vfastrpc_invoke
 		goto bail;
 	}
 
+	trace_fastrpc_txbuf_send_start(ctx);
 	err = vfastrpc_txbuf_send(vfl, vmsg, ctx->size);
+	trace_fastrpc_txbuf_send_end(ctx);
 bail:
 	return err;
 }
@@ -1165,6 +1196,9 @@ int vfastrpc_internal_invoke(struct vfastrpc_file *vfl,
 	struct timespec64 invoket = {0};
 	uint64_t *perf_counter = NULL;
 	bool isasyncinvoke = false;
+	s64 lseq_num = atomic64_fetch_add(1, &vfl->seq_num);
+
+	trace_fastrpc_internal_invoke_start(invoke->handle, invoke->sc, lseq_num);
 
 	VERIFY(err, invoke->handle != FASTRPC_STATIC_HANDLE_KERNEL);
 	if (err) {
@@ -1190,7 +1224,7 @@ int vfastrpc_internal_invoke(struct vfastrpc_file *vfl,
 	if (ctx)
 		goto wait;
 
-	VERIFY(err, 0 == context_alloc(vfl, inv, &ctx));
+	VERIFY(err, 0 == context_alloc(vfl, lseq_num, inv, &ctx));
 	if (err)
 		goto bail;
 	isasyncinvoke = (ctx->asyncjob.isasyncjob ? true : false);
@@ -1214,6 +1248,7 @@ int vfastrpc_internal_invoke(struct vfastrpc_file *vfl,
 		goto invoke_end;
 wait:
 	interrupted = wait_for_completion_interruptible(&ctx->msg->work);
+	trace_wait_for_completion_end(ctx);
 	VERIFY(err, 0 == (err = interrupted));
 	if (err)
 		goto bail;
@@ -1240,6 +1275,7 @@ invoke_end:
 	if (fl->profile && !interrupted && isasyncinvoke)
 		vfastrpc_update_invoke_count(invoke->handle, perf_counter,
 				&invoket);
+	trace_fastrpc_internal_invoke_end(invoke->handle, invoke->sc, lseq_num);
 	return err;
 }
 
@@ -1404,6 +1440,8 @@ static int virt_fastrpc_munmap(struct vfastrpc_file *vfl, uintptr_t raddr,
 	vmsg = (struct virt_munmap_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_MUNMAP;
 	vmsg->hdr.len = sizeof(*vmsg);
@@ -1562,6 +1600,8 @@ static int virt_fastrpc_munmap_fd(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_munmap_fd_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_MUNMAP_FD;
 	vmsg->hdr.len = total_size;
@@ -1662,6 +1702,8 @@ static int virt_fastrpc_mmap(struct vfastrpc_file *vfl, uint32_t flags,
 	vmsg = (struct virt_mmap_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_MMAP;
 	vmsg->hdr.len = total_size;
@@ -2022,6 +2064,8 @@ static int virt_fastrpc_control(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_control_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = fl->cid;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_CONTROL;
 	vmsg->hdr.len = sizeof(*vmsg);
@@ -2203,6 +2247,8 @@ static int virt_fastrpc_open(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_open_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = -1;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_OPEN;
 	vmsg->hdr.len = sizeof(*vmsg);
@@ -2312,6 +2358,8 @@ static int virt_fastrpc_get_dsp_info(struct vfastrpc_file *vfl,
 	vmsg = (struct virt_cap_msg *)msg->txbuf;
 	vmsg->hdr.pid = fl->tgid;
 	vmsg->hdr.tid = current->pid;
+	if (fl->sessionid)
+		vmsg->hdr.tid |= (1 << SESSION_ID_INDEX);
 	vmsg->hdr.cid = -1;
 	vmsg->hdr.cmd = VIRTIO_FASTRPC_CMD_GET_DSP_INFO;
 	vmsg->hdr.len = sizeof(*vmsg);

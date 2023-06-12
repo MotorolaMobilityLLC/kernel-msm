@@ -23,7 +23,9 @@
 
 /* Support upto 3 GVMs: 3 DBQs(Low/Medium/High priority) per GVM */
 #define MAX_DB_QUEUE 9
-#define HGSL_TCSR_NUM 2
+#define HGSL_TCSR_NUM 4
+
+#define HGSL_CONTEXT_NUM 256
 
 struct qcom_hgsl;
 struct hgsl_hsync_timeline;
@@ -64,6 +66,21 @@ struct doorbell_queue {
 	uint32_t dbq_idx;
 	struct mutex lock;
 	atomic_t seq_num;
+};
+
+struct doorbell_context_queue {
+	struct hgsl_mem_node *queue_mem;
+	struct dma_buf_map map;
+	uint32_t db_signal;
+	uint32_t seq_num;
+	void *queue_header;
+	void *queue_body;
+	void *indirect_ibs;
+	uint32_t queue_header_gmuaddr;
+	uint32_t queue_body_gmuaddr;
+	uint32_t indirect_ibs_gmuaddr;
+	uint32_t queue_size;
+	int irq_idx;
 };
 
 struct qcom_hgsl {
@@ -124,8 +141,9 @@ struct hgsl_context {
 	bool dbq_assigned;
 	uint32_t dbq_info;
 	struct doorbell_queue *dbq;
-	struct hgsl_mem_node shadow_ts_node;
+	struct hgsl_mem_node *shadow_ts_node;
 	uint32_t shadow_ts_flags;
+	bool is_fe_shadow;
 	bool in_destroy;
 	bool destroyed;
 	struct kref kref;
@@ -134,6 +152,10 @@ struct hgsl_context {
 	struct hgsl_hsync_timeline *timeline;
 	uint32_t queued_ts;
 	bool is_killed;
+	int tcsr_idx;
+	struct mutex lock;
+	struct doorbell_context_queue *dbcq;
+	uint32_t dbcq_export_id;
 };
 
 struct hgsl_priv {

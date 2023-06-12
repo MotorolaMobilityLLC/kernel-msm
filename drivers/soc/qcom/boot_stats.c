@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -155,6 +155,7 @@ unsigned long long msm_timer_get_sclk_ticks(void)
 	}
 	return t1;
 }
+EXPORT_SYMBOL(msm_timer_get_sclk_ticks);
 
 static void _destroy_boot_marker(const char *name)
 {
@@ -318,7 +319,7 @@ static ssize_t bootkpi_reader(struct file *fp, struct kobject *obj,
 		size_t count)
 {
 	struct boot_marker *marker;
-	unsigned long ts_whole_num, ts_precision;
+	unsigned long long ts_whole_num, ts_precision;
 	static char *kpi_buf;
 	static int temp;
 	int ret = 0;

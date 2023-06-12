@@ -265,6 +265,8 @@ static void arm_smmu_interrupt_selftest(struct arm_smmu_device *smmu)
 				dev_err(smmu->dev, "SCTLR  = 0x%08x\n",
 					arm_smmu_cb_read(smmu, cb,
 							 ARM_SMMU_CB_SCTLR));
+			else
+				arm_smmu_cb_write(smmu, cb, ARM_SMMU_CB_FSR, fsr);
 		}
 
 		/* Make sure ARM_SMMU_CB_FSRRESTORE is written to */
@@ -2831,6 +2833,22 @@ static void arm_smmu_device_reset(struct arm_smmu_device *smmu)
 	reg = arm_smmu_gr0_read(smmu, ARM_SMMU_GR0_sGFSR);
 	arm_smmu_gr0_write(smmu, ARM_SMMU_GR0_sGFSR, reg);
 
+#if defined CONFIG_QTI_QUIN_GVM
+	/*
+	 * Reset stream mapping groups for unused sme's: Initial values mark all SMRn as
+	 * invalid and all S2CRn as bypass unless overridden.
+	 */
+	for (i = 0; i < smmu->num_mapping_groups; ++i)
+		if (!smmu->s2crs[i].pinned)
+			arm_smmu_write_sme(smmu, i);
+
+	/* Make sure only unpinned context banks are disabled and clear CB_FSR  */
+	for (i = 0; i < smmu->num_context_banks; ++i)
+		if (!smmu->s2crs[i].pinned) {
+			arm_smmu_write_context_bank(smmu, i);
+			arm_smmu_cb_write(smmu, i, ARM_SMMU_CB_FSR, ARM_SMMU_FSR_FAULT);
+		}
+#else
 	/*
 	 * Reset stream mapping groups: Initial values mark all SMRn as
 	 * invalid and all S2CRn as bypass unless overridden.
@@ -2843,6 +2861,7 @@ static void arm_smmu_device_reset(struct arm_smmu_device *smmu)
 		arm_smmu_write_context_bank(smmu, i);
 		arm_smmu_cb_write(smmu, i, ARM_SMMU_CB_FSR, ARM_SMMU_FSR_FAULT);
 	}
+#endif
 
 	/* Invalidate the TLB, just in case */
 	arm_smmu_gr0_write(smmu, ARM_SMMU_GR0_TLBIALLH, QCOM_DUMMY_VAL);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -79,6 +79,7 @@ struct seb_priv {
 	uint8_t rx_event_len;
 	struct work_struct slate_up_work;
 	struct work_struct slate_down_work;
+	struct work_struct slate_status_work;
 	struct work_struct glink_up_work;
 	struct work_struct slate_notify_work;
 	void *slate_subsys_handle;
@@ -225,6 +226,47 @@ static void seb_slatedown_work(struct work_struct *work)
 	mutex_unlock(&dev->seb_state_mutex);
 }
 
+static void seb_slatestatus_work(struct work_struct *work)
+{
+	struct seb_notif_info *seb_notify = NULL;
+	enum event_group_type event_header;
+	struct seb_buf_list *rx_notify, *next;
+	unsigned long flags;
+
+	struct seb_priv *dev =
+		container_of(work, struct seb_priv, slate_status_work);
+
+	mutex_lock(&dev->seb_state_mutex);
+	if (!list_empty(&dev->rx_list)) {
+		list_for_each_entry_safe(rx_notify, next, &dev->rx_list, rx_queue_head) {
+			event_header = *(enum event_group_type *)rx_notify->rx_buf;
+			seb_notify = _notif_find_group(event_header);
+			if (!seb_notify) {
+				pr_err("%s: notifier event not found\n", __func__);
+				spin_lock_irqsave(&dev->rx_lock, flags);
+				list_del(&rx_notify->rx_queue_head);
+				spin_unlock_irqrestore(&dev->rx_lock, flags);
+				kfree(rx_notify->rx_buf);
+				kfree(rx_notify);
+				mutex_unlock(&dev->seb_state_mutex);
+				return;
+			}
+			srcu_notifier_call_chain(&seb_notify->seb_notif_rcvr_list,
+						 event_header,
+						 rx_notify->rx_buf + sizeof(enum event_group_type));
+
+			spin_lock_irqsave(&dev->rx_lock, flags);
+			list_del(&rx_notify->rx_queue_head);
+			spin_unlock_irqrestore(&dev->rx_lock, flags);
+			kfree(rx_notify->rx_buf);
+			kfree(rx_notify);
+		}
+	}
+
+	pr_debug("%s: notifier call successful\n", __func__);
+	mutex_unlock(&dev->seb_state_mutex);
+}
+
 static void seb_notify_work(struct work_struct *work)
 {
 	struct seb_notif_info *seb_notify = NULL;
@@ -358,6 +400,47 @@ error_ret:
 }
 EXPORT_SYMBOL(seb_send_event_to_slate);
 
+int seb_send_event(enum event_group_type event,
+						void *event_buf, uint32_t buf_size)
+{
+	int rc = 0;
+	uint32_t txn_len = 0;
+	struct seb_priv *dev =
+		container_of(seb_drv, struct seb_priv, lhndl);
+	struct seb_buf_list *rx_notif = NULL;
+	unsigned long flags;
+
+	mutex_lock(&seb_api_mutex);
+
+	if (event == SLATE_STATUS) {
+		rx_notif = kzalloc(sizeof(struct seb_buf_list), GFP_ATOMIC);
+		if (!rx_notif) {
+			rc = -EINVAL;
+			goto error_ret;
+		}
+		txn_len = sizeof(enum event_group_type) + buf_size;
+		rx_notif->rx_buf = kmalloc(txn_len, GFP_ATOMIC);
+		if (!(rx_notif->rx_buf)) {
+			kfree(rx_notif);
+			pr_err("failed to allocate memory\n");
+			rc = -EINVAL;
+			goto error_ret;
+		}
+		memcpy(rx_notif->rx_buf, &event, sizeof(enum event_group_type));
+		memcpy(rx_notif->rx_buf + sizeof(enum event_group_type), event_buf, buf_size);
+
+		spin_lock_irqsave(&dev->rx_lock, flags);
+		list_add_tail(&rx_notif->rx_queue_head, &dev->rx_list);
+		spin_unlock_irqrestore(&dev->rx_lock, flags);
+		queue_work(dev->seb_wq, &dev->slate_status_work);
+	}
+
+error_ret:
+	mutex_unlock(&seb_api_mutex);
+	return rc;
+}
+EXPORT_SYMBOL(seb_send_event);
+
 void seb_notify_glink_channel_state(bool state)
 {
 	struct seb_priv *dev =
@@ -459,6 +542,10 @@ void handle_rx_event(struct seb_priv *dev, void *rx_event_buf, int len)
 	struct seb_buf_list *rx_notif = NULL;
 	unsigned long flags;
 
+	if (len < sizeof(struct gmi_header)) {
+		pr_err("Invalid rx_event_buffer length\n");
+		return;
+	}
 	event_header = (struct gmi_header *)rx_event_buf;
 
 	if (event_header->opcode == GMI_SLATE_EVENT_RSB ||
@@ -476,6 +563,7 @@ void handle_rx_event(struct seb_priv *dev, void *rx_event_buf, int len)
 
 		seb_send_input(evnt);
 		kfree(evnt);
+		return;
 	} else if (event_header->opcode == GMI_SLATE_EVENT_TOUCH) {
 		return;
 	}
@@ -508,6 +596,10 @@ void seb_rx_msg(void *data, int len)
 
 	wake_up(&dev->link_state_wait);
 	if (dev->wait_for_resp) {
+		if (len > SEB_GLINK_INTENT_SIZE) {
+			pr_err("Invalid seb rx buffer length\n");
+			return;
+		}
 		memcpy(dev->rx_buf, data, len);
 	} else {
 		/* Handle the event received from Slate */
@@ -603,6 +695,7 @@ static int seb_init(struct seb_priv *dev)
 	/* Init all works */
 	INIT_WORK(&dev->slate_up_work, seb_slateup_work);
 	INIT_WORK(&dev->slate_down_work, seb_slatedown_work);
+	INIT_WORK(&dev->slate_status_work, seb_slatestatus_work);
 	INIT_WORK(&dev->slate_notify_work, seb_notify_work);
 	INIT_LIST_HEAD(&dev->rx_list);
 	spin_lock_init(&dev->rx_lock);

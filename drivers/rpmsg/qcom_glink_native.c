@@ -76,7 +76,8 @@ do {									\
 #define RPM_GLINK_CID_MAX	65536
 
 static int should_wake;
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
+
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
 static int quickboot;
 atomic_t qb_comp;
 wait_queue_head_t quickboot_complete;
@@ -1169,9 +1170,11 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
 					channel->ept.priv,
 					RPMSG_ADDR_ANY);
 
-			if (ret < 0 && ret != -ENODEV) {
-				CH_ERR(channel,
-					"callback error ret = %d\n", ret);
+			if (ret < 0) {
+				if (ret != -ENODEV) {
+					CH_ERR(channel,
+						"callback error ret = %d\n", ret);
+				}
 				ret = 0;
 			}
 		} else {
@@ -1677,7 +1680,7 @@ static struct rpmsg_endpoint *qcom_glink_create_ept(struct rpmsg_device *rpdev,
 	struct rpmsg_endpoint *ept;
 	const char *name = chinfo.name;
 	int rcid;
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
 	struct glink_channel *local_channel;
 	int lcid, rcid_exist = 0, lcid_exist = 0;
 #endif
@@ -1687,14 +1690,14 @@ static struct rpmsg_endpoint *qcom_glink_create_ept(struct rpmsg_device *rpdev,
 	spin_lock_irqsave(&glink->idr_lock, flags);
 	idr_for_each_entry(&glink->rcids, channel, rcid) {
 		if (!strcmp(channel->name, name)) {
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
 			rcid_exist = 1;
 #endif
 			break;
 		}
 	}
 
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
 	idr_for_each_entry(&glink->lcids, local_channel, lcid) {
 		if (!strcmp(local_channel->name, name)) {
 			lcid_exist = 1;
@@ -1704,7 +1707,7 @@ static struct rpmsg_endpoint *qcom_glink_create_ept(struct rpmsg_device *rpdev,
 #endif
 	spin_unlock_irqrestore(&glink->idr_lock, flags);
 
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
 	if (rcid_exist && lcid_exist)
 		return &channel->ept;
 #endif
@@ -2125,6 +2128,12 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
 	complete_all(&channel->open_req);
 	qcom_glink_send_open_ack(glink, channel);
 
+	/*
+	 * Acknowledge the open request to establish the channel
+	 * before initializing the rpmsg device.
+	 */
+	qcom_glink_send_open_ack(glink, channel);
+
 	if (create_device) {
 		rpdev = kzalloc(sizeof(*rpdev), GFP_KERNEL);
 		if (!rpdev) {
@@ -2147,7 +2156,8 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
 		if (ret)
 			goto rcid_remove;
 
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM) \
+	   && IS_ENABLED(CONFIG_MSM_RPM_SMD)
 		ret = !strcmp(glink->name, "rpm-glink") &&
 				!strcmp(channel->name, "rpm_requests");
 		if (quickboot && ret) {
@@ -2397,6 +2407,20 @@ static void qcom_glink_set_affinity(struct qcom_glink *glink, u32 *arr,
 		dev_err(glink->dev, "failed to set task affinity\n");
 }
 
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
+void glink_rpm_ready_wait(void)
+{
+	int ret = 0;
+
+	ret = wait_event_timeout(quickboot_complete,
+				atomic_read(&qb_comp), 10 * HZ);
+	if (!ret) {
+		pr_err("glink: channel open request from rpm timed out\n");
+	}
+}
+EXPORT_SYMBOL(glink_rpm_ready_wait);
+#endif
+
 struct qcom_glink *qcom_glink_native_probe(struct device *dev,
 					   unsigned long features,
 					   struct qcom_glink_pipe *rx,
@@ -2440,7 +2464,7 @@ struct qcom_glink *qcom_glink_native_probe(struct device *dev,
 	if (ret < 0)
 		glink->name = dev->of_node->name;
 
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
 	if (!strcmp(glink->name, "rpm-glink")) {
 		atomic_set(&qb_comp, 0);
 		init_waitqueue_head(&quickboot_complete);
@@ -2586,29 +2610,19 @@ EXPORT_SYMBOL_GPL(qcom_glink_native_unregister);
 static int qcom_glink_suspend_no_irq(struct device *dev)
 {
 	should_wake = true;
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
+	if (pm_suspend_via_firmware()) {
+		quickboot = 1;
+	}
+#endif
 
 	return 0;
 }
 
 static int qcom_glink_resume_no_irq(struct device *dev)
 {
-	int ret = 0;
 	should_wake = false;
-#if defined(CONFIG_DEEPSLEEP) && defined(CONFIG_RPMSG_QCOM_GLINK_RPM)
-	if (pm_suspend_via_firmware()) {
-		quickboot = 1;
-		glink_rpm_resume_noirq(dev);
-
-		ret = wait_event_timeout(quickboot_complete,
-					 atomic_read(&qb_comp), 10 * HZ);
-		if (!ret) {
-			pr_err("glink: channel open request from rpm timed out\n");
-			ret = -ETIMEDOUT;
-		}
-	}
-
-#endif
-	return ret;
+	return 0;
 }
 
 const struct dev_pm_ops glink_native_pm_ops = {

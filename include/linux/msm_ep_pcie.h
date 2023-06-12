@@ -94,10 +94,10 @@ struct ep_pcie_register_event {
 };
 
 struct ep_pcie_iatu {
-	u32 start;
-	u32 end;
-	u32 tgt_lower;
-	u32 tgt_upper;
+	u64 start;
+	u64 end;
+	u64 tgt_lower;
+	u64 tgt_upper;
 };
 
 struct ep_pcie_msi_config {

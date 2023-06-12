@@ -236,7 +236,9 @@ int vfastrpc_mmap_remove(struct vfastrpc_file *vfl, int fd,
 				map->raddr + map->len == va + len &&
 				(map->refs == 1 ||
 				 (map->refs == 2 &&
-				  map->attr & FASTRPC_ATTR_KEEP_MAP))) {
+				  map->attr & FASTRPC_ATTR_KEEP_MAP)) &&
+				/* Remove if only one reference map and no context map */
+				!map->ctx_refs) {
 			if (map->attr & FASTRPC_ATTR_KEEP_MAP)
 				map->refs--;
 			match = map;
@@ -264,10 +266,10 @@ int vfastrpc_mmap_remove_fd(struct vfastrpc_file *vfl, int fd, u32 *entries)
 				(map->attr & FASTRPC_ATTR_KEEP_MAP)) {
 			(*entries)++;
 			match = map;
-			if (match->refs > 1) {
+			if (match->refs > 1 || match->ctx_refs) {
 				dev_err(vfl->apps->dev,
-						"%s map refs = %d is abnormal\n",
-						__func__, match->refs);
+						"%s map refs = %d or ctx_refs = %d is abnormal\n",
+						__func__, match->refs, match->ctx_refs);
 				err = -ETOOMANYREFS;
 			}
 			vfastrpc_mmap_free(vfl, match, 0);
@@ -289,18 +291,21 @@ void vfastrpc_mmap_free(struct vfastrpc_file *vfl,
 		dev_err(me->dev, "%s ADSP_MMAP_HEAP_ADDR is not supported\n",
 				__func__);
 	} else {
-		if (map->refs <= 0) {
-			dev_warn(me->dev, "map refcnt = %d is abnormal\n", map->refs);
+		if (map->refs <= 0 || map->ctx_refs < 0) {
+			dev_warn(me->dev, "%s map refs = %d or ctx_refs = %d is abnormal\n",
+					__func__, map->refs, map->ctx_refs);
 			return;
 		}
 
 		map->refs--;
-		if (map->refs && force_free) {
-			dev_warn(me->dev, "force free map, but refs = %d\n", map->refs);
+		if ((map->refs || map->ctx_refs) && force_free) {
+			dev_warn(me->dev, "force free, refs = %d ctx_refs = %d attr = 0x%x\n",
+					map->refs + 1, map->ctx_refs, map->attr);
 			map->refs = 0;
+			map->ctx_refs = 0;
 		}
 
-		if (!map->refs) {
+		if (!map->refs && !map->ctx_refs) {
 			hlist_del_init(&map->hn);
 			if (!IS_ERR_OR_NULL(map->table)) {
 				dma_buf_unmap_attachment(map->attach, map->table,
@@ -382,6 +387,7 @@ int vfastrpc_mmap_create(struct vfastrpc_file *vfl, int fd,
 	map->vfl = vfl;
 	map->fd = fd;
 	map->attr = attr;
+	map->ctx_refs = 0;
 	if (mflags == ADSP_MMAP_HEAP_ADDR ||
 			mflags == ADSP_MMAP_REMOTE_HEAP_ADDR) {
 		dev_err(me->dev, "%s ADSP_MMAP_HEAP_ADDR is not supported\n",

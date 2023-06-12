@@ -872,7 +872,8 @@ struct etmv4_save_state {
  * @csdev:      Component vitals needed by the framework.
  * @spinlock:   Only one at a time pls.
  * @mode:	This tracer's mode, i.e sysFS, Perf or disabled.
- * @cpu:        The cpu this component is affined to.
+ * @cpu:        The logical cpu this component is affined to.
+ * @pcpu:       The physical cpu this component is affined to.
  * @arch:       ETM architecture version.
  * @nr_pe:	The number of processing entity available for tracing.
  * @nr_pe_cmp:	The number of processing entity comparator inputs that are
@@ -938,6 +939,7 @@ struct etmv4_drvdata {
 	spinlock_t			spinlock;
 	local_t				mode;
 	int				cpu;
+	int				pcpu;
 	u8				arch;
 	u8				nr_pe;
 	u8				nr_pe_cmp;

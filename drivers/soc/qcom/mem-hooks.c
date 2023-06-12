@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -152,12 +152,6 @@ static int init_kswapd_per_node_hook(void)
 	return ret;
 }
 
-static void allow_shared_pages_reclaim(void *unused, struct vm_area_struct *vma, bool *allow_shared)
-{
-	/* Allow shared pages reclaim through process_madvise() only */
-	*allow_shared = (current->mm != vma->vm_mm);
-}
-
 static int __init init_mem_hooks(void)
 {
 	int ret;
@@ -191,13 +185,6 @@ static int __init init_mem_hooks(void)
 			pr_err("Failed to register balance_anon_file_reclaim hooks\n");
 			return ret;
 		}
-	}
-
-	ret = register_trace_android_vh_madvise_cold_or_pageout(
-				allow_shared_pages_reclaim, NULL);
-	if (ret) {
-		pr_err("Failed to register madvise_cold_or_pageout_pte_range hook\n");
-		return ret;
 	}
 	return 0;
 }

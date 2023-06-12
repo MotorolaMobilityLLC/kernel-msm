@@ -1379,7 +1379,7 @@ static struct clk_rcg2 gcc_sdcc2_apps_clk_src = {
 };
 
 static const struct freq_tbl ftbl_gcc_tlmm_125_clk_src[] = {
-	F(125000000, P_GPLL4_OUT_MAIN, 4, 0, 0),
+	F(125000000, P_GPLL4_OUT_MAIN, 1, 1, 4),
 	{ }
 };
 

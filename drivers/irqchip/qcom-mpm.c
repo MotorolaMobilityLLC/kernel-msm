@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/soc/qcom/irq.h>
 #include <linux/spinlock.h>
+#include <linux/suspend.h>
 
 #include <soc/qcom/mpm.h>
 
@@ -300,7 +301,7 @@ static struct irq_chip msm_mpm_gic_chip = {
 	.irq_disable	= msm_mpm_gic_chip_mask,
 	.irq_unmask	= msm_mpm_gic_chip_unmask,
 	.irq_set_type	= msm_mpm_gic_chip_set_type,
-	.flags		= IRQCHIP_MASK_ON_SUSPEND | IRQCHIP_SKIP_SET_WAKE,
+	.flags		= IRQCHIP_SET_TYPE_MASKED | IRQCHIP_MASK_ON_SUSPEND | IRQCHIP_SKIP_SET_WAKE,
 	.irq_set_affinity	= msm_mpm_gic_chip_set_affinity,
 };
 
@@ -310,7 +311,7 @@ static struct irq_chip msm_mpm_gpio_chip = {
 	.irq_disable	= msm_mpm_gpio_chip_mask,
 	.irq_unmask	= msm_mpm_gpio_chip_unmask,
 	.irq_set_type	= msm_mpm_gpio_chip_set_type,
-	.flags		= IRQCHIP_MASK_ON_SUSPEND | IRQCHIP_SKIP_SET_WAKE,
+	.flags		= IRQCHIP_SET_TYPE_MASKED | IRQCHIP_MASK_ON_SUSPEND | IRQCHIP_SKIP_SET_WAKE,
 };
 
 static int msm_mpm_gpio_chip_translate(struct irq_domain *d,
@@ -428,12 +429,16 @@ static inline void msm_mpm_timer_write(void)
 {
 	u32 lo = ~0U, hi = ~0U, ctrl;
 
+	if (system_state == SYSTEM_SUSPEND)
+		goto exit;
+
 	ctrl = readl_relaxed_no_log(msm_mpm_dev_data.timer_frame_reg + MPM_CNTV_CTL);
 	if (ctrl & MPM_ARCH_TIMER_CTRL_ENABLE) {
 		lo = readl_relaxed_no_log(msm_mpm_dev_data.timer_frame_reg + MPM_CNTCVAL_LO);
 		hi = readl_relaxed_no_log(msm_mpm_dev_data.timer_frame_reg + MPM_CNTCVAL_HI);
 	}
 
+exit:
 	writel_relaxed(lo, msm_mpm_dev_data.mpm_request_reg_base);
 	writel_relaxed(hi, msm_mpm_dev_data.mpm_request_reg_base + 0x4);
 }
@@ -486,6 +491,9 @@ static irqreturn_t msm_mpm_irq(int irq, void *dev_id)
 	for (i = 0; i < QCOM_MPM_REG_WIDTH; i++) {
 		pending = msm_mpm_read(MPM_REG_STATUS, i);
 		pending &= (unsigned long)value[i];
+
+		if (pending)
+			pm_system_wakeup();
 
 		trace_mpm_wakeup_pending_irqs(i, pending);
 		for_each_set_bit(k, &pending, 32) {
@@ -558,24 +566,15 @@ static int msm_mpm_init(struct device_node *node)
 	dev->ipc_irq = irq;
 
 	ret = request_irq(dev->ipc_irq, msm_mpm_irq,
-		IRQF_TRIGGER_RISING | IRQF_NO_SUSPEND, "mpm",
-		msm_mpm_irq);
+			  IRQF_TRIGGER_RISING | IRQF_NO_SUSPEND, "mpm",
+			  msm_mpm_irq);
 	if (ret) {
 		pr_err("request_irq failed errno: %d\n", ret);
 		goto ipc_irq_err;
 	}
 
-	ret = irq_set_irq_wake(dev->ipc_irq, 1);
-	if (ret) {
-		pr_err("failed to set wakeup irq %lu: %d\n",
-			dev->ipc_irq, ret);
-		goto set_wake_irq_err;
-	}
-
 	return 0;
 
-set_wake_irq_err:
-	free_irq(dev->ipc_irq, msm_mpm_irq);
 ipc_irq_err:
 	iounmap(dev->mpm_ipc_reg);
 ipc_reg_err:
@@ -592,6 +591,16 @@ const struct mpm_pin mpm_khaje_gic_chip_data[] = {
 	{86, 183}, /* mpm_wake,spmi_m */
 	{90, 188}, /* eud_p0_dmse_int_mx */
 	{91, 184}, /* eud_p0_dpse_int_mx */
+	{-1},
+};
+
+const struct mpm_pin mpm_qcs405_gic_chip_data[] = {
+	{2, 184}, /*tsens0_tsens_upper_lower_int */
+	{35, 318}, /* dmse_hv, usb20 -> hs_phy_irq */
+	{36, 318}, /* dpse_hv, usb20 -> hs_phy_irq */
+	{38, 319}, /* dmse_hv, usb30 -> hs_phy_irq */
+	{39, 319}, /* dpse_hv, usb30 -> hs_phy_irq */
+	{62, 190}, /* mpm_wake,spmi_m */
 	{-1},
 };
 
@@ -632,6 +641,10 @@ static const struct of_device_id mpm_gic_chip_data_table[] = {
 	{
 		.compatible = "qcom,mpm-monaco",
 		.data = mpm_monaco_gic_chip_data,
+	},
+	{
+		.compatible = "qcom,mpm-qcs405",
+		.data = mpm_qcs405_gic_chip_data,
 	},
 	{
 		.compatible = "qcom,mpm-sa410m",

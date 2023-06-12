@@ -2,6 +2,7 @@ qcom_wdt_core.ko
 gh_virt_wdt.ko
 qcom_cpu_vendor_hooks.ko
 clk-rpmh.ko
+gcc-crow.ko
 gcc-kalama.ko
 icc-rpmh.ko
 camcc-kalama.ko
@@ -26,6 +27,7 @@ crypto-qti-hwkm.ko
 dcc_v2.ko
 dcvs_fp.ko
 debug-regulator.ko
+dispcc-crow.ko
 dispcc-kalama.ko
 tcsrcc-kalama.ko
 videocc-kalama.ko

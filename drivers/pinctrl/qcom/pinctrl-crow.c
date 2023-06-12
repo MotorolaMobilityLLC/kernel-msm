@@ -2112,8 +2112,19 @@ static const struct msm_pinctrl_soc_data crow_pinctrl = {
 	.nwakeirq_map = ARRAY_SIZE(crow_pdc_map),
 };
 
+static const struct msm_pinctrl_soc_data crow_vm_pinctrl = {
+	.pins = crow_pins,
+	.npins = ARRAY_SIZE(crow_pins),
+	.functions = crow_functions,
+	.nfunctions = ARRAY_SIZE(crow_functions),
+	.groups = crow_groups,
+	.ngroups = ARRAY_SIZE(crow_groups),
+	.ngpios = 168,
+};
+
 static const struct of_device_id crow_pinctrl_of_match[] = {
 	{ .compatible = "qcom,crow-pinctrl", .data = &crow_pinctrl},
+	{ .compatible = "qcom,crow-vm-pinctrl", .data = &crow_vm_pinctrl},
 	{},
 };
 
@@ -2153,3 +2164,4 @@ module_exit(crow_pinctrl_exit);
 MODULE_DESCRIPTION("QTI crow pinctrl driver");
 MODULE_LICENSE("GPL v2");
 MODULE_DEVICE_TABLE(of, crow_pinctrl_of_match);
+MODULE_SOFTDEP("pre: qcom_tlmm_vm_irqchip");

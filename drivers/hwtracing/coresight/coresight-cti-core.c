@@ -1082,11 +1082,9 @@ static int cti_probe(struct amba_device *adev, const struct amba_id *id)
 	/* default to powered - could change on PM notifications */
 	drvdata->config.hw_powered = true;
 
-	/* set up device name - will depend if cpu bound or otherwise */
-	if (drvdata->ctidev.cpu >= 0) {
-		if (!cpu_active(drvdata->ctidev.cpu))
-			return -ENXIO;
-	}
+	/* skip cpu cti probe if the corresponding cpu is not ready */
+	if (drvdata->ctidev.cpu == -ENODEV)
+		return -ENXIO;
 
 	cti_desc.name = coresight_alloc_device_name(&cti_sys_devs, dev);
 	if (!cti_desc.name)

@@ -175,6 +175,7 @@
 #define PCIE20_IATU_O_LTAR(n)          (PCIE20_IATU_BASE(n) + 0x14)
 #define PCIE20_IATU_O_UTAR(n)          (PCIE20_IATU_BASE(n) + 0x18)
 #define PCIE20_IATU_O_CTRL3(n)         (PCIE20_IATU_BASE(n) + 0x1C)
+#define PCIE20_IATU_O_ULAR(n)          (PCIE20_IATU_BASE(n) + 0x20)
 
 #define PCIE20_IATU_I_CTRL1(n)         (PCIE20_IATU_BASE(n) + 0x100)
 #define PCIE20_IATU_I_CTRL2(n)         (PCIE20_IATU_BASE(n) + 0x104)
@@ -183,6 +184,8 @@
 #define PCIE20_IATU_I_LAR(n)           (PCIE20_IATU_BASE(n) + 0x110)
 #define PCIE20_IATU_I_LTAR(n)          (PCIE20_IATU_BASE(n) + 0x114)
 #define PCIE20_IATU_I_UTAR(n)          (PCIE20_IATU_BASE(n) + 0x118)
+
+#define PCIE20_IATU_O_INCREASE_REGION_SIZE	0x2000
 
 #define PCIE20_MHICFG                  0x110
 #define PCIE20_BHI_EXECENV             0x228
@@ -228,7 +231,7 @@
 
 #define EP_PCIE_LOG_PAGES 50
 #define EP_PCIE_MAX_VREG 4
-#define EP_PCIE_MAX_CLK 16
+#define EP_PCIE_MAX_CLK 20
 #define EP_PCIE_MAX_PIPE_CLK 1
 #define EP_PCIE_MAX_RESET 2
 
@@ -487,6 +490,11 @@ struct ep_pcie_dev_t {
 	struct clk		     *ref_clk_src;
 
 	bool				override_disable_sriov;
+	bool				no_path_from_ipa_to_pcie;
+	u32				tcsr_perst_separation_en_offset;
+	u32				tcsr_reset_separation_offset;
+	u32				tcsr_perst_enable_offset;
+	u32				perst_raw_rst_status_mask;
 };
 
 extern struct ep_pcie_dev_t ep_pcie_dev;

@@ -42,6 +42,8 @@
 #define PCIE_MHI_STATUS(n)			((n) + 0x148)
 #define TCSR_PERST_SEPARATION_ENABLE		0x270
 #define TCSR_PCIE_RST_SEPARATION		0x3F8
+#define TCSR_PCIE_PERST_EN			0x258
+
 #define PCIE_ISSUE_WAKE				1
 #define PCIE_MHI_FWD_STATUS_MIN			5000
 #define PCIE_MHI_FWD_STATUS_MAX			5110
@@ -49,9 +51,11 @@
 #define PCIE_L1SUB_AHB_TIMEOUT_MIN		100
 #define PCIE_L1SUB_AHB_TIMEOUT_MAX		120
 
-#define ICC_AVG_BW				500
-#define ICC_PEAK_BW				800
 #define PERST_RAW_RESET_STATUS			BIT(11)
+#define LINK_STATUS_REG_SHIFT			16
+
+#define LODWORD(addr)             (addr & 0xFFFFFFFF)
+#define HIDWORD(addr)             ((addr >> 32) & 0xFFFFFFFF)
 
 /* debug mask sys interface */
 static int ep_pcie_debug_mask;
@@ -63,7 +67,7 @@ static u32 clkreq_irq;
 struct ep_pcie_dev_t ep_pcie_dev = {0};
 
 static struct ep_pcie_vreg_info_t ep_pcie_vreg_info[EP_PCIE_MAX_VREG] = {
-	{NULL, "vreg-1p8", 1200000, 1200000, 30000, true},
+	{NULL, "vreg-1p2", 1200000, 1200000, 30000, true},
 	{NULL, "vreg-0p9", 912000, 912000, 132000, true},
 	{NULL, "vreg-cx", 0, 0, 0, false},
 	{NULL, "vreg-mx", 0, 0, 0, false}
@@ -94,6 +98,10 @@ static struct ep_pcie_clk_info_t
 	{NULL, "snoc_cnoc_gemnoc_pcie_south_qx_clk", 0, false},
 	{NULL, "snoc_cnoc_gemnoc_pcie_qx_clk", 0, false},
 	{NULL, "gemnoc_pcie_qx_clk", 0, false},
+	{NULL, "pcie_ddrss_sf_tbu_clk", 0, false},
+	{NULL, "pcie_aggre_noc_0_axi_clk", 0, false},
+	{NULL, "gcc_cnoc_pcie_sf_axi_clk", 0, false},
+	{NULL, "pcie_phy_aux_clk", 0, false},
 };
 
 static struct ep_pcie_clk_info_t
@@ -465,6 +473,52 @@ static void ep_pcie_vreg_deinit(struct ep_pcie_dev_t *dev)
 	}
 }
 
+static int qcom_ep_pcie_icc_bw_update(struct ep_pcie_dev_t *dev, u16 speed, u16 width)
+{
+	u32 bw, icc_bw;
+	int rc;
+
+	if (dev->icc_path && !IS_ERR(dev->icc_path)) {
+
+		switch (speed) {
+		case 1:
+			bw = 250000; /* avg bw / AB: 2.5 GBps, peak bw / IB: no vote */
+			break;
+		case 2:
+			bw = 500000; /* avg bw / AB: 5 GBps, peak bw / IB: no vote */
+			break;
+		case 3:
+			bw = 1000000; /* avg bw / AB: 8 GBps, peak bw / IB: no vote */
+			break;
+		case 4:
+			bw = 2000000; /* avg bw / AB: 16 GBps, peak bw / IB: no vote */
+			break;
+		case 5:
+			bw = 4000000; /* avg bw / AB: 32 GBps, peak bw / IB: no vote */
+			break;
+		default:
+			bw = 0;
+			break;
+		}
+
+		icc_bw = width * bw;
+		/* Speed == 0 implies to vote for '0' bandwidth. */
+		if (speed == 0)
+			rc = icc_set_bw(dev->icc_path, 0, 0);
+		else
+			rc = icc_set_bw(dev->icc_path, icc_bw, icc_bw);
+
+		if (rc) {
+			EP_PCIE_ERR(dev, "PCIe V%d: fail to set bus bandwidth:%d\n", dev->rev, rc);
+			return rc;
+		}
+
+		EP_PCIE_DBG(dev, "PCIe V%d: set bus Avg and Peak bandwidth:%d\n", dev->rev, icc_bw);
+	}
+
+	return 0;
+}
+
 static int ep_pcie_clk_init(struct ep_pcie_dev_t *dev)
 {
 	int i, rc = 0;
@@ -493,17 +547,12 @@ static int ep_pcie_clk_init(struct ep_pcie_dev_t *dev)
 	if (dev->pipe_clk_mux && dev->pipe_clk_ext_src)
 		clk_set_parent(dev->pipe_clk_mux, dev->pipe_clk_ext_src);
 
-	if (dev->icc_path) {
-		rc = icc_set_bw(dev->icc_path, ICC_AVG_BW, ICC_PEAK_BW);
-		if (rc) {
-			EP_PCIE_ERR(dev,
-				"PCIe V%d: fail to set bus bandwidth:%d\n",
-				dev->rev, rc);
-			return rc;
-		}
-		EP_PCIE_DBG(dev,
-			"PCIe V%d: set bus bandwidth\n",
-			dev->rev);
+	rc = qcom_ep_pcie_icc_bw_update(dev, PCI_EXP_LNKSTA_CLS_2_5GB, PCI_EXP_LNKSTA_NLW_X1);
+	if (rc) {
+		EP_PCIE_ERR(dev,
+			"PCIe V%d: fail to set bus bandwidth:%d\n",
+			dev->rev, rc);
+		return rc;
 	}
 
 	for (i = 0; i < EP_PCIE_MAX_CLK; i++) {
@@ -572,8 +621,8 @@ static void ep_pcie_clk_deinit(struct ep_pcie_dev_t *dev)
 		if (dev->clk[i].hdl)
 			clk_disable_unprepare(dev->clk[i].hdl);
 
-	if (dev->icc_path) {
-		rc = icc_set_bw(dev->icc_path, 0, 0);
+	rc = qcom_ep_pcie_icc_bw_update(dev, 0, 0);
+	if (rc) {
 		EP_PCIE_DBG(dev,
 			"PCIe V%d: relinquish bus bandwidth returns %d\n",
 			dev->rev, rc);
@@ -859,7 +908,7 @@ static void ep_pcie_core_init(struct ep_pcie_dev_t *dev, bool configured)
 
 		if (!dev->tcsr_not_supported)
 			ep_pcie_write_reg_field(dev->tcsr_perst_en,
-					TCSR_PCIE_RST_SEPARATION, BIT(5), 0);
+					ep_pcie_dev.tcsr_reset_separation_offset, BIT(5), 0);
 	}
 
 	if (!dev->enumerated) {
@@ -1236,8 +1285,10 @@ static void ep_pcie_config_inbound_iatu(struct ep_pcie_dev_t *dev, u32 vf_id)
 
 static void ep_pcie_config_outbound_iatu_entry(struct ep_pcie_dev_t *dev,
 					u32 region, u32 vf_id, u32 lower, u32 upper,
-					u32 limit, u32 tgt_lower, u32 tgt_upper)
+					u64 limit, u32 tgt_lower, u32 tgt_upper)
 {
+	u32 limit_low = LODWORD(limit);
+	u32 limit_high = HIDWORD(limit);
 	region = region + (vf_id * 4);
 	EP_PCIE_DBG(dev,
 		"PCIe V%d: region:%d; lower:0x%x; limit:0x%x; target_lower:0x%x; target_upper:0x%x vf_id:%d\n",
@@ -1251,11 +1302,20 @@ static void ep_pcie_config_outbound_iatu_entry(struct ep_pcie_dev_t *dev,
 		ep_pcie_write_reg(dev->iatu, PCIE20_IATU_O_UBAR(region),
 					upper);
 		ep_pcie_write_reg(dev->iatu, PCIE20_IATU_O_LAR(region),
-					limit);
+					limit_low);
 		ep_pcie_write_reg(dev->iatu, PCIE20_IATU_O_LTAR(region),
 					tgt_lower);
 		ep_pcie_write_reg(dev->iatu, PCIE20_IATU_O_UTAR(region),
 					tgt_upper);
+
+		/* if limit address exceeds 32 bit*/
+		if (limit_high) {
+			ep_pcie_write_reg(dev->iatu, PCIE20_IATU_O_CTRL1(region),
+						PCIE20_IATU_O_INCREASE_REGION_SIZE);
+			ep_pcie_write_reg(dev->iatu, PCIE20_IATU_O_ULAR(region),
+						limit_high);
+		}
+
 		/* Set DMA Bypass bit for eDMA */
 		if (dev->pcie_edma)
 			ep_pcie_write_mask(dev->iatu +
@@ -1289,7 +1349,9 @@ static void ep_pcie_config_outbound_iatu_entry(struct ep_pcie_dev_t *dev,
 		EP_PCIE_DBG(dev, "PCIE20_IATU_O_CTRL2:0x%x\n",
 			readl_relaxed(dev->iatu +
 					PCIE20_IATU_O_CTRL2(region)));
-
+		EP_PCIE_DBG(dev, "PCIE20_IATU_O_ULAR:0x%x\n",
+			readl_relaxed(dev->iatu +
+					PCIE20_IATU_O_ULAR(region)));
 		return;
 	}
 
@@ -1665,11 +1727,15 @@ static int ep_pcie_get_resources(struct ep_pcie_dev_t *dev,
 	dev->msi_vf = dev->res[EP_PCIE_RES_MSI_VF].base;
 
 	dev->icc_path = of_icc_get(&pdev->dev, "icc_path");
-	if (!dev->icc_path && !dev->rumi) {
+	WARN_ON(!dev->icc_path || IS_ERR(dev->icc_path));
+	if (!dev->icc_path) {
 		EP_PCIE_ERR(dev,
-			"PCIe V%d: Failed to register bus client for %s\n",
+			"PCIe V%d: Failed to register bus client for %s, interconnects missing\n",
 			dev->rev, dev->pdev->name);
-		ret = -ENODEV;
+	} else if (IS_ERR(dev->icc_path)) {
+		EP_PCIE_ERR(dev,
+			"PCIe V%d: Failed to register bus client for %s,interconnect-names miss\n",
+			dev->rev, dev->pdev->name);
 	}
 
 out:
@@ -1690,7 +1756,7 @@ static void ep_pcie_release_resources(struct ep_pcie_dev_t *dev)
 	dev->dm_core_vf = NULL;
 	dev->msi_vf = NULL;
 
-	if (dev->icc_path) {
+	if (dev->icc_path && !IS_ERR(dev->icc_path)) {
 		icc_put(dev->icc_path);
 		dev->icc_path = 0;
 	}
@@ -2007,6 +2073,7 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 	bool perst = true;
 	bool ltssm_en = false;
 	struct ep_pcie_dev_t *dev = &ep_pcie_dev;
+	u32 link_speed, link_width, reg;
 
 	EP_PCIE_DBG(dev, "PCIe V%d: options input are 0x%x\n", dev->rev, opt);
 
@@ -2053,24 +2120,27 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 		if (!dev->tcsr_not_supported) {
 			EP_PCIE_DBG(dev,
 				"TCSR PERST_EN value before configure:0x%x\n",
-				readl_relaxed(dev->tcsr_perst_en + 0x258));
+				readl_relaxed(dev->tcsr_perst_en +
+						ep_pcie_dev.tcsr_perst_enable_offset));
 
 			/*
 			 * Delatch PERST_EN with TCSR to avoid device reset
 			 * during host reboot case.
 			 */
-			writel_relaxed(0, dev->tcsr_perst_en + 0x258);
+			writel_relaxed(0, dev->tcsr_perst_en +
+					ep_pcie_dev.tcsr_perst_enable_offset);
 
 			EP_PCIE_DBG(dev,
 				"TCSR PERST_EN value after configure:0x%x\n",
-				readl_relaxed(dev->tcsr_perst_en + 0x258));
+				readl_relaxed(dev->tcsr_perst_en +
+						ep_pcie_dev.tcsr_perst_enable_offset));
 
 			/*
 			 * Delatch PERST_SEPARATION_ENABLE with TCSR to avoid
 			 * device reset during host reboot and hibernate case.
 			 */
 			writel_relaxed(0, dev->tcsr_perst_en +
-						TCSR_PERST_SEPARATION_ENABLE);
+						ep_pcie_dev.tcsr_perst_separation_en_offset);
 		}
 
 		 /* check link status during initial bootup */
@@ -2143,17 +2213,17 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 	if (!dev->tcsr_not_supported) {
 		EP_PCIE_DBG(dev,
 			"TCSR PERST_EN value before configure:0x%x\n",
-			readl_relaxed(dev->tcsr_perst_en + 0x258));
+			readl_relaxed(dev->tcsr_perst_en + ep_pcie_dev.tcsr_perst_enable_offset));
 
 		/*
 		 * Delatch PERST_EN with TCSR to avoid device reset
 		 * during host reboot case.
 		 */
-		writel_relaxed(0, dev->tcsr_perst_en + 0x258);
+		writel_relaxed(0, dev->tcsr_perst_en + ep_pcie_dev.tcsr_perst_enable_offset);
 
 		EP_PCIE_DBG(dev,
 			"TCSR PERST_EN value after configure:0x%x\n",
-			readl_relaxed(dev->tcsr_perst_en));
+			readl_relaxed(dev->tcsr_perst_en + ep_pcie_dev.tcsr_perst_enable_offset));
 	}
 
 	if (opt & EP_PCIE_OPT_AST_WAKE) {
@@ -2281,9 +2351,23 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 	}
 
 checkbme:
-	/* Clear AOSS_CC_RESET_STATUS::PERST_RAW_RESET_STATUS when linking up */
+	reg = readl_relaxed(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS);
+	link_speed = (reg >> LINK_STATUS_REG_SHIFT) & PCI_EXP_LNKSTA_CLS;
+	link_width = ((reg >> LINK_STATUS_REG_SHIFT) & PCI_EXP_LNKSTA_NLW) >>
+		PCI_EXP_LNKSTA_NLW_SHIFT;
+
+	EP_PCIE_INFO(dev, "PCIe V%d Link is up at Gen%dX%d\n", dev->rev, link_speed, link_width);
+
+	/* Update icc voting to match bandwidth for actual gen speed and link width */
+	ret = qcom_ep_pcie_icc_bw_update(dev, link_speed, link_width);
+	if (ret) {
+		EP_PCIE_ERR(dev, "PCIe V%d: fail to set bus bandwidth:%d\n", dev->rev, ret);
+		return ret;
+	}
+
+	/* Clear PERST_RAW_RESET_STATUS when linking up */
 	if (dev->aoss_rst_clear && dev->aoss_rst_perst)
-		writel_relaxed(PERST_RAW_RESET_STATUS, dev->aoss_rst_perst);
+		writel_relaxed(ep_pcie_dev.perst_raw_rst_status_mask, dev->aoss_rst_perst);
 
 	/*
 	 * De-assert WAKE# GPIO following link until L2/3 and WAKE#
@@ -2400,7 +2484,7 @@ int ep_pcie_core_disable_endpoint(void)
 
 	if (!dev->tcsr_not_supported)
 		ep_pcie_write_reg_field(dev->tcsr_perst_en,
-					TCSR_PCIE_RST_SEPARATION, BIT(5), 1);
+					ep_pcie_dev.tcsr_reset_separation_offset, BIT(5), 1);
 
 	ep_pcie_pipe_clk_deinit(dev);
 	ep_pcie_clk_deinit(dev);
@@ -3268,26 +3352,17 @@ enum ep_pcie_link_status ep_pcie_core_get_linkstatus(void)
 int ep_pcie_core_config_outbound_iatu(struct ep_pcie_iatu entries[],
 				u32 num_entries, u32 vf_id)
 {
-	u32 data_start = 0;
-	u32 data_end = 0;
-	u32 data_tgt_lower = 0;
-	u32 data_tgt_upper = 0;
-	u32 ctrl_start = 0;
-	u32 ctrl_end = 0;
-	u32 ctrl_tgt_lower = 0;
-	u32 ctrl_tgt_upper = 0;
-	u32 upper = 0;
+	u64 data_start = 0;
+	u64 data_end = 0;
+	u64 data_tgt_lower = 0;
+	u64 data_tgt_upper = 0;
+	u64 ctrl_start = 0;
+	u64 ctrl_end = 0;
+	u64 ctrl_tgt_lower = 0;
+	u64 ctrl_tgt_upper = 0;
 	bool once = true;
-
-	if (ep_pcie_dev.active_config) {
-		upper = EP_PCIE_OATU_UPPER;
-		if (once) {
-			once = false;
-			EP_PCIE_DBG2(&ep_pcie_dev,
-				"PCIe V%d: No outbound iATU config is needed since active config is enabled\n",
-				ep_pcie_dev.rev);
-		}
-	}
+	u32 data_start_upper = 0;
+	u32 ctrl_start_upper = 0;
 
 	if ((num_entries > MAX_IATU_ENTRY_NUM) || !num_entries) {
 		EP_PCIE_ERR(&ep_pcie_dev,
@@ -3308,8 +3383,22 @@ int ep_pcie_core_config_outbound_iatu(struct ep_pcie_iatu entries[],
 		ctrl_tgt_upper = entries[1].tgt_upper;
 	}
 
+	if (ep_pcie_dev.active_config) {
+		data_start_upper = EP_PCIE_OATU_UPPER;
+		ctrl_start_upper = EP_PCIE_OATU_UPPER;
+		if (once) {
+			once = false;
+			EP_PCIE_DBG2(&ep_pcie_dev,
+				"PCIe V%d: No outbound iATU config is needed since active config is enabled\n",
+				ep_pcie_dev.rev);
+		}
+	} else {
+		data_start_upper = HIDWORD(data_start);
+		ctrl_start_upper = HIDWORD(ctrl_start);
+	}
+
 	EP_PCIE_DBG(&ep_pcie_dev,
-		"PCIe V%d: data_start:0x%x; data_end:0x%x; data_tgt_lower:0x%x; data_tgt_upper:0x%x; ctrl_start:0x%x; ctrl_end:0x%x; ctrl_tgt_lower:0x%x; ctrl_tgt_upper:0x%x\n",
+		"PCIe V%d: data_start:0x%llx; data_end:0x%llx; data_tgt_lower:0x%llx; data_tgt_upper:0x%llx; ctrl_start:0x%llx; ctrl_end:0x%llx; ctrl_tgt_lower:0x%llx; ctrl_tgt_upper:0x%llx\n",
 		ep_pcie_dev.rev, data_start, data_end, data_tgt_lower,
 		data_tgt_upper, ctrl_start, ctrl_end, ctrl_tgt_lower,
 		ctrl_tgt_upper);
@@ -3321,12 +3410,12 @@ int ep_pcie_core_config_outbound_iatu(struct ep_pcie_iatu entries[],
 		ep_pcie_config_outbound_iatu_entry(&ep_pcie_dev,
 					EP_PCIE_OATU_INDEX_DATA,
 					vf_id,
-					data_start, upper, data_end,
+					data_start, data_start_upper, data_end,
 					data_tgt_lower, data_tgt_upper);
 		ep_pcie_config_outbound_iatu_entry(&ep_pcie_dev,
 					EP_PCIE_OATU_INDEX_CTRL,
 					vf_id,
-					ctrl_start, upper, ctrl_end,
+					ctrl_start, ctrl_start_upper, ctrl_end,
 					ctrl_tgt_lower, ctrl_tgt_upper);
 	} else if ((data_start <= ctrl_start) && (ctrl_end <= data_end)) {
 		EP_PCIE_DBG(&ep_pcie_dev,
@@ -3335,7 +3424,7 @@ int ep_pcie_core_config_outbound_iatu(struct ep_pcie_iatu entries[],
 		ep_pcie_config_outbound_iatu_entry(&ep_pcie_dev,
 					EP_PCIE_OATU_INDEX_DATA,
 					vf_id,
-					data_start, upper, data_end,
+					data_start, data_start_upper, data_end,
 					data_tgt_lower, data_tgt_upper);
 	} else {
 		EP_PCIE_DBG(&ep_pcie_dev,
@@ -3344,12 +3433,12 @@ int ep_pcie_core_config_outbound_iatu(struct ep_pcie_iatu entries[],
 		ep_pcie_config_outbound_iatu_entry(&ep_pcie_dev,
 					EP_PCIE_OATU_INDEX_CTRL,
 					vf_id,
-					ctrl_start, upper, ctrl_end,
+					ctrl_start, ctrl_start_upper, ctrl_end,
 					ctrl_tgt_lower, ctrl_tgt_upper);
 		ep_pcie_config_outbound_iatu_entry(&ep_pcie_dev,
 					EP_PCIE_OATU_INDEX_DATA,
 					vf_id,
-					data_start, upper, data_end,
+					data_start, data_start_upper, data_end,
 					data_tgt_lower, data_tgt_upper);
 	}
 
@@ -3488,7 +3577,8 @@ int ep_pcie_core_get_msi_config(struct ep_pcie_msi_config *cfg, u32 vf_id)
 					msi->start + (n * 0x8), 0, msi->end,
 					lower, upper);
 
-		if (ep_pcie_dev.active_config || ep_pcie_dev.pcie_edma) {
+		if (ep_pcie_dev.active_config || ep_pcie_dev.pcie_edma ||
+			ep_pcie_dev.no_path_from_ipa_to_pcie) {
 			cfg->lower = lower;
 			cfg->upper = upper;
 		} else {
@@ -3524,8 +3614,9 @@ int ep_pcie_core_get_msi_config(struct ep_pcie_msi_config *cfg, u32 vf_id)
 			 * bit set by default. Setup another ATU region to clear
 			 * the RO bit for MSIs triggered via IPA DMA.
 			 */
-			if (ep_pcie_dev.active_config &&
-					!ep_pcie_dev.conf_ipa_msi_iatu[vf_id]) {
+			if (ep_pcie_dev.no_path_from_ipa_to_pcie ||
+				(ep_pcie_dev.active_config &&
+				!ep_pcie_dev.conf_ipa_msi_iatu[vf_id])) {
 				ep_pcie_config_outbound_iatu_entry(&ep_pcie_dev,
 					EP_PCIE_OATU_INDEX_IPA_MSI,
 					vf_id,
@@ -3945,6 +4036,81 @@ static int is_pcie_boot_config(struct platform_device *pdev)
 	return -EPERM;
 }
 
+static void ep_pcie_tcsr_aoss_data_dt(struct platform_device *pdev)
+{
+	int ret;
+
+	ep_pcie_dev.tcsr_not_supported = of_property_read_bool((&pdev->dev)->of_node,
+								"qcom,tcsr-not-supported");
+	EP_PCIE_DBG(&ep_pcie_dev,
+		"PCIe V%d: tcsr pcie perst is %s supported\n",
+		ep_pcie_dev.rev, ep_pcie_dev.tcsr_not_supported ? "not" : "");
+
+	if (!ep_pcie_dev.tcsr_not_supported) {
+		ret = of_property_read_u32((&pdev->dev)->of_node,
+					"qcom,tcsr-perst-separation-enable-offset",
+					&ep_pcie_dev.tcsr_perst_separation_en_offset);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: TCSR Perst Separation En Offset is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.tcsr_perst_separation_en_offset = TCSR_PERST_SEPARATION_ENABLE;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: TCSR Perst Separation En Offset: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.tcsr_perst_separation_en_offset);
+
+		ret = of_property_read_u32((&pdev->dev)->of_node,
+					"qcom,tcsr-reset-separation-offset",
+					&ep_pcie_dev.tcsr_reset_separation_offset);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: TCSR Reset Separation Offset is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.tcsr_reset_separation_offset = TCSR_PCIE_RST_SEPARATION;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: TCSR Reset Separation Offset: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.tcsr_reset_separation_offset);
+
+		ret = of_property_read_u32((&pdev->dev)->of_node, "qcom,tcsr-perst-enable-offset",
+					&ep_pcie_dev.tcsr_perst_enable_offset);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: TCSR Perst Enable Offset is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.tcsr_perst_enable_offset = TCSR_PCIE_PERST_EN;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: TCSR Perst Enable Offset: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.tcsr_perst_enable_offset);
+	}
+
+	ep_pcie_dev.aoss_rst_clear = of_property_read_bool((&pdev->dev)->of_node,
+								"qcom,aoss-rst-clr");
+
+	if (ep_pcie_dev.aoss_rst_clear) {
+		ret = of_property_read_u32((&pdev->dev)->of_node,
+					"qcom,perst-raw-rst-status-b",
+					&ep_pcie_dev.perst_raw_rst_status_mask);
+
+		ep_pcie_dev.perst_raw_rst_status_mask = BIT(ep_pcie_dev.perst_raw_rst_status_mask);
+		if (ret) {
+			EP_PCIE_DBG(&ep_pcie_dev,
+				"PCIe V%d: Perst raw rst status bit is not supplied from DT",
+				ep_pcie_dev.rev);
+			ep_pcie_dev.perst_raw_rst_status_mask = PERST_RAW_RESET_STATUS;
+		}
+
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: Perset Raw Reset Status Bit: %d",
+			ep_pcie_dev.rev, BIT(ep_pcie_dev.perst_raw_rst_status_mask));
+	}
+}
+
 static int ep_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -4086,16 +4252,8 @@ static int ep_pcie_probe(struct platform_device *pdev)
 		"PCIe V%d: enum by PERST is %s enabled\n",
 		ep_pcie_dev.rev, ep_pcie_dev.perst_enum ? "" : "not");
 
-	ep_pcie_dev.tcsr_not_supported = of_property_read_bool
-		((&pdev->dev)->of_node,
-				"qcom,tcsr-not-supported");
-	EP_PCIE_DBG(&ep_pcie_dev,
-		"PCIe V%d: tcsr pcie perst is %s supported\n",
-		ep_pcie_dev.rev, ep_pcie_dev.tcsr_not_supported ? "not" : "");
+	ep_pcie_tcsr_aoss_data_dt(pdev);
 
-	ep_pcie_dev.aoss_rst_clear = of_property_read_bool
-		((&pdev->dev)->of_node,
-				"qcom,aoss-rst-clr");
 	EP_PCIE_DBG(&ep_pcie_dev,
 		"PCIe V%d: AOSS reset for perst needed\n", ep_pcie_dev.rev);
 	ep_pcie_dev.parf_msi_vf_indexed = of_property_read_bool((&pdev->dev)->of_node,
@@ -4155,6 +4313,11 @@ static int ep_pcie_probe(struct platform_device *pdev)
 		EP_PCIE_INFO(&ep_pcie_dev, "PCIe V%d: SR-IOV mask:0x%x\n",
 			ep_pcie_dev.rev, sriov_mask);
 	}
+
+	ep_pcie_dev.no_path_from_ipa_to_pcie = of_property_read_bool((&pdev->dev)->of_node,
+				"qcom,no-path-from-ipa-to-pcie");
+	EP_PCIE_INFO(&ep_pcie_dev, "Path from IPA to PCIe is %s present\n",
+				ep_pcie_dev.no_path_from_ipa_to_pcie ? "not" : "");
 
 	ep_pcie_dev.use_iatu_msi = of_property_read_bool((&pdev->dev)->of_node,
 				"qcom,pcie-use-iatu-msi");

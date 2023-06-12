@@ -3,13 +3,14 @@
  * Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  * Copyright (c) 2017, Linaro Ltd.
  */
-
+#include <linux/of.h>
 #include <linux/completion.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
 #include <linux/rpmsg.h>
 #include <linux/rpmsg/qcom_glink.h>
 #include <linux/remoteproc/qcom_rproc.h>
+#include <linux/ipc_logging.h>
 
 /**
  * struct do_cleanup_msg - The data structure for an SSR do_cleanup message
@@ -55,8 +56,16 @@ struct glink_ssr {
 	struct completion completion;
 };
 
+#define MSM_SSR_LOG_PAGE_CNT 4
+static void *ssr_ilc;
+
+#define MSM_SSR_INFO(x, ...) ipc_log_string(ssr_ilc, x, ##__VA_ARGS__)
+
 /* Notifier list for all registered glink_ssr instances */
 static BLOCKING_NOTIFIER_HEAD(ssr_notifiers);
+
+static struct rpmsg_endpoint *rpm_ept;
+static u32 sequence_num;
 
 /**
  * qcom_glink_ssr_notify() - notify GLINK SSR about stopped remoteproc
@@ -95,6 +104,30 @@ static int qcom_glink_ssr_callback(struct rpmsg_device *rpdev,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_DEEPSLEEP) && IS_ENABLED(CONFIG_RPMSG_QCOM_GLINK_RPM)
+void glink_ssr_notify_rpm(void)
+{
+	struct do_cleanup_msg msg;
+	int ret;
+
+	sequence_num = sequence_num + 1;
+	memset(&msg, 0, sizeof(msg));
+	msg.command = cpu_to_le32(GLINK_SSR_DO_CLEANUP);
+	msg.seq_num = cpu_to_le32(sequence_num);
+	msg.name_len = cpu_to_le32(strlen("apss"));
+	strscpy(msg.name, "apss", sizeof(msg.name));
+
+	MSM_SSR_INFO("%s: notify of %s Deep Sleep seq_num:%d\n",
+				"rpm", "apss", sequence_num);
+
+	ret = rpmsg_send(rpm_ept, &msg, sizeof(msg));
+	if (ret)
+		pr_err("fail to send do cleanup to rpm for APSS SSR %d\n",
+					ret);
+}
+EXPORT_SYMBOL(glink_ssr_notify_rpm);
+#endif
+
 static int qcom_glink_ssr_notifier_call(struct notifier_block *nb,
 					unsigned long event,
 					void *data)
@@ -103,6 +136,17 @@ static int qcom_glink_ssr_notifier_call(struct notifier_block *nb,
 	struct do_cleanup_msg msg;
 	char *ssr_name = data;
 	int ret;
+	struct device *dev;
+	const char *name;
+
+	dev = ssr->dev;
+
+	name = dev->parent->of_node->name;
+	if (!strcmp(name, "rpm-glink")) {
+		if (ssr->seq_num < sequence_num)
+			ssr->seq_num = sequence_num;
+		sequence_num = sequence_num + 1;
+	}
 
 	ssr->seq_num++;
 	reinit_completion(&ssr->completion);
@@ -127,6 +171,8 @@ static int qcom_glink_ssr_notifier_call(struct notifier_block *nb,
 static int qcom_glink_ssr_probe(struct rpmsg_device *rpdev)
 {
 	struct glink_ssr *ssr;
+	struct device_node *node;
+	struct device *dev;
 
 	ssr = devm_kzalloc(&rpdev->dev, sizeof(*ssr), GFP_KERNEL);
 	if (!ssr)
@@ -138,6 +184,16 @@ static int qcom_glink_ssr_probe(struct rpmsg_device *rpdev)
 	ssr->ept = rpdev->ept;
 	ssr->nb.notifier_call = qcom_glink_ssr_notifier_call;
 
+	dev = rpdev->dev.parent;
+	node = dev->of_node;
+	if (!strcmp(node->name, "rpm-glink")) {
+		sequence_num = 0;
+		rpm_ept = rpdev->ept;
+	}
+
+	ssr_ilc = ipc_log_context_create(MSM_SSR_LOG_PAGE_CNT,
+				"glink_ssr", 0);
+
 	dev_set_drvdata(&rpdev->dev, ssr);
 
 	return blocking_notifier_chain_register(&ssr_notifiers, &ssr->nb);
@@ -146,6 +202,11 @@ static int qcom_glink_ssr_probe(struct rpmsg_device *rpdev)
 static void qcom_glink_ssr_remove(struct rpmsg_device *rpdev)
 {
 	struct glink_ssr *ssr = dev_get_drvdata(&rpdev->dev);
+
+	ssr->dev = NULL;
+	ssr->ept = NULL;
+
+	dev_set_drvdata(&rpdev->dev, NULL);
 
 	blocking_notifier_chain_unregister(&ssr_notifiers, &ssr->nb);
 }
