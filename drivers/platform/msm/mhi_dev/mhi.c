@@ -1631,7 +1631,7 @@ static int mhi_hwc_init(struct mhi_dev *mhi_ctx)
 	struct ep_pcie_db_config erdb_cfg;
 	struct mhi_dma_function_params mhi_dma_fun_params;
 
-	if (mhi_ctx->use_edma || !mhi_ctx->no_path_from_ipa_to_pcie) {
+	if (mhi_ctx->use_edma || mhi_ctx->no_path_from_ipa_to_pcie) {
 		/*
 		 * Interrupts are enabled during the MHI DMA callback
 		 * once the MHI DMA HW is ready. Callback is not triggerred
@@ -4245,7 +4245,7 @@ static void mhi_dev_enable(struct work_struct *work)
 		return;
 	}
 
-	if (mhi->use_edma || !mhi->no_path_from_ipa_to_pcie) {
+	if (mhi->use_edma || mhi->no_path_from_ipa_to_pcie) {
 		if (mhi->config_iatu || mhi->mhi_int) {
 			mhi->mhi_int_en = true;
 			enable_irq(mhi->mhi_irq);
