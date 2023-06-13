@@ -1145,14 +1145,14 @@ static void ep_pcie_core_init(struct ep_pcie_dev_t *dev, bool configured)
 	if (dev->active_config) {
 		ep_pcie_write_reg(dev->dm_core, PCIE20_AUX_CLK_FREQ_REG, dev->aux_clk_val);
 
-		/* Prevent L1ss wakeup after 100ms */
-		ep_pcie_write_mask(dev->dm_core + PCIE20_GEN3_RELATED_OFF,
-							BIT(0), 0);
-
 		/* Disable SRIS_MODE */
 		ep_pcie_write_mask(dev->parf + PCIE20_PARF_SRIS_MODE,
 								BIT(0), 0);
 	}
+
+	/* Prevent L1ss wakeup after 100ms */
+	ep_pcie_write_mask(dev->dm_core + PCIE20_GEN3_RELATED_OFF,
+						BIT(0), 0);
 
 	ep_pcie_sriov_init(dev);
 	if (!configured) {
