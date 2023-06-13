@@ -25,6 +25,7 @@
 #include <linux/swap.h>
 #include <linux/mm_inline.h>
 #include <linux/compaction.h>
+#include <linux/debugfs.h>
 
 struct movable_zone_fill_control {
 	struct list_head freepages;
@@ -67,6 +68,7 @@ static struct workqueue_struct *migrate_wq;
 #define SEGMENT_NAME		"segment%lu"
 #define BUF_LEN			100
 #define MIGRATE_TIMEOUT_SEC	20
+#define SYSFS_STAT_DDR_LIMIT	(SZ_2G)
 
 struct section_stat {
 	unsigned long success_count;
@@ -784,10 +786,19 @@ static ssize_t show_num_segments(struct kobject *kobj,
 	return scnprintf(buf, PAGE_SIZE, "%lu\n",
 			(unsigned long)num_segments);
 }
+#define MEM_OFFLINE_DEBUG(seq, buf, sz, fmt, ...)  ({		\
+	int ret = 0;						\
+	if (!seq)						\
+		ret = scnprintf(buf, sz, fmt, ##__VA_ARGS__);	\
+	else							\
+		seq_printf(seq, fmt, ##__VA_ARGS__);		\
+	ret;							\
+})
 
 static unsigned int print_blk_residency_percentage(char *buf, size_t sz,
 			unsigned int tot_blks, ktime_t *total_time,
-			enum memory_states mode)
+			enum memory_states mode,
+			struct seq_file *seq)
 {
 	unsigned int i;
 	unsigned int c = 0;
@@ -799,13 +810,15 @@ static unsigned int print_blk_residency_percentage(char *buf, size_t sz,
 			ktime_add(total_time[i + MEMORY_ONLINE * idx],
 					total_time[i + MEMORY_OFFLINE * idx]));
 
-		c += scnprintf(buf + c, sz - c, "%d%%\t\t", percent);
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "%d%%\t\t", percent);
 	}
 	return c;
 }
+
 static unsigned int print_blk_residency_times(char *buf, size_t sz,
 			unsigned int tot_blks, ktime_t *total_time,
-			enum memory_states mode)
+			enum memory_states mode,
+			struct seq_file *seq)
 {
 	unsigned int i;
 	unsigned int c = 0;
@@ -821,15 +834,16 @@ static unsigned int print_blk_residency_times(char *buf, size_t sz,
 			delta = 0;
 		delta = ktime_add(delta,
 			mem_info[i + mode * idx].resident_time);
-		c += scnprintf(buf + c, sz - c, "%lus\t\t",
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "%lus\t\t",
 				ktime_to_us(delta) / USEC_PER_SEC);
 		total_time[i + mode * idx] = delta;
 	}
 	return c;
 }
 
-static ssize_t show_mem_stats(struct kobject *kobj,
-				struct kobj_attribute *attr, char *buf)
+static ssize_t print_mem_stats(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf,
+				struct seq_file *seq)
 {
 
 	unsigned int blk_start = start_section_nr / sections_per_block;
@@ -849,83 +863,83 @@ static ssize_t show_mem_stats(struct kobject *kobj,
 		return -ENOMEM;
 
 	for (j = 0; j < MAX_STATE; j++) {
-		c += scnprintf(buf + c, sz - c,
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 			"\n\t%s\n\t\t\t", j == 0 ? "ONLINE" : "OFFLINE");
 		for (i = blk_start; i <= blk_end; i++)
-			c += scnprintf(buf + c, sz - c,
+			c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 							"%s%d\t\t", "mem", i);
-		c += scnprintf(buf + c, sz - c, "\n");
-		c += scnprintf(buf + c, sz - c,
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 							"\tLast recd time:\t");
 		for (i = 0; i <= tot_blks; i++)
-			c += scnprintf(buf + c, sz - c, "%luus\t\t",
+			c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "%luus\t\t",
 				mem_info[i + j * idx].last_recorded_time);
-		c += scnprintf(buf + c, sz - c, "\n");
-		c += scnprintf(buf + c, sz - c,
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 							"\tAvg time:\t");
 		for (i = 0; i <= tot_blks; i++)
-			c += scnprintf(buf + c, sz - c,
+			c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 				"%luus\t\t", mem_info[i + j * idx].avg_time);
-		c += scnprintf(buf + c, sz - c, "\n");
-		c += scnprintf(buf + c, sz - c,
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 							"\tBest time:\t");
 		for (i = 0; i <= tot_blks; i++)
-			c += scnprintf(buf + c, sz - c,
+			c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 				"%luus\t\t", mem_info[i + j * idx].best_time);
-		c += scnprintf(buf + c, sz - c, "\n");
-		c += scnprintf(buf + c, sz - c,
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 							"\tWorst time:\t");
 		for (i = 0; i <= tot_blks; i++)
-			c += scnprintf(buf + c, sz - c,
+			c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 				"%luus\t\t", mem_info[i + j * idx].worst_time);
-		c += scnprintf(buf + c, sz - c, "\n");
-		c += scnprintf(buf + c, sz - c,
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 							"\tSuccess count:\t");
 		for (i = 0; i <= tot_blks; i++)
-			c += scnprintf(buf + c, sz - c,
+			c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 				"%lu\t\t", mem_info[i + j * idx].success_count);
-		c += scnprintf(buf + c, sz - c, "\n");
-		c += scnprintf(buf + c, sz - c,
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 							"\tFail count:\t");
 		for (i = 0; i <= tot_blks; i++)
-			c += scnprintf(buf + c, sz - c,
+			c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 				"%lu\t\t", mem_info[i + j * idx].fail_count);
-		c += scnprintf(buf + c, sz - c, "\n");
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
 	}
 
-	c += scnprintf(buf + c, sz - c, "\n");
-	c += scnprintf(buf + c, sz - c, "\tState:\t\t");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\tState:\t\t");
 	for (i = 0; i <= tot_blks; i++) {
-		c += scnprintf(buf + c, sz - c, "%s\t\t",
+		c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "%s\t\t",
 			mem_sec_state[i] == MEMORY_ONLINE ?
 			"Online" : "Offline");
 	}
-	c += scnprintf(buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
 
-	c += scnprintf(buf + c, sz - c, "\n");
-	c += scnprintf(buf + c, sz - c, "\tOnline time:\t");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\tOnline time:\t");
 	c += print_blk_residency_times(buf + c, sz - c,
-			tot_blks, total_time, MEMORY_ONLINE);
+			tot_blks, total_time, MEMORY_ONLINE, seq);
 
 
-	c += scnprintf(buf + c, sz - c, "\n");
-	c += scnprintf(buf + c, sz - c, "\tOffline time:\t");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\tOffline time:\t");
 	c += print_blk_residency_times(buf + c, sz - c,
-			tot_blks, total_time, MEMORY_OFFLINE);
+			tot_blks, total_time, MEMORY_OFFLINE, seq);
 
-	c += scnprintf(buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
 
-	c += scnprintf(buf + c, sz - c, "\n");
-	c += scnprintf(buf + c, sz - c, "\tOnline %%:\t");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\tOnline %%:\t");
 	c += print_blk_residency_percentage(buf + c, sz - c,
-			tot_blks, total_time, MEMORY_ONLINE);
+			tot_blks, total_time, MEMORY_ONLINE, seq);
 
-	c += scnprintf(buf + c, sz - c, "\n");
-	c += scnprintf(buf + c, sz - c, "\tOffline %%:\t");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\tOffline %%:\t");
 	c += print_blk_residency_percentage(buf + c, sz - c,
-			tot_blks, total_time, MEMORY_OFFLINE);
-	c += scnprintf(buf + c, sz - c, "\n");
-	c += scnprintf(buf + c, sz - c, "\n");
+			tot_blks, total_time, MEMORY_OFFLINE, seq);
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
 
 	for (i = 0; i <= tot_blks; i++)
 		total = ktime_add(total,
@@ -938,16 +952,30 @@ static ssize_t show_mem_stats(struct kobject *kobj,
 
 	total_offline = ktime_sub(total, total_online);
 
-	c += scnprintf(buf + c, sz - c,
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 					"\tAvg Online %%:\t%d%%\n",
 					((int)total_online * 100) / total);
-	c += scnprintf(buf + c, sz - c,
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c,
 					"\tAvg Offline %%:\t%d%%\n",
 					((int)total_offline * 100) / total);
 
-	c += scnprintf(buf + c, sz - c, "\n");
+	c += MEM_OFFLINE_DEBUG(seq, buf + c, sz - c, "\n");
 	kfree(total_time);
 	return c;
+}
+static ssize_t sysfs_show_mem_stats(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+	size_t stat_ddr_limit;
+
+	stat_ddr_limit = ((end_section_nr - start_section_nr) + 1) *
+				sections_per_block * memory_block_size_bytes();
+	if (stat_ddr_limit > SYSFS_STAT_DDR_LIMIT) {
+		pr_info("Try reading the stats through /sys/kernel/debug/mem_offline_stats\n");
+		return -EFBIG;
+	}
+
+	return print_mem_stats(kobj, attr, buf, NULL);
 }
 
 static ssize_t show_anon_migrate(struct kobject *kobj,
@@ -1211,7 +1239,7 @@ out:
 }
 
 static struct kobj_attribute stats_attr =
-		__ATTR(stats, 0444, show_mem_stats, NULL);
+		__ATTR(stats, 0444, sysfs_show_mem_stats, NULL);
 
 static struct kobj_attribute offline_granule_attr =
 		__ATTR(offline_granule, 0444, show_mem_offline_granule, NULL);
@@ -1714,6 +1742,13 @@ static int update_dram_end_address_and_movable_bitmap(phys_addr_t *bootmem_dram_
 	return 0;
 }
 
+static int mem_offline_stats_show(struct seq_file *seq, void *data)
+{
+	return print_mem_stats(NULL, NULL, NULL, seq);
+}
+
+DEFINE_SHOW_ATTRIBUTE(mem_offline_stats);
+
 static int mem_offline_driver_probe(struct platform_device *pdev)
 {
 	unsigned int total_blks;
@@ -1801,6 +1836,7 @@ static int mem_offline_driver_probe(struct platform_device *pdev)
 		goto err_sysfs_remove_group;
 	}
 
+	debugfs_create_file("mem_offline_stats", 0444, NULL, NULL, &mem_offline_stats_fops);
 	return 0;
 
 err_sysfs_remove_group:
