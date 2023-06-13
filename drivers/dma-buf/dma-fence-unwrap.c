@@ -90,7 +90,7 @@ struct dma_fence *__dma_fence_unwrap_merge(unsigned int num_fences,
 	 * fence with the timestamp of the last signaled one.
 	 */
 	if (count == 0)
-		return dma_fence_allocate_private_stub(timestamp);
+		return dma_fence_allocate_private_stub_with_timestamp(timestamp);
 
 	array = kmalloc_array(count, sizeof(*array), GFP_KERNEL);
 	if (!array)
@@ -151,7 +151,7 @@ restart:
 	} while (tmp);
 
 	if (count == 0) {
-		tmp = dma_fence_allocate_private_stub(ktime_get());
+		tmp = dma_fence_allocate_private_stub_with_timestamp(ktime_get());
 		goto return_tmp;
 	}
 
