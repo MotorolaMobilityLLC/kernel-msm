@@ -2126,7 +2126,6 @@ static int qcom_glink_rx_open(struct qcom_glink *glink, unsigned int rcid,
 	spin_unlock_irqrestore(&glink->idr_lock, flags);
 
 	complete_all(&channel->open_req);
-	qcom_glink_send_open_ack(glink, channel);
 
 	/*
 	 * Acknowledge the open request to establish the channel
