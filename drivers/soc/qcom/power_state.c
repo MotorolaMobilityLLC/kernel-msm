@@ -55,6 +55,8 @@
 #define PS_PM_NOTIFIER_PRIORITY		100
 #define PS_SSR_NOTIFIER_PRIORITY	0
 
+#define MAX_QMP_MSG_SIZE	96
+
 enum power_states {
 	ACTIVE,
 	DEEPSLEEP,
