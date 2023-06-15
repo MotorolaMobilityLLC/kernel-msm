@@ -464,9 +464,12 @@ fail:
 
 static int slatecom_fw_load(struct slatedaemon_priv *priv)
 {
-	int ret;
+	int ret = 0;
 
-	ret = slatecom_get_rproc_handle(priv);
+	if (!priv->pil_h) {
+		pr_err("%s: Getting rproc handle\n", __func__);
+		ret = slatecom_get_rproc_handle(priv);
+	}
 	if (ret == 0) {
 		ret = rproc_boot(priv->pil_h);
 		if (ret) {
