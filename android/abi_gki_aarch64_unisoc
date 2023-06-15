@@ -2352,6 +2352,7 @@
   seq_open_private
   seq_release
   skb_copy_bits
+  skb_vlan_untag
   unregister_netdevice_notifier
 
 # required by sha1-ce.ko
