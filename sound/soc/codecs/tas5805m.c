@@ -727,9 +727,13 @@ static int TAS5805m_probe(struct i2c_client *client, struct regmap *regmap)
 		goto err;
 	}
 
-	if (priv->hpd_gpio >= 0)
-		tas5805m_i2c_mute(priv->client, gpio_get_value
-				(priv->hpd_gpio) == 1);
+	if (priv->hpd_gpio >= 0) {
+		if (gpio_get_value(priv->hpd_gpio))
+			priv->hs_state = 1;
+		else
+			priv->hs_state = 0;
+		tas5805m_i2c_mute(priv->client, priv->hs_state);
+	}
 
 	return 0;
 
