@@ -49,17 +49,17 @@ Output is similar to /sys/kernel/debug/pm_genpd/pm_genpd_summary'''
         else:
             status_string = 'off-{}'.format(genpd['state_idx'])
 
-        child_names = []
+        slave_names = []
         for link in list_for_each_entry(
-                genpd['parent_links'],
+                genpd['master_links'],
                 device_link_type.get_type().pointer(),
-                'parent_node'):
-            child_names.append(link['child']['name'])
+                'master_node'):
+            slave_names.apend(link['slave']['name'])
 
         gdb.write('%-30s  %-15s %s\n' % (
                 genpd['name'].string(),
                 status_string,
-                ', '.join(child_names)))
+                ', '.join(slave_names)))
 
         # Print devices in domain
         for pm_data in list_for_each_entry(genpd['dev_list'],
@@ -70,7 +70,7 @@ Output is similar to /sys/kernel/debug/pm_genpd/pm_genpd_summary'''
             gdb.write('    %-50s  %s\n' % (kobj_path, rtpm_status_str(dev)))
 
     def invoke(self, arg, from_tty):
-        gdb.write('domain                          status          children\n');
+        gdb.write('domain                          status          slaves\n');
         gdb.write('    /device                                             runtime status\n');
         gdb.write('----------------------------------------------------------------------\n');
         for genpd in list_for_each_entry(
