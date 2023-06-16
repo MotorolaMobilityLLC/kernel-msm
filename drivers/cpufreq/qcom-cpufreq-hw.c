@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018, 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/bitfield.h>
@@ -72,6 +73,7 @@ struct qcom_cpufreq_data {
 	int throttle_irq;
 	char irq_name[15];
 	bool cancel_throttle;
+	bool is_irq_requested;
 	struct delayed_work throttle_work;
 	struct cpufreq_policy *policy;
 	unsigned long last_non_boost_freq;
@@ -522,6 +524,8 @@ static int qcom_cpufreq_hw_lmh_init(struct cpufreq_policy *policy, int index,
 	struct platform_device *pdev = cpufreq_get_driver_data();
 	int ret;
 
+	if (data->is_irq_requested)
+		return 0;
 	/*
 	 * Look for LMh interrupt. If no interrupt line is specified /
 	 * if there is an error, allow cpufreq to be enabled as usual.
@@ -544,6 +548,8 @@ static int qcom_cpufreq_hw_lmh_init(struct cpufreq_policy *policy, int index,
 		return 0;
 	}
 
+	data->is_irq_requested = true;
+
 	sysfs_attr_init(&data->freq_limit_attr.attr);
 	data->freq_limit_attr.attr.name = "dcvsh_freq_limit";
 	data->freq_limit_attr.show = dcvsh_freq_limit_show;
@@ -557,8 +563,12 @@ static int qcom_cpufreq_hw_lmh_init(struct cpufreq_policy *policy, int index,
 static void qcom_cpufreq_hw_lmh_exit(struct qcom_cpufreq_data *data)
 {
 	struct cpufreq_policy *policy = data->policy;
+	struct device *cpu_dev;
 
 	if (data->throttle_irq <= 0)
+		return;
+
+	if (!policy)
 		return;
 
 	mutex_lock(&data->throttle_lock);
@@ -566,9 +576,12 @@ static void qcom_cpufreq_hw_lmh_exit(struct qcom_cpufreq_data *data)
 	mutex_unlock(&data->throttle_lock);
 
 	free_irq(data->throttle_irq, data);
+	data->is_irq_requested = false;
 	cancel_delayed_work_sync(&data->throttle_work);
 
 	arch_set_thermal_pressure(policy->related_cpus, 0);
+	cpu_dev = get_cpu_device(cpumask_first(policy->related_cpus));
+	device_remove_file(cpu_dev, &data->freq_limit_attr);
 	trace_dcvsh_throttle(cpumask_first(policy->related_cpus), 0);
 }
 
