@@ -1785,7 +1785,7 @@ static const char *qg_get_battery_type(struct qpnp_qg *chip)
 }
 
 #define DEBUG_BATT_SOC		67
-#define BATT_MISSING_SOC	50
+#define BATT_MISSING_SOC	10
 #define EMPTY_SOC		0
 #define FULL_SOC		100
 static int qg_get_battery_capacity(struct qpnp_qg *chip, int *soc)
