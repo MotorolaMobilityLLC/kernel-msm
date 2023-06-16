@@ -60,6 +60,12 @@ int set_slate_boot_mode(uint32_t boot_mode);
 int get_slate_boot_mode(void);
 
 /*
+ * To get current state of slate shutdown_only
+ * Return true if it unload only or else return false
+ */
+bool is_slate_unload_only(void);
+
+/*
  * Message header type - generic header structure
  */
 struct msg_header_t {
