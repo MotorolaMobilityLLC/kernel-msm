@@ -1324,6 +1324,16 @@ struct dwc3 {
 	ANDROID_KABI_RESERVE(4);
 };
 
+/**
+ * struct dwc3_vendor - contains parameters without modifying the format of DWC3 core
+ * @dwc: contains dwc3 core reference
+ * @suspended: set to track suspend event due to U3/L2.
+ */
+struct dwc3_vendor {
+	struct dwc3	dwc;
+	unsigned	suspended:1;
+};
+
 #define INCRX_BURST_MODE 0
 #define INCRX_UNDEF_LENGTH_BURST_MODE 1
 

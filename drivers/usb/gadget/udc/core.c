@@ -6,6 +6,8 @@
  * Author: Felipe Balbi <balbi@ti.com>
  */
 
+#define pr_fmt(fmt)	"UDC core: " fmt
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/device.h>
@@ -1043,12 +1045,16 @@ EXPORT_SYMBOL_GPL(usb_gadget_set_state);
 
 /* ------------------------------------------------------------------------- */
 
-static void usb_udc_connect_control(struct usb_udc *udc)
+static int usb_udc_connect_control(struct usb_udc *udc)
 {
+	int ret;
+
 	if (udc->vbus)
-		usb_gadget_connect(udc->gadget);
+		ret = usb_gadget_connect(udc->gadget);
 	else
-		usb_gadget_disconnect(udc->gadget);
+		ret = usb_gadget_disconnect(udc->gadget);
+
+	return ret;
 }
 
 /**
@@ -1503,15 +1509,26 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
 	if (ret)
 		goto err1;
 	ret = usb_gadget_udc_start(udc);
-	if (ret) {
-		driver->unbind(udc->gadget);
-		goto err1;
-	}
+	if (ret)
+		goto err_start;
+
 	usb_gadget_enable_async_callbacks(udc);
-	usb_udc_connect_control(udc);
+	ret = usb_udc_connect_control(udc);
+	if (ret)
+		goto err_connect_control;
 
 	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
 	return 0;
+
+err_connect_control:
+	usb_gadget_disable_async_callbacks(udc);
+	if (udc->gadget->irq)
+		synchronize_irq(udc->gadget->irq);
+	usb_gadget_udc_stop(udc);
+
+err_start:
+	driver->unbind(udc->gadget);
+
 err1:
 	if (ret != -EISNAM)
 		dev_err(&udc->dev, "failed to start %s: %d\n",
@@ -1523,7 +1540,7 @@ err1:
 
 int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
 {
-	struct usb_udc		*udc = NULL;
+	struct usb_udc		*udc = NULL, *iter;
 	int			ret = -ENODEV;
 
 	if (!driver || !driver->bind || !driver->setup)
@@ -1531,10 +1548,12 @@ int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
 
 	mutex_lock(&udc_lock);
 	if (driver->udc_name) {
-		list_for_each_entry(udc, &udc_list, list) {
-			ret = strcmp(driver->udc_name, dev_name(&udc->dev));
-			if (!ret)
-				break;
+		list_for_each_entry(iter, &udc_list, list) {
+			ret = strcmp(driver->udc_name, dev_name(&iter->dev));
+			if (ret)
+				continue;
+			udc = iter;
+			break;
 		}
 		if (ret)
 			ret = -ENODEV;
@@ -1543,23 +1562,25 @@ int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
 		else
 			goto found;
 	} else {
-		list_for_each_entry(udc, &udc_list, list) {
+		list_for_each_entry(iter, &udc_list, list) {
 			/* For now we take the first one */
-			if (!udc->driver)
-				goto found;
+			if (iter->driver)
+				continue;
+			udc = iter;
+			goto found;
 		}
 	}
 
 	if (!driver->match_existing_only) {
 		list_add_tail(&driver->pending, &gadget_driver_pending_list);
-		pr_info("udc-core: couldn't find an available UDC - added [%s] to list of pending drivers\n",
+		pr_info("couldn't find an available UDC - added [%s] to list of pending drivers\n",
 			driver->function);
 		ret = 0;
 	}
 
 	mutex_unlock(&udc_lock);
 	if (ret)
-		pr_warn("udc-core: couldn't find an available UDC or it's busy\n");
+		pr_warn("couldn't find an available UDC or it's busy: %d\n", ret);
 	return ret;
 found:
 	ret = udc_bind_to_driver(udc, driver);

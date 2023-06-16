@@ -89,6 +89,7 @@ struct page {
 			 * by the page owner.
 			 */
 			struct list_head lru;
+
 			/* See page-flags.h for PAGE_MAPPING_FLAGS */
 			struct address_space *mapping;
 			pgoff_t index;		/* Our offset within mapping. */

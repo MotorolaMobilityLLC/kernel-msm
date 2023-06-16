@@ -79,12 +79,15 @@
   bitmap_allocate_region
   __bitmap_and
   __bitmap_clear
+  __bitmap_complement
   bitmap_find_next_zero_area_off
   bitmap_free
   __bitmap_or
   bitmap_print_to_pagebuf
   bitmap_release_region
+  __bitmap_replace
   __bitmap_set
+  __bitmap_xor
   bitmap_zalloc
   __blk_alloc_disk
   blk_cleanup_disk
@@ -145,10 +148,10 @@
   blocking_notifier_chain_register
   blocking_notifier_chain_unregister
   bmap
-  bpf_trace_run1
   bpf_trace_run10
   bpf_trace_run11
   bpf_trace_run12
+  bpf_trace_run1
   bpf_trace_run2
   bpf_trace_run3
   bpf_trace_run4
@@ -423,6 +426,7 @@
   devm_iio_channel_get_all
   devm_iio_device_alloc
   __devm_iio_device_register
+  devm_iio_triggered_buffer_setup_ext
   devm_input_allocate_device
   devm_ioremap
   devm_ioremap_resource
@@ -688,8 +692,11 @@
   edac_device_handle_ue_count
   enable_irq
   enable_percpu_irq
+  ethnl_cable_test_amplitude
   ethnl_cable_test_fault_length
+  ethnl_cable_test_pulse
   ethnl_cable_test_result
+  ethnl_cable_test_step
   ethtool_convert_legacy_u32_to_link_mode
   ethtool_convert_link_mode_to_legacy_u32
   eventfd_ctx_fdget
@@ -772,14 +779,20 @@
   geni_se_select_mode
   geni_se_tx_dma_prep
   geni_se_tx_dma_unprep
+  genphy_check_and_restart_aneg
   __genphy_config_aneg
+  genphy_c45_read_status
   genphy_read_abilities
+  genphy_read_lpa
   genphy_read_mmd_unsupported
   genphy_read_status
+  genphy_read_status_fixed
   genphy_restart_aneg
   genphy_resume
+  genphy_setup_forced
   genphy_soft_reset
   genphy_suspend
+  genphy_update_link
   genphy_write_mmd_unsupported
   gen_pool_add_owner
   gen_pool_alloc_algo_owner
@@ -1032,6 +1045,7 @@
   iommu_group_set_iommudata
   iommu_iova_to_phys
   iommu_map
+  iommu_map_atomic
   iommu_map_sg
   iommu_present
   iommu_put_dma_cookie
@@ -1236,8 +1250,10 @@
   mdiobus_alloc_size
   mdiobus_free
   mdiobus_get_phy
+  __mdiobus_read
   mdiobus_read
   mdiobus_unregister
+  __mdiobus_write
   mdiobus_write
   mdio_device_create
   mdio_device_free
@@ -1267,8 +1283,8 @@
   mempool_kmalloc
   memremap
   mem_section
-  memset
   memset64
+  memset
   __memset_io
   memstart_addr
   memunmap
@@ -1295,8 +1311,8 @@
   mmc_retune_release
   mmc_select_bus_width
   mmc_select_card
-  mmc_select_hs
   mmc_select_hs400
+  mmc_select_hs
   mmc_select_hs_ddr
   mmc_select_timing
   mmc_send_status
@@ -1329,8 +1345,8 @@
   netdev_rss_key_fill
   netif_receive_skb_list
   nla_find
-  nla_reserve
   nla_reserve_64bit
+  nla_reserve
   __nla_validate
   no_llseek
   nonseekable_open
@@ -1528,12 +1544,15 @@
   perf_trace_run_bpf_submit
   phy_attached_info
   phy_calibrate
+  phy_config_aneg
   phy_drivers_register
   phy_drivers_unregister
   phy_error
+  phy_ethtool_get_eee
   phy_ethtool_get_wol
   phy_ethtool_set_wol
   phy_exit
+  phy_gbit_fibre_features
   phy_init
   phy_init_eee
   phy_init_hw
@@ -1563,14 +1582,27 @@
   phylink_stop
   phylink_suspend
   phy_mac_interrupt
+  __phy_modify
   phy_modify
+  phy_modify_changed
   phy_modify_mmd
+  phy_modify_paged
+  phy_modify_paged_changed
   phy_power_off
   phy_power_on
   phy_read_mmd
+  phy_read_paged
+  phy_resolve_aneg_pause
+  phy_restore_page
+  phy_save_page
+  phy_select_page
   phy_set_mode_ext
+  phy_sfp_attach
+  phy_sfp_detach
+  phy_sfp_probe
   phy_trigger_machine
   phy_write_mmd
+  phy_write_paged
   pick_highest_pushable_task
   pick_migrate_task
   pid_nr_ns
@@ -1867,6 +1899,7 @@
   rproc_put
   rproc_remove_subdev
   rproc_report_crash
+  rproc_set_firmware
   rproc_shutdown
   rtc_time64_to_tm
   rtc_tm_to_time64
@@ -2153,6 +2186,7 @@
   task_may_not_preempt
   __task_pid_nr_ns
   __task_rq_lock
+  task_rq_lock
   tcp_hashinfo
   thermal_cooling_device_register
   thermal_cooling_device_unregister
@@ -2285,6 +2319,7 @@
   __traceiter_android_vh_ufs_check_int_errors
   __traceiter_android_vh_ufs_clock_scaling
   __traceiter_android_vh_ufs_compl_command
+  __traceiter_android_vh_ufs_prepare_command
   __traceiter_android_vh_ufs_send_command
   __traceiter_android_vh_ufs_send_tm_command
   __traceiter_android_vh_ufs_send_uic_command
@@ -2407,6 +2442,7 @@
   __tracepoint_android_vh_ufs_check_int_errors
   __tracepoint_android_vh_ufs_clock_scaling
   __tracepoint_android_vh_ufs_compl_command
+  __tracepoint_android_vh_ufs_prepare_command
   __tracepoint_android_vh_ufs_send_command
   __tracepoint_android_vh_ufs_send_tm_command
   __tracepoint_android_vh_ufs_send_uic_command
@@ -2518,6 +2554,7 @@
   up_write
   usb_add_phy_dev
   usb_alloc_coherent
+  usb_alloc_dev
   usb_assign_descriptors
   usb_bus_idr
   usb_bus_idr_lock
@@ -2526,6 +2563,7 @@
   usb_control_msg_send
   usb_debug_root
   usb_decode_ctrl
+  usb_driver_set_configuration
   usb_ep_alloc_request
   usb_ep_autoconfig
   usb_ep_dequeue
@@ -2534,6 +2572,7 @@
   usb_ep_free_request
   usb_ep_queue
   usb_ep_set_halt
+  usb_find_common_endpoints
   usb_free_all_descriptors
   usb_free_coherent
   usb_function_register
@@ -2556,6 +2595,7 @@
   usb_role_switch_register
   usb_role_switch_set_role
   usb_role_switch_unregister
+  usb_set_device_state
   usb_speed_string
   usb_string_id
   usb_unregister_notify

@@ -437,17 +437,17 @@ enum {
 struct lru_gen_mm_state {
 	/* set to max_seq after each iteration */
 	unsigned long seq;
-	/* where the current iteration continues (inclusive) */
+	/* where the current iteration continues after */
 	struct list_head *head;
-	/* where the last iteration ended (exclusive) */
+	/* where the last iteration ended before */
 	struct list_head *tail;
-	/* to wait for the last page table walker to finish */
+	/* Unused - keep for ABI compatiiblity */
 	struct wait_queue_head wait;
 	/* Bloom filters flip after each iteration */
 	unsigned long *filters[NR_BLOOM_FILTERS];
 	/* the mm stats for debugging */
 	unsigned long stats[NR_HIST_GENS][NR_MM_STATS];
-	/* the number of concurrent page table walkers */
+	/* Unused - keep for ABI compatiiblity */
 	int nr_walkers;
 };
 
@@ -581,6 +581,11 @@ struct per_cpu_pages {
 
 	/* Lists of pages, one per migrate type stored on the pcp-lists */
 	struct list_head lists[NR_PCP_LISTS];
+};
+
+struct per_cpu_pages_ext {
+	spinlock_t lock;	/* Protects pcp.lists field */
+	struct per_cpu_pages pcp;
 };
 
 struct per_cpu_zonestat {
