@@ -164,6 +164,9 @@ static struct debugfs_reg32 qscratch_reg[] = {
 #define dbg_ep_map(ep_num, req) \
 	dwc3_dbg_dma_map(mdwc->dwc_dma_ipc_log_ctxt, ep_num, req)
 
+#define dump_dwc3_regs(name, offset, value) \
+	dbg_dwc3_dump_regs(mdwc->dwc_dma_ipc_log_ctxt, name, offset, value)
+
 #define dbg_log_string(fmt, ...) \
 	ipc_log_string(mdwc->dwc_ipc_log_ctxt,\
 			"%s: " fmt, __func__, ##__VA_ARGS__)
@@ -222,5 +225,6 @@ void dwc3_dbg_dma_map(void *log_ctxt, u8 ep_num,
 			struct dwc3_request *req);
 void dwc3_dbg_dma_unmap(void *log_ctxt, u8 ep_num,
 			struct dwc3_request *req);
+void dbg_dwc3_dump_regs(void *log_ctxt, char *name, int offset, int value);
 
 #endif /* __DWC3_DEBUG_IPC_H */
