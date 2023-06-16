@@ -419,7 +419,7 @@ int qg_get_battery_voltage(struct qpnp_qg *chip, int *vbat_uv)
 	u64 last_vbat = 0;
 
 	if (chip->battery_missing) {
-		*vbat_uv = 3700000;
+		*vbat_uv = 4200000;
 		return 0;
 	}
 
