@@ -66,6 +66,7 @@ struct qg_dt {
 	int			fvss_vbat_mv;
 	int			tcss_entry_soc;
 	int			esr_low_temp_threshold;
+	int			cp_chrg_soc_limit;
 	bool			hold_soc_while_full;
 	bool			linearize_soc;
 	bool			cl_disable;
