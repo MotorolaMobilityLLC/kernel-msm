@@ -44,6 +44,7 @@
   blk_status_to_errno
   call_rcu
   capable
+  cgroup_add_dfl_cftypes
   cgroup_add_legacy_cftypes
   __class_register
   class_unregister
