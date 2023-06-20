@@ -210,7 +210,6 @@ define_db845c(
         # TODO(b/233404531): Remove zsmalloc.ko when db845c is a mixed build
         "mm/zsmalloc.ko",
         "net/mac80211/mac80211.ko",
-        "net/qrtr/ns.ko",
         "net/qrtr/qrtr.ko",
         "net/qrtr/qrtr-mhi.ko",
         "net/qrtr/qrtr-smd.ko",
