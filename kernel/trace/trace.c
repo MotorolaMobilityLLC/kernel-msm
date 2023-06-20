@@ -9539,7 +9539,7 @@ init_tracer_tracefs(struct trace_array *tr, struct dentry *d_tracer)
 
 	tr->buffer_percent = 50;
 
-	trace_create_file("buffer_percent", 0444, d_tracer,
+	trace_create_file("buffer_percent", 0640, d_tracer,
 			tr, &buffer_percent_fops);
 
 	create_trace_options_dir(tr);
