@@ -1998,7 +1998,12 @@ static void msm_geni_uart_gsi_cancel_rx(struct work_struct *work)
 
 	UART_LOG_DBG(msm_port->ipc_log_misc, msm_port->uport.dev,
 		     "%s: Start\n", __func__);
-
+	if (!msm_port->gsi_rx_done) {
+		UART_LOG_DBG(msm_port->ipc_log_misc, msm_port->uport.dev,
+			     "%s: gsi_rx not yet done\n", __func__);
+		atomic_set(&msm_port->stop_rx_inprogress, 0);
+		return;
+	}
 	if (msm_port->gsi->rx_c)
 		dmaengine_terminate_all(msm_port->gsi->rx_c);
 	complete(&msm_port->xfer);
@@ -2569,7 +2574,7 @@ static int stop_rx_sequencer(struct uart_port *uport)
 	}
 
 	if (port->gsi_mode) {
-		if (!port->port_setup || !port->gsi_rx_done) {
+		if (!port->port_setup && !port->gsi_rx_done) {
 			UART_LOG_DBG(port->ipc_log_misc, uport->dev,
 				     "%s: Port setup not yet done\n", __func__);
 			atomic_set(&port->stop_rx_inprogress, 0);
