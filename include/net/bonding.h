@@ -121,6 +121,7 @@ struct bond_params {
 	int xmit_policy;
 	int miimon;
 	u8 num_peer_notif;
+	u8 missed_max;
 	int arp_interval;
 	int arp_validate;
 	int arp_all_targets;
@@ -227,7 +228,7 @@ struct bonding {
 	 */
 	spinlock_t mode_lock;
 	spinlock_t stats_lock;
-	u8	 send_peer_notif;
+	u32	 send_peer_notif;
 	u8       igmp_retrans;
 #ifdef CONFIG_PROC_FS
 	struct   proc_dir_entry *proc_entry;
