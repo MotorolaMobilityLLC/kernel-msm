@@ -780,6 +780,7 @@
   geni_se_tx_dma_unprep
   genphy_check_and_restart_aneg
   __genphy_config_aneg
+  genphy_c45_read_status
   genphy_read_abilities
   genphy_read_lpa
   genphy_read_mmd_unsupported
