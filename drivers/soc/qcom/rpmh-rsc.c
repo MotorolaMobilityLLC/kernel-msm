@@ -76,8 +76,15 @@
 #define CH_CLEAR_STATUS			BIT(31)
 
 #define ACCL_TYPE(addr)			((addr >> 16) & 0xF)
-#define NR_ACCL_TYPES			3
+#define VREG_ADDR(addr)			(addr & ~0xF)
+
 #define MAX_RSC_COUNT			5
+
+enum {
+	HW_ACCL_CLK = 0x3,
+	HW_ACCL_VREG,
+	HW_ACCL_BUS,
+};
 
 static const char * const accl_str[] = {
 	"", "", "", "CLK", "VREG", "BUS",
@@ -332,8 +339,11 @@ static void tcs_invalidate(struct rsc_drv *drv, int type, int ch)
 	if (bitmap_empty(tcs->slots, tcs->ncpt * tcs->num_tcs))
 		return;
 
-	for (m = tcs->offset; m < tcs->offset + tcs->num_tcs; m++)
+	for (m = tcs->offset; m < tcs->offset + tcs->num_tcs; m++) {
 		write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_ENABLE], m, 0);
+		write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_WAIT_FOR_CMPL], m, 0);
+	}
+
 	bitmap_zero(tcs->slots, tcs->ncpt * tcs->num_tcs);
 }
 
@@ -559,7 +569,9 @@ static irqreturn_t tcs_tx_done(int irq, void *p)
 			__tcs_set_trigger(drv, i, false);
 skip:
 		/* Reclaim the TCS */
+
 		write_tcs_reg(drv, drv->regs[RSC_DRV_CMD_ENABLE], i, 0);
+		write_tcs_reg(drv, drv->regs[RSC_DRV_CMD_WAIT_FOR_CMPL], i, 0);
 		writel_relaxed(BIT(i), drv->tcs_base + drv->regs[RSC_DRV_IRQ_CLEAR]);
 		spin_lock(&drv->lock);
 		clear_bit(i, drv->tcs_in_use);
@@ -595,20 +607,18 @@ static void __tcs_buffer_write(struct rsc_drv *drv, int tcs_id, int cmd_id,
 	u32 msgid;
 	u32 cmd_msgid = CMD_MSGID_LEN | CMD_MSGID_WRITE;
 	u32 cmd_enable = 0;
+	u32 cmd_complete;
 	struct tcs_cmd *cmd;
 	int i, j;
 
-	/* Convert all commands to RR when the request has wait_for_compl set */
 	cmd_msgid |= msg->wait_for_compl ? CMD_MSGID_RESP_REQ : 0;
+	cmd_complete = read_tcs_reg(drv, drv->regs[RSC_DRV_CMD_WAIT_FOR_CMPL], tcs_id);
 
 	for (i = 0, j = cmd_id; i < msg->num_cmds; i++, j++) {
 		cmd = &msg->cmds[i];
 		cmd_enable |= BIT(j);
+		cmd_complete |= cmd->wait << j;
 		msgid = cmd_msgid;
-		/*
-		 * Additionally, if the cmd->wait is set, make the command
-		 * response reqd even if the overall request was fire-n-forget.
-		 */
 		msgid |= cmd->wait ? CMD_MSGID_RESP_REQ : 0;
 
 		write_tcs_cmd(drv, drv->regs[RSC_DRV_CMD_MSGID], tcs_id, j, msgid);
@@ -621,6 +631,7 @@ static void __tcs_buffer_write(struct rsc_drv *drv, int tcs_id, int cmd_id,
 			       cmd->data, cmd->wait);
 	}
 
+	write_tcs_reg(drv, drv->regs[RSC_DRV_CMD_WAIT_FOR_CMPL], tcs_id, cmd_complete);
 	cmd_enable |= read_tcs_reg(drv, drv->regs[RSC_DRV_CMD_ENABLE], tcs_id);
 	write_tcs_reg(drv, drv->regs[RSC_DRV_CMD_ENABLE], tcs_id, cmd_enable);
 }
@@ -652,6 +663,7 @@ static int check_for_req_inflight(struct rsc_drv *drv, struct tcs_group *tcs,
 	u32 addr;
 	int j, k;
 	int i = tcs->offset;
+	unsigned long accl;
 
 	for_each_set_bit_from(i, drv->tcs_in_use, tcs->offset + tcs->num_tcs) {
 		curr_enabled = read_tcs_reg(drv, drv->regs[RSC_DRV_CMD_ENABLE], i);
@@ -659,7 +671,16 @@ static int check_for_req_inflight(struct rsc_drv *drv, struct tcs_group *tcs,
 		for_each_set_bit(j, &curr_enabled, tcs->ncpt) {
 			addr = read_tcs_cmd(drv, drv->regs[RSC_DRV_CMD_ADDR], i, j);
 			for (k = 0; k < msg->num_cmds; k++) {
-				if (addr == msg->cmds[k].addr)
+			/*
+			 * Each RPMh VREG accelerator resource has 3 or 4 contiguous 4-byte
+			 * aligned addresses associated with it. Ignore the offset to check
+			 * for in-flight VREG requests.
+			 */
+				accl = ACCL_TYPE(msg->cmds[k].addr);
+				if (accl == HW_ACCL_VREG &&
+				    VREG_ADDR(addr) == VREG_ADDR(msg->cmds[k].addr))
+					return -EBUSY;
+				else if (addr == msg->cmds[k].addr)
 					return -EBUSY;
 			}
 		}
@@ -776,6 +797,7 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg, int c
 		 * cleaned from rpmh_flush() by invoking rpmh_rsc_invalidate()
 		 */
 		write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_ENABLE], tcs_id, 0);
+		write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_WAIT_FOR_CMPL], tcs_id, 0);
 		enable_tcs_irq(drv, tcs_id, true);
 	}
 	spin_unlock_irqrestore(&drv->lock, flags);

@@ -1098,6 +1098,8 @@ static int rproc_slate_driver_probe(struct platform_device *pdev)
 	ret = setup_slate_gpio_irq(pdev, slate);
 	if (ret < 0)
 		goto free_rproc;
+	/* Disable S2A irq bydefault */
+	disable_irq(slate->status_irq);
 
 	slate->firmware_name = fw_name;
 	slate->app_status = RESULT_FAILURE;

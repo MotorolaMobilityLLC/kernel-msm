@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/suspend.h>
 #include <linux/regulator/debug-regulator.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
@@ -705,6 +706,63 @@ static void rpmh_regulator_aggregate_requests(struct rpmh_aggr_vreg *aggr_vreg,
 	rpmh_regulator_handle_disable_mode(aggr_vreg, req_sleep);
 }
 
+static void swap_cmds(struct tcs_cmd *cmd1, struct tcs_cmd *cmd2)
+{
+	struct tcs_cmd cmd_temp;
+
+	if (cmd1 == cmd2)
+		return;
+
+	cmd_temp = *cmd1;
+	*cmd1 = *cmd2;
+	*cmd2 = cmd_temp;
+}
+
+/**
+ * rpmh_regulator_reorder_cmds() - reorder tcs commands to ensure safe regulator
+ *		state transitions
+ * @aggr_vreg:		Pointer to the aggregated rpmh regulator resource
+ * @cmd:		TCS command array
+ * @len:		Number of elements in 'cmd' array
+ *
+ * LDO regulators can accidentally trigger over-current protection (OCP) when
+ * RPMh regulator requests are processed if the commands in the request are in
+ * an order that temporarily places the LDO in an incorrect state.  For example,
+ * if an LDO is disabled with mode=LPM, then executing the request
+ * [en=ON, mode=HPM] can trigger OCP after the first command is executed since
+ * it will result in the overall state: en=ON, mode=LPM.  This issue can be
+ * avoided by reordering the commands: [mode=HPM, en=ON].
+ *
+ * This function reorders the request command sequence to avoid invalid
+ * transient LDO states.
+ *
+ * Return: none
+ */
+static void rpmh_regulator_reorder_cmds(struct rpmh_aggr_vreg *aggr_vreg,
+					struct tcs_cmd *cmd, int len)
+{
+	enum rpmh_regulator_reg_index reg_index;
+	int i;
+
+	if (len == 1 || aggr_vreg->regulator_type != RPMH_REGULATOR_TYPE_VRM)
+		return;
+
+	for (i = 0; i < len; i++) {
+		reg_index = (cmd[i].addr - aggr_vreg->addr) >> 2;
+
+		if (reg_index == RPMH_REGULATOR_REG_VRM_ENABLE) {
+			if (cmd[i].data) {
+				/* Move enable command to end */
+				swap_cmds(&cmd[i], &cmd[len - 1]);
+			} else {
+				/* Move disable command to start */
+				swap_cmds(&cmd[i], &cmd[0]);
+			}
+			break;
+		}
+	}
+}
+
 /**
  * rpmh_regulator_send_aggregate_requests() - aggregate the requests from all
  *		regulators associated with an RPMh resource and send the request
@@ -771,6 +829,7 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 					!= req_sleep.reg[i])) {
 				cmd[j].addr = aggr_vreg->addr + i * 4;
 				cmd[j].data = req_sleep.reg[i];
+				cmd[j].wait = true;
 				j++;
 				sent_mask |= BIT(i);
 			}
@@ -778,6 +837,8 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 
 		/* Send the rpmh command if any register values differ. */
 		if (j > 0) {
+			rpmh_regulator_reorder_cmds(aggr_vreg, cmd, j);
+
 			rc = rpmh_write_async(aggr_vreg->dev,
 					RPMH_SLEEP_STATE, cmd, j);
 			if (rc) {
@@ -807,7 +868,7 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 				!= req_active.reg[i] || resend_active)) {
 			cmd[j].addr = aggr_vreg->addr + i * 4;
 			cmd[j].data = req_active.reg[i];
-			cmd[j].wait = sleep_set_differs;
+			cmd[j].wait = true;
 			j++;
 			sent_mask |= BIT(i);
 
@@ -823,6 +884,8 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 
 	/* Send the rpmh command if any register values differ. */
 	if (j > 0) {
+		rpmh_regulator_reorder_cmds(aggr_vreg, cmd, j);
+
 		if (sleep_set_differs) {
 			state = RPMH_WAKE_ONLY_STATE;
 			rc = rpmh_write_async(aggr_vreg->dev, state, cmd, j);
@@ -833,8 +896,6 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 			}
 			rpmh_regulator_req(vreg, &req_active,
 				&aggr_vreg->aggr_req_active, sent_mask, state);
-			for (i = 0; i < j; i++)
-				cmd[j].wait = false;
 		}
 
 		state = RPMH_ACTIVE_ONLY_STATE;
@@ -856,6 +917,25 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 	}
 
 	return 0;
+}
+
+static int rpmh_vreg_send_ds_requests(struct rpmh_aggr_vreg *aggr_vreg)
+{
+	int rc;
+
+	mutex_lock(&aggr_vreg->lock);
+
+	aggr_vreg->aggr_req_active.valid = 0;
+	aggr_vreg->aggr_req_sleep.valid = 0;
+
+	rc = rpmh_regulator_send_aggregate_requests(&aggr_vreg->vreg[0]);
+
+	if (rc)
+		aggr_vreg_err(aggr_vreg, "error while re-sending request, rc=%d\n",
+				rc);
+	mutex_unlock(&aggr_vreg->lock);
+
+	return rc;
 }
 
 /**
@@ -2033,11 +2113,56 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 	return rc;
 }
 
+static int rpmh_vreg_freeze(struct device *dev)
+{
+	pr_debug("Entering hibernation via Rpmh_regulator freeze\n");
+
+	return 0;
+}
+
+static int rpmh_vreg_restore(struct device *dev)
+{
+	struct rpmh_aggr_vreg *aggr_vreg = dev_get_drvdata(dev);
+
+	pr_debug("Resuming from hibernation via Rpmh_regulator restore\n");
+	rpmh_vreg_send_ds_requests(aggr_vreg);
+
+	return 0;
+}
+
+static int rpmh_vreg_suspend(struct device *dev)
+{
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware())
+		pr_debug("Entering Deepsleep via Rpmh_regulator suspend\n");
+#endif
+	return 0;
+}
+
+static int rpmh_vreg_resume(struct device *dev)
+{
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware()) {
+		pr_debug("Resuming Deepsleep via Rpmh_regulator resume\n");
+		rpmh_vreg_restore(dev);
+	}
+#endif
+	return 0;
+}
+
+static const struct dev_pm_ops rpmh_vreg_pm_ops = {
+	.suspend = rpmh_vreg_suspend,
+	.resume  = rpmh_vreg_resume,
+	.freeze  = rpmh_vreg_freeze,
+	.restore = rpmh_vreg_restore,
+};
+
 static struct platform_driver rpmh_regulator_driver = {
 	.driver = {
 		.name		= "qcom,rpmh-regulator",
 		.of_match_table	= rpmh_regulator_match_table,
 		.sync_state	= regulator_proxy_consumer_sync_state,
+		.pm		= &rpmh_vreg_pm_ops,
 	},
 	.probe = rpmh_regulator_probe,
 };

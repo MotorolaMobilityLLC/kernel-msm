@@ -235,3 +235,14 @@ config LIB80211_DEBUG
 	  from lib80211.
 
 	  If unsure, say N.
+
+config CORE_REGDB
+	bool "kernel support for regulatory database"
+	default y
+	help
+	  Enable this if the kernel is supposed to have regulatory.db
+	  available for core hint.
+
+	  Once this is disabled, kernel will not probe for regulatory.db
+	  on startup, and any programs using NL80211_CMD_RELOAD_REGDB
+	  will be unable to get regulatory.db reloaded.
