@@ -2421,6 +2421,7 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	struct address_space *mapping = file->f_mapping;
 	struct file *fpin = NULL;
 	pgoff_t offset = vmf->pgoff;
+	unsigned int ra_pages;
 
 	/* If we don't want any read-ahead, don't bother */
 	if (vmf->vma_flags & VM_RAND_READ)
@@ -2449,10 +2450,20 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	/*
 	 * mmap read-around
 	 */
+
+#if CONFIG_MMAP_READAROUND_LIMIT == 0
+	ra_pages = ra->ra_pages;
+#else
+	if (ra->ra_pages > CONFIG_MMAP_READAROUND_LIMIT)
+		ra_pages = CONFIG_MMAP_READAROUND_LIMIT < 0 ? 0 : CONFIG_MMAP_READAROUND_LIMIT;
+	else
+		ra_pages = ra->ra_pages;
+#endif
+
 	fpin = maybe_unlock_mmap_for_io(vmf, fpin);
-	ra->start = max_t(long, 0, offset - ra->ra_pages / 2);
-	ra->size = ra->ra_pages;
-	ra->async_size = ra->ra_pages / 4;
+	ra->start = max_t(long, 0, offset - ra_pages / 2);
+	ra->size = ra_pages;
+	ra->async_size = ra_pages / 4;
 	ra_submit(ra, mapping, file);
 	return fpin;
 }
