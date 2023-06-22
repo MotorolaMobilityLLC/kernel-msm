@@ -2439,6 +2439,20 @@ static int spi_geni_remove(struct platform_device *pdev)
 	return ret;
 }
 
+/**
+ * spi_geni_shutdown: shutdown call back function for SPI
+ * This will invoke during reboot/shutdown process
+ *
+ * @pdev: SPI platform device
+ *
+ * Return: none
+ */
+static void spi_geni_shutdown(struct platform_device *pdev)
+{
+	dev_info(&pdev->dev, "%s: Entry %d\n", __func__, true);
+	spi_geni_remove(pdev);
+}
+
 #if IS_ENABLED(CONFIG_PM)
 static int spi_geni_gpi_suspend_resume(struct spi_geni_master *geni_mas, bool is_suspend)
 {
@@ -2738,6 +2752,7 @@ static const struct of_device_id spi_geni_dt_match[] = {
 static struct platform_driver spi_geni_driver = {
 	.probe  = spi_geni_probe,
 	.remove = spi_geni_remove,
+	.shutdown = spi_geni_shutdown,
 	.driver = {
 		.name = "spi_geni",
 		.pm = &spi_geni_pm_ops,
