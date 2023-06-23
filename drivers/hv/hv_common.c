@@ -112,12 +112,12 @@ void *hv_alloc_hyperv_zeroed_page(void)
 }
 EXPORT_SYMBOL_GPL(hv_alloc_hyperv_zeroed_page);
 
-void hv_free_hyperv_page(unsigned long addr)
+void hv_free_hyperv_page(void *addr)
 {
 	if (PAGE_SIZE == HV_HYP_PAGE_SIZE)
-		free_page(addr);
+		free_page((unsigned long)addr);
 	else
-		kfree((void *)addr);
+		kfree(addr);
 }
 EXPORT_SYMBOL_GPL(hv_free_hyperv_page);
 
@@ -250,7 +250,7 @@ static void hv_kmsg_dump_unregister(void)
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 					 &hyperv_panic_report_block);
 
-	hv_free_hyperv_page((unsigned long)hv_panic_page);
+	hv_free_hyperv_page(hv_panic_page);
 	hv_panic_page = NULL;
 }
 
@@ -267,7 +267,7 @@ static void hv_kmsg_dump_register(void)
 	ret = kmsg_dump_register(&hv_kmsg_dumper);
 	if (ret) {
 		pr_err("Hyper-V: kmsg dump register error 0x%x\n", ret);
-		hv_free_hyperv_page((unsigned long)hv_panic_page);
+		hv_free_hyperv_page(hv_panic_page);
 		hv_panic_page = NULL;
 	}
 }
