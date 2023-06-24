@@ -46,17 +46,11 @@ static inline void snd_soc_dpcm_stream_lock_irq(struct snd_soc_pcm_runtime *rtd,
 	snd_pcm_stream_lock_irq(snd_soc_dpcm_get_substream(rtd, stream));
 }
 
-#define snd_soc_dpcm_stream_lock_irqsave(rtd, stream, flags) \
-	snd_pcm_stream_lock_irqsave(snd_soc_dpcm_get_substream(rtd, stream), flags)
-
 static inline void snd_soc_dpcm_stream_unlock_irq(struct snd_soc_pcm_runtime *rtd,
 						  int stream)
 {
 	snd_pcm_stream_unlock_irq(snd_soc_dpcm_get_substream(rtd, stream));
 }
-
-#define snd_soc_dpcm_stream_unlock_irqrestore(rtd, stream, flags) \
-	snd_pcm_stream_unlock_irqrestore(snd_soc_dpcm_get_substream(rtd, stream), flags)
 
 #define DPCM_MAX_BE_USERS	8
 
@@ -2109,7 +2103,6 @@ int dpcm_be_dai_trigger(struct snd_soc_pcm_runtime *fe, int stream,
 {
 	struct snd_soc_pcm_runtime *be;
 	struct snd_soc_dpcm *dpcm;
-	unsigned long flags;
 	int ret = 0;
 
 	for_each_dpcm_be(fe, stream, dpcm) {
@@ -2118,11 +2111,9 @@ int dpcm_be_dai_trigger(struct snd_soc_pcm_runtime *fe, int stream,
 		be = dpcm->be;
 		be_substream = snd_soc_dpcm_get_substream(be, stream);
 
-		snd_soc_dpcm_stream_lock_irqsave(be, stream, flags);
-
 		/* is this op for this BE ? */
 		if (!snd_soc_dpcm_be_can_update(fe, be, stream))
-			goto next;
+			continue;
 
 		dev_dbg(be->dev, "ASoC: trigger BE %s cmd %d\n",
 			be->dai_link->name, cmd);
@@ -2132,80 +2123,77 @@ int dpcm_be_dai_trigger(struct snd_soc_pcm_runtime *fe, int stream,
 			if ((be->dpcm[stream].state != SND_SOC_DPCM_STATE_PREPARE) &&
 			    (be->dpcm[stream].state != SND_SOC_DPCM_STATE_STOP) &&
 			    (be->dpcm[stream].state != SND_SOC_DPCM_STATE_PAUSED))
-				goto next;
+				continue;
 
 			ret = soc_pcm_trigger(be_substream, cmd);
 			if (ret)
-				goto next;
+				goto end;
 
 			be->dpcm[stream].state = SND_SOC_DPCM_STATE_START;
 			break;
 		case SNDRV_PCM_TRIGGER_RESUME:
 			if ((be->dpcm[stream].state != SND_SOC_DPCM_STATE_SUSPEND))
-				goto next;
+				continue;
 
 			ret = soc_pcm_trigger(be_substream, cmd);
 			if (ret)
-				goto next;
+				goto end;
 
 			be->dpcm[stream].state = SND_SOC_DPCM_STATE_START;
 			break;
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 			if ((be->dpcm[stream].state != SND_SOC_DPCM_STATE_PAUSED))
-				goto next;
+				continue;
 
 			ret = soc_pcm_trigger(be_substream, cmd);
 			if (ret)
-				goto next;
+				goto end;
 
 			be->dpcm[stream].state = SND_SOC_DPCM_STATE_START;
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
 			if ((be->dpcm[stream].state != SND_SOC_DPCM_STATE_START) &&
 			    (be->dpcm[stream].state != SND_SOC_DPCM_STATE_PAUSED))
-				goto next;
+				continue;
 
 			if (!snd_soc_dpcm_can_be_free_stop(fe, be, stream))
-				goto next;
+				continue;
 
 			ret = soc_pcm_trigger(be_substream, cmd);
 			if (ret)
-				goto next;
+				goto end;
 
 			be->dpcm[stream].state = SND_SOC_DPCM_STATE_STOP;
 			break;
 		case SNDRV_PCM_TRIGGER_SUSPEND:
 			if (be->dpcm[stream].state != SND_SOC_DPCM_STATE_START)
-				goto next;
+				continue;
 
 			if (!snd_soc_dpcm_can_be_free_stop(fe, be, stream))
-				goto next;
+				continue;
 
 			ret = soc_pcm_trigger(be_substream, cmd);
 			if (ret)
-				goto next;
+				goto end;
 
 			be->dpcm[stream].state = SND_SOC_DPCM_STATE_SUSPEND;
 			break;
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 			if (be->dpcm[stream].state != SND_SOC_DPCM_STATE_START)
-				goto next;
+				continue;
 
 			if (!snd_soc_dpcm_can_be_free_stop(fe, be, stream))
-				goto next;
+				continue;
 
 			ret = soc_pcm_trigger(be_substream, cmd);
 			if (ret)
-				goto next;
+				goto end;
 
 			be->dpcm[stream].state = SND_SOC_DPCM_STATE_PAUSED;
 			break;
 		}
-next:
-		snd_soc_dpcm_stream_unlock_irqrestore(be, stream, flags);
-		if (ret)
-			break;
 	}
+end:
 	if (ret < 0)
 		dev_err(fe->dev, "ASoC: %s() failed at %s (%d)\n",
 			__func__, be->dai_link->name, ret);
