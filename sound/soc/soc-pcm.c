@@ -717,7 +717,7 @@ static int soc_pcm_close(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
 
 	snd_soc_dpcm_mutex_lock(rtd);
-	__soc_pcm_close(rtd, substream);
+	soc_pcm_clean(rtd, substream, 0);
 	snd_soc_dpcm_mutex_unlock(rtd);
 	return 0;
 }
