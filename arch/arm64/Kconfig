@@ -1945,3 +1945,7 @@ config MOT_SENSOR_PRE_POWERUP
         default n
         help
         Enable it to power up and initialise early.
+
+config MOT_USB_DEBUG_LOG
+	bool "For usb debug log in factiry SW"
+	default n
