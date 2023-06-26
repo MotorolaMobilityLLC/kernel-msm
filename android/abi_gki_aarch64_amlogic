@@ -1110,6 +1110,7 @@
   netif_schedule_queue
   netif_set_real_num_rx_queues
   netif_set_real_num_tx_queues
+  netif_set_xps_queue
   netif_tx_stop_all_queues
   netif_tx_wake_queue
   netlink_broadcast
@@ -1474,6 +1475,7 @@
   rfkill_resume_polling
   rfkill_set_hw_state_reason
   rfkill_unregister
+  rfs_needed
   rhashtable_free_and_destroy
   rhashtable_insert_slow
   rhltable_init
@@ -1483,6 +1485,8 @@
   round_jiffies
   round_jiffies_relative
   round_jiffies_up
+  rps_cpu_mask
+  rps_sock_flow_table
   rtc_add_group
   rtc_time64_to_tm
   rtc_tm_to_time64
