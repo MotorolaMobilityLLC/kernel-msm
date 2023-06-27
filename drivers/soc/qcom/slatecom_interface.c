@@ -480,10 +480,9 @@ static int slatecom_fw_load(struct slatedaemon_priv *priv)
 			goto fail;
 		}
 		slate_boot_status = 1;
+		pr_info("%s: SLATE image is loaded\n", __func__);
+		return 0;
 	}
-	pr_info("%s: SLATE image is loaded\n", __func__);
-	return 0;
-
 fail:
 	pr_err("%s: SLATE image loading failed\n", __func__);
 	return -EFAULT;
