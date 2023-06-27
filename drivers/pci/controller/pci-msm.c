@@ -8427,11 +8427,15 @@ static void msm_pcie_drv_connect_worker(struct work_struct *work)
 
 	if (!pcie_dev->drv_name)
 		return;
-	pcie_drv->notifier = qcom_register_early_ssr_notifier(pcie_dev->drv_name, &pcie_drv->nb);
-	if (IS_ERR(pcie_drv->notifier)) {
-		PCIE_ERR(pcie_dev, "PCIe: RC%d: DRV: failed to register ssr notifier\n",
-			 pcie_dev->rc_idx);
-		pcie_drv->notifier = NULL;
+
+	if (!pcie_drv->notifier) {
+		pcie_drv->notifier = qcom_register_early_ssr_notifier(pcie_dev->drv_name,
+								      &pcie_drv->nb);
+		if (IS_ERR(pcie_drv->notifier)) {
+			PCIE_ERR(pcie_dev, "PCIe: RC%d: DRV: failed to register ssr notifier\n",
+				 pcie_dev->rc_idx);
+			pcie_drv->notifier = NULL;
+		}
 	}
 }
 
