@@ -1208,7 +1208,6 @@ static struct qcom_icc_bcm bcm_mc0 = {
 static struct qcom_icc_bcm bcm_qp0 = {
 	.name = "QP0",
 	.voter_idx = 0,
-	.keepalive_early = true,
 	.num_nodes = 1,
 	.nodes = { &qpic_core_slave },
 };
