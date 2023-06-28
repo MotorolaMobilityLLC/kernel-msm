@@ -126,6 +126,14 @@ config FOGOR_DTB
                 Only include FOGOR specific DTBs to limit the number that
                 get built during kernel compilation.
 
+config FOGO_DTB
+        depends on ARCH_QCOM
+        default n
+        bool "FOGO DTBs"
+        help
+                Only include FOGO specific DTBs to limit the number that
+                get built during kernel compilation.
+
 config PENANGB_DTB
         depends on ARCH_QCOM
         default n
