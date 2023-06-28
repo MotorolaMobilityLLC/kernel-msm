@@ -39,3 +39,4 @@ regmap-spmi.ko
 qcom-spmi-pmic.ko
 nvmem_qcom-spmi-sdam.ko
 rtc-pm8xxx.ko
+qcom-cpufreq-hw.ko
