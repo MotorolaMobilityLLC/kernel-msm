@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/string.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/debug-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/spm-regulator.h>
@@ -1276,6 +1277,11 @@ static int spm_regulator_probe(struct platform_device *pdev)
 	}
 
 	dev_set_drvdata(&pdev->dev, vreg);
+
+	rc = devm_regulator_debug_register(&pdev->dev, vreg->rdev);
+	if (rc)
+		dev_err(&pdev->dev, "Error registering SPM debug regulator, rc=%d\n",
+						rc);
 
 	pr_info("name=%s, range=%s, voltage=%d uV, mode=%s, step rate=%d uV/us\n",
 		vreg->rdesc.name,
