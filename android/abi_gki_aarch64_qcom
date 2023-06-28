@@ -2361,6 +2361,7 @@
   snd_pcm_stop
   _snd_pcm_stream_lock_irqsave
   snd_pcm_stream_unlock_irqrestore
+  snd_soc_add_card_controls
   snd_soc_add_component_controls
   snd_soc_bytes_tlv_callback
   snd_soc_card_get_kcontrol
