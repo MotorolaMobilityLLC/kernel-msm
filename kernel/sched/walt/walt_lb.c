@@ -623,6 +623,9 @@ static int walt_lb_find_busiest_cpu(int dst_cpu, const cpumask_t *src_mask, int 
 	struct walt_rq *fsrc_wrq = (struct walt_rq *) cpu_rq(fsrc_cpu)->android_vendor_data1;
 	struct walt_rq *dst_wrq = (struct walt_rq *) cpu_rq(dst_cpu)->android_vendor_data1;
 
+	if (ignore_cluster_valid(NULL, cpu_rq(dst_cpu)))
+		return -1;
+
 	if (dst_wrq->cluster->id == fsrc_wrq->cluster->id)
 		busiest_cpu = walt_lb_find_busiest_similar_cap_cpu(dst_cpu,
 								src_mask, has_misfit, is_newidle);
