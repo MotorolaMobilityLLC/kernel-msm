@@ -2314,6 +2314,10 @@
   sdio_writel
   sdio_writesb
 
+# required by sensorhub.ko
+  devm_iio_kfifo_buffer_setup_ext
+  iio_kfifo_free
+
 # required by seth.ko
   napi_complete_done
   napi_disable

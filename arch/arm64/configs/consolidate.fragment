@@ -3,7 +3,7 @@
 CONFIG_BOOTPARAM_SOFTLOCKUP_PANIC=y
 CONFIG_BOOTPARAM_SOFTLOCKUP_PANIC_VALUE=1
 # CONFIG_CMA_DEBUG is not set
-CONFIG_CMDLINE="kasan.stacktrace=off stack_depot_disable=off page_owner=on no_hash_pointers panic_on_taint=0x20 cgroup_disable=pressure"
+CONFIG_CMDLINE="kasan.stacktrace=off stack_depot_disable=off page_owner=on no_hash_pointers panic_on_taint=0x20 cgroup_disable=pressure slub_debug=FZP,zs_handle,zspage;FZPU"
 CONFIG_DEBUG_KMEMLEAK=y
 # CONFIG_DEBUG_KMEMLEAK_AUTO_SCAN is not set
 CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF=y
@@ -32,6 +32,7 @@ CONFIG_GKI_HIDDEN_RCUTORTURE=y
 # CONFIG_LKDTM is not set
 CONFIG_LOCALVERSION="-qki-consolidate"
 CONFIG_LOCKUP_DETECTOR=y
+CONFIG_PAGE_POISONING=y
 # CONFIG_PERCPU_TEST is not set
 CONFIG_PID_IN_CONTEXTIDR=y
 # CONFIG_PM_ADVANCED_DEBUG is not set

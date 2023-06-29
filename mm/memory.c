@@ -253,6 +253,11 @@ void put_vma(struct vm_area_struct *vma)
 		vm_area_free_no_check(vma);
 }
 
+#if ALLOC_SPLIT_PTLOCKS
+static void wait_for_smp_sync(void *arg)
+{
+}
+#endif
 #endif	/* CONFIG_SPECULATIVE_PAGE_FAULT */
 
 /*
@@ -272,6 +277,14 @@ static void free_pte_range(struct mmu_gather *tlb, pmd_t *pmd,
 	 */
 	spinlock_t *ptl = pmd_lock(tlb->mm, pmd);
 	spin_unlock(ptl);
+#if ALLOC_SPLIT_PTLOCKS
+	/*
+	 * The __pte_map_lock can still be working on the ->ptl in the read side
+	 * critical section while ->ptl is freed which results into the use-after
+	 * -free. Sync it using the smp_call_().
+	 */
+	smp_call_function(wait_for_smp_sync, NULL, 1);
+#endif
 #endif
 	pmd_clear(pmd);
 	pte_free_tlb(tlb, token, addr);

@@ -6,6 +6,8 @@ arch/arm64/crypto/aes-glue.c
 arch/arm64/crypto/aes-modes.S
 arch/arm64/crypto/chacha-neon-core.S
 arch/arm64/crypto/chacha-neon-glue.c
+arch/arm64/crypto/ghash-ce-core.S
+arch/arm64/crypto/ghash-ce-glue.c
 arch/arm64/crypto/poly1305-glue.c
 arch/arm64/crypto/polyval-ce-core.S
 arch/arm64/crypto/polyval-ce-glue.c
@@ -446,6 +448,7 @@ block/blk-flush.c
 block/blk.h
 block/blk-ioc.c
 block/blk-iocost.c
+block/blk-ioprio.c
 block/blk-ioprio.h
 block/blk-lib.c
 block/blk-map.c
@@ -3594,6 +3597,7 @@ include/linux/user.h
 include/linux/usermode_driver.h
 include/linux/user_namespace.h
 include/linux/user-return-notifier.h
+include/linux/util_macros.h
 include/linux/uts.h
 include/linux/utsname.h
 include/linux/uuid.h
@@ -4721,7 +4725,7 @@ kernel/exit.c
 kernel/extable.c
 kernel/fork.c
 kernel/freezer.c
-kernel/futex.c
+kernel/futex/core.c
 kernel/gki_module.c
 kernel/groups.c
 kernel/hung_task.c

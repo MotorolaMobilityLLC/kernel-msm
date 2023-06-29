@@ -1434,6 +1434,7 @@
   register_wide_hw_breakpoint
   regmap_field_read
   regmap_field_update_bits_base
+  regmap_irq_chip_get_base
   regmap_multi_reg_write
   regmap_raw_write
   regmap_read
