@@ -211,6 +211,12 @@ DECLARE_HOOK(android_vh_alloc_highpage_movable_gfp_adjust,
 DECLARE_HOOK(android_vh_anon_gfp_adjust,
 	TP_PROTO(gfp_t *gfp_mask),
 	TP_ARGS(gfp_mask));
+DECLARE_HOOK(android_vh_slab_page_alloced,
+	TP_PROTO(struct page *page, size_t size, gfp_t flags),
+	TP_ARGS(page, size, flags));
+DECLARE_HOOK(android_vh_kmalloc_order_alloced,
+        TP_PROTO(struct page *page, size_t size, gfp_t flags),
+        TP_ARGS(page, size, flags));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

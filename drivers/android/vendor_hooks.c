@@ -440,6 +440,8 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_psi_group);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rmqueue_smallest_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_free_one_page_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_use_cma_first_check);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_slab_page_alloced);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_kmalloc_order_alloced);
 /*
  * For type visibility
  */
