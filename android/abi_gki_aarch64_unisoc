@@ -3169,6 +3169,12 @@
   __tracepoint_android_vh_page_trylock_set
   __tracepoint_android_vh_shrink_slab_bypass
 
+# required by unisoc_mm_slab.ko
+  __traceiter_android_vh_kmalloc_order_alloced
+  __traceiter_android_vh_slab_page_alloced
+  __tracepoint_android_vh_kmalloc_order_alloced
+  __tracepoint_android_vh_slab_page_alloced
+
 # required by unisoc_multi_control.ko
   cpufreq_table_index_unsorted
 
