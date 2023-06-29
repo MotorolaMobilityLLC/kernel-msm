@@ -78,6 +78,13 @@
 #define	EVT_RESUMED			10
 
 #define NUM_LOG_PAGES 10
+#define log_event_err_ratelimited(x, ...) do { \
+	if (gsi) { \
+		ipc_log_string(gsi->ipc_log_ctxt, x, ##__VA_ARGS__); \
+		pr_err_ratelimited(x, ##__VA_ARGS__); \
+	} \
+} while (0)
+
 #define log_event_err(x, ...) do { \
 	if (gsi) { \
 		ipc_log_string(gsi->ipc_log_ctxt, x, ##__VA_ARGS__); \
