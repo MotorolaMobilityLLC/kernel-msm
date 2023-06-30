@@ -107,6 +107,7 @@ static moto_product products_list[] = {
 	{"geneva",      "all",  NV_IPA},
 	{"genevn",      "NA",  NV_EPA},
 	{"genevn",      "VZW",  NV_IPA},
+	{"avatrn",      "all",  NV_EPA},
 	/* Terminator */
 	{{0}, {0}, {0}},
 };
