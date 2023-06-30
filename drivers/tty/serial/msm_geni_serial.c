@@ -3662,14 +3662,6 @@ static int msm_geni_serial_startup(struct uart_port *uport)
 	if (uart_console(uport) ||  msm_port->pm_auto_suspend_disable)
 		enable_irq(uport->irq);
 
-	if (msm_port->wakeup_irq > 0) {
-		ret = irq_set_irq_wake(msm_port->wakeup_irq, 1);
-		if (unlikely(ret)) {
-			dev_err(uport->dev, "%s:Failed to set IRQ wake:%d\n",
-					__func__, ret);
-			goto exit_startup;
-		}
-	}
 exit_startup:
 	if (likely(!uart_console(uport)))
 		msm_geni_serial_power_off(&msm_port->uport);
@@ -5133,7 +5125,6 @@ static int msm_geni_serial_sys_suspend(struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_DEEPSLEEP
 static int msm_geni_serial_sys_hib_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -5159,12 +5150,6 @@ static int msm_geni_serial_sys_hib_resume(struct device *dev)
 	}
 	return 0;
 }
-#else
-static int msm_geni_serial_sys_hib_resume(struct device *dev)
-{
-	return 0;
-}
-#endif
 
 static int msm_geni_serial_sys_resume(struct device *dev)
 {
@@ -5216,6 +5201,10 @@ static int msm_geni_serial_sys_suspend(struct device *dev)
 }
 
 static int msm_geni_serial_sys_resume(struct device *dev)
+{
+	return 0;
+}
+static int msm_geni_serial_sys_hib_resume(struct device *dev)
 {
 	return 0;
 }
