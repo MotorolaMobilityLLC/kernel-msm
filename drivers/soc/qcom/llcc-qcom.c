@@ -428,22 +428,22 @@ static const struct llcc_slice_config crow_data[] =  {
 };
 
 static const struct llcc_slice_config kona_data[] =  {
-	{LLCC_CPUSS,     1, 3072, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 1},
-	{LLCC_VIDSC0,    2,  512, 3, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
+	{LLCC_CPUSS,     1, 3072, 1, 1, 0xFFF, 0x0, 0, 0, 0, 1, 1, 0},
+	{LLCC_VIDSC0,    2,  512, 3, 1, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
 	{LLCC_AUDIO,     6, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 0, 0, 0},
 	{LLCC_CMPT,     10, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 0, 0, 0},
-	{LLCC_GPUHTW,   11, 1024, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
-	{LLCC_GPU,      12, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 1, 1, 0},
-	{LLCC_MMUHWT,   13, 1024, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 0, 1},
-	{LLCC_CMPTDMA,  15, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
-	{LLCC_DISP,     16, 3072, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
-	{LLCC_AUDHW,    22, 1024, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
-	{LLCC_NPU,      23, 3072, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
-	{LLCC_WLNHW,    24, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
-	{LLCC_CVP,      28,  256, 3, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
-	{LLCC_APTCM,    30,  128, 3, 0, 0x0,   0x3, 1, 0, 0, 0, 1, 0},
-	{LLCC_WRTCH,    31,  256, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 0, 1},
-	{LLCC_CVPFW,    17,  512, 1, 0, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
+	{LLCC_GPUHTW,   11, 1024, 1, 1, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
+	{LLCC_GPU,      12, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 1, 0, 1},
+	{LLCC_MMUHWT,   13, 1024, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
+	{LLCC_CMPTDMA,  15, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
+	{LLCC_DISP,     16, 3072, 1, 1, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
+	{LLCC_AUDHW,    22, 1024, 1, 1, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
+	{LLCC_NPU,      23, 3072, 1, 1, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
+	{LLCC_WLNHW,    24, 1024, 1, 0, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
+	{LLCC_CVP,      28,  256, 3, 1, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
+	{LLCC_APTCM,    30,  128, 3, 0, 0x0,   0x3, 1, 0, 0, 1, 0, 0},
+	{LLCC_WRTCH,    31,  256, 1, 1, 0xFFF, 0x0, 0, 0, 0, 0, 1, 0},
+	{LLCC_CVPFW,    17,  512, 1, 0, 0xFFF, 0x0, 0, 0, 0, 1, 0, 0},
 };
 
 static const struct llcc_slice_config cinder_data_2ch[] =  {
