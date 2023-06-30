@@ -1385,7 +1385,7 @@ static void gic_syscore_init(void)
 #else
 static inline void gic_syscore_init(void) { }
 void gic_resume(void) { }
-static int gic_suspend(void) { return 0; }
+static inline int gic_suspend(void) { return 0; }
 #endif
 
 

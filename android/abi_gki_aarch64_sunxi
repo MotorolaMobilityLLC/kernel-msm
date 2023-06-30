@@ -58,9 +58,9 @@
   blk_queue_max_segment_size
   blk_queue_max_write_zeroes_sectors
   blk_queue_physical_block_size
-  blk_status_to_errno
   blk_queue_rq_timeout
   blk_queue_write_cache
+  blk_status_to_errno
   blk_update_request
   blockdev_superblock
   blocking_notifier_call_chain
@@ -233,9 +233,9 @@
   devfreq_event_get_event
   devfreq_recommended_opp
   devfreq_remove_device
-  devfreq_unregister_opp_notifier
   devfreq_resume_device
   devfreq_suspend_device
+  devfreq_unregister_opp_notifier
   __dev_get_by_index
   dev_get_by_index
   device_add
@@ -375,9 +375,9 @@
   dma_fence_array_ops
   dma_fence_context_alloc
   dma_fence_default_wait
-  dma_fence_get_status
   dma_fence_enable_sw_signaling
   dma_fence_free
+  dma_fence_get_status
   dma_fence_init
   dma_fence_release
   dma_fence_remove_callback
@@ -452,10 +452,10 @@
   event_triggers_call
   fb_mode_option
   fd_install
+  fget
   file_path
   filp_close
   filp_open_block
-  fget
   _find_first_bit
   find_get_pid
   _find_next_bit
@@ -888,8 +888,8 @@
   of_iomap
   of_io_request_and_map
   of_irq_find_parent
-  of_machine_is_compatible
   of_irq_get
+  of_machine_is_compatible
   of_match_device
   of_match_node
   of_nvmem_cell_get
@@ -924,6 +924,7 @@
   pci_dev_put
   pci_disable_device
   pci_disable_msi
+  pcie_link_speed
   pci_enable_device
   pci_enable_msi
   pci_get_device
@@ -943,7 +944,6 @@
   pci_unregister_driver
   pci_write_config_byte
   pci_write_config_word
-  pcie_link_speed
   PDE_DATA
   __per_cpu_offset
   perf_trace_buf_alloc
@@ -1213,9 +1213,9 @@
   seq_write
   set_capacity
   set_capacity_and_notify
-  set_page_dirty_lock
   set_disk_ro
   set_freezable
+  set_page_dirty_lock
   __SetPageMovable
   set_user_nice
   sg_alloc_table
@@ -1226,9 +1226,9 @@
   sg_next
   __sg_page_iter_next
   __sg_page_iter_start
+  si_meminfo
   simple_attr_open
   simple_attr_release
-  si_meminfo
   simple_open
   simple_read_from_buffer
   simple_strtol
@@ -1414,6 +1414,7 @@
   __traceiter_android_vh_dma_buf_release
   __traceiter_android_vh_map_util_freq
   __traceiter_android_vh_meminfo_proc_show
+  __traceiter_android_vh_page_cache_forced_ra
   __traceiter_android_vh_show_mem
   __traceiter_android_vh_tune_inactive_ratio
   __traceiter_android_vh_tune_swappiness
@@ -1655,9 +1656,9 @@
   vm_get_page_prot
   vm_insert_page
   vm_iomap_memory
+  vm_map_ram
   vm_mmap
   vm_munmap
-  vm_map_ram
   vm_unmap_ram
   vsnprintf
   vunmap
