@@ -3200,6 +3200,44 @@ static int arm_smmu_id_size_to_bits(int size)
 	}
 }
 
+#ifdef CONFIG_MSM_TZ_SMMU
+static int arm_smmu_handoff_cbs(struct arm_smmu_device *smmu)
+{
+	u32 i, raw_smr, raw_s2cr;
+	struct arm_smmu_smr smr;
+	struct arm_smmu_s2cr s2cr;
+
+	for (i = 0; i < smmu->num_mapping_groups; i++) {
+		raw_smr = arm_smmu_gr0_read(smmu, ARM_SMMU_GR0_SMR(i));
+		if (!(raw_smr & ARM_SMMU_SMR_VALID))
+			continue;
+
+		smr.mask = FIELD_GET(ARM_SMMU_SMR_MASK, raw_smr);
+		smr.id = (u16)raw_smr;
+		smr.valid = true;
+
+		raw_s2cr = arm_smmu_gr0_read(smmu, ARM_SMMU_GR0_S2CR(i));
+		memset(&s2cr, 0, sizeof(s2cr));
+		s2cr.group = NULL;
+		s2cr.count = 1;
+		s2cr.type = FIELD_GET(ARM_SMMU_S2CR_TYPE, raw_s2cr);
+		s2cr.privcfg =  FIELD_GET(ARM_SMMU_S2CR_PRIVCFG, raw_s2cr);
+		s2cr.cbndx = FIELD_GET(ARM_SMMU_S2CR_CBNDX, raw_s2cr);
+		s2cr.pinned = true;
+
+		if (s2cr.type != S2CR_TYPE_TRANS)
+			continue;
+
+		smmu->smrs[i] = smr;
+		smmu->s2crs[i] = s2cr;
+		bitmap_set(smmu->context_map, s2cr.cbndx, 1);
+		dev_info(smmu->dev, "Handoff smr: %x s2cr: %x cb: %d\n",
+			raw_smr, raw_s2cr, s2cr.cbndx);
+	}
+
+	return 0;
+}
+#else
 static int arm_smmu_handoff_cbs(struct arm_smmu_device *smmu)
 {
 	u32 i, smr, s2cr;
@@ -3299,6 +3337,7 @@ static int arm_smmu_handoff_cbs(struct arm_smmu_device *smmu)
 
 	return 0;
 }
+#endif
 
 static int arm_smmu_parse_impl_def_registers(struct arm_smmu_device *smmu)
 {
