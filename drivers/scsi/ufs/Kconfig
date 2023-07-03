@@ -276,3 +276,10 @@ config UFSFBO_POC
         default n
         help
           UFS FBO POC test
+
+config UFS_READ_VENDOR_MODE
+        bool "UFS get secure smart report"
+        depends on SCSI_UFSHCD && UFSFEATURE
+        default n
+        help
+           Samsung get secure smart report in vendor mode
