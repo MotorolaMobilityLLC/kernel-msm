@@ -212,6 +212,205 @@ static void ufsf_print_query_buf(unsigned char *field, int size)
 	printk(buf);
 }
 
+#if defined(CONFIG_UFS_READ_VENDOR_MODE)
+int __ufsf_scsi_execute(struct scsi_device *sdev, const unsigned char *cmd,
+		 int data_direction, void *buffer, unsigned bufflen,
+		 unsigned char *sense, struct scsi_sense_hdr *sshdr,
+		 int timeout, int retries, u64 flags, req_flags_t rq_flags,
+		 int *resid)
+{
+	struct request *req;
+	struct scsi_request *rq;
+	int ret;
+
+	req = blk_get_request(sdev->request_queue,
+			data_direction == DMA_TO_DEVICE ?
+			REQ_OP_DRV_OUT : REQ_OP_DRV_IN,
+			rq_flags & RQF_PM ? BLK_MQ_REQ_PM : 0);
+	if (IS_ERR(req))
+		return PTR_ERR(req);
+
+	rq = scsi_req(req);
+
+	if (bufflen) {
+		ret = blk_rq_map_kern(sdev->request_queue, req,
+				      buffer, bufflen, GFP_NOIO);
+		if (ret)
+			goto out;
+	}
+	if (cmd[0] == 0xc0)
+		rq->cmd_len = 16;
+	else
+		rq->cmd_len = COMMAND_SIZE(cmd[0]);
+	memcpy(rq->cmd, cmd, rq->cmd_len);
+	rq->retries = retries;
+	req->timeout = timeout;
+	req->cmd_flags |= flags;
+	req->rq_flags |= rq_flags | RQF_QUIET;
+
+	/*
+	 * head injection *required* here otherwise quiesce won't work
+	 */
+	blk_execute_rq(NULL, req, 1);
+
+	/*
+	 * Some devices (USB mass-storage in particular) may transfer
+	 * garbage data together with a residue indicating that the data
+	 * is invalid.  Prevent the garbage from being misinterpreted
+	 * and prevent security leaks by zeroing out the excess data.
+	 */
+	if (unlikely(rq->resid_len > 0 && rq->resid_len <= bufflen))
+		memset(buffer + (bufflen - rq->resid_len), 0, rq->resid_len);
+
+	if (resid)
+		*resid = rq->resid_len;
+	if (sense && rq->sense_len)
+		memcpy(sense, rq->sense, SCSI_SENSE_BUFFERSIZE);
+	if (sshdr)
+		scsi_normalize_sense(rq->sense, rq->sense_len, sshdr);
+	ret = rq->result;
+ out:
+	blk_put_request(req);
+
+	return ret;
+}
+
+static int ufsf_execute_vendor_mode(struct ufsf_feature *ufsf,
+				    int lun, unsigned char *cdb,
+				    void *buf, int len)
+{
+	struct scsi_sense_hdr sshdr;
+	struct scsi_device *sdev;
+	int ret;
+
+	sdev = ufsf->sdev_ufs_lu[lun];
+	if (!sdev) {
+		WARN_MSG("cannot find scsi_device");
+		return -ENODEV;
+	}
+
+	ret = __ufsf_scsi_execute(sdev, cdb, DMA_FROM_DEVICE, buf, len, NULL, &sshdr,
+			   msecs_to_jiffies(30000), 3, 0, 0, NULL);
+	return ret;
+}
+
+static int set_pass(struct ufsf_feature *ufsf, int lun)
+{
+	unsigned char cdb[16] = {0};
+	int ret = 0;
+	unsigned char *buf;
+	buf = kmalloc(255, GFP_KERNEL);
+	cdb[0] = 0xc0;
+	cdb[1] = 0x03;
+	cdb[2] = 0x12;
+	cdb[3] = 0x34;
+	cdb[4] = 0x56;
+	cdb[5] = 0x78;
+
+	ret = ufsf_execute_vendor_mode(ufsf, lun, cdb,buf, 255);
+	kfree(buf);
+	return ret;
+}
+
+static int enter_vendor_mode(struct ufsf_feature *ufsf, int lun)
+{
+	unsigned char cdb[16] = {0};
+	int ret;
+	unsigned char *buf;
+	buf = kmalloc(255, GFP_KERNEL);
+	cdb[0] = 0xc0;
+	cdb[1] = 0;
+	cdb[2] = 0x5c;
+	cdb[3] = 0x38;
+	cdb[4] = 0x23;
+	cdb[5] = 0xAE;
+	cdb[6] = 0x12;
+	cdb[7] = 0x34;
+	cdb[8] = 0x56;
+	cdb[9] = 0x78;
+
+	ret = ufsf_execute_vendor_mode(ufsf, lun, cdb,buf, 255);
+	return ret;
+}
+
+static int exit_vendor_mode(struct ufsf_feature *ufsf, int lun)
+{
+	unsigned char cdb[16] = {0};
+	int ret;
+	unsigned char *buf;
+	buf = kmalloc(255, GFP_KERNEL);
+	cdb[0] = 0xc0;
+	cdb[1] = 0x01;
+
+	ret = ufsf_execute_vendor_mode(ufsf, lun, cdb,buf, 255);
+	return ret;
+}
+
+static int do_read_SSR_report(struct ufsf_feature *ufsf, int lun, unsigned char *buf, int buf_len)
+{
+	unsigned char cdb[16] = {0};
+	int ret;
+	// unsigned char *buf;
+	// buf = kmalloc(255, GFP_KERNEL);
+	cdb[0] = 0xc0;
+	cdb[1] = 0x40;
+	cdb[4] = 0x01;
+	cdb[5] = 0x0A;
+	cdb[12] = 0;
+	cdb[13] = 0;
+	cdb[14] = 0;
+	cdb[15] = buf_len;
+	ret = ufsf_execute_vendor_mode(ufsf, lun, cdb,buf, buf_len);
+	return ret;
+}
+
+int read_SSR_report(struct ufsf_feature *ufsf, int lun)
+{
+	int ret = 0;
+	int buf_len = 0xE4;
+	int open_count = 0;
+	char *buf = kzalloc(buf_len, GFP_KERNEL);
+	// static int inited = 0;
+	// if (inited ) return 0;
+	// inited ++;
+	if (buf == NULL) {
+		ERR_MSG("it is failed to malloc, exit!");
+		return -1;
+	}
+	ret = set_pass(ufsf,lun);
+	if( ret !=0 ) {
+		ERR_MSG("set vendor pass failed!, it maybe set onece!, just continue");
+	}
+
+	ret = enter_vendor_mode(ufsf,lun);
+	if (ret != 0) {
+		ERR_MSG(KERN_ERR "enter vendor mode failed , just exit!");
+		goto free_mem;
+	}
+
+	ret = do_read_SSR_report(ufsf, lun, buf, buf_len);
+	if (ret != 0) {
+		ERR_MSG("enter vendor mode failed , just exit!");
+		goto free_mem;
+	}
+	ret = exit_vendor_mode(ufsf,lun);
+	if (ret != 0) {
+		ERR_MSG("exit vendor mode failed , just exit!");
+		goto free_mem;
+	}
+
+	ufsf_print_query_buf(buf, buf_len);
+	open_count = (buf[0x3c] << 24) | (buf[0x3d] << 16) | (buf[0x3e] << 8) | (buf[0x3f]);
+	INFO_MSG("open count = %d\n", open_count);
+
+free_mem:
+	if (buf) {
+		kfree(buf);
+	}
+	return 0;
+}
+#endif
+
 static inline void ufsf_set_read10_debug_cmd(unsigned char *cdb, int lba,
 					     int len)
 {
@@ -631,6 +830,10 @@ static void ufsf_device_check_work_handler(struct work_struct *work)
 		ufsf_device_check(ufsf->hba);
 		ufsf_init(ufsf);
 	}
+#if defined(CONFIG_UFS_READ_VENDOR_MODE)
+	if (ufsf->slave_conf_cnt == 1 && is_vendor_device(ufsf->hba, UFS_VENDOR_SAMSUNG))
+		read_SSR_report(ufsf, 0);
+#endif
 	mutex_unlock(&ufsf->device_check_lock);
 }
 /*
