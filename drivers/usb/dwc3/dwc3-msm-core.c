@@ -4716,9 +4716,9 @@ static int dwc3_msm_dp_notifier(struct notifier_block *nb, unsigned long event, 
 		extcon_get_property(edev, EXTCON_USB_HOST, EXTCON_PROP_USB_SS, &val);
 
 		if (val.intval)
-			dwc3_msm_set_dp_mode(mdwc->dev, true, 4);
-		else
 			dwc3_msm_set_dp_mode(mdwc->dev, true, 2);
+		else
+			dwc3_msm_set_dp_mode(mdwc->dev, true, 4);
 	} else {
 		dwc3_msm_set_dp_mode(mdwc->dev, false, 0);
 	}
