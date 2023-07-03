@@ -62,3 +62,5 @@ blocklist vsock
 blocklist vsock_diag
 blocklist xc4000
 blocklist xc5000
+blocklist fpsensor_spi_tee_v1
+blocklist fpc1020_mmi
