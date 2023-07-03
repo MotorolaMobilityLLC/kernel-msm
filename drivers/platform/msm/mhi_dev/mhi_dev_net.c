@@ -302,10 +302,17 @@ static __be16 mhi_dev_net_eth_type_trans(struct sk_buff *skb)
 static void mhi_dev_net_read_completion_cb(void *req)
 {
 	struct mhi_req *mreq = (struct mhi_req *)req;
-	struct mhi_dev_net_client *net_handle =
-			chan_to_net_client(mreq->vf_id, mreq->chan);
+	struct mhi_dev_net_client *net_handle;
 	struct sk_buff *skb = mreq->context;
 	unsigned long   flags;
+
+	net_handle = chan_to_net_client(mreq->vf_id, mreq->chan);
+
+	if (!net_handle) {
+		mhi_dev_net_log(mreq->vf_id, MHI_ERROR,
+				"Failed to assign client handle\n");
+		return;
+	}
 
 	skb_put(skb, mreq->transfer_len);
 
