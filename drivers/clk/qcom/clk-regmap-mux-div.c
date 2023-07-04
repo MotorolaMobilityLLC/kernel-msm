@@ -56,7 +56,7 @@ int mux_div_set_src_div(struct clk_regmap_mux_div *md, u32 src, u32 div)
 }
 EXPORT_SYMBOL_GPL(mux_div_set_src_div);
 
-static void mux_div_get_src_div(struct clk_regmap_mux_div *md, u32 *src,
+void mux_div_get_src_div(struct clk_regmap_mux_div *md, u32 *src,
 				u32 *div)
 {
 	u32 val, d, s;
