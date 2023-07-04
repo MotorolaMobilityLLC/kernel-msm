@@ -842,6 +842,12 @@ static void gi2c_gsi_rx_cb(void *ptr)
 
 	gi2c = rx_cb->userdata;
 
+	if (!gi2c->cur) {
+		geni_i2c_err(gi2c, GENI_SPURIOUS_IRQ);
+		complete(&gi2c->xfer);
+		return;
+	}
+
 	if (gi2c->cur->flags & I2C_M_RD) {
 		gi2c_gsi_cb_err(rx_cb, "RX");
 		complete(&gi2c->xfer);
