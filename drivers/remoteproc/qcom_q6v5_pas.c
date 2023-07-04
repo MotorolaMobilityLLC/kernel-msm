@@ -1871,6 +1871,42 @@ static const struct adsp_data crow_wpss_resource = {
 	.ssctl_id = 0x19,
 };
 
+static const struct adsp_data qcs405_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.pas_id = 1,
+	.has_aggre2_clk = false,
+	.auto_boot = true,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data qcs405_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.pas_id = 18,
+	.has_aggre2_clk = false,
+	.auto_boot = true,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
+static const struct adsp_data qcs405_modem_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "wcnss.mdt",
+	.pas_id = 6,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "wcnss",
+	.sysmon_name = "wlan",
+	.qmp_name = "wlan",
+	.ssctl_id = 0x12,
+};
+
 static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,msm8974-adsp-pil", .data = &adsp_resource_init},
 	{ .compatible = "qcom,msm8996-adsp-pil", .data = &adsp_resource_init},
@@ -1928,6 +1964,9 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,crow-adsp-pas", .data = &crow_adsp_resource},
 	{ .compatible = "qcom,crow-cdsp-pas", .data = &crow_cdsp_resource},
 	{ .compatible = "qcom,crow-modem-pas", .data = &crow_mpss_resource},
+	{ .compatible = "qcom,qcs405-adsp-pas", .data = &qcs405_adsp_resource},
+	{ .compatible = "qcom,qcs405-wlan-dsp", .data = &qcs405_modem_resource},
+	{ .compatible = "qcom,qcs405-cdsp-pas", .data = &qcs405_cdsp_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);
