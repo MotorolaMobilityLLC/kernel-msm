@@ -23,6 +23,7 @@
 #include "common.h"
 #include "reset.h"
 #include "vdd-level.h"
+#include "clk-pm.h"
 
 static DEFINE_VDD_REGULATORS(vdd_cx, VDD_HIGH + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_cx_ao, VDD_HIGH + 1, 1, vdd_corner);
@@ -1589,6 +1590,16 @@ static struct clk_branch gcc_usb_phy_cfg_ahb2phy_clk = {
 	},
 };
 
+/*
+ * Keep clocks always enabled:
+ * gcc_ahb_pcie_link_clk
+ * gcc_xo_pcie_link_clk
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x3e004, .mask = BIT(0) },
+	{ .offset = 0x3e008, .mask = BIT(0) },
+};
+
 static struct clk_regmap *gcc_sdxbaagha_clocks[] = {
 	[GCC_BOOT_ROM_AHB_CLK] = &gcc_boot_rom_ahb_clk.clkr,
 	[GCC_CPUSS_AHB_CLK] = &gcc_cpuss_ahb_clk.clkr,
@@ -1697,7 +1708,7 @@ static const struct regmap_config gcc_sdxbaagha_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gcc_sdxbaagha_desc = {
+static struct qcom_cc_desc gcc_sdxbaagha_desc = {
 	.config = &gcc_sdxbaagha_regmap_config,
 	.clks = gcc_sdxbaagha_clocks,
 	.num_clks = ARRAY_SIZE(gcc_sdxbaagha_clocks),
@@ -1705,6 +1716,8 @@ static const struct qcom_cc_desc gcc_sdxbaagha_desc = {
 	.num_resets = ARRAY_SIZE(gcc_sdxbaagha_resets),
 	.clk_regulators = gcc_sdxbaagha_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gcc_sdxbaagha_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id gcc_sdxbaagha_match_table[] = {
@@ -1726,15 +1739,12 @@ static int gcc_sdxbaagha_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	/*
-	 * Keep clocks always enabled:
-	 * gcc_ahb_pcie_link_clk
-	 * gcc_xo_div4_clk
-	 * gcc_xo_pcie_link_clk
-	 */
-	regmap_update_bits(regmap, 0x3e004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x3e010, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x3e008, BIT(0), BIT(0));
+	ret = register_qcom_clks_pm(pdev, false, &gcc_sdxbaagha_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register gcc_pm_rt_ops clocks\n");
+
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &gcc_sdxbaagha_desc, regmap);
 	if (ret) {
