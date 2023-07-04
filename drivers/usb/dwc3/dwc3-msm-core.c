@@ -4716,9 +4716,9 @@ static int dwc3_msm_dp_notifier(struct notifier_block *nb, unsigned long event, 
 		extcon_get_property(edev, EXTCON_USB_HOST, EXTCON_PROP_USB_SS, &val);
 
 		if (val.intval)
-			dwc3_msm_set_dp_mode(mdwc->dev, true, 4);
-		else
 			dwc3_msm_set_dp_mode(mdwc->dev, true, 2);
+		else
+			dwc3_msm_set_dp_mode(mdwc->dev, true, 4);
 	} else {
 		dwc3_msm_set_dp_mode(mdwc->dev, false, 0);
 	}
@@ -5462,12 +5462,6 @@ exit:
 	return ret;
 }
 EXPORT_SYMBOL(dwc3_msm_set_dp_mode);
-
-int dwc3_msm_release_ss_lane(struct device *dev)
-{
-	return dwc3_msm_set_dp_mode(dev, true, 4);
-}
-EXPORT_SYMBOL(dwc3_msm_release_ss_lane);
 
 static int dwc3_msm_debug_init(struct dwc3_msm *mdwc)
 {
