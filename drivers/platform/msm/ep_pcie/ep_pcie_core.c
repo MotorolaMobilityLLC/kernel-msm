@@ -51,7 +51,7 @@
 #define PCIE_L1SUB_AHB_TIMEOUT_MIN		100
 #define PCIE_L1SUB_AHB_TIMEOUT_MAX		120
 
-#define PERST_RAW_RESET_STATUS			BIT(11)
+#define PERST_RAW_RESET_STATUS			BIT(0)
 #define LINK_STATUS_REG_SHIFT			16
 
 #define LODWORD(addr)             (addr & 0xFFFFFFFF)
@@ -4113,8 +4113,8 @@ static void ep_pcie_tcsr_aoss_data_dt(struct platform_device *pdev)
 		}
 
 		EP_PCIE_DBG(&ep_pcie_dev,
-			"PCIe V%d: Perset Raw Reset Status Bit: %d",
-			ep_pcie_dev.rev, BIT(ep_pcie_dev.perst_raw_rst_status_mask));
+			"PCIe V%d: Perst Raw Reset Status Mask: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.perst_raw_rst_status_mask);
 	}
 }
 
