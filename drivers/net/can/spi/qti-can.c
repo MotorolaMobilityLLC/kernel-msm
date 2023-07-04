@@ -1822,6 +1822,7 @@ static int timer_thread_fn(void *data)
 				retry++;
 			}
 			timer_Flag = 0;
+			msleep(25000);
 		}
 	}
 	return 0;
