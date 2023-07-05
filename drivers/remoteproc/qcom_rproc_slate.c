@@ -25,6 +25,7 @@
 #include <linux/soc/qcom/mdt_loader.h>
 #include <linux/qseecom_kernel.h>
 #include <linux/soc/qcom/slatecom_interface.h>
+#include <linux/suspend.h>
 #include "qcom_common.h"
 #include "remoteproc_internal.h"
 
@@ -1059,6 +1060,24 @@ static int slate_app_reboot_notify(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+#ifdef CONFIG_DEEPSLEEP
+static int rproc_slate_suspend(struct device *dev)
+{
+	if (pm_suspend_via_firmware()) {
+		struct qcom_slate *slate_data = dev_get_drvdata(dev);
+
+		qseecom_shutdown_app(&slate_data->qseecom_handle);
+		slate_data->qseecom_handle = NULL;
+	}
+	return 0;
+}
+
+static int rproc_slate_resume(struct device *dev)
+{
+	return 0;
+}
+#endif
+
 static int rproc_slate_driver_probe(struct platform_device *pdev)
 {
 	struct qcom_slate *slate;
@@ -1180,6 +1199,13 @@ static int rproc_slate_driver_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct dev_pm_ops rproc_slate_pm_ops = {
+#ifdef CONFIG_DEEPSLEEP
+	.suspend = rproc_slate_suspend,
+	.resume = rproc_slate_resume,
+#endif
+};
+
 static const struct of_device_id rproc_slate_match_table[] = {
 	{.compatible = "qcom,rproc-slate"},
 	{}
@@ -1192,6 +1218,7 @@ static struct platform_driver rproc_slate_driver = {
 	.driver = {
 		.name = "qcom-rproc-slate",
 		.of_match_table = rproc_slate_match_table,
+		.pm = &rproc_slate_pm_ops,
 	},
 };
 
