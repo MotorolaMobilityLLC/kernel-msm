@@ -1798,7 +1798,7 @@ static int mhi_hwc_chcmd(struct mhi_dev *mhi, uint chid,
 	switch (type) {
 	case MHI_DEV_RING_EL_RESET:
 	case MHI_DEV_RING_EL_STOP:
-		if ((chid-(mhi->mhi_chan_hw_base)) > NUM_HW_CHANNELS) {
+		if ((chid-(mhi->mhi_chan_hw_base)) >= NUM_HW_CHANNELS) {
 			mhi_log(mhi->vf_id, MHI_MSG_ERROR,
 				"Invalid HW ch_id:%d\n", chid);
 			return -EINVAL;
@@ -1821,7 +1821,7 @@ static int mhi_hwc_chcmd(struct mhi_dev *mhi, uint chid,
 			return -EINVAL;
 		}
 
-		if ((chid-(mhi->mhi_chan_hw_base)) > NUM_HW_CHANNELS) {
+		if ((chid-(mhi->mhi_chan_hw_base)) >= NUM_HW_CHANNELS) {
 			mhi_log(mhi->vf_id, MHI_MSG_ERROR,
 				"Invalid HW ch_id:%d\n", chid);
 			return -EINVAL;
