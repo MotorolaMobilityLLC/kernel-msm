@@ -404,8 +404,11 @@ static void tx_wakeup_worker(struct glink_slatecom *glink)
 	rc = slatecom_reg_read(glink->slatecom_handle, SLATECOM_REG_FIFO_FILL, 1,
 						&fifo_fill);
 	if (rc < 0) {
-		GLINK_ERR(glink, "%s: Error %d receiving data\n"
+		GLINK_ERR(glink, "%s: Error %d reading fifo state\n"
 					, __func__, rc);
+		__pm_relax(glink->ws);
+		mutex_unlock(&glink->tx_avail_lock);
+		return;
 	}
 
 	__pm_relax(glink->ws);
@@ -1602,7 +1605,7 @@ static int glink_slatecom_rx_defer(struct glink_slatecom *glink,
 	extra = ALIGN(extra, SLATECOM_ALIGNMENT);
 
 	if (rx_avail < sizeof(struct glink_slatecom_msg) + extra) {
-		dev_dbg(glink->dev, "Insufficient data in rx fifo");
+		dev_err(glink->dev, "Insufficient data in rx fifo\n");
 		return -ENXIO;
 	}
 
@@ -1705,7 +1708,7 @@ static int glink_slatecom_rx_data(struct glink_slatecom *glink,
 	channel = idr_find(&glink->rcids, rcid);
 	mutex_unlock(&glink->idr_lock);
 	if (!channel) {
-		dev_dbg(glink->dev, "Data on non-existing channel\n");
+		dev_err(glink->dev, "Data on non-existing channel\n");
 		return msglen;
 	}
 	CH_INFO(channel, "chunk_size:%d left_size:%d\n", chunk_size, left_size);
@@ -1752,7 +1755,7 @@ static int glink_slatecom_rx_data(struct glink_slatecom *glink,
 
 	} while (rc == -ECANCELED);
 
-intent->offset += chunk_size;
+	intent->offset += chunk_size;
 
 	/* Handle message when no fragments remain to be received */
 	if (!left_size) {
