@@ -206,6 +206,9 @@ DECLARE_HOOK(android_vh_use_cma_first_check,
 	TP_PROTO(bool *use_cma_first_check),
 	TP_ARGS(use_cma_first_check));
 DECLARE_HOOK(android_vh_alloc_highpage_movable_gfp_adjust,
+        TP_PROTO(gfp_t *gfp_mask),
+        TP_ARGS(gfp_mask));
+DECLARE_HOOK(android_vh_anon_gfp_adjust,
 	TP_PROTO(gfp_t *gfp_mask),
 	TP_ARGS(gfp_mask));
 #endif /* _TRACE_HOOK_MM_H */

@@ -1012,6 +1012,7 @@ struct page *alloc_zeroed_user_highpage_movable(struct vm_area_struct *vma,
 	gfp_t flags = GFP_HIGHUSER_MOVABLE | __GFP_ZERO | __GFP_CMA;
 
 	trace_android_vh_alloc_highpage_movable_gfp_adjust(&flags);
+	trace_android_vh_anon_gfp_adjust(&flags);
 	/*
 	 * If the page is mapped with PROT_MTE, initialise the tags at the
 	 * point of allocation and page zeroing as this is usually faster than
