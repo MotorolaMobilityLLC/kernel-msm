@@ -393,6 +393,7 @@ int glink_rpm_resume_noirq(struct device *dev)
 	if (pm_suspend_via_firmware()) {
 		dev_info(dev, "Deep sleep exit path\n");
 
+		glink_ssr_notify_rpm();
 		glink_rpm_unregister(dev);
 		glink = glink_rpm_register(dev, dev->of_node);
 		if (IS_ERR(glink)) {
