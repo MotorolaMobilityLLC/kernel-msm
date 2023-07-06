@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -11,12 +12,14 @@
 #include <linux/of_device.h>
 #include <linux/of.h>
 #include <linux/regmap.h>
+#include <linux/pm_runtime.h>
 
 #include <dt-bindings/clock/qcom,gpucc-kalama.h>
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
 #include "clk-pll.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap.h"
 #include "clk-regmap-divider.h"
@@ -52,7 +55,7 @@ static struct pll_vco lucid_ole_vco[] = {
 	{ 249600000, 2000000000, 0 },
 };
 
-static const struct alpha_pll_config gpu_cc_pll0_config = {
+static struct alpha_pll_config gpu_cc_pll0_config = {
 	.l = 0x1E,
 	.cal_l = 0x44,
 	.cal_l_ringosc = 0x44,
@@ -73,6 +76,7 @@ static struct clk_alpha_pll gpu_cc_pll0 = {
 	.vco_table = lucid_ole_vco,
 	.num_vco = ARRAY_SIZE(lucid_ole_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE],
+	.config = &gpu_cc_pll0_config,
 	.clkr = {
 		.hw.init = &(struct clk_init_data){
 			.name = "gpu_cc_pll0",
@@ -94,7 +98,7 @@ static struct clk_alpha_pll gpu_cc_pll0 = {
 	},
 };
 
-static const struct alpha_pll_config gpu_cc_pll1_config = {
+static struct alpha_pll_config gpu_cc_pll1_config = {
 	.l = 0x16,
 	.cal_l = 0x44,
 	.cal_l_ringosc = 0x44,
@@ -115,6 +119,7 @@ static struct clk_alpha_pll gpu_cc_pll1 = {
 	.vco_table = lucid_ole_vco,
 	.num_vco = ARRAY_SIZE(lucid_ole_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE],
+	.config = &gpu_cc_pll1_config,
 	.clkr = {
 		.hw.init = &(struct clk_init_data){
 			.name = "gpu_cc_pll1",
@@ -618,7 +623,7 @@ static const struct regmap_config gpu_cc_kalama_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gpu_cc_kalama_desc = {
+static struct qcom_cc_desc gpu_cc_kalama_desc = {
 	.config = &gpu_cc_kalama_regmap_config,
 	.clks = gpu_cc_kalama_clocks,
 	.num_clks = ARRAY_SIZE(gpu_cc_kalama_clocks),
@@ -643,6 +648,10 @@ static int gpu_cc_kalama_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	ret = register_qcom_clks_pm(pdev, true, &gpu_cc_kalama_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
+
 	clk_lucid_ole_pll_configure(&gpu_cc_pll0, regmap, &gpu_cc_pll0_config);
 	clk_lucid_ole_pll_configure(&gpu_cc_pll1, regmap, &gpu_cc_pll1_config);
 
@@ -652,6 +661,7 @@ static int gpu_cc_kalama_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	pm_runtime_put_sync(&pdev->dev);
 	dev_info(&pdev->dev, "Registered GPU CC clocks\n");
 
 	return ret;

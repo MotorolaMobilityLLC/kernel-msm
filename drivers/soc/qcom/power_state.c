@@ -226,7 +226,8 @@ static int send_deep_sleep_vote(int state, struct power_state_drvdata *drv)
 	drv->kvp_req.data = (void *)&val;
 	drv->kvp_req.length = sizeof(val);
 
-	return msm_rpm_send_message(MSM_RPM_CTX_SLEEP_SET, RPM_XO_DS_REQ, RPM_XO_DS_ID, &drv->kvp_req, 1);
+	return msm_rpm_send_message(MSM_RPM_CTX_SLEEP_SET, RPM_XO_DS_REQ,
+				    RPM_XO_DS_ID, &drv->kvp_req, 1);
 }
 #elif IS_ENABLED(CONFIG_NOTIFY_AOP)
 static int send_deep_sleep_vote(int state, struct power_state_drvdata *drv)
@@ -580,13 +581,13 @@ static int power_state_probe(struct platform_device *pdev)
 		list_add_tail(&ss_data->list, &drv->sub_sys_list);
 	}
 
-#if IS_ENABLED(CONFIG_NOTIFY_AOP)
-	drv->qmp = qmp_get(&pdev->dev);
-	if (IS_ERR(drv->qmp)) {
-		ret = PTR_ERR(drv->qmp);
-		goto remove_ss;
+	if (IS_ENABLED(CONFIG_NOTIFY_AOP)) {
+		drv->qmp = qmp_get(&pdev->dev);
+		if (IS_ERR(drv->qmp)) {
+			ret = PTR_ERR(drv->qmp);
+			goto remove_ss;
+		}
 	}
-#endif
 
 	drv->ps_ops.suspend = power_state_suspend;
 	drv->ps_ops.resume = power_state_resume;
@@ -614,9 +615,9 @@ static int power_state_remove(struct platform_device *pdev)
 	struct subsystem_data *ss_data;
 
 	unregister_syscore_ops(&drv->ps_ops);
-#if IS_ENABLED(CONFIG_NOTIFY_AOP)
-	qmp_put(drv->qmp);
-#endif
+	if (IS_ENABLED(CONFIG_NOTIFY_AOP))
+		qmp_put(drv->qmp);
+
 	list_for_each_entry(ss_data, &drv->sub_sys_list, list) {
 		qcom_unregister_ssr_notifier(ss_data->ssr_handle, &ss_data->ps_ssr_nb);
 		list_del(&ss_data->list);

@@ -2985,7 +2985,7 @@ static int __init qcom_scm_init(void)
 
 	return qtee_shmbridge_driver_init();
 }
-subsys_initcall(qcom_scm_init);
+core_initcall(qcom_scm_init);
 
 #if IS_MODULE(CONFIG_QCOM_SCM)
 static void __exit qcom_scm_exit(void)

@@ -1393,7 +1393,7 @@ config NOTIFY_AOP
 	help
 	  set this option to send the DeepSleep notification to AOP from
 	  APSS when APSS decided to go to the Deep Sleep. AOP once it
-	  recieves the notification, save the state and once all subsystems
+	  receives the notification, save the state and once all subsystems
 	  went to power collapse put the device to Deep Sleep.
 
 config RENAME_DEVICES

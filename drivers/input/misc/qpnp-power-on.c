@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -2556,7 +2556,7 @@ static int qpnp_pon_freeze(struct device *dev)
 static int qpnp_pon_suspend(struct device *dev)
 {
 #ifdef CONFIG_DEEPSLEEP
-	if (pm_suspend_via_firmware() == PM_SUSPEND_MEM)
+	if (pm_suspend_via_firmware())
 		return qpnp_pon_freeze(dev);
 #endif
 
@@ -2566,7 +2566,7 @@ static int qpnp_pon_suspend(struct device *dev)
 static int qpnp_pon_resume(struct device *dev)
 {
 #ifdef CONFIG_DEEPSLEEP
-	if (pm_suspend_via_firmware() == PM_SUSPEND_MEM)
+	if (pm_suspend_via_firmware())
 		return qpnp_pon_restore(dev);
 #endif
 

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/**
+/*
  * extcon-qcom-spmi-misc.c - Qualcomm USB extcon driver to support USB ID
  *			and VBUS detection based on extcon-usb-gpio.c.
  *
  * Copyright (C) 2016 Linaro, Ltd.
  * Stephen Boyd <stephen.boyd@linaro.org>
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/devm-helpers.h>
@@ -16,6 +17,8 @@
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/of_irq.h>
+#include <linux/suspend.h>
 #include <linux/workqueue.h>
 
 #define USB_ID_DEBOUNCE_MS	5	/* ms */
@@ -163,12 +166,79 @@ static int qcom_usb_extcon_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static int qcom_usb_extcon_freeze(struct device *dev)
+{
+	struct qcom_usb_extcon_info *info = dev_get_drvdata(dev);
+
+	pr_debug("Entering Hibernation via %s\n", __func__);
+
+	if (info->id_irq > 0) {
+		disable_irq(info->id_irq);
+		devm_free_irq(dev, info->id_irq, info);
+	}
+	if (info->vbus_irq > 0) {
+		disable_irq(info->vbus_irq);
+		devm_free_irq(dev, info->vbus_irq, info);
+	}
+
+	return 0;
+}
+
+static int qcom_usb_extcon_restore(struct device *dev)
+{
+	struct qcom_usb_extcon_info *info = dev_get_drvdata(dev);
+	int ret = 0;
+
+	pr_debug("Restoring from hibernation via %s\n", __func__);
+
+	ret = devm_delayed_work_autocancel(dev, &info->wq_detcable,
+					   qcom_usb_extcon_detect_cable);
+	if (ret)
+		return ret;
+
+	if (info->id_irq > 0) {
+		ret = devm_request_threaded_irq(dev, info->id_irq, NULL,
+					qcom_usb_irq_handler,
+					IRQF_TRIGGER_RISING |
+					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+					"usb_id", info);
+		if (ret < 0) {
+			dev_err(dev, "failed to request handler for ID IRQ\n");
+			return ret;
+		}
+	}
+
+	if (info->vbus_irq > 0) {
+		ret = devm_request_threaded_irq(dev, info->vbus_irq, NULL,
+					qcom_usb_irq_handler,
+					IRQF_TRIGGER_RISING |
+					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+					"usb_vbus", info);
+		if (ret < 0) {
+			dev_err(dev, "failed to request handler for VBUS IRQ\n");
+			return ret;
+		}
+	}
+
+	/* Perform initial detection */
+	qcom_usb_extcon_detect_cable(&info->wq_detcable.work);
+
+	return ret;
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int qcom_usb_extcon_suspend(struct device *dev)
 {
 	struct qcom_usb_extcon_info *info = dev_get_drvdata(dev);
 	int ret = 0;
 
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware()) {
+		pr_debug("Entering Deepsleep via %s\n", __func__);
+		qcom_usb_extcon_freeze(dev);
+		return 0;
+	}
+#endif
 	if (device_may_wakeup(dev)) {
 		if (info->id_irq > 0)
 			ret = enable_irq_wake(info->id_irq);
@@ -184,6 +254,14 @@ static int qcom_usb_extcon_resume(struct device *dev)
 	struct qcom_usb_extcon_info *info = dev_get_drvdata(dev);
 	int ret = 0;
 
+#ifdef CONFIG_DEEPSLEEP
+	if (pm_suspend_via_firmware()) {
+		pr_debug("Resuming from deepsleep via %s\n", __func__);
+		qcom_usb_extcon_restore(dev);
+		return 0;
+	}
+#endif
+
 	if (device_may_wakeup(dev)) {
 		if (info->id_irq > 0)
 			ret = disable_irq_wake(info->id_irq);
@@ -195,8 +273,12 @@ static int qcom_usb_extcon_resume(struct device *dev)
 }
 #endif
 
-static SIMPLE_DEV_PM_OPS(qcom_usb_extcon_pm_ops,
-			 qcom_usb_extcon_suspend, qcom_usb_extcon_resume);
+static const struct dev_pm_ops qcom_usb_extcon_pm_ops = {
+	.suspend = qcom_usb_extcon_suspend,
+	.resume  = qcom_usb_extcon_resume,
+	.freeze  = qcom_usb_extcon_freeze,
+	.restore = qcom_usb_extcon_restore,
+};
 
 static const struct of_device_id qcom_usb_extcon_dt_match[] = {
 	{ .compatible = "qcom,pm8941-misc", },

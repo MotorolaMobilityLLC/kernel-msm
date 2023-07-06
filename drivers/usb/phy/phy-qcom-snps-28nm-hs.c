@@ -63,6 +63,7 @@ struct msm_snps_hsphy {
 	struct regulator_bulk_data	regulator[USB_HSPHY_MAX_REGULATORS];
 
 	struct mutex		phy_lock;
+	bool			reg_enabled;
 };
 
 struct hsphy_reg_val {
@@ -128,6 +129,8 @@ static int msm_snps_hsphy_disable_regulators(struct msm_snps_hsphy *phy)
 	int ret = 0;
 
 	dev_dbg(phy->phy.dev, "%s turn off regulators\n", __func__);
+	if (!phy->reg_enabled)
+		return 0;
 
 	mutex_lock(&phy->phy_lock);
 	ret = regulator_bulk_disable(USB_HSPHY_MAX_REGULATORS, phy->regulator);
@@ -145,6 +148,7 @@ static int msm_snps_hsphy_disable_regulators(struct msm_snps_hsphy *phy)
 	ret = msm_snps_hsphy_config_regulators(phy, 0);
 
 	mutex_unlock(&phy->phy_lock);
+	phy->reg_enabled = false;
 
 	return ret;
 }
@@ -154,6 +158,9 @@ static int msm_snps_hsphy_enable_regulators(struct msm_snps_hsphy *phy)
 	int ret = 0;
 
 	dev_dbg(phy->phy.dev, "%s turn on regulators.\n", __func__);
+
+	if (phy->reg_enabled)
+		return 0;
 
 	mutex_lock(&phy->phy_lock);
 	ret = msm_snps_hsphy_config_regulators(phy, 1);
@@ -183,6 +190,7 @@ static int msm_snps_hsphy_enable_regulators(struct msm_snps_hsphy *phy)
 		goto unset_3p3_load;
 
 	mutex_unlock(&phy->phy_lock);
+	phy->reg_enabled = true;
 
 	dev_dbg(phy->phy.dev, "%s(): HSUSB PHY's regulators are turned ON.\n",
 								__func__);
@@ -327,6 +335,7 @@ static int msm_snps_hsphy_init(struct usb_phy *uphy)
 	int ret;
 
 	dev_dbg(phy->phy.dev, "%s: Initialize HS PHY\n", __func__);
+	msm_snps_hsphy_enable_regulators(phy);
 	ret = msm_snps_phy_block_reset(phy);
 	if (ret)
 		return ret;

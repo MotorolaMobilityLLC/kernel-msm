@@ -272,6 +272,7 @@ struct mhi_config {
 #define MHI_ENV_VALUE			2
 #define MHI_MASK_ROWS_CH_EV_DB		4
 #define TRB_MAX_DATA_SIZE		8192
+#define TRB_MAX_DATA_SIZE_16K		16384
 #define MHI_CTRL_STATE			100
 #define MHI_MAX_NUM_INSTANCES		17 /* 1PF and 16 VFs */
 #define MHI_DEFAULT_ERROR_LOG_ID	255
