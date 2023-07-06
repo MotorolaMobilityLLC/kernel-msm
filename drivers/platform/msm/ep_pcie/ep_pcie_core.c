@@ -828,6 +828,9 @@ static void ep_pcie_core_init(struct ep_pcie_dev_t *dev, bool configured)
 		ep_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CAPABILITY, 0,
 			0x1f);
 
+		/* Set CLK_PM_EN which allows to configure the clock-power-man bit below for EP */
+		ep_pcie_write_mask(dev->elbi + PCIE20_ELBI_SYS_CTRL, 1, BIT(7));
+
 		/* Enable Clock Power Management */
 		ep_pcie_write_reg_field(dev->dm_core, PCIE20_LINK_CAPABILITIES,
 			PCIE20_MASK_CLOCK_POWER_MAN, 0x1);
