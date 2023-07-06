@@ -2514,7 +2514,7 @@ static struct smb_irq_info smb5_irqs[] = {
 	},
 	[INPUT_CURRENT_LIMITING_IRQ] = {
 		.name		= "input-current-limiting",
-		.handler	= smb5_default_irq_handler,
+		.handler	= smb5_icl_irq_handler,
 	},
 	[CONCURRENT_MODE_DISABLE_IRQ] = {
 		.name		= "concurrent-mode-disable",
