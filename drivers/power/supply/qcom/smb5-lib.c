@@ -5266,6 +5266,14 @@ irqreturn_t smb5_default_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+irqreturn_t smb5_icl_irq_handler(int irq, void *data)
+{
+	struct smb_irq_data *irq_data = data;
+
+	pr_debug("%s IRQ: %s\n",__func__, irq_data->name);
+	return IRQ_HANDLED;
+}
+
 irqreturn_t smb5_smb_en_irq_handler(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
