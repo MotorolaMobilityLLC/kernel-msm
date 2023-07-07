@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -114,8 +115,8 @@ hh_rm_init_connection_buff(struct hh_rm_connection *connection,
 	if (!payload_size)
 		return 0;
 
-	max_buf_size = (HH_MSGQ_MAX_MSG_SIZE_BYTES - hdr_size) *
-			(hdr->fragments + 1);
+	max_buf_size = payload_size +
+			(hdr->fragments * HH_RM_MAX_MSG_SIZE_BYTES);
 
 	if (payload_size > max_buf_size) {
 		pr_err("%s: Payload size exceeds max buff size\n", __func__);
