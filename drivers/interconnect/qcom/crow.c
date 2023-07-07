@@ -177,13 +177,35 @@ static struct qcom_icc_node qhm_qup0 = {
 	.links = { SLAVE_A2NOC_SNOC },
 };
 
+static struct qcom_icc_qosbox qnm_cnoc_datapath_qos = {
+	.regs = icc_qnoc_qos_regs[ICC_QNOC_QOSGEN_TYPE_RPMH],
+	.num_ports = 1,
+	.offsets = { 0x14000 },
+	.config = &(struct qos_config) {
+		.prio = 2,
+		.urg_fwd = 0,
+		.prio_fwd_disable = 1,
+	},
+};
+
+static struct qcom_icc_node qnm_cnoc_datapath = {
+	.name = "qnm_cnoc_datapath",
+	.id = MASTER_CNOC_A2NOC,
+	.channels = 1,
+	.buswidth = 8,
+	.noc_ops = &qcom_qnoc4_ops,
+	.qosbox = &qnm_cnoc_datapath_qos,
+	.num_links = 1,
+	.links = { SLAVE_A2NOC_SNOC },
+};
+
 static struct qcom_icc_qosbox qxm_crypto_qos = {
 	.regs = icc_qnoc_qos_regs[ICC_QNOC_QOSGEN_TYPE_RPMH],
 	.num_ports = 1,
 	.offsets = { 0x15000 },
 	.config = &(struct qos_config) {
 		.prio = 2,
-		.urg_fwd = 1,
+		.urg_fwd = 0,
 		.prio_fwd_disable = 1,
 	},
 };
@@ -205,7 +227,7 @@ static struct qcom_icc_qosbox qxm_ipa_qos = {
 	.offsets = { 0x16000 },
 	.config = &(struct qos_config) {
 		.prio = 2,
-		.urg_fwd = 1,
+		.urg_fwd = 0,
 		.prio_fwd_disable = 1,
 	},
 };
@@ -420,7 +442,7 @@ static struct qcom_icc_qosbox qnm_gpu_qos = {
 	.offsets = { 0x31000, 0x71000 },
 	.config = &(struct qos_config) {
 		.prio = 0,
-		.urg_fwd = 1,
+		.urg_fwd = 0,
 		.prio_fwd_disable = 1,
 	},
 };
@@ -520,7 +542,7 @@ static struct qcom_icc_qosbox qnm_nsp_gemnoc_qos = {
 	.offsets = { 0x37000, 0x77000 },
 	.config = &(struct qos_config) {
 		.prio = 0,
-		.urg_fwd = 1,
+		.urg_fwd = 0,
 		.prio_fwd_disable = 1,
 	},
 };
@@ -542,7 +564,7 @@ static struct qcom_icc_qosbox qnm_pcie_qos = {
 	.num_ports = 1,
 	.offsets = { 0xb7000 },
 	.config = &(struct qos_config) {
-		.prio = 2,
+		.prio = 0,
 		.urg_fwd = 1,
 		.prio_fwd_disable = 0,
 	},
@@ -675,8 +697,8 @@ static struct qcom_icc_qosbox qnm_camnoc_icp_qos = {
 	.num_ports = 1,
 	.offsets = { 0x2a000 },
 	.config = &(struct qos_config) {
-		.prio = 4,
-		.urg_fwd = 1,
+		.prio = 5,
+		.urg_fwd = 0,
 		.prio_fwd_disable = 1,
 	},
 };
@@ -764,7 +786,7 @@ static struct qcom_icc_qosbox qnm_video_cpu_qos = {
 	.offsets = { 0x34000 },
 	.config = &(struct qos_config) {
 		.prio = 4,
-		.urg_fwd = 1,
+		.urg_fwd = 0,
 		.prio_fwd_disable = 1,
 	},
 };
@@ -1885,6 +1907,7 @@ static struct qcom_icc_node *aggre2_noc_nodes[] = {
 	[MASTER_QDSS_BAM] = &qhm_qdss_bam,
 	[MASTER_QSPI_0] = &qhm_qspi,
 	[MASTER_QUP_0] = &qhm_qup0,
+	[MASTER_CNOC_A2NOC] = &qnm_cnoc_datapath,
 	[MASTER_CRYPTO] = &qxm_crypto,
 	[MASTER_IPA] = &qxm_ipa,
 	[MASTER_QDSS_ETR] = &xm_qdss_etr_0,
