@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -344,6 +344,7 @@ static struct platform_driver rimps_log_driver = {
 	.driver = {
 		.name = "rimps-log",
 		.of_match_table = rimps_log,
+		.suppress_bind_attrs = true,
 	},
 	.probe = rimps_log_probe,
 	.remove = rimps_log_remove,
