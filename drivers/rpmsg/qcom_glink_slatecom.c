@@ -250,8 +250,12 @@ struct glink_slatecom_channel {
 
 	struct mutex intent_req_lock;
 	bool intent_req_result;
-	struct completion intent_req_comp;
-	struct completion intent_alloc_comp;
+
+	atomic_t intent_req_acked;
+	atomic_t intent_req_completed;
+	wait_queue_head_t intent_req_ack;
+	wait_queue_head_t intent_req_comp;
+
 	bool remote_close;
 };
 
@@ -312,8 +316,10 @@ glink_slatecom_alloc_channel(struct glink_slatecom *glink, const char *name)
 
 	init_completion(&channel->close_ack);
 
-	init_completion(&channel->intent_req_comp);
-	init_completion(&channel->intent_alloc_comp);
+	atomic_set(&channel->intent_req_acked, 0);
+	atomic_set(&channel->intent_req_completed, 0);
+	init_waitqueue_head(&channel->intent_req_ack);
+	init_waitqueue_head(&channel->intent_req_comp);
 
 	idr_init(&channel->liids);
 	idr_init(&channel->riids);
@@ -332,8 +338,11 @@ static void glink_slatecom_channel_release(struct kref *ref)
 	CH_INFO(channel, "\n");
 
 	channel->intent_req_result = false;
-	complete(&channel->intent_req_comp);
-	complete(&channel->intent_alloc_comp);
+
+	atomic_inc(&channel->intent_req_acked);
+	wake_up(&channel->intent_req_ack);
+	atomic_inc(&channel->intent_req_completed);
+	wake_up(&channel->intent_req_comp);
 
 	mutex_lock(&channel->intent_lock);
 	idr_for_each_entry(&channel->liids, tmp, iid) {
@@ -609,7 +618,10 @@ static void glink_slatecom_handle_intent_req_ack(struct glink_slatecom *glink,
 	}
 
 	channel->intent_req_result = granted;
-	complete(&channel->intent_req_comp);
+
+	atomic_inc(&channel->intent_req_acked);
+	wake_up(&channel->intent_req_ack);
+
 	CH_INFO(channel, "\n");
 }
 
@@ -696,8 +708,8 @@ static int glink_slatecom_request_intent(struct glink_slatecom *glink,
 	kref_get(&channel->refcount);
 	mutex_lock(&channel->intent_req_lock);
 
-	reinit_completion(&channel->intent_req_comp);
-	reinit_completion(&channel->intent_alloc_comp);
+	atomic_set(&channel->intent_req_acked, 0);
+	atomic_set(&channel->intent_req_completed, 0);
 
 	req.cmd = cpu_to_le16(SLATECOM_CMD_RX_INTENT_REQ);
 	req.param1 = cpu_to_le16(channel->lcid);
@@ -709,10 +721,17 @@ static int glink_slatecom_request_intent(struct glink_slatecom *glink,
 	if (ret)
 		goto unlock;
 
-	ret = wait_for_completion_timeout(&channel->intent_req_comp, 10 * HZ);
+	ret = wait_event_timeout(channel->intent_req_ack,
+				 atomic_read(&channel->intent_req_acked) ||
+				 atomic_read(&glink->in_reset), 10 * HZ);
 	if (!ret) {
 		dev_err(glink->dev, "intent request ack timed out\n");
 		ret = -ETIMEDOUT;
+	} else if (atomic_read(&glink->in_reset)) {
+		CH_INFO(channel, "ssr detected\n");
+		ret = -ECONNRESET;
+	} else {
+		ret = channel->intent_req_result ? 0 : -ECANCELED;
 	}
 
 	if (!channel->intent_req_result) {
@@ -722,13 +741,6 @@ static int glink_slatecom_request_intent(struct glink_slatecom *glink,
 		goto unlock;
 	}
 
-	ret = wait_for_completion_timeout(&channel->intent_alloc_comp, 10 * HZ);
-	if (!ret) {
-		dev_err(glink->dev, "intent request alloc timed out\n");
-		ret = -ETIMEDOUT;
-	} else {
-		ret = channel->intent_req_result ? 0 : -ECANCELED;
-	}
 unlock:
 	mutex_unlock(&channel->intent_req_lock);
 	kref_put(&channel->refcount, glink_slatecom_channel_release);
@@ -853,6 +865,23 @@ static int __glink_slatecom_send(struct glink_slatecom_channel *channel,
 		}
 
 		ret = glink_slatecom_request_intent(glink, channel, len);
+		if (ret < 0)
+			goto tx_exit;
+
+		/*Wait for intents to arrive*/
+		ret = wait_event_timeout(channel->intent_req_comp,
+					 atomic_read(&channel->intent_req_completed) ||
+					 atomic_read(&glink->in_reset), 10 * HZ);
+		if (!ret) {
+			dev_err(glink->dev, "intent request completion timed out\n");
+			ret = -ETIMEDOUT;
+		} else if (atomic_read(&glink->in_reset)) {
+			CH_INFO(channel, "ssr detected\n");
+			ret = -ECONNRESET;
+		} else {
+			ret = channel->intent_req_result ? 0 : -ECANCELED;
+		}
+
 		if (ret < 0)
 			goto tx_exit;
 	}
@@ -1895,7 +1924,9 @@ static int glink_slatecom_handle_intent(struct glink_slatecom *glink,
 			dev_err(glink->dev, "failed to store remote intent\n");
 	}
 
-	complete(&channel->intent_alloc_comp);
+	atomic_inc(&channel->intent_req_completed);
+	wake_up(&channel->intent_req_comp);
+
 	return msglen;
 }
 
@@ -2138,7 +2169,10 @@ static int glink_slatecom_cleanup(struct glink_slatecom *glink)
 	idr_for_each_entry(&glink->lcids, channel, cid) {
 		/* Wakeup threads waiting for intent*/
 		complete(&channel->close_ack);
-		complete(&channel->intent_req_comp);
+
+		atomic_inc(&channel->intent_req_acked);
+		wake_up(&channel->intent_req_ack);
+
 		kref_put(&channel->refcount, glink_slatecom_channel_release);
 		idr_remove(&glink->lcids, cid);
 	}
