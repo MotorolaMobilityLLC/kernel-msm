@@ -15,6 +15,7 @@
  */
 
 #include "ufshcd.h"
+#include "ufshcd-add-info.h"
 #include "ufshcd-crypto.h"
 #include "ufsfeature.h"
 #include <trace/events/ufs.h>
@@ -316,6 +317,8 @@ void ufsf_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	ufsf_clk_scaling_start_busy(hba);
 	if (unlikely(ufsf_should_inform_monitor(hba, lrbp)))
 		ufsf_start_monitor(hba, lrbp);
+       if (hba->vops && hba->vops->setup_xfer_req)
+               hba->vops->setup_xfer_req(hba, task_tag, !!lrbp->cmd);
 	if (ufshcd_has_utrlcnr(hba)) {
 		set_bit(task_tag, &hba->outstanding_reqs);
 		ufshcd_writel(hba, 1 << task_tag,
@@ -567,34 +570,18 @@ static void ufsf_add_query_upiu_trace(struct ufs_hba *hba, unsigned int tag,
  * it is expected you hold the hba->dev_cmd.lock mutex.
  */
 static int ufsf_exec_dev_cmd(struct ufs_hba *hba,
-			     enum dev_cmd_type cmd_type, int timeout)
+		enum dev_cmd_type cmd_type, int timeout)
 {
-	struct request_queue *q = hba->cmd_queue;
-	struct request *req;
+	DECLARE_COMPLETION_ONSTACK(wait);
+	const u32 tag = ufs_hba_add_info(hba)->reserved_slot;
 	struct ufshcd_lrb *lrbp;
 	int err;
-	int tag;
-	struct completion wait;
+
+	/* Protects use of ufs_hba_add_info(hba)->reserved_slot. */
+	lockdep_assert_held(&hba->dev_cmd.lock);
 
 	down_read(&hba->clk_scaling_lock);
 
-	/*
-	 * Get free slot, sleep if slots are unavailable.
-	 * Even though we use wait_event() which sleeps indefinitely,
-	 * the maximum wait time is bounded by SCSI request timeout.
-	 */
-	req = blk_get_request(q, REQ_OP_DRV_OUT, 0);
-	if (IS_ERR(req)) {
-		err = PTR_ERR(req);
-		goto out_unlock;
-	}
-	tag = req->tag;
-	WARN_ON_ONCE(!ufsf_valid_tag(hba, tag));
-	/* Set the timeout such that the SCSI error handler is not activated. */
-	req->timeout = msecs_to_jiffies(2 * timeout);
-	blk_mq_start_request(req);
-
-	init_completion(&wait);
 	lrbp = &hba->lrb[tag];
 	WARN_ON(lrbp->cmd);
 	err = ufsf_compose_dev_cmd(hba, lrbp, cmd_type, tag);
@@ -613,8 +600,6 @@ static int ufsf_exec_dev_cmd(struct ufs_hba *hba,
 			err ? "query_complete_err" : "query_complete");
 
 out:
-	blk_put_request(req);
-out_unlock:
 	up_read(&hba->clk_scaling_lock);
 	return err;
 }
