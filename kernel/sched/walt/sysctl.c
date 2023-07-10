@@ -51,6 +51,7 @@ unsigned int sysctl_input_boost_freq[8];
 unsigned int sysctl_sched_boost_on_input;
 unsigned int sysctl_sched_early_up[MAX_MARGIN_LEVELS];
 unsigned int sysctl_sched_early_down[MAX_MARGIN_LEVELS];
+int sysctl_cluster_arr[3][15];
 
 /* sysctl nodes accesed by other files */
 unsigned int __read_mostly sysctl_sched_coloc_downmigrate_ns;
@@ -82,6 +83,7 @@ unsigned int sysctl_ed_boost_pct;
 unsigned int sysctl_em_inflate_pct = 100;
 unsigned int sysctl_em_inflate_thres = 1024;
 unsigned int sysctl_sched_heavy_nr;
+struct cluster_freq_relation cluster_arr[3][6];
 
 /* range is [1 .. INT_MAX] */
 static int sysctl_task_read_pid = 1;
@@ -1058,6 +1060,33 @@ struct ctl_table walt_table[] = {
 		.proc_handler	= proc_douintvec_minmax,
 		.extra1		= SYSCTL_ZERO,
 		.extra2		= &walt_max_cpus,
+	},
+	{
+		.procname	= "cluster0_rel",
+		.data		= sysctl_cluster_arr[0],
+		.maxlen		= sizeof(int) * 15,
+		.mode		= 0644,
+		.proc_handler	= sched_ignore_cluster_handler,
+		.extra1		= SYSCTL_ZERO,
+		.extra2		= SYSCTL_INT_MAX,
+	},
+	{
+		.procname	= "cluster1_rel",
+		.data		= sysctl_cluster_arr[1],
+		.maxlen		= sizeof(int) * 15,
+		.mode		= 0644,
+		.proc_handler	= sched_ignore_cluster_handler,
+		.extra1		= SYSCTL_ZERO,
+		.extra2		= SYSCTL_INT_MAX,
+	},
+	{
+		.procname	= "cluster2_rel",
+		.data		= sysctl_cluster_arr[2],
+		.maxlen		= sizeof(int) * 15,
+		.mode		= 0644,
+		.proc_handler	= sched_ignore_cluster_handler,
+		.extra1		= SYSCTL_ZERO,
+		.extra2		= SYSCTL_INT_MAX,
 	},
 	{ }
 };

@@ -14,6 +14,8 @@
 #required by memory module
   blk_execute_rq
   blk_rq_map_kern
+  nr_free_buffer_pages
+  mmc_set_blocklen
   scsi_device_lookup
   scsi_host_lookup
   scsi_host_put
@@ -103,6 +105,21 @@
   __traceiter_android_vh_dm_update_clone_bio
   __traceiter_android_vh_direct_io_update_bio
   __traceiter_android_vh_loop_prepare_cmd
+
+#required by bfq module
+  __blkg_prfill_rwstat
+  blkg_rwstat_recursive_sum
+  blkg_prfill_rwstat
+  blkg_conf_finish
+  blkg_conf_prep
+  __blkg_prfill_u64
+  blkcg_print_blkgs
+  blkg_rwstat_exit
+  blkg_rwstat_init
+  percpu_counter_add_batch
+  io_cgrp_subsys_on_dfl_key
+  ioc_lookup_icq
+  bdi_dev_name
 
 #required by cs35l41 module
   regmap_raw_write_async

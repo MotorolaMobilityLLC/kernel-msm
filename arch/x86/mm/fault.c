@@ -1227,6 +1227,7 @@ void do_user_addr_fault(struct pt_regs *regs,
 	vm_fault_t fault;
 	unsigned int flags = FAULT_FLAG_DEFAULT;
 #ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	struct vm_area_struct pvma;
 	unsigned long seq;
 #endif
 
@@ -1351,17 +1352,17 @@ void do_user_addr_fault(struct pt_regs *regs,
 		count_vm_spf_event(SPF_ABORT_NO_SPECULATE);
 		goto spf_abort;
 	}
-
+	pvma = *vma;
 	if (!mmap_seq_read_check(mm, seq, SPF_ABORT_VMA_COPY)) {
 		put_vma(vma);
 		goto spf_abort;
 	}
-	if (unlikely(access_error(error_code, vma))) {
+	if (unlikely(access_error(error_code, &pvma))) {
 		put_vma(vma);
 		count_vm_spf_event(SPF_ABORT_ACCESS_ERROR);
 		goto spf_abort;
 	}
-	fault = do_handle_mm_fault(vma, address,
+	fault = do_handle_mm_fault(&pvma, address,
 			flags | FAULT_FLAG_SPECULATIVE, seq, regs);
 	put_vma(vma);
 

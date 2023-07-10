@@ -1396,6 +1396,7 @@
   tasklet_setup
   tasklet_unlock_wait
   __task_pid_nr_ns
+  tcpm_tcpc_reset
   thermal_zone_get_temp
   thermal_zone_get_zone_by_name
   time64_to_tm
