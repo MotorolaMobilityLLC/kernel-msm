@@ -79,7 +79,7 @@ define_db845c(
         "drivers/base/regmap/regmap-spmi.ko",
         # TODO(b/233404531): Remove zram.ko when db845c is a mixed build
         "drivers/block/zram/zram.ko",
-        "drivers/bus/mhi/core/mhi.ko",
+        "drivers/bus/mhi/host/mhi.ko",
         "drivers/clk/qcom/clk-qcom.ko",
         "drivers/clk/qcom/clk-rpmh.ko",
         "drivers/clk/qcom/clk-spmi-pmic-div.ko",
@@ -210,7 +210,6 @@ define_db845c(
         # TODO(b/233404531): Remove zsmalloc.ko when db845c is a mixed build
         "mm/zsmalloc.ko",
         "net/mac80211/mac80211.ko",
-        "net/qrtr/ns.ko",
         "net/qrtr/qrtr.ko",
         "net/qrtr/qrtr-mhi.ko",
         "net/qrtr/qrtr-smd.ko",
