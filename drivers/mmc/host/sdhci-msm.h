@@ -30,6 +30,14 @@
 
 #define MMC_CAP2_CLK_SCALE      (1 << 28)       /* Allow dynamic clk scaling */
 
+/* CPU Clusters Info */
+enum cpu_cluster_info {
+	SILVER_CORE,
+	GOLD_CORE,
+	GOLD_PRIME_CORE,
+	MAX_NUM_CLUSTERS,
+};
+
 enum dev_state {
 	DEV_SUSPENDING = 1,
 	DEV_SUSPENDED,
