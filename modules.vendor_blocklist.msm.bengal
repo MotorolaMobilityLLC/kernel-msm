@@ -64,3 +64,14 @@ blocklist xc4000
 blocklist xc5000
 blocklist fpsensor_spi_tee_v1
 blocklist fpc1020_mmi
+blocklist adapter_class
+blocklist mmi_qc3p_wt6670f
+blocklist mmi_charger
+blocklist mmi_discrete_charger_class
+blocklist sgm4154x_charger
+blocklist mmi_discrete_charger
+blocklist qpnp_adaptive_charge
+blocklist tcpc_class
+blocklist tcpc_sgm7220
+blocklist rt_pd_manager
+blocklist moto_f_usbnet
