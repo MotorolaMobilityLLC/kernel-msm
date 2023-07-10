@@ -380,6 +380,39 @@ static struct fastrpc_channel_ctx gcinfo[NUM_CHANNELS] = {
 		.cpuinfo_todsp = FASTRPC_CPUINFO_EARLY_WAKEUP,
 		.cpuinfo_status = false,
 	},
+	{
+		.name = "cdsprpc1-smd",
+		.subsys = "cdsp1",
+		.spd = {
+			{
+				.cid = CDSP_DOMAIN_ID,
+			}
+		},
+		.cpuinfo_todsp = FASTRPC_CPUINFO_EARLY_WAKEUP,
+		.cpuinfo_status = false,
+	},
+	{
+		.name = "gpdsprpc-smd",
+		.subsys = "gpdsp0",
+		.spd = {
+			{
+				.cid = GPDSP_DOMAIN_ID,
+			}
+		},
+		.cpuinfo_todsp = FASTRPC_CPUINFO_EARLY_WAKEUP,
+		.cpuinfo_status = false,
+	},
+	{
+		.name = "gpdsprpc1-smd",
+		.subsys = "gpdsp1",
+		.spd = {
+			{
+				.cid = GPDSP1_DOMAIN_ID,
+			}
+		},
+		.cpuinfo_todsp = FASTRPC_CPUINFO_EARLY_WAKEUP,
+		.cpuinfo_status = false,
+	},
 };
 
 static int hlosvm[1] = {VMID_HLOS};

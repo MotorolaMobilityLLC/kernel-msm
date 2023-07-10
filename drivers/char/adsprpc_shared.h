@@ -108,13 +108,16 @@
 #define REMOTE_SCALARS_OUTHANDLES(sc)    ((sc) & 0x0f)
 
 /* Remote domains ID */
-#define ADSP_DOMAIN_ID	(0)
-#define MDSP_DOMAIN_ID	(1)
-#define SDSP_DOMAIN_ID	(2)
-#define CDSP_DOMAIN_ID	(3)
-#define MAX_DOMAIN_ID	CDSP_DOMAIN_ID
+#define ADSP_DOMAIN_ID		(0)
+#define MDSP_DOMAIN_ID		(1)
+#define SDSP_DOMAIN_ID		(2)
+#define CDSP_DOMAIN_ID		(3)
+#define CDSP1_DOMAIN_ID		(4)
+#define GPDSP_DOMAIN_ID		(5)
+#define GPDSP1_DOMAIN_ID	(6)
+#define MAX_DOMAIN_ID	GPDSP1_DOMAIN_ID
 
-#define NUM_CHANNELS	4	/* adsp, mdsp, slpi, cdsp*/
+#define NUM_CHANNELS	(MAX_DOMAIN_ID + 1)	/* adsp, mdsp, slpi, cdsp, cdsp1, gpdsp, gpdsp1*/
 #define NUM_SESSIONS	13	/* max 12 compute, 1 cpz */
 
 #define VALID_FASTRPC_CID(cid) \
