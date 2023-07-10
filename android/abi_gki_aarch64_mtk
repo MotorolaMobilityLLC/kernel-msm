@@ -344,6 +344,21 @@
   device_unregister
   _dev_info
   __dev_kfree_skb_any
+  devlink_alloc_ns
+  devlink_flash_update_status_notify
+  devlink_fmsg_binary_pair_nest_end
+  devlink_fmsg_binary_pair_nest_start
+  devlink_fmsg_binary_put
+  devlink_free
+  devlink_health_report
+  devlink_health_reporter_create
+  devlink_health_reporter_destroy
+  devlink_health_reporter_priv
+  devlink_health_reporter_state_update
+  devlink_region_create
+  devlink_region_destroy
+  devlink_register
+  devlink_unregister
   devm_add_action
   __devm_alloc_percpu
   devm_blk_ksm_init
