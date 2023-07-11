@@ -276,6 +276,13 @@
 		pr_alert("%s: " fmt, __func__, arg); \
 	} while (0)
 
+#define EP_PCIE_EOM(lane, dev, fmt, arg...) do {			\
+	ipc_log_string((dev)->ipc_log_eom, \
+		"" fmt, arg); \
+	if (ep_pcie_get_debug_mask())   \
+		pr_alert("%s: " fmt, __func__, arg); \
+	} while (0)
+
 #define EP_PCIE_INFO(dev, fmt, arg...) do {			 \
 	ipc_log_string((dev)->ipc_log_sel, \
 		"INFO:%s: " fmt, __func__, arg); \
@@ -442,6 +449,7 @@ struct ep_pcie_dev_t {
 	void                         *ipc_log_sel;
 	void                         *ipc_log_ful;
 	void                         *ipc_log_dump;
+	void                         *ipc_log_eom;
 	struct mutex                 setup_mtx;
 	struct mutex                 ext_mtx;
 	spinlock_t                   ext_lock;
