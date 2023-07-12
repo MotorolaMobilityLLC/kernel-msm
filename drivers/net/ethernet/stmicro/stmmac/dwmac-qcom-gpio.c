@@ -55,7 +55,7 @@ static int setup_gpio_input_common
 	return ret;
 }
 
-int ethqos_init_reqgulators(struct qcom_ethqos *ethqos)
+int ethqos_init_regulators(struct qcom_ethqos *ethqos)
 {
 	int ret = 0;
 
@@ -143,7 +143,7 @@ reg_error:
 	ethqos_disable_regulators(ethqos);
 	return ret;
 }
-EXPORT_SYMBOL(ethqos_init_reqgulators);
+EXPORT_SYMBOL(ethqos_init_regulators);
 
 void ethqos_disable_regulators(struct qcom_ethqos *ethqos)
 {
