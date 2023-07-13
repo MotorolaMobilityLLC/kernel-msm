@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017-2019, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -281,17 +281,21 @@ static struct irq_chip qcom_pdc_gic_chip = {
 	.irq_set_affinity	= irq_chip_set_affinity_parent,
 };
 
-#if IS_ENABLED(CONFIG_HIBERNATION)
-static bool in_hibernation;
+#if IS_ENABLED(CONFIG_HIBERNATION) || IS_ENABLED(CONFIG_DEEPSLEEP)
+static bool pdc_save_restore;
 static u32 pdc_enabled[MAX_ENABLE_REGS] = { 0 };
 
 static int pdc_suspend_notifier(struct notifier_block *nb,
 				unsigned long event, void *dummy)
 {
 	if (event == PM_HIBERNATION_PREPARE)
-		in_hibernation = true;
+		pdc_save_restore = true;
 	else if (event == PM_POST_HIBERNATION)
-		in_hibernation = false;
+		pdc_save_restore = false;
+	else if (event == PM_SUSPEND_PREPARE && pm_suspend_via_firmware())
+		pdc_save_restore = true;
+	else if (event == PM_POST_SUSPEND && pm_suspend_via_firmware())
+		pdc_save_restore = false;
 
 	return NOTIFY_OK;
 }
@@ -301,7 +305,7 @@ static int pdc_suspend(void)
 	int i, last_region = pdc_region_cnt - 1;
 	u32 max_reg_index, max_irq;
 
-	if (!in_hibernation)
+	if (!pdc_save_restore)
 		return 0;
 
 	max_irq = pdc_region[last_region].pin_base + pdc_region[last_region].cnt;
@@ -318,7 +322,7 @@ static void pdc_resume(void)
 	int i;
 	u32 config;
 
-	if (!in_hibernation)
+	if (!pdc_save_restore)
 		return;
 
 	for (i = 0; i < PDC_MAX_IRQS; i++) {
@@ -351,7 +355,7 @@ static struct syscore_ops pdc_syscore_ops = {
 	.resume = pdc_resume,
 };
 
-static int pdc_init_hibernation(void)
+static int pdc_init_save_restore_config(void)
 {
 	u32 ret;
 
@@ -610,8 +614,8 @@ static int qcom_pdc_init(struct device_node *node, struct device_node *parent)
 	}
 
 	irq_domain_update_bus_token(pdc_gpio_domain, DOMAIN_BUS_WAKEUP);
-#if IS_ENABLED(CONFIG_HIBERNATION)
-	pdc_init_hibernation();
+#if IS_ENABLED(CONFIG_HIBERNATION) || IS_ENABLED(CONFIG_DEEPSLEEP)
+	pdc_init_save_restore_config();
 #endif
 
 	pdc_ipc_log = ipc_log_context_create(PDC_IPC_LOG_SZ, "pdc", 0);
