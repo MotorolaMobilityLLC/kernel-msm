@@ -32,6 +32,11 @@
 #define CREATE_TRACE_POINTS
 #include "trace-qcom-lpm.h"
 
+#define LPM_PRED_RESET				0
+#define LPM_PRED_RESIDENCY_PATTERN		1
+#define LPM_PRED_PREMATURE_EXITS		2
+#define LPM_PRED_IPI_PATTERN			3
+
 #define LPM_SELECT_STATE_DISABLED		0
 #define LPM_SELECT_STATE_QOS_UNMET		1
 #define LPM_SELECT_STATE_RESIDENCY_UNMET	2
@@ -271,8 +276,10 @@ static void cpu_predict(struct lpm_cpu *cpu_gov, u64 duration_ns)
 	 * that mode.
 	 */
 	cpu_gov->predicted = find_deviation(cpu_gov, lpm_history->resi, duration_ns);
-	if (cpu_gov->predicted)
+	if (cpu_gov->predicted) {
+		cpu_gov->pred_type = LPM_PRED_RESIDENCY_PATTERN;
 		return;
+	}
 
 	/*
 	 * Find the number of premature exits for each of the mode,
@@ -296,8 +303,9 @@ static void cpu_predict(struct lpm_cpu *cpu_gov, u64 duration_ns)
 		if (count >= PRED_PREMATURE_CNT) {
 			do_div(avg_residency, count);
 			cpu_gov->predicted = avg_residency;
-			cpu_gov->next_pred_time = ktime_to_ns(cpu_gov->now)
+			cpu_gov->next_pred_time = ktime_to_us(cpu_gov->now)
 								+ cpu_gov->predicted;
+			cpu_gov->pred_type = LPM_PRED_PREMATURE_EXITS;
 			break;
 		}
 	}
@@ -307,6 +315,8 @@ static void cpu_predict(struct lpm_cpu *cpu_gov, u64 duration_ns)
 
 	cpu_gov->predicted = find_deviation(cpu_gov, ipi_history->interval,
 					    duration_ns);
+	if (cpu_gov->predicted)
+		cpu_gov->pred_type = LPM_PRED_IPI_PATTERN;
 }
 
 /**
@@ -331,6 +341,7 @@ void clear_cpu_predict_history(void)
 			lpm_history->samples_idx = 0;
 			lpm_history->nsamp = 0;
 			cpu_gov->next_pred_time = 0;
+			cpu_gov->pred_type = LPM_PRED_RESET;
 		}
 	}
 }
@@ -370,6 +381,7 @@ static void update_cpu_history(struct lpm_cpu *cpu_gov)
 		lpm_history->resi[lpm_history->samples_idx] = measured_us;
 
 	lpm_history->mode[lpm_history->samples_idx] = idx;
+	cpu_gov->pred_type = LPM_PRED_RESET;
 
 	trace_gov_pred_hist(idx, lpm_history->resi[lpm_history->samples_idx],
 			    tmr);
@@ -645,7 +657,7 @@ done:
 	}
 
 	trace_lpm_gov_select(i, latency_req, duration_ns, reason);
-	trace_gov_pred_select(cpu_gov->predicted, cpu_gov->predicted, htime);
+	trace_gov_pred_select(cpu_gov->pred_type, cpu_gov->predicted, htime);
 
 	return i;
 }
