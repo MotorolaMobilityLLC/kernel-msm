@@ -594,6 +594,7 @@ struct haptics_play_info {
 struct haptics_hw_config {
 	struct brake_cfg	brake;
 	u32			vmax_mv;
+	u32			vmax_mv_debug;
 	u32			t_lra_us;
 	u32			cl_t_lra_us;
 	u32			lra_min_mohms;
@@ -4203,6 +4204,7 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 		rc = -EINVAL;
 		goto free_pbs;
 	}
+	config->vmax_mv_debug = 0;
 
 	config->fifo_empty_thresh = get_fifo_empty_threshold(chip);
 	of_property_read_u32(node, "qcom,fifo-empty-threshold",
@@ -4876,7 +4878,8 @@ static int haptics_start_play(struct haptics_chip *chip, bool enable)
 {
 	int rc;
 	u8 amplitude;
-	u32 vmax_mv = chip->config.vmax_mv;
+	u32 vmax_mv = (chip->config.vmax_mv_debug == 0 ?
+	    chip->config.vmax_mv : chip->config.vmax_mv_debug);
 
 	mutex_lock(&chip->play.lock);
 	if (enable) {
@@ -4897,6 +4900,10 @@ static int haptics_start_play(struct haptics_chip *chip, bool enable)
 			goto unlock;
 
 		rc = haptics_enable_hpwr_vreg(chip, true);
+		if (rc < 0)
+			goto unlock;
+
+		rc = haptics_wait_hboost_ready(chip);
 		if (rc < 0)
 			goto unlock;
 
@@ -5762,12 +5769,44 @@ static ssize_t primitive_duration_store(struct class *c,
 
 static CLASS_ATTR_RW(primitive_duration);
 
+static ssize_t vmax_mv_debug_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int val;
+
+	if (kstrtoint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val >= 0) {
+	    dev_err(chip->dev, "change vmax_mv %d -> %d\n",
+	            chip->config.vmax_mv, val);
+	    chip->config.vmax_mv_debug = val;
+	} else {
+	    chip->config.vmax_mv_debug = 0;
+	}
+	return count;
+}
+
+static ssize_t vmax_mv_debug_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%d mv\n", chip->config.vmax_mv_debug);
+}
+static CLASS_ATTR_RW(vmax_mv_debug);
+
+
 static struct attribute *hap_class_attrs[] = {
 	&class_attr_lra_calibration.attr,
 	&class_attr_lra_frequency_hz.attr,
 	&class_attr_lra_impedance.attr,
 	&class_attr_primitive_duration.attr,
 	&class_attr_enable_play.attr,
+	&class_attr_vmax_mv_debug.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(hap_class);
