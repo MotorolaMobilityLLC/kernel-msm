@@ -101,6 +101,8 @@ static struct ep_pcie_clk_info_t
 	{NULL, "pcie_ddrss_sf_tbu_clk", 0, false},
 	{NULL, "pcie_aggre_noc_0_axi_clk", 0, false},
 	{NULL, "gcc_cnoc_pcie_sf_axi_clk", 0, false},
+	{NULL, "pcie_pipediv2_clk", 0, false},
+	{NULL, "pcie_phy_refgen_clk", 0, false},
 	{NULL, "pcie_phy_aux_clk", 0, false},
 };
 
