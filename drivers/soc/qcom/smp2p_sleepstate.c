@@ -104,7 +104,6 @@ static int smp2p_sleepstate_probe(struct platform_device *pdev)
 	return 0;
 err:
 	wakeup_source_unregister(notify_ws);
-	__pm_relax(notify_ws);
 err_ws:
 	unregister_pm_notifier(&smp2p_info->nb);
 	return ret;
