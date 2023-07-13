@@ -1845,8 +1845,10 @@ static int qg_get_charge_counter(struct qpnp_qg *chip, int *charge_counter)
 		return rc;
 	}
 
-	cc_soc = CAP(0, 100, DIV_ROUND_CLOSEST(chip->cc_soc, 100));
-	*charge_counter = div_s64(temp * cc_soc, 100);
+	cc_soc = CAP(0, 100*100, chip->cc_soc);
+	*charge_counter = div_s64(temp * cc_soc, 10000);
+
+	pr_info("charge-counter:%d\n",*charge_counter);
 
 	return 0;
 }
