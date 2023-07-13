@@ -66,6 +66,7 @@ blocklist fpsensor_spi_tee_v1
 blocklist fpc1020_mmi
 blocklist cw2217b_fg_mmi
 blocklist sm5602_fg_mmi
+blocklist rt9426a_fg_mmi
 blocklist adapter_class
 blocklist mmi_qc3p_wt6670f
 blocklist mmi_charger
