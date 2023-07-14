@@ -79,6 +79,17 @@ struct hwkm_clk_info {
 
 static struct ice_mmio_data *mmio_data_ref;
 
+bool qti_hwkm_init_required(const struct ice_mmio_data *mmio_data)
+{
+	u32 val = 0;
+
+	val = qti_hwkm_readl(mmio_data,
+			QTI_HWKM_ICE_RG_TZ_KM_CTL, ICEMEM_SLAVE);
+	val = (val >> ICE_LEGACY_MODE_EN_OTP) & 0x1;
+	return (val == 1);
+}
+EXPORT_SYMBOL(qti_hwkm_init_required);
+
 static inline unsigned int qti_hwkm_get_reg_data(struct ice_mmio_data *mmio_data,
 						 u32 reg, u32 offset, u32 mask,
 						 enum hwkm_destination dest)
