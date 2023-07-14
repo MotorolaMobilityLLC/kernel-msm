@@ -110,6 +110,8 @@ static const char * const gsl_rpc_func_names[] = {
 	"RPC_PERFCOUNTERS_READ",
 	"RPC_NOTIFY_CLEANUP",
 	"RPC_COMMAND_RESETSTATUS",
+	"RPC_CONTEXT_QUERY_DBCQ",
+	"RPC_CONTEXT_REGISTER_DBCQ",
 	"RPC_FUNC_LAST" // insert new func BEFORE this line!
 };
 
