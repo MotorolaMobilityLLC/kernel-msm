@@ -82,6 +82,7 @@ struct smb23x_chip {
 	int				thermal_levels;
 	u32				workaround_flags;
 	int				batt_id_ohm;
+	bool				usb_poll;
 	const char			*bms_psy_name;
 	struct power_supply		*usb_psy;
 	struct power_supply		*bms_psy;
@@ -213,6 +214,9 @@ static int hot_bat_decidegc_table[] = {
 #define SAFETY_TIMER_MASK	SMB_MASK(4, 3)
 #define SAFETY_TIMER_OFFSET	3
 #define SAFETY_TIMER_DISABLE	SMB_MASK(4, 3)
+#define SYSTEM_VOLATGE_MASK	SMB_MASK(1, 0)
+#define TEMP_MASK		SMB_MASK(7, 0)
+#define SYS_VOLT_VBATT_TRACK	BIT(1)
 
 #define CFG_REG_5		0x05
 #define BAT_THERM_DIS_BIT	BIT(7)
@@ -226,7 +230,9 @@ static int hot_bat_decidegc_table[] = {
 
 #define CFG_REG_6		0x06
 #define CHG_INHIBIT_THRESH_MASK	SMB_MASK(7, 6)
+#define SYS_THRESHOLD_MASK	SMB_MASK(5, 4)
 #define INHIBIT_THRESH_OFFSET	6
+#define VBATT_TRACK		BIT(5)
 #define BMD_ALGO_MASK		SMB_MASK(1, 0)
 #define BMD_ALGO_THERM_IO	SMB_MASK(1, 0)
 
@@ -856,6 +862,13 @@ static int smb23x_hw_init(struct smb23x_chip *chip)
 		}
 	}
 
+	rc = smb23x_masked_write(chip, CFG_REG_6, SYS_THRESHOLD_MASK,
+							VBATT_TRACK);
+	if (rc < 0) {
+		pr_err("set VBATT_TRACK failed, rc=%d\n", rc);
+		return rc;
+	}
+
 	/* disable AICL */
 	if (chip->cfg_aicl_disabled) {
 		rc = smb23x_masked_write(chip, CFG_REG_5, AICL_EN_BIT, 0);
@@ -873,6 +886,13 @@ static int smb23x_hw_init(struct smb23x_chip *chip)
 			return rc;
 		}
 		chip->apsd_enabled = false;
+
+		rc = smb23x_masked_write(chip, CFG_REG_5, AICL_EN_BIT, 0);
+		if (rc < 0) {
+			pr_err("Disable CFG_5 failed, rc=%d\n", rc);
+			return rc;
+		}
+
 	} else {
 		rc = smb23x_read(chip, CFG_REG_5, &tmp);
 		if (rc < 0) {
@@ -1024,6 +1044,13 @@ static int smb23x_hw_init(struct smb23x_chip *chip)
 			pr_err("Set safety timer failed, rc=%d\n", rc);
 			return rc;
 		}
+	}
+
+	rc = smb23x_masked_write(chip, CFG_REG_4,
+			SYSTEM_VOLATGE_MASK, SYS_VOLT_VBATT_TRACK);
+	if (rc < 0) {
+		pr_err("Set system_voltage failed, rc=%d\n", rc);
+		return rc;
 	}
 
 	/*
@@ -1238,10 +1265,11 @@ static void reconfig_upon_unplug(struct smb23x_chip *chip)
 	int reason;
 
 	if (chip->workaround_flags & WRKRND_IRQ_POLLING) {
-		if (chip->usb_present) {
+		if (chip->usb_present && chip->usb_poll) {
 			pm_stay_awake(chip->dev);
 			schedule_delayed_work(&chip->irq_polling_work,
 					msecs_to_jiffies(IRQ_POLLING_MS));
+			chip->usb_poll = false;
 		} else {
 			pr_debug("restore software settings after unplug\n");
 			pm_relax(chip->dev);
@@ -1287,7 +1315,8 @@ static int usbin_uv_irq_handler(struct smb23x_chip *chip, u8 rt_sts)
 		return 0;
 
 	chip->usb_present = usb_present;
-	reconfig_upon_unplug(chip);
+	if (!chip->cfg_apsd_disabled)
+		reconfig_upon_unplug(chip);
 	pval.intval = usb_present;
 	power_supply_set_property(chip->usb_psy,
 			POWER_SUPPLY_PROP_PRESENT, &pval);
@@ -1506,6 +1535,7 @@ static int smb23x_determine_initial_status(struct smb23x_chip *chip)
 		power_supply_set_property(chip->usb_psy,
 					POWER_SUPPLY_PROP_PRESENT,
 						&pval);
+		chip->usb_poll = true;
 		reconfig_upon_unplug(chip);
 	}
 
@@ -1773,8 +1803,11 @@ static void smb23x_update_desc_type(struct smb23x_chip *chip)
 	switch (chip->charger_type) {
 	case POWER_SUPPLY_TYPE_USB_CDP:
 	case POWER_SUPPLY_TYPE_USB_DCP:
-	case POWER_SUPPLY_TYPE_USB:
 	case POWER_SUPPLY_TYPE_USB_ACA:
+		chip->usb_psy_desc.type = chip->charger_type;
+		reconfig_upon_unplug(chip);
+		break;
+	case POWER_SUPPLY_TYPE_USB:
 		chip->usb_psy_desc.type = chip->charger_type;
 		break;
 	default:
