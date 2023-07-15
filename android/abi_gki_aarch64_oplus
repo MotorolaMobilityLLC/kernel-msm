@@ -145,8 +145,8 @@
   ipv6_skip_exthdr
   is_dma_buf_file
   iterate_fd
-  jiffies
   jiffies_64
+  jiffies
   jiffies_to_msecs
   kasan_flag_enabled
   kasprintf
@@ -197,8 +197,8 @@
   memory_cgrp_subsys
   memory_cgrp_subsys_enabled_key
   memparse
-  memset
   memset64
+  memset
   memstart_addr
   migrate_page_copy
   misc_deregister
@@ -222,10 +222,10 @@
   nla_find
   nla_memcpy
   __nla_parse
-  nla_put
   nla_put_64bit
-  nla_reserve
+  nla_put
   nla_reserve_64bit
+  nla_reserve
   nonseekable_open
   nr_cpu_ids
   __num_online_cpus
@@ -234,8 +234,8 @@
   __page_file_index
   __page_mapcount
   page_mapping
-  param_ops_uint
   page_to_lruvec
+  param_ops_uint
   __per_cpu_offset
   platform_device_add
   platform_device_alloc
@@ -266,7 +266,6 @@
   radix_tree_next_chunk
   radix_tree_preload
   radix_tree_replace_slot
-  rtc_read_alarm
   _raw_read_lock
   _raw_read_unlock
   _raw_spin_lock
@@ -285,6 +284,7 @@
   register_sysctl_table
   register_tcf_proto_ops
   remove_proc_subtree
+  rtc_read_alarm
   __rtnl_link_unregister
   sched_clock
   sched_setscheduler_nocheck
@@ -414,8 +414,8 @@
   __traceiter_android_vh_mem_cgroup_id_remove
   __traceiter_android_vh_meminfo_proc_show
   __traceiter_android_vh_modify_thermal_cpu_get_power
-  __traceiter_android_vh_mutex_init
   __traceiter_android_vh_mutex_can_spin_on_owner
+  __traceiter_android_vh_mutex_init
   __traceiter_android_vh_mutex_opt_spin_finish
   __traceiter_android_vh_mutex_opt_spin_start
   __traceiter_android_vh_page_referenced_check_bypass
@@ -443,6 +443,10 @@
   __traceiter_android_vh_tune_scan_type
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_update_page_mapcount
+  __traceiter_net_dev_queue
+  __traceiter_net_dev_xmit
+  __traceiter_netif_receive_skb
+  __traceiter_netif_rx
   __traceiter_sched_stat_blocked
   __traceiter_sched_stat_iowait
   __traceiter_sched_stat_runtime
@@ -476,6 +480,7 @@
   __tracepoint_android_vh_binder_thread_release
   __tracepoint_android_vh_build_sched_domains
   __tracepoint_android_vh_cache_show
+  __tracepoint_android_vh_check_uninterruptible_tasks_dn
   __tracepoint_android_vh_cma_drain_all_pages_bypass
   __tracepoint_android_vh_cpufreq_acct_update_power
   __tracepoint_android_vh_del_page_from_lrulist
@@ -505,8 +510,8 @@
   __tracepoint_android_vh_mem_cgroup_id_remove
   __tracepoint_android_vh_meminfo_proc_show
   __tracepoint_android_vh_modify_thermal_cpu_get_power
-  __tracepoint_android_vh_mutex_init
   __tracepoint_android_vh_mutex_can_spin_on_owner
+  __tracepoint_android_vh_mutex_init
   __tracepoint_android_vh_mutex_opt_spin_finish
   __tracepoint_android_vh_mutex_opt_spin_start
   __tracepoint_android_vh_page_referenced_check_bypass
@@ -525,8 +530,8 @@
   __tracepoint_android_vh_rwsem_opt_spin_finish
   __tracepoint_android_vh_rwsem_opt_spin_start
   __tracepoint_android_vh_rwsem_wake_finish
-  __tracepoint_android_vh_sched_show_task
   __tracepoint_android_vh_save_track_hash
+  __tracepoint_android_vh_sched_show_task
   __tracepoint_android_vh_sched_stat_runtime_rt
   __tracepoint_android_vh_show_mapcount_pages
   __tracepoint_android_vh_sync_txn_recvd
