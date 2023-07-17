@@ -5202,6 +5202,13 @@ static int mhi_dev_probe(struct platform_device *pdev)
 		}
 
 		mhi_pf = mhi_get_dev_ctx(mhi_hw_ctx, MHI_DEV_PHY_FUN);
+
+		if (!mhi_pf) {
+			mhi_log(MHI_DEFAULT_ERROR_LOG_ID, MHI_MSG_ERROR,
+					"mhi_pf is NULL, defering\n");
+			return -EINVAL;
+		}
+
 		/*
 		 * The below list and mutex should be initialized
 		 * before calling mhi_uci_init to avoid crash in
@@ -5225,6 +5232,13 @@ static int mhi_dev_probe(struct platform_device *pdev)
 		 * completion to make sure VF's are initialized in mission
 		 * mode directly, if not host assumes it in PBL state.
 		 */
+
+		if (!mhi_pf) {
+			mhi_log(MHI_DEFAULT_ERROR_LOG_ID, MHI_MSG_ERROR,
+					"mhi_pf is NULL, defering\n");
+			return -EINVAL;
+		}
+
 		mhi_dev_setup_virt_device(mhi_hw_ctx);
 		queue_work(mhi_pf->pcie_event_wq, &mhi_pf->pcie_event);
 	} else {
