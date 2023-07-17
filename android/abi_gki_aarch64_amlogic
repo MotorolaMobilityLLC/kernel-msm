@@ -47,6 +47,7 @@
   bitmap_find_next_zero_area_off
   bitmap_free
   __bitmap_or
+  bitmap_parselist
   __bitmap_set
   __bitmap_shift_left
   __bitmap_shift_right
@@ -353,6 +354,7 @@
   devm_kmemdup
   devm_kstrdup
   devm_kvasprintf
+  devm_mbox_controller_register
   devm_nvmem_cell_get
   devm_of_clk_add_hw_provider
   devm_of_phy_get
@@ -707,6 +709,7 @@
   _find_last_bit
   _find_next_bit
   __find_vma
+  find_vm_area
   find_vpid
   finish_wait
   flow_block_cb_setup_simple
@@ -782,7 +785,9 @@
   gen_pool_create
   gen_pool_destroy
   gen_pool_first_fit_align
+  gen_pool_first_fit_order_align
   gen_pool_free_owner
+  gen_pool_has_addr
   gen_pool_set_algo
   gen_pool_size
   gen_pool_virt_to_phys
@@ -932,6 +937,10 @@
   invalidate_bdev
   invalidate_inode_buffers
   iomem_resource
+  iommu_device_register
+  iommu_device_sysfs_add
+  iommu_device_sysfs_remove
+  iommu_device_unregister
   __ioremap
   ioremap_cache
   iounmap
@@ -1085,10 +1094,12 @@
   mark_buffer_dirty
   __mark_inode_dirty
   mbox_chan_received_data
+  mbox_chan_txdone
   mbox_controller_register
   mbox_controller_unregister
   mbox_free_channel
   mbox_request_channel
+  mbox_request_channel_byname
   mbox_send_message
   mdiobus_alloc_size
   mdiobus_free
@@ -1313,6 +1324,8 @@
   panic_notifier_list
   param_array_ops
   param_get_charp
+  param_get_hexint
+  param_get_int
   param_get_string
   param_ops_bool
   param_ops_byte
@@ -1327,6 +1340,8 @@
   param_ops_ushort
   param_set_charp
   param_set_copystring
+  param_set_hexint
+  param_set_int
   pci_disable_device
   pci_enable_device
   pci_find_next_bus
@@ -1398,6 +1413,7 @@
   pin_user_pages
   pin_user_pages_fast
   pin_user_pages_remote
+  platform_bus_type
   platform_device_add
   platform_device_add_data
   platform_device_add_resources
@@ -1514,6 +1530,7 @@
   rdev_get_drvdata
   read_cache_page
   read_sanitised_ftr_reg
+  rebuild_sched_domains
   refcount_warn_saturate
   __refrigerator
   regcache_cache_only
@@ -1913,6 +1930,7 @@
   __traceiter_android_rvh_check_preempt_wakeup
   __traceiter_android_rvh_do_sea
   __traceiter_android_rvh_gic_v3_set_affinity
+  __traceiter_android_rvh_iommu_setup_dma_ops
   __traceiter_android_rvh_panic_unhandled
   __traceiter_android_rvh_place_entity
   __traceiter_android_rvh_replace_next_task_fair
@@ -1924,6 +1942,7 @@
   __traceiter_android_vh_do_traversal_lruvec
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_ftrace_format_check
+  __traceiter_android_vh_iommu_iovad_free_iova
   __traceiter_android_vh_mem_cgroup_alloc
   __traceiter_android_vh_mmc_sd_update_cmdline_timing
   __traceiter_android_vh_mmc_sd_update_dataline_timing
@@ -1942,6 +1961,7 @@
   __tracepoint_android_rvh_check_preempt_wakeup
   __tracepoint_android_rvh_do_sea
   __tracepoint_android_rvh_gic_v3_set_affinity
+  __tracepoint_android_rvh_iommu_setup_dma_ops
   __tracepoint_android_rvh_panic_unhandled
   __tracepoint_android_rvh_place_entity
   __tracepoint_android_rvh_replace_next_task_fair
@@ -1953,6 +1973,7 @@
   __tracepoint_android_vh_do_traversal_lruvec
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_ftrace_format_check
+  __tracepoint_android_vh_iommu_iovad_free_iova
   __tracepoint_android_vh_mem_cgroup_alloc
   __tracepoint_android_vh_mmc_sd_update_cmdline_timing
   __tracepoint_android_vh_mmc_sd_update_dataline_timing
