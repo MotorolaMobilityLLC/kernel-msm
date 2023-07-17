@@ -65,6 +65,7 @@
   name_to_dev_t
   netlink_ack
   of_css
+  of_find_all_nodes
   phy_connect_direct
   phy_find_first
   phy_get_pause
@@ -80,14 +81,38 @@
   skb_copy_ubufs
   smpboot_unregister_percpu_thread
   snd_soc_add_card_controls
+  snd_soc_component_enable_pin
+  snd_soc_component_get_pin_status
   stack_trace_save_regs
+  _trace_android_vh_record_pcpu_rwsem_starttime
+  __traceiter_android_rvh_arm64_serror_panic
   __traceiter_android_rvh_die_kernel_fault
   __traceiter_android_rvh_do_mem_abort
+  __traceiter_android_rvh_do_ptrauth_fault
+  __traceiter_android_rvh_do_sea
   __traceiter_android_rvh_do_sp_pc_abort
   __traceiter_android_rvh_do_undefinstr
+  __traceiter_android_rvh_panic_unhandled
+  __traceiter_android_rvh_ufs_complete_init
   __traceiter_android_vh_meminfo_proc_show
+  __traceiter_android_vh_ptype_head
+  __traceiter_android_vh_rtmutex_wait_finish
+  __traceiter_android_vh_rtmutex_wait_start
+  __traceiter_android_vh_rwsem_read_wait_finish
+  __traceiter_android_vh_rwsem_write_wait_finish
+  __traceiter_android_vh_sched_show_task
   __traceiter_android_vh_show_mem
+  __traceiter_android_vh_try_to_freeze_todo
+  __traceiter_android_vh_try_to_freeze_todo_unfrozen
+  __traceiter_android_vh_watchdog_timer_softlockup
+  __traceiter_android_vh_wq_lockup_pool
   __traceiter_block_rq_insert
+  __traceiter_hrtimer_expire_entry
+  __traceiter_hrtimer_expire_exit
+  __traceiter_irq_handler_entry
+  __traceiter_irq_handler_exit
+  __traceiter_kfree_skb
+  __traceiter_workqueue_execute_start
   __tracepoint_android_rvh_arm64_serror_panic
   __tracepoint_android_rvh_die_kernel_fault
   __tracepoint_android_rvh_do_mem_abort
@@ -96,6 +121,7 @@
   __tracepoint_android_rvh_do_sp_pc_abort
   __tracepoint_android_rvh_do_undefinstr
   __tracepoint_android_rvh_panic_unhandled
+  __tracepoint_android_rvh_ufs_complete_init
   __tracepoint_android_vh_meminfo_proc_show
   __tracepoint_android_vh_ptype_head
   __tracepoint_android_vh_rtmutex_wait_finish
@@ -115,7 +141,6 @@
   __tracepoint_irq_handler_exit
   __tracepoint_kfree_skb
   __tracepoint_workqueue_execute_start
-  _trace_android_vh_record_pcpu_rwsem_starttime
   usb_alloc_dev
   usb_deregister_dev
   usb_find_interface

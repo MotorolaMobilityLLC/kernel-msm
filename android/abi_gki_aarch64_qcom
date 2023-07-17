@@ -148,10 +148,10 @@
   blocking_notifier_chain_register
   blocking_notifier_chain_unregister
   bmap
-  bpf_trace_run1
   bpf_trace_run10
   bpf_trace_run11
   bpf_trace_run12
+  bpf_trace_run1
   bpf_trace_run2
   bpf_trace_run3
   bpf_trace_run4
@@ -1281,8 +1281,8 @@
   mempool_kmalloc
   memremap
   mem_section
-  memset
   memset64
+  memset
   __memset_io
   memstart_addr
   memunmap
@@ -1309,8 +1309,8 @@
   mmc_retune_release
   mmc_select_bus_width
   mmc_select_card
-  mmc_select_hs
   mmc_select_hs400
+  mmc_select_hs
   mmc_select_hs_ddr
   mmc_select_timing
   mmc_send_status
@@ -1343,8 +1343,8 @@
   netdev_rss_key_fill
   netif_receive_skb_list
   nla_find
-  nla_reserve
   nla_reserve_64bit
+  nla_reserve
   __nla_validate
   no_llseek
   nonseekable_open
@@ -2316,6 +2316,7 @@
   __traceiter_android_vh_ufs_check_int_errors
   __traceiter_android_vh_ufs_clock_scaling
   __traceiter_android_vh_ufs_compl_command
+  __traceiter_android_vh_ufs_prepare_command
   __traceiter_android_vh_ufs_send_command
   __traceiter_android_vh_ufs_send_tm_command
   __traceiter_android_vh_ufs_send_uic_command
@@ -2438,6 +2439,7 @@
   __tracepoint_android_vh_ufs_check_int_errors
   __tracepoint_android_vh_ufs_clock_scaling
   __tracepoint_android_vh_ufs_compl_command
+  __tracepoint_android_vh_ufs_prepare_command
   __tracepoint_android_vh_ufs_send_command
   __tracepoint_android_vh_ufs_send_tm_command
   __tracepoint_android_vh_ufs_send_uic_command
