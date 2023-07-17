@@ -140,6 +140,8 @@ static int qcom_glink_ssr_notifier_call(struct notifier_block *nb,
 	const char *name;
 
 	dev = ssr->dev;
+	if (!dev || !ssr->ept)
+		return NOTIFY_DONE;
 
 	name = dev->parent->of_node->name;
 	if (!strcmp(name, "rpm-glink")) {
