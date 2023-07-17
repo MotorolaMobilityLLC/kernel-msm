@@ -1892,6 +1892,12 @@ config AW882XX_MAPSIZE_16K
         help
         Enable it only for use 16k mapsize.
 
+config AW882XX_STEREO_SMARTPA_PRI
+        bool "aw dual smart pa pri i2s"
+        default n
+        help
+        Enable it only for dual smart pa.
+
 config SND_SOC_AW87XXX
         tristate "SoC Audio for awinic AW87XXX Smart K PA"
         depends on I2C
