@@ -110,6 +110,7 @@ obj-$(CONFIG_QCOM_MINIDUMP) += minidump.o
 minidump-y   += msm_minidump.o minidump_log.o
 minidump-$(CONFIG_QCOM_MINIDUMP_RM) += minidump_rm.o
 minidump-$(CONFIG_QCOM_MINIDUMP_SMEM) += minidump_smem.o
+minidump-$(CONFIG_QCOM_MINIDUMP_MMIO) += minidump_mmio.o
 minidump-$(CONFIG_QCOM_MINIDUMP_PANIC_DUMP) += minidump_memory.o
 obj-$(CONFIG_QCOM_VA_MINIDUMP) += qcom_va_minidump.o
 obj-$(CONFIG_QCOM_LOGBUF_VENDOR_HOOKS) += qcom_logbuf_vh.o
