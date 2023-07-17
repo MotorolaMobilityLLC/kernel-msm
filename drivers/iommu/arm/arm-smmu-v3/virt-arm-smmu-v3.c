@@ -774,6 +774,12 @@ static bool virt_arm_smmu_capable(enum iommu_cap cap)
 		return false;
 	}
 }
+
+static int virt_arm_smmu_def_domain_type(struct device *dev)
+{
+	return IOMMU_DOMAIN_DMA;
+}
+
 #define MAX_MAP_SG_BATCH_SIZE (SZ_4M)
 
 static struct iommu_ops  virt_arm_smmu_ops = {
@@ -794,6 +800,8 @@ static struct iommu_ops  virt_arm_smmu_ops = {
 		.flush_iotlb_all        = virt_arm_smmu_flush_iotlb_all,
 		.iotlb_sync             = virt_arm_smmu_iotlb_sync,
 		.iova_to_phys           = virt_arm_smmu_iova_to_phys,
+		.def_domain_type        = virt_arm_smmu_def_domain_type,
+		.owner                  = THIS_MODULE,
 };
 
 static int virt_arm_smmu_set_bus_ops(struct iommu_ops *ops)
@@ -838,8 +846,6 @@ static int virt_arm_smmu_device_probe(struct platform_device *pdev)
 				     "virt-smmuv3");
 	if (ret)
 		return ret;
-
-	iommu_set_default_translated(false);
 
 	ret = iommu_device_register(&smmu->iommu, &virt_arm_smmu_ops, dev);
 	if (ret) {

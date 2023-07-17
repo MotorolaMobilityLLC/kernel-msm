@@ -3921,6 +3921,7 @@ static void __exit arm_smmu_exit(void)
 }
 module_exit(arm_smmu_exit);
 
+MODULE_SOFTDEP("pre: virt-arm-smmu-v3");
 MODULE_DESCRIPTION("IOMMU API for ARM architected SMMU implementations");
 MODULE_AUTHOR("Will Deacon <will@kernel.org>");
 MODULE_ALIAS("platform:arm-smmu");
