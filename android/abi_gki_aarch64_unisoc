@@ -3153,7 +3153,9 @@
 
 # required by unisoc_mm_emem.ko
   __traceiter_android_vh_oom_check_panic
+  __traceiter_android_vh_show_mem
   __tracepoint_android_vh_oom_check_panic
+  __tracepoint_android_vh_show_mem
 
 # required by unisoc_mm_reclaim.ko
   __traceiter_android_vh_do_page_trylock
