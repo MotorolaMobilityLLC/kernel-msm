@@ -352,6 +352,7 @@
   devm_clk_bulk_get_optional
   devm_clk_get
   devm_clk_get_optional
+  devm_clk_get_optional_enabled
   devm_clk_put
   devm_clk_register
   devm_devfreq_add_device
