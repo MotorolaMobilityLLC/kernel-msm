@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -28,6 +28,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/nvmem-provider.h>
 
 #define PMIC_VER_8941				0x01
 #define PMIC_VERSION_REG			0x0105
@@ -218,6 +219,7 @@ struct qpnp_pon {
 	struct mutex		restore_lock;
 	struct delayed_work	bark_work;
 	struct dentry		*debugfs;
+	struct nvmem_config	pon_config;
 	u16			base;
 	u16			pbs_base;
 	u8			subtype;
@@ -230,6 +232,7 @@ struct qpnp_pon {
 	int			pon_power_off_reason;
 	u32			dbc_time_us;
 	u32			uvlo;
+	u32			reg_base;
 	int			warm_reset_poff_type;
 	int			hard_reset_poff_type;
 	int			shutdown_poff_type;
@@ -378,6 +381,19 @@ static int qpnp_pon_write(struct qpnp_pon *pon, u16 addr, u8 val)
 	return rc;
 }
 
+static int pon_write(void *priv, unsigned int offset, void *val, size_t bytes)
+{
+	struct  qpnp_pon *pon = priv;
+	struct device *dev = pon->pon_config.dev;
+	int rc;
+
+	rc = regmap_bulk_write(pon->regmap, pon->reg_base + offset, val, bytes);
+	if (rc)
+		dev_err(dev, "Failed to Write PON Offset %#x len=%zd, rc=%d\n",
+						offset, bytes, rc);
+	return rc;
+}
+
 static int
 qpnp_pon_masked_write_backup(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
 {
@@ -400,6 +416,20 @@ static int qpnp_pon_read(struct qpnp_pon *pon, u16 addr, unsigned int *val)
 			addr, rc);
 	return rc;
 }
+
+static int pon_read(void *priv, unsigned int offset, void *val, size_t bytes)
+{
+	struct  qpnp_pon *pon = priv;
+	struct device *dev = pon->pon_config.dev;
+	int rc;
+
+	rc = regmap_bulk_read(pon->regmap, pon->reg_base + offset, val, bytes);
+	if (rc)
+		dev_err(dev, "Failed to read PON Offset %#x len=%zd, rc=%d\n",
+						offset, bytes, rc);
+	return rc;
+}
+
 
 static bool is_pon_gen1(struct qpnp_pon *pon)
 {
@@ -2343,6 +2373,7 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *node;
 	struct qpnp_pon *pon;
+	struct nvmem_device *nvmem;
 	unsigned long flags;
 	u32 delay;
 	const __be32 *addr;
@@ -2395,9 +2426,6 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 			pon->num_pon_reg++;
 		} else if (of_find_property(node, "qcom,pon-type", NULL)) {
 			pon->num_pon_config++;
-		} else {
-			dev_err(dev, "Unknown sub-node found %s\n", node->name);
-			return -EINVAL;
 		}
 	}
 	dev_dbg(dev, "PON@SID%d: num_pon_config=%d, num_pon_reg=%d\n",
@@ -2486,6 +2514,28 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	rc = of_property_read_u32(pdev->dev.of_node, "reg", &pon->reg_base);
+	if (rc < 0) {
+		dev_err(&pdev->dev, "Failed to read SDAM_SIZE rc=%d\n", rc);
+		return -EINVAL;
+	}
+	pon->pon_config.dev = &pdev->dev;
+	pon->pon_config.name = "power_on";
+	pon->pon_config.id = NVMEM_DEVID_AUTO;
+	pon->pon_config.owner = THIS_MODULE;
+	pon->pon_config.stride = 1;
+	pon->pon_config.word_size = 1;
+	pon->pon_config.reg_read = pon_read;
+	pon->pon_config.reg_write = pon_write;
+	pon->pon_config.priv = pon;
+
+	nvmem = devm_nvmem_register(&pdev->dev, &pon->pon_config);
+	if (IS_ERR(nvmem)) {
+		dev_err(&pdev->dev,
+			"Failed to register SDAM nvmem device rc=%ld\n",
+			PTR_ERR(nvmem));
+		return -ENXIO;
+	}
 	return 0;
 }
 
