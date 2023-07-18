@@ -781,6 +781,9 @@
   geni_se_tx_dma_unprep
   genphy_check_and_restart_aneg
   __genphy_config_aneg
+  genphy_c45_an_config_aneg
+  genphy_c45_check_and_restart_aneg
+  genphy_c45_pma_setup_forced
   genphy_c45_read_status
   genphy_read_abilities
   genphy_read_lpa
@@ -1587,6 +1590,7 @@
   phy_modify
   phy_modify_changed
   phy_modify_mmd
+  phy_modify_mmd_changed
   phy_modify_paged
   phy_modify_paged_changed
   phy_power_off
@@ -1597,6 +1601,7 @@
   phy_restore_page
   phy_save_page
   phy_select_page
+  phy_set_max_speed
   phy_set_mode_ext
   phy_sfp_attach
   phy_sfp_detach
