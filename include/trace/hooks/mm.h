@@ -419,6 +419,9 @@ DECLARE_HOOK(android_vh_suitable_migration_target_bypass,
 DECLARE_HOOK(android_vh_swap_writepage,
 	TP_PROTO(unsigned long *sis_flags, struct page *page),
 	TP_ARGS(sis_flags, page));
+DECLARE_HOOK(android_vh_alloc_flags_cma_adjust,
+	TP_PROTO(gfp_t gfp_mask, unsigned int *alloc_flags),
+	TP_ARGS(gfp_mask, alloc_flags));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
