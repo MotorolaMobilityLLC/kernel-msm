@@ -2057,6 +2057,11 @@ static void mhi_dev_trigger_cb(uint32_t vf_id, enum mhi_client_channel ch_id)
 	if (ch_id >= MHI_MAX_SOFTWARE_CHANNELS)
 		return;
 
+	if (!mhi_ctx) {
+		mhi_log(vf_id, MHI_MSG_ERROR, "mhi_ctx is NULL\n");
+		return;
+	}
+
 	list_for_each_entry(info, &mhi_ctx->client_cb_list, list)
 		if (info->cb && info->cb_data.channel == ch_id) {
 			mhi_vf_ctrl_state_info(mhi_ctx->vf_id,
