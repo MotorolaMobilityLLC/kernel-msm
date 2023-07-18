@@ -3147,9 +3147,13 @@
   __traceiter_android_vh_use_cma_first_check
   __traceiter_android_vh_alloc_highpage_movable_gfp_adjust
   __traceiter_android_vh_anon_gfp_adjust
+  __traceiter_android_vh_alloc_flags_cma_adjust
+  __traceiter_android_vh_rmqueue_cma_fallback
   __tracepoint_android_vh_use_cma_first_check
   __tracepoint_android_vh_alloc_highpage_movable_gfp_adjust
   __tracepoint_android_vh_anon_gfp_adjust
+  __tracepoint_android_vh_alloc_flags_cma_adjust
+  __tracepoint_android_vh_rmqueue_cma_fallback
 
 # required by unisoc_mm_emem.ko
   __traceiter_android_vh_oom_check_panic
