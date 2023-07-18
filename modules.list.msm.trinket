@@ -61,3 +61,5 @@ qcom-cpufreq-hw.ko
 videocc-trinket.ko
 dispcc-trinket.ko
 debugcc-trinket.ko
+cqhci.ko
+sdhci-msm.ko
