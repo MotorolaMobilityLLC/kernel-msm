@@ -250,6 +250,8 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_trylock_set);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_trylock_clear);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_trylock_get_result);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_do_page_trylock);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_dm_bufio_shrink_scan_bypass);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_cleanup_old_buffers_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_referenced_check_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_drain_all_pages_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_cma_drain_all_pages_bypass);
@@ -426,6 +428,8 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_direct_io_update_bio);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_loop_prepare_cmd);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_psi_event);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_psi_group);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rmqueue_smallest_bypass);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_free_one_page_bypass);
 /*
  * For type visibility
  */
