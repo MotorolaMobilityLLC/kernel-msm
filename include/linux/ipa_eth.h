@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _IPA_ETH_H_
@@ -109,12 +109,14 @@ struct ipa_eth_aqc_setup_info {
  * @bar_size: bar region size
  * @queue_number: Which RTK queue to check the status on
  * @dest_tail_ptr_offs: tail ptr offset
+ * @num_queues_enabled: Total queues to be enable
  */
 struct ipa_eth_realtek_setup_info {
 	phys_addr_t bar_addr;
 	u32 bar_size;
 	u8 queue_number;
 	phys_addr_t dest_tail_ptr_offs;
+	u8 num_queues_enabled;
 };
 
 
