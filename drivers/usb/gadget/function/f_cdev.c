@@ -1679,6 +1679,7 @@ static void usb_cser_notify_modem(void *fport, int ctrl_bits)
 	spin_lock_irqsave(&port->port_lock, flags);
 	port->cbits_to_modem = temp;
 	port->cbits_updated = true;
+	spin_unlock_irqrestore(&port->port_lock, flags);
 
 	 /* if DTR is high, update latest modem info to laptop */
 	if (port->cbits_to_modem & TIOCM_DTR) {
@@ -1691,7 +1692,6 @@ static void usb_cser_notify_modem(void *fport, int ctrl_bits)
 			cser->send_modem_ctrl_bits(cser, cbits_to_laptop);
 	}
 
-	spin_unlock_irqrestore(&port->port_lock, flags);
 	wake_up(&port->read_wq);
 }
 
