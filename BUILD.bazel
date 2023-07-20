@@ -52,6 +52,7 @@ define_common_kernels(target_configs = {
         "kmi_symbol_list": "android/abi_gki_aarch64",
         "additional_kmi_symbol_lists": _aarch64_additional_kmi_symbol_lists,
         "abi_definition": "android/abi_gki_aarch64.xml",
+        "kmi_symbol_list_add_only": True,
     },
     "kernel_aarch64_debug": {
         "module_implicit_outs": [
@@ -61,6 +62,7 @@ define_common_kernels(target_configs = {
         "kmi_symbol_list": "android/abi_gki_aarch64",
         "additional_kmi_symbol_lists": _aarch64_additional_kmi_symbol_lists,
         "abi_definition": "android/abi_gki_aarch64.xml",
+        "kmi_symbol_list_add_only": True,
     },
 })
 
