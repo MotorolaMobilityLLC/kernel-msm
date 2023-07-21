@@ -37,8 +37,8 @@
 #define RESULT_SUCCESS		0
 #define RESULT_FAILURE		-1
 
-/* Slate Ramdump Size 4 MB */
-#define SLATE_RAMDUMP_SZ SZ_8M
+/* Slate Ramdump Size 8MB + 3MB (ITCM) */
+#define SLATE_RAMDUMP_SZ 0XB00000
 #define SLATE_MINIDUMP_SZ (0x400*40)
 #define SLATE_RAMDUMP		3
 #define SLATE_MINIDUMP		4
