@@ -124,6 +124,31 @@ TRACE_EVENT(recv_single_end,
 		__entry->handle, __entry->sc)
 );
 
+TRACE_EVENT(fastrpc_internal_invoke_interrupted,
+
+	TP_PROTO(struct vfastrpc_invoke_ctx *ctx),
+
+	TP_ARGS(ctx),
+
+	TP_STRUCT__entry(
+		__field(uint32_t, handle)
+		__field(uint32_t, sc)
+		__field(s64, seq_num)
+		__field(unsigned long long, mpm_tv)
+	),
+
+	TP_fast_assign(
+		__entry->handle = ctx->handle;
+		__entry->sc = ctx->sc;
+		__entry->seq_num = ctx->seq_num;
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
+	),
+
+	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,
+		__entry->handle, __entry->sc,
+		__entry->mpm_tv)
+);
+
 TRACE_EVENT(wait_for_completion_end,
 
 	TP_PROTO(struct vfastrpc_invoke_ctx *ctx),
