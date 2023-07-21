@@ -51,7 +51,7 @@
 #define PCIE_L1SUB_AHB_TIMEOUT_MIN		100
 #define PCIE_L1SUB_AHB_TIMEOUT_MAX		120
 
-#define PERST_RAW_RESET_STATUS			BIT(11)
+#define PERST_RAW_RESET_STATUS			BIT(0)
 #define LINK_STATUS_REG_SHIFT			16
 
 #define LODWORD(addr)             (addr & 0xFFFFFFFF)
@@ -101,6 +101,8 @@ static struct ep_pcie_clk_info_t
 	{NULL, "pcie_ddrss_sf_tbu_clk", 0, false},
 	{NULL, "pcie_aggre_noc_0_axi_clk", 0, false},
 	{NULL, "gcc_cnoc_pcie_sf_axi_clk", 0, false},
+	{NULL, "pcie_pipediv2_clk", 0, false},
+	{NULL, "pcie_phy_refgen_clk", 0, false},
 	{NULL, "pcie_phy_aux_clk", 0, false},
 };
 
@@ -2143,10 +2145,6 @@ int ep_pcie_core_enable_endpoint(enum ep_pcie_options opt)
 						ep_pcie_dev.tcsr_perst_separation_en_offset);
 		}
 
-		if (dev->pcie_cesta_clkreq_offset)
-			ep_pcie_write_reg_field(dev->parf,
-						dev->pcie_cesta_clkreq_offset, BIT(0), 0);
-
 		 /* check link status during initial bootup */
 		if (!dev->enumerated) {
 			val = readl_relaxed(dev->parf + PCIE20_PARF_PM_STTS);
@@ -2372,6 +2370,13 @@ checkbme:
 	/* Clear PERST_RAW_RESET_STATUS when linking up */
 	if (dev->aoss_rst_clear && dev->aoss_rst_perst)
 		writel_relaxed(ep_pcie_dev.perst_raw_rst_status_mask, dev->aoss_rst_perst);
+
+	/* Make sure clkreq control is with controller, not CESTA */
+	if (dev->pcie_cesta_clkreq_offset) {
+		ep_pcie_write_reg_field(dev->parf, dev->pcie_cesta_clkreq_offset, BIT(0), 0);
+		val = readl_relaxed(dev->parf + dev->pcie_cesta_clkreq_offset);
+		EP_PCIE_DBG(dev, "PCIe V%d: CESTA_CLKREQ_CTRL:0x%x.\n", dev->rev, val);
+	}
 
 	/*
 	 * De-assert WAKE# GPIO following link until L2/3 and WAKE#
@@ -4110,8 +4115,8 @@ static void ep_pcie_tcsr_aoss_data_dt(struct platform_device *pdev)
 		}
 
 		EP_PCIE_DBG(&ep_pcie_dev,
-			"PCIe V%d: Perset Raw Reset Status Bit: %d",
-			ep_pcie_dev.rev, BIT(ep_pcie_dev.perst_raw_rst_status_mask));
+			"PCIe V%d: Perst Raw Reset Status Mask: 0x%x\n",
+			ep_pcie_dev.rev, ep_pcie_dev.perst_raw_rst_status_mask);
 	}
 }
 

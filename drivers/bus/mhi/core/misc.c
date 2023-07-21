@@ -320,6 +320,9 @@ int mhi_misc_register_controller(struct mhi_controller *mhi_cntrl)
 
 	mhi_priv->log_buf = ipc_log_context_create(MHI_IPC_LOG_PAGES,
 						   mhi_dev->name, 0);
+	if (!mhi_priv->log_buf)
+		MHI_ERR(dev, "Failed to create MHI IPC logs\n");
+
 	mhi_priv->mhi_cntrl = mhi_cntrl;
 
 	/* adding it to this list only for debug purpose */

@@ -1315,9 +1315,9 @@ static int spi_geni_mas_setup(struct spi_master *spi)
 {
 	struct spi_geni_master *mas = spi_master_get_devdata(spi);
 	int proto = geni_se_read_proto(&mas->spi_rsc);
-	unsigned int major;
-	unsigned int minor;
-	int hw_ver;
+	unsigned int major = 0;
+	unsigned int minor = 0;
+	u32 hw_ver = 0;
 	int ret = 0;
 
 	if (spi->slave) {
@@ -1442,10 +1442,10 @@ setup_ipc:
 
 	if (!mas->is_deep_sleep) {
 		hw_ver = geni_se_get_qup_hw_version(&mas->spi_rsc);
-		if (hw_ver)
+		if (!hw_ver) {
 			dev_err(mas->dev, "%s:Err getting HW version %d\n",
 							__func__, hw_ver);
-		else {
+		} else {
 			major = GENI_SE_VERSION_MAJOR(hw_ver);
 			minor = GENI_SE_VERSION_MINOR(hw_ver);
 

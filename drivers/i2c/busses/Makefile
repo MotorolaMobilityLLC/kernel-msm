@@ -92,6 +92,7 @@ obj-$(CONFIG_I2C_PXA_PCI)	+= i2c-pxa-pci.o
 obj-$(CONFIG_I2C_QCOM_CCI)	+= i2c-qcom-cci.o
 obj-$(CONFIG_I2C_QCOM_GENI)	+= i2c-qcom-geni.o
 obj-$(CONFIG_I2C_MSM_GENI)	+= i2c-msm-geni.o
+obj-$(CONFIG_I2C_MSM_V2)        += i2c-msm-v2.o
 obj-$(CONFIG_I2C_SLAVE_QCOM)    += i2c-slave.o
 obj-$(CONFIG_I2C_SLAVE_TEST)	+= i2c-slave-test.o
 obj-$(CONFIG_I2C_QUP)		+= i2c-qup.o

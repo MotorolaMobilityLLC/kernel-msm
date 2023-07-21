@@ -120,6 +120,7 @@ struct slatedaemon_priv {
 	struct device *platform_dev;
 	bool slatecom_rpmsg;
 	bool slate_resp_cmplt;
+	bool slate_unload;
 	void *lhndl;
 	wait_queue_head_t link_state_wait;
 	char rx_buf[SCOM_GLINK_INTENT_SIZE];
@@ -496,7 +497,9 @@ static void slatecom_fw_unload(struct slatedaemon_priv *priv)
 	}
 	if (priv->pil_h) {
 		pr_err("%s: calling subsystem put\n", __func__);
+		priv->slate_unload = true;
 		rproc_shutdown(priv->pil_h);
+		priv->slate_unload = false;
 		priv->pil_h = NULL;
 		slate_boot_status = 0;
 	}
@@ -774,6 +777,15 @@ int get_slate_boot_mode(void)
 	return mode;
 }
 EXPORT_SYMBOL(get_slate_boot_mode);
+
+bool is_slate_unload_only(void)
+{
+	struct slatedaemon_priv *dev =
+		container_of(slatecom_intf_drv, struct slatedaemon_priv, lhndl);
+
+	return dev->slate_unload;
+}
+EXPORT_SYMBOL(is_slate_unload_only);
 
 static int send_get_fw_version(struct slate_ui_data *ui_obj_msg)
 {

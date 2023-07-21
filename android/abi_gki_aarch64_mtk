@@ -29,12 +29,12 @@
   __arch_copy_to_user
   arch_freq_scale
   arch_timer_read_counter
+  arm64_const_caps_ready
+  arm64_use_ng_mappings
   arm_smccc_1_1_get_conduit
   arm_smccc_1_2_hvc
   arm_smccc_1_2_smc
   arm_smccc_get_version
-  arm64_const_caps_ready
-  arm64_use_ng_mappings
   __arm_smccc_hvc
   __arm_smccc_smc
   arp_create
@@ -380,6 +380,7 @@
   devm_iio_device_alloc
   devm_iio_triggered_buffer_setup_ext
   __devm_iio_device_register
+  devm_iio_triggered_buffer_setup_ext
   devm_input_allocate_device
   devm_ioremap
   devm_ioremap_resource
@@ -1409,10 +1410,10 @@
   pci_msi_create_irq_domain
   pci_msi_mask_irq
   pci_msi_unmask_irq
+  pci_pio_to_address
   pci_remove_root_bus
   pci_stop_root_bus
   pci_unlock_rescan_remove
-  pci_pio_to_address
   PDE_DATA
   __per_cpu_offset
   perf_event_create_kernel_counter
@@ -1960,7 +1961,6 @@
   system_wq
   sys_tz
   task_active_pid_ns
-  task_sched_runtime
   __tasklet_hi_schedule
   tasklet_init
   tasklet_kill
@@ -1968,6 +1968,7 @@
   tasklet_setup
   __task_pid_nr_ns
   __task_rq_lock
+  task_sched_runtime
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_pressure
@@ -2024,9 +2025,9 @@
   __traceiter_android_rvh_selinux_avc_node_delete
   __traceiter_android_rvh_selinux_avc_node_replace
   __traceiter_android_rvh_selinux_is_initialized
-  __traceiter_android_rvh_setscheduler
-  __traceiter_android_rvh_set_cpus_allowed_ptr_locked
   __traceiter_android_rvh_set_cpus_allowed_by_task
+  __traceiter_android_rvh_set_cpus_allowed_ptr_locked
+  __traceiter_android_rvh_setscheduler
   __traceiter_android_rvh_set_user_nice
   __traceiter_android_rvh_tick_entry
   __traceiter_android_rvh_update_cpu_capacity
@@ -2071,6 +2072,7 @@
   __traceiter_xhci_urb_giveback
   trace_output_call
   __tracepoint_android_rvh_after_enqueue_task
+  __tracepoint_android_rvh_audio_usb_offload_disconnect
   __tracepoint_android_rvh_can_migrate_task
   __tracepoint_android_rvh_commit_creds
   __tracepoint_android_rvh_cpu_overutilized
@@ -2102,9 +2104,9 @@
   __tracepoint_android_rvh_selinux_avc_node_delete
   __tracepoint_android_rvh_selinux_avc_node_replace
   __tracepoint_android_rvh_selinux_is_initialized
-  __tracepoint_android_rvh_setscheduler
-  __tracepoint_android_rvh_set_cpus_allowed_ptr_locked
   __tracepoint_android_rvh_set_cpus_allowed_by_task
+  __tracepoint_android_rvh_set_cpus_allowed_ptr_locked
+  __tracepoint_android_rvh_setscheduler
   __tracepoint_android_rvh_set_user_nice
   __tracepoint_android_rvh_tick_entry
   __tracepoint_android_rvh_update_cpu_capacity
@@ -2310,7 +2312,6 @@
   usb_hcd_start_port_resume
   usb_hub_clear_tt_buffer
   usb_interface_id
-  usb_wakeup_notification
   usbnet_change_mtu
   usbnet_disconnect
   usbnet_get_drvinfo
@@ -2353,6 +2354,7 @@
   usb_role_switch_unregister
   usb_speed_string
   usb_string_id
+  usb_wakeup_notification
   __usecs_to_jiffies
   usleep_range_state
   uuid_null
@@ -2582,8 +2584,8 @@
   pci_set_master
   pci_set_power_state
   pci_unregister_driver
-  _raw_spin_trylock_bh
   radix_tree_maybe_preload
+  _raw_spin_trylock_bh
   register_inetaddr_notifier
   regmap_multi_reg_write
   regmap_register_patch

@@ -172,6 +172,7 @@ static int ufs_qcom_config_shared_ice(struct ufs_qcom_host *host);
 static int ufs_qcom_ber_threshold_set(const char *val, const struct kernel_param *kp);
 static int ufs_qcom_ber_duration_set(const char *val, const struct kernel_param *kp);
 static void ufs_qcom_ber_mon_init(struct ufs_hba *hba);
+static void ufs_qcom_populate_available_cpus(struct ufs_hba *hba);
 
 static s64 idle_time[UFS_QCOM_BER_MODE_MAX];
 static ktime_t idle_start;
@@ -1547,7 +1548,7 @@ static void ufs_qcom_set_affinity_hint(struct ufs_hba *hba, bool prime)
 		affinity_mask = &host->perf_mask;
 	} else {
 		clear = IRQ_NO_BALANCING;
-		affinity_mask = &host->def_mask;
+		affinity_mask = &host->silver_mask;
 	}
 
 	irq_modify_status(hba->irq, clear, set);
@@ -2571,8 +2572,16 @@ static int ufs_qcom_setup_clocks(struct ufs_hba *hba, bool on,
 	case PRE_CHANGE:
 		if (on) {
 			err = ufs_qcom_set_bus_vote(hba, true);
-			if (ufs_qcom_is_link_hibern8(hba))
+			if (ufs_qcom_is_link_hibern8(hba)) {
+				err = ufs_qcom_enable_lane_clks(host);
+				if (err) {
+					ufs_qcom_msg(ERR, hba->dev,
+							"%s: enable lane clks failed, ret=%d\n",
+							__func__, err);
+					return err;
+				}
 				ufs_qcom_phy_set_src_clk_h8_exit(phy);
+			}
 
 			if (!host->ref_clki->enabled) {
 				err = clk_prepare_enable(host->ref_clki->clk);
@@ -2615,8 +2624,15 @@ static int ufs_qcom_setup_clocks(struct ufs_hba *hba, bool on,
 		break;
 	case POST_CHANGE:
 		if (!on) {
-			if (ufs_qcom_is_link_hibern8(hba))
+			if (ufs_qcom_is_link_hibern8(hba)) {
 				ufs_qcom_phy_set_src_clk_h8_enter(phy);
+				/*
+				 * As XO is set to the source of lane clocks, hence
+				 * disable lane clocks to unvote on XO and allow XO shutdown
+				 */
+				ufs_qcom_disable_lane_clks(host);
+			}
+
 			err = ufs_qcom_set_bus_vote(hba, false);
 			if (err)
 				return err;
@@ -3214,7 +3230,7 @@ static void ufs_qcom_qos_init(struct ufs_hba *hba)
 	struct device_node *group_node;
 	struct ufs_qcom_qos_req *qr;
 	struct qos_cpu_group *qcg;
-	int i, err, mask = 0;
+	int i, err;
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
 	host->cpufreq_dis = true;
@@ -3239,19 +3255,21 @@ static void ufs_qcom_qos_init(struct ufs_hba *hba)
 	}
 	qr->qcg = qcg;
 	for_each_available_child_of_node(np, group_node) {
-		of_property_read_u32(group_node, "mask", &mask);
-		/* assign only populated cpu mask to qcg mask */
-		qcg->mask.bits[0] = mask & cpu_possible_mask->bits[0];
-		if (!cpumask_subset(&qcg->mask, cpu_possible_mask)) {
-			ufs_qcom_msg(ERR, dev, "Invalid group mask\n");
-			goto out_err;
-		}
-
+		/*
+		 * Due to Logical contiguous CPU numbering, one to one mapping
+		 * between physical and logical cpu is no more applicable.
+		 * Hence we don't need to pass the qos mask from the device tree
+		 * and instead need to populate the mask dynamically
+		 * using available kernel API.
+		 */
 		if (of_property_read_bool(group_node, "perf")) {
 			qcg->perf_core = true;
+			qcg->mask.bits[0] = host->gold_mask.bits[0] |
+					host->gold_prime_mask.bits[0];
 			host->cpufreq_dis = false;
 		} else {
 			qcg->perf_core = false;
+			qcg->mask.bits[0] = host->silver_mask.bits[0];
 		}
 
 		err = of_property_count_u32_elems(group_node, "vote");
@@ -3284,31 +3302,71 @@ out_err:
 	host->ufs_qos = NULL;
 }
 
+/**
+ * ufs_qcom_populate_available_cpus - Populate all the available cpu masks -
+ * Silver, gold and gold prime.
+ * @hba: per adapter instance
+ */
+static void ufs_qcom_populate_available_cpus(struct ufs_hba *hba)
+{
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+	int cid_cpu[MAX_NUM_CLUSTERS] = {-1, -1, -1};
+	int cid = -1;
+	int prev_cid = -1;
+	int cpu;
+
+	/*
+	 * Due to Logical contiguous CPU numbering, one to one mapping
+	 * between physical and logical cpu is no more applicable.
+	 * Hence we are not passing cpu mask from the device tree.
+	 * Hence populate the cpu mask dynamically as below.
+	 */
+	for_each_cpu(cpu, cpu_possible_mask) {
+		cid = topology_physical_package_id(cpu);
+		if (cid != prev_cid) {
+			cid_cpu[cid] = cpu;
+			prev_cid = cid;
+		}
+	}
+
+	/*
+	 * perf_mask which is needed for dynamic irq_affinity feature is updated
+	 * with either gold or gold_prime depending on the availability of the core.
+	 */
+	if (cid_cpu[SILVER_CORE] != -1)
+		host->silver_mask.bits[0] =
+			topology_core_cpumask(cid_cpu[SILVER_CORE])->bits[0];
+
+	if (cid_cpu[GOLD_CORE] != -1) {
+		host->gold_mask.bits[0] =
+			topology_core_cpumask(cid_cpu[GOLD_CORE])->bits[0];
+		host->perf_mask.bits[0] = host->gold_mask.bits[0];
+	}
+
+	if (cid_cpu[GOLD_PRIME_CORE] != -1) {
+		host->gold_prime_mask.bits[0] =
+			topology_core_cpumask(cid_cpu[GOLD_PRIME_CORE])->bits[0];
+		host->perf_mask.bits[0] = host->gold_prime_mask.bits[0];
+	}
+}
+
 static void ufs_qcom_parse_irq_affinity(struct ufs_hba *hba)
 {
 	struct device *dev = hba->dev;
 	struct device_node *np = dev->of_node;
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
-	int mask = 0;
+	int err;
 
 	if (np) {
-		of_property_read_u32(np, "qcom,prime-mask", &mask);
-		/* assign only populated cpu mask to perf mask  */
-		host->perf_mask.bits[0] = mask & cpu_possible_mask->bits[0];
-		if (!cpumask_subset(&host->perf_mask, cpu_possible_mask)) {
-			ufs_qcom_msg(ERR, dev, "Invalid group prime mask\n");
-			host->perf_mask.bits[0] = UFS_QCOM_IRQ_PRIME_MASK;
-		}
-		mask = 0;
-		of_property_read_u32(np, "qcom,silver-mask", &mask);
-		/* assign only populated cpu mask to silver mask */
-		host->def_mask.bits[0] = mask & cpu_possible_mask->bits[0];
-		if (!cpumask_subset(&host->def_mask, cpu_possible_mask)) {
-			ufs_qcom_msg(ERR, dev, "Invalid group silver mask\n");
-			host->def_mask.bits[0] = UFS_QCOM_IRQ_SLVR_MASK;
+		/* check for dynamic irq affinity feature support */
+		err = of_property_read_bool(np, "qcom,dynamic-irq-affinity");
+		if (!err) {
+			ufs_qcom_msg(DBG, host->hba->dev, "dynamic irq affinity not supported\n");
+			return;
 		}
 	}
-	/* If device includes perf mask, enable dynamic irq affinity feature */
+
+	/* If perf mask is available then only enable dynamic irq affinity feature */
 	if (host->perf_mask.bits[0])
 		host->irq_affinity_support = true;
 }
@@ -3919,6 +3977,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 
 	ufs_qcom_save_host_ptr(hba);
 
+	ufs_qcom_populate_available_cpus(hba);
 	ufs_qcom_qos_init(hba);
 	ufs_qcom_parse_irq_affinity(hba);
 	ufs_qcom_ber_mon_init(hba);

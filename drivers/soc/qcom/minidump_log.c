@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/cache.h>
@@ -1461,3 +1461,5 @@ int msm_minidump_log_init(void)
 #if !IS_MODULE(CONFIG_QCOM_MINIDUMP)
 late_initcall(msm_minidump_log_init)
 #endif
+
+MODULE_IMPORT_NS(MINIDUMP);

@@ -1723,12 +1723,14 @@ static ssize_t mhi_sm_debugfs_write(struct file *file,
 	unsigned long missing;
 	s8 in_num = 0;
 	struct mhi_sm_dev *mhi_sm_ctx = mhi_dev_sm_ctx[0];
-	struct mhi_dev *mhi = mhi_sm_ctx->mhi_dev;
+	struct mhi_dev *mhi;
 
 	if (!mhi_sm_ctx) {
 		MHI_SM_ERR(MHI_DEFAULT_ERROR_LOG_ID, "Not initialized\n");
 		return -EFAULT;
 	}
+
+	mhi = mhi_sm_ctx->mhi_dev;
 
 	if (sizeof(dbg_buff) < count + 1)
 		return -EFAULT;

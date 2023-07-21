@@ -340,6 +340,7 @@ struct sdhci_msm_host {
 	u8 raw_ext_csd_bus_width;
 	u8 raw_ext_csd_hs_timing;
 	struct mmc_ios cached_ios;
+	bool rst_n_disable;
 };
 
 struct mmc_pwrseq_ops {

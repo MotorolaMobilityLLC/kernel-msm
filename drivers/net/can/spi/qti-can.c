@@ -1822,6 +1822,7 @@ static int timer_thread_fn(void *data)
 				retry++;
 			}
 			timer_Flag = 0;
+			msleep(25000);
 		}
 	}
 	return 0;
@@ -2114,7 +2115,6 @@ static int qti_can_restore(struct device *dev)
 
 	if (spi) {
 		priv_data = spi_get_drvdata(spi);
-		disable_irq_wake(spi->irq);
 	} else {
 		ret = -1;
 	}
@@ -2189,7 +2189,7 @@ static int qti_can_suspend(struct device *dev)
 
 	if (spi) {
 		priv_data = spi_get_drvdata(spi);
-		if (priv_data->time_sync_from_soc_to_mcu)
+		if (priv_data && priv_data->time_sync_from_soc_to_mcu)
 			enable_irq_wake(spi->irq);
 	} else {
 		ret = -1;
@@ -2205,13 +2205,11 @@ static int qti_can_resume(struct device *dev)
 
 	if (spi) {
 		priv_data = spi_get_drvdata(spi);
-		disable_irq_wake(spi->irq);
 
-		if (priv_data && priv_data->time_sync_from_soc_to_mcu)
+		if (priv_data && priv_data->time_sync_from_soc_to_mcu) {
+			disable_irq_wake(spi->irq);
 			qti_can_rx_message(priv_data);
-		else
-			ret = -1;
-
+		}
 	} else {
 		ret = -1;
 	}

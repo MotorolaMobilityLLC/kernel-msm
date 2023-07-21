@@ -27,7 +27,7 @@ TRACE_EVENT(fastrpc_internal_invoke_start,
 		__entry->handle = handle;
 		__entry->sc = sc;
 		__entry->seq_num = seq_num;
-		__entry->mpm_tv = msm_timer_get_sclk_ticks();
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
 	),
 
 	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,
@@ -52,7 +52,7 @@ TRACE_EVENT(fastrpc_txbuf_send_start,
 		__entry->handle = ctx->handle;
 		__entry->sc = ctx->sc;
 		__entry->seq_num = ctx->seq_num;
-		__entry->mpm_tv = msm_timer_get_sclk_ticks();
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
 	),
 
 	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,
@@ -77,7 +77,7 @@ TRACE_EVENT(fastrpc_txbuf_send_end,
 		__entry->handle = ctx->handle;
 		__entry->sc = ctx->sc;
 		__entry->seq_num = ctx->seq_num;
-		__entry->mpm_tv = msm_timer_get_sclk_ticks();
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
 	),
 
 	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,
@@ -141,7 +141,7 @@ TRACE_EVENT(wait_for_completion_end,
 		__entry->handle = ctx->handle;
 		__entry->sc = ctx->sc;
 		__entry->seq_num = ctx->seq_num;
-		__entry->mpm_tv = msm_timer_get_sclk_ticks();
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
 	),
 
 	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,
@@ -166,7 +166,7 @@ TRACE_EVENT(fastrpc_rxbuf_send_start,
 		__entry->handle = ctx->handle;
 		__entry->sc = ctx->sc;
 		__entry->seq_num = ctx->seq_num;
-		__entry->mpm_tv = msm_timer_get_sclk_ticks();
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
 	),
 
 	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,
@@ -191,7 +191,7 @@ TRACE_EVENT(fastrpc_rxbuf_send_end,
 		__entry->handle = ctx->handle;
 		__entry->sc = ctx->sc;
 		__entry->seq_num = ctx->seq_num;
-		__entry->mpm_tv = msm_timer_get_sclk_ticks();
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
 	),
 
 	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,
@@ -216,7 +216,7 @@ TRACE_EVENT(fastrpc_internal_invoke_end,
 		__entry->handle = handle;
 		__entry->sc = sc;
 		__entry->seq_num = seq_num;
-		__entry->mpm_tv = msm_timer_get_sclk_ticks();
+		__entry->mpm_tv = msm_hr_timer_get_sclk_ticks();
 	),
 
 	TP_printk("%lld:0x%x:0x%x:%llu", __entry->seq_num,

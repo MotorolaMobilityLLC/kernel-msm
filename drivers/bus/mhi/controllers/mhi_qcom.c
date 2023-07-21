@@ -175,6 +175,19 @@ static const struct mhi_channel_config modem_qcom_sdx65_mhi_channels[] = {
 			      false, false, 0, 0),
 };
 
+static const struct mhi_channel_config qcom_lemans_mhi_channels[] = {
+	MHI_CHANNEL_CONFIG_UL(0, "LOOPBACK", 64, 1, MHI_EE_AMSS,
+				MHI_DB_BRST_DISABLE, false, 0, false, false, 0),
+	MHI_CHANNEL_CONFIG_DL(1, "LOOPBACK", 64, 1, MHI_EE_AMSS,
+				MHI_DB_BRST_DISABLE, false, 0, false, false,
+				false, false, 0, 0),
+	MHI_CHANNEL_CONFIG_UL(46, "IP_SW0", 4096, 2, MHI_EE_AMSS,
+				MHI_DB_BRST_DISABLE, false, 0, false, false, 0),
+	MHI_CHANNEL_CONFIG_DL(47, "IP_SW0", 4096, 3, MHI_EE_AMSS,
+				MHI_DB_BRST_DISABLE, false, 0, false, false,
+				false, false, 0, 0),
+};
+
 static struct mhi_event_config modem_qcom_sdx65_mhi_events[] = {
 	MHI_EVENT_CONFIG(0, 1, MHI_ER_CTRL, 64, 0,
 			 MHI_ER_PRIORITY_HI_NOSLEEP, MHI_DB_BRST_DISABLE, false,
@@ -222,6 +235,21 @@ static struct mhi_event_config modem_qcom_sdx65_mhi_events[] = {
 	MHI_EVENT_CONFIG(14, 15, MHI_ER_DATA, 1024, 0,
 			 MHI_ER_PRIORITY_HI_NOSLEEP, MHI_DB_BRST_DISABLE, true,
 			 false, false, 110),
+};
+
+static struct mhi_event_config qcom_lemans_mhi_events[] = {
+	MHI_EVENT_CONFIG(0, 1, MHI_ER_CTRL, 64, 0,
+			MHI_ER_PRIORITY_HI_NOSLEEP, MHI_DB_BRST_DISABLE, false,
+			 false, false, 0),
+	MHI_EVENT_CONFIG(1, 2, MHI_ER_DATA, 256, 0,
+			MHI_ER_PRIORITY_DEFAULT_NOSLEEP, MHI_DB_BRST_DISABLE,
+			false, false, false, 0),
+	MHI_EVENT_CONFIG(2, 3, MHI_ER_DATA, 4096, 0,
+			MHI_ER_PRIORITY_HI_NOSLEEP, MHI_DB_BRST_DISABLE,
+			false, false, false, 46),
+	MHI_EVENT_CONFIG(3, 4, MHI_ER_DATA, 4096, 0,
+			MHI_ER_PRIORITY_HI_NOSLEEP, MHI_DB_BRST_DISABLE,
+			false, true, false, 47),
 };
 
 static const struct mhi_controller_config modem_qcom_sdx65_mhi_config = {
@@ -272,6 +300,15 @@ static const struct mhi_controller_config qcom_sxr_mhi_config = {
 	.event_cfg = qcom_sxr_mhi_events,
 };
 
+static const struct mhi_controller_config qcom_lemans_mhi_config = {
+	.max_channels = 128,
+	.timeout_ms = 2000,
+	.buf_len = 0x8000,
+	.num_channels = ARRAY_SIZE(qcom_lemans_mhi_channels),
+	.ch_cfg = qcom_lemans_mhi_channels,
+	.num_events = ARRAY_SIZE(qcom_lemans_mhi_events),
+	.event_cfg = qcom_lemans_mhi_events,
+};
 
 static const struct mhi_pci_dev_info mhi_qcom_sdx65_info = {
 	.device_id = 0x0308,
@@ -285,6 +322,19 @@ static const struct mhi_pci_dev_info mhi_qcom_sdx65_info = {
 	.skip_forced_suspend = true,
 	.sfr_support = true,
 	.timesync = true,
+	.drv_support = false,
+};
+
+static const struct mhi_pci_dev_info mhi_qcom_lemans_info = {
+	.device_id = 0x0116,
+	.name = "Lemans",
+	.config = &qcom_lemans_mhi_config,
+	.bar_num = MHI_PCI_BAR_NUM,
+	.dma_data_width = 64,
+	.allow_m1 = true,
+	.skip_forced_suspend = true,
+	.sfr_support = false,
+	.timesync = false,
 	.drv_support = false,
 };
 
@@ -337,6 +387,8 @@ static const struct pci_device_id mhi_pcie_device_id[] = {
 		.driver_data = (kernel_ulong_t) &mhi_qcom_sdx75_info },
 	{ PCI_DEVICE(MHI_PCIE_VENDOR_ID, 0x0111),
 		.driver_data = (kernel_ulong_t) &mhi_qcom_sxr_info },
+	{ PCI_DEVICE(MHI_PCIE_VENDOR_ID, 0x0116),
+		.driver_data = (kernel_ulong_t) &mhi_qcom_lemans_info },
 	{ PCI_DEVICE(MHI_PCIE_VENDOR_ID, MHI_PCIE_DEBUG_ID),
 		.driver_data = (kernel_ulong_t) &mhi_qcom_debug_info },
 	{  }
