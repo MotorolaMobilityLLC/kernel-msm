@@ -584,6 +584,8 @@ static int virt_arm_smmu_write_strtab_ent(struct virt_arm_smmu_master *master,
 		smmu_domain = master->domain;
 		smmu = master->smmu;
 	}
+	if (!smmu_domain)
+		return -EINVAL;
 
 	s1_cfg = &smmu_domain->s1_cfg;
 	val = STRTAB_STE_0_V;
