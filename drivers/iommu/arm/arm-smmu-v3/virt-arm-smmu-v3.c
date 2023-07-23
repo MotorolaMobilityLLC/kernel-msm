@@ -36,10 +36,6 @@
 #include <linux/qcom_scm.h>
 #include <linux/amba/bus.h>
 
-/* Convert between AArch64 (CPU) TCR format and SMMU CD format */
-#define ARM_SMMU_TCR2CD(tcr, fld)	FIELD_PREP(CTXDESC_CD_0_TCR_##fld, \
-					FIELD_GET(ARM64_TCR_##fld, tcr))
-
 /*
  * Stream table.
  *
@@ -280,28 +276,12 @@ out_free_asid:
 	return ret;
 }
 
-static u64 arm_smmu_cpu_tcr_to_cd(u64 tcr)
-{
-	u64 val = 0;
-
-	val |= ARM_SMMU_TCR2CD(tcr, T0SZ);
-	val |= ARM_SMMU_TCR2CD(tcr, TG0);
-	val |= ARM_SMMU_TCR2CD(tcr, IRGN0);
-	val |= ARM_SMMU_TCR2CD(tcr, ORGN0);
-	val |= ARM_SMMU_TCR2CD(tcr, SH0);
-	val |= ARM_SMMU_TCR2CD(tcr, EPD0);
-	val |= ARM_SMMU_TCR2CD(tcr, EPD1);
-	val |= ARM_SMMU_TCR2CD(tcr, IPS);
-
-	return val;
-}
-
 static void virt_arm_smmu_write_ctx_desc(struct virt_arm_smmu_device *smmu,
 				    struct arm_smmu_s1_cfg *cfg)
 {
 	u64 val;
 
-	val = arm_smmu_cpu_tcr_to_cd(cfg->cd.tcr) |
+	val = cfg->cd.tcr |
 #ifdef __BIG_ENDIAN
 	      CTXDESC_CD_0_ENDI |
 #endif
@@ -505,18 +485,39 @@ static phys_addr_t virt_arm_smmu_iova_to_phys(struct iommu_domain *domain, dma_a
 	return ops->iova_to_phys(ops, iova);
 }
 
+static unsigned long get_sid_from_smmu_domain(struct virt_arm_smmu_domain *smmu_domain)
+{
+	struct virt_arm_smmu_master *master;
+	unsigned long flags;
+	u64 sid;
+	u16 i;
+
+	spin_lock_irqsave(&smmu_domain->devices_lock, flags);
+	list_for_each_entry(master, &smmu_domain->devices, domain_head) {
+		for (i = 0; i < master->num_sids; i++) {
+			if (master->domain == smmu_domain)
+				sid = master->ste_cfg->sid;
+		}
+	}
+	spin_unlock_irqrestore(&smmu_domain->devices_lock, flags);
+
+	return sid;
+}
+
 static void virt_arm_smmu_tlb_inv_sync(unsigned long iova, size_t size,
 				   size_t granule, bool leaf,
 				   struct virt_arm_smmu_domain *smmu_domain)
 {
 	u32 asid;
+	u64 sid;
 
 	if (!size)
 		return;
 	asid = smmu_domain->s1_cfg.cd.asid;
+	sid = get_sid_from_smmu_domain(smmu_domain);
 
-	if (qcom_scm_paravirt_tlb_inv(asid))
-		pr_err("SCM called failed for TLB inv: asid:0x%x\n", asid);
+	if (qcom_scm_paravirt_tlb_inv(asid,sid))
+		pr_err("SCM called failed for TLB inv: asid:0x%x and sid is 0x%x\n", asid, sid);
 }
 
 
@@ -524,9 +525,11 @@ static void virt_arm_smmu_tlb_inv_context(void *cookie)
 {
 	struct virt_arm_smmu_domain *smmu_domain = cookie;
 	u32 asid = smmu_domain->s1_cfg.cd.asid;
+	u64 sid;
 
-	if (qcom_scm_paravirt_tlb_inv(asid))
-		pr_err("SCM called failed for TLB inv: asid:0x%x\n", asid);
+	sid = get_sid_from_smmu_domain(smmu_domain);
+	if (qcom_scm_paravirt_tlb_inv(asid,sid))
+		pr_err("SCM called failed for TLB inv: asid:0x%x and sid is 0x%x\n", asid, sid);
 }
 
 static void virt_arm_smmu_iotlb_sync(struct iommu_domain *domain,
