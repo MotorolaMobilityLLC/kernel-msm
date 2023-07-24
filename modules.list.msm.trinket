@@ -26,6 +26,10 @@ clk-qcom.ko
 clk-smd-rpm.ko
 gcc-trinket.ko
 gpucc-trinket.ko
+qnoc-qos-rpm.ko
+qnoc-trinket.ko
+icc-rpm.ko
+icc-debug.ko
 secure_buffer.ko
 smem.ko
 socinfo.ko
