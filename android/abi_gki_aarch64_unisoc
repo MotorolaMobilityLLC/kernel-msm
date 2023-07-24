@@ -3143,9 +3143,23 @@
   __traceiter_android_vh_tune_swappiness
   __tracepoint_android_vh_tune_swappiness
 
+# required by unisoc_mm_cma.ko
+  __traceiter_android_vh_use_cma_first_check
+  __traceiter_android_vh_alloc_highpage_movable_gfp_adjust
+  __traceiter_android_vh_anon_gfp_adjust
+  __traceiter_android_vh_alloc_flags_cma_adjust
+  __traceiter_android_vh_rmqueue_cma_fallback
+  __tracepoint_android_vh_use_cma_first_check
+  __tracepoint_android_vh_alloc_highpage_movable_gfp_adjust
+  __tracepoint_android_vh_anon_gfp_adjust
+  __tracepoint_android_vh_alloc_flags_cma_adjust
+  __tracepoint_android_vh_rmqueue_cma_fallback
+
 # required by unisoc_mm_emem.ko
   __traceiter_android_vh_oom_check_panic
+  __traceiter_android_vh_show_mem
   __tracepoint_android_vh_oom_check_panic
+  __tracepoint_android_vh_show_mem
 
 # required by unisoc_mm_reclaim.ko
   __traceiter_android_vh_do_page_trylock
@@ -3160,6 +3174,12 @@
   __tracepoint_android_vh_page_trylock_get_result
   __tracepoint_android_vh_page_trylock_set
   __tracepoint_android_vh_shrink_slab_bypass
+
+# required by unisoc_mm_slab.ko
+  __traceiter_android_vh_kmalloc_order_alloced
+  __traceiter_android_vh_slab_page_alloced
+  __tracepoint_android_vh_kmalloc_order_alloced
+  __tracepoint_android_vh_slab_page_alloced
 
 # required by unisoc_multi_control.ko
   cpufreq_table_index_unsorted
