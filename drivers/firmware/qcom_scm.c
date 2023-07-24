@@ -3077,7 +3077,11 @@ static int __init qcom_scm_init(void)
 
 	return qtee_shmbridge_driver_init();
 }
+#ifdef CONFIG_QCOM_SCM_HAB
+subsys_initcall(qcom_scm_init);
+#else
 core_initcall(qcom_scm_init);
+#endif
 
 #if IS_MODULE(CONFIG_QCOM_SCM)
 static void __exit qcom_scm_exit(void)
