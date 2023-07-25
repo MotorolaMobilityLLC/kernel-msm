@@ -17,6 +17,14 @@ qcom_iommu_util.ko
 qcom_dma_heaps.ko
 qcom_hwspinlock.ko
 qti-regmap-debugfs.ko
+qcom-apcs-ipc-mailbox.ko
+smem.ko
+qcom_ipc_logging.ko
+qcom_glink.ko
+qcom_glink_rpm.ko
+qcom_glink_smem.ko
+ns.ko
+qrtr.ko
 rpm-smd.ko
 proxy-consumer.ko
 rpm-smd-regulator.ko
