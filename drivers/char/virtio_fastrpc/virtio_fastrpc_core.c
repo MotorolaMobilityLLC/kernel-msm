@@ -2315,12 +2315,16 @@ int vfastrpc_internal_init_process(struct vfastrpc_file *vfl,
 	case FASTRPC_INIT_CREATE:
 		fl->pd = DYNAMIC_PD;
 		/* Untrusted apps are not allowed to offload to signedPD on DSP. */
-		if (fl->untrusted_process) {
+		if (fl->untrusted_process || vfl->apps->signed_pd_control) {
 			VERIFY(err, uproc->attrs & FASTRPC_MODE_UNSIGNED_MODULE);
 			if (err) {
 				err = -ECONNREFUSED;
-				dev_err(vfl->apps->dev,
-					"untrusted app trying to offload to signed remote process\n");
+				if (fl->untrusted_process)
+					dev_err(vfl->apps->dev,
+							"untrusted app trying to offload to signed PD\n");
+				else
+					dev_err(vfl->apps->dev,
+							"signed PD is not allowed\n");
 				goto bail;
 			}
 		}
