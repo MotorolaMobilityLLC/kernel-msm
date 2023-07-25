@@ -176,6 +176,7 @@ struct ps5169_redriver {
 	struct work_struct	pullup_work;
 	int			pullup_req;
 	bool			work_ongoing;
+	bool			config_dp_eq;
 
 	struct work_struct	host_work;
 };
@@ -940,6 +941,24 @@ static int ps5169_config_seqs_init(struct ps5169_redriver *ps5169)
 	return ret;
 }
 
+int redriver_config_dp_eq(struct device_node *node)
+{
+	struct ps5169_redriver *ps5169;
+
+	ps5169 = check_devnode(node);
+	if (IS_ERR_OR_NULL(ps5169))
+		return -EINVAL;
+
+	if (ps5169->config_dp_eq) {
+		ps5169_redriver_write_reg_bits(ps5169, 0x52, 0x00, 0xff);
+		ps5169_redriver_write_reg_bits(ps5169, 0x5e, 0x04, 0xff);
+		dev_info(ps5169->dev, "%s, done.\n", __func__);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(redriver_config_dp_eq);
+
 static void ps5169_config_work_mode(struct ps5169_redriver *ps5169,
 		enum operation_mode mode)
 {
@@ -1048,6 +1067,8 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 		dev_err(dev, "failed to allocate register map: %d\n", ret);
 		return ret;
 	}
+
+	ps5169->config_dp_eq = of_property_read_bool(dev->of_node, "redriver,config-dp-eq");
 
 	ps5169->vcc = devm_regulator_get_optional(&client->dev, "vcc");
 	if (IS_ERR(ps5169->vcc) || ps5169->vcc == NULL) {
