@@ -21,6 +21,7 @@ int redriver_orientation_get(struct device_node *node);
 int redriver_gadget_pullup_enter(struct device_node *node, int is_on);
 int redriver_gadget_pullup_exit(struct device_node *node, int is_on);
 int redriver_powercycle(struct device_node *node);
+int redriver_config_dp_eq(struct device_node *node);
 
 #else
 
