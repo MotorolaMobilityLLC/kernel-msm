@@ -159,6 +159,7 @@ int msm_ep_update_ops(struct usb_ep *ep);
 int msm_ep_clear_ops(struct usb_ep *ep);
 int msm_ep_set_mode(struct usb_ep *ep, enum usb_hw_ep_mode mode);
 int dwc3_core_stop_hw_active_transfers(struct dwc3 *dwc);
+int dwc3_msm_set_usb_redriver_eq(struct device *dev);
 #else
 void dwc3_msm_notify_event(struct dwc3 *dwc,
 		enum dwc3_notify_event event, unsigned int value)

@@ -4902,6 +4902,21 @@ static void dwc3_msm_set_dp_only_params(struct dwc3_msm *mdwc)
 	mdwc->ss_phy->flags |= PHY_DP_MODE;
 }
 
+int dwc3_msm_set_usb_redriver_eq(struct device *dev)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc || !mdwc->ss_redriver_node) {
+		dev_err(dev, "dwc3-msm is not initialized yet.\n");
+		return -EAGAIN;
+	}
+
+	redriver_config_dp_eq(mdwc->ss_redriver_node);
+
+	return 0;
+}
+EXPORT_SYMBOL(dwc3_msm_set_usb_redriver_eq);
+
 int dwc3_msm_set_dp_mode(struct device *dev, bool dp_connected, int lanes)
 {
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
