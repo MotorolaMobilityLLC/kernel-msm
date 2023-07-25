@@ -1109,6 +1109,10 @@
   mdiobus_write
   mdio_device_create
   mdio_device_free
+  media_create_pad_link
+  media_entity_remote_pad
+  media_pipeline_start
+  media_pipeline_stop
   memchr
   memcmp
   memcpy
@@ -1326,6 +1330,7 @@
   param_get_charp
   param_get_hexint
   param_get_int
+  param_get_short
   param_get_string
   param_ops_bool
   param_ops_byte
@@ -1342,6 +1347,7 @@
   param_set_copystring
   param_set_hexint
   param_set_int
+  pci_choose_state
   pci_disable_device
   pci_enable_device
   pci_find_next_bus
@@ -1357,9 +1363,11 @@
   pci_read_config_dword
   pci_remove_root_bus
   pci_rescan_bus
+  pci_set_power_state
   pci_stop_and_remove_bus_device_locked
   pci_stop_root_bus
   pci_unlock_rescan_remove
+  pci_write_config_byte
   pci_write_config_dword
   PDE_DATA
   __per_cpu_offset
@@ -1899,6 +1907,7 @@
   system_freezing_cnt
   system_highpri_wq
   system_power_efficient_wq
+  system_unbound_wq
   system_wq
   sys_tz
   __tasklet_hi_schedule
@@ -1929,6 +1938,7 @@
   __traceiter_android_rvh_check_preempt_tick
   __traceiter_android_rvh_check_preempt_wakeup
   __traceiter_android_rvh_do_sea
+  __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_gic_v3_set_affinity
   __traceiter_android_rvh_iommu_setup_dma_ops
   __traceiter_android_rvh_panic_unhandled
@@ -1936,6 +1946,7 @@
   __traceiter_android_rvh_replace_next_task_fair
   __traceiter_android_rvh_schedule
   __traceiter_android_rvh_select_task_rq_rt
+  __traceiter_android_rvh_tick_entry
   __traceiter_android_vh_cma_drain_all_pages_bypass
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
@@ -1954,12 +1965,14 @@
   __traceiter_mmap_lock_acquire_returned
   __traceiter_mmap_lock_released
   __traceiter_mmap_lock_start_locking
+  __traceiter_sched_switch
   __traceiter_xdp_exception
   trace_output_call
   __tracepoint_android_rvh_arm64_serror_panic
   __tracepoint_android_rvh_check_preempt_tick
   __tracepoint_android_rvh_check_preempt_wakeup
   __tracepoint_android_rvh_do_sea
+  __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_gic_v3_set_affinity
   __tracepoint_android_rvh_iommu_setup_dma_ops
   __tracepoint_android_rvh_panic_unhandled
@@ -1967,6 +1980,7 @@
   __tracepoint_android_rvh_replace_next_task_fair
   __tracepoint_android_rvh_schedule
   __tracepoint_android_rvh_select_task_rq_rt
+  __tracepoint_android_rvh_tick_entry
   __tracepoint_android_vh_cma_drain_all_pages_bypass
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
@@ -1987,6 +2001,7 @@
   __tracepoint_mmap_lock_start_locking
   tracepoint_probe_register
   tracepoint_probe_unregister
+  __tracepoint_sched_switch
   __tracepoint_xdp_exception
   trace_print_array_seq
   trace_print_flags_seq
@@ -2087,17 +2102,22 @@
   utf8_to_utf32
   uuid_null
   v4l2_ctrl_add_handler
+  v4l2_ctrl_find
   v4l2_ctrl_handler_free
   v4l2_ctrl_handler_init_class
   v4l2_ctrl_handler_setup
   v4l2_ctrl_new_custom
+  v4l2_ctrl_new_int_menu
   v4l2_ctrl_new_std
+  __v4l2_ctrl_s_ctrl
+  __v4l2_ctrl_s_ctrl_int64
   v4l2_ctrl_subscribe_event
   v4l2_device_register
   v4l2_device_register_subdev
   v4l2_device_unregister
   v4l2_device_unregister_subdev
   v4l2_event_queue_fh
+  v4l2_event_subdev_unsubscribe
   v4l2_event_subscribe
   v4l2_event_unsubscribe
   v4l2_fh_add
@@ -2105,6 +2125,7 @@
   v4l2_fh_exit
   v4l2_fh_init
   v4l2_fh_open
+  __v4l2_find_nearest_size
   v4l2_i2c_subdev_init
   v4l2_m2m_buf_queue
   v4l2_m2m_buf_remove
@@ -2127,6 +2148,7 @@
   v4l2_m2m_release
   v4l2_m2m_try_schedule
   v4l2_src_change_event_subscribe
+  v4l2_subdev_link_validate
   v4l_bound_align_image
   vabits_actual
   vb2_buffer_done
@@ -2139,6 +2161,7 @@
   vb2_ioctl_create_bufs
   vb2_ioctl_dqbuf
   vb2_ioctl_expbuf
+  vb2_ioctl_prepare_buf
   vb2_ioctl_qbuf
   vb2_ioctl_querybuf
   vb2_ioctl_reqbufs
@@ -2183,6 +2206,7 @@
   wait_for_completion_timeout
   __wait_on_buffer
   wait_on_page_bit
+  wait_woken
   __wake_up
   wake_up_process
   wakeup_source_register
