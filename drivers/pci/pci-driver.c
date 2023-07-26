@@ -956,7 +956,7 @@ static int pci_pm_resume_noirq(struct device *dev)
 	pcie_pme_root_status_cleanup(pci_dev);
 
 	if (!skip_bus_pm && prev_state == PCI_D3cold)
-		pci_bridge_wait_for_secondary_bus(pci_dev);
+		pci_bridge_wait_for_secondary_bus(pci_dev, "resume", PCI_RESET_WAIT);
 
 	if (pci_has_legacy_pm_support(pci_dev))
 		return pci_legacy_resume_early(dev);
@@ -1377,7 +1377,7 @@ static int pci_pm_runtime_resume(struct device *dev)
 	pci_fixup_device(pci_fixup_resume, pci_dev);
 
 	if (prev_state == PCI_D3cold)
-		pci_bridge_wait_for_secondary_bus(pci_dev);
+		pci_bridge_wait_for_secondary_bus(pci_dev, "resume", PCI_RESET_WAIT);
 
 #ifdef CONFIG_PCI_QTI
 skip_restore:
