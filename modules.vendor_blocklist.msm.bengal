@@ -77,5 +77,6 @@ blocklist qpnp_adaptive_charge
 blocklist tcpc_class
 blocklist tcpc_sgm7220
 blocklist tcpc_aw35616
+blocklist bq2589x_charger
 blocklist rt_pd_manager
 blocklist moto_f_usbnet
