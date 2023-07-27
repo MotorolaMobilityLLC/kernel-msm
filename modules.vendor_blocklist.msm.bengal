@@ -82,3 +82,6 @@ blocklist rt_pd_manager
 blocklist moto_f_usbnet
 blocklist chipone_tddi_v2_mmi
 blocklist nova_0flash_mmi
+blocklist sensors_class
+blocklist sx933x_sar
+blocklist aw9610x
