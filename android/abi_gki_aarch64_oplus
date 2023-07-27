@@ -390,6 +390,7 @@
   __traceiter_android_vh_cleanup_old_buffers_bypass
   __traceiter_android_vh_cma_drain_all_pages_bypass
   __traceiter_android_vh_compact_finished
+  __traceiter_android_vh_check_page_look_around_ref
   __traceiter_android_vh_alloc_pages_reclaim_bypass
   __traceiter_android_vh_free_unref_page_bypass
   __traceiter_android_vh_kvmalloc_node_use_vmalloc
@@ -419,6 +420,8 @@
   __traceiter_android_vh_irqtime_account_process_tick
   __traceiter_android_vh_killed_process
   __traceiter_android_vh_kmalloc_slab
+  __traceiter_android_vh_look_around
+  __traceiter_android_vh_look_around_migrate_page
   __traceiter_android_vh_madvise_cold_or_pageout_abort
   __traceiter_android_vh_mark_page_accessed
   __traceiter_android_vh_mem_cgroup_alloc
@@ -456,6 +459,7 @@
   __traceiter_android_vh_tune_inactive_ratio
   __traceiter_android_vh_tune_scan_type
   __traceiter_android_vh_tune_swappiness
+  __traceiter_android_vh_test_clear_look_around_ref
   __traceiter_android_vh_update_page_mapcount
   __traceiter_block_bio_complete
   __traceiter_block_bio_queue
@@ -506,6 +510,7 @@
   __tracepoint_android_vh_cleanup_old_buffers_bypass
   __tracepoint_android_vh_cma_drain_all_pages_bypass
   __tracepoint_android_vh_compact_finished
+  __tracepoint_android_vh_check_page_look_around_ref
   __tracepoint_android_vh_alloc_pages_reclaim_bypass
   __tracepoint_android_vh_free_unref_page_bypass
   __tracepoint_android_vh_kvmalloc_node_use_vmalloc
@@ -535,6 +540,8 @@
   __tracepoint_android_vh_irqtime_account_process_tick
   __tracepoint_android_vh_killed_process
   __tracepoint_android_vh_kmalloc_slab
+  __tracepoint_android_vh_look_around
+  __tracepoint_android_vh_look_around_migrate_page
   __tracepoint_android_vh_madvise_cold_or_pageout_abort
   __tracepoint_android_vh_mark_page_accessed
   __tracepoint_android_vh_mem_cgroup_alloc
@@ -572,6 +579,7 @@
   __tracepoint_android_vh_tune_inactive_ratio
   __tracepoint_android_vh_tune_scan_type
   __tracepoint_android_vh_tune_swappiness
+  __tracepoint_android_vh_test_clear_look_around_ref
   __tracepoint_android_vh_update_page_mapcount
   __tracepoint_block_bio_complete
   __tracepoint_block_bio_queue
