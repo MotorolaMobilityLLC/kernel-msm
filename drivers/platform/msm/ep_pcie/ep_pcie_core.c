@@ -2897,7 +2897,7 @@ static irqreturn_t ep_pcie_handle_perst_irq(int irq, void *data)
 			"PCIe V%d: No. %ld PERST assertion\n",
 			dev->rev, dev->perst_ast_counter);
 
-		if (dev->client_ready) {
+		if (dev->event_reg->events & EP_PCIE_EVENT_PM_D3_COLD) {
 			ep_pcie_notify_event(dev, EP_PCIE_EVENT_PM_D3_COLD);
 		} else {
 			dev->no_notify = true;
@@ -2922,11 +2922,16 @@ static irqreturn_t ep_pcie_handle_perst_deassert(int irq, void *data)
 {
 	struct ep_pcie_dev_t *dev = data;
 
-	if (!dev->enumerated) {
+	if (!dev->enumerated || dev->dma_wake) {
 		EP_PCIE_DBG(dev,
 		"PCIe V%d: Start enumeration due to PERST deassertion\n",
 		dev->rev);
 		ep_pcie_enumeration(dev);
+		if (dev->dma_wake) {
+			EP_PCIE_DBG(dev,
+				"PCIe V%d: Handle perst deassert for dma wake\n", dev->rev);
+			dev->dma_wake = false;
+		}
 	} else {
 		ep_pcie_notify_event(dev, EP_PCIE_EVENT_PM_RST_DEAST);
 	}
@@ -3801,16 +3806,21 @@ static int ep_pcie_core_wakeup_host_internal(enum ep_pcie_event event)
 		/*D3 cold handling*/
 		ep_pcie_core_toggle_wake_gpio(true);
 	} else if (dev->l23_ready) {
-		EP_PCIE_ERR(dev,
+		EP_PCIE_DBG(dev,
 			"PCIe V%d: request to assert WAKE# when in D3hot\n",
 			dev->rev);
 		/*D3 hot handling*/
 		ep_pcie_core_issue_inband_pme();
 	} else {
 		/*D0 handling*/
-		EP_PCIE_ERR(dev,
+		EP_PCIE_DBG(dev,
 			"PCIe V%d: request to assert WAKE# when in D0\n",
 			dev->rev);
+	}
+
+	if (event == EP_PCIE_EVENT_INVALID) {
+		EP_PCIE_DBG(dev, "PCIe V%d: Wake from DMA Call Back\n", dev->rev);
+		dev->dma_wake = true;
 	}
 
 	atomic_set(&dev->host_wake_pending, 1);
