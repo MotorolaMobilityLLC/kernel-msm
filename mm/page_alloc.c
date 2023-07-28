@@ -3176,8 +3176,13 @@ retry:
 	/*
 	 * let normal GFP_MOVABLE has chance to try MIGRATE_CMA
 	 */
-	if (unlikely(!page) && (migratetype == MIGRATE_MOVABLE))
+	if (unlikely(!page) && (migratetype == MIGRATE_MOVABLE)) {
+		bool try_cma = false;
 		trace_android_vh_rmqueue_cma_fallback(zone, order, &page);
+		trace_android_vh_try_cma_fallback(zone, order, &try_cma);
+		if (try_cma)
+			page = __rmqueue_cma_fallback(zone, order);
+	}
 
 	if (unlikely(!page) && __rmqueue_fallback(zone, order, migratetype,
 						  alloc_flags))

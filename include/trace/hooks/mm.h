@@ -240,6 +240,9 @@ DECLARE_HOOK(android_vh_look_around,
 	TP_PROTO(struct page_vma_mapped_walk *pvmw, struct page *page,
 		struct vm_area_struct *vma, int *referenced),
 	TP_ARGS(pvmw, page, vma, referenced));
+DECLARE_HOOK(android_vh_try_cma_fallback,
+	TP_PROTO(struct zone *zone, unsigned int order, bool *try_cma),
+	TP_ARGS(zone, order, try_cma));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
