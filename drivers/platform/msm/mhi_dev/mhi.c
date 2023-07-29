@@ -787,8 +787,7 @@ static int mhi_dev_flush_transfer_completion_events(struct mhi_dev *mhi,
 		struct mhi_dev_channel *ch, u32 snd_cmpl_num)
 {
 	int rc = 0;
-	unsigned long flags = 0;
-	struct event_req *flush_ereq;
+	struct event_req *flush_ereq = NULL;
 	struct event_req *itr, *tmp;
 
 	do {
@@ -826,14 +825,17 @@ static int mhi_dev_flush_transfer_completion_events(struct mhi_dev *mhi,
 		if (mhi->use_edma) {
 			list_for_each_entry_safe(itr, tmp, &ch->flush_event_req_buffers, list) {
 				flush_ereq = itr;
-				if (flush_ereq->snd_cmpl == snd_cmpl_num)
+				if (flush_ereq && flush_ereq->snd_cmpl == snd_cmpl_num)
 					break;
 			}
 
-			if (flush_ereq->snd_cmpl != snd_cmpl_num) {
-				spin_unlock_irqrestore(&mhi->lock, flags);
+			if (flush_ereq && (flush_ereq->snd_cmpl != snd_cmpl_num))
 				break;
-			}
+		}
+
+		if (!flush_ereq) {
+			mhi_log(mhi->vf_id, MHI_MSG_ERROR, "failed to assign flush_ereq\n");
+			return -EINVAL;
 		}
 
 		list_del_init(&flush_ereq->list);
