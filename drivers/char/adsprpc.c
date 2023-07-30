@@ -2483,6 +2483,7 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 		struct fastrpc_mmap *map = ctx->maps[i];
 		uint64_t buf = ptr_to_uint64(lpra[i].buf.pv);
 		size_t len = lpra[i].buf.len;
+		uint64_t buf_start = 0;
 
 		rpra[i].buf.pv = 0;
 		rpra[i].buf.len = len;
@@ -2504,7 +2505,17 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 					up_read(&current->mm->mmap_lock);
 					goto bail;
 				}
-				offset = buf_page_start(buf) - vma->vm_start;
+				buf_start = buf_page_start(buf);
+				VERIFY(err, vma->vm_start <= buf_start);
+				if (err) {
+					up_read(&current->mm->mmap_lock);
+					ADSPRPC_ERR(
+						"buffer VA invalid for fd %d, IPA 0x%llx, VA 0x%llx, vma start 0x%llx\n",
+						map->fd, map->phys, map->va, vma->vm_start);
+					err = -EFAULT;
+					goto bail;
+				}
+				offset = buf_start - vma->vm_start;
 				up_read(&current->mm->mmap_lock);
 				VERIFY(err, offset + len <= (uintptr_t)map->size);
 				if (err) {
