@@ -364,6 +364,7 @@
   __traceiter_android_rvh_do_serror
   __traceiter_android_rvh_pick_next_entity
   __traceiter_android_rvh_place_entity
+  __traceiter_android_rvh_rtmutex_force_update
   __traceiter_android_rvh_schedule
   __traceiter_android_rvh_set_balance_anon_file_reclaim
   __traceiter_android_rvh_set_user_nice
@@ -447,6 +448,7 @@
   __traceiter_android_vh_record_rtmutex_lock_starttime
   __traceiter_android_vh_record_rwsem_lock_starttime
   __traceiter_android_vh_rmqueue
+  __traceiter_android_vh_rtmutex_waiter_prio
   __traceiter_android_vh_rwsem_can_spin_on_owner
   __traceiter_android_vh_rwsem_opt_spin_finish
   __traceiter_android_vh_rwsem_opt_spin_start
@@ -456,6 +458,7 @@
   __traceiter_android_vh_sched_stat_runtime_rt
   __traceiter_android_vh_show_mapcount_pages
   __traceiter_android_vh_sync_txn_recvd
+  __traceiter_android_vh_task_blocks_on_rtmutex
   __traceiter_android_vh_tune_inactive_ratio
   __traceiter_android_vh_tune_scan_type
   __traceiter_android_vh_tune_swappiness
@@ -484,6 +487,7 @@
   __tracepoint_android_rvh_do_serror
   __tracepoint_android_rvh_pick_next_entity
   __tracepoint_android_rvh_place_entity
+  __tracepoint_android_rvh_rtmutex_force_update
   __tracepoint_android_rvh_schedule
   __tracepoint_android_rvh_set_balance_anon_file_reclaim
   __tracepoint_android_rvh_set_user_nice
@@ -567,6 +571,7 @@
   __tracepoint_android_vh_record_rtmutex_lock_starttime
   __tracepoint_android_vh_record_rwsem_lock_starttime
   __tracepoint_android_vh_rmqueue
+  __tracepoint_android_vh_rtmutex_waiter_prio
   __tracepoint_android_vh_rwsem_can_spin_on_owner
   __tracepoint_android_vh_rwsem_opt_spin_finish
   __tracepoint_android_vh_rwsem_opt_spin_start
@@ -576,6 +581,7 @@
   __tracepoint_android_vh_sched_stat_runtime_rt
   __tracepoint_android_vh_show_mapcount_pages
   __tracepoint_android_vh_sync_txn_recvd
+  __tracepoint_android_vh_task_blocks_on_rtmutex
   __tracepoint_android_vh_tune_inactive_ratio
   __tracepoint_android_vh_tune_scan_type
   __tracepoint_android_vh_tune_swappiness
