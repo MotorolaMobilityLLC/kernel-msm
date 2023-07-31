@@ -630,3 +630,4 @@
   __wake_up
   wake_up_process
   wq_worker_comm
+  is_ashmem_file
