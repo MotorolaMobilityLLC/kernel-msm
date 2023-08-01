@@ -960,3 +960,8 @@ config SPI_DYNAMIC
 	def_bool ACPI || OF_DYNAMIC || SPI_SLAVE
 
 endif # SPI
+
+config IS_XFER_IN_PROGRESS
+	bool "Check if xfer is in progress"
+	help
+	  Force suspend if spi xfers were completed.
