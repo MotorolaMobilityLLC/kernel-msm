@@ -22,7 +22,7 @@
 #include <linux/string.h>
 
 /* Define IPC Logging Macros */
-#define GLINK_PKT_IPC_LOG_PAGE_CNT 2
+#define GLINK_PKT_IPC_LOG_PAGE_CNT 32
 static void *glink_pkt_ilctxt;
 
 #define GLINK_PKT_INFO(x, ...)						     \
@@ -179,8 +179,13 @@ static int glink_pkt_rpdev_probe(struct rpmsg_device *rpdev)
 
 static void glink_pkt_kfree_skb(struct glink_pkt_device *gpdev, struct sk_buff *skb)
 {
+	int ret;
+
 	if (gpdev->rx_done) {
-		rpmsg_rx_done(gpdev->rpdev->ept, skb->data);
+		GLINK_PKT_INFO("channel:%s\n", gpdev->ch_name);
+		ret = rpmsg_rx_done(gpdev->rpdev->ept, skb->data);
+		if (ret < 0)
+			GLINK_PKT_INFO("Failed channel:%s ret:%d\n", gpdev->ch_name, ret);
 		/*
 		 * Data memory is freed by rpmsg_rx_done(), reset the
 		 * skb data pointers so kfree_skb() does not try to free
@@ -220,9 +225,13 @@ static int glink_pkt_rpdev_no_copy_cb(struct rpmsg_device *rpdev, void *buf,
 	unsigned long flags;
 	struct sk_buff *skb;
 
+	GLINK_PKT_INFO("Data received on:%s len:%d\n", gpdev->ch_name, len);
+
 	skb = alloc_skb(0, GFP_ATOMIC);
-	if (!skb)
+	if (!skb) {
+		GLINK_PKT_ERR("skb failed for channel:%s len:%d\n", gpdev->ch_name, len);
 		return -ENOMEM;
+	}
 
 	skb->head = buf;
 	skb->data = buf;
@@ -237,6 +246,8 @@ static int glink_pkt_rpdev_no_copy_cb(struct rpmsg_device *rpdev, void *buf,
 	/* wake up any blocking processes, waiting for new data */
 	wake_up_interruptible(&gpdev->readq);
 
+	GLINK_PKT_INFO("Data queued on:%s len:%d\n", gpdev->ch_name, len);
+
 	return RPMSG_DEFER;
 }
 
@@ -247,14 +258,18 @@ static int glink_pkt_rpdev_copy_cb(struct rpmsg_device *rpdev, void *buf,
 	unsigned long flags;
 	struct sk_buff *skb;
 
+	GLINK_PKT_INFO("Data received on:%s len:%d\n", gpdev->ch_name, len);
+
 	if (!gpdev) {
 		GLINK_PKT_ERR("channel is in reset\n");
 		return -ENETRESET;
 	}
 
 	skb = alloc_skb(len, GFP_ATOMIC);
-	if (!skb)
+	if (!skb) {
+		GLINK_PKT_ERR("skb failed for channel:%s len:%d\n", gpdev->ch_name, len);
 		return -ENOMEM;
+	}
 
 	skb_put_data(skb, buf, len);
 
@@ -264,6 +279,8 @@ static int glink_pkt_rpdev_copy_cb(struct rpmsg_device *rpdev, void *buf,
 
 	/* wake up any blocking processes, waiting for new data */
 	wake_up_interruptible(&gpdev->readq);
+
+	GLINK_PKT_INFO("Data queued on:%s len:%d\n", gpdev->ch_name, len);
 
 	return 0;
 }
@@ -285,6 +302,9 @@ static int glink_pkt_rpdev_sigs(struct rpmsg_device *rpdev, void *priv,
 	struct rpmsg_driver *rpdrv = drv_to_rpdrv(drv);
 	struct glink_pkt_device *gpdev = rpdrv_to_gpdev(rpdrv);
 	unsigned long flags;
+
+	GLINK_PKT_INFO("Received signal new:0x%x old:0x%x on channel:%s\n",
+			new, old, gpdev->ch_name);
 
 	spin_lock_irqsave(&gpdev->queue_lock, flags);
 	gpdev->sig_change = true;
@@ -597,6 +617,7 @@ static __poll_t glink_pkt_poll(struct file *file, poll_table *wait)
 		return POLLHUP | POLLPRI;
 	}
 
+	GLINK_PKT_INFO("Wait for pkt on channel:%s\n", gpdev->ch_name);
 	poll_wait(file, &gpdev->readq, wait);
 
 	mutex_lock(&gpdev->lock);
@@ -618,6 +639,8 @@ static __poll_t glink_pkt_poll(struct file *file, poll_table *wait)
 	mask |= rpmsg_poll(gpdev->rpdev->ept, file, wait);
 
 	mutex_unlock(&gpdev->lock);
+
+	GLINK_PKT_INFO("Exit channel:%s\n", gpdev->ch_name);
 
 	return mask;
 }
