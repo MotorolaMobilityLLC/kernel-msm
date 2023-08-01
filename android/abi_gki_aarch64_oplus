@@ -385,6 +385,7 @@
   __traceiter_android_vh_binder_select_worklist_ilocked
   __traceiter_android_vh_binder_thread_read
   __traceiter_android_vh_binder_thread_release
+  __traceiter_android_vh_blk_account_io_done
   __traceiter_android_vh_build_sched_domains
   __traceiter_android_vh_cache_show
   __traceiter_android_vh_check_uninterruptible_tasks_dn
@@ -508,6 +509,7 @@
   __tracepoint_android_vh_binder_select_worklist_ilocked
   __tracepoint_android_vh_binder_thread_read
   __tracepoint_android_vh_binder_thread_release
+  __tracepoint_android_vh_blk_account_io_done
   __tracepoint_android_vh_build_sched_domains
   __tracepoint_android_vh_cache_show
   __tracepoint_android_vh_check_uninterruptible_tasks_dn
