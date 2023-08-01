@@ -1586,6 +1586,11 @@
   regulator_map_voltage_iterate
   regulator_put
   regulator_set_voltage
+  relay_close
+  relay_file_operations
+  relay_flush
+  relay_open
+  relay_switch_subbuf
   release_firmware
   __release_region
   release_resource
