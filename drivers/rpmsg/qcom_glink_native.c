@@ -20,6 +20,7 @@
 #include <linux/sizes.h>
 #include <linux/slab.h>
 #include <linux/termios.h>
+#include <linux/wakeup_reason.h>
 #include <linux/workqueue.h>
 #include <linux/kthread.h>
 #include <linux/mailbox_client.h>
@@ -1484,10 +1485,11 @@ static int qcom_glink_native_rx(struct qcom_glink *glink, int iterations)
 	int i;
 
 	if (should_wake) {
-		pr_info("%s: wakeup %s\n", __func__, glink->irqname);
 		glink_resume_pkt = true;
 		should_wake = false;
 		pm_system_wakeup();
+		if (!glink->intentless)
+			log_abnormal_wakeup_reason("IRQ %d, %s", glink->irq, glink->irqname);
 	}
 
 	spin_lock_irqsave(&glink->irq_lock, flags);
