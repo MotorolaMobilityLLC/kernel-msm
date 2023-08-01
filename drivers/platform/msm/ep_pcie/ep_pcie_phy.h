@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2015, 2017, 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __EP_PCIE_PHY_H
@@ -454,4 +454,17 @@
 #define PCIE_PHY_LFPS_PER_TIMER_VAL                    0x9EC
 #define PCIE_PHY_SIGDET_STARTUP_TIMER_VAL              0x9F0
 #define PCIE_PHY_LOCK_DETECT_CONFIG4                   0x9F4
+#define PCIE20_PHY_QSERDES_TX0_RESET_GEN_MUXES         0xA8
+#define PCIE20_PHY_QSERDES_RX0_CDR_RESET_OVERRIDE      0x35C
+#define PCIE20_PHY_QSERDES_RX0_EOM_CTRL1               0x244
+#define PCIE20_PHY_QSERDES_RX0_EOM_CTRL2               0x248
+#define PCIE20_PHY_QSERDES_RX0_AUX_CONTROL             0x238
+#define PCIE20_PHY_QSERDES_RX0_RCLK_AUXDATA_SEL        0x240
+#define PCIE20_PHY_QSERDES_RX0_RX_MARG_CTRL2           0x3BC
+#define PCIE20_PHY_QSERDES_RX0_RX_MARG_VERTICAL_CTRL   0x3E0
+#define PCIE20_PHY_QSERDES_RX0_AUXDATA_TB              0x23C
+#define PCIE20_PHY_QSERDES_RX0_RX_MARG_CTRL_4          0x3C4
+#define PCIE20_PHY_QSERDES_RX0_RX_MARG_CTRL3           0x3C0
+#define PCIE20_PHY_QSERDES_RX0_IA_ERROR_COUNTER_LOW    0x470
+#define PCIE20_PHY_QSERDES_RX0_IA_ERROR_COUNTER_HIGH   0x474
 #endif
