@@ -4693,6 +4693,13 @@ struct usbpd *usbpd_create(struct device *parent,
 	if (ret)
 		goto free_pd;
 
+	pd->usb_psy = power_supply_get_by_name("usb");
+	if (!pd->usb_psy) {
+		usbpd_dbg(&pd->dev, "Could not get USB power_supply, deferring probe\n");
+		ret = -EPROBE_DEFER;
+		goto free_pd;
+	}
+
 	ret = device_add(&pd->dev);
 	if (ret)
 		goto free_pd;
@@ -4709,13 +4716,6 @@ struct usbpd *usbpd_create(struct device *parent,
 	pd->timer.function = pd_timeout;
 	mutex_init(&pd->swap_lock);
 	mutex_init(&pd->svid_handler_lock);
-
-	pd->usb_psy = power_supply_get_by_name("usb");
-	if (!pd->usb_psy) {
-		usbpd_dbg(&pd->dev, "Could not get USB power_supply, deferring probe\n");
-		ret = -EPROBE_DEFER;
-		goto destroy_wq;
-	}
 
 	if (!pd->bat_psy)
 		pd->bat_psy = power_supply_get_by_name("battery");
@@ -4856,7 +4856,6 @@ del_inst:
 	list_del(&pd->instance);
 put_psy:
 	power_supply_put(pd->usb_psy);
-destroy_wq:
 	destroy_workqueue(pd->wq);
 del_pd:
 	device_del(&pd->dev);
