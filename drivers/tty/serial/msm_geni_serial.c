@@ -1002,13 +1002,14 @@ static int vote_clock_on(struct uart_port *uport)
 	UART_LOG_DBG(port->ipc_log_pwr, uport->dev,
 		     "Enter %s:%s ioctl_count:%d\n",
 		     __func__, current->comm, port->ioctl_count);
-	ret = msm_geni_serial_power_on(uport);
 
 	if (port->ioctl_count) {
 		UART_LOG_DBG(port->ipc_log_pwr, uport->dev,
 			     "%s clock already on\n", __func__);
 		return ret;
 	}
+	ret = msm_geni_serial_power_on(uport);
+
 	if (ret) {
 		dev_err(uport->dev, "Failed to vote clock on\n");
 		return ret;
