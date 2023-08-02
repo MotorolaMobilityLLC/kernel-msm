@@ -60,6 +60,7 @@ struct qcom_scm {
 	struct qcom_scm_waitq waitq;
 
 	u64 dload_mode_addr;
+	bool legacy_dload_method;
 };
 
 enum qcom_scm_custom_reset_type qcom_scm_custom_reset_type;
@@ -524,14 +525,10 @@ static int __qcom_scm_set_dload_mode(struct device *dev, enum qcom_download_mode
 
 void qcom_scm_set_download_mode(enum qcom_download_mode mode, phys_addr_t tcsr_boot_misc)
 {
-	bool avail;
 	int ret = 0;
 	struct device *dev = __scm ? __scm->dev : NULL;
 
-	avail = __qcom_scm_is_call_available(dev,
-					     QCOM_SCM_SVC_BOOT,
-					     QCOM_SCM_BOOT_SET_DLOAD_MODE);
-	if (avail) {
+	if (__scm && __scm->legacy_dload_method) {
 		ret = __qcom_scm_set_dload_mode(dev, mode);
 	} else if (tcsr_boot_misc || (__scm && __scm->dload_mode_addr)) {
 		ret = qcom_scm_io_writel(tcsr_boot_misc ? : __scm->dload_mode_addr, mode);
@@ -2917,6 +2914,11 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
 	if (ret < 0)
 		return ret;
+
+	if (!scm->dload_mode_addr) {
+		scm->legacy_dload_method = __qcom_scm_is_call_available(&pdev->dev,
+				QCOM_SCM_SVC_BOOT, QCOM_SCM_BOOT_SET_DLOAD_MODE);
+	}
 
 	clks = (unsigned long)of_device_get_match_data(&pdev->dev);
 
