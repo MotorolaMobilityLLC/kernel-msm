@@ -63,6 +63,11 @@ static inline int redriver_powercycle(struct device_node *node)
 	return 0;
 }
 
+static inline int redriver_config_dp_eq(struct device_node *node)
+{
+	return 0;
+}
+
 #endif
 
 #endif /*__LINUX_USB_REDRIVER_H */

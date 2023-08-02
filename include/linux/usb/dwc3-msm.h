@@ -192,6 +192,9 @@ int msm_ep_set_mode(struct usb_ep *ep, enum usb_hw_ep_mode mode)
 { return -ENODEV; }
 inline int dwc3_core_stop_hw_active_transfers(struct dwc3 *dwc)
 { return 0; }
+
+inline int dwc3_msm_set_usb_redriver_eq(struct device *dev)
+{ return 0; }
 #endif
 
 #ifdef CONFIG_ARM64
