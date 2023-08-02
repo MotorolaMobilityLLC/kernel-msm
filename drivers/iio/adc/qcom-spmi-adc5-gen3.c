@@ -21,6 +21,7 @@
 #include <linux/thermal.h>
 #include <linux/thermal_minidump.h>
 #include <linux/slab.h>
+#include <linux/suspend.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/adc/qcom-vadc-common.h>
 
@@ -1862,9 +1863,27 @@ static void adc5_gen3_shutdown(struct platform_device *pdev)
 	}
 }
 
+static int adc5_gen3_suspend(struct device *dev)
+{
+	if (pm_suspend_via_firmware())
+		return adc5_gen3_freeze(dev);
+
+	return 0;
+}
+
+static int adc5_gen3_resume(struct device *dev)
+{
+	if (pm_suspend_via_firmware())
+		return adc5_gen3_restore(dev);
+
+	return 0;
+}
+
 static const struct dev_pm_ops adc5_gen3_pm_ops = {
 	.freeze = adc5_gen3_freeze,
 	.restore = adc5_gen3_restore,
+	.suspend = adc5_gen3_suspend,
+	.resume = adc5_gen3_resume,
 };
 
 static struct platform_driver adc5_gen3_driver = {
