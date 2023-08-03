@@ -9,8 +9,9 @@
 #define MAX_CACHE_BUF_SIZE		(8*1024*1024)
 /* Maximum buffers cached in cached buffer list */
 #define MAX_CACHED_BUFS		32
+#define MAX_BUF_SIZE	0x78000000
 
-static inline void vfastrpc_free_pages(struct page **pages, int count)
+static inline void vfastrpc_free_pages(struct page **pages, unsigned int count)
 {
 	while (count--)
 		__free_page(pages[count]);
@@ -151,9 +152,12 @@ int vfastrpc_buf_alloc(struct vfastrpc_file *vfl, size_t size,
 	struct hlist_node *n;
 	int err = 0;
 
-	VERIFY(err, size > 0);
-	if (err)
+	VERIFY(err, size > 0 && size < MAX_BUF_SIZE);
+	if (err) {
+		dev_err(me->dev, "%s: Invalid buffer size, 0x%llx\n",
+				__func__, size);
 		goto bail;
+	}
 
 	if (!remote) {
 		/* find the smallest buffer that fits in the cache */
@@ -188,7 +192,7 @@ int vfastrpc_buf_alloc(struct vfastrpc_file *vfl, size_t size,
 	if (IS_ERR_OR_NULL(buf->pages)) {
 		err = -ENOMEM;
 		dev_err(me->dev,
-			"%s: %s: fastrpc_alloc_buffer failed for size 0x%zx, returned %ld\n",
+			"%s: %s: failed for size 0x%zx, returned %ld\n",
 			current->comm, __func__, size, PTR_ERR(buf->pages));
 		goto bail;
 	}
