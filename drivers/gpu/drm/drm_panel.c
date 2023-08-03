@@ -46,20 +46,17 @@ static LIST_HEAD(panel_list);
  * @panel: DRM panel
  * @dev: parent device of the panel
  * @funcs: panel operations
- * @connector_type: the connector type (DRM_MODE_CONNECTOR_*) corresponding to
- *	the panel interface
  *
  * Initialize the panel structure for subsequent registration with
  * drm_panel_add().
  */
 void drm_panel_init(struct drm_panel *panel, struct device *dev,
-		    const struct drm_panel_funcs *funcs, int connector_type)
+		    const struct drm_panel_funcs *funcs)
 {
 	INIT_LIST_HEAD(&panel->list);
 	BLOCKING_INIT_NOTIFIER_HEAD(&panel->nh);
 	panel->dev = dev;
 	panel->funcs = funcs;
-	panel->connector_type = connector_type;
 }
 EXPORT_SYMBOL(drm_panel_init);
 

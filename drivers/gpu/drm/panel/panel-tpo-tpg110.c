@@ -457,8 +457,7 @@ static int tpg110_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	drm_panel_init(&tpg->panel, dev, &tpg110_drm_funcs,
-		       DRM_MODE_CONNECTOR_DPI);
+	drm_panel_init(&tpg->panel, dev, &tpg110_drm_funcs);
 	spi_set_drvdata(spi, tpg);
 
 	return drm_panel_add(&tpg->panel);

@@ -254,8 +254,7 @@ static int panel_lvds_probe(struct platform_device *pdev)
 	 */
 
 	/* Register the panel. */
-	drm_panel_init(&lvds->panel, lvds->dev, &panel_lvds_funcs,
-		       DRM_MODE_CONNECTOR_LVDS);
+	drm_panel_init(&lvds->panel, lvds->dev, &panel_lvds_funcs);
 
 	ret = drm_panel_add(&lvds->panel);
 	if (ret < 0)

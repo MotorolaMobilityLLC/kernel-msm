@@ -458,8 +458,7 @@ static int td043mtea1_probe(struct spi_device *spi)
 		return ret;
 	}
 
-	drm_panel_init(&lcd->panel, &lcd->spi->dev, &td043mtea1_funcs,
-		       DRM_MODE_CONNECTOR_DPI);
+	drm_panel_init(&lcd->panel, &lcd->spi->dev, &td043mtea1_funcs);
 
 	ret = drm_panel_add(&lcd->panel);
 	if (ret < 0) {

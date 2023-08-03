@@ -1017,8 +1017,7 @@ static int s6e8aa0_probe(struct mipi_dsi_device *dsi)
 
 	ctx->brightness = GAMMA_LEVEL_NUM - 1;
 
-	drm_panel_init(&ctx->panel, dev, &s6e8aa0_drm_funcs,
-		       DRM_MODE_CONNECTOR_DSI);
+	drm_panel_init(&ctx->panel, dev, &s6e8aa0_drm_funcs);
 
 	ret = drm_panel_add(&ctx->panel);
 	if (ret < 0)
