@@ -177,6 +177,7 @@ static struct dma_chan *qbam_dma_xlate(struct of_phandle_args *dma_spec,
 	struct qbam_channel *qbam_chan;
 	u32 channel_index;
 	u32 num_descriptors;
+	int ret = 0;
 
 	if (dma_spec->args_count != QBAM_OF_SLAVE_N_ARGS) {
 		qbam_err(qbam_dev,
@@ -223,6 +224,13 @@ static struct dma_chan *qbam_dma_xlate(struct of_phandle_args *dma_spec,
 
 	/* init dma_chan */
 	qbam_chan->chan.device = &qbam_dev->dma_dev;
+	ret = dma_async_device_channel_register(qbam_chan->chan.device,
+						&qbam_chan->chan);
+	if (ret < 0) {
+		qbam_err(qbam_dev, "error: dma_async_device_channel_register ret: %d\n", ret);
+		kfree(qbam_chan);
+		return NULL;
+	}
 	dma_cookie_init(&qbam_chan->chan);
 	qbam_chan->chan.client_count                 = 1;
 	/* init qbam_chan */
