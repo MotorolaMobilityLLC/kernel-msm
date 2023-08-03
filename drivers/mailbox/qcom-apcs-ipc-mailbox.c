@@ -198,6 +198,7 @@ static const struct of_device_id qcom_apcs_ipc_of_match[] = {
 	{ .compatible = "qcom,bengal-apcs-hmss-global", .data = &bengal_apcs_data },
 	{ .compatible = "qcom,scuba-apcs-hmss-global", .data = &scuba_apcs_data },
 	{ .compatible = "qcom,trinket-apcs-hmss-global", .data = &trinket_apcs_data },
+	{ .compatible = "qcom,qcs605-apcs-shared", .data = &apps_shared_apcs_data },
 	{}
 };
 MODULE_DEVICE_TABLE(of, qcom_apcs_ipc_of_match);
