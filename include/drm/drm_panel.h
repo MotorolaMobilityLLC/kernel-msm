@@ -177,8 +177,7 @@ struct drm_panel {
 	struct blocking_notifier_head nh;
 };
 
-void drm_panel_init(struct drm_panel *panel, struct device *dev,
-		    const struct drm_panel_funcs *funcs);
+void drm_panel_init(struct drm_panel *panel);
 
 int drm_panel_add(struct drm_panel *panel);
 void drm_panel_remove(struct drm_panel *panel);

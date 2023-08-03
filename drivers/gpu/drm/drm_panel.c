@@ -44,19 +44,14 @@ static LIST_HEAD(panel_list);
 /**
  * drm_panel_init - initialize a panel
  * @panel: DRM panel
- * @dev: parent device of the panel
- * @funcs: panel operations
  *
- * Initialize the panel structure for subsequent registration with
- * drm_panel_add().
+ * Sets up internal fields of the panel so that it can subsequently be added
+ * to the registry.
  */
-void drm_panel_init(struct drm_panel *panel, struct device *dev,
-		    const struct drm_panel_funcs *funcs)
+void drm_panel_init(struct drm_panel *panel)
 {
 	INIT_LIST_HEAD(&panel->list);
 	BLOCKING_INIT_NOTIFIER_HEAD(&panel->nh);
-	panel->dev = dev;
-	panel->funcs = funcs;
 }
 EXPORT_SYMBOL(drm_panel_init);
 
