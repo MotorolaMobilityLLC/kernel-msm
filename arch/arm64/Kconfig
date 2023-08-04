@@ -1910,6 +1910,12 @@ config SND_SOC_FS1815
         help
           This option enables support for fs1815 K PA.
 
+config SND_SOC_AW8838
+        bool "aw8838 for hac"
+        default n
+        help
+        Enable it only for hac on.
+
 config CAMERA_FLASH_PWM
         bool "control flash"
         default n
