@@ -631,3 +631,4 @@
   wake_up_process
   wq_worker_comm
   is_ashmem_file
+  zero_pfn
