@@ -99,6 +99,7 @@ struct nb7vpq904m_redriver {
 	u8	gen_dev_val;
 	bool	lane_channel_swap;
 	bool	is_set_aux;
+	bool	aux_violate;
 
 	struct workqueue_struct *pullup_wq;
 	struct work_struct	pullup_work;
@@ -148,7 +149,8 @@ static void nb7vpq904m_dev_aux_set(struct nb7vpq904m_redriver *redriver)
 	switch (redriver->op_mode) {
 	case OP_MODE_DP:
 	case OP_MODE_USB_AND_DP:
-		if (redriver->typec_orientation == ORIENTATION_CC1)
+		if ((redriver->typec_orientation == ORIENTATION_CC1 && !redriver->aux_violate) ||
+		    (redriver->typec_orientation == ORIENTATION_CC2 && redriver->aux_violate))
 			aux_val = AUX_NORMAL_VAL;
 		else
 			aux_val = AUX_FLIP_VAL;
@@ -421,6 +423,7 @@ static int nb7vpq904m_read_configuration(struct nb7vpq904m_redriver *redriver)
 	}
 
 	redriver->is_set_aux = of_property_read_bool(node, "set-aux");
+	redriver->aux_violate = of_property_read_bool(node, "aux-orientation-violate-usb");
 
 	return 0;
 
