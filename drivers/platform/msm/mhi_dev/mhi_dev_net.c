@@ -413,13 +413,14 @@ static void mhi_dev_net_write_completion_cb(void *req)
 	struct sk_buff *skb = wreq->context;
 	unsigned long   flags;
 
+	kfree_skb(skb);
+
 	if (!client_handle) {
 		mhi_dev_net_log(wreq->vf_id, MHI_ERROR,
 				"Failed to assign client handle\n");
 		return;
 	}
 
-	kfree_skb(skb);
 	spin_lock_irqsave(&client_handle->wrt_lock, flags);
 	list_add_tail(&wreq->list, &client_handle->wr_req_buffers);
 	spin_unlock_irqrestore(&client_handle->wrt_lock, flags);
