@@ -1354,6 +1354,13 @@ static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 		ret = tmc_eth_enable(drvdata->eth_data);
 
 	if (ret) {
+		if (drvdata->out_mode == TMC_ETR_OUT_MODE_USB &&
+			drvdata->usb_data->usb_mode == TMC_ETR_USB_SW) {
+			spin_lock_irqsave(&drvdata->spinlock, flags);
+			tmc_etr_disable_hw(drvdata);
+			spin_unlock_irqrestore(&drvdata->spinlock, flags);
+		}
+
 		atomic_dec(csdev->refcnt);
 		drvdata->mode = CS_MODE_DISABLED;
 	}
