@@ -69,3 +69,4 @@ boot_stats.ko
 pcs_xpcs.ko
 micrel.ko
 qcom-reboot-reason.ko
+sched-walt.ko
