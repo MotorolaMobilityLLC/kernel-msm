@@ -141,6 +141,7 @@ struct walt_task_struct {
 	int				new_cpu;
 	u8				enqueue_after_migration;
 	int				pipeline_cpu;
+	u64				mark_start_birth_ts;
 };
 
 /*
