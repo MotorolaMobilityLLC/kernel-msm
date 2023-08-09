@@ -1892,6 +1892,7 @@ static int of_qcom_slim_ngd_register(struct device *parent,
 	const struct of_device_id *match;
 	struct device_node *node;
 	u32 id;
+	int instance = 0;
 
 	match = of_match_node(qcom_slim_ngd_dt_match, parent->of_node);
 	data = match->data;
@@ -1918,8 +1919,9 @@ static int of_qcom_slim_ngd_register(struct device *parent,
 		ctrl->ngd = ngd;
 
 		platform_device_add(ngd->pdev);
-		ngd->base = ctrl->base + ngd->id * data->offset +
-					(ngd->id - 1) * data->size;
+		instance++;
+		ngd->base = ctrl->base + instance * data->offset +
+					(instance - 1) * data->size;
 
 		return 0;
 	}
