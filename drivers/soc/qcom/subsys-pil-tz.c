@@ -873,7 +873,7 @@ static int subsys_ramdump(int enable, const struct subsys_desc *subsys)
 		return 0;
 #ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
 	if (!strcmp(subsys->name, "modem"))
-		place_marker("M - Modem Dump start");
+		update_marker("M - Modem Dump start");
 #endif
 
 	return pil_do_ramdump(&d->desc, d->ramdump_dev, d->minidump_dev);
@@ -921,7 +921,7 @@ static irqreturn_t subsys_err_fatal_intr_handler (int irq, void *drv_data)
 	}
 #ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
 	if (!strcmp(d->subsys_desc.name, "modem"))
-		place_marker("M - Modem crash");
+		update_marker("M - Modem crash");
 #endif
 	subsys_set_crash_status(d->subsys, CRASH_STATUS_ERR_FATAL);
 	log_failure_reason(d);
