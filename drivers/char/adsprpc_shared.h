@@ -120,8 +120,13 @@
 #define NUM_CHANNELS	(MAX_DOMAIN_ID + 1)	/* adsp, mdsp, slpi, cdsp, cdsp1, gpdsp, gpdsp1*/
 #define NUM_SESSIONS	13	/* max 12 compute, 1 cpz */
 
+#define RH_CID ADSP_DOMAIN_ID
+
 #define VALID_FASTRPC_CID(cid) \
 	(cid >= ADSP_DOMAIN_ID && cid < NUM_CHANNELS)
+
+#define GET_DEV_FROM_CID(me, cid) \
+	((me->dev[cid] == NULL) ? me->dev[RH_CID] : me->dev[cid])
 
 #define REMOTE_SCALARS_LENGTH(sc)	(REMOTE_SCALARS_INBUFS(sc) +\
 					REMOTE_SCALARS_OUTBUFS(sc) +\
@@ -923,7 +928,7 @@ struct fastrpc_apps {
 	int compat;
 	struct hlist_head drivers;
 	spinlock_t hlock;
-	struct device *dev;
+	struct device *dev[NUM_CHANNELS];
 	/* Indicates fastrpc device node info */
 	struct device *dev_fastrpc;
 	unsigned int latency;
