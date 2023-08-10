@@ -390,6 +390,7 @@
   device_property_read_u32_array
   device_property_read_u8_array
   device_register
+  device_remove_bin_file
   device_remove_file
   device_set_of_node_from_dev
   device_set_wakeup_capable
