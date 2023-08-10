@@ -2066,10 +2066,14 @@ void try_to_migrate(struct page *page, enum ttu_flags flags)
 	if (!PageKsm(page) && PageAnon(page))
 		rwc.invalid_vma = invalid_migration_vma;
 
+	trace_android_vh_set_page_migrating(page);
+
 	if (flags & TTU_RMAP_LOCKED)
 		rmap_walk_locked(page, &rwc);
 	else
 		rmap_walk(page, &rwc);
+
+	trace_android_vh_clear_page_migrating(page);
 }
 
 /*
