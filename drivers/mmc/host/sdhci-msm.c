@@ -2328,6 +2328,8 @@ static int sdhci_msm_vreg_init(struct device *dev,
 	int ret = 0;
 	struct sdhci_msm_vreg_data *curr_slot;
 	struct sdhci_msm_reg_data *curr_vdd_reg, *curr_vdd_io_reg;
+	struct mmc_host *mmc = msm_host->mmc;
+	struct sdhci_host *host = mmc_priv(mmc);
 
 	curr_slot = msm_host->vreg_data;
 	if (!curr_slot)
@@ -2349,8 +2351,15 @@ static int sdhci_msm_vreg_init(struct device *dev,
 		if (ret)
 			goto out;
 	}
-	if (curr_vdd_io_reg)
+	if (curr_vdd_io_reg) {
 		ret = sdhci_msm_vreg_init_reg(dev, curr_vdd_io_reg);
+
+		/* In eMMC case vdd-io might be a fixed 1.8V regulator */
+		if (mmc->caps & MMC_CAP_NONREMOVABLE &&
+			!regulator_is_supported_voltage(curr_vdd_io_reg->reg,
+				2700000, 3600000))
+			host->flags &= ~SDHCI_SIGNALING_330;
+	}
 out:
 	if (ret)
 		dev_err(dev, "vreg reset failed (%d)\n", ret);
@@ -4447,7 +4456,15 @@ static void sdhci_msm_qos_init(struct sdhci_msm_host *msm_host)
 	struct device_node *group_node;
 	struct sdhci_msm_qos_req *qr;
 	struct qos_cpu_group *qcg;
-	int i, err, mask = 0;
+
+	cpumask_t silver_mask;
+	cpumask_t gold_mask;
+	cpumask_t gold_prime_mask;
+	int cid_cpu[MAX_NUM_CLUSTERS] = {-1, -1, -1};
+	int cid = -1;
+	int prev_cid = -1;
+	int cpu;
+	int i, err;
 
 	qr = kzalloc(sizeof(*qr), GFP_KERNEL);
 	if (!qr)
@@ -4472,22 +4489,45 @@ static void sdhci_msm_qos_init(struct sdhci_msm_host *msm_host)
 	}
 
 	/*
+	 * Due to Logical contiguous CPU numbering, one to one mapping
+	 * between physical and logical cpu is no more applicable.
+	 * Hence we don't need to pass the qos mask from the device tree
+	 * and instead need to populate the mask dynamically
+	 * using available kernel API.
+	 */
+
+	for_each_cpu(cpu, cpu_possible_mask) {
+		cid = topology_physical_package_id(cpu);
+		if (cid != prev_cid) {
+			cid_cpu[cid] = cpu;
+			prev_cid = cid;
+		}
+	}
+
+	if (cid_cpu[SILVER_CORE] != -1)
+		silver_mask.bits[0] =
+			topology_core_cpumask(cid_cpu[SILVER_CORE])->bits[0];
+
+	if (cid_cpu[GOLD_CORE] != -1)
+		gold_mask.bits[0] =
+			topology_core_cpumask(cid_cpu[GOLD_CORE])->bits[0];
+
+	if (cid_cpu[GOLD_PRIME_CORE] != -1)
+		gold_prime_mask.bits[0] =
+			topology_core_cpumask(cid_cpu[GOLD_PRIME_CORE])->bits[0];
+
+	/*
 	 * Assign qos cpu group/cluster to host qos request and
 	 * read child entries of qos node
 	 */
 	qr->qcg = qcg;
+
 	for_each_available_child_of_node(np, group_node) {
-		err = of_property_read_u32(group_node, "mask", &mask);
-		if (err) {
-			dev_dbg(&pdev->dev, "Error reading group mask: %d\n",
-					err);
-			continue;
-		}
-		qcg->mask.bits[0] = mask & cpu_possible_mask->bits[0];
-		if (!cpumask_subset(&qcg->mask, cpu_possible_mask)) {
-			dev_err(&pdev->dev, "Invalid group mask\n");
-			goto out_vote_err;
-		}
+		if (of_property_read_bool(group_node, "perf"))
+			qcg->mask.bits[0] = gold_mask.bits[0] |
+						gold_prime_mask.bits[0];
+		else
+			qcg->mask.bits[0] = silver_mask.bits[0];
 
 		err = of_property_count_u32_elems(group_node, "vote");
 		if (err <= 0) {
@@ -5021,11 +5061,11 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		goto pltfm_free;
 
 	if (pdev->dev.of_node) {
-		ret = of_alias_get_id(pdev->dev.of_node, "sdhc");
-		if (ret <= 0)
+		ret = of_alias_get_id(pdev->dev.of_node, "mmc");
+		if (ret < 0)
 			dev_err(&pdev->dev, "get slot index failed %d\n", ret);
-		else if (ret <= 2)
-			sdhci_slot[ret-1] = msm_host;
+		else if (ret <= 1)
+			sdhci_slot[ret] = msm_host;
 	}
 
 	/*

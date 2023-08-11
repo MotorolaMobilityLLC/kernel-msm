@@ -2483,6 +2483,7 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 		struct fastrpc_mmap *map = ctx->maps[i];
 		uint64_t buf = ptr_to_uint64(lpra[i].buf.pv);
 		size_t len = lpra[i].buf.len;
+		uint64_t buf_start = 0;
 
 		rpra[i].buf.pv = 0;
 		rpra[i].buf.len = len;
@@ -2504,7 +2505,17 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 					up_read(&current->mm->mmap_lock);
 					goto bail;
 				}
-				offset = buf_page_start(buf) - vma->vm_start;
+				buf_start = buf_page_start(buf);
+				VERIFY(err, vma->vm_start <= buf_start);
+				if (err) {
+					up_read(&current->mm->mmap_lock);
+					ADSPRPC_ERR(
+						"buffer VA invalid for fd %d, IPA 0x%llx, VA 0x%llx, vma start 0x%llx\n",
+						map->fd, map->phys, map->va, vma->vm_start);
+					err = -EFAULT;
+					goto bail;
+				}
+				offset = buf_start - vma->vm_start;
 				up_read(&current->mm->mmap_lock);
 				VERIFY(err, offset + len <= (uintptr_t)map->size);
 				if (err) {
@@ -3332,9 +3343,11 @@ int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 		context_free(ctx);
 		trace_fastrpc_msg("context_free: end");
 	}
-	if (VALID_FASTRPC_CID(cid)
-		&& (fl->ssrcount != fl->apps->channel[cid].ssrcount))
-		err = -ECONNRESET;
+	if (!kernel) {
+		if (VALID_FASTRPC_CID(cid)
+			&& (fl->ssrcount != fl->apps->channel[cid].ssrcount))
+			err = -ECONNRESET;
+	}
 
 invoke_end:
 	if (fl->profile && !interrupted && isasyncinvoke)
@@ -7419,6 +7432,7 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 	struct hlist_node *n;
 	int cid = -1;
 	struct timespec64 startT = {0};
+	unsigned long irq_flags = 0;
 
 	ctx = container_of(nb, struct fastrpc_channel_ctx, nb);
 	cid = ctx - &me->channel[0];
@@ -7438,13 +7452,13 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 	case QCOM_SSR_AFTER_SHUTDOWN:
 		fastrpc_rproc_trace_events(gcinfo[cid].subsys,
 			"QCOM_SSR_AFTER_SHUTDOWN", "fastrpc_restart_notifier-enter");
-		spin_lock(&me->hlock);
+		spin_lock_irqsave(&me->hlock, irq_flags);
 		hlist_for_each_entry_safe(fl, n, &me->drivers, hn) {
 			if (fl->cid != cid)
 				continue;
 			complete(&fl->shutdown);
 		}
-		spin_unlock(&me->hlock);
+		spin_unlock_irqrestore(&me->hlock, irq_flags);
 		ctx->subsystemstate = SUBSYSTEM_DOWN;
 		pr_info("adsprpc: %s: received RAMDUMP notification for %s\n",
 			__func__, gcinfo[cid].subsys);

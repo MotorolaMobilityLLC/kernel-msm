@@ -52,6 +52,7 @@ struct vfastrpc_apps {
 	bool has_mmap;
 	bool has_control;
 	bool has_mem_map;
+	u32 signed_pd_control;
 
 	struct device *dev;
 	struct cdev cdev;

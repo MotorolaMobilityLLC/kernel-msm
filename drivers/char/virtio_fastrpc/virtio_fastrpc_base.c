@@ -37,6 +37,9 @@
 #define VIRTIO_FASTRPC_F_VQUEUE_SETTING			7
 /* indicates fastrpc_mmap/fastrpc_munmap is supported */
 #define VIRTIO_FASTRPC_F_MEM_MAP			8
+/* indicates signed PD control is available in config space */
+#define VIRTIO_FASTRPC_F_SIGNED_PD_CONTROL		9
+
 
 #define NUM_DEVICES			2 /* adsprpc-smd, adsprpc-smd-secure */
 
@@ -58,7 +61,7 @@
  * need to be matched with BE_MINOR_VER. And it will return to 0 when
  * FE_MAJOR_VER is increased.
  */
-#define FE_MINOR_VER 0x2
+#define FE_MINOR_VER 0x3
 #define FE_VERSION (FE_MAJOR_VER << 16 | FE_MINOR_VER)
 #define BE_MAJOR_VER(ver) (((ver) >> 16) & 0xffff)
 
@@ -66,6 +69,7 @@ struct virtio_fastrpc_config {
 	u32 version;
 	u32 domain_num;
 	u32 max_buf_size;
+	u32 signed_pd_control;
 } __packed;
 
 
@@ -922,6 +926,14 @@ static int virt_fastrpc_probe(struct virtio_device *vdev)
 	if (virtio_has_feature(vdev, VIRTIO_FASTRPC_F_MEM_MAP))
 		me->has_mem_map = true;
 
+	if (virtio_has_feature(vdev, VIRTIO_FASTRPC_F_SIGNED_PD_CONTROL)) {
+		virtio_cread(vdev, struct virtio_fastrpc_config, signed_pd_control,
+				&config.signed_pd_control);
+		me->signed_pd_control = config.signed_pd_control;
+	} else {
+		me->signed_pd_control = 0;
+	}
+
 	vdev->priv = me;
 	me->vdev = vdev;
 	me->dev = vdev->dev.parent;
@@ -1092,6 +1104,7 @@ static unsigned int features[] = {
 	VIRTIO_FASTRPC_F_DOMAIN_NUM,
 	VIRTIO_FASTRPC_F_VQUEUE_SETTING,
 	VIRTIO_FASTRPC_F_MEM_MAP,
+	VIRTIO_FASTRPC_F_SIGNED_PD_CONTROL,
 };
 
 static struct virtio_driver virtio_fastrpc_driver = {

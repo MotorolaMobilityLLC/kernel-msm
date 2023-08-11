@@ -28,6 +28,7 @@
 #include <linux/sort.h>
 #include <linux/uaccess.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/debug-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/cpr-regulator.h>
@@ -5625,6 +5626,10 @@ static int cpr_regulator_probe(struct platform_device *pdev)
 	mutex_lock(&cpr_regulator_list_mutex);
 	list_add(&cpr_vreg->list, &cpr_regulator_list);
 	mutex_unlock(&cpr_regulator_list_mutex);
+
+	rc = devm_regulator_debug_register(&pdev->dev, cpr_vreg->rdev);
+	if (rc)
+		cpr_err(cpr_vreg, "Error registering CPR debug regulator, rc=%d\n", rc);
 
 	return 0;
 

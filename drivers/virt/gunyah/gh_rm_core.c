@@ -166,8 +166,8 @@ gh_rm_init_connection_buff(struct gh_rm_connection *connection,
 	if (!payload_size)
 		return 0;
 
-	max_buf_size = (GH_MSGQ_MAX_MSG_SIZE_BYTES - hdr_size) *
-			(hdr->fragments + 1);
+	max_buf_size = payload_size +
+			(hdr->fragments * GH_RM_MAX_MSG_SIZE_BYTES);
 
 	if (payload_size > max_buf_size) {
 		pr_err("%s: Payload size exceeds max buff size\n", __func__);

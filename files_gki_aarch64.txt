@@ -9,8 +9,6 @@ arch/arm64/crypto/chacha-neon-glue.c
 arch/arm64/crypto/ghash-ce-core.S
 arch/arm64/crypto/ghash-ce-glue.c
 arch/arm64/crypto/poly1305-glue.c
-arch/arm64/crypto/polyval-ce-core.S
-arch/arm64/crypto/polyval-ce-glue.c
 arch/arm64/crypto/sha256-glue.c
 arch/arm64/crypto/sha2-ce-core.S
 arch/arm64/crypto/sha2-ce-glue.c
@@ -551,7 +549,6 @@ crypto/geniv.c
 crypto/gf128mul.c
 crypto/ghash-generic.c
 crypto/hash_info.c
-crypto/hctr2.c
 crypto/hmac.c
 crypto/internal.h
 crypto/jitterentropy.c
@@ -564,7 +561,6 @@ crypto/lzo-rle.c
 crypto/md5.c
 crypto/nhpoly1305.c
 crypto/poly1305_generic.c
-crypto/polyval-generic.c
 crypto/proc.c
 crypto/rng.c
 crypto/rsa.c
@@ -580,7 +576,6 @@ crypto/shash.c
 crypto/skcipher.c
 crypto/testmgr.c
 crypto/xcbc.c
-crypto/xctr.c
 crypto/xts.c
 crypto/zstd.c
 drivers/amba/bus.c
@@ -2371,7 +2366,6 @@ include/crypto/nhpoly1305.h
 include/crypto/null.h
 include/crypto/pkcs7.h
 include/crypto/poly1305.h
-include/crypto/polyval.h
 include/crypto/public_key.h
 include/crypto/rng.h
 include/crypto/scatterwalk.h
@@ -5523,6 +5517,7 @@ net/ipv4/proc.c
 net/ipv4/protocol.c
 net/ipv4/raw.c
 net/ipv4/route.c
+net/ipv4/syncookies.c
 net/ipv4/sysctl_net_ipv4.c
 net/ipv4/tcp_bpf.c
 net/ipv4/tcp.c
@@ -5612,6 +5607,7 @@ net/ipv6/route.c
 net/ipv6/rpl.c
 net/ipv6/seg6.c
 net/ipv6/sit.c
+net/ipv6/syncookies.c
 net/ipv6/sysctl_net_ipv6.c
 net/ipv6/tcp_ipv6.c
 net/ipv6/tcpv6_offload.c
@@ -5774,7 +5770,6 @@ net/sched/cls_bpf.c
 net/sched/cls_flow.c
 net/sched/cls_fw.c
 net/sched/cls_matchall.c
-net/sched/cls_tcindex.c
 net/sched/cls_u32.c
 net/sched/ematch.c
 net/sched/em_cmp.c

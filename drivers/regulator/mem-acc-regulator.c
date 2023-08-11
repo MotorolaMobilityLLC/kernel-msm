@@ -16,6 +16,7 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/debug-regulator.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/string.h>
@@ -283,7 +284,7 @@ static int mem_acc_regulator_get_voltage(struct regulator_dev *rdev)
 	return mem_acc_vreg->corner;
 }
 
-static struct const regulator_ops mem_acc_corner_ops = {
+static const struct regulator_ops mem_acc_corner_ops = {
 	.set_voltage		= mem_acc_regulator_set_voltage,
 	.get_voltage		= mem_acc_regulator_get_voltage,
 };
@@ -1451,6 +1452,10 @@ static int mem_acc_regulator_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, mem_acc_vreg);
+
+	rc = devm_regulator_debug_register(&pdev->dev, mem_acc_vreg->rdev);
+	if (rc)
+		pr_err("Failed to register debug regulator, rc=%d\n", rc);
 
 	return 0;
 }

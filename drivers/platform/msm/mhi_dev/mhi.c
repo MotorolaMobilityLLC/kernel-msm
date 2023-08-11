@@ -787,8 +787,7 @@ static int mhi_dev_flush_transfer_completion_events(struct mhi_dev *mhi,
 		struct mhi_dev_channel *ch, u32 snd_cmpl_num)
 {
 	int rc = 0;
-	unsigned long flags = 0;
-	struct event_req *flush_ereq;
+	struct event_req *flush_ereq = NULL;
 	struct event_req *itr, *tmp;
 
 	do {
@@ -826,14 +825,17 @@ static int mhi_dev_flush_transfer_completion_events(struct mhi_dev *mhi,
 		if (mhi->use_edma) {
 			list_for_each_entry_safe(itr, tmp, &ch->flush_event_req_buffers, list) {
 				flush_ereq = itr;
-				if (flush_ereq->snd_cmpl == snd_cmpl_num)
+				if (flush_ereq && flush_ereq->snd_cmpl == snd_cmpl_num)
 					break;
 			}
 
-			if (flush_ereq->snd_cmpl != snd_cmpl_num) {
-				spin_unlock_irqrestore(&mhi->lock, flags);
+			if (flush_ereq && (flush_ereq->snd_cmpl != snd_cmpl_num))
 				break;
-			}
+		}
+
+		if (!flush_ereq) {
+			mhi_log(mhi->vf_id, MHI_MSG_ERROR, "failed to assign flush_ereq\n");
+			return -EINVAL;
 		}
 
 		list_del_init(&flush_ereq->list);
@@ -2056,6 +2058,11 @@ static void mhi_dev_trigger_cb(uint32_t vf_id, enum mhi_client_channel ch_id)
 	/* Currently no clients register for HW channel notification */
 	if (ch_id >= MHI_MAX_SOFTWARE_CHANNELS)
 		return;
+
+	if (!mhi_ctx) {
+		mhi_log(vf_id, MHI_MSG_ERROR, "mhi_ctx is NULL\n");
+		return;
+	}
 
 	list_for_each_entry(info, &mhi_ctx->client_cb_list, list)
 		if (info->cb && info->cb_data.channel == ch_id) {
@@ -4418,6 +4425,11 @@ int mhi_ctrl_state_info(uint32_t ch_id, uint32_t *info)
 {
 	struct mhi_dev *mhi = mhi_get_dev_ctx(mhi_hw_ctx, MHI_DEV_PHY_FUN);
 
+	if (!mhi) {
+		mhi_log(MHI_DEV_PHY_FUN, MHI_MSG_ERROR, "MHI is NULL, defering\n");
+		return -EINVAL;
+	}
+
 	return __mhi_ctrl_state_info(mhi, mhi->vf_id, ch_id, info);
 }
 EXPORT_SYMBOL(mhi_ctrl_state_info);
@@ -4425,6 +4437,11 @@ EXPORT_SYMBOL(mhi_ctrl_state_info);
 int mhi_vf_ctrl_state_info(uint32_t vf_id, uint32_t ch_id, uint32_t *info)
 {
 	struct mhi_dev *mhi = mhi_get_dev_ctx(mhi_hw_ctx, vf_id);
+
+	if (!mhi) {
+		mhi_log(vf_id, MHI_MSG_ERROR, "MHI is NULL, defering\n");
+		return -EINVAL;
+	}
 
 	return __mhi_ctrl_state_info(mhi, vf_id, ch_id, info);
 }

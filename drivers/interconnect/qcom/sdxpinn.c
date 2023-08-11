@@ -501,7 +501,7 @@ static struct qcom_icc_qosbox qxm_ipa_qos = {
 	.num_ports = 1,
 	.offsets = { 0x39000 },
 	.config = &(struct qos_config) {
-		.prio = 0,
+		.prio = 1,
 		.urg_fwd = 0,
 		.prio_fwd_disable = 1,
 	},

@@ -63,4 +63,5 @@ obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
 obj-$(CONFIG_OPEN_DICE)		+= open-dice.o
 obj-$(CONFIG_QSEECOM_PROXY) 	+= qseecom_proxy.o
 obj-$(CONFIG_QPNP_MISC)		+= qpnp-misc.o
-obj-$(CONFIG_PROFILER)			+= profiler.o
+obj-$(CONFIG_PROFILER)		+= profiler.o
+obj-$(CONFIG_QRC)		+= qrc/

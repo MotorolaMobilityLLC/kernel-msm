@@ -426,6 +426,7 @@
   devm_iio_channel_get_all
   devm_iio_device_alloc
   __devm_iio_device_register
+  devm_iio_triggered_buffer_setup_ext
   devm_input_allocate_device
   devm_ioremap
   devm_ioremap_resource
@@ -1044,6 +1045,7 @@
   iommu_group_set_iommudata
   iommu_iova_to_phys
   iommu_map
+  iommu_map_atomic
   iommu_map_sg
   iommu_present
   iommu_put_dma_cookie
@@ -1897,6 +1899,7 @@
   rproc_put
   rproc_remove_subdev
   rproc_report_crash
+  rproc_set_firmware
   rproc_shutdown
   rtc_time64_to_tm
   rtc_tm_to_time64

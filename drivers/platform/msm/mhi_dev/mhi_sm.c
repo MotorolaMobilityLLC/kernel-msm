@@ -1605,40 +1605,6 @@ exit:
 }
 EXPORT_SYMBOL(mhi_dev_sm_pcie_handler);
 
-/**
- * mhi_dev_sm_syserr() - switch to system error state.
- *
- * Called on system error condition.
- * Switch MHI to SYSERR state, notify MHI-host and ASSERT on the device.
- * Synchronic function.
- *
- * Return:	0: success
- *		negative: failure
- */
-int mhi_dev_sm_syserr(void)
-{
-	int res, i;
-	struct mhi_sm_dev *mhi_sm_ctx;
-
-	MHI_SM_FUNC_ENTRY(MHI_PF_VALUE);
-
-	for (i = 0; i < MHI_MAX_NUM_INSTANCES; i++) {
-		if (!mhi_dev_sm_ctx[i])
-			continue;
-
-		mhi_sm_ctx = mhi_dev_sm_ctx[i];
-		mutex_lock(&mhi_sm_ctx->mhi_state_lock);
-		res = mhi_sm_handle_syserr(mhi_sm_ctx);
-		if (res)
-			MHI_SM_ERR(i, "mhi_sm_handle_syserr failed %d\n", res);
-		mutex_unlock(&mhi_sm_ctx->mhi_state_lock);
-	}
-
-	MHI_SM_FUNC_EXIT(MHI_PF_VALUE);
-	return res;
-}
-EXPORT_SYMBOL(mhi_dev_sm_syserr);
-
 #ifdef CONFIG_DEBUG_FS
 static ssize_t mhi_sm_debugfs_read(struct file *file, char __user *ubuf,
 				size_t count, loff_t *ppos)

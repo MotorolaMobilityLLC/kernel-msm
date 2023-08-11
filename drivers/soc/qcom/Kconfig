@@ -139,6 +139,16 @@ config QCOM_MSM_IPCC
 	  Say Y here to compile the driver as a part of kernel or M to compile
 	  as a module.
 
+config MSM_TZ_SMMU
+	depends on ARCH_MSM8953 || ARCH_QCS405 || ARCH_QCS403 || ARCH_SDM429W || ARCH_SA2150P || ARCH_SA2145P
+	bool "Helper functions for SMMU configuration through TZ"
+	help
+	  Say 'Y' here for targets that need to call into TZ to configure
+	  SMMUs for any reason (for example, for errata workarounds or
+	  configuration of SMMU virtualization).
+
+	  If unsure, say N.
+
 config QCOM_RIMPS
 	tristate "Qualcomm Technologies, Inc. Rimps driver"
 	depends on MAILBOX

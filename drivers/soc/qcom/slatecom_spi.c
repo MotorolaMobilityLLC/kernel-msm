@@ -464,7 +464,7 @@ static void parse_fifo(uint8_t *data, uint16_t data_len, union slatecom_event_da
 		} else if (event_id == 0xc8) {
 			data = data + 12;
 			data_len = data_len - 12;
-			pr_err("Packet Received = 0x%X, len = %u\n", event_id, p_len);
+			SLATECOM_INFO("Packet Received = 0x%X, len = %u\n", event_id, p_len);
 		}
 
 		data = data + p_len;
@@ -661,7 +661,7 @@ static int wakeup_ahb_read(void *handle)
 	uint8_t cmnd = 0;
 	int ret = 0;
 
-	pr_err("slatecom AHB read to resume\n");
+	SLATECOM_INFO("slatecom AHB read to resume\n");
 	tx_ahb_buf = kmalloc(TX_AHB_BUF_SIZE, GFP_KERNEL | GFP_ATOMIC);
 	if (!tx_ahb_buf)
 		return -ENOMEM;
@@ -820,7 +820,7 @@ static int slatecom_resume_l(void *handle)
 	}
 
 complete:
-	SLATECOM_ERR("slatecom resume completed\n");
+	SLATECOM_INFO("slatecom resume completed\n");
 	atomic_set(&state, SLATECOM_STATE_ACTIVE);
 	atomic_set(&slate_is_spi_active, 1);
 
@@ -1768,7 +1768,7 @@ static int slatecom_pm_runtime_suspend(struct device *dev)
 	struct slate_spi_priv *slate_spi = spi_get_drvdata(s_dev);
 	int ret = 0;
 
-	SLATECOM_ERR("entry\n");
+	SLATECOM_INFO("entry\n");
 	clnt_handle.slate_spi = slate_spi;
 
 	if (atomic_read(&state) == SLATECOM_STATE_RUNTIME_SUSPEND)
@@ -1802,7 +1802,7 @@ static int slatecom_pm_runtime_resume(struct device *dev)
 	struct slate_spi_priv *spi =
 		container_of(slate_com_drv, struct slate_spi_priv, lhandle);
 
-	SLATECOM_ERR("entry\n");
+	SLATECOM_INFO("entry\n");
 	clnt_handle.slate_spi = spi;
 
 	if (atomic_read(&spi->irq_lock) == 1) {
@@ -1816,7 +1816,7 @@ static int slatecom_pm_runtime_resume(struct device *dev)
 	atomic_set(&slate_is_spi_active, 1);
 	atomic_set(&slate_is_runtime_suspend, 0);
 	ret = slatecom_resume_l(&clnt_handle);
-	SLATECOM_ERR("Slatecom Runtime resumed with : %d\n", ret);
+	SLATECOM_INFO("Slatecom Runtime resumed with : %d\n", ret);
 	mutex_unlock(&slate_task_mutex);
 	return ret;
 }

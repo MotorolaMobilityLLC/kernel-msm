@@ -104,6 +104,7 @@ obj-$(CONFIG_SPS) += sps/
 obj-$(CONFIG_QCOM_HGSL) += hgsl/
 obj-$(CONFIG_MSM_HAB) += hab/
 obj-$(CONFIG_MSM_SPSS_UTILS) += spss_utils.o
+obj-$(CONFIG_MSM_TZ_SMMU) += msm_tz_smmu.o
 obj-$(CONFIG_MSM_SPCOM) += spcom.o
 obj-$(CONFIG_MSM_PERFORMANCE) += msm_performance.o
 obj-$(CONFIG_QCOM_MINIDUMP) += minidump.o

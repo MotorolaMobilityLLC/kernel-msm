@@ -221,7 +221,7 @@ struct spi_geni_master {
 	bool cmd_done;
 	bool set_miso_sampling;
 	u32 miso_sampling_ctrl_val;
-	bool gpi_reset; /* GPI channel reset*/
+	bool le_gpi_reset_done;
 	bool disable_dma;
 	bool slave_setup;
 	bool slave_state;
@@ -618,8 +618,8 @@ static struct msm_gpi_tre *setup_config0_tre(struct spi_transfer *xfer,
 	c0_tre->dword[2] = MSM_GPI_SPI_CONFIG0_TRE_DWORD2(idx, div);
 	c0_tre->dword[3] = MSM_GPI_SPI_CONFIG0_TRE_DWORD3(0, 0, 0, 0, 1);
 	SPI_LOG_DBG(mas->ipc, false, mas->dev,
-		"%s: flags 0x%x word %d pack %d idx %d div %d\n",
-		__func__, flags, word_len, pack, idx, div);
+		"%s: flags 0x%x word %d pack %d freq %d idx %d div %d\n",
+		__func__, flags, word_len, pack, mas->cur_speed_hz, idx, div);
 	SPI_LOG_DBG(mas->ipc, false, mas->dev,
 		"%s: cs_clk_delay %d inter_words_delay %d\n", __func__,
 				 cs_clk_delay, inter_words_delay);
@@ -867,14 +867,16 @@ static void spi_geni_unlock_bus(struct spi_master *spi)
 	struct scatterlist *xfer_tx_sg = mas->gsi_lock_unlock->tx_sg;
 	unsigned long flags = DMA_PREP_INTERRUPT | DMA_CTRL_ACK;
 
+	/* if gpi reset happened for levm, no need to do unlock */
+	if (mas->is_le_vm && mas->le_gpi_reset_done) {
+		SPI_LOG_DBG(mas->ipc, false, mas->dev,
+			    "%s:gpi reset happened for levm, no need to do unlock\n", __func__);
+		return;
+	}
+
 	reinit_completion(&mas->tx_cb);
 
 	SPI_LOG_DBG(mas->ipc, false, mas->dev, "%s %d\n", __func__, ret);
-
-	if (mas->gpi_reset) {
-		SPI_LOG_DBG(mas->ipc, false, mas->dev, "GPI Reset required\n");
-		goto err_spi_geni_unlock_bus;
-	}
 
 	unlock_t = setup_unlock_tre(mas);
 	sg_init_table(xfer_tx_sg, 1);
@@ -917,10 +919,8 @@ static void spi_geni_unlock_bus(struct spi_master *spi)
 	}
 
 err_spi_geni_unlock_bus:
-	if (mas->gpi_reset || ret) {
+	if (ret)
 		dmaengine_terminate_all(mas->tx);
-		mas->gpi_reset = false;
-	}
 }
 
 static int setup_gsi_xfer(struct spi_transfer *xfer,
@@ -945,6 +945,18 @@ static int setup_gsi_xfer(struct spi_transfer *xfer,
 	struct spi_geni_qcom_ctrl_data *delay_params = NULL;
 	u32 cs_clk_delay = 0;
 	u32 inter_words_delay = 0;
+
+	if (mas->is_le_vm && mas->le_gpi_reset_done) {
+		SPI_LOG_DBG(mas->ipc, false, mas->dev,
+			    "%s doing gsi lock, due to levm gsi reset\n", __func__);
+		ret = spi_geni_lock_bus(spi);
+		if (ret) {
+			SPI_LOG_DBG(mas->ipc, true, mas->dev,
+				    "%s lock bus failed: %d\n", __func__, ret);
+			return ret;
+		}
+		mas->le_gpi_reset_done = false;
+	}
 
 	if (spi_slv->controller_data) {
 		delay_params =
@@ -1613,6 +1625,8 @@ static int setup_fifo_xfer(struct spi_transfer *xfer,
 		m_clk_cfg |= ((div << CLK_DIV_SHFT) | SER_CLK_EN);
 		geni_write_reg(clk_sel, mas->base, SE_GENI_CLK_SEL);
 		geni_write_reg(m_clk_cfg, mas->base, GENI_SER_M_CLK_CFG);
+		SPI_LOG_DBG(mas->ipc, false, mas->dev,
+			    "%s: freq %d idx %d div %d\n", __func__, xfer->speed_hz, idx, div);
 	}
 
 	mas->tx_rem_bytes = 0;
@@ -1671,9 +1685,9 @@ static int setup_fifo_xfer(struct spi_transfer *xfer,
 		geni_write_reg(spi_tx_cfg, mas->base, SE_SPI_TRANS_CFG);
 	geni_se_setup_m_cmd(&mas->spi_rsc, m_cmd, m_param);
 	SPI_LOG_DBG(mas->ipc, false, mas->dev,
-	"%s: trans_len %d xferlen%d tx_cfg 0x%x cmd 0x%x cs%d mode%d\n",
-		__func__, trans_len, xfer->len, spi_tx_cfg, m_cmd,
-			xfer->cs_change, mas->cur_xfer_mode);
+		"%s: trans_len %d xferlen%d tx_cfg 0x%x cmd 0x%x cs%d mode%d freq %d\n",
+		__func__, trans_len, xfer->len, spi_tx_cfg, m_cmd, xfer->cs_change,
+		mas->cur_xfer_mode, xfer->speed_hz);
 	if ((m_cmd & SPI_RX_ONLY) && (mas->cur_xfer_mode == GENI_SE_DMA)) {
 		ret =  geni_se_rx_dma_prep(&mas->spi_rsc,
 				xfer->rx_buf, xfer->len, &xfer->rx_dma);
@@ -1912,17 +1926,9 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 	return ret;
 err_gsi_geni_transfer_one:
 	geni_spi_se_dump_dbg_regs(&mas->spi_rsc, mas->base, mas->ipc);
-	if (!mas->is_le_vm) {
-		dmaengine_terminate_all(mas->tx);
-	} else {
-		/* Stop channel in case of error in LE-VM */
-		ret = dmaengine_pause(mas->tx);
-		if (ret) {
-			mas->gpi_reset = true;
-			SPI_LOG_ERR(mas->ipc, true, mas->dev,
-				"Channel cancel failed\n");
-		}
-	}
+	dmaengine_terminate_all(mas->tx);
+	if (mas->is_le_vm)
+		mas->le_gpi_reset_done = true;
 	return ret;
 err_fifo_geni_transfer_one:
 	handle_fifo_timeout(spi, xfer);
@@ -2367,7 +2373,8 @@ static int spi_geni_probe(struct platform_device *pdev)
 	init_completion(&geni_mas->tx_cb);
 	init_completion(&geni_mas->rx_cb);
 	pm_runtime_set_suspended(&pdev->dev);
-	if (!geni_mas->dis_autosuspend) {
+	/* for levm skip auto suspend timer */
+	if (!geni_mas->is_le_vm && !geni_mas->dis_autosuspend) {
 		pm_runtime_set_autosuspend_delay(&pdev->dev,
 					SPI_AUTO_SUSPEND_DELAY);
 		pm_runtime_use_autosuspend(&pdev->dev);
@@ -2432,6 +2439,20 @@ static int spi_geni_remove(struct platform_device *pdev)
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 	return ret;
+}
+
+/**
+ * spi_geni_shutdown: shutdown call back function for SPI
+ * This will invoke during reboot/shutdown process
+ *
+ * @pdev: SPI platform device
+ *
+ * Return: none
+ */
+static void spi_geni_shutdown(struct platform_device *pdev)
+{
+	dev_info(&pdev->dev, "%s: Entry %d\n", __func__, true);
+	spi_geni_remove(pdev);
 }
 
 #if IS_ENABLED(CONFIG_PM)
@@ -2733,6 +2754,7 @@ static const struct of_device_id spi_geni_dt_match[] = {
 static struct platform_driver spi_geni_driver = {
 	.probe  = spi_geni_probe,
 	.remove = spi_geni_remove,
+	.shutdown = spi_geni_shutdown,
 	.driver = {
 		.name = "spi_geni",
 		.pm = &spi_geni_pm_ops,

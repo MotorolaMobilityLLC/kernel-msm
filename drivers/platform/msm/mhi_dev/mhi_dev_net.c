@@ -266,6 +266,12 @@ static void mhi_dev_net_event_notifier(struct mhi_dev_client_cb_reason *reason)
 	struct mhi_dev_net_client *client_handle =
 				chan_to_net_client(reason->vf_id, reason->ch_id);
 
+	if (!client_handle) {
+		mhi_dev_net_log(reason->vf_id, MHI_ERROR,
+				"Failed to assign client handle\n");
+		return;
+	}
+
 	if (reason->reason == MHI_DEV_TRE_AVAILABLE) {
 		if (reason->ch_id % 2) {
 			spin_lock(&client_handle->net_tx_q_state);
@@ -408,6 +414,13 @@ static void mhi_dev_net_write_completion_cb(void *req)
 	unsigned long   flags;
 
 	kfree_skb(skb);
+
+	if (!client_handle) {
+		mhi_dev_net_log(wreq->vf_id, MHI_ERROR,
+				"Failed to assign client handle\n");
+		return;
+	}
+
 	spin_lock_irqsave(&client_handle->wrt_lock, flags);
 	list_add_tail(&wreq->list, &client_handle->wr_req_buffers);
 	spin_unlock_irqrestore(&client_handle->wrt_lock, flags);

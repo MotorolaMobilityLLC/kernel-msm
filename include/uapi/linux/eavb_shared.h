@@ -11,15 +11,13 @@
 #define EAVB_IOCTL_MAGIC    'B'
 
 /* ioctl request */
+/* EAVB_IOCTL_CREATE_STREAM DEPRECATED Do not use this in new code */
 #define EAVB_IOCTL_CREATE_STREAM \
 	_IOWR(EAVB_IOCTL_MAGIC, 1, struct eavb_ioctl_create_stream)
 #define EAVB_IOCTL_GET_STREAM_INFO \
 	_IOWR(EAVB_IOCTL_MAGIC, 2, struct eavb_ioctl_get_stream_info)
-
-/* DEPRECATED Do not use this in new code */
 #define EAVB_IOCTL_CONNECT_STREAM \
 	_IOWR(EAVB_IOCTL_MAGIC, 3, struct eavb_ioctl_connect_stream)
-
 #define EAVB_IOCTL_RECEIVE \
 	_IOWR(EAVB_IOCTL_MAGIC, 4, struct eavb_ioctl_receive)
 #define EAVB_IOCTL_RECV_DONE \
@@ -285,6 +283,8 @@ struct eavb_ioctl_stream_info {
 
 	/* Max buffer size (Bytes) allowed */
 	unsigned int max_buffer_size;
+	/* qavb ring buffer size */
+	__u32 ring_buffer_size;
 } __packed;
 
 struct eavb_ioctl_get_stream_info {
@@ -331,6 +331,7 @@ struct eavb_ioctl_buf_hdr {
 	__u32 reserved;
 	/* Size of the payload (bytes) */
 	__u32 payload_size;
+	__u32 buf_ele_count;
 } __packed;
 
 struct eavb_ioctl_buf_data {

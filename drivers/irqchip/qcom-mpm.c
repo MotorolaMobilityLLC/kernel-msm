@@ -23,6 +23,7 @@
 #include <linux/soc/qcom/irq.h>
 #include <linux/spinlock.h>
 #include <linux/suspend.h>
+#include <linux/syscore_ops.h>
 
 #include <soc/qcom/mpm.h>
 
@@ -73,6 +74,12 @@ struct mpm_pin {
 static int num_mpm_irqs = 64;
 static struct msm_mpm_device_data msm_mpm_dev_data;
 static unsigned int *mpm_to_irq;
+#ifdef CONFIG_DEEPSLEEP
+static unsigned int mpm_enabled[MAX_REG_WIDTH];
+static unsigned int mpm_type_raising_edge[MAX_REG_WIDTH];
+static unsigned int mpm_type_falling_edge[MAX_REG_WIDTH];
+static unsigned int mpm_type_level[MAX_REG_WIDTH];
+#endif
 static DEFINE_SPINLOCK(mpm_lock);
 
 static irq_hw_number_t get_parent_hwirq(struct irq_domain *d,
@@ -512,6 +519,55 @@ static irqreturn_t msm_mpm_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_DEEPSLEEP
+static int mpm_suspend(void)
+{
+	int i;
+	unsigned int reg;
+
+	for (i = 0; i < QCOM_MPM_REG_WIDTH; i++) {
+		reg = MPM_REG_RISING_EDGE;
+		mpm_type_raising_edge[i] = msm_mpm_read(reg, i);
+
+		reg = MPM_REG_FALLING_EDGE;
+		mpm_type_falling_edge[i] = msm_mpm_read(reg, i);
+
+		reg = MPM_REG_POLARITY;
+		mpm_type_level[i] = msm_mpm_read(reg, i);
+
+		reg = MPM_REG_ENABLE;
+		mpm_enabled[i] =  msm_mpm_read(reg, i);
+	}
+
+	return 0;
+}
+
+static void mpm_resume(void)
+{
+	int i;
+	unsigned int reg;
+
+	for (i = 0; i < QCOM_MPM_REG_WIDTH; i++) {
+		reg = MPM_REG_RISING_EDGE;
+		msm_mpm_write(reg, i, mpm_type_raising_edge[i]);
+
+		reg = MPM_REG_FALLING_EDGE;
+		msm_mpm_write(reg, i, mpm_type_falling_edge[i]);
+
+		reg = MPM_REG_POLARITY;
+		msm_mpm_write(reg, i, mpm_type_level[i]);
+
+		reg = MPM_REG_ENABLE;
+		msm_mpm_write(reg, i, mpm_enabled[i]);
+	}
+}
+
+static struct syscore_ops mpm_syscore_ops = {
+	.suspend = mpm_suspend,
+	.resume = mpm_resume,
+};
+#endif
+
 static int msm_mpm_init(struct device_node *node)
 {
 	struct msm_mpm_device_data *dev = &msm_mpm_dev_data;
@@ -572,6 +628,10 @@ static int msm_mpm_init(struct device_node *node)
 		pr_err("request_irq failed errno: %d\n", ret);
 		goto ipc_irq_err;
 	}
+
+#ifdef CONFIG_DEEPSLEEP
+	register_syscore_ops(&mpm_syscore_ops);
+#endif
 
 	return 0;
 

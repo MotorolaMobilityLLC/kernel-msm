@@ -2337,6 +2337,7 @@
   unregister_netdev
 
 # required by sfp_core.ko
+  br_fdb_find_port
   csum_tcpudp_nofold
   dev_get_by_index_rcu
   ip_send_check
@@ -2351,6 +2352,7 @@
   seq_open_private
   seq_release
   skb_copy_bits
+  skb_vlan_untag
   unregister_netdevice_notifier
 
 # required by sha1-ce.ko
@@ -3136,6 +3138,28 @@
 
 # required by unisoc_dump_io.ko
   blk_stat_enable_accounting
+
+# required by unisoc_mm.ko
+  __traceiter_android_vh_tune_swappiness
+  __tracepoint_android_vh_tune_swappiness
+
+# required by unisoc_mm_emem.ko
+  __traceiter_android_vh_oom_check_panic
+  __tracepoint_android_vh_oom_check_panic
+
+# required by unisoc_mm_reclaim.ko
+  __traceiter_android_vh_do_page_trylock
+  __traceiter_android_vh_handle_failed_page_trylock
+  __traceiter_android_vh_page_trylock_clear
+  __traceiter_android_vh_page_trylock_get_result
+  __traceiter_android_vh_page_trylock_set
+  __traceiter_android_vh_shrink_slab_bypass
+  __tracepoint_android_vh_do_page_trylock
+  __tracepoint_android_vh_handle_failed_page_trylock
+  __tracepoint_android_vh_page_trylock_clear
+  __tracepoint_android_vh_page_trylock_get_result
+  __tracepoint_android_vh_page_trylock_set
+  __tracepoint_android_vh_shrink_slab_bypass
 
 # required by unisoc_multi_control.ko
   cpufreq_table_index_unsorted

@@ -68,3 +68,4 @@ soc_sleep_stats.ko
 boot_stats.ko
 pcs_xpcs.ko
 micrel.ko
+qcom-reboot-reason.ko

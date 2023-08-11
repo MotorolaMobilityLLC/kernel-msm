@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2016, 2019 Linaro Ltd
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/io.h>
@@ -20,6 +21,7 @@
 #include <linux/regmap.h>
 #include <linux/workqueue.h>
 #include <linux/list.h>
+#include <linux/ipc_logging.h>
 
 #include <linux/rpmsg/qcom_glink.h>
 
@@ -32,6 +34,13 @@
 #define SMEM_GLINK_NATIVE_XPRT_DESCRIPTOR	478
 #define SMEM_GLINK_NATIVE_XPRT_FIFO_0		479
 #define SMEM_GLINK_NATIVE_XPRT_FIFO_1		480
+
+/* Define IPC Logging Macros */
+#define GLINK_SMEM_IPC_LOG_PAGE_CNT 8
+static void *glink_ilctxt;
+
+#define GLINK_SMEM_INFO(x, ...)						\
+ipc_log_string(glink_ilctxt, "[%s]: "x, __func__, ##__VA_ARGS__)
 
 struct glink_smem_pipe {
 	struct qcom_glink_pipe native;
@@ -103,6 +112,9 @@ static void glink_smem_rx_peak(struct qcom_glink_pipe *np,
 
 	if (len != count)
 		memcpy_fromio(data + len, pipe->fifo, (count - len));
+
+	GLINK_SMEM_INFO("RX: remote-pid=%d, head=0x%x, tail=0x%x\n",
+			pipe->remote_pid, le32_to_cpu(*pipe->head), tail);
 }
 
 static void glink_smem_rx_advance(struct qcom_glink_pipe *np,
@@ -189,6 +201,8 @@ static void glink_smem_tx_write(struct qcom_glink_pipe *glink_pipe,
 	/* Ensure ordering of fifo and head update */
 	wmb();
 
+	GLINK_SMEM_INFO("TX: remote-pid=%d, head=0x%x, tail=0x%x\n",
+			 pipe->remote_pid, head, le32_to_cpu(*pipe->tail));
 	*pipe->head = cpu_to_le32(head);
 }
 
@@ -300,6 +314,9 @@ struct qcom_glink *qcom_glink_smem_register(struct device *parent,
 		goto err_put_dev;
 	}
 
+	if (!glink_ilctxt)
+		glink_ilctxt = ipc_log_context_create(GLINK_SMEM_IPC_LOG_PAGE_CNT,
+							   "glink_smem", 0);
 	return glink;
 
 err_put_dev:

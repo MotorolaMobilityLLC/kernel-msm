@@ -31,7 +31,7 @@
 #include "rpmsg_internal.h"
 #include "qcom_glink_native.h"
 
-#define GLINK_LOG_PAGE_CNT 2
+#define GLINK_LOG_PAGE_CNT 32
 #define GLINK_INFO(ctxt, x, ...)					  \
 	ipc_log_string(ctxt, "[%s]: "x, __func__, ##__VA_ARGS__)
 
@@ -678,12 +678,14 @@ static int qcom_glink_send_rx_done(struct qcom_glink *glink,
 	if (!intent->size)
 		intent->data = NULL;
 
+	ret = intent->offset;
+
 	if (!reuse) {
 		kfree(intent->data);
 		kfree(intent);
 	}
 
-	CH_INFO(channel, "reuse:%d liid:%d", reuse, iid);
+	CH_INFO(channel, "reuse:%d liid:%d data_size:%d", reuse, iid, ret);
 	return 0;
 }
 
@@ -1342,6 +1344,7 @@ static void qcom_glink_handle_intent(struct qcom_glink *glink,
 	spin_unlock_irqrestore(&glink->idr_lock, flags);
 	if (!channel) {
 		dev_err(glink->dev, "intents for non-existing channel\n");
+		qcom_glink_rx_advance(glink, ALIGN(msglen, 8));
 		return;
 	}
 

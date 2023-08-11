@@ -58,9 +58,9 @@ int mhi_rddm_download_status(struct mhi_controller *mhi_cntrl)
 {
 	u32 rx_status;
 	enum mhi_ee_type ee;
-	const u32 delayus = 5000;
+	const u32 delayms = 5;
 	void __iomem *base = mhi_cntrl->bhie;
-	u32 retry = (mhi_cntrl->timeout_ms * 1000) / delayus;
+	u32 retry = (mhi_cntrl->timeout_ms) / delayms;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	int ret = 0;
 
@@ -77,7 +77,7 @@ int mhi_rddm_download_status(struct mhi_controller *mhi_cntrl)
 			return 0;
 		}
 
-		udelay(delayus);
+		msleep(delayms);
 	}
 
 	ee = mhi_get_exec_env(mhi_cntrl);

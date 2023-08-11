@@ -1002,13 +1002,14 @@ static int vote_clock_on(struct uart_port *uport)
 	UART_LOG_DBG(port->ipc_log_pwr, uport->dev,
 		     "Enter %s:%s ioctl_count:%d\n",
 		     __func__, current->comm, port->ioctl_count);
-	ret = msm_geni_serial_power_on(uport);
 
 	if (port->ioctl_count) {
 		UART_LOG_DBG(port->ipc_log_pwr, uport->dev,
 			     "%s clock already on\n", __func__);
 		return ret;
 	}
+	ret = msm_geni_serial_power_on(uport);
+
 	if (ret) {
 		dev_err(uport->dev, "Failed to vote clock on\n");
 		return ret;
@@ -4597,6 +4598,11 @@ static int msm_geni_serial_get_irq_pinctrl(struct platform_device *pdev,
 	if (dev_port->wakeup_irq > 0) {
 		dev_port->wakeup_irq_wq = alloc_workqueue("%s", WQ_HIGHPRI, 1,
 							  dev_name(uport->dev));
+		if (!dev_port->wakeup_irq_wq) {
+			dev_err(uport->dev, "%s:WQ alloc failed for Wakeup IRQ\n",
+					__func__);
+			return -ENOMEM;
+		}
 		INIT_DELAYED_WORK(&dev_port->wakeup_irq_dwork, msm_geni_wakeup_work);
 		irq_set_status_flags(dev_port->wakeup_irq, IRQ_NOAUTOEN);
 		ret = devm_request_irq(uport->dev, dev_port->wakeup_irq,
