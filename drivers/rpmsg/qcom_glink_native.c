@@ -709,8 +709,7 @@ static void qcom_glink_rx_done_work(struct kthread_work *work)
 
 static void __qcom_glink_rx_done(struct qcom_glink *glink,
 			       struct glink_channel *channel,
-			       struct glink_core_rx_intent *intent,
-			       bool defer)
+			       struct glink_core_rx_intent *intent)
 {
 	int ret = -EAGAIN;
 	unsigned long flags;
@@ -729,16 +728,10 @@ static void __qcom_glink_rx_done(struct qcom_glink *glink,
 		spin_unlock_irqrestore(&channel->intent_lock, flags);
 	}
 
-	/* Move intent to defer list until client calls rpmsg_rx_done */
-	if (defer) {
-		spin_lock_irqsave(&channel->intent_lock, flags);
-		list_add_tail(&intent->node, &channel->defer_intents);
-		spin_unlock_irqrestore(&channel->intent_lock, flags);
-		return;
-	}
-
-	/* Schedule the sending of a rx_done indication */
 	spin_lock_irqsave(&channel->intent_lock, flags);
+	/* Remove intent from intent defer list */
+	list_del(&intent->node);
+	/* Schedule the sending of a rx_done indication */
 	if (list_empty(&channel->done_intents))
 		ret = qcom_glink_send_rx_done(glink, channel, intent, false);
 
@@ -1081,7 +1074,6 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
 	} __packed hdr;
 	unsigned int chunk_size;
 	unsigned int left_size;
-	bool rx_done_defer;
 	unsigned int rcid;
 	unsigned int liid;
 	int ret = 0;
@@ -1164,6 +1156,12 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
 
 	/* Handle message when no fragments remain to be received */
 	if (!left_size) {
+		if (!glink->intentless) {
+			spin_lock_irqsave(&channel->intent_lock, flags);
+			list_add_tail(&intent->node, &channel->defer_intents);
+			spin_unlock_irqrestore(&channel->intent_lock, flags);
+		}
+
 		spin_lock_irqsave(&channel->recv_lock, flags);
 		if (channel->ept.cb) {
 			ret = channel->ept.cb(channel->ept.rpdev,
@@ -1177,7 +1175,6 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
 					CH_ERR(channel,
 						"callback error ret = %d\n", ret);
 				}
-				ret = 0;
 			}
 		} else {
 			CH_ERR(channel, "callback not present\n");
@@ -1193,12 +1190,10 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
 		intent->offset = 0;
 		channel->buf = NULL;
 
-		if (channel->ept.rx_done && ret == RPMSG_DEFER)
-			rx_done_defer = true;
-		else
-			rx_done_defer = false;
+		if (!(channel->ept.rx_done && ret == RPMSG_DEFER))
+			__qcom_glink_rx_done(glink, channel, intent);
 
-		__qcom_glink_rx_done(glink, channel, intent, rx_done_defer);
+		ret = 0;
 	}
 
 advance_rx:
@@ -1218,7 +1213,6 @@ static int qcom_glink_rx_data_zero_copy(struct qcom_glink *glink, size_t avail)
 		__le64 addr;
 	} __packed hdr;
 	unsigned long flags;
-	bool rx_done_defer;
 	unsigned int rcid;
 	unsigned int liid;
 	unsigned int len;
@@ -1273,6 +1267,11 @@ static int qcom_glink_rx_data_zero_copy(struct qcom_glink *glink, size_t avail)
 
 	intent->data = data;
 	intent->offset = len;
+
+	spin_lock_irqsave(&channel->intent_lock, flags);
+	list_add_tail(&intent->node, &channel->defer_intents);
+	spin_unlock_irqrestore(&channel->intent_lock, flags);
+
 	spin_lock_irqsave(&channel->recv_lock, flags);
 	if (channel->ept.cb) {
 		ret = channel->ept.cb(channel->ept.rpdev, intent->data,
@@ -1297,12 +1296,8 @@ static int qcom_glink_rx_data_zero_copy(struct qcom_glink *glink, size_t avail)
 	}
 	intent->offset = 0;
 
-	if (channel->ept.rx_done && ret == RPMSG_DEFER)
-		rx_done_defer = true;
-	else
-		rx_done_defer = false;
-
-	__qcom_glink_rx_done(glink, channel, intent, rx_done_defer);
+	if (!(channel->ept.rx_done && ret == RPMSG_DEFER))
+		__qcom_glink_rx_done(glink, channel, intent);
 
 advance_rx:
 	qcom_glink_rx_advance(glink, ALIGN(sizeof(hdr), 8));
