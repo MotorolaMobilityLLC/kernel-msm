@@ -2986,6 +2986,17 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	ETHQOSINFO("emac-phy-off-suspend = %d\n",
 		   ethqos->current_phy_mode);
 
+	if (of_property_read_bool(pdev->dev.of_node,
+				  "gdsc-off-on-suspend")) {
+		ethqos->gdsc_off_on_suspend = true;
+		ETHQOSDBG(":resource gdsc-off-on-suspend in dtsi\n");
+	} else {
+		ethqos->gdsc_off_on_suspend = false;
+		ETHQOSDBG(":resource gdsc-off-on-suspend not in dtsi\n");
+	}
+	ETHQOSDBG("gdsc-off-on-suspend = %d\n",
+		  ethqos->gdsc_off_on_suspend);
+
 	ethqos->ioaddr = (&stmmac_res)->addr;
 	if (of_device_is_compatible(np, "qcom,qcs404-ethqos"))
 		plat_dat->rx_clk_runs_in_lpi = 1;
@@ -3140,6 +3151,13 @@ static int qcom_ethqos_suspend(struct device *dev)
 	}
 
 	priv->boot_kpi = false;
+
+	if (ethqos->gdsc_off_on_suspend) {
+		if (ethqos->gdsc_emac) {
+			regulator_disable(ethqos->gdsc_emac);
+			ETHQOSDBG("Disabled <%s>\n", EMAC_GDSC_EMAC_NAME);
+		}
+	}
 #ifdef CONFIG_MSM_BOOT_TIME_MARKER
 	place_marker("M - Ethernet Suspend End");
 #endif
@@ -3167,6 +3185,13 @@ static int qcom_ethqos_resume(struct device *dev)
 	if (!ethqos)
 		return -ENODEV;
 
+	if (ethqos->gdsc_off_on_suspend) {
+		ret = regulator_enable(ethqos->gdsc_emac);
+		if (ret)
+			ETHQOSERR("Can not enable <%s>\n", EMAC_GDSC_EMAC_NAME);
+		ETHQOSDBG("Enabled <%s>\n", EMAC_GDSC_EMAC_NAME);
+	}
+
 	ndev = dev_get_drvdata(dev);
 	priv = netdev_priv(ndev);
 
@@ -3180,6 +3205,9 @@ static int qcom_ethqos_resume(struct device *dev)
 		ethqos_phy_power_on(ethqos);
 	}
 	qcom_ethqos_phy_resume_clks(ethqos);
+
+	if (ethqos->gdsc_off_on_suspend)
+		ethqos_set_func_clk_en(ethqos);
 
 	if (ethqos->current_phy_mode == DISABLE_PHY_SUSPEND_ENABLE_RESUME) {
 		ETHQOSINFO("reset phy after clock\n");
