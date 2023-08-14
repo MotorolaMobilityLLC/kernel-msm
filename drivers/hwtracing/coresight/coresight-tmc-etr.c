@@ -1208,9 +1208,17 @@ ssize_t tmc_etr_get_sysfs_trace(struct tmc_drvdata *drvdata,
 static struct etr_buf *
 tmc_etr_setup_sysfs_buf(struct tmc_drvdata *drvdata)
 {
+	struct device *parent = NULL;
+
+	parent = drvdata->csdev->dev.parent;
+
+	of_property_read_u32(parent->of_node, "sw_usb_buf_size", &sw_usb_buf_size);
+	dev_info(&drvdata->csdev->dev,
+		"setting tmc etr sw usb buf size 0x%x\n", sw_usb_buf_size);
+
 	if (drvdata->out_mode == TMC_ETR_OUT_MODE_USB &&
 		drvdata->usb_data->usb_mode == TMC_ETR_USB_SW)
-		return tmc_alloc_etr_buf(drvdata, TMC_ETR_SW_USB_BUF_SIZE,
+		return tmc_alloc_etr_buf(drvdata, sw_usb_buf_size,
 				0, cpu_to_node(0), NULL);
 	else
 		return tmc_alloc_etr_buf(drvdata, drvdata->size,
@@ -1312,7 +1320,7 @@ static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 					&& sysfs_buf->size != drvdata->size)
 					|| (drvdata->out_mode == TMC_ETR_OUT_MODE_USB
 					&& drvdata->usb_data->usb_mode == TMC_ETR_USB_SW
-					&&  sysfs_buf->size != TMC_ETR_SW_USB_BUF_SIZE)) {
+					&&  sysfs_buf->size != sw_usb_buf_size)) {
 			spin_unlock_irqrestore(&drvdata->spinlock, flags);
 
 			/* Allocate memory with the locks released */
