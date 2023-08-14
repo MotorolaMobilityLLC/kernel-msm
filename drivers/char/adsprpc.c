@@ -7301,7 +7301,8 @@ static void  fastrpc_print_debug_data(int cid)
 	}
 	spin_lock_irqsave(&me->hlock, irq_flags);
 	hlist_for_each_entry_safe(fl, n, &me->drivers, hn) {
-		if (fl->cid == cid) {
+		// check if ramdump enabled before accessing fl else it could cause UAF.
+		if (fl->cid == cid && fl->is_ramdump_pend) {
 			fastrpc_print_file(fl, mini_dump_buff);
 			scnprintf(mini_dump_buff +
 					strlen(mini_dump_buff),
