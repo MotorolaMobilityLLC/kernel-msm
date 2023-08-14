@@ -277,6 +277,10 @@ struct battery_chg_dev {
 	u32				thermal_fcc_step;
 	u32				connector_type;
 	u32				usb_prev_mode;
+	u32				tbatt_filter_interval_ms;
+	u32				tbatt_filter_offset_degree;
+	int				tbatt_filter_save_degree;
+	bool				tbatt_filter_en;
 	bool				restrict_chg_en;
 	/* To track the driver initialization status */
 	bool				initialized;
@@ -360,6 +364,34 @@ int unregister_hboost_event_notifier(struct notifier_block *nb)
 	return raw_notifier_chain_unregister(&hboost_notifier, nb);
 }
 EXPORT_SYMBOL(unregister_hboost_event_notifier);
+
+static bool jiffies_timer_expire(struct battery_chg_dev *bcdev, bool clear_jiffies) {
+	unsigned long cur_jiffies = jiffies;
+	static unsigned long last_jiffies = 0;
+	unsigned long intr_timeout = msecs_to_jiffies(bcdev->tbatt_filter_interval_ms);
+	bool ret = false;
+
+	if (!last_jiffies)
+		last_jiffies = cur_jiffies;
+
+	if (time_after(cur_jiffies, intr_timeout + last_jiffies))
+		ret = true;
+	else
+		ret = false;
+
+	if (ret) {
+              pr_err("expire:%dms, curr_jiffies:%dms, last jiffies:%d",
+                              bcdev->tbatt_filter_interval_ms, jiffies_to_msecs(cur_jiffies), jiffies_to_msecs(last_jiffies));
+		last_jiffies = cur_jiffies;
+
+	}
+
+	if (clear_jiffies) {
+		last_jiffies = cur_jiffies;
+	}
+
+	return ret;
+}
 
 static int battery_chg_fw_write(struct battery_chg_dev *bcdev, void *data,
 				int len)
@@ -1347,6 +1379,29 @@ static int battery_psy_set_cycle_count(struct battery_chg_dev *bcdev,
 
 	return rc;
 }
+static int tbatt_filter_handler(struct battery_chg_dev *bcdev, int batt_temp)
+{
+	int ret = batt_temp;
+	if (batt_temp == -400)
+		return ret;
+
+	if (!bcdev->tbatt_filter_save_degree) {
+		bcdev->tbatt_filter_save_degree = batt_temp;
+		jiffies_timer_expire(bcdev, true);
+		ret = batt_temp;
+	} else {
+		if (abs(bcdev->tbatt_filter_save_degree - batt_temp) > bcdev->tbatt_filter_offset_degree &&
+			!jiffies_timer_expire(bcdev, false)) {
+			ret = bcdev->tbatt_filter_save_degree;
+		 	pr_err("fliter out tbatt: %d, report last temp %d\n", batt_temp, bcdev->tbatt_filter_save_degree);
+		} else {
+			jiffies_timer_expire(bcdev, true);
+			ret = batt_temp;
+			bcdev->tbatt_filter_save_degree = batt_temp;
+		}
+	}
+	return ret;
+}
 
 static int battery_psy_get_prop(struct power_supply *psy,
 		enum power_supply_property prop,
@@ -1398,7 +1453,11 @@ static int battery_psy_get_prop(struct power_supply *psy,
 			pval->intval = bcdev->fake_soc;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		pval->intval = DIV_ROUND_CLOSEST((int)pst->prop[prop_id], 10);
+		if (bcdev->tbatt_filter_en) {
+			pval->intval = tbatt_filter_handler(bcdev, DIV_ROUND_CLOSEST((int)pst->prop[prop_id], 10));
+		} else {
+			pval->intval = DIV_ROUND_CLOSEST((int)pst->prop[prop_id], 10);
+		}
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
 		pval->intval = bcdev->curr_thermal_level;
@@ -2238,6 +2297,20 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 	struct psy_state *pst = &bcdev->psy_list[PSY_TYPE_BATTERY];
 	int i, rc, len;
 	u32 prev, val;
+
+	bcdev->tbatt_filter_en = of_property_read_bool(node, "qcom,tbatt-filter-en");
+
+	rc = of_property_read_u32(node, "qcom,tbatt-filter-interval-ms",
+				&bcdev->tbatt_filter_interval_ms);
+	if (rc < 0) {
+		bcdev->tbatt_filter_interval_ms = 5000;
+	}
+
+	rc = of_property_read_u32(node, "qcom,tbatt-filter-offset-degree",
+				&bcdev->tbatt_filter_offset_degree);
+	if (rc < 0) {
+		bcdev->tbatt_filter_offset_degree = 50;
+	}
 
 	bcdev->wls_not_supported = of_property_read_bool(node,
 			"qcom,wireless-charging-not-supported");
