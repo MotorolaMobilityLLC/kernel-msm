@@ -3481,7 +3481,7 @@ static const struct file_operations clk_enabled_list_fops = {
 	.release	= seq_release,
 };
 
-static u32 debug_suspend;
+static u32 debug_suspend = IS_ENABLED(CONFIG_DUMP_CLK_ON_SUSPEND);
 
 /*
  * Print the names of all enabled clocks and their parents if

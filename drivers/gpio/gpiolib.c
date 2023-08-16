@@ -5063,6 +5063,104 @@ static int gpiolib_seq_show(struct seq_file *s, void *v)
 	return 0;
 }
 
+static u32 debug_gpio = IS_ENABLED(CONFIG_DUMP_GPIO_ON_SUSPEND);
+void gpio_debug_print_enabled(void)
+{
+	unsigned long flags;
+	struct gpio_device *gdev = NULL;
+	struct seq_file *s;
+	int back;
+
+	if (likely(!debug_gpio))
+	{
+		return;
+	}
+
+	printk("======================= Dump GPIO status begin  =======================");
+	spin_lock_irqsave(&gpio_lock, flags);
+	s = kzalloc(sizeof(struct seq_file), GFP_KERNEL);
+	if(s == NULL)
+	{
+		printk("hxy struct seq file  failed to alloc memory");
+		return;
+	}
+	s->index = 0;
+	s->version = 0;
+	s->count = s->from = 0;
+	s->read_pos= 0;
+	s->private = NULL;
+	s->file = NULL;
+	s->op = NULL;
+	s->private = "";
+
+	s->buf =  kzalloc(s->size = PAGE_SIZE,GFP_KERNEL_ACCOUNT);
+	if (!s->buf)
+	{
+		printk("hxy seq file buffer failed to alloc memory %d bytes",s->size);
+		kfree(s );
+		return ;
+	}
+
+	list_for_each_entry(gdev, &gpio_devices, list)
+	{
+		try_again:
+		s->count  = 0;
+		back=s->count;
+
+		gpiolib_seq_show(s,gdev);
+
+		if(s->count >= s->size)
+		{
+			kfree(s->buf );
+			s->buf =  kzalloc(s->size = (s->size*2),GFP_KERNEL_ACCOUNT);
+			if (!s->buf)
+			{
+				printk("hxy seq file buffer failed to alloc memory %d bytes",s->size);
+				kfree(s );
+				return ;
+			}
+			goto try_again;
+		}
+		s->buf[s->count] = '\0';
+		{
+			char tt[256];
+			char *ptr;
+			char *ptr1;
+			int n;
+			int loop;
+
+			ptr1=s->buf+back;
+			ptr=strstr(ptr1,"\x0a");
+			loop=0;
+			while(ptr != NULL && (loop++ < 500)  && (ptr < (s->buf+ s->size)))
+			{
+				n=ptr-ptr1;
+				strncpy(tt,ptr1,n);
+				tt[n]='\0';
+				printk(" %s",tt);
+				ptr1 = ptr+strlen("\x0a");
+				ptr=strstr(ptr1,"\x0a");
+			}
+		}
+	}
+
+	if(s->buf != NULL)
+	{
+		kfree(s->buf );
+		s->buf = NULL;
+	}
+	if(s != NULL)
+	{
+		kfree(s );
+		s = NULL;
+	}
+	spin_unlock_irqrestore(&gpio_lock, flags);
+	printk("======================= Dump GPIO status end    =======================");
+
+}
+
+EXPORT_SYMBOL(gpio_debug_print_enabled);
+
 static const struct seq_operations gpiolib_seq_ops = {
 	.start = gpiolib_seq_start,
 	.next = gpiolib_seq_next,
@@ -5088,6 +5186,7 @@ static int __init gpiolib_debugfs_init(void)
 	/* /sys/kernel/debug/gpio */
 	debugfs_create_file("gpio", S_IFREG | S_IRUGO, NULL, NULL,
 			    &gpiolib_operations);
+	debugfs_create_u32("debug_gpio", 0644, NULL, &debug_gpio);
 	return 0;
 }
 subsys_initcall(gpiolib_debugfs_init);

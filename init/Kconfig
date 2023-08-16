@@ -639,6 +639,15 @@ config IKHEADERS
 	  or similar programs.  If you build the headers as a module, a module called
 	  kheaders.ko is built which can be loaded on-demand to get access to headers.
 
+config DUMP_GPIO_ON_SUSPEND
+	bool "dump gpio on suspend"
+
+config DUMP_CLK_ON_SUSPEND
+	bool "dump clk on suspend"
+
+config DUMP_REGULATOR_ON_SUSPEND
+	bool "dump regulator on suspend"
+
 config LOG_BUF_SHIFT
 	int "Kernel log buffer size (16 => 64KB, 17 => 128KB)"
 	range 12 25 if !H8300
