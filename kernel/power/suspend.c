@@ -32,6 +32,7 @@
 #include <linux/compiler.h>
 #include <linux/moduleparam.h>
 #include <linux/wakeup_reason.h>
+#include <linux/rtc.h>
 
 #include "power.h"
 
@@ -62,6 +63,46 @@ static DECLARE_SWAIT_QUEUE_HEAD(s2idle_wait_head);
 
 enum s2idle_states __read_mostly s2idle_state;
 static DEFINE_RAW_SPINLOCK(s2idle_lock);
+
+const char *suspend_state_name[] = {
+"ON",
+"TO IDLE",
+"STANDBY",
+"MEM",
+"MIN",
+"MAX",
+};
+
+void print_time(bool running)
+{
+	static ktime_t kt_boot0 = 0;
+	ktime_t kt_boot;
+	u32 rem;
+	unsigned long delta;
+	struct timespec ts;
+	struct rtc_time tm;
+	char sign = '-';
+	int tz_min = sys_tz.tz_minuteswest;
+	if (tz_min < 0) {
+		sign = '+';
+		tz_min = -tz_min;
+	}
+
+	kt_boot = ktime_get_boottime();
+        delta = div_u64(kt_boot - kt_boot0, NSEC_PER_SEC);
+
+	kt_boot0 = kt_boot;
+	kt_boot = div_u64_rem(kt_boot, NSEC_PER_SEC, &rem);
+
+	getnstimeofday(&ts);
+	ts.tv_sec -= sys_tz.tz_minuteswest * 60;
+	rtc_time_to_tm(ts.tv_sec, &tm);
+	pr_err("realtime: %u-%02u-%02u %02u:%02u:%02u.%06u UTC%c%02d:%02d  boottime: %5lu.%06u  %s: %lu\n",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec, (int)(ts.tv_nsec / 1000),
+		sign, tz_min / 60, tz_min % 60,
+		(long)kt_boot, (int)rem / 1000, running ? "running" : "sleep", delta);
+}
 
 /**
  * pm_suspend_default_s2idle - Check if suspend-to-idle is the default suspend.
@@ -121,7 +162,7 @@ static void s2idle_enter(void)
 
 static void s2idle_loop(void)
 {
-	pm_pr_dbg("suspend-to-idle\n");
+	pr_err("suspend-to-idle\n");
 
 	/*
 	 * Suspend-to-idle equals:
@@ -144,7 +185,7 @@ static void s2idle_loop(void)
 		s2idle_enter();
 	}
 
-	pm_pr_dbg("resume from suspend-to-idle\n");
+	pr_err("resume from suspend-to-idle\n");
 }
 
 void s2idle_wake(void)
@@ -325,7 +366,7 @@ static int suspend_test(int level)
 {
 #ifdef CONFIG_PM_DEBUG
 	if (pm_test_level == level) {
-		pr_info("suspend debug: Waiting for %d second(s).\n",
+		pr_err("suspend debug: Waiting for %d second(s).\n",
 				pm_test_delay);
 		mdelay(pm_test_delay * 1000);
 		return 1;
@@ -636,7 +677,9 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pm_suspend_marker("entry");
-	pr_info("suspend entry (%s)\n", mem_sleep_labels[state]);
+	pr_err("suspend entry (%s) state=%d (%s)\n", mem_sleep_labels[state], state,
+		state < ARRAY_SIZE(suspend_state_name) ? suspend_state_name[state] : "unknow");
+	print_time(true);
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -645,7 +688,8 @@ int pm_suspend(suspend_state_t state)
 		suspend_stats.success++;
 	}
 	pm_suspend_marker("exit");
-	pr_info("suspend exit\n");
+	pr_err("suspend exit err=%d success=%d fail=%d\n", error, suspend_stats.success, suspend_stats.fail);
+	print_time(false);
 	return error;
 }
 EXPORT_SYMBOL(pm_suspend);
