@@ -71,6 +71,7 @@ filemap_fdatawrite
 filemap_flush
 __filemap_set_wb_err
 filemap_write_and_wait_range
+file_check_and_advance_wb_err
 file_remove_privs
 file_update_time
 file_write_and_wait_range
