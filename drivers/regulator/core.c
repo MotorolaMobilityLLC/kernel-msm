@@ -55,7 +55,7 @@ static LIST_HEAD(regulator_supply_alias_list);
 static LIST_HEAD(regulator_coupler_list);
 static bool has_full_constraints;
 #ifdef CONFIG_DEBUG_FS
-static bool debug_suspend;
+static bool debug_suspend = IS_ENABLED(CONFIG_DUMP_REGULATOR_ON_SUSPEND);
 #endif
 
 static struct dentry *debugfs_root;
