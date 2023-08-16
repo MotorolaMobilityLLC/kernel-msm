@@ -35,6 +35,10 @@
 #include <linux/platform_device.h>
 #include <linux/qcom_scm.h>
 #include <linux/amba/bus.h>
+#include <linux/qcom-iommu-util.h>
+
+#define MSI_IOVA_BASE                     0x8000000
+#define MSI_IOVA_LENGTH                   0x100000
 
 /*
  * Stream table.
@@ -360,11 +364,24 @@ static struct virt_arm_smmu_device *virt_arm_smmu_get_by_fwnode(struct fwnode_ha
 static void virt_arm_smmu_put_resv_regions(struct device *dev,
 				      struct list_head *head)
 {
-
+	generic_iommu_put_resv_regions(dev, head);
 }
 static void virt_arm_smmu_get_resv_regions(struct device *dev,
 				      struct list_head *head)
 {
+	struct iommu_resv_region *region;
+	int prot = IOMMU_WRITE | IOMMU_NOEXEC | IOMMU_MMIO;
+
+	region = iommu_alloc_resv_region(MSI_IOVA_BASE, MSI_IOVA_LENGTH,
+						prot, IOMMU_RESV_SW_MSI);
+	if (!region)
+		return;
+
+	list_add_tail(&region->list, head);
+
+	iommu_dma_get_resv_regions(dev, head);
+
+	qcom_iommu_generate_resv_regions(dev, head);
 
 }
 
