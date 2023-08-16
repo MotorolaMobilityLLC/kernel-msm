@@ -551,7 +551,8 @@ static void io_kill_timeout(struct io_kiocb *req)
 		atomic_inc(&req->ctx->cq_timeouts);
 		list_del(&req->list);
 		io_cqring_fill_event(req->ctx, req->user_data, 0);
-		__io_free_req(req);
+		if (refcount_dec_and_test(&req->refs))
+			__io_free_req(req);
 	}
 }
 
@@ -2076,12 +2077,12 @@ static int io_timeout(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	req->sequence -= span;
 add:
 	list_add(&req->list, entry);
-	spin_unlock_irq(&ctx->completion_lock);
 
 	hrtimer_init(&req->timeout.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	req->timeout.timer.function = io_timeout_fn;
 	hrtimer_start(&req->timeout.timer, timespec64_to_ktime(ts),
 			HRTIMER_MODE_REL);
+	spin_unlock_irq(&ctx->completion_lock);
 	return 0;
 }
 
@@ -3734,9 +3735,6 @@ static void io_cancel_async_work(struct io_ring_ctx *ctx,
 				 struct files_struct *files)
 {
 	struct io_kiocb *req;
-
-	if (list_empty(&ctx->task_list))
-		return;
 
 	spin_lock_irq(&ctx->task_lock);
 
