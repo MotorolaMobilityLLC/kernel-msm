@@ -199,13 +199,10 @@ struct sdhci_msm_host {
 	bool skip_bus_bw_voting;
 	struct sdhci_msm_bus_vote_data *bus_vote_data;
 	struct delayed_work bus_vote_work;
-	struct delayed_work clk_gating_work;
 	struct workqueue_struct *workq;	/* QoS work queue */
 	struct sdhci_msm_qos_req *sdhci_qos;
 	struct irq_affinity_notify affinity_notify;
-	struct device_attribute clk_gating;
 	struct device_attribute pm_qos;
-	u32 clk_gating_delay;
 	u32 pm_qos_delay;
 	bool cqhci_offset_changed;
 	bool reg_store;
