@@ -62,7 +62,6 @@ static int tmc_pcie_sw_start(struct tmc_pcie_data *pcie_data)
 					PCIE_BLK_SIZE / 8);
 	atomic_set(&pcie_data->irq_cnt, 0);
 	pcie_data->total_size = 0;
-	pcie_data->drop_size = 0;
 	pcie_data->offset = 0;
 	pcie_data->total_irq = 0;
 	mutex_unlock(&pcie_data->pcie_lock);
@@ -72,6 +71,8 @@ static int tmc_pcie_sw_start(struct tmc_pcie_data *pcie_data)
 				&pcie_data->pcie_open_work);
 
 	queue_work(pcie_data->pcie_wq, &pcie_data->pcie_write_work);
+	dev_info(pcie_data->dev, "tmc pcie sw path enabled\n");
+
 	return 0;
 }
 
@@ -163,7 +164,6 @@ static void tmc_pcie_write_work_fn(struct work_struct *work)
 	int ret = 0;
 	struct mhi_req *req;
 	size_t actual;
-	size_t drop_size;
 	int bytes_to_write;
 	char *buf;
 
@@ -219,14 +219,12 @@ static void tmc_pcie_write_work_fn(struct work_struct *work)
 
 		bytes_to_write = mhi_dev_write_channel(req);
 
-		if (bytes_to_write != PCIE_BLK_SIZE) {
-			drop_size = actual - bytes_to_write;
+		if (bytes_to_write != actual) {
 			dev_err_ratelimited(pcie_data->dev,
-				"pcie drop data %d\n", drop_size);
-			pcie_data->drop_size += drop_size;
+				"Write error %d\n", bytes_to_write);
 			kfree(req);
 			req = NULL;
-			continue;
+			break;
 		}
 
 		pcie_data->total_size += actual;
@@ -256,7 +254,7 @@ static int tmc_pcie_sw_init(struct tmc_pcie_data *pcie_data)
 	if (ret)
 		pcie_data->buf_size = TMC_PCIE_MEM_SIZE;
 
-	dev_info(dev, "setting tmc etr sw usb buf size 0x%x\n", pcie_data->buf_size);
+	dev_info(dev, "setting tmc etr sw pcie buf size 0x%x\n", pcie_data->buf_size);
 	mutex_init(&pcie_data->pcie_lock);
 
 	return tmc_register_pcie_channel(pcie_data);
@@ -563,6 +561,7 @@ static int tmc_pcie_hw_enable(struct tmc_pcie_data *pcie_data)
 		return ret;
 	}
 
+	dev_info(pcie_data->dev, "tmc pcie hw path enabled\n");
 	return 0;
 }
 
@@ -592,9 +591,8 @@ void tmc_pcie_disable(struct tmc_pcie_data *pcie_data)
 		tmc_pcie_sw_stop(pcie_data);
 		flush_work(&pcie_data->pcie_write_work);
 		dev_info(pcie_data->dev,
-		"qdss receive total irq: %ld, send data %ld, drop data:%ld\n",
-		pcie_data->total_irq, pcie_data->total_size,
-		pcie_data->drop_size);
+		"qdss receive total irq: %ld, send data %ld\n",
+		pcie_data->total_irq, pcie_data->total_size);
 	} else
 		return tmc_pcie_hw_disable(pcie_data);
 }
