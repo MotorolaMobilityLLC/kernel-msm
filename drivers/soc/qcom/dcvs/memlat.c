@@ -1714,8 +1714,10 @@ static int memlat_dev_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct kobject *dcvs_kobj;
 	struct memlat_dev_data *dev_data;
-	int i, cpu, ret;
+	int i, cpu, ret, num_cpus;
 	u32 event_id;
+	struct cpufreq_policy *policy;
+	struct cpufreq_frequency_table *table;
 
 	dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
 	if (!dev_data)
@@ -1789,6 +1791,25 @@ static int memlat_dev_probe(struct platform_device *pdev)
 	}
 
 	memlat_data = dev_data;
+	num_cpus = cpumask_last(cpu_possible_mask) + 1;
+	memlat_data->max_cpu_freq_array = devm_kzalloc(dev,
+			num_cpus * sizeof(unsigned int), GFP_KERNEL);
+	if (!memlat_data->max_cpu_freq_array)
+		return -ENOMEM;
+	for_each_possible_cpu(cpu) {
+		policy = cpufreq_cpu_get_raw(cpu);
+		if (!policy)
+			continue;
+		table = policy->freq_table;
+		for (i = 0; i < LUT_MAX_ENTRIES &&
+				table[i].frequency != CPUFREQ_TABLE_END; i++) {
+			if (table[i].flags == CPUFREQ_BOOST_FREQ)
+				break;
+		}
+		if (i > 0)
+			memlat_data->max_cpu_freq_array[cpu] =
+				table[i - 1].frequency;
+	}
 
 	return 0;
 }
@@ -2054,11 +2075,9 @@ unlock_out:
 static int qcom_memlat_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	int ret = 0, cpu, i, num_cpus;
+	int ret = 0;
 	const struct memlat_spec *spec = of_device_get_match_data(dev);
 	enum memlat_type type = NUM_MEMLAT_TYPES;
-	struct cpufreq_policy *policy;
-	struct cpufreq_frequency_table *table;
 
 	if (spec)
 		type = spec->type;
@@ -2072,25 +2091,6 @@ static int qcom_memlat_probe(struct platform_device *pdev)
 		ret = memlat_dev_probe(pdev);
 		if (!ret && of_get_available_child_count(dev->of_node))
 			of_platform_populate(dev->of_node, NULL, NULL, dev);
-		num_cpus = cpumask_last(cpu_possible_mask) + 1;
-		memlat_data->max_cpu_freq_array = kcalloc(num_cpus, sizeof(unsigned int),
-			GFP_KERNEL);
-		if (!memlat_data->max_cpu_freq_array)
-			return -ENOMEM;
-		for_each_possible_cpu(cpu) {
-			policy = cpufreq_cpu_get_raw(cpu);
-			if (policy != NULL) {
-				table = policy->freq_table;
-				for (i = 0; i < LUT_MAX_ENTRIES &&
-				table[i].frequency != CPUFREQ_TABLE_END; i++) {
-					if (table[i].flags == CPUFREQ_BOOST_FREQ)
-						break;
-				}
-				if (i > 0)
-					memlat_data->max_cpu_freq_array[cpu] =
-						table[i - 1].frequency;
-			}
-		}
 		break;
 	case MEMLAT_GRP:
 		ret = memlat_grp_probe(pdev);
