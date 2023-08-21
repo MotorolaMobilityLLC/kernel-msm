@@ -40,6 +40,13 @@ config OBERON_DTB
 	help
 		Only include Motorola Oberon device specific device tree.
 
+config EQE_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Eqe Device DTB"
+	help
+		Only include Motorola Eqe device specific device tree.
+
 config MMI_FACTORY_BUILD
 	depends on ARCH_QCOM
 	default n
