@@ -51,6 +51,7 @@ phy-qcom-ufs-qmp-v4-khaje.ko
 phy-qcom-ufs-qrbtc-sdm845.ko
 pinctrl-msm.ko
 proxy-consumer.ko
+qcom-dcvs.ko
 qpnp-power-on.ko
 msm-poweroff.ko
 qcom_dma_heaps.ko
