@@ -4154,8 +4154,9 @@ static void ep_pcie_tcsr_aoss_data_dt(struct platform_device *pdev)
 
 static int ep_pcie_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret, num_ipc_pages_dev_fac;
 	u32 sriov_mask = 0;
+	char logname[MAX_NAME_LEN];
 
 	ret = is_pcie_boot_config(pdev);
 	if (ret) {
@@ -4164,6 +4165,52 @@ static int ep_pcie_probe(struct platform_device *pdev)
 			ep_pcie_dev.rev);
 		goto res_failure;
 	}
+
+	ret = of_property_read_u32((&pdev->dev)->of_node,
+				"qcom,ep-pcie-num-ipc-pages-dev-fac",
+				&num_ipc_pages_dev_fac);
+
+	if (ret) {
+		pr_err("qcom,ep-pcie-num-ipc-pages-dev-fac does not exist\n");
+		num_ipc_pages_dev_fac = 1;
+	}
+	if (num_ipc_pages_dev_fac < 1 || num_ipc_pages_dev_fac > 5) {
+		pr_err("Invalid value received for num_ipc_pages_dev_fac\n");
+		num_ipc_pages_dev_fac = 1;
+	}
+
+	snprintf(logname, MAX_NAME_LEN, "ep-pcie-long");
+	ep_pcie_dev.ipc_log_sel =
+		ipc_log_context_create(EP_PCIE_LOG_PAGES/num_ipc_pages_dev_fac, logname, 0);
+	if (ep_pcie_dev.ipc_log_sel == NULL)
+		pr_err("%s: unable to create IPC selected log for %s\n",
+				__func__, logname);
+	else
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: IPC selected logging is enable for %s\n",
+			ep_pcie_dev.rev, logname);
+
+	snprintf(logname, MAX_NAME_LEN, "ep-pcie-short");
+	ep_pcie_dev.ipc_log_ful =
+		ipc_log_context_create((EP_PCIE_LOG_PAGES * 2)/num_ipc_pages_dev_fac, logname, 0);
+	if (ep_pcie_dev.ipc_log_ful == NULL)
+		pr_err("%s: unable to create IPC detailed log for %s\n",
+				__func__, logname);
+	else
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: IPC detailed logging is enable for %s\n",
+			ep_pcie_dev.rev, logname);
+
+	snprintf(logname, MAX_NAME_LEN, "ep-pcie-dump");
+	ep_pcie_dev.ipc_log_dump =
+		ipc_log_context_create(EP_PCIE_LOG_PAGES, logname, 0);
+	if (ep_pcie_dev.ipc_log_dump == NULL)
+		pr_err("%s: unable to create IPC dump log for %s\n",
+				__func__, logname);
+	else
+		EP_PCIE_DBG(&ep_pcie_dev,
+			"PCIe V%d: IPC dump logging is enable for %s\n",
+			ep_pcie_dev.rev, logname);
 
 	ep_pcie_dev.link_speed = 1;
 	ret = of_property_read_u32((&pdev->dev)->of_node,
@@ -4538,41 +4585,6 @@ static struct platform_driver ep_pcie_driver = {
 static int __init ep_pcie_init(void)
 {
 	int ret;
-	char logname[MAX_NAME_LEN];
-
-
-	snprintf(logname, MAX_NAME_LEN, "ep-pcie-long");
-	ep_pcie_dev.ipc_log_sel =
-		ipc_log_context_create(EP_PCIE_LOG_PAGES, logname, 0);
-	if (ep_pcie_dev.ipc_log_sel == NULL)
-		pr_err("%s: unable to create IPC selected log for %s\n",
-			__func__, logname);
-	else
-		EP_PCIE_DBG(&ep_pcie_dev,
-			"PCIe V%d: IPC selected logging is enable for %s\n",
-			ep_pcie_dev.rev, logname);
-
-	snprintf(logname, MAX_NAME_LEN, "ep-pcie-short");
-	ep_pcie_dev.ipc_log_ful =
-		ipc_log_context_create(EP_PCIE_LOG_PAGES * 2, logname, 0);
-	if (ep_pcie_dev.ipc_log_ful == NULL)
-		pr_err("%s: unable to create IPC detailed log for %s\n",
-			__func__, logname);
-	else
-		EP_PCIE_DBG(&ep_pcie_dev,
-			"PCIe V%d: IPC detailed logging is enable for %s\n",
-			ep_pcie_dev.rev, logname);
-
-	snprintf(logname, MAX_NAME_LEN, "ep-pcie-dump");
-	ep_pcie_dev.ipc_log_dump =
-		ipc_log_context_create(EP_PCIE_LOG_PAGES, logname, 0);
-	if (ep_pcie_dev.ipc_log_dump == NULL)
-		pr_err("%s: unable to create IPC dump log for %s\n",
-			__func__, logname);
-	else
-		EP_PCIE_DBG(&ep_pcie_dev,
-			"PCIe V%d: IPC dump logging is enable for %s\n",
-			ep_pcie_dev.rev, logname);
 
 	mutex_init(&ep_pcie_dev.setup_mtx);
 	mutex_init(&ep_pcie_dev.ext_mtx);
