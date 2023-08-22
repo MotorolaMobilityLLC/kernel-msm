@@ -4371,6 +4371,15 @@ static int msm_nand_bam_panic_notifier(struct notifier_block *this,
 	struct msm_nand_chip *chip = &info->nand_chip;
 	int err;
 
+	/* We shouldn't request for a new resource during panic
+	 * as the cores and irq's were already in disabled state.
+	 * So, check device runtime status before request for a
+	 * resource (clock and bus).
+	 */
+
+	if (pm_runtime_suspended(chip->dev))
+		return NOTIFY_DONE;
+
 	err = msm_nand_get_device(chip->dev);
 	if (err)
 		goto out;
