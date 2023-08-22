@@ -2044,6 +2044,24 @@ err:
 	return NULL;
 }
 
+
+/**
+ * ufs_qcom_enable_crash_on_err - read from DTS whether crash_on_err
+ * should be enabled during boot.
+ * @hba: per adapter instance
+ */
+static void ufs_qcom_enable_crash_on_err(struct ufs_hba *hba)
+{
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+	struct device *dev = hba->dev;
+	struct device_node *np = dev->of_node;
+
+	if (!np)
+		return;
+	host->crash_on_err =
+		of_property_read_bool(np, "qcom,enable_crash_on_err");
+}
+
 static int ufs_qcom_bus_register(struct ufs_qcom_host *host)
 {
 	int err = 0;
@@ -3822,6 +3840,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	host->dbg_en = true;
 #endif
 
+	ufs_qcom_enable_crash_on_err(hba);
 	/* Setup the reset control of HCI */
 	host->core_reset = devm_reset_control_get(hba->dev, "rst");
 	if (IS_ERR(host->core_reset)) {
