@@ -65,3 +65,4 @@ cqhci.ko
 sdhci-msm.ko
 qpnp-power-on.ko
 msm-poweroff.ko
+mem-hooks.ko
