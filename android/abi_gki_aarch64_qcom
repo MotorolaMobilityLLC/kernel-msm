@@ -1461,6 +1461,7 @@
   page_endio
   page_is_ram
   page_mapping
+  page_owner_inited
   page_pool_alloc_pages
   page_pool_create
   page_pool_destroy
@@ -1991,6 +1992,7 @@
   set_next_entity
   set_normalized_timespec64
   __SetPageMovable
+  __set_page_owner
   set_task_cpu
   set_user_nice
   sg_alloc_table
