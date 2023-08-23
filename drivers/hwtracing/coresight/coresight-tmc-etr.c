@@ -1870,8 +1870,6 @@ static int _tmc_disable_etr_sink(struct coresight_device *csdev,
 			else
 				tmc_pcie_disable(drvdata->pcie_data);
 
-			tmc_etr_free_sysfs_buf(drvdata->sysfs_buf);
-			drvdata->sysfs_buf = NULL;
 			spin_lock_irqsave(&drvdata->spinlock, flags);
 		}
 		tmc_etr_disable_hw(drvdata);
