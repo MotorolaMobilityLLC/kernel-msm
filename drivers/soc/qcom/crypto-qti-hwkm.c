@@ -290,7 +290,7 @@ int crypto_qti_program_key(const struct ice_mmio_data *mmio_data,
 		return -EINVAL;
 	}
 
-	if (!qti_hwkm_init_done) {
+	if (qti_hwkm_init_required(mmio_data)) {
 		err = qti_hwkm_init(mmio_data);
 		if (err) {
 			pr_err("%s: Error with HWKM init %d\n", __func__, err);

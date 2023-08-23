@@ -497,6 +497,7 @@ struct hwkm_rsp {
 int qti_hwkm_handle_cmd(struct hwkm_cmd *cmd, struct hwkm_rsp *rsp);
 int qti_hwkm_clocks(bool on);
 int qti_hwkm_init(const struct ice_mmio_data *mmio_data);
+bool qti_hwkm_init_required(const struct ice_mmio_data *mmio_data);
 #else
 static inline int qti_hwkm_add_req(struct hwkm_cmd *cmd,
 				   struct hwkm_rsp *rsp)
@@ -508,6 +509,10 @@ static inline int qti_hwkm_clocks(bool on)
 	return -EOPNOTSUPP;
 }
 static inline int qti_hwkm_init(const struct ice_mmio_data *mmio_data)
+{
+	return -EOPNOTSUPP;
+}
+static inline bool qti_hwkm_init_required(const struct ice_mmio_data *mmio_data)
 {
 	return -EOPNOTSUPP;
 }
