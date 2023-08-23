@@ -57,7 +57,9 @@
 #include <trace/events/migrate.h>
 
 #undef CREATE_TRACE_POINTS
+#ifndef __GENKSYMS__
 #include <trace/hooks/mm.h>
+#endif
 
 #include "internal.h"
 
