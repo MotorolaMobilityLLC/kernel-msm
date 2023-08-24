@@ -236,6 +236,7 @@
   __page_file_index
   __page_mapcount
   page_mapping
+  page_referenced
   page_to_lruvec
   param_ops_uint
   __per_cpu_offset
@@ -286,6 +287,7 @@
   register_sysctl_table
   register_tcf_proto_ops
   remove_proc_subtree
+  root_mem_cgroup
   rtc_read_alarm
   __rtnl_link_unregister
   sched_clock
