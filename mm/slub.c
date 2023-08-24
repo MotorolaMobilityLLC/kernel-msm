@@ -1794,6 +1794,8 @@ static inline struct page *alloc_slab_page(struct kmem_cache *s,
 	else
 		page = __alloc_pages_node(node, flags, order);
 
+	trace_android_vh_slab_page_alloced(page, s->size, flags);
+
 	return page;
 }
 
