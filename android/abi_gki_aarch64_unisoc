@@ -3149,11 +3149,13 @@
   __traceiter_android_vh_anon_gfp_adjust
   __traceiter_android_vh_alloc_flags_cma_adjust
   __traceiter_android_vh_rmqueue_cma_fallback
+  __traceiter_android_vh_try_cma_fallback
   __tracepoint_android_vh_use_cma_first_check
   __tracepoint_android_vh_alloc_highpage_movable_gfp_adjust
   __tracepoint_android_vh_anon_gfp_adjust
   __tracepoint_android_vh_alloc_flags_cma_adjust
   __tracepoint_android_vh_rmqueue_cma_fallback
+  __tracepoint_android_vh_try_cma_fallback
 
 # required by unisoc_mm_emem.ko
   __traceiter_android_vh_oom_check_panic
@@ -3162,17 +3164,21 @@
   __tracepoint_android_vh_show_mem
 
 # required by unisoc_mm_reclaim.ko
+  __traceiter_android_vh_clear_page_migrating
   __traceiter_android_vh_do_page_trylock
   __traceiter_android_vh_handle_failed_page_trylock
   __traceiter_android_vh_page_trylock_clear
   __traceiter_android_vh_page_trylock_get_result
   __traceiter_android_vh_page_trylock_set
+  __traceiter_android_vh_set_page_migrating
   __traceiter_android_vh_shrink_slab_bypass
+  __tracepoint_android_vh_clear_page_migrating
   __tracepoint_android_vh_do_page_trylock
   __tracepoint_android_vh_handle_failed_page_trylock
   __tracepoint_android_vh_page_trylock_clear
   __tracepoint_android_vh_page_trylock_get_result
   __tracepoint_android_vh_page_trylock_set
+  __tracepoint_android_vh_set_page_migrating
   __tracepoint_android_vh_shrink_slab_bypass
 
 # required by unisoc_mm_slab.ko

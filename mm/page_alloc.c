@@ -74,6 +74,8 @@
 #include <linux/khugepaged.h>
 #include <linux/buffer_head.h>
 #include <trace/hooks/mm.h>
+#include <trace/hooks/vmscan.h>
+
 #include <asm/sections.h>
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -2618,6 +2620,7 @@ static void prep_new_page(struct page *page, unsigned int order, gfp_t gfp_flags
 		set_page_pfmemalloc(page);
 	else
 		clear_page_pfmemalloc(page);
+	trace_android_vh_test_clear_look_around_ref(page);
 }
 
 /*
@@ -3173,8 +3176,13 @@ retry:
 	/*
 	 * let normal GFP_MOVABLE has chance to try MIGRATE_CMA
 	 */
-	if (unlikely(!page) && (migratetype == MIGRATE_MOVABLE))
+	if (unlikely(!page) && (migratetype == MIGRATE_MOVABLE)) {
+		bool try_cma = false;
 		trace_android_vh_rmqueue_cma_fallback(zone, order, &page);
+		trace_android_vh_try_cma_fallback(zone, order, &try_cma);
+		if (try_cma)
+			page = __rmqueue_cma_fallback(zone, order);
+	}
 
 	if (unlikely(!page) && __rmqueue_fallback(zone, order, migratetype,
 						  alloc_flags))

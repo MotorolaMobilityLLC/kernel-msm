@@ -135,6 +135,7 @@
   __const_udelay
   consume_skb
   contig_page_data
+  copy_from_kernel_nofault
   __cpu_active_mask
   cpu_all_bits
   cpu_bit_bitmap
@@ -739,6 +740,7 @@
   mmc_free_host
   mmc_gpio_get_cd
   mmc_gpio_get_ro
+  mmc_hw_reset
   mmc_of_parse
   mmc_regulator_get_supply
   mmc_regulator_set_ocr
@@ -1391,6 +1393,7 @@
   __traceiter_android_vh_ipi_stop
   __traceiter_android_vh_logbuf
   __traceiter_android_vh_logbuf_pr_cont
+  __traceiter_android_vh_meminfo_proc_show
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_show_mem
   __traceiter_binder_transaction_received
@@ -1454,6 +1457,7 @@
   __tracepoint_android_vh_ipi_stop
   __tracepoint_android_vh_logbuf
   __tracepoint_android_vh_logbuf_pr_cont
+  __tracepoint_android_vh_meminfo_proc_show
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_show_mem
   __tracepoint_binder_transaction_received
