@@ -2462,7 +2462,11 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	struct address_space *mapping = file->f_mapping;
 	struct file *fpin = NULL;
 	pgoff_t offset = vmf->pgoff;
+#ifdef CONFIG_MMAP_READAROUND_LIMIT
+	static unsigned int ra_pages = 0;
+#else
 	unsigned int ra_pages;
+#endif
 
 	/* If we don't want any read-ahead, don't bother */
 	if (vmf->vma_flags & VM_RAND_READ)
@@ -2491,14 +2495,12 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	/*
 	 * mmap read-around
 	 */
-
-#if CONFIG_MMAP_READAROUND_LIMIT == 0
-	ra_pages = ra->ra_pages;
+#ifdef CONFIG_MMAP_READAROUND_LIMIT
+	/* Set 8 pages for < 8G RAM and set 16 pages for >= 8G RAM */
+	if (ra_pages == 0)
+		ra_pages = ((totalram_pages() >> (30 - PAGE_SHIFT)) + 1) < 8 ? 8 : 16;
 #else
-	if (ra->ra_pages > CONFIG_MMAP_READAROUND_LIMIT)
-		ra_pages = CONFIG_MMAP_READAROUND_LIMIT < 0 ? 0 : CONFIG_MMAP_READAROUND_LIMIT;
-	else
-		ra_pages = ra->ra_pages;
+	ra_pages = ra->ra_pages;
 #endif
 
 	fpin = maybe_unlock_mmap_for_io(vmf, fpin);
