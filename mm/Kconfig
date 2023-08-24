@@ -737,12 +737,13 @@ config DEVICE_PRIVATE
 	  group of devices). You likely also want to select HMM_MIRROR.
 
 config MMAP_READAROUND_LIMIT
-	int "Limit mmap readaround upperbond"
-	default 0
+	bool "Limit mmap readaround upperbond"
+	default n
 	help
 		Inappropriate mmap readaround size can hurt device performance
 		during the sluggish situation. Add the hard upper-limit for
 		mmap readaround
+
 config FRAME_VECTOR
 	bool
 
