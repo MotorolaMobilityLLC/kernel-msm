@@ -338,7 +338,7 @@ ssize_t tmc_etr_buf_get_data(struct etr_buf *etr_buf,
 /* ETR functions */
 int tmc_read_prepare_etr(struct tmc_drvdata *drvdata);
 int tmc_read_unprepare_etr(struct tmc_drvdata *drvdata);
-void tmc_etr_disable_hw(struct tmc_drvdata *drvdata);
+void tmc_etr_disable_hw(struct tmc_drvdata *drvdata, bool flush);
 struct byte_cntr *byte_cntr_init(struct amba_device *adev,
 					struct tmc_drvdata *drvdata);
 void byte_cntr_remove(struct byte_cntr *byte_cntr);
