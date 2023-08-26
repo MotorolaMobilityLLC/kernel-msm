@@ -323,9 +323,10 @@ extern const char *migrate_type_names[];
 TRACE_EVENT(sched_set_preferred_cluster,
 
 	TP_PROTO(struct walt_related_thread_group *grp, u64 total_demand,
-		bool prev_skip_min),
+		bool prev_skip_min, unsigned int sched_group_upmigrate,
+		unsigned int sched_group_downmigrate),
 
-	TP_ARGS(grp, total_demand, prev_skip_min),
+	TP_ARGS(grp, total_demand, prev_skip_min, sched_group_upmigrate, sched_group_downmigrate),
 
 	TP_STRUCT__entry(
 		__field(int,		id)
@@ -336,6 +337,8 @@ TRACE_EVENT(sched_set_preferred_cluster,
 		__field(u64,		last_update)
 		__field(unsigned int,	sysctl_sched_hyst_min_coloc_ns)
 		__field(u64,		downmigrate_ts)
+		__field(unsigned int,	sched_group_upmigrate)
+		__field(unsigned int,	sched_group_downmigrate)
 	),
 
 	TP_fast_assign(
@@ -347,14 +350,17 @@ TRACE_EVENT(sched_set_preferred_cluster,
 		__entry->last_update	= grp->last_update;
 		__entry->sysctl_sched_hyst_min_coloc_ns = sysctl_sched_hyst_min_coloc_ns;
 		__entry->downmigrate_ts	= grp->downmigrate_ts;
+		__entry->sched_group_upmigrate = sched_group_upmigrate;
+		__entry->sched_group_downmigrate = sched_group_downmigrate;
 	),
 
-	TP_printk("group_id %d total_demand %llu skip_min %d prev_skip_min %d start_ktime_ts %llu last_update %llu min_coloc_ns %u downmigrate_ts %llu",
+	TP_printk("group_id %d total_demand %llu skip_min %d prev_skip_min %d start_ktime_ts %llu last_update %llu min_coloc_ns %u downmigrate_ts %llu group_upmigrate %llu group_downmigrate %llu",
 			__entry->id, __entry->total_demand,
 			__entry->skip_min, __entry->prev_skip_min,
 			__entry->start_ktime_ts, __entry->last_update,
 			__entry->sysctl_sched_hyst_min_coloc_ns,
-			__entry->downmigrate_ts)
+			__entry->downmigrate_ts,
+			__entry->sched_group_upmigrate, __entry->sched_group_downmigrate)
 );
 
 TRACE_EVENT(sched_migration_update_sum,
@@ -596,6 +602,34 @@ TRACE_EVENT(core_ctl_notif_data,
 		  __entry->ta_util[0], __entry->ta_util[1],
 		  __entry->ta_util[2], __entry->cur_cap[0],
 		  __entry->cur_cap[1], __entry->cur_cap[2])
+);
+
+TRACE_EVENT(core_ctl_sbt,
+
+	TP_PROTO(cpumask_t *sbt_cpus, bool prev_is_sbt, bool now_is_sbt,
+		 int prev_is_sbt_windows, int prime_big_tasks),
+
+	TP_ARGS(sbt_cpus, prev_is_sbt, now_is_sbt, prev_is_sbt_windows, prime_big_tasks),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, sbt_cpus)
+		__field(unsigned int, prev_is_sbt)
+		__field(unsigned int, now_is_sbt)
+		__field(int, prev_is_sbt_windows)
+		__field(int, prime_big_tasks)
+		),
+
+	TP_fast_assign(
+		__entry->sbt_cpus = cpumask_bits(sbt_cpus)[0];
+		__entry->prev_is_sbt = prev_is_sbt;
+		__entry->now_is_sbt = now_is_sbt;
+		__entry->prev_is_sbt_windows = prev_is_sbt_windows;
+		__entry->prime_big_tasks = prime_big_tasks;
+		),
+
+	TP_printk("sbt_cpus=0x%x prev_is_sbt=%d now_is_sbt=%d prev_is_sbt_windows=%d prime_big_tasks=%d",
+		__entry->sbt_cpus, __entry->prev_is_sbt,  __entry->now_is_sbt,
+		__entry->prev_is_sbt_windows, __entry->prime_big_tasks)
 );
 
 /*
@@ -1051,15 +1085,17 @@ TRACE_EVENT(sched_compute_energy,
 
 TRACE_EVENT(sched_select_task_rt,
 
-	TP_PROTO(struct task_struct *p, int fastpath, int new_cpu),
+	TP_PROTO(struct task_struct *p, int fastpath, int new_cpu, struct cpumask *lowest_mask),
 
-	TP_ARGS(p, fastpath, new_cpu),
+	TP_ARGS(p, fastpath, new_cpu, lowest_mask),
 
 	TP_STRUCT__entry(
 		__field(int,		pid)
 		__array(char,		comm, TASK_COMM_LEN)
 		__field(int,		fastpath)
 		__field(int,		new_cpu)
+		__field(unsigned long,	reduce_mask)
+		__field(unsigned long,	lowest_mask)
 	),
 
 	TP_fast_assign(
@@ -1067,23 +1103,33 @@ TRACE_EVENT(sched_select_task_rt,
 		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
 		__entry->fastpath		= fastpath;
 		__entry->new_cpu		= new_cpu;
+		__entry->reduce_mask		=
+		cpumask_bits(&(((struct walt_task_struct *)
+				p->android_vendor_data1)->reduce_mask))[0];
+		if (!lowest_mask)
+			__entry->lowest_mask	= 0;
+		else
+			__entry->lowest_mask	= cpumask_bits(lowest_mask)[0];
 	),
 
-	TP_printk("pid=%d comm=%s fastpath=%u best_cpu=%d",
-		__entry->pid, __entry->comm, __entry->fastpath, __entry->new_cpu)
+	TP_printk("pid=%d comm=%s fastpath=%u best_cpu=%d reduce_mask=0x%x lowest_mask=0x%x",
+		__entry->pid, __entry->comm, __entry->fastpath, __entry->new_cpu,
+		__entry->reduce_mask, __entry->lowest_mask)
 );
 
 TRACE_EVENT(sched_rt_find_lowest_rq,
 
-	TP_PROTO(struct task_struct *p, int fastpath, int best_cpu),
+	TP_PROTO(struct task_struct *p, int fastpath, int best_cpu, struct cpumask *lowest_mask),
 
-	TP_ARGS(p, fastpath, best_cpu),
+	TP_ARGS(p, fastpath, best_cpu, lowest_mask),
 
 	TP_STRUCT__entry(
 		__field(int,		pid)
 		__array(char,		comm, TASK_COMM_LEN)
 		__field(int,		fastpath)
 		__field(int,		best_cpu)
+		__field(unsigned long,	reduce_mask)
+		__field(unsigned long,	lowest_mask)
 	),
 
 	TP_fast_assign(
@@ -1091,10 +1137,18 @@ TRACE_EVENT(sched_rt_find_lowest_rq,
 		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
 		__entry->fastpath		= fastpath;
 		__entry->best_cpu		= best_cpu;
+		__entry->reduce_mask		=
+		cpumask_bits(&(((struct walt_task_struct *)
+				p->android_vendor_data1)->reduce_mask))[0];
+		if (!lowest_mask)
+			__entry->lowest_mask	= 0;
+		else
+			__entry->lowest_mask	= cpumask_bits(lowest_mask)[0];
 	),
 
-	TP_printk("pid=%d comm=%s fastpath=%u best_cpu=%d",
-		__entry->pid, __entry->comm, __entry->fastpath, __entry->best_cpu)
+	TP_printk("pid=%d comm=%s fastpath=%u best_cpu=%d reduce_mask=0x%x lowest_mask=0x%x",
+		__entry->pid, __entry->comm, __entry->fastpath, __entry->best_cpu,
+		__entry->reduce_mask, __entry->lowest_mask)
 );
 
 TRACE_EVENT(sched_task_util,
@@ -1158,7 +1212,7 @@ TRACE_EVENT(sched_task_util,
 			((struct walt_task_struct *) p->android_vendor_data1)->iowaited;
 		__entry->load_boost		=
 			((struct walt_task_struct *) p->android_vendor_data1)->load_boost;
-		__entry->sync_state		= !cluster_partial_halted();
+		__entry->sync_state		= !is_state1();
 		__entry->pipeline_cpu		=
 			((struct walt_task_struct *) p->android_vendor_data1)->pipeline_cpu;
 	),
@@ -1602,6 +1656,63 @@ TRACE_EVENT(sched_fmax_uncap,
 			__entry->fmax_cap_2,
 			__entry->fmax_cap_3)
 );
+
+TRACE_EVENT(sched_update_updown_migrate_values,
+
+	TP_PROTO(bool up, int cluster),
+
+	TP_ARGS(up, cluster),
+
+
+	TP_STRUCT__entry(
+		__field(bool, up)
+		__field(int, cluster)
+		__field(unsigned int, cluster_up)
+		__field(unsigned int, cluster_down)
+	),
+
+	TP_fast_assign(
+		__entry->up		= up;
+		__entry->cluster	= cluster;
+		__entry->cluster_up	= sched_capacity_margin_up[cluster_first_cpu(
+						sched_cluster[cluster])];
+		__entry->cluster_down	= sched_capacity_margin_down[cluster_first_cpu(
+						sched_cluster[cluster])];
+	),
+
+	TP_printk("up=%d cluster=%d cluster_up=%u cluster_down=%u",
+			__entry->up, __entry->cluster,
+			__entry->cluster_up, __entry->cluster_down)
+);
+
+TRACE_EVENT(sched_update_updown_early_migrate_values,
+
+	TP_PROTO(bool up, int cluster),
+
+	TP_ARGS(up, cluster),
+
+
+	TP_STRUCT__entry(
+		__field(bool, up)
+		__field(int, cluster)
+		__field(unsigned int, cluster_up)
+		__field(unsigned int, cluster_down)
+	),
+
+	TP_fast_assign(
+		__entry->up		= up;
+		__entry->cluster	= cluster;
+		__entry->cluster_up	= sched_capacity_margin_early_up[cluster_first_cpu(
+						sched_cluster[cluster])];
+		__entry->cluster_down	= sched_capacity_margin_early_down[cluster_first_cpu(
+						sched_cluster[cluster])];
+	),
+
+	TP_printk("up=%d cluster=%d cluster_up=%u cluster_down=%u",
+			__entry->up, __entry->cluster,
+			__entry->cluster_up, __entry->cluster_down)
+);
+
 #endif /* _TRACE_WALT_H */
 
 #undef TRACE_INCLUDE_PATH
