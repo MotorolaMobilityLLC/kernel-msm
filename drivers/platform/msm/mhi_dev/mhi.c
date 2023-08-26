@@ -136,6 +136,8 @@ int mhi_dma_provide_ops(const struct mhi_dma_ops *ops)
 		return -EINVAL;
 	}
 
+	mhi_log(MHI_DEV_PHY_FUN, MHI_MSG_VERBOSE, "Received MHI DMA fun ops\n");
+
 	memcpy(&mhi_hw_ctx->mhi_dma_fun_ops, ops, sizeof(struct mhi_dma_ops));
 	mhi_dma_fun_ops = &mhi_hw_ctx->mhi_dma_fun_ops;
 
@@ -5060,11 +5062,44 @@ void mhi_dev_resume_init_with_link_up(struct ep_pcie_notify *notify)
 static void mhi_dev_pcie_handle_event(struct work_struct *work)
 {
 	int rc = 0;
+	enum ep_pcie_link_status link_state;
 	struct mhi_dev *mhi = container_of(work, struct mhi_dev, pcie_event);
 
 	if (!mhi_dma_fun_ops && !mhi->use_edma) {
+		/*
+		 * Register for linkup event if it is not registered in
+		 * mhi_dev_probe, to get linkup event after host wake
+		 * as part of mhi_dma_provide_ops.
+		 */
+		if (!(mhi_hw_ctx->event_reg.events & EP_PCIE_EVENT_LINKUP)) {
+			mhi_log(mhi->vf_id, MHI_MSG_VERBOSE,
+				"Register for Link up event if not registered in mhi_dev_probe\n");
+			mhi_hw_ctx->event_reg.events = EP_PCIE_EVENT_LINKUP;
+			mhi_hw_ctx->event_reg.user = mhi_hw_ctx;
+			mhi_hw_ctx->event_reg.mode = EP_PCIE_TRIGGER_CALLBACK;
+			mhi_hw_ctx->event_reg.callback = mhi_dev_resume_init_with_link_up;
+			mhi_hw_ctx->event_reg.options = MHI_INIT;
+			rc = ep_pcie_register_event(mhi_hw_ctx->phandle, &mhi_hw_ctx->event_reg);
+			if (rc)
+				mhi_log(MHI_DEFAULT_ERROR_LOG_ID, MHI_MSG_ERROR,
+						"Failed to register for events from PCIe\n");
+		}
 		mhi_log(mhi->vf_id, MHI_MSG_ERROR, "MHI DMA fun ops missing, defering\n");
 		return;
+	}
+
+	mhi_hw_ctx->phandle = ep_pcie_get_phandle(mhi_hw_ctx->ifc_id);
+	if (mhi_hw_ctx->phandle) {
+		link_state = ep_pcie_get_linkstatus(mhi_hw_ctx->phandle);
+		if (link_state != EP_PCIE_LINK_ENABLED) {
+			mhi_log(mhi->vf_id, MHI_MSG_VERBOSE,
+					"Link disabled, link state = %d\n", link_state);
+			/* Wake host if the link is not enabled in mhi_dma_provide_ops call. */
+			rc = ep_pcie_wakeup_host(mhi_hw_ctx->phandle, EP_PCIE_EVENT_INVALID);
+			if (rc)
+				mhi_log(mhi->vf_id, MHI_MSG_ERROR, "Failed to wake up Host\n");
+			return;
+		}
 	}
 
 	/* Get EP PCIe capabilities to check if it supports SRIOV capability */
