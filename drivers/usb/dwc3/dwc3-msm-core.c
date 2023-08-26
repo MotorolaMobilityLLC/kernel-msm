@@ -6774,8 +6774,8 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		/*
 		 * Check udc->driver to find out if we are bound to udc or not.
 		 */
-		if ((dwc->gadget->udc->driver) && (!dwc->softconnect) &&
-			(mdwc->force_disconnect)) {
+		if ((!dwc->softconnect) && (mdwc->force_disconnect)
+			&& (dwc->gadget->udc->driver)) {
 			dbg_event(0xFF, "Force Pullup", 0);
 			usb_gadget_connect(dwc->gadget);
 		}
