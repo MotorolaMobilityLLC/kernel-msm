@@ -48,12 +48,11 @@
 #define CAN_FD_MAX_DATA_SIZE		64
 #define CAN_STANDARD_PACKET_SIZE	22
 #define CALYPSO_MAX_CAN_CLK_FREQ	40000000 /* 40MHz */
-#define TIME_REQUEST_PERIOD         (30000) /* 30 Seconds */
+#define TIME_REQUEST_PERIOD         (60000) /* 60 Seconds */
 
 static int static_pos_checksum_en;
 static int dynamic_pos_checksum_en;
 static int checksum_enable;
-static int timer_Flag;
 
 struct qti_can {
 	struct net_device	**netdev;
@@ -655,7 +654,7 @@ static int qti_can_process_response(struct qti_can *priv_data,
 exit:
 	if (resp->cmd == priv_data->wait_cmd) {
 		priv_data->probe_query_resp = true;
-		priv_data->cmd_result = ret;
+		priv_data->cmd_result = 0;
 		complete(&priv_data->response_completion);
 	}
 	return ret;
@@ -1791,59 +1790,46 @@ static int time_request_update(struct qti_can *priv_data)
 	return ret;
 }
 
-static void timer_callback(struct timer_list *timer_p)
-{
-	struct qti_can *priv_data = from_timer(priv_data, timer_p, timer);
-
-	dev_dbg(&priv_data->spidev->dev, "Timer Flag Enable\r\n");
-	timer_Flag = 1;
-	mod_timer(&priv_data->timer, jiffies + msecs_to_jiffies(TIME_REQUEST_PERIOD));
-}
-
 static int timer_thread_fn(void *data)
 {
 	int retry = 0, query_err = -1;
 	struct qti_can *priv_data = (struct qti_can *)data;
+	unsigned long jiffies = msecs_to_jiffies(TIME_REQUEST_PERIOD);
 
 	dev_info(&priv_data->spidev->dev, "Thread CallBack\n");
-	timer_setup(&priv_data->timer, timer_callback, 0);
-	mod_timer(&priv_data->timer, jiffies + 1);
-	while (1) {
-		if (kthread_should_stop()) {
-			dev_err(&priv_data->spidev->dev, "Timer thread stopped\n");
-			break;
+	while (!kthread_should_stop()) {
+		dev_dbg(&priv_data->spidev->dev, "Requesting Time Sync Update\r\n");
+		retry = 0;
+		query_err = -1;
+		while ((query_err != 0) && (retry < QTI_CAN_TIME_SYNC_RETRY_COUNT)) {
+			query_err = time_request_update(priv_data);
+			retry++;
 		}
-		if (timer_Flag) {
-			dev_dbg(&priv_data->spidev->dev, "Requesting Time Sync Update\r\n");
-			retry = 0;
-			query_err = -1;
-			while ((query_err != 0) && (retry < QTI_CAN_TIME_SYNC_RETRY_COUNT)) {
-				query_err = time_request_update(priv_data);
-				retry++;
-			}
-			timer_Flag = 0;
-			msleep(25000);
-		}
+		dev_dbg(&priv_data->spidev->dev,
+			"time sync query_err: %d and retry: %d\n", query_err, retry);
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(jiffies);
 	}
 	return 0;
 }
 
 static int Init_timer_thread(struct qti_can *priv_data)
 {
+	int ret = 0;
 	priv_data->timer_thread = kthread_create(timer_thread_fn, priv_data, "timer_thread");
 	if (priv_data->timer_thread) {
 		wake_up_process(priv_data->timer_thread);
-		dev_dbg(&priv_data->spidev->dev, "Wake Up Thread\n");
+		dev_dbg(&priv_data->spidev->dev, "Timer Thread is running\n");
 	} else {
-		dev_err(&priv_data->spidev->dev, "Timer thread isn't created\n");
-		return -EINVAL;
+		dev_err(&priv_data->spidev->dev, "Timer thread could not be created\n");
+		ret = -1;
 	}
-	return 0;
+	return ret;
 }
 
 static int qti_can_query_probe(struct qti_can *priv_data)
 {
-	int err, query_err = -1, retry = 0;
+	int query_err = -1, retry = 0;
 
 	priv_data->probe_query_resp = false;
 	while ((query_err != 0) && (retry < QTI_CAN_FW_QUERY_RETRY_COUNT) &&
@@ -1853,12 +1839,8 @@ static int qti_can_query_probe(struct qti_can *priv_data)
 		priv_data->assembly_buffer_size = 0;
 		retry++;
 	}
-	if (priv_data->time_sync_from_soc_to_mcu) {
-		timer_Flag = 1;
-		err = Init_timer_thread(priv_data);
-		if (err)
-			dev_err(&priv_data->spidev->dev, "Timer thread isn't created\n");
-	}
+	if (priv_data->time_sync_from_soc_to_mcu && query_err == 0)
+		Init_timer_thread(priv_data);
 	return query_err;
 }
 
@@ -2008,7 +1990,7 @@ static int qti_can_probe(struct spi_device *spi)
 
 	query_err = qti_can_query_probe(priv_data);
 
-	if (query_err) {
+	if (query_err != 0) {
 		dev_err(&priv_data->spidev->dev, "QTI CAN probe failed\n");
 		err = -ENODEV;
 		goto free_irq;
@@ -2017,6 +1999,8 @@ static int qti_can_probe(struct spi_device *spi)
 
 free_irq:
 	free_irq(spi->irq, priv_data);
+	if (priv_data->timer_thread)
+		kthread_stop(priv_data->timer_thread);
 unregister_candev:
 	for (i = 0; i < priv_data->max_can_channels; i++)
 		unregister_candev(priv_data->netdev[i]);
@@ -2094,8 +2078,6 @@ static int qti_can_freeze(struct device *dev)
 	/* To disable checksum validation for qti-can probe response in restore */
 	checksum_enable = 0;
 
-	if (priv_data->time_sync_from_soc_to_mcu)
-		del_timer(&priv_data->timer);
 	return ret;
 }
 
@@ -2132,19 +2114,6 @@ static int qti_can_restore(struct device *dev)
 		dev_err(&priv_data->spidev->dev, "QTI CAN probe failed\n");
 		err = -ENODEV;
 		goto free_irq;
-	}
-
-	if (priv_data->time_sync_from_soc_to_mcu) {
-		timer_setup(&priv_data->timer, timer_callback, 0);
-		mod_timer(&priv_data->timer, jiffies + 1);
-		retry = 0;
-		query_err = -1;
-		while ((query_err != 0) && (retry < QTI_CAN_TIME_SYNC_RETRY_COUNT)) {
-			query_err = time_request_update(priv_data);
-			retry++;
-		}
-		if (query_err)
-			dev_err(&priv_data->spidev->dev, "Time Request query Failed\n");
 	}
 
 	if (priv_data->univ_acc_filter_flag) {
