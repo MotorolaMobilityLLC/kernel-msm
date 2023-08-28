@@ -472,7 +472,10 @@ int pil_do_ramdump(struct pil_desc *desc,
 	if (ret)
 		pil_err(desc, "%s: Ramdump collection failed for subsys %s rc:%d\n",
 				__func__, desc->name, ret);
-
+#ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
+	if (!strcmp(desc->name, "modem"))
+		update_marker("M - Modem Dump completed");
+#endif
 	if (desc->subsys_vmid > 0)
 		ret = pil_assign_mem_to_subsys(desc, priv->region_start,
 				(priv->region_end - priv->region_start));
@@ -870,7 +873,7 @@ static int pil_init_mmap(struct pil_desc *desc, const struct pil_mdt *mdt)
 
 #ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
 	if (!strcmp(desc->name, "modem"))
-		place_marker("M - Modem Image Start Loading");
+		update_marker("M - Modem Image Start Loading");
 #endif
 
 	pil_info(desc, "loading from %pa to %pa\n", &priv->region_start,
@@ -1336,7 +1339,7 @@ int pil_boot(struct pil_desc *desc)
 
 #ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
 	if (!strcmp(desc->name, "modem"))
-		place_marker("M - Modem out of reset");
+		update_marker("M - Modem out of reset");
 #endif
 
 	pil_info(desc, "Brought out of reset\n");
