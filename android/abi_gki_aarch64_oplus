@@ -156,6 +156,7 @@
   kern_unmount
   kfree
   kfree_skb
+  kick_process
   kill_anon_super
   kmalloc_caches
   kmem_cache_alloc
@@ -230,6 +231,7 @@
   nla_reserve
   nonseekable_open
   nr_cpu_ids
+  nr_running
   __num_online_cpus
   of_css
   page_endio
@@ -411,9 +413,12 @@
   __traceiter_android_vh_dm_bufio_shrink_scan_bypass
   __traceiter_android_vh_drain_all_pages_bypass
   __traceiter_android_vh_dup_task_struct
+  __traceiter_android_vh_exit_check
   __traceiter_android_vh_exit_mm
   __traceiter_android_vh_exit_signal
+  __traceiter_android_vh_exit_signal_whether_wake
   __traceiter_android_vh_free_task
+  __traceiter_android_vh_freeze_whether_wake
   __traceiter_android_vh_futex_sleep_start
   __traceiter_android_vh_futex_wait_end
   __traceiter_android_vh_futex_wait_start
@@ -535,9 +540,12 @@
   __tracepoint_android_vh_do_traversal_lruvec
   __tracepoint_android_vh_drain_all_pages_bypass
   __tracepoint_android_vh_dup_task_struct
+  __tracepoint_android_vh_exit_check
   __tracepoint_android_vh_exit_mm
   __tracepoint_android_vh_exit_signal
+  __tracepoint_android_vh_exit_signal_whether_wake
   __tracepoint_android_vh_free_task
+  __tracepoint_android_vh_freeze_whether_wake
   __tracepoint_android_vh_futex_sleep_start
   __tracepoint_android_vh_futex_wait_end
   __tracepoint_android_vh_futex_wait_start
@@ -631,6 +639,7 @@
   wait_for_completion_io_timeout
   __wake_up
   wake_up_process
+  wake_up_state
   wq_worker_comm
   is_ashmem_file
   zero_pfn
