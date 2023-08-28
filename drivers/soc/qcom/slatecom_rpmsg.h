@@ -10,6 +10,7 @@
 #include <linux/soc/qcom/slatecom_interface.h>
 
 #define TIMEOUT_MS 5000
+#define	TIMEOUT_MS_GLINK_OPEN	10000
 
 struct slatecom_rpmsg_dev {
 	struct rpmsg_endpoint *channel;

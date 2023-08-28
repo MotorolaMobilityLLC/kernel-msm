@@ -1022,7 +1022,7 @@ static void slatecom_slateup_work(struct work_struct *work)
 	if (!dev->slatecom_rpmsg)
 		pr_err("slatecom-rpmsg is not probed yet\n");
 	ret = wait_event_timeout(dev->link_state_wait,
-				dev->slatecom_rpmsg, msecs_to_jiffies(TIMEOUT_MS));
+				dev->slatecom_rpmsg, msecs_to_jiffies(TIMEOUT_MS_GLINK_OPEN));
 	if (ret == 0) {
 		pr_err("channel connection time out %d\n", ret);
 		goto glink_err;

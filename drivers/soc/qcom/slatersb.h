@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef SLATERSB_H
@@ -24,7 +24,7 @@
 #define	SLATERSB_GLINK_INTENT_SIZE	0x04
 #define SLATERSB_MSG_SIZE 0x08
 #define TIMEOUT_MS 2000
-
+#define	TIMEOUT_MS_GLINK_OPEN	10000
 #define SLATERSB_SLATE_SUBSYS "slatefw"
 
 #define	SLATERSB_POWER_DISABLE	0
