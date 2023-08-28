@@ -652,6 +652,11 @@ static int subsystem_shutdown(struct subsys_device *dev, void *data)
 	dev->crash_count++;
 	subsys_set_state(dev, SUBSYS_OFFLINE);
 
+#ifdef CONFIG_QGKI_MSM_BOOT_TIME_MARKER
+	if (!strcmp(dev->desc->name, "modem"))
+		update_marker("M - Modem Stop");
+#endif
+
 	return 0;
 }
 

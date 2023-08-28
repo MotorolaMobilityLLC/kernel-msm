@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -439,6 +440,10 @@ void seb_rx_msg(void *data, int len)
 	dev->seb_resp_cmplt = true;
 	wake_up(&dev->link_state_wait);
 	if (dev->wait_for_resp) {
+		if (len > SEB_GLINK_INTENT_SIZE) {
+			pr_err("Invalid seb rx buffer length\n");
+			return;
+		}
 		memcpy(dev->rx_buf, data, len);
 	} else {
 		/* Handle the event received from Slate */
