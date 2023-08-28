@@ -914,10 +914,12 @@
   int_sqrt
   iomem_resource
   iommu_alloc_resv_region
+  iommu_attach_device
   iommu_attach_group
   iommu_aux_attach_device
   iommu_aux_detach_device
   iommu_aux_get_pasid
+  iommu_detach_device
   iommu_dev_enable_feature
   iommu_dev_feature_enabled
   iommu_device_register
