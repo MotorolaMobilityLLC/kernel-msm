@@ -8833,7 +8833,7 @@ static const struct i2c_driver_data ntn3_data = {
 };
 
 static const struct of_device_id of_i2c_id_table[] = {
-	{ .compatible = "qcom,pcie0-i2c-ntn3", .data = &ntn3_data },
+	{ .compatible = "qcom,pcie-i2c-ntn3", .data = &ntn3_data },
 	{}
 };
 MODULE_DEVICE_TABLE(of, of_i2c_id_table);
