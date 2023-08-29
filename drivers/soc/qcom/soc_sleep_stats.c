@@ -70,13 +70,6 @@ static struct subsystem_data subsystems[] = {
 };
 #endif
 
-struct stats_config {
-	unsigned int offset_addr;
-	unsigned int ddr_offset_addr;
-	unsigned int num_records;
-	bool appended_stats_avail;
-};
-
 struct stats_entry {
 	uint32_t name;
 	uint32_t count;
@@ -95,11 +88,6 @@ struct sleep_stats {
 	u64 last_entered_at;
 	u64 last_exited_at;
 	u64 accumulated;
-};
-
-struct appended_stats {
-	u32 client_votes;
-	u32 reserved[3];
 };
 
 #if IS_ENABLED(CONFIG_MSM_QMP)

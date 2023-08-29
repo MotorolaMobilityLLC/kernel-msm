@@ -18,6 +18,18 @@ struct ddr_stats_ss_vote_info {
 	u32 ib; /* vote_y */
 };
 
+struct stats_config {
+	unsigned int offset_addr;
+	unsigned int ddr_offset_addr;
+	unsigned int num_records;
+	bool appended_stats_avail;
+};
+
+struct appended_stats {
+	u32 client_votes;
+	u32 reserved[3];
+};
+
 #ifdef CONFIG_MSM_BOOT_TIME_MARKER
 uint64_t get_aosd_sleep_exit_time(void);
 #endif
