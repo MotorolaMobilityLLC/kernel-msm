@@ -26,6 +26,13 @@ config CTWO_DTB
 	help
 		Only include Motorola Ctwo device specific device tree.
 
+config ARC_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Arc Device DTB"
+	help
+		Only include Motorola Arc device specific device tree.
+
 config OBERON_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
