@@ -1084,6 +1084,14 @@ static void fastrpc_mmap_free(struct fastrpc_mmap *map, uint32_t flags)
 		if (!IS_ERR_OR_NULL(map->buf))
 			dma_buf_put(map->buf);
 	}
+	if (fl) {
+		spin_lock(&fl->hlock);
+		if ((map->flags == ADSP_MMAP_ADD_PAGES) || (map->flags == ADSP_MMAP_ADD_PAGES_LLC))
+			fl->mem_snap.heap_bufs_size -= map->size;
+		else
+			fl->mem_snap.nonheap_bufs_size -= map->size;
+		spin_unlock(&fl->hlock);
+	}
 bail:
 	if (!map->is_persistent)
 		kfree(map);
@@ -1157,6 +1165,8 @@ static int fastrpc_mmap_create(struct fastrpc_file *fl, int fd, struct dma_buf *
 	struct fastrpc_mmap *map = NULL;
 	int err = 0, vmid, sgl_index = 0;
 	struct scatterlist *sgl = NULL;
+	bool dma_attach_fail =  false;
+	size_t tot_bufs_size = 0;
 
 	if (!fl) {
 		err = -EBADF;
@@ -1220,6 +1230,7 @@ static int fastrpc_mmap_create(struct fastrpc_file *fl, int fd, struct dma_buf *
 			"dma_buf_attach for fd %d for len 0x%zx failed to map buffer on SMMU device %s ret %ld\n",
 				fd, len, dev_name(me->dev), PTR_ERR(map->attach));
 			err = -EFAULT;
+			dma_attach_fail = true;
 			goto bail;
 		}
 
@@ -1309,6 +1320,7 @@ static int fastrpc_mmap_create(struct fastrpc_file *fl, int fd, struct dma_buf *
 				fd, len, dev_name(sess->smmu.dev),
 				PTR_ERR(map->attach));
 			err = -EFAULT;
+			dma_attach_fail = true;
 			goto bail;
 		}
 
@@ -1392,10 +1404,24 @@ static int fastrpc_mmap_create(struct fastrpc_file *fl, int fd, struct dma_buf *
 	}
 	map->len = len;
 
+	spin_lock(&fl->hlock);
+	if ((mflags == ADSP_MMAP_ADD_PAGES) || (mflags == ADSP_MMAP_ADD_PAGES_LLC))
+		fl->mem_snap.heap_bufs_size += map->size;
+	else
+		fl->mem_snap.nonheap_bufs_size += map->size;
+	spin_unlock(&fl->hlock);
+
 	fastrpc_mmap_add(map);
 	*ppmap = map;
 
 bail:
+	if (dma_attach_fail && fl) {
+		tot_bufs_size = fl->mem_snap.heap_bufs_size
+				+ fl->mem_snap.nonheap_bufs_size;
+		ADSPRPC_INFO("Heapbufs size: %zu, non-heapbufs size: %zu, total size: %zu\n",
+				fl->mem_snap.heap_bufs_size, fl->mem_snap.nonheap_bufs_size,
+				tot_bufs_size);
+	}
 	if (map)
 		ktime_get_real_ts64(&map->map_end_time);
 	if (err && map)
