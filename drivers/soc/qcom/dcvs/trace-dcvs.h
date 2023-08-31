@@ -221,6 +221,64 @@ TRACE_EVENT(bw_hwmon_update,
 		__entry->down_thres)
 );
 
+TRACE_EVENT(memlat_spm_update,
+
+	TP_PROTO(const char *name, unsigned long spm_cpu_freq,
+		unsigned long max_spm_cpu_freq, unsigned long base_vote,
+		unsigned long spm_vote, unsigned long spm_vote_inc_steps,
+		char flags, unsigned long indexed_spm_thres, unsigned long avg_spm,
+		unsigned long indexed_disable_spm_value, unsigned long miss_delta_pct,
+		unsigned long max_miss),
+
+	TP_ARGS(name, spm_cpu_freq, max_spm_cpu_freq, base_vote, spm_vote, spm_vote_inc_steps,
+		flags, indexed_spm_thres, avg_spm, indexed_disable_spm_value, miss_delta_pct,
+		max_miss),
+
+	TP_STRUCT__entry(
+		__string(name, name)
+		__field(unsigned long, spm_cpu_freq)
+		__field(unsigned long, max_spm_cpu_freq)
+		__field(unsigned long, base_vote)
+		__field(unsigned long, spm_vote)
+		__field(unsigned long, spm_vote_inc_steps)
+		__field(char, flags)
+		__field(unsigned long, indexed_spm_thres)
+		__field(unsigned long, avg_spm)
+		__field(unsigned long, indexed_disable_spm_value)
+		__field(unsigned long, miss_delta_pct)
+		__field(unsigned long, max_miss)
+	),
+
+	TP_fast_assign(
+		__assign_str(name, name);
+		__entry->spm_cpu_freq = spm_cpu_freq;
+		__entry->max_spm_cpu_freq = max_spm_cpu_freq;
+		__entry->base_vote = base_vote;
+		__entry->spm_vote = spm_vote;
+		__entry->spm_vote_inc_steps = spm_vote_inc_steps;
+		__entry->flags = flags;
+		__entry->indexed_spm_thres = indexed_spm_thres;
+		__entry->avg_spm = avg_spm;
+		__entry->indexed_disable_spm_value = indexed_disable_spm_value;
+		__entry->miss_delta_pct = miss_delta_pct;
+		__entry->max_miss = max_miss;
+	),
+
+	TP_printk("dev: %s spm_cpu_freq=%lu max_spm_cpu_freq=%lu base_vote=%lu spm_vote=%lu spm_vote_inc_steps=%lu flags=%c indexed_spm_thres=%lu avg_spm=%lu indexed_disable_spm_value=%lu miss_delta_pct=%lu max_miss=%lu",
+		__get_str(name),
+		__entry->spm_cpu_freq,
+		__entry->max_spm_cpu_freq,
+		__entry->base_vote,
+		__entry->spm_vote,
+		__entry->spm_vote_inc_steps,
+		__entry->flags,
+		__entry->indexed_spm_thres,
+		__entry->avg_spm,
+		__entry->indexed_disable_spm_value,
+		__entry->miss_delta_pct,
+		__entry->max_miss)
+);
+
 TRACE_EVENT(bw_hwmon_debug,
 
 	TP_PROTO(const char *name, unsigned long mbps, unsigned long zone,

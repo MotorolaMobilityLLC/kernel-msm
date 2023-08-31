@@ -510,7 +510,7 @@ static struct clk_branch disp_cc_mdss_byte0_intf_clk = {
 				&disp_cc_mdss_byte0_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
-			.flags = CLK_GET_RATE_NOCACHE | CLK_SET_RATE_PARENT,
+			.flags = CLK_GET_RATE_NOCACHE,
 			.ops = &clk_branch2_ops,
 		},
 	},

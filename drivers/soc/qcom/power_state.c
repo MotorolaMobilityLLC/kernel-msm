@@ -79,6 +79,9 @@ static struct subsystem_event_data event_data[] = {
 	{ "mpss", MDSP_BEFORE_POWERDOWN, MDSP_AFTER_POWERUP },
 	{ "lpass", ADSP_BEFORE_POWERDOWN, ADSP_AFTER_POWERUP },
 	{ "cdsp", CDSP_BEFORE_POWERDOWN, CDSP_AFTER_POWERUP },
+	{ "cdsp1", CDSP1_BEFORE_POWERDOWN, CDSP1_AFTER_POWERUP },
+	{ "gpdsp0", GPDSP0_BEFORE_POWERDOWN, GPDSP0_AFTER_POWERUP },
+	{ "gpdsp1", GPDSP1_BEFORE_POWERDOWN, GPDSP1_AFTER_POWERUP },
 };
 
 struct subsystem_data {
@@ -99,6 +102,7 @@ struct power_state_drvdata {
 	dev_t ps_dev_no;
 	struct kobject *ps_kobj;
 	struct kobj_attribute ps_ka;
+	struct kobj_attribute ds_ka;
 	struct wakeup_source *ps_ws;
 	struct notifier_block ps_pm_nb;
 	struct qmp *qmp;
@@ -107,6 +111,7 @@ struct power_state_drvdata {
 	enum power_states current_state;
 	u32 subsys_count;
 	struct list_head sub_sys_list;
+	bool deep_sleep_allowed;
 };
 
 static struct power_state_drvdata *drv;
@@ -445,6 +450,32 @@ static int power_state_suspend(void)
 	return 0;
 }
 
+static ssize_t deep_sleep_allowed_show(struct kobject *kobj, struct kobj_attribute *attr,
+				       char *buf)
+{
+	struct power_state_drvdata *drv = container_of(attr, struct power_state_drvdata, ds_ka);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", drv->deep_sleep_allowed);
+}
+
+static ssize_t deep_sleep_allowed_store(struct kobject *kobj, struct kobj_attribute *attr,
+					const char *buf, size_t count)
+{
+	struct power_state_drvdata *drv = container_of(attr, struct power_state_drvdata, ds_ka);
+	bool val;
+	int ret;
+
+	ret = kstrtobool(buf, &val);
+	if (ret) {
+		pr_err("Invalid argument passed\n");
+		return ret;
+	}
+
+	drv->deep_sleep_allowed = val;
+
+	return count;
+}
+
 static ssize_t state_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
 	struct power_state_drvdata *drv = container_of(attr, struct power_state_drvdata, ps_ka);
@@ -501,16 +532,31 @@ static int power_state_dev_init(struct power_state_drvdata *drv)
 	drv->ps_ka.show = state_show;
 
 	ret = sysfs_create_file(drv->ps_kobj, &drv->ps_ka.attr);
+	if (ret)
+		goto exit;
+
+	sysfs_attr_init(&drv->ds_ka.attr);
+	drv->ds_ka.attr.mode = 0644;
+	drv->ds_ka.attr.name = "deep_sleep_allowed";
+	drv->ds_ka.show = deep_sleep_allowed_show;
+	drv->ds_ka.store = deep_sleep_allowed_store;
+
+	ret = sysfs_create_file(drv->ps_kobj, &drv->ds_ka.attr);
 	if (ret) {
-		kobject_put(drv->ps_kobj);
-		device_destroy(drv->ps_class, drv->ps_dev_no);
-		class_destroy(drv->ps_class);
-		cdev_del(&drv->ps_cdev);
-		unregister_chrdev_region(drv->ps_dev_no, 1);
-		return ret;
+		sysfs_remove_file(drv->ps_kobj, &drv->ps_ka.attr);
+		goto exit;
 	}
 
 	return 0;
+
+exit:
+	kobject_put(drv->ps_kobj);
+	device_destroy(drv->ps_class, drv->ps_dev_no);
+	class_destroy(drv->ps_class);
+	cdev_del(&drv->ps_cdev);
+	unregister_chrdev_region(drv->ps_dev_no, 1);
+
+	return ret;
 }
 
 static int power_state_probe(struct platform_device *pdev)
@@ -534,10 +580,6 @@ static int power_state_probe(struct platform_device *pdev)
 	drv->ps_ws = wakeup_source_register(&pdev->dev, POWER_STATE_DEVICE_NAME);
 	if (!drv->ps_ws)
 		goto remove_pm_notifier;
-
-	ret = power_state_dev_init(drv);
-	if (ret)
-		goto remove_ws;
 
 	INIT_LIST_HEAD(&drv->sub_sys_list);
 
@@ -589,6 +631,10 @@ static int power_state_probe(struct platform_device *pdev)
 		}
 	}
 
+	ret = power_state_dev_init(drv);
+	if (ret)
+		goto remove_ss;
+
 	drv->ps_ops.suspend = power_state_suspend;
 	drv->ps_ops.resume = power_state_resume;
 	register_syscore_ops(&drv->ps_ops);
@@ -602,7 +648,6 @@ remove_ss:
 		list_del(&ss_data->list);
 	}
 	INIT_LIST_HEAD(&drv->sub_sys_list);
-remove_ws:
 	wakeup_source_unregister(drv->ps_ws);
 remove_pm_notifier:
 	unregister_pm_notifier(&drv->ps_pm_nb);
@@ -625,6 +670,7 @@ static int power_state_remove(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&drv->sub_sys_list);
 	wakeup_source_unregister(drv->ps_ws);
+	sysfs_remove_file(drv->ps_kobj, &drv->ds_ka.attr);
 	sysfs_remove_file(drv->ps_kobj, &drv->ps_ka.attr);
 	kobject_put(drv->ps_kobj);
 	device_destroy(drv->ps_class, drv->ps_dev_no);

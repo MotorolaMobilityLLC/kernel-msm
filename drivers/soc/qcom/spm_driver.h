@@ -57,6 +57,7 @@ struct msm_spm_platform_data {
 
 	uint32_t ver_reg;
 	uint32_t vctl_port;
+	int vctl_port_ub;
 	uint32_t phase_port;
 	uint32_t pfm_port;
 
@@ -79,6 +80,7 @@ struct msm_spm_driver_data {
 	uint32_t minor;
 	uint32_t ver_reg;
 	uint32_t vctl_port;
+	int vctl_port_ub;
 	uint32_t phase_port;
 	uint32_t pfm_port;
 	void __iomem *reg_base_addr;

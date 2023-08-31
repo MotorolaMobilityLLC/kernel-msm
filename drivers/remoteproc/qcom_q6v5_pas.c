@@ -1968,6 +1968,42 @@ static const struct adsp_data qcs405_modem_resource = {
 	.ssctl_id = 0x12,
 };
 
+static const struct adsp_data trinket_modem_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "modem.mdt",
+	.pas_id = 4,
+	.free_after_auth_reset = true,
+	.minidump_id = 3,
+	.uses_elf64 = true,
+	.ssr_name = "mpss",
+	.sysmon_name = "modem",
+	.ssctl_id = 0x12,
+};
+
+static const struct adsp_data trinket_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.pas_id = 1,
+	.has_aggre2_clk = false,
+	.auto_boot = true,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data trinket_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.pas_id = 18,
+	.has_aggre2_clk = false,
+	.auto_boot = true,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
 static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,msm8974-adsp-pil", .data = &adsp_resource_init},
 	{ .compatible = "qcom,msm8996-adsp-pil", .data = &adsp_resource_init},
@@ -2028,6 +2064,9 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,qcs405-adsp-pas", .data = &qcs405_adsp_resource},
 	{ .compatible = "qcom,qcs405-wlan-dsp", .data = &qcs405_modem_resource},
 	{ .compatible = "qcom,qcs405-cdsp-pas", .data = &qcs405_cdsp_resource},
+	{ .compatible = "qcom,trinket-modem-pas", .data = &trinket_modem_resource},
+	{ .compatible = "qcom,trinket-adsp-pas", .data = &trinket_adsp_resource},
+	{ .compatible = "qcom,trinket-cdsp-pas", .data = &trinket_cdsp_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);

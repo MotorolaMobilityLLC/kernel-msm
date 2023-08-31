@@ -2044,6 +2044,24 @@ err:
 	return NULL;
 }
 
+
+/**
+ * ufs_qcom_enable_crash_on_err - read from DTS whether crash_on_err
+ * should be enabled during boot.
+ * @hba: per adapter instance
+ */
+static void ufs_qcom_enable_crash_on_err(struct ufs_hba *hba)
+{
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+	struct device *dev = hba->dev;
+	struct device_node *np = dev->of_node;
+
+	if (!np)
+		return;
+	host->crash_on_err =
+		of_property_read_bool(np, "qcom,enable_crash_on_err");
+}
+
 static int ufs_qcom_bus_register(struct ufs_qcom_host *host)
 {
 	int err = 0;
@@ -3756,6 +3774,39 @@ static int ufs_qcom_panic_handler(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static void ufs_qcom_set_rate_a(struct ufs_qcom_host *host)
+{
+	size_t len;
+	u8 *data;
+	struct nvmem_cell *nvmem_cell;
+
+	nvmem_cell = nvmem_cell_get(host->hba->dev, "ufs_dev");
+	if (IS_ERR(nvmem_cell)) {
+		dev_err(host->hba->dev, "(%s) Failed to get nvmem cell\n", __func__);
+		return;
+	}
+
+	data = (u8 *)nvmem_cell_read(nvmem_cell, &len);
+	if (IS_ERR(data)) {
+		dev_err(host->hba->dev, "(%s) Failed to read from nvmem\n", __func__);
+		goto cell_put;
+	}
+
+	/*
+	 * data equal to zero shows that ufs 2.x card is connected while
+	 * non-zero value shows that ufs 3.x card is connected
+	 */
+	if (*data) {
+		host->limit_rate = PA_HS_MODE_A;
+		dev_dbg(host->hba->dev, "UFS 3.x device is detected, Mode is set to RATE A\n");
+	}
+
+	kfree(data);
+
+cell_put:
+	nvmem_cell_put(nvmem_cell);
+}
+
 /**
  * ufs_qcom_init - bind phy with controller
  * @hba: host controller instance
@@ -3789,6 +3840,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	host->dbg_en = true;
 #endif
 
+	ufs_qcom_enable_crash_on_err(hba);
 	/* Setup the reset control of HCI */
 	host->core_reset = devm_reset_control_get(hba->dev, "rst");
 	if (IS_ERR(host->core_reset)) {
@@ -4784,6 +4836,9 @@ static void ufs_qcom_parse_limits(struct ufs_qcom_host *host)
 	of_property_read_u32(np, "limit-rx-pwm-gear", &host->limit_rx_pwm_gear);
 	of_property_read_u32(np, "limit-rate", &host->limit_rate);
 	of_property_read_u32(np, "limit-phy-submode", &host->limit_phy_submode);
+
+	if (of_property_read_bool(np, "limit-rate-ufs3"))
+		ufs_qcom_set_rate_a(host);
 }
 
 /*

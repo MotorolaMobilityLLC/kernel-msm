@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _IPA_ETH_H_
@@ -43,8 +43,8 @@ enum ipa_eth_client_type {
 	IPA_ETH_CLIENT_RTK8111K,
 	IPA_ETH_CLIENT_RTK8125B,
 	IPA_ETH_CLIENT_NTN,
-	IPA_ETH_CLIENT_NTN3,
 	IPA_ETH_CLIENT_EMAC,
+	IPA_ETH_CLIENT_NTN3,
 	IPA_ETH_CLIENT_IEMAC,
 	IPA_ETH_CLIENT_MAX,
 };

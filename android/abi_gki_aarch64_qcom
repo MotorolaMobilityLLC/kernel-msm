@@ -1847,6 +1847,13 @@
   regulator_set_mode
   regulator_set_voltage
   regulator_unregister_notifier
+  relay_close
+  relay_file_operations
+  relay_flush
+  relay_open
+  relay_reset
+  relay_subbufs_consumed
+  relay_switch_subbuf
   release_firmware
   __release_region
   release_sock

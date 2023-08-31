@@ -768,12 +768,14 @@ static int msm_spm_dev_probe(struct platform_device *pdev)
 	}
 
 	spm_data.vctl_port = -1;
+	spm_data.vctl_port_ub = -1;
 	spm_data.phase_port = -1;
 	spm_data.pfm_port = -1;
 
 	of_property_read_u32(node, "qcom,vctl-port", &spm_data.vctl_port);
 	of_property_read_u32(node, "qcom,phase-port", &spm_data.phase_port);
 	of_property_read_u32(node, "qcom,pfm-port", &spm_data.pfm_port);
+	of_property_read_u32(node, "qcom,vctl-port-ub", &spm_data.vctl_port_ub);
 
 	/* Q2S (QChannel-2-SPM) register */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "q2s");

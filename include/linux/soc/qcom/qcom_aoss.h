@@ -37,7 +37,7 @@ static inline void qmp_put(struct qmp *qmp)
 
 typedef void (*qmp_rx_cb_t)(void *rx_buf, void *priv, u32 len);
 
-inline int qmp_register_rx_cb(struct qmp *qmp, void *priv, qmp_rx_cb_t cb)
+static inline int qmp_register_rx_cb(struct qmp *qmp, void *priv, qmp_rx_cb_t cb)
 {
 	return -ENODEV;
 }

@@ -323,7 +323,7 @@ static inline int mhi_register_state_cb(void (*mhi_state_cb)
 	return -EINVAL;
 }
 
-int mhi_vf_register_state_cb(void (*mhi_state_cb)
+static inline int mhi_vf_register_state_cb(void (*mhi_state_cb)
 			(struct mhi_dev_client_cb_data *cb_data), void *data,
 			enum mhi_client_channel channel,
 			unsigned int vf_id)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/interrupt.h>
@@ -41,6 +41,7 @@ static irqreturn_t etr_handler(int irq, void *data)
 {
 	struct byte_cntr *byte_cntr_data = data;
 	struct tmc_drvdata *tmcdrvdata = byte_cntr_data->tmcdrvdata;
+	struct tmc_pcie_data *pcie_data = byte_cntr_data->pcie_data;
 
 	if (tmcdrvdata->out_mode == TMC_ETR_OUT_MODE_USB) {
 		atomic_inc(&byte_cntr_data->irq_cnt);
@@ -48,6 +49,10 @@ static irqreturn_t etr_handler(int irq, void *data)
 	} else if (tmcdrvdata->out_mode == TMC_ETR_OUT_MODE_MEM) {
 		atomic_inc(&byte_cntr_data->irq_cnt);
 		wake_up(&byte_cntr_data->wq);
+	} else if (tmcdrvdata->out_mode == TMC_ETR_OUT_MODE_PCIE) {
+		atomic_inc(&pcie_data->irq_cnt);
+		wake_up(&pcie_data->pcie_wait_wq);
+		pcie_data->total_irq++;
 	}
 
 	byte_cntr_data->total_irq++;
