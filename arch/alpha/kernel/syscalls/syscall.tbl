@@ -475,4 +475,8 @@
 543	common	fspick				sys_fspick
 544	common	pidfd_open			sys_pidfd_open
 # 545 reserved for clone3
-546	common	process_madvise			sys_process_madvise
+# 546 reserved for close_range
+# 547 reserved for openat2
+# 548 reserved for pidfd_getfd
+# 549 reserved for faccessat2
+550	common	process_madvise			sys_process_madvise

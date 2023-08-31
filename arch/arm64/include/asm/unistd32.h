@@ -879,7 +879,7 @@ __SYSCALL(__NR_fspick, sys_fspick)
 __SYSCALL(__NR_pidfd_open, sys_pidfd_open)
 #define __NR_clone3 435
 __SYSCALL(__NR_clone3, sys_clone3)
-#define __NR_process_madvise 436
+#define __NR_process_madvise 440
 __SYSCALL(__NR_process_madvise, sys_process_madvise)
 
 /*
