@@ -26,38 +26,6 @@ MODULE_PARM_DESC(maximum_substreams, "Maximum substreams with preallocated DMA m
 
 static const size_t snd_minimum_buffer = 16384;
 
-static unsigned long max_alloc_per_card = 32UL * 1024UL * 1024UL;
-module_param(max_alloc_per_card, ulong, 0644);
-MODULE_PARM_DESC(max_alloc_per_card, "Max total allocation bytes per card.");
-
-static int do_alloc_pages(struct snd_card *card, int type, struct device *dev,
-			  size_t size, struct snd_dma_buffer *dmab)
-{
-	int err;
-
-	if (max_alloc_per_card &&
-	    card->total_pcm_alloc_bytes + size > max_alloc_per_card)
-		return -ENOMEM;
-	err = snd_dma_alloc_pages(type, dev, size, dmab);
-	if (!err) {
-		mutex_lock(&card->memory_mutex);
-		card->total_pcm_alloc_bytes += dmab->bytes;
-		mutex_unlock(&card->memory_mutex);
-	}
-	return err;
-}
-
-static void do_free_pages(struct snd_card *card, struct snd_dma_buffer *dmab)
-{
-	if (!dmab->area)
-		return;
-	mutex_lock(&card->memory_mutex);
-	WARN_ON(card->total_pcm_alloc_bytes < dmab->bytes);
-	card->total_pcm_alloc_bytes -= dmab->bytes;
-	mutex_unlock(&card->memory_mutex);
-	snd_dma_free_pages(dmab);
-	dmab->area = NULL;
-}
 
 /*
  * try to allocate as the large pages as possible.
@@ -68,15 +36,16 @@ static void do_free_pages(struct snd_card *card, struct snd_dma_buffer *dmab)
 static int preallocate_pcm_pages(struct snd_pcm_substream *substream, size_t size)
 {
 	struct snd_dma_buffer *dmab = &substream->dma_buffer;
-	struct snd_card *card = substream->pcm->card;
 	size_t orig_size = size;
 	int err;
 
 	do {
-		err = do_alloc_pages(card, dmab->dev.type, dmab->dev.dev,
-				     size, dmab);
-		if (err != -ENOMEM)
-			return err;
+		if ((err = snd_dma_alloc_pages(dmab->dev.type, dmab->dev.dev,
+					       size, dmab)) < 0) {
+			if (err != -ENOMEM)
+				return err; /* fatal error */
+		} else
+			return 0;
 		size >>= 1;
 	} while (size >= snd_minimum_buffer);
 	dmab->bytes = 0; /* tell error */
@@ -92,7 +61,10 @@ static int preallocate_pcm_pages(struct snd_pcm_substream *substream, size_t siz
  */
 static void snd_pcm_lib_preallocate_dma_free(struct snd_pcm_substream *substream)
 {
-	do_free_pages(substream->pcm->card, &substream->dma_buffer);
+	if (substream->dma_buffer.area == NULL)
+		return;
+	snd_dma_free_pages(&substream->dma_buffer);
+	substream->dma_buffer.area = NULL;
 }
 
 /**
@@ -157,7 +129,6 @@ static void snd_pcm_lib_preallocate_proc_write(struct snd_info_entry *entry,
 					       struct snd_info_buffer *buffer)
 {
 	struct snd_pcm_substream *substream = entry->private_data;
-	struct snd_card *card = substream->pcm->card;
 	char line[64], str[64];
 	size_t size;
 	struct snd_dma_buffer new_dmab;
@@ -179,10 +150,9 @@ static void snd_pcm_lib_preallocate_proc_write(struct snd_info_entry *entry,
 		memset(&new_dmab, 0, sizeof(new_dmab));
 		new_dmab.dev = substream->dma_buffer.dev;
 		if (size > 0) {
-			if (do_alloc_pages(card,
-					   substream->dma_buffer.dev.type,
-					   substream->dma_buffer.dev.dev,
-					   size, &new_dmab) < 0) {
+			if (snd_dma_alloc_pages(substream->dma_buffer.dev.type,
+						substream->dma_buffer.dev.dev,
+						size, &new_dmab) < 0) {
 				buffer->error = -ENOMEM;
 				goto unlock;
 			}
@@ -191,7 +161,7 @@ static void snd_pcm_lib_preallocate_proc_write(struct snd_info_entry *entry,
 			substream->buffer_bytes_max = UINT_MAX;
 		}
 		if (substream->dma_buffer.area)
-			do_free_pages(card, &substream->dma_buffer);
+			snd_dma_free_pages(&substream->dma_buffer);
 		substream->dma_buffer = new_dmab;
 	} else {
 		buffer->error = -EINVAL;
@@ -319,7 +289,6 @@ EXPORT_SYMBOL(snd_pcm_sgbuf_ops_page);
  */
 int snd_pcm_lib_malloc_pages(struct snd_pcm_substream *substream, size_t size)
 {
-	struct snd_card *card = substream->pcm->card;
 	struct snd_pcm_runtime *runtime;
 	struct snd_dma_buffer *dmab = NULL;
 
@@ -348,10 +317,9 @@ int snd_pcm_lib_malloc_pages(struct snd_pcm_substream *substream, size_t size)
 		if (! dmab)
 			return -ENOMEM;
 		dmab->dev = substream->dma_buffer.dev;
-		if (do_alloc_pages(card,
-				   substream->dma_buffer.dev.type,
-				   substream->dma_buffer.dev.dev,
-				   size, dmab) < 0) {
+		if (snd_dma_alloc_pages(substream->dma_buffer.dev.type,
+					substream->dma_buffer.dev.dev,
+					size, dmab) < 0) {
 			kfree(dmab);
 			return -ENOMEM;
 		}
@@ -372,7 +340,6 @@ EXPORT_SYMBOL(snd_pcm_lib_malloc_pages);
  */
 int snd_pcm_lib_free_pages(struct snd_pcm_substream *substream)
 {
-	struct snd_card *card = substream->pcm->card;
 	struct snd_pcm_runtime *runtime;
 
 	if (PCM_RUNTIME_CHECK(substream))
@@ -382,7 +349,7 @@ int snd_pcm_lib_free_pages(struct snd_pcm_substream *substream)
 		return 0;
 	if (runtime->dma_buffer_p != &substream->dma_buffer) {
 		/* it's a newly allocated buffer.  release it now. */
-		do_free_pages(card, runtime->dma_buffer_p);
+		snd_dma_free_pages(runtime->dma_buffer_p);
 		kfree(runtime->dma_buffer_p);
 	}
 	snd_pcm_set_runtime_buffer(substream, NULL);
