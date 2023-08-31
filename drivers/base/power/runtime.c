@@ -1172,6 +1172,20 @@ int pm_runtime_get_if_active(struct device *dev, bool ign_usage_count)
 EXPORT_SYMBOL_GPL(pm_runtime_get_if_active);
 
 /**
+ * pm_runtime_get_if_in_use - a wrapper around pm_runtime_get_if_active()
+ * @dev: Device to handle.
+ *
+ * In commit a55d55a30781 ("PM: runtime: Add pm_runtime_get_if_active()") it was
+ * removed but it was part of the Android API so put it back as just a call to
+ * pm_runtime_get_if_active() to keep the build working properly.
+ */
+int pm_runtime_get_if_in_use(struct device *dev)
+{
+	return pm_runtime_get_if_active(dev, false);
+}
+EXPORT_SYMBOL_GPL(pm_runtime_get_if_in_use);
+
+/**
  * __pm_runtime_set_status - Set runtime PM status of a device.
  * @dev: Device to handle.
  * @status: New runtime PM status of the device.
