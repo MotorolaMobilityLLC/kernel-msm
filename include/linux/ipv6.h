@@ -82,6 +82,7 @@ struct ipv6_devconf {
 	__u32		ioam6_id;
 	__u32		ioam6_id_wide;
 	__u8		ioam6_enabled;
+	/* 1 byte padding, unused */
 	/* ANDROID HACK: 2 byte padding used for __u16 accept_ra_min_lft */
 
 	struct ctl_table_header *sysctl_header;
@@ -95,13 +96,13 @@ struct ipv6_devconf {
 /* Assert that there is actually padding where accept_ra_min_lft is placed */
 static_assert(offsetof(struct ipv6_devconf, sysctl_header) -
 	      offsetof(struct ipv6_devconf, ioam6_enabled) >=
-	      sizeof(((struct ipv6_devconf *)0)->ioam6_enabled) + sizeof(__u16));
+	      sizeof(((struct ipv6_devconf *)0)->ioam6_enabled) + 1 + sizeof(__u16));
 
 /* The ACCEPT_RA_MIN_LFT macro relies on ioam6_enabled being a u8 */
 static_assert(sizeof(((struct ipv6_devconf *)0)->ioam6_enabled) == 1);
 
 #define ACCEPT_RA_MIN_LFT(cfg) \
-	(*((__u16 *)(&(cfg).ioam6_enabled + 1)))
+	(*((__u16 *)(&(cfg).ioam6_enabled + 2)))
 
 struct ipv6_params {
 	__s32 disable_ipv6;
