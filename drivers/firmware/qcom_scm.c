@@ -1229,6 +1229,7 @@ static void qcom_scm_shutdown(struct platform_device *pdev)
 {
 	qcom_scm_disable_sdi();
 	qcom_scm_halt_spmi_pmic_arbiter();
+	qcom_scm_set_download_mode(QCOM_DOWNLOAD_NODUMP, 0);
 }
 
 static const struct of_device_id qcom_scm_dt_match[] = {
