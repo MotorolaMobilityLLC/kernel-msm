@@ -531,7 +531,7 @@ static int mhi_sm_prepare_resume(struct mhi_sm_dev *mhi_sm_ctx)
 				goto exit;
 			}
 
-			if (mhi_sm_ctx->mhi_dev->no_path_from_ipa_to_pcie) {
+			if (!mhi_sm_ctx->mhi_dev->no_path_from_ipa_to_pcie) {
 				res = mhi_pcie_config_db_routing(mhi_sm_ctx->mhi_dev);
 				if (res) {
 					MHI_SM_ERR(mhi->vf_id, "Error configuring db routing\n");
