@@ -55,7 +55,6 @@ struct tmc_pcie_data {
 	bool			enable_to_bam;
 	u32				buf_size;
 	uint64_t		total_size;
-	uint64_t		drop_size;
 	uint64_t		total_irq;
 };
 
