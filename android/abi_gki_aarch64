@@ -19,7 +19,6 @@
 
 # required by zram.ko
   __alloc_percpu
-  android_kmalloc_64_create
   bio_endio
   bio_end_io_acct_remapped
   bio_start_io_acct
@@ -142,3 +141,6 @@
   unregister_shrinker
   wait_on_page_bit
   __wake_up
+
+# preserved by --additions-only
+  android_kmalloc_64_create

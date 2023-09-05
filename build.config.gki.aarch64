@@ -51,6 +51,7 @@ arch/arm64/boot/Image.gz
 
 # Update BUILD.bazel, define_common_kernels() if the value is not 1.
 TRIM_NONLISTED_KMI=${TRIM_NONLISTED_KMI:-1}
+KMI_SYMBOL_LIST_ADD_ONLY=1
 KMI_SYMBOL_LIST_STRICT_MODE=${KMI_SYMBOL_LIST_STRICT_MODE:-1}
 KMI_ENFORCED=1
 
