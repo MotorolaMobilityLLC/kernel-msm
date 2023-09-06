@@ -79,7 +79,7 @@ struct vfastrpc_invoke_ctx {
 	size_t size;
 	struct vfastrpc_buf_desc *desc;
 	struct hlist_node hn;
-	struct list_head asyncn;
+	struct hlist_node asyncn;
 	struct vfastrpc_mmap **maps;
 	remote_arg_t *lpra;
 	int *fds;

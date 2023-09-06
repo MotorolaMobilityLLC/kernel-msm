@@ -789,7 +789,7 @@ struct smq_notif_rsp {
 struct smq_invoke_ctx {
 	struct hlist_node hn;
 	/* Async node to add to async job ctx list */
-	struct list_head asyncn;
+	struct hlist_node asyncn;
 	struct completion work;
 	int retval;
 	int pid;
@@ -836,7 +836,7 @@ struct fastrpc_ctx_lst {
 	/* Number of active contexts queued to DSP */
 	uint32_t num_active_ctxs;
 	/* Queue which holds all async job contexts of process */
-	struct list_head async_queue;
+	struct hlist_head async_queue;
 	/* Queue which holds all status notifications of process */
 	struct list_head notif_queue;
 };
