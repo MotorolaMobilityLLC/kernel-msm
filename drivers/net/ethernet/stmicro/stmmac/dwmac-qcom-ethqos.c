@@ -1697,7 +1697,7 @@ static void ethqos_defer_phy_isr_work(struct work_struct *work)
 	ethqos_handle_phy_interrupt(ethqos);
 }
 
-static irqreturn_t ETHQOS_PHY_ISR(int irq, void *dev_data)
+static irqreturn_t ethqos_phy_isr(int irq, void *dev_data)
 {
 	struct qcom_ethqos *ethqos = (struct qcom_ethqos *)dev_data;
 
@@ -1739,7 +1739,7 @@ static int ethqos_phy_intr_enable(struct qcom_ethqos *ethqos)
 	INIT_WORK(&ethqos->emac_phy_work, ethqos_defer_phy_isr_work);
 	init_completion(&ethqos->clk_enable_done);
 
-	ret = request_irq(ethqos->phy_intr, ETHQOS_PHY_ISR,
+	ret = request_irq(ethqos->phy_intr, ethqos_phy_isr,
 			  IRQF_SHARED, "stmmac", ethqos);
 	if (ret) {
 		ETHQOSERR("Unable to register PHY IRQ %d\n",
