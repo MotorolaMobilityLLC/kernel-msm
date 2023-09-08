@@ -2650,6 +2650,8 @@ static void enter_state_snk_startup(struct usbpd *pd)
 		memset(&pd->partner_identity, 0, sizeof(pd->partner_identity));
 		pd->partner_desc.usb_pd = false;
 		pd->partner_desc.accessory = TYPEC_ACCESSORY_NONE;
+		if (pd->typec_mode == QTI_POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
+			pd->partner_desc.accessory = TYPEC_ACCESSORY_AUDIO;
 		pd->partner = typec_register_partner(pd->typec_port,
 				&pd->partner_desc);
 	}
@@ -3735,6 +3737,7 @@ static int usbpd_process_typec_mode(struct usbpd *pd,
 		break;
 	case QTI_POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
 		usbpd_info(&pd->dev, "Type-C Analog Audio Adapter connected\n");
+		pd->current_pr = PR_SINK;
 		break;
 	default:
 		usbpd_warn(&pd->dev, "Unsupported typec mode:%d\n",
