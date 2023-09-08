@@ -599,6 +599,7 @@ struct mhi_dev {
 	u32				mhi_ep_msi_num;
 	u32				mhi_version;
 	u32				mhi_chan_hw_base;
+	u32				mhi_num_ipc_pages_dev_fac;
 	void				*dma_cache;
 	void				*read_handle;
 	void				*write_handle;
