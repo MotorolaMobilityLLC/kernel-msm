@@ -231,20 +231,27 @@ static void msm_nand_print_rpm_info(struct device *dev)
 static int msm_nand_suspend(struct device *dev)
 {
 	int ret = 0;
+	struct msm_nand_info *info = dev_get_drvdata(dev);
+
+	mutex_lock(&info->lock);
 
 	if (!pm_runtime_suspended(dev))
 		ret = msm_nand_runtime_suspend(dev);
 
+	mutex_unlock(&info->lock);
 	return ret;
 }
 
 static int msm_nand_resume(struct device *dev)
 {
 	int ret = 0;
+	struct msm_nand_info *info = dev_get_drvdata(dev);
 
+	mutex_lock(&info->lock);
 	if (!pm_runtime_suspended(dev))
 		ret = msm_nand_runtime_resume(dev);
 
+	mutex_unlock(&info->lock);
 	return ret;
 }
 #else
