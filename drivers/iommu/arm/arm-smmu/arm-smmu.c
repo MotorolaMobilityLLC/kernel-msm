@@ -1113,6 +1113,9 @@ static bool arm_smmu_master_attached(struct arm_smmu_device *smmu,
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	struct arm_smmu_master_cfg *cfg = dev_iommu_priv_get(dev);
 
+	if (!cfg || !fwspec)
+		return false;
+
 	for_each_cfg_sme(cfg, fwspec, i, idx) {
 		if (smmu->s2crs[idx].count)
 			return true;
