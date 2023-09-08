@@ -1619,13 +1619,12 @@ static void handle_uaudio_stream_req(struct qmi_handle *handle,
 		goto response;
 	}
 
-	if (req_msg->enable) {
-		if (info_idx < 0) {
-			uaudio_err("interface# %d already in use card# %d\n",
-					subs->cur_audiofmt->iface, pcm_card_num);
-			ret = -EBUSY;
-			goto response;
-		}
+	if ((req_msg->enable) && (info_idx < 0)) {
+		uaudio_err("interface# %d already in use card# %d\n",
+				subs->cur_audiofmt ? subs->cur_audiofmt->iface : -1,
+				pcm_card_num);
+		ret = -EBUSY;
+		goto response;
 	}
 
 	if (req_msg->service_interval_valid) {

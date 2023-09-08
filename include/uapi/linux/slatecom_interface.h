@@ -45,6 +45,10 @@ enum slate_event_type {
 	SLATE_BT_READY,
 	SLATE_SNS_ERROR,
 	SLATE_SNS_READY,
+	MODEM_AFTER_POWER_DOWN,
+	MODEM_BEFORE_POWER_UP,
+	ADSP_AFTER_POWER_DOWN,
+	ADSP_BEFORE_POWER_UP,
 };
 
 enum device_state_transition {

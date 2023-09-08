@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include "hab.h"
 
@@ -169,7 +169,10 @@ void hab_vchan_stop(struct virtual_channel *vchan)
 		vchan->otherend_closed = 1;
 		wake_up(&vchan->rx_queue);
 		if (vchan->ctx)
-			wake_up_interruptible(&vchan->ctx->exp_wq);
+			if (vchan->pchan->mem_proto == 1)
+				wake_up_interruptible(&vchan->ctx->imp_wq);
+			else
+				wake_up_interruptible(&vchan->ctx->exp_wq);
 		else
 			pr_err("NULL ctx for vchan %x\n", vchan->id);
 	}
