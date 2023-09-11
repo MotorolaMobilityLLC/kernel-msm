@@ -68,3 +68,5 @@ blocklist limits_stress
 blocklist wil6210
 blocklist fpc1020_mmi.ko
 blocklist ets_bix_mmi.ko
+blocklist goodix_fod_mmi.ko
+blocklist anc_fps_mmi.ko
