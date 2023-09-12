@@ -3258,6 +3258,9 @@
   usb_store_new_id
   usb_unpoison_urb
 
+# required by sprd_time_sync_cp.ko
+  pvclock_gtod_register_notifier
+
 # required by vha.ko
   clk_bulk_get
   device_wakeup_disable
