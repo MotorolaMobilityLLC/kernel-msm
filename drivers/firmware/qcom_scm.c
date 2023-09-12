@@ -2901,6 +2901,13 @@ int  scm_mem_protection_init_do(void)
 	return resp;
 }
 
+static bool is_dload_enabled(void)
+{
+	return ((IS_ENABLED(CONFIG_POWER_RESET_QCOM_DOWNLOAD_MODE) ||
+	    IS_ENABLED(CONFIG_POWER_RESET_MSM) ||
+	    download_mode));
+}
+
 static int qcom_scm_probe(struct platform_device *pdev)
 {
 	struct qcom_scm *scm;
@@ -2911,13 +2918,20 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	if (!scm)
 		return -ENOMEM;
 
-	ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
-	if (ret < 0)
-		return ret;
+	/*
+	 * For some target checking _qcom_scm_is_call_available on
+	 * QCOM_SCM_BOOT_SET_DLOAD_MODE just hangs, so, to be on safer
+	 * side, check only if the configs are enabled.
+	 */
+	if (is_dload_enabled()) {
+		ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
+		if (ret < 0)
+			return ret;
 
-	if (!scm->dload_mode_addr) {
-		scm->legacy_dload_method = __qcom_scm_is_call_available(&pdev->dev,
-				QCOM_SCM_SVC_BOOT, QCOM_SCM_BOOT_SET_DLOAD_MODE);
+		if (!scm->dload_mode_addr) {
+			scm->legacy_dload_method = __qcom_scm_is_call_available(&pdev->dev,
+					QCOM_SCM_SVC_BOOT, QCOM_SCM_BOOT_SET_DLOAD_MODE);
+		}
 	}
 
 	clks = (unsigned long)of_device_get_match_data(&pdev->dev);
