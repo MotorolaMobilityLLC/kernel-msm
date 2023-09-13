@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 #include <linux/dmi.h>
 #include <linux/dma-mapping.h>
+#include <trace/hooks/usb.h>
 
 #include "xhci.h"
 #include "xhci-trace.h"
@@ -1408,6 +1409,11 @@ static void xhci_unmap_temp_buf(struct usb_hcd *hcd, struct urb *urb)
 	urb->transfer_flags &= ~URB_DMA_MAP_SINGLE;
 	kfree(urb->transfer_buffer);
 	urb->transfer_buffer = NULL;
+}
+
+void _trace_android_vh_xhci_urb_suitable_bypass(struct urb *urb, int *ret)
+{
+	trace_android_vh_xhci_urb_suitable_bypass(urb, ret);
 }
 
 /*
