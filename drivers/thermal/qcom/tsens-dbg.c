@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/arch_timer.h>
@@ -9,6 +9,8 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include "tsens2xxx.h"
+#include "tsens-mtc.h"
+
 
 /* debug defines */
 #define	TSENS_DBG_BUS_ID_0			0
@@ -38,6 +40,192 @@ struct tsens_dbg_func {
 	int (*dbg_func)(struct tsens_device *data, u32 id, u32 dbg_type,
 							int *temp);
 };
+
+static ssize_t
+zonemask_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct tsens_device *tmdev = NULL;
+
+	tmdev = tsens_controller_is_present();
+	if (!tmdev) {
+		pr_err("No TSENS controller present\n");
+		return -EPROBE_DEFER;
+	}
+
+	return scnprintf(buf, PAGE_SIZE,
+		"Zone =%d th1=%d th2=%d\n", tmdev->mtcsys.zone_mtc,
+				tmdev->mtcsys.th1, tmdev->mtcsys.th2);
+}
+
+static ssize_t
+zonemask_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret;
+	struct tsens_device *tmdev = NULL;
+
+	tmdev = tsens_controller_is_present();
+	if (!tmdev) {
+		pr_err("No TSENS controller present\n");
+		return -EPROBE_DEFER;
+	}
+
+	ret = sscanf(buf, "%d %d %d", &tmdev->mtcsys.zone_mtc,
+				&tmdev->mtcsys.th1, &tmdev->mtcsys.th2);
+
+	if (ret != TSENS_ZONEMASK_PARAMS) {
+		pr_err("Invalid command line arguments\n");
+		count = -EINVAL;
+	} else {
+		pr_debug("store zone_mtc=%d th1=%d th2=%d\n",
+				tmdev->mtcsys.zone_mtc,
+				tmdev->mtcsys.th1, tmdev->mtcsys.th2);
+		ret = tsens_set_mtc_zone_sw_mask(tmdev->mtcsys.zone_mtc,
+					tmdev->mtcsys.th1, tmdev->mtcsys.th2);
+		if (ret < 0) {
+			pr_err("Invalid command line arguments\n");
+			count = -EINVAL;
+		}
+	}
+
+	return count;
+}
+
+static ssize_t
+zonelog_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int ret, zlog[TSENS_MTC_ZONE_LOG_SIZE];
+	struct tsens_device *tmdev = NULL;
+
+	tmdev = tsens_controller_is_present();
+	if (!tmdev) {
+		pr_err("No TSENS controller present\n");
+		return -EPROBE_DEFER;
+	}
+
+	ret = tsens_get_mtc_zone_log(tmdev->mtcsys.zone_log, zlog);
+	if (ret < 0) {
+		pr_err("Invalid command line arguments\n");
+		return -EINVAL;
+	}
+
+	return scnprintf(buf, PAGE_SIZE,
+		"Log[0]=%d\nLog[1]=%d\nLog[2]=%d\nLog[3]=%d\nLog[4]=%d\nLog[5]=%d\n",
+			zlog[0], zlog[1], zlog[2], zlog[3], zlog[4], zlog[5]);
+}
+
+static ssize_t
+zonelog_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret;
+	struct tsens_device *tmdev = NULL;
+
+	tmdev = tsens_controller_is_present();
+	if (!tmdev) {
+		pr_err("No TSENS controller present\n");
+		return -EPROBE_DEFER;
+	}
+
+	ret = kstrtou32(buf, 0, &tmdev->mtcsys.zone_log);
+	if (ret < 0) {
+		pr_err("Invalid command line arguments\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static ssize_t
+zonehist_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int ret, zhist[TSENS_MTC_ZONE_HISTORY_SIZE];
+	struct tsens_device *tmdev = NULL;
+
+	tmdev = tsens_controller_is_present();
+	if (!tmdev) {
+		pr_err("No TSENS controller present\n");
+		return -EPROBE_DEFER;
+	}
+
+	ret = tsens_get_mtc_zone_history(tmdev->mtcsys.zone_hist, zhist);
+	if (ret < 0) {
+		pr_err("Invalid command line arguments\n");
+		return -EINVAL;
+	}
+
+	return scnprintf(buf, PAGE_SIZE,
+		"Cool = %d\nYellow = %d\nRed = %d\n",
+			zhist[0], zhist[1], zhist[2]);
+}
+
+static ssize_t
+zonehist_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret;
+	struct tsens_device *tmdev = NULL;
+
+	tmdev = tsens_controller_is_present();
+	if (!tmdev) {
+		pr_err("No TSENS controller present\n");
+		return -EPROBE_DEFER;
+	}
+
+	ret = kstrtou32(buf, 0, &tmdev->mtcsys.zone_hist);
+	if (ret < 0) {
+		pr_err("Invalid command line arguments\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static struct device_attribute tsens_mtc_dev_attr[] = {
+	__ATTR(zonemask, 0644, zonemask_show, zonemask_store),
+	__ATTR(zonelog, 0644, zonelog_show, zonelog_store),
+	__ATTR(zonehist, 0644, zonehist_show, zonehist_store),
+};
+
+static struct device_attribute tsens_mtc_dev_attr_V14[] = {
+	__ATTR(zonemask, 0644, zonemask_show, zonemask_store),
+	__ATTR(zonelog, 0644, zonelog_show, zonelog_store),
+};
+
+static int tsens_dbg_mtc_data(struct tsens_device *data,
+					u32 id, u32 dbg_type, int *val)
+{
+	int result = 0, i;
+	struct tsens_device *tmdev = NULL;
+	struct device_attribute *attr_ptr = NULL;
+	u32 ver_major, ver_minor, num_elem;
+
+	tmdev = data;
+	ver_major = tmdev->ctrl_data->ver_major;
+	ver_minor = tmdev->ctrl_data->ver_minor;
+
+	if (ver_major == 1 && ver_minor == 4) {
+		attr_ptr = tsens_mtc_dev_attr_V14;
+		num_elem = ARRAY_SIZE(tsens_mtc_dev_attr_V14);
+	} else {
+		attr_ptr = tsens_mtc_dev_attr;
+		num_elem = ARRAY_SIZE(tsens_mtc_dev_attr);
+	}
+
+	for (i = 0; i < num_elem; i++) {
+		result = device_create_file(&tmdev->pdev->dev, &attr_ptr[i]);
+		if (result < 0)
+			goto error;
+	}
+
+	return result;
+
+error:
+	for (i--; i >= 0; i--)
+		device_remove_file(&tmdev->pdev->dev, &attr_ptr[i]);
+
+	return result;
+}
 
 static int tsens_dbg_log_temp_reads(struct tsens_device *data, u32 id,
 					u32 dbg_type, int *temp)
@@ -217,6 +405,7 @@ static struct tsens_dbg_func dbg_arr[] = {
 	[TSENS_DBG_LOG_INTERRUPT_TIMESTAMP] = {
 			tsens_dbg_log_interrupt_timestamp},
 	[TSENS_DBG_LOG_BUS_ID_DATA] = {tsens_dbg_log_bus_id_data},
+	[TSENS_DBG_MTC_DATA] = {tsens_dbg_mtc_data},
 };
 
 int tsens2xxx_dbg(struct tsens_device *data, u32 id, u32 dbg_type, int *val)
