@@ -235,11 +235,18 @@ enum fastrpc_proc_attr {
 	FASTRPC_MODE_PRIVILEGED      = (1 << 6),
 };
 
-/* FastRPC remote subsystem state*/
+/* FastRPC remote subsystem state */
 enum fastrpc_remote_subsys_state {
 	SUBSYSTEM_RESTARTING = 0,
 	SUBSYSTEM_DOWN,
 	SUBSYSTEM_UP,
+};
+
+/* Hibernation states */
+enum fastrpc_hibernation_state {
+	NORMAL_STATE = 0,
+	HIBERNATION_SUSPEND,
+	HIBERNATION_RESTORE,
 };
 
 #define PERF_END ((void)0)
@@ -738,7 +745,7 @@ skip_buf_cache:
 		}
 		vmid = fl->apps->channel[cid].vmid;
 		if (((vmid) || (cid == MDSP_DOMAIN_ID && fl->apps->channel[cid].rhvm.vmid)) &&
-				(fl->apps->channel[cid].in_hib == 0)) {
+				(fl->apps->channel[cid].hib_state == NORMAL_STATE)) {
 			int srcVM[2] = {VMID_HLOS, vmid};
 			int hyp_err = 0;
 			if (vmid) {
@@ -1053,7 +1060,7 @@ static void fastrpc_mmap_free(struct fastrpc_mmap *map, uint32_t flags)
 		vmid = fl->apps->channel[cid].vmid;
 		if (((vmid && map->phys) || ((cid == MDSP_DOMAIN_ID) &&
 						fl->apps->channel[cid].rhvm.vmid)) &&
-				(me->channel[cid].in_hib == 0)) {
+				(me->channel[cid].hib_state == NORMAL_STATE)) {
 			int hyp_err = 0;
 			int srcVM[2] = {VMID_HLOS, vmid};
 			if (vmid) {
@@ -4841,7 +4848,7 @@ static int fastrpc_munmap_rh(uint64_t phys, size_t size,
 	int destVMperm[1] = {PERM_READ | PERM_WRITE | PERM_EXEC};
 
 	if ((me->channel[RH_CID].rhvm.vmid)
-			&& (me->channel[RH_CID].in_hib == 0)) {
+			&& (me->channel[RH_CID].hib_state == NORMAL_STATE)) {
 		err = hyp_assign_phys(phys,
 				(uint64_t)size,
 				me->channel[RH_CID].rhvm.vmid,
@@ -4978,7 +4985,8 @@ static int fastrpc_mmap_remove_ssr(struct fastrpc_file *fl, int locked)
 			ramdump_segments_rh.size = match->size;
 			INIT_LIST_HEAD(&head);
 			list_add(&ramdump_segments_rh.node, &head);
-			if (me->dev[RH_CID] && dump_enabled()) {
+			if (me->dev[RH_CID] && dump_enabled() &&
+				me->channel[RH_CID].hib_state == NORMAL_STATE) {
 				ret = qcom_elf_dump(&head, me->dev[RH_CID], ELF_CLASS);
 				if (ret < 0)
 					pr_err("adsprpc: %s: unable to dump heap (err %d)\n",
@@ -6029,7 +6037,7 @@ static int fastrpc_channel_open(struct fastrpc_file *fl, uint32_t flags)
 		me->channel[cid].prevssrcount =
 					me->channel[cid].ssrcount;
 	}
-	me->channel[cid].in_hib = 0;
+	me->channel[cid].hib_state = NORMAL_STATE;
 	mutex_unlock(&me->channel[cid].smd_mutex);
 
 bail:
@@ -8138,10 +8146,13 @@ static struct notifier_block fastrpc_notif_block = {
 #ifdef CONFIG_PM_SLEEP
 static int fastrpc_hibernation_suspend(struct device *dev)
 {
-	int err = 0;
+	struct fastrpc_apps *me = &gfa;
+	int err = 0, cid;
 
 	if (of_device_is_compatible(dev->of_node,
 					"qcom,msm-fastrpc-compute")) {
+		for (cid = 0; cid < NUM_CHANNELS; cid++)
+			me->channel[cid].hib_state = HIBERNATION_SUSPEND;
 		err = fastrpc_mmap_remove_ssr(NULL, 0);
 		if (err)
 			ADSPRPC_WARN("failed to unmap remote heap (err %d)\n",
@@ -8158,7 +8169,7 @@ static int fastrpc_restore(struct device *dev)
 					"qcom,msm-fastrpc-compute")) {
 		pr_info("adsprpc: restore enter\n");
 		for (cid = 0; cid < NUM_CHANNELS; cid++)
-			me->channel[cid].in_hib = 1;
+			me->channel[cid].hib_state = HIBERNATION_RESTORE;
 
 		pr_info("adsprpc: restore exit\n");
 	}
@@ -8572,7 +8583,7 @@ static int __init fastrpc_device_init(void)
 		me->jobid[i] = 1;
 		me->channel[i].dev = me->secure_dev;
 		me->channel[i].ssrcount = 0;
-		me->channel[i].in_hib = 0;
+		me->channel[i].hib_state = NORMAL_STATE;
 		me->channel[i].prevssrcount = 0;
 		me->channel[i].subsystemstate = SUBSYSTEM_UP;
 		me->channel[i].rh_dump_dev = NULL;
