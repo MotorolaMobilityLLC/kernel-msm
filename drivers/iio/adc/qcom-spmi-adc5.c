@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/bitops.h>
@@ -1066,7 +1066,8 @@ static int adc5_get_dt_channel_data(struct adc5_chip *adc,
 		/* Digital controller >= 5.3 have hw_settle_2 option */
 		if ((dig_version[0] >= ADC5_HW_SETTLE_DIFF_MINOR &&
 			dig_version[1] >= ADC5_HW_SETTLE_DIFF_MAJOR) ||
-			adc->data->info == &adc7_info)
+			adc->data->info == &adc7_info ||
+			adc->data->info == &adc7_sw_calib_info)
 			ret = qcom_adc5_hw_settle_time_from_dt(value, data->hw_settle_2);
 		else
 			ret = qcom_adc5_hw_settle_time_from_dt(value, data->hw_settle_1);
@@ -1141,6 +1142,19 @@ static const struct adc5_data adc7_data_pmic = {
 				64000, 128000},
 };
 
+static const struct adc5_data adc7_sw_calib_data_pmic = {
+	.name = "pm-adc7",
+	.full_scale_code_volt = 0x70e4,
+	.adc_chans = adc7_chans_pmic,
+	.info = &adc7_sw_calib_info,
+	.decimation = (unsigned int [ADC5_DECIMATION_SAMPLES_MAX])
+				{85, 340, 1360},
+	.hw_settle_2 = (unsigned int [VADC_HW_SETTLE_SAMPLES_MAX])
+				{15, 100, 200, 300, 400, 500, 600, 700,
+				1000, 2000, 4000, 8000, 16000, 32000,
+				64000, 128000},
+};
+
 static const struct adc5_data adc5_data_pmic5_lite = {
 	.name = "pm-adc5-lite",
 	.full_scale_code_volt = 0x70e4,
@@ -1180,7 +1194,7 @@ static const struct of_device_id adc5_match_table[] = {
 	},
 	{
 		.compatible = "qcom,spmi-adc7-sw-calib",
-		.data = &adc7_data_pmic,
+		.data = &adc7_sw_calib_data_pmic,
 	},
 	{
 		.compatible = "qcom,spmi-adc-rev2",
