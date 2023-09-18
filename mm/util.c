@@ -29,6 +29,7 @@
 #include "internal.h"
 #ifndef __GENKSYMS__
 #include <trace/hooks/syscall_check.h>
+#include <trace/hooks/mm.h>
 #endif
 
 /**
@@ -587,6 +588,7 @@ void *kvmalloc_node(size_t size, gfp_t flags, int node)
 {
 	gfp_t kmalloc_flags = flags;
 	void *ret;
+	bool use_vmalloc = false;
 
 	/*
 	 * vmalloc uses GFP_KERNEL for some internal allocations (e.g page tables)
@@ -594,6 +596,10 @@ void *kvmalloc_node(size_t size, gfp_t flags, int node)
 	 */
 	if ((flags & GFP_KERNEL) != GFP_KERNEL)
 		return kmalloc_node(size, flags, node);
+
+	trace_android_vh_kvmalloc_node_use_vmalloc(size, &kmalloc_flags, &use_vmalloc);
+	if (use_vmalloc)
+		goto use_vmalloc_node;
 
 	/*
 	 * We want to attempt a large physically contiguous block first because
@@ -624,6 +630,7 @@ void *kvmalloc_node(size_t size, gfp_t flags, int node)
 		return NULL;
 	}
 
+use_vmalloc_node:
 	return __vmalloc_node(size, 1, flags, node,
 			__builtin_return_address(0));
 }
@@ -665,6 +672,21 @@ void kvfree_sensitive(const void *addr, size_t len)
 	}
 }
 EXPORT_SYMBOL(kvfree_sensitive);
+
+void *kvrealloc(const void *p, size_t oldsize, size_t newsize, gfp_t flags)
+{
+	void *newp;
+
+	if (oldsize >= newsize)
+		return (void *)p;
+	newp = kvmalloc(newsize, flags);
+	if (!newp)
+		return NULL;
+	memcpy(newp, p, oldsize);
+	kvfree(p);
+	return newp;
+}
+EXPORT_SYMBOL(kvrealloc);
 
 static inline void *__page_rmapping(struct page *page)
 {

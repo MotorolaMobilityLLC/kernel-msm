@@ -3,7 +3,7 @@
  * drivers/mmc/host/sdhci-msm.c - Qualcomm SDHCI Platform driver
  *
  * Copyright (c) 2013-2014,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -86,9 +86,6 @@
 #define ENABLE_DLL_LOCK_STATUS	BIT(26)
 #define FINE_TUNE_MODE_EN	BIT(27)
 #define BIAS_OK_SIGNAL		BIT(29)
-
-#define DLL_CONFIG_3_LOW_FREQ_VAL	0x08
-#define DLL_CONFIG_3_HIGH_FREQ_VAL	0x10
 
 #define CORE_VENDOR_SPEC_POR_VAL 0xa9c
 #define CORE_CLK_PWRSAVE	BIT(1)
@@ -789,20 +786,16 @@ static int msm_init_cm_dll(struct sdhci_host *host,
 	 */
 	if (msm_host->uses_tassadar_dll) {
 		u32 config;
-		config = DLL_USR_CTL_POR_VAL | FINE_TUNE_MODE_EN |
-			ENABLE_DLL_LOCK_STATUS | BIAS_OK_SIGNAL;
-		writel_relaxed(config, host->ioaddr +
-				msm_offset->core_dll_usr_ctl);
-
-		config = readl_relaxed(host->ioaddr +
-				msm_offset->core_dll_config_3);
-		config &= ~0xFF;
-		if (msm_host->clk_rate < 150000000)
-			config |= DLL_CONFIG_3_LOW_FREQ_VAL;
-		else
-			config |= DLL_CONFIG_3_HIGH_FREQ_VAL;
-		writel_relaxed(config, host->ioaddr +
-			msm_offset->core_dll_config_3);
+		if (msm_host->dll_hsr) {
+			writel_relaxed(msm_host->dll_hsr->dll_usr_ctl,
+					host->ioaddr +
+					msm_offset->core_dll_usr_ctl);
+		} else {
+			config = DLL_USR_CTL_POR_VAL | FINE_TUNE_MODE_EN |
+				ENABLE_DLL_LOCK_STATUS | BIAS_OK_SIGNAL;
+			writel_relaxed(config, host->ioaddr +
+					msm_offset->core_dll_usr_ctl);
+		}
 	}
 
 	/* Step 11 - Wait for 52us */
@@ -1558,6 +1551,25 @@ static int sdhci_msm_dt_parse_vreg_info(struct device *dev,
 	vreg->msm_host = msm_host;
 	vreg->name = vreg_name;
 
+	/*
+	 * To support FR84471 for chipsets where PMIC doesn't support
+	 * PBS ram sequence to turn OFF regulators automatically on
+	 * multicard tray removal, parse and use new regulator resources
+	 * which are exposed by PMIC team for enabling/disabling
+	 * conditions only and its old design for voltage/load.
+	 */
+	if (mmc_card_is_removable(host->mmc) &&
+			!vreg->multi_card_tray_wa_needed) {
+		snprintf(prop_name, MAX_PROP_SIZE, "%s-en-dis", vreg_name);
+		strlcpy(vreg->en_dis_name, prop_name, sizeof(vreg->en_dis_name));
+
+		snprintf(prop_name, MAX_PROP_SIZE, "%s-supply", vreg->en_dis_name);
+		if (of_parse_phandle(np, prop_name, 0)) {
+			dev_info(dev, "Multi card tray WA needed\n");
+			vreg->multi_card_tray_wa_needed = true;
+		}
+	}
+
 	snprintf(prop_name, MAX_PROP_SIZE,
 			"qcom,%s-always-on", vreg_name);
 	if (of_get_property(np, prop_name, NULL))
@@ -1696,6 +1708,9 @@ static bool sdhci_msm_populate_pdata(struct device *dev,
 
 	msm_host->dll_lock_bist_fail_wa =
 		of_property_read_bool(np, "qcom,dll_lock_bist_fail_wa");
+
+	msm_host->need_special_up_threshold =
+		of_property_read_bool(np, "qcom,need_special_up_threshold");
 
 	msm_host->crash_on_err =
 		of_property_read_bool(np, "qcom,enable_crash_on_err");
@@ -2000,6 +2015,16 @@ static int sdhci_msm_vreg_init_reg(struct device *dev,
 		goto out;
 	}
 
+	if (vreg->multi_card_tray_wa_needed) {
+		vreg->reg_en_dis = devm_regulator_get(dev, vreg->en_dis_name);
+		if (IS_ERR(vreg->reg_en_dis)) {
+			ret = PTR_ERR(vreg->reg_en_dis);
+			pr_err("%s: devm_regulator_get(%s) failed. ret=%d\n",
+				__func__, vreg->en_dis_name, ret);
+			goto out;
+		}
+	}
+
 	if (regulator_count_voltages(vreg->reg) > 0) {
 		vreg->set_voltage_sup = true;
 		/* sanity check */
@@ -2063,6 +2088,8 @@ static int sdhci_msm_vreg_set_voltage(struct sdhci_msm_reg_data *vreg,
 static int sdhci_msm_vreg_enable(struct sdhci_msm_reg_data *vreg)
 {
 	int ret = 0;
+	bool wa_needed = vreg->multi_card_tray_wa_needed;
+	const char *reg_name = wa_needed ? vreg->en_dis_name : vreg->name;
 
 	/* Put regulator in HPM (high power mode) */
 	ret = sdhci_msm_vreg_set_optimum_mode(vreg, vreg->hpm_uA);
@@ -2076,10 +2103,14 @@ static int sdhci_msm_vreg_enable(struct sdhci_msm_reg_data *vreg)
 		if (ret)
 			return ret;
 	}
-	ret = regulator_enable(vreg->reg);
+	if (wa_needed)
+		ret = regulator_enable(vreg->reg_en_dis);
+	else
+		ret = regulator_enable(vreg->reg);
+
 	if (ret) {
 		pr_err("%s: regulator_enable(%s) failed. ret=%d\n",
-				__func__, vreg->name, ret);
+				__func__, reg_name, ret);
 		return ret;
 	}
 	vreg->is_enabled = true;
@@ -2089,13 +2120,19 @@ static int sdhci_msm_vreg_enable(struct sdhci_msm_reg_data *vreg)
 static int sdhci_msm_vreg_disable(struct sdhci_msm_reg_data *vreg)
 {
 	int ret = 0;
+	bool wa_needed = vreg->multi_card_tray_wa_needed;
+	const char *reg_name = wa_needed ? vreg->en_dis_name : vreg->name;
 
 	/* Never disable regulator marked as always_on */
 	if (vreg->is_enabled && !vreg->is_always_on) {
-		ret = regulator_disable(vreg->reg);
+
+		if (vreg->multi_card_tray_wa_needed)
+			ret = regulator_disable(vreg->reg_en_dis);
+		else
+			ret = regulator_disable(vreg->reg);
 		if (ret) {
 			pr_err("%s: regulator_disable(%s) failed. ret=%d\n",
-				__func__, vreg->name, ret);
+				__func__, reg_name, ret);
 			goto out;
 		}
 		vreg->is_enabled = false;
@@ -2454,6 +2491,7 @@ static void __sdhci_msm_set_clock(struct sdhci_host *host, unsigned int clock)
 	u16 clk;
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
 	struct mmc_ios ios = host->mmc->ios;
+	struct mmc_host *mmc = host->mmc;
 #endif
 	/*
 	 * Keep actual_clock as zero -
@@ -2477,8 +2515,14 @@ static void __sdhci_msm_set_clock(struct sdhci_host *host, unsigned int clock)
 	sdhci_enable_clk(host, clk);
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
-	if (ios.timing == MMC_TIMING_MMC_HS400)
+	if (ios.timing == MMC_TIMING_MMC_HS400 ||
+			ios.timing == MMC_TIMING_MMC_DDR52) {
+
+		if (mmc->card && mmc_card_mmc(mmc->card))
+			mmc->card->mmc_avail_type |= (EXT_CSD_CARD_TYPE_HS400ES |
+				EXT_CSD_CARD_TYPE_HS400 | EXT_CSD_CARD_TYPE_HS200);
 		sdhci_msm_cqe_scaling_resume(host->mmc);
+	}
 #endif
 }
 
@@ -3614,6 +3658,18 @@ static int sdhci_msm_start_signal_voltage_switch(struct mmc_host *mmc,
 	return -EAGAIN;
 }
 
+#if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
+static void sdhci_msm_init_card(struct mmc_host *host,
+				struct mmc_card *card)
+{
+
+	if (host->card && mmc_card_mmc(card)) {
+		card->mmc_avail_type &= ~(EXT_CSD_CARD_TYPE_HS400ES |
+			EXT_CSD_CARD_TYPE_HS400 | EXT_CSD_CARD_TYPE_HS200);
+	}
+}
+#endif
+
 #define MAX_TEST_BUS 60
 #define DRIVER_NAME "sdhci_msm"
 #define SDHCI_MSM_DUMP(f, x...) \
@@ -3774,6 +3830,7 @@ static const struct sdhci_msm_variant_info sdm845_sdhci_var = {
 static const struct of_device_id sdhci_msm_dt_match[] = {
 	{.compatible = "qcom,sdhci-msm-v4", .data = &sdhci_msm_mci_var},
 	{.compatible = "qcom,sdhci-msm-v5", .data = &sdhci_msm_v5_var},
+	{.compatible = "qcom,sdm670-sdhci", .data = &sdm845_sdhci_var},
 	{.compatible = "qcom,sdm845-sdhci", .data = &sdm845_sdhci_var},
 	{},
 };
@@ -4906,6 +4963,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	host->mmc_host_ops.start_signal_voltage_switch =
 		sdhci_msm_start_signal_voltage_switch;
 	host->mmc_host_ops.execute_tuning = sdhci_msm_execute_tuning;
+#if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
+	host->mmc_host_ops.init_card = sdhci_msm_init_card;
+#endif
 
 	msm_host->workq = create_workqueue("sdhci_msm_generic_swq");
 	if (!msm_host->workq)
@@ -4918,13 +4978,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	/* Initialize sysfs entries */
 	sdhci_msm_init_sysfs_gating_qos(dev);
 
-	if (of_property_read_bool(node, "supports-cqe"))
-		ret = sdhci_msm_cqe_add_host(host, pdev);
-	else
-		ret = sdhci_add_host(host);
-	if (ret)
-		goto pm_runtime_disable;
-
 	if (mmc_card_is_removable(msm_host->mmc)) {
 		msm_host->mmc->max_busy_timeout = 600000;
 		pr_info("set sdcard max_busy_timeout %ds\n", msm_host->mmc->max_busy_timeout / 1000);
@@ -4932,9 +4985,22 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
 	pwrseq_scale = kzalloc(sizeof(struct mmc_pwrseq), GFP_KERNEL);
+
+	if (!pwrseq_scale) {
+		ret = -ENOMEM;
+		goto pm_runtime_disable;
+	}
+
 	pwrseq_scale->ops = &mmc_pwrseq_emmc_ops;
 	host->mmc->pwrseq = pwrseq_scale;
 #endif
+
+	if (of_property_read_bool(node, "supports-cqe"))
+		ret = sdhci_msm_cqe_add_host(host, pdev);
+	else
+		ret = sdhci_add_host(host);
+	if (ret)
+		goto pm_runtime_disable;
 
 	/* For SDHC v5.0.0 onwards, ICE 3.0 specific registers are added
 	 * in CQ register space, due to which few CQ registers are
