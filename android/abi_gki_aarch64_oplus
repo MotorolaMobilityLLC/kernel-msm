@@ -434,6 +434,7 @@
   __traceiter_android_vh_madvise_cold_or_pageout_abort
   __traceiter_android_vh_mark_page_accessed
   __traceiter_android_vh_mem_cgroup_alloc
+  __traceiter_android_vh_adjust_alloc_flags
   __traceiter_android_vh_mem_cgroup_css_offline
   __traceiter_android_vh_mem_cgroup_css_online
   __traceiter_android_vh_mem_cgroup_free
@@ -561,6 +562,7 @@
   __tracepoint_android_vh_madvise_cold_or_pageout_abort
   __tracepoint_android_vh_mark_page_accessed
   __tracepoint_android_vh_mem_cgroup_alloc
+  __tracepoint_android_vh_adjust_alloc_flags
   __tracepoint_android_vh_mem_cgroup_css_offline
   __tracepoint_android_vh_mem_cgroup_css_online
   __tracepoint_android_vh_mem_cgroup_free
