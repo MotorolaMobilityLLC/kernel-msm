@@ -110,6 +110,13 @@ config BOSTON_DTB
         help
                 Only include Motorola Boston device specific DTB.
 
+config CUSCO_DTB
+        depends on MMI_DEVICE_DTBS
+        default n
+        bool "Motorola Mobility Cusco Device DTB"
+        help
+                Only include Motorola Cusco device specific DTB.
+
 config AVATRN_DTB
         depends on MMI_DEVICE_DTBS
         default n
