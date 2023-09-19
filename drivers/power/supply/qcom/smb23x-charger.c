@@ -1885,6 +1885,9 @@ static int smb23x_usb_set_property(struct power_supply *psy,
 				pr_err("Couldn't set USB current rc = %d\n", rc);
 			break;
 		}
+	case POWER_SUPPLY_PROP_PRESENT:
+		chip->usb_present = val->intval;
+		break;
 	default:
 		return -EINVAL;
 	}
