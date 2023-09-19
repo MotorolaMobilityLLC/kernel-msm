@@ -4085,6 +4085,8 @@ static int fastrpc_init_create_static_process(struct fastrpc_file *fl,
 			mutex_lock(&fl->map_mutex);
 			err = fastrpc_mmap_create(fl, -1, NULL, 0, init->mem,
 				 init->memlen, ADSP_MMAP_REMOTE_HEAP_ADDR, &mem);
+			if (mem)
+				mem->is_filemap = true;
 			mutex_unlock(&fl->map_mutex);
 			if (err)
 				goto bail;
