@@ -1342,6 +1342,7 @@ static int tmc_enable_etr_sink_sysfs(struct coresight_device *csdev)
 		 */
 
 		if (new_buf) {
+			sysfs_buf = READ_ONCE(drvdata->sysfs_buf);
 			free_buf = sysfs_buf;
 			drvdata->sysfs_buf = new_buf;
 		}
