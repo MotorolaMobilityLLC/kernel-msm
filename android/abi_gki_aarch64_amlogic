@@ -1978,6 +1978,7 @@
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_sched_show_task
   __traceiter_android_vh_set_module_permit_after_init
+  __traceiter_android_vh_xhci_urb_suitable_bypass
   __traceiter_gpu_mem_total
   __traceiter_irq_handler_entry
   __traceiter_irq_handler_exit
@@ -2016,6 +2017,7 @@
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_sched_show_task
   __tracepoint_android_vh_set_module_permit_after_init
+  __tracepoint_android_vh_xhci_urb_suitable_bypass
   __tracepoint_gpu_mem_total
   __tracepoint_irq_handler_entry
   __tracepoint_irq_handler_exit
