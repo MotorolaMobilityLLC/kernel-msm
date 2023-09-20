@@ -26,6 +26,9 @@
 #include "ch101_reg.h"
 
 #define SX1508_DEVICE_ID "sx1508q"
+#define CH101_DEFER_PROBE_CNT 10
+
+u8 ch101_deferred_probe_cnt;
 
 // Device tree RP4
 //
@@ -319,6 +322,19 @@ static int ch101_i2c_probe(struct i2c_client *client,
 
 	dev = &client->dev;
 
+	gpio = get_gpio_exp();
+	if (!gpio) {
+		ch101_deferred_probe_cnt++;
+		if (ch101_deferred_probe_cnt > CH101_DEFER_PROBE_CNT) {
+			dev_err(dev, "Error initializing expander: %s\n",
+				SX1508_DEVICE_ID);
+			return -ENODEV;
+		}
+		dev_info(dev, "Wait initializing expander: %s retry %d\n",
+			 SX1508_DEVICE_ID, ch101_deferred_probe_cnt);
+		return -EPROBE_DEFER;
+	}
+
 	cbk = devm_kmalloc(dev, sizeof(struct ch101_callbacks), GFP_KERNEL);
 	if (!cbk)
 		return -ENOMEM;
@@ -330,13 +346,6 @@ static int ch101_i2c_probe(struct i2c_client *client,
 		dev, dev ? dev->init_name : "");
 
 	dev_info(dev, "%s: IRQ: %d\n", __func__, irq);
-
-	gpio = get_gpio_exp();
-	if (!gpio) {
-		dev_err(dev, "Error initializing expander: %s\n",
-			SX1508_DEVICE_ID);
-		return -ENODEV;
-	}
 
 	cbk->read_reg = read_reg;
 	cbk->write_reg = write_reg;
