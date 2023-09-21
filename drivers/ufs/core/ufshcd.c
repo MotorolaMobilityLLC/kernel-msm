@@ -2759,6 +2759,8 @@ static int ufshcd_compose_devman_upiu(struct ufs_hba *hba,
  */
 static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
+	struct request *rq = scsi_cmd_to_rq(lrbp->cmd);
+	unsigned int ioprio_class = IOPRIO_PRIO_CLASS(req_get_ioprio(rq));
 	u8 upiu_flags;
 	int ret = 0;
 
@@ -2769,6 +2771,8 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 
 	if (likely(lrbp->cmd)) {
 		ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags, lrbp->cmd->sc_data_direction, 0);
+		if (ioprio_class == IOPRIO_CLASS_RT)
+			upiu_flags |= UPIU_CMD_FLAGS_CP;
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
 		if (hba->android_quirks & UFSHCD_ANDROID_QUIRK_SET_IID_TO_ONE)
 			lrbp->ucd_req_ptr->header.iid = 1;
