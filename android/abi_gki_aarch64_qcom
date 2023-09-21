@@ -2498,6 +2498,7 @@
   typec_set_pwr_opmode
   typec_set_pwr_role
   typec_unregister_partner
+  typec_get_orientation
   uart_add_one_port
   uart_get_baud_rate
   uart_insert_char
