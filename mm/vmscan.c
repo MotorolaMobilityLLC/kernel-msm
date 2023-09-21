@@ -63,6 +63,9 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/vmscan.h>
 
+#undef CREATE_TRACE_POINTS
+#include <trace/hooks/vmscan.h>
+
 struct scan_control {
 	/* How many pages shrink_list() should reclaim */
 	unsigned long nr_to_reclaim;
@@ -2341,6 +2344,8 @@ static bool inactive_list_is_low(struct lruvec *lruvec, bool file,
 			lruvec_lru_size(lruvec, active_lru, MAX_NR_ZONES), active,
 			inactive_ratio, file);
 
+	trace_android_vh_tune_inactive_ratio(&inactive_ratio, is_file_lru(inactive_lru));
+
 	return inactive * inactive_ratio < active;
 }
 
@@ -2393,6 +2398,7 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
 		goto out;
 	}
 
+	trace_android_vh_tune_swappiness(&swappiness);
 	/*
 	 * Global reclaim will swap to prevent OOM even with no
 	 * swappiness, but memcg users want to use this knob to
@@ -2526,6 +2532,7 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
 	fraction[1] = fp;
 	denominator = ap + fp + 1;
 out:
+	trace_android_vh_tune_scan_type((char *)(&scan_balance));
 	*lru_pages = 0;
 	for_each_evictable_lru(lru) {
 		int file = is_file_lru(lru);
