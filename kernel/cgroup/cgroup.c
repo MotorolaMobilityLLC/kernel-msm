@@ -4315,6 +4315,7 @@ int cgroup_add_legacy_cftypes(struct cgroup_subsys *ss, struct cftype *cfts)
 	return cgroup_add_cftypes(ss, cfts);
 }
 
+EXPORT_SYMBOL_GPL(cgroup_add_legacy_cftypes);
 /**
  * cgroup_file_notify - generate a file modified event for a cgroup_file
  * @cfile: target cgroup_file
