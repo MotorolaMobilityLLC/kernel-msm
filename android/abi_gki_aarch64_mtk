@@ -793,6 +793,7 @@
   fwnode_property_read_string
   fwnode_property_read_u32_array
   fwnode_property_read_u64_array
+  fwnode_typec_mux_get
   g_audio_cleanup
   g_audio_setup
   gcd
@@ -2190,10 +2191,13 @@
   tty_unregister_ldisc
   tty_write_room
   typec_mux_get_drvdata
+  typec_mux_put
   typec_mux_register
   typec_mux_set
   typec_mux_unregister
   typec_partner_set_identity
+  typec_partner_set_pd_revision
+  typec_partner_set_svdm_version
   typec_register_partner
   typec_register_port
   typec_set_data_role
