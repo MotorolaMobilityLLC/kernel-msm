@@ -6,7 +6,7 @@
  *
  * Author: Will Deacon <will.deacon@arm.com>
  *
- * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"arm-lpae io-pgtable: " fmt
@@ -744,8 +744,10 @@ static int arm_lpae_map_by_pgsize(struct io_pgtable_ops *ops,
 
 		if (ms->pgtable && (iova < ms->iova_end)) {
 			ms_ptep = ms->pgtable + ARM_LPAE_LVL_IDX(iova, MAP_STATE_LVL, data);
-			arm_lpae_init_pte(data, iova, paddr, prot, MAP_STATE_LVL,
+			ret = arm_lpae_init_pte(data, iova, paddr, prot, MAP_STATE_LVL,
 					  1, ms_ptep, ms->prev_pgtable, false);
+			if (ret)
+				return ret;
 			ms->num_pte++;
 		} else {
 			ret = __arm_lpae_map(data, iova, paddr, pgsize, 1,
