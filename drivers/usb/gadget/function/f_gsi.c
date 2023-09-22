@@ -658,10 +658,8 @@ static int ipa_connect_channels(struct gsi_data_port *d_port)
 			ret = -ETIMEDOUT;
 			goto end_xfer_ep_out;
 		}
+		gsi->d_port.ipa_ready = false;
 	}
-
-	if (!gsi->d_port.ipa_ready)
-		goto end_xfer_ep_out;
 
 	log_event_dbg("%s: Calling xdci_connect", __func__);
 	ret = ipa_usb_xdci_connect(out_params, in_params,
