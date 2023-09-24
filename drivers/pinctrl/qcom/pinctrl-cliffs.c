@@ -706,7 +706,7 @@ enum cliffs_functions {
 	msm_mux_qup1_se7_l2,
 	msm_mux_qup1_se7_l3,
 	msm_mux_sd_write_protect,
-	msm_mux_sdc2None,
+	msm_mux_sdc2_data,
 	msm_mux_sdc2_clk,
 	msm_mux_sdc2_cmd,
 	msm_mux_sdc2_fb_clk,
@@ -1468,7 +1468,7 @@ static const char *const qup1_se7_l3_groups[] = {
 static const char *const sd_write_protect_groups[] = {
 	"gpio29",
 };
-static const char *const sdc2None_groups[] = {
+static const char *const sdc2_data_groups[] = {
 	"gpio38",
 	"gpio39",
 	"gpio48",
@@ -1791,7 +1791,7 @@ static const struct msm_function cliffs_functions[] = {
 	FUNCTION(qup1_se7_l2),
 	FUNCTION(qup1_se7_l3),
 	FUNCTION(sd_write_protect),
-	FUNCTION(sdc2None),
+	FUNCTION(sdc2_data),
 	FUNCTION(sdc2_clk),
 	FUNCTION(sdc2_cmd),
 	FUNCTION(sdc2_fb_clk),
@@ -1910,9 +1910,9 @@ static const struct msm_pingroup cliffs_groups[] = {
 			NA, NA, NA, NA, NA, 0, -1),
 	[37] = PINGROUP(37, qup1_se1_l1, ibi_i3c, qup1_se1_l3, NA, NA, NA, NA,
 			NA, NA, NA, NA, 0, -1),
-	[38] = PINGROUP(38, sdc2None, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
+	[38] = PINGROUP(38, sdc2_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
 			-1),
-	[39] = PINGROUP(39, sdc2None, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
+	[39] = PINGROUP(39, sdc2_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
 			-1),
 	[40] = PINGROUP(40, qup1_se2_l0, NA, phase_flag13, qdss_cti, NA, NA, NA,
 			NA, NA, NA, NA, 0, -1),
@@ -1930,9 +1930,9 @@ static const struct msm_pingroup cliffs_groups[] = {
 			NA, NA, NA, 0, -1),
 	[47] = PINGROUP(47, qup1_se3_l3, ddr_bist_stop, NA, phase_flag6, NA, NA,
 			NA, NA, NA, NA, NA, 0, -1),
-	[48] = PINGROUP(48, sdc2None, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
+	[48] = PINGROUP(48, sdc2_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
 			-1),
-	[49] = PINGROUP(49, sdc2None, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
+	[49] = PINGROUP(49, sdc2_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0,
 			-1),
 	[50] = PINGROUP(50, sdc2_fb_clk, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
@@ -2232,8 +2232,20 @@ static const struct msm_pinctrl_soc_data cliffs_pinctrl = {
 	.egpio_func = 11,
 };
 
+static const struct msm_pinctrl_soc_data cliffs_vm_pinctrl = {
+	.pins = cliffs_pins,
+	.npins = ARRAY_SIZE(cliffs_pins),
+	.functions = cliffs_functions,
+	.nfunctions = ARRAY_SIZE(cliffs_functions),
+	.groups = cliffs_groups,
+	.ngroups = ARRAY_SIZE(cliffs_groups),
+	.ngpios = 176,
+	.egpio_func = 11,
+};
+
 static const struct of_device_id cliffs_pinctrl_of_match[] = {
 	{ .compatible = "qcom,cliffs-pinctrl", .data = &cliffs_pinctrl },
+	{ .compatible = "qcom,cliffs-vm-pinctrl", .data = &cliffs_vm_pinctrl },
 	{},
 };
 
@@ -2273,4 +2285,5 @@ module_exit(cliffs_pinctrl_exit);
 MODULE_DESCRIPTION("QTI cliffs pinctrl driver");
 MODULE_LICENSE("GPL");
 MODULE_DEVICE_TABLE(of, cliffs_pinctrl_of_match);
+MODULE_SOFTDEP("pre: qcom_tlmm_vm_irqchip");
 

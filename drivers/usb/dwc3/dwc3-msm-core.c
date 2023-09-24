@@ -564,6 +564,7 @@ struct dwc3_msm {
 #define PWR_EVENT_HS_WAKEUP	BIT(1)
 	bool			host_poweroff_in_pm_suspend;
 	bool			disable_host_ssphy_powerdown;
+	bool			hibernate_skip_thaw;
 	unsigned long		lpm_flags;
 	unsigned int		vbus_draw;
 #define MDWC3_SS_PHY_SUSPEND		BIT(0)
@@ -3636,15 +3637,6 @@ static int dwc3_msm_power_collapse_por(struct dwc3_msm *mdwc)
 	if (DWC3_GSNPS_ID(val) == 0)
 		return -EINVAL;
 
-	/* Get initial P3 status and enable IN_P3 event */
-	if (mdwc->ip == DWC31_IP)
-		val = dwc3_msm_read_reg_field(mdwc->base,
-			DWC31_LINK_GDBGLTSSM,
-			DWC3_GDBGLTSSM_LINKSTATE_MASK);
-	else
-		val = dwc3_msm_read_reg_field(mdwc->base,
-			DWC3_GDBGLTSSM, DWC3_GDBGLTSSM_LINKSTATE_MASK);
-	atomic_set(&mdwc->in_p3, val == DWC3_LINK_STATE_U3);
 	dwc3_msm_write_reg_field(mdwc->base, PWR_EVNT_IRQ_MASK_REG,
 				PWR_EVNT_POWERDOWN_IN_P3_MASK, 1);
 
@@ -4151,6 +4143,8 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 	ret = dwc3_msm_prepare_suspend(mdwc, force_power_collapse);
 	if (ret) {
 		mutex_unlock(&mdwc->suspend_resume_mutex);
+		if (mdwc->in_host_mode)
+			pm_request_resume(&dwc->xhci->dev);
 		return ret;
 	}
 
@@ -5757,6 +5751,12 @@ static int dwc3_msm_core_init(struct dwc3_msm *mdwc)
 		goto err;
 	}
 
+	/*
+	 * Wait for child's probe completion before retrieving the
+	 * driver data to make sure its populated properly.
+	 */
+	wait_for_device_probe();
+
 	mdwc->dwc3 = of_find_device_by_node(dwc3_node);
 	of_node_put(dwc3_node);
 	if (!mdwc->dwc3) {
@@ -5812,6 +5812,8 @@ static int dwc3_msm_core_init(struct dwc3_msm *mdwc)
 		goto depopulate;
 
 	dwc3_msm_override_pm_ops(dwc->dev, mdwc->dwc3_pm_ops, false);
+	if (mdwc->hibernate_skip_thaw)
+		dev_pm_syscore_device(dwc->dev, true);
 
 	mdwc->xhci_pm_ops = kzalloc(sizeof(struct dev_pm_ops), GFP_ATOMIC);
 	if (!mdwc->xhci_pm_ops)
@@ -5994,6 +5996,9 @@ static int dwc3_msm_parse_params(struct dwc3_msm *mdwc, struct device_node *node
 	mdwc->use_eusb2_phy = of_property_read_bool(node, "qcom,use-eusb2-phy");
 	mdwc->disable_host_ssphy_powerdown = of_property_read_bool(node,
 				"qcom,disable-host-ssphy-powerdown");
+
+	mdwc->hibernate_skip_thaw = of_property_read_bool(node,
+					"qcom,hibernate-skip-thaw");
 
 	mdwc->dis_sending_cm_l1_quirk = of_property_read_bool(node,
 				"qcom,dis-sending-cm-l1-quirk");

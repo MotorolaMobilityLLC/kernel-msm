@@ -43,7 +43,6 @@
 #define XO_FREQ		19200000
 #define PIL_TZ_AVG_BW	UINT_MAX
 #define PIL_TZ_PEAK_BW	UINT_MAX
-#define QMP_MSG_LEN	64
 
 #define ADSP_DECRYPT_SHUTDOWN_DELAY_MS	100
 
@@ -239,16 +238,6 @@ static void adsp_minidump(struct rproc *rproc)
 
 exit:
 	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_minidump", "exit");
-}
-
-static int adsp_toggle_load_state(struct qmp *qmp, const char *name, bool enable)
-{
-	char buf[QMP_MSG_LEN] = {};
-
-	snprintf(buf, sizeof(buf),
-		 "{class: image, res: load_state, name: %s, val: %s}",
-		 name, enable ? "on" : "off");
-	return qmp_send(qmp, buf, sizeof(buf));
 }
 
 static int adsp_pds_enable(struct qcom_adsp *adsp, struct device **pds,
@@ -594,6 +583,67 @@ static void add_mpss_dsm_mem_ssr_dump(struct qcom_adsp *adsp)
 	iounmap(base);
 }
 
+static int qcom_rproc_alloc_dtb_firmware(struct qcom_adsp *adsp,
+					const char *dtb_firmware)
+{
+	const char *p;
+
+	if (!dtb_firmware)
+		return 0;
+
+	p = kstrdup_const(dtb_firmware, GFP_KERNEL);
+	if (!p)
+		return -ENOMEM;
+	adsp->dtb_fw_name = p;
+	return 0;
+}
+
+int qcom_rproc_set_dtb_firmware(struct rproc *rproc, const char *dtb_fw_name)
+{
+	struct qcom_adsp *adsp;
+	struct device *dev;
+	int ret, len;
+	char *p;
+
+	if (!rproc || !dtb_fw_name)
+		return -EINVAL;
+
+	dev = rproc->dev.parent;
+	adsp = (struct qcom_adsp *)rproc->priv;
+	ret = mutex_lock_interruptible(&rproc->lock);
+	if (ret) {
+		dev_err(dev, "can't lock rproc %s: %d\n", rproc->name, ret);
+		return -EINVAL;
+	}
+
+	if (rproc->state != RPROC_OFFLINE) {
+		dev_err(dev, "can't change firmware while running\n");
+		ret = -EBUSY;
+		goto out;
+	}
+
+	len = strcspn(dtb_fw_name, "\n");
+	if (!len) {
+		dev_err(dev, "can't provide empty string for DTB firmware name\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	p = kstrndup(dtb_fw_name, len, GFP_KERNEL);
+	if (!p) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	if (adsp->dtb_fw_name)
+		kfree_const(adsp->dtb_fw_name);
+	adsp->dtb_fw_name = p;
+
+out:
+	mutex_unlock(&rproc->lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(qcom_rproc_set_dtb_firmware);
+
 static int adsp_start(struct rproc *rproc)
 {
 	struct qcom_adsp *adsp = (struct qcom_adsp *)rproc->priv;
@@ -625,7 +675,7 @@ static int adsp_start(struct rproc *rproc)
 		goto disable_active_pds;
 
 	if (adsp->qmp) {
-		ret = adsp_toggle_load_state(adsp->qmp, adsp->qmp_name, true);
+		ret = qcom_rproc_toggle_load_state(adsp->qmp, adsp->qmp_name, true);
 		if (ret)
 			goto disable_proxy_pds;
 	}
@@ -724,7 +774,7 @@ disable_xo_clk:
 	clk_disable_unprepare(adsp->xo);
 disable_load_state:
 	if (adsp->qmp)
-		adsp_toggle_load_state(adsp->qmp, adsp->qmp_name, false);
+		qcom_rproc_toggle_load_state(adsp->qmp, adsp->qmp_name, false);
 disable_proxy_pds:
 	adsp_pds_disable(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
 disable_active_pds:
@@ -782,7 +832,7 @@ static int adsp_stop(struct rproc *rproc)
 	scm_pas_disable_bw();
 	adsp_pds_disable(adsp, adsp->active_pds, adsp->active_pd_count);
 	if (adsp->qmp)
-		adsp_toggle_load_state(adsp->qmp, adsp->qmp_name, false);
+		qcom_rproc_toggle_load_state(adsp->qmp, adsp->qmp_name, false);
 	handover = qcom_q6v5_unprepare(&adsp->q6v5);
 	if (handover)
 		qcom_pas_handover(&adsp->q6v5);
@@ -843,7 +893,7 @@ begin_attach:
 	if (ret < 0)
 		goto disable_active_pds;
 
-	ret = adsp_toggle_load_state(adsp->qmp, adsp->qmp_name, true);
+	ret = qcom_rproc_toggle_load_state(adsp->qmp, adsp->qmp_name, true);
 	if (ret)
 		goto disable_proxy_pds;
 
@@ -892,7 +942,7 @@ disable_aggre2_clk:
 disable_xo_clk:
 	clk_disable_unprepare(adsp->xo);
 disable_load_state:
-	adsp_toggle_load_state(adsp->qmp, adsp->qmp_name, false);
+	qcom_rproc_toggle_load_state(adsp->qmp, adsp->qmp_name, false);
 disable_proxy_pds:
 	adsp_pds_disable(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
 disable_active_pds:
@@ -1295,7 +1345,9 @@ static int adsp_probe(struct platform_device *pdev)
 	adsp->minidump_id = desc->minidump_id;
 	adsp->pas_id = desc->pas_id;
 	adsp->dtb_pas_id = desc->dtb_pas_id;
-	adsp->dtb_fw_name = desc->dtb_firmware_name;
+	ret = qcom_rproc_alloc_dtb_firmware(adsp, desc->dtb_firmware_name);
+	if (ret)
+		goto free_rproc;
 	adsp->has_aggre2_clk = desc->has_aggre2_clk;
 	adsp->info_name = desc->sysmon_name;
 	adsp->decrypt_shutdown = desc->decrypt_shutdown;
@@ -1313,7 +1365,7 @@ static int adsp_probe(struct platform_device *pdev)
 		ret = setup_mpss_dsm_mem(adsp);
 		if (ret) {
 			dev_err(adsp->dev, "failed to parse mpss dsm mem\n");
-			goto free_rproc;
+			goto free_dtb_firmware;
 		}
 		adsp->ssr_hyp_assign_mem = true;
 	}
@@ -1322,7 +1374,7 @@ static int adsp_probe(struct platform_device *pdev)
 
 	ret = device_init_wakeup(adsp->dev, true);
 	if (ret)
-		goto free_rproc;
+		goto free_dtb_firmware;
 
 	ret = adsp_alloc_memory_region(adsp);
 	if (ret)
@@ -1427,6 +1479,9 @@ detach_active_pds:
 	adsp_pds_detach(adsp, adsp->active_pds, adsp->active_pd_count);
 deinit_wakeup_source:
 	device_init_wakeup(adsp->dev, false);
+free_dtb_firmware:
+	if (adsp->dtb_fw_name)
+		kfree_const(adsp->dtb_fw_name);
 free_rproc:
 	device_init_wakeup(adsp->dev, false);
 	rproc_free(rproc);
@@ -1439,6 +1494,8 @@ static int adsp_remove(struct platform_device *pdev)
 	struct qcom_adsp *adsp = platform_get_drvdata(pdev);
 
 	unregister_trace_android_vh_rproc_recovery_set(android_vh_rproc_recovery_set, NULL);
+	if (adsp->dtb_fw_name)
+		kfree_const(adsp->dtb_fw_name);
 	rproc_del(adsp->rproc);
 	if (adsp->minidump_dev)
 		qcom_destroy_ramdump_device(adsp->minidump_dev);
@@ -1578,6 +1635,22 @@ static const struct adsp_data kalama_adsp_resource = {
 };
 
 static const struct adsp_data pineapple_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.dtb_firmware_name = "adsp_dtb.mdt",
+	.pas_id = 1,
+	.dtb_pas_id = 0x24,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data cliffs_adsp_resource = {
 	.crash_reason_smem = 423,
 	.firmware_name = "adsp.mdt",
 	.dtb_firmware_name = "adsp_dtb.mdt",
@@ -1788,6 +1861,23 @@ static const struct adsp_data pineapple_cdsp_resource = {
 	.ssctl_id = 0x17,
 };
 
+static const struct adsp_data cliffs_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.dtb_firmware_name = "cdsp_dtb.mdt",
+	.pas_id = 18,
+	.dtb_pas_id = 0x25,
+	.minidump_id = 7,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.hyp_assign_mem = true,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
 static const struct adsp_data khaje_cdsp_resource = {
 	.crash_reason_smem = 601,
 	.firmware_name = "cdsp.mdt",
@@ -1893,6 +1983,26 @@ static const struct adsp_data pineapple_mpss_resource = {
 	.has_aggre2_clk = false,
 	.auto_boot = false,
 	.ssr_hyp_assign_mem = true,
+	.ssr_name = "mpss",
+	.sysmon_name = "modem",
+	.qmp_name = "modem",
+	.ssctl_id = 0x12,
+	.dma_phys_below_32b = true,
+	.both_dumps = true,
+};
+
+static const struct adsp_data cliffs_mpss_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "modem.mdt",
+	.dtb_firmware_name = "modem_dtb.mdt",
+	.pas_id = 4,
+	.dtb_pas_id = 0x26,
+	.free_after_auth_reset = true,
+	.minidump_id = 3,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.hyp_assign_mem = true,
 	.ssr_name = "mpss",
 	.sysmon_name = "modem",
 	.qmp_name = "modem",
@@ -2140,7 +2250,7 @@ static const struct adsp_data monaco_auto_adsp_resource = {
 	.sysmon_name = "adsp",
 	.qmp_name = "adsp",
 	.ssctl_id = 0x14,
-	.auto_boot = true,
+	.minidump_id = 5,
 };
 
 static const struct adsp_data monaco_auto_cdsp_resource = {
@@ -2154,7 +2264,7 @@ static const struct adsp_data monaco_auto_cdsp_resource = {
 	.sysmon_name = "cdsp",
 	.qmp_name = "cdsp",
 	.ssctl_id = 0x17,
-	.auto_boot = true,
+	.minidump_id = 19,
 };
 
 static const struct adsp_data monaco_auto_gpdsp_resource = {
@@ -2168,7 +2278,19 @@ static const struct adsp_data monaco_auto_gpdsp_resource = {
 	.sysmon_name = "gpdsp0",
 	.qmp_name = "gpdsp0",
 	.ssctl_id = 0x21,
-	.auto_boot = true,
+	.minidump_id = 21,
+};
+
+static const struct adsp_data cliffs_wpss_resource = {
+	.crash_reason_smem = 626,
+	.firmware_name = "wpss.mdt",
+	.pas_id = 6,
+	.minidump_id = 4,
+	.uses_elf64 = true,
+	.ssr_name = "wpss",
+	.sysmon_name = "wpss",
+	.qmp_name = "wpss",
+	.ssctl_id = 0x19,
 };
 
 static const struct of_device_id adsp_of_match[] = {
@@ -2230,6 +2352,10 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,holi-adsp-pas", .data = &holi_adsp_resource},
 	{ .compatible = "qcom,holi-cdsp-pas", .data = &holi_cdsp_resource},
 	{ .compatible = "qcom,holi-modem-pas", .data = &holi_mpss_resource},
+	{ .compatible = "qcom,cliffs-adsp-pas", .data = &cliffs_adsp_resource},
+	{ .compatible = "qcom,cliffs-modem-pas", .data = &cliffs_mpss_resource},
+	{ .compatible = "qcom,cliffs-cdsp-pas", .data = &cliffs_cdsp_resource},
+	{ .compatible = "qcom,cliffs-wpss-pas", .data = &cliffs_wpss_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);

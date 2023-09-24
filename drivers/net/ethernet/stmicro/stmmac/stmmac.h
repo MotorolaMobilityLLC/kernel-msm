@@ -223,6 +223,7 @@ struct stmmac_priv {
 	struct mac_device_info *hw;
 	int (*hwif_quirks)(struct stmmac_priv *priv);
 	struct mutex lock;
+	struct phy_device *phydev;
 
 	struct stmmac_dma_conf dma_conf;
 
@@ -331,6 +332,9 @@ enum stmmac_state {
 	STMMAC_RESETING,
 	STMMAC_SERVICE_SCHED,
 };
+
+#define GET_MEM_PDEV_DEV (priv->plat->stmmac_emb_smmu_ctx.valid ? \
+			&priv->plat->stmmac_emb_smmu_ctx.smmu_pdev->dev : priv->device)
 
 int stmmac_mdio_unregister(struct net_device *ndev);
 int stmmac_mdio_register(struct net_device *ndev);

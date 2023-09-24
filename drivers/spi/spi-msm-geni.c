@@ -713,6 +713,10 @@ static void spi_gsi_ch_cb(struct dma_chan *ch, struct msm_gpi_cb const *cb,
 		complete_all(&mas->rx_cb);
 
 		break;
+	default:
+		SPI_LOG_ERR(mas->ipc, false, mas->dev,
+					"%s: Unsupported event: %d\n", __func__, cb->cb_event);
+		break;
 	}
 }
 
@@ -2439,6 +2443,19 @@ static int spi_geni_levm_suspend_proc(struct spi_geni_master *geni_mas, struct s
 	int ret = 0;
 
 	spi_geni_unlock_bus(spi);
+
+	if (!geni_mas->setup) {
+		/* It will take care of all GPI /DMA initialization and generic SW/HW
+		 * initializations required for a spi transfer. Gets called once per
+		 * Bootup session.
+		 */
+		ret = spi_geni_mas_setup(spi);
+		if (ret) {
+			SPI_LOG_ERR(geni_mas->ipc, true, geni_mas->dev,
+				     "%s mas_setup failed: %d\n", __func__, ret);
+			return ret;
+		}
+	}
 
 	if (geni_mas->gsi_mode) {
 		ret = spi_geni_gpi_pause_resume(geni_mas, true);
