@@ -2294,7 +2294,16 @@ int vfastrpc_internal_init_process(struct vfastrpc_file *vfl,
 	struct fastrpc_file *fl = to_fastrpc_file(vfl);
 	struct fastrpc_ioctl_init *init = &uproc->init;
 	int domain = vfl->domain;
-	struct vfastrpc_channel_ctx *chan = &vfl->apps->channel[domain];
+	struct vfastrpc_channel_ctx *chan = NULL;
+
+	VERIFY(err, domain >= 0 && domain < vfl->apps->num_channels);
+	if (err) {
+		dev_err(vfl->apps->dev, "user application %s domain is not set\n",
+				current->comm);
+		err = -EBADR;
+		goto bail;
+	}
+	chan = &vfl->apps->channel[domain];
 
 	if (chan->unsigned_support && fl->dev_minor == MINOR_NUM_DEV) {
 		/*

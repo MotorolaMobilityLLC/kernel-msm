@@ -121,6 +121,8 @@ static struct segment_info *segment_infos;
 
 static struct ddr_region *ddr_regions;
 
+static bool ddr_old_version;
+
 static int differing_segment_sizes;
 
 static int num_ddr_regions, num_segments;
@@ -1426,6 +1428,9 @@ static int mem_parse_dt(struct platform_device *pdev)
 		return PTR_ERR(mailbox.mbox);
 	}
 
+	if (of_find_property(node, "ddr-old-version", NULL))
+		ddr_old_version = true;
+
 	return 0;
 }
 
@@ -1580,8 +1585,12 @@ static int get_ddr_regions_info(void)
 	num_ddr_regions = get_num_ddr_regions(node);
 
 	if (!num_ddr_regions) {
-		pr_err("mem-offine: num_ddr_regions is %d\n", num_ddr_regions);
-		return -EINVAL;
+		if (ddr_old_version)
+			num_ddr_regions = 1;
+		else {
+			pr_err("mem-offine: num_ddr_regions is %d\n", num_ddr_regions);
+			return -EINVAL;
+		}
 	}
 
 	ddr_regions = kcalloc(num_ddr_regions, sizeof(*ddr_regions), GFP_KERNEL);
@@ -1590,39 +1599,46 @@ static int get_ddr_regions_info(void)
 
 	nr_address_cells = of_n_addr_cells(of_root);
 
-	for (i = 0; i < num_ddr_regions; i++) {
+	if (ddr_old_version) {
+		ddr_regions[0].start_address =  offlinable_region_start_addr;
+		ddr_regions[0].length = bootmem_dram_end_addr - ddr_regions[0].start_address;
+		ddr_regions[0].segments_start_offset = 0;
+		ddr_regions[0].segments_start_idx = 0;
+		ddr_regions[0].granule_size = offline_granule;
+	} else {
+		for (i = 0; i < num_ddr_regions; i++) {
 
-		snprintf(str, sizeof(str), "region%d", i);
-		prop = of_find_property(node, str, &len);
+			snprintf(str, sizeof(str), "region%d", i);
+			prop = of_find_property(node, str, &len);
+			if (!prop)
+				return -EINVAL;
 
-		if (!prop)
-			return -EINVAL;
+			num_cells = len / sizeof(__be32);
+			if (num_cells != DDR_REGIONS_NUM_CELLS)
+				return -EINVAL;
 
-		num_cells = len / sizeof(__be32);
-		if (num_cells != DDR_REGIONS_NUM_CELLS)
-			return -EINVAL;
+			pos = prop->value;
 
-		pos = prop->value;
+			val = of_read_number(pos, nr_address_cells);
+			pos += nr_address_cells;
+			ddr_regions[i].start_address = val;
 
-		val = of_read_number(pos, nr_address_cells);
-		pos += nr_address_cells;
-		ddr_regions[i].start_address = val;
+			val = of_read_number(pos, nr_address_cells);
+			pos += nr_address_cells;
+			ddr_regions[i].length = val;
 
-		val = of_read_number(pos, nr_address_cells);
-		pos += nr_address_cells;
-		ddr_regions[i].length = val;
+			val = of_read_number(pos, nr_address_cells);
+			pos += nr_address_cells;
+			ddr_regions[i].segments_start_offset = val;
 
-		val = of_read_number(pos, nr_address_cells);
-		pos += nr_address_cells;
-		ddr_regions[i].segments_start_offset = val;
+			val = of_read_number(pos, nr_address_cells);
+			pos += nr_address_cells;
+			ddr_regions[i].segments_start_idx = val;
 
-		val = of_read_number(pos, nr_address_cells);
-		pos += nr_address_cells;
-		ddr_regions[i].segments_start_idx = val;
-
-		val = of_read_number(pos, nr_address_cells);
-		pos += nr_address_cells;
-		ddr_regions[i].granule_size = val;
+			val = of_read_number(pos, nr_address_cells);
+			pos += nr_address_cells;
+			ddr_regions[i].granule_size = val;
+		}
 	}
 
 	for (i = 0; i < num_ddr_regions; i++) {

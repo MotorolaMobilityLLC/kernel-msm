@@ -113,18 +113,20 @@ static int md_smem_init_md_table(void)
 }
 
 /* Update Mini dump table in SMEM */
-static void md_add_ss_toc(const struct md_region *entry)
+static void md_add_ss_toc(const struct md_region *entry, bool pending)
 {
 	struct md_ss_region *ss_mdr;
 	struct md_region *mdr;
 	int seq = 0, reg_cnt = minidump_table.md_ss_toc->ss_region_count;
 
-	mdr = &minidump_table.entry[md_num_regions];
-	strscpy(mdr->name, entry->name, sizeof(mdr->name));
-	mdr->virt_addr = entry->virt_addr;
-	mdr->phys_addr = entry->phys_addr;
-	mdr->size = entry->size;
-	mdr->id = entry->id;
+	if (!pending) {
+		mdr = &minidump_table.entry[md_num_regions];
+		strscpy(mdr->name, entry->name, sizeof(mdr->name));
+		mdr->virt_addr = entry->virt_addr;
+		mdr->phys_addr = entry->phys_addr;
+		mdr->size = entry->size;
+		mdr->id = entry->id;
+	}
 
 	ss_mdr = &minidump_table.md_regions[reg_cnt];
 	strscpy(ss_mdr->name, entry->name, sizeof(ss_mdr->name));
@@ -154,7 +156,8 @@ static int md_smem_add_pending_entry(struct list_head *pending_list)
 		/* Add pending entry to minidump table and ss toc */
 		minidump_table.entry[region_number] =
 			pending_region->entry;
-		md_add_ss_toc(&minidump_table.entry[region_number]);
+		md_add_ss_toc(&minidump_table.entry[region_number], true);
+		md_add_elf_header(&minidump_table.entry[region_number]);
 		list_del(&pending_region->list);
 		kfree(pending_region);
 		region_number++;
@@ -282,7 +285,7 @@ static int md_smem_add_region(const struct md_region *entry, struct list_head *p
 			ret = -EEXIST;
 			goto out;
 		}
-		md_add_ss_toc(entry);
+		md_add_ss_toc(entry, false);
 		md_add_elf_header(entry);
 	} else {
 		/* Local table not initialized

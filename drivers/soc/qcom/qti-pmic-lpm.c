@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"%s: " fmt, __func__
@@ -20,8 +20,10 @@
 #define SDAM_PBS_ARG_REG	0x42
 
 #define SDAM_INT_REASON_REG	0x47
-#define APPS_LPM_EXIT_BIT	BIT(1)
-#define APPS_LPM_ENTRY_BIT	BIT(0)
+
+#define APPS_LPM_ENTRY_BIT		BIT(0)
+#define APPS_LPM_EXIT_BIT		BIT(1)
+#define APPS_NOTIFY_BUTTON_OWNER	BIT(2)
 
 #define SDAM_INT_TEST1		0xE0
 #define TEST_MODE_EN_BIT	BIT(7)
@@ -134,6 +136,39 @@ static ssize_t pmic_twm_enable_store(struct class *c,
 		return rc;
 
 	chip->twm_enable = val ? true : false;
+
+	if (chip->twm_enable) {
+
+		/*
+		 * Send APPS_NOTIFY_BUTTON_OWNER notification to Co-Proc
+		 * as soon as the user-space intiates TWM entry to optimize
+		 * Buttons response latency.
+		 */
+		val = APPS_NOTIFY_BUTTON_OWNER;
+		rc = pmic_lpm_write(gchip, SDAM_INT_REASON_REG, &val, 1);
+		if (rc < 0) {
+			pr_err("PMIC: Failed to write to pmic sdam offset %#x, rc=%d\n",
+							SDAM_INT_REASON_REG, rc);
+			return -EINVAL;
+		}
+
+		val = SDAM_INT_TEST_VAL_BIT;
+		rc = pmic_lpm_write(gchip, SDAM_INT_TEST_VAL, &val, 1);
+		if (rc < 0) {
+			pr_err("PMIC: Failed to write to pmic sdam offset %#x, rc=%d\n",
+							SDAM_INT_TEST_VAL, rc);
+			return -EINVAL;
+		}
+		val = 0;
+		rc = pmic_lpm_write(gchip, SDAM_INT_TEST_VAL, &val, 1);
+		if (rc < 0) {
+			pr_err("PMIC: Failed to write to pmic sdam offset %#x, rc=%d\n",
+					SDAM_INT_TEST_VAL, rc);
+			return -EINVAL;
+		}
+
+		pr_info("PMIC : Successfully sent Button owner notification to Co-proc\n");
+	}
 
 	return count;
 }

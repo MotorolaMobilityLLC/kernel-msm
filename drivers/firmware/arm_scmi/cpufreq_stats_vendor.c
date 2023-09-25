@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 
 #include "common.h"
 #include <linux/scmi_cpufreq_stats.h>
 
-#define SCMI_MAX_RX_SIZE	128
 #define SCMI_VENDOR_MSG_START    (3)
 
 enum scmi_cpufreq_stats_protocol_cmd {
@@ -22,7 +21,7 @@ static int scmi_get_tunable_cpufreq_stats(const struct scmi_protocol_handle *ph,
 	struct scmi_xfer *t;
 	struct cpufreq_stats_prot_attr *msg;
 
-	ret = ph->xops->xfer_get_init(ph, msg_id, sizeof(*msg), SCMI_MAX_RX_SIZE,
+	ret = ph->xops->xfer_get_init(ph, msg_id, sizeof(*msg), sizeof(*msg),
 				      &t);
 	if (ret)
 		return ret;
@@ -72,8 +71,11 @@ static struct scmi_cpufreq_stats_vendor_ops cpufreq_stats_config_ops = {
 static int scmi_cpufreq_stats_protocol_init(const struct scmi_protocol_handle *ph)
 {
 	u32 version;
+	int ret;
 
-	ph->xops->version_get(ph, &version);
+	ret = ph->xops->version_get(ph, &version);
+	if (ret)
+		return ret;
 
 	dev_dbg(ph->dev, "cpufreq stats version %d.%d\n",
 		PROTOCOL_REV_MAJOR(version), PROTOCOL_REV_MINOR(version));

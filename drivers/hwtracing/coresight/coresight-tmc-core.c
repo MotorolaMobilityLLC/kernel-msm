@@ -801,7 +801,7 @@ static void tmc_shutdown(struct amba_device *adev)
 		(drvdata->out_mode == TMC_ETR_OUT_MODE_MEM ||
 		 (drvdata->out_mode == TMC_ETR_OUT_MODE_USB &&
 		  drvdata->usb_data->usb_mode == TMC_ETR_USB_SW)))
-		tmc_etr_disable_hw(drvdata);
+		tmc_etr_disable_hw(drvdata, true);
 
 	/*
 	 * We do not care about coresight unregister here unlike remove
