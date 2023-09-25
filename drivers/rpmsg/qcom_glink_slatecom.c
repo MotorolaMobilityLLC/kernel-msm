@@ -156,6 +156,7 @@ struct slatecom_fifo_fill {
  * @ilc:	ipc logging context reference
  * @sent_read_notify:	flag to check cmd sent or not
  * @tx_counter: Tx packet Counter
+ * @rx_counter: Rx packet Counter
  */
 struct glink_slatecom {
 	struct device *dev;
@@ -193,6 +194,7 @@ struct glink_slatecom {
 	void *slatecom_handle;
 	bool water_mark_reached;
 	uint32_t tx_counter;
+	uint32_t rx_counter;
 };
 
 enum {
@@ -1997,6 +1999,10 @@ static int glink_slatecom_process_cmd(struct glink_slatecom *glink, void *rx_dat
 		param2 = le32_to_cpu(msg->param2);
 		param3 = le32_to_cpu(msg->param3);
 		param4 = le32_to_cpu(msg->param4);
+		glink->rx_counter = glink->rx_counter + 1;
+
+		GLINK_INFO(glink, "Packet count local %d remote %d\n",
+					glink->rx_counter, param3);
 
 		switch (cmd) {
 		case SLATECOM_CMD_VERSION:
