@@ -1797,8 +1797,9 @@ static int context_alloc(struct fastrpc_file *fl, uint32_t kernel,
 	}
 
 	INIT_HLIST_NODE(&ctx->hn);
-	INIT_LIST_HEAD(&ctx->asyncn);
+	INIT_HLIST_NODE(&ctx->asyncn);
 	hlist_add_fake(&ctx->hn);
+	hlist_add_fake(&ctx->asyncn);
 	ctx->fl = fl;
 	ctx->maps = (struct fastrpc_mmap **)(&ctx[1]);
 	ctx->lpra = (remote_arg_t *)(&ctx->maps[bufs]);
@@ -2009,10 +2010,12 @@ static void fastrpc_queue_completed_async_job(struct smq_invoke_ctx *ctx)
 	spin_lock_irqsave(&fl->aqlock, flags);
 	if (ctx->is_early_wakeup)
 		goto bail;
-	list_add_tail(&ctx->asyncn, &fl->clst.async_queue);
-	atomic_add(1, &fl->async_queue_job_count);
-	ctx->is_early_wakeup = true;
-	wake_up_interruptible(&fl->async_wait_queue);
+	if (!hlist_unhashed(&ctx->asyncn)) {
+		hlist_add_head(&ctx->asyncn, &fl->clst.async_queue);
+		atomic_add(1, &fl->async_queue_job_count);
+		ctx->is_early_wakeup = true;
+		wake_up_interruptible(&fl->async_wait_queue);
+	}
 bail:
 	spin_unlock_irqrestore(&fl->aqlock, flags);
 }
@@ -2271,7 +2274,7 @@ static void context_list_ctor(struct fastrpc_ctx_lst *me)
 	INIT_HLIST_HEAD(&me->interrupted);
 	INIT_HLIST_HEAD(&me->pending);
 	me->num_active_ctxs = 0;
-	INIT_LIST_HEAD(&me->async_queue);
+	INIT_HLIST_HEAD(&me->async_queue);
 	INIT_LIST_HEAD(&me->notif_queue);
 }
 
@@ -3385,10 +3388,11 @@ static int fastrpc_wait_on_async_queue(
 			struct fastrpc_file *fl)
 {
 	int err = 0, ierr = 0, interrupted = 0, perfErr = 0;
-	struct smq_invoke_ctx *ctx = NULL, *ictx = NULL, *n = NULL;
+	struct smq_invoke_ctx *ctx = NULL, *ictx = NULL;
 	unsigned long flags;
 	uint64_t *perf_counter = NULL;
 	bool isworkdone = false;
+	struct hlist_node *n;
 
 read_async_job:
 	interrupted = wait_event_interruptible(fl->async_wait_queue,
@@ -3406,8 +3410,8 @@ read_async_job:
 		goto bail;
 
 	spin_lock_irqsave(&fl->aqlock, flags);
-	list_for_each_entry_safe(ictx, n, &fl->clst.async_queue, asyncn) {
-		list_del_init(&ictx->asyncn);
+	hlist_for_each_entry_safe(ictx, n, &fl->clst.async_queue, asyncn) {
+		hlist_del_init(&ictx->asyncn);
 		atomic_sub(1, &fl->async_queue_job_count);
 		ctx = ictx;
 		break;
