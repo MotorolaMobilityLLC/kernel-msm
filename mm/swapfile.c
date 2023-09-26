@@ -1111,6 +1111,7 @@ start_over:
 			goto check_out;
 		pr_debug("scan_swap_map of si %d failed to find offset\n",
 			si->type);
+		cond_resched();
 
 		spin_lock(&swap_avail_lock);
 nextsi:
@@ -2908,6 +2909,7 @@ static struct swap_info_struct *alloc_swap_info(void)
 	int i;
 	bool skip = false;
 
+	trace_android_rvh_alloc_si(&p, &skip);
 	trace_android_vh_alloc_si(&p, &skip);
 	if (!skip)
 		p = kvzalloc(struct_size(p, avail_lists, nr_node_ids), GFP_KERNEL);

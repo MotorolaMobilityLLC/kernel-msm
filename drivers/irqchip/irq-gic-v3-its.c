@@ -1492,7 +1492,7 @@ static void its_vlpi_set_doorbell(struct irq_data *d, bool enable)
 	 *
 	 * Ideally, we'd issue a VMAPTI to set the doorbell to its LPI
 	 * value or to 1023, depending on the enable bit. But that
-	 * would be issueing a mapping for an /existing/ DevID+EventID
+	 * would be issuing a mapping for an /existing/ DevID+EventID
 	 * pair, which is UNPREDICTABLE. Instead, let's issue a VMOVI
 	 * to the /same/ vPE, using this opportunity to adjust the
 	 * doorbell. Mouahahahaha. We loves it, Precious.
@@ -1615,7 +1615,7 @@ static int its_select_cpu(struct irq_data *d,
 
 		cpu = cpumask_pick_least_loaded(d, tmpmask);
 	} else {
-		cpumask_and(tmpmask, irq_data_get_affinity_mask(d), cpu_online_mask);
+		cpumask_copy(tmpmask, aff_mask);
 
 		/* If we cannot cross sockets, limit the search to that node */
 		if ((its_dev->its->flags & ITS_FLAGS_WORKAROUND_CAVIUM_23144) &&
@@ -3002,17 +3002,11 @@ static int __init allocate_lpi_tables(void)
 	return 0;
 }
 
-static u64 its_clear_vpend_valid(void __iomem *vlpi_base, u64 clr, u64 set)
+static u64 read_vpend_dirty_clear(void __iomem *vlpi_base)
 {
 	u32 count = 1000000;	/* 1s! */
 	bool clean;
 	u64 val;
-
-	val = gicr_read_vpendbaser(vlpi_base + GICR_VPENDBASER);
-	val &= ~GICR_VPENDBASER_Valid;
-	val &= ~clr;
-	val |= set;
-	gicr_write_vpendbaser(val, vlpi_base + GICR_VPENDBASER);
 
 	do {
 		val = gicr_read_vpendbaser(vlpi_base + GICR_VPENDBASER);
@@ -3024,10 +3018,26 @@ static u64 its_clear_vpend_valid(void __iomem *vlpi_base, u64 clr, u64 set)
 		}
 	} while (!clean && count);
 
-	if (unlikely(val & GICR_VPENDBASER_Dirty)) {
+	if (unlikely(!clean))
 		pr_err_ratelimited("ITS virtual pending table not cleaning\n");
+
+	return val;
+}
+
+static u64 its_clear_vpend_valid(void __iomem *vlpi_base, u64 clr, u64 set)
+{
+	u64 val;
+
+	/* Make sure we wait until the RD is done with the initial scan */
+	val = read_vpend_dirty_clear(vlpi_base);
+	val &= ~GICR_VPENDBASER_Valid;
+	val &= ~clr;
+	val |= set;
+	gicr_write_vpendbaser(val, vlpi_base + GICR_VPENDBASER);
+
+	val = read_vpend_dirty_clear(vlpi_base);
+	if (unlikely(val & GICR_VPENDBASER_Dirty))
 		val |= GICR_VPENDBASER_PendingLast;
-	}
 
 	return val;
 }
@@ -3122,7 +3132,7 @@ static void its_cpu_init_lpis(void)
 
 		/*
 		 * It's possible for CPU to receive VLPIs before it is
-		 * sheduled as a vPE, especially for the first CPU, and the
+		 * scheduled as a vPE, especially for the first CPU, and the
 		 * VLPI with INTID larger than 2^(IDbits+1) will be considered
 		 * as out of range and dropped by GIC.
 		 * So we initialize IDbits to known value to avoid VLPI drop.
@@ -3613,7 +3623,7 @@ static void its_irq_domain_free(struct irq_domain *domain, unsigned int virq,
 
 	/*
 	 * If all interrupts have been freed, start mopping the
-	 * floor. This is conditionned on the device not being shared.
+	 * floor. This is conditioned on the device not being shared.
 	 */
 	if (!its_dev->shared &&
 	    bitmap_empty(its_dev->event_map.lpi_map,
@@ -4191,7 +4201,7 @@ static int its_sgi_set_affinity(struct irq_data *d,
 {
 	/*
 	 * There is no notion of affinity for virtual SGIs, at least
-	 * not on the host (since they can only be targetting a vPE).
+	 * not on the host (since they can only be targeting a vPE).
 	 * Tell the kernel we've done whatever it asked for.
 	 */
 	irq_data_update_effective_affinity(d, mask_val);
@@ -4236,7 +4246,7 @@ static int its_sgi_get_irqchip_state(struct irq_data *d,
 	/*
 	 * Locking galore! We can race against two different events:
 	 *
-	 * - Concurent vPE affinity change: we must make sure it cannot
+	 * - Concurrent vPE affinity change: we must make sure it cannot
 	 *   happen, or we'll talk to the wrong redistributor. This is
 	 *   identical to what happens with vLPIs.
 	 *

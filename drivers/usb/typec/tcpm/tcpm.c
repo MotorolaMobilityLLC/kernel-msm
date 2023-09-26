@@ -5354,6 +5354,10 @@ static void _tcpm_pd_vbus_vsafe0v(struct tcpm_port *port)
 	case PR_SWAP_SNK_SRC_SOURCE_ON:
 		/* Do nothing, vsafe0v is expected during transition */
 		break;
+	case SNK_ATTACH_WAIT:
+	case SNK_DEBOUNCED:
+		/*Do nothing, still waiting for VSAFE5V for connect */
+		break;
 	default:
 		if (port->pwr_role == TYPEC_SINK && port->auto_vbus_discharge_enabled)
 			tcpm_set_state(port, SNK_UNATTACHED, 0);
@@ -6516,6 +6520,10 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
 		err = PTR_ERR(port->typec_port);
 		goto out_role_sw_put;
 	}
+
+	typec_port_register_altmodes(port->typec_port,
+				     &tcpm_altmode_ops, port,
+				     port->port_altmode, ALTMODE_DISCOVERY_MAX);
 
 	mutex_lock(&port->lock);
 	tcpm_init(port);

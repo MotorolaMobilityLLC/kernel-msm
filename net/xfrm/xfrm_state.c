@@ -1556,6 +1556,7 @@ static struct xfrm_state *xfrm_state_clone(struct xfrm_state *orig,
 	x->km.seq = orig->km.seq;
 	x->replay = orig->replay;
 	x->preplay = orig->preplay;
+	x->lastused = orig->lastused;
 
 	return x;
 
@@ -2590,9 +2591,6 @@ int __xfrm_init_state(struct xfrm_state *x, bool init_replay, bool offload)
 
 		inner_mode = xfrm_get_mode(x->props.mode, x->props.family);
 		if (inner_mode == NULL)
-			goto error;
-
-		if (!(inner_mode->flags & XFRM_MODE_FLAG_TUNNEL))
 			goto error;
 
 		x->inner_mode = *inner_mode;
