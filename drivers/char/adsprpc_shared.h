@@ -894,7 +894,7 @@ struct fastrpc_channel_ctx {
 	struct mutex smd_mutex;
 	uint64_t sesscount;
 	uint64_t ssrcount;
-	int in_hib;
+	int hib_state;
 	void *handle;
 	uint64_t prevssrcount;
 	int subsystemstate;
