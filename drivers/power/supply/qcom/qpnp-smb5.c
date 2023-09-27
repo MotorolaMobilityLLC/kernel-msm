@@ -2975,6 +2975,49 @@ static int smb5_init_typec_class(struct smb5 *chip)
 	return rc;
 }
 
+static int smb5_typec_cable_check(struct smb5 *chip)
+{
+	struct smb_charger *chg = &chip->chg;
+	int rc = 0;
+	int i = 0;
+	u8 stat = 0;
+	bool usb_input_present = false;
+
+	if (chg->pd_not_supported)
+		return rc;
+
+	rc = smblib_read(chg, USBIN_BASE + INT_RT_STS_OFFSET, &stat);
+	if (rc < 0) {
+		pr_err("%s Couldn't read USBIN_RT_STS rc=%d\n", __func__, rc);
+		return rc;
+	}
+	usb_input_present = stat & USBIN_PLUGIN_RT_STS_BIT;
+
+	rc = smblib_read(chg, TYPE_C_MISC_STATUS_REG, &stat);
+	if (rc < 0) {
+		pr_err("%s Couldn't read TYPE_C_STATUS_4 rc=%d\n", __func__, rc);
+		return rc;
+	}
+	pr_info("%s usb_input_present=%d TYPE_C_STATUS_4=0x%02X\n", __func__, usb_input_present, stat);
+
+	if (usb_input_present || (stat & TYPEC_VBUS_STATUS)) {
+		for (i = 0; i < 10; i++) {
+			rc = smblib_read(chg, TYPE_C_STATE_MACHINE_STATUS_REG, &stat);
+			if (rc < 0) {
+				pr_err("%s Couldn't read TYPE_C_STATE_MACHINE_STATUS rc=%d\n", __func__, rc);
+				return rc;
+			}
+			pr_info("%s index=%d stat=0x%02X\n", __func__, i, stat);
+			if (stat & TYPEC_ATTACH_DETACH_STATE_BIT) {
+				break;
+			}
+			msleep(50);
+		}
+	}
+
+	return rc;
+}
+
 static int smb5_of_xlate(struct iio_dev *indio_dev,
 				const struct of_phandle_args *iiospec)
 {
@@ -3255,6 +3298,8 @@ static int smb5_probe(struct platform_device *pdev)
 		pr_err("Couldn't initialize typec class rc=%d\n", rc);
 		goto cleanup;
 	}
+
+	smb5_typec_cable_check(chip);
 
 	rc = smb5_determine_initial_status(chip);
 	if (rc < 0) {
