@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include <linux/bitmap.h>
 #include <linux/debugfs.h>
@@ -308,7 +308,6 @@ static int pmic_arb_wait_for_done(struct spmi_controller *ctrl,
 			if (status & PMIC_ARB_STATUS_FAILURE) {
 				dev_err(&ctrl->dev, "%s: %#x %#x: transaction failed (%#x)\n",
 					__func__, sid, addr, status);
-				WARN_ON(1);
 				return -EIO;
 			}
 
