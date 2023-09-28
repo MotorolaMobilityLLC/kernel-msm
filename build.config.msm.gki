@@ -65,3 +65,4 @@ function build_defconfig_fragments() {
 	fi
 }
 build_defconfig_fragments
+. ${KERNEL_DIR}/build.config.moto

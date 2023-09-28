@@ -1,0 +1,1 @@
+apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/ext_config/moto_fragment.config
