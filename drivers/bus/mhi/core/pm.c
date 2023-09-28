@@ -865,6 +865,9 @@ int mhi_pm_suspend(struct mhi_controller *mhi_cntrl)
 	mhi_cntrl->wake_get(mhi_cntrl, false);
 	read_unlock_bh(&mhi_cntrl->pm_lock);
 
+	/* finish reg writes */
+	mhi_force_reg_write(mhi_cntrl);
+
 	ret = wait_event_timeout(mhi_cntrl->state_event,
 				 mhi_cntrl->dev_state == MHI_STATE_M0 ||
 				 mhi_cntrl->dev_state == MHI_STATE_M1 ||
@@ -880,6 +883,9 @@ int mhi_pm_suspend(struct mhi_controller *mhi_cntrl)
 			"Could not enter M0/M1 state");
 		return -EIO;
 	}
+
+	/* finish any reg writes before setting M3 */
+	mhi_force_reg_write(mhi_cntrl);
 
 	write_lock_irq(&mhi_cntrl->pm_lock);
 
@@ -905,8 +911,6 @@ int mhi_pm_suspend(struct mhi_controller *mhi_cntrl)
 	write_unlock_irq(&mhi_cntrl->pm_lock);
 	MHI_VERB(dev, "Waiting for M3 completion\n");
 
-	/* finish reg writes before D3 cold */
-	mhi_force_reg_write(mhi_cntrl);
 
 	ret = wait_event_timeout(mhi_cntrl->state_event,
 				 mhi_cntrl->dev_state == MHI_STATE_M3 ||

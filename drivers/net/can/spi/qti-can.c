@@ -87,6 +87,7 @@ struct qti_can {
 	bool univ_acc_filter_flag;
 	bool probe_query_resp;
 	bool time_sync_from_soc_to_mcu;
+	bool wake_irq_en;
 };
 
 struct qti_can_netdev_privdata {
@@ -298,7 +299,14 @@ static irqreturn_t qti_can_irq(int irq, void *priv)
 {
 	struct qti_can *priv_data = priv;
 
-	qti_can_rx_message(priv_data);
+	if (priv_data  && !priv_data->wake_irq_en) {
+		qti_can_rx_message(priv_data);
+		if (priv_data->wake_irq_en) {
+			dev_dbg(&priv_data->spidev->dev,
+				"qti_can wake_irq Invoked upon Resume\r\n");
+		}
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -653,8 +661,13 @@ static int qti_can_process_response(struct qti_can *priv_data,
 
 exit:
 	if (resp->cmd == priv_data->wait_cmd) {
-		priv_data->probe_query_resp = true;
-		priv_data->cmd_result = 0;
+		if (resp->cmd == CMD_GET_FW_VERSION) {
+			priv_data->probe_query_resp = true;
+			priv_data->cmd_result = 0;
+		} else {
+			/* This is to hold return value for IOCTL query */
+			priv_data->cmd_result = ret;
+		}
 		complete(&priv_data->response_completion);
 	}
 	return ret;
@@ -1989,12 +2002,13 @@ static int qti_can_probe(struct spi_device *spi)
 		dev_info(&priv_data->spidev->dev, "register_pm_notifier_error\n");
 
 	query_err = qti_can_query_probe(priv_data);
-
 	if (query_err != 0) {
 		dev_err(&priv_data->spidev->dev, "QTI CAN probe failed\n");
 		err = -ENODEV;
 		goto free_irq;
 	}
+	/* Initializing wake_irq_en with false to recive SPI data on IRQ */
+	priv_data->wake_irq_en = false;
 	return 0;
 
 free_irq:
@@ -2158,8 +2172,10 @@ static int qti_can_suspend(struct device *dev)
 
 	if (spi) {
 		priv_data = spi_get_drvdata(spi);
-		if (priv_data && priv_data->time_sync_from_soc_to_mcu)
+		if (priv_data && priv_data->time_sync_from_soc_to_mcu) {
 			enable_irq_wake(spi->irq);
+			priv_data->wake_irq_en = true;
+		}
 	} else {
 		ret = -1;
 	}
@@ -2174,10 +2190,10 @@ static int qti_can_resume(struct device *dev)
 
 	if (spi) {
 		priv_data = spi_get_drvdata(spi);
-
 		if (priv_data && priv_data->time_sync_from_soc_to_mcu) {
 			disable_irq_wake(spi->irq);
 			qti_can_rx_message(priv_data);
+			priv_data->wake_irq_en = false;
 		}
 	} else {
 		ret = -1;

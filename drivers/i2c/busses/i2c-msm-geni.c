@@ -27,6 +27,9 @@
 #include <linux/slab.h>
 #include <soc/qcom/boot_stats.h>
 
+#define SE_GENI_TEST_BUS_CTRL	0x44
+#define SE_NUM_FOR_TEST_BUS	5
+
 #define SE_GENI_CFG_REG68		(0x210)
 #define SE_I2C_TX_TRANS_LEN		(0x26C)
 #define SE_I2C_RX_TRANS_LEN		(0x270)
@@ -190,6 +193,7 @@ struct geni_i2c_dev {
 	bool bus_recovery_enable; //To be enabled by client if needed
 	atomic_t is_xfer_in_progress; /* Used to maintain xfer inprogress status */
 	bool is_deep_sleep; /* For deep sleep restore the config similar to the probe. */
+	bool i2c_test_dev; /* Set this DT flag to enable test bus dump for an SE */
 };
 
 static struct geni_i2c_dev *gi2c_dev_dbg[MAX_SE];
@@ -364,6 +368,21 @@ static inline void qcom_geni_i2c_calc_timeout(struct geni_i2c_dev *gi2c)
 	gi2c->xfer_timeout = usecs_to_jiffies(xfer_max_usec);
 }
 
+/*
+ * geni_se_select_test_bus: Selects the test bus as required
+ *
+ * @gi2c_dev: Geni I2C device handle
+ * @test_bus_num: Test bus number to select (1 to 16)
+ *
+ * Return: None
+ */
+static void geni_se_select_test_bus(struct geni_i2c_dev *gi2c, u8 test_bus_num)
+{
+	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
+		    "%s: test_bus:%d\n", __func__, test_bus_num);
+	writel_relaxed(test_bus_num, gi2c->base + SE_GENI_TEST_BUS_CTRL);
+}
+
 static void geni_i2c_err(struct geni_i2c_dev *gi2c, int err)
 {
 	if (err == I2C_DATA_NACK || err == I2C_ADDR_NACK
@@ -409,6 +428,33 @@ static void do_reg68_war_for_rtl_se(struct geni_i2c_dev *gi2c)
 	}
 }
 
+/*
+ * geni_i2c_test_bus_dump(): Dumps or reads test bus for selected SE test bus.
+ *
+ * @gi2c_i2c_dev: Handle to SE device
+ * @se_num: SE number, which start from 0.
+ *
+ * Return: None
+ *
+ * Note: This function has added extra test buses for refrences.
+ */
+static void geni_i2c_test_bus_dump(struct geni_i2c_dev *gi2c, u8 se_num)
+{
+	/* Select test bus number and test bus, then read test bus.*/
+
+	/* geni_m_comp_sig_test_bus */
+	geni_se_select_test_bus(gi2c, 8);
+	test_bus_select_per_qupv3(gi2c->wrapper_dev, se_num, gi2c->ipcl);
+	test_bus_read_per_qupv3(gi2c->wrapper_dev, gi2c->ipcl);
+
+	/* geni_m_branch_cond_1_test_bus */
+	geni_se_select_test_bus(gi2c, 5);
+	test_bus_select_per_qupv3(gi2c->wrapper_dev, se_num, gi2c->ipcl);
+	test_bus_read_per_qupv3(gi2c->wrapper_dev, gi2c->ipcl);
+
+	/* Can Add more here based on debug ask. */
+}
+
 /**
  * geni_i2c_stop_with_cancel(): stops GENI SE with cancel command.
  * @gi2c: I2C dev handle
@@ -422,6 +468,12 @@ static int geni_i2c_stop_with_cancel(struct geni_i2c_dev *gi2c)
 	int timeout = 0;
 
 	reinit_completion(&gi2c->m_cancel_cmd);
+
+	/* Issue point for e.g.: dump test bus/read test bus */
+	if (gi2c->i2c_test_dev)
+		/* For se4, its 5 as SE num starts from 0 */
+		geni_i2c_test_bus_dump(gi2c, SE_NUM_FOR_TEST_BUS);
+
 	geni_se_cancel_m_cmd(&gi2c->i2c_rsc);
 	timeout = wait_for_completion_timeout(&gi2c->m_cancel_cmd, HZ);
 	if (!timeout) {
@@ -1812,6 +1864,12 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,leica-used-i2c"))
 		gi2c->skip_bw_vote = true;
 
+	gi2c->i2c_test_dev = false;
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,i2c-test-dev")) {
+		gi2c->i2c_test_dev = true;
+		dev_info(&pdev->dev, "%s: This is I2C device under test\n", __func__);
+	}
+
 	gi2c->i2c_rsc.dev = dev;
 	gi2c->i2c_rsc.wrapper = dev_get_drvdata(dev->parent);
 	gi2c->i2c_rsc.base = gi2c->base;
@@ -1974,7 +2032,15 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	gi2c->ipcl = ipc_log_context_create(2, dev_name(gi2c->dev), 0);
+
 	atomic_set(&gi2c->is_xfer_in_progress, 0);
+
+	if (gi2c->i2c_test_dev) {
+		/* configure Test bus to dump test bus later, only once */
+		test_bus_enable_per_qupv3(gi2c->wrapper_dev, gi2c->ipcl);
+	}
+
 	snprintf(boot_marker, sizeof(boot_marker),
 				"M - DRIVER GENI_I2C_%d Ready", gi2c->adap.nr);
 	place_marker(boot_marker);
@@ -2172,13 +2238,6 @@ static int geni_i2c_runtime_resume(struct device *dev)
 {
 	int ret = 0;
 	struct geni_i2c_dev *gi2c = dev_get_drvdata(dev);
-
-	if (!gi2c->ipcl) {
-		char ipc_name[I2C_NAME_SIZE];
-
-		snprintf(ipc_name, I2C_NAME_SIZE, "%s", dev_name(gi2c->dev));
-		gi2c->ipcl = ipc_log_context_create(2, ipc_name, 0);
-	}
 
 	if (!gi2c->is_le_vm) {
 		if (gi2c->skip_bw_vote)

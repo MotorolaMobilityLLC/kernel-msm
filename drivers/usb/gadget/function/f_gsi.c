@@ -645,6 +645,7 @@ static int ipa_connect_channels(struct gsi_data_port *d_port)
 				sizeof(ipa_out_channel_out_params));
 
 	gsi->ipa_ready_timeout = false;
+	gsi->d_port.ipa_ready = false;
 	ret = ipa_register_ipa_ready_cb(ipa_ready_callback, gsi);
 	if (!ret) {
 		log_event_info("%s: ipa is not ready", __func__);
@@ -657,8 +658,10 @@ static int ipa_connect_channels(struct gsi_data_port *d_port)
 			ret = -ETIMEDOUT;
 			goto end_xfer_ep_out;
 		}
-		gsi->d_port.ipa_ready = false;
 	}
+
+	if (!gsi->d_port.ipa_ready)
+		goto end_xfer_ep_out;
 
 	log_event_dbg("%s: Calling xdci_connect", __func__);
 	ret = ipa_usb_xdci_connect(out_params, in_params,
@@ -3176,6 +3179,7 @@ static int gsi_bind(struct usb_configuration *c, struct usb_function *f)
 		goto dereg_rndis;
 
 	gsi->ipa_ready_timeout = false;
+	gsi->d_port.ipa_ready = false;
 	status = ipa_register_ipa_ready_cb(ipa_ready_callback, gsi);
 	if (!status) {
 		log_event_info("%s: ipa is not ready", __func__);

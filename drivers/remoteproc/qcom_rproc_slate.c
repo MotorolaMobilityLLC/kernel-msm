@@ -645,9 +645,7 @@ static void slate_coredump(struct rproc *rproc)
 	int ret = 0;
 
 	pr_err("Setup for Coredump.\n");
-	rproc_coredump_cleanup(rproc);
 
-	slate_tz_req.tzapp_slate_cmd = SLATE_RPROC_DUMPINFO;
 	if (!slate_data->qseecom_handle) {
 		ret = load_slate_tzapp(slate_data);
 		if (ret) {
@@ -658,6 +656,39 @@ static void slate_coredump(struct rproc *rproc)
 		}
 	}
 
+	/*
+	 * This check is added here to make slate dump collection
+	 * decision in RTOS/TWM mode exit. Only way for kernel to know slate state
+	 * info(crashed/running)in RTOS/TWM exit is by reading S2A irq line.
+	 * When S2A is pulled LOW, it is interpreted as slate crashed state and
+	 * slate dump needs to be collected. Once dumps are collected TZ will
+	 * automatically send SLATE_RESET CMD.
+	 * When S2A is pulled HIGH, it is interpreted as slate running state and
+	 * dump should not be collected. At this point it is necessary
+	 * to send SLATE_RESET CMD to bring slate out of RTOS slate.
+	 * This check does not disturb SSR/system dump collection.
+	 */
+
+	if (is_twm_exit()) {
+		if (!gpio_get_value(slate_data->gpios[0])) {
+			pr_err("TWM Exit: Collect Dump, slate is CRASHED..!!\n");
+			/* We are assuming that Slate TZapp has started
+			 * subsystem_ramdump service.
+			 * Introducing delay here for subsystem_ramdump
+			 * service to start.
+			 */
+			msleep(5000);
+		} else {
+			pr_debug("TWM Exit: Skip dump collection, slate is RUNNING ..!!\n");
+			/* Send RESET CMD to bring slate out of RTOS state */
+			slate_tz_req.tzapp_slate_cmd = SLATE_RPROC_RESET;
+			ret = slate_tzapp_comm(slate_data, &slate_tz_req);
+			return;
+		}
+	}
+	rproc_coredump_cleanup(rproc);
+
+	slate_tz_req.tzapp_slate_cmd = SLATE_RPROC_DUMPINFO;
 	ret = slate_tzapp_comm(slate_data, &slate_tz_req);
 	dump_info = slate_data->cmd_status;
 

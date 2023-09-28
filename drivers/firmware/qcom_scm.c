@@ -2303,6 +2303,120 @@ int qcom_scm_qdss_invoke(phys_addr_t paddr, size_t size, u64 *out)
 }
 EXPORT_SYMBOL(qcom_scm_qdss_invoke);
 
+int qcom_scm_camera_tz_get_status(uint32_t status_mask,
+				uint32_t *result)
+{
+	unsigned int ret;
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_CAMERA,
+		.cmd = QCOM_SCM_CAMERA_TZ_STATUS,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.arginfo = SCM_ARGS(0),
+	};
+	struct qcom_scm_res res;
+
+	ret = qcom_scm_call(__scm->dev, &desc, &res);
+
+	if (result)
+		*result = res.result[0];
+
+	return ret;
+}
+EXPORT_SYMBOL(qcom_scm_camera_tz_get_status);
+
+int qcom_scm_camera_tz_reg_read(uint32_t region, uint32_t offset,
+				uint32_t *data)
+{
+	unsigned int ret;
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_CAMERA,
+		.cmd = QCOM_SCM_CAMERA_REG_READ,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.args[0] = region,
+		.args[1] = offset,
+		.arginfo = QCOM_SCM_ARGS(2),
+	};
+	struct qcom_scm_res res;
+
+	ret = qcom_scm_call(__scm->dev, &desc, &res);
+
+	if (data)
+		*data = res.result[0];
+
+	return ret;
+}
+EXPORT_SYMBOL(qcom_scm_camera_tz_reg_read);
+
+int qcom_scm_camera_tz_reg_write(uint32_t region, uint32_t offset,
+				uint32_t data)
+{
+	unsigned int ret;
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_CAMERA,
+		.cmd = QCOM_SCM_CAMERA_REG_WRITE,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.args[0] = region,
+		.args[1] = offset,
+		.args[2] = data,
+		.arginfo = QCOM_SCM_ARGS(3),
+	};
+	struct qcom_scm_res res;
+
+	ret = qcom_scm_call(__scm->dev, &desc, &res);
+
+	return ret;
+}
+EXPORT_SYMBOL(qcom_scm_camera_tz_reg_write);
+
+int qcom_scm_camera_tz_reg_write_bulk(uint32_t region,
+			uint32_t num_registers, void *offsets,
+			void *data, uint32_t size)
+{
+	unsigned int ret;
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_CAMERA,
+		.cmd = QCOM_SCM_CAMERA_REG_WRITE_BULK,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.args[0] = region,
+		.args[1] = num_registers,
+		.args[2] = SCM_BUFFER_PHYS(offsets),
+		.args[3] = size,
+		.args[4] = SCM_BUFFER_PHYS(data),
+		.args[5] = size,
+		.arginfo = QCOM_SCM_ARGS(6,
+			SCM_VAL, SCM_VAL, SCM_RO, SCM_VAL, SCM_RO, SCM_VAL),
+	};
+	struct qcom_scm_res res;
+
+	ret = qcom_scm_call(__scm->dev, &desc, &res);
+
+	return ret;
+}
+EXPORT_SYMBOL(qcom_scm_camera_tz_reg_write_bulk);
+
+int qcom_scm_camera_tz_reset_hw_block(uint32_t status_mask,
+			uint32_t region, uint32_t *status)
+{
+	unsigned int ret;
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_CAMERA,
+		.cmd = QCOM_SCM_CAMERA_RESET_HW_BLOCK,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.args[0] = region,
+		.args[1] = status_mask,
+		.arginfo = QCOM_SCM_ARGS(2),
+	};
+	struct qcom_scm_res res;
+
+	ret = qcom_scm_call(__scm->dev, &desc, &res);
+
+	if (status)
+		*status = res.result[0];
+
+	return ret;
+}
+EXPORT_SYMBOL(qcom_scm_camera_tz_reset_hw_block);
+
 int qcom_scm_camera_protect_all(uint32_t protect, uint32_t param)
 {
 	struct qcom_scm_desc desc = {
@@ -2332,6 +2446,36 @@ int qcom_scm_camera_protect_phy_lanes(bool protect, u64 regmask)
 	return qcom_scm_call(__scm->dev, &desc, NULL);
 }
 EXPORT_SYMBOL(qcom_scm_camera_protect_phy_lanes);
+
+int qcom_scm_camera_send_topology(uint32_t phy_sel, uint32_t topology)
+{
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_CAMERA,
+		.cmd = QCOM_SCM_CAMERA_TOPOLOGY,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.args[0] = phy_sel,
+		.args[1] = topology,
+		.arginfo = QCOM_SCM_ARGS(2),
+	};
+
+	return qcom_scm_call(__scm->dev, &desc, NULL);
+}
+EXPORT_SYMBOL(qcom_scm_camera_send_topology);
+
+int qcom_scm_camera_reset_pipeLine(uint32_t phy_sel, uint32_t stream)
+{
+	struct qcom_scm_desc desc = {
+		.svc = QCOM_SCM_SVC_CAMERA,
+		.cmd = QCOM_SCM_CAMERA_STREAM_NOTIF,
+		.owner = ARM_SMCCC_OWNER_SIP,
+		.args[0] = phy_sel,
+		.args[1] = stream,
+		.arginfo = QCOM_SCM_ARGS(2),
+	};
+
+	return qcom_scm_call(__scm->dev, &desc, NULL);
+}
+EXPORT_SYMBOL(qcom_scm_camera_reset_pipeLine);
 
 int qcom_scm_tsens_reinit(int *tsens_ret)
 {
@@ -2901,6 +3045,13 @@ int  scm_mem_protection_init_do(void)
 	return resp;
 }
 
+static bool is_dload_enabled(void)
+{
+	return ((IS_ENABLED(CONFIG_POWER_RESET_QCOM_DOWNLOAD_MODE) ||
+	    IS_ENABLED(CONFIG_POWER_RESET_MSM) ||
+	    download_mode));
+}
+
 static int qcom_scm_probe(struct platform_device *pdev)
 {
 	struct qcom_scm *scm;
@@ -2911,13 +3062,20 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	if (!scm)
 		return -ENOMEM;
 
-	ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
-	if (ret < 0)
-		return ret;
+	/*
+	 * For some target checking _qcom_scm_is_call_available on
+	 * QCOM_SCM_BOOT_SET_DLOAD_MODE just hangs, so, to be on safer
+	 * side, check only if the configs are enabled.
+	 */
+	if (is_dload_enabled()) {
+		ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
+		if (ret < 0)
+			return ret;
 
-	if (!scm->dload_mode_addr) {
-		scm->legacy_dload_method = __qcom_scm_is_call_available(&pdev->dev,
-				QCOM_SCM_SVC_BOOT, QCOM_SCM_BOOT_SET_DLOAD_MODE);
+		if (!scm->dload_mode_addr) {
+			scm->legacy_dload_method = __qcom_scm_is_call_available(&pdev->dev,
+					QCOM_SCM_SVC_BOOT, QCOM_SCM_BOOT_SET_DLOAD_MODE);
+		}
 	}
 
 	clks = (unsigned long)of_device_get_match_data(&pdev->dev);

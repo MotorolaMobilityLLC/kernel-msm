@@ -221,12 +221,10 @@ static void  print_ddr_stats(struct seq_file *s, int *count,
 
 	u32 cp_idx = 0;
 	u32 name;
-	u64 duration = 0;
+	u32 duration = 0;
 
-	if (accumulated_duration) {
-		duration = data->duration * 100;
-		do_div(duration, accumulated_duration);
-	}
+	if (accumulated_duration)
+		duration = (data->duration * 100) / accumulated_duration;
 
 	name = (data->name >> 8) & 0xFF;
 	if (name == 0x0) {
