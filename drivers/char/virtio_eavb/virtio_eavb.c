@@ -60,7 +60,7 @@ do { \
 do { \
 	static int times; \
 	if (times < 1) { \
-		place_marker(log); \
+		update_marker(log); \
 		times++; \
 	} \
 } while (0)
@@ -1586,7 +1586,7 @@ static int virtio_eavb_probe(struct virtio_device *vdev)
 			priv->debugfs_root, NULL,
 			&fops_debugfs_timeout);
 #endif
-	place_marker("M - DRIVER EAVB FE Ready");
+	update_marker("M - DRIVER EAVB FE Ready");
 	return 0;
 
 alloc_rxbufs_fail:
@@ -1649,7 +1649,7 @@ static struct virtio_driver virtio_eavb_driver = {
 
 static int __init virtio_eavb_init(void)
 {
-	place_marker("M - DRIVER EAVB FE Init");
+	update_marker("M - DRIVER EAVB FE Init");
 	return register_virtio_driver(&virtio_eavb_driver);
 }
 
