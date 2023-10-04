@@ -15,6 +15,7 @@
 
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_alloc_rqs);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_rq_ctx_init);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_account_io_done);
 
 /*
  * For type visibility
