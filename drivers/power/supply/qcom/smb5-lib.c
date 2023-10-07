@@ -2654,6 +2654,10 @@ int smblib_run_aicl(struct smb_charger *chg, int type)
 	if (stat & USBIN_SUSPEND_STS_BIT)
 		return rc;
 
+	/* Neither usbin nor dcin exists so skip re-running AICL */
+	if (!(stat & (USE_USBIN_BIT | USE_DCIN_BIT)))
+		return rc;
+
 	smblib_dbg(chg, PR_MISC, "re-running AICL\n");
 
 	stat = (type == RERUN_AICL) ? RERUN_AICL_BIT : RESTART_AICL_BIT;
