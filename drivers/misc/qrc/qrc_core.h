@@ -106,6 +106,7 @@ struct qrc_dev {
  * @tx_head: String head in XMIT queue.
  * @tx_left: Bytes left in XMIT queue.
  * @tx_buffer: XMIT buffer.
+ * @is_open: Flag shows if the device is open.
  * This structure is used to define robotic controller uart device.
  */
 struct qrcuart {
@@ -117,6 +118,7 @@ struct qrcuart {
 	unsigned char *tx_head;
 	int tx_left;
 	unsigned char *tx_buffer;
+	bool is_open;
 };
 
 struct qrcspi {
