@@ -1639,13 +1639,13 @@ static long f_cdev_ioctl(struct file *fp, unsigned int cmd,
 		break;
 	case TIOCMGET:
 		pr_debug("TIOCMGET on port(%s)%pK\n", port->name, port);
-		spin_lock_irqsave(&port->port_lock, flags);
 		ret = f_cdev_tiocmget(port);
 		if (ret >= 0) {
 			ret = put_user(ret, (uint32_t *)arg);
+			spin_lock_irqsave(&port->port_lock, flags);
 			port->cbits_updated = false;
+			spin_unlock_irqrestore(&port->port_lock, flags);
 		}
-		spin_unlock_irqrestore(&port->port_lock, flags);
 		break;
 	default:
 		pr_err("Received cmd:%d not supported\n", cmd);

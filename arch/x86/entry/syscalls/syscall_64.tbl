@@ -357,7 +357,11 @@
 433	common	fspick			__x64_sys_fspick
 434	common	pidfd_open		__x64_sys_pidfd_open
 435	common	clone3			__x64_sys_clone3/ptregs
-436	common	process_madvise		sys_process_madvise
+# 436 reserved for close_range
+# 437 reserved for openat2
+# 438 reserved for pidfd_getfd
+# 439 reserved for faccessat2
+440	common	process_madvise		sys_process_madvise
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact
