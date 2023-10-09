@@ -1805,7 +1805,6 @@ err2:
 err1:
 	pm_runtime_allow(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
-
 	clk_bulk_disable_unprepare(dwc->num_clks, dwc->clks);
 assert_reset:
 	reset_control_assert(dwc->reset);
