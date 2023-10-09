@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -264,7 +264,12 @@ static int gh_vcpu_release(struct inode *inode, struct file *filp)
 {
 	struct gh_vcpu *vcpu = filp->private_data;
 
-	gh_put_vm(vcpu->vm);
+	/* need to create workqueue if critical vm */
+	if (vcpu->vm->keep_running)
+		gh_vcpu_create_wq(vcpu->vm->vmid, vcpu->vcpu_id);
+	else
+		gh_put_vm(vcpu->vm);
+
 	return 0;
 }
 
@@ -633,7 +638,8 @@ static int gh_vm_release(struct inode *inode, struct file *filp)
 {
 	struct gh_vm *vm = filp->private_data;
 
-	gh_put_vm(vm);
+	if (!vm->keep_running)
+		gh_put_vm(vm);
 	return 0;
 }
 
