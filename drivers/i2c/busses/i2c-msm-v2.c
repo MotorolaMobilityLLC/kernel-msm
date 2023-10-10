@@ -1817,12 +1817,12 @@ static irqreturn_t i2c_msm_qup_isr(int irq, void *devid)
 			 * State reset
 			 */
 			wmb();
-			usleep_range(100, 101);
+			udelay(100);
 			state = readl_relaxed(ctrl->rsrcs.base + QUP_STATE);
 			while (!(state & QUP_I2C_FLUSH)) {
 				state =
 				readl_relaxed(ctrl->rsrcs.base + QUP_STATE);
-				usleep_range(50, 51);
+				udelay(50);
 				if (++temp_cnt >= 500)
 					break;
 			}
