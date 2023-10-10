@@ -1147,6 +1147,7 @@
   __traceiter_android_vh_mmc_update_partition_status
   __traceiter_android_vh_modify_thermal_request_freq
   __traceiter_android_vh_modify_thermal_target_freq
+  __traceiter_android_vh_modify_thermal_throttle_update
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_set_wake_flags
   __traceiter_android_vh_thermal_power_cap
@@ -1242,6 +1243,7 @@
   __tracepoint_android_vh_mmc_update_partition_status
   __tracepoint_android_vh_modify_thermal_request_freq
   __tracepoint_android_vh_modify_thermal_target_freq
+  __tracepoint_android_vh_modify_thermal_throttle_update
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_set_wake_flags
   __tracepoint_android_vh_thermal_power_cap
@@ -2311,6 +2313,10 @@
   sdio_writeb
   sdio_writel
   sdio_writesb
+
+# required by sensorhub.ko
+  devm_iio_kfifo_buffer_setup_ext
+  iio_kfifo_free
 
 # required by seth.ko
   napi_complete_done

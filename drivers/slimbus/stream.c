@@ -49,6 +49,42 @@ static const struct segdist_code {
 	{768,	2,	0xc02,	 0x001},
 };
 
+/*
+ * Presence Rate table for all Natural Frequencies
+ * The Presence rate of a constant bitrate stream is mean flow rate of the
+ * stream expressed in occupied Segments of that Data Channel per second.
+ * Table 66 from SLIMbus 2.0 Specs
+ *
+ * Index of the table corresponds to Presence rate code for the respective rate
+ * in the table.
+ */
+static const int slim_presence_rate_table[] = {
+	0, /* Not Indicated */
+	12000,
+	24000,
+	48000,
+	96000,
+	192000,
+	384000,
+	768000,
+	0, /* Reserved */
+	11025,
+	22050,
+	44100,
+	88200,
+	176400,
+	352800,
+	705600,
+	4000,
+	8000,
+	16000,
+	32000,
+	64000,
+	128000,
+	256000,
+	512000,
+};
+
 /**
  * slim_stream_allocate() - Allocate a new SLIMbus Stream
  * @dev:Slim device to be associated with

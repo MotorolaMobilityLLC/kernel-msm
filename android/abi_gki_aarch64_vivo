@@ -335,6 +335,7 @@
   del_gendisk
   del_timer
   del_timer_sync
+  dentry_path_raw
   destroy_workqueue
   dev_alloc_name
   dev_coredumpm
