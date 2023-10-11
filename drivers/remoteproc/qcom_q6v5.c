@@ -21,6 +21,9 @@
 
 #define Q6V5_PANIC_DELAY_MS	200
 
+static char qcom_ssr_reason[256];
+static char *ssr_reason = qcom_ssr_reason;
+module_param(ssr_reason, charp, S_IRUGO);
 /**
  * qcom_q6v5_prepare() - reinitialize the qcom_q6v5 context before start
  * @q6v5:	reference to qcom_q6v5 context to be reinitialized
@@ -120,6 +123,8 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 		q6v5->rproc->recovery_disabled ?
 		"disabled and lead to device crash" :
 		"enabled and kick reovery process");
+	memset(qcom_ssr_reason, 0, sizeof(qcom_ssr_reason));
+	strlcpy(qcom_ssr_reason, msg, min((size_t)len, (size_t)sizeof(qcom_ssr_reason)));
 
 	if (q6v5->ssr_subdev)
 		qcom_notify_early_ssr_clients(q6v5->ssr_subdev);
@@ -150,6 +155,9 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 	} else {
 		dev_err(q6v5->dev, "fatal error without message\n");
 	}
+
+	memset(qcom_ssr_reason, 0, sizeof(qcom_ssr_reason));
+	strlcpy(qcom_ssr_reason, msg, min((size_t)len, (size_t)sizeof(qcom_ssr_reason)));
 
 	q6v5->running = false;
 	dev_err(q6v5->dev, "rproc recovery state: %s\n",
