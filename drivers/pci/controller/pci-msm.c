@@ -8929,7 +8929,7 @@ static void msm_pcie_drv_connect_worker(struct work_struct *work)
 	int i;
 
 	/* rpmsg probe hasn't happened yet */
-	if (!pcie_drv->rpdev || !pcie_dev->enumerated)
+	if (!pcie_drv->rpdev)
 		return;
 
 	pcie_itr = pcie_dev;
