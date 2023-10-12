@@ -287,7 +287,7 @@ static void context_list_ctor(struct fastrpc_ctx_lst *me)
 {
 	INIT_HLIST_HEAD(&me->interrupted);
 	INIT_HLIST_HEAD(&me->pending);
-	INIT_LIST_HEAD(&me->async_queue);
+	INIT_HLIST_HEAD(&me->async_queue);
 }
 
 struct vfastrpc_file *vfastrpc_file_alloc(void)
@@ -628,7 +628,8 @@ static int context_alloc(struct vfastrpc_file *vfl, s64 seq_num,
 
 	INIT_HLIST_NODE(&ctx->hn);
 	hlist_add_fake(&ctx->hn);
-	INIT_LIST_HEAD(&ctx->asyncn);
+	INIT_HLIST_NODE(&ctx->asyncn);
+	hlist_add_fake(&ctx->asyncn);
 	ctx->vfl = vfl;
 	ctx->maps = (struct vfastrpc_mmap **)(&ctx[1]);
 	ctx->lpra = (remote_arg_t *)(&ctx->maps[bufs]);
@@ -1179,9 +1180,11 @@ void vfastrpc_queue_completed_async_job(struct vfastrpc_invoke_ctx *ctx)
 	unsigned long flags;
 
 	spin_lock_irqsave(&fl->aqlock, flags);
-	list_add_tail(&ctx->asyncn, &fl->clst.async_queue);
-	atomic_add(1, &fl->async_queue_job_count);
-	wake_up_interruptible(&fl->async_wait_queue);
+	if (!hlist_unhashed(&ctx->asyncn)) {
+		hlist_add_head(&ctx->asyncn, &fl->clst.async_queue);
+		atomic_add(1, &fl->async_queue_job_count);
+		wake_up_interruptible(&fl->async_wait_queue);
+	}
 	spin_unlock_irqrestore(&fl->aqlock, flags);
 }
 
@@ -1287,11 +1290,12 @@ static int vfastrpc_wait_on_async_queue(
 			struct vfastrpc_file *vfl)
 {
 	int err = 0, ierr = 0, interrupted = 0;
-	struct vfastrpc_invoke_ctx *ctx = NULL, *ictx = NULL, *n = NULL;
+	struct vfastrpc_invoke_ctx *ctx = NULL, *ictx = NULL;
 	struct fastrpc_file *fl = to_fastrpc_file(vfl);
 	struct virt_invoke_msg *rsp = NULL;
 	unsigned long flags;
 	uint64_t *perf_counter = NULL;
+	struct hlist_node *n;
 
 read_async_job:
 	interrupted = wait_event_interruptible(fl->async_wait_queue,
@@ -1306,8 +1310,8 @@ read_async_job:
 		goto bail;
 
 	spin_lock_irqsave(&fl->aqlock, flags);
-	list_for_each_entry_safe(ictx, n, &fl->clst.async_queue, asyncn) {
-		list_del_init(&ictx->asyncn);
+	hlist_for_each_entry_safe(ictx, n, &fl->clst.async_queue, asyncn) {
+		hlist_del_init(&ictx->asyncn);
 		atomic_sub(1, &fl->async_queue_job_count);
 		ctx = ictx;
 		break;

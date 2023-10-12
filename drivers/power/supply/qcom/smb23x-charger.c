@@ -216,7 +216,6 @@ static int hot_bat_decidegc_table[] = {
 #define SAFETY_TIMER_DISABLE	SMB_MASK(4, 3)
 #define SYSTEM_VOLATGE_MASK	SMB_MASK(1, 0)
 #define TEMP_MASK		SMB_MASK(7, 0)
-#define SYS_VOLT_VBATT_TRACK	BIT(1)
 
 #define CFG_REG_5		0x05
 #define BAT_THERM_DIS_BIT	BIT(7)
@@ -232,7 +231,6 @@ static int hot_bat_decidegc_table[] = {
 #define CHG_INHIBIT_THRESH_MASK	SMB_MASK(7, 6)
 #define SYS_THRESHOLD_MASK	SMB_MASK(5, 4)
 #define INHIBIT_THRESH_OFFSET	6
-#define VBATT_TRACK		BIT(5)
 #define BMD_ALGO_MASK		SMB_MASK(1, 0)
 #define BMD_ALGO_THERM_IO	SMB_MASK(1, 0)
 
@@ -862,13 +860,6 @@ static int smb23x_hw_init(struct smb23x_chip *chip)
 		}
 	}
 
-	rc = smb23x_masked_write(chip, CFG_REG_6, SYS_THRESHOLD_MASK,
-							VBATT_TRACK);
-	if (rc < 0) {
-		pr_err("set VBATT_TRACK failed, rc=%d\n", rc);
-		return rc;
-	}
-
 	/* disable AICL */
 	if (chip->cfg_aicl_disabled) {
 		rc = smb23x_masked_write(chip, CFG_REG_5, AICL_EN_BIT, 0);
@@ -1044,13 +1035,6 @@ static int smb23x_hw_init(struct smb23x_chip *chip)
 			pr_err("Set safety timer failed, rc=%d\n", rc);
 			return rc;
 		}
-	}
-
-	rc = smb23x_masked_write(chip, CFG_REG_4,
-			SYSTEM_VOLATGE_MASK, SYS_VOLT_VBATT_TRACK);
-	if (rc < 0) {
-		pr_err("Set system_voltage failed, rc=%d\n", rc);
-		return rc;
 	}
 
 	/*
@@ -1251,6 +1235,19 @@ static void smb23x_irq_polling_work_fn(struct work_struct *work)
 			msecs_to_jiffies(IRQ_POLLING_MS));
 }
 
+#define DEBUG_BATT_ID_LOW	6000
+#define DEBUG_BATT_ID_HIGH	9000
+static bool is_debug_batt_id(struct smb23x_chip *chip)
+{
+	pr_info("DEBUG_BATT: DEBUG BATT ID value is %d\n", chip->batt_id_ohm);
+
+	if (is_between(DEBUG_BATT_ID_LOW, DEBUG_BATT_ID_HIGH,
+						chip->batt_id_ohm))
+		return true;
+
+	return false;
+}
+
 /*
  * On some of the parts, the Non-volatile register values will
  * be reloaded upon unplug event. Even the unplug event won't be
@@ -1263,6 +1260,9 @@ static void reconfig_upon_unplug(struct smb23x_chip *chip)
 {
 	int rc;
 	int reason;
+
+	if (is_debug_batt_id(chip))
+		return;
 
 	if (chip->workaround_flags & WRKRND_IRQ_POLLING) {
 		if (chip->usb_present && chip->usb_poll) {
@@ -1438,21 +1438,6 @@ static struct irq_handler_info handlers[] = {
 		},
 	},
 };
-
-#define DEBUG_BATT_ID_LOW	6000
-#define DEBUG_BATT_ID_HIGH	9000
-static bool is_debug_batt_id(struct smb23x_chip *chip)
-{
-	pr_info("DEBUG_BATT: DEBUG BATT ID value is %d\n", chip->batt_id_ohm);
-
-	if (is_between(DEBUG_BATT_ID_LOW, DEBUG_BATT_ID_HIGH,
-						chip->batt_id_ohm))
-		return true;
-
-
-	return false;
-
-}
 
 #define UPDATE_IRQ_STAT(irq_reg, value) \
 	handlers[irq_reg - IRQ_A_STATUS_REG].prev_val = value
@@ -2407,7 +2392,7 @@ static int smb23x_probe(struct i2c_client *client,
 	 * set USB_SUSPEND to cutoff USB power completely
 	 */
 	rc = smb23x_suspend_usb(chip, USER,
-		chip->cfg_charging_disabled | chip->debug_batt ? true : false);
+		(chip->cfg_charging_disabled | chip->debug_batt) ? true : false);
 	if (rc < 0) {
 		pr_err("%suspend USB failed\n",
 			chip->cfg_charging_disabled ? "S" : "Un-s");

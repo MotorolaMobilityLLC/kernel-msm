@@ -101,12 +101,6 @@ enum subsystem_pid {
 	PID_OTHERS = -2,
 };
 
-struct stats_config {
-	unsigned int offset_addr;
-	unsigned int ddr_offset_addr;
-	unsigned int num_records;
-};
-
 struct sleep_stats_data {
 	dev_t		dev_no;
 	struct class	*stats_class;
@@ -192,6 +186,9 @@ static int subsystem_sleep_stats(struct sleep_stats_data *stats_data, struct sle
 		return -ENODEV;
 
 	if (idx == DDR && !config->ddr_offset_addr)
+		return -EINVAL;
+
+	if (idx == DDR_STATS && !config->ddr_offset_addr)
 		return -EINVAL;
 
 	if (pid == SUBSYSTEM_STATS_OTHERS_NUM)
@@ -494,6 +491,9 @@ static int subsystem_stats_probe(struct platform_device *pdev)
 	for (i = 0; i < config->num_records; i++) {
 		stats_data->config[i] = config;
 		offset = (i * sizeof(struct sleep_stats));
+		if (config->appended_stats_avail)
+			offset += sizeof(struct appended_stats);
+
 		stats_data->reg[i] = stats_data->reg_base + offset;
 	}
 
@@ -642,11 +642,13 @@ static const struct stats_config rpmh_data = {
 	.offset_addr = 0x4,
 	.ddr_offset_addr = 0x1c,
 	.num_records = 3,
+	.appended_stats_avail = false,
 };
 
 static const struct stats_config rpm_data = {
 	.offset_addr = 0x14,
 	.num_records = 2,
+	.appended_stats_avail = true,
 };
 
 static const struct of_device_id subsystem_stats_table[] = {
