@@ -163,7 +163,6 @@ struct ps5169_redriver {
 
 	int			typec_orientation;
 	enum operation_mode	op_mode;
-	int			orientation_gpio;
 
 	int			enable_gpio;
 
@@ -202,25 +201,6 @@ static int ps5169_redriver_enable_chip(struct ps5169_redriver *ps5169, bool en)
 		mdelay(10);
 
 	return 0;
-}
-
-static int ps5169_get_orientation(struct usb_redriver *r)
-{
-	struct ps5169_redriver *ps5169 =
-		container_of(r, struct ps5169_redriver, r);
-	int orientation;
-
-	dev_dbg(ps5169->dev, "%s: mode %s\n", __func__,
-		OPMODESTR(ps5169->op_mode));
-
-	if (!gpio_is_valid(ps5169->orientation_gpio))
-		orientation = 0;
-	else
-		orientation = gpio_get_value(ps5169->orientation_gpio);
-
-	dev_info(ps5169->dev, "%s: mode %s, orientation %d\n", __func__,
-		OPMODESTR(ps5169->op_mode), orientation);
-	return orientation;
 }
 
 static int ps5169_notify_connect(struct usb_redriver *r, int ort)
@@ -379,33 +359,20 @@ static void ps5169_redriver_gpio_init(struct ps5169_redriver *ps5169)
 	struct device *dev = ps5169->dev;
 	int rc;
 
-	ps5169->orientation_gpio = of_get_named_gpio(dev->of_node, "redriver,orientation-gpio", 0);
-	if (!gpio_is_valid(ps5169->orientation_gpio)) {
-		dev_err(dev, "Failed to get orientation gpio\n");
-		return;
-	}
-
-	rc = devm_gpio_request(dev, ps5169->orientation_gpio, "redriver-orientation-gpio");
-	if (rc < 0) {
-		dev_err(dev, "Failed to request orientation gpio\n");
-		ps5169->orientation_gpio = -EINVAL;
-		return;
-	}
-	ps5169->r.has_orientation = true;
-
 	ps5169->enable_gpio = of_get_named_gpio(dev->of_node, "redriver,enable-gpio", 0);
 	if (!gpio_is_valid(ps5169->enable_gpio)) {
 		dev_err(dev, "Failed to get enable gpio\n");
 		return;
 	}
 
-	rc = devm_gpio_request(dev, ps5169->enable_gpio, "redriver-enable-gpio");
+	rc = devm_gpio_request_one(dev, ps5169->enable_gpio,
+					GPIOF_OUT_INIT_LOW,
+					"redriver-enable-gpio");
 	if (rc < 0) {
 		dev_err(dev, "Failed to request enable gpio\n");
 		ps5169->enable_gpio = -EINVAL;
 		return;
 	}
-	gpio_direction_output(ps5169->enable_gpio, 0);
 }
 
 static inline int ps5169_redriver_write_reg_bits(struct ps5169_redriver *ps5169,
@@ -940,7 +907,6 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	ps5169->r.release_usb_lanes = ps5169_release_usb_lanes;
 	ps5169->r.notify_connect = ps5169_notify_connect;
 	ps5169->r.notify_disconnect = ps5169_notify_disconnect;
-	ps5169->r.get_orientation = ps5169_get_orientation;
 	ps5169->r.gadget_pullup_enter = ps5169_gadget_pullup_enter;
 	ps5169->r.gadget_pullup_exit = ps5169_gadget_pullup_exit;
 	ps5169->r.host_powercycle = ps5169_host_powercycle;
@@ -951,12 +917,12 @@ static int ps5169_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int ps5169_i2c_remove(struct i2c_client *client)
+static void ps5169_i2c_remove(struct i2c_client *client)
 {
 	struct ps5169_redriver *ps5169 = i2c_get_clientdata(client);
 
 	if (usb_remove_redriver(&ps5169->r))
-		return -EINVAL;
+		return;
 
 	debugfs_remove(ps5169->debug_root);
 	if (!IS_ERR_OR_NULL(ps5169->vcc)) {
@@ -969,18 +935,6 @@ static int ps5169_i2c_remove(struct i2c_client *client)
 			regulator_disable(ps5169->vio);
 		devm_regulator_put(ps5169->vio);
 	}
-
-	if (gpio_is_valid(ps5169->enable_gpio)) {
-		devm_gpio_free(ps5169->dev, ps5169->enable_gpio);
-		ps5169->enable_gpio = -EINVAL;
-	}
-
-	if (gpio_is_valid(ps5169->orientation_gpio)) {
-		devm_gpio_free(ps5169->dev, ps5169->orientation_gpio);
-		ps5169->orientation_gpio = -EINVAL;
-	}
-
-	return 0;
 }
 
 static int __maybe_unused redriver_i2c_suspend(struct device *dev)
