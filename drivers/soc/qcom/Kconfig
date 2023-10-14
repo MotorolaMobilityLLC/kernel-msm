@@ -19,6 +19,13 @@ config ARCF_DTB
 	help
 		Only include Motorola Arcf device specific device tree.
 
+config CTWOV_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Device DTB"
+	help
+		Only include Motorola device specific device tree.
+
 
 config SPS
 	tristate "SPS support"
