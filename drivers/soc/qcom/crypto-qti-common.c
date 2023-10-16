@@ -32,8 +32,16 @@
 
 #define CRYPTO_ICE_FDE_KEY_INDEX        31
 #define CRYPTO_UD_VOLNAME               "userdata"
-#define CRYPTO_ICE_FDE_LEGACY_UFS       "UFS ICE Full Disk Encryption    "
-#define CRYPTO_ICE_FDE_LEGACY_EMMC      "SDCC ICE Full Disk Encryption   "
+#define CRYPTO_ICE_HASH_SIZE            32
+#define CRYPTO_ICE_KEY_ID_SIZE          32
+
+#define CRYPTO_ICE_FDE_UFS_KEYID       "UFS ICE Full Disk Encryption    "
+#define CRYPTO_ICE_FDE_EMMC_KEYID      "SDCC ICE Full Disk Encryption   "
+
+/* add the legacy key_id to support ICE OTA */
+#define CRYPTO_ICE_FDE_UFS_LEGACY_KEYID       "UFS ICE Full Disk Encryption"
+#define CRYPTO_ICE_FDE_EMMC_LEGACY_KEYID      "SDCC ICE Full Disk Encryption"
+
 #define CRYPTO_ICE_UFS_DEV_NAME         "ufshcd-qcom"
 #define CRYPTO_ICE_EMMC_DEV_NAME        "sdhci_msm"
 #define QSEECOM_KEY_ID_EXISTS           -65
@@ -467,6 +475,42 @@ int crypto_qti_derive_raw_secret(const u8 *wrapped_key,
 EXPORT_SYMBOL(crypto_qti_derive_raw_secret);
 
 #if IS_ENABLED(CONFIG_QTI_CRYPTO_FDE)
+static int get_key_id(char *key_id, uint32_t usage, bool hash_enable)
+{
+	/* only legacy hash will get the legacy key id, otherwise return new key id */
+	if (hash_enable) {
+		switch (usage) {
+		case QSEECOM_KM_USAGE_UFS_ICE_DISK_ENCRYPTION:
+			memcpy((void *)key_id,	(void *)CRYPTO_ICE_FDE_UFS_LEGACY_KEYID,
+						strlen(CRYPTO_ICE_FDE_UFS_LEGACY_KEYID));
+			break;
+		case QSEECOM_KM_USAGE_SDCC_ICE_DISK_ENCRYPTION:
+			memcpy((void *)key_id,	(void *)CRYPTO_ICE_FDE_EMMC_LEGACY_KEYID,
+						strlen(CRYPTO_ICE_FDE_EMMC_LEGACY_KEYID));
+			break;
+		default:
+			pr_err("unsupported usage %d\n", usage);
+			return -EINVAL;
+		}
+	} else {
+		switch (usage) {
+		case QSEECOM_KM_USAGE_UFS_ICE_DISK_ENCRYPTION:
+			memcpy((void *)key_id,	(void *)CRYPTO_ICE_FDE_UFS_KEYID,
+						strlen(CRYPTO_ICE_FDE_UFS_KEYID));
+			break;
+		case QSEECOM_KM_USAGE_SDCC_ICE_DISK_ENCRYPTION:
+			memcpy((void *)key_id,	(void *)CRYPTO_ICE_FDE_EMMC_KEYID,
+						strlen(CRYPTO_ICE_FDE_EMMC_KEYID));
+			break;
+		default:
+			pr_err("unsupported usage %d\n", usage);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 static struct ice_part_cfg *crypto_qti_ice_get_part_cfg(struct ice_device *ice_dev,
 							char const * const volname)
 {
@@ -675,6 +719,11 @@ static ssize_t add_partition_store(struct device *dev,
 	struct ice_device *ice_dev = dev_get_drvdata(dev);
 	ssize_t ret = count;
 	char label[PARTITION_META_INFO_VOLNAMELTH + 1] = {0};
+	char key_id[CRYPTO_ICE_KEY_ID_SIZE] = {0};
+	char *flag = "-hash";
+	char *hash_index = NULL;
+	bool hash_enable = false;
+	size_t partition_count = count;
 	int rc = 0;
 	struct list_head *new_pos = NULL;
 	struct ice_part_cfg *elem = NULL;
@@ -682,8 +731,14 @@ static ssize_t add_partition_store(struct device *dev,
 	bool new_key_generated = false;
 	int key_res = 0;
 
-	if (count > PARTITION_META_INFO_VOLNAMELTH) {
+	/* The count of the buf include hash size and flag size */
+	if (count > PARTITION_META_INFO_VOLNAMELTH + CRYPTO_ICE_HASH_SIZE + strlen(flag)) {
 		dev_err(dev, "Invalid partition '%s' (%u)\n", buf, count);
+		return -EINVAL;
+	}
+
+	if (!buf) {
+		dev_err(dev, "Invalid buf\n");
 		return -EINVAL;
 	}
 
@@ -692,15 +747,45 @@ static ssize_t add_partition_store(struct device *dev,
 		return -ENODEV;
 	}
 
-	/* Copy into a temporary buffer, stripping out newlines */
-	count = strcspn(buf, "\n\r");
-	memcpy(label, buf, count);
-	label[count] = '\0';
-
-	if (!count) {
-		dev_err(dev, "Invalid partition '%s' (%u)\n", buf, count);
-		return -EINVAL;
+	/*
+	 * check if the userspace input the hash to generate ICE key
+	 * -hash means input hash with legacy key id
+	 */
+	hash_index = strnstr(buf, flag, count);
+	if (hash_index) {
+		/*
+		 * It must follow the right format to input partition name and hash,
+		 * partition name can't be null.
+		 */
+		if (hash_index > buf + 1) {
+			hash_enable = true;
+			/* skip the blank and get the partition name count */
+			partition_count = hash_index - buf - 1;
+			/* skip to the header pointer of hash */
+			hash_index += strlen(flag) + 1;
+			/* exclude "\r" that in the end of input buf, and check hash size */
+			if (strlen(hash_index) - 1 != CRYPTO_ICE_HASH_SIZE) {
+				dev_err(dev, "Invalid hash\n");
+				return -EINVAL;
+			}
+		} else {
+			dev_err(dev, "Invalid partition\n");
+			return -EINVAL;
+		}
 	}
+
+	if (!hash_enable) {
+		/* Copy into a temporary buffer, stripping out newlines */
+		partition_count = strcspn(buf, "\n\r");
+		if (!partition_count) {
+			dev_err(dev, "Invalid partition '%s' (%u)\n", buf, partition_count);
+			return -EINVAL;
+		}
+	}
+
+	/* copy the partition name */
+	memcpy(label, buf, partition_count);
+	label[partition_count] = '\0';
 
 	mutex_lock(&ice_dev->mutex);
 	/* Check if the partition is already in the list */
@@ -737,25 +822,50 @@ static ssize_t add_partition_store(struct device *dev,
 	 */
 	if (strcmp(ice_dev->ice_instance_type, "ufs") == 0) {
 #if IS_ENABLED(CONFIG_QTI_CRYPTO_LEGACY_KEY_FDE)
+		/* In legacy mode, only one common key is needed */
 		if (list_empty(&ice_dev->part_cfg_list)) {
-			/* In legacy mode, only one common key is needed */
+			/* get the key_id that depends on if inhash_enable or not */
+			if (get_key_id(key_id, QSEECOM_KM_USAGE_UFS_ICE_DISK_ENCRYPTION,
+					hash_enable)) {
+				dev_err(dev, "Fail to get the ice key_id\n");
+				ret = -EINVAL;
+				goto out;
+			}
+
 			key_res = qseecom_create_key_in_slot(
 				QSEECOM_KM_USAGE_UFS_ICE_DISK_ENCRYPTION,
-				slot, CRYPTO_ICE_FDE_LEGACY_UFS, NULL);
+				slot, key_id, hash_index);
 		} else {
 			/* Key is already generated and set,contune */
 			key_res = QSEECOM_KEY_ID_EXISTS;
 		}
 #else
-		key_res = qseecom_create_key_in_slot(QSEECOM_KM_USAGE_UFS_ICE_DISK_ENCRYPTION,
+		key_res = qseecom_create_key_in_slot(
+			QSEECOM_KM_USAGE_UFS_ICE_DISK_ENCRYPTION,
 			slot, label, NULL);
 #endif
 	} else if (strcmp(ice_dev->ice_instance_type, "sdcc") == 0) {
 #if IS_ENABLED(CONFIG_QTI_CRYPTO_LEGACY_KEY_FDE)
-		key_res = qseecom_create_key_in_slot(QSEECOM_KM_USAGE_SDCC_ICE_DISK_ENCRYPTION,
-			slot, CRYPTO_ICE_FDE_LEGACY_EMMC, NULL);
+		/* In legacy mode, only one common key is needed */
+		if (list_empty(&ice_dev->part_cfg_list)) {
+			/* get the key_id that depends on if inhash_enable or not */
+			if (get_key_id(key_id, QSEECOM_KM_USAGE_SDCC_ICE_DISK_ENCRYPTION,
+					hash_enable)) {
+				dev_err(dev, "Fail to get the ice key_id\n");
+				ret = -EINVAL;
+				goto out;
+			}
+
+			key_res = qseecom_create_key_in_slot(
+				QSEECOM_KM_USAGE_SDCC_ICE_DISK_ENCRYPTION,
+				slot, key_id, hash_index);
+		} else {
+			/* Key is already generated and set,contune */
+			key_res = QSEECOM_KEY_ID_EXISTS;
+		}
 #else
-		key_res = qseecom_create_key_in_slot(QSEECOM_KM_USAGE_SDCC_ICE_DISK_ENCRYPTION,
+		key_res = qseecom_create_key_in_slot(
+			QSEECOM_KM_USAGE_SDCC_ICE_DISK_ENCRYPTION,
 			slot, label, NULL);
 #endif
 	} else {
