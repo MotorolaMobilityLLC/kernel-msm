@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s:%s " fmt, KBUILD_MODNAME, __func__
@@ -80,19 +80,29 @@ static int32_t encode_qmi(int32_t val)
 	return local_val;
 }
 
-static int32_t decode_qmi(int32_t val)
+static int32_t decode_qmi(int32_t float32)
 {
-	int32_t sign = 0, shift = 0, local_val;
+	int fraction, shift, mantissa, sign, exp, zeropre;
 
-	sign = (val & QMI_FL_SIGN) ? -1 : 1;
-	shift = (val & QMI_FL_EXP) >> QMI_MANTISSA_MSB;
-	shift = QMI_MANTISSA_MSB - (shift - 127);
-	local_val = (val & QMI_FL_MANTISSA) | QMI_FL_NORM;
-	pr_debug("val:0x%x sign:%d shift:%d mantissa:%x temp:%d\n",
-			val, sign, shift, local_val,
-			sign * (local_val >> shift));
+	mantissa = float32 & GENMASK(22, 0);
+	sign = (float32 & BIT(31)) ? -1 : 1;
+	exp = (float32 & ~BIT(31)) >> 23;
 
-	return sign * (local_val >> shift);
+	if (!exp && !mantissa)
+		return 0;
+
+	exp -= 127;
+	if (exp < 0) {
+		exp = -exp;
+		zeropre = (((BIT(23) + mantissa) * 100) >> 23) >> exp;
+		return zeropre >= 50 ? sign : 0;
+	}
+
+	shift = 23 - exp;
+	float32 = BIT(exp) + (mantissa >> shift);
+	fraction = mantissa & GENMASK(shift - 1, 0);
+
+	return (((fraction * 100) >> shift) >= 50) ? sign * (float32 + 1) : sign * float32;
 }
 
 static int qmi_sensor_pm_notify(struct notifier_block *nb,
