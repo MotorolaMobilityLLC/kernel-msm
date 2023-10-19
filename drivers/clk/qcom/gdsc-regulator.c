@@ -1004,6 +1004,15 @@ static int restore_hw_trig_clk_dis(struct device *dev)
 {
 	struct gdsc *sc = dev_get_drvdata(dev);
 	uint32_t regval;
+	int ret;
+
+	if (sc->rdev->supply) {
+		ret = regulator_enable(sc->rdev->supply);
+		if (ret) {
+			dev_err(&sc->rdev->dev, "reg enable failed\n");
+			return ret;
+		}
+	}
 
 	regmap_read(sc->regmap, REG_OFFSET, &regval);
 	if (sc->is_gdsc_hw_ctrl_mode)
@@ -1014,7 +1023,12 @@ static int restore_hw_trig_clk_dis(struct device *dev)
 		regval |= sc->clk_dis_wait_val;
 	}
 
-	return regmap_write(sc->regmap, REG_OFFSET, regval);
+	ret = regmap_write(sc->regmap, REG_OFFSET, regval);
+
+	if (sc->rdev->supply)
+		regulator_disable(sc->rdev->supply);
+
+	return ret;
 }
 
 static int gdsc_pm_resume_early(struct device *dev)
