@@ -1,6 +1,7 @@
 load(":target_variants.bzl", "la_variants")
 load(":msm_kernel_la.bzl", "define_msm_la")
 load(":image_opts.bzl", "boot_image_opts")
+load(":moto_product.bzl", "mmi_product_name")
 
 target_name = "pineapple"
 
@@ -295,6 +296,21 @@ def define_pineapple():
         "lib/test_user_copy.ko",
     ]
 
+    _pineapple_moto_in_tree_modules = {
+        "arcf": [
+        # keep sorted
+        ],
+        "arcfox": [
+        # keep sorted
+        ],
+        "ctwo": [
+        # keep sorted
+        ],
+        "ctwov": [
+        # keep sorted
+        ],
+    }
+
     kernel_vendor_cmdline_extras = [
         # do not sort
         "console=ttyMSM0,115200n8",
@@ -314,10 +330,15 @@ def define_pineapple():
             kernel_vendor_cmdline_extras += ["nosoftlockup"]
             board_bootconfig_extras += ["androidboot.console=0"]
 
+        moto_in_tree_modules = [ ]
+        for p, v in _pineapple_moto_in_tree_modules.items():
+             if p == mmi_product_name:
+                moto_in_tree_modules = v
+
         define_msm_la(
             msm_target = target_name,
             variant = variant,
-            in_tree_module_list = mod_list,
+            in_tree_module_list = mod_list + moto_in_tree_modules,
             boot_image_opts = boot_image_opts(
                 earlycon_addr = "qcom_geni,0x00a9C000",
                 kernel_vendor_cmdline_extras = kernel_vendor_cmdline_extras,
