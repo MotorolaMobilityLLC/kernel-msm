@@ -25,6 +25,12 @@ config MOT_OIS_EARLY_UPGRADE_FW
 	help
 	  This is enabling OIS upgrade fw early.
 
+config MOT_OIS_AF_USE_SAME_IC
+	default n
+	bool "enable OIS and AF use same IC"
+	help
+	  This is enabling OIS and AF use same IC.
+
 config CTWOV_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
