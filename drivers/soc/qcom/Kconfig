@@ -19,6 +19,12 @@ config ARCF_DTB
 	help
 		Only include Motorola Arcf device specific device tree.
 
+config MOT_OIS_EARLY_UPGRADE_FW
+	default n
+	bool "enable OIS upgrade FW early"
+	help
+	  This is enabling OIS upgrade fw early.
+
 config CTWOV_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
