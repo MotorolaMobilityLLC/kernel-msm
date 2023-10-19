@@ -481,6 +481,7 @@ static int slatecom_fw_load(struct slatedaemon_priv *priv)
 			goto fail;
 		}
 		slate_boot_status = 1;
+		dev->slate_unload = false;
 		pr_info("%s: SLATE image is loaded\n", __func__);
 		return 0;
 	}
@@ -842,6 +843,7 @@ static int send_boot_cmd_to_slate(struct slate_ui_data *ui_obj_msg)
 		break;
 	case TWM_EXIT:
 		twm_exit = true;
+		dev->slate_unload = true;
 		break;
 	case AON_APP_RUNNING:
 		slate_app_running = true;
@@ -851,6 +853,7 @@ static int send_boot_cmd_to_slate(struct slate_ui_data *ui_obj_msg)
 			ret = slatecom_fw_load(dev);
 		else {
 			pr_info("slate is already loaded\n");
+			dev->slate_unload = false;
 			ret = -EFAULT;
 		}
 		break;
