@@ -27,8 +27,20 @@ static int clock_pm_resume_early(struct device *dev)
 {
 #ifdef CONFIG_DEEPSLEEP
 	if (pm_suspend_via_firmware()) {
-		clk_restore_context();
+		if (pm_runtime_enabled(dev)) {
+			int ret;
+
+			ret = pm_runtime_get_sync(dev);
+			if (ret < 0)
+				return ret;
+
+			clk_restore_context();
+		}
+
 		clk_restore_critical_clocks(dev);
+
+		if (pm_runtime_enabled(dev))
+			pm_runtime_put_sync(dev);
 	}
 #endif
 	return 0;
