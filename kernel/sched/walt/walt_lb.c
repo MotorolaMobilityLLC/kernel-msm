@@ -264,9 +264,6 @@ static inline bool _walt_can_migrate_task(struct task_struct *p, int dst_cpu,
 	if (cpu_halted(dst_cpu))
 		return false;
 
-	if (task_reject_partialhalt_cpu(p, dst_cpu))
-		return false;
-
 	return true;
 }
 
@@ -494,9 +491,6 @@ static int walt_lb_find_busiest_similar_cap_cpu(int dst_cpu, const cpumask_t *sr
 		trace_walt_lb_cpu_util(i, wrq);
 
 		if (cpu_rq(i)->nr_running < 2 || !cpu_rq(i)->cfs.h_nr_running)
-			continue;
-
-		if (cpu_partial_halted(dst_cpu) && !cpu_partial_halted(i))
 			continue;
 
 		util = walt_lb_cpu_util(i);

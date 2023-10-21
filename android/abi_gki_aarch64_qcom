@@ -3158,6 +3158,7 @@
   strchrnul
   strcmp
   strcpy
+  strcspn
   stream_open
   strim
   string_get_size
@@ -3268,6 +3269,7 @@
   topology_update_thermal_pressure
   _totalram_pages
   _trace_android_vh_record_pcpu_rwsem_starttime
+  _trace_android_vh_record_pcpu_rwsem_time_early
   trace_array_put
   __trace_bprintk
   trace_clock_local
@@ -3286,6 +3288,7 @@
   __traceiter_android_rvh_before_do_sched_yield
   __traceiter_android_rvh_build_perf_domains
   __traceiter_android_rvh_can_migrate_task
+  __traceiter_android_rvh_cgroup_force_kthread_migration
   __traceiter_android_rvh_check_preempt_tick
   __traceiter_android_rvh_check_preempt_wakeup
   __traceiter_android_rvh_check_preempt_wakeup_ignore
@@ -3395,6 +3398,7 @@
   __traceiter_android_vh_rproc_recovery_set
   __traceiter_android_vh_save_cpu_resume
   __traceiter_android_vh_save_hib_resume_bdev
+  __traceiter_android_vh_scan_abort_check_wmarks
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_setscheduler_uclamp
   __traceiter_android_vh_show_resume_epoch_val
@@ -3430,6 +3434,7 @@
   __tracepoint_android_rvh_before_do_sched_yield
   __tracepoint_android_rvh_build_perf_domains
   __tracepoint_android_rvh_can_migrate_task
+  __tracepoint_android_rvh_cgroup_force_kthread_migration
   __tracepoint_android_rvh_check_preempt_tick
   __tracepoint_android_rvh_check_preempt_wakeup
   __tracepoint_android_rvh_check_preempt_wakeup_ignore
@@ -3539,6 +3544,7 @@
   __tracepoint_android_vh_rproc_recovery_set
   __tracepoint_android_vh_save_cpu_resume
   __tracepoint_android_vh_save_hib_resume_bdev
+  __tracepoint_android_vh_scan_abort_check_wmarks
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_setscheduler_uclamp
   __tracepoint_android_vh_show_resume_epoch_val
@@ -3984,6 +3990,7 @@
   wait_for_completion_interruptible_timeout
   wait_for_completion_killable
   wait_for_completion_timeout
+  wait_for_device_probe
   __wait_rcu_gp
   wait_woken
   __wake_up

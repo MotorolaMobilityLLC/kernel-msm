@@ -193,7 +193,13 @@ static int drain_rq_cpu_stop(void *data)
 	struct walt_rq *wrq = &per_cpu(walt_rq, cpu_of(rq));
 
 	rq_lock_irqsave(rq, &rf);
+	/* rq lock is pinned */
+
+	/* migrate tasks assumes that the lock is pinned, and will unlock/repin */
 	migrate_tasks(rq, &rf);
+
+	/* __balance_callbacks can unlock and relock the rq lock. unpin */
+	rq_unpin_lock(rq, &rf);
 
 	/*
 	 * service any callbacks that were accumulated, prior to unlocking. such that
@@ -205,7 +211,8 @@ static int drain_rq_cpu_stop(void *data)
 	if (wrq->enqueue_counter)
 		WALT_BUG(WALT_BUG_WALT, NULL, "cpu: %d task was re-enqueued", cpu_of(rq));
 
-	rq_unlock_irqrestore(rq, &rf);
+	/* lock is no longer pinned, raw unlock using same flags as locking */
+	raw_spin_rq_unlock_irqrestore(rq, rf.flags);
 
 	return 0;
 }
@@ -515,6 +522,19 @@ static void android_rvh_get_nohz_timer_target(void *unused, int *cpu, bool *done
 		if (!available_idle_cpu(*cpu))
 			return;
 		default_cpu = *cpu;
+	}
+
+	/*
+	 * find first cpu halted by core control and try to avoid
+	 * affecting externally halted cpus.
+	 */
+	if (!cpumask_andnot(&unhalted, cpu_active_mask, cpu_halt_mask)) {
+		if (cpumask_weight(&cpus_paused_by_us))
+			*cpu = cpumask_first(&cpus_paused_by_us);
+		else
+			*cpu = cpumask_first(cpu_halt_mask);
+
+		return;
 	}
 
 	rcu_read_lock();
