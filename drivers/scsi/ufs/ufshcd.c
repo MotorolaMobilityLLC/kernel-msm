@@ -243,7 +243,7 @@ static inline int  is_support_hpb_100_device(unsigned int mfrid){
 #endif
 #if defined(CONFIG_UFSFEATURE)
 static inline int  is_support_hpb_200_device(unsigned int mfrid){
-#if defined(CONFIG_MICRON_HPB)
+#if defined(CONFIG_MICRON_HPB) || defined(CONFIG_MICRON_UFSHID)
         return  (IS_SAMSUNG_DEVICE(mfrid) || IS_MICRON_DEVICE(mfrid));
 #else
         return  IS_SAMSUNG_DEVICE(mfrid);
