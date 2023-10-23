@@ -109,6 +109,7 @@ static moto_product products_list[] = {
 	{"genevn",      "VZW",  NV_IPA},
 	{"avatrn",      "all",  NV_EPA},
 	{"boston",      "NA",  NV_EPA},
+	{"cusco",      "all",  NV_IPA},
 	/* Terminator */
 	{{0}, {0}, {0}},
 };
@@ -223,8 +224,14 @@ static int selectFileNameByProduct(struct icnss_priv *plat_priv, char *filename,
 					ret = 1;
 					break;
 				} else if (ICNSS_BDF_BIN == bdf_type) {
-					sprintf(filename, "adrastea/%s_%s_%s.bin", BDF_FILE_NAME_PREFIX,
-					(products_list+i)->hw_device, (products_list+i)->nv_name);
+					if (plat_priv->foundry_name) {
+						sprintf(filename, "adrastea/%s%s_%s_%s.bin", BDF_FILE_NAME_PREFIX,
+							plat_priv->foundry_name, (products_list+i)->hw_device,
+							(products_list+i)->nv_name);
+					} else {
+						sprintf(filename, "adrastea/%s_%s_%s.bin", BDF_FILE_NAME_PREFIX,
+							(products_list+i)->hw_device, (products_list+i)->nv_name);
+					}
 					ret = 1;
 					break;
 				}
