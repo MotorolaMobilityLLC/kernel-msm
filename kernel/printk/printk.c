@@ -2428,6 +2428,7 @@ static int __init console_setup(char *str)
 	 */
 	if (str[0] == 0 || strcmp(str, "null") == 0) {
 		__add_preferred_console("ttynull", 0, NULL, NULL, true);
+		console_set_on_cmdline = 1;
 		return 1;
 	}
 
