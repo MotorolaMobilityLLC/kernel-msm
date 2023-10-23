@@ -2676,6 +2676,7 @@
   wait_for_completion_interruptible_timeout
   wait_for_completion_io_timeout
   wait_for_completion_timeout
+  wait_for_device_probe
   __wait_rcu_gp
   __wake_up
   wake_up_if_idle
