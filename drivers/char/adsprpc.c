@@ -57,6 +57,7 @@
 #include <linux/dma-iommu.h>
 #include <asm/arch_timer.h>
 #include <linux/genalloc.h>
+#include <soc/qcom/qseecom_scm.h>
 
 #ifdef CONFIG_HIBERNATION
 #include <linux/suspend.h>
@@ -4704,7 +4705,7 @@ static int fastrpc_mmap_on_dsp(struct fastrpc_file *fl, uint32_t flags,
 	struct smq_phy_page page;
 	int num = 1;
 	remote_arg_t ra[3];
-	int err = 0;
+	int err = 0, scm_ret = 0;
 	struct {
 		int pid;
 		uint32_t flags;
@@ -4752,7 +4753,8 @@ static int fastrpc_mmap_on_dsp(struct fastrpc_file *fl, uint32_t flags,
 	*raddr = (uintptr_t)routargs.vaddrout;
 	if (err)
 		goto bail;
-	if (flags == ADSP_MMAP_REMOTE_HEAP_ADDR) {
+	if (flags == ADSP_MMAP_REMOTE_HEAP_ADDR ||
+		flags == ADSP_MMAP_HEAP_ADDR) {
 		VERIFY(err, VALID_FASTRPC_CID(cid));
 		if (err) {
 			err = -ECHRNG;
@@ -4762,7 +4764,30 @@ static int fastrpc_mmap_on_dsp(struct fastrpc_file *fl, uint32_t flags,
 			goto bail;
 		}
 	}
-	if (flags == ADSP_MMAP_REMOTE_HEAP_ADDR
+	if (flags == ADSP_MMAP_HEAP_ADDR) {
+		struct qseecom_scm_desc desc = {0};
+
+		desc.args[0] = TZ_PIL_AUTH_QDSP6_PROC;
+		desc.args[1] = phys;
+		desc.args[2] = size;
+		desc.arginfo = SCM_ARGS(3);
+		scm_ret = qcom_scm_qseecom_call(SCM_SIP_FNID(SCM_SVC_PIL,
+			TZ_PIL_PROTECT_MEM_SUBSYS_ID), &desc, true);
+		if (scm_ret) {
+			ADSPRPC_ERR(
+				"qcom_scm_qseecom_call failed with %d for phys 0x%llx, size %zu\n",
+				scm_ret, phys, size);
+			scm_ret = -EADDRNOTAVAIL;
+			err = fastrpc_unmap_on_dsp(fl,
+				*raddr, phys, size, flags);
+			if (err) {
+				ADSPRPC_ERR(
+					"failed to unmap %d for phys 0x%llx, size %zd\n",
+					err, phys, size);
+			}
+			goto bail;
+		}
+	} else if (flags == ADSP_MMAP_REMOTE_HEAP_ADDR
 				&& me->channel[cid].rhvm.vmid && refs == 1) {
 		err = hyp_assign_phys(phys, (uint64_t)size,
 				hlosvm, 1, me->channel[cid].rhvm.vmid,
@@ -4795,6 +4820,7 @@ static int fastrpc_munmap_on_dsp_rh(struct fastrpc_file *fl, uint64_t phys,
 	struct fastrpc_apps *me = &gfa;
 	int cid = -1;
 	struct fastrpc_ioctl_invoke_async ioctl;
+	struct qseecom_scm_desc desc = {0};
 	remote_arg_t ra[2];
 	struct {
 		uint8_t skey;
@@ -4840,6 +4866,20 @@ static int fastrpc_munmap_on_dsp_rh(struct fastrpc_file *fl, uint64_t phys,
 	}
 	if (err)
 		goto bail;
+	desc.args[0] = TZ_PIL_AUTH_QDSP6_PROC;
+	desc.args[1] = phys;
+	desc.args[2] = size;
+	desc.args[3] = routargs.skey;
+	desc.arginfo = SCM_ARGS(4);
+	err = qcom_scm_qseecom_call(SCM_SIP_FNID(SCM_SVC_PIL,
+		TZ_PIL_CLEAR_PROTECT_MEM_SUBSYS_ID), &desc, true);
+	if (err) {
+		ADSPRPC_ERR(
+			"qcom_scm_qseecom_call failed with %d for phys 0x%llx, size %zu\n",
+			err, phys, size);
+		err = -EADDRNOTAVAIL;
+		return err;
+	}
 
 bail:
 	return err;
