@@ -5526,7 +5526,7 @@ static void richtap_work_proc(struct work_struct *work)
 			tmp_len, count, get_max_fifo_samples(chip));
 	ret = richtap_load_prebake(chip, chip->rtp_ptr, tmp_len);
 	if (ret < 0) {
-		dev_err(chip->dev, "aac RichTap Upload FIFO data fail\n", ret);
+		dev_err(chip->dev, "aac RichTap Upload FIFO data fail: %d\n", ret);
 		return;
 	}
 
@@ -5608,7 +5608,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 
 		ret = richtap_load_prebake(chip, &chip->rtp_ptr[4], tmp);
 		if (ret < 0) {
-			dev_err(chip->dev, "aac RichTap Upload FIFO data fail\n", ret);
+			dev_err(chip->dev, "aac RichTap Upload FIFO data fail: %d\n", ret);
 			break;
 		}
 
