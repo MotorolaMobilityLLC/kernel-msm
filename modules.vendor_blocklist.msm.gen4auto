@@ -4,6 +4,7 @@
 blocklist 8250_of
 blocklist adc-tm
 blocklist atomic64_test
+blocklist aurix-can
 blocklist can-bcm
 blocklist can-gw
 blocklist can-raw
