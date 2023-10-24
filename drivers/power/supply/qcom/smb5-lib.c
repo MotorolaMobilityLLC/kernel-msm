@@ -6156,6 +6156,7 @@ static void update_sw_icl_max(struct smb_charger *chg, int val)
 {
 	int typec_mode;
 	int rp_ua;
+	const struct apsd_result *apsd = NULL;
 
 	/* while PD is active it should have complete ICL control */
 	if (chg->pd_active)
@@ -6198,8 +6199,14 @@ static void update_sw_icl_max(struct smb_charger *chg, int val)
 		vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
-		rp_ua = get_rp_based_dcp_current(chg, typec_mode);
-		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, rp_ua);
+		apsd = smblib_get_apsd_result(chg);
+		if (apsd->bit == OCP_CHARGER_BIT) {
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+						OCP_CURRENT_UA);
+		} else {
+			rp_ua = get_rp_based_dcp_current(chg, typec_mode);
+			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, rp_ua);
+		}
 		vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 		break;
 	case QTI_POWER_SUPPLY_TYPE_USB_FLOAT:
