@@ -261,6 +261,7 @@ def define_pineapple():
         "drivers/usb/phy/phy-qcom-emu.ko",
         "drivers/usb/redriver/nb7vpq904m.ko",
         "drivers/usb/redriver/redriver.ko",
+        "drivers/usb/redriver/ps5169.ko",
         "drivers/usb/repeater/repeater.ko",
         "drivers/usb/repeater/repeater-qti-pmic-eusb2.ko",
         "drivers/usb/typec/ucsi/ucsi_glink.ko",
