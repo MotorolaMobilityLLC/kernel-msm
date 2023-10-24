@@ -536,6 +536,7 @@
   drm_atomic_helper_resume
   drm_atomic_helper_set_config
   drm_atomic_helper_setup_commit
+  drm_atomic_helper_shutdown
   drm_atomic_helper_suspend
   drm_atomic_helper_swap_state
   drm_atomic_helper_update_plane
@@ -647,6 +648,8 @@
   drm_poll
   drm_prime_gem_destroy
   drm_printf
+  __drm_printfn_coredump
+  __drm_printfn_seq_file
   drm_property_add_enum
   drm_property_blob_get
   drm_property_blob_put
@@ -657,9 +660,12 @@
   drm_property_destroy
   drm_property_lookup_blob
   drm_property_replace_blob
+  __drm_puts_coredump
+  __drm_puts_seq_file
   drm_read
   drm_release
   drm_self_refresh_helper_update_avg_times
+  drm_state_dump
   drm_universal_plane_init
   drm_vblank_init
   drm_writeback_connector_init
@@ -1986,6 +1992,7 @@
   __traceiter_mmap_lock_acquire_returned
   __traceiter_mmap_lock_released
   __traceiter_mmap_lock_start_locking
+  __traceiter_mm_page_alloc
   __traceiter_rwmmio_post_read
   __traceiter_rwmmio_post_write
   __traceiter_rwmmio_read
@@ -2030,6 +2037,7 @@
   __tracepoint_mmap_lock_acquire_returned
   __tracepoint_mmap_lock_released
   __tracepoint_mmap_lock_start_locking
+  __tracepoint_mm_page_alloc
   tracepoint_probe_register
   tracepoint_probe_unregister
   __tracepoint_rwmmio_post_read
