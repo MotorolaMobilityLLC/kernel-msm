@@ -23,6 +23,7 @@ blk_start_plug
 __blockdev_direct_IO
 block_invalidatepage
 block_is_partially_uptodate
+block_read_full_page
 __breadahead
 __bread_gfp
 __brelse
@@ -49,6 +50,7 @@ delete_from_page_cache
 d_instantiate
 d_make_root
 d_obtain_alias
+dirty_writeback_interval
 down_read
 down_write
 down_write_trylock
@@ -104,6 +106,7 @@ __init_rwsem
 init_special_inode
 init_wait_entry
 __init_waitqueue_head
+inode_add_bytes
 inode_dio_wait
 inode_init_once
 inode_init_owner
@@ -255,6 +258,7 @@ truncate_inode_pages
 truncate_inode_pages_final
 truncate_pagecache
 truncate_setsize
+try_to_free_buffers
 try_to_release_page
 try_to_writeback_inodes_sb
 __ubsan_handle_cfi_check_fail_abort
@@ -266,6 +270,7 @@ unmap_mapping_range
 unregister_filesystem
 up_read
 up_write
+utf32_to_utf8
 vfree
 vfs_fsync_range
 __vmalloc
