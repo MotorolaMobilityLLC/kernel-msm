@@ -327,6 +327,7 @@ static void reclaim_cleanup(struct work_struct *reclaim_work)
 {
 	struct export_desc *exp = NULL, *exp_tmp = NULL;
 	struct export_desc_super *exp_super = NULL;
+	struct physical_channel *pchan = NULL;
 
 	pr_debug("reclaim worker called\n");
 	spin_lock(&hab_driver.reclaim_lock);
@@ -334,6 +335,10 @@ static void reclaim_cleanup(struct work_struct *reclaim_work)
 		exp_super = container_of(exp, struct export_desc_super, exp);
 		if (exp_super->remote_imported == 0) {
 			list_del(&exp->node);
+			pchan = exp->pchan;
+			spin_lock_bh(&pchan->expid_lock);
+			idr_remove(&pchan->expid_idr, exp->export_id);
+			spin_unlock_bh(&pchan->expid_lock);
 			pr_info("cleanup exp id %d\n", exp->export_id);
 			habmem_export_put(exp_super);
 		}
