@@ -2426,6 +2426,15 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 		 */
 		if (msm_uport->wakeup.inject_rx) {
 			tty = uport->state->port.tty;
+			/* uport->state->port.tty pointer initialized as part of
+			 * UART port_open. Adding null check to ensure tty should
+			 * have a valid value before dereference it in wakeup_isr.
+			 */
+			if (!tty) {
+				MSM_HS_ERR("%s: Unexpected wakeup ISR\n", __func__);
+				spin_unlock_irqrestore(&uport->lock, flags);
+				return IRQ_HANDLED;
+			}
 			tty_insert_flip_char(tty->port,
 					     msm_uport->wakeup.rx_to_inject,
 					     TTY_NORMAL);
