@@ -67,7 +67,7 @@ static inline int qpnp_vib_ldo_poll_status(struct vib_ldo_chip *chip)
 
 	ret = regmap_read_poll_timeout(chip->regmap,
 			chip->base + QPNP_VIB_LDO_REG_STATUS1, val,
-			val & QPNP_VIB_LDO_VREG_READY, 100, 1000);
+			val & QPNP_VIB_LDO_VREG_READY, 100, 2000);
 	if (ret < 0) {
 		pr_err("Vibrator LDO vreg_ready timeout, status=0x%02x, ret=%d\n",
 			val, ret);
