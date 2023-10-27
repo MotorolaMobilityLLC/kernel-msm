@@ -1603,6 +1603,7 @@
   __v4l2_device_register_subdev_nodes
   v4l2_device_unregister
   v4l2_device_unregister_subdev
+  v4l2_enum_dv_timings_cap
   v4l2_event_queue
   v4l2_event_subdev_unsubscribe
   v4l2_event_subscribe
@@ -1614,8 +1615,11 @@
   v4l2_s_ctrl
   v4l2_spi_new_subdev
   v4l2_spi_subdev_init
+  v4l2_src_change_event_subdev_subscribe
   v4l2_subdev_call_wrappers
   v4l2_subdev_init
+  v4l2_subdev_notify_event
+  v4l2_valid_dv_timings
   v4l_bound_align_image
   vabits_actual
   vb2_buffer_done
