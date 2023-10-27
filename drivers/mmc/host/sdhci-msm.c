@@ -29,13 +29,16 @@
 #include <linux/nvmem-consumer.h>
 #include <linux/ipc_logging.h>
 #include <linux/pinctrl/qcom-pinctrl.h>
-
+#include <linux/genhd.h>
+#include <linux/blkdev.h>
+#include <linux/dcache.h>
 #include <trace/hooks/mmc.h>
 #include "../core/mmc_ops.h"
 #include "../core/host.h"
 #include "sdhci-pltfm.h"
 #include "cqhci.h"
 #include "../core/core.h"
+#include "../core/queue.h"
 #include <linux/qtee_shmbridge.h>
 #include <linux/crypto-qti-common.h>
 #include <linux/suspend.h>
@@ -215,6 +218,32 @@
 
 #define SDHCI_CMD_FLAGS_MASK	0xff
 #define	SDHCI_BOOT_DEVICE	0x0
+/* Copied from mmc/core/block.c to access the request queue */
+struct mmc_blk_data {
+	struct device	*parent;
+	struct gendisk	*disk;
+	struct mmc_queue queue;
+	struct list_head part;
+	struct list_head rpmbs;
+
+	unsigned int	flags;
+
+	struct kref	kref;
+	unsigned int	read_only;
+	unsigned int	part_type;
+	unsigned int	reset_done;
+	/*
+	 * Only set in main mmc_blk_data associated
+	 * with mmc_card with dev_set_drvdata, and keeps
+	 * track of the current selected device partition.
+	 */
+	unsigned int	part_curr;
+	int	area_type;
+
+	/* debugfs files (only in main mmc_blk_data) */
+	struct dentry *status_dentry;
+	struct dentry *ext_csd_dentry;
+};
 
 static const struct sdhci_msm_offset sdhci_msm_v5_offset = {
 	.core_mci_data_cnt = 0x35c,
@@ -3794,7 +3823,14 @@ static void sdhci_msm_init_card(struct mmc_host *host,
 				struct mmc_card *card)
 {
 	int ret;
+	struct mmc_blk_data *md = dev_get_drvdata(&card->dev);
 
+	if (mmc_card_is_removable(host)) {
+		if (md != NULL) {
+			pr_debug("update the removable card discard sectors to max\n");
+			blk_queue_max_discard_sectors(md->queue.queue, UINT_MAX);
+		}
+	}
 	if (mmc_card_sdio(card)) {
 		ret = device_init_wakeup(&card->dev, true);
 		if (ret)
