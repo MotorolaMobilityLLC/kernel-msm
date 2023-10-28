@@ -451,16 +451,13 @@ ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)
 
 struct posix_acl *ovl_get_acl(struct inode *inode, int type, bool rcu)
 {
-	struct inode *realinode;
+	struct inode *realinode = ovl_inode_real(inode);
 	const struct cred *old_cred;
 	struct posix_acl *acl;
-	struct path realpath;
 
 	if (!IS_ENABLED(CONFIG_FS_POSIX_ACL))
 		return NULL;
 
-	/* Careful in RCU walk mode */
-	realinode = ovl_i_path_real(inode, &realpath);
 	if (!realinode) {
 		WARN_ON(!rcu);
 		return ERR_PTR(-ECHILD);
