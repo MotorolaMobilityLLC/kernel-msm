@@ -47,11 +47,15 @@ static int ufsf_read_desc(struct ufs_hba *hba, u8 desc_id, u8 desc_index,
 			  u8 *desc_buf, u32 size)
 {
 	int err = 0;
-
+	u8 selector =0;
+#if defined(CONFIG_UFSFEATURE3)
+	if (is_vendor_device(hba, UFS_VENDOR_SAMSUNG))
+		selector = 1;
+#endif
 	pm_runtime_get_sync(hba->dev);
 
 	err = ufshcd_query_descriptor_retry(hba, UPIU_QUERY_OPCODE_READ_DESC,
-					    desc_id, desc_index, 0,
+					    desc_id, desc_index, selector,
 					    desc_buf, &size);
 	if (err)
 		ERR_MSG("reading Device Desc failed. err = %d", err);
@@ -69,7 +73,6 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf)
 
 	if (is_vendor_device(ufsf->hba, UFS_VENDOR_SAMSUNG))
 		idn = UFSF_QUERY_DESC_IDN_DEVICE;
-
 	ret = ufsf_read_desc(ufsf->hba, idn, 0,
 			     desc_buf, UFSF_QUERY_DESC_DEVICE_MAX_SIZE);
 	if (ret)
@@ -104,7 +107,7 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf)
 #endif
 	return 0;
 }
-
+#if !defined(CONFIG_UFSFEATURE3)
 static int ufsf_read_geo_desc(struct ufsf_feature *ufsf)
 {
 	u8 geo_buf[UFSF_QUERY_DESC_GEOMETRY_MAX_SIZE];
@@ -126,7 +129,7 @@ static int ufsf_read_geo_desc(struct ufsf_feature *ufsf)
 
 	return 0;
 }
-
+#endif
 void ufsf_device_check(struct ufs_hba *hba)
 {
 	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
@@ -137,7 +140,9 @@ void ufsf_device_check(struct ufs_hba *hba)
 #if defined(CONFIG_UFSFBO)
 	ufsfbo_read_fbo_desc(ufsf);
 #endif
+#if !defined(CONFIG_UFSFEATURE3)
 	ufsf_read_geo_desc(ufsf);
+#endif
 }
 
 static int ufsf_execute_dev_ctx_req(struct ufsf_feature *ufsf,
@@ -301,9 +306,10 @@ int ufsf_query_ioctl(struct ufsf_feature *ufsf, int lun, void __user *buffer,
 		case QUERY_DESC_IDN_DEVICE:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_CONFIGURATION:
+#if !defined(CONFIG_UFSFEATURE3)
 		case UFSF_QUERY_DESC_IDN_DEVICE:
 		case UFSF_QUERY_DESC_IDN_GEOMETRY:
-
+#endif
 			break;
 
 		default:

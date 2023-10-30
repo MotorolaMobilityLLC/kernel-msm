@@ -46,12 +46,20 @@
 #include <scsi/scsi_cmnd.h>
 
 #include "../../../block/blk.h"
-
+#if  !defined(CONFIG_UFSFEATURE3)
 #define UFSHID_VER					0x0201
+#else
+#define UFSHID_VER					0x0101
+#endif
 #define UFSHID_DD_VER					0x020200
 #define UFSHID_DD_VER_POST				""
-
+#if  !defined(CONFIG_UFSFEATURE3)
 #define UFS_FEATURE_SUPPORT_HID_BIT			(1 << 0)
+#else
+#define UFS_FEATURE_SUPPORT_HID_BIT			(0x400)
+#endif
+
+
 
 #define HID_TRIGGER_WORKER_DELAY_MS_DEFAULT	2000
 #define HID_TRIGGER_WORKER_DELAY_MS_MIN		100
@@ -105,6 +113,18 @@ enum {
 	HID_NOT_REQUIRED	= 0,
 	HID_REQUIRED		= 1
 };
+
+ enum {
+	HID_LEV_GREEN_MICRON  = 0,
+	HID_LEV_RED_MICRON   = 1,
+ };
+
+enum {
+	HID_PROG_IDLE		= 0,
+	HID_PROG_ONGOING	= 1,
+	HID_PROG_STOP	= 2, //stopped by Host
+	HID_PROG_COMPLETE	= 3,
+ };
 
 enum {
 	HID_LEV_GRAY	= 0,

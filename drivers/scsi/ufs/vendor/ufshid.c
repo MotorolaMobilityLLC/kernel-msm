@@ -141,11 +141,16 @@ static int ufshid_read_attr(struct ufshid_dev *hid, u8 idn, u32 *attr_val)
 {
 	struct ufs_hba *hba = hid->ufsf->hba;
 	int ret = 0;
+	int selector = 0;
 
 	ufshcd_rpm_get_sync(hba);
-
+#if defined(CONFIG_UFSFEATURE3)
+	if (is_vendor_device(hba,UFS_VENDOR_SAMSUNG)){
+		selector = 1;
+	}
+#endif
 	ret = ufshcd_query_attr_retry(hba, UPIU_QUERY_OPCODE_READ_ATTR, idn, 0,
-				      0, attr_val);
+				      selector, attr_val);
 	if (ret) {
 		ERR_MSG("read attr [0x%.2X] fail. (%d)", idn, ret);
 		goto err_out;
@@ -166,11 +171,16 @@ static int ufshid_write_attr(struct ufshid_dev *hid, u8 idn, u32 val)
 {
 	struct ufs_hba *hba = hid->ufsf->hba;
 	int ret = 0;
+	int selector = 0;
 
 	ufshcd_rpm_get_sync(hba);
-
+#if defined(CONFIG_UFSFEATURE3)
+	if (is_vendor_device(hba,UFS_VENDOR_SAMSUNG)){
+		selector = 1;
+	}
+#endif
 	ret = ufshcd_query_attr_retry(hba, UPIU_QUERY_OPCODE_WRITE_ATTR, idn, 0,
-				      0, &val);
+				      selector, &val);
 	if (ret) {
 		ERR_MSG("write attr [0x%.2X] fail. (%d)", idn, ret);
 		goto err_out;
@@ -247,7 +257,7 @@ void ufshid_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf)
 err_out:
 	ufshid_set_state(ufsf, HID_FAILED);
 }
-
+#if !defined(CONFIG_UFSFEATURE3)
 static inline void ufshid_set_wb_cmd(unsigned char *cdb, size_t len)
 {
 	cdb[0] = WRITE_BUFFER;
@@ -347,7 +357,7 @@ static int ufshid_wait_hid_req(struct ufshid_dev *hid)
 	}
 	return 0;
 }
-
+#endif
 static inline void ufshid_init_lba_trigger_mode(struct ufshid_dev *hid)
 {
 	hid->lba_trigger_mode = false;
@@ -371,15 +381,17 @@ static inline void ufshid_set_lba_trigger_mode(struct ufshid_dev *hid,
 
 static inline void ufshid_clear_lba_trigger_mode(struct ufshid_dev *hid)
 {
+#if !defined(CONFIG_UFSFEATURE3)
 	if (!ufshid_wait_hid_req(hid))
 		ufshid_init_lba_trigger_mode(hid);
+#endif
 }
 
 static int ufshid_execute_query_op(struct ufshid_dev *hid, enum UFSHID_OP op,
 				   u32 *attr_val)
 {
+#if !defined(CONFIG_UFSFEATURE3)
 	int ret;
-
 	ret = ufshid_wait_hid_req(hid);
 	if (ret)
 		return -EBUSY;
@@ -387,7 +399,7 @@ static int ufshid_execute_query_op(struct ufshid_dev *hid, enum UFSHID_OP op,
 	ret = ufshid_issue_lba_list(hid);
 	if (ret)
 		return ret;
-
+#endif
 	if (ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_OPERATION, op))
 		return -EINVAL;
 
@@ -433,7 +445,30 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 	int ret;
     struct ufsf_feature *ufsf = hid->ufsf;
 
-	if (is_vendor_device(ufsf->hba,UFS_VENDOR_SAMSUNG)) {
+	if (is_vendor_device(ufsf->hba,UFS_VENDOR_MICRON)) {
+#if defined(CONFIG_UFSFEATURE3)
+		//get micron ufs frag level
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &frag_level))
+			return -EINVAL;
+		//get micron ufs hid execution progress
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+			return -EINVAL;
+		HID_DEBUG(hid, "micron frag_level= %d attr_val= %d",frag_level,attr_val);
+
+		if (attr_val != HID_PROG_ONGOING) {
+			if(frag_level!= HID_LEV_GREEN_MICRON) {
+				ufshid_set_flag(hid, QUERY_FLAG_IDN_HID_EN);
+				return HID_REQUIRED;
+			} else {
+				return HID_NOT_REQUIRED;
+			}
+		} else {
+			return HID_REQUIRED;
+		}
+#else
+	return -EAGAIN;
+#endif
+	} else if (is_vendor_device(ufsf->hba,UFS_VENDOR_SAMSUNG)) {
 		ret = ufshid_execute_query_op(hid, HID_OP_EXECUTE, &attr_val);
 		if (ret)
 			return ret;
@@ -486,7 +521,19 @@ static inline void ufshid_issue_disable(struct ufshid_dev *hid)
 		ERR_MSG("the ufsf is NULL !!!");
 		return;
 	}
-    if (is_vendor_device(ufsf->hba,UFS_VENDOR_SAMSUNG)) {
+	if (is_vendor_device(ufsf->hba, UFS_VENDOR_MICRON)) {
+#if defined(CONFIG_UFSFEATURE3)
+		//get micron ufs hid execution progress
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+			return ;
+		HID_DEBUG(hid, "micron hid progress = %d",attr_val);
+
+		if(attr_val == HID_PROG_ONGOING) {
+			if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_HID_EN))
+				return ;
+		}
+#endif
+	}else if (is_vendor_device(ufsf->hba,UFS_VENDOR_SAMSUNG)) {
 		ufshid_execute_query_op(hid, HID_OP_DISABLE, &attr_val);
 	}else if(is_vendor_device(ufsf->hba,UFS_VENDOR_TOSHIBA)){
        if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN))
@@ -1028,11 +1075,11 @@ void ufshid_remove(struct ufsf_feature *ufsf)
 	mutex_unlock(&hid->sysfs_lock);
 
 	cancel_delayed_work_sync(&hid->hid_trigger_work);
-
+#if !defined(CONFIG_UFSFEATURE3)
 	ret = ufshid_wait_hid_req(hid);
 	if (ret)
 		ERR_MSG("hid req is not completed");
-
+#endif
 	kfree(hid);
 
 	INFO_MSG("end HID release");
@@ -1234,7 +1281,19 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 		return -EINVAL;
 	}
 
-	if (is_vendor_device(ufsf->hba,  UFS_VENDOR_SAMSUNG)) {
+	if (is_vendor_device(ufsf->hba, UFS_VENDOR_MICRON)) {
+#if defined(CONFIG_UFSFEATURE3)
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &attr_val))
+			return -EINVAL;
+		frag_level = attr_val;
+			/*Micron only has two levels RED & GREEN*/
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+			((frag_level == HID_LEV_GREEN_MICRON)) ? "GREEN" :
+			((frag_level ==HID_LEV_RED_MICRON))?"RED":"UNKNOWN");
+#else
+	return snprintf(buf, PAGE_SIZE, "%s\n","Error.");
+#endif
+	} else if (is_vendor_device(ufsf->hba,  UFS_VENDOR_SAMSUNG)) {
 		ret = ufshid_execute_query_op(hid, HID_OP_ANALYZE, &attr_val);
 		if (ret)
 			return ret;
