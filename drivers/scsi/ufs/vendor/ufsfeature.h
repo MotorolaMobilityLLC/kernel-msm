@@ -97,8 +97,14 @@ enum {
 #define UFSF_QUERY_DESC_FBO_MAX_SIZE		0x12
 
 /* Descriptor idn for Query Request */
+#if !defined(CONFIG_UFSFEATURE3)
 #define UFSF_QUERY_DESC_IDN_DEVICE		0xF0
 #define UFSF_QUERY_DESC_IDN_GEOMETRY		0xF7
+#else
+#define UFSF_QUERY_DESC_IDN_DEVICE          0
+#define UFSF_QUERY_DESC_IDN_GEOMETRY		7
+#endif
+
 
 #define UFSF_QUERY_DESC_IDN_FBO			0x0A
 /* query_flag  */
@@ -192,15 +198,34 @@ void ufsf_hid_acc_io_stat(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp);
 
 /* Attribute idn for Query requests */
 #if defined(CONFIG_UFSHID)
+#if !defined(CONFIG_UFSFEATURE3)
 #define QUERY_ATTR_IDN_HID_OPERATION			0x80
 #define QUERY_ATTR_IDN_HID_FRAG_LEVEL			0x81
+#else
+#define QUERY_ATTR_IDN_HID_OPERATION			0x20
+#define QUERY_ATTR_IDN_HID_FRAG_LEVEL			0x21
+#endif
+#endif
+
+#if defined(CONFIG_UFSFEATURE3)
+#define	QUERY_FLAG_IDN_HID_EN					0x13
+#define	QUERY_ATTR_IDN_HID_FRAG_STATUS        0x31
+#define	QUERY_ATTR_IDN_HID_PROGRESS        0x32
 #endif
 
 /* Device descriptor parameters offsets in bytes*/
 #define DEVICE_DESC_PARAM_EX_FEAT_SUP			0x4F
+#if !defined(CONFIG_UFSFEATURE3)
 #define DEVICE_DESC_PARAM_SAMSUNG_SUP			0xFB
+#else
+#define DEVICE_DESC_PARAM_SAMSUNG_SUP			0x4F
+#endif
 #if defined(CONFIG_UFSHID)
+#if !defined(CONFIG_UFSFEATURE3)
 #define DEVICE_DESC_PARAM_HID_VER			0xF7
+#else
+#define DEVICE_DESC_PARAM_HID_VER			0x59
+#endif
 #endif
 #if defined(CONFIG_UFSSID)
 #define DEVICE_DESC_PARAM_SID_VER			0xEF

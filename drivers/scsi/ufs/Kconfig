@@ -235,6 +235,13 @@ config UFSFEATURE
 	help
 	  UFS feature activate such as hpb, tw and etc.
 
+config UFSFEATURE3
+	bool "UFS 3.1 features"
+	depends on SCSI_UFSHCD
+	default n
+	help
+	   UFS 3.1 features like HID
+
 config UFSHID
 	bool "UFS Host Initiated Defrag support"
 	depends on SCSI_UFSHCD && UFSFEATURE
