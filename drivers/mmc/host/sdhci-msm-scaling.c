@@ -60,7 +60,7 @@ void sdhci_msm_scale_parse_dt(struct device *dev, struct sdhci_msm_host *msm_hos
 		pr_debug("%s: no clock scaling frequencies were supplied\n",
 				dev_name(dev));
 	else if (!msm_host->clk_scaling.pltfm_freq_table ||
-			msm_host->clk_scaling.pltfm_freq_table_sz)
+			!msm_host->clk_scaling.pltfm_freq_table_sz)
 		dev_info(dev, "bad dts clock scaling frequencies\n");
 
 	/*
