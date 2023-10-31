@@ -37,6 +37,12 @@ config MOT_OIS_DRIVER
 	help
 	  This is enabling OIS driver.
 
+config CCI_DEBUG_INTF
+	default n
+	bool "enable cci debug"
+	help
+	  This is enabling cci debug tool.
+
 config CTWOV_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
