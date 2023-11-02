@@ -162,6 +162,7 @@
   clk_register
   clk_register_composite
   clk_round_rate
+  clk_set_max_rate
   clk_set_min_rate
   clk_set_parent
   clk_set_rate
@@ -1023,6 +1024,7 @@
   kill_block_super
   kill_fasync
   kill_pid
+  kimage_vaddr
   kimage_voffset
   __kmalloc
   kmalloc_caches
@@ -1082,6 +1084,7 @@
   led_trigger_unregister_simple
   __list_add_valid
   __list_del_entry_valid
+  list_sort
   ll_rw_block
   load_nls
   load_nls_default
@@ -1902,6 +1905,7 @@
   syscon_node_to_regmap
   syscon_regmap_lookup_by_phandle
   sysctl_sched_latency
+  sysfs_create_bin_file
   sysfs_create_file_ns
   sysfs_create_group
   sysfs_create_link
@@ -1949,6 +1953,7 @@
   __traceiter_android_rvh_check_preempt_tick
   __traceiter_android_rvh_check_preempt_wakeup
   __traceiter_android_rvh_do_sea
+  __traceiter_android_rvh_do_undefinstr
   __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_gic_v3_set_affinity
   __traceiter_android_rvh_iommu_setup_dma_ops
@@ -1972,6 +1977,8 @@
   __traceiter_android_vh_mmc_sd_update_dataline_timing
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_sched_show_task
+  __traceiter_android_vh_set_module_permit_after_init
+  __traceiter_android_vh_xhci_urb_suitable_bypass
   __traceiter_gpu_mem_total
   __traceiter_irq_handler_entry
   __traceiter_irq_handler_exit
@@ -1985,6 +1992,7 @@
   __tracepoint_android_rvh_check_preempt_tick
   __tracepoint_android_rvh_check_preempt_wakeup
   __tracepoint_android_rvh_do_sea
+  __tracepoint_android_rvh_do_undefinstr
   __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_gic_v3_set_affinity
   __tracepoint_android_rvh_iommu_setup_dma_ops
@@ -2008,6 +2016,8 @@
   __tracepoint_android_vh_mmc_sd_update_dataline_timing
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_sched_show_task
+  __tracepoint_android_vh_set_module_permit_after_init
+  __tracepoint_android_vh_xhci_urb_suitable_bypass
   __tracepoint_gpu_mem_total
   __tracepoint_irq_handler_entry
   __tracepoint_irq_handler_exit
