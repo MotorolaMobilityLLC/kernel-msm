@@ -2354,6 +2354,8 @@
   skb_copy_bits
   skb_vlan_untag
   unregister_netdevice_notifier
+  vlan_dev_real_dev
+  vlan_dev_vlan_id
 
 # required by sha1-ce.ko
   crypto_sha1_finup
