@@ -306,6 +306,7 @@ struct sdhci_msm_host {
 	struct reset_control *core_reset;
 	bool vbias_skip_wa;
 	bool pltfm_init_done;
+	bool pltfm_pwr_resumed;
 	bool fake_core_3_0v_support;
 	bool core_3_0v_support;
 	bool use_7nm_dll;

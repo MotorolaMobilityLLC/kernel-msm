@@ -3407,25 +3407,33 @@ static int __sdhci_msm_check_write(struct sdhci_host *host, u16 val, int reg)
 static void sdhci_msm_writew(struct sdhci_host *host, u16 val, int reg)
 {
 	u32 req_type = 0;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
 
-	req_type = __sdhci_msm_check_write(host, val, reg);
-	writew_relaxed(val, host->ioaddr + reg);
+	if (msm_host->pltfm_pwr_resumed) {
+		req_type = __sdhci_msm_check_write(host, val, reg);
+		writew_relaxed(val, host->ioaddr + reg);
 
-	if (req_type)
-		sdhci_msm_check_power_status(host, req_type);
+		if (req_type)
+			sdhci_msm_check_power_status(host, req_type);
+	}
 }
 
 /* This function may sleep*/
 static void sdhci_msm_writeb(struct sdhci_host *host, u8 val, int reg)
 {
 	u32 req_type = 0;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
 
-	req_type = __sdhci_msm_check_write(host, val, reg);
+	if (msm_host->pltfm_pwr_resumed) {
+		req_type = __sdhci_msm_check_write(host, val, reg);
 
-	writeb_relaxed(val, host->ioaddr + reg);
+		writeb_relaxed(val, host->ioaddr + reg);
 
-	if (req_type)
-		sdhci_msm_check_power_status(host, req_type);
+		if (req_type)
+			sdhci_msm_check_power_status(host, req_type);
+	}
 }
 
 static void sdhci_msm_set_regulator_caps(struct sdhci_msm_host *msm_host)
@@ -5384,6 +5392,8 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	 */
 	msm_host->pltfm_init_done = true;
 
+	msm_host->pltfm_pwr_resumed = true;
+
 	pm_runtime_mark_last_busy(&pdev->dev);
 	pm_runtime_put_autosuspend(&pdev->dev);
 
@@ -5494,6 +5504,8 @@ static __maybe_unused int sdhci_msm_runtime_suspend(struct device *dev)
 		goto skip_qos;
 	sdhci_msm_unvote_qos_all(msm_host);
 
+	msm_host->pltfm_pwr_resumed = false;
+
 skip_qos:
 	queue_delayed_work(msm_host->workq,
 			&msm_host->clk_gating_work,
@@ -5531,6 +5543,8 @@ static __maybe_unused int sdhci_msm_runtime_resume(struct device *dev)
 		if (msm_host->restore_dll_config && msm_host->clk_rate)
 			sdhci_msm_restore_sdr_dll_config(host);
 	}
+
+	msm_host->pltfm_pwr_resumed = true;
 
 	if (!qos_req)
 		return 0;
