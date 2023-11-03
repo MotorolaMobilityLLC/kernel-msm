@@ -43,6 +43,12 @@ config CCI_DEBUG_INTF
 	help
 	  This is enabling cci debug tool.
 
+config CAM_SENSOR_PROBE_DEBUG
+	default n
+	bool "enable cam sensor probe debug"
+	help
+	  This is enabling cam sensor probe debug.
+
 config CTWOV_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
