@@ -375,6 +375,7 @@
   dev_get_by_name
   dev_get_by_name_rcu
   dev_get_regmap
+  dev_get_tstats64
   device_add
   device_add_disk
   device_add_groups
@@ -698,6 +699,7 @@
   ethnl_cable_test_pulse
   ethnl_cable_test_result
   ethnl_cable_test_step
+  eth_platform_get_mac_address
   ethtool_convert_legacy_u32_to_link_mode
   ethtool_convert_link_mode_to_legacy_u32
   eventfd_ctx_fdget
@@ -765,6 +767,7 @@
   generic_handle_domain_irq
   generic_handle_irq
   generic_iommu_put_resv_regions
+  generic_mii_ioctl
   geni_icc_disable
   geni_icc_enable
   geni_icc_get
@@ -1296,6 +1299,8 @@
   migrate_pages
   migrate_swap
   __migrate_task
+  mii_check_media
+  mii_ethtool_gset
   mipi_dsi_dcs_set_tear_off
   misc_deregister
   misc_register
@@ -2573,6 +2578,8 @@
   usb_alloc_coherent
   usb_alloc_dev
   usb_assign_descriptors
+  usb_autopm_get_interface_async
+  usb_autopm_put_interface_async
   usb_bus_idr
   usb_bus_idr_lock
   usb_composite_setup_continue
@@ -2601,6 +2608,26 @@
   usb_interface_id
   usb_mon_deregister
   usb_mon_register
+  usbnet_disconnect
+  usbnet_get_endpoints
+  usbnet_get_msglevel
+  usbnet_link_change
+  usbnet_nway_reset
+  usbnet_open
+  usbnet_probe
+  usbnet_read_cmd
+  usbnet_read_cmd_nopm
+  usbnet_resume
+  usbnet_set_msglevel
+  usbnet_skb_return
+  usbnet_start_xmit
+  usbnet_stop
+  usbnet_suspend
+  usbnet_tx_timeout
+  usbnet_update_max_qlen
+  usbnet_write_cmd
+  usbnet_write_cmd_async
+  usbnet_write_cmd_nopm
   usb_phy_set_charger_current
   usb_pipe_type_check
   usb_put_function_instance
