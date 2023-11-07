@@ -90,6 +90,7 @@ def _define_build_config(
         ] + [fragment for fragment in build_config_fragments] + [
             "build.config.msm.common",
             "build.config.msm.gki",
+            "build.config.moto",
         ],
     )
 
