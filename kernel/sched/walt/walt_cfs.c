@@ -1250,6 +1250,10 @@ static inline unsigned int walt_cfs_mvp_task_limit(struct task_struct *p)
 	if (wts->mvp_prio == WALT_BINDER_MVP)
 		return WALT_MVP_SLICE;
 
+	/* Moto huangzq2: use longer exec limit (100ms) for top UI task */
+	if (wts->mvp_prio == WALT_TASK_BOOST_MVP)
+		return 100000000U;
+
 	return WALT_MVP_LIMIT;
 }
 
