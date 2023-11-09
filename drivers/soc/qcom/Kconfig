@@ -26,6 +26,13 @@ config ARCFOX_DTB
 	help
 		Only include Motorola Arcfox device specific device tree.
 
+config MALMO_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Malmo Device DTB"
+	help
+		Only include Motorola Malmo device specific device tree.
+
 config MOT_CNSS_KIWI_V2
 	default n
 	bool "enable kiwi_v2 module"
