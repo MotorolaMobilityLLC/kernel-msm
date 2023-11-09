@@ -177,9 +177,11 @@ static int qmp_open(struct qmp *qmp)
 		return -EINVAL;
 	}
 
-	qmp->qmp_rx.rx_buf = devm_kzalloc(qmp->dev, qmp->qmp_rx.rx_size, GFP_KERNEL);
-	if (!qmp->qmp_rx.rx_buf)
-		return -ENOMEM;
+	if (!qmp->ds_entry) {
+		qmp->qmp_rx.rx_buf = devm_kzalloc(qmp->dev, qmp->qmp_rx.rx_size, GFP_KERNEL);
+		if (!qmp->qmp_rx.rx_buf)
+			return -ENOMEM;
+	}
 
 	/* Ack remote core's link state */
 	val = readl(qmp->msgram + QMP_DESC_UCORE_LINK_STATE);
@@ -807,7 +809,7 @@ static int aoss_qmp_mbox_suspend_noirq(struct device *dev)
 	return 0;
 }
 
-static int aoss_qmp_mbox_resume_noirq(struct device *dev)
+static int aoss_qmp_mbox_resume_early(struct device *dev)
 {
 	struct qmp *qmp = dev_get_drvdata(dev);
 	int ret = 0;
@@ -828,7 +830,7 @@ static const struct dev_pm_ops aoss_qmp_mbox_pm_ops = {
 	.freeze_late = aoss_qmp_mbox_freeze,
 	.restore_early = aoss_qmp_mbox_restore,
 	.suspend_noirq = aoss_qmp_mbox_suspend_noirq,
-	.resume_noirq = aoss_qmp_mbox_resume_noirq,
+	.resume_early = aoss_qmp_mbox_resume_early,
 };
 
 static const struct of_device_id qmp_dt_match[] = {
