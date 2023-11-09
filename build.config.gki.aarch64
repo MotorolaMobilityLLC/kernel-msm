@@ -42,6 +42,7 @@ android/abi_gki_aarch64_sunxi
 android/abi_gki_aarch64_pasa
 android/abi_gki_aarch64_zeku
 android/abi_gki_aarch64_lenovo
+android/abi_gki_aarch64_transsion
 "
 
 FILES="${FILES}
