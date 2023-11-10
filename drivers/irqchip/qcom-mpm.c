@@ -691,7 +691,7 @@ const struct mpm_pin mpm_monaco_gic_chip_data[] = {
 };
 
 const struct mpm_pin mpm_trinket_gic_chip_data[] = {
-	{2, 190},
+	{2, 275},
 	{12, 422}, /* b3_lfps_rxterm_irq */
 	{86, 183}, /* mpm_wake,spmi_m */
 	{90, 260}, /* eud_p0_dpse_int_mx */
