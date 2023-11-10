@@ -1800,9 +1800,11 @@ static int msm_pinctrl_hibernation_suspend(void)
 				msm_readl_ctl(pctrl, pgroup);
 		pctrl->gpio_regs[i].io_reg =
 				msm_readl_io(pctrl, pgroup);
-		pctrl->gpio_regs[i].intr_cfg_reg =
+		if (pgroup->intr_cfg_reg)
+			pctrl->gpio_regs[i].intr_cfg_reg =
 				msm_readl_intr_cfg(pctrl, pgroup);
-		pctrl->gpio_regs[i].intr_status_reg =
+		if (pgroup->intr_status_reg)
+			pctrl->gpio_regs[i].intr_status_reg =
 				msm_readl_intr_status(pctrl, pgroup);
 	}
 
@@ -1845,9 +1847,11 @@ static void msm_pinctrl_hibernation_resume(void)
 		pgroup = &soc->groups[i];
 		msm_writel_ctl(pctrl->gpio_regs[i].ctl_reg, pctrl, pgroup);
 		msm_writel_io(pctrl->gpio_regs[i].io_reg, pctrl, pgroup);
-		msm_writel_intr_cfg(pctrl->gpio_regs[i].intr_cfg_reg,
-			pctrl, pgroup);
-		msm_writel_intr_status(pctrl->gpio_regs[i].intr_status_reg,
+		if (pgroup->intr_cfg_reg)
+			msm_writel_intr_cfg(pctrl->gpio_regs[i].intr_cfg_reg,
+				pctrl, pgroup);
+		if (pgroup->intr_status_reg)
+			msm_writel_intr_status(pctrl->gpio_regs[i].intr_status_reg,
 				pctrl, pgroup);
 	}
 
