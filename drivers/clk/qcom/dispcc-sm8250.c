@@ -1729,6 +1729,9 @@ static int disp_cc_sm8250_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	ret = register_qcom_clks_pm(pdev, true, &disp_cc_sm8250_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
 
 	ret = disp_cc_sm8250_fixup(pdev, regmap);
 	if (ret)
@@ -1737,24 +1740,14 @@ static int disp_cc_sm8250_probe(struct platform_device *pdev)
 	clk_lucid_pll_configure(&disp_cc_pll0, regmap, disp_cc_pll0.config);
 	clk_lucid_pll_configure(&disp_cc_pll1, regmap, disp_cc_pll1.config);
 
-	/* Enable clock gating for MDP clocks */
-	regmap_update_bits(regmap, 0x8000, 0x10, 0x10);
-
-	/*
-	 *Keep clocks always enabled
-	 *	disp_cc_xo_clk
-	 */
-	regmap_update_bits(regmap, 0x605c, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &disp_cc_sm8250_desc, regmap);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register DISP CC clocks\n");
 		return ret;
 	}
-
-	ret = register_qcom_clks_pm(pdev, false, &disp_cc_sm8250_desc);
-	if (ret)
-		dev_err(&pdev->dev, "Failed to register for pm ops\n");
 
 	pm_runtime_put_sync(&pdev->dev);
 	dev_info(&pdev->dev, "Registered DISP CC clocks\n");

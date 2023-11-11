@@ -10,6 +10,7 @@
 #include <linux/dma-direction.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
+#include <linux/sched/clock.h>
 #include <linux/ipc_logging.h>
 
 #ifdef CONFIG_ARM64
@@ -19,6 +20,8 @@
 #define GENI_SE_DMA_PTR_L(ptr) ((u32)ptr)
 #define GENI_SE_DMA_PTR_H(ptr) 0
 #endif
+
+#define IPC_LOG_KPI_PAGES	(4)  // KPI IPC Log size
 
 #define QUPV3_TEST_BUS_EN	0x204 //write 0x11
 #define QUPV3_TEST_BUS_SEL	0x200 //write 0x5  [for SE index 4)
@@ -74,6 +77,16 @@ if (print) { \
 #define SE_DMA_RX_IRQ_EN_SET	(0xD4C)
 #define SE_DMA_RX_IRQ_EN_CLR	(0xD50)
 
+#define TX_FLUSH_DONE			BIT(4)
+#define TX_GENI_GP_IRQ			(GENMASK(12, 5))
+#define TX_GENI_CMD_FAILURE		BIT(15)
+#define DMA_TX_ERROR_STATUS (TX_SBE | TX_GENI_CANCEL_IRQ | TX_GENI_CMD_FAILURE)
+
+#define RX_GENI_GP_IRQ			GENMASK(12, 5)
+#define RX_GENI_CANCEL_IRQ		BIT(14)
+#define RX_GENI_CMD_FAILURE		BIT(15)
+#define DMA_RX_ERROR_STATUS (RX_SBE | RX_GENI_CANCEL_IRQ | RX_GENI_CMD_FAILURE)
+
 #define SE_HW_PARAM_2                   (0xE2C)
 
 #define TX_GENI_CANCEL_IRQ		(BIT(14))
@@ -122,6 +135,19 @@ if (print) { \
 #define IO_MACRO_IO3_SEL	(GENMASK(7, 6))
 #define IO_MACRO_IO2_SEL	BIT(5)
 #define IO_MACRO_IO0_SEL_BIT	BIT(0)
+
+/**
+ * struct kpi_time - Help to capture KPI information
+ * @len: length of the request
+ * @time_stamp: Time stamp of the request
+ *
+ * This struct used to hold length and time stamp of Tx/Rx request
+ *
+ */
+struct kpi_time {
+	unsigned int len;
+	unsigned long long time_stamp;
+};
 
 static inline int geni_se_common_resources_init(struct geni_se *se, u32 geni_to_core,
 			 u32 cpu_to_geni, u32 geni_to_ddr)
@@ -446,5 +472,66 @@ static inline void test_bus_read_per_qupv3(struct device *wrapper_dev, void *ipc
 	GENI_SE_ERR(ipc, false, geni_se_dev->dev,
 		    "%s: dump QUPV3_TEST_BUS_REG:0x%x\n",
 		    __func__, geni_read_reg(geni_se_dev->base, QUPV3_TEST_BUS_REG));
+}
+
+/**
+ * geni_capture_start_time() - Used to capture start time of a function.
+ * @se: serial engine device
+ * @ipc: which IPC module to be used to log.
+ * @func: for which function start time is captured.
+ * @geni_kpi_capture_enabled: kpi capture enable flag to start capture the logs or not.
+ *
+ * Return:  start time if kpi geni_kpi_capture_enabled flag enabled.
+ */
+static inline unsigned long long geni_capture_start_time(struct geni_se *se, void *ipc,
+							 const char *func,
+							 int geni_kpi_capture_enabled)
+{
+	struct device *dev = se->dev;
+	unsigned long long start_time = 0;
+
+	if (geni_kpi_capture_enabled) {
+		start_time = sched_clock();
+		GENI_SE_ERR(ipc, false, dev,
+			    "%s:start at %llu nsec(%llu usec)\n", func,
+			    start_time, (start_time / 1000));
+	}
+	return start_time;
+}
+
+/**
+ * geni_capture_stop_time() - Logs the function execution time
+ * @se:	serial engine device
+ * @ipc: which IPC module to be used to log.
+ * @func: for which function kpi capture is used.
+ * @geni_kpi_capture_enabled: kpi capture enable flag to start capture the logs or not.
+ * @start_time: start time of the function
+ * @len: Number of bytes of transfer
+ * @freq: frequency of operation
+ * Return: None
+ */
+static inline void geni_capture_stop_time(struct geni_se *se, void *ipc,
+					  const char *func, int geni_kpi_capture_enabled,
+					  unsigned long long start_time, unsigned int len,
+					  unsigned int freq)
+{
+	struct device *dev = se->dev;
+	unsigned long long exec_time = 0;
+
+	if (geni_kpi_capture_enabled && start_time) {
+		exec_time = sched_clock() - start_time;
+		if (len == 0)
+			GENI_SE_ERR(ipc, false, dev,
+				    "%s:took %llu nsec(%llu usec)\n",
+				    func, exec_time, (exec_time / 1000));
+		else if (len != 0 && freq != 0)
+			GENI_SE_ERR(ipc, false, dev,
+				    "%s:took %llu nsec(%llu usec) for %d bytes with freq %d\n",
+				    func, exec_time, (exec_time / 1000), len, freq);
+		else
+			GENI_SE_ERR(ipc, false, dev,
+				    "%s:took %llu nsec(%llu usec) for %d bytes\n", func,
+				    exec_time, (exec_time / 1000), len);
+	}
 }
 #endif

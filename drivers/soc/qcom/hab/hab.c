@@ -137,7 +137,7 @@ static void hab_ctx_free_fn(struct uhab_context *ctx)
 	int ret = 0;
 
 	/* garbage-collect exp/imp buffers */
-	write_lock_bh(&ctx->exp_lock);
+	write_lock(&ctx->exp_lock);
 	list_for_each_entry_safe(exp, exp_tmp, &ctx->exp_whse, node) {
 		list_del(&exp->node);
 		exp_super = container_of(exp, struct export_desc_super, exp);
@@ -152,12 +152,18 @@ static void hab_ctx_free_fn(struct uhab_context *ctx)
 			pr_debug("potential leak exp %d vcid %X recovered\n",
 					exp->export_id, exp->vcid_local);
 			habmem_hyp_revoke(exp->payload, exp->payload_count);
-			write_unlock_bh(&ctx->exp_lock);
+			write_unlock(&ctx->exp_lock);
+
+			pchan = exp->pchan;
+			hab_spin_lock(&pchan->expid_lock, irqs_disabled);
+			idr_remove(&pchan->expid_idr, exp->export_id);
+			hab_spin_unlock(&pchan->expid_lock, irqs_disabled);
+
 			habmem_remove_export(exp);
-			write_lock_bh(&ctx->exp_lock);
+			write_lock(&ctx->exp_lock);
 		}
 	}
-	write_unlock_bh(&ctx->exp_lock);
+	write_unlock(&ctx->exp_lock);
 
 	spin_lock_bh(&ctx->imp_lock);
 	list_for_each_entry_safe(exp, exp_tmp, &ctx->imp_whse, node) {
@@ -711,7 +717,7 @@ long hab_vchan_send(struct uhab_context *ctx,
 	 * from the hab_vchan_send()'s perspective.
 	 */
 	if (!ret)
-		vchan->tx_cnt++;
+		atomic64_inc(&vchan->tx_cnt);
 err:
 
 	/* log msg send timestamp: exit hab_vchan_send */
@@ -762,7 +768,7 @@ int hab_vchan_recv(struct uhab_context *ctx,
 		 * hab_vchan_recv()'s view w/ the ret as 0 and *message as
 		 * non-zero.
 		 */
-		vchan->rx_cnt++;
+		atomic64_inc(&vchan->rx_cnt);
 	}
 
 	vchan->rx_inflight = 0;

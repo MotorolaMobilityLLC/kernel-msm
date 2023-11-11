@@ -10,6 +10,7 @@
 #include <linux/platform_device.h>
 #include <linux/mailbox_controller.h>
 #include <dt-bindings/soc/qcom,ipcc.h>
+#include <linux/syscore_ops.h>
 
 /* IPCC Register offsets */
 #define IPCC_REG_SEND_ID		0x0C
@@ -24,6 +25,8 @@
 #define IPCC_CLIENT_ID_SHIFT		16
 
 #define IPCC_NO_PENDING_IRQ		(~(u32)0)
+
+void __iomem *ipc_base;
 
 /**
  * struct ipcc_protocol_data - Per-protocol data
@@ -177,6 +180,27 @@ static const struct irq_domain_ops qcom_ipcc_irq_ops = {
 	.xlate = qcom_ipcc_domain_xlate,
 };
 
+static void qcom_ipcc_pm_resume(void)
+{
+	int i, j;
+	u32 packed_id;
+	u16 client_id[] = {IPCC_CLIENT_TZ, IPCC_CLIENT_LPASS, IPCC_CLIENT_CDSP,
+					IPCC_CLIENT_MPSS, IPCC_CLIENT_SPSS};
+	u16 signal_id[] = {IPCC_MPROC_SIGNAL_GLINK_QMP, IPCC_MPROC_SIGNAL_TZ,
+					IPCC_MPROC_SIGNAL_SMP2P, IPCC_MPROC_SIGNAL_PING};
+
+	for (i = 0; i < ARRAY_SIZE(client_id); i++) {
+		for (j = 0; j < ARRAY_SIZE(signal_id); j++) {
+			packed_id = qcom_ipcc_get_packed_id(client_id[i], signal_id[j]);
+			writel(packed_id, ipc_base + IPCC_REG_RECV_SIGNAL_ENABLE);
+		}
+	}
+}
+
+static struct syscore_ops ipcc_mbox_power_ops = {
+	.resume = qcom_ipcc_pm_resume,
+};
+
 static int qcom_ipcc_mbox_send_data(struct mbox_chan *chan, void *data)
 {
 	struct ipcc_mbox_chan *ipcc_mbox_chan = chan->con_priv;
@@ -328,6 +352,7 @@ static int qcom_ipcc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to ioremap the ipcc base addr\n");
 		return PTR_ERR(proto_data->base);
 	}
+	ipc_base = proto_data->base;
 
 	name = devm_kasprintf(&pdev->dev, GFP_KERNEL, "ipcc_%d", id++);
 	if (!name)
@@ -354,13 +379,18 @@ static int qcom_ipcc_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_request_irq(&pdev->dev, proto_data->irq, qcom_ipcc_irq_fn,
-				IRQF_TRIGGER_HIGH | IRQF_NO_SUSPEND, name, proto_data);
+				IRQF_TRIGGER_HIGH | IRQF_NO_SUSPEND |
+				IRQF_NO_THREAD, name, proto_data);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register the irq: %d\n", ret);
 		goto err_req_irq;
 	}
 
 	platform_set_drvdata(pdev, proto_data);
+
+#ifdef CONFIG_PM_SLEEP
+	register_syscore_ops(&ipcc_mbox_power_ops);
+#endif
 
 	return 0;
 

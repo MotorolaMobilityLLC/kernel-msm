@@ -280,10 +280,12 @@ int ovl_permission(struct user_namespace *mnt_userns,
 {
 	struct inode *upperinode = ovl_inode_upper(inode);
 	struct inode *realinode = upperinode ?: ovl_inode_lower(inode);
+	struct path realpath;
 	const struct cred *old_cred;
 	int err;
 
 	/* Careful in RCU walk mode */
+	realinode = ovl_i_path_real(inode, &realpath);
 	if (!realinode) {
 		WARN_ON(!(mask & MAY_NOT_BLOCK));
 		return -ECHILD;
@@ -449,11 +451,22 @@ ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)
 
 struct posix_acl *ovl_get_acl(struct inode *inode, int type, bool rcu)
 {
-	struct inode *realinode = ovl_inode_real(inode);
+	struct inode *realinode;
 	const struct cred *old_cred;
 	struct posix_acl *acl;
+	struct path realpath;
 
-	if (!IS_ENABLED(CONFIG_FS_POSIX_ACL) || !IS_POSIXACL(realinode))
+	if (!IS_ENABLED(CONFIG_FS_POSIX_ACL))
+		return NULL;
+
+	/* Careful in RCU walk mode */
+	realinode = ovl_i_path_real(inode, &realpath);
+	if (!realinode) {
+		WARN_ON(!rcu);
+		return ERR_PTR(-ECHILD);
+	}
+
+	if (!IS_POSIXACL(realinode))
 		return NULL;
 
 	if (rcu)

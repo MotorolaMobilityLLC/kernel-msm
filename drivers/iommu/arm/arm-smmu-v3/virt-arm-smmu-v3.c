@@ -506,7 +506,7 @@ static unsigned long get_sid_from_smmu_domain(struct virt_arm_smmu_domain *smmu_
 {
 	struct virt_arm_smmu_master *master;
 	unsigned long flags;
-	u64 sid;
+	u64 sid = 0;
 	u16 i;
 
 	spin_lock_irqsave(&smmu_domain->devices_lock, flags);

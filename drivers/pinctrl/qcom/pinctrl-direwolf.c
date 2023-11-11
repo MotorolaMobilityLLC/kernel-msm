@@ -2295,7 +2295,7 @@ static struct msm_dir_conn direwolf_dir_conn[] = {
 	{-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}
 };
 
-static const struct msm_pinctrl_soc_data direwolf_pinctrl = {
+static struct msm_pinctrl_soc_data direwolf_pinctrl = {
 	.pins = direwolf_pins,
 	.npins = ARRAY_SIZE(direwolf_pins),
 	.functions = direwolf_functions,
@@ -2305,6 +2305,42 @@ static const struct msm_pinctrl_soc_data direwolf_pinctrl = {
 	.ngpios = 230,
 	.dir_conn = direwolf_dir_conn,
 };
+
+static int direwolf_pinctrl_gpio_irq_map_probe(struct platform_device *pdev)
+{
+	int ret, n, gpio_irq_map_count;
+	struct device_node *np = pdev->dev.of_node;
+	struct msm_gpio_wakeirq_map *gpio_irq_map;
+
+	n = of_property_count_elems_of_size(np, "qcom,gpio-irq-map",
+					sizeof(u32));
+	if (n <= 0 || n % 2)
+		return -EINVAL;
+
+	gpio_irq_map_count = n / 2;
+	gpio_irq_map = devm_kcalloc(&pdev->dev, gpio_irq_map_count,
+				sizeof(*gpio_irq_map), GFP_KERNEL);
+	if (!gpio_irq_map)
+		return -ENOMEM;
+
+	for (n = 0; n < gpio_irq_map_count; n++) {
+		ret = of_property_read_u32_index(np, "qcom,gpio-irq-map",
+						n * 2 + 0,
+						&gpio_irq_map[n].gpio);
+		if (ret)
+			return ret;
+		ret = of_property_read_u32_index(np, "qcom,gpio-irq-map",
+						n * 2 + 1,
+						&gpio_irq_map[n].wakeirq);
+		if (ret)
+			return ret;
+	}
+
+	direwolf_pinctrl.wakeirq_map = gpio_irq_map;
+	direwolf_pinctrl.nwakeirq_map = gpio_irq_map_count;
+
+	return 0;
+}
 
 static int direwolf_pinctrl_dirconn_list_probe(struct platform_device *pdev)
 {
@@ -2340,6 +2376,15 @@ static int direwolf_pinctrl_dirconn_list_probe(struct platform_device *pdev)
 static int direwolf_pinctrl_probe(struct platform_device *pdev)
 {
 	int len, ret;
+
+	if (of_find_property(pdev->dev.of_node, "qcom,gpio-irq-map", &len)) {
+		ret = direwolf_pinctrl_gpio_irq_map_probe(pdev);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"Unable to parse GPIO IRQ map\n");
+			return ret;
+		}
+	}
 
 	if (of_find_property(pdev->dev.of_node, "qcom,dirconn-list", &len)) {
 		ret = direwolf_pinctrl_dirconn_list_probe(pdev);

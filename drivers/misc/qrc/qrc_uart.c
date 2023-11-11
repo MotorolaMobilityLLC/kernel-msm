@@ -100,13 +100,16 @@ static int qrcuart_open(struct qrc_dev *dev)
 	struct serdev_device *serdev = qrc->serdev;
 	int ret;
 
-	ret = serdev_device_open(serdev);
-	if (ret) {
-		pr_err("qrcuart :Unable to open device\n");
-		return ret;
+	if (!qrc->is_open) {
+		ret = serdev_device_open(serdev);
+		if (ret) {
+			pr_err("qrcuart :Unable to open device\n");
+			return ret;
+		}
+		serdev_device_set_baudrate(serdev, 115200);
+		serdev_device_set_flow_control(serdev, false);
+		qrc->is_open = true;
 	}
-	serdev_device_set_baudrate(serdev, 115200);
-	serdev_device_set_flow_control(serdev, false);
 
 	return 0;
 }
@@ -120,7 +123,11 @@ static int qrcuart_close(struct qrc_dev *dev)
 	spin_lock_bh(&qrc->lock);
 	qrc->tx_left = 0;
 	spin_unlock_bh(&qrc->lock);
-	serdev_device_close(serdev);
+	if (qrc->is_open) {
+		serdev_device_close(serdev);
+		qrc->is_open = false;
+	}
+
 	return 0;
 }
 
@@ -286,6 +293,7 @@ static int qrc_uart_probe(struct serdev_device *serdev)
 		goto free;
 	}
 	serdev_device_close(serdev);
+	qrc->is_open = false;
 
 	ret = qrc_register_device(qdev, &serdev->dev);
 
@@ -307,13 +315,14 @@ static void qrc_uart_remove(struct serdev_device *serdev)
 {
 	struct qrcuart *qrc = serdev_device_get_drvdata(serdev);
 
-	serdev_device_close(serdev);
+	if (qrc->is_open)
+		serdev_device_close(serdev);
+
 	qrcuart_uninit(qrc->qrc_dev);
 	cancel_work_sync(&qrc->tx_work);
 	qrc_unregister(qrc->qrc_dev);
 	kfree(qrc->qrc_dev);
 	kfree(qrc);
-	dev_info(&serdev->dev, "qrcuart drv removed\n");
 }
 
 static const struct of_device_id qrc_uart_of_match[] = {

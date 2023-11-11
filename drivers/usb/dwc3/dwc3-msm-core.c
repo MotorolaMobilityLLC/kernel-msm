@@ -606,6 +606,7 @@ struct dwc3_msm {
 	bool			dynamic_disable;
 	bool			wcd_usbss;
 	bool			force_disconnect;
+	bool			read_u1u2;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -3150,13 +3151,12 @@ static void mdwc3_usb2_phy_soft_reset(struct dwc3_msm *mdwc)
 static void mdwc3_update_u1u2_value(struct dwc3 *dwc)
 {
 	struct dwc3_msm *mdwc = dev_get_drvdata(dwc->dev->parent);
-	static bool read_u1u2;
 
 	/* cache DT based initial value once */
-	if (!read_u1u2) {
+	if (!mdwc->read_u1u2) {
 		mdwc->cached_dis_u1_entry_quirk = dwc->dis_u1_entry_quirk;
 		mdwc->cached_dis_u2_entry_quirk = dwc->dis_u2_entry_quirk;
-		read_u1u2 = true;
+		mdwc->read_u1u2 = true;
 		dbg_log_string("cached_dt_param: u1_disable:%d u2_disable:%d\n",
 			mdwc->cached_dis_u1_entry_quirk, mdwc->cached_dis_u2_entry_quirk);
 	}

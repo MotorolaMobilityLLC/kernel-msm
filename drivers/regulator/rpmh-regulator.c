@@ -236,6 +236,7 @@ struct rpmh_aggr_vreg {
 	bool				always_wait_for_ack;
 	bool				next_wait_for_ack;
 	bool				sleep_request_sent;
+	bool				enable_regulator_deepsleep;
 	struct rpmh_vreg		*vreg;
 	int				vreg_count;
 	struct rpmh_regulator_mode	*mode;
@@ -922,6 +923,11 @@ rpmh_regulator_send_aggregate_requests(struct rpmh_vreg *vreg)
 static int rpmh_vreg_send_ds_requests(struct rpmh_aggr_vreg *aggr_vreg)
 {
 	int rc;
+
+	if (!aggr_vreg->enable_regulator_deepsleep) {
+		pr_debug("clients are handling regulator votes during deepsleep\n");
+		return 0;
+	}
 
 	mutex_lock(&aggr_vreg->lock);
 
@@ -2049,6 +2055,9 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 			sid);
 		return -EINVAL;
 	}
+
+	if (of_find_node_by_name(node, "qcom,regulator_deepsleep"))
+		aggr_vreg->enable_regulator_deepsleep = true;
 
 	if (aggr_vreg->regulator_type == RPMH_REGULATOR_TYPE_ARC) {
 		rc = rpmh_regulator_load_arc_level_mapping(aggr_vreg);
