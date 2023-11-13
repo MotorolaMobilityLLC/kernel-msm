@@ -328,22 +328,27 @@ static void reclaim_cleanup(struct work_struct *reclaim_work)
 	struct export_desc *exp = NULL, *exp_tmp = NULL;
 	struct export_desc_super *exp_super = NULL;
 	struct physical_channel *pchan = NULL;
+	LIST_HEAD(free_list);
 
 	pr_debug("reclaim worker called\n");
 	spin_lock(&hab_driver.reclaim_lock);
 	list_for_each_entry_safe(exp, exp_tmp, &hab_driver.reclaim_list, node) {
 		exp_super = container_of(exp, struct export_desc_super, exp);
-		if (exp_super->remote_imported == 0) {
-			list_del(&exp->node);
-			pchan = exp->pchan;
-			spin_lock_bh(&pchan->expid_lock);
-			idr_remove(&pchan->expid_idr, exp->export_id);
-			spin_unlock_bh(&pchan->expid_lock);
-			pr_info("cleanup exp id %d\n", exp->export_id);
-			habmem_export_put(exp_super);
-		}
+		if (exp_super->remote_imported == 0)
+			list_move(&exp->node, &free_list);
 	}
 	spin_unlock(&hab_driver.reclaim_lock);
+
+	list_for_each_entry_safe(exp, exp_tmp, &free_list, node) {
+		list_del(&exp->node);
+		exp_super = container_of(exp, struct export_desc_super, exp);
+		pchan = exp->pchan;
+		spin_lock_bh(&pchan->expid_lock);
+		idr_remove(&pchan->expid_idr, exp->export_id);
+		spin_unlock_bh(&pchan->expid_lock);
+		pr_info("cleanup exp id %u from %s\n", exp->export_id, pchan->name);
+		habmem_export_put(exp_super);
+	}
 }
 
 static int __init hab_init(void)
