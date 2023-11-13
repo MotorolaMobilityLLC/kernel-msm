@@ -19,6 +19,13 @@ config ARCF_DTB
 	help
 		Only include Motorola Arcf device specific device tree.
 
+config ARCFOX_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Arcfox Device DTB"
+	help
+		Only include Motorola Arcfox device specific device tree.
+
 config MOT_OIS_EARLY_UPGRADE_FW
 	default n
 	bool "enable OIS upgrade FW early"
@@ -56,6 +63,12 @@ config CTWOV_DTB
 	help
 		Only include Motorola device specific device tree.
 
+config CTWO_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Device DTB"
+	help
+		Only include Motorola device specific device tree.
 
 config SPS
 	tristate "SPS support"
