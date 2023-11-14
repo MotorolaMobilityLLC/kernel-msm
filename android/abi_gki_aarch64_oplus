@@ -434,6 +434,7 @@
   __traceiter_android_vh_madvise_cold_or_pageout_abort
   __traceiter_android_vh_mark_page_accessed
   __traceiter_android_vh_mem_cgroup_alloc
+  __traceiter_android_vh_adjust_alloc_flags
   __traceiter_android_vh_mem_cgroup_css_offline
   __traceiter_android_vh_mem_cgroup_css_online
   __traceiter_android_vh_mem_cgroup_free
@@ -453,6 +454,7 @@
   __traceiter_android_vh_print_slabinfo_header
   __traceiter_android_vh_record_mutex_lock_starttime
   __traceiter_android_vh_record_pcpu_rwsem_starttime
+  __traceiter_android_vh_percpu_rwsem_wq_add
   __traceiter_android_vh_record_rtmutex_lock_starttime
   __traceiter_android_vh_record_rwsem_lock_starttime
   __traceiter_android_vh_rmqueue
@@ -561,6 +563,7 @@
   __tracepoint_android_vh_madvise_cold_or_pageout_abort
   __tracepoint_android_vh_mark_page_accessed
   __tracepoint_android_vh_mem_cgroup_alloc
+  __tracepoint_android_vh_adjust_alloc_flags
   __tracepoint_android_vh_mem_cgroup_css_offline
   __tracepoint_android_vh_mem_cgroup_css_online
   __tracepoint_android_vh_mem_cgroup_free
@@ -580,6 +583,7 @@
   __tracepoint_android_vh_print_slabinfo_header
   __tracepoint_android_vh_record_mutex_lock_starttime
   __tracepoint_android_vh_record_pcpu_rwsem_starttime
+  __tracepoint_android_vh_percpu_rwsem_wq_add
   __tracepoint_android_vh_record_rtmutex_lock_starttime
   __tracepoint_android_vh_record_rwsem_lock_starttime
   __tracepoint_android_vh_rmqueue
