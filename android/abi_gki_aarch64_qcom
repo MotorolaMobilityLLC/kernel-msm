@@ -2443,6 +2443,7 @@
   sysfs_create_group
   sysfs_create_groups
   sysfs_create_link
+  sysfs_emit
   __sysfs_match_string
   sysfs_notify
   sysfs_remove_bin_file
@@ -2563,6 +2564,7 @@
   ufshcd_uic_hibern8_exit
   uhid_hid_driver
   __uio_register_device
+  uhid_hid_driver
   uio_unregister_device
   unlock_new_inode
   unlock_page
