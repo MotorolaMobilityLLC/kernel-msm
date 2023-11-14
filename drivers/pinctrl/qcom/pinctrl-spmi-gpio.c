@@ -16,6 +16,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/spmi.h>
+#include <linux/suspend.h>
 #include <linux/types.h>
 
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
@@ -812,8 +813,17 @@ static int pmic_gpio_restore(struct device *dev)
 	return ret;
 }
 
+static int pmic_gpio_resume(struct device *dev)
+{
+	if (pm_suspend_via_firmware())
+		return pmic_gpio_restore(dev);
+
+	return 0;
+}
+
 static const struct dev_pm_ops pmic_gpio_pm_ops = {
 	.restore = pmic_gpio_restore,
+	.resume = pmic_gpio_resume,
 };
 #else
 static const struct dev_pm_ops pmic_gpio_pm_ops = {};

@@ -571,6 +571,7 @@ int slate_flash_mode(struct qcom_slate *slate_data)
 static int slate_start(struct rproc *rproc)
 {
 	struct qcom_slate *slate_data = (struct qcom_slate *)rproc->priv;
+	struct tzapp_slate_req slate_tz_req;
 	int ret = 0;
 
 	if (!slate_data) {
@@ -584,6 +585,13 @@ static int slate_start(struct rproc *rproc)
 		if (gpio_get_value(slate_data->gpios[0])) {
 			pr_info("Slate is booted up!! Mode: FLASH\n");
 			slate_data->is_ready = true;
+			/* Update dump configuration when it boots from FLASH Mode. */
+			slate_tz_req.tzapp_slate_cmd = SLATE_RPROC_UP_INFO;
+			ret = slate_tzapp_comm(slate_data, &slate_tz_req);
+			if (ret || slate_data->cmd_status)
+				dev_err(slate_data->dev,
+				"%s: failed to update dump info %d\n",
+				__func__, slate_data->cmd_status);
 			return RESULT_SUCCESS;
 		} else
 			return RESULT_FAILURE;

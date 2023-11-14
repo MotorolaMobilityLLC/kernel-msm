@@ -31,6 +31,7 @@ struct gh_ext_reg {
 struct gh_vm {
 	bool is_secure_vm; /* is true for Qcom authenticated secure VMs */
 	bool vm_run_once;
+	bool keep_running;
 	u32 created_vcpus;
 	u32 allowed_vcpus;
 	gh_vmid_t vmid;

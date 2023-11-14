@@ -57,3 +57,4 @@ obj-$(CONFIG_PINCTRL_LEMANS) += pinctrl-lemans.o
 obj-$(CONFIG_PINCTRL_DIREWOLF) += pinctrl-direwolf.o
 obj-$(CONFIG_PINCTRL_MONACO_AUTO) += pinctrl-monaco_auto.o
 obj-$(CONFIG_PINCTRL_TRINKET) += pinctrl-trinket.o
+obj-$(CONFIG_PINCTRL_SDM670) += pinctrl-sdm670.o

@@ -24,7 +24,8 @@
 #include "hgsl.h"
 #include "hgsl_tcsr.h"
 #include "hgsl_memory.h"
-#include "hgsl_hyp.h"
+#include "hgsl_sysfs.h"
+#include "hgsl_debugfs.h"
 
 #define HGSL_DEVICE_NAME "hgsl"
 #define HGSL_DEV_NUM 1
@@ -3176,6 +3177,8 @@ static int hgsl_open(struct inode *inodep, struct file *filep)
 	priv->dev = hgsl;
 	filep->private_data = priv;
 
+	hgsl_sysfs_client_init(priv);
+	hgsl_debugfs_client_init(priv);
 out:
 	if (ret != 0)
 		kfree(priv);
@@ -3242,6 +3245,8 @@ static int _hgsl_release(struct hgsl_priv *priv)
 	struct qcom_hgsl *hgsl = priv->dev;
 	uint32_t i;
 	int ret;
+	hgsl_debugfs_client_release(priv);
+	hgsl_sysfs_client_release(priv);
 
 	read_lock(&hgsl->ctxt_lock);
 	for (i = 0; i < HGSL_CONTEXT_NUM; i++) {
@@ -3899,6 +3904,8 @@ static int qcom_hgsl_probe(struct platform_device *pdev)
 	hgsl_dev->default_iocoherency = of_property_read_bool(pdev->dev.of_node,
 							"default_iocoherency");
 	platform_set_drvdata(pdev, hgsl_dev);
+	hgsl_sysfs_init(pdev);
+	hgsl_debugfs_init(pdev);
 
 	return 0;
 
@@ -3912,6 +3919,8 @@ static int qcom_hgsl_remove(struct platform_device *pdev)
 	struct qcom_hgsl *hgsl = platform_get_drvdata(pdev);
 	struct hgsl_tcsr *tcsr_sender, *tcsr_receiver;
 	int i;
+	hgsl_debugfs_release(pdev);
+	hgsl_sysfs_release(pdev);
 
 	for (i = 0; i < HGSL_TCSR_NUM; i++) {
 		tcsr_sender = hgsl->tcsr[i][HGSL_TCSR_ROLE_SENDER];
