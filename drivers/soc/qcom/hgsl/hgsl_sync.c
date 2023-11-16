@@ -275,14 +275,16 @@ int hgsl_isync_timeline_create(struct hgsl_priv *priv,
 	idr_preload(GFP_KERNEL);
 	spin_lock(&priv->isync_timeline_lock);
 	idr = idr_alloc(&priv->isync_timeline_idr, timeline, 1, 0, GFP_NOWAIT);
-	spin_unlock(&priv->isync_timeline_lock);
-	idr_preload_end();
-
 	if (idr > 0) {
 		timeline->id = idr;
 		*timeline_id = idr;
 		ret = 0;
-	} else
+	}
+	spin_unlock(&priv->isync_timeline_lock);
+	idr_preload_end();
+
+	/* allocate IDR failed */
+	if (ret != 0)
 		kfree(timeline);
 
 	return ret;
