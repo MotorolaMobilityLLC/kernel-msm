@@ -26,6 +26,12 @@ config ARCFOX_DTB
 	help
 		Only include Motorola Arcfox device specific device tree.
 
+config MOT_OIS_AFTER_SALES_SERVICE
+	default n
+	bool "enable OIS_AFTER_SALES_SERVICE"
+	help
+	  This is enabling OIS_AFTER_SALES_SERVICE.
+
 config MOT_OIS_EARLY_UPGRADE_FW
 	default n
 	bool "enable OIS upgrade FW early"
