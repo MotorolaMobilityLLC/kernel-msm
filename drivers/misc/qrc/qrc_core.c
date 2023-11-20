@@ -308,7 +308,7 @@ void qrc_unregister(struct qrc_dev *qdev)
 {
 	device_destroy(qrc_class, qdev->dev->devt);
 	qrc_control_gpio_uninit(qdev);
-	dev_info(qdev->dev, "qrc drv unregistered\n");
+	pr_err("qrc drv unregistered\n");
 }
 
 MODULE_DESCRIPTION("Qualcomm Technologies, Inc. QRC Uart Driver");
