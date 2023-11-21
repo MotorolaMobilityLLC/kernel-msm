@@ -2966,6 +2966,12 @@
   __traceiter_task_newtask
   __traceiter_task_rename
   __traceiter_xhci_urb_giveback
+  __traceiter_android_vh_binder_proc_transaction_finish
+  __traceiter_android_vh_alloc_oem_binder_struct
+  __traceiter_android_vh_binder_transaction_received
+  __traceiter_android_vh_free_oem_binder_struct
+  __traceiter_android_vh_binder_special_task
+  __traceiter_android_vh_binder_free_buf
   __tracepoint_android_rvh_account_irq
   __tracepoint_android_rvh_after_enqueue_task
   __tracepoint_android_rvh_build_perf_domains
@@ -3238,6 +3244,12 @@
   __tracepoint_task_newtask
   __tracepoint_task_rename
   __tracepoint_xhci_urb_giveback
+  __tracepoint_android_vh_binder_proc_transaction_finish
+  __tracepoint_android_vh_alloc_oem_binder_struct
+  __tracepoint_android_vh_binder_transaction_received
+  __tracepoint_android_vh_free_oem_binder_struct
+  __tracepoint_android_vh_binder_special_task
+  __tracepoint_android_vh_binder_free_buf
   trace_print_array_seq
   trace_print_flags_seq
   trace_print_hex_seq
