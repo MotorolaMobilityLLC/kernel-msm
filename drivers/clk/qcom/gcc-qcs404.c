@@ -3037,11 +3037,17 @@ static int gcc_qcs404_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static void gcc_qcs404_sync_state(struct device *dev)
+{
+	qcom_cc_sync_state(dev, &gcc_qcs404_desc);
+}
+
 static struct platform_driver gcc_qcs404_driver = {
 	.probe = gcc_qcs404_probe,
 	.driver = {
 		.name = "gcc-qcs404",
 		.of_match_table = gcc_qcs404_match_table,
+		.sync_state = gcc_qcs404_sync_state,
 	},
 };
 
