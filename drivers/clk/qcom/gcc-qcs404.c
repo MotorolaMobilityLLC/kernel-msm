@@ -95,7 +95,7 @@ static struct clk_alpha_pll gpll0_ao_out_main = {
 		.hw.init = &(struct clk_init_data){
 			.name = "gpll0_ao_out_main",
 			.parent_data = &(const struct clk_parent_data){
-					.fw_name = "bi_tcxo",
+					.fw_name = "bi_tcxo_ao",
 		},
 			.num_parents = 1,
 			.ops = &clk_alpha_pll_ops,
@@ -230,7 +230,7 @@ static const struct clk_parent_data gcc_parent_data_0[] = {
 };
 
 static const struct clk_parent_data gcc_parent_data_ao_0[] = {
-	{ .fw_name = "bi_tcxo" },
+	{ .fw_name = "bi_tcxo_ao" },
 	{ .hw = &gpll0_ao_out_main.clkr.hw },
 };
 
