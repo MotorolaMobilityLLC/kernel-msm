@@ -331,6 +331,16 @@ def _define_kernel_dist(
     if define_abi_targets:
         msm_dist_targets.append("{}_gki_artifacts".format(base_kernel))
 
+    native.genrule(
+        name = "{}_system_dlkm_module_blocklist".format(target),
+        srcs = ["modules.systemdlkm_blocklist.msm.{}".format(msm_target)],
+        outs = ["{}/system_dlkm.modules.blocklist".format(target)],
+        cmd = """
+          mkdir -p "$$(dirname "$@")"
+          sed -e '/^#/d' -e '/^$$/d' $(SRCS) > "$@"
+        """,
+    )
+
     msm_dist_targets.extend([
         # do not sort
         "{}_images_system_dlkm_image".format(base_kernel),
@@ -341,6 +351,7 @@ def _define_kernel_dist(
         ":{}_unsparsed_image".format(target),
         ":{}_merged_kernel_uapi_headers".format(target),
         ":{}_build_config".format(target),
+        ":{}_system_dlkm_module_blocklist".format(target),
     ])
 
     msm_dist_targets.append("{}_avb_sign_boot_image".format(target))
@@ -450,6 +461,10 @@ def define_msm_la(
     vendor_ramdisk_binaries = get_vendor_ramdisk_binaries(target)
     gki_ramdisk_prebuilt_binary = get_gki_ramdisk_prebuilt_binary()
     build_config_fragments = get_build_config_fragments(msm_target)
+
+    # Can't enable dpm_overlay if no overlays are listed
+    if len(dtbo_list) == 0 and dpm_overlay:
+        dpm_overlay = False
 
     _define_build_config(
         msm_target,

@@ -573,8 +573,8 @@ static void add_mpss_dsm_mem_ssr_dump(struct qcom_adsp *adsp)
 	 * bytes will be zeros, so, left shift by 16 to get proper address & size.
 	 */
 	for (i = 0; i < resource_size(&imem); i = i + 4) {
-		da = __raw_readw(base + i) << 16;
-		size = __raw_readw(base + (i + 2)) << 16;
+		da = (u32)(__raw_readw(base + i) << 16);
+		size = (u32)(__raw_readw(base + (i + 2)) << 16);
 		if (da && size)
 			rproc_coredump_add_custom_segment(rproc,
 				da, size, adsp_segment_dump, NULL);
@@ -746,9 +746,6 @@ static int adsp_start(struct rproc *rproc)
 			dev_err(adsp->dev, "start timed out\n");
 	}
 
-	if (is_mss_ssr_hyp_assign_en(adsp))
-		add_mpss_dsm_mem_ssr_dump(adsp);
-
 free_metadata:
 	qcom_mdt_free_metadata(adsp->dev, adsp->pas_id, adsp->mdata,
 					adsp->dma_phys_below_32b, ret);
@@ -838,6 +835,7 @@ static int adsp_stop(struct rproc *rproc)
 		qcom_pas_handover(&adsp->q6v5);
 
 	if (is_mss_ssr_hyp_assign_en(adsp)) {
+		add_mpss_dsm_mem_ssr_dump(adsp);
 		ret = mpss_dsm_hyp_assign_control(adsp, false);
 		if (ret)
 			dev_err(adsp->dev, "failed to reclaim mpss dsm mem\n");
@@ -1650,6 +1648,22 @@ static const struct adsp_data pineapple_adsp_resource = {
 	.ssctl_id = 0x14,
 };
 
+static const struct adsp_data niobe_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.dtb_firmware_name = "adsp_dtb.mdt",
+	.pas_id = 1,
+	.dtb_pas_id = 0x24,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
 static const struct adsp_data cliffs_adsp_resource = {
 	.crash_reason_smem = 423,
 	.firmware_name = "adsp.mdt",
@@ -1707,6 +1721,20 @@ static const struct adsp_data blair_adsp_resource = {
 };
 
 static const struct adsp_data holi_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.pas_id = 1,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data pitti_adsp_resource = {
 	.crash_reason_smem = 423,
 	.firmware_name = "adsp.mdt",
 	.pas_id = 1,
@@ -1845,6 +1873,23 @@ static const struct adsp_data kalama_cdsp_resource = {
 };
 
 static const struct adsp_data pineapple_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.dtb_firmware_name = "cdsp_dtb.mdt",
+	.pas_id = 18,
+	.dtb_pas_id = 0x25,
+	.minidump_id = 7,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.hyp_assign_mem = true,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
+static const struct adsp_data niobe_cdsp_resource = {
 	.crash_reason_smem = 601,
 	.firmware_name = "cdsp.mdt",
 	.dtb_firmware_name = "cdsp_dtb.mdt",
@@ -2002,7 +2047,7 @@ static const struct adsp_data cliffs_mpss_resource = {
 	.uses_elf64 = true,
 	.has_aggre2_clk = false,
 	.auto_boot = false,
-	.hyp_assign_mem = true,
+	.ssr_hyp_assign_mem = true,
 	.ssr_name = "mpss",
 	.sysmon_name = "modem",
 	.qmp_name = "modem",
@@ -2054,6 +2099,21 @@ static const struct adsp_data blair_mpss_resource = {
 };
 
 static const struct adsp_data holi_mpss_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "modem.mdt",
+	.pas_id = 4,
+	.free_after_auth_reset = true,
+	.minidump_id = 3,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "mpss",
+	.sysmon_name = "modem",
+	.qmp_name = "modem",
+	.ssctl_id = 0x12,
+};
+
+static const struct adsp_data pitti_mpss_resource = {
 	.crash_reason_smem = 421,
 	.firmware_name = "modem.mdt",
 	.pas_id = 4,
@@ -2337,6 +2397,8 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,pineapple-adsp-pas", .data = &pineapple_adsp_resource},
 	{ .compatible = "qcom,pineapple-modem-pas", .data = &pineapple_mpss_resource},
 	{ .compatible = "qcom,pineapple-cdsp-pas", .data = &pineapple_cdsp_resource},
+	{ .compatible = "qcom,niobe-adsp-pas", .data = &niobe_adsp_resource},
+	{ .compatible = "qcom,niobe-cdsp-pas", .data = &niobe_cdsp_resource},
 	{ .compatible = "qcom,cinder-modem-pas", .data = &cinder_mpss_resource},
 	{ .compatible = "qcom,khaje-adsp-pas", .data = &khaje_adsp_resource},
 	{ .compatible = "qcom,khaje-cdsp-pas", .data = &khaje_cdsp_resource},
@@ -2356,6 +2418,8 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,cliffs-modem-pas", .data = &cliffs_mpss_resource},
 	{ .compatible = "qcom,cliffs-cdsp-pas", .data = &cliffs_cdsp_resource},
 	{ .compatible = "qcom,cliffs-wpss-pas", .data = &cliffs_wpss_resource},
+	{ .compatible = "qcom,pitti-adsp-pas", .data = &pitti_adsp_resource},
+	{ .compatible = "qcom,pitti-modem-pas", .data = &pitti_mpss_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);

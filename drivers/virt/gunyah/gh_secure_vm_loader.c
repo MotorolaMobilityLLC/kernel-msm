@@ -27,14 +27,24 @@
 
 #define PAGE_ROUND_UP(x) ((((u64)(x) + (PAGE_SIZE - 1)) / PAGE_SIZE)  * PAGE_SIZE)
 
+struct gh_sec_ext_region {
+	phys_addr_t ext_phys;
+	ssize_t ext_size;
+	u32 ext_label;
+};
+
 struct gh_sec_vm_dev {
 	struct list_head list;
 	const char *vm_name;
 	struct device *dev;
 	bool system_vm;
+	bool keep_running;
 	phys_addr_t fw_phys;
 	void *fw_virt;
 	ssize_t fw_size;
+	struct gh_sec_ext_region *ext_region;
+	bool ext_region_supported;
+
 	int pas_id;
 	int vmid;
 	bool is_static;
@@ -200,10 +210,28 @@ static int gh_vm_loader_sec_load(struct gh_sec_vm_dev *vm_dev,
 	ret = gh_provide_mem(vm, vm_dev->fw_phys,
 			vm_dev->fw_size, vm_dev->system_vm);
 
+	vm->keep_running = vm_dev->keep_running;
+
 	if (ret) {
 		dev_err(dev, "Failed to provide memory for %s, %d\n",
 						vm_dev->vm_name, ret);
 		goto release_fw;
+	}
+
+	if (vm_dev->ext_region_supported) {
+		vm->ext_region_supported = vm_dev->ext_region_supported;
+		vm->ext_region->ext_label = vm_dev->ext_region->ext_label;
+		vm->ext_region->ext_phys = vm_dev->ext_region->ext_phys;
+		vm->ext_region->ext_size = vm_dev->ext_region->ext_size;
+
+		ret = gh_provide_mem(vm, vm_dev->ext_region->ext_phys,
+				vm_dev->ext_region->ext_size,
+				vm_dev->system_vm);
+		if (ret) {
+			dev_err(dev, "Failed to provide memory for ext-region to vm: %s, %d\n",
+				vm_dev->vm_name, ret);
+			goto release_fw;
+		}
 	}
 
 	vm->is_secure_vm = true;
@@ -280,6 +308,7 @@ long gh_vm_ioctl_set_fw_name(struct gh_vm *vm, unsigned long arg)
 	if (copy_from_user(&vm_fw_name, (void __user *)arg, sizeof(vm_fw_name)))
 		return -EFAULT;
 
+	vm_fw_name.name[GH_VM_FW_NAME_MAX - 1] = '\0';
 	mutex_lock(&vm->vm_lock);
 	if (strlen(vm->fw_name)) {
 		pr_err("Secure VM %s already loaded %ld\n",
@@ -420,6 +449,28 @@ static int gh_vm_loader_mem_probe(struct gh_sec_vm_dev *sec_vm_dev)
 		sec_vm_dev->fw_size = size;
 	}
 
+	node = of_parse_phandle(dev->of_node, "ext-region", 0);
+	if (node) {
+		sec_vm_dev->ext_region_supported = true;
+		ret = of_address_to_resource(node, 0, &res);
+		if (ret) {
+			dev_err(dev, "error %d getting \"ext-region\" resource\n",
+				ret);
+			goto err_of_node_put;
+		}
+
+
+		sec_vm_dev->ext_region->ext_phys = res.start;
+		sec_vm_dev->ext_region->ext_size = (size_t)resource_size(&res);
+		ret = of_property_read_u32(dev->of_node, "ext-label",
+				&sec_vm_dev->ext_region->ext_label);
+		if (ret) {
+			dev_err(dev, "DT error getting \"ext-label\": %d\n", ret);
+			goto err_of_node_put;
+		}
+
+	}
+
 err_of_node_put:
 	of_node_put(node);
 	return ret;
@@ -428,6 +479,7 @@ err_of_node_put:
 static int gh_secure_vm_loader_probe(struct platform_device *pdev)
 {
 	struct gh_sec_vm_dev *sec_vm_dev;
+	struct gh_sec_ext_region *ext_region;
 	struct device *dev = &pdev->dev;
 	enum gh_vm_names vm_name;
 	int ret;
@@ -435,6 +487,11 @@ static int gh_secure_vm_loader_probe(struct platform_device *pdev)
 	sec_vm_dev = devm_kzalloc(dev, sizeof(*sec_vm_dev), GFP_KERNEL);
 	if (!sec_vm_dev)
 		return -ENOMEM;
+
+	ext_region = devm_kzalloc(dev, sizeof(*ext_region), GFP_KERNEL);
+	if (!ext_region)
+		return -ENOMEM;
+	sec_vm_dev->ext_region = ext_region;
 
 	sec_vm_dev->dev = dev;
 	platform_set_drvdata(pdev, sec_vm_dev);
@@ -450,6 +507,10 @@ static int gh_secure_vm_loader_probe(struct platform_device *pdev)
 	if (sec_vm_dev->system_vm)
 		dev_info(dev, "Vm with no shutdown attribute added\n");
 
+	sec_vm_dev->keep_running =
+		of_property_read_bool(dev->of_node, "qcom,keep-running");
+	if (sec_vm_dev->keep_running)
+		dev_info(dev, "VM with keep running attribute added\n");
 
 	ret = of_property_read_u32(dev->of_node,
 				"qcom,vmid", &sec_vm_dev->vmid);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _GH_PRIVATE_H
@@ -21,9 +21,17 @@ struct gh_vcpu {
 	struct gh_vm *vm;
 };
 
+struct gh_ext_reg {
+	u32 ext_label;
+	phys_addr_t ext_phys;
+	ssize_t ext_size;
+	gh_memparcel_handle_t ext_mem_handle;
+};
+
 struct gh_vm {
 	bool is_secure_vm; /* is true for Qcom authenticated secure VMs */
 	bool vm_run_once;
+	bool keep_running;
 	u32 created_vcpus;
 	u32 allowed_vcpus;
 	gh_vmid_t vmid;
@@ -35,6 +43,8 @@ struct gh_vm {
 	int exit_type;
 	refcount_t users_count;
 	gh_memparcel_handle_t mem_handle;
+	struct gh_ext_reg *ext_region;
+	bool ext_region_supported;
 	struct mutex vm_lock;
 };
 

@@ -40,7 +40,9 @@
 		.out_bit = 1,                                                     \
 		.intr_enable_bit = 0,                                             \
 		.intr_status_bit = 0,                                             \
-		.intr_target_bit = 5,                                             \
+		.intr_target_bit = 8,                                             \
+		.intr_wakeup_enable_bit = 7,                                      \
+		.intr_wakeup_present_bit = 6,                                     \
 		.intr_target_kpss_val = 3,                                        \
 		.intr_raw_status_bit = 4,                                         \
 		.intr_polarity_bit = 1,                                           \
@@ -303,7 +305,10 @@ static const struct pinctrl_pin_desc cliffs_pins[] = {
 	PINCTRL_PIN(172, "GPIO_172"),
 	PINCTRL_PIN(173, "GPIO_173"),
 	PINCTRL_PIN(174, "GPIO_174"),
-	PINCTRL_PIN(175, "UFS_RESET"),
+	PINCTRL_PIN(175, "GPIO_175"),
+	PINCTRL_PIN(176, "GPIO_176"),
+	PINCTRL_PIN(177, "GPIO_177"),
+	PINCTRL_PIN(178, "UFS_RESET"),
 };
 
 #define DECLARE_MSM_GPIO_PINS(pin) \
@@ -483,8 +488,11 @@ DECLARE_MSM_GPIO_PINS(171);
 DECLARE_MSM_GPIO_PINS(172);
 DECLARE_MSM_GPIO_PINS(173);
 DECLARE_MSM_GPIO_PINS(174);
+DECLARE_MSM_GPIO_PINS(175);
+DECLARE_MSM_GPIO_PINS(176);
+DECLARE_MSM_GPIO_PINS(177);
 
-static const unsigned int ufs_reset_pins[] = { 175 };
+static const unsigned int ufs_reset_pins[] = { 178 };
 
 enum cliffs_functions {
 	msm_mux_gpio,
@@ -1832,13 +1840,13 @@ static const struct msm_function cliffs_functions[] = {
  * Clients would not be able to request these dummy pin groups.
  */
 static const struct msm_pingroup cliffs_groups[] = {
-	[0] = PINGROUP(0, NA, qup1_se0_l0, ibi_i3c, NA, NA, NA, NA, NA, NA, NA,
+	[0] = PINGROUP(0, qup1_se0_l0, ibi_i3c, NA, NA, NA, NA, NA, NA, NA, NA,
 		       egpio, 0, -1),
-	[1] = PINGROUP(1, NA, qup1_se0_l1, ibi_i3c, NA, NA, NA, NA, NA, NA, NA,
+	[1] = PINGROUP(1, qup1_se0_l1, ibi_i3c, NA, NA, NA, NA, NA, NA, NA, NA,
 		       egpio, 0, -1),
-	[2] = PINGROUP(2, NA, qup1_se0_l2, NA, NA, NA, NA, NA, NA, NA, NA,
+	[2] = PINGROUP(2, qup1_se0_l2, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 		       egpio, 0, -1),
-	[3] = PINGROUP(3, NA, qup1_se0_l3, NA, NA, NA, NA, NA, NA, NA, NA,
+	[3] = PINGROUP(3, qup1_se0_l3, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 		       egpio, 0, -1),
 	[4] = PINGROUP(4, qup0_se1_l0, ibi_i3c, gcc_gp3, qdss_gpio15, NA, NA,
 		       NA, NA, NA, NA, NA, 0, -1),
@@ -2153,37 +2161,43 @@ static const struct msm_pingroup cliffs_groups[] = {
 			 -1),
 	[159] = PINGROUP(159, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, egpio, 0,
 			 -1),
-	[160] = PINGROUP(160, NA, qdss_gpio0, NA, NA, NA, NA, NA, NA, NA, NA,
+	[160] = PINGROUP(160, qdss_gpio0, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[161] = PINGROUP(161, NA, qdss_gpio1, NA, NA, NA, NA, NA, NA, NA, NA,
+	[161] = PINGROUP(161, qdss_gpio1, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[162] = PINGROUP(162, NA, qdss_gpio2, NA, NA, NA, NA, NA, NA, NA, NA,
+	[162] = PINGROUP(162, qdss_gpio2, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[163] = PINGROUP(163, NA, qdss_gpio3, NA, NA, NA, NA, NA, NA, NA, NA,
+	[163] = PINGROUP(163, qdss_gpio3, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[164] = PINGROUP(164, NA, qdss_gpio, NA, NA, NA, NA, NA, NA, NA, NA,
+	[164] = PINGROUP(164, qdss_gpio, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[165] = PINGROUP(165, NA, qdss_gpio5, NA, NA, NA, NA, NA, NA, NA, NA,
+	[165] = PINGROUP(165, qdss_gpio5, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[166] = PINGROUP(166, NA, qdss_gpio6, NA, NA, NA, NA, NA, NA, NA, NA,
+	[166] = PINGROUP(166, qdss_gpio6, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[167] = PINGROUP(167, NA, qdss_gpio7, NA, NA, NA, NA, NA, NA, NA, NA,
+	[167] = PINGROUP(167, qdss_gpio7, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[168] = PINGROUP(168, NA, qdss_gpio8, NA, NA, NA, NA, NA, NA, NA, NA,
+	[168] = PINGROUP(168, qdss_gpio8, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[169] = PINGROUP(169, NA, qdss_gpio9, NA, NA, NA, NA, NA, NA, NA, NA,
+	[169] = PINGROUP(169, qdss_gpio9, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
 	[170] = PINGROUP(170, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, egpio, 0,
 			 -1),
-	[171] = PINGROUP(171, NA, qdss_gpio11, NA, NA, NA, NA, NA, NA, NA, NA,
+	[171] = PINGROUP(171, qdss_gpio11, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[172] = PINGROUP(172, NA, qdss_gpio12, NA, NA, NA, NA, NA, NA, NA, NA,
+	[172] = PINGROUP(172, qdss_gpio12, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[173] = PINGROUP(173, NA, qdss_gpio13, NA, NA, NA, NA, NA, NA, NA, NA,
+	[173] = PINGROUP(173, qdss_gpio13, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[174] = PINGROUP(174, NA, qdss_gpio, NA, NA, NA, NA, NA, NA, NA, NA,
+	[174] = PINGROUP(174, qdss_gpio, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[175] = UFS_RESET(ufs_reset, 0x1BC004, 0x1BD000),
+	[175] = PINGROUP(175, qdss_gpio15, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+			 egpio, 0, -1),
+	[176] = PINGROUP(176, qup1_se4_l0, NA, NA, NA, NA, NA, NA, NA,
+			 NA, NA, egpio, 0, -1),
+	[177] = PINGROUP(177, qup1_se4_l1, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+			 egpio, 0, -1),
+	[178] = UFS_RESET(ufs_reset, 0x1BC004, 0x1BD000),
 };
 
 static struct pinctrl_qup cliffs_qup_regs[] = {
@@ -2224,7 +2238,7 @@ static const struct msm_pinctrl_soc_data cliffs_pinctrl = {
 	.nfunctions = ARRAY_SIZE(cliffs_functions),
 	.groups = cliffs_groups,
 	.ngroups = ARRAY_SIZE(cliffs_groups),
-	.ngpios = 176,
+	.ngpios = 179,
 	.qup_regs = cliffs_qup_regs,
 	.nqup_regs = ARRAY_SIZE(cliffs_qup_regs),
 	.wakeirq_map = cliffs_pdc_map,
@@ -2239,7 +2253,7 @@ static const struct msm_pinctrl_soc_data cliffs_vm_pinctrl = {
 	.nfunctions = ARRAY_SIZE(cliffs_functions),
 	.groups = cliffs_groups,
 	.ngroups = ARRAY_SIZE(cliffs_groups),
-	.ngpios = 176,
+	.ngpios = 179,
 	.egpio_func = 11,
 };
 
@@ -2286,4 +2300,3 @@ MODULE_DESCRIPTION("QTI cliffs pinctrl driver");
 MODULE_LICENSE("GPL");
 MODULE_DEVICE_TABLE(of, cliffs_pinctrl_of_match);
 MODULE_SOFTDEP("pre: qcom_tlmm_vm_irqchip");
-

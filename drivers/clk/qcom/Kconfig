@@ -1274,6 +1274,60 @@ config SM_GCC_PITTI
 	  Say Y if you want to use peripheral devices such as UART, SPI,
 	  I2C, USB, SD/UFS, Camera, Video etc.
 
+config SXR_GCC_NIOBE
+	tristate "NIOBE Global Clock Controller"
+	depends on COMMON_CLK_QCOM
+	help
+	  Support for the global clock controller on Qualcomm Technologies, Inc
+	  NIOBE devices.
+	  Say Y if you want to use peripheral devices such as UART,
+	  SPI, I2C, USB, SD/UFS, PCIe etc.
+
+config SXR_VIDEOCC_NIOBE
+	tristate "NIOBE Video Clock Controller"
+	depends on SXR_GCC_NIOBE
+	help
+	  Support for the video clock controller on Qualcomm Technologies, Inc
+	  NIOBE devices.
+	  Say Y if you want to support video devices and functionality such as
+	  video encode/decode.
+
+config SXR_GPUCC_NIOBE
+	tristate "NIOBE Graphics Clock Controller"
+	depends on SXR_GCC_NIOBE
+	help
+	  Support for the graphics clock controller on Qualcomm Technologies, Inc
+	  NIOBE devices.
+	  Say Y if you want to support graphics controller devices and
+	  functionality such as 3D graphics.
+
+config SXR_CAMCC_NIOBE
+	tristate "NIOBE Camera Clock Controller"
+	depends on SXR_GCC_NIOBE
+	help
+	  Support for the camera clock controller on Qualcomm Technologies, Inc
+	  NIOBE devices.
+	  Say Y if you want to support camera devices and functionality such as
+	  capturing pictures.
+
+config SXR_DISPCC_NIOBE
+	tristate "NIOBE Display Clock Controller"
+	depends on SXR_GCC_NIOBE
+	help
+	  Support for the display clock controller on Qualcomm Technologies, Inc
+	  NIOBE devices.
+	  Say Y if you want to support display devices and functionality such as
+	  splash screen.
+
+config SM_GPUCC_PITTI
+	tristate "PITTI Graphics Clock Controller"
+	select SM_GCC_PITTI
+	help
+	  Support for the graphics clock controller on Qualcomm Technologies, Inc
+	  PITTI devices.
+	  Say Y if you want to support graphics controller devices and
+	  functionality such as 3D graphics.
+
 endif
 
 config VIRTIO_CLK

@@ -170,6 +170,11 @@ static const char * const hw_platform_ifeature_code[] = {
 #define SMEM_IMAGE_TABLE_ADSP_INDEX     12
 #define SMEM_IMAGE_TABLE_CNSS_INDEX     13
 #define SMEM_IMAGE_TABLE_VIDEO_INDEX    14
+#define SMEM_IMAGE_TABLE_DSPS_INDEX     15
+#define SMEM_IMAGE_TABLE_CDSP_INDEX     16
+#define SMEM_IMAGE_TABLE_CDSP1_INDEX    19
+#define SMEM_IMAGE_TABLE_GPDSP_INDEX    20
+#define SMEM_IMAGE_TABLE_GPDSP1_INDEX   21
 #define SMEM_IMAGE_VERSION_TABLE       469
 
 /*
@@ -184,6 +189,11 @@ static const char *const socinfo_image_names[] = {
 	[SMEM_IMAGE_TABLE_RPM_INDEX] = "rpm",
 	[SMEM_IMAGE_TABLE_TZ_INDEX] = "tz",
 	[SMEM_IMAGE_TABLE_VIDEO_INDEX] = "video",
+	[SMEM_IMAGE_TABLE_DSPS_INDEX] = "dsps",
+	[SMEM_IMAGE_TABLE_CDSP_INDEX] = "cdsp",
+	[SMEM_IMAGE_TABLE_CDSP1_INDEX] = "cdsp1",
+	[SMEM_IMAGE_TABLE_GPDSP_INDEX] = "gpdsp",
+	[SMEM_IMAGE_TABLE_GPDSP1_INDEX] = "gpdsp1",
 };
 
 static const char *const pmic_models[] = {
@@ -346,10 +356,14 @@ struct smem_image_version {
 		int num_parts = 0; \
 		int str_pos = 0, i = 0, ret = 0; \
 		num_parts = socinfo_get_part_count(part_enum); \
+		if (num_parts <= 0) \
+			return -EINVAL;  \
 		part_info = kmalloc_array(num_parts, sizeof(*part_info), GFP_KERNEL); \
 		ret = socinfo_get_subpart_info(part_enum, part_info, num_parts); \
-		if (ret < 0) \
+		if (ret < 0) { \
+			kfree(part_info); \
 			return -EINVAL;  \
+		} \
 		for (i = 0; i < num_parts; i++) { \
 			str_pos += scnprintf(buf+str_pos, PAGE_SIZE-str_pos, "0x%x", \
 					part_info[i]); \
@@ -544,6 +558,8 @@ static const struct soc_id soc_id[] = {
 	{ 614, "CLIFFS" },
 	{ 620, "SA_MONACOAU_SRV1L_FFC" },
 	{ 623, "PITTI" },
+	{ 632, "CLIFFS7" },
+	{ 636, "VOLCANO" },
 };
 
 static struct attribute *msm_custom_socinfo_attrs[MAX_SOCINFO_ATTRS];
@@ -821,8 +837,9 @@ bool
 socinfo_get_part_info(enum subset_part_type part)
 {
 	uint32_t partinfo;
+	uint32_t num_parts = socinfo_get_num_subset_parts();
 
-	if (part >= NUM_PARTS_MAX) {
+	if ((part <= PART_UNKNOWN) || (part >= NUM_PARTS_MAX) || (part >= num_parts)) {
 		pr_err("Bad part number\n");
 		return false;
 	}
@@ -849,10 +866,11 @@ int
 socinfo_get_part_count(enum subset_part_type part)
 {
 	int part_count = 1;
+	uint32_t num_parts = socinfo_get_num_subset_parts();
 
 	/* TODO: part_count to be read from SMEM after firmware adds support */
 
-	if ((part <= PART_UNKNOWN) || (part >= NUM_PARTS_MAX)) {
+	if ((part <= PART_UNKNOWN) || (part >= NUM_PARTS_MAX) || (part >= num_parts)) {
 		pr_err("Bad part number\n");
 		return -EINVAL;
 	}

@@ -245,9 +245,13 @@ static const struct pinctrl_pin_desc pitti_pins[] = {
 	PINCTRL_PIN(120, "GPIO_120"),
 	PINCTRL_PIN(121, "GPIO_121"),
 	PINCTRL_PIN(122, "UFS_RESET"),
-	PINCTRL_PIN(123, "SDC2_CLK"),
-	PINCTRL_PIN(124, "SDC2_CMD"),
-	PINCTRL_PIN(125, "SDC2_DATA"),
+	PINCTRL_PIN(123, "SDC1_RCLK"),
+	PINCTRL_PIN(124, "SDC1_CLK"),
+	PINCTRL_PIN(125, "SDC1_CMD"),
+	PINCTRL_PIN(126, "SDC1_DATA"),
+	PINCTRL_PIN(127, "SDC2_CLK"),
+	PINCTRL_PIN(128, "SDC2_CMD"),
+	PINCTRL_PIN(129, "SDC2_DATA"),
 };
 
 #define DECLARE_MSM_GPIO_PINS(pin) \
@@ -376,9 +380,13 @@ DECLARE_MSM_GPIO_PINS(120);
 DECLARE_MSM_GPIO_PINS(121);
 
 static const unsigned int ufs_reset_pins[] = { 122 };
-static const unsigned int sdc2_clk_pins[] = { 123 };
-static const unsigned int sdc2_cmd_pins[] = { 124 };
-static const unsigned int sdc2_data_pins[] = { 125 };
+static const unsigned int sdc1_rclk_pins[] = { 123 };
+static const unsigned int sdc1_clk_pins[] = { 124 };
+static const unsigned int sdc1_cmd_pins[] = { 125 };
+static const unsigned int sdc1_data_pins[] = { 126 };
+static const unsigned int sdc2_clk_pins[] = { 127 };
+static const unsigned int sdc2_cmd_pins[] = { 128 };
+static const unsigned int sdc2_data_pins[] = { 129 };
 
 enum pitti_functions {
 	msm_mux_gpio,
@@ -1733,53 +1741,56 @@ static const struct msm_pingroup pitti_groups[] = {
 			0x7A010, 12),
 	[100] = PINGROUP(100, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, egpio,
 			 0x7A010, 13),
-	[101] = PINGROUP(101, NA, dbg_out_clk, qdss_cti, atest_gpsadc0, NA, NA,
+	[101] = PINGROUP(101, dbg_out_clk, qdss_cti, atest_gpsadc0, NA, NA, NA,
 			 NA, NA, NA, NA, egpio, 0x7A010, 14),
-	[102] = PINGROUP(102, NA, qdss_gpio12, NA, NA, NA, NA, NA, NA, NA, NA,
+	[102] = PINGROUP(102, qdss_gpio12, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A010, 15),
-	[103] = PINGROUP(103, NA, qdss_gpio13, NA, NA, NA, NA, NA, NA, NA, NA,
+	[103] = PINGROUP(103, qdss_gpio13, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[104] = PINGROUP(104, NA, NA, qdss_cti, NA, NA, NA, NA, NA, NA, NA,
+	[104] = PINGROUP(104, NA, qdss_cti, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A014, 0),
-	[105] = PINGROUP(105, NA, jitter_bist, qdss_gpio14, NA, NA, NA, NA, NA,
+	[105] = PINGROUP(105, jitter_bist, qdss_gpio14, NA, NA, NA, NA, NA, NA,
 			 NA, NA, egpio, 0x7A014, 1),
-	[106] = PINGROUP(106, NA, NA, qdss_gpio2, NA, NA, NA, NA, NA, NA, NA,
+	[106] = PINGROUP(106, NA, qdss_gpio2, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A014, 2),
-	[107] = PINGROUP(107, NA, gcc_gp2, qdss_gpio6, atest_bbrx0, atest_usb02,
-			 ddr_pxi1, NA, NA, NA, NA, egpio, 0x7A014, 3),
-	[108] = PINGROUP(108, NA, qdss_gpio9, NA, NA, NA, NA, NA, NA, NA, NA,
+	[107] = PINGROUP(107, gcc_gp2, qdss_gpio6, atest_bbrx0, atest_usb02,
+			 ddr_pxi1, NA, NA, NA, NA, NA, egpio, 0x7A014, 3),
+	[108] = PINGROUP(108, qdss_gpio9, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A014, 4),
-	[109] = PINGROUP(109, NA, NA, tb_trig_sdc1, NA, NA, NA, NA, NA, NA, NA,
+	[109] = PINGROUP(109, NA, tb_trig_sdc1, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
 	[110] = PINGROUP(110, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, egpio,
 			 0x7A014, 5),
-	[111] = PINGROUP(111, NA, qdss_gpio4, NA, NA, NA, NA, NA, NA, NA, NA,
+	[111] = PINGROUP(111, qdss_gpio4, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A014, 6),
-	[112] = PINGROUP(112, NA, pll_clk_aux, qdss_gpio5,
-			 vsense_trigger_mirnat, NA, NA, NA, NA, NA, NA, egpio,
-			 0x7A014, 7),
+	[112] = PINGROUP(112, pll_clk_aux, qdss_gpio5, vsense_trigger_mirnat,
+			 NA, NA, NA, NA, NA, NA, NA, egpio, 0x7A014, 7),
 	[113] = PINGROUP(113, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, egpio, 0,
 			 -1),
-	[114] = PINGROUP(114, NA, qdss_gpio15, NA, NA, NA, NA, NA, NA, NA, NA,
+	[114] = PINGROUP(114, qdss_gpio15, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A014, 8),
-	[115] = PINGROUP(115, NA, NA, phase_flag7, NA, NA, NA, NA, NA, NA, NA,
+	[115] = PINGROUP(115, NA, phase_flag7, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A014, 9),
-	[116] = PINGROUP(116, NA, qdss_gpio11, NA, NA, NA, NA, NA, NA, NA, NA,
+	[116] = PINGROUP(116, qdss_gpio11, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0x7A014, 10),
 	[117] = PINGROUP(117, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, egpio, 0,
 			 -1),
-	[118] = PINGROUP(118, NA, NA, phase_flag3, qdss_gpio7, NA, NA, NA, NA,
+	[118] = PINGROUP(118, NA, phase_flag3, qdss_gpio7, NA, NA, NA, NA, NA,
 			 NA, NA, egpio, 0x7A014, 11),
-	[119] = PINGROUP(119, NA, NA, phase_flag17, qdss_gpio0, NA, NA, NA, NA,
+	[119] = PINGROUP(119, NA, phase_flag17, qdss_gpio0, NA, NA, NA, NA, NA,
 			 NA, NA, egpio, 0x7A014, 12),
-	[120] = PINGROUP(120, NA, qdss_gpio8, NA, NA, NA, NA, NA, NA, NA, NA,
+	[120] = PINGROUP(120, qdss_gpio8, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			 egpio, 0, -1),
-	[121] = PINGROUP(121, NA, NA, phase_flag8, NA, qdss_gpio1, NA, NA, NA,
+	[121] = PINGROUP(121, NA, phase_flag8, NA, qdss_gpio1, NA, NA, NA, NA,
 			 NA, NA, egpio, 0x7A014, 13),
 	[122] = UFS_RESET(ufs_reset, 0x18A000),
-	[123] = SDC_QDSD_PINGROUP(sdc2_clk, 0x181000, 14, 6),
-	[124] = SDC_QDSD_PINGROUP(sdc2_cmd, 0x181000, 11, 3),
-	[125] = SDC_QDSD_PINGROUP(sdc2_data, 0x181000, 9, 0),
+	[123] = SDC_QDSD_PINGROUP(sdc1_rclk, 0x17E004, 0, 0),
+	[124] = SDC_QDSD_PINGROUP(sdc1_clk, 0x17E000, 13, 6),
+	[125] = SDC_QDSD_PINGROUP(sdc1_cmd, 0x17E000, 11, 3),
+	[126] = SDC_QDSD_PINGROUP(sdc1_data, 0x17E000, 9, 0),
+	[127] = SDC_QDSD_PINGROUP(sdc2_clk, 0x181000, 14, 6),
+	[128] = SDC_QDSD_PINGROUP(sdc2_cmd, 0x181000, 11, 3),
+	[129] = SDC_QDSD_PINGROUP(sdc2_data, 0x181000, 9, 0),
 };
 
 static struct pinctrl_qup pitti_qup_regs[] = {};

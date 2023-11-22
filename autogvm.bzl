@@ -8,6 +8,7 @@ def define_autogvm():
     _autogvm_in_tree_modules = [
         # keep sorted
         "drivers/block/virtio_blk.ko",
+        "drivers/block/virtio_blk_qti_crypto.ko",
         "drivers/bus/mhi/devices/mhi_dev_uci.ko",
         "drivers/bus/mhi/host/mhi.ko",
         "drivers/char/virtio_console.ko",
@@ -27,6 +28,7 @@ def define_autogvm():
         "drivers/firmware/qcom_scm_hab.ko",
         "drivers/i2c/busses/i2c-msm-geni.ko",
         "drivers/i2c/busses/i2c-virtio.ko",
+        "drivers/iommu/arm/arm-smmu-v3/virt-arm-smmu-v3.ko",
         "drivers/iommu/arm/arm-smmu/arm_smmu.ko",
         "drivers/iommu/iommu-logger.ko",
         "drivers/iommu/qcom_iommu_debug.ko",
@@ -58,6 +60,7 @@ def define_autogvm():
         "drivers/remoteproc/rproc_qcom_common.ko",
         "drivers/rtc/rtc-pm8xxx.ko",
         "drivers/soc/qcom/boot_stats.ko",
+        "drivers/soc/qcom/crypto-qti-virt.ko",
         "drivers/soc/qcom/hab/msm_hab.ko",
         "drivers/soc/qcom/hgsl/qcom_hgsl.ko",
         "drivers/soc/qcom/mem_buf/mem_buf.ko",
