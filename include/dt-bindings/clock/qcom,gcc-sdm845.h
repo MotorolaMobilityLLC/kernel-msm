@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _DT_BINDINGS_CLK_SDM_GCC_SDM845_H
@@ -199,6 +200,11 @@
 #define GCC_QSPI_CNOC_PERIPH_AHB_CLK				189
 #define GCC_LPASS_Q6_AXI_CLK					190
 #define GCC_LPASS_SWAY_CLK					191
+#define GCC_UFS_PHY_PHY_AUX_HW_CTL_CLK                          192
+#define GCC_UFS_PHY_AXI_HW_CTL_CLK                              193
+#define GCC_UFS_PHY_UNIPRO_CORE_HW_CTL_CLK			194
+#define GCC_UFS_PHY_ICE_CORE_HW_CTL_CLK				195
+#define GPLL6							196
 
 /* GCC Resets */
 #define GCC_MMSS_BCR						0
@@ -227,6 +233,7 @@
 #define GCC_USB_PHY_CFG_AHB2PHY_BCR				23
 #define GCC_PCIE_0_PHY_BCR					24
 #define GCC_PCIE_1_PHY_BCR					25
+#define GCC_SDCC1_BCR						26
 
 /* GCC GDSCRs */
 #define PCIE_0_GDSC						0
