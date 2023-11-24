@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2019, Linaro Ltd
  */
@@ -17,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/soc/qcom/qcom_aoss.h>
 #include <linux/ipc_logging.h>
+#include <linux/suspend.h>
 
 #define QMP_DESC_MAGIC			0x0
 #define QMP_DESC_VERSION		0x4
@@ -79,6 +81,7 @@ struct qmp_rx_client {
  * @qdss_clk: QDSS clock hw struct
  * @pd_data: genpd data
  * @cooling_devs: thermal cooling devices
+ * @ds_entry: deepsleep entry path
  */
 struct qmp {
 	void __iomem *msgram;
@@ -102,6 +105,7 @@ struct qmp {
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *debugfs_file;
 #endif /* CONFIG_DEBUG_FS */
+	bool ds_entry;
 };
 
 struct qmp_pd {
@@ -173,9 +177,11 @@ static int qmp_open(struct qmp *qmp)
 		return -EINVAL;
 	}
 
-	qmp->qmp_rx.rx_buf = devm_kzalloc(qmp->dev, qmp->qmp_rx.rx_size, GFP_KERNEL);
-	if (!qmp->qmp_rx.rx_buf)
-		return -ENOMEM;
+	if (!qmp->ds_entry) {
+		qmp->qmp_rx.rx_buf = devm_kzalloc(qmp->dev, qmp->qmp_rx.rx_size, GFP_KERNEL);
+		if (!qmp->qmp_rx.rx_buf)
+			return -ENOMEM;
+	}
 
 	/* Ack remote core's link state */
 	val = readl(qmp->msgram + QMP_DESC_UCORE_LINK_STATE);
@@ -212,6 +218,8 @@ static int qmp_open(struct qmp *qmp)
 		dev_err(qmp->dev, "ucore didn't ack channel\n");
 		goto timeout_close_channel;
 	}
+
+	qmp->ds_entry = false;
 
 	return 0;
 
@@ -301,6 +309,9 @@ int qmp_send(struct qmp *qmp, const void *data, size_t len)
 
 	if (WARN_ON(IS_ERR_OR_NULL(qmp) || !data))
 		return -EINVAL;
+
+	if (qmp->ds_entry)
+		return -ENXIO;
 
 	if (WARN_ON(len + sizeof(u32) > qmp->size))
 		return -EINVAL;
@@ -786,9 +797,40 @@ static int aoss_qmp_mbox_restore(struct device *dev)
 	return 0;
 }
 
+static int aoss_qmp_mbox_suspend_noirq(struct device *dev)
+{
+	struct qmp *qmp = dev_get_drvdata(dev);
+
+	if (pm_suspend_via_firmware()) {
+		qmp->ds_entry = true;
+		dev_info(dev, "AOSS: Deep sleep entry\n");
+	}
+
+	return 0;
+}
+
+static int aoss_qmp_mbox_resume_early(struct device *dev)
+{
+	struct qmp *qmp = dev_get_drvdata(dev);
+	int ret = 0;
+
+	if (pm_suspend_via_firmware()) {
+		ret = qmp_open(qmp);
+
+		if (ret < 0)
+			dev_err(dev, "QMP restore failed, ret = %d\n", ret);
+
+		dev_info(dev, "AOSS: Deep sleep exit\n");
+	}
+
+	return ret;
+}
+
 static const struct dev_pm_ops aoss_qmp_mbox_pm_ops = {
 	.freeze_late = aoss_qmp_mbox_freeze,
 	.restore_early = aoss_qmp_mbox_restore,
+	.suspend_noirq = aoss_qmp_mbox_suspend_noirq,
+	.resume_early = aoss_qmp_mbox_resume_early,
 };
 
 static const struct of_device_id qmp_dt_match[] = {
