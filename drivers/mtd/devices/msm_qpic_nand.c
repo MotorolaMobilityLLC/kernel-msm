@@ -1758,6 +1758,8 @@ static int msm_nand_is_erased_page_ps(struct mtd_info *mtd, loff_t from,
 	memcpy(&raw_ops, ops, sizeof(struct mtd_oob_ops));
 	raw_ops.mode = MTD_OPS_RAW;
 	ecc = kzalloc(total_ecc_byte_cnt, GFP_KERNEL);
+	if (!ecc)
+		return -ENOMEM;
 
 	wait_event(chip->dma_wait_queue, (dma_buffer = msm_nand_get_dma_buffer(
 					chip, sizeof(*dma_buffer))));
@@ -2382,6 +2384,8 @@ static int msm_nand_is_erased_page(struct mtd_info *mtd, loff_t from,
 	memcpy(&raw_ops, ops, sizeof(struct mtd_oob_ops));
 	raw_ops.mode = MTD_OPS_RAW;
 	ecc = kzalloc(total_ecc_byte_cnt, GFP_KERNEL);
+	if (!ecc)
+		return -ENOMEM;
 
 	wait_event(chip->dma_wait_queue, (dma_buffer = msm_nand_get_dma_buffer(
 					chip, sizeof(*dma_buffer))));
