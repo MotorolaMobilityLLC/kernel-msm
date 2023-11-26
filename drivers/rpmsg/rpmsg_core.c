@@ -586,7 +586,7 @@ int rpmsg_register_device_override(struct rpmsg_device *rpdev,
 
 	device_initialize(dev);
 	if (driver_override) {
-		ret = driver_set_override(dev, &rpdev->driver_override,
+		ret = driver_set_override(dev, (const char **)&rpdev->driver_override,
 					  driver_override,
 					  strlen(driver_override));
 		if (ret) {
