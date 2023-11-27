@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -17,6 +17,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap.h"
 #include "clk-regmap-divider.h"
@@ -1460,6 +1461,14 @@ static struct clk_branch mdss_0_disp_cc_sleep_clk = {
 	},
 };
 
+/*
+ * Keep the clocks always-ON
+ * MDSS_0_DISP_CC_XO_CLK.
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0xc054, .mask = BIT(0) },
+};
+
 static struct clk_regmap *disp_cc_0_lemans_clocks[] = {
 	[DISP_CC_MDSS_AHB1_CLK] = &mdss_0_disp_cc_mdss_ahb1_clk.clkr,
 	[DISP_CC_MDSS_AHB_CLK] = &mdss_0_disp_cc_mdss_ahb_clk.clkr,
@@ -1553,6 +1562,8 @@ static struct qcom_cc_desc disp_cc_0_lemans_desc = {
 	.num_resets = ARRAY_SIZE(disp_cc_0_lemans_resets),
 	.clk_regulators = disp_cc_0_lemans_regulators,
 	.num_clk_regulators = ARRAY_SIZE(disp_cc_0_lemans_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id disp_cc_0_lemans_match_table[] = {
@@ -1570,22 +1581,15 @@ static int disp_cc_0_lemans_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_runtime_init(pdev, &disp_cc_0_lemans_desc);
+	ret = register_qcom_clks_pm(pdev, true, &disp_cc_0_lemans_desc);
 	if (ret)
-		return ret;
-
-	ret = pm_runtime_get_sync(&pdev->dev);
-	if (ret)
-		return ret;
+		dev_err(&pdev->dev, "Failed register disp_cc_0_pm_rt_ops clocks\n");
 
 	clk_lucid_evo_pll_configure(&mdss_0_disp_cc_pll0, regmap, mdss_0_disp_cc_pll0.config);
 	clk_lucid_evo_pll_configure(&mdss_0_disp_cc_pll1, regmap, mdss_0_disp_cc_pll1.config);
 
-	/*
-	 * Keep the clocks always-ON
-	 * MDSS_0_DISP_CC_XO_CLK.
-	 */
-	regmap_update_bits(regmap, 0xc054, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &disp_cc_0_lemans_desc, regmap);
 	if (ret) {
@@ -1604,19 +1608,12 @@ static void disp_cc_0_lemans_sync_state(struct device *dev)
 	qcom_cc_sync_state(dev, &disp_cc_0_lemans_desc);
 }
 
-static const struct dev_pm_ops disp_cc_0_lemans_pm_ops = {
-	SET_RUNTIME_PM_OPS(qcom_cc_runtime_suspend, qcom_cc_runtime_resume, NULL)
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-};
-
 static struct platform_driver disp_cc_0_lemans_driver = {
 	.probe = disp_cc_0_lemans_probe,
 	.driver = {
 		.name = "disp_cc_0-lemans",
 		.of_match_table = disp_cc_0_lemans_match_table,
 		.sync_state = disp_cc_0_lemans_sync_state,
-		.pm = &disp_cc_0_lemans_pm_ops,
 	},
 };
 
