@@ -483,6 +483,8 @@ kgsl_mmu_unmap(struct kgsl_pagetable *pagetable,
 		size = kgsl_memdesc_footprint(memdesc);
 
 		ret = pagetable->pt_ops->mmu_unmap(pagetable, memdesc);
+		if (ret)
+			return ret;
 
 		atomic_dec(&pagetable->stats.entries);
 		atomic_long_sub(size, &pagetable->stats.mapped);
