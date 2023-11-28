@@ -68,6 +68,13 @@ config LYNKCO_DTB
 	help
 		Only include Motorola LYNKCO device specific DTB.
 
+config TANK_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility TANK Device DTB"
+	help
+		Only include Motorola TANK device specific DTB.
+
 config EQS_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
