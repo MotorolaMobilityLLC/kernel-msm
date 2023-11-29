@@ -18,7 +18,9 @@
 #include "ufshcd-add-info.h"
 #include "ufshcd-crypto.h"
 #include "ufsfeature.h"
+#ifdef CONFIG_SCSI_UFS_QCOM
 #include <trace/events/ufs.h>
+#endif
 #include <trace/hooks/ufshcd.h>
 
 /* Query request retries */
@@ -215,6 +217,7 @@ static void ufsf_clk_scaling_start_busy(struct ufs_hba *hba)
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 }
 
+#ifdef CONFIG_SCSI_UFS_QCOM
 static void ufsf_add_cmd_upiu_trace(struct ufs_hba *hba, unsigned int tag,
 				    const char *str)
 {
@@ -268,7 +271,7 @@ static void ufsf_add_command_trace(struct ufs_hba *hba,
 	trace_ufshcd_command(dev_name(hba->dev), str, tag,
 			doorbell, transfer_len, intr, lba, opcode, group_id);
 }
-
+#endif
 static inline bool ufsf_should_inform_monitor(struct ufs_hba *hba,
 					      struct ufshcd_lrb *lrbp)
 {
@@ -313,7 +316,9 @@ void ufsf_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	lrbp->issue_time_stamp = ktime_get();
 	lrbp->compl_time_stamp = ktime_set(0, 0);
 	trace_android_vh_ufs_send_command(hba, lrbp);
+#ifdef CONFIG_SCSI_UFS_QCOM
 	ufsf_add_command_trace(hba, task_tag, "send");
+#endif
 	ufsf_clk_scaling_start_busy(hba);
 	if (unlikely(ufsf_should_inform_monitor(hba, lrbp)))
 		ufsf_start_monitor(hba, lrbp);
@@ -552,6 +557,7 @@ static inline bool ufsf_valid_tag(struct ufs_hba *hba, int tag)
 	return tag >= 0 && tag < hba->nutrs;
 }
 
+#ifdef CONFIG_SCSI_UFS_QCOM
 static void ufsf_add_query_upiu_trace(struct ufs_hba *hba, unsigned int tag,
 				      const char *str)
 {
@@ -559,6 +565,7 @@ static void ufsf_add_query_upiu_trace(struct ufs_hba *hba, unsigned int tag,
 
 	trace_ufshcd_upiu(dev_name(hba->dev), str, &rq->header, &rq->qr);
 }
+#endif
 
 /**
  * ufsf_exec_dev_cmd - API for sending device management requests
@@ -590,14 +597,18 @@ static int ufsf_exec_dev_cmd(struct ufs_hba *hba,
 
 	hba->dev_cmd.complete = &wait;
 
+#ifdef CONFIG_SCSI_UFS_QCOM
 	ufsf_add_query_upiu_trace(hba, tag, "query_send");
+#endif
 	/* Make sure descriptors are ready before ringing the doorbell */
 	wmb();
 
 	ufsf_send_command(hba, tag);
 	err = ufsf_wait_for_dev_cmd(hba, lrbp, timeout);
+#ifdef CONFIG_SCSI_UFS_QCOM
 	ufsf_add_query_upiu_trace(hba, tag,
 			err ? "query_complete_err" : "query_complete");
+#endif
 
 out:
 	up_read(&hba->clk_scaling_lock);
