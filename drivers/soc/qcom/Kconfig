@@ -56,6 +56,12 @@ config MOT_OIS_DRIVER
 	help
 	  This is enabling OIS driver.
 
+config MOT_SENSOR_PRE_POWERUP
+	default n
+	bool "enable power on sensor in advance"
+	help
+	  This is enabling power on sensor in advance.
+
 config CCI_DEBUG_INTF
 	default n
 	bool "enable cci debug"
