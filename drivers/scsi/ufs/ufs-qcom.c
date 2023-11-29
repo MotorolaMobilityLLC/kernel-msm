@@ -38,9 +38,11 @@
 #include "ufshcd-crypto-qti.h"
 
 #ifdef CONFIG_UFSFEATURE
+#ifdef CONFIG_SCSI_UFS_QCOM
 #define CREATE_TRACE_POINTS
 #include <trace/events/ufs.h>
 #undef CREATE_TRACE_POINTS
+#endif
 #endif
 
 #if defined(CONFIG_SCSI_SKHID)
