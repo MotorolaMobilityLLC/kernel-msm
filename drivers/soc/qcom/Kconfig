@@ -50,6 +50,12 @@ config MOT_OIS_AF_USE_SAME_IC
 	help
 	  This is enabling OIS and AF use same IC.
 
+config MOT_DONGWOON_OIS_AF_DRIFT
+        default n
+        bool "enable OIS_AF_DRIFT"
+        help
+          This is enabling OIS_AF_DRIFT.
+
 config MOT_OIS_DRIVER
 	default n
 	bool "enable OIS driver"
