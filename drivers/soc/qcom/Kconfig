@@ -26,6 +26,12 @@ config ARCFOX_DTB
 	help
 		Only include Motorola Arcfox device specific device tree.
 
+config MOT_CNSS_KIWI_V2
+	default n
+	bool "enable kiwi_v2 module"
+	help
+	  This is enabling kiwi_v2 module.
+
 config MOT_OIS_AFTER_SALES_SERVICE
 	default n
 	bool "enable OIS_AFTER_SALES_SERVICE"
