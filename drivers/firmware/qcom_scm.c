@@ -60,7 +60,6 @@ struct qcom_scm {
 	struct qcom_scm_waitq waitq;
 
 	u64 dload_mode_addr;
-	bool legacy_dload_method;
 };
 
 enum qcom_scm_custom_reset_type qcom_scm_custom_reset_type;
@@ -528,10 +527,12 @@ void qcom_scm_set_download_mode(enum qcom_download_mode mode, phys_addr_t tcsr_b
 	int ret = 0;
 	struct device *dev = __scm ? __scm->dev : NULL;
 
-	if (__scm && __scm->legacy_dload_method) {
-		ret = __qcom_scm_set_dload_mode(dev, mode);
-	} else if (tcsr_boot_misc || (__scm && __scm->dload_mode_addr)) {
+	if (tcsr_boot_misc || (__scm && __scm->dload_mode_addr)) {
 		ret = qcom_scm_io_writel(tcsr_boot_misc ? : __scm->dload_mode_addr, mode);
+	} else if (__qcom_scm_is_call_available(dev,
+				QCOM_SCM_SVC_BOOT,
+				QCOM_SCM_BOOT_SET_DLOAD_MODE)) {
+		ret = __qcom_scm_set_dload_mode(dev, mode);
 	} else {
 		dev_err(dev,
 			"No available mechanism for setting download mode\n");
@@ -3045,13 +3046,6 @@ int  scm_mem_protection_init_do(void)
 	return resp;
 }
 
-static bool is_dload_enabled(void)
-{
-	return ((IS_ENABLED(CONFIG_POWER_RESET_QCOM_DOWNLOAD_MODE) ||
-	    IS_ENABLED(CONFIG_POWER_RESET_MSM) ||
-	    download_mode));
-}
-
 static int qcom_scm_probe(struct platform_device *pdev)
 {
 	struct qcom_scm *scm;
@@ -3062,21 +3056,9 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	if (!scm)
 		return -ENOMEM;
 
-	/*
-	 * For some target checking _qcom_scm_is_call_available on
-	 * QCOM_SCM_BOOT_SET_DLOAD_MODE just hangs, so, to be on safer
-	 * side, check only if the configs are enabled.
-	 */
-	if (is_dload_enabled()) {
-		ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
-		if (ret < 0)
-			return ret;
-
-		if (!scm->dload_mode_addr) {
-			scm->legacy_dload_method = __qcom_scm_is_call_available(&pdev->dev,
-					QCOM_SCM_SVC_BOOT, QCOM_SCM_BOOT_SET_DLOAD_MODE);
-		}
-	}
+	ret = qcom_scm_find_dload_address(&pdev->dev, &scm->dload_mode_addr);
+	if (ret < 0)
+		return ret;
 
 	clks = (unsigned long)of_device_get_match_data(&pdev->dev);
 
