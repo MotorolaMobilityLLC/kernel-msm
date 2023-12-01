@@ -475,6 +475,65 @@ void i3c_trace_log(struct device *dev, const char *fmt, ...)
 	va_end(args);
 }
 
+/*
+ * geni_i3c_ibi_dump_dbg_regs() - Dumps IBI related important debug registers
+ * @gi3c: I3C device handle
+ *
+ * Return: None
+ */
+static void geni_i3c_ibi_dump_dbg_regs(struct geni_i3c_dev *gi3c)
+{
+	u32 ibi_gen_config, gpii_ibi_en, ibi_gen_irq_status;
+	u32 ibi_unexpect_ibi_info, ibi_legacy_mode, ibi_irq_status_0;
+
+	if (!gi3c->ibi.hw_support && !gi3c->ibi.is_init)
+		return;
+
+	ibi_gen_config = geni_read_reg(gi3c->ibi.ibi_base, IBI_GEN_CONFIG);
+	gpii_ibi_en = geni_read_reg(gi3c->ibi.ibi_base, IBI_GPII_IBI_EN);
+	ibi_gen_irq_status = geni_read_reg(gi3c->ibi.ibi_base, IBI_GEN_IRQ_STATUS);
+	ibi_unexpect_ibi_info = geni_read_reg(gi3c->ibi.ibi_base, IBI_UNEXPECT_IBI_INFO);
+	ibi_legacy_mode = geni_read_reg(gi3c->ibi.ibi_base, IBI_LEGACY_MODE);
+	ibi_irq_status_0 = geni_read_reg(gi3c->ibi.ibi_base, IBI_IRQ_STATUS(0));
+
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "ibi_gen_config:0x%x, gpii_ibi_en:0x%x, ibi_gen_irq_status:0x%x\n",
+		    ibi_gen_config, gpii_ibi_en, ibi_gen_irq_status);
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "ibi_unexpect_ibi_info:0x%x, ibi_legacy_mode:0x%x, ibi_irq_status_0:0x%x\n",
+		    ibi_unexpect_ibi_info, ibi_legacy_mode, ibi_irq_status_0);
+}
+
+/*
+ * geni_i3c_ibi_test_bus_dump_regs() - Dumps IBI related test bus registers
+ * @gi3c: I3C device handle
+ * @ibi_test_bus_num: Test bus number as passed by caller for debug
+ * @ibi_test_bus_sel: Test bus select number as passed by caller for debug
+ *
+ * Return: None
+ */
+static void geni_i3c_ibi_test_bus_dump_regs(struct geni_i3c_dev *gi3c,
+					    int bus_num, int bus_sel)
+{
+	u32 ibi_test_bus_en, ibi_test_bus_sel, ibi_test_bus_reg;
+
+	if (!gi3c->ibi.hw_support && !gi3c->ibi.is_init)
+		return;
+
+	 /* IBI TEST BUS */
+	geni_write_reg(bus_num, gi3c->ibi.ibi_base, IBI_TEST_BUS_EN);
+	geni_write_reg(bus_sel, gi3c->ibi.ibi_base, IBI_TEST_BUS_SEL);
+
+	ibi_test_bus_en = geni_read_reg(gi3c->ibi.ibi_base, IBI_TEST_BUS_EN);
+	ibi_test_bus_sel = geni_read_reg(gi3c->ibi.ibi_base, IBI_TEST_BUS_SEL);
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "ibi_test_bus_en:0x%x, ibi_test_bus_sel:0x%x\n",
+		    ibi_test_bus_en, ibi_test_bus_sel);
+
+	ibi_test_bus_reg = geni_read_reg(gi3c->ibi.ibi_base, IBI_TEST_BUS_REG);
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "ibi_test_bus_reg:0x%x\n",
+		    ibi_test_bus_reg);
+}
 /**
  * geni_i3c_se_dump_dbg_regs() - Print relevant registers that capture most
  *			accurately the state of an SE.
@@ -557,6 +616,28 @@ void geni_i3c_se_dump_dbg_regs(struct geni_se *se, void __iomem *base,
 	geni_dma_tx_ptr_l, geni_dma_tx_ptr_h);
 }
 
+/**
+ * geni_i3c_dump_dbg_regs() - capture SE, IBI and test bus dumps
+ *			accurately the state of an SE.
+ *
+ * @gi3c: I3C device handle
+ *
+ * Return: None
+ */
+static void geni_i3c_dump_dbg_regs(struct geni_i3c_dev *gi3c)
+{
+	/* se dumps*/
+	geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+
+	/* ibi and test bus dumps */
+	geni_i3c_ibi_dump_dbg_regs(gi3c);
+	geni_i3c_ibi_test_bus_dump_regs(gi3c, 0x11, 0);
+
+	/*gpi dumps*/
+	if (gi3c->se_mode == GENI_GPI_DMA && gi3c->gsi.tx.ch)
+		gpi_dump_for_geni(gi3c->gsi.tx.ch);
+}
+
 /*
  * geni_i3c_err() - updates i3c global gsi error
  *
@@ -577,7 +658,7 @@ static void geni_i3c_err(struct geni_i3c_dev *gi3c, int err)
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s\n", gi3c_log[err].msg);
 	gi3c->err = gi3c_log[err].err;
 
-	geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+	geni_i3c_dump_dbg_regs(gi3c);
 }
 
 /*
@@ -1045,7 +1126,7 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			    "%s:wait_for_completion timedout\n", __func__);
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+		geni_i3c_dump_dbg_regs(gi3c);
 		reinit_completion(&gi3c->done);
 		goto geni_i3c_err_prep;
 	}
@@ -1128,7 +1209,7 @@ static int geni_i3c_gsi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_pa
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			    "%s:wait_for_completion timed out\n", __func__);
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+		geni_i3c_dump_dbg_regs(gi3c);
 		gi3c->cur_buf = NULL;
 		gi3c->cur_idx = 0;
 		gi3c->cur_rnw = 0;
@@ -1223,7 +1304,7 @@ static int geni_i3c_gsi_read(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			    "%s:wait_for_completion timed out\n", __func__);
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+		geni_i3c_dump_dbg_regs(gi3c);
 		gi3c->cur_buf = NULL;
 		gi3c->cur_idx = 0;
 		gi3c->cur_rnw = 0;
@@ -1318,7 +1399,7 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 	if (!time_remaining) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "wait_for_completion timed out\n");
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+		geni_i3c_dump_dbg_regs(gi3c);
 		gi3c->cur_buf = NULL;
 		gi3c->cur_len = 0;
 		gi3c->cur_idx = 0;
@@ -1334,7 +1415,7 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 		if (!time_remaining) {
 			I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 				    "%s:Cancel failed: Aborting\n", __func__);
-			geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+			geni_i3c_dump_dbg_regs(gi3c);
 			reinit_completion(&gi3c->done);
 			spin_lock_irqsave(&gi3c->spinlock, flags);
 			geni_se_abort_m_cmd(&gi3c->se);
@@ -1343,7 +1424,7 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 			if (!time_remaining) {
 				I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 					    "%s:Abort Failed\n", __func__);
-				geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+				geni_i3c_dump_dbg_regs(gi3c);
 			}
 		}
 	}
@@ -1360,7 +1441,7 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 			if (!time_remaining) {
 				I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 					    "Timeout:FSM Reset, rnw:%d\n", rnw);
-				geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+				geni_i3c_dump_dbg_regs(gi3c);
 			}
 		}
 
