@@ -3801,7 +3801,7 @@ static int msm_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 	int ret, mark_block_bad_page = 0;
 	uint8_t *buf;
 	size_t len;
-	uint32_t pages_per_block;
+	uint32_t pages_per_block = 0;
 
 	if (ofs > mtd->size) {
 		pr_err("Invalid offset 0x%llx\n", ofs);
