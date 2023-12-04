@@ -893,7 +893,12 @@ static int cnss_get_bdf_file_name(struct cnss_plat_data *plat_priv,
 		}
 		break;
 	case CNSS_BDF_REGDB:
-		snprintf(filename_tmp, filename_len, REGDB_FILE_NAME);
+		if (device_ptr[0] != '\0') {
+			snprintf(filename_tmp, filename_len, "%s.%s", REGDB_FILE_NAME, device_ptr);
+		} else {
+			cnss_pr_dbg("device_ptr is not available yet, use default regdb file");
+			snprintf(filename_tmp, filename_len, REGDB_FILE_NAME);
+		}
 		break;
 	case CNSS_BDF_HDS:
 		snprintf(filename_tmp, filename_len, HDS_FILE_NAME);
@@ -1081,12 +1086,20 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 	if (ret)
 		goto err_req_fw;
 
-	if (bdf_type == CNSS_BDF_REGDB)
+	if (bdf_type == CNSS_BDF_REGDB) {
 		ret = cnss_request_firmware_direct(plat_priv, &fw_entry,
 						   filename);
-	else
+		if (ret != 0) {
+			memset(filename, 0, MAX_FIRMWARE_NAME_LEN);
+			cnss_bus_add_fw_prefix_name(plat_priv, filename, REGDB_FILE_NAME);
+			cnss_pr_dbg("Trying to load %s\n", filename);
+			ret = cnss_request_firmware_direct(plat_priv, &fw_entry,
+							   filename);
+		}
+	} else {
 		ret = firmware_request_nowarn(&fw_entry, filename,
 					      &plat_priv->plat_dev->dev);
+	}
 
 	if (ret) {
 		cnss_pr_err("Failed to load %s: %s, ret: %d\n",
