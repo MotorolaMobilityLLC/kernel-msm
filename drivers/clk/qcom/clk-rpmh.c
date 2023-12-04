@@ -832,6 +832,8 @@ static struct clk_hw *cliffs_rpmh_clocks[] = {
 	[RPMH_RF_CLK1_A]	= &pineapple_rf_clk1_ao.hw,
 	[RPMH_RF_CLK2]		= &pineapple_rf_clk2.hw,
 	[RPMH_RF_CLK2_A]	= &pineapple_rf_clk2_ao.hw,
+	[RPMH_RF_CLK5]          = &pineapple_rf_clk5.hw,
+        [RPMH_RF_CLK5_A]        = &pineapple_rf_clk5_ao.hw,
 	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
 };
 
