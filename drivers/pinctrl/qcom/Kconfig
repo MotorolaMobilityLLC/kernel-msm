@@ -608,5 +608,9 @@ config PINCTRL_MONACO_AUTO
 	  block found on the QTI MONACO_AUTO platform.
 	  Say Y here to compile statically, or M here to compile it as a module.
 	  If unsure, say N.
-
+config PINCTRL_FS1815
+	tristate "fs1815 gpio support"
+	default n
+	help
+	  This is for fs1815 gpio config.
 endif

@@ -1605,9 +1605,15 @@ static const struct msm_pingroup blair_groups[] = {
 	[163] = SDC_QDSD_PINGROUP(sdc2_data, 0x1a2000, 9, 0),
 };
 
+#ifdef CONFIG_PINCTRL_FS1815
+static const int blair_reserved_gpios[] = {
+	13, 14, 15, 16, 17, 45, 46, 56, 57, -1
+};
+#else
 static const int blair_reserved_gpios[] = {
 	13, 14, 15, 16, 17, 45, 46, 48, 56, 57, -1
 };
+#endif
 
 static const struct msm_gpio_wakeirq_map blair_mpm_map[] = {
 	{0, 84},
