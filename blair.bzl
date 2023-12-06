@@ -228,11 +228,9 @@ def define_blair():
 
     _blair_consolidate_in_tree_modules = _blair_in_tree_modules + [
         # keep sorted
-        "drivers/hwtracing/coresight/coresight-etm4x.ko",
         "drivers/misc/lkdtm/lkdtm.ko",
         "kernel/locking/locktorture.ko",
         "kernel/rcu/rcutorture.ko",
-        "kernel/sched/walt/sched-walt-debug.ko",
         "kernel/torture.ko",
         "lib/atomic64_test.ko",
         "lib/test_user_copy.ko",
