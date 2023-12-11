@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
@@ -727,8 +727,16 @@ void ipclite_recover(enum ipcmem_host_type core_id)
 {
 	int ret, i, host, host0, host1;
 
-	IPCLITE_OS_LOG(IPCLITE_DBG, "IPCLite Recover - Crashed Core : %d\n", core_id);
+	if (!ipclite) {
+		IPCLITE_OS_LOG(IPCLITE_ERR, "IPCLite not initialized\n");
+		return;
+	}
 
+	IPCLITE_OS_LOG(IPCLITE_DBG, "IPCLite Recover - Crashed Core : %d\n", core_id);
+	if (core_id >= IPCMEM_NUM_HOSTS) {
+		IPCLITE_OS_LOG(IPCLITE_ERR, "Invalid Core ID\n");
+		return;
+	}
 	/* verify and reset the hw mutex lock */
 	if (core_id == ipclite->ipcmem.toc->recovery.global_atomic_hwlock_owner) {
 		ipclite->ipcmem.toc->recovery.global_atomic_hwlock_owner = IPCMEM_INVALID_HOST;
@@ -1460,7 +1468,7 @@ static int ipclite_probe(struct platform_device *pdev)
 		if (hwlock_id != -EPROBE_DEFER)
 			dev_err(&pdev->dev, "failed to retrieve hwlock\n");
 		ret = hwlock_id;
-		goto error;
+		goto release;
 	}
 	IPCLITE_OS_LOG(IPCLITE_DBG, "Hwlock id retrieved, hwlock_id=%d\n", hwlock_id);
 
@@ -1468,7 +1476,7 @@ static int ipclite_probe(struct platform_device *pdev)
 	if (!ipclite->hwlock) {
 		IPCLITE_OS_LOG(IPCLITE_ERR, "Failed to assign hwlock_id\n");
 		ret = -ENXIO;
-		goto error;
+		goto release;
 	}
 	IPCLITE_OS_LOG(IPCLITE_DBG, "Hwlock id assigned successfully, hwlock=%p\n",
 									ipclite->hwlock);
@@ -1557,6 +1565,7 @@ mem_release:
 	 */
 release:
 	kfree(ipclite);
+	ipclite = NULL;
 error:
 	IPCLITE_OS_LOG(IPCLITE_ERR, "IPCLite probe failed\n");
 	return ret;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -249,7 +249,7 @@ void synx_util_put_object(struct synx_coredata *synx_obj)
 
 void synx_util_object_destroy(struct synx_coredata *synx_obj)
 {
-	int rc;
+	int rc = SYNX_SUCCESS;
 	u32 i;
 	s32 sync_id;
 	u32 type;
