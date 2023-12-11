@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __QCOM_RPMH_REGULATOR_LEVELS_H
 #define __QCOM_RPMH_REGULATOR_LEVELS_H
 
 /* These levels may be used for ARC type RPMh regulators. */
+#define RPMH_REGULATOR_LEVEL_OFF		0
 #define RPMH_REGULATOR_LEVEL_RETENTION		16
 #define RPMH_REGULATOR_LEVEL_MIN_SVS		48
 #define RPMH_REGULATOR_LEVEL_LOW_SVS_D2		52

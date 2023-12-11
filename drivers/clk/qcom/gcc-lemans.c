@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021, 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -16,6 +16,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap.h"
 #include "clk-regmap-divider.h"
@@ -4846,6 +4847,24 @@ static struct clk_branch gcc_video_axi1_clk = {
 	},
 };
 
+/*
+ * Keep the clocks always-ON
+ * GCC_CAMERA_AHB_CLK, GCC_CAMERA_XO_CLK, GCC_DISP1_AHB_CLK,
+ * GCC_DISP1_XO_CLK, GCC_DISP_AHB_CLK, GCC_DISP_XO_CLK,
+ * GCC_GPU_CFG_AHB_CLK, GCC_VIDEO_AHB_CLK, GCC_VIDEO_XO_CLK.
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x32004, .mask = BIT(0) },
+	{ .offset = 0x32020, .mask = BIT(0) },
+	{ .offset = 0xc7004, .mask = BIT(0) },
+	{ .offset = 0xc7018, .mask = BIT(0) },
+	{ .offset = 0x33004, .mask = BIT(0) },
+	{ .offset = 0x33018, .mask = BIT(0) },
+	{ .offset = 0x7d004, .mask = BIT(0) },
+	{ .offset = 0x34004, .mask = BIT(0) },
+	{ .offset = 0x34024, .mask = BIT(0) },
+};
+
 static struct clk_regmap *gcc_lemans_clocks[] = {
 	[GCC_AGGRE_NOC_QUPV3_AXI_CLK] = &gcc_aggre_noc_qupv3_axi_clk.clkr,
 	[GCC_AGGRE_UFS_CARD_AXI_CLK] = &gcc_aggre_ufs_card_axi_clk.clkr,
@@ -5160,7 +5179,7 @@ static const struct regmap_config gcc_lemans_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gcc_lemans_desc = {
+static struct qcom_cc_desc gcc_lemans_desc = {
 	.config = &gcc_lemans_regmap_config,
 	.clks = gcc_lemans_clocks,
 	.num_clks = ARRAY_SIZE(gcc_lemans_clocks),
@@ -5168,6 +5187,8 @@ static const struct qcom_cc_desc gcc_lemans_desc = {
 	.num_resets = ARRAY_SIZE(gcc_lemans_resets),
 	.clk_regulators = gcc_lemans_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gcc_lemans_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id gcc_lemans_match_table[] = {
@@ -5186,26 +5207,17 @@ static int gcc_lemans_probe(struct platform_device *pdev)
 		return PTR_ERR(regmap);
 
 
+	ret = register_qcom_clks_pm(pdev, false, &gcc_lemans_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed register gcc_pm_ops clocks\n");
+
 	ret = qcom_cc_register_rcg_dfs(regmap, gcc_dfs_clocks,
 				       ARRAY_SIZE(gcc_dfs_clocks));
 	if (ret)
 		return ret;
 
-	/*
-	 * Keep the clocks always-ON
-	 * GCC_CAMERA_AHB_CLK, GCC_CAMERA_XO_CLK, GCC_DISP1_AHB_CLK,
-	 * GCC_DISP1_XO_CLK, GCC_DISP_AHB_CLK, GCC_DISP_XO_CLK,
-	 * GCC_GPU_CFG_AHB_CLK, GCC_VIDEO_AHB_CLK, GCC_VIDEO_XO_CLK.
-	 */
-	regmap_update_bits(regmap, 0x32004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x32020, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xc7004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xc7018, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x33004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x33018, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x7d004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x34004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x34024, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &gcc_lemans_desc, regmap);
 	if (ret) {

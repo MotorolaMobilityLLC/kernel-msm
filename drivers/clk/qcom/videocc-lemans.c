@@ -17,6 +17,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap.h"
 #include "clk-regmap-divider.h"
@@ -443,6 +444,16 @@ static struct clk_branch video_cc_sleep_clk = {
 	},
 };
 
+/*
+ * Keep clocks always enabled:
+ *	video_cc_ahb_clk
+ *	video_cc_xo_clk
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x80ec, .mask = BIT(0) },
+	{ .offset = 0x8128, .mask = BIT(0) },
+};
+
 static struct clk_regmap *video_cc_lemans_clocks[] = {
 	[VIDEO_CC_AHB_CLK_SRC] = &video_cc_ahb_clk_src.clkr,
 	[VIDEO_CC_MVS0_CLK] = &video_cc_mvs0_clk.clkr,
@@ -488,6 +499,8 @@ static struct qcom_cc_desc video_cc_lemans_desc = {
 	.num_resets = ARRAY_SIZE(video_cc_lemans_resets),
 	.clk_regulators = video_cc_lemans_regulators,
 	.num_clk_regulators = ARRAY_SIZE(video_cc_lemans_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id video_cc_lemans_match_table[] = {
@@ -505,24 +518,15 @@ static int video_cc_lemans_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_runtime_init(pdev, &video_cc_lemans_desc);
+	ret = register_qcom_clks_pm(pdev, true, &video_cc_lemans_desc);
 	if (ret)
-		return ret;
-
-	ret = pm_runtime_get_sync(&pdev->dev);
-	if (ret)
-		return ret;
+		dev_err(&pdev->dev, "Failed register video_cc_pm_rt_ops clocks\n");
 
 	clk_lucid_evo_pll_configure(&video_pll0, regmap, video_pll0.config);
 	clk_lucid_evo_pll_configure(&video_pll1, regmap, video_pll1.config);
 
-	/*
-	 * Keep clocks always enabled:
-	 *	video_cc_ahb_clk
-	 *	video_cc_xo_clk
-	 */
-	regmap_update_bits(regmap, 0x80ec, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x8128, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &video_cc_lemans_desc, regmap);
 	if (ret) {
@@ -541,19 +545,12 @@ static void video_cc_lemans_sync_state(struct device *dev)
 	qcom_cc_sync_state(dev, &video_cc_lemans_desc);
 }
 
-static const struct dev_pm_ops video_cc_lemans_pm_ops = {
-	SET_RUNTIME_PM_OPS(qcom_cc_runtime_suspend, qcom_cc_runtime_resume, NULL)
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-};
-
 static struct platform_driver video_cc_lemans_driver = {
 	.probe = video_cc_lemans_probe,
 	.driver = {
 		.name = "video_cc-lemans",
 		.of_match_table = video_cc_lemans_match_table,
 		.sync_state = video_cc_lemans_sync_state,
-		.pm = &video_cc_lemans_pm_ops,
 	},
 };
 
