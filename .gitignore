@@ -166,6 +166,12 @@ x509.genkey
 # generated defconfigs
 arch/*/configs/vendor/*_defconfig
 
+# generate moto config
+arch/*/configs/vendor/ext_config/moto_fragment.config
+
+# generate moto bazel build file
+moto_product.bzl
+
 # vendor device tree directories
 arch/*/boot/dts/vendor
 
