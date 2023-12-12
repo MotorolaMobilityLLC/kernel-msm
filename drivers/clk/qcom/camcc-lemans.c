@@ -18,6 +18,7 @@
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
 #include "clk-pll.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap.h"
 #include "common.h"
@@ -1950,6 +1951,14 @@ static struct clk_branch cam_cc_titan_top_accu_shift_clk = {
 	},
 };
 
+/*
+ * Keep clocks always enabled:
+ *	cam_cc_gdsc_clk
+ */
+static struct critical_clk_offset lemans_critical_clk_list[] = {
+	{ .offset = 0x131ec, .mask = BIT(0) },
+};
+
 static struct clk_regmap *cam_cc_lemans_clocks[] = {
 	[CAM_CC_CAMNOC_AXI_CLK] = &cam_cc_camnoc_axi_clk.clkr,
 	[CAM_CC_CAMNOC_AXI_CLK_SRC] = &cam_cc_camnoc_axi_clk_src.clkr,
@@ -2063,6 +2072,8 @@ static struct qcom_cc_desc cam_cc_lemans_desc = {
 	.num_resets = ARRAY_SIZE(cam_cc_lemans_resets),
 	.clk_regulators = cam_cc_lemans_regulators,
 	.num_clk_regulators = ARRAY_SIZE(cam_cc_lemans_regulators),
+	.critical_clk_en = lemans_critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(lemans_critical_clk_list),
 };
 
 static const struct of_device_id cam_cc_lemans_match_table[] = {
@@ -2074,8 +2085,6 @@ MODULE_DEVICE_TABLE(of, cam_cc_lemans_match_table);
 
 static int cam_cc_lemans_fixup(struct platform_device *pdev, struct regmap *regmap)
 {
-	u32 offset = 0x131ec;
-
 	if (of_device_is_compatible(pdev->dev.of_node, "qcom,monaco_auto-camcc")) {
 		cam_cc_camnoc_axi_clk_src.cmd_rcgr = 0x13154;
 		cam_cc_camnoc_axi_clk.halt_reg = 0x1316c;
@@ -2143,14 +2152,11 @@ static int cam_cc_lemans_fixup(struct platform_device *pdev, struct regmap *regm
 		cam_cc_lemans_clocks[CAM_CC_TITAN_TOP_ACCU_SHIFT_CLK] =
 				&cam_cc_titan_top_accu_shift_clk.clkr;
 
-		offset = 0x131d0;
+		lemans_critical_clk_list[0].offset = 0x131d0;
 	}
 
-	/*
-	 * Keep clocks always enabled:
-	 * cam_cc_gdsc_clk
-	 */
-	regmap_update_bits(regmap, offset, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	return 0;
 }
@@ -2164,13 +2170,9 @@ static int cam_cc_lemans_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_runtime_init(pdev, &cam_cc_lemans_desc);
+	ret = register_qcom_clks_pm(pdev, true, &cam_cc_lemans_desc);
 	if (ret)
-		return ret;
-
-	ret = pm_runtime_get_sync(&pdev->dev);
-	if (ret)
-		return ret;
+		dev_err(&pdev->dev, "Failed register cam_cc_pm_rt_ops clocks\n");
 
 	clk_lucid_evo_pll_configure(&cam_cc_pll0, regmap, cam_cc_pll0.config);
 	clk_rivian_evo_pll_configure(&cam_cc_pll2, regmap, cam_cc_pll2.config);
@@ -2199,19 +2201,12 @@ static void cam_cc_lemans_sync_state(struct device *dev)
 	qcom_cc_sync_state(dev, &cam_cc_lemans_desc);
 }
 
-static const struct dev_pm_ops cam_cc_lemans_pm_ops = {
-	SET_RUNTIME_PM_OPS(qcom_cc_runtime_suspend, qcom_cc_runtime_resume, NULL)
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-};
-
 static struct platform_driver cam_cc_lemans_driver = {
 	.probe = cam_cc_lemans_probe,
 	.driver = {
 		.name = "cam_cc-lemans",
 		.of_match_table = cam_cc_lemans_match_table,
 		.sync_state = cam_cc_lemans_sync_state,
-		.pm = &cam_cc_lemans_pm_ops,
 	},
 };
 

@@ -91,6 +91,7 @@ extern enum qcom_scm_custom_reset_type qcom_scm_custom_reset_type;
 #define QCOM_SCM_VMID_MSS_MSA    0xF
 #define QCOM_SCM_VMID_WLAN       0x18
 #define QCOM_SCM_VMID_WLAN_CE    0x19
+#define QCOM_SCM_VMID_CP_SPSS_SP 0x1A
 #define QCOM_SCM_PERM_READ       0x4
 #define QCOM_SCM_PERM_WRITE      0x2
 #define QCOM_SCM_PERM_EXEC       0x1
