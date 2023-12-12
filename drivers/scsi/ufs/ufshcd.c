@@ -2105,6 +2105,7 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	}
 	/* Make sure that doorbell is committed immediately */
 	wmb();
+	trace_android_vh_ufs_send_command_post_change(hba, lrbp);
 }
 
 /**
@@ -2770,7 +2771,9 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 	}
 	/* Make sure descriptors are ready before ringing the doorbell */
 	wmb();
-
+	trace_android_vh_ufs_perf_huristic_ctrl(hba, lrbp, &err);
+	if (err)
+		goto out;
 	ufshcd_send_command(hba, tag);
 out:
 	up_read(&hba->clk_scaling_lock);
@@ -7049,8 +7052,10 @@ static int ufshcd_abort(struct scsi_cmnd *cmd)
 	outstanding = __test_and_clear_bit(tag, &hba->outstanding_reqs);
 	spin_unlock_irqrestore(host->host_lock, flags);
 
-	if (outstanding)
+	if (outstanding) {
 		ufshcd_release_scsi_cmd(hba, lrbp);
+		trace_android_vh_ufs_abort_success_ctrl(hba, lrbp);
+	}
 
 	err = SUCCESS;
 
