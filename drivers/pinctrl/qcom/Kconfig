@@ -613,4 +613,10 @@ config PINCTRL_FS1815
 	default n
 	help
 	  This is for fs1815 gpio config.
+
+config PINCTRL_FPS
+        tristate "fod fps gpio support"
+        default n
+        help
+          This is for fps gpio config.
 endif
