@@ -27,9 +27,13 @@
 #include <linux/reset.h>
 #include <linux/ipc_logging.h>
 #include <linux/clk/qcom.h>
+#include <linux/genhd.h>
+#include <linux/blkdev.h>
+#include <linux/dcache.h>
 #include "sdhci-pltfm.h"
 #include "cqhci.h"
 #include "../core/core.h"
+#include "../core/queue.h"
 #include <linux/crypto-qti-common.h>
 #include <linux/qtee_shmbridge.h>
 
@@ -204,6 +208,32 @@
 #define CQHCI_VENDOR_DIS_RST_ON_CQ_EN	(0x3 << 13)
 
 #define SDHCI_CMD_FLAGS_MASK	0xff
+/* Copied from mmc/core/block.c to access the request queue */
+struct mmc_blk_data {
+	struct device	*parent;
+	struct gendisk	*disk;
+	struct mmc_queue queue;
+	struct list_head part;
+	struct list_head rpmbs;
+
+	unsigned int	flags;
+
+	struct kref	kref;
+	unsigned int	read_only;
+	unsigned int	part_type;
+	unsigned int	reset_done;
+	/*
+	 * Only set in main mmc_blk_data associated
+	 * with mmc_card with dev_set_drvdata, and keeps
+	 * track of the current selected device partition.
+	 */
+	unsigned int	part_curr;
+	int	area_type;
+
+	/* debugfs files (only in main mmc_blk_data) */
+	struct dentry *status_dentry;
+	struct dentry *ext_csd_dentry;
+};
 
 static const struct sdhci_msm_offset sdhci_msm_v5_offset = {
 	.core_mci_data_cnt = 0x35c,
@@ -3641,14 +3671,37 @@ static int sdhci_msm_start_signal_voltage_switch(struct mmc_host *mmc,
 	return -EAGAIN;
 }
 
+static void moto_sdcard_event_work(struct work_struct *work)
+{
+	struct sdhci_msm_host *msm_host = container_of(work, struct sdhci_msm_host, sdcard_hotplut_work.work);
+	struct mmc_host *mmc = msm_host->mmc;
+	struct mmc_card *card = mmc->card;
+	struct mmc_blk_data *md = dev_get_drvdata(&card->dev);
+
+	if (mmc_card_is_removable(msm_host->mmc)) {
+		if (md != NULL) {
+			pr_debug("mmc update the removable card discard sectors to max\n");
+			blk_queue_max_discard_sectors(md->queue.queue, UINT_MAX);
+			cancel_delayed_work(&msm_host->sdcard_hotplut_work);
+		}
+	}
+}
+
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
 static void sdhci_msm_init_card(struct mmc_host *host,
 				struct mmc_card *card)
 {
+	struct sdhci_host *sdhci_host = mmc_priv(host);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci_host);
+	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
 
 	if (host->card && mmc_card_mmc(card)) {
 		card->mmc_avail_type &= ~(EXT_CSD_CARD_TYPE_HS400ES |
 			EXT_CSD_CARD_TYPE_HS400 | EXT_CSD_CARD_TYPE_HS200);
+	}
+
+	if (mmc_card_is_removable(host)) {
+		schedule_delayed_work(&msm_host->sdcard_hotplut_work, msecs_to_jiffies(2*HZ));
 	}
 }
 #endif
@@ -4820,6 +4873,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&msm_host->clk_gating_work,
 			sdhci_msm_clkgate_bus_delayed_work);
+	INIT_DELAYED_WORK(&msm_host->sdcard_hotplut_work, moto_sdcard_event_work);
 
 	ret = sdhci_msm_bus_register(msm_host, pdev);
 	if (ret && !msm_host->skip_bus_bw_voting) {
