@@ -288,6 +288,7 @@ struct sdhci_msm_host {
 	struct delayed_work bus_vote_work;
 	struct delayed_work clk_gating_work;
 	struct delayed_work pmqos_unvote_work;
+	struct delayed_work sdcard_hotplut_work;
 	struct workqueue_struct *workq;	/* QoS work queue */
 	struct sdhci_msm_qos_req *sdhci_qos;
 	struct irq_affinity_notify affinity_notify;
