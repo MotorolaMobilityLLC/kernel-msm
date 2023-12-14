@@ -493,7 +493,7 @@ retry_ignore_cluster:
 			}
 
 			// Moto chentao: spread mvp tasks.
-			if (fbt_env->strict_max) {
+			if (wts->mvp_prio > WALT_NOT_MVP) {
 				if (wrq->num_mvp_tasks < mvp_min_tasks) {
 					mvp_min_tasks = wrq->num_mvp_tasks;
 					most_spare_cap_cpu = i;
@@ -1213,8 +1213,15 @@ static void binder_set_priority_hook(void *data,
 	}
 
 	// Moto huangzq2: inherit ux type
-	if (bndrtrans && bndrtrans->need_reply && (current_wts->ux_type & UX_TYPE_TOPAPP)) {
-		wts->ux_type |= UX_TYPE_INHERIT;
+	if (bndrtrans && bndrtrans->need_reply && (current_wts->ux_type > 0
+				|| task_in_related_thread_group(current)
+				|| current->tgid == get_systemserver_tgid()
+				|| current->tgid == get_surfaceflinger_tgid())) {
+		if (current_wts->ux_type & (UX_TYPE_PERF_DAEMON|UX_TYPE_AUDIO|UX_TYPE_INPUT|UX_TYPE_ANIMATOR|UX_TYPE_TOPAPP|UX_TYPE_TOPUI)) {
+			wts->ux_type |= UX_TYPE_INHERIT_HIGH;
+		} else {
+			wts->ux_type |= UX_TYPE_INHERIT_LOW;
+		}
 	}
 }
 
@@ -1230,8 +1237,8 @@ static void binder_restore_priority_hook(void *data,
 		wts->boost = bndrtrans->android_vendor_data1;
 
 	// Moto huangzq2: clear inherited ux type
-	if (bndrtrans && (wts->ux_type & UX_TYPE_INHERIT))
-		wts->ux_type &= ~UX_TYPE_INHERIT;
+	if (bndrtrans && (wts->ux_type & (UX_TYPE_INHERIT_HIGH|UX_TYPE_INHERIT_LOW)))
+		wts->ux_type &= ~(UX_TYPE_INHERIT_HIGH|UX_TYPE_INHERIT_LOW);
 }
 
 /*
@@ -1247,8 +1254,7 @@ int walt_get_mvp_task_prio(struct task_struct *p)
 	int ux_type = task_get_ux_type(p);
 
 	if (walt_procfs_low_latency_task(p) ||
-			walt_pipeline_low_latency_task(p)
-			|| ux_type & UX_TYPE_PERF_DAEMON) // Moto huangzq2: assign walt priority based on ux type.
+			walt_pipeline_low_latency_task(p))
 		return WALT_LL_PIPE_MVP;
 
 	if (per_task_boost(p) == TASK_BOOST_STRICT_MAX)
@@ -1258,20 +1264,30 @@ int walt_get_mvp_task_prio(struct task_struct *p)
 		return WALT_BINDER_MVP;
 
 	// Moto huangzq2: assign walt priority based on ux type.
-	if (ux_type & UX_TYPE_AUDIO)
+	if (ux_type & UX_TYPE_PERF_DAEMON)
+		return WALT_LL_PIPE_MVP;
+	else if (ux_type & UX_TYPE_AUDIO)
 		return WALT_UX_AUDIO;
 	else if (ux_type & UX_TYPE_INPUT)
 		return WALT_UX_INPUT;
 	else if (ux_type & UX_TYPE_ANIMATOR)
 		return WALT_UX_ANIMATOR;
-	else if (ux_type & (UX_TYPE_TOPAPP|UX_TYPE_INHERIT))
+	else if (ux_type & (UX_TYPE_TOPAPP|UX_TYPE_INHERIT_HIGH))
 		return WALT_UX_TOPAPP;
 	else if (ux_type & UX_TYPE_TOPUI)
 		return WALT_UX_TOPUI;
-	else if (ux_type & UX_TYPE_LAUNCHER)
+	else if (ux_type & (UX_TYPE_LAUNCHER|UX_TYPE_GESTURE_MONITOR))
 		return WALT_UX_LAUNCHER;
 	else if (ux_type & UX_TYPE_KSWAPD)
 		return WALT_UX_KSWAPD;
+	else if (task_in_related_thread_group(p))
+		return p->prio < 120 ? WALT_UX_TOPAPP_HIGH : WALT_UX_TOPAPP_LOW;
+	else if (p->tgid == get_systemserver_tgid() || p->tgid == get_surfaceflinger_tgid())
+		return p->prio < 120 ? WALT_UX_SYSTEM_HIGH : WALT_UX_SYSTEM_LOW;
+	else if (ux_type & UX_TYPE_INHERIT_LOW)
+		return WALT_UX_SYSTEM_LOW;
+	else if (ux_type > 0) // in case we have some ux_type not handled, use WALT_UX_SYSTEM_LOW.
+		return WALT_UX_SYSTEM_LOW;
 
 	if (task_rtg_high_prio(p))
 		return WALT_RTG_MVP;
@@ -1287,7 +1303,7 @@ static inline unsigned int __walt_cfs_mvp_task_limit(int mvp_prio)
 		return WALT_MVP_SLICE;
 
 	/* Moto huangzq2: use longer exec limit (100ms) for top UI task */
-	if (mvp_prio == WALT_UX_TOPAPP)
+	if (mvp_prio == WALT_UX_TOPAPP || mvp_prio == WALT_UX_TOPAPP_HIGH || mvp_prio == WALT_UX_TOPAPP_LOW)
 		return 100000000U;
 
 	// 100ms for kswapd
