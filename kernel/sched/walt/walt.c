@@ -77,6 +77,29 @@ unsigned int __read_mostly sched_init_task_load_windows;
  */
 unsigned int __read_mostly sched_load_granule;
 
+
+int global_ux_scene = 0;
+int set_ux_scene(int scene) {
+	global_ux_scene = scene;
+	return 0;
+}
+EXPORT_SYMBOL(set_ux_scene);
+
+int get_ux_scene(void) {
+	return global_ux_scene;
+}
+
+int global_systemserver_tgid = -1;
+int set_systemserver_tgid(int tgid) {
+	global_systemserver_tgid = tgid;
+	return 0;
+}
+EXPORT_SYMBOL(set_systemserver_tgid);
+
+int get_systemserver_tgid(void) {
+	return global_systemserver_tgid;
+}
+
 /*
  *@boost:should be 0,1,2.
  *@period:boost time based on ms units.
