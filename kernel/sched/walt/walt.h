@@ -818,9 +818,8 @@ static inline bool task_in_related_thread_group(struct task_struct *p)
 
 static inline bool task_rtg_high_prio(struct task_struct *p)
 {
-	// Moto huangzq2: only boost all threads in top-app and systemserver group for app launching
-	return (task_in_related_thread_group(p) || p->tgid == get_systemserver_tgid()) &&
-		(p->prio <= sysctl_walt_rtg_cfs_boost_prio || (get_ux_scene() & UX_SCENE_LAUNCH));
+	return task_in_related_thread_group(p) &&
+			(p->prio <= sysctl_walt_rtg_cfs_boost_prio);
 }
 
 static inline struct walt_related_thread_group
@@ -896,16 +895,24 @@ static inline bool walt_fair_task(struct task_struct *p)
 }
 
 #define WALT_MVP_SLICE		3000000U
-#define WALT_MVP_LIMIT		(4 * WALT_MVP_SLICE)
+#define WALT_MVP_LIMIT		(10 * WALT_MVP_SLICE)
 
 #define WALT_RTG_MVP		   0
-#define WALT_UX_KSWAPD         1
-#define WALT_UX_LAUNCHER       2
-#define WALT_UX_TOPUI          3
-#define WALT_UX_TOPAPP         4
-#define WALT_UX_ANIMATOR       5
-#define WALT_UX_INPUT          6
-#define WALT_UX_AUDIO          7
+#define WALT_UX_FG_LOW	1
+#define WALT_UX_FG_HIGH	2
+#define WALT_UX_SYSTEM_LOW	3
+#define WALT_UX_TOPAPP_LOW	4
+#define WALT_UX_SYSTEM_HIGH	5
+#define WALT_UX_TOPAPP_HIGH	6
+
+#define WALT_UX_KSWAPD		7
+#define WALT_UX_LAUNCHER	8
+#define WALT_UX_TOPUI		9
+#define WALT_UX_TOPAPP		10
+#define WALT_UX_ANIMATOR	11
+#define WALT_UX_INPUT		12
+#define WALT_UX_AUDIO		13
+
 #define WALT_BINDER_MVP        14
 #define WALT_TASK_BOOST_MVP    15
 #define WALT_LL_PIPE_MVP       16
