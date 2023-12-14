@@ -40,10 +40,6 @@
 #define SP_SCSR_MB1_SP2CL_GP0_ADDR 0x1888020
 #define SP_SCSR_MB3_SP2CL_GP0_ADDR 0x188C020
 
-#define MAX_ROT_DATA_SIZE_IN_BYTES 4096
-
-static bool ssr_already_occurred_since_boot;
-
 #define NUM_OF_DEBUG_REGISTERS_READ 0x3
 struct spss_data {
 	const char *firmware_name;
@@ -302,74 +298,13 @@ static bool check_status(struct qcom_spss *spss, int *ret_error)
 	return false;
 }
 
-static int manage_unused_pil_region_memory(struct qcom_spss *spss)
-{
-	unsigned int src_vmid_list;
-	struct qcom_scm_vmperm newvm[2];
-	u8 *spss_rot_data;
-	int res;
-
-	spss_rot_data = kcalloc(MAX_ROT_DATA_SIZE_IN_BYTES, sizeof(*spss_rot_data), GFP_KERNEL);
-	if (!spss_rot_data)
-		return -ENOMEM;
-
-	/*
-	 * When assigning memory to different ownership, previous data is erased,
-	 * ROT data needs to remain in SPSS region as written by SPSS before.
-	 */
-	memcpy(spss_rot_data,
-		(uint8_t *)(uintptr_t)(spss->mem_region+spss->mem_size-MAX_ROT_DATA_SIZE_IN_BYTES),
-		MAX_ROT_DATA_SIZE_IN_BYTES);
-
-	src_vmid_list = BIT(QCOM_SCM_VMID_HLOS);
-
-	newvm[0].vmid = QCOM_SCM_VMID_HLOS;
-	newvm[0].perm = QCOM_SCM_PERM_RW;
-	newvm[1].vmid = QCOM_SCM_VMID_CP_SPSS_SP;
-	newvm[1].perm = QCOM_SCM_PERM_RW;
-
-	res = qcom_scm_assign_mem(spss->mem_phys + spss->mem_size - MAX_ROT_DATA_SIZE_IN_BYTES,
-			MAX_ROT_DATA_SIZE_IN_BYTES, &src_vmid_list, newvm, 2);
-	if (res) {
-		dev_err(spss->dev, "qcom_scm_assign_mem failed %d\n", res);
-		kfree(spss_rot_data);
-		return res;
-	}
-
-	memcpy((uint8_t *)(uintptr_t)(spss->mem_region+spss->mem_size-MAX_ROT_DATA_SIZE_IN_BYTES),
-		spss_rot_data, MAX_ROT_DATA_SIZE_IN_BYTES);
-
-	kfree(spss_rot_data);
-	return res;
-}
-
 static int spss_load(struct rproc *rproc, const struct firmware *fw)
 {
 	struct qcom_spss *spss = (struct qcom_spss *)rproc->priv;
-	int res;
 
-	res = qcom_mdt_load(spss->dev, fw, rproc->firmware, spss->pas_id,
+	return qcom_mdt_load(spss->dev, fw, rproc->firmware, spss->pas_id,
 			     spss->mem_region, spss->mem_phys, spss->mem_size,
 			     &spss->mem_reloc);
-
-	if (res) {
-		dev_err(spss->dev, "qcom_mdt_load of SPSS image failed, error value %d\n", res);
-		return res;
-	}
-
-	/*
-	 * During SSR only PIL memory is released.
-	 * If an SSR already occurred, the memory beyond image_size
-	 * remains assigned since PIL didn't own it.
-	 */
-	if (!ssr_already_occurred_since_boot) {
-		res = manage_unused_pil_region_memory(spss);
-		/* Set to true only if memory was successfully assigned*/
-		if (!res)
-			ssr_already_occurred_since_boot = true;
-	}
-
-	return res;
 }
 
 static int spss_stop(struct rproc *rproc)
