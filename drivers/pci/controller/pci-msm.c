@@ -226,6 +226,11 @@
 #define MSM_PCIE_PHY_SW_PWRDN		BIT(0)
 #define MSM_PCIE_PHY_REFCLK_DRV_DSBL	BIT(1)
 
+#define MSM_PCIE_PHY_SW_AUX_CLK_REQ	(BIT(6) | BIT(7))
+#define MSM_PCIE_PHY_SW_AUX_CLK_REQ_VAL 0x2
+
+#define MSM_PCIE_EXT_CLKBUF_EN_MUX	BIT(1)
+#define MSM_PCIE_EXT_CLKBUF_EN_MUX_VAL	0x1
 #define ICC_AVG_BW (500)
 #define ICC_PEAK_BW (800)
 
@@ -713,6 +718,7 @@ struct msm_pcie_dev_t {
 	struct clk *phy_aux_clk_mux;
 	struct clk *phy_aux_clk_ext_src;
 	struct clk *ref_clk_src;
+	struct clk *ahb_clk;
 
 	bool cfg_access;
 	bool apss_based_l1ss_sleep;
@@ -762,6 +768,8 @@ struct msm_pcie_dev_t {
 	uint32_t phy_status_offset;
 	uint32_t phy_status_bit;
 	uint32_t phy_power_down_offset;
+	uint32_t phy_aux_clk_config1_offset;
+	uint32_t phy_pll_clk_enable1_offset;
 	uint32_t eq_pset_req_vec;
 	uint32_t core_preset;
 	uint32_t eq_fmdc_t_min_phase23;
@@ -1217,6 +1225,19 @@ static void msm_pcie_write_reg_field(void __iomem *base, u32 offset,
 	writel_relaxed(val, base + offset);
 	/* ensure that changes propagated to the hardware */
 	readl_relaxed(base + offset);
+}
+
+static void msm_pcie_clear_set_reg(void __iomem *base, u32 pos,
+	u32 clear, u32 set)
+{
+	u32 val;
+
+	val = readl_relaxed(base + pos);
+	val &= ~clear;
+	val |= set;
+	writel_relaxed(val, base + pos);
+	/* ensure that changes propagated to the hardware */
+	readl_relaxed(base + pos);
 }
 
 static void msm_pcie_config_clear_set_dword(struct pci_dev *pdev,
@@ -3716,6 +3737,7 @@ static int msm_pcie_get_clk(struct msm_pcie_dev_t *pcie_dev)
 	u32 *clkfreq = NULL;
 	struct platform_device *pdev = pcie_dev->pdev;
 	char ref_clk_src[MAX_PROP_SIZE];
+	char ahb_clk[MAX_PROP_SIZE];
 
 	cnt = of_property_count_elems_of_size((&pdev->dev)->of_node,
 			"max-clock-frequency-hz", sizeof(u32));
@@ -3785,6 +3807,15 @@ static int msm_pcie_get_clk(struct msm_pcie_dev_t *pcie_dev)
 	pcie_dev->ref_clk_src = clk_get(&pdev->dev, ref_clk_src);
 	if (IS_ERR(pcie_dev->ref_clk_src))
 		pcie_dev->ref_clk_src = NULL;
+
+	scnprintf(ahb_clk, MAX_PROP_SIZE, "pcie_%d_cfg_ahb_clk",
+		pcie_dev->rc_idx);
+	pcie_dev->ahb_clk = clk_get(&pdev->dev, ahb_clk);
+	if (IS_ERR(pcie_dev->ahb_clk)) {
+		pcie_dev->ahb_clk = NULL;
+		PCIE_DBG(pcie_dev,
+				"Clock ahb isn't available\n");
+	}
 
 	for (i = 0; i < MSM_PCIE_MAX_PIPE_CLK; i++) {
 		clk_info = &pcie_dev->pipeclk[i];
@@ -6202,6 +6233,16 @@ static int msm_pcie_probe(struct platform_device *pdev)
 	PCIE_DBG(pcie_dev, "RC%d: phy-power-down-offset: 0x%x.\n",
 		pcie_dev->rc_idx, pcie_dev->phy_power_down_offset);
 
+	of_property_read_u32(of_node, "qcom,phy-aux-clk-config1-offset",
+				&pcie_dev->phy_aux_clk_config1_offset);
+	PCIE_DBG(pcie_dev, "RC%d: phy-aux-clk-config1-offset: 0x%x.\n",
+		pcie_dev->rc_idx, pcie_dev->phy_aux_clk_config1_offset);
+
+	of_property_read_u32(of_node, "qcom,phy-pll-clk-enable1-offset",
+				&pcie_dev->phy_pll_clk_enable1_offset);
+	PCIE_DBG(pcie_dev, "RC%d: phy-pll-clk-enable1-offset: 0x%x.\n",
+		pcie_dev->rc_idx, pcie_dev->phy_pll_clk_enable1_offset);
+
 	of_property_read_u32(pdev->dev.of_node,
 				"qcom,eq-pset-req-vec",
 				&pcie_dev->eq_pset_req_vec);
@@ -6865,10 +6906,14 @@ static int __maybe_unused msm_pcie_pm_suspend_noirq(struct device *dev)
 	u32 val;
 	int ret_l1ss, i;
 	unsigned long irqsave_flags;
+	char ahb_clk[MAX_PROP_SIZE];
 	struct msm_pcie_dev_t *pcie_dev = (struct msm_pcie_dev_t *)
 						dev_get_drvdata(dev);
 
 	PCIE_DBG(pcie_dev, "RC%d: entry\n", pcie_dev->rc_idx);
+
+	scnprintf(ahb_clk, MAX_PROP_SIZE, "pcie_%d_cfg_ahb_clk",
+		pcie_dev->rc_idx);
 
 	mutex_lock(&pcie_dev->recovery_lock);
 	if (pcie_dev->enumerated && pcie_dev->power_on &&
@@ -6930,13 +6975,10 @@ static int __maybe_unused msm_pcie_pm_suspend_noirq(struct device *dev)
 			pinctrl_select_state(pcie_dev->pinctrl,
 						pcie_dev->pins_sleep);
 
-		/* park the PCIe PHY in power down mode */
-		if (pcie_dev->phy_power_down_offset)
-			msm_pcie_write_reg(pcie_dev->phy, pcie_dev->phy_power_down_offset, 0);
 
 		/* Disable all the clocks */
 		for (i = 0; i < MSM_PCIE_MAX_CLK; i++)
-			if (pcie_dev->clk[i].hdl)
+			if (pcie_dev->clk[i].hdl && strcmp(pcie_dev->clk[i].name, ahb_clk))
 				clk_disable_unprepare(pcie_dev->clk[i].hdl);
 
 		qcom_pcie_icc_bw_update(pcie_dev, 0, 0);
@@ -6949,11 +6991,33 @@ static int __maybe_unused msm_pcie_pm_suspend_noirq(struct device *dev)
 		if (pcie_dev->pipe_clk_mux && pcie_dev->ref_clk_src)
 			clk_set_parent(pcie_dev->pipe_clk_mux, pcie_dev->ref_clk_src);
 
+		/* Disable the pipe clock*/
+		msm_pcie_pipe_clk_deinit(pcie_dev);
+
+		/* Shut off FLL */
+		if (pcie_dev->phy_aux_clk_config1_offset)
+			msm_pcie_write_reg_field(pcie_dev->phy,
+						 pcie_dev->phy_aux_clk_config1_offset,
+						 MSM_PCIE_PHY_SW_AUX_CLK_REQ,
+						 MSM_PCIE_PHY_SW_AUX_CLK_REQ_VAL);
+
+		/* Enable ext clk buf en to eliminate VDDA lekeage path*/
+		if (pcie_dev->phy_pll_clk_enable1_offset)
+			msm_pcie_write_reg_field(pcie_dev->phy,
+						 pcie_dev->phy_pll_clk_enable1_offset,
+						 MSM_PCIE_EXT_CLKBUF_EN_MUX,
+						 MSM_PCIE_EXT_CLKBUF_EN_MUX_VAL);
+
+		/* park the PCIe PHY in power down mode */
+		if (pcie_dev->phy_power_down_offset)
+			msm_pcie_write_reg(pcie_dev->phy, pcie_dev->phy_power_down_offset, 0);
+
+		/* Turn off AHB clk as there wont be any more register access */
+		clk_disable_unprepare(pcie_dev->ahb_clk);
+
 		/* disable the controller GDSC*/
 		regulator_disable(pcie_dev->gdsc_core);
 
-		/* Disable the pipe clock*/
-		msm_pcie_pipe_clk_deinit(pcie_dev);
 
 		/* Disable the voltage regulators*/
 		msm_pcie_vreg_deinit_analog_rails(pcie_dev);
@@ -6971,11 +7035,14 @@ static int __maybe_unused msm_pcie_pm_resume_noirq(struct device *dev)
 {
 	int i, rc;
 	unsigned long irqsave_flags;
+	char ahb_clk[MAX_PROP_SIZE];
 	struct msm_pcie_dev_t *pcie_dev = (struct msm_pcie_dev_t *)
 						dev_get_drvdata(dev);
 
 	PCIE_DBG(pcie_dev, "RC%d: entry\n", pcie_dev->rc_idx);
 
+	scnprintf(ahb_clk, MAX_PROP_SIZE, "pcie_%d_cfg_ahb_clk",
+		pcie_dev->rc_idx);
 	mutex_lock(&pcie_dev->recovery_lock);
 
 	if (pcie_dev->enumerated && !pcie_dev->power_on &&
@@ -6994,9 +7061,25 @@ static int __maybe_unused msm_pcie_pm_resume_noirq(struct device *dev)
 			return rc;
 		}
 
+		/* Turn on ahb clock first as its needed for register access */
+		clk_prepare_enable(pcie_dev->ahb_clk);
+
 		/* switch pipe clock source after gdsc-core is turned on */
 		if (pcie_dev->pipe_clk_mux && pcie_dev->pipe_clk_ext_src)
 			clk_set_parent(pcie_dev->pipe_clk_mux, pcie_dev->pipe_clk_ext_src);
+
+		if (pcie_dev->phy_pll_clk_enable1_offset)
+			msm_pcie_clear_set_reg(pcie_dev->phy, pcie_dev->phy_pll_clk_enable1_offset,
+							MSM_PCIE_EXT_CLKBUF_EN_MUX, 0x0);
+
+		if (pcie_dev->phy_aux_clk_config1_offset)
+			msm_pcie_clear_set_reg(pcie_dev->phy, pcie_dev->phy_aux_clk_config1_offset,
+						MSM_PCIE_PHY_SW_AUX_CLK_REQ, 0x0);
+
+		/* Bring back PCIe PHY from power down */
+		if (pcie_dev->phy_power_down_offset)
+			msm_pcie_write_reg(pcie_dev->phy, pcie_dev->phy_power_down_offset,
+				MSM_PCIE_PHY_SW_PWRDN | MSM_PCIE_PHY_REFCLK_DRV_DSBL);
 
 		rc = qcom_pcie_icc_bw_update(pcie_dev,
 			pcie_dev->current_link_speed, pcie_dev->current_link_width);
@@ -7014,7 +7097,7 @@ static int __maybe_unused msm_pcie_pm_resume_noirq(struct device *dev)
 
 		/* Enable all clocks */
 		for (i = 0; i < MSM_PCIE_MAX_CLK; i++) {
-			if (pcie_dev->clk[i].hdl) {
+			if (pcie_dev->clk[i].hdl && strcmp(pcie_dev->clk[i].name, ahb_clk)) {
 				rc = clk_prepare_enable(pcie_dev->clk[i].hdl);
 				if (rc)
 					PCIE_ERR(pcie_dev, "PCIe: RC%d failed to enable clk %s\n",
@@ -7034,10 +7117,6 @@ static int __maybe_unused msm_pcie_pm_resume_noirq(struct device *dev)
 		if (pcie_dev->phy_aux_clk_mux && pcie_dev->phy_aux_clk_ext_src)
 			clk_set_parent(pcie_dev->phy_aux_clk_mux, pcie_dev->phy_aux_clk_ext_src);
 
-		/* Bring back PCIe PHY from power down */
-		if (pcie_dev->phy_power_down_offset)
-			msm_pcie_write_reg(pcie_dev->phy, pcie_dev->phy_power_down_offset,
-				MSM_PCIE_PHY_SW_PWRDN | MSM_PCIE_PHY_REFCLK_DRV_DSBL);
 
 		/* Disable the clkreq override functionality */
 		msm_pcie_write_reg(pcie_dev->parf, PCIE20_PARF_CLKREQ_OVERRIDE, 0x0);
