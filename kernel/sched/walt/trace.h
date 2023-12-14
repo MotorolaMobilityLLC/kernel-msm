@@ -1210,9 +1210,9 @@ TRACE_EVENT(walt_window_rollover,
 
 DECLARE_EVENT_CLASS(walt_cfs_mvp_task_template,
 
-	TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
+	TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit, int tasks),
 
-	TP_ARGS(p, wts, limit),
+	TP_ARGS(p, wts, limit, tasks),
 
 	TP_STRUCT__entry(
 		__array(char,		comm,	TASK_COMM_LEN)
@@ -1222,6 +1222,7 @@ DECLARE_EVENT_CLASS(walt_cfs_mvp_task_template,
 		__field(int,		cpu)
 		__field(u64,		exec)
 		__field(unsigned int,	limit)
+		__field(int,         tasks)
 	),
 
 	TP_fast_assign(
@@ -1232,33 +1233,75 @@ DECLARE_EVENT_CLASS(walt_cfs_mvp_task_template,
 		__entry->cpu		= task_cpu(p);
 		__entry->exec		= wts->total_exec;
 		__entry->limit		= limit;
+		__entry->tasks      = tasks;
 	),
 
-	TP_printk("comm=%s pid=%d prio=%d mvp_prio=%d cpu=%d exec=%llu limit=%u",
+	TP_printk("comm=%s pid=%d prio=%d mvp_prio=%d cpu=%d exec=%llu limit=%u num_mvp_tasks=%d",
 		__entry->comm, __entry->pid, __entry->prio,
 		__entry->mvp_prio, __entry->cpu, __entry->exec,
-		__entry->limit)
+		__entry->limit, __entry->tasks)
 );
 
 /* called upon MVP task de-activation. exec will be more than limit */
 DEFINE_EVENT(walt_cfs_mvp_task_template, walt_cfs_deactivate_mvp_task,
-	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
-	     TP_ARGS(p, wts, limit));
+	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit, int tasks),
+	     TP_ARGS(p, wts, limit, tasks));
 
 /* called upon when MVP is returned to run next */
 DEFINE_EVENT(walt_cfs_mvp_task_template, walt_cfs_mvp_pick_next,
-	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
-	     TP_ARGS(p, wts, limit));
+	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit, int tasks),
+	     TP_ARGS(p, wts, limit, tasks));
+
+
+// Moto wangwang: add more trace for debugging.
+DECLARE_EVENT_CLASS(walt_cfs_mvp_task_template2,
+
+	TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit, struct task_struct *p2, struct walt_task_struct *wts2),
+
+	TP_ARGS(p, wts, limit, p2, wts2),
+
+	TP_STRUCT__entry(
+		__array(char,		comm,	TASK_COMM_LEN)
+		__field(pid_t,		pid)
+		__field(int,		prio)
+		__field(int,		mvp_prio)
+		__field(int,		cpu)
+		__field(u64,		exec)
+		__field(unsigned int,	limit)
+		__field(pid_t, 		pid2)
+		__field(int,		prio2)
+		__field(int,		mvp_prio2)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid		= p->pid;
+		__entry->prio		= p->prio;
+		__entry->mvp_prio	= wts->mvp_prio;
+		__entry->cpu		= task_cpu(p);
+		__entry->exec		= wts->total_exec;
+		__entry->limit		= limit;
+		__entry->pid2		= p2->pid;
+		__entry->prio2		= p2->prio;
+		__entry->mvp_prio2 	= wts2->mvp_prio;
+	),
+
+	TP_printk("comm=%s pid=%d prio=%d mvp_prio=%d cpu=%d exec=%llu limit=%u pid2=%d prio2=%d, mvp_prio2=%d",
+		__entry->comm, __entry->pid, __entry->prio,
+		__entry->mvp_prio, __entry->cpu, __entry->exec,
+		__entry->limit,
+		__entry->pid2, __entry->prio2, __entry->mvp_prio2)
+);
 
 /* called upon when MVP (current) is not preempted by waking task */
-DEFINE_EVENT(walt_cfs_mvp_task_template, walt_cfs_mvp_wakeup_nopreempt,
-	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
-	     TP_ARGS(p, wts, limit));
+DEFINE_EVENT(walt_cfs_mvp_task_template2, walt_cfs_mvp_wakeup_nopreempt,
+	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit, struct task_struct *p2, struct walt_task_struct *wts2),
+	     TP_ARGS(p, wts, limit, p2, wts2));
 
 /* called upon when MVP (waking task) preempts the current */
-DEFINE_EVENT(walt_cfs_mvp_task_template, walt_cfs_mvp_wakeup_preempt,
-	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
-	     TP_ARGS(p, wts, limit));
+DEFINE_EVENT(walt_cfs_mvp_task_template2, walt_cfs_mvp_wakeup_preempt,
+	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit, struct task_struct *p2, struct walt_task_struct *wts2),
+	     TP_ARGS(p, wts, limit, p2, wts2));
 
 #define SPAN_SIZE	(NR_CPUS/4)
 
