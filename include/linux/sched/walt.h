@@ -44,7 +44,11 @@ enum task_boost_type {
 #define UX_TYPE_LAUNCHER			(1 << 6)
 #define UX_TYPE_KSWAPD				(1 << 7)
 #define UX_TYPE_ONCE				(1 << 8) /* clear ux type when dequeue */
-#define UX_TYPE_INHERIT				(1 << 9)
+#define UX_TYPE_INHERIT_HIGH		(1 << 9)
+#define UX_TYPE_INHERIT_LOW			(1 << 10)
+#define UX_TYPE_GESTURE_MONITOR		(1 << 11)
+#define UX_TYPE_SF					(1 << 12)
+
 
 
 #define WALT_NR_CPUS 8
@@ -177,6 +181,8 @@ extern int set_ux_scene(int scene);
 extern int get_ux_scene(void);
 extern int set_systemserver_tgid(int tgid);
 extern int get_systemserver_tgid(void);
+extern int set_surfaceflinger_tgid(int tgid);
+extern int get_surfaceflinger_tgid(void);
 
 struct notifier_block;
 extern void core_ctl_notifier_register(struct notifier_block *n);
