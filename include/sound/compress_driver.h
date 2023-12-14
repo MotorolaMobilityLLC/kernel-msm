@@ -207,4 +207,5 @@ static inline void snd_compr_set_runtime_buffer(
 int snd_compr_stop_error(struct snd_compr_stream *stream,
 			 snd_pcm_state_t state);
 
+void snd_compr_use_pause_in_draining(struct snd_compr_stream *stream);
 #endif
