@@ -30,6 +30,23 @@ enum task_boost_type {
 	TASK_BOOST_END,
 };
 
+/* Moto huangzq2: define for UX scene type, keep same as the define in java file */
+#define UX_SCENE_LAUNCH				(1 << 0)
+#define UX_SCENE_SCROLL				(1 << 1)
+
+/* Moto huangzq2: define for UX thread type, keep same as the define in java file */
+#define UX_TYPE_PERF_DAEMON			(1 << 0)
+#define UX_TYPE_AUDIO				(1 << 1)
+#define UX_TYPE_INPUT				(1 << 2)
+#define UX_TYPE_ANIMATOR			(1 << 3)
+#define UX_TYPE_TOPAPP				(1 << 4)
+#define UX_TYPE_TOPUI				(1 << 5)
+#define UX_TYPE_LAUNCHER			(1 << 6)
+#define UX_TYPE_KSWAPD				(1 << 7)
+#define UX_TYPE_ONCE				(1 << 8) /* clear ux type when dequeue */
+#define UX_TYPE_INHERIT				(1 << 9)
+
+
 #define WALT_NR_CPUS 8
 #define RAVG_HIST_SIZE_MAX 5
 #define NUM_BUSY_BUCKETS 10
@@ -97,6 +114,7 @@ struct walt_task_struct {
 	u64				active_time;
 	u64				last_win_size;
 	int				boost;
+	u16				ux_type; // Moto huangzq2: add ux flag for moto_sched
 	bool				wake_up_idle;
 	bool				misfit;
 	bool				rtg_high_prio;
@@ -151,6 +169,14 @@ static inline void set_wake_up_idle(bool wake_up_idle)
 
 extern int sched_lpm_disallowed_time(int cpu, u64 *timeout);
 extern int set_task_boost(int boost, u64 period);
+
+// Moto huangzq2: export api for moto_sched
+extern int set_moto_sched_enabled(int enable);
+extern int get_moto_sched_enabled(void);
+extern int set_ux_scene(int scene);
+extern int get_ux_scene(void);
+extern int set_systemserver_tgid(int tgid);
+extern int get_systemserver_tgid(void);
 
 struct notifier_block;
 extern void core_ctl_notifier_register(struct notifier_block *n);
