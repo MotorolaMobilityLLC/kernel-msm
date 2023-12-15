@@ -633,6 +633,7 @@ struct smb_charger {
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
 	int			usb_dcp_curr_max;
+	int			usb_cdp_curr_max;
 
 	/* mmi qc3p */
 	struct iio_channel	**iio_chan_list_mmi_cp;

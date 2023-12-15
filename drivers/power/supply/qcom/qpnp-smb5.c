@@ -805,6 +805,12 @@ static int smb5_parse_dt_mmi(struct smb5 *chip, struct device_node *node)
 	chg->usb_dcp_curr_max = 0;
 	np = of_find_node_by_path("/chosen");
 
+	retval = of_property_read_u32(npoint, "qcom,cdp-curr-max",
+				  &chg->usb_cdp_curr_max);
+	if (retval) {
+		chg->usb_cdp_curr_max = 1500000;
+	}
+
 	retval = of_property_read_u32(npoint, "qcom,dcp-curr-max",
 				  &chg->usb_dcp_curr_max);
 	if (retval) {
