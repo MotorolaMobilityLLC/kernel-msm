@@ -102,6 +102,51 @@ static struct syscore_ops walt_syscore_ops = {
 	.suspend	= walt_suspend
 };
 
+// Moto huangzq2
+int moto_sched_enabled = 0;
+int set_moto_sched_enabled(int enable) {
+	moto_sched_enabled = enable;
+	return 0;
+}
+EXPORT_SYMBOL(set_moto_sched_enabled);
+
+int get_moto_sched_enabled(void) {
+	return moto_sched_enabled;
+}
+
+int global_ux_scene = 0;
+int set_ux_scene(int scene) {
+	global_ux_scene = scene;
+	return 0;
+}
+EXPORT_SYMBOL(set_ux_scene);
+
+int get_ux_scene(void) {
+	return global_ux_scene;
+}
+
+int global_systemserver_tgid = -1;
+int set_systemserver_tgid(int tgid) {
+	global_systemserver_tgid = tgid;
+	return 0;
+}
+EXPORT_SYMBOL(set_systemserver_tgid);
+
+int get_systemserver_tgid(void) {
+	return global_systemserver_tgid;
+}
+
+int global_surfaceflinger_tgid = -1;
+int set_surfaceflinger_tgid(int tgid) {
+	global_surfaceflinger_tgid = tgid;
+	return 0;
+}
+EXPORT_SYMBOL(set_surfaceflinger_tgid);
+
+int get_surfaceflinger_tgid(void) {
+	return global_surfaceflinger_tgid;
+}
+
 /*
  *@boost:should be 0,1,2.
  *@period:boost time based on ms units.
@@ -4971,7 +5016,8 @@ static void walt_do_sched_yield(void *unused, struct rq *rq)
 		return;
 
 	walt_lockdep_assert_rq(rq, NULL);
-	if (!list_empty(&wts->mvp_list) && wts->mvp_list.next)
+	// Moto wangwang: don't deactivate mvp tasks when moto_sched enabled.
+	if (unlikely(!moto_sched_enabled) && !list_empty(&wts->mvp_list) && wts->mvp_list.next)
 		walt_cfs_deactivate_mvp_task(rq, curr);
 
 	if (per_cpu(rt_task_arrival_time, cpu_of(rq)))

@@ -666,6 +666,18 @@ static inline int per_task_boost(struct task_struct *p)
 	return wts->boost;
 }
 
+// Moto huangzq2
+static inline int task_get_ux_type(struct task_struct *p)
+{
+	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
+	return wts->ux_type;
+}
+
+static inline bool task_has_ux_type(struct task_struct *p, unsigned int type)
+{
+	return task_get_ux_type(p) & type;
+}
+
 static inline int cluster_first_cpu(struct walt_sched_cluster *cluster)
 {
 	return cpumask_first(&cluster->cpus);
@@ -965,13 +977,30 @@ static inline bool walt_flag_test(struct task_struct *p, enum walt_flags feature
 }
 
 #define WALT_MVP_SLICE		3000000U
-#define WALT_MVP_LIMIT		(4 * WALT_MVP_SLICE)
+#define WALT_MVP_LIMIT		(10 * WALT_MVP_SLICE)
 
+// Moto huangzq2: add more mvp prioriteis for moto_sched
 /* higher number, better priority */
 #define WALT_RTG_MVP		0
-#define WALT_BINDER_MVP		1
-#define WALT_TASK_BOOST_MVP	2
-#define WALT_LL_PIPE_MVP	3
+
+#define WALT_UX_FG_LOW	1
+#define WALT_UX_FG_HIGH	2
+#define WALT_UX_SYSTEM_LOW	3
+#define WALT_UX_TOPAPP_LOW	4
+#define WALT_UX_SYSTEM_HIGH	5
+#define WALT_UX_TOPAPP_HIGH	6
+
+#define WALT_UX_KSWAPD		7
+#define WALT_UX_LAUNCHER	8
+#define WALT_UX_TOPUI		9
+#define WALT_UX_TOPAPP		10
+#define WALT_UX_ANIMATOR	11
+#define WALT_UX_INPUT		12
+#define WALT_UX_AUDIO		13
+
+#define WALT_BINDER_MVP		14
+#define WALT_TASK_BOOST_MVP	15
+#define WALT_LL_PIPE_MVP	16
 
 #define WALT_NOT_MVP		-1
 
