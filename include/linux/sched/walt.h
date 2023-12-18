@@ -37,27 +37,6 @@ enum task_boost_type {
 	TASK_BOOST_END,
 };
 
-/* Moto huangzq2: define for UX scene type, keep same as the define in java file */
-#define UX_SCENE_LAUNCH				(1 << 0)
-#define UX_SCENE_SCROLL				(1 << 1)
-
-/* Moto huangzq2: define for UX thread type, keep same as the define in java file */
-#define UX_TYPE_PERF_DAEMON			(1 << 0)
-#define UX_TYPE_AUDIO				(1 << 1)
-#define UX_TYPE_INPUT				(1 << 2)
-#define UX_TYPE_ANIMATOR			(1 << 3)
-#define UX_TYPE_TOPAPP				(1 << 4)
-#define UX_TYPE_TOPUI				(1 << 5)
-#define UX_TYPE_LAUNCHER			(1 << 6)
-#define UX_TYPE_KSWAPD				(1 << 7)
-#define UX_TYPE_ONCE				(1 << 8) /* clear ux type when dequeue */
-#define UX_TYPE_INHERIT_HIGH		(1 << 9)
-#define UX_TYPE_INHERIT_LOW			(1 << 10)
-#define UX_TYPE_GESTURE_MONITOR		(1 << 11)
-#define UX_TYPE_SF					(1 << 12)
-
-
-
 #define WALT_NR_CPUS 8
 #define RAVG_HIST_SIZE 5
 /* wts->bucket_bitmask needs to be updated if NUM_BUSY_BUCKETS > 16 */
@@ -209,12 +188,40 @@ extern int set_task_boost(int boost, u64 period);
 // Moto huangzq2: export api for moto_sched
 extern int set_moto_sched_enabled(int enable);
 extern int get_moto_sched_enabled(void);
-extern int set_ux_scene(int scene);
-extern int get_ux_scene(void);
-extern int set_systemserver_tgid(int tgid);
-extern int get_systemserver_tgid(void);
-extern int set_surfaceflinger_tgid(int tgid);
-extern int get_surfaceflinger_tgid(void);
+
+struct msched_ops {
+	int (*task_get_mvp_prio)(struct task_struct *p, bool with_inherit);
+	unsigned int (*task_get_mvp_limit)(int mvp_prio);
+	void (*binder_inherit_ux_type)(struct task_struct *task);
+	void (*binder_clear_inherited_ux_type)(struct task_struct *task);
+};
+
+extern struct msched_ops *moto_sched_ops;
+extern void set_moto_sched_ops(struct msched_ops *ops);
+
+static inline int moto_task_get_mvp_prio(struct task_struct *p, bool with_inherit) {
+	if (moto_sched_ops != NULL && moto_sched_ops->task_get_mvp_prio != NULL)
+		return moto_sched_ops->task_get_mvp_prio(p, with_inherit);
+
+	return -1;
+}
+
+static inline unsigned int moto_task_get_mvp_limit(int mvp_prio) {
+	if (moto_sched_ops != NULL && moto_sched_ops->task_get_mvp_limit != NULL)
+		return moto_sched_ops->task_get_mvp_limit(mvp_prio);
+
+	return -1;
+}
+
+static inline void moto_binder_inherit_ux_type(struct task_struct *task) {
+	if (moto_sched_ops != NULL && moto_sched_ops->binder_inherit_ux_type != NULL)
+		return moto_sched_ops->binder_inherit_ux_type(task);
+}
+
+static inline void moto_binder_clear_inherited_ux_type(struct task_struct *task) {
+	if (moto_sched_ops != NULL && moto_sched_ops->binder_clear_inherited_ux_type != NULL)
+		return moto_sched_ops->binder_clear_inherited_ux_type(task);
+}
 
 struct notifier_block;
 extern void core_ctl_notifier_register(struct notifier_block *n);
