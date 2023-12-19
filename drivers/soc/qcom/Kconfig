@@ -86,6 +86,12 @@ config CAM_SENSOR_PROBE_DEBUG
 	help
 	  This is enabling cam sensor probe debug.
 
+config AF_NOISE_ELIMINATION
+	default n
+	bool "enable af noise elimination"
+	help
+	  This is enabling af noise elimination.
+
 config CTWOV_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
