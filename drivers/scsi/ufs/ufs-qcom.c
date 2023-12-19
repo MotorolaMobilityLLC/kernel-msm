@@ -41,6 +41,9 @@
 #if IS_ENABLED(CONFIG_QTI_CRYPTO_FDE)
 #include <linux/crypto-qti-common.h>
 #endif
+#if defined(CONFIG_SCSI_SKHID)
+char storage_mfrid[32];
+#endif
 
 #define UFS_QCOM_DEFAULT_DBG_PRINT_EN	\
 	(UFS_QCOM_DBG_PRINT_REGS_EN | UFS_QCOM_DBG_PRINT_TEST_BUS_EN)
@@ -408,6 +411,31 @@ static inline void cancel_dwork_unvote_cpufreq(struct ufs_hba *hba)
 		host->cur_freq_vote = false;
 	ufs_qcom_msg(DBG, hba->dev, "%s,err=%d\n", __func__, err);
 }
+#if defined(CONFIG_SCSI_SKHID)
+static int get_storage_info(struct ufs_hba *hba)
+{
+    int ret = 0;
+    struct property *p;
+    struct device_node *n;
+
+    n = of_find_node_by_path("/chosen/mmi,storage");
+    if (n == NULL) {
+        ret = 1;
+        goto err;
+    }
+
+    for_each_property_of_node(n, p) {
+        if (!strcmp(p->name, "manufacturer") && p->value)
+            strlcpy(storage_mfrid, (char *)p->value, sizeof(storage_mfrid));
+    }
+
+    of_node_put(n);
+
+    dev_info(hba->dev, "manufacturer parsed from choosen is %s\n", storage_mfrid);
+err:
+        return ret;
+}
+#endif
 
 static int ufs_qcom_get_pwr_dev_param(struct ufs_qcom_dev_params *qcom_param,
 				      struct ufs_pa_layer_attr *dev_max,
@@ -4116,6 +4144,20 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_qos_init(hba);
 	ufs_qcom_parse_irq_affinity(hba);
 	ufs_qcom_ber_mon_init(hba);
+
+#if defined(CONFIG_SCSI_SKHID)
+	get_storage_info(hba);
+#endif
+
+#if defined(CONFIG_SCSI_SKHID)
+	if ((IS_SKHYNIX_DEVICE(storage_mfrid)) || (IS_HYNIX_DEVICE(storage_mfrid))) {
+		err = pixel_init(hba);
+		if (err) {
+			return err;
+		}
+		pixel_init_manual_gc(hba);
+	}
+#endif
 	host->ufs_ipc_log_ctx = ipc_log_context_create(UFS_QCOM_MAX_LOG_SZ,
 							"ufs-qcom", 0);
 	if (!host->ufs_ipc_log_ctx)
@@ -4155,7 +4197,13 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 					  void __user *))ufs_qcom_ioctl;
 #endif
 #if defined(CONFIG_UFSFEATURE)
+	#if defined(CONFIG_SCSI_SKHID)
+		if ((!IS_SKHYNIX_DEVICE(storage_mfrid)) && (!IS_HYNIX_DEVICE(storage_mfrid))) {
+			ufsf_set_init_state(hba);
+		}
+	#else
 	ufsf_set_init_state(hba);
+	#endif
 #endif
 	goto out;
 

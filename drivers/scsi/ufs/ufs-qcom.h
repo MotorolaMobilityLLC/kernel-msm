@@ -18,6 +18,10 @@
 #include "ufsfeature.h"
 #endif
 
+#if defined(CONFIG_SCSI_SKHID)
+#include "ufs-manual-gc.h"
+#endif
+
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
 #define MPHY_TX_FSM_STATE       0x41
@@ -44,6 +48,20 @@
 
 #define UFS_VENDOR_MICRON	0x12C
 
+#if defined(CONFIG_SCSI_SKHID)
+#define IS_SKHYNIX_DEVICE(mfrid)   (0 == strcasecmp(mfrid,"SKHYNIX"))
+#define IS_HYNIX_DEVICE(mfrid)   (0 == strcasecmp(mfrid,"HYNIX"))
+
+#if defined(CONFIG_SCSI_UFS_HID)
+/* UFSHCD error handling flags */
+enum {
+	UFSHCD_EH_IN_PROGRESS = (1 << 0),		/* ufshcd.c */
+};
+
+#define ufshcd_eh_in_progress(h) \
+        ((h)->eh_flags & UFSHCD_EH_IN_PROGRESS)         /* ufshcd.c */
+#endif
+#endif
 #define SLOW 1
 #define FAST 2
 
@@ -629,6 +647,11 @@ struct ufs_qcom_host {
 	bool irq_affinity_support;
 	bool bypass_pbl_rst_wa;
 	struct notifier_block ufs_qcom_panic_nb;
+#if defined(CONFIG_SCSI_SKHID)
+	struct work_struct update_sysfs_work;
+	/* manual_gc */
+	struct ufs_manual_gc manual_gc;
+#endif
 
 };
 

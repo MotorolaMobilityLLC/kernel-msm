@@ -270,6 +270,11 @@ config UFSSID
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
 	help
 	  Enable Stream ID Feature for Streamed-HID
+config SCSI_SKHID
+	bool "SKHix UFS Host Initiated Defrag supportr"
+	depends on SCSI_UFSHCD
+	help
+	  SKHix UFS HID Feature Enable
 
 config UFSFBO
         bool "UFS File Base Optimization support"
