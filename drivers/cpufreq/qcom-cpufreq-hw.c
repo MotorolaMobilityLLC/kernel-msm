@@ -426,6 +426,56 @@ static int qcom_cpufreq_exit(struct cpufreq_policy *policy)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+/* Check carrier*/
+static bool is_expected_carrier(const char* carrier, const char* prop, const char* key)
+{
+	struct device_node *n = of_find_node_by_path("/chosen");
+	const char *bootargs_ptr = NULL;
+	char *idx = NULL;
+	bool err = false;
+	size_t bootargs_ptr_len = 0;
+
+	if (n == NULL) {
+		pr_err("Don't find node\n");
+		goto err;
+	}
+	if (!key || !prop || !carrier) {
+		pr_err("invalid carrier\n");
+		goto err_putnode;
+	}
+
+	if (of_property_read_string(n, prop, &bootargs_ptr) != 0)
+		goto err_putnode;
+
+	bootargs_ptr_len = strlen(bootargs_ptr);
+
+	idx = strnstr(bootargs_ptr, key, bootargs_ptr_len);
+
+	if (idx) {
+		bootargs_ptr = idx;
+		idx = strnstr(bootargs_ptr, carrier, strlen(key) + strlen(carrier));
+		if (idx) {
+			pr_info("Match carrier\n");
+			err = true;
+		}
+	}
+
+err_putnode:
+	of_node_put(n);
+err:
+	return err;
+}
+#else
+static bool is_expected_carrier(const char* carrier, const char* prop, const char* key)
+{
+	(void*)carrier;
+	(void*)prop;
+	(void*)key;
+	return false;
+}
+#endif
+
 static struct cpufreq_driver cpufreq_qcom_hw_driver = {
 	.flags		= CPUFREQ_STICKY | CPUFREQ_NEED_INITIAL_FREQ_CHECK |
 			  CPUFREQ_HAVE_GOVERNOR_PER_POLICY,
@@ -447,6 +497,9 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 	struct device *dev = &pdev->dev, *cpu_dev;
 	u32 data, src, lval, i, core_count, prev_cc, prev_freq, freq, volt;
 	unsigned long cpu;
+	struct device_node *cpu_np;
+	u32 moto_max_freq = 0, match_carrier = 0;
+	const char* carrier = NULL, *prop = NULL, *key = NULL;
 
 	c->table = devm_kcalloc(dev, lut_max_entries + 1,
 				sizeof(*c->table), GFP_KERNEL);
@@ -455,6 +508,17 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 
 	cpu = cpumask_first(&c->related_cpus);
 	cpu_dev = get_cpu_device(cpu);
+
+	cpu_np = of_cpu_device_node_get(cpu);
+	if (cpu_np) {
+		of_property_read_u32(cpu_np, "moto,max_freq", &moto_max_freq);
+		of_property_read_string(cpu_np, "moto,effective-carrier", &carrier);
+		of_property_read_string(cpu_np, "moto,carrier-key", &key);
+		of_property_read_string(cpu_np, "moto,prop", &prop);
+		of_node_put(cpu_np);
+
+		match_carrier = is_expected_carrier(carrier, prop, key);
+	}
 
 	prev_cc = 0;
 
@@ -487,6 +551,12 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 		/* Two of the same frequencies means end of table. */
 		if (i > 0 && prev_freq == freq)
 			break;
+
+		/* Disable the frequency that's greater than moto max frequncy  */
+		if (i > 0 && match_carrier && moto_max_freq > 0 && freq > moto_max_freq) {
+			dev_info(dev, "cue off last freq");
+			break;
+		}
 
 		prev_cc = core_count;
 		prev_freq = freq;
