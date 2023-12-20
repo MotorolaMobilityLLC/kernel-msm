@@ -62,6 +62,14 @@ enum pon_restart_reason {
 	PON_RESTART_REASON_FORCED_NON_SILENT	= 0x0d,
 };
 
+#define RESET_EXTRA_POST_HWWARM_RESET_REASON	 BIT(6)
+#define RESET_EXTRA_POST_PANIC_REASON	(BIT(4) | BIT(5))
+#define RESET_EXTRA_POST_PMICWDT_REASON	BIT(5)
+#define RESET_EXTRA_POST_WDT_REASON	BIT(4)
+#define RESET_EXTRA_POST_REBOOT_MASK	(BIT(4) | BIT(5) | BIT(6))
+#define RESET_EXTRA_PANIC_REASON       BIT(3)
+#define RESET_EXTRA_REBOOT_BL_REASON   BIT(2)
+
 #if IS_ENABLED(CONFIG_INPUT_QPNP_POWER_ON)
 int qpnp_pon_system_pwr_off(enum pon_power_off_type type);
 int qpnp_pon_is_warm_reset(void);
@@ -70,6 +78,7 @@ int qpnp_pon_wd_config(bool enable);
 int qpnp_pon_set_restart_reason(enum pon_restart_reason reason);
 bool qpnp_pon_check_hard_reset_stored(void);
 int qpnp_pon_modem_pwr_off(enum pon_power_off_type type);
+int qpnp_pon_store_extra_reset_info(u16 mask, u16 val);
 
 #else
 
@@ -109,6 +118,10 @@ static inline int qpnp_pon_modem_pwr_off(enum pon_power_off_type type)
 	return -ENODEV;
 }
 
+static inline int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
+{
+	return -ENODEV;
+}
 #endif
 
 #endif

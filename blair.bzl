@@ -98,6 +98,7 @@ def define_blair():
         "drivers/power/reset/msm-poweroff.ko",
         "drivers/power/reset/qcom-dload-mode.ko",
         "drivers/power/reset/qcom-pon.ko",
+        "drivers/power/reset/qcom-reboot-reason.ko",
         "drivers/power/reset/reboot-mode.ko",
         "drivers/power/supply/qcom/qcom-qpnp-qg.ko",
         "drivers/power/supply/qcom/qcom-smb1355-charger.ko",

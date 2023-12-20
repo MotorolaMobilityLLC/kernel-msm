@@ -340,4 +340,14 @@ config POWER_MLXBF
 	help
 	  This driver supports reset or low power mode handling for Mellanox BlueField.
 
+config MOTO_LEGACY_REBOOT_REASON_SUPPORT
+	depends on OF
+	depends on POWER_RESET_QCOM_REBOOT_REASON
+	default n
+	bool "Moto legacy extra reboot reason suppport"
+	help
+	  This feature supports for setting moto extra reboot reasons through both PMIC
+	  spare REGs and imem to UEFI on legacy platform.
+	  If unsure, say N.
+
 endif

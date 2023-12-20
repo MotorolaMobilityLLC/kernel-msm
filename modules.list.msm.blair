@@ -78,6 +78,8 @@ nvmem_qfprom.ko
 debug_symbol.ko
 minidump.ko
 qcom-dcvs.ko
+qpnp-power-on.ko
+qcom-reboot-reason.ko
 qcom-dload-mode.ko
 qcom-pmu-lib.ko
 qcom_llcc_pmu.ko

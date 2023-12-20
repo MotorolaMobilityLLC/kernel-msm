@@ -17,6 +17,9 @@
 #include <linux/panic_notifier.h>
 #include <linux/qcom_scm.h>
 #include <soc/qcom/minidump.h>
+#if IS_ENABLED(CONFIG_MOTO_LEGACY_REBOOT_REASON_SUPPORT)
+#include <linux/input/qpnp-power-on.h>
+#endif
 
 static char *sys_restart_mode = "NULL";
 module_param(sys_restart_mode, charp, 0644);
@@ -301,8 +304,12 @@ static int qcom_dload_reboot(struct notifier_block *this, unsigned long event,
 			msm_enable_dump_mode(true);
 	}
 
-	if (current_download_mode != QCOM_DOWNLOAD_NODUMP)
+	if (current_download_mode != QCOM_DOWNLOAD_NODUMP) {
 		reboot_mode = REBOOT_WARM;
+#if IS_ENABLED(CONFIG_MOTO_LEGACY_REBOOT_REASON_SUPPORT) && IS_ENABLED(CONFIG_INPUT_QPNP_POWER_ON)
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+#endif
+	}
 
 	return NOTIFY_OK;
 }
@@ -426,3 +433,7 @@ module_exit(qcom_dload_driver_exit);
 
 MODULE_DESCRIPTION("MSM Download Mode Driver");
 MODULE_LICENSE("GPL v2");
+
+#if IS_ENABLED(CONFIG_MOTO_LEGACY_REBOOT_REASON_SUPPORT) && IS_ENABLED(CONFIG_INPUT_QPNP_POWER_ON)
+MODULE_SOFTDEP("pre: qpnp-power-on");
+#endif
