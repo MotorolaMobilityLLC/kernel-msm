@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -95,8 +94,11 @@
 
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
-#define USB3_PORTSC		(0x420)
-#define USB3_PORTPMSC_20	(0x424)
+#define USB3_PORTSC_BASE	(0x400)
+#define USB3_PORTPMSC_20_BASE	(0x404)
+#define CAPLENGTH_MASK		(0xff)
+#define USB3_PORTSC(d, n)	(USB3_PORTSC_BASE + (d)->cap_length + (n*0x10))
+#define USB3_PORTPMSC(d)	(USB3_PORTPMSC_20_BASE + (d)->cap_length)
 
 /**
  *  USB QSCRATCH Hardware registers
@@ -667,6 +669,8 @@ struct dwc3_msm {
 	bool			fw_managed_pwr;
 	int			pd_count;
 	struct device		**pd_devs;
+
+	u32			cap_length;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -1118,7 +1122,7 @@ static bool dwc3_msm_is_ss_rhport_connected(struct dwc3_msm *mdwc)
 	num_ports = HCS_MAX_PORTS(reg);
 
 	for (i = 0; i < num_ports; i++) {
-		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC + i*0x10);
+		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC(mdwc, i));
 		if ((reg & PORT_CONNECT) && DEV_SUPERSPEED_ANY(reg))
 			return true;
 	}
@@ -1135,7 +1139,7 @@ static bool dwc3_msm_is_host_superspeed(struct dwc3_msm *mdwc)
 	num_ports = HCS_MAX_PORTS(reg);
 
 	for (i = 0; i < num_ports; i++) {
-		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC + i*0x10);
+		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC(mdwc, i));
 		if ((reg & PORT_PE) && DEV_SUPERSPEED_ANY(reg))
 			return true;
 	}
@@ -3799,8 +3803,7 @@ static void dwc3_set_phy_speed_flags(struct dwc3_msm *mdwc)
 		reg = dwc3_msm_read_reg(mdwc->base, USB3_HCSPARAMS1);
 		num_ports = HCS_MAX_PORTS(reg);
 		for (i = 0; i < num_ports; i++) {
-			reg = dwc3_msm_read_reg(mdwc->base,
-					USB3_PORTSC + i*0x10);
+			reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC(mdwc, i));
 			if ((reg & PORT_CONNECT) && !(reg & PORT_CSC)) {
 				if (DEV_HIGHSPEED(reg) || DEV_FULLSPEED(reg))
 					mdwc->hs_phy->flags |= PHY_HSFS_MODE;
@@ -5541,11 +5544,11 @@ static ssize_t xhci_test_store(struct device *dev,
 
 	pm_runtime_resume(&dwc->xhci->dev);
 	pm_runtime_forbid(&dwc->xhci->dev);
-	reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTPMSC_20);
+	reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTPMSC(mdwc));
 	dev_info(dev, "USB PORTPMSC val:%x\n", reg);
 	reg |= USB_TEST_PACKET << PORT_TEST_MODE_SHIFT;
 	dev_info(dev, "writing %x to USB PORTPMSC\n", reg);
-	dwc3_msm_write_reg(mdwc->base, USB3_PORTPMSC_20, reg);
+	dwc3_msm_write_reg(mdwc->base, USB3_PORTPMSC(mdwc), reg);
 	return count;
 }
 static DEVICE_ATTR_WO(xhci_test);
@@ -6049,6 +6052,8 @@ static int dwc3_msm_core_init(struct dwc3_msm *mdwc)
 
 	if (mdwc->dwc3)
 		return 0;
+
+	mdwc->cap_length = dwc3_msm_read_reg(mdwc->base, 0) & CAPLENGTH_MASK;
 
 	ret = usb_phy_init(mdwc->hs_phy);
 	if (ret) {
