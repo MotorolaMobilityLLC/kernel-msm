@@ -201,6 +201,11 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 		}
 	}
 
+	ret = kgsl_mmu_map_child(memdesc->pagetable, memdesc, start,
+			&entry->memdesc, offset, last - start + 1);
+	if (ret)
+		goto error;
+
 	/* Add the new range */
 	interval_tree_insert(&range->range, &memdesc->ranges);
 
@@ -208,8 +213,7 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 		range->entry, bind_range_len(range));
 	mutex_unlock(&memdesc->ranges_lock);
 
-	return kgsl_mmu_map_child(memdesc->pagetable, memdesc, start,
-			&entry->memdesc, offset, last - start + 1);
+	return ret;
 
 error:
 	kgsl_mem_entry_put(range->entry);
