@@ -1256,6 +1256,7 @@
 
 # required by qcom_smd.ko
   __memcpy_toio
+  rpmsg_register_device_override
 
 # required by qcom_spmi-regulator.ko
   regulator_disable_regmap
