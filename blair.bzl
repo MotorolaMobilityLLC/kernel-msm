@@ -249,6 +249,7 @@ def define_blair():
     _blair_moto_build_type_in_tree_modules = {
         "factory": [
         # keep sorted
+        "drivers/base/regmap/qti-regmap-debugfs.ko",
         ],
     }
 
