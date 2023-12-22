@@ -1,6 +1,8 @@
 load(":target_variants.bzl", "la_variants")
 load(":msm_kernel_la.bzl", "define_msm_la")
 load(":image_opts.bzl", "boot_image_opts")
+load(":moto_product.bzl", "mmi_product_name")
+load(":moto_product.bzl", "mmi_product_type")
 
 target_name = "blair"
 
@@ -238,16 +240,38 @@ def define_blair():
         "lib/test_user_copy.ko",
     ]
 
+    _blair_moto_device_name_in_tree_modules = {
+        "malmo": [
+        # keep sorted
+        ],
+    }
+
+    _blair_moto_build_type_in_tree_modules = {
+        "factory": [
+        # keep sorted
+        ],
+    }
+
     for variant in la_variants:
         if variant == "consolidate":
             mod_list = _blair_consolidate_in_tree_modules
         else:
             mod_list = _blair_in_tree_modules
 
+        moto_device_name_in_tree_modules = [ ]
+        for p, v in _blair_moto_device_name_in_tree_modules.items():
+             if p == mmi_product_name:
+                moto_device_name_in_tree_modules = v
+
+        moto_build_type_in_tree_modules = [ ]
+        for p, v in _blair_moto_build_type_in_tree_modules.items():
+             if p == mmi_product_type:
+                moto_build_type_in_tree_modules = v
+
         define_msm_la(
             msm_target = target_name,
             variant = variant,
-            in_tree_module_list = mod_list,
+            in_tree_module_list = mod_list + moto_device_name_in_tree_modules + moto_build_type_in_tree_modules,
             boot_image_opts = boot_image_opts(
                 earlycon_addr = "qcom_geni,0x4c8c000",
                 kernel_vendor_cmdline_extras = [
