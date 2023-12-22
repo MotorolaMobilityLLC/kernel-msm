@@ -184,7 +184,7 @@ static inline unsigned int moto_task_get_mvp_limit(struct task_struct *p, int mv
 	if (moto_sched_ops != NULL && moto_sched_ops->task_get_mvp_limit != NULL)
 		return moto_sched_ops->task_get_mvp_limit(p, mvp_prio);
 
-	return -1;
+	return 0;
 }
 
 static inline void moto_binder_inherit_ux_type(struct task_struct *task) {
