@@ -8668,7 +8668,7 @@ int smblib_init(struct smb_charger *chg)
 					smblib_pr_lock_clear_work);
 	 if (chg->mmi_qc3p_support) {
 		chg->mmi_qc3p_authen_task = kthread_create(mmi_qc3p_kthread_handler, chg,
-			"mmi_qc3p_authen", "mmi_qc3p_authen_task", chg);
+			"mmi_qc3p_authen_task");
 		if (IS_ERR(chg->mmi_qc3p_authen_task)) {
 			rc = PTR_ERR(chg->mmi_qc3p_authen_task);
 			smblib_err(chg, "Failed to create mmi_qc3p_authen_task rc = %d\n", rc);
