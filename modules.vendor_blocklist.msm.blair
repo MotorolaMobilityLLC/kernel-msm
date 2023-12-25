@@ -58,4 +58,6 @@ blocklist vsock_diag
 blocklist vsock
 blocklist torture
 blocklist locktorture
+blocklist goodix_fod_mmi
+blocklist anc_fps_mmi
 blocklist rcutorture
