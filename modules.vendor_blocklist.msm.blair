@@ -60,4 +60,8 @@ blocklist torture
 blocklist locktorture
 blocklist goodix_fod_mmi
 blocklist anc_fps_mmi
+blocklist sc8541_mmi_iio
+blocklist qpnp_adaptive_charge
+blocklist mmi-smbcharger-iio
+blocklist mmi_parallel_charger_iio
 blocklist rcutorture
