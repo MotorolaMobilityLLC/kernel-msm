@@ -2,7 +2,6 @@
 /*
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
-
 #include <linux/usb/typec.h>
 #include <linux/usb/ucsi_glink.h>
 #include <linux/soc/qcom/wcd939x-i2c.h>
@@ -742,7 +741,7 @@ static int wcd_usbss_usbc_event_changed(struct notifier_block *nb,
 	if (!dev)
 		return -EINVAL;
 
-	dev_dbg(dev, "%s: USB change event received, supply mode %d, usbc mode %ld, expected %d\n",
+	dev_info(dev, "%s: USB change event received, supply mode %d, usbc mode %ld, expected %d\n",
 			__func__, acc, priv->usbc_mode.counter,
 			TYPEC_ACCESSORY_AUDIO);
 
@@ -783,7 +782,7 @@ static int wcd_usbss_usbc_analog_setup_switches(struct wcd_usbss_ctxt *priv)
 	/* get latest mode again within locked context */
 	mode = atomic_read(&(priv->usbc_mode));
 
-	dev_dbg(dev, "%s: setting GPIOs active = %d cable_status = %d mode = %d\n",
+	dev_info(dev, "%s: setting GPIOs active = %d cable_status = %d mode = %d\n",
 		__func__, mode != TYPEC_ACCESSORY_NONE, priv->cable_status, mode);
 
 	switch (mode) {
@@ -1205,12 +1204,12 @@ int wcd_usbss_switch_update(enum wcd_usbss_cable_types ctype,
 				wcd_usbss_dpdm_switch_connect(wcd_usbss_ctxt_, false);
 				wcd_usbss_standby_control_locked(true);
 				wcd_usbss_ctxt_->wcd_standby_status = WCD_USBSS_LPD_USB_MODE_CLEAR;
-				dev_dbg(wcd_usbss_ctxt_->dev, "wcd state transition to %s complete\n",
+				dev_info(wcd_usbss_ctxt_->dev, "wcd state transition to %s complete\n",
 						status_to_str(wcd_usbss_ctxt_->wcd_standby_status));
 			} else {
 				wcd_usbss_dpdm_switch_connect(wcd_usbss_ctxt_, true);
 				wcd_usbss_ctxt_->wcd_standby_status = WCD_USBSS_USB_MODE_SET;
-				dev_dbg(wcd_usbss_ctxt_->dev, "wcd state transition to %s complete\n",
+				dev_info(wcd_usbss_ctxt_->dev, "wcd state transition to %s complete\n",
 						status_to_str(wcd_usbss_ctxt_->wcd_standby_status));
 			}
 		}
@@ -1387,7 +1386,7 @@ int wcd_usbss_switch_update(enum wcd_usbss_cable_types ctype,
 						BIT(WCD_USBSS_HSJ_CONNECT) |
 						BIT(WCD_USBSS_GND_MIC_SWAP_HSJ)))) {
 			wcd_usbss_ctxt_->wcd_standby_status = WCD_USBSS_AUDIO_MODE_SET;
-			dev_dbg(wcd_usbss_ctxt_->dev, "wcd state transition to %s complete\n",
+			dev_info(wcd_usbss_ctxt_->dev, "%s: wcd state transition to %s complete\n", __func__,
 					status_to_str(wcd_usbss_ctxt_->wcd_standby_status));
 		}
 	}
@@ -1657,7 +1656,7 @@ static irqreturn_t wcd_usbss_sdam_notifier_handler(int irq, void *data)
 	rc = wcd_usbss_sdam_handle_events_locked(buf[0]);
 	if (rc == 0) {
 		priv->wcd_standby_status = buf[0];
-		dev_dbg(priv->dev, "wcd state transition to %s complete\n",
+		dev_info(priv->dev, "%s: wcd state transition to %s complete\n", __func__,
 				status_to_str(priv->wcd_standby_status));
 	}
 release_runtime:
