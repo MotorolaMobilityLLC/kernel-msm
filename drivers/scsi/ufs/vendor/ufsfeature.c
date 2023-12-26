@@ -39,6 +39,10 @@
 #include "ufshcd.h"
 #include "ufs-qcom.h"
 
+#if defined(CONFIG_SCSI_SKHID)
+extern char storage_mfrid[32];
+#endif
+
 static int ufsf_read_desc(struct ufs_hba *hba, u8 desc_id, u8 desc_index,
 			  u8 selector, u8 *desc_buf, u32 size)
 {
@@ -400,7 +404,10 @@ static void ufsf_device_check_work_handler(struct work_struct *work)
 	struct ufsf_feature *ufsf;
 
 	ufsf = container_of(work, struct ufsf_feature, device_check_work);
-
+#if defined(CONFIG_SCSI_SKHID)
+	if ((IS_SKHYNIX_DEVICE(storage_mfrid)) || (IS_HYNIX_DEVICE(storage_mfrid)))
+		return;
+#endif
 	mutex_lock(&ufsf->device_check_lock);
 	if (!ufsf->check_init) {
 		ufsf_device_check(ufsf->hba);
