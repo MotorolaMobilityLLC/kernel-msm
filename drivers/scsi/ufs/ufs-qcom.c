@@ -418,6 +418,7 @@ static int get_storage_info(struct ufs_hba *hba)
     struct property *p;
     struct device_node *n;
 
+    memset(storage_mfrid,0,sizeof(storage_mfrid));
     n = of_find_node_by_path("/chosen/mmi,storage");
     if (n == NULL) {
         ret = 1;
@@ -4197,13 +4198,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 					  void __user *))ufs_qcom_ioctl;
 #endif
 #if defined(CONFIG_UFSFEATURE)
-	#if defined(CONFIG_SCSI_SKHID)
-		if ((!IS_SKHYNIX_DEVICE(storage_mfrid)) && (!IS_HYNIX_DEVICE(storage_mfrid))) {
-			ufsf_set_init_state(hba);
-		}
-	#else
 	ufsf_set_init_state(hba);
-	#endif
 #endif
 	goto out;
 
