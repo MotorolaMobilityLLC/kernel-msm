@@ -161,3 +161,37 @@ config SCSI_UFS_SPRD
 
 	  Select this if you have UFS controller on Unisoc chipset.
 	  If unsure, say N.
+
+config UFSFEATURE
+	tristate "UFS feature activate"
+	depends on SCSI_UFSHCD
+	help
+	  UFS feature activate such as hpb, tw and etc.
+
+config UFSHID
+	tristate "UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	help
+	  UFS HID Feature Enable
+
+config UFSHID_POC
+	tristate "UFSHID_POC test"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
+	help
+	  UFS HID POC test
+	  1. block to enter suspend state
+	  2. auto_hibern8 enable/disable (HCI)
+	  3. set flag bDefragOperation
+	  4. debug msg enable (default : disable)
+
+config UFSSID
+	tristate "UFS Stream ID support"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID && UFSWHINT
+	help
+	  Enable Stream ID Feature for Streamed-HID
+
+config UFSWHINT
+	tristate "UFS Write Hint support"
+	depends on SCSI_UFSHCD && UFSFEATURE
+	help
+	  Enable Write Hint Detection
