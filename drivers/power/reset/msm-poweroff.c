@@ -12,6 +12,9 @@
 #include <linux/module.h>
 #include <linux/reboot.h>
 #include <linux/pm.h>
+#if IS_ENABLED(CONFIG_MOTO_LEGACY_REBOOT_REASON_SUPPORT) && IS_ENABLED(CONFIG_INPUT_QPNP_POWER_ON)
+#include <linux/input/qpnp-power-on.h>
+#endif
 
 static void __iomem *msm_ps_hold;
 static int deassert_pshold(struct notifier_block *nb, unsigned long action,
@@ -30,6 +33,9 @@ static struct notifier_block restart_nb = {
 
 static void do_msm_poweroff(void)
 {
+#if IS_ENABLED(CONFIG_MOTO_LEGACY_REBOOT_REASON_SUPPORT) && IS_ENABLED(CONFIG_INPUT_QPNP_POWER_ON)
+	qpnp_pon_system_pwr_off(PON_POWER_OFF_SHUTDOWN);
+#endif
 	deassert_pshold(&restart_nb, 0, NULL);
 }
 
@@ -94,3 +100,7 @@ module_exit(msm_restart_exit);
 
 MODULE_DESCRIPTION("MSM Poweroff Driver");
 MODULE_LICENSE("GPL");
+
+#if IS_ENABLED(CONFIG_MOTO_LEGACY_REBOOT_REASON_SUPPORT) && IS_ENABLED(CONFIG_INPUT_QPNP_POWER_ON)
+MODULE_SOFTDEP("pre: qpnp-power-on");
+#endif

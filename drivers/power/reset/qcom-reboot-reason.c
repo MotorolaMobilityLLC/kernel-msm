@@ -90,6 +90,7 @@ static int qcom_reboot_reason_reboot(struct notifier_block *this,
 #if IS_ENABLED(CONFIG_MOTO_LEGACY_REBOOT_REASON_SUPPORT) && IS_ENABLED(CONFIG_INPUT_QPNP_POWER_ON)
 		pr_info("%s: cmd is NULL\n", __func__);
 		__raw_writel(0x77665501, restart_reason);
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 #endif
 		return NOTIFY_OK;
 	}
