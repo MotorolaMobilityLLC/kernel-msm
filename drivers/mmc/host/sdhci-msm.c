@@ -3674,17 +3674,31 @@ static int sdhci_msm_start_signal_voltage_switch(struct mmc_host *mmc,
 static void moto_sdcard_event_work(struct work_struct *work)
 {
 	struct sdhci_msm_host *msm_host = container_of(work, struct sdhci_msm_host, sdcard_hotplut_work.work);
-	struct mmc_host *mmc = msm_host->mmc;
-	struct mmc_card *card = mmc->card;
-	struct mmc_blk_data *md = dev_get_drvdata(&card->dev);
+	struct mmc_host *mmc = NULL;
+	struct mmc_card *card = NULL;
+	struct mmc_blk_data *md = NULL;
 
-	if (mmc_card_is_removable(msm_host->mmc)) {
+	if ((msm_host != NULL) && (mmc_card_is_removable(msm_host->mmc))) {
+		mmc = msm_host->mmc;
+
+		if (mmc != NULL)
+			card = mmc->card;
+		else
+			goto done;
+
+		if (card != NULL)
+			md = dev_get_drvdata(&card->dev);
+		else
+			goto done;
+
 		if (md != NULL) {
 			pr_debug("mmc update the removable card discard sectors to max\n");
 			blk_queue_max_discard_sectors(md->queue.queue, UINT_MAX);
-			cancel_delayed_work(&msm_host->sdcard_hotplut_work);
 		}
 	}
+done:
+	if (msm_host != NULL)
+		cancel_delayed_work(&msm_host->sdcard_hotplut_work);
 }
 
 #if IS_ENABLED(CONFIG_MMC_SDHCI_MSM_SCALING)
