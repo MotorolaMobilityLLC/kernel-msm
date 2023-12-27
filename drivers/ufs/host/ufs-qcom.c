@@ -33,6 +33,10 @@
 #endif
 #include <linux/nvmem-consumer.h>
 
+// #if defined(CONFIG_UFSFEATURE)
+#include "../core/ufshcd-priv.h"
+// #endif
+
 #include <ufs/ufshcd.h>
 #include "ufshcd-pltfrm.h"
 #include <ufs/unipro.h>
@@ -488,6 +492,48 @@ static int ufs_qcom_get_pwr_dev_param(struct ufs_qcom_dev_params *qcom_param,
 	agreed_pwr->hs_rate = qcom_param->hs_rate;
 	return 0;
 }
+
+#if defined(CONFIG_UFSFEATURE)
+static void ufs_vh_prep_fn(void *data, struct ufs_hba *hba,
+			struct request *rq, struct ufshcd_lrb *lrbp, int *err)
+{
+	ufsf_change_lun(ufs_qcom_get_ufsf(hba), lrbp);
+	*err = ufsf_prep_fn(ufs_qcom_get_ufsf(hba), lrbp);
+}
+
+static void ufs_vh_compl_command(void *data, struct ufs_hba *hba,
+			struct ufshcd_lrb *lrbp)
+{
+	struct utp_upiu_header *header = &lrbp->ucd_rsp_ptr->header;
+	struct scsi_cmnd *cmd = lrbp->cmd;
+	int scsi_status, result, ocs;
+
+	if (!cmd)
+		return;
+
+	ocs = le32_to_cpu(lrbp->utr_descriptor_ptr->header.dword_2) & MASK_OCS;
+	if (ocs != OCS_SUCCESS)
+		return;
+
+	result = be32_to_cpu(header->dword_0) >> 24;
+	if (result != UPIU_TRANSACTION_RESPONSE)
+		return;
+
+	scsi_status = be32_to_cpu(header->dword_1) & MASK_SCSI_STATUS;
+	if (scsi_status != SAM_STAT_GOOD)
+		return;
+
+	ufsf_upiu_check_for_ccd(lrbp);
+}
+
+static void ufs_vh_update_sdev(void *data, struct scsi_device *sdev)
+{
+	struct ufs_hba *hba = shost_priv(sdev->host);
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	ufsf_slave_configure(ufsf, sdev);
+}
+#endif
 
 static struct ufs_qcom_host *rcdev_to_ufs_host(struct reset_controller_dev *rcd)
 {
@@ -1781,8 +1827,12 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err = 0;
 
-	if (status == PRE_CHANGE)
+	if (status == PRE_CHANGE) {
+#if defined(CONFIG_UFSFEATURE)
+		ufsf_suspend(ufs_qcom_get_ufsf(hba));
+#endif
 		return 0;
+	}
 
 	/*
 	 * If UniPro link is not active or OFF, PHY ref_clk, main PHY analog
@@ -1820,6 +1870,11 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	unsigned long flags;
 	int err;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
+
+	schedule_work(&ufsf->resume_work);
+#endif
 
 	if (host->vddp_ref_clk && (hba->rpm_lvl > UFS_PM_LVL_3 ||
 				   hba->spm_lvl > UFS_PM_LVL_3))
@@ -2576,6 +2631,266 @@ static u32 ufs_qcom_get_ufs_hci_version(struct ufs_hba *hba)
 		return ufshci_version(2, 0);
 }
 
+#if defined(CONFIG_UFSFEATURE)
+/**
+ * ufs_qcom_query_ioctl - perform user read queries
+ * @hba: per-adapter instance
+ * @lun: used for lun specific queries
+ * @buffer: user space buffer for reading and submitting query data and params
+ * @return: 0 for success negative error code otherwise
+ *
+ * Expected/Submitted buffer structure is struct ufs_ioctl_query_data.
+ * It will read the opcode, idn and buf_length parameters, and, put the
+ * response in the buffer field while updating the used size in buf_length.
+ */
+static int
+ufs_qcom_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
+{
+	struct ufs_ioctl_query_data *ioctl_data;
+	int err = 0;
+	int length = 0;
+	void *data_ptr;
+	bool flag;
+	u32 att;
+	u8 index;
+	u8 *desc = NULL;
+
+	ioctl_data = kzalloc(sizeof(*ioctl_data), GFP_KERNEL);
+	if (!ioctl_data) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	/* extract params from user buffer */
+	err = copy_from_user(ioctl_data, buffer,
+			     sizeof(struct ufs_ioctl_query_data));
+	if (err) {
+		dev_err(hba->dev,
+			"%s: Failed copying buffer from user, err %d\n",
+			__func__, err);
+		goto out_release_mem;
+	}
+
+#if defined(CONFIG_UFSFEATURE)
+	if (ufsf_check_query(ioctl_data->opcode)) {
+		err = ufsf_query_ioctl(ufs_qcom_get_ufsf(hba), lun, buffer,
+				       ioctl_data);
+		goto out_release_mem;
+	}
+#endif
+
+	/* verify legal parameters & send query */
+	switch (ioctl_data->opcode) {
+	case UPIU_QUERY_OPCODE_READ_DESC:
+		switch (ioctl_data->idn) {
+		case QUERY_DESC_IDN_DEVICE:
+		case QUERY_DESC_IDN_CONFIGURATION:
+		case QUERY_DESC_IDN_INTERCONNECT:
+		case QUERY_DESC_IDN_GEOMETRY:
+		case QUERY_DESC_IDN_POWER:
+			index = 0;
+			break;
+		case QUERY_DESC_IDN_UNIT:
+			if (!ufs_is_valid_unit_desc_lun(&hba->dev_info, lun)) {
+				dev_err(hba->dev,
+					"%s: No unit descriptor for lun 0x%x\n",
+					__func__, lun);
+				err = -EINVAL;
+				goto out_release_mem;
+			}
+			index = lun;
+			break;
+		default:
+			goto out_einval;
+		}
+		length = min_t(int, QUERY_DESC_MAX_SIZE,
+			       ioctl_data->buf_size);
+		desc = kzalloc(length, GFP_KERNEL);
+		if (!desc) {
+			dev_err(hba->dev, "%s: Failed allocating %d bytes\n",
+				__func__, length);
+			err = -ENOMEM;
+			goto out_release_mem;
+		}
+		err = ufshcd_query_descriptor_retry(hba, ioctl_data->opcode,
+						    ioctl_data->idn, index, 0,
+						    desc, &length);
+		break;
+	case UPIU_QUERY_OPCODE_READ_ATTR:
+		switch (ioctl_data->idn) {
+		case QUERY_ATTR_IDN_BOOT_LU_EN:
+		case QUERY_ATTR_IDN_POWER_MODE:
+		case QUERY_ATTR_IDN_ACTIVE_ICC_LVL:
+		case QUERY_ATTR_IDN_OOO_DATA_EN:
+		case QUERY_ATTR_IDN_BKOPS_STATUS:
+		case QUERY_ATTR_IDN_PURGE_STATUS:
+		case QUERY_ATTR_IDN_MAX_DATA_IN:
+		case QUERY_ATTR_IDN_MAX_DATA_OUT:
+		case QUERY_ATTR_IDN_REF_CLK_FREQ:
+		case QUERY_ATTR_IDN_CONF_DESC_LOCK:
+		case QUERY_ATTR_IDN_MAX_NUM_OF_RTT:
+		case QUERY_ATTR_IDN_EE_CONTROL:
+		case QUERY_ATTR_IDN_EE_STATUS:
+		case QUERY_ATTR_IDN_SECONDS_PASSED:
+			index = 0;
+			break;
+		case QUERY_ATTR_IDN_DYN_CAP_NEEDED:
+		case QUERY_ATTR_IDN_CORR_PRG_BLK_NUM:
+			index = lun;
+			break;
+		default:
+			goto out_einval;
+		}
+		err = ufshcd_query_attr(hba, ioctl_data->opcode,
+					ioctl_data->idn, index, 0, &att);
+		break;
+
+	case UPIU_QUERY_OPCODE_WRITE_ATTR:
+		err = copy_from_user(&att,
+				     buffer +
+				     sizeof(struct ufs_ioctl_query_data),
+				     sizeof(u32));
+		if (err) {
+			dev_err(hba->dev,
+				"%s: Failed copying buffer from user, err %d\n",
+				__func__, err);
+			goto out_release_mem;
+		}
+
+		switch (ioctl_data->idn) {
+		case QUERY_ATTR_IDN_BOOT_LU_EN:
+			index = 0;
+			if (!att) {
+				dev_err(hba->dev,
+					"%s: Illegal ufs query ioctl data, opcode 0x%x, idn 0x%x, att 0x%x\n",
+					__func__, ioctl_data->opcode,
+					(unsigned int)ioctl_data->idn, att);
+				err = -EINVAL;
+				goto out_release_mem;
+			}
+			break;
+		default:
+			goto out_einval;
+		}
+		err = ufshcd_query_attr(hba, ioctl_data->opcode,
+					ioctl_data->idn, index, 0, &att);
+		break;
+
+	case UPIU_QUERY_OPCODE_READ_FLAG:
+		switch (ioctl_data->idn) {
+		case QUERY_FLAG_IDN_FDEVICEINIT:
+		case QUERY_FLAG_IDN_PERMANENT_WPE:
+		case QUERY_FLAG_IDN_PWR_ON_WPE:
+		case QUERY_FLAG_IDN_BKOPS_EN:
+		case QUERY_FLAG_IDN_PURGE_ENABLE:
+		case QUERY_FLAG_IDN_FPHYRESOURCEREMOVAL:
+		case QUERY_FLAG_IDN_BUSY_RTC:
+			break;
+		default:
+			goto out_einval;
+		}
+		err = ufshcd_query_flag(hba, ioctl_data->opcode,
+					ioctl_data->idn, 0, &flag);
+		break;
+	default:
+		goto out_einval;
+	}
+
+	if (err) {
+		dev_err(hba->dev, "%s: Query for idn %d failed\n", __func__,
+			ioctl_data->idn);
+		goto out_release_mem;
+	}
+
+	/*
+	 * copy response data
+	 * As we might end up reading less data than what is specified in
+	 * "ioctl_data->buf_size". So we are updating "ioctl_data->
+	 * buf_size" to what exactly we have read.
+	 */
+	switch (ioctl_data->opcode) {
+	case UPIU_QUERY_OPCODE_READ_DESC:
+		ioctl_data->buf_size = min_t(int, ioctl_data->buf_size, length);
+		data_ptr = desc;
+		break;
+	case UPIU_QUERY_OPCODE_READ_ATTR:
+		ioctl_data->buf_size = sizeof(u32);
+		data_ptr = &att;
+		break;
+	case UPIU_QUERY_OPCODE_READ_FLAG:
+		ioctl_data->buf_size = 1;
+		data_ptr = &flag;
+		break;
+	case UPIU_QUERY_OPCODE_WRITE_ATTR:
+		goto out_release_mem;
+	default:
+		goto out_einval;
+	}
+
+	/* copy to user */
+	err = copy_to_user(buffer, ioctl_data,
+			   sizeof(struct ufs_ioctl_query_data));
+	if (err)
+		dev_err(hba->dev, "%s: Failed copying back to user.\n",
+			__func__);
+	err = copy_to_user(buffer + sizeof(struct ufs_ioctl_query_data),
+			   data_ptr, ioctl_data->buf_size);
+	if (err)
+		dev_err(hba->dev, "%s: err %d copying back to user.\n",
+			__func__, err);
+	goto out_release_mem;
+
+out_einval:
+	dev_err(hba->dev,
+		"%s: illegal ufs query ioctl data, opcode 0x%x, idn 0x%x\n",
+		__func__, ioctl_data->opcode, (unsigned int)ioctl_data->idn);
+	err = -EINVAL;
+out_release_mem:
+	kfree(ioctl_data);
+	kfree(desc);
+out:
+	return err;
+}
+
+/**
+ * ufs_qcom_ioctl - ufs ioctl callback registered in scsi_host
+ * @dev: scsi device required for per LUN queries
+ * @cmd: command opcode
+ * @buffer: user space buffer for transferring data
+ *
+ * Supported commands:
+ * UFS_IOCTL_QUERY
+ */
+static int
+ufs_qcom_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *buffer)
+{
+	struct ufs_hba *hba = shost_priv(dev->host);
+	int err = 0;
+
+	BUG_ON(!hba);
+	if (!buffer) {
+		dev_err(hba->dev, "%s: User buffer is NULL!\n", __func__);
+		return -EINVAL;
+	}
+
+	switch (cmd) {
+	case UFS_IOCTL_QUERY:
+		ufshcd_rpm_get_sync(hba);
+		err = ufs_qcom_query_ioctl(hba,
+					   ufshcd_scsi_to_upiu_lun(dev->lun),
+					   buffer);
+		ufshcd_rpm_put_sync(hba);
+		break;
+	default:
+		err = -ENOIOCTLCMD;
+		dev_err(hba->dev, "%s: Unsupported ioctl cmd %d\n", __func__,
+			cmd);
+		break;
+	}
+
+	return err;
+}
+#endif
 /**
  * ufs_qcom_advertise_quirks - advertise the known QCOM UFS controller quirks
  * @hba: host controller instance
@@ -3883,6 +4198,16 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		/* Failure is non-fatal */
 		dev_warn(dev, "%s: failed to configure the testbus %d\n",
 				__func__, err);
+#if defined(CONFIG_UFSFEATURE)
+	/* Provide SCSI host ioctl API */
+	hba->host->hostt->ioctl = (int (*)(struct scsi_device *, unsigned int,
+				   void __user *))ufs_qcom_ioctl;
+#ifdef CONFIG_COMPAT
+	hba->host->hostt->compat_ioctl = (int (*)(struct scsi_device *,
+					  unsigned int,
+					  void __user *))ufs_qcom_ioctl;
+#endif
+#endif
 
 	ufs_qcom_init_sysfs(hba);
 
@@ -4380,6 +4705,11 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 			dev_warn_ratelimited(hba->dev, "Warning: UFS BER exceeds threshold !!!\n");
 
 		break;
+#if defined(CONFIG_UFSFEATURE)
+	case UFS_EVT_WL_SUSP_ERR:
+		ufsf_resume(ufs_qcom_get_ufsf(hba), true);
+		break;
+#endif
 	default:
 		break;
 	}
@@ -4954,6 +5284,9 @@ static int ufs_qcom_device_reset(struct ufs_hba *hba)
 		dev_warn(hba->dev, "%s: host reset returned %d\n",
 				 __func__, ret);
 
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_reset_host(ufs_qcom_get_ufsf(hba));
+#endif
 	/* reset gpio is optional */
 	if (!host->device_reset)
 		return -EOPNOTSUPP;
@@ -5013,6 +5346,9 @@ static struct ufs_dev_quirk ufs_qcom_dev_fixups[] = {
 static void ufs_qcom_fixup_dev_quirks(struct ufs_hba *hba)
 {
 	ufshcd_fixup_dev_quirks(hba, ufs_qcom_dev_fixups);
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_set_init_state(hba);
+#endif
 }
 
 /* Resources */
@@ -5273,7 +5609,17 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 	.op_runtime_config	= ufs_qcom_op_runtime_config,
 	.get_outstanding_cqs	= ufs_qcom_get_outstanding_cqs,
 	.config_esi		= ufs_qcom_config_esi,
+
 };
+
+#if defined(CONFIG_UFSFEATURE)
+static void ufs_samsung_register_hooks(void)
+{
+	register_trace_android_vh_ufs_prepare_command(ufs_vh_prep_fn, NULL);
+	register_trace_android_vh_ufs_compl_command(ufs_vh_compl_command, NULL);
+	register_trace_android_vh_ufs_update_sdev(ufs_vh_update_sdev, NULL);
+}
+#endif
 
 /**
  * QCOM specific sysfs group and nodes
@@ -5892,6 +6238,10 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, err, "ufshcd_pltfrm_init() failed\n");
 
 	ufs_qcom_register_hooks();
+#if defined(CONFIG_UFSFEATURE)
+	/* Register hook for Samsung feature */
+	ufs_samsung_register_hooks();
+#endif
 	return err;
 }
 
