@@ -188,7 +188,7 @@
  * but clk's driver supply 37MHz only and uses ceil ops. So vote for
  * 37MHz to avoid picking next ceil value.
  */
-#define LEVEL_SHIFTER_HIGH_SPEED_FREQ	37000000
+#define LEVEL_SHIFTER_HIGH_SPEED_FREQ	37500000
 
 #define VS_CAPABILITIES_SDR_50_SUPPORT BIT(0)
 #define VS_CAPABILITIES_SDR_104_SUPPORT BIT(1)
@@ -4198,6 +4198,9 @@ static inline void sdhci_msm_get_of_property(struct platform_device *pdev,
 		msm_host->ddr_config = DDR_CONFIG_POR_VAL;
 
 	of_property_read_u32(node, "qcom,dll-config", &msm_host->dll_config);
+
+	if (of_device_is_compatible(node, "qcom,msm8916-sdhci"))
+		host->quirks2 |= SDHCI_QUIRK2_BROKEN_64_BIT_DMA;
 }
 
 static int mmc_sleep_busy_cb(void *cb_data, bool *busy)

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2016-2018, 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 
@@ -27,7 +28,24 @@
 #define SOLVER_PRESENT			1
 #define HW_CHANNEL_PRESENT		2
 
+#define	CMD_DB_MAX_RESOURCES	250
+
 struct rsc_drv;
+
+/**
+ * struct cache_req: the request object for caching
+ *
+ * @addr: the address of the resource
+ * @sleep_val: the sleep vote
+ * @wake_val: the wake vote
+ * @list: linked list obj
+ */
+struct cache_req {
+	u32 addr;
+	u32 sleep_val;
+	u32 wake_val;
+	struct list_head list;
+};
 
 /**
  * struct tcs_group: group of Trigger Command Sets (TCS) to send state requests
@@ -69,20 +87,17 @@ struct tcs_group {
  * @cmd: the payload that will be part of the @msg
  * @completion: triggered when request is done
  * @dev: the device making the request
- * @needs_free: check to free dynamically allocated request object
  */
 struct rpmh_request {
 	struct tcs_request msg;
 	struct tcs_cmd cmd[MAX_RPMH_PAYLOAD];
 	struct completion *completion;
 	const struct device *dev;
-	bool needs_free;
 };
 
 /**
  * struct rpmh_ctrlr: our representation of the controller
  *
- * @cache: the list of cached requests
  * @cache_lock: synchronize access to the cache data
  * @dirty: was the cache updated since flush
  * @in_solver_mode: Controller is busy in solver mode
@@ -90,12 +105,13 @@ struct rpmh_request {
  * @batch_cache: Cache sleep and wake requests sent as batch
  */
 struct rpmh_ctrlr {
-	struct list_head cache;
 	spinlock_t cache_lock;
 	bool dirty;
 	bool in_solver_mode;
 	u32 flags;
-	struct list_head batch_cache;
+	struct rpmh_request batch_cache[RPMH_ACTIVE_ONLY_STATE];
+	u32 non_batch_cache_idx;
+	struct cache_req *non_batch_cache;
 };
 
 /**
@@ -195,6 +211,7 @@ int rpmh_rsc_write_ctrl_data(struct rsc_drv *drv,
 			     int ch);
 void rpmh_rsc_invalidate(struct rsc_drv *drv, int ch);
 void rpmh_rsc_debug(struct rsc_drv *drv, struct completion *compl);
+void rpmh_rsc_debug_channel_busy(struct rsc_drv *drv);
 int rpmh_rsc_mode_solver_set(struct rsc_drv *drv, bool enable);
 int rpmh_rsc_get_channel(struct rsc_drv *drv);
 int rpmh_rsc_switch_channel(struct rsc_drv *drv, int ch);

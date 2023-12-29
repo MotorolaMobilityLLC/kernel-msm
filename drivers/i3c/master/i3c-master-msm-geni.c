@@ -422,7 +422,7 @@ static const struct geni_i3c_clk_fld geni_i3c_clk_map[] = {
 	{ KHZ(1920),   19200,  1,  4,  9,  7,  8,  19},
 	{ KHZ(3500),   19200,  1, 72, 168, 3, 4,  300},
 	{ KHZ(370),   100000, 20,  4,  7,  8, 14,  14},
-	{ KHZ(12500), 100000,  1, 45, 63, 6,  7, 110},
+	{ KHZ(12500), 100000,  1, 72, 168, 6,  7, 300},
 };
 
 #define GENI_SE_I3C_ERR(log_ctx, print, dev, x...) do { \
@@ -3313,8 +3313,8 @@ static int geni_i3c_enable_regulator(struct geni_i3c_dev *gi3c,
 				     struct platform_device *pdev, bool enable)
 {
 	int i = 0;
-	int ret;
-	struct regulator *reg[MAX_REGULATOR];
+	int ret = -EINVAL;
+	struct regulator *reg[MAX_REGULATOR] = { NULL };
 	const char *regulator_name[20] = {"i3c_rgltr1", "i3c_rgltr2", "i3c_rgltr3",
 					  "i3c_rgltr4", "i3c_rgltr5"};
 
@@ -3672,6 +3672,10 @@ static int geni_i3c_runtime_resume(struct device *dev)
 			"%s geni_se_resources_on failed %d\n", __func__, ret);
 		return ret;
 	}
+
+	geni_write_reg(0x7f, gi3c->se.base, GENI_OUTPUT_CTRL);
+	/* Added 10 us delay to settle the write of the register as per HW team recommendation */
+	udelay(10);
 
 	if (gi3c->se_mode != GENI_GPI_DMA) {
 		enable_irq(gi3c->irq);

@@ -28,6 +28,7 @@
 
 #include <soc/qcom/cmd-db.h>
 #include <soc/qcom/tcs.h>
+#include <soc/qcom/crm.h>
 #include <dt-bindings/soc/qcom,rpmh-rsc.h>
 
 #include "rpmh-internal.h"
@@ -183,6 +184,8 @@ enum {
 	RSC_DRV_CMD_STATUS,
 	RSC_DRV_CMD_RESP_DATA,
 /* DRV channel Registers */
+	RSC_DRV_CHN_SEQ_BUSY,
+	RSC_DRV_CHN_SEQ_PC,
 	RSC_DRV_CHN_TCS_TRIGGER,
 	RSC_DRV_CHN_TCS_COMPLETE,
 	RSC_DRV_CHN_UPDATE,
@@ -207,6 +210,8 @@ static u32 rpmh_rsc_reg_offsets_ver_2_7[] = {
 	[RSC_DRV_CMD_DATA]		=	0x38,
 	[RSC_DRV_CMD_STATUS]		=	0x3C,
 	[RSC_DRV_CMD_RESP_DATA]		=	0x40,
+	[RSC_DRV_CHN_SEQ_BUSY]		=	0x0,
+	[RSC_DRV_CHN_SEQ_PC]		=	0x0,
 	[RSC_DRV_CHN_TCS_TRIGGER]	=	0x0,
 	[RSC_DRV_CHN_TCS_COMPLETE]	=	0x0,
 	[RSC_DRV_CHN_UPDATE]		=	0x0,
@@ -231,6 +236,8 @@ static u32 rpmh_rsc_reg_offsets_ver_3_0[] = {
 	[RSC_DRV_CMD_DATA]		=	0x3C,
 	[RSC_DRV_CMD_STATUS]		=	0x40,
 	[RSC_DRV_CMD_RESP_DATA]		=	0x44,
+	[RSC_DRV_CHN_SEQ_BUSY]		=	0x464,
+	[RSC_DRV_CHN_SEQ_PC]		=	0x468,
 	[RSC_DRV_CHN_TCS_TRIGGER]	=	0x490,
 	[RSC_DRV_CHN_TCS_COMPLETE]	=	0x494,
 	[RSC_DRV_CHN_UPDATE]		=	0x498,
@@ -255,6 +262,8 @@ static u32 rpmh_rsc_reg_offsets_ver_3_0_hw_channel[] = {
 	[RSC_DRV_CMD_DATA]		=	0x3C,
 	[RSC_DRV_CMD_STATUS]		=	0x40,
 	[RSC_DRV_CMD_RESP_DATA]		=	0x44,
+	[RSC_DRV_CHN_SEQ_BUSY]		=	0x464,
+	[RSC_DRV_CHN_SEQ_PC]		=	0x468,
 	[RSC_DRV_CHN_TCS_TRIGGER]	=	0x490,
 	[RSC_DRV_CHN_TCS_COMPLETE]	=	0x494,
 	[RSC_DRV_CHN_UPDATE]		=	0x498,
@@ -703,9 +712,20 @@ static int find_free_tcs(struct tcs_group *tcs)
 	const struct rsc_drv *drv = tcs->drv;
 	unsigned long i;
 	unsigned long max = tcs->offset + tcs->num_tcs;
+	int timeout = 100;
 
 	i = find_next_zero_bit(drv->tcs_in_use, max, tcs->offset);
 	if (i >= max)
+		return -EBUSY;
+
+	while (timeout) {
+		if (read_tcs_reg(drv, drv->regs[RSC_DRV_STATUS], i))
+			break;
+		timeout--;
+		udelay(1);
+	}
+
+	if (!timeout)
 		return -EBUSY;
 
 	return i;
@@ -790,17 +810,20 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg, int c
 
 	tcs->req[tcs_id - tcs->offset] = msg;
 	set_bit(tcs_id, drv->tcs_in_use);
-	if (msg->state == RPMH_ACTIVE_ONLY_STATE && tcs->type != ACTIVE_TCS) {
-		/*
-		 * Clear previously programmed WAKE commands in selected
-		 * repurposed TCS to avoid triggering them. tcs->slots will be
-		 * cleaned from rpmh_flush() by invoking rpmh_rsc_invalidate()
-		 */
-		write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_ENABLE], tcs_id, 0);
-		write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_WAIT_FOR_CMPL], tcs_id, 0);
+
+	/*
+	 * Clear previously programmed ACTIVE/WAKE commands in selected
+	 * repurposed TCS to avoid triggering them. tcs->slots will be
+	 * cleaned from rpmh_flush() by invoking rpmh_rsc_invalidate()
+	 */
+	write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_ENABLE], tcs_id, 0);
+	write_tcs_reg_sync(drv, drv->regs[RSC_DRV_CMD_WAIT_FOR_CMPL], tcs_id, 0);
+
+	if (msg->wait_for_compl || (msg->state == RPMH_ACTIVE_ONLY_STATE &&
+	    tcs->type != ACTIVE_TCS))
 		enable_tcs_irq(drv, tcs_id, true);
-	}
-	spin_unlock_irqrestore(&drv->lock, flags);
+	else
+		enable_tcs_irq(drv, tcs_id, false);
 
 	/*
 	 * These two can be done after the lock is released because:
@@ -812,7 +835,16 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg, int c
 	 */
 	__tcs_buffer_write(drv, tcs_id, 0, msg);
 	__tcs_set_trigger(drv, tcs_id, true);
-	ipc_log_string(drv->ipc_log_ctx, "TCS trigger: m=%d", tcs_id);
+	ipc_log_string(drv->ipc_log_ctx, "TCS trigger: m=%d wait_for_compl=%u",
+		       tcs_id, msg->wait_for_compl);
+
+	if (!msg->wait_for_compl)
+		clear_bit(tcs_id, drv->tcs_in_use);
+
+	spin_unlock_irqrestore(&drv->lock, flags);
+
+	if (!msg->wait_for_compl)
+		wake_up(&drv->tcs_wait);
 
 	return 0;
 }
@@ -950,6 +982,30 @@ print_tcs_data:
 		if (!(sts & CMD_STATUS_COMPL))
 			*accl |= BIT(ACCL_TYPE(addr));
 	}
+}
+
+void rpmh_rsc_debug_channel_busy(struct rsc_drv *drv)
+{
+	u32 event_sts, ctrl_sts;
+	u32 chn_update, chn_busy, chn_en;
+	u32 seq_busy, seq_pc;
+
+	pr_err("RSC:%s\n", drv->name);
+
+	event_sts = readl_relaxed(drv->base + drv->regs[RSC_DRV_CHN_TCS_COMPLETE]);
+	ctrl_sts = readl_relaxed(drv->base + drv->regs[RSC_DRV_CHN_TCS_TRIGGER]);
+	chn_update = readl_relaxed(drv->base + drv->regs[RSC_DRV_CHN_UPDATE]);
+	chn_busy = readl_relaxed(drv->base + drv->regs[RSC_DRV_CHN_BUSY]);
+	chn_en = readl_relaxed(drv->base + drv->regs[RSC_DRV_CHN_EN]);
+	seq_busy = readl_relaxed(drv->base + drv->regs[RSC_DRV_CHN_SEQ_BUSY]);
+	seq_pc = readl_relaxed(drv->base + drv->regs[RSC_DRV_CHN_SEQ_PC]);
+
+	pr_err("event sts: 0x%x ctrl_sts: 0x%x\n", event_sts, ctrl_sts);
+	pr_err("chn_update: 0x%x chn_busy: 0x%x chn_en: 0x%x\n", chn_update, chn_busy, chn_en);
+	pr_err("seq_busy: 0x%x seq_pc: 0x%x\n", seq_busy, seq_pc);
+
+	crm_dump_regs("cam_crm");
+	crm_dump_drv_regs("cam_crm", drv->id);
 }
 
 void rpmh_rsc_debug(struct rsc_drv *drv, struct completion *compl)
@@ -1584,7 +1640,7 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 	struct rsc_drv_top *rsc_top;
 	int ret, irq;
 	u32 rsc_id, major_ver, minor_ver, solver_config;
-	int i, drv_count;
+	int i, j, drv_count;
 	const char *name;
 
 	/*
@@ -1714,6 +1770,13 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 		spin_lock_init(&drv[i].lock);
 		init_waitqueue_head(&drv[i].tcs_wait);
 		bitmap_zero(drv[i].tcs_in_use, MAX_TCS_NR);
+		drv[i].client.non_batch_cache = devm_kcalloc(&pdev->dev, CMD_DB_MAX_RESOURCES,
+							     sizeof(struct cache_req), GFP_KERNEL);
+		if (!drv[i].client.non_batch_cache)
+			return -ENOMEM;
+
+		for (j = 0; j < CMD_DB_MAX_RESOURCES; j++)
+			INIT_LIST_HEAD(&drv[i].client.non_batch_cache[j].list);
 
 		irq = platform_get_irq(pdev, drv[i].id);
 		if (irq < 0)
@@ -1728,8 +1791,6 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 			return ret;
 
 		spin_lock_init(&drv[i].client.cache_lock);
-		INIT_LIST_HEAD(&drv[i].client.cache);
-		INIT_LIST_HEAD(&drv[i].client.batch_cache);
 
 		drv[i].ipc_log_ctx = ipc_log_context_create(
 						RSC_DRV_IPC_LOG_SIZE,

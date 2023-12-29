@@ -2932,8 +2932,10 @@ static void arm_smmu_device_reset(struct arm_smmu_device *smmu)
 	 * Reset stream mapping groups: Initial values mark all SMRn as
 	 * invalid and all S2CRn as bypass unless overridden.
 	 */
+	mutex_lock(&smmu->stream_map_mutex);
 	for (i = 0; i < smmu->num_mapping_groups; ++i)
 		arm_smmu_write_sme(smmu, i);
+	mutex_unlock(&smmu->stream_map_mutex);
 
 	/* Make sure all context banks are disabled and clear CB_FSR  */
 	for (i = 0; i < smmu->num_context_banks; ++i) {
@@ -3070,8 +3072,9 @@ static int arm_smmu_handoff_cbs(struct arm_smmu_device *smmu)
 			if (!handoff_smrs[index].valid)
 				continue;
 
-			if ((handoff_smrs[index].mask & smrs.mask) == handoff_smrs[index].mask &&
-			    !((handoff_smrs[index].id ^ smrs.id) & ~smrs.mask)) {
+			/* smrs is subset of handoff_smrs */
+			if ((handoff_smrs[index].mask & smrs.mask) == smrs.mask &&
+			    !((handoff_smrs[index].id ^ smrs.id) & ~handoff_smrs[index].mask)) {
 
 				dev_dbg(smmu->dev,
 					"handoff-smrs match idx %d, id, 0x%x, mask 0x%x\n",
