@@ -1195,6 +1195,8 @@ static void walt_binder_low_latency_set(void *unused, struct task_struct *task,
 		 */
 		wts->low_latency &= ~WALT_LOW_LATENCY_BINDER;
 
+	// Moto huangzq2: set ux type on binder
+	moto_binder_ux_type_set(task, false, false);
 }
 
 static void binder_set_priority_hook(void *data,
@@ -1244,7 +1246,7 @@ static void binder_restore_priority_hook(void *data,
  */
 int walt_get_mvp_task_prio(struct task_struct *p)
 {
-	int mvp_prio = moto_task_get_mvp_prio(p, true); // Moto huangzq2
+	int mvp_prio; // Moto huangzq2
 
 	if (walt_procfs_low_latency_task(p) ||
 			walt_pipeline_low_latency_task(p))
@@ -1256,6 +1258,7 @@ int walt_get_mvp_task_prio(struct task_struct *p)
 	if (walt_binder_low_latency_task(p))
 		return WALT_BINDER_MVP;
 
+	mvp_prio = moto_task_get_mvp_prio(p, true);
 	if (mvp_prio > WALT_NOT_MVP)  // Moto huangzq2
 		return mvp_prio;
 
@@ -1268,14 +1271,15 @@ int walt_get_mvp_task_prio(struct task_struct *p)
 // Moto huangzq2
 static inline unsigned int __walt_cfs_mvp_task_limit(int mvp_prio)
 {
-	/* Moto huangzq2: use longer exec limit for moto mvp task */
-	unsigned int limit = moto_task_get_mvp_limit(mvp_prio);
-	if (limit > 0)
-		return limit;
+	unsigned int limit; // Moto huangzq2
 
 	/* Binder MVP tasks are high prio but have only single slice */
 	if (mvp_prio== WALT_BINDER_MVP)
 		return WALT_MVP_SLICE;
+
+	limit = moto_task_get_mvp_limit(mvp_prio); // Moto huangzq2
+	if (limit > 0)
+		return limit;
 
 	return WALT_MVP_LIMIT;
 }
@@ -1309,12 +1313,12 @@ static void walt_cfs_insert_mvp_task(struct walt_rq *wrq, struct walt_task_struc
 	wrq->num_mvp_tasks++;
 }
 
-void walt_cfs_deactivate_mvp_task(struct rq *rq, struct task_struct *p)
+void walt_cfs_deactivate_mvp_task(struct rq *rq, struct task_struct *p, unsigned int reason) // Moto huangzq2: debugging enhancement.
 {
 	struct walt_rq *wrq = (struct walt_rq *) rq->android_vendor_data1;
 	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
 
-	trace_walt_cfs_deactivate_mvp_task(rq->curr, wts, 123456); // MOto wangwang: debugging enhancement.
+	trace_walt_cfs_deactivate_mvp_task(rq->curr, wts, reason); // MOto wangwang: debugging enhancement.
 
 	list_del_init(&wts->mvp_list);
 	wts->mvp_prio = WALT_NOT_MVP;
@@ -1370,7 +1374,7 @@ static void walt_cfs_account_mvp_runtime(struct rq *rq, struct task_struct *curr
 
 	limit = walt_cfs_mvp_task_limit(curr);
 	if (wts->total_exec > limit) {
-		walt_cfs_deactivate_mvp_task(rq, curr);
+		walt_cfs_deactivate_mvp_task(rq, curr, 2); // Moto huangzq2: debugging enhancement.
 		return;
 	}
 
@@ -1419,7 +1423,7 @@ void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
 	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
 
 	if (!list_empty(&wts->mvp_list) && wts->mvp_list.next)
-		walt_cfs_deactivate_mvp_task(rq, p);
+		walt_cfs_deactivate_mvp_task(rq, p, 1); // Moto huangzq2: debugging enhancement.
 
 	/*
 	 * Reset the exec time during sleep so that it starts
@@ -1545,9 +1549,7 @@ static void walt_cfs_replace_next_task_fair(void *unused, struct rq *rq, struct 
 			 (*p)->on_rq, (*p)->cpu, cpu_of(rq), ((*p)->flags & PF_KTHREAD));
 
 	/* We don't have MVP tasks queued */
-	if (list_empty(&wrq->mvp_tasks)) { // Moto wangwang: debugging enhancement.
-		struct walt_task_struct *wts_p = (struct walt_task_struct *) current->android_vendor_data1;
-		trace_walt_cfs_mvp_pick_next(current, wts_p, wrq->num_mvp_tasks);
+	if (list_empty(&wrq->mvp_tasks)) {
 		return;
 	}
 

@@ -965,13 +965,13 @@ static inline bool walt_flag_test(struct task_struct *p, enum walt_flags feature
 }
 
 #define WALT_MVP_SLICE		3000000U
-#define WALT_MVP_LIMIT		(10 * WALT_MVP_SLICE)
+#define WALT_MVP_LIMIT		(4 * WALT_MVP_SLICE)
 
 /* higher number, better priority */
 #define WALT_RTG_MVP		0
 
 /* Moto huangzq2: reserve mvp prioriteis (11~100) for moto_sched */
-#define UX_PRIO_TOPAPP		20 // fixed value 20, must not be changed!
+#define UX_PRIO_TOPAPP		70 // must be aligned with moto_sched!
 
 #define WALT_BINDER_MVP		101
 #define WALT_TASK_BOOST_MVP	UX_PRIO_TOPAPP // align to UX_PRIO_TOPAPP in moto_sched
@@ -1150,7 +1150,7 @@ extern struct rq *__migrate_task(struct rq *rq, struct rq_flags *rf,
 
 DECLARE_PER_CPU(u64, rt_task_arrival_time);
 extern int walt_get_mvp_task_prio(struct task_struct *p);
-extern void walt_cfs_deactivate_mvp_task(struct rq *rq, struct task_struct *p);
+extern void walt_cfs_deactivate_mvp_task(struct rq *rq, struct task_struct *p, unsigned int reason); // Moto huangzq2: debugging enhancement.
 
 enum WALT_DEBUG_FEAT {
 	WALT_BUG_UPSTREAM,

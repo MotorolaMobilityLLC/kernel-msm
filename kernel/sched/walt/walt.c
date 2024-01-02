@@ -4991,7 +4991,7 @@ static void walt_do_sched_yield(void *unused, struct rq *rq)
 	walt_lockdep_assert_rq(rq, NULL);
 	// Moto wangwang: don't deactivate mvp tasks when moto_sched enabled.
 	if (unlikely(!moto_sched_enabled) && !list_empty(&wts->mvp_list) && wts->mvp_list.next)
-		walt_cfs_deactivate_mvp_task(rq, curr);
+		walt_cfs_deactivate_mvp_task(rq, curr, 3); // Moto huangzq2: debugging enhancement.
 
 	if (per_cpu(rt_task_arrival_time, cpu_of(rq)))
 		per_cpu(rt_task_arrival_time, cpu_of(rq)) = 0;

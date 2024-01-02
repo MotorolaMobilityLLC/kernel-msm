@@ -194,6 +194,7 @@ struct msched_ops {
 	unsigned int (*task_get_mvp_limit)(int mvp_prio);
 	void (*binder_inherit_ux_type)(struct task_struct *task);
 	void (*binder_clear_inherited_ux_type)(struct task_struct *task);
+	void (*binder_ux_type_set)(struct task_struct *task, bool has_clear, bool clear);
 };
 
 extern struct msched_ops *moto_sched_ops;
@@ -221,6 +222,11 @@ static inline void moto_binder_inherit_ux_type(struct task_struct *task) {
 static inline void moto_binder_clear_inherited_ux_type(struct task_struct *task) {
 	if (moto_sched_ops != NULL && moto_sched_ops->binder_clear_inherited_ux_type != NULL)
 		return moto_sched_ops->binder_clear_inherited_ux_type(task);
+}
+
+static inline void moto_binder_ux_type_set(struct task_struct *task, bool has_clear, bool clear) {
+	if (moto_sched_ops != NULL && moto_sched_ops->binder_ux_type_set != NULL)
+		return moto_sched_ops->binder_ux_type_set(task, has_clear, clear);
 }
 
 struct notifier_block;
