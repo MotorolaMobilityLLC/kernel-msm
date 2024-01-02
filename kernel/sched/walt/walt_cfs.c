@@ -1119,6 +1119,9 @@ static void walt_binder_low_latency_set(void *unused, struct task_struct *task,
 			((current->prio < DEFAULT_PRIO) ||
 			(task->group_leader->prio < MAX_RT_PRIO)))
 		wts->low_latency |= WALT_LOW_LATENCY_BINDER;
+
+	// Moto huangzq2: set ux type on binder
+	moto_binder_ux_type_set(task, false, false);
 }
 
 static void walt_binder_low_latency_clear(void *unused, struct binder_transaction *t)
@@ -1130,6 +1133,9 @@ static void walt_binder_low_latency_clear(void *unused, struct binder_transactio
 
 	if (wts->low_latency & WALT_LOW_LATENCY_BINDER)
 		wts->low_latency &= ~WALT_LOW_LATENCY_BINDER;
+
+	// Moto huangzq2: set ux type on binder
+	moto_binder_ux_type_set(current, false, true);
 }
 
 static void binder_set_priority_hook(void *data,
@@ -1180,13 +1186,15 @@ static void binder_restore_priority_hook(void *data,
  */
 static inline int walt_get_mvp_task_prio(struct task_struct *p)
 {
-	int mvp_prio = moto_task_get_mvp_prio(p, true); // Moto huangzq2
+	int mvp_prio = WALT_NOT_MVP;
 
 	if (per_task_boost(p) == TASK_BOOST_STRICT_MAX)
 		return WALT_TASK_BOOST_MVP;
 
 	if (walt_binder_low_latency_task(p))
 		return WALT_BINDER_MVP;
+
+	mvp_prio = moto_task_get_mvp_prio(p, true);
 
 	if (mvp_prio > WALT_NOT_MVP)  // Moto huangzq2
 		return mvp_prio;
@@ -1202,12 +1210,14 @@ static inline int walt_get_mvp_task_prio(struct task_struct *p)
 static inline unsigned int __walt_cfs_mvp_task_limit(int mvp_prio)
  {
 	/* Moto huangzq2: use longer exec limit for moto mvp task */
-	unsigned int limit = moto_task_get_mvp_limit(mvp_prio);
-	if (limit > 0)
-		return limit;
+	unsigned int limit = WALT_MVP_LIMIT;
 
 	if (mvp_prio== WALT_BINDER_MVP)
 		return WALT_MVP_SLICE;
+
+	limit = moto_task_get_mvp_limit(mvp_prio);
+	if (limit > 0)
+		return limit;
 
 	return WALT_MVP_LIMIT;
  }
@@ -1241,12 +1251,12 @@ static void walt_cfs_insert_mvp_task(struct walt_rq *wrq, struct walt_task_struc
 	wrq->num_mvp_tasks++;
 }
 
-static void walt_cfs_deactivate_mvp_task(struct rq *rq, struct task_struct *p)
+static void walt_cfs_deactivate_mvp_task(struct rq *rq, struct task_struct *p, unsigned int reason)
 {
 	struct walt_rq *wrq = (struct walt_rq *) rq->android_vendor_data1;
 	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
 
-	trace_walt_cfs_deactivate_mvp_task(rq->curr, wts, 123456, wrq->num_mvp_tasks); // MOto wangwang: debugging enhancement.
+	trace_walt_cfs_deactivate_mvp_task(rq->curr, wts, reason, wrq->num_mvp_tasks); // MOto wangwang: debugging enhancement.
 
 	list_del_init(&wts->mvp_list);
 	wts->mvp_prio = WALT_NOT_MVP;
@@ -1300,7 +1310,7 @@ static void walt_cfs_account_mvp_runtime(struct rq *rq, struct task_struct *curr
 
 	limit = walt_cfs_mvp_task_limit(curr);
 	if (wts->total_exec > limit) {
-		walt_cfs_deactivate_mvp_task(rq, curr);
+		walt_cfs_deactivate_mvp_task(rq, curr, 2);
 		return;
 	}
 
@@ -1321,7 +1331,7 @@ static void walt_cfs_mvp_do_sched_yield(void *unused, struct rq *rq)
 	lockdep_assert_held(&rq->lock);
     // Moto wangwang: don't deactivate mvp tasks when moto_sched enabled.
 	if (unlikely(!moto_sched_enabled) && !list_empty(&wts->mvp_list) && wts->mvp_list.next)
-		walt_cfs_deactivate_mvp_task(rq, curr);
+		walt_cfs_deactivate_mvp_task(rq, curr, 3);
 }
 
 void walt_cfs_enqueue_task(struct rq *rq, struct task_struct *p)
@@ -1359,7 +1369,7 @@ void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
 	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
 
 	if (is_mvp_task(rq, p))
-		walt_cfs_deactivate_mvp_task(rq, p);
+		walt_cfs_deactivate_mvp_task(rq, p, 1);
 
 	/*
 	 * Reset the exec time during sleep so that it starts
@@ -1473,9 +1483,7 @@ static void walt_cfs_replace_next_task_fair(void *unused, struct rq *rq, struct 
 			 (*p)->on_rq, (*p)->cpu, cpu_of(rq), ((*p)->flags & PF_KTHREAD));
 
 	/* We don't have MVP tasks queued */
-	if (list_empty(&wrq->mvp_tasks)) { // Moto wangwang: debugging enhancement.
-		struct walt_task_struct *wts_p = (struct walt_task_struct *) current->android_vendor_data1;
-		trace_walt_cfs_mvp_pick_next(current, wts_p,1234567, wrq->num_mvp_tasks);
+	if (list_empty(&wrq->mvp_tasks)) {
 		return;
 	}
 
