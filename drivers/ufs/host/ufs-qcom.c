@@ -2636,6 +2636,7 @@ static u32 ufs_qcom_get_ufs_hci_version(struct ufs_hba *hba)
 		return ufshci_version(2, 0);
 }
 
+#if defined(CONFIG_UFSFEATURE)
 /**
  * ufs_qcom_query_ioctl - perform user read queries
  * @hba: per-adapter instance
@@ -2894,7 +2895,7 @@ ufs_qcom_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *buffer)
 
 	return err;
 }
-
+#endif
 /**
  * ufs_qcom_advertise_quirks - advertise the known QCOM UFS controller quirks
  * @hba: host controller instance
