@@ -1229,6 +1229,7 @@ static void qcom_scm_shutdown(struct platform_device *pdev)
 {
 	qcom_scm_disable_sdi();
 	qcom_scm_halt_spmi_pmic_arbiter();
+	/* Clean shutdown, disable download mode to allow normal restart */
 	qcom_scm_set_download_mode(QCOM_DOWNLOAD_NODUMP, 0);
 }
 
