@@ -887,12 +887,17 @@ static inline bool walt_fair_task(struct task_struct *p)
 
 #define WALT_RTG_MVP			0
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 /* Moto huangzq2: reserve mvp prioriteis (11~100) for moto_sched */
 #define UX_PRIO_TOPAPP			70 // fixed value 20, must not be changed!
 
 #define WALT_BINDER_MVP			101
 #define WALT_TASK_BOOST_MVP	UX_PRIO_TOPAPP // align to UX_PRIO_TOPAPP in moto_sched
 #define WALT_LL_PIPE_MVP		103
+#else
+#define WALT_BINDER_MVP		1
+#define WALT_TASK_BOOST_MVP	2
+#endif
 
 #define WALT_NOT_MVP		-1
 

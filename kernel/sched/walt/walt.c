@@ -77,12 +77,13 @@ unsigned int __read_mostly sched_init_task_load_windows;
  */
 unsigned int __read_mostly sched_load_granule;
 
-
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 struct msched_ops *moto_sched_ops = NULL;
 void set_moto_sched_ops(struct msched_ops *ops) {
 	moto_sched_ops = ops;
 }
 EXPORT_SYMBOL_GPL(set_moto_sched_ops);
+#endif
 
 /*
  *@boost:should be 0,1,2.
