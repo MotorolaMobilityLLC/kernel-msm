@@ -201,3 +201,8 @@ config MICRON_UFSHID
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
 	help
 	  Enable Micron HID feature
+config SCSI_SKHID
+	tristate "SKHix UFS Host Initiated Defrag supportr"
+	depends on SCSI_UFSHCD
+	help
+	  SKHix UFS HID Feature Enable

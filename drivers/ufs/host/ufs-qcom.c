@@ -91,6 +91,10 @@ enum {
 	UFS_QCOM_CMD_COMPL,
 };
 
+#if defined(CONFIG_SCSI_SKHID)
+char storage_mfrid[32];
+#endif
+
 static char android_boot_dev[ANDROID_BOOT_DEV_MAX];
 
 static DEFINE_PER_CPU(struct freq_qos_request, qos_min_req);
@@ -408,6 +412,33 @@ static inline void cancel_dwork_unvote_cpufreq(struct ufs_hba *hba)
 			host->cpu_info[i].cpu);
 	}
 }
+
+#if defined(CONFIG_SCSI_SKHID)
+static int get_storage_info(struct ufs_hba *hba)
+{
+    int ret = 0;
+    struct property *p;
+    struct device_node *n;
+
+    memset(storage_mfrid,0,sizeof(storage_mfrid));
+    n = of_find_node_by_path("/chosen/mmi,storage");
+    if (n == NULL) {
+        ret = 1;
+        goto err;
+    }
+
+    for_each_property_of_node(n, p) {
+        if (!strcmp(p->name, "manufacturer") && p->value)
+            strlcpy(storage_mfrid, (char *)p->value, sizeof(storage_mfrid));
+    }
+
+    of_node_put(n);
+
+    dev_info(hba->dev, "manufacturer parsed from choosen is %s\n", storage_mfrid);
+err:
+        return ret;
+}
+#endif
 
 static int ufs_qcom_get_pwr_dev_param(struct ufs_qcom_dev_params *qcom_param,
 				      struct ufs_pa_layer_attr *dev_max,
@@ -4176,6 +4207,20 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_qos_init(hba);
 	ufs_qcom_parse_irq_affinity(hba);
 	ufs_qcom_ber_mon_init(hba);
+
+#if defined(CONFIG_SCSI_SKHID)
+	get_storage_info(hba);
+#endif
+
+#if defined(CONFIG_SCSI_SKHID)
+	if ((IS_SKHYNIX_DEVICE(storage_mfrid)) || (IS_HYNIX_DEVICE(storage_mfrid))) {
+		err = pixel_init(hba);
+		if (err) {
+			return err;
+		}
+		pixel_init_manual_gc(hba);
+	}
+#endif
 	host->ufs_ipc_log_ctx = ipc_log_context_create(UFS_QCOM_MAX_LOG_SZ,
 							"ufs-qcom", 0);
 	if (!host->ufs_ipc_log_ctx)
@@ -5295,7 +5340,10 @@ static void ufs_qcom_fixup_dev_quirks(struct ufs_hba *hba)
 {
 	ufshcd_fixup_dev_quirks(hba, ufs_qcom_dev_fixups);
 #if defined(CONFIG_UFSFEATURE)
-	ufsf_set_init_state(hba);
+#if defined(CONFIG_SCSI_SKHID)
+	if ((!IS_SKHYNIX_DEVICE(storage_mfrid)) && (!IS_HYNIX_DEVICE(storage_mfrid)))
+#endif
+		ufsf_set_init_state(hba);
 #endif
 }
 

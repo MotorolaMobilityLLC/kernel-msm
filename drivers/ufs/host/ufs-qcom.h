@@ -16,6 +16,9 @@
 #if defined(CONFIG_UFSFEATURE)
 #include "vendor/ufsfeature.h"
 #endif
+#if defined(CONFIG_SCSI_SKHID)
+#include "ufs-manual-gc.h"
+#endif
 
 #include <ufs/unipro.h>
 
@@ -34,6 +37,21 @@
 #define UFS_HW_VER_STEP_MASK	GENMASK(15, 0)
 
 #define UFS_VENDOR_MICRON	0x12C
+
+#if defined(CONFIG_SCSI_SKHID)
+#define IS_SKHYNIX_DEVICE(mfrid)   (0 == strncasecmp(mfrid,"SKHYNIX",sizeof("SKHYNIX")))
+#define IS_HYNIX_DEVICE(mfrid)   (0 == strncasecmp(mfrid,"HYNIX",sizeof("HYNIX")))
+
+#if defined(CONFIG_SCSI_UFS_HID)
+/* UFSHCD error handling flags */
+enum {
+	UFSHCD_EH_IN_PROGRESS = (1 << 0),		/* ufshcd.c */
+};
+
+#define ufshcd_eh_in_progress(h) \
+        ((h)->eh_flags & UFSHCD_EH_IN_PROGRESS)         /* ufshcd.c */
+#endif
+#endif
 
 #define SLOW 1
 #define FAST 2
@@ -630,7 +648,11 @@ struct ufs_qcom_host {
 
 	bool broken_ahit_wa;
 	unsigned long active_cmds;
-
+#if defined(CONFIG_SCSI_SKHID)
+	struct work_struct update_sysfs_work;
+	/* manual_gc */
+	struct ufs_manual_gc manual_gc;
+#endif
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
 #endif
