@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -385,7 +385,7 @@ static ssize_t perfmon_configure_store(struct device *dev,
 
 	token = strsep((char **)&buf, delim);
 	/* Getting filter information if provided */
-	if (strlen(token) == strlen("FILTERX")) {
+	if (token && (strlen(token) == strlen("FILTERX"))) {
 		if (llcc_priv->fltr_logic != multiple_filtr) {
 			pr_err("Error Multifilter configuration not present\n");
 			goto out_configure;
@@ -520,7 +520,7 @@ static ssize_t perfmon_remove_store(struct device *dev,
 	}
 
 	/* Getting filter information if provided */
-	if (strlen(token) == strlen("FILTERX")) {
+	if (token && strlen(token) == strlen("FILTERX")) {
 		if (llcc_priv->fltr_logic != multiple_filtr) {
 			pr_err("Error! Multifilter configuration not present\n");
 			goto out_remove_store_err;
