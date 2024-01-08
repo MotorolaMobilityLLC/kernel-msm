@@ -783,6 +783,7 @@ static const struct soc_id soc_id[] = {
 	{ 507, "BLAIR" },
 	{ 565, "BLAIRP" },
 	{ 628, "BLAIRP-XR" },
+	{ 647, "BLAIRP-LTE" },
 	{ 486, "MONACO" },
 	{ 458, "SDXLEMUR" },
 	{ 483, "SDXLEMUR-SD"},
