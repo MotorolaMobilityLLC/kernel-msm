@@ -62,6 +62,12 @@ config MOT_OIS_DRIVER
 	help
 	  This is enabling OIS driver.
 
+config MOT_OIS_DW9784_DRIVER
+        default n
+        bool "enable OIS DW9784 driver"
+        help
+          This is enabling OIS DW9784 driver.
+
 config MOT_SENSOR_PRE_POWERUP
 	default n
 	bool "enable power on sensor in advance"
