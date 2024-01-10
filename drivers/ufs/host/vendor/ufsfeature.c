@@ -43,7 +43,7 @@
 
 
 #if defined(CONFIG_SCSI_SKHID)
-extern char storage_mfrid[32];
+extern int storage_mfrid;
 #endif
 
 static int ufsf_read_desc(struct ufs_hba *hba, u8 desc_id, u8 desc_index,
@@ -595,8 +595,8 @@ static void ufsf_device_check_work_handler(struct work_struct *work)
 
 	ufsf = container_of(work, struct ufsf_feature, device_check_work);
 
- #if defined(CONFIG_SCSI_SKHID)
-	if ((IS_SKHYNIX_DEVICE(storage_mfrid)) || (IS_HYNIX_DEVICE(storage_mfrid)))
+#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_UFS(storage_mfrid))
 		return;
 #endif
 	mutex_lock(&ufsf->device_check_lock);

@@ -41,6 +41,7 @@
 #if defined(CONFIG_SCSI_SKHID)
 #define IS_SKHYNIX_DEVICE(mfrid)   (0 == strncasecmp(mfrid,"SKHYNIX",sizeof("SKHYNIX")))
 #define IS_HYNIX_DEVICE(mfrid)   (0 == strncasecmp(mfrid,"HYNIX",sizeof("HYNIX")))
+#define IS_SKHYNIX_UFS(var) (var==UFS_VENDOR_SKHYNIX)
 
 #if defined(CONFIG_SCSI_UFS_HID)
 /* UFSHCD error handling flags */

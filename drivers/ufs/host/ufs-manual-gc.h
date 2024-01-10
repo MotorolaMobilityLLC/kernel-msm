@@ -11,7 +11,7 @@
 #define _UFS_MANUAL_GC_H_
 
 #include <asm/unaligned.h>
-#include "ufshcd.h"
+#include <ufs/ufshcd.h>
 
 /* manual gc */
 struct ufs_manual_gc {
