@@ -1014,7 +1014,7 @@ int synx_merge(struct synx_session *session,
 
 	if (params->flags & SYNX_MERGE_GLOBAL_FENCE) {
 		h_child_list = kzalloc(count*4, GFP_KERNEL);
-		if (IS_ERR_OR_NULL(synx_obj)) {
+		if (IS_ERR_OR_NULL(h_child_list)) {
 			rc = -SYNX_NOMEM;
 			goto clear;
 		}
@@ -1031,6 +1031,7 @@ int synx_merge(struct synx_session *session,
 			synx_util_global_idx(*params->h_merged_obj));
 		if (rc != SYNX_SUCCESS) {
 			dprintk(SYNX_ERR, "global merge failed\n");
+			kfree(h_child_list);
 			goto clear;
 		}
 	}
@@ -1039,6 +1040,7 @@ int synx_merge(struct synx_session *session,
 		"[sess :%llu] merge allocated %u, core %pK, fence %pK\n",
 		client->id, *params->h_merged_obj, synx_obj,
 		synx_obj->fence);
+	kfree(h_child_list);
 	synx_put_client(client);
 	return SYNX_SUCCESS;
 
@@ -1459,6 +1461,8 @@ static int synx_native_import_handle(struct synx_client *client,
 		old_entry = map_entry;
 		map_entry = synx_handle_conversion(client, &h_synx,
 						old_entry);
+		if (IS_ERR_OR_NULL(map_entry))
+			return -SYNX_INVALID;
 	}
 
 	if (rc != SYNX_SUCCESS)
