@@ -9,7 +9,7 @@
 
 #include "ufs-qcom.h"
 #include <trace/hooks/ufshcd.h>
-
+#include <ufs/ufshcd-priv.h>
 
 extern struct workqueue_struct *system_highpri_wq;
 
@@ -20,19 +20,23 @@ static ssize_t manual_gc_show(struct device *dev,
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
 	u32 status = MANUAL_GC_OFF;
+
 	if (ufs->manual_gc.state == MANUAL_GC_DISABLE)
 		return scnprintf(buf, PAGE_SIZE, "%s", "disabled\n");
+
 	if (ufs->manual_gc.hagc_support) {
 		int err;
+
 		if (!ufshcd_eh_in_progress(hba)) {
-			pm_runtime_get_sync(hba->dev);
+			ufshcd_rpm_get_sync(hba);
 			err = ufshcd_query_attr_retry(hba,
 				UPIU_QUERY_OPCODE_READ_ATTR,
 				QUERY_ATTR_IDN_MANUAL_GC_STATUS, 0, 0, &status);
-			pm_runtime_put_sync(hba->dev);
+			ufshcd_rpm_put_sync(hba);
 			ufs->manual_gc.hagc_support = err ? false: true;
 		}
 	}
+
 	if (!ufs->manual_gc.hagc_support)
 		return scnprintf(buf, PAGE_SIZE, "%s", "bkops\n");
 	return scnprintf(buf, PAGE_SIZE, "%s",
@@ -42,14 +46,16 @@ static ssize_t manual_gc_show(struct device *dev,
 static int manual_gc_enable(struct ufs_hba *hba, u32 *value)
 {
 	int ret;
+
 	if (ufshcd_eh_in_progress(hba))
 		return -EBUSY;
-	pm_runtime_get_sync(hba->dev);
+
+	ufshcd_rpm_get_sync(hba);
 	ret = ufshcd_query_attr_retry(hba,
 				UPIU_QUERY_OPCODE_WRITE_ATTR,
 				QUERY_ATTR_IDN_MANUAL_GC_CONT, 0, 0,
 				value);
-	pm_runtime_put_sync(hba->dev);
+	ufshcd_rpm_put_sync(hba);
 	return ret;
 }
 
@@ -61,22 +67,28 @@ static ssize_t manual_gc_store(struct device *dev,
 	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
 	u32 value;
 	int err = 0;
+
 	if (kstrtou32(buf, 0, &value))
 		return -EINVAL;
+
 	if (value >= MANUAL_GC_MAX)
 		return -EINVAL;
+
 	if (ufshcd_eh_in_progress(hba))
 		return -EBUSY;
+
 	if (value == MANUAL_GC_DISABLE || value == MANUAL_GC_ENABLE) {
 		ufs->manual_gc.state = value;
 		return count;
 	}
 	if (ufs->manual_gc.state == MANUAL_GC_DISABLE)
 		return count;
+
 	if (ufs->manual_gc.hagc_support)
 		ufs->manual_gc.hagc_support =
 			manual_gc_enable(hba, &value) ? false : true;
-	pm_runtime_get_sync(hba->dev);
+
+	ufshcd_rpm_get_sync(hba);
 
 	if (!ufs->manual_gc.hagc_support) {
 		err = ufshcd_bkops_ctrl(hba, (value == MANUAL_GC_ON) ?
@@ -85,6 +97,7 @@ static ssize_t manual_gc_store(struct device *dev,
 		if (!hba->auto_bkops_enabled)
 			err = -EAGAIN;
 	}
+
 	/* flush wb buffer */
 	if (hba->dev_info.wspecversion >= 0x0310) {
 		enum query_opcode opcode = (value == MANUAL_GC_ON) ?
@@ -98,8 +111,9 @@ static ssize_t manual_gc_store(struct device *dev,
 		ufshcd_query_flag_retry(hba, opcode,
 				QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN, index, NULL);
 	}
+
 	if (err || hrtimer_active(&ufs->manual_gc.hrtimer)) {
-		pm_runtime_put_sync(hba->dev);
+		ufshcd_rpm_put_sync(hba);
 		return count;
 	} else {
 		/* pm_runtime_put_sync in delay_ms */
@@ -117,19 +131,23 @@ static ssize_t manual_gc_status_show(struct device *dev,
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
 	u32 status = MANUAL_GC_OFF;
+
 	if (ufs->manual_gc.state == MANUAL_GC_DISABLE)
 		return scnprintf(buf, PAGE_SIZE, "%s", "disabled\n");
+
 	if (ufs->manual_gc.hagc_support) {
 		int err;
+
 		if (!ufshcd_eh_in_progress(hba)) {
-			pm_runtime_get_sync(hba->dev);
+			ufshcd_rpm_get_sync(hba);
 			err = ufshcd_query_attr_retry(hba,
 				UPIU_QUERY_OPCODE_READ_ATTR,
 				QUERY_ATTR_IDN_MANUAL_GC_STATUS, 0, 0, &status);
-			pm_runtime_put_sync(hba->dev);
+			ufshcd_rpm_put_sync(hba);
 			ufs->manual_gc.hagc_support = err ? false: true;
 		}
 	}
+
 	if (!ufs->manual_gc.hagc_support)
 		return scnprintf(buf, PAGE_SIZE, "%s", "bkops\n");
 	return scnprintf(buf, PAGE_SIZE, "%u", status);
@@ -149,8 +167,10 @@ static ssize_t manual_gc_hold_store(struct device *dev,
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
 	unsigned long value;
+
 	if (kstrtoul(buf, 0, &value))
 		return -EINVAL;
+
 	ufs->manual_gc.delay_ms = value;
 	return count;
 }
@@ -159,6 +179,7 @@ static enum hrtimer_restart pixel_mgc_hrtimer_handler(struct hrtimer *timer)
 {
 	struct ufs_qcom_host *ufs = container_of(timer, struct ufs_qcom_host,
 					manual_gc.hrtimer);
+
 	queue_work(ufs->manual_gc.mgc_workq, &ufs->manual_gc.hibern8_work);
 	return HRTIMER_NORESTART;
 }
@@ -167,7 +188,7 @@ static void pixel_mgc_hibern8_work(struct work_struct *work)
 {
 	struct ufs_qcom_host *ufs = container_of(work, struct ufs_qcom_host,
 					manual_gc.hibern8_work);
-	pm_runtime_put_sync(ufs->hba->dev);
+	ufshcd_rpm_put_sync(ufs->hba);
 	/* bkops will be disabled when power down */
 }
 
@@ -176,6 +197,7 @@ void pixel_init_manual_gc(struct ufs_hba *hba)
 	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
 	struct ufs_manual_gc *mgc = &ufs->manual_gc;
 	char wq_name[sizeof("ufs_mgc_hibern8_work")];
+
 	mgc->state = MANUAL_GC_ENABLE;
 	mgc->hagc_support = true;
 	mgc->delay_ms = UFSHCD_MANUAL_GC_HOLD_HIBERN8;
@@ -226,6 +248,7 @@ static void pixel_ufs_update_sysfs_work(struct work_struct *work)
 						update_sysfs_work);
 	struct ufs_hba *hba = ufs->hba;
 	int err;
+
 	err = sysfs_create_groups(&hba->dev->kobj,
 				pixel_sysfs_hid_groups);
 	if (err)
@@ -243,10 +266,12 @@ int pixel_init(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
 	int ret;
+
 	ret = register_trace_android_vh_ufs_update_sysfs(
 				pixel_ufs_update_sysfs, NULL);
 	if (ret)
 		return ret;
+
 	INIT_WORK(&ufs->update_sysfs_work, pixel_ufs_update_sysfs_work);
 	return 0;
 }
