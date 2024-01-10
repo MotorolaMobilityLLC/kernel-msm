@@ -656,10 +656,16 @@ static void md_dump_task_info(struct task_struct *task, char *status,
 
 	se = &task->se;
 	if (task == curr) {
+#ifdef CONFIG_ARM64
 		seq_buf_printf(md_runq_seq_buf,
 			       "[status: curr] pid: %d comm: %s preempt: %#x\n",
 			       task_pid_nr(task), task->comm,
 			       task->thread_info.preempt_count);
+#else
+		seq_buf_printf(md_runq_seq_buf,
+				"[status: curr] pid: %d comm: %s\n",
+				task_pid_nr(task), task->comm);
+#endif
 		return;
 	}
 

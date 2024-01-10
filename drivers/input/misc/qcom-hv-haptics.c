@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/atomic.h>
@@ -3035,6 +3035,11 @@ static ssize_t pattern_s_dbgfs_write(struct file *fp,
 			goto exit;
 		}
 
+		if (i >= ARRAY_SIZE(tmp)) {
+			pr_err("too many patterns in input string\n");
+			rc = -EINVAL;
+			goto exit;
+		}
 		tmp[i++] = val;
 	}
 

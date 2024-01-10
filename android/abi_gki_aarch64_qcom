@@ -2062,6 +2062,7 @@
   rpmsg_set_signals
   rpmsg_trysend
   rpmsg_unregister_device
+  rpmsg_register_device_override
   rtc_add_group
   rtc_class_close
   rtc_class_open
@@ -2254,6 +2255,7 @@
   snd_card_free_when_closed
   snd_card_new
   snd_card_register
+  snd_compr_use_pause_in_draining
   snd_ctl_add
   snd_ctl_boolean_mono_info
   snd_ctl_enum_info
