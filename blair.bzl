@@ -150,7 +150,6 @@ def define_blair():
         "drivers/soc/qcom/hwkm_v1.ko",
         "drivers/soc/qcom/mdt_loader.ko",
         "drivers/soc/qcom/mem-hooks.ko",
-        "drivers/soc/qcom/mem-offline.ko",
         "drivers/soc/qcom/mem_buf/mem_buf.ko",
         "drivers/soc/qcom/mem_buf/mem_buf_dev.ko",
         "drivers/soc/qcom/memory_dump_v2.ko",
