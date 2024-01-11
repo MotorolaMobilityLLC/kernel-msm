@@ -1,0 +1,31 @@
+name: Request of Open Source Software
+title: "Kernel Source for <build_id>"
+description: This is a template for requesting OSS for Motorola devices
+labels: [request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        💬 **Instructions:**
+        - Only one request per issue. If you have more than one request, please open another issue.
+        - Write the Build ID in the title above and in the text box below.
+        - Do not change the Build ID after you open the request. If you are not interested in this Build ID anymore, please close the issue.
+
+  - type: textarea
+    attributes:
+      label: Build ID
+      description: Provide the device's Build ID.
+      placeholder: |
+        💡 You find it in the System Config.
+        It is a group of letters and numbers that look like these:
+        RRA31.Q3-19-19, S1RD32.55-33, S0RCS32.41-10-9-2, T2TZ33.28-16-19.
+    validations:
+      required: true
+
+
+  - type: textarea
+    attributes:
+      label: Additional
+      description: Anything else you'd like to add?
+      placeholder: |
+        How will you use this code? We'd love to know!
