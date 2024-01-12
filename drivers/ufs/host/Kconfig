@@ -195,3 +195,9 @@ config UFSWHINT
 	depends on SCSI_UFSHCD && UFSFEATURE
 	help
 	  Enable Write Hint Detection
+
+config MICRON_UFSHID
+	tristate "micron Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
+	help
+	  Enable Micron HID feature
