@@ -63,8 +63,14 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf)
 {
 	u8 desc_buf[UFSF_QUERY_DESC_DEVICE_MAX_SIZE];
 	int ret;
+	int id_desc = -1;
 
-	ret = ufsf_read_desc(ufsf->hba, UFSF_QUERY_DESC_IDN_VENDOR_DEVICE, 0,
+	if (ufsf->hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG)
+		id_desc = UFSF_QUERY_DESC_IDN_VENDOR_DEVICE;
+	else
+		id_desc = QUERY_DESC_IDN_DEVICE;
+
+	ret = ufsf_read_desc(ufsf->hba, id_desc, 0,
 			     desc_buf, UFSF_QUERY_DESC_DEVICE_MAX_SIZE);
 	if (ret)
 		return ret;

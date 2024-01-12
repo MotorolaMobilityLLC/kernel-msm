@@ -129,6 +129,23 @@ enum {
 	HID_LEV_UNKNOWN	= 4,
 };
 
+#if defined(CONFIG_MICRON_UFSHID)
+enum {
+	HID_NOT_REQUIRED	= 0,
+	HID_REQUIRED		= 1,
+};
+enum {
+	HID_LEV_GREEN_MICRON  = 0,
+	HID_LEV_RED_MICRON   = 1,
+};
+
+enum {
+	HID_PROG_IDLE		= 0,
+	HID_PROG_ONGOING	= 1,
+	HID_PROG_STOP	= 2, //stopped by Host
+	HID_PROG_COMPLETE	= 3,
+};
+#endif
 struct ufshid_blk_desc {
 	__be32 lba;
 	__be32 blk_cnt;
