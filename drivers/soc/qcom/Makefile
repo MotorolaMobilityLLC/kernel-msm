@@ -9,6 +9,7 @@ obj-$(CONFIG_QCOM_GSBI)	+=	qcom_gsbi.o
 obj-$(CONFIG_QCOM_MDT_LOADER)	+= mdt_loader.o
 obj-$(CONFIG_QCOM_OCMEM)	+= ocmem.o
 obj-$(CONFIG_MSM_PIL)   +=      peripheral-loader.o
+obj-$(CONFIG_MSM_POWER_STATE) += power_state.o
 obj-$(CONFIG_MSM_SUBSYSTEM_RESTART) += subsystem_restart.o
 obj-$(CONFIG_MSM_CDSP_LOADER) += qdsp6v2/
 obj-$(CONFIG_QCOM_RAMDUMP) += qcom_ramdump.o

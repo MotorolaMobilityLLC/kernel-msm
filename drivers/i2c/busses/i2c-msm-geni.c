@@ -649,6 +649,12 @@ static void geni_i2c_irq_handle_watermark(struct geni_i2c_dev *gi2c, u32 m_stat)
 	int i, j;
 	u32 rx_st = readl_relaxed(gi2c->base + SE_GENI_RX_FIFO_STATUS);
 
+	if (!cur) {
+		I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev, "%s: Spurious irq\n", __func__);
+		geni_i2c_err(gi2c, GENI_SPURIOUS_IRQ);
+		return;
+	}
+
 	if (((m_stat & M_RX_FIFO_WATERMARK_EN) ||
 	     (m_stat & M_RX_FIFO_LAST_EN)) && (cur->flags & I2C_M_RD)) {
 		u32 rxcnt = rx_st & RX_FIFO_WC_MSK;
@@ -707,7 +713,7 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 		    "%s: m_irq_status:0x%x\n", __func__, m_stat);
 
 	if (!cur) {
-		I2C_LOG_ERR(gi2c->ipcl, false, gi2c->dev, "Spurious irq\n");
+		I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev, "Spurious irq\n");
 		geni_i2c_err(gi2c, GENI_SPURIOUS_IRQ);
 		gi2c->cmd_done = true;
 		is_clear_watermark = true;
@@ -722,10 +728,13 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 		(m_stat & M_GP_IRQ_3_EN) ||
 		(m_stat & M_GP_IRQ_4_EN)) {
 		if (m_stat & M_GP_IRQ_1_EN) {
-			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH))
-				geni_i2c_err(gi2c, I2C_DATA_NACK);
-			else
+			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH)) {
+				/* only process for write operation. */
+				if (!(gi2c->cur->flags & I2C_M_RD))
+					geni_i2c_err(gi2c, I2C_DATA_NACK);
+			} else {
 				geni_i2c_err(gi2c, I2C_ADDR_NACK);
+			}
 		}
 		if (m_stat & M_GP_IRQ_3_EN)
 			geni_i2c_err(gi2c, I2C_BUS_PROTO);
@@ -805,10 +814,13 @@ static void gi2c_ev_cb(struct dma_chan *ch, struct msm_gpi_cb const *cb_str,
 		break;
 	case MSM_GPI_QUP_NOTIFY:
 		if (m_stat & M_GP_IRQ_1_EN) {
-			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH))
-				geni_i2c_err(gi2c, I2C_DATA_NACK);
-			else
+			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH)) {
+				/* only process for write operation. */
+				if (!(gi2c->cur->flags & I2C_M_RD))
+					geni_i2c_err(gi2c, I2C_DATA_NACK);
+			} else {
 				geni_i2c_err(gi2c, I2C_ADDR_NACK);
+			}
 		}
 		if (m_stat & M_GP_IRQ_3_EN)
 			geni_i2c_err(gi2c, I2C_BUS_PROTO);
@@ -839,10 +851,13 @@ static void gi2c_gsi_cb_err(struct msm_gpi_dma_async_tx_cb_param *cb,
 			    "%s TCE Unexpected Err, stat:0x%x\n",
 				xfer, cb->status);
 		if (cb->status & (BIT(GP_IRQ1) << 5)) {
-			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH))
-				geni_i2c_err(gi2c, I2C_DATA_NACK);
-			else
+			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH)) {
+				/* only process for write operation. */
+				if (!(gi2c->cur->flags & I2C_M_RD))
+					geni_i2c_err(gi2c, I2C_DATA_NACK);
+			} else {
 				geni_i2c_err(gi2c, I2C_ADDR_NACK);
+			}
 		}
 		if (cb->status & (BIT(GP_IRQ3) << 5))
 			geni_i2c_err(gi2c, I2C_BUS_PROTO);
@@ -2214,6 +2229,15 @@ static int geni_i2c_resume_early(struct device *device)
 	return 0;
 }
 
+static int geni_i2c_hib_resume_noirq(struct device *device)
+{
+	struct geni_i2c_dev *gi2c = dev_get_drvdata(device);
+
+	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev, "%s\n", __func__);
+	gi2c->se_mode = UNINITIALIZED;
+	return 0;
+}
+
 static int geni_i2c_gpi_pause_resume(struct geni_i2c_dev *gi2c, bool is_suspend)
 {
 	int tx_ret = 0;
@@ -2412,6 +2436,9 @@ static const struct dev_pm_ops geni_i2c_pm_ops = {
 	.resume_early		= geni_i2c_resume_early,
 	.runtime_suspend	= geni_i2c_runtime_suspend,
 	.runtime_resume		= geni_i2c_runtime_resume,
+	.freeze                 = geni_i2c_suspend_late,
+	.restore                = geni_i2c_hib_resume_noirq,
+	.thaw			= geni_i2c_hib_resume_noirq,
 };
 
 static const struct of_device_id geni_i2c_dt_match[] = {
