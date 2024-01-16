@@ -1128,7 +1128,7 @@ static void walt_binder_low_latency_set(void *unused, struct task_struct *task,
 
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	// Moto huangzq2: set ux type on binder
-	moto_binder_ux_type_set(task, false, false);
+	moto_binder_ux_type_set(task, true, false);
 #endif
 }
 
@@ -1144,7 +1144,7 @@ static void walt_binder_low_latency_clear(void *unused, struct binder_transactio
 
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	// Moto huangzq2: set ux type on binder
-	moto_binder_ux_type_set(current, false, true);
+	moto_binder_ux_type_set(current, true, true);
 #endif
 }
 
