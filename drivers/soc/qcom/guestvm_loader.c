@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/completion.h>
@@ -24,6 +25,7 @@
 
 #include <soc/qcom/subsystem_notif.h>
 #include <soc/qcom/subsystem_restart.h>
+#include <soc/qcom/secure_buffer.h>
 
 #define MAX_LEN 256
 #define DEFAULT_UNISO_TIMEOUT_MS 12000
@@ -41,6 +43,13 @@ const static struct {
 
 static struct kobj_type guestvm_kobj_type = {
 	.sysfs_ops = &kobj_sysfs_ops,
+};
+
+struct gh_sec_ext_region {
+	phys_addr_t ext_phys;
+	ssize_t ext_size;
+	u32 ext_label;
+	gh_memparcel_handle_t ext_mem_handle;
 };
 
 struct guestvm_loader_private {
@@ -63,6 +72,8 @@ struct guestvm_loader_private {
 	cpumask_t guestvm_isolated_cpus;
 	cpumask_t guestvm_reserve_cpus;
 	u32 guestvm_unisolate_timeout;
+	struct gh_sec_ext_region ext_region;
+	bool ext_region_supported;
 };
 
 static void guestvm_isolate_cpu(struct guestvm_loader_private *priv)
@@ -132,6 +143,100 @@ static inline enum gh_vm_names get_gh_vm_name(const char *str)
 	return GH_VM_MAX;
 }
 
+static int vm_provide_ext_region(struct guestvm_loader_private *priv)
+{
+	gh_vmid_t self_vmid;
+	u32 src_vmlist[1];
+	int src_perms[1] = { PERM_READ | PERM_WRITE | PERM_EXEC };
+	int dst_vmlist[1] = { priv->vmid };
+	int dst_perms[1] = { PERM_READ };
+	struct gh_acl_desc *acl;
+	struct gh_sgl_desc *sgl;
+	int ret;
+
+	ret = gh_rm_get_vmid(GH_PRIMARY_VM, &self_vmid);
+	if (ret)
+		return ret;
+	src_vmlist[0] = self_vmid;
+
+	acl = kzalloc(offsetof(struct gh_acl_desc, acl_entries[1]), GFP_KERNEL);
+	if (!acl) {
+		ret = -ENOMEM;
+		return ret;
+	}
+	sgl = kzalloc(offsetof(struct gh_sgl_desc, sgl_entries[1]), GFP_KERNEL);
+	if (!sgl) {
+		ret = -ENOMEM;
+		goto err_sgl;
+	}
+	ret = hyp_assign_phys(priv->ext_region.ext_phys,
+			      priv->ext_region.ext_size, src_vmlist, 1,
+			      dst_vmlist, dst_perms, 1);
+
+	if (ret) {
+		dev_err(priv->dev,
+			"%s: hyp_assign_phys failed for addr=%llx size=%lld err=%d\n",
+			priv->ext_region.ext_phys, priv->ext_region.ext_size,
+			ret);
+		goto err_hyp_assign;
+	}
+
+	acl->n_acl_entries = 1;
+	acl->acl_entries[0].vmid = (u16)priv->vmid;
+	acl->acl_entries[0].perms = GH_RM_ACL_R;
+
+	sgl->n_sgl_entries = 1;
+	sgl->sgl_entries[0].ipa_base = priv->ext_region.ext_phys;
+	sgl->sgl_entries[0].size = priv->ext_region.ext_size;
+
+	ret = gh_rm_mem_lend(GH_RM_MEM_TYPE_NORMAL, 0,
+			     priv->ext_region.ext_label, acl, sgl, NULL,
+			     &priv->ext_region.ext_mem_handle);
+	if (ret) {
+		dev_err(priv->dev, "%s: Sharing memory failed %d\n", ret);
+		/* Attempt to assign resource back to HLOS */
+		hyp_assign_phys(priv->ext_region.ext_phys,
+				priv->ext_region.ext_size, dst_vmlist, 1,
+				src_vmlist, src_perms, 1);
+	}
+
+err_hyp_assign:
+	kfree(sgl);
+err_sgl:
+	kfree(acl);
+
+	return ret;
+}
+
+static void vm_reclaim_ext_region(struct guestvm_loader_private *priv)
+{
+	gh_vmid_t self_vmid;
+
+	int dst_perms[1] = { PERM_READ | PERM_WRITE | PERM_EXEC };
+	int src_vmlist[1];
+	u32 dst_vmlist[1];
+	int ret;
+
+	ret = gh_rm_get_vmid(GH_PRIMARY_VM, &self_vmid);
+	if (ret) {
+		dev_err(priv->dev, "Failed to get VMID\n");
+		return;
+	}
+
+	src_vmlist[0] = priv->vmid;
+	dst_vmlist[0] = self_vmid;
+
+	ret = gh_rm_mem_reclaim(priv->ext_region.ext_mem_handle, 0);
+	if (ret)
+		dev_err(priv->dev, "ext_region reclaim failed\n");
+
+	ret = hyp_assign_phys(priv->ext_region.ext_phys,
+			      priv->ext_region.ext_size, src_vmlist, 1,
+			      dst_vmlist, dst_perms, 1);
+	if (ret)
+		dev_err(priv->dev, "ext_region assign failed\n");
+}
+
 static int guestvm_loader_nb_handler(struct notifier_block *this,
 					unsigned long cmd, void *data)
 {
@@ -186,6 +291,10 @@ static int guestvm_loader_nb_handler(struct notifier_block *this,
 					vm_status_payload->vmid);
 		}
 		break;
+	case GH_RM_VM_STATUS_RESET:
+		if (priv->ext_region_supported)
+			vm_reclaim_ext_region(priv);
+		break;
 	default:
 		dev_err(priv->dev, "Unknown notification receieved for vmid = %d vm_status = %d\n",
 				vm_status_payload->vmid, vm_status);
@@ -227,6 +336,28 @@ static int vm_load(struct guestvm_loader_private *priv)
 	int ret;
 	struct device *dev = priv->dev;
 
+	node = of_parse_phandle(dev->of_node, "ext-region", 0);
+	if (node) {
+		priv->ext_region_supported = true;
+		ret = of_address_to_resource(node, 0, &res);
+		if (ret) {
+			dev_err(dev,
+				"error %d getting \"ext-region\" resource\n",
+				ret);
+			return -EINVAL;
+		}
+
+		priv->ext_region.ext_phys = res.start;
+		priv->ext_region.ext_size = (size_t)resource_size(&res);
+		ret = of_property_read_u32(dev->of_node, "ext-label",
+					   &priv->ext_region.ext_label);
+		if (ret) {
+			dev_err(dev, "DT error getting \"ext-label\": %d\n",
+				ret);
+			return -EINVAL;
+		}
+	}
+
 	node = of_parse_phandle(dev->of_node, "memory-region", 0);
 	if (!node) {
 		dev_err(dev, "DT error getting \"memory-region\" property\n");
@@ -267,6 +398,16 @@ static int vm_load(struct guestvm_loader_private *priv)
 	if (ret) {
 		dev_err(dev, "error %d loading \"%s\"\n", ret, fw_name);
 		goto mem_unmap;
+	}
+
+	if (priv->ext_region_supported) {
+		ret = vm_provide_ext_region(priv);
+		if (ret) {
+			dev_err(priv->dev,
+				"Failed to provide memory for ext-region to vm: %s, %d\n",
+				priv->vm_name, ret);
+			goto mem_unmap;
+		}
 	}
 
 	ret = qcom_scm_pas_auth_and_reset(priv->pas_id);
