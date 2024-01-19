@@ -38,4 +38,12 @@ config SCHED_CONSERVATIVE_BOOST_LPM_BIAS
 	  modes on a cpu if conservative boost is active. The cpu
 	  will not enter low power mode for a hysteresis time period,
 	  which can be configured from userspace.
+
+config SCHED_MOTO_UNFAIR
+	tristate "Enable moto unfair scheduler"
+	depends on SCHED_WALT
+	default n
+	help
+	  This feature will allow the scheduler to maintain more detailed
+	  mvp scheduling.
 endmenu
