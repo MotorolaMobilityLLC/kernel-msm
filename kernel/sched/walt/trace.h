@@ -1354,7 +1354,7 @@ DEFINE_EVENT(walt_cfs_mvp_task_template, walt_cfs_mvp_pick_next,
 	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
 	     TP_ARGS(p, wts, limit));
 
-
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 // Moto wangwang: add more trace for debugging.
 DECLARE_EVENT_CLASS(walt_cfs_mvp_task_template2,
 
@@ -1404,6 +1404,17 @@ DEFINE_EVENT(walt_cfs_mvp_task_template2, walt_cfs_mvp_wakeup_nopreempt,
 DEFINE_EVENT(walt_cfs_mvp_task_template2, walt_cfs_mvp_wakeup_preempt,
 	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit, struct task_struct *p2, struct walt_task_struct *wts2),
 	     TP_ARGS(p, wts, limit, p2, wts2));
+#else
+/* called upon when MVP (current) is not preempted by waking task */
+DEFINE_EVENT(walt_cfs_mvp_task_template, walt_cfs_mvp_wakeup_nopreempt,
+	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
+	     TP_ARGS(p, wts, limit));
+
+/* called upon when MVP (waking task) preempts the current */
+DEFINE_EVENT(walt_cfs_mvp_task_template, walt_cfs_mvp_wakeup_preempt,
+	     TP_PROTO(struct task_struct *p, struct walt_task_struct *wts, unsigned int limit),
+	     TP_ARGS(p, wts, limit));
+#endif
 
 #define SPAN_SIZE	(NR_CPUS/4)
 

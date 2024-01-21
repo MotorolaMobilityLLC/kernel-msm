@@ -110,7 +110,9 @@ struct walt_task_struct {
 	u64				active_time;
 	u64				last_win_size;
 	int				boost;
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	u16				ux_type; // Moto huangzq2: add ux flag for moto_sched
+#endif
 	bool				wake_up_idle;
 	bool				misfit;
 	bool				rtg_high_prio;
@@ -185,6 +187,7 @@ static inline void set_wake_up_idle(bool wake_up_idle)
 extern int sched_lpm_disallowed_time(int cpu, u64 *timeout);
 extern int set_task_boost(int boost, u64 period);
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 // Moto huangzq2: export api for moto_sched
 extern int set_moto_sched_enabled(int enable);
 extern int get_moto_sched_enabled(void);
@@ -228,6 +231,7 @@ static inline void moto_binder_ux_type_set(struct task_struct *task, bool has_cl
 	if (moto_sched_ops != NULL && moto_sched_ops->binder_ux_type_set != NULL)
 		return moto_sched_ops->binder_ux_type_set(task, has_clear, clear);
 }
+#endif
 
 struct notifier_block;
 extern void core_ctl_notifier_register(struct notifier_block *n);
