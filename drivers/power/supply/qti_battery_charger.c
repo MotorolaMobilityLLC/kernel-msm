@@ -970,7 +970,7 @@ static int wls_psy_get_prop(struct power_supply *psy,
 	if (rc < 0)
 		return rc;
 #else
-	if (rc == -ETIMEDOUT) {
+	if (rc == -ETIMEDOUT || rc == -ECONNRESET) {
 		pr_err("read prop:%d timeout, use old prop value\n", prop_id);
 		rc = 0;
 	} else if (rc < 0) {
@@ -1110,7 +1110,7 @@ static int usb_psy_get_prop(struct power_supply *psy,
 	if (rc < 0)
 		return rc;
 #else
-	if (rc == -ETIMEDOUT) {
+	if (rc == -ETIMEDOUT || rc == -ECONNRESET) {
 		pr_err("read prop:%d timeout, use old prop value\n", prop_id);
 		rc = 0;
 	} else if (rc < 0) {
@@ -1405,8 +1405,8 @@ static int battery_psy_get_prop(struct power_supply *psy,
 	if (rc < 0)
 		return rc;
 #else
-	if (rc == -ETIMEDOUT) {
-		pr_err("read prop:%d timeout, use old prop value\n", prop_id);
+	if (rc == -ETIMEDOUT || rc == -ECONNRESET) {
+		pr_err("read prop:%d timeout or connection reset, use old prop value\n", prop_id);
 		rc = 0;
 	} else if (rc < 0) {
 		pr_err("read prop:%d error, rc = %d", prop_id, rc);
@@ -1927,7 +1927,7 @@ static ssize_t wireless_fw_update_store(struct class *c,
 
 	do{
 		rc = wireless_fw_update(bcdev, false);
-		if (rc != -ETIMEDOUT)
+		if (rc != -ETIMEDOUT && rc != -ECONNRESET)
 			break;
 		retry--;
 	}while(retry);
