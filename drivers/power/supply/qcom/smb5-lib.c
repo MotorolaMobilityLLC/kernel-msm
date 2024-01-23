@@ -873,6 +873,8 @@ int smblib_set_aicl_cont_threshold(struct smb_chg_param *param,
 /* MMI CP channels */
 static const char * const smblib_mmi_cp_ext_iio_chan[] = {
 	[CP_INPUT_VOLTAGE_NOW] = "cp_input_voltage_now",
+	[CP_OTG_ENABLE] = "cp_otg_enable",
+	[CP_CHIP_ID] = "cp_chip_id",
 };
 
 /* CP channels */
@@ -1999,6 +2001,33 @@ int smblib_vconn_regulator_is_enabled(struct regulator_dev *rdev)
 /*****************
  * OTG REGULATOR *
  *****************/
+#define NU2115_CHIP_ID 0x90
+static int mmi_set_pump_otg_en(struct smb_charger *chg, bool en_otg)
+{
+	int rc = 0;
+
+	if (!is_mmi_cp_available(chg))
+		return rc;
+
+	if (!chg->cp_read_id_flag) {
+		rc = smblib_read_iio_prop(chg, MMI_CP, CP_CHIP_ID, &chg->cp_chip_id);
+		if (rc < 0)
+			return rc;
+
+		chg->cp_read_id_flag = true;
+	}
+
+	if (chg->cp_chip_id != NU2115_CHIP_ID)
+		return rc;
+
+	rc = smblib_write_iio_prop(chg, MMI_CP, CP_OTG_ENABLE, en_otg);
+	if (!rc)
+		return rc;
+	else {
+		smblib_err(chg, "Couldn't write cp otg en rc=%d\n", rc);
+		return 0;
+	}
+}
 
 int smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 {
@@ -2012,6 +2041,8 @@ int smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 		smblib_err(chg, "Couldn't enable OTG rc=%d\n", rc);
 		return rc;
 	}
+
+	mmi_set_pump_otg_en(chg, true);
 
 	return 0;
 }
@@ -2028,6 +2059,8 @@ int smblib_vbus_regulator_disable(struct regulator_dev *rdev)
 		smblib_err(chg, "Couldn't disable OTG regulator rc=%d\n", rc);
 		return rc;
 	}
+
+	mmi_set_pump_otg_en(chg, false);
 
 	return 0;
 }
@@ -8690,6 +8723,7 @@ int smblib_init(struct smb_charger *chg)
 	INIT_DELAYED_WORK(&chg->role_reversal_check,
 					smblib_typec_role_check_work);
 
+
 	if (chg->wa_flags & CHG_TERMINATION_WA) {
 		INIT_WORK(&chg->chg_termination_work,
 					smblib_chg_termination_work);
@@ -8735,6 +8769,8 @@ int smblib_init(struct smb_charger *chg)
 	chg->typec_irq_en = true;
 	chg->cp_topo = -EINVAL;
 	chg->dr_mode = TYPEC_PORT_DRP;
+	chg->cp_read_id_flag = false;
+	chg->cp_chip_id = 0;
 
 	switch (chg->mode) {
 	case PARALLEL_MASTER:

@@ -644,6 +644,10 @@ struct smb_charger {
 	bool			mmi_qc3p_support;
 	bool			mmi_timer_trig_flag;
 	bool			mmi_qc3p_rerun_done;
+
+	/* pump charger chip id*/
+	bool			cp_read_id_flag;
+	int			cp_chip_id;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);

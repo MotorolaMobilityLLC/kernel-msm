@@ -43,6 +43,8 @@ enum qg_chg_iio_channels {
 
 enum mmi_cp_iio_channels {
 	CP_INPUT_VOLTAGE_NOW,
+	CP_OTG_ENABLE,
+	CP_CHIP_ID,
 };
 
 enum cp_iio_channels {
