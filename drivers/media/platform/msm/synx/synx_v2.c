@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/atomic.h>
@@ -2575,6 +2575,11 @@ static int __init synx_init(void)
 	}
 
 	synx_dev->class = class_create(THIS_MODULE, SYNX_DEVICE_NAME);
+
+	if (IS_ERR(synx_dev->class)) {
+		rc = PTR_ERR(synx_dev->class);
+		goto err_class_create;
+	}
 	device_create(synx_dev->class, NULL, synx_dev->dev,
 		NULL, SYNX_DEVICE_NAME);
 
@@ -2625,6 +2630,8 @@ err:
 fail:
 	device_destroy(synx_dev->class, synx_dev->dev);
 	class_destroy(synx_dev->class);
+err_class_create:
+	cdev_del(&synx_dev->cdev);
 reg_fail:
 	unregister_chrdev_region(synx_dev->dev, 1);
 alloc_fail:
