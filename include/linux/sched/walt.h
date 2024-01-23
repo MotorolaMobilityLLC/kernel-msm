@@ -198,6 +198,7 @@ struct msched_ops {
 	void (*binder_inherit_ux_type)(struct task_struct *task);
 	void (*binder_clear_inherited_ux_type)(struct task_struct *task);
 	void (*binder_ux_type_set)(struct task_struct *task, bool has_clear, bool clear);
+	void (*queue_ux_task)(struct rq *rq, struct task_struct *task, int enqueue);
 };
 
 extern struct msched_ops *moto_sched_ops;
@@ -230,6 +231,11 @@ static inline void moto_binder_clear_inherited_ux_type(struct task_struct *task)
 static inline void moto_binder_ux_type_set(struct task_struct *task, bool has_clear, bool clear) {
 	if (moto_sched_ops != NULL && moto_sched_ops->binder_ux_type_set != NULL)
 		return moto_sched_ops->binder_ux_type_set(task, has_clear, clear);
+}
+
+static inline void moto_queue_ux_task(struct rq *rq, struct task_struct *task, int enqueue) {
+	if (moto_sched_ops != NULL && moto_sched_ops->queue_ux_task != NULL)
+		return moto_sched_ops->queue_ux_task(rq, task, enqueue);
 }
 #endif
 
