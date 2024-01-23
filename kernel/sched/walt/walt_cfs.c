@@ -1414,6 +1414,10 @@ void walt_cfs_enqueue_task(struct rq *rq, struct task_struct *p)
 	if (!wts->total_exec) /* queue after sleep */
 		wts->sum_exec_snapshot = p->se.sum_exec_runtime;
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	// Moto chentao8: enqueue task
+	moto_queue_ux_task(rq, p, 1);
+#endif
 }
 
 void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
@@ -1436,6 +1440,11 @@ void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
 	 */
 	if (p->state != TASK_RUNNING)
 		wts->total_exec = 0;
+
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	// Moto chentao8: dequeue task
+	moto_queue_ux_task(rq, p, 0);
+#endif
 }
 
 void walt_cfs_tick(struct rq *rq)
