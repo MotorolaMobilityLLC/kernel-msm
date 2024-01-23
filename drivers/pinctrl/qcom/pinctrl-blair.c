@@ -1609,9 +1609,10 @@ static const struct msm_pingroup blair_groups[] = {
 /*
 48 for audioPA
 17 for FPS
+45, 46, 56, 57 for NFC ESE
 */
 static const int blair_reserved_gpios[] = {
-	13, 14, 15, 16, 45, 46, 56, 57, -1
+	13, 14, 15, 16, -1
 };
 #else
 static const int blair_reserved_gpios[] = {
