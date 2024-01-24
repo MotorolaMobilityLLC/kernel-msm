@@ -42,6 +42,9 @@ static int gh_##name(struct gh_vm *vm, int vm_status)			 \
 
 gh_rm_call_and_set_status(vm_start);
 
+#define gh_wait_for_vm_status(vm, wait_status)				\
+	wait_event(vm->vm_status_wait, (vm->status.vm_status == wait_status))
+
 int gh_register_vm_notifier(struct notifier_block *nb)
 {
 	return srcu_notifier_chain_register(&gh_vm_notifier, nb);
@@ -109,20 +112,8 @@ static void gh_notif_vm_exited(struct gh_vm *vm,
 
 	vm->status.vm_status = GH_RM_VM_STATUS_EXITED;
 	gh_wakeup_all_vcpus(vm->vmid);
-	wake_up_interruptible(&vm->vm_status_wait);
+	wake_up(&vm->vm_status_wait);
 	mutex_unlock(&vm->vm_lock);
-}
-
-int gh_wait_for_vm_status(struct gh_vm *vm, int wait_status)
-{
-	int ret = 0;
-
-	ret = wait_event_interruptible(vm->vm_status_wait,
-			vm->status.vm_status == wait_status);
-	if (ret < 0)
-		pr_err("Wait for VM_STATUS %d interrupted\n", wait_status);
-
-	return ret;
 }
 
 static int gh_vm_rm_notifier_fn(struct notifier_block *nb,
@@ -166,12 +157,11 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 	case GH_RM_VM_STATUS_AUTH:
 		ret = ghd_rm_vm_reset(vmid);
 		if (!ret) {
-			ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_RESET);
-			if (ret < 0)
-				pr_err("wait for VM_STATUS_RESET interrupted %d\n", ret);
+			gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_RESET);
 		} else
 			pr_warn("Reset is unsuccessful for VM:%d\n", vmid);
 
+		gh_notify_clients(vm, GH_VM_EARLY_POWEROFF);
 		if (vm->is_secure_vm) {
 			ret = gh_secure_vm_loader_reclaim_fw(vm);
 			if (ret)
@@ -182,7 +172,6 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 		ret = gh_rm_vm_dealloc_vmid(vmid);
 		if (ret)
 			pr_warn("Failed to dealloc VMID: %d: %d\n", vmid, ret);
-		vm->vmid = 0;
 	}
 
 	vm->status.vm_status = GH_RM_VM_STATUS_NO_STATE;
@@ -211,9 +200,7 @@ static int gh_exit_vm(struct gh_vm *vm, u32 stop_reason, u8 stop_flags)
 	}
 	mutex_unlock(&vm->vm_lock);
 
-	ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
-	if (ret)
-		pr_err("VM:%d stop operation is interrupted\n", vmid);
+	gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
 
 	return ret;
 }
@@ -223,7 +210,12 @@ static int gh_stop_vm(struct gh_vm *vm)
 	gh_vmid_t vmid = vm->vmid;
 	int ret = -EINVAL;
 
-	ret = gh_exit_vm(vm, GH_VM_STOP_RESTART, 0);
+	if (vm->proxy_vm)
+		ret = gh_exit_vm(vm, GH_VM_STOP_RESTART,
+					GH_RM_VM_STOP_FLAG_FORCE_STOP);
+	else
+		ret = gh_exit_vm(vm, GH_VM_STOP_RESTART, 0);
+
 	if (ret && ret != -ENODEV)
 		goto err_vm_force_stop;
 
@@ -263,12 +255,12 @@ void gh_destroy_vm(struct gh_vm *vm)
 		vcpu_id++;
 	}
 
-	gh_notify_clients(vm, GH_VM_EARLY_POWEROFF);
 	gh_vm_cleanup(vm);
+	gh_notify_clients(vm, GH_VM_POWEROFF);
 
 	gh_uevent_notify_change(GH_EVENT_DESTROY_VM, vm);
-	gh_notify_clients(vm, GH_VM_POWEROFF);
 	memset(vm->fw_name, 0, GH_VM_FW_NAME_MAX);
+	vm->vmid = 0;
 
 clean_vm:
 	gh_rm_unregister_notifier(&vm->rm_nb);
@@ -356,19 +348,18 @@ start_vcpu_run:
 	 * proxy scheduling APIs
 	 */
 	if (gh_vm_supports_proxy_sched(vm->vmid)) {
+		vm->proxy_vm = true;
 		ret = gh_vcpu_run(vm->vmid, vcpu->vcpu_id,
 						0, 0, 0, &vcpu_run);
 		if (ret < 0) {
 			pr_err("Failed vcpu_run %d\n", ret);
 			return ret;
 		}
+	} else {
+		gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
+		ret = vm->exit_type;
 	}
 
-	ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
-	if (ret)
-		return ret;
-
-	ret = vm->exit_type;
 	return ret;
 
 err_powerup:
@@ -636,9 +627,7 @@ long gh_vm_configure(u16 auth_mech, u64 image_offset,
 		return ret;
 	}
 
-	ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_READY);
-		if (ret < 0)
-			pr_err("wait for VM_STATUS_RESET interrupted %d\n", ret);
+	gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_READY);
 
 	ret = gh_rm_populate_hyp_res(vm->vmid, fw_name);
 	if (ret < 0) {
