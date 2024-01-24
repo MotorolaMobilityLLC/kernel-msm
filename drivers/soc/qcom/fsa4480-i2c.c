@@ -11,6 +11,7 @@
 #include <linux/usb/ucsi_glink.h>
 #include <linux/soc/qcom/fsa4480-i2c.h>
 #include <linux/qti-regmap-debugfs.h>
+#include <linux/of.h>
 
 #define FSA4480_I2C_NAME	"fsa4480-driver"
 
@@ -332,7 +333,10 @@ static int fsa4480_probe(struct i2c_client *i2c,
 			 const struct i2c_device_id *id)
 {
 	struct fsa4480_priv *fsa_priv;
+	struct device_node *np = i2c->dev.of_node;
 	int rc = 0;
+	int ret = 0;
+	u32 add_fsa4480_reset_probe_value = 0;
 
 	fsa_priv = devm_kzalloc(&i2c->dev, sizeof(*fsa_priv),
 				GFP_KERNEL);
@@ -341,7 +345,20 @@ static int fsa4480_probe(struct i2c_client *i2c,
 
 	fsa_priv->dev = &i2c->dev;
 
+	ret = of_property_read_u32(np, "add-fsa4480-reset-probe", &add_fsa4480_reset_probe_value);
+        if (ret) {
+                dev_err(fsa_priv->dev, "%s get add fsa4480-reset-probe failed,ret = %d\n", __func__, ret);
+        }
+
+
 	fsa_priv->regmap = devm_regmap_init_i2c(i2c, &fsa4480_regmap_config);
+
+	dev_info(fsa_priv->dev, "%s add_fsa4480_reset_probe_value = %d\n", __func__, add_fsa4480_reset_probe_value);
+	if (add_fsa4480_reset_probe_value) {
+		regmap_write(fsa_priv->regmap, FSA4480_RESET, 0x01);
+		dev_info(fsa_priv->dev, "%s write FSA4480 RESET probe okay\n", __func__);
+	}
+
 	if (IS_ERR_OR_NULL(fsa_priv->regmap)) {
 		dev_err(fsa_priv->dev, "%s: Failed to initialize regmap: %d\n",
 			__func__, rc);
