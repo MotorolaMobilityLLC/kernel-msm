@@ -2381,10 +2381,13 @@
   uart_update_timeout
   uclamp_eff_value
   __udelay
+  ufshcd_complete_requests
   ufshcd_delay_us
   ufshcd_dme_get_attr
   ufshcd_dme_set_attr
   ufshcd_dump_regs
+  ufshcd_err_handling_prepare
+  ufshcd_err_handling_unprepare
   ufshcd_fixup_dev_quirks
   ufshcd_get_pwr_dev_param
   ufshcd_hba_enable
