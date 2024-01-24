@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/interrupt.h>
@@ -1216,6 +1216,7 @@ static int unshare_vm_buffers(struct virt_machine *vm, gh_vmid_t peer)
 			dma_free_coherent(vm->com_mem_dev, vm->shmem[i].size, vm->shmem[i].base,
 				phys_to_dma(vm->com_mem_dev, vm->shmem[i].r.start));
 	}
+
 	vm->hyp_assign_done = 0;
 	return 0;
 }
@@ -1404,7 +1405,7 @@ int gh_virtio_mmio_exit(gh_vmid_t vmid, const char *vm_name)
 	struct virt_machine *vm;
 	struct virtio_backend_device *vb_dev;
 	unsigned long flags;
-	int ret = -EINVAL;
+	int ret = -EINVAL, i;
 	u32 refcount;
 
 	vm = find_vm_by_name(vm_name);
@@ -1428,6 +1429,11 @@ int gh_virtio_mmio_exit(gh_vmid_t vmid, const char *vm_name)
 		if (refcount)
 			wait_event(vb_dev->notify_queue, !vb_dev->refcount);
 
+		for (i = 0; i < MAX_IO_CONTEXTS; ++i)
+			vb_dev->ioctx[i].fd = 0;
+		free_pages((unsigned long)vb_dev->config_data, 0);
+		vb_dev->config_data = NULL;
+		vb_dev->ack_driver_ok = 0;
 		free_irq(vb_dev->linux_irq, vb_dev);
 		iounmap(vb_dev->config_shared_buf);
 		vb_dev->config_shared_buf = NULL;

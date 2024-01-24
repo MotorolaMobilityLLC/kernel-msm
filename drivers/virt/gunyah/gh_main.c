@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -149,9 +149,6 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 		ret = gh_rm_unpopulate_hyp_res(vmid, vm->fw_name);
 		if (ret)
 			pr_warn("Failed to unpopulate hyp resources: %d\n", ret);
-		ret = gh_virtio_mmio_exit(vmid, vm->fw_name);
-		if (ret)
-			pr_warn("Failed to free virtio resources : %d\n", ret);
 		fallthrough;
 	case GH_RM_VM_STATUS_INIT:
 	case GH_RM_VM_STATUS_AUTH:
@@ -162,6 +159,10 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 			pr_warn("Reset is unsuccessful for VM:%d\n", vmid);
 
 		gh_notify_clients(vm, GH_VM_EARLY_POWEROFF);
+		ret = gh_virtio_mmio_exit(vmid, vm->fw_name);
+		if (ret)
+			pr_warn("Failed to free virtio resources : %d\n", ret);
+
 		if (vm->is_secure_vm) {
 			ret = gh_secure_vm_loader_reclaim_fw(vm);
 			if (ret)
