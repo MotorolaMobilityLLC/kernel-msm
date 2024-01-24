@@ -84,8 +84,8 @@ static int __init boot_log_dump_init(void)
 	size_t text_len;
 
 	ret = boot_log_init();
-	if (ret < 0)
-		return ret;
+	if(ret < 0)
+		return -ENODEV;
 
 	kmsg_dump_rewind(&iter);
 	dumped_line = iter.next_seq;
