@@ -960,9 +960,9 @@ TRACE_EVENT(walt_lb_cpu_util,
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 TRACE_EVENT(sched_cpu_util,
 
-	TP_PROTO(int cpu),
+	TP_PROTO(int cpu, struct cpumask *lowest_mask),
 
-	TP_ARGS(cpu),
+	TP_ARGS(cpu, lowest_mask),
 
 	TP_STRUCT__entry(
 		__field(unsigned int,	cpu)
@@ -980,6 +980,7 @@ TRACE_EVENT(sched_cpu_util,
 		__field(int,		high_irq_load)
 		__field(unsigned int,	nr_rtg_high_prio_tasks)
 		__field(unsigned int,	walt_mvp_taks)
+		__field(unsigned int,	lowest_mask)
 		__field(u64,	prs_gprs)
 	),
 
@@ -1000,6 +1001,10 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->high_irq_load		= sched_cpu_high_irqload(cpu);
 		__entry->nr_rtg_high_prio_tasks	= walt_nr_rtg_high_prio(cpu);
 		__entry->walt_mvp_taks = walt_mvp_taks(cpu);
+		if (!lowest_mask)
+			__entry->lowest_mask	= 0;
+		else
+			__entry->lowest_mask	= cpumask_bits(lowest_mask)[0];
 		__entry->prs_gprs	= wrq->prev_runnable_sum + wrq->grp_time.prev_runnable_sum;
 	),
 
