@@ -957,6 +957,61 @@ TRACE_EVENT(walt_lb_cpu_util,
 		__entry->cpu_util, __entry->capacity_orig)
 );
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+TRACE_EVENT(sched_cpu_util,
+
+	TP_PROTO(int cpu),
+
+	TP_ARGS(cpu),
+
+	TP_STRUCT__entry(
+		__field(unsigned int,	cpu)
+		__field(unsigned int,	nr_running)
+		__field(long,		cpu_util)
+		__field(long,		cpu_util_cum)
+		__field(unsigned long,	capacity_curr)
+		__field(unsigned long,	capacity)
+		__field(unsigned long,	capacity_orig)
+		__field(unsigned int,	idle_exit_latency)
+		__field(u64,		irqload)
+		__field(int,		online)
+		__field(int,		inactive)
+		__field(int,		reserved)
+		__field(int,		high_irq_load)
+		__field(unsigned int,	nr_rtg_high_prio_tasks)
+		__field(unsigned int,	walt_mvp_taks)
+		__field(u64,	prs_gprs)
+	),
+
+	TP_fast_assign(
+		struct walt_rq *wrq = (struct walt_rq *) cpu_rq(cpu)->android_vendor_data1;
+		__entry->cpu		= cpu;
+		__entry->nr_running	= cpu_rq(cpu)->nr_running;
+		__entry->cpu_util	= cpu_util(cpu);
+		__entry->cpu_util_cum	= cpu_util_cum(cpu);
+		__entry->capacity_curr	= capacity_curr_of(cpu);
+		__entry->capacity	= capacity_of(cpu);
+		__entry->capacity_orig	= capacity_orig_of(cpu);
+		__entry->idle_exit_latency	= walt_get_idle_exit_latency(cpu_rq(cpu));
+		__entry->irqload		= sched_irqload(cpu);
+		__entry->online			= cpu_online(cpu);
+		__entry->inactive		= !cpu_active(cpu);
+		__entry->reserved		= is_reserved(cpu);
+		__entry->high_irq_load		= sched_cpu_high_irqload(cpu);
+		__entry->nr_rtg_high_prio_tasks	= walt_nr_rtg_high_prio(cpu);
+		__entry->walt_mvp_taks = walt_mvp_taks(cpu);
+		__entry->prs_gprs	= wrq->prev_runnable_sum + wrq->grp_time.prev_runnable_sum;
+	),
+
+	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_util_cum=%ld capacity_curr=%lu capacity=%lu capacity_orig=%lu idle_exit_latency=%u irqload=%llu online=%u, inactive=%u, reserved=%u, high_irq_load=%u nr_rtg_hp=%u prs_gprs=%llu nr_mvp=%u",
+		__entry->cpu, __entry->nr_running, __entry->cpu_util,
+		__entry->cpu_util_cum, __entry->capacity_curr,
+		__entry->capacity, __entry->capacity_orig,
+		__entry->idle_exit_latency, __entry->irqload, __entry->online,
+		__entry->inactive, __entry->reserved, __entry->high_irq_load,
+		__entry->nr_rtg_high_prio_tasks, __entry->prs_gprs, __entry->walt_mvp_taks)
+);
+#else
 TRACE_EVENT(sched_cpu_util,
 
 	TP_PROTO(int cpu, struct cpumask *lowest_mask),
@@ -1018,6 +1073,7 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->nr_rtg_high_prio_tasks, __entry->prs_gprs,
 		__entry->lowest_mask, __entry->thermal_pressure)
 );
+#endif
 
 TRACE_EVENT(sched_compute_energy,
 
@@ -1188,6 +1244,69 @@ TRACE_EVENT(sched_task_util,
 /*
  * Tracepoint for find_best_target
  */
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+TRACE_EVENT(sched_find_best_target,
+
+	TP_PROTO(struct task_struct *tsk,
+		 unsigned long min_util, int start_cpu,
+		 unsigned long candidates,
+		 int most_spare_cap,
+		 int order_index, int end_index,
+		 int skip, bool running,
+		 int most_spare_rq_cpu, int least_mvp_cpu, int mvp_prio),
+
+	TP_ARGS(tsk, min_util, start_cpu, candidates,
+		most_spare_cap,
+		order_index, end_index, skip, running,
+		most_spare_rq_cpu, least_mvp_cpu, mvp_prio),
+
+	TP_STRUCT__entry(
+		__array(char,		comm, TASK_COMM_LEN)
+		__field(pid_t,		pid)
+		__field(unsigned long,	min_util)
+		__field(int,		start_cpu)
+		__field(unsigned long,	candidates)
+		__field(int,		most_spare_cap)
+		__field(int,		order_index)
+		__field(int,		end_index)
+		__field(int,		skip)
+		__field(bool,		running)
+		__field(int,		most_spare_rq_cpu)
+		__field(int,		least_mvp_cpu)
+		__field(int,		mvp_prio)
+		),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
+		__entry->pid		= tsk->pid;
+		__entry->min_util	= min_util;
+		__entry->start_cpu	= start_cpu;
+		__entry->candidates	= candidates;
+		__entry->most_spare_cap = most_spare_cap;
+		__entry->order_index	= order_index;
+		__entry->end_index	= end_index;
+		__entry->skip		= skip;
+		__entry->running	= running;
+		__entry->most_spare_rq_cpu	= most_spare_rq_cpu;
+		__entry->least_mvp_cpu	= least_mvp_cpu;
+		__entry->mvp_prio	= mvp_prio;
+		),
+
+	TP_printk("pid=%d comm=%s start_cpu=%d candidates=%#lx most_spare_cap=%d order_index=%d end_index=%d skip=%d running=%d min_util=%lu spare_rq_cpu=%d least_mvp_cpu=%d mvp_prio=%d",
+		  __entry->pid, __entry->comm,
+		  __entry->start_cpu,
+		  __entry->candidates,
+		  __entry->most_spare_cap,
+		  __entry->order_index,
+		  __entry->end_index,
+		  __entry->skip,
+		  __entry->running,
+		  __entry->min_util,
+		  __entry->most_spare_rq_cpu,
+		  __entry->least_mvp_cpu,
+		  __entry->mvp_prio)
+);
+#else
 TRACE_EVENT(sched_find_best_target,
 
 	TP_PROTO(struct task_struct *tsk,
@@ -1246,6 +1365,7 @@ TRACE_EVENT(sched_find_best_target,
 		  __entry->most_spare_rq_cpu,
 		  __entry->cpu_rq_runnable_cnt)
 );
+#endif
 
 TRACE_EVENT(sched_enq_deq_task,
 

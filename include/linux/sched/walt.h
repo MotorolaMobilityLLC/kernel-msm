@@ -194,10 +194,10 @@ extern int get_moto_sched_enabled(void);
 
 struct msched_ops {
 	int (*task_get_mvp_prio)(struct task_struct *p, bool with_inherit);
-	unsigned int (*task_get_mvp_limit)(int mvp_prio);
+	unsigned int (*task_get_mvp_limit)(struct task_struct *p, int mvp_prio);
 	void (*binder_inherit_ux_type)(struct task_struct *task);
 	void (*binder_clear_inherited_ux_type)(struct task_struct *task);
-	void (*binder_ux_type_set)(struct task_struct *task, bool has_clear, bool clear);
+	void (*binder_ux_type_set)(struct task_struct *task);
 	void (*queue_ux_task)(struct rq *rq, struct task_struct *task, int enqueue);
 };
 
@@ -211,9 +211,9 @@ static inline int moto_task_get_mvp_prio(struct task_struct *p, bool with_inheri
 	return -1;
 }
 
-static inline unsigned int moto_task_get_mvp_limit(int mvp_prio) {
+static inline unsigned int moto_task_get_mvp_limit(struct task_struct *p, int mvp_prio) {
 	if (moto_sched_ops != NULL && moto_sched_ops->task_get_mvp_limit != NULL)
-		return moto_sched_ops->task_get_mvp_limit(mvp_prio);
+		return moto_sched_ops->task_get_mvp_limit(p, mvp_prio);
 
 	return 0;
 }
@@ -228,9 +228,9 @@ static inline void moto_binder_clear_inherited_ux_type(struct task_struct *task)
 		return moto_sched_ops->binder_clear_inherited_ux_type(task);
 }
 
-static inline void moto_binder_ux_type_set(struct task_struct *task, bool has_clear, bool clear) {
+static inline void moto_binder_ux_type_set(struct task_struct *task) {
 	if (moto_sched_ops != NULL && moto_sched_ops->binder_ux_type_set != NULL)
-		return moto_sched_ops->binder_ux_type_set(task, has_clear, clear);
+		return moto_sched_ops->binder_ux_type_set(task);
 }
 
 static inline void moto_queue_ux_task(struct rq *rq, struct task_struct *task, int enqueue) {
