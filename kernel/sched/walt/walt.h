@@ -788,6 +788,7 @@ static inline unsigned int walt_nr_rtg_high_prio(int cpu)
 }
 
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+extern int moto_sched_enabled;
 static inline unsigned int walt_mvp_taks(int cpu)
 {
 	struct walt_rq *wrq = &per_cpu(walt_rq, cpu);
