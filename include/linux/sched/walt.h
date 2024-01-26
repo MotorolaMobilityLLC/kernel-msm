@@ -190,7 +190,6 @@ extern int set_task_boost(int boost, u64 period);
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 // Moto huangzq2: export api for moto_sched
 extern int set_moto_sched_enabled(int enable);
-extern int get_moto_sched_enabled(void);
 
 struct msched_ops {
 	int (*task_get_mvp_prio)(struct task_struct *p, bool with_inherit);

@@ -111,10 +111,6 @@ int set_moto_sched_enabled(int enable) {
 }
 EXPORT_SYMBOL(set_moto_sched_enabled);
 
-int get_moto_sched_enabled(void) {
-	return moto_sched_enabled;
-}
-
 struct msched_ops *moto_sched_ops = NULL;
 void set_moto_sched_ops(struct msched_ops *ops) {
 	moto_sched_ops = ops;
