@@ -105,10 +105,6 @@ int set_moto_sched_enabled(int enable) {
 	return 0;
 }
 EXPORT_SYMBOL(set_moto_sched_enabled);
-
-int get_moto_sched_enabled(void) {
-	return moto_sched_enabled;
-}
 #endif
 
 /*
@@ -458,7 +454,7 @@ retry_ignore_cluster:
 
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 			// Moto huangzq2: skip long exec mvp tasks like top app or kswapd.
-			if (wrq->num_mvp_tasks > 0) {
+			if (likely(moto_sched_enabled) && wrq->num_mvp_tasks > 0) {
 				struct walt_task_struct *rq_wts = list_first_entry(&wrq->mvp_tasks, struct walt_task_struct, mvp_list);
 				if (rq_wts != NULL && (rq_wts->mvp_prio == UX_PRIO_TOPAPP || rq_wts->mvp_prio == UX_PRIO_KSWAPD)) {
 					continue;
@@ -466,7 +462,9 @@ retry_ignore_cluster:
 			}
 
 			// Moto huangzq2: select least mvp cpu for all taks.
-			if (wrq->num_mvp_tasks < mvp_min_tasks) {
+			if (likely(moto_sched_enabled)
+					&& (wrq->num_mvp_tasks < mvp_min_tasks // least mvp tasks, select it.
+							|| (wrq->num_mvp_tasks == mvp_min_tasks && i == prev_cpu))) { // same mvp tasks but prev_cpu, also select it.
 				mvp_min_tasks = wrq->num_mvp_tasks;
 				least_mvp_cpu = i;
 			}
@@ -996,7 +994,11 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		goto fail;
 
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
-	fbt_env.mvp_prio = walt_get_mvp_task_prio(p);
+	// TODO: Mark it here becuase of potential overhead of walt_get_mvp_task_prio,
+	// pls unmark it once we have further optimization based on current mvp_prio,
+	// for example, select big core on top app.
+	// fbt_env.mvp_prio = walt_get_mvp_task_prio(p);
+	fbt_env.mvp_prio = WALT_NOT_MVP;
 #endif
 	fbt_env.is_rtg = is_rtg;
 	fbt_env.start_cpu = start_cpu;
@@ -1139,24 +1141,24 @@ static inline struct task_struct *task_of(struct sched_entity *se)
 static void walt_binder_low_latency_set(void *unused, struct task_struct *task,
 					bool sync, struct binder_proc *proc)
 {
-#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
-	if (unlikely(walt_disabled))
-		return;
-
-	// Moto huangzq2: set ux type on binder
-	moto_binder_ux_type_set(task);
-#else
 	struct walt_task_struct *wts = (struct walt_task_struct *) task->android_vendor_data1;
 
 	if (unlikely(walt_disabled))
 		return;
+
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	if (likely(moto_sched_enabled)) {
+		// Moto huangzq2: set ux type on binder
+		moto_binder_ux_type_set(task);
+		return; // qcom's low latency task will be coverd by moto_sched, so directly return here.
+	}
+#endif
 
 	if (task && current->signal &&
 			(current->signal->oom_score_adj == 0) &&
 			((current->prio < DEFAULT_PRIO) ||
 			(task->group_leader->prio < MAX_RT_PRIO)))
 		wts->low_latency |= WALT_LOW_LATENCY_BINDER;
-#endif
 }
 
 static void walt_binder_low_latency_clear(void *unused, struct binder_transaction *t)
