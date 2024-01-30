@@ -4075,6 +4075,14 @@ static u64 cap_alignment(struct kgsl_device *device, u64 flags)
 	return flags | FIELD_PREP(KGSL_MEMALIGN_MASK, align);
 }
 
+static u64 gpumem_max_va_size(struct kgsl_pagetable *pt, u64 flags)
+{
+	if (flags & KGSL_MEMFLAGS_FORCE_32BIT)
+		return pt->compat_va_end - pt->compat_va_start;
+
+	return pt->va_end - pt->va_start;
+}
+
 static struct kgsl_mem_entry *
 gpumem_alloc_vbo_entry(struct kgsl_device_private *dev_priv,
 		u64 size, u64 flags)
@@ -4083,6 +4091,7 @@ gpumem_alloc_vbo_entry(struct kgsl_device_private *dev_priv,
 	struct kgsl_device *device = dev_priv->device;
 	struct kgsl_memdesc *memdesc;
 	struct kgsl_mem_entry *entry;
+	struct kgsl_pagetable *pt;
 	int ret;
 
 	/* Disallow specific flags */
@@ -4101,6 +4110,12 @@ gpumem_alloc_vbo_entry(struct kgsl_device_private *dev_priv,
 
 	if ((flags & KGSL_MEMFLAGS_SECURE) && !check_and_warn_secured(device))
 		return ERR_PTR(-EOPNOTSUPP);
+
+	pt = (flags & KGSL_MEMFLAGS_SECURE) ?
+		device->mmu.securepagetable : private->pagetable;
+
+	if (!size || (size > gpumem_max_va_size(pt, flags)))
+		return ERR_PTR(-EINVAL);
 
 	flags = cap_alignment(device, flags);
 
