@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/file.h>
@@ -44,6 +44,12 @@ static struct kgsl_memdesc_bind_range *bind_range_create(u64 start, u64 last,
 	}
 
 	return range;
+}
+
+static void bind_range_destroy(struct kgsl_memdesc_bind_range *range)
+{
+	kgsl_mem_entry_put(range->entry);
+	kfree(range);
 }
 
 static u64 bind_range_len(struct kgsl_memdesc_bind_range *range)
@@ -113,8 +119,7 @@ static void kgsl_memdesc_remove_range(struct kgsl_mem_entry *target,
 			kgsl_mmu_map_zero_page_to_range(memdesc->pagetable,
 				memdesc, range->range.start, bind_range_len(range));
 
-			kgsl_mem_entry_put(range->entry);
-			kfree(range);
+			bind_range_destroy(range);
 		}
 	}
 
@@ -161,8 +166,7 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 
 		if (start <= cur->range.start) {
 			if (last >= cur->range.last) {
-				kgsl_mem_entry_put(cur->entry);
-				kfree(cur);
+				bind_range_destroy(cur);
 				continue;
 			}
 			/* Adjust the start of the mapping */
@@ -216,8 +220,7 @@ static int kgsl_memdesc_add_range(struct kgsl_mem_entry *target,
 	return ret;
 
 error:
-	kgsl_mem_entry_put(range->entry);
-	kfree(range);
+	bind_range_destroy(range);
 	mutex_unlock(&memdesc->ranges_lock);
 	return ret;
 }
@@ -247,12 +250,11 @@ static void kgsl_sharedmem_vbo_put_gpuaddr(struct kgsl_memdesc *memdesc)
 
 		interval_tree_remove(node, &memdesc->ranges);
 
-		/* If unmap failed, mark the child memdesc as still mapped */
-		if (ret)
-			range->entry->memdesc.priv |= KGSL_MEMDESC_MAPPED;
-
-		kgsl_mem_entry_put(range->entry);
-		kfree(range);
+		/* Put the child's refcount if unmap succeeds */
+		if (!ret)
+			bind_range_destroy(range);
+		else
+			kfree(range);
 	}
 
 	if (ret)
