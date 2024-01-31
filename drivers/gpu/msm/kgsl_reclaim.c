@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kthread.h>
@@ -262,6 +262,13 @@ static u32 kgsl_reclaim_process(struct kgsl_process_private *process,
 		spin_unlock(&process->mem_lock);
 
 		if (!valid_entry) {
+			next++;
+			continue;
+		}
+
+		/* Do not reclaim pages mapped into a VBO */
+		if (atomic_read(&valid_entry->vbo_count)) {
+			kgsl_mem_entry_put(entry);
 			next++;
 			continue;
 		}

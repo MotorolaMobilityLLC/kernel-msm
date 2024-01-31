@@ -43,12 +43,16 @@ static struct kgsl_memdesc_bind_range *bind_range_create(u64 start, u64 last,
 		return ERR_PTR(-EINVAL);
 	}
 
+	atomic_inc(&entry->vbo_count);
 	return range;
 }
 
 static void bind_range_destroy(struct kgsl_memdesc_bind_range *range)
 {
-	kgsl_mem_entry_put(range->entry);
+	struct kgsl_mem_entry *entry = range->entry;
+
+	atomic_dec(&entry->vbo_count);
+	kgsl_mem_entry_put(entry);
 	kfree(range);
 }
 
@@ -309,8 +313,12 @@ static void kgsl_sharedmem_free_bind_op(struct kgsl_sharedmem_bind_op *op)
 	if (IS_ERR_OR_NULL(op))
 		return;
 
-	for (i = 0; i < op->nr_ops; i++)
+	for (i = 0; i < op->nr_ops; i++) {
+		/* Decrement the vbo_count we added when creating the bind_op */
+		if (op->ops[i].entry)
+			atomic_dec(&op->ops[i].entry->vbo_count);
 		kgsl_mem_entry_put(op->ops[i].entry);
+	}
 
 	kgsl_mem_entry_put(op->target);
 
@@ -415,6 +423,9 @@ kgsl_sharedmem_create_bind_op(struct kgsl_process_private *private,
 			ret = -ENOENT;
 			goto err;
 		}
+
+		/* Keep the child pinned in memory */
+		atomic_inc(&entry->vbo_count);
 
 		/* Make sure the child is not a VBO */
 		if ((entry->memdesc.flags & KGSL_MEMFLAGS_VBO)) {

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __KGSL_H
 #define __KGSL_H
@@ -350,6 +350,8 @@ struct kgsl_mem_entry {
 	 * debugfs accounting
 	 */
 	atomic_t map_count;
+	/** @vbo_count: Count how many VBO ranges this entry is mapped in */
+	atomic_t vbo_count;
 };
 
 struct kgsl_device_private;
