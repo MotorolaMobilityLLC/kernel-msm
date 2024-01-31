@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _IPA_H_
@@ -490,6 +491,17 @@ struct ipa_ep_cfg_seq {
 	int seq_type;
 };
 
+/**
+ * struct ipa_ep_cfg_ucp - uCP config register
+ * @command: Command ID at uCP, that the packets should hit
+ *
+ * @enable: 0 - Disabled
+ *		1- Enabled
+ */
+struct ipa_ep_cfg_ucp {
+	u16 command;
+	u32 enable;
+};
 /**
  * struct ipa_ep_cfg_ulso - ULSO configurations
  * @ipid_min_max_idx: A value in the range [0, 2]. Determines the registers
