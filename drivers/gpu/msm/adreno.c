@@ -203,19 +203,10 @@ static void adreno_input_work(struct work_struct *work)
 	mutex_unlock(&device->mutex);
 }
 
-/*
- * Process input events and schedule work if needed.  At this point we are only
- * interested in groking EV_ABS touchscreen events
- */
-static void adreno_input_event(struct input_handle *handle, unsigned int type,
-		unsigned int code, int value)
+/* Wake up the touch event kworker to initiate GPU wakeup */
+void adreno_touch_wake(struct kgsl_device *device)
 {
-	struct kgsl_device *device = handle->handler->private;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-
-	/* Only consider EV_ABS (touch) events */
-	if (type != EV_ABS)
-		return;
 
 	/*
 	 * Don't do anything if anything hasn't been rendered since we've been
@@ -247,6 +238,20 @@ static void adreno_input_event(struct input_handle *handle, unsigned int type,
 	} else if (device->state == KGSL_STATE_SLUMBER) {
 		schedule_work(&adreno_dev->input_work);
 	}
+}
+
+/*
+ * Process input events and schedule work if needed.  At this point we are only
+ * interested in groking EV_ABS touchscreen events
+ */
+static void adreno_input_event(struct input_handle *handle, unsigned int type,
+		unsigned int code, int value)
+{
+	struct kgsl_device *device = handle->handler->private;
+
+	/* Only consider EV_ABS (touch) events */
+	if (type == EV_ABS)
+		adreno_touch_wake(device);
 }
 
 #ifdef CONFIG_INPUT

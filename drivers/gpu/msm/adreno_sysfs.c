@@ -213,6 +213,18 @@ static bool _ifpc_show(struct adreno_device *adreno_dev)
 	return gmu_core_dev_ifpc_show(KGSL_DEVICE(adreno_dev));
 }
 
+static int _touch_wake_store(struct adreno_device *adreno_dev, bool val)
+{
+	if (val)
+		adreno_touch_wake(KGSL_DEVICE(adreno_dev));
+	return 0;
+}
+
+static bool _touch_wake_show(struct adreno_device *adreno_dev)
+{
+	return false;
+}
+
 static unsigned int _ifpc_count_show(struct adreno_device *adreno_dev)
 {
 	return adreno_dev->ifpc_count;
@@ -368,6 +380,7 @@ static ADRENO_SYSFS_BOOL(l3_vote);
 static ADRENO_SYSFS_BOOL(perfcounter);
 static ADRENO_SYSFS_BOOL(lpac);
 static ADRENO_SYSFS_BOOL(dms);
+static ADRENO_SYSFS_BOOL(touch_wake);
 
 static DEVICE_ATTR_RO(gpu_model);
 
@@ -394,6 +407,7 @@ static const struct attribute *_attr_list[] = {
 	&adreno_attr_perfcounter.attr.attr,
 	&adreno_attr_lpac.attr.attr,
 	&adreno_attr_dms.attr.attr,
+	&adreno_attr_touch_wake.attr.attr,
 	NULL,
 };
 
