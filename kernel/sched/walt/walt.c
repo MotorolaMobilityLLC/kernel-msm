@@ -5522,7 +5522,9 @@ static void walt_init(struct work_struct *work)
 	walt_rt_init();
 	walt_cfs_init();
 	walt_halt_init();
+#if !IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	walt_mvp_lock_ordering_init();
+#endif
 
 	wait_for_completion_interruptible(&tick_sched_clock_completion);
 
