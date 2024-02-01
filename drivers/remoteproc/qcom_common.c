@@ -195,11 +195,7 @@ static int qcom_add_minidump_segments(struct rproc *rproc, struct minidump_subsy
 			}
 			da = le64_to_cpu(region.address);
 			size = le32_to_cpu(region.size);
-			/*MOTO: because the modem ssr dump is abnormal now, modify the follow code
-			to generate dump without indentifying the segment, will revert after
-			modem ssr dump problem is solved;*/
-			/*if (le32_to_cpu(subsystem->encryption_status) != MD_SS_ENCR_DONE) {*/
-			if (false && le32_to_cpu(subsystem->encryption_status) != MD_SS_ENCR_DONE) {
+			if (le32_to_cpu(subsystem->encryption_status) != MD_SS_ENCR_DONE) {
 				if (!i && len < MAX_REGION_NAME_LENGTH &&
 				    !strcmp(name, dbg_buf_name))
 					rproc_coredump_add_custom_segment(rproc, da, size, dumpfn,
