@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /*
@@ -510,6 +510,8 @@ static int drawobj_add_sync_timeline(struct kgsl_device *device,
 	/* Set pending flag before adding callback to avoid race */
 	set_bit(event->id, &syncobj->pending);
 
+	/* Get a dma_fence refcount to hand over to the callback */
+	dma_fence_get(event->fence);
 	ret = dma_fence_add_callback(event->fence,
 		&event->cb, drawobj_sync_timeline_fence_callback);
 
@@ -522,11 +524,16 @@ static int drawobj_add_sync_timeline(struct kgsl_device *device,
 			ret = 0;
 		}
 
+		/* Put the refcount from fence creation */
+		dma_fence_put(event->fence);
 		kgsl_drawobj_put(drawobj);
 		return ret;
 	}
 
 	trace_syncpoint_timeline_fence(event->syncobj, event->fence, false);
+
+	/* Put the refcount from fence creation */
+	dma_fence_put(event->fence);
 	return 0;
 }
 
