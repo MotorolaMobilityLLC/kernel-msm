@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2011-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/bitfield.h>
@@ -2235,19 +2235,20 @@ static int kgsl_iommu_svm_range(struct kgsl_pagetable *pagetable,
 static bool kgsl_iommu_addr_in_range(struct kgsl_pagetable *pagetable,
 		uint64_t gpuaddr, uint64_t size)
 {
-	if (gpuaddr == 0)
+	u64 end = gpuaddr + size;
+
+	/* Make sure we don't wrap around */
+	if (gpuaddr == 0 || end < gpuaddr)
 		return false;
 
-	if (gpuaddr >= pagetable->va_start && (gpuaddr + size) <
-			pagetable->va_end)
+	if (gpuaddr >= pagetable->va_start && end <= pagetable->va_end)
 		return true;
 
-	if (gpuaddr >= pagetable->compat_va_start && (gpuaddr + size) <
-			pagetable->compat_va_end)
+	if (gpuaddr >= pagetable->compat_va_start &&
+		end <= pagetable->compat_va_end)
 		return true;
 
-	if (gpuaddr >= pagetable->svm_start && (gpuaddr + size) <
-			pagetable->svm_end)
+	if (gpuaddr >= pagetable->svm_start && end <= pagetable->svm_end)
 		return true;
 
 	return false;
