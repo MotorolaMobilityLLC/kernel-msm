@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/err.h>
@@ -496,10 +497,52 @@ static int adc_tm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int adc_tm_freeze(struct device *dev)
+{
+	struct adc_tm_chip *adc_tm = dev_get_drvdata(dev);
+	int rc = 0;
+
+	if (adc_tm->ops->freeze)
+		rc = adc_tm->ops->freeze(adc_tm);
+
+	return rc;
+}
+
+static int adc_tm_restore(struct device *dev)
+{
+	struct adc_tm_chip *adc_tm = dev_get_drvdata(dev);
+	int rc = 0;
+	unsigned int i = 0;
+
+	/*
+	 * Calling Thermal device update to adjust trip settings
+	 * based on current state of sensors before enabling
+	 * the thershold IRQ in restore flow,
+	 * to avoid mistriggering IRQ
+	 */
+	if (adc_tm->ops->restore) {
+		for (i = 0; i < adc_tm->dt_channels; i++) {
+			if (adc_tm->sensor[i].tzd != NULL)
+				thermal_zone_device_update(adc_tm->sensor[i].tzd,
+						THERMAL_DEVICE_UP);
+		}
+
+		rc = adc_tm->ops->restore(adc_tm);
+	}
+
+	return rc;
+}
+
+static const struct dev_pm_ops adc_tm_pm_ops = {
+	.freeze = adc_tm_freeze,
+	.restore = adc_tm_restore,
+};
+
 static struct platform_driver adc_tm_driver = {
 	.driver = {
 		.name = "qcom,adc-tm",
 		.of_match_table	= adc_tm_match_table,
+		.pm = &adc_tm_pm_ops,
 	},
 	.probe = adc_tm_probe,
 	.remove = adc_tm_remove,
