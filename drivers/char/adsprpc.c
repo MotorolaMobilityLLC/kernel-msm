@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /* Uncomment this block to log an error on every VERIFY failure */
@@ -475,6 +475,7 @@ struct smq_invoke_ctx {
 	uint32_t sc_interrupted;
 	struct fastrpc_file *fl_interrupted;
 	uint32_t handle_interrupted;
+	bool is_job_sent_to_remote_ss; /* Flag to check if job is sent to remote sub system */
 };
 
 struct fastrpc_ctx_lst {
@@ -3130,6 +3131,7 @@ static int fastrpc_invoke_send(struct smq_invoke_ctx *ctx,
 {
 	struct smq_msg *msg = &ctx->msg;
 	struct smq_msg msg_temp;
+	struct smq_invoke_ctx ctx_temp;
 	struct fastrpc_file *fl = ctx->fl;
 	struct fastrpc_channel_ctx *channel_ctx = NULL;
 	int err = 0, cid = -1;
@@ -3137,6 +3139,8 @@ static int fastrpc_invoke_send(struct smq_invoke_ctx *ctx,
 	int64_t ns = 0;
 	uint64_t xo_time_in_us = 0;
 	int isasync = (ctx->asyncjob.isasyncjob ? true : false);
+	unsigned long irq_flags = 0;
+	uint32_t index = 0;
 
 	if (!fl) {
 		err = -EBADF;
@@ -3182,13 +3186,26 @@ static int fastrpc_invoke_send(struct smq_invoke_ctx *ctx,
 		/*
 		 * After message is sent to DSP, async response thread could immediately
 		 * get the response and free context, which will result in a use-after-free
-		 * in this function. So use a local variable for message.
+		 * in this function. So use a local variable for message and context.
 		 */
 		memcpy(&msg_temp, msg, sizeof(struct smq_msg));
 		msg = &msg_temp;
+		memcpy(&ctx_temp, ctx, sizeof(struct smq_invoke_ctx));
+		index = (uint32_t)GET_TABLE_IDX_FROM_CTXID(ctx->ctxid);
 	}
-	err = rpmsg_send(channel_ctx->rpdev->ept, (void *)msg, sizeof(*msg));
-	mutex_unlock(&channel_ctx->rpmsg_mutex);
+	if (isasync) {
+		if (!err) {
+			/*
+			 * Validate the ctx as this could have been already
+			 * freed by async response.
+			 */
+			spin_lock_irqsave(&channel_ctx->ctxlock, irq_flags);
+			if (index < FASTRPC_CTX_MAX && channel_ctx->ctxtable[index] == ctx)
+				ctx->is_job_sent_to_remote_ss = true;
+			spin_unlock_irqrestore(&channel_ctx->ctxlock, irq_flags);
+		}
+		ctx = &ctx_temp;
+	}
 	trace_fastrpc_rpmsg_send(cid, (uint64_t)ctx, msg->invoke.header.ctx,
 		handle, sc, msg->invoke.page.addr, msg->invoke.page.size);
 	ns = get_timestamp_in_ns();
