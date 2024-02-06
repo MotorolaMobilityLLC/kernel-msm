@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -70,6 +71,7 @@
 #define DWC3_GUCTL1_L1_SUSP_THRLD_EN_FOR_HOST	BIT(8)
 #define DWC3_GUCTL3_USB20_RETRY_DISABLE	BIT(16)
 #define DWC3_GUSB3PIPECTL_DISRXDETU3	BIT(22)
+#define DWC3_GUCTL_SPRSCTRLTRANSEN	BIT(17)
 
 #define DWC3_LLUCTL	0xd024
 /* Force Gen1 speed on Gen2 link */
@@ -546,6 +548,7 @@ struct dwc3_msm {
 	unsigned long		inputs;
 	enum dwc3_drd_state	drd_state;
 	enum usb_dr_mode	dr_mode;
+	bool                    otg_capable;
 	enum bus_vote		default_bus_vote;
 	enum bus_vote		override_bus_vote;
 	struct icc_path		*icc_paths[3];
@@ -3420,6 +3423,7 @@ void dwc3_msm_notify_event(struct dwc3 *dwc,
 		enum dwc3_notify_event event, unsigned int value)
 {
 	struct dwc3_msm *mdwc = dev_get_drvdata(dwc->dev->parent);
+	u32 saved_config = 0x00;
 	u32 reg;
 
 	switch (event) {
@@ -3513,6 +3517,28 @@ void dwc3_msm_notify_event(struct dwc3 *dwc,
 		break;
 	case DWC3_GSI_EVT_BUF_CLEAR:
 		dev_dbg(mdwc->dev, "DWC3_GSI_EVT_BUF_CLEAR\n");
+
+		/*
+		 * GSI_EVT_BUF_CLEAR is invoked during run_stop(0).
+		 * Ensure that during run_stop(0), UTMI clock is not suspended
+		 * since it is observed that if the SUSPHY bit of USB2PFYCFG(0)
+		 * is set, then DSTS_CtrlDevHalt bit is not getting set to "1"
+		 * causing LPM entry issues.
+		 */
+		reg = dwc3_msm_read_reg(mdwc->base, DWC3_GUSB2PHYCFG(0));
+		if (unlikely(reg & DWC3_GUSB2PHYCFG_SUSPHY)) {
+			saved_config |= DWC3_GUSB2PHYCFG_SUSPHY;
+			reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
+		}
+
+		if (reg & DWC3_GUSB2PHYCFG_ENBLSLPM) {
+			saved_config |= DWC3_GUSB2PHYCFG_ENBLSLPM;
+			reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
+		}
+
+		if (saved_config)
+			dwc3_msm_write_reg(mdwc->base, DWC3_GUSB2PHYCFG(0), reg);
+
 		handle_gsi_buffer_clear_event(dwc);
 		break;
 	case DWC3_CONTROLLER_NOTIFY_DISABLE_UPDXFER:
@@ -4072,13 +4098,65 @@ disable_xo_clk:
 	return ret;
 }
 
+static void dwc3_msm_suspend_phy(struct dwc3_msm *mdwc)
+{
+	bool can_suspend_ssphy, no_active_ss;
+
+	/*
+	 * Synopsys Superspeed PHY does not support ss_phy_irq, so to detect
+	 * any wakeup events in host mode PHY cannot be suspended.
+	 * This Superspeed PHY can be suspended only in the following cases:
+	 *      1. The core is not in host mode
+	 *      2. A Highspeed device is connected but not a Superspeed device
+	 *
+	 */
+
+	no_active_ss = (!mdwc->in_host_mode) || (mdwc->in_host_mode &&
+		((mdwc->hs_phy->flags & (PHY_HSFS_MODE | PHY_LS_MODE)) &&
+			 !dwc3_msm_is_superspeed(mdwc)));
+	can_suspend_ssphy = dwc3_msm_get_max_speed(mdwc) >= USB_SPEED_SUPER &&
+		(!(mdwc->use_pwr_event_for_wakeup & PWR_EVENT_SS_WAKEUP) || no_active_ss);
+
+	/* Suspend SS PHY */
+	if (can_suspend_ssphy) {
+		if (mdwc->in_host_mode) {
+			u32 reg = dwc3_msm_read_reg(mdwc->base,
+					DWC3_GUSB3PIPECTL(0));
+
+			reg |= DWC3_GUSB3PIPECTL_DISRXDETU3;
+			dwc3_msm_write_reg(mdwc->base, DWC3_GUSB3PIPECTL(0),
+					reg);
+		}
+		/* indicate phy about SS mode */
+		if (dwc3_msm_is_superspeed(mdwc))
+			mdwc->ss_phy->flags |= DEVICE_IN_SS_MODE;
+		usb_phy_set_suspend(mdwc->ss_phy, 1);
+		mdwc->lpm_flags |= MDWC3_SS_PHY_SUSPEND;
+	} else if (mdwc->use_pwr_event_for_wakeup  & PWR_EVENT_SS_WAKEUP) {
+		mdwc->lpm_flags |= MDWC3_USE_PWR_EVENT_IRQ_FOR_WAKEUP;
+	}
+
+	/*
+	 * When operating in HS host mode, check if pwr event IRQ is
+	 * required for wakeup.
+	 */
+
+	if (mdwc->in_host_mode && (mdwc->use_pwr_event_for_wakeup
+				& PWR_EVENT_HS_WAKEUP))
+		mdwc->lpm_flags |= MDWC3_USE_PWR_EVENT_IRQ_FOR_WAKEUP;
+
+	if (mdwc->lpm_flags & MDWC3_USE_PWR_EVENT_IRQ_FOR_WAKEUP) {
+		dwc3_msm_set_pwr_events(mdwc, true);
+		enable_irq(mdwc->wakeup_irq[PWR_EVNT_IRQ].irq);
+	}
+}
+
 static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 {
 	int ret;
 	struct dwc3 *dwc = NULL;
 	struct dwc3_event_buffer *evt;
 	struct usb_irq *uirq;
-	bool can_suspend_ssphy, no_active_ss;
 
 	if (mdwc->dwc3)
 		dwc = platform_get_drvdata(mdwc->dwc3);
@@ -4142,7 +4220,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 	ret = dwc3_msm_prepare_suspend(mdwc, force_power_collapse);
 	if (ret) {
 		mutex_unlock(&mdwc->suspend_resume_mutex);
-		if (mdwc->in_host_mode)
+		if (mdwc->in_host_mode && dwc && dwc->xhci)
 			pm_request_resume(&dwc->xhci->dev);
 		return ret;
 	}
@@ -4154,49 +4232,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool force_power_collapse)
 	/* Suspend HS PHY */
 	usb_phy_set_suspend(mdwc->hs_phy, 1);
 
-	/*
-	 * Synopsys Superspeed PHY does not support ss_phy_irq, so to detect
-	 * any wakeup events in host mode PHY cannot be suspended.
-	 * This Superspeed PHY can be suspended only in the following cases:
-	 *	1. The core is not in host mode
-	 *	2. A Highspeed device is connected but not a Superspeed device
-	 */
-	no_active_ss = (!mdwc->in_host_mode) || (mdwc->in_host_mode &&
-		((mdwc->hs_phy->flags & (PHY_HSFS_MODE | PHY_LS_MODE)) &&
-			!dwc3_msm_is_superspeed(mdwc)));
-	can_suspend_ssphy = dwc3_msm_get_max_speed(mdwc) >= USB_SPEED_SUPER &&
-		(!(mdwc->use_pwr_event_for_wakeup & PWR_EVENT_SS_WAKEUP) || no_active_ss);
-	/* Suspend SS PHY */
-	if (can_suspend_ssphy) {
-		if (mdwc->in_host_mode) {
-			u32 reg = dwc3_msm_read_reg(mdwc->base,
-					DWC3_GUSB3PIPECTL(0));
-
-			reg |= DWC3_GUSB3PIPECTL_DISRXDETU3;
-			dwc3_msm_write_reg(mdwc->base, DWC3_GUSB3PIPECTL(0),
-					reg);
-		}
-		/* indicate phy about SS mode */
-		if (dwc3_msm_is_superspeed(mdwc))
-			mdwc->ss_phy->flags |= DEVICE_IN_SS_MODE;
-		usb_phy_set_suspend(mdwc->ss_phy, 1);
-		mdwc->lpm_flags |= MDWC3_SS_PHY_SUSPEND;
-	} else if (mdwc->use_pwr_event_for_wakeup  & PWR_EVENT_SS_WAKEUP) {
-		mdwc->lpm_flags |= MDWC3_USE_PWR_EVENT_IRQ_FOR_WAKEUP;
-	}
-
-	/*
-	 * When operating in HS host mode, check if pwr event IRQ is
-	 * required for wakeup.
-	 */
-	if (mdwc->in_host_mode && (mdwc->use_pwr_event_for_wakeup
-				& PWR_EVENT_HS_WAKEUP))
-		mdwc->lpm_flags |= MDWC3_USE_PWR_EVENT_IRQ_FOR_WAKEUP;
-
-	if (mdwc->lpm_flags & MDWC3_USE_PWR_EVENT_IRQ_FOR_WAKEUP) {
-		dwc3_msm_set_pwr_events(mdwc, true);
-		enable_irq(mdwc->wakeup_irq[PWR_EVNT_IRQ].irq);
-	}
+	dwc3_msm_suspend_phy(mdwc);
 
 	/* make sure above writes are completed before turning off clocks */
 	wmb();
@@ -4271,6 +4307,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	int ret;
 	struct dwc3 *dwc = NULL;
 	struct usb_irq *uirq;
+	u32 reg = 0;
 
 	if (mdwc->dwc3)
 		dwc = platform_get_drvdata(mdwc->dwc3);
@@ -4381,10 +4418,10 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	/* enable power evt irq for IN P3 detection */
 	enable_irq(mdwc->wakeup_irq[PWR_EVNT_IRQ].irq);
 
-	/* Disable HSPHY auto suspend */
+	/* Disable HSPHY auto suspend and utmi sleep assert */
+	reg = dwc3_msm_read_reg(mdwc->base, DWC3_GUSB2PHYCFG(0));
 	dwc3_msm_write_reg(mdwc->base, DWC3_GUSB2PHYCFG(0),
-		dwc3_msm_read_reg(mdwc->base, DWC3_GUSB2PHYCFG(0)) &
-				~DWC3_GUSB2PHYCFG_SUSPHY);
+		reg & ~DWC3_GUSB2PHYCFG_SUSPHY & ~DWC3_GUSB2PHYCFG_ENBLSLPM);
 
 	/* Disable wakeup capable for HS_PHY IRQ & SS_PHY_IRQ if enabled */
 	if (mdwc->lpm_flags & MDWC3_ASYNC_IRQ_WAKE_CAPABILITY) {
@@ -4855,7 +4892,7 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
-
+static void dwc3_override_vbus_status(struct dwc3_msm *mdwc, bool vbus_present);
 static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	unsigned long event, void *ptr)
 {
@@ -4901,6 +4938,11 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 				wcd_usbss_dpdm_switch_update(false, false);
 			if (!spoof)
 				return NOTIFY_DONE;
+		}
+
+		if (!spoof && mdwc->drd_state != DRD_STATE_UNDEFINED) {
+			dwc3_override_vbus_status(mdwc, !!event);
+			return NOTIFY_DONE;
 		}
 
 		mdwc->check_eud_state = true;
@@ -5307,6 +5349,10 @@ static ssize_t enable_l1_suspend_show(struct device *dev,
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
 	struct dwc3	 *dwc = platform_get_drvdata(mdwc->dwc3);
 
+	/* gadget lpm capability only when otg/gadget mode is supported */
+	if (!(mdwc->otg_capable) && (dwc->dr_mode == USB_DR_MODE_HOST))
+		return -EPERM;
+
 	return scnprintf(buf, PAGE_SIZE, "%d\n", dwc->gadget->lpm_capable);
 
 }
@@ -5319,6 +5365,10 @@ static ssize_t enable_l1_suspend_store(struct device *dev,
 	struct dwc3	 *dwc = platform_get_drvdata(mdwc->dwc3);
 	bool		 enable_l1;
 	int		 ret;
+
+	/* gadget lpm capability only when otg/gadget mode is supported */
+	if (!(mdwc->otg_capable) && (dwc->dr_mode == USB_DR_MODE_HOST))
+		return -EPERM;
 
 	ret = kstrtobool(buf, &enable_l1);
 	if (ret < 0) {
@@ -5614,6 +5664,16 @@ int dwc3_msm_set_dp_mode(struct device *dev, bool dp_connected, int lanes)
 	dbg_log_string("Set DP lanes:%d refcnt:%d\n", lanes, mdwc->refcnt_dp_usb);
 
 	if (lanes == 2) {
+		if (!mdwc->in_host_mode) {
+			msleep(20);
+			/*
+			 * There are scenarios where DP driver calls this API before dwc3-msm
+			 * gets the role information, hence return if host mode hasn't started.
+			 * DP Altmode driver has retry mechanism we return -EAGAIN or -EBUSY.
+			 */
+			return -EAGAIN;
+		}
+
 		mutex_lock(&mdwc->role_switch_mutex);
 		mdwc->dp_state = DP_2_LANE;
 		mdwc->refcnt_dp_usb++;
@@ -6304,6 +6364,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			.allow_userspace_control = true,
 		};
 
+		mdwc->otg_capable = true;
 		role_desc.fwnode = dev_fwnode(&pdev->dev);
 		mdwc->role_switch = usb_role_switch_register(mdwc->dev,
 								&role_desc);
@@ -6478,7 +6539,7 @@ static int dwc3_msm_host_ss_powerdown(struct dwc3_msm *mdwc)
 {
 	u32 reg;
 
-	if (mdwc->disable_host_ssphy_powerdown ||
+	if (mdwc->disable_host_ssphy_powerdown || mdwc->dp_state ||
 		dwc3_msm_get_max_speed(mdwc) < USB_SPEED_SUPER)
 		return 0;
 
@@ -6751,6 +6812,7 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 {
 	int ret = 0;
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	u32 reg;
 
 	if (on) {
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
@@ -6789,6 +6851,16 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 
 		if (mdwc->dis_sending_cm_l1_quirk)
 			mdwc3_dis_sending_cm_l1(mdwc);
+
+		/*
+		 * Some devices are slow in responding to control transfers. Scheduling multiple
+		 * transactions in one microframe/frame can cause these devices to misbehave.
+		 * Enable sparse control so that host controller schedules each phase of a Control
+		 * transfer in different microframes/frames.
+		 */
+		reg = dwc3_msm_read_reg(mdwc->base, DWC3_GUCTL);
+		reg |= DWC3_GUCTL_SPRSCTRLTRANSEN;
+		dwc3_msm_write_reg(mdwc->base, DWC3_GUCTL, reg);
 
 		/*
 		 * Increase Inter-packet delay by 1 UTMI clock cycle (EL_23).
@@ -7018,7 +7090,7 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		 * or pullup disable), and retry suspend again.
 		 */
 		ret = pm_runtime_put_sync(&mdwc->dwc3->dev);
-		if (ret == -EBUSY) {
+		if (!pm_runtime_suspended(&mdwc->dwc3->dev)) {
 			while (--timeout && dwc->connected)
 				msleep(20);
 			dbg_event(0xFF, "StopGdgt connected", dwc->connected);

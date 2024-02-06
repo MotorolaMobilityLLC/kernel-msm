@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2018-19, Linaro Limited
-// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/module.h>
 #include <linux/of.h>
@@ -874,7 +874,7 @@ static int ethqos_configure_mac_v3(struct qcom_ethqos *ethqos)
 	return ret;
 }
 
-void qcom_serdes_loopback_v3_1(struct plat_stmmacenet_data *plat, bool on)
+static void qcom_serdes_loopback_v3_1(struct plat_stmmacenet_data *plat, bool on)
 {
 	struct qcom_ethqos *ethqos = plat->bsp_priv;
 
@@ -1104,6 +1104,7 @@ static void ethqos_fix_mac_speed(void *priv, unsigned int speed)
 	int ret = 0;
 
 	ethqos->speed = speed;
+	ethqos_update_rgmii_clk(ethqos, speed);
 
 	if (ethqos->emac_ver == EMAC_HW_v3_0_0_RG)
 		ret = ethqos_configure_mac_v3(ethqos);
@@ -1473,6 +1474,7 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 
 	plat_dat->bsp_priv = ethqos;
 	plat_dat->fix_mac_speed = ethqos_fix_mac_speed;
+	plat_dat->serdes_loopback_v3_1 = qcom_serdes_loopback_v3_1;
 	plat_dat->dump_debug_regs = rgmii_dump;
 	plat_dat->has_gmac4 = 1;
 	if (plat_dat->interface == PHY_INTERFACE_MODE_SGMII ||
@@ -1521,6 +1523,15 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 		rgmii_readl(ethqos, EMAC_I0_EMAC_CORE_HW_VERSION_RGOFFADDR);
 	}
 	ETHQOSDBG(": emac_core_version = %d\n", ethqos->emac_ver);
+
+	if (of_property_read_bool(pdev->dev.of_node,
+				  "gdsc-off-on-suspend")) {
+		ethqos->gdsc_off_on_suspend = true;
+	} else {
+		ethqos->gdsc_off_on_suspend = false;
+	}
+	ETHQOSDBG("gdsc-off-on-suspend = %d\n",
+		  ethqos->gdsc_off_on_suspend);
 
 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
 	if (ret)
@@ -1600,6 +1611,13 @@ static int qcom_ethqos_suspend(struct device *dev)
 	ret = stmmac_suspend(dev);
 	qcom_ethqos_phy_suspend_clks(ethqos);
 
+	if (ethqos->gdsc_off_on_suspend) {
+		if (ethqos->gdsc_emac) {
+			regulator_disable(ethqos->gdsc_emac);
+			ETHQOSDBG("Disabled <%s>\n", EMAC_GDSC_EMAC_NAME);
+		}
+	}
+
 	ETHQOSDBG(" ret = %d\n", ret);
 	return ret;
 }
@@ -1619,6 +1637,13 @@ static int qcom_ethqos_resume(struct device *dev)
 	if (!ethqos)
 		return -ENODEV;
 
+	if (ethqos->gdsc_off_on_suspend) {
+		ret = regulator_enable(ethqos->gdsc_emac);
+		if (ret)
+			ETHQOSERR("Can not enable <%s>\n", EMAC_GDSC_EMAC_NAME);
+		ETHQOSDBG("Enabled <%s>\n", EMAC_GDSC_EMAC_NAME);
+	}
+
 	ndev = dev_get_drvdata(dev);
 	if (!ndev || !netif_running(ndev)) {
 		ETHQOSERR(" Resume not possible\n");
@@ -1626,6 +1651,8 @@ static int qcom_ethqos_resume(struct device *dev)
 	}
 
 	qcom_ethqos_phy_resume_clks(ethqos);
+	if (ethqos->gdsc_off_on_suspend)
+		ethqos_set_func_clk_en(ethqos);
 
 	ret = stmmac_resume(dev);
 

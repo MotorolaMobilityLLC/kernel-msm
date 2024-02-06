@@ -3,7 +3,7 @@
  * Copyright (c) 2015, Sony Mobile Communications, AB.
  */
 /*
- * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
@@ -321,7 +321,7 @@ static int wled_module_enable(struct wled *wled, int val)
 		return 0;
 
 	/* Force HFRC off */
-	if (is_wled5(wled)) {
+	if (*wled->version == WLED_PM8150L) {
 		reg = val ? 0 : 3;
 		rc = regmap_write(wled->regmap, wled->ctrl_addr +
 				  WLED5_CTRL_PBUS_WRITE_SYNC_CTL, reg);
@@ -336,7 +336,7 @@ static int wled_module_enable(struct wled *wled, int val)
 		return rc;
 
 	/* Force HFRC off */
-	if (is_wled5(wled) && val) {
+	if ((*wled->version == WLED_PM8150L) && val) {
 		rc = regmap_write(wled->regmap, wled->sink_addr +
 				  WLED5_SINK_FLASH_SHDN_CLR_REG, 0);
 		if (rc < 0)
@@ -379,15 +379,13 @@ static int wled_sync_toggle(struct wled *wled)
 
 	rc = regmap_update_bits(wled->regmap,
 			wled->sink_addr + WLED_SINK_SYNC,
-			WLED_SINK_SYNC_MASK, WLED_SINK_SYNC_MASK);
+			WLED_SINK_SYNC_MASK, WLED_SINK_SYNC_CLEAR);
 	if (rc < 0)
 		return rc;
 
-	rc = regmap_update_bits(wled->regmap,
+	return regmap_update_bits(wled->regmap,
 			wled->sink_addr + WLED_SINK_SYNC,
-			WLED_SINK_SYNC_MASK, WLED_SINK_SYNC_CLEAR);
-
-	return rc;
+			WLED_SINK_SYNC_MASK, WLED_SINK_SYNC_MASK);
 }
 
 static int wled5_sample_hold_control(struct wled *wled, u16 brightness,
@@ -461,20 +459,19 @@ static int wled5_set_brightness(struct wled *wled, u16 brightness)
 	if (rc < 0)
 		return rc;
 
-	/* Update brightness values to modulator in WLED5 */
-	val = (wled->cfg.mod_sel == MOD_A) ? WLED5_SINK_SYNC_MODA_BIT :
-		WLED5_SINK_SYNC_MODB_BIT;
-	rc = regmap_update_bits(wled->regmap,
-			wled->sink_addr + WLED5_SINK_MOD_SYNC_BIT_REG,
-			WLED5_SINK_SYNC_MASK, val);
-	if (rc < 0)
-		return rc;
-
 	val = 0;
 	rc = regmap_update_bits(wled->regmap,
 			wled->sink_addr + WLED5_SINK_MOD_SYNC_BIT_REG,
 			WLED_SINK_SYNC_MASK, val);
-	return rc;
+	/* Update brightness values to modulator in WLED5 */
+	if (rc < 0)
+		return rc;
+
+	val = (wled->cfg.mod_sel == MOD_A) ? WLED5_SINK_SYNC_MODA_BIT :
+		WLED5_SINK_SYNC_MODB_BIT;
+	return regmap_update_bits(wled->regmap,
+			wled->sink_addr + WLED5_SINK_MOD_SYNC_BIT_REG,
+			WLED5_SINK_SYNC_MASK, val);
 }
 
 static int wled4_set_brightness(struct wled *wled, u16 brightness)
@@ -994,7 +991,7 @@ static bool wled_auto_cal_required(struct wled *wled)
 
 static int wled_auto_calibrate_at_init(struct wled *wled)
 {
-	int rc;
+	int rc, delay_time_us;
 	bool fault_set;
 
 	if (!wled->cfg.auto_calib_enabled)
@@ -1007,6 +1004,23 @@ static int wled_auto_calibrate_at_init(struct wled *wled)
 	}
 
 	if (fault_set) {
+		wled_get_ovp_delay(wled, &delay_time_us);
+
+		if (delay_time_us < 20000)
+			usleep_range(delay_time_us, delay_time_us + 1000);
+		else
+			msleep(delay_time_us / 1000);
+
+		rc = wled_get_ovp_fault_status(wled, &fault_set);
+		if (rc < 0) {
+			pr_err("Error in getting OVP fault_sts, rc=%d\n", rc);
+			return rc;
+		}
+		if (!fault_set) {
+			pr_debug("WLED OVP fault cleared, not running auto calibration\n");
+			return rc;
+		}
+
 		mutex_lock(&wled->lock);
 		rc = wled_auto_calibrate(wled);
 		mutex_unlock(&wled->lock);

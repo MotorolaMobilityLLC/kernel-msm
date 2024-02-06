@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2022, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/unistd.h>
@@ -2153,7 +2153,7 @@ static int hgsl_ioctl_set_metainfo(struct file *filep, unsigned long arg)
 	int ret = 0;
 	struct hgsl_mem_node *mem_node = NULL;
 	struct hgsl_mem_node *tmp = NULL;
-	char metainfo[HGSL_MEM_META_MAX_SIZE];
+	char metainfo[HGSL_MEM_META_MAX_SIZE] = {0};
 
 	if (copy_from_user(&params, USRPTR(arg), sizeof(params))) {
 		pr_err_ratelimited("failed to copy params from user");
@@ -2573,6 +2573,12 @@ static int hgsl_ioctl_issueib_with_alloc_list(struct file *filep,
 			}
 		}
 
+		if (params.num_ibs > UINT_MAX - params.num_allocations) {
+			ret = -ENOMEM;
+			LOGE("Too many ibs or allocations: num_ibs = %u, num_allocations = %u",
+				params.num_ibs, params.num_allocations);
+			goto out;
+		}
 		be_data_size = (params.num_ibs + params.num_allocations) *
 			(sizeof(struct gsl_memdesc_t) + sizeof(uint64_t));
 		be_descs = (struct gsl_memdesc_t *)hgsl_malloc(be_data_size);

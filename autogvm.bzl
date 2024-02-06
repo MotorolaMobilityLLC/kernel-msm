@@ -46,6 +46,7 @@ def define_autogvm():
         "drivers/pci/controller/pci-msm-drv.ko",
         "drivers/phy/qualcomm/phy-qcom-ufs.ko",
         "drivers/phy/qualcomm/phy-qcom-ufs-qmp-v4.ko",
+        "drivers/phy/qualcomm/phy-qcom-ufs-qmp-v4-lahaina.ko",
         "drivers/phy/qualcomm/phy-qcom-ufs-qmp-v4-waipio.ko",
         "drivers/pinctrl/qcom/pinctrl-direwolf.ko",
         "drivers/pinctrl/qcom/pinctrl-lemans.ko",
@@ -112,6 +113,7 @@ def define_autogvm():
     _autogvm_consolidate_in_tree_modules = _autogvm_in_tree_modules + [
         # keep sorted
         "drivers/misc/lkdtm/lkdtm.ko",
+        "drivers/usb/misc/lvstest.ko",
     ]
 
     for variant in la_variants:
