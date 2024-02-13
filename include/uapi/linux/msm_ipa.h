@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _UAPI_MSM_IPA_H_
@@ -151,6 +151,7 @@
 #define IPA_IOCTL_QUERY_CACHED_DRIVER_MSG       94
 #define IPA_IOCTL_SET_EXT_ROUTER_MODE           95
 #define IPA_IOCTL_ADD_DEL_DSCP_PCP_MAPPING      96
+#define IPA_IOCTL_SEND_VLAN_MUXID_MAPPING       97
 /**
  * max size of the header to be inserted
  */
@@ -1754,6 +1755,27 @@ struct IpaDscpVlanPcpMap_t {
 	uint16_t  vlan_c[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
 	uint16_t  vlan_s[IPA_EoGRE_MAX_VLAN * IPA_GRE_MAX_S_VLAN];
 } __packed;
+
+
+#define MAX_VLAN_CONFIGURE 16
+enum pkt_path {
+	SW_PATH = 0,
+	HW_PATH_OUTSIDE_TUNNEL = 1,
+	HW_PATH_INSIDE_TUNNEL = 2
+};
+
+/* VLANID - Action - Tunnel_ID - MUX_ID */
+struct singletag_mux_map_entry {
+	uint16_t vlan_id;
+	uint8_t mux_id;
+	uint8_t pkt_path;
+	uint32_t tunnel_id;
+};
+
+struct ipa_ioc_mux_mapping_table {
+	struct singletag_mux_map_entry map_entries[MAX_VLAN_CONFIGURE];
+};
+
 
 /**
  * struct ipa_exception
@@ -4076,6 +4098,11 @@ struct ipa_ioc_dscp_pcp_map_info {
 #define IPA_IOC_ADD_DEL_DSCP_PCP_MAPPING _IOWR(IPA_IOC_MAGIC, \
 				IPA_IOCTL_ADD_DEL_DSCP_PCP_MAPPING, \
 				struct ipa_ioc_dscp_pcp_map_info)
+
+#define IPA_IOC_SEND_VLAN_MUXID_MAPPING _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_SEND_VLAN_MUXID_MAPPING, \
+				struct ipa_ioc_mux_mapping_table)
+
 
 /*
  * unique magic number of the Tethering bridge ioctls
