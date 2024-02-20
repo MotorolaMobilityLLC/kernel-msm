@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s: %s: " fmt, KBUILD_MODNAME, __func__
@@ -103,6 +103,7 @@ struct power_state_drvdata {
 	struct kobject *ps_kobj;
 	struct kobj_attribute ps_ka;
 	struct kobj_attribute ds_ka;
+	struct kobj_attribute sd_ka;
 	struct wakeup_source *ps_ws;
 	struct notifier_block ps_pm_nb;
 	struct qmp *qmp;
@@ -112,6 +113,7 @@ struct power_state_drvdata {
 	int subsys_count;
 	struct list_head sub_sys_list;
 	bool deep_sleep_allowed;
+	u32 suspend_delay;
 };
 
 static struct power_state_drvdata *drv;
@@ -450,6 +452,32 @@ static int power_state_suspend(void)
 	return 0;
 }
 
+static ssize_t suspend_delay_show(struct kobject *kobj, struct kobj_attribute *attr,
+				       char *buf)
+{
+	struct power_state_drvdata *drv = container_of(attr, struct power_state_drvdata, sd_ka);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", drv->suspend_delay);
+}
+
+static ssize_t suspend_delay_store(struct kobject *kobj, struct kobj_attribute *attr,
+					const char *buf, size_t count)
+{
+	struct power_state_drvdata *drv = container_of(attr, struct power_state_drvdata, sd_ka);
+	u32 val;
+	int ret;
+
+	ret = kstrtouint(buf, 0, &val);
+	if (ret < 0) {
+		pr_err("Invalid argument passed\n");
+		return ret;
+	}
+
+	drv->deep_sleep_allowed = val;
+
+	return count;
+}
+
 static ssize_t deep_sleep_allowed_show(struct kobject *kobj, struct kobj_attribute *attr,
 				       char *buf)
 {
@@ -547,6 +575,21 @@ static int power_state_dev_init(struct power_state_drvdata *drv)
 		goto exit;
 	}
 
+	sysfs_attr_init(&drv->sd_ka.attr);
+	drv->sd_ka.attr.mode = 0644;
+	drv->sd_ka.attr.name = "suspend_delay";
+	drv->sd_ka.show = suspend_delay_show;
+	drv->sd_ka.store = suspend_delay_store;
+
+	ret = sysfs_create_file(drv->ps_kobj, &drv->sd_ka.attr);
+	if (ret) {
+		sysfs_remove_file(drv->ps_kobj, &drv->ds_ka.attr);
+		sysfs_remove_file(drv->ps_kobj, &drv->ps_ka.attr);
+		goto exit;
+	}
+
+	/* Default delay of 1 second */
+	drv->suspend_delay = 1;
 	return 0;
 
 exit:

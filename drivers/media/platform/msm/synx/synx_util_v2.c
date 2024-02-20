@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -52,7 +52,7 @@ int synx_util_init_coredata(struct synx_coredata *synx_obj,
 		strlcpy(synx_obj->name, params->name, sizeof(synx_obj->name));
 
 	if (params->flags & SYNX_CREATE_DMA_FENCE) {
-		fence = params->fence;
+		fence = (struct dma_fence *)params->fence;
 		if (IS_ERR_OR_NULL(fence)) {
 			dprintk(SYNX_ERR, "invalid external fence\n");
 			goto free;
@@ -249,7 +249,7 @@ void synx_util_put_object(struct synx_coredata *synx_obj)
 
 void synx_util_object_destroy(struct synx_coredata *synx_obj)
 {
-	int rc;
+	int rc = SYNX_SUCCESS;
 	u32 i;
 	s32 sync_id;
 	u32 type;

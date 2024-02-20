@@ -698,7 +698,7 @@ int synx_global_merge(u32 *idx_list, u32 num_list, u32 p_idx)
 	int rc = -SYNX_INVALID;
 	unsigned long flags;
 	struct synx_global_coredata *synx_g_obj;
-	u32 i, j = 0;
+	u32 i = 0, j = 0;
 	u32 idx;
 	bool sig_error = false;
 	u32 num_child = 0;
