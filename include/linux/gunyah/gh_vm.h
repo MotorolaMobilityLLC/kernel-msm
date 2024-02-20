@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _GH_VM_H
@@ -11,6 +11,7 @@
 #define GH_VM_POWERUP_FAIL		0x2
 #define GH_VM_EARLY_POWEROFF		0x3
 #define GH_VM_POWEROFF			0x4
+#define GH_VM_EXITED			0x5
 
 #if IS_ENABLED(CONFIG_GH_SECURE_VM_LOADER)
 int gh_register_vm_notifier(struct notifier_block *nb);
