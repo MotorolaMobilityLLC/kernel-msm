@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2009-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2017-2019, Linaro Ltd.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/err.h>
@@ -1051,6 +1051,7 @@ static const struct soc_id soc_id[] = {
 	{ 554, "NEO-LA" },
 	{ 568, "RAVELIN" },
 	{ 549, "ANORAK" },
+	{ 649, "ANORAKP" },
 	{ 581, "MONTAGUE" },
 	{ 582, "MONTAGUEP" },
 	{ 602, "RAVELINP" },
