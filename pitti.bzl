@@ -7,7 +7,6 @@ target_name = "pitti"
 def define_pitti():
     _pitti_in_tree_modules = [
         # keep sorted
-        "arch/arm64/gunyah/gh_arm_drv.ko",
         "drivers/base/regmap/qti-regmap-debugfs.ko",
         "drivers/char/rdbg.ko",
         "drivers/clk/qcom/clk-dummy.ko",
@@ -24,6 +23,7 @@ def define_pitti():
         "drivers/dma-buf/heaps/qcom_dma_heaps.ko",
         "drivers/dma/qcom/bam_dma.ko",
         "drivers/dma/qcom/msm_gpi.ko",
+        "drivers/edac/kryo_arm64_edac.ko",
         "drivers/firmware/qcom-scm.ko",
         "drivers/hwspinlock/qcom_hwspinlock.ko",
         "drivers/hwtracing/coresight/coresight.ko",
@@ -179,12 +179,12 @@ def define_pitti():
         "drivers/usb/phy/phy-qcom-emu.ko",
         "drivers/usb/typec/ucsi/ucsi_glink.ko",
         "drivers/video/backlight/qcom-spmi-wled.ko",
-        "drivers/virt/gunyah/gh_rm_drv.ko",
         "drivers/virt/gunyah/gh_virt_wdt.ko",
-        "drivers/virt/gunyah/gunyah_loader.ko",
         "kernel/sched/walt/sched-walt.ko",
+        "kernel/trace/qcom_ipc_logging.ko",
         "net/qrtr/qrtr.ko",
         "net/qrtr/qrtr-smd.ko",
+        "net/wireless/cfg80211.ko",
         "sound/usb/snd-usb-audio-qmi.ko",
     ]
 
