@@ -341,3 +341,7 @@
 #required by zram.ko
   bioset_init
   bioset_exit
+
+#required by speed_ui.ko
+  __tracepoint_android_rvh_update_cpus_allowed
+  __traceiter_android_rvh_update_cpus_allowed
