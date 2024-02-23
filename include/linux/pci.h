@@ -393,7 +393,9 @@ struct pci_dev {
 
 #ifdef CONFIG_PCIEASPM
 	struct pcie_link_state	*link_state;	/* ASPM link state */
+#endif
 	u16		l1ss;		/* L1SS Capability pointer */
+#ifdef CONFIG_PCIEASPM
 	unsigned int	ltr_path:1;	/* Latency Tolerance Reporting
 					   supported from root to here */
 #endif
