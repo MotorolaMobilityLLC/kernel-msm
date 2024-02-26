@@ -5,6 +5,7 @@
   alloc_anon_inode
   alloc_chrdev_region
   alloc_etherdev_mqs
+  alloc_ep_req
   alloc_netdev_mqs
   __alloc_pages
   alloc_pages_exact
@@ -120,6 +121,7 @@
   clk_hw_get_parent
   clk_hw_get_parent_by_index
   clk_hw_get_rate
+  clk_hw_register_clkdev
   clk_hw_round_rate
   clk_hw_unregister
   __clk_is_enabled
@@ -693,6 +695,7 @@
   kmem_cache_destroy
   kmem_cache_free
   kmemdup
+  kmsg_dump_reason_str
   kobject_init_and_add
   kobject_uevent
   kobject_uevent_env
@@ -1029,6 +1032,7 @@
   pskb_expand_head
   __pskb_pull_tail
   ___pskb_trim
+  pstore_type_to_name
   put_device
   put_disk
   __put_net
@@ -1603,6 +1607,7 @@
   __v4l2_device_register_subdev_nodes
   v4l2_device_unregister
   v4l2_device_unregister_subdev
+  v4l2_enum_dv_timings_cap
   v4l2_event_queue
   v4l2_event_subdev_unsubscribe
   v4l2_event_subscribe
@@ -1614,8 +1619,11 @@
   v4l2_s_ctrl
   v4l2_spi_new_subdev
   v4l2_spi_subdev_init
+  v4l2_src_change_event_subdev_subscribe
   v4l2_subdev_call_wrappers
   v4l2_subdev_init
+  v4l2_subdev_notify_event
+  v4l2_valid_dv_timings
   v4l_bound_align_image
   vabits_actual
   vb2_buffer_done

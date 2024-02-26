@@ -162,6 +162,8 @@
   clk_register
   clk_register_composite
   clk_round_rate
+  clk_set_max_rate
+  clk_set_min_rate
   clk_set_parent
   clk_set_rate
   clk_unprepare
@@ -469,6 +471,7 @@
   dma_heap_get_dev
   dma_heap_get_drvdata
   dma_heap_get_name
+  dma_heap_put
   d_make_root
   dmam_alloc_attrs
   dma_map_page_attrs
@@ -533,6 +536,7 @@
   drm_atomic_helper_resume
   drm_atomic_helper_set_config
   drm_atomic_helper_setup_commit
+  drm_atomic_helper_shutdown
   drm_atomic_helper_suspend
   drm_atomic_helper_swap_state
   drm_atomic_helper_update_plane
@@ -644,6 +648,8 @@
   drm_poll
   drm_prime_gem_destroy
   drm_printf
+  __drm_printfn_coredump
+  __drm_printfn_seq_file
   drm_property_add_enum
   drm_property_blob_get
   drm_property_blob_put
@@ -654,9 +660,12 @@
   drm_property_destroy
   drm_property_lookup_blob
   drm_property_replace_blob
+  __drm_puts_coredump
+  __drm_puts_seq_file
   drm_read
   drm_release
   drm_self_refresh_helper_update_avg_times
+  drm_state_dump
   drm_universal_plane_init
   drm_vblank_init
   drm_writeback_connector_init
@@ -797,6 +806,7 @@
   get_cpu_iowait_time_us
   get_device
   get_device_system_crosststamp
+  get_each_dmabuf
   __get_free_pages
   get_kernel_pages
   get_net_ns_by_fd
@@ -1020,6 +1030,7 @@
   kill_block_super
   kill_fasync
   kill_pid
+  kimage_vaddr
   kimage_voffset
   __kmalloc
   kmalloc_caches
@@ -1079,6 +1090,7 @@
   led_trigger_unregister_simple
   __list_add_valid
   __list_del_entry_valid
+  list_sort
   ll_rw_block
   load_nls
   load_nls_default
@@ -1109,6 +1121,10 @@
   mdiobus_write
   mdio_device_create
   mdio_device_free
+  media_create_pad_link
+  media_entity_remote_pad
+  media_pipeline_start
+  media_pipeline_stop
   memchr
   memcmp
   memcpy
@@ -1298,6 +1314,7 @@
   of_prop_next_u32
   of_pwm_xlate_with_flags
   of_reserved_mem_device_init_by_idx
+  of_reserved_mem_device_init_by_name
   of_reserved_mem_device_release
   of_reserved_mem_lookup
   of_reset_control_array_get
@@ -1323,9 +1340,11 @@
   panic
   panic_notifier_list
   param_array_ops
+  param_get_bool
   param_get_charp
   param_get_hexint
   param_get_int
+  param_get_short
   param_get_string
   param_ops_bool
   param_ops_byte
@@ -1342,6 +1361,7 @@
   param_set_copystring
   param_set_hexint
   param_set_int
+  pci_choose_state
   pci_disable_device
   pci_enable_device
   pci_find_next_bus
@@ -1357,9 +1377,11 @@
   pci_read_config_dword
   pci_remove_root_bus
   pci_rescan_bus
+  pci_set_power_state
   pci_stop_and_remove_bus_device_locked
   pci_stop_root_bus
   pci_unlock_rescan_remove
+  pci_write_config_byte
   pci_write_config_dword
   PDE_DATA
   __per_cpu_offset
@@ -1578,6 +1600,11 @@
   regulator_map_voltage_iterate
   regulator_put
   regulator_set_voltage
+  relay_close
+  relay_file_operations
+  relay_flush
+  relay_open
+  relay_switch_subbuf
   release_firmware
   __release_region
   release_resource
@@ -1884,6 +1911,7 @@
   syscon_node_to_regmap
   syscon_regmap_lookup_by_phandle
   sysctl_sched_latency
+  sysfs_create_bin_file
   sysfs_create_file_ns
   sysfs_create_group
   sysfs_create_link
@@ -1899,6 +1927,7 @@
   system_freezing_cnt
   system_highpri_wq
   system_power_efficient_wq
+  system_unbound_wq
   system_wq
   sys_tz
   __tasklet_hi_schedule
@@ -1907,6 +1936,7 @@
   __tasklet_schedule
   tasklet_setup
   tasklet_unlock_wait
+  tasklist_lock
   task_may_not_preempt
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
@@ -1929,6 +1959,8 @@
   __traceiter_android_rvh_check_preempt_tick
   __traceiter_android_rvh_check_preempt_wakeup
   __traceiter_android_rvh_do_sea
+  __traceiter_android_rvh_do_undefinstr
+  __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_gic_v3_set_affinity
   __traceiter_android_rvh_iommu_setup_dma_ops
   __traceiter_android_rvh_panic_unhandled
@@ -1936,6 +1968,9 @@
   __traceiter_android_rvh_replace_next_task_fair
   __traceiter_android_rvh_schedule
   __traceiter_android_rvh_select_task_rq_rt
+  __traceiter_android_rvh_tick_entry
+  __traceiter_android_vh_alloc_pages_entry
+  __traceiter_android_vh_cma_alloc_bypass
   __traceiter_android_vh_cma_drain_all_pages_bypass
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
@@ -1943,23 +1978,35 @@
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_ftrace_format_check
   __traceiter_android_vh_iommu_iovad_free_iova
+  __traceiter_android_vh_ipi_stop
+  __traceiter_android_vh_isolate_freepages
   __traceiter_android_vh_mem_cgroup_alloc
   __traceiter_android_vh_mmc_sd_update_cmdline_timing
   __traceiter_android_vh_mmc_sd_update_dataline_timing
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_sched_show_task
+  __traceiter_android_vh_set_module_permit_after_init
+  __traceiter_android_vh_xhci_urb_suitable_bypass
   __traceiter_gpu_mem_total
   __traceiter_irq_handler_entry
   __traceiter_irq_handler_exit
   __traceiter_mmap_lock_acquire_returned
   __traceiter_mmap_lock_released
   __traceiter_mmap_lock_start_locking
+  __traceiter_mm_page_alloc
+  __traceiter_rwmmio_post_read
+  __traceiter_rwmmio_post_write
+  __traceiter_rwmmio_read
+  __traceiter_rwmmio_write
+  __traceiter_sched_switch
   __traceiter_xdp_exception
   trace_output_call
   __tracepoint_android_rvh_arm64_serror_panic
   __tracepoint_android_rvh_check_preempt_tick
   __tracepoint_android_rvh_check_preempt_wakeup
   __tracepoint_android_rvh_do_sea
+  __tracepoint_android_rvh_do_undefinstr
+  __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_gic_v3_set_affinity
   __tracepoint_android_rvh_iommu_setup_dma_ops
   __tracepoint_android_rvh_panic_unhandled
@@ -1967,6 +2014,9 @@
   __tracepoint_android_rvh_replace_next_task_fair
   __tracepoint_android_rvh_schedule
   __tracepoint_android_rvh_select_task_rq_rt
+  __tracepoint_android_rvh_tick_entry
+  __tracepoint_android_vh_alloc_pages_entry
+  __tracepoint_android_vh_cma_alloc_bypass
   __tracepoint_android_vh_cma_drain_all_pages_bypass
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
@@ -1974,19 +2024,29 @@
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_ftrace_format_check
   __tracepoint_android_vh_iommu_iovad_free_iova
+  __tracepoint_android_vh_ipi_stop
+  __tracepoint_android_vh_isolate_freepages
   __tracepoint_android_vh_mem_cgroup_alloc
   __tracepoint_android_vh_mmc_sd_update_cmdline_timing
   __tracepoint_android_vh_mmc_sd_update_dataline_timing
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_sched_show_task
+  __tracepoint_android_vh_set_module_permit_after_init
+  __tracepoint_android_vh_xhci_urb_suitable_bypass
   __tracepoint_gpu_mem_total
   __tracepoint_irq_handler_entry
   __tracepoint_irq_handler_exit
   __tracepoint_mmap_lock_acquire_returned
   __tracepoint_mmap_lock_released
   __tracepoint_mmap_lock_start_locking
+  __tracepoint_mm_page_alloc
   tracepoint_probe_register
   tracepoint_probe_unregister
+  __tracepoint_rwmmio_post_read
+  __tracepoint_rwmmio_post_write
+  __tracepoint_rwmmio_read
+  __tracepoint_rwmmio_write
+  __tracepoint_sched_switch
   __tracepoint_xdp_exception
   trace_print_array_seq
   trace_print_flags_seq
@@ -2087,17 +2147,22 @@
   utf8_to_utf32
   uuid_null
   v4l2_ctrl_add_handler
+  v4l2_ctrl_find
   v4l2_ctrl_handler_free
   v4l2_ctrl_handler_init_class
   v4l2_ctrl_handler_setup
   v4l2_ctrl_new_custom
+  v4l2_ctrl_new_int_menu
   v4l2_ctrl_new_std
+  __v4l2_ctrl_s_ctrl
+  __v4l2_ctrl_s_ctrl_int64
   v4l2_ctrl_subscribe_event
   v4l2_device_register
   v4l2_device_register_subdev
   v4l2_device_unregister
   v4l2_device_unregister_subdev
   v4l2_event_queue_fh
+  v4l2_event_subdev_unsubscribe
   v4l2_event_subscribe
   v4l2_event_unsubscribe
   v4l2_fh_add
@@ -2105,6 +2170,7 @@
   v4l2_fh_exit
   v4l2_fh_init
   v4l2_fh_open
+  __v4l2_find_nearest_size
   v4l2_i2c_subdev_init
   v4l2_m2m_buf_queue
   v4l2_m2m_buf_remove
@@ -2127,6 +2193,7 @@
   v4l2_m2m_release
   v4l2_m2m_try_schedule
   v4l2_src_change_event_subscribe
+  v4l2_subdev_link_validate
   v4l_bound_align_image
   vabits_actual
   vb2_buffer_done
@@ -2139,6 +2206,7 @@
   vb2_ioctl_create_bufs
   vb2_ioctl_dqbuf
   vb2_ioctl_expbuf
+  vb2_ioctl_prepare_buf
   vb2_ioctl_qbuf
   vb2_ioctl_querybuf
   vb2_ioctl_reqbufs
@@ -2183,6 +2251,7 @@
   wait_for_completion_timeout
   __wait_on_buffer
   wait_on_page_bit
+  wait_woken
   __wake_up
   wake_up_process
   wakeup_source_register

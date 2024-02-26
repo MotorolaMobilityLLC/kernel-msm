@@ -1601,6 +1601,7 @@ static void isolate_freepages(struct compact_control *cc)
 	unsigned long low_pfn;	     /* lowest pfn scanner is able to scan */
 	struct list_head *freelist = &cc->freepages;
 	unsigned int stride;
+	bool bypass = false;
 
 	/* Try a small search of the free lists for a candidate */
 	isolate_start_pfn = fast_isolate_freepages(cc);
@@ -1654,6 +1655,10 @@ static void isolate_freepages(struct compact_control *cc)
 
 		/* If isolation recently failed, do not retry */
 		if (!isolation_suitable(cc, page))
+			continue;
+
+		trace_android_vh_isolate_freepages(cc, page, &bypass);
+		if (bypass)
 			continue;
 
 		/* Found a block suitable for isolating free pages from. */

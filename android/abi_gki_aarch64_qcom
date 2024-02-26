@@ -103,6 +103,7 @@
   blk_get_request
   blk_ksm_get_slot_idx
   blk_ksm_register
+  blk_ksm_reprogram_all_keys
   blk_mark_disk_dead
   blk_mq_alloc_request
   blk_mq_alloc_request_hctx
@@ -374,6 +375,7 @@
   dev_get_by_name
   dev_get_by_name_rcu
   dev_get_regmap
+  dev_get_tstats64
   device_add
   device_add_disk
   device_add_groups
@@ -697,6 +699,7 @@
   ethnl_cable_test_pulse
   ethnl_cable_test_result
   ethnl_cable_test_step
+  eth_platform_get_mac_address
   ethtool_convert_legacy_u32_to_link_mode
   ethtool_convert_link_mode_to_legacy_u32
   eventfd_ctx_fdget
@@ -764,6 +767,7 @@
   generic_handle_domain_irq
   generic_handle_irq
   generic_iommu_put_resv_regions
+  generic_mii_ioctl
   geni_icc_disable
   geni_icc_enable
   geni_icc_get
@@ -781,6 +785,9 @@
   geni_se_tx_dma_unprep
   genphy_check_and_restart_aneg
   __genphy_config_aneg
+  genphy_c45_an_config_aneg
+  genphy_c45_check_and_restart_aneg
+  genphy_c45_pma_setup_forced
   genphy_c45_read_status
   genphy_read_abilities
   genphy_read_lpa
@@ -1042,6 +1049,7 @@
   iommu_group_get_iommudata
   iommu_group_put
   iommu_group_ref_get
+  iommu_group_remove_device
   iommu_group_set_iommudata
   iommu_iova_to_phys
   iommu_map
@@ -1291,6 +1299,8 @@
   migrate_pages
   migrate_swap
   __migrate_task
+  mii_check_media
+  mii_ethtool_gset
   mipi_dsi_dcs_set_tear_off
   misc_deregister
   misc_register
@@ -1457,6 +1467,7 @@
   page_endio
   page_is_ram
   page_mapping
+  page_owner_inited
   page_pool_alloc_pages
   page_pool_create
   page_pool_destroy
@@ -1586,6 +1597,7 @@
   phy_modify
   phy_modify_changed
   phy_modify_mmd
+  phy_modify_mmd_changed
   phy_modify_paged
   phy_modify_paged_changed
   phy_power_off
@@ -1596,6 +1608,7 @@
   phy_restore_page
   phy_save_page
   phy_select_page
+  phy_set_max_speed
   phy_set_mode_ext
   phy_sfp_attach
   phy_sfp_detach
@@ -1985,6 +1998,7 @@
   set_next_entity
   set_normalized_timespec64
   __SetPageMovable
+  __set_page_owner
   set_task_cpu
   set_user_nice
   sg_alloc_table
@@ -2489,6 +2503,7 @@
   typec_set_pwr_opmode
   typec_set_pwr_role
   typec_unregister_partner
+  typec_get_orientation
   uart_add_one_port
   uart_get_baud_rate
   uart_insert_char
@@ -2563,6 +2578,8 @@
   usb_alloc_coherent
   usb_alloc_dev
   usb_assign_descriptors
+  usb_autopm_get_interface_async
+  usb_autopm_put_interface_async
   usb_bus_idr
   usb_bus_idr_lock
   usb_composite_setup_continue
@@ -2591,6 +2608,26 @@
   usb_interface_id
   usb_mon_deregister
   usb_mon_register
+  usbnet_disconnect
+  usbnet_get_endpoints
+  usbnet_get_msglevel
+  usbnet_link_change
+  usbnet_nway_reset
+  usbnet_open
+  usbnet_probe
+  usbnet_read_cmd
+  usbnet_read_cmd_nopm
+  usbnet_resume
+  usbnet_set_msglevel
+  usbnet_skb_return
+  usbnet_start_xmit
+  usbnet_stop
+  usbnet_suspend
+  usbnet_tx_timeout
+  usbnet_update_max_qlen
+  usbnet_write_cmd
+  usbnet_write_cmd_async
+  usbnet_write_cmd_nopm
   usb_phy_set_charger_current
   usb_pipe_type_check
   usb_put_function_instance
@@ -2666,6 +2703,7 @@
   wait_for_completion_interruptible_timeout
   wait_for_completion_io_timeout
   wait_for_completion_timeout
+  wait_for_device_probe
   __wait_rcu_gp
   __wake_up
   wake_up_if_idle

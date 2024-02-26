@@ -812,6 +812,7 @@ static bool page_referenced_one(struct page *page, struct vm_area_struct *vma,
 		}
 
 		if (pvmw.pte) {
+			trace_android_vh_look_around(&pvmw, page, vma, &referenced);
 			if (lru_gen_enabled() && pte_young(*pvmw.pte) &&
 			    !(vma->vm_flags & (VM_SEQ_READ | VM_RAND_READ))) {
 				lru_gen_look_around(&pvmw);
@@ -929,6 +930,7 @@ int page_referenced(struct page *page,
 
 	return rwc.contended ? -1 : pra.referenced;
 }
+EXPORT_SYMBOL_GPL(page_referenced);
 
 static bool page_mkclean_one(struct page *page, struct vm_area_struct *vma,
 			    unsigned long address, void *arg)
@@ -2065,10 +2067,14 @@ void try_to_migrate(struct page *page, enum ttu_flags flags)
 	if (!PageKsm(page) && PageAnon(page))
 		rwc.invalid_vma = invalid_migration_vma;
 
+	trace_android_vh_set_page_migrating(page);
+
 	if (flags & TTU_RMAP_LOCKED)
 		rmap_walk_locked(page, &rwc);
 	else
 		rmap_walk(page, &rwc);
+
+	trace_android_vh_clear_page_migrating(page);
 }
 
 /*

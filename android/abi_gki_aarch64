@@ -141,3 +141,6 @@
   unregister_shrinker
   wait_on_page_bit
   __wake_up
+
+# preserved by --additions-only
+  android_kmalloc_64_create
