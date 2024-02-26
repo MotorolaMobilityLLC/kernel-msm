@@ -2886,10 +2886,12 @@ void vma_adjust_trans_huge(struct vm_area_struct *vma,
 
 static void unmap_folio(struct folio *folio)
 {
-	enum ttu_flags ttu_flags = TTU_RMAP_LOCKED | TTU_SPLIT_HUGE_PMD |
-		TTU_SYNC;
+	enum ttu_flags ttu_flags = TTU_RMAP_LOCKED | TTU_SYNC;
 
 	VM_BUG_ON_FOLIO(!folio_test_large(folio), folio);
+
+	if (folio_test_pmd_mappable(folio))
+		ttu_flags |= TTU_SPLIT_HUGE_PMD;
 
 	/*
 	 * Anon pages need migration entries to preserve them, but file
