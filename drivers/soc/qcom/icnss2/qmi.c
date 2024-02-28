@@ -226,10 +226,9 @@ static int selectFileNameByProduct(struct icnss_priv *plat_priv, char *filename,
 					ret = 1;
 					break;
 				} else if (ICNSS_BDF_BIN == bdf_type) {
-					if (plat_priv->foundry_name) {
-						sprintf(filename, "adrastea/%s%s_%s_%s.bin", BDF_FILE_NAME_PREFIX,
-							plat_priv->foundry_name, (products_list+i)->hw_device,
-							(products_list+i)->nv_name);
+					if (plat_priv->chip_info.chip_id == UMC_CHIP_ID) {
+						sprintf(filename, "adrastea/%su_%s_%s.bin", BDF_FILE_NAME_PREFIX,
+							(products_list+i)->hw_device, (products_list+i)->nv_name);
 					} else {
 						sprintf(filename, "adrastea/%s_%s_%s.bin", BDF_FILE_NAME_PREFIX,
 							(products_list+i)->hw_device, (products_list+i)->nv_name);
