@@ -28,6 +28,8 @@ icc-bcm-voter.ko
 icc-rpmh.ko
 rpmh-regulator.ko
 qcom-scm.ko
+qcom_llcc_pmu.ko
+qcom-pmu-lib.ko
 dcvs_fp.ko
 qcom-dcvs.ko
 qmi_helpers.ko
