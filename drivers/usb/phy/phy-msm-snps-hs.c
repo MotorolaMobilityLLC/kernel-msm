@@ -24,6 +24,7 @@
 #include <linux/debugfs.h>
 #include <linux/qcom_scm.h>
 #include <linux/types.h>
+#include <linux/qti_power_supply.h>
 
 #define USB2_PHY_USB_PHY_UTMI_CTRL0		(0x3c)
 #define OPMODE_MASK				(0x3 << 3)
@@ -130,6 +131,8 @@ struct msm_hsphy {
 	struct regulator_dev	*dpdm_rdev;
 
 	struct power_supply	*usb_psy;
+	struct power_supply	*charger_psy;
+
 	unsigned int		vbus_draw;
 	struct work_struct	vbus_draw_work;
 
@@ -670,12 +673,34 @@ static int msm_hsphy_notify_disconnect(struct usb_phy *uphy,
 	return 0;
 }
 
+static int get_chg_type(struct msm_hsphy *phy)
+{
+	int value = 0;
+	union power_supply_propval pval = {0};
+
+	if (!phy->charger_psy) {
+		phy->charger_psy = power_supply_get_by_name("charger");
+		if (!phy->charger_psy) {
+			dev_err(phy->phy.dev, "Could not get charger psy\n");
+			return -ENODEV;
+		}
+	}
+
+	power_supply_get_property(phy->charger_psy,
+			POWER_SUPPLY_PROP_USB_TYPE, &pval);
+	value = pval.intval;
+	dev_info(phy->phy.dev, "get_chg_type:%d\n", value);
+
+	return value;
+}
+
 static void msm_hsphy_vbus_draw_work(struct work_struct *w)
 {
 	struct msm_hsphy *phy = container_of(w, struct msm_hsphy,
 			vbus_draw_work);
 	union power_supply_propval val = {0};
 	int ret;
+	int chg_type;
 
 	if (!phy->usb_psy) {
 		phy->usb_psy = power_supply_get_by_name("usb");
@@ -685,6 +710,25 @@ static void msm_hsphy_vbus_draw_work(struct work_struct *w)
 		}
 	}
 
+	chg_type = get_chg_type(phy);
+	if(chg_type == POWER_SUPPLY_USB_TYPE_UNKNOWN || chg_type == QTI_POWER_SUPPLY_TYPE_USB_FLOAT) {
+        	dev_info(phy->phy.dev, "Avail curr from unknown USB = %u\n", phy->vbus_draw);
+
+		if(phy->vbus_draw == 2)
+			return ;
+
+		if(!phy->vbus_draw)
+			return;
+		else
+			goto set_prop;
+	}
+
+	if(chg_type != POWER_SUPPLY_USB_TYPE_SDP)
+		return;
+
+	if(chg_type != POWER_SUPPLY_TYPE_USB)
+		return;
+ set_prop:
 	dev_info(phy->phy.dev, "Avail curr from USB = %u\n", phy->vbus_draw);
 
 	/* Set max current limit in uA */
@@ -1033,6 +1077,8 @@ static int msm_hsphy_remove(struct platform_device *pdev)
 
 	if (phy->usb_psy)
 		power_supply_put(phy->usb_psy);
+	if (phy->charger_psy)
+		power_supply_put(phy->charger_psy);
 
 	debugfs_remove_recursive(phy->root);
 
