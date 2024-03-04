@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "Minidump: " fmt
@@ -29,9 +29,10 @@ struct md_core {
 	const struct md_ops	*ops;
 };
 
-static DEFINE_SPINLOCK(mdt_lock);
 static bool md_init_done;
 static struct md_core md_core;
+
+DEFINE_SPINLOCK(mdt_lock);
 
 unsigned int md_num_regions;
 EXPORT_SYMBOL_GPL(md_num_regions);
@@ -77,6 +78,31 @@ struct md_region md_get_region(char *name)
 
 	return tmp;
 }
+
+/* Update elf header */
+void md_add_elf_header(const struct md_region *entry)
+{
+	struct elfhdr *hdr = minidump_elfheader.ehdr;
+	struct elf_shdr *shdr = elf_section(hdr, hdr->e_shnum++);
+	struct elf_phdr *phdr = elf_program(hdr, hdr->e_phnum++);
+
+	shdr->sh_type = SHT_PROGBITS;
+	shdr->sh_name = set_section_name(entry->name);
+	shdr->sh_addr = (elf_addr_t)entry->virt_addr;
+	shdr->sh_size = entry->size;
+	shdr->sh_flags = SHF_WRITE;
+	shdr->sh_offset = minidump_elfheader.elf_offset;
+	shdr->sh_entsize = 0;
+
+	phdr->p_type = PT_LOAD;
+	phdr->p_offset = minidump_elfheader.elf_offset;
+	phdr->p_vaddr = entry->virt_addr;
+	phdr->p_paddr = entry->phys_addr;
+	phdr->p_filesz = phdr->p_memsz = entry->size;
+	phdr->p_flags = PF_R | PF_W;
+	minidump_elfheader.elf_offset += shdr->sh_size;
+}
+EXPORT_SYMBOL_GPL(md_add_elf_header);
 
 int msm_minidump_clear_headers(const struct md_region *entry)
 {
@@ -155,8 +181,6 @@ int msm_minidump_clear_headers(const struct md_region *entry)
 }
 EXPORT_SYMBOL_GPL(msm_minidump_clear_headers);
 
-
-
 bool msm_minidump_enabled(void)
 {
 	bool ret = false;
@@ -222,36 +246,32 @@ int msm_minidump_add_region(const struct md_region *entry)
 	if (validate_region(entry))
 		return -EINVAL;
 
-	spin_lock_irqsave(&mdt_lock, flags);
-
-	if (md_num_regions >= MAX_NUM_ENTRIES) {
-		printk_deferred("Maximum entries reached\n");
-		ret = -ENOMEM;
-		goto out;
-	}
-
 	if (md_core.ops) {
 		ret = md_core.ops->add_region(entry);
-		if (ret)
-			goto out;
 	} else {
 		/* Local table not initialized
 		 * add to pending list, need free after initialized
 		 */
 		pr_info("Minidump driver hasn't probe, add region to pending list\n");
+		spin_lock_irqsave(&mdt_lock, flags);
+
+		if (md_num_regions >= MAX_NUM_ENTRIES) {
+			printk_deferred("Maximum entries reached\n");
+			spin_unlock_irqrestore(&mdt_lock, flags);
+			return -ENOMEM;
+		}
+
 		pending_region = kzalloc(sizeof(*pending_region), GFP_ATOMIC);
 		if (!pending_region) {
-			ret = -ENOMEM;
-			goto out;
+			spin_unlock_irqrestore(&mdt_lock, flags);
+			return -ENOMEM;
 		}
 		pending_region->entry = *entry;
 		list_add_tail(&pending_region->list, &pending_list);
+		ret = md_num_regions;
+		md_num_regions++;
+		spin_unlock_irqrestore(&mdt_lock, flags);
 	}
-	ret = md_num_regions;
-	md_num_regions++;
-
-out:
-	spin_unlock_irqrestore(&mdt_lock, flags);
 
 	return ret;
 }

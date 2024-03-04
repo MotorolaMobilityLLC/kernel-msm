@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/syscore_ops.h>
@@ -2551,7 +2551,6 @@ static struct walt_sched_cluster init_cluster = {
 	.max_possible_freq	= 1,
 	.aggr_grp_load		= 0,
 	.found_ts		= 0,
-	.smart_fmax_cap		= 1,
 };
 
 static void init_clusters(void)
@@ -2593,7 +2592,6 @@ static struct walt_sched_cluster *alloc_new_cluster(const struct cpumask *cpus)
 	raw_spin_lock_init(&cluster->load_lock);
 	cluster->cpus			= *cpus;
 	cluster->found_ts		= 0;
-	cluster->smart_fmax_cap		= 1;
 
 	return cluster;
 }
@@ -4567,7 +4565,7 @@ void walt_rotation_checkpoint(int nr_big)
 			fmax_cap[HIGH_PERF_CAP][i] = FREQ_QOS_MAX_DEFAULT_VALUE;
 	}
 
-	update_fmax_cap_capacities(HIGH_PERF_CAP);
+	update_fmax_cap_capacities();
 }
 
 #define WAKEUP_CTR_THRESH 50
@@ -4582,17 +4580,23 @@ bool thres_based_uncap(u64 window_start)
 
 	for (i = 0; i < num_sched_clusters; i++) {
 		bool cluster_high_load = false;
+		unsigned long fmax_capacity, tgt_cap;
 
 		cluster = sched_cluster[i];
+		fmax_capacity = arch_scale_cpu_capacity(cpumask_first(&cluster->cpus));
+		tgt_cap = mult_frac(fmax_capacity, sysctl_fmax_cap[cluster->id],
+					cluster->max_possible_freq);
 
 		for_each_cpu(cpu, &cluster->cpus) {
 			wrq = &per_cpu(walt_rq, cpu);
-			if (wrq->util >= mult_frac(UTIL_THRES, cluster->smart_fmax_cap, 100)) {
+			if (wrq->util >= mult_frac(tgt_cap, UTIL_THRES, 100)) {
 				cluster_high_load = true;
 				if (!cluster->found_ts)
 					cluster->found_ts = window_start;
 				else if ((window_start - cluster->found_ts) >= UNCAP_THRES)
 					return true;
+
+				break;
 			}
 		}
 		if (!cluster_high_load)
@@ -4607,7 +4611,6 @@ void fmax_uncap_checkpoint(int nr_big, u64 window_start, u32 wakeup_ctr_sum)
 	bool fmax_uncap_load_detected;
 	static u64 fmax_uncap_timestamp;
 	int i;
-	bool change = false;
 
 	fmax_uncap_load_detected = (nr_big >= 7 && wakeup_ctr_sum < WAKEUP_CTR_THRESH) ||
 			is_full_throttle_boost() ||
@@ -4619,22 +4622,21 @@ void fmax_uncap_checkpoint(int nr_big, u64 window_start, u32 wakeup_ctr_sum)
 			for (i = 0; i < num_sched_clusters; i++)
 				fmax_cap[SMART_FMAX_CAP][i] = FREQ_QOS_MAX_DEFAULT_VALUE;
 		fmax_uncap_timestamp = window_start;
-	} else {
-		for (int i = 0; i < num_sched_clusters; i++) {
-			if (fmax_cap[SMART_FMAX_CAP][i] != sysctl_fmax_cap[i]) {
-				change = true;
-				break;
-			}
-		}
-		if (change || (fmax_uncap_timestamp &&
-			(window_start > fmax_uncap_timestamp + FMAX_CAP_HYSTERESIS))) {
+	} else if (fmax_uncap_timestamp) {
+		/*
+		 * Enter to check for capping again only if we have already uncapped
+		 * Apply fmax capping if we are continuously running at lower
+		 * load for more than FMAX_CAP_HYSTERESIS.
+		 */
+		if (window_start > fmax_uncap_timestamp + FMAX_CAP_HYSTERESIS) {
 			for (int i = 0; i < num_sched_clusters; i++)
 				fmax_cap[SMART_FMAX_CAP][i] = sysctl_fmax_cap[i];
+
 			fmax_uncap_timestamp = 0;
 		}
 	}
 
-	update_fmax_cap_capacities(SMART_FMAX_CAP);
+	update_fmax_cap_capacities();
 
 	trace_sched_fmax_uncap(nr_big, window_start, wakeup_ctr_sum,
 			fmax_uncap_load_detected, fmax_uncap_timestamp);
@@ -4671,7 +4673,7 @@ void update_freq_relation(struct walt_sched_cluster *cluster)
 		fmax_cap[FREQ_REL_CAP][cluster_id] = FREQ_QOS_MAX_DEFAULT_VALUE;
 
 	if (prev_cap != fmax_cap[FREQ_REL_CAP][cluster_id])
-		update_fmax_cap_capacities(FREQ_REL_CAP);
+		update_fmax_cap_capacities();
 }
 
 void walt_fill_ta_data(struct core_ctl_notif_data *data)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "Minidump: " fmt
@@ -24,7 +24,6 @@
 #include "elf.h"
 
 /* Protect elfheader and smem table from deferred calls contention */
-static DEFINE_SPINLOCK(mdt_lock);
 static DEFINE_RWLOCK(mdt_remove_lock);
 struct workqueue_struct *minidump_rm_wq;
 static bool md_init_done;
@@ -251,30 +250,6 @@ static int md_rm_init_md_table(void)
 	return 0;
 }
 
-/* Update elf header */
-void md_rm_add_elf_header(const struct md_region *entry)
-{
-	struct elfhdr *hdr = minidump_elfheader.ehdr;
-	struct elf_shdr *shdr = elf_section(hdr, hdr->e_shnum++);
-	struct elf_phdr *phdr = elf_program(hdr, hdr->e_phnum++);
-
-	shdr->sh_type = SHT_PROGBITS;
-	shdr->sh_name = set_section_name(entry->name);
-	shdr->sh_addr = (elf_addr_t)entry->virt_addr;
-	shdr->sh_size = entry->size;
-	shdr->sh_flags = SHF_WRITE;
-	shdr->sh_offset = minidump_elfheader.elf_offset;
-	shdr->sh_entsize = 0;
-
-	phdr->p_type = PT_LOAD;
-	phdr->p_offset = minidump_elfheader.elf_offset;
-	phdr->p_vaddr = entry->virt_addr;
-	phdr->p_paddr = entry->phys_addr;
-	phdr->p_filesz = phdr->p_memsz = entry->size;
-	phdr->p_flags = PF_R | PF_W;
-	minidump_elfheader.elf_offset += shdr->sh_size;
-}
-
 static int md_rm_add_pending_entry(struct list_head *pending_list)
 {
 	unsigned int region_number;
@@ -296,7 +271,7 @@ static int md_rm_add_pending_entry(struct list_head *pending_list)
 		rm_region->work_cmd = MINIDUMP_ADD;
 		INIT_WORK(&rm_region->work, minidump_rm_work);
 		queue_work(minidump_rm_wq, &rm_region->work);
-		md_rm_add_elf_header(&pending_region->entry);
+		md_add_elf_header(&pending_region->entry);
 		list_del(&pending_region->list);
 		kfree(pending_region);
 		region_number++;
@@ -339,19 +314,33 @@ static int md_rm_remove_md_region(const struct md_region *entry)
 static int md_rm_add_md_region(const struct md_region *entry)
 {
 	int ret = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mdt_lock, flags);
+
+	if (md_num_regions >= MAX_NUM_ENTRIES) {
+		printk_deferred("Maximum entries reached\n");
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	/* Ensure that init completes before register region */
 	if (smp_load_acquire(&md_init_done)) {
 		if (md_elf_entry_number(entry) >= 0) {
 			printk_deferred("Entry name already exist\n");
 			ret = -EEXIST;
-			return ret;
+			goto out;
 		}
 		ret = md_rm_add_region(entry);
-		md_rm_add_elf_header(entry);
+		md_add_elf_header(entry);
 		if (ret)
-			return ret;
+			goto out;
 	}
+	ret = md_num_regions;
+	md_num_regions++;
+
+out:
+	spin_unlock_irqrestore(&mdt_lock, flags);
 
 	return ret;
 }

@@ -5,7 +5,7 @@
  * Copyright (C) 2016 Linaro Ltd
  * Copyright (C) 2014 Sony Mobile Communications AB
  * Copyright (c) 2012-2013, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -59,6 +59,7 @@ static bool recovery_set_cb;
 
 #define SOCCP_SLEEP_US  100
 #define SOCCP_TIMEOUT_US  10000
+#define SOCCP_STATE_MASK 0x600
 #define SOCCP_D0  0x2
 #define SOCCP_D1  0x4
 #define SOCCP_D3  0x8
@@ -901,7 +902,6 @@ int rproc_set_state(struct rproc *rproc, bool state)
 			goto soccp_out;
 		}
 
-		adsp->current_users = 1;
 		ret = enable_regulators(adsp);
 		if (ret) {
 			dev_err(adsp->dev, "failed to enable regulators\n");
@@ -915,7 +915,7 @@ int rproc_set_state(struct rproc *rproc, bool state)
 		}
 
 		ret = qcom_smem_state_update_bits(adsp->wake_state,
-					    BIT(adsp->wake_bit),
+					    SOCCP_STATE_MASK,
 					    BIT(adsp->wake_bit));
 		if (ret) {
 			dev_err(adsp->dev, "failed to update smem bits for D3 to D0\n");
@@ -923,23 +923,34 @@ int rproc_set_state(struct rproc *rproc, bool state)
 		}
 
 		ret = rproc_config_check(adsp, SOCCP_D0);
-	} else {
-		adsp->current_users--;
-		if (adsp->current_users == 0) {
+		if (ret) {
+			dev_err(adsp->dev, "failed to change from D3 to D0\n");
+			goto soccp_out;
+		}
 
+		adsp->current_users = 1;
+	} else {
+		if (users > 1) {
+			adsp->current_users--;
+			ret = 0;
+			goto soccp_out;
+		} else if (users == 1) {
 			ret = qcom_smem_state_update_bits(adsp->sleep_state,
-						    BIT(adsp->sleep_bit),
-						    BIT(adsp->sleep_bit));
+					    SOCCP_STATE_MASK,
+					    BIT(adsp->sleep_bit));
 			if (ret) {
 				dev_err(adsp->dev, "failed to update smem bits for D0 to D3\n");
 				goto soccp_out;
 			}
 
 			ret = rproc_config_check(adsp, SOCCP_D3);
-			if (ret)
+			if (ret) {
 				dev_err(adsp->dev, "failed to change from D0 to D3\n");
+				goto soccp_out;
+			}
 			disable_regulators(adsp);
 			clk_disable_unprepare(adsp->xo);
+			adsp->current_users = 0;
 		}
 	}
 
@@ -1913,6 +1924,22 @@ static const struct adsp_data cliffs_adsp_resource = {
 	.ssctl_id = 0x14,
 };
 
+static const struct adsp_data volcano_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.dtb_firmware_name = "adsp_dtb.mdt",
+	.pas_id = 1,
+	.dtb_pas_id = 0x24,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
 static const struct adsp_data khaje_adsp_resource = {
 	.crash_reason_smem = 423,
 	.firmware_name = "adsp.mdt",
@@ -2156,6 +2183,22 @@ static const struct adsp_data cliffs_cdsp_resource = {
 	.ssctl_id = 0x17,
 };
 
+static const struct adsp_data volcano_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.dtb_firmware_name = "cdsp_dtb.mdt",
+	.pas_id = 18,
+	.dtb_pas_id = 0x25,
+	.minidump_id = 7,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
 static const struct adsp_data khaje_cdsp_resource = {
 	.crash_reason_smem = 601,
 	.firmware_name = "cdsp.mdt",
@@ -2287,6 +2330,22 @@ static const struct adsp_data cliffs_mpss_resource = {
 	.ssctl_id = 0x12,
 	.dma_phys_below_32b = true,
 	.both_dumps = true,
+};
+
+static const struct adsp_data volcano_mpss_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "modem.mdt",
+	.pas_id = 4,
+	.free_after_auth_reset = true,
+	.minidump_id = 3,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "mpss",
+	.sysmon_name = "modem",
+	.qmp_name = "modem",
+	.ssctl_id = 0x12,
+	.dma_phys_below_32b = true,
 };
 
 static const struct adsp_data cinder_mpss_resource = {
@@ -2676,6 +2735,9 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,pitti-adsp-pas", .data = &pitti_adsp_resource},
 	{ .compatible = "qcom,pitti-modem-pas", .data = &pitti_mpss_resource},
 	{ .compatible = "qcom,niobe-soccp-pas", .data = &niobe_soccp_resource},
+	{ .compatible = "qcom,volcano-adsp-pas", .data = &volcano_adsp_resource},
+	{ .compatible = "qcom,volcano-modem-pas", .data = &volcano_mpss_resource},
+	{ .compatible = "qcom,volcano-cdsp-pas", .data = &volcano_cdsp_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);
