@@ -13,10 +13,6 @@
 #include <linux/notifier.h>
 #include <linux/panic_notifier.h>
 #include <ufs/ufshcd.h>
-#if defined(CONFIG_UFSFEATURE)
-#include "vendor/ufsfeature.h"
-#endif
-
 #include <ufs/unipro.h>
 
 #define MAX_UFS_QCOM_HOSTS	2
@@ -639,10 +635,6 @@ struct ufs_qcom_host {
 
 	bool broken_ahit_wa;
 	unsigned long active_cmds;
-
-#if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature ufsf;
-#endif
 };
 
 static inline u32
@@ -806,12 +798,4 @@ static inline void ufs_qcom_msi_unlock_descs(struct ufs_hba *hba)
 	mutex_unlock(&hba->dev->msi.data->mutex);
 }
 
-#if defined(CONFIG_UFSFEATURE)
-static inline struct ufsf_feature *ufs_qcom_get_ufsf(struct ufs_hba *hba)
-{
-	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
-
-	return &host->ufsf;
-}
-#endif
 #endif /* UFS_QCOM_H_ */
