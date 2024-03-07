@@ -29,6 +29,8 @@
 #define FSA4480_DELAY_L_AGND    0x10
 #define FSA4480_RESET           0x1E
 
+static u32 add_fsa4480_reset_probe_value = 0;
+
 struct fsa4480_priv {
 	struct regmap *regmap;
 	struct device *dev;
@@ -336,7 +338,6 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	struct device_node *np = i2c->dev.of_node;
 	int rc = 0;
 	int ret = 0;
-	u32 add_fsa4480_reset_probe_value = 0;
 
 	fsa_priv = devm_kzalloc(&i2c->dev, sizeof(*fsa_priv),
 				GFP_KERNEL);
@@ -346,9 +347,9 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	fsa_priv->dev = &i2c->dev;
 
 	ret = of_property_read_u32(np, "add-fsa4480-reset-probe", &add_fsa4480_reset_probe_value);
-        if (ret) {
-                dev_err(fsa_priv->dev, "%s get add fsa4480-reset-probe failed,ret = %d\n", __func__, ret);
-        }
+	if (ret) {
+		dev_err(fsa_priv->dev, "%s get add fsa4480-reset-probe failed,ret = %d\n", __func__, ret);
+	}
 
 
 	fsa_priv->regmap = devm_regmap_init_i2c(i2c, &fsa4480_regmap_config);
@@ -415,6 +416,16 @@ static int fsa4480_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static void fsa4480_shutdown(struct i2c_client *i2c)
+{
+	if (add_fsa4480_reset_probe_value) {
+		struct fsa4480_priv *fsa_priv =
+			(struct fsa4480_priv *)i2c_get_clientdata(i2c);
+		regmap_write(fsa_priv->regmap, FSA4480_RESET, 0x01);
+		dev_info(fsa_priv->dev, "%s write FSA4480 RESET shutdown okay\n", __func__);
+	}
+}
+
 static const struct of_device_id fsa4480_i2c_dt_match[] = {
 	{
 		.compatible = "qcom,fsa4480-i2c",
@@ -430,6 +441,7 @@ static struct i2c_driver fsa4480_i2c_driver = {
 	},
 	.probe = fsa4480_probe,
 	.remove = fsa4480_remove,
+	.shutdown = fsa4480_shutdown,
 };
 
 static int __init fsa4480_init(void)
