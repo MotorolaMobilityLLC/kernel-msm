@@ -284,6 +284,7 @@ struct battery_chg_dev {
 	bool				initialized;
 	bool				notify_en;
 	bool				error_prop;
+	bool				aura_combo_policy;
 	struct power_supply		*combo_batt_psy;
 };
 
@@ -1420,7 +1421,7 @@ static int battery_psy_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		pval->intval = DIV_ROUND_CLOSEST(pst->prop[prop_id], 100);
-		if (bcdev->combo_batt_psy) {
+		if (bcdev->combo_batt_psy && !bcdev->aura_combo_policy) {
 			power_supply_get_property(bcdev->combo_batt_psy,
 						prop, pval);
 		}
@@ -1437,10 +1438,17 @@ static int battery_psy_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
 		pval->intval = bcdev->num_thermal_levels;
 		break;
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+		pval->intval = pst->prop[prop_id];
+		if (bcdev->combo_batt_psy && !bcdev->aura_combo_policy) {
+			pval->intval = pst->prop[prop_id];
+			power_supply_get_property(bcdev->combo_batt_psy,
+						prop, pval);
+		}
+		break;
 	case POWER_SUPPLY_PROP_STATUS:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		if (bcdev->combo_batt_psy) {
@@ -1587,6 +1595,8 @@ static int battery_chg_init_psy(struct battery_chg_dev *bcdev)
 				return -ENODEV;
 			else
 				return PTR_ERR(bcdev->combo_batt_psy);
+		} else {
+			bcdev->aura_combo_policy = of_property_read_bool(bcdev->dev->of_node, "mmi,aura-combo-policy");
 		}
 	}
 	return 0;
