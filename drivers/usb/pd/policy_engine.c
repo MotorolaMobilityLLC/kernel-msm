@@ -641,6 +641,12 @@ static void start_usb_peripheral_work(struct work_struct *w)
 	start_usb_peripheral(pd);
 	typec_set_data_role(pd->typec_port, TYPEC_DEVICE);
 	typec_set_pwr_role(pd->typec_port, TYPEC_SINK);
+
+	if ((pd->typec_mode - QTI_POWER_SUPPLY_TYPEC_SOURCE_DEFAULT < TYPEC_PWR_MODE_USB) ||
+		(pd->typec_mode - QTI_POWER_SUPPLY_TYPEC_SOURCE_DEFAULT > TYPEC_PWR_MODE_PD)) {
+		return ;
+	}
+
 	typec_set_pwr_opmode(pd->typec_port,
 			pd->typec_mode - QTI_POWER_SUPPLY_TYPEC_SOURCE_DEFAULT);
 	if (!pd->partner) {
