@@ -329,6 +329,11 @@ static void fsa4480_update_reg_defaults(struct regmap *regmap)
 	for (i = 0; i < ARRAY_SIZE(fsa_reg_i2c_defaults); i++)
 		regmap_write(regmap, fsa_reg_i2c_defaults[i].reg,
 				   fsa_reg_i2c_defaults[i].val);
+
+        if (add_fsa4480_reset_probe_value) {
+            regmap_write(regmap, FSA4480_SWITCH_CONTROL, 0x18);
+        }
+
 }
 
 static int fsa4480_probe(struct i2c_client *i2c,
@@ -338,6 +343,7 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	struct device_node *np = i2c->dev.of_node;
 	int rc = 0;
 	int ret = 0;
+	u32 prev_control = 0, prev_enable = 0;
 
 	fsa_priv = devm_kzalloc(&i2c->dev, sizeof(*fsa_priv),
 				GFP_KERNEL);
@@ -355,10 +361,7 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	fsa_priv->regmap = devm_regmap_init_i2c(i2c, &fsa4480_regmap_config);
 
 	dev_info(fsa_priv->dev, "%s add_fsa4480_reset_probe_value = %d\n", __func__, add_fsa4480_reset_probe_value);
-	if (add_fsa4480_reset_probe_value) {
-		regmap_write(fsa_priv->regmap, FSA4480_RESET, 0x01);
-		dev_info(fsa_priv->dev, "%s write FSA4480 RESET probe okay\n", __func__);
-	}
+
 
 	if (IS_ERR_OR_NULL(fsa_priv->regmap)) {
 		dev_err(fsa_priv->dev, "%s: Failed to initialize regmap: %d\n",
@@ -372,6 +375,13 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	}
 
 	fsa4480_update_reg_defaults(fsa_priv->regmap);
+
+	if (add_fsa4480_reset_probe_value) {
+	    regmap_read(fsa_priv->regmap, FSA4480_SWITCH_CONTROL, &prev_control);
+	    regmap_read(fsa_priv->regmap, FSA4480_SWITCH_SETTINGS, &prev_enable);
+	    dev_info(fsa_priv->dev, "%s default Read control:%u enable:%u \n", __func__, prev_control, prev_enable);
+	}
+
 	devm_regmap_qti_debugfs_register(fsa_priv->dev, fsa_priv->regmap);
 
 	fsa_priv->ucsi_nb.notifier_call = fsa4480_usbc_event_changed;
