@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/iio/consumer.h>
 #include <linux/io.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
@@ -24,6 +25,7 @@
 #include <linux/reset.h>
 #include <linux/debugfs.h>
 #include <linux/qcom_scm.h>
+#include <linux/qti_power_supply.h>
 #include <linux/types.h>
 
 #define USB2_PHY_USB_PHY_UTMI_CTRL0		(0x3c)
@@ -97,6 +99,12 @@ struct hs_phy_priv_data {
 	bool limit_control_vdda33;
 };
 
+enum charger_detection_type {
+	REMOTE_PROC,
+	IIO,
+	PSY,
+};
+
 struct msm_hsphy {
 	struct usb_phy		phy;
 	void __iomem		*base;
@@ -134,8 +142,11 @@ struct msm_hsphy {
 	struct regulator_dev	*dpdm_rdev;
 
 	struct power_supply	*usb_psy;
+	struct iio_channel	*chg_type;
 	unsigned int		vbus_draw;
 	struct work_struct	vbus_draw_work;
+
+        enum charger_detection_type apsd_source;
 
 	/* debugfs entries */
 	struct dentry		*root;
@@ -677,12 +688,54 @@ static int msm_hsphy_notify_disconnect(struct usb_phy *uphy,
 	return 0;
 }
 
+static int get_chg_type(struct msm_hsphy *phy)
+{
+	int ret, value = 0;
+	union power_supply_propval val = {0};
+
+	switch (phy->apsd_source) {
+	case IIO:
+		if (!phy->chg_type) {
+			phy->chg_type = devm_iio_channel_get(phy->phy.dev,
+						"chg_type");
+			if (IS_ERR_OR_NULL(phy->chg_type)) {
+				dev_err(phy->phy.dev,
+					"unable to get iio channel\n");
+				phy->chg_type = NULL;
+				return -ENODEV;
+			}
+		}
+		ret = iio_read_channel_processed(phy->chg_type, &value);
+		if (ret < 0) {
+			dev_err(phy->phy.dev, "failed to get charger type\n");
+			return ret;
+		}
+		break;
+	case PSY:
+		if (!phy->usb_psy) {
+			phy->usb_psy = power_supply_get_by_name("usb");
+			if (!phy->usb_psy) {
+				dev_err(phy->phy.dev, "Could not get usb psy\n");
+				return -ENODEV;
+			}
+		}
+		power_supply_get_property(phy->usb_psy,
+				POWER_SUPPLY_PROP_USB_TYPE, &val);
+		value = val.intval;
+		break;
+	default:
+		return -EINVAL;
+	}
+        dev_info(phy->phy.dev, "get_chg_type:%d\n", value);
+	return value;
+}
+
 static void msm_hsphy_vbus_draw_work(struct work_struct *w)
 {
 	struct msm_hsphy *phy = container_of(w, struct msm_hsphy,
 			vbus_draw_work);
 	union power_supply_propval val = {0};
-	int ret;
+	int ret, chg_type;
 
 	if (!phy->usb_psy) {
 		phy->usb_psy = power_supply_get_by_name("usb");
@@ -692,6 +745,35 @@ static void msm_hsphy_vbus_draw_work(struct work_struct *w)
 		}
 	}
 
+	chg_type = get_chg_type(phy);
+	if(chg_type == QTI_POWER_SUPPLY_TYPE_USB_FLOAT) {
+		dev_info(phy->phy.dev, "Avail curr from unknown USB = %u\n", phy->vbus_draw);
+
+		if(phy->vbus_draw == 2)
+			return ;
+
+		if(!phy->vbus_draw)
+			return;
+		else
+			goto set_prop;
+	}
+
+	/*
+	 * Set the valid current only when the device
+	 * is connected to a Standard Downstream Port.
+	 * For ADSP based charger detection set current
+	 * for all charger types. For psy based charger
+	 * detection power_supply_usb_type enum is
+	 * returned from pmic while for iio based charger
+	 * detection power_supply_type enum is returned.
+	 */
+	if (phy->apsd_source == PSY && chg_type != POWER_SUPPLY_USB_TYPE_SDP)
+		return;
+
+	if (phy->apsd_source == IIO && chg_type != POWER_SUPPLY_TYPE_USB)
+		return;
+
+set_prop:
 	dev_info(phy->phy.dev, "Avail curr from USB = %u\n", phy->vbus_draw);
 
 	/* Set max current limit in uA */
@@ -1036,6 +1118,14 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 
 	INIT_WORK(&phy->vbus_draw_work, msm_hsphy_vbus_draw_work);
 	msm_hsphy_create_debugfs(phy);
+
+	/* Check charger detection type to obtain charger type */
+	if (of_get_property(dev->of_node, "io-channel-names", NULL))
+		phy->apsd_source = IIO;
+	else if (of_get_property(dev->of_node, "usb-role-switch", NULL))
+		phy->apsd_source = REMOTE_PROC;
+	else
+		phy->apsd_source = PSY;
 
 	/*
 	 * EUD may be enable in boot loader and to keep EUD session alive across
