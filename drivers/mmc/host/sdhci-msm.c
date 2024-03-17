@@ -3,7 +3,7 @@
  * drivers/mmc/host/sdhci-msm.c - Qualcomm SDHCI Platform driver
  *
  * Copyright (c) 2013-2014,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -3851,6 +3851,7 @@ static int sdhci_msm_gcc_reset(struct device *dev, struct sdhci_host *host)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
 static void sdhci_msm_hwkm_ice_init(struct sdhci_msm_host *msm_host)
 {
 	struct ice_mmio_data mmio_data;
@@ -3859,6 +3860,7 @@ static void sdhci_msm_hwkm_ice_init(struct sdhci_msm_host *msm_host)
 	mmio_data.ice_hwkm_mmio = msm_host->ice_hwkm_mem;
 	qti_hwkm_ice_init_sequence(&mmio_data);
 }
+#endif
 
 static void sdhci_msm_hw_reset(struct sdhci_host *host)
 {
