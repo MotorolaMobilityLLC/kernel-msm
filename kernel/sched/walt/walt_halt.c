@@ -536,6 +536,7 @@ static void android_rvh_get_nohz_timer_target(void *unused, int *cpu, bool *done
 	cpumask_t unhalted;
 
 	*done = true;
+	cpumask_andnot(&unhalted, cpu_active_mask, cpu_halt_mask);
 
 	if (housekeeping_cpu(*cpu, HK_TYPE_TIMER) && !cpu_halted(*cpu)) {
 		if (!available_idle_cpu(*cpu))
@@ -547,7 +548,7 @@ static void android_rvh_get_nohz_timer_target(void *unused, int *cpu, bool *done
 	 * find first cpu halted by core control and try to avoid
 	 * affecting externally halted cpus.
 	 */
-	if (!cpumask_andnot(&unhalted, cpu_active_mask, cpu_halt_mask)) {
+	if (!cpumask_weight(&unhalted)) {
 		cpumask_t tmp_pause, tmp_part_pause, tmp_halt, *tmp;
 
 		cpumask_and(&tmp_part_pause, cpu_active_mask, &cpus_part_paused_by_us);
@@ -580,7 +581,6 @@ static void android_rvh_get_nohz_timer_target(void *unused, int *cpu, bool *done
 	}
 
 	if (default_cpu == -1) {
-		cpumask_complement(&unhalted, cpu_halt_mask);
 		for_each_cpu_and(i, &unhalted,
 				 housekeeping_cpumask(HK_TYPE_TIMER)) {
 			if (*cpu == i)
