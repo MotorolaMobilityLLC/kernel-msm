@@ -1607,12 +1607,6 @@ static irqreturn_t wcd_usbss_sdam_notifier_handler(int irq, void *data)
 	dev_dbg(priv->dev, "executing wcd state transition from %s to %s\n",
 			status_to_str(priv->wcd_standby_status), status_to_str(buf[0]));
 
-	if ((priv->wcd_standby_status & WCD_USBSS_USB_MODE_SET) &&
-	    buf[0] == WCD_USBSS_LPD_USB_MODE_CLEAR) {
-		dev_info(priv->dev, "%s: delay 500ms for wcd state clear\n", __func__);
-		usleep_range(500000, 500100);
-	}
-
 	rc = wcd_usbss_sdam_handle_events_locked(buf[0]);
 	if (rc == 0) {
 		priv->wcd_standby_status = buf[0];
