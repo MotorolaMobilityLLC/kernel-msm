@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -218,6 +218,7 @@ struct geni_i2c_dev {
 	atomic_t is_xfer_in_progress; /* Used to maintain xfer inprogress status */
 	bool bus_recovery_enable; /* To be enabled by client if needed */
 	bool i2c_test_dev; /* Set this DT flag to enable test bus dump for an SE */
+	bool is_deep_sleep; /* For deep sleep restore the config similar to the probe. */
 };
 
 static struct geni_i2c_dev *gi2c_dev_dbg[MAX_SE];
@@ -846,6 +847,26 @@ static void geni_i2c_irq_handle_watermark(struct geni_i2c_dev *gi2c, u32 m_stat)
 	}
 }
 
+/*
+ * geni_i2c_check_addr_data_nack() - checks wheather it is Address Nack or Data Nack
+ *
+ * @gi2c: I2C device handle
+ * @flags: gi2c cur flags
+ *
+ * Return: None
+ */
+
+static void geni_i2c_check_addr_data_nack(struct geni_i2c_dev *gi2c, __u16 flags)
+{
+	if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH)) {
+		/* only process for write operation. */
+		if (!(flags & I2C_M_RD))
+			geni_i2c_err(gi2c, I2C_DATA_NACK);
+	} else {
+		geni_i2c_err(gi2c, I2C_ADDR_NACK);
+	}
+}
+
 static irqreturn_t geni_i2c_irq(int irq, void *dev)
 {
 	struct geni_i2c_dev *gi2c = dev;
@@ -878,12 +899,8 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 		(m_stat & M_GP_IRQ_1_EN) ||
 		(m_stat & M_GP_IRQ_3_EN) ||
 		(m_stat & M_GP_IRQ_4_EN)) {
-		if (m_stat & M_GP_IRQ_1_EN) {
-			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH))
-				geni_i2c_err(gi2c, I2C_DATA_NACK);
-			else
-				geni_i2c_err(gi2c, I2C_ADDR_NACK);
-		}
+		if (m_stat & M_GP_IRQ_1_EN)
+			geni_i2c_check_addr_data_nack(gi2c, gi2c->cur->flags);
 		if (m_stat & M_GP_IRQ_3_EN)
 			geni_i2c_err(gi2c, I2C_BUS_PROTO);
 		if (m_stat & M_GP_IRQ_4_EN)
@@ -972,12 +989,8 @@ static void gi2c_ev_cb(struct dma_chan *ch, struct msm_gpi_cb const *cb_str,
 		break;
 	case MSM_GPI_QUP_NOTIFY:
 	case MSM_GPI_QUP_CH_ERROR:
-		if (m_stat & M_GP_IRQ_1_EN) {
-			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH))
-				geni_i2c_err(gi2c, I2C_DATA_NACK);
-			else
-				geni_i2c_err(gi2c, I2C_ADDR_NACK);
-		}
+		if (m_stat & M_GP_IRQ_1_EN)
+			geni_i2c_check_addr_data_nack(gi2c, gi2c->cur->flags);
 		if (m_stat & M_GP_IRQ_3_EN)
 			geni_i2c_err(gi2c, I2C_BUS_PROTO);
 		if (m_stat & M_GP_IRQ_4_EN)
@@ -1006,12 +1019,8 @@ static void gi2c_gsi_cb_err(struct msm_gpi_dma_async_tx_cb_param *cb,
 		I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
 			    "%s TCE Unexpected Err, stat:0x%x\n",
 				xfer, cb->status);
-		if (cb->status & (BIT(GP_IRQ1) << 5)) {
-			if (readl_relaxed(gi2c->base + SE_GENI_M_GP_LENGTH))
-				geni_i2c_err(gi2c, I2C_DATA_NACK);
-			else
-				geni_i2c_err(gi2c, I2C_ADDR_NACK);
-		}
+		if (cb->status & (BIT(GP_IRQ1) << 5))
+			geni_i2c_check_addr_data_nack(gi2c, gi2c->cur->flags);
 		if (cb->status & (BIT(GP_IRQ3) << 5))
 			geni_i2c_err(gi2c, I2C_BUS_PROTO);
 		if (cb->status & (BIT(GP_IRQ4) << 5))
@@ -2527,9 +2536,9 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	if (of_property_read_u32(pdev->dev.of_node, "qcom,clk-freq-out",
 				&gi2c->clk_freq_out))
 		gi2c->clk_freq_out = KHz(400);
-
 	dev_info(&pdev->dev, "Bus frequency is set to %dHz.\n",
 						gi2c->clk_freq_out);
+	gi2c->is_deep_sleep = false;
 
 	ret = geni_i2c_clk_map_idx(gi2c);
 	if (ret) {
@@ -2688,6 +2697,11 @@ static int geni_i2c_resume_early(struct device *device)
 	struct geni_i2c_dev *gi2c = dev_get_drvdata(device);
 
 	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev, "%s ret=%d\n", __func__, true);
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
+		gi2c->se_mode = UNINITIALIZED;
+		gi2c->is_deep_sleep = true;
+	}
 	return 0;
 }
 
@@ -2709,11 +2723,29 @@ static int geni_i2c_gpi_pause_resume(struct geni_i2c_dev *gi2c, bool is_suspend)
 {
 	int tx_ret = 0;
 
+	/* Do dma operations only for tx channel here, as it takes care of rx channel
+	 * also internally from the GPI driver functions. if we call for both channels,
+	 * will see channels in wrong state due to double operations.
+	 */
+
 	if (gi2c->tx_c) {
-		if (is_suspend)
+		if (is_suspend) {
 			tx_ret = dmaengine_pause(gi2c->tx_c);
-		else
+		} else {
+			/* For deep sleep need to restore the config similar to the probe,
+			 * hence using MSM_GPI_DEEP_SLEEP_INIT flag, in gpi_resume it will
+			 * do similar to the probe. After this we should set this flag to
+			 * MSM_GPI_DEFAULT, means gpi probe state is restored.
+			 */
+			if (gi2c->is_deep_sleep)
+				gi2c->tx_ev.cmd = MSM_GPI_DEEP_SLEEP_INIT;
+
 			tx_ret = dmaengine_resume(gi2c->tx_c);
+			if (gi2c->is_deep_sleep) {
+				gi2c->tx_ev.cmd = MSM_GPI_DEFAULT;
+				gi2c->is_deep_sleep = false;
+			}
+		}
 
 		if (tx_ret) {
 			I2C_LOG_ERR(gi2c->ipcl, true, gi2c->dev,

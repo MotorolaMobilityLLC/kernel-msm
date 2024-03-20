@@ -59,6 +59,7 @@ static bool recovery_set_cb;
 
 #define SOCCP_SLEEP_US  100
 #define SOCCP_TIMEOUT_US  10000
+#define SOCCP_STATE_MASK 0x600
 #define SOCCP_D0  0x2
 #define SOCCP_D1  0x4
 #define SOCCP_D3  0x8
@@ -901,7 +902,6 @@ int rproc_set_state(struct rproc *rproc, bool state)
 			goto soccp_out;
 		}
 
-		adsp->current_users = 1;
 		ret = enable_regulators(adsp);
 		if (ret) {
 			dev_err(adsp->dev, "failed to enable regulators\n");
@@ -915,7 +915,7 @@ int rproc_set_state(struct rproc *rproc, bool state)
 		}
 
 		ret = qcom_smem_state_update_bits(adsp->wake_state,
-					    BIT(adsp->wake_bit),
+					    SOCCP_STATE_MASK,
 					    BIT(adsp->wake_bit));
 		if (ret) {
 			dev_err(adsp->dev, "failed to update smem bits for D3 to D0\n");
@@ -923,23 +923,34 @@ int rproc_set_state(struct rproc *rproc, bool state)
 		}
 
 		ret = rproc_config_check(adsp, SOCCP_D0);
-	} else {
-		adsp->current_users--;
-		if (adsp->current_users == 0) {
+		if (ret) {
+			dev_err(adsp->dev, "failed to change from D3 to D0\n");
+			goto soccp_out;
+		}
 
+		adsp->current_users = 1;
+	} else {
+		if (users > 1) {
+			adsp->current_users--;
+			ret = 0;
+			goto soccp_out;
+		} else if (users == 1) {
 			ret = qcom_smem_state_update_bits(adsp->sleep_state,
-						    BIT(adsp->sleep_bit),
-						    BIT(adsp->sleep_bit));
+					    SOCCP_STATE_MASK,
+					    BIT(adsp->sleep_bit));
 			if (ret) {
 				dev_err(adsp->dev, "failed to update smem bits for D0 to D3\n");
 				goto soccp_out;
 			}
 
 			ret = rproc_config_check(adsp, SOCCP_D3);
-			if (ret)
+			if (ret) {
 				dev_err(adsp->dev, "failed to change from D0 to D3\n");
+				goto soccp_out;
+			}
 			disable_regulators(adsp);
 			clk_disable_unprepare(adsp->xo);
+			adsp->current_users = 0;
 		}
 	}
 
@@ -2658,6 +2669,18 @@ static const struct adsp_data pitti_wpss_resource = {
 	.ssctl_id = 0x19,
 };
 
+static const struct adsp_data volcano_wpss_resource = {
+	.crash_reason_smem = 626,
+	.firmware_name = "wpss.mdt",
+	.pas_id = 6,
+	.minidump_id = 4,
+	.uses_elf64 = true,
+	.ssr_name = "wpss",
+	.sysmon_name = "wpss",
+	.qmp_name = "wpss",
+	.ssctl_id = 0x19,
+};
+
 static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,msm8226-adsp-pil", .data = &adsp_resource_init},
 	{ .compatible = "qcom,msm8974-adsp-pil", .data = &adsp_resource_init},
@@ -2727,6 +2750,7 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,pitti-adsp-pas", .data = &pitti_adsp_resource},
 	{ .compatible = "qcom,pitti-modem-pas", .data = &pitti_mpss_resource},
 	{ .compatible = "qcom,niobe-soccp-pas", .data = &niobe_soccp_resource},
+	{ .compatible = "qcom,volcano-wpss-pas", .data = &volcano_wpss_resource},
 	{ .compatible = "qcom,volcano-adsp-pas", .data = &volcano_adsp_resource},
 	{ .compatible = "qcom,volcano-modem-pas", .data = &volcano_mpss_resource},
 	{ .compatible = "qcom,volcano-cdsp-pas", .data = &volcano_cdsp_resource},

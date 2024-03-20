@@ -1466,10 +1466,6 @@ static int _anx7625_hpd_polling(struct anx7625_data *ctx,
 	int ret, val;
 	struct device *dev = &ctx->client->dev;
 
-	/* Interrupt mode, no need poll HPD status, just return */
-	if ((ctx->pdata.intp_irq) && !(ctx->out_of_hibr))
-		return 0;
-
 	ret = readx_poll_timeout(anx7625_read_hpd_status_p0,
 				 ctx, val,
 				 ((val & HPD_STATUS) || (val < 0)),
@@ -1487,9 +1483,6 @@ static int _anx7625_hpd_polling(struct anx7625_data *ctx,
 			  INTERFACE_CHANGE_INT, 0);
 
 	anx7625_start_dp_work(ctx);
-
-	if (!ctx->pdata.panel_bridge && ctx->bridge_attached)
-		drm_helper_hpd_irq_event(ctx->bridge.dev);
 
 	return 0;
 }
@@ -1605,9 +1598,6 @@ static void anx7625_work_func(struct work_struct *work)
 	event = anx7625_hpd_change_detect(ctx);
 	if (event < 0)
 		goto unlock;
-
-	if (ctx->bridge_attached)
-		drm_helper_hpd_irq_event(ctx->bridge.dev);
 
 unlock:
 	mutex_unlock(&ctx->lock);
@@ -2224,7 +2214,7 @@ static int anx7625_bridge_attach(struct drm_bridge *bridge,
 		}
 	}
 
-	device_link_add(bridge->dev->dev, dev, DL_FLAG_PM_RUNTIME);
+	device_link_add(bridge->dev->dev, dev, DL_FLAG_STATELESS);
 	ctx->bridge_attached = 1;
 
 	return 0;
