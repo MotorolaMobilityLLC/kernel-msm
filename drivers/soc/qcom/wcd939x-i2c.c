@@ -1510,17 +1510,17 @@ static int wcd_usbss_sdam_handle_events_locked(int req_state)
 
 	switch (req_state) {
 	case WCD_USBSS_LPD_USB_MODE_CLEAR:
-		regmap_update_bits(priv->regmap, WCD_USBSS_PMP_OUT1, 0x20, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_PMP_OUT1, 0x20, 0x00);
 		/* Enable D+/D- 1M & 400K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_BIAS_TOP, 0x20, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_BIAS_TOP, 0x20, 0x00);
 
 		/* Enable DP/DN 2K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_DP_BIAS, 0x01, 0x01);
-		regmap_update_bits(priv->regmap, WCD_USBSS_DN_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_DP_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_DN_BIAS, 0x01, 0x01);
 
 		/* Enable SBU1/2 2K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x01, 0x01);
-		regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x01, 0x01);
 		/* Disconnect D+/D- switch */
 		wcd_usbss_dpdm_switch_update(false, false);
 
@@ -1530,16 +1530,16 @@ static int wcd_usbss_sdam_handle_events_locked(int req_state)
 	case WCD_USBSS_LPD_MODE_SET:
 		fallthrough;
 	case WCD_USBSS_LPD_USB_MODE_SET:
-		regmap_update_bits(priv->regmap, WCD_USBSS_PMP_OUT1, 0x20, 0x20);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_PMP_OUT1, 0x20, 0x20);
 		/* Disable D+/D- 1M & 400K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_BIAS_TOP, 0x20, 0x20);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_BIAS_TOP, 0x20, 0x20);
 		/* Disable DP/DN 2K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_DP_BIAS, 0x01, 0x00);
-		regmap_update_bits(priv->regmap, WCD_USBSS_DN_BIAS, 0x01, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_DP_BIAS, 0x01, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_DN_BIAS, 0x01, 0x00);
 
 		/* Disable SBU1/2 2K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x01, 0x00);
-		regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x01, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x01, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x01, 0x00);
 		/* USB Mode : Connect D+/D- switch */
 		wcd_usbss_dpdm_switch_connect(priv, true);
 
@@ -1547,16 +1547,16 @@ static int wcd_usbss_sdam_handle_events_locked(int req_state)
 		wcd_usbss_standby_control_locked(false);
 		break;
 	case WCD_USBSS_USB_MODE_SET:
-		regmap_update_bits(priv->regmap, WCD_USBSS_PMP_OUT1, 0x20, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_PMP_OUT1, 0x20, 0x00);
 		/* Enable D+/D- 1M & 400K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_BIAS_TOP, 0x20, 0x00);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_BIAS_TOP, 0x20, 0x00);
 		/* Enable DP/DN 2K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_DP_BIAS, 0x01, 0x01);
-		regmap_update_bits(priv->regmap, WCD_USBSS_DN_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_DP_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_DN_BIAS, 0x01, 0x01);
 
 		/* Enable SBU1/2 2K PLDN */
-		regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x01, 0x01);
-		regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x01, 0x01);
+		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x01, 0x01);
 
 		/* Connect D+/D- switch */
 		wcd_usbss_dpdm_switch_connect(priv, true);
@@ -1578,6 +1578,7 @@ static irqreturn_t wcd_usbss_sdam_notifier_handler(int irq, void *data)
 {
 	struct wcd_usbss_ctxt *priv = data;
 	u8 *buf;
+	u8 mode;
 	size_t len = 0;
 	int rc = 0;
 
@@ -1587,6 +1588,7 @@ static irqreturn_t wcd_usbss_sdam_notifier_handler(int irq, void *data)
 		dev_err(priv->dev, "nvmem cell read failed, rc:%d\n", rc);
 		return rc;
 	}
+	mode = buf[0];
 	buf[0] &= 0x3;
 	dev_dbg(priv->dev, "sdam notifier request:%d\n", buf[0]);
 
@@ -1616,6 +1618,13 @@ static irqreturn_t wcd_usbss_sdam_notifier_handler(int irq, void *data)
 
 	release_runtime_env(wcd_usbss_ctxt_);
 unlock_mutex:
+	if (rc == 0) {
+		dev_info(priv->dev, "%s: write wcd mode=0x%x\n", __func__, mode);
+		mode |= (buf[0] | (buf[0] << 4));
+		rc = nvmem_cell_write(priv->nvmem_cell, &mode, 1);
+		if (rc != 1)
+			dev_err(priv->dev, "nvmem cell write failed, rc:%d\n", rc);
+	}
 	mutex_unlock(&wcd_usbss_ctxt_->switch_update_lock);
 	kfree(buf);
 	return IRQ_HANDLED;
