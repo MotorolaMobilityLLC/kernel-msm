@@ -24,6 +24,7 @@
 #define MAX_SURGE_TIMER_PERIOD_SEC 20
 #define PM_RUNTIME_RESUME_CNT 8
 #define PM_RUNTIME_RESUME_WAIT_US_MIN  5000
+#define WCD_USBSS_TIMEOUT_PM_RESUME   500
 
 enum {
 	WCD_USBSS_AUDIO_MANUAL,
@@ -99,6 +100,7 @@ static struct kobj_attribute wcd_usbss_standby_enable_attribute =
 static int acquire_runtime_env(struct wcd_usbss_ctxt *priv)
 {
 	int rc = 0, retry = 0;
+	bool suspended = false;
 
 	mutex_lock(&priv->runtime_env_counter_lock);
 
@@ -134,6 +136,16 @@ static int acquire_runtime_env(struct wcd_usbss_ctxt *priv)
 	}
 
 	mutex_unlock(&priv->runtime_env_counter_lock);
+
+	mutex_lock(&priv->suspend_status_lock);
+	suspended = priv->suspended;
+	mutex_unlock(&priv->suspend_status_lock);
+	if (rc >= 0 && suspended) {
+		rc = wait_for_completion_timeout(&priv->pm_completion,
+                            msecs_to_jiffies(WCD_USBSS_TIMEOUT_PM_RESUME));
+		if (!rc)
+			dev_err(priv->dev, "%s: bus don't resume from pm, rc = %d\n", __func__, rc);
+	}
 
 	return rc;
 }
@@ -1729,6 +1741,7 @@ static int wcd_usbss_probe(struct i2c_client *i2c)
 	mutex_init(&priv->io_lock);
 	mutex_init(&priv->switch_update_lock);
 	mutex_init(&priv->runtime_env_counter_lock);
+	mutex_init(&priv->suspend_status_lock);
 	i2c_set_clientdata(i2c, priv);
 
 	pm_runtime_enable(dev);
@@ -1835,6 +1848,7 @@ static int wcd_usbss_probe(struct i2c_client *i2c)
 		wcd_usbss_enable_surge_kthread();
 	}
 
+	init_completion(&wcd_usbss_ctxt_->pm_completion);
 	release_runtime_env(wcd_usbss_ctxt_);
 	dev_info(priv->dev, "Probe completed!\n");
 	return 0;
@@ -1906,6 +1920,7 @@ static int wcd_usbss_pm_suspend(struct device *dev)
 	mutex_lock(&wcd_usbss_ctxt_->switch_update_lock);
 	wcd_usbss_ctxt_->suspended = true;
 	mutex_unlock(&wcd_usbss_ctxt_->switch_update_lock);
+	reinit_completion(&wcd_usbss_ctxt_->pm_completion);
 
 	dev_dbg(wcd_usbss_ctxt_->dev, "wcd usbss pm suspended");
 	return 0;
@@ -1931,6 +1946,7 @@ static int wcd_usbss_pm_resume(struct device *dev)
 	}
 	wcd_usbss_ctxt_->suspended = false;
 	mutex_unlock(&wcd_usbss_ctxt_->switch_update_lock);
+	complete(&wcd_usbss_ctxt_->pm_completion);
 
 	dev_dbg(wcd_usbss_ctxt_->dev, "wcd usbss pm resume completed");
 	return 0;
