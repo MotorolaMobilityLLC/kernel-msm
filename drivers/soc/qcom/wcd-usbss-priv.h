@@ -46,11 +46,13 @@ struct wcd_usbss_ctxt {
 	bool is_in_standby;
 	struct mutex switch_update_lock;
 	struct mutex runtime_env_counter_lock;
+	struct mutex suspend_status_lock;
 	unsigned int version;
 	int wcd_standby_status;
 	int runtime_env_counter;
 	struct nvmem_cell *nvmem_cell;
 	bool suspended;
+	struct completion pm_completion;
 };
 
 extern struct regmap *wcd_usbss_regmap_init(struct device *dev,
