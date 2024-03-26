@@ -12,6 +12,7 @@
 #define GH_VM_EARLY_POWEROFF		0x3
 #define GH_VM_POWEROFF			0x4
 #define GH_VM_EXITED			0x5
+#define GH_VM_CRASH			0x6
 
 #if IS_ENABLED(CONFIG_GH_SECURE_VM_LOADER)
 int gh_register_vm_notifier(struct notifier_block *nb);
