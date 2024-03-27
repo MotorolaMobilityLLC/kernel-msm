@@ -92,6 +92,12 @@ config AF_NOISE_ELIMINATION
 	help
 	  This is enabling af noise elimination.
 
+config MOT_SENSOR_STRICT_PERFRAMECONTROL
+	default n
+	bool "enable sensor strict perframe control"
+	help
+	  This is enabling sensor strict perframe control.
+
 config CTWOV_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
