@@ -116,6 +116,33 @@ struct eusb2_repeater {
 	u32			*host_param_override_seq;
 	u32			host_param_override_seq_cnt;
 };
+char mmi_felica[32];
+static bool has_felica(struct platform_device *pdev)
+{
+    int ret = false;
+    struct property *p;
+    struct device_node *n;
+
+    memset(mmi_felica,0,sizeof(mmi_felica));
+    n = of_find_node_by_path("/chosen");
+    if (n == NULL) {
+        goto err;
+    }
+
+    for_each_property_of_node(n, p) {
+        if (!strcmp(p->name, "mmi,felica") && p->value){
+			strlcpy(mmi_felica, (char *)p->value, sizeof(mmi_felica));
+			if(!strncmp(mmi_felica,"true",strlen("true")))
+				ret = true;
+		}
+    }
+
+    of_node_put(n);
+
+    dev_info(&pdev->dev, "mmi felica parsed from choosen is %s\n", mmi_felica);
+err:
+    return ret;
+}
 
 /* Perform one or more register read */
 static int eusb2_repeater_reg_read(struct eusb2_repeater *er,
@@ -449,6 +476,16 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 	struct eusb2_repeater *er;
 	struct device *dev = &pdev->dev;
 	int ret = 0, num_elem, base;
+	bool is_jp = false;
+
+	is_jp = has_felica(pdev);
+	if (is_jp) {
+		if ((of_find_property(pdev->dev.of_node,
+			"qcom,param-override-seq-jp",NULL) == NULL) ||
+		   (of_find_property(pdev->dev.of_node,
+			"qcom,host-param-override-seq-jp",NULL) == NULL))
+			is_jp = false;
+	}
 
 	er = devm_kzalloc(dev, sizeof(*er), GFP_KERNEL);
 	if (!er) {
@@ -483,10 +520,16 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 		ret = PTR_ERR(er->vdd18);
 		goto err_probe;
 	}
-
-	num_elem = of_property_count_elems_of_size(dev->of_node,
+	if (!is_jp) {
+		num_elem = of_property_count_elems_of_size(dev->of_node,
 				"qcom,param-override-seq",
 				sizeof(*er->param_override_seq));
+	} else {
+		num_elem = of_property_count_elems_of_size(dev->of_node,
+				"qcom,param-override-seq-jp",
+				sizeof(*er->param_override_seq));
+	}
+
 	if (num_elem > 0) {
 		if (num_elem % 2) {
 			dev_err(dev, "invalid param_override_seq_len\n");
@@ -503,10 +546,18 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 			goto err_probe;
 		}
 
-		ret = of_property_read_u32_array(dev->of_node,
-				"qcom,param-override-seq",
-				er->param_override_seq,
-				er->param_override_seq_cnt);
+		if (!is_jp) {
+			ret = of_property_read_u32_array(dev->of_node,
+					"qcom,param-override-seq",
+					er->param_override_seq,
+					er->param_override_seq_cnt);
+		} else {
+			ret = of_property_read_u32_array(dev->of_node,
+					"qcom,param-override-seq-jp",
+					er->param_override_seq,
+					er->param_override_seq_cnt);
+		}
+
 		if (ret) {
 			dev_err(dev, "qcom,param-override-seq read failed %d\n",
 									ret);
@@ -514,9 +565,15 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 		}
 	}
 
-	num_elem = of_property_count_elems_of_size(dev->of_node,
-				"qcom,host-param-override-seq",
-				sizeof(*er->host_param_override_seq));
+	if (!is_jp) {
+		num_elem = of_property_count_elems_of_size(dev->of_node,
+					"qcom,host-param-override-seq",
+					sizeof(*er->host_param_override_seq));
+	} else {
+		num_elem = of_property_count_elems_of_size(dev->of_node,
+					"qcom,host-param-override-seq-jp",
+					sizeof(*er->host_param_override_seq));
+	}
 	if (num_elem > 0) {
 		if (num_elem % 2) {
 			dev_err(dev, "invalid host_param_override_seq_len\n");
@@ -533,10 +590,17 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 			goto err_probe;
 		}
 
-		ret = of_property_read_u32_array(dev->of_node,
-				"qcom,host-param-override-seq",
-				er->host_param_override_seq,
-				er->host_param_override_seq_cnt);
+		if (!is_jp) {
+			ret = of_property_read_u32_array(dev->of_node,
+					"qcom,host-param-override-seq",
+					er->host_param_override_seq,
+					er->host_param_override_seq_cnt);
+		} else {
+			ret = of_property_read_u32_array(dev->of_node,
+					"qcom,host-param-override-seq-jp",
+					er->host_param_override_seq,
+					er->host_param_override_seq_cnt);
+		}
 		if (ret) {
 			dev_err(dev, "qcom,host-param-override-seq read failed %d\n",
 									ret);
