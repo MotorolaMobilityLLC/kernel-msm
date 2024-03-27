@@ -88,6 +88,10 @@ enum {
 	UFS_QCOM_CMD_COMPL,
 };
 
+#if defined(CONFIG_SCSI_SKHID)
+int storage_mfrid = 0;
+#endif
+
 static char android_boot_dev[ANDROID_BOOT_DEV_MAX];
 
 static DEFINE_PER_CPU(struct freq_qos_request, qos_min_req);
@@ -474,6 +478,36 @@ static inline void cancel_dwork_unvote_cpufreq(struct ufs_hba *hba)
 			host->cpu_info[i].cpu);
 	}
 }
+
+#if defined(CONFIG_SCSI_SKHID)
+static int get_storage_info(struct ufs_hba *hba)
+{
+	int ret = 0;
+	struct property *p;
+	struct device_node *n;
+
+	storage_mfrid = 0;
+	n = of_find_node_by_path("/chosen/mmi,storage");
+	if (n == NULL) {
+		ret = 1;
+		goto err;
+	}
+
+	for_each_property_of_node(n, p) {
+		if (!strcmp(p->name, "manufacturer") && p->value)
+			//strlcpy(storage_mfrid, (char *)p->value, sizeof(storage_mfrid));
+			if(IS_SKHYNIX_DEVICE(p->value) || IS_HYNIX_DEVICE(p->value)) {
+				storage_mfrid = UFS_VENDOR_SKHYNIX;
+			}
+	}
+
+	of_node_put(n);
+
+	dev_info(hba->dev, "manufacturer parsed from choosen is 0x%x\n", storage_mfrid);
+err:
+	return ret;
+}
+#endif
 
 static int ufs_qcom_get_pwr_dev_param(struct ufs_qcom_dev_params *qcom_param,
 				      struct ufs_pa_layer_attr *dev_max,
@@ -1852,7 +1886,13 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 
 	if (status == PRE_CHANGE) {
 #if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_SCSI_SKHID)
+	if (!IS_SKHYNIX_UFS(storage_mfrid))
 		ufsf_suspend(ufs_qcom_get_ufsf(hba));
+#else
+	ufsf_suspend(ufs_qcom_get_ufsf(hba));
+#endif
+
 #endif
 		return 0;
 	}
@@ -1895,9 +1935,14 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	int err;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
-
+#if defined(CONFIG_SCSI_SKHID)
+	if (!IS_SKHYNIX_UFS(storage_mfrid))
+		schedule_work(&ufsf->resume_work);
+#else
 	schedule_work(&ufsf->resume_work);
 #endif
+#endif
+
 	if (host->vddp_ref_clk && (hba->rpm_lvl > UFS_PM_LVL_3 ||
 				   hba->spm_lvl > UFS_PM_LVL_3))
 		ufs_qcom_enable_vreg(hba->dev,
@@ -4239,6 +4284,18 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_qos_init(hba);
 	ufs_qcom_parse_irq_affinity(hba);
 	ufs_qcom_ber_mon_init(hba);
+
+#if defined(CONFIG_SCSI_SKHID)
+	get_storage_info(hba);
+
+	if (IS_SKHYNIX_UFS(storage_mfrid)){
+		err = pixel_init(hba);
+		if (err) {
+			return err;
+		}
+		pixel_init_manual_gc(hba);
+	}
+#endif
 	host->ufs_ipc_log_ctx = ipc_log_context_create(UFS_QCOM_MAX_LOG_SZ,
 							"ufs-qcom", 0);
 	if (!host->ufs_ipc_log_ctx)
@@ -4704,11 +4761,6 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 	struct phy *phy = host->generic_phy;
 	bool ber_th_exceeded = false;
 
-#if defined(CONFIG_UFSFEATURE)
-	if (evt == UFS_EVT_WL_SUSP_ERR)
-		ufsf_resume(ufs_qcom_get_ufsf(hba), true);
-#endif
-
 	switch (evt) {
 	case UFS_EVT_PA_ERR:
 		ber_th_exceeded = ufs_qcom_update_ber_event(host, *(u32 *)data,
@@ -4729,6 +4781,16 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 			dev_warn_ratelimited(hba->dev, "Warning: UFS BER exceeds threshold !!!\n");
 
 		break;
+#if defined(CONFIG_UFSFEATURE)
+	case UFS_EVT_WL_SUSP_ERR:
+#if defined(CONFIG_SCSI_SKHID)
+	if (!IS_SKHYNIX_UFS(storage_mfrid))
+		ufsf_resume(ufs_qcom_get_ufsf(hba), true);
+#else
+	ufsf_resume(ufs_qcom_get_ufsf(hba), true);
+#endif
+		break;
+#endif
 	default:
 		break;
 	}
@@ -5298,8 +5360,14 @@ static int ufs_qcom_device_reset(struct ufs_hba *hba)
 	int ret = 0;
 
 #if defined(CONFIG_UFSFEATURE)
-	ufsf_reset_host(ufs_qcom_get_ufsf(hba));
-#endif
+#if defined(CONFIG_SCSI_SKHID)
+        if (!IS_SKHYNIX_UFS(storage_mfrid))
+                ufsf_reset_host(ufs_qcom_get_ufsf(hba));
+#else   
+        ufsf_reset_host(ufs_qcom_get_ufsf(hba));
+#endif  
+#endif  
+
 	/* Reset UFS Host Controller and PHY */
 	ret = ufs_qcom_host_reset(hba);
 	if (ret)
@@ -5366,7 +5434,13 @@ static void ufs_qcom_fixup_dev_quirks(struct ufs_hba *hba)
 {
 	ufshcd_fixup_dev_quirks(hba, ufs_qcom_dev_fixups);
 #if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_SCSI_SKHID)
+	if (!IS_SKHYNIX_UFS(storage_mfrid))
+		ufsf_set_init_state(hba);
+#else
 	ufsf_set_init_state(hba);
+#endif
+
 #endif
 }
 
@@ -5633,6 +5707,11 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 #if defined(CONFIG_UFSFEATURE)
 static void ufs_samsung_register_hooks(void)
 {
+#if defined(CONFIG_SCSI_SKHID)
+	if (IS_SKHYNIX_UFS(storage_mfrid)) {
+		return;
+	}
+#endif
 	register_trace_android_vh_ufs_compl_command(ufs_vh_compl_command, NULL);
 	register_trace_android_vh_ufs_update_sdev(ufs_vh_update_sdev, NULL);
 	register_trace_android_vh_ufs_send_command(ufs_vh_send_command, NULL);

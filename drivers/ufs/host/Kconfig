@@ -190,3 +190,8 @@ config UFSHID_DEBUG
 	default n
 	help
 	  UFS HID Debug Enable (for check io stat during trigger)
+config SCSI_SKHID
+	tristate "SKHix UFS Host Initiated Defrag supportr"
+	depends on SCSI_UFSHCD
+	help
+	  SKHix UFS HID Feature Enable
