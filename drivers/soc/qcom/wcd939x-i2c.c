@@ -101,6 +101,7 @@ static int acquire_runtime_env(struct wcd_usbss_ctxt *priv)
 {
 	int rc = 0, retry = 0;
 	bool suspended = false;
+	int ret = 0;
 
 	mutex_lock(&priv->runtime_env_counter_lock);
 
@@ -141,10 +142,10 @@ static int acquire_runtime_env(struct wcd_usbss_ctxt *priv)
 	suspended = priv->suspended;
 	mutex_unlock(&priv->suspend_status_lock);
 	if (rc >= 0 && suspended) {
-		rc = wait_for_completion_timeout(&priv->pm_completion,
+		ret = wait_for_completion_timeout(&priv->pm_completion,
                             msecs_to_jiffies(WCD_USBSS_TIMEOUT_PM_RESUME));
-		if (!rc)
-			dev_err(priv->dev, "%s: bus don't resume from pm, rc = %d\n", __func__, rc);
+		if (!ret)
+			dev_err(priv->dev, "%s: bus don't resume from pm, rc = %d\n", __func__, ret);
 	}
 
 	return rc;
@@ -1831,6 +1832,7 @@ static void wcd_usbss_remove(struct i2c_client *i2c)
 	mutex_destroy(&priv->notification_lock);
 	mutex_destroy(&priv->io_lock);
 	mutex_destroy(&priv->switch_update_lock);
+	mutex_destroy(&priv->suspend_status_lock);
 	if (error >= 0)
 		pm_runtime_put_sync(priv->dev);
 	pm_runtime_dont_use_autosuspend(priv->dev);
