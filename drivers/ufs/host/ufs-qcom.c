@@ -168,6 +168,7 @@ static int ufs_qcom_config_shared_ice(struct ufs_qcom_host *host);
 static int ufs_qcom_ber_threshold_set(const char *val, const struct kernel_param *kp);
 static int ufs_qcom_ber_duration_set(const char *val, const struct kernel_param *kp);
 static void ufs_qcom_ber_mon_init(struct ufs_hba *hba);
+static void ufs_qcom_populate_available_cpus(struct ufs_hba *hba);
 
 static s64 idle_time[UFS_QCOM_BER_MODE_MAX];
 static ktime_t idle_start;
@@ -1537,6 +1538,51 @@ static int ufs_qcom_init_cpu_minfreq_req(struct ufs_qcom_host *host)
 	return ret;
 }
 
+/**
+ * ufs_qcom_populate_available_cpus - Populate all the available cpu masks -
+ * Silver, gold and gold prime.
+ * @hba: per adapter instance
+ */
+static void ufs_qcom_populate_available_cpus(struct ufs_hba *hba)
+{
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+	int cid_cpu[MAX_NUM_CLUSTERS] = {-1, -1, -1, -1};
+	int cid = -1;
+	int prev_cid = -1;
+	int cpu = 0;
+	/*
+	 * Due to Logical contiguous CPU numbering, one to one mapping
+	 * between physical and logical cpu is no more applicable.
+	 * Hence we are not passing cpu mask from the device tree.
+	 * Hence populate the cpu mask dynamically as below.
+	 */
+	for_each_cpu(cpu, cpu_possible_mask) {
+		cid = topology_cluster_id(cpu);
+		if (cid != prev_cid) {
+			cid_cpu[cid] = cpu;
+			prev_cid = cid;
+		}
+	}
+
+	if (cid_cpu[CLUSTER_0] != -1) {
+		host->cluster_mask[CLUSTER_0].bits[0] =
+			topology_cluster_cpumask(cid_cpu[CLUSTER_0])->bits[0];
+	}
+	if (cid_cpu[CLUSTER_1] != -1) {
+		host->cluster_mask[CLUSTER_1].bits[0] =
+			topology_cluster_cpumask(cid_cpu[CLUSTER_1])->bits[0];
+	}
+	if (cid_cpu[CLUSTER_2] != -1) {
+		host->cluster_mask[CLUSTER_2].bits[0] =
+			topology_cluster_cpumask(cid_cpu[CLUSTER_2])->bits[0];
+	}
+
+	if (cid_cpu[CLUSTER_3] != -1) {
+		host->cluster_mask[CLUSTER_3].bits[0] =
+			topology_cluster_cpumask(cid_cpu[CLUSTER_3])->bits[0];
+	}
+}
+
 static void ufs_qcom_set_affinity_hint(struct ufs_hba *hba, bool prime)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
@@ -1562,30 +1608,44 @@ static void ufs_qcom_set_affinity_hint(struct ufs_hba *hba, bool prime)
 static void ufs_qcom_set_esi_affinity_hint(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
-	cpumask_t *affinity_mask = &host->esi_affinity_mask;
+	cpumask_t affinity_mask;
 	const cpumask_t *mask;
 	struct msi_desc *desc;
 	unsigned int set = IRQ_NO_BALANCING;
 	unsigned int clear = 0;
-	unsigned int cpu = 0;
+	unsigned int num_cpu = 0;
 	int ret, i = 0;
 
-	if (affinity_mask->bits[0] == 0)
+	if (!(host->cluster_mask[CLUSTER_3].bits[0] || host->cluster_mask[CLUSTER_2].bits[0] ||
+			host->cluster_mask[CLUSTER_1].bits[0]))
 		return;
 
 	ufs_qcom_msi_lock_descs(hba);
 	msi_for_each_desc(desc, hba->dev, MSI_DESC_ALL) {
-		if (i % cpumask_weight(affinity_mask) == 0)
-			cpu = cpumask_first(affinity_mask);
-		else
-			cpu = cpumask_next(cpu, affinity_mask);
+		/* Check if target has 4 cpu clusters configuration */
+		if (host->cluster_mask[CLUSTER_3].bits[0]) {
+			affinity_mask.bits[0] = host->cluster_mask[CLUSTER_2].bits[0] |
+						host->cluster_mask[CLUSTER_3].bits[0];
+		}
 
-		mask = get_cpu_mask(cpu);
+		/* Check if the target has 3 cpu cluster configuration */
+		else if (host->cluster_mask[CLUSTER_2].bits[0])  {
+			if (cpumask_subset(get_cpu_mask(i), &host->cluster_mask[CLUSTER_1]) &&
+					(num_cpu++ <= 2))
+				affinity_mask = host->cluster_mask[CLUSTER_2];
+			else
+				affinity_mask = host->cluster_mask[CLUSTER_1];
+		}
+
+		else
+			affinity_mask = host->cluster_mask[CLUSTER_1];
+
+		mask = &affinity_mask;
 		irq_modify_status(desc->irq, clear, set);
 		ret = irq_set_affinity_hint(desc->irq, mask);
 		if (ret < 0)
-			dev_err(hba->dev, "%s: Failed to set affinity hint to cpu %d for ESI %d, err = %d\n",
-					__func__, cpu, desc->irq, ret);
+			dev_err(hba->dev, "%s: Failed to set affinity hint to cpu for ESI %d, err = %d\n",
+					__func__, desc->irq, ret);
 		i++;
 	}
 	ufs_qcom_msi_unlock_descs(hba);
@@ -3165,15 +3225,6 @@ static void ufs_qcom_parse_irq_affinity(struct ufs_hba *hba)
 			dev_err(dev, "Invalid group silver mask\n");
 			host->def_mask.bits[0] = UFS_QCOM_IRQ_SLVR_MASK;
 		}
-		mask = 0;
-		of_property_read_u32(np, "qcom,esi-affinity-mask", &mask);
-		host->esi_affinity_mask.bits[0] = mask;
-		if (!cpumask_subset(&host->esi_affinity_mask,
-				    cpu_possible_mask)) {
-			dev_err(dev, "Invalid group ESI affinity mask\n");
-			host->esi_affinity_mask.bits[0] =
-					UFS_QCOM_ESI_AFFINITY_MASK;
-		}
 	}
 	/* If device includes perf mask, enable dynamic irq affinity feature */
 	if (host->perf_mask.bits[0])
@@ -3848,6 +3899,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 
 	ufs_qcom_save_host_ptr(hba);
 
+	ufs_qcom_populate_available_cpus(hba);
 	ufs_qcom_qos_init(hba);
 	ufs_qcom_parse_irq_affinity(hba);
 	ufs_qcom_ber_mon_init(hba);
