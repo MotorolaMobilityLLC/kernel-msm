@@ -1801,10 +1801,10 @@ static int qg_get_battery_capacity(struct qpnp_qg *chip, int *soc)
 		return 0;
 	}
 
-	if (chip->charge_full) {
+	/*if (chip->charge_full) {
 		*soc = FULL_SOC;
 		return 0;
-	}
+	}*/
 
 	mutex_lock(&chip->soc_lock);
 
@@ -2433,11 +2433,11 @@ static int qg_charge_full_update(struct qpnp_qg *chip)
 		 * msoc from 100% for better UX.
 		 */
 		if (chip->msoc < recharge_soc || !input_present) {
-			if (chip->dt.linearize_soc) {
+			/*if (chip->dt.linearize_soc) {
 				get_rtc_time(&chip->last_maint_soc_update_time);
 				chip->maint_soc = FULL_SOC;
 				qg_scale_soc(chip, false);
-			}
+			}*/
 			chip->charge_full = false;
 			qg_dbg(chip, QG_DEBUG_STATUS, "msoc=%d recharge_soc=%d charge_full (1->0)\n",
 					chip->msoc, recharge_soc);
