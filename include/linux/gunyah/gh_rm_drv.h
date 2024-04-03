@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -193,6 +193,7 @@ struct gh_notify_vmid_desc {
 #define GH_RM_VM_STATUS_EXITED		9
 #define GH_RM_VM_STATUS_RESETTING	10
 #define GH_RM_VM_STATUS_RESET		11
+#define GH_RM_VM_STATUS_RESET_FAILED	12
 
 #define GH_RM_OS_STATUS_NONE		0
 #define GH_RM_OS_STATUS_EARLY_BOOT	1
