@@ -179,11 +179,21 @@ int ufsf_query_flag_retry(struct ufs_hba *hba, enum query_opcode opcode,
 /* for hid */
 void ufsf_hid_acc_io_stat(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp);
 
+#if defined(CONFIG_MICRON_UFSHID)
+#define QUERY_FLAG_IDN_HID_EN                           0x13
+#endif
+
 /* Attribute idn for Query requests */
 #if defined(CONFIG_UFSHID)
 #define QUERY_ATTR_IDN_HID_OPERATION			0x20
 #define QUERY_ATTR_IDN_HID_FRAG_LEVEL			0x21
 #endif
+
+#if defined(CONFIG_MICRON_UFSHID)
+#define QUERY_ATTR_IDN_HID_FRAG_STATUS                  0x31
+#define QUERY_ATTR_IDN_HID_PROGRESS                     0x32
+#endif
+
 #define QUERY_ATTR_IDN_VENDOR_EE_CONTROL		0x97
 #define QUERY_ATTR_IDN_VENDOR_EE_STATUS			0x98
 
