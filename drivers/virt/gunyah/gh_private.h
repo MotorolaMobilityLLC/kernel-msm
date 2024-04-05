@@ -32,6 +32,7 @@ struct gh_vm {
 	bool is_secure_vm; /* is true for Qcom authenticated secure VMs */
 	bool vm_run_once;
 	bool keep_running;
+	bool rebootable;
 	bool proxy_vm; /* is true for VMs scheduled by proxy driver*/
 	u32 created_vcpus;
 	u32 allowed_vcpus;

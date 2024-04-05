@@ -284,7 +284,8 @@ static int gh_vcpu_release(struct inode *inode, struct file *filp)
 	struct gh_vcpu *vcpu = filp->private_data;
 
 	/* need to create workqueue if critical vm */
-	if (vcpu->vm->keep_running)
+	if (vcpu->vm->keep_running && (!vcpu->vm->rebootable ||
+	    vcpu->vm->status.vm_status == GH_RM_VM_STATUS_RUNNING))
 		gh_vcpu_create_wq(vcpu->vm->vmid, vcpu->vcpu_id);
 	else
 		gh_put_vm(vcpu->vm);
@@ -692,7 +693,8 @@ static int gh_vm_release(struct inode *inode, struct file *filp)
 {
 	struct gh_vm *vm = filp->private_data;
 
-	if (!vm->keep_running)
+	if (!(vm->keep_running && (!vm->rebootable ||
+	      vm->status.vm_status == GH_RM_VM_STATUS_RUNNING)))
 		gh_put_vm(vm);
 	return 0;
 }
