@@ -46,6 +46,7 @@
 #define BC_WLS_FW_PUSH_BUF_RESP		0x43
 #define BC_WLS_FW_GET_VERSION		0x44
 #define BC_SHUTDOWN_NOTIFY		0x47
+#define BC_WLS_CHECK_CHIP_ID	0x48
 #define BC_HBOOST_VMAX_CLAMP_NOTIFY	0x79
 #define BC_GENERIC_NOTIFY		0x80
 
@@ -141,6 +142,8 @@ enum wireless_vendor {
 	WLS_IDT,
 	WLS_CPS,
 	WLS_CPS4019,
+	WLS_CPS4038 = 0x4038,
+	WLS_SC9624 = 0x9624,
 };
 
 enum {
@@ -180,6 +183,11 @@ struct battery_model_resp_msg {
 	struct pmic_glink_hdr	hdr;
 	u32			property_id;
 	char			model[MAX_STR_LEN];
+};
+
+struct wireless_check_chip_id {
+	struct pmic_glink_hdr	hdr;
+	u32			ret_code;
 };
 
 struct wireless_fw_check_req {
@@ -251,6 +259,7 @@ struct battery_chg_dev {
 	struct extcon_dev		*extcon;
 	u32				*thermal_levels;
 	const char			*wls_fw_name;
+	const char			*sc_wls_fw_name;
 	int				curr_thermal_level;
 	int				num_thermal_levels;
 	int				shutdown_volt_mv;
@@ -264,6 +273,7 @@ struct battery_chg_dev {
 	bool				debug_battery_detected;
 	bool				wls_not_supported;
 	bool				wls_fw_update_reqd;
+	u32             wls_chip_id;
 	u32				wls_fw_version;
 	u32				wls_fw_vendor;
 	u16				wls_fw_crc;
@@ -814,6 +824,16 @@ static void handle_message(struct battery_chg_dev *bcdev, void *data,
 			ack_set = true;
 		} else {
 			pr_err("Incorrect response length %zu for wls_fw_get_version\n",
+				len);
+		}
+		break;
+	case BC_WLS_CHECK_CHIP_ID:
+		if (len == sizeof(*fw_check_msg)) {
+			fw_check_msg = data;
+			bcdev->wls_chip_id = fw_check_msg->ret_code;
+			ack_set = true;
+		} else {
+			pr_err("Incorrect response length %zu for wls_fw_check_update\n",
 				len);
 		}
 		break;
@@ -1684,6 +1704,20 @@ static int wireless_fw_send_firmware(struct battery_chg_dev *bcdev,
 	return 0;
 }
 
+static int wireless_check_chip_id(struct battery_chg_dev *bcdev)
+{
+	struct wireless_check_chip_id req_msg = {};
+
+	bcdev->wls_chip_id = 0x0000;
+
+	req_msg.hdr.owner = MSG_OWNER_BC;
+	req_msg.hdr.type = MSG_TYPE_REQ_RESP;
+	req_msg.hdr.opcode = BC_WLS_CHECK_CHIP_ID;
+	req_msg.ret_code = 0;
+
+	return battery_chg_write(bcdev, &req_msg, sizeof(req_msg));
+}
+
 static int wireless_fw_check_for_update(struct battery_chg_dev *bcdev,
 					u32 version, size_t size)
 {
@@ -1711,15 +1745,17 @@ static int wireless_fw_check_for_update(struct battery_chg_dev *bcdev,
 #define CPS4019_FW_MAJOR_VER_OFFSET2		0xc5
 #define CPS4019_FW_MINOR_VER_OFFSET1		0xc6
 #define CPS4019_FW_MINOR_VER_OFFSET2		0xc7
+#define SC9624_FW_VER_OFFSET		0x104
+
 static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 {
 	const struct firmware *fw;
 	struct psy_state *pst;
-	u32 version;
+	u32 version = 0;
 	u16 maj_ver, min_ver, maj_ver1, maj_ver2, min_ver1, min_ver2;
 	int rc;
 
-	if (!bcdev->wls_fw_name) {
+	if (!bcdev->wls_fw_name && !bcdev->sc_wls_fw_name) {
 		pr_err("wireless FW name is not specified\n");
 		return -EINVAL;
 	}
@@ -1748,10 +1784,77 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		}
 	}
 
-	rc = firmware_request_nowarn(&fw, bcdev->wls_fw_name, bcdev->dev);
-	if (rc) {
-		pr_err("Couldn't get firmware rc=%d\n", rc);
-		goto out;
+	if (bcdev->sc_wls_fw_name)
+	{
+		rc = wireless_check_chip_id(bcdev);
+		if (rc) {
+			pr_err("Couldn't get chip id rc=%d\n", rc);
+			goto out;
+		}
+
+		pr_err("wireless chip id = %04x\n", bcdev->wls_chip_id);
+		if(bcdev->wls_chip_id == WLS_SC9624) {
+			rc = firmware_request_nowarn(&fw, bcdev->sc_wls_fw_name, bcdev->dev);
+			if (rc) {
+				pr_err("Couldn't get southchip firmware rc=%d\n", rc);
+				goto out;
+			}
+			// version = min_ver << 16 | maj_ver;
+			version = *(u32 *)&fw->data[SC9624_FW_VER_OFFSET];
+			pr_info("southchip fw version: %08x\n", version);
+		} else{
+			if (bcdev->wls_fw_vendor == WLS_CPS4019) {
+				maj_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET1));
+				maj_ver = maj_ver1 >> 8;
+				maj_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET2));
+				maj_ver2 = maj_ver2 & 0xFF00;
+				maj_ver = maj_ver + maj_ver2;
+				min_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET1));
+				min_ver = min_ver1 >> 8;
+				min_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET2));
+				min_ver2 = min_ver2 & 0xFF00;
+				min_ver = min_ver + min_ver2;
+				pr_info("WLS_CPS 4019 maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
+				version = maj_ver << 16 | min_ver;
+			} else if (bcdev->wls_fw_vendor == WLS_CPS) {
+				maj_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MAJOR_VER_OFFSET));
+				maj_ver = maj_ver >> 8;
+				min_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MINOR_VER_OFFSET));
+				min_ver = min_ver >> 8;
+				pr_info("WLS_CPS maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
+				version = maj_ver << 16 | min_ver;
+			} else {
+				maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
+				min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MINOR_VER_OFFSET));
+				version = maj_ver << 16 | min_ver;
+			}
+		}
+	} else {
+		if (bcdev->wls_fw_vendor == WLS_CPS4019) {
+			maj_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET1));
+			maj_ver = maj_ver1 >> 8;
+			maj_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET2));
+			maj_ver2 = maj_ver2 & 0xFF00;
+			maj_ver = maj_ver + maj_ver2;
+			min_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET1));
+			min_ver = min_ver1 >> 8;
+			min_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET2));
+			min_ver2 = min_ver2 & 0xFF00;
+			min_ver = min_ver + min_ver2;
+			pr_info("WLS_CPS 4019 maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
+			version = maj_ver << 16 | min_ver;
+		} else if (bcdev->wls_fw_vendor == WLS_CPS) {
+			maj_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MAJOR_VER_OFFSET));
+			maj_ver = maj_ver >> 8;
+			min_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MINOR_VER_OFFSET));
+			min_ver = min_ver >> 8;
+			pr_info("WLS_CPS maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
+			version = maj_ver << 16 | min_ver;
+		} else {
+			maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
+			min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MINOR_VER_OFFSET));
+			version = maj_ver << 16 | min_ver;
+		}
 	}
 
 	if (!fw || !fw->data || !fw->size) {
@@ -1766,32 +1869,6 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		goto release_fw;
 	}
 
-	if (bcdev->wls_fw_vendor == WLS_CPS4019) {
-		maj_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET1));
-		maj_ver = maj_ver1 >> 8;
-		maj_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET2));
-		maj_ver2 = maj_ver2 & 0xFF00;
-		maj_ver = maj_ver + maj_ver2;
-		min_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET1));
-		min_ver = min_ver1 >> 8;
-		min_ver2 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MINOR_VER_OFFSET2));
-		min_ver2 = min_ver2 & 0xFF00;
-		min_ver = min_ver + min_ver2;
-		pr_info("WLS_CPS 4019 maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
-		version = maj_ver << 16 | min_ver;
-	} else if (bcdev->wls_fw_vendor == WLS_CPS) {
-		maj_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MAJOR_VER_OFFSET));
-		maj_ver = maj_ver >> 8;
-		min_ver = be16_to_cpu(*(__le16 *)(fw->data + CPS_FW_MINOR_VER_OFFSET));
-		min_ver = min_ver >> 8;
-		pr_info("WLS_CPS maj_ver %#x, min_ver %#x\n", maj_ver, min_ver);
-		version = maj_ver << 16 | min_ver;
-	} else {
-		maj_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MAJOR_VER_OFFSET));
-		min_ver = le16_to_cpu(*(__le16 *)(fw->data + IDT_FW_MINOR_VER_OFFSET));
-		version = maj_ver << 16 | min_ver;
-	}
-
 	if (force)
 		version = UINT_MAX;
 
@@ -1801,6 +1878,8 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		pr_err("Wireless FW update not needed, rc=%d\n", rc);
 		goto release_fw;
 	}
+
+	pr_info("southchip %d\n", bcdev->wls_fw_update_reqd);
 
 	if (!bcdev->wls_fw_update_reqd) {
 		pr_warn("Wireless FW update not required\n");
@@ -2317,6 +2396,9 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 
 	of_property_read_string(node, "qcom,wireless-fw-name",
 				&bcdev->wls_fw_name);
+
+	of_property_read_string(node, "qcom,wireless-fw-name-sc",
+				&bcdev->sc_wls_fw_name);
 
 	of_property_read_u32(node, "qcom,shutdown-voltage",
 				&bcdev->shutdown_volt_mv);
