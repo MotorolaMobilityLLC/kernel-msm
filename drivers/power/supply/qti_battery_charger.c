@@ -1893,6 +1893,11 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 			version = *(u32 *)&fw->data[SC9624_FW_VER_OFFSET];
 			pr_info("southchip fw version: %08x\n", version);
 		} else{
+			rc = firmware_request_nowarn(&fw, bcdev->wls_fw_name, bcdev->dev);
+			if (rc) {
+				pr_err("Couldn't get southchip firmware rc=%d\n", rc);
+				goto out;
+			}
 			if (bcdev->wls_fw_vendor == WLS_CPS4019) {
 				maj_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET1));
 				maj_ver = maj_ver1 >> 8;
@@ -1920,6 +1925,11 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 			}
 		}
 	} else {
+		rc = firmware_request_nowarn(&fw, bcdev->wls_fw_name, bcdev->dev);
+		if (rc) {
+				pr_err("Couldn't get southchip firmware rc=%d\n", rc);
+				goto out;
+			}
 		if (bcdev->wls_fw_vendor == WLS_CPS4019) {
 			maj_ver1 = be16_to_cpu(*(__le16 *)(fw->data + CPS4019_FW_MAJOR_VER_OFFSET1));
 			maj_ver = maj_ver1 >> 8;
