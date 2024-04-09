@@ -326,6 +326,11 @@ static __always_inline void __folio_dup_file_rmap(struct folio *folio,
 
 	switch (level) {
 	case RMAP_LEVEL_PTE:
+		if (!folio_test_large(folio)) {
+			atomic_inc(&page->_mapcount);
+			break;
+		}
+
 		do {
 			trace_android_vh_update_page_mapcount(page, true, false, NULL, &success);
 			if (!success)
@@ -408,6 +413,14 @@ static __always_inline int __folio_try_dup_anon_rmap(struct folio *folio,
 				if (PageAnonExclusive(page + i))
 					return -EBUSY;
 		}
+
+		if (!folio_test_large(folio)) {
+			if (PageAnonExclusive(page))
+				ClearPageAnonExclusive(page);
+			atomic_inc(&page->_mapcount);
+			break;
+		}
+
 		do {
 			if (PageAnonExclusive(page))
 				ClearPageAnonExclusive(page);
