@@ -2681,6 +2681,10 @@ static void enter_state_snk_startup(struct usbpd *pd)
 
 	typec_set_pwr_role(pd->typec_port, TYPEC_SINK);
 	if (!pd->partner) {
+		if ((pd->typec_mode - QTI_POWER_SUPPLY_TYPEC_SOURCE_DEFAULT < TYPEC_PWR_MODE_USB) ||
+			(pd->typec_mode - QTI_POWER_SUPPLY_TYPEC_SOURCE_DEFAULT > TYPEC_PWR_MODE_PD))
+			return ;
+
 		typec_set_pwr_opmode(pd->typec_port,
 			pd->typec_mode - QTI_POWER_SUPPLY_TYPEC_SOURCE_DEFAULT);
 		memset(&pd->partner_identity, 0, sizeof(pd->partner_identity));
