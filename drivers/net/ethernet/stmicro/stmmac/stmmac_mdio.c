@@ -351,6 +351,9 @@ int stmmac_mdio_reset(struct mii_bus *bus)
 	unsigned int mii_address = priv->hw->mii.addr;
 	bool active_high = false;
 
+	if (priv->plat->early_eth)
+		return 0;
+
 #ifdef CONFIG_OF
 	if (priv->device->of_node) {
 		struct gpio_desc *reset_gpio;
@@ -359,8 +362,11 @@ int stmmac_mdio_reset(struct mii_bus *bus)
 		reset_gpio = devm_gpiod_get_optional(priv->device,
 						     "snps,reset",
 						     GPIOD_OUT_LOW);
-		if (IS_ERR(reset_gpio))
+		if (IS_ERR(reset_gpio)) {
+			pr_err("qcom-ethqos: %s failed to get gpio with err %d\n",
+			       __func__, PTR_ERR(reset_gpio));
 			return PTR_ERR(reset_gpio);
+		}
 
 		device_property_read_u32_array(priv->device,
 					       "snps,reset-delays-us",
@@ -376,6 +382,7 @@ int stmmac_mdio_reset(struct mii_bus *bus)
 		gpiod_set_value_cansleep(reset_gpio, active_high ? 0 : 1);
 		if (delays[2])
 			msleep(DIV_ROUND_UP(delays[2], 1000));
+		devm_gpiod_put(priv->device, reset_gpio);
 	}
 #endif
 

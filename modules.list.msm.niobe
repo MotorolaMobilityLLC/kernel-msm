@@ -39,6 +39,7 @@ gdsc-regulator.ko
 stub-regulator.ko
 pinctrl-msm.ko
 pinctrl-niobe.ko
+qcom-dload-mode.ko
 qcom_cpu_vendor_hooks.ko
 qcom_hwspinlock.ko
 smem.ko
@@ -56,6 +57,8 @@ rtc-pm8xxx.ko
 qcom-reboot-reason.ko
 pmic-pon-log.ko
 ufs_qcom.ko
+cqhci.ko
+sdhci-msm.ko
 llcc-qcom.ko
 gcc-niobe.ko
 tcsrcc-niobe.ko
@@ -87,3 +90,6 @@ gunyah_qcom.ko
 mem_buf_msgq.ko
 debug_symbol.ko
 minidump.ko
+hwkm.ko
+crypto-qti.ko
+ufshcd-crypto-qti.ko

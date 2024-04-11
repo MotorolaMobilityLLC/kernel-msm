@@ -1721,12 +1721,13 @@ int gpi_terminate_channel(struct gpii_chan *gpii_chan)
 }
 
 /*
- * geni_gsi_ch_disconenct_doorbell() - gsi channel commond to disconnect doorbell to GSI
+ * geni_gsi_disconnect_doorbell_stop_ch() - function to disconnect gsi doorbell and stop channel
  * @chan: gsi channel handle
+ * @stop_ch: stop channel if set to true
  *
  * Return: Returns success or failure
  */
-int geni_gsi_ch_disconnect_doorbell(struct dma_chan *chan)
+int geni_gsi_disconnect_doorbell_stop_ch(struct dma_chan *chan, bool stop_ch)
 {
 	struct gpii_chan *gpii_chan = to_gpii_chan(chan);
 	struct gpii *gpii = gpii_chan->gpii;
@@ -1745,6 +1746,14 @@ int geni_gsi_ch_disconnect_doorbell(struct dma_chan *chan)
 		error = true;
 		gpi_dump_debug_reg(gpii);
 	}
+
+	/* Disconnect only doorbell & free Rx chan desc */
+	if (!stop_ch) {
+		GPII_VERB(gpii, gpii_chan->chid, "Free RX chan desc\n");
+		gpi_free_chan_desc(&gpii->gpii_chan[1]);
+		return ret;
+	}
+
 	/* Stop RX channel */
 	GPII_INFO(gpii, gpii_chan->chid, "Stop RX chan\n");
 	ret = gpi_terminate_channel(&gpii->gpii_chan[1]);
@@ -1773,7 +1782,7 @@ int geni_gsi_ch_disconnect_doorbell(struct dma_chan *chan)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(geni_gsi_ch_disconnect_doorbell);
+EXPORT_SYMBOL_GPL(geni_gsi_disconnect_doorbell_stop_ch);
 
 /* program transfer ring DB register */
 static inline void gpi_write_ch_db(struct gpii_chan *gpii_chan,
@@ -3116,6 +3125,7 @@ static int gpi_pause(struct dma_chan *chan)
 	int i, ret, idx = 0;
 	u32 offset1, offset2, type1, type2;
 	struct gpi_ring *ev_ring = gpii->ev_ring;
+	struct msm_gpi_ctrl *gpi_ctrl = chan->private;
 	phys_addr_t cntxt_rp, local_rp;
 	void *rp, *rp1;
 	union gpi_event *gpi_event;
@@ -3190,20 +3200,56 @@ static int gpi_pause(struct dma_chan *chan)
 		}
 	}
 
-	for (i = 0; i < MAX_CHANNELS_PER_GPII; i++) {
-		gpii_chan = &gpii->gpii_chan[i];
-		gpi_noop_tre(gpii_chan);
-	}
+	if (gpi_ctrl->cmd == MSM_GPI_DEEP_SLEEP_INIT) {
+		GPII_INFO(gpii, gpii_chan->chid, "deep sleep config\n");
+		/* Resetting the channels */
+		for (i = 0; i < MAX_CHANNELS_PER_GPII; i++) {
+			gpii_chan = &gpii->gpii_chan[i];
+			ret = gpi_send_cmd(gpii, gpii_chan, GPI_CH_CMD_RESET);
+			if (ret) {
+				GPII_ERR(gpii, gpii->gpii_chan[i].chid,
+					 "Error resetting chan, ret:%d\n", ret);
+				mutex_unlock(&gpii->ctrl_lock);
+				return -ECONNRESET;
+			}
+		}
 
-	for (i = 0; i < MAX_CHANNELS_PER_GPII; i++) {
-		gpii_chan = &gpii->gpii_chan[i];
+		/* Dealloc the channels */
+		for (i = 0; i < MAX_CHANNELS_PER_GPII; i++) {
+			gpii_chan = &gpii->gpii_chan[i];
+			ret = gpi_reset_chan(gpii_chan, GPI_CH_CMD_DE_ALLOC);
+			if (ret) {
+				GPII_ERR(gpii, gpii->gpii_chan[i].chid,
+					 "Error chan deallocating, ret:%d\n", ret);
+				mutex_unlock(&gpii->ctrl_lock);
+				return -ECONNRESET;
+			}
+		}
 
-		ret = gpi_start_chan(gpii_chan);
+		/* Dealloc Event Ring */
+		ret = gpi_send_cmd(gpii, NULL, GPI_EV_CMD_DEALLOC);
 		if (ret) {
-			GPII_ERR(gpii, gpii_chan->chid,
-				 "Error Starting Channel ret:%d\n", ret);
+			GPII_ERR(gpii, GPI_DBG_COMMON, "error with cmd:%s ret:%d\n",
+				 TO_GPI_CMD_STR(GPI_EV_CMD_DEALLOC), ret);
 			mutex_unlock(&gpii->ctrl_lock);
-			return -ECONNRESET;
+			return ret;
+		}
+	} else {
+		for (i = 0; i < MAX_CHANNELS_PER_GPII; i++) {
+			gpii_chan = &gpii->gpii_chan[i];
+			gpi_noop_tre(gpii_chan);
+		}
+
+		for (i = 0; i < MAX_CHANNELS_PER_GPII; i++) {
+			gpii_chan = &gpii->gpii_chan[i];
+
+			ret = gpi_start_chan(gpii_chan);
+			if (ret) {
+				GPII_ERR(gpii, gpii_chan->chid,
+					 "Error Starting Channel ret:%d\n", ret);
+				mutex_unlock(&gpii->ctrl_lock);
+				return -ECONNRESET;
+			}
 		}
 	}
 
@@ -3418,10 +3464,26 @@ static int gpi_deep_sleep_exit_config(struct dma_chan *chan,
 {
 	struct gpii_chan *gpii_chan = to_gpii_chan(chan);
 	struct gpii *gpii = gpii_chan->gpii;
+	struct gpi_ring *ring_ch = NULL;
+	struct gpi_ring *ring_ev = NULL;
 	int i = 0;
 	int ret = 0;
 
 	GPII_INFO(gpii, gpii_chan->chid, "enter\n");
+
+	/* Reset the ring channel for TX,RX to the base address */
+	for (i = 0; i < MAX_CHANNELS_PER_GPII; i++) {
+		gpii_chan = &gpii->gpii_chan[i];
+
+		ring_ch = gpii_chan->ch_ring;
+		ring_ch->wp = ring_ch->base;
+		ring_ch->rp = ring_ch->base;
+	}
+
+	/* Reset Event ring to the base address */
+	ring_ev = gpii->ev_ring;
+	ring_ev->wp = ring_ev->base;
+	ring_ev->rp = ring_ev->base;
 
 	ret = gpi_config_interrupts(gpii, DEFAULT_IRQ_SETTINGS, 0);
 	if (ret) {
