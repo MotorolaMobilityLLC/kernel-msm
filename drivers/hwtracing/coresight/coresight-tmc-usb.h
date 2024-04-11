@@ -23,6 +23,10 @@ struct tmc_usb_data {
 	struct tmc_drvdata	*tmcdrvdata;
 	bool			data_overwritten;
 	u64			drop_data_size;
+	u64			out_data_size;
+	u64			in_data_speed;
+	u64			out_data_speed;
+	struct timespec64	start_time;
 };
 
 extern int tmc_usb_enable(struct tmc_usb_data *usb_data);
