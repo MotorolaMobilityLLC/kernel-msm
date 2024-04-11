@@ -11,6 +11,7 @@
 #include <linux/usb/usb_qdss.h>
 #include <linux/time.h>
 #include <linux/slab.h>
+#include <linux/time64.h>
 #include "coresight-tmc-usb.h"
 #include "coresight-priv.h"
 #include "coresight-common.h"
@@ -55,6 +56,9 @@ static int usb_bypass_start(struct byte_cntr *byte_cntr_data)
 	byte_cntr_data->total_irq = 0;
 	tmcdrvdata->usb_data->drop_data_size = 0;
 	tmcdrvdata->usb_data->data_overwritten = false;
+	tmcdrvdata->usb_data->out_data_size = 0;
+	tmcdrvdata->usb_data->in_data_speed = 0;
+	tmcdrvdata->usb_data->out_data_speed = 0;
 
 	/*Ensure usbch is ready*/
 	if (!tmcdrvdata->usb_data->usbch) {
@@ -94,6 +98,8 @@ static int usb_bypass_start(struct byte_cntr *byte_cntr_data)
 
 static void usb_bypass_stop(struct byte_cntr *byte_cntr_data)
 {
+	u64 drop_rate;
+
 	if (!byte_cntr_data)
 		return;
 
@@ -108,13 +114,20 @@ static void usb_bypass_stop(struct byte_cntr *byte_cntr_data)
 	pr_info("coresight: stop usb bypass\n");
 	byte_cntr_data->rwp_offset = tmc_get_rwp_offset(byte_cntr_data->tmcdrvdata);
 	coresight_csr_set_byte_cntr(byte_cntr_data->csr, byte_cntr_data->irqctrl_offset, 0);
-	dev_dbg(&byte_cntr_data->tmcdrvdata->csdev->dev,
+	dev_info(&byte_cntr_data->tmcdrvdata->csdev->dev,
 		"USB total size: %lld, total irq: %lld,current irq:%d, offset: %ld, rwp_offset: %ld, drop_data: %lld\n",
 		byte_cntr_data->total_size, byte_cntr_data->total_irq,
 		atomic_read(&byte_cntr_data->irq_cnt),
 		byte_cntr_data->offset,
 		byte_cntr_data->rwp_offset,
 		byte_cntr_data->tmcdrvdata->usb_data->drop_data_size);
+	drop_rate = byte_cntr_data->tmcdrvdata->usb_data->drop_data_size;
+	drop_rate = drop_rate * 100 / (byte_cntr_data->total_size + drop_rate);
+	dev_info(&byte_cntr_data->tmcdrvdata->csdev->dev,
+		"Data input speed: %lldMB/s, Data output speed: %lldMB/s, drop_rate: %d%%\n",
+		byte_cntr_data->tmcdrvdata->usb_data->in_data_speed,
+		byte_cntr_data->tmcdrvdata->usb_data->out_data_speed,
+		drop_rate);
 	mutex_unlock(&byte_cntr_data->usb_bypass_lock);
 
 }
@@ -140,6 +153,8 @@ static int usb_transfer_small_packet(struct byte_cntr *drvdata, size_t *small_si
 	if (unlikely(atomic_read(&drvdata->irq_cnt) > USB_TOTAL_IRQ)) {
 		tmcdrvdata->usb_data->data_overwritten = true;
 		dev_err_ratelimited(&tmcdrvdata->csdev->dev, "ETR data is overwritten.\n");
+	} else if (tmcdrvdata->usb_data->data_overwritten) {
+		tmcdrvdata->usb_data->data_overwritten = false;
 	}
 
 	req_size = ((w_offset < drvdata->offset) ? etr_buf->size : 0) +
@@ -218,7 +233,10 @@ static void usb_read_work_fn(struct work_struct *work)
 		container_of(work, struct byte_cntr, read_work);
 	struct tmc_drvdata *tmcdrvdata = drvdata->tmcdrvdata;
 	struct etr_buf *etr_buf = tmcdrvdata->sysfs_buf;
+	u64 elapsed_ms;
+	struct timespec64 now;
 
+	ktime_get_real_ts64(&tmcdrvdata->usb_data->start_time);
 	while (tmcdrvdata->mode == CS_MODE_SYSFS
 		&& tmcdrvdata->out_mode == TMC_ETR_OUT_MODE_USB) {
 		if (!atomic_read(&drvdata->irq_cnt)) {
@@ -230,9 +248,10 @@ static void usb_read_work_fn(struct work_struct *work)
 				|| !drvdata->read_active, USB_TIME_OUT);
 			if (ret == -ERESTARTSYS || tmcdrvdata->mode != CS_MODE_SYSFS
 			|| tmcdrvdata->out_mode != TMC_ETR_OUT_MODE_USB
-			|| !drvdata->read_active)
+			|| !drvdata->read_active) {
+				dev_err(&tmcdrvdata->csdev->dev, "usb wait for irq_cnt exit, ret=%d\n", ret);
 				break;
-
+			}
 			if (ret == 0) {
 				ret = usb_transfer_small_packet(drvdata, &small_size);
 				if (ret && ret != -EAGAIN)
@@ -243,7 +262,24 @@ static void usb_read_work_fn(struct work_struct *work)
 
 		if (unlikely(atomic_read(&drvdata->irq_cnt) > USB_TOTAL_IRQ)) {
 			tmcdrvdata->usb_data->data_overwritten = true;
-			dev_err_ratelimited(&tmcdrvdata->csdev->dev, "ETR data is overwritten.\n");
+			dev_err_ratelimited(&tmcdrvdata->csdev->dev, "ETR data is overwritten. irq_cnt=%d\n",
+				atomic_read(&drvdata->irq_cnt));
+		} else {
+			tmcdrvdata->usb_data->data_overwritten = false;
+			ret = wait_event_interruptible_timeout(drvdata->usb_wait_wq,
+				atomic_read(&drvdata->usb_free_buf) > 0
+				|| tmcdrvdata->mode != CS_MODE_SYSFS || tmcdrvdata->out_mode
+				!= TMC_ETR_OUT_MODE_USB
+				|| !drvdata->read_active, HZ / 2);
+			if (!ret) {
+				dev_err_ratelimited(&tmcdrvdata->csdev->dev, "wait for usb free_buf\n");
+				continue;
+			} else if (ret == -ERESTARTSYS || tmcdrvdata->mode != CS_MODE_SYSFS
+				|| tmcdrvdata->out_mode != TMC_ETR_OUT_MODE_USB
+				|| !drvdata->read_active) {
+				dev_err(&tmcdrvdata->csdev->dev, "usb wait for usb free_buf exit, ret=%d\n", ret);
+				break;
+			}
 		}
 
 		req_size = USB_BLK_SIZE - small_size;
@@ -330,6 +366,19 @@ static void usb_read_work_fn(struct work_struct *work)
 
 		if (atomic_read(&drvdata->irq_cnt) > 0)
 			atomic_dec(&drvdata->irq_cnt);
+
+		ktime_get_real_ts64(&now);
+		elapsed_ms = (now.tv_sec - tmcdrvdata->usb_data->start_time.tv_sec) * 1000;
+		elapsed_ms += (now.tv_nsec - tmcdrvdata->usb_data->start_time.tv_nsec) / 1000000;
+		if (elapsed_ms > 0) {
+			tmcdrvdata->usb_data->in_data_speed =
+			(drvdata->total_size + tmcdrvdata->usb_data->drop_data_size) * 1000 / elapsed_ms / SZ_1M;
+			dev_dbg_ratelimited(&tmcdrvdata->csdev->dev,
+				"in_data_speed = %lldMB/s, free_buf = %d, irq_cnt = %d\n",
+				tmcdrvdata->usb_data->in_data_speed,
+				atomic_read(&drvdata->usb_free_buf),
+				atomic_read(&drvdata->irq_cnt));
+		}
 	}
 	dev_err(&tmcdrvdata->csdev->dev, "TMC has been stopped.\n");
 }
@@ -337,12 +386,30 @@ static void usb_read_work_fn(struct work_struct *work)
 static void usb_write_done(struct byte_cntr *drvdata,
 				   struct qdss_request *d_req)
 {
+	u64 elapsed_ms;
+	struct timespec64 now;
+
+	drvdata->tmcdrvdata->usb_data->out_data_size += d_req->length;
 	atomic_inc(&drvdata->usb_free_buf);
 	if (d_req->status && d_req->status != -ECONNRESET
 			&& d_req->status != -ESHUTDOWN)
 		pr_err_ratelimited("USB write failed err:%d\n", d_req->status);
 	kfree(d_req->sg);
 	kfree(d_req);
+	wake_up(&drvdata->usb_wait_wq);
+
+	ktime_get_real_ts64(&now);
+	elapsed_ms = (now.tv_sec - drvdata->tmcdrvdata->usb_data->start_time.tv_sec) * 1000;
+	elapsed_ms += (now.tv_nsec - drvdata->tmcdrvdata->usb_data->start_time.tv_nsec) / 1000000;
+	if (elapsed_ms > 0) {
+		drvdata->tmcdrvdata->usb_data->out_data_speed =
+			drvdata->tmcdrvdata->usb_data->out_data_size * 1000 / elapsed_ms / SZ_1M;
+		dev_dbg_ratelimited(&drvdata->tmcdrvdata->csdev->dev,
+			"out_data_speed = %lldMB/s, free_buf = %d, irq_cnt = %d\n",
+			drvdata->tmcdrvdata->usb_data->out_data_speed,
+			atomic_read(&drvdata->usb_free_buf),
+			atomic_read(&drvdata->irq_cnt));
+	}
 }
 
 static int usb_bypass_init(struct byte_cntr *byte_cntr_data)
