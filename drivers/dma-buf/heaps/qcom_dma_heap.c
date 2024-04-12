@@ -35,7 +35,7 @@ static int qcom_dma_heap_probe(struct platform_device *pdev)
 
 	qcom_system_heap_create("qcom,system", "system", false);
 #ifdef CONFIG_QCOM_DMABUF_HEAPS_SYSTEM_UNCACHED
-	qcom_system_heap_create("qcom,system-uncached", NULL, true);
+	qcom_system_heap_create("qcom,system-uncached", "system-uncached", true);
 #endif
 	qcom_secure_system_heap_create("qcom,secure-pixel", NULL,
 				       QCOM_DMA_HEAP_FLAG_CP_PIXEL);
