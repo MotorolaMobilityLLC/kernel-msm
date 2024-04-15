@@ -124,6 +124,13 @@ config CUSCO_DTB
         help
                 Only include Motorola Cusco device specific DTB.
 
+config PARO_DTB
+        depends on MMI_DEVICE_DTBS
+        default n
+        bool "Motorola Mobility Paro Device DTB"
+        help
+                Only include Motorola Paro device specific DTB.
+
 config AVATRN_DTB
         depends on MMI_DEVICE_DTBS
         default n
