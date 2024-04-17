@@ -844,32 +844,34 @@ static int wcd_usbss_validate_display_port_settings(struct wcd_usbss_ctxt *priv,
 
 static int wcd_usbss_switch_update_defaults(struct wcd_usbss_ctxt *priv)
 {
+	int rc = 0;
+
 	dev_dbg(priv->dev, "restoring defaults\n");
 	/* Disable all switches */
-	regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SETTINGS_ENABLE, 0x07, 0x00);
+	rc |= regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SETTINGS_ENABLE, 0x07, 0x00);
 	/* Select MG1 for AGND_SWITCHES */
-	regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SELECT1, 0x01, 0x00);
+	rc |= regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SELECT1, 0x01, 0x00);
 	/* Select GSBU1 and MG1 for MIC_SWITCHES */
-	regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SELECT0, 0x03, 0x00);
+	rc |= regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SELECT0, 0x03, 0x00);
 	/* Enable OVP_MG1_BIAS PCOMP_DYN_BST_EN */
-	regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x08, 0x08);
+	rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG1_BIAS, 0x08, 0x08);
 	/* Enable OVP_MG2_BIAS PCOMP_DYN_BST_EN */
-	regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x08, 0x08);
-	regmap_update_bits_base(priv->regmap, WCD_USBSS_AUDIO_FSM_START, 0x01,
+	rc |= regmap_update_bits(priv->regmap, WCD_USBSS_MG2_BIAS, 0x08, 0x08);
+	rc |= regmap_update_bits_base(priv->regmap, WCD_USBSS_AUDIO_FSM_START, 0x01,
 			0x01, NULL, false, true);
 	/* Select DN for DNL_SWITHCES and DP for DPR_SWITCHES */
-	regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SELECT0, 0x3C, 0x14);
-	regmap_update_bits(priv->regmap, WCD_USBSS_USB_SS_CNTL, 0x07, 0x05); /* Mode5: USB*/
-	regmap_write(priv->regmap, WCD_USBSS_PMP_EN, 0x0);
+	rc |= regmap_update_bits(priv->regmap, WCD_USBSS_SWITCH_SELECT0, 0x3C, 0x14);
+	rc |= regmap_update_bits(priv->regmap, WCD_USBSS_USB_SS_CNTL, 0x07, 0x05); /* Mode5: USB*/
+	rc |= regmap_write(priv->regmap, WCD_USBSS_PMP_EN, 0x0);
 	if (wcd_usbss_ctxt_->version == WCD_USBSS_2_0)
-		regmap_update_bits(wcd_usbss_ctxt_->regmap, WCD_USBSS_PMP_OUT1,
+		rc |= regmap_update_bits(wcd_usbss_ctxt_->regmap, WCD_USBSS_PMP_OUT1,
 				0x40, 0x00);
-	regmap_write(wcd_usbss_ctxt_->regmap, WCD_USBSS_EXT_SW_CTRL_1, 0x00);
-	regmap_write(wcd_usbss_ctxt_->regmap, WCD_USBSS_EXT_LIN_EN, 0x00);
+	rc |= regmap_write(wcd_usbss_ctxt_->regmap, WCD_USBSS_EXT_SW_CTRL_1, 0x00);
+	rc |= regmap_write(wcd_usbss_ctxt_->regmap, WCD_USBSS_EXT_LIN_EN, 0x00);
 
 	/* Once plug-out done, restore to MANUAL mode */
 	audio_fsm_mode = WCD_USBSS_AUDIO_MANUAL;
-	return 0;
+	return rc;
 }
 
 static void wcd_usbss_update_reg_init(struct regmap *regmap)
@@ -1523,6 +1525,7 @@ static int wcd_usbss_sdam_handle_events_locked(int req_state)
 
 	switch (req_state) {
 	case WCD_USBSS_LPD_USB_MODE_CLEAR:
+		rc |= wcd_usbss_switch_update_defaults(priv);
 		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_PMP_OUT1, 0x20, 0x00);
 		/* Enable D+/D- 1M & 400K PLDN */
 		rc |= regmap_update_bits(priv->regmap, WCD_USBSS_BIAS_TOP, 0x20, 0x00);
