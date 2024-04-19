@@ -2521,6 +2521,7 @@
   __tasklet_schedule
   __task_pid_nr_ns
   thermal_cdev_update
+  thermal_cooling_device_register
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_zone_device_register
