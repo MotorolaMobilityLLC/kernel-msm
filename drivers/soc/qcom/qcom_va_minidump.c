@@ -764,6 +764,7 @@ static int qcom_va_md_driver_probe(struct platform_device *pdev)
 	int count;
 	struct page **pages, *page;
 	dma_addr_t dma_handle;
+	int maxtry = 10;
 
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
 	if (ret)
@@ -775,8 +776,14 @@ static int qcom_va_md_driver_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	vaddr = dma_alloc_coherent(&pdev->dev, va_md_data.total_mem_size, &dma_handle,
-				   GFP_KERNEL);
+	while(maxtry--) {
+		vaddr = dma_alloc_coherent(&pdev->dev, va_md_data.total_mem_size, &dma_handle,
+						GFP_KERNEL);
+		if (!vaddr)
+			continue;
+		else
+			break;
+	}
 	if (!vaddr) {
 		ret = -ENOMEM;
 		goto out;
