@@ -127,6 +127,7 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 	bool is_addr_dynamic = false;
 	bool guard_memory = false;
 	bool vm_nav_path = false;
+	int maxtry = 10;
 
 	/* Get the addresses from platform-data */
 	if (!pdev->dev.of_node) {
@@ -175,9 +176,14 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 
 		shared_mem_tot_sz = guard_memory ? shared_mem_size + SZ_8K :
 					shared_mem_size;
-
-		shared_mem = dma_alloc_coherent(&pdev->dev, shared_mem_tot_sz,
-					&shared_mem_pyhsical, GFP_KERNEL);
+		while (maxtry--) {
+			shared_mem = dma_alloc_coherent(&pdev->dev, shared_mem_tot_sz,
+						&shared_mem_pyhsical, GFP_KERNEL);
+			if (shared_mem == NULL)
+				continue;
+			else
+				break;
+		}
 		if (shared_mem == NULL) {
 			pr_err("failed to alloc memory %d\n", shared_mem_tot_sz);
 			return -ENOMEM;
