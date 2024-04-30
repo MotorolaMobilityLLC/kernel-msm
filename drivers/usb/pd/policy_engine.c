@@ -2766,6 +2766,10 @@ static void handle_state_snk_wait_for_capabilities(struct usbpd *pd,
 
 	if (IS_DATA(rx_msg, MSG_SOURCE_CAPABILITIES)) {
 		val.intval = 0;
+		if (!pd->vbus_present) {
+		    usbpd_dbg(&pd->dev, "vbus not present yet, delay 50ms.\n");
+		    msleep(50);
+		}
 		usbpd_set_psy_iio_property(pd,
 				POWER_SUPPLY_PROP_PD_IN_HARD_RESET, &val);
 
