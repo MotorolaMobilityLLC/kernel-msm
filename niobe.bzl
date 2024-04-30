@@ -10,7 +10,6 @@ def define_niobe():
         # TODO: Need to add GKI modules
         "arch/arm64/gunyah/gh_arm_drv.ko",
         "drivers/base/regmap/qti-regmap-debugfs.ko",
-        "drivers/bus/mhi/devices/mhi_dev_satellite.ko",
         "drivers/bus/mhi/devices/mhi_dev_uci.ko",
         "drivers/bus/mhi/host/mhi.ko",
         "drivers/char/rdbg.ko",
@@ -100,6 +99,7 @@ def define_niobe():
         "drivers/power/reset/reboot-mode.ko",
         "drivers/power/supply/qti_battery_charger.ko",
         "drivers/pwm/pwm-qti-lpg.ko",
+        "drivers/regulator/ap72200-regulator.ko",
         "drivers/regulator/debug-regulator.ko",
         "drivers/regulator/proxy-consumer.ko",
         "drivers/regulator/qti-fixed-regulator.ko",
@@ -152,6 +152,8 @@ def define_niobe():
         "drivers/soc/qcom/memshare/heap_mem_ext_v01.ko",
         "drivers/soc/qcom/memshare/msm_memshare.ko",
         "drivers/soc/qcom/minidump.ko",
+        "drivers/soc/qcom/msm_performance.ko",
+        "drivers/soc/qcom/panel_event_notifier.ko",
         "drivers/soc/qcom/pdr_interface.ko",
         "drivers/soc/qcom/pmic-glink-debug.ko",
         "drivers/soc/qcom/pmic-pon-log.ko",
@@ -165,9 +167,11 @@ def define_niobe():
         "drivers/soc/qcom/qcom_ramdump.ko",
         "drivers/soc/qcom/qcom_rpmh.ko",
         "drivers/soc/qcom/qcom_stats.ko",
+        "drivers/soc/qcom/qcom_va_minidump.ko",
         "drivers/soc/qcom/qcom_wdt_core.ko",
         "drivers/soc/qcom/qfprom-sys.ko",
         "drivers/soc/qcom/qmi_helpers.ko",
+        "drivers/soc/qcom/qsee_ipc_irq_bridge.ko",
         "drivers/soc/qcom/qti_battery_debug.ko",
         "drivers/soc/qcom/secure_buffer.ko",
         "drivers/soc/qcom/smem.ko",
@@ -229,6 +233,7 @@ def define_niobe():
         "net/qrtr/qrtr-mhi.ko",
         "net/qrtr/qrtr-smd.ko",
         "net/wireless/cfg80211.ko",
+        "sound/usb/snd-usb-audio-qmi.ko",
     ]
 
     _niobe_consolidate_in_tree_modules = _niobe_in_tree_modules + [

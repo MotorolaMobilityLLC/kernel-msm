@@ -39,6 +39,7 @@ blocklist r820t
 blocklist rcutorture
 blocklist rtc-test
 blocklist si2157
+blocklist socinfo_dt
 blocklist tda18212
 blocklist tda18218
 blocklist tda18250
@@ -65,3 +66,4 @@ blocklist qca_cld3_qca6174
 blocklist qca_cld3_qcn7605
 blocklist qca_cld3_qca6390
 blocklist qca_cld3_qca6490
+blocklist qca_cld3_kiwi_v2
