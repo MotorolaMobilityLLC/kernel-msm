@@ -112,6 +112,7 @@ static moto_product products_list[] = {
 	{"cusco",      "all",  NV_IPA},
 	{"cuscoi",      "all",  NV_IPA},
 	{"tank",        "all",  NV_IPA},
+	{"paro",        "all",  NV_IPA},
 	/* Terminator */
 	{{0}, {0}, {0}},
 };
