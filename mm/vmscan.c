@@ -75,6 +75,9 @@
 #include <trace/hooks/vmscan.h>
 #include <trace/hooks/mm.h>
 
+#undef CREATE_TRACE_POINTS
+#include <trace/hooks/mm.h>
+
 EXPORT_TRACEPOINT_SYMBOL_GPL(mm_vmscan_direct_reclaim_begin);
 EXPORT_TRACEPOINT_SYMBOL_GPL(mm_vmscan_direct_reclaim_end);
 EXPORT_TRACEPOINT_SYMBOL_GPL(mm_vmscan_kswapd_wake);
@@ -2861,7 +2864,8 @@ skip_folio_referenced:
 
 static unsigned int reclaim_folio_list(struct list_head *folio_list,
 				      struct pglist_data *pgdat,
-				      bool ignore_references)
+				      bool ignore_references,
+				      void *private)
 {
 	struct reclaim_stat dummy_stat;
 	unsigned int nr_reclaimed;
@@ -2875,16 +2879,21 @@ static unsigned int reclaim_folio_list(struct list_head *folio_list,
 	};
 
 	nr_reclaimed = shrink_folio_list(folio_list, pgdat, &sc, &dummy_stat, ignore_references);
-	while (!list_empty(folio_list)) {
-		folio = lru_to_folio(folio_list);
-		list_del(&folio->lru);
-		folio_putback_lru(folio);
+	if (private) {
+		trace_android_rvh_reclaim_folio_list(folio_list, private);
+	} else {
+		while (!list_empty(folio_list)) {
+			folio = lru_to_folio(folio_list);
+			list_del(&folio->lru);
+			folio_putback_lru(folio);
+		}
 	}
 
 	return nr_reclaimed;
 }
 
-unsigned long reclaim_pages(struct list_head *folio_list, bool ignore_references)
+unsigned long __reclaim_pages(struct list_head *folio_list, bool ignore_references,
+			    void *private)
 {
 	int nid;
 	unsigned int nr_reclaimed = 0;
@@ -2907,15 +2916,21 @@ unsigned long reclaim_pages(struct list_head *folio_list, bool ignore_references
 		}
 
 		nr_reclaimed += reclaim_folio_list(&node_folio_list, NODE_DATA(nid),
-						   ignore_references);
+						   ignore_references, private);
 		nid = folio_nid(lru_to_folio(folio_list));
 	} while (!list_empty(folio_list));
 
-	nr_reclaimed += reclaim_folio_list(&node_folio_list, NODE_DATA(nid), ignore_references);
+	nr_reclaimed += reclaim_folio_list(&node_folio_list, NODE_DATA(nid),
+					   ignore_references, private);
 
 	memalloc_noreclaim_restore(noreclaim_flag);
 
 	return nr_reclaimed;
+}
+
+unsigned long reclaim_pages(struct list_head *folio_list, bool ignore_references)
+{
+	return __reclaim_pages(folio_list, ignore_references, NULL);
 }
 EXPORT_SYMBOL_GPL(reclaim_pages);
 

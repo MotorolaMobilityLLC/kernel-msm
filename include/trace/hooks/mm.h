@@ -60,6 +60,15 @@ DECLARE_HOOK(android_vh_filemap_get_folio,
 	TP_PROTO(struct address_space *mapping, pgoff_t index,
 		int fgp_flags, gfp_t gfp_mask, struct folio *folio),
 	TP_ARGS(mapping, index, fgp_flags, gfp_mask, folio));
+DECLARE_RESTRICTED_HOOK(android_rvh_madvise_pageout_begin,
+			TP_PROTO(void **private),
+			TP_ARGS(private), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_madvise_pageout_end,
+			TP_PROTO(void *private, struct list_head *folio_list),
+			TP_ARGS(private, folio_list), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_reclaim_folio_list,
+			TP_PROTO(struct list_head *folio_list, void *private),
+			TP_ARGS(folio_list, private), 1);
 DECLARE_HOOK(android_vh_meminfo_cache_adjust,
 	TP_PROTO(unsigned long *cached),
 	TP_ARGS(cached));
