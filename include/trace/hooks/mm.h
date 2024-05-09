@@ -51,6 +51,9 @@ DECLARE_HOOK(android_vh_slab_free,
 DECLARE_RESTRICTED_HOOK(android_rvh_mapping_shrinkable,
 			TP_PROTO(bool *shrinkable),
 			TP_ARGS(shrinkable), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_do_read_fault,
+			TP_PROTO(struct vm_fault *vmf, unsigned long *fault_around_pages),
+			TP_ARGS(vmf, fault_around_pages), 1);
 DECLARE_HOOK(android_vh_rmqueue,
 	TP_PROTO(struct zone *preferred_zone, struct zone *zone,
 		unsigned int order, gfp_t gfp_flags,
