@@ -210,7 +210,8 @@ static int gh_stop_vm(struct gh_vm *vm)
 	gh_vmid_t vmid = vm->vmid;
 	int ret = -EINVAL;
 
-	if (vm->proxy_vm)
+	if (vm->proxy_vm && !(vm->keep_running == true &&
+			      vm->status.vm_status == GH_RM_VM_STATUS_RUNNING))
 		ret = gh_exit_vm(vm, GH_VM_STOP_RESTART,
 					GH_RM_VM_STOP_FLAG_FORCE_STOP);
 	else
@@ -287,7 +288,8 @@ static int gh_vcpu_release(struct inode *inode, struct file *filp)
 	if (vcpu->vm->keep_running && (!vcpu->vm->rebootable ||
 	    vcpu->vm->status.vm_status == GH_RM_VM_STATUS_RUNNING))
 		gh_vcpu_create_wq(vcpu->vm->vmid, vcpu->vcpu_id);
-	else
+
+	if (vcpu->vm->rebootable || !vcpu->vm->keep_running)
 		gh_put_vm(vcpu->vm);
 
 	return 0;
@@ -693,9 +695,9 @@ static int gh_vm_release(struct inode *inode, struct file *filp)
 {
 	struct gh_vm *vm = filp->private_data;
 
-	if (!(vm->keep_running && (!vm->rebootable ||
-	      vm->status.vm_status == GH_RM_VM_STATUS_RUNNING)))
+	if (vm->rebootable || !vm->keep_running)
 		gh_put_vm(vm);
+
 	return 0;
 }
 
