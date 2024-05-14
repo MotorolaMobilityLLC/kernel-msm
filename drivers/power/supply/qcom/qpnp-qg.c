@@ -1801,10 +1801,12 @@ static int qg_get_battery_capacity(struct qpnp_qg *chip, int *soc)
 		return 0;
 	}
 
-	/*if (chip->charge_full) {
-		*soc = FULL_SOC;
-		return 0;
-	}*/
+	if (!chip->dt.lotx_enabled) {
+		if (chip->charge_full) {
+			*soc = FULL_SOC;
+			return 0;
+		}
+	}
 
 	mutex_lock(&chip->soc_lock);
 
@@ -2433,11 +2435,13 @@ static int qg_charge_full_update(struct qpnp_qg *chip)
 		 * msoc from 100% for better UX.
 		 */
 		if (chip->msoc < recharge_soc || !input_present) {
-			/*if (chip->dt.linearize_soc) {
-				get_rtc_time(&chip->last_maint_soc_update_time);
-				chip->maint_soc = FULL_SOC;
-				qg_scale_soc(chip, false);
-			}*/
+			if (!chip->dt.lotx_enabled) {
+				if (chip->dt.linearize_soc) {
+					get_rtc_time(&chip->last_maint_soc_update_time);
+					chip->maint_soc = FULL_SOC;
+					qg_scale_soc(chip, false);
+				}
+			}
 			chip->charge_full = false;
 			qg_dbg(chip, QG_DEBUG_STATUS, "msoc=%d recharge_soc=%d charge_full (1->0)\n",
 					chip->msoc, recharge_soc);
@@ -4481,6 +4485,8 @@ static int qg_parse_dt(struct qpnp_qg *chip)
 
 	chip->dt.multi_profile_load = of_property_read_bool(node,
 					"qcom,multi-profile-load");
+
+	chip->dt.lotx_enabled = of_property_read_bool(node, "mmi,qg-lotx-support");
 
 	qg_dbg(chip, QG_DEBUG_PON, "DT: vbatt_empty_mv=%dmV vbatt_low_mv=%dmV delta_soc=%d ext-sns=%d\n",
 			chip->dt.vbatt_empty_mv, chip->dt.vbatt_low_mv,

@@ -84,6 +84,7 @@ struct qg_dt {
 	bool			tcss_enable;
 	bool			bass_enable;
 	bool			cp_use_internal_qg;
+	bool			lotx_enabled;
 };
 
 struct qg_esr_data {
