@@ -1380,4 +1380,10 @@ config XILINX_AMS
 	  The driver can also be built as a module. If so, the module will be called
 	  xilinx-ams.
 
+config BATT_THERMAL_100K_MALMO
+       bool "update Malmo 5G ROW batt  NTC ADC acquisition accuracy"
+       default n
+       help
+         update Malmo 5G ROW batt  NTC ADC acquisition accuracy
+
 endmenu
