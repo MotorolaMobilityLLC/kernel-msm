@@ -35,6 +35,14 @@
 #define SE_I2C_SCL_COUNTERS		(0x278)
 #define SE_GENI_M_GP_LENGTH		(0x910)
 
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+/* I2c Noise cancel reg */
+#define SE_I2C_NOISE_CANCEL_CTL		(0x234)
+/* I2C 0x4C90000 SE10 address */
+#define SE_I2C_ADDRESS_4C90000		0x4C90000
+#define SE_I2C_GPIO_OUTPUT_TIMES		13
+#endif
+
 /* M_CMD OP codes for I2C */
 #define I2C_WRITE		(0x1)
 #define I2C_READ		(0x2)
@@ -219,6 +227,16 @@ struct geni_i2c_dev {
 	bool bus_recovery_enable; /* To be enabled by client if needed */
 	bool i2c_test_dev; /* Set this DT flag to enable test bus dump for an SE */
 	bool is_deep_sleep; /* For deep sleep restore the config similar to the probe. */
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+	u32 noise_rjct_scl;
+	u32 noise_rjct_sda;
+	u32 qcom_i2c_reg_address;
+	struct pinctrl *pinctrl_i2c;
+	struct pinctrl_state *pin_i2c_active;
+	struct pinctrl_state *pin_i2c_sleep;
+	struct pinctrl_state *pin_i2c_gpio_high;
+	struct pinctrl_state *pin_i2c_gpio_low;
+#endif
 };
 
 static struct geni_i2c_dev *gi2c_dev_dbg[MAX_SE];
@@ -447,7 +465,12 @@ static inline void qcom_geni_i2c_conf(struct geni_i2c_dev *gi2c, int dfs)
 	geni_write_reg((itr->clk_div << 4) | 1, gi2c->base, GENI_SER_M_CLK_CFG);
 	geni_write_reg(((itr->t_high << 20) | (itr->t_low << 10) |
 			itr->t_cycle), gi2c->base, SE_I2C_SCL_COUNTERS);
-
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+	if ((gi2c->qcom_i2c_reg_address == SE_I2C_ADDRESS_4C90000) &&
+		(gi2c->noise_rjct_scl || gi2c->noise_rjct_sda))
+		geni_write_reg(gi2c->noise_rjct_scl << 1 |
+		gi2c->noise_rjct_sda << 3, gi2c->base, SE_I2C_NOISE_CANCEL_CTL);
+#endif
 	/*
 	 * Ensure Clk config completes before return.
 	 */
@@ -692,6 +715,47 @@ static int geni_i2c_bus_recovery(struct geni_i2c_dev *gi2c)
 			       gi2c->i2c_kpi, start_time, 0, 0);
 	return 0;
 }
+
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+/**
+ * geni_i2c_bus_recovery_gpio(): Function to recover i2c bus when required
+ * @gi2c:	I2C device handle
+ *
+ * Use this function only when bus is bad for some reason and need to
+ * reset the slave to bring slave into proper state. such as sda had pulled low
+ * This should put bus into proper state once executed successfully.
+ *
+ * Return: Success OR Respective error code/value.
+ */
+static int geni_i2c_bus_recovery_gpio(struct geni_i2c_dev *gi2c)
+{
+	int i = 0;
+	int ret = 0;
+	u32 geni_ios = 0;
+	if (gi2c->qcom_i2c_reg_address != SE_I2C_ADDRESS_4C90000) {
+		return ret;
+	}
+
+	GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev, "%s: enter gpio ctrl.\n", __func__);
+	/* gpio pull output low and high for 13 times when sda had pulled low */
+	if (gi2c->pin_i2c_gpio_high && gi2c->pin_i2c_gpio_low) {
+		for (i = 0; i < SE_I2C_GPIO_OUTPUT_TIMES; i++) {
+			ret = pinctrl_select_state(gi2c->pinctrl_i2c, gi2c->pin_i2c_gpio_low);
+			udelay(5);
+			ret = pinctrl_select_state(gi2c->pinctrl_i2c, gi2c->pin_i2c_gpio_high);
+			udelay(5);
+		}
+		udelay(10);
+		ret = pinctrl_select_state(gi2c->pinctrl_i2c, gi2c->pin_i2c_active);
+	}
+
+	geni_write_reg(FORCE_DEFAULT,
+			gi2c->base, GENI_FORCE_DEFAULT_REG);
+	geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
+	do_reg68_war_for_rtl_se(gi2c);
+	return ret;
+}
+#endif
 
 static int do_pending_cancel(struct geni_i2c_dev *gi2c)
 {
@@ -2139,6 +2203,13 @@ static int geni_i2c_execute_xfer(struct geni_i2c_dev *gi2c,
 					I2C_LOG_DBG(gi2c->ipcl, true, gi2c->dev,
 						    "%s: IO lines not in good state\n",
 						    __func__);
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+					if ((gi2c->qcom_i2c_reg_address == SE_I2C_ADDRESS_4C90000) &&
+						(((geni_ios & 0x3) == 0x2) ||
+						((geni_ios & 0x3) == 0x0))) {
+						geni_i2c_bus_recovery_gpio(gi2c);
+					}
+#endif
 					gi2c->prev_cancel_pending = true;
 					goto geni_i2c_execute_xfer_exit;
 				}
@@ -2254,6 +2325,13 @@ static int geni_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
 		I2C_LOG_ERR(gi2c->ipcl, false, gi2c->dev,
 			    "IO lines in bad state, Power the slave\n");
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+		if ((gi2c->qcom_i2c_reg_address == SE_I2C_ADDRESS_4C90000) &&
+				(((geni_ios & 0x3) == 0x2) ||
+				((geni_ios & 0x3) == 0x0))) {
+			geni_i2c_bus_recovery_gpio(gi2c);
+		}
+#endif
 		/* for levm skip auto suspend timer */
 		if (!gi2c->is_le_vm) {
 			pm_runtime_mark_last_busy(gi2c->dev);
@@ -2547,6 +2625,20 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+	if (of_property_read_u32(pdev->dev.of_node, "qcom,i2c_reg_address",
+				&gi2c->qcom_i2c_reg_address))
+		gi2c->qcom_i2c_reg_address = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "qcom,noise_rjct_scl",
+				&gi2c->noise_rjct_scl))
+		gi2c->noise_rjct_scl = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "qcom,noise_rjct_sda",
+				&gi2c->noise_rjct_sda))
+		gi2c->noise_rjct_sda = 0;
+#endif
+
 	/*
 	 * For LE, clocks, gpio and icb voting will be provided by
 	 * LA. The I2C operates in GSI mode only for LE usecase,
@@ -2621,6 +2713,47 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		test_bus_enable_per_qupv3(gi2c->wrapper_dev, gi2c->ipcl);
 	}
 
+#ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
+	if (gi2c->qcom_i2c_reg_address != SE_I2C_ADDRESS_4C90000){
+		pr_info("boot_kpi: M - DRIVER GENI_I2C_%d Ready\n", gi2c->adap.nr);
+		dev_info(gi2c->dev, "I2C probed\n");
+		return 0;
+	}
+
+	gi2c->pinctrl_i2c = devm_pinctrl_get(gi2c->dev);
+	if (IS_ERR_OR_NULL(gi2c->pinctrl_i2c)) {
+		gi2c->pinctrl_i2c = devm_pinctrl_get(gi2c->dev);
+		if (IS_ERR_OR_NULL(gi2c->pinctrl_i2c)) {
+			dev_err(gi2c->dev, "Failed to get pinctrl handler gpio ctrl\n");
+			return PTR_ERR(gi2c->pinctrl_i2c);
+		}
+	}
+
+	gi2c->pin_i2c_active = pinctrl_lookup_state(gi2c->pinctrl_i2c, "default");
+	if (IS_ERR_OR_NULL(gi2c->pin_i2c_active)) {
+			dev_err(gi2c->dev, "Failed to avtive pinctrl state gpio ctrl\n");
+			return PTR_ERR(gi2c->pin_i2c_active);
+	}
+
+	gi2c->pin_i2c_sleep = pinctrl_lookup_state(gi2c->pinctrl_i2c, "sleep");
+	if (IS_ERR_OR_NULL(gi2c->pin_i2c_sleep)) {
+			dev_err(gi2c->dev, "Failed to sleep pinctrl state gpio ctrl\n");
+			return PTR_ERR(gi2c->pin_i2c_sleep);
+	}
+
+	gi2c->pin_i2c_gpio_high = pinctrl_lookup_state(gi2c->pinctrl_i2c, "gpio_high");
+	if (IS_ERR_OR_NULL(gi2c->pin_i2c_gpio_high)) {
+			dev_err(gi2c->dev, "Failed to high pinctrl  handler gpio ctrl\n");
+			return PTR_ERR(gi2c->pin_i2c_gpio_high);
+	}
+
+	gi2c->pin_i2c_gpio_low = pinctrl_lookup_state(gi2c->pinctrl_i2c, "gpio_low");
+	if (IS_ERR_OR_NULL(gi2c->pin_i2c_gpio_low)) {
+			dev_err(gi2c->dev, "Failed to low pinctrl handler gpio ctrl\n");
+			return PTR_ERR(gi2c->pin_i2c_gpio_low);
+	}
+	pr_info("%s :success get pinctrl state gpio ctrl\n", __func__);
+#endif
 	pr_info("boot_kpi: M - DRIVER GENI_I2C_%d Ready\n", gi2c->adap.nr);
 	dev_info(gi2c->dev, "I2C probed\n");
 	return 0;
