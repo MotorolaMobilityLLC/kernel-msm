@@ -719,8 +719,8 @@ static int adsp_start(struct rproc *rproc)
 	if (adsp->dtb_pas_id || adsp->dtb_fw_name) {
 		ret = qcom_scm_pas_auth_and_reset(adsp->dtb_pas_id);
 		if (ret)
-			panic("Panicking, auth and reset failed for remoteproc %s dtb\n",
-				 rproc->name);
+			panic("Panicking, auth and reset failed for remoteproc %s dtb ret=%d\n",
+				rproc->name, ret);
 	}
 
 	trace_rproc_qcom_event(dev_name(adsp->dev), "Q6_firmware_loading", "enter");
@@ -741,7 +741,8 @@ static int adsp_start(struct rproc *rproc)
 
 	ret = qcom_scm_pas_auth_and_reset(adsp->pas_id);
 	if (ret)
-		panic("Panicking, auth and reset failed for remoteproc %s\n", rproc->name);
+		panic("Panicking, auth and reset failed for remoteproc %s ret=%d\n",
+				rproc->name, ret);
 	trace_rproc_qcom_event(dev_name(adsp->dev), "Q6_auth_reset", "exit");
 
 	/* if needed, signal Q6 to continute booting */
@@ -2610,7 +2611,7 @@ static const struct adsp_data monaco_auto_cdsp_resource = {
 	.sysmon_name = "cdsp",
 	.qmp_name = "cdsp",
 	.ssctl_id = 0x17,
-	.minidump_id = 19,
+	.minidump_id = 7,
 };
 
 static const struct adsp_data niobe_soccp_resource = {

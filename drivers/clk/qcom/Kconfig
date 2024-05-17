@@ -1418,6 +1418,60 @@ config SM_CAMCC_VOLCANO
 	  Say Y if you want to support camera devices and functionality such as
 	  capturing pictures.
 
+config SXR_GCC_ANORAK
+	tristate "ANORAK Global Clock Controller"
+	depends on COMMON_CLK_QCOM
+	help
+	  Support for the global clock controller on Qualcomm Technologies, Inc.
+	  ANORAK devices.
+	  Say Y if you want to use peripheral devices such as UART, SPI, I2C,
+	  USB, UFS, SD/eMMC, PCIE, etc.
+
+config SXR_VIDEOCC_ANORAK
+	tristate "ANORAK Video Clock Controller"
+	select SXR_GCC_ANORAK
+	help
+	  Support for the video clock controller on Qualcomm Technologies, Inc.
+	  ANORAK devices.
+	  Say Y if you want to support video devices and functionality such as
+	  video encode/decode.
+
+config SXR_GPUCC_ANORAK
+	tristate "ANORAK Graphics Clock Controller"
+	select SXR_GCC_ANORAK
+	help
+	  Support for the graphics clock controller on Qualcomm Technologies, Inc.
+	  ANORAK devices.
+	  Say Y if you want to support graphics controller devices and
+	  functionality such as 3D graphics.
+
+config SXR_CAMCC_ANORAK
+	tristate "ANORAK Camera Clock Controller"
+	select SXR_GCC_ANORAK
+	help
+	  Support for the camera clock controller on Qualcomm Technologies, Inc.
+	  ANORAK devices.
+	  Say Y if you want to support camera devices and functionality such as
+	  capturing pictures.
+
+config SXR_DEBUGCC_ANORAK
+	tristate "ANORAK Debug Clock Controller"
+	depends on SXR_GCC_ANORAK
+	help
+	  Support for the debug clock controller on Qualcomm Technologies, Inc.
+	  ANORAK devices.
+	  Say Y if you want to support the debug clocks such as clock measurement
+	  functionality.
+
+config SXR_DISPCC_ANORAK
+        tristate "ANORAK Display Clock Controller"
+        select SXR_GCC_ANORAK
+        help
+          Support for the display clock controller on Qualcomm Technologies, Inc
+          ANORAK devices.
+          Say Y if you want to support display devices and functionality such as
+          splash screen.
+
 config SM_DISPCC_VOLCANO
 	tristate "Volcano Display Clock Controller"
 	select SM_GCC_VOLCANO

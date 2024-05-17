@@ -2351,6 +2351,10 @@ static int hgsl_ioctl_mem_alloc(struct file *filep, unsigned long arg)
 		goto out;
 	}
 
+	/* let the back end aware that this is HGSL allocation */
+	params.flags &= ~GSL_MEMFLAGS_USERMEM_MASK;
+	params.flags |= GSL_MEMFLAGS_USERMEM_HGSL_ALLOC;
+
 	mem_node->flags = params.flags;
 
 	ret = hgsl_sharedmem_alloc(hgsl->dev, params.sizebytes, params.flags, mem_node);
@@ -2540,6 +2544,7 @@ static int hgsl_ioctl_mem_map_smmu(struct file *filep, unsigned long arg)
 	}
 
 	params.size = PAGE_ALIGN(params.size);
+	params.flags &= ~GSL_MEMFLAGS_USERMEM_MASK;
 	mem_node->flags = params.flags;
 	mem_node->fd = params.fd;
 	mem_node->memtype = params.memtype;
@@ -3412,25 +3417,37 @@ out:
 
 static int hgsl_open(struct inode *inodep, struct file *filep)
 {
-	struct hgsl_priv *priv = hgsl_zalloc(sizeof(*priv));
+	struct hgsl_priv *priv = NULL;
 	struct qcom_hgsl  *hgsl = container_of(inodep->i_cdev,
 					       struct qcom_hgsl, cdev);
 	struct pid *pid = task_tgid(current);
 	struct task_struct *task = pid_task(pid, PIDTYPE_PID);
+	pid_t pid_nr;
 	int ret = 0;
 
-	if (!priv)
-		return -ENOMEM;
+	if (!task)
+		return -EINVAL;
 
-	if (!task) {
-		ret = -EINVAL;
+	pid_nr = task_pid_nr(task);
+
+	mutex_lock(&hgsl->mutex);
+	list_for_each_entry(priv, &hgsl->active_list, node) {
+		if (priv->pid == pid_nr) {
+			priv->open_count++;
+			goto out;
+		}
+	}
+
+	priv = hgsl_zalloc(sizeof(*priv));
+	if (!priv) {
+		ret = -ENOMEM;
 		goto out;
 	}
 
 	INIT_LIST_HEAD(&priv->mem_mapped);
 	INIT_LIST_HEAD(&priv->mem_allocated);
 	mutex_init(&priv->lock);
-	priv->pid = task_pid_nr(task);
+	priv->pid = pid_nr;
 
 	ret = hgsl_hyp_init(&priv->hyp_priv, hgsl->dev,
 		priv->pid, task->comm);
@@ -3438,13 +3455,17 @@ static int hgsl_open(struct inode *inodep, struct file *filep)
 		goto out;
 
 	priv->dev = hgsl;
-	filep->private_data = priv;
+	priv->open_count = 1;
 
+	list_add(&priv->node, &hgsl->active_list);
 	hgsl_sysfs_client_init(priv);
 	hgsl_debugfs_client_init(priv);
 out:
 	if (ret != 0)
 		kfree(priv);
+	else
+		filep->private_data = priv;
+	mutex_unlock(&hgsl->mutex);
 	return ret;
 }
 
@@ -3508,8 +3529,6 @@ static int _hgsl_release(struct hgsl_priv *priv)
 	struct qcom_hgsl *hgsl = priv->dev;
 	uint32_t i;
 	int ret;
-	hgsl_debugfs_client_release(priv);
-	hgsl_sysfs_client_release(priv);
 
 	read_lock(&hgsl->ctxt_lock);
 	for (i = 0; i < HGSL_CONTEXT_NUM; i++) {
@@ -3590,10 +3609,16 @@ static int hgsl_release(struct inode *inodep, struct file *filep)
 	struct qcom_hgsl *hgsl = priv->dev;
 
 	mutex_lock(&hgsl->mutex);
-	list_add(&priv->node, &hgsl->release_list);
+	if (priv->open_count < 1)
+		WARN_ON(1);
+	else if (--priv->open_count == 0) {
+		list_move(&priv->node, &hgsl->release_list);
+		hgsl_debugfs_client_release(priv);
+		hgsl_sysfs_client_release(priv);
+		queue_work(hgsl->release_wq, &hgsl->release_work);
+	}
 	mutex_unlock(&hgsl->mutex);
 
-	queue_work(hgsl->release_wq, &hgsl->release_work);
 	return 0;
 }
 
@@ -4327,6 +4352,8 @@ static int qcom_hgsl_probe(struct platform_device *pdev)
 		goto exit_dereg;
 	}
 
+	INIT_LIST_HEAD(&hgsl_dev->active_list);
+
 	ret = hgsl_init_release_wq(hgsl_dev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "hgsl_init_release_wq failed, ret %d\n",
@@ -4379,10 +4406,13 @@ static int qcom_hgsl_remove(struct platform_device *pdev)
 		if (tcsr_receiver) {
 			hgsl_tcsr_disable(tcsr_receiver);
 			hgsl_tcsr_free(tcsr_receiver);
-			flush_workqueue(hgsl->wq);
-			destroy_workqueue(hgsl->wq);
-			hgsl->wq = NULL;
 		}
+	}
+
+	if (hgsl->wq) {
+		flush_workqueue(hgsl->wq);
+		destroy_workqueue(hgsl->wq);
+		hgsl->wq = NULL;
 	}
 
 	kfree(hgsl->contexts);
