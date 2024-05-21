@@ -2200,20 +2200,25 @@ static int geni_i2c_execute_xfer(struct geni_i2c_dev *gi2c,
 				/* WAR: Set flag to mark cancel pending if IOS bad */
 				geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
 				if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
-					I2C_LOG_DBG(gi2c->ipcl, true, gi2c->dev,
-						    "%s: IO lines not in good state\n",
-						    __func__);
 #ifdef CONFIG_I2C_MSM_GENI_GPIO_RECOVERY
 					if ((gi2c->qcom_i2c_reg_address == SE_I2C_ADDRESS_4C90000) &&
 						(((geni_ios & 0x3) == 0x2) ||
 						((geni_ios & 0x3) == 0x0))) {
+						I2C_LOG_DBG(gi2c->ipcl, true, gi2c->dev,
+						    "%s: IO lines not in good state\n",
+						    __func__);
 						geni_i2c_bus_recovery_gpio(gi2c);
+						gi2c->prev_cancel_pending = true;
+						goto geni_i2c_execute_xfer_exit;
 					}
-#endif
+#else
+					I2C_LOG_DBG(gi2c->ipcl, true, gi2c->dev,
+						    "%s: IO lines not in good state\n",
+						    __func__);
 					gi2c->prev_cancel_pending = true;
 					goto geni_i2c_execute_xfer_exit;
+#endif
 				}
-
 				/* EBUSY set by ARB_LOST error condition */
 				if (gi2c->err == -EBUSY) {
 					I2C_LOG_DBG(gi2c->ipcl, true, gi2c->dev,
