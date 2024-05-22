@@ -270,6 +270,9 @@ DECLARE_HOOK(android_vh_page_should_be_protected,
 	s8 priority, u64 *ext, int *should_protect),
 	TP_ARGS(folio, nr_scanned, priority, ext, should_protect));
 
+DECLARE_HOOK(android_vh_count_workingset_refault,
+	TP_PROTO(struct folio *folio),
+	TP_ARGS(folio));
 DECLARE_HOOK(android_vh_swapmem_gather_init,
 	TP_PROTO(struct mm_struct *mm),
 	TP_ARGS(mm));
