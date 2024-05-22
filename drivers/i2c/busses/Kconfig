@@ -1434,4 +1434,11 @@ config I2C_FSI
 	  This driver can also be built as a module. If so, the module will be
 	  called as i2c-fsi.
 
+config VENUS_RACK_TEST
+	tristate "venus rack test workaround"
+	default n
+	help
+	  This config set to y means revert change 460a24a to fix sar and camera
+	  i2c error of 988000.i2c.
+
 endmenu
