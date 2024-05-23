@@ -2990,6 +2990,7 @@ static int smb5_typec_cable_check(struct smb5 *chip)
 	int rc = 0;
 	int i = 0;
 	u8 stat = 0;
+	u8 stat_typec_sink = 0;
 	bool usb_input_present = false;
 
 	if (chg->pd_not_supported)
@@ -3007,7 +3008,22 @@ static int smb5_typec_cable_check(struct smb5 *chip)
 		pr_err("%s Couldn't read TYPE_C_STATUS_4 rc=%d\n", __func__, rc);
 		return rc;
 	}
-	pr_info("%s usb_input_present=%d TYPE_C_STATUS_4=0x%02X\n", __func__, usb_input_present, stat);
+
+	for (i = 0; i < 5 ;i++) {
+		rc = smblib_read(chg, TYPE_C_SNK_STATUS_REG, &stat_typec_sink);
+		if (rc < 0) {
+			pr_err("%s Couldn't read TYPE_C_SNK_STATUS_REG rc=%d, i=%d\n", __func__, rc, i);
+			continue;
+		}
+		pr_info("%s index=%d stat_typec_sink=0x%02x\n", __func__, i, stat_typec_sink);
+		if ((stat_typec_sink & DETECTED_SRC_TYPE_MASK) == SNK_RP_3P0_BIT) {
+			break;
+		}
+		msleep(20);
+	}
+
+	pr_info("%s usb_input_present=%d TYPE_C_STATUS_4=0x%02X, TYPE_C_SNK=0x%02x\n",
+			__func__, usb_input_present, stat, stat_typec_sink);
 
 	if (usb_input_present || (stat & TYPEC_VBUS_STATUS)) {
 		for (i = 0; i < 10; i++) {
