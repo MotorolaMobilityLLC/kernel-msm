@@ -9,6 +9,8 @@ def define_autoghgvm():
         # keep sorted
         "arch/arm64/gunyah/gh_arm_drv.ko",
         "drivers/block/virtio_blk.ko",
+        "drivers/bus/mhi/devices/mhi_dev_uci.ko",
+        "drivers/bus/mhi/host/mhi.ko",
         "drivers/clk/qcom/clk-dummy.ko",
         "drivers/clk/qcom/clk-qcom.ko",
         "drivers/dma-buf/heaps/qcom_dma_heaps.ko",
@@ -36,6 +38,7 @@ def define_autoghgvm():
         "drivers/soc/qcom/minidump.ko",
         "drivers/soc/qcom/qcom_wdt_core.ko",
         "drivers/soc/qcom/rename_devices.ko",
+        "drivers/soc/qcom/rq_stats.ko",
         "drivers/soc/qcom/smem.ko",
         "drivers/spi/spi-msm-geni.ko",
         "drivers/spi/spidev.ko",
