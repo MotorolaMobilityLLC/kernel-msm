@@ -121,6 +121,10 @@
  *   ->tasklist_lock            (memory_failure, collect_procs_ao)
  */
 
+/* Export tracepoints that act as a bare tracehook */
+EXPORT_TRACEPOINT_SYMBOL_GPL(mm_filemap_delete_from_page_cache);
+EXPORT_TRACEPOINT_SYMBOL_GPL(mm_filemap_add_to_page_cache);
+
 static void page_cache_delete(struct address_space *mapping,
 				   struct page *page, void *shadow)
 {

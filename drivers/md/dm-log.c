@@ -296,7 +296,7 @@ static int rw_header(struct log_c *lc, int op)
 	lc->io_req.bi_op = op;
 	lc->io_req.bi_op_flags = 0;
 
-	return dm_io(&lc->io_req, 1, &lc->header_location, NULL);
+	return dm_io(&lc->io_req, 1, &lc->header_location, NULL, IOPRIO_DEFAULT);
 }
 
 static int flush_header(struct log_c *lc)
@@ -310,7 +310,7 @@ static int flush_header(struct log_c *lc)
 	lc->io_req.bi_op = REQ_OP_WRITE;
 	lc->io_req.bi_op_flags = REQ_PREFLUSH;
 
-	return dm_io(&lc->io_req, 1, &null_location, NULL);
+	return dm_io(&lc->io_req, 1, &null_location, NULL, IOPRIO_DEFAULT);
 }
 
 static int read_header(struct log_c *log)

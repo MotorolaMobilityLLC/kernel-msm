@@ -54,6 +54,7 @@
 #ifndef __GENKSYMS__
 #include "blk-rq-qos.h"
 #endif
+#include "blk-ioprio.h"
 
 struct dentry *blk_debugfs_root;
 
@@ -1045,6 +1046,14 @@ blk_qc_t submit_bio_noacct(struct bio *bio)
 }
 EXPORT_SYMBOL(submit_bio_noacct);
 
+static void bio_set_ioprio(struct bio *bio)
+{
+	/* Nobody set ioprio so far? Initialize it based on task's nice value */
+	if (IOPRIO_PRIO_CLASS(bio->bi_ioprio) == IOPRIO_CLASS_NONE)
+		bio->bi_ioprio = get_current_ioprio();
+	blkcg_set_ioprio(bio);
+}
+
 /**
  * submit_bio - submit a bio to the block device layer for I/O
  * @bio: The &struct bio which describes the I/O
@@ -1083,6 +1092,8 @@ blk_qc_t submit_bio(struct bio *bio)
 			count_vm_events(PGPGIN, count);
 		}
 	}
+
+	bio_set_ioprio(bio);
 
 	/*
 	 * If we're reading data that is part of the userspace workingset, count
