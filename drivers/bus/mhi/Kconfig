@@ -32,3 +32,4 @@ config MHI_BUS_DEBUG
 
 source "drivers/bus/mhi/devices/Kconfig"
 source "drivers/bus/mhi/controllers/Kconfig"
+source "drivers/bus/mhi/host/Kconfig"
