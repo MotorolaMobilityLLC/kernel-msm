@@ -2060,7 +2060,7 @@ static int geni_i3c_master_i2c_xfers(struct i2c_dev_desc *dev, const struct i2c_
 	struct i3c_master_controller *m = i2c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	struct geni_i3c_xfer_params xfer;
-	int i, ret;
+	int i, ret = 0;
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "Enter %s num xfers=%d\n", __func__, num);
 	if (!msgs) {
