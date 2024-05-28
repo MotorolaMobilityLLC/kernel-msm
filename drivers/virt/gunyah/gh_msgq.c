@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -501,7 +501,16 @@ int gh_msgq_populate_cap_info(int label, u64 cap_id, int direction, int irq)
 	spin_lock(&gh_msgq_cap_list_lock);
 	list_for_each_entry(tmp_entry, &gh_msgq_cap_list, entry) {
 		if (label == tmp_entry->label) {
-			cap_table_entry = tmp_entry;
+			if (direction == GH_MSGQ_DIRECTION_TX &&
+				tmp_entry->tx_cap_id == GH_CAPID_INVAL) {
+				cap_table_entry = tmp_entry;
+			} else if (direction == GH_MSGQ_DIRECTION_RX &&
+				tmp_entry->rx_cap_id == GH_CAPID_INVAL) {
+				cap_table_entry = tmp_entry;
+			} else {
+				spin_unlock(&gh_msgq_cap_list_lock);
+				return -EINVAL;
+			}
 			break;
 		}
 	}
