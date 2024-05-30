@@ -276,7 +276,11 @@ static int qcom_dload_reboot(struct notifier_block *this, unsigned long event,
 		set_download_mode(QCOM_DOWNLOAD_NODUMP);
 
 	if (cmd && !strcmp(cmd, "edl"))
+#if 0
 		set_download_mode(QCOM_DOWNLOAD_EDL);
+#else
+                        pr_err("EDL mode disabled\n");
+#endif
 
 	if (current_download_mode != QCOM_DOWNLOAD_NODUMP)
 		reboot_mode = REBOOT_WARM;
