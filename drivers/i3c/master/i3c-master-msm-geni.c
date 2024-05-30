@@ -388,6 +388,7 @@ static int geni_i3c_gsi_stop_on_bus(struct geni_i3c_dev *gi3c);
 static void geni_i3c_enable_ibi_ctrl(struct geni_i3c_dev *gi3c, bool enable);
 static void geni_i3c_enable_ibi_irq(struct geni_i3c_dev *gi3c, bool enable);
 static int geni_i3c_enable_naon_ibi_clks(struct geni_i3c_dev *gi3c, bool enable);
+static int qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus_phase);
 
 static struct geni_i3c_dev *i3c_geni_dev[MAX_I3C_SE];
 static int i3c_nos;
@@ -1585,7 +1586,7 @@ static bool is_new_addr_slot_set(unsigned long *addrslot, u8 addr)
 	return ((*ptr & (1 << (addr % BITS_PER_LONG))) != 0);
 }
 
-static void qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus_phase)
+static int qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus_phase)
 {
 	const struct geni_i3c_clk_fld *itr = gi3c->clk_fld;
 	u32 val;
@@ -1609,9 +1610,17 @@ static void qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus
 			    __func__, gi3c->dfs_idx, gi3c->prev_dfs_idx);
 	}
 
+	ret = clk_set_rate(gi3c->se.clk, freq);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:clock set rate failed:%d\n",
+			    __func__, ret);
+		return ret;
+	}
+
 	gi3c->prev_dfs_idx = gi3c->dfs_idx;
 	if (gi3c->se_mode == GENI_GPI_DMA)
-		return;
+		return 0;
 	writel_relaxed(gi3c->dfs_idx, gi3c->se.base + SE_GENI_CLK_SEL);
 
 	val = itr->clk_div << CLK_DEV_VALUE_SHFT;
@@ -1625,6 +1634,7 @@ static void qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus
 
 	writel_relaxed(itr->i3c_t_cycle_cnt, gi3c->se.base + SE_I3C_SCL_CYCLE);
 	writel_relaxed(itr->i3c_t_high_cnt, gi3c->se.base + SE_I3C_SCL_HIGH);
+	return 0;
 }
 
 static void geni_i3c_hotjoin(struct work_struct *work)
@@ -2113,7 +2123,12 @@ geni_i3c_master_priv_xfers(struct i3c_dev_desc *dev, struct i3c_priv_xfer *xfers
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
 			    "%s:IO lines:0x%x not in good state\n", __func__, geni_ios);
 
-	qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	ret = qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		return ret;
+	}
 
 	if (gi3c->se_mode == GENI_GPI_DMA)
 		ret = geni_i3c_master_gsi_priv_xfers(gi3c, xfers, dev->info.dyn_addr, num_xfers);
@@ -2159,7 +2174,12 @@ static int geni_i3c_master_i2c_xfers(struct i2c_dev_desc *dev, const struct i2c_
 	if (ret)
 		return ret;
 
-	qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	ret = qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		return ret;
+	}
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "i2c xfer:num:%d, msgs:len:%d,flg:%d\n",
 		    num, msgs[0].len, msgs[0].flags);
@@ -2415,7 +2435,12 @@ static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct 
 	if (ret)
 		return ret;
 
-	qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	ret = qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		return ret;
+	}
 
 	for (i = 0; i < cmd->ndests; i++) {
 		int stall = (i < (cmd->ndests - 1)) ||
@@ -2646,7 +2671,12 @@ static int geni_i3c_master_bus_init(struct i3c_master_controller *m)
 		goto err_cleanup;
 	}
 
-	qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	ret = qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		return ret;
+	}
 
 	/* Get an address for the master. */
 	ret = i3c_master_get_free_addr(m, 0);
