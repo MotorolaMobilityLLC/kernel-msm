@@ -299,7 +299,11 @@ static int qcom_dload_reboot(struct notifier_block *this, unsigned long event,
 
 	if (cmd) {
 		if (!strcmp(cmd, "edl"))
+#if 0
 			set_download_mode(QCOM_DOWNLOAD_EDL);
+#else
+			pr_err("EDL mode disabled\n");
+#endif
 		else if (!strcmp(cmd, "qcom_dload"))
 			msm_enable_dump_mode(true);
 	}
