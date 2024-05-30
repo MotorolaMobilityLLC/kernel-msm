@@ -8160,6 +8160,9 @@ static void ufshcd_set_rtt(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	u32 rtt = 0;
 	u32 dev_rtt = 0;
+	const int max_num_rtt = hba->vops && hba->vops->name &&
+		strcmp(hba->vops->name, "mediatek.ufshci") == 0 ? 2 : 0;
+	int host_rtt_cap = max_num_rtt ? max_num_rtt : to_hba_priv(hba)->nortt;
 
 	/* RTT override makes sense only for UFS-4.0 and above */
 	if (dev_info->wspecversion < 0x400)
@@ -8175,7 +8178,8 @@ static void ufshcd_set_rtt(struct ufs_hba *hba)
 	if (dev_rtt != DEFAULT_MAX_NUM_RTT)
 		return;
 
-	rtt = min_t(int, to_hba_priv(hba)->rtt_cap, to_hba_priv(hba)->nortt);
+	rtt = min_t(int, to_hba_priv(hba)->rtt_cap, host_rtt_cap);
+
 	if (rtt == dev_rtt)
 		return;
 
