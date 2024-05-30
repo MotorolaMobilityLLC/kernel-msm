@@ -374,7 +374,11 @@ static int qcom_dload_reboot(struct notifier_block *this, unsigned long event,
 
 	if (cmd && !strcmp(cmd, "edl")) {
 		poweroff->in_reboot_edl = true;
+#if 0
 		set_download_mode(QCOM_DOWNLOAD_EDL);
+#else
+                        pr_err("EDL mode disabled\n");
+#endif
 		if (poweroff->in_reboot_edl) {
 			ret = enable_regulators(poweroff);
 			if (ret)
