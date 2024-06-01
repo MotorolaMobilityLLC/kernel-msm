@@ -3949,7 +3949,7 @@ int xfrm_policy_register_afinfo(const struct xfrm_policy_afinfo *afinfo, int fam
 		if (likely(dst_ops->mtu == NULL))
 			dst_ops->mtu = xfrm_mtu;
 		if (likely(dst_ops->negative_advice == NULL))
-			dst_ops->negative_advice = xfrm_negative_advice;
+			dst_ops->negative_advice = (android_dst_ops_negative_advice_old_t)xfrm_negative_advice;
 		if (likely(dst_ops->link_failure == NULL))
 			dst_ops->link_failure = xfrm_link_failure;
 		if (likely(dst_ops->neigh_lookup == NULL))
