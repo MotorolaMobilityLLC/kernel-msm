@@ -327074,6 +327074,13 @@ function {
   parameter_id: 0x3e10b518
 }
 function {
+  id: 0x9b41a786
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x3861403d
+  parameter_id: 0x3e6396e0
+}
+function {
   id: 0x9b41b1a1
   return_type_id: 0x6720d32f
   parameter_id: 0x1d44326e
@@ -351526,6 +351533,15 @@ elf_symbol {
   full_name: "__traceiter_task_rename"
 }
 elf_symbol {
+  id: 0x59a320d1
+  name: "__traceiter_tcp_retransmit_skb"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x848a5532
+  type_id: 0x9b41a786
+  full_name: "__traceiter_tcp_retransmit_skb"
+}
+elf_symbol {
   id: 0x961fbab2
   name: "__traceiter_workqueue_execute_end"
   is_defined: true
@@ -356780,6 +356796,15 @@ elf_symbol {
   crc: 0x990f1219
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_task_rename"
+}
+elf_symbol {
+  id: 0x4c9e8f73
+  name: "__tracepoint_tcp_retransmit_skb"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xe47aeb12
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_tcp_retransmit_skb"
 }
 elf_symbol {
   id: 0x1a51f8cc
@@ -403624,6 +403649,15 @@ elf_symbol {
   full_name: "skb_free_datagram"
 }
 elf_symbol {
+  id: 0xf49fd863
+  name: "skb_orphan_partial"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xe115fbcc
+  type_id: 0x11cb8bd5
+  full_name: "skb_orphan_partial"
+}
+elf_symbol {
   id: 0x778992cc
   name: "skb_page_frag_refill"
   is_defined: true
@@ -419991,6 +420025,7 @@ interface {
   symbol_id: 0x313b4348
   symbol_id: 0xcac5a7d5
   symbol_id: 0x2dc83a86
+  symbol_id: 0x59a320d1
   symbol_id: 0x961fbab2
   symbol_id: 0x09f12012
   symbol_id: 0xb3150ce0
@@ -420575,6 +420610,7 @@ interface {
   symbol_id: 0x9deae602
   symbol_id: 0xe91cdbb3
   symbol_id: 0x4f1ffabc
+  symbol_id: 0x4c9e8f73
   symbol_id: 0x1a51f8cc
   symbol_id: 0x20843be8
   symbol_id: 0xc9969dba
@@ -425778,6 +425814,7 @@ interface {
   symbol_id: 0x236e8eb5
   symbol_id: 0xd1a5a209
   symbol_id: 0xca7402ca
+  symbol_id: 0xf49fd863
   symbol_id: 0x778992cc
   symbol_id: 0x0e0dc50e
   symbol_id: 0x90d072a5

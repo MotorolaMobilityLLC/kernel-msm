@@ -489,6 +489,7 @@
   __traceiter_sched_switch
   __traceiter_suspend_resume
   __traceiter_sys_exit
+  __traceiter_tcp_retransmit_skb
   __traceiter_workqueue_execute_start
   __traceiter_xdp_exception
   __tracepoint_android_rvh_account_irq
@@ -694,6 +695,7 @@
   __tracepoint_sched_switch
   __tracepoint_suspend_resume
   __tracepoint_sys_exit
+  __tracepoint_tcp_retransmit_skb
   __tracepoint_workqueue_execute_start
   __tracepoint_xdp_exception
   __tty_alloc_driver
@@ -4131,6 +4133,7 @@
   skb_dequeue_tail
   skb_ensure_writable
   skb_free_datagram
+  skb_orphan_partial
   skb_page_frag_refill
   skb_partial_csum_set
   skb_pull
