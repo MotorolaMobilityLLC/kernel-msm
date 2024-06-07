@@ -1341,7 +1341,7 @@ static int stmmac_init_phy(struct net_device *dev)
 			    !priv->phydev->drv->config_intr(priv->phydev)) {
 				pr_err(" qcom-ethqos: %s config_phy_intr successful aftre connect\n",
 					 __func__);
-				priv->plat->request_phy_wol(priv->plat);
+
 		}
 	} else {
 			pr_info("stmmac phy polling mode\n");
@@ -3531,18 +3531,18 @@ static int stmmac_hw_setup(struct net_device *dev, bool ptp_register)
 			netdev_warn(priv->dev,
 				    "failed to enable PTP reference clock: %pe\n",
 				    ERR_PTR(ret));
-	}
 
-	ret = stmmac_init_ptp(priv);
-	if (ret == -EOPNOTSUPP)
-		netdev_info(priv->dev, "PTP not supported by HW\n");
-	else if (ret)
-		netdev_warn(priv->dev, "PTP init failed\n");
-	else if (ptp_register)
-		stmmac_ptp_register(priv);
-	else
-		clk_set_rate(priv->plat->clk_ptp_ref, priv->plat->clk_ptp_rate);
-	ret = priv->plat->init_pps(priv);
+		ret = stmmac_init_ptp(priv);
+		if (ret == -EOPNOTSUPP) {
+			netdev_info(priv->dev, "PTP not supported by HW\n");
+		} else if (ret) {
+			netdev_warn(priv->dev, "PTP init failed\n");
+		} else {
+			stmmac_ptp_register(priv);
+			clk_set_rate(priv->plat->clk_ptp_ref, priv->plat->clk_ptp_rate);
+		}
+		ret = priv->plat->init_pps(priv);
+	}
 	priv->eee_tw_timer = STMMAC_DEFAULT_TWT_LS;
 
 	/* Convert the timer from msec to usec */
@@ -6186,13 +6186,33 @@ static int stmmac_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	case SIOCGHWTSTAMP:
 		ret = stmmac_hwtstamp_get(dev, rq);
 		fallthrough;
-	case SIOCDEVPRIVATE:
-		ret = priv->plat->handle_prv_ioctl(dev, rq, cmd);
-		break;
 	default:
 		break;
 	}
 
+	return ret;
+}
+
+static int stmmac_private_ioctl(struct net_device *dev,
+				struct ifreq *ifr,
+				void __user *data,
+				int cmd)
+{
+	int ret = -EOPNOTSUPP;
+	struct stmmac_priv *priv;
+
+	if (!netif_running(dev))
+		return -EINVAL;
+
+	priv = netdev_priv(dev);
+
+	if (cmd == SIOCDEVPRIVATE) {
+		pr_info("stmmac private ioctl cmd=%d\n", cmd);
+		ret = priv->plat->handle_prv_ioctl(dev, ifr, cmd);
+		return ret;
+	}
+
+	pr_err("stmmac private ioctl not supported & cmd=%d\n", cmd);
 	return ret;
 }
 
@@ -6985,6 +7005,7 @@ static const struct net_device_ops stmmac_netdev_ops = {
 	.ndo_set_rx_mode = stmmac_set_rx_mode,
 	.ndo_tx_timeout = stmmac_tx_timeout,
 	.ndo_eth_ioctl = stmmac_ioctl,
+	.ndo_siocdevprivate = stmmac_private_ioctl,
 	.ndo_setup_tc = stmmac_setup_tc,
 #ifdef CONFIG_NET_POLL_CONTROLLER
 	.ndo_poll_controller = stmmac_poll_controller,

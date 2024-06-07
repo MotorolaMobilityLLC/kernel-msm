@@ -47,6 +47,7 @@
 #define PIL_TZ_PEAK_BW	UINT_MAX
 
 #define ADSP_DECRYPT_SHUTDOWN_DELAY_MS	100
+#define RPROC_HANDOVER_POLL_DELAY_MS	1
 
 static struct icc_path *scm_perf_client;
 static int scm_pas_bw_count;
@@ -674,6 +675,9 @@ static int adsp_start(struct rproc *rproc)
 
 	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_start", "enter");
 
+	if (adsp->check_status)
+		adsp->current_users = 0;
+
 	qcom_q6v5_prepare(&adsp->q6v5);
 
 	if (is_mss_ssr_hyp_assign_en(adsp)) {
@@ -824,7 +828,7 @@ static int rproc_config_check(struct qcom_adsp *adsp, u32 state)
 {
 	u32 val;
 
-	return readx_poll_timeout(readl, adsp->config_addr, val,
+	return readx_poll_timeout_atomic(readl, adsp->config_addr, val,
 				val == state, SOCCP_SLEEP_US, SOCCP_TIMEOUT_US);
 }
 
@@ -869,6 +873,17 @@ static int rproc_find_status_register(struct qcom_adsp *adsp)
 	return 0;
 }
 
+static bool rproc_poll_handover(struct qcom_adsp *adsp)
+{
+	unsigned int retry_num = 50;
+
+	do {
+		msleep(RPROC_HANDOVER_POLL_DELAY_MS);
+	} while (!adsp->q6v5.handover_issued && --retry_num);
+
+	return adsp->q6v5.handover_issued;
+}
+
 /**
  * rproc_set_state() - Request the SOCCP to change state
  * @state: 1 to set state to RUNNING (D3 to D0)
@@ -889,9 +904,15 @@ int rproc_set_state(struct rproc *rproc, bool state)
 		pr_err("no rproc or adsp\n");
 		return -EINVAL;
 	}
-	if (rproc->state != RPROC_RUNNING) {
+	if (!adsp->q6v5.running) {
 		dev_err(adsp->dev, "rproc is not running\n");
 		return -EINVAL;
+	} else if (!adsp->q6v5.handover_issued) {
+		dev_err(adsp->dev, "rproc is running but handover is not received\n");
+		if (!rproc_poll_handover(adsp)) {
+			dev_err(adsp->dev, "retry for handover timedout\n");
+			return -EINVAL;
+		}
 	}
 
 	mutex_lock(&adsp->adsp_lock);
@@ -1649,10 +1670,6 @@ static int adsp_probe(struct platform_device *pdev)
 		mutex_init(&adsp->adsp_lock);
 
 		adsp->current_users = 0;
-
-		adsp->panic_blk.priority = INT_MAX - 1;
-		adsp->panic_blk.notifier_call = rproc_panic_handler;
-		atomic_notifier_chain_register(&panic_notifier_list, &adsp->panic_blk);
 	}
 
 	qcom_q6v5_register_ssr_subdev(&adsp->q6v5, &adsp->ssr_subdev.subdev);
@@ -1699,6 +1716,12 @@ static int adsp_probe(struct platform_device *pdev)
 	}
 	mutex_unlock(&q6v5_pas_mutex);
 
+	if (adsp->check_status) {
+		adsp->panic_blk.priority = INT_MAX - 1;
+		adsp->panic_blk.notifier_call = rproc_panic_handler;
+		atomic_notifier_chain_register(&panic_notifier_list, &adsp->panic_blk);
+	}
+
 	return 0;
 
 remove_rproc:
@@ -1741,6 +1764,8 @@ static int adsp_remove(struct platform_device *pdev)
 	qcom_remove_sysmon_subdev(adsp->sysmon);
 	qcom_remove_smd_subdev(adsp->rproc, &adsp->smd_subdev);
 	qcom_remove_ssr_subdev(adsp->rproc, &adsp->ssr_subdev);
+	if (adsp->check_status)
+		atomic_notifier_chain_unregister(&panic_notifier_list, &adsp->panic_blk);
 	adsp_pds_detach(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
 	device_init_wakeup(adsp->dev, false);
 	rproc_free(adsp->rproc);
@@ -2188,6 +2213,35 @@ static const struct adsp_data volcano_cdsp_resource = {
 	.uses_elf64 = true,
 	.has_aggre2_clk = false,
 	.auto_boot = false,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
+static const struct adsp_data anorak_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.pas_id = 1,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data anorak_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.pas_id = 18,
+	.minidump_id = 7,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.hyp_assign_mem = true,
 	.ssr_name = "cdsp",
 	.sysmon_name = "cdsp",
 	.qmp_name = "cdsp",
@@ -2748,6 +2802,8 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,volcano-adsp-pas", .data = &volcano_adsp_resource},
 	{ .compatible = "qcom,volcano-modem-pas", .data = &volcano_mpss_resource},
 	{ .compatible = "qcom,volcano-cdsp-pas", .data = &volcano_cdsp_resource},
+	{ .compatible = "qcom,anorak-adsp-pas", .data = &anorak_adsp_resource},
+	{ .compatible = "qcom,anorak-cdsp-pas", .data = &anorak_cdsp_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);
