@@ -3623,8 +3623,11 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 	void *shadow = NULL;
 
 	if (vmf->flags & FAULT_FLAG_SPECULATIVE) {
+		/* ksm_might_need_to_copy() needs a stable VMA, spf can't be used */
+#ifdef CONFIG_KSM
 		pte_unmap(vmf->pte);
 		return VM_FAULT_RETRY;
+#endif
 	}
 
 	ret = pte_unmap_same(vmf);
@@ -3641,6 +3644,10 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 
 	entry = pte_to_swp_entry(vmf->orig_pte);
 	if (unlikely(non_swap_entry(entry))) {
+		if (vmf->flags & FAULT_FLAG_SPECULATIVE) {
+			ret = VM_FAULT_RETRY;
+			goto out;
+		}
 		if (is_migration_entry(entry)) {
 			migration_entry_wait(vma->vm_mm, vmf->pmd,
 					     vmf->address);
