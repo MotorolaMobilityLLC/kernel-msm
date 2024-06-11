@@ -16,9 +16,9 @@
 #include <linux/phy.h>
 #include <linux/netdevice.h>
 
-#define MTL_MAX_RX_QUEUES	8
-#define MTL_MAX_TX_QUEUES	8
-#define STMMAC_CH_MAX		8
+#define MTL_MAX_RX_QUEUES	12
+#define MTL_MAX_TX_QUEUES	12
+#define STMMAC_CH_MAX		12
 
 #define STMMAC_RX_COE_NONE	0
 #define STMMAC_RX_COE_TYPE1	1
@@ -200,6 +200,18 @@ struct emac_emb_smmu_cb_ctx {
 	int ret;
 };
 
+/* Addresses that may be customized by a platform */
+struct dwxgmac_addrs {
+	u32 dma_even_chan_base;
+	u32 dma_odd_chan_base;
+	u32 dma_chan_offset;
+	u32 mtl_chan_base;
+	u32 mtl_chan_offset;
+	u32 timestamp_base;
+	u32 pps_base;
+	u32 pps_offset;
+};
+
 struct plat_stmmacenet_data {
 	u32 snps_id;
 	u32 dev_id;
@@ -312,5 +324,6 @@ struct plat_stmmacenet_data {
 	struct completion mdio_op;
 	int board_type;
 	int phy_type;
+	const struct dwxgmac_addrs *dwxgmac_addrs;
 };
 #endif

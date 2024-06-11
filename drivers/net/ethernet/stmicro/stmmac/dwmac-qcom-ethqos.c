@@ -676,6 +676,20 @@ static void ethqos_set_func_clk_en(struct qcom_ethqos *ethqos)
 		      RGMII_CONFIG_FUNC_CLK_EN, RGMII_IO_MACRO_CONFIG);
 }
 
+static const struct ethqos_emac_driver_data emac_v6_6_0_data = {
+	.dma_addr_width = 32,
+	.dwxgmac_addrs = {
+		.dma_even_chan_base  = 0x00008500,
+		.dma_odd_chan_base = 0x00008580,
+		.dma_chan_offset = 0x00001000,
+		.mtl_chan_base = 0x00008000,
+		.mtl_chan_offset =  0x00001000,
+		.timestamp_base = 0x00007000,
+		.pps_base = 0x00007080,
+		.pps_offset = 0x10,
+	},
+};
+
 static int ethqos_dll_configure(struct qcom_ethqos *ethqos)
 {
 	unsigned int val;
@@ -1744,6 +1758,7 @@ static int ethqos_phy_intr_enable(struct qcom_ethqos *ethqos)
 static const struct of_device_id qcom_ethqos_match[] = {
 	{ .compatible = "qcom,stmmac-ethqos", },
 	{ .compatible = "qcom,emac-smmu-embedded", },
+	{ .compatible = "qcom,sa8797p-ethqos-vm", .data = &emac_v6_6_0_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, qcom_ethqos_match);
@@ -2271,6 +2286,7 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	struct qcom_ethqos *ethqos = NULL;
 	struct net_device *ndev;
 	struct stmmac_priv *priv;
+	const struct ethqos_emac_driver_data *data;
 
 	int ret;
 
@@ -2343,7 +2359,7 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 		goto err_mem;
 	}
 
-	ethqos->por = of_device_get_match_data(&pdev->dev);
+	data = of_device_get_match_data(&pdev->dev);
 
 	ret = ethqos_clks_config(ethqos, true);
 	if (ret)
@@ -2383,6 +2399,12 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	if (plat_dat->interface == PHY_INTERFACE_MODE_SGMII ||
 	    plat_dat->interface == PHY_INTERFACE_MODE_USXGMII)
 		plat_dat->serdes_powerup = ethqos_serdes_power_up;
+	if (plat_dat->has_xgmac) {
+		plat_dat->has_gmac4 = 0;
+		plat_dat->dwxgmac_addrs = &data->dwxgmac_addrs;
+	}
+	if (data->dma_addr_width)
+		plat_dat->host_dma_width = data->dma_addr_width;
 
 	/* Set mdio phy addr probe capability to c22 .
 	 * If c22_c45 is set then multiple phy is getting detected.
@@ -2455,12 +2477,15 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 		ETHQOSDBG(":pcs-v3 not in dtsi\n");
 	}
 
-	if (!ethqos_phy_intr_config(ethqos)) {
-		if (ethqos_phy_intr_enable(ethqos))
-			ETHQOSERR("ethqos_phy_intr_enable failed");
-	} else {
-		ETHQOSERR("Phy interrupt configuration failed");
+	if (of_property_present(pdev->dev.of_node, "phy-intr")) {
+		if (!ethqos_phy_intr_config(ethqos)) {
+			if (ethqos_phy_intr_enable(ethqos))
+				ETHQOSERR("ethqos_phy_intr_enable failed");
+		} else {
+			ETHQOSERR("Phy interrupt configuration failed");
+		}
 	}
+
 	if (ethqos->emac_ver == EMAC_HW_v2_3_2_RG || ethqos->emac_ver == EMAC_HW_v2_3_1) {
 		ethqos_pps_irq_config(ethqos);
 		create_pps_interrupt_device_node(&ethqos->avb_class_a_dev_t,

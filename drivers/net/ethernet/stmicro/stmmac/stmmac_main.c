@@ -1144,6 +1144,15 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 		case SPEED_2500:
 			ctrl |= priv->hw->link.xgmii.speed2500;
 			break;
+		case SPEED_1000:
+			ctrl |= priv->hw->link.speed1000;
+			break;
+		case SPEED_100:
+			ctrl |= priv->hw->link.speed100;
+			break;
+		case SPEED_10:
+			ctrl |= priv->hw->link.speed10;
+			break;
 		default:
 			return;
 		}

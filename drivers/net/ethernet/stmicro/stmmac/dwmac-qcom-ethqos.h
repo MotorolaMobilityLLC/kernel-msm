@@ -115,6 +115,8 @@ struct ethqos_emac_por {
 struct ethqos_emac_driver_data {
 	struct ethqos_emac_por *por;
 	unsigned int num_por;
+	struct dwxgmac_addrs dwxgmac_addrs;
+	u32 dma_addr_width;
 };
 
 struct qcom_ethqos {
