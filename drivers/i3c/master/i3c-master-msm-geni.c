@@ -218,6 +218,7 @@
 #define IBI_SW_RESET_MAX_SLEEP 2000
 
 #define MAX_I3C_SE		2
+#define I3C_START_ADDR		8
 
 /* For multi descriptor, gsi irq will generate for every 64 tre's */
 #define NUM_I3C_TRE_MSGS_PER_INTR (64)
@@ -2281,6 +2282,9 @@ static void geni_i3c_perform_daa(struct geni_i3c_dev *gi3c)
 		/* If DA is specified in DTSI, use it */
 		if (i3cboardinfo->init_dyn_addr && i3cboardinfo->init_dyn_addr < I3C_MAX_ADDR)
 			addr = init_dyn_addr = i3cboardinfo->init_dyn_addr;
+
+		if (addr < I3C_START_ADDR)
+			addr = I3C_START_ADDR;
 
 		addr = ret = i3c_master_get_free_addr(m, addr);
 
