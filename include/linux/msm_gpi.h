@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __MSM_GPI_H_
@@ -403,7 +403,7 @@ struct gsi_common {
 	struct gsi_xfer_param rx;
 	void *ipc;
 	bool req_chan;
-	bool err; /* For every gsi error performing gsi reset */
+	bool *err; /* For every gsi error performing gsi reset */
 	int *protocol_err; /* protocol specific error*/
 	void (*ev_cb_fun)(struct dma_chan *ch, struct msm_gpi_cb const *cb_str, void *ptr);
 };

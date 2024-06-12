@@ -3603,6 +3603,7 @@ static void geni_i3c_init_gsi_common_param(struct geni_i3c_dev *gi3c)
 	gi3c->gsi.rx.cb_fun = gi3c_gsi_rx_cb;
 	gi3c->gsi.ev_cb_fun = gi3c_ev_cb;
 	gi3c->gsi.protocol_err = &gi3c->err;
+	gi3c->gsi.err = &gi3c->gsi_err;
 }
 
 /*
