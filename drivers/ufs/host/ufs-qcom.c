@@ -185,6 +185,7 @@ static bool override_ber_duration;
 static int ber_threshold = UFS_QCOM_BER_TH_DEF_G1_G4;
 static int ber_mon_dur_ms = UFS_QCOM_BER_DUR_DEF_MS;
 
+static bool crash_on_err;
 static struct ufs_qcom_ber_table ber_table[] = {
 	[UFS_HS_DONT_CHANGE] = {UFS_QCOM_BER_MODE_G1_G4, UFS_QCOM_BER_TH_DEF_G1_G4},
 	[UFS_HS_G1] = {UFS_QCOM_BER_MODE_G1_G4, UFS_QCOM_BER_TH_DEF_G1_G4},
@@ -196,6 +197,9 @@ static struct ufs_qcom_ber_table ber_table[] = {
 
 module_param(crash_on_ber, bool, 0644);
 MODULE_PARM_DESC(crash_on_ber, "Crash if PHY BER exceeds threshold. the default value is false");
+
+module_param(crash_on_err, bool, 0644);
+MODULE_PARM_DESC(crash_on_err, "BugON if crash . the default value is false");
 
 static const struct kernel_param_ops ber_threshold_ops = {
 	.set = ufs_qcom_ber_threshold_set,
@@ -2211,7 +2215,7 @@ static void ufs_qcom_enable_crash_on_err(struct ufs_hba *hba)
 	if (!np)
 		return;
 	host->crash_on_err =
-		of_property_read_bool(np, "qcom,enable_crash_on_err");
+		of_property_read_bool(np, "qcom,enable_crash_on_err") || crash_on_err;
 }
 
 static int ufs_qcom_bus_register(struct ufs_qcom_host *host)
