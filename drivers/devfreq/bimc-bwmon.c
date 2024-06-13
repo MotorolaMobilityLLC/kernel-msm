@@ -198,8 +198,6 @@ void mon_set_hw_sampling_window(struct bwmon *m, unsigned int sample_ms,
 		m->sample_size_ms = sample_ms;
 		if (unlikely(rate > SAMPLE_WIN_LIM)) {
 			rate = SAMPLE_WIN_LIM;
-			pr_warn("Sample window %u larger than hw limit: %u\n",
-					rate, SAMPLE_WIN_LIM);
 		}
 		switch (type) {
 		case MON1:
@@ -466,8 +464,6 @@ void set_zone_thres(struct bwmon *m, unsigned int sample_ms,
 	lo = 0;
 
 	if (unlikely((hi > m->thres_lim) || (med > hi) || (lo > med))) {
-		pr_warn("Zone thres larger than hw limit: hi:%u med:%u lo:%u\n",
-				hi, med, lo);
 		hi = min(hi, m->thres_lim);
 		med = min(med, hi - 1);
 		lo = min(lo, med-1);
