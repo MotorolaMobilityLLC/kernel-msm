@@ -517,7 +517,7 @@ re_enable:
 	return ret;
 }
 
-int dwmac5_flex_pps_config(void __iomem *ioaddr, int index,
+int dwmac5_flex_pps_config(struct stmmac_priv *priv, void __iomem *ioaddr, int index,
 			   struct stmmac_pps_cfg *cfg, bool enable,
 			   u32 sub_second_inc, u32 systime_flags)
 {

@@ -174,7 +174,7 @@ static void dwxgmac2_prog_mtl_rx_algorithms(struct mac_device_info *hw,
 	writel(value, ioaddr + XGMAC_MTL_OPMODE);
 }
 
-static void dwxgmac2_prog_mtl_tx_algorithms(struct mac_device_info *hw,
+static void dwxgmac2_prog_mtl_tx_algorithms(struct stmmac_priv *priv, struct mac_device_info *hw,
 					    u32 tx_alg)
 {
 	void __iomem *ioaddr = hw->pcsr;
@@ -257,7 +257,7 @@ static void dwxgmac2_config_cbs(struct stmmac_priv *priv,
 	writel(value, ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(queue));
 }
 
-static void dwxgmac2_dump_regs(struct mac_device_info *hw, u32 *reg_space)
+static void dwxgmac2_dump_regs(struct stmmac_priv *priv, struct mac_device_info *hw, u32 *reg_space)
 {
 	void __iomem *ioaddr = hw->pcsr;
 	int i;
@@ -1180,7 +1180,8 @@ re_enable:
 	return ret;
 }
 
-static int dwxgmac2_get_mac_tx_timestamp(struct mac_device_info *hw, u64 *ts)
+static int dwxgmac2_get_mac_tx_timestamp(struct stmmac_priv *priv, struct mac_device_info *hw,
+					 u64 *ts)
 {
 	void __iomem *ioaddr = hw->pcsr;
 	u32 value;
@@ -1194,7 +1195,7 @@ static int dwxgmac2_get_mac_tx_timestamp(struct mac_device_info *hw, u64 *ts)
 	return 0;
 }
 
-static int dwxgmac2_flex_pps_config(void __iomem *ioaddr, int index,
+static int dwxgmac2_flex_pps_config(struct stmmac_priv *priv, void __iomem *ioaddr, int index,
 				    struct stmmac_pps_cfg *cfg, bool enable,
 				    u32 sub_second_inc, u32 systime_flags)
 {
