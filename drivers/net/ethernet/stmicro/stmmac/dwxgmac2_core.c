@@ -177,6 +177,7 @@ static void dwxgmac2_prog_mtl_rx_algorithms(struct mac_device_info *hw,
 static void dwxgmac2_prog_mtl_tx_algorithms(struct stmmac_priv *priv, struct mac_device_info *hw,
 					    u32 tx_alg)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	void __iomem *ioaddr = hw->pcsr;
 	bool ets = true;
 	u32 value;
@@ -204,11 +205,11 @@ static void dwxgmac2_prog_mtl_tx_algorithms(struct stmmac_priv *priv, struct mac
 
 	/* Set ETS if desired */
 	for (i = 0; i < MTL_MAX_TX_QUEUES; i++) {
-		value = readl(ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(i));
+		value = readl(ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(dwxgmac_addrs, i));
 		value &= ~XGMAC_TSA;
 		if (ets)
 			value |= XGMAC_ETS;
-		writel(value, ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(i));
+		writel(value, ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(dwxgmac_addrs, i));
 	}
 }
 
@@ -216,9 +217,10 @@ static void dwxgmac2_set_mtl_tx_queue_weight(struct stmmac_priv *priv,
 					     struct mac_device_info *hw,
 					     u32 weight, u32 queue)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	void __iomem *ioaddr = hw->pcsr;
 
-	writel(weight, ioaddr + XGMAC_MTL_TCx_QUANTUM_WEIGHT(queue));
+	writel(weight, ioaddr + XGMAC_MTL_TCx_QUANTUM_WEIGHT(dwxgmac_addrs, queue));
 }
 
 static void dwxgmac2_map_mtl_to_dma(struct mac_device_info *hw, u32 queue,
@@ -243,26 +245,28 @@ static void dwxgmac2_config_cbs(struct stmmac_priv *priv,
 				u32 send_slope, u32 idle_slope,
 				u32 high_credit, u32 low_credit, u32 queue)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	void __iomem *ioaddr = hw->pcsr;
 	u32 value;
 
-	writel(send_slope, ioaddr + XGMAC_MTL_TCx_SENDSLOPE(queue));
-	writel(idle_slope, ioaddr + XGMAC_MTL_TCx_QUANTUM_WEIGHT(queue));
-	writel(high_credit, ioaddr + XGMAC_MTL_TCx_HICREDIT(queue));
-	writel(low_credit, ioaddr + XGMAC_MTL_TCx_LOCREDIT(queue));
+	writel(send_slope, ioaddr + XGMAC_MTL_TCx_SENDSLOPE(dwxgmac_addrs, queue));
+	writel(idle_slope, ioaddr + XGMAC_MTL_TCx_QUANTUM_WEIGHT(dwxgmac_addrs, queue));
+	writel(high_credit, ioaddr + XGMAC_MTL_TCx_HICREDIT(dwxgmac_addrs, queue));
+	writel(low_credit, ioaddr + XGMAC_MTL_TCx_LOCREDIT(dwxgmac_addrs, queue));
 
-	value = readl(ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(queue));
+	value = readl(ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(dwxgmac_addrs, queue));
 	value &= ~XGMAC_TSA;
 	value |= XGMAC_CC | XGMAC_CBS;
-	writel(value, ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(queue));
+	writel(value, ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(dwxgmac_addrs, queue));
 }
 
 static void dwxgmac2_dump_regs(struct stmmac_priv *priv, struct mac_device_info *hw, u32 *reg_space)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	void __iomem *ioaddr = hw->pcsr;
 	int i;
 
-	for (i = 0; i < XGMAC_MAC_REGSIZE; i++)
+	for (i = 0; i < XGMAC_MAC_REGSIZE(dwxgmac_addrs); i++)
 		reg_space[i] = readl(ioaddr + i * 4);
 }
 
@@ -306,18 +310,19 @@ static int dwxgmac2_host_irq_status(struct mac_device_info *hw,
 static int dwxgmac2_host_mtl_irq_status(struct stmmac_priv *priv,
 					struct mac_device_info *hw, u32 chan)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	void __iomem *ioaddr = hw->pcsr;
 	int ret = 0;
 	u32 status;
 
 	status = readl(ioaddr + XGMAC_MTL_INT_STATUS);
 	if (status & BIT(chan)) {
-		u32 chan_status = readl(ioaddr + XGMAC_MTL_QINT_STATUS(chan));
+		u32 chan_status = readl(ioaddr + XGMAC_MTL_QINT_STATUS(dwxgmac_addrs, chan));
 
 		if (chan_status & XGMAC_RXOVFIS)
 			ret |= CORE_IRQ_MTL_RX_OVERFLOW;
 
-		writel(~0x0, ioaddr + XGMAC_MTL_QINT_STATUS(chan));
+		writel(~0x0, ioaddr + XGMAC_MTL_QINT_STATUS(dwxgmac_addrs, chan));
 	}
 
 	return ret;
@@ -1183,15 +1188,16 @@ re_enable:
 static int dwxgmac2_get_mac_tx_timestamp(struct stmmac_priv *priv, struct mac_device_info *hw,
 					 u64 *ts)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	void __iomem *ioaddr = hw->pcsr;
 	u32 value;
 
-	if (readl_poll_timeout_atomic(ioaddr + XGMAC_TIMESTAMP_STATUS,
+	if (readl_poll_timeout_atomic(ioaddr + XGMAC_TIMESTAMP_STATUS(dwxgmac_addrs),
 				      value, value & XGMAC_TXTSC, 100, 10000))
 		return -EBUSY;
 
-	*ts = readl(ioaddr + XGMAC_TXTIMESTAMP_NSEC) & XGMAC_TXTSSTSLO;
-	*ts += readl(ioaddr + XGMAC_TXTIMESTAMP_SEC) * 1000000000ULL;
+	*ts = readl(ioaddr + XGMAC_TXTIMESTAMP_NSEC(dwxgmac_addrs)) & XGMAC_TXTSSTSLO;
+	*ts += readl(ioaddr + XGMAC_TXTIMESTAMP_SEC(dwxgmac_addrs)) * 1000000000ULL;
 	return 0;
 }
 
@@ -1199,8 +1205,9 @@ static int dwxgmac2_flex_pps_config(struct stmmac_priv *priv, void __iomem *ioad
 				    struct stmmac_pps_cfg *cfg, bool enable,
 				    u32 sub_second_inc, u32 systime_flags)
 {
-	u32 tnsec = readl(ioaddr + XGMAC_PPSx_TARGET_TIME_NSEC(index));
-	u32 val = readl(ioaddr + XGMAC_PPS_CONTROL);
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
+	u32 tnsec = readl(ioaddr + XGMAC_PPSx_TARGET_TIME_NSEC(dwxgmac_addrs, index));
+	u32 val = readl(ioaddr + XGMAC_PPS_CONTROL(dwxgmac_addrs));
 	u64 period;
 
 	if (!cfg->available)
@@ -1214,7 +1221,7 @@ static int dwxgmac2_flex_pps_config(struct stmmac_priv *priv, void __iomem *ioad
 
 	if (!enable) {
 		val |= XGMAC_PPSCMDx(index, XGMAC_PPSCMD_STOP);
-		writel(val, ioaddr + XGMAC_PPS_CONTROL);
+		writel(val, ioaddr + XGMAC_PPS_CONTROL(dwxgmac_addrs));
 		return 0;
 	}
 
@@ -1234,11 +1241,11 @@ static int dwxgmac2_flex_pps_config(struct stmmac_priv *priv, void __iomem *ioad
 	 */
 	val |= XGMAC_PPSENx(index);
 
-	writel(cfg->start.tv_sec, ioaddr + XGMAC_PPSx_TARGET_TIME_SEC(index));
+	writel(cfg->start.tv_sec, ioaddr + XGMAC_PPSx_TARGET_TIME_SEC(dwxgmac_addrs, index));
 
 	if (!(systime_flags & PTP_TCR_TSCTRLSSR))
 		cfg->start.tv_nsec = (cfg->start.tv_nsec * 1000) / 465;
-	writel(cfg->start.tv_nsec, ioaddr + XGMAC_PPSx_TARGET_TIME_NSEC(index));
+	writel(cfg->start.tv_nsec, ioaddr + XGMAC_PPSx_TARGET_TIME_NSEC(dwxgmac_addrs, index));
 
 	period = cfg->period.tv_sec * 1000000000;
 	period += cfg->period.tv_nsec;
@@ -1248,16 +1255,16 @@ static int dwxgmac2_flex_pps_config(struct stmmac_priv *priv, void __iomem *ioad
 	if (period <= 1)
 		return -EINVAL;
 
-	writel(period - 1, ioaddr + XGMAC_PPSx_INTERVAL(index));
+	writel(period - 1, ioaddr + XGMAC_PPSx_INTERVAL(dwxgmac_addrs, index));
 
 	period >>= 1;
 	if (period <= 1)
 		return -EINVAL;
 
-	writel(period - 1, ioaddr + XGMAC_PPSx_WIDTH(index));
+	writel(period - 1, ioaddr + XGMAC_PPSx_WIDTH(dwxgmac_addrs, index));
 
 	/* Finally, activate it */
-	writel(val, ioaddr + XGMAC_PPS_CONTROL);
+	writel(val, ioaddr + XGMAC_PPS_CONTROL(dwxgmac_addrs));
 	return 0;
 }
 

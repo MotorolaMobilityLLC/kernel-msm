@@ -89,6 +89,7 @@ void dw25gmac_dma_init_tx_chan(struct stmmac_priv *priv,
 			       struct stmmac_dma_cfg *dma_cfg,
 			       dma_addr_t dma_addr, u32 chan)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	u32 value;
 	u32 tc;
 
@@ -111,15 +112,15 @@ void dw25gmac_dma_init_tx_chan(struct stmmac_priv *priv,
 	wr_dma_ch_ind(ioaddr, MODE_TXEXTCFG, chan, value);
 
 	/* 1-to-1 VDMA to TC mapping */
-	value = readl(ioaddr + XGMAC_DMA_CH_TX_CONTROL(chan));
+	value = readl(ioaddr + XGMAC_DMA_CH_TX_CONTROL(dwxgmac_addrs, chan));
 	value &= ~XXVGMAC_TVDMA2TCMP;
 	value |= FIELD_PREP(XXVGMAC_TVDMA2TCMP, tc);
-	writel(value, ioaddr + XGMAC_DMA_CH_TX_CONTROL(chan));
+	writel(value, ioaddr + XGMAC_DMA_CH_TX_CONTROL(dwxgmac_addrs, chan));
 
 	writel(upper_32_bits(dma_addr),
-	       ioaddr + XGMAC_DMA_CH_TxDESC_HADDR(chan));
+	       ioaddr + XGMAC_DMA_CH_TxDESC_HADDR(dwxgmac_addrs, chan));
 	writel(lower_32_bits(dma_addr),
-	       ioaddr + XGMAC_DMA_CH_TxDESC_LADDR(chan));
+	       ioaddr + XGMAC_DMA_CH_TxDESC_LADDR(dwxgmac_addrs, chan));
 }
 
 void dw25gmac_dma_init_rx_chan(struct stmmac_priv *priv,
@@ -127,6 +128,7 @@ void dw25gmac_dma_init_rx_chan(struct stmmac_priv *priv,
 			       struct stmmac_dma_cfg *dma_cfg,
 			       dma_addr_t dma_addr, u32 chan)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	u32 value;
 	u32 tc;
 
@@ -149,13 +151,13 @@ void dw25gmac_dma_init_rx_chan(struct stmmac_priv *priv,
 	wr_dma_ch_ind(ioaddr, MODE_RXEXTCFG, chan, value);
 
 	/* 1-to-1 VDMA to TC mapping */
-	value = readl(ioaddr + XGMAC_DMA_CH_RX_CONTROL(chan));
+	value = readl(ioaddr + XGMAC_DMA_CH_RX_CONTROL(dwxgmac_addrs, chan));
 	value &= ~XXVGMAC_RVDMA2TCMP;
 	value |= FIELD_PREP(XXVGMAC_RVDMA2TCMP, tc);
-	writel(value, ioaddr + XGMAC_DMA_CH_RX_CONTROL(chan));
+	writel(value, ioaddr + XGMAC_DMA_CH_RX_CONTROL(dwxgmac_addrs, chan));
 
 	writel(upper_32_bits(dma_addr),
-	       ioaddr + XGMAC_DMA_CH_RxDESC_HADDR(chan));
+	       ioaddr + XGMAC_DMA_CH_RxDESC_HADDR(dwxgmac_addrs, chan));
 	writel(lower_32_bits(dma_addr),
-	       ioaddr + XGMAC_DMA_CH_RxDESC_LADDR(chan));
+	       ioaddr + XGMAC_DMA_CH_RxDESC_LADDR(dwxgmac_addrs, chan));
 }
