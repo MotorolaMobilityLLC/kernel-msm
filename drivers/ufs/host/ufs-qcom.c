@@ -186,6 +186,11 @@ static int ber_threshold = UFS_QCOM_BER_TH_DEF_G1_G4;
 static int ber_mon_dur_ms = UFS_QCOM_BER_DUR_DEF_MS;
 
 static bool crash_on_err;
+static unsigned long link_startup_life_time = 0;
+static bool link_failed_recovery = true;
+
+#define LINK_RECOVERY_TIMEOUT 100000 //100000ms
+
 static struct ufs_qcom_ber_table ber_table[] = {
 	[UFS_HS_DONT_CHANGE] = {UFS_QCOM_BER_MODE_G1_G4, UFS_QCOM_BER_TH_DEF_G1_G4},
 	[UFS_HS_G1] = {UFS_QCOM_BER_MODE_G1_G4, UFS_QCOM_BER_TH_DEF_G1_G4},
@@ -200,6 +205,9 @@ MODULE_PARM_DESC(crash_on_ber, "Crash if PHY BER exceeds threshold. the default 
 
 module_param(crash_on_err, bool, 0644);
 MODULE_PARM_DESC(crash_on_err, "BugON if crash . the default value is false");
+
+module_param(link_failed_recovery, bool, 0644);
+MODULE_PARM_DESC(link_failed_recovery, "BugON if link startup failed 3 times, the default is true");
 
 static const struct kernel_param_ops ber_threshold_ops = {
 	.set = ufs_qcom_ber_threshold_set,
@@ -2355,6 +2363,15 @@ struct ufs_qcom_dev_params ufs_qcom_cap;
 		goto out;
 	}
 
+	if (link_failed_recovery && link_startup_life_time == 0) {
+		link_startup_life_time = jiffies + msecs_to_jiffies(LINK_RECOVERY_TIMEOUT);
+		dev_err(hba->dev, "init link_startup_life_time jiffies 0x%x (0x%x)\n", jiffies,link_startup_life_time);
+	}
+	if (link_failed_recovery && time_after(jiffies, link_startup_life_time )){
+		link_failed_recovery = false;
+		dev_err(hba->dev, "disable link_failed_recovery\n");
+	}
+
 	switch (status) {
 	case PRE_CHANGE:
 		ufs_qcom_cap.hs_rx_gear = host->limit_rx_hs_gear;
@@ -4043,6 +4060,13 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	if (!host) {
 		dev_err(dev, "%s: no memory for qcom ufs host\n", __func__);
 		return -ENOMEM;
+	}
+
+	// it is called by host_reset_restore.when boot up, if link startup failed 3 times, bug_on.
+	if (link_failed_recovery && time_before(jiffies, link_startup_life_time )
+            && hba->ufs_stats.event[UFS_EVT_LINK_STARTUP_FAIL].cnt > 2) {
+		printk(KERN_ERR "dme link startup failed 3 time when boot up..\n ");
+		BUG_ON(1);
 	}
 
 	/* Make a two way bind between the qcom host and the hba */
@@ -5834,6 +5858,34 @@ static ssize_t crash_on_err_store(struct device *dev,
 
 static DEVICE_ATTR_RW(crash_on_err);
 
+static ssize_t link_failed_recovery_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", link_failed_recovery);
+}
+
+static ssize_t link_failed_recovery_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	bool v;
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
+	if (kstrtobool(buf, &v))
+		return -EINVAL;
+
+	link_failed_recovery = v;
+	link_startup_life_time = ULONG_MAX;
+
+	return count;
+}
+
+
+static DEVICE_ATTR_RW(link_failed_recovery);
+
 static ssize_t hibern8_count_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
 {
@@ -5930,6 +5982,7 @@ static struct attribute *ufs_qcom_sysfs_attrs[] = {
 	&dev_attr_err_count.attr,
 	&dev_attr_dbg_state.attr,
 	&dev_attr_crash_on_err.attr,
+	&dev_attr_link_failed_recovery.attr,
 	&dev_attr_hibern8_count.attr,
 	&dev_attr_ber_th_exceeded.attr,
 	&dev_attr_irq_affinity_support.attr,
