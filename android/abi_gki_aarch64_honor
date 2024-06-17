@@ -126,6 +126,8 @@
   __tracepoint_android_vh_udp_v4_connect
   __traceiter_android_vh_udp_v6_connect
   __tracepoint_android_vh_udp_v6_connect
+  __traceiter_android_rvh_dma_buf_stats_teardown
+  __tracepoint_android_rvh_dma_buf_stats_teardown
   __traceiter_android_rvh_hw_protection_shutdown
   __tracepoint_android_rvh_hw_protection_shutdown
   __traceiter_android_rvh_bpf_int_jit_compile_ro

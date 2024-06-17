@@ -337585,6 +337585,13 @@ function {
   parameter_id: 0xfc0e1dbd
 }
 function {
+  id: 0x9bc6be8a
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x1b5dc4bf
+  parameter_id: 0x11cfee5a
+}
+function {
   id: 0x9bc757bb
   return_type_id: 0x6720d32f
   parameter_id: 0x1efad3bd
@@ -354403,6 +354410,15 @@ elf_symbol {
   full_name: "__traceiter_android_rvh_die_kernel_fault"
 }
 elf_symbol {
+  id: 0xaed18130
+  name: "__traceiter_android_rvh_dma_buf_stats_teardown"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x8d429a3c
+  type_id: 0x9bc6be8a
+  full_name: "__traceiter_android_rvh_dma_buf_stats_teardown"
+}
+elf_symbol {
   id: 0x40034e11
   name: "__traceiter_android_rvh_do_el1_bti"
   is_defined: true
@@ -360422,6 +360438,15 @@ elf_symbol {
   crc: 0xfd918723
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_rvh_die_kernel_fault"
+}
+elf_symbol {
+  id: 0x95b8edae
+  name: "__tracepoint_android_rvh_dma_buf_stats_teardown"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x13a1d87a
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_dma_buf_stats_teardown"
 }
 elf_symbol {
   id: 0x25e320a3
@@ -426252,6 +426277,7 @@ interface {
   symbol_id: 0x3e4ab4f6
   symbol_id: 0xa0a77bb8
   symbol_id: 0xa3b41867
+  symbol_id: 0xaed18130
   symbol_id: 0x40034e11
   symbol_id: 0x6e62463e
   symbol_id: 0x1bf82dcd
@@ -426921,6 +426947,7 @@ interface {
   symbol_id: 0xaa8affb8
   symbol_id: 0x5029bb46
   symbol_id: 0x11f903b1
+  symbol_id: 0x95b8edae
   symbol_id: 0x25e320a3
   symbol_id: 0xcd81b300
   symbol_id: 0x7a6ec3db
