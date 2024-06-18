@@ -1478,8 +1478,16 @@ static int ufs_qcom_link_startup_notify(struct ufs_hba *hba,
 		if (ufs_qcom_cap_qunipro(host)) {
 			err = ufs_qcom_set_dme_vs_core_clk_ctrl_max_freq_mode(
 				hba);
-			if (err)
+			if (err) {
+				// it is called by host_reset_restore.when boot up, if link startup failed 3 times, bug_on.
+				if (link_failed_recovery && time_before(jiffies, link_startup_life_time )
+					&& hba->ufs_stats.event[UFS_EVT_LINK_STARTUP_FAIL].cnt > 2) {
+					printk(KERN_ERR "dme link startup failed 3 time when boot up..\n ");
+					BUG_ON(1);
+				}
+
 				goto out;
+			}
 		}
 
 		err = ufs_qcom_enable_hw_clk_gating(hba);
@@ -4060,13 +4068,6 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	if (!host) {
 		dev_err(dev, "%s: no memory for qcom ufs host\n", __func__);
 		return -ENOMEM;
-	}
-
-	// it is called by host_reset_restore.when boot up, if link startup failed 3 times, bug_on.
-	if (link_failed_recovery && time_before(jiffies, link_startup_life_time )
-            && hba->ufs_stats.event[UFS_EVT_LINK_STARTUP_FAIL].cnt > 2) {
-		printk(KERN_ERR "dme link startup failed 3 time when boot up..\n ");
-		BUG_ON(1);
 	}
 
 	/* Make a two way bind between the qcom host and the hba */
