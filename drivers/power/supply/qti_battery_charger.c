@@ -1482,7 +1482,7 @@ static int battery_psy_set_prop(struct power_supply *psy,
 		return battery_psy_set_charge_end_threshold(bcdev,
 								pval->intval);
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-		if (bcdev->combo_batt_psy) {
+		if (bcdev->combo_batt_psy && !bcdev->aura_combo_policy) {
 			return power_supply_set_property(bcdev->combo_batt_psy,
 						prop, pval);
 		} else {
