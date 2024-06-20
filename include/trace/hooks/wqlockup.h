@@ -14,6 +14,10 @@ DECLARE_HOOK(android_vh_wq_lockup_pool,
 	TP_PROTO(int cpu, unsigned long pool_ts),
 	TP_ARGS(cpu, pool_ts));
 
+DECLARE_HOOK(android_rvh_alloc_and_link_pwqs,
+	TP_PROTO(struct workqueue_struct *wq, int *ret, bool *skip),
+	TP_ARGS(wq, ret, skip));
+
 DECLARE_RESTRICTED_HOOK(android_rvh_create_worker,
 	TP_PROTO(struct task_struct *p, struct workqueue_attrs *attrs),
 	TP_ARGS(p, attrs), 1);
