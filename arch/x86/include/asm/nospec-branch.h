@@ -421,11 +421,6 @@ extern void (*x86_return_thunk)(void);
 #ifdef CONFIG_CALL_DEPTH_TRACKING
 extern void __x86_return_skl(void);
 
-static inline void x86_set_skl_return_thunk(void)
-{
-	x86_return_thunk = &__x86_return_skl;
-}
-
 #define CALL_DEPTH_ACCOUNT					\
 	ALTERNATIVE("",						\
 		    __stringify(INCREMENT_CALL_DEPTH),		\
@@ -438,7 +433,6 @@ DECLARE_PER_CPU(u64, __x86_stuffs_count);
 DECLARE_PER_CPU(u64, __x86_ctxsw_count);
 #endif
 #else
-static inline void x86_set_skl_return_thunk(void) {}
 
 #define CALL_DEPTH_ACCOUNT ""
 
