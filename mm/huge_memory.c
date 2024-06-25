@@ -2885,7 +2885,6 @@ static bool __discard_anon_folio_pmd_locked(struct vm_area_struct *vma,
 	struct mm_struct *mm = vma->vm_mm;
 	int ref_count, map_count;
 	pmd_t orig_pmd = *pmdp;
-	struct page *page;
 
 	if (folio_test_dirty(folio) || pmd_dirty(orig_pmd))
 		return false;
@@ -2921,7 +2920,7 @@ static bool __discard_anon_folio_pmd_locked(struct vm_area_struct *vma,
 		return false;
 	}
 
-	folio_remove_rmap_pmd(folio, page, vma);
+	folio_remove_rmap_pmd(folio, pmd_page(orig_pmd), vma);
 	zap_deposited_table(mm, pmdp);
 	add_mm_counter(mm, MM_ANONPAGES, -HPAGE_PMD_NR);
 	if (vma->vm_flags & VM_LOCKED)
