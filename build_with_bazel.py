@@ -62,7 +62,7 @@ class Target:
 class BazelBuilder:
     """Helper class for building with Bazel"""
 
-    def __init__(self, target_list, skip_list, out_dir, cache_dir, dry_run, gki_headers, user_opts):
+    def __init__(self, target_list, skip_list, out_dir, cache_dir, dry_run, gki_headers, user_opts, abl_only):
         BazelBuilder.targets_done = []
         self.workspace = os.path.realpath(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
@@ -86,6 +86,7 @@ class BazelBuilder:
         self.dry_run = dry_run
         self.gki_headers = gki_headers
         self.user_opts = user_opts
+        self.abl_only = abl_only
         self.process_list = []
         if len(self.target_list) > 1 and out_dir:
             logging.error("cannot specify multiple targets with one out dir")
@@ -187,7 +188,9 @@ class BazelBuilder:
             for label in label_list:
                 if any((skip_re.match(label) for skip_re in skip_list_re)):
                     continue
-
+                if self.abl_only and re.search(r"_abl_dist", label) is None:
+                    logging.info("force to skip target label: [%s]" , label)
+                    continue
                 if v == "ALL":
                     real_variant = re.search(
                         r"//{}:[^_]*_([^_]+)_".format(self.kernel_dir), label
@@ -489,6 +492,12 @@ def main():
         help="Run menuconfig for <target>-<variant> and exit without building",
     )
     parser.add_argument(
+        "-a",
+        "--abl_only",
+        action="store_true",
+        help="only build abl target and skip all other non abl targets",
+    )
+    parser.add_argument(
         "-d",
         "--dry-run",
         action="store_true",
@@ -523,7 +532,8 @@ def main():
         args.cache_dir,
         args.dry_run,
         args.gki_headers,
-        user_opts
+        user_opts,
+        args.abl_only
     )
     try:
         if args.menuconfig:
