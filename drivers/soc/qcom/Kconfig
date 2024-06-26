@@ -12,6 +12,13 @@ config MMI_DEVICE_DTBS
 		Only include Motorola device specific DTBs to limit the number that
 		get built during kernel completion.
 
+config PAROS_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Paros Device DTBs"
+	help
+		Only include Motorola Paros device specific device tree
+
 config SPS
 	tristate "SPS support"
 	select GENERIC_ALLOCATOR
