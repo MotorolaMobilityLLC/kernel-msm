@@ -343,10 +343,6 @@ also applies to the regions registered in khugepaged.
 Monitoring usage
 ================
 
-.. note::
-   Currently the below counters only record events relating to
-   PMD-sized THP. Events relating to other THP sizes are not included.
-
 The number of PMD-sized anonymous transparent huge pages currently used by the
 system is available by reading the AnonHugePages field in ``/proc/meminfo``.
 To identify what applications are using PMD-sized anonymous transparent huge
@@ -474,6 +470,21 @@ swpout_fallback
 	is incremented if a huge page has to be split before swapout.
 	Usually because failed to allocate some continuous swap space
 	for the huge page.
+
+split
+	is incremented every time a huge page is successfully split into
+	smaller orders. This can happen for a variety of reasons but a
+	common reason is that a huge page is old and is being reclaimed.
+
+split_failed
+	is incremented if kernel fails to split huge
+	page. This can happen if the page was pinned by somebody.
+
+split_deferred
+	is incremented when a huge page is put onto split queue.
+	This happens when a huge page is partially unmapped and splitting
+	it would free up some memory. Pages on split queue are going to
+	be split under memory pressure, if splitting is possible.
 
 As the system ages, allocating huge pages may be expensive as the
 system uses memory compaction to copy data around memory to free a
