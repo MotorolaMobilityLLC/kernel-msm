@@ -2565,6 +2565,7 @@
   __stack_chk_guard
   stack_depot_fetch
   stack_trace_save
+  static_key_enable
   static_key_disable
   static_key_slow_dec
   static_key_slow_inc
@@ -2761,6 +2762,7 @@
   __traceiter_android_rvh_wake_up_new_task
   __traceiter_android_vh_account_task_time
   __traceiter_android_vh_add_page_to_lrulist
+  __traceiter_android_vh_adjust_alloc_flags
   __traceiter_android_vh_alloc_pages_slowpath_begin
   __traceiter_android_vh_alloc_pages_slowpath_end
   __traceiter_android_vh_allow_domain_state
@@ -2937,6 +2939,7 @@
   __traceiter_android_vh_ufs_send_tm_command
   __traceiter_android_vh_update_page_mapcount
   __traceiter_android_vh_update_topology_flags_workfn
+  __traceiter_android_vh_vmscan_kswapd_done
   __traceiter_binder_transaction_received
   __traceiter_cpu_frequency
   __traceiter_cpu_frequency_limits
@@ -2945,6 +2948,7 @@
   __traceiter_ipi_entry
   __traceiter_ipi_raise
   __traceiter_irq_handler_entry
+  __traceiter_mm_vmscan_kswapd_wake
   __traceiter_net_dev_queue
   __traceiter_net_dev_xmit
   __traceiter_netif_receive_skb
@@ -2966,6 +2970,13 @@
   __traceiter_task_newtask
   __traceiter_task_rename
   __traceiter_xhci_urb_giveback
+  __traceiter_android_vh_binder_proc_transaction_finish
+  __traceiter_android_vh_alloc_oem_binder_struct
+  __traceiter_android_vh_binder_transaction_received
+  __traceiter_android_vh_free_oem_binder_struct
+  __traceiter_android_vh_binder_special_task
+  __traceiter_android_vh_binder_free_buf
+  __traceiter_android_vh_binder_buffer_release
   __tracepoint_android_rvh_account_irq
   __tracepoint_android_rvh_after_enqueue_task
   __tracepoint_android_rvh_build_perf_domains
@@ -3029,6 +3040,7 @@
   __tracepoint_android_rvh_wake_up_new_task
   __tracepoint_android_vh_account_task_time
   __tracepoint_android_vh_add_page_to_lrulist
+  __tracepoint_android_vh_adjust_alloc_flags
   __tracepoint_android_vh_alloc_pages_slowpath_begin
   __tracepoint_android_vh_alloc_pages_slowpath_end
   __tracepoint_android_vh_allow_domain_state
@@ -3205,6 +3217,7 @@
   __tracepoint_android_vh_ufs_send_tm_command
   __tracepoint_android_vh_update_page_mapcount
   __tracepoint_android_vh_update_topology_flags_workfn
+  __tracepoint_android_vh_vmscan_kswapd_done
   __tracepoint_binder_transaction_received
   __tracepoint_cpu_frequency
   __tracepoint_cpu_frequency_limits
@@ -3213,6 +3226,7 @@
   __tracepoint_ipi_entry
   __tracepoint_ipi_raise
   __tracepoint_irq_handler_entry
+  __tracepoint_mm_vmscan_kswapd_wake
   __tracepoint_net_dev_queue
   __tracepoint_net_dev_xmit
   __tracepoint_netif_receive_skb
@@ -3238,6 +3252,13 @@
   __tracepoint_task_newtask
   __tracepoint_task_rename
   __tracepoint_xhci_urb_giveback
+  __tracepoint_android_vh_binder_proc_transaction_finish
+  __tracepoint_android_vh_alloc_oem_binder_struct
+  __tracepoint_android_vh_binder_transaction_received
+  __tracepoint_android_vh_free_oem_binder_struct
+  __tracepoint_android_vh_binder_special_task
+  __tracepoint_android_vh_binder_free_buf
+  __tracepoint_android_vh_binder_buffer_release
   trace_print_array_seq
   trace_print_flags_seq
   trace_print_hex_seq
@@ -3702,4 +3723,6 @@
   xhci_ring_cmd_db
   xhci_ring_free
   xhci_trb_virt_to_dma
+  xt_register_match
+  xt_unregister_match
   zero_pfn

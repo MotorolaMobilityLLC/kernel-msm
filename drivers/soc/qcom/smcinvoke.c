@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "smcinvoke: %s: " fmt, __func__
@@ -895,30 +895,30 @@ static struct smcinvoke_cb_txn *find_cbtxn_locked(
 }
 
 /*
- * size_add saturates at SIZE_MAX. If integer overflow is detected,
+ * smci_size_add saturates at SIZE_MAX. If integer overflow is detected,
  * this function would return SIZE_MAX otherwise normal a+b is returned.
  */
-static inline size_t size_add(size_t a, size_t b)
+static inline size_t smci_size_add(size_t a, size_t b)
 {
 	return (b > (SIZE_MAX - a)) ? SIZE_MAX : a + b;
 }
 
 /*
- * pad_size is used along with size_align to define a buffer overflow
+ * smci_pad_size is used along with smci_size_align to define a buffer overflow
  * protected version of ALIGN
  */
-static inline size_t pad_size(size_t a, size_t b)
+static inline size_t smci_pad_size(size_t a, size_t b)
 {
 	return (~a + 1) % b;
 }
 
 /*
- * size_align saturates at SIZE_MAX. If integer overflow is detected, this
+ * smci_size_align saturates at SIZE_MAX. If integer overflow is detected, this
  * function would return SIZE_MAX otherwise next aligned size is returned.
  */
-static inline size_t size_align(size_t a, size_t b)
+static inline size_t smci_size_align(size_t a, size_t b)
 {
-	return size_add(a, pad_size(a, b));
+	return smci_size_add(a, smci_pad_size(a, b));
 }
 
 static uint16_t get_server_id(int cb_server_fd)
@@ -1645,6 +1645,52 @@ static bool is_inbound_req(int val)
 		val == QSEOS_RESULT_BLOCKED_ON_LISTENER);
 }
 
+static void process_piggyback_cb_data(uint8_t *outbuf, size_t buf_len)
+{
+	struct smcinvoke_tzcb_req *msg = NULL;
+	uint32_t max_offset = 0;
+	uint32_t buffer_size_max_offset = 0;
+	void *piggyback_buf = NULL;
+	size_t piggyback_buf_size;
+	size_t piggyback_offset = 0;
+	int i = 0;
+
+	if (outbuf == NULL) {
+		pr_err("%s: outbuf is NULL\n", __func__);
+		return;
+	}
+	msg = (void *) outbuf;
+	if ((buf_len < msg->args[0].b.offset) ||
+		(buf_len - msg->args[0].b.offset < msg->args[0].b.size)) {
+		pr_err("%s: invalid scenario\n", __func__);
+		return;
+	}
+	FOR_ARGS(i, msg->hdr.counts, BI)
+	{
+		if (msg->args[i].b.offset > max_offset) {
+			max_offset = msg->args[i].b.offset;
+			buffer_size_max_offset = msg->args[i].b.size;
+		}
+	}
+	FOR_ARGS(i, msg->hdr.counts, BO)
+	{
+		if (msg->args[i].b.offset > max_offset) {
+			max_offset = msg->args[i].b.offset;
+			buffer_size_max_offset = msg->args[i].b.size;
+		}
+	}
+	//Take out the offset after BI and BO objects end
+	if (max_offset)
+		piggyback_offset = max_offset + buffer_size_max_offset;
+	else
+		piggyback_offset = TZCB_BUF_OFFSET(msg);
+	piggyback_offset = smci_size_align(piggyback_offset, SMCINVOKE_ARGS_ALIGN_SIZE);
+	// Jump to piggy back data offset
+	piggyback_buf = (uint8_t *)msg + piggyback_offset;
+	piggyback_buf_size = g_max_cb_buf_size - piggyback_offset;
+	process_piggyback_data(piggyback_buf, piggyback_buf_size);
+}
+
 static int prepare_send_scm_msg(const uint8_t *in_buf, phys_addr_t in_paddr,
 		size_t in_buf_len,
 		uint8_t *out_buf, phys_addr_t out_paddr,
@@ -1738,6 +1784,7 @@ static int prepare_send_scm_msg(const uint8_t *in_buf, phys_addr_t in_paddr,
 
 		if (response_type == SMCINVOKE_RESULT_INBOUND_REQ_NEEDED) {
 			trace_status(__func__, "looks like inbnd req reqd");
+			process_piggyback_cb_data(out_buf, out_buf_len);
 			process_tzcb_req(out_buf, out_buf_len, arr_filp);
 			cmd = SMCINVOKE_CB_RSP_CMD;
 		}
@@ -1767,8 +1814,8 @@ static size_t compute_in_msg_size(const struct smcinvoke_cmd_req *req,
 
 	/* each buffer has to be 8 bytes aligned */
 	while (i < SMCI_OBJECT_COUNTS_NUM_BUFFERS(req->counts))
-		total_size = size_add(total_size,
-				size_align(args_buf[i++].b.size,
+		total_size = smci_size_add(total_size,
+				smci_size_align(args_buf[i++].b.size,
 				SMCINVOKE_ARGS_ALIGN_SIZE));
 
 	return PAGE_ALIGN(total_size);
@@ -1798,7 +1845,7 @@ static int marshal_in_invoke_req(const struct smcinvoke_cmd_req *req,
 		return 0;
 
 	FOR_ARGS(i, req->counts, BI) {
-		offset = size_align(offset, SMCINVOKE_ARGS_ALIGN_SIZE);
+		offset = smci_size_align(offset, SMCINVOKE_ARGS_ALIGN_SIZE);
 		if ((offset > buf_size) ||
 			(args_buf[i].b.size > (buf_size - offset)))
 			goto out;
@@ -1817,7 +1864,7 @@ static int marshal_in_invoke_req(const struct smcinvoke_cmd_req *req,
 		offset += args_buf[i].b.size;
 	}
 	FOR_ARGS(i, req->counts, BO) {
-		offset = size_align(offset, SMCINVOKE_ARGS_ALIGN_SIZE);
+		offset = smci_size_align(offset, SMCINVOKE_ARGS_ALIGN_SIZE);
 		if ((offset > buf_size) ||
 				(args_buf[i].b.size > (buf_size - offset)))
 			goto out;
@@ -1878,7 +1925,7 @@ static int marshal_in_tzcb_req(const struct smcinvoke_cb_txn *cb_txn,
 			user_req->cbobj_id, user_req->op, user_req->counts);
 
 	FOR_ARGS(i, tzcb_req->hdr.counts, BI) {
-		user_req_buf_offset = size_align(user_req_buf_offset,
+		user_req_buf_offset = smci_size_align(user_req_buf_offset,
 				SMCINVOKE_ARGS_ALIGN_SIZE);
 		tmp_arg.b.size = tz_args[i].b.size;
 		if ((tz_args[i].b.offset > tzcb_req_len) ||
@@ -1904,7 +1951,7 @@ static int marshal_in_tzcb_req(const struct smcinvoke_cb_txn *cb_txn,
 		user_req_buf_offset += tmp_arg.b.size;
 	}
 	FOR_ARGS(i, tzcb_req->hdr.counts, BO) {
-		user_req_buf_offset = size_align(user_req_buf_offset,
+		user_req_buf_offset = smci_size_align(user_req_buf_offset,
 				SMCINVOKE_ARGS_ALIGN_SIZE);
 
 		tmp_arg.b.size = tz_args[i].b.size;

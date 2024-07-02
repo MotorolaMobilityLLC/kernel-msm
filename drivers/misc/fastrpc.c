@@ -993,11 +993,6 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 	if (err)
 		goto bail;
 
-	/* Check the response from remote dsp */
-	err = ctx->retval;
-	if (err)
-		goto bail;
-
 	if (ctx->nscalars) {
 		/* make sure that all memory writes by DSP are seen by CPU */
 		dma_rmb();
@@ -1006,6 +1001,11 @@ static int fastrpc_internal_invoke(struct fastrpc_user *fl,  u32 kernel,
 		if (err)
 			goto bail;
 	}
+
+	/* Check the response from remote dsp */
+	err = ctx->retval;
+	if (err)
+		goto bail;
 
 bail:
 	if (err != -ERESTARTSYS && err != -ETIMEDOUT) {

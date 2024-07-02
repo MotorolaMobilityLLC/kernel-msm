@@ -1307,7 +1307,7 @@ static int scan_movable_pages(unsigned long start, unsigned long end,
 		head = compound_head(page);
 		if (page_huge_active(head))
 			goto found;
-		skip = compound_nr(head) - (page - head);
+		skip = compound_nr(head) - (pfn - page_to_pfn(head));
 		pfn += skip - 1;
 	}
 	return -ENOENT;

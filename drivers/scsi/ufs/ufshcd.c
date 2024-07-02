@@ -3499,7 +3499,7 @@ int ufshcd_read_string_desc(struct ufs_hba *hba, u8 desc_index,
 		 */
 		ret = utf16s_to_utf8s(uc_str->uc,
 				      uc_str->len - QUERY_DESC_HDR_SIZE,
-				      UTF16_BIG_ENDIAN, str, ascii_len);
+				      UTF16_BIG_ENDIAN, str, ascii_len - 1);
 
 		/* replace non-printable or non-ASCII characters with spaces */
 		for (i = 0; i < ret; i++)
@@ -7181,6 +7181,20 @@ static int ufshcd_eh_host_reset_handler(struct scsi_cmnd *cmd)
 	struct ufs_hba *hba;
 
 	hba = shost_priv(cmd->device->host);
+
+	/*
+	 * If runtime pm send SSU and got timeout, scsi_error_handler
+	 * stuck at this function to wait for flush_work(&hba->eh_work).
+	 * And ufshcd_err_handler(eh_work) stuck at wait for runtime pm active.
+	 * Do ufshcd_link_recovery instead schedule eh_work can prevent
+	 * dead lock to happen.
+	 */
+	if (hba->pm_op_in_progress) {
+		if (ufshcd_link_recovery(hba))
+			err = FAILED;
+
+		return err;
+	}
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	hba->force_reset = true;

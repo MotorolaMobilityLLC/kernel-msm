@@ -362,6 +362,9 @@ DECLARE_HOOK(android_vh_madvise_cold_or_pageout_abort,
 DECLARE_HOOK(android_vh_skip_swapcache,
 	TP_PROTO(swp_entry_t entry, bool *skip),
 	TP_ARGS(entry, skip));
+DECLARE_HOOK(android_vh_do_swap_page_spf,
+	TP_PROTO(bool *allow_swap_spf),
+	TP_ARGS(allow_swap_spf));
 /* macro versions of hooks are no longer required */
 
 #endif /* _TRACE_HOOK_MM_H */
