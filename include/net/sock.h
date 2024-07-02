@@ -2020,16 +2020,17 @@ sk_dst_get(struct sock *sk)
 
 static inline void __dst_negative_advice(struct sock *sk)
 {
-	struct dst_entry *ndst, *dst = __sk_dst_get(sk);
+	/* *** ANDROID FIXUP ***
+	 * See b/343727534 for more details why this typedef is needed here.
+	 * *** ANDROID FIXUP ***
+	 */
+	android_dst_ops_negative_advice_new_t negative_advice;
+
+	struct dst_entry *dst = __sk_dst_get(sk);
 
 	if (dst && dst->ops->negative_advice) {
-		ndst = dst->ops->negative_advice(dst);
-
-		if (ndst != dst) {
-			rcu_assign_pointer(sk->sk_dst_cache, ndst);
-			sk_tx_queue_clear(sk);
-			WRITE_ONCE(sk->sk_dst_pending_confirm, 0);
-		}
+		negative_advice = (android_dst_ops_negative_advice_new_t)dst->ops->negative_advice;
+		negative_advice(sk, dst);
 	}
 }
 
