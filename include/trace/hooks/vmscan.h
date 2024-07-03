@@ -61,6 +61,16 @@ DECLARE_HOOK(android_vh_vmscan_kswapd_done,
 DECLARE_HOOK(android_vh_mglru_new_gen,
 	TP_PROTO(void *unused),
 	TP_ARGS(unused));
+DECLARE_HOOK(android_vh_shrink_page_list,
+	TP_PROTO(struct page *page, bool dirty, bool writeback,
+		bool *activate, bool *keep),
+	TP_ARGS(page, dirty, writeback, activate, keep));
+DECLARE_HOOK(android_vh_inode_lru_isolate,
+	TP_PROTO(struct inode *inode, bool *skip),
+	TP_ARGS(inode, skip));
+DECLARE_HOOK(android_vh_invalidate_mapping_pagevec,
+	TP_PROTO(struct address_space *mapping, bool *skip),
+	TP_ARGS(mapping, skip));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
