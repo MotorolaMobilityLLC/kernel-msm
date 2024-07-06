@@ -429,6 +429,9 @@ int qcom_scm_set_cold_boot_addr(void *entry, const cpumask_t *cpus)
 		.owner = ARM_SMCCC_OWNER_SIP,
 	};
 
+	if (!__scm)
+		return -EINVAL;
+
 	if (!cpus || cpumask_empty(cpus))
 		return -EINVAL;
 
@@ -442,7 +445,7 @@ int qcom_scm_set_cold_boot_addr(void *entry, const cpumask_t *cpus)
 	desc.args[0] = flags;
 	desc.args[1] = virt_to_phys(entry);
 
-	return qcom_scm_call_atomic(__scm ? __scm->dev : NULL, &desc, NULL);
+	return qcom_scm_call_atomic(__scm->dev, &desc, NULL);
 }
 EXPORT_SYMBOL(qcom_scm_set_cold_boot_addr);
 
@@ -521,7 +524,12 @@ void qcom_scm_disable_sdi(void)
 		.arginfo = QCOM_SCM_ARGS(2),
 	};
 
-	ret = qcom_scm_call_atomic(__scm ? __scm->dev : NULL, &desc, NULL);
+	if (!__scm) {
+		pr_err("No scm device available\n");
+		return;
+	}
+
+	ret = qcom_scm_call_atomic(__scm->dev, &desc, NULL);
 	if (ret)
 		pr_err("Failed to disable secure wdog debug: %d\n", ret);
 }
@@ -630,8 +638,6 @@ EXPORT_SYMBOL(qcom_scm_config_cpu_errata);
 
 void qcom_scm_phy_update_scm_level_shifter(u32 val)
 {
-	struct device *dev = __scm ? __scm->dev : NULL;
-
 	int ret;
 	struct qcom_scm_desc desc = {
 		.svc = QCOM_SCM_SVC_BOOT,
@@ -639,11 +645,16 @@ void qcom_scm_phy_update_scm_level_shifter(u32 val)
 		.owner = ARM_SMCCC_OWNER_SIP
 	};
 
+	if (!__scm) {
+		pr_err("No scm device available\n");
+		return;
+	}
+
 	desc.args[0] = val;
 	desc.args[1] = 0;
 	desc.arginfo = QCOM_SCM_ARGS(2);
 
-	ret = qcom_scm_call(dev, &desc, NULL);
+	ret = qcom_scm_call(__scm->dev, &desc, NULL);
 	if (ret)
 		pr_err("Failed to update scm level shifter=0x%x\n", ret);
 
@@ -1087,7 +1098,12 @@ void qcom_scm_deassert_ps_hold(void)
 		.arginfo = QCOM_SCM_ARGS(1),
 	};
 
-	ret = qcom_scm_call_atomic(__scm ? __scm->dev : NULL, &desc, NULL);
+	if (!__scm) {
+		pr_err("No scm device available\n");
+		return;
+	}
+
+	ret = qcom_scm_call_atomic(__scm->dev, &desc, NULL);
 	if (ret)
 		pr_err("Failed to deassert_ps_hold=0x%x\n", ret);
 }
@@ -1196,7 +1212,12 @@ void qcom_scm_mmu_sync(bool sync)
 		.arginfo = QCOM_SCM_ARGS(1),
 	};
 
-	ret = qcom_scm_call_atomic(__scm ? __scm->dev : NULL, &desc, NULL);
+	if (!__scm) {
+		pr_err("No scm device available\n");
+		return;
+	}
+
+	ret = qcom_scm_call_atomic(__scm->dev, &desc, NULL);
 
 	if (ret)
 		pr_err("MMU sync with Hypervisor off %x\n", ret);
@@ -3034,6 +3055,13 @@ static int __qcom_multi_smc_init(struct qcom_scm *__scm,
 			return ret;
 		}
 
+		/* Return success if "no-multi-smc-support" property is present */
+		if (of_property_read_bool(__scm->dev->of_node,
+				"qcom,no-multi-smc-support")) {
+			dev_info(__scm->dev, "Multi smc is not supported\n");
+			return 0;
+		}
+
 		/* Detect Multi SMC support present or not */
 		ret = qcom_scm_query_wq_queue_info(__scm);
 		if (!ret)
@@ -3126,6 +3154,7 @@ static int qcom_scm_probe(struct platform_device *pdev)
 
 	clks = (unsigned long)of_device_get_match_data(&pdev->dev);
 
+	scm->dev = &pdev->dev;
 	scm->path = devm_of_icc_get(&pdev->dev, NULL);
 	if (IS_ERR(scm->path))
 		return dev_err_probe(&pdev->dev, PTR_ERR(scm->path),
@@ -3189,7 +3218,6 @@ static int qcom_scm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, scm);
 
 	__scm = scm;
-	__scm->dev = &pdev->dev;
 
 	__qcom_scm_init();
 	__get_convention();

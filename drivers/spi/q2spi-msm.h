@@ -169,12 +169,9 @@
 #define PINCTRL_SLEEP		"sleep"
 #define PINCTRL_SHUTDOWN	"shutdown"
 
-/* Max Minor devices */
-#define MAX_DEV				2
-#define DEVICE_NAME_MAX_LEN		64
-
-#define QSPI_NUM_CS			2
-#define QSPI_BYTES_PER_WORD		4
+/* Max number of Q2SPI devices */
+#define Q2SPI_MAX_DEV			2
+#define Q2SPI_DEV_NAME_MAX_LEN		64
 
 #define Q2SPI_RESP_BUF_RETRIES		(100)
 
@@ -379,11 +376,11 @@ enum var_type {
  */
 struct q2spi_chrdev {
 	dev_t q2spi_dev;
-	struct cdev cdev[MAX_DEV];
+	struct cdev cdev[Q2SPI_MAX_DEV];
 	int major;
 	int minor;
 	struct device *dev;
-	char dev_name[DEVICE_NAME_MAX_LEN];
+	char dev_name[Q2SPI_DEV_NAME_MAX_LEN];
 	struct device *class_dev;
 	struct class *q2spi_class;
 };
@@ -443,6 +440,7 @@ struct q2spi_dma_transfer {
  * @kworker: kthread worker to process the q2spi requests
  * @send_messages: work function to process the q2spi requests
  * @gsi_lock: lock to protect gsi operations
+ * @port_lock: lock to protect q2spi open, release and transfer operations
  * @txn_lock: lock to protect transfer id allocation and free
  * @queue_lock: lock to protect HC operations
  * @send_msgs_lock: lock to protect q2spi_send_messages
@@ -526,6 +524,8 @@ struct q2spi_geni {
 	struct kthread_work send_messages;
 	/* lock to protect gsi operations one at a time */
 	struct mutex gsi_lock;
+	/* lock to protect port open, close and transfer operations  */
+	struct mutex port_lock;
 	/* lock to protect transfer id allocation and free */
 	spinlock_t txn_lock;
 	/* lock to protect HC operations one at a time*/
