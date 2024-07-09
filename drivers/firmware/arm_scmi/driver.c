@@ -155,6 +155,7 @@ struct scmi_debug_info {
  * @devreq_mtx: A mutex to serialize device creation for this SCMI instance
  * @dbg: A pointer to debugfs related data (if any)
  * @raw: An opaque reference handle used by SCMI Raw mode.
+ * @max_rx_timeout_ms: the maximum receive channel timeout value
  */
 struct scmi_info {
 	int id;
@@ -181,6 +182,7 @@ struct scmi_info {
 	struct mutex devreq_mtx;
 	struct scmi_debug_info *dbg;
 	void *raw;
+	unsigned int max_rx_timeout_ms;
 };
 
 #define handle_to_scmi_info(h)	container_of(h, struct scmi_info, handle)
@@ -1121,11 +1123,11 @@ static int scmi_wait_for_message_response(struct scmi_chan_info *cinfo,
 
 	trace_scmi_xfer_response_wait(xfer->transfer_id, xfer->hdr.id,
 				      xfer->hdr.protocol_id, xfer->hdr.seq,
-				      info->desc->max_rx_timeout_ms,
+				      info->max_rx_timeout_ms,
 				      xfer->hdr.poll_completion);
 
 	return scmi_wait_for_reply(dev, info->desc, cinfo, xfer,
-				   info->desc->max_rx_timeout_ms);
+				   info->max_rx_timeout_ms);
 }
 
 /**
@@ -2348,7 +2350,7 @@ static int scmi_chan_setup(struct scmi_info *info, struct device_node *of_node,
 	if (!cinfo)
 		return -ENOMEM;
 
-	cinfo->rx_timeout_ms = info->desc->max_rx_timeout_ms;
+	cinfo->rx_timeout_ms = info->max_rx_timeout_ms;
 
 	/* Create a unique name for this transport device */
 	snprintf(name, 32, "__scmi_transport_device_%s_%02X",
@@ -2618,7 +2620,7 @@ static struct scmi_debug_info *scmi_debugfs_common_setup(struct scmi_info *info)
 	debugfs_create_bool("is_atomic", 0400, trans, &dbg->is_atomic);
 
 	debugfs_create_u32("max_rx_timeout_ms", 0400, trans,
-			   (u32 *)&info->desc->max_rx_timeout_ms);
+			   (u32 *)&info->max_rx_timeout_ms);
 
 	debugfs_create_u32("max_msg_size", 0400, trans,
 			   (u32 *)&info->desc->max_msg_size);
@@ -2670,7 +2672,8 @@ static int scmi_debugfs_raw_mode_setup(struct scmi_info *info)
 
 	info->raw = scmi_raw_mode_init(&info->handle, info->dbg->top_dentry,
 				       info->id, channels, num_chans,
-				       info->desc, info->tx_minfo.max_msg);
+				       info->desc, info->tx_minfo.max_msg,
+				       info->max_rx_timeout_ms);
 	if (IS_ERR(info->raw)) {
 		dev_err(info->dev, "Failed to initialize SCMI RAW Mode !\n");
 		ret = PTR_ERR(info->raw);
@@ -2683,6 +2686,7 @@ static int scmi_debugfs_raw_mode_setup(struct scmi_info *info)
 static int scmi_probe(struct platform_device *pdev)
 {
 	int ret;
+	u32 timeout;
 	struct scmi_handle *handle;
 	const struct scmi_desc *desc;
 	struct scmi_info *info;
@@ -2730,6 +2734,11 @@ static int scmi_probe(struct platform_device *pdev)
 			 "SCMI System wide atomic threshold set to %d us\n",
 			 info->atomic_threshold);
 	handle->is_transport_atomic = scmi_is_transport_atomic;
+
+	if (!of_property_read_u32(np, "max-rx-timeout-ms", &timeout))
+		info->max_rx_timeout_ms = timeout;
+	else
+		info->max_rx_timeout_ms = info->desc->max_rx_timeout_ms;
 
 	if (desc->ops->link_supplier) {
 		ret = desc->ops->link_supplier(dev);
