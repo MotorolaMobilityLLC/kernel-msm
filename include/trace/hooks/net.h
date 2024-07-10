@@ -51,6 +51,8 @@ DECLARE_RESTRICTED_HOOK(android_rvh_inet_sock_create,
 	TP_PROTO(struct sock *sk), TP_ARGS(sk), 1);
 DECLARE_RESTRICTED_HOOK(android_rvh_inet_sock_release,
 	TP_PROTO(struct sock *sk), TP_ARGS(sk), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_tcp_rcv_spurious_retrans,
+	TP_PROTO(struct sock *sk), TP_ARGS(sk), 1);
 DECLARE_HOOK(android_vh_tcp_rtt_estimator,
 	TP_PROTO(struct sock *sk, long mrtt_us), TP_ARGS(sk, mrtt_us));
 DECLARE_HOOK(android_vh_udp_enqueue_schedule_skb,
