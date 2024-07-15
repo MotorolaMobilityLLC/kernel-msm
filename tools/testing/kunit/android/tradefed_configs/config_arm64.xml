@@ -24,6 +24,7 @@
     <!-- Modules that leave the OS in an unstable state have been temporarily commented out. -->
     <test class="com.android.tradefed.testtype.binary.KUnitModuleTest" >
         <option name="skip-binary-check" value="true" />
+        <option name="ktap-result-parser-resolution" value="INDIVIDUAL_LEAVES" />
         <option name='binary' key='drivers/base/regmap/regmap-kunit' value='/data/kunit/arm64/regmap-kunit.ko' />
         <option name='binary' key='drivers/hid/hid-uclogic-test' value='/data/kunit/arm64/hid-uclogic-test.ko' />
         <!-- <option name='binary' key='drivers/iio/test/iio-test-format' value='/data/kunit/arm64/iio-test-format.ko' /> -->
