@@ -19,6 +19,13 @@ config PAROS_DTB
 	help
 		Only include Motorola Paros device specific device tree
 
+config MONA_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Mona Device DTBs"
+	help
+		Only include Motorola MOna device specific device tree
+
 config SPS
 	tristate "SPS support"
 	select GENERIC_ALLOCATOR
