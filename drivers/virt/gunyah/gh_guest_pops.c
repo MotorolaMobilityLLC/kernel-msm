@@ -11,6 +11,7 @@
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/notifier.h>
+#include <linux/pm_wakeup.h>
 #include <linux/reboot.h>
 
 #include <linux/gunyah/gh_rm_drv.h>
@@ -28,9 +29,13 @@ static struct kobj_type gh_guest_kobj_type = {
 };
 static struct kobject gh_guest_kobj;
 
+static struct wakeup_source *ws;
+
 static int gh_guest_pops_handle_stop_shutdown(u32 stop_reason)
 {
 	/* Emulate a KEY_POWER event to notify user-space of a shutdown */
+	__pm_stay_awake(ws);
+
 	pr_info("Sending KEY_POWER event\n");
 
 	input_report_key(gh_vm_poff_input, KEY_POWER, 1);
@@ -63,6 +68,8 @@ static int gh_guest_pops_handle_stop_shutdown(u32 stop_reason)
 		kernel_restart(NULL);
 		break;
 	}
+
+	__pm_relax(ws);
 
 	return 0;
 }
@@ -118,8 +125,16 @@ static int __init gh_guest_pops_init_poff(void)
 	if (ret)
 		goto fail_init;
 
+	ws = wakeup_source_register(NULL, "gh_guest_pops_ws");
+	if (!ws) {
+		ret = -ENOMEM;
+		goto fail_ws;
+	}
+
 	return 0;
 
+fail_ws:
+	gh_rm_unregister_notifier(&rm_nb);
 fail_init:
 	input_unregister_device(gh_vm_poff_input);
 fail_register:
