@@ -41786,6 +41786,10 @@ member {
   type_id: 0x00bf9506
 }
 member {
+  id: 0x23e7eda8
+  type_id: 0x00b1c6b3
+}
+member {
   id: 0x23eda52b
   type_id: 0x0098e4bc
 }
@@ -42194,6 +42198,10 @@ member {
   type_id: 0x34f6a768
 }
 member {
+  id: 0x2f1819a7
+  type_id: 0x334e168e
+}
+member {
   id: 0x2f71fc30
   type_id: 0x32e980d1
 }
@@ -42252,6 +42260,11 @@ member {
   id: 0x30345aac
   type_id: 0x4fff3cac
   offset: 96
+}
+member {
+  id: 0x3036aec8
+  type_id: 0x4ff4d296
+  offset: 3584
 }
 member {
   id: 0x303da1de
@@ -42459,6 +42472,11 @@ member {
 member {
   id: 0x32814327
   type_id: 0x452b7c8e
+}
+member {
+  id: 0x3293400e
+  type_id: 0x45635409
+  offset: 3520
 }
 member {
   id: 0x32a3f754
@@ -51187,6 +51205,11 @@ member {
   name: "android_kabi_reserved3"
   type_id: 0x92233392
   offset: 2560
+}
+member {
+  id: 0xac894956
+  name: "android_kabi_reserved3"
+  type_id: 0x92233392
 }
 member {
   id: 0xac894975
@@ -106132,6 +106155,16 @@ member {
   name: "host_size"
   type_id: 0x6720d32f
   offset: 2688
+}
+member {
+  id: 0x64171333
+  name: "host_stage2_disable_lazy_pte"
+  type_id: 0x24401166
+}
+member {
+  id: 0x4e45f6b9
+  name: "host_stage2_enable_lazy_pte"
+  type_id: 0x24401166
 }
 member {
   id: 0x4c5d85c5
@@ -217415,6 +217448,14 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x00b1c6b3
+  kind: STRUCT
+  definition {
+    bytesize: 8
+    member_id: 0x637609a2
+  }
+}
+struct_union {
   id: 0x00b57da4
   kind: STRUCT
   definition {
@@ -221538,6 +221579,14 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x334e168e
+  kind: STRUCT
+  definition {
+    bytesize: 8
+    member_id: 0xac894956
+  }
+}
+struct_union {
   id: 0x337e48e0
   kind: STRUCT
   definition {
@@ -222852,6 +222901,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x45635409
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0x4e45f6b9
+    member_id: 0x23e7eda8
+    member_id: 0x36752b74
+  }
+}
+struct_union {
   id: 0x458861c9
   kind: UNION
   definition {
@@ -223443,6 +223502,16 @@ struct_union {
     bytesize: 8
     member_id: 0x649f4d2e
     member_id: 0x179bf477
+  }
+}
+struct_union {
+  id: 0x4ff4d296
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0x64171333
+    member_id: 0x2f1819a7
+    member_id: 0x36752b74
   }
 }
 struct_union {
@@ -259575,8 +259644,8 @@ struct_union {
     member_id: 0x0e5ac226
     member_id: 0x0c6030af
     member_id: 0x30a9cfe3
-    member_id: 0x637600aa
-    member_id: 0xac894f3f
+    member_id: 0x3293400e
+    member_id: 0x3036aec8
     member_id: 0xe0f63cd3
     member_id: 0x22369471
     member_id: 0x667752ee

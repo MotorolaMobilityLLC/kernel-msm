@@ -95,6 +95,16 @@ static int _hyp_smp_processor_id(void)
 	return hyp_smp_processor_id();
 }
 
+static int host_stage2_enable_lazy_pte(u64 pfn, u64 nr_pages)
+{
+	return __pkvm_host_lazy_pte(pfn, nr_pages, true);
+}
+
+static int host_stage2_disable_lazy_pte(u64 pfn, u64 nr_pages)
+{
+	return __pkvm_host_lazy_pte(pfn, nr_pages, false);
+}
+
 const struct pkvm_module_ops module_ops = {
 	.create_private_mapping = __pkvm_create_private_mapping,
 	.alloc_module_va = __pkvm_alloc_module_va,
@@ -153,6 +163,8 @@ const struct pkvm_module_ops module_ops = {
 	.iommu_snapshot_host_stage2 = kvm_iommu_snapshot_host_stage2,
 	.hyp_smp_processor_id = _hyp_smp_processor_id,
 	.iommu_flush_unmap_cache = kvm_iommu_flush_unmap_cache,
+	.host_stage2_enable_lazy_pte = host_stage2_enable_lazy_pte,
+	.host_stage2_disable_lazy_pte = host_stage2_disable_lazy_pte,
 };
 
 int __pkvm_init_module(void *module_init)
