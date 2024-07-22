@@ -345,8 +345,12 @@ int qcedev_check_and_map_buffer(void *handle,
 	return 0;
 
 unmap:
-	if (!found)
+	if (!found) {
 		qcedev_unmap_buffer(handle, mem_client, binfo);
+		mutex_lock(&qce_hndl->registeredbufs.lock);
+		list_del(&binfo->list);
+		mutex_unlock(&qce_hndl->registeredbufs.lock);
+	}
 
 error:
 	kfree(binfo);
