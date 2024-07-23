@@ -279,8 +279,8 @@ struct geni_i2c_clk_fld {
 };
 
 static struct geni_i2c_clk_fld geni_i2c_clk_map[] = {
-	{KHz(100), 7, 10, 11, 26},
-	{KHz(400), 2,  7, 10, 24},
+	{KHz(100), 7, 10, 12, 26},
+	{KHz(400), 2,  3, 11, 22},
 	{KHz(1000), 1, 2,  8, 18},
 };
 
@@ -349,6 +349,22 @@ void geni_i2c_se_dump_dbg_regs(struct geni_se *se, void __iomem *base,
 	u32 geni_s_irq_en = 0;
 	u32 geni_dma_tx_irq_en = 0;
 	u32 geni_dma_rx_irq_en = 0;
+	u32 geni_general_cfg = 0;
+	u32 geni_output_ctrl = 0;
+	u32 geni_clk_ctrl_ro = 0;
+	u32 fifo_if_disable_ro = 0;
+	u32 geni_fw_multilock_msa_ro = 0;
+	u32 geni_clk_sel = 0;
+	u32 m_irq_en = 0;
+	u32 se_dma_tx_attr = 0;
+	u32 se_dma_tx_irq_stat = 0;
+	u32 se_dma_rx_attr = 0;
+	u32 se_dma_rx_irq_stat = 0;
+	u32 se_gsi_event_en = 0;
+	u32 se_irq_en = 0;
+	u32 dma_if_en_ro = 0;
+	u32 dma_general_cfg = 0;
+	u32 dma_debug_reg0 = 0;
 
 	m_cmd0 = geni_read_reg(base, SE_GENI_M_CMD0);
 	m_irq_status = geni_read_reg(base, SE_GENI_M_IRQ_STATUS);
@@ -370,23 +386,53 @@ void geni_i2c_se_dump_dbg_regs(struct geni_se *se, void __iomem *base,
 	geni_s_irq_en = geni_read_reg(base, SE_GENI_S_IRQ_EN);
 	geni_dma_tx_irq_en = geni_read_reg(base, SE_DMA_TX_IRQ_EN);
 	geni_dma_rx_irq_en = geni_read_reg(base, SE_DMA_RX_IRQ_EN);
+	geni_general_cfg = geni_read_reg(base, GENI_GENERAL_CFG);
+	geni_output_ctrl = geni_read_reg(base, GENI_OUTPUT_CTRL);
+	geni_clk_ctrl_ro = geni_read_reg(base, GENI_CLK_CTRL_RO);
+	fifo_if_disable_ro = geni_read_reg(base, GENI_IF_DISABLE_RO);
+	geni_fw_multilock_msa_ro = geni_read_reg(base, GENI_FW_MULTILOCK_MSA_RO);
+	geni_clk_sel = geni_read_reg(base, SE_GENI_CLK_SEL);
+	m_irq_en = geni_read_reg(base, SE_GENI_M_IRQ_EN);
+	se_dma_tx_attr = geni_read_reg(base, SE_DMA_TX_ATTR);
+	se_dma_tx_irq_stat = geni_read_reg(base, SE_DMA_TX_IRQ_STAT);
+	se_dma_rx_attr = geni_read_reg(base, SE_DMA_RX_ATTR);
+	se_dma_rx_irq_stat = geni_read_reg(base, SE_DMA_RX_IRQ_STAT);
+	se_gsi_event_en = geni_read_reg(base, SE_GSI_EVENT_EN);
+	se_irq_en = geni_read_reg(base, SE_IRQ_EN);
+	dma_if_en_ro = geni_read_reg(base, DMA_IF_EN_RO);
+	dma_general_cfg = geni_read_reg(base, DMA_GENERAL_CFG);
+	dma_debug_reg0 = geni_read_reg(base, SE_DMA_DEBUG_REG0);
 
 	I2C_LOG_DBG(ipc, false, se->dev,
-	"%s: m_cmd0:0x%x, m_irq_status:0x%x, geni_status:0x%x, geni_ios:0x%x\n",
-	__func__, m_cmd0, m_irq_status, geni_status, geni_ios);
+		    "%s: m_cmd0:0x%x, m_irq_status:0x%x, geni_status:0x%x, geni_ios:0x%x\n",
+		    __func__, m_cmd0, m_irq_status, geni_status, geni_ios);
 	I2C_LOG_DBG(ipc, false, se->dev,
-	"dma_rx_irq:0x%x, dma_tx_irq:0x%x, rx_fifo_sts:0x%x, tx_fifo_sts:0x%x\n",
-	dma_rx_irq, dma_tx_irq, rx_fifo_status, tx_fifo_status);
+		    "dma_rx_irq:0x%x, dma_tx_irq:0x%x, rx_fifo_sts:0x%x, tx_fifo_sts:0x%x\n",
+		    dma_rx_irq, dma_tx_irq, rx_fifo_status, tx_fifo_status);
 	I2C_LOG_DBG(ipc, false, se->dev,
-	"se_dma_dbg:0x%x, m_cmd_ctrl:0x%x, dma_rxlen:0x%x, dma_rxlen_in:0x%x\n",
-	se_dma_dbg, m_cmd_ctrl, se_dma_rx_len, se_dma_rx_len_in);
+		    "se_dma_dbg:0x%x, m_cmd_ctrl:0x%x, dma_rxlen:0x%x, dma_rxlen_in:0x%x\n",
+		    se_dma_dbg, m_cmd_ctrl, se_dma_rx_len, se_dma_rx_len_in);
 	I2C_LOG_DBG(ipc, false, se->dev,
-	"dma_txlen:0x%x, dma_txlen_in:0x%x s_irq_status:0x%x\n",
-	se_dma_tx_len, se_dma_tx_len_in, s_irq_status);
+		    "dma_txlen:0x%x, dma_txlen_in:0x%x s_irq_status:0x%x\n",
+		    se_dma_tx_len, se_dma_tx_len_in, s_irq_status);
 	I2C_LOG_DBG(ipc, false, se->dev,
-	"dma_txirq_en:0x%x, dma_rxirq_en:0x%x geni_m_irq_en:0x%x geni_s_irq_en:0x%x\n",
-	geni_dma_tx_irq_en, geni_dma_rx_irq_en, geni_m_irq_en,
-	geni_s_irq_en);
+		    "dma_txirq_en:0x%x, dma_rxirq_en:0x%x geni_m_irq_en:0x%x geni_s_irq_en:0x%x\n",
+		    geni_dma_tx_irq_en, geni_dma_rx_irq_en, geni_m_irq_en, geni_s_irq_en);
+	I2C_LOG_DBG(ipc, false, se->dev,
+		    "geni_dma_tx_irq_en:0x%x, geni_dma_rx_irq_en:0x%x, geni_general_cfg:0x%x\n",
+		    geni_dma_tx_irq_en, geni_dma_rx_irq_en, geni_general_cfg);
+	I2C_LOG_DBG(ipc, false, se->dev,
+		    "geni_clk_ctrl_ro:0x%x, fifo_if_disable_ro:0x%x, geni_fw_multilock_msa_ro:0x%x\n",
+		    geni_clk_ctrl_ro, fifo_if_disable_ro, geni_fw_multilock_msa_ro);
+	I2C_LOG_DBG(ipc, false, se->dev,
+		    "m_irq_en:0x%x, se_dma_tx_attr:0x%x se_dma_tx_irq_stat:0x%x, geni_output_ctrl:0x%x\n",
+		     m_irq_en, se_dma_tx_attr, se_dma_tx_irq_stat, geni_output_ctrl);
+	I2C_LOG_DBG(ipc, false, se->dev,
+		    "se_dma_rx_attr:0x%x, se_dma_rx_irq_stat:0x%x se_gsi_event_en:0x%x se_irq_en:0x%x\n",
+		    se_dma_rx_attr, se_dma_rx_irq_stat, se_gsi_event_en, se_irq_en);
+	I2C_LOG_DBG(ipc, false, se->dev,
+		    "dma_if_en_ro:0x%x, dma_general_cfg:0x%x dma_debug_reg0:0x%x\n, geni_clk_sel:0x%x",
+		    dma_if_en_ro, dma_general_cfg, dma_debug_reg0, geni_clk_sel);
 }
 
 /*
@@ -1015,8 +1061,16 @@ irqret:
 static void gi2c_ev_cb(struct dma_chan *ch, struct msm_gpi_cb const *cb_str,
 		       void *ptr)
 {
-	struct geni_i2c_dev *gi2c = ptr;
-	u32 m_stat = cb_str->status;
+	struct geni_i2c_dev *gi2c;
+	u32 m_stat;
+
+	if (!ptr || !cb_str) {
+		pr_err("%s: Invalid ev_cb buffer\n", __func__);
+		return;
+	}
+
+	gi2c = (struct geni_i2c_dev *)ptr;
+	m_stat = cb_str->status;
 
 	switch (cb_str->cb_event) {
 	case MSM_GPI_QUP_ERROR:
@@ -2924,6 +2978,7 @@ static int geni_i2c_resume_early(struct device *device)
 {
 	struct geni_i2c_dev *gi2c = dev_get_drvdata(device);
 
+	geni_se_ssc_clk_enable(&gi2c->rsc, true);
 	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev, "%s ret=%d\n", __func__, true);
 
 	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
@@ -2939,6 +2994,8 @@ static int geni_i2c_hib_resume_noirq(struct device *device)
 
 	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev, "%s\n", __func__);
 	gi2c->se_mode = UNINITIALIZED;
+	geni_se_ssc_clk_enable(&gi2c->rsc, true);
+
 	return 0;
 }
 
@@ -3211,6 +3268,7 @@ static int geni_i2c_suspend_late(struct device *device)
 		pm_runtime_enable(device);
 	}
 
+	geni_se_ssc_clk_enable(&gi2c->rsc, false);
 	i2c_unlock_bus(&gi2c->adap, I2C_LOCK_SEGMENT);
 	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev, "%s ret=%d\n", __func__, ret);
 	geni_capture_stop_time(&gi2c->i2c_rsc, gi2c->ipc_log_kpi, __func__,

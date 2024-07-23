@@ -11,6 +11,7 @@
 #include <linux/cma.h>
 
 #include "hab_virtio.h" /* requires hab.h */
+#include "hab_trace_os.h"
 
 #define HAB_VIRTIO_DEVICE_ID_HAB	88
 #define HAB_VIRTIO_DEVICE_ID_BUFFERQ	89
@@ -52,7 +53,7 @@ enum pool_type_t {
 
 struct vh_buf_header {
 	char *buf; /* buffer starting address */
-	int size; /* total buffer size */
+	int size; /* the maximum payload size */
 	enum pool_type_t pool_type;
 	int index; /* debugging only */
 
@@ -61,10 +62,11 @@ struct vh_buf_header {
 	char padding[GUARD_BAND_SZ];
 };
 
+/* Such below *_BUF_SIZEs are the sizes used to store the payload */
 #define IN_BUF_SIZE         5120
 #define OUT_SMALL_BUF_SIZE  512
 #define OUT_MEDIUM_BUF_SIZE 5120
-#define OUT_LARGE_BUF_SIZE  51200
+#define OUT_LARGE_BUF_SIZE  (64 * 1024)
 
 #define IN_BUF_NUM         100 /*64*/
 #define OUT_SMALL_BUF_NUM  200 /*64*/
@@ -73,15 +75,19 @@ struct vh_buf_header {
 
 #define IN_BUF_POOL_SLOT    (GUARD_BAND_SZ + \
 			     sizeof(struct vh_buf_header) + \
+			     sizeof(struct hab_header) + \
 			     IN_BUF_SIZE)
 #define OUT_SMALL_BUF_SLOT  (GUARD_BAND_SZ + \
 			     sizeof(struct vh_buf_header) + \
+			     sizeof(struct hab_header) + \
 			     OUT_SMALL_BUF_SIZE)
 #define OUT_MEDIUM_BUF_SLOT (GUARD_BAND_SZ + \
 			     sizeof(struct vh_buf_header) + \
+			     sizeof(struct hab_header) + \
 			     OUT_MEDIUM_BUF_SIZE)
 #define OUT_LARGE_BUF_SLOT  (GUARD_BAND_SZ + \
 			     sizeof(struct vh_buf_header) + \
+			     sizeof(struct hab_header) + \
 			     OUT_LARGE_BUF_SIZE)
 
 #define IN_POOL_SIZE (IN_BUF_POOL_SLOT * IN_BUF_NUM)
@@ -128,6 +134,8 @@ static void virthab_recv_txq(struct virtqueue *vq)
 
 	if (!vpc)
 		return;
+
+	trace_hab_recv_txq_start(vpc->pchan);
 
 	spin_lock_irqsave(&vpc->lock[HAB_PCHAN_TX_VQ], flags);
 	if (vpc->pchan_ready) {
@@ -181,6 +189,9 @@ static void virthab_recv_txq(struct virtqueue *vq)
 		}
 	}
 	spin_unlock_irqrestore(&vpc->lock[HAB_PCHAN_TX_VQ], flags);
+
+	trace_hab_recv_txq_end(vpc->pchan);
+
 	wake_up(&vpc->out_wq);
 }
 
@@ -204,6 +215,8 @@ static void virthab_recv_rxq(unsigned long p)
 	if (vq != vpc->vq[HAB_PCHAN_RX_VQ])
 		pr_err("%s failed to match rxq %pK expecting %pK\n",
 			vq->name, vq, vpc->vq[HAB_PCHAN_RX_VQ]);
+
+	trace_hab_recv_rxq_start(vpc->pchan);
 
 	spin_lock(&vpc->lock[HAB_PCHAN_RX_VQ]);
 
@@ -236,6 +249,7 @@ static void virthab_recv_rxq(unsigned long p)
 		else {
 			/* parse and handle the input */
 			spin_unlock(&vpc->lock[HAB_PCHAN_RX_VQ]);
+			trace_hab_pchan_recv_start(pchan);
 			rc = hab_msg_recv(pchan, (struct hab_header *)inbuf);
 
 			spin_lock(&vpc->lock[HAB_PCHAN_RX_VQ]);
@@ -252,7 +266,7 @@ static void virthab_recv_rxq(unsigned long p)
 		}
 
 		/* return the inbuf to PVM after consuming */
-		sg_init_one(sg, hd->buf, IN_BUF_SIZE);
+		sg_init_one(sg, hd->buf, IN_BUF_SIZE + sizeof(struct hab_header));
 		if (vpc->pchan_ready) {
 			rc = virtqueue_add_inbuf(vq, sg, 1, hd, GFP_ATOMIC);
 			if (rc)
@@ -271,6 +285,8 @@ static void virthab_recv_rxq(unsigned long p)
 
 	}
 	spin_unlock(&vpc->lock[HAB_PCHAN_RX_VQ]);
+
+	trace_hab_recv_rxq_end(vpc->pchan);
 }
 
 static void virthab_recv_rxq_task(struct virtqueue *vq)
@@ -281,7 +297,7 @@ static void virthab_recv_rxq_task(struct virtqueue *vq)
 	if (!vpc)
 		return;
 
-	tasklet_schedule(&vpc->task);
+	tasklet_hi_schedule(&vpc->task);
 }
 
 static void init_pool_list(void *pool, int buf_size, int buf_num,
@@ -306,7 +322,7 @@ static void init_pool_list(void *pool, int buf_size, int buf_num,
 		hd->index = i;
 		hd->payload_size = 0;
 		list_add_tail(&hd->node, pool_head);
-		ptr = hd->buf + buf_size;
+		ptr = hd->buf + sizeof(struct hab_header) + buf_size;
 		(*cnt)++;
 	}
 }
@@ -378,7 +394,7 @@ int virthab_queue_inbufs(struct virtio_hab *vh, int alloc)
 
 		list_for_each_entry_safe(hd, hd_tmp, &vpc->in_list, node) {
 			list_del(&hd->node);
-			sg_init_one(sg, hd->buf, IN_BUF_SIZE);
+			sg_init_one(sg, hd->buf, IN_BUF_SIZE + sizeof(struct hab_header));
 			ret = virtqueue_add_inbuf(vpc->vq[HAB_PCHAN_RX_VQ], sg,
 							1, hd, GFP_ATOMIC);
 			if (ret) {
@@ -971,6 +987,8 @@ int physical_channel_send(struct physical_channel *pchan,
 		return -EINVAL;
 	}
 
+	trace_hab_pchan_send_start(pchan);
+
 	spin_lock_irqsave(&vpc->lock[HAB_PCHAN_TX_VQ], lock_flags);
 	if (vpc->pchan_ready) {
 		/* pick the available outbuf */
@@ -1021,6 +1039,7 @@ int physical_channel_send(struct physical_channel *pchan,
 		rc = virtqueue_add_outbuf(vpc->vq[HAB_PCHAN_TX_VQ], sgout, 1,
 							hd, GFP_ATOMIC);
 		if (!rc) {
+			trace_hab_pchan_send_done(pchan);
 			rc = virtqueue_kick(vpc->vq[HAB_PCHAN_TX_VQ]);
 			if (!rc)
 				pr_err("failed to kick outbuf to PVM %d\n", rc);

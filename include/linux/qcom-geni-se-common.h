@@ -56,9 +56,18 @@ if (print) { \
 #define I2C_CORE2X_VOTE	50000
 #define I3C_CORE2X_VOTE	50000
 #define APPS_PROC_TO_QUP_VOTE	140000
-/* SE_DMA_GENERAL_CFG */
-#define SE_DMA_DEBUG_REG0		(0xE40)
 
+/* COMMON SE REGISTERS */
+#define GENI_GENERAL_CFG		(0x10)
+#define GENI_CLK_CTRL_RO		(0x60)
+#define GENI_FW_MULTILOCK_MSA_RO	(0x74)
+
+/* SE_DMA_GENERAL_CFG */
+#define DMA_IF_EN_RO			(0xe20)
+#define SE_GSI_EVENT_EN			(0xe18)
+#define SE_IRQ_EN			(0xe1c)
+#define DMA_GENERAL_CFG			(0xe30)
+#define SE_DMA_DEBUG_REG0		(0xE40)
 #define SE_DMA_TX_PTR_L			(0xC30)
 #define SE_DMA_TX_PTR_H			(0xC34)
 #define SE_DMA_TX_ATTR			(0xC38)
@@ -208,6 +217,12 @@ struct kpi_time {
 #if IS_ENABLED(CONFIG_QCOM_GENI_SE_SSC)
 
 struct geni_se_ssc_device *get_se_ssc_dev(void);
+void geni_se_ssc_clk_enable(struct geni_se_rsc *rsc, bool enable);
+
+#else
+
+static inline void geni_se_ssc_clk_enable(struct geni_se_rsc *rsc, bool enable)
+{ }
 
 #endif
 

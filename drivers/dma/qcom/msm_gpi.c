@@ -126,7 +126,7 @@ enum EV_PRIORITY {
 #define GPII_VERB(gpii, ch, fmt, ...)
 #endif
 
-#define IPC_LOG_PAGES (2)
+#define IPC_LOG_PAGES (4)
 #define GPI_LABEL_SIZE (256)
 #define GPI_DBG_COMMON (99)
 #define MAX_CHANNELS_PER_GPII (2)
@@ -298,20 +298,6 @@ static const char *const gpi_cmd_str[GPI_MAX_CMD] = {
 
 #define TO_GPI_CMD_STR(cmd) ((cmd >= GPI_MAX_CMD) ? "INVALID" : \
 			     gpi_cmd_str[cmd])
-
-static const char *const gpi_cb_event_str[MSM_GPI_QUP_MAX_EVENT] = {
-	[MSM_GPI_QUP_NOTIFY] = "NOTIFY",
-	[MSM_GPI_QUP_ERROR] = "GLOBAL ERROR",
-	[MSM_GPI_QUP_CH_ERROR] = "CHAN ERROR",
-	[MSM_GPI_QUP_FW_ERROR] = "UNHANDLED ERROR",
-	[MSM_GPI_QUP_PENDING_EVENT] = "PENDING EVENT",
-	[MSM_GPI_QUP_EOT_DESC_MISMATCH] = "EOT/DESC MISMATCH",
-	[MSM_GPI_QUP_SW_ERROR] = "SW ERROR",
-	[MSM_GPI_QUP_CR_HEADER] = "Doorbell CR EVENT"
-};
-
-#define TO_GPI_CB_EVENT_STR(event) ((event >= MSM_GPI_QUP_MAX_EVENT) ? \
-				    "INVALID" : gpi_cb_event_str[event])
 
 enum se_protocol {
 	SE_PROTOCOL_SPI = 1,
@@ -486,6 +472,7 @@ struct gpi_dev {
 	u32 klog_lvl;
 	struct dentry *dentry;
 	bool is_le_vm;
+	struct mutex qup_se_lock; /* qup SE instance lock */
 };
 
 static struct gpi_dev *gpi_dev_dbg[5];
@@ -529,10 +516,39 @@ static const struct reg_info gpi_debug_ch_cntxt[] = {
 
 static const struct reg_info gpi_debug_regs[] = {
 	{ "DEBUG_PC", GPI_DEBUG_PC_FOR_DEBUG },
+	{ "DEBUG_BUSY", GPI_DEBUG_BUSY_REG },
+	{ "SW_RF_0", GPI_DEBUG_SW_RF_n_READ(0) },
+	{ "SW_RF_1", GPI_DEBUG_SW_RF_n_READ(1) },
+	{ "SW_RF_2", GPI_DEBUG_SW_RF_n_READ(2) },
+	{ "SW_RF_3", GPI_DEBUG_SW_RF_n_READ(3) },
+	{ "SW_RF_4", GPI_DEBUG_SW_RF_n_READ(4) },
+	{ "SW_RF_5", GPI_DEBUG_SW_RF_n_READ(5) },
+	{ "SW_RF_6", GPI_DEBUG_SW_RF_n_READ(6) },
+	{ "SW_RF_7", GPI_DEBUG_SW_RF_n_READ(7) },
+	{ "SW_RF_8", GPI_DEBUG_SW_RF_n_READ(8) },
+	{ "SW_RF_9", GPI_DEBUG_SW_RF_n_READ(9) },
 	{ "SW_RF_10", GPI_DEBUG_SW_RF_n_READ(10) },
 	{ "SW_RF_11", GPI_DEBUG_SW_RF_n_READ(11) },
 	{ "SW_RF_12", GPI_DEBUG_SW_RF_n_READ(12) },
+	{ "SW_RF_13", GPI_DEBUG_SW_RF_n_READ(13) },
+	{ "SW_RF_14", GPI_DEBUG_SW_RF_n_READ(14) },
+	{ "SW_RF_15", GPI_DEBUG_SW_RF_n_READ(15) },
+	{ "SW_RF_16", GPI_DEBUG_SW_RF_n_READ(16) },
+	{ "SW_RF_17", GPI_DEBUG_SW_RF_n_READ(17) },
+	{ "SW_RF_18", GPI_DEBUG_SW_RF_n_READ(18) },
+	{ "SW_RF_19", GPI_DEBUG_SW_RF_n_READ(19) },
+	{ "SW_RF_20", GPI_DEBUG_SW_RF_n_READ(20) },
 	{ "SW_RF_21", GPI_DEBUG_SW_RF_n_READ(21) },
+	{ "SW_RF_22", GPI_DEBUG_SW_RF_n_READ(22) },
+	{ "SW_RF_23", GPI_DEBUG_SW_RF_n_READ(23) },
+	{ "SW_RF_24", GPI_DEBUG_SW_RF_n_READ(24) },
+	{ "SW_RF_25", GPI_DEBUG_SW_RF_n_READ(25) },
+	{ "SW_RF_26", GPI_DEBUG_SW_RF_n_READ(26) },
+	{ "SW_RF_27", GPI_DEBUG_SW_RF_n_READ(27) },
+	{ "SW_RF_28", GPI_DEBUG_SW_RF_n_READ(28) },
+	{ "SW_RF_29", GPI_DEBUG_SW_RF_n_READ(29) },
+	{ "SW_RF_30", GPI_DEBUG_SW_RF_n_READ(30) },
+	{ "SW_RF_31", GPI_DEBUG_SW_RF_n_READ(31) },
 	{ NULL },
 };
 
@@ -812,6 +828,14 @@ static void gpi_dump_cntxt_regs(struct gpii *gpii)
 		GPII_ERR(gpii, GPI_DBG_COMMON, "GPI_GPII_%d_CH_%d_RE_FETCH_READ_PTRg_val:0x%x\n",
 			 gpii->gpii_id, chan, reg_val);
 	}
+
+	for (chan = 0; chan < MAX_CHANNELS_PER_GPII; chan++) {
+		offset = GPI_GPII_MAP_EE_n_CH_k_VP_TABLE(gpii->gpii_id,
+							 gpii->gpii_chan[chan].chid);
+		reg_val = readl_relaxed(gpii->regs + offset);
+		GPII_ERR(gpii, GPI_DBG_COMMON, "GPI_GPII_%d_CH_%d_VP_TABLE_val:0x%x\n",
+			 gpii->gpii_id, chan, reg_val);
+	}
 }
 
 static void gpi_dump_debug_reg(struct gpii *gpii)
@@ -838,6 +862,12 @@ static void gpi_dump_debug_reg(struct gpii *gpii)
 		{ "IEOB_IRQ_MSK", GPI_GPII_n_CNTXT_SRC_IEOB_IRQ_MSK_OFFS
 					(gpii->gpii_id) },
 		{ "GLOB_IRQ", GPI_GPII_n_CNTXT_GLOB_IRQ_STTS_OFFS
+					(gpii->gpii_id) },
+		{ "GLOB_IRQ_EN", GPI_GPII_n_CNTXT_GLOB_IRQ_EN_OFFS
+					(gpii->gpii_id) },
+		{ "GPII_IRQ_STTS", GPI_GPII_n_CNTXT_GPII_IRQ_STTS_OFFS
+					(gpii->gpii_id) },
+		{ "GPII_IRQ_EN", GPI_GPII_n_CNTXT_GPII_IRQ_EN_OFFS
 					(gpii->gpii_id) },
 		{ NULL },
 	};
@@ -1910,7 +1940,7 @@ static void gpi_process_ch_ctrl_irq(struct gpii *gpii)
 		/* notifying clients if in error state */
 		if (gpii_chan->ch_state == CH_STATE_ERROR)
 			gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_CH_ERROR,
-					      __LINE__);
+					      ch_irq);
 	}
 }
 
@@ -3876,6 +3906,7 @@ static struct dma_chan *gpi_of_dma_xlate(struct of_phandle_args *args,
 	u32 seid, chid;
 	int gpii, static_gpii_no;
 	struct gpii_chan *gpii_chan;
+	struct dma_chan *dma_chan;
 
 	if (args->args_count < REQ_OF_DMA_ARGS) {
 		GPI_ERR(gpi_dev,
@@ -3890,6 +3921,7 @@ static struct dma_chan *gpi_of_dma_xlate(struct of_phandle_args *args,
 		return NULL;
 	}
 
+	mutex_lock(&gpi_dev->qup_se_lock);
 	seid = args->args[1];
 	static_gpii_no = (args->args[4] & STATIC_GPII_BMSK) >> STATIC_GPII_SHFT;
 
@@ -3900,6 +3932,7 @@ static struct dma_chan *gpi_of_dma_xlate(struct of_phandle_args *args,
 
 	if (gpii < 0) {
 		GPI_ERR(gpi_dev, "no available gpii instances\n");
+		mutex_unlock(&gpi_dev->qup_se_lock);
 		return NULL;
 	}
 
@@ -3907,6 +3940,7 @@ static struct dma_chan *gpi_of_dma_xlate(struct of_phandle_args *args,
 	if (gpii_chan->vc.chan.client_count) {
 		GPI_ERR(gpi_dev, "gpii:%d chid:%d seid:%d already configured\n",
 			gpii, chid, gpii_chan->seid);
+		mutex_unlock(&gpi_dev->qup_se_lock);
 		return NULL;
 	}
 
@@ -3922,8 +3956,9 @@ static struct dma_chan *gpi_of_dma_xlate(struct of_phandle_args *args,
 		"client req gpii:%u chid:%u #_tre:%u prio:%u proto:%u SE:%d init_config:%d\n",
 		gpii, chid, gpii_chan->req_tres, gpii_chan->priority,
 		gpii_chan->protocol, gpii_chan->seid, gpii_chan->init_config);
-
-	return dma_get_slave_channel(&gpii_chan->vc.chan);
+	dma_chan = dma_get_slave_channel(&gpii_chan->vc.chan);
+	mutex_unlock(&gpi_dev->qup_se_lock);
+	return dma_chan;
 }
 
 /* gpi_setup_debug - setup debug capabilities */
@@ -4059,6 +4094,7 @@ static int gpi_probe(struct platform_device *pdev)
 	if (!gpi_dev->gpiis)
 		return -ENOMEM;
 
+	mutex_init(&gpi_dev->qup_se_lock);
 	gpi_dev->is_le_vm = of_property_read_bool(pdev->dev.of_node, "qcom,le-vm");
 	if (gpi_dev->is_le_vm)
 		GPI_LOG(gpi_dev, "LE-VM usecase\n");
