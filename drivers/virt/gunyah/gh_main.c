@@ -186,7 +186,11 @@ static int gh_exit_vm(struct gh_vm *vm, u32 stop_reason, u8 stop_flags)
 		return -ENODEV;
 
 	mutex_lock(&vm->vm_lock);
-	if (vm->status.vm_status != GH_RM_VM_STATUS_RUNNING) {
+	if (vm->status.vm_status == GH_RM_VM_STATUS_EXITED) {
+		pr_info("VM:%d already exited\n", vmid);
+		mutex_unlock(&vm->vm_lock);
+		return 0;
+	} else if (vm->status.vm_status != GH_RM_VM_STATUS_RUNNING) {
 		pr_err("VM:%d is not running\n", vmid);
 		mutex_unlock(&vm->vm_lock);
 		return -ENODEV;
@@ -240,14 +244,16 @@ void gh_destroy_vcpu(struct gh_vcpu *vcpu)
 	vm->created_vcpus--;
 }
 
-void gh_destroy_vm(struct gh_vm *vm)
+int gh_destroy_vm(struct gh_vm *vm)
 {
-	int vcpu_id = 0;
+	int vcpu_id = 0, ret;
 
 	if (vm->status.vm_status == GH_RM_VM_STATUS_NO_STATE)
 		goto clean_vm;
 
-	gh_stop_vm(vm);
+	ret = gh_stop_vm(vm);
+	if (ret)
+		return ret;
 
 	while (vm->created_vcpus && vcpu_id < GH_MAX_VCPUS) {
 		if (!vm->vcpus[vcpu_id])
@@ -267,6 +273,7 @@ clean_vm:
 	gh_rm_unregister_notifier(&vm->rm_nb);
 	mutex_destroy(&vm->vm_lock);
 	kfree(vm);
+	return 0;
 }
 
 static void gh_get_vm(struct gh_vm *vm)
@@ -274,10 +281,18 @@ static void gh_get_vm(struct gh_vm *vm)
 	refcount_inc(&vm->users_count);
 }
 
-static void gh_put_vm(struct gh_vm *vm)
+static int gh_put_vm(struct gh_vm *vm)
 {
-	if (refcount_dec_and_test(&vm->users_count))
-		gh_destroy_vm(vm);
+	int ret = 0;
+
+	if (refcount_dec_and_test(&vm->users_count)) {
+		ret = gh_destroy_vm(vm);
+		if (ret)
+			pr_err("Failed to destroy VM:%d ret %d\n", vm->vmid,
+			       ret);
+	}
+
+	return ret;
 }
 
 static int gh_vcpu_release(struct inode *inode, struct file *filp)
@@ -290,7 +305,7 @@ static int gh_vcpu_release(struct inode *inode, struct file *filp)
 		gh_vcpu_create_wq(vcpu->vm->vmid, vcpu->vcpu_id);
 
 	if (vcpu->vm->rebootable || !vcpu->vm->keep_running)
-		gh_put_vm(vcpu->vm);
+		return gh_put_vm(vcpu->vm);
 
 	return 0;
 }
@@ -696,7 +711,7 @@ static int gh_vm_release(struct inode *inode, struct file *filp)
 	struct gh_vm *vm = filp->private_data;
 
 	if (vm->rebootable || !vm->keep_running)
-		gh_put_vm(vm);
+		return gh_put_vm(vm);
 
 	return 0;
 }

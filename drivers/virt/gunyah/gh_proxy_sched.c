@@ -381,6 +381,10 @@ static int gh_unpopulate_vm_vcpu_info(gh_vmid_t vmid, gh_label_t cpu_idx,
 	mutex_lock(&gh_vm_mutex);
 	vm = gh_get_vm(vmid);
 	if (vm && vm->is_vcpu_info_populated) {
+		if (vm->vcpu_wq) {
+			destroy_workqueue(vm->vcpu_wq);
+			vm->vcpu_wq = NULL;
+		}
 		vcpu = gh_get_vcpu(vm, cap_id);
 		if (vcpu) {
 			*irq = vcpu->virq;
