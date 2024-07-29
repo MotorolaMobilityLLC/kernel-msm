@@ -40076,12 +40076,12 @@ member {
   type_id: 0x048fc360
 }
 member {
-  id: 0x230f36dc
-  type_id: 0x0312ab60
+  id: 0x22fde5dd
+  type_id: 0x04d9e766
 }
 member {
-  id: 0x23531e28
-  type_id: 0x026208b2
+  id: 0x230f36dc
+  type_id: 0x0312ab60
 }
 member {
   id: 0x2380a48f
@@ -40317,6 +40317,10 @@ member {
   type_id: 0x2548e662
 }
 member {
+  id: 0x2aac4c8c
+  type_id: 0x259f4220
+}
+member {
   id: 0x2ad966ef
   type_id: 0x244bebad
 }
@@ -40340,6 +40344,10 @@ member {
 member {
   id: 0x2bc5541a
   type_id: 0x203b2079
+}
+member {
+  id: 0x2bdfee76
+  type_id: 0x2051c9c9
 }
 member {
   id: 0x2befc6c5
@@ -40998,8 +41006,8 @@ member {
   offset: 96
 }
 member {
-  id: 0x34aaae1a
-  type_id: 0x5d84d1ff
+  id: 0x34aab4f5
+  type_id: 0x5d84ba41
   offset: 24
 }
 member {
@@ -41020,6 +41028,11 @@ member {
   id: 0x34dc7c7e
   type_id: 0x5c5fa7e4
   offset: 96
+}
+member {
+  id: 0x34dd58d6
+  type_id: 0x5c5b3484
+  offset: 2240
 }
 member {
   id: 0x34e08151
@@ -49349,6 +49362,11 @@ member {
   name: "android_kabi_reserved4"
   type_id: 0x92233392
   offset: 8320
+}
+member {
+  id: 0xe0f6344b
+  name: "android_kabi_reserved4"
+  type_id: 0x92233392
 }
 member {
   id: 0xe0f634cc
@@ -147578,6 +147596,12 @@ member {
   type_id: 0x23cbe491
 }
 member {
+  id: 0x16657abd
+  name: "padding4"
+  type_id: 0x44377683
+  offset: 8
+}
+member {
   id: 0xbedde9a2
   name: "padding_pkt"
   type_id: 0x3e10b518
@@ -155747,6 +155771,13 @@ member {
   offset: 64
 }
 member {
+  id: 0x52bd4ccc
+  name: "preferpd"
+  type_id: 0xb3e7bac9
+  offset: 4
+  bitsize: 1
+}
+member {
   id: 0x9f05839d
   name: "preferred_bpp"
   type_id: 0x6720d32f
@@ -161229,6 +161260,11 @@ member {
   name: "ra_defrtr_metric"
   type_id: 0xe62ebf07
   offset: 672
+}
+member {
+  id: 0xf7da7e97
+  name: "ra_honor_pio_pflag"
+  type_id: 0xb3e7bac9
 }
 member {
   id: 0x66aa8ae5
@@ -168191,10 +168227,10 @@ member {
   offset: 1024
 }
 member {
-  id: 0x688b9626
+  id: 0x72849e28
   name: "reserved"
   type_id: 0xb3e7bac9
-  bitsize: 6
+  bitsize: 4
 }
 member {
   id: 0x8a62eaf9
@@ -171355,6 +171391,13 @@ member {
   name: "router_alert"
   type_id: 0x5d8155a5
   offset: 104
+}
+member {
+  id: 0xad209f54
+  name: "routeraddr"
+  type_id: 0xb3e7bac9
+  offset: 5
+  bitsize: 1
 }
 member {
   id: 0x1061afd7
@@ -213693,16 +213736,6 @@ struct_union {
   }
 }
 struct_union {
-  id: 0x026208b2
-  kind: STRUCT
-  definition {
-    bytesize: 1
-    member_id: 0x688b9626
-    member_id: 0xb2dd5b41
-    member_id: 0x7adb5caf
-  }
-}
-struct_union {
   id: 0x02c70092
   kind: STRUCT
   definition {
@@ -213794,6 +213827,18 @@ struct_union {
   definition {
     bytesize: 4
     member_id: 0x72d76384
+  }
+}
+struct_union {
+  id: 0x04d9e766
+  kind: STRUCT
+  definition {
+    bytesize: 1
+    member_id: 0x72849e28
+    member_id: 0x52bd4ccc
+    member_id: 0xad209f54
+    member_id: 0xb2dd5b41
+    member_id: 0x7adb5caf
   }
 }
 struct_union {
@@ -215853,6 +215898,14 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x2051c9c9
+  kind: STRUCT
+  definition {
+    bytesize: 8
+    member_id: 0xe0f6344b
+  }
+}
+struct_union {
   id: 0x20914098
   kind: STRUCT
   definition {
@@ -216043,6 +216096,15 @@ struct_union {
     bytesize: 16
     member_id: 0xf4931918
     member_id: 0x0193fe4b
+  }
+}
+struct_union {
+  id: 0x259f4220
+  kind: STRUCT
+  definition {
+    bytesize: 8
+    member_id: 0xf7da7e97
+    member_id: 0x16657abd
   }
 }
 struct_union {
@@ -218806,6 +218868,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x5c5b3484
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0x2aac4c8c
+    member_id: 0x2bdfee76
+    member_id: 0x36752b74
+  }
+}
+struct_union {
   id: 0x5c5fa7e4
   kind: UNION
   definition {
@@ -218925,12 +218997,12 @@ struct_union {
   }
 }
 struct_union {
-  id: 0x5d84d1ff
+  id: 0x5d84ba41
   kind: UNION
   definition {
     bytesize: 1
     member_id: 0x2ddb63e4
-    member_id: 0x23531e28
+    member_id: 0x22fde5dd
   }
 }
 struct_union {
@@ -242996,7 +243068,7 @@ struct_union {
     member_id: 0x3494a41f
     member_id: 0x637607e0
     member_id: 0xac894cc9
-    member_id: 0xe0f63db8
+    member_id: 0x34dd58d6
   }
 }
 struct_union {
@@ -254205,7 +254277,7 @@ struct_union {
     member_id: 0x5ce532c4
     member_id: 0xb5de8e04
     member_id: 0x2165da89
-    member_id: 0x34aaae1a
+    member_id: 0x34aab4f5
     member_id: 0xe91a1d71
     member_id: 0xbada6e7d
     member_id: 0x08cabd3c
