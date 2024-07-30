@@ -4046,7 +4046,7 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 			 * reusing the same entry. It's undetectable as
 			 * pte_same() returns true due to entry reuse.
 			 */
-			if (swapcache_prepare(entry)) {
+			if (swapcache_prepare(entry, 1)) {
 				/* Relax a bit to prevent rapid repeated page faults */
 				schedule_timeout_uninterruptible(1);
 				goto out;
@@ -4354,7 +4354,7 @@ unlock:
 out:
 	/* Clear the swap cache pin for direct swapin after PTL unlock */
 	if (need_clear_cache)
-		swapcache_clear(si, entry);
+		swapcache_clear(si, entry, 1);
 	if (si)
 		put_swap_device(si);
 	return ret;
@@ -4370,7 +4370,7 @@ out_release:
 		folio_put(swapcache);
 	}
 	if (need_clear_cache)
-		swapcache_clear(si, entry);
+		swapcache_clear(si, entry, 1);
 	if (si)
 		put_swap_device(si);
 	return ret;
