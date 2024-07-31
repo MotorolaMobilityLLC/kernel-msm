@@ -1604,6 +1604,7 @@ static int battery_psy_get_prop(struct power_supply *psy,
 						prop, pval);
 			break;
 		}
+		break;
 	default:
 		pval->intval = pst->prop[prop_id];
 		break;
@@ -1994,7 +1995,7 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 	}
 
 	if (fw->size < bcdev->wls_fw_size_min) {
-		pr_err("Invalid firmware size (%zu < %zu)\n", fw->size, bcdev->wls_fw_size_min);
+		pr_err("Invalid firmware size (%zu < %d)\n", fw->size, bcdev->wls_fw_size_min);
 		rc = -EINVAL;
 		goto release_fw;
 	}
@@ -2622,9 +2623,6 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 		bcdev->tbatt_filter_offset_degree = 50;
 	}
 
-	bcdev->wls_not_supported = of_property_read_bool(node,
-			"qcom,wireless-charging-not-supported");
-
 	of_property_read_string(node, "qcom,wireless-fw-name",
 				&bcdev->wls_fw_name);
 
@@ -2639,7 +2637,7 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 				&bcdev->wls_fw_size_min);
 	if (rc < 0) {
 		bcdev->wls_fw_size_min = SZ_16K;
-		pr_info("fw size min do not defined, use 16k as default (%d)\n",
+		pr_info("%s fw size min do not defined, use 16k as default (%d)\n",
 			__func__, bcdev->wls_fw_size_min);
 	}
 
