@@ -5962,6 +5962,53 @@ static int haptics_start_auto_brake_calibration(struct haptics_chip *chip)
 	return haptics_auto_brake_pbs_trigger(chip);
 }
 
+static int haptics_start_play(struct haptics_chip *chip, bool enable)
+{
+	int rc;
+	u8 amplitude;
+	u32 vmax_mv = chip->config.vmax_mv;
+
+	mutex_lock(&chip->play.lock);
+	if (enable) {
+		/* Stop other mode playing if there is any */
+		rc = haptics_enable_play(chip, false);
+		if (rc < 0) {
+			dev_err(chip->dev, "Stop playing failed, rc=%d\n", rc);
+			goto unlock;
+		}
+
+		rc = haptics_set_vmax_mv(chip, vmax_mv);
+		if (rc < 0)
+			goto unlock;
+
+		amplitude = get_direct_play_max_amplitude(chip);
+		rc = haptics_set_direct_play(chip, amplitude);
+		if (rc < 0)
+			goto unlock;
+
+		rc = haptics_enable_hpwr_vreg(chip, true);
+		if (rc < 0)
+			goto unlock;
+
+		chip->play.pattern_src = DIRECT_PLAY;
+		rc = haptics_enable_play(chip, true);
+		if (rc < 0)
+			goto unlock;
+
+		mutex_unlock(&chip->play.lock);
+		return rc;
+	}
+
+unlock:
+	/* Disable play in case it's not been disabled */
+	haptics_enable_play(chip, false);
+	rc = haptics_enable_hpwr_vreg(chip, false);
+
+	mutex_unlock(&chip->play.lock);
+
+	return rc;
+}
+
 static int haptics_start_lra_calibrate(struct haptics_chip *chip)
 {
 	int rc;
@@ -6167,12 +6214,38 @@ static ssize_t i_gain_error_show(const struct class *c,
 }
 static const CLASS_ATTR_RO(i_gain_error);
 
+static ssize_t enable_play_store(const struct class *c,
+		const struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int val;
+	int rc;
+
+	if (kstrtoint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val) {
+		rc = haptics_start_play(chip, true);
+		if (rc < 0)
+			return rc;
+	} else {
+		rc = haptics_start_play(chip, false);
+		if (rc < 0)
+			return rc;
+	}
+
+	return count;
+}
+static CLASS_ATTR_WO(enable_play);
+
 static struct attribute *hap_class_attrs[] = {
 	&class_attr_lra_calibration.attr,
 	&class_attr_lra_frequency_hz.attr,
 	&class_attr_lra_impedance.attr,
 	&class_attr_primitive_duration.attr,
 	&class_attr_visense_enabled.attr,
+	&class_attr_enable_play.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(hap_class);
