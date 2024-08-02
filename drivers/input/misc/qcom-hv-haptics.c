@@ -2720,6 +2720,7 @@ static int haptics_load_predefined_effect(struct haptics_chip *chip,
 			usleep_range(100, 101);
 		}
 
+		play->effect->fifo->num_s = roundup(play->effect->fifo->num_s, chip->mmap.hw_info.pat_mem_step);
 		rc = haptics_set_fifo(chip, play->effect->fifo);
 		if (rc < 0)
 			return rc;
@@ -3579,7 +3580,7 @@ static int haptics_mmap_config(struct haptics_chip *chip)
 	left = chip->mmap.fifo_mmap.length % chip->mmap.hw_info.fifo_mem_step;
 	if (left) {
 		chip->mmap.fifo_mmap.length -= left;
-		chip->mmap.pat_sel_mmap[0].length += left;
+		//chip->mmap.pat_sel_mmap[0].length += left;
 		chip->mmap.pat_sel_mmap[0].start_addr = chip->mmap.fifo_mmap.length;
 		dev_dbg(chip->dev, "PAT_MEM partition 0 is updated: start_addr %#x, length %#x\n",
 				chip->mmap.pat_sel_mmap[0].start_addr,
@@ -4375,6 +4376,7 @@ static int haptics_parse_effect_fifo_data(struct haptics_chip *chip,
 		return rc;
 	}
 
+	effect->t_lra_us = config->t_lra_us;
 	effect->fifo->num_s = tmp;
 	effect->fifo->period_per_s = T_LRA;
 	rc = of_property_read_u32(node, "qcom,wf-fifo-period", &tmp);
