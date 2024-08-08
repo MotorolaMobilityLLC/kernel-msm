@@ -528,7 +528,7 @@ static const struct sys_reg_desc_reset pvm_sys_reg_reset_vals[] = {
 	RESET_VAL(CPACR_EL1, 0),
 	RESET_VAL(ZCR_EL1, 0),
 	RESET_VAL(TCR_EL1, 0),
-	RESET_VAL(VBAR_EL1, 0),
+	RESET_VAL(VBAR_EL1, 0x1de7ec7edbadc000ULL),
 	RESET_VAL(CONTEXTIDR_EL1, 0),
 	RESET_FUNC(AMAIR_EL1, reset_amair_el1),
 	RESET_VAL(CNTKCTL_EL1, 0),
