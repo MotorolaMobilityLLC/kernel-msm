@@ -6107,7 +6107,7 @@ static void msm_pcie_disable_dbi_mirroring(struct msm_pcie_dev_t *dev)
 {
 	struct resource *dbi_res = dev->res[MSM_PCIE_RES_DM_CORE].resource;
 	struct resource *atu_res = dev->res[MSM_PCIE_RES_IATU].resource;
-	u64 slv_addr_space_size = U64_MAX;
+	u32 slv_addr_space_size = 0x80000000;
 
 	/* Configure DBI base address */
 	msm_pcie_write_reg(dev->parf, PCIE20_PARF_DBI_BASE_ADDR,
@@ -6124,14 +6124,14 @@ static void msm_pcie_disable_dbi_mirroring(struct msm_pcie_dev_t *dev)
 				PCIE_UPPER_ADDR(atu_res->start));
 
 	/*
-	 * Configure to maximum possible 64 bit value so that the DBI/ATU/BAR
-	 * memory dosen't get mirrored to the higher addresses
+	 * Program PCIE20_PARF_SLV_ADDR_SPACE_SIZE by setting the highest
+	 * bit (only powers of 2 are valid) so that the DBI/ATU/BAR memory
+	 * doesn't get mirrored to the higher addresses
 	 */
-	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE,
-				PCIE_LOWER_ADDR(slv_addr_space_size));
+	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE, 0x0);
 
 	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE_HI,
-				PCIE_UPPER_ADDR(slv_addr_space_size));
+							slv_addr_space_size);
 }
 
 static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
