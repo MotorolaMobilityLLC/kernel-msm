@@ -32,4 +32,14 @@ config PCS_ALTERA_TSE
 	  This module provides helper functions for the Altera Triple Speed
 	  Ethernet SGMII PCS, that can be found on the Intel Socfpga family.
 
+config PCS_QCOM
+	tristate "Qualcomm Technologies, Inc. XPCS controller"
+	select PHYLINK
+	help
+	  PCS_QCOM provides the Qualcomm Technologies, Inc. XPCS driver
+	  for XGMAC. It uses SerDes for SGMII, and is compatible with both
+	  SGMII and USXGMII PHY interfaces. It supports SGMII-plus as well,
+	  for 2.5Gbps Full Duplex mode. It's role is to support Clause 37
+	  Autonegotiation and EEE for STMMAC Ethernet controllers.
+
 endmenu
