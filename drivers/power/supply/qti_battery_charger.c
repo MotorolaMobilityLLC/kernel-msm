@@ -1635,6 +1635,12 @@ static int battery_psy_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP:
 		pval->intval = DIV_ROUND_CLOSEST((int)pst->prop[prop_id], 10);
 		break;
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		pval->intval = bcdev->curr_thermal_level;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
+		pval->intval = bcdev->num_thermal_levels;
+		break;
 	default:
 		pval->intval = pst->prop[prop_id];
 		break;
