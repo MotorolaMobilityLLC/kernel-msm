@@ -1125,6 +1125,9 @@ static int dm_bow_map(struct dm_target *ti, struct bio *bio)
 	if (bio_data_dir(bio) == READ && bio->bi_iter.bi_sector != 0)
 		return remap_unless_illegal_trim(bc, bio);
 
+	if (bio->bi_iter.bi_size == 0)
+		return remap_unless_illegal_trim(bc, bio);
+
 	if (atomic_read(&bc->state) != COMMITTED) {
 		enum state state;
 
