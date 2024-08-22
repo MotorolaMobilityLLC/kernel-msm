@@ -586,10 +586,11 @@ static struct attribute *bow_attrs[] = {
 	&attr_free.attr,
 	NULL
 };
+ATTRIBUTE_GROUPS(bow);
 
 static struct kobj_type bow_ktype = {
 	.sysfs_ops = &kobj_sysfs_ops,
-	.default_attrs = bow_attrs,
+	.default_groups = bow_groups,
 	.release = dm_kobject_release
 };
 
@@ -709,7 +710,6 @@ static int dm_bow_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 
 	ti->num_flush_bios = 1;
 	ti->num_discard_bios = 1;
-	ti->num_write_same_bios = 1;
 	ti->private = bc;
 
 	ret = dm_get_device(ti, argv[0], dm_table_get_mode(ti->table),
@@ -746,7 +746,7 @@ static int dm_bow_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	mutex_init(&bc->ranges_lock);
 	bc->ranges = RB_ROOT;
 	bc->bufio = dm_bufio_client_create(bc->dev->bdev, bc->block_size, 1, 0,
-					   NULL, NULL);
+					   NULL, NULL, 0);
 	if (IS_ERR(bc->bufio)) {
 		ti->error = "Cannot initialize dm-bufio";
 		ret = PTR_ERR(bc->bufio);
@@ -1256,7 +1256,7 @@ int dm_bow_prepare_ioctl(struct dm_target *ti, struct block_device **bdev)
 
 	*bdev = dev->bdev;
 	/* Only pass ioctls through if the device sizes match exactly. */
-	return ti->len != i_size_read(dev->bdev->bd_inode) >> SECTOR_SHIFT;
+	return ti->len != bdev_nr_sectors(dev->bdev);
 }
 
 static int dm_bow_iterate_devices(struct dm_target *ti,
