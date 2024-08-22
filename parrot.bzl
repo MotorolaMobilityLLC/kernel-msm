@@ -152,7 +152,6 @@ def define_parrot():
         "drivers/soc/qcom/gic_intr_routing.ko",
         "drivers/soc/qcom/hung_task_enh.ko",
         "drivers/soc/qcom/mdt_loader.ko",
-        "drivers/soc/qcom/mem-offline.ko",
         "drivers/soc/qcom/mem_buf/mem_buf.ko",
         "drivers/soc/qcom/mem_buf/mem_buf_dev.ko",
         "drivers/soc/qcom/mem_buf/mem_buf_msgq.ko",
