@@ -99,6 +99,7 @@ def define_seraph():
         "drivers/rtc/rtc-pm8xxx.ko",
         "drivers/slimbus/slim-qcom-ngd-ctrl.ko",
         "drivers/slimbus/slimbus.ko",
+        "drivers/soc/qcom/boot_stats.ko",
         "drivers/soc/qcom/cmd-db.ko",
         "drivers/soc/qcom/core_hang_detect.ko",
         "drivers/soc/qcom/crypto-qti.ko",
