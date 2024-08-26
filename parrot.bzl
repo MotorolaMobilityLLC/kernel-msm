@@ -258,6 +258,7 @@ def define_parrot():
         "drivers/hwtracing/coresight/coresight-etm4x.ko",
         "drivers/misc/lkdtm/lkdtm.ko",
         "kernel/locking/locktorture.ko",
+        "kernel/power/user_sysfs_private.ko",
         "kernel/rcu/rcutorture.ko",
         "kernel/sched/walt/sched-walt-debug.ko",
         "kernel/torture.ko",
