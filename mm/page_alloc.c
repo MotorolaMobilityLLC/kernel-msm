@@ -603,7 +603,10 @@ static inline unsigned int order_to_pindex(int migratetype, int order)
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	if (order > PAGE_ALLOC_COSTLY_ORDER) {
-		VM_BUG_ON(order != pageblock_order);
+		unsigned int expected_order = pageblock_order;
+
+		trace_android_vh_customize_thp_pcp_order(&expected_order);
+		VM_BUG_ON(order != expected_order);
 		return NR_LOWORDER_PCP_LISTS;
 	}
 #else
@@ -618,8 +621,10 @@ static inline int pindex_to_order(unsigned int pindex)
 	int order = pindex / MIGRATE_PCPTYPES;
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-	if (pindex == NR_LOWORDER_PCP_LISTS)
+	if (pindex == NR_LOWORDER_PCP_LISTS) {
 		order = pageblock_order;
+		trace_android_vh_customize_thp_pcp_order(&order);
+	}
 #else
 	VM_BUG_ON(order > PAGE_ALLOC_COSTLY_ORDER);
 #endif
@@ -629,10 +634,14 @@ static inline int pindex_to_order(unsigned int pindex)
 
 static inline bool pcp_allowed_order(unsigned int order)
 {
+	unsigned int __maybe_unused allowed_order;
+
 	if (order <= PAGE_ALLOC_COSTLY_ORDER)
 		return true;
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-	if (order == pageblock_order)
+	allowed_order = pageblock_order;
+	trace_android_vh_customize_thp_pcp_order(&allowed_order);
+	if (order == allowed_order)
 		return true;
 #endif
 	return false;

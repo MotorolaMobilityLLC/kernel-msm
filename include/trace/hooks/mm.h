@@ -381,6 +381,12 @@ DECLARE_HOOK(android_vh_zs_shrinker_adjust,
 DECLARE_HOOK(android_vh_zs_shrinker_bypass,
 	TP_PROTO(bool *bypass),
 	TP_ARGS(bypass));
+DECLARE_HOOK(android_vh_customize_thp_pcp_order,
+	TP_PROTO(unsigned int *order),
+	TP_ARGS(order));
+DECLARE_HOOK(android_vh_customize_thp_gfp_orders,
+	TP_PROTO(gfp_t *gfp_mask, unsigned long *orders, int *order),
+	TP_ARGS(gfp_mask, orders, order));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

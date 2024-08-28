@@ -1595,6 +1595,7 @@
   regulator_get_voltage_rdev
   regulator_is_enabled
   regulator_is_supported_voltage
+  regulator_list_voltage_linear
   regulator_notifier_call_chain
   regulator_put
   regulator_register_notifier

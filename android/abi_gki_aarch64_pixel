@@ -1230,6 +1230,7 @@
   kthread_should_park
   kthread_should_stop
   kthread_stop
+  kthread_stop_put
   kthread_unpark
   kthread_worker_fn
   ktime_get

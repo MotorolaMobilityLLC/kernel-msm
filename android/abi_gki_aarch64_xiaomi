@@ -78,6 +78,10 @@
   __traceiter_android_vh_compact_finished
   __tracepoint_android_vh_madvise_cold_or_pageout_abort
   __tracepoint_android_vh_compact_finished
+  __traceiter_android_vh_customize_thp_pcp_order
+  __tracepoint_android_vh_customize_thp_pcp_order
+  __traceiter_android_vh_customize_thp_gfp_orders
+  __tracepoint_android_vh_customize_thp_gfp_orders
 
 #required by metis.ko module
   __traceiter_android_vh_rwsem_read_wait_start
