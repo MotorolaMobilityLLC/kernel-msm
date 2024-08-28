@@ -876,6 +876,24 @@ ddk_headers(
 # Implementation details for DDK headers. The targets below cannot be directly
 # depended on by DDK modules.
 
+# Headers needed to include drivers/usb/host/xhci.h.
+ddk_headers(
+    name = "xhci_headers",
+    hdrs = [
+        "drivers/usb/core/hub.h",
+        "drivers/usb/core/usb.h",
+        "drivers/usb/host/pci-quirks.h",
+        "drivers/usb/host/xhci.h",
+        "drivers/usb/host/xhci-ext-caps.h",
+        "drivers/usb/host/xhci-plat.h",
+    ],
+    linux_includes = [
+        "drivers/usb",
+        "drivers/usb/host",
+    ],
+    visibility = ["//visibility:private"],
+)
+
 # DDK headers allowlist. This is the list of all headers and include
 # directories that are safe to use in DDK modules.
 ddk_headers(
@@ -883,8 +901,11 @@ ddk_headers(
     hdrs = [
         "drivers/thermal/thermal_core.h",
         "drivers/thermal/thermal_netlink.h",
+        "sound/usb/card.h",
+        "sound/usb/usbaudio.h",
         ":all_headers_allowlist_aarch64_globs",
         ":all_headers_allowlist_common_globs",
+        ":xhci_headers",
     ],
     # The list of include directories where source files can #include headers
     # from. In other words, these are the `-I` option to the C compiler.
@@ -893,6 +914,7 @@ ddk_headers(
         "arch/arm64/include",
         "arch/arm64/include/uapi",
         "drivers/thermal",
+        "sound/usb",
         "include",
         "include/uapi",
     ],

@@ -279,11 +279,11 @@ int pkvm_load_early_modules(void);
  */
 #define pkvm_el2_mod_va(kern_va, token)					\
 ({									\
-	unsigned long hyp_text_kern_va =				\
-		(unsigned long)THIS_MODULE->arch.hyp.text.start;	\
+	unsigned long hyp_mod_kern_va =				\
+		(unsigned long)THIS_MODULE->arch.hyp.sections.start;	\
 	unsigned long offset;						\
 									\
-	offset = (unsigned long)kern_va - hyp_text_kern_va;		\
+	offset = (unsigned long)kern_va - hyp_mod_kern_va;		\
 	token + offset;							\
 })
 

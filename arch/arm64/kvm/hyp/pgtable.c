@@ -27,9 +27,6 @@ struct kvm_pgtable_walk_data {
 	const u64			end;
 };
 
-static void stage2_unmap_clear_pte(const struct kvm_pgtable_visit_ctx *ctx,
-				   struct kvm_s2_mmu *mmu);
-
 static bool kvm_pgtable_walk_skip_bbm_tlbi(const struct kvm_pgtable_visit_ctx *ctx)
 {
 	return unlikely(ctx->flags & KVM_PGTABLE_WALK_SKIP_BBM_TLBI);
@@ -483,7 +480,7 @@ static int hyp_unmap_walker(const struct kvm_pgtable_visit_ctx *ctx,
 
 		kvm_clear_pte(ctx->ptep);
 		dsb(ishst);
-		__tlbi_level(vae2is, __TLBI_VADDR(ctx->addr, 0), ctx->level);
+		__tlbi_level(vae2is, __TLBI_VADDR(ctx->addr, 0), 0);
 	} else {
 		if (ctx->end - ctx->addr < granule)
 			return -EINVAL;
@@ -812,8 +809,7 @@ static bool stage2_try_break_pte(const struct kvm_pgtable_visit_ctx *ctx,
 	return true;
 }
 
-static void stage2_make_pte(const struct kvm_pgtable_visit_ctx *ctx,
-			    kvm_pte_t new, struct kvm_s2_mmu *mmu)
+static void stage2_make_pte(const struct kvm_pgtable_visit_ctx *ctx, kvm_pte_t new)
 {
 	struct kvm_pgtable_mm_ops *mm_ops = ctx->mm_ops;
 	struct kvm_pgtable_pte_ops *pte_ops = ctx->pte_ops;
@@ -822,8 +818,6 @@ static void stage2_make_pte(const struct kvm_pgtable_visit_ctx *ctx,
 
 	if (pte_ops->pte_is_counted_cb(new, ctx->level))
 		mm_ops->get_page(ctx->ptep);
-	else
-		stage2_unmap_clear_pte(ctx, mmu);
 
 	smp_store_release(ctx->ptep, new);
 }
@@ -848,9 +842,13 @@ static void stage2_unmap_clear_pte(const struct kvm_pgtable_visit_ctx *ctx,
 	if (kvm_pte_valid(ctx->old)) {
 		kvm_clear_pte(ctx->ptep);
 
-		if (!stage2_unmap_defer_tlb_flush(pgt))
-			kvm_call_hyp(__kvm_tlb_flush_vmid_ipa, mmu,
-				     ctx->addr, ctx->level);
+		if (kvm_pte_table(ctx->old, ctx->level)) {
+			kvm_call_hyp(__kvm_tlb_flush_vmid_ipa, mmu, ctx->addr,
+				     0);
+		} else if (!stage2_unmap_defer_tlb_flush(pgt)) {
+			kvm_call_hyp(__kvm_tlb_flush_vmid_ipa, mmu, ctx->addr,
+				     ctx->level);
+		}
 	}
 }
 
@@ -973,7 +971,7 @@ static int stage2_map_walker_try_leaf(const struct kvm_pgtable_visit_ctx *ctx,
 	    stage2_pte_executable(new))
 		mm_ops->icache_inval_pou(kvm_pte_follow(new, mm_ops), granule);
 
-	stage2_make_pte(ctx, new, data->mmu);
+	stage2_make_pte(ctx, new);
 
 	return 0;
 }
@@ -1075,7 +1073,7 @@ static int stage2_map_walk_leaf(const struct kvm_pgtable_visit_ctx *ctx,
 	 * will be mapped lazily.
 	 */
 	new = kvm_init_table_pte(childp, mm_ops);
-	stage2_make_pte(ctx, new, data->mmu);
+	stage2_make_pte(ctx, new);
 	return 0;
 }
 
@@ -1139,7 +1137,7 @@ static int stage2_coalesce_walk_table_post(const struct kvm_pgtable_visit_ctx *c
 	/* Host doesn't require CMOs. */
 	WARN_ON(mm_ops->dcache_clean_inval_poc || mm_ops->icache_inval_pou);
 
-	stage2_make_pte(ctx, new, data->mmu);
+	stage2_make_pte(ctx, new);
 
 	/* Finally, free the unlinked table. */
 	mm_ops->put_page(childp);
@@ -1290,6 +1288,18 @@ int kvm_pgtable_stage2_unmap(struct kvm_pgtable *pgt, u64 addr, u64 size)
 		.arg	= pgt,
 		.flags	= KVM_PGTABLE_WALK_LEAF | KVM_PGTABLE_WALK_TABLE_POST,
 	};
+
+	/*
+	 * stage2_unmap_walker's TLBI logic is unsafe for the pKVM host stage-2
+	 * table because a child table may have a refcount of 1 while still
+	 * containing valid mappings. The use of __kvm_tlb_flush_vmid_ipa in
+	 * stage2_unmap_clear_pte is then insufficient to invalidate all leaf
+	 * mappings reachable from the child table. All other stage-2 tables
+	 * hold a reference for every non-zero PTE, and are thus guaranteed to
+	 * be completely empty when refcount is 1.
+	 */
+	if (WARN_ON(pgt->flags & KVM_PGTABLE_S2_IDMAP))
+		return -EINVAL;
 
 	ret = kvm_pgtable_walk(pgt, addr, size, &walker);
 	if (stage2_unmap_defer_tlb_flush(pgt))
@@ -1694,7 +1704,7 @@ static int stage2_split_walker(const struct kvm_pgtable_visit_ctx *ctx,
 	 * writes the PTE using smp_store_release().
 	 */
 	new = kvm_init_table_pte(childp, mm_ops);
-	stage2_make_pte(ctx, new, mmu);
+	stage2_make_pte(ctx, new);
 	dsb(ishst);
 	return 0;
 }

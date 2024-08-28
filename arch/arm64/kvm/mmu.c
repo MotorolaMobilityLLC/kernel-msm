@@ -1804,7 +1804,7 @@ int pkvm_mem_abort_range(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa, size_t si
 	read_lock(&vcpu->kvm->mmu_lock);
 	ppage = find_ppage_or_above(vcpu->kvm, fault_ipa);
 
-	while (size) {
+	while (fault_ipa < ipa_end) {
 		if (ppage && ppage->ipa == fault_ipa) {
 			page_size = PAGE_SIZE << ppage->order;
 			ppage = mt_next(&vcpu->kvm->arch.pkvm.pinned_pages,
@@ -1832,11 +1832,10 @@ int pkvm_mem_abort_range(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa, size_t si
 			 * We had to release the mmu_lock so let's update the
 			 * reference.
 			 */
-			ppage = find_ppage_or_above(vcpu->kvm, fault_ipa + PAGE_SIZE);
+			ppage = find_ppage_or_above(vcpu->kvm, fault_ipa + page_size);
 		}
 
-		size = size_sub(size, PAGE_SIZE);
-		fault_ipa += PAGE_SIZE;
+		fault_ipa += page_size;
 	}
 end:
 	read_unlock(&vcpu->kvm->mmu_lock);

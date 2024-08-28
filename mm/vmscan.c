@@ -2011,7 +2011,7 @@ retry:
 			 * try_to_unmap acquire PTL from the first PTE,
 			 * eliminating the influence of temporary PTE values.
 			 */
-			if (folio_test_large(folio) && list_empty(&folio->_deferred_list))
+			if (folio_test_large(folio))
 				flags |= TTU_SYNC;
 
 			if (!ignore_references)

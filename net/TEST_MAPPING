@@ -242,5 +242,15 @@
     {
       "name": "vts_kernel_net_tests"
     }
+  ],
+  "kernel-presubmit": [
+    {
+      "name": "CtsCameraTestCases",
+      "options": [
+        {
+          "include-filter": "android.hardware.camera2.cts.FastBasicsTest"
+        }
+      ]
+    }
   ]
 }

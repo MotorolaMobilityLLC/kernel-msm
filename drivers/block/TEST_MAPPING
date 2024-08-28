@@ -204,5 +204,15 @@
         }
       ]
     }
+  ],
+  "kernel-presubmit": [
+    {
+      "name": "CtsCameraTestCases",
+      "options": [
+        {
+          "include-filter": "android.hardware.camera2.cts.FastBasicsTest"
+        }
+      ]
+    }
   ]
 }
