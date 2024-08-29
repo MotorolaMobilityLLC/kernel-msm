@@ -284277,6 +284277,14 @@ enumeration {
       name: "BINDER_WORK_CLEAR_DEATH_NOTIFICATION"
       value: 9
     }
+    enumerator {
+      name: "BINDER_WORK_FROZEN_BINDER"
+      value: 10
+    }
+    enumerator {
+      name: "BINDER_WORK_CLEAR_FREEZE_NOTIFICATION"
+      value: 11
+    }
   }
 }
 enumeration {
