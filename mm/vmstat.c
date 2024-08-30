@@ -1358,6 +1358,7 @@ const char * const vmstat_text[] = {
 	"thp_split_page",
 	"thp_split_page_failed",
 	"thp_deferred_split_page",
+	"thp_underused_split_page",
 	"thp_split_pmd",
 	"thp_shatter_page",
 	"thp_shatter_page_failed",
