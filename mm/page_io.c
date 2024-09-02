@@ -27,6 +27,9 @@
 #include <linux/zswap.h>
 #include "swap.h"
 
+#undef CREATE_TRACE_POINTS
+#include <trace/hooks/mm.h>
+
 static void __end_swap_bio_write(struct bio *bio)
 {
 	struct folio *folio = bio_first_folio_all(bio);
@@ -372,6 +375,7 @@ static void swap_writepage_bdev_async(struct page *page,
 void __swap_writepage(struct page *page, struct writeback_control *wbc)
 {
 	struct swap_info_struct *sis = page_swap_info(page);
+	unsigned long sis_flags = 0;
 
 	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
 	/*
@@ -379,9 +383,11 @@ void __swap_writepage(struct page *page, struct writeback_control *wbc)
 	 * but that will never affect SWP_FS_OPS, so the data_race
 	 * is safe.
 	 */
-	if (data_race(sis->flags & SWP_FS_OPS))
+	sis_flags = data_race(sis->flags);
+	trace_android_vh_swap_writepage(&sis_flags, page);
+	if (sis_flags & SWP_FS_OPS)
 		swap_writepage_fs(page, wbc);
-	else if (sis->flags & SWP_SYNCHRONOUS_IO)
+	else if (sis_flags & SWP_SYNCHRONOUS_IO)
 		swap_writepage_bdev_sync(page, wbc, sis);
 	else
 		swap_writepage_bdev_async(page, wbc, sis);
