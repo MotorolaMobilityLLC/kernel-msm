@@ -174,11 +174,13 @@
   __traceiter_android_vh_shmem_swapin_folio
   __traceiter_android_vh_should_alloc_pages_retry
   __traceiter_android_vh_shrink_folio_list
+  __traceiter_android_vh_shrink_node_memcgs
   __traceiter_android_vh_sk_alloc
   __traceiter_android_vh_sk_free
   __traceiter_android_vh_swapmem_gather_add_bypass
   __traceiter_android_vh_swapmem_gather_finish
   __traceiter_android_vh_swapmem_gather_init
+  __traceiter_android_vh_swap_writepage
   __traceiter_android_vh_sync_txn_recvd
   __traceiter_android_vh_tcp_rtt_estimator
   __traceiter_android_vh_test_clear_look_around_ref
@@ -295,11 +297,13 @@
   __tracepoint_android_vh_shmem_swapin_folio
   __tracepoint_android_vh_should_alloc_pages_retry
   __tracepoint_android_vh_shrink_folio_list
+  __tracepoint_android_vh_shrink_node_memcgs
   __tracepoint_android_vh_sk_alloc
   __tracepoint_android_vh_sk_free
   __tracepoint_android_vh_swapmem_gather_add_bypass
   __tracepoint_android_vh_swapmem_gather_finish
   __tracepoint_android_vh_swapmem_gather_init
+  __tracepoint_android_vh_swap_writepage
   __tracepoint_android_vh_sync_txn_recvd
   __tracepoint_android_vh_tcp_rtt_estimator
   __tracepoint_android_vh_test_clear_look_around_ref
@@ -325,3 +329,4 @@
   ufshcd_query_descriptor_retry
   unlock_buffer
   __wait_on_buffer
+  zs_lookup_class_index
