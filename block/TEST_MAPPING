@@ -274,6 +274,17 @@
       ]
     },
     {
+      "name": "CtsIncrementalInstallHostTestCases",
+      "options": [
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalFeatureTest"
+        },
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalInstallTest"
+        }
+      ]
+    },
+    {
       "name": "CtsLibcoreLegacy22TestCases",
       "options": [
         {
