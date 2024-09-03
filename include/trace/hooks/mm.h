@@ -387,6 +387,9 @@ DECLARE_HOOK(android_vh_customize_thp_pcp_order,
 DECLARE_HOOK(android_vh_customize_thp_gfp_orders,
 	TP_PROTO(gfp_t *gfp_mask, unsigned long *orders, int *order),
 	TP_ARGS(gfp_mask, orders, order));
+DECLARE_HOOK(android_vh_init_adjust_zone_wmark,
+	TP_PROTO(struct zone *zone, u64 interval),
+	TP_ARGS(zone, interval));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
