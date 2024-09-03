@@ -542,3 +542,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_customize_thp_pcp_order);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_customize_thp_gfp_orders);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_init_adjust_zone_wmark);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_ksys_umount);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_do_group_exit);
