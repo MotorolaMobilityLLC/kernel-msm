@@ -331870,6 +331870,13 @@ function {
   parameter_id: 0x1c3dbe5a
 }
 function {
+  id: 0x9ba2be49
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x0a63398f
+  parameter_id: 0x92233392
+}
+function {
   id: 0x9ba2dbe7
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -352047,6 +352054,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_inet_csk_clone_lock"
 }
 elf_symbol {
+  id: 0xa8439430
+  name: "__traceiter_android_vh_init_adjust_zone_wmark"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4b8b75ae
+  type_id: 0x9ba2be49
+  full_name: "__traceiter_android_vh_init_adjust_zone_wmark"
+}
+elf_symbol {
   id: 0x2b3e4b23
   name: "__traceiter_android_vh_inode_lru_isolate"
   is_defined: true
@@ -357778,6 +357794,15 @@ elf_symbol {
   crc: 0x14df2172
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_inet_csk_clone_lock"
+}
+elf_symbol {
+  id: 0x4e88b2c2
+  name: "__tracepoint_android_vh_init_adjust_zone_wmark"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x13e8ec0c
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_init_adjust_zone_wmark"
 }
 elf_symbol {
   id: 0x52cc3d91
@@ -420060,6 +420085,7 @@ interface {
   symbol_id: 0x2b2d07aa
   symbol_id: 0x2e323991
   symbol_id: 0x3d32611b
+  symbol_id: 0xa8439430
   symbol_id: 0x2b3e4b23
   symbol_id: 0x7cd03d83
   symbol_id: 0x4b67a5dc
@@ -420697,6 +420723,7 @@ interface {
   symbol_id: 0x90e3616c
   symbol_id: 0xee2c17ff
   symbol_id: 0xdab6baf5
+  symbol_id: 0x4e88b2c2
   symbol_id: 0x52cc3d91
   symbol_id: 0xba330301
   symbol_id: 0xbbfc3b7e
