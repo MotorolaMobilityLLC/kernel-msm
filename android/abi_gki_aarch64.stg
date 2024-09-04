@@ -357423,6 +357423,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_split_large_folio_bypass"
 }
 elf_symbol {
+  id: 0xa61572f8
+  name: "__traceiter_android_vh_suitable_migration_target_bypass"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xdb869c27
+  type_id: 0x9bb1c4e2
+  full_name: "__traceiter_android_vh_suitable_migration_target_bypass"
+}
+elf_symbol {
   id: 0x445e3749
   name: "__traceiter_android_vh_swapmem_gather_add_bypass"
   is_defined: true
@@ -363190,6 +363199,15 @@ elf_symbol {
   crc: 0x0c4e84a7
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_split_large_folio_bypass"
+}
+elf_symbol {
+  id: 0xdeb3106a
+  name: "__tracepoint_android_vh_suitable_migration_target_bypass"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x5eb049c5
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_suitable_migration_target_bypass"
 }
 elf_symbol {
   id: 0x052557d7
@@ -424260,6 +424278,7 @@ interface {
   symbol_id: 0xa082ad86
   symbol_id: 0x57cb67b6
   symbol_id: 0x7068c1fb
+  symbol_id: 0xa61572f8
   symbol_id: 0x445e3749
   symbol_id: 0x3f14ea30
   symbol_id: 0x64e397a9
@@ -424901,6 +424920,7 @@ interface {
   symbol_id: 0x227ce62c
   symbol_id: 0xb11763a0
   symbol_id: 0x02bb68bd
+  symbol_id: 0xdeb3106a
   symbol_id: 0x052557d7
   symbol_id: 0x6fb8113a
   symbol_id: 0xab09fdb7
