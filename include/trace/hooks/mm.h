@@ -396,6 +396,9 @@ DECLARE_HOOK(android_vh_cma_alloc_retry,
 DECLARE_HOOK(android_vh_do_group_exit,
 	TP_PROTO(struct task_struct *tsk),
 	TP_ARGS(tsk));
+DECLARE_HOOK(android_vh_suitable_migration_target_bypass,
+	TP_PROTO(struct page *page, bool *bypass),
+	TP_ARGS(page, bypass));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
