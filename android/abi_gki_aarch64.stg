@@ -346946,6 +346946,11 @@ function {
   parameter_id: 0x18bd6530
 }
 function {
+  id: 0xdb365209
+  return_type_id: 0x030b9acf
+  parameter_id: 0x11c404ba
+}
+function {
   id: 0xdb53d61f
   return_type_id: 0x3f095459
   parameter_id: 0x3b806236
@@ -376019,6 +376024,15 @@ elf_symbol {
   crc: 0x628c0f8f
   type_id: 0x9df2edfa
   full_name: "dma_fence_add_callback"
+}
+elf_symbol {
+  id: 0x7ab07b7f
+  name: "dma_fence_allocate_private_stub"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xba00daa2
+  type_id: 0xdb365209
+  full_name: "dma_fence_allocate_private_stub"
 }
 elf_symbol {
   id: 0xe2ee283f
@@ -426211,6 +426225,7 @@ interface {
   symbol_id: 0x279bd3a7
   symbol_id: 0x0e847130
   symbol_id: 0xd13969dd
+  symbol_id: 0x7ab07b7f
   symbol_id: 0xe2ee283f
   symbol_id: 0xf5808a3e
   symbol_id: 0x2762abc3
