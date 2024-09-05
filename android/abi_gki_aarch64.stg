@@ -402233,6 +402233,15 @@ elf_symbol {
   full_name: "proc_dostring"
 }
 elf_symbol {
+  id: 0x1c3e9f6b
+  name: "proc_douintvec"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x28500e13
+  type_id: 0x91cb6689
+  full_name: "proc_douintvec"
+}
+elf_symbol {
   id: 0x712f800b
   name: "proc_douintvec_minmax"
   is_defined: true
@@ -429167,6 +429176,7 @@ interface {
   symbol_id: 0xfd020b9f
   symbol_id: 0x7c9e1a26
   symbol_id: 0x499b7b9e
+  symbol_id: 0x1c3e9f6b
   symbol_id: 0x712f800b
   symbol_id: 0x37c95360
   symbol_id: 0x7a8a2031

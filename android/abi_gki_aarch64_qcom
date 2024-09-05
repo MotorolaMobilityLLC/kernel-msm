@@ -1473,6 +1473,7 @@
   proc_dointvec
   proc_dointvec_minmax
   proc_dostring
+  proc_douintvec
   proc_douintvec_minmax
   proc_set_user
   proto_register
