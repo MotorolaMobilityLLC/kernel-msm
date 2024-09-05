@@ -376502,6 +376502,15 @@ elf_symbol {
   full_name: "drm_rect_rotate"
 }
 elf_symbol {
+  id: 0xf836eb53
+  name: "drm_rect_rotate_inv"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x6e30ba8e
+  type_id: 0x1784717f
+  full_name: "drm_rect_rotate_inv"
+}
+elf_symbol {
   id: 0xa9f64e27
   name: "drm_release"
   is_defined: true
@@ -422262,6 +422271,7 @@ interface {
   symbol_id: 0x7f211ebf
   symbol_id: 0x62aa5e8d
   symbol_id: 0xeeb4f73d
+  symbol_id: 0xf836eb53
   symbol_id: 0xa9f64e27
   symbol_id: 0x4ba62142
   symbol_id: 0x39b330a8
