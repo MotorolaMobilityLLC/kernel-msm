@@ -32,7 +32,7 @@ struct pkvm_el2_module {
 	int (*init)(const struct pkvm_module_ops *ops);
 };
 
-void kvm_apply_hyp_module_relocations(void *mod_start, void *hyp_va,
+void kvm_apply_hyp_module_relocations(struct pkvm_el2_module *mod,
 				      kvm_nvhe_reloc_t *begin,
 				      kvm_nvhe_reloc_t *end);
 

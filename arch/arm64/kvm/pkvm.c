@@ -970,7 +970,7 @@ int __pkvm_load_el2_module(struct module *this, unsigned long *token)
 	mod->sections.end = end;
 
 	endrel = (void *)mod->relocs + mod->nr_relocs * sizeof(*endrel);
-	kvm_apply_hyp_module_relocations(start, hyp_va, mod->relocs, endrel);
+	kvm_apply_hyp_module_relocations(mod, mod->relocs, endrel);
 
 	ret = hyp_trace_init_mod_events(mod->hyp_events,
 					mod->event_ids.start,
