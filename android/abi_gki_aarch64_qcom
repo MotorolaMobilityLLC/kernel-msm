@@ -105,11 +105,13 @@
   check_preempt_curr
   check_zeroed_user
   class_create
+  class_create_file_ns
   class_destroy
   class_find_device
   class_for_each_device
   class_interface_unregister
   class_register
+  class_remove_file_ns
   class_unregister
   cleanup_srcu_struct
   clear_page
