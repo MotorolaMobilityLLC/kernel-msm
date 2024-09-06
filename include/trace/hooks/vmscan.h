@@ -58,6 +58,9 @@ DECLARE_HOOK(android_vh_should_continue_reclaim,
 DECLARE_HOOK(android_vh_file_is_tiny_bypass,
 	TP_PROTO(bool file_is_tiny, bool *bypass),
 	TP_ARGS(file_is_tiny, bypass));
+DECLARE_HOOK(android_vh_mglru_should_abort_scan,
+	TP_PROTO(u64 *ext, bool *bypass),
+	TP_ARGS(ext, bypass));
 DECLARE_HOOK(android_vh_rebalance_anon_lru_bypass,
 	TP_PROTO(bool *bypass),
 	TP_ARGS(bypass));
