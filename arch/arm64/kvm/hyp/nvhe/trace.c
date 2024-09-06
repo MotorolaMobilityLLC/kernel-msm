@@ -424,9 +424,9 @@ err:
 	return ret;
 }
 
-int __pkvm_swap_reader_tracing(int cpu)
+int __pkvm_swap_reader_tracing(unsigned int cpu)
 {
-	struct hyp_rb_per_cpu *cpu_buffer = per_cpu_ptr(&trace_rb, cpu);
+	struct hyp_rb_per_cpu *cpu_buffer;
 	int ret = 0;
 
 	hyp_spin_lock(&trace_rb_lock);
