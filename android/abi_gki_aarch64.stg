@@ -404123,6 +404123,15 @@ elf_symbol {
   full_name: "regulator_count_voltages"
 }
 elf_symbol {
+  id: 0x1e484088
+  name: "regulator_desc_list_voltage_linear"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x3b1414ec
+  type_id: 0x92f2a156
+  full_name: "regulator_desc_list_voltage_linear"
+}
+elf_symbol {
   id: 0x4cf1070c
   name: "regulator_desc_list_voltage_linear_range"
   is_defined: true
@@ -404258,6 +404267,15 @@ elf_symbol {
   full_name: "regulator_get_voltage_rdev"
 }
 elf_symbol {
+  id: 0x22a5b64b
+  name: "regulator_get_voltage_sel_pickable_regmap"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x087bae09
+  type_id: 0x9e5ef2fc
+  full_name: "regulator_get_voltage_sel_pickable_regmap"
+}
+elf_symbol {
   id: 0x117f1097
   name: "regulator_get_voltage_sel_regmap"
   is_defined: true
@@ -404319,6 +404337,15 @@ elf_symbol {
   crc: 0x219689b5
   type_id: 0x9f48e764
   full_name: "regulator_list_voltage_linear_range"
+}
+elf_symbol {
+  id: 0x6833e084
+  name: "regulator_list_voltage_pickable_linear_range"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x96e3ae41
+  type_id: 0x9f48e764
+  full_name: "regulator_list_voltage_pickable_linear_range"
 }
 elf_symbol {
   id: 0x04d5663a
@@ -404472,6 +404499,15 @@ elf_symbol {
   crc: 0x6854bf5a
   type_id: 0x9c6e2fdb
   full_name: "regulator_set_voltage"
+}
+elf_symbol {
+  id: 0x8af977a8
+  name: "regulator_set_voltage_sel_pickable_regmap"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x9f5e93b0
+  type_id: 0x9f48e764
+  full_name: "regulator_set_voltage_sel_pickable_regmap"
 }
 elf_symbol {
   id: 0x0b03a904
@@ -429386,6 +429422,7 @@ interface {
   symbol_id: 0xf2357f9f
   symbol_id: 0xc16e78d8
   symbol_id: 0xabbc8603
+  symbol_id: 0x1e484088
   symbol_id: 0x4cf1070c
   symbol_id: 0x9e48588d
   symbol_id: 0x3945d02a
@@ -429401,6 +429438,7 @@ interface {
   symbol_id: 0x0118b55f
   symbol_id: 0x4e97a73b
   symbol_id: 0x62f86638
+  symbol_id: 0x22a5b64b
   symbol_id: 0x117f1097
   symbol_id: 0x8570255f
   symbol_id: 0x438146c4
@@ -429408,6 +429446,7 @@ interface {
   symbol_id: 0xd8377ddc
   symbol_id: 0xfbb2197e
   symbol_id: 0xb4fdfb1e
+  symbol_id: 0x6833e084
   symbol_id: 0x04d5663a
   symbol_id: 0x5cf2f6f8
   symbol_id: 0xa66866da
@@ -429425,6 +429464,7 @@ interface {
   symbol_id: 0x1764380c
   symbol_id: 0xfb766d3e
   symbol_id: 0xc20a2c2c
+  symbol_id: 0x8af977a8
   symbol_id: 0x0b03a904
   symbol_id: 0x2bce772d
   symbol_id: 0x705777ef
