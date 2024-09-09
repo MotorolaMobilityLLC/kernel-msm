@@ -1698,6 +1698,7 @@
   rproc_report_crash
   rproc_set_firmware
   rproc_shutdown
+  rtc_add_group
   rtc_time64_to_tm
   rtc_tm_to_time64
   rtc_update_irq
