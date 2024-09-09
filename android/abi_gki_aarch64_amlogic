@@ -2079,6 +2079,7 @@
   sock_release
   sock_wfree
   sort
+  spi_add_device
   __spi_alloc_controller
   spi_alloc_device
   spi_controller_resume
@@ -2092,6 +2093,7 @@
   __spi_register_driver
   spi_setup
   spi_sync
+  spi_unregister_device
   split_page
   sprintf
   sprint_symbol

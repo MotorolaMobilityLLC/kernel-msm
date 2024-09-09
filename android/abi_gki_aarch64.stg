@@ -411774,6 +411774,15 @@ elf_symbol {
   full_name: "sort"
 }
 elf_symbol {
+  id: 0x743e9912
+  name: "spi_add_device"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xfbfab9c0
+  type_id: 0x9930cdbf
+  full_name: "spi_add_device"
+}
+elf_symbol {
   id: 0x13b529c0
   name: "spi_alloc_device"
   is_defined: true
@@ -430322,6 +430331,7 @@ interface {
   symbol_id: 0xe86ce747
   symbol_id: 0x85476106
   symbol_id: 0x1780168b
+  symbol_id: 0x743e9912
   symbol_id: 0x13b529c0
   symbol_id: 0x55b4474a
   symbol_id: 0xe2eab328
