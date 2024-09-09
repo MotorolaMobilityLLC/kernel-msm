@@ -302718,6 +302718,12 @@ function {
   parameter_id: 0xd0b3a203
 }
 function {
+  id: 0x10e61e10
+  return_type_id: 0x48b5725f
+  parameter_id: 0x0258f96e
+  parameter_id: 0x3a1c763b
+}
+function {
   id: 0x10e93841
   return_type_id: 0x48b5725f
   parameter_id: 0x01c5a749
@@ -374878,6 +374884,15 @@ elf_symbol {
   full_name: "devm_nvmem_device_get"
 }
 elf_symbol {
+  id: 0xe504a070
+  name: "devm_nvmem_device_put"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x53ca63ed
+  type_id: 0x10e61e10
+  full_name: "devm_nvmem_device_put"
+}
+elf_symbol {
   id: 0x47264dbb
   name: "devm_nvmem_register"
   is_defined: true
@@ -426217,6 +426232,7 @@ interface {
   symbol_id: 0x91f58d29
   symbol_id: 0x7abe395b
   symbol_id: 0xa8b058e5
+  symbol_id: 0xe504a070
   symbol_id: 0x47264dbb
   symbol_id: 0x35094803
   symbol_id: 0x5bc8c0f2
