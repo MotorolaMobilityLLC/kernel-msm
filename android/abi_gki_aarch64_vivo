@@ -184,6 +184,7 @@
   __traceiter_android_vh_sync_txn_recvd
   __traceiter_android_vh_tcp_rtt_estimator
   __traceiter_android_vh_test_clear_look_around_ref
+  __traceiter_android_vh_throttle_direct_reclaim_bypass
   __traceiter_android_vh_try_to_unmap_one
   __traceiter_android_vh_tune_mmap_readaround
   __traceiter_android_vh_udp_enqueue_schedule_skb
@@ -307,6 +308,7 @@
   __tracepoint_android_vh_sync_txn_recvd
   __tracepoint_android_vh_tcp_rtt_estimator
   __tracepoint_android_vh_test_clear_look_around_ref
+  __tracepoint_android_vh_throttle_direct_reclaim_bypass
   __tracepoint_android_vh_try_to_unmap_one
   __tracepoint_android_vh_tune_mmap_readaround
   __tracepoint_android_vh_udp_enqueue_schedule_skb
