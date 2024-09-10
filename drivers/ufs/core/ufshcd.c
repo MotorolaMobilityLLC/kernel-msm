@@ -2309,17 +2309,7 @@ static inline int ufshcd_hba_capabilities(struct ufs_hba *hba)
 		return err;
 	}
 
-	/*
-	 * The UFSHCI 3.0 specification does not define MCQ_SUPPORT and
-	 * LSDB_SUPPORT, but [31:29] as reserved bits with reset value 0s, which
-	 * means we can simply read values regardless of version.
-	 */
 	hba->mcq_sup = FIELD_GET(MASK_MCQ_SUPPORT, hba->capabilities);
-	/*
-	 * 0h: legacy single doorbell support is available
-	 * 1h: indicate that legacy single doorbell support has been removed
-	 */
-	hba->lsdb_sup = !FIELD_GET(MASK_LSDB_SUPPORT, hba->capabilities);
 	if (!hba->mcq_sup)
 		return 0;
 
@@ -10477,12 +10467,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	}
 
 	if (!is_mcq_supported(hba)) {
-		if (!hba->lsdb_sup) {
-			dev_err(hba->dev, "%s: failed to initialize (legacy doorbell mode not supported)\n",
-				__func__);
-			err = -EINVAL;
-			goto out_disable;
-		}
 		err = scsi_add_host(host, hba->dev);
 		if (err) {
 			dev_err(hba->dev, "scsi_add_host failed\n");
