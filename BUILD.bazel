@@ -109,6 +109,7 @@ filegroup(
         "android/abi_gki_aarch64_kunit",
         "android/abi_gki_aarch64_lenovo",
         "android/abi_gki_aarch64_mtk",
+        "android/abi_gki_aarch64_mtktv",
         "android/abi_gki_aarch64_nothing",
         "android/abi_gki_aarch64_oplus",
         "android/abi_gki_aarch64_pixel",
