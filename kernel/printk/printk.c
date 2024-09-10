@@ -2309,6 +2309,7 @@ int vprintk_store(int facility, int level,
 	else
 		prb_final_commit(&e);
 
+	trace_android_rvh_logbuf(prb, &r);
 	trace_android_vh_logbuf(prb, &r);
 	ret = text_len + trunc_msg_len;
 out:

@@ -12,6 +12,10 @@
 struct printk_ringbuffer;
 struct printk_record;
 
+DECLARE_RESTRICTED_HOOK(android_rvh_logbuf,
+	TP_PROTO(struct printk_ringbuffer *rb, struct printk_record *r),
+	TP_ARGS(rb, r), true)
+
 DECLARE_HOOK(android_vh_logbuf,
 	TP_PROTO(struct printk_ringbuffer *rb, struct printk_record *r),
 	TP_ARGS(rb, r))

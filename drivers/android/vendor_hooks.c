@@ -323,6 +323,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_looper_exited);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_spawn_new_thread);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_has_special_work_ilocked);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_logbuf);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_logbuf);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_do_shrink_slab);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_get_page_wmark);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_add_new_anon_rmap);
