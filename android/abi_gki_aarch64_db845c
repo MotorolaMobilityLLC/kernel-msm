@@ -1971,6 +1971,7 @@
   device_find_child
 
 # required by smem.ko
+  hwspin_lock_bust
   hwspin_lock_free
   hwspin_lock_request_specific
   __hwspin_lock_timeout
