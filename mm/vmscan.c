@@ -5498,8 +5498,9 @@ static bool should_abort_scan(struct lruvec *lruvec, struct scan_control *sc)
 	if (sc->nr_reclaimed >= max(sc->nr_to_reclaim, compact_gap(sc->order)))
 		return true;
 
+	trace_android_vh_mglru_should_abort_scan_order(sc->order, &bypass);
 	/* check the order to exclude compaction-induced reclaim */
-	if (!current_is_kswapd() || sc->order)
+	if ((!current_is_kswapd() || sc->order) && !bypass)
 		return false;
 
 	mark = sysctl_numa_balancing_mode & NUMA_BALANCING_MEMORY_TIERING ?
