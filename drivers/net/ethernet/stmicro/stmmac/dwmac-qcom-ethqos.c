@@ -19,7 +19,7 @@
 #include <linux/iommu.h>
 #include <linux/micrel_phy.h>
 #include <linux/rtnetlink.h>
-
+#include <linux/suspend.h>
 #include <linux/tcp.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
@@ -171,6 +171,8 @@
 void *ipc_emac_log_ctxt;
 
 struct emac_emb_smmu_cb_ctx emac_emb_smmu_ctx = {0};
+static int qcom_ethqos_hib_restore(struct device *dev);
+static int qcom_ethqos_hib_freeze(struct device *dev);
 struct plat_stmmacenet_data *plat_dat;
 struct qcom_ethqos *pethqos;
 
@@ -2375,7 +2377,7 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	} else {
 		ETHQOSERR("Phy interrupt configuration failed");
 	}
-	if (ethqos->emac_ver == EMAC_HW_v2_3_2_RG) {
+	if (ethqos->emac_ver == EMAC_HW_v2_3_2_RG || ethqos->emac_ver == EMAC_HW_v2_3_1) {
 		ethqos_pps_irq_config(ethqos);
 		create_pps_interrupt_device_node(&ethqos->avb_class_a_dev_t,
 						 &ethqos->avb_class_a_cdev,
@@ -2422,6 +2424,11 @@ static int qcom_ethqos_remove(struct platform_device *pdev)
 	int ret;
 	struct stmmac_priv *priv;
 
+	if (of_device_is_compatible(pdev->dev.of_node, "qcom,emac-smmu-embedded")) {
+		of_platform_depopulate(&pdev->dev);
+		return 0;
+	}
+
 	ethqos = get_stmmac_bsp_priv(&pdev->dev);
 	if (!ethqos)
 		return -ENODEV;
@@ -2429,6 +2436,13 @@ static int qcom_ethqos_remove(struct platform_device *pdev)
 	priv = qcom_ethqos_get_priv(ethqos);
 
 	ret = stmmac_pltfr_remove(pdev);
+
+	if (ethqos->rgmii_clk)
+		clk_disable_unprepare(ethqos->rgmii_clk);
+	if (priv->plat->has_gmac4 && ethqos->phyaux_clk)
+		clk_disable_unprepare(ethqos->phyaux_clk);
+	if (priv->plat->has_gmac4 && ethqos->sgmiref_clk)
+		clk_disable_unprepare(ethqos->sgmiref_clk);
 
 	if (priv->plat->phy_intr_en_extn_stm)
 		free_irq(ethqos->phy_intr, ethqos);
@@ -2441,7 +2455,19 @@ static int qcom_ethqos_remove(struct platform_device *pdev)
 	ethqos_disable_regulators(ethqos);
 	ethqos_clks_config(ethqos, false);
 
+	platform_set_drvdata(pdev, NULL);
+	of_platform_depopulate(&pdev->dev);
 	return ret;
+}
+
+static void qcom_ethqos_shutdown_main(struct platform_device *pdev)
+{
+	struct net_device *dev = platform_get_drvdata(pdev);
+
+	if (!dev)
+		return;
+
+	qcom_ethqos_remove(pdev);
 }
 
 static int qcom_ethqos_suspend(struct device *dev)
@@ -2455,6 +2481,9 @@ static int qcom_ethqos_suspend(struct device *dev)
 		ETHQOSDBG("smmu return\n");
 		return 0;
 	}
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return qcom_ethqos_hib_freeze(dev);
 
 	ethqos = get_stmmac_bsp_priv(dev);
 	if (!ethqos)
@@ -2490,6 +2519,9 @@ static int qcom_ethqos_resume(struct device *dev)
 	ETHQOSDBG("Resume Enter\n");
 	if (of_device_is_compatible(dev->of_node, "qcom,emac-smmu-embedded"))
 		return 0;
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return qcom_ethqos_hib_restore(dev);
 
 	ethqos = get_stmmac_bsp_priv(dev);
 
@@ -2567,8 +2599,38 @@ static int qcom_ethqos_enable_clks(struct qcom_ethqos *ethqos, struct device *de
 			goto error_rgmii_get;
 		}
 	}
+	if (priv->plat->interface == PHY_INTERFACE_MODE_SGMII ||
+	    priv->plat->interface == PHY_INTERFACE_MODE_USXGMII) {
+		ethqos->sgmiref_clk = devm_clk_get(dev, "sgmi_ref");
+		if (IS_ERR(ethqos->sgmiref_clk)) {
+			dev_warn(dev, "Failed sgmi_ref\n");
+			ret = PTR_ERR(ethqos->sgmiref_clk);
+			goto error_sgmi_ref;
+		} else {
+			ret = clk_prepare_enable(ethqos->sgmiref_clk);
+			if (ret)
+				goto error_sgmi_ref;
+		}
+		ethqos->phyaux_clk = devm_clk_get(dev, "phyaux");
+		if (IS_ERR(ethqos->phyaux_clk)) {
+			dev_warn(dev,  "Failed phyaux\n");
+			ret = PTR_ERR(ethqos->phyaux_clk);
+			goto error_phyaux_ref;
+		} else {
+			ret = clk_prepare_enable(ethqos->phyaux_clk);
+			if (ret)
+				goto error_phyaux_ref;
+		}
+	}
 	return 0;
 
+	if (priv->plat->interface == PHY_INTERFACE_MODE_SGMII ||
+	    priv->plat->interface == PHY_INTERFACE_MODE_USXGMII) {
+error_phyaux_ref:
+		clk_disable_unprepare(ethqos->sgmiref_clk);
+error_sgmi_ref:
+		clk_disable_unprepare(ethqos->rgmii_clk);
+	}
 error_rgmii_get:
 	clk_disable_unprepare(priv->plat->pclk);
 error_pclk_get:
@@ -2590,6 +2652,12 @@ static void qcom_ethqos_disable_clks(struct qcom_ethqos *ethqos, struct device *
 
 	if (ethqos->rgmii_clk)
 		clk_disable_unprepare(ethqos->rgmii_clk);
+
+	if (priv->plat->has_gmac4 && ethqos->phyaux_clk)
+		clk_disable_unprepare(ethqos->phyaux_clk);
+
+	if (priv->plat->has_gmac4 && ethqos->sgmiref_clk)
+		clk_disable_unprepare(ethqos->sgmiref_clk);
 
 	ETHQOSINFO("Exit\n");
 }
@@ -2622,7 +2690,7 @@ static int qcom_ethqos_hib_restore(struct device *dev)
 
 	ret = ethqos_init_gpio(ethqos);
 	if (ret)
-		return ret;
+		ETHQOSINFO("GPIO init failed\n");
 
 	ret = qcom_ethqos_enable_clks(ethqos, dev);
 	if (ret)
@@ -2652,11 +2720,6 @@ static int qcom_ethqos_hib_restore(struct device *dev)
 #endif /* end of DWC_ETH_QOS_CONFIG_PTP */
 
 	/* issue software reset to device */
-	ret = stmmac_reset(priv, priv->ioaddr);
-	if (ret) {
-		dev_err(priv->device, "Failed to reset\n");
-		return ret;
-	}
 
 	if (!netif_running(ndev)) {
 		rtnl_lock();
@@ -2710,6 +2773,8 @@ static int qcom_ethqos_hib_freeze(struct device *dev)
 
 	ethqos_free_gpios(ethqos);
 
+	ethqos->curr_serdes_speed = 0;
+
 	ETHQOSINFO("end\n");
 
 	return ret;
@@ -2726,6 +2791,7 @@ static const struct dev_pm_ops qcom_ethqos_pm_ops = {
 static struct platform_driver qcom_ethqos_driver = {
 	.probe  = qcom_ethqos_probe,
 	.remove = qcom_ethqos_remove,
+	.shutdown = qcom_ethqos_shutdown_main,
 	.driver = {
 		.name           = DRV_NAME,
 		.pm             = &qcom_ethqos_pm_ops,
@@ -2782,6 +2848,13 @@ module_init(qcom_ethqos_init_module)
  */
 
 module_exit(qcom_ethqos_exit_module)
+
+#if IS_ENABLED(CONFIG_AQUANTIA_PHY)
+MODULE_SOFTDEP("post: aquantia");
+#endif
+#if IS_ENABLED(CONFIG_MARVELL_PHY)
+MODULE_SOFTDEP("post: marvell");
+#endif
 
 MODULE_DESCRIPTION("Qualcomm ETHQOS driver");
 MODULE_LICENSE("GPL v2");

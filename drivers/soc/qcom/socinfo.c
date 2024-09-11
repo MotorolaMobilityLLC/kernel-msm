@@ -578,6 +578,7 @@ static const struct soc_id soc_id[] = {
 	{ 565, "BLAIRP" },
 	{ 629, "NIOBE" },
 	{ 652, "NIOBE" },
+	{ 672, "SERAPH" },
 	{ 577, "PINEAPPLEP" },
 	{ 578, "BLAIR-LITE" },
 	{ 605, "SA_MONACOAU_ADAS" },
@@ -593,6 +594,7 @@ static const struct soc_id soc_id[] = {
 	{ 642, "CLIFFSP" },
 	{ 643, "CLIFFS7P" },
 	{ 549, "ANORAK" },
+	{ 554, "NEO-LA" },
 };
 
 static struct attribute *msm_custom_socinfo_attrs[MAX_SOCINFO_ATTRS];

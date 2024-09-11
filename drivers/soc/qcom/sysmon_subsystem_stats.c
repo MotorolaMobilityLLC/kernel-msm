@@ -191,7 +191,12 @@ static int add_delta_time(
 		ptr = g_sysmon_stats.sysmon_power_stats_cdsp;
 	} else if (dsp_id == SLPI) {
 		ptr = g_sysmon_stats.sysmon_power_stats_slpi;
+	} else {
+		return -EINVAL;
 	}
+
+	if (ptr == NULL)
+		return -EINVAL;
 
 	if (ver >= 2) {
 		powerstats_ticks = (u64)(((u64)ptr->last_update_time_powerstats_msb << 32) |
