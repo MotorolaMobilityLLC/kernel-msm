@@ -1138,18 +1138,15 @@ static int dm_bow_map(struct dm_target *ti, struct bio *bio)
 				ret = add_trim(bc, bio);
 			else if (bio_data_dir(bio) == WRITE)
 				ret = remove_trim(bc, bio);
-			else
-				/* pass-through */;
+			/* else pass-through */
 		} else if (state == CHECKPOINT) {
 			if (bio->bi_iter.bi_sector == 0)
 				ret = handle_sector0(bc, bio);
 			else if (bio_data_dir(bio) == WRITE)
 				ret = queue_write(bc, bio);
-			else
-				/* pass-through */;
-		} else {
-			/* pass-through */
+			/* else pass-through */
 		}
+		/* else pass-through */
 		mutex_unlock(&bc->ranges_lock);
 	}
 
