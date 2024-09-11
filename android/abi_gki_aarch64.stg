@@ -333284,6 +333284,13 @@ function {
   parameter_id: 0x6720d32f
 }
 function {
+  id: 0x9abddc00
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x4585663f
+  parameter_id: 0x11cfee5a
+}
+function {
   id: 0x9abe486f
   return_type_id: 0x6720d32f
   parameter_id: 0x18a2fb63
@@ -356845,6 +356852,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_mglru_should_abort_scan"
 }
 elf_symbol {
+  id: 0x83742db6
+  name: "__traceiter_android_vh_mglru_should_abort_scan_order"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xe76b37b9
+  type_id: 0x9abddc00
+  full_name: "__traceiter_android_vh_mglru_should_abort_scan_order"
+}
+elf_symbol {
   id: 0x9f58159a
   name: "__traceiter_android_vh_mm_direct_reclaim_enter"
   is_defined: true
@@ -362648,6 +362664,15 @@ elf_symbol {
   crc: 0xfc074060
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_mglru_should_abort_scan"
+}
+elf_symbol {
+  id: 0x420ef2d0
+  name: "__tracepoint_android_vh_mglru_should_abort_scan_order"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xeae8520f
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_mglru_should_abort_scan_order"
 }
 elf_symbol {
   id: 0xd333a65c
@@ -425412,6 +425437,7 @@ interface {
   symbol_id: 0x8c174a7d
   symbol_id: 0xea8ce2b0
   symbol_id: 0x105350cb
+  symbol_id: 0x83742db6
   symbol_id: 0x9f58159a
   symbol_id: 0x29c67d40
   symbol_id: 0xf182fb15
@@ -426057,6 +426083,7 @@ interface {
   symbol_id: 0xa2bd1edf
   symbol_id: 0xa5b4e5b2
   symbol_id: 0xca4f3601
+  symbol_id: 0x420ef2d0
   symbol_id: 0xd333a65c
   symbol_id: 0xddcff44a
   symbol_id: 0x47bcd15f
