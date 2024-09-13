@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <linux/soc/mediatek/gzvm_drv.h>
 #include <linux/debugfs.h>
+#include <trace/hooks/gzvm.h>
 #include "gzvm_common.h"
 
 static DEFINE_MUTEX(gzvm_list_lock);
@@ -374,6 +375,8 @@ static void gzvm_destroy_vm(struct gzvm *gzvm)
 	}
 
 	mutex_unlock(&gzvm->lock);
+
+	trace_android_vh_gzvm_destroy_vm_post_process(gzvm);
 
 	/* No need to lock here becauese it's single-threaded execution */
 	gzvm_destroy_all_ppage(gzvm);
