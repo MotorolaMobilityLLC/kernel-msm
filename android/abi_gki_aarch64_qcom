@@ -1351,6 +1351,7 @@
   panic_notifier_list
   panic_timeout
   param_array_ops
+  param_get_bool
   param_get_int
   param_get_string
   param_get_uint
@@ -1907,6 +1908,7 @@
   stop_one_cpu_nowait
   strcmp
   strcpy
+  strcspn
   strim
   strlen
   strncasecmp
