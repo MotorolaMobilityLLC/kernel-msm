@@ -61,6 +61,7 @@ struct hyp_arm_smmu_v3_domain {
 	hyp_rwlock_t			lock; /* Protects iommu_list. */
 	hyp_spinlock_t			pgt_lock; /* protects page table. */
 	struct io_pgtable		*pgtable;
+	void				*cdptr;
 };
 
 struct kvm_iommu_walk_data {
@@ -359,6 +360,13 @@ static u64 *smmu_alloc_cd(u32 pasid_bits)
 	if (!cd_table)
 		return NULL;
 	return (u64 *)hyp_virt_to_phys(cd_table);
+}
+
+static void smmu_free_cd(u64 *cd_table, u32 pasid_bits)
+{
+	u32 order  = get_order((1 << pasid_bits) * (CTXDESC_CD_DWORDS << 3));
+
+	kvm_iommu_reclaim_pages(cd_table, order);
 }
 
 static int smmu_init_registers(struct hyp_arm_smmu_v3_device *smmu)
@@ -812,7 +820,6 @@ int smmu_domain_config_s1(struct hyp_arm_smmu_v3_device *smmu,
 {
 	u64 *cd_table;
 	u64 *ste;
-	u32 nr_entries;
 	u64 val;
 	u64 *cd_entry;
 	struct io_pgtable_cfg *cfg;
@@ -822,19 +829,47 @@ int smmu_domain_config_s1(struct hyp_arm_smmu_v3_device *smmu,
 	ste = smmu_get_ste_ptr(smmu, sid);
 	val = le64_to_cpu(ste[0]);
 
+	*update_ste = false;
+
 	/* The host trying to attach stage-1 domain to an already stage-2 attached device. */
 	if (FIELD_GET(STRTAB_STE_0_CFG, val) == STRTAB_STE_0_CFG_S2_TRANS)
 		return -EBUSY;
 
-	cd_table = (u64 *)(FIELD_GET(STRTAB_STE_0_S1CTXPTR_MASK, val) << 6);
-	nr_entries = 1 << FIELD_GET(STRTAB_STE_0_S1CDMAX, val);
-	*update_ste = false;
-	/* This is the first pasid attached to this device. */
-	if (!cd_table) {
-		cd_table = smmu_alloc_cd(pasid_bits);
-		if (!cd_table)
-			return -ENOMEM;
-		nr_entries = 1 << pasid_bits;
+	/*
+	 * CD ptr is retrieved differently for stage-1:
+	 * - PASID != 0 attach, it's read from the STE as PASID = 0 Must be attached first.
+	 * - PASID = 0 and PASID_BITs > 0: Devices that support pasids, allocate a new CD table.
+	 * - PASID_BITS = 0: Share the CDptr inside the domain if existing, otherwise allocate it.
+	 */
+	if (!pasid_bits) {
+		/* The domain already have a CD table. */
+		if (smmu_domain->cdptr) {
+			cd_table = smmu_domain->cdptr;
+		} else {
+			cd_table = smmu_alloc_cd(pasid_bits);
+			if (!cd_table)
+				return -ENOMEM;
+			smmu_domain->cdptr = cd_table;
+		}
+	} else {
+		if (pasid == 0) {
+			cd_table = smmu_alloc_cd(pasid_bits);
+			if (!cd_table)
+				return -ENOMEM;
+		} else {
+			u32 nr_entries = 1 << FIELD_GET(STRTAB_STE_0_S1CDMAX, val);
+
+			if (pasid >= nr_entries)
+				return -E2BIG;
+			cd_table = (u64 *)(val & STRTAB_STE_0_S1CTXPTR_MASK);
+			/* Device (pasid = 0) must be attached first. */
+			if (!cd_table)
+				return -ENODEV;
+		}
+	}
+
+	/* PASID = 0 always populates the STE. */
+	if (!pasid) {
 		ent[1] = FIELD_PREP(STRTAB_STE_1_S1DSS, STRTAB_STE_1_S1DSS_SSID0) |
 			 FIELD_PREP(STRTAB_STE_1_S1CIR, STRTAB_STE_1_S1C_CACHE_WBRA) |
 			 FIELD_PREP(STRTAB_STE_1_S1COR, STRTAB_STE_1_S1C_CACHE_WBRA) |
@@ -847,21 +882,27 @@ int smmu_domain_config_s1(struct hyp_arm_smmu_v3_device *smmu,
 		*update_ste = true;
 	}
 
-	if (pasid >= nr_entries)
-		return -E2BIG;
-	/* Write CD. */
 	cd_entry = smmu_get_cd_ptr(hyp_phys_to_virt((u64)cd_table), pasid);
-
-	/* CD already used by another device. */
-	if (cd_entry[0])
-		return -EBUSY;
+	if (cd_entry[0]) {
+		/* CD already attached to a different domain. */
+		if (cfg->arm_lpae_s1_cfg.ttbr != (cd_entry[1] & CTXDESC_CD_1_TTB0_MASK))
+			return -EBUSY;
+		/*
+		 * This can only happen for PASID = 0 && PASID_BITS =0 with shared cd table,
+		 * in that case the STE is not live, so no need to sync the CD or write it.
+		 */
+		return 0;
+	}
 
 	cd_entry[1] = cpu_to_le64(cfg->arm_lpae_s1_cfg.ttbr & CTXDESC_CD_1_TTB0_MASK);
 	cd_entry[2] = 0;
 	cd_entry[3] = cpu_to_le64(cfg->arm_lpae_s1_cfg.mair);
-	/* STE is live. */
-	if (!(*update_ste))
+	/*
+	 * For PASID != 0, STE is live, so we need to sync also.
+	 */
+	if (pasid)
 		smmu_sync_cd(smmu, cd_entry, sid, pasid);
+
 	val =  FIELD_PREP(CTXDESC_CD_0_TCR_T0SZ, cfg->arm_lpae_s1_cfg.tcr.tsz) |
 	       FIELD_PREP(CTXDESC_CD_0_TCR_TG0, cfg->arm_lpae_s1_cfg.tcr.tg) |
 	       FIELD_PREP(CTXDESC_CD_0_TCR_IRGN0, cfg->arm_lpae_s1_cfg.tcr.irgn) |
@@ -874,8 +915,7 @@ int smmu_domain_config_s1(struct hyp_arm_smmu_v3_device *smmu,
 	       FIELD_PREP(CTXDESC_CD_0_ASID, domain->domain_id) |
 	       CTXDESC_CD_0_V;
 	WRITE_ONCE(cd_entry[0], cpu_to_le64(val));
-	/* STE is live. */
-	if (!(*update_ste))
+	if (pasid)
 		smmu_sync_cd(smmu, cd_entry, sid, pasid);
 	return 0;
 }
@@ -1108,7 +1148,7 @@ static int smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 	int i, ret = -ENODEV;
 	struct hyp_arm_smmu_v3_device *smmu = to_smmu(iommu);
 	struct hyp_arm_smmu_v3_domain *smmu_domain = domain->priv;
-	u32 nr_ssid;
+	u32 pasid_bits = 0;
 	u64 *cd_table, *cd;
 
 	hyp_write_lock(&smmu_domain->lock);
@@ -1117,41 +1157,61 @@ static int smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 	if (!dst)
 		goto out_unlock;
 
+	/*
+	 * Look at smmu_domain_config_s1 for CD allocation and life time
+	 * For detach stage-1 domains:
+	 * - PASID != 0, invalidate that the CD entry, as leave the table as it might be used.
+	 * - PASID = 0 and PASID_BITs > 0: Devices that support pasids, free the CD table and
+	 *   invalidate the STE.
+	 * - PASID_BITS = 0: invalidate the STE, the cdptr per domain would be free at free_domain()
+	 */
 	if (smmu_domain->type == KVM_ARM_SMMU_DOMAIN_S1) {
-		nr_ssid = 1 << FIELD_GET(STRTAB_STE_0_S1CDMAX, dst[0]);
-		if (pasid >= nr_ssid) {
+		pasid_bits = FIELD_GET(STRTAB_STE_0_S1CDMAX, dst[0]);
+		if (pasid >= (1 << pasid_bits)) {
 			ret = -E2BIG;
 			goto out_unlock;
 		}
 		cd_table = (u64 *)(FIELD_GET(STRTAB_STE_0_S1CTXPTR_MASK, dst[0]) << 6);
-		/* This shouldn't happen*/
 		BUG_ON(!cd_table);
-
 		cd_table = hyp_phys_to_virt((phys_addr_t)cd_table);
-		cd = smmu_get_cd_ptr(cd_table, pasid);
+		if (pasid_bits) {
+			if (pasid == 0) {
+				int j;
 
-		WARN_ON(!FIELD_GET(CTXDESC_CD_0_V, cd[0]));
-
-		/* Invalidate CD. */
-		cd[0] = 0;
-		smmu_sync_cd(smmu, cd, sid, pasid);
-		cd[1] = 0;
-		cd[2] = 0;
-		cd[3] = 0;
-		ret = smmu_sync_cd(smmu, cd, sid, pasid);
-	} else {
-		/* Don't clear CD ptr, as it would leak memory. */
-		dst[0] &= STRTAB_STE_0_S1CTXPTR_MASK;
-		ret = smmu_sync_ste(smmu, dst, sid);
-		if (ret)
-			goto out_unlock;
-
-		for (i = 1; i < STRTAB_STE_DWORDS; i++)
-			dst[i] = 0;
-
-		ret = smmu_sync_ste(smmu, dst, sid);
+				/* PASID 0 must be detach last! */
+				for (j = 1 ; j < (1 << pasid_bits) ; ++j) {
+					cd = smmu_get_cd_ptr(cd_table, j);
+					if (cd[0] & CTXDESC_CD_0_V) {
+						ret = -EINVAL;
+						goto out_unlock;
+					}
+				}
+			} else {
+				cd = smmu_get_cd_ptr(cd_table, pasid);
+				cd[0] = 0;
+				smmu_sync_cd(smmu, cd, sid, pasid);
+				cd[1] = 0;
+				cd[2] = 0;
+				cd[3] = 0;
+				ret = smmu_sync_cd(smmu, cd, sid, pasid);
+				goto out_skip_ste;
+			}
+		}
 	}
+	/* For stage-2 and pasid = 0 */
+	dst[0] = 0;
+	ret = smmu_sync_ste(smmu, dst, sid);
+	if (ret)
+		goto out_unlock;
+	for (i = 1; i < STRTAB_STE_DWORDS; i++)
+		dst[i] = 0;
 
+	ret = smmu_sync_ste(smmu, dst, sid);
+
+	/* CD table is per SID and not domain for device with PASID. */
+	if (pasid_bits)
+		smmu_free_cd(cd_table, pasid_bits);
+out_skip_ste:
 	/*
 	 * Ensure no stale tlb enteries when domain_id
 	 * is re-used for this SMMU.
@@ -1193,6 +1253,9 @@ void smmu_free_domain(struct kvm_hyp_iommu_domain *domain)
 	 */
 	if (smmu_domain->pgtable)
 		kvm_arm_io_pgtable_free(smmu_domain->pgtable);
+
+	if (smmu_domain->cdptr)
+		smmu_free_cd((u64 *)hyp_phys_to_virt((phys_addr_t)smmu_domain->cdptr), 0);
 
 	hyp_free(smmu_domain);
 }
