@@ -90,7 +90,7 @@ static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res)
 
 	if (req.mem.dest == REQ_MEM_DEST_HYP_IOMMU) {
 		return __pkvm_topup_hyp_alloc_mgt(HYP_ALLOC_MGT_IOMMU_ID,
-+					 	  req.mem.nr_pages, req.mem.sz_alloc);
+						  req.mem.nr_pages, req.mem.sz_alloc);
 	} else if (req.mem.dest == REQ_MEM_DEST_HYP_ALLOC) {
 		/* Fill hyp alloc*/
 		return __pkvm_topup_hyp_alloc(req.mem.nr_pages);
