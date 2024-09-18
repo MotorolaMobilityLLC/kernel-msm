@@ -1177,6 +1177,11 @@ static void *hyp_mc_alloc_fn(void *flags, unsigned long order)
 	return addr;
 }
 
+static void *hyp_mc_alloc_gfp_fn(void *flags, unsigned long order)
+{
+	return (void *)__get_free_pages(*(gfp_t *)flags, order);
+}
+
 void free_hyp_memcache(struct kvm_hyp_memcache *mc)
 {
 	unsigned long flags = mc->flags;
@@ -1202,6 +1207,21 @@ int topup_hyp_memcache(struct kvm_hyp_memcache *mc, unsigned long min_pages,
 				    kvm_host_pa, (void *)flags, order);
 }
 EXPORT_SYMBOL(topup_hyp_memcache);
+
+int topup_hyp_memcache_gfp(struct kvm_hyp_memcache *mc, unsigned long min_pages,
+			   unsigned long order, gfp_t gfp)
+{
+	void *flags = &gfp;
+
+	if (!is_protected_kvm_enabled())
+		return 0;
+
+	if (order > PAGE_SHIFT)
+		return -E2BIG;
+
+	return __topup_hyp_memcache(mc, min_pages, hyp_mc_alloc_gfp_fn,
+				    kvm_host_pa, flags, order);
+}
 
 /**
  * kvm_phys_addr_ioremap - map a device range to guest IPA
