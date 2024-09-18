@@ -26,6 +26,15 @@ config MONA_DTB
 	help
 		Only include Motorola MOna device specific device tree
 
+
+config MONAI_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Monai Device DTBs"
+	help
+		Only include Motorola Monai device specific device tree
+		
+		
 config PARO_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
