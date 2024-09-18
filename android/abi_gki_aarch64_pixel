@@ -1587,6 +1587,7 @@
   __pkvm_load_el2_module
   __pkvm_topup_hyp_alloc
   __pkvm_topup_hyp_alloc_mgt
+  __pkvm_topup_hyp_alloc_mgt_gfp
   platform_bus_type
   platform_device_add
   platform_device_add_data

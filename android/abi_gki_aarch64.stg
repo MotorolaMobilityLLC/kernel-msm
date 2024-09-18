@@ -323064,6 +323064,14 @@ function {
   parameter_id: 0x0ef35c55
 }
 function {
+  id: 0x919f745e
+  return_type_id: 0x6720d32f
+  parameter_id: 0x33756485
+  parameter_id: 0x33756485
+  parameter_id: 0x33756485
+  parameter_id: 0xf1a6dfed
+}
+function {
   id: 0x919f7f11
   return_type_id: 0x6720d32f
   parameter_id: 0x33f8b54b
@@ -352937,6 +352945,15 @@ elf_symbol {
   crc: 0x2607d7a6
   type_id: 0x919cb2c5
   full_name: "__pkvm_topup_hyp_alloc_mgt"
+}
+elf_symbol {
+  id: 0x42bef347
+  name: "__pkvm_topup_hyp_alloc_mgt_gfp"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x75f95ba7
+  type_id: 0x919f745e
+  full_name: "__pkvm_topup_hyp_alloc_mgt_gfp"
 }
 elf_symbol {
   id: 0x430bd907
@@ -425430,6 +425447,7 @@ interface {
   symbol_id: 0xb35f76db
   symbol_id: 0xed5a2777
   symbol_id: 0xeef3c2cd
+  symbol_id: 0x42bef347
   symbol_id: 0x430bd907
   symbol_id: 0x535df772
   symbol_id: 0xafd4e12a
