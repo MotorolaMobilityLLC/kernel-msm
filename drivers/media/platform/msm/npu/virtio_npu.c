@@ -677,6 +677,7 @@ static int32_t virt_npu_unmap_buf(struct npu_client *client,
 	ion_buf = npu_get_npu_ion_buffer(client, buf_hdl);
 	if (!ion_buf) {
 		NPU_ERR("could not find buffer\n");
+                mutex_unlock(&npu_dev->lock);
 		return -EINVAL;
 	}
 
