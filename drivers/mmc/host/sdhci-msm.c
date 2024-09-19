@@ -35,10 +35,13 @@
 
 #include <soc/qcom/ice.h>
 
+#include <linux/blkdev.h>
+#include <linux/dcache.h>
 #include "sdhci-cqhci.h"
 #include "sdhci-pltfm.h"
 #include "cqhci.h"
 #include "../core/core.h"
+#include "../core/queue.h"
 #include <linux/qtee_shmbridge.h>
 
 #define CORE_MCI_VERSION		0x50
@@ -220,6 +223,33 @@
 #define TLMM_NORTH_SPARE_CORE_IE	BIT(15)
 
 #define SDHCI_CMD_FLAGS_MASK	0xff
+
+/* Copied from mmc/core/block.c to access the request queue */
+struct mmc_blk_data {
+	struct device	*parent;
+	struct gendisk	*disk;
+	struct mmc_queue queue;
+	struct list_head part;
+	struct list_head rpmbs;
+
+	unsigned int	flags;
+
+	struct kref	kref;
+	unsigned int	read_only;
+	unsigned int	part_type;
+	unsigned int	reset_done;
+	/*
+	 * Only set in main mmc_blk_data associated
+	 * with mmc_card with dev_set_drvdata, and keeps
+	 * track of the current selected device partition.
+	 */
+	unsigned int	part_curr;
+	int	area_type;
+
+	/* debugfs files (only in main mmc_blk_data) */
+	struct dentry *status_dentry;
+	struct dentry *ext_csd_dentry;
+};
 
 struct sdhci_msm_offset {
 	u32 core_hc_mode;
@@ -518,6 +548,7 @@ struct sdhci_msm_host {
 	bool skip_bus_bw_voting;
 	struct sdhci_msm_bus_vote_data *bus_vote_data;
 	struct delayed_work bus_vote_work;
+	struct delayed_work sdcard_hotplut_work;
 	struct workqueue_struct *workq;	/* QoS work queue */
 	struct sdhci_msm_qos_req *sdhci_qos;
 	struct irq_affinity_notify affinity_notify;
@@ -3952,6 +3983,48 @@ static int sdhci_msm_start_signal_voltage_switch(struct mmc_host *mmc,
 	return -EAGAIN;
 }
 
+static void moto_sdcard_event_work(struct work_struct *work)
+{
+	struct sdhci_msm_host *msm_host = container_of(work, struct sdhci_msm_host, sdcard_hotplut_work.work);
+	struct mmc_host *mmc = NULL;
+	struct mmc_card *card = NULL;
+	struct mmc_blk_data *md = NULL;
+
+	if ((msm_host != NULL) && (mmc_card_is_removable(msm_host->mmc))) {
+		mmc = msm_host->mmc;
+
+		if (mmc != NULL)
+			card = mmc->card;
+		else
+			goto done;
+
+		if (card != NULL)
+			md = dev_get_drvdata(&card->dev);
+		else
+			goto done;
+
+		if (md != NULL) {
+			pr_debug("mmc update the removable card discard sectors to max\n");
+			blk_queue_max_discard_sectors(md->queue.queue, UINT_MAX);
+		}
+	}
+done:
+	if (msm_host != NULL)
+		cancel_delayed_work(&msm_host->sdcard_hotplut_work);
+}
+
+static void sdhci_msm_init_card(struct mmc_host *host,
+				struct mmc_card *card)
+{
+	struct sdhci_host *sdhci_host = mmc_priv(host);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci_host);
+	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
+
+	if (mmc_card_is_removable(host)) {
+		schedule_delayed_work(&msm_host->sdcard_hotplut_work, msecs_to_jiffies(2*HZ));
+	}
+}
+
 #define MAX_TEST_BUS 60
 #define DRIVER_NAME "sdhci_msm"
 #define SDHCI_MSM_DUMP(f, x...) \
@@ -5199,6 +5272,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	if (ret)
 		goto pltfm_free;
 
+	INIT_DELAYED_WORK(&msm_host->sdcard_hotplut_work, moto_sdcard_event_work);
 	/* Setup regulators */
 	ret = sdhci_msm_vreg_init(&pdev->dev, msm_host, true);
 	if (ret) {
@@ -5257,6 +5331,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	host->mmc_host_ops.start_signal_voltage_switch =
 		sdhci_msm_start_signal_voltage_switch;
 	host->mmc_host_ops.execute_tuning = sdhci_msm_execute_tuning;
+	host->mmc_host_ops.init_card = sdhci_msm_init_card;
 
 	msm_host->workq = create_workqueue("sdhci_msm_generic_swq");
 	if (!msm_host->workq)
