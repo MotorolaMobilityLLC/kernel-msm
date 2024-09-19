@@ -294268,6 +294268,20 @@ enumeration {
   }
 }
 enumeration {
+  id: 0xf01a263d
+  name: "lockdep_ok"
+  definition {
+    underlying_type_id: 0x4585663f
+    enumerator {
+      name: "LOCKDEP_STILL_OK"
+    }
+    enumerator {
+      name: "LOCKDEP_NOW_UNRELIABLE"
+      value: 1
+    }
+  }
+}
+enumeration {
   id: 0x0d164218
   name: "lru_list"
   definition {
@@ -301606,6 +301620,12 @@ function {
   parameter_id: 0x3e10b518
   parameter_id: 0x3747dc62
   parameter_id: 0xf435685e
+}
+function {
+  id: 0x02396084
+  return_type_id: 0x48b5725f
+  parameter_id: 0x4585663f
+  parameter_id: 0xf01a263d
 }
 function {
   id: 0x023bf562
@@ -366265,6 +366285,15 @@ elf_symbol {
   full_name: "add_swap_extent"
 }
 elf_symbol {
+  id: 0xa5dcf915
+  name: "add_taint"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0eb6eb87
+  type_id: 0x02396084
+  full_name: "add_taint"
+}
+elf_symbol {
   id: 0xf2768ed7
   name: "add_timer"
   is_defined: true
@@ -371503,6 +371532,15 @@ elf_symbol {
   crc: 0x52ecbc75
   type_id: 0x25b94d0a
   full_name: "crc_ccitt"
+}
+elf_symbol {
+  id: 0x44303242
+  name: "crc_ccitt_false"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0cc4b4b6
+  type_id: 0x25b94d0a
+  full_name: "crc_ccitt_false"
 }
 elf_symbol {
   id: 0xab0e3dee
@@ -386395,6 +386433,15 @@ elf_symbol {
   crc: 0x29b9320c
   type_id: 0x5f272d07
   full_name: "gpiod_get"
+}
+elf_symbol {
+  id: 0x94ca6698
+  name: "gpiod_get_array_value"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x7d8cfea5
+  type_id: 0x8ce0e11d
+  full_name: "gpiod_get_array_value"
 }
 elf_symbol {
   id: 0x80497778
@@ -426596,6 +426643,7 @@ interface {
   symbol_id: 0xf09e1ca4
   symbol_id: 0xcef4ad72
   symbol_id: 0x7951d828
+  symbol_id: 0xa5dcf915
   symbol_id: 0xf2768ed7
   symbol_id: 0xfbeae533
   symbol_id: 0x52066ae4
@@ -427179,6 +427227,7 @@ interface {
   symbol_id: 0xec1b66f9
   symbol_id: 0xac913841
   symbol_id: 0x42676517
+  symbol_id: 0x44303242
   symbol_id: 0xab0e3dee
   symbol_id: 0xd5cc5ce2
   symbol_id: 0xcd2564d1
@@ -428828,6 +428877,7 @@ interface {
   symbol_id: 0xad2ad56b
   symbol_id: 0xfc326378
   symbol_id: 0x652eb3f5
+  symbol_id: 0x94ca6698
   symbol_id: 0x80497778
   symbol_id: 0xaca51db1
   symbol_id: 0x226f81df
