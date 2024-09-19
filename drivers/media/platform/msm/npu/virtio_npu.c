@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/cdev.h>
@@ -746,12 +746,15 @@ fail:
 static int32_t virt_npu_unmap_buf(struct npu_client *client,
 		 int buf_hdl,  uint64_t iova)
 {
+	struct npu_device *npu_dev = client->npu_dev;
 	struct npu_ion_buf *ion_buf;
 
+	mutex_lock(&npu_dev->lock);
 	/* clear entry and retrieve the corresponding buffer */
 	ion_buf = npu_get_npu_ion_buffer(client, buf_hdl);
 	if (!ion_buf) {
 		NPU_ERR("could not find buffer\n");
+		mutex_unlock(&npu_dev->lock);
 		return -EINVAL;
 	}
 
@@ -772,6 +775,7 @@ static int32_t virt_npu_unmap_buf(struct npu_client *client,
 	NPU_DBG("unmapped mem addr:0x%llx size:0x%x\n", ion_buf->iova,
 		ion_buf->size);
 	npu_free_npu_ion_buffer(client, buf_hdl);
+	mutex_unlock(&npu_dev->lock);
 
 	return 0;
 }
