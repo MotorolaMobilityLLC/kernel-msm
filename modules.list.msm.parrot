@@ -13,7 +13,6 @@ dispcc-parrot.ko
 gcc-sm4450.ko
 dispcc-sm4450.ko
 sched-walt.ko
-sched-walt-debug.ko
 qcom_wdt_core.ko
 qcom_cpucp.ko
 qcom_ipc_logging.ko
