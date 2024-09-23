@@ -164,6 +164,8 @@
   __tracepoint_android_vh_ogki_check_vip_status
   __tracepoint_android_vh_ogki_cma_alloc_retry
   __tracepoint_android_vh_ogki_ufs_dsm
+  __tracepoint_scsi_dispatch_cmd_start
+  __traceiter_scsi_dispatch_cmd_start
   __traceiter_android_vh_ogki_tcp_srtt_estimator
   __tracepoint_android_vh_ogki_tcp_srtt_estimator
   __traceiter_android_vh_ogki_tcp_rcv_estab_fastpath

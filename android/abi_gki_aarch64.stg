@@ -334961,6 +334961,12 @@ function {
   parameter_id: 0x4585663f
 }
 function {
+  id: 0x9b51e812
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x3f949c69
+}
+function {
   id: 0x9b520f2d
   return_type_id: 0x6720d32f
   parameter_id: 0x18db1c77
@@ -359586,6 +359592,15 @@ elf_symbol {
   full_name: "__traceiter_sched_waking"
 }
 elf_symbol {
+  id: 0x36d71264
+  name: "__traceiter_scsi_dispatch_cmd_start"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xb590d0ca
+  type_id: 0x9b51e812
+  full_name: "__traceiter_scsi_dispatch_cmd_start"
+}
+elf_symbol {
   id: 0x8ce8e50d
   name: "__traceiter_sk_data_ready"
   is_defined: true
@@ -365443,6 +365458,15 @@ elf_symbol {
   crc: 0xa9d05ba3
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_sched_waking"
+}
+elf_symbol {
+  id: 0x6069ba16
+  name: "__tracepoint_scsi_dispatch_cmd_start"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xb7224ab3
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_scsi_dispatch_cmd_start"
 }
 elf_symbol {
   id: 0xf68d6127
@@ -426145,6 +426169,7 @@ interface {
   symbol_id: 0xf574f9d9
   symbol_id: 0x8fa66546
   symbol_id: 0x20097074
+  symbol_id: 0x36d71264
   symbol_id: 0x8ce8e50d
   symbol_id: 0x62a42e92
   symbol_id: 0xa7ccbbf5
@@ -426796,6 +426821,7 @@ interface {
   symbol_id: 0xf586b3bb
   symbol_id: 0x97e630b0
   symbol_id: 0xa70e8cd2
+  symbol_id: 0x6069ba16
   symbol_id: 0xf68d6127
   symbol_id: 0x9a65f074
   symbol_id: 0x158cc323
