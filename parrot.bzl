@@ -256,14 +256,14 @@ def define_parrot():
 
     _parrot_consolidate_in_tree_modules = _parrot_in_tree_modules + [
         # keep sorted
-        "drivers/misc/lkdtm/lkdtm.ko",
-        "kernel/locking/locktorture.ko",
+        #"drivers/misc/lkdtm/lkdtm.ko",
+        #"kernel/locking/locktorture.ko",
         "kernel/power/user_sysfs_private.ko",
-        "kernel/rcu/rcutorture.ko",
+        #"kernel/rcu/rcutorture.ko",
         #"kernel/sched/walt/sched-walt-debug.ko",
-        "kernel/torture.ko",
-        "lib/atomic64_test.ko",
-        "lib/test_user_copy.ko",
+        #"kernel/torture.ko",
+        #"lib/atomic64_test.ko",
+        #"lib/test_user_copy.ko",
     ]
 
     _parrot_moto_in_tree_modules = {
