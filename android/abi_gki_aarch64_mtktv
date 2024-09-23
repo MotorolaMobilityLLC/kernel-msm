@@ -581,6 +581,8 @@
   enable_percpu_irq
   end_buffer_read_sync
   ether_setup
+  ethtool_convert_legacy_u32_to_link_mode
+  ethtool_convert_link_mode_to_legacy_u32
   ethtool_op_get_link
   eth_type_trans
   extcon_get_edev_by_phandle
@@ -635,6 +637,7 @@
   generic_file_open
   generic_file_read_iter
   generic_handle_irq
+  generic_mii_ioctl
   generic_read_dir
   gen_pool_add_owner
   gen_pool_alloc_algo_owner
@@ -922,6 +925,9 @@
   __memset_io
   memstart_addr
   memunmap
+  mii_ethtool_get_link_ksettings
+  mii_ethtool_set_link_ksettings
+  mii_nway_restart
   misc_deregister
   misc_register
   __mmap_lock_do_trace_acquire_returned
@@ -962,6 +968,7 @@
   napi_schedule_prep
   __netdev_alloc_skb
   netdev_err
+  netdev_info
   netif_carrier_off
   netif_carrier_on
   netif_napi_add_weight
