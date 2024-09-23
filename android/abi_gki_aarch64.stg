@@ -336853,6 +336853,13 @@ function {
   parameter_id: 0x18bd6530
 }
 function {
+  id: 0x9bb0dfd9
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x06835e9c
+  parameter_id: 0x15a30023
+}
+function {
   id: 0x9bb12429
   return_type_id: 0x6720d32f
   parameter_id: 0x18e64f74
@@ -337443,6 +337450,13 @@ function {
   parameter_id: 0x18ea6ae3
   parameter_id: 0x18bd6530
   parameter_id: 0x716d7970
+}
+function {
+  id: 0x9bc52d71
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x1b8590a8
+  parameter_id: 0x120540d1
 }
 function {
   id: 0x9bc5dfda
@@ -357451,6 +357465,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_ogki_cma_alloc_retry"
 }
 elf_symbol {
+  id: 0xe2695428
+  name: "__traceiter_android_vh_ogki_f2fs_create"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xbc2977b2
+  type_id: 0x9bc52d71
+  full_name: "__traceiter_android_vh_ogki_f2fs_create"
+}
+elf_symbol {
   id: 0x2853afc7
   name: "__traceiter_android_vh_ogki_f2fs_dsm"
   is_defined: true
@@ -357467,6 +357490,15 @@ elf_symbol {
   crc: 0x9e4521e8
   type_id: 0x9b634f08
   full_name: "__traceiter_android_vh_ogki_f2fs_dsm_get"
+}
+elf_symbol {
+  id: 0xab5a83cd
+  name: "__traceiter_android_vh_ogki_f2fs_submit_write_page"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x347c48f5
+  type_id: 0x9bb0dfd9
+  full_name: "__traceiter_android_vh_ogki_f2fs_submit_write_page"
 }
 elf_symbol {
   id: 0xdf18f975
@@ -363319,6 +363351,15 @@ elf_symbol {
   full_name: "__tracepoint_android_vh_ogki_cma_alloc_retry"
 }
 elf_symbol {
+  id: 0xc286b1d6
+  name: "__tracepoint_android_vh_ogki_f2fs_create"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xf5e3edac
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_ogki_f2fs_create"
+}
+elf_symbol {
   id: 0xd4b0bfc9
   name: "__tracepoint_android_vh_ogki_f2fs_dsm"
   is_defined: true
@@ -363335,6 +363376,15 @@ elf_symbol {
   crc: 0x727e2432
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_ogki_f2fs_dsm_get"
+}
+elf_symbol {
+  id: 0x6c9f1d93
+  name: "__tracepoint_android_vh_ogki_f2fs_submit_write_page"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x2ab6dc04
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_ogki_f2fs_submit_write_page"
 }
 elf_symbol {
   id: 0xa9eb9293
@@ -426135,8 +426185,10 @@ interface {
   symbol_id: 0x056c5936
   symbol_id: 0xd3e1b817
   symbol_id: 0x08789d6e
+  symbol_id: 0xe2695428
   symbol_id: 0x2853afc7
   symbol_id: 0x910aba6d
+  symbol_id: 0xab5a83cd
   symbol_id: 0xdf18f975
   symbol_id: 0xa86939b3
   symbol_id: 0xfbaaa7e4
@@ -426787,8 +426839,10 @@ interface {
   symbol_id: 0xcda04300
   symbol_id: 0x508ff939
   symbol_id: 0x0d872dfc
+  symbol_id: 0xc286b1d6
   symbol_id: 0xd4b0bfc9
   symbol_id: 0x4be59f2f
+  symbol_id: 0x6c9f1d93
   symbol_id: 0xa9eb9293
   symbol_id: 0x5363abe5
   symbol_id: 0x90dcde6e

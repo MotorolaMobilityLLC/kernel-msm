@@ -153,6 +153,10 @@
   __traceiter_android_vh_ogki_async_psi_bypass
   __traceiter_android_vh_ogki_f2fs_dsm
   __traceiter_android_vh_ogki_f2fs_dsm_get
+  __tracepoint_android_vh_ogki_f2fs_create
+  __traceiter_android_vh_ogki_f2fs_create
+  __tracepoint_android_vh_ogki_f2fs_submit_write_page
+  __traceiter_android_vh_ogki_f2fs_submit_write_page
   __traceiter_android_vh_ogki_check_vip_status
   __traceiter_android_vh_ogki_cma_alloc_retry
   __traceiter_android_vh_ogki_ufs_dsm
