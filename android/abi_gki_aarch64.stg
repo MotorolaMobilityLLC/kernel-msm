@@ -291038,6 +291038,24 @@ enumeration {
   }
 }
 enumeration {
+  id: 0x9fe5c5a6
+  name: "ftrace_dump_mode"
+  definition {
+    underlying_type_id: 0x4585663f
+    enumerator {
+      name: "DUMP_NONE"
+    }
+    enumerator {
+      name: "DUMP_ALL"
+      value: 1
+    }
+    enumerator {
+      name: "DUMP_ORIG"
+      value: 2
+    }
+  }
+}
+enumeration {
   id: 0x42ebe6bd
   name: "geni_se_xfer_mode"
   definition {
@@ -315445,6 +315463,11 @@ function {
   parameter_id: 0x33756485
   parameter_id: 0x33756485
   parameter_id: 0x33756485
+}
+function {
+  id: 0x376120fa
+  return_type_id: 0x48b5725f
+  parameter_id: 0x9fe5c5a6
 }
 function {
   id: 0x37677261
@@ -371016,6 +371039,15 @@ elf_symbol {
   full_name: "cpu_irqtime"
 }
 elf_symbol {
+  id: 0xdf9606b3
+  name: "cpu_is_hotpluggable"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x2ebe3135
+  type_id: 0xefc5028b
+  full_name: "cpu_is_hotpluggable"
+}
+elf_symbol {
   id: 0xd6ea4255
   name: "cpu_latency_qos_add_request"
   is_defined: true
@@ -384535,6 +384567,15 @@ elf_symbol {
   namespace: "VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver"
   type_id: 0x161723fb
   full_name: "fsstack_copy_inode_size"
+}
+elf_symbol {
+  id: 0x613adcb1
+  name: "ftrace_dump"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xaaa918c9
+  type_id: 0x376120fa
+  full_name: "ftrace_dump"
 }
 elf_symbol {
   id: 0x370e6f08
@@ -404587,6 +404628,24 @@ elf_symbol {
   crc: 0x60a13e90
   type_id: 0x10985193
   full_name: "rcu_barrier"
+}
+elf_symbol {
+  id: 0x5a1e8208
+  name: "rcu_cpu_stall_suppress"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xb0747ed2
+  type_id: 0x6720d32f
+  full_name: "rcu_cpu_stall_suppress"
+}
+elf_symbol {
+  id: 0xc67413f4
+  name: "rcu_inkernel_boot_has_ended"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x24da0093
+  type_id: 0xfea45b04
+  full_name: "rcu_inkernel_boot_has_ended"
 }
 elf_symbol {
   id: 0x5b007949
@@ -427359,6 +427418,7 @@ interface {
   symbol_id: 0x33bbeca6
   symbol_id: 0x4e0ae383
   symbol_id: 0xfbce2cbb
+  symbol_id: 0xdf9606b3
   symbol_id: 0xd6ea4255
   symbol_id: 0xa3ab8c31
   symbol_id: 0x8daa61e5
@@ -428857,6 +428917,7 @@ interface {
   symbol_id: 0x28929e3b
   symbol_id: 0x17542476
   symbol_id: 0xabbe28f4
+  symbol_id: 0x613adcb1
   symbol_id: 0x370e6f08
   symbol_id: 0x16ccff22
   symbol_id: 0x5df140db
@@ -431080,6 +431141,8 @@ interface {
   symbol_id: 0xd8d641e9
   symbol_id: 0xf1e11c16
   symbol_id: 0xdbf9c67a
+  symbol_id: 0x5a1e8208
+  symbol_id: 0xc67413f4
   symbol_id: 0x5b007949
   symbol_id: 0x854212b1
   symbol_id: 0xd12105c9
