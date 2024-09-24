@@ -10,6 +10,10 @@
  * Following tracepoints are not exported in tracefs and provide a
  * mechanism for vendor modules to hook and extend functionality
  */
+DECLARE_RESTRICTED_HOOK(android_rvh_alloc_workqueue,
+	TP_PROTO(struct workqueue_struct *wq, unsigned int *flags, int *max_active),
+	TP_ARGS(wq, flags, max_active), 1);
+
 DECLARE_RESTRICTED_HOOK(android_rvh_create_worker,
 	TP_PROTO(struct task_struct *p, struct workqueue_attrs *attrs),
 	TP_ARGS(p, attrs), 1);

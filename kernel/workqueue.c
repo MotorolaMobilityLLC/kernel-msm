@@ -4732,6 +4732,7 @@ struct workqueue_struct *alloc_workqueue(const char *fmt,
 	vsnprintf(wq->name, sizeof(wq->name), fmt, args);
 	va_end(args);
 
+	trace_android_rvh_alloc_workqueue(wq, &flags, &max_active);
 	max_active = max_active ?: WQ_DFL_ACTIVE;
 	max_active = wq_clamp_max_active(max_active, flags, wq->name);
 
