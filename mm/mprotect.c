@@ -661,7 +661,7 @@ success:
 	 * held in write mode.
 	 */
 	vma_start_write(vma);
-	vm_flags_reset(vma, vma_pad_fixup_flags(vma, newflags));
+	vm_flags_reset(vma, newflags);
 	if (vma_wants_manual_pte_write_upgrade(vma))
 		mm_cp_flags |= MM_CP_TRY_CHANGE_WRITABLE;
 	vma_set_page_prot(vma);
