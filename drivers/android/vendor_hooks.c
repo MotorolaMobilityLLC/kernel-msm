@@ -571,3 +571,5 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_wq_wait_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_wq_wait_finish);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_work_wait_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_work_wait_finish);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_direct_reclaim_begin);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_direct_reclaim_end);
