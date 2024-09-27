@@ -367,7 +367,8 @@ enum page_memcg_data_flags {
 static inline bool folio_memcg_kmem(struct folio *folio);
 
 void do_traversal_all_lruvec(void);
-
+void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
+			    unsigned long *evictionp, bool *workingsetp);
 int mem_cgroup_move_account(struct folio *folio,
 			    bool compound,
 			    struct mem_cgroup *from,
