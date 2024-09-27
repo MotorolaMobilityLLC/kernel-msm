@@ -356565,6 +356565,24 @@ elf_symbol {
   full_name: "__traceiter_android_vh_del_page_from_lrulist"
 }
 elf_symbol {
+  id: 0x17df4128
+  name: "__traceiter_android_vh_direct_reclaim_begin"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xcedb9e1a
+  type_id: 0x9be2da56
+  full_name: "__traceiter_android_vh_direct_reclaim_begin"
+}
+elf_symbol {
+  id: 0x5db6a094
+  name: "__traceiter_android_vh_direct_reclaim_end"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x47bf6c00
+  type_id: 0x9a33392f
+  full_name: "__traceiter_android_vh_direct_reclaim_end"
+}
+elf_symbol {
   id: 0x0bf2f5bb
   name: "__traceiter_android_vh_disable_thermal_cooling_stats"
   is_defined: true
@@ -362593,6 +362611,24 @@ elf_symbol {
   crc: 0x14acfd09
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_del_page_from_lrulist"
+}
+elf_symbol {
+  id: 0x749563a6
+  name: "__tracepoint_android_vh_direct_reclaim_begin"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x0345ead2
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_direct_reclaim_begin"
+}
+elf_symbol {
+  id: 0x694ad7a6
+  name: "__tracepoint_android_vh_direct_reclaim_end"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x95f3b83d
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_direct_reclaim_end"
 }
 elf_symbol {
   id: 0x1ddb60ad
@@ -426648,6 +426684,8 @@ interface {
   symbol_id: 0xbb17692f
   symbol_id: 0xc8db6e69
   symbol_id: 0x45f41f73
+  symbol_id: 0x17df4128
+  symbol_id: 0x5db6a094
   symbol_id: 0x0bf2f5bb
   symbol_id: 0x5c382938
   symbol_id: 0x94b48bb0
@@ -427318,6 +427356,8 @@ interface {
   symbol_id: 0x869fd955
   symbol_id: 0xaab0786f
   symbol_id: 0x5e32ebbd
+  symbol_id: 0x749563a6
+  symbol_id: 0x694ad7a6
   symbol_id: 0x1ddb60ad
   symbol_id: 0x0ae2ee16
   symbol_id: 0x30442e2e
