@@ -315501,6 +315501,11 @@ function {
   parameter_id: 0x0490bb4a
 }
 function {
+  id: 0x36c501fb
+  return_type_id: 0x33756485
+  parameter_id: 0x1da732a0
+}
+function {
   id: 0x36cad8bb
   return_type_id: 0x23f09c34
   parameter_id: 0x23f09c34
@@ -423782,6 +423787,15 @@ elf_symbol {
   full_name: "vm_unmap_ram"
 }
 elf_symbol {
+  id: 0xbbf42090
+  name: "vm_unmapped_area"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x064b9739
+  type_id: 0x36c501fb
+  full_name: "vm_unmapped_area"
+}
+elf_symbol {
   id: 0xca7f93d5
   name: "vm_zone_stat"
   is_defined: true
@@ -433543,6 +433557,7 @@ interface {
   symbol_id: 0x2570ceae
   symbol_id: 0xacc76406
   symbol_id: 0xef2c49d1
+  symbol_id: 0xbbf42090
   symbol_id: 0xca7f93d5
   symbol_id: 0x3c915fdb
   symbol_id: 0x8ffd0533

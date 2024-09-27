@@ -2599,6 +2599,7 @@
   vmalloc_user
   vmap
   vmf_insert_pfn_prot
+  vm_unmapped_area
   vprintk
   vprintk_emit
   vring_del_virtqueue
