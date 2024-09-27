@@ -94,6 +94,10 @@
   __traceiter_android_vh_slab_free
   __traceiter_android_vh_should_fault_around
   __tracepoint_android_vh_should_fault_around
+  __traceiter_android_vh_mglru_should_abort_scan
+  __tracepoint_android_vh_mglru_should_abort_scan
+  __traceiter_android_vh_mglru_should_abort_scan_order
+  __tracepoint_android_vh_mglru_should_abort_scan_order
   __traceiter_android_vh_tcp_connect
   __tracepoint_android_vh_tcp_connect
   __traceiter_android_vh_tcp_write_timeout_estab_retrans
@@ -104,6 +108,10 @@
   __tracepoint_android_vh_tcp_clean_rtx_queue
   __traceiter_android_vh_tcp_rcv_synack
   __tracepoint_android_vh_tcp_rcv_synack
+  __traceiter_android_vh_udp_unicast_rcv_skb
+  __tracepoint_android_vh_udp_unicast_rcv_skb
+  __traceiter_android_vh_udp6_unicast_rcv_skb
+  __tracepoint_android_vh_udp6_unicast_rcv_skb
   __tracepoint_android_vh_si_mem_available_adjust
   __traceiter_android_vh_si_mem_available_adjust
   __tracepoint_android_vh_si_meminfo_adjust
@@ -138,11 +146,17 @@
   __tracepoint_android_vh_sk_free
   __traceiter_android_vh_sk_clone_lock
   __tracepoint_android_vh_sk_clone_lock
+  __traceiter_android_vh_cma_alloc_retry
+  __tracepoint_android_vh_cma_alloc_retry
   __traceiter_android_rvh_ogki_vfree_bypass
   __traceiter_android_rvh_ogki_vmalloc_node_bypass
   __traceiter_android_vh_ogki_async_psi_bypass
   __traceiter_android_vh_ogki_f2fs_dsm
   __traceiter_android_vh_ogki_f2fs_dsm_get
+  __tracepoint_android_vh_ogki_f2fs_create
+  __traceiter_android_vh_ogki_f2fs_create
+  __tracepoint_android_vh_ogki_f2fs_submit_write_page
+  __traceiter_android_vh_ogki_f2fs_submit_write_page
   __traceiter_android_vh_ogki_check_vip_status
   __traceiter_android_vh_ogki_cma_alloc_retry
   __traceiter_android_vh_ogki_ufs_dsm
@@ -154,6 +168,8 @@
   __tracepoint_android_vh_ogki_check_vip_status
   __tracepoint_android_vh_ogki_cma_alloc_retry
   __tracepoint_android_vh_ogki_ufs_dsm
+  __tracepoint_scsi_dispatch_cmd_start
+  __traceiter_scsi_dispatch_cmd_start
   __traceiter_android_vh_ogki_tcp_srtt_estimator
   __tracepoint_android_vh_ogki_tcp_srtt_estimator
   __traceiter_android_vh_ogki_tcp_rcv_estab_fastpath

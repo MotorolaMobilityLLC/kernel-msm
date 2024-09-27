@@ -944,7 +944,7 @@ void handle_host_mem_abort(struct kvm_cpu_context *host_ctxt)
 
 	if (is_dabt(esr) && !addr_is_memory(addr) &&
 	    kvm_iommu_host_dabt_handler(host_ctxt, esr, addr))
-		ret = 0;
+		goto return_to_host;
 
 	/* If not handled, attempt to map the page. */
 	if (ret == -EPERM)

@@ -603,6 +603,12 @@
 # required by sysdump.ko
   node_states
 
+# required by torture.ko
+  cpu_is_hotpluggable
+  ftrace_dump
+  rcu_cpu_stall_suppress
+  rcu_inkernel_boot_has_ended
+
 # required by ufs_sprd.ko
   __scsi_add_device
   scsi_test_unit_ready

@@ -970,19 +970,24 @@ int __pkvm_load_el2_module(struct module *this, unsigned long *token)
 	mod->sections.end = end;
 
 	endrel = (void *)mod->relocs + mod->nr_relocs * sizeof(*endrel);
-	kvm_apply_hyp_module_relocations(start, hyp_va, mod->relocs, endrel);
-
-	/*
-	 * Exclude EL2 module sections from kmemleak before making them
-	 * inaccessible.
-	 */
-	kmemleak_free_part(start, size);
+	kvm_apply_hyp_module_relocations(mod, mod->relocs, endrel);
 
 	ret = hyp_trace_init_mod_events(mod->hyp_events,
 					mod->event_ids.start,
 					mod->nr_hyp_events);
 	if (ret)
 		kvm_err("Failed to init module events: %d\n", ret);
+
+	/*
+	 * Sadly we have also to disable kmemleak for EL1 sections: we can't
+	 * reset created scan area and therefore we can't create a finer grain
+	 * scan excluding only EL2 sections.
+	 */
+	if (this) {
+		kmemleak_no_scan(this->mem[MOD_TEXT].base);
+		kmemleak_no_scan(this->mem[MOD_DATA].base);
+		kmemleak_no_scan(this->mem[MOD_RODATA].base);
+	}
 
 	ret = pkvm_map_module_sections(secs_map + secs_first, hyp_va,
 				       ARRAY_SIZE(secs_map) - secs_first);
@@ -1014,14 +1019,15 @@ int __pkvm_register_el2_call(unsigned long hfn_hyp_va)
 EXPORT_SYMBOL(__pkvm_register_el2_call);
 #endif /* CONFIG_MODULES */
 
-int __pkvm_topup_hyp_alloc_mgt(unsigned long id, unsigned long nr_pages, unsigned long sz_alloc)
+int __pkvm_topup_hyp_alloc_mgt_gfp(unsigned long id, unsigned long nr_pages,
+				   unsigned long sz_alloc, gfp_t gfp)
 {
 	struct kvm_hyp_memcache mc;
 	int ret;
 
 	init_hyp_memcache(&mc);
 
-	ret = topup_hyp_memcache(&mc, nr_pages, get_order(sz_alloc));
+	ret = topup_hyp_memcache_gfp(&mc, nr_pages, get_order(sz_alloc), gfp);
 	if (ret)
 		return ret;
 
@@ -1031,6 +1037,12 @@ int __pkvm_topup_hyp_alloc_mgt(unsigned long id, unsigned long nr_pages, unsigne
 		free_hyp_memcache(&mc);
 
 	return ret;
+}
+EXPORT_SYMBOL(__pkvm_topup_hyp_alloc_mgt_gfp);
+
+int __pkvm_topup_hyp_alloc_mgt(unsigned long id, unsigned long nr_pages, unsigned long sz_alloc)
+{
+	return __pkvm_topup_hyp_alloc_mgt_gfp(id, nr_pages, sz_alloc, GFP_KERNEL);
 }
 EXPORT_SYMBOL(__pkvm_topup_hyp_alloc_mgt);
 

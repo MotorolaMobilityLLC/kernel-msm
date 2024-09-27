@@ -24,6 +24,9 @@ DECLARE_HOOK(android_vh_check_folio_look_around_ref,
 DECLARE_HOOK(android_vh_do_shrink_slab,
 	TP_PROTO(struct shrinker *shrinker, long *freeable),
 	TP_ARGS(shrinker, freeable));
+DECLARE_HOOK(android_vh_throttle_direct_reclaim_bypass,
+	TP_PROTO(bool *bypass),
+	TP_ARGS(bypass));
 DECLARE_HOOK(android_vh_vmscan_kswapd_done,
 	TP_PROTO(int node_id, unsigned int highest_zoneidx, unsigned int alloc_order,
 	        unsigned int reclaim_order),
@@ -58,6 +61,12 @@ DECLARE_HOOK(android_vh_should_continue_reclaim,
 DECLARE_HOOK(android_vh_file_is_tiny_bypass,
 	TP_PROTO(bool file_is_tiny, bool *bypass),
 	TP_ARGS(file_is_tiny, bypass));
+DECLARE_HOOK(android_vh_mglru_should_abort_scan,
+	TP_PROTO(u64 *ext, bool *bypass),
+	TP_ARGS(ext, bypass));
+DECLARE_HOOK(android_vh_mglru_should_abort_scan_order,
+	TP_PROTO(unsigned int order, bool *bypass),
+	TP_ARGS(order, bypass));
 DECLARE_HOOK(android_vh_rebalance_anon_lru_bypass,
 	TP_PROTO(bool *bypass),
 	TP_ARGS(bypass));
@@ -83,6 +92,9 @@ DECLARE_HOOK(android_vh_do_folio_trylock,
 	TP_PROTO(struct folio *folio, struct rw_semaphore *sem,
 		bool *got_lock, bool *skip),
 	TP_ARGS(folio, sem, got_lock, skip));
+DECLARE_HOOK(android_vh_shrink_node_memcgs,
+	TP_PROTO(struct mem_cgroup *memcg, bool *skip),
+	TP_ARGS(memcg, skip));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

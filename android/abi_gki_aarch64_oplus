@@ -519,3 +519,13 @@
   xt_register_match
   xt_unregister_match
   zero_pfn
+  crypto_register_scomp
+  crypto_unregister_scomp
+  zstd_get_params
+  zstd_compress_cctx
+  zstd_is_error
+  zstd_decompress_dctx
+  zstd_cctx_workspace_bound
+  zstd_init_cctx
+  zstd_dctx_workspace_bound
+  zstd_init_dctx

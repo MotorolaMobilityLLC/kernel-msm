@@ -565,6 +565,9 @@ void dwc3_event_buffers_cleanup(struct dwc3 *dwc)
 	if (!(reg & DWC3_DSTS_DEVCTRLHLT))
 		return;
 
+	if (!dwc->ev_buf)
+		return;
+
 	evt = dwc->ev_buf;
 
 	evt->lpos = 0;

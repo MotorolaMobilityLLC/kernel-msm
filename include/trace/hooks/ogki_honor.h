@@ -18,6 +18,10 @@ struct ufs_hba;
 struct tcp_sock;
 struct net_device;
 struct cfg80211_registered_device;
+struct dentry;
+struct inode;
+struct page;
+struct bio;
 DECLARE_HOOK(android_vh_ogki_async_psi_bypass,
 	TP_PROTO(bool *bypass),
 	TP_ARGS(bypass));
@@ -105,6 +109,12 @@ DECLARE_HOOK(android_vh_ogki_f2fs_dsm,
 DECLARE_HOOK(android_vh_ogki_f2fs_dsm_get,
 	TP_PROTO(unsigned long code, char *err_msg),
 	TP_ARGS(code, err_msg));
+DECLARE_HOOK(android_vh_ogki_f2fs_create,
+	TP_PROTO(struct inode *inode, struct dentry *dentry),
+	TP_ARGS(inode, dentry));
+DECLARE_HOOK(android_vh_ogki_f2fs_submit_write_page,
+	TP_PROTO(struct page *page, struct bio *bio),
+	TP_ARGS(page, bio));
 DECLARE_HOOK(android_vh_ogki_cma_alloc_retry,
 	TP_PROTO(char *name, int *retry),
 	TP_ARGS(name, retry));

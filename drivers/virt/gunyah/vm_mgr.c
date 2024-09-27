@@ -955,7 +955,8 @@ int gunyah_gup_reclaim_parcel(struct gunyah_vm *ghvm,
 			if (folio_test_private(folio))
 				gunyah_folio_host_reclaim(folio);
 
-			folio_put(folio);
+			unpin_user_page(folio_page(folio, 0));
+			account_locked_vm(ghvm->mm_s, 1, false);
 		}
 
 		kfree(parcel->mem_entries);

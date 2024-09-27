@@ -251,6 +251,25 @@
       ]
     },
     {
+      "name": "CtsIncrementalInstallHostTestCases",
+      "options": [
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalFeatureTest"
+        },
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalInstallTest"
+        }
+      ]
+    },
+    {
+      "name": "CtsLibcoreLegacy22TestCases",
+      "options": [
+        {
+          "include-filter": "android.util.cts.FloatMathTest"
+        }
+      ]
+    },
+    {
       "name": "libdm_test"
     },
     {

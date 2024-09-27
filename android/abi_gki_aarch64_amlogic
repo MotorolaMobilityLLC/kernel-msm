@@ -357,6 +357,7 @@
   __devm_add_action
   devm_alloc_etherdev_mqs
   devm_blk_crypto_profile_init
+  devm_clk_bulk_get
   devm_clk_bulk_get_all
   devm_clk_get
   devm_clk_get_optional
@@ -435,6 +436,7 @@
   dev_pm_domain_attach_by_id
   dev_pm_domain_attach_by_name
   dev_pm_domain_detach
+  dev_pm_genpd_set_performance_state
   dev_pm_opp_find_freq_ceil
   dev_pm_opp_free_cpufreq_table
   dev_pm_opp_get_opp_count
@@ -1200,6 +1202,7 @@
   kset_unregister
   kstrdup
   kstrdup_const
+  kstrndup
   kstrtobool
   kstrtobool_from_user
   kstrtoint
@@ -1463,6 +1466,7 @@
   of_get_phy_mode
   of_get_property
   of_get_regulator_init_data
+  of_get_required_opp_performance_state
   of_graph_get_remote_node
   of_graph_get_remote_port_parent
   of_graph_is_present
@@ -2075,6 +2079,7 @@
   sock_release
   sock_wfree
   sort
+  spi_add_device
   __spi_alloc_controller
   spi_alloc_device
   spi_controller_resume
@@ -2088,6 +2093,7 @@
   __spi_register_driver
   spi_setup
   spi_sync
+  spi_unregister_device
   split_page
   sprintf
   sprint_symbol

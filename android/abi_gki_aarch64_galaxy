@@ -73,6 +73,7 @@
   __traceiter_android_rvh_do_el1_undef
   __traceiter_android_rvh_do_sea
   __traceiter_android_rvh_do_sp_pc_abort
+  __traceiter_android_rvh_ksys_umount
   __traceiter_android_rvh_panic_unhandled
   __traceiter_android_rvh_process_madvise_bypass
   __traceiter_android_rvh_report_bug
@@ -117,6 +118,7 @@
   __traceiter_android_vh_smaps_pte_entry
   __traceiter_android_vh_smaps_swap_shared
   __traceiter_android_vh_show_smap_swap_shared
+  __traceiter_android_vh_suitable_migration_target_bypass
   __traceiter_android_vh_split_large_folio_bypass
   __traceiter_android_vh_try_to_freeze_todo
   __traceiter_android_vh_try_to_freeze_todo_unfrozen
@@ -141,6 +143,7 @@
   __tracepoint_android_rvh_do_el1_undef
   __tracepoint_android_rvh_do_sea
   __tracepoint_android_rvh_do_sp_pc_abort
+  __tracepoint_android_rvh_ksys_umount
   __tracepoint_android_rvh_panic_unhandled
   __tracepoint_android_rvh_process_madvise_bypass
   __tracepoint_android_rvh_report_bug
@@ -186,6 +189,7 @@
   __tracepoint_android_vh_smaps_swap_shared
   __tracepoint_android_vh_show_smap_swap_shared
   __tracepoint_android_vh_split_large_folio_bypass
+  __tracepoint_android_vh_suitable_migration_target_bypass
   __tracepoint_android_vh_try_to_freeze_todo
   __tracepoint_android_vh_try_to_freeze_todo_unfrozen
   __tracepoint_android_vh_tune_scan_control

@@ -412,6 +412,7 @@
   devm_mipi_dsi_attach
   devm_mipi_dsi_device_register_full
   devm_nvmem_device_get
+  devm_nvmem_device_put
   devm_nvmem_register
   devm_of_clk_add_hw_provider
   devm_of_iomap
@@ -436,6 +437,7 @@
   devm_rc_allocate_device
   devm_rc_register_device
   devm_register_sys_off_handler
+  devm_regmap_add_irq_chip
   devm_regmap_field_alloc
   __devm_regmap_init
   __devm_regmap_init_i2c
@@ -1904,6 +1906,7 @@
   put_pid
   __put_task_struct
   put_unused_fd
+  pwm_apply_might_sleep
   pwm_apply_state
   pwmchip_add
   pwmchip_remove
@@ -1988,6 +1991,7 @@
   regmap_field_update_bits_base
   regmap_get_device
   __regmap_init_mmio_clk
+  regmap_irq_get_domain
   regmap_irq_get_virq
   regmap_multi_reg_write
   regmap_noinc_read
@@ -2004,6 +2008,7 @@
   regulator_bulk_enable
   regulator_bulk_free
   regulator_bulk_get
+  regulator_desc_list_voltage_linear
   regulator_desc_list_voltage_linear_range
   regulator_disable
   regulator_disable_regmap
@@ -2011,11 +2016,13 @@
   regulator_enable_regmap
   regulator_get_optional
   regulator_get_voltage
+  regulator_get_voltage_sel_pickable_regmap
   regulator_get_voltage_sel_regmap
   regulator_is_enabled
   regulator_is_enabled_regmap
   regulator_list_voltage_linear
   regulator_list_voltage_linear_range
+  regulator_list_voltage_pickable_linear_range
   regulator_list_voltage_table
   regulator_map_voltage_ascend
   regulator_put
@@ -2023,6 +2030,7 @@
   regulator_set_load
   regulator_set_ramp_delay_regmap
   regulator_set_voltage
+  regulator_set_voltage_sel_pickable_regmap
   regulator_set_voltage_sel_regmap
   regulator_set_voltage_time_sel
   release_firmware

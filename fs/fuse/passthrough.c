@@ -209,6 +209,8 @@ ssize_t fuse_passthrough_splice_write(struct pipe_inode_info *pipe,
 	file_end_write(backing_file);
 	fuse_invalidate_attr_mask(inode, FUSE_STATX_MODSIZE);
 	revert_creds(old_cred);
+	if (ret > 0)
+		fuse_copyattr(out, backing_file);
 	inode_unlock(inode);
 
 	return ret;

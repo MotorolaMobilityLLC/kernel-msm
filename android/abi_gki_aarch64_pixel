@@ -42,6 +42,7 @@
   argv_split
   arm64_use_ng_mappings
   __arm_smccc_smc
+  __arm_smccc_sve_check
   async_schedule_node_domain
   async_synchronize_full_domain
   atomic_notifier_call_chain
@@ -57,6 +58,7 @@
   __bitmap_andnot
   __bitmap_clear
   __bitmap_equal
+  bitmap_find_free_region
   bitmap_find_next_zero_area_off
   bitmap_free
   bitmap_from_arr32
@@ -65,6 +67,7 @@
   bitmap_parselist
   bitmap_parse_user
   bitmap_print_to_pagebuf
+  bitmap_release_region
   __bitmap_set
   bitmap_to_arr32
   __bitmap_weight
@@ -502,6 +505,7 @@
   dma_direct_free
   dmaengine_unmap_put
   dma_fence_add_callback
+  dma_fence_allocate_private_stub
   dma_fence_array_ops
   dma_fence_context_alloc
   dma_fence_default_wait
@@ -857,6 +861,7 @@
   fwnode_property_present
   fwnode_property_read_string
   fwnode_property_read_u32_array
+  fwnode_typec_mux_get
   fwnode_typec_switch_get
   gcd
   generic_file_llseek
@@ -1252,6 +1257,8 @@
   kvfree
   kvfree_call_rcu
   kvmalloc_node
+  kvm_iommu_init_hyp
+  kvm_iommu_register_driver
   led_classdev_register_ext
   led_classdev_unregister
   led_init_default_state_get
@@ -1275,6 +1282,7 @@
   mbox_controller_unregister
   mbox_free_channel
   mbox_request_channel
+  mbox_request_channel_byname
   mbox_send_message
   memchr
   memchr_inv
@@ -1576,8 +1584,10 @@
   pktgen_xfrm_outer_mode_output
   pkvm_iommu_resume
   pkvm_iommu_suspend
+  __pkvm_load_el2_module
   __pkvm_topup_hyp_alloc
   __pkvm_topup_hyp_alloc_mgt
+  __pkvm_topup_hyp_alloc_mgt_gfp
   platform_bus_type
   platform_device_add
   platform_device_add_data
@@ -1669,7 +1679,12 @@
   __put_task_struct
   put_unused_fd
   put_vaddr_frames
+  pwm_apply_might_sleep
   pwm_apply_state
+  pwmchip_add
+  pwmchip_remove
+  pwm_get_chip_data
+  pwm_set_chip_data
   queue_delayed_work_on
   queue_work_on
   radix_tree_insert
@@ -2406,6 +2421,7 @@
   tty_port_tty_get
   typec_mux_get_drvdata
   typec_mux_register
+  typec_mux_set
   typec_switch_get_drvdata
   typec_switch_register
   typec_switch_set

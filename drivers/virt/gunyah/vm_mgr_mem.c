@@ -557,6 +557,7 @@ int gunyah_gup_share_parcel(struct gunyah_vm *ghvm, struct gunyah_rm_mem_parcel 
 	}
 	folio = page_folio(pages[0]);
 	*gfn -= folio_page_idx(folio, pages[0]);
+	*nr = folio_nr_pages(folio);
 	parcel->mem_entries[0].size = cpu_to_le64(folio_size(folio));
 	parcel->mem_entries[0].phys_addr = cpu_to_le64(PFN_PHYS(folio_pfn(folio)));
 
@@ -567,6 +568,7 @@ int gunyah_gup_share_parcel(struct gunyah_vm *ghvm, struct gunyah_rm_mem_parcel 
 				cpu_to_le64(folio_size(folio));
 			parcel->mem_entries[entries].phys_addr =
 				cpu_to_le64(PFN_PHYS(folio_pfn(folio)));
+			*nr += folio_nr_pages(folio);
 			entries++;
 		} else {
 			unpin_user_page(pages[i]);

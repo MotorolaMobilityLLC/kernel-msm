@@ -1,5 +1,7 @@
 [abi_symbol_list]
 # commonly used symbols
+  __traceiter_android_rvh_logbuf
+  __tracepoint_android_rvh_logbuf
   __traceiter_android_vh_logbuf
   __tracepoint_android_vh_logbuf
   tracepoint_probe_register

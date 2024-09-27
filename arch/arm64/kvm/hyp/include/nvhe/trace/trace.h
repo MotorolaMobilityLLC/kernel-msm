@@ -31,7 +31,7 @@ int register_hyp_event_ids(unsigned long start, unsigned long end);
 int __pkvm_load_tracing(unsigned long desc_va, size_t desc_size);
 void __pkvm_teardown_tracing(void);
 int __pkvm_enable_tracing(bool enable);
-int __pkvm_swap_reader_tracing(int cpu);
+int __pkvm_swap_reader_tracing(unsigned int cpu);
 int __pkvm_enable_event(unsigned short id, bool enable);
 
 extern char __hyp_printk_fmts_start[];
@@ -81,7 +81,7 @@ static inline int register_hyp_event_ids(unsigned long start, unsigned long end)
 static inline int __pkvm_load_tracing(unsigned long desc_va, size_t desc_size) { return -ENODEV; }
 static inline void __pkvm_teardown_tracing(void) { }
 static inline int __pkvm_enable_tracing(bool enable) { return -ENODEV; }
-static inline int __pkvm_swap_reader_tracing(int cpu) { return -ENODEV; }
+static inline int __pkvm_swap_reader_tracing(unsigned int cpu) { return -ENODEV; }
 static inline int __pkvm_enable_event(unsigned short id, bool enable)  { return -ENODEV; }
 #define trace_hyp_printk(fmt, ...)
 #endif

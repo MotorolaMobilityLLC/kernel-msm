@@ -72,7 +72,7 @@ extern struct kvm_iommu_ops kvm_nvhe_sym(smmu_ops);
 static int atomic_pages;
 module_param(atomic_pages, int, 0);
 
-static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res)
+static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res, gfp_t gfp)
 {
 	struct kvm_hyp_req req;
 
@@ -89,8 +89,10 @@ static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res)
 	}
 
 	if (req.mem.dest == REQ_MEM_DEST_HYP_IOMMU) {
-		return __pkvm_topup_hyp_alloc_mgt(HYP_ALLOC_MGT_IOMMU_ID,
-+					 	  req.mem.nr_pages, req.mem.sz_alloc);
+		return __pkvm_topup_hyp_alloc_mgt_gfp(HYP_ALLOC_MGT_IOMMU_ID,
+						      req.mem.nr_pages,
+						      req.mem.sz_alloc,
+						      gfp);
 	} else if (req.mem.dest == REQ_MEM_DEST_HYP_ALLOC) {
 		/* Fill hyp alloc*/
 		return __pkvm_topup_hyp_alloc(req.mem.nr_pages);
@@ -108,7 +110,7 @@ static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res)
 	struct arm_smccc_res __res;					\
 	do {								\
 		__res = kvm_call_hyp_nvhe_smccc(__VA_ARGS__);		\
-	} while (__res.a1 && !kvm_arm_smmu_topup_memcache(&__res));\
+	} while (__res.a1 && !kvm_arm_smmu_topup_memcache(&__res, GFP_KERNEL));\
 	__res.a1;							\
 })
 
@@ -395,7 +397,7 @@ static int kvm_arm_smmu_map_pages(struct iommu_domain *domain,
 		WARN_ON(mapped > pgcount * pgsize);
 		pgcount -= mapped / pgsize;
 		*total_mapped += mapped;
-	} while (*total_mapped < size && !kvm_arm_smmu_topup_memcache(&res));
+	} while (*total_mapped < size && !kvm_arm_smmu_topup_memcache(&res, gfp));
 	if (*total_mapped < size)
 		return -EINVAL;
 
@@ -430,7 +432,7 @@ static size_t kvm_arm_smmu_unmap_pages(struct iommu_domain *domain,
 		 * block mapping.
 		 */
 	} while (total_unmapped < size &&
-		 (unmapped || !kvm_arm_smmu_topup_memcache(&res)));
+		 (unmapped || !kvm_arm_smmu_topup_memcache(&res, GFP_ATOMIC)));
 
 	return total_unmapped;
 }

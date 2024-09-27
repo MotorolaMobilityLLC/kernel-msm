@@ -6,6 +6,21 @@
 #include <linux/pm_runtime.h>
 #include <ufs/ufshcd.h>
 
+/*
+ * @rtt_cap -  bDeviceRTTCap
+ * @nortt - Max outstanding RTTs supported by controller
+ */
+struct ufs_hba_priv {
+	struct ufs_hba hba;
+	u8 rtt_cap;
+	int nortt;
+};
+
+static inline struct ufs_hba_priv *to_hba_priv(struct ufs_hba *hba)
+{
+	return container_of(hba, struct ufs_hba_priv, hba);
+}
+
 static inline bool ufshcd_is_user_access_allowed(struct ufs_hba *hba)
 {
 	return !hba->shutting_down;

@@ -48,6 +48,9 @@
   __balance_callbacks
   balance_push_callback
   bcmp
+  bio_endio
+  bio_end_io_acct_remapped
+  bio_start_io_acct
   bitmap_allocate_region
   __bitmap_andnot
   __bitmap_clear
@@ -58,11 +61,19 @@
   bitmap_release_region
   __bitmap_set
   bitmap_zalloc
+  __blk_alloc_disk
   blk_execute_rq_nowait
   blk_get_queue
   blk_mq_free_request
   blk_mq_rq_cpu
   blk_put_queue
+  blk_queue_flag_set
+  blk_queue_io_min
+  blk_queue_io_opt
+  blk_queue_logical_block_size
+  blk_queue_max_discard_sectors
+  blk_queue_max_write_zeroes_sectors
+  blk_queue_physical_block_size
   blk_rq_map_user_io
   blk_rq_unmap_user
   blocking_notifier_call_chain
@@ -105,14 +116,17 @@
   check_preempt_curr
   check_zeroed_user
   class_create
+  class_create_file_ns
   class_destroy
   class_find_device
   class_for_each_device
   class_interface_unregister
   class_register
+  class_remove_file_ns
   class_unregister
   cleanup_srcu_struct
   clear_page
+  __ClearPageMovable
   clk_bulk_disable
   clk_bulk_enable
   clk_bulk_prepare
@@ -198,6 +212,8 @@
   __cpuhp_remove_state
   __cpuhp_setup_state
   __cpuhp_setup_state_cpuslocked
+  __cpuhp_state_add_instance
+  __cpuhp_state_remove_instance
   cpuidle_governor_latency_req
   cpuidle_register_governor
   cpu_irqtime
@@ -229,9 +245,13 @@
   crypto_ahash_setkey
   crypto_alloc_aead
   crypto_alloc_ahash
+  crypto_alloc_base
   crypto_alloc_shash
   crypto_alloc_skcipher
+  crypto_comp_compress
+  crypto_comp_decompress
   crypto_destroy_tfm
+  crypto_has_alg
   __crypto_memneq
   crypto_register_aead
   crypto_register_rng
@@ -269,9 +289,11 @@
   debugfs_remove
   debugfs_rename
   dec_node_page_state
+  dec_zone_page_state
   default_llseek
   deferred_free
   delayed_work_timer_fn
+  del_gendisk
   destroy_workqueue
   dev_addr_mod
   dev_alloc_name
@@ -294,6 +316,7 @@
   dev_get_regmap
   dev_get_stats
   device_add
+  device_add_disk
   device_add_groups
   device_create
   device_create_file
@@ -636,12 +659,14 @@
   finish_wait
   firmware_request_nowarn
   flow_keys_dissector
+  flush_dcache_page
   flush_delayed_fput
   flush_delayed_work
   flush_work
   __flush_workqueue
   __folio_batch_release
   __folio_put
+  folio_wait_bit
   fortify_panic
   fput
   free_io_pgtable_ops
@@ -845,6 +870,7 @@
   iio_write_channel_raw
   in4_pton
   inc_node_page_state
+  inc_zone_page_state
   in_egroup_p
   __inet6_lookup_established
   inet_csk_get_port
@@ -1106,6 +1132,7 @@
   memmove
   memory_block_size_bytes
   memory_read_from_buffer
+  memparse
   mempool_alloc
   mempool_alloc_slab
   mempool_create
@@ -1115,6 +1142,7 @@
   memremap
   mem_section
   memset
+  memset64
   __memset_io
   memstart_addr
   memunmap
@@ -1323,6 +1351,7 @@
   panic_notifier_list
   panic_timeout
   param_array_ops
+  param_get_bool
   param_get_int
   param_get_string
   param_get_uint
@@ -1473,6 +1502,7 @@
   proc_dointvec
   proc_dointvec_minmax
   proc_dostring
+  proc_douintvec
   proc_douintvec_minmax
   proc_set_user
   proto_register
@@ -1481,6 +1511,7 @@
   __pskb_pull_tail
   ___pskb_trim
   put_device
+  put_disk
   put_iova_domain
   __put_net
   put_sg_io_hdr
@@ -1549,6 +1580,7 @@
   refcount_warn_saturate
   regcache_mark_dirty
   regcache_sync
+  __register_blkdev
   __register_chrdev
   register_chrdev_region
   register_console
@@ -1666,6 +1698,7 @@
   rproc_report_crash
   rproc_set_firmware
   rproc_shutdown
+  rtc_add_group
   rtc_time64_to_tm
   rtc_tm_to_time64
   rtc_update_irq
@@ -1733,7 +1766,10 @@
   seq_read
   seq_release
   seq_vprintf
+  set_capacity
+  set_capacity_and_notify
   set_next_entity
+  __SetPageMovable
   set_task_cpu
   sg_alloc_table
   sg_alloc_table_from_pages_segment
@@ -1873,6 +1909,7 @@
   stop_one_cpu_nowait
   strcmp
   strcpy
+  strcspn
   strim
   strlen
   strncasecmp
@@ -1893,6 +1930,7 @@
   __sw_hweight32
   __sw_hweight64
   __sw_hweight8
+  sync_blockdev
   synchronize_irq
   synchronize_net
   synchronize_rcu
@@ -1986,6 +2024,7 @@
   __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_find_busiest_queue
   __traceiter_android_rvh_find_lowest_rq
+  __traceiter_android_rvh_find_new_ilb
   __traceiter_android_rvh_flush_task
   __traceiter_android_rvh_get_nohz_timer_target
   __traceiter_android_rvh_gic_v3_set_affinity
@@ -2089,6 +2128,7 @@
   __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_find_busiest_queue
   __tracepoint_android_rvh_find_lowest_rq
+  __tracepoint_android_rvh_find_new_ilb
   __tracepoint_android_rvh_flush_task
   __tracepoint_android_rvh_get_nohz_timer_target
   __tracepoint_android_rvh_gic_v3_set_affinity
@@ -2244,7 +2284,9 @@
   ufshcd_uic_hibern8_exit
   __uio_register_device
   uio_unregister_device
+  unlock_page
   unpin_user_pages
+  unregister_blkdev
   __unregister_chrdev
   unregister_chrdev_region
   unregister_console

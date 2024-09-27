@@ -15,6 +15,7 @@
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/android_kabi.h>
 
 struct kunit_resource;
 
@@ -89,6 +90,8 @@ struct kunit_resource {
 	struct kref refcount;
 	struct list_head node;
 	bool should_kfree;
+
+	ANDROID_KABI_RESERVE(1);
 };
 
 /**

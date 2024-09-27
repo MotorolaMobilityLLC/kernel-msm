@@ -17,12 +17,18 @@
   drm_mode_create_tv_properties_legacy
   drm_mode_legacy_fb_format
   drm_property_create_object
+  drm_vblank_work_init
+  drm_vblank_work_schedule
+  drm_vblank_work_cancel_sync
+  drm_vblank_work_flush
   hid_hw_request
   iio_map_array_register
   iio_map_array_unregister
   init_on_alloc
   ioport_resource
   irq_setup_alt_chip
+  ir_raw_event_store
+  ir_raw_event_handle
   kstrtos16
   ktime_add_safe
   lookup_user_key
@@ -51,6 +57,9 @@
   stop_tty
   clk_hw_register_clkdev
   reset_control_status
+  rc_map_register
+  rc_map_unregister
+  rc_keydown
   gpiochip_line_is_irq
   drm_warn_on_modeset_not_all_locked
   __media_entity_setup_link
@@ -61,6 +70,7 @@
   v4l2_i2c_new_subdev
   vb2_dma_contig_set_max_seg_size
   usb_serial_port_softint
+  usb_role_switch_get_role
   ppp_channel_index
   ppp_input
   ppp_input_error

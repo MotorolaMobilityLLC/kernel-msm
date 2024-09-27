@@ -244,5 +244,34 @@
         }
       ]
     }
+  ],
+  "kernel-presubmit": [
+    {
+      "name": "CtsCameraTestCases",
+      "options": [
+        {
+          "include-filter": "android.hardware.camera2.cts.FastBasicsTest"
+        }
+      ]
+    },
+    {
+      "name": "CtsIncrementalInstallHostTestCases",
+      "options": [
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalFeatureTest"
+        },
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalInstallTest"
+        }
+      ]
+    },
+    {
+      "name": "CtsLibcoreLegacy22TestCases",
+      "options": [
+        {
+          "include-filter": "android.util.cts.FloatMathTest"
+        }
+      ]
+    }
   ]
 }
