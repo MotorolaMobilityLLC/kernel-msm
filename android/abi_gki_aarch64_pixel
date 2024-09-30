@@ -124,6 +124,7 @@
   class_unregister
   cleancache_register_ops
   clear_page
+  __ClearPageMovable
   clk_disable
   clk_enable
   clk_get
@@ -559,6 +560,7 @@
   down_read_trylock
   down_trylock
   down_write
+  d_path
   dput
   drain_workqueue
   driver_for_each_device
@@ -826,11 +828,13 @@
   find_pid_ns
   find_task_by_vpid
   find_vma_intersection
+  find_vpid
   finish_wait
   firmware_request_nowarn
   flush_delayed_work
   flush_work
   __flush_workqueue
+  __folio_lock
   __folio_put
   fortify_panic
   fput
@@ -899,6 +903,7 @@
   get_sg_io_hdr
   __get_task_comm
   get_task_cred
+  get_task_mm
   get_thermal_instance
   get_unused_fd_flags
   get_user_pages
@@ -1276,6 +1281,7 @@
   loops_per_jiffy
   mac_pton
   mas_empty_area_rev
+  mas_find
   max_load_balance_interval
   mbox_chan_received_data
   mbox_controller_register
@@ -1329,6 +1335,7 @@
   __mmap_lock_do_trace_released
   __mmap_lock_do_trace_start_locking
   __mmdrop
+  mmput
   mod_delayed_work_on
   mod_timer
   __module_get
@@ -1493,6 +1500,7 @@
   param_array_ops
   param_get_int
   param_get_string
+  param_get_uint
   param_ops_bool
   param_ops_byte
   param_ops_charp
@@ -1503,6 +1511,7 @@
   param_ops_ulong
   param_set_copystring
   param_set_int
+  param_set_uint_minmax
   pci_alloc_irq_vectors
   pci_alloc_irq_vectors_affinity
   pci_assign_resource
@@ -1802,6 +1811,7 @@
   regulator_set_mode
   regulator_set_voltage
   regulator_set_voltage_sel_regmap
+  regulator_sync_voltage
   regulator_unregister
   release_firmware
   __release_region
@@ -1903,6 +1913,7 @@
   set_normalized_timespec64
   set_page_dirty
   set_page_dirty_lock
+  __SetPageMovable
   set_task_cpu
   set_user_nice
   sg_alloc_table
@@ -2243,6 +2254,7 @@
   __traceiter_android_rvh_set_task_cpu
   __traceiter_android_rvh_set_user_nice_locked
   __traceiter_android_rvh_tick_entry
+  __traceiter_android_rvh_try_to_wake_up_success
   __traceiter_android_rvh_uclamp_eff_get
   __traceiter_android_rvh_ufs_complete_init
   __traceiter_android_rvh_ufs_reprogram_all_keys
@@ -2262,11 +2274,13 @@
   __traceiter_android_vh_early_resume_begin
   __traceiter_android_vh_enable_thermal_genl_check
   __traceiter_android_vh_ipi_stop
+  __traceiter_android_vh_mm_kcompactd_cpu_online
   __traceiter_android_vh_prio_inheritance
   __traceiter_android_vh_prio_restore
   __traceiter_android_vh_resume_end
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_setscheduler_uclamp
+  __traceiter_android_vh_set_task_comm
   __traceiter_android_vh_si_meminfo_adjust
   __traceiter_android_vh_sysrq_crash
   __traceiter_android_vh_uclamp_validate
@@ -2340,6 +2354,7 @@
   __tracepoint_android_rvh_set_task_cpu
   __tracepoint_android_rvh_set_user_nice_locked
   __tracepoint_android_rvh_tick_entry
+  __tracepoint_android_rvh_try_to_wake_up_success
   __tracepoint_android_rvh_uclamp_eff_get
   __tracepoint_android_rvh_ufs_complete_init
   __tracepoint_android_rvh_ufs_reprogram_all_keys
@@ -2359,11 +2374,13 @@
   __tracepoint_android_vh_early_resume_begin
   __tracepoint_android_vh_enable_thermal_genl_check
   __tracepoint_android_vh_ipi_stop
+  __tracepoint_android_vh_mm_kcompactd_cpu_online
   __tracepoint_android_vh_prio_inheritance
   __tracepoint_android_vh_prio_restore
   __tracepoint_android_vh_resume_end
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_setscheduler_uclamp
+  __tracepoint_android_vh_set_task_comm
   __tracepoint_android_vh_si_meminfo_adjust
   __tracepoint_android_vh_sysrq_crash
   __tracepoint_android_vh_uclamp_validate
@@ -2454,6 +2471,7 @@
   ufshcd_remove
   ufshcd_system_resume
   ufshcd_system_suspend
+  unlock_page
   unmap_mapping_range
   unpin_user_page
   __unregister_chrdev
