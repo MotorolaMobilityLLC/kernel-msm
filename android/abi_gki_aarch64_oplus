@@ -199,6 +199,7 @@
   __traceiter_android_vh_alloc_oem_binder_struct
   __traceiter_android_vh_alloc_pages_failure_bypass
   __traceiter_android_vh_alloc_pages_reclaim_bypass
+  __traceiter_android_rvh_alloc_workqueue
   __traceiter_android_vh_alter_mutex_list_add
   __traceiter_android_vh_binder_alloc_new_buf_locked
   __traceiter_android_vh_binder_buffer_release
@@ -345,6 +346,7 @@
   __tracepoint_android_vh_alloc_oem_binder_struct
   __tracepoint_android_vh_alloc_pages_failure_bypass
   __tracepoint_android_vh_alloc_pages_reclaim_bypass
+  __tracepoint_android_rvh_alloc_workqueue
   __tracepoint_android_vh_alter_mutex_list_add
   __tracepoint_android_vh_binder_alloc_new_buf_locked
   __tracepoint_android_vh_binder_buffer_release
