@@ -1225,6 +1225,7 @@
   __mmap_lock_do_trace_released
   __mmap_lock_do_trace_start_locking
   mmc_cqe_request_done
+  mmc_detect_change
   mmc_of_parse
   mmc_regulator_get_supply
   mmc_regulator_set_ocr
