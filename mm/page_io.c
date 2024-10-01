@@ -380,14 +380,14 @@ void __swap_writepage(struct page *page, struct writeback_control *wbc)
 	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
 	/*
 	 * ->flags can be updated non-atomicially (scan_swap_map_slots),
-	 * but that will never affect SWP_FS_OPS, so the data_race
+	 * but that will never affect __SWP_WRITE_SYNCHRONOUS_IO, so the data_race
 	 * is safe.
 	 */
 	sis_flags = data_race(sis->flags);
 	trace_android_vh_swap_writepage(&sis_flags, page);
 	if (sis_flags & SWP_FS_OPS)
 		swap_writepage_fs(page, wbc);
-	else if (sis_flags & SWP_SYNCHRONOUS_IO)
+	else if (sis_flags & __SWP_WRITE_SYNCHRONOUS_IO)
 		swap_writepage_bdev_sync(page, wbc, sis);
 	else
 		swap_writepage_bdev_async(page, wbc, sis);
