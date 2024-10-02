@@ -60,17 +60,14 @@ static int __init init_mmap_rnd_bits(void)
 core_initcall(init_mmap_rnd_bits);
 
 /*
- * Updates len to avoid mapping off the end of the file.
- *
- * The length of the original mapping must be updated before
- * it's VMA is created to avoid an unaligned munmap in the
- * MAP_FIXED fixup mapping.
+ * Returns size of the portion of the VMA backed by the
+ * underlying file.
  */
 unsigned long ___filemap_len(struct inode *inode, unsigned long pgoff, unsigned long len,
 			     unsigned long flags)
 {
 	unsigned long file_size;
-	unsigned long new_len;
+	unsigned long filemap_len;
 	pgoff_t max_pgcount;
 	pgoff_t last_pgoff;
 
@@ -87,10 +84,10 @@ unsigned long ___filemap_len(struct inode *inode, unsigned long pgoff, unsigned 
 	last_pgoff = pgoff + (len >> PAGE_SHIFT);
 
 	if (unlikely(last_pgoff >= max_pgcount)) {
-		new_len = (max_pgcount - pgoff)  << PAGE_SHIFT;
+		filemap_len = (max_pgcount - pgoff)  << PAGE_SHIFT;
 		/* Careful of underflows in special files */
-		if (new_len > 0 && new_len < len)
-			return new_len;
+		if (filemap_len > 0 && filemap_len < len)
+			return filemap_len;
 	}
 
 	return len;
@@ -120,14 +117,74 @@ static inline bool is_filemap_fault(const struct vm_operations_struct *vm_ops)
 }
 
 /*
- * This is called to fill any holes created by ___filemap_len()
- * with an anonymous mapping.
+ * Given a file mapping of 48KiB backed by a file of size 18KiB, the
+ * faulting behaviour of the different page-size configurations is
+ * explained below.
+
+ * In a 4KiB base page size system, when a file backed mapping extends
+ * past the end of the file, accessed is allowed to the entire last
+ * page that at least partially corresponds to valid offsets on the
+ * file. However, access beyond that page will generate a SIGBUS, since
+ * the offset we are trying to fault doesn't correspond to anywhere on
+ * the backing file.
+ *
+ * This is illustrated below. The offsets are given in units of KiB.
+ *
+ *                    Access OK (4KiB page paritially backed by file)
+ *                                │
+ *    ┌──────────────────────────┬┼─┬─────────────────────────────────────────┐
+ *    │                          │▼ │                                         │
+ *    │       File backed        │  │     SIGBUS (Invalid filemap_fault)      │
+ *    │                          │  │                                         │
+ *    └──────────────────────────┴──┴─────────────────────────────────────────┘
+ *
+ *    └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+ *    0     4     8     12   16    20    24    28    32    36    40    44    48
+ *
+ * In a x86_64 emulated 16KiB page size system, userspace beleives the page
+ * size is 16KiB and therefore shoud be able to access the entire last 16KiB page
+ * that is at least partially backed by the file. However, the kernel is still a
+ * 4KiB kernel and will fault at each 4KiB page that makes up the "emulated"
+ * 16KiB page, which will generate a SIGBUS any of the 4KiB pages making up the
+ * 16KiB expect the first is being faulted.
+ *
+ *                    Access OK (4KiB page paritially backed by file)
+ *                                │
+ *    ┌──────────────────────────┬┼─┬─────────────────────────────────────────┐
+ *    │                          │▼ │                                         │
+ *    │       File backed        │  │     SIGBUS (Invalid filemap_fault)      │
+ *    │                          │  │                                         │
+ *    └──────────────────────────┴──┴─────────────────────────────────────────┘
+ *
+ *    └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+ *    0     4     8     12   16    20    24    28    32    36    40    44    48
+ *
+ * To fix this semantic in the emulated page size mode an anonymous mapping is
+ * inserted into to replace the full 4KiB pages that make up the last 16KiB page
+ * partially backed by the file.
+ *
+ *
+ *                    Access OK (4KiB page paritially backed by file)
+ *                                │
+ *                                │        ┌─── Access OK
+ *                                │        │   (16KiB page partially backed
+ *                                │        │       by file)
+ *                                │        │
+ *    ┌──────────────────────────┬┼─┬──────┼──────────┬───────────────────────┐
+ *    │                          │▼ │      ▼          │      SIGBUS           │
+ *    │       File backed        │  │   Access OK     │(Invalid filemap fault)│
+ *    │                          │  │  (Anon Mapping) │                       │
+ *    └──────────────────────────┴──┴─────────────────┴───────────────────────┘
+ *
+ *    └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+ *    0     4     8     12   16    20    24    28    32    36    40    44    48
  */
-void ___filemap_fixup(unsigned long addr, unsigned long prot, unsigned long old_len,
-		      unsigned long new_len)
+void ___filemap_fixup(unsigned long addr, unsigned long prot, unsigned long file_backed_len,
+		      unsigned long len)
 {
-	unsigned long anon_len = old_len - new_len;
-	unsigned long anon_addr = addr + new_len;
+	unsigned long anon_addr = addr + file_backed_len;
+	unsigned long __offset = __offset_in_page(anon_addr);
+	unsigned long anon_len = __offset ? __PAGE_SIZE - __offset : 0;
 	struct mm_struct *mm = current->mm;
 	unsigned long populate = 0;
 	struct vm_area_struct *vma;
@@ -136,7 +193,7 @@ void ___filemap_fixup(unsigned long addr, unsigned long prot, unsigned long old_
 	if (!anon_len)
 		return;
 
-	BUG_ON(new_len > old_len);
+	BUG_ON(anon_len >= __PAGE_SIZE);
 
 	/* The original do_mmap() failed */
 	if (IS_ERR_VALUE(addr))
@@ -169,7 +226,7 @@ void ___filemap_fixup(unsigned long addr, unsigned long prot, unsigned long old_
 		return;
 
 	/*
-	 * Override the end of the file mapping that is off the file
+	 * Override the partial emulated page of the file backed portion of the VMA
 	 * with an anonymous mapping.
 	 */
 	anon_addr = do_mmap(NULL, anon_addr, anon_len, prot,
