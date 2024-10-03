@@ -110,6 +110,7 @@
   __traceiter_android_vh_madvise_pageout_swap_entry
   __traceiter_android_vh_madvise_swapin_walk_pmd_entry
   __traceiter_android_vh_meminfo_proc_show
+  __traceiter_android_vh_si_meminfo_adjust_shmem
   __traceiter_android_vh_page_cache_readahead_start
   __traceiter_android_vh_page_cache_readahead_end
   __traceiter_android_vh_print_slabinfo_header
@@ -188,6 +189,7 @@
   __tracepoint_android_vh_madvise_pageout_swap_entry
   __tracepoint_android_vh_madvise_swapin_walk_pmd_entry
   __tracepoint_android_vh_meminfo_proc_show
+  __tracepoint_android_vh_si_meminfo_adjust_shmem
   __tracepoint_android_vh_page_cache_readahead_start
   __tracepoint_android_vh_page_cache_readahead_end
   __tracepoint_android_vh_print_slabinfo_header
