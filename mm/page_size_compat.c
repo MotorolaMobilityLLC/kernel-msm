@@ -10,7 +10,9 @@
 #include <linux/init.h>
 #include <linux/kstrtox.h>
 #include <linux/mm.h>
+#include <linux/pagemap.h>
 #include <linux/page_size_compat.h>
+#include <linux/swap.h>
 
 #define MIN_PAGE_SHIFT_COMPAT (PAGE_SHIFT + 1)
 #define MAX_PAGE_SHIFT_COMPAT 16 /* Max of 64KB */
@@ -258,4 +260,58 @@ void __fold_filemap_fixup_entry(struct vma_iterator *iter, unsigned long *end)
 
 	/* Rewind iterator */
 	vma_prev(iter);
+}
+
+/*
+ * The swap header is usually in the first page, with the magic in the last 10 bytes.
+ * of the page. In the emulated mode, mkswap tools might place the magic on the last
+ * 10 bytes of __PAGE_SIZE-ed page. Check if this is the case and place the magic on
+ * the first page and clear the magic from the original page in which it was found.
+ *
+ */
+int __fixup_swap_header(struct file *swap_file, struct address_space *mapping)
+{
+	union swap_header *swap_header;
+	struct page *header_page = NULL;
+	struct page *magic_page = NULL;
+	int index;
+	int error = 0;
+	const char* magic = "SWAPSPACE2";
+
+	if (__PAGE_SHIFT == PAGE_SHIFT)
+		return 0;
+
+	index = (1 << (__PAGE_SHIFT  - PAGE_SHIFT)) - 1;
+	magic_page = read_mapping_page(mapping, index, swap_file);
+	if (IS_ERR(magic_page)) {
+		pgcompat_err("Failed reading swap magic page");
+		return PTR_ERR(magic_page);
+	}
+	swap_header = kmap(magic_page);
+
+	/* Nothing to do; mkswap tool may have hardcoded a 4096 page size */
+	if (memcmp(magic, swap_header->magic.magic, 10))
+		goto free_magic;
+
+	memset(swap_header->magic.magic, 0, 10);
+
+	index = 0;
+	header_page = read_mapping_page(mapping, index, swap_file);
+	if (IS_ERR(header_page)) {
+		pgcompat_err("Failed reading swap header page");
+		error = PTR_ERR(header_page);
+		goto free_magic;
+	}
+	swap_header = kmap(header_page);
+
+	memcpy(swap_header->magic.magic, magic, 10);
+
+	kunmap(header_page);
+	put_page(header_page);
+
+free_magic:
+	kunmap(magic_page);
+	put_page(magic_page);
+
+	return error;
 }
