@@ -251,6 +251,21 @@ config GKI_NET_XFRM_HACKS
 	help
 	  Android Networking tests fail without this.
 
+config GKI_DYNAMIC_TASK_STRUCT_SIZE
+	bool "Dynamic task_struct size needed for GKI"
+	select ARCH_WANTS_DYNAMIC_TASK_STRUCT
+	help
+	  Avoid static allocation of memory for vendor data in task_struct.
+
+config GKI_TASK_STRUCT_VENDOR_SIZE_MAX
+	int "Max vendor data size in bytes"
+	default 512
+	depends on GKI_DYNAMIC_TASK_STRUCT_SIZE
+	help
+	  Allows vendor to choose the maximum size which can be added to
+	  task_struct dynamically when the GKI_DYNAMIC_TASK_STRUCT_SIZE
+	  option is enabled.
+
 # Atrocities needed for
 # a) building GKI modules in separate tree, or
 # b) building drivers that are not modularizable
@@ -285,6 +300,7 @@ config GKI_HACKS_TO_FIX
 	select GKI_HIDDEN_MM_CONFIGS
 	select GKI_HIDDEN_ETHERNET_CONFIGS
 	select GKI_HIDDEN_DMA_CONFIGS
+	select GKI_DYNAMIC_TASK_STRUCT_SIZE
 
 	help
 	  Dummy config option used to enable core functionality used by
