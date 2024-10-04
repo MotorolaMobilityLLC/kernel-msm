@@ -13,6 +13,7 @@
 #include <linux/pagemap.h>
 #include <linux/page_size_compat.h>
 #include <linux/swap.h>
+#include <linux/perf_event.h>
 
 #define MIN_PAGE_SHIFT_COMPAT (PAGE_SHIFT + 1)
 #define MAX_PAGE_SHIFT_COMPAT 16 /* Max of 64KB */
@@ -315,3 +316,15 @@ free_magic:
 
 	return error;
 }
+
+static int __init init_sysctl_perf_event_mlock(void)
+{
+	if (!static_branch_unlikely(&page_shift_compat_enabled))
+		return 0;
+
+	/* Minimum for 512 kiB + 1 user control page */
+	sysctl_perf_event_mlock = 512 + (__PAGE_SIZE / 1024); /* 'free' kiB per user */
+
+	return 0;
+}
+core_initcall(init_sysctl_perf_event_mlock);
