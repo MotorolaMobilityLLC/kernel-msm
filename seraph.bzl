@@ -8,10 +8,16 @@ def define_seraph():
     _seraph_in_tree_modules = [
         # keep sorted
         # TODO: Need to add GKI modules
+        "drivers/clk/qcom/clk-dummy.ko",
+        "drivers/clk/qcom/clk-qcom.ko",
+        "drivers/clk/qcom/gdsc-regulator.ko",
         "drivers/firmware/qcom-scm.ko",
         "drivers/hwspinlock/qcom_hwspinlock.ko",
+        "drivers/irqchip/qcom-pdc.ko",
         "drivers/pinctrl/qcom/pinctrl-msm.ko",
         "drivers/pinctrl/qcom/pinctrl-seraph.ko",
+        "drivers/soc/qcom/cmd-db.ko",
+        "drivers/soc/qcom/qcom_rpmh.ko",
         "drivers/soc/qcom/smem.ko",
         "drivers/soc/qcom/socinfo.ko",
     ]

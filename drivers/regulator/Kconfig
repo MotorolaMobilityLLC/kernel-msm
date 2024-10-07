@@ -65,6 +65,16 @@ config REGULATOR_VIRTUAL_CONSUMER
 
 	  If unsure, say no.
 
+config REGULATOR_SPM
+        bool "SPM regulator driver"
+        depends on SPMI
+        help
+          Enable support for the SPM regulator driver which is used for
+          setting voltages of processor supply regulators via the SPM module
+          found inside chips of Qualcomm Technologies Inc. The SPM regulator
+          driver can be used on QTI SoCs where the APSS processor cores are
+          supplied by their own PMIC regulator.
+
 config REGULATOR_USERSPACE_CONSUMER
 	tristate "Userspace regulator consumer support"
 	help
@@ -1590,6 +1600,14 @@ config REGULATOR_WM8994
 	  This driver provides support for the voltage regulators on the
 	  WM8994 CODEC.
 
+config REGULATOR_MEM_ACC
+        tristate "QTI Memory accelerator regulator driver"
+        help
+          Say y here to enable the memory accelerator driver for
+          Qualcomm Technologies, Inc. (QTI) chips. The accelerator
+          controls delays applied for memory accesses.  This driver
+          configures the power-mode(corner) for the memory accelerator.
+
 config REGULATOR_REFGEN
 	tristate "Qualcomm Technologies, Inc. REFGEN regulator driver"
 	depends on OF
@@ -1617,6 +1635,16 @@ config REGULATOR_RPMH
 	  block found on Qualcomm Technologies Inc. SoCs.  RPMh regulator
 	  control allows for voting on regulator state between multiple
 	  processors within the SoC.
+
+config REGULATOR_CPR
+        bool "RBCPR regulator driver for APC"
+        depends on OF && QCOM_SCM
+        help
+          Compile in RBCPR (RapidBridge Core Power Reduction) driver to support
+          corner vote for APC power rail. The driver takes PTE process voltage
+          suggestions in efuse as initial settings. It converts corner vote
+          to voltage value before writing to a voltage regulator API, such as
+          that provided by spm-regulator driver.
 
 config REGULATOR_RPM_SMD
 	tristate "RPM SMD regulator driver"
