@@ -36,6 +36,8 @@
 #include <linux/timer.h>
 #include <linux/wakeup_reason.h>
 
+#include <trace/hooks/dtask.h>
+
 #include "../base.h"
 #include "power.h"
 
@@ -239,8 +241,11 @@ static void dpm_wait(struct device *dev, bool async)
 	if (!dev)
 		return;
 
-	if (async || (pm_async_enabled && dev->power.async_suspend))
+	if (async || (pm_async_enabled && dev->power.async_suspend)) {
+		trace_android_vh_dpm_wait_start(dev);
 		wait_for_completion(&dev->power.completion);
+		trace_android_vh_dpm_wait_finish(dev);
+	}
 }
 
 static int dpm_wait_fn(struct device *dev, void *async_ptr)

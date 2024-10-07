@@ -22,6 +22,8 @@
 #include <uapi/linux/sched/types.h>
 #include <linux/task_work.h>
 
+#include <trace/hooks/dtask.h>
+
 #include "internals.h"
 
 #if defined(CONFIG_IRQ_FORCED_THREADING) && !defined(CONFIG_PREEMPT_RT)
@@ -115,7 +117,9 @@ static void __synchronize_irq(struct irq_desc *desc)
 	 * We made sure that no hardirq handler is running. Now verify that no
 	 * threaded handlers are active.
 	 */
+	trace_android_vh_sync_irq_wait_start(desc);
 	wait_event(desc->wait_for_threads, !atomic_read(&desc->threads_active));
+	trace_android_vh_sync_irq_wait_finish(desc);
 }
 
 /**
