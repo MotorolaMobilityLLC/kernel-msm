@@ -43,8 +43,8 @@ include/generated/gki_module_unprotected.h: $(ALL_KMI_SYMBOLS) \
 # AARCH is the same as ARCH, except that arm64 becomes aarch64
 AARCH := $(if $(filter arm64,$(ARCH)),aarch64,$(ARCH))
 
-# Generate symbol list with union of all symbol list for arm64; empty for others
-$(ALL_KMI_SYMBOLS): $(if $(filter arm64,$(ARCH)),$(wildcard $(srctree)/android/abi_gki_$(AARCH)_*),)
+# Generate symbol list with union of all symbol list for ARCH
+$(ALL_KMI_SYMBOLS): $(wildcard $(srctree)/android/abi_gki_$(AARCH)_*)
 	$(if $(strip $^),cat $^ > $(ALL_KMI_SYMBOLS), echo "" > $(ALL_KMI_SYMBOLS))
 
 # ABI protected exports list file specific to ARCH if exists else empty
