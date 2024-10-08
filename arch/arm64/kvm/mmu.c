@@ -1748,10 +1748,10 @@ static int pkvm_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t *fault_ipa,
 						fault_ipa);
 	page = pfn_to_page(pfn);
 
+retry:
 	if (size)
 		*size = page_size;
 
-retry:
 	ret = account_locked_vm(mm, page_size >> PAGE_SHIFT, true);
 	if (ret)
 		goto unpin;
