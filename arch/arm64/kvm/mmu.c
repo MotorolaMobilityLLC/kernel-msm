@@ -1769,8 +1769,8 @@ retry:
 		*fault_ipa += pmd_offset;
 		pfn += pmd_offset >> PAGE_SHIFT;
 		page = pfn_to_page(pfn);
-		page_size = PAGE_SIZE;
 		account_locked_vm(mm, page_size >> PAGE_SHIFT, false);
+		page_size = PAGE_SIZE;
 		goto retry;
 	}
 
