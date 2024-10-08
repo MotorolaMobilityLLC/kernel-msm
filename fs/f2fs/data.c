@@ -3767,6 +3767,9 @@ static int f2fs_write_end(struct file *file,
 	if (f2fs_is_atomic_file(inode))
 		set_page_private_atomic(folio_page(folio, 0));
 
+	if (f2fs_is_atomic_file(inode))
+		set_page_private_atomic(page);
+
 	if (pos + copied > i_size_read(inode) &&
 	    !f2fs_verity_in_progress(inode)) {
 		f2fs_i_size_write(inode, pos + copied);
