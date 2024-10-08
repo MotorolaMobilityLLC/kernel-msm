@@ -5663,8 +5663,7 @@ static const struct bpf_func_proto bpf_kallsyms_lookup_name_proto = {
 	.arg1_type	= ARG_PTR_TO_MEM,
 	.arg2_type	= ARG_CONST_SIZE_OR_ZERO,
 	.arg3_type	= ARG_ANYTHING,
-	.arg4_type	= ARG_PTR_TO_FIXED_SIZE_MEM | MEM_UNINIT | MEM_ALIGNED,
-	.arg4_size	= sizeof(u64),
+	.arg4_type	= ARG_PTR_TO_LONG,
 };
 
 static const struct bpf_func_proto *
