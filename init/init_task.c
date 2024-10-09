@@ -218,6 +218,9 @@ struct task_struct init_task
 };
 EXPORT_SYMBOL(init_task);
 
+u64 vendor_data_pad[CONFIG_GKI_TASK_STRUCT_VENDOR_SIZE_MAX / sizeof(u64)];
+EXPORT_SYMBOL_GPL(vendor_data_pad);
+
 /*
  * Initial thread structure. Alignment of this is handled by a special
  * linker map entry.
