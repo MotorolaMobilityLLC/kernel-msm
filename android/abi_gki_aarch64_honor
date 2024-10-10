@@ -148,6 +148,8 @@
   __tracepoint_android_vh_sk_free
   __traceiter_android_vh_sk_clone_lock
   __tracepoint_android_vh_sk_clone_lock
+  __traceiter_android_rvh_f2fs_down_read
+  __tracepoint_android_rvh_f2fs_down_read
   __traceiter_android_vh_cma_alloc_retry
   __tracepoint_android_vh_cma_alloc_retry
   __tracepoint_android_vh_should_memcg_bypass

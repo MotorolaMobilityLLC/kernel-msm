@@ -336269,6 +336269,14 @@ function {
   parameter_id: 0x29f042bf
 }
 function {
+  id: 0x9b860319
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x0a747547
+  parameter_id: 0x00be4281
+  parameter_id: 0x11cfee5a
+}
+function {
   id: 0x9b86643e
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -354650,6 +354658,15 @@ elf_symbol {
   full_name: "__traceiter_android_rvh_exit_creds"
 }
 elf_symbol {
+  id: 0x35765b66
+  name: "__traceiter_android_rvh_f2fs_down_read"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xc9b4beea
+  type_id: 0x9b860319
+  full_name: "__traceiter_android_rvh_f2fs_down_read"
+}
+elf_symbol {
   id: 0xf94ce10d
   name: "__traceiter_android_rvh_find_busiest_group"
   is_defined: true
@@ -360714,6 +360731,15 @@ elf_symbol {
   crc: 0x614cae7c
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_rvh_exit_creds"
+}
+elf_symbol {
+  id: 0xb2a7c054
+  name: "__tracepoint_android_rvh_f2fs_down_read"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x0c3b3cd0
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_f2fs_down_read"
 }
 elf_symbol {
   id: 0xb05fc507
@@ -426649,6 +426675,7 @@ interface {
   symbol_id: 0xd5b05c65
   symbol_id: 0xebecb2ce
   symbol_id: 0x6740fa4e
+  symbol_id: 0x35765b66
   symbol_id: 0xf94ce10d
   symbol_id: 0x45d21f87
   symbol_id: 0x83371e9e
@@ -427323,6 +427350,7 @@ interface {
   symbol_id: 0x395b2a73
   symbol_id: 0x4a5c5988
   symbol_id: 0xb71e231c
+  symbol_id: 0xb2a7c054
   symbol_id: 0xb05fc507
   symbol_id: 0xe0cf8a85
   symbol_id: 0x60184478
