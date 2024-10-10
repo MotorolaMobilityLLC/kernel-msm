@@ -885,6 +885,14 @@ ddk_headers(
     visibility = ["//visibility:public"],
 )
 
+ddk_headers_archive(
+    name = "kernel_x86_64_ddk_headers_archive",
+    srcs = [
+        "all_headers_x86_64",
+    ],
+    visibility = ["//visibility:private"],
+)
+
 # Implementation details for DDK headers. The targets below cannot be directly
 # depended on by DDK modules.
 
