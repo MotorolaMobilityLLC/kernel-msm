@@ -230,3 +230,4 @@
   __tracepoint_kfree_skb
   usb_set_device_state
   yield
+  regulator_get_current_limit
