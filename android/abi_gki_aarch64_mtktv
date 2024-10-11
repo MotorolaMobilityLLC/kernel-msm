@@ -216,6 +216,7 @@
   dbs_update
   debugfs_attr_read
   debugfs_attr_write
+  debugfs_create_blob
   debugfs_create_bool
   debugfs_create_devm_seqfile
   debugfs_create_dir
@@ -726,7 +727,9 @@
   iget5_locked
   igrab
   ihold
+  iio_device_claim_direct_mode
   __iio_device_register
+  iio_device_release_direct_mode
   iio_device_unregister
   iio_read_channel_processed
   iio_read_channel_scale
@@ -786,9 +789,11 @@
   irq_domain_set_hwirq_and_chip
   irq_find_matching_fwspec
   irq_get_irq_data
+  irq_modify_status
   irq_of_parse_and_map
   __irq_resolve_mapping
   __irq_set_handler
+  irq_set_irq_wake
   irq_to_desc
   is_bad_inode
   is_vmalloc_addr
@@ -832,6 +837,7 @@
   kobject_init_and_add
   kobject_put
   kobject_uevent
+  kobject_uevent_env
   krealloc
   kstrdup
   kstrdup_quotable_cmdline
@@ -846,6 +852,7 @@
   kstrtoull
   kthread_cancel_work_sync
   kthread_create_on_node
+  kthread_flush_work
   kthread_flush_worker
   __kthread_init_worker
   kthread_park
@@ -925,6 +932,8 @@
   __memset_io
   memstart_addr
   memunmap
+  mfd_add_devices
+  mfd_remove_devices
   mii_ethtool_get_link_ksettings
   mii_ethtool_set_link_ksettings
   mii_nway_restart
@@ -1126,8 +1135,10 @@
   platform_unregister_drivers
   __pm_relax
   pm_relax
+  pm_runtime_allow
   __pm_runtime_disable
   pm_runtime_enable
+  pm_runtime_forbid
   pm_runtime_force_resume
   pm_runtime_force_suspend
   __pm_runtime_idle
@@ -1137,6 +1148,7 @@
   __pm_runtime_suspend
   __pm_stay_awake
   pm_stay_awake
+  pm_wakeup_dev_event
   pm_wakeup_ws_event
   pm_wq
   preempt_schedule
@@ -1411,8 +1423,11 @@
   snd_pcm_format_big_endian
   snd_pcm_format_name
   snd_pcm_format_physical_width
+  snd_pcm_format_width
   snd_pcm_hw_constraint_list
   _snd_pcm_hw_params_any
+  _snd_pcm_lib_alloc_vmalloc_buffer
+  snd_pcm_lib_free_vmalloc_buffer
   snd_pcm_lib_ioctl
   snd_pcm_new
   snd_pcm_period_elapsed
@@ -1467,6 +1482,10 @@
   spi_sync
   split_page
   sprintf
+  srcu_init_notifier_head
+  srcu_notifier_call_chain
+  srcu_notifier_chain_register
+  srcu_notifier_chain_unregister
   sscanf
   __stack_chk_fail
   static_key_disable

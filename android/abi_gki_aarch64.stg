@@ -334785,6 +334785,13 @@ function {
   parameter_id: 0x3ee42466
 }
 function {
+  id: 0x9b420e77
+  return_type_id: 0x6720d32f
+  parameter_id: 0x14b9453b
+  parameter_id: 0xf435685e
+  parameter_id: 0xf1a6dfed
+}
+function {
   id: 0x9b4219a6
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -366990,6 +366997,15 @@ elf_symbol {
   crc: 0x0283dfe3
   type_id: 0x1bf280c6
   full_name: "_snd_pcm_hw_params_any"
+}
+elf_symbol {
+  id: 0x132bfd7d
+  name: "_snd_pcm_lib_alloc_vmalloc_buffer"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xbbbd8b54
+  type_id: 0x9b420e77
+  full_name: "_snd_pcm_lib_alloc_vmalloc_buffer"
 }
 elf_symbol {
   id: 0x97b98e85
@@ -411977,6 +411993,15 @@ elf_symbol {
   full_name: "snd_pcm_lib_free_pages"
 }
 elf_symbol {
+  id: 0x50044b1f
+  name: "snd_pcm_lib_free_vmalloc_buffer"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x919e2148
+  type_id: 0x98aeb261
+  full_name: "snd_pcm_lib_free_vmalloc_buffer"
+}
+elf_symbol {
   id: 0xcb6ed759
   name: "snd_pcm_lib_ioctl"
   is_defined: true
@@ -427684,6 +427709,7 @@ interface {
   symbol_id: 0xeaaac8d4
   symbol_id: 0x69bac57e
   symbol_id: 0xa5eaf571
+  symbol_id: 0x132bfd7d
   symbol_id: 0x97b98e85
   symbol_id: 0x7c570dc6
   symbol_id: 0x993e379e
@@ -432673,6 +432699,7 @@ interface {
   symbol_id: 0x837a4a5d
   symbol_id: 0x10040745
   symbol_id: 0x26db3306
+  symbol_id: 0x50044b1f
   symbol_id: 0xcb6ed759
   symbol_id: 0x62017cf8
   symbol_id: 0x4fc4b51e
