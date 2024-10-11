@@ -283,6 +283,12 @@
           "include-filter": "android.util.cts.FloatMathTest"
         }
       ]
+    },
+    {
+      "name": "CtsRootBluetoothTestCases"
+    },
+    {
+      "name": "vts_kernel_net_tests"
     }
   ]
 }
