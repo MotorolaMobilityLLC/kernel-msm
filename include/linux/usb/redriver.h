@@ -75,6 +75,7 @@ void usb_redriver_notify_disconnect(struct usb_redriver *ur);
 void usb_redriver_gadget_pullup_enter(struct usb_redriver *ur, int is_on);
 void usb_redriver_gadget_pullup_exit(struct usb_redriver *ur, int is_on);
 void usb_redriver_host_powercycle(struct usb_redriver *ur);
+void usb_redriver_config_dp_eq(struct usb_redriver *ur);
 
 #else
 
@@ -93,6 +94,10 @@ static inline struct usb_redriver *usb_get_redriver_by_phandle(
 static inline int usb_remove_redriver(struct usb_redriver *ur)
 {
 	return 0;
+}
+
+static inline void usb_redriver_config_dp_eq(struct usb_redriver *ur)
+{
 }
 
 #define usb_put_redriver(ur) do {} while (0)
