@@ -477,7 +477,8 @@ regular_folio:
 
 		if (!pte_present(ptent)) {
 			entry = pte_to_swp_entry(ptent);
-			trace_android_vh_madvise_pageout_swap_entry(entry,
+			if (!non_swap_entry(entry))
+				trace_android_vh_madvise_pageout_swap_entry(entry,
 					swp_swapcount(entry), NULL);
 			continue;
 		}
