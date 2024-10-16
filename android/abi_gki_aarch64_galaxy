@@ -235,3 +235,4 @@
   usb_set_device_state
   yield
   regulator_get_current_limit
+  android_create_function_device

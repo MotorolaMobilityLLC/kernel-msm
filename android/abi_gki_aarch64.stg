@@ -346237,6 +346237,13 @@ function {
   parameter_id: 0x11c404ba
 }
 function {
+  id: 0xac6cacda
+  return_type_id: 0x0258f96e
+  parameter_id: 0x0483e6f8
+  parameter_id: 0x18bd6530
+  parameter_id: 0x06433852
+}
+function {
   id: 0xac8d9251
   return_type_id: 0x0642705a
 }
@@ -367845,6 +367852,15 @@ elf_symbol {
   crc: 0xbcb99d53
   type_id: 0x933f3b0e
   full_name: "amba_request_regions"
+}
+elf_symbol {
+  id: 0xdc66fe63
+  name: "android_create_function_device"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xcdd93950
+  type_id: 0xac6cacda
+  full_name: "android_create_function_device"
 }
 elf_symbol {
   id: 0xd8dbec6e
@@ -428266,6 +428282,7 @@ interface {
   symbol_id: 0x8480d9c1
   symbol_id: 0xb7d7d836
   symbol_id: 0xacb3d1d3
+  symbol_id: 0xdc66fe63
   symbol_id: 0xd8dbec6e
   symbol_id: 0x95eaf556
   symbol_id: 0xf2d017ff
