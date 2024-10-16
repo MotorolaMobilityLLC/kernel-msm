@@ -27,6 +27,8 @@
 // "From" extent for memory private to guest
 #define GUNYAH_VM_MEM_EXTENT_HOST_PRIVATE_LABEL 2
 
+#define BOOT_CONTEXT_REG_MASK	GUNYAH_VM_BOOT_CONTEXT_REG(0xff, 0xff)
+
 static DEFINE_XARRAY(gunyah_vm_functions);
 
 static void gunyah_vm_put_function(struct gunyah_vm_function *fn)
@@ -550,6 +552,9 @@ static long gunyah_vm_set_boot_context(struct gunyah_vm *ghvm,
 {
 	u8 reg_set, reg_index; /* to check values are reasonable */
 	int ret;
+
+	if (boot_ctx->reg & ~BOOT_CONTEXT_REG_MASK)
+		return -EINVAL;
 
 	reg_set = (boot_ctx->reg >> GUNYAH_VM_BOOT_CONTEXT_REG_SHIFT) & 0xff;
 	reg_index = boot_ctx->reg & 0xff;
