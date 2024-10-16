@@ -188,6 +188,30 @@ static int qti_hwkm_check_bist_status(const struct ice_mmio_data *mmio_data)
 	return 0;
 }
 
+bool qti_hwkm_init_required(const struct ice_mmio_data *mmio_data)
+{
+	u32 val = 0;
+
+	val = ice_readl(mmio_data->ice_base_mmio, ICE_REGS_CONTROL);
+	val = val & 0x1;
+
+	return (val == 1);
+}
+EXPORT_SYMBOL_GPL(qti_hwkm_init_required);
+
+bool qti_hwkm_is_ice_tpkey_set(const struct ice_mmio_data *mmio_data)
+{
+
+	u32 val = 0;
+
+	val = qti_hwkm_readl(mmio_data->ice_hwkm_mmio,
+			     QTI_HWKM_ICE_RG_TZ_TPKEY_RECEIVE_STATUS,
+			     DONE);
+
+	return (val == 1);
+}
+EXPORT_SYMBOL_GPL(qti_hwkm_is_ice_tpkey_set);
+
 static int qti_hwkm_ice_init_sequence(const struct ice_mmio_data *mmio_data)
 {
 	int ret = 0;

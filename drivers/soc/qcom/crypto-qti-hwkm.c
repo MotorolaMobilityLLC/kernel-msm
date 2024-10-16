@@ -298,7 +298,11 @@ int crypto_qti_program_key(const struct ice_mmio_data *mmio_data,
 		return -EINVAL;
 	}
 
+#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
+	if (qti_hwkm_init_required(mmio_data) || !qti_hwkm_is_ice_tpkey_set(mmio_data)) {
+#elif IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER_V1)
 	if (!qti_hwkm_init_done) {
+#endif
 		err = qti_hwkm_init(mmio_data);
 		if (err) {
 			pr_err("%s: Error with HWKM init %d\n", __func__, err);

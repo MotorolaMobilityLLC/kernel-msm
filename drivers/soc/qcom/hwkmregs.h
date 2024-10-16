@@ -186,6 +186,9 @@
 /* HWKM_ICEMEM_SLAVE_ICE_KM_RG_TZ_TPKEY_RECEIVE_CTL */
 #define TPKEY_EN				8
 
+/* HWKM_ICEMEM_SLAVE_ICE_KM_RG_TZ_TPKEY_RECEIVE_STATUS */
+#define DONE					8
+
 /* QTI HWKM Bank status & control reg vals */
 
 /* HWKM_MASTER_CFG_KM_BANKN_CTL */
