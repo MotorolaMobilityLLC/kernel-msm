@@ -300,6 +300,9 @@
     },
     {
       "name": "KernelAbilistTest"
+    },
+    {
+      "name": "VtsAidlHalSensorsTargetTest"
     }
   ]
 }

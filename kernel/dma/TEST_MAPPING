@@ -272,6 +272,9 @@
           "include-filter": "android.incrementalinstall.cts.IncrementalInstallTest"
         }
       ]
+    },
+    {
+      "name": "VtsAidlHalSensorsTargetTest"
     }
   ]
 }
