@@ -402507,6 +402507,15 @@ elf_symbol {
   full_name: "phylink_get_eee_err"
 }
 elf_symbol {
+  id: 0x04ada2db
+  name: "phylink_init_eee"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xec02ebe0
+  type_id: 0x982336a1
+  full_name: "phylink_init_eee"
+}
+elf_symbol {
   id: 0x60e18dd0
   name: "phylink_limit_mac_speed"
   is_defined: true
@@ -431659,6 +431668,7 @@ interface {
   symbol_id: 0x2c092465
   symbol_id: 0x161b2b54
   symbol_id: 0x707a35cb
+  symbol_id: 0x04ada2db
   symbol_id: 0x60e18dd0
   symbol_id: 0x1391d24c
   symbol_id: 0x5170316a
