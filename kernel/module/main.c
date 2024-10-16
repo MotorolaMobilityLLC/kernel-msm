@@ -63,6 +63,9 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/module.h>
 
+#undef CREATE_TRACE_POINTS
+#include <trace/hooks/module.h>
+
 /*
  * Mutex protects:
  * 1) List of modules (also safely readable with preempt_disable),
@@ -1242,6 +1245,7 @@ static void module_memory_free(void *ptr, enum mod_mem_type type)
 
 static void free_mod_mem(struct module *mod)
 {
+	trace_android_vh_free_mod_mem(mod);
 	for_each_mod_mem_type(type) {
 		struct module_memory *mod_mem = &mod->mem[type];
 
@@ -2612,6 +2616,7 @@ static noinline int do_init_module(struct module *mod)
 	rcu_assign_pointer(mod->kallsyms, &mod->core_kallsyms);
 #endif
 	module_enable_ro(mod, true);
+	trace_android_vh_set_mod_perm_after_init(mod);
 	mod_tree_remove_init(mod);
 	module_arch_freeing_init(mod);
 	for_class_mod_mem_type(type, init) {
@@ -2779,6 +2784,7 @@ static int complete_formation(struct module *mod, struct load_info *info)
 	module_enable_ro(mod, false);
 	module_enable_nx(mod);
 	module_enable_x(mod);
+	trace_android_vh_set_mod_perm_before_init(mod);
 
 	/*
 	 * Mark state as coming so strong_try_module_get() ignores us,
