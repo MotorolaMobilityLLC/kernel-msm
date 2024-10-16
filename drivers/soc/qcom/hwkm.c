@@ -206,9 +206,10 @@ bool qti_hwkm_is_ice_tpkey_set(const struct ice_mmio_data *mmio_data)
 
 	val = qti_hwkm_readl(mmio_data->ice_hwkm_mmio,
 			     QTI_HWKM_ICE_RG_TZ_TPKEY_RECEIVE_STATUS,
-			     DONE);
+			     ICE_SLAVE);
+	val = val >> 8;
 
-	return (val == 1);
+	return (val == 0x1);
 }
 EXPORT_SYMBOL_GPL(qti_hwkm_is_ice_tpkey_set);
 
