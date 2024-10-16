@@ -54,7 +54,9 @@ extern spinlock_t mmlist_lock;
 
 extern union thread_union init_thread_union;
 extern struct task_struct init_task;
+#ifdef CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE
 extern u64 vendor_data_pad[CONFIG_GKI_TASK_STRUCT_VENDOR_SIZE_MAX / sizeof(u64)];
+#endif
 
 extern int lockdep_tasklist_lock_is_held(void);
 
