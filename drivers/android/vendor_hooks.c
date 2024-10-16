@@ -48,6 +48,7 @@
 #include <trace/hooks/fpsimd.h>
 #include <trace/hooks/preemptirq.h>
 #include <trace/hooks/mm.h>
+#include <trace/hooks/huge_memory.h>
 #include <trace/hooks/fs.h>
 #include <trace/hooks/dtask.h>
 #include <trace/hooks/ftrace_dump.h>
@@ -165,6 +166,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_syscall_prctl_finished);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_anon_vma_name_recog);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_restore_mm_flags);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_update_vma_flags);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_thp_vma_allowable_orders);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_send_uic_command);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_send_tm_command);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_check_int_errors);
