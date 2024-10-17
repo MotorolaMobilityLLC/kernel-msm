@@ -1155,6 +1155,8 @@ static bool kick_pool(struct worker_pool *pool)
 		}
 	}
 #endif
+	trace_android_vh_wq_wake_idle_worker(p, list_first_entry(&pool->worklist,
+					struct work_struct, entry));
 	wake_up_process(p);
 	return true;
 }
@@ -1800,6 +1802,8 @@ retry:
 
 	/* pwq determined, queue */
 	trace_workqueue_queue_work(req_cpu, pwq, work);
+
+	trace_android_vh_wq_queue_work(work, wq->name, wq->flags, cpu);
 
 	if (WARN_ON(!list_empty(&work->entry)))
 		goto out;
