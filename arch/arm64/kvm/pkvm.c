@@ -408,6 +408,8 @@ static int __pkvm_create_hyp_vm(struct kvm *host_kvm)
 	handle = ret;
 
 	host_kvm->arch.pkvm.handle = handle;
+	atomic64_set(&host_kvm->stat.protected_pgtable_mem, pgd_sz);
+	kvm_account_pgtable_pages(pgd, pgd_sz >> PAGE_SHIFT);
 
 	/* Donate memory for the vcpus at hyp and initialize it. */
 	kvm_for_each_vcpu(idx, host_vcpu, host_kvm) {
@@ -417,8 +419,6 @@ static int __pkvm_create_hyp_vm(struct kvm *host_kvm)
 		__pkvm_vcpu_hyp_created(host_vcpu);
 	}
 
-	atomic64_set(&host_kvm->stat.protected_pgtable_mem, pgd_sz);
-	kvm_account_pgtable_pages(pgd, pgd_sz >> PAGE_SHIFT);
 
 	return 0;
 
