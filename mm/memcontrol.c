@@ -873,6 +873,7 @@ void __mod_memcg_lruvec_state(struct lruvec *lruvec, enum node_stat_item idx,
 	memcg_rstat_updated(memcg, val);
 	memcg_stats_unlock();
 }
+EXPORT_SYMBOL_GPL(__mod_memcg_lruvec_state);
 
 /**
  * __mod_lruvec_state - update lruvec memory statistics
@@ -7181,6 +7182,7 @@ int __mem_cgroup_charge(struct folio *folio, struct mm_struct *mm, gfp_t gfp)
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(__mem_cgroup_charge);
 
 /**
  * mem_cgroup_swapin_charge_folio - Charge a newly allocated folio for swapin.
@@ -7357,6 +7359,7 @@ void __mem_cgroup_uncharge(struct folio *folio)
 	uncharge_folio(folio, &ug);
 	uncharge_batch(&ug);
 }
+EXPORT_SYMBOL_GPL(__mem_cgroup_uncharge);
 
 /**
  * __mem_cgroup_uncharge_list - uncharge a list of page

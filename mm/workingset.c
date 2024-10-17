@@ -194,8 +194,8 @@
  * that case, we have to sacrifice granularity for distance, and group
  * evictions into coarser buckets by shaving off lower timestamp bits.
  */
-static unsigned int bucket_order __read_mostly;
-
+unsigned int bucket_order __read_mostly;
+EXPORT_SYMBOL_GPL(bucket_order);
 static void *pack_shadow(int memcgid, pg_data_t *pgdat, unsigned long eviction,
 			 bool workingset)
 {
