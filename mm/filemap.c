@@ -997,8 +997,15 @@ int filemap_add_folio(struct address_space *mapping, struct folio *folio,
 		 * get overwritten with something else, is a waste of memory.
 		 */
 		WARN_ON_ONCE(folio_test_active(folio));
-		if (!(gfp & __GFP_WRITE) && shadow)
+		if (!(gfp & __GFP_WRITE) && shadow) {
 			workingset_refault(folio, shadow);
+			trace_android_vh_refault_filemap_add_folio(folio, shadow, gfp, &ret);
+			if (unlikely(ret)) {
+				__filemap_remove_folio(folio, shadow);
+				__folio_clear_locked(folio);
+				return ret;
+			}
+		}
 		folio_add_lru(folio);
 	}
 	return ret;
