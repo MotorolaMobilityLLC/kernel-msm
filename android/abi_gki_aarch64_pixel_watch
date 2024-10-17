@@ -360,6 +360,7 @@
   devm_extcon_dev_unregister
   devm_extcon_register_notifier
   devm_free_irq
+  devm_gen_pool_create
   devm_gpiod_get
   devm_gpiod_get_array
   devm_gpiod_get_optional
@@ -488,6 +489,7 @@
   dma_buf_end_cpu_access
   dma_buf_end_cpu_access_partial
   dma_buf_export
+  dma_buf_fd
   dma_buf_get
   dma_buf_map_attachment_unlocked
   dma_buf_put
@@ -892,6 +894,7 @@
   hrtimer_try_to_cancel
   hwrng_register
   hwrng_unregister
+  hwspin_lock_bust
   hwspin_lock_free
   hwspin_lock_request_specific
   __hwspin_lock_timeout
@@ -923,6 +926,7 @@
   icc_set_bw
   icc_set_tag
   ida_alloc_range
+  ida_destroy
   ida_free
   idr_alloc
   idr_alloc_cyclic
@@ -1197,6 +1201,7 @@
   __memcpy_fromio
   __memcpy_toio
   memdup_user
+  memdup_user_nul
   memmove
   memory_read_from_buffer
   memparse
