@@ -306,6 +306,8 @@ int __fixup_swap_header(struct file *swap_file, struct address_space *mapping)
 	swap_header = kmap(header_page);
 
 	memcpy(swap_header->magic.magic, magic, 10);
+	/* Update max pages in terms of the kernel's PAGE_SIZE */
+	swap_header->info.last_page *= __PAGE_SIZE / PAGE_SIZE;
 
 	kunmap(header_page);
 	put_page(header_page);
