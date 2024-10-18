@@ -2277,8 +2277,13 @@ static void gpi_process_imed_data_event(struct gpii_chan *gpii_chan,
 			 "Pending TRE: %08x %08x %08x %08x\n",
 			 gpi_tre->dword[0], gpi_tre->dword[1],
 			 gpi_tre->dword[2], gpi_tre->dword[3]);
-		gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
-				      __LINE__);
+		/*
+		 * for multi-ee Rx case, pending event without descriptor
+		 * is expected for last transfer followed by unlock tre
+		 */
+		if (!gpii->unlock_tre_set)
+			gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
+					      __LINE__);
 		return;
 	}
 	gpi_desc = to_gpi_desc(vd);
@@ -2402,8 +2407,13 @@ static void gpi_process_xfer_compl_event(struct gpii_chan *gpii_chan,
 		GPII_ERR(gpii, gpii_chan->chid, "Event: %08x %08x %08x %08x\n",
 			 gpi_ere->dword[0], gpi_ere->dword[1],
 			 gpi_ere->dword[2], gpi_ere->dword[3]);
-		gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
-				      __LINE__);
+		/*
+		 * for multi-ee Rx case, pending event without descriptor
+		 * is expected for last transfer followed by unlock tre
+		 */
+		if (!gpii->unlock_tre_set)
+			gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
+					      __LINE__);
 		return;
 	}
 
