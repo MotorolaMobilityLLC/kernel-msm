@@ -71,6 +71,11 @@
   blk_mq_quiesce_tagset
   blk_mq_unquiesce_tagset
   memblock_free
+  __mem_cgroup_charge
+  __mem_cgroup_uncharge
+  __mod_memcg_lruvec_state
+  unpack_shadow
+  bucket_order
   mem_cgroup_move_account
   sum_mthp_stat
   all_pcp_disable
@@ -91,6 +96,8 @@
   __tracepoint_android_vh_customize_thp_pcp_order
   __traceiter_android_vh_customize_thp_gfp_orders
   __tracepoint_android_vh_customize_thp_gfp_orders
+  __traceiter_android_vh_refault_filemap_add_folio
+  __tracepoint_android_vh_refault_filemap_add_folio
   __traceiter_android_vh_mem_cgroup_charge
   __traceiter_android_vh_filemap_add_folio
   __traceiter_android_vh_shrink_node
