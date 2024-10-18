@@ -2725,7 +2725,6 @@ static int haptics_load_predefined_effect(struct haptics_chip *chip,
 			usleep_range(100, 101);
 		}
 
-		play->effect->fifo->num_s = roundup(play->effect->fifo->num_s, chip->mmap.hw_info.pat_mem_step);
 		rc = haptics_set_fifo(chip, play->effect->fifo);
 		if (rc < 0)
 			return rc;
@@ -2752,7 +2751,8 @@ static int haptics_load_predefined_effect(struct haptics_chip *chip,
 				return rc;
 
 			pat_sel_mmap = &chip->mmap.pat_sel_mmap[effect->pat_sel];
-			length = pat_sel_mmap->length /
+			//length = pat_sel_mmap->length /
+			length = play->effect->fifo->num_s /
 					chip->mmap.hw_info.pat_mem_play_step;
 			addr = pat_sel_mmap->start_addr / HAP530_MMAP_PAT_LEN_PER_LSB;
 			val[0] = addr & HAP_PTN_PATX_MEM_LEN_LO_MASK;
@@ -3023,7 +3023,7 @@ static int haptics_load_periodic_effect(struct haptics_chip *chip,
 	}
 
 	play->vmax_mv = (magnitude * effects[i].vmax_mv) / 0x7fff;
-	dev_dbg(chip->dev, "upload %s effect %d, vmax=%d\n", primitive ? "primitive" : "predefined",
+	dev_info(chip->dev, "upload %s effect %d, vmax=%d\n", primitive ? "primitive" : "predefined",
 			effects[i].id, play->vmax_mv);
 
 	rc = haptics_load_predefined_effect(chip, &effects[i]);
@@ -3585,7 +3585,7 @@ static int haptics_mmap_config(struct haptics_chip *chip)
 	left = chip->mmap.fifo_mmap.length % chip->mmap.hw_info.fifo_mem_step;
 	if (left) {
 		chip->mmap.fifo_mmap.length -= left;
-		//chip->mmap.pat_sel_mmap[0].length += left;
+		chip->mmap.pat_sel_mmap[0].length += left;
 		chip->mmap.pat_sel_mmap[0].start_addr = chip->mmap.fifo_mmap.length;
 		dev_dbg(chip->dev, "PAT_MEM partition 0 is updated: start_addr %#x, length %#x\n",
 				chip->mmap.pat_sel_mmap[0].start_addr,
