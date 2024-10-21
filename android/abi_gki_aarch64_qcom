@@ -205,10 +205,17 @@
   cpufreq_driver_fast_switch
   cpufreq_driver_resolve_freq
   __cpufreq_driver_target
+  cpufreq_enable_boost_support
   cpufreq_enable_fast_switch
+  cpufreq_freq_attr_scaling_available_freqs
+  cpufreq_freq_attr_scaling_boost_freqs
+  cpufreq_generic_frequency_table_verify
+  cpufreq_get_driver_data
   cpufreq_quick_get
   cpufreq_quick_get_max
+  cpufreq_register_driver
   cpufreq_register_governor
+  cpufreq_unregister_driver
   __cpuhp_remove_state
   __cpuhp_setup_state
   __cpuhp_setup_state_cpuslocked
@@ -444,15 +451,25 @@
   dev_pm_genpd_set_performance_state
   dev_pm_genpd_suspend
   dev_pm_opp_add_dynamic
+  dev_pm_opp_adjust_voltage
   dev_pm_opp_clear_config
+  dev_pm_opp_disable
+  dev_pm_opp_enable
+  dev_pm_opp_find_freq_ceil
+  dev_pm_opp_find_freq_exact
   dev_pm_opp_find_freq_floor
   dev_pm_opp_get_opp_count
   dev_pm_opp_of_add_table
+  dev_pm_opp_of_cpumask_remove_table
   dev_pm_opp_of_find_icc_paths
+  dev_pm_opp_of_register_em
   dev_pm_opp_of_remove_table
   dev_pm_opp_put
+  dev_pm_opp_remove_all_dynamic
   dev_pm_opp_set_config
+  dev_pm_opp_set_opp
   dev_pm_opp_set_rate
+  dev_pm_opp_set_sharing_cpus
   dev_pm_qos_add_notifier
   dev_pm_qos_add_request
   dev_pm_qos_remove_notifier
@@ -1481,6 +1498,7 @@
   pm_system_wakeup
   pm_wakeup_dev_event
   pm_wakeup_ws_event
+  policy_has_boost_freq
   powercap_register_control_type
   powercap_register_zone
   powercap_unregister_control_type
