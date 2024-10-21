@@ -284,9 +284,14 @@ static inline void count_mthp_stat(int order, enum mthp_stat_item item)
 
 	this_cpu_inc(mthp_stats.stats[order][item]);
 }
+unsigned long sum_mthp_stat(int order, enum mthp_stat_item item);
 #else
 static inline void count_mthp_stat(int order, enum mthp_stat_item item)
 {
+}
+unsigned long sum_mthp_stat(int order, enum mthp_stat_item item)
+{
+	return 0;
 }
 #endif
 
