@@ -16,6 +16,9 @@
 #include <ufs/ufshcd.h>
 #include <ufs/unipro.h>
 
+#if defined(CONFIG_UFSFEATURE)
+#include "vendor/ufsfeature.h"
+#endif
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
 #define MPHY_TX_FSM_STATE       0x41
@@ -31,6 +34,17 @@
 #define UFS_HW_VER_STEP_MASK	GENMASK(15, 0)
 
 #define UFS_VENDOR_MICRON	0x12C
+
+#if defined(CONFIG_UFSFEATURE)
+#ifndef ufshcd_set_eh_in_progress
+	/* UFSHCD error handling flags */
+	enum {
+		UFSHCD_EH_IN_PROGRESS = (1 << 0),
+	};
+	#define ufshcd_eh_in_progress(h) \
+		((h)->eh_flags & UFSHCD_EH_IN_PROGRESS)
+#endif
+#endif
 
 #define SLOW 1
 #define FAST 2
@@ -625,6 +639,9 @@ struct ufs_qcom_host {
 	unsigned int boost_monitor_timer;
 	u32 min_boost_thres;
 	u32 max_boost_thres;
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature ufsf;
+#endif
 };
 
 static inline u32
@@ -757,4 +774,12 @@ static inline void ufs_qcom_ice_debug(struct ufs_qcom_host *host)
 }
 #endif /* !CONFIG_SCSI_UFS_CRYPTO */
 
+#if defined(CONFIG_UFSFEATURE)
+static inline struct ufsf_feature *ufs_qcom_get_ufsf(struct ufs_hba *hba)
+{
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+
+	return &host->ufsf;
+}
+#endif
 #endif /* UFS_QCOM_H_ */
