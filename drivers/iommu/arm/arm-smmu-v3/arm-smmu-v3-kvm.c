@@ -171,15 +171,6 @@ err_free:
 	return ERR_PTR(ret);
 }
 
-static void kvm_arm_smmu_release_device(struct device *dev)
-{
-	struct kvm_arm_smmu_master *master = dev_iommu_priv_get(dev);
-
-	xa_destroy(&master->domains);
-	kfree(master);
-	iommu_fwspec_free(dev);
-}
-
 static struct iommu_domain *kvm_arm_smmu_domain_alloc(unsigned type)
 {
 	struct kvm_arm_smmu_domain *kvm_smmu_domain;
@@ -308,6 +299,17 @@ static int kvm_arm_smmu_detach_dev(struct host_arm_smmu_device *host_smmu,
 				   struct kvm_arm_smmu_master *master)
 {
 	return kvm_arm_smmu_detach_dev_pasid(host_smmu, master, 0);
+}
+
+static void kvm_arm_smmu_release_device(struct device *dev)
+{
+	struct kvm_arm_smmu_master *master = dev_iommu_priv_get(dev);
+	struct host_arm_smmu_device *host_smmu = smmu_to_host(master->smmu);
+
+	kvm_arm_smmu_detach_dev(host_smmu, master);
+	xa_destroy(&master->domains);
+	kfree(master);
+	iommu_fwspec_free(dev);
 }
 
 static void kvm_arm_smmu_remove_dev_pasid(struct device *dev, ioasid_t pasid)
