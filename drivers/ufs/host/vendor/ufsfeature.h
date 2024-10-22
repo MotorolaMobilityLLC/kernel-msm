@@ -146,9 +146,17 @@ void ufsf_rpm_put_noidle(struct ufs_hba *hba);
 #define DEVICE_DESC_PARAM_SAMSUNG_SUP			0xFB
 
 #if defined(CONFIG_UFSHID)
+#if defined(CONFIG_MICRON_UFSHID)
+#define QUERY_FLAG_IDN_HID_EN					0x13
+#endif
+
 /* Attribute idn for Query requests */
 #define QUERY_ATTR_IDN_HID_OPERATION			0x20
 #define QUERY_ATTR_IDN_HID_FRAG_LEVEL			0x21
+#if defined(CONFIG_MICRON_UFSHID)
+#define QUERY_ATTR_IDN_HID_FRAG_STATUS			0x31
+#define QUERY_ATTR_IDN_HID_PROGRESS				0x32
+#endif
 
 #define DEVICE_DESC_PARAM_HID_VER			0x59
 #endif
