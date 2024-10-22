@@ -2478,7 +2478,8 @@ static int __pkvm_host_use_dma_page(phys_addr_t phys_addr)
 	 * host shared the page.
 	 */
 	if (state & PKVM_PAGE_SHARED_BORROWED || state & PKVM_PAGE_SHARED_OWNED) {
-		ret = __hyp_check_page_state_range(phys_addr, PAGE_SIZE, PKVM_NOPAGE);
+		ret = __hyp_check_page_state_range((u64)hyp_phys_to_virt(phys_addr),
+						   PAGE_SIZE, PKVM_NOPAGE);
 		if (ret)
 			return ret;
 	}
