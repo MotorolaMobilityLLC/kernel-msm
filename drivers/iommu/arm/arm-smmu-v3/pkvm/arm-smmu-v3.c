@@ -1378,13 +1378,19 @@ static phys_addr_t smmu_iova_to_phys(struct kvm_hyp_iommu_domain *domain,
  * As we optimize for memory usage and performance, we try to use block mappings
  * when possible.
  */
-static size_t smmu_pgsize(size_t size)
+static size_t smmu_pgsize_idmap(size_t size, u64 paddr)
 {
 	size_t pgsizes;
 	const size_t pgsize_bitmask = PAGE_SIZE | (PAGE_SIZE * PTRS_PER_PTE) |
 				      (PAGE_SIZE * PTRS_PER_PTE * PTRS_PER_PTE);
 
+	/* All page sizes that fit the size */
 	pgsizes = pgsize_bitmask & GENMASK_ULL(__fls(size), 0);
+
+	/* Address must be aligned to page size */
+	if (likely(paddr))
+		pgsizes &= GENMASK_ULL(__ffs(paddr), 0);
+
 	WARN_ON(!pgsizes);
 
 	return BIT(__fls(pgsizes));
@@ -1410,7 +1416,7 @@ static void smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 
 		while (size) {
 			mapped = 0;
-			pgsize = smmu_pgsize(size);
+			pgsize = smmu_pgsize_idmap(size, start);
 			pgcount = size / pgsize;
 			ret = pgtable->ops.map_pages(&pgtable->ops, start, start,
 						     pgsize, pgcount, prot, 0, &mapped);
@@ -1421,7 +1427,7 @@ static void smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 		}
 	} else {
 		while (size) {
-			pgsize = smmu_pgsize(size);
+			pgsize = smmu_pgsize_idmap(size, start);
 			pgcount = size / pgsize;
 			unmapped = pgtable->ops.unmap_pages(&pgtable->ops, start,
 							    pgsize, pgcount, NULL);
