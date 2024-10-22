@@ -25,6 +25,7 @@
   filp_close
   free_workqueue_attrs
   __getblk_gfp
+  get_dup_sched_clock
   gnet_stats_add_queue
   gnet_stats_copy_basic
   gnet_stats_copy_queue
