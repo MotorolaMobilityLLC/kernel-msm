@@ -39,9 +39,8 @@ struct netlink_sock {
 	bool			cb_running;
 	int			dump_done_errno;
 	struct netlink_callback	cb;
-	struct mutex		nl_cb_mutex;
-
-	struct mutex		*dump_cb_mutex;
+	struct mutex		*cb_mutex;
+	struct mutex		cb_def_mutex;
 	void			(*netlink_rcv)(struct sk_buff *skb);
 	int			(*netlink_bind)(struct net *net, int group);
 	void			(*netlink_unbind)(struct net *net, int group);
