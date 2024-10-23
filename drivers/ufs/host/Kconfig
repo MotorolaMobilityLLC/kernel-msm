@@ -186,8 +186,15 @@ config UFSHID_POC
 	  2. auto_hibern8 enable/disable (HCI)
 	  3. set flag bDefragOperation
 	  4. debug msg enable (default : disable)
+
 config MICRON_UFSHID
 	tristate "micron Host Initiated Defrag support"
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
 	help
 	  Enable Micron HID feature
+
+config SCSI_SKHID
+	bool "SKHix UFS Host Initiated Defrag supportr"
+	depends on SCSI_UFSHCD
+	help
+	  SKHix UFS HID Feature Enable
