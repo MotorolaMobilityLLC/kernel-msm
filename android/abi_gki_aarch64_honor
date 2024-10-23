@@ -150,6 +150,10 @@
   __tracepoint_android_vh_sk_clone_lock
   __traceiter_android_rvh_f2fs_down_read
   __tracepoint_android_rvh_f2fs_down_read
+  __traceiter_android_vh_f2fs_improve_priority
+  __tracepoint_android_vh_f2fs_improve_priority
+  __traceiter_android_vh_f2fs_restore_priority
+  __tracepoint_android_vh_f2fs_restore_priority
   __traceiter_android_vh_cma_alloc_retry
   __tracepoint_android_vh_cma_alloc_retry
   __tracepoint_android_vh_should_memcg_bypass

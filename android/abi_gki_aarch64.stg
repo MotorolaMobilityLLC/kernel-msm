@@ -357124,6 +357124,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_f2fs_file_open"
 }
 elf_symbol {
+  id: 0xcb0a2c01
+  name: "__traceiter_android_vh_f2fs_improve_priority"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xb827a3cb
+  type_id: 0x9bdf4df8
+  full_name: "__traceiter_android_vh_f2fs_improve_priority"
+}
+elf_symbol {
   id: 0x377d134d
   name: "__traceiter_android_vh_f2fs_ra_op_flags"
   is_defined: true
@@ -357131,6 +357140,15 @@ elf_symbol {
   crc: 0x061f3684
   type_id: 0x9bf7484d
   full_name: "__traceiter_android_vh_f2fs_ra_op_flags"
+}
+elf_symbol {
+  id: 0x905272e6
+  name: "__traceiter_android_vh_f2fs_restore_priority"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x2ae668ab
+  type_id: 0x9bc214f0
+  full_name: "__traceiter_android_vh_f2fs_restore_priority"
 }
 elf_symbol {
   id: 0x93a4717b
@@ -363271,6 +363289,15 @@ elf_symbol {
   full_name: "__tracepoint_android_vh_f2fs_file_open"
 }
 elf_symbol {
+  id: 0x34b6590b
+  name: "__tracepoint_android_vh_f2fs_improve_priority"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x7803936a
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_f2fs_improve_priority"
+}
+elf_symbol {
   id: 0x26d15e93
   name: "__tracepoint_android_vh_f2fs_ra_op_flags"
   is_defined: true
@@ -363278,6 +363305,15 @@ elf_symbol {
   crc: 0x33148828
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_f2fs_ra_op_flags"
+}
+elf_symbol {
+  id: 0xbf5d713c
+  name: "__tracepoint_android_vh_f2fs_restore_priority"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x16bd98df
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_f2fs_restore_priority"
 }
 elf_symbol {
   id: 0x50a83025
@@ -427341,7 +427377,9 @@ interface {
   symbol_id: 0x1f554c2a
   symbol_id: 0x343adff1
   symbol_id: 0x9c6911fb
+  symbol_id: 0xcb0a2c01
   symbol_id: 0x377d134d
+  symbol_id: 0x905272e6
   symbol_id: 0x93a4717b
   symbol_id: 0x6091a763
   symbol_id: 0x19fc04e0
@@ -428024,7 +428062,9 @@ interface {
   symbol_id: 0x0d418d38
   symbol_id: 0x2121385f
   symbol_id: 0x9ad783c1
+  symbol_id: 0x34b6590b
   symbol_id: 0x26d15e93
+  symbol_id: 0xbf5d713c
   symbol_id: 0x50a83025
   symbol_id: 0x0c03d499
   symbol_id: 0x197d6be2
