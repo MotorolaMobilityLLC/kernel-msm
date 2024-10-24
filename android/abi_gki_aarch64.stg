@@ -295034,6 +295034,48 @@ enumeration {
   }
 }
 enumeration {
+  id: 0x6d69c879
+  name: "mthp_stat_item"
+  definition {
+    underlying_type_id: 0x4585663f
+    enumerator {
+      name: "MTHP_STAT_ANON_FAULT_ALLOC"
+    }
+    enumerator {
+      name: "MTHP_STAT_ANON_FAULT_FALLBACK"
+      value: 1
+    }
+    enumerator {
+      name: "MTHP_STAT_ANON_FAULT_FALLBACK_CHARGE"
+      value: 2
+    }
+    enumerator {
+      name: "MTHP_STAT_SWPOUT"
+      value: 3
+    }
+    enumerator {
+      name: "MTHP_STAT_SWPOUT_FALLBACK"
+      value: 4
+    }
+    enumerator {
+      name: "MTHP_STAT_SPLIT"
+      value: 5
+    }
+    enumerator {
+      name: "MTHP_STAT_SPLIT_FAILED"
+      value: 6
+    }
+    enumerator {
+      name: "MTHP_STAT_SPLIT_DEFERRED"
+      value: 7
+    }
+    enumerator {
+      name: "__MTHP_STAT_COUNT"
+      value: 8
+    }
+  }
+}
+enumeration {
   id: 0xa13cd7c6
   name: "net_device_path_type"
   definition {
@@ -314807,6 +314849,12 @@ function {
   return_type_id: 0x2ba06eea
   parameter_id: 0x25ffeea5
   parameter_id: 0x0258f96e
+}
+function {
+  id: 0x29d15eb9
+  return_type_id: 0x33756485
+  parameter_id: 0x6720d32f
+  parameter_id: 0x6d69c879
 }
 function {
   id: 0x29da83bb
@@ -415486,6 +415534,15 @@ elf_symbol {
   full_name: "subsys_system_register"
 }
 elf_symbol {
+  id: 0x4072acf3
+  name: "sum_mthp_stat"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xd18876bf
+  type_id: 0x29d15eb9
+  full_name: "sum_mthp_stat"
+}
+elf_symbol {
   id: 0xdf289104
   name: "super_setup_bdi"
   is_defined: true
@@ -433693,6 +433750,7 @@ interface {
   symbol_id: 0x5577d5a8
   symbol_id: 0x0e1b0b82
   symbol_id: 0xfb52ace2
+  symbol_id: 0x4072acf3
   symbol_id: 0xdf289104
   symbol_id: 0x44e002a2
   symbol_id: 0x2906b2b1
