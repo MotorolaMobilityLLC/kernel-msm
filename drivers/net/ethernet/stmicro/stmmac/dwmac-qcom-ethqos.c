@@ -672,6 +672,7 @@ static void ethqos_set_func_clk_en(struct qcom_ethqos *ethqos)
 
 static const struct ethqos_emac_driver_data emac_v6_6_0_data = {
 	.dma_addr_width = 32,
+	.has_hdma = true,
 	.dwxgmac_addrs = {
 		.dma_even_chan_base  = 0x00008500,
 		.dma_odd_chan_base = 0x00008580,
@@ -2278,6 +2279,44 @@ static void qcom_ethqos_request_phy_wol(void *plat_n)
 	}
 }
 
+static void qcom_ethqos_hdma_cfg(struct plat_stmmacenet_data *plat)
+{
+	plat->dma_cfg->orrq = 15;
+	plat->dma_cfg->owrq = 15;
+	plat->dma_cfg->txdcsz = 4;
+	plat->dma_cfg->tdps = 1;
+	plat->dma_cfg->rxdcsz = 4;
+	plat->dma_cfg->rdps = 1;
+
+	plat->dma_cfg->tx_pdma_custom_map = true;
+	plat->dma_cfg->tx_pdma_map[0] = 0;
+	plat->dma_cfg->tx_pdma_map[1] = 0;
+	plat->dma_cfg->tx_pdma_map[2] = 0;
+	plat->dma_cfg->tx_pdma_map[3] = 0;
+	plat->dma_cfg->tx_pdma_map[4] = 5;
+	plat->dma_cfg->tx_pdma_map[5] = 5;
+	plat->dma_cfg->tx_pdma_map[6] = 5;
+	plat->dma_cfg->tx_pdma_map[7] = 2;
+	plat->dma_cfg->tx_pdma_map[8] = 3;
+	plat->dma_cfg->tx_pdma_map[9] = 4;
+	plat->dma_cfg->tx_pdma_map[10] = 6;
+	plat->dma_cfg->tx_pdma_map[11] = 7;
+
+	plat->dma_cfg->rx_pdma_custom_map = true;
+	plat->dma_cfg->rx_pdma_map[0] = 0;
+	plat->dma_cfg->rx_pdma_map[1] = 0;
+	plat->dma_cfg->rx_pdma_map[2] = 0;
+	plat->dma_cfg->rx_pdma_map[3] = 0;
+	plat->dma_cfg->rx_pdma_map[4] = 5;
+	plat->dma_cfg->rx_pdma_map[5] = 5;
+	plat->dma_cfg->rx_pdma_map[6] = 5;
+	plat->dma_cfg->rx_pdma_map[7] = 2;
+	plat->dma_cfg->rx_pdma_map[8] = 3;
+	plat->dma_cfg->rx_pdma_map[9] = 4;
+	plat->dma_cfg->rx_pdma_map[10] = 6;
+	plat->dma_cfg->rx_pdma_map[11] = 7;
+}
+
 static int qcom_ethqos_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -2401,6 +2440,9 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	if (plat_dat->has_xgmac) {
 		plat_dat->has_gmac4 = 0;
 		plat_dat->dwxgmac_addrs = &data->dwxgmac_addrs;
+		plat_dat->has_hdma = data->has_hdma;
+		if (plat_dat->has_hdma)
+			qcom_ethqos_hdma_cfg(plat_dat);
 	}
 	if (data->dma_addr_width)
 		plat_dat->host_dma_width = data->dma_addr_width;

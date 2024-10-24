@@ -95,10 +95,20 @@ struct stmmac_dma_cfg {
 	bool pblx8;
 	int fixed_burst;
 	int mixed_burst;
+	int owrq;
+	int orrq;
+	u32 tdps;
+	u32 rdps;
+	u32 txdcsz;
+	u32 rxdcsz;
 	bool aal;
 	bool eame;
 	bool multi_msi_en;
 	bool dche;
+	bool tx_pdma_custom_map;
+	bool rx_pdma_custom_map;
+	u8 tx_pdma_map[MTL_MAX_TX_QUEUES];
+	u8 rx_pdma_map[MTL_MAX_RX_QUEUES];
 };
 
 #define AXI_BLEN	7
@@ -246,6 +256,7 @@ struct plat_stmmacenet_data {
 	u32 host_dma_width;
 	u32 rx_queues_to_use;
 	u32 tx_queues_to_use;
+	bool has_hdma;
 	u8 rx_sched_algorithm;
 	u8 tx_sched_algorithm;
 	struct stmmac_rxq_cfg rx_queues_cfg[MTL_MAX_RX_QUEUES];

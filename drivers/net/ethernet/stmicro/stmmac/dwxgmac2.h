@@ -374,6 +374,8 @@ static inline u32 xgmac_mtl_chanx_base_addr(const struct dwxgmac_addrs *addrs,
 #define XGMAC_DMA_CHAN_OFFSET		0x80
 #define XGMAC_DMA_MODE			0x00003000
 #define XGMAC_SWR			BIT(0)
+#define XGMAC_DSCB		BIT(16)
+#define XGMAC_HMIC		BIT(17)
 #define XGMAC_DMA_SYSBUS_MODE		0x00003004
 #define XGMAC_WR_OSR_LMT		GENMASK(29, 24)
 #define XGMAC_WR_OSR_LMT_SHIFT		24
@@ -381,6 +383,7 @@ static inline u32 xgmac_mtl_chanx_base_addr(const struct dwxgmac_addrs *addrs,
 #define XGMAC_RD_OSR_LMT_SHIFT		16
 #define XGMAC_EN_LPI			BIT(15)
 #define XGMAC_LPI_XIT_PKT		BIT(14)
+#define XGMAC_ONEKBBE		BIT(13)
 #define XGMAC_AAL			BIT(12)
 #define XGMAC_EAME			BIT(11)
 #define XGMAC_BLEN			GENMASK(7, 1)
@@ -457,12 +460,13 @@ static inline u32 xgmac_dma_chanx_base_addr(const struct dwxgmac_addrs *addrs,
 #define XGMAC_DMA_CH_INT_EN(addr, x)		(xgmac_dma_chanx_base_addr(addr, x) + 0x38)
 #define XGMAC_NIE			BIT(15)
 #define XGMAC_AIE			BIT(14)
+#define XGMAC_FBEE			BIT(12)
 #define XGMAC_RBUE			BIT(7)
 #define XGMAC_RIE			BIT(6)
 #define XGMAC_TBUE			BIT(2)
 #define XGMAC_TIE			BIT(0)
 #define XGMAC_DMA_INT_DEFAULT_EN	(XGMAC_NIE | XGMAC_AIE | XGMAC_RBUE | \
-					XGMAC_RIE | XGMAC_TIE)
+					XGMAC_RIE | XGMAC_TIE | XGMAC_FBEE)
 #define XGMAC_DMA_INT_DEFAULT_RX	(XGMAC_RBUE | XGMAC_RIE)
 #define XGMAC_DMA_INT_DEFAULT_TX	(XGMAC_TIE)
 #define XGMAC_DMA_CH_Rx_WATCHDOG(addr, x)	(xgmac_dma_chanx_base_addr(addr, x) + 0x3c)
