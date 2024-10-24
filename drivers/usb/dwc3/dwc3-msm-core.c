@@ -3647,6 +3647,7 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc, bool ignore_p3_state)
 {
 	unsigned long timeout;
 	u32 reg = 0;
+	int ret = 0;
 
 	if (!mdwc->in_host_mode && !mdwc->in_device_mode)
 		return 0;
@@ -3679,14 +3680,16 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc, bool ignore_p3_state)
 		if (reg & PWR_EVNT_LPM_IN_L2_MASK)
 			break;
 	}
-	if (!(reg & PWR_EVNT_LPM_IN_L2_MASK))
+	if (!(reg & PWR_EVNT_LPM_IN_L2_MASK)) {
 		dev_err(mdwc->dev, "could not transition HS PHY to L2\n");
+		ret = -EBUSY;
+	}
 
 	/* Clear L2 event bit */
 	dwc3_msm_write_reg(mdwc->base, PWR_EVNT_IRQ_STAT_REG,
 		PWR_EVNT_LPM_IN_L2_MASK);
 
-	return 0;
+	return mdwc->in_host_mode ? ret : 0;
 }
 
 static void dwc3_set_phy_speed_flags(struct dwc3_msm *mdwc)
