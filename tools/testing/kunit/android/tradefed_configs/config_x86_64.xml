@@ -1,4 +1,8 @@
 <configuration description="kunit">
+    <object type="module_controller" class="com.android.tradefed.testtype.suite.module.KernelTestModuleController">
+        <option name="arch" value="x86_64" />
+    </object>
+
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
 
     <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
