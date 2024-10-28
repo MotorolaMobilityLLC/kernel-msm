@@ -315,6 +315,7 @@ struct geni_i3c_dev {
 	int i3c_kpi;
 	struct completion done;
 	struct mutex lock;
+	struct mutex i3c_ibi_lock; /* ibi master request lock */
 	struct gsi_common gsi;
 	dma_addr_t rx_phy;
 	bool gsi_err;
@@ -3043,8 +3044,8 @@ static void qcom_geni_i3c_ibi_conf(struct geni_i3c_dev *gi3c)
 	gi3c->ibi.is_init = true;
 }
 
-static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
-	const struct i3c_ibi_setup *req)
+static int geni_i3c_request_ibi(struct i3c_dev_desc *dev,
+				const struct i3c_ibi_setup *req)
 {
 	struct i3c_master_controller *m = i3c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
@@ -3117,6 +3118,20 @@ static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
 			       gi3c->i3c_kpi, start_time, 0, 0);
 
 	return -ENOSPC;
+}
+
+static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
+				       const struct i3c_ibi_setup *req)
+{
+	struct i3c_master_controller *m = i3c_dev_get_master(dev);
+	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	int ret;
+
+	mutex_lock(&gi3c->i3c_ibi_lock);
+	ret = geni_i3c_request_ibi(dev, req);
+	mutex_unlock(&gi3c->i3c_ibi_lock);
+
+	return ret;
 }
 
 static int qcom_deallocate_ibi_table_entry(struct geni_i3c_dev *gi3c)
@@ -3878,6 +3893,7 @@ static int geni_i3c_probe(struct platform_device *pdev)
 
 	init_completion(&gi3c->done);
 	mutex_init(&gi3c->lock);
+	mutex_init(&gi3c->i3c_ibi_lock);
 	spin_lock_init(&gi3c->spinlock);
 	platform_set_drvdata(pdev, gi3c);
 
