@@ -698,17 +698,17 @@ static irqreturn_t qcom_wdt_bark_handler(int irq, void *dev_id)
 	unsigned long long tp = wdog_dd->last_pet;
 
 	nanosec_rem = do_div(t, 1000000000);
-	dev_info(wdog_dd->dev, "QCOM Apps Watchdog bark! Now = %lu.%06lu\n",
+	dev_err(wdog_dd->dev, "QCOM Apps Watchdog bark! Now = %lu.%06lu\n",
 			(unsigned long) t, nanosec_rem / 1000);
 
 	nanosec_rem = do_div(tp, 1000000000);
-	dev_info(wdog_dd->dev, "QCOM Apps Watchdog last pet at %lu.%06lu\n",
+	dev_err(wdog_dd->dev, "QCOM Apps Watchdog last pet at %lu.%06lu\n",
 			(unsigned long) tp, nanosec_rem / 1000);
 	if (wdog_dd->do_ipi_ping)
 		qcom_wdt_dump_cpu_alive_mask(wdog_dd);
 
 	if (wdog_dd->freeze_in_progress)
-		dev_info(wdog_dd->dev, "Suspend in progress\n");
+		dev_err(wdog_dd->dev, "Suspend in progress\n");
 
 	md_dump_process();
 	qcom_wdt_trigger_bite();
