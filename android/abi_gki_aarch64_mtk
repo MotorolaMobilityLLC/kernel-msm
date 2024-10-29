@@ -2232,6 +2232,8 @@
   __pskb_pull_tail
   pskb_put
   ___pskb_trim
+  ptp_find_pin
+  ptp_schedule_worker
   put_cmsg
   __put_cred
   put_device
