@@ -42,6 +42,7 @@
   cpufreq_unregister_driver
   cpu_number
   __cpu_online_mask
+  __cpu_possible_mask
   crc32_le
   csum_partial
   debugfs_attr_read
@@ -226,6 +227,7 @@
   kimage_voffset
   __kmalloc
   kmalloc_caches
+  kmalloc_large
   kmalloc_trace
   kmemdup
   kstrndup
@@ -234,7 +236,6 @@
   kthread_park
   kthread_should_stop
   kthread_stop
-  kthread_stop_put
   kthread_unpark
   ktime_get
   ktime_get_ts64
@@ -433,6 +434,7 @@
   strcmp
   strcpy
   strlen
+  strncpy
   strnlen
   strscpy
   __sw_hweight16
@@ -497,7 +499,20 @@
   usb_unanchor_urb
   __usecs_to_jiffies
   usleep_range_state
+  v4l2_device_register
+  v4l2_device_unregister
+  v4l2_event_pending
+  v4l2_event_subscribe
+  v4l2_event_unsubscribe
+  v4l2_fh_add
+  v4l2_fh_del
+  v4l2_fh_exit
+  v4l2_fh_init
   vfree
+  video_devdata
+  video_ioctl2
+  __video_register_device
+  video_unregister_device
   virtio_break_device
   virtio_check_driver_offered_feature
   virtio_config_changed
@@ -527,6 +542,7 @@
   vring_interrupt
   vring_notification_data
   vring_transport_features
+  vzalloc
   __wake_up
   wake_up_process
   __warn_printk
@@ -537,22 +553,6 @@
   clk_get
   clk_put
   serio_unregister_port
-
-# required by android-v-virt-cpufreq.ko
-  arch_freq_scale
-  cpufreq_cpu_get
-  cpufreq_cpu_put
-  cpufreq_frequency_table_verify
-  cpufreq_get_hw_max_freq
-  cpu_scale
-  dev_pm_opp_free_cpufreq_table
-  dev_pm_opp_get_opp_count
-  dev_pm_opp_init_cpufreq_table
-  dev_pm_opp_of_add_table
-  get_cpu_device
-  topology_clear_scale_freq_source
-  topology_set_scale_freq_source
-  topology_update_thermal_pressure
 
 # required by armmmci.ko
   clk_round_rate
@@ -802,7 +802,6 @@
   bitmap_free
   bitmap_zalloc
   call_rcu
-  __cpu_possible_mask
   crc32_be
   crypto_aead_decrypt
   crypto_aead_encrypt
@@ -834,7 +833,6 @@
   kernel_param_lock
   kernel_param_unlock
   kfree_skb_list_reason
-  kmalloc_large
   ktime_get_seconds
   netdev_set_default_ethtool_ops
   netif_receive_skb
@@ -853,7 +851,6 @@
   skb_ensure_writable
   __skb_get_hash
   __skb_gso_segment
-  strncpy
   __sw_hweight64
   tasklet_kill
   unregister_inet6addr_notifier
@@ -1063,25 +1060,11 @@
   v4l2_ctrl_handler_setup
   v4l2_ctrl_new_custom
   v4l2_ctrl_subscribe_event
-  v4l2_device_register
-  v4l2_device_unregister
-  v4l2_event_pending
   v4l2_event_queue
-  v4l2_event_subscribe
-  v4l2_event_unsubscribe
-  v4l2_fh_add
-  v4l2_fh_del
-  v4l2_fh_exit
-  v4l2_fh_init
   v4l2_format_info
-  video_devdata
   video_device_alloc
   video_device_release
-  video_ioctl2
-  __video_register_device
-  video_unregister_device
   vm_insert_page
-  vzalloc
 
 # required by vexpress-config.ko
   of_find_compatible_node
@@ -1102,6 +1085,7 @@
   kernel_sock_shutdown
   kstrtoint
   kstrtoll
+  kthread_stop_put
   platform_bus
   sockfd_lookup
   strchr
@@ -1215,6 +1199,17 @@
   vmemdup_user
   ww_mutex_lock_interruptible
   ww_mutex_unlock
+
+# required by virtio-media.ko
+  frame_vector_to_pages
+  pfn_is_map_memory
+  sg_alloc_table_from_pages_segment
+  sg_nents
+  v4l2_event_queue_fh
+  v4l2_src_change_event_subscribe
+  vb2_create_framevec
+  vb2_destroy_framevec
+  video_device_release_empty
 
 # required by virtio-rng.ko
   hwrng_register
@@ -1440,6 +1435,16 @@
   snd_pcm_set_ops
   wait_for_completion_interruptible_timeout
 
+# required by virtual-cpufreq.ko
+  arch_freq_scale
+  cpufreq_freq_transition_begin
+  cpufreq_freq_transition_end
+  cpufreq_frequency_table_verify
+  cpufreq_get_hw_max_freq
+  get_cpu_device
+  topology_clear_scale_freq_source
+  topology_set_scale_freq_source
+
 # required by vkms.ko
   __devm_drm_dev_alloc
   devres_open_group
@@ -1527,5 +1532,13 @@
 # preserved by --additions-only
   blk_mq_quiesce_queue
   blk_mq_unquiesce_queue
+  cpufreq_cpu_get
+  cpufreq_cpu_put
+  cpu_scale
+  dev_pm_opp_free_cpufreq_table
+  dev_pm_opp_get_opp_count
+  dev_pm_opp_init_cpufreq_table
+  dev_pm_opp_of_add_table
   page_shift_compat
   page_shift_compat_enabled
+  topology_update_thermal_pressure
