@@ -1800,61 +1800,54 @@ static void geni_i3c_hotjoin(struct work_struct *work)
 			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
-static void geni_i3c_handle_received_ibi(struct geni_i3c_dev *gi3c)
+static void geni_i3c_handle_received_ibi(struct geni_i3c_dev *gi3c, u8 slot_index)
 {
 	struct geni_i3c_i2c_dev_data *data;
 	struct i3c_ibi_slot *slot;
-	struct i3c_dev_desc *dev = gi3c->ibi.slots[0];
-	u32 val, i;
-
-	val = readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_STATUS(0));
+	struct i3c_dev_desc *dev = gi3c->ibi.slots[slot_index];
 
 	if (!dev || !dev->ibi) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "Invalid IBI device\n");
-		goto no_free_slot;
+		return;
 	}
 
 	data = i3c_dev_get_master_data(dev);
 	slot = i3c_generic_ibi_get_free_slot(data->ibi_pool);
 	if (!slot) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "no free slot\n");
-		goto no_free_slot;
+		return;
 	}
 
-	for (i = 0; i < gi3c->ibi.num_slots; i++) {
-		if (!(val & (1u << i)))
-			continue;
 
-		gi3c->ibi.data.info.info =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_INFO_ENTRY(0, i));
-		gi3c->ibi.data.ts =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_TS_LSB_ENTRY(0, i));
-		gi3c->ibi.data.payload =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_DATA_ENTRY_REG0(0, i));
+	gi3c->ibi.data.info.info =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_INFO_ENTRY(0, slot_index));
+	gi3c->ibi.data.ts =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_TS_LSB_ENTRY(0, slot_index));
+	gi3c->ibi.data.payload =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_DATA_ENTRY_REG0(0, slot_index));
 
-		if (slot->data)
-			memcpy(slot->data, &gi3c->ibi.data.payload, dev->ibi->max_payload_len);
+	if (slot->data)
+		memcpy(slot->data, &gi3c->ibi.data.payload, dev->ibi->max_payload_len);
 
-		slot->len = min_t(unsigned int, gi3c->ibi.data.info.fields.num_bytes,
-				  dev->ibi->max_payload_len);
+	slot->len = min_t(unsigned int, gi3c->ibi.data.info.fields.num_bytes,
+			  dev->ibi->max_payload_len);
 
-		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
-			    "IBI: info: 0x%x, ts: 0x%x, Data: 0x%x\n",
-			    gi3c->ibi.data.info.info, gi3c->ibi.data.ts, gi3c->ibi.data.payload);
-	}
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "IBI: info: 0x%x, ts: 0x%x, Data: 0x%x slot_id: 0x%x\n",
+		    gi3c->ibi.data.info.info, gi3c->ibi.data.ts, gi3c->ibi.data.payload,
+		    slot_index);
 
 	i3c_master_queue_ibi(dev, slot);
-no_free_slot:
-	writel_relaxed(val, gi3c->ibi.ibi_base + IBI_RCVD_IBI_CLR(0));
 }
 
 static irqreturn_t geni_i3c_ibi_irq(int irq, void *dev)
 {
 	struct geni_i3c_dev *gi3c = dev;
 	unsigned long flags;
-	u32 m_stat = 0, m_stat_mask = 0;
+	u32 m_stat = 0, m_stat_mask = 0, val = 0, rcvd_ibi_status = 0;
 	bool cmd_done = false;
 	unsigned long long start_time;
+	u8 slot_index = 0;
 
 	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
 					     gi3c->i3c_kpi);
@@ -1888,8 +1881,19 @@ static irqreturn_t geni_i3c_ibi_irq(int irq, void *dev)
 		if (m_stat & SE_I3C_IBI_ERR)
 			gi3c->ibi.err = m_stat;
 
-		if (m_stat & IBI_RECEIVED)
-			geni_i3c_handle_received_ibi(gi3c);
+		if (m_stat & IBI_RECEIVED) {
+			rcvd_ibi_status = readl_relaxed(gi3c->ibi.ibi_base
+							+ IBI_RCVD_IBI_STATUS(0));
+			val = rcvd_ibi_status;
+			/* Handle multiple IBI interrupts/entries if any */
+			while (val) {
+				if (val & 0x1)
+					geni_i3c_handle_received_ibi(gi3c, slot_index);
+				slot_index++;
+				val >>= 1;
+			}
+			writel_relaxed(rcvd_ibi_status, gi3c->ibi.ibi_base + IBI_RCVD_IBI_CLR(0));
+		}
 
 		if (m_stat & COMMAND_DONE)
 			cmd_done = true;
