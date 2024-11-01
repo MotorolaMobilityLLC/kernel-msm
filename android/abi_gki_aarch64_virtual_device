@@ -316,11 +316,8 @@
   pci_bus_type
   pci_disable_device
   pci_enable_device
-  pci_find_capability
-  pci_find_next_capability
   pci_iounmap
   pci_read_config_byte
-  pci_read_config_dword
   __pci_register_driver
   pci_release_region
   pci_request_region
@@ -1395,21 +1392,37 @@
   pci_device_is_present
   pci_disable_sriov
   pci_enable_sriov
+  pci_find_capability
   pci_find_ext_capability
+  pci_find_next_capability
   pci_free_irq_vectors
   pci_irq_get_affinity
   pci_irq_vector
+  pci_read_config_dword
   pci_read_config_word
   pci_set_master
   pci_vfs_assigned
+  vp_modern_config_vector
+  vp_modern_generation
+  vp_modern_get_features
+  vp_modern_get_num_queues
+  vp_modern_get_queue_enable
+  vp_modern_get_queue_reset
+  vp_modern_get_queue_size
+  vp_modern_get_status
+  vp_modern_map_vq_notify
+  vp_modern_probe
+  vp_modern_queue_address
+  vp_modern_queue_vector
+  vp_modern_remove
+  vp_modern_set_features
+  vp_modern_set_queue_enable
+  vp_modern_set_queue_reset
+  vp_modern_set_queue_size
+  vp_modern_set_status
 
 # required by virtio_pci_legacy_dev.ko
   pci_iomap
-
-# required by virtio_pci_modern_dev.ko
-  pci_iomap_range
-  pci_release_selected_regions
-  pci_request_selected_regions
 
 # required by virtio_pmem.ko
   nvdimm_bus_register
