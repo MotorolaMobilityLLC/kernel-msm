@@ -7,6 +7,7 @@
 #include <linux/iopoll.h>
 #include "stmmac.h"
 #include "dwxgmac2.h"
+#include "dw25gmac.h"
 
 static int dwxgmac2_dma_reset(void __iomem *ioaddr)
 {
@@ -460,6 +461,26 @@ static int dwxgmac2_get_hw_feature(void __iomem *ioaddr,
 	return 0;
 }
 
+static int dw25gmac_get_hw_feature(void __iomem *ioaddr,
+				   struct dma_features *dma_cap)
+{
+	u32 hw_cap;
+	int ret;
+
+	ret = dwxgmac2_get_hw_feature(ioaddr, dma_cap);
+
+	/* For DW25GMAC VDMA channel count is channel count */
+	hw_cap = readl(ioaddr + XGMAC_HW_FEATURE2);
+	dma_cap->number_tx_channel =
+		dw25gmac_decode_vdma_count(FIELD_GET(XXVGMAC_HWFEAT_VDMA_TXCNT,
+						     hw_cap));
+	dma_cap->number_rx_channel =
+		dw25gmac_decode_vdma_count(FIELD_GET(XXVGMAC_HWFEAT_VDMA_RXCNT,
+						     hw_cap));
+
+	return ret;
+}
+
 static void dwxgmac2_rx_watchdog(struct stmmac_priv *priv, void __iomem *ioaddr,
 				 u32 riwt, u32 queue)
 {
@@ -590,6 +611,36 @@ const struct stmmac_dma_ops dwxgmac210_dma_ops = {
 	.stop_rx = dwxgmac2_dma_stop_rx,
 	.dma_interrupt = dwxgmac2_dma_interrupt,
 	.get_hw_feature = dwxgmac2_get_hw_feature,
+	.rx_watchdog = dwxgmac2_rx_watchdog,
+	.set_rx_ring_len = dwxgmac2_set_rx_ring_len,
+	.set_tx_ring_len = dwxgmac2_set_tx_ring_len,
+	.set_rx_tail_ptr = dwxgmac2_set_rx_tail_ptr,
+	.set_tx_tail_ptr = dwxgmac2_set_tx_tail_ptr,
+	.enable_tso = dwxgmac2_enable_tso,
+	.qmode = dwxgmac2_qmode,
+	.set_bfsize = dwxgmac2_set_bfsize,
+	.enable_sph = dwxgmac2_enable_sph,
+	.enable_tbs = dwxgmac2_enable_tbs,
+};
+
+const struct stmmac_dma_ops dw25gmac400_dma_ops = {
+	.reset = dwxgmac2_dma_reset,
+	.init = dw25gmac_dma_init,
+	.init_chan = dwxgmac2_dma_init_chan,
+	.init_rx_chan = dw25gmac_dma_init_rx_chan,
+	.init_tx_chan = dw25gmac_dma_init_tx_chan,
+	.axi = dwxgmac2_dma_axi,
+	.dump_regs = dwxgmac2_dma_dump_regs,
+	.dma_rx_mode = dwxgmac2_dma_rx_mode,
+	.dma_tx_mode = dwxgmac2_dma_tx_mode,
+	.enable_dma_irq = dwxgmac2_enable_dma_irq,
+	.disable_dma_irq = dwxgmac2_disable_dma_irq,
+	.start_tx = dwxgmac2_dma_start_tx,
+	.stop_tx = dwxgmac2_dma_stop_tx,
+	.start_rx = dwxgmac2_dma_start_rx,
+	.stop_rx = dwxgmac2_dma_stop_rx,
+	.dma_interrupt = dwxgmac2_dma_interrupt,
+	.get_hw_feature = dw25gmac_get_hw_feature,
 	.rx_watchdog = dwxgmac2_rx_watchdog,
 	.set_rx_ring_len = dwxgmac2_set_rx_ring_len,
 	.set_tx_ring_len = dwxgmac2_set_tx_ring_len,
