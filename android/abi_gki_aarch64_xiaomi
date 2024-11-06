@@ -132,6 +132,14 @@
   __traceiter_android_rvh_fiq_dump
   __tracepoint_android_rvh_fiq_dump
 
+# required by kmod_protect.ko
+  __traceiter_android_vh_free_mod_mem
+  __traceiter_android_vh_set_mod_perm_after_init
+  __traceiter_android_vh_set_mod_perm_before_init
+  __tracepoint_android_vh_free_mod_mem
+  __tracepoint_android_vh_set_mod_perm_after_init
+  __tracepoint_android_vh_set_mod_perm_before_init
+
 #required by mi_sched.ko
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_free_user
