@@ -55,6 +55,8 @@
   tty_unlock
   tty_set_ldisc
   tty_kclose
+  android_debug_per_cpu_symbol
+  android_debug_symbol
   __kfifo_len_r
   __traceiter_android_vh_killed_process
   __tracepoint_android_vh_killed_process

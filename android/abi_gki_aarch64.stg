@@ -284872,6 +284872,94 @@ enumeration {
   }
 }
 enumeration {
+  id: 0x503181cf
+  name: "android_debug_per_cpu_symbol"
+  definition {
+    underlying_type_id: 0x4585663f
+    enumerator {
+      name: "ADS_IRQ_STACK_PTR"
+    }
+    enumerator {
+      name: "ADS_DEBUG_PER_CPU_END"
+      value: 1
+    }
+  }
+}
+enumeration {
+  id: 0x705ce9b7
+  name: "android_debug_symbol"
+  definition {
+    underlying_type_id: 0x4585663f
+    enumerator {
+      name: "ADS_PER_CPU_START"
+    }
+    enumerator {
+      name: "ADS_PER_CPU_END"
+      value: 1
+    }
+    enumerator {
+      name: "ADS_TEXT"
+      value: 2
+    }
+    enumerator {
+      name: "ADS_SEND"
+      value: 3
+    }
+    enumerator {
+      name: "ADS_MEM_BLOCK"
+      value: 4
+    }
+    enumerator {
+      name: "ADS_INIT_MM"
+      value: 5
+    }
+    enumerator {
+      name: "ADS_ITERATE_SUPERS"
+      value: 6
+    }
+    enumerator {
+      name: "ADS_DROP_SLAB"
+      value: 7
+    }
+    enumerator {
+      name: "ADS_FREE_PAGES"
+      value: 8
+    }
+    enumerator {
+      name: "ADS_COMPACT_PAGES"
+      value: 9
+    }
+    enumerator {
+      name: "ADS_SHOW_MEM"
+      value: 10
+    }
+    enumerator {
+      name: "ADS_TOTAL_CMA"
+      value: 11
+    }
+    enumerator {
+      name: "ADS_SLAB_CACHES"
+      value: 12
+    }
+    enumerator {
+      name: "ADS_SLAB_MUTEX"
+      value: 13
+    }
+    enumerator {
+      name: "ADS_START_RO_AFTER_INIT"
+      value: 14
+    }
+    enumerator {
+      name: "ADS_END_RO_AFTER_INIT"
+      value: 15
+    }
+    enumerator {
+      name: "ADS_END"
+      value: 16
+    }
+  }
+}
+enumeration {
   id: 0x635e163e
   name: "arch_timer_erratum_match_type"
   definition {
@@ -316796,6 +316884,11 @@ function {
   parameter_id: 0x2ef43f67
 }
 function {
+  id: 0x429ad182
+  return_type_id: 0x18bd6530
+  parameter_id: 0x503181cf
+}
+function {
   id: 0x42a927f9
   return_type_id: 0xc9082b19
   parameter_id: 0x1d44326e
@@ -317143,6 +317236,11 @@ function {
   return_type_id: 0xc9082b19
   parameter_id: 0x397d00ab
   parameter_id: 0x6720d32f
+}
+function {
+  id: 0x4a818b9c
+  return_type_id: 0x18bd6530
+  parameter_id: 0x705ce9b7
 }
 function {
   id: 0x4abfefa4
@@ -368478,6 +368576,26 @@ elf_symbol {
   crc: 0xcdd93950
   type_id: 0xac6cacda
   full_name: "android_create_function_device"
+}
+elf_symbol {
+  id: 0x5653e7da
+  name: "android_debug_per_cpu_symbol"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x8ee3d8d9
+  namespace: "MINIDUMP"
+  type_id: 0x429ad182
+  full_name: "android_debug_per_cpu_symbol"
+}
+elf_symbol {
+  id: 0xffaebc56
+  name: "android_debug_symbol"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x468b1512
+  namespace: "MINIDUMP"
+  type_id: 0x4a818b9c
+  full_name: "android_debug_symbol"
 }
 elf_symbol {
   id: 0xd8dbec6e
@@ -429119,6 +429237,8 @@ interface {
   symbol_id: 0xb7d7d836
   symbol_id: 0xacb3d1d3
   symbol_id: 0xdc66fe63
+  symbol_id: 0x5653e7da
+  symbol_id: 0xffaebc56
   symbol_id: 0xd8dbec6e
   symbol_id: 0x95eaf556
   symbol_id: 0xf2d017ff
