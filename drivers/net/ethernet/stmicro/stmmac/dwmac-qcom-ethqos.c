@@ -168,6 +168,8 @@
 #define DWMAC4_PCS_BASE			0x000000e0
 #define RGMII_CONFIG_10M_CLK_DVD	GENMASK(18, 10)
 
+static int phytype = -1;
+static int boardtype = -1;
 void *ipc_emac_log_ctxt;
 
 struct emac_emb_smmu_cb_ctx emac_emb_smmu_ctx = {0};
@@ -177,6 +179,14 @@ struct plat_stmmacenet_data *plat_dat;
 struct qcom_ethqos *pethqos;
 
 #ifdef MODULE
+static char *board;
+module_param(board, charp, 0660);
+MODULE_PARM_DESC(board, "board type of the device");
+
+static char *enet;
+module_param(enet, charp, 0660);
+MODULE_PARM_DESC(enet, "enet value for the phy connection");
+
 static char *eipv4;
 module_param(eipv4, charp, 0660);
 MODULE_PARM_DESC(eipv4, "ipv4 value from ethernet partition");
@@ -202,6 +212,28 @@ inline void *qcom_ethqos_get_priv(struct qcom_ethqos *ethqos)
 static unsigned char dev_addr[ETH_ALEN] = {
 	0, 0x55, 0x7b, 0xb5, 0x7d, 0xf7};
 static struct ip_params pparams = {"", "", "", ""};
+
+static int set_board_type(char *board_params)
+{
+	if (!strcmp(board_params, "Air"))
+		boardtype = AIR_BOARD;
+	else if (!strcmp(board_params, "Star"))
+		boardtype = STAR_BOARD;
+	else
+		return -1;
+	return 0;
+}
+
+static int set_phy_type(char *enet_params)
+{
+	if (!strcmp(enet_params, "1") || !strcmp(enet_params, "2"))
+		phytype = PHY_1G;
+	else if (!strcmp(enet_params, "3") || !strcmp(enet_params, "6"))
+		phytype = PHY_25G;
+	else
+		return -1;
+	return 0;
+}
 
 static int set_early_ethernet_ipv4(char *ipv4_addr_in)
 {
@@ -278,6 +310,11 @@ fail:
 }
 
 #ifndef MODULE
+
+__setup("board=", set_board_type);
+
+__setup("enet=", set_phy_type);
+
 static int __init set_early_ethernet_ipv4_static(char *ipv4_addr_in)
 {
 	int ret = 1;
@@ -338,8 +375,11 @@ static int qcom_ethqos_add_ipaddr(struct ip_params *ip_info,
 		} else {
 			ETHQOSINFO("Assigned IPv4 address: %s\r\n",
 				   ip_info->ipv4_addr_str);
-
+#if (IS_ENABLED(CONFIG_BOOTMARKER_PROXY))
+	bootmarker_place_marker("M - Etherent Assigned IPv4 address");
+#else
 	ETHQOSINFO("M - Etherent Assigned IPv4 address\n");
+#endif
 		}
 	return res;
 }
@@ -385,8 +425,11 @@ static int qcom_ethqos_add_ipv6addr(struct ip_params *ip_info,
 	} else {
 		ETHQOSDBG("Assigned IPv6 address: %s\r\n",
 			  ip_info->ipv6_addr_str);
-
+#if (IS_ENABLED(CONFIG_BOOTMARKER_PROXY))
+		bootmarker_place_marker("M - Ethernet Assigned IPv6 address");
+#else
 		ETHQOSINFO("M - Ethernet Assigned IPv6 address\n");
+#endif
 	}
 	return ret;
 }
@@ -2139,6 +2182,18 @@ static int ethqos_set_early_eth_param(struct stmmac_priv *priv,
 	return 0;
 }
 
+static void qcom_ethqos_disable_phy_clks(struct qcom_ethqos *ethqos)
+{
+	ETHQOSINFO("Enter\n");
+
+	if (ethqos->phyaux_clk)
+		clk_disable_unprepare(ethqos->phyaux_clk);
+	if (ethqos->sgmiref_clk)
+		clk_disable_unprepare(ethqos->sgmiref_clk);
+
+	ETHQOSINFO("Exit\n");
+}
+
 static void qcom_ethqos_request_phy_wol(void *plat_n)
 {
 	struct plat_stmmacenet_data *plat = plat_n;
@@ -2217,10 +2272,19 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 		ETHQOSERR("Error creating logging context for emac\n");
 	else
 		ETHQOSDBG("IPC logging has been enabled for emac\n");
-
+#if (IS_ENABLED(CONFIG_BOOTMARKER_PROXY))
+	bootmarker_place_marker("M - Ethernet probe start");
+#else
 	ETHQOSINFO("M - Ethernet probe start\n");
+#endif
 
 #ifdef MODULE
+		if (enet)
+			ret = set_phy_type(enet);
+
+		if (board)
+			ret = set_board_type(board);
+
 		if (eipv4)
 			ret = set_early_ethernet_ipv4(eipv4);
 
@@ -2362,7 +2426,8 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	}
 	ETHQOSDBG("gdsc-off-on-suspend = %d\n",
 		  ethqos->gdsc_off_on_suspend);
-
+	plat_dat->phy_type = phytype;
+	plat_dat->board_type = boardtype;
 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
 	if (ret)
 		goto err_clk;
@@ -2412,8 +2477,11 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 		ethqos_set_early_eth_param(priv, ethqos);
 	}
 	atomic_set(&priv->plat->phy_clks_suspended, 0);
-
+#if (IS_ENABLED(CONFIG_BOOTMARKER_PROXY))
+	bootmarker_place_marker("M - Ethernet probe end");
+#else
 	ETHQOSINFO("M - Ethernet probe end\n");
+#endif
 	return ret;
 
 err_clk:
@@ -2421,7 +2489,11 @@ err_clk:
 
 err_mem:
 	stmmac_remove_config_dt(pdev, plat_dat);
-
+	if (ethqos) {
+		ethqos->driver_load_fail = true;
+		qcom_ethqos_disable_phy_clks(ethqos);
+		ethqos_disable_regulators(ethqos);
+	}
 	return ret;
 }
 
@@ -2489,12 +2561,17 @@ static int qcom_ethqos_suspend(struct device *dev)
 		return 0;
 	}
 
-	if (pm_suspend_target_state == PM_SUSPEND_MEM)
-		return qcom_ethqos_hib_freeze(dev);
-
 	ethqos = get_stmmac_bsp_priv(dev);
 	if (!ethqos)
 		return -ENODEV;
+
+	if (ethqos->driver_load_fail) {
+		ETHQOSINFO("driver load failed\n");
+		return 0;
+	}
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return qcom_ethqos_hib_freeze(dev);
 
 	ndev = dev_get_drvdata(dev);
 	if (!ndev)
@@ -2527,13 +2604,18 @@ static int qcom_ethqos_resume(struct device *dev)
 	if (of_device_is_compatible(dev->of_node, "qcom,emac-smmu-embedded"))
 		return 0;
 
-	if (pm_suspend_target_state == PM_SUSPEND_MEM)
-		return qcom_ethqos_hib_restore(dev);
-
 	ethqos = get_stmmac_bsp_priv(dev);
 
 	if (!ethqos)
 		return -ENODEV;
+
+	if (ethqos->driver_load_fail) {
+		ETHQOSINFO("driver load failed\n");
+		return 0;
+	}
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return qcom_ethqos_hib_restore(dev);
 
 	if (ethqos->gdsc_off_on_suspend) {
 		ret = regulator_enable(ethqos->gdsc_emac);
