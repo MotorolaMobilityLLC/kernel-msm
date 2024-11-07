@@ -336106,6 +336106,14 @@ function {
   parameter_id: 0xfc0e1dbd
 }
 function {
+  id: 0x9b5eb7d7
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x38d23361
+  parameter_id: 0x4585663f
+  parameter_id: 0xc9082b19
+}
+function {
   id: 0x9b5ee6f1
   return_type_id: 0x6720d32f
   parameter_id: 0x18ea6ae3
@@ -357920,6 +357928,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_futex_wait_end"
 }
 elf_symbol {
+  id: 0x036eff0c
+  name: "__traceiter_android_vh_futex_wait_queue_start"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0b618679
+  type_id: 0x9b5eb7d7
+  full_name: "__traceiter_android_vh_futex_wait_queue_start"
+}
+elf_symbol {
   id: 0x4f81fc38
   name: "__traceiter_android_vh_futex_wait_start"
   is_defined: true
@@ -364110,6 +364127,15 @@ elf_symbol {
   crc: 0x9e32efb0
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_futex_wait_end"
+}
+elf_symbol {
+  id: 0x03704d12
+  name: "__tracepoint_android_vh_futex_wait_queue_start"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xa8d0f29b
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_futex_wait_queue_start"
 }
 elf_symbol {
   id: 0x6d73379a
@@ -428121,6 +428147,7 @@ interface {
   symbol_id: 0x39120fb0
   symbol_id: 0x494c2e7a
   symbol_id: 0x79670e34
+  symbol_id: 0x036eff0c
   symbol_id: 0x4f81fc38
   symbol_id: 0xff623c2f
   symbol_id: 0x7fef736f
@@ -428809,6 +428836,7 @@ interface {
   symbol_id: 0x50b14cbe
   symbol_id: 0xef0379f8
   symbol_id: 0x08e2cf92
+  symbol_id: 0x03704d12
   symbol_id: 0x6d73379a
   symbol_id: 0x0c310ebd
   symbol_id: 0x9b384a49

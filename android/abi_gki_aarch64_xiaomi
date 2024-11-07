@@ -446,3 +446,7 @@ __tracepoint_android_vh_do_folio_trylock
 reclaim_pages
 __tracepoint_android_vh_alloc_flags_cma_adjust
 __traceiter_android_vh_alloc_flags_cma_adjust
+
+# required by xr-qi.ko
+__tracepoint_android_vh_futex_wait_queue_start
+__traceiter_android_vh_futex_wait_queue_start
