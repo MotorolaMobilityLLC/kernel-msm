@@ -1084,25 +1084,25 @@ _KSELFTEST_COPTS = [
 
 config_setting(
     name = "x86_64",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_x86_64"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_x86_64"))},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "i386",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_i386"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_i386"))},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "arm64",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_arm64"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_arm64"))},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "arm",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_arm"},
+    values = {"platforms": str(package_relative_label("//build/kernel/kleaf/impl:android_arm"))},
     visibility = ["//visibility:private"],
 )
 
