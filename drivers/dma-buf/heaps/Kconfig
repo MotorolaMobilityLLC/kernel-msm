@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# DMABUF HEAP drivers
+#
 menuconfig DMABUF_HEAPS_DEFERRED_FREE
 	bool "DMA-BUF heaps deferred-free library"
 	help
@@ -124,5 +128,14 @@ config QCOM_DMABUF_HEAPS_SYSTEM_MOVABLE
 	  This heap itself is backed by the system heap memory and
 	  works in tandem with the system-movable driver to be able to
 	  lend memory from the movable zone.
+	  If in doubt, say N here.
+
+config QCOM_DMABUF_HEAPS_SC_TCM
+	bool "QCOM dma-buf SC TCM heap"
+	depends on QCOM_SC_TCM_MEM && QCOM_DMABUF_HEAPS_CARVEOUT
+	help
+	  Choose this option to build QCOM DMA-BUF SC TCM heap.
+	  This is backed by the SC TCM memory which gets
+	  registered to this heap during the initialization.
 	  If in doubt, say N here.
 
