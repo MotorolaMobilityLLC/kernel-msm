@@ -302,6 +302,15 @@ DECLARE_HOOK(android_vh_shmem_swapin_page,
 DECLARE_HOOK(android_vh_should_end_madvise,
 	TP_PROTO(struct mm_struct *mm, bool *skip, bool *pageout),
 	TP_ARGS(mm, skip, pageout));
+DECLARE_HOOK(android_vh_io_statistics,
+	TP_PROTO(struct address_space *mapping, unsigned int index,
+			unsigned int nr_page, bool read, bool direct),
+	TP_ARGS(mapping, index, nr_page, read, direct));
+DECLARE_HOOK(android_vh_page_cache_miss,
+	TP_PROTO(struct file *file,
+		pgoff_t start, pgoff_t len,
+		pgoff_t index, bool buffer),
+	TP_ARGS(file, start, len, index, buffer));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

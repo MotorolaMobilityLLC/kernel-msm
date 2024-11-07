@@ -142,6 +142,7 @@
   clk_hw_get_name
   clk_hw_get_num_parents
   clk_hw_get_parent
+  clk_hw_get_parent_index
   clk_hw_get_parent_by_index
   clk_hw_get_rate
   clk_hw_is_enabled

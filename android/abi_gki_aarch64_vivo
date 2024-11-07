@@ -179,6 +179,7 @@
   clk_round_rate
   clk_set_parent
   clk_set_rate
+  clk_set_duty_cycle
   clk_sync_state
   clk_unprepare
   close_fd

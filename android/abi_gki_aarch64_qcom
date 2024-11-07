@@ -721,6 +721,7 @@
   extcon_set_property_capability
   extcon_set_state
   extcon_set_state_sync
+  extcon_sync
   fasync_helper
   __fdget
   fd_install
@@ -2613,7 +2614,9 @@
   usb_control_msg_send
   usb_debug_root
   usb_decode_ctrl
+  usb_disable_autosuspend
   usb_driver_set_configuration
+  usb_enable_autosuspend
   usb_ep_alloc_request
   usb_ep_autoconfig
   usb_ep_dequeue

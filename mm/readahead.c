@@ -223,7 +223,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
 			i = ractl->_index + ractl->_nr_pages - index - 1;
 			continue;
 		}
-
+		trace_android_vh_io_statistics(mapping, index + i, 1, true, false);
 		page = __page_cache_alloc(gfp_mask);
 		if (!page)
 			break;

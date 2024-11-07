@@ -11,6 +11,8 @@
   __traceiter_android_vh_rwsem_write_finished
   __traceiter_android_vh_do_swap_page_spf
   __traceiter_android_vh_tune_fault_around_bytes
+  __traceiter_android_vh_io_statistics
+  __traceiter_android_vh_page_cache_miss
   __tracepoint_android_rvh_dma_buf_stats_teardown
   __tracepoint_android_vh_alter_mutex_list_add
   __tracepoint_android_vh_alter_rwsem_list_add
@@ -23,4 +25,16 @@
   __tracepoint_android_vh_rwsem_write_finished
   __tracepoint_android_vh_do_swap_page_spf
   __tracepoint_android_vh_tune_fault_around_bytes
+  __tracepoint_android_vh_io_statistics
+  __tracepoint_android_vh_page_cache_miss
   next_arg
+  netdev_get_name
+  tcp_send_active_reset
+  sock_from_file
+  sock_i_ino
+  in6addr_any
+  sock_gen_put
+  udp6_lib_lookup
+  udp4_lib_lookup
+  tcp_done
+  dev_get_flags

@@ -523,6 +523,8 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_percpu_rwsem_up_write);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_percpu_rwsem_wait_complete);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rwsem_read_trylock_failed);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mglru_new_gen);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_io_statistics);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_cache_miss);
 /*
  * For type visibility
  */
