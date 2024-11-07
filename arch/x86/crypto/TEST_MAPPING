@@ -9,8 +9,8 @@
     {
       "path": "system/netd"
     }
- ],
- "presubmit": [
+  ],
+  "presubmit": [
     {
       "name": "CtsAppEnumerationTestCases",
       "options": [
@@ -289,6 +289,9 @@
     },
     {
       "name": "vts_kernel_net_tests"
+    },
+    {
+      "name": "binderLibTest"
     }
   ]
 }
