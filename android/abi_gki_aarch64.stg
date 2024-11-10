@@ -346326,6 +346326,11 @@ function {
   parameter_id: 0x358ff5b7
 }
 function {
+  id: 0xb145a9a1
+  return_type_id: 0x06835e9c
+  parameter_id: 0x33756485
+}
+function {
   id: 0xb166862a
   return_type_id: 0x399c459b
   parameter_id: 0x1b8590a8
@@ -401610,6 +401615,15 @@ elf_symbol {
   full_name: "pfn_is_map_memory"
 }
 elf_symbol {
+  id: 0x46cb13fb
+  name: "pfn_to_online_page"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xdc6b93a2
+  type_id: 0xb145a9a1
+  full_name: "pfn_to_online_page"
+}
+elf_symbol {
   id: 0x5fa10488
   name: "phy_attached_info"
   is_defined: true
@@ -406316,6 +406330,15 @@ elf_symbol {
   crc: 0xd904f32c
   type_id: 0x9e19cd45
   full_name: "regulator_get_bypass_regmap"
+}
+elf_symbol {
+  id: 0x90e2334a
+  name: "regulator_get_current_limit"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x73dc6f80
+  type_id: 0x9deb64a3
+  full_name: "regulator_get_current_limit"
 }
 elf_symbol {
   id: 0xfd198070
@@ -431466,6 +431489,7 @@ interface {
   symbol_id: 0x018498a2
   symbol_id: 0x1e700c22
   symbol_id: 0xba681a1a
+  symbol_id: 0x46cb13fb
   symbol_id: 0x5fa10488
   symbol_id: 0xf7731514
   symbol_id: 0x9db95d0c
@@ -431989,6 +432013,7 @@ interface {
   symbol_id: 0x7511baca
   symbol_id: 0x29553efc
   symbol_id: 0x0fbaa7b3
+  symbol_id: 0x90e2334a
   symbol_id: 0xfd198070
   symbol_id: 0x4a781b7f
   symbol_id: 0xc92def38

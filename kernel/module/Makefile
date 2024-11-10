@@ -40,17 +40,15 @@ include/generated/gki_module_unprotected.h: $(ALL_KMI_SYMBOLS) \
 	"$(srctree)" \
 	$(ALL_KMI_SYMBOLS)
 
-# Generate symbol list with union of all symbol list for arm64; empty for others
-$(ALL_KMI_SYMBOLS): $(if $(filter arm64,$(ARCH)),$(wildcard $(srctree)/android/abi_gki_aarch64_*),)
+# AARCH is the same as ARCH, except that arm64 becomes aarch64
+AARCH := $(if $(filter arm64,$(ARCH)),aarch64,$(ARCH))
+
+# Generate symbol list with union of all symbol list for ARCH
+$(ALL_KMI_SYMBOLS): $(wildcard $(srctree)/android/abi_gki_$(AARCH) $(srctree)/android/abi_gki_$(AARCH)_*)
 	$(if $(strip $^),cat $^ > $(ALL_KMI_SYMBOLS), echo "" > $(ALL_KMI_SYMBOLS))
 
 # ABI protected exports list file specific to ARCH if exists else empty
-ABI_PROTECTED_EXPORTS_FILE :=
-ifeq ($(ARCH),arm64)
-	ABI_PROTECTED_EXPORTS_FILE := $(wildcard $(srctree)/android/abi_gki_protected_exports_aarch64)
-else
-	ABI_PROTECTED_EXPORTS_FILE := $(wildcard $(srctree)/android/abi_gki_protected_exports_$(ARCH))
-endif
+ABI_PROTECTED_EXPORTS_FILE := $(wildcard $(srctree)/android/abi_gki_protected_exports_$(AARCH))
 
 include/generated/gki_module_protected_exports.h: $(ABI_PROTECTED_EXPORTS_FILE) \
 				$(srctree)/scripts/gen_gki_modules_headers.sh

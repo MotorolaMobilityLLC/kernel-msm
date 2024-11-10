@@ -38,6 +38,7 @@
   noop_qdisc
   of_css
   pfifo_qdisc_ops
+  pfn_to_online_page
   proc_mkdir_mode
   profile_event_register
   profile_event_unregister
