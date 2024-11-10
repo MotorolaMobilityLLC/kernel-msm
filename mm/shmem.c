@@ -818,6 +818,7 @@ static int shmem_add_to_page_cache(struct folio *folio,
 		mapping->nrpages += nr;
 		__lruvec_stat_mod_folio(folio, NR_FILE_PAGES, nr);
 		__lruvec_stat_mod_folio(folio, NR_SHMEM, nr);
+		trace_android_vh_shmem_mod_shmem(folio->mapping, nr);
 unlock:
 		xas_unlock_irq(&xas);
 	} while (xas_nomem(&xas, gfp));
@@ -845,6 +846,7 @@ static void shmem_delete_from_page_cache(struct folio *folio, void *radswap)
 
 	xa_lock_irq(&mapping->i_pages);
 	error = shmem_replace_entry(mapping, folio->index, folio, radswap);
+	trace_android_vh_shmem_mod_shmem(folio->mapping, -nr);
 	folio->mapping = NULL;
 	mapping->nrpages -= nr;
 	__lruvec_stat_mod_folio(folio, NR_FILE_PAGES, -nr);
@@ -1134,6 +1136,7 @@ whole_folios:
 	}
 
 	shmem_recalc_inode(inode, 0, -nr_swaps_freed);
+	trace_android_vh_shmem_mod_swapped(mapping, -nr_swaps_freed);
 }
 
 void shmem_truncate_range(struct inode *inode, loff_t lstart, loff_t lend)
@@ -1540,6 +1543,7 @@ static int shmem_writepage(struct page *page, struct writeback_control *wbc)
 			__GFP_HIGH | __GFP_NOMEMALLOC | __GFP_NOWARN,
 			NULL) == 0) {
 		shmem_recalc_inode(inode, 0, 1);
+		trace_android_vh_shmem_mod_swapped(folio->mapping, 1);
 		swap_shmem_alloc(swap);
 		shmem_delete_from_page_cache(folio, swp_to_radix_entry(swap));
 
@@ -1920,6 +1924,7 @@ static int shmem_swapin_folio(struct inode *inode, pgoff_t index,
 		goto failed;
 
 	shmem_recalc_inode(inode, 0, -1);
+	trace_android_vh_shmem_mod_swapped(folio->mapping, -1);
 
 	if (sgp == SGP_WRITE)
 		folio_mark_accessed(folio);

@@ -337578,6 +337578,13 @@ function {
   parameter_id: 0x19118777
 }
 function {
+  id: 0x9bc6b348
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x1582ab06
+  parameter_id: 0xfc0e1dbd
+}
+function {
   id: 0x9bc757bb
   return_type_id: 0x6720d32f
   parameter_id: 0x1efad3bd
@@ -358486,6 +358493,24 @@ elf_symbol {
   full_name: "__traceiter_android_vh_sha256"
 }
 elf_symbol {
+  id: 0xb6a93669
+  name: "__traceiter_android_vh_shmem_mod_shmem"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xaccc7004
+  type_id: 0x9bc6b348
+  full_name: "__traceiter_android_vh_shmem_mod_shmem"
+}
+elf_symbol {
+  id: 0x7a1f2e3e
+  name: "__traceiter_android_vh_shmem_mod_swapped"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x609c1108
+  type_id: 0x9bc6b348
+  full_name: "__traceiter_android_vh_shmem_mod_swapped"
+}
+elf_symbol {
   id: 0x70e34072
   name: "__traceiter_android_vh_shmem_swapin_folio"
   is_defined: true
@@ -358637,6 +358662,15 @@ elf_symbol {
   crc: 0xc3c83350
   type_id: 0x9bb71cb9
   full_name: "__traceiter_android_vh_si_meminfo_adjust"
+}
+elf_symbol {
+  id: 0x893b8004
+  name: "__traceiter_android_vh_si_meminfo_adjust_shmem"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xa6b69e0c
+  type_id: 0x9bb68fe1
+  full_name: "__traceiter_android_vh_si_meminfo_adjust_shmem"
 }
 elf_symbol {
   id: 0x56a5b453
@@ -364480,6 +364514,24 @@ elf_symbol {
   full_name: "__tracepoint_android_vh_sha256"
 }
 elf_symbol {
+  id: 0x0d23f467
+  name: "__tracepoint_android_vh_shmem_mod_shmem"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xeca0cc5e
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_shmem_mod_shmem"
+}
+elf_symbol {
+  id: 0x392adba0
+  name: "__tracepoint_android_vh_shmem_mod_swapped"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xffb852a7
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_shmem_mod_swapped"
+}
+elf_symbol {
   id: 0x6ed615c4
   name: "__tracepoint_android_vh_shmem_swapin_folio"
   is_defined: true
@@ -364631,6 +364683,15 @@ elf_symbol {
   crc: 0x85f501f6
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_si_meminfo_adjust"
+}
+elf_symbol {
+  id: 0xef1341da
+  name: "__tracepoint_android_vh_si_meminfo_adjust_shmem"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xb4e910d9
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_si_meminfo_adjust_shmem"
 }
 elf_symbol {
   id: 0x4aa5e229
@@ -426623,6 +426684,8 @@ interface {
   symbol_id: 0xaa3f6a65
   symbol_id: 0xa2fe718f
   symbol_id: 0x98a943de
+  symbol_id: 0xb6a93669
+  symbol_id: 0x7a1f2e3e
   symbol_id: 0x70e34072
   symbol_id: 0x53263f73
   symbol_id: 0xe828d15b
@@ -426640,6 +426703,7 @@ interface {
   symbol_id: 0xdfd06b97
   symbol_id: 0x69c3749b
   symbol_id: 0x3d0fc76c
+  symbol_id: 0x893b8004
   symbol_id: 0x56a5b453
   symbol_id: 0x215231a8
   symbol_id: 0x9f96ac15
@@ -427289,6 +427353,8 @@ interface {
   symbol_id: 0xd7ceb15f
   symbol_id: 0x923147c1
   symbol_id: 0x5cfdecb8
+  symbol_id: 0x0d23f467
+  symbol_id: 0x392adba0
   symbol_id: 0x6ed615c4
   symbol_id: 0xd860c719
   symbol_id: 0x5b6bc3a9
@@ -427306,6 +427372,7 @@ interface {
   symbol_id: 0x3e70324d
   symbol_id: 0xc8a7ac69
   symbol_id: 0x5ef059ce
+  symbol_id: 0xef1341da
   symbol_id: 0x4aa5e229
   symbol_id: 0xa5ebe436
   symbol_id: 0x9ff9eb7b
