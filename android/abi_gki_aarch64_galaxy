@@ -89,11 +89,17 @@
   __traceiter_android_vh_dma_heap_buffer_alloc_end
   __traceiter_android_vh_dmabuf_page_pool_free_bypass
   __traceiter_android_vh_do_read_fault
+  __traceiter_android_vh_dpm_wait_finish
+  __traceiter_android_vh_dpm_wait_start
   __traceiter_android_vh_exit_mm
   __traceiter_android_vh_filemap_fault_start
   __traceiter_android_vh_filemap_fault_end
   __traceiter_android_vh_filemap_read
   __traceiter_android_vh_filemap_map_pages
+  __traceiter_android_vh_flush_work_wait_finish
+  __traceiter_android_vh_flush_work_wait_start
+  __traceiter_android_vh_flush_wq_wait_finish
+  __traceiter_android_vh_flush_wq_wait_start
   __traceiter_android_vh_free_pages_prepare_bypass
   __traceiter_android_vh_free_pages_ok_bypass
   __traceiter_android_vh_is_fpsimd_save
@@ -120,6 +126,8 @@
   __traceiter_android_vh_show_smap_swap_shared
   __traceiter_android_vh_suitable_migration_target_bypass
   __traceiter_android_vh_split_large_folio_bypass
+  __traceiter_android_vh_sync_irq_wait_finish
+  __traceiter_android_vh_sync_irq_wait_start
   __traceiter_android_vh_try_to_freeze_todo
   __traceiter_android_vh_try_to_freeze_todo_unfrozen
   __traceiter_android_vh_tune_scan_control
@@ -159,11 +167,17 @@
   __tracepoint_android_vh_dma_heap_buffer_alloc_end
   __tracepoint_android_vh_dmabuf_page_pool_free_bypass
   __tracepoint_android_vh_do_read_fault
+  __tracepoint_android_vh_dpm_wait_finish
+  __tracepoint_android_vh_dpm_wait_start
   __tracepoint_android_vh_exit_mm
   __tracepoint_android_vh_filemap_fault_start
   __tracepoint_android_vh_filemap_fault_end
   __tracepoint_android_vh_filemap_read
   __tracepoint_android_vh_filemap_map_pages
+  __tracepoint_android_vh_flush_work_wait_finish
+  __tracepoint_android_vh_flush_work_wait_start
+  __tracepoint_android_vh_flush_wq_wait_finish
+  __tracepoint_android_vh_flush_wq_wait_start
   __tracepoint_android_vh_free_pages_prepare_bypass
   __tracepoint_android_vh_free_pages_ok_bypass
   __tracepoint_android_vh_is_fpsimd_save
@@ -190,6 +204,8 @@
   __tracepoint_android_vh_show_smap_swap_shared
   __tracepoint_android_vh_split_large_folio_bypass
   __tracepoint_android_vh_suitable_migration_target_bypass
+  __tracepoint_android_vh_sync_irq_wait_finish
+  __tracepoint_android_vh_sync_irq_wait_start
   __tracepoint_android_vh_try_to_freeze_todo
   __tracepoint_android_vh_try_to_freeze_todo_unfrozen
   __tracepoint_android_vh_tune_scan_control

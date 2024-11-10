@@ -958,4 +958,28 @@ static inline int kvm_pgtable_stage2_snapshot(struct kvm_pgtable_snapshot *dest_
 	return -EPERM;
 }
 #endif	/* CONFIG_NVHE_EL2_DEBUG */
+
+/**
+ * kvm_pgtable_get_pages() - Raise the refcount for each entry and unmap them.
+ *
+ * @pgt:	Page-table structure initialised by kvm_pgtable_*_init()
+ * 		or a similar initialiser.
+ * @addr:	Input address for the start of the walk.
+ * @size:	Size of the range.
+ * @mc:		Cache of pre-allocated and zeroed memory from which to allocate
+ *		page-table pages.
+ */
+int kvm_pgtable_stage2_get_pages(struct kvm_pgtable *pgt, u64 addr, u64 size, void *mc);
+
+/**
+ * kvm_pgtable_put_pages() - Drop the refcount for each entry. This is the
+ *			     opposite of kvm_pgtable_get_pages().
+ *
+ * @pgt:	Page-table structure initialised by kvm_pgtable_*_init()
+ * 		or a similar initialiser.
+ * @addr:	Input address for the start of the walk.
+ * @size:	Size of the range.
+ */
+int kvm_pgtable_stage2_put_pages(struct kvm_pgtable *pgt, u64 addr, u64 size);
+
 #endif	/* __ARM64_KVM_PGTABLE_H__ */

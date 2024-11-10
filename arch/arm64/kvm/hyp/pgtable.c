@@ -1233,6 +1233,66 @@ int kvm_pgtable_stage2_annotate(struct kvm_pgtable *pgt, u64 addr, u64 size,
 	return ret;
 }
 
+static int stage2_get_pages_walker(const struct kvm_pgtable_visit_ctx *ctx,
+				   enum kvm_pgtable_walk_flags visit)
+{
+	struct kvm_pgtable_mm_ops *mm_ops = ctx->mm_ops;
+	struct stage2_map_data *data = ctx->arg;
+	int ret;
+
+	ret = stage2_map_walk_leaf(ctx, data);
+	if (ret)
+		return ret;
+
+	if (ctx->level == KVM_PGTABLE_MAX_LEVELS - 1)
+		mm_ops->get_page(ctx->ptep);
+
+	return 0;
+}
+
+int kvm_pgtable_stage2_get_pages(struct kvm_pgtable *pgt, u64 addr, u64 size,
+				 void *mc)
+{
+	struct stage2_map_data map_data = {
+		.phys		= KVM_PHYS_INVALID,
+		.mmu		= pgt->mmu,
+		.memcache	= mc,
+		.force_pte	= true,
+	};
+	struct kvm_pgtable_walker walker = {
+		.cb		= stage2_get_pages_walker,
+		.flags		= KVM_PGTABLE_WALK_LEAF,
+		.arg		= &map_data,
+	};
+
+	return kvm_pgtable_walk(pgt, addr, size, &walker);
+}
+
+static int stage2_put_pages_walker(const struct kvm_pgtable_visit_ctx *ctx,
+				   enum kvm_pgtable_walk_flags visit)
+{
+	struct kvm_pgtable_mm_ops *mm_ops = ctx->mm_ops;
+
+	/* get_pages has force_pte */
+	if (WARN_ON(ctx->level != KVM_PGTABLE_MAX_LEVELS - 1))
+		return -EINVAL;
+
+	mm_ops->put_page(ctx->ptep);
+
+	return 0;
+}
+
+int kvm_pgtable_stage2_put_pages(struct kvm_pgtable *pgt, u64 addr, u64 size)
+{
+	struct kvm_pgtable_walker walker = {
+		.cb		= stage2_put_pages_walker,
+		.flags		= KVM_PGTABLE_WALK_LEAF,
+		.arg		= pgt->mmu,
+	};
+
+	return kvm_pgtable_walk(pgt, addr, size, &walker);
+}
+
 static int stage2_unmap_walker(const struct kvm_pgtable_visit_ctx *ctx,
 			       enum kvm_pgtable_walk_flags visit)
 {
