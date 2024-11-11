@@ -2251,6 +2251,7 @@
   thermal_zone_get_trip
   thermal_zone_get_zone_by_name
   thread_group_cputime_adjusted
+  tick_nohz_get_idle_calls_cpu
   time64_to_tm
   timer_delete
   timer_delete_sync
@@ -2717,6 +2718,12 @@
   xhci_init_driver
   xhci_resume
   xhci_run
+  xhci_sideband_add_endpoint
+  xhci_sideband_create_interrupter
+  xhci_sideband_register
+  xhci_sideband_remove_endpoint
+  xhci_sideband_remove_interrupter
+  xhci_sideband_unregister
   xhci_suspend
   zs_compact
   zs_create_pool
