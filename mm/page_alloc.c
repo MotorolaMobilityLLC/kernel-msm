@@ -6683,6 +6683,28 @@ void zone_pcp_enable(struct zone *zone)
 	mutex_unlock(&pcp_batch_high_lock);
 }
 
+void all_pcp_disable(void)
+{
+	struct zone *zone;
+	mutex_lock(&pcp_batch_high_lock);
+
+	for_each_populated_zone(zone) {
+		__zone_set_pageset_high_and_batch(zone, 0, 1);
+		__drain_all_pages(zone, true);
+	}
+}
+EXPORT_SYMBOL(all_pcp_disable);
+
+void all_pcp_enable(void)
+{
+	struct zone *zone;
+	for_each_populated_zone(zone)
+		__zone_set_pageset_high_and_batch(zone, zone->pageset_high, zone->pageset_batch);
+
+	mutex_unlock(&pcp_batch_high_lock);
+}
+EXPORT_SYMBOL(all_pcp_enable);
+
 void zone_pcp_reset(struct zone *zone)
 {
 	int cpu;
