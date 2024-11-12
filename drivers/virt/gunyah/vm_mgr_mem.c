@@ -329,7 +329,7 @@ int gunyah_vm_reclaim_range(struct gunyah_vm *ghvm, u64 gfn, u64 nr)
 	mt_for_each(&ghvm->mm, entry, next, gfn + nr) {
 		folio = xa_untag_pointer(entry);
 		g = next;
-		sync = !!mt_find_after(&ghvm->mm, &g, gfn + nr);
+		sync = !mt_find_after(&ghvm->mm, &g, gfn + nr);
 
 		g = next - folio_nr_pages(folio);
 		folio_get(folio);
