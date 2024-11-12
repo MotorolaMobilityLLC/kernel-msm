@@ -413,7 +413,7 @@ DECLARE_HOOK(android_vh_cma_alloc_retry,
 DECLARE_HOOK(android_vh_do_group_exit,
 	TP_PROTO(struct task_struct *tsk),
 	TP_ARGS(tsk));
-DECLARE_HOOK(android_vh_suitable_migration_target_bypass,
+DECLARE_HOOK(android_vh_migration_target_bypass,
 	TP_PROTO(struct page *page, bool *bypass),
 	TP_ARGS(page, bypass));
 DECLARE_HOOK(android_vh_swap_writepage,

@@ -1389,7 +1389,7 @@ static bool suitable_migration_target(struct compact_control *cc,
 			return false;
 	}
 
-	trace_android_vh_suitable_migration_target_bypass(page, &bypass);
+	trace_android_vh_migration_target_bypass(page, &bypass);
 	if (bypass)
 		return false;
 
@@ -1478,7 +1478,7 @@ fast_isolate_around(struct compact_control *cc, unsigned long pfn)
 	if (!page)
 		return;
 
-	trace_android_vh_suitable_migration_target_bypass(page, &bypass);
+	trace_android_vh_migration_target_bypass(page, &bypass);
 	if (bypass)
 		return;
 
