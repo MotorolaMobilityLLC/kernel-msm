@@ -596,6 +596,7 @@ static const struct soc_id soc_id[] = {
 	{ 642, "CLIFFSP" },
 	{ 643, "CLIFFS7P" },
 	{ 682, "SG_PINEAPPLE" },
+	{ 696, "PINEAPPLEQ" },
 	{ 549, "ANORAK" },
 	{ 554, "NEO-LA" },
 };
