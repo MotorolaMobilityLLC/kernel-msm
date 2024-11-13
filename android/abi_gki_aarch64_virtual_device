@@ -26,8 +26,6 @@
   cancel_delayed_work_sync
   cancel_work_sync
   __check_object_size
-  class_register
-  class_unregister
   clk_disable
   clk_enable
   clk_get_rate
@@ -61,7 +59,6 @@
   dev_close
   _dev_err
   __dev_get_by_index
-  device_create
   device_create_file
   device_remove_file
   device_set_wakeup_capable
@@ -77,20 +74,17 @@
   devm_kmalloc
   devm_platform_ioremap_resource
   devm_request_threaded_irq
-  _dev_notice
   _dev_printk
   __dev_queue_xmit
   devres_add
   __devres_alloc_node
   devres_free
   _dev_warn
-  dma_alloc_attrs
   dma_buf_export
   dma_fence_context_alloc
   dma_fence_init
   dma_fence_release
   dma_fence_signal_locked
-  dma_free_attrs
   dmam_alloc_attrs
   dma_set_coherent_mask
   dma_set_mask
@@ -162,7 +156,6 @@
   flush_delayed_work
   flush_work
   __flush_workqueue
-  __folio_put
   fortify_panic
   fput
   free_irq
@@ -172,7 +165,6 @@
   genlmsg_put
   genl_register_family
   genl_unregister_family
-  get_device
   __get_free_pages
   get_random_bytes
   get_unused_fd_flags
@@ -299,12 +291,9 @@
   nla_put_64bit
   nonseekable_open
   noop_llseek
-  nr_cpu_ids
   of_device_is_compatible
   of_find_property
   of_property_read_variable_u32_array
-  page_pinner_inited
-  __page_pinner_put_page
   page_pool_alloc_frag
   page_pool_destroy
   page_pool_put_defragged_page
@@ -314,14 +303,8 @@
   param_ops_uint
   passthru_features_check
   pci_bus_type
-  pci_disable_device
-  pci_enable_device
-  pci_iounmap
-  pci_read_config_byte
-  __pci_register_driver
   pci_release_region
   pci_request_region
-  pci_unregister_driver
   __per_cpu_offset
   perf_trace_buf_alloc
   perf_trace_run_bpf_submit
@@ -364,7 +347,6 @@
   register_netdevice
   register_netdevice_notifier
   register_pernet_device
-  register_virtio_device
   register_virtio_driver
   __regmap_init
   regmap_write
@@ -383,10 +365,8 @@
   schedule
   schedule_timeout
   scnprintf
-  seq_lseek
   seq_printf
   seq_puts
-  seq_read
   serio_close
   serio_interrupt
   serio_open
@@ -406,8 +386,6 @@
   simple_attr_release
   simple_open
   simple_read_from_buffer
-  single_open
-  single_release
   skb_add_rx_frag
   skb_clone
   skb_copy
@@ -438,15 +416,10 @@
   __sw_hweight32
   __sw_hweight8
   sync_file_create
-  synchronize_irq
   synchronize_net
   synchronize_rcu
-  sysfs_create_group
-  sysfs_emit
-  sysfs_remove_group
   sysfs_remove_link
   system_cpucaps
-  system_freezable_wq
   system_wq
   __tasklet_schedule
   tasklet_setup
@@ -465,7 +438,6 @@
   unregister_netdevice_notifier
   unregister_netdevice_queue
   unregister_pernet_device
-  unregister_virtio_device
   unregister_virtio_driver
   up_write
   usb_add_hcd
@@ -510,11 +482,7 @@
   video_ioctl2
   __video_register_device
   video_unregister_device
-  virtio_break_device
   virtio_check_driver_offered_feature
-  virtio_config_changed
-  virtio_device_freeze
-  virtio_device_restore
   virtio_reset_device
   virtqueue_add_inbuf
   virtqueue_add_outbuf
@@ -522,10 +490,7 @@
   virtqueue_detach_unused_buf
   virtqueue_disable_cb
   virtqueue_enable_cb
-  virtqueue_get_avail_addr
   virtqueue_get_buf
-  virtqueue_get_desc_addr
-  virtqueue_get_used_addr
   virtqueue_get_vring_size
   virtqueue_is_broken
   virtqueue_kick
@@ -534,11 +499,6 @@
   vmalloc
   vmalloc_to_page
   vm_get_page_prot
-  vring_create_virtqueue
-  vring_del_virtqueue
-  vring_interrupt
-  vring_notification_data
-  vring_transport_features
   vzalloc
   __wake_up
   wake_up_process
@@ -641,6 +601,8 @@
   bpf_trace_run11
   bpf_trace_run7
   bpf_trace_run8
+  class_register
+  class_unregister
   _ctype
   debugfs_rename
   __dev_change_net_namespace
@@ -695,9 +657,11 @@
   regmap_read
 
 # required by drm_dma_helper.ko
+  dma_alloc_attrs
   dma_alloc_pages
   dma_buf_vmap_unlocked
   dma_buf_vunmap_unlocked
+  dma_free_attrs
   dma_free_pages
   dma_get_sgtable_attrs
   dma_mmap_attrs
@@ -727,6 +691,11 @@
 # required by goldfish_address_space.ko
   memremap
   memunmap
+  pci_disable_device
+  pci_enable_device
+  pci_read_config_byte
+  __pci_register_driver
+  pci_unregister_driver
 
 # required by goldfish_battery.ko
   power_supply_changed
@@ -849,6 +818,7 @@
   __skb_get_hash
   __skb_gso_segment
   __sw_hweight64
+  system_freezable_wq
   tasklet_kill
   unregister_inet6addr_notifier
   unregister_inetaddr_notifier
@@ -857,6 +827,7 @@
   class_create
   class_destroy
   device_bind_driver
+  device_create
   device_release_driver
   dst_release
   genl_notify
@@ -907,6 +878,10 @@
 # required by mt76x02-lib.ko
   debugfs_create_bool
   __kfifo_init
+  seq_lseek
+  seq_read
+  single_open
+  single_release
 
 # required by mt76x02-usb.ko
   hrtimer_active
@@ -969,6 +944,7 @@
   device_link_add
   device_link_remove
   device_remove_groups
+  _dev_notice
   i2c_adapter_type
   i2c_bus_type
   i2c_client_type
@@ -1030,6 +1006,7 @@
   scmi_driver_register
   scmi_driver_unregister
   strrchr
+  sysfs_emit
 
 # required by snd-aloop.ko
   devm_kfree
@@ -1109,6 +1086,8 @@
   platform_bus
   sockfd_lookup
   strchr
+  sysfs_create_group
+  sysfs_remove_group
   usb_speed_string
 
 # required by virt_wifi.ko
@@ -1236,111 +1215,24 @@
   hwrng_unregister
   wait_for_completion_killable
 
-# required by virtio_balloon.ko
-  adjust_managed_page_count
-  all_vm_events
-  balloon_mops
-  balloon_page_alloc
-  balloon_page_dequeue
-  balloon_page_enqueue
-  __ClearPageMovable
-  init_on_free
-  mutex_trylock
-  page_relinquish
-  page_reporting_register
-  page_reporting_unregister
-  post_page_relinquish_tlb_inv
-  register_oom_notifier
-  register_shrinker
-  __SetPageMovable
-  si_mem_available
-  si_meminfo
-  unregister_oom_notifier
-  unregister_shrinker
-  virtqueue_disable_dma_api_for_buffers
-  vm_event_states
-  vm_node_stat
-
-# required by virtio_blk.ko
-  blk_execute_rq
-  __blk_mq_alloc_disk
-  blk_mq_alloc_request
-  blk_mq_alloc_tag_set
-  blk_mq_complete_request
-  blk_mq_complete_request_remote
-  blk_mq_end_request
-  blk_mq_end_request_batch
-  blk_mq_free_request
-  blk_mq_free_tag_set
-  blk_mq_freeze_queue
-  blk_mq_map_queues
-  blk_mq_requeue_request
-  blk_mq_start_request
-  blk_mq_start_stopped_hw_queues
-  blk_mq_stop_hw_queue
-  blk_mq_unfreeze_queue
-  blk_mq_virtio_map_queues
-  blk_queue_alignment_offset
-  blk_queue_chunk_sectors
-  blk_queue_flag_set
-  blk_queue_io_min
-  blk_queue_io_opt
-  blk_queue_logical_block_size
-  blk_queue_max_discard_sectors
-  blk_queue_max_discard_segments
-  blk_queue_max_hw_sectors
-  blk_queue_max_secure_erase_sectors
-  blk_queue_max_segments
-  blk_queue_max_segment_size
-  blk_queue_max_write_zeroes_sectors
-  blk_queue_max_zone_append_sectors
-  blk_queue_physical_block_size
-  blk_queue_write_cache
-  blk_revalidate_disk_zones
-  blk_rq_map_kern
-  __blk_rq_map_sg
-  blk_status_to_errno
-  del_gendisk
-  device_add_disk
-  disk_set_zoned
-  put_disk
-  __register_blkdev
-  set_capacity_and_notify
-  set_disk_ro
-  sg_alloc_table_chained
-  sg_free_table_chained
-  string_get_size
-  __sysfs_match_string
-  unregister_blkdev
-  virtio_max_dma_size
-  __vmalloc
-
-# required by virtio_console.ko
-  cdev_add
-  cdev_alloc
-  cdev_del
-  device_destroy
-  fasync_helper
-  hvc_alloc
-  hvc_instantiate
-  hvc_kick
-  hvc_poll
-  hvc_remove
-  __hvc_resize
-  kill_fasync
-  kobject_uevent
-  pipe_lock
-  pipe_unlock
-  __register_chrdev
-  __splice_from_pipe
-  unlock_page
-  __unregister_chrdev
-  wait_for_completion
-
 # required by virtio_mmio.ko
   device_for_each_child
   device_register
   memparse
+  register_virtio_device
+  synchronize_irq
+  unregister_virtio_device
+  virtio_config_changed
+  virtio_device_freeze
+  virtio_device_restore
+  virtqueue_get_avail_addr
+  virtqueue_get_desc_addr
+  virtqueue_get_used_addr
+  vring_create_virtqueue
+  vring_del_virtqueue
+  vring_interrupt
+  vring_notification_data
+  vring_transport_features
 
 # required by virtio_net.ko
   bpf_dispatcher_xdp_func
@@ -1362,6 +1254,7 @@
   ethtool_sprintf
   ethtool_virtdev_set_link_ksettings
   flow_keys_basic_dissector
+  __folio_put
   jiffies_to_usecs
   __napi_alloc_skb
   napi_consume_skb
@@ -1374,7 +1267,10 @@
   __netif_set_xps_queue
   netif_tx_lock
   netif_tx_unlock
+  nr_cpu_ids
   __num_online_cpus
+  page_pinner_inited
+  __page_pinner_put_page
   sched_clock
   skb_coalesce_rx_frag
   __skb_flow_dissect
@@ -1409,43 +1305,9 @@
   xdp_rxq_info_unreg
   xdp_warn
 
-# required by virtio_pci.ko
-  __irq_apply_affinity_hint
-  pci_alloc_irq_vectors_affinity
-  pci_device_is_present
-  pci_disable_sriov
-  pci_enable_sriov
-  pci_find_capability
-  pci_find_ext_capability
-  pci_find_next_capability
-  pci_free_irq_vectors
-  pci_irq_get_affinity
-  pci_irq_vector
-  pci_read_config_dword
-  pci_read_config_word
-  pci_set_master
-  pci_vfs_assigned
-  vp_modern_config_vector
-  vp_modern_generation
-  vp_modern_get_features
-  vp_modern_get_num_queues
-  vp_modern_get_queue_enable
-  vp_modern_get_queue_reset
-  vp_modern_get_queue_size
-  vp_modern_get_status
-  vp_modern_map_vq_notify
-  vp_modern_probe
-  vp_modern_queue_address
-  vp_modern_queue_vector
-  vp_modern_remove
-  vp_modern_set_features
-  vp_modern_set_queue_enable
-  vp_modern_set_queue_reset
-  vp_modern_set_queue_size
-  vp_modern_set_status
-
 # required by virtio_pci_legacy_dev.ko
   pci_iomap
+  pci_iounmap
 
 # required by virtio_pmem.ko
   nvdimm_bus_register
@@ -1524,8 +1386,127 @@
   drm_writeback_queue_job
   drm_writeback_signal_completion
 
-# required by vmw_vsock_virtio_transport.ko
+# preserved by --additions-only
+  adjust_managed_page_count
+  all_vm_events
+  balloon_mops
+  balloon_page_alloc
+  balloon_page_dequeue
+  balloon_page_enqueue
+  blk_execute_rq
+  __blk_mq_alloc_disk
+  blk_mq_alloc_request
+  blk_mq_alloc_tag_set
+  blk_mq_complete_request
+  blk_mq_complete_request_remote
+  blk_mq_end_request
+  blk_mq_end_request_batch
+  blk_mq_free_request
+  blk_mq_free_tag_set
+  blk_mq_freeze_queue
+  blk_mq_map_queues
+  blk_mq_quiesce_queue
+  blk_mq_requeue_request
+  blk_mq_start_request
+  blk_mq_start_stopped_hw_queues
+  blk_mq_stop_hw_queue
+  blk_mq_unfreeze_queue
+  blk_mq_unquiesce_queue
+  blk_mq_virtio_map_queues
+  blk_queue_alignment_offset
+  blk_queue_chunk_sectors
+  blk_queue_flag_set
+  blk_queue_io_min
+  blk_queue_io_opt
+  blk_queue_logical_block_size
+  blk_queue_max_discard_sectors
+  blk_queue_max_discard_segments
+  blk_queue_max_hw_sectors
+  blk_queue_max_secure_erase_sectors
+  blk_queue_max_segments
+  blk_queue_max_segment_size
+  blk_queue_max_write_zeroes_sectors
+  blk_queue_max_zone_append_sectors
+  blk_queue_physical_block_size
+  blk_queue_write_cache
+  blk_revalidate_disk_zones
+  blk_rq_map_kern
+  __blk_rq_map_sg
+  blk_status_to_errno
+  cdev_add
+  cdev_alloc
+  cdev_del
+  __ClearPageMovable
+  cpufreq_cpu_get
+  cpufreq_cpu_put
+  cpu_scale
+  del_gendisk
+  device_add_disk
+  device_destroy
+  dev_pm_opp_free_cpufreq_table
+  dev_pm_opp_get_opp_count
+  dev_pm_opp_init_cpufreq_table
+  dev_pm_opp_of_add_table
+  disk_set_zoned
+  fasync_helper
+  get_device
+  hvc_alloc
+  hvc_instantiate
+  hvc_kick
+  hvc_poll
+  hvc_remove
+  __hvc_resize
+  init_on_free
+  __irq_apply_affinity_hint
+  kill_fasync
+  kobject_uevent
+  mutex_trylock
+  page_relinquish
+  page_reporting_register
+  page_reporting_unregister
+  page_shift_compat
+  page_shift_compat_enabled
+  pci_alloc_irq_vectors_affinity
+  pci_device_is_present
+  pci_disable_sriov
+  pci_enable_sriov
+  pci_find_capability
+  pci_find_ext_capability
+  pci_find_next_capability
+  pci_free_irq_vectors
+  pci_irq_get_affinity
+  pci_irq_vector
+  pci_read_config_dword
+  pci_read_config_word
+  pci_set_master
+  pci_vfs_assigned
+  pipe_lock
+  pipe_unlock
+  post_page_relinquish_tlb_inv
+  put_disk
+  __register_blkdev
+  __register_chrdev
+  register_oom_notifier
+  register_shrinker
+  set_capacity_and_notify
+  set_disk_ro
+  __SetPageMovable
+  sg_alloc_table_chained
+  sg_free_table_chained
+  si_mem_available
+  si_meminfo
   sk_error_report
+  __splice_from_pipe
+  string_get_size
+  __sysfs_match_string
+  topology_update_thermal_pressure
+  unlock_page
+  unregister_blkdev
+  __unregister_chrdev
+  unregister_oom_notifier
+  unregister_shrinker
+  virtio_break_device
+  virtio_max_dma_size
   virtio_transport_connect
   virtio_transport_deliver_tap_pkt
   virtio_transport_destruct
@@ -1561,20 +1542,29 @@
   virtio_transport_stream_has_space
   virtio_transport_stream_is_active
   virtio_transport_stream_rcvhiwat
+  virtqueue_disable_dma_api_for_buffers
+  __vmalloc
+  vm_event_states
+  vm_node_stat
+  vp_modern_config_vector
+  vp_modern_generation
+  vp_modern_get_features
+  vp_modern_get_num_queues
+  vp_modern_get_queue_enable
+  vp_modern_get_queue_reset
+  vp_modern_get_queue_size
+  vp_modern_get_status
+  vp_modern_map_vq_notify
+  vp_modern_probe
+  vp_modern_queue_address
+  vp_modern_queue_vector
+  vp_modern_remove
+  vp_modern_set_features
+  vp_modern_set_queue_enable
+  vp_modern_set_queue_reset
+  vp_modern_set_queue_size
+  vp_modern_set_status
   vsock_core_register
   vsock_core_unregister
   vsock_for_each_connected_socket
-
-# preserved by --additions-only
-  blk_mq_quiesce_queue
-  blk_mq_unquiesce_queue
-  cpufreq_cpu_get
-  cpufreq_cpu_put
-  cpu_scale
-  dev_pm_opp_free_cpufreq_table
-  dev_pm_opp_get_opp_count
-  dev_pm_opp_init_cpufreq_table
-  dev_pm_opp_of_add_table
-  page_shift_compat
-  page_shift_compat_enabled
-  topology_update_thermal_pressure
+  wait_for_completion
