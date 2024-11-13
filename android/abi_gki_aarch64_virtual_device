@@ -1031,6 +1031,29 @@
   scmi_driver_unregister
   strrchr
 
+# required by snd-aloop.ko
+  devm_kfree
+  devm_kstrdup
+  snd_card_ref
+  snd_card_rw_proc_new
+  snd_ctl_boolean_mono_info
+  snd_devm_card_new
+  snd_ecards_limit
+  snd_info_get_line
+  snd_interval_refine
+  snd_pcm_format_set_silence
+  snd_pcm_hw_rule_add
+  snd_pcm_stop
+  snd_pcm_stop_xrun
+  snd_timer_close
+  snd_timer_instance_free
+  snd_timer_instance_new
+  snd_timer_open
+  snd_timer_start
+  snd_timer_stop
+  strim
+  strpbrk
+
 # required by system_heap.ko
   dma_heap_add
   dma_heap_get_dev
