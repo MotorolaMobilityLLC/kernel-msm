@@ -361,7 +361,7 @@ static void gzvm_destroy_vm(struct gzvm *gzvm)
 
 	gzvm_vm_irqfd_release(gzvm);
 	gzvm_destroy_vcpus(gzvm);
-	gzvm_arch_destroy_vm(gzvm->vm_id);
+	gzvm_arch_destroy_vm(gzvm->vm_id, gzvm->gzvm_drv->destroy_batch_pages);
 
 	mutex_lock(&gzvm_list_lock);
 	list_del(&gzvm->vm_list);

@@ -30,6 +30,7 @@ struct gzvm_driver {
 
 	struct kobject *sysfs_root_dir;
 	u32 demand_paging_batch_pages;
+	u32 destroy_batch_pages;
 
 	struct dentry *gzvm_debugfs_dir;
 };
@@ -53,6 +54,7 @@ struct gzvm_driver {
 #define ERR_INVALID_ARGS        (-8)
 #define ERR_NOT_SUPPORTED       (-24)
 #define ERR_NOT_IMPLEMENTED     (-27)
+#define ERR_BUSY                (-33)
 #define ERR_FAULT               (-40)
 #define GZVM_IRQFD_RESAMPLE_IRQ_SOURCE_ID       1
 
@@ -68,6 +70,7 @@ struct gzvm_driver {
 #define GZVM_BLOCK_BASED_DEMAND_PAGE_SIZE	(PMD_SIZE) /* 2MB */
 #define GZVM_DRV_DEMAND_PAGING_BATCH_PAGES	\
 	(GZVM_BLOCK_BASED_DEMAND_PAGE_SIZE / PAGE_SIZE)
+#define GZVM_DRV_DESTROY_PAGING_BATCH_PAGES	(128)
 
 #define GZVM_MAX_DEBUGFS_DIR_NAME_SIZE  20
 #define GZVM_MAX_DEBUGFS_VALUE_SIZE	20
@@ -225,12 +228,14 @@ int gzvm_arch_probe(struct gzvm_version drv_version,
 		    struct gzvm_version *hyp_version);
 int gzvm_arch_query_hyp_batch_pages(struct gzvm_enable_cap *cap,
 				    void __user *argp);
+int gzvm_arch_query_destroy_batch_pages(struct gzvm_enable_cap *cap,
+					void __user *argp);
 
 int gzvm_arch_set_memregion(u16 vm_id, size_t buf_size,
 			    phys_addr_t region);
 int gzvm_arch_check_extension(struct gzvm *gzvm, __u64 cap, void __user *argp);
 int gzvm_arch_create_vm(unsigned long vm_type);
-int gzvm_arch_destroy_vm(u16 vm_id);
+int gzvm_arch_destroy_vm(u16 vm_id, u64 destroy_page_gran);
 int gzvm_arch_map_guest(u16 vm_id, int memslot_id, u64 pfn, u64 gfn,
 			u64 nr_pages);
 int gzvm_arch_map_guest_block(u16 vm_id, int memslot_id, u64 gfn, u64 nr_pages);
