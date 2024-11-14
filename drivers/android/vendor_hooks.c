@@ -48,6 +48,7 @@
 #include <trace/hooks/fpsimd.h>
 #include <trace/hooks/preemptirq.h>
 #include <trace/hooks/mm.h>
+#include <trace/hooks/huge_memory.h>
 #include <trace/hooks/fs.h>
 #include <trace/hooks/dtask.h>
 #include <trace/hooks/ftrace_dump.h>
@@ -165,6 +166,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_syscall_prctl_finished);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_anon_vma_name_recog);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_restore_mm_flags);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_update_vma_flags);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_thp_vma_allowable_orders);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_send_uic_command);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_send_tm_command);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_check_int_errors);
@@ -276,6 +278,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_sha256);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_aes_expandkey);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_aes_encrypt);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_aes_decrypt);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmc_update_mmc_queue);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rwsem_downgrade_wake_finish);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rwsem_wake_finish);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_meminfo_proc_show);
@@ -353,6 +356,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_look_around);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_look_around_migrate_folio);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_test_clear_look_around_ref);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_throttle_direct_reclaim_bypass);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_dma_buf_stats_teardown);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_perf_huristic_ctrl);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_send_command_post_change);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_ufs_abort_success_ctrl);
@@ -570,3 +574,5 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_wq_wait_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_wq_wait_finish);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_work_wait_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_flush_work_wait_finish);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_direct_reclaim_begin);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_direct_reclaim_end);

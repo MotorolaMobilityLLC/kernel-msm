@@ -46,6 +46,7 @@
 #include <linux/filter.h>
 #include <linux/namei.h>
 #include <linux/parser.h>
+#include <linux/page_size_compat.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/mm.h>
 #include <linux/proc_ns.h>
@@ -6473,7 +6474,7 @@ static int perf_mmap(struct file *file, struct vm_area_struct *vma)
 	vma_size = vma->vm_end - vma->vm_start;
 
 	if (vma->vm_pgoff == 0) {
-		nr_pages = (vma_size / PAGE_SIZE) - 1;
+		nr_pages = (vma_size / PAGE_SIZE) - (__PAGE_SIZE / PAGE_SIZE);
 	} else {
 		/*
 		 * AUX area mapping: if rb->aux_nr_pages != 0, it's already
@@ -6541,7 +6542,7 @@ static int perf_mmap(struct file *file, struct vm_area_struct *vma)
 	if (nr_pages != 0 && !is_power_of_2(nr_pages))
 		return -EINVAL;
 
-	if (vma_size != PAGE_SIZE * (1 + nr_pages))
+	if (vma_size != PAGE_SIZE * ((__PAGE_SIZE / PAGE_SIZE) + nr_pages))
 		return -EINVAL;
 
 	WARN_ON_ONCE(event->ctx->parent_ctx);

@@ -42,6 +42,7 @@
 #include <linux/completion.h>
 #include <linux/suspend.h>
 #include <linux/zswap.h>
+#include <linux/page_size_compat.h>
 
 #include <asm/tlbflush.h>
 #include <linux/swapops.h>
@@ -3084,6 +3085,12 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 		error = -EINVAL;
 		goto bad_swap_unlock_inode;
 	}
+	error = __fixup_swap_header(swap_file, mapping);
+	if (error) {
+		pgcompat_err("Failed __fixup_swap_header");
+		goto bad_swap_unlock_inode;
+	}
+
 	page = read_mapping_page(mapping, 0, swap_file);
 	if (IS_ERR(page)) {
 		error = PTR_ERR(page);

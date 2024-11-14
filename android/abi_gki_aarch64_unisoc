@@ -798,3 +798,4 @@
   devfreq_cooling_em_register
   dev_pm_qos_read_value
   regcache_cache_only
+  vm_unmapped_area

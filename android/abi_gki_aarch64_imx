@@ -122,6 +122,7 @@
   class_find_device
   class_register
   class_unregister
+  cleanup_srcu_struct
   clear_page
   clk_bulk_disable
   clk_bulk_enable
@@ -148,6 +149,7 @@
   clk_hw_get_parent_by_index
   clk_hw_get_rate
   clk_hw_is_enabled
+  clk_hw_is_prepared
   clk_hw_register
   clk_hw_register_composite
   __clk_hw_register_divider
@@ -1251,6 +1253,7 @@
   __kmalloc
   kmalloc_caches
   kmalloc_large
+  kmalloc_size_roundup
   kmalloc_trace
   kmem_cache_alloc
   kmem_cache_create
@@ -1740,6 +1743,7 @@
   phylink_fwnode_phy_connect
   phylink_generic_validate
   phylink_get_eee_err
+  phylink_init_eee
   phylink_limit_mac_speed
   phylink_mii_c22_pcs_an_restart
   phylink_mii_c22_pcs_config
@@ -2175,6 +2179,8 @@
   set_user_nice
   sg_alloc_table
   sg_alloc_table_from_pages_segment
+  sg_copy_from_buffer
+  sg_copy_to_buffer
   sget_dev
   sg_free_table
   sg_init_one
@@ -2377,6 +2383,10 @@
   spi_sync
   spi_unregister_controller
   sprintf
+  srcu_init_notifier_head
+  srcu_notifier_call_chain
+  srcu_notifier_chain_register
+  srcu_notifier_chain_unregister
   sscanf
   __stack_chk_fail
   static_key_count

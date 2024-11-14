@@ -656,6 +656,7 @@
   _find_next_zero_bit
   find_task_by_vpid
   find_vpid
+  finish_rcuwait
   finish_wait
   firmware_request_nowarn
   flow_keys_dissector

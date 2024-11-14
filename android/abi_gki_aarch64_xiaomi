@@ -70,12 +70,15 @@
   scsi_device_lookup
   blk_mq_quiesce_tagset
   blk_mq_unquiesce_tagset
+  memblock_free
   __traceiter_android_vh_anon_vma_name_recog
   __traceiter_android_vh_restore_mm_flags
   __traceiter_android_vh_update_vma_flags
+  __traceiter_android_vh_thp_vma_allowable_orders
   __tracepoint_android_vh_anon_vma_name_recog
   __tracepoint_android_vh_restore_mm_flags
   __tracepoint_android_vh_update_vma_flags
+  __tracepoint_android_vh_thp_vma_allowable_orders
   __traceiter_android_vh_madvise_cold_or_pageout_abort
   __traceiter_android_vh_compact_finished
   __tracepoint_android_vh_madvise_cold_or_pageout_abort

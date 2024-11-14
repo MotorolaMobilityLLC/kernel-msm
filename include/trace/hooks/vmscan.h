@@ -98,6 +98,12 @@ DECLARE_HOOK(android_vh_shrink_node_memcgs,
 DECLARE_HOOK(android_vh_should_memcg_bypass,
 	TP_PROTO(struct mem_cgroup *memcg, int priority, bool *bypass),
 	TP_ARGS(memcg, priority, bypass));
+DECLARE_HOOK(android_vh_direct_reclaim_begin,
+	TP_PROTO(int *prio),
+	TP_ARGS(prio));
+DECLARE_HOOK(android_vh_direct_reclaim_end,
+	TP_PROTO(int prio),
+	TP_ARGS(prio));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

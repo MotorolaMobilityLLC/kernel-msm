@@ -86,6 +86,7 @@
   lookup_one_len_unlocked
   mem_cgroup_from_id
   mem_cgroup_update_lru_size
+  memcg_page_state
   memory_cgrp_subsys
   memory_cgrp_subsys_enabled_key
   mipi_dsi_generic_write

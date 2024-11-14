@@ -27,6 +27,8 @@
 // "From" extent for memory private to guest
 #define GUNYAH_VM_MEM_EXTENT_HOST_PRIVATE_LABEL 2
 
+#define BOOT_CONTEXT_REG_MASK	GUNYAH_VM_BOOT_CONTEXT_REG(0xff, 0xff)
+
 static DEFINE_XARRAY(gunyah_vm_functions);
 
 static void gunyah_vm_put_function(struct gunyah_vm_function *fn)
@@ -549,7 +551,11 @@ static long gunyah_vm_set_boot_context(struct gunyah_vm *ghvm,
 				       struct gunyah_vm_boot_context *boot_ctx)
 {
 	u8 reg_set, reg_index; /* to check values are reasonable */
+	u64 *value;
 	int ret;
+
+	if (boot_ctx->reg & ~BOOT_CONTEXT_REG_MASK)
+		return -EINVAL;
 
 	reg_set = (boot_ctx->reg >> GUNYAH_VM_BOOT_CONTEXT_REG_SHIFT) & 0xff;
 	reg_index = boot_ctx->reg & 0xff;
@@ -580,8 +586,21 @@ static long gunyah_vm_set_boot_context(struct gunyah_vm *ghvm,
 		goto out;
 	}
 
+	/*
+	 * allocate memory for the value because xarray supports [0, LONG_MAX]
+	 * for values and we want [0, ULONG_MAX]
+	 */
+	value = kmalloc(sizeof(*value), GFP_KERNEL);
+	if (!value) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	*value = boot_ctx->value;
+
 	ret = xa_err(xa_store(&ghvm->boot_context, boot_ctx->reg,
-			      (void *)boot_ctx->value, GFP_KERNEL));
+			      value, GFP_KERNEL));
+	if (ret)
+		kfree(value);
 out:
 	up_read(&ghvm->status_lock);
 	return ret;
@@ -596,8 +615,9 @@ static inline int gunyah_vm_fill_boot_context(struct gunyah_vm *ghvm)
 	xa_for_each(&ghvm->boot_context, id, entry) {
 		reg_set = (id >> GUNYAH_VM_BOOT_CONTEXT_REG_SHIFT) & 0xff;
 		reg_index = id & 0xff;
-		ret = gunyah_rm_vm_set_boot_context(
-			ghvm->rm, ghvm->vmid, reg_set, reg_index, (u64)entry);
+		ret = gunyah_rm_vm_set_boot_context(ghvm->rm, ghvm->vmid,
+						    reg_set, reg_index,
+						    *(u64 *)entry);
 		if (ret)
 			return ret;
 	}
@@ -971,6 +991,7 @@ static void _gunyah_vm_put(struct kref *kref)
 	struct gunyah_vm *ghvm = container_of(kref, struct gunyah_vm, kref);
 	struct gunyah_vm_gup_binding *b;
 	unsigned long index = 0;
+	void *entry;
 	int ret;
 
 	/**
@@ -1053,6 +1074,9 @@ static void _gunyah_vm_put(struct kref *kref)
 			dev_warn(ghvm->parent,
 				 "Failed to deallocate vmid: %d\n", ret);
 	}
+
+	xa_for_each(&ghvm->boot_context, index, entry)
+		kfree(entry);
 
 	xa_destroy(&ghvm->boot_context);
 	gunyah_rm_put(ghvm->rm);
