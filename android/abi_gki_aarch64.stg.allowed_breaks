@@ -77,3 +77,8 @@ type 'struct pkvm_module_ops' changed
 type 'enum ftrace_dump_mode' changed
   enumerator 'DUMP_PARAM' (3) was added
 
+1 function symbol(s) removed
+  'int __traceiter_android_vh_suitable_migration_target_bypass(void*, struct page*, bool*)'
+
+1 variable symbol(s) removed
+  'struct tracepoint __tracepoint_android_vh_suitable_migration_target_bypass'
