@@ -72,6 +72,7 @@
   blk_mq_unquiesce_tagset
   memblock_free
   mem_cgroup_move_account
+  sum_mthp_stat
   __traceiter_android_vh_anon_vma_name_recog
   __traceiter_android_vh_restore_mm_flags
   __traceiter_android_vh_update_vma_flags
@@ -130,6 +131,14 @@
   android_rvh_probe_register
   __traceiter_android_rvh_fiq_dump
   __tracepoint_android_rvh_fiq_dump
+
+# required by kmod_protect.ko
+  __traceiter_android_vh_free_mod_mem
+  __traceiter_android_vh_set_mod_perm_after_init
+  __traceiter_android_vh_set_mod_perm_before_init
+  __tracepoint_android_vh_free_mod_mem
+  __tracepoint_android_vh_set_mod_perm_after_init
+  __tracepoint_android_vh_set_mod_perm_before_init
 
 #required by mi_sched.ko
   __traceiter_android_vh_scheduler_tick
@@ -437,3 +446,7 @@ __tracepoint_android_vh_do_folio_trylock
 reclaim_pages
 __tracepoint_android_vh_alloc_flags_cma_adjust
 __traceiter_android_vh_alloc_flags_cma_adjust
+
+# required by xr-qi.ko
+__tracepoint_android_vh_futex_wait_queue_start
+__traceiter_android_vh_futex_wait_queue_start

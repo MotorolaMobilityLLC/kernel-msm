@@ -232,6 +232,8 @@ struct kvm_pinned_page {
 	u16			pins;
 };
 
+#define KVM_DUMMY_PPAGE ((struct kvm_pinned_page *)-1)
+
 typedef unsigned int pkvm_handle_t;
 
 struct kvm_protected_vm {

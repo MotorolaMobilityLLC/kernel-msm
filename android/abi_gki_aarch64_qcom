@@ -1963,12 +1963,14 @@
   sysctl_vals
   sysfs_add_file_to_group
   sysfs_add_link_to_group
+  sysfs_create_bin_file
   sysfs_create_file_ns
   sysfs_create_group
   sysfs_create_link
   sysfs_emit
   sysfs_emit_at
   sysfs_notify
+  sysfs_remove_bin_file
   sysfs_remove_file_from_group
   sysfs_remove_file_ns
   sysfs_remove_group
@@ -2434,6 +2436,7 @@
   __xa_alloc
   __xa_alloc_cyclic
   xa_destroy
+  __xa_erase
   xa_erase
   xa_find
   xa_find_after

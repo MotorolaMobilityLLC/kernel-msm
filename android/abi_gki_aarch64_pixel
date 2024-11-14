@@ -55,6 +55,15 @@
   balance_push_callback
   bcmp
   bin2hex
+  __bio_add_page
+  bio_add_page
+  bio_alloc_bioset
+  bio_chain
+  bio_endio
+  bio_end_io_acct_remapped
+  bio_init
+  bio_put
+  bio_start_io_acct
   __bitmap_andnot
   __bitmap_clear
   __bitmap_equal
@@ -72,10 +81,22 @@
   bitmap_to_arr32
   __bitmap_weight
   bitmap_zalloc
+  __blk_alloc_disk
+  blk_check_plugged
+  blkdev_get_by_dev
+  blkdev_put
   blk_execute_rq_nowait
   blk_get_queue
   blk_mq_free_request
   blk_put_queue
+  blk_queue_flag_clear
+  blk_queue_flag_set
+  blk_queue_io_min
+  blk_queue_io_opt
+  blk_queue_logical_block_size
+  blk_queue_max_discard_sectors
+  blk_queue_max_write_zeroes_sectors
+  blk_queue_physical_block_size
   blk_queue_update_dma_alignment
   blk_rq_map_user_io
   blk_rq_unmap_user
@@ -243,9 +264,12 @@
   crypto_aead_setauthsize
   crypto_aead_setkey
   crypto_alloc_aead
+  crypto_alloc_base
   crypto_alloc_shash
   crypto_alloc_skcipher
   crypto_alloc_sync_skcipher
+  crypto_comp_compress
+  crypto_comp_decompress
   crypto_destroy_tfm
   __crypto_memneq
   crypto_req_done
@@ -286,6 +310,7 @@
   default_llseek
   deferred_free
   delayed_work_timer_fn
+  del_gendisk
   desc_to_gpio
   destroy_workqueue
   dev_addr_mod
@@ -316,6 +341,7 @@
   dev_get_by_index
   dev_get_by_name
   device_add
+  device_add_disk
   device_add_groups
   device_create
   device_create_file
@@ -820,6 +846,9 @@
   __fdget
   fd_install
   fget
+  file_path
+  filp_close
+  filp_open_block
   _find_first_bit
   _find_first_zero_bit
   find_get_pid
@@ -831,6 +860,7 @@
   find_vpid
   finish_wait
   firmware_request_nowarn
+  flush_dcache_page
   flush_delayed_work
   flush_work
   __flush_workqueue
@@ -855,6 +885,7 @@
   freq_qos_add_request
   freq_qos_remove_request
   freq_qos_update_request
+  fs_bio_set
   fsnotify
   __fsnotify_parent
   full_name_hash
@@ -1309,6 +1340,7 @@
   memremap
   mem_section
   memset
+  memset64
   __memset_io
   memstart_addr
   memunmap
@@ -1681,6 +1713,7 @@
   push_cpu_stop
   __put_cred
   put_device
+  put_disk
   put_iova_domain
   __put_net
   put_pid
@@ -1752,6 +1785,7 @@
   regcache_drop_region
   regcache_mark_dirty
   regcache_sync
+  __register_blkdev
   __register_chrdev
   register_chrdev_region
   register_console
@@ -1908,6 +1942,8 @@
   seq_release_private
   seq_vprintf
   seq_write
+  set_capacity
+  set_capacity_and_notify
   set_cpus_allowed_ptr
   set_freezable
   set_normalized_timespec64
@@ -2125,12 +2161,15 @@
   strsep
   strspn
   strstr
+  submit_bio
+  submit_bio_wait
   subsys_system_register
   suspend_set_ops
   __sw_hweight16
   __sw_hweight32
   __sw_hweight64
   __sw_hweight8
+  sync_blockdev
   sync_file_create
   sync_file_get_fence
   synchronize_irq
@@ -2196,6 +2235,7 @@
   teo_cpu_get_util_threshold
   teo_cpu_set_util_threshold
   thermal_cdev_update
+  thermal_cooling_device_register
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_pressure
@@ -2211,6 +2251,7 @@
   thermal_zone_get_trip
   thermal_zone_get_zone_by_name
   thread_group_cputime_adjusted
+  tick_nohz_get_idle_calls_cpu
   time64_to_tm
   timer_delete
   timer_delete_sync
@@ -2246,6 +2287,7 @@
   __traceiter_android_rvh_remove_entity_load_avg
   __traceiter_android_rvh_rtmutex_prepare_setprio
   __traceiter_android_rvh_sched_newidle_balance
+  __traceiter_android_rvh_sched_setaffinity
   __traceiter_android_rvh_select_task_rq_fair
   __traceiter_android_rvh_select_task_rq_rt
   __traceiter_android_rvh_set_cpus_allowed_by_task
@@ -2346,6 +2388,7 @@
   __tracepoint_android_rvh_remove_entity_load_avg
   __tracepoint_android_rvh_rtmutex_prepare_setprio
   __tracepoint_android_rvh_sched_newidle_balance
+  __tracepoint_android_rvh_sched_setaffinity
   __tracepoint_android_rvh_select_task_rq_fair
   __tracepoint_android_rvh_select_task_rq_rt
   __tracepoint_android_rvh_set_cpus_allowed_by_task
@@ -2474,6 +2517,7 @@
   unlock_page
   unmap_mapping_range
   unpin_user_page
+  unregister_blkdev
   __unregister_chrdev
   unregister_chrdev_region
   unregister_inet6addr_notifier
@@ -2617,6 +2661,7 @@
   vmalloc_user
   vmap
   vmf_insert_pfn_prot
+  vm_node_stat
   vm_unmapped_area
   vprintk
   vprintk_emit
@@ -2673,4 +2718,20 @@
   xhci_init_driver
   xhci_resume
   xhci_run
+  xhci_sideband_add_endpoint
+  xhci_sideband_create_interrupter
+  xhci_sideband_register
+  xhci_sideband_remove_endpoint
+  xhci_sideband_remove_interrupter
+  xhci_sideband_unregister
   xhci_suspend
+  zs_compact
+  zs_create_pool
+  zs_destroy_pool
+  zs_free
+  zs_get_total_pages
+  zs_huge_class_size
+  zs_malloc
+  zs_map_object
+  zs_pool_stats
+  zs_unmap_object

@@ -136,6 +136,7 @@ int kvm_arm_io_pgtable_free(struct io_pgtable *iopt)
 		kvm_flush_dcache_to_poc(data->pgd, pgd_size);
 
 	__arm_lpae_free_pgtable(data, data->start_level, data->pgd);
+	hyp_free(data);
 	return 0;
 }
 

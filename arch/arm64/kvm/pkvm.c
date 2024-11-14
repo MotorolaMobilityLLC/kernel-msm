@@ -330,6 +330,8 @@ static void __pkvm_destroy_hyp_vm(struct kvm *host_kvm)
 	WARN_ON(kvm_call_hyp_nvhe(__pkvm_start_teardown_vm, host_kvm->arch.pkvm.handle));
 
 	mt_for_each(&host_kvm->arch.pkvm.pinned_pages, ppage, ipa, ULONG_MAX) {
+		if (WARN_ON(ppage == KVM_DUMMY_PPAGE))
+			continue;
 		WARN_ON(pkvm_call_hyp_nvhe_ppage(ppage,
 						 __reclaim_dying_guest_page_call,
 						 host_kvm, true));
@@ -539,7 +541,7 @@ void pkvm_host_reclaim_page(struct kvm *host_kvm, phys_addr_t ipa)
 	write_lock(&host_kvm->mmu_lock);
 	ppage = mt_find(&host_kvm->arch.pkvm.pinned_pages, &index,
 			index + PAGE_SIZE - 1);
-	if (ppage) {
+	if (ppage && ppage != KVM_DUMMY_PPAGE) {
 		if (ppage->pins)
 			ppage->pins--;
 		else

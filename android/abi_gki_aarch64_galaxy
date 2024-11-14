@@ -79,6 +79,7 @@
   __traceiter_android_rvh_report_bug
   __traceiter_android_rvh_try_alloc_pages
   __traceiter_android_rvh_try_alloc_pages_gfp
+  __traceiter_android_rvh_usb_dev_suspend
   __traceiter_android_vh_alloc_contig_range_not_isolated
   __traceiter_android_vh_alloc_pages_slowpath_start
   __traceiter_android_vh_alloc_pages_slowpath_end
@@ -137,11 +138,15 @@
   __traceiter_android_vh_try_to_freeze_todo
   __traceiter_android_vh_try_to_freeze_todo_unfrozen
   __traceiter_android_vh_tune_scan_control
+  __traceiter_android_vh_usb_dev_resume
+  __traceiter_android_vh_usb_new_device_added
   __traceiter_android_vh_use_vm_swappiness
   __traceiter_android_vh_warn_alloc_tune_ratelimit
   __traceiter_android_vh_warn_alloc_show_mem_bypass
   __traceiter_android_vh_watchdog_timer_softlockup
   __traceiter_android_vh_wq_lockup_pool
+  __traceiter_android_vh_xhci_resume
+  __traceiter_android_vh_xhci_suspend
   __traceiter_android_vh_zs_shrinker_adjust
   __traceiter_android_vh_zs_shrinker_bypass
   __traceiter_console
@@ -163,6 +168,7 @@
   __tracepoint_android_rvh_report_bug
   __tracepoint_android_rvh_try_alloc_pages
   __tracepoint_android_rvh_try_alloc_pages_gfp
+  __tracepoint_android_rvh_usb_dev_suspend
   __tracepoint_android_vh_alloc_contig_range_not_isolated
   __tracepoint_android_vh_alloc_pages_slowpath_start
   __tracepoint_android_vh_alloc_pages_slowpath_end
@@ -221,11 +227,15 @@
   __tracepoint_android_vh_try_to_freeze_todo
   __tracepoint_android_vh_try_to_freeze_todo_unfrozen
   __tracepoint_android_vh_tune_scan_control
+  __tracepoint_android_vh_usb_dev_resume
+  __tracepoint_android_vh_usb_new_device_added
   __tracepoint_android_vh_use_vm_swappiness
   __tracepoint_android_vh_warn_alloc_tune_ratelimit
   __tracepoint_android_vh_warn_alloc_show_mem_bypass
   __tracepoint_android_vh_watchdog_timer_softlockup
   __tracepoint_android_vh_wq_lockup_pool
+  __tracepoint_android_vh_xhci_resume
+  __tracepoint_android_vh_xhci_suspend
   __tracepoint_android_vh_zs_shrinker_adjust
   __tracepoint_android_vh_zs_shrinker_bypass
   __tracepoint_console

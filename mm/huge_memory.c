@@ -535,7 +535,7 @@ static const struct kobj_type thpsize_ktype = {
 
 DEFINE_PER_CPU(struct mthp_stat, mthp_stats) = {{{0}}};
 
-static unsigned long sum_mthp_stat(int order, enum mthp_stat_item item)
+unsigned long sum_mthp_stat(int order, enum mthp_stat_item item)
 {
 	unsigned long sum = 0;
 	int cpu;
@@ -548,6 +548,7 @@ static unsigned long sum_mthp_stat(int order, enum mthp_stat_item item)
 
 	return sum;
 }
+EXPORT_SYMBOL_GPL(sum_mthp_stat);
 
 #define DEFINE_MTHP_STAT_ATTR(_name, _index)				\
 static ssize_t _name##_show(struct kobject *kobj,			\

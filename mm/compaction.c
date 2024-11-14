@@ -52,7 +52,6 @@ static inline void count_compact_events(enum vm_event_item item, long delta)
 #undef CREATE_TRACE_POINTS
 #include <trace/hooks/compaction.h>
 
-#undef CREATE_TRACE_POINTS
 #ifndef __GENKSYMS__
 #include <trace/hooks/mm.h>
 #endif

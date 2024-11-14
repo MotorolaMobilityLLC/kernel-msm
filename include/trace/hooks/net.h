@@ -120,6 +120,10 @@ DECLARE_HOOK(android_vh_udp_unicast_rcv_skb,
 DECLARE_HOOK(android_vh_udp6_unicast_rcv_skb,
 	TP_PROTO(struct sk_buff *skb, struct sock *sk),
 	TP_ARGS(skb, sk));
+DECLARE_HOOK(android_vh_tcp_rcv_established_fast_path,
+	TP_PROTO(struct sock *sk), TP_ARGS(sk));
+DECLARE_HOOK(android_vh_tcp_rcv_established_slow_path,
+	TP_PROTO(struct sock *sk), TP_ARGS(sk));
 /* macro versions of hooks are no longer required */
 
 #endif /* _TRACE_HOOK_NET_VH_H */
