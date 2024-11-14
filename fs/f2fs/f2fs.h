@@ -2174,8 +2174,15 @@ static inline int f2fs_rwsem_is_contended(struct f2fs_rwsem *sem)
 	return rwsem_is_contended(&sem->internal_rwsem);
 }
 
+void _trace_android_rvh_f2fs_down_read(wait_queue_head_t *read_waiters,
+				   struct rw_semaphore *rwsem, bool *skip);
+
 static inline void f2fs_down_read(struct f2fs_rwsem *sem)
 {
+	bool skip = false;
+	_trace_android_rvh_f2fs_down_read(&sem->read_waiters, &sem->internal_rwsem, &skip);
+	if (skip)
+		return;
 #ifdef CONFIG_F2FS_UNFAIR_RWSEM
 	wait_event(sem->read_waiters, down_read_trylock(&sem->internal_rwsem));
 #else

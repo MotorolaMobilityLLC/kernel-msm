@@ -368,6 +368,11 @@ static inline bool folio_memcg_kmem(struct folio *folio);
 
 void do_traversal_all_lruvec(void);
 
+int mem_cgroup_move_account(struct folio *folio,
+			    bool compound,
+			    struct mem_cgroup *from,
+			    struct mem_cgroup *to);
+
 /*
  * After the initialization objcg->memcg is always pointing at
  * a valid memcg, but can be atomically swapped to the parent memcg.
@@ -1205,6 +1210,14 @@ static inline bool PageMemcgKmem(struct page *page)
 
 static inline void do_traversal_all_lruvec(void)
 {
+}
+
+static inline int mem_cgroup_move_account(struct folio *folio,
+					  bool compound,
+					  struct mem_cgroup *from,
+					  struct mem_cgroup *to)
+{
+	return 0;
 }
 
 static inline bool mem_cgroup_is_root(struct mem_cgroup *memcg)

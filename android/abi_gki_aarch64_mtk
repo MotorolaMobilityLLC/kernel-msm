@@ -3655,6 +3655,7 @@
   vm_iomap_memory
   vm_map_ram
   vm_node_stat
+  vm_unmapped_area
   vm_unmap_ram
   vm_zone_stat
   vprintk

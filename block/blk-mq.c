@@ -32,6 +32,8 @@
 
 #include <trace/events/block.h>
 
+#include <trace/hooks/blk.h>
+
 #include <linux/t10-pi.h>
 #include "blk.h"
 #include "blk-mq.h"
@@ -1503,6 +1505,12 @@ static void blk_mq_requeue_work(struct work_struct *work)
 
 void blk_mq_kick_requeue_list(struct request_queue *q)
 {
+	bool skip = false;
+
+	trace_android_vh_blk_mq_kick_requeue_list(q, 0, &skip);
+	if (skip)
+		return;
+
 	kblockd_mod_delayed_work_on(WORK_CPU_UNBOUND, &q->requeue_work, 0);
 }
 EXPORT_SYMBOL(blk_mq_kick_requeue_list);
@@ -1510,6 +1518,13 @@ EXPORT_SYMBOL(blk_mq_kick_requeue_list);
 void blk_mq_delay_kick_requeue_list(struct request_queue *q,
 				    unsigned long msecs)
 {
+	bool skip = false;
+
+	trace_android_vh_blk_mq_kick_requeue_list(q,
+			msecs_to_jiffies(msecs), &skip);
+	if (skip)
+		return;
+
 	kblockd_mod_delayed_work_on(WORK_CPU_UNBOUND, &q->requeue_work,
 				    msecs_to_jiffies(msecs));
 }
@@ -2243,8 +2258,16 @@ select_cpu:
  */
 void blk_mq_delay_run_hw_queue(struct blk_mq_hw_ctx *hctx, unsigned long msecs)
 {
+	bool skip = false;
+
 	if (unlikely(blk_mq_hctx_stopped(hctx)))
 		return;
+
+	trace_android_vh_blk_mq_delay_run_hw_queue(blk_mq_hctx_next_cpu(hctx),
+			hctx, msecs_to_jiffies(msecs), &skip);
+	if (skip)
+		return;
+
 	kblockd_mod_delayed_work_on(blk_mq_hctx_next_cpu(hctx), &hctx->run_work,
 				    msecs_to_jiffies(msecs));
 }

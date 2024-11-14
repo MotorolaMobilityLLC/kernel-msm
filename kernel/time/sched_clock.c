@@ -108,6 +108,11 @@ unsigned long long notrace sched_clock(void)
 	return ns;
 }
 
+u64 notrace get_dup_sched_clock(void)
+{
+	return sched_clock();
+}
+EXPORT_SYMBOL_GPL(get_dup_sched_clock);
 /*
  * Updating the data required to read the clock.
  *

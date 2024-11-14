@@ -34,6 +34,17 @@ DECLARE_HOOK(android_vh_f2fs_ra_op_flags,
 	TP_PROTO(blk_opf_t *op_flag, struct readahead_control *rac),
 	TP_ARGS(op_flag, rac));
 
+struct blk_mq_hw_ctx;
+struct request_queue;
+
+DECLARE_HOOK(android_vh_blk_mq_delay_run_hw_queue,
+	TP_PROTO(int cpu, struct blk_mq_hw_ctx *hctx, unsigned long delay, bool *skip),
+	TP_ARGS(cpu, hctx, delay, skip));
+
+DECLARE_HOOK(android_vh_blk_mq_kick_requeue_list,
+	TP_PROTO(struct request_queue *q, unsigned long delay, bool *skip),
+	TP_ARGS(q, delay, skip));
+
 #endif /* _TRACE_HOOK_BLK_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

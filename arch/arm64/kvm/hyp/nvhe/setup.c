@@ -152,20 +152,14 @@ static int recreate_hyp_mappings(phys_addr_t phys, unsigned long size,
 	create_hyp_host_fp_mappings();
 
 	/*
-	 * Map the host sections RO in the hypervisor, but transfer the
-	 * ownership from the host to the hypervisor itself to make sure they
+	 * Map the pvmfw section RO in the hypervisor, but transfer the
+	 * ownership from the host to the hypervisor itself to make sure that it
 	 * can't be donated or shared with another entity.
 	 *
 	 * The ownership transition requires matching changes in the host
 	 * stage-2. This will be done later (see finalize_host_mappings()) once
 	 * the hyp_vmemmap is addressable.
 	 */
-	prot = pkvm_mkstate(PAGE_HYP_RO, PKVM_PAGE_SHARED_OWNED);
-	ret = pkvm_create_mappings(&kvm_vgic_global_state,
-				   &kvm_vgic_global_state + 1, prot);
-	if (ret)
-		return ret;
-
 	start = hyp_phys_to_virt(pvmfw_base);
 	end = start + pvmfw_size;
 	prot = pkvm_mkstate(PAGE_HYP_RO, PKVM_PAGE_OWNED);

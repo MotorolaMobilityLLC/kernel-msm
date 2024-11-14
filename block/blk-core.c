@@ -611,8 +611,13 @@ static inline blk_status_t blk_check_zone_append(struct request_queue *q,
 
 static void __submit_bio(struct bio *bio)
 {
+	/* If plug is not used, add new plug here to cache nsecs time. */
+	struct blk_plug plug;
+
 	if (unlikely(!blk_crypto_bio_prep(&bio)))
 		return;
+
+	blk_start_plug(&plug);
 
 	if (!bio->bi_bdev->bd_has_submit_bio) {
 		blk_mq_submit_bio(bio);
@@ -622,6 +627,8 @@ static void __submit_bio(struct bio *bio)
 		disk->fops->submit_bio(bio);
 		blk_queue_exit(disk->queue);
 	}
+
+	blk_finish_plug(&plug);
 }
 
 /*
