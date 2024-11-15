@@ -314643,6 +314643,11 @@ function {
   parameter_id: 0x0bb0c019
 }
 function {
+  id: 0x1f821b4c
+  return_type_id: 0x48b5725f
+  parameter_id: 0x3c692b7e
+}
+function {
   id: 0x1f835b6f
   return_type_id: 0x48b5725f
   parameter_id: 0x397d00ab
@@ -384435,6 +384440,15 @@ elf_symbol {
   full_name: "dump_stack"
 }
 elf_symbol {
+  id: 0x652fbf96
+  name: "dump_tasks"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4308a91f
+  type_id: 0x1f821b4c
+  full_name: "dump_tasks"
+}
+elf_symbol {
   id: 0xe5d449a3
   name: "dup_iter"
   is_defined: true
@@ -431304,6 +431318,7 @@ interface {
   symbol_id: 0xded28924
   symbol_id: 0xcb93fb69
   symbol_id: 0xe3421d56
+  symbol_id: 0x652fbf96
   symbol_id: 0xe5d449a3
   symbol_id: 0xda364c85
   symbol_id: 0x68e0756b
