@@ -2057,6 +2057,8 @@
   __traceiter_android_rvh_irqs_disable
   __traceiter_android_rvh_irqs_enable
   __traceiter_android_rvh_is_cpu_allowed
+  __traceiter_android_rvh_mmc_resume
+  __traceiter_android_rvh_mmc_suspend
   __traceiter_android_rvh_new_task_stats
   __traceiter_android_rvh_preempt_disable
   __traceiter_android_rvh_preempt_enable
@@ -2161,6 +2163,8 @@
   __tracepoint_android_rvh_irqs_disable
   __tracepoint_android_rvh_irqs_enable
   __tracepoint_android_rvh_is_cpu_allowed
+  __tracepoint_android_rvh_mmc_resume
+  __tracepoint_android_rvh_mmc_suspend
   __tracepoint_android_rvh_new_task_stats
   __tracepoint_android_rvh_preempt_disable
   __tracepoint_android_rvh_preempt_enable
