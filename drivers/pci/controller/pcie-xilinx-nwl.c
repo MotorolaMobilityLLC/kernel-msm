@@ -808,7 +808,6 @@ static int nwl_pcie_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	pcie = pci_host_bridge_priv(bridge);
-	platform_set_drvdata(pdev, pcie);
 
 	pcie->dev = dev;
 	pcie->ecam_value = NWL_ECAM_VALUE_DEFAULT;
@@ -832,13 +831,13 @@ static int nwl_pcie_probe(struct platform_device *pdev)
 	err = nwl_pcie_bridge_init(pcie);
 	if (err) {
 		dev_err(dev, "HW Initialization failed\n");
-		goto err_clk;
+		return err;
 	}
 
 	err = nwl_pcie_init_irq_domain(pcie);
 	if (err) {
 		dev_err(dev, "Failed creating IRQ Domain\n");
-		goto err_clk;
+		return err;
 	}
 
 	bridge->sysdata = pcie;
@@ -848,24 +847,11 @@ static int nwl_pcie_probe(struct platform_device *pdev)
 		err = nwl_pcie_enable_msi(pcie);
 		if (err < 0) {
 			dev_err(dev, "failed to enable MSI support: %d\n", err);
-			goto err_clk;
+			return err;
 		}
 	}
 
-	err = pci_host_probe(bridge);
-	if (!err)
-		return 0;
-
-err_clk:
-	clk_disable_unprepare(pcie->clk);
-	return err;
-}
-
-static void nwl_pcie_remove(struct platform_device *pdev)
-{
-	struct nwl_pcie *pcie = platform_get_drvdata(pdev);
-
-	clk_disable_unprepare(pcie->clk);
+	return pci_host_probe(bridge);
 }
 
 static struct platform_driver nwl_pcie_driver = {
@@ -875,6 +861,5 @@ static struct platform_driver nwl_pcie_driver = {
 		.of_match_table = nwl_pcie_of_match,
 	},
 	.probe = nwl_pcie_probe,
-	.remove_new = nwl_pcie_remove,
 };
 builtin_platform_driver(nwl_pcie_driver);
