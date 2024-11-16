@@ -18,8 +18,6 @@
 
 #define IMMR_SIZE (FIX_IMMR_SIZE << PAGE_SHIFT)
 
-extern int __map_without_ltlbs;
-
 static unsigned long block_mapped_ram;
 
 /*
@@ -32,8 +30,6 @@ phys_addr_t v_block_mapped(unsigned long va)
 
 	if (va >= VIRT_IMMR_BASE && va < VIRT_IMMR_BASE + IMMR_SIZE)
 		return p + va - VIRT_IMMR_BASE;
-	if (__map_without_ltlbs)
-		return 0;
 	if (va >= PAGE_OFFSET && va < PAGE_OFFSET + block_mapped_ram)
 		return __pa(va);
 	return 0;
@@ -49,8 +45,6 @@ unsigned long p_block_mapped(phys_addr_t pa)
 
 	if (pa >= p && pa < p + IMMR_SIZE)
 		return VIRT_IMMR_BASE + pa - p;
-	if (__map_without_ltlbs)
-		return 0;
 	if (pa < block_mapped_ram)
 		return (unsigned long)__va(pa);
 	return 0;
@@ -157,14 +151,11 @@ unsigned long __init mmu_mapin_ram(unsigned long base, unsigned long top)
 
 	mmu_mapin_immr();
 
-	if (__map_without_ltlbs)
-		return 0;
-
-	mmu_mapin_ram_chunk(0, boundary, PAGE_KERNEL_TEXT, true);
+	mmu_mapin_ram_chunk(0, boundary, PAGE_KERNEL_X, true);
 	if (debug_pagealloc_enabled_or_kfence()) {
 		top = boundary;
 	} else {
-		mmu_mapin_ram_chunk(boundary, einittext8, PAGE_KERNEL_TEXT, true);
+		mmu_mapin_ram_chunk(boundary, einittext8, PAGE_KERNEL_X, true);
 		mmu_mapin_ram_chunk(einittext8, top, PAGE_KERNEL, true);
 	}
 
