@@ -313069,6 +313069,15 @@ function {
   parameter_id: 0x92233392
 }
 function {
+  id: 0x1d8bbf50
+  return_type_id: 0x48b5725f
+  parameter_id: 0x3760766d
+  parameter_id: 0x337f6d5e
+  parameter_id: 0x18bd6530
+  parameter_id: 0x072e5f93
+  parameter_id: 0xf435685e
+}
+function {
   id: 0x1d8c491d
   return_type_id: 0x1b8590a8
   parameter_id: 0x1b8590a8
@@ -419920,6 +419929,15 @@ elf_symbol {
   full_name: "typec_port_register_altmode"
 }
 elf_symbol {
+  id: 0xfe0397d1
+  name: "typec_port_register_altmodes"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xc64b476d
+  type_id: 0x1d8bbf50
+  full_name: "typec_port_register_altmodes"
+}
+elf_symbol {
   id: 0x22d09ebb
   name: "typec_register_partner"
   is_defined: true
@@ -435629,6 +435647,7 @@ interface {
   symbol_id: 0x0df14bce
   symbol_id: 0xd6fc8732
   symbol_id: 0x4fe4e1e0
+  symbol_id: 0xfe0397d1
   symbol_id: 0x22d09ebb
   symbol_id: 0xad69345e
   symbol_id: 0x381c401c

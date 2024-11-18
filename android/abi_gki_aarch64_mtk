@@ -3211,6 +3211,7 @@
   typec_partner_set_identity
   typec_partner_set_pd_revision
   typec_partner_set_svdm_version
+  typec_port_register_altmodes
   typec_register_partner
   typec_register_port
   typec_set_data_role
