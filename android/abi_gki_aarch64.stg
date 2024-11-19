@@ -15969,6 +15969,11 @@ pointer_reference {
   pointee_type_id: 0x9be532e0
 }
 pointer_reference {
+  id: 0x2c6a18d1
+  kind: POINTER
+  pointee_type_id: 0x9be885da
+}
+pointer_reference {
   id: 0x2c6c412b
   kind: POINTER
   pointee_type_id: 0x9bf1e232
@@ -323010,6 +323015,15 @@ function {
   parameter_id: 0x3b399f9e
 }
 function {
+  id: 0x91017265
+  return_type_id: 0x6720d32f
+  parameter_id: 0x36194830
+  parameter_id: 0x4585663f
+  parameter_id: 0x4585663f
+  parameter_id: 0x2c6a18d1
+  parameter_id: 0x18bd6530
+}
+function {
   id: 0x9101d3da
   return_type_id: 0x6720d32f
   parameter_id: 0x32a623d7
@@ -350533,6 +350547,13 @@ function {
   parameter_id: 0x33756485
 }
 function {
+  id: 0xf389cb34
+  return_type_id: 0x6d7f5ff6
+  parameter_id: 0x36194830
+  parameter_id: 0x2ea8d96e
+  parameter_id: 0x4585663f
+}
+function {
   id: 0xf3944fac
   return_type_id: 0x3a800090
   parameter_id: 0x3a800090
@@ -354004,6 +354025,15 @@ elf_symbol {
   crc: 0x4fcbd27e
   type_id: 0x90247076
   full_name: "__mmc_claim_host"
+}
+elf_symbol {
+  id: 0x479db511
+  name: "__mmc_poll_for_busy"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xf9b162bb
+  type_id: 0x91017265
+  full_name: "__mmc_poll_for_busy"
 }
 elf_symbol {
   id: 0x603dcc7d
@@ -398313,6 +398343,15 @@ elf_symbol {
   full_name: "mmc_of_parse_voltage"
 }
 elf_symbol {
+  id: 0xa9685e37
+  name: "mmc_prepare_busy_cmd"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xdb8e767e
+  type_id: 0xf389cb34
+  full_name: "mmc_prepare_busy_cmd"
+}
+elf_symbol {
   id: 0x5dc5546f
   name: "mmc_put_card"
   is_defined: true
@@ -398419,6 +398458,15 @@ elf_symbol {
   crc: 0x1951ed8d
   type_id: 0x1d1e039f
   full_name: "mmc_retune_hold"
+}
+elf_symbol {
+  id: 0x50e01c5d
+  name: "mmc_retune_release"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x96377d7c
+  type_id: 0x1d1e039f
+  full_name: "mmc_retune_release"
 }
 elf_symbol {
   id: 0xc9735609
@@ -428332,6 +428380,7 @@ interface {
   symbol_id: 0x96a6352b
   symbol_id: 0x49293097
   symbol_id: 0x0ba13d85
+  symbol_id: 0x479db511
   symbol_id: 0x603dcc7d
   symbol_id: 0x68d1b187
   symbol_id: 0x9de4c040
@@ -433247,6 +433296,7 @@ interface {
   symbol_id: 0xb2308a01
   symbol_id: 0x3ce0db00
   symbol_id: 0xbb4d4446
+  symbol_id: 0xa9685e37
   symbol_id: 0x5dc5546f
   symbol_id: 0x05ea5ad1
   symbol_id: 0xa6c3d5a7
@@ -433259,6 +433309,7 @@ interface {
   symbol_id: 0x462cbc3f
   symbol_id: 0x5eda25d4
   symbol_id: 0xbc5ef117
+  symbol_id: 0x50e01c5d
   symbol_id: 0xc9735609
   symbol_id: 0x243ce42b
   symbol_id: 0x2d0e7608
