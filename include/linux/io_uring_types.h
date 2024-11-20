@@ -286,6 +286,7 @@ struct io_ring_ctx {
 	 */
 	struct {
 		struct llist_head	work_llist;
+		struct llist_head	retry_llist;
 		unsigned long		check_cq;
 		atomic_t		cq_wait_nr;
 		atomic_t		cq_timeouts;
