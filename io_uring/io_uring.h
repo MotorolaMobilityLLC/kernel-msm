@@ -313,9 +313,14 @@ static inline int io_run_task_work(void)
 	return 0;
 }
 
+static inline bool io_local_work_pending(struct io_ring_ctx *ctx)
+{
+	return !llist_empty(&ctx->work_llist);
+}
+
 static inline bool io_task_work_pending(struct io_ring_ctx *ctx)
 {
-	return task_work_pending(current) || !llist_empty(&ctx->work_llist);
+	return task_work_pending(current) || io_local_work_pending(ctx);
 }
 
 static inline void io_tw_lock(struct io_ring_ctx *ctx, struct io_tw_state *ts)

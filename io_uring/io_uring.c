@@ -1372,7 +1372,7 @@ static void __cold io_move_task_work_from_local(struct io_ring_ctx *ctx)
 static bool io_run_local_work_continue(struct io_ring_ctx *ctx, int events,
 				       int min_events)
 {
-	if (llist_empty(&ctx->work_llist))
+	if (!io_local_work_pending(ctx))
 		return false;
 	if (events < min_events)
 		return true;
@@ -1429,7 +1429,7 @@ static inline int io_run_local_work_locked(struct io_ring_ctx *ctx,
 	struct io_tw_state ts = { .locked = true, };
 	int ret;
 
-	if (llist_empty(&ctx->work_llist))
+	if (!io_local_work_pending(ctx))
 		return 0;
 
 	ret = __io_run_local_work(ctx, &ts, min_events);
@@ -2499,7 +2499,7 @@ struct io_wait_queue {
 static inline bool io_has_work(struct io_ring_ctx *ctx)
 {
 	return test_bit(IO_CHECK_CQ_OVERFLOW_BIT, &ctx->check_cq) ||
-	       !llist_empty(&ctx->work_llist);
+	       io_local_work_pending(ctx);
 }
 
 static inline bool io_should_wake(struct io_wait_queue *iowq)
@@ -2531,7 +2531,7 @@ static int io_wake_function(struct wait_queue_entry *curr, unsigned int mode,
 
 int io_run_task_work_sig(struct io_ring_ctx *ctx)
 {
-	if (!llist_empty(&ctx->work_llist)) {
+	if (io_local_work_pending(ctx)) {
 		__set_current_state(TASK_RUNNING);
 		if (io_run_local_work(ctx, INT_MAX) > 0)
 			return 0;
@@ -2560,7 +2560,7 @@ static inline int io_cqring_wait_schedule(struct io_ring_ctx *ctx,
 
 	if (unlikely(READ_ONCE(ctx->check_cq)))
 		return 1;
-	if (unlikely(!llist_empty(&ctx->work_llist)))
+	if (unlikely(io_local_work_pending(ctx)))
 		return 1;
 	if (unlikely(task_work_pending(current)))
 		return 1;
@@ -2599,7 +2599,7 @@ static int io_cqring_wait(struct io_ring_ctx *ctx, int min_events,
 
 	if (!io_allowed_run_tw(ctx))
 		return -EEXIST;
-	if (!llist_empty(&ctx->work_llist))
+	if (io_local_work_pending(ctx))
 		io_run_local_work(ctx, min_events);
 	io_run_task_work();
 	io_cqring_overflow_flush(ctx);
@@ -2658,7 +2658,7 @@ static int io_cqring_wait(struct io_ring_ctx *ctx, int min_events,
 		 * If we got woken because of task_work being processed, run it
 		 * now rather than let the caller do another wait loop.
 		 */
-		if (!llist_empty(&ctx->work_llist))
+		if (io_local_work_pending(ctx))
 			io_run_local_work(ctx, nr_wait);
 		io_run_task_work();
 
@@ -3522,7 +3522,7 @@ __cold void io_uring_cancel_generic(bool cancel_all, struct io_sq_data *sqd)
 		io_run_task_work();
 		io_uring_drop_tctx_refs(current);
 		xa_for_each(&tctx->xa, index, node) {
-			if (!llist_empty(&node->ctx->work_llist)) {
+			if (io_local_work_pending(node->ctx)) {
 				WARN_ON_ONCE(node->ctx->submitter_task &&
 					     node->ctx->submitter_task != current);
 				goto end_wait;
