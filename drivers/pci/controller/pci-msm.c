@@ -1957,11 +1957,12 @@ static void pcie_crm_dump(struct msm_pcie_dev_t *dev)
 
 static void pcie_dm_core_dump(struct msm_pcie_dev_t *dev)
 {
-	int i, size;
+	unsigned int i;
+	resource_size_t size;
 
 	PCIE_DUMP(dev, "PCIe: RC%d DBI/dm_core register dump\n", dev->rc_idx);
 
-	size = resource_size(dev->res[MSM_PCIE_RES_DM_CORE].resource);
+	size = min(SZ_4K, resource_size(dev->res[MSM_PCIE_RES_DM_CORE].resource));
 
 	for (i = 0; i < size; i += 32) {
 		PCIE_DUMP(dev,
@@ -2508,6 +2509,9 @@ static void msm_pcie_sel_debug_testcase(struct msm_pcie_dev_t *dev,
 		} else {
 			base_sel_size = resource_size(
 				dev->res[base_sel - 1].resource);
+
+			if (base_sel - 1 == MSM_PCIE_RES_DM_CORE)
+				base_sel_size = min(SZ_4K, base_sel_size);
 		}
 
 		PCIE_DBG_FS(dev, "\n\nPCIe: Dumping %s Registers for RC%d\n\n",
