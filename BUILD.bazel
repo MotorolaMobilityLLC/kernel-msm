@@ -961,6 +961,7 @@ ddk_headers(
 ddk_headers(
     name = "all_headers_allowlist_aarch64",
     hdrs = [
+        "drivers/dma-buf/heaps/deferred-free-helper.h",
         "drivers/thermal/thermal_core.h",
         "drivers/thermal/thermal_netlink.h",
         "sound/usb/card.h",
@@ -975,6 +976,7 @@ ddk_headers(
     linux_includes = [
         "arch/arm64/include",
         "arch/arm64/include/uapi",
+        "drivers/dma-buf",
         "drivers/thermal",
         "sound/usb",
         "include",
