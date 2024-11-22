@@ -82,3 +82,7 @@ type 'enum ftrace_dump_mode' changed
 
 1 variable symbol(s) removed
   'struct tracepoint __tracepoint_android_vh_suitable_migration_target_bypass'
+
+type 'struct cgroup_root' changed
+  member 'u8 android_backport_reserved1[28]' was removed
+  member 'union { struct callback_head rcu; struct { u8 android_backport_reserved1[28]; }; union { }; }' was added

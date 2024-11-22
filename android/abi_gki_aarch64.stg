@@ -42308,6 +42308,10 @@ member {
   type_id: 0x34f6a768
 }
 member {
+  id: 0x2efe0273
+  type_id: 0x34d679de
+}
+member {
   id: 0x2f1819a7
   type_id: 0x334e168e
 }
@@ -43923,6 +43927,11 @@ member {
   id: 0x3f25e92e
   type_id: 0x73b9d605
   offset: 256
+}
+member {
+  id: 0x3f2a640d
+  type_id: 0x7387dd81
+  offset: 49472
 }
 member {
   id: 0x3f2df7ff
@@ -49772,10 +49781,9 @@ member {
   type_id: 0x92233392
 }
 member {
-  id: 0xb2e8fb7e
+  id: 0xb2e8f417
   name: "android_backport_reserved1"
   type_id: 0x1159eb36
-  offset: 49472
 }
 member {
   id: 0x71aeb2cd
@@ -222060,6 +222068,14 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x34d679de
+  kind: STRUCT
+  definition {
+    bytesize: 32
+    member_id: 0xb2e8f417
+  }
+}
+struct_union {
   id: 0x34ed11d4
   kind: STRUCT
   definition {
@@ -226228,6 +226244,16 @@ struct_union {
     bytesize: 8
     member_id: 0x96950623
     member_id: 0x92478c56
+  }
+}
+struct_union {
+  id: 0x7387dd81
+  kind: UNION
+  definition {
+    bytesize: 32
+    member_id: 0x95dac977
+    member_id: 0x2efe0273
+    member_id: 0x36752b74
   }
 }
 struct_union {
@@ -231813,7 +231839,7 @@ struct_union {
     member_id: 0x2d2d08b0
     member_id: 0xe8e1b772
     member_id: 0x0de6d95b
-    member_id: 0xb2e8fb7e
+    member_id: 0x3f2a640d
   }
 }
 struct_union {
