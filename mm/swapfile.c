@@ -50,9 +50,6 @@
 #include "internal.h"
 #include "swap.h"
 
-#define CLUSTER_FLAG_FREE	1 /* This cluster is free */
-#define CLUSTER_FLAG_NONFULL	2 /* This cluster on nonfull list  */
-
 static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
 				 unsigned char);
 static void free_swap_count_continuations(struct swap_info_struct *);
