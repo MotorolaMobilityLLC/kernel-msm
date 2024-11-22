@@ -266,11 +266,9 @@ struct swap_cluster_info {
 				 */
 	u16 count;
 	u8 flags;
-	u8 order;
 	struct list_head list;
 };
 #define CLUSTER_FLAG_FREE 1 /* This cluster is free */
-#define CLUSTER_FLAG_NONFULL 2 /* This cluster is on nonfull list */
 
 
 /*
@@ -309,8 +307,6 @@ struct swap_info_struct {
 	unsigned char *swap_map;	/* vmalloc'ed array of usage counts */
 	struct swap_cluster_info *cluster_info; /* cluster info. Only for SSD */
 	struct list_head free_clusters; /* free clusters list */
-	struct list_head nonfull_clusters[SWAP_NR_ORDERS];
-					/* list of cluster that contains at least one free slot */
 	unsigned int lowest_bit;	/* index of first free in swap_map */
 	unsigned int highest_bit;	/* index of last free in swap_map */
 	unsigned int pages;		/* total of usable pages of swap */
