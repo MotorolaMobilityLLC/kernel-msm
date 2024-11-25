@@ -340139,6 +340139,12 @@ function {
   parameter_id: 0x3e10b518
 }
 function {
+  id: 0x9c0fbfcd
+  return_type_id: 0x6720d32f
+  parameter_id: 0x026525e9
+  parameter_id: 0x4585663f
+}
+function {
   id: 0x9c0ff674
   return_type_id: 0x6720d32f
   parameter_id: 0x0258f96e
@@ -398550,6 +398556,15 @@ elf_symbol {
   full_name: "mmc_send_tuning"
 }
 elf_symbol {
+  id: 0x0654cb12
+  name: "mmc_set_blocklen"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x74d61bc3
+  type_id: 0x9c0fbfcd
+  full_name: "mmc_set_blocklen"
+}
+elf_symbol {
   id: 0xa466e3d3
   name: "mmc_set_bus_mode"
   is_defined: true
@@ -399959,6 +399974,15 @@ elf_symbol {
   crc: 0x017de3d5
   type_id: 0x4585663f
   full_name: "nr_cpu_ids"
+}
+elf_symbol {
+  id: 0xb8d3aa55
+  name: "nr_free_buffer_pages"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x27fa66e1
+  type_id: 0x31accd53
+  full_name: "nr_free_buffer_pages"
 }
 elf_symbol {
   id: 0x1cfcf940
@@ -433319,6 +433343,7 @@ interface {
   symbol_id: 0xd0f0d35f
   symbol_id: 0xfb31b7b7
   symbol_id: 0xfe0604fe
+  symbol_id: 0x0654cb12
   symbol_id: 0xa466e3d3
   symbol_id: 0x836750b8
   symbol_id: 0x1398d9e3
@@ -433475,6 +433500,7 @@ interface {
   symbol_id: 0xe3b94e5f
   symbol_id: 0x16059afd
   symbol_id: 0x1560f116
+  symbol_id: 0xb8d3aa55
   symbol_id: 0x1cfcf940
   symbol_id: 0x3704ac3f
   symbol_id: 0xea37502b
