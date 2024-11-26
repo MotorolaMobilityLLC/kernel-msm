@@ -264,9 +264,11 @@ struct swap_cluster_info {
 				 * other than list, and swap_info_struct->swap_map
 				 * elements corresponding to the swap cluster.
 				 */
-	u16 count;
-	u8 flags;
-	u8 order;
+	unsigned int count:12;
+	unsigned int state:3;
+	unsigned int order:4;
+	unsigned int reserved:1;
+	unsigned int flags:4;
 	struct list_head list;
 };
 #define CLUSTER_FLAG_FREE 1 /* This cluster is free */
