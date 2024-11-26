@@ -54,9 +54,16 @@ static int __init page_shift_params(char *param, char *val,
 static int __init init_page_shift_compat(void)
 {
 	char *err;
+	char *command_line;
 
-	err = parse_args("page_shift", saved_command_line, NULL, 0, 0, 0, NULL,
+	command_line = kstrdup(saved_command_line, GFP_KERNEL);
+	if (!command_line)
+		return -ENOMEM;
+
+	err = parse_args("page_shift", command_line, NULL, 0, 0, 0, NULL,
 			page_shift_params);
+
+	kfree(command_line);
 
 	if (IS_ERR(err))
 		return -EINVAL;
