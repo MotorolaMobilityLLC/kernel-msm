@@ -73,6 +73,7 @@ struct dwc3_qcom {
 	struct notifier_block	vbus_nb;
 	struct notifier_block	host_nb;
 
+	struct regulator	*dwc3_gdsc;
 	enum usb_dr_mode	mode;
 	bool			is_suspended;
 	bool			pm_suspended;
@@ -402,6 +403,33 @@ static void dwc3_qcom_enable_interrupts(struct dwc3_qcom *qcom)
 	dwc3_qcom_enable_wakeup_irq(qcom->ss_phy_irq, 0);
 }
 
+/*
+ * Config Global Distributed Switch Controller (GDSC)
+ * to support controller power collapse
+ */
+static int dwc3_qcom_config_gdsc(struct dwc3_qcom *qcom, bool on)
+{
+	int ret;
+
+	if (IS_ERR_OR_NULL(qcom->dwc3_gdsc))
+		return -EPERM;
+
+	if (on) {
+		ret = regulator_enable(qcom->dwc3_gdsc);
+		if (ret) {
+			dev_err(qcom->dev, "unable to enable usb3 gdsc\n");
+			return ret;
+		}
+	} else {
+		ret = regulator_disable(qcom->dwc3_gdsc);
+		if (ret) {
+			dev_err(qcom->dev, "unable to disable usb3 gdsc\n");
+			return ret;
+		}
+	}
+
+	return ret;
+}
 static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
 {
 	u32 val;
@@ -430,6 +458,12 @@ static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
 		dwc3_qcom_enable_interrupts(qcom);
 	}
 
+	if (!wakeup) {
+		ret = dwc3_qcom_config_gdsc(qcom, false);
+		if (ret < 0)
+			return ret;
+	}
+
 	qcom->is_suspended = true;
 
 	return 0;
@@ -442,6 +476,12 @@ static int dwc3_qcom_resume(struct dwc3_qcom *qcom, bool wakeup)
 
 	if (!qcom->is_suspended)
 		return 0;
+
+	if (!wakeup) {
+		ret = dwc3_qcom_config_gdsc(qcom, true);
+		if (ret < 0)
+			return ret;
+	}
 
 	if (dwc3_qcom_is_host(qcom) && wakeup)
 		dwc3_qcom_disable_interrupts(qcom);
@@ -688,6 +728,18 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		goto reset_assert;
 	}
 
+	qcom->dwc3_gdsc = devm_regulator_get(qcom->dev, "USB3_GDSC");
+	if (IS_ERR(qcom->dwc3_gdsc)) {
+		dev_err(&pdev->dev, "gdsc acqusition faled\n");
+		return PTR_ERR(qcom->dwc3_gdsc);
+	}
+
+	ret = regulator_enable(qcom->dwc3_gdsc);
+	if (ret) {
+		dev_err(&pdev->dev, "unable to enable usb3 gdsc\n");
+		return ret;
+	}
+
 	ret = dwc3_qcom_clk_init(qcom, of_clk_get_parent_count(np));
 	if (ret) {
 		dev_err(dev, "failed to get clocks\n");
@@ -771,7 +823,7 @@ static int dwc3_qcom_remove(struct platform_device *pdev)
 {
 	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
-	int i;
+	int i, ret;
 
 	of_platform_depopulate(&pdev->dev);
 	platform_device_put(qcom->dwc3);
@@ -783,6 +835,11 @@ static int dwc3_qcom_remove(struct platform_device *pdev)
 	qcom->num_clocks = 0;
 
 	dwc3_qcom_interconnect_exit(qcom);
+
+	ret = dwc3_qcom_config_gdsc(qcom, false);
+	if (ret < 0)
+		return ret;
+
 	reset_control_assert(qcom->resets);
 
 	pm_runtime_allow(dev);
