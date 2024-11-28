@@ -1325,12 +1325,8 @@ static int hyp_ack_share(const struct pkvm_checked_mem_transition *checked_tx,
 
 static int hyp_ack_unshare(const struct pkvm_checked_mem_transition *checked_tx)
 {
-	const struct pkvm_mem_transition *tx = checked_tx->tx;
 	u64 size = checked_tx->nr_pages * PAGE_SIZE;
 	u64 addr = checked_tx->completer_addr;
-
-	if (__hyp_ack_skip_pgtable_check(tx))
-		return 0;
 
 	return __hyp_check_page_state_range(addr, size,
 					    PKVM_PAGE_SHARED_BORROWED);
