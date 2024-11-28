@@ -1209,9 +1209,9 @@ static int host_ack_donation(u64 addr,
 
 static int host_ack_unshare(const struct pkvm_checked_mem_transition *checked_tx)
 {
-	return __host_ack_transition(checked_tx->completer_addr,
-				     checked_tx->nr_pages * PAGE_SIZE,
-				     checked_tx->tx, PKVM_PAGE_SHARED_BORROWED);
+	return __host_check_page_state_range(checked_tx->completer_addr,
+					     checked_tx->nr_pages * PAGE_SIZE,
+					     PKVM_PAGE_SHARED_BORROWED);
 }
 
 static int host_complete_share(const struct pkvm_checked_mem_transition *checked_tx,
