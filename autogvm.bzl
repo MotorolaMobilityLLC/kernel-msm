@@ -116,6 +116,7 @@ def define_autogvm():
         "drivers/ufs/host/ufs_qcom.ko",
         "drivers/uio/msm_sharedmem/msm_sharedmem.ko",
         "drivers/usb/dwc3/dwc3-msm.ko",
+        "drivers/usb/dwc3/dwc3-qcom-mp.ko",
         "drivers/usb/gadget/function/usb_f_cdev.ko",
         "drivers/usb/gadget/function/usb_f_diag.ko",
         "drivers/usb/gadget/function/usb_f_qdss.ko",
