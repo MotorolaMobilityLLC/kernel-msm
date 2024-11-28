@@ -690,6 +690,7 @@ void f2fs_flush_merged_writes(struct f2fs_sb_info *sbi)
 int f2fs_submit_page_bio(struct f2fs_io_info *fio)
 {
 	struct bio *bio;
+	struct folio *fio_folio = page_folio(fio->page);
 	struct page *page = fio->encrypted_page ?
 			fio->encrypted_page : fio->page;
 
@@ -703,8 +704,8 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
 	/* Allocate a new bio */
 	bio = __bio_alloc(fio, 1);
 
-	f2fs_set_bio_crypt_ctx(bio, fio->page->mapping->host,
-			page_folio(fio->page)->index, fio, GFP_NOIO);
+	f2fs_set_bio_crypt_ctx(bio, fio_folio->mapping->host,
+			fio_folio->index, fio, GFP_NOIO);
 
 	if (bio_add_page(bio, page, PAGE_SIZE, 0) < PAGE_SIZE) {
 		bio_put(bio);
