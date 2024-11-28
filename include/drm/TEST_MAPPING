@@ -304,6 +304,9 @@
     },
     {
       "name": "memunreachable_binder_test"
+    },
+    {
+      "name": "VtsHalBluetoothAudioTargetTest"
     }
   ]
 }

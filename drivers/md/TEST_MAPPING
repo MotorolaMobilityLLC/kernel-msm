@@ -295,6 +295,9 @@
     },
     {
       "name": "VtsBootconfigTest"
+    },
+    {
+      "name": "VtsHalBluetoothAudioTargetTest"
     }
   ]
 }
