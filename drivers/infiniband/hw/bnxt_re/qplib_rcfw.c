@@ -525,7 +525,7 @@ static int __bnxt_qplib_rcfw_send_message(struct bnxt_qplib_rcfw *rcfw,
 		/* failed with status */
 		dev_err(&rcfw->pdev->dev, "cmdq[%#x]=%#x status %#x\n",
 			cookie, opcode, evnt->status);
-		rc = -EFAULT;
+		rc = -EIO;
 	}
 
 	return rc;
@@ -852,7 +852,7 @@ int bnxt_qplib_init_rcfw(struct bnxt_qplib_rcfw *rcfw,
 	 */
 	if (is_virtfn)
 		goto skip_ctx_setup;
-	if (bnxt_qplib_is_chip_gen_p5(rcfw->res->cctx))
+	if (bnxt_qplib_is_chip_gen_p5_p7(rcfw->res->cctx))
 		goto config_vf_res;
 
 	lvl = ctx->qpc_tbl.level;
