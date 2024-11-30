@@ -359041,13 +359041,13 @@ elf_symbol {
   full_name: "__traceiter_android_vh_mutex_unlock_slowpath"
 }
 elf_symbol {
-  id: 0x6105c960
-  name: "__traceiter_android_vh_mutex_unlock_slowpath_before_wakeq"
+  id: 0x34502396
+  name: "__traceiter_android_vh_mutex_unlock_slowpath_bf_wakeq"
   is_defined: true
   symbol_type: FUNCTION
-  crc: 0x73d405f2
+  crc: 0x607266e0
   type_id: 0x9b2239e7
-  full_name: "__traceiter_android_vh_mutex_unlock_slowpath_before_wakeq"
+  full_name: "__traceiter_android_vh_mutex_unlock_slowpath_bf_wakeq"
 }
 elf_symbol {
   id: 0xe17999f4
@@ -365314,13 +365314,13 @@ elf_symbol {
   full_name: "__tracepoint_android_vh_mutex_unlock_slowpath"
 }
 elf_symbol {
-  id: 0x5890e7da
-  name: "__tracepoint_android_vh_mutex_unlock_slowpath_before_wakeq"
+  id: 0x2d21cb40
+  name: "__tracepoint_android_vh_mutex_unlock_slowpath_bf_wakeq"
   is_defined: true
   symbol_type: OBJECT
-  crc: 0x4fc5f337
+  crc: 0x3ad373d6
   type_id: 0x18ccbd2c
-  full_name: "__tracepoint_android_vh_mutex_unlock_slowpath_before_wakeq"
+  full_name: "__tracepoint_android_vh_mutex_unlock_slowpath_bf_wakeq"
 }
 elf_symbol {
   id: 0x76e879b6
@@ -429073,7 +429073,7 @@ interface {
   symbol_id: 0x17b175ff
   symbol_id: 0x2a856841
   symbol_id: 0x0b2ba11b
-  symbol_id: 0x6105c960
+  symbol_id: 0x34502396
   symbol_id: 0xe17999f4
   symbol_id: 0x721b87b7
   symbol_id: 0x1c5ab7ec
@@ -429770,7 +429770,7 @@ interface {
   symbol_id: 0xecc3ea35
   symbol_id: 0x2122908b
   symbol_id: 0x68d68809
-  symbol_id: 0x5890e7da
+  symbol_id: 0x2d21cb40
   symbol_id: 0x76e879b6
   symbol_id: 0xae5bbde9
   symbol_id: 0x830fa786
