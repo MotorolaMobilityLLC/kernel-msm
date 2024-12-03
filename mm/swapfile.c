@@ -108,6 +108,19 @@ static DEFINE_SPINLOCK(swap_avail_lock);
 
 static struct swap_info_struct *swap_info[MAX_SWAPFILES];
 
+struct swap_info_ext {
+	struct list_head frag_clusters[SWAP_NR_ORDERS];
+					/* list of cluster that are fragmented or contented */
+	unsigned int frag_cluster_nr[SWAP_NR_ORDERS];
+};
+
+static struct swap_info_ext *swap_info_ext[MAX_SWAPFILES];
+
+static inline struct swap_info_ext *to_swap_info_ext(struct swap_info_struct *si)
+{
+	return READ_ONCE(swap_info_ext[si->type]); /* rcu_dereference() */
+}
+
 static DEFINE_MUTEX(swapon_mutex);
 
 static DECLARE_WAIT_QUEUE_HEAD(proc_poll_wait);
@@ -526,12 +539,14 @@ static void swap_users_ref_free(struct percpu_ref *ref)
 
 static void free_cluster(struct swap_info_struct *si, struct swap_cluster_info *ci)
 {
+	struct swap_info_ext *sie = to_swap_info_ext(si);
+
 	VM_BUG_ON(ci->count != 0);
 	lockdep_assert_held(&si->lock);
 	lockdep_assert_held(&ci->lock);
 
 	if (ci->flags & CLUSTER_FLAG_FRAG)
-		si->frag_cluster_nr[ci->order]--;
+		sie->frag_cluster_nr[ci->order]--;
 
 	/*
 	 * If the swap is discardable, prepare discard the cluster
@@ -576,6 +591,8 @@ static void inc_cluster_info_page(struct swap_info_struct *p,
 static void dec_cluster_info_page(struct swap_info_struct *p,
 				  struct swap_cluster_info *ci, int nr_pages)
 {
+	struct swap_info_ext *sie = to_swap_info_ext(p);
+
 	if (!p->cluster_info)
 		return;
 
@@ -593,7 +610,7 @@ static void dec_cluster_info_page(struct swap_info_struct *p,
 	if (!(ci->flags & CLUSTER_FLAG_NONFULL)) {
 		VM_BUG_ON(ci->flags & CLUSTER_FLAG_FREE);
 		if (ci->flags & CLUSTER_FLAG_FRAG)
-			p->frag_cluster_nr[ci->order]--;
+			sie->frag_cluster_nr[ci->order]--;
 		list_move_tail(&ci->list, &p->nonfull_clusters[ci->order]);
 		ci->flags = CLUSTER_FLAG_NONFULL;
 	}
@@ -668,6 +685,7 @@ static void cluster_alloc_range(struct swap_info_struct *si, struct swap_cluster
 				unsigned int start, unsigned char usage,
 				unsigned int order)
 {
+	struct swap_info_ext *sie = to_swap_info_ext(si);
 	unsigned int nr_pages = 1 << order;
 
 	if (cluster_is_free(ci)) {
@@ -686,7 +704,7 @@ static void cluster_alloc_range(struct swap_info_struct *si, struct swap_cluster
 		VM_BUG_ON(!(ci->flags &
 			  (CLUSTER_FLAG_FREE | CLUSTER_FLAG_NONFULL | CLUSTER_FLAG_FRAG)));
 		if (ci->flags & CLUSTER_FLAG_FRAG)
-			si->frag_cluster_nr[ci->order]--;
+			sie->frag_cluster_nr[ci->order]--;
 		list_move_tail(&ci->list, &si->full_clusters);
 		ci->flags = CLUSTER_FLAG_FULL;
 	}
@@ -788,6 +806,7 @@ static void swap_reclaim_work(struct work_struct *work)
 static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si, int order,
 					      unsigned char usage)
 {
+	struct swap_info_ext *sie = to_swap_info_ext(si);
 	struct percpu_cluster *cluster;
 	struct swap_cluster_info *ci;
 	unsigned int offset, found = 0;
@@ -819,9 +838,9 @@ new_cluster:
 		while (!list_empty(&si->nonfull_clusters[order])) {
 			ci = list_first_entry(&si->nonfull_clusters[order],
 					      struct swap_cluster_info, list);
-			list_move_tail(&ci->list, &si->frag_clusters[order]);
+			list_move_tail(&ci->list, &sie->frag_clusters[order]);
 			ci->flags = CLUSTER_FLAG_FRAG;
-			si->frag_cluster_nr[order]++;
+			sie->frag_cluster_nr[order]++;
 			offset = alloc_swap_scan_cluster(si, cluster_offset(si, ci),
 							 &found, order, usage);
 			frags++;
@@ -834,15 +853,15 @@ new_cluster:
 			 * Nonfull clusters are moved to frag tail if we reached
 			 * here, count them too, don't over scan the frag list.
 			 */
-			while (frags < si->frag_cluster_nr[order]) {
-				ci = list_first_entry(&si->frag_clusters[order],
+			while (frags < sie->frag_cluster_nr[order]) {
+				ci = list_first_entry(&sie->frag_clusters[order],
 						      struct swap_cluster_info, list);
 				/*
 				 * Rotate the frag list to iterate, they were all failing
 				 * high order allocation or moved here due to per-CPU usage,
 				 * this help keeping usable cluster ahead.
 				 */
-				list_move_tail(&ci->list, &si->frag_clusters[order]);
+				list_move_tail(&ci->list, &sie->frag_clusters[order]);
 				offset = alloc_swap_scan_cluster(si, cluster_offset(si, ci),
 								 &found, order, usage);
 				frags++;
@@ -874,8 +893,8 @@ new_cluster:
 		 * Clusters here have at least one usable slots and can't fail order 0
 		 * allocation, but reclaim may drop si->lock and race with another user.
 		 */
-		while (!list_empty(&si->frag_clusters[o])) {
-			ci = list_first_entry(&si->frag_clusters[o],
+		while (!list_empty(&sie->frag_clusters[o])) {
+			ci = list_first_entry(&sie->frag_clusters[o],
 					      struct swap_cluster_info, list);
 			offset = alloc_swap_scan_cluster(si, cluster_offset(si, ci),
 							 &found, 0, usage);
@@ -3024,7 +3043,9 @@ late_initcall(max_swapfiles_check);
 static struct swap_info_struct *alloc_swap_info(void)
 {
 	struct swap_info_struct *p;
+	struct swap_info_ext *sie;
 	struct swap_info_struct *defer = NULL;
+	struct swap_info_ext *defer_sie = NULL;
 	unsigned int type;
 	int i;
 
@@ -3032,9 +3053,14 @@ static struct swap_info_struct *alloc_swap_info(void)
 	if (!p)
 		return ERR_PTR(-ENOMEM);
 
+	sie = kvzalloc(sizeof(struct swap_info_ext), GFP_KERNEL);
+	if (!sie)
+		return ERR_PTR(-ENOMEM);
+
 	if (percpu_ref_init(&p->users, swap_users_ref_free,
 			    PERCPU_REF_INIT_DEAD, GFP_KERNEL)) {
 		kvfree(p);
+		kvfree(sie);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -3047,6 +3073,7 @@ static struct swap_info_struct *alloc_swap_info(void)
 		spin_unlock(&swap_lock);
 		percpu_ref_exit(&p->users);
 		kvfree(p);
+		kvfree(sie);
 		return ERR_PTR(-EPERM);
 	}
 	if (type >= nr_swapfiles) {
@@ -3056,10 +3083,13 @@ static struct swap_info_struct *alloc_swap_info(void)
 		 * Note that kvzalloc() above zeroes all its fields.
 		 */
 		smp_store_release(&swap_info[type], p); /* rcu_assign_pointer() */
+		smp_store_release(&swap_info_ext[type], sie); /* rcu_assign_pointer() */
 		nr_swapfiles++;
 	} else {
 		defer = p;
 		p = swap_info[type];
+		defer_sie = sie;
+		sie = swap_info_ext[type];
 		/*
 		 * Do not memset this entry: a racing procfs swap_next()
 		 * would be relying on p->type to remain valid.
@@ -3074,6 +3104,7 @@ static struct swap_info_struct *alloc_swap_info(void)
 	if (defer) {
 		percpu_ref_exit(&defer->users);
 		kvfree(defer);
+		kvfree(defer_sie);
 	}
 	spin_lock_init(&p->lock);
 	spin_lock_init(&p->cont_lock);
@@ -3224,6 +3255,7 @@ static int setup_swap_map_and_extents(struct swap_info_struct *p,
 					unsigned long maxpages,
 					sector_t *span)
 {
+	struct swap_info_ext *sie = to_swap_info_ext(p);
 	unsigned int j, k;
 	unsigned int nr_good_pages;
 	int nr_extents;
@@ -3239,8 +3271,8 @@ static int setup_swap_map_and_extents(struct swap_info_struct *p,
 
 	for (i = 0; i < SWAP_NR_ORDERS; i++) {
 		INIT_LIST_HEAD(&p->nonfull_clusters[i]);
-		INIT_LIST_HEAD(&p->frag_clusters[i]);
-		p->frag_cluster_nr[i] = 0;
+		INIT_LIST_HEAD(&sie->frag_clusters[i]);
+		sie->frag_cluster_nr[i] = 0;
 	}
 
 	for (i = 0; i < swap_header->info.nr_badpages; i++) {
