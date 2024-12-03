@@ -346653,6 +346653,15 @@ function {
   parameter_id: 0x18bd6530
 }
 function {
+  id: 0xa1164938
+  return_type_id: 0xfc0e1dbd
+  parameter_id: 0x18ea6ae3
+  parameter_id: 0x0379c823
+  parameter_id: 0x0b3a3706
+  parameter_id: 0xf435685e
+  parameter_id: 0x4585663f
+}
+function {
   id: 0xa12d5d56
   return_type_id: 0xfc0e1dbd
   parameter_id: 0x18ea6ae3
@@ -425395,6 +425404,15 @@ elf_symbol {
   full_name: "vfs_setpos"
 }
 elf_symbol {
+  id: 0x15481b49
+  name: "vfs_splice_read"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xda03ee39
+  type_id: 0xa1164938
+  full_name: "vfs_splice_read"
+}
+elf_symbol {
   id: 0xf96f1be3
   name: "vfs_statfs"
   is_defined: true
@@ -436488,6 +436506,7 @@ interface {
   symbol_id: 0xa59dd70a
   symbol_id: 0x8aac7146
   symbol_id: 0x2ad025fd
+  symbol_id: 0x15481b49
   symbol_id: 0xf96f1be3
   symbol_id: 0x2e5511da
   symbol_id: 0x6031d6ee
