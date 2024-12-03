@@ -86,3 +86,18 @@ type 'enum ftrace_dump_mode' changed
 type 'struct cgroup_root' changed
   member 'u8 android_backport_reserved1[28]' was removed
   member 'union { struct callback_head rcu; struct { u8 android_backport_reserved1[28]; }; union { }; }' was added
+
+1 function symbol(s) removed
+  'int __traceiter_android_vh_mutex_unlock_slowpath_before_wakeq(void*, struct mutex*)'
+
+1 variable symbol(s) removed
+  'struct tracepoint __tracepoint_android_vh_mutex_unlock_slowpath_before_wakeq'
+
+2 function symbol(s) removed
+  'int __traceiter_android_vh_mutex_unlock_slowpath_before_wakeq(void*, struct mutex*)'
+  'int __traceiter_android_vh_suitable_migration_target_bypass(void*, struct page*, bool*)'
+
+2 variable symbol(s) removed
+  'struct tracepoint __tracepoint_android_vh_mutex_unlock_slowpath_before_wakeq'
+  'struct tracepoint __tracepoint_android_vh_suitable_migration_target_bypass'
+
