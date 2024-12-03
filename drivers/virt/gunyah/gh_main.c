@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -374,7 +374,15 @@ start_vcpu_run:
 			return ret;
 		}
 	} else {
-		gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
+		/*
+		 * wait_event is not allowing the process to freez,
+		 * results in device suspend failure. Use wait_event_freezable
+		 * so that device suspends while wait for event.
+		 */
+		ret = wait_event_freezable(vm->vm_status_wait,
+			(vm->status.vm_status == GH_RM_VM_STATUS_EXITED));
+		if (ret < 0)
+			return ret;
 		ret = vm->exit_type;
 	}
 
