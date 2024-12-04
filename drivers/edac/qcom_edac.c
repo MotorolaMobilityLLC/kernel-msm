@@ -29,43 +29,64 @@
 
 #define LLCC_COMMON_STATUS0_V2          0x0003000c
 #define LLCC_COMMON_STATUS0_V21         0x0003400c
+#define LLCC_COMMON_STATUS0_V51         0x0006400c
 #define LLCC_COMMON_STATUS0             edac_regs[LLCC_COMMON_STATUS0_num]
 #define LLCC_LB_CNT_MASK                GENMASK(31, 28)
 #define LLCC_LB_CNT_SHIFT               28
 
 /* Single & double bit syndrome register offsets */
 #define TRP_ECC_SB_ERR_SYN0             0x0002034c
+#define TRP_ECC_SB_ERR_SYN0_V51         0x00047490
 #define TRP_ECC_DB_ERR_SYN0             0x00020370
+#define TRP_ECC_DB_ERR_SYN0_V51         0x000474d0
 #define DRP_ECC_SB_ERR_SYN0_V2          0x0004204c
 #define DRP_ECC_SB_ERR_SYN0_V21         0x0005204c
+#define DRP_ECC_SB_ERR_SYN0_V51         0x000820fc
 #define DRP_ECC_SB_ERR_SYN0             edac_regs[DRP_ECC_SB_ERR_SYN0_num]
 #define DRP_ECC_DB_ERR_SYN0_V2          0x00042070
 #define DRP_ECC_DB_ERR_SYN0_V21         0x00052070
+#define DRP_ECC_DB_ERR_SYN0_V51         0x00082120
 #define DRP_ECC_DB_ERR_SYN0             edac_regs[DRP_ECC_DB_ERR_SYN0_num]
 
 /* Error register offsets */
 #define TRP_ECC_ERROR_STATUS1           0x00020348
+#define TRP_ECC_ERROR_STATUS1_V51       0x00047450
 #define TRP_ECC_ERROR_STATUS0           0x00020344
+#define TRP_ECC_ERROR_STATUS0_V51       0x00047448
 #define DRP_ECC_ERROR_STATUS1_V2        0x00042048
 #define DRP_ECC_ERROR_STATUS1_V21       0x00052048
+#define DRP_ECC_ERROR_STATUS1_V51       0x000820f8
 #define DRP_ECC_ERROR_STATUS1           edac_regs[DRP_ECC_ERROR_STATUS1_num]
 #define DRP_ECC_ERROR_STATUS0_V2        0x00042044
 #define DRP_ECC_ERROR_STATUS0_V21       0x00052044
+#define DRP_ECC_ERROR_STATUS0_V51       0x000820f4
 #define DRP_ECC_ERROR_STATUS0           edac_regs[DRP_ECC_ERROR_STATUS0_num]
 
 /* TRP, DRP interrupt register offsets */
 #define DRP_INTERRUPT_STATUS_V2         0x00041000
 #define DRP_INTERRUPT_STATUS_V21        0x00050020
+#define DRP_INTERRUPT_STATUS_V51        0x00080020
 #define DRP_INTERRUPT_STATUS            edac_regs[DRP_INTERRUPT_STATUS_num]
-#define TRP_INTERRUPT_0_STATUS          0x00020480
+#define TRP_INTERRUPT_0_STATUS_V2       0x00020480
+#define TRP_INTERRUPT_0_STATUS_V21      0x00020480
+#define TRP_INTERRUPT_0_STATUS_V51      0x00047600
+#define TRP_INTERRUPT_0_STATUS          edac_regs[TRP_INTERRUPT_0_STATUS_num]
 #define DRP_INTERRUPT_CLEAR_V2          0x00041008
 #define DRP_INTERRUPT_CLEAR_V21         0x00050028
+#define DRP_INTERRUPT_CLEAR_V51         0x00080028
 #define DRP_INTERRUPT_CLEAR             edac_regs[DRP_INTERRUPT_CLEAR_num]
 #define DRP_ECC_ERROR_CNTR_CLEAR_V2     0x00040004
 #define DRP_ECC_ERROR_CNTR_CLEAR_V21    0x00050004
+#define DRP_ECC_ERROR_CNTR_CLEAR_V51    0x00080004
 #define DRP_ECC_ERROR_CNTR_CLEAR        edac_regs[DRP_ECC_ERROR_CNTR_CLEAR_num]
-#define TRP_INTERRUPT_0_CLEAR           0x00020484
-#define TRP_ECC_ERROR_CNTR_CLEAR        0x00020440
+#define TRP_INTERRUPT_0_CLEAR_V2        0x00020484
+#define TRP_INTERRUPT_0_CLEAR_V21       0x00020484
+#define TRP_INTERRUPT_0_CLEAR_V51       0x00047604
+#define TRP_INTERRUPT_0_CLEAR           edac_regs[TRP_INTERRUPT_0_CLEAR_num]
+#define TRP_ECC_ERROR_CNTR_CLEAR_V2     0x00020440
+#define TRP_ECC_ERROR_CNTR_CLEAR_V21    0x00020440
+#define TRP_ECC_ERROR_CNTR_CLEAR_V51    0x00047444
+#define TRP_ECC_ERROR_CNTR_CLEAR        edac_regs[TRP_ECC_ERROR_CNTR_CLEAR_num]
 
 /* Mask and shift macros */
 #define ECC_DB_ERR_COUNT_MASK           GENMASK(4, 0)
@@ -85,18 +106,25 @@
 /* Config registers offsets*/
 #define DRP_ECC_ERROR_CFG_V2            0x00040000
 #define DRP_ECC_ERROR_CFG_V21           0x00050000
+#define DRP_ECC_ERROR_CFG_V51           0x00080000
 #define DRP_ECC_ERROR_CFG               edac_regs[DRP_ECC_ERROR_CFG_num]
 
 /* Tag RAM, Data RAM interrupt register offsets */
 #define CMN_INTERRUPT_0_ENABLE_V2       0x0003001c
 #define CMN_INTERRUPT_0_ENABLE_V21      0x0003401c
+#define CMN_INTERRUPT_0_ENABLE_V51      0x0006401c
 #define CMN_INTERRUPT_0_ENABLE          edac_regs[CMN_INTERRUPT_0_ENABLE_num]
 #define CMN_INTERRUPT_2_ENABLE_V2       0x0003003c
 #define CMN_INTERRUPT_2_ENABLE_V21      0x0003403c
+#define CMN_INTERRUPT_2_ENABLE_V51      0x0006403c
 #define CMN_INTERRUPT_2_ENABLE          edac_regs[CMN_INTERRUPT_2_ENABLE_num]
-#define TRP_INTERRUPT_0_ENABLE          0x00020488
+#define TRP_INTERRUPT_0_ENABLE_V2       0x00020488
+#define TRP_INTERRUPT_0_ENABLE_V21      0x00020488
+#define TRP_INTERRUPT_0_ENABLE_V51      0x00047608
+#define TRP_INTERRUPT_0_ENABLE          edac_regs[TRP_INTERRUPT_0_ENABLE_num]
 #define DRP_INTERRUPT_ENABLE_V2         0x0004100c
 #define DRP_INTERRUPT_ENABLE_V21        0x0005002C
+#define DRP_INTERRUPT_ENABLE_V51        0x0008002c
 #define DRP_INTERRUPT_ENABLE            edac_regs[DRP_INTERRUPT_ENABLE_num]
 
 #define SB_ERROR_THRESHOLD              0x1
@@ -126,6 +154,10 @@ enum {
 	CMN_INTERRUPT_0_ENABLE_num,
 	CMN_INTERRUPT_2_ENABLE_num,
 	DRP_INTERRUPT_ENABLE_num,
+	TRP_INTERRUPT_0_ENABLE_num,
+	TRP_INTERRUPT_0_CLEAR_num,
+	TRP_INTERRUPT_0_STATUS_num,
+	TRP_ECC_ERROR_CNTR_CLEAR_num,
 	EDAC_REGS_MAX,
 };
 
@@ -145,6 +177,10 @@ static unsigned int edac_regs_v2[EDAC_REGS_MAX] = {
 	CMN_INTERRUPT_0_ENABLE_V2,
 	CMN_INTERRUPT_2_ENABLE_V2,
 	DRP_INTERRUPT_ENABLE_V2,
+	TRP_INTERRUPT_0_ENABLE_V2,
+	TRP_INTERRUPT_0_CLEAR_V2,
+	TRP_INTERRUPT_0_STATUS_V2,
+	TRP_ECC_ERROR_CNTR_CLEAR_V2,
 };
 
 static unsigned int edac_regs_v21[EDAC_REGS_MAX] = {
@@ -160,6 +196,29 @@ static unsigned int edac_regs_v21[EDAC_REGS_MAX] = {
 	CMN_INTERRUPT_0_ENABLE_V21,
 	CMN_INTERRUPT_2_ENABLE_V21,
 	DRP_INTERRUPT_ENABLE_V21,
+	TRP_INTERRUPT_0_ENABLE_V21,
+	TRP_INTERRUPT_0_CLEAR_V21,
+	TRP_INTERRUPT_0_STATUS_V21,
+	TRP_ECC_ERROR_CNTR_CLEAR_V21,
+};
+
+static unsigned int edac_regs_v51[EDAC_REGS_MAX] = {
+	LLCC_COMMON_STATUS0_V51,
+	DRP_ECC_SB_ERR_SYN0_V51,
+	DRP_ECC_DB_ERR_SYN0_V51,
+	DRP_ECC_ERROR_STATUS1_V51,
+	DRP_ECC_ERROR_STATUS0_V51,
+	DRP_INTERRUPT_STATUS_V51,
+	DRP_INTERRUPT_CLEAR_V51,
+	DRP_ECC_ERROR_CNTR_CLEAR_V51,
+	DRP_ECC_ERROR_CFG_V51,
+	CMN_INTERRUPT_0_ENABLE_V51,
+	CMN_INTERRUPT_2_ENABLE_V51,
+	DRP_INTERRUPT_ENABLE_V51,
+	TRP_INTERRUPT_0_ENABLE_V51,
+	TRP_INTERRUPT_0_CLEAR_V51,
+	TRP_INTERRUPT_0_STATUS_V51,
+	TRP_ECC_ERROR_CNTR_CLEAR_V51,
 };
 
 static unsigned int *edac_regs = edac_regs_v2;
@@ -243,6 +302,49 @@ static struct llcc_edac_reg_data edac_reg_data_v21[] = {
 		.synd_reg = TRP_ECC_DB_ERR_SYN0,
 		.count_status_reg = TRP_ECC_ERROR_STATUS1,
 		.ways_status_reg = TRP_ECC_ERROR_STATUS0,
+		.reg_cnt = TRP_SYN_REG_CNT,
+		.count_mask = ECC_DB_ERR_COUNT_MASK,
+		.ways_mask = ECC_DB_ERR_WAYS_MASK,
+		.ways_shift = ECC_DB_ERR_WAYS_SHIFT,
+	},
+};
+
+static struct llcc_edac_reg_data edac_reg_data_v51[] = {
+	[LLCC_DRAM_CE] = {
+		.name = "DRAM Single-bit",
+		.synd_reg = DRP_ECC_SB_ERR_SYN0_V51,
+		.count_status_reg = DRP_ECC_ERROR_STATUS1_V51,
+		.ways_status_reg = DRP_ECC_ERROR_STATUS0_V51,
+		.reg_cnt = DRP_SYN_REG_CNT,
+		.count_mask = ECC_SB_ERR_COUNT_MASK,
+		.ways_mask = ECC_SB_ERR_WAYS_MASK,
+		.count_shift = ECC_SB_ERR_COUNT_SHIFT,
+	},
+	[LLCC_DRAM_UE] = {
+		.name = "DRAM Double-bit",
+		.synd_reg = DRP_ECC_DB_ERR_SYN0_V51,
+		.count_status_reg = DRP_ECC_ERROR_STATUS1_V51,
+		.ways_status_reg = DRP_ECC_ERROR_STATUS0_V51,
+		.reg_cnt = DRP_SYN_REG_CNT,
+		.count_mask = ECC_DB_ERR_COUNT_MASK,
+		.ways_mask = ECC_DB_ERR_WAYS_MASK,
+		.ways_shift = ECC_DB_ERR_WAYS_SHIFT,
+	},
+	[LLCC_TRAM_CE] = {
+		.name = "TRAM Single-bit",
+		.synd_reg = TRP_ECC_SB_ERR_SYN0_V51,
+		.count_status_reg = TRP_ECC_ERROR_STATUS1_V51,
+		.ways_status_reg = TRP_ECC_ERROR_STATUS0_V51,
+		.reg_cnt = TRP_SYN_REG_CNT,
+		.count_mask = ECC_SB_ERR_COUNT_MASK,
+		.ways_mask = ECC_SB_ERR_WAYS_MASK,
+		.count_shift = ECC_SB_ERR_COUNT_SHIFT,
+	},
+	[LLCC_TRAM_UE] = {
+		.name = "TRAM Double-bit",
+		.synd_reg = TRP_ECC_DB_ERR_SYN0_V51,
+		.count_status_reg = TRP_ECC_ERROR_STATUS1_V51,
+		.ways_status_reg = TRP_ECC_ERROR_STATUS0_V51,
 		.reg_cnt = TRP_SYN_REG_CNT,
 		.count_mask = ECC_DB_ERR_COUNT_MASK,
 		.ways_mask = ECC_DB_ERR_WAYS_MASK,
@@ -485,9 +587,15 @@ static int qcom_llcc_edac_probe(struct platform_device *pdev)
 	int ecc_irq;
 	int rc;
 
-	if (llcc_driv_data->llcc_ver > 20) {
+	if (llcc_driv_data->llcc_ver > 20 && llcc_driv_data->llcc_ver <= 50) {
 		edac_reg_data = edac_reg_data_v21;
 		edac_regs = edac_regs_v21;
+	} else if (llcc_driv_data->llcc_ver <= 20) {
+		edac_reg_data = edac_reg_data_v2;
+		edac_regs = edac_regs_v2;
+	} else {
+		edac_reg_data = edac_reg_data_v51;
+		edac_regs = edac_regs_v51;
 	}
 
 	/* Allocate edac control info */
