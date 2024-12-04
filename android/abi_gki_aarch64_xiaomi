@@ -96,6 +96,8 @@
   __tracepoint_android_vh_customize_thp_pcp_order
   __traceiter_android_vh_customize_thp_gfp_orders
   __tracepoint_android_vh_customize_thp_gfp_orders
+  __traceiter_android_vh_customize_pmd_gfp_bypass
+  __tracepoint_android_vh_customize_pmd_gfp_bypass
   __traceiter_android_vh_refault_filemap_add_folio
   __tracepoint_android_vh_refault_filemap_add_folio
   __traceiter_android_vh_mem_cgroup_charge
