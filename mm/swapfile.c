@@ -113,6 +113,8 @@ struct swap_info_ext {
 					/* list of cluster that are fragmented or contented */
 	unsigned int frag_cluster_nr[SWAP_NR_ORDERS];
 	struct list_head full_clusters;		/* full clusters list */
+	struct work_struct reclaim_work;	/* reclaim worker */
+	signed char type;			/* strange name for an index */
 };
 
 static struct swap_info_ext *swap_info_ext[MAX_SWAPFILES];
@@ -120,6 +122,11 @@ static struct swap_info_ext *swap_info_ext[MAX_SWAPFILES];
 static inline struct swap_info_ext *to_swap_info_ext(struct swap_info_struct *si)
 {
 	return READ_ONCE(swap_info_ext[si->type]); /* rcu_dereference() */
+}
+
+static inline struct swap_info_struct *to_swap_info_struct(struct swap_info_ext *sie)
+{
+	return READ_ONCE(swap_info[sie->type]); /* rcu_dereference() */
 }
 
 static DEFINE_MUTEX(swapon_mutex);
@@ -791,9 +798,11 @@ static void swap_reclaim_full_clusters(struct swap_info_struct *si, bool force)
 
 static void swap_reclaim_work(struct work_struct *work)
 {
+	struct swap_info_ext *sie;
 	struct swap_info_struct *si;
 
-	si = container_of(work, struct swap_info_struct, reclaim_work);
+	sie = container_of(work, struct swap_info_ext, reclaim_work);
+	si = to_swap_info_struct(sie);
 
 	spin_lock(&si->lock);
 	swap_reclaim_full_clusters(si, true);
@@ -938,6 +947,7 @@ static void del_from_avail_list(struct swap_info_struct *p)
 static void swap_range_alloc(struct swap_info_struct *si, unsigned long offset,
 			     unsigned int nr_entries)
 {
+	struct swap_info_ext *sie = to_swap_info_ext(si);
 	unsigned int end = offset + nr_entries - 1;
 
 	if (offset == si->lowest_bit)
@@ -951,7 +961,7 @@ static void swap_range_alloc(struct swap_info_struct *si, unsigned long offset,
 		del_from_avail_list(si);
 
 		if (vm_swap_full())
-			schedule_work(&si->reclaim_work);
+			schedule_work(&sie->reclaim_work);
 	}
 }
 
@@ -2730,6 +2740,7 @@ bool has_usable_swap(void)
 
 SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
 {
+	struct swap_info_ext *sie = NULL;
 	struct swap_info_struct *p = NULL;
 	unsigned char *swap_map;
 	struct swap_cluster_info *cluster_info;
@@ -2769,6 +2780,9 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
 		spin_unlock(&swap_lock);
 		goto out_dput;
 	}
+
+	sie = to_swap_info_ext(p);
+
 	if (!security_vm_enough_memory_mm(current->mm, p->pages))
 		vm_unacct_memory(p->pages);
 	else {
@@ -2826,7 +2840,7 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
 	wait_for_completion(&p->comp);
 
 	flush_work(&p->discard_work);
-	flush_work(&p->reclaim_work);
+	flush_work(&sie->reclaim_work);
 
 	destroy_swap_extents(p);
 	if (p->flags & SWP_CONTINUED)
@@ -3080,6 +3094,7 @@ static struct swap_info_struct *alloc_swap_info(void)
 	}
 	if (type >= nr_swapfiles) {
 		p->type = type;
+		sie->type = type;
 		/*
 		 * Publish the swap_info_struct after initializing it.
 		 * Note that kvzalloc() above zeroes all its fields.
@@ -3344,6 +3359,7 @@ static int setup_swap_map_and_extents(struct swap_info_struct *p,
 
 SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 {
+	struct swap_info_ext *sie;
 	struct swap_info_struct *p;
 	struct filename *name;
 	struct file *swap_file = NULL;
@@ -3374,8 +3390,10 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 	if (IS_ERR(p))
 		return PTR_ERR(p);
 
+	sie = to_swap_info_ext(p);
+
 	INIT_WORK(&p->discard_work, swap_discard_work);
-	INIT_WORK(&p->reclaim_work, swap_reclaim_work);
+	INIT_WORK(&sie->reclaim_work, swap_reclaim_work);
 
 	name = getname(specialfile);
 	if (IS_ERR(name)) {
