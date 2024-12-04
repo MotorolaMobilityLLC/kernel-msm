@@ -321,6 +321,9 @@
     },
     {
       "name": "VtsHalBluetoothAudioTargetTest"
+    },
+    {
+      "name": "CtsBionicTestCases"
     }
   ]
 }

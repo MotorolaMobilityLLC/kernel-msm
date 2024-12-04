@@ -247,6 +247,9 @@
     },
     {
       "name": "binderSafeInterfaceTest"
+    },
+    {
+      "name": "CtsBionicTestCases"
     }
   ]
 }
