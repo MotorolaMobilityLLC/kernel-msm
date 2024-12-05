@@ -287,6 +287,9 @@
     },
     {
       "name": "CtsBionicTestCases"
+    },
+    {
+      "name": "CtsLibcoreTestCases"
     }
   ]
 }

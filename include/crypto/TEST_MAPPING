@@ -316,6 +316,9 @@
     },
     {
       "name": "CtsBionicTestCases"
+    },
+    {
+      "name": "CtsLibcoreTestCases"
     }
   ]
 }
