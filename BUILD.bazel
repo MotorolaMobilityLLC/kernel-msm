@@ -1384,6 +1384,28 @@ cc_binary_with_abi(
     ],
 )
 
+cc_library(
+    name = "kselftest_memfd",
+    srcs = ["tools/testing/selftests/memfd/common.c"],
+    hdrs = ["tools/testing/selftests/memfd/common.h"],
+    copts = _KSELFTEST_COPTS,
+    visibility = ["//visibility:private"],
+    deps = [
+        ":kselftest_headers_lib",
+    ],
+)
+
+cc_binary_with_abi(
+    name = "kselftest_memfd_test",
+    srcs = ["tools/testing/selftests/memfd/memfd_test.c"],
+    copts = _KSELFTEST_COPTS,
+    includes = ["tools/testing/selftests"],
+    path_prefix = _KSELFTEST_DIR,
+    target_compatible_with = ["@platforms//os:android"],
+    visibility = ["//visibility:private"],
+    deps = [":kselftest_memfd"],
+)
+
 cc_binary_with_abi(
     name = "kselftest_mm_compaction_test",
     srcs = ["tools/testing/selftests/mm/compaction_test.c"],
@@ -2093,6 +2115,7 @@ android_filegroup(
         ":kselftest_futex_futex_wait_x86_64",
         ":kselftest_gen_config",
         ":kselftest_kcmp_kcmp_test_x86_64",
+        ":kselftest_memfd_test_x86_64",
         ":kselftest_mm_compaction_test_x86_64",
         ":kselftest_mm_hugepage_mmap_x86_64",
         ":kselftest_mm_hugepage_shm_x86_64",
@@ -2297,6 +2320,7 @@ android_filegroup(
         ":kselftest_futex_futex_wait_wouldblock_arm64",
         ":kselftest_gen_config",
         ":kselftest_kcmp_kcmp_test_arm64",
+        ":kselftest_memfd_test_arm64",
         ":kselftest_mm_compaction_test_arm64",
         ":kselftest_mm_hugepage_mmap_arm64",
         ":kselftest_mm_hugepage_shm_arm64",
