@@ -104,6 +104,14 @@
   __tracepoint_android_vh_mem_cgroup_charge
   __tracepoint_android_vh_filemap_add_folio
   __tracepoint_android_vh_shrink_node
+  __tracepoint_cma_alloc_start
+  __tracepoint_cma_alloc_busy_retry
+  __tracepoint_cma_alloc_finish
+  __tracepoint_cma_release
+  __traceiter_cma_alloc_start
+  __traceiter_cma_alloc_busy_retry
+  __traceiter_cma_alloc_finish
+  __traceiter_cma_release
   mmc_set_blocklen
   nr_free_buffer_pages
 
