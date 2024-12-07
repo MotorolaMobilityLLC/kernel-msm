@@ -112,6 +112,8 @@
   __traceiter_cma_alloc_busy_retry
   __traceiter_cma_alloc_finish
   __traceiter_cma_release
+  __traceiter_android_vh_dma_buf_release
+  __tracepoint_android_vh_dma_buf_release
   mmc_set_blocklen
   nr_free_buffer_pages
 

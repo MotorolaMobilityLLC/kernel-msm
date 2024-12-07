@@ -338099,6 +338099,12 @@ function {
   parameter_id: 0x01222f7d
 }
 function {
+  id: 0x9bac9a8d
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x00c83ba6
+}
+function {
   id: 0x9bacd4a1
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -357944,6 +357950,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_dm_bufio_shrink_scan_bypass"
 }
 elf_symbol {
+  id: 0x6664371a
+  name: "__traceiter_android_vh_dma_buf_release"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x3f2ea3db
+  type_id: 0x9bac9a8d
+  full_name: "__traceiter_android_vh_dma_buf_release"
+}
+elf_symbol {
   id: 0x94b48bb0
   name: "__traceiter_android_vh_dma_heap_buffer_alloc_end"
   is_defined: true
@@ -364269,6 +364284,15 @@ elf_symbol {
   crc: 0x6355ed22
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_dm_bufio_shrink_scan_bypass"
+}
+elf_symbol {
+  id: 0x7bbd7744
+  name: "__tracepoint_android_vh_dma_buf_release"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x49d73a7a
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_dma_buf_release"
 }
 elf_symbol {
   id: 0x30442e2e
@@ -429186,6 +429210,7 @@ interface {
   symbol_id: 0x5db6a094
   symbol_id: 0x0bf2f5bb
   symbol_id: 0x5c382938
+  symbol_id: 0x6664371a
   symbol_id: 0x94b48bb0
   symbol_id: 0xbcd1a27c
   symbol_id: 0x33876061
@@ -429889,6 +429914,7 @@ interface {
   symbol_id: 0x694ad7a6
   symbol_id: 0x1ddb60ad
   symbol_id: 0x0ae2ee16
+  symbol_id: 0x7bbd7744
   symbol_id: 0x30442e2e
   symbol_id: 0x9d32ef5e
   symbol_id: 0x1972fe5b
