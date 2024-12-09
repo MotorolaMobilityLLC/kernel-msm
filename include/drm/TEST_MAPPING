@@ -310,6 +310,9 @@
     },
     {
       "name": "CtsLibcoreTestCases"
+    },
+    {
+      "name": "CtsUsbTests"
     }
   ]
 }
