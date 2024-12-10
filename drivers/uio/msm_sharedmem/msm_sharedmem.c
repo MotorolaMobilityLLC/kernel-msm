@@ -127,7 +127,7 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 	bool is_addr_dynamic = false;
 	bool guard_memory = false;
 	bool vm_nav_path = false;
-	int maxtry = 10;
+	int maxtry = 30;
 
 	/* Get the addresses from platform-data */
 	if (!pdev->dev.of_node) {

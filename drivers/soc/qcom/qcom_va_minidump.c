@@ -764,7 +764,7 @@ static int qcom_va_md_driver_probe(struct platform_device *pdev)
 	int count;
 	struct page **pages, *page;
 	dma_addr_t dma_handle;
-	int maxtry = 10;
+	int maxtry = 30;
 
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
 	if (ret)
