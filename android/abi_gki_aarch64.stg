@@ -303422,6 +303422,12 @@ function {
   parameter_id: 0x0490bb4a
 }
 function {
+  id: 0x101d83a0
+  return_type_id: 0x48b5725f
+  parameter_id: 0x01c5a749
+  parameter_id: 0x3d2ef874
+}
+function {
   id: 0x101da732
   return_type_id: 0x48b5725f
   parameter_id: 0x030b9acf
@@ -350562,6 +350568,14 @@ function {
   id: 0xf2d19814
   return_type_id: 0x26e55184
   parameter_id: 0x3e10b518
+}
+function {
+  id: 0xf2d3e848
+  return_type_id: 0x6d7f5ff6
+  parameter_id: 0x324e7f0f
+  parameter_id: 0x3bcd0c02
+  parameter_id: 0x2de928d9
+  parameter_id: 0x18bd6530
 }
 function {
   id: 0xf2d73ac2
@@ -423829,6 +423843,15 @@ elf_symbol {
   full_name: "v4l2_ctrl_get_menu"
 }
 elf_symbol {
+  id: 0x1b3bffbd
+  name: "v4l2_ctrl_get_name"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x32d43420
+  type_id: 0xa0061d65
+  full_name: "v4l2_ctrl_get_name"
+}
+elf_symbol {
   id: 0xd811c59d
   name: "v4l2_ctrl_handler_free"
   is_defined: true
@@ -424747,6 +424770,15 @@ elf_symbol {
   full_name: "v4l2_s_parm_cap"
 }
 elf_symbol {
+  id: 0x90eb49a1
+  name: "v4l2_src_change_event_subdev_subscribe"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xcbc8ea21
+  type_id: 0x9d3b60fc
+  full_name: "v4l2_src_change_event_subdev_subscribe"
+}
+elf_symbol {
   id: 0xac8d7ab3
   name: "v4l2_src_change_event_subscribe"
   is_defined: true
@@ -424846,6 +424878,15 @@ elf_symbol {
   full_name: "v4l2_subdev_link_validate_default"
 }
 elf_symbol {
+  id: 0x5da8252d
+  name: "v4l2_subdev_notify_event"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xeb3d603b
+  type_id: 0x101d83a0
+  full_name: "v4l2_subdev_notify_event"
+}
+elf_symbol {
   id: 0x6ddb8360
   name: "v4l2_subdev_routing_find_opposite_end"
   is_defined: true
@@ -424898,6 +424939,15 @@ elf_symbol {
   crc: 0xc3e44687
   type_id: 0x5a274bcf
   full_name: "v4l2_subdev_state_xlate_streams"
+}
+elf_symbol {
+  id: 0xd07f1826
+  name: "v4l2_valid_dv_timings"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0af3d134
+  type_id: 0xf2d3e848
+  full_name: "v4l2_valid_dv_timings"
 }
 elf_symbol {
   id: 0x7733b651
@@ -436520,6 +436570,7 @@ interface {
   symbol_id: 0xd71b366d
   symbol_id: 0xe2254576
   symbol_id: 0xcab5ad52
+  symbol_id: 0x1b3bffbd
   symbol_id: 0xd811c59d
   symbol_id: 0xd669e74b
   symbol_id: 0xc474068f
@@ -436622,6 +436673,7 @@ interface {
   symbol_id: 0x9b29f9ed
   symbol_id: 0x5f3882d0
   symbol_id: 0xe203e72f
+  symbol_id: 0x90eb49a1
   symbol_id: 0xac8d7ab3
   symbol_id: 0x2f159216
   symbol_id: 0x9cd9421b
@@ -436633,12 +436685,14 @@ interface {
   symbol_id: 0xb1da32d2
   symbol_id: 0x354ec447
   symbol_id: 0x28f5deaf
+  symbol_id: 0x5da8252d
   symbol_id: 0x6ddb8360
   symbol_id: 0x5b5a6294
   symbol_id: 0x5ba76bf9
   symbol_id: 0xecdd8832
   symbol_id: 0x4ccb58cf
   symbol_id: 0xae8bff1a
+  symbol_id: 0xd07f1826
   symbol_id: 0x7733b651
   symbol_id: 0x8e6a3c4a
   symbol_id: 0x3635e264

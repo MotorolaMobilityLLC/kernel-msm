@@ -68,6 +68,10 @@
   v4l2_ctrl_cluster
   v4l2_g_ctrl
   v4l2_i2c_new_subdev
+  v4l2_src_change_event_subdev_subscribe
+  v4l2_valid_dv_timings
+  v4l2_subdev_notify_event
+  v4l2_ctrl_get_name
   vb2_dma_contig_set_max_seg_size
   usb_serial_port_softint
   usb_role_switch_get_role
