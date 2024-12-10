@@ -44,12 +44,18 @@
 #define TLS_PAGE_ORDER	(min_t(unsigned int, PAGE_ALLOC_COSTLY_ORDER,	\
 			       TLS_MAX_PAYLOAD_SIZE >> PAGE_SHIFT))
 
+#if defined(CONFIG_TLS_STATS)
 #define __TLS_INC_STATS(net, field)				\
 	__SNMP_INC_STATS((net)->mib.tls_statistics, field)
 #define TLS_INC_STATS(net, field)				\
 	SNMP_INC_STATS((net)->mib.tls_statistics, field)
 #define TLS_DEC_STATS(net, field)				\
 	SNMP_DEC_STATS((net)->mib.tls_statistics, field)
+#else
+#define __TLS_INC_STATS(net, field)
+#define TLS_INC_STATS(net, field)
+#define TLS_DEC_STATS(net, field)
+#endif /* CONFIG_TLS_STATS */
 
 struct tls_cipher_desc {
 	unsigned int nonce;
