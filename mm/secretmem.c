@@ -234,7 +234,7 @@ SYSCALL_DEFINE1(memfd_secret, unsigned int, flags)
 	/* make sure local flags do not confict with global fcntl.h */
 	BUILD_BUG_ON(SECRETMEM_FLAGS_MASK & O_CLOEXEC);
 
-	if (!secretmem_enable)
+	if (!secretmem_enable || !can_set_direct_map())
 		return -ENOSYS;
 
 	if (flags & ~(SECRETMEM_FLAGS_MASK | O_CLOEXEC))
@@ -278,7 +278,7 @@ static int secretmem_init(void)
 {
 	int ret = 0;
 
-	if (!secretmem_enable)
+	if (!secretmem_enable || !can_set_direct_map())
 		return ret;
 
 	secretmem_mnt = kern_mount(&secretmem_fs);
