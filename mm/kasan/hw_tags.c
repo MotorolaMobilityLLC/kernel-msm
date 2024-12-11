@@ -77,6 +77,12 @@ unsigned int kasan_page_alloc_sample_order = PAGE_ALLOC_SAMPLE_ORDER_DEFAULT;
 
 DEFINE_PER_CPU(long, kasan_page_alloc_skip);
 
+/*
+ * Flush dcache after writing the tag for certain H/W to maintain cache coherence.
+ * The default value is chosen not to flush the cache.
+ */
+DEFINE_STATIC_KEY_FALSE(kasan_inval_dcache);
+
 /* kasan=off/on */
 static int __init early_kasan_flag(char *arg)
 {
@@ -181,6 +187,14 @@ static int __init early_kasan_flag_page_alloc_sample_order(char *arg)
 	return 0;
 }
 early_param("kasan.page_alloc.sample.order", early_kasan_flag_page_alloc_sample_order);
+
+static int __init kasan_set_inval_dcache(char *arg)
+{
+	static_branch_enable(&kasan_inval_dcache);
+
+	return 0;
+}
+early_param("kasan_inval_dcache", kasan_set_inval_dcache);
 
 /*
  * kasan_init_hw_tags_cpu() is called for each CPU.
