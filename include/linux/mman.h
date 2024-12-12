@@ -2,7 +2,9 @@
 #ifndef _LINUX_MMAN_H
 #define _LINUX_MMAN_H
 
+#ifndef __GENKSYMS__
 #include <linux/fs.h>
+#endif
 #include <linux/mm.h>
 #include <linux/percpu_counter.h>
 
