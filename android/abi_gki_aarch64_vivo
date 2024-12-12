@@ -178,6 +178,7 @@
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_sd_init_unmap_multi_segment
   __traceiter_android_vh_sd_setup_unmap_multi_segment
+  __traceiter_android_vh_send_signal_locked
   __traceiter_android_vh_shmem_swapin_folio
   __traceiter_android_vh_should_alloc_pages_retry
   __traceiter_android_vh_shrink_folio_list
@@ -306,6 +307,7 @@
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_sd_init_unmap_multi_segment
   __tracepoint_android_vh_sd_setup_unmap_multi_segment
+  __tracepoint_android_vh_send_signal_locked
   __tracepoint_android_vh_shmem_swapin_folio
   __tracepoint_android_vh_should_alloc_pages_retry
   __tracepoint_android_vh_shrink_folio_list
