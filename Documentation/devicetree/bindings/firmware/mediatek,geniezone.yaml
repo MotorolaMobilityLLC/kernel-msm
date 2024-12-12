@@ -10,7 +10,7 @@ maintainers:
   - Yingshiuan Pan <yingshiuan.pan@mediatek.com>
 
 description:
-  GenieZone is a proprietary type-II hypervisor firmware developed by MediaTek,
+  GenieZone is a proprietary type-I hypervisor firmware developed by MediaTek,
   providing an isolated execution environment for mTEE (MediaTek Trusted
   Execution Environment) and AVF (Android Virtualization Framework) virtual
   machines. This binding facilitates the integration of GenieZone into the
