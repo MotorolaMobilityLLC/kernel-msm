@@ -3,8 +3,10 @@
 #define __ASM_MMAN_H__
 
 #include <linux/compiler.h>
+#ifndef __GENKSYMS__
 #include <linux/fs.h>
 #include <linux/shmem_fs.h>
+#endif
 #include <linux/types.h>
 #include <uapi/asm/mman.h>
 
