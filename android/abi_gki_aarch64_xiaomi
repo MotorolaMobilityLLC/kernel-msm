@@ -482,3 +482,12 @@ __tracepoint_android_vh_zs_shrinker_bypass
 
 # required by msm_drm.ko
 pwm_apply_might_sleep
+
+# required by mi_buffer_io_reclaim ko
+shrink_inactive_list
+__tracepoint_android_vh_copy_page_to_user
+__traceiter_android_vh_copy_page_to_user
+__tracepoint_android_vh_copy_page_from_user
+__traceiter_android_vh_copy_page_from_user
+__tracepoint_android_vh_destroy_inode
+__traceiter_android_vh_destroy_inode
