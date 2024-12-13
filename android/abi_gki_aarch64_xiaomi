@@ -479,3 +479,6 @@ __traceiter_android_vh_zs_shrinker_adjust
 __traceiter_android_vh_zs_shrinker_bypass
 __tracepoint_android_vh_zs_shrinker_adjust
 __tracepoint_android_vh_zs_shrinker_bypass
+
+# required by msm_drm.ko
+pwm_apply_might_sleep
