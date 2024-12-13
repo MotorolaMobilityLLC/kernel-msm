@@ -1235,7 +1235,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 #endif
 	android_init_vendor_data(tsk, 1);
 	android_init_oem_data(tsk, 1);
-
+	android_init_dynamic_vendor_data(tsk);
 	trace_android_vh_dup_task_struct(tsk, orig);
 	return tsk;
 
