@@ -2620,7 +2620,7 @@ static int current_may_throttle(void)
  * shrink_inactive_list() is a helper for shrink_node().  It returns the number
  * of reclaimed pages
  */
-static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
+unsigned long shrink_inactive_list(unsigned long nr_to_scan,
 		struct lruvec *lruvec, struct scan_control *sc,
 		enum lru_list lru)
 {
@@ -2723,6 +2723,7 @@ static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
 			nr_scanned, nr_reclaimed, &stat, sc->priority, file);
 	return nr_reclaimed;
 }
+EXPORT_SYMBOL(shrink_inactive_list);
 
 /*
  * shrink_active_list() moves folios from the active LRU to the inactive LRU.
