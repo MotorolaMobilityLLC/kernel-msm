@@ -473,3 +473,9 @@ __traceiter_android_vh_alloc_flags_cma_adjust
 # required by xr-qi.ko
 __tracepoint_android_vh_futex_wait_queue_start
 __traceiter_android_vh_futex_wait_queue_start
+
+# required by zsmalloc.ko
+__traceiter_android_vh_zs_shrinker_adjust
+__traceiter_android_vh_zs_shrinker_bypass
+__tracepoint_android_vh_zs_shrinker_adjust
+__tracepoint_android_vh_zs_shrinker_bypass
