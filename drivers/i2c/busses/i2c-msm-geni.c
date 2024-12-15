@@ -25,6 +25,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
+#include <linux/bootmarker_kernel.h>
 
 #define SE_GENI_TEST_BUS_CTRL	0x44
 #define SE_NUM_FOR_TEST_BUS	5
@@ -119,6 +120,7 @@ if (dev) \
 #define IMMEDIATE_DMA_LEN	8
 
 #define MIN_NUM_MSGS_FOR_MULTI_DESC_MODE	4
+#define BOOT_MARKER_SIZE	50
 
 /* FTRACE Logging */
 void i2c_trace_log(struct device *dev, const char *fmt, ...)
@@ -219,6 +221,7 @@ struct geni_i2c_dev {
 	u32 dbg_num;
 	struct dbg_buf_ctxt *dbg_buf_ptr;
 	bool is_le_vm;
+	bool is_gsi_cmd;
 	bool pm_ctrl_client;
 	bool req_chan;
 	bool first_xfer_done; /* for le-vm doing lock/unlock, after first xfer initiated. */
@@ -1212,7 +1215,10 @@ static void gi2c_gsi_tx_cb(void *ptr)
 	}
 
 	gi2c = tx_cb->userdata;
-	gi2c_gsi_cb_err(tx_cb, "TX");
+
+	/* For gsi lock/unlock commands, no need to check bus related error */
+	if (!gi2c->is_gsi_cmd)
+		gi2c_gsi_cb_err(tx_cb, "TX");
 
 	atomic_inc(&gi2c->gsi_tx.irq_cnt);
 	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
@@ -1555,6 +1561,7 @@ static int geni_i2c_lock_bus(struct geni_i2c_dev *gi2c)
 		goto geni_i2c_err_lock_bus;
 	}
 
+	gi2c->is_gsi_cmd = true;
 	reinit_completion(&gi2c->xfer);
 	/* Issue TX */
 	tx_cookie = dmaengine_submit(gi2c->tx_desc);
@@ -1576,6 +1583,7 @@ static int geni_i2c_lock_bus(struct geni_i2c_dev *gi2c)
 		gi2c->err = -ETIMEDOUT;
 		goto geni_i2c_err_lock_bus;
 	}
+	gi2c->is_gsi_cmd = false;
 	return 0;
 
 geni_i2c_err_lock_bus:
@@ -1583,6 +1591,7 @@ geni_i2c_err_lock_bus:
 		dmaengine_terminate_all(gi2c->tx_c);
 		gi2c->cfg_sent = 0;
 	}
+	gi2c->is_gsi_cmd = false;
 	geni_capture_stop_time(&gi2c->i2c_rsc, gi2c->ipc_log_kpi, __func__,
 			       gi2c->i2c_kpi, start_time, 0, 0);
 	return gi2c->err;
@@ -1617,6 +1626,7 @@ static void geni_i2c_unlock_bus(struct geni_i2c_dev *gi2c)
 		goto geni_i2c_err_unlock_bus;
 	}
 
+	gi2c->is_gsi_cmd = true;
 	reinit_completion(&gi2c->xfer);
 	/* Issue TX */
 	tx_cookie = dmaengine_submit(gi2c->tx_desc);
@@ -1645,6 +1655,7 @@ geni_i2c_err_unlock_bus:
 		gi2c->cfg_sent = 0;
 		gi2c->err = 0;
 	}
+	gi2c->is_gsi_cmd = false;
 	geni_capture_stop_time(&gi2c->i2c_rsc, gi2c->ipc_log_kpi, __func__,
 			       gi2c->i2c_kpi, start_time, 0, 0);
 }
@@ -2779,6 +2790,9 @@ static int geni_i2c_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 	struct device *dev = &pdev->dev;
+	#if (IS_ENABLED(CONFIG_BOOTMARKER_PROXY))
+	char boot_marker[BOOT_MARKER_SIZE];
+	#endif
 
 	gi2c = devm_kzalloc(&pdev->dev, sizeof(*gi2c), GFP_KERNEL);
 	if (!gi2c)
@@ -2790,7 +2804,13 @@ static int geni_i2c_probe(struct platform_device *pdev)
 
 	gi2c->dev = dev;
 
-	pr_info("boot_kpi: M - DRIVER GENI_I2C Init\n");
+	#if (IS_ENABLED(CONFIG_BOOTMARKER_PROXY))
+		snprintf(boot_marker, sizeof(boot_marker),
+					"M - DRIVER GENI_I2C Init");
+		bootmarker_place_marker(boot_marker);
+	#else
+		dev_dbg(&pdev->dev, "M - DRIVER GENI_I2C Init\n");
+	#endif
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res)
@@ -2927,8 +2947,14 @@ static int geni_i2c_probe(struct platform_device *pdev)
 		/* configure Test bus to dump test bus later, only once */
 		test_bus_enable_per_qupv3(gi2c->wrapper_dev, gi2c->ipcl);
 	}
+	#if (IS_ENABLED(CONFIG_BOOTMARKER_PROXY))
+		snprintf(boot_marker, sizeof(boot_marker),
+					"M - DRIVER GENI_I2C_%d Ready", gi2c->adap.nr);
+		bootmarker_place_marker(boot_marker);
+	#else
+		dev_dbg(&pdev->dev, "M - DRIVER GENI_I2C_%d Ready\n", gi2c->adap.nr);
+	#endif
 
-	pr_info("boot_kpi: M - DRIVER GENI_I2C_%d Ready\n", gi2c->adap.nr);
 	dev_info(gi2c->dev, "I2C probed\n");
 	return 0;
 }

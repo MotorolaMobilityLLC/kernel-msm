@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
+obj-$(CONFIG_QTI_THERMAL_VENDOR_HOOK) += qti_thermal_vendor_hooks.o
 obj-$(CONFIG_QCOM_TSENS)	+= qcom_tsens.o
 qcom_tsens-y			+= tsens.o tsens-v2.o tsens-v1.o tsens-v0_1.o \
 				   tsens-8960.o
@@ -31,7 +32,7 @@ obj-$(CONFIG_QTI_THERMALZONE_CONFIG_DEBUG) += thermal_config.o
 obj-${CONFIG_QTI_SDPM_CLOCK_MONITOR} += sdpm_clk.o
 obj-$(CONFIG_QTI_THERMAL_MINIDUMP) += thermal_minidump.o
 obj-$(CONFIG_THERMAL_TSENS_LEGACY)	+= msm-tsens-driver.o
-msm-tsens-driver-y			+= msm-tsens.o tsens2xxx.o tsens-dbg.o
+msm-tsens-driver-y			+= msm-tsens.o tsens2xxx.o tsens-dbg.o tsens-calib.o tsens-mtc.o tsens1xxx.o
 obj-$(CONFIG_QTI_CX_IPEAK_COOLING_DEVICE) += cx_ipeak_cdev.o
 obj-$(CONFIG_QTI_RPM_SMD_COOLING_DEVICE) += rpm_smd_cooling_device.o
 obj-$(CONFIG_REGULATOR_COOLING_DEVICE) += regulator_cdev.o

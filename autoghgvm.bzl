@@ -39,6 +39,7 @@ def define_autoghgvm():
         "drivers/soc/qcom/mem_buf/mem_buf_dev.ko",
         "drivers/soc/qcom/minidump.ko",
         "drivers/soc/qcom/qcom_logbuf_boot_log.ko",
+        "drivers/soc/qcom/qcom_logbuf_vendor_hooks.ko",
         "drivers/soc/qcom/qcom_wdt_core.ko",
         "drivers/soc/qcom/qmi_helpers.ko",
         "drivers/soc/qcom/rename_devices.ko",
@@ -60,6 +61,8 @@ def define_autoghgvm():
         "net/core/failover.ko",
         "net/qrtr/qrtr.ko",
         "net/qrtr/qrtr-mhi.ko",
+        "net/vmw_vsock/vmw_vsock_virtio_transport.ko",
+        "net/wireless/cfg80211.ko",
     ]
 
     _autoghgvm_consolidate_in_tree_modules = _autoghgvm_in_tree_modules + [

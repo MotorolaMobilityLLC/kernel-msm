@@ -127,7 +127,7 @@ enum mon_type {
 	NUM_MON_TYPES
 };
 
-#define SAMPLING_VOTER	(num_possible_cpus())
+#define SAMPLING_VOTER	max(num_possible_cpus(), 8U)
 #define NUM_FP_VOTERS	(SAMPLING_VOTER + 1)
 
 enum memlat_type {
@@ -1757,10 +1757,13 @@ static int memlat_dev_probe(struct platform_device *pdev)
 			ret = qcom_pmu_event_supported(event_id, cpu);
 			if (!ret)
 				continue;
-			if (ret != -EPROBE_DEFER)
+			if (ret != -EPROBE_DEFER) {
 				dev_err(dev, "ev=%lu not found on cpu%d: %d\n",
 						event_id, cpu, ret);
-			return ret;
+				if (event_id == INST_EV || event_id == CYC_EV)
+					return ret;
+			} else
+				return ret;
 		}
 	}
 
