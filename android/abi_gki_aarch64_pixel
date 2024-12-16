@@ -1937,6 +1937,7 @@
   __seq_open_private
   seq_printf
   seq_putc
+  seq_put_decimal_ull_width
   seq_puts
   seq_read
   seq_release
@@ -2282,10 +2283,14 @@
   __traceiter_android_rvh_iommu_limit_align_shift
   __traceiter_android_rvh_irqs_disable
   __traceiter_android_rvh_irqs_enable
+  __traceiter_android_rvh_madvise_pageout_begin
+  __traceiter_android_rvh_madvise_pageout_end
+  __traceiter_android_rvh_mapping_shrinkable
   __traceiter_android_rvh_meminfo_proc_show
   __traceiter_android_rvh_post_init_entity_util_avg
   __traceiter_android_rvh_preempt_disable
   __traceiter_android_rvh_preempt_enable
+  __traceiter_android_rvh_reclaim_folio_list
   __traceiter_android_rvh_remove_entity_load_avg
   __traceiter_android_rvh_rtmutex_prepare_setprio
   __traceiter_android_rvh_sched_newidle_balance
@@ -2317,11 +2322,15 @@
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
   __traceiter_android_vh_enable_thermal_genl_check
+  __traceiter_android_vh_filemap_get_folio
   __traceiter_android_vh_ipi_stop
+  __traceiter_android_vh_mm_compaction_begin
+  __traceiter_android_vh_mm_compaction_end
   __traceiter_android_vh_mm_kcompactd_cpu_online
   __traceiter_android_vh_prio_inheritance
   __traceiter_android_vh_prio_restore
   __traceiter_android_vh_resume_end
+  __traceiter_android_vh_rmqueue
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_setscheduler_uclamp
   __traceiter_android_vh_set_task_comm
@@ -2384,10 +2393,14 @@
   __tracepoint_android_rvh_iommu_limit_align_shift
   __tracepoint_android_rvh_irqs_disable
   __tracepoint_android_rvh_irqs_enable
+  __tracepoint_android_rvh_madvise_pageout_begin
+  __tracepoint_android_rvh_madvise_pageout_end
+  __tracepoint_android_rvh_mapping_shrinkable
   __tracepoint_android_rvh_meminfo_proc_show
   __tracepoint_android_rvh_post_init_entity_util_avg
   __tracepoint_android_rvh_preempt_disable
   __tracepoint_android_rvh_preempt_enable
+  __tracepoint_android_rvh_reclaim_folio_list
   __tracepoint_android_rvh_remove_entity_load_avg
   __tracepoint_android_rvh_rtmutex_prepare_setprio
   __tracepoint_android_rvh_sched_newidle_balance
@@ -2419,11 +2432,15 @@
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
   __tracepoint_android_vh_enable_thermal_genl_check
+  __tracepoint_android_vh_filemap_get_folio
   __tracepoint_android_vh_ipi_stop
+  __tracepoint_android_vh_mm_compaction_begin
+  __tracepoint_android_vh_mm_compaction_end
   __tracepoint_android_vh_mm_kcompactd_cpu_online
   __tracepoint_android_vh_prio_inheritance
   __tracepoint_android_vh_prio_restore
   __tracepoint_android_vh_resume_end
+  __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_setscheduler_uclamp
   __tracepoint_android_vh_set_task_comm
