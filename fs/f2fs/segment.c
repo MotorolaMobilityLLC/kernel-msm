@@ -1672,12 +1672,22 @@ void f2fs_stop_discard_thread(struct f2fs_sb_info *sbi)
 	}
 }
 
-/* This comes from f2fs_put_super */
+/**
+ * f2fs_issue_discard_timeout() - Issue all discard cmd within UMOUNT_DISCARD_TIMEOUT
+ * @sbi: the f2fs_sb_info data for discard cmd to issue
+ *
+ * When UMOUNT_DISCARD_TIMEOUT is exceeded, all remaining discard commands will be dropped
+ *
+ * Return true if issued all discard cmd or no discard cmd need issue, otherwise return false.
+ */
 bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi)
 {
 	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
 	struct discard_policy dpolicy;
 	bool dropped;
+
+	if (!atomic_read(&dcc->discard_cmd_cnt))
+		return true;
 
 	__init_discard_policy(sbi, &dpolicy, DPOLICY_UMOUNT,
 					dcc->discard_granularity);
@@ -1688,7 +1698,7 @@ bool f2fs_issue_discard_timeout(struct f2fs_sb_info *sbi)
 	__wait_all_discard_cmd(sbi, NULL);
 
 	f2fs_bug_on(sbi, atomic_read(&dcc->discard_cmd_cnt));
-	return dropped;
+	return !dropped;
 }
 
 static int issue_discard_thread(void *data)
@@ -2132,8 +2142,7 @@ static void destroy_discard_cmd_control(struct f2fs_sb_info *sbi)
 	 * Recovery can cache discard commands, so in error path of
 	 * fill_super(), it needs to give a chance to handle them.
 	 */
-	if (unlikely(atomic_read(&dcc->discard_cmd_cnt)))
-		f2fs_issue_discard_timeout(sbi);
+	f2fs_issue_discard_timeout(sbi);
 
 	kfree(dcc);
 	SM_I(sbi)->dcc_info = NULL;

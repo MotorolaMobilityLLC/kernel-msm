@@ -60,6 +60,7 @@
   bitmap_zalloc
   __blk_alloc_disk
   blk_cleanup_disk
+  blkdev_ioctl
   blkdev_issue_discard
   blk_finish_plug
   blk_queue_flag_clear
@@ -165,7 +166,9 @@
   clk_put
   clk_register
   clk_register_composite
+  clk_restore_context
   clk_round_rate
+  clk_save_context
   clk_set_max_rate
   clk_set_min_rate
   clk_set_parent
@@ -345,6 +348,7 @@
   devm_extcon_dev_allocate
   devm_extcon_dev_register
   devm_free_irq
+  devm_fwnode_pwm_get
   devm_gpiod_get
   devm_gpiod_get_index
   devm_gpiod_get_optional
@@ -379,6 +383,7 @@
   devm_platform_ioremap_resource_byname
   devm_pwm_get
   devm_regmap_field_alloc
+  __devm_regmap_init
   __devm_regmap_init_i2c
   __devm_regmap_init_mmio_clk
   devm_regulator_bulk_get
@@ -495,6 +500,15 @@
   dma_sync_single_for_device
   dma_unmap_page_attrs
   dma_unmap_sg_attrs
+  dm_get_device
+  dm_io
+  dm_io_client_create
+  dm_io_client_destroy
+  dm_per_bio_data
+  dm_put_device
+  dm_register_target
+  dm_table_get_mode
+  dm_unregister_target
   d_obtain_alias
   do_SAK
   do_trace_netlink_extack
@@ -665,6 +679,7 @@
   drm_property_blob_get
   drm_property_blob_put
   drm_property_create
+  drm_property_create_blob
   drm_property_create_bool
   drm_property_create_enum
   drm_property_create_range
@@ -757,6 +772,7 @@
   fs_param_is_string
   fs_param_is_u32
   __fs_parse
+  fs_umode_to_dtype
   fsync_bdev
   fwnode_device_is_available
   fwnode_get_name
@@ -902,6 +918,7 @@
   i2c_put_adapter
   i2c_register_driver
   i2c_smbus_read_byte_data
+  i2c_smbus_write_byte
   i2c_smbus_write_byte_data
   i2c_smbus_xfer
   i2c_transfer
@@ -1064,6 +1081,7 @@
   krealloc
   kstrdup
   kstrdup_const
+  kstrndup
   kstrtobool
   kstrtobool_from_user
   kstrtoint
@@ -1097,6 +1115,7 @@
   kvmalloc_node
   led_classdev_register_ext
   led_classdev_unregister
+  led_set_brightness
   led_trigger_blink_oneshot
   led_trigger_event
   led_trigger_register
@@ -1177,6 +1196,7 @@
   mmc_cqe_request_done
   mmc_detect_change
   mmc_free_host
+  mmc_get_ext_csd
   mmc_gpio_get_cd
   mmc_of_parse
   mmc_regulator_get_supply
@@ -1484,6 +1504,7 @@
   platform_get_irq_byname_optional
   platform_get_resource
   platform_get_resource_byname
+  platform_irq_count
   pm_genpd_add_subdomain
   pm_genpd_init
   pm_genpd_remove
@@ -1874,6 +1895,7 @@
   sock_release
   sock_wfree
   sort
+  spi_add_device
   __spi_alloc_controller
   spi_alloc_device
   spi_busnum_to_master
@@ -1888,6 +1910,7 @@
   __spi_register_driver
   spi_setup
   spi_sync
+  spi_unregister_device
   split_page
   sprintf
   sprint_symbol
@@ -2026,6 +2049,7 @@
   __traceiter_android_vh_mem_cgroup_alloc
   __traceiter_android_vh_mmc_sd_update_cmdline_timing
   __traceiter_android_vh_mmc_sd_update_dataline_timing
+  __traceiter_android_vh_oom_check_panic
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_sched_show_task
   __traceiter_android_vh_set_module_permit_after_init
@@ -2076,6 +2100,7 @@
   __tracepoint_android_vh_mem_cgroup_alloc
   __tracepoint_android_vh_mmc_sd_update_cmdline_timing
   __tracepoint_android_vh_mmc_sd_update_dataline_timing
+  __tracepoint_android_vh_oom_check_panic
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_sched_show_task
   __tracepoint_android_vh_set_module_permit_after_init
@@ -2107,6 +2132,9 @@
   try_module_get
   try_wait_for_completion
   tty_flip_buffer_push
+  tty_get_char_size
+  tty_put_char
+  tty_termios_hw_change
   uart_add_one_port
   uart_console_device
   uart_console_write
@@ -2164,7 +2192,9 @@
   usb_anchor_urb
   usb_autopm_get_interface
   usb_autopm_put_interface
+  usb_clear_halt
   usb_control_msg
+  usb_control_msg_recv
   usb_create_hcd
   usb_del_gadget_udc
   usb_deregister
