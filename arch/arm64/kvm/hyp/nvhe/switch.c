@@ -83,12 +83,45 @@ static void __deactivate_pvm_traps_hfgxtr(struct kvm_vcpu *vcpu)
 		write_sysreg_s(ctxt_sys_reg(hctxt, HAFGRTR_EL2), SYS_HAFGRTR_EL2);
 }
 
+static void __activate_cptr_traps(struct kvm_vcpu *vcpu)
+{
+	u64 val = CPTR_EL2_TAM;	/* Same bit irrespective of E2H */
+
+	if (has_hvhe()) {
+		val |= CPACR_ELx_TTA;
+
+		if (vcpu->arch.fp_state == FP_STATE_GUEST_OWNED) {
+			val |= CPACR_ELx_FPEN;
+			if (vcpu_has_sve(vcpu))
+				val |= CPACR_ELx_ZEN;
+		}
+	} else {
+		val |= CPTR_EL2_TTA | CPTR_NVHE_EL2_RES1;
+
+		/*
+		 * Always trap SME since it's not supported in KVM.
+		 * TSM is RES1 if SME isn't implemented.
+		 */
+		val |= CPTR_EL2_TSM;
+
+		if (!vcpu_has_sve(vcpu) || vcpu->arch.fp_state != FP_STATE_GUEST_OWNED)
+			val |= CPTR_EL2_TZ;
+
+		if (vcpu->arch.fp_state != FP_STATE_GUEST_OWNED)
+			val |= CPTR_EL2_TFP;
+	}
+
+	if (vcpu->arch.fp_state != FP_STATE_GUEST_OWNED)
+		__activate_traps_fpsimd32(vcpu);
+
+	kvm_write_cptr_el2(val);
+}
+
 static void __activate_traps(struct kvm_vcpu *vcpu)
 {
-	u64 val;
-
 	___activate_traps(vcpu);
 	__activate_traps_common(vcpu);
+	__activate_cptr_traps(vcpu);
 
 	if (unlikely(vcpu_is_protected(vcpu))) {
 		__activate_pvm_fine_grain_traps(vcpu);
@@ -97,27 +130,6 @@ static void __activate_traps(struct kvm_vcpu *vcpu)
 		__activate_traps_hfgxtr(vcpu);
 	}
 
-	val = vcpu->arch.cptr_el2;
-	val |= CPTR_EL2_TAM;	/* Same bit irrespective of E2H */
-	val |= has_hvhe() ? CPACR_EL1_TTA : CPTR_EL2_TTA;
-	if (cpus_have_final_cap(ARM64_SME)) {
-		if (has_hvhe())
-			val &= ~(CPACR_EL1_SMEN_EL1EN | CPACR_EL1_SMEN_EL0EN);
-		else
-			val |= CPTR_EL2_TSM;
-	}
-
-	if (vcpu->arch.fp_state != FP_STATE_GUEST_OWNED) {
-		if (has_hvhe())
-			val &= ~(CPACR_EL1_FPEN_EL0EN | CPACR_EL1_FPEN_EL1EN |
-				 CPACR_EL1_ZEN_EL0EN | CPACR_EL1_ZEN_EL1EN);
-		else
-			val |= CPTR_EL2_TFP | CPTR_EL2_TZ;
-
-		__activate_traps_fpsimd32(vcpu);
-	}
-
-	kvm_write_cptr_el2(val);
 	write_sysreg(__this_cpu_read(kvm_hyp_vector), vbar_el2);
 
 	if (cpus_have_final_cap(ARM64_WORKAROUND_SPECULATIVE_AT)) {
