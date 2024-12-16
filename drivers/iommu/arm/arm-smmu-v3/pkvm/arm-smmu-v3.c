@@ -1444,8 +1444,14 @@ static phys_addr_t smmu_iova_to_phys(struct kvm_hyp_iommu_domain *domain,
 static size_t smmu_pgsize_idmap(size_t size, u64 paddr)
 {
 	size_t pgsizes;
-	const size_t pgsize_bitmask = PAGE_SIZE | (PAGE_SIZE * PTRS_PER_PTE) |
-				      (PAGE_SIZE * PTRS_PER_PTE * PTRS_PER_PTE);
+	size_t pgsize_bitmask;
+
+	if (PAGE_SIZE == SZ_4K) {
+		pgsize_bitmask = PAGE_SIZE | (PAGE_SIZE * PTRS_PER_PTE) |
+				 (PAGE_SIZE * PTRS_PER_PTE * PTRS_PER_PTE);
+	} else {
+		pgsize_bitmask = PAGE_SIZE | (PAGE_SIZE * PTRS_PER_PTE);
+	}
 
 	/* All page sizes that fit the size */
 	pgsizes = pgsize_bitmask & GENMASK_ULL(__fls(size), 0);
