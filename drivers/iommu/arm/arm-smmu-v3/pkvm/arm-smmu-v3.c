@@ -490,7 +490,7 @@ static int smmu_init_strtab(struct hyp_arm_smmu_v3_device *smmu)
 	}
 
 	strtab_base &= STRTAB_BASE_ADDR_MASK;
-	smmu->strtab_base = smmu_take_pages(strtab_base, strtab_size);
+	smmu->strtab_base = smmu_take_pages(strtab_base, PAGE_ALIGN(strtab_size));
 	if (!smmu->strtab_base)
 		return -EINVAL;
 
