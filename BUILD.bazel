@@ -945,8 +945,10 @@ ddk_headers(
         "drivers/usb/core/usb.h",
         "drivers/usb/host/pci-quirks.h",
         "drivers/usb/host/xhci.h",
+        "drivers/usb/host/xhci-caps.h",
         "drivers/usb/host/xhci-ext-caps.h",
         "drivers/usb/host/xhci-plat.h",
+        "drivers/usb/host/xhci-port.h",
     ],
     linux_includes = [
         "drivers/usb",
