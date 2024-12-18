@@ -79,15 +79,40 @@ phys_addr_t __topup_virt_to_phys(void *virt)
 	return __pa(virt);
 }
 
+static struct page *__kvm_arm_smmu_alloc_from_cma(gfp_t gfp)
+{
+	bool from_spare = (gfp & GFP_ATOMIC) == GFP_ATOMIC;
+	static atomic64_t spare_p;
+	struct page *p = NULL;
+
+again:
+	if (from_spare)
+		return (struct page *)atomic64_cmpxchg(&spare_p, atomic64_read(&spare_p), 0);
+
+	p = kvm_iommu_cma_alloc();
+	if (!p) {
+		from_spare = true;
+		goto again;
+	}
+
+	/*
+	 * Top-up the spare block if necessary. If we failed to update spare_p
+	 * then someone did it already and we can proceed with that page.
+	 */
+	if (!atomic64_read(&spare_p)) {
+		if (!atomic64_cmpxchg(&spare_p, 0, (u64)p))
+			goto again;
+	}
+
+	return p;
+}
+
 static int __kvm_arm_smmu_topup_from_cma(size_t size, gfp_t gfp, size_t *allocated)
 {
 	*allocated = 0;
 
-	if ((gfp & GFP_ATOMIC) == GFP_ATOMIC)
-		return -ENOMEM;
-
 	while (*allocated < size) {
-		struct page *p = kvm_iommu_cma_alloc();
+		struct page *p = __kvm_arm_smmu_alloc_from_cma(gfp);
 		struct kvm_hyp_memcache mc;
 
 		if (!p)
