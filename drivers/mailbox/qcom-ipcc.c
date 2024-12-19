@@ -154,6 +154,12 @@ static int qcom_ipcc_mbox_send_data(struct mbox_chan *chan, void *data)
 	hwirq = qcom_ipcc_get_hwirq(mchan->client_id, mchan->signal_id);
 	writel(hwirq, ipcc->base + IPCC_REG_SEND_ID);
 
+	/* All data writes need to be flushed to memory before the write index
+	 * is updated. This protects against a race condition where the remote
+	 * reads stale data because the write index was written before the data.
+	 */
+	wmb();
+
 	return 0;
 }
 
