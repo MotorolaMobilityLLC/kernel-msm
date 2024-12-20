@@ -6,6 +6,8 @@
  */
 #include <asm/kvm_pkvm.h>
 #include <asm/kvm_mmu.h>
+#include <linux/cma.h>
+#include <linux/dma-map-ops.h>
 #include <linux/local_lock.h>
 #include <linux/moduleparam.h>
 #include <linux/of_address.h>
@@ -72,6 +74,40 @@ extern struct kvm_iommu_ops kvm_nvhe_sym(smmu_ops);
 static int atomic_pages;
 module_param(atomic_pages, int, 0);
 
+phys_addr_t __topup_virt_to_phys(void *virt)
+{
+	return __pa(virt);
+}
+
+static int __kvm_arm_smmu_topup_from_cma(size_t size, gfp_t gfp, size_t *allocated)
+{
+	*allocated = 0;
+
+	if ((gfp & GFP_ATOMIC) == GFP_ATOMIC)
+		return -ENOMEM;
+
+	while (*allocated < size) {
+		struct page *p = kvm_iommu_cma_alloc();
+		struct kvm_hyp_memcache mc;
+
+		if (!p)
+			return -ENOMEM;
+
+		init_hyp_memcache(&mc);
+		push_hyp_memcache(&mc, page_to_virt(p), __topup_virt_to_phys,
+				  PMD_SHIFT - PAGE_SHIFT);
+
+		if (__pkvm_topup_hyp_alloc_mgt_mc(HYP_ALLOC_MGT_IOMMU_ID, &mc)) {
+			kvm_iommu_cma_release(p);
+			return -EINVAL;
+		}
+
+		*allocated += PMD_SIZE;
+	}
+
+	return 0;
+}
+
 static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res, gfp_t gfp)
 {
 	struct kvm_hyp_req req;
@@ -89,8 +125,23 @@ static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res, gfp_t gfp)
 	}
 
 	if (req.mem.dest == REQ_MEM_DEST_HYP_IOMMU) {
+		size_t nr_pages, from_cma = 0;
+		int ret;
+
+		nr_pages = req.mem.nr_pages;
+
+		if (req.mem.sz_alloc < PMD_SIZE) {
+			size_t size = req.mem.sz_alloc * nr_pages;
+
+			ret = __kvm_arm_smmu_topup_from_cma(size, gfp, &from_cma);
+			if (!ret)
+				return 0;
+
+			nr_pages -= from_cma / req.mem.sz_alloc;
+		}
+
 		return __pkvm_topup_hyp_alloc_mgt_gfp(HYP_ALLOC_MGT_IOMMU_ID,
-						      req.mem.nr_pages,
+						      nr_pages,
 						      req.mem.sz_alloc,
 						      gfp);
 	} else if (req.mem.dest == REQ_MEM_DEST_HYP_ALLOC) {
