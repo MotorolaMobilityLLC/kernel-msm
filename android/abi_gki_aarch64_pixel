@@ -305,6 +305,7 @@
   debugfs_create_u8
   debugfs_create_x32
   debugfs_lookup
+  debugfs_lookup_and_remove
   debugfs_remove
   debugfs_rename
   default_llseek
@@ -443,6 +444,7 @@
   devm_power_supply_register
   devm_pwm_get
   devm_register_reboot_notifier
+  devm_register_sys_off_handler
   devm_regmap_add_irq_chip
   __devm_regmap_init
   __devm_regmap_init_i2c
@@ -1069,6 +1071,7 @@
   init_dummy_netdev
   init_iova_domain
   init_net
+  init_on_free
   init_pid_ns
   __init_rwsem
   __init_swait_queue_head
@@ -1557,6 +1560,7 @@
   pci_find_bus
   pci_find_capability
   pci_find_ext_capability
+  pci_free_irq
   pci_free_irq_vectors
   pci_get_device
   pci_iomap
@@ -1571,6 +1575,7 @@
   __pci_register_driver
   pci_release_region
   pci_release_regions
+  pci_request_irq
   pci_request_region
   pci_rescan_bus
   pci_restore_msi_state
@@ -2316,8 +2321,10 @@
   __traceiter_android_rvh_util_est_update
   __traceiter_android_rvh_util_fits_cpu
   __traceiter_android_vh_arch_set_freq_scale
+  __traceiter_android_vh_binder_proc_transaction_finish
   __traceiter_android_vh_binder_restore_priority
   __traceiter_android_vh_binder_set_priority
+  __traceiter_android_vh_check_new_page
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
   __traceiter_android_vh_dump_throttled_rt_tasks
@@ -2325,10 +2332,12 @@
   __traceiter_android_vh_early_resume_begin
   __traceiter_android_vh_enable_thermal_genl_check
   __traceiter_android_vh_filemap_get_folio
+  __traceiter_android_vh_free_pages_prepare_init
   __traceiter_android_vh_ipi_stop
   __traceiter_android_vh_mm_compaction_begin
   __traceiter_android_vh_mm_compaction_end
   __traceiter_android_vh_mm_kcompactd_cpu_online
+  __traceiter_android_vh_post_alloc_hook
   __traceiter_android_vh_prio_inheritance
   __traceiter_android_vh_prio_restore
   __traceiter_android_vh_resume_end
@@ -2429,8 +2438,10 @@
   __tracepoint_android_rvh_util_est_update
   __tracepoint_android_rvh_util_fits_cpu
   __tracepoint_android_vh_arch_set_freq_scale
+  __tracepoint_android_vh_binder_proc_transaction_finish
   __tracepoint_android_vh_binder_restore_priority
   __tracepoint_android_vh_binder_set_priority
+  __tracepoint_android_vh_check_new_page
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
   __tracepoint_android_vh_dump_throttled_rt_tasks
@@ -2438,10 +2449,12 @@
   __tracepoint_android_vh_early_resume_begin
   __tracepoint_android_vh_enable_thermal_genl_check
   __tracepoint_android_vh_filemap_get_folio
+  __tracepoint_android_vh_free_pages_prepare_init
   __tracepoint_android_vh_ipi_stop
   __tracepoint_android_vh_mm_compaction_begin
   __tracepoint_android_vh_mm_compaction_end
   __tracepoint_android_vh_mm_kcompactd_cpu_online
+  __tracepoint_android_vh_post_alloc_hook
   __tracepoint_android_vh_prio_inheritance
   __tracepoint_android_vh_prio_restore
   __tracepoint_android_vh_resume_end
