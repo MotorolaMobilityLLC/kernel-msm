@@ -5,11 +5,17 @@
  */
 
 #include <asm/kvm_mmu.h>
+#include <linux/cma.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/kvm_host.h>
 #include <kvm/iommu.h>
 
 struct kvm_iommu_driver *iommu_driver;
 extern struct kvm_iommu_ops *kvm_nvhe_sym(kvm_iommu_ops);
+
+static struct cma *kvm_iommu_cma;
+extern phys_addr_t kvm_nvhe_sym(cma_base);
+extern size_t kvm_nvhe_sym(cma_size);
 
 int kvm_iommu_register_driver(struct kvm_iommu_driver *kern_ops)
 {
@@ -35,6 +41,48 @@ int kvm_iommu_init_hyp(struct kvm_iommu_ops *hyp_ops,
 }
 EXPORT_SYMBOL(kvm_iommu_init_hyp);
 
+static int __init pkvm_iommu_cma_setup(struct reserved_mem *rmem)
+{
+	int err;
+
+	if (!IS_ALIGNED(rmem->base | rmem->size, PMD_SIZE))
+		kvm_info("pKVM IOMMU reserved memory not PMD-aligned\n");
+
+	err = cma_init_reserved_mem(rmem->base, rmem->size, 0, rmem->name,
+				    &kvm_iommu_cma);
+	if (err) {
+		kvm_err("Failed to init pKVM IOMMU reserved memory\n");
+		kvm_iommu_cma = NULL;
+		return err;
+	}
+
+	kvm_nvhe_sym(cma_base) = cma_get_base(kvm_iommu_cma);
+	kvm_nvhe_sym(cma_size) = cma_get_size(kvm_iommu_cma);
+
+	return 0;
+}
+RESERVEDMEM_OF_DECLARE(pkvm_cma, "pkvm,cma", pkvm_iommu_cma_setup);
+
+static const u8 pmd_order = PMD_SHIFT - PAGE_SHIFT;
+
+struct page *kvm_iommu_cma_alloc(void)
+{
+	if (!kvm_iommu_cma)
+		return NULL;
+
+	return cma_alloc(kvm_iommu_cma, (1 << pmd_order), pmd_order, true);
+}
+EXPORT_SYMBOL(kvm_iommu_cma_alloc);
+
+bool kvm_iommu_cma_release(struct page *p)
+{
+	if (!kvm_iommu_cma || !p)
+		return false;
+
+	return cma_release(kvm_iommu_cma, p, 1 << pmd_order);
+}
+EXPORT_SYMBOL(kvm_iommu_cma_release);
+
 int kvm_iommu_init_driver(void)
 {
 	if (!smp_load_acquire(&iommu_driver) || !iommu_driver->get_iommu_id) {
@@ -42,6 +90,7 @@ int kvm_iommu_init_driver(void)
 			 " workloads in virtual machines\n");
 		return -ENODEV;
 	}
+
 	/*
 	 * init_driver is optional as the driver already registered it self.
 	 * This call mainly notify the driver we are about to drop privilege.
@@ -55,7 +104,6 @@ int kvm_iommu_init_driver(void)
 		kvm_err("No enough mem for IOMMU domains");
 		return -ENOMEM;
 	}
-
 	return iommu_driver->init_driver();
 }
 

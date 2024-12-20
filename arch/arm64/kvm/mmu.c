@@ -4,6 +4,8 @@
  * Author: Christoffer Dall <c.dall@virtualopensystems.com>
  */
 
+#include <linux/cma.h>
+#include <linux/dma-map-ops.h>
 #include <linux/maple_tree.h>
 #include <linux/mman.h>
 #include <linux/kvm_host.h>
@@ -1156,11 +1158,18 @@ void kvm_free_stage2_pgd(struct kvm_s2_mmu *mmu)
 
 static void hyp_mc_free_fn(void *addr, void *flags, unsigned long order)
 {
+	static const u8 pmd_order = PMD_SHIFT - PAGE_SHIFT;
+
 	if (!addr)
 		return;
 
 	if ((unsigned long)flags & HYP_MEMCACHE_ACCOUNT_STAGE2)
 		kvm_account_pgtable_pages(addr, -1);
+
+	/* The iommu pool supports top-up from dma_contiguous_default_area */
+	if (order == pmd_order &&
+	    kvm_iommu_cma_release(virt_to_page(addr)))
+		return;
 
 	free_pages((unsigned long)addr, order);
 }
