@@ -24,6 +24,7 @@
   __alloc_skb
   alloc_skb_with_frags
   alloc_workqueue
+  all_vm_events
   alt_cb_patch_nops
   amba_bustype
   amba_driver_register
@@ -579,6 +580,7 @@
   dma_unmap_resource
   dma_unmap_sg_attrs
   do_SAK
+  do_send_sig_info
   do_trace_netlink_extack
   do_wait_intr_irq
   down
@@ -934,6 +936,7 @@
   get_random_u32
   __get_random_u32_below
   get_random_u8
+  get_reclaim_params
   get_sg_io_hdr
   __get_task_comm
   get_task_cred
@@ -1526,6 +1529,7 @@
   of_reserved_mem_lookup
   of_root
   of_usb_host_tpl_support
+  __oom_reap_task_mm
   page_frag_alloc_align
   __page_frag_cache_drain
   page_frag_free
@@ -1547,6 +1551,7 @@
   param_ops_ulong
   param_set_copystring
   param_set_int
+  param_set_uint
   param_set_uint_minmax
   pci_alloc_irq_vectors
   pci_alloc_irq_vectors_affinity
@@ -1917,6 +1922,7 @@
   sched_uclamp_used
   schedule
   schedule_timeout
+  schedule_timeout_idle
   schedule_timeout_interruptible
   scnprintf
   scsi_alloc_request
@@ -1958,6 +1964,7 @@
   set_page_dirty
   set_page_dirty_lock
   __SetPageMovable
+  set_reclaim_params
   set_task_cpu
   set_user_nice
   sg_alloc_table
@@ -2704,6 +2711,7 @@
   vmf_insert_pfn_prot
   vm_node_stat
   vm_unmapped_area
+  vm_zone_stat
   vprintk
   vprintk_emit
   vring_del_virtqueue

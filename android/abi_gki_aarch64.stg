@@ -306615,6 +306615,12 @@ function {
   parameter_id: 0x126add1c
 }
 function {
+  id: 0x140332fd
+  return_type_id: 0x48b5725f
+  parameter_id: 0x13580d6c
+  parameter_id: 0x13580d6c
+}
+function {
   id: 0x140aea45
   return_type_id: 0x48b5725f
   parameter_id: 0x1058a3c5
@@ -321148,6 +321154,14 @@ function {
   id: 0x84a9b4bc
   return_type_id: 0x11cffa09
   parameter_id: 0x11cffa09
+}
+function {
+  id: 0x84ad5b06
+  return_type_id: 0x6720d32f
+  parameter_id: 0x6720d32f
+  parameter_id: 0x38264f07
+  parameter_id: 0x1d19a9d5
+  parameter_id: 0x94ed3026
 }
 function {
   id: 0x84af08b2
@@ -351426,6 +351440,11 @@ function {
   parameter_id: 0x1e9745d3
 }
 function {
+  id: 0xf869eaec
+  return_type_id: 0x6d7f5ff6
+  parameter_id: 0x1b36c7a2
+}
+function {
   id: 0xf86dbd48
   return_type_id: 0x6d7f5ff6
   parameter_id: 0x1df06cce
@@ -354753,6 +354772,15 @@ elf_symbol {
   crc: 0xa0a05373
   type_id: 0x1d39a3c7
   full_name: "__of_reset_control_get"
+}
+elf_symbol {
+  id: 0x4b944f82
+  name: "__oom_reap_task_mm"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xd4084a17
+  type_id: 0xf869eaec
+  full_name: "__oom_reap_task_mm"
 }
 elf_symbol {
   id: 0x4d1e5aba
@@ -381642,6 +381670,15 @@ elf_symbol {
   full_name: "do_SAK"
 }
 elf_symbol {
+  id: 0x9c1c9dfa
+  name: "do_send_sig_info"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x701989de
+  type_id: 0x84ad5b06
+  full_name: "do_send_sig_info"
+}
+elf_symbol {
   id: 0xb50c088c
   name: "do_trace_netlink_extack"
   is_defined: true
@@ -389621,6 +389658,15 @@ elf_symbol {
   crc: 0x9858f364
   type_id: 0x534abe77
   full_name: "get_random_u8"
+}
+elf_symbol {
+  id: 0x7aac3cd4
+  name: "get_reclaim_params"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x14d5a025
+  type_id: 0x140332fd
+  full_name: "get_reclaim_params"
 }
 elf_symbol {
   id: 0x3a06dd48
@@ -413206,6 +413252,15 @@ elf_symbol {
   full_name: "set_page_writeback"
 }
 elf_symbol {
+  id: 0x62e16249
+  name: "set_reclaim_params"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x51ece615
+  type_id: 0x85d454a8
+  full_name: "set_reclaim_params"
+}
+elf_symbol {
   id: 0xe19d98a9
   name: "set_task_cpu"
   is_defined: true
@@ -429708,6 +429763,7 @@ interface {
   symbol_id: 0x38c74e33
   symbol_id: 0xcbeef20f
   symbol_id: 0x10e977be
+  symbol_id: 0x4b944f82
   symbol_id: 0x4d1e5aba
   symbol_id: 0x057c7766
   symbol_id: 0xe595f8f9
@@ -432692,6 +432748,7 @@ interface {
   symbol_id: 0xdae2cdaf
   symbol_id: 0xac16424d
   symbol_id: 0x6bebb14a
+  symbol_id: 0x9c1c9dfa
   symbol_id: 0xb50c088c
   symbol_id: 0x28bb5738
   symbol_id: 0x718fec30
@@ -433577,6 +433634,7 @@ interface {
   symbol_id: 0x0447d62c
   symbol_id: 0xba2bc2c4
   symbol_id: 0x3266d1f2
+  symbol_id: 0x7aac3cd4
   symbol_id: 0x3a06dd48
   symbol_id: 0x75d8e345
   symbol_id: 0x35d05a7d
@@ -436193,6 +436251,7 @@ interface {
   symbol_id: 0x455375fa
   symbol_id: 0xc1ea8aaa
   symbol_id: 0x500f328c
+  symbol_id: 0x62e16249
   symbol_id: 0xe19d98a9
   symbol_id: 0x5e7a57c2
   symbol_id: 0xdebcf3e9
