@@ -51,6 +51,8 @@
   v4l2_ctrl_type_op_log
   v4l2_m2m_buf_done_and_job_finish
   v4l2_m2m_last_buf
+  v4l2_type_names
+  devm_devfreq_register_opp_notifier
 
 # required by jpu_heap.ko
   kmem_cache_size
@@ -64,3 +66,9 @@
 # required by xhci-asr.ko
   extcon_find_edev_by_node
 
+# required by clk-asr.ko
+  clk_register_mux_table
+
+# required by keypad-asr.ko
+  input_device_enabled
+  fwnode_create_software_node
