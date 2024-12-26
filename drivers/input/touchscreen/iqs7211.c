@@ -1754,11 +1754,12 @@ static int iqs7211_parse_cycles(struct iqs7211_private *iqs7211,
 	int num_cycles = dev_desc->cycle_limit[0] + dev_desc->cycle_limit[1];
 	int error, count, i, j, k, cycle_start;
 	unsigned int cycle_alloc[IQS7211_MAX_CYCLES][2];
+	unsigned int *cycle_ptr = cycle_alloc[0];
 	u8 total_rx = iqs7211->tp_config.total_rx;
 	u8 total_tx = iqs7211->tp_config.total_tx;
 
 	for (i = 0; i < IQS7211_MAX_CYCLES * 2; i++)
-		*(cycle_alloc[0] + i) = U8_MAX;
+		*(cycle_ptr + i) = U8_MAX;
 
 	count = fwnode_property_count_u32(tp_node, "azoteq,channel-select");
 	if (count == -EINVAL) {
@@ -1820,8 +1821,7 @@ static int iqs7211_parse_cycles(struct iqs7211_private *iqs7211,
 		}
 
 		for (i = 0; i < count; i++) {
-			int chan = *(cycle_alloc[0] + i);
-
+			int chan = *(cycle_ptr + i);
 			if (chan == U8_MAX)
 				continue;
 
@@ -1832,7 +1832,7 @@ static int iqs7211_parse_cycles(struct iqs7211_private *iqs7211,
 			}
 
 			for (j = 0; j < count; j++) {
-				if (j == i || *(cycle_alloc[0] + j) != chan)
+				if (j == i || *(cycle_ptr + j) != chan)
 					continue;
 
 				dev_err(&client->dev, "Duplicate channel: %d\n",
@@ -2128,6 +2128,7 @@ static int iqs7211_register_kp(struct iqs7211_private *iqs7211)
 	return error;
 }
 
+#ifdef ENABLE_TP
 static int iqs7211_register_tp(struct iqs7211_private *iqs7211)
 {
 	const struct iqs7211_dev_desc *dev_desc = iqs7211->dev_desc;
@@ -2204,6 +2205,7 @@ static int iqs7211_register_tp(struct iqs7211_private *iqs7211)
 
 	return error;
 }
+#endif
 
 static int iqs7211_report(struct iqs7211_private *iqs7211)
 {
@@ -2244,6 +2246,7 @@ static int iqs7211_report(struct iqs7211_private *iqs7211)
 		return 0;
 	}
 
+#ifdef ENABLE_TP
 	for (i = 0; i < iqs7211->num_contacts; i++) {
 		u16 pressure;
 
@@ -2267,6 +2270,7 @@ static int iqs7211_report(struct iqs7211_private *iqs7211)
 		input_mt_sync_frame(iqs7211->tp_idev);
 		input_sync(iqs7211->tp_idev);
 	}
+#endif
 
 	if (!iqs7211->kp_idev)
 		return 0;
@@ -2371,6 +2375,7 @@ static int iqs7211_resume(struct device *dev)
 {
 	struct iqs7211_private *iqs7211 = dev_get_drvdata(dev);
 	const struct iqs7211_dev_desc *dev_desc = iqs7211->dev_desc;
+
 	__le16 sys_ctrl[] = {
 		0,
 		cpu_to_le16(iqs7211->event_mask),
@@ -2434,7 +2439,8 @@ static const struct of_device_id iqs7211_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, iqs7211_of_match);
 
-static int iqs7211_probe(struct i2c_client *client)
+static int iqs7211_probe(struct i2c_client *client,
+		const struct i2c_device_id *id)
 {
 	struct iqs7211_private *iqs7211;
 	enum iqs7211_reg_grp_id reg_grp;
@@ -2517,9 +2523,11 @@ static int iqs7211_probe(struct i2c_client *client)
 	if (error)
 		return error;
 
+#ifdef ENABLE_TP
 	error = iqs7211_register_tp(iqs7211);
 	if (error)
 		return error;
+#endif
 
 	error = iqs7211_init_device(iqs7211);
 	if (error)
