@@ -23,6 +23,9 @@
 #include "iostat.h"
 #include <trace/events/f2fs.h>
 
+EXPORT_TRACEPOINT_SYMBOL_GPL(f2fs_gc_begin);
+EXPORT_TRACEPOINT_SYMBOL_GPL(f2fs_gc_end);
+
 static struct kmem_cache *victim_entry_slab;
 
 static unsigned int count_bits(const unsigned long *addr,
