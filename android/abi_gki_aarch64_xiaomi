@@ -422,6 +422,20 @@
   __tracepoint_android_vh_psi_event
   __tracepoint_android_vh_psi_group
 
+#required by io_monitor.ko
+  __tracepoint_f2fs_gc_begin
+  __tracepoint_f2fs_gc_end
+  __tracepoint_f2fs_write_checkpoint
+  __tracepoint_f2fs_sync_file_enter
+  __tracepoint_f2fs_sync_file_exit
+  __tracepoint_ufshcd_command
+  __traceiter_f2fs_gc_begin
+  __traceiter_f2fs_gc_end
+  __traceiter_f2fs_write_checkpoint
+  __traceiter_f2fs_sync_file_enter
+  __traceiter_f2fs_sync_file_exit
+  __traceiter_ufshcd_command
+
 #required by zram.ko module
   __blk_alloc_disk
   bio_end_io_acct_remapped
