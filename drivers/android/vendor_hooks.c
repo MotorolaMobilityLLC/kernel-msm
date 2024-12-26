@@ -504,6 +504,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_xhci_resume);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_bd_link_disk_holder);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_do_new_mount_fc);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_fill_rwbs);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_io_statistics);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_mq_delay_run_hw_queue);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_mq_kick_requeue_list);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_f2fs_ra_op_flags);
