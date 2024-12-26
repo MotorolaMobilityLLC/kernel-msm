@@ -55,6 +55,8 @@
   tty_unlock
   tty_set_ldisc
   tty_kclose
+  percpu_ref_init
+  percpu_ref_exit
   android_debug_per_cpu_symbol
   android_debug_symbol
   __traceiter_rpm_idle
@@ -252,3 +254,5 @@
   __tracepoint_android_vh_wq_wake_idle_worker
   __traceiter_android_vh_mutex_unlock_slowpath_bf_wakeq
   __tracepoint_android_vh_mutex_unlock_slowpath_bf_wakeq
+  __traceiter_android_vh_io_statistics
+  __tracepoint_android_vh_io_statistics

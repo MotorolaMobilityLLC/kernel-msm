@@ -340330,6 +340330,16 @@ function {
   parameter_id: 0x11b57133
 }
 function {
+  id: 0x9be9dd69
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x1582ab06
+  parameter_id: 0x4585663f
+  parameter_id: 0x4585663f
+  parameter_id: 0x6d7f5ff6
+  parameter_id: 0x6d7f5ff6
+}
+function {
   id: 0x9bec16df
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -340683,6 +340693,14 @@ function {
   return_type_id: 0x6720d32f
   parameter_id: 0x054f691a
   parameter_id: 0x319266e1
+}
+function {
+  id: 0x9c1598bd
+  return_type_id: 0x6720d32f
+  parameter_id: 0x05003835
+  parameter_id: 0x31f49752
+  parameter_id: 0x4585663f
+  parameter_id: 0xf1a6dfed
 }
 function {
   id: 0x9c1677f9
@@ -359212,6 +359230,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_invalidate_mapping_pagevec"
 }
 elf_symbol {
+  id: 0x67c7aa4f
+  name: "__traceiter_android_vh_io_statistics"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x893fb474
+  type_id: 0x9be9dd69
+  full_name: "__traceiter_android_vh_io_statistics"
+}
+elf_symbol {
   id: 0x4b67a5dc
   name: "__traceiter_android_vh_iommu_iovad_alloc_iova"
   is_defined: true
@@ -365798,6 +365825,15 @@ elf_symbol {
   crc: 0x7b96fb5d
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_invalidate_mapping_pagevec"
+}
+elf_symbol {
+  id: 0x1975aef5
+  name: "__tracepoint_android_vh_io_statistics"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x502ab001
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_io_statistics"
 }
 elf_symbol {
   id: 0xbbfc3b7e
@@ -404779,6 +404815,24 @@ elf_symbol {
   full_name: "percpu_free_rwsem"
 }
 elf_symbol {
+  id: 0xb8393125
+  name: "percpu_ref_exit"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x37bf7be3
+  type_id: 0x11d85f9e
+  full_name: "percpu_ref_exit"
+}
+elf_symbol {
+  id: 0xae849ea8
+  name: "percpu_ref_init"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x81a7f541
+  type_id: 0x9c1598bd
+  full_name: "percpu_ref_init"
+}
+elf_symbol {
   id: 0xe4bc7703
   name: "percpu_up_write"
   is_defined: true
@@ -430468,6 +430522,7 @@ interface {
   symbol_id: 0xa8439430
   symbol_id: 0x2b3e4b23
   symbol_id: 0x7cd03d83
+  symbol_id: 0x67c7aa4f
   symbol_id: 0x4b67a5dc
   symbol_id: 0x3684a257
   symbol_id: 0x7ee652cd
@@ -431200,6 +431255,7 @@ interface {
   symbol_id: 0x4e88b2c2
   symbol_id: 0x52cc3d91
   symbol_id: 0xba330301
+  symbol_id: 0x1975aef5
   symbol_id: 0xbbfc3b7e
   symbol_id: 0xdb161c79
   symbol_id: 0x1d442b97
@@ -435522,6 +435578,8 @@ interface {
   symbol_id: 0x7efbd192
   symbol_id: 0x22f7748e
   symbol_id: 0x12951e5c
+  symbol_id: 0xb8393125
+  symbol_id: 0xae849ea8
   symbol_id: 0xe4bc7703
   symbol_id: 0xf9e83d36
   symbol_id: 0x80bebca0
