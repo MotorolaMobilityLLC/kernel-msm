@@ -452,6 +452,7 @@
   usb_create_shared_hcd
   usb_deregister
   usb_disabled
+  usb_find_common_endpoints
   usb_free_urb
   usb_get_dev
   usb_hcd_check_unlink_urb
