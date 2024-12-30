@@ -23,13 +23,13 @@ struct gzvm_ioevent {
 };
 
 /**
- * ioeventfd_check_collision() - Check collison assumes gzvm->ioevent_lock held.
+ * ioeventfd_check_collision() - Check collision assumes gzvm->ioevent_lock held.
  * @gzvm: Pointer to gzvm.
  * @p: Pointer to gzvm_ioevent.
  *
  * Return:
- * * true			- collison found
- * * false			- no collison
+ * * true			- collision found
+ * * false			- no collision
  */
 static bool ioeventfd_check_collision(struct gzvm *gzvm, struct gzvm_ioevent *p)
 {

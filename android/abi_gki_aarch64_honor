@@ -57,6 +57,14 @@
   tty_kclose
   android_debug_per_cpu_symbol
   android_debug_symbol
+  __traceiter_rpm_idle
+  __tracepoint_rpm_idle
+  __traceiter_rpm_suspend
+  __tracepoint_rpm_suspend
+  __traceiter_rpm_resume
+  __tracepoint_rpm_resume
+  __traceiter_rpm_return_int
+  __tracepoint_rpm_return_int
   __kfifo_len_r
   __traceiter_android_vh_killed_process
   __tracepoint_android_vh_killed_process
@@ -242,3 +250,5 @@
   __traceiter_android_vh_wq_wake_idle_worker
   __tracepoint_android_vh_wq_queue_work
   __tracepoint_android_vh_wq_wake_idle_worker
+  __traceiter_android_vh_mutex_unlock_slowpath_bf_wakeq
+  __tracepoint_android_vh_mutex_unlock_slowpath_bf_wakeq

@@ -81,14 +81,23 @@ int gzvm_arch_inform_exit(u16 vm_id)
 	return 0;
 }
 
-int gzvm_arch_probe(void)
+int gzvm_arch_probe(struct gzvm_version drv_version,
+		    struct gzvm_version *hyp_version)
 {
 	struct arm_smccc_res res;
 	int ret;
 
-	ret = gzvm_hypcall_wrapper(MT_HVC_GZVM_PROBE, 0, 0, 0, 0, 0, 0, 0, &res);
+	ret = gzvm_hypcall_wrapper(MT_HVC_GZVM_PROBE,
+				   drv_version.major,
+				   drv_version.minor,
+				   drv_version.sub,
+				   0, 0, 0, 0, &res);
 	if (ret)
 		return -ENXIO;
+
+	hyp_version->major = (u32)res.a1;
+	hyp_version->minor = (u32)res.a2;
+	hyp_version->sub = res.a3;
 
 	return 0;
 }
@@ -166,12 +175,18 @@ int gzvm_arch_create_vm(unsigned long vm_type)
 	return ret ? ret : res.a1;
 }
 
-int gzvm_arch_destroy_vm(u16 vm_id)
+int gzvm_arch_destroy_vm(u16 vm_id, u64 destroy_page_gran)
 {
 	struct arm_smccc_res res;
+	int ret;
 
-	return gzvm_hypcall_wrapper(MT_HVC_GZVM_DESTROY_VM, vm_id, 0, 0, 0, 0,
-				    0, 0, &res);
+	do {
+		ret = gzvm_hypcall_wrapper(MT_HVC_GZVM_DESTROY_VM, vm_id,
+					   destroy_page_gran, 0, 0,
+					   0, 0, 0, &res);
+	} while (ret == -EAGAIN);
+
+	return ret;
 }
 
 int gzvm_arch_memregion_purpose(struct gzvm *gzvm,
@@ -201,6 +216,50 @@ static int gzvm_vm_arch_enable_cap(struct gzvm *gzvm,
 				    cap->cap, cap->args[0], cap->args[1],
 				    cap->args[2], cap->args[3], cap->args[4],
 				    res);
+}
+
+static int gzvm_arch_enable_cap(struct gzvm_enable_cap *cap,
+				struct arm_smccc_res *res)
+{
+	return gzvm_hypcall_wrapper(MT_HVC_GZVM_ENABLE_CAP, 0,
+				    cap->cap, cap->args[0], cap->args[1],
+				    cap->args[2], cap->args[3], cap->args[4],
+				    res);
+}
+
+int gzvm_arch_query_hyp_batch_pages(struct gzvm_enable_cap *cap,
+				    void __user *argp)
+{
+	struct arm_smccc_res res = {0};
+	int ret;
+
+	ret = gzvm_arch_enable_cap(cap, &res);
+
+	if (ret)
+		return ret;
+
+	if (res.a1 == 0 ||
+	    GZVM_BLOCK_BASED_DEMAND_PAGE_SIZE % (PAGE_SIZE * res.a1) != 0)
+		return -EFAULT;
+
+	cap->args[0] = res.a1;
+
+	return ret;
+}
+
+int gzvm_arch_query_destroy_batch_pages(struct gzvm_enable_cap *cap,
+					void __user *argp)
+{
+	struct arm_smccc_res res = {0};
+	int ret;
+
+	ret = gzvm_arch_enable_cap(cap, &res);
+	/* destroy page batch size should be power of 2 */
+	if (ret || ((res.a1 & (res.a1 - 1)) != 0))
+		return -EINVAL;
+
+	cap->args[0] = res.a1;
+	return ret;
 }
 
 /**

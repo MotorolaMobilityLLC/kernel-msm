@@ -10,6 +10,7 @@
 #include <linux/usb/role.h>
 #include <linux/property.h>
 #include <linux/device.h>
+#include <linux/lockdep.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
@@ -20,6 +21,7 @@ static const struct class role_class = {
 
 struct usb_role_switch {
 	struct device dev;
+	struct lock_class_key key;
 	struct mutex lock; /* device lock*/
 	struct module *module; /* the module this device depends on */
 	enum usb_role role;
@@ -299,6 +301,8 @@ static void usb_role_switch_release(struct device *dev)
 {
 	struct usb_role_switch *sw = to_role_switch(dev);
 
+	mutex_destroy(&sw->lock);
+	lockdep_unregister_key(&sw->key);
 	kfree(sw);
 }
 
@@ -337,7 +341,8 @@ usb_role_switch_register(struct device *parent,
 	if (!sw)
 		return ERR_PTR(-ENOMEM);
 
-	mutex_init(&sw->lock);
+	lockdep_register_key(&sw->key);
+	mutex_init_with_key(&sw->lock, &sw->key);
 
 	sw->allow_userspace_control = desc->allow_userspace_control;
 	sw->usb2_port = desc->usb2_port;
@@ -377,10 +382,10 @@ EXPORT_SYMBOL_GPL(usb_role_switch_register);
  */
 void usb_role_switch_unregister(struct usb_role_switch *sw)
 {
-	if (!IS_ERR_OR_NULL(sw)) {
-		sw->registered = false;
-		device_unregister(&sw->dev);
-	}
+	if (IS_ERR_OR_NULL(sw))
+		return;
+	sw->registered = false;
+	device_unregister(&sw->dev);
 }
 EXPORT_SYMBOL_GPL(usb_role_switch_unregister);
 

@@ -31,6 +31,10 @@ DECLARE_HOOK(android_vh_check_nanosleep_syscall,
     TP_PROTO(struct timespec64 *tu),
     TP_ARGS(tu));
 
+DECLARE_HOOK(android_vh_destroy_inode,
+	TP_PROTO(struct inode *inode),
+	TP_ARGS(inode));
+
 #endif /* _TRACE_HOOK_SYSCALL_CHECK_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

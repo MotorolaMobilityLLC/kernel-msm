@@ -432,10 +432,16 @@ config GDB_SCRIPTS
 
 endif # DEBUG_INFO
 
+config FORCE_FRAME_WARN_TO_2K
+	bool "Force FRAME_WARN to 2048 for 32-bit allmod/allyes builds"
+	default n
+	depends on !64BIT
+
 config FRAME_WARN
 	int "Warn for stack frames larger than"
 	range 0 8192
 	default 0 if KMSAN
+	default 2048 if FORCE_FRAME_WARN_TO_2K
 	default 2048 if GCC_PLUGIN_LATENT_ENTROPY
 	default 2048 if PARISC
 	default 1536 if (!64BIT && XTENSA)

@@ -18,6 +18,7 @@
   alarm_start_relative
   alarm_try_to_cancel
   alloc_chrdev_region
+  alloc_contig_range
   alloc_etherdev_mqs
   alloc_io_pgtable_ops
   alloc_netdev_mqs
@@ -1025,6 +1026,7 @@
   frame_vector_destroy
   frame_vector_to_pages
   frame_vector_to_pfns
+  free_contig_range
   free_io_pgtable_ops
   free_irq
   free_netdev
@@ -1721,6 +1723,8 @@
   netdev_rx_handler_register
   netdev_rx_handler_unregister
   netdev_set_default_ethtool_ops
+  netdev_stats_to_stats64
+  netdev_sw_irq_coalesce_default_on
   netdev_update_features
   netdev_upper_dev_link
   netdev_upper_dev_unlink
@@ -1939,6 +1943,7 @@
   pci_alloc_irq_vectors_affinity
   pci_ats_supported
   pci_bus_type
+  pci_clear_mwi
   pci_device_group
   pci_device_is_present
   pci_dev_put
@@ -1990,6 +1995,7 @@
   pci_save_state
   pci_select_bars
   pci_set_master
+  pci_set_mwi
   pci_set_power_state
   pci_stop_root_bus
   pci_unlock_rescan_remove
@@ -2653,6 +2659,7 @@
   snd_ctl_boolean_mono_info
   snd_jack_set_key
   snd_pcm_format_physical_width
+  snd_pcm_format_set_silence
   snd_pcm_format_width
   snd_pcm_hw_constraint_integer
   snd_pcm_hw_constraint_minmax
@@ -3211,6 +3218,7 @@
   typec_partner_set_identity
   typec_partner_set_pd_revision
   typec_partner_set_svdm_version
+  typec_port_register_altmodes
   typec_register_partner
   typec_register_port
   typec_set_data_role

@@ -254,27 +254,27 @@ enum {
  * space with SWAPFILE_CLUSTER pages long and naturally aligns in disk. All
  * free clusters are organized into a list. We fetch an entry from the list to
  * get a free cluster.
+ *
+ * The flags field determines if a cluster is free. This is
+ * protected by cluster lock.
  */
 struct swap_cluster_info {
 	spinlock_t lock;	/*
-				 * Protect swap_cluster_info count and state
-				 * field and swap_info_struct->swap_map
-				 * elements correspond to the swap
-				 * cluster
+				 * Protect swap_cluster_info fields
+				 * other than list, and swap_info_struct->swap_map
+				 * elements corresponding to the swap cluster.
 				 */
 	unsigned int count:12;
 	unsigned int state:3;
 	unsigned int order:4;
 	unsigned int reserved:1;
 	unsigned int flags:4;
-	struct list_head list;	/* Protected by swap_info_struct->lock */
+	struct list_head list;
 };
-
-#define CLUSTER_STATE_FREE	1 /* This cluster is free */
-#define CLUSTER_STATE_PER_CPU	2 /* This cluster on per_cpu_cluster  */
-#define CLUSTER_STATE_SCANNED	3 /* This cluster off per_cpu_cluster */
-#define CLUSTER_STATE_NONFULL	4 /* This cluster is on nonfull list */
-
+#define CLUSTER_FLAG_FREE 1 /* This cluster is free */
+#define CLUSTER_FLAG_NONFULL 2 /* This cluster is on nonfull list */
+#define CLUSTER_FLAG_FRAG 4 /* This cluster is on nonfull list */
+#define CLUSTER_FLAG_FULL 8 /* This cluster is on full list */
 
 /*
  * The first page in the swap file is the swap header, which is always marked
@@ -441,6 +441,9 @@ extern unsigned long shrink_all_memory(unsigned long nr_pages);
 extern int vm_swappiness;
 long remove_mapping(struct address_space *mapping, struct folio *folio);
 
+extern unsigned long reclaim_pages(struct list_head *folio_list, bool ignore_references);
+extern unsigned long __reclaim_pages(struct list_head *folio_list, bool ignore_references,
+				     void *private);
 #ifdef CONFIG_NUMA
 extern int node_reclaim_mode;
 extern int sysctl_min_unmapped_ratio;
@@ -501,7 +504,7 @@ extern int get_swap_pages(int n, swp_entry_t swp_entries[], int order);
 extern int add_swap_count_continuation(swp_entry_t, gfp_t);
 extern void swap_shmem_alloc(swp_entry_t);
 extern int swap_duplicate(swp_entry_t);
-extern int swapcache_prepare(swp_entry_t);
+extern int swapcache_prepare(swp_entry_t entry, int nr);
 extern void swap_free_nr(swp_entry_t entry, int nr_pages);
 extern void swapcache_free_entries(swp_entry_t *entries, int n);
 extern void free_swap_and_cache_nr(swp_entry_t entry, int nr);
@@ -576,7 +579,7 @@ static inline int swap_duplicate(swp_entry_t swp)
 	return 0;
 }
 
-static inline int swapcache_prepare(swp_entry_t swp)
+static inline int swapcache_prepare(swp_entry_t swp, int nr)
 {
 	return 0;
 }

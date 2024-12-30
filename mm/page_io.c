@@ -464,36 +464,36 @@ static void swap_readpage_fs(struct page *page,
 		*plug = sio;
 }
 
-static void swap_readpage_bdev_sync(struct page *page,
+static void swap_readpage_bdev_sync(struct folio *folio,
 		struct swap_info_struct *sis)
 {
 	struct bio_vec bv;
 	struct bio bio;
 
 	bio_init(&bio, sis->bdev, &bv, 1, REQ_OP_READ);
-	bio.bi_iter.bi_sector = swap_page_sector(page);
-	__bio_add_page(&bio, page, thp_size(page), 0);
+	bio.bi_iter.bi_sector = swap_page_sector(&folio->page);
+	bio_add_folio_nofail(&bio, folio, folio_size(folio), 0);
 	/*
 	 * Keep this task valid during swap readpage because the oom killer may
 	 * attempt to access it in the page fault retry time check.
 	 */
 	get_task_struct(current);
-	count_vm_event(PSWPIN);
+	count_vm_events(PSWPIN, folio_nr_pages(folio));
 	submit_bio_wait(&bio);
 	__end_swap_bio_read(&bio);
 	put_task_struct(current);
 }
 
-static void swap_readpage_bdev_async(struct page *page,
+static void swap_readpage_bdev_async(struct folio *folio,
 		struct swap_info_struct *sis)
 {
 	struct bio *bio;
 
 	bio = bio_alloc(sis->bdev, 1, REQ_OP_READ, GFP_KERNEL);
-	bio->bi_iter.bi_sector = swap_page_sector(page);
+	bio->bi_iter.bi_sector = swap_page_sector(&folio->page);
 	bio->bi_end_io = end_swap_bio_read;
-	__bio_add_page(bio, page, thp_size(page), 0);
-	count_vm_event(PSWPIN);
+	bio_add_folio_nofail(bio, folio, folio_size(folio), 0);
+	count_vm_events(PSWPIN, folio_nr_pages(folio));
 	submit_bio(bio);
 }
 
@@ -526,9 +526,9 @@ void swap_readpage(struct page *page, bool synchronous, struct swap_iocb **plug)
 	} else if (data_race(sis->flags & SWP_FS_OPS)) {
 		swap_readpage_fs(page, plug);
 	} else if (synchronous || (sis->flags & SWP_SYNCHRONOUS_IO)) {
-		swap_readpage_bdev_sync(page, sis);
+		swap_readpage_bdev_sync(folio, sis);
 	} else {
-		swap_readpage_bdev_async(page, sis);
+		swap_readpage_bdev_async(folio, sis);
 	}
 
 	if (workingset) {

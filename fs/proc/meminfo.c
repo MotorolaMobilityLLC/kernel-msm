@@ -162,6 +162,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		    global_zone_page_state(NR_FREE_CMA_PAGES));
 #endif
 	trace_android_vh_meminfo_proc_show(m);
+	trace_android_rvh_meminfo_proc_show(m);
 
 #ifdef CONFIG_UNACCEPTED_MEMORY
 	show_val_kb(m, "Unaccepted:     ",

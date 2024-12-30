@@ -691,6 +691,9 @@ enum ufshcd_android_quirks {
 	 * 64-bit addressing support.
 	 */
 	UFSHCD_ANDROID_QUIRK_36BIT_ADDRESS_DMA		= 1 << 3,
+
+	/* Set IID to one. */
+	UFSHCD_ANDROID_QUIRK_SET_IID_TO_ONE		= 1 << 30,
 };
 
 enum ufshcd_caps {

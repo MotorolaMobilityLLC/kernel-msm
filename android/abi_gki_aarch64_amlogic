@@ -181,7 +181,9 @@
   clk_put
   clk_register
   clk_register_composite
+  clk_restore_context
   clk_round_rate
+  clk_save_context
   clk_set_max_rate
   clk_set_min_rate
   clk_set_parent
@@ -538,6 +540,15 @@
   dma_sync_single_for_device
   dma_unmap_page_attrs
   dma_unmap_sg_attrs
+  dm_get_device
+  dm_io
+  dm_io_client_create
+  dm_io_client_destroy
+  dm_per_bio_data
+  dm_put_device
+  dm_register_target
+  dm_table_get_mode
+  dm_unregister_target
   d_obtain_alias
   do_SAK
   do_trace_netlink_extack
@@ -726,6 +737,7 @@
   drm_property_blob_get
   drm_property_blob_put
   drm_property_create
+  drm_property_create_blob
   drm_property_create_bool
   drm_property_create_enum
   drm_property_create_range
@@ -1330,6 +1342,7 @@
   mmc_cqe_request_done
   mmc_detect_change
   mmc_free_host
+  mmc_get_ext_csd
   mmc_gpiod_request_cd
   mmc_gpio_get_cd
   mmc_of_parse
@@ -1668,6 +1681,7 @@
   platform_get_irq_byname_optional
   platform_get_resource
   platform_get_resource_byname
+  platform_irq_count
   pm_genpd_add_subdomain
   pm_genpd_init
   pm_genpd_remove
@@ -2192,6 +2206,7 @@
   thermal_zone_device_unregister
   thermal_zone_device_update
   thermal_zone_get_num_trips
+  thermal_zone_get_temp
   __thermal_zone_get_trip
   thermal_zone_get_trip
   thermal_zone_get_zone_by_name

@@ -187,7 +187,9 @@
   tcf_exts_init_ex
   tcf_exts_validate
   tcf_queue_work
+  tcp_cong_avoid_ai
   tcp_hashinfo
+  tcp_reno_undo_cwnd
   touch_atime
   __traceiter_android_rvh_post_init_entity_util_avg
   __traceiter_android_rvh_rtmutex_force_update
@@ -511,6 +513,7 @@
   vfs_path_lookup
   vfs_rename
   vfs_rmdir
+  vfs_splice_read
   vfs_statfs
   vfs_unlink
   __vmalloc_array

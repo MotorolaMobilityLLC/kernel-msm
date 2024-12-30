@@ -23,6 +23,7 @@
 #include <linux/rw_hint.h>
 #include <trace/events/writeback.h>
 #include "internal.h"
+#include <trace/hooks/syscall_check.h>
 
 #undef CREATE_TRACE_POINTS
 #include <trace/hooks/vmscan.h>
@@ -286,6 +287,7 @@ static struct inode *alloc_inode(struct super_block *sb)
 void __destroy_inode(struct inode *inode)
 {
 	BUG_ON(inode_has_buffers(inode));
+	trace_android_vh_destroy_inode(inode);
 	inode_detach_wb(inode);
 	security_inode_free(inode);
 	fsnotify_inode_delete(inode);

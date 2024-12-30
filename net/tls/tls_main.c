@@ -1087,9 +1087,11 @@ static int __net_init tls_init_net(struct net *net)
 {
 	int err;
 
+#if defined(CONFIG_TLS_STATS)
 	net->mib.tls_statistics = alloc_percpu(struct linux_tls_mib);
 	if (!net->mib.tls_statistics)
 		return -ENOMEM;
+#endif /* CONFIG_TLS_STATS */
 
 	err = tls_proc_init(net);
 	if (err)
@@ -1097,14 +1099,18 @@ static int __net_init tls_init_net(struct net *net)
 
 	return 0;
 err_free_stats:
+#if defined(CONFIG_TLS_STATS)
 	free_percpu(net->mib.tls_statistics);
+#endif /* CONFIG_TLS_STATS */
 	return err;
 }
 
 static void __net_exit tls_exit_net(struct net *net)
 {
 	tls_proc_fini(net);
+#if defined(CONFIG_TLS_STATS)
 	free_percpu(net->mib.tls_statistics);
+#endif /* CONFIG_TLS_STATS */
 }
 
 static struct pernet_operations tls_proc_ops = {

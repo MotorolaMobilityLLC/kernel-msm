@@ -367,7 +367,9 @@ enum page_memcg_data_flags {
 static inline bool folio_memcg_kmem(struct folio *folio);
 
 void do_traversal_all_lruvec(void);
-
+extern unsigned int bucket_order __read_mostly;
+void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
+			    unsigned long *evictionp, bool *workingsetp);
 int mem_cgroup_move_account(struct folio *folio,
 			    bool compound,
 			    struct mem_cgroup *from,
@@ -703,7 +705,8 @@ static inline int mem_cgroup_charge(struct folio *folio, struct mm_struct *mm,
 
 int mem_cgroup_swapin_charge_folio(struct folio *folio, struct mm_struct *mm,
 				  gfp_t gfp, swp_entry_t entry);
-void mem_cgroup_swapin_uncharge_swap(swp_entry_t entry);
+
+void mem_cgroup_swapin_uncharge_swap(swp_entry_t entry, unsigned int nr_pages);
 
 void __mem_cgroup_uncharge(struct folio *folio);
 
@@ -1282,7 +1285,7 @@ static inline int mem_cgroup_swapin_charge_folio(struct folio *folio,
 	return 0;
 }
 
-static inline void mem_cgroup_swapin_uncharge_swap(swp_entry_t entry)
+static inline void mem_cgroup_swapin_uncharge_swap(swp_entry_t entry, unsigned int nr)
 {
 }
 

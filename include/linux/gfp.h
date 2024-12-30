@@ -135,8 +135,8 @@ static inline enum zone_type __gfp_zone(gfp_t flags)
 					 ((1 << GFP_ZONES_SHIFT) - 1);
 	VM_BUG_ON((GFP_ZONE_BAD >> bit) & 1);
 
-	if ((flags & __GFP_COMP) &&
-	    (!static_branch_unlikely(&movablecore_enabled) || (flags & __GFP_MOVABLE)))
+
+	if (z == ZONE_MOVABLE)
 		return LAST_VIRT_ZONE;
 
 	return z;
@@ -376,6 +376,9 @@ static inline bool gfp_compaction_allowed(gfp_t gfp_mask)
 }
 
 extern gfp_t vma_thp_gfp_mask(struct vm_area_struct *vma);
+
+int set_reclaim_params(int wmark_scale_factor, int swappiness);
+void get_reclaim_params(int *wmark_scale_factor, int *swappiness);
 
 #ifdef CONFIG_CONTIG_ALLOC
 /* The below functions must be run on a range from a single zone. */

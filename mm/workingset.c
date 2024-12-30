@@ -194,8 +194,8 @@
  * that case, we have to sacrifice granularity for distance, and group
  * evictions into coarser buckets by shaving off lower timestamp bits.
  */
-static unsigned int bucket_order __read_mostly;
-
+unsigned int bucket_order __read_mostly;
+EXPORT_SYMBOL_GPL(bucket_order);
 static void *pack_shadow(int memcgid, pg_data_t *pgdat, unsigned long eviction,
 			 bool workingset)
 {
@@ -207,7 +207,7 @@ static void *pack_shadow(int memcgid, pg_data_t *pgdat, unsigned long eviction,
 	return xa_mk_value(eviction);
 }
 
-static void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
+void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
 			  unsigned long *evictionp, bool *workingsetp)
 {
 	unsigned long entry = xa_to_value(shadow);
@@ -226,6 +226,7 @@ static void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
 	*evictionp = entry;
 	*workingsetp = workingset;
 }
+EXPORT_SYMBOL_GPL(unpack_shadow);
 
 #ifdef CONFIG_LRU_GEN
 

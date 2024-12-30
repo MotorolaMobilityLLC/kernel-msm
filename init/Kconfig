@@ -2008,4 +2008,6 @@ config ARCH_HAS_SYNC_CORE_BEFORE_USERMODE
 config ARCH_HAS_SYSCALL_WRAPPER
 	def_bool n
 
+if 64BIT
 source "init/Kconfig.gki"
+endif

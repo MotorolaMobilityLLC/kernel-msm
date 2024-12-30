@@ -37,7 +37,7 @@
 /*
  * Worker macros, don't use these, use the ones without a leading '_'
  */
-
+#ifdef CONFIG_64BIT
 #define __ANDROID_KABI_CHECK_SIZE_ALIGN(_orig, _new)				\
 	union {									\
 		_Static_assert(sizeof(struct{_new;}) <= sizeof(struct{_orig;}),	\
@@ -51,6 +51,9 @@
 			       " is not aligned the same as "			\
 			       __stringify(_new) );				\
 	}
+#else
+#define __ANDROID_KABI_CHECK_SIZE_ALIGN(_orig, _new)
+#endif
 
 #ifdef __GENKSYMS__
 

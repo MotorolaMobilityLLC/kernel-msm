@@ -17,6 +17,10 @@ DECLARE_HOOK(android_vh_exit_signal,
 DECLARE_HOOK(android_vh_killed_process,
 	TP_PROTO(struct task_struct *killer, struct task_struct *dst, bool *reap),
 	TP_ARGS(killer, dst, reap));
+DECLARE_HOOK(android_vh_send_signal_locked,
+	TP_PROTO(int result, int ret, int sig, struct task_struct *t,
+		enum pid_type type, struct kernel_siginfo *info),
+	TP_ARGS(result, ret, sig, t, type, info));
 #endif /* _TRACE_HOOK_SIGNAL_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

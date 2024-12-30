@@ -113,6 +113,7 @@
   __traceiter_android_vh_madvise_pageout_swap_entry
   __traceiter_android_vh_madvise_swapin_walk_pmd_entry
   __traceiter_android_vh_meminfo_proc_show
+  __traceiter_android_vh_migration_target_bypass
   __traceiter_android_vh_mmc_update_mmc_queue
   __traceiter_android_vh_si_meminfo_adjust_shmem
   __traceiter_android_vh_shmem_mod_shmem
@@ -131,7 +132,6 @@
   __traceiter_android_vh_smaps_pte_entry
   __traceiter_android_vh_smaps_swap_shared
   __traceiter_android_vh_show_smap_swap_shared
-  __traceiter_android_vh_suitable_migration_target_bypass
   __traceiter_android_vh_split_large_folio_bypass
   __traceiter_android_vh_sync_irq_wait_finish
   __traceiter_android_vh_sync_irq_wait_start
@@ -202,6 +202,7 @@
   __tracepoint_android_vh_madvise_pageout_swap_entry
   __tracepoint_android_vh_madvise_swapin_walk_pmd_entry
   __tracepoint_android_vh_meminfo_proc_show
+  __tracepoint_android_vh_migration_target_bypass
   __tracepoint_android_vh_mmc_update_mmc_queue
   __tracepoint_android_vh_si_meminfo_adjust_shmem
   __tracepoint_android_vh_shmem_mod_shmem
@@ -221,7 +222,6 @@
   __tracepoint_android_vh_smaps_swap_shared
   __tracepoint_android_vh_show_smap_swap_shared
   __tracepoint_android_vh_split_large_folio_bypass
-  __tracepoint_android_vh_suitable_migration_target_bypass
   __tracepoint_android_vh_sync_irq_wait_finish
   __tracepoint_android_vh_sync_irq_wait_start
   __tracepoint_android_vh_try_to_freeze_todo

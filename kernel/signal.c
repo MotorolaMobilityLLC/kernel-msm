@@ -1205,6 +1205,7 @@ out_set:
 	complete_signal(sig, t, type);
 ret:
 	trace_signal_generate(sig, info, t, type != PIDTYPE_PID, result);
+	trace_android_vh_send_signal_locked(result, ret, sig, t, type, info);
 	return ret;
 }
 
@@ -1324,6 +1325,7 @@ int do_send_sig_info(int sig, struct kernel_siginfo *info, struct task_struct *p
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(do_send_sig_info);
 
 enum sig_handler {
 	HANDLER_CURRENT, /* If reachable use the current handler */

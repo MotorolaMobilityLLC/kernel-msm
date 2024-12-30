@@ -47,6 +47,7 @@ _COMMON_GKI_MODULES_LIST = [
     "drivers/usb/serial/usbserial.ko",
     "drivers/virtio/virtio_balloon.ko",
     "drivers/virtio/virtio_pci.ko",
+    "drivers/virtio/virtio_pci_legacy_dev.ko",
     "drivers/virtio/virtio_pci_modern_dev.ko",
     "kernel/kheaders.ko",
     "lib/crypto/libarc4.ko",
@@ -79,6 +80,7 @@ _COMMON_GKI_MODULES_LIST = [
     "net/rfkill/rfkill.ko",
     "net/tipc/diag.ko",
     "net/tipc/tipc.ko",
+    "net/tls/tls.ko",
     "net/vmw_vsock/vmw_vsock_virtio_transport.ko",
 ]
 
