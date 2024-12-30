@@ -389,6 +389,10 @@ DECLARE_HOOK(android_vh_lruvec_del_folio,
 		bool *skip),
 	TP_ARGS(lruvec, folio, lru, skip));
 
+DECLARE_HOOK(android_vh_do_async_mmap_readahead,
+	TP_PROTO(struct vm_fault *vmf, struct folio *folio, bool *skip),
+	TP_ARGS(vmf, folio, skip));
+
 DECLARE_HOOK(android_vh_cma_debug_show_areas,
 	TP_PROTO(bool *show),
 	TP_ARGS(show));
