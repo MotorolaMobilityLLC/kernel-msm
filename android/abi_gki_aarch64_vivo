@@ -345,3 +345,4 @@
   unlock_buffer
   __wait_on_buffer
   zs_lookup_class_index
+  utf8_data_table_new

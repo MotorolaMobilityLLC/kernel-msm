@@ -424550,6 +424550,15 @@ elf_symbol {
   full_name: "utf8_data_table"
 }
 elf_symbol {
+  id: 0xd2d0fdc4
+  name: "utf8_data_table_new"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xd199339a
+  type_id: 0x45396185
+  full_name: "utf8_data_table_new"
+}
+elf_symbol {
   id: 0x4b0dcba7
   name: "utf8_to_utf32"
   is_defined: true
@@ -437530,6 +437539,7 @@ interface {
   symbol_id: 0xb5437ef4
   symbol_id: 0x1473720a
   symbol_id: 0xa459c02b
+  symbol_id: 0xd2d0fdc4
   symbol_id: 0x4b0dcba7
   symbol_id: 0xa040d5a9
   symbol_id: 0xb0c1eaf9
