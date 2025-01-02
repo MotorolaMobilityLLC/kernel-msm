@@ -633,6 +633,7 @@ copy_to_dist_dir(
         ":kernel_aarch64",
         ":kernel_aarch64_modules",
         ":kernel_aarch64_additional_artifacts",
+        ":tests_zip_arm64",
     ],
     dist_dir = "out/db845/dist",
     flat = True,
