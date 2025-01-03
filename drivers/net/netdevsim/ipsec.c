@@ -171,7 +171,7 @@ static int nsim_ipsec_add_sa(struct xfrm_state *xs)
 		return ret;
 	}
 
-	if (xs->xso.dir == XFRM_DEV_OFFLOAD_IN) {
+	if (xs->xso.flags & XFRM_OFFLOAD_INBOUND) {
 		sa.rx = true;
 
 		if (xs->props.family == AF_INET6)
