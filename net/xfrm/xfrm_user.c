@@ -855,8 +855,7 @@ static int copy_user_offload(struct xfrm_dev_offload *xso, struct sk_buff *skb)
 	xuo = nla_data(attr);
 	memset(xuo, 0, sizeof(*xuo));
 	xuo->ifindex = xso->dev->ifindex;
-	if (xso->dir == XFRM_DEV_OFFLOAD_IN)
-		xuo->flags = XFRM_OFFLOAD_INBOUND;
+	xuo->flags = xso->flags;
 
 	return 0;
 }
