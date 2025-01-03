@@ -128,9 +128,9 @@ static __always_inline unsigned __page_shift(void)
  *
  * If page size emulation is enabled, adds translation of the no-compat flag.
  */
-static __always_inline unsigned long calc_vm_flag_bits(unsigned long flags)
+static __always_inline unsigned long calc_vm_flag_bits(struct file *file, unsigned long flags)
 {
-	unsigned long flag_bits = __calc_vm_flag_bits(flags);
+	unsigned long flag_bits = __calc_vm_flag_bits(file, flags);
 
 	if (static_branch_unlikely(&page_shift_compat_enabled))
 		flag_bits |= _calc_vm_trans(flags, __MAP_NO_COMPAT,  __VM_NO_COMPAT );
