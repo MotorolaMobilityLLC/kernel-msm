@@ -652,8 +652,7 @@ static void delete_vma_from_mm(struct vm_area_struct *vma)
  */
 static void delete_vma(struct mm_struct *mm, struct vm_area_struct *vma)
 {
-	if (vma->vm_ops && vma->vm_ops->close)
-		vma->vm_ops->close(vma);
+	vma_close(vma);
 	put_nommu_region(vma->vm_region);
 	/* fput(vma->vm_file) happens within vm_area_free() */
 	vm_area_free(vma);
