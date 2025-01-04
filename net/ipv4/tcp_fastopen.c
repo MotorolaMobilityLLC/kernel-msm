@@ -49,7 +49,7 @@ void tcp_fastopen_ctx_destroy(struct net *net)
 {
 	struct tcp_fastopen_context *ctxt;
 
-	ctxt = unrcu_pointer(xchg(&net->ipv4.tcp_fastopen_ctx, NULL));
+	ctxt = xchg((__force struct tcp_fastopen_context **)&net->ipv4.tcp_fastopen_ctx, NULL);
 
 	if (ctxt)
 		call_rcu(&ctxt->rcu, tcp_fastopen_ctx_free);
@@ -80,10 +80,9 @@ int tcp_fastopen_reset_cipher(struct net *net, struct sock *sk,
 
 	if (sk) {
 		q = &inet_csk(sk)->icsk_accept_queue.fastopenq;
-		octx = unrcu_pointer(xchg(&q->ctx, RCU_INITIALIZER(ctx)));
+		octx = xchg((__force struct tcp_fastopen_context **)&q->ctx, ctx);
 	} else {
-		octx = unrcu_pointer(xchg(&net->ipv4.tcp_fastopen_ctx,
-					  RCU_INITIALIZER(ctx)));
+		octx = xchg((__force struct tcp_fastopen_context **)&net->ipv4.tcp_fastopen_ctx, ctx);
 	}
 
 	if (octx)
