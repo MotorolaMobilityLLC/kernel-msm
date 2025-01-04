@@ -25,6 +25,8 @@
 #include "ksz8795_reg.h"
 #include "ksz8.h"
 
+#define KSZ8795_CHIP_ID         0x09
+
 static const u8 ksz8795_regs[] = {
 	[REG_IND_CTRL_0]		= 0x6E,
 	[REG_IND_DATA_8]		= 0x70,
@@ -52,13 +54,13 @@ static const u32 ksz8795_masks[] = {
 	[STATIC_MAC_TABLE_VALID]	= BIT(21),
 	[STATIC_MAC_TABLE_USE_FID]	= BIT(23),
 	[STATIC_MAC_TABLE_FID]		= GENMASK(30, 24),
-	[STATIC_MAC_TABLE_OVERRIDE]	= BIT(26),
-	[STATIC_MAC_TABLE_FWD_PORTS]	= GENMASK(24, 20),
+	[STATIC_MAC_TABLE_OVERRIDE]	= BIT(22),
+	[STATIC_MAC_TABLE_FWD_PORTS]	= GENMASK(20, 16),
 	[DYNAMIC_MAC_TABLE_ENTRIES_H]	= GENMASK(6, 0),
-	[DYNAMIC_MAC_TABLE_MAC_EMPTY]	= BIT(8),
+	[DYNAMIC_MAC_TABLE_MAC_EMPTY]	= BIT(7),
 	[DYNAMIC_MAC_TABLE_NOT_READY]	= BIT(7),
 	[DYNAMIC_MAC_TABLE_ENTRIES]	= GENMASK(31, 29),
-	[DYNAMIC_MAC_TABLE_FID]		= GENMASK(26, 20),
+	[DYNAMIC_MAC_TABLE_FID]		= GENMASK(22, 16),
 	[DYNAMIC_MAC_TABLE_SRC_PORT]	= GENMASK(26, 24),
 	[DYNAMIC_MAC_TABLE_TIMESTAMP]	= GENMASK(28, 27),
 };
@@ -601,7 +603,13 @@ static int ksz8_r_sta_mac_table(struct ksz_device *dev, u16 addr,
 				shifts[STATIC_MAC_FWD_PORTS];
 		alu->is_override =
 			(data_hi & masks[STATIC_MAC_TABLE_OVERRIDE]) ? 1 : 0;
-		data_hi >>= 1;
+
+		/* KSZ8795 family switches have STATIC_MAC_TABLE_USE_FID and
+		 * STATIC_MAC_TABLE_FID definitions off by 1 when doing read on the
+		 * static MAC table compared to doing write.
+		 */
+		if (dev->chip_id == KSZ8795_CHIP_ID)
+			data_hi >>= 1;
 		alu->is_static = true;
 		alu->is_use_fid =
 			(data_hi & masks[STATIC_MAC_TABLE_USE_FID]) ? 1 : 0;

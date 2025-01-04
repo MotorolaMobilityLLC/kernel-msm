@@ -606,10 +606,6 @@ bool gve_rx_poll(struct gve_notify_block *block, int budget)
 
 	feat = block->napi.dev->features;
 
-	/* If budget is 0, do all the work */
-	if (budget == 0)
-		budget = INT_MAX;
-
 	if (budget > 0)
 		repoll |= gve_clean_rx_done(rx, budget, feat);
 	else

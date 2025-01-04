@@ -401,7 +401,7 @@ static ssize_t amdgpu_debugfs_regs_didt_write(struct file *f, const char __user 
 	ssize_t result = 0;
 	int r;
 
-	if (size > 4096 || size & 0x3 || *pos & 0x3)
+	if (size & 0x3 || *pos & 0x3)
 		return -EINVAL;
 
 	if (!adev->didt_wreg)
