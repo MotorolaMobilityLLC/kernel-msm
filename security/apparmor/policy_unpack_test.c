@@ -283,6 +283,8 @@ static void policy_unpack_test_unpack_strdup_with_null_name(struct kunit *test)
 			   ((uintptr_t)puf->e->start <= (uintptr_t)string)
 			   && ((uintptr_t)string <= (uintptr_t)puf->e->end));
 	KUNIT_EXPECT_STREQ(test, string, TEST_STRING_DATA);
+
+	kfree(string);
 }
 
 static void policy_unpack_test_unpack_strdup_with_name(struct kunit *test)
@@ -298,6 +300,8 @@ static void policy_unpack_test_unpack_strdup_with_name(struct kunit *test)
 			   ((uintptr_t)puf->e->start <= (uintptr_t)string)
 			   && ((uintptr_t)string <= (uintptr_t)puf->e->end));
 	KUNIT_EXPECT_STREQ(test, string, TEST_STRING_DATA);
+
+	kfree(string);
 }
 
 static void policy_unpack_test_unpack_strdup_out_of_bounds(struct kunit *test)
@@ -315,6 +319,8 @@ static void policy_unpack_test_unpack_strdup_out_of_bounds(struct kunit *test)
 	KUNIT_EXPECT_EQ(test, size, 0);
 	KUNIT_EXPECT_PTR_EQ(test, string, (char *)NULL);
 	KUNIT_EXPECT_PTR_EQ(test, puf->e->pos, start);
+
+	kfree(string);
 }
 
 static void policy_unpack_test_unpack_nameX_with_null_name(struct kunit *test)

@@ -938,7 +938,7 @@ no_ownership:
 
 drop:
 	__inet_csk_reqsk_queue_drop(sk_listener, oreq, true);
-	reqsk_put(req);
+	reqsk_put(oreq);
 }
 
 static void reqsk_queue_hash_req(struct request_sock *req,
