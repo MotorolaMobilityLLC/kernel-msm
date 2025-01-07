@@ -44,12 +44,27 @@ static const int xpcs_usxgmii_features[] = {
 	__ETHTOOL_LINK_MODE_MASK_NBITS,
 };
 
+static const int xpcs_10gbaser_features[] = {
+	ETHTOOL_LINK_MODE_Pause_BIT,
+	ETHTOOL_LINK_MODE_Asym_Pause_BIT,
+	ETHTOOL_LINK_MODE_10000baseSR_Full_BIT,
+	ETHTOOL_LINK_MODE_10000baseLR_Full_BIT,
+	ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT,
+	ETHTOOL_LINK_MODE_10000baseER_Full_BIT,
+	__ETHTOOL_LINK_MODE_MASK_NBITS,
+};
+
 static const phy_interface_t xpcs_usxgmii_interfaces[] = {
 	PHY_INTERFACE_MODE_USXGMII,
 };
 
+static const phy_interface_t xpcs_10gbaser_interfaces[] = {
+	PHY_INTERFACE_MODE_10GBASER,
+};
+
 enum {
 	DW_XPCS_USXGMII,
+	DW_XPCS_10GBASER,
 	DW_XPCS_INTERFACE_MAX,
 };
 
@@ -354,6 +369,8 @@ static int qcom_xpcs_do_config(struct dw_xpcs_qcom *qxpcs, phy_interface_t inter
 		if (ret < 0)
 			return ret;
 		break;
+	case DW_10GBASER:
+		break;
 	default:
 		XPCSERR("Incompatible Autonegotiation mode\n");
 		return -EINVAL;
@@ -467,7 +484,7 @@ static int qcom_xpcs_select_mode(struct dw_xpcs_qcom *qxpcs, phy_interface_t int
 
 	g_interface = interface;
 
-	if (interface == PHY_INTERFACE_MODE_USXGMII) {
+	if (interface == PHY_INTERFACE_MODE_USXGMII || interface == PHY_INTERFACE_MODE_10GBASER) {
 		ret = qcom_xpcs_read(qxpcs, DW_SR_MII_PCS_CTRL2);
 		if (ret < 0)
 			goto out;
@@ -494,7 +511,8 @@ static int qcom_xpcs_select_mode(struct dw_xpcs_qcom *qxpcs, phy_interface_t int
 		if (ret < 0)
 			goto out;
 
-		qcom_xpcs_write(qxpcs, DW_VR_MII_PCS_DIG_CTRL1, ret | DW_USXGMII_EN);
+		if (interface == PHY_INTERFACE_MODE_USXGMII)
+			qcom_xpcs_write(qxpcs, DW_VR_MII_PCS_DIG_CTRL1, ret | DW_USXGMII_EN);
 
 		return 0;
 	}
@@ -561,6 +579,12 @@ static const struct xpcs_compat synopsys_xpcs_compat[DW_XPCS_INTERFACE_MAX] = {
 		.interface = xpcs_usxgmii_interfaces,
 		.num_interfaces = ARRAY_SIZE(xpcs_usxgmii_interfaces),
 		.an_mode = DW_AN_C37_USXGMII,
+	},
+	[DW_XPCS_10GBASER] = {
+		.supported = xpcs_10gbaser_features,
+		.interface = xpcs_10gbaser_interfaces,
+		.num_interfaces = ARRAY_SIZE(xpcs_10gbaser_interfaces),
+		.an_mode = DW_10GBASER,
 	},
 };
 

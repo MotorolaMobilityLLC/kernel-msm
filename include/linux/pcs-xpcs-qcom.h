@@ -13,6 +13,7 @@
 
 /* AN mode */
 #define DW_AN_C37_USXGMII		1
+#define DW_10GBASER			5
 
 struct xpcs_id;
 
