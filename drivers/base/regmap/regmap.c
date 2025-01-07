@@ -756,7 +756,6 @@ struct regmap *__regmap_init(struct device *dev,
 						   lock_key, lock_name);
 		}
 		map->lock_arg = map;
-		map->lock_key = lock_key;
 	}
 
 	/*
