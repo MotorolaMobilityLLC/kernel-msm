@@ -46,6 +46,7 @@ android/abi_gki_aarch64_zeku
 android/abi_gki_aarch64_lenovo
 android/abi_gki_aarch64_transsion
 android/abi_gki_aarch64_honda
+android/abi_gki_aarch64_volvo
 "
 
 FILES="${FILES}

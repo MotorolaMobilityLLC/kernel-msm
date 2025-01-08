@@ -45,6 +45,7 @@ _aarch64_additional_kmi_symbol_lists = [
     "android/abi_gki_aarch64_virtual_device",
     "android/abi_gki_aarch64_virtual_device_removed",
     "android/abi_gki_aarch64_vivo",
+    "android/abi_gki_aarch64_volvo",
     "android/abi_gki_aarch64_xiaomi",
     "android/abi_gki_aarch64_zeku",
 ]
