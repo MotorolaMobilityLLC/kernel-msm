@@ -498,6 +498,9 @@ DECLARE_HOOK(android_vh_copy_page_to_user,
 DECLARE_HOOK(android_vh_copy_page_from_user,
 	TP_PROTO(struct page *page),
 	TP_ARGS(page));
+DECLARE_HOOK(android_vh_page_private_mod,
+	TP_PROTO(struct page *page, unsigned long private),
+	TP_ARGS(page, private));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
