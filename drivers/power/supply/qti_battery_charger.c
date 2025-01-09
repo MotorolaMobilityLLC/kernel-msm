@@ -265,6 +265,11 @@ struct battery_chg_dev {
 	void				*notifier_cookie;
 	u32				*thermal_levels;
 	const char			*wls_fw_name;
+	const char			*wls_fw_name_2nd;
+	const char			*wls_coil_hw;
+	const char			*wls_coil_id;
+	const char			*wls_coil_id_2nd;
+	bool				wls_2nd_fw_enabled;
 	int				curr_thermal_level;
 	int				num_thermal_levels;
 	int				shutdown_volt_mv;
@@ -2473,6 +2478,32 @@ static void battery_chg_add_debugfs(struct battery_chg_dev *bcdev)
 static void battery_chg_add_debugfs(struct battery_chg_dev *bcdev) { }
 #endif
 
+static int mmi_get_wls_coil_id(const char **coilid_buf)
+{
+        struct device_node *np = of_find_node_by_path("/chosen");
+        int retval;
+
+	*coilid_buf = NULL;
+
+        if (np)
+                retval = of_property_read_string(np, "mmi,wireless_coil_id",
+                                                 coilid_buf);
+        else
+                return 0;
+
+        if ((retval == -EINVAL) || !*coilid_buf) {
+                pr_err("Coilid unused\n");
+                of_node_put(np);
+                return retval;
+
+        } else
+                pr_err("Coilid = %s\n", *coilid_buf);
+
+        of_node_put(np);
+
+        return 0;
+}
+
 static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 {
 	struct device_node *node = bcdev->dev->of_node;
@@ -2496,6 +2527,40 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 
 	if (bcdev->wls_fw_name && strstr(bcdev->wls_fw_name, "cps"))
 		bcdev->wls_fw_vendor = WLS_CPS;
+
+	bcdev->wls_2nd_fw_enabled = of_property_read_bool(bcdev->dev->of_node, "mmi,wls-2nd-fw-enabled");
+
+	if (bcdev->wls_2nd_fw_enabled) {
+		rc = of_property_read_string(node, "qcom,wireless-coil-id",
+					&bcdev->wls_coil_id);
+		if (rc)
+			bcdev->wls_coil_id = NULL;
+
+		rc = of_property_read_string(node, "qcom,wireless-fw-name-2nd",
+					&bcdev->wls_fw_name_2nd);
+		if (rc)
+			bcdev->wls_fw_name_2nd = NULL;
+
+		rc = of_property_read_string(node, "qcom,wireless-coil-id-2nd",
+					&bcdev->wls_coil_id_2nd);
+		if (rc)
+			bcdev->wls_coil_id_2nd = NULL;
+
+		mmi_get_wls_coil_id(&bcdev->wls_coil_hw);
+		if (bcdev->wls_coil_id && bcdev->wls_fw_name_2nd
+				&& bcdev->wls_coil_id_2nd
+				&& bcdev->wls_coil_hw) {
+			pr_info("coid hw id %s, coil fw id: %s, coil fw id 2nd: %s\n",
+					bcdev->wls_coil_hw,
+					bcdev->wls_coil_id,
+					bcdev->wls_coil_id_2nd);
+			if (!strcmp(bcdev->wls_coil_id_2nd, bcdev->wls_coil_hw)) {
+				of_property_read_string(node, "qcom,wireless-fw-name-2nd",
+					&bcdev->wls_fw_name);
+			}
+		}
+	}
+	pr_info("wlc firmware name: %s\n", bcdev->wls_fw_name);
 
 	rc = read_property_id(bcdev, pst, BATT_CHG_CTRL_LIM_MAX);
 	if (rc < 0) {
