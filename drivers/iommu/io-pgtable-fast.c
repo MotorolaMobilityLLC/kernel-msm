@@ -134,7 +134,7 @@
 	typeof(base) __base = (base); \
 	typeof(pmds) __pmds = (pmds); \
 	(__iova < __base) ? ERR_PTR(-EINVAL) : \
-	__pmds + ((__iova - __base) >> AV8L_FAST_PAGE_SHIFT); \
+	__pmds + ((__iova - ALIGN_DOWN(__base, SZ_2M)) >> AV8L_FAST_PAGE_SHIFT); \
 })
 
 static inline dma_addr_t av8l_dma_addr(void *addr)
