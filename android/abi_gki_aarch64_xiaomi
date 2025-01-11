@@ -116,6 +116,9 @@
   __traceiter_cma_release
   __traceiter_android_vh_dma_buf_release
   __tracepoint_android_vh_dma_buf_release
+  __traceiter_android_vh_page_private_mod
+  __tracepoint_android_vh_page_private_mod
+  set_page_private
   mmc_set_blocklen
   nr_free_buffer_pages
 
@@ -505,3 +508,11 @@ __tracepoint_android_vh_copy_page_from_user
 __traceiter_android_vh_copy_page_from_user
 __tracepoint_android_vh_destroy_inode
 __traceiter_android_vh_destroy_inode
+
+# required by gzvm.ko
+__traceiter_android_vh_gzvm_destroy_vm_post_process
+__tracepoint_android_vh_gzvm_destroy_vm_post_process
+__traceiter_android_vh_gzvm_handle_demand_page_pre
+__traceiter_android_vh_gzvm_handle_demand_page_post
+__tracepoint_android_vh_gzvm_handle_demand_page_pre
+__tracepoint_android_vh_gzvm_handle_demand_page_post

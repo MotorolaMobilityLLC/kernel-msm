@@ -314,6 +314,18 @@
   snd_usb_unlock_shutdown
   snd_usb_unregister_platform_ops
 
+# required by batman-adv.ko
+  br_multicast_has_querier_adjacent
+  br_multicast_has_querier_anywhere
+  br_multicast_has_router_adjacent
+  br_multicast_list_adjacent
+  dev_get_iflink
+  ip_mc_check_igmp
+  ipv6_mc_check_mld
+  netdev_master_upper_dev_get_rcu
+  skb_prepare_seq_read
+  skb_seq_read
+
 # required by gzvm.ko
   __traceiter_android_vh_gzvm_vcpu_exit_reason
   __tracepoint_android_vh_gzvm_vcpu_exit_reason

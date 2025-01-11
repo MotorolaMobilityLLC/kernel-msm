@@ -5194,6 +5194,8 @@ static vm_fault_t do_read_fault(struct vm_fault *vmf)
 	vm_fault_t ret = 0;
 	struct folio *folio;
 
+	trace_android_rvh_do_read_fault(vmf, &fault_around_pages);
+
 	/*
 	 * Let's call ->map_pages() first and use ->fault() as fallback
 	 * if page by the offset is not ready to be mapped (cold cache or

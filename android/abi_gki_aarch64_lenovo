@@ -1316,6 +1316,7 @@
   vm_iomap_memory
   vm_map_ram
   vm_unmap_ram
+  vm_unmapped_area
   vprintk
   vscnprintf
   vsnprintf

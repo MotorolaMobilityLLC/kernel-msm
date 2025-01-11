@@ -129,6 +129,7 @@
   __traceiter_android_vh_configfs_uevent_work
   __traceiter_android_vh_count_workingset_refault
   __traceiter_android_vh_do_anonymous_page
+  __traceiter_android_vh_do_async_mmap_readahead
   __traceiter_android_vh_do_group_exit
   __traceiter_android_vh_do_new_mount_fc
   __traceiter_android_vh_do_swap_page
@@ -258,6 +259,7 @@
   __tracepoint_android_vh_configfs_uevent_work
   __tracepoint_android_vh_count_workingset_refault
   __tracepoint_android_vh_do_anonymous_page
+  __tracepoint_android_vh_do_async_mmap_readahead
   __tracepoint_android_vh_do_group_exit
   __tracepoint_android_vh_do_new_mount_fc
   __tracepoint_android_vh_do_swap_page
@@ -345,3 +347,4 @@
   unlock_buffer
   __wait_on_buffer
   zs_lookup_class_index
+  utf8_data_table_new
