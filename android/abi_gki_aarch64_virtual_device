@@ -377,6 +377,7 @@
   __serio_register_driver
   __serio_register_port
   serio_unregister_driver
+  set_page_private
   sg_alloc_table
   sg_free_table
   sg_init_one
