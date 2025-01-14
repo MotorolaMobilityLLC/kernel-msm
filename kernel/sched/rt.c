@@ -959,7 +959,7 @@ static int do_sched_rt_period_timer(struct rt_bandwidth *rt_b, int overrun)
 
 				/*
 				 * When we're idle and a woken (rt) task is
-				 * throttled wakeup_preempt() will set
+				 * throttled check_preempt_curr() will set
 				 * skip_update and the time between the wakeup
 				 * and this unthrottle will get accounted as
 				 * 'runtime'.
@@ -1799,7 +1799,7 @@ static int balance_rt(struct rq *rq, struct task_struct *p, struct rq_flags *rf)
 /*
  * Preempt the current task with a newly woken task if needed:
  */
-static void wakeup_preempt_rt(struct rq *rq, struct task_struct *p, int flags)
+static void check_preempt_curr_rt(struct rq *rq, struct task_struct *p, int flags)
 {
 	if (p->prio < rq->curr->prio) {
 		resched_curr(rq);
@@ -2808,7 +2808,7 @@ DEFINE_SCHED_CLASS(rt) = {
 	.dequeue_task		= dequeue_task_rt,
 	.yield_task		= yield_task_rt,
 
-	.wakeup_preempt		= wakeup_preempt_rt,
+	.check_preempt_curr	= check_preempt_curr_rt,
 
 	.pick_next_task		= pick_next_task_rt,
 	.put_prev_task		= put_prev_task_rt,
