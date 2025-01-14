@@ -517,30 +517,33 @@ TRACE_EVENT(sched_blocked_reason,
  */
 DECLARE_EVENT_CLASS(sched_stat_runtime,
 
-	TP_PROTO(struct task_struct *tsk, u64 runtime),
+	TP_PROTO(struct task_struct *tsk, u64 runtime, u64 vruntime),
 
-	TP_ARGS(tsk, __perf_count(runtime)),
+	TP_ARGS(tsk, __perf_count(runtime), vruntime),
 
 	TP_STRUCT__entry(
 		__array( char,	comm,	TASK_COMM_LEN	)
 		__field( pid_t,	pid			)
 		__field( u64,	runtime			)
+		__field( u64,	vruntime			)
 	),
 
 	TP_fast_assign(
 		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
 		__entry->pid		= tsk->pid;
 		__entry->runtime	= runtime;
+		__entry->vruntime	= vruntime;
 	),
 
-	TP_printk("comm=%s pid=%d runtime=%Lu [ns]",
+	TP_printk("comm=%s pid=%d runtime=%Lu [ns] vruntime=%Lu [ns]",
 			__entry->comm, __entry->pid,
-			(unsigned long long)__entry->runtime)
+			(unsigned long long)__entry->runtime,
+			(unsigned long long)__entry->vruntime)
 );
 
 DEFINE_EVENT(sched_stat_runtime, sched_stat_runtime,
-	     TP_PROTO(struct task_struct *tsk, u64 runtime),
-	     TP_ARGS(tsk, runtime));
+	     TP_PROTO(struct task_struct *tsk, u64 runtime, u64 vruntime),
+	     TP_ARGS(tsk, runtime, vruntime));
 
 /*
  * Tracepoint for showing priority inheritance modifying a tasks
