@@ -503,7 +503,7 @@ struct sched_statistics {
 	u64				block_max;
 	s64				sum_block_runtime;
 
-	s64				exec_max;
+	u64				exec_max;
 	u64				slice_max;
 
 	u64				nr_migrations_cold;
