@@ -1077,6 +1077,8 @@ static void update_curr_rt(struct rq *rq)
 
 	update_current_exec_runtime(curr, now, delta_exec);
 
+	trace_android_vh_sched_stat_runtime_rt(curr, delta_exec);
+
 	if (!rt_bandwidth_enabled())
 		return;
 
