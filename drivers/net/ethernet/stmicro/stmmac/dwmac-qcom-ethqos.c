@@ -37,15 +37,12 @@
 #define RGMII_CONFIG_FUNC_CLK_EN		BIT(30)
 #define RGMII_CONFIG_POS_NEG_DATA_SEL		BIT(23)
 #define RGMII_CONFIG_GPIO_CFG_RX_INT		GENMASK(21, 20)
-#if IS_ENABLED(CONFIG_DWXGMAC_QCOM_VER4)
-	#define RGMII_CONFIG_GPIO_CFG_TX_INT		GENMASK(21, 19)
-	#define RGMII_CONFIG_MAX_SPD_PRG_9		GENMASK(18, 10)
-	#define RGMII_CONFIG_MAX_SPD_PRG_2		GENMASK(9, 6)
-#else
-	#define RGMII_CONFIG_GPIO_CFG_TX_INT		GENMASK(19, 17)
-	#define RGMII_CONFIG_MAX_SPD_PRG_9		GENMASK(16, 8)
-	#define RGMII_CONFIG_MAX_SPD_PRG_2		GENMASK(7, 6)
-#endif
+#define RGMII_CONFIG_GPIO_CFG_TX_INT_V4		GENMASK(21, 19)
+#define RGMII_CONFIG_SGMII_CLK_DVDR		GENMASK(18, 10)
+#define RGMII_CONFIG_MAX_SPD_PRG_2_V4		GENMASK(9, 6)
+#define RGMII_CONFIG_GPIO_CFG_TX_INT		GENMASK(19, 17)
+#define RGMII_CONFIG_MAX_SPD_PRG_9		GENMASK(16, 8)
+#define RGMII_CONFIG_MAX_SPD_PRG_2		GENMASK(7, 6)
 #define RGMII_CONFIG_INTF_SEL			GENMASK(5, 4)
 #define RGMII_CONFIG_BYPASS_TX_ID_EN		BIT(3)
 #define RGMII_CONFIG_LOOPBACK_EN		BIT(2)
@@ -95,11 +92,8 @@
 #define SDC4_STATUS_DLL_LOCK			BIT(7)
 
 /* RGMII_IO_MACRO_CONFIG2 fields */
-#if IS_ENABLED(CONFIG_DWXGMAC_QCOM_VER4)
-	#define RGMII_CONFIG2_RSVD_CONFIG15		GENMASK(31, 24)
-#else
-	#define RGMII_CONFIG2_RSVD_CONFIG15		GENMASK(31, 17)
-#endif
+#define RGMII_CONFIG2_RSVD_CONFIG15		GENMASK(31, 17)
+
 #define RGMII_CONFIG2_MODE_EN_VIA_GMII		BIT(21)
 #define RGMII_CONFIG2_MAX_SPD_PRG_3		GENMASK(20, 17)
 #define RGMII_CONFIG2_RGMII_CLK_SEL_CFG		BIT(16)
@@ -1329,9 +1323,11 @@ static void qcom_serdes_loopback_v3_1(struct plat_stmmacenet_data *plat, bool on
 	if (on)
 		rgmii_updatel(ethqos, SGMII_PHY_CNTRL1_SGMII_TX_TO_RX_LOOPBACK_EN,
 			      SGMII_PHY_CNTRL1_SGMII_TX_TO_RX_LOOPBACK_EN,
+			      ethqos->emac_ver == EMAC_HW_v4_0_0 ? EMAC_WRAPPER_SGMII_PHY_CNTRL1 :
 			      EMAC_WRAPPER_SGMII_PHY_CNTRL1_v3);
 	else
 		rgmii_updatel(ethqos, SGMII_PHY_CNTRL1_SGMII_TX_TO_RX_LOOPBACK_EN, 0,
+			      ethqos->emac_ver == EMAC_HW_v4_0_0 ? EMAC_WRAPPER_SGMII_PHY_CNTRL1 :
 			      EMAC_WRAPPER_SGMII_PHY_CNTRL1_v3);
 }
 
@@ -1430,8 +1426,9 @@ static int ethqos_configure_sgmii_v4(struct qcom_ethqos *ethqos)
 	rgmii_updatel(ethqos, USXGMII_CLK_BLK_CLK_EN, 0, EMAC_WRAPPER_USXGMII_MUX_SEL);
 
 	rgmii_updatel(ethqos, SGMII_PHY_CNTRL0_2P5G_1G_CLK_SEL, 0, EMAC_WRAPPER_SGMII_PHY_CNTRL0);
-	rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_2, (BIT(6) | BIT(9)), RGMII_IO_MACRO_CONFIG);
-	rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_9, (BIT(10) | BIT(14) | BIT(15)),
+	rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_2_V4, (BIT(6) | BIT(9)),
+		      RGMII_IO_MACRO_CONFIG);
+	rgmii_updatel(ethqos, RGMII_CONFIG_SGMII_CLK_DVDR, (BIT(10) | BIT(14) | BIT(15)),
 		      RGMII_IO_MACRO_CONFIG);
 	rgmii_updatel(ethqos, RGMII_CONFIG2_MAX_SPD_PRG_3, (BIT(17) | BIT(20)),
 		      RGMII_IO_MACRO_CONFIG2);
@@ -1447,6 +1444,7 @@ static int ethqos_configure_sgmii_v4(struct qcom_ethqos *ethqos)
 
 static int ethqos_configure_usxgmii_v4(struct qcom_ethqos *ethqos)
 {
+	rgmii_updatel(ethqos, RGMII_BYPASS_EN, RGMII_BYPASS_EN, RGMII_IO_MACRO_BYPASS);
 	rgmii_updatel(ethqos, RGMII_CONFIG2_MODE_EN_VIA_GMII, 0, RGMII_IO_MACRO_CONFIG2);
 	rgmii_updatel(ethqos, SGMII_PHY_CNTRL0_2P5G_1G_CLK_SEL, BIT(5),
 		      EMAC_WRAPPER_SGMII_PHY_CNTRL0);
@@ -1470,7 +1468,7 @@ static int ethqos_configure_usxgmii_v4(struct qcom_ethqos *ethqos)
 	case SPEED_5000:
 		rgmii_updatel(ethqos, SGMII_PHY_CNTRL0_2P5G_1G_CLK_SEL, 0,
 			      EMAC_WRAPPER_SGMII_PHY_CNTRL0);
-		rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_2, (BIT(6) | BIT(7)),
+		rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_2_V4, (BIT(6) | BIT(7)),
 			      RGMII_IO_MACRO_CONFIG);
 		rgmii_updatel(ethqos, RGMII_CONFIG2_MAX_SPD_PRG_3, (BIT(17) | BIT(18)),
 			      RGMII_IO_MACRO_CONFIG2);
@@ -1479,7 +1477,7 @@ static int ethqos_configure_usxgmii_v4(struct qcom_ethqos *ethqos)
 	case SPEED_2500:
 		rgmii_updatel(ethqos, SGMII_PHY_CNTRL0_2P5G_1G_CLK_SEL, 0,
 			      EMAC_WRAPPER_SGMII_PHY_CNTRL0);
-		rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_9, (BIT(10) | BIT(11)),
+		rgmii_updatel(ethqos, RGMII_CONFIG_SGMII_CLK_DVDR, (BIT(10) | BIT(11)),
 			      RGMII_IO_MACRO_CONFIG);
 		rgmii_updatel(ethqos, RGMII_SCRATCH2_MAX_SPD_PRG_4, (BIT(2) | BIT(3)),
 			      RGMII_IO_MACRO_SCRATCH_2);
@@ -1497,7 +1495,7 @@ static int ethqos_configure_usxgmii_v4(struct qcom_ethqos *ethqos)
 		rgmii_updatel(ethqos, RGMII_CONFIG2_RGMII_CLK_SEL_CFG,
 			      RGMII_CONFIG2_RGMII_CLK_SEL_CFG,
 			      RGMII_IO_MACRO_CONFIG2);
-		rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_2, BIT(9),
+		rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_2_V4, BIT(9),
 			      RGMII_IO_MACRO_CONFIG);
 		rgmii_updatel(ethqos, RGMII_CONFIG2_MAX_SPD_PRG_3, BIT(20),
 			      RGMII_IO_MACRO_CONFIG2);
@@ -1539,6 +1537,7 @@ static int ethqos_configure_mac_v4(struct qcom_ethqos *ethqos)
 		break;
 
 	case PHY_INTERFACE_MODE_USXGMII:
+	case PHY_INTERFACE_MODE_10GBASER:
 		ret = ethqos_configure_usxgmii_v4(ethqos);
 		break;
 	}
