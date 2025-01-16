@@ -340345,6 +340345,13 @@ function {
   parameter_id: 0x11cfee5a
 }
 function {
+  id: 0x9be90d40
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x11cfee5a
+  parameter_id: 0x0622699d
+}
+function {
   id: 0x9be96fa7
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -360160,6 +360167,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_prio_restore"
 }
 elf_symbol {
+  id: 0x55349b76
+  name: "__traceiter_android_vh_proactive_compact_stop"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xcff7c389
+  type_id: 0x9be90d40
+  full_name: "__traceiter_android_vh_proactive_compact_stop"
+}
+elf_symbol {
   id: 0x46ce0353
   name: "__traceiter_android_vh_process_madvise"
   is_defined: true
@@ -366773,6 +366789,15 @@ elf_symbol {
   crc: 0x417b0fe8
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_prio_restore"
+}
+elf_symbol {
+  id: 0x861885fc
+  name: "__tracepoint_android_vh_proactive_compact_stop"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x89509caa
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_proactive_compact_stop"
 }
 elf_symbol {
   id: 0x2f640519
@@ -430689,6 +430714,7 @@ interface {
   symbol_id: 0x7d499dab
   symbol_id: 0xeba1d6c7
   symbol_id: 0x204c04f7
+  symbol_id: 0x55349b76
   symbol_id: 0x46ce0353
   symbol_id: 0x246a30af
   symbol_id: 0xb30b32e6
@@ -431424,6 +431450,7 @@ interface {
   symbol_id: 0x49b95a49
   symbol_id: 0x2bfccca9
   symbol_id: 0x2a85f575
+  symbol_id: 0x861885fc
   symbol_id: 0x2f640519
   symbol_id: 0x1185eadd
   symbol_id: 0x5f208298
