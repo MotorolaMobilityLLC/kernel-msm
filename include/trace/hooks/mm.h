@@ -160,6 +160,9 @@ DECLARE_HOOK(android_vh_mm_compaction_begin,
 DECLARE_HOOK(android_vh_mm_compaction_end,
 	TP_PROTO(struct compact_control *cc, long vendor_ret),
 	TP_ARGS(cc, vendor_ret));
+DECLARE_HOOK(android_vh_proactive_compact_stop,
+	TP_PROTO(bool *compact_enough, struct compact_control *cc),
+	TP_ARGS(compact_enough, cc));
 struct mem_cgroup;
 DECLARE_HOOK(android_vh_mem_cgroup_alloc,
 	TP_PROTO(struct mem_cgroup *memcg),
