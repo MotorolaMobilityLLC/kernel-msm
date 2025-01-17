@@ -238,6 +238,8 @@ static inline u32 xgmac_pps_base_addr(const struct dwxgmac_addrs *addrs,
 #define XGMAC_TXTIMESTAMP_NSEC(addrs)		(xgmac_timestamp_base_addr(addrs) + 0x30)
 #define XGMAC_TXTSSTSLO			GENMASK(30, 0)
 #define XGMAC_TXTIMESTAMP_SEC(addrs)		(xgmac_timestamp_base_addr(addrs) + 0x34)
+#define XGMAC_TXTIMESTAMP_STATUS_PKTID(addrs) (xgmac_timestamp_base_addr(addrs) + 0x38)
+
 #define XGMAC_PPS_CONTROL(addrs)		(xgmac_timestamp_base_addr(addrs) + 0x70)
 #define XGMAC_PPS_MAXIDX(x)		((((x) + 1) * 8) - 1)
 #define XGMAC_PPS_MINIDX(x)		((x) * 8)
@@ -491,6 +493,7 @@ static inline u32 xgmac_dma_chanx_base_addr(const struct dwxgmac_addrs *addrs,
 /* Descriptors */
 #define XGMAC_TDES0_LTV			BIT(31)
 #define XGMAC_TDES0_LT			GENMASK(7, 0)
+#define XGMAC_TDES0_TTSL		GENMASK(9, 0)
 #define XGMAC_TDES1_LT			GENMASK(31, 8)
 #define XGMAC_TDES2_IVT			GENMASK(31, 16)
 #define XGMAC_TDES2_IVT_SHIFT		16
@@ -505,6 +508,8 @@ static inline u32 xgmac_dma_chanx_base_addr(const struct dwxgmac_addrs *addrs,
 #define XGMAC_TDES3_CTXT		BIT(30)
 #define XGMAC_TDES3_FD			BIT(29)
 #define XGMAC_TDES3_LD			BIT(28)
+#define XGMAC_TDES3_OSTC		BIT(27)
+#define XGMAC_TDES3_PIDV		BIT(25)
 #define XGMAC_TDES3_CPC			GENMASK(27, 26)
 #define XGMAC_TDES3_CPC_SHIFT		26
 #define XGMAC_TDES3_TCMSSV		BIT(26)

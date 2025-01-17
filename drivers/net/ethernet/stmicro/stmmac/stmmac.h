@@ -84,6 +84,7 @@ struct stmmac_tx_queue {
 	dma_addr_t dma_tx_phy;
 	dma_addr_t tx_tail_addr;
 	u32 mss;
+	u32 pid;
 };
 
 struct stmmac_rx_buffer {

@@ -97,6 +97,7 @@ struct stmmac_desc_ops {
 			     u32 inner_type);
 	void (*set_vlan)(struct dma_desc *p, u32 type);
 	void (*set_tbs)(struct dma_edesc *p, u32 sec, u32 nsec);
+	void (*set_hw_ts)(struct dma_desc *p, u32 pid);
 };
 
 #define stmmac_init_rx_desc(__priv, __args...) \
@@ -159,6 +160,8 @@ struct stmmac_desc_ops {
 	stmmac_do_void_callback(__priv, desc, set_vlan, __args)
 #define stmmac_set_desc_tbs(__priv, __args...) \
 	stmmac_do_void_callback(__priv, desc, set_tbs, __args)
+#define stmmac_set_desc_hw_ts(__priv, __args...) \
+	stmmac_do_void_callback(__priv, desc, set_hw_ts, __args)
 
 struct stmmac_dma_cfg;
 struct dma_features;
