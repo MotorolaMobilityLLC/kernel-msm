@@ -68,6 +68,31 @@
   __traceiter_rpm_return_int
   __tracepoint_rpm_return_int
   __kfifo_len_r
+  mempool_init
+  mempool_exit
+  dm_register_target
+  dm_unregister_target
+  blk_crypto_evict_key
+  blk_crypto_derive_sw_secret
+  dm_shift_arg
+  dm_get_device
+  dm_put_device
+  dm_read_arg_group
+  dm_consume_args
+  bioset_init
+  dm_set_target_max_io_len
+  dm_per_bio_data
+  dm_bio_get_target_bio_nr
+  bioset_exit
+  dm_submit_bio_remap
+  dm_table_device_name
+  dm_table_event
+  empty_zero_page
+  dm_get_reserved_bio_based_ios
+  wait_for_completion_io
+  bio_crypt_set_ctx
+  zero_fill_bio_iter
+  __trace_bputs
   __traceiter_android_vh_killed_process
   __tracepoint_android_vh_killed_process
   __traceiter_android_vh_rwsem_write_wait_finish
