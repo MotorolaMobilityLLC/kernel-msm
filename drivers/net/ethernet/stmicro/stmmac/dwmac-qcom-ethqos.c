@@ -26,6 +26,7 @@
 #include <linux/tcp.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
+#include <linux/pcs-xpcs-qcom.h>
 #include "stmmac.h"
 #include "stmmac_platform.h"
 #include "dwmac-qcom-ethqos.h"
@@ -1811,9 +1812,10 @@ static int qcom_ethqos_init(struct platform_device *pdev, void *prv)
 	return qcom_ethqos_domain_transition_d0d3(prv, true);
 }
 
-static void ethqos_fix_mac_speed(void *priv, unsigned int speed)
+static void ethqos_fix_mac_speed(void *priv_n, unsigned int speed)
 {
-	struct qcom_ethqos *ethqos = priv;
+	struct qcom_ethqos *ethqos = priv_n;
+	struct stmmac_priv *priv = qcom_ethqos_get_priv(ethqos);
 	int ret = 0;
 
 	ethqos->speed = speed;
@@ -1828,6 +1830,11 @@ static void ethqos_fix_mac_speed(void *priv, unsigned int speed)
 
 	if (ret != 0)
 		ETHQOSERR("HSR configuration has failed\n");
+
+	if (priv->plat->qcom_pcs)
+		qcom_xpcs_link_up(priv->plat->qcom_pcs,
+				  priv->plat->phy_interface, speed,
+				  DUPLEX_FULL);
 }
 
 static int ethqos_clks_config(void *priv, bool enabled)
@@ -2585,6 +2592,7 @@ static void qcom_ethqos_hdma_cfg(struct plat_stmmacenet_data *plat)
 static int qcom_ethqos_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
+	struct device_node *pcs_node;
 	struct stmmac_resources stmmac_res;
 	struct qcom_ethqos *ethqos = NULL;
 	struct net_device *ndev;
@@ -2809,6 +2817,15 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	} else {
 		plat_dat->pcs_v3 = false;
 		ETHQOSDBG(":pcs-v3 not in dtsi\n");
+	}
+
+	if (of_property_present(pdev->dev.of_node, "qcom-xpcs-handle")) {
+		pcs_node = of_parse_phandle(pdev->dev.of_node, "qcom-xpcs-handle", 0);
+		plat_dat->qcom_pcs = qcom_xpcs_create(pcs_node, plat_dat->phy_interface);
+		if (IS_ERR_OR_NULL(plat_dat->qcom_pcs)) {
+			dev_warn(&pdev->dev, "Qcom Xpcs not found\n");
+			return -ENODEV;
+		}
 	}
 
 	if (of_property_present(pdev->dev.of_node, "phy-intr")) {
@@ -3324,6 +3341,9 @@ MODULE_SOFTDEP("post: aquantia");
 #endif
 #if IS_ENABLED(CONFIG_MARVELL_PHY)
 MODULE_SOFTDEP("post: marvell");
+#endif
+#if IS_ENABLED(CONFIG_PCS_QCOM)
+MODULE_SOFTDEP("post: pcs-xpcs-qcom");
 #endif
 
 MODULE_DESCRIPTION("Qualcomm ETHQOS driver");

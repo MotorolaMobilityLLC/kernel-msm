@@ -949,10 +949,13 @@ static struct phylink_pcs *stmmac_mac_select_pcs(struct phylink_config *config,
 {
 	struct stmmac_priv *priv = netdev_priv(to_net_dev(config->dev));
 
-	if (!priv->hw->xpcs)
-		return NULL;
+	if (priv->hw->xpcs)
+		return &priv->hw->xpcs->pcs;
 
-	return &priv->hw->xpcs->pcs;
+	if (priv->plat->qcom_pcs)
+		return priv->plat->qcom_pcs;
+
+	return NULL;
 }
 
 static void stmmac_validate(struct phylink_config *config,
