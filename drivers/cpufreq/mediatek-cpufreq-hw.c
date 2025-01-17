@@ -64,7 +64,7 @@ mtk_cpufreq_get_cpu_power(unsigned long *mW,
 
 	policy = cpufreq_cpu_get_raw(cpu_dev->id);
 	if (!policy)
-		return 0;
+		return -EINVAL;
 
 	data = policy->driver_data;
 

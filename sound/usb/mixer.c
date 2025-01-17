@@ -1206,6 +1206,7 @@ static void volume_control_quirks(struct usb_mixer_elem_info *cval,
 		}
 		break;
 	case USB_ID(0x1bcf, 0x2283): /* NexiGo N930AF FHD Webcam */
+	case USB_ID(0x03f0, 0x654a): /* HP 320 FHD Webcam */
 		if (!strcmp(kctl->id.name, "Mic Capture Volume")) {
 			usb_audio_info(chip,
 				"set resolution quirk: cval->res = 16\n");
@@ -2005,6 +2006,13 @@ static int parse_audio_feature_unit(struct mixer_build *state, int unitid,
 		csize = 4;
 		channels = (ftr->bLength - 7) / 4 - 1;
 		bmaControls = ftr->bmaControls;
+	}
+
+	if (channels > 32) {
+		usb_audio_info(state->chip,
+			       "usbmixer: too many channels (%d) in unit %d\n",
+			       channels, unitid);
+		return -EINVAL;
 	}
 
 	/* parse the source unit */

@@ -686,10 +686,6 @@ bool gve_tx_poll(struct gve_notify_block *block, int budget)
 	u32 nic_done;
 	u32 to_do;
 
-	/* If budget is 0, do all the work */
-	if (budget == 0)
-		budget = INT_MAX;
-
 	/* Find out how much work there is to be done */
 	tx->last_nic_done = gve_tx_load_event_counter(priv, tx);
 	nic_done = be32_to_cpu(tx->last_nic_done);

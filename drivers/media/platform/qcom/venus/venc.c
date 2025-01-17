@@ -509,6 +509,64 @@ static int venc_enum_frameintervals(struct file *file, void *fh,
 	return 0;
 }
 
+static int venc_subscribe_event(struct v4l2_fh *fh,
+				const struct v4l2_event_subscription *sub)
+{
+	switch (sub->type) {
+	case V4L2_EVENT_EOS:
+		return v4l2_event_subscribe(fh, sub, 2, NULL);
+	case V4L2_EVENT_CTRL:
+		return v4l2_ctrl_subscribe_event(fh, sub);
+	default:
+		return -EINVAL;
+	}
+}
+
+static int
+venc_encoder_cmd(struct file *file, void *fh, struct v4l2_encoder_cmd *cmd)
+{
+	struct venus_inst *inst = to_inst(file);
+	struct hfi_frame_data fdata = {0};
+	int ret = 0;
+
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, fh, cmd);
+	if (ret)
+		return ret;
+
+	mutex_lock(&inst->lock);
+
+	if (cmd->cmd == V4L2_ENC_CMD_STOP &&
+	    inst->enc_state == VENUS_ENC_STATE_ENCODING) {
+		/*
+		 * Implement V4L2_ENC_CMD_STOP by enqueue an empty buffer on
+		 * encoder input to signal EOS.
+		 */
+		if (!(inst->streamon_out && inst->streamon_cap))
+			goto unlock;
+
+		fdata.buffer_type = HFI_BUFFER_INPUT;
+		fdata.flags |= HFI_BUFFERFLAG_EOS;
+		fdata.device_addr = 0xdeadb000;
+
+		ret = hfi_session_process_buf(inst, &fdata);
+
+		inst->enc_state = VENUS_ENC_STATE_DRAIN;
+	} else if (cmd->cmd == V4L2_ENC_CMD_START) {
+		if (inst->enc_state == VENUS_ENC_STATE_DRAIN) {
+			ret = -EBUSY;
+			goto unlock;
+		}
+		if (inst->enc_state == VENUS_ENC_STATE_STOPPED) {
+			vb2_clear_last_buffer_dequeued(&inst->fh.m2m_ctx->cap_q_ctx.q);
+			inst->enc_state = VENUS_ENC_STATE_ENCODING;
+		}
+	}
+
+unlock:
+	mutex_unlock(&inst->lock);
+	return ret;
+}
+
 static const struct v4l2_ioctl_ops venc_ioctl_ops = {
 	.vidioc_querycap = venc_querycap,
 	.vidioc_enum_fmt_vid_cap = venc_enum_fmt,
@@ -534,9 +592,69 @@ static const struct v4l2_ioctl_ops venc_ioctl_ops = {
 	.vidioc_g_parm = venc_g_parm,
 	.vidioc_enum_framesizes = venc_enum_framesizes,
 	.vidioc_enum_frameintervals = venc_enum_frameintervals,
-	.vidioc_subscribe_event = v4l2_ctrl_subscribe_event,
+	.vidioc_subscribe_event = venc_subscribe_event,
 	.vidioc_unsubscribe_event = v4l2_event_unsubscribe,
+	.vidioc_try_encoder_cmd = v4l2_m2m_ioctl_try_encoder_cmd,
+	.vidioc_encoder_cmd = venc_encoder_cmd,
 };
+
+static int venc_pm_get(struct venus_inst *inst)
+{
+	struct venus_core *core = inst->core;
+	struct device *dev = core->dev_enc;
+	int ret;
+
+	mutex_lock(&core->pm_lock);
+	ret = pm_runtime_resume_and_get(dev);
+	mutex_unlock(&core->pm_lock);
+
+	return ret < 0 ? ret : 0;
+}
+
+static int venc_pm_put(struct venus_inst *inst, bool autosuspend)
+{
+	struct venus_core *core = inst->core;
+	struct device *dev = core->dev_enc;
+	int ret;
+
+	mutex_lock(&core->pm_lock);
+
+	if (autosuspend)
+		ret = pm_runtime_put_autosuspend(dev);
+	else
+		ret = pm_runtime_put_sync(dev);
+
+	mutex_unlock(&core->pm_lock);
+
+	return ret < 0 ? ret : 0;
+}
+
+static int venc_pm_get_put(struct venus_inst *inst)
+{
+	struct venus_core *core = inst->core;
+	struct device *dev = core->dev_enc;
+	int ret = 0;
+
+	mutex_lock(&core->pm_lock);
+
+	if (pm_runtime_suspended(dev)) {
+		ret = pm_runtime_resume_and_get(dev);
+		if (ret < 0)
+			goto error;
+
+		ret = pm_runtime_put_autosuspend(dev);
+	}
+
+error:
+	mutex_unlock(&core->pm_lock);
+
+	return ret < 0 ? ret : 0;
+}
+
+static void venc_pm_touch(struct venus_inst *inst)
+{
+	pm_runtime_mark_last_busy(inst->core->dev_enc);
+}
 
 static int venc_set_properties(struct venus_inst *inst)
 {
@@ -931,10 +1049,18 @@ static int venc_queue_setup(struct vb2_queue *q,
 		return 0;
 	}
 
+	ret = venc_pm_get(inst);
+	if (ret)
+		return ret;
+
 	mutex_lock(&inst->lock);
 	ret = venc_init_session(inst);
 	mutex_unlock(&inst->lock);
 
+	if (ret)
+		goto put_power;
+
+	ret = venc_pm_put(inst, false);
 	if (ret)
 		return ret;
 
@@ -971,6 +1097,9 @@ static int venc_queue_setup(struct vb2_queue *q,
 	}
 
 	return ret;
+put_power:
+	venc_pm_put(inst, false);
+	return ret;
 }
 
 static int venc_buf_init(struct vb2_buffer *vb)
@@ -986,6 +1115,8 @@ static void venc_release_session(struct venus_inst *inst)
 {
 	int ret;
 
+	venc_pm_get(inst);
+
 	mutex_lock(&inst->lock);
 
 	ret = hfi_session_deinit(inst);
@@ -997,6 +1128,8 @@ static void venc_release_session(struct venus_inst *inst)
 	venus_pm_load_scale(inst);
 	INIT_LIST_HEAD(&inst->registeredbufs);
 	venus_pm_release_core(inst);
+
+	venc_pm_put(inst, false);
 }
 
 static void venc_buf_cleanup(struct vb2_buffer *vb)
@@ -1066,7 +1199,15 @@ static int venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	inst->sequence_cap = 0;
 	inst->sequence_out = 0;
 
+	ret = venc_pm_get(inst);
+	if (ret)
+		goto error;
+
 	ret = venus_pm_acquire_core(inst);
+	if (ret)
+		goto put_power;
+
+	ret = venc_pm_put(inst, true);
 	if (ret)
 		goto error;
 
@@ -1087,10 +1228,14 @@ static int venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	if (ret)
 		goto error;
 
+	inst->enc_state = VENUS_ENC_STATE_ENCODING;
+
 	mutex_unlock(&inst->lock);
 
 	return 0;
 
+put_power:
+	venc_pm_put(inst, false);
 error:
 	venus_helper_buffers_done(inst, q->type, VB2_BUF_STATE_QUEUED);
 	if (q->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
@@ -1104,8 +1249,21 @@ error:
 static void venc_vb2_buf_queue(struct vb2_buffer *vb)
 {
 	struct venus_inst *inst = vb2_get_drv_priv(vb->vb2_queue);
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+
+	venc_pm_get_put(inst);
 
 	mutex_lock(&inst->lock);
+
+	if (inst->enc_state == VENUS_ENC_STATE_STOPPED) {
+		vbuf->sequence = inst->sequence_cap++;
+		vbuf->field = V4L2_FIELD_NONE;
+		vb2_set_plane_payload(vb, 0, 0);
+		v4l2_m2m_buf_done(vbuf, VB2_BUF_STATE_DONE);
+		mutex_unlock(&inst->lock);
+		return;
+	}
+
 	venus_helper_vb2_buf_queue(vb);
 	mutex_unlock(&inst->lock);
 }
@@ -1128,6 +1286,8 @@ static void venc_buf_done(struct venus_inst *inst, unsigned int buf_type,
 	struct vb2_buffer *vb;
 	unsigned int type;
 
+	venc_pm_touch(inst);
+
 	if (buf_type == HFI_BUFFER_INPUT)
 		type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	else
@@ -1145,6 +1305,10 @@ static void venc_buf_done(struct venus_inst *inst, unsigned int buf_type,
 		vb->planes[0].data_offset = data_offset;
 		vb->timestamp = timestamp_us * NSEC_PER_USEC;
 		vbuf->sequence = inst->sequence_cap++;
+		if ((vbuf->flags & V4L2_BUF_FLAG_LAST) &&
+		    inst->enc_state == VENUS_ENC_STATE_DRAIN) {
+			inst->enc_state = VENUS_ENC_STATE_STOPPED;
+		}
 	} else {
 		vbuf->sequence = inst->sequence_out++;
 	}
@@ -1156,6 +1320,8 @@ static void venc_event_notify(struct venus_inst *inst, u32 event,
 			      struct hfi_event_data *data)
 {
 	struct device *dev = inst->core->dev_enc;
+
+	venc_pm_touch(inst);
 
 	if (event == EVT_SESSION_ERROR) {
 		inst->session_error = true;
@@ -1189,6 +1355,7 @@ static int m2m_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->allow_zero_bytesused = 1;
 	src_vq->min_buffers_needed = 1;
 	src_vq->dev = inst->core->dev;
+	src_vq->lock = &inst->ctx_q_lock;
 	if (inst->core->res->hfi_version == HFI_VERSION_1XX)
 		src_vq->bidirectional = 1;
 	ret = vb2_queue_init(src_vq);
@@ -1205,6 +1372,7 @@ static int m2m_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->allow_zero_bytesused = 1;
 	dst_vq->min_buffers_needed = 1;
 	dst_vq->dev = inst->core->dev;
+	dst_vq->lock = &inst->ctx_q_lock;
 	return vb2_queue_init(dst_vq);
 }
 
@@ -1237,21 +1405,21 @@ static int venc_open(struct file *file)
 	INIT_LIST_HEAD(&inst->internalbufs);
 	INIT_LIST_HEAD(&inst->list);
 	mutex_init(&inst->lock);
+	mutex_init(&inst->ctx_q_lock);
 
 	inst->core = core;
 	inst->session_type = VIDC_SESSION_TYPE_ENC;
 	inst->clk_data.core_id = VIDC_CORE_ID_DEFAULT;
 	inst->core_acquired = false;
 
-	venus_helper_init_instance(inst);
+	if (inst->enc_state == VENUS_ENC_STATE_DEINIT)
+		inst->enc_state = VENUS_ENC_STATE_INIT;
 
-	ret = pm_runtime_resume_and_get(core->dev_enc);
-	if (ret < 0)
-		goto err_free;
+	venus_helper_init_instance(inst);
 
 	ret = venc_ctrl_init(inst);
 	if (ret)
-		goto err_put_sync;
+		goto err_free;
 
 	ret = hfi_session_create(inst, &venc_hfi_ops);
 	if (ret)
@@ -1290,8 +1458,6 @@ err_session_destroy:
 	hfi_session_destroy(inst);
 err_ctrl_deinit:
 	venc_ctrl_deinit(inst);
-err_put_sync:
-	pm_runtime_put_sync(core->dev_enc);
 err_free:
 	kfree(inst);
 	return ret;
@@ -1301,15 +1467,20 @@ static int venc_close(struct file *file)
 {
 	struct venus_inst *inst = to_inst(file);
 
+	venc_pm_get(inst);
+
 	v4l2_m2m_ctx_release(inst->m2m_ctx);
 	v4l2_m2m_release(inst->m2m_dev);
 	venc_ctrl_deinit(inst);
 	hfi_session_destroy(inst);
 	mutex_destroy(&inst->lock);
+	mutex_destroy(&inst->ctx_q_lock);
 	v4l2_fh_del(&inst->fh);
 	v4l2_fh_exit(&inst->fh);
 
-	pm_runtime_put_sync(inst->core->dev_enc);
+	inst->enc_state = VENUS_ENC_STATE_DEINIT;
+
+	venc_pm_put(inst, false);
 
 	kfree(inst);
 	return 0;
@@ -1366,6 +1537,8 @@ static int venc_probe(struct platform_device *pdev)
 	core->dev_enc = dev;
 
 	video_set_drvdata(vdev, core);
+	pm_runtime_set_autosuspend_delay(dev, 2000);
+	pm_runtime_use_autosuspend(dev);
 	pm_runtime_enable(dev);
 
 	return 0;

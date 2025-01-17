@@ -61,10 +61,15 @@ static int nvme_submit_user_cmd(struct request_queue *q,
 	bool write = nvme_is_write(cmd);
 	struct nvme_ns *ns = q->queuedata;
 	struct block_device *bdev = ns ? ns->disk->part0 : NULL;
+	bool supports_metadata = bdev && blk_get_integrity(bdev->bd_disk);
+	bool has_metadata = meta_buffer && meta_len;
 	struct request *req;
 	struct bio *bio = NULL;
 	void *meta = NULL;
 	int ret;
+
+	if (has_metadata && !supports_metadata)
+			return -EINVAL;
 
 	req = nvme_alloc_request(q, cmd, 0);
 	if (IS_ERR(req))
@@ -82,7 +87,7 @@ static int nvme_submit_user_cmd(struct request_queue *q,
 		bio = req->bio;
 		if (bdev)
 			bio_set_dev(bio, bdev);
-		if (bdev && meta_buffer && meta_len) {
+		if (has_metadata) {
 			meta = nvme_add_user_metadata(bio, meta_buffer, meta_len,
 					meta_seed, write);
 			if (IS_ERR(meta)) {
