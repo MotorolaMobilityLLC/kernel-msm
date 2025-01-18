@@ -175,6 +175,44 @@ static void clk_branch2_disable(struct clk_hw *hw)
 	clk_branch_toggle(hw, false, clk_branch2_check_halt);
 }
 
+static int clk_branch2_mem_enable(struct clk_hw *hw)
+{
+	struct clk_mem_branch *mem_br = to_clk_mem_branch(hw);
+	struct clk_branch branch = mem_br->branch;
+	u32 val;
+	int ret;
+
+	if (mem_br->mem_enable_invert)
+		regmap_update_bits(branch.clkr.regmap, mem_br->mem_enable_reg,
+			   mem_br->mem_enable_mask, 0);
+	else
+		regmap_update_bits(branch.clkr.regmap, mem_br->mem_enable_reg,
+			   mem_br->mem_enable_ack_mask, mem_br->mem_enable_ack_mask);
+
+	ret = regmap_read_poll_timeout(branch.clkr.regmap, mem_br->mem_ack_reg,
+				       val, val & mem_br->mem_enable_ack_mask, 0, 200);
+	if (ret) {
+		WARN(1, "%s mem enable failed\n", clk_hw_get_name(&branch.clkr.hw));
+		return ret;
+	}
+
+	return clk_branch2_enable(hw);
+}
+
+static void clk_branch2_mem_disable(struct clk_hw *hw)
+{
+	struct clk_mem_branch *mem_br = to_clk_mem_branch(hw);
+
+	if (mem_br->mem_enable_invert)
+		regmap_update_bits(mem_br->branch.clkr.regmap, mem_br->mem_enable_reg,
+				mem_br->mem_enable_mask, mem_br->mem_enable_mask);
+	else
+		regmap_update_bits(mem_br->branch.clkr.regmap, mem_br->mem_enable_reg,
+			   mem_br->mem_enable_ack_mask, 0);
+
+	return clk_branch2_disable(hw);
+}
+
 static int clk_branch2_force_off_enable(struct clk_hw *hw)
 {
 	struct clk_regmap *rclk = to_clk_regmap(hw);
@@ -210,12 +248,6 @@ static void clk_branch2_list_registers(struct seq_file *f, struct clk_hw *hw)
 		{"APSS_SLEEP_VOTE", 0x4},
 	};
 
-	static struct clk_register_data data2[] = {
-		{"MEM_ENABLE", 0x0},
-		{"MEM_ENABLE_ACK", 0x0},
-		{"MEM_ENABLE_ACK_MASK", 0x0},
-	};
-
 	static struct clk_register_data data3[] = {
 		{"SREG_ENABLE_REG", 0x0},
 		{"SREG_CORE_ACK_MASK", 0x0},
@@ -243,18 +275,6 @@ static void clk_branch2_list_registers(struct seq_file *f, struct clk_hw *hw)
 		}
 	}
 
-	if (br->mem_enable_reg && br->mem_ack_reg) {
-		regmap_read(br->clkr.regmap, br->mem_enable_reg +
-						data2[0].offset, &val);
-		clock_debug_output(f, "%20s: 0x%.8x\n", data2[0].name, val);
-
-		regmap_read(br->clkr.regmap, br->mem_ack_reg +
-						data2[1].offset, &val);
-		clock_debug_output(f, "%20s: 0x%.8x\n", data2[1].name, val);
-		clock_debug_output(f, "%20s: 0x%.8x\n", data2[2].name,
-						br->mem_enable_ack_bit);
-	}
-
 	if (br->sreg_enable_reg) {
 		regmap_read(br->clkr.regmap, br->sreg_enable_reg +
 						data3[0].offset, &val);
@@ -263,6 +283,36 @@ static void clk_branch2_list_registers(struct seq_file *f, struct clk_hw *hw)
 						br->sreg_core_ack_bit);
 		clock_debug_output(f, "%20s: 0x%.8x\n", data3[2].name,
 						br->sreg_periph_ack_bit);
+	}
+}
+
+static void clk_branch2_mem_list_registers(struct seq_file *f, struct clk_hw *hw)
+{
+	struct clk_mem_branch *mem_br = to_clk_mem_branch(hw);
+	struct clk_branch *br = &mem_br->branch;
+	u32 val;
+
+	static struct clk_register_data data[] = {
+		{"CBCR", 0x0},
+		{"MEM_ENABLE", 0x0},
+		{"MEM_ENABLE_ACK", 0x0},
+		{"MEM_ENABLE_ACK_MASK", 0x0},
+	};
+
+	regmap_read(br->clkr.regmap, br->halt_reg + data[0].offset,
+				&val);
+	clock_debug_output(f, "%20s: 0x%.8x\n", data[0].name, val);
+
+	if (mem_br->mem_enable_reg && mem_br->mem_ack_reg) {
+		regmap_read(mem_br->branch.clkr.regmap, mem_br->mem_enable_reg +
+						data[1].offset, &val);
+		clock_debug_output(f, "%20s: 0x%.8x\n", data[1].name, val);
+
+		regmap_read(mem_br->branch.clkr.regmap, mem_br->mem_ack_reg +
+						data[2].offset, &val);
+		clock_debug_output(f, "%20s: 0x%.8x\n", data[2].name, val);
+		clock_debug_output(f, "%20s: 0x%.8x\n", data[3].name,
+						mem_br->mem_enable_ack_mask);
 	}
 }
 
@@ -310,6 +360,11 @@ static struct clk_regmap_ops clk_branch2_regmap_ops = {
 	.set_flags = clk_branch2_set_flags,
 };
 
+static struct clk_regmap_ops clk_branch2_mem_regmap_ops = {
+	.list_registers = clk_branch2_mem_list_registers,
+	.set_flags = clk_branch2_set_flags,
+};
+
 static int clk_branch2_init(struct clk_hw *hw)
 {
 	struct clk_regmap *rclk = to_clk_regmap(hw);
@@ -320,28 +375,14 @@ static int clk_branch2_init(struct clk_hw *hw)
 	return 0;
 }
 
-static int clk_branch2_mem_enable(struct clk_hw *hw)
+static int clk_branch2_mem_init(struct clk_hw *hw)
 {
-	struct clk_branch *br = to_clk_branch(hw);
-	u32 val;
-	int count = 200;
+	struct clk_regmap *rclk = to_clk_regmap(hw);
 
-	regmap_update_bits(br->clkr.regmap, br->mem_enable_reg,
-			br->mem_enable_ack_bit, br->mem_enable_ack_bit);
+	if (!rclk->ops)
+		rclk->ops = &clk_branch2_mem_regmap_ops;
 
-	regmap_read(br->clkr.regmap, br->mem_ack_reg, &val);
-
-	pr_debug("%s Val 0x%x\n", __func__, val);
-	while (count-- > 0) {
-		if (val & br->mem_enable_ack_bit) {
-			pr_debug("%s Val 0x%x\n", __func__, val);
-			return clk_branch2_enable(hw);
-		}
-		udelay(1);
-		regmap_read(br->clkr.regmap, br->mem_ack_reg, &val);
-	}
-
-	return -EBUSY;
+	return 0;
 }
 
 static int clk_branch2_sreg_enable(struct clk_hw *hw)
@@ -365,15 +406,6 @@ static int clk_branch2_sreg_enable(struct clk_hw *hw)
 	}
 
 	return -EBUSY;
-}
-
-static void clk_branch2_mem_disable(struct clk_hw *hw)
-{
-	struct clk_branch *br = to_clk_branch(hw);
-
-	regmap_update_bits(br->clkr.regmap, br->mem_enable_reg,
-						br->mem_enable_ack_bit, 0);
-	return clk_branch2_disable(hw);
 }
 
 static void clk_branch2_sreg_disable(struct clk_hw *hw)
@@ -452,10 +484,10 @@ const struct clk_ops clk_branch2_mem_ops = {
 	.enable = clk_branch2_mem_enable,
 	.disable = clk_branch2_mem_disable,
 	.is_enabled = clk_is_enabled_regmap,
-	.init = clk_branch2_init,
+	.init = clk_branch2_mem_init,
 	.debug_init = clk_branch_debug_init,
 };
-EXPORT_SYMBOL(clk_branch2_mem_ops);
+EXPORT_SYMBOL_GPL(clk_branch2_mem_ops);
 
 const struct clk_ops clk_branch2_sreg_ops = {
 	.enable = clk_branch2_sreg_enable,

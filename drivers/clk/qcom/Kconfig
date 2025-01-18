@@ -1572,6 +1572,51 @@ config SXR_TCSRCC_SERAPH
 	  Say Y if you want to support miscellaneous top-level clocks
 	  such as for the PHY references.
 
+config SXR_VIDEOCC_SERAPH
+	tristate "SERAPH Video Clock Controller"
+	depends on SXR_GCC_SERAPH
+	help
+	  Support for the video clock controller on Qualcomm Technologies, Inc
+	  SERAPH devices.
+	  Say Y if you want to support video devices and functionality such as
+	  video encode/decode.
+
+config SXR_EVACC_SERAPH
+	tristate "SERAPH EVA Clock Controller"
+	depends on SXR_GCC_SERAPH
+	help
+	  Support for the eva clock controller on Qualcomm Technologies, Inc
+	  SERAPH devices.
+	  Say Y if you want to support EVA devices to get better visual
+          analysis.
+
+config SXR_LSRCC_SERAPH
+	tristate "SERAPH LSR Clock Controller"
+	depends on SXR_GCC_SERAPH
+	help
+	  Support for the LSR clock controller on Qualcomm Technologies, Inc
+	  SERAPH devices.
+	  Say Y if you want to support LSR devices and functionality of late
+	  state reprojection.
+
+config SXR_CAMCC_SERAPH
+	tristate "SERAPH Camera Clock Controller"
+	depends on SXR_GCC_SERAPH
+	help
+	  Support for the camera clock controller on Qualcomm Technologies, Inc
+	  SERAPH devices.
+	  Say Y if you want to support camera devices and functionality such as
+	  capturing pictures.
+
+config SXR_GPUCC_SERAPH
+	tristate "SERAPH Graphics Clock Controller"
+	depends on SXR_GCC_SERAPH
+	help
+	  Support for the graphics clock controller on Qualcomm Technologies, Inc
+	  SERAPH devices.
+	  Say Y if you want to support graphics controller devices and
+	  functionality such as 3D graphics.
+
 endif
 
 config VIRTIO_CLK
