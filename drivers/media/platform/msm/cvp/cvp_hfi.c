@@ -2729,17 +2729,19 @@ skip_power_off:
 static void __process_sys_error(struct iris_hfi_device *device)
 {
 	struct cvp_hfi_sfr_struct *vsfr = NULL;
+	u32 sfr_buf_size = 0;
 
 	vsfr = (struct cvp_hfi_sfr_struct *)device->sfr.align_virtual_addr;
-	if (vsfr) {
-		void *p = memchr(vsfr->rg_data, '\0', vsfr->bufSize);
+	sfr_buf_size = vsfr->bufSize;
+	if (vsfr && sfr_buf_size < ALIGNED_SFR_SIZE) {
+		void *p = memchr(vsfr->rg_data, '\0', sfr_buf_size);
 		/*
 		 * SFR isn't guaranteed to be NULL terminated
 		 * since SYS_ERROR indicates that Iris is in the
 		 * process of crashing.
 		 */
 		if (p == NULL)
-			vsfr->rg_data[vsfr->bufSize - 1] = '\0';
+			vsfr->rg_data[sfr_buf_size - 1] = '\0';
 
 		dprintk(CVP_ERR, "SFR Message from FW: %s\n",
 				vsfr->rg_data);
