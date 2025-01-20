@@ -1674,10 +1674,14 @@ static int pkvm_relax_perms(struct kvm_vcpu *vcpu, u64 pfn, u64 gfn, u8 order,
 	pfn = host_addr >> PAGE_SHIFT;
 	gfn = guest_addr >> PAGE_SHIFT;
 
+	WARN_ON(kvm_vm_is_protected(kvm));
+
 	/* read_lock(kvm->mmu_lock) protects against structural changes to the maple tree. */
 	ppage = find_ppage(kvm, gfn << PAGE_SHIFT);
+
+	/* Try again if we raced with an MMU notifier. */
 	if (!ppage || page_to_pfn(ppage->page) != pfn)
-		return -EFAULT;
+		return -EAGAIN;
 
 	if (!PageSwapBacked(ppage->page))
 		return -EIO;
