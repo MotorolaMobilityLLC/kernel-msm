@@ -302,6 +302,14 @@ SYSCALL_DEFINE3(mincore, unsigned long, start, size_t, len,
 			retval = -EFAULT;
 			break;
 		}
+
+		/*
+		 * If emulating the page size, clear the old results, to avoid
+		 * corrupting the next __collapse_mincore_result()
+		 */
+		if (nr_subpages > 1)
+			memset(res, 0, retval / nr_subpages);
+
 		pages -= retval;
 		vec += retval / nr_subpages;
 		start += retval << PAGE_SHIFT;
