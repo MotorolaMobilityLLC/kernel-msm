@@ -5854,6 +5854,7 @@ static int haptics_start_play(struct haptics_chip *chip, bool enable)
 
 	mutex_lock(&chip->play.lock);
 	if (enable) {
+		haptics_module_enable(chip, true);
 		/* Stop other mode playing if there is any */
 		rc = haptics_enable_play(chip, false);
 		if (rc < 0) {
