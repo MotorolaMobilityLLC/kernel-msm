@@ -100,6 +100,17 @@ config QCOM_CRM
 	  of hardware components aggregate requests for these resources and
 	  help apply the aggregated power state on the resource.
 
+config QCOM_CRM_V2
+	tristate "Qualcomm Technologies, Inc. (QTI) CRM-V2 driver"
+	depends on QCOM_RPMH && (ARCH_QCOM || COMPILE_TEST)
+	help
+	  Support for communication with the hardened-CRM blocks in
+	  Qualcomm Technologies, Inc. (QTI) SoCs. CRM-V2 provides interface
+	  to vote desired power state of resources local to a subsystem. A set
+	  of hardware components aggregate requests for these resources and
+	  help apply the aggregated power state on the resource.
+
+
 config QCOM_DCC_V2
        tristate "Qualcomm Technologies Data Capture and Compare enigne support for V2"
        help
@@ -413,6 +424,15 @@ config QCOM_RPMH
 	  internal bus to transmit state requests for shared resources. A set
 	  of hardware components aggregate requests for these resources and
 	  help apply the aggregated state on the resource.
+
+config QCOM_RPMH_TIMEOUT
+	int "Timeout for RPMH and CRM communication"
+	default 5000
+	depends on QCOM_RPMH
+	help
+	  The amount of time, in milliseconds, that should be sufficient to
+	  receive a response from RPMh for the resource request from APSS.
+	  Wait for this duration before emitting a warning.
 
 config QCOM_RPMHPD
 	tristate "Qualcomm RPMh Power domain driver"
