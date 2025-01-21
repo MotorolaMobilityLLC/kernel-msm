@@ -63,6 +63,8 @@
   scsi_device_quiesce
   scsi_device_resume
   smpboot_unregister_percpu_thread
+  snd_ctl_remove
+  snd_ctl_remove_id
   stack_trace_save_regs
   swp_swapcount
   __kfree_skb

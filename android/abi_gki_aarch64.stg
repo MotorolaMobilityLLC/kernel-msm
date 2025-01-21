@@ -324775,6 +324775,12 @@ function {
   parameter_id: 0x1bf16028
 }
 function {
+  id: 0x915108e4
+  return_type_id: 0x6720d32f
+  parameter_id: 0x33f8b54b
+  parameter_id: 0x0bf1a65b
+}
+function {
   id: 0x91523c59
   return_type_id: 0x6720d32f
   parameter_id: 0x315b7e01
@@ -417168,6 +417174,24 @@ elf_symbol {
   full_name: "snd_ctl_notify_one"
 }
 elf_symbol {
+  id: 0x20fc506b
+  name: "snd_ctl_remove"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x6cd6e418
+  type_id: 0x91d0f233
+  full_name: "snd_ctl_remove"
+}
+elf_symbol {
+  id: 0x6095200b
+  name: "snd_ctl_remove_id"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xf8770874
+  type_id: 0x915108e4
+  full_name: "snd_ctl_remove_id"
+}
+elf_symbol {
   id: 0xe3942db0
   name: "snd_device_free"
   is_defined: true
@@ -439175,6 +439199,8 @@ interface {
   symbol_id: 0x6aca9744
   symbol_id: 0x6b08a95c
   symbol_id: 0x238c5442
+  symbol_id: 0x20fc506b
+  symbol_id: 0x6095200b
   symbol_id: 0xe3942db0
   symbol_id: 0xcb68aa10
   symbol_id: 0x74d92df1
