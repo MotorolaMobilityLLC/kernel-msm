@@ -2206,6 +2206,7 @@ static bool should_proactive_compact_node(pg_data_t *pgdat)
 		return false;
 
 	wmark_high = fragmentation_score_wmark(false);
+	trace_android_vh_proactive_compact_wmark_high(&wmark_high);
 	return fragmentation_score_node(pgdat) > wmark_high;
 }
 
