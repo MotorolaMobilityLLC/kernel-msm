@@ -371544,6 +371544,15 @@ elf_symbol {
   full_name: "blk_mq_quiesce_queue"
 }
 elf_symbol {
+  id: 0x9d72c022
+  name: "blk_mq_quiesce_queue_nowait"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x76764e3a
+  type_id: 0x12c8ce83
+  full_name: "blk_mq_quiesce_queue_nowait"
+}
+elf_symbol {
   id: 0xf017d544
   name: "blk_mq_quiesce_tagset"
   is_defined: true
@@ -431954,6 +431963,7 @@ interface {
   symbol_id: 0x16569be2
   symbol_id: 0x43a3424f
   symbol_id: 0x1f81c0c0
+  symbol_id: 0x9d72c022
   symbol_id: 0xf017d544
   symbol_id: 0xcebb0cec
   symbol_id: 0x27ae2b17
