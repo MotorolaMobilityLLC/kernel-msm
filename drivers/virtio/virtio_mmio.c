@@ -621,6 +621,7 @@ static int virtio_mmio_restore(struct device *dev)
 
 static const struct dev_pm_ops virtio_mmio_pm_ops = {
 	.freeze_noirq		= virtio_mmio_freeze,
+	.thaw_noirq		= virtio_mmio_restore,
 	.restore_noirq		= virtio_mmio_restore,
 };
 #endif
