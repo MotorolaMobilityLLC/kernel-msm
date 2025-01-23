@@ -1185,6 +1185,14 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 		default:
 			return;
 		}
+	} else if (interface == PHY_INTERFACE_MODE_10GBASER) {
+		switch (speed) {
+		case SPEED_10000:
+			ctrl |= priv->hw->link.xgmii.speed10000;
+			break;
+		default:
+			return;
+		}
 	} else {
 		switch (speed) {
 		case SPEED_2500:
