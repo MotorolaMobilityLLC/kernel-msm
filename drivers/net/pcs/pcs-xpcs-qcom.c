@@ -118,7 +118,7 @@ static int qcom_xpcs_poll_reset(struct dw_xpcs_qcom *qxpcs, unsigned int offset,
 	int ret;
 
 	do {
-		usleep_range(1, 20);
+		usleep_range(1000, 2000);
 		ret = qcom_xpcs_read(qxpcs, offset);
 		if (ret < 0)
 			return ret;
@@ -222,7 +222,7 @@ static int qcom_xpcs_reset_usxgmii(struct dw_xpcs_qcom *qxpcs)
 	qcom_xpcs_write(qxpcs, DW_VR_MII_PCS_DIG_CTRL1, ret | DW_USXGMII_RST);
 
 	if (!qxpcs->intr_en)
-		return qcom_xpcs_poll_reset(qxpcs, DW_VR_MII_DIG_CTRL1, SW_RST_BIT_STATUS);
+		return qcom_xpcs_poll_reset(qxpcs, DW_VR_MII_PCS_DIG_CTRL1, USXG_RST_BIT_STATUS);
 
 	return qcom_xpcs_poll_reset_usxgmii(qxpcs, DW_VR_MII_PCS_DIG_CTRL1, USXG_RST_BIT_STATUS);
 }
