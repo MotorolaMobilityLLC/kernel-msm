@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/io.h>
@@ -1281,6 +1281,41 @@ static unsigned int gen7_register_offsets[ADRENO_REG_REGISTER_MAX] = {
 			GEN7_GMU_GMU2HOST_INTR_MASK),
 };
 
+static bool gen7_acquire_cp_semaphore(struct adreno_device *adreno_dev)
+{
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	u32 sem, i;
+
+	for (i = 0; i < 10; i++) {
+		kgsl_regwrite(device, GEN7_CP_SEMAPHORE_REG_0, BIT(8));
+
+		/*
+		 * Make sure the previous register write is posted before
+		 * checking the CP sempahore status
+		 */
+		mb();
+
+		kgsl_regread(device, GEN7_CP_SEMAPHORE_REG_0, &sem);
+		if (sem)
+			return true;
+
+		udelay(10);
+	}
+
+	/* Check CP semaphore status one last time */
+	kgsl_regread(device, GEN7_CP_SEMAPHORE_REG_0, &sem);
+
+	if (!sem)
+		return false;
+
+	return true;
+}
+
+static void gen7_release_cp_semaphore(struct adreno_device *adreno_dev)
+{
+	kgsl_regwrite(KGSL_DEVICE(adreno_dev), GEN7_CP_SEMAPHORE_REG_0, 0);
+}
+
 int gen7_perfcounter_update(struct adreno_device *adreno_dev,
 	struct adreno_perfcount_register *reg, bool update_reg, u32 pipe)
 {
@@ -1288,10 +1323,16 @@ int gen7_perfcounter_update(struct adreno_device *adreno_dev,
 	struct cpu_gpu_lock *lock = ptr;
 	u32 *data = ptr + sizeof(*lock);
 	int i, offset = (lock->ifpc_list_len + lock->preemption_list_len) * 2;
+	unsigned long irq_flags;
+	int ret = 0;
+
+	if (!ADRENO_ACQUIRE_CP_SEMAPHORE(adreno_dev, irq_flags))
+		return -EBUSY;
 
 	if (kgsl_hwlock(lock)) {
 		kgsl_hwunlock(lock);
-		return -EBUSY;
+		ret = -EBUSY;
+		goto err;
 	}
 
 	/*
@@ -1332,7 +1373,10 @@ update:
 			reg->countable);
 
 	kgsl_hwunlock(lock);
-	return 0;
+
+err:
+	ADRENO_RELEASE_CP_SEMAPHORE(adreno_dev, irq_flags);
+	return ret;
 }
 
 u64 gen7_read_alwayson(struct adreno_device *adreno_dev)
@@ -1504,6 +1548,8 @@ const struct gen7_gpudev adreno_gen7_hwsched_gpudev = {
 		.gx_is_on = gen7_gmu_gx_is_on,
 		.send_recurring_cmdobj = gen7_hwsched_send_recurring_cmdobj,
 		.context_destroy = gen7_hwsched_context_destroy,
+		.acquire_cp_semaphore = gen7_acquire_cp_semaphore,
+		.release_cp_semaphore = gen7_release_cp_semaphore,
 	},
 	.hfi_probe = gen7_hwsched_hfi_probe,
 	.hfi_remove = gen7_hwsched_hfi_remove,
@@ -1531,6 +1577,8 @@ const struct gen7_gpudev adreno_gen7_gmu_gpudev = {
 		.setproperty = gen7_setproperty,
 		.add_to_va_minidump = gen7_gmu_add_to_minidump,
 		.gx_is_on = gen7_gmu_gx_is_on,
+		.acquire_cp_semaphore = gen7_acquire_cp_semaphore,
+		.release_cp_semaphore = gen7_release_cp_semaphore,
 	},
 	.hfi_probe = gen7_gmu_hfi_probe,
 	.handle_watchdog = gen7_gmu_handle_watchdog,
