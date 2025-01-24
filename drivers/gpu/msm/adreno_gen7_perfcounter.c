@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "adreno.h"
@@ -10,24 +10,6 @@
 #include "adreno_perfcounter.h"
 #include "adreno_pm4types.h"
 #include "kgsl_device.h"
-
-/*
- * For registers that do not get restored on power cycle, read the value and add
- * the stored shadow value
- */
-static u64 gen7_counter_read_norestore(struct adreno_device *adreno_dev,
-		const struct adreno_perfcount_group *group,
-		unsigned int counter)
-{
-	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
-	struct adreno_perfcount_register *reg = &group->regs[counter];
-	u32 hi, lo;
-
-	kgsl_regread(device, reg->offset, &lo);
-	kgsl_regread(device, reg->offset_hi, &hi);
-
-	return ((((u64) hi) << 32) | lo) + reg->value;
-}
 
 static int gen7_counter_br_enable(struct adreno_device *adreno_dev,
 		const struct adreno_perfcount_group *group,
@@ -187,6 +169,18 @@ static u64 gen7_counter_read(struct adreno_device *adreno_dev,
 
 	/* These registers are restored on power resume */
 	return (((u64) hi) << 32) | lo;
+}
+
+/*
+ * For registers that do not get restored on power cycle, read the value and add
+ * the stored shadow value
+ */
+static u64 gen7_counter_read_norestore(struct adreno_device *adreno_dev,
+		const struct adreno_perfcount_group *group, u32 counter)
+{
+	struct adreno_perfcount_register *reg = &group->regs[counter];
+
+	return gen7_counter_read(adreno_dev, group, counter) + reg->value;
 }
 
 static int gen7_counter_gbif_enable(struct adreno_device *adreno_dev,
