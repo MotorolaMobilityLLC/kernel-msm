@@ -303478,6 +303478,13 @@ function {
   parameter_id: 0x6720d32f
 }
 function {
+  id: 0x0ffba10b
+  return_type_id: 0x914dbfdc
+  parameter_id: 0x3f0185ef
+  parameter_id: 0x4585663f
+  parameter_id: 0x1bf16028
+}
+function {
   id: 0x10012374
   return_type_id: 0x48b5725f
   parameter_id: 0x0258f96e
@@ -315555,6 +315562,14 @@ function {
   parameter_id: 0x3d8951f4
   parameter_id: 0x0130219f
   parameter_id: 0x6720d32f
+}
+function {
+  id: 0x1fe91863
+  return_type_id: 0x48b5725f
+  parameter_id: 0x3e10b518
+  parameter_id: 0x3e10b518
+  parameter_id: 0x324e7f0f
+  parameter_id: 0x6d7f5ff6
 }
 function {
   id: 0x1feaaebf
@@ -351291,6 +351306,15 @@ function {
   parameter_id: 0x36194830
 }
 function {
+  id: 0xf3248c4f
+  return_type_id: 0x6d7f5ff6
+  parameter_id: 0x35f8cea5
+  parameter_id: 0x3bcd0c02
+  parameter_id: 0x4585663f
+  parameter_id: 0x2de928d9
+  parameter_id: 0x18bd6530
+}
+function {
   id: 0xf334abb2
   return_type_id: 0x6d7f5ff6
   parameter_id: 0x34bb6aad
@@ -373435,6 +373459,15 @@ elf_symbol {
   crc: 0x0fa99e2c
   type_id: 0x1d25d246
   full_name: "cec_fill_conn_info_from_drm"
+}
+elf_symbol {
+  id: 0x5027163d
+  name: "cec_get_edid_phys_addr"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xbe4de675
+  type_id: 0x0ffba10b
+  full_name: "cec_get_edid_phys_addr"
 }
 elf_symbol {
   id: 0xc97591d1
@@ -425989,6 +426022,15 @@ elf_symbol {
   full_name: "v4l2_fh_release"
 }
 elf_symbol {
+  id: 0x538ad5cc
+  name: "v4l2_find_dv_timings_cap"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x3aa68d7a
+  type_id: 0xf3248c4f
+  full_name: "v4l2_find_dv_timings_cap"
+}
+elf_symbol {
   id: 0x2244c8f0
   name: "v4l2_format_info"
   is_defined: true
@@ -426527,6 +426569,15 @@ elf_symbol {
   crc: 0x0f178a28
   type_id: 0x900d5d3b
   full_name: "v4l2_pipeline_link_notify"
+}
+elf_symbol {
+  id: 0x64b2fdfd
+  name: "v4l2_print_dv_timings"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x08402862
+  type_id: 0x1fe91863
+  full_name: "v4l2_print_dv_timings"
 }
 elf_symbol {
   id: 0x5f3882d0
@@ -432720,6 +432771,7 @@ interface {
   symbol_id: 0xc8e5adc6
   symbol_id: 0xa0a33b62
   symbol_id: 0xc80b76b2
+  symbol_id: 0x5027163d
   symbol_id: 0xc97591d1
   symbol_id: 0xbf627c6e
   symbol_id: 0x690c64c9
@@ -438549,6 +438601,7 @@ interface {
   symbol_id: 0x592a4678
   symbol_id: 0xff77e1ca
   symbol_id: 0xe66642fe
+  symbol_id: 0x538ad5cc
   symbol_id: 0x2244c8f0
   symbol_id: 0xfb876b5c
   symbol_id: 0x7ba36329
@@ -438609,6 +438662,7 @@ interface {
   symbol_id: 0x906c5f61
   symbol_id: 0xf40e82dd
   symbol_id: 0x9b29f9ed
+  symbol_id: 0x64b2fdfd
   symbol_id: 0x5f3882d0
   symbol_id: 0xe203e72f
   symbol_id: 0x90eb49a1
