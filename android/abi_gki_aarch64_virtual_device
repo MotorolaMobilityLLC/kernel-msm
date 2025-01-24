@@ -377,6 +377,7 @@
   __serio_register_driver
   __serio_register_port
   serio_unregister_driver
+  set_page_private
   sg_alloc_table
   sg_free_table
   sg_init_one
@@ -452,6 +453,7 @@
   usb_create_shared_hcd
   usb_deregister
   usb_disabled
+  usb_find_common_endpoints
   usb_free_urb
   usb_get_dev
   usb_hcd_check_unlink_urb
