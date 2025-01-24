@@ -204,4 +204,7 @@ struct gh_hypercall_vcpu_run_resp {
 enum gh_error gh_hypercall_vcpu_run(u64 capid, u64 *resume_data,
 					struct gh_hypercall_vcpu_run_resp *resp);
 
+enum gh_error
+gh_hypercall_addrspace_find_info_area(unsigned long *ipa, unsigned long *size);
+
 #endif
