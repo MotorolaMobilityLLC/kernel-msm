@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2002,2007-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -197,8 +198,15 @@ int adreno_perfcounter_read_group(struct adreno_device *adreno_dev,
 		/* group/counter iterator */
 		for (i = 0; i < group->reg_count; i++) {
 			if (group->regs[i].countable == list[j].countable) {
+				unsigned long irq_flags;
+
+				if (!ADRENO_ACQUIRE_CP_SEMAPHORE(adreno_dev, irq_flags)) {
+					ret = -EAGAIN;
+					break;
+				}
 				list[j].value = adreno_perfcounter_read(
 					adreno_dev, list[j].groupid, i);
+				ADRENO_RELEASE_CP_SEMAPHORE(adreno_dev, irq_flags);
 				break;
 			}
 		}
