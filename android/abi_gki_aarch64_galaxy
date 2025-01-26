@@ -3132,6 +3132,7 @@
   scsi_device_get
   scsi_device_put
   scsi_device_quiesce
+  scsi_device_resume
   scsi_dma_unmap
   scsi_eh_ready_devs
   __scsi_execute

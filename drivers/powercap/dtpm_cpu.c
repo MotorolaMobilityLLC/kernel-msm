@@ -223,7 +223,7 @@ static int cpuhp_dtpm_cpu_online(unsigned int cpu)
 	ret = freq_qos_add_request(&policy->constraints,
 				   &dtpm_cpu->qos_req, FREQ_QOS_MAX,
 				   pd->table[pd->nr_perf_states - 1].frequency);
-	if (ret)
+	if (ret < 0)
 		goto out_power_sub;
 
 	return 0;

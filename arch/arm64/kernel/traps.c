@@ -824,6 +824,7 @@ asmlinkage void noinstr handle_bad_stack(struct pt_regs *regs)
 	 * We use nmi_panic to limit the potential for recusive overflows, and
 	 * to get a better stack trace.
 	 */
+	trace_android_rvh_handle_bad_stack(regs, esr, far);
 	nmi_panic(NULL, "kernel stack overflow");
 	cpu_park_loop();
 }
