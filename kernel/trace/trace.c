@@ -3874,11 +3874,8 @@ static void test_can_verify(void)
 void trace_check_vprintf(struct trace_iterator *iter, const char *fmt,
 			 va_list ap)
 {
-	long text_delta = iter->tr->text_delta;
-	long data_delta = iter->tr->data_delta;
 	const char *p = fmt;
 	const char *str;
-	bool good;
 	int i, j;
 
 	if (WARN_ON_ONCE(!fmt))
@@ -3897,10 +3894,7 @@ void trace_check_vprintf(struct trace_iterator *iter, const char *fmt,
 
 		j = 0;
 
-		/*
-		 * We only care about %s and variants
-		 * as well as %p[sS] if delta is non-zero
-		 */
+		/* We only care about %s and variants */
 		for (i = 0; p[i]; i++) {
 			if (i + 1 >= iter->fmt_size) {
 				/*
@@ -3929,11 +3923,6 @@ void trace_check_vprintf(struct trace_iterator *iter, const char *fmt,
 				}
 				if (p[i+j] == 's')
 					break;
-
-				if (text_delta && p[i+1] == 'p' &&
-				    ((p[i+2] == 's' || p[i+2] == 'S')))
-					break;
-
 				star = false;
 			}
 			j = 0;
@@ -3946,24 +3935,6 @@ void trace_check_vprintf(struct trace_iterator *iter, const char *fmt,
 		strncpy(iter->fmt, p, i);
 		iter->fmt[i] = '\0';
 		trace_seq_vprintf(&iter->seq, iter->fmt, ap);
-
-		/* Add delta to %pS pointers */
-		if (p[i+1] == 'p') {
-			unsigned long addr;
-			char fmt[4];
-
-			fmt[0] = '%';
-			fmt[1] = 'p';
-			fmt[2] = p[i+2]; /* Either %ps or %pS */
-			fmt[3] = '\0';
-
-			addr = va_arg(ap, unsigned long);
-			addr += text_delta;
-			trace_seq_printf(&iter->seq, fmt, (void *)addr);
-
-			p += i + 3;
-			continue;
-		}
 
 		/*
 		 * If iter->seq is full, the above call no longer guarantees
@@ -3983,14 +3954,6 @@ void trace_check_vprintf(struct trace_iterator *iter, const char *fmt,
 		/* The ap now points to the string data of the %s */
 		str = va_arg(ap, const char *);
 
-		good = trace_safe_str(iter, str, star, len);
-
-		/* Could be from the last boot */
-		if (data_delta && !good) {
-			str += data_delta;
-			good = trace_safe_str(iter, str, star, len);
-		}
-
 		/*
 		 * If you hit this warning, it is likely that the
 		 * trace event in question used %s on a string that
@@ -4000,7 +3963,8 @@ void trace_check_vprintf(struct trace_iterator *iter, const char *fmt,
 		 * instead. See samples/trace_events/trace-events-sample.h
 		 * for reference.
 		 */
-		if (WARN_ONCE(!good, "fmt: '%s' current_buffer: '%s'",
+		if (WARN_ONCE(!trace_safe_str(iter, str, star, len),
+			      "fmt: '%s' current_buffer: '%s'",
 			      fmt, seq_buf_str(&iter->seq.seq))) {
 			int ret;
 
