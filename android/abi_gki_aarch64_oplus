@@ -409,6 +409,7 @@
   tcf_exts_dump_stats
   tcf_exts_validate
   tcf_queue_work
+  tcp_cong_avoid_ai
   tcp_hashinfo
   time64_to_tm
   timespec64_to_jiffies
