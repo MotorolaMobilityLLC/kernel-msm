@@ -109,7 +109,9 @@ void seq_buf_do_printk(struct seq_buf *s, const char *lvl)
 	if (s->size == 0 || s->len == 0)
 		return;
 
-	start = seq_buf_str(s);
+	seq_buf_terminate(s);
+
+	start = s->buffer;
 	while ((lf = strchr(start, '\n'))) {
 		int len = lf - start + 1;
 

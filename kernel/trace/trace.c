@@ -3826,6 +3826,15 @@ static bool trace_safe_str(struct trace_iterator *iter, const char *str,
 	return false;
 }
 
+static const char *show_buffer(struct trace_seq *s)
+{
+	struct seq_buf *seq = &s->seq;
+
+	seq_buf_terminate(seq);
+
+	return seq->buffer;
+}
+
 static DEFINE_STATIC_KEY_FALSE(trace_no_verify);
 
 static int test_can_verify_check(const char *fmt, ...)
@@ -3965,7 +3974,7 @@ void trace_check_vprintf(struct trace_iterator *iter, const char *fmt,
 		 */
 		if (WARN_ONCE(!trace_safe_str(iter, str, star, len),
 			      "fmt: '%s' current_buffer: '%s'",
-			      fmt, seq_buf_str(&iter->seq.seq))) {
+			      fmt, show_buffer(&iter->seq))) {
 			int ret;
 
 			/* Try to safely read the string */
