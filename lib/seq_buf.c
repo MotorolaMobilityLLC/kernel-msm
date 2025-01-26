@@ -324,24 +324,23 @@ int seq_buf_path(struct seq_buf *s, const struct path *path, const char *esc)
  * seq_buf_to_user - copy the sequence buffer to user space
  * @s: seq_buf descriptor
  * @ubuf: The userspace memory location to copy to
- * @start: The first byte in the buffer to copy
  * @cnt: The amount to copy
  *
  * Copies the sequence buffer into the userspace memory pointed to
- * by @ubuf. It starts from @start and writes up to @cnt characters
- * or until it reaches the end of the content in the buffer (@s->len),
- * whichever comes first.
+ * by @ubuf. It starts from the last read position (@s->readpos)
+ * and writes up to @cnt characters or till it reaches the end of
+ * the content in the buffer (@s->len), which ever comes first.
  *
  * On success, it returns a positive number of the number of bytes
  * it copied.
  *
  * On failure it returns -EBUSY if all of the content in the
  * sequence has been already read, which includes nothing in the
- * sequence (@s->len == @start).
+ * sequence (@s->len == @s->readpos).
  *
  * Returns -EFAULT if the copy to userspace fails.
  */
-int seq_buf_to_user(struct seq_buf *s, char __user *ubuf, size_t start, int cnt)
+int seq_buf_to_user(struct seq_buf *s, char __user *ubuf, int cnt)
 {
 	int len;
 	int ret;
@@ -351,17 +350,20 @@ int seq_buf_to_user(struct seq_buf *s, char __user *ubuf, size_t start, int cnt)
 
 	len = seq_buf_used(s);
 
-	if (len <= start)
+	if (len <= s->readpos)
 		return -EBUSY;
 
-	len -= start;
+	len -= s->readpos;
 	if (cnt > len)
 		cnt = len;
-	ret = copy_to_user(ubuf, s->buffer + start, cnt);
+	ret = copy_to_user(ubuf, s->buffer + s->readpos, cnt);
 	if (ret == cnt)
 		return -EFAULT;
 
-	return cnt - ret;
+	cnt -= ret;
+
+	s->readpos += cnt;
+	return cnt;
 }
 
 /**

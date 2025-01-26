@@ -1747,15 +1747,15 @@ static ssize_t trace_seq_to_buffer(struct trace_seq *s, void *buf, size_t cnt)
 {
 	int len;
 
-	if (trace_seq_used(s) <= s->readpos)
+	if (trace_seq_used(s) <= s->seq.readpos)
 		return -EBUSY;
 
-	len = trace_seq_used(s) - s->readpos;
+	len = trace_seq_used(s) - s->seq.readpos;
 	if (cnt > len)
 		cnt = len;
-	memcpy(buf, s->buffer + s->readpos, cnt);
+	memcpy(buf, s->buffer + s->seq.readpos, cnt);
 
-	s->readpos += cnt;
+	s->seq.readpos += cnt;
 	return cnt;
 }
 
@@ -7027,7 +7027,7 @@ waitagain:
 
 	/* Now copy what we have to the user */
 	sret = trace_seq_to_user(&iter->seq, ubuf, cnt);
-	if (iter->seq.readpos >= trace_seq_used(&iter->seq))
+	if (iter->seq.seq.readpos >= trace_seq_used(&iter->seq))
 		trace_seq_init(&iter->seq);
 
 	/*
