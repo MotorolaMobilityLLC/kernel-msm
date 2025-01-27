@@ -134,3 +134,9 @@
   __tracepoint_android_vh_blk_mq_free_tags
   __tracepoint_android_vh_blk_mq_sched_insert_request
   zero_pfn
+  fsnotify_add_mark
+  fsnotify_alloc_group
+  fsnotify_destroy_mark
+  fsnotify_init_mark
+  fsnotify_put_group
+  fsnotify_put_mark

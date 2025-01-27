@@ -565,3 +565,4 @@ EXPORT_SYMBOL_GPL(GKI_struct_gic_chip_data);
 #include <linux/swap_slots.h>
 const struct swap_slots_cache *GKI_struct_swap_slots_cache;
 EXPORT_SYMBOL_GPL(GKI_struct_swap_slots_cache);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_io_statistics);

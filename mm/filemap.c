@@ -3525,6 +3525,7 @@ again:
 			break;
 		copied = status;
 
+		trace_android_vh_io_statistics(mapping, page->index, 1, false, false);
 		cond_resched();
 
 		iov_iter_advance(i, copied);
