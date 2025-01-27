@@ -220,6 +220,16 @@
 #define MAX_I3C_SE		2
 #define I3C_START_ADDR		8
 
+/* I3C OD mode frequency config values */
+enum geni_i3c_od_mode {
+	I2C_MAX_STANDARD_MODE,
+	I2C_MAX_FAST_MODE,
+	I2C_MAX_FAST_MODE_PLUS,
+	I2C_MAX_TURBO_MODE,
+	I2C_MAX_HIGH_SPEED,
+	I2C_MAX_ULTRA_FAST_MODE,
+};
+
 /* For multi descriptor, gsi irq will generate for every 64 tre's */
 #define NUM_I3C_TRE_MSGS_PER_INTR (64)
 
@@ -2827,6 +2837,32 @@ static int geni_i3c_master_do_daa(struct i3c_master_controller *m)
 	return geni_i3c_master_entdaa_locked(gi3c);
 }
 
+/*
+ * geni_i3c_config_od_mode_freq() - configure od mode frequency
+ *
+ * @gi3c: i3c master device handle
+ * @od_freq: open drain frequency value
+ *
+ * Return: None
+ */
+static void geni_i3c_config_od_mode_freq(struct geni_i3c_dev *gi3c, unsigned long od_freq)
+{
+	u32 od_val = 0;
+
+	/* Config ibi open drain mode frequency based on i2c OD frequency.
+	 * OD_MODE to ensure it is within valid range
+	 * (0: standard (100KHz), 1: fast (400KHz), 2: fast-plus (1MHz)).
+	 */
+	if (od_freq == I2C_MAX_FAST_MODE_PLUS_FREQ)
+		od_val = I2C_MAX_FAST_MODE_PLUS;
+	else if (od_freq == I2C_MAX_FAST_MODE_FREQ)
+		od_val = I2C_MAX_FAST_MODE;
+	else
+		od_val = I2C_MAX_STANDARD_MODE;
+
+	geni_write_reg(od_val, gi3c->ibi.ibi_base, IBI_SCL_OD_TYPE);
+}
+
 static int geni_i3c_master_bus_init(struct i3c_master_controller *m)
 {
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
@@ -2863,6 +2899,9 @@ static int geni_i3c_master_bus_init(struct i3c_master_controller *m)
 			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
 		return ret;
 	}
+
+	/* configure i3c OD mode frequency */
+	geni_i3c_config_od_mode_freq(gi3c, bus->scl_rate.i2c);
 
 	/* Get an address for the master. */
 	ret = i3c_master_get_free_addr(m, 0);
@@ -3037,9 +3076,6 @@ static void qcom_geni_i3c_ibi_conf(struct geni_i3c_dev *gi3c)
 			return;
 		}
 	}
-
-	/* set the configuration for 100Khz OD speed */
-	geni_write_reg(0x5FD74322, gi3c->ibi.ibi_base, IBI_SCL_PP_TIMING_CONFIG);
 
 	geni_i3c_enable_ibi_ctrl(gi3c, true);
 	geni_i3c_enable_ibi_irq(gi3c, true);
@@ -3718,7 +3754,6 @@ static int i3c_ibi_rsrcs_init(struct geni_i3c_dev *gi3c,
 	}
 
 	qcom_geni_i3c_ibi_conf(gi3c);
-
 	return 0;
 }
 
@@ -4006,7 +4041,7 @@ static int geni_i3c_probe(struct platform_device *pdev)
 		ret = 0;
 	}
 	I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
-		"I3C bus freq:%ld, I2C bus fres:%ld\n",
+		"I3C bus freq:%ld, I2C bus freq:%ld\n",
 		gi3c->ctrlr.bus.scl_rate.i3c,  gi3c->ctrlr.bus.scl_rate.i2c);
 
 	if (gi3c->se_mode == GENI_GPI_DMA) {
