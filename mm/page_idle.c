@@ -8,6 +8,7 @@
 #include <linux/mm.h>
 #include <linux/mmzone.h>
 #include <linux/pagemap.h>
+#include <linux/page_size_compat.h>
 #include <linux/rmap.h>
 #include <linux/mmu_notifier.h>
 #include <linux/page_ext.h>
@@ -210,6 +211,9 @@ static const struct attribute_group page_idle_attr_group = {
 static int __init page_idle_init(void)
 {
 	int err;
+
+	if (__PAGE_SIZE != PAGE_SIZE)
+		return 0;
 
 	err = sysfs_create_group(mm_kobj, &page_idle_attr_group);
 	if (err) {

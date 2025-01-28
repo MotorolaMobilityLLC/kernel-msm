@@ -14,6 +14,7 @@
 #include <linux/memcontrol.h>
 #include <linux/mmu_notifier.h>
 #include <linux/page_idle.h>
+#include <linux/page_size_compat.h>
 #include <linux/kernel-page-flags.h>
 #include <linux/uaccess.h>
 #include "internal.h"
@@ -329,6 +330,9 @@ static const struct proc_ops kpagecgroup_proc_ops = {
 
 static int __init proc_page_init(void)
 {
+	if (__PAGE_SIZE != PAGE_SIZE)
+		return 0;
+
 	proc_create("kpagecount", S_IRUSR, NULL, &kpagecount_proc_ops);
 	proc_create("kpageflags", S_IRUSR, NULL, &kpageflags_proc_ops);
 #ifdef CONFIG_MEMCG
