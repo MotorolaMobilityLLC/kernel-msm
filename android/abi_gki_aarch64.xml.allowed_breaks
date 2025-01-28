@@ -112,3 +112,13 @@ type 'struct clk_core' changed
   30 members ('struct device_node* of_node' .. 'struct kref ref') changed
     offset changed by 128
 
+type 'struct net_device' changed
+  member 'u64 android_kabi_reserved8' was removed
+  member 'union { const struct l3mdev_ops* l3mdev_ops; struct { u64 android_kabi_reserved8; }; union { }; }' was added
+
+type 'struct netns_ipv4' changed
+  member 'u8 sysctl_tcp_l3mdev_accept' was added
+  member 'u8 sysctl_udp_l3mdev_accept' was added
+  member 'u8 sysctl_raw_l3mdev_accept' was added
+
+
