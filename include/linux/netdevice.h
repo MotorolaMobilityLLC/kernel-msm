@@ -2322,7 +2322,7 @@ struct net_device {
 	ANDROID_KABI_RESERVE(5);
 	ANDROID_KABI_RESERVE(6);
 	ANDROID_KABI_RESERVE(7);
-	ANDROID_KABI_RESERVE(8);
+	ANDROID_KABI_BACKPORT_OK(8);
 };
 #define to_net_dev(d) container_of(d, struct net_device, dev)
 
