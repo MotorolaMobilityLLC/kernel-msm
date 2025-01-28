@@ -110,3 +110,6 @@ type 'struct cgroup_root' changed
   'void xhci_sideband_remove_interrupter(struct xhci_sideband*)'
   'void xhci_sideband_unregister(struct xhci_sideband*)'
 
+type 'struct xhci_sideband' changed
+  was fully defined, is now only declared
+

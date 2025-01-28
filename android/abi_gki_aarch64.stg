@@ -2939,6 +2939,11 @@ pointer_reference {
   pointee_type_id: 0x039e2476
 }
 pointer_reference {
+  id: 0x0a7a1263
+  kind: POINTER
+  pointee_type_id: 0x03a8af11
+}
+pointer_reference {
   id: 0x0a812782
   kind: POINTER
   pointee_type_id: 0x00447895
@@ -4372,11 +4377,6 @@ pointer_reference {
   id: 0x0cd5af0d
   kind: POINTER
   pointee_type_id: 0x19165aaa
-}
-pointer_reference {
-  id: 0x0cd5bff8
-  kind: POINTER
-  pointee_type_id: 0x1916197d
 }
 pointer_reference {
   id: 0x0cd75860
@@ -40245,11 +40245,6 @@ array {
   id: 0x8aefc272
   number_of_elements: 4
   element_type_id: 0x1a8b45a0
-}
-array {
-  id: 0x8b22066c
-  number_of_elements: 31
-  element_type_id: 0x1c8d675d
 }
 array {
   id: 0x8b6f70d0
@@ -88319,12 +88314,6 @@ member {
   type_id: 0x197ee30b
 }
 member {
-  id: 0x4560eebd
-  name: "eps"
-  type_id: 0x8b22066c
-  offset: 128
-}
-member {
   id: 0x4571d9d3
   name: "eps"
   type_id: 0x9a1c0141
@@ -116225,12 +116214,6 @@ member {
   bitsize: 1
 }
 member {
-  id: 0x5dd91f3e
-  name: "ir"
-  type_id: 0x0e88ae5c
-  offset: 2112
-}
-member {
   id: 0x5def1bf7
   name: "ir"
   type_id: 0x3885e219
@@ -137298,12 +137281,6 @@ member {
   name: "mutex"
   type_id: 0xa7c362b0
   offset: 2688
-}
-member {
-  id: 0xad89869d
-  name: "mutex"
-  type_id: 0xa7c362b0
-  offset: 2176
 }
 member {
   id: 0xad8987e3
@@ -185082,16 +185059,16 @@ member {
   type_id: 0xc9082b19
 }
 member {
-  id: 0x37c2bb5d
+  id: 0x37c4126e
   name: "sideband"
-  type_id: 0x0cd5bff8
-  offset: 38336
+  type_id: 0x0a7a1263
+  offset: 1152
 }
 member {
-  id: 0x37c2bdc3
+  id: 0x37c414f0
   name: "sideband"
-  type_id: 0x0cd5bff8
-  offset: 1152
+  type_id: 0x0a7a1263
+  offset: 38336
 }
 member {
   id: 0x71a9d2d2
@@ -211284,12 +211261,6 @@ member {
   type_id: 0x242fbc95
 }
 member {
-  id: 0xebd4d4b4
-  name: "vdev"
-  type_id: 0x242fbc95
-  offset: 64
-}
-member {
   id: 0xebd9c964
   name: "vdev"
   type_id: 0x2936263d
@@ -217584,11 +217555,6 @@ member {
   name: "xhci"
   type_id: 0x1285100d
   offset: 512
-}
-member {
-  id: 0x4f5aac7d
-  name: "xhci"
-  type_id: 0x1285100d
 }
 member {
   id: 0x4f771184
@@ -284070,17 +284036,9 @@ struct_union {
   }
 }
 struct_union {
-  id: 0x1916197d
+  id: 0x03a8af11
   kind: STRUCT
   name: "xhci_sideband"
-  definition {
-    bytesize: 320
-    member_id: 0x4f5aac7d
-    member_id: 0xebd4d4b4
-    member_id: 0x4560eebd
-    member_id: 0x5dd91f3e
-    member_id: 0xad89869d
-  }
 }
 struct_union {
   id: 0x051dcd31
@@ -284161,7 +284119,7 @@ struct_union {
     member_id: 0x2d5bfa55
     member_id: 0x94facea2
     member_id: 0x9b75f88d
-    member_id: 0x37c2bb5d
+    member_id: 0x37c414f0
   }
 }
 struct_union {
@@ -284186,7 +284144,7 @@ struct_union {
     member_id: 0x07daf4d5
     member_id: 0x19f52f20
     member_id: 0x0482303b
-    member_id: 0x37c2bdc3
+    member_id: 0x37c4126e
   }
 }
 struct_union {
