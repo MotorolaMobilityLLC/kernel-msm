@@ -507,19 +507,6 @@ static int ovl_verify_fh(struct ovl_fs *ofs, struct dentry *dentry,
 	return err;
 }
 
-int ovl_verify_set_fh(struct ovl_fs *ofs, struct dentry *dentry,
-		      enum ovl_xattr ox, const struct ovl_fh *fh,
-		      bool is_upper, bool set)
-{
-	int err;
-
-	err = ovl_verify_fh(ofs, dentry, ox, fh);
-	if (set && err == -ENODATA)
-		err = ovl_setxattr(ofs, dentry, ox, fh->buf, fh->fb.len);
-
-	return err;
-}
-
 /*
  * Verify that @real dentry matches the file handle stored in xattr @name.
  *
@@ -528,22 +515,24 @@ int ovl_verify_set_fh(struct ovl_fs *ofs, struct dentry *dentry,
  *
  * Return 0 on match, -ESTALE on mismatch, -ENODATA on no xattr, < 0 on error.
  */
-int ovl_verify_origin_xattr(struct ovl_fs *ofs, struct dentry *dentry,
-			    enum ovl_xattr ox, struct dentry *real,
-			    bool is_upper, bool set)
+int ovl_verify_set_fh(struct ovl_fs *ofs, struct dentry *dentry,
+		      enum ovl_xattr ox, struct dentry *real, bool is_upper,
+		      bool set)
 {
 	struct inode *inode;
 	struct ovl_fh *fh;
 	int err;
 
-	fh = ovl_encode_real_fh(ofs, d_inode(real), is_upper);
+	fh = ovl_encode_real_fh(ofs, real, is_upper);
 	err = PTR_ERR(fh);
 	if (IS_ERR(fh)) {
 		fh = NULL;
 		goto fail;
 	}
 
-	err = ovl_verify_set_fh(ofs, dentry, ox, fh, is_upper, set);
+	err = ovl_verify_fh(ofs, dentry, ox, fh);
+	if (set && err == -ENODATA)
+		err = ovl_setxattr(ofs, dentry, ox, fh->buf, fh->fb.len);
 	if (err)
 		goto fail;
 
@@ -558,7 +547,6 @@ fail:
 			    inode ? inode->i_ino : 0, err);
 	goto out;
 }
-
 
 /* Get upper dentry from index */
 struct dentry *ovl_index_upper(struct ovl_fs *ofs, struct dentry *index,
@@ -696,7 +684,7 @@ orphan:
 	goto out;
 }
 
-int ovl_get_index_name_fh(const struct ovl_fh *fh, struct qstr *name)
+static int ovl_get_index_name_fh(struct ovl_fh *fh, struct qstr *name)
 {
 	char *n, *s;
 
@@ -732,7 +720,7 @@ int ovl_get_index_name(struct ovl_fs *ofs, struct dentry *origin,
 	struct ovl_fh *fh;
 	int err;
 
-	fh = ovl_encode_real_fh(ofs, d_inode(origin), false);
+	fh = ovl_encode_real_fh(ofs, origin, false);
 	if (IS_ERR(fh))
 		return PTR_ERR(fh);
 
@@ -885,27 +873,20 @@ int ovl_path_next(int idx, struct dentry *dentry, struct path *path)
 static int ovl_fix_origin(struct ovl_fs *ofs, struct dentry *dentry,
 			  struct dentry *lower, struct dentry *upper)
 {
-	const struct ovl_fh *fh;
 	int err;
 
 	if (ovl_check_origin_xattr(ofs, upper))
 		return 0;
 
-	fh = ovl_get_origin_fh(ofs, lower);
-	if (IS_ERR(fh))
-		return PTR_ERR(fh);
-
 	err = ovl_want_write(dentry);
 	if (err)
-		goto out;
+		return err;
 
-	err = ovl_set_origin_fh(ofs, fh, upper);
+	err = ovl_set_origin(ofs, lower, upper);
 	if (!err)
 		err = ovl_set_impure(dentry->d_parent, upper->d_parent);
 
 	ovl_drop_write(dentry);
-out:
-	kfree(fh);
 	return err;
 }
 
