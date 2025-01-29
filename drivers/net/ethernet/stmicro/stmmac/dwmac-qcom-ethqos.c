@@ -677,7 +677,7 @@ ethqos_update_rgmii_clk(struct qcom_ethqos *ethqos, unsigned int speed)
 	clk_set_rate(ethqos->rgmii_clk, ethqos->rgmii_clk_rate);
 }
 
-static void qcom_serdes_loopback_v3_1(struct plat_stmmacenet_data *plat, bool on)
+static void qcom_serdes_loopback(struct plat_stmmacenet_data *plat, bool on)
 {
 	struct qcom_ethqos *ethqos = plat->bsp_priv;
 
@@ -694,7 +694,7 @@ static void qcom_serdes_loopback_v3_1(struct plat_stmmacenet_data *plat, bool on
 
 static void ethqos_set_func_clk_en(struct qcom_ethqos *ethqos)
 {
-	qcom_serdes_loopback_v3_1(plat_dat, true);
+	qcom_serdes_loopback(plat_dat, true);
 
 	rgmii_updatel(ethqos, RGMII_CONFIG_FUNC_CLK_EN,
 		      RGMII_CONFIG_FUNC_CLK_EN, RGMII_IO_MACRO_CONFIG);
@@ -2729,7 +2729,7 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	ethqos_set_func_clk_en(ethqos);
 
 	plat_dat->fix_mac_speed = ethqos_fix_mac_speed;
-	plat_dat->serdes_loopback_v3_1 = qcom_serdes_loopback_v3_1;
+	plat_dat->serdes_loopback = qcom_serdes_loopback;
 	plat_dat->dump_debug_regs = rgmii_dump;
 	plat_dat->tx_select_queue = dwmac_qcom_select_queue;
 	plat_dat->has_gmac4 = 1;
@@ -2814,9 +2814,10 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 
 	if (of_property_read_bool(np, "pcs-v3")) {
 		plat_dat->pcs_v3 = true;
+	} else if (of_property_read_bool(np, "pcs-v4")) {
+		plat_dat->pcs_v4 = true;
 	} else {
-		plat_dat->pcs_v3 = false;
-		ETHQOSDBG(":pcs-v3 not in dtsi\n");
+		ETHQOSDBG(":pcs-version is not present in the dtsi\n");
 	}
 
 	if (of_property_present(pdev->dev.of_node, "qcom-xpcs-handle")) {

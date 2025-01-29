@@ -1108,8 +1108,8 @@ static void stmmac_mac_link_down(struct phylink_config *config,
 {
 	struct stmmac_priv *priv = netdev_priv(to_net_dev(config->dev));
 
-	if (priv->plat->pcs_v3 && priv->plat->serdes_loopback_v3_1)
-		priv->plat->serdes_loopback_v3_1(priv->plat, true);
+	if ((priv->plat->pcs_v3 || priv->plat->pcs_v4) && priv->plat->serdes_loopback)
+		priv->plat->serdes_loopback(priv->plat, true);
 
 	stmmac_mac_set(priv, priv->ioaddr, false);
 	priv->eee_active = false;
@@ -1130,8 +1130,8 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 	struct stmmac_priv *priv = netdev_priv(to_net_dev(config->dev));
 	u32 old_ctrl, ctrl;
 
-	if (priv->plat->pcs_v3 && priv->plat->serdes_loopback_v3_1)
-		priv->plat->serdes_loopback_v3_1(priv->plat, false);
+	if ((priv->plat->pcs_v3 || priv->plat->pcs_v4) && priv->plat->serdes_loopback)
+		priv->plat->serdes_loopback(priv->plat, false);
 
 	old_ctrl = readl(priv->ioaddr + MAC_CTRL_REG);
 	ctrl = old_ctrl & ~priv->hw->link.speed_mask;
@@ -4128,8 +4128,8 @@ static int __stmmac_open(struct net_device *dev,
 		}
 	}
 
-	if (priv->plat->pcs_v3 && priv->plat->serdes_loopback_v3_1)
-		priv->plat->serdes_loopback_v3_1(priv->plat, true);
+	if ((priv->plat->pcs_v3 || priv->plat->pcs_v4) && priv->plat->serdes_loopback)
+		priv->plat->serdes_loopback(priv->plat, true);
 
 	/* Extra statistics */
 	memset(&priv->xstats, 0, sizeof(struct stmmac_extra_stats));
