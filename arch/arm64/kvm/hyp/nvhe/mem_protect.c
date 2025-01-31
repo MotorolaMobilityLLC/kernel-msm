@@ -1567,6 +1567,11 @@ static int __do_share(struct pkvm_mem_share *share)
 		break;
 	case PKVM_ID_HYP:
 		ret = hyp_complete_share(completer_addr, tx, share->completer_prot);
+		if (ret == -ENOMEM) {
+			WARN_ON(tx->initiator.id != PKVM_ID_HOST);
+			WARN_ON(host_initiate_unshare(&completer_addr, tx));
+			return ret;
+		}
 		break;
 	case PKVM_ID_GUEST:
 		ret = guest_complete_share(completer_addr, tx, share->completer_prot);
@@ -1582,7 +1587,7 @@ static int __do_share(struct pkvm_mem_share *share)
 		ret = -EINVAL;
 	}
 
-	return ret;
+	return WARN_ON(ret);
 }
 
 /*
@@ -1602,7 +1607,7 @@ static int do_share(struct pkvm_mem_share *share)
 	if (ret)
 		return ret;
 
-	return WARN_ON(__do_share(share));
+	return __do_share(share);
 }
 
 static int check_unshare(struct pkvm_mem_share *share)
@@ -1764,6 +1769,16 @@ static int __do_donate(struct pkvm_mem_donation *donation)
 		break;
 	case PKVM_ID_HYP:
 		ret = hyp_complete_donation(completer_addr, tx);
+		if (ret == -ENOMEM) {
+			struct pkvm_mem_transition abort = {
+				.nr_pages = tx->nr_pages,
+				.completer.id = PKVM_ID_HOST,
+			};
+
+			WARN_ON(tx->initiator.id != PKVM_ID_HOST);
+			WARN_ON(host_complete_donation(completer_addr, &abort));
+			return -ENOMEM;
+		}
 		break;
 	case PKVM_ID_GUEST:
 		ret = guest_complete_donation(completer_addr, tx);
@@ -1772,7 +1787,7 @@ static int __do_donate(struct pkvm_mem_donation *donation)
 		ret = -EINVAL;
 	}
 
-	return ret;
+	return WARN_ON(ret);
 }
 
 /*
@@ -1792,7 +1807,7 @@ static int do_donate(struct pkvm_mem_donation *donation)
 	if (ret)
 		return ret;
 
-	return WARN_ON(__do_donate(donation));
+	return __do_donate(donation);
 }
 
 int __pkvm_host_share_hyp(u64 pfn)
