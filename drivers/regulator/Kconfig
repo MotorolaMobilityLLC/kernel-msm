@@ -731,6 +731,16 @@ config REGULATOR_MAX77693
 	  and one current regulator 'CHARGER'. This is suitable for
 	  Exynos-4x12 (MAX77693) or Exynos5433 (MAX77843) SoC chips.
 
+config REGULATOR_MAX77720
+	tristate "ADI max77720 regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports MAX77720 voltage regulator chip via I2C bus.
+	  The driver updates various registers to configure the
+	  regulator to output required voltages. It includes support
+	  for control of voltage and ramp speed.
+
 config REGULATOR_MAX77802
 	tristate "Maxim 77802 regulator"
 	depends on MFD_MAX77686 || COMPILE_TEST
