@@ -904,6 +904,16 @@ pkg_install(
     visibility = ["//visibility:private"],
 )
 
+py_library(
+    name = "kunit_parser",
+    srcs = [
+        "tools/testing/kunit/kunit_parser.py",
+        "tools/testing/kunit/kunit_printer.py",
+    ],
+    imports = ["tools/testing/kunit"],
+    visibility = ["//visibility:public"],
+)
+
 # DDK Headers
 # All headers. These are the public targets for DDK modules to use.
 alias(
