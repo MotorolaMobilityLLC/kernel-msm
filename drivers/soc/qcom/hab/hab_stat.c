@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
 #include "hab_grantable.h"
+#include "hab_virq.h"
 
 #define MAX_LINE_SIZE 128
 
@@ -84,6 +85,7 @@ int hab_stat_show_ctx(struct hab_driver *driver,
 {
 	int ret = 0;
 	struct uhab_context *ctx;
+	struct virq_uhab_context *virq_ctx;
 
 	ret = strscpy(buf, "", size);
 
@@ -93,12 +95,23 @@ int hab_stat_show_ctx(struct hab_driver *driver,
 					driver->ctx_cnt);
 	list_for_each_entry(ctx, &hab_driver.uctx_list, node) {
 		ret = hab_stat_buffer_print(buf, size,
-		"ctx %d K %d close %d vc %d exp %d imp %d open %d ref %d grp %s\n",
+			"ctx %d K %d close %d vc %d exp %d imp %d open %d ref %d grp %s\n",
 			ctx->owner, ctx->kernel, ctx->closing,
 			ctx->vcnt, ctx->export_total,
 			ctx->import_total, ctx->pending_cnt,
 			get_refcnt(ctx->refcount),
 			ctx->kernel ? "" : HAB_MMID_MAP_NODE(ctx->mmid_grp_index * 100));
+	}
+
+	ret = hab_stat_buffer_print(buf, size,
+			"Total virq contexts %d\n",
+			driver->virq_ctx_cnt);
+	list_for_each_entry(virq_ctx, &hab_driver.virq_uctx_list, node) {
+		ret = hab_stat_buffer_print(buf, size,
+		"ctx %d K %d virq %d ref %d\n",
+			virq_ctx->owner, virq_ctx->kernel,
+			virq_ctx->virq_total,
+			get_refcnt(virq_ctx->refcount));
 	}
 	spin_unlock_bh(&hab_driver.drvlock);
 
@@ -249,6 +262,28 @@ int hab_stat_show_reclaim(struct hab_driver *driver, char *buf, int size)
 	spin_unlock(&hab_driver.reclaim_lock);
 
 	return hab_stat_buffer_print(buf, size, "total: %u, size %u\n", total_num, total_size);
+}
+
+int hab_stat_show_virq(struct hab_driver *driver, char *buf, int size)
+{
+	int ret = 0;
+	struct virq_uhab_context *ctx;
+	struct hvirq_dbl *dbl = NULL;
+
+	ret = strscpy(buf, "", size);
+
+	spin_lock_bh(&hab_driver.drvlock);
+	list_for_each_entry(ctx, &hab_driver.virq_uctx_list, node) {
+		list_for_each_entry(dbl, &ctx->virq, node) {
+			ret = hab_stat_buffer_print(buf, size,
+					"ctx %d virq rx regd %d recv %d lbl %d\n",
+					ctx->owner,  ctx->virq_total,
+					dbl->virq_recv, dbl->virtirq_label);
+		}
+	}
+	spin_unlock_bh(&hab_driver.drvlock);
+
+	return ret;
 }
 
 #define HAB_PIPE_DUMP_FILE_NAME "/sdcard/habpipe-"

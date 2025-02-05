@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
 #include <linux/rtc.h>
@@ -259,6 +259,7 @@ static struct kobject *hab_kobject;
 static int vchan_stat;
 static int context_stat;
 static int pid_stat;
+static int virq_stat;
 
 static ssize_t vchan_show(struct kobject *kobj, struct kobj_attribute *attr,
 						char *buf)
@@ -291,6 +292,25 @@ static ssize_t ctx_store(struct kobject *kobj, struct kobj_attribute *attr,
 	int ret;
 
 	ret = sscanf(buf, "%du", &context_stat);
+	if (ret < 1) {
+		pr_err("failed to read anything from input %d\n", ret);
+		return 0;
+	} else
+		return count;
+}
+
+static ssize_t virq_show(struct kobject *kobj, struct kobj_attribute *attr,
+		char *buf)
+{
+	return hab_stat_show_virq(&hab_driver, buf, PAGE_SIZE);
+}
+
+static ssize_t virq_store(struct kobject *kobj, struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret;
+
+	ret = sscanf(buf, "%du", &virq_stat);
 	if (ret < 1) {
 		pr_err("failed to read anything from input %d\n", ret);
 		return 0;
@@ -372,6 +392,11 @@ static struct kobj_attribute reclaim_attribute = __ATTR(reclaim_stat, 0660,
 								reclaim_show,
 								reclaim_store);
 
+static struct kobj_attribute virq_attribute = __ATTR(virq_stat, 0660,
+								virq_show,
+								virq_store);
+
+
 int hab_stat_init_sub(struct hab_driver *driver)
 {
 	int result;
@@ -396,6 +421,10 @@ int hab_stat_init_sub(struct hab_driver *driver)
 	if (result)
 		pr_debug("cannot add reclaim in /sys/kernel/hab %d\n", result);
 
+	result = sysfs_create_file(hab_kobject, &virq_attribute.attr);
+	if (result)
+		pr_debug("cannot add virq in /sys/kernel/hab %d\n", result);
+
 	return result;
 }
 
@@ -404,6 +433,7 @@ int hab_stat_deinit_sub(struct hab_driver *driver)
 	sysfs_remove_file(hab_kobject, &vchan_attribute.attr);
 	sysfs_remove_file(hab_kobject, &ctx_attribute.attr);
 	sysfs_remove_file(hab_kobject, &expimp_attribute.attr);
+	sysfs_remove_file(hab_kobject, &virq_attribute.attr);
 	kobject_put(hab_kobject);
 
 	return 0;

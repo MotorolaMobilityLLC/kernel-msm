@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2016-2018, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef _HAB_IOCTL_H
 #define _HAB_IOCTL_H
@@ -32,6 +32,24 @@ struct hab_open {
 
 struct hab_close {
 	__s32 vcid;
+	__u32 flags;
+};
+
+struct hab_virq_register {
+	__s32 virq_handle;
+	__u32 vmid;
+	__u32 virq_num;
+	__s32 efd;
+	__u32 flags;
+};
+
+struct hab_virq_unregister {
+	__s32 virq_handle;
+	__u32 flags;
+};
+
+struct hab_virq {
+	__s32 virq_handle;
 	__u32 flags;
 };
 
@@ -106,6 +124,15 @@ struct vhost_hab_config {
 
 #define IOCTL_HAB_VC_QUERY \
 	_IOWR(HAB_IOC_TYPE, 0xA, struct hab_info)
+
+#define IOCTL_HAB_VIRQ_REGISTER \
+	_IOWR(HAB_IOC_TYPE, 0xB, struct hab_virq_register)
+
+#define IOCTL_HAB_SEND_VIRQ \
+	_IOW(HAB_IOC_TYPE, 0xC, struct hab_virq)
+
+#define IOCTL_HAB_VIRQ_UNREGISTER \
+	_IOW(HAB_IOC_TYPE, 0xD, struct hab_virq_unregister)
 
 #define HAB_MMID_MAP_NODE(mmid) ( \
 {\
