@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include <linux/bitmap.h>
 #include <linux/delay.h>
@@ -857,6 +857,39 @@ static void virtio_spmi_remove(struct virtio_device *vdev)
 	vdev->config->del_vqs(vdev);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int virtio_spmi_freeze(struct virtio_device *vdev)
+{
+	struct virtio_spmi *vs = vdev->priv;
+
+	virtio_reset_device(vdev);
+
+	virtio_spmi_del_vqs(vs);
+
+	return 0;
+}
+
+static int virtio_spmi_restore(struct virtio_device *vdev)
+{
+	struct virtio_spmi *vs = vdev->priv;
+	int ret;
+
+	ret = virtio_spmi_init_vqs(vs);
+	if (ret)
+		goto err_init_vq;
+
+	virtio_device_ready(vdev);
+
+	vspmi_fill_rxmsgs(vs);
+
+	return 0;
+
+err_init_vq:
+	virtio_spmi_del_vqs(vs);
+	return ret;
+}
+#endif
+
 static unsigned int features[] = {
 	VIRTIO_SPMI_F_INT,
 };
@@ -874,6 +907,10 @@ static struct virtio_driver virtio_spmi_driver = {
 	.id_table		= id_table,
 	.probe		= virtio_spmi_probe,
 	.remove		= virtio_spmi_remove,
+#ifdef CONFIG_PM_SLEEP
+	.freeze		= virtio_spmi_freeze,
+	.restore	= virtio_spmi_restore,
+#endif
 };
 
 static int __init virtio_spmi_init(void)
