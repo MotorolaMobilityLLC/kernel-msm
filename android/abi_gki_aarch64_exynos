@@ -1534,7 +1534,13 @@
   usb_altnum_to_altsetting
   usb_choose_configuration
   usb_ifnum_to_if
+  xhci_get_endpoint_index
   xhci_get_ep_ctx
+  xhci_sideband_add_endpoint
+  xhci_sideband_create_interrupter
+  xhci_sideband_enable_interrupt
+  xhci_sideband_register
+  xhci_sideband_unregister
 
 # required by exynos9955_sound.ko
   clk_bulk_disable
