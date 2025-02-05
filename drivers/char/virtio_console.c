@@ -2151,7 +2151,7 @@ static const unsigned int rproc_serial_features[] = {
 static int virtcons_freeze(struct virtio_device *vdev)
 {
 	struct ports_device *portdev;
-	struct port *port;
+	struct port *port, *port2;
 
 	portdev = vdev->priv;
 
@@ -2178,6 +2178,10 @@ static int virtcons_freeze(struct virtio_device *vdev)
 		port->host_connected = false;
 		remove_port_data(port);
 	}
+
+	list_for_each_entry_safe(port, port2, &portdev->ports, list)
+		unplug_port(port);
+
 	remove_vqs(portdev);
 
 	return 0;
@@ -2196,6 +2200,8 @@ static int virtcons_restore(struct virtio_device *vdev)
 		return ret;
 
 	virtio_device_ready(portdev->vdev);
+
+	add_port(portdev, 0);
 
 	if (use_multiport(portdev))
 		fill_queue(portdev->c_ivq, &portdev->c_ivq_lock);
