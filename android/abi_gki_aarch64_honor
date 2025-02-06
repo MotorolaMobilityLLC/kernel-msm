@@ -48,6 +48,7 @@
   filp_open_block
   mm_trace_rss_stat
   get_slabinfo
+  isolate_folio
   xas_find
   contpte_ptep_test_and_clear_young
   tty_dev_name_to_number
