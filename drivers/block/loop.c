@@ -238,7 +238,7 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)
  */
 static void loop_set_size(struct loop_device *lo, loff_t size)
 {
-	if (!set_capacity_and_notify(lo->lo_disk, size))
+	if (!set_capacity_revalidate_and_notify(lo->lo_disk, size, true))
 		kobject_uevent(&disk_to_dev(lo->lo_disk)->kobj, KOBJ_CHANGE);
 }
 
