@@ -112,3 +112,7 @@ type 'struct clk_core' changed
   30 members ('struct device_node* of_node' .. 'struct kref ref') changed
     offset changed by 128
 
+type 'struct of_bus' changed
+  member 'bool has_flags' was removed
+  member 'int flag_cells' was added
+
