@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -14,6 +14,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap-divider.h"
 #include "clk-regmap-mux.h"
@@ -3607,6 +3608,37 @@ static struct clk_regmap *gcc_seraph_clocks[] = {
 	[GCC_VIDEO_AXI1_CLK] = &gcc_video_axi1_clk.clkr,
 };
 
+/*
+ *	gcc_camera_ahb_clk
+ *	gcc_camera_xo_clk
+ *	gcc_disp_0_ahb_clk
+ *	gcc_disp_0_xo_clk
+ *	gcc_eva_ahb_clk
+ *	gcc_eva_xo_clk
+ *	gcc_gpu_cfg_ahb_clk
+ *	gcc_lsr_ahb_clk
+ *	gcc_lsr_xo_clk
+ *	gcc_pcie_rscc_cfg_ahb_clk
+ *	gcc_pcie_rscc_xo_clk
+ *	gcc_video_ahb_clk
+ *	gcc_video_xo_clk
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x26004, .mask = BIT(0) },
+	{ .offset = 0x26020, .mask = BIT(0) },
+	{ .offset = 0x27004, .mask = BIT(0) },
+	{ .offset = 0x27020, .mask = BIT(0) },
+	{ .offset = 0xb2004, .mask = BIT(0) },
+	{ .offset = 0xb2004, .mask = BIT(0) },
+	{ .offset = 0x71004, .mask = BIT(0) },
+	{ .offset = 0xb3004, .mask = BIT(0) },
+	{ .offset = 0xb3024, .mask = BIT(0) },
+	{ .offset = 0x52010, .mask = BIT(20) },
+	{ .offset = 0x52010, .mask = BIT(21) },
+	{ .offset = 0x32004, .mask = BIT(0) },
+	{ .offset = 0x32040, .mask = BIT(0) },
+};
+
 static const struct qcom_reset_map gcc_seraph_resets[] = {
 	[GCC_CAMERA_BCR] = { 0x26000 },
 	[GCC_DISPLAY_0_BCR] = { 0x27000 },
@@ -3668,7 +3700,7 @@ static const struct regmap_config gcc_seraph_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gcc_seraph_desc = {
+static struct qcom_cc_desc gcc_seraph_desc = {
 	.config = &gcc_seraph_regmap_config,
 	.clks = gcc_seraph_clocks,
 	.num_clks = ARRAY_SIZE(gcc_seraph_clocks),
@@ -3676,6 +3708,8 @@ static const struct qcom_cc_desc gcc_seraph_desc = {
 	.num_resets = ARRAY_SIZE(gcc_seraph_resets),
 	.clk_regulators = gcc_seraph_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gcc_seraph_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id gcc_seraph_match_table[] = {
@@ -3693,40 +3727,17 @@ static int gcc_seraph_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	ret = register_qcom_clks_pm(pdev, false, &gcc_seraph_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
+
 	ret = qcom_cc_register_rcg_dfs(regmap, gcc_dfs_clocks,
 				       ARRAY_SIZE(gcc_dfs_clocks));
 	if (ret)
 		return ret;
 
-	/*
-	 * Keep clocks always enabled:
-	 *	gcc_camera_ahb_clk
-	 *	gcc_camera_xo_clk
-	 *	gcc_disp_0_ahb_clk
-	 *	gcc_disp_0_xo_clk
-	 *	gcc_eva_ahb_clk
-	 *	gcc_eva_xo_clk
-	 *	gcc_gpu_cfg_ahb_clk
-	 *	gcc_lsr_ahb_clk
-	 *	gcc_lsr_xo_clk
-	 *	gcc_pcie_rscc_cfg_ahb_clk
-	 *	gcc_pcie_rscc_xo_clk
-	 *	gcc_video_ahb_clk
-	 *	gcc_video_xo_clk
-	 */
-	regmap_update_bits(regmap, 0x26004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x26020, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x27004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x27020, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb2004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb2024, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x71004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb3004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb3024, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x52010, BIT(20), BIT(20));
-	regmap_update_bits(regmap, 0x52010, BIT(21), BIT(21));
-	regmap_update_bits(regmap, 0x32004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x32040, BIT(0), BIT(0));
+	/* Enalbling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	/* Clear GDSC_SLEEP_ENA_VOTE to stop votes being auto-removed in sleep. */
 	regmap_write(regmap, 0x52150, 0x0);
