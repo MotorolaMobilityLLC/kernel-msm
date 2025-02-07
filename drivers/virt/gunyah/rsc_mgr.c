@@ -39,6 +39,26 @@
 #define GH_RM_MAX_NUM_FRAGMENTS		62
 #define RM_RPC_FRAGMENTS_MASK		GENMASK(7, 2)
 
+
+struct gh_info_desc {
+	__le16 id;
+	__le16 owner;
+	__le32 size;
+	__le32 offset;
+#define INFO_DESC_VALID		BIT(31)
+	__le32 flags;
+} __packed;
+
+enum gh_info_owner {
+	/* clang-format off */
+	GH_INFO_OWNER_INVALID	= 0,
+	GH_INFO_OWNER_HYP	= 1,
+	GH_INFO_OWNER_ROOTVM	= 2,
+	GH_INFO_OWNER_RM	= 3,
+	GH_INFO_OWNER_QCRM	= 16,
+	/* clang-format on */
+};
+
 struct gh_rm_rpc_hdr {
 	u8 api;
 	u8 type;
@@ -200,6 +220,8 @@ static inline int gh_rm_error_remap(enum gh_rm_error rm_error)
 struct gh_irq_chip_data {
 	u32 gh_virq;
 };
+
+static void *info_area;
 
 static struct irq_chip gh_rm_irq_chip = {
 	.name			= "Gunyah",
@@ -820,6 +842,30 @@ static int gh_identify(void)
 	}
 
 	return 0;
+}
+
+static void *gh_rm_get_info(enum gh_info_owner owner, u16 id, size_t *size)
+{
+	struct gh_info_desc *desc = info_area;
+	__le16 le_owner = cpu_to_le16(owner);
+	__le16 le_id = cpu_to_le16(id);
+
+	if (!desc)
+		return ERR_PTR(-ENOENT);
+	for (desc = info_area; le32_to_cpu(desc->offset); desc++) {
+		if (!(le32_to_cpu(desc->flags) & INFO_DESC_VALID))
+			continue;
+
+		/* No speculative reads to owner and id unless the descriptor is valid */
+		mb();
+
+		if (le_owner == desc->owner && le_id == desc->id) {
+			if (size)
+				*size = le32_to_cpu(desc->size);
+			return info_area + le32_to_cpu(desc->offset);
+		}
+	}
+	return ERR_PTR(-ENOENT);
 }
 
 static int gh_rm_drv_probe(struct platform_device *pdev)
