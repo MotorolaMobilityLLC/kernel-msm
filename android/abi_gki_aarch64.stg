@@ -31094,6 +31094,11 @@ pointer_reference {
   pointee_type_id: 0xd649efa3
 }
 pointer_reference {
+  id: 0x3f035b61
+  kind: POINTER
+  pointee_type_id: 0xd64d8b1a
+}
+pointer_reference {
   id: 0x3f063da2
   kind: POINTER
   pointee_type_id: 0xd6581015
@@ -35627,6 +35632,11 @@ qualified {
   id: 0xd649efa3
   qualifier: CONST
   qualified_type_id: 0x29600806
+}
+qualified {
+  id: 0xd64d8b1a
+  qualifier: CONST
+  qualified_type_id: 0x29719ae3
 }
 qualified {
   id: 0xd6640671
@@ -304427,6 +304437,15 @@ function {
   parameter_id: 0x035330ac
 }
 function {
+  id: 0x104d46b7
+  return_type_id: 0x48b5725f
+  parameter_id: 0x054f691a
+  parameter_id: 0x6720d32f
+  parameter_id: 0x6720d32f
+  parameter_id: 0xe276adef
+  parameter_id: 0x3f035b61
+}
+function {
   id: 0x104da524
   return_type_id: 0x48b5725f
   parameter_id: 0x0357d2dd
@@ -355277,6 +355296,15 @@ elf_symbol {
   crc: 0x62028c99
   type_id: 0x9480cdfa
   full_name: "__i2c_transfer"
+}
+elf_symbol {
+  id: 0xf9338671
+  name: "__icmp_send"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4f946007
+  type_id: 0x104d46b7
+  full_name: "__icmp_send"
 }
 elf_symbol {
   id: 0xf9e10bbf
@@ -432469,6 +432497,7 @@ interface {
   symbol_id: 0x09a111a4
   symbol_id: 0x9ff710d8
   symbol_id: 0xee9e2392
+  symbol_id: 0xf9338671
   symbol_id: 0xf9e10bbf
   symbol_id: 0x335e7054
   symbol_id: 0x64c84a6a
