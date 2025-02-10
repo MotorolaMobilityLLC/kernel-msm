@@ -693,8 +693,6 @@ struct kvm_vcpu_arch {
 /* pKVM host vcpu state is dirty, needs resync */
 #define PKVM_HOST_STATE_DIRTY	__vcpu_single_flag(iflags, BIT(7))
 
-/* SME enabled for EL0 */
-#define HOST_SME_ENABLED	__vcpu_single_flag(sflags, BIT(1))
 /* Physical CPU not in supported_cpus */
 #define ON_UNSUPPORTED_CPU	__vcpu_single_flag(sflags, BIT(2))
 /* WFIT instruction trapped */
