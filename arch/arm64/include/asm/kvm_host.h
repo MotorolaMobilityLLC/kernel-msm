@@ -488,7 +488,8 @@ struct kvm_vcpu_arch {
 	struct kvm_guest_debug_arch vcpu_debug_state;
 	struct kvm_guest_debug_arch external_debug_state;
 
-	struct user_fpsimd_state *host_fpsimd_state;	/* hyp VA */
+	/* DO NOT USE: Removed upstream. Kept to not break the KMI. */
+	struct user_fpsimd_state *host_fpsimd_state;
 
 	struct {
 		/* {Break,watch}point registers */

@@ -122,7 +122,7 @@ void __noreturn __host_enter(struct kvm_cpu_context *host_ctxt);
 struct user_fpsimd_state *get_host_fpsimd_state(struct kvm_vcpu *vcpu);
 struct kvm_host_sve_state *get_host_sve_state(struct kvm_vcpu *vcpu);
 #else
-#define get_host_fpsimd_state(vcpu) (vcpu)->arch.host_fpsimd_state
+#define get_host_fpsimd_state(vcpu) NULL
 #define get_host_sve_state(vcpu) NULL
 #endif
 

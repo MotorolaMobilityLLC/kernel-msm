@@ -54,9 +54,6 @@ static void *__get_host_fpsimd_bytes(void)
 
 struct user_fpsimd_state *get_host_fpsimd_state(struct kvm_vcpu *vcpu)
 {
-	if (likely(!is_protected_kvm_enabled()))
-		return vcpu->arch.host_fpsimd_state;
-
 	WARN_ON(system_supports_sve());
 	return __get_host_fpsimd_bytes();
 }

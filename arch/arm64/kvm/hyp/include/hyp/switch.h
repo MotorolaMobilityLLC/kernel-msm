@@ -175,7 +175,7 @@ static void kvm_hyp_handle_fpsimd_host(struct kvm_vcpu *vcpu)
 	 * Protected kvm restores the host's sve state as not to reveal that
 	 * fpsimd was used by a guest nor leak upper sve bits.
 	 */
-	if (unlikely(is_protected_kvm_enabled() && system_supports_sve())) {
+	if (system_supports_sve()) {
 		struct kvm_host_sve_state *sve_state = get_host_sve_state(vcpu);
 
 		sve_state->zcr_el1 = read_sysreg_el1(SYS_ZCR);
@@ -243,7 +243,7 @@ static bool kvm_hyp_handle_fpsimd(struct kvm_vcpu *vcpu, u64 *exit_code)
 	isb();
 
 	/* Write out the host state if it's in the registers */
-	if (vcpu->arch.fp_state == FP_STATE_HOST_OWNED)
+	if (is_protected_kvm_enabled() && vcpu->arch.fp_state == FP_STATE_HOST_OWNED)
 		kvm_hyp_handle_fpsimd_host(vcpu);
 
 	/* Restore the guest state */
