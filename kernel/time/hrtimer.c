@@ -114,9 +114,11 @@ DEFINE_PER_CPU(struct hrtimer_cpu_base, hrtimer_bases) =
 			.clockid = CLOCK_TAI,
 			.get_time = &ktime_get_clocktai,
 		},
-	},
-	.csd = CSD_INIT(retrigger_next_event, NULL)
+	}
 };
+
+DEFINE_PER_CPU(call_single_data_t, hrtimer_base_csd) =
+	CSD_INIT(retrigger_next_event, NULL);
 
 static const int hrtimer_clock_to_base_table[MAX_CLOCKS] = {
 	/* Make sure we catch unsupported clockids */
@@ -1315,8 +1317,9 @@ static int __hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 
 		if (first) {
 			struct hrtimer_cpu_base *new_cpu_base = new_base->cpu_base;
+			call_single_data_t *csd = per_cpu_ptr(&hrtimer_base_csd, new_cpu_base->cpu);
 
-			smp_call_function_single_async(new_cpu_base->cpu, &new_cpu_base->csd);
+			smp_call_function_single_async(new_cpu_base->cpu, csd);
 		}
 		return 0;
 	}
