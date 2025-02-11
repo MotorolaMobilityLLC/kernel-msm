@@ -470,6 +470,7 @@ enum wa_flags {
 	SLEEP_CLK_32K_SCALE = BIT(2),
 	TOGGLE_EN_TO_FLUSH_FIFO = BIT(3),
 	RECOVER_SWR_SLAVE = BIT(4),
+	DISCHARGE_VNDRV_LDO = BIT(8),
 };
 
 static const char * const src_str[] = {
@@ -1297,6 +1298,22 @@ static int haptics_module_enable(struct haptics_chip *chip, bool enable)
 {
 	u8 val;
 	int rc;
+	unsigned int delay_us = 100;
+
+	/*
+	 * Increase the delay to 500us for HAP525_HV to remove the potential
+	 * overshoot on VNDRV when there is a rapid haptics module enable and
+	 * disable sequence.
+	 */
+	if (chip->hw_type >= HAP525_HV)
+		delay_us = 500;
+
+	/*
+	 * Delay for a while before enabling haptics module to avoid
+	 * it's mistakenly blocked by HW debounce logic.
+	 */
+	if (enable)
+		usleep_range(delay_us, delay_us + 1);
 
 	val = enable ? HAPTICS_EN_BIT : 0;
 	rc = haptics_write(chip, chip->cfg_addr_base,
@@ -1323,7 +1340,6 @@ static int haptics_toggle_module_enable(struct haptics_chip *chip)
 	if (rc < 0)
 		return rc;
 
-	usleep_range(100, 101);
 	return haptics_module_enable(chip, true);
 }
 
@@ -1342,8 +1358,20 @@ static int haptics_check_hpwr_status(struct haptics_chip *chip)
 			break;
 
 		val &= HPWR_INTF_STATUS_MASK;
-		if ((val == HPWR_DISABLED) || (val == HPWR_READY))
-			break;
+
+		if (chip->wa_flags & DISCHARGE_VNDRV_LDO) {
+			/*
+			 * Haptics VNDRV LDO has already been disabled when HPWR_DISABLED
+			 * status is set, delay 500us here to discharge the VNDRV voltage.
+			 */
+			if (val == HPWR_DISABLED) {
+				usleep_range(500, 501);
+				break;
+			}
+		} else {
+			if ((val == HPWR_DISABLED) || (val == HPWR_READY))
+				break;
+		}
 
 		usleep_range(1000, 1001);
 	}
@@ -1829,6 +1857,16 @@ static int haptics_wait_brake_complete(struct haptics_chip *chip)
 	} while (--timeout);
 
 	if (timeout == 0) {
+		/*
+		 * If there is a SWR play in the background, HPWR_DISABLED
+		 * bit won't be set and toggling HAPTICS_EN will re-initiate
+		 * the voltage requested from hBoost, it would cause potential
+		 * glitches on hBoost output which is unexpected, hence ignore
+		 * doing that in such case.
+		 */
+		if (is_swr_play_enabled(chip))
+			return 0;
+
 		dev_warn(chip->dev, "poll HPWR_DISABLED failed after stopped play\n");
 		return haptics_toggle_module_enable(chip);
 	}
@@ -3371,6 +3409,9 @@ static int haptics_config_wa(struct haptics_chip *chip)
 	case HAP525_HV:
 		if (chip->hbst_revision == HAP_BOOST_V0P1)
 			chip->wa_flags |= SW_CTRL_HBST;
+		chip->wa_flags |= DISCHARGE_VNDRV_LDO;
+		dev_err(chip->dev, "HW type %d wa_flag: %#x\n",
+			chip->hw_type, chip->wa_flags);
 		break;
 	default:
 		dev_err(chip->dev, "HW type %d does not match\n",
