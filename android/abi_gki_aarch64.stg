@@ -331951,6 +331951,12 @@ function {
   parameter_id: 0x35f82503
 }
 function {
+  id: 0x97a1ddd3
+  return_type_id: 0x6720d32f
+  parameter_id: 0x257d12af
+  parameter_id: 0xdf9e95f6
+}
+function {
   id: 0x97a3c07a
   return_type_id: 0x6720d32f
   parameter_id: 0x2efe8065
@@ -414262,6 +414268,15 @@ elf_symbol {
   full_name: "scsi_device_resume"
 }
 elf_symbol {
+  id: 0x55968d64
+  name: "scsi_device_set_state"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x681b1aa2
+  type_id: 0x97a1ddd3
+  full_name: "scsi_device_set_state"
+}
+elf_symbol {
   id: 0xf10245da
   name: "scsi_dma_map"
   is_defined: true
@@ -439039,6 +439054,7 @@ interface {
   symbol_id: 0x474e9bcc
   symbol_id: 0x61df84bc
   symbol_id: 0x054c0bba
+  symbol_id: 0x55968d64
   symbol_id: 0xf10245da
   symbol_id: 0x18cbd7f9
   symbol_id: 0x30f6b9b1
