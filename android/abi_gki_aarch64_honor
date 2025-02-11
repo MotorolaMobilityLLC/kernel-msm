@@ -6,6 +6,8 @@
   _vm_normal_page
   pmd_clear_bad
   __pmd_trans_huge_lock
+  get_task_cred
+  __put_cred
   __traceiter_android_rvh_dma_buf_stats_teardown
   __traceiter_android_vh_tune_fault_around_bytes
   __traceiter_android_vh_io_statistics
