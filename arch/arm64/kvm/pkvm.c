@@ -329,6 +329,8 @@ static void __pkvm_destroy_hyp_vm(struct kvm *host_kvm)
 
 	WARN_ON(kvm_call_hyp_nvhe(__pkvm_start_teardown_vm, host_kvm->arch.pkvm.handle));
 
+	mt_clear_in_rcu(&host_kvm->arch.pkvm.pinned_pages);
+
 	mt_for_each(&host_kvm->arch.pkvm.pinned_pages, ppage, ipa, ULONG_MAX) {
 		if (WARN_ON(ppage == KVM_DUMMY_PPAGE))
 			continue;
