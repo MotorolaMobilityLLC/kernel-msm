@@ -121,4 +121,7 @@ type 'struct netns_ipv4' changed
   member 'u8 sysctl_udp_l3mdev_accept' was added
   member 'u8 sysctl_raw_l3mdev_accept' was added
 
+type 'struct of_bus' changed
+  member 'bool has_flags' was removed
+  member 'int flag_cells' was added
 
