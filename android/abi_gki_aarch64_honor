@@ -134,6 +134,8 @@
   __traceiter_android_vh_slab_free
   __traceiter_android_vh_should_fault_around
   __tracepoint_android_vh_should_fault_around
+  __traceiter_android_vh_add_lazyfree_bypass
+  __tracepoint_android_vh_add_lazyfree_bypass
   __traceiter_android_vh_mglru_should_abort_scan
   __tracepoint_android_vh_mglru_should_abort_scan
   __traceiter_android_vh_mglru_should_abort_scan_order
