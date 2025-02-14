@@ -396,6 +396,8 @@ static ssize_t __read_vmcore(char *buffer, size_t buflen, loff_t *fpos,
 			if (buflen == 0)
 				return acc;
 		}
+
+		cond_resched();
 	}
 
 	return acc;
