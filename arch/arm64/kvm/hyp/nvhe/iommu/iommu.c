@@ -231,9 +231,11 @@ int kvm_iommu_refill(struct kvm_hyp_memcache *host_mc)
 		unsigned long order = FIELD_GET(~PAGE_MASK, host_mc->head);
 		phys_addr_t phys = host_mc->head & PAGE_MASK;
 		struct hyp_pool *pool = &iommu_system_pool;
+		u64 nr_pages;
 		void *addr;
 
-		if (!IS_ALIGNED(phys, PAGE_SIZE << order))
+		if (check_shl_overflow(1UL, order, &nr_pages) ||
+		    !IS_ALIGNED(phys, PAGE_SIZE << order))
 			return -EINVAL;
 
 		addr = admit_host_page(host_mc, order);
