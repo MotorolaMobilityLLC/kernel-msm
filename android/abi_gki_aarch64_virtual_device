@@ -1411,6 +1411,7 @@
   blk_mq_freeze_queue
   blk_mq_map_queues
   blk_mq_quiesce_queue
+  blk_mq_quiesce_queue_nowait
   blk_mq_requeue_request
   blk_mq_start_request
   blk_mq_start_stopped_hw_queues
