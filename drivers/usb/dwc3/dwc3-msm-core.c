@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -420,7 +420,7 @@ static struct {
 } bus_vote_values[BUS_VOTE_MAX][3] = {
 	/* usb_ddr avg/peak, usb_ipa avg/peak, apps_usb avg/peak */
 	[BUS_VOTE_NONE]    = { {0, 0}, {0, 0}, {0, 0} },
-	[BUS_VOTE_NOMINAL] = { {1000000, 1250000}, {0, 2400}, {0, 40000}, },
+	[BUS_VOTE_NOMINAL] = { {1000000, 1350000}, {0, 2400}, {0, 40000}, },
 	[BUS_VOTE_SVS]     = { {240000, 700000}, {0, 2400}, {0, 40000}, },
 	[BUS_VOTE_MIN]     = { {1, 1}, {1, 1}, {1, 1}, },
 };
@@ -6037,9 +6037,8 @@ static int dwc3_msm_parse_core_params(struct dwc3_msm *mdwc, struct device_node 
 
 static int dwc3_msm_interconnect_vote_populate(struct dwc3_msm *mdwc)
 {
-	int ret_nom = 0, i = 0, j = 0, count = 0;
-	int ret_svs = 0, ret = 0;
-	u32 *vv_nom, *vv_svs;
+	int i = 0, j = 0, count = 0, ret = 0;
+	u32 *vv_nom = NULL, *vv_svs = NULL;
 
 	count = of_property_count_strings(mdwc->dev->of_node,
 						"interconnect-names");
@@ -6050,29 +6049,31 @@ static int dwc3_msm_interconnect_vote_populate(struct dwc3_msm *mdwc)
 
 	/* 2 signifies the two types of values avg & peak */
 	vv_nom = kzalloc(count * 2 * sizeof(*vv_nom), GFP_KERNEL);
-	if (!vv_nom)
-		return -ENOMEM;
-
-	vv_svs = kzalloc(count * 2 * sizeof(*vv_svs), GFP_KERNEL);
-	if (!vv_svs)
-		return -ENOMEM;
-
-	/* of_property_read_u32_array returns 0 on success */
-	ret_nom = of_property_read_u32_array(mdwc->dev->of_node,
-				"qcom,interconnect-values-nom",
-					vv_nom, count * 2);
-	if (ret_nom) {
-		dev_err(mdwc->dev, "Nominal values not found.\n");
-		ret = ret_nom;
+	if (!vv_nom) {
+		ret = -ENOMEM;
 		goto icc_err;
 	}
 
-	ret_svs = of_property_read_u32_array(mdwc->dev->of_node,
+	vv_svs = kzalloc(count * 2 * sizeof(*vv_svs), GFP_KERNEL);
+	if (!vv_svs) {
+		ret = -ENOMEM;
+		goto icc_err;
+	}
+
+	/* of_property_read_u32_array returns 0 on success */
+	ret = of_property_read_u32_array(mdwc->dev->of_node,
+				"qcom,interconnect-values-nom",
+					vv_nom, count * 2);
+	if (ret) {
+		dev_err(mdwc->dev, "Nominal values not found.\n");
+		goto icc_err;
+	}
+
+	ret = of_property_read_u32_array(mdwc->dev->of_node,
 				"qcom,interconnect-values-svs",
 					vv_svs, count * 2);
-	if (ret_svs) {
+	if (ret) {
 		dev_err(mdwc->dev, "Svs values not found.\n");
-		ret = ret_svs;
 		goto icc_err;
 	}
 

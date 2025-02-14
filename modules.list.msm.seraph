@@ -9,6 +9,7 @@ smem.ko
 socinfo.ko
 clk-dummy.ko
 clk-qcom.ko
+dcc_v2.ko
 cqhci.ko
 sdhci-msm.ko
 gdsc-regulator.ko
@@ -19,6 +20,7 @@ icc-rpmh.ko
 icc-debug.ko
 qnoc-qos.ko
 qnoc-seraph.ko
+spmi-pmic-arb.ko
 stub-regulator.ko
 arm_smmu.ko
 iommu-logger.ko
@@ -42,3 +44,7 @@ qcom_aoss.ko
 qcom-ipcc.ko
 qcom_wdt_core.ko
 gh_virt_wdt.ko
+qcom-cpufreq-hw.ko
+clk-rpmh.ko
+sched-walt.ko
+gic_intr_routing.ko
