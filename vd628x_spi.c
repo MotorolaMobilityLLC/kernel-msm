@@ -20,7 +20,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/module.h>
-#include <linux/regulator/consumer.h>
+/*#include <linux/regulator/consumer.h>*/
 #include <linux/miscdevice.h>
 
 #include "cam_sensor_dev.h"
@@ -31,21 +31,24 @@
 
 #define VD628x_ADAPTER_DEV_NAME "vd628x_adapter"
 
+/*
 struct regulator_info {
 	struct regulator *reg;
 	const char *name;
 };
+*/
 
 struct vd628x_spidev_data {
 	struct spi_device *pdev;
 	struct miscdevice misc;
 	struct cam_hw_soc_info soc_info;
+/*
 	uint32_t number_of_regulators;
 	struct regulator_info regulators[1];
 	uint32_t min_volt[1];
 	uint32_t max_volt[1];
 	uint32_t load_current[1];
-
+*/
 	u8 *pbuffer;
 	int16_t *psamples;
 	u32 spi_max_frequency;
@@ -277,128 +280,6 @@ static const struct file_operations vd628x_spi_fops = {
 };
 
 
-static int vd628x_get_ext_regulators(struct vd628x_spidev_data *pdata)
-{
-	int count = 0, i = 0, ret = 0;
-	struct device_node *of_node = pdata->soc_info.dev->of_node;
-
-	pr_info("vd628x: getting regulators info\n");
-
-	count = of_property_count_strings(of_node, "regulator-names");
-	if (count != -EINVAL) {
-		if (count <= 0) {
-			pr_err("vd628x : No regulator found\n");
-			pdata->number_of_regulators = 0;
-			return -1;
-		}
-		pdata->number_of_regulators = count;
-	} else {
-		pr_info("vd628x: No regulator node found\n");
-		return 0;
-
-	}
-
-	for (i = 0; i < count; i++) {
-		ret = of_property_read_string_index(of_node,
-			"regulator-names", i, &pdata->regulators[i].name);
-		if (ret) {
-			pr_err("vd628x: Invalid argument: No reg name found");
-			return -1;
-		}
-		printk("vd628x: regulator: %s found at index: %d\n",
-			pdata->regulators[i].name, i);
-	}
-
-	ret = of_property_read_u32_array(of_node, "rgltr-min-voltage",
-		pdata->min_volt, pdata->number_of_regulators);
-	if (ret) {
-		pr_err("vd628x: Min volt Array not found\n");
-		goto clear_reg_array;
-	}
-
-	ret = of_property_read_u32_array(of_node, "rgltr-max-voltage",
-		pdata->max_volt, pdata->number_of_regulators);
-	if (ret) {
-		pr_err("vd628x: Max volt Array not found\n");
-		goto clear_min_volt_array;
-	}
-
-	ret = of_property_read_u32_array(of_node, "rgltr-load-current",
-		pdata->load_current, pdata->number_of_regulators);
-	if (ret) {
-		pr_err("vd628x: Load current Array not found\n");
-		goto clear_max_volt_array;
-	}
-	return 0;
-
-clear_max_volt_array:
-	for (i = 0; i < count; i++)
-		pdata->max_volt[i] = 0;
-clear_min_volt_array:
-	for (i = 0; i < count; i++)
-		pdata->min_volt[i] = 0;
-clear_reg_array:
-	for (i = 0; i < count; i++)
-		pdata->regulators[i].name = NULL;
-
-	return ret;
-}
-
-
-
-
-static int vd628x_enable_ext_regulators(struct vd628x_spidev_data *pdata) {
-
-	int ret = 0, i = 0;
-
-	pr_info("vd628x: enabling regulators info\n");
-
-	for (i = 0; i < pdata->number_of_regulators; i++) {
-		pdata->regulators[i].reg = regulator_get(pdata->soc_info.dev, pdata->regulators[i].name);
-		if (IS_ERR_OR_NULL(pdata->regulators[i].reg)) {
-			if(PTR_ERR(pdata->regulators[i].reg))
-				pr_err("vd628x: NULL pointer");
-			ret = -EINVAL;
-			pr_err("vd628x: reg: %s failed ret: %d\n", pdata->regulators[i].name, ret);
-			goto error;
-		}
-
-		printk("vd628x: reg_name[%d]:%s: min_volt[%d]:%d, max_volt[%d]:%d load_current[%d]:%d\n", i, pdata->regulators[i].name, i, pdata->min_volt[i], i, pdata->max_volt[i], i, pdata->load_current[i]);
-
-		ret = regulator_set_voltage(pdata->regulators[i].reg, pdata->min_volt[i], pdata->max_volt[i]);
-		if (ret) {
-			pr_err("vd628x: %s set voltage failed ret: %d", pdata->regulators[i].name, ret);
-			goto error;
-		}
-
-		ret = regulator_set_load(pdata->regulators[i].reg, pdata->load_current[i]);
-		if (ret) {
-			pr_err("vd628x: %s set load failed ret: %d", pdata->regulators[i].name, ret);
-			regulator_set_voltage(pdata->regulators[i].reg, 0, pdata->max_volt[i]);
-			goto error;
-		}
-
-		ret = regulator_enable(pdata->regulators[i].reg);
-		if (ret) {
-			pr_err("vd628x: %s regulator_enable failed ret: %d", pdata->regulators[i].name, ret);
-			regulator_set_load(pdata->regulators[i].reg, 0);
-			regulator_set_voltage(pdata->regulators[i].reg, 0, pdata->max_volt[i]);
-			goto error;
-		}
-	}
-	return 0;
-
-error:
-	for (i -= 1; i >= 0; i--) {
-		regulator_set_voltage(pdata->regulators[i].reg, 0, pdata->max_volt[i]);
-		regulator_set_load(pdata->regulators[i].reg, 0);
-		regulator_put(pdata->regulators[i].reg);
-		pdata->regulators[i].reg = NULL;
-	}
-	return ret;
-}
-
-
 
 int vd628x_spi_driver_probe(struct spi_device *pdev)
 {
@@ -426,19 +307,6 @@ int vd628x_spi_driver_probe(struct spi_device *pdev)
 	pdata->misc.fops = &vd628x_spi_fops;
 	ret = misc_register(&pdata->misc);
 
-	ret = vd628x_get_ext_regulators(pdata);
-	if (ret) {
-		pr_err("vd628x_get_ext_regulators => %d", ret);
-		return ret;
-	}
-
-	ret = vd628x_enable_ext_regulators(pdata);
-	if (ret) {
-		pr_err("vd628x_enable_ext_regulators failed => %d", ret);
-		return ret;
-	}
-
-
 	if (ret)
 		pr_info("vd628x_spi_probe failed");
 	else
@@ -451,20 +319,10 @@ int vd628x_spi_driver_probe(struct spi_device *pdev)
 int vd628x_spi_driver_remove(struct spi_device *pdev)
 {
 	struct vd628x_spidev_data *pdata;
-	int i;
-
 	pdata = spi_get_drvdata(pdev);
 	if (!pdata) {
 		pr_err("[%s] can't remove %p", __func__, pdev);
 		return 0;
-	}
-
-	for (i = 0; i < pdata->number_of_regulators; i++) {
-		regulator_set_voltage(pdata->regulators[i].reg, 0, pdata->max_volt[i]);
-		regulator_set_load(pdata->regulators[i].reg, 0);
-		regulator_disable(pdata->regulators[i].reg);
-		regulator_put(pdata->regulators[i].reg);
-		pdata->regulators[i].reg = NULL;
 	}
 
 
@@ -498,7 +356,7 @@ static struct spi_driver vd628x_spi_driver = {
 
 MODULE_DEVICE_TABLE(of, vd628x_spi_dt_ids);
 
-static int __init vd628x_module_init(void)
+static int __init vd628x_spi_module_init(void)
 {
 	int ret = 0;
 
@@ -513,7 +371,7 @@ static int __init vd628x_module_init(void)
 	return ret;
 }
 
-static void __exit vd628x_module_exit(void)
+static void __exit vd628x_spi_module_exit(void)
 {
 
 	pr_debug("vd628x : module exit\n");
@@ -521,8 +379,8 @@ static void __exit vd628x_module_exit(void)
 	spi_unregister_driver(&vd628x_spi_driver);
 }
 
-module_init(vd628x_module_init);
-module_exit(vd628x_module_exit);
+module_init(vd628x_spi_module_init);
+module_exit(vd628x_spi_module_exit);
 
 MODULE_DESCRIPTION("vd628x spi adapter driver");
 MODULE_LICENSE("GPL v2");
