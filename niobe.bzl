@@ -60,6 +60,7 @@ def define_niobe():
         "drivers/i2c/busses/i2c-msm-geni.ko",
         "drivers/iio/adc/qcom-spmi-adc5-gen3.ko",
         "drivers/iio/adc/qcom-vadc-common.ko",
+        "drivers/iio/ipd.ko",
         "drivers/input/misc/pm8941-pwrkey.ko",
         "drivers/interconnect/icc-test.ko",
         "drivers/interconnect/qcom/icc-bcm-voter.ko",
