@@ -4165,6 +4165,7 @@
   __xa_insert
   xa_load
   xa_store
+  xas_load
   xdp_convert_zc_to_xdp_frame
   xdp_do_flush
   xdp_do_redirect

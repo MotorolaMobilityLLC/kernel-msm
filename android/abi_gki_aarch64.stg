@@ -310493,6 +310493,11 @@ function {
   parameter_id: 0x18a2fb63
 }
 function {
+  id: 0x5e72d005
+  return_type_id: 0x18bd6530
+  parameter_id: 0x239187d3
+}
+function {
   id: 0x5e864c76
   return_type_id: 0x2560a232
   parameter_id: 0x0490bb4a
@@ -416939,6 +416944,15 @@ elf_symbol {
   full_name: "xas_find"
 }
 elf_symbol {
+  id: 0x38562df0
+  name: "xas_load"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x31d34278
+  type_id: 0x5e72d005
+  full_name: "xas_load"
+}
+elf_symbol {
   id: 0x0fe35b07
   name: "xas_pause"
   is_defined: true
@@ -426157,6 +426171,7 @@ interface {
   symbol_id: 0xaa425530
   symbol_id: 0x9b05d33a
   symbol_id: 0xb5ba02d4
+  symbol_id: 0x38562df0
   symbol_id: 0x0fe35b07
   symbol_id: 0xebb799b4
   symbol_id: 0xcaf4c4fe
