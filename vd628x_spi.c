@@ -20,7 +20,6 @@
 
 #include <linux/platform_device.h>
 #include <linux/module.h>
-/*#include <linux/regulator/consumer.h>*/
 #include <linux/miscdevice.h>
 
 #include "cam_sensor_dev.h"
@@ -31,24 +30,10 @@
 
 #define VD628x_ADAPTER_DEV_NAME "vd628x_adapter"
 
-/*
-struct regulator_info {
-	struct regulator *reg;
-	const char *name;
-};
-*/
-
 struct vd628x_spidev_data {
 	struct spi_device *pdev;
 	struct miscdevice misc;
 	struct cam_hw_soc_info soc_info;
-/*
-	uint32_t number_of_regulators;
-	struct regulator_info regulators[1];
-	uint32_t min_volt[1];
-	uint32_t max_volt[1];
-	uint32_t load_current[1];
-*/
 	u8 *pbuffer;
 	int16_t *psamples;
 	u32 spi_max_frequency;
