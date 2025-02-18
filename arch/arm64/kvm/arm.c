@@ -1862,8 +1862,11 @@ static void __init cpu_prepare_hyp_mode(int cpu, u32 hyp_va_bits)
 		tcr &= ~(TCR_HD | TCR_HA | TCR_A1 | TCR_T0SZ_MASK);
 		tcr |= TCR_EPD1_MASK;
 	} else {
+		u64 mmfr0 = read_sanitised_ftr_reg(SYS_ID_AA64MMFR0_EL1);
+
 		tcr &= TCR_EL2_MASK;
-		tcr |= TCR_EL2_RES1;
+		tcr |= TCR_EL2_RES1 |
+		       FIELD_PREP(TCR_EL2_PS_MASK, kvm_get_parange(mmfr0));
 	}
 	tcr |= TCR_T0SZ(hyp_va_bits);
 	params->tcr_el2 = tcr;
