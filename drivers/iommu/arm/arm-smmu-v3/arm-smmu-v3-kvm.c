@@ -6,6 +6,8 @@
  */
 #include <asm/kvm_pkvm.h>
 #include <asm/kvm_mmu.h>
+#include <linux/cma.h>
+#include <linux/dma-map-ops.h>
 #include <linux/local_lock.h>
 #include <linux/moduleparam.h>
 #include <linux/of_address.h>
@@ -72,6 +74,65 @@ extern struct kvm_iommu_ops kvm_nvhe_sym(smmu_ops);
 static int atomic_pages;
 module_param(atomic_pages, int, 0);
 
+phys_addr_t __topup_virt_to_phys(void *virt)
+{
+	return __pa(virt);
+}
+
+static struct page *__kvm_arm_smmu_alloc_from_cma(gfp_t gfp)
+{
+	bool from_spare = (gfp & GFP_ATOMIC) == GFP_ATOMIC;
+	static atomic64_t spare_p;
+	struct page *p = NULL;
+
+again:
+	if (from_spare)
+		return (struct page *)atomic64_cmpxchg(&spare_p, atomic64_read(&spare_p), 0);
+
+	p = kvm_iommu_cma_alloc();
+	if (!p) {
+		from_spare = true;
+		goto again;
+	}
+
+	/*
+	 * Top-up the spare block if necessary. If we failed to update spare_p
+	 * then someone did it already and we can proceed with that page.
+	 */
+	if (!atomic64_read(&spare_p)) {
+		if (!atomic64_cmpxchg(&spare_p, 0, (u64)p))
+			goto again;
+	}
+
+	return p;
+}
+
+static int __kvm_arm_smmu_topup_from_cma(size_t size, gfp_t gfp, size_t *allocated)
+{
+	*allocated = 0;
+
+	while (*allocated < size) {
+		struct page *p = __kvm_arm_smmu_alloc_from_cma(gfp);
+		struct kvm_hyp_memcache mc;
+
+		if (!p)
+			return -ENOMEM;
+
+		init_hyp_memcache(&mc);
+		push_hyp_memcache(&mc, page_to_virt(p), __topup_virt_to_phys,
+				  PMD_SHIFT - PAGE_SHIFT);
+
+		if (__pkvm_topup_hyp_alloc_mgt_mc(HYP_ALLOC_MGT_IOMMU_ID, &mc)) {
+			kvm_iommu_cma_release(p);
+			return -EINVAL;
+		}
+
+		*allocated += PMD_SIZE;
+	}
+
+	return 0;
+}
+
 static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res, gfp_t gfp)
 {
 	struct kvm_hyp_req req;
@@ -89,8 +150,23 @@ static int kvm_arm_smmu_topup_memcache(struct arm_smccc_res *res, gfp_t gfp)
 	}
 
 	if (req.mem.dest == REQ_MEM_DEST_HYP_IOMMU) {
+		size_t nr_pages, from_cma = 0;
+		int ret;
+
+		nr_pages = req.mem.nr_pages;
+
+		if (req.mem.sz_alloc < PMD_SIZE) {
+			size_t size = req.mem.sz_alloc * nr_pages;
+
+			ret = __kvm_arm_smmu_topup_from_cma(size, gfp, &from_cma);
+			if (!ret)
+				return 0;
+
+			nr_pages -= from_cma / req.mem.sz_alloc;
+		}
+
 		return __pkvm_topup_hyp_alloc_mgt_gfp(HYP_ALLOC_MGT_IOMMU_ID,
-						      req.mem.nr_pages,
+						      nr_pages,
 						      req.mem.sz_alloc,
 						      gfp);
 	} else if (req.mem.dest == REQ_MEM_DEST_HYP_ALLOC) {

@@ -606,6 +606,7 @@
   kasprintf
   kernel_kobj
   kernel_sigaction
+  __kfence_pool
   __kfifo_free
   __kfifo_in
   __kfifo_init
@@ -865,6 +866,7 @@
   pci_unregister_driver
   pci_write_config_dword
   __per_cpu_offset
+  perf_allow_kernel
   perf_aux_output_begin
   perf_aux_output_end
   perf_aux_output_flag

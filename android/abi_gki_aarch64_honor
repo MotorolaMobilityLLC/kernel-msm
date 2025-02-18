@@ -48,6 +48,7 @@
   filp_open_block
   mm_trace_rss_stat
   get_slabinfo
+  isolate_folio
   xas_find
   contpte_ptep_test_and_clear_young
   tty_dev_name_to_number
@@ -68,6 +69,31 @@
   __traceiter_rpm_return_int
   __tracepoint_rpm_return_int
   __kfifo_len_r
+  mempool_init
+  mempool_exit
+  dm_register_target
+  dm_unregister_target
+  blk_crypto_evict_key
+  blk_crypto_derive_sw_secret
+  dm_shift_arg
+  dm_get_device
+  dm_put_device
+  dm_read_arg_group
+  dm_consume_args
+  bioset_init
+  dm_set_target_max_io_len
+  dm_per_bio_data
+  dm_bio_get_target_bio_nr
+  bioset_exit
+  dm_submit_bio_remap
+  dm_table_device_name
+  dm_table_event
+  empty_zero_page
+  dm_get_reserved_bio_based_ios
+  wait_for_completion_io
+  bio_crypt_set_ctx
+  zero_fill_bio_iter
+  __trace_bputs
   __traceiter_android_vh_killed_process
   __tracepoint_android_vh_killed_process
   __traceiter_android_vh_rwsem_write_wait_finish
@@ -174,6 +200,16 @@
   __tracepoint_android_vh_cma_alloc_retry
   __tracepoint_android_vh_should_memcg_bypass
   __traceiter_android_vh_should_memcg_bypass
+  __traceiter_android_vh_rmqueue_smallest_bypass
+  __tracepoint_android_vh_rmqueue_smallest_bypass
+  __traceiter_android_vh_free_one_page_bypass
+  __tracepoint_android_vh_free_one_page_bypass
+  __traceiter_android_vh_reserve_highatomic_bypass
+  __tracepoint_android_vh_reserve_highatomic_bypass
+  __traceiter_android_vh_pagetypeinfo_show
+  __tracepoint_android_vh_pagetypeinfo_show
+  __traceiter_android_vh_watermark_fast_ok
+  __tracepoint_android_vh_watermark_fast_ok
   __traceiter_android_rvh_ogki_vfree_bypass
   __traceiter_android_rvh_ogki_vmalloc_node_bypass
   __traceiter_android_vh_ogki_async_psi_bypass

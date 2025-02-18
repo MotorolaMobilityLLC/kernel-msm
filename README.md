@@ -128,6 +128,12 @@ a maintainer tree)
         Signed-off-by: Joe Smith <joe.smith@foo.org>
 ```
 
+- If a patch has been submitted to the community, but rejected, do NOT use the
+  `FROMLIST:` tag to try to hide this fact.  Use the `ANDROID:` tag as
+  described below as this must be considered as an Android-specific submission,
+  not an upstream submission as the community will not accept these changes
+  as-is.
+
 ## Requirements for Android-specific patches: `ANDROID:`
 
 - If the patch is fixing a bug to Android-specific code

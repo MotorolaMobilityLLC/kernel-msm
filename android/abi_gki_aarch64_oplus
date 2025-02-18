@@ -60,6 +60,7 @@
   have_governor_per_policy
   i2c_smbus_read_word_data
   i2c_smbus_write_word_data
+  __icmp_send
   igrab
   iio_channel_get
   iio_channel_release

@@ -184,7 +184,7 @@ static int hyp_allocator_map(struct hyp_allocator *allocator,
 		u8 *missing_donations = this_cpu_ptr(&hyp_allocator_missing_donations);
 		u32 delta = (size >> PAGE_SHIFT) - mc->nr_pages;
 
-		*missing_donations = (u8)min(delta, (u32)~((u8)0));
+		*missing_donations = min(delta, U8_MAX);
 
 		return -ENOMEM;
 	}

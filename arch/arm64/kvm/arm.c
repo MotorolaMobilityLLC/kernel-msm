@@ -1859,12 +1859,12 @@ static void __init cpu_prepare_hyp_mode(int cpu, u32 hyp_va_bits)
 
 	tcr = read_sysreg(tcr_el1);
 	if (cpus_have_final_cap(ARM64_KVM_HVHE)) {
+		tcr &= ~(TCR_HD | TCR_HA | TCR_A1 | TCR_T0SZ_MASK);
 		tcr |= TCR_EPD1_MASK;
 	} else {
 		tcr &= TCR_EL2_MASK;
 		tcr |= TCR_EL2_RES1;
 	}
-	tcr &= ~TCR_T0SZ_MASK;
 	tcr |= TCR_T0SZ(hyp_va_bits);
 	params->tcr_el2 = tcr;
 
@@ -2261,6 +2261,12 @@ static void kvm_hyp_init_symbols(void)
 	kvm_nvhe_sym(smccc_trng_available) = smccc_trng_available;
 	kvm_nvhe_sym(kvm_sve_max_vl) = kvm_sve_max_vl;
 	kvm_nvhe_sym(kvm_host_sve_max_vl) = kvm_host_sve_max_vl;
+
+	/*
+	 * Flush entire BSS since part of its data is read while the MMU is off.
+	 */
+	kvm_flush_dcache_to_poc(kvm_ksym_ref(__hyp_bss_start),
+				kvm_ksym_ref(__hyp_bss_end) - kvm_ksym_ref(__hyp_bss_start));
 }
 
 static unsigned long kvm_hyp_shrinker_count(struct shrinker *shrinker,

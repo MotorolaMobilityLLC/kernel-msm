@@ -1330,6 +1330,9 @@ bool kvm_arm_vcpu_stopped(struct kvm_vcpu *vcpu);
 int kvm_iommu_init_driver(void);
 void kvm_iommu_remove_driver(void);
 
+struct page *kvm_iommu_cma_alloc(void);
+bool kvm_iommu_cma_release(struct page *p);
+
 int pkvm_iommu_suspend(struct device *dev);
 int pkvm_iommu_resume(struct device *dev);
 
@@ -1346,6 +1349,7 @@ int kvm_iommu_register_driver(struct kvm_iommu_driver *kern_ops);
 #define HYP_ALLOC_MGT_IOMMU_ID		1
 
 unsigned long __pkvm_reclaim_hyp_alloc_mgt(unsigned long nr_pages);
+int __pkvm_topup_hyp_alloc_mgt_mc(unsigned long id, struct kvm_hyp_memcache *mc);
 int __pkvm_topup_hyp_alloc_mgt(unsigned long id, unsigned long nr_pages,
 			       unsigned long sz_alloc);
 int __pkvm_topup_hyp_alloc_mgt_gfp(unsigned long id, unsigned long nr_pages,

@@ -44,4 +44,5 @@ void assert_in_mod_range(unsigned long addr);
 #else
 static inline void assert_in_mod_range(unsigned long addr) { }
 #endif /* CONFIG_NVHE_EL2_DEBUG */
+void *admit_host_page(void *arg, unsigned long order);
 #endif /* __KVM_HYP_MM_H */

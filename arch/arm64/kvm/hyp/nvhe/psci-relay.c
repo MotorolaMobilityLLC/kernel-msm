@@ -333,15 +333,26 @@ static unsigned long psci_0_2_handler(u64 func_id, struct kvm_cpu_context *host_
 	}
 }
 
+static unsigned long psci_system_reset2(struct kvm_cpu_context *host_ctxt)
+{
+	DECLARE_REG(u32, reset_type, host_ctxt, 1);
+
+	pkvm_poison_pvmfw_pages();
+	hyp_spin_lock(&mem_protect_lock);
+
+	if (psci_mem_protect_active() &&
+	    reset_type == PSCI_1_1_RESET_TYPE_SYSTEM_WARM_RESET) {
+		cpu_reg(host_ctxt, 0) = PSCI_0_2_FN_SYSTEM_RESET;
+	}
+
+	return psci_forward(host_ctxt);
+}
+
 static unsigned long psci_1_0_handler(u64 func_id, struct kvm_cpu_context *host_ctxt)
 {
 	switch (func_id) {
 	case PSCI_1_1_FN64_SYSTEM_RESET2:
-		pkvm_poison_pvmfw_pages();
-		hyp_spin_lock(&mem_protect_lock);
-		if (psci_mem_protect_active())
-			cpu_reg(host_ctxt, 0) = PSCI_0_2_FN_SYSTEM_RESET;
-		fallthrough;
+		return psci_system_reset2(host_ctxt);
 	case PSCI_1_0_FN_PSCI_FEATURES:
 	case PSCI_1_0_FN_SET_SUSPEND_MODE:
 		return psci_forward(host_ctxt);

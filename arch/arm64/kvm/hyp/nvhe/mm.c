@@ -541,7 +541,7 @@ int pkvm_create_stack(phys_addr_t phys, unsigned long *haddr)
 	return ret;
 }
 
-static void *admit_host_page(void *arg, unsigned long order)
+void *admit_host_page(void *arg, unsigned long order)
 {
 	phys_addr_t p;
 	struct kvm_hyp_memcache *host_mc = arg;

@@ -36,6 +36,7 @@ bt_procfs_init
 bt_sock_alloc
 bt_sock_ioctl
 bt_sock_link
+bt_sock_linked
 bt_sock_poll
 bt_sock_reclassify_lock
 bt_sock_recvmsg

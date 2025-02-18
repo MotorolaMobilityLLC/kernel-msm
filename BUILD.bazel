@@ -3,6 +3,7 @@
 
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@rules_pkg//pkg:install.bzl", "pkg_install")
 load(
     "@rules_pkg//pkg:mappings.bzl",
@@ -126,6 +127,7 @@ filegroup(
         "android/abi_gki_aarch64_mtktv",
         "android/abi_gki_aarch64_nothing",
         "android/abi_gki_aarch64_oplus",
+        "android/abi_gki_aarch64_paragon",
         "android/abi_gki_aarch64_pixel",
         "android/abi_gki_aarch64_pixel_watch",
         "android/abi_gki_aarch64_qcom",
@@ -137,6 +139,7 @@ filegroup(
         "android/abi_gki_aarch64_virtual_device",
         "android/abi_gki_aarch64_vivo",
         "android/abi_gki_aarch64_xiaomi",
+        "android/abi_gki_aarch64_xiaomi2",
     ],
     visibility = ["//visibility:public"],
 )
