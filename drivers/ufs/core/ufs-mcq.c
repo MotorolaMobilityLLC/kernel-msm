@@ -524,7 +524,7 @@ int ufshcd_mcq_sq_cleanup(struct ufs_hba *hba, int task_tag)
 		goto unlock;
 
 	/* SQCTI = EXT_IID, IID, LUN, Task Tag */
-	nexus = lrbp->lun << 8 | task_tag;
+	nexus = lrbp->ucd_req_ptr->header.iid << 16 | lrbp->lun << 8 | task_tag;
 	opr_sqd_base = mcq_opr_base(hba, OPR_SQD, id);
 	writel(nexus, opr_sqd_base + REG_SQCTI);
 
