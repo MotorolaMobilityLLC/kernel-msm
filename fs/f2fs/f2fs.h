@@ -1843,6 +1843,7 @@ struct f2fs_sb_info {
 	spinlock_t iostat_lat_lock;
 	struct iostat_lat_info *iostat_io_lat;
 #endif
+	unsigned int sanity_check;
 };
 
 /* Definitions to access f2fs_sb_info */
