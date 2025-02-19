@@ -3698,6 +3698,10 @@ static int __swap_duplicate(swp_entry_t entry, unsigned char usage, int nr)
 	int err, i;
 
 	p = swp_swap_info(entry);
+	if (WARN_ON_ONCE(!p)) {
+		pr_err("%s%08lx\n", Bad_file, entry.val);
+		return -EINVAL;
+	}
 
 	offset = swp_offset(entry);
 	VM_WARN_ON(nr > SWAPFILE_CLUSTER - offset % SWAPFILE_CLUSTER);
