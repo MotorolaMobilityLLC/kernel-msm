@@ -1764,11 +1764,8 @@ struct drm_connector {
 	struct drm_encoder *encoder;
 
 #define MAX_ELD_BYTES	128
-	/** @eld: EDID-like data, if present, protected by @eld_mutex */
+	/** @eld: EDID-like data, if present */
 	uint8_t eld[MAX_ELD_BYTES];
-	/** @eld_mutex: protection for concurrenct access to @eld */
-	struct mutex eld_mutex;
-
 	/** @latency_present: AV delay info from ELD, if found */
 	bool latency_present[2];
 	/**
