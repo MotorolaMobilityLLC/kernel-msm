@@ -342825,6 +342825,12 @@ function {
   parameter_id: 0x13580d6c
 }
 function {
+  id: 0x9cbb13a8
+  return_type_id: 0x6720d32f
+  parameter_id: 0x00b7947f
+  parameter_id: 0x4585663f
+}
+function {
   id: 0x9cbbbdfe
   return_type_id: 0x6720d32f
   parameter_id: 0x060cf413
@@ -415557,6 +415563,15 @@ elf_symbol {
   full_name: "serdev_device_write_flush"
 }
 elf_symbol {
+  id: 0x0746da0a
+  name: "serial8250_clear_and_reinit_fifos"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xa5ac3453
+  type_id: 0x17abf19b
+  full_name: "serial8250_clear_and_reinit_fifos"
+}
+elf_symbol {
   id: 0x98b882af
   name: "serial8250_do_pm"
   is_defined: true
@@ -415564,6 +415579,24 @@ elf_symbol {
   crc: 0x28e4b475
   type_id: 0x11b2c04d
   full_name: "serial8250_do_pm"
+}
+elf_symbol {
+  id: 0x45ffec2b
+  name: "serial8250_do_set_divisor"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x31aec8b0
+  type_id: 0x11b3d658
+  full_name: "serial8250_do_set_divisor"
+}
+elf_symbol {
+  id: 0x5b9376b0
+  name: "serial8250_do_set_ldisc"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x6dbea9fe
+  type_id: 0x1043ff6b
+  full_name: "serial8250_do_set_ldisc"
 }
 elf_symbol {
   id: 0x2bb7ad6a
@@ -415593,6 +415626,42 @@ elf_symbol {
   full_name: "serial8250_do_startup"
 }
 elf_symbol {
+  id: 0xec4fe037
+  name: "serial8250_em485_config"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x923ef3e3
+  type_id: 0x9d5ada98
+  full_name: "serial8250_em485_config"
+}
+elf_symbol {
+  id: 0xb90d3326
+  name: "serial8250_em485_start_tx"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x83cc27ad
+  type_id: 0x17abf19b
+  full_name: "serial8250_em485_start_tx"
+}
+elf_symbol {
+  id: 0xb09b6acb
+  name: "serial8250_em485_stop_tx"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xcfb8238e
+  type_id: 0x17abf19b
+  full_name: "serial8250_em485_stop_tx"
+}
+elf_symbol {
+  id: 0xcc28e994
+  name: "serial8250_em485_supported"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xf2ff4bc2
+  type_id: 0x33341885
+  full_name: "serial8250_em485_supported"
+}
+elf_symbol {
   id: 0x3e462ca5
   name: "serial8250_get_port"
   is_defined: true
@@ -415600,6 +415669,15 @@ elf_symbol {
   crc: 0xb4abe329
   type_id: 0x56706cd5
   full_name: "serial8250_get_port"
+}
+elf_symbol {
+  id: 0x53281d0f
+  name: "serial8250_handle_irq"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x7d642534
+  type_id: 0x9cbb13a8
+  full_name: "serial8250_handle_irq"
 }
 elf_symbol {
   id: 0x358696a1
@@ -415690,6 +415768,15 @@ elf_symbol {
   crc: 0xcefcd99a
   type_id: 0x09506558
   full_name: "serial8250_unregister_port"
+}
+elf_symbol {
+  id: 0xfa4a7632
+  name: "serial8250_update_uartclk"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x8c2f4fa5
+  type_id: 0x11a3a114
+  full_name: "serial8250_update_uartclk"
 }
 elf_symbol {
   id: 0x4e412a59
@@ -424369,6 +424456,15 @@ elf_symbol {
   crc: 0x4f72a987
   type_id: 0x1f558355
   full_name: "uart_parse_options"
+}
+elf_symbol {
+  id: 0xb56e6dcc
+  name: "uart_read_port_properties"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x60730094
+  type_id: 0x9dad0630
+  full_name: "uart_read_port_properties"
 }
 elf_symbol {
   id: 0x321abf21
@@ -439373,11 +439469,19 @@ interface {
   symbol_id: 0x3c71822d
   symbol_id: 0x6e10178a
   symbol_id: 0x5d6a93ff
+  symbol_id: 0x0746da0a
   symbol_id: 0x98b882af
+  symbol_id: 0x45ffec2b
+  symbol_id: 0x5b9376b0
   symbol_id: 0x2bb7ad6a
   symbol_id: 0x4bb58367
   symbol_id: 0x63762e51
+  symbol_id: 0xec4fe037
+  symbol_id: 0xb90d3326
+  symbol_id: 0xb09b6acb
+  symbol_id: 0xcc28e994
   symbol_id: 0x3e462ca5
+  symbol_id: 0x53281d0f
   symbol_id: 0x358696a1
   symbol_id: 0x970aca32
   symbol_id: 0x7e56f1cb
@@ -439388,6 +439492,7 @@ interface {
   symbol_id: 0x89ed643c
   symbol_id: 0xb00e1c68
   symbol_id: 0x620f0859
+  symbol_id: 0xfa4a7632
   symbol_id: 0x4e412a59
   symbol_id: 0xaf2bd97c
   symbol_id: 0x5b1dd2cc
@@ -440352,6 +440457,7 @@ interface {
   symbol_id: 0x3714b6e5
   symbol_id: 0x637e9bac
   symbol_id: 0xffeb078f
+  symbol_id: 0xb56e6dcc
   symbol_id: 0x321abf21
   symbol_id: 0x92b41cef
   symbol_id: 0x7d9e83f8
