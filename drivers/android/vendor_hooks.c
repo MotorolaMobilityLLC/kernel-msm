@@ -473,3 +473,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_sdhci_get_cd);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmc_gpio_cd_irqt);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_trigger_vendor_lmk_kill);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_filemap_map_pages_range);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_vprintk_store);

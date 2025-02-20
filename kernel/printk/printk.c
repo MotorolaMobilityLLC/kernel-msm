@@ -2248,6 +2248,7 @@ int vprintk_store(int facility, int level,
 	r.info->flags = flags & 0x1f;
 	r.info->ts_nsec = ts_nsec;
 	r.info->caller_id = caller_id;
+	trace_android_vh_vprintk_store(r.info->ts_nsec, r.text_buf, r.info->text_len);
 	if (dev_info)
 		memcpy(&r.info->dev_info, dev_info, sizeof(r.info->dev_info));
 
