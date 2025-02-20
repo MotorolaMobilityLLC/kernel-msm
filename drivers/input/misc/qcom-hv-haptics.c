@@ -726,6 +726,7 @@ struct haptics_reg_info {
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
 struct haptics_chip *g_richtap_ptr;
 #endif //CONFIG_RICHTAP_FOR_PMIC_ENABLE
+static int haptics_clear_fault(struct haptics_chip *chip);
 
 static inline int get_max_fifo_samples(struct haptics_chip *chip)
 {
@@ -1340,6 +1341,7 @@ static int haptics_toggle_module_enable(struct haptics_chip *chip)
 	if (rc < 0)
 		return rc;
 
+	haptics_clear_fault(chip);
 	return haptics_module_enable(chip, true);
 }
 
@@ -1367,7 +1369,10 @@ static int haptics_check_hpwr_status(struct haptics_chip *chip)
 			if (val == HPWR_DISABLED) {
 				usleep_range(500, 501);
 				break;
+			} else if(val == HPWR_READY) {
+				break;
 			}
+
 		} else {
 			if ((val == HPWR_DISABLED) || (val == HPWR_READY))
 				break;
@@ -5628,6 +5633,15 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 			return -EFAULT;
 		break;
 	case RICHTAP_RTP_MODE:
+		cancel_work_sync(&chip->richtap_stream_work);
+		mutex_lock(&chip->play.lock);
+		haptics_stop_fifo_play(chip);
+		atomic_set(&chip->play.fifo_status.written_done, 1);
+		atomic_set(&chip->richtap_mode, false);
+		mutex_unlock(&chip->play.lock);
+		cancel_work_sync(&chip->richtap_erase_work);
+		richtap_rc_clk_disable(chip);
+
 		if (copy_from_user(chip->rtp_ptr, (void __user *)arg,
 			RICHTAP_MMAP_BUF_SIZE * RICHTAP_MMAP_BUF_SUM)) {
 			ret = -EFAULT;
@@ -5639,13 +5653,6 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 			ret = -EINVAL;
 			break;
 		}
-
-		mutex_lock(&chip->play.lock);
-		haptics_stop_fifo_play(chip);
-		atomic_set(&chip->play.fifo_status.written_done, 1);
-		atomic_set(&chip->richtap_mode, false);
-		mutex_unlock(&chip->play.lock);
-		richtap_rc_clk_disable(chip);
 
 		ret = richtap_load_prebake(chip, &chip->rtp_ptr[4], tmp);
 		if (ret < 0) {
