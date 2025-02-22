@@ -119,6 +119,8 @@ static	int ti_tscadc_probe(struct platform_device *pdev)
 	struct clk *clk;
 	struct device_node *node;
 	struct mfd_cell *cell;
+	struct property *prop;
+	const __be32 *cur;
 	bool use_tsc = false, use_mag = false;
 	u32 val;
 	int err;
@@ -165,7 +167,7 @@ static	int ti_tscadc_probe(struct platform_device *pdev)
 	}
 
 	node = of_get_child_by_name(pdev->dev.of_node, "adc");
-	of_property_for_each_u32(node, "ti,adc-channels", val) {
+	of_property_for_each_u32(node, "ti,adc-channels", prop, cur, val) {
 		adc_channels++;
 		if (val > 7) {
 			dev_err(&pdev->dev, " PIN numbers are 0..7 (not %d)\n",

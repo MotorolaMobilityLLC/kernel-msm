@@ -94,6 +94,8 @@
   bio_crypt_set_ctx
   zero_fill_bio_iter
   __trace_bputs
+  __traceiter_android_vh_proactive_compact_wmark_high
+  __tracepoint_android_vh_proactive_compact_wmark_high
   __traceiter_android_vh_killed_process
   __tracepoint_android_vh_killed_process
   __traceiter_android_vh_rwsem_write_wait_finish

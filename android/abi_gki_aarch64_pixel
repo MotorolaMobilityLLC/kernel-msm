@@ -2080,6 +2080,7 @@
   register_oom_notifier
   register_pernet_device
   register_pernet_subsys
+  register_platform_power_off
   register_pm_notifier
   register_reboot_notifier
   register_restart_handler

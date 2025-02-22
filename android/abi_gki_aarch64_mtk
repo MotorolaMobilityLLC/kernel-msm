@@ -251,6 +251,7 @@
   configfs_register_subsystem
   configfs_unregister_group
   configfs_unregister_subsystem
+  config_group_find_item
   config_group_init
   config_group_init_type_name
   config_item_set_name
@@ -3365,6 +3366,7 @@
   usb_enable_lpm
   usb_ep_alloc_request
   usb_ep_autoconfig
+  usb_ep_autoconfig_ss
   usb_ep_dequeue
   usb_ep_disable
   usb_ep_enable
@@ -3377,10 +3379,13 @@
   usb_free_all_descriptors
   usb_free_coherent
   usb_free_urb
+  usb_function_activate
+  usb_function_deactivate
   usb_function_register
   usb_function_unregister
   usb_gadget_connect
   usb_gadget_disconnect
+  usb_gadget_frame_number
   usb_gadget_giveback_request
   usb_gadget_map_request
   usb_gadget_register_driver_owner
@@ -3459,6 +3464,7 @@
   usleep_range_state
   uuid_null
   uuid_parse
+  uvc_format_by_guid
   __v4l2_async_nf_add_fwnode
   __v4l2_async_nf_add_fwnode_remote
   v4l2_async_nf_cleanup
@@ -3546,6 +3552,7 @@
   v4l2_match_dv_timings
   v4l2_pipeline_link_notify
   v4l2_print_dv_timings
+  v4l2_simplify_fraction
   v4l2_src_change_event_subdev_subscribe
   v4l2_src_change_event_subscribe
   v4l2_subdev_call_wrappers

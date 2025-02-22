@@ -382,9 +382,11 @@ static void usb251xb_get_ports_field(struct usb251xb *hub,
 				    bool ds_only, u8 *fld)
 {
 	struct device *dev = hub->dev;
+	struct property *prop;
+	const __be32 *p;
 	u32 port;
 
-	of_property_for_each_u32(dev->of_node, prop_name, port) {
+	of_property_for_each_u32(dev->of_node, prop_name, prop, p, port) {
 		if ((port >= ds_only ? 1 : 0) && (port <= port_cnt))
 			*fld |= BIT(port);
 		else

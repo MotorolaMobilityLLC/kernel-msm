@@ -182,11 +182,6 @@ static inline bool is_of_node(const struct fwnode_handle *fwnode)
 			&__of_fwnode_handle_node->fwnode : NULL;	\
 	})
 
-static inline bool of_have_populated_dt(void)
-{
-	return of_root != NULL;
-}
-
 static inline bool of_node_is_root(const struct device_node *node)
 {
 	return node && (node->parent == NULL);
@@ -436,9 +431,11 @@ extern int of_detach_node(struct device_node *);
 #define of_match_ptr(_ptr)	(_ptr)
 
 /*
+ * struct property *prop;
+ * const __be32 *p;
  * u32 u;
  *
- * of_property_for_each_u32(np, "propname", u)
+ * of_property_for_each_u32(np, "propname", prop, p, u)
  *         printk("U32 value: %x\n", u);
  */
 const __be32 *of_prop_next_u32(struct property *prop, const __be32 *cur,
@@ -561,11 +558,6 @@ static inline struct device_node *of_find_node_with_property(
 }
 
 #define of_fwnode_handle(node) NULL
-
-static inline bool of_have_populated_dt(void)
-{
-	return false;
-}
 
 static inline struct device_node *of_get_compatible_child(const struct device_node *parent,
 					const char *compatible)
@@ -1415,12 +1407,11 @@ static inline int of_property_read_s32(const struct device_node *np,
 	     err == 0;							\
 	     err = of_phandle_iterator_next(it))
 
-#define of_property_for_each_u32(np, propname, u)			\
-	for (struct {struct property *prop; const __be32 *item; } _it =	\
-		{of_find_property(np, propname, NULL),			\
-		 of_prop_next_u32(_it.prop, NULL, &u)};			\
-	     _it.item;							\
-	     _it.item = of_prop_next_u32(_it.prop, _it.item, &u))
+#define of_property_for_each_u32(np, propname, prop, p, u)	\
+	for (prop = of_find_property(np, propname, NULL),	\
+		p = of_prop_next_u32(prop, NULL, &u);		\
+		p;						\
+		p = of_prop_next_u32(prop, p, &u))
 
 #define of_property_for_each_string(np, propname, prop, s)	\
 	for (prop = of_find_property(np, propname, NULL),	\
@@ -1664,6 +1655,21 @@ static inline int of_reconfig_get_state_change(unsigned long action,
 static inline bool of_device_is_system_power_controller(const struct device_node *np)
 {
 	return of_property_read_bool(np, "system-power-controller");
+}
+
+/**
+ * of_have_populated_dt() - Has DT been populated by bootloader
+ *
+ * Return: True if a DTB has been populated by the bootloader and it isn't the
+ * empty builtin one. False otherwise.
+ */
+static inline bool of_have_populated_dt(void)
+{
+#ifdef CONFIG_OF
+	return of_property_present(of_root, "compatible");
+#else
+	return false;
+#endif
 }
 
 /*

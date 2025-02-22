@@ -2283,9 +2283,11 @@ static int sysc_init_idlemode(struct sysc *ddata, u8 *idlemodes,
 			      const char *name)
 {
 	struct device_node *np = ddata->dev->of_node;
+	struct property *prop;
+	const __be32 *p;
 	u32 val;
 
-	of_property_for_each_u32(np, name, val) {
+	of_property_for_each_u32(np, name, prop, p, val) {
 		if (val >= SYSC_NR_IDLEMODES) {
 			dev_err(ddata->dev, "invalid idlemode: %i\n", val);
 			return -EINVAL;

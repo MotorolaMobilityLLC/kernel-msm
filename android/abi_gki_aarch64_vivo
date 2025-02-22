@@ -138,6 +138,7 @@
   __traceiter_android_vh_f2fs_file_open
   __traceiter_android_vh_f2fs_ra_op_flags
   __traceiter_android_vh_filemap_update_page
+  __traceiter_android_vh_free_unref_page_list_bypass
   __traceiter_android_vh_free_task
   __traceiter_android_vh_free_unref_page_bypass
   __traceiter_android_vh_fuse_request_end
@@ -312,6 +313,7 @@
   __tracepoint_android_vh_send_signal_locked
   __tracepoint_android_vh_shmem_swapin_folio
   __tracepoint_android_vh_should_alloc_pages_retry
+  __tracepoint_android_vh_free_unref_page_list_bypass
   __tracepoint_android_vh_shrink_folio_list
   __tracepoint_android_vh_shrink_node_memcgs
   __tracepoint_android_vh_sk_alloc

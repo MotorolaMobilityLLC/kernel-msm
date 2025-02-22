@@ -594,6 +594,8 @@ static int brcmstb_gpio_probe(struct platform_device *pdev)
 	void __iomem *reg_base;
 	struct brcmstb_gpio_priv *priv;
 	struct resource *res;
+	struct property *prop;
+	const __be32 *p;
 	u32 bank_width;
 	int num_banks = 0;
 	int err;
@@ -638,7 +640,8 @@ static int brcmstb_gpio_probe(struct platform_device *pdev)
 	flags = BGPIOF_BIG_ENDIAN_BYTE_ORDER;
 #endif
 
-	of_property_for_each_u32(np, "brcm,gpio-bank-widths", bank_width) {
+	of_property_for_each_u32(np, "brcm,gpio-bank-widths", prop, p,
+			bank_width) {
 		struct brcmstb_gpio_bank *bank;
 		struct gpio_chip *gc;
 
