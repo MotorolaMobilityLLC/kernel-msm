@@ -100,9 +100,6 @@ struct netns_ipv4 {
 	/* Shall we try to damage output packets if routing dev changes? */
 	u8 sysctl_ip_dynaddr;
 	u8 sysctl_ip_early_demux;
-#ifdef CONFIG_NET_L3_MASTER_DEV
-	u8 sysctl_raw_l3mdev_accept;
-#endif
 	u8 sysctl_tcp_early_demux;
 	u8 sysctl_udp_early_demux;
 
@@ -110,9 +107,6 @@ struct netns_ipv4 {
 
 	u8 sysctl_fwmark_reflect;
 	u8 sysctl_tcp_fwmark_accept;
-#ifdef CONFIG_NET_L3_MASTER_DEV
-	u8 sysctl_tcp_l3mdev_accept;
-#endif
 	u8 sysctl_tcp_mtu_probing;
 	int sysctl_tcp_mtu_probe_floor;
 	int sysctl_tcp_base_mss;
@@ -128,6 +122,18 @@ struct netns_ipv4 {
 	u8 sysctl_tcp_synack_retries;
 	u8 sysctl_tcp_syncookies;
 	u8 sysctl_tcp_migrate_req;
+#ifdef CONFIG_NET_L3_MASTER_DEV
+	/*
+	 * These fields are moved here to avoid a KMI break
+	 * by using an alignment padding hole in the original
+	 * struct netns_ipv4
+	 */
+#ifndef __GENKSYMS__
+	u8 sysctl_tcp_l3mdev_accept;
+	u8 sysctl_udp_l3mdev_accept;
+	u8 sysctl_raw_l3mdev_accept;
+#endif
+#endif
 	int sysctl_tcp_reordering;
 	u8 sysctl_tcp_retries1;
 	u8 sysctl_tcp_retries2;
@@ -183,10 +189,6 @@ struct netns_ipv4 {
 	int sysctl_udp_rmem_min;
 
 	u8 sysctl_fib_notify_on_flag_change;
-
-#ifdef CONFIG_NET_L3_MASTER_DEV
-	u8 sysctl_udp_l3mdev_accept;
-#endif
 
 	u8 sysctl_igmp_llm_reports;
 	int sysctl_igmp_max_memberships;
