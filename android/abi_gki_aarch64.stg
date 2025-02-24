@@ -306407,6 +306407,12 @@ function {
   parameter_id: 0xe276adef
 }
 function {
+  id: 0x127f2869
+  return_type_id: 0x48b5725f
+  parameter_id: 0x0a134144
+  parameter_id: 0x18ea6ae3
+}
+function {
   id: 0x1282e056
   return_type_id: 0x48b5725f
   parameter_id: 0x0b30ee00
@@ -430733,6 +430739,15 @@ elf_symbol {
   full_name: "vm_zone_stat"
 }
 elf_symbol {
+  id: 0xac972f8d
+  name: "vma_set_file"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xc09d1b63
+  type_id: 0x127f2869
+  full_name: "vma_set_file"
+}
+elf_symbol {
   id: 0x3c915fdb
   name: "vmalloc"
   is_defined: true
@@ -441153,6 +441168,7 @@ interface {
   symbol_id: 0xef2c49d1
   symbol_id: 0xbbf42090
   symbol_id: 0xca7f93d5
+  symbol_id: 0xac972f8d
   symbol_id: 0x3c915fdb
   symbol_id: 0x8ffd0533
   symbol_id: 0x3f9de086

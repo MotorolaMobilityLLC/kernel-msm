@@ -518,6 +518,7 @@
   vfs_statfs
   vfs_unlink
   __vmalloc_array
+  vma_set_file
   wait_for_completion_io_timeout
   wait_for_completion_killable_timeout
   wakeup_source_remove
