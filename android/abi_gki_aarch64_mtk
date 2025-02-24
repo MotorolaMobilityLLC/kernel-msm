@@ -1031,6 +1031,8 @@
   irq_work_queue
   irq_work_run
   irq_work_sync
+  ir_raw_encode_scancode
+  ir_raw_encode_carrier
   is_dma_buf_file
   is_vmalloc_addr
   iterate_dir
@@ -1166,6 +1168,7 @@
   media_device_init
   __media_device_register
   media_device_unregister
+  __media_device_usb_init
   media_devnode_create
   media_devnode_remove
   media_entity_pads_init
@@ -1837,6 +1840,7 @@
   smp_call_function
   smp_call_function_single
   snd_card_add_dev_attr
+  snd_card_free_when_closed
   snd_ctl_boolean_mono_info
   snd_jack_set_key
   snd_pcm_format_physical_width
@@ -2382,17 +2386,23 @@
   usleep_range_state
   uuid_null
   v4l2_compat_ioctl32
+  v4l2_ctrl_activate
   v4l2_ctrl_find
   v4l2_ctrl_g_ctrl
   v4l2_ctrl_g_ctrl_int64
+  v4l2_ctrl_get_menu
+  __v4l2_ctrl_grab
   v4l2_ctrl_handler_free
   v4l2_ctrl_handler_init_class
+  v4l2_ctrl_handler_log_status
   v4l2_ctrl_handler_setup
   __v4l2_ctrl_modify_range
   v4l2_ctrl_new_custom
   v4l2_ctrl_new_std
   v4l2_ctrl_new_std_menu
   v4l2_ctrl_new_std_menu_items
+  v4l2_ctrl_query_fill
+  v4l2_ctrl_radio_filter
   v4l2_ctrl_request_complete
   v4l2_ctrl_request_setup
   __v4l2_ctrl_s_ctrl
@@ -2449,6 +2459,7 @@
   v4l2_m2m_suspend
   v4l2_m2m_try_schedule
   v4l2_m2m_unregister_media_controller
+  v4l2_mc_create_media_graph
   v4l2_pipeline_link_notify
   v4l2_src_change_event_subscribe
   v4l2_subdev_call_wrappers
