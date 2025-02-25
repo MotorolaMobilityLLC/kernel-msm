@@ -58,4 +58,6 @@ extern bool cma_release(struct cma *cma, const struct page *pages, unsigned long
 extern int cma_for_each_area(int (*it)(struct cma *cma, void *data), void *data);
 
 extern void cma_reserve_pages_on_error(struct cma *cma);
+
+extern unsigned long cma_get_first_virtzone_base(int nid);
 #endif
