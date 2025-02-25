@@ -548,6 +548,9 @@ DECLARE_HOOK(android_vh_should_skip_zone,
 DECLARE_HOOK(android_vh_update_unmapped_area_info,
 	TP_PROTO(struct vm_unmapped_area_info *info),
 	TP_ARGS(info));
+DECLARE_HOOK(android_vh_reuse_whole_anon_folio,
+	TP_PROTO(struct folio *folio, struct vm_fault *vmf, bool *can_reuse_whole_anon),
+	TP_ARGS(folio, vmf, can_reuse_whole_anon));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

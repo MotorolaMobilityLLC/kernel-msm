@@ -3621,6 +3621,7 @@ static vm_fault_t do_wp_page(struct vm_fault *vmf)
 	const bool unshare = vmf->flags & FAULT_FLAG_UNSHARE;
 	struct vm_area_struct *vma = vmf->vma;
 	struct folio *folio = NULL;
+	bool can_reuse_whole_anon = false;
 
 	if (likely(!unshare)) {
 		if (userfaultfd_pte_wp(vma, ptep_get(vmf->pte))) {
@@ -3660,6 +3661,10 @@ static vm_fault_t do_wp_page(struct vm_fault *vmf)
 	}
 
 	trace_android_vh_do_wp_page(folio);
+
+	trace_android_vh_reuse_whole_anon_folio(folio, vmf, &can_reuse_whole_anon);
+	if (can_reuse_whole_anon)
+		return 0;
 
 	/*
 	 * Private mapping: create an exclusive anonymous page copy if reuse

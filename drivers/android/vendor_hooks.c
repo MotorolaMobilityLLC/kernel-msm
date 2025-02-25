@@ -651,3 +651,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_get_swap_pages_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_should_split_folio_to_list);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_should_skip_zone);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_update_unmapped_area_info);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_reuse_whole_anon_folio);
