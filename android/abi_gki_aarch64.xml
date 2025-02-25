@@ -189,6 +189,7 @@
       <elf-symbol name='__hwspin_unlock' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xa7bc3c0c'/>
       <elf-symbol name='__i2c_smbus_xfer' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xd69ef2ec'/>
       <elf-symbol name='__i2c_transfer' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x571c2f3f'/>
+      <elf-symbol name='__icmp_send' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x546b622f'/>
       <elf-symbol name='__iio_device_register' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x43d0e4c1'/>
       <elf-symbol name='__iio_trigger_register' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x65696be0'/>
       <elf-symbol name='__inet6_lookup_established' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xdaf3da8e'/>
@@ -17967,6 +17968,7 @@
         <return type-id='95e97e5e'/>
       </function-type>
       <pointer-type-def type-id='eacd353c' size-in-bits='64' id='17e4a02a'/>
+      <qualified-type-def type-id='fa35cea9' const='yes' id='17e90378'/>
       <class-decl name='ieee80211_eht_mcs_nss_supp_20mhz_only' size-in-bits='32' is-struct='yes' visibility='default' filepath='include/linux/ieee80211.h' line='1957' column='1' id='17ee5cc6'>
         <data-member access='public' layout-offset-in-bits='0'>
           <var-decl name='rx_tx_mcs7_max_nss' type-id='f9b06939' visibility='default' filepath='include/linux/ieee80211.h' line='1958' column='1'/>
@@ -126349,6 +126351,7 @@
         <return type-id='95e97e5e'/>
       </function-type>
       <typedef-decl name='raw_spinlock_t' type-id='f106d0e5' filepath='include/linux/spinlock_types_raw.h' line='23' column='1' id='f5c90b3f'/>
+      <pointer-type-def type-id='17e90378' size-in-bits='64' id='f5d03a16'/>
       <class-decl name='arc4_ctx' size-in-bits='8256' is-struct='yes' visibility='default' filepath='include/crypto/arc4.h' line='15' column='1' id='f5dcfad3'>
         <data-member access='public' layout-offset-in-bits='0'>
           <var-decl name='S' type-id='ee5ba316' visibility='default' filepath='include/crypto/arc4.h' line='16' column='1'/>
@@ -131998,6 +132001,14 @@
         <parameter type-id='cd44bc95' name='msgs' filepath='drivers/i2c/i2c-core-base.c' line='2078' column='1'/>
         <parameter type-id='95e97e5e' name='num' filepath='drivers/i2c/i2c-core-base.c' line='2078' column='1'/>
         <return type-id='95e97e5e'/>
+      </function-decl>
+      <function-decl name='__icmp_send' mangled-name='__icmp_send' filepath='net/ipv4/icmp.c' line='594' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='__icmp_send'>
+        <parameter type-id='0fbf3cfd' name='skb_in' filepath='net/ipv4/icmp.c' line='594' column='1'/>
+        <parameter type-id='95e97e5e' name='type' filepath='net/ipv4/icmp.c' line='594' column='1'/>
+        <parameter type-id='95e97e5e' name='code' filepath='net/ipv4/icmp.c' line='594' column='1'/>
+        <parameter type-id='78a133c2' name='info' filepath='net/ipv4/icmp.c' line='594' column='1'/>
+        <parameter type-id='f5d03a16' name='opt' filepath='net/ipv4/icmp.c' line='595' column='1'/>
+        <return type-id='48b5725f'/>
       </function-decl>
       <function-decl name='__iio_device_register' mangled-name='__iio_device_register' filepath='drivers/iio/industrialio-core.c' line='1922' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='__iio_device_register'>
         <parameter type-id='226853d2' name='indio_dev' filepath='drivers/iio/industrialio-core.c' line='1922' column='1'/>

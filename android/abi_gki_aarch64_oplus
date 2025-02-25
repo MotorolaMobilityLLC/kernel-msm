@@ -133,6 +133,7 @@
   gnet_stats_copy_basic
   gnet_stats_copy_queue
   __gnet_stats_copy_queue
+  __icmp_send
   idr_alloc
   idr_destroy
   idr_find
