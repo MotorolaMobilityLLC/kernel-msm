@@ -187,6 +187,7 @@ success:
 		error = replace_anon_vma_name(vma, anon_name);
 		if (error)
 			return error;
+		trace_android_vh_replace_anon_vma_name(vma, anon_name);
 	}
 
 	return 0;

@@ -49,6 +49,7 @@
 #include <linux/swap_cgroup.h>
 #include "internal.h"
 #include "swap.h"
+#include <trace/hooks/swapfile.h>
 
 static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
 				 unsigned char);
@@ -1274,6 +1275,7 @@ int get_swap_pages(int n_goal, swp_entry_t swp_entries[], int entry_order)
 	long avail_pgs;
 	int n_ret = 0;
 	int node;
+	bool skip_swap = false;
 
 	spin_lock(&swap_avail_lock);
 
@@ -1290,6 +1292,11 @@ int get_swap_pages(int n_goal, swp_entry_t swp_entries[], int entry_order)
 start_over:
 	node = numa_node_id();
 	plist_for_each_entry_safe(si, next, &swap_avail_heads[node], avail_lists[node]) {
+
+		trace_android_vh_get_swap_pages_bypass(si, entry_order, &skip_swap);
+		if (skip_swap)
+			continue;
+
 		/* requeue si to after same-priority siblings */
 		plist_requeue(&si->avail_lists[node], &swap_avail_heads[node]);
 		spin_unlock(&swap_avail_lock);

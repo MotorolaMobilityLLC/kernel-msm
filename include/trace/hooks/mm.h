@@ -17,6 +17,7 @@ struct folio;
 struct page_vma_mapped_walk;
 struct track;
 struct compact_control;
+struct vm_unmapped_area_info;
 
 DECLARE_RESTRICTED_HOOK(android_rvh_shmem_get_folio,
 			TP_PROTO(struct shmem_inode_info *info, struct folio **folio),
@@ -532,6 +533,21 @@ DECLARE_HOOK(android_vh_filemap_map_pages_range,
 	TP_PROTO(struct file *file, pgoff_t orig_start_pgoff,
 		pgoff_t last_pgoff, vm_fault_t ret),
 	TP_ARGS(file, orig_start_pgoff, last_pgoff, ret));
+DECLARE_HOOK(android_vh_alloc_swap_folio_gfp,
+	TP_PROTO(struct vm_area_struct *vma, gfp_t *gfp_mask),
+	TP_ARGS(vma, gfp_mask));
+DECLARE_HOOK(android_vh_replace_anon_vma_name,
+	TP_PROTO(struct vm_area_struct *vma,
+		struct anon_vma_name *anon_name),
+	TP_ARGS(vma, anon_name));
+DECLARE_HOOK(android_vh_should_skip_zone,
+	TP_PROTO(struct zone *zone, gfp_t gfp_mask,
+		unsigned int order, int migratetype, bool *should_skip_zone),
+	TP_ARGS(zone, gfp_mask, order,
+		migratetype, should_skip_zone));
+DECLARE_HOOK(android_vh_update_unmapped_area_info,
+	TP_PROTO(struct vm_unmapped_area_info *info),
+	TP_ARGS(info));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

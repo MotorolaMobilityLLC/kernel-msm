@@ -83,6 +83,7 @@
 #include <trace/hooks/xhci.h>
 #include <trace/hooks/typec.h>
 #include <trace/events/android_vendor_lmk.h>
+#include <trace/hooks/swapfile.h>
 
 /*
  * Export tracepoints that act as a bare tracehook (ie: have no trace event
@@ -644,3 +645,9 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_typec_tcpm_log);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_proactive_compact_wmark_high);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_trigger_vendor_lmk_kill);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_filemap_map_pages_range);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_alloc_swap_folio_gfp);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_replace_anon_vma_name);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_get_swap_pages_bypass);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_should_split_folio_to_list);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_should_skip_zone);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_update_unmapped_area_info);

@@ -114,6 +114,9 @@ DECLARE_HOOK(android_vh_direct_reclaim_begin,
 DECLARE_HOOK(android_vh_direct_reclaim_end,
 	TP_PROTO(int prio),
 	TP_ARGS(prio));
+DECLARE_HOOK(android_vh_should_split_folio_to_list,
+	TP_PROTO(struct folio *folio, bool *should_split_to_list),
+	TP_ARGS(folio, should_split_to_list));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
