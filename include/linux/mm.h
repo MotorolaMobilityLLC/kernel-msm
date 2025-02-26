@@ -2039,6 +2039,10 @@ static inline bool folio_is_longterm_pinnable(struct folio *folio)
 	if (folio_is_device_coherent(folio))
 		return false;
 
+	if (folio_test_large(folio) &&
+		(folio_zonenum(folio) == ZONE_NOSPLIT ||
+		folio_zonenum(folio) == ZONE_NOMERGE))
+		return true;
 	/* Otherwise, non-movable zone folios can be pinned. */
 	return !folio_is_zone_movable(folio);
 
