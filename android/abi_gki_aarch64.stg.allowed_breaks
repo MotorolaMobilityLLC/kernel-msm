@@ -101,3 +101,12 @@ type 'struct cgroup_root' changed
   'struct tracepoint __tracepoint_android_vh_mutex_unlock_slowpath_before_wakeq'
   'struct tracepoint __tracepoint_android_vh_suitable_migration_target_bypass'
 
+7 function symbol(s) removed
+  'int xhci_sideband_add_endpoint(struct xhci_sideband*, struct usb_host_endpoint*)'
+  'int xhci_sideband_create_interrupter(struct xhci_sideband*, int, int, bool)'
+  'int xhci_sideband_enable_interrupt(struct xhci_sideband*, u32)'
+  'struct xhci_sideband* xhci_sideband_register(struct usb_device*)'
+  'int xhci_sideband_remove_endpoint(struct xhci_sideband*, struct usb_host_endpoint*)'
+  'void xhci_sideband_remove_interrupter(struct xhci_sideband*)'
+  'void xhci_sideband_unregister(struct xhci_sideband*)'
+
