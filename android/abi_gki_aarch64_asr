@@ -33,6 +33,7 @@
   sdhci_set_clock
   sdhci_set_uhs_signaling
   sdhci_suspend_host
+  sdhci_reset_tuning
 
 # required by vh_sched.ko
   __traceiter_android_vh_map_util_freq
@@ -72,3 +73,11 @@
 # required by keypad-asr.ko
   input_device_enabled
   fwnode_create_software_node
+
+# required by asr_mipi_panel.ko
+  devm_of_find_backlight
+
+# required by usb_offload.ko
+  usb_set_interface
+  usb_control_msg
+  snd_usb_find_format

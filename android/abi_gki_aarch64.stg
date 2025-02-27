@@ -321624,6 +321624,11 @@ function {
   parameter_id: 0x16c24c4b
 }
 function {
+  id: 0x7c2d40b8
+  return_type_id: 0x309d6e18
+  parameter_id: 0x0258f96e
+}
+function {
   id: 0x7c59d0ca
   return_type_id: 0xa256f9e0
   parameter_id: 0x23e1331e
@@ -381615,6 +381620,15 @@ elf_symbol {
   full_name: "devm_of_clk_add_hw_provider"
 }
 elf_symbol {
+  id: 0xcefdfa33
+  name: "devm_of_find_backlight"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x3370cbdc
+  type_id: 0x7c2d40b8
+  full_name: "devm_of_find_backlight"
+}
+elf_symbol {
   id: 0x5bc8c0f2
   name: "devm_of_icc_get"
   is_defined: true
@@ -414767,6 +414781,15 @@ elf_symbol {
   full_name: "sdhci_reset"
 }
 elf_symbol {
+  id: 0x35ce45f5
+  name: "sdhci_reset_tuning"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x61a1a28b
+  type_id: 0x1ec711b9
+  full_name: "sdhci_reset_tuning"
+}
+elf_symbol {
   id: 0xa6fc085f
   name: "sdhci_resume_host"
   is_defined: true
@@ -435618,6 +435641,7 @@ interface {
   symbol_id: 0xe504a070
   symbol_id: 0x47264dbb
   symbol_id: 0x35094803
+  symbol_id: 0xcefdfa33
   symbol_id: 0x5bc8c0f2
   symbol_id: 0xbf8a0e84
   symbol_id: 0x421190ef
@@ -439293,6 +439317,7 @@ interface {
   symbol_id: 0xdc85b8be
   symbol_id: 0xd1dc3f24
   symbol_id: 0xa6a2da07
+  symbol_id: 0x35ce45f5
   symbol_id: 0xa6fc085f
   symbol_id: 0x4e595f64
   symbol_id: 0xd94e8fae
