@@ -202,6 +202,7 @@ enum domain_t {
 	POWER_CORE = 0,
 	POWER_MDIO = 1,
 	PERF_SERDES = 2,
+	PERF_5G_SERDES = 3,
 };
 
 inline void *qcom_ethqos_get_priv(struct qcom_ethqos *ethqos)
@@ -855,10 +856,22 @@ static void qcom_ethqos_domain_off(struct qcom_ethqos *ethqos, enum domain_t dom
 
 static int qcom_ethqos_serdes_set_level(struct qcom_ethqos *ethqos)
 {
-	struct device *dev = ethqos->pd_list->pd_devs[PERF_SERDES];
-	struct dev_pm_opp *opp = dev_pm_opp_find_level_exact(dev, ethqos->speed);
+	struct device *dev = NULL;
+	struct dev_pm_opp *opp = NULL;
 	int ret = 0;
+	struct stmmac_priv *priv = qcom_ethqos_get_priv(ethqos);
 
+	if (priv->plat->interface == PHY_INTERFACE_MODE_USXGMII ||
+	    priv->plat->interface == PHY_INTERFACE_MODE_10GBASER) {
+		dev = ethqos->pd_list->pd_devs[PERF_SERDES];
+	} else if (priv->plat->interface == PHY_INTERFACE_MODE_5GBASER) {
+		dev = ethqos->pd_list->pd_devs[PERF_5G_SERDES];
+		ethqos->speed = SPEED_5000;
+	} else {
+		dev = ethqos->pd_list->pd_devs[PERF_SERDES];
+	}
+
+	opp = dev_pm_opp_find_level_exact(dev, ethqos->speed);
 	if (IS_ERR(opp))
 		return -EINVAL;
 
@@ -1689,6 +1702,44 @@ static int ethqos_configure_usxgmii_v4(struct qcom_ethqos *ethqos)
 	return 0;
 }
 
+static int  ethqos_configure_5gbaser(struct qcom_ethqos *ethqos)
+{
+	ethqos_set_func_clk_en(ethqos);
+
+	rgmii_updatel(ethqos, RGMII_BYPASS_EN, RGMII_BYPASS_EN, RGMII_IO_MACRO_BYPASS);
+	rgmii_updatel(ethqos, SGMII_PHY_CNTRL0_2P5G_1G_CLK_SEL, BIT(5),
+		      EMAC_WRAPPER_SGMII_PHY_CNTRL0);
+	rgmii_updatel(ethqos, SGMII_PHY_CNTRL1_RGMII_SGMII_CLK_MUX_SEL, 0,
+		      EMAC_WRAPPER_SGMII_PHY_CNTRL1);
+	rgmii_updatel(ethqos, SGMII_PHY_CNTRL1_USXGMII_GMII_MASTER_CLK_MUX_SEL,
+		      SGMII_PHY_CNTRL1_USXGMII_GMII_MASTER_CLK_MUX_SEL,
+		      EMAC_WRAPPER_SGMII_PHY_CNTRL1);
+	rgmii_updatel(ethqos, SGMII_PHY_CNTRL1_SGMII_TX_TO_RX_LOOPBACK_EN, 0,
+		      EMAC_WRAPPER_SGMII_PHY_CNTRL1);
+	rgmii_updatel(ethqos, RGMII_CONFIG2_MODE_EN_VIA_GMII, 0, RGMII_IO_MACRO_CONFIG2);
+	rgmii_updatel(ethqos, USXGMII_CLK_BLK_GMII_CLK_BLK_SEL, USXGMII_CLK_BLK_GMII_CLK_BLK_SEL,
+		      EMAC_WRAPPER_USXGMII_MUX_SEL);
+	rgmii_updatel(ethqos, USXGMII_CLK_BLK_CLK_EN, 0, EMAC_WRAPPER_USXGMII_MUX_SEL);
+
+	rgmii_updatel(ethqos, RGMII_CONFIG_MAX_SPD_PRG_2_V4, (BIT(6) | BIT(9)),
+		      RGMII_IO_MACRO_CONFIG);
+	rgmii_updatel(ethqos, RGMII_CONFIG_SGMII_CLK_DVDR, (BIT(10) |  BIT(14) | BIT(15)),
+		      RGMII_IO_MACRO_CONFIG);
+	rgmii_updatel(ethqos, RGMII_CONFIG2_MAX_SPD_PRG_3, (BIT(17) | BIT(20)),
+		      RGMII_IO_MACRO_CONFIG2);
+	rgmii_updatel(ethqos, RGMII_SCRATCH2_MAX_SPD_PRG_4, BIT(2),
+		      RGMII_IO_MACRO_SCRATCH_2);
+	rgmii_updatel(ethqos, RGMII_SCRATCH2_MAX_SPD_PRG_5, (BIT(6) | BIT(7)),
+		      RGMII_IO_MACRO_SCRATCH_2);
+	rgmii_updatel(ethqos, RGMII_SCRATCH2_MAX_SPD_PRG_6, 0,
+		      RGMII_IO_MACRO_SCRATCH_2);
+	rgmii_updatel(ethqos, RGMII_CONFIG2_RGMII_CLK_SEL_CFG,
+		      RGMII_CONFIG2_RGMII_CLK_SEL_CFG,
+		      RGMII_IO_MACRO_CONFIG2);
+
+	return 0;
+}
+
 static int ethqos_configure_mac_v4(struct qcom_ethqos *ethqos)
 {
 	struct stmmac_priv *priv = qcom_ethqos_get_priv(ethqos);
@@ -1706,6 +1757,10 @@ static int ethqos_configure_mac_v4(struct qcom_ethqos *ethqos)
 		ret = ethqos_configure_sgmii_v4(ethqos);
 		break;
 
+	case PHY_INTERFACE_MODE_5GBASER:
+		ret = ethqos_configure_5gbaser(ethqos);
+		break;
+
 	case PHY_INTERFACE_MODE_USXGMII:
 	case PHY_INTERFACE_MODE_10GBASER:
 		ret = ethqos_configure_usxgmii_v4(ethqos);
@@ -1720,12 +1775,17 @@ static int ethqos_configure_mac_v4(struct qcom_ethqos *ethqos)
 	return ret;
 }
 
-static int qcom_ethqos_serdes_up(struct net_device *ndev, void *priv)
+static int qcom_ethqos_serdes_up(struct net_device *ndev, void *priv_n)
 {
-	struct qcom_ethqos *ethqos = priv;
+	struct qcom_ethqos *ethqos = priv_n;
+	int domain = PERF_SERDES;
 	int ret = 0;
+	struct stmmac_priv *priv = qcom_ethqos_get_priv(ethqos);
 
-	ret = qcom_ethqos_domain_on(ethqos, PERF_SERDES);
+	if (priv->plat->interface == PHY_INTERFACE_MODE_5GBASER)
+		domain = PERF_5G_SERDES;
+
+	ret = qcom_ethqos_domain_on(ethqos, domain);
 	if (ret < 0)
 		return ret;
 
@@ -1734,11 +1794,16 @@ static int qcom_ethqos_serdes_up(struct net_device *ndev, void *priv)
 	return ret;
 }
 
-static void qcom_ethqos_serdes_down(struct net_device *ndev, void *priv)
+static void qcom_ethqos_serdes_down(struct net_device *ndev, void *priv_n)
 {
-	struct qcom_ethqos *ethqos = priv;
+	struct qcom_ethqos *ethqos = priv_n;
+	int domain = PERF_SERDES;
+	struct stmmac_priv *priv = qcom_ethqos_get_priv(ethqos);
 
-	qcom_ethqos_domain_off(ethqos, PERF_SERDES);
+	if (priv->plat->interface == PHY_INTERFACE_MODE_5GBASER)
+		domain = PERF_5G_SERDES;
+
+	qcom_ethqos_domain_off(ethqos, domain);
 }
 
 /* callback for stmmac runtime suspend/resume functions */
@@ -2675,7 +2740,10 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 		plat_dat->init = qcom_ethqos_init;
 
 		qcom_ethqos_domain_transition_d0d3(ethqos, true);
-		qcom_ethqos_domain_on(ethqos, PERF_SERDES);
+		if (plat_dat->interface == PHY_INTERFACE_MODE_5GBASER)
+			qcom_ethqos_domain_on(ethqos, PERF_5G_SERDES);
+		else
+			qcom_ethqos_domain_on(ethqos, PERF_SERDES);
 	}
 
 	ethqos->rgmii_base = devm_platform_ioremap_resource_byname(pdev, "rgmii");
