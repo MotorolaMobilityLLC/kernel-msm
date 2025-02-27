@@ -322,6 +322,13 @@
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_unreserve_highatomic_bypass
   __traceiter_android_vh_update_page_mapcount
+  __traceiter_android_vh_alloc_swap_folio_gfp
+  __traceiter_android_vh_replace_anon_vma_name
+  __traceiter_android_vh_get_swap_pages_bypass
+  __traceiter_android_vh_should_split_folio_to_list
+  __traceiter_android_vh_should_skip_zone
+  __traceiter_android_vh_update_unmapped_area_info
+  __traceiter_android_vh_reuse_whole_anon_folio
   __traceiter_block_bio_queue
   __traceiter_block_getrq
   __traceiter_block_rq_complete
@@ -470,6 +477,13 @@
   __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_unreserve_highatomic_bypass
   __tracepoint_android_vh_update_page_mapcount
+  __tracepoint_android_vh_alloc_swap_folio_gfp
+  __tracepoint_android_vh_replace_anon_vma_name
+  __tracepoint_android_vh_get_swap_pages_bypass
+  __tracepoint_android_vh_should_split_folio_to_list
+  __tracepoint_android_vh_should_skip_zone
+  __tracepoint_android_vh_update_unmapped_area_info
+  __tracepoint_android_vh_reuse_whole_anon_folio
   __tracepoint_block_bio_queue
   __tracepoint_block_getrq
   __tracepoint_block_rq_complete
@@ -537,3 +551,6 @@
   zstd_init_cctx
   zstd_dctx_workspace_bound
   zstd_init_dctx
+  contpte_ptep_get
+  contpte_ptep_set_access_flags
+  __ptep_set_access_flags
