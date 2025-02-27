@@ -535,6 +535,7 @@
   devm_usb_get_phy_by_phandle
   devm_watchdog_register_device
   _dev_notice
+  dev_pm_clear_wake_irq
   dev_pm_domain_attach_by_id
   dev_pm_domain_attach_by_name
   dev_pm_domain_detach
@@ -567,6 +568,7 @@
   dev_pm_qos_remove_notifier
   dev_pm_qos_remove_request
   dev_pm_qos_update_request
+  dev_pm_set_wake_irq
   _dev_printk
   dev_printk_emit
   __dev_queue_xmit
@@ -606,7 +608,9 @@
   dma_buf_unmap_attachment
   dma_buf_unmap_attachment_unlocked
   dma_buf_vmap
+  dma_buf_vmap_unlocked
   dma_buf_vunmap
+  dma_buf_vunmap_unlocked
   dma_contiguous_default_area
   dma_direct_alloc
   dma_direct_free
@@ -1491,6 +1495,8 @@
   kvfree
   kvfree_call_rcu
   kvmalloc_node
+  kvm_iommu_cma_alloc
+  kvm_iommu_cma_release
   kvm_iommu_init_hyp
   kvm_iommu_register_driver
   kvrealloc
@@ -1509,6 +1515,8 @@
   log_threaded_irq_wakeup_reason
   log_write_mmio
   loops_per_jiffy
+  lru_cache_disable
+  lru_disable_count
   mac_pton
   mas_empty_area_rev
   mas_find
@@ -2674,6 +2682,9 @@
   __traceiter_android_vh_si_meminfo_adjust
   __traceiter_android_vh_sysrq_crash
   __traceiter_android_vh_tune_swappiness
+  __traceiter_android_vh_typec_store_partner_src_caps
+  __traceiter_android_vh_typec_tcpm_log
+  __traceiter_android_vh_typec_tcpm_modify_src_caps
   __traceiter_android_vh_uclamp_validate
   __traceiter_android_vh_ufs_check_int_errors
   __traceiter_android_vh_ufs_compl_command
@@ -2795,6 +2806,9 @@
   __tracepoint_android_vh_si_meminfo_adjust
   __tracepoint_android_vh_sysrq_crash
   __tracepoint_android_vh_tune_swappiness
+  __tracepoint_android_vh_typec_store_partner_src_caps
+  __tracepoint_android_vh_typec_tcpm_log
+  __tracepoint_android_vh_typec_tcpm_modify_src_caps
   __tracepoint_android_vh_uclamp_validate
   __tracepoint_android_vh_ufs_check_int_errors
   __tracepoint_android_vh_ufs_compl_command
@@ -2901,11 +2915,16 @@
   ufshcd_mcq_read_cqis
   ufshcd_mcq_write_cqis
   ufshcd_pltfrm_init
+  ufshcd_populate_vreg
   ufshcd_query_attr_retry
   ufshcd_query_flag_retry
   ufshcd_read_desc_param
   ufshcd_release
   ufshcd_remove
+  ufshcd_resume_complete
+  ufshcd_runtime_resume
+  ufshcd_runtime_suspend
+  ufshcd_suspend_prepare
   ufshcd_system_resume
   ufshcd_system_suspend
   unlock_page
