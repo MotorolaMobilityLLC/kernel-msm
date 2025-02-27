@@ -1197,6 +1197,7 @@ struct iqs7211_private {
 	u16 event_mask;
 	u16 ati_start;
 	u16 gesture_cache;
+	u8 tp_settings;
 };
 
 static int iqs7211_irq_poll(struct iqs7211_private *iqs7211, u64 timeout_us)
@@ -1416,6 +1417,33 @@ static int iqs7211_write_word(struct iqs7211_private *iqs7211, u8 reg, u16 val)
 	return iqs7211_write_burst(iqs7211, reg, &val_buf, sizeof(val_buf));
 }
 
+static int iqs7211_parse_tp_settings(struct iqs7211_private *iqs7211)
+{
+	struct i2c_client *client = iqs7211->client;
+	int error;
+	int val;
+
+	error = device_property_read_u32(&client->dev,
+					"azoteq,tp_settings", &val);
+	if (error == -EINVAL) {
+		return 0;
+	} else if (error) {
+		dev_err(&client->dev, "Failed to read tp_setting: %d\n",
+			error);
+		return error;
+	}
+
+	if (val & 0xFFFFFF00) {
+		dev_warn(&client->dev, "The tp_setting is an 8-bit unsigned integer. Mask the higher bits of 0x%x to 0x%x.\n",
+			val, (val & 0xFF));
+		val = val & 0xFF;
+	}
+
+	iqs7211->tp_settings = (u8)val;
+
+	return 0;
+}
+
 static int iqs7211_start_comms(struct iqs7211_private *iqs7211)
 {
 	const struct iqs7211_dev_desc *dev_desc = iqs7211->dev_desc;
@@ -1574,6 +1602,9 @@ static int iqs7211_init_device(struct iqs7211_private *iqs7211)
 		if (error)
 			return error;
 	}
+
+	if (iqs7211->tp_settings > 0)
+		iqs7211->tp_config.tp_settings |= iqs7211->tp_settings;
 
 	error = iqs7211_write_burst(iqs7211, dev_desc->tp_config,
 				    &iqs7211->tp_config,
@@ -2497,6 +2528,10 @@ static int iqs7211_probe(struct i2c_client *client,
 	}
 
 	error = iqs7211_start_comms(iqs7211);
+	if (error)
+		return error;
+
+	error = iqs7211_parse_tp_settings(iqs7211);
 	if (error)
 		return error;
 
