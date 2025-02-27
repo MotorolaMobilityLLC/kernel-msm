@@ -3148,11 +3148,18 @@
   __xfrm_state_destroy
   xfrm_state_lookup_byspi
   xfrm_stateonly_find
+  xhci_create_secondary_interrupter
+  xhci_disable_interrupter
+  xhci_enable_interrupter
   xhci_gen_setup
   xhci_get_endpoint_index
   xhci_init_driver
+  xhci_initialize_ring_info
+  xhci_remove_secondary_interrupter
   xhci_resume
   xhci_run
+  xhci_set_interrupter_moderation
+  xhci_stop_endpoint_sync
   xhci_suspend
   zs_compact
   zs_create_pool
