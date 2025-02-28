@@ -176,6 +176,23 @@ define_common_kernels(target_configs = {
             ":tests_zip_arm64",
         ],
     },
+    "kernel_aarch64_autofdo": {
+        "kmi_symbol_list_strict_mode": True,
+        "kmi_symbol_list": "android/abi_gki_aarch64",
+        "additional_kmi_symbol_lists": [":aarch64_additional_kmi_symbol_lists"],
+        "trim_nonlisted_kmi": True,
+        "protected_exports_list": "android/abi_gki_protected_exports_aarch64",
+        "protected_modules_list": ":gki_aarch64_protected_modules",
+        "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
+        "make_goals": _GKI_AARCH64_MAKE_GOALS,
+        "clang_autofdo_profile": "//toolchain/pgo-profiles/kernel:aarch64/android15-6.6/kernel.afdo",
+        "defconfig_fragments": ["arch/arm64/configs/autofdo_gki.fragment"],
+        "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
+        "extra_dist": [
+            ":test_mappings_zip",
+            ":tests_zip_arm64",
+        ],
+    },
     "kernel_x86_64": {
         "kmi_symbol_list_strict_mode": False,
         "module_implicit_outs": get_gki_modules_list("x86_64") + get_kunit_modules_list("x86_64"),
