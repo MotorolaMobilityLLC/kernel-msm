@@ -11,6 +11,7 @@ def define_seraph():
         "arch/arm64/gunyah/gh_arm_drv.ko",
         "drivers/bus/mhi/devices/mhi_dev_uci.ko",
         "drivers/bus/mhi/host/mhi.ko",
+        "drivers/char/rdbg.ko",
         "drivers/clk/qcom/camcc-seraph.ko",
         "drivers/clk/qcom/clk-dummy.ko",
         "drivers/clk/qcom/clk-qcom.ko",
