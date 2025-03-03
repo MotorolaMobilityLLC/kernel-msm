@@ -381803,6 +381803,15 @@ elf_symbol {
   full_name: "devm_pci_remap_cfg_resource"
 }
 elf_symbol {
+  id: 0x6676bb1c
+  name: "devm_pci_remap_cfgspace"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x36bf41ef
+  type_id: 0x54704321
+  full_name: "devm_pci_remap_cfgspace"
+}
+elf_symbol {
   id: 0xd6e5f7c7
   name: "devm_phy_create"
   is_defined: true
@@ -435795,6 +435804,7 @@ interface {
   symbol_id: 0x1ed62a9d
   symbol_id: 0x5df7b359
   symbol_id: 0x92ffc2e2
+  symbol_id: 0x6676bb1c
   symbol_id: 0xd6e5f7c7
   symbol_id: 0x7695d1dd
   symbol_id: 0xcf6046cf
