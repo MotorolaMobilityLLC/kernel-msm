@@ -70,6 +70,7 @@ def define_autoghgvm():
         "drivers/usb/phy/phy-generic.ko",
         "drivers/usb/phy/phy-msm-snps-eusb2.ko",
         "drivers/usb/phy/phy-msm-snps-hs.ko",
+        "drivers/usb/phy/phy-msm-ssusb-qmp.ko",
         "drivers/virt/gunyah/gh_ctrl.ko",
         "drivers/virt/gunyah/gh_dbl.ko",
         "drivers/virt/gunyah/gh_msgq.ko",
