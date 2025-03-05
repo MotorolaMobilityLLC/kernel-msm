@@ -70,3 +70,4 @@ gh_rm_drv.ko
 gunyah.ko
 gunyah_loader.ko
 gunyah_qcom.ko
+qcom-reboot-reason.ko
