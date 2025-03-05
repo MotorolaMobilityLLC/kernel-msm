@@ -78,6 +78,7 @@ def define_seraph():
         "drivers/pinctrl/qcom/pinctrl-seraph.ko",
         "drivers/pinctrl/qcom/pinctrl-spmi-gpio.ko",
         "drivers/pinctrl/qcom/pinctrl-spmi-mpp.ko",
+        "drivers/power/reset/qcom-dload-mode.ko",
         "drivers/power/reset/qcom-pon.ko",
         "drivers/power/reset/reboot-mode.ko",
         "drivers/pwm/pwm-qti-lpg.ko",
