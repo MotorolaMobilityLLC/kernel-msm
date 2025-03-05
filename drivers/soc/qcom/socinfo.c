@@ -581,6 +581,7 @@ static const struct soc_id soc_id[] = {
 	{ 629, "NIOBE" },
 	{ 652, "NIOBE" },
 	{ 672, "SERAPH" },
+	{ 673, "SERAPHP" },
 	{ 577, "PINEAPPLEP" },
 	{ 578, "BLAIR-LITE" },
 	{ 605, "SA_MONACOAU_ADAS" },
