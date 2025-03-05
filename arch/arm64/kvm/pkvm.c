@@ -539,6 +539,7 @@ void pkvm_host_reclaim_page(struct kvm *host_kvm, phys_addr_t ipa)
 	struct mm_struct *mm = current->mm;
 	struct kvm_pinned_page *ppage;
 	unsigned long index = ipa;
+	u16 pins;
 
 	write_lock(&host_kvm->mmu_lock);
 	ppage = mt_find(&host_kvm->arch.pkvm.pinned_pages, &index,
@@ -549,16 +550,16 @@ void pkvm_host_reclaim_page(struct kvm *host_kvm, phys_addr_t ipa)
 		else
 			WARN_ON(1);
 
-		if (!ppage->pins)
+		pins = ppage->pins;
+		if (!pins)
 			mtree_erase(&host_kvm->arch.pkvm.pinned_pages, ipa);
 	}
 	write_unlock(&host_kvm->mmu_lock);
 
-	WARN_ON(!ppage);
-	if (!ppage || ppage->pins)
+	if (WARN_ON(!ppage) || pins)
 		return;
 
-	account_locked_vm(mm, 1, false);
+	account_locked_vm(mm, 1 << ppage->order, false);
 	unpin_user_pages_dirty_lock(&ppage->page, 1, host_kvm->arch.pkvm.enabled);
 	kfree(ppage);
 }
