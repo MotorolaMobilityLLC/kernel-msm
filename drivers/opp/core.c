@@ -104,19 +104,9 @@ struct opp_table *_find_opp_table(struct device *dev)
  * representation in the OPP table and manage the clock configuration themselves
  * in an platform specific way.
  */
-static bool assert_single_clk(struct opp_table *opp_table,
-			      unsigned int __always_unused index)
+static bool assert_single_clk(struct opp_table *opp_table)
 {
 	return !WARN_ON(opp_table->clk_count > 1);
-}
-
-/*
- * Returns true if clock table is large enough to contain the clock index.
- */
-static bool assert_clk_index(struct opp_table *opp_table,
-			     unsigned int index)
-{
-	return opp_table->clk_count > index;
 }
 
 /**
@@ -506,12 +496,12 @@ static struct dev_pm_opp *_opp_table_find_key(struct opp_table *opp_table,
 		unsigned long (*read)(struct dev_pm_opp *opp, int index),
 		bool (*compare)(struct dev_pm_opp **opp, struct dev_pm_opp *temp_opp,
 				unsigned long opp_key, unsigned long key),
-		bool (*assert)(struct opp_table *opp_table, unsigned int index))
+		bool (*assert)(struct opp_table *opp_table))
 {
 	struct dev_pm_opp *temp_opp, *opp = ERR_PTR(-ERANGE);
 
 	/* Assert that the requirement is met */
-	if (assert && !assert(opp_table, index))
+	if (assert && !assert(opp_table))
 		return ERR_PTR(-EINVAL);
 
 	mutex_lock(&opp_table->lock);
@@ -539,7 +529,7 @@ _find_key(struct device *dev, unsigned long *key, int index, bool available,
 	  unsigned long (*read)(struct dev_pm_opp *opp, int index),
 	  bool (*compare)(struct dev_pm_opp **opp, struct dev_pm_opp *temp_opp,
 			  unsigned long opp_key, unsigned long key),
-	  bool (*assert)(struct opp_table *opp_table, unsigned int index))
+	  bool (*assert)(struct opp_table *opp_table))
 {
 	struct opp_table *opp_table;
 	struct dev_pm_opp *opp;
@@ -562,7 +552,7 @@ _find_key(struct device *dev, unsigned long *key, int index, bool available,
 static struct dev_pm_opp *_find_key_exact(struct device *dev,
 		unsigned long key, int index, bool available,
 		unsigned long (*read)(struct dev_pm_opp *opp, int index),
-		bool (*assert)(struct opp_table *opp_table, unsigned int index))
+		bool (*assert)(struct opp_table *opp_table))
 {
 	/*
 	 * The value of key will be updated here, but will be ignored as the
@@ -575,7 +565,7 @@ static struct dev_pm_opp *_find_key_exact(struct device *dev,
 static struct dev_pm_opp *_opp_table_find_key_ceil(struct opp_table *opp_table,
 		unsigned long *key, int index, bool available,
 		unsigned long (*read)(struct dev_pm_opp *opp, int index),
-		bool (*assert)(struct opp_table *opp_table, unsigned int index))
+		bool (*assert)(struct opp_table *opp_table))
 {
 	return _opp_table_find_key(opp_table, key, index, available, read,
 				   _compare_ceil, assert);
@@ -584,7 +574,7 @@ static struct dev_pm_opp *_opp_table_find_key_ceil(struct opp_table *opp_table,
 static struct dev_pm_opp *_find_key_ceil(struct device *dev, unsigned long *key,
 		int index, bool available,
 		unsigned long (*read)(struct dev_pm_opp *opp, int index),
-		bool (*assert)(struct opp_table *opp_table, unsigned int index))
+		bool (*assert)(struct opp_table *opp_table))
 {
 	return _find_key(dev, key, index, available, read, _compare_ceil,
 			 assert);
@@ -593,7 +583,7 @@ static struct dev_pm_opp *_find_key_ceil(struct device *dev, unsigned long *key,
 static struct dev_pm_opp *_find_key_floor(struct device *dev,
 		unsigned long *key, int index, bool available,
 		unsigned long (*read)(struct dev_pm_opp *opp, int index),
-		bool (*assert)(struct opp_table *opp_table, unsigned int index))
+		bool (*assert)(struct opp_table *opp_table))
 {
 	return _find_key(dev, key, index, available, read, _compare_floor,
 			 assert);
@@ -654,8 +644,7 @@ struct dev_pm_opp *
 dev_pm_opp_find_freq_exact_indexed(struct device *dev, unsigned long freq,
 				   u32 index, bool available)
 {
-	return _find_key_exact(dev, freq, index, available, _read_freq,
-			       assert_clk_index);
+	return _find_key_exact(dev, freq, index, available, _read_freq, NULL);
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_exact_indexed);
 
@@ -715,8 +704,7 @@ struct dev_pm_opp *
 dev_pm_opp_find_freq_ceil_indexed(struct device *dev, unsigned long *freq,
 				  u32 index)
 {
-	return _find_key_ceil(dev, freq, index, true, _read_freq,
-			      assert_clk_index);
+	return _find_key_ceil(dev, freq, index, true, _read_freq, NULL);
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_ceil_indexed);
 
@@ -769,7 +757,7 @@ struct dev_pm_opp *
 dev_pm_opp_find_freq_floor_indexed(struct device *dev, unsigned long *freq,
 				   u32 index)
 {
-	return _find_key_floor(dev, freq, index, true, _read_freq, assert_clk_index);
+	return _find_key_floor(dev, freq, index, true, _read_freq, NULL);
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_floor_indexed);
 
@@ -1725,7 +1713,7 @@ void dev_pm_opp_remove(struct device *dev, unsigned long freq)
 	if (IS_ERR(opp_table))
 		return;
 
-	if (!assert_single_clk(opp_table, 0))
+	if (!assert_single_clk(opp_table))
 		goto put_table;
 
 	mutex_lock(&opp_table->lock);
@@ -2075,7 +2063,7 @@ int _opp_add_v1(struct opp_table *opp_table, struct device *dev,
 	unsigned long tol, u_volt = data->u_volt;
 	int ret;
 
-	if (!assert_single_clk(opp_table, 0))
+	if (!assert_single_clk(opp_table))
 		return -EINVAL;
 
 	new_opp = _opp_allocate(opp_table);
@@ -2943,7 +2931,7 @@ static int _opp_set_availability(struct device *dev, unsigned long freq,
 		return r;
 	}
 
-	if (!assert_single_clk(opp_table, 0)) {
+	if (!assert_single_clk(opp_table)) {
 		r = -EINVAL;
 		goto put_table;
 	}
@@ -3019,7 +3007,7 @@ int dev_pm_opp_adjust_voltage(struct device *dev, unsigned long freq,
 		return r;
 	}
 
-	if (!assert_single_clk(opp_table, 0)) {
+	if (!assert_single_clk(opp_table)) {
 		r = -EINVAL;
 		goto put_table;
 	}
