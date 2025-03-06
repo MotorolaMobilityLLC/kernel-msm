@@ -1,5 +1,6 @@
 [abi_symbol_list]
   address_space_init_once
+  alg_test
   bio_add_page
   bio_associate_blkg
   bio_put
