@@ -14,10 +14,17 @@
 #include <linux/qcom_scm.h>
 #include <linux/qtee_shmbridge.h>
 #include <linux/slab.h>
+#include <linux/smci_object.h>
+#include <linux/smci_clientenv.h>
+#include "smci_mem_lat.h"
 #include "trace-bus-prof.h"
 
 #define SAMPLE_MS	10
 #define MAGIC (0x01CB)
+
+#ifndef UINT32_C
+#define UINT32_C(x) ((uint32_t)(x))
+#endif
 
 enum cmd {
 	MEM_LAT_START_PROFILING = 1,
@@ -33,6 +40,7 @@ enum cmd {
 #define CPU_PROFILING_ENABLED	BIT(CPU_BIT_SHIFT)
 #define GPU_PROFILING_ENABLED	BIT(GPU_BIT_SHIFT)
 #define NSP_PROFILING_ENABLED	BIT(NPU_BIT_SHIFT)
+#define MEM_LATENCY_FEATURE_ID 2102
 
 enum error {
 	E_SUCCESS = 0, /* Operation successful */
@@ -284,6 +292,35 @@ static int set_mon_enabled(void *data, u64 val)
 	u32 count, enable = val ? 1 : 0;
 	char *master_name = data;
 	int i, ret = 0;
+	struct smci_object mem_lat_env = {NULL, NULL};
+	struct smci_object mem_lat_profiler = {NULL, NULL};
+
+	ret = smci_get_client_env_object(&mem_lat_env);
+	if (ret) {
+		mem_lat_env.invoke = NULL;
+		mem_lat_env.context = NULL;
+		pr_err("mem_lat_profiler: get client env object failed\n");
+		ret =  -EIO;
+		goto end;
+	}
+
+	ret = smci_clientenv_open(mem_lat_env, SMCI_MEM_LAT_PROFILER_SERVICE_UID,
+			&mem_lat_profiler);
+	if (ret) {
+		mem_lat_profiler.invoke = NULL;
+		mem_lat_profiler.context = NULL;
+		pr_err("mem_lat_profiler: smci client env open failed\n");
+		ret = -EIO;
+		goto end;
+	}
+
+	ret = smci_mem_lat_profiler_check_license_status(mem_lat_profiler,
+			MEM_LATENCY_FEATURE_ID, NULL, 0);
+	if (ret) {
+		pr_err("mem_lat_profiler: smci_mem_lat_profiler_check_license_status failed\n");
+		ret = -EIO;
+		goto end;
+	}
 
 	mutex_lock(&bus_lat->lock);
 
@@ -313,9 +350,14 @@ static int set_mon_enabled(void *data, u64 val)
 
 	if (bus_lat->active_masters)
 		start_memory_lat_stats();
+	ret = 0;
+
 unlock:
 	mutex_unlock(&bus_lat->lock);
-
+	return ret;
+end:
+	SMCI_OBJECT_ASSIGN_NULL(mem_lat_profiler);
+	SMCI_OBJECT_ASSIGN_NULL(mem_lat_env);
 	return ret;
 }
 
@@ -472,7 +514,7 @@ cleanup:
 }
 static int __init qcom_bus_lat_init(void)
 {
-	int ret, i, j;
+	int i, j, ret = 0;
 
 	bus_lat =  kzalloc(sizeof(*bus_lat), GFP_KERNEL);
 
@@ -530,7 +572,6 @@ debugfs_file_err:
 err:
 	kfree(bus_lat->data);
 	kfree(bus_lat);
-
 	return ret;
 }
 
