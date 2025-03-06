@@ -4147,7 +4147,13 @@ static int usbpd_typec_port_type_set(struct typec_port *port,
 	usbpd_dbg(&pd->dev, "Setting mode to %d\n", type);
 
 	if (type == TYPEC_PORT_DRP)
+	{
+		/* Setting it to DRP. HW can figure out new mode */
+		value.intval = QTI_POWER_SUPPLY_TYPEC_PR_DUAL;
+		usbpd_set_psy_iio_property(pd,
+		POWER_SUPPLY_PROP_TYPEC_POWER_ROLE, &value);
 		return 0;
+	}
 
 	/*
 	 * Forces disconnect on CC and re-establishes connection.
