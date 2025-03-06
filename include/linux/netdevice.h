@@ -2203,7 +2203,7 @@ struct net_device {
 	void 			*atalk_ptr;
 #endif
 #if IS_ENABLED(CONFIG_AX25)
-	void			*ax25_ptr;
+	struct ax25_dev	__rcu	*ax25_ptr;
 #endif
 	/* Android KMI hack to allow vendors to have their own wifi changes in modules */
 #ifdef __GENKSYMS__
