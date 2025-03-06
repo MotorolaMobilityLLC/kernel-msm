@@ -1,0 +1,6 @@
+config VD628x
+	tristate " STMicroelectronics VD6283 flicker detection"
+	depends on SPI_MASTER
+
+	help
+	  If your system has a slave-capable SPI controller, you can enable slave protocol handlers.
