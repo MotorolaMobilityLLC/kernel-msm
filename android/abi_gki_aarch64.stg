@@ -324350,6 +324350,14 @@ function {
   parameter_id: 0x082be49e
 }
 function {
+  id: 0x99e5c681
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x92233392
+  parameter_id: 0x0483e6f8
+  parameter_id: 0xf435685e
+}
+function {
   id: 0x99e6ede5
   return_type_id: 0x6720d32f
   parameter_id: 0x129a6a0a
@@ -350178,6 +350186,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_vmscan_kswapd_done"
 }
 elf_symbol {
+  id: 0xac83aa3b
+  name: "__traceiter_android_vh_vprintk_store"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0e5e212c
+  type_id: 0x99e5c681
+  full_name: "__traceiter_android_vh_vprintk_store"
+}
+elf_symbol {
   id: 0xb0bf7fd6
   name: "__traceiter_android_vh_watchdog_timer_softlockup"
   is_defined: true
@@ -355207,6 +355224,15 @@ elf_symbol {
   crc: 0x46714dec
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_vmscan_kswapd_done"
+}
+elf_symbol {
+  id: 0x743f545d
+  name: "__tracepoint_android_vh_vprintk_store"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x36987c5d
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_vprintk_store"
 }
 elf_symbol {
   id: 0x42dbeb24
@@ -418715,6 +418741,7 @@ interface {
   symbol_id: 0xd0e4682b
   symbol_id: 0x08824ed3
   symbol_id: 0xcbec9d66
+  symbol_id: 0xac83aa3b
   symbol_id: 0xb0bf7fd6
   symbol_id: 0xae5e5469
   symbol_id: 0x6911084f
@@ -419274,6 +419301,7 @@ interface {
   symbol_id: 0x990b2371
   symbol_id: 0xe100c3ad
   symbol_id: 0x55476a7c
+  symbol_id: 0x743f545d
   symbol_id: 0x42dbeb24
   symbol_id: 0xa13f65ff
   symbol_id: 0xf57e8f65
