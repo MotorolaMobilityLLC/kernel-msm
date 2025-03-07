@@ -79,14 +79,14 @@ void *kvm_iommu_donate_pages(u8 order, bool request)
 
 	i = last_block_pool;
 	do {
-		p = hyp_alloc_pages(&iommu_block_pools[i++], order);
+		p = hyp_alloc_pages(&iommu_block_pools[i], order);
 		if (p) {
 			last_block_pool = i;
 			hyp_spin_unlock(&__block_pools_lock);
 			return p;
 		}
 
-		if (i >= MAX_BLOCK_POOLS)
+		if (++i >= MAX_BLOCK_POOLS)
 			i = 0;
 	} while (i != last_block_pool);
 
