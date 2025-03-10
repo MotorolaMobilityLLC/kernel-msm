@@ -367,6 +367,11 @@
 	status = "okay";
 };
 
+&uart5 {
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+};
+
 /* Mule UCAN */
 &usb_host0_ehci {
 	status = "okay";
