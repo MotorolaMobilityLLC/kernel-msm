@@ -164,12 +164,6 @@ static struct page *get_next_nat_page(struct f2fs_sb_info *sbi, nid_t nid)
 	return dst_page;
 }
 
-struct page *f2fs_get_prev_nat_page(struct f2fs_sb_info *sbi, nid_t nid)
-{
-	pgoff_t dst_off = next_nat_addr(sbi, current_nat_addr(sbi, nid));
-	return f2fs_get_meta_page(sbi, dst_off);
-}
-
 static struct nat_entry *__alloc_nat_entry(struct f2fs_sb_info *sbi,
 						nid_t nid, bool no_fail)
 {
@@ -381,39 +375,6 @@ void f2fs_reset_fsync_node_info(struct f2fs_sb_info *sbi)
 	spin_lock_irqsave(&sbi->fsync_node_lock, flags);
 	sbi->fsync_seg_id = 0;
 	spin_unlock_irqrestore(&sbi->fsync_node_lock, flags);
-}
-
-bool f2fs_get_nat_entry(struct f2fs_sb_info *sbi, struct node_info *cni,
-					struct node_info *jni, nid_t nid)
-{
-	struct f2fs_nm_info *nm_i = NM_I(sbi);
-	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	struct f2fs_journal *journal = curseg->journal;
-	struct nat_entry *e;
-	int ret = 0;
-	int i;
-
-	f2fs_down_read(&nm_i->nat_tree_lock);
-
-	/* lookup nat entry in journal */
-	i = f2fs_lookup_journal_in_cursum(journal, NAT_JOURNAL, nid, 0);
-	if (i >= 0) {
-		struct f2fs_nat_entry ne;
-
-		ne = nat_in_journal(journal, i);
-		node_info_from_raw_nat(jni, &ne);
-		ret |= NAT_JOURNAL_ENTRY;
-	}
-
-	/* lookup nat entry in cache */
-	e = __lookup_nat_cache(nm_i, nid);
-	if (e) {
-		*cni = e->ni;
-		ret |= NAT_CACHED_ENTRY;
-	}
-	f2fs_up_read(&nm_i->nat_tree_lock);
-
-	return ret;
 }
 
 int f2fs_need_dentry_mark(struct f2fs_sb_info *sbi, nid_t nid)
