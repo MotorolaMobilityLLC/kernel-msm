@@ -766,9 +766,6 @@ static void f2fs_sanity_check_nat(struct f2fs_sb_info *sbi, pgoff_t nid)
 	int err;
 	int ret;
 
-	if (likely(!sbi->sanity_check))
-		return;
-
 	if (!is_sbi_flag_set(sbi, SBI_CP_DISABLED))
 		return;
 
