@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
@@ -3763,7 +3763,7 @@ static int cpr_init_cpr_efuse(struct platform_device *pdev,
 	bool disable_fuse_valid = false;
 	char *targ_quot_str;
 	u32 cpr_fuse_row[2];
-	u32 bp_cpr_disable, bp_scheme;
+	u32 bp_cpr_disable = 0, bp_scheme = 0;
 	size_t len;
 	int *bp_target_quot;
 	u64 fuse_bits, fuse_bits_2;
@@ -4541,7 +4541,7 @@ static int cpr_rpm_apc_init(struct platform_device *pdev,
 static int cpr_parse_vdd_mode_config(struct platform_device *pdev,
 			       struct cpr_regulator *cpr_vreg)
 {
-	int rc, len = 0, i, mode;
+	int rc = 0, len = 0, i, mode;
 	struct device_node *of_node = pdev->dev.of_node;
 	const char *prop_str = "qcom,cpr-vdd-mode-map";
 
