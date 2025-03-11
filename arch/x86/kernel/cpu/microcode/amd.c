@@ -813,7 +813,7 @@ static void free_cache(void)
 static struct ucode_patch *find_patch(unsigned int cpu)
 {
 	struct ucode_cpu_info *uci = ucode_cpu_info + cpu;
-	u16 equiv_id;
+	u16 equiv_id = 0;
 
 	uci->cpu_sig.rev = get_patch_level();
 
