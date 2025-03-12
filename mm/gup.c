@@ -2080,8 +2080,7 @@ static long check_and_migrate_movable_pages(unsigned long nr_pages,
 {
 	LIST_HEAD(movable_page_list);
 
-	collect_longterm_unpinnable_pages(&movable_page_list,
-						nr_pages, pages);
+	collect_longterm_unpinnable_pages(&movable_page_list, nr_pages, pages);
 	if (list_empty(&movable_page_list))
 		return 0;
 

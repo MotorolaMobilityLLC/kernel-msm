@@ -303,7 +303,9 @@ static int io_sendmsg_copy_hdr(struct io_kiocb *req,
 		if (unlikely(ret))
 			return ret;
 
-		return __get_compat_msghdr(&iomsg->msg, &cmsg, NULL);
+		ret = __get_compat_msghdr(&iomsg->msg, &cmsg, NULL);
+		sr->msg_control = iomsg->msg.msg_control_user;
+		return ret;
 	}
 #endif
 
@@ -1531,6 +1533,11 @@ int io_connect(struct io_kiocb *req, unsigned int issue_flags)
 		if (ret)
 			goto out;
 		io = &__io;
+	}
+
+	if (unlikely(req->flags & REQ_F_FAIL)) {
+		ret = -ECONNRESET;
+		goto out;
 	}
 
 	file_flags = force_nonblock ? O_NONBLOCK : 0;
