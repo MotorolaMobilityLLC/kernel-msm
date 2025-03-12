@@ -2498,6 +2498,7 @@
   __drm_atomic_state_free
   drm_bridge_chain_mode_set
   drm_bridge_get_edid
+  drm_bridge_is_panel
   drm_connector_list_update
   drm_crtc_cleanup
   drm_crtc_enable_color_mgmt
@@ -2543,7 +2544,9 @@
   drm_kms_helper_poll_init
   drm_mm_init
   drm_mm_insert_node_in_range
+  drmm_of_get_bridge
   drmm_mode_config_init
+  drmm_panel_bridge_add
   drm_mm_print
   drm_mm_remove_node
   drm_mm_reserve_node
@@ -2567,6 +2570,7 @@
   drm_mode_validate_ycbcr420
   drm_of_crtc_port_mask
   drm_of_encoder_active_endpoint
+  drm_panel_bridge_set_orientation
   drm_plane_cleanup
   drm_plane_create_alpha_property
   drm_plane_create_blend_mode_property
