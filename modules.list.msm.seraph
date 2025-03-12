@@ -27,6 +27,12 @@ proxy-consumer.ko
 qti-fixed-regulator.ko
 rpmh-regulator.ko
 stub-regulator.ko
+regmap-spmi.ko
+qti-regmap-debugfs.ko
+qcom-spmi-pmic.ko
+nvmem_qcom-spmi-sdam.ko
+rtc-pm8xxx.ko
+pmic-pon-log.ko
 arm_smmu.ko
 iommu-logger.ko
 qcom_iommu_util.ko
