@@ -201,6 +201,8 @@ struct emac_emb_smmu_cb_ctx {
 };
 
 struct plat_stmmacenet_data {
+	u32 snps_id;
+	u32 dev_id;
 	int bus_id;
 	int phy_addr;
 	int interface;
