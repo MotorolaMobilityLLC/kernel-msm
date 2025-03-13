@@ -187,6 +187,43 @@
 #define MMC_XGMAC_RX_FPE_FRAG		0x234
 #define MMC_XGMAC_RX_IPC_INTR_MASK	0x25c
 
+/* 25GMAC MMC registers */
+#define MMC_25GMAC_RX_IPC_INTR				0x260
+
+/* IPv4 */
+#define MMC_25GMAC_RX_IPV4_GD				0x264
+#define MMC_25GMAC_RX_IPV4_HDERR			0x26c
+#define MMC_25GMAC_RX_IPV4_NOPAY			0x274
+#define MMC_25GMAC_RX_IPV4_FRAG				0x27c
+#define MMC_25GMAC_RX_IPV4_UDSBL			0x284
+#define MMC_25GMAC_RX_IPV4_GD_OCTETS			0x2d4
+#define MMC_25GMAC_RX_IPV4_HDERR_OCTETS			0x2dc
+#define MMC_25GMAC_RX_IPV4_NOPAY_OCTETS			0x2e4
+#define MMC_25GMAC_RX_IPV4_FRAG_OCTETS			0x2ec
+#define MMC_25GMAC_RX_IPV4_UDSBL_OCTETS			0x2f4
+
+/* IPV6 */
+#define MMC_25GMAC_RX_IPV6_GD				0x28c
+#define MMC_25GMAC_RX_IPV6_HDERR			0x294
+#define MMC_25GMAC_RX_IPV6_NOPAY			0x29c
+#define MMC_25GMAC_RX_IPV6_GD_OCTETS			0x2fc
+#define MMC_25GMAC_RX_IPV6_HDERR_OCTETS			0x304
+#define MMC_25GMAC_RX_IPV6_NOPAY_OCTETS			0x30c
+
+/* Protocols */
+#define MMC_25GMAC_RX_UDP_GD				0x2a4
+#define MMC_25GMAC_RX_UDP_ERR				0x2ac
+#define MMC_25GMAC_RX_TCP_GD				0x2b4
+#define MMC_25GMAC_RX_TCP_ERR				0x2bc
+#define MMC_25GMAC_RX_ICMP_GD				0x2c4
+#define MMC_25GMAC_RX_ICMP_ERR				0x2cc
+#define MMC_25GMAC_RX_UDP_GD_OCTETS			0x314
+#define MMC_25GMAC_RX_UDP_ERR_OCTETS			0x31c
+#define MMC_25GMAC_RX_TCP_GD_OCTETS			0x324
+#define MMC_25GMAC_RX_TCP_ERR_OCTETS			0x32c
+#define MMC_25GMAC_RX_ICMP_GD_OCTETS			0x334
+#define MMC_25GMAC_RX_ICMP_ERR_OCTETS			0x33c
+
 static void dwmac_mmc_ctrl(void __iomem *mmcaddr, unsigned int mode)
 {
 	u32 value = readl(mmcaddr + MMC_CNTRL);
@@ -476,4 +513,190 @@ const struct stmmac_mmc_ops dwxgmac_mmc_ops = {
 	.ctrl = dwxgmac_mmc_ctrl,
 	.intr_all_mask = dwxgmac_mmc_intr_all_mask,
 	.read = dwxgmac_mmc_read,
+};
+
+static void dw25gmac_mmc_ctrl(void __iomem *mmcaddr, unsigned int mode)
+{
+	u32 value = readl(mmcaddr + MMC_CNTRL);
+
+	value |= (mode & 0x3F);
+	/* This field disables receive channels mapping for certain set of
+	 * Receive Frame/Priority/IPC MAC Management Counters.
+	 * Application should set this field to 1 to disable it.
+	 */
+	value |= (mode & 0x80000000);
+
+	writel(value, mmcaddr + MMC_CNTRL);
+}
+
+/* This reads the MAC core counters (if actaully supported).
+ * by default the MMC core is programmed to reset each
+ * counter after a read. So all the field of the mmc struct
+ * have to be incremented.
+ */
+static void dw25gmac_mmc_read(void __iomem *mmcaddr, struct stmmac_counters *mmc)
+{
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_OCTET_GB,
+			     &mmc->mmc_tx_octetcount_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_PKT_GB,
+			     &mmc->mmc_tx_framecount_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_BROAD_PKT_G,
+			     &mmc->mmc_tx_broadcastframe_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_MULTI_PKT_G,
+			     &mmc->mmc_tx_multicastframe_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_64OCT_GB,
+			     &mmc->mmc_tx_64_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_65OCT_GB,
+			     &mmc->mmc_tx_65_to_127_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_128OCT_GB,
+			     &mmc->mmc_tx_128_to_255_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_256OCT_GB,
+			     &mmc->mmc_tx_256_to_511_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_512OCT_GB,
+			     &mmc->mmc_tx_512_to_1023_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_1024OCT_GB,
+			     &mmc->mmc_tx_1024_to_max_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_UNI_PKT_GB,
+			     &mmc->mmc_tx_unicast_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_MULTI_PKT_GB,
+			     &mmc->mmc_tx_multicast_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_BROAD_PKT_GB,
+			     &mmc->mmc_tx_broadcast_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_UNDER,
+			     &mmc->mmc_tx_underflow_error);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_OCTET_G,
+			     &mmc->mmc_tx_octetcount_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_PKT_G,
+			     &mmc->mmc_tx_framecount_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_PAUSE,
+			     &mmc->mmc_tx_pause_frame);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_TX_VLAN_PKT_G,
+			     &mmc->mmc_tx_vlan_frame_g);
+
+	/* MMC RX counter registers */
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_PKT_GB,
+			     &mmc->mmc_rx_framecount_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_OCTET_GB,
+			     &mmc->mmc_rx_octetcount_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_OCTET_G,
+			     &mmc->mmc_rx_octetcount_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_BROAD_PKT_G,
+			     &mmc->mmc_rx_broadcastframe_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_MULTI_PKT_G,
+			     &mmc->mmc_rx_multicastframe_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_CRC_ERR,
+			     &mmc->mmc_rx_crc_error);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_CRC_ERR,
+			     &mmc->mmc_rx_crc_error);
+	mmc->mmc_rx_run_error += readl(mmcaddr + MMC_XGMAC_RX_RUNT_ERR);
+	mmc->mmc_rx_jabber_error += readl(mmcaddr + MMC_XGMAC_RX_JABBER_ERR);
+	mmc->mmc_rx_undersize_g += readl(mmcaddr + MMC_XGMAC_RX_UNDER);
+	mmc->mmc_rx_oversize_g += readl(mmcaddr + MMC_XGMAC_RX_OVER);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_64OCT_GB,
+			     &mmc->mmc_rx_64_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_65OCT_GB,
+			     &mmc->mmc_rx_65_to_127_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_128OCT_GB,
+			     &mmc->mmc_rx_128_to_255_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_256OCT_GB,
+			     &mmc->mmc_rx_256_to_511_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_512OCT_GB,
+			     &mmc->mmc_rx_512_to_1023_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_1024OCT_GB,
+			     &mmc->mmc_rx_1024_to_max_octets_gb);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_UNI_PKT_G,
+			     &mmc->mmc_rx_unicast_g);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_LENGTH_ERR,
+			     &mmc->mmc_rx_length_error);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_RANGE,
+			     &mmc->mmc_rx_autofrangetype);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_PAUSE,
+			     &mmc->mmc_rx_pause_frames);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_FIFOOVER_PKT,
+			     &mmc->mmc_rx_fifo_overflow);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_VLAN_PKT_GB,
+			     &mmc->mmc_rx_vlan_frames_gb);
+	mmc->mmc_rx_watchdog_error += readl(mmcaddr + MMC_XGMAC_RX_WATCHDOG_ERR);
+	mmc->mmc_rx_ipc_intr_mask = readl(mmcaddr + MMC_XGMAC_RX_IPC_INTR_MASK);
+
+	mmc->mmc_tx_fpe_fragment_cntr += readl(mmcaddr + MMC_XGMAC_TX_FPE_FRAG);
+	mmc->mmc_tx_hold_req_cntr += readl(mmcaddr + MMC_XGMAC_TX_HOLD_REQ);
+	mmc->mmc_rx_packet_assembly_err_cntr +=
+		readl(mmcaddr + MMC_XGMAC_RX_PKT_ASSEMBLY_ERR);
+	mmc->mmc_rx_packet_smd_err_cntr +=
+		readl(mmcaddr + MMC_XGMAC_RX_PKT_SMD_ERR);
+	mmc->mmc_rx_packet_assembly_ok_cntr +=
+		readl(mmcaddr + MMC_XGMAC_RX_PKT_ASSEMBLY_OK);
+	mmc->mmc_rx_fpe_fragment_cntr +=
+		readl(mmcaddr + MMC_XGMAC_RX_FPE_FRAG);
+
+	/* Additional 25GMAC counters */
+	mmc->mmc_rx_ipc_intr = readl(mmcaddr + MMC_25GMAC_RX_IPC_INTR);
+	/* IPv4 */
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_GD,
+			     &mmc->mmc_rx_ipv4_gd);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_HDERR,
+			     &mmc->mmc_rx_ipv4_hderr);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_NOPAY,
+			     &mmc->mmc_rx_ipv4_nopay);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_FRAG,
+			     &mmc->mmc_rx_ipv4_frag);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_UDSBL,
+			     &mmc->mmc_rx_ipv4_udsbl);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_GD_OCTETS,
+			     &mmc->mmc_rx_ipv4_gd_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_HDERR_OCTETS,
+			     &mmc->mmc_rx_ipv4_hderr_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_NOPAY_OCTETS,
+			     &mmc->mmc_rx_ipv4_nopay_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_FRAG_OCTETS,
+			     &mmc->mmc_rx_ipv4_frag_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV4_UDSBL_OCTETS,
+			     &mmc->mmc_rx_ipv4_udsbl_octets);
+
+	/* IPV6 */
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV6_GD,
+			     &mmc->mmc_rx_ipv6_gd);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV6_HDERR,
+			     &mmc->mmc_rx_ipv6_hderr);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV6_NOPAY,
+			     &mmc->mmc_rx_ipv6_nopay);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV6_GD_OCTETS,
+			     &mmc->mmc_rx_ipv6_gd_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV6_HDERR_OCTETS,
+			     &mmc->mmc_rx_ipv6_hderr_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_IPV6_NOPAY_OCTETS,
+			     &mmc->mmc_rx_ipv6_nopay_octets);
+
+	/* Protocols */
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_UDP_GD,
+			     &mmc->mmc_rx_udp_gd);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_UDP_ERR,
+			     &mmc->mmc_rx_udp_err);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_TCP_GD,
+			     &mmc->mmc_rx_tcp_gd);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_TCP_ERR,
+			     &mmc->mmc_rx_tcp_err);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_ICMP_GD,
+			     &mmc->mmc_rx_icmp_gd);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_ICMP_ERR,
+			     &mmc->mmc_rx_icmp_err);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_UDP_GD_OCTETS,
+			     &mmc->mmc_rx_udp_gd_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_UDP_ERR_OCTETS,
+			     &mmc->mmc_rx_udp_err_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_TCP_GD_OCTETS,
+			     &mmc->mmc_rx_tcp_gd_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_TCP_ERR_OCTETS,
+			     &mmc->mmc_rx_tcp_err_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_ICMP_GD_OCTETS,
+			     &mmc->mmc_rx_icmp_gd_octets);
+	dwxgmac_read_mmc_reg(mmcaddr, MMC_25GMAC_RX_ICMP_ERR_OCTETS,
+			     &mmc->mmc_rx_icmp_err_octets);
+}
+
+const struct stmmac_mmc_ops dw25gmac_mmc_ops = {
+	.ctrl = dw25gmac_mmc_ctrl,
+	.intr_all_mask = dwxgmac_mmc_intr_all_mask,
+	.read = dw25gmac_mmc_read,
 };
