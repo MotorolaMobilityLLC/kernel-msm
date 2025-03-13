@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -56,6 +56,10 @@ enum rpmh_regulator_hw_type {
 	RPMH_REGULATOR_HW_TYPE_PMIC5_HFSMPS,
 	RPMH_REGULATOR_HW_TYPE_PMIC5_FTSMPS,
 	RPMH_REGULATOR_HW_TYPE_PMIC5_BOB,
+	RPMH_REGULATOR_HW_TYPE_PMIC7_LDO,
+	RPMH_REGULATOR_HW_TYPE_PMIC7_HFSMPS,
+	RPMH_REGULATOR_HW_TYPE_PMIC7_FTSMPS,
+	RPMH_REGULATOR_HW_TYPE_PMIC7_BOB,
 	RPMH_REGULATOR_HW_TYPE_MAX,
 };
 
@@ -310,6 +314,11 @@ struct rpmh_vreg {
 #define RPMH_REGULATOR_MODE_PMIC5_BOB_AUTO	6
 #define RPMH_REGULATOR_MODE_PMIC5_BOB_PWM	7
 
+#define RPMH_REGULATOR_MODE_PMIC7_LDO_RM	3
+#define RPMH_REGULATOR_MODE_PMIC7_LDO_LPM	4
+#define RPMH_REGULATOR_MODE_PMIC7_LDO_OPM	5
+#define RPMH_REGULATOR_MODE_PMIC7_LDO_HPM	7
+
 /*
  * Mappings from RPMh generic modes to VRM accelerator modes and regulator
  * framework modes for each regulator type.
@@ -438,6 +447,27 @@ rpmh_regulator_mode_map_pmic5_bob[RPMH_REGULATOR_MODE_COUNT] = {
 	},
 };
 
+/* For PMIC7, only LDOs have a mode control delta vs PMIC5 (i.e. OPM added). */
+static const struct rpmh_regulator_mode
+rpmh_regulator_mode_map_pmic7_ldo[RPMH_REGULATOR_MODE_COUNT] = {
+	[RPMH_REGULATOR_MODE_RET] = {
+		.pmic_mode = RPMH_REGULATOR_MODE_PMIC7_LDO_RM,
+		.framework_mode = REGULATOR_MODE_STANDBY,
+	},
+	[RPMH_REGULATOR_MODE_LPM] = {
+		.pmic_mode = RPMH_REGULATOR_MODE_PMIC7_LDO_LPM,
+		.framework_mode = REGULATOR_MODE_IDLE,
+	},
+	[RPMH_REGULATOR_MODE_AUTO] = {
+		.pmic_mode = RPMH_REGULATOR_MODE_PMIC7_LDO_OPM,
+		.framework_mode = REGULATOR_MODE_NORMAL,
+	},
+	[RPMH_REGULATOR_MODE_HPM] = {
+		.pmic_mode = RPMH_REGULATOR_MODE_PMIC7_LDO_HPM,
+		.framework_mode = REGULATOR_MODE_FAST,
+	},
+};
+
 static const struct rpmh_regulator_mode * const
 rpmh_regulator_mode_map[RPMH_REGULATOR_HW_TYPE_MAX] = {
 	[RPMH_REGULATOR_HW_TYPE_PMIC4_LDO]
@@ -455,6 +485,14 @@ rpmh_regulator_mode_map[RPMH_REGULATOR_HW_TYPE_MAX] = {
 	[RPMH_REGULATOR_HW_TYPE_PMIC5_FTSMPS]
 		= rpmh_regulator_mode_map_pmic5_ftsmps,
 	[RPMH_REGULATOR_HW_TYPE_PMIC5_BOB]
+		= rpmh_regulator_mode_map_pmic5_bob,
+	[RPMH_REGULATOR_HW_TYPE_PMIC7_LDO]
+		= rpmh_regulator_mode_map_pmic7_ldo,
+	[RPMH_REGULATOR_HW_TYPE_PMIC7_HFSMPS]
+		= rpmh_regulator_mode_map_pmic5_hfsmps,
+	[RPMH_REGULATOR_HW_TYPE_PMIC7_FTSMPS]
+		= rpmh_regulator_mode_map_pmic5_ftsmps,
+	[RPMH_REGULATOR_HW_TYPE_PMIC7_BOB]
 		= rpmh_regulator_mode_map_pmic5_bob,
 };
 
@@ -1415,6 +1453,65 @@ rpmh_regulator_load_arc_level_mapping(struct rpmh_aggr_vreg *aggr_vreg)
 }
 
 /**
+ * rpmh_regulator_parse_hw_type() - parse the hardware type for a VRM RPMh
+ *		resource
+ * @aggr_vreg:		Pointer to the aggregated rpmh regulator resource
+ * @type:		String containing regulator type
+ *
+ * This function initializes the regulator_hw_type element of aggr_vreg based
+ * upon the value of a device tree property.
+ *
+ * Return: 0 on success, errno on failure
+ */
+static int rpmh_regulator_parse_hw_type(struct rpmh_aggr_vreg *aggr_vreg,
+					const char *type)
+{
+	if (!strcmp(type, "pmic4-ldo")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC4_LDO;
+	} else if (!strcmp(type, "pmic4-hfsmps")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC4_HFSMPS;
+	} else if (!strcmp(type, "pmic4-ftsmps")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC4_FTSMPS;
+	} else if (!strcmp(type, "pmic4-bob")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC4_BOB;
+	} else if (!strcmp(type, "pmic5-ldo")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC5_LDO;
+	} else if (!strcmp(type, "pmic5-hfsmps")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC5_HFSMPS;
+	} else if (!strcmp(type, "pmic5-ftsmps")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC5_FTSMPS;
+	} else if (!strcmp(type, "pmic5-bob")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC5_BOB;
+	} else if (!strcmp(type, "pmic7-ldo")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC7_LDO;
+	} else if (!strcmp(type, "pmic7-hfsmps")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC7_HFSMPS;
+	} else if (!strcmp(type, "pmic7-ftsmps")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC7_FTSMPS;
+	} else if (!strcmp(type, "pmic7-bob")) {
+		aggr_vreg->regulator_hw_type
+			= RPMH_REGULATOR_HW_TYPE_PMIC7_BOB;
+	} else {
+		aggr_vreg_err(aggr_vreg, "unknown qcom,regulator-type = %s\n",
+				type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
  * rpmh_regulator_parse_vrm_modes() - parse the supported mode configurations
  *		for a VRM RPMh resource from device tree
  * @aggr_vreg:		Pointer to the aggregated rpmh regulator resource
@@ -1448,35 +1545,9 @@ static int rpmh_regulator_parse_vrm_modes(struct rpmh_aggr_vreg *aggr_vreg)
 		return rc;
 	}
 
-	if (!strcmp(type, "pmic4-ldo")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC4_LDO;
-	} else if (!strcmp(type, "pmic4-hfsmps")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC4_HFSMPS;
-	} else if (!strcmp(type, "pmic4-ftsmps")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC4_FTSMPS;
-	} else if (!strcmp(type, "pmic4-bob")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC4_BOB;
-	} else if (!strcmp(type, "pmic5-ldo")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC5_LDO;
-	} else if (!strcmp(type, "pmic5-hfsmps")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC5_HFSMPS;
-	} else if (!strcmp(type, "pmic5-ftsmps")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC5_FTSMPS;
-	} else if (!strcmp(type, "pmic5-bob")) {
-		aggr_vreg->regulator_hw_type
-			= RPMH_REGULATOR_HW_TYPE_PMIC5_BOB;
-	} else {
-		aggr_vreg_err(aggr_vreg, "unknown %s = %s\n",
-				prop, type);
-		return -EINVAL;
-	}
+	rc = rpmh_regulator_parse_hw_type(aggr_vreg, type);
+	if (rc)
+		return rc;
 
 	map = rpmh_regulator_mode_map[aggr_vreg->regulator_hw_type];
 
