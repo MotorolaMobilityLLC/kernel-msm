@@ -1,6 +1,6 @@
-load(":target_variants.bzl", "lxc_variants")
-load(":msm_kernel_lxc.bzl", "define_msm_lxc")
 load(":image_opts.bzl", "boot_image_opts")
+load(":msm_kernel_lxc.bzl", "define_msm_lxc")
+load(":target_variants.bzl", "lxc_variants")
 
 target_name = "autogvm"
 
