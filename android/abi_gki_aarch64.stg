@@ -298539,6 +298539,12 @@ function {
   parameter_id: 0x054f691a
 }
 function {
+  id: 0x147ac3d5
+  return_type_id: 0x48b5725f
+  parameter_id: 0x12191e2a
+  parameter_id: 0x19357319
+}
+function {
   id: 0x147c9fd8
   return_type_id: 0x48b5725f
   parameter_id: 0x1393392e
@@ -324323,6 +324329,12 @@ function {
   return_type_id: 0x6720d32f
   parameter_id: 0x1e870478
   parameter_id: 0xf017819f
+}
+function {
+  id: 0x99e350e4
+  return_type_id: 0x6720d32f
+  parameter_id: 0x12191e2a
+  parameter_id: 0x397d1060
 }
 function {
   id: 0x99e386dd
@@ -386393,6 +386405,15 @@ elf_symbol {
   full_name: "mii_check_media"
 }
 elf_symbol {
+  id: 0x399512e2
+  name: "mii_ethtool_get_link_ksettings"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x9d480e3b
+  type_id: 0x147ac3d5
+  full_name: "mii_ethtool_get_link_ksettings"
+}
+elf_symbol {
   id: 0xbc90165b
   name: "mii_ethtool_gset"
   is_defined: true
@@ -386400,6 +386421,15 @@ elf_symbol {
   crc: 0xc42b22b3
   type_id: 0x142e3633
   full_name: "mii_ethtool_gset"
+}
+elf_symbol {
+  id: 0x69f7fc4b
+  name: "mii_ethtool_set_link_ksettings"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x14505b9c
+  type_id: 0x99e350e4
+  full_name: "mii_ethtool_set_link_ksettings"
 }
 elf_symbol {
   id: 0x863e9436
@@ -422709,7 +422739,9 @@ interface {
   symbol_id: 0x89c6398f
   symbol_id: 0xbad16ab3
   symbol_id: 0x68c3a63b
+  symbol_id: 0x399512e2
   symbol_id: 0xbc90165b
+  symbol_id: 0x69f7fc4b
   symbol_id: 0x863e9436
   symbol_id: 0x1579ecd2
   symbol_id: 0xe4572a81
