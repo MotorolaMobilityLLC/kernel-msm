@@ -387,6 +387,10 @@ static int relinquish_walker(const struct kvm_pgtable_visit_ctx *ctx,
 	if (!kvm_pte_valid(pte))
 		return 0;
 
+	/* We don't support splitting non-leaf mappings */
+	if (ctx->level != (KVM_PGTABLE_MAX_LEVELS - 1))
+		return 0;
+
 	state = pkvm_getstate(kvm_pgtable_stage2_pte_prot(pte));
 	if (state != data->expected_state)
 		return -EPERM;
