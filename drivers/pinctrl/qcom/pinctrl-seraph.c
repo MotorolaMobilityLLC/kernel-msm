@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -2178,8 +2178,20 @@ static const struct msm_pinctrl_soc_data seraph_pinctrl = {
 	.egpio_func = 11,
 };
 
+static const struct msm_pinctrl_soc_data seraph_vm_pinctrl = {
+	.pins = seraph_pins,
+	.npins = ARRAY_SIZE(seraph_pins),
+	.functions = seraph_functions,
+	.nfunctions = ARRAY_SIZE(seraph_functions),
+	.groups = seraph_groups,
+	.ngroups = ARRAY_SIZE(seraph_groups),
+	.ngpios = 132,
+	.egpio_func = 11,
+};
+
 static const struct of_device_id seraph_pinctrl_of_match[] = {
 	{ .compatible = "qcom,seraph-pinctrl", .data = &seraph_pinctrl},
+	{ .compatible = "qcom,seraph-vm-pinctrl", .data = &seraph_vm_pinctrl},
 	{},
 };
 
@@ -2219,3 +2231,4 @@ module_exit(seraph_pinctrl_exit);
 MODULE_DESCRIPTION("QTI seraph pinctrl driver");
 MODULE_LICENSE("GPL");
 MODULE_DEVICE_TABLE(of, seraph_pinctrl_of_match);
+MODULE_SOFTDEP("pre: qcom_tlmm_vm_irqchip");
