@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "hgsl_memory.h"
@@ -25,7 +25,7 @@ static struct sg_table *hgsl_get_sgt_internal(struct hgsl_mem_node *mem_node)
 	struct sg_table *sgt;
 	int ret = 0;
 
-	if (!mem_node) {
+	if (!mem_node || !mem_node->pages || mem_node->page_count == 0) {
 		sgt = ERR_PTR(-EINVAL);
 		goto out;
 	}
