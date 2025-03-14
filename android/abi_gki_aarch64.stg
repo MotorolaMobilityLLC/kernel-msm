@@ -413688,6 +413688,15 @@ elf_symbol {
   full_name: "register_tcf_proto_ops"
 }
 elf_symbol {
+  id: 0x77a96df6
+  name: "register_tracepoint_module_notifier"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4e2d2cd4
+  type_id: 0x9b6d4a33
+  full_name: "register_tracepoint_module_notifier"
+}
+elf_symbol {
   id: 0x49b7d4e1
   name: "register_virtio_device"
   is_defined: true
@@ -441173,6 +441182,7 @@ interface {
   symbol_id: 0x4268401e
   symbol_id: 0xe7ab0439
   symbol_id: 0xf62fefe0
+  symbol_id: 0x77a96df6
   symbol_id: 0x49b7d4e1
   symbol_id: 0x3e36e803
   symbol_id: 0xfb6bc213

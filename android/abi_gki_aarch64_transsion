@@ -1,4 +1,7 @@
 [abi_symbol_list]
+# commonly used symbols
+  register_tracepoint_module_notifier
+
 # required by tran block module
   __percpu_counter_init_many
   __percpu_counter_sum
