@@ -10,6 +10,7 @@
 #include <linux/mailbox_controller.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/ipc_logging.h>
 
 #include <dt-bindings/mailbox/qcom-ipcc.h>
 
@@ -27,6 +28,12 @@
 #define IPCC_CLIENT_ID_MASK		GENMASK(31, 16)
 
 #define IPCC_NO_PENDING_IRQ		GENMASK(31, 0)
+
+#define IPCC_IPC_LOG_PAGE_CNT		1024
+static void *ipcc_ilc = NULL;
+
+#define IPCC_INFO(x,...)	\
+	ipc_log_string(ipcc_ilc, "[%s]: "x, __func__, ##__VA_ARGS__)
 
 /**
  * struct qcom_ipcc_chan_info - Per-mailbox-channel info
@@ -79,10 +86,13 @@ static irqreturn_t qcom_ipcc_irq_fn(int irq, void *data)
 
 	for (;;) {
 		hwirq = readl(ipcc->base + IPCC_REG_RECV_ID);
-		if (hwirq == IPCC_NO_PENDING_IRQ)
+		if (hwirq == IPCC_NO_PENDING_IRQ) {
+			IPCC_INFO("read IPCC_NO_PENDING_IRQ\n");
 			break;
+		}
 
 		virq = irq_find_mapping(ipcc->irq_domain, hwirq);
+		IPCC_INFO("hwirq: 0x%x, virq: %d\n",hwirq, virq);
 		writel(hwirq, ipcc->base + IPCC_REG_RECV_SIGNAL_CLEAR);
 		generic_handle_irq(virq);
 	}
@@ -96,6 +106,7 @@ static void qcom_ipcc_mask_irq(struct irq_data *irqd)
 	irq_hw_number_t hwirq = irqd_to_hwirq(irqd);
 
 	writel(hwirq, ipcc->base + IPCC_REG_RECV_SIGNAL_DISABLE);
+	IPCC_INFO("hwirq: 0x%lx\n", hwirq);
 }
 
 static void qcom_ipcc_unmask_irq(struct irq_data *irqd)
@@ -104,6 +115,7 @@ static void qcom_ipcc_unmask_irq(struct irq_data *irqd)
 	irq_hw_number_t hwirq = irqd_to_hwirq(irqd);
 
 	writel(hwirq, ipcc->base + IPCC_REG_RECV_SIGNAL_ENABLE);
+	IPCC_INFO("hwirq: 0x%lx\n", hwirq);
 }
 
 static struct irq_chip qcom_ipcc_irq_chip = {
@@ -153,12 +165,9 @@ static int qcom_ipcc_mbox_send_data(struct mbox_chan *chan, void *data)
 
 	hwirq = qcom_ipcc_get_hwirq(mchan->client_id, mchan->signal_id);
 	writel(hwirq, ipcc->base + IPCC_REG_SEND_ID);
-
-	/* All data writes need to be flushed to memory before the write index
-	 * is updated. This protects against a race condition where the remote
-	 * reads stale data because the write index was written before the data.
-	 */
 	wmb();
+	(void)readl(ipcc->base + IPCC_REG_RECV_ID);
+	IPCC_INFO("hwirq: 0x%x\n", hwirq);
 
 	return 0;
 }
@@ -268,11 +277,14 @@ static int qcom_ipcc_pm_resume(struct device *dev)
 	int virq;
 
 	hwirq = readl(ipcc->base + IPCC_REG_RECV_ID);
-	if (hwirq == IPCC_NO_PENDING_IRQ)
+	if (hwirq == IPCC_NO_PENDING_IRQ) {
+		IPCC_INFO("IPCC_NO_PENDING_IRQ\n");
 		return 0;
+	}
 
 	virq = irq_find_mapping(ipcc->irq_domain, hwirq);
 
+	IPCC_INFO("hwirq: 0x%x, virq: %d triggered\n", hwirq, virq);
 	dev_dbg(dev, "virq: %d triggered client-id: %ld; signal-id: %ld\n", virq,
 		FIELD_GET(IPCC_CLIENT_ID_MASK, hwirq), FIELD_GET(IPCC_SIGNAL_ID_MASK, hwirq));
 
@@ -338,6 +350,8 @@ static int qcom_ipcc_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ipcc);
 
+	ipcc_ilc = ipc_log_context_create(1024, "ipcc", 0);
+
 	return 0;
 
 err_req_irq:
@@ -352,6 +366,9 @@ err_mbox:
 static int qcom_ipcc_remove(struct platform_device *pdev)
 {
 	struct qcom_ipcc *ipcc = platform_get_drvdata(pdev);
+
+	if (ipcc_ilc)
+		ipc_log_context_destroy(ipcc_ilc);
 
 	disable_irq_wake(ipcc->irq);
 	irq_domain_remove(ipcc->irq_domain);
