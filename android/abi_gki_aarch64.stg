@@ -375015,6 +375015,15 @@ elf_symbol {
   full_name: "folio_clear_dirty_for_io"
 }
 elf_symbol {
+  id: 0x4ac51913
+  name: "folio_mapcount"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x77eeba8a
+  type_id: 0x95dcd734
+  full_name: "folio_mapcount"
+}
+elf_symbol {
   id: 0x159a69a3
   name: "folio_mapping"
   is_defined: true
@@ -421512,6 +421521,7 @@ interface {
   symbol_id: 0x3c7c2553
   symbol_id: 0x06c58be7
   symbol_id: 0xab55569c
+  symbol_id: 0x4ac51913
   symbol_id: 0x159a69a3
   symbol_id: 0xcef0ca54
   symbol_id: 0x39840ab2
