@@ -847,6 +847,7 @@ int folio_mapcount(struct folio *folio)
 		ret -= nr;
 	return ret;
 }
+EXPORT_SYMBOL_GPL(folio_mapcount);
 
 /**
  * folio_copy - Copy the contents of one folio to another.
