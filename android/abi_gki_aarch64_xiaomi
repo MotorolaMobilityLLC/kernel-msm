@@ -352,6 +352,14 @@
   blk_crypto_evict_key
   blk_crypto_init_key
   blk_crypto_start_using_key
+  mem_cgroup_move_account
+  cgroup_rm_cftypes
+  __traceiter_android_vh_mem_cgroup_charge
+  __traceiter_android_vh_filemap_add_folio
+  __traceiter_android_vh_shrink_node
+  __tracepoint_android_vh_mem_cgroup_charge
+  __tracepoint_android_vh_filemap_add_folio
+  __tracepoint_android_vh_shrink_node
 
 #required by mi_asap.ko
   __traceiter_android_vh_read_pages
