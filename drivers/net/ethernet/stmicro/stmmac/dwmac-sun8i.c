@@ -342,7 +342,8 @@ static void sun8i_dwmac_dump_regs(struct stmmac_priv *priv,
  * Called from stmmac_ops->dump_regs
  * Used for ethtool
  */
-static void sun8i_dwmac_dump_mac_regs(struct mac_device_info *hw,
+static void sun8i_dwmac_dump_mac_regs(struct stmmac_priv *priv,
+				      struct mac_device_info *hw,
 				      u32 *reg_space)
 {
 	int i;

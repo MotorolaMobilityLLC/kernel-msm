@@ -85,7 +85,8 @@ static int dwmac1000_rx_ipc_enable(struct mac_device_info *hw)
 	return !!(value & GMAC_CONTROL_IPC);
 }
 
-static void dwmac1000_dump_regs(struct mac_device_info *hw, u32 *reg_space)
+static void dwmac1000_dump_regs(struct stmmac_priv *priv, struct mac_device_info *hw,
+				u32 *reg_space)
 {
 	void __iomem *ioaddr = hw->pcsr;
 	int i;
