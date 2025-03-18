@@ -49,9 +49,9 @@ static struct alpha_pll_config gpu_cc_pll0_config = {
 	.cal_l = 0x48,
 	.alpha = 0x7555,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000400,
+	.user_ctl_val = 0x00000408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -74,7 +74,7 @@ static struct clk_alpha_pll gpu_cc_pll0 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
