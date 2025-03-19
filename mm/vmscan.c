@@ -2709,6 +2709,8 @@ static void shrink_active_list(unsigned long nr_to_scan,
 		}
 
 		trace_android_vh_page_referenced_check_bypass(folio, nr_to_scan, lru, &bypass);
+		trace_android_vh_folio_referenced_check_bypass(folio, sc->priority,
+					     nr_to_scan, lru, &bypass);
 		if (bypass)
 			goto skip_folio_referenced;
 		trace_android_vh_folio_trylock_set(folio);
