@@ -73,7 +73,6 @@ def define_sdmsteppeauto():
         "drivers/irqchip/qcom-pdc.ko",
         "drivers/mailbox/msm_qmp.ko",
         "drivers/mailbox/qcom-apcs-ipc-mailbox.ko",
-        "drivers/md/dm-bow.ko",
         "drivers/mfd/qcom-spmi-pmic.ko",
         "drivers/misc/bootmarker_proxy.ko",
         "drivers/misc/qseecom_proxy.ko",
