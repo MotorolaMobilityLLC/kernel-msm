@@ -49,7 +49,11 @@
 #define PCIE_VENDOR_ID_QCOM (0x17cb)
 
 #define PCIE20_PARF_DBI_BASE_ADDR (0x350)
+#define PCIE20_PARF_DBI_BASE_ADDR_HI (0x354)
 #define PCIE20_PARF_SLV_ADDR_SPACE_SIZE (0x358)
+#define PCIE20_PARF_SLV_ADDR_SPACE_SIZE_HI (0x35c)
+#define PCIE20_PARF_ATU_BASE_ADDR (0x634)
+#define PCIE20_PARF_ATU_BASE_ADDR_HI (0x638)
 
 #define PCIE_GEN3_PRESET_DEFAULT (0x55555555)
 #define PCIE_GEN3_SPCIE_CAP (0x0154)
@@ -1170,7 +1174,6 @@ struct msm_pcie_dev_t {
 	uint32_t ep_latency;
 	uint32_t switch_latency;
 	uint32_t wr_halt_size;
-	uint32_t slv_addr_space_size;
 	uint32_t phy_status_offset;
 	uint32_t phy_status_bit;
 	uint32_t phy_power_down_offset;
@@ -2156,8 +2159,6 @@ static void msm_pcie_show_status(struct msm_pcie_dev_t *dev)
 		dev->switch_latency);
 	PCIE_DBG_FS(dev, "wr_halt_size: 0x%x\n",
 		dev->wr_halt_size);
-	PCIE_DBG_FS(dev, "slv_addr_space_size: 0x%x\n",
-		dev->slv_addr_space_size);
 	PCIE_DBG_FS(dev, "PCIe: bdf_halt_dis is %d\n",
 		dev->pcie_bdf_halt_dis);
 	PCIE_DBG_FS(dev, "PCIe: halt_feature_dis is %d\n",
@@ -6102,6 +6103,37 @@ static void ntn3_de_emphasis_wa(struct pcie_i2c_ctrl *i2c_ctrl)
 }
 #endif
 
+static void msm_pcie_disable_dbi_mirroring(struct msm_pcie_dev_t *dev)
+{
+	struct resource *dbi_res = dev->res[MSM_PCIE_RES_DM_CORE].resource;
+	struct resource *atu_res = dev->res[MSM_PCIE_RES_IATU].resource;
+	u32 slv_addr_space_size = 0x80000000;
+
+	/* Configure DBI base address */
+	msm_pcie_write_reg(dev->parf, PCIE20_PARF_DBI_BASE_ADDR,
+				PCIE_LOWER_ADDR(dbi_res->start));
+
+	msm_pcie_write_reg(dev->parf, PCIE20_PARF_DBI_BASE_ADDR_HI,
+				PCIE_UPPER_ADDR(dbi_res->start));
+
+	/* Configure ATU base address */
+	msm_pcie_write_reg(dev->parf, PCIE20_PARF_ATU_BASE_ADDR,
+				PCIE_LOWER_ADDR(atu_res->start));
+
+	msm_pcie_write_reg(dev->parf, PCIE20_PARF_ATU_BASE_ADDR_HI,
+				PCIE_UPPER_ADDR(atu_res->start));
+
+	/*
+	 * Program PCIE20_PARF_SLV_ADDR_SPACE_SIZE by setting the highest
+	 * bit (only powers of 2 are valid) so that the DBI/ATU/BAR memory
+	 * doesn't get mirrored to the higher addresses
+	 */
+	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE, 0x0);
+
+	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE_HI,
+							slv_addr_space_size);
+}
+
 static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 {
 	int ret = 0;
@@ -6117,9 +6149,6 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 
 	/* enable PCIe clocks and resets */
 	msm_pcie_write_mask(dev->parf + PCIE20_PARF_PHY_CTRL, BIT(0), 0);
-
-	/* change DBI base address */
-	msm_pcie_write_reg(dev->parf, PCIE20_PARF_DBI_BASE_ADDR, 0);
 
 	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SYS_CTRL, 0x365E);
 
@@ -6148,8 +6177,7 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 		dev->rc_idx,
 		readl_relaxed(dev->parf + PCIE20_PARF_INT_ALL_MASK));
 
-	msm_pcie_write_reg(dev->parf, PCIE20_PARF_SLV_ADDR_SPACE_SIZE,
-				dev->slv_addr_space_size);
+	msm_pcie_disable_dbi_mirroring(dev);
 
 	if (dev->pcie_halt_feature_dis) {
 		/* Disable PCIe Wr halt window */
@@ -8583,12 +8611,6 @@ static void msm_pcie_read_dt(struct msm_pcie_dev_t *pcie_dev, int rc_idx,
 							"qcom,gdsc-clk-drv-ss-nonvotable");
 	PCIE_DBG(pcie_dev, "Gdsc clk is %s votable during drv hand over.\n",
 			pcie_dev->gdsc_clk_drv_ss_nonvotable ? "not" : "");
-
-	pcie_dev->slv_addr_space_size = SZ_16M;
-	of_property_read_u32(of_node, "qcom,slv-addr-space-size",
-				&pcie_dev->slv_addr_space_size);
-	PCIE_DBG(pcie_dev, "RC%d: slv-addr-space-size: 0x%x.\n",
-		pcie_dev->rc_idx, pcie_dev->slv_addr_space_size);
 
 	of_property_read_u32(of_node, "qcom,num-parf-testbus-sel",
 				&pcie_dev->num_parf_testbus_sel);
