@@ -1262,6 +1262,7 @@
   __traceiter_android_vh_cpufreq_online
   __traceiter_android_vh_update_topology_flags_workfn
   __traceiter_binder_transaction_received
+  __traceiter_android_vh_alloc_swap_slot_cache
   __traceiter_cpu_frequency_limits
   __tracepoint_android_rvh_account_irq
   __tracepoint_android_rvh_after_dequeue_task
@@ -1289,6 +1290,7 @@
   __tracepoint_android_vh_update_topology_flags_workfn
   __tracepoint_binder_transaction_received
   __tracepoint_cpu_frequency_limits
+  __tracepoint_android_vh_alloc_swap_slot_cache
   tracing_off
   tracing_on
   try_module_get

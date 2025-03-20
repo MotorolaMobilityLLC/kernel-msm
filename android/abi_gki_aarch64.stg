@@ -360227,6 +360227,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_alloc_swap_folio_gfp"
 }
 elf_symbol {
+  id: 0x535cd6af
+  name: "__traceiter_android_vh_alloc_swap_slot_cache"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x01c26555
+  type_id: 0x9bcd4ff7
+  full_name: "__traceiter_android_vh_alloc_swap_slot_cache"
+}
+elf_symbol {
   id: 0x9c240ef1
   name: "__traceiter_android_vh_alloc_uid"
   is_defined: true
@@ -367065,6 +367074,15 @@ elf_symbol {
   crc: 0x8785221f
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_alloc_swap_folio_gfp"
+}
+elf_symbol {
+  id: 0x9f919fe5
+  name: "__tracepoint_android_vh_alloc_swap_slot_cache"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xd7f79eaf
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_alloc_swap_slot_cache"
 }
 elf_symbol {
   id: 0xea695d5b
@@ -435251,6 +435269,7 @@ interface {
   symbol_id: 0xf3650061
   symbol_id: 0x23d552d4
   symbol_id: 0xb76179f4
+  symbol_id: 0x535cd6af
   symbol_id: 0x9c240ef1
   symbol_id: 0x505f4289
   symbol_id: 0xd5431a65
@@ -436011,6 +436030,7 @@ interface {
   symbol_id: 0xff9480af
   symbol_id: 0xa47162fe
   symbol_id: 0xa3337e72
+  symbol_id: 0x9f919fe5
   symbol_id: 0xea695d5b
   symbol_id: 0xd82141b7
   symbol_id: 0xe520cb67
