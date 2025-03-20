@@ -16,7 +16,7 @@ body:
       label: Build ID
       description: Provide the device's Build ID.
       placeholder: |
-        💡 You find it in the System Config.
+        💡 You find it in the System Config and also in the property ro.build.id
         It is a group of letters and numbers that look like these:
         RRA31.Q3-19-19, S1RD32.55-33, S0RCS32.41-10-9-2, T2TZ33.28-16-19.
     validations:
@@ -27,7 +27,7 @@ body:
       label: Build fingerprint
       description: Provide the fingerprint for the desired Build ID.
       placeholder: |
-        🔍 You find it in the System Config.
+        🔍 You find it in the property ro.build.fingerprint
         It is long string that look like this: motorola/dubai_g/dubai:12/S1RD32.55-33/91483-c0e0a7:user/release-keys
         It will not identify your device. It helps us locate exactly the sw version you want
     validations:
