@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include <dt-bindings/regulator/qcom,rpmh-regulator-levels.h>
 #include <dt-bindings/interconnect/qcom,icc.h>
@@ -3821,9 +3821,6 @@ static int msm_pcie_rd_conf(struct pci_bus *bus, u32 devfn, int where,
 {
 	int ret = msm_pcie_oper_conf(bus, devfn, RD, where, size, val);
 
-	if ((bus->number == 0) && (where == PCI_CLASS_REVISION))
-		*val = (*val & 0xff) | (PCI_CLASS_BRIDGE_PCI << 16);
-
 	return ret;
 }
 
@@ -6103,6 +6100,19 @@ static void ntn3_de_emphasis_wa(struct pcie_i2c_ctrl *i2c_ctrl)
 }
 #endif
 
+/* RC do not represent the right class; set it to PCI_CLASS_BRIDGE_PCI_NORMAL */
+static void msm_pcie_set_root_port_class(struct msm_pcie_dev_t *dev)
+{
+	/* enable write access to RO register */
+	msm_pcie_write_mask(dev->dm_core + PCIE_GEN3_MISC_CONTROL, 0, BIT(0));
+
+	msm_pcie_write_mask(dev->dm_core + PCI_CLASS_REVISION,
+			0xFFFFFF << 8, PCI_CLASS_BRIDGE_PCI_NORMAL << 8);
+
+	/* disable write access to RO register */
+	msm_pcie_write_mask(dev->dm_core + PCIE_GEN3_MISC_CONTROL, BIT(0), 0);
+}
+
 static void msm_pcie_disable_dbi_mirroring(struct msm_pcie_dev_t *dev)
 {
 	struct resource *dbi_res = dev->res[MSM_PCIE_RES_DM_CORE].resource;
@@ -6233,6 +6243,8 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 		if (ret)
 			return ret;
 	}
+
+	msm_pcie_set_root_port_class(dev);
 
 	/* Disable override for fal10_veto logic to de-assert Qactive signal */
 	msm_pcie_write_mask(dev->parf + PCIE20_PARF_CFG_BITS_3, BIT(0), 0);
@@ -9855,9 +9867,7 @@ static int msm_pci_probe(struct pci_dev *pci_dev,
 }
 
 static struct pci_device_id msm_pci_device_id[] = {
-	{PCI_DEVICE(0x17cb, 0x0108)},
-	{PCI_DEVICE(0x17cb, 0x010b)},
-	{PCI_DEVICE(0x17cb, 0x010c)},
+	{PCI_DEVICE_CLASS(PCI_CLASS_BRIDGE_PCI_NORMAL, ~0x0)},
 	{0},
 };
 
@@ -10319,18 +10329,6 @@ static void __exit pcie_exit(void)
 
 subsys_initcall_sync(pcie_init);
 module_exit(pcie_exit);
-
-/* RC do not represent the right class; set it to PCI_CLASS_BRIDGE_PCI */
-static void msm_pcie_fixup_early(struct pci_dev *dev)
-{
-	struct msm_pcie_dev_t *pcie_dev = PCIE_BUS_PRIV_DATA(dev->bus);
-
-	PCIE_DBG(pcie_dev, "hdr_type %d\n", dev->hdr_type);
-	if (pci_is_root_bus(dev->bus))
-		dev->class = (dev->class & 0xff) | (PCI_CLASS_BRIDGE_PCI << 8);
-}
-DECLARE_PCI_FIXUP_EARLY(PCIE_VENDOR_ID_QCOM, PCI_ANY_ID,
-			msm_pcie_fixup_early);
 
 static void __msm_pcie_l1ss_timeout_disable(struct msm_pcie_dev_t *pcie_dev)
 {
