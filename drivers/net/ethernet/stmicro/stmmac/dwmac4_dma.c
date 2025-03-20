@@ -145,7 +145,7 @@ static void dwmac410_dma_init_channel(struct stmmac_priv *priv,
 	       ioaddr + DMA_CHAN_INTR_ENA(chan));
 }
 
-static void dwmac4_dma_init(void __iomem *ioaddr,
+static void dwmac4_dma_init(struct stmmac_priv *priv, void __iomem *ioaddr,
 			    struct stmmac_dma_cfg *dma_cfg, int atds)
 {
 	u32 value = readl(ioaddr + DMA_SYS_BUS_MODE);

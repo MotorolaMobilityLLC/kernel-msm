@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/*Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.*/
+/*Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
 #ifndef	_DWMAC_QCOM_ETHQOS_H
 #define	_DWMAC_QCOM_ETHQOS_H
 
@@ -115,6 +115,9 @@ struct ethqos_emac_por {
 struct ethqos_emac_driver_data {
 	struct ethqos_emac_por *por;
 	unsigned int num_por;
+	struct dwxgmac_addrs dwxgmac_addrs;
+	u32 dma_addr_width;
+	bool has_hdma;
 };
 
 struct qcom_ethqos {
@@ -128,6 +131,7 @@ struct qcom_ethqos {
 	struct clk *sgmiref_clk;
 
 	unsigned int speed;
+	int interface;
 
 	int gpio_phy_intr_redirect;
 	u32 phy_intr;
@@ -146,6 +150,9 @@ struct qcom_ethqos {
 	int pps_class_b_irq;
 
 	struct pinctrl_state *emac_pps_0;
+
+	bool use_domains;
+	struct dev_pm_domain_list *pd_list;
 
 	/* state of enabled wol options in PHY*/
 	u32 phy_wol_wolopts;

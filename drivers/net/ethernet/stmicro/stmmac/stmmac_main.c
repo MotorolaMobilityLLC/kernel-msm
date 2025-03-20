@@ -1144,6 +1144,15 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 		case SPEED_2500:
 			ctrl |= priv->hw->link.xgmii.speed2500;
 			break;
+		case SPEED_1000:
+			ctrl |= priv->hw->link.speed1000;
+			break;
+		case SPEED_100:
+			ctrl |= priv->hw->link.speed100;
+			break;
+		case SPEED_10:
+			ctrl |= priv->hw->link.speed10;
+			break;
 		default:
 			return;
 		}
@@ -3183,9 +3192,11 @@ static void stmmac_check_ether_addr(struct stmmac_priv *priv)
  */
 static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 {
-	u32 rx_channels_count = priv->plat->rx_queues_to_use;
-	u32 tx_channels_count = priv->plat->tx_queues_to_use;
-	u32 dma_csr_ch = max(rx_channels_count, tx_channels_count);
+	u32 rx_channels_enabled = priv->plat->rx_queues_to_use;
+	u32 tx_channels_enabled = priv->plat->tx_queues_to_use;
+	u32 rx_channels_supported = priv->dma_cap.number_rx_channel;
+	u32 tx_channels_supported = priv->dma_cap.number_tx_channel;
+	u32 dma_csr_ch = max(rx_channels_enabled, tx_channels_enabled);
 	struct stmmac_rx_queue *rx_q;
 	struct stmmac_tx_queue *tx_q;
 	u32 chan = 0;
@@ -3219,7 +3230,7 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 	}
 
 	/* DMA RX Channel Configuration */
-	for (chan = 0; chan < rx_channels_count; chan++) {
+	for (chan = 0; chan < rx_channels_enabled; chan++) {
 		rx_q = &priv->dma_conf.rx_queue[chan];
 
 		stmmac_init_rx_chan(priv, priv->ioaddr, priv->plat->dma_cfg,
@@ -3233,7 +3244,7 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 	}
 
 	/* DMA TX Channel Configuration */
-	for (chan = 0; chan < tx_channels_count; chan++) {
+	for (chan = 0; chan < tx_channels_enabled ; chan++) {
 		tx_q = &priv->dma_conf.tx_queue[chan];
 
 		stmmac_init_tx_chan(priv, priv->ioaddr, priv->plat->dma_cfg,
@@ -3242,6 +3253,18 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 		tx_q->tx_tail_addr = tx_q->dma_tx_phy;
 		stmmac_set_tx_tail_ptr(priv, priv->ioaddr,
 				       tx_q->tx_tail_addr, chan);
+	}
+
+	if (priv->plat->has_hdma) {
+		/* DMA RX Mapping Configuration for offline channels */
+		for (chan = rx_channels_enabled; chan < rx_channels_supported; chan++)
+			stmmac_map_rx_offline_chan(priv, priv->ioaddr, priv->plat->dma_cfg, chan);
+
+		/* DMA TX Mapping Configuration for offline channels */
+		for (chan = tx_channels_enabled; chan < tx_channels_supported; chan++)
+			stmmac_map_tx_offline_chan(priv, priv->ioaddr, priv->plat->dma_cfg, chan);
+
+		stmmac_desc_cache_compute(priv, priv->ioaddr);
 	}
 
 	return ret;

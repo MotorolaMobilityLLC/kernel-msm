@@ -34,6 +34,7 @@ enum dma_ch_ind_modes {
 #define XXVGMAC_ORRQ			GENMASK(13, 8)
 
 /* RX Config definitions */
+#define XXVGMAC_RXPEN			BIT(31)
 #define XXVGMAC_RXPBL			GENMASK(29, 24)
 #define XXVGMAC_RPBLX8_MODE		BIT(19)
 #define XXVGMAC_RP2TCMP			GENMASK(18, 16)
@@ -41,29 +42,11 @@ enum dma_ch_ind_modes {
 
 /* Tx Descriptor control */
 #define XXVGMAC_TXDCSZ			GENMASK(2, 0)
-#define XXVGMAC_TXDCSZ_0BYTES		0
-#define XXVGMAC_TXDCSZ_64BYTES		1
-#define XXVGMAC_TXDCSZ_128BYTES		2
-#define XXVGMAC_TXDCSZ_256BYTES		3
 #define XXVGMAC_TDPS			GENMASK(5, 3)
-#define XXVGMAC_TDPS_ZERO		0
-#define XXVGMAC_TDPS_1_8TH		1
-#define XXVGMAC_TDPS_1_4TH		2
-#define XXVGMAC_TDPS_HALF		3
-#define XXVGMAC_TDPS_3_4TH		4
 
 /* Rx Descriptor control */
 #define XXVGMAC_RXDCSZ			GENMASK(2, 0)
-#define XXVGMAC_RXDCSZ_0BYTES		0
-#define XXVGMAC_RXDCSZ_64BYTES		1
-#define XXVGMAC_RXDCSZ_128BYTES		2
-#define XXVGMAC_RXDCSZ_256BYTES		3
 #define XXVGMAC_RDPS			GENMASK(5, 3)
-#define XXVGMAC_RDPS_ZERO		0
-#define XXVGMAC_RDPS_1_8TH		1
-#define XXVGMAC_RDPS_1_4TH		2
-#define XXVGMAC_RDPS_HALF		3
-#define XXVGMAC_RDPS_3_4TH		4
 
 /* DWCXG_DMA_CH(#i) Registers*/
 #define XXVGMAC_DSL			GENMASK(20, 18)
@@ -78,7 +61,7 @@ enum dma_ch_ind_modes {
 
 u32 dw25gmac_decode_vdma_count(u32 regval);
 
-void dw25gmac_dma_init(void __iomem *ioaddr,
+void dw25gmac_dma_init(struct stmmac_priv *priv, void __iomem *ioaddr,
 		       struct stmmac_dma_cfg *dma_cfg, int atds);
 
 void dw25gmac_dma_init_tx_chan(struct stmmac_priv *priv,
@@ -89,4 +72,13 @@ void dw25gmac_dma_init_rx_chan(struct stmmac_priv *priv,
 			       void __iomem *ioaddr,
 			       struct stmmac_dma_cfg *dma_cfg,
 			       dma_addr_t dma_addr, u32 chan);
+void dw25gmac_dma_map_tx_offline_chan(struct stmmac_priv *priv,
+				      void __iomem *ioaddr,
+				      struct stmmac_dma_cfg *dma_cfg,
+				      u32 chan);
+void dw25gmac_dma_map_rx_offline_chan(struct stmmac_priv *priv,
+				      void __iomem *ioaddr,
+				      struct stmmac_dma_cfg *dma_cfg,
+				      u32 chan);
+void dw25gmac_desc_cache_compute(void __iomem *ioaddr);
 #endif /* __STMMAC_DW25GMAC_H__ */

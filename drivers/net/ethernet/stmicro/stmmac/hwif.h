@@ -167,7 +167,7 @@ struct dma_features;
 struct stmmac_dma_ops {
 	/* DMA core initialization */
 	int (*reset)(void __iomem *ioaddr);
-	void (*init)(void __iomem *ioaddr, struct stmmac_dma_cfg *dma_cfg,
+	void (*init)(struct stmmac_priv *priv, void __iomem *ioaddr, struct stmmac_dma_cfg *dma_cfg,
 		     int atds);
 	void (*init_chan)(struct stmmac_priv *priv, void __iomem *ioaddr,
 			  struct stmmac_dma_cfg *dma_cfg, u32 chan);
@@ -177,6 +177,13 @@ struct stmmac_dma_ops {
 	void (*init_tx_chan)(struct stmmac_priv *priv, void __iomem *ioaddr,
 			     struct stmmac_dma_cfg *dma_cfg,
 			     dma_addr_t phy, u32 chan);
+	void (*map_rx_offline_chan)(struct stmmac_priv *priv, void __iomem *ioaddr,
+				    struct stmmac_dma_cfg *dma_cfg,
+				    u32 chan);
+	void (*map_tx_offline_chan)(struct stmmac_priv *priv, void __iomem *ioaddr,
+				    struct stmmac_dma_cfg *dma_cfg,
+				    u32 chan);
+	void (*desc_cache_compute)(void __iomem *ioaddr);
 	/* Configure the AXI Bus Mode Register */
 	void (*axi)(void __iomem *ioaddr, struct stmmac_axi *axi);
 	/* Dump DMA registers */
@@ -234,13 +241,19 @@ struct stmmac_dma_ops {
 #define stmmac_reset(__priv, __args...) \
 	stmmac_do_callback(__priv, dma, reset, __args)
 #define stmmac_dma_init(__priv, __args...) \
-	stmmac_do_void_callback(__priv, dma, init, __args)
+	stmmac_do_void_callback(__priv, dma, init, __priv, __args)
 #define stmmac_init_chan(__priv, __args...) \
 	stmmac_do_void_callback(__priv, dma, init_chan, __priv, __args)
 #define stmmac_init_rx_chan(__priv, __args...) \
 	stmmac_do_void_callback(__priv, dma, init_rx_chan,  __priv, __args)
 #define stmmac_init_tx_chan(__priv, __args...) \
-	stmmac_do_void_callback(__priv, dma, init_tx_chan,  __priv, __args)
+	stmmac_do_void_callback(__priv, dma, init_tx_chan, __priv, __args)
+#define stmmac_map_rx_offline_chan(__priv, __args...) \
+	stmmac_do_void_callback(__priv, dma, map_rx_offline_chan, __priv, __args)
+#define stmmac_map_tx_offline_chan(__priv, __args...) \
+	stmmac_do_void_callback(__priv, dma, map_tx_offline_chan, __priv, __args)
+#define stmmac_desc_cache_compute(__priv, __args...) \
+	stmmac_do_void_callback(__priv, dma, desc_cache_compute, __args)
 #define stmmac_axi(__priv, __args...) \
 	stmmac_do_void_callback(__priv, dma, axi, __args)
 #define stmmac_dump_dma_regs(__priv, __args...) \
