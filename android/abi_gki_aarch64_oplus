@@ -194,6 +194,7 @@
   tcp_hashinfo
   tcp_reno_undo_cwnd
   touch_atime
+  __traceiter_android_rvh_do_madvise_bypass
   __traceiter_android_rvh_post_init_entity_util_avg
   __traceiter_android_rvh_rtmutex_force_update
   __traceiter_android_rvh_set_cpus_allowed_comm
@@ -358,6 +359,7 @@
   __traceiter_android_vh_filemap_pages
   __traceiter_android_rvh_kswapd_shrink_node
   __traceiter_android_rvh_perform_reclaim
+  __tracepoint_android_rvh_do_madvise_bypass
   __tracepoint_android_rvh_post_init_entity_util_avg
   __tracepoint_android_rvh_rtmutex_force_update
   __tracepoint_android_rvh_set_cpus_allowed_comm
