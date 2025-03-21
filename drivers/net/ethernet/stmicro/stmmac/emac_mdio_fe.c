@@ -36,7 +36,7 @@
 /*Virtio ID of EMAC*/
 #define VIRTIO_DT_QCOM_BASE         (49152)
 #define VIRTIO_DT_EMAC_MDIO         (VIRTIO_DT_QCOM_BASE + 12)
-#define WAIT_PHY_REPLY_MAX_TIMEOUT  (100)
+#define WAIT_PHY_REPLY_MAX_TIMEOUT  (2000)
 /* ========================================================================== */
 /*                         TYPE DECLARATIONS                                  */
 /* ========================================================================== */
@@ -64,9 +64,10 @@ struct phy_remote_access_t {
 	unsigned short phydata;
 };
 
-enum emac_mdio_fe_state_type {
-	EMAC_MDIO_FE_DOWN = 0,
-	EMAC_MDIO_FE_UP,
+enum emac_mdio_hw_state_type {
+	EMAC_MDIO_HW_STATE_UNKNOWN = -1,
+	EMAC_MDIO_HW_STATE_DOWN,
+	EMAC_MDIO_HW_STATE_UP,
 };
 
 struct be_to_fe_msg {
@@ -99,7 +100,7 @@ struct emac_mdio_dev {
 	struct fe_to_be_msg tx_msg;
 	struct be_to_fe_msg rx_msg[10];
 
-	enum emac_mdio_fe_state_type   emac_mdio_fe_state;
+	enum emac_mdio_hw_state_type   emac_mdio_hw_state;
 	struct semaphore               emac_mdio_fe_sem;
 	struct mutex                   emac_mdio_fe_lock; /* Used for mdio ready/write */
 	s32                            phy_reply;
@@ -112,15 +113,15 @@ enum EMAC_MDIO_FE_VIRTQ {
 };
 
 enum emac_mdio_fe_to_be_cmds {
-	VIRTIO_EMAC_MDIO_FE_DOWN = 0,
-	VIRTIO_EMAC_MDIO_FE_UP   = 1,
-	VIRTIO_EMAC_MDIO_FE_REQ  = 2,
+	EMAC_MDIO_FE_DOWN = 0,
+	EMAC_MDIO_FE_UP   = 1,
+	EMAC_MDIO_FE_REQ  = 2,
 };
 
 enum emac_mdio_be_to_fe_cmds {
-	VIRTIO_EMAC_MDIO_HW_DOWN  = 0,
-	VIRTIO_EMAC_MDIO_HW_UP    = 1,
-	VIRTIO_EMAC_MDIO_HW_REPLY = 2,
+	EMAC_MDIO_HW_DOWN  = 0,
+	EMAC_MDIO_HW_UP    = 1,
+	EMAC_MDIO_HW_REPLY = 2,
 };
 
 /* ========================================================================== */
@@ -132,7 +133,6 @@ static int emac_mdio_fe_probe(struct virtio_device *vdev);
 /*                          VARIABLE DEFINITIONS                              */
 /* ========================================================================== */
 static struct emac_mdio_dev *emac_mdio_fe_ctx;
-static struct emac_mdio_dev *emac_mdio_fe_pdev;
 
 static const struct virtio_device_id id_table[] = {
 	{ VIRTIO_DT_EMAC_MDIO, VIRTIO_DEV_ANY_ID },
@@ -224,18 +224,18 @@ static void emac_mdio_fe_update(struct emac_mdio_dev *pdev, struct be_to_fe_msg 
 	EMAC_MDIO_FE_DBG("Receive msg->cmd= %d", msg->cmd);
 
 	switch (msg->cmd) {
-	case VIRTIO_EMAC_MDIO_HW_DOWN:
-		EMAC_MDIO_FE_INFO("Notify VIRTIO_EMAC_MDIO_HW_DOWN");
-		pdev->emac_mdio_fe_state = EMAC_MDIO_FE_DOWN;
+	case EMAC_MDIO_HW_DOWN:
+		EMAC_MDIO_FE_INFO("Notify EMAC_MDIO_HW_DOWN");
+		pdev->emac_mdio_hw_state = EMAC_MDIO_HW_STATE_DOWN;
 		break;
 
-	case VIRTIO_EMAC_MDIO_HW_UP:
-		EMAC_MDIO_FE_INFO("Notify VIRTIO_EMAC_MDIO_HW_UP");
-		pdev->emac_mdio_fe_state = EMAC_MDIO_FE_UP;
+	case EMAC_MDIO_HW_UP:
+		EMAC_MDIO_FE_INFO("Notify EMAC_MDIO_HW_UP");
+		pdev->emac_mdio_hw_state = EMAC_MDIO_HW_STATE_UP;
 		break;
 
-	case VIRTIO_EMAC_MDIO_HW_REPLY:
-		EMAC_MDIO_FE_DBG("Notify VIRTIO_EMAC_MDIO_HW_REPLY");
+	case EMAC_MDIO_HW_REPLY:
+		EMAC_MDIO_FE_DBG("Notify EMAC_MDIO_HW_REPLY");
 		pdev->phy_reply = msg->result;
 		up(&pdev->emac_mdio_fe_sem);
 		break;
@@ -348,11 +348,14 @@ int virtio_mdio_read(struct mii_bus *bus, int addr, int regnum)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	int ret = 0;
 
+	if (emac_mdio_fe_ctx->emac_mdio_hw_state != EMAC_MDIO_HW_STATE_UP)
+		return -EIO;
+
 	if (atomic_read(&priv->plat->phy_clks_suspended))
 		return -EBUSY;
 
 	mutex_lock(&priv->lock);
-	mutex_lock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_lock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 
 	phy_request = &emac_mdio_fe_ctx->tx_msg.request_data;
 	memset(phy_request, 0, sizeof(*phy_request));
@@ -361,14 +364,14 @@ int virtio_mdio_read(struct mii_bus *bus, int addr, int regnum)
 	phy_request->phyaddr = addr;
 	phy_request->phyreg = regnum;
 
-	emac_mdio_fe_ctx->tx_msg.type = VIRTIO_EMAC_MDIO_FE_REQ;
+	emac_mdio_fe_ctx->tx_msg.type = EMAC_MDIO_FE_REQ;
 	emac_mdio_fe_ctx->tx_msg.len = sizeof(struct fe_to_be_msg);
 	emac_mdio_fe_ctx->phy_reply = -1;
 
-	EMAC_MDIO_FE_DBG("Send VIRTIO_EMAC_MDIO_FE_REQ Event Cmd\n");
+	EMAC_MDIO_FE_DBG("Send EMAC_MDIO_FE_REQ Event Cmd\n");
 	ret = emac_mdio_fe_xmit_and_wait(emac_mdio_fe_ctx);
 
-	mutex_unlock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_unlock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 	mutex_unlock(&priv->lock);
 
 	return ret;
@@ -382,11 +385,14 @@ int virtio_mdio_write(struct mii_bus *bus, int addr, int regnum, u16 val)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	int ret = 0;
 
+	if (emac_mdio_fe_ctx->emac_mdio_hw_state != EMAC_MDIO_HW_STATE_UP)
+		return -EIO;
+
 	if (atomic_read(&priv->plat->phy_clks_suspended))
 		return -EBUSY;
 
 	mutex_lock(&priv->lock);
-	mutex_lock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_lock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 
 	phy_request = &emac_mdio_fe_ctx->tx_msg.request_data;
 	memset(phy_request, 0, sizeof(*phy_request));
@@ -396,14 +402,14 @@ int virtio_mdio_write(struct mii_bus *bus, int addr, int regnum, u16 val)
 	phy_request->phyreg = regnum;
 	phy_request->phydata = val;
 
-	emac_mdio_fe_ctx->tx_msg.type = VIRTIO_EMAC_MDIO_FE_REQ;
+	emac_mdio_fe_ctx->tx_msg.type = EMAC_MDIO_FE_REQ;
 	emac_mdio_fe_ctx->tx_msg.len = sizeof(struct fe_to_be_msg);
 	emac_mdio_fe_ctx->phy_reply = -1;
 
-	EMAC_MDIO_FE_DBG("Send VIRTIO_EMAC_MDIO_FE_REQ Event Cmd\n");
+	EMAC_MDIO_FE_DBG("Send EMAC_MDIO_FE_REQ Event Cmd\n");
 	ret = emac_mdio_fe_xmit_and_wait(emac_mdio_fe_ctx);
 
-	mutex_unlock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_unlock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 	mutex_unlock(&priv->lock);
 
 	return ret;
@@ -417,11 +423,14 @@ int virtio_mdio_read_c45(struct mii_bus *bus, int addr, int devnum, int regnum)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	int ret = 0;
 
+	if (emac_mdio_fe_ctx->emac_mdio_hw_state != EMAC_MDIO_HW_STATE_UP)
+		return -EIO;
+
 	if (atomic_read(&priv->plat->phy_clks_suspended))
 		return -EBUSY;
 
 	mutex_lock(&priv->lock);
-	mutex_lock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_lock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 
 	phy_request = &emac_mdio_fe_ctx->tx_msg.request_data;
 	memset(phy_request, 0, sizeof(*phy_request));
@@ -431,14 +440,14 @@ int virtio_mdio_read_c45(struct mii_bus *bus, int addr, int devnum, int regnum)
 	phy_request->phydev = devnum;
 	phy_request->phyreg = regnum;
 
-	emac_mdio_fe_ctx->tx_msg.type = VIRTIO_EMAC_MDIO_FE_REQ;
+	emac_mdio_fe_ctx->tx_msg.type = EMAC_MDIO_FE_REQ;
 	emac_mdio_fe_ctx->tx_msg.len = sizeof(struct fe_to_be_msg);
 	emac_mdio_fe_ctx->phy_reply = -1;
 
-	EMAC_MDIO_FE_DBG("Send VIRTIO_EMAC_MDIO_FE_REQ Event Cmd\n");
+	EMAC_MDIO_FE_DBG("Send EMAC_MDIO_FE_REQ Event Cmd\n");
 	ret = emac_mdio_fe_xmit_and_wait(emac_mdio_fe_ctx);
 
-	mutex_unlock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_unlock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 	mutex_unlock(&priv->lock);
 
 	return ret;
@@ -452,11 +461,14 @@ int virtio_mdio_write_c45(struct mii_bus *bus, int addr, int devnum, int regnum,
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	int ret = 0;
 
+	if (emac_mdio_fe_ctx->emac_mdio_hw_state != EMAC_MDIO_HW_STATE_UP)
+		return -EIO;
+
 	if (atomic_read(&priv->plat->phy_clks_suspended))
 		return -EBUSY;
 
 	mutex_lock(&priv->lock);
-	mutex_lock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_lock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 
 	phy_request = &emac_mdio_fe_ctx->tx_msg.request_data;
 	memset(phy_request, 0, sizeof(*phy_request));
@@ -467,14 +479,14 @@ int virtio_mdio_write_c45(struct mii_bus *bus, int addr, int devnum, int regnum,
 	phy_request->phyreg = regnum;
 	phy_request->phydata = val;
 
-	emac_mdio_fe_ctx->tx_msg.type = VIRTIO_EMAC_MDIO_FE_REQ;
+	emac_mdio_fe_ctx->tx_msg.type = EMAC_MDIO_FE_REQ;
 	emac_mdio_fe_ctx->tx_msg.len = sizeof(struct fe_to_be_msg);
 	emac_mdio_fe_ctx->phy_reply = -1;
 
-	EMAC_MDIO_FE_DBG("Send VIRTIO_EMAC_MDIO_FE_REQ Event Cmd\n");
+	EMAC_MDIO_FE_DBG("Send EMAC_MDIO_FE_REQ Event Cmd\n");
 	ret = emac_mdio_fe_xmit_and_wait(emac_mdio_fe_ctx);
 
-	mutex_unlock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_unlock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 	mutex_unlock(&priv->lock);
 
 	return ret;
@@ -488,11 +500,14 @@ int virtio_mdio_read_c45_indirect(struct mii_bus *bus, int addr, int regnum)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	int ret = 0;
 
+	if (emac_mdio_fe_ctx->emac_mdio_hw_state != EMAC_MDIO_HW_STATE_UP)
+		return -EIO;
+
 	if (atomic_read(&priv->plat->phy_clks_suspended))
 		return -EBUSY;
 
 	mutex_lock(&priv->lock);
-	mutex_lock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_lock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 
 	phy_request = &emac_mdio_fe_ctx->tx_msg.request_data;
 	memset(phy_request, 0, sizeof(*phy_request));
@@ -502,14 +517,14 @@ int virtio_mdio_read_c45_indirect(struct mii_bus *bus, int addr, int regnum)
 	phy_request->phydev =  mdiobus_c45_devad(regnum);
 	phy_request->phyreg = mdiobus_c45_regad(regnum);
 
-	emac_mdio_fe_ctx->tx_msg.type = VIRTIO_EMAC_MDIO_FE_REQ;
+	emac_mdio_fe_ctx->tx_msg.type = EMAC_MDIO_FE_REQ;
 	emac_mdio_fe_ctx->tx_msg.len = sizeof(struct fe_to_be_msg);
 	emac_mdio_fe_ctx->phy_reply = -1;
 
-	EMAC_MDIO_FE_DBG("Send VIRTIO_EMAC_MDIO_FE_REQ Event Cmd\n");
+	EMAC_MDIO_FE_DBG("Send EMAC_MDIO_FE_REQ Event Cmd\n");
 	ret = emac_mdio_fe_xmit_and_wait(emac_mdio_fe_ctx);
 
-	mutex_unlock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_unlock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 	mutex_unlock(&priv->lock);
 
 	return ret;
@@ -523,11 +538,14 @@ int virtio_mdio_write_c45_indirect(struct mii_bus *bus, int addr, int regnum, u1
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	int ret = 0;
 
+	if (emac_mdio_fe_ctx->emac_mdio_hw_state != EMAC_MDIO_HW_STATE_UP)
+		return -EIO;
+
 	if (atomic_read(&priv->plat->phy_clks_suspended))
 		return -EBUSY;
 
 	mutex_lock(&priv->lock);
-	mutex_lock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_lock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 
 	phy_request = &emac_mdio_fe_ctx->tx_msg.request_data;
 	memset(phy_request, 0, sizeof(*phy_request));
@@ -538,14 +556,14 @@ int virtio_mdio_write_c45_indirect(struct mii_bus *bus, int addr, int regnum, u1
 	phy_request->phyreg = mdiobus_c45_regad(regnum);
 	phy_request->phydata = val;
 
-	emac_mdio_fe_ctx->tx_msg.type = VIRTIO_EMAC_MDIO_FE_REQ;
+	emac_mdio_fe_ctx->tx_msg.type = EMAC_MDIO_FE_REQ;
 	emac_mdio_fe_ctx->tx_msg.len = sizeof(struct fe_to_be_msg);
 	emac_mdio_fe_ctx->phy_reply = -1;
 
-	EMAC_MDIO_FE_DBG("Send VIRTIO_EMAC_MDIO_FE_REQ Event Cmd\n");
+	EMAC_MDIO_FE_DBG("Send EMAC_MDIO_FE_REQ Event Cmd\n");
 	ret = emac_mdio_fe_xmit_and_wait(emac_mdio_fe_ctx);
 
-	mutex_unlock(&emac_mdio_fe_pdev->emac_mdio_fe_lock);
+	mutex_unlock(&emac_mdio_fe_ctx->emac_mdio_fe_lock);
 	mutex_unlock(&priv->lock);
 
 	return ret;
@@ -566,7 +584,6 @@ static int emac_mdio_fe_probe(struct virtio_device *vdev)
 		ret = -ENOMEM;
 		return ret;
 	}
-	emac_mdio_fe_pdev = pdev;
 
 	sema_init(&pdev->emac_mdio_fe_sem, (0));
 	mutex_init(&pdev->emac_mdio_fe_lock);
@@ -577,7 +594,7 @@ static int emac_mdio_fe_probe(struct virtio_device *vdev)
 	pdev->name = "emac_mdio_fe";
 
 	/*Initialize States*/
-	pdev->emac_mdio_fe_state = EMAC_MDIO_FE_DOWN;
+	pdev->emac_mdio_hw_state = EMAC_MDIO_HW_STATE_UNKNOWN;
 
 	EMAC_MDIO_FE_INFO("Init VQS\n");
 	/* Allocate and Initialize RX and TX VirtQueues */
@@ -599,9 +616,8 @@ static int emac_mdio_fe_probe(struct virtio_device *vdev)
 	virtqueue_kick(pdev->emac_mdio_fe_rxq);
 
 	EMAC_MDIO_FE_INFO("Kicked Host VirtQ\n");
-	pdev->emac_mdio_fe_state = EMAC_MDIO_FE_DOWN;
 
-	emac_mdio_fe_ctx->tx_msg.type = VIRTIO_EMAC_MDIO_FE_UP;
+	emac_mdio_fe_ctx->tx_msg.type = EMAC_MDIO_FE_UP;
 	emac_mdio_fe_ctx->tx_msg.len = sizeof(struct fe_to_be_msg);
 	emac_mdio_fe_xmit(emac_mdio_fe_ctx);
 	EMAC_MDIO_FE_INFO("Sent Register Event Cmd\n");
