@@ -2185,6 +2185,7 @@
   rps_needed
   rtc_class_close
   rtc_class_open
+  rtc_ktime_to_tm
   rtc_read_time
   rtc_time64_to_tm
   rtc_tm_to_time64
@@ -2546,6 +2547,7 @@
   tasklet_setup
   tasklet_unlock_wait
   __task_pid_nr_ns
+  __task_rq_lock
   task_rq_lock
   tcpci_get_tcpm_port
   tcpci_irq
@@ -2962,6 +2964,7 @@
   usb_assign_descriptors
   usb_copy_descriptors
   __usb_create_hcd
+  usb_debug_root
   usb_disabled
   usb_enable_autosuspend
   usb_ep_alloc_request
