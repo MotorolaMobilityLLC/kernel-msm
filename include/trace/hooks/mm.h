@@ -554,6 +554,9 @@ DECLARE_HOOK(android_vh_reuse_whole_anon_folio,
 DECLARE_HOOK(android_vh_alloc_swap_slot_cache,
 	TP_PROTO(void *cache),
 	TP_ARGS(cache));
+DECLARE_HOOK(android_vh_calculate_totalreserve_pages,
+	TP_PROTO(bool *skip),
+	TP_ARGS(skip));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
