@@ -78,6 +78,7 @@
 #define PCIE20_PARF_PM_STTS (0x24)
 #define PCIE20_PARF_PHY_CTRL (0x40)
 #define PCIE20_PARF_TEST_BUS (0xe4)
+#define PCIE20_PARF_VERSION (0x170)
 #define PCIE20_PARF_MHI_CLOCK_RESET_CTRL (0x174)
 #define PCIE20_PARF_AXI_MSTR_RD_ADDR_HALT (0x1a4)
 #define PCIE20_PARF_AXI_MSTR_WR_ADDR_HALT (0x1a8)
@@ -270,6 +271,7 @@
 #define PCIE_CONF_SPACE_DW (1024)
 #define PCIE_CLEAR (0xdeadbeef)
 #define PCIE_LINK_DOWN (0xffffffff)
+#define PARF_VER_WITH_NO_LANE_UPCONFIG_BIT (0x1470)
 
 #define MSM_PCIE_MAX_RESET (5)
 #define MSM_PCIE_MAX_PIPE_RESET (1)
@@ -1188,6 +1190,7 @@ struct msm_pcie_dev_t {
 	uint32_t perst_delay_us_max;
 	uint32_t tlp_rd_size;
 	uint32_t aux_clk_freq;
+	uint32_t parf_ver;
 	bool linkdown_panic;
 	uint32_t boot_option;
 	uint32_t link_speed_override;
@@ -6151,6 +6154,9 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 	uint32_t val;
 	unsigned long ep_up_timeout = 0;
 
+	if (!dev->parf_ver)
+		dev->parf_ver = readl_relaxed(dev->parf + PCIE20_PARF_VERSION);
+
 	/* configure PCIe to RC mode */
 	msm_pcie_write_reg(dev->parf, PCIE20_PARF_DEVICE_TYPE, 0x4);
 
@@ -6253,8 +6259,18 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 	/**
 	 * configure LANE_SKEW_OFF BIT-5 and PARF_CFG_BITS_3 BIT-8 to support
 	 * dynamic link width upscaling.
+	 *
+	 * Although the HPG suggests setting the PARF_CFG_BITS_3 BIT-8 as well, the design team
+	 * has confirmed this is handled in the latest Synopsys IP rendering this bit
+	 * non-functional. Therefore, it does not need to be updated. Design team couldn't confirm
+	 * from which PARF version it has been taken care of.
+	 *
+	 * Moreover, on latest targets (seraph onwards), the aforementioned bit has been repurposed
+	 * entirely. We can avoid setting this altogether, just to maintain backward compatibility
+	 * with older targets, set this bit only if it exists.
 	 */
-	msm_pcie_write_mask(dev->parf + PCIE20_PARF_CFG_BITS_3, 0, BIT(8));
+	if (dev->parf_ver < PARF_VER_WITH_NO_LANE_UPCONFIG_BIT)
+		msm_pcie_write_mask(dev->parf + PCIE20_PARF_CFG_BITS_3, 0, BIT(8));
 	msm_pcie_write_mask(dev->dm_core + PCIE20_LANE_SKEW_OFF, 0, BIT(5));
 
 	/* override the vendor id */
