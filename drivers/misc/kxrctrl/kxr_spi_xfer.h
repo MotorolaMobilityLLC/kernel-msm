@@ -7,7 +7,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "kxr_cache.h"
@@ -37,6 +37,12 @@
 #define KXR_SPI_IOC_SetPowerMode		KXR_SPI_IOC('K', 0x09, 0)
 #define KXR_SPI_IOC_GetWorkMode			KXR_SPI_IOC('K', 0x0A, 0)
 #define KXR_SPI_IOC_SetWorkMode			KXR_SPI_IOC('K', 0x0B, 0)
+#define KXR_SPI_IOC_ReadTime(len)		KXR_SPI_IOC('K', 0x0C, len)
+#define KXR_SPI_IOC_GpioUnlock			KXR_SPI_IOC('K', 0x0D, 0)
+#define QC_SPI_IOC_SetWorkTimer			KXR_SPI_IOC('K', 0x0E, 0)
+#define QC_SPI_IOC_GetWorkTimer			KXR_SPI_IOC('K', 0x0F, 0)
+
+
 
 #define KXR_SPI_IOC_TYPE_LEN			8
 #define KXR_SPI_IOC_NR_LEN				8
