@@ -863,8 +863,10 @@ static int synth_event_reg(struct trace_event_call *call,
 	int ret;
 
 	switch (type) {
-	case TRACE_REG_REGISTER:
+#ifdef CONFIG_PERF_EVENTS
 	case TRACE_REG_PERF_REGISTER:
+#endif
+	case TRACE_REG_REGISTER:
 		if (!try_module_get(event->mod))
 			return -EBUSY;
 		break;
@@ -875,8 +877,10 @@ static int synth_event_reg(struct trace_event_call *call,
 	ret = trace_event_reg(call, type, data);
 
 	switch (type) {
-	case TRACE_REG_UNREGISTER:
+#ifdef CONFIG_PERF_EVENTS
 	case TRACE_REG_PERF_UNREGISTER:
+#endif
+	case TRACE_REG_UNREGISTER:
 		module_put(event->mod);
 		break;
 	default:
