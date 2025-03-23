@@ -2455,6 +2455,7 @@
   __traceiter_android_vh_usb_dev_resume
   __traceiter_android_vh_use_amu_fie
   __traceiter_android_vh_vmscan_kswapd_done
+  __traceiter_android_vh_calculate_totalreserve_pages
   __traceiter_clock_set_rate
   __traceiter_cma_alloc_finish
   __traceiter_cma_alloc_start
@@ -2595,6 +2596,7 @@
   __tracepoint_android_vh_usb_dev_resume
   __tracepoint_android_vh_use_amu_fie
   __tracepoint_android_vh_vmscan_kswapd_done
+  __tracepoint_android_vh_calculate_totalreserve_pages
   __tracepoint_clock_set_rate
   __tracepoint_cma_alloc_finish
   __tracepoint_cma_alloc_start
