@@ -127,6 +127,10 @@ enum emac_mdio_be_to_fe_cmds {
 /*                         FUNCTION DECLARATIONS                              */
 /* ========================================================================== */
 static int emac_mdio_fe_probe(struct virtio_device *vdev);
+#ifdef CONFIG_PM_SLEEP
+static int emac_mdio_fe_freeze(struct virtio_device *vdev);
+static int emac_mdio_fe_restore(struct virtio_device *vdev);
+#endif
 
 /* ========================================================================== */
 /*                          VARIABLE DEFINITIONS                              */
@@ -152,6 +156,10 @@ static struct virtio_driver emac_mdio_fe_virtio_drv = {
 	.feature_table_size = ARRAY_SIZE(features),
 	.id_table = id_table,
 	.probe = emac_mdio_fe_probe,
+#ifdef CONFIG_PM_SLEEP
+	.freeze = emac_mdio_fe_freeze,
+	.restore = emac_mdio_fe_restore,
+#endif
 };
 
 /* ========================================================================== */
@@ -608,6 +616,37 @@ static int emac_mdio_fe_probe(struct virtio_device *vdev)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static int emac_mdio_fe_freeze(struct virtio_device *vdev)
+{
+	virtio_reset_device(vdev);
+	vdev->config->del_vqs(vdev);
+	return 0;
+}
+
+static int emac_mdio_fe_restore(struct virtio_device *vdev)
+{
+	struct emac_mdio_dev *pdev = vdev->priv;
+	int ret;
+
+	ret = emac_mdio_fe_init_vqs(pdev);
+	if (ret)
+		dev_err(&vdev->dev, "fail to initialize virtqueues\n");
+
+	virtio_device_ready(vdev);
+
+	emac_mdio_fe_allocate_rxbufs(pdev);
+	/* Enable TX Complete ISR */
+	virtqueue_enable_cb(pdev->emac_mdio_fe_txq);
+	/*Enable Rx Complete ISR*/
+	virtqueue_enable_cb(pdev->emac_mdio_fe_rxq);
+	/* Kick Host */
+	virtqueue_kick(pdev->emac_mdio_fe_rxq);
+
+	return 0;
+}
+#endif
 
 static int __init emac_mdio_fe_init(void)
 {
