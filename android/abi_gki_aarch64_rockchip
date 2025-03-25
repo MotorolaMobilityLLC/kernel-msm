@@ -2522,6 +2522,7 @@
   drm_flip_work_init
   drm_flip_work_queue
   drm_format_info
+  drm_format_info_bpp
   drm_format_info_min_pitch
   drm_framebuffer_cleanup
   drm_framebuffer_init
