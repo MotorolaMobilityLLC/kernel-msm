@@ -8,6 +8,7 @@
 
 #include <linux/amba/bus.h>
 #include <linux/bitops.h>
+#include <linux/bitfield.h>
 #include <linux/io.h>
 #include <linux/coresight.h>
 #include <linux/pm_runtime.h>
@@ -32,6 +33,7 @@
  * Coresight device CLAIM protocol.
  * See PSCI - ARM DEN 0022D, Section: 6.8.1 Debug and Trace save and restore.
  */
+#define CORESIGHT_CLAIM_MASK		GENMASK(1, 0)
 #define CORESIGHT_CLAIM_SELF_HOSTED	BIT(1)
 
 #define TIMEOUT_US		100
