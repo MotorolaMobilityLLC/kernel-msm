@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# STMicroelectonics VD628X spi kernel driver for flicker detection.
+#
+
 config VD628x
 	tristate " STMicroelectronics VD6283 flicker detection"
 	depends on SPI_MASTER
