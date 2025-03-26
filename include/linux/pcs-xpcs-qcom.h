@@ -23,6 +23,7 @@ struct dw_xpcs_qcom {
 	void __iomem *addr;
 	int pcs_intr;
 	bool intr_en;
+	bool needs_aneg;
 	int phy_interface;
 };
 

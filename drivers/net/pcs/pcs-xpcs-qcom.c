@@ -366,7 +366,7 @@ static int xpcs_config_aneg_c37(struct dw_xpcs_qcom *qxpcs)
 	if (ret < 0)
 		return -EINVAL;
 
-	ret |= DW_VR_MII_TX_CONFIG_MASK;
+	ret |= DW_VR_MII_TX_CONFIG_PHY_SIDE << DW_VR_MII_AN_CTRL_TX_CONFIG_SHIFT;
 	ret |= DW_VR_MII_SGMII_LINK_STS;
 
 	qcom_xpcs_write(qxpcs, DW_VR_MII_AN_CTRL, ret);
@@ -385,6 +385,7 @@ static int qcom_xpcs_do_config(struct dw_xpcs_qcom *qxpcs, phy_interface_t inter
 
 	switch (compat->an_mode) {
 	case DW_AN_C37_USXGMII:
+		qxpcs->needs_aneg = true;
 		ret = xpcs_config_aneg_c37(qxpcs);
 		if (ret < 0)
 			return ret;
@@ -450,10 +451,35 @@ static void qcom_xpcs_get_state(struct phylink_pcs *pcs,
 void qcom_xpcs_link_up_usxgmii(struct dw_xpcs_qcom *qxpcs, int speed)
 {
 	int mmd_ctrl;
+	int ret;
+
+	ret = qcom_xpcs_read(qxpcs, DW_VR_MII_PCS_DIG_CTRL1);
+	if (ret < 0)
+		goto read_err;
+
+	qcom_xpcs_write(qxpcs, DW_VR_MII_PCS_DIG_CTRL1, ret | SOFT_RST);
+
+	mmd_ctrl = qcom_xpcs_poll_reset(qxpcs, DW_VR_MII_PCS_DIG_CTRL1,
+					SW_RST_BIT_STATUS);
+	if (mmd_ctrl < 0) {
+		XPCSERR("Failed to perform soft reset\n");
+		return;
+	}
+
+	if (qxpcs->needs_aneg) {
+		ret = qcom_xpcs_read(qxpcs, DW_VR_MII_AN_CTRL);
+		if (ret < 0)
+			goto read_err;
+
+		ret |= DW_VR_MII_TX_CONFIG_PHY_SIDE << DW_VR_MII_AN_CTRL_TX_CONFIG_SHIFT;
+		ret |= DW_VR_MII_SGMII_LINK_STS;
+
+		qcom_xpcs_write(qxpcs, DW_VR_MII_AN_CTRL, ret);
+	}
 
 	mmd_ctrl = qcom_xpcs_read(qxpcs, DW_SR_MII_MMD_CTRL);
 	if (mmd_ctrl < 0)
-		goto out;
+		goto read_err;
 
 	mmd_ctrl &= ~DW_USXGMII_SS_MASK;
 
@@ -488,12 +514,22 @@ void qcom_xpcs_link_up_usxgmii(struct dw_xpcs_qcom *qxpcs, int speed)
 
 	qcom_xpcs_write(qxpcs, DW_SR_MII_MMD_CTRL, mmd_ctrl);
 
+	if (qxpcs->needs_aneg) {
+		ret = qcom_xpcs_read(qxpcs, DW_SR_MII_MMD_CTRL);
+		if (ret < 0)
+			goto read_err;
+
+		qcom_xpcs_write(qxpcs, DW_SR_MII_MMD_CTRL, ret | AN_CL37_EN);
+	}
+
 	mmd_ctrl = qcom_xpcs_reset_usxgmii(qxpcs);
 	if (mmd_ctrl < 0)
 		goto out;
 
 	XPCSINFO("USXGMII link is up\n");
 	return;
+read_err:
+	XPCSERR("Failed to read register\n");
 out:
 	XPCSERR("Failed to bring up USXGMII link\n");
 }
