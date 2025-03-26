@@ -865,6 +865,7 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 
 	freeable = shrinker->count_objects(shrinker, shrinkctl);
 	trace_android_vh_do_shrink_slab(shrinker, &freeable);
+	trace_android_vh_do_shrink_slab_ex(shrinkctl, shrinker, &freeable, priority);
 	if (freeable == 0 || freeable == SHRINK_EMPTY)
 		return freeable;
 
@@ -1772,6 +1773,7 @@ retry:
 		unsigned int nr_pages;
 		bool activate = false;
 		bool keep = false;
+		bool should_split_to_list = false;
 
 		cond_resched();
 
@@ -1953,8 +1955,11 @@ retry:
 				 * Split partially mapped folios right away.
 				 * We can free the unmapped pages without IO.
 				 */
+				trace_android_vh_should_split_folio_to_list(folio,
+					    &should_split_to_list);
 				if (folio_test_large(folio) &&
-				    data_race(!list_empty(&folio->_deferred_list)))
+				    (data_race(!list_empty(&folio->_deferred_list)) ||
+				    should_split_to_list))
 					split_folio_to_list(folio, folio_list);
 				if (!add_to_swap(folio)) {
 					int __maybe_unused order = folio_order(folio);

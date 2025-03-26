@@ -18,6 +18,12 @@
   __traceiter_android_vh_do_shrink_slab
   __traceiter_android_vh_shrink_slab_bypass
 
+# required by mi_mem_engine.ko
+  __traceiter_android_vh_tune_swappiness
+  __tracepoint_android_vh_tune_swappiness
+  __traceiter_android_vh_do_shrink_slab_ex
+  __tracepoint_android_vh_do_shrink_slab_ex
+
 # required by lz4 decompress module
   __tracepoint_android_vh_lz4_decompress_bypass
   __traceiter_android_vh_lz4_decompress_bypass

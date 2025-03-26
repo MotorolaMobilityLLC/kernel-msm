@@ -17,6 +17,7 @@ struct folio;
 struct page_vma_mapped_walk;
 struct track;
 struct compact_control;
+struct vm_unmapped_area_info;
 
 DECLARE_RESTRICTED_HOOK(android_rvh_shmem_get_folio,
 			TP_PROTO(struct shmem_inode_info *info, struct folio **folio),
@@ -407,7 +408,9 @@ DECLARE_HOOK(android_vh_lruvec_del_folio,
 	TP_PROTO(struct lruvec *lruvec, struct folio *folio, enum lru_list lru,
 		bool *skip),
 	TP_ARGS(lruvec, folio, lru, skip));
-
+DECLARE_HOOK(android_vh_add_lazyfree_bypass,
+	TP_PROTO(struct lruvec *lruvec, struct folio *folio, bool *bypass),
+	TP_ARGS(lruvec, folio, bypass));
 DECLARE_HOOK(android_vh_do_async_mmap_readahead,
 	TP_PROTO(struct vm_fault *vmf, struct folio *folio, bool *skip),
 	TP_ARGS(vmf, folio, skip));
@@ -530,6 +533,30 @@ DECLARE_HOOK(android_vh_filemap_map_pages_range,
 	TP_PROTO(struct file *file, pgoff_t orig_start_pgoff,
 		pgoff_t last_pgoff, vm_fault_t ret),
 	TP_ARGS(file, orig_start_pgoff, last_pgoff, ret));
+DECLARE_HOOK(android_vh_alloc_swap_folio_gfp,
+	TP_PROTO(struct vm_area_struct *vma, gfp_t *gfp_mask),
+	TP_ARGS(vma, gfp_mask));
+DECLARE_HOOK(android_vh_replace_anon_vma_name,
+	TP_PROTO(struct vm_area_struct *vma,
+		struct anon_vma_name *anon_name),
+	TP_ARGS(vma, anon_name));
+DECLARE_HOOK(android_vh_should_skip_zone,
+	TP_PROTO(struct zone *zone, gfp_t gfp_mask,
+		unsigned int order, int migratetype, bool *should_skip_zone),
+	TP_ARGS(zone, gfp_mask, order,
+		migratetype, should_skip_zone));
+DECLARE_HOOK(android_vh_update_unmapped_area_info,
+	TP_PROTO(struct vm_unmapped_area_info *info),
+	TP_ARGS(info));
+DECLARE_HOOK(android_vh_reuse_whole_anon_folio,
+	TP_PROTO(struct folio *folio, struct vm_fault *vmf, bool *can_reuse_whole_anon),
+	TP_ARGS(folio, vmf, can_reuse_whole_anon));
+DECLARE_HOOK(android_vh_alloc_swap_slot_cache,
+	TP_PROTO(void *cache),
+	TP_ARGS(cache));
+DECLARE_HOOK(android_vh_calculate_totalreserve_pages,
+	TP_PROTO(bool *skip),
+	TP_ARGS(skip));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

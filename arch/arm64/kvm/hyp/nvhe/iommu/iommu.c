@@ -79,14 +79,14 @@ void *kvm_iommu_donate_pages(u8 order, bool request)
 
 	i = last_block_pool;
 	do {
-		p = hyp_alloc_pages(&iommu_block_pools[i++], order);
+		p = hyp_alloc_pages(&iommu_block_pools[i], order);
 		if (p) {
 			last_block_pool = i;
 			hyp_spin_unlock(&__block_pools_lock);
 			return p;
 		}
 
-		if (i >= MAX_BLOCK_POOLS)
+		if (++i >= MAX_BLOCK_POOLS)
 			i = 0;
 	} while (i != last_block_pool);
 
@@ -474,34 +474,36 @@ int kvm_iommu_detach_dev(pkvm_handle_t iommu_id, pkvm_handle_t domain_id,
 #define IOMMU_PROT_MASK (IOMMU_READ | IOMMU_WRITE | IOMMU_CACHE |\
 			 IOMMU_NOEXEC | IOMMU_MMIO | IOMMU_PRIV)
 
-size_t kvm_iommu_map_pages(pkvm_handle_t domain_id, unsigned long iova,
-			   phys_addr_t paddr, size_t pgsize,
-			   size_t pgcount, int prot)
+int kvm_iommu_map_pages(pkvm_handle_t domain_id, unsigned long iova,
+			phys_addr_t paddr, size_t pgsize,
+			size_t pgcount, int prot, unsigned long *mapped)
 {
 	size_t size;
 	int ret;
 	size_t total_mapped = 0;
 	struct kvm_hyp_iommu_domain *domain;
 
+	*mapped = 0;
 	if (!kvm_iommu_ops || !kvm_iommu_ops->map_pages)
-		return 0;
+		return -ENODEV;
 
 	if (prot & ~IOMMU_PROT_MASK)
-		return 0;
+		return -EOPNOTSUPP;
 
 	if (__builtin_mul_overflow(pgsize, pgcount, &size) ||
 	    iova + size < iova || paddr + size < paddr)
-		return 0;
+		return -E2BIG;
 
 	domain = handle_to_domain(domain_id);
 	if (!domain || domain_get(domain))
-		return 0;
+		return -ENOENT;
 
 	ret = __pkvm_host_use_dma(paddr, size);
 	if (ret)
-		return 0;
+		goto out_put_domain;
 
-	kvm_iommu_ops->map_pages(domain, iova, paddr, pgsize, pgcount, prot, &total_mapped);
+	ret = kvm_iommu_ops->map_pages(domain, iova, paddr, pgsize, pgcount,
+				       prot, &total_mapped);
 
 	pgcount -= total_mapped / pgsize;
 	/*
@@ -512,8 +514,12 @@ size_t kvm_iommu_map_pages(pkvm_handle_t domain_id, unsigned long iova,
 	if (pgcount)
 		__pkvm_host_unuse_dma(paddr + total_mapped, pgcount * pgsize);
 
+	*mapped = total_mapped;
+
+out_put_domain:
 	domain_put(domain);
-	return total_mapped;
+	/* Mask -ENOMEM, as it's passed as a request. */
+	return ret == -ENOMEM ? 0 : ret;
 }
 
 /* Based on  the kernel iommu_iotlb* but with some tweak, this can be unified later. */

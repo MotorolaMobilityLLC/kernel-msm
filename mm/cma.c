@@ -168,6 +168,25 @@ void __init cma_reserve_pages_on_error(struct cma *cma)
 	cma->reserve_pages_on_error = true;
 }
 
+unsigned long cma_get_first_virtzone_base(int nid)
+{
+        struct pglist_data *pgdata;
+        struct zone *zone;
+        int zone_idx;
+
+        pgdata = NODE_DATA(nid);
+        if (!pgdata)
+                return 0;
+
+        for (zone_idx = ZONE_NOSPLIT; zone_idx <= ZONE_NOMERGE; zone_idx++) {
+                zone = &pgdata->node_zones[zone_idx];
+                if (zone->zone_start_pfn)
+                        return zone->zone_start_pfn << PAGE_SHIFT;
+        }
+
+        return 0;
+}
+
 /**
  * cma_init_reserved_mem() - create custom contiguous area from reserved memory
  * @base: Base address of the reserved area

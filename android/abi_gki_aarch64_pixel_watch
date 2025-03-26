@@ -173,6 +173,7 @@
   __const_udelay
   consume_skb
   contig_page_data
+  copy_from_kernel_nofault
   __copy_overflow
   __cpu_active_mask
   cpu_all_bits
@@ -1452,6 +1453,7 @@
   pci_write_config_dword
   pci_write_config_word
   __per_cpu_offset
+  per_cpu_ptr_to_phys
   perf_aux_output_begin
   perf_aux_output_end
   perf_aux_output_flag
@@ -1643,6 +1645,7 @@
   register_inet6addr_notifier
   register_inetaddr_notifier
   register_kretprobe
+  register_module_notifier
   register_netdev
   register_netdevice
   register_netdevice_notifier
@@ -2114,6 +2117,7 @@
   __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_find_busiest_queue
   __traceiter_android_rvh_find_lowest_rq
+  __traceiter_android_rvh_find_new_ilb
   __traceiter_android_rvh_flush_task
   __traceiter_android_rvh_get_nohz_timer_target
   __traceiter_android_rvh_iommu_alloc_insert_iova
@@ -2185,6 +2189,7 @@
   __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_find_busiest_queue
   __tracepoint_android_rvh_find_lowest_rq
+  __tracepoint_android_rvh_find_new_ilb
   __tracepoint_android_rvh_flush_task
   __tracepoint_android_rvh_get_nohz_timer_target
   __tracepoint_android_rvh_iommu_alloc_insert_iova
@@ -2280,6 +2285,7 @@
   uio_unregister_device
   __unregister_chrdev
   unregister_chrdev_region
+  unregister_die_notifier
   unregister_ftrace_export
   unregister_inet6addr_notifier
   unregister_inetaddr_notifier

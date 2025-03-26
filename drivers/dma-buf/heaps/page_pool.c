@@ -162,7 +162,7 @@ struct dmabuf_page_pool *dmabuf_page_pool_create(gfp_t gfp_mask, unsigned int or
 		pool->count[i] = 0;
 		INIT_LIST_HEAD(&pool->items[i]);
 	}
-	pool->gfp_mask = gfp_mask | __GFP_COMP;
+	pool->gfp_mask = gfp_mask | (order ? __GFP_COMP : 0);
 	pool->order = order;
 	spin_lock_init(&pool->lock);
 

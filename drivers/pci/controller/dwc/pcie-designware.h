@@ -53,6 +53,7 @@
 #define DW_PCIE_CAP_REQ_RES		0
 #define DW_PCIE_CAP_IATU_UNROLL		1
 #define DW_PCIE_CAP_CDM_CHECK		2
+#define DW_PCIE_CAP_USE_LINKUP_IRQ	3
 
 #define dw_pcie_cap_is(_pci, _cap) \
 	test_bit(DW_PCIE_CAP_ ## _cap, &(_pci)->caps)
