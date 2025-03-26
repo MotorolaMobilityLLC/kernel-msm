@@ -1,0 +1,29 @@
+[abi_symbol_list]
+
+#required by pegasus.ko
+  mii_nway_restart
+  mii_link_ok
+  mii_ethtool_get_link_ksettings
+  mii_ethtool_set_link_ksettings
+
+#required by susc95xx.ko
+  usbnet_get_endpoints
+  usbnet_write_cmd
+  usbnet_write_cmd_nopm
+  usbnet_read_cmd
+  usbnet_read_cmd_nopm
+  usbnet_open
+  usbnet_stop
+  usbnet_start_xmit
+  usbnet_change_mtu
+  usbnet_tx_timeout
+  usbnet_write_cmd_async
+  usbnet_get_drvinfo
+  usbnet_get_msglevel
+  usbnet_set_msglevel
+  usbnet_defer_kevent
+  usbnet_skb_return
+  usbnet_probe
+  usbnet_disconnect
+  usbnet_suspend
+  usbnet_resume

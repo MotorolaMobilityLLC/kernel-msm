@@ -1720,6 +1720,11 @@
   net_selftest_get_count
   net_selftest_get_strings
   nf_conntrack_destroy
+  nfnetlink_subsys_register
+  nfnetlink_subsys_unregister
+  nfnetlink_unicast
+  nfnl_lock
+  nfnl_unlock
   nf_register_net_hooks
   nf_unregister_net_hooks
   nla_find
@@ -3569,6 +3574,8 @@
   xsk_tx_peek_desc
   xsk_tx_release
   xsk_uses_need_wakeup
+  xt_register_matches
+  xt_unregister_matches
   zlib_deflate
   zlib_deflateEnd
   zlib_deflateInit2

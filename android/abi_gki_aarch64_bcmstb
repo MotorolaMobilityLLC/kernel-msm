@@ -406,6 +406,7 @@
   phy_ethtool_nway_reset
   phy_ethtool_set_eee
   phy_ethtool_set_link_ksettings
+  phy_ethtool_set_wol
   phy_exit
   phy_init
   phy_init_eee
@@ -801,6 +802,9 @@
 # required by bcm7038_wdt.ko
   devm_watchdog_register_device
 
+# required by bcm74110-rng.ko
+  devm_hwrng_register
+
 # required by bcm7xxx.ko
   genphy_restart_aneg
 
@@ -865,23 +869,6 @@
   of_find_net_device_by_node
   of_find_node_by_phandle
 
-# required by brcmstb-iommu.ko
-  devm_get_free_pages
-  generic_device_group
-  iommu_device_register
-  iommu_device_sysfs_add
-  iommu_device_sysfs_remove
-  iommu_device_unlink
-  iommu_device_unregister
-  iommu_fwspec_init
-  iommu_group_alloc
-  iommu_group_put
-  iommu_group_ref_get
-  iommu_group_set_name
-  pci_device_group
-  pci_find_host_bridge
-  platform_get_irq_byname
-
 # required by brcmstb-proc-info.ko
   find_get_pid
   generic_file_open
@@ -899,6 +886,21 @@
 # required by brcmstb_gisb.ko
   __sw_hweight64
 
+# required by brcmstb_iommu.ko
+  devm_get_free_pages
+  iommu_device_register
+  iommu_device_sysfs_add
+  iommu_device_sysfs_remove
+  iommu_device_unlink
+  iommu_device_unregister
+  iommu_fwspec_init
+  iommu_group_alloc
+  iommu_group_put
+  iommu_group_ref_get
+  pci_device_group
+  pci_find_host_bridge
+  platform_get_irq_byname
+
 # required by brcmstb_memc.ko
   of_match_device
 
@@ -907,9 +909,6 @@
   genphy_c37_config_aneg
   genphy_c37_read_status
   genphy_suspend
-
-# required by btbcm.ko
-  efi
 
 # required by btsdio.ko
   sdio_claim_host
@@ -1082,7 +1081,6 @@
   phy_connect_direct
   phy_ethtool_ksettings_get
   phy_ethtool_ksettings_set
-  phy_ethtool_set_wol
   phy_get_pause
   phy_init_hw
   phy_resume
@@ -1420,10 +1418,12 @@
   bitmap_find_free_region
   bitmap_release_region
   devm_pci_alloc_host_bridge
+  devm_phy_optional_get
   irq_chip_ack_parent
   irq_domain_get_irq_data
   irq_domain_set_info
   of_pci_get_max_link_speed
+  of_property_read_variable_u16_array
   of_property_read_variable_u64_array
   pcie_link_speed
   pci_generic_config_read
@@ -1446,6 +1446,12 @@
 
 # required by phy-brcm-sata.ko
   of_phy_simple_xlate
+
+# required by phy-brcm-pcie.ko
+  __copy_overflow
+  debugfs_initialized
+  regmap_read
+  strsep
 
 # required by phy-brcm-usb-dvr.ko
   brcmstb_get_family_id
