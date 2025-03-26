@@ -52,5 +52,7 @@ int __net_init tls_proc_init(struct net *net)
 
 void __net_exit tls_proc_fini(struct net *net)
 {
+#if defined(CONFIG_PROC_FS) && defined(CONFIG_TLS_STATS)
 	remove_proc_entry("tls_stat", net->proc_net);
+#endif /* CONFIG_PROC_FS && CONFIG_TLS_STATS */
 }

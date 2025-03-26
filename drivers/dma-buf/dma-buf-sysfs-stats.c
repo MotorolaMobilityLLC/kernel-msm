@@ -66,6 +66,7 @@ static ssize_t dma_buf_stats_attribute_show(struct kobject *kobj,
 	struct dma_buf_stats_attribute *attribute;
 	struct dma_buf_sysfs_entry *sysfs_entry;
 	struct dma_buf *dmabuf;
+	ssize_t ret;
 
 	attribute = to_dma_buf_stats_attr(attr);
 	sysfs_entry = to_dma_buf_entry_from_kobj(kobj);
@@ -74,7 +75,11 @@ static ssize_t dma_buf_stats_attribute_show(struct kobject *kobj,
 	if (!dmabuf || !attribute->show)
 		return -EIO;
 
-	return attribute->show(dmabuf, attribute, buf);
+	trace_android_vh_dma_buf_attr_show_start(&dmabuf);
+	ret = attribute->show(dmabuf, attribute, buf);
+	trace_android_vh_dma_buf_attr_show_end(dmabuf);
+
+	return ret;
 }
 
 static const struct sysfs_ops dma_buf_stats_sysfs_ops = {

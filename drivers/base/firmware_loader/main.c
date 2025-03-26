@@ -531,6 +531,9 @@ static int firmware_param_path_get(char *buffer, const struct kernel_param *kp)
 			count += scnprintf(buffer + count, PATH_SIZE, "%s%s", fw_path_para[i], ",");
 	}
 
+	if (count == 0)
+		return count;
+
 	buffer[count - 1] = '\0';
 
 	return count - 1;

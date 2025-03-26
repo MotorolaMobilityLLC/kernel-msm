@@ -1750,6 +1750,7 @@ generic_get_unmapped_area(struct file *filp, unsigned long addr,
 	info.high_limit = mmap_end;
 	info.align_mask = 0;
 	info.align_offset = 0;
+	trace_android_vh_update_unmapped_area_info(&info);
 	return vm_unmapped_area(&info);
 }
 
@@ -1800,6 +1801,7 @@ generic_get_unmapped_area_topdown(struct file *filp, unsigned long addr,
 	info.high_limit = arch_get_mmap_base(addr, mm->mmap_base);
 	info.align_mask = 0;
 	info.align_offset = 0;
+	trace_android_vh_update_unmapped_area_info(&info);
 	addr = vm_unmapped_area(&info);
 
 	/*

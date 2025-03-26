@@ -455,7 +455,7 @@ static void __arm_lpae_walk(struct arm_lpae_io_pgtable *data,
 			};
 
 			walker->cb(&ctx);
-		} else {
+		} else if (iopte_type(pte) == ARM_LPAE_PTE_TYPE_TABLE) {
 			__arm_lpae_walk(data, lvl + 1, iopte_deref(pte, data), walker);
 		}
 		ptep++;

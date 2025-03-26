@@ -24,6 +24,10 @@ DECLARE_HOOK(android_vh_check_folio_look_around_ref,
 DECLARE_HOOK(android_vh_do_shrink_slab,
 	TP_PROTO(struct shrinker *shrinker, long *freeable),
 	TP_ARGS(shrinker, freeable));
+DECLARE_HOOK(android_vh_do_shrink_slab_ex,
+	TP_PROTO(struct shrink_control *shrinkctl, struct shrinker *shrinker,
+                long *freeable, int priority),
+	TP_ARGS(shrinkctl, shrinker, freeable, priority));
 DECLARE_HOOK(android_vh_throttle_direct_reclaim_bypass,
 	TP_PROTO(bool *bypass),
 	TP_ARGS(bypass));
@@ -114,6 +118,9 @@ DECLARE_HOOK(android_vh_direct_reclaim_begin,
 DECLARE_HOOK(android_vh_direct_reclaim_end,
 	TP_PROTO(int prio),
 	TP_ARGS(prio));
+DECLARE_HOOK(android_vh_should_split_folio_to_list,
+	TP_PROTO(struct folio *folio, bool *should_split_to_list),
+	TP_ARGS(folio, should_split_to_list));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
