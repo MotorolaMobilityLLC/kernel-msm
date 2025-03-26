@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
 
 #include <linux/acpi.h>
 #include <linux/clk.h>
@@ -1075,7 +1075,6 @@ static const struct geni_i2c_desc sa8255p_control_geni_i2c = {
 };
 
 static const struct of_device_id geni_i2c_dt_match[] = {
-	{ .compatible = "qcom,geni-i2c", .data = &geni_i2c },
 	{ .compatible = "qcom,sa8255p-geni-i2c", .data = &sa8255p_control_geni_i2c },
 	{}
 };
