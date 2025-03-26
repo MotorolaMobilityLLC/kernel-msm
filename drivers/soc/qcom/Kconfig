@@ -33,8 +33,14 @@ config MONAI_DTB
 	bool "Motorola Mobility Monai Device DTBs"
 	help
 		Only include Motorola Monai device specific device tree
-		
-		
+
+config PORTOV_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Portov Device DTBs"
+	help
+		Only include Motorola Portov device specific device tree
+
 config PARO_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
