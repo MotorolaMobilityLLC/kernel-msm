@@ -2122,6 +2122,9 @@ static ssize_t wireless_fw_force_update_store(struct class *c,
 	if (kstrtobool(buf, &val) || !val)
 		return -EINVAL;
 
+	if (wls_fw_udating)
+		return -EBUSY;
+
 	rc = wireless_fw_update(bcdev, true);
 	if (rc < 0)
 		return rc;
@@ -2141,6 +2144,9 @@ static ssize_t wireless_fw_update_store(struct class *c,
 
 	if (kstrtobool(buf, &val) || !val)
 		return -EINVAL;
+
+	if (wls_fw_udating)
+		return -EBUSY;
 
 	do{
 		rc = wireless_fw_update(bcdev, false);
