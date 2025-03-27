@@ -165,6 +165,14 @@ enum pkvm_psci_notification {
  * @iommu_donate_pages_atomic:	Allocate memory from IOMMU identity pool.
  * @iommu_reclaim_pages_atomic:	Reclaim memory from iommu_donate_pages_atomic()
  * @hyp_smp_processor_id:	Current CPU id
+ * @guest_stage2_pa:		Look up and return the PA (@phys) mapped into
+ *				the specified VM (@handle) at the specified
+ *				intermediate physical address (@ipa). If there
+ *				is no mapping, or if it is a block mapping,
+ *				then -EINVAL will be returned. Note that no
+ *				lock or pin is held on the returned PA; the
+ *				only guarantee is that @handle:@ipa -> @phys
+ *				at some point during the call to this function.
  */
 struct pkvm_module_ops {
 	int (*create_private_mapping)(phys_addr_t phys, size_t size,
@@ -236,7 +244,8 @@ struct pkvm_module_ops {
 						     struct arm_smccc_res *res,
 						     pkvm_handle_t handle),
 					  pkvm_handle_t handle));
-	ANDROID_KABI_RESERVE(5);
+	ANDROID_KABI_USE(5, int (*guest_stage2_pa)(pkvm_handle_t handle,
+						   u64 ipa, phys_addr_t *phys));
 	ANDROID_KABI_RESERVE(6);
 	ANDROID_KABI_RESERVE(7);
 	ANDROID_KABI_RESERVE(8);

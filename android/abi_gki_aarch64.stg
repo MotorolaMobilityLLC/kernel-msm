@@ -14894,6 +14894,11 @@ pointer_reference {
   pointee_type_id: 0x9a60b05d
 }
 pointer_reference {
+  id: 0x2c081838
+  kind: POINTER
+  pointee_type_id: 0x9a60867f
+}
+pointer_reference {
   id: 0x2c081e7e
   kind: POINTER
   pointee_type_id: 0x9a609f65
@@ -42333,6 +42338,10 @@ member {
   type_id: 0x10a1214c
 }
 member {
+  id: 0x27f3e47f
+  type_id: 0x10e1e1ec
+}
+member {
   id: 0x28026f1f
   type_id: 0x2f27cc6c
 }
@@ -43631,6 +43640,11 @@ member {
 member {
   id: 0x397f1ce9
   type_id: 0x6ad203b6
+}
+member {
+  id: 0x397f4bf7
+  type_id: 0x6ad35d7c
+  offset: 3712
 }
 member {
   id: 0x3987082b
@@ -52227,10 +52241,9 @@ member {
   offset: 448
 }
 member {
-  id: 0x22369471
+  id: 0x223694dd
   name: "android_kabi_reserved5"
   type_id: 0x92233392
-  offset: 3712
 }
 member {
   id: 0x22369513
@@ -103897,6 +103910,11 @@ member {
   id: 0xbdee7702
   name: "guest_ipa"
   type_id: 0x33756485
+}
+member {
+  id: 0xf081c766
+  name: "guest_stage2_pa"
+  type_id: 0x2c081838
 }
 member {
   id: 0x3c06cc88
@@ -220485,6 +220503,14 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x10e1e1ec
+  kind: STRUCT
+  definition {
+    bytesize: 8
+    member_id: 0x223694dd
+  }
+}
+struct_union {
   id: 0x114301c2
   kind: STRUCT
   definition {
@@ -226862,6 +226888,16 @@ struct_union {
     bytesize: 16
     member_id: 0xf036a316
     member_id: 0x95dac977
+  }
+}
+struct_union {
+  id: 0x6ad35d7c
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0xf081c766
+    member_id: 0x27f3e47f
+    member_id: 0x36752b74
   }
 }
 struct_union {
@@ -261397,7 +261433,7 @@ struct_union {
     member_id: 0x3293400e
     member_id: 0x3036aec8
     member_id: 0x31dd0541
-    member_id: 0x22369471
+    member_id: 0x397f4bf7
     member_id: 0x667752ee
     member_id: 0xa1b7d38a
     member_id: 0xe3f4b484
@@ -336673,6 +336709,13 @@ function {
   parameter_id: 0x1d44326e
   parameter_id: 0x2cdbb77a
   parameter_id: 0xf435685e
+}
+function {
+  id: 0x9a60867f
+  return_type_id: 0x6720d32f
+  parameter_id: 0x16864222
+  parameter_id: 0x92233392
+  parameter_id: 0x25e45be7
 }
 function {
   id: 0x9a609f65
