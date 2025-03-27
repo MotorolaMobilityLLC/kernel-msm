@@ -1835,6 +1835,28 @@ bool kvm_hyp_handle_hvc64(struct kvm_vcpu *vcpu, u64 *exit_code)
 	return false;
 }
 
+int pkvm_guest_stage2_pa(pkvm_handle_t handle, u64 ipa, phys_addr_t *phys)
+{
+	struct pkvm_hyp_vm *hyp_vm;
+	int err;
+
+	hyp_read_lock(&vm_table_lock);
+	hyp_vm = get_vm_by_handle(handle);
+	if (!hyp_vm) {
+		err = -ENOENT;
+		goto err_unlock;
+	} else if (hyp_vm->is_dying) {
+		err = -EBUSY;
+		goto err_unlock;
+	}
+
+	err = guest_stage2_pa(hyp_vm, ipa, phys);
+	hyp_read_unlock(&vm_table_lock);
+
+err_unlock:
+	return err;
+}
+
 #ifdef CONFIG_NVHE_EL2_DEBUG
 static inline phys_addr_t get_next_memcache_page(phys_addr_t head)
 {

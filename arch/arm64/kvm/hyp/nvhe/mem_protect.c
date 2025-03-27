@@ -3009,6 +3009,26 @@ int host_stage2_get_leaf(phys_addr_t phys, kvm_pte_t *ptep, u32 *level)
 	return ret;
 }
 
+int guest_stage2_pa(struct pkvm_hyp_vm *vm, u64 ipa, phys_addr_t *phys)
+{
+	kvm_pte_t pte;
+	u32 level;
+	int ret;
+
+	guest_lock_component(vm);
+	ret = kvm_pgtable_get_leaf(&vm->pgt, ipa, &pte, &level);
+	guest_unlock_component(vm);
+
+	if (ret)
+		return ret;
+
+	if (!kvm_pte_valid(pte) || level != KVM_PGTABLE_MAX_LEVELS - 1)
+		return -EINVAL;
+
+	*phys = kvm_pte_to_phys(pte);
+	return 0;
+}
+
 #ifdef CONFIG_NVHE_EL2_DEBUG
 static void *snap_zalloc_page(void *mc)
 {

@@ -100,4 +100,7 @@ static __always_inline void __load_host_stage2(void)
 	else
 		write_sysreg(0, vttbr_el2);
 }
+
+int guest_stage2_pa(struct pkvm_hyp_vm *vm, u64 ipa, phys_addr_t *phys);
+
 #endif /* __KVM_NVHE_MEM_PROTECT__ */

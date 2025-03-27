@@ -166,6 +166,7 @@ const struct pkvm_module_ops module_ops = {
 	.iommu_flush_unmap_cache = kvm_iommu_flush_unmap_cache,
 	.host_stage2_enable_lazy_pte = host_stage2_enable_lazy_pte,
 	.host_stage2_disable_lazy_pte = host_stage2_disable_lazy_pte,
+	.guest_stage2_pa = pkvm_guest_stage2_pa,
 };
 
 int __pkvm_init_module(void *module_init)
