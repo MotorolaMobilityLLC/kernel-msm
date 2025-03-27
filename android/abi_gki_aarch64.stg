@@ -365627,6 +365627,15 @@ elf_symbol {
   full_name: "device_destroy"
 }
 elf_symbol {
+  id: 0x3cb87444
+  name: "device_find_any_child"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4f7a1913
+  type_id: 0xadb90e65
+  full_name: "device_find_any_child"
+}
+elf_symbol {
   id: 0x0b165427
   name: "device_find_child"
   is_defined: true
@@ -420534,6 +420543,7 @@ interface {
   symbol_id: 0x83a82ebe
   symbol_id: 0xe85fa1f1
   symbol_id: 0xe6df6df5
+  symbol_id: 0x3cb87444
   symbol_id: 0x0b165427
   symbol_id: 0x01805ccc
   symbol_id: 0xd81e7ab3
