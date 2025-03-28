@@ -251,18 +251,15 @@ static int lm3535_brightness_set(struct led_classdev *cdev,
 {
 	struct lm3535_led *led =
 			container_of(cdev, struct lm3535_led, cdev_flash);
-	int ret;
 
-	mutex_lock(&led->lock);
-	ret = lm3535_set_brightness_val(led->dev, brightness);
-	mutex_unlock(&led->lock);
-	return ret;
+	return lm3535_set_brightness_val(led->dev, brightness);
 }
 
 
 static int lm3535_parse_node(struct lm3535_led *led)
 {
 	int ret = -ENODEV;
+	struct fwnode_handle *child = NULL;
 
 	led->en_gpio = of_get_named_gpio(led->dev->of_node, "drv-en-gpio", 0);
 
@@ -287,6 +284,33 @@ static int lm3535_parse_node(struct lm3535_led *led)
 	if (!led->name) {
 		dev_err(&led->client->dev, "%s name node not found..\n", __func__);
 		return -ENODEV;
+	}
+
+	child = device_get_next_child_node(&led->client->dev, child);
+	if (!child) {
+		dev_err(&led->client->dev, "No LED Child node\n");
+		return ret;
+	}
+
+	ret = fwnode_property_read_string(child, "qcom,led-name",
+		&led->cdev_flash.name);
+	if (ret < 0) {
+		dev_err(&led->client->dev, "Failed to read flash LED names\n");
+		return ret;
+	}
+
+	ret = fwnode_property_read_u32(child, "qcom,max-current-ma",
+				&led->cdev_flash.max_brightness);
+	if (ret < 0) {
+		dev_err(&led->client->dev, "Failed to read max current, rc=%d\n", ret);
+		return ret;
+	}
+
+	ret = fwnode_property_read_string(child, "qcom,default-led-trigger",
+		&led->cdev_flash.default_trigger);
+	if (ret < 0) {
+		dev_err(&led->client->dev, "Failed to read default_trigger, rc=%d\n", ret);
+		return ret;
 	}
 
 	return ret;
@@ -321,10 +345,7 @@ static int lm3535_probe(struct i2c_client *client, const struct i2c_device_id *i
 	}
 
 	/* flash */
-	led->cdev_flash.name = "leds-lm3535";
-	led->cdev_flash.max_brightness = 255;
 	led->cdev_flash.brightness_set_blocking = lm3535_brightness_set;
-	led->cdev_flash.default_trigger = "flash";
 	ret = led_classdev_register(&client->dev, &led->cdev_flash);
 	if (ret < 0)
 		return ret;
