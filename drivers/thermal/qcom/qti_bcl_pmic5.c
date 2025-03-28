@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt) "%s:%s " fmt, KBUILD_MODNAME, __func__
 
@@ -529,6 +529,9 @@ static int bcl_set_lbat(struct thermal_zone_device *tz, int low, int high)
 	struct bcl_peripheral_data *bat_data =
 		(struct bcl_peripheral_data *)tz->devdata;
 	struct bcl_device *bcl_perph = bat_data->dev;
+
+	if (bat_data->irq_freed)
+		return 0;
 
 	mutex_lock(&bat_data->state_trans_lock);
 
@@ -1136,6 +1139,66 @@ static int bcl_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static int bcl_freeze(struct device *dev)
+{
+	struct bcl_device *bcl_perph = dev_get_drvdata(dev);
+	int i;
+	struct bcl_peripheral_data *bcl_data;
+
+	for (i = 0; i < ARRAY_SIZE(bcl_int_names); i++) {
+		bcl_data = &bcl_perph->param[i];
+
+		mutex_lock(&bcl_data->state_trans_lock);
+		if (bcl_data->irq_num > 0 && bcl_data->irq_enabled) {
+			disable_irq(bcl_data->irq_num);
+			bcl_data->irq_enabled = false;
+		}
+		devm_free_irq(dev, bcl_data->irq_num, bcl_data);
+		bcl_data->irq_freed = true;
+		mutex_unlock(&bcl_data->state_trans_lock);
+	}
+	return 0;
+}
+
+static int bcl_restore(struct device *dev)
+{
+	struct bcl_device *bcl_perph = dev_get_drvdata(dev);
+	struct bcl_peripheral_data *bcl_data;
+	int ret = 0, i;
+
+	for (i = 0; i < ARRAY_SIZE(bcl_int_names); i++) {
+		bcl_data = &bcl_perph->param[i];
+		mutex_lock(&bcl_data->state_trans_lock);
+		if (bcl_data->irq_num > 0 && !bcl_data->irq_enabled) {
+			ret = devm_request_threaded_irq(dev,
+					bcl_data->irq_num, NULL, bcl_handle_irq,
+					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+					bcl_int_names[i], bcl_data);
+			if (ret) {
+				dev_err(dev,
+					"Error requesting trip irq. err:%d\n",
+					ret);
+				mutex_unlock(&bcl_data->state_trans_lock);
+				return -EINVAL;
+			}
+			disable_irq_nosync(bcl_data->irq_num);
+			bcl_data->irq_freed = false;
+		}
+		mutex_unlock(&bcl_data->state_trans_lock);
+
+		if (bcl_data->tz_dev)
+			thermal_zone_device_update(bcl_data->tz_dev, THERMAL_DEVICE_UP);
+	}
+	bcl_configure_bcl_peripheral(bcl_perph);
+
+	return 0;
+}
+
+static const struct dev_pm_ops bcl_pm_ops = {
+	.freeze = bcl_freeze,
+	.restore = bcl_restore,
+};
+
 static const struct of_device_id bcl_match[] = {
 	{
 		.compatible = "qcom,bcl-v5",
@@ -1148,6 +1211,7 @@ static struct platform_driver bcl_driver = {
 	.remove = bcl_remove,
 	.driver = {
 		.name           = BCL_DRIVER_NAME,
+		.pm = &bcl_pm_ops,
 		.of_match_table = bcl_match,
 	},
 };
