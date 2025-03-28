@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+
+config EOM_MSM
+	tristate "Eye Opening Monitor (EOM) framework support"
+	help
+	  This option enables support for the Eye Opening Monitor (EOM) framework,
+	  which provides a generic interface for controlling and collecting EOM data
+	  from various hardware subsystems. The EOM framework is typically used to
+	  monitor signal integrity and eye diagrams in high-speed interfaces.
+
+	  Enable this option if your platform includes hardware that supports EOM
+	  and you need to collect or analyze signal quality metrics.
+
+
+config USB_MSM_EOM
+	tristate "MSM USB EOM driver"
+	depends on EOM_MSM
+	help
+	  This option enables the Eye Opening Monitor (EOM) driver for USB PHYs
+	  on Qualcomm MSM platforms. It allows monitoring of signal quality and
+	  eye diagram characteristics specific to USB interfaces.
+
+	  Enable this option if your MSM-based system uses USB PHYs that support
+	  EOM and you need to collect signal integrity data for diagnostics or tuning

@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
+
+#ifndef PCIE_EOM_REG_H
+#define PCIE_EOM_REG_H
+
+#define EYE_HEIGHT_STEP         3
+#define MAX_VERTICAL_THRESHOLD  8
+#define MAX_EYE_HEIGHT          8
+#define MAX_EYE_HEIGHT_MV       (MAX_EYE_HEIGHT * EYE_HEIGHT_STEP)
+#define EYE_WIDTH_STEP          (1 / 32)
+#define MAX_EYE_WIDTH           64
+#define MAX_EYE_WIDTH_UI        (MAX_EYE_WIDTH * EYE_WIDTH_STEP)
+#define MAX_NUM_LANES           8
+#define EOM_TEST_TIME_DEFAULT   1
+#define EOM_TEST_TIME_MAX       1000
+
+#define QSERDES_OFFSET_SIZE      0x800
+#define LANE_SIZE(lanenum)       (lanenum * QSERDES_OFFSET_SIZE)
+#define LINK_STATUS_REG_SPEED_SHFT  0x10
+#define LINK_STATUS_REG_SPEED    0xf0000
+#define POSITIVE_SEQUENCE        1
+#define NEGATIVE_SEQUENCE        0
+
+#define PCIE0_PHY_QSERDES_TX0_RESET_GEN_MUXES      0xB0
+#define PCIE0_PHY_QSERDES_RX0_CDR_RESET_OVERRIDE   0x3EC
+#define PCIE0_PHY_QSERDES_RX0_EOM_CTRL1            0x314
+#define PCIE0_PHY_QSERDES_RX0_EOM_CTRL2            0x318
+#define PCIE0_PHY_QSERDES_RX0_AUX_CONTROL          0x2FC
+#define PCIE0_PHY_QSERDES_RX0_AUXDATA_TB           0x300
+#define PCIE0_PHY_QSERDES_RX0_RCLK_AUXDATA_SEL     0x310
+#define PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL2        0x4FC
+#define PCIE0_PHY_QSERDES_RX0_RX_MARG_VERTICAL_CODE 0x524
+#define PCIE0_PHY_QSERDES_RX0_AUXDATA_TB           0x300
+#define PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL_4       0x504
+#define PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3        0x500
+#define PCIE0_PHY_QSERDES_RX0_IA_ERROR_COUNTER_LOW 0x5C4
+#define PCIE0_PHY_QSERDES_RX0_IA_ERROR_COUNTER_HIGH 0x5C8
+
+#endif
