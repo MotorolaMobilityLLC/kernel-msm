@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -37,6 +38,8 @@ enum {
 	P_SLEEP_CLK,
 	P_XO,
 };
+
+static unsigned int soft_vote_gpll0;
 
 static const struct parent_map gcc_parent_map_0[] = {
 	{ P_XO, 0 },
@@ -304,6 +307,8 @@ static struct clk_alpha_pll gpll0_sleep_clk_src = {
 static struct clk_alpha_pll gpll0_out_main = {
 	.offset = 0x21000,
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_DEFAULT],
+	.soft_vote = &soft_vote_gpll0,
+	.soft_vote_mask = PLL_SOFT_VOTE_PRIMARY,
 	.flags = SUPPORTS_FSM_MODE,
 	.clkr = {
 		.enable_reg = 0x45000,
@@ -321,6 +326,8 @@ static struct clk_alpha_pll gpll0_out_main = {
 static struct clk_alpha_pll gpll0_ao_out_main = {
 	.offset = 0x21000,
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_DEFAULT],
+	.soft_vote = &soft_vote_gpll0,
+	.soft_vote_mask = PLL_SOFT_VOTE_CPU,
 	.flags = SUPPORTS_FSM_MODE,
 	.clkr = {
 		.enable_reg = 0x45000,
