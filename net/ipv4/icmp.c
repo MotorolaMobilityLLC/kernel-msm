@@ -93,9 +93,11 @@
 #include <net/ip_fib.h>
 #include <net/l3mdev.h>
 #include <net/addrconf.h>
+#ifndef __GENKSYMS__
 #include <net/inet_dscp.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/icmp.h>
+#endif
 
 /*
  *	Build xmit assembly blocks
