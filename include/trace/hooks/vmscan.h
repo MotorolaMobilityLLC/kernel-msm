@@ -21,6 +21,10 @@ DECLARE_HOOK(android_vh_shrink_slab_bypass,
 DECLARE_HOOK(android_vh_do_shrink_slab,
 	TP_PROTO(struct shrinker *shrinker, long *freeable),
 	TP_ARGS(shrinker, freeable));
+DECLARE_HOOK(android_vh_do_shrink_slab_ex,
+	TP_PROTO(struct shrink_control *shrinkctl, struct shrinker *shrinker,
+	        long *freeable, int priority),
+	TP_ARGS(shrinkctl, shrinker, freeable, priority));
 DECLARE_HOOK(android_vh_shrink_node_memcgs,
 	TP_PROTO(struct mem_cgroup *memcg, bool *skip),
 	TP_ARGS(memcg, skip));
