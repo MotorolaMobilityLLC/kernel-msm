@@ -3226,7 +3226,7 @@ int io_uring_mmap_pages(struct io_ring_ctx *ctx, struct vm_area_struct *vma,
 {
 	unsigned long nr_pages = npages;
 
-	vma->vm_flags |= VM_DONTEXPAND;
+	vm_flags_set(vma, VM_DONTEXPAND);
 	return vm_insert_pages(vma, vma->vm_start, pages, &nr_pages);
 }
 
