@@ -4430,7 +4430,7 @@ static void sdhci_msm_clkgate_bus_delayed_work(struct work_struct *work)
 	struct sdhci_host *host = mmc_priv(msm_host->mmc);
 
 	sdhci_msm_registers_save(host);
-	dev_pm_opp_set_rate(&msm_host->pdev->dev, 0);
+	dev_pm_opp_set_rate(&msm_host->pdev->dev, 400000);
 	clk_bulk_disable_unprepare(ARRAY_SIZE(msm_host->bulk_clks),
 					msm_host->bulk_clks);
 	sdhci_msm_log_str(msm_host, "Clocks gated\n");
@@ -5746,7 +5746,10 @@ static __maybe_unused int sdhci_msm_runtime_resume(struct device *dev)
 	ret = cancel_delayed_work_sync(&msm_host->clk_gating_work);
 	if (!ret) {
 		sdhci_msm_bus_voting(host, true);
-		dev_pm_opp_set_rate(dev, msm_host->clk_rate);
+		if (msm_host->clk_rate)
+			dev_pm_opp_set_rate(dev, msm_host->clk_rate);
+		else
+			dev_pm_opp_set_rate(dev, 400000);
 		ret = clk_bulk_prepare_enable(ARRAY_SIZE(msm_host->bulk_clks),
 					       msm_host->bulk_clks);
 		if (ret) {
