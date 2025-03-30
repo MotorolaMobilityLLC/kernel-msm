@@ -380,6 +380,14 @@
 # required by shrink memory module
   shrink_slab
 
+# required by mi_mem_engine.ko
+  __traceiter_android_vh_tune_swappiness
+  __tracepoint_android_vh_tune_swappiness
+  __traceiter_android_vh_do_shrink_slab_ex
+  __tracepoint_android_vh_do_shrink_slab_ex
+  __traceiter_android_vh_shrink_slab_bypass
+  __tracepoint_android_vh_shrink_slab_bypass
+
 #required by cifs.ko
   add_swap_extent
   asn1_ber_decoder
