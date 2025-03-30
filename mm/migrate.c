@@ -425,19 +425,17 @@ int folio_migrate_mapping(struct address_space *mapping,
 	newfolio->index = folio->index;
 	newfolio->mapping = folio->mapping;
 	folio_ref_add(newfolio, nr); /* add cache reference */
-	if (folio_test_swapbacked(folio)) {
+	if (folio_test_swapbacked(folio))
 		__folio_set_swapbacked(newfolio);
-		if (folio_test_swapcache(folio)) {
-			int i;
+    if (folio_test_swapcache(folio)) {
+        int i;
 
-			folio_set_swapcache(newfolio);
-			for (i = 0; i < nr; i++)
-				set_page_private(folio_page(newfolio, i),
-					page_private(folio_page(folio, i)));
-		}
+        folio_set_swapcache(newfolio);
+        for (i = 0; i < nr; i++)
+            set_page_private(folio_page(newfolio, i),
+                page_private(folio_page(folio, i)));
 		entries = nr;
 	} else {
-		VM_BUG_ON_FOLIO(folio_test_swapcache(folio), folio);
 		entries = 1;
 	}
 
