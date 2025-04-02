@@ -62,5 +62,13 @@
   __tracepoint_android_vh_do_read_fault
   __tracepoint_android_vh_filemap_read
   __tracepoint_android_vh_filemap_map_pages
+  __traceiter_rpm_idle
+  __tracepoint_rpm_idle
+  __traceiter_rpm_suspend
+  __tracepoint_rpm_suspend
+  __traceiter_rpm_resume
+  __tracepoint_rpm_resume
+  __traceiter_rpm_return_int
+  __tracepoint_rpm_return_int
   udp4_lib_lookup
   udp6_lib_lookup
