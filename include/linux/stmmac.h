@@ -257,6 +257,7 @@ struct plat_stmmacenet_data {
 	u32 rx_queues_to_use;
 	u32 tx_queues_to_use;
 	bool has_hdma;
+	bool insert_ts_pktid;
 	u8 rx_sched_algorithm;
 	u8 tx_sched_algorithm;
 	struct stmmac_rxq_cfg rx_queues_cfg[MTL_MAX_RX_QUEUES];
