@@ -646,7 +646,8 @@ long hab_vchan_send(struct uhab_context *ctx,
 	}
 	if (vchan->otherend_closed) {
 		pr_debug("vchan %x is otherend closed\n", vchan->id);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err_otherend_closed;
 	}
 
 	/**
@@ -720,6 +721,7 @@ long hab_vchan_send(struct uhab_context *ctx,
 err:
 	/* log msg send timestamp: exit hab_vchan_send */
 	trace_hab_vchan_send_done(vchan);
+err_otherend_closed:
 	hab_vchan_put(vchan);
 
 	return ret;
