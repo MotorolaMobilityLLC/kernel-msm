@@ -74,6 +74,8 @@ def define_niobe():
         "drivers/iommu/qcom_iommu_debug.ko",
         "drivers/iommu/qcom_iommu_util.ko",
         "drivers/irqchip/qcom-pdc.ko",
+        "drivers/leds/leds-lm3535.ko",
+        "drivers/leds/leds-lm36011.ko",
         "drivers/leds/leds-qti-flash.ko",
         "drivers/leds/leds-qti-tri-led.ko",
         "drivers/mailbox/msm_qmp.ko",
