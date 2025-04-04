@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/io.h>
@@ -145,7 +145,7 @@ static void q2spi_gsi_tx_callback(void *cb)
 	struct q2spi_geni *q2spi;
 
 	cb_param = (struct msm_gpi_dma_async_tx_cb_param *)cb;
-	if (!cb_param) {
+	if (!(cb_param && cb_param->userdata)) {
 		pr_err("%s Err Invalid CB\n", __func__);
 		return;
 	}
@@ -180,6 +180,7 @@ static void q2spi_gsi_tx_callback(void *cb)
 				    __func__, cb_param->tce_type);
 		}
 	}
+	cb_param->userdata = NULL;
 }
 
 static void q2spi_gsi_rx_callback(void *cb)
@@ -189,7 +190,7 @@ static void q2spi_gsi_rx_callback(void *cb)
 	struct q2spi_geni *q2spi;
 
 	cb_param = (struct msm_gpi_dma_async_tx_cb_param *)cb;
-	if (!cb_param) {
+	if (!(cb_param && cb_param->userdata)) {
 		pr_err("%s Err Invalid CB\n", __func__);
 		return;
 	}
@@ -224,6 +225,7 @@ static void q2spi_gsi_rx_callback(void *cb)
 		Q2SPI_DEBUG(q2spi, "%s: Err cb_param->completion_code = %d\n",
 			    __func__, cb_param->completion_code);
 	}
+	cb_param->userdata = NULL;
 }
 
 static void q2spi_geni_deallocate_chan(struct q2spi_gsi *gsi)
