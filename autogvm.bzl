@@ -40,6 +40,7 @@ def define_autogvm():
         "drivers/media/platform/msm/npu/virtio_npu.ko",
         "drivers/mfd/qcom-spmi-pmic.ko",
         "drivers/misc/bootmarker_proxy.ko",
+        "drivers/misc/open-dice.ko",
         "drivers/misc/qseecom_proxy.ko",
         "drivers/mmc/host/cqhci.ko",
         "drivers/mmc/host/sdhci-msm.ko",
