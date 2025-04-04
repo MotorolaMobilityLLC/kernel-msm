@@ -46,7 +46,6 @@ mem-offline.ko
 qcom_iommu_debug.ko
 phy-qcom-emu.ko
 phy-generic.ko
-dwc3-msm.ko
 gcc-seraph.ko
 tcsrcc-seraph.ko
 mdt_loader.ko
