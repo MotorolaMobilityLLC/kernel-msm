@@ -351046,6 +351046,10 @@ function {
   parameter_id: 0x334eed41
 }
 function {
+  id: 0xc20e2d34
+  return_type_id: 0x2b16c036
+}
+function {
   id: 0xc21e59d8
   return_type_id: 0x4585663f
   parameter_id: 0x356691bc
@@ -400787,6 +400791,15 @@ elf_symbol {
   full_name: "kthread_bind_mask"
 }
 elf_symbol {
+  id: 0x3360440d
+  name: "kthread_blkcg"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x6ad0c0a7
+  type_id: 0xc20e2d34
+  full_name: "kthread_blkcg"
+}
+elf_symbol {
   id: 0x5b454f0c
   name: "kthread_cancel_delayed_work_sync"
   is_defined: true
@@ -439850,6 +439863,7 @@ interface {
   symbol_id: 0x80424e6f
   symbol_id: 0xa662c735
   symbol_id: 0xa921f032
+  symbol_id: 0x3360440d
   symbol_id: 0x5b454f0c
   symbol_id: 0x21fc0560
   symbol_id: 0xd20ecdb9

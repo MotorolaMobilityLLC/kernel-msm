@@ -81,6 +81,7 @@
   iterate_dir
   jiffies_64_to_clock_t
   kick_process
+  kthread_blkcg
   ktime_get_coarse_real_ts64
   ktime_get_raw_ts64
   ktime_get_real_ts64
