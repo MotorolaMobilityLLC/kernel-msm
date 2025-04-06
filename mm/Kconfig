@@ -280,7 +280,7 @@ config SLAB
 
 config SLUB_TINY
 	bool "Configure SLUB for minimal memory footprint"
-	depends on SLUB && EXPERT
+	depends on SLUB && EXPERT && !COMPILE_TEST
 	select SLAB_MERGE_DEFAULT
 	help
 	   Configures the SLUB allocator in a way to achieve minimal memory
