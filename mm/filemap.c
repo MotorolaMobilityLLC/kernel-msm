@@ -3412,6 +3412,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 		addr += (xas.xa_index - last_pgoff) << PAGE_SHIFT;
 		vmf->pte += xas.xa_index - last_pgoff;
 		last_pgoff = xas.xa_index;
+		trace_android_vh_filemap_pages(page);
 
 		if (!pte_none(*vmf->pte))
 			goto unlock;

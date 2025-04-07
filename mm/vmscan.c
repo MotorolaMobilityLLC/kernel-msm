@@ -1203,8 +1203,16 @@ static int __remove_mapping(struct address_space *mapping, struct page *page,
 		 * same address_space.
 		 */
 		if (reclaimed && page_is_file_lru(page) &&
-		    !mapping_exiting(mapping) && !dax_mapping(mapping))
+		    !mapping_exiting(mapping) && !dax_mapping(mapping)) {
+			bool keep = false;
+
+			trace_android_vh_keep_reclaimed_page(page, refcount, &keep);
+			if (keep)
+				goto cannot_free;
+
 			shadow = workingset_eviction(page, target_memcg);
+		}
+		trace_android_vh_clear_reclaimed_page(page, reclaimed);
 		__delete_from_page_cache(page, shadow);
 		xa_unlock_irq(&mapping->i_pages);
 
@@ -4866,6 +4874,12 @@ retry:
 	sc->nr_reclaimed += reclaimed;
 
 	list_for_each_entry_safe_reverse(page, next, &list, lru) {
+		bool bypass = false;
+
+		trace_android_vh_evict_pages_bypass(page, &bypass);
+		if (bypass)
+			continue;
+
 		if (!page_evictable(page)) {
 			list_del(&page->lru);
 			putback_lru_page(page);
@@ -4968,6 +4982,7 @@ static bool should_abort_scan(struct lruvec *lruvec, unsigned long seq,
 	int i;
 	DEFINE_MAX_SEQ(lruvec);
 
+	trace_android_vh_mglru_should_abort_scan(&sc->nr_reclaimed);
 	if (!current_is_kswapd()) {
 		/* age each memcg at most once to ensure fairness */
 		if (max_seq - seq > 1)
@@ -6742,6 +6757,7 @@ static bool kswapd_shrink_node(pg_data_t *pgdat,
 
 		sc->nr_to_reclaim += max(high_wmark_pages(zone), SWAP_CLUSTER_MAX);
 	}
+	trace_android_rvh_kswapd_shrink_node(&sc->nr_to_reclaim);
 
 	/*
 	 * Historically care was taken to put equal pressure on all zones but

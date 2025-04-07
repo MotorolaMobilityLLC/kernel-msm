@@ -37,6 +37,14 @@ struct compact_control;
 DECLARE_RESTRICTED_HOOK(android_rvh_set_skip_swapcache_flags,
 			TP_PROTO(gfp_t *flags),
 			TP_ARGS(flags), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_perform_reclaim,
+			TP_PROTO(int order, gfp_t gfp_mask, nodemask_t *nodemask,
+				 unsigned long *progress, bool *skip),
+			TP_ARGS(order, gfp_mask, nodemask, progress, skip), 4);
+DECLARE_RESTRICTED_HOOK(android_rvh_do_traversal_lruvec_ex,
+			TP_PROTO(struct mem_cgroup *memcg, struct lruvec *lruvec,
+				 bool *stop),
+			TP_ARGS(memcg, lruvec, stop), 3);
 DECLARE_RESTRICTED_HOOK(android_rvh_set_gfp_zone_flags,
 			TP_PROTO(gfp_t *flags),
 			TP_ARGS(flags), 1);
@@ -214,6 +222,15 @@ DECLARE_HOOK(android_vh_si_mem_available_adjust,
 DECLARE_HOOK(android_vh_si_meminfo_adjust,
 	TP_PROTO(unsigned long *totalram, unsigned long *freeram),
 	TP_ARGS(totalram, freeram));
+DECLARE_HOOK(android_vh_filemap_pages,
+	TP_PROTO(struct page *page),
+	TP_ARGS(page));
+DECLARE_HOOK(android_vh_lru_gen_add_page_skip,
+	TP_PROTO(struct lruvec *lruvec, struct page *page, bool *skip),
+	TP_ARGS(lruvec, page, skip));
+DECLARE_HOOK(android_vh_lru_gen_del_page_skip,
+	TP_PROTO(struct lruvec *lruvec, struct page *page, bool *skip),
+	TP_ARGS(lruvec, page, skip));
 
 DECLARE_RESTRICTED_HOOK(android_rvh_ctl_dirty_rate,
 	TP_PROTO(void *unused),
