@@ -125,6 +125,7 @@ def define_seraph():
         "drivers/soc/qcom/qcom_cpu_vendor_hooks.ko",
         "drivers/soc/qcom/qcom_logbuf_boot_log.ko",
         "drivers/soc/qcom/qcom_logbuf_vendor_hooks.ko",
+        "drivers/soc/qcom/qcom_ramdump.ko",
         "drivers/soc/qcom/qcom_rpmh.ko",
         "drivers/soc/qcom/qcom_va_minidump.ko",
         "drivers/soc/qcom/qcom_wdt_core.ko",
