@@ -1098,7 +1098,7 @@ void pkvm_poison_pvmfw_pages(void)
 	phys_addr_t addr = pvmfw_base;
 
 	while (npages--) {
-		hyp_poison_page(addr);
+		hyp_poison_page(addr, PAGE_SIZE);
 		addr += PAGE_SIZE;
 	}
 }
