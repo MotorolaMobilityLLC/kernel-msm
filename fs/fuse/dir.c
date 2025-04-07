@@ -1786,7 +1786,7 @@ static const char *fuse_get_link(struct dentry *dentry, struct inode *inode,
 #endif
 
 	if (fc->cache_symlinks)
-		return page_get_link(dentry, inode, callback);
+		return page_get_link_raw(dentry, inode, callback);
 
 	err = -ECHILD;
 	if (!dentry)
