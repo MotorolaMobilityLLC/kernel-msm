@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# see Documentation/kbuild/kconfig-language.rst.
+#
+
+source "drivers/firmware/qcom/si_core/Kconfig"
