@@ -60,9 +60,9 @@ static struct alpha_pll_config cam_cc_pll0_config = {
 	.cal_l = 0x48,
 	.alpha = 0x8000,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00008400,
+	.user_ctl_val = 0x00008408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -85,7 +85,7 @@ static struct clk_alpha_pll cam_cc_pll0 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -143,9 +143,9 @@ static struct alpha_pll_config cam_cc_pll1_config = {
 	.cal_l = 0x48,
 	.alpha = 0x9000,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000400,
+	.user_ctl_val = 0x00000408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -168,7 +168,7 @@ static struct clk_alpha_pll cam_cc_pll1 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -206,7 +206,7 @@ static struct alpha_pll_config cam_cc_pll2_config = {
 	.alpha = 0x0,
 	.config_ctl_val = 0x12000000,
 	.config_ctl_hi_val = 0x00890263,
-	.config_ctl_hi1_val = 0x1c804237,
+	.config_ctl_hi1_val = 0x1af04237,
 	.config_ctl_hi2_val = 0x00000000,
 };
 
@@ -229,7 +229,7 @@ static struct clk_alpha_pll cam_cc_pll2 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOW] = 1171200000},
+				[VDD_LOW_L1] = 1171200000},
 		},
 	},
 };
@@ -240,9 +240,9 @@ static struct alpha_pll_config cam_cc_pll3_config = {
 	.cal_l = 0x48,
 	.alpha = 0x7555,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000400,
+	.user_ctl_val = 0x00000408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -265,7 +265,7 @@ static struct clk_alpha_pll cam_cc_pll3 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -302,9 +302,9 @@ static struct alpha_pll_config cam_cc_pll4_config = {
 	.cal_l = 0x48,
 	.alpha = 0x7555,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000400,
+	.user_ctl_val = 0x00000408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -327,7 +327,7 @@ static struct clk_alpha_pll cam_cc_pll4 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -364,9 +364,9 @@ static struct alpha_pll_config cam_cc_pll5_config = {
 	.cal_l = 0x48,
 	.alpha = 0x8000,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000400,
+	.user_ctl_val = 0x00000408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -389,7 +389,7 @@ static struct clk_alpha_pll cam_cc_pll5 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -425,9 +425,9 @@ static struct alpha_pll_config cam_cc_pll6_config = {
 	.cal_l = 0x48,
 	.alpha = 0x0,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00008400,
+	.user_ctl_val = 0x00008408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -450,7 +450,7 @@ static struct clk_alpha_pll cam_cc_pll6 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -2210,6 +2210,42 @@ static struct clk_branch cam_cc_csiphy4_clk = {
 	},
 };
 
+static struct clk_branch cam_cc_drv_ahb_clk = {
+	.halt_reg = 0x14084,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x14084,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "cam_cc_drv_ahb_clk",
+			.parent_hws = (const struct clk_hw*[]) {
+				&cam_cc_slow_ahb_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_aon_ops,
+		},
+	},
+};
+
+static struct clk_branch cam_cc_drv_xo_clk = {
+	.halt_reg = 0x14080,
+	.halt_check = BRANCH_HALT,
+	.clkr = {
+		.enable_reg = 0x14080,
+		.enable_mask = BIT(0),
+		.hw.init = &(const struct clk_init_data) {
+			.name = "cam_cc_drv_xo_clk",
+			.parent_hws = (const struct clk_hw*[]) {
+				&cam_cc_xo_clk_src.clkr.hw,
+			},
+			.num_parents = 1,
+			.flags = CLK_SET_RATE_PARENT,
+			.ops = &clk_branch2_aon_ops,
+		},
+	},
+};
+
 static struct clk_branch cam_cc_icp_ahb_clk = {
 	.halt_reg = 0x131e4,
 	.halt_check = BRANCH_HALT,
@@ -2939,6 +2975,8 @@ static struct clk_regmap *cam_cc_seraph_clocks[] = {
 	[CAM_CC_CSIPHY1_CLK] = &cam_cc_csiphy1_clk.clkr,
 	[CAM_CC_CSIPHY2_CLK] = &cam_cc_csiphy2_clk.clkr,
 	[CAM_CC_CSIPHY4_CLK] = &cam_cc_csiphy4_clk.clkr,
+	[CAM_CC_DRV_AHB_CLK] = &cam_cc_drv_ahb_clk.clkr,
+	[CAM_CC_DRV_XO_CLK] = &cam_cc_drv_xo_clk.clkr,
 	[CAM_CC_FAST_AHB_CLK_SRC] = &cam_cc_fast_ahb_clk_src.clkr,
 	[CAM_CC_ICP_AHB_CLK] = &cam_cc_icp_ahb_clk.clkr,
 	[CAM_CC_ICP_ATB_CLK] = &cam_cc_icp_atb_clk.clkr,
@@ -3020,14 +3058,10 @@ static struct clk_regmap *cam_cc_seraph_clocks[] = {
 };
 
 /*
- *	cam_cc_drv_ahb_clk
- *	cam_cc_drv_xo_clk
  *	cam_cc_gdsc_clk
  *	cam_cc_sleep_clk
  */
 static struct critical_clk_offset critical_clk_list[] = {
-	{ .offset = 0x14084, .mask = BIT(0) },
-	{ .offset = 0x14080, .mask = BIT(0) },
 	{ .offset = 0x14058, .mask = BIT(0) },
 	{ .offset = 0x14074, .mask = BIT(0) },
 };

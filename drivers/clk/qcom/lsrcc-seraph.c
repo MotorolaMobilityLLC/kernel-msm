@@ -23,6 +23,8 @@
 #include "reset.h"
 #include "vdd-level.h"
 
+#define ACCU_CFG_MASK (0x1f << 21)
+
 static DEFINE_VDD_REGULATORS(vdd_mm, VDD_HIGH + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_mx, VDD_HIGH + 1, 1, vdd_corner);
 
@@ -48,9 +50,9 @@ static struct alpha_pll_config lsr_cc_pll0_config = {
 	.cal_l = 0x48,
 	.alpha = 0x2aaa,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -73,7 +75,7 @@ static struct clk_alpha_pll lsr_cc_pll0 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -87,9 +89,9 @@ static struct alpha_pll_config lsr_cc_pll1_config = {
 	.cal_l = 0x48,
 	.alpha = 0x1555,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -112,7 +114,7 @@ static struct clk_alpha_pll lsr_cc_pll1 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -449,14 +451,23 @@ static struct clk_regmap *lsr_cc_seraph_clocks[] = {
 };
 
 /*
+ *	Keep the clocks always enabled
  *	lsr_cc_ahb_clk
  *	lsr_cc_sleep_clk
  *	lsr_cc_xo_clk
+ *
+ *	Maximize ctl data download delay and enable memory redundancy
+ *	MVS0C CFG3
+ *	MVS0 CFG3
+ *	LSR NOC CFG3
  */
 static struct critical_clk_offset critical_clk_list[] = {
 	{ .offset = 0x80a4, .mask = BIT(0) },
 	{ .offset = 0x80f8, .mask = BIT(0) },
 	{ .offset = 0x80d4, .mask = BIT(0) },
+	{ .offset = 0x8040, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x8088, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x810c, .mask = ACCU_CFG_MASK },
 };
 
 
@@ -499,7 +510,6 @@ MODULE_DEVICE_TABLE(of, lsr_cc_seraph_match_table);
 static int lsr_cc_seraph_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
-	unsigned int accu_cfg_mask = 0x1f << 21;
 	int ret;
 
 	regmap = qcom_cc_map(pdev, &lsr_cc_seraph_desc);
@@ -512,16 +522,6 @@ static int lsr_cc_seraph_probe(struct platform_device *pdev)
 
 	clk_taycan_eko_t_pll_configure(&lsr_cc_pll0, regmap, &lsr_cc_pll0_config);
 	clk_taycan_eko_t_pll_configure(&lsr_cc_pll1, regmap, &lsr_cc_pll1_config);
-
-	/*
-	 *	Maximize ctl data download delay and enable memory redundancy
-	 *	MVS0C CFG3
-	 *	MVS0 CFG3
-	 *	LSR NOC CFG3
-	 */
-	regmap_update_bits(regmap, 0x8040, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x8088, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x810c, accu_cfg_mask, accu_cfg_mask);
 
 	/* Enabling always ON clocks */
 	clk_restore_critical_clocks(&pdev->dev);

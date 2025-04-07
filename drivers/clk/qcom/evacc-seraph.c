@@ -23,6 +23,8 @@
 #include "reset.h"
 #include "vdd-level.h"
 
+#define ACCU_CFG_MASK (0x1f << 21)
+
 static DEFINE_VDD_REGULATORS(vdd_mm, VDD_NOMINAL + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_mx, VDD_NOMINAL + 1, 1, vdd_corner);
 
@@ -47,9 +49,9 @@ static struct alpha_pll_config eva_cc_pll0_config = {
 	.cal_l = 0x48,
 	.alpha = 0xc000,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -72,7 +74,7 @@ static struct clk_alpha_pll eva_cc_pll0 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -390,14 +392,21 @@ static struct clk_regmap *eva_cc_seraph_clocks[] = {
 };
 
 /*
+ *	Keep the clocks always enabled
  *	eva_cc_ahb_clk
  *	eva_cc_sleep_clk
  *	eva_cc_xo_clk
+ *
+ *	Maximize ctl data download delay and enable memory redundancy
+ *	MVS0C CFG3
+ *	MVS0 CFG3
  */
 static struct critical_clk_offset critical_clk_list[] = {
 	{ .offset = 0x80a4, .mask = BIT(0) },
 	{ .offset = 0x80f8, .mask = BIT(0) },
 	{ .offset = 0x80d4, .mask = BIT(0) },
+	{ .offset = 0x8040, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x8074, .mask = ACCU_CFG_MASK },
 };
 
 static const struct qcom_reset_map eva_cc_seraph_resets[] = {
@@ -438,7 +447,6 @@ MODULE_DEVICE_TABLE(of, eva_cc_seraph_match_table);
 static int eva_cc_seraph_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
-	unsigned int accu_cfg_mask = 0x1f << 21;
 	int ret;
 
 	regmap = qcom_cc_map(pdev, &eva_cc_seraph_desc);
@@ -450,14 +458,6 @@ static int eva_cc_seraph_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register for pm ops\n");
 
 	clk_taycan_eko_t_pll_configure(&eva_cc_pll0, regmap, &eva_cc_pll0_config);
-
-	/*
-	 *	Maximize ctl data download delay and enable memory redundancy
-	 *	MVS0C CFG3
-	 *	MVS0 CFG3
-	 */
-	regmap_update_bits(regmap, 0x8040, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x8074, accu_cfg_mask, accu_cfg_mask);
 
 	/* Enabling always ON clocks */
 	clk_restore_critical_clocks(&pdev->dev);
