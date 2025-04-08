@@ -701,8 +701,20 @@ static void ethqos_set_func_clk_en(struct qcom_ethqos *ethqos)
 		      RGMII_CONFIG_FUNC_CLK_EN, RGMII_IO_MACRO_CONFIG);
 }
 
+static const struct ethqos_emac_por emac_v6_6_0_por[] = {
+	{ .offset = RGMII_IO_MACRO_CONFIG,	.value = 0xC04D03 },
+	{ .offset = SDCC_HC_REG_DLL_CONFIG,	.value = 0x2004642C },
+	{ .offset = SDCC_HC_REG_DDR_CONFIG,	.value = 0x80040800 },
+	{ .offset = SDCC_HC_REG_DLL_CONFIG2,	.value = 0x00200000 },
+	{ .offset = SDCC_USR_CTL,		.value = 0x00010800 },
+	{ .offset = RGMII_IO_MACRO_CONFIG2,	.value = 0x222060},
+	{ .offset = RGMII_IO_MACRO_SCRATCH_2, .value = 0x4c },
+};
+
 static const struct ethqos_emac_driver_data emac_v6_6_0_data = {
-	.dma_addr_width = 32,
+	.por = emac_v6_6_0_por,
+	.num_por = ARRAY_SIZE(emac_v6_6_0_por),
+	.dma_addr_width = 40,
 	.has_hdma = true,
 	.dwxgmac_addrs = {
 		.dma_even_chan_base  = 0x00008500,
@@ -1654,6 +1666,13 @@ static int ethqos_configure_sgmii_v4(struct qcom_ethqos *ethqos)
 
 static int ethqos_configure_usxgmii_v4(struct qcom_ethqos *ethqos)
 {
+	unsigned int i;
+
+	/* Reset to POR values */
+	for (i = 0; i < ethqos->num_por; i++)
+		rgmii_writel(ethqos, ethqos->por[i].value,
+			     ethqos->por[i].offset);
+
 	rgmii_updatel(ethqos, RGMII_BYPASS_EN, RGMII_BYPASS_EN, RGMII_IO_MACRO_BYPASS);
 	rgmii_updatel(ethqos, RGMII_CONFIG2_MODE_EN_VIA_GMII, 0, RGMII_IO_MACRO_CONFIG2);
 	rgmii_updatel(ethqos, SGMII_PHY_CNTRL0_2P5G_1G_CLK_SEL, BIT(5),
@@ -1709,7 +1728,7 @@ static int ethqos_configure_usxgmii_v4(struct qcom_ethqos *ethqos)
 			      RGMII_IO_MACRO_CONFIG);
 		rgmii_updatel(ethqos, RGMII_CONFIG2_MAX_SPD_PRG_3, BIT(20),
 			      RGMII_IO_MACRO_CONFIG2);
-		rgmii_updatel(ethqos, RGMII_SCRATCH2_MAX_SPD_PRG_6, BIT(1),
+		rgmii_updatel(ethqos, RGMII_SCRATCH2_MAX_SPD_PRG_6, BIT(10),
 			      RGMII_IO_MACRO_SCRATCH_2);
 		break;
 
@@ -2805,6 +2824,9 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 		ethqos->early_eth_enabled = true;
 		ETHQOSINFO("Early ethernet is enabled\n");
 	}
+
+	ethqos->por = data->por;
+	ethqos->num_por = data->num_por;
 
 	ethqos_update_rgmii_clk(ethqos, SPEED_1000);
 
