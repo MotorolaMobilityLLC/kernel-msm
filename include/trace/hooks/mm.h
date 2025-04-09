@@ -581,6 +581,9 @@ DECLARE_HOOK(android_vh_init_adjust_zone_wmark,
 DECLARE_HOOK(android_vh_cma_alloc_retry,
 	TP_PROTO(char *name, int *retry),
 	TP_ARGS(name, retry));
+DECLARE_HOOK(android_vh_adjust_swap_info_flags,
+	TP_PROTO(unsigned long *flags),
+	TP_ARGS(flags));
 DECLARE_HOOK(android_vh_do_group_exit,
 	TP_PROTO(struct task_struct *tsk),
 	TP_ARGS(tsk));
