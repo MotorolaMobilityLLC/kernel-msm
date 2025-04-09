@@ -132,6 +132,7 @@ def define_seraph():
         "drivers/soc/qcom/qcom_stats.ko",
         "drivers/soc/qcom/qcom_va_minidump.ko",
         "drivers/soc/qcom/qcom_wdt_core.ko",
+        "drivers/soc/qcom/qfprom-sys.ko",
         "drivers/soc/qcom/qmi_helpers.ko",
         "drivers/soc/qcom/secure_buffer.ko",
         "drivers/soc/qcom/smem.ko",
