@@ -494,6 +494,9 @@ int kvm_iommu_map_pages(pkvm_handle_t domain_id, unsigned long iova,
 	    iova + size < iova || paddr + size < paddr)
 		return -E2BIG;
 
+	if (domain_id == KVM_IOMMU_DOMAIN_IDMAP_ID)
+		return -EINVAL;
+
 	domain = handle_to_domain(domain_id);
 	if (!domain || domain_get(domain))
 		return -ENOENT;
@@ -595,6 +598,9 @@ size_t kvm_iommu_unmap_pages(pkvm_handle_t domain_id,
 	    iova + size < iova)
 		return 0;
 
+	if (domain_id == KVM_IOMMU_DOMAIN_IDMAP_ID)
+		return 0;
+
 	domain = handle_to_domain(domain_id);
 	if (!domain || domain_get(domain))
 		return 0;
@@ -625,6 +631,9 @@ phys_addr_t kvm_iommu_iova_to_phys(pkvm_handle_t domain_id, unsigned long iova)
 
 	if (!kvm_iommu_ops || !kvm_iommu_ops->iova_to_phys)
 		return 0;
+
+	if (domain_id == KVM_IOMMU_DOMAIN_IDMAP_ID)
+		return iova;
 
 	domain = handle_to_domain( domain_id);
 
