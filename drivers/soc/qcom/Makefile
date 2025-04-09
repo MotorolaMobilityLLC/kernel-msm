@@ -123,3 +123,4 @@ obj-$(CONFIG_QCOM_QFPROM_SYS) += qfprom-sys.o
 obj-$(CONFIG_QCOM_S2D_VENDOR_HOOK) += qcom_hib.o
 obj-$(CONFIG_QCOM_SECURE_HIBERNATION) += qcom_secure_hibernation.o
 obj-$(CONFIG_MSM_BAM_DMUX) += bam_dmux.o
+obj-$(CONFIG_QCOM_SC_TCM_MEM) += sc_tcm.o
