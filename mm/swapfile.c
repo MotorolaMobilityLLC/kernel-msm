@@ -50,6 +50,7 @@
 #include "internal.h"
 #include "swap.h"
 #include <trace/hooks/swapfile.h>
+#include <trace/hooks/mm.h>
 
 static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
 				 unsigned char);
@@ -3496,6 +3497,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 
 	if (p->bdev && bdev_synchronous(p->bdev))
 		p->flags |= SWP_SYNCHRONOUS_IO;
+
+	trace_android_vh_adjust_swap_info_flags(&p->flags);
 
 	if (p->bdev && bdev_nonrot(p->bdev)) {
 		int cpu, i;
