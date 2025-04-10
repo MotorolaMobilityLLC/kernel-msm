@@ -115,6 +115,7 @@ def define_seraph():
         "drivers/soc/qcom/glink_probe.ko",
         "drivers/soc/qcom/hung_task_enh.ko",
         "drivers/soc/qcom/hwkm.ko",
+        "drivers/soc/qcom/llcc-qcom.ko",
         "drivers/soc/qcom/mdt_loader.ko",
         "drivers/soc/qcom/mem-hooks.ko",
         "drivers/soc/qcom/mem-offline.ko",
