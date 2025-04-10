@@ -22,18 +22,16 @@
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 
-#include "cam_sensor_dev.h"
+#include <linux/spi/spi.h>
 #include "vd628x_spi_ioctl.h"
 
 #include <linux/of.h>
 #include <linux/uaccess.h>
 
-#define VD628x_ADAPTER_DEV_NAME "vd628x_adapter"
 
 struct vd628x_spidev_data {
 	struct spi_device *pdev;
 	struct miscdevice misc;
-	struct cam_hw_soc_info soc_info;
 	u8 *pbuffer;
 	int16_t *psamples;
 	u32 spi_max_frequency;
@@ -307,22 +305,14 @@ int vd628x_spi_driver_remove(struct spi_device *pdev)
 	pdata = spi_get_drvdata(pdev);
 	if (!pdata) {
 		pr_err("[%s] can't remove %p", __func__, pdev);
-		return 0;
+		return -ENOMEM;
 	}
 
 
 	misc_deregister(&pdata->misc);
-
 	return 0;
 }
 
-
-
-static const struct of_device_id vd628x_adapter_dt_ids[] = {
-	{ .compatible = "st,vd628x_adapter" },
-	{ /* sentinel */ }
-};
-MODULE_DEVICE_TABLE(of, vd628x_adapter_dt_ids);
 
 static const struct of_device_id vd628x_spi_dt_ids[] = {
 	{ .compatible = "st,vd628x_spi" },
@@ -367,5 +357,5 @@ static void __exit vd628x_spi_module_exit(void)
 module_init(vd628x_spi_module_init);
 module_exit(vd628x_spi_module_exit);
 
-MODULE_DESCRIPTION("vd628x spi adapter driver");
+MODULE_DESCRIPTION("vd628x spi driver");
 MODULE_LICENSE("GPL v2");
