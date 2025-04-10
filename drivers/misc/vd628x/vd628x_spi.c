@@ -299,18 +299,15 @@ int vd628x_spi_driver_probe(struct spi_device *pdev)
 }
 
 
-int vd628x_spi_driver_remove(struct spi_device *pdev)
+void vd628x_spi_driver_remove(struct spi_device *pdev)
 {
 	struct vd628x_spidev_data *pdata;
 	pdata = spi_get_drvdata(pdev);
 	if (!pdata) {
 		pr_err("[%s] can't remove %p", __func__, pdev);
-		return -ENOMEM;
 	}
 
-
 	misc_deregister(&pdata->misc);
-	return 0;
 }
 
 
