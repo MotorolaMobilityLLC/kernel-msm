@@ -293,7 +293,7 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
 	}
 
 	start = vma->vm_start;
-	end = vma->vm_end;
+	end = VMA_PAD_START(vma);
 	show_vma_header_prefix(m, start, end, flags, pgoff, dev, ino);
 
 	/*
@@ -349,13 +349,12 @@ done:
 
 static int show_map(struct seq_file *m, void *v)
 {
-	struct vm_area_struct *pad_vma = get_pad_vma(v);
-	struct vm_area_struct *vma = get_data_vma(v);
+	struct vm_area_struct *vma = v;
 
 	if (vma_pages(vma))
 		show_map_vma(m, vma);
 
-	show_map_pad_vma(vma, pad_vma, m, show_map_vma, false);
+	show_map_pad_vma(vma, m, show_map_vma, false);
 
 	return 0;
 }
@@ -786,9 +785,10 @@ static void smap_gather_stats(struct vm_area_struct *vma,
 		struct mem_size_stats *mss, unsigned long start)
 {
 	const struct mm_walk_ops *ops = &smaps_walk_ops;
+	unsigned long end = VMA_PAD_START(vma);
 
 	/* Invalid start */
-	if (start >= vma->vm_end)
+	if (start >= end)
 		return;
 
 #ifdef CONFIG_SHMEM
@@ -806,7 +806,15 @@ static void smap_gather_stats(struct vm_area_struct *vma,
 		unsigned long shmem_swapped = shmem_swap_usage(vma);
 
 		if (!start && (!shmem_swapped || (vma->vm_flags & VM_SHARED) ||
-					!(vma->vm_flags & VM_WRITE))) {
+					!(vma->vm_flags & VM_WRITE)) &&
+					/*
+					 * Only if we don't have padding can we use the fast path
+					 * shmem_inode_info->swapped for shmem_swapped.
+					 *
+					 * Else we'll walk the page table to calculate
+					 * shmem_swapped, (excluding the padding region).
+					 */
+					end == vma->vm_end) {
 			mss->swap += shmem_swapped;
 		} else {
 			ops = &smaps_shmem_walk_ops;
@@ -815,9 +823,9 @@ static void smap_gather_stats(struct vm_area_struct *vma,
 #endif
 	/* mmap_lock is held in m_start */
 	if (!start)
-		walk_page_vma(vma, ops, mss);
+		walk_page_range(vma->vm_mm, vma->vm_start, end, ops, mss);
 	else
-		walk_page_range(vma->vm_mm, start, vma->vm_end, ops, mss);
+		walk_page_range(vma->vm_mm, start, end, ops, mss);
 }
 
 #define SEQ_PUT_DEC(str, val) \
@@ -866,8 +874,7 @@ static void __show_smap(struct seq_file *m, const struct mem_size_stats *mss,
 
 static int show_smap(struct seq_file *m, void *v)
 {
-	struct vm_area_struct *pad_vma = get_pad_vma(v);
-	struct vm_area_struct *vma = get_data_vma(v);
+	struct vm_area_struct *vma = v;
 	struct mem_size_stats mss;
 
 	memset(&mss, 0, sizeof(mss));
@@ -879,7 +886,7 @@ static int show_smap(struct seq_file *m, void *v)
 
 	show_map_vma(m, vma);
 
-	SEQ_PUT_DEC("Size:           ", vma->vm_end - vma->vm_start);
+	SEQ_PUT_DEC("Size:           ", VMA_PAD_START(vma) - vma->vm_start);
 	SEQ_PUT_DEC(" kB\nKernelPageSize: ", vma_kernel_pagesize(vma));
 	SEQ_PUT_DEC(" kB\nMMUPageSize:    ", vma_mmu_pagesize(vma));
 	seq_puts(m, " kB\n");
@@ -894,7 +901,7 @@ static int show_smap(struct seq_file *m, void *v)
 	show_smap_vma_flags(m, vma);
 
 show_pad:
-	show_map_pad_vma(vma, pad_vma, m, show_smap, true);
+	show_map_pad_vma(vma, m, show_smap, true);
 
 	return 0;
 }
