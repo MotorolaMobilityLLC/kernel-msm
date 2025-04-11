@@ -346,7 +346,7 @@ static int habmem_compress_pfns(
 		struct export_desc_super *exp_super,
 		struct compressed_pfns *pfns,
 		uint32_t *data_size,
-		int mmid_grp_index)
+		int dev_idx)
 {
 	int ret = 0;
 	struct exp_platform_data *platform_data =
@@ -379,7 +379,7 @@ static int habmem_compress_pfns(
 
 	/* DMA buffer from fd */
 	if (dmabuf->ops != &dma_buf_ops) {
-		attach = dma_buf_attach(dmabuf, hab_driver.dev[mmid_grp_index]);
+		attach = dma_buf_attach(dmabuf, hab_driver.dev[dev_idx]);
 		if (IS_ERR_OR_NULL(attach)) {
 			pr_err("dma_buf_attach failed %d\n", -EBADF);
 			ret = -EBADF;
@@ -521,7 +521,14 @@ static int habmem_add_export_compress(struct virtual_channel *vchan,
 	kref_init(&exp_super->refcount);
 
 	pfns = (struct compressed_pfns *)&exp->payload[0];
-	ret = habmem_compress_pfns(exp_super, pfns, payload_size, vchan->ctx->mmid_grp_index);
+	/*
+	 * always use the mmid group specific device to attach to the dma-buf
+	 * the mmid_grp_index in ctx cannot be used because:
+	 * 1. It cannot distinguish if the client is in the kernel or accessed from /dev/hab due to
+	 *    lack of permission to the specific /dev/hab-xxx entry (fallback).
+	 * 2. The dma_coherent attribute cannot be managed per MMID group.
+	 */
+	ret = habmem_compress_pfns(exp_super, pfns, payload_size, (vchan->pchan->habdev->id / 100));
 	if (ret) {
 		pr_err("hab compressed pfns failed %d\n", ret);
 		*payload_size = 0;
