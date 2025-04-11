@@ -513,6 +513,14 @@ config QSEECOM_PROXY
 	 These callback functions can be used to start, shutdown and
 	 send commands to the trusted apps.
 
+config QCOM_SMCI_PROXY
+	tristate "To enable smci proxy driver for kernel client"
+	help
+	 smci proxy driver serves the kernel clients by providing
+	 required ops via call back functions with a minimal framework.
+	 These callback functions can be used to get client objects from
+	 Trusted firmware.
+
 config BOOTMARKER_PROXY
 	tristate "To enable Bootmarker proxy driver for kernel client"
 	help
