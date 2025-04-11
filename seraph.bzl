@@ -69,6 +69,7 @@ def define_seraph():
         "drivers/mailbox/msm_qmp.ko",
         "drivers/mailbox/qcom-ipcc.ko",
         "drivers/mfd/qcom-spmi-pmic.ko",
+        "drivers/misc/isl97900_led/isl97900_led.ko",
         "drivers/mmc/host/cqhci.ko",
         "drivers/mmc/host/sdhci-msm.ko",
         "drivers/nvmem/nvmem_qcom-spmi-sdam.ko",
