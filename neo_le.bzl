@@ -2,9 +2,9 @@ load(":image_opts.bzl", "boot_image_opts")
 load(":msm_kernel_le.bzl", "define_msm_le")
 load(":target_variants.bzl", "le_64_variants")
 
-target_name = "neo"
+target_name = "neo-le"
 
-def define_neo():
+def define_neo_le():
     _neo_in_tree_modules = [
         # keep sorted
         "drivers/base/regmap/qti-regmap-debugfs.ko",
@@ -205,7 +205,7 @@ def define_neo():
         define_msm_le(
             msm_target = target_name,
             variant = variant,
-            defconfig = "build.config.msm.neo",
+            defconfig = "build.config.msm.neo-le",
             in_tree_module_list = mod_list,
             target_variants = le_64_variants,
             boot_image_opts = boot_image_opts(
