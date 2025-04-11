@@ -248,18 +248,15 @@ static int lm36011_brightness_set(struct led_classdev *cdev,
 					enum led_brightness brightness)
 {
 	struct lm36011_led *led = container_of(cdev, struct lm36011_led, cdev_flash);
-	int ret;
 
-	mutex_lock(&led->lock);
-	ret = lm36011_brightness_reg(led->dev, brightness);
-	mutex_unlock(&led->lock);
-	return ret;
+	return lm36011_brightness_reg(led->dev, brightness);
 }
 
 
 static int lm36011_parse_node(struct lm36011_led *led)
 {
 	int ret = 0;
+	struct fwnode_handle *child = NULL;
 
 	ret = of_property_read_u32(led->dev->of_node, "mode", &led->led_mode);
 	if (ret) {
@@ -303,6 +300,33 @@ static int lm36011_parse_node(struct lm36011_led *led)
 	if (!led->name) {
 		dev_err(&led->client->dev, "%s name node not found..\n", __func__);
 		return -ENODEV;
+	}
+
+	child = device_get_next_child_node(&led->client->dev, child);
+	if (!child) {
+		dev_err(&led->client->dev, "No LED Child node\n");
+		return ret;
+	}
+
+	ret = fwnode_property_read_string(child, "qcom,led-name",
+				&led->cdev_flash.name);
+	if (ret < 0) {
+		dev_err(&led->client->dev, "Failed to read flash LED names\n");
+		return ret;
+	}
+
+	ret = fwnode_property_read_u32(child, "qcom,max-current-ma",
+				&led->cdev_flash.max_brightness);
+	if (ret < 0) {
+		dev_err(&led->client->dev, "Failed to read max current, rc=%d\n", ret);
+		return ret;
+	}
+
+	ret = fwnode_property_read_string(child, "qcom,default-led-trigger",
+				&led->cdev_flash.default_trigger);
+	if (ret < 0) {
+		dev_err(&led->client->dev, "Failed to read default_trigger, rc=%d\n", ret);
+		return ret;
 	}
 
 out_err:
@@ -357,10 +381,7 @@ static int lm36011_probe(struct i2c_client *client, const struct i2c_device_id *
 	}
 
 	/* flash */
-	led->cdev_flash.name = "leds-lm36011";
-	led->cdev_flash.max_brightness = 255;
 	led->cdev_flash.brightness_set_blocking = lm36011_brightness_set;
-	led->cdev_flash.default_trigger = "flash";
 	ret = led_classdev_register(&client->dev, &led->cdev_flash);
 	if (ret < 0)
 		return ret;
