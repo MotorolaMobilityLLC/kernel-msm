@@ -55,7 +55,6 @@ class BazelBuilder:
     """Helper class for building with Bazel"""
 
     def __init__(self, target_list, skip_list, out_dir, dry_run, user_opts):
-        BazelBuilder.targets_done = []
         self.workspace = os.path.realpath(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
         )
@@ -218,106 +217,20 @@ class BazelBuilder:
         """Execute a bazel command"""
         if os.environ.get("BAZEL_BUILD_TRACER"):
             pkg_path = os.environ.get("PATH_TO_FILER")
-            curr_targets = [t.bazel_label for t in targets]
-            num_targets_done = len(BazelBuilder.targets_done)
-            if extra_options is None:
-                extra_options = ['--sandbox_debug', '--noreuse_sandbox_directories']
-            if '--sandbox_debug' not in extra_options:
-                extra_options = extra_options + ['--sandbox_debug']
-            if '--noreuse_sandbox_directories' not in extra_options:
-                extra_options = extra_options + ['--noreuse_sandbox_directories']
-            logging.info('Under a build tracer')
-            logging.info("self.workspace = %s" % (self.workspace))
-            logging.info("self.bazel_bin = %s" % (self.bazel_bin))
-            if num_targets_done == 0:
-                logging.info('No target built so far')
-                extra_options = extra_options + ['--discard_analysis_cache']
-                cmds_with_outputs = [\
-                        [self.bazel_bin, 'info'],
-                        [self.bazel_bin, 'version']
-                        ]
-                outputs = []
-                for o_cmd in cmds_with_outputs:
-                    try:
-                        logging.info('Running "%s"', " ".join(o_cmd))
-                        cmd_proc = subprocess.Popen(o_cmd, cwd=self.workspace, stdout=subprocess.PIPE)
-                        self.process_list.append(cmd_proc)
-                        outputs.append([l.decode("utf-8") for l in cmd_proc.stdout.read().splitlines()])
-                    except Exception as e:
-                        logging.error('Command Failed: "%s"', " ".join(o_cmd))
-                        logging.error(e)
-                        sys.exit(1)
-                    self.process_list.remove(cmd_proc)
-                for o in outputs[0]:
-                    o_arr = o.split(':')
-                    if o_arr[0] == 'java-home':
-                        java_home = o_arr[1].strip()
-                    if o_arr[0] == 'install_base':
-                        install_base = o_arr[1].strip()
-                if outputs[1][3].strip() == 'Build timestamp as int: 0':
-                    bazel_version = '7.0.0'
-                cmds_with_outputs = [\
-                        ['find', install_base, '-name', 'A-server.jar', '-print'], \
-                        ['find', java_home, '-name', 'java', '-type', 'f', '-print'], \
-                        [self.bazel_bin, 'shutdown']
-                        ]
-                outputs = []
-                for o_cmd in cmds_with_outputs:
-                    try:
-                        logging.info('Running "%s"', " ".join(o_cmd))
-                        cmd_proc = subprocess.Popen(o_cmd, cwd=self.workspace, stdout=subprocess.PIPE)
-                        self.process_list.append(cmd_proc)
-                        outputs.append([l.decode("utf-8") for l in cmd_proc.stdout.read().splitlines()])
-                    except Exception as e:
-                        logging.error('Command Failed: "%s"', " ".join(o_cmd))
-                        logging.error(e)
-                        sys.exit(1)
-                    self.process_list.remove(cmd_proc)
-                aserver_path = outputs[0][0]
-                java_path = outputs[1][0]
-                logging.info('Bazel Version = %s', bazel_version)
-                logging.info('Absolute Path to A-server.jar is "%s"' % aserver_path)
-                logging.info('Absolute Path to java is "%s"' % java_path)
-                if bazel_version < '7.1.1':
-                    inst_branch = 'kp3'
-                elif bazel_version < '7.2.1':
-                    inst_branch = 'kp4'
-                else:
-                    inst_branch = 'kp5'
-                if os.path.isfile('%s/kernel_platform/prebuilts/jdk/jdk11/linux-x86/bin/java' % (self.workspace)):
-                    repo_path = self.workspace
-                else:
-                    repo_path = '%s/..' % (self.workspace)
-                commands = [ \
-                        'cp -R %s/%s %s' % (pkg_path, inst_branch, repo_path),
-                        'tar xfz %s/%s --directory %s' % (pkg_path, os.environ.get("JPKG"), repo_path),
-                        'mkdir -p %s/aspectj-1.9' % (repo_path),
-                        '%s/%s -jar %s/aspectj-1.9.22.1.jar -to %s/aspectj-1.9' % (repo_path, os.environ.get("JBIN"), pkg_path, repo_path), \
-                        '%s/aspectj-1.9/bin/ajc -1.9 -cp %s:%s/aspectj-1.9/lib/aspectjrt.jar -outxml -outjar %s/aspectskp.jar %s/%s/aspectinstrumentation.java' % \
-                        (repo_path, aserver_path, repo_path, repo_path, repo_path, inst_branch), \
-                        '%s/%s/instrument.sh %s %s/aspectj-1.9/lib %s/aspectskp.jar' % (repo_path, inst_branch, repo_path, repo_path, repo_path),
-                        'touch -d "10 years" %s/prebuilts/jdk/jdk11/linux-x86/bin/java' % (self.workspace)
-                        ]
-                for i, cmd in enumerate(commands):
-                    logging.info('Running command %d : "%s"', i, cmd)
-                    try:
-                        if i == 5:
-                            run_dir = '%s/%s' % (repo_path, inst_branch)
-                        else:
-                            run_dir = self.workspace
-                        cmd_proc = subprocess.Popen(cmd, cwd=run_dir, shell=True)
-                        self.process_list.append(cmd_proc)
-                        cmd_proc.wait()
-                        if cmd_proc.returncode != 0:
-                            sys.exit(cmd_proc.returncode)
-                    except Exception as e:
-                        logging.error(e)
-                        sys.exit(1)
-            else:
-                logging.info('Re-entering this function; Hence instrumentation is already done')
-            cmdline = [self.bazel_bin, "--max_idle_secs=%s" % (os.environ.get("IDLE_TIMEOUT")), bazel_subcommand]
-        else:
-            cmdline = [self.bazel_bin, bazel_subcommand]
+            cmd = "python3 %s/init_bazel_tracing.py --working-dir %s" % (pkg_path, os.getcwd())
+            print ("Running %s" % (cmd))
+            cmd_proc = subprocess.Popen(cmd, shell=True)
+            self.process_list.append(cmd_proc)
+            cmd_proc.wait()
+            try:
+                if cmd_proc.returncode != 0:
+                    print("BAZEL_BUILD_TRACER: Failed to run %s" %(cmd))
+                    sys.exit(cmd_proc.returncode)
+            except Exception as e:
+                logging.error(e)
+                sys.exit(1)
+            print("BAZEL_BUILD_TRACER: Tracer has been initialized")
+        cmdline = [self.bazel_bin, bazel_subcommand]
         logging.info('targets = "%s"', [t.bazel_label for t in targets])
         if extra_options:
             cmdline.extend(extra_options)
@@ -337,7 +250,6 @@ class BazelBuilder:
             logging.error(e)
             sys.exit(1)
 
-        BazelBuilder.targets_done.extend([t.bazel_label for t in targets])
         self.process_list.remove(build_proc)
 
     def build_targets(self, targets):
