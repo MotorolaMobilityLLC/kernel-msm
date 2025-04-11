@@ -133584,6 +133584,12 @@ member {
   offset: 128
 }
 member {
+  id: 0xffaa3920
+  name: "n_ring_pages"
+  type_id: 0xc93e017b
+  offset: 10624
+}
+member {
   id: 0xeebfc981
   name: "n_rules"
   type_id: 0x6720d32f
@@ -133605,6 +133611,12 @@ member {
   name: "n_small_ops"
   type_id: 0x295c7202
   offset: 304
+}
+member {
+  id: 0x3543ba34
+  name: "n_sqe_pages"
+  type_id: 0xc93e017b
+  offset: 10640
 }
 member {
   id: 0x998218ab
@@ -170563,6 +170575,12 @@ member {
   type_id: 0xc9082b19
 }
 member {
+  id: 0x44db695c
+  name: "ring_pages"
+  type_id: 0x0b30ee00
+  offset: 10688
+}
+member {
   id: 0x44db6fdd
   name: "ring_pages"
   type_id: 0x0b30ee00
@@ -185141,6 +185159,12 @@ member {
   name: "sqe_op"
   type_id: 0xb914bfab
   offset: 64
+}
+member {
+  id: 0xce17811e
+  name: "sqe_pages"
+  type_id: 0x0b30ee00
+  offset: 10752
 }
 member {
   id: 0xe005d64f
@@ -241492,7 +241516,7 @@ struct_union {
   kind: STRUCT
   name: "io_ring_ctx"
   definition {
-    bytesize: 1344
+    bytesize: 1408
     member_id: 0x2c717118
     member_id: 0x246f2632
     member_id: 0x7adfc058
@@ -241534,6 +241558,10 @@ struct_union {
     member_id: 0x31444ba6
     member_id: 0x1d068fc6
     member_id: 0xd2c00a64
+    member_id: 0xffaa3920
+    member_id: 0x3543ba34
+    member_id: 0x44db695c
+    member_id: 0xce17811e
   }
 }
 struct_union {
