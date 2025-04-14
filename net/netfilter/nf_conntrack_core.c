@@ -720,9 +720,6 @@ static void nf_ct_gc_expired(struct nf_conn *ct)
 	if (!refcount_inc_not_zero(&ct->ct_general.use))
 		return;
 
-	/* load ->status after refcount increase */
-	smp_acquire__after_ctrl_dep();
-
 	if (nf_ct_should_gc(ct))
 		nf_ct_kill(ct);
 
@@ -789,9 +786,6 @@ __nf_conntrack_find_get(struct net *net, const struct nf_conntrack_zone *zone,
 		 */
 		ct = nf_ct_tuplehash_to_ctrack(h);
 		if (likely(refcount_inc_not_zero(&ct->ct_general.use))) {
-			/* re-check key after refcount */
-			smp_acquire__after_ctrl_dep();
-
 			if (likely(nf_ct_key_equal(h, tuple, zone, net)))
 				goto found;
 
@@ -1291,9 +1285,6 @@ static unsigned int early_drop_list(struct net *net,
 		if (!refcount_inc_not_zero(&tmp->ct_general.use))
 			continue;
 
-		/* load ->ct_net and ->status after refcount increase */
-		smp_acquire__after_ctrl_dep();
-
 		/* kill only if still in same netns -- might have moved due to
 		 * SLAB_TYPESAFE_BY_RCU rules.
 		 *
@@ -1409,9 +1400,6 @@ static void gc_worker(struct work_struct *work)
 			/* need to take reference to avoid possible races */
 			if (!refcount_inc_not_zero(&tmp->ct_general.use))
 				continue;
-
-			/* load ->status after refcount increase */
-			smp_acquire__after_ctrl_dep();
 
 			if (gc_worker_skip_ct(tmp)) {
 				nf_ct_put(tmp);
@@ -1622,16 +1610,6 @@ init_conntrack(struct net *net, struct nf_conn *tmpl,
 	}
 	if (!exp)
 		__nf_ct_try_assign_helper(ct, tmpl, GFP_ATOMIC);
-
-	/* Other CPU might have obtained a pointer to this object before it was
-	 * released.  Because refcount is 0, refcount_inc_not_zero() will fail.
-	 *
-	 * After refcount_set(1) it will succeed; ensure that zeroing of
-	 * ct->status and the correct ct->net pointer are visible; else other
-	 * core might observe CONFIRMED bit which means the entry is valid and
-	 * in the hash table, but its not (anymore).
-	 */
-	smp_wmb();
 
 	/* Now it is inserted into the unconfirmed list, set refcount to 1. */
 	refcount_set(&ct->ct_general.use, 1);
