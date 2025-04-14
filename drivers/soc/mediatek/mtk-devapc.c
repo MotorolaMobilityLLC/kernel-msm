@@ -285,16 +285,18 @@ err:
 	return ret;
 }
 
-static void mtk_devapc_remove(struct platform_device *pdev)
+static int mtk_devapc_remove(struct platform_device *pdev)
 {
 	struct mtk_devapc_context *ctx = platform_get_drvdata(pdev);
 
 	stop_devapc(ctx);
+
+	return 0;
 }
 
 static struct platform_driver mtk_devapc_driver = {
 	.probe = mtk_devapc_probe,
-	.remove_new = mtk_devapc_remove,
+	.remove = mtk_devapc_remove,
 	.driver = {
 		.name = "mtk-devapc",
 		.of_match_table = mtk_devapc_dt_match,
