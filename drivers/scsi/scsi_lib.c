@@ -1519,7 +1519,6 @@ static blk_status_t scsi_prepare_cmd(struct request *req)
 	cmd->allowed = 0;
 	cmd->prot_type = 0;
 	cmd->prot_flags = 0;
-	cmd->submitter = 0;
 	cmd->cmd_len = 0;
 	cmd->cmnd = NULL;
 	memset(&cmd->sdb, 0, sizeof(cmd->sdb));
