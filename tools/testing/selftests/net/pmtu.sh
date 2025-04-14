@@ -26,6 +26,15 @@
 # - pmtu_ipv6
 #	Same as pmtu_ipv4, except for locked PMTU tests, using IPv6
 #
+# - pmtu_ipv4_dscp_icmp_exception
+#	Set up the same network topology as pmtu_ipv4, but use non-default
+#	routing table in A. A fib-rule is used to jump to this routing table
+#	based on DSCP. Send ICMPv4 packets with the expected DSCP value and
+#	verify that ECN doesn't interfere with the creation of PMTU exceptions.
+#
+# - pmtu_ipv4_dscp_udp_exception
+#	Same as pmtu_ipv4_dscp_icmp_exception, but use UDP instead of ICMP.
+#
 # - pmtu_ipv4_vxlan4_exception
 #	Set up the same network topology as pmtu_ipv4, create a VXLAN tunnel
 #	over IPv4 between A and B, routed via R1. On the link between R1 and B,
@@ -188,6 +197,12 @@
 #
 # - pmtu_ipv6_route_change
 #	Same as above but with IPv6
+#
+# - pmtu_ipv4_mp_exceptions
+#	Use the same topology as in pmtu_ipv4, but add routeable addresses
+#	on host A and B on lo reachable via both routers. Host A and B
+#	addresses have multipath routes to each other, b_r1 mtu = 1500.
+#	Check that PMTU exceptions are created for both paths.
 
 # Kselftest framework requirement - SKIP code is 4.
 ksft_skip=4
@@ -203,6 +218,8 @@ which ping6 > /dev/null 2>&1 && ping6=$(which ping6) || ping6=$(which ping)
 tests="
 	pmtu_ipv4_exception		ipv4: PMTU exceptions			1
 	pmtu_ipv6_exception		ipv6: PMTU exceptions			1
+	pmtu_ipv4_dscp_icmp_exception	ICMPv4 with DSCP and ECN: PMTU exceptions	1
+	pmtu_ipv4_dscp_udp_exception	UDPv4 with DSCP and ECN: PMTU exceptions	1
 	pmtu_ipv4_vxlan4_exception	IPv4 over vxlan4: PMTU exceptions	1
 	pmtu_ipv6_vxlan4_exception	IPv6 over vxlan4: PMTU exceptions	1
 	pmtu_ipv4_vxlan6_exception	IPv4 over vxlan6: PMTU exceptions	1
@@ -255,7 +272,8 @@ tests="
 	list_flush_ipv4_exception	ipv4: list and flush cached exceptions	1
 	list_flush_ipv6_exception	ipv6: list and flush cached exceptions	1
 	pmtu_ipv4_route_change		ipv4: PMTU exception w/route replace	1
-	pmtu_ipv6_route_change		ipv6: PMTU exception w/route replace	1"
+	pmtu_ipv6_route_change		ipv6: PMTU exception w/route replace	1
+	pmtu_ipv4_mp_exceptions		ipv4: PMTU multipath nh exceptions	1"
 
 NS_A="ns-A"
 NS_B="ns-B"
@@ -323,6 +341,9 @@ routes_nh="
 	B	6	default			61
 "
 
+policy_mark=0x04
+rt_table=main
+
 veth4_a_addr="192.168.1.1"
 veth4_b_addr="192.168.1.2"
 veth4_c_addr="192.168.2.10"
@@ -339,6 +360,9 @@ tunnel6_a_addr="fd00:2::a"
 tunnel6_b_addr="fd00:2::b"
 tunnel6_mask="64"
 
+host4_a_addr="192.168.99.99"
+host4_b_addr="192.168.88.88"
+
 dummy6_0_prefix="fc00:1000::"
 dummy6_1_prefix="fc00:1001::"
 dummy6_mask="64"
@@ -346,6 +370,7 @@ dummy6_mask="64"
 err_buf=
 tcpdump_pids=
 nettest_pids=
+socat_pids=
 
 err() {
 	err_buf="${err_buf}${1}
@@ -725,7 +750,7 @@ setup_routing_old() {
 
 		ns_name="$(nsname ${ns})"
 
-		ip -n ${ns_name} route add ${addr} via ${gw}
+		ip -n "${ns_name}" route add "${addr}" table "${rt_table}" via "${gw}"
 
 		ns=""; addr=""; gw=""
 	done
@@ -755,7 +780,7 @@ setup_routing_new() {
 
 		ns_name="$(nsname ${ns})"
 
-		ip -n ${ns_name} -${fam} route add ${addr} nhid ${nhid}
+		ip -n "${ns_name}" -"${fam}" route add "${addr}" table "${rt_table}" nhid "${nhid}"
 
 		ns=""; fam=""; addr=""; nhid=""
 	done
@@ -798,6 +823,24 @@ setup_routing() {
 	fi
 
 	return 0
+}
+
+setup_policy_routing() {
+	setup_routing
+
+	ip -netns "${NS_A}" -4 rule add dsfield "${policy_mark}" \
+		table "${rt_table}"
+
+	# Set the IPv4 Don't Fragment bit with tc, since socat doesn't seem to
+	# have an option do to it.
+	tc -netns "${NS_A}" qdisc replace dev veth_A-R1 root prio
+	tc -netns "${NS_A}" qdisc replace dev veth_A-R2 root prio
+	tc -netns "${NS_A}" filter add dev veth_A-R1                      \
+		protocol ipv4 flower ip_proto udp                         \
+		action pedit ex munge ip df set 0x40 pipe csum ip and udp
+	tc -netns "${NS_A}" filter add dev veth_A-R2                      \
+		protocol ipv4 flower ip_proto udp                         \
+		action pedit ex munge ip df set 0x40 pipe csum ip and udp
 }
 
 setup_bridge() {
@@ -874,6 +917,52 @@ setup_ovs_bridge() {
 	run_cmd ip route add ${prefix6}:${b_r1}::1 via ${prefix6}:${a_r1}::2
 }
 
+setup_multipath_new() {
+	# Set up host A with multipath routes to host B host4_b_addr
+	run_cmd ${ns_a} ip addr add ${host4_a_addr} dev lo
+	run_cmd ${ns_a} ip nexthop add id 401 via ${prefix4}.${a_r1}.2 dev veth_A-R1
+	run_cmd ${ns_a} ip nexthop add id 402 via ${prefix4}.${a_r2}.2 dev veth_A-R2
+	run_cmd ${ns_a} ip nexthop add id 403 group 401/402
+	run_cmd ${ns_a} ip route add ${host4_b_addr} src ${host4_a_addr} nhid 403
+
+	# Set up host B with multipath routes to host A host4_a_addr
+	run_cmd ${ns_b} ip addr add ${host4_b_addr} dev lo
+	run_cmd ${ns_b} ip nexthop add id 401 via ${prefix4}.${b_r1}.2 dev veth_B-R1
+	run_cmd ${ns_b} ip nexthop add id 402 via ${prefix4}.${b_r2}.2 dev veth_B-R2
+	run_cmd ${ns_b} ip nexthop add id 403 group 401/402
+	run_cmd ${ns_b} ip route add ${host4_a_addr} src ${host4_b_addr} nhid 403
+}
+
+setup_multipath_old() {
+	# Set up host A with multipath routes to host B host4_b_addr
+	run_cmd ${ns_a} ip addr add ${host4_a_addr} dev lo
+	run_cmd ${ns_a} ip route add ${host4_b_addr} \
+			src ${host4_a_addr} \
+			nexthop via ${prefix4}.${a_r1}.2 weight 1 \
+			nexthop via ${prefix4}.${a_r2}.2 weight 1
+
+	# Set up host B with multipath routes to host A host4_a_addr
+	run_cmd ${ns_b} ip addr add ${host4_b_addr} dev lo
+	run_cmd ${ns_b} ip route add ${host4_a_addr} \
+			src ${host4_b_addr} \
+			nexthop via ${prefix4}.${b_r1}.2 weight 1 \
+			nexthop via ${prefix4}.${b_r2}.2 weight 1
+}
+
+setup_multipath() {
+	if [ "$USE_NH" = "yes" ]; then
+		setup_multipath_new
+	else
+		setup_multipath_old
+	fi
+
+	# Set up routers with routes to dummies
+	run_cmd ${ns_r1} ip route add ${host4_a_addr} via ${prefix4}.${a_r1}.1
+	run_cmd ${ns_r2} ip route add ${host4_a_addr} via ${prefix4}.${a_r2}.1
+	run_cmd ${ns_r1} ip route add ${host4_b_addr} via ${prefix4}.${b_r1}.1
+	run_cmd ${ns_r2} ip route add ${host4_b_addr} via ${prefix4}.${b_r2}.1
+}
+
 setup() {
 	[ "$(id -u)" -ne 0 ] && echo "  need to run as root" && return $ksft_skip
 
@@ -904,6 +993,11 @@ cleanup() {
 		kill ${pid}
 	done
 	nettest_pids=
+
+	for pid in ${socat_pids}; do
+		kill "${pid}"
+	done
+	socat_pids=
 
 	for n in ${NS_A} ${NS_B} ${NS_C} ${NS_R1} ${NS_R2}; do
 		ip netns del ${n} 2> /dev/null
@@ -950,17 +1044,15 @@ link_get_mtu() {
 }
 
 route_get_dst_exception() {
-	ns_cmd="${1}"
-	dst="${2}"
+	ns_cmd="${1}"; shift
 
-	${ns_cmd} ip route get "${dst}"
+	${ns_cmd} ip route get "$@"
 }
 
 route_get_dst_pmtu_from_exception() {
-	ns_cmd="${1}"
-	dst="${2}"
+	ns_cmd="${1}"; shift
 
-	mtu_parse "$(route_get_dst_exception "${ns_cmd}" ${dst})"
+	mtu_parse "$(route_get_dst_exception "${ns_cmd}" "$@")"
 }
 
 check_pmtu_value() {
@@ -1068,6 +1160,95 @@ test_pmtu_ipv4_exception() {
 
 test_pmtu_ipv6_exception() {
 	test_pmtu_ipvX 6
+}
+
+test_pmtu_ipv4_dscp_icmp_exception() {
+	rt_table=100
+
+	setup namespaces policy_routing || return $ksft_skip
+	trace "${ns_a}"  veth_A-R1    "${ns_r1}" veth_R1-A \
+	      "${ns_r1}" veth_R1-B    "${ns_b}"  veth_B-R1 \
+	      "${ns_a}"  veth_A-R2    "${ns_r2}" veth_R2-A \
+	      "${ns_r2}" veth_R2-B    "${ns_b}"  veth_B-R2
+
+	# Set up initial MTU values
+	mtu "${ns_a}"  veth_A-R1 2000
+	mtu "${ns_r1}" veth_R1-A 2000
+	mtu "${ns_r1}" veth_R1-B 1400
+	mtu "${ns_b}"  veth_B-R1 1400
+
+	mtu "${ns_a}"  veth_A-R2 2000
+	mtu "${ns_r2}" veth_R2-A 2000
+	mtu "${ns_r2}" veth_R2-B 1500
+	mtu "${ns_b}"  veth_B-R2 1500
+
+	len=$((2000 - 20 - 8)) # Fills MTU of veth_A-R1
+
+	dst1="${prefix4}.${b_r1}.1"
+	dst2="${prefix4}.${b_r2}.1"
+
+	# Create route exceptions
+	dsfield=${policy_mark} # No ECN bit set (Not-ECT)
+	run_cmd "${ns_a}" ping -q -M want -Q "${dsfield}" -c 1 -w 1 -s "${len}" "${dst1}"
+
+	dsfield=$(printf "%#x" $((policy_mark + 0x02))) # ECN=2 (ECT(0))
+	run_cmd "${ns_a}" ping -q -M want -Q "${dsfield}" -c 1 -w 1 -s "${len}" "${dst2}"
+
+	# Check that exceptions have been created with the correct PMTU
+	pmtu_1="$(route_get_dst_pmtu_from_exception "${ns_a}" "${dst1}" dsfield "${policy_mark}")"
+	check_pmtu_value "1400" "${pmtu_1}" "exceeding MTU" || return 1
+
+	pmtu_2="$(route_get_dst_pmtu_from_exception "${ns_a}" "${dst2}" dsfield "${policy_mark}")"
+	check_pmtu_value "1500" "${pmtu_2}" "exceeding MTU" || return 1
+}
+
+test_pmtu_ipv4_dscp_udp_exception() {
+	rt_table=100
+
+	if ! which socat > /dev/null 2>&1; then
+		echo "'socat' command not found; skipping tests"
+		return $ksft_skip
+	fi
+
+	setup namespaces policy_routing || return $ksft_skip
+	trace "${ns_a}"  veth_A-R1    "${ns_r1}" veth_R1-A \
+	      "${ns_r1}" veth_R1-B    "${ns_b}"  veth_B-R1 \
+	      "${ns_a}"  veth_A-R2    "${ns_r2}" veth_R2-A \
+	      "${ns_r2}" veth_R2-B    "${ns_b}"  veth_B-R2
+
+	# Set up initial MTU values
+	mtu "${ns_a}"  veth_A-R1 2000
+	mtu "${ns_r1}" veth_R1-A 2000
+	mtu "${ns_r1}" veth_R1-B 1400
+	mtu "${ns_b}"  veth_B-R1 1400
+
+	mtu "${ns_a}"  veth_A-R2 2000
+	mtu "${ns_r2}" veth_R2-A 2000
+	mtu "${ns_r2}" veth_R2-B 1500
+	mtu "${ns_b}"  veth_B-R2 1500
+
+	len=$((2000 - 20 - 8)) # Fills MTU of veth_A-R1
+
+	dst1="${prefix4}.${b_r1}.1"
+	dst2="${prefix4}.${b_r2}.1"
+
+	# Create route exceptions
+	run_cmd_bg "${ns_b}" socat UDP-LISTEN:50000 OPEN:/dev/null,wronly=1
+	socat_pids="${socat_pids} $!"
+
+	dsfield=${policy_mark} # No ECN bit set (Not-ECT)
+	run_cmd "${ns_a}" socat OPEN:/dev/zero,rdonly=1,readbytes="${len}" \
+		UDP:"${dst1}":50000,tos="${dsfield}"
+
+	dsfield=$(printf "%#x" $((policy_mark + 0x02))) # ECN=2 (ECT(0))
+	run_cmd "${ns_a}" socat OPEN:/dev/zero,rdonly=1,readbytes="${len}" \
+		UDP:"${dst2}":50000,tos="${dsfield}"
+
+	# Check that exceptions have been created with the correct PMTU
+	pmtu_1="$(route_get_dst_pmtu_from_exception "${ns_a}" "${dst1}" dsfield "${policy_mark}")"
+	check_pmtu_value "1400" "${pmtu_1}" "exceeding MTU" || return 1
+	pmtu_2="$(route_get_dst_pmtu_from_exception "${ns_a}" "${dst2}" dsfield "${policy_mark}")"
+	check_pmtu_value "1500" "${pmtu_2}" "exceeding MTU" || return 1
 }
 
 test_pmtu_ipvX_over_vxlanY_or_geneveY_exception() {
@@ -2070,6 +2251,36 @@ test_pmtu_ipv4_route_change() {
 
 test_pmtu_ipv6_route_change() {
 	test_pmtu_ipvX_route_change 6
+}
+
+test_pmtu_ipv4_mp_exceptions() {
+	setup namespaces routing multipath || return $ksft_skip
+
+	trace "${ns_a}"  veth_A-R1    "${ns_r1}" veth_R1-A \
+	      "${ns_r1}" veth_R1-B    "${ns_b}"  veth_B-R1 \
+	      "${ns_a}"  veth_A-R2    "${ns_r2}" veth_R2-A \
+	      "${ns_r2}" veth_R2-B    "${ns_b}"  veth_B-R2
+
+	# Set up initial MTU values
+	mtu "${ns_a}"  veth_A-R1 2000
+	mtu "${ns_r1}" veth_R1-A 2000
+	mtu "${ns_r1}" veth_R1-B 1500
+	mtu "${ns_b}"  veth_B-R1 1500
+
+	mtu "${ns_a}"  veth_A-R2 2000
+	mtu "${ns_r2}" veth_R2-A 2000
+	mtu "${ns_r2}" veth_R2-B 1500
+	mtu "${ns_b}"  veth_B-R2 1500
+
+	# Ping and expect two nexthop exceptions for two routes
+	run_cmd ${ns_a} ping -q -M want -i 0.1 -c 1 -s 1800 "${host4_b_addr}"
+
+	# Check that exceptions have been created with the correct PMTU
+	pmtu_a_R1="$(route_get_dst_pmtu_from_exception "${ns_a}" "${host4_b_addr}" oif veth_A-R1)"
+	pmtu_a_R2="$(route_get_dst_pmtu_from_exception "${ns_a}" "${host4_b_addr}" oif veth_A-R2)"
+
+	check_pmtu_value "1500" "${pmtu_a_R1}" "exceeding MTU (veth_A-R1)" || return 1
+	check_pmtu_value "1500" "${pmtu_a_R2}" "exceeding MTU (veth_A-R2)" || return 1
 }
 
 usage() {
