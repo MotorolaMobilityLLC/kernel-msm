@@ -26,6 +26,7 @@ def define_seraph():
         "drivers/clk/qcom/videocc-seraph.ko",
         "drivers/cpufreq/qcom-cpufreq-hw.ko",
         "drivers/cpufreq/qcom-cpufreq-hw-debug.ko",
+        "drivers/cpuidle/governors/qcom_lpm.ko",
         "drivers/dma-buf/heaps/qcom_dma_heaps.ko",
         "drivers/dma/qcom/bam_dma.ko",
         "drivers/dma/qcom/msm_gpi.ko",
@@ -186,6 +187,7 @@ def define_seraph():
 
     _seraph_consolidate_in_tree_modules = _seraph_in_tree_modules + [
         # keep sorted
+        "drivers/cpuidle/governors/qcom_simple_lpm.ko",
         "drivers/hwtracing/coresight/coresight-etm4x.ko",
         "drivers/misc/lkdtm/lkdtm.ko",
         "kernel/locking/locktorture.ko",
