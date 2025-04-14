@@ -348,6 +348,10 @@
 #required by zram.ko
   bioset_init
   bioset_exit
+  bio_crypt_set_ctx
+  blk_crypto_evict_key
+  blk_crypto_init_key
+  blk_crypto_start_using_key
 
 #required by mi_asap.ko
   __traceiter_android_vh_read_pages
