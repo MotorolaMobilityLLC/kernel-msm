@@ -21,6 +21,7 @@
 						 * current value.*/
 #define MMC_CNTRL_PRESET		0x10
 #define MMC_CNTRL_FULL_HALF_PRESET	0x20
+#define MMC_CNTRL_DRCHM			BIT(31)
 
 #define MMC_GMAC4_OFFSET		0x700
 #define MMC_GMAC3_X_OFFSET		0x100
