@@ -98,4 +98,14 @@ config QCOM_POWER_TELEMETRY_FRAMEWORK
 	  it binds different channels to power-zone node (aka qptm). Each
 	  qptm node registers with powercap framework as powercap zones.
 
+config QCOM_POWER_TELEMETRY_HW_V2
+	tristate "Qualcomm Technologies, Inc. Power Telemetry Hardware v2 driver"
+	depends on NVMEM_SPMI_SDAM
+	depends on QCOM_POWER_TELEMETRY_FRAMEWORK
+	help
+	  This enables Qualcomm Technologies, Inc. power telemetry
+	  hardware v2 device driver. It provides power and energy data for different
+	  power devices like pmic regulator, bobs etc. It registers each power/energy
+	  channel to power telemetry framework.
+
 endif
