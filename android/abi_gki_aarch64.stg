@@ -320162,6 +320162,14 @@ function {
   parameter_id: 0x39cdf888
 }
 function {
+  id: 0x52b6bce6
+  return_type_id: 0x2560a232
+  parameter_id: 0x347303b4
+  parameter_id: 0x3e10b518
+  parameter_id: 0x4585663f
+  parameter_id: 0x064d6086
+}
+function {
   id: 0x52c37930
   return_type_id: 0x92233392
   parameter_id: 0x1462a9ec
@@ -406774,6 +406782,15 @@ elf_symbol {
   full_name: "of_find_device_by_node"
 }
 elf_symbol {
+  id: 0xd1459283
+  name: "of_find_gpio"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x245269e3
+  type_id: 0x52b6bce6
+  full_name: "of_find_gpio"
+}
+elf_symbol {
   id: 0xdf129c81
   name: "of_find_matching_node_and_match"
   is_defined: true
@@ -440986,6 +441003,7 @@ interface {
   symbol_id: 0x985c43d8
   symbol_id: 0xd5545a99
   symbol_id: 0x9f89ff97
+  symbol_id: 0xd1459283
   symbol_id: 0xdf129c81
   symbol_id: 0x94b29523
   symbol_id: 0x27d7263a
