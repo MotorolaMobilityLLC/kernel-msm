@@ -45,6 +45,7 @@ static inline int rproc_set_state(struct rproc *rproc, bool state)
 
 #if IS_ENABLED(CONFIG_QCOM_Q6V5_PAS)
 
+extern bool power_state_enter_into_hibernate;
 int qcom_rproc_set_dtb_firmware(struct rproc *rproc, const char *dtb_fw_name);
 
 #else
