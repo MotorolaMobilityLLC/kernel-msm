@@ -5605,19 +5605,25 @@ static int hist_show(struct seq_file *m, void *v)
 {
 	struct event_trigger_data *data;
 	struct trace_event_file *event_file;
-	int n = 0;
+	int n = 0, ret = 0;
 
-	guard(mutex)(&event_mutex);
+	mutex_lock(&event_mutex);
 
 	event_file = event_file_file(m->private);
-	if (unlikely(!event_file))
-		return -ENODEV;
+	if (unlikely(!event_file)) {
+		ret = -ENODEV;
+		goto out_unlock;
+	}
 
 	list_for_each_entry(data, &event_file->triggers, list) {
 		if (data->cmd_ops->trigger_type == ETT_EVENT_HIST)
 			hist_trigger_show(m, data, n++);
 	}
-	return 0;
+
+ out_unlock:
+	mutex_unlock(&event_mutex);
+
+	return ret;
 }
 
 static int event_hist_open(struct inode *inode, struct file *file)
@@ -5878,19 +5884,25 @@ static int hist_debug_show(struct seq_file *m, void *v)
 {
 	struct event_trigger_data *data;
 	struct trace_event_file *event_file;
-	int n = 0;
+	int n = 0, ret = 0;
 
-	guard(mutex)(&event_mutex);
+	mutex_lock(&event_mutex);
 
 	event_file = event_file_file(m->private);
-	if (unlikely(!event_file))
-		return -ENODEV;
+	if (unlikely(!event_file)) {
+		ret = -ENODEV;
+		goto out_unlock;
+	}
 
 	list_for_each_entry(data, &event_file->triggers, list) {
 		if (data->cmd_ops->trigger_type == ETT_EVENT_HIST)
 			hist_trigger_debug_show(m, data, n++);
 	}
-	return 0;
+
+ out_unlock:
+	mutex_unlock(&event_mutex);
+
+	return ret;
 }
 
 static int event_hist_debug_open(struct inode *inode, struct file *file)
