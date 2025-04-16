@@ -153,7 +153,7 @@ xfs_growfs_data_private(
 			(delta > 0 ? XFS_GROWFS_SPACE_RES(mp) : -delta), 0,
 			XFS_TRANS_RESERVE, &tp);
 	if (error)
-		return error;
+		goto out_free_unused_perag;
 
 	last_pag = xfs_perag_get(mp, oagcount - 1);
 	if (delta > 0) {
@@ -227,6 +227,9 @@ xfs_growfs_data_private(
 
 out_trans_cancel:
 	xfs_trans_cancel(tp);
+out_free_unused_perag:
+	if (nagcount > oagcount)
+		xfs_free_unused_perag_range(mp, oagcount, nagcount);
 	return error;
 }
 

@@ -137,3 +137,10 @@ type 'struct geni_wrapper' changed
   member 'struct clk_bulk_data clks[2]' was added
   member 'unsigned int num_clks' was added
 
+type 'struct io_ring_ctx' changed
+  byte size changed from 1344 to 1408
+  member 'unsigned short n_ring_pages' was added
+  member 'unsigned short n_sqe_pages' was added
+  member 'struct page** ring_pages' was added
+  member 'struct page** sqe_pages' was added
+
