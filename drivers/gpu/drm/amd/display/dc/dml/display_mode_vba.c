@@ -628,6 +628,19 @@ static void fetch_pipe_params(struct display_mode_lib *mode_lib)
 				}
 			}
 		}
+		if (src->viewport_width_max) {
+			int hdiv_c = src->source_format >= dm_420_8 && src->source_format <= dm_422_10 ? 2 : 1;
+			int vdiv_c = src->source_format >= dm_420_8 && src->source_format <= dm_420_12 ? 2 : 1;
+
+			if (mode_lib->vba.ViewportWidth[mode_lib->vba.NumberOfActivePlanes] > src->viewport_width_max)
+				mode_lib->vba.ViewportWidth[mode_lib->vba.NumberOfActivePlanes] = src->viewport_width_max;
+			if (mode_lib->vba.ViewportHeight[mode_lib->vba.NumberOfActivePlanes] > src->viewport_height_max)
+				mode_lib->vba.ViewportHeight[mode_lib->vba.NumberOfActivePlanes] = src->viewport_height_max;
+			if (mode_lib->vba.ViewportWidthChroma[mode_lib->vba.NumberOfActivePlanes] > src->viewport_width_max / hdiv_c)
+				mode_lib->vba.ViewportWidthChroma[mode_lib->vba.NumberOfActivePlanes] = src->viewport_width_max / hdiv_c;
+			if (mode_lib->vba.ViewportHeightChroma[mode_lib->vba.NumberOfActivePlanes] > src->viewport_height_max / vdiv_c)
+				mode_lib->vba.ViewportHeightChroma[mode_lib->vba.NumberOfActivePlanes] = src->viewport_height_max / vdiv_c;
+		}
 
 		if (pipes[k].pipe.src.immediate_flip) {
 			mode_lib->vba.ImmediateFlipSupport = true;
@@ -825,11 +838,30 @@ static unsigned int CursorBppEnumToBits(enum cursor_bpp ebpp)
 	}
 }
 
+static unsigned int get_pipe_idx(struct display_mode_lib *mode_lib, unsigned int plane_idx)
+{
+	int pipe_idx = -1;
+	int i;
+
+	ASSERT(plane_idx < DC__NUM_DPP__MAX);
+
+	for (i = 0; i < DC__NUM_DPP__MAX ; i++) {
+		if (plane_idx == mode_lib->vba.pipe_plane[i]) {
+			pipe_idx = i;
+			break;
+		}
+	}
+	ASSERT(pipe_idx >= 0);
+
+	return pipe_idx;
+}
+
 void ModeSupportAndSystemConfiguration(struct display_mode_lib *mode_lib)
 {
 	soc_bounding_box_st *soc = &mode_lib->vba.soc;
 	unsigned int k;
 	unsigned int total_pipes = 0;
+	unsigned int pipe_idx = 0;
 
 	mode_lib->vba.VoltageLevel = mode_lib->vba.cache_pipes[0].clks_cfg.voltage;
 	mode_lib->vba.ReturnBW = mode_lib->vba.ReturnBWPerState[mode_lib->vba.VoltageLevel][mode_lib->vba.maxMpcComb];
@@ -849,8 +881,14 @@ void ModeSupportAndSystemConfiguration(struct display_mode_lib *mode_lib)
 		mode_lib->vba.DISPCLK = soc->clock_limits[mode_lib->vba.VoltageLevel].dispclk_mhz;
 
 	// Total Available Pipes Support Check
-	for (k = 0; k < mode_lib->vba.NumberOfActivePlanes; ++k)
+	for (k = 0; k < mode_lib->vba.NumberOfActivePlanes; ++k) {
+		pipe_idx = get_pipe_idx(mode_lib, k);
+		if (pipe_idx == -1) {
+			ASSERT(0);
+			continue; // skip inactive planes
+		}
 		total_pipes += mode_lib->vba.DPPPerPlane[k];
+	}
 	ASSERT(total_pipes <= DC__NUM_DPP__MAX);
 }
 
