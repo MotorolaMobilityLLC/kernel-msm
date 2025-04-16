@@ -1235,7 +1235,7 @@ static int qmp_mbox_suspend_noirq(struct device *dev)
 	return 0;
 }
 
-static int qmp_mbox_resume_noirq(struct device *dev)
+static int qmp_mbox_resume_early(struct device *dev)
 {
 	int ret = 0;
 
@@ -1251,7 +1251,7 @@ static const struct dev_pm_ops qmp_mbox_pm_ops = {
 	.freeze_late = qmp_mbox_freeze,
 	.restore_early = qmp_mbox_restore,
 	.suspend_noirq = qmp_mbox_suspend_noirq,
-	.resume_noirq = qmp_mbox_resume_noirq,
+	.resume_early = qmp_mbox_resume_early,
 };
 
 static const struct of_device_id qmp_mbox_dt_match[] = {
