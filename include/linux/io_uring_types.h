@@ -326,8 +326,9 @@ struct io_ring_ctx {
 
 	struct list_head	io_buffers_cache;
 
-	/* deferred free list, protected by ->uring_lock */
+#ifdef __GENKSYMS__
 	struct hlist_head	io_buf_list;
+#endif
 
 	/* Keep this last, we don't need it for the fast path */
 	struct wait_queue_head		poll_wq;
