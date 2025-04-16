@@ -517,3 +517,7 @@ __traceiter_android_vh_filemap_read
 __tracepoint_android_vh_filemap_read
 __traceiter_android_vh_filemap_map_pages_range
 __tracepoint_android_vh_filemap_map_pages_range
+
+#required by rtase.ko
+proc_get_parent_data
+netdev_stats_to_stats64
