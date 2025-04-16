@@ -185,7 +185,7 @@ define_common_kernels(target_configs = {
         "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
-        "clang_autofdo_profile": "//toolchain/pgo-profiles/kernel:aarch64/android15-6.6/kernel.afdo",
+        "clang_autofdo_profile": ":android/gki/aarch64/afdo/kernel.afdo",
         "defconfig_fragments": ["arch/arm64/configs/autofdo_gki.fragment"],
         "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
         "extra_dist": [
