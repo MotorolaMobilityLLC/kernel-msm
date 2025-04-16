@@ -9542,8 +9542,7 @@ static int trace_array_create_dir(struct trace_array *tr)
 	return ret;
 }
 
-static struct trace_array *
-trace_array_create_systems(const char *name, const char *systems)
+static struct trace_array *trace_array_create(const char *name)
 {
 	struct trace_array *tr;
 	int ret;
@@ -9562,12 +9561,6 @@ trace_array_create_systems(const char *name, const char *systems)
 
 	if (!zalloc_cpumask_var(&tr->pipe_cpumask, GFP_KERNEL))
 		goto out_free_tr;
-
-	if (systems) {
-		tr->system_names = kstrdup_const(systems, GFP_KERNEL);
-		if (!tr->system_names)
-			goto out_free_tr;
-	}
 
 	tr->trace_flags = global_trace.trace_flags & ~ZEROED_TRACE_FLAGS;
 
@@ -9612,16 +9605,10 @@ trace_array_create_systems(const char *name, const char *systems)
 	free_trace_buffers(tr);
 	free_cpumask_var(tr->pipe_cpumask);
 	free_cpumask_var(tr->tracing_cpumask);
-	kfree_const(tr->system_names);
 	kfree(tr->name);
 	kfree(tr);
 
 	return ERR_PTR(ret);
-}
-
-static struct trace_array *trace_array_create(const char *name)
-{
-	return trace_array_create_systems(name, NULL);
 }
 
 static int instance_mkdir(const char *name)
@@ -9649,7 +9636,6 @@ out_unlock:
 /**
  * trace_array_get_by_name - Create/Lookup a trace array, given its name.
  * @name: The name of the trace array to be looked up/created.
- * @systems: A list of systems to create event directories for (NULL for all)
  *
  * Returns pointer to trace array with given name.
  * NULL, if it cannot be created.
@@ -9663,7 +9649,7 @@ out_unlock:
  * trace_array_put() is called, user space can not delete it.
  *
  */
-struct trace_array *trace_array_get_by_name(const char *name, const char *systems)
+struct trace_array *trace_array_get_by_name(const char *name)
 {
 	struct trace_array *tr;
 
@@ -9675,7 +9661,7 @@ struct trace_array *trace_array_get_by_name(const char *name, const char *system
 			goto out_unlock;
 	}
 
-	tr = trace_array_create_systems(name, systems);
+	tr = trace_array_create(name);
 
 	if (IS_ERR(tr))
 		tr = NULL;
@@ -9722,7 +9708,6 @@ static int __remove_instance(struct trace_array *tr)
 
 	free_cpumask_var(tr->pipe_cpumask);
 	free_cpumask_var(tr->tracing_cpumask);
-	kfree_const(tr->system_names);
 	kfree(tr->name);
 	kfree(tr);
 
@@ -10527,7 +10512,7 @@ __init static void enable_instances(void)
 		if (IS_ENABLED(CONFIG_TRACER_MAX_TRACE))
 			do_allocate_snapshot(tok);
 
-		tr = trace_array_get_by_name(tok, NULL);
+		tr = trace_array_get_by_name(tok);
 		if (!tr) {
 			pr_warn("Failed to create instance buffer %s\n", curr_str);
 			continue;
