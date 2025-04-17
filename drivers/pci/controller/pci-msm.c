@@ -270,6 +270,7 @@
 
 #define PHY_READY_TIMEOUT_COUNT (10)
 #define XMLH_LINK_UP (0x400)
+#define PARF_XMLH_LINK_UP (BIT(30))
 #define MAX_PROP_SIZE (32)
 #define MAX_RC_NAME_LEN (15)
 #define MSM_PCIE_MAX_VREG (6)
@@ -6526,11 +6527,6 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 	if (ret)
 		return ret;
 
-	dev->link_status = MSM_PCIE_LINK_ENABLED;
-	dev->power_on = true;
-	dev->suspending = false;
-	dev->link_turned_on_counter++;
-
 	if (dev->switch_latency) {
 		PCIE_DBG(dev, "switch_latency: %dms\n",
 			dev->switch_latency);
@@ -6636,6 +6632,7 @@ static void msm_pcie_parf_cesta_config(struct msm_pcie_dev_t *dev)
 static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 {
 	int ret = 0;
+	uint32_t val = 0, link_status;
 
 	PCIE_DBG(dev, "RC%d: entry\n", dev->rc_idx);
 
@@ -6650,21 +6647,10 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 		goto out;
 	}
 
-	/* assert PCIe reset link to keep EP in reset */
-
-	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
-		dev->rc_idx);
-	msm_pcie_config_perst(dev, true);
-	usleep_range(dev->perst_delay_us_min, dev->perst_delay_us_max);
-
-	ret = msm_pcie_gpio_init(dev);
-	if (ret)
-		goto out;
-
 	/* enable power */
 	ret = msm_pcie_vreg_init(dev);
 	if (ret)
-		goto vreg_fail;
+		goto out;
 
 	/* enable core, phy gdsc */
 	ret = msm_pcie_gdsc_init(dev);
@@ -6681,7 +6667,37 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	/* Use CESTA to turn on the resources */
 	ret = msm_pcie_enable_cesta(dev);
 	if (ret)
-		goto reset_fail;
+		goto gpio_fail;
+
+	/* Check for PCIe link up, if link is already up, skip the link initialization */
+	val = readl_relaxed(dev->parf + PCIE20_PARF_PM_STTS);
+	if (val & PARF_XMLH_LINK_UP) {
+		link_status = readl_relaxed(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS);
+
+		dev->current_link_speed = (link_status >> 16) & PCI_EXP_LNKSTA_CLS;
+		dev->current_link_width = ((link_status >> 16) & PCI_EXP_LNKSTA_NLW)
+						>> PCI_EXP_LNKSTA_NLW_SHIFT;
+		PCIE_DBG(dev, "PCIe: RC%d: Link is up at Gen%dX%d\n",
+			dev->rc_idx, dev->current_link_speed, dev->current_link_width);
+
+		ret = msm_pcie_pipe_clk_init(dev);
+		/* ensure that changes propagated to the hardware */
+		wmb();
+		if (ret)
+			goto gpio_fail;
+
+		goto skip_link_enablement;
+	}
+
+	/* assert PCIe reset link to keep EP in reset */
+	PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+		dev->rc_idx);
+	msm_pcie_config_perst(dev, true);
+	usleep_range(dev->perst_delay_us_min, dev->perst_delay_us_max);
+
+	ret = msm_pcie_gpio_init(dev);
+	if (ret)
+		goto gpio_fail;
 
 	/* reset pcie controller and phy */
 	ret = msm_pcie_core_phy_reset(dev);
@@ -6690,10 +6706,6 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	if (ret)
 		goto reset_fail;
 
-	/* Configure clkreq, l1ss sleep timeout access to CESTA */
-	if (dev->pcie_parf_cesta_config)
-		msm_pcie_parf_cesta_config(dev);
-
 	/* RUMI PCIe reset sequence */
 	if (dev->rumi_init)
 		dev->rumi_init(dev);
@@ -6701,9 +6713,18 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	ret = msm_pcie_enable_link(dev);
 	if (ret)
 		goto link_fail;
+skip_link_enablement:
+	/* Configure clkreq, l1ss sleep timeout access to CESTA */
+	if (dev->pcie_parf_cesta_config)
+		msm_pcie_parf_cesta_config(dev);
 
 	if (dev->no_client_based_bw_voting)
 		msm_pcie_icc_vote(dev, dev->current_link_speed, dev->current_link_width, false);
+
+	dev->link_status = MSM_PCIE_LINK_ENABLED;
+	dev->power_on = true;
+	dev->suspending = false;
+	dev->link_turned_on_counter++;
 
 	if (dev->enumerated) {
 		if (!dev->lpi_enable)
@@ -6740,6 +6761,9 @@ link_fail:
 	msm_pcie_pipe_clk_deinit(dev);
 reset_fail:
 
+	msm_pcie_gpio_deinit(dev);
+gpio_fail:
+
 	msm_pcie_clk_deinit(dev);
 clk_fail:
 
@@ -6747,9 +6771,6 @@ clk_fail:
 gdsc_fail:
 
 	msm_pcie_vreg_deinit(dev);
-vreg_fail:
-
-	msm_pcie_gpio_deinit(dev);
 out:
 	mutex_unlock(&dev->setup_lock);
 
@@ -6810,6 +6831,18 @@ static void msm_pcie_disable(struct msm_pcie_dev_t *dev)
 			PCIE_ERR(dev, "Failed to move to D3 cold state %d\n",
 									ret);
 	}
+
+	/* Assert, De-assert the pipe reset */
+	msm_pcie_pipe_reset(dev);
+
+	/* ensure that changes propagated to the hardware */
+	wmb();
+
+	/* reset pcie controller and phy */
+	msm_pcie_core_phy_reset(dev);
+
+	/* ensure that changes propagated to the hardware */
+	wmb();
 
 	msm_pcie_clk_deinit(dev);
 	msm_pcie_gdsc_deinit(dev);
