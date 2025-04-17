@@ -4473,11 +4473,7 @@ static int __dwc3_msm_resume(struct dwc3_msm *mdwc)
 static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 {
 	int ret;
-	struct dwc3 *dwc = NULL;
-	u32 reg = 0;
-
-	if (mdwc->dwc3)
-		dwc = platform_get_drvdata(mdwc->dwc3);
+	u32 reg;
 
 	dev_dbg(mdwc->dev, "%s: exiting lpm\n", __func__);
 
@@ -4523,7 +4519,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 		mdwc->lpm_flags &= ~MDWC3_SS_PHY_SUSPEND;
 
 		if (mdwc->in_host_mode) {
-			u32 reg = dwc3_msm_read_reg(mdwc->base,
+			reg = dwc3_msm_read_reg(mdwc->base,
 					DWC3_GUSB3PIPECTL(0));
 
 			reg &= ~DWC3_GUSB3PIPECTL_DISRXDETU3;
