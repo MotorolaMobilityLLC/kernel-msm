@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <dt-bindings/interconnect/qcom,neo.h>
@@ -14,6 +14,8 @@
 #include <linux/platform_device.h>
 #include <linux/sort.h>
 #include <linux/soc/qcom/smem.h>
+#include <linux/pm.h>
+#include <linux/suspend.h>
 
 #include "icc-rpmh.h"
 #include "qnoc-qos.h"
@@ -2255,6 +2257,18 @@ static int qnoc_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static int qnoc_neo_restore(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct qcom_icc_provider *qp = platform_get_drvdata(pdev);
+
+	return qcom_icc_rpmh_configure_qos(qp);
+}
+
+static const struct dev_pm_ops qnoc_neo_pm_ops = {
+	.restore = qnoc_neo_restore,
+};
+
 static const struct of_device_id qnoc_of_match[] = {
 	{ .compatible = "qcom,neo-clk_virt",
 	  .data = &neo_clk_virt},
@@ -2284,6 +2298,7 @@ static struct platform_driver qnoc_driver = {
 	.driver = {
 		.name = "qnoc-neo",
 		.of_match_table = qnoc_of_match,
+		.pm = &qnoc_neo_pm_ops,
 		.sync_state = qcom_icc_rpmh_sync_state,
 	},
 };

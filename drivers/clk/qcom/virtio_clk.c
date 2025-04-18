@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
@@ -662,6 +662,39 @@ err_find_desc:
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int virtio_clk_freeze(struct virtio_device *vdev)
+{
+	struct virtio_clk *vclk = vdev->priv;
+	void *buf;
+
+	virtio_reset_device(vdev);
+
+	while ((buf = virtqueue_detach_unused_buf(vclk->vq)) != NULL)
+		kfree(buf);
+
+	vdev->config->del_vqs(vdev);
+
+	return 0;
+}
+
+static int virtio_clk_restore(struct virtio_device *vdev)
+{
+	struct virtio_clk *vclk = vdev->priv;
+	int ret;
+
+	ret = virtclk_init_vqs(vclk);
+	if (ret) {
+		dev_err(&vdev->dev, "fail to initialize virtqueue\n");
+		return ret;
+	}
+
+	virtio_device_ready(vdev);
+
+	return 0;
+}
+#endif
+
 static const struct virtio_device_id id_table[] = {
 	{ VIRTIO_ID_CLOCK, VIRTIO_DEV_ANY_ID },
 	{ 0 },
@@ -679,6 +712,10 @@ static struct virtio_driver virtio_clk_driver = {
 	.driver.owner			= THIS_MODULE,
 	.id_table			= id_table,
 	.probe				= virtio_clk_probe,
+#ifdef CONFIG_PM_SLEEP
+	.freeze				= virtio_clk_freeze,
+	.restore			= virtio_clk_restore,
+#endif
 };
 
 static int __init virtio_clk_init(void)

@@ -362,7 +362,7 @@ static int stmmac_dt_phy(struct plat_stmmacenet_data *plat,
 		mdio = true;
 	}
 
-	if (mdio || phytype != SWITCH) {
+	if (mdio) {
 		plat->mdio_bus_data =
 			devm_kzalloc(dev, sizeof(struct stmmac_mdio_bus_data),
 				     GFP_KERNEL);
@@ -445,8 +445,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
 	plat->phy_node = of_parse_phandle(np, "phy-handle", 0);
 
 	/* PHYLINK automatically parses the phy-handle property */
-	if (phytype == SWITCH)
-		plat->phylink_node = np;
+	plat->phylink_node = np;
 
 	/* Get max speed of operation from device tree */
 	of_property_read_u32(np, "max-speed", &plat->max_speed);

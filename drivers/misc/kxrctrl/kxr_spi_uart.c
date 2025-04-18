@@ -7,7 +7,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "kxr_aphost.h"
@@ -34,9 +34,8 @@ static int kxr_spi_uart_write_spi_user(struct kxr_aphost *aphost,
 		return 0;
 	}
 	kxr_cache_write_user(&uart->tx_cache, buff, length);
-	mutex_unlock(&uart->tx_lock);
-
 	kxr_spi_xfer_wakeup(&aphost->xfer);
+	mutex_unlock(&uart->tx_lock);
 
 	return 0;
 }
@@ -298,6 +297,21 @@ static int kxr_spi_uart_ioctl(struct uart_port *port, unsigned int command, unsi
 		kxr_spi_xfer_mode_set(&aphost->xfer, args);
 		break;
 
+	case KXR_SPI_IOC_ReadTime(0):
+		return kxr_aphost_read_time(aphost,
+				(void __user *) args, KXR_SPI_IOC_GET_SIZE(command));
+
+	case QC_SPI_IOC_GetWorkTimer:
+		return qc_work_timer_get(aphost);
+
+	case QC_SPI_IOC_SetWorkTimer:
+		qc_work_timer_set(aphost, args);
+		break;
+
+	case KXR_SPI_IOC_GpioUnlock:
+		kxr_aphost_gpio_unlock(aphost);
+		break;
+
 	default:
 		return -ENOIOCTLCMD;
 	}
@@ -351,38 +365,37 @@ bool kxr_spi_uart_sync(struct kxr_aphost *aphost)
 	int length;
 	int ret;
 
+	mutex_lock(&uart->tx_lock);
 	if (uart->send_pending) {
 		uart->send_pending = false;
 		kxr_spi_uart_read_uart_all(aphost);
 	}
 
-	mutex_lock(&uart->tx_lock);
 	tx_buff = kxr_cache_read(&uart->tx_cache, tx_pkg->buff, sizeof(tx_pkg->buff));
-	mutex_unlock(&uart->tx_lock);
 
 	if (tx_buff > tx_pkg->buff) {
 		tx_pkg->length = length = tx_buff - tx_pkg->buff;
 	} else {
 #ifndef CONFIG_KXR_SIMULATION_TEST
 		if (gpiod_get_value(aphost->gpio_irq) == 0)
-			return false;
+			goto out_failed;
 #endif
 
 		tx_pkg->length = 0;
 
 		ret = kxr_spi_xfer_sync(&aphost->xfer, tx_pkg, rx_pkg, 1);
 		if (ret < 0)
-			return false;
+			goto out_failed;
 
 		length = rx_pkg->length;
 
 		if (length == 0 || length == 0xFF)
-			return false;
+			goto out_failed;
 	}
 
 	ret = kxr_spi_xfer_sync(&aphost->xfer, tx_pkg, rx_pkg, length + 1);
 	if (ret < 0)
-		return false;
+		goto out_failed;
 
 	if (length > rx_pkg->length)
 		length = rx_pkg->length;
@@ -390,7 +403,12 @@ bool kxr_spi_uart_sync(struct kxr_aphost *aphost)
 	if (length > 0 && length != 0xFF)
 		kxr_spi_uart_write_uart_all(uart, rx_pkg->buff, length);
 
+	mutex_unlock(&uart->tx_lock);
 	return true;
+
+out_failed:
+	mutex_unlock(&uart->tx_lock);
+	return false;
 }
 
 int kxr_spi_uart_probe(struct kxr_aphost *aphost)

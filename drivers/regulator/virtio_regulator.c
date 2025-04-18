@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -612,6 +612,39 @@ static void virtio_regulator_remove(struct virtio_device *vdev)
 	vdev->config->del_vqs(vdev);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int virtio_regulator_freeze(struct virtio_device *vdev)
+{
+	struct virtio_regulator *vreg = vdev->priv;
+	void *buf;
+
+	virtio_reset_device(vdev);
+
+	while ((buf = virtqueue_detach_unused_buf(vreg->vq)) != NULL)
+		kfree(buf);
+
+	vdev->config->del_vqs(vdev);
+
+	return 0;
+}
+
+static int virtio_regulator_restore(struct virtio_device *vdev)
+{
+	struct virtio_regulator *vreg = vdev->priv;
+	int ret;
+
+	ret = virtio_regulator_init_vqs(vreg);
+	if (ret) {
+		dev_err(&vdev->dev, "fail to initialize virtqueue\n");
+		return ret;
+	}
+
+	virtio_device_ready(vdev);
+
+	return 0;
+}
+#endif
+
 static const struct virtio_device_id id_table[] = {
 	{ VIRTIO_ID_REGULATOR, VIRTIO_DEV_ANY_ID },
 	{ 0 },
@@ -628,6 +661,10 @@ static struct virtio_driver virtio_regulator_driver = {
 	.id_table			= id_table,
 	.probe				= virtio_regulator_probe,
 	.remove				= virtio_regulator_remove,
+#ifdef CONFIG_PM_SLEEP
+	.freeze				= virtio_regulator_freeze,
+	.restore			= virtio_regulator_restore,
+#endif
 };
 
 static int __init virtio_regulator_init(void)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -15,12 +15,15 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap-divider.h"
 #include "clk-regmap-mux.h"
 #include "common.h"
 #include "reset.h"
 #include "vdd-level.h"
+
+#define ACCU_CFG_MASK (0x1f << 21)
 
 static DEFINE_VDD_REGULATORS(vdd_mm, VDD_HIGH_L1 + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_mx, VDD_HIGH_L1 + 1, 1, vdd_corner);
@@ -42,14 +45,14 @@ static const struct pll_vco taycan_eko_t_vco[] = {
 };
 
 /* 360.0 MHz Configuration */
-static const struct alpha_pll_config video_cc_pll0_config = {
+static struct alpha_pll_config video_cc_pll0_config = {
 	.l = 0x12,
 	.cal_l = 0x48,
 	.alpha = 0xc000,
 	.config_ctl_val = 0x25c400e7,
 	.config_ctl_hi_val = 0x0a8060e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -58,6 +61,7 @@ static struct clk_alpha_pll video_cc_pll0 = {
 	.vco_table = taycan_eko_t_vco,
 	.num_vco = ARRAY_SIZE(taycan_eko_t_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_TAYCAN_EKO_T],
+	.config = &video_cc_pll0_config,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "video_cc_pll0",
@@ -71,7 +75,7 @@ static struct clk_alpha_pll video_cc_pll0 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -80,14 +84,14 @@ static struct clk_alpha_pll video_cc_pll0 = {
 };
 
 /* 480.0 MHz Configuration */
-static const struct alpha_pll_config video_cc_pll1_config = {
+static struct alpha_pll_config video_cc_pll1_config = {
 	.l = 0x19,
 	.cal_l = 0x48,
 	.alpha = 0x0,
 	.config_ctl_val = 0x25c400e7,
 	.config_ctl_hi_val = 0x0a8060e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -96,6 +100,7 @@ static struct clk_alpha_pll video_cc_pll1 = {
 	.vco_table = taycan_eko_t_vco,
 	.num_vco = ARRAY_SIZE(taycan_eko_t_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_TAYCAN_EKO_T],
+	.config = &video_cc_pll1_config,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "video_cc_pll1",
@@ -109,7 +114,7 @@ static struct clk_alpha_pll video_cc_pll1 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -118,14 +123,14 @@ static struct clk_alpha_pll video_cc_pll1 = {
 };
 
 /* 480.0 MHz Configuration */
-static const struct alpha_pll_config video_cc_pll2_config = {
+static struct alpha_pll_config video_cc_pll2_config = {
 	.l = 0x19,
 	.cal_l = 0x48,
 	.alpha = 0x0,
 	.config_ctl_val = 0x25c400e7,
 	.config_ctl_hi_val = 0x0a8060e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -134,6 +139,7 @@ static struct clk_alpha_pll video_cc_pll2 = {
 	.vco_table = taycan_eko_t_vco,
 	.num_vco = ARRAY_SIZE(taycan_eko_t_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_TAYCAN_EKO_T],
+	.config = &video_cc_pll2_config,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "video_cc_pll2",
@@ -147,7 +153,7 @@ static struct clk_alpha_pll video_cc_pll2 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -621,6 +627,30 @@ static struct clk_regmap *video_cc_seraph_clocks[] = {
 	[VIDEO_CC_XO_CLK_SRC] = &video_cc_xo_clk_src.clkr,
 };
 
+/*
+ *	Keep the clocks always enabled
+ *	video_cc_ahb_clk
+ *	video_cc_sleep_clk
+ *	video_cc_ts_xo_clk
+ *	video_cc_xo_clk
+ *
+ *	Maximize ctl data download delay and enable memory redundancy
+ *	MVS0 CFG3
+ *	MVS0 VPP1 CFG3
+ *	MVS0 VPP0 CFG3
+ *	MVS0C CFG3
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x817c, .mask = BIT(0) },
+	{ .offset = 0x81bc, .mask = BIT(0) },
+	{ .offset = 0x81b0, .mask = BIT(0) },
+	{ .offset = 0x81ac, .mask = BIT(0) },
+	{ .offset = 0x80b4, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x8100, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x812c, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x8158, .mask = ACCU_CFG_MASK },
+};
+
 static const struct qcom_reset_map video_cc_seraph_resets[] = {
 	[VIDEO_CC_INTERFACE_BCR] = { 0x8178 },
 	[VIDEO_CC_MVS0_BCR] = { 0x80a4 },
@@ -649,6 +679,8 @@ static struct qcom_cc_desc video_cc_seraph_desc = {
 	.num_resets = ARRAY_SIZE(video_cc_seraph_resets),
 	.clk_regulators = video_cc_seraph_regulators,
 	.num_clk_regulators = ARRAY_SIZE(video_cc_seraph_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id video_cc_seraph_match_table[] = {
@@ -660,48 +692,22 @@ MODULE_DEVICE_TABLE(of, video_cc_seraph_match_table);
 static int video_cc_seraph_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
-	unsigned int accu_cfg_mask = 0x1f << 21;
 	int ret;
 
 	regmap = qcom_cc_map(pdev, &video_cc_seraph_desc);
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_runtime_init(pdev, &video_cc_seraph_desc);
+	ret = register_qcom_clks_pm(pdev, true, &video_cc_seraph_desc);
 	if (ret)
-		return ret;
-
-	ret = pm_runtime_get_sync(&pdev->dev);
-	if (ret)
-		return ret;
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
 
 	clk_taycan_eko_t_pll_configure(&video_cc_pll0, regmap, &video_cc_pll0_config);
 	clk_taycan_eko_t_pll_configure(&video_cc_pll1, regmap, &video_cc_pll1_config);
 	clk_taycan_eko_t_pll_configure(&video_cc_pll2, regmap, &video_cc_pll2_config);
 
-	/*
-	 *	Maximize ctl data download delay and enable memory redundancy
-	 *	MVS0 CFG3
-	 *	MVS0 VPP1 CFG3
-	 *	MVS0 VPP0 CFG3
-	 *	MVS0C CFG3
-	 */
-	regmap_update_bits(regmap, 0x80b4, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x8100, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x812c, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x8158, accu_cfg_mask, accu_cfg_mask);
-
-	/*
-	 * Keep clocks always enabled:
-	 *	video_cc_ahb_clk
-	 *	video_cc_sleep_clk
-	 *	video_cc_ts_xo_clk
-	 *	video_cc_xo_clk
-	 */
-	regmap_update_bits(regmap, 0x817c, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x81bc, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x81b0, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x81ac, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &video_cc_seraph_desc, regmap);
 	if (ret) {
@@ -720,19 +726,12 @@ static void video_cc_seraph_sync_state(struct device *dev)
 	qcom_cc_sync_state(dev, &video_cc_seraph_desc);
 }
 
-static const struct dev_pm_ops video_cc_seraph_pm_ops = {
-	SET_RUNTIME_PM_OPS(qcom_cc_runtime_suspend, qcom_cc_runtime_resume, NULL)
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-};
-
 static struct platform_driver video_cc_seraph_driver = {
 	.probe = video_cc_seraph_probe,
 	.driver = {
 		.name = "videocc-seraph",
 		.of_match_table = video_cc_seraph_match_table,
 		.sync_state = video_cc_seraph_sync_state,
-		.pm = &video_cc_seraph_pm_ops,
 	},
 };
 

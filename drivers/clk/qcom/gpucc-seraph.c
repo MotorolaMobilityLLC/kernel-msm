@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -14,6 +14,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap-divider.h"
 #include "clk-regmap-mux.h"
@@ -43,14 +44,14 @@ static const struct pll_vco taycan_eko_t_vco[] = {
 };
 
 /* 700.0 MHz Configuration */
-static const struct alpha_pll_config gpu_cc_pll0_config = {
+static struct alpha_pll_config gpu_cc_pll0_config = {
 	.l = 0x24,
 	.cal_l = 0x48,
 	.alpha = 0x7555,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000400,
+	.user_ctl_val = 0x00000408,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -59,6 +60,7 @@ static struct clk_alpha_pll gpu_cc_pll0 = {
 	.vco_table = taycan_eko_t_vco,
 	.num_vco = ARRAY_SIZE(taycan_eko_t_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_TAYCAN_EKO_T],
+	.config = &gpu_cc_pll0_config,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "gpu_cc_pll0",
@@ -72,7 +74,7 @@ static struct clk_alpha_pll gpu_cc_pll0 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -371,6 +373,21 @@ static struct clk_regmap *gpu_cc_seraph_clocks[] = {
 	[GPU_CC_PLL0_OUT_EVEN] = &gpu_cc_pll0_out_even.clkr,
 };
 
+/*
+ *	gpu_cc_cb_clk
+ *	gpu_cc_cxo_aon_clk
+ *	gpu_cc_rscc_hub_aon_clk
+ *	gpu_cc_rscc_xo_aon_clk
+ *	gpu_cc_sleep_clk
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x93a4, .mask = BIT(0) },
+	{ .offset = 0x9008, .mask = BIT(0) },
+	{ .offset = 0x93a8, .mask = BIT(0) },
+	{ .offset = 0x9004, .mask = BIT(0) },
+	{ .offset = 0x90cc, .mask = BIT(0) },
+};
+
 static const struct qcom_reset_map gpu_cc_seraph_resets[] = {
 	[GPU_CC_CB_BCR] = { 0x93a0 },
 	[GPU_CC_CX_BCR] = { 0x907c },
@@ -390,7 +407,7 @@ static const struct regmap_config gpu_cc_seraph_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gpu_cc_seraph_desc = {
+static struct qcom_cc_desc gpu_cc_seraph_desc = {
 	.config = &gpu_cc_seraph_regmap_config,
 	.clks = gpu_cc_seraph_clocks,
 	.num_clks = ARRAY_SIZE(gpu_cc_seraph_clocks),
@@ -398,6 +415,8 @@ static const struct qcom_cc_desc gpu_cc_seraph_desc = {
 	.num_resets = ARRAY_SIZE(gpu_cc_seraph_resets),
 	.clk_regulators = gpu_cc_seraph_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gpu_cc_seraph_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id gpu_cc_seraph_match_table[] = {
@@ -415,21 +434,14 @@ static int gpu_cc_seraph_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	ret = register_qcom_clks_pm(pdev, false, &gpu_cc_seraph_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
+
 	clk_taycan_eko_t_pll_configure(&gpu_cc_pll0, regmap, &gpu_cc_pll0_config);
 
-	/*
-	 * Keep clocks always enabled:
-	 *	gpu_cc_cb_clk
-	 *	gpu_cc_cxo_aon_clk
-	 *	gpu_cc_rscc_hub_aon_clk
-	 *	gpu_cc_rscc_xo_aon_clk
-	 *	gpu_cc_sleep_clk
-	 */
-	regmap_update_bits(regmap, 0x93a4, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x9008, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x93a8, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x9004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x90cc, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &gpu_cc_seraph_desc, regmap);
 	if (ret) {

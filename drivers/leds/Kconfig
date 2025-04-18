@@ -213,6 +213,28 @@ config LEDS_LM3533
 	  hardware-accelerated blinking with maximum on and off periods of 9.8
 	  and 77 seconds respectively.
 
+config LEDS_LM3535
+	tristate "IR LED driver for LM3535"
+	select REGMAP_I2C
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for the IR LED using
+	  LM3532 ambient light sensor chip. This chip can be
+	  controlled with camera strobe signal and able to control
+	  brightness with i2c writes.
+
+config LEDS_LM36011
+	tristate "IR LED driver for LM36011"
+	select REGMAP_I2C
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for the IR LED using
+	  LM36011 ambient light sensor chip. This chip can be
+	  controlled with camera strobe signal and able to control
+	  brightness with i2c writes.
+
 config LEDS_LM3642
 	tristate "LED support for LM3642 Chip"
 	depends on LEDS_CLASS && I2C

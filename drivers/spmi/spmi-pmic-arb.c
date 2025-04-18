@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include <linux/bitmap.h>
 #include <linux/debugfs.h>
@@ -1731,7 +1731,10 @@ static int spmi_pmic_arb_probe(struct platform_device *pdev)
 	}
 
 	core = devm_ioremap(&ctrl->dev, res->start, resource_size(res));
-	if (IS_ERR(core)) {
+	if (!core) {
+		err = -EINVAL;
+		goto err_put_ctrl;
+	} else if (IS_ERR(core)) {
 		err = PTR_ERR(core);
 		goto err_put_ctrl;
 	}

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #ifndef __MSM_PCIE_H
 #define __MSM_PCIE_H
@@ -266,6 +266,9 @@ static inline void msm_pcie_allow_l1(struct pci_dev *pci_dev)
 
 static inline int msm_pcie_prevent_l1(struct pci_dev *pci_dev)
 {
+#ifdef CONFIG_PCIE_QCOM_ECAM
+	return 0;
+#endif
 	return -ENODEV;
 }
 

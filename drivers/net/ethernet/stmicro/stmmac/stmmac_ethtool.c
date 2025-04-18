@@ -439,9 +439,10 @@ static int stmmac_check_if_running(struct net_device *dev)
 static int stmmac_ethtool_get_regs_len(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 
 	if (priv->plat->has_xgmac)
-		return XGMAC_REGSIZE * 4;
+		return XGMAC_REGSIZE(dwxgmac_addrs) * 4;
 	else if (priv->plat->has_gmac4)
 		return GMAC4_REG_SPACE_SIZE;
 	return REG_SPACE_SIZE;

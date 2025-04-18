@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -475,16 +475,9 @@ static const unsigned int sdc2_data_pins[] = { 170 };
 enum volcano_functions {
 	msm_mux_gpio,
 	msm_mux_RESOUT_GPIO_N,
-	msm_mux_SDC1_CLK,
-	msm_mux_SDC1_CMD,
-	msm_mux_SDC1_DATA0,
-	msm_mux_SDC1_DATA1,
-	msm_mux_SDC1_DATA2,
-	msm_mux_SDC1_DATA3,
-	msm_mux_SDC1_DATA4,
-	msm_mux_SDC1_DATA5,
-	msm_mux_SDC1_DATA6,
-	msm_mux_SDC1_DATA7,
+	msm_mux_sdc1_clk,
+	msm_mux_sdc1_cmd,
+	msm_mux_sdc1_data,
 	msm_mux_SDC1_RCLK,
 	msm_mux_aoss_cti,
 	msm_mux_atest_char0,
@@ -754,35 +747,14 @@ static const char *const gpio_groups[] = {
 static const char *const RESOUT_GPIO_N_groups[] = {
 	"gpio39",
 };
-static const char *const SDC1_CLK_groups[] = {
+static const char *const sdc1_clk_groups[] = {
 	"gpio77",
 };
-static const char *const SDC1_CMD_groups[] = {
+static const char *const sdc1_cmd_groups[] = {
 	"gpio78",
 };
-static const char *const SDC1_DATA0_groups[] = {
-	"gpio79",
-};
-static const char *const SDC1_DATA1_groups[] = {
-	"gpio80",
-};
-static const char *const SDC1_DATA2_groups[] = {
-	"gpio81",
-};
-static const char *const SDC1_DATA3_groups[] = {
-	"gpio82",
-};
-static const char *const SDC1_DATA4_groups[] = {
-	"gpio73",
-};
-static const char *const SDC1_DATA5_groups[] = {
-	"gpio74",
-};
-static const char *const SDC1_DATA6_groups[] = {
-	"gpio75",
-};
-static const char *const SDC1_DATA7_groups[] = {
-	"gpio76",
+static const char *const sdc1_data_groups[] = {
+	"gpio79", "gpio80", "gpio81", "gpio82", "gpio73", "gpio74", "gpio75", "gpio76",
 };
 static const char *const SDC1_RCLK_groups[] = {
 	"gpio72",
@@ -1527,16 +1499,9 @@ static const char *const wcn_sw_ctrl_groups[] = {
 static const struct msm_function volcano_functions[] = {
 	FUNCTION(gpio),
 	FUNCTION(RESOUT_GPIO_N),
-	FUNCTION(SDC1_CLK),
-	FUNCTION(SDC1_CMD),
-	FUNCTION(SDC1_DATA0),
-	FUNCTION(SDC1_DATA1),
-	FUNCTION(SDC1_DATA2),
-	FUNCTION(SDC1_DATA3),
-	FUNCTION(SDC1_DATA4),
-	FUNCTION(SDC1_DATA5),
-	FUNCTION(SDC1_DATA6),
-	FUNCTION(SDC1_DATA7),
+	FUNCTION(sdc1_clk),
+	FUNCTION(sdc1_cmd),
+	FUNCTION(sdc1_data),
 	FUNCTION(SDC1_RCLK),
 	FUNCTION(aoss_cti),
 	FUNCTION(atest_char0),
@@ -1924,25 +1889,25 @@ static const struct msm_pingroup volcano_groups[] = {
 	[71] = PINGROUP(71, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 0, -1),
 	[72] = PINGROUP(72, SDC1_RCLK, mdp_vsync, NA, NA, NA, NA, NA, NA, NA,
 			NA, NA, 0, -1),
-	[73] = PINGROUP(73, SDC1_DATA4, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+	[73] = PINGROUP(73, sdc1_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
-	[74] = PINGROUP(74, SDC1_DATA5, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+	[74] = PINGROUP(74, sdc1_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
-	[75] = PINGROUP(75, SDC1_DATA6, dp0_hot, NA, NA, NA, NA, NA, NA, NA, NA,
+	[75] = PINGROUP(75, sdc1_data, dp0_hot, NA, NA, NA, NA, NA, NA, NA, NA,
 			NA, 0, -1),
-	[76] = PINGROUP(76, SDC1_DATA7, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+	[76] = PINGROUP(76, sdc1_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
-	[77] = PINGROUP(77, SDC1_CLK, cci_timer0, NA, NA, NA, NA, NA, NA, NA,
+	[77] = PINGROUP(77, sdc1_clk, cci_timer0, NA, NA, NA, NA, NA, NA, NA,
 			NA, NA, 0, -1),
-	[78] = PINGROUP(78, SDC1_CMD, tb_trig_sdc2, NA, NA, NA, NA, NA, NA, NA,
+	[78] = PINGROUP(78, sdc1_cmd, tb_trig_sdc2, NA, NA, NA, NA, NA, NA, NA,
 			NA, NA, 0, -1),
-	[79] = PINGROUP(79, SDC1_DATA0, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+	[79] = PINGROUP(79, sdc1_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
-	[80] = PINGROUP(80, SDC1_DATA1, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+	[80] = PINGROUP(80, sdc1_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
-	[81] = PINGROUP(81, SDC1_DATA2, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+	[81] = PINGROUP(81, sdc1_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
-	[82] = PINGROUP(82, SDC1_DATA3, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+	[82] = PINGROUP(82, sdc1_data, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 			0, -1),
 	[83] = PINGROUP(83, cam_mclk, cci_timer1, tmess_prng1, qdss_gpio12, NA,
 			NA, NA, NA, NA, NA, NA, 0, -1),

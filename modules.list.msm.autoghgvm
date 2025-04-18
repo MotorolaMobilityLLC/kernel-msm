@@ -27,3 +27,5 @@ secure_buffer.ko
 iommu-logger.ko
 qcom_iommu_util.ko
 arm_smmu.ko
+scmi_pm_domain.ko
+scmi_perf_domain.ko

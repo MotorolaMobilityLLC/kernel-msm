@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -14,6 +14,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap-divider.h"
 #include "clk-regmap-mux.h"
@@ -62,7 +63,7 @@ static struct clk_alpha_pll gcc_gpll0 = {
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1066000000,
 				[VDD_LOW_L1] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
@@ -111,7 +112,7 @@ static struct clk_alpha_pll gcc_gpll2 = {
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1066000000,
 				[VDD_LOW_L1] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
@@ -138,7 +139,7 @@ static struct clk_alpha_pll gcc_gpll4 = {
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1066000000,
 				[VDD_LOW_L1] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
@@ -165,7 +166,7 @@ static struct clk_alpha_pll gcc_gpll6 = {
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1066000000,
 				[VDD_LOW_L1] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
@@ -192,7 +193,7 @@ static struct clk_alpha_pll gcc_gpll7 = {
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1066000000,
 				[VDD_LOW_L1] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
@@ -219,7 +220,7 @@ static struct clk_alpha_pll gcc_gpll8 = {
 			.vdd_class = &vdd_cx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1066000000,
 				[VDD_LOW_L1] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
@@ -682,8 +683,9 @@ static struct clk_rcg2 gcc_pcie_0_aux_clk_src = {
 	.flags = HW_CLK_CTRL_MODE,
 	.clkr.hw.init = &(const struct clk_init_data) {
 		.name = "gcc_pcie_0_aux_clk_src",
-		.parent_data = gcc_parent_data_4,
-		.num_parents = ARRAY_SIZE(gcc_parent_data_4),
+		.parent_data = gcc_parent_data_3,
+		.num_parents = ARRAY_SIZE(gcc_parent_data_3),
+		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_rcg2_ops,
 	},
 	.clkr.vdd_data = {
@@ -929,6 +931,19 @@ static struct clk_rcg2 gcc_qupv3_wrap1_s2_clk_src = {
 	},
 };
 
+static const struct freq_tbl ftbl_gcc_qupv3_wrap1_s3_clk_src[] = {
+	F(7372800, P_GCC_GPLL0_OUT_EVEN, 1, 384, 15625),
+	F(14745600, P_GCC_GPLL0_OUT_EVEN, 1, 768, 15625),
+	F(19200000, P_BI_TCXO, 1, 0, 0),
+	F(29491200, P_GCC_GPLL0_OUT_EVEN, 1, 1536, 15625),
+	F(32000000, P_GCC_GPLL0_OUT_EVEN, 1, 8, 75),
+	F(48000000, P_GCC_GPLL0_OUT_EVEN, 1, 4, 25),
+	F(51200000, P_GCC_GPLL0_OUT_EVEN, 1, 64, 375),
+	F(64000000, P_GCC_GPLL0_OUT_EVEN, 1, 16, 75),
+	F(75000000, P_GCC_GPLL0_OUT_MAIN, 8, 0, 0),
+	{ }
+};
+
 static struct clk_init_data gcc_qupv3_wrap1_s3_clk_src_init = {
 	.name = "gcc_qupv3_wrap1_s3_clk_src",
 	.parent_data = gcc_parent_data_1,
@@ -941,7 +956,7 @@ static struct clk_rcg2 gcc_qupv3_wrap1_s3_clk_src = {
 	.mnd_width = 16,
 	.hid_width = 5,
 	.parent_map = gcc_parent_map_1,
-	.freq_tbl = ftbl_gcc_qupv3_wrap1_s2_clk_src,
+	.freq_tbl = ftbl_gcc_qupv3_wrap1_s3_clk_src,
 	.enable_safe_config = true,
 	.flags = HW_CLK_CTRL_MODE,
 	.clkr.hw.init = &gcc_qupv3_wrap1_s3_clk_src_init,
@@ -950,7 +965,7 @@ static struct clk_rcg2 gcc_qupv3_wrap1_s3_clk_src = {
 		.num_vdd_classes = ARRAY_SIZE(gcc_seraph_regulators),
 		.num_rate_max = VDD_NUM,
 		.rate_max = (unsigned long[VDD_NUM]) {
-			[VDD_LOWER_D1] = 100000000},
+			[VDD_LOWER_D1] = 75000000},
 	},
 };
 
@@ -1858,7 +1873,7 @@ static struct clk_branch gcc_disp_sf_axi_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data) {
 			.name = "gcc_disp_sf_axi_clk",
-			.ops = &clk_branch2_ops,
+			.ops = &clk_branch2_aon_ops,
 		},
 	},
 };
@@ -3607,6 +3622,37 @@ static struct clk_regmap *gcc_seraph_clocks[] = {
 	[GCC_VIDEO_AXI1_CLK] = &gcc_video_axi1_clk.clkr,
 };
 
+/*
+ *	gcc_camera_ahb_clk
+ *	gcc_camera_xo_clk
+ *	gcc_disp_0_ahb_clk
+ *	gcc_disp_0_xo_clk
+ *	gcc_eva_ahb_clk
+ *	gcc_eva_xo_clk
+ *	gcc_gpu_cfg_ahb_clk
+ *	gcc_lsr_ahb_clk
+ *	gcc_lsr_xo_clk
+ *	gcc_pcie_rscc_cfg_ahb_clk
+ *	gcc_pcie_rscc_xo_clk
+ *	gcc_video_ahb_clk
+ *	gcc_video_xo_clk
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x26004, .mask = BIT(0) },
+	{ .offset = 0x26020, .mask = BIT(0) },
+	{ .offset = 0x27004, .mask = BIT(0) },
+	{ .offset = 0x27020, .mask = BIT(0) },
+	{ .offset = 0xb2004, .mask = BIT(0) },
+	{ .offset = 0xb2004, .mask = BIT(0) },
+	{ .offset = 0x71004, .mask = BIT(0) },
+	{ .offset = 0xb3004, .mask = BIT(0) },
+	{ .offset = 0xb3024, .mask = BIT(0) },
+	{ .offset = 0x52010, .mask = BIT(20) },
+	{ .offset = 0x52010, .mask = BIT(21) },
+	{ .offset = 0x32004, .mask = BIT(0) },
+	{ .offset = 0x32040, .mask = BIT(0) },
+};
+
 static const struct qcom_reset_map gcc_seraph_resets[] = {
 	[GCC_CAMERA_BCR] = { 0x26000 },
 	[GCC_DISPLAY_0_BCR] = { 0x27000 },
@@ -3668,7 +3714,7 @@ static const struct regmap_config gcc_seraph_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gcc_seraph_desc = {
+static struct qcom_cc_desc gcc_seraph_desc = {
 	.config = &gcc_seraph_regmap_config,
 	.clks = gcc_seraph_clocks,
 	.num_clks = ARRAY_SIZE(gcc_seraph_clocks),
@@ -3676,6 +3722,8 @@ static const struct qcom_cc_desc gcc_seraph_desc = {
 	.num_resets = ARRAY_SIZE(gcc_seraph_resets),
 	.clk_regulators = gcc_seraph_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gcc_seraph_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id gcc_seraph_match_table[] = {
@@ -3693,40 +3741,17 @@ static int gcc_seraph_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	ret = register_qcom_clks_pm(pdev, false, &gcc_seraph_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
+
 	ret = qcom_cc_register_rcg_dfs(regmap, gcc_dfs_clocks,
 				       ARRAY_SIZE(gcc_dfs_clocks));
 	if (ret)
 		return ret;
 
-	/*
-	 * Keep clocks always enabled:
-	 *	gcc_camera_ahb_clk
-	 *	gcc_camera_xo_clk
-	 *	gcc_disp_0_ahb_clk
-	 *	gcc_disp_0_xo_clk
-	 *	gcc_eva_ahb_clk
-	 *	gcc_eva_xo_clk
-	 *	gcc_gpu_cfg_ahb_clk
-	 *	gcc_lsr_ahb_clk
-	 *	gcc_lsr_xo_clk
-	 *	gcc_pcie_rscc_cfg_ahb_clk
-	 *	gcc_pcie_rscc_xo_clk
-	 *	gcc_video_ahb_clk
-	 *	gcc_video_xo_clk
-	 */
-	regmap_update_bits(regmap, 0x26004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x26020, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x27004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x27020, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb2004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb2024, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x71004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb3004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0xb3024, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x52010, BIT(20), BIT(20));
-	regmap_update_bits(regmap, 0x52010, BIT(21), BIT(21));
-	regmap_update_bits(regmap, 0x32004, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x32040, BIT(0), BIT(0));
+	/* Enalbling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	/* Clear GDSC_SLEEP_ENA_VOTE to stop votes being auto-removed in sleep. */
 	regmap_write(regmap, 0x52150, 0x0);

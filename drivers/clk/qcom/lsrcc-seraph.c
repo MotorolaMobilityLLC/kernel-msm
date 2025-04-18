@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -15,12 +15,15 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "clk-regmap-divider.h"
 #include "clk-regmap-mux.h"
 #include "common.h"
 #include "reset.h"
 #include "vdd-level.h"
+
+#define ACCU_CFG_MASK (0x1f << 21)
 
 static DEFINE_VDD_REGULATORS(vdd_mm, VDD_HIGH + 1, 1, vdd_corner);
 static DEFINE_VDD_REGULATORS(vdd_mx, VDD_HIGH + 1, 1, vdd_corner);
@@ -42,14 +45,14 @@ static const struct pll_vco taycan_eko_t_vco[] = {
 };
 
 /* 560.0 MHz Configuration */
-static const struct alpha_pll_config lsr_cc_pll0_config = {
+static struct alpha_pll_config lsr_cc_pll0_config = {
 	.l = 0x1d,
 	.cal_l = 0x48,
 	.alpha = 0x2aaa,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -58,6 +61,7 @@ static struct clk_alpha_pll lsr_cc_pll0 = {
 	.vco_table = taycan_eko_t_vco,
 	.num_vco = ARRAY_SIZE(taycan_eko_t_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_TAYCAN_EKO_T],
+	.config = &lsr_cc_pll0_config,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "lsr_cc_pll0",
@@ -71,7 +75,7 @@ static struct clk_alpha_pll lsr_cc_pll0 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -80,14 +84,14 @@ static struct clk_alpha_pll lsr_cc_pll0 = {
 };
 
 /* 520.0 MHz Configuration */
-static const struct alpha_pll_config lsr_cc_pll1_config = {
+static struct alpha_pll_config lsr_cc_pll1_config = {
 	.l = 0x1b,
 	.cal_l = 0x48,
 	.alpha = 0x1555,
 	.config_ctl_val = 0x25c400e7,
-	.config_ctl_hi_val = 0x0a8060e0,
+	.config_ctl_hi_val = 0x0a8062e0,
 	.config_ctl_hi1_val = 0xf51dea20,
-	.user_ctl_val = 0x00000000,
+	.user_ctl_val = 0x00000008,
 	.user_ctl_hi_val = 0x00000002,
 };
 
@@ -96,6 +100,7 @@ static struct clk_alpha_pll lsr_cc_pll1 = {
 	.vco_table = taycan_eko_t_vco,
 	.num_vco = ARRAY_SIZE(taycan_eko_t_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_TAYCAN_EKO_T],
+	.config = &lsr_cc_pll1_config,
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "lsr_cc_pll1",
@@ -109,7 +114,7 @@ static struct clk_alpha_pll lsr_cc_pll1 = {
 			.vdd_class = &vdd_mx,
 			.num_rate_max = VDD_NUM,
 			.rate_max = (unsigned long[VDD_NUM]) {
-				[VDD_LOWER_D1] = 621000000,
+				[VDD_LOWER_D2] = 621000000,
 				[VDD_LOW] = 1600000000,
 				[VDD_NOMINAL] = 2000000000,
 				[VDD_HIGH] = 2500000000},
@@ -445,6 +450,27 @@ static struct clk_regmap *lsr_cc_seraph_clocks[] = {
 	[LSR_CC_XO_CLK_SRC] = &lsr_cc_xo_clk_src.clkr,
 };
 
+/*
+ *	Keep the clocks always enabled
+ *	lsr_cc_ahb_clk
+ *	lsr_cc_sleep_clk
+ *	lsr_cc_xo_clk
+ *
+ *	Maximize ctl data download delay and enable memory redundancy
+ *	MVS0C CFG3
+ *	MVS0 CFG3
+ *	LSR NOC CFG3
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x80a4, .mask = BIT(0) },
+	{ .offset = 0x80f8, .mask = BIT(0) },
+	{ .offset = 0x80d4, .mask = BIT(0) },
+	{ .offset = 0x8040, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x8088, .mask = ACCU_CFG_MASK },
+	{ .offset = 0x810c, .mask = ACCU_CFG_MASK },
+};
+
+
 static const struct qcom_reset_map lsr_cc_seraph_resets[] = {
 	[LSR_CC_INTERFACE_BCR] = { 0x80a0 },
 	[LSR_CC_LSR_NOC_BCR] = { 0x80fc },
@@ -471,6 +497,8 @@ static struct qcom_cc_desc lsr_cc_seraph_desc = {
 	.num_resets = ARRAY_SIZE(lsr_cc_seraph_resets),
 	.clk_regulators = lsr_cc_seraph_regulators,
 	.num_clk_regulators = ARRAY_SIZE(lsr_cc_seraph_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id lsr_cc_seraph_match_table[] = {
@@ -482,43 +510,21 @@ MODULE_DEVICE_TABLE(of, lsr_cc_seraph_match_table);
 static int lsr_cc_seraph_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
-	unsigned int accu_cfg_mask = 0x1f << 21;
 	int ret;
 
 	regmap = qcom_cc_map(pdev, &lsr_cc_seraph_desc);
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	ret = qcom_cc_runtime_init(pdev, &lsr_cc_seraph_desc);
+	ret = register_qcom_clks_pm(pdev, true, &lsr_cc_seraph_desc);
 	if (ret)
-		return ret;
-
-	ret = pm_runtime_get_sync(&pdev->dev);
-	if (ret)
-		return ret;
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
 
 	clk_taycan_eko_t_pll_configure(&lsr_cc_pll0, regmap, &lsr_cc_pll0_config);
 	clk_taycan_eko_t_pll_configure(&lsr_cc_pll1, regmap, &lsr_cc_pll1_config);
 
-	/*
-	 *	Maximize ctl data download delay and enable memory redundancy
-	 *	MVS0C CFG3
-	 *	MVS0 CFG3
-	 *	LSR NOC CFG3
-	 */
-	regmap_update_bits(regmap, 0x8040, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x8088, accu_cfg_mask, accu_cfg_mask);
-	regmap_update_bits(regmap, 0x810c, accu_cfg_mask, accu_cfg_mask);
-
-	/*
-	 * Keep clocks always enabled:
-	 *	lsr_cc_ahb_clk
-	 *	lsr_cc_sleep_clk
-	 *	lsr_cc_xo_clk
-	 */
-	regmap_update_bits(regmap, 0x80a4, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x80f8, BIT(0), BIT(0));
-	regmap_update_bits(regmap, 0x80d4, BIT(0), BIT(0));
+	/* Enabling always ON clocks */
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &lsr_cc_seraph_desc, regmap);
 	if (ret) {
@@ -537,19 +543,12 @@ static void lsr_cc_seraph_sync_state(struct device *dev)
 	qcom_cc_sync_state(dev, &lsr_cc_seraph_desc);
 }
 
-static const struct dev_pm_ops lsr_cc_seraph_pm_ops = {
-	SET_RUNTIME_PM_OPS(qcom_cc_runtime_suspend, qcom_cc_runtime_resume, NULL)
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-};
-
 static struct platform_driver lsr_cc_seraph_driver = {
 	.probe = lsr_cc_seraph_probe,
 	.driver = {
 		.name = "lsrcc-seraph",
 		.of_match_table = lsr_cc_seraph_match_table,
 		.sync_state = lsr_cc_seraph_sync_state,
-		.pm = &lsr_cc_seraph_pm_ops,
 	},
 };
 

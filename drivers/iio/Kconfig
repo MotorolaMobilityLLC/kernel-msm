@@ -68,6 +68,14 @@ config IIO_TRIGGERED_EVENT
 	help
 	  Provides helper functions for setting up triggered events.
 
+config QTI_IPD
+	tristate "Enable IPD Step Motor Driver"
+	help
+	  IPD(Inter Pupilliar Distance) Step motor driver is used to control the ipd step motor.
+	  IPD step motor is used to adjust the display lens position as the user
+	  adjusts the IPD motor. IPD motor can move the lens in both left and
+          right direction when user wears the MR device.
+
 source "drivers/iio/accel/Kconfig"
 source "drivers/iio/adc/Kconfig"
 source "drivers/iio/addac/Kconfig"

@@ -1,6 +1,6 @@
-load(":target_variants.bzl", "la_variants")
-load(":msm_kernel_la.bzl", "define_msm_la")
 load(":image_opts.bzl", "boot_image_opts")
+load(":msm_kernel_la.bzl", "define_msm_la")
+load(":target_variants.bzl", "la_variants")
 
 target_name = "gen3auto"
 
@@ -87,7 +87,6 @@ def define_gen3auto():
         "drivers/irqchip/qcom-pdc.ko",
         "drivers/mailbox/msm_qmp.ko",
         "drivers/mailbox/qcom-apcs-ipc-mailbox.ko",
-        "drivers/md/dm-bow.ko",
         "drivers/media/platform/msm/npu/msm_npu.ko",
         "drivers/mfd/qcom-spmi-pmic.ko",
         "drivers/misc/bootmarker_proxy.ko",
