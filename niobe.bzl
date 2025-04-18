@@ -62,6 +62,7 @@ def define_niobe():
         "drivers/iio/adc/qcom-vadc-common.ko",
         "drivers/iio/ipd.ko",
         "drivers/input/misc/pm8941-pwrkey.ko",
+        "drivers/input/touchscreen/iqs7211.ko",
         "drivers/interconnect/icc-test.ko",
         "drivers/interconnect/qcom/icc-bcm-voter.ko",
         "drivers/interconnect/qcom/icc-debug.ko",
