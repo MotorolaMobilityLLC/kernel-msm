@@ -109,6 +109,7 @@ def define_niobe():
         "drivers/pwm/pwm-qti-lpg.ko",
         "drivers/regulator/ap72200-regulator.ko",
         "drivers/regulator/debug-regulator.ko",
+        "drivers/regulator/max77720-regulator.ko",
         "drivers/regulator/proxy-consumer.ko",
         "drivers/regulator/qti-fixed-regulator.ko",
         "drivers/regulator/qti-ocp-notifier.ko",
