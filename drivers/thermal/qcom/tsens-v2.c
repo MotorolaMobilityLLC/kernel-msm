@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  * Copyright (c) 2018, Linaro Limited
- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/bitops.h>
@@ -98,6 +98,8 @@ static const struct tsens_ops ops_generic_v2 = {
 	.get_temp	= get_temp_tsens_valid,
 	.suspend = tsens_v2_tsens_suspend,
 	.resume = tsens_v2_tsens_resume,
+	.freeze = tsens_v2_tsens_freeze,
+	.restore = tsens_v2_tsens_restore,
 	.get_cold_status  = get_cold_int_status,
 };
 
