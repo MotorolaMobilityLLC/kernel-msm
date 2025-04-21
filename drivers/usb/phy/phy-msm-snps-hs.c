@@ -797,7 +797,21 @@ suspend:
 			if (!phy->dpdm_enable && !eud_active) {
 				if (!(phy->phy.flags & EUD_SPOOF_DISCONNECT)) {
 					dev_dbg(uphy->dev, "turning off clocks/ldo\n");
-					if (!(phy->phy.flags & PHY_HOST_MODE)) {
+					/*
+					 * For fw managed devices, if the genpd virtual devices
+					 * are put, then the control goes to firmware which
+					 * manages the resources. With no EUD SPOOF DISCONNECT,
+					 * the control is passed down to firmware, which is not
+					 * aware of the INIT or suspend states, or the role of
+					 * USB.
+					 *
+					 * Hence, do not powerdown the PHY and let it be managed
+					 * via resources only. This way, we do not have to rely
+					 * on the role of DUT. and we can skip INIT for cable
+					 * disconnect and connect.
+					 */
+					if (!(phy->phy.flags & PHY_HOST_MODE)
+						&& !phy->fw_managed_pwr) {
 						msm_usb_write_readback(phy->base,
 							USB2_PHY_USB_PHY_PWRDOWN_CTRL,
 							PWRDOWN_B, 0);
