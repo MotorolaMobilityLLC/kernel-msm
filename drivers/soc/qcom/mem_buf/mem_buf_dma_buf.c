@@ -47,7 +47,6 @@ struct mem_buf_vmperm {
 static DEFINE_XARRAY(vmperm_xa);
 static LIST_HEAD(vmperm_list);
 static DEFINE_MUTEX(vmperm_list_lock);
-static void *gh_rm_mem_notifier_cookie;
 
 /*
  * Ensures the vmperm can hold at least nr_acl_entries.
@@ -882,6 +881,9 @@ int mem_buf_dma_buf_get_memparcel_hdl(struct dma_buf *dmabuf,
 }
 EXPORT_SYMBOL(mem_buf_dma_buf_get_memparcel_hdl);
 
+#ifdef CONFIG_QCOM_MEM_BUF_DEV_GH
+static void *gh_rm_mem_notifier_cookie;
+
 /* Find the object with matching memparcel_hdl, and grab a reference */
 static struct mem_buf_vmperm *vmperm_lookup(u32 hdl)
 {
@@ -921,6 +923,23 @@ static void mem_buf_vmperm_gh_notifier(enum gh_mem_notifier_tag tag, unsigned lo
 	/* Drop refcount from vmperm_lookup */
 	kref_put(vmperm->kref, vmperm->kref_release);
 }
+
+static int mem_buf_vmperm_gh_notifier_register(void)
+{
+	gh_rm_mem_notifier_cookie = gh_mem_notifier_register(GH_MEM_NOTIFIER_TAG_MEM_BUF,
+						mem_buf_vmperm_gh_notifier, NULL);
+	if (IS_ERR(gh_rm_mem_notifier_cookie)) {
+		pr_err("Failed: gh_mem_notifier_register\n");
+		return PTR_ERR(gh_rm_mem_notifier_cookie);
+	}
+	return 0;
+}
+#else /* CONFIG_QCOM_MEM_BUF_DEV_GH */
+static int mem_buf_vmperm_gh_notifier_register(void)
+{
+	return 0;
+}
+#endif /* CONFIG_QCOM_MEM_BUF_DEV_GH */
 
 struct summary_data {
 	int vmid;
@@ -982,12 +1001,11 @@ static const struct file_operations summary_fops = {
 
 int mem_buf_dma_buf_init(void)
 {
-	gh_rm_mem_notifier_cookie = gh_mem_notifier_register(GH_MEM_NOTIFIER_TAG_MEM_BUF,
-						mem_buf_vmperm_gh_notifier, NULL);
-	if (IS_ERR(gh_rm_mem_notifier_cookie)) {
-		pr_err("Failed: gh_mem_notifier_register\n");
-		return PTR_ERR(gh_rm_mem_notifier_cookie);
-	}
+	int ret;
+
+	ret = mem_buf_vmperm_gh_notifier_register();
+	if (ret)
+		return ret;
 
 	debugfs_create_file("mem_buf_summary", 0400, mem_buf_debugfs_root, NULL,
 			    &summary_fops);
