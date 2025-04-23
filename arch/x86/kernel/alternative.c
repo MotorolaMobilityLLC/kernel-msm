@@ -1449,6 +1449,13 @@ static void __apply_fineibt(s32 *start_retpoline, s32 *end_retpoline,
 static void poison_cfi(void *addr) { }
 #endif
 
+u8 *its_static_thunk(int reg)
+{
+	u8 *thunk = __x86_indirect_its_thunk_array[reg];
+
+	return thunk;
+}
+
 #endif
 
 void apply_fineibt(s32 *start_retpoline, s32 *end_retpoline,
