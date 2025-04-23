@@ -289,6 +289,7 @@ def define_sun():
         "drivers/virt/gunyah/gunyah_loader.ko",
         "kernel/msm_sysstats.ko",
         "kernel/sched/walt/sched-walt.ko",
+        "kernel/sched/walt/midpoint.ko",
         "kernel/trace/qcom_ipc_logging.ko",
         "net/mac80211/mac80211.ko",
         "net/qrtr/qrtr.ko",
