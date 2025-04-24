@@ -325,6 +325,13 @@ struct uffdio_move {
 	 */
 #define UFFDIO_MOVE_MODE_DONTWAKE		((__u64)1<<0)
 #define UFFDIO_MOVE_MODE_ALLOW_SRC_HOLES	((__u64)1<<1)
+	/*
+	 * To confirm if the ioctl has fixes to avoid panic when src folio is
+	 * in swap-cache. Also, to avoid livelock when multiple threads try
+	 * to move same src folio. It's a KMI workaround and cannot be relied
+	 * upon by userspace.
+	 */
+#define UFFDIO_MOVE_MODE_CONFIRM_FIXED		((__u64)1<<63)
 	__u64 mode;
 	/*
 	 * "move" is written by the ioctl and must be at the end: the

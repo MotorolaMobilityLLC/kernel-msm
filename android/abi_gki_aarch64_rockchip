@@ -2462,7 +2462,9 @@
   driver_find_device
   drm_aperture_remove_conflicting_framebuffers
   drm_atomic_add_encoder_bridges
+  drm_atomic_bridge_chain_check
   drm_atomic_commit
+  drm_atomic_get_bridge_state
   drm_atomic_get_plane_state
   drm_atomic_helper_check
   drm_atomic_helper_check_plane_state

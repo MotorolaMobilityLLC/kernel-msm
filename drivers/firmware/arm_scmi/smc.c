@@ -26,6 +26,7 @@
  * @irq: An optional IRQ for completion
  * @cinfo: SCMI channel info
  * @shmem: Transmit/Receive shared memory area
+ * @io_ops: Transport specific I/O operations
  * @shmem_lock: Lock to protect access to Tx/Rx shared memory area.
  *		Used when NOT operating in atomic mode.
  * @inflight: Atomic flag to protect access to Tx/Rx shared memory area.
@@ -37,6 +38,7 @@ struct scmi_smc {
 	int irq;
 	struct scmi_chan_info *cinfo;
 	struct scmi_shared_mem __iomem *shmem;
+	struct scmi_shmem_io_ops *io_ops;
 	/* Protect access to shmem area */
 	struct mutex shmem_lock;
 #define INFLIGHT_NONE	MSG_TOKEN_MAX
@@ -158,6 +160,8 @@ static int smc_chan_setup(struct scmi_chan_info *cinfo, struct device *dev,
 		cinfo->no_completion_irq = true;
 	}
 
+	scmi_info->io_ops = shmem_get_io_ops(np);
+
 	scmi_info->func_id = func_id;
 	scmi_info->cinfo = cinfo;
 	smc_channel_lock_init(scmi_info);
@@ -202,7 +206,8 @@ static int smc_send_message(struct scmi_chan_info *cinfo,
 	 */
 	smc_channel_lock_acquire(scmi_info, xfer);
 
-	shmem_tx_prepare(scmi_info->shmem, xfer, cinfo);
+	shmem_tx_prepare(scmi_info->shmem, xfer, cinfo,
+			 scmi_info->io_ops->toio);
 
 	arm_smccc_1_1_invoke(scmi_info->func_id, 0, 0, 0, 0, 0, 0, 0, &res);
 
@@ -220,7 +225,8 @@ static void smc_fetch_response(struct scmi_chan_info *cinfo,
 {
 	struct scmi_smc *scmi_info = cinfo->transport_info;
 
-	shmem_fetch_response(scmi_info->shmem, xfer);
+	shmem_fetch_response(scmi_info->shmem, xfer,
+			     scmi_info->io_ops->fromio);
 }
 
 static void smc_mark_txdone(struct scmi_chan_info *cinfo, int ret,

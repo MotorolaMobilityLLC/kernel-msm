@@ -392,17 +392,20 @@ void v9fs_evict_inode(struct inode *inode)
 	struct v9fs_inode *v9inode = V9FS_I(inode);
 	__le32 version;
 
-	truncate_inode_pages_final(&inode->i_data);
-	version = cpu_to_le32(v9inode->qid.version);
-	fscache_clear_inode_writeback(v9fs_inode_cookie(v9inode), inode,
+	if (!is_bad_inode(inode)) {
+		truncate_inode_pages_final(&inode->i_data);
+		version = cpu_to_le32(v9inode->qid.version);
+		fscache_clear_inode_writeback(v9fs_inode_cookie(v9inode), inode,
 				      &version);
-	clear_inode(inode);
-	filemap_fdatawrite(&inode->i_data);
-
-	fscache_relinquish_cookie(v9fs_inode_cookie(v9inode), false);
-	/* clunk the fid stashed in writeback_fid */
-	p9_fid_put(v9inode->writeback_fid);
-	v9inode->writeback_fid = NULL;
+		clear_inode(inode);
+		filemap_fdatawrite(&inode->i_data);
+		if (v9fs_inode_cookie(v9inode))
+			fscache_relinquish_cookie(v9fs_inode_cookie(v9inode), false);
+		/* clunk the fid stashed in writeback_fid */
+		p9_fid_put(v9inode->writeback_fid);
+		v9inode->writeback_fid = NULL;
+	} else
+		clear_inode(inode);
 }
 
 static int v9fs_test_inode(struct inode *inode, void *data)
