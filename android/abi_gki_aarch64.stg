@@ -295921,6 +295921,12 @@ function {
   parameter_id: 0x391f15ea
 }
 function {
+  id: 0x10ebd1f0
+  return_type_id: 0x48b5725f
+  parameter_id: 0x0258f96e
+  parameter_id: 0x396f8e0f
+}
+function {
   id: 0x10ee407c
   return_type_id: 0x48b5725f
   parameter_id: 0x078316ff
@@ -304662,6 +304668,15 @@ function {
   parameter_id: 0x3df8f8c1
   parameter_id: 0x92233392
   parameter_id: 0x92233392
+}
+function {
+  id: 0x1d8bbf50
+  return_type_id: 0x48b5725f
+  parameter_id: 0x3760766d
+  parameter_id: 0x337f6d5e
+  parameter_id: 0x18bd6530
+  parameter_id: 0x072e5f93
+  parameter_id: 0xf435685e
 }
 function {
   id: 0x1d8c491d
@@ -367394,6 +367409,15 @@ elf_symbol {
   full_name: "devm_nvmem_cell_get"
 }
 elf_symbol {
+  id: 0x6841cd31
+  name: "devm_nvmem_cell_put"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x2459791b
+  type_id: 0x10ebd1f0
+  full_name: "devm_nvmem_cell_put"
+}
+elf_symbol {
   id: 0xa8b058e5
   name: "devm_nvmem_device_get"
   is_defined: true
@@ -375953,6 +375977,15 @@ elf_symbol {
   crc: 0xd6eaaea1
   type_id: 0xc075980c
   full_name: "full_name_hash"
+}
+elf_symbol {
+  id: 0x16ccff22
+  name: "fw_devlink_purge_absent_suppliers"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0c65c0aa
+  type_id: 0x11bc7f41
+  full_name: "fw_devlink_purge_absent_suppliers"
 }
 elf_symbol {
   id: 0xc35e482b
@@ -410207,6 +410240,15 @@ elf_symbol {
   full_name: "typec_port_register_altmode"
 }
 elf_symbol {
+  id: 0xfe0397d1
+  name: "typec_port_register_altmodes"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xe10772e7
+  type_id: 0x1d8bbf50
+  full_name: "typec_port_register_altmodes"
+}
+elf_symbol {
   id: 0x22d09ebb
   name: "typec_register_partner"
   is_defined: true
@@ -421141,6 +421183,7 @@ interface {
   symbol_id: 0x6e37c2ad
   symbol_id: 0x91f58d29
   symbol_id: 0x7abe395b
+  symbol_id: 0x6841cd31
   symbol_id: 0xa8b058e5
   symbol_id: 0x47264dbb
   symbol_id: 0x35094803
@@ -422090,6 +422133,7 @@ interface {
   symbol_id: 0xee139066
   symbol_id: 0x613adcb1
   symbol_id: 0x370e6f08
+  symbol_id: 0x16ccff22
   symbol_id: 0xc35e482b
   symbol_id: 0x53816b02
   symbol_id: 0xc9ddb79e
@@ -425896,6 +425940,7 @@ interface {
   symbol_id: 0x0df14bce
   symbol_id: 0xd6fc8732
   symbol_id: 0x4fe4e1e0
+  symbol_id: 0xfe0397d1
   symbol_id: 0x22d09ebb
   symbol_id: 0xad69345e
   symbol_id: 0x381c401c

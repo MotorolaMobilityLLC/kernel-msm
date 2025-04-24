@@ -531,6 +531,7 @@
   devm_memremap_pages
   devm_mfd_add_devices
   devm_nvmem_cell_get
+  devm_nvmem_cell_put
   devm_nvmem_device_get
   devm_nvmem_register
   devm_of_icc_get
@@ -1030,6 +1031,7 @@
   fsg_common_set_inquiry_string
   fsg_common_set_sysfs
   fsg_config_from_params
+  fw_devlink_purge_absent_suppliers
   fwnode_device_is_available
   fwnode_get_name
   fwnode_get_named_child_node
@@ -3118,6 +3120,7 @@
   typec_partner_set_identity
   typec_partner_set_pd_revision
   typec_partner_set_svdm_version
+  typec_port_register_altmodes
   typec_register_partner
   typec_register_port
   typec_set_data_role
