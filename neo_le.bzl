@@ -9,7 +9,6 @@ def define_neo_le():
         # keep sorted
         "drivers/base/regmap/qti-regmap-debugfs.ko",
         "drivers/base/regmap/regmap-spmi.ko",
-        "drivers/bluetooth/btpower.ko",
         "drivers/bus/mhi/devices/mhi_dev_dtr.ko",
         "drivers/bus/mhi/devices/mhi_dev_uci.ko",
         "drivers/bus/mhi/host/mhi.ko",
