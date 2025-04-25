@@ -90,6 +90,8 @@ static bool cgroup_memory_nosocket __ro_after_init;
 /* Kernel memory accounting disabled? */
 static bool cgroup_memory_nokmem __ro_after_init;
 
+static struct kmem_cache *memcg_cachep;
+
 #ifdef CONFIG_CGROUP_WRITEBACK
 static DECLARE_WAIT_QUEUE_HEAD(memcg_cgwb_frn_waitq);
 #endif
@@ -5320,7 +5322,7 @@ static struct mem_cgroup *mem_cgroup_alloc(void)
 	int __maybe_unused i;
 	long error = -ENOMEM;
 
-	memcg = kzalloc(struct_size(memcg, nodeinfo, nr_node_ids), GFP_KERNEL);
+	memcg = kmem_cache_zalloc(memcg_cachep, GFP_KERNEL);
 	if (!memcg)
 		return ERR_PTR(error);
 
@@ -7345,6 +7347,7 @@ __setup("cgroup.memory=", cgroup_memory);
  */
 int __init mem_cgroup_init(void)
 {
+	unsigned int memcg_size;
 	int cpu, node;
 
 	/*
@@ -7361,6 +7364,10 @@ int __init mem_cgroup_init(void)
 	for_each_possible_cpu(cpu)
 		INIT_WORK(&per_cpu_ptr(&memcg_stock, cpu)->work,
 			  drain_local_stock);
+
+	memcg_size = struct_size((struct mem_cgroup *)NULL, nodeinfo, nr_node_ids);
+	memcg_cachep = kmem_cache_create("mem_cgroup", memcg_size, 0,
+					 SLAB_PANIC | SLAB_HWCACHE_ALIGN, NULL);
 
 	for_each_node(node) {
 		struct mem_cgroup_tree_per_node *rtpn;
