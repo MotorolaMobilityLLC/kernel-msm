@@ -6388,10 +6388,14 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	msm_pcie_config_perst(dev, true);
 	usleep_range(dev->perst_delay_us_min, dev->perst_delay_us_max);
 
+	ret = msm_pcie_gpio_init(dev);
+	if (ret)
+		goto out;
+
 	/* enable power */
 	ret = msm_pcie_vreg_init(dev);
 	if (ret)
-		goto out;
+		goto vreg_fail;
 
 	/* enable core, phy gdsc */
 	ret = msm_pcie_gdsc_init(dev);
@@ -6474,6 +6478,9 @@ clk_fail:
 gdsc_fail:
 
 	msm_pcie_vreg_deinit(dev);
+vreg_fail:
+
+	msm_pcie_gpio_deinit(dev);
 out:
 	mutex_unlock(&dev->setup_lock);
 
@@ -6543,6 +6550,8 @@ static void msm_pcie_disable(struct msm_pcie_dev_t *dev)
 	if (dev->gpio[MSM_PCIE_GPIO_EP].num)
 		gpio_set_value(dev->gpio[MSM_PCIE_GPIO_EP].num,
 				1 - dev->gpio[MSM_PCIE_GPIO_EP].on);
+
+	msm_pcie_gpio_deinit(dev);
 
 	mutex_unlock(&dev->setup_lock);
 
@@ -8918,16 +8927,9 @@ static int msm_pcie_probe(struct platform_device *pdev)
 
 	msm_pcie_get_pinctrl(pcie_dev, pdev);
 
-	ret = msm_pcie_gpio_init(pcie_dev);
-	if (ret) {
-		msm_pcie_release_resources(pcie_dev);
-		goto decrease_rc_num;
-	}
-
 	ret = msm_pcie_irq_init(pcie_dev);
 	if (ret) {
 		msm_pcie_release_resources(pcie_dev);
-		msm_pcie_gpio_deinit(pcie_dev);
 		goto decrease_rc_num;
 	}
 
