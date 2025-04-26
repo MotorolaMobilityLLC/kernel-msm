@@ -185,7 +185,7 @@ define_common_kernels(target_configs = {
         "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
-        "clang_autofdo_profile": "//toolchain/pgo-profiles/kernel:aarch64/android15-6.6/kernel.afdo",
+        "clang_autofdo_profile": ":android/gki/aarch64/afdo/kernel.afdo",
         "defconfig_fragments": ["arch/arm64/configs/autofdo_gki.fragment"],
         "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
         "extra_dist": [
@@ -752,6 +752,7 @@ kernel_build(
     build_config = "build.config.gki.aarch64.fips140",
     kmi_symbol_list = "android/abi_gki_aarch64_fips140",
     module_outs = ["crypto/fips140.ko"],
+    strip_modules = True,
 )
 
 kernel_abi(
@@ -904,6 +905,16 @@ pkg_install(
     visibility = ["//visibility:private"],
 )
 
+py_library(
+    name = "kunit_parser",
+    srcs = [
+        "tools/testing/kunit/kunit_parser.py",
+        "tools/testing/kunit/kunit_printer.py",
+    ],
+    imports = ["tools/testing/kunit"],
+    visibility = ["//visibility:public"],
+)
+
 # DDK Headers
 # All headers. These are the public targets for DDK modules to use.
 alias(
@@ -985,6 +996,7 @@ ddk_headers(
     hdrs = [
         "drivers/dma-buf/heaps/deferred-free-helper.h",
         "drivers/extcon/extcon.h",
+        "drivers/pci/controller/dwc/pcie-designware.h",
         "drivers/thermal/thermal_core.h",
         "drivers/thermal/thermal_netlink.h",
         "drivers/usb/dwc3/core.h",
@@ -1002,6 +1014,7 @@ ddk_headers(
         "arch/arm64/include/uapi",
         "drivers/dma-buf",
         "drivers/extcon",
+        "drivers/pci/controller/dwc",
         "drivers/thermal",
         "drivers/usb",
         "sound/usb",

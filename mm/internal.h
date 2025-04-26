@@ -735,10 +735,6 @@ extern void *memmap_alloc(phys_addr_t size, phys_addr_t align,
 void memmap_init_range(unsigned long, int, unsigned long, unsigned long,
 		unsigned long, enum meminit_context, struct vmem_altmap *, int);
 
-
-int split_free_page(struct page *free_page,
-			unsigned int order, unsigned long split_pfn_offset);
-
 #if defined CONFIG_COMPACTION || defined CONFIG_CMA
 
 /*
@@ -1214,11 +1210,6 @@ extern const struct trace_print_flags gfpflag_names[];
 static inline bool is_migrate_highatomic(enum migratetype migratetype)
 {
 	return migratetype == MIGRATE_HIGHATOMIC;
-}
-
-static inline bool is_migrate_highatomic_page(struct page *page)
-{
-	return get_pageblock_migratetype(page) == MIGRATE_HIGHATOMIC;
 }
 
 void setup_zone_pageset(struct zone *zone);

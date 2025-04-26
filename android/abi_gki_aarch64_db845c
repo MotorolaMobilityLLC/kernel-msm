@@ -53,7 +53,6 @@
   clk_put
   clk_round_rate
   clk_set_rate
-  clk_sync_state
   clk_unprepare
   complete
   complete_all
@@ -224,6 +223,7 @@
   driver_register
   driver_unregister
   drm_add_edid_modes
+  drm_atomic_get_new_connector_for_encoder
   drm_atomic_get_private_obj_state
   drm_atomic_helper_bridge_destroy_state
   drm_atomic_helper_bridge_duplicate_state
@@ -244,7 +244,6 @@
   drm_connector_update_edid_property
   drm_crtc_add_crc_entry
   ___drm_dbg
-  __drm_debug
   __drm_dev_dbg
   drm_dev_printk
   drm_do_get_edid
@@ -258,9 +257,6 @@
   drm_mode_vrefresh
   drm_of_find_panel_or_bridge
   drm_printf
-  drm_rect_rotate
-  drm_rect_rotate_inv
-  drmm_kmalloc
   enable_irq
   eth_type_trans
   _find_first_bit
@@ -275,6 +271,7 @@
   fortify_panic
   free_io_pgtable_ops
   free_irq
+  fwnode_handle_put
   fwnode_property_present
   fwnode_property_read_u32_array
   gcd
@@ -456,8 +453,8 @@
   misc_register
   mod_delayed_work_on
   mod_timer
-  __module_get
   module_layout
+  module_put
   __msecs_to_jiffies
   msleep
   __mutex_init
@@ -582,7 +579,6 @@
   prepare_to_wait_event
   print_hex_dump
   _printk
-  __pskb_copy_fclone
   pskb_expand_head
   __pskb_pull_tail
   put_device
@@ -697,7 +693,6 @@
   simple_read_from_buffer
   single_open
   single_release
-  skb_clone
   skb_copy
   skb_copy_bits
   skb_dequeue
@@ -813,6 +808,7 @@
   usb_disabled
   __usecs_to_jiffies
   usleep_range_state
+  utf8_data_table
   v4l2_ctrl_handler_free
   v4l2_ctrl_handler_init_class
   v4l2_ctrl_new_std
@@ -861,8 +857,6 @@
   vunmap
   vzalloc
   wait_for_completion
-  wait_for_completion_interruptible
-  wait_for_completion_interruptible_timeout
   wait_for_completion_timeout
   __wake_up
   wake_up_process
@@ -1056,6 +1050,7 @@
   __drm_crtc_commit_free
   drm_crtc_commit_wait
   drm_crtc_wait_one_vblank
+  __drm_debug
   drm_display_mode_from_cea_vic
   drm_edid_dup
   drm_edid_duplicate
@@ -1102,6 +1097,7 @@
   __tracepoint_mmap_lock_released
   __tracepoint_mmap_lock_start_locking
   up_read
+  wait_for_completion_interruptible
 
 # required by gpi.ko
   krealloc
@@ -1196,7 +1192,6 @@
   of_cpu_node_to_id
 
 # required by lontium-lt9611.ko
-  drm_atomic_get_new_connector_for_encoder
   drm_hdmi_vendor_infoframe_from_display_mode
 
 # required by lontium-lt9611uxc.ko
@@ -1265,6 +1260,7 @@
   round_jiffies
   round_jiffies_relative
   sg_init_one
+  skb_clone
   skb_clone_sk
   skb_complete_wifi_ack
   skb_copy_expand
@@ -1472,6 +1468,7 @@
   drm_ioctl
   drm_kms_helper_poll_fini
   drm_kms_helper_poll_init
+  drmm_kmalloc
   drm_mm_init
   drm_mm_insert_node_in_range
   drmm_mode_config_init
@@ -1521,6 +1518,8 @@
   __drm_puts_coredump
   __drm_puts_seq_file
   drm_read
+  drm_rect_rotate
+  drm_rect_rotate_inv
   drm_release
   drm_rotation_simplify
   drm_self_refresh_helper_init
@@ -1541,7 +1540,6 @@
   get_unused_fd_flags
   gpiod_get_value
   hdmi_audio_infoframe_pack
-  icc_put
   idr_preload
   invalidate_mapping_pages
   iommu_map_sg
@@ -1709,7 +1707,6 @@
   gpiochip_unlock_as_irq
   handle_fasteoi_ack_irq
   handle_fasteoi_irq
-  module_put
   pinctrl_force_default
   pinctrl_force_sleep
   pm_power_off
@@ -1789,7 +1786,6 @@
   device_get_next_child_node
   devm_iio_device_alloc
   __devm_iio_device_register
-  fwnode_handle_put
   fwnode_property_read_string
   strchrnul
 
@@ -1888,8 +1884,10 @@
   get_user_ifreq
   kernel_bind
   lock_sock_nested
+  __module_get
   proto_register
   proto_unregister
+  __pskb_copy_fclone
   put_user_ifreq
   radix_tree_insert
   radix_tree_iter_delete
@@ -1967,6 +1965,7 @@
   driver_set_override
   platform_device_add
   platform_device_alloc
+  wait_for_completion_interruptible_timeout
 
 # required by slimbus.ko
   device_find_child
@@ -2002,8 +2001,8 @@
   snd_soc_dapm_widget_name_cmp
 
 # required by snd-soc-qcom-common.ko
-  snd_soc_dummy_dlc
   snd_soc_dai_link_set_capabilities
+  snd_soc_dummy_dlc
   snd_soc_of_get_dai_link_codecs
   snd_soc_of_get_dlc
   snd_soc_of_parse_audio_routing
@@ -2093,6 +2092,7 @@
   dma_sync_sg_for_device
   __free_pages
   __sg_page_iter_next
+  _totalram_pages
 
 # required by ufs-qcom.ko
   insert_resource

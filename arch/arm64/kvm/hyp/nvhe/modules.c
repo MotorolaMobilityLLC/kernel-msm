@@ -124,6 +124,7 @@ const struct pkvm_module_ops module_ops = {
 	.host_stage2_mod_prot = module_change_host_page_prot,
 	.host_stage2_get_leaf = host_stage2_get_leaf,
 	.register_host_smc_handler = __pkvm_register_host_smc_handler,
+	.register_guest_smc_handler = __pkvm_register_guest_smc_handler,
 	.register_default_trap_handler = __pkvm_register_default_trap_handler,
 	.register_illegal_abt_notifier = __pkvm_register_illegal_abt_notifier,
 	.register_psci_notifier = __pkvm_register_psci_notifier,
@@ -165,6 +166,7 @@ const struct pkvm_module_ops module_ops = {
 	.iommu_flush_unmap_cache = kvm_iommu_flush_unmap_cache,
 	.host_stage2_enable_lazy_pte = host_stage2_enable_lazy_pte,
 	.host_stage2_disable_lazy_pte = host_stage2_disable_lazy_pte,
+	.guest_stage2_pa = pkvm_guest_stage2_pa,
 };
 
 int __pkvm_init_module(void *module_init)

@@ -45,6 +45,12 @@ DECLARE_HOOK(android_vh_blk_mq_kick_requeue_list,
 	TP_PROTO(struct request_queue *q, unsigned long delay, bool *skip),
 	TP_ARGS(q, delay, skip));
 
+struct bio;
+
+DECLARE_HOOK(android_vh_check_set_ioprio,
+	TP_PROTO(struct bio *bio),
+	TP_ARGS(bio));
+
 #endif /* _TRACE_HOOK_BLK_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

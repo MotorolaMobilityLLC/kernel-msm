@@ -303,6 +303,7 @@ static const exit_handler_fn hyp_exit_handlers[] = {
 static const exit_handler_fn pvm_exit_handlers[] = {
 	[0 ... ESR_ELx_EC_MAX]		= NULL,
 	[ESR_ELx_EC_HVC64]		= kvm_handle_pvm_hvc64,
+	[ESR_ELx_EC_SMC64]		= kvm_handle_pvm_smc64,
 	[ESR_ELx_EC_SYS64]		= kvm_handle_pvm_sys64,
 	[ESR_ELx_EC_SVE]		= kvm_hyp_handle_fpsimd,
 	[ESR_ELx_EC_SME]		= kvm_handle_pvm_restricted,
