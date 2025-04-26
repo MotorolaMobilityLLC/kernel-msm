@@ -163,6 +163,7 @@
   cancel_delayed_work_sync
   cancel_work
   cancel_work_sync
+  can_get_echo_skb
   capable
   cdc_parse_cdc_header
   cdev_add

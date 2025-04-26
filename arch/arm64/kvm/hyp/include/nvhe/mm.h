@@ -19,7 +19,7 @@ void *hyp_fixmap_map(phys_addr_t phys);
 void hyp_fixmap_unmap(void);
 void *hyp_fixblock_map(phys_addr_t phys);
 void hyp_fixblock_unmap(void);
-void hyp_poison_page(phys_addr_t phys);
+void hyp_poison_page(phys_addr_t phys, size_t page_size);
 
 int hyp_create_idmap(u32 hyp_va_bits);
 int hyp_map_vectors(void);

@@ -7,6 +7,8 @@
 #include <linux/kvm_host.h>
 #include <linux/mm.h>
 
+#include <hyp/adjust_pc.h>
+
 #include <kvm/arm_hypercalls.h>
 #include <kvm/arm_psci.h>
 
@@ -1098,7 +1100,7 @@ void pkvm_poison_pvmfw_pages(void)
 	phys_addr_t addr = pvmfw_base;
 
 	while (npages--) {
-		hyp_poison_page(addr);
+		hyp_poison_page(addr, PAGE_SIZE);
 		addr += PAGE_SIZE;
 	}
 }
@@ -1682,6 +1684,64 @@ static bool pkvm_forward_trng(struct kvm_vcpu *vcpu)
 	return true;
 }
 
+static bool is_standard_secure_service_call(u64 func_id)
+{
+	return (func_id >= PSCI_0_2_FN_BASE && func_id <= ARM_CCA_FUNC_END) ||
+	       (func_id >= PSCI_0_2_FN64_BASE && func_id <= ARM_CCA_64BIT_FUNC_END);
+}
+
+bool kvm_handle_pvm_smc64(struct kvm_vcpu *vcpu, u64 *exit_code)
+{
+	bool handled = false;
+	struct kvm_cpu_context *ctxt = &vcpu->arch.ctxt;
+	struct pkvm_hyp_vm *vm;
+	struct pkvm_hyp_vcpu *hyp_vcpu;
+	struct arm_smccc_1_2_regs regs;
+	struct arm_smccc_res res;
+	DECLARE_REG(u64, func_id, ctxt, 0);
+
+	hyp_vcpu = container_of(vcpu, struct pkvm_hyp_vcpu, vcpu);
+	vm = pkvm_hyp_vcpu_to_hyp_vm(hyp_vcpu);
+
+	if (is_standard_secure_service_call(func_id))
+		return false;
+
+	/* Paired with cmpxchg_release in the guest registration handler */
+	if (smp_load_acquire(&vm->smc_handler)) {
+		memcpy(&regs, &ctxt->regs, sizeof(regs));
+		handled = vm->smc_handler(&regs, &res, vm->kvm.arch.pkvm.handle);
+
+		/* Pass the return back to the calling guest */
+		memcpy(&ctxt->regs.regs[0], &regs, sizeof(res));
+	}
+
+	/* SMC was trapped, move ELR past the current PC. */
+	if (handled)
+		__kvm_skip_instr(vcpu);
+
+	return handled;
+}
+
+int __pkvm_register_guest_smc_handler(bool (*cb)(struct arm_smccc_1_2_regs *,
+						 struct arm_smccc_res *res,
+						 pkvm_handle_t handle),
+				      pkvm_handle_t handle)
+{
+	int ret = -EINVAL;
+	struct pkvm_hyp_vm *vm;
+
+	if (!cb)
+		return ret;
+
+	hyp_read_lock(&vm_table_lock);
+	vm = get_vm_by_handle(handle);
+	if (vm)
+		ret = cmpxchg_release(&vm->smc_handler, NULL, cb) ? -EBUSY : 0;
+	hyp_read_unlock(&vm_table_lock);
+
+	return ret;
+}
+
 /*
  * Handler for protected VM HVC calls.
  *
@@ -1773,6 +1833,28 @@ bool kvm_hyp_handle_hvc64(struct kvm_vcpu *vcpu, u64 *exit_code)
 	}
 
 	return false;
+}
+
+int pkvm_guest_stage2_pa(pkvm_handle_t handle, u64 ipa, phys_addr_t *phys)
+{
+	struct pkvm_hyp_vm *hyp_vm;
+	int err;
+
+	hyp_read_lock(&vm_table_lock);
+	hyp_vm = get_vm_by_handle(handle);
+	if (!hyp_vm) {
+		err = -ENOENT;
+		goto err_unlock;
+	} else if (hyp_vm->is_dying) {
+		err = -EBUSY;
+		goto err_unlock;
+	}
+
+	err = guest_stage2_pa(hyp_vm, ipa, phys);
+	hyp_read_unlock(&vm_table_lock);
+
+err_unlock:
+	return err;
 }
 
 #ifdef CONFIG_NVHE_EL2_DEBUG

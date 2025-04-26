@@ -12,6 +12,7 @@
  */
 struct ufs_hba_priv {
 	struct ufs_hba hba;
+	struct completion dev_cmd_compl;
 	u8 rtt_cap;
 	int nortt;
 };

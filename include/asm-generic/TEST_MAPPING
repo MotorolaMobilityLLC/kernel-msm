@@ -233,6 +233,14 @@
     },
     {
       "name": "vts_kernel_net_tests"
+    },
+    {
+      "name": "CtsJobSchedulerTestCases",
+      "options": [
+        {
+          "include-filter": "android.jobscheduler.cts.ConnectivityConstraintTest#testConnectivityConstraintExecutes_withMobile"
+        }
+      ]
     }
   ],
   "presubmit-large": [
