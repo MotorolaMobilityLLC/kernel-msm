@@ -2703,14 +2703,14 @@ int do_munmap(struct mm_struct *mm, unsigned long start, size_t len,
 	return do_vmi_munmap(&vmi, mm, start, len, uf, false);
 }
 
-static unsigned long __mmap_region(struct file *file, unsigned long addr,
+unsigned long mmap_region(struct file *file, unsigned long addr,
 		unsigned long len, vm_flags_t vm_flags, unsigned long pgoff,
 		struct list_head *uf)
 {
 	struct mm_struct *mm = current->mm;
 	struct vm_area_struct *vma = NULL;
 	struct vm_area_struct *next, *prev, *merge;
-	pgoff_t pglen = PHYS_PFN(len);
+	pgoff_t pglen = len >> PAGE_SHIFT;
 	unsigned long charged = 0;
 	unsigned long end = addr + len;
 	unsigned long merge_start = addr, merge_end = end;
@@ -2810,26 +2810,25 @@ cannot_expand:
 	vma->vm_page_prot = vm_get_page_prot(vm_flags);
 	vma->vm_pgoff = pgoff;
 
-	if (vma_iter_prealloc(&vmi, vma)) {
-		error = -ENOMEM;
-		goto free_vma;
-	}
-
 	if (file) {
+		if (vm_flags & VM_SHARED) {
+			error = mapping_map_writable(file->f_mapping);
+			if (error)
+				goto free_vma;
+		}
+
 		vma->vm_file = get_file(file);
 		error = mmap_file(file, vma);
 		if (error)
-			goto unmap_and_free_file_vma;
+			goto unmap_and_free_vma;
 
-		/* Drivers cannot alter the address of the VMA. */
-		WARN_ON_ONCE(addr != vma->vm_start);
 		/*
-		 * Drivers should not permit writability when previously it was
-		 * disallowed.
+		 * Expansion is handled above, merging is handled below.
+		 * Drivers should not alter the address of the VMA.
 		 */
-		VM_WARN_ON_ONCE(vm_flags != vma->vm_flags &&
-				!(vm_flags & VM_MAYWRITE) &&
-				(vma->vm_flags & VM_MAYWRITE));
+		error = -EINVAL;
+		if (WARN_ON((addr != vma->vm_start)))
+			goto close_and_free_vma;
 
 		vma_iter_config(&vmi, addr, end);
 		/*
@@ -2841,7 +2840,6 @@ cannot_expand:
 				    vma->vm_end, vma->vm_flags, NULL,
 				    vma->vm_file, vma->vm_pgoff, NULL,
 				    NULL_VM_UFFD_CTX, NULL);
-
 			if (merge) {
 				/*
 				 * ->mmap() can change vma->vm_file and fput
@@ -2855,7 +2853,7 @@ cannot_expand:
 				vma = merge;
 				/* Update vm_flags to pick up the change. */
 				vm_flags = vma->vm_flags;
-				goto file_expanded;
+				goto unmap_writable;
 			}
 		}
 
@@ -2863,15 +2861,24 @@ cannot_expand:
 	} else if (vm_flags & VM_SHARED) {
 		error = shmem_zero_setup(vma);
 		if (error)
-			goto free_iter_vma;
+			goto free_vma;
 	} else {
 		vma_set_anonymous(vma);
 	}
 
-#ifdef CONFIG_SPARC64
-	/* TODO: Fix SPARC ADI! */
-	WARN_ON_ONCE(!arch_validate_flags(vm_flags));
-#endif
+	if (map_deny_write_exec(vma->vm_flags, vma->vm_flags)) {
+		error = -EACCES;
+		goto close_and_free_vma;
+	}
+
+	/* Allow architectures to sanity-check the vm_flags */
+	error = -EINVAL;
+	if (!arch_validate_flags(vma->vm_flags))
+		goto close_and_free_vma;
+
+	error = -ENOMEM;
+	if (vma_iter_prealloc(&vmi, vma))
+		goto close_and_free_vma;
 
 	/* Lock the VMA since it is modified after insertion into VMA tree */
 	vma_start_write(vma);
@@ -2894,7 +2901,10 @@ cannot_expand:
 	 */
 	khugepaged_enter_vma(vma, vma->vm_flags);
 
-file_expanded:
+	/* Once vma denies write, undo our temporary denial count */
+unmap_writable:
+	if (file && vm_flags & VM_SHARED)
+		mapping_unmap_writable(file->f_mapping);
 	file = vma->vm_file;
 	ksm_add_vma(vma);
 expanded:
@@ -2926,58 +2936,31 @@ expanded:
 
 	trace_android_vh_mmap_region(vma, addr);
 
+	validate_mm(mm);
 	return addr;
 
-unmap_and_free_file_vma:
-	fput(vma->vm_file);
-	vma->vm_file = NULL;
+close_and_free_vma:
+	vma_close(vma);
 
-	vma_iter_set(&vmi, vma->vm_end);
-	/* Undo any partial mapping done by a device driver. */
-	unmap_region(mm, &vmi.mas, vma, prev, next, vma->vm_start,
-		     vma->vm_end, vma->vm_end, true);
-free_iter_vma:
-	vma_iter_free(&vmi);
+	if (file || vma->vm_file) {
+unmap_and_free_vma:
+		fput(vma->vm_file);
+		vma->vm_file = NULL;
+
+		vma_iter_set(&vmi, vma->vm_end);
+		/* Undo any partial mapping done by a device driver. */
+		unmap_region(mm, &vmi.mas, vma, prev, next, vma->vm_start,
+			     vma->vm_end, vma->vm_end, true);
+	}
+	if (file && (vm_flags & VM_SHARED))
+		mapping_unmap_writable(file->f_mapping);
 free_vma:
 	vm_area_free(vma);
 unacct_error:
 	if (charged)
 		vm_unacct_memory(charged);
+	validate_mm(mm);
 	return error;
-}
-
-unsigned long mmap_region(struct file *file, unsigned long addr,
-			  unsigned long len, vm_flags_t vm_flags, unsigned long pgoff,
-			  struct list_head *uf)
-{
-	unsigned long ret;
-	bool writable_file_mapping = false;
-
-	/* Check to see if MDWE is applicable. */
-	if (map_deny_write_exec(vm_flags, vm_flags))
-		return -EACCES;
-
-	/* Allow architectures to sanity-check the vm_flags. */
-	if (!arch_validate_flags(vm_flags))
-		return -EINVAL;
-
-	/* Map writable and ensure this isn't a sealed memfd. */
-	if (file && (vm_flags & VM_SHARED)) {
-		int error = mapping_map_writable(file->f_mapping);
-
-		if (error)
-			return error;
-		writable_file_mapping = true;
-	}
-
-	ret = __mmap_region(file, addr, len, vm_flags, pgoff, uf);
-
-	/* Clear our write mapping regardless of error. */
-	if (writable_file_mapping)
-		mapping_unmap_writable(file->f_mapping);
-
-	validate_mm(current->mm);
-	return ret;
 }
 
 static int __vm_munmap(unsigned long start, size_t len, bool unlock)

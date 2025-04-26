@@ -31,6 +31,7 @@
 #include <linux/part_stat.h>
 
 #include <trace/events/block.h>
+#include <trace/hooks/blk.h>
 
 #include <trace/hooks/blk.h>
 
@@ -3030,6 +3031,8 @@ void blk_mq_submit_bio(struct bio *bio)
 	struct request *rq = NULL;
 	unsigned int nr_segs = 1;
 	blk_status_t ret;
+
+	trace_android_vh_check_set_ioprio(bio);
 
 	bio = blk_queue_bounce(bio, q);
 

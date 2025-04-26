@@ -257,6 +257,9 @@
 			   ARM_SMCCC_OWNER_STANDARD,		\
 			   0x53)
 
+#define ARM_CCA_FUNC_END	0x840001CF
+#define ARM_CCA_64BIT_FUNC_END	0xC40001CF
+
 /*
  * Return codes defined in ARM DEN 0070A
  * ARM DEN 0070A is now merged/consolidated into ARM DEN 0028 C

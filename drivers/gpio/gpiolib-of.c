@@ -679,6 +679,7 @@ struct gpio_desc *of_find_gpio(struct device_node *np, const char *con_id,
 
 	return desc;
 }
+EXPORT_SYMBOL_GPL(of_find_gpio);
 
 /**
  * of_parse_own_gpio() - Get a GPIO hog descriptor, names and flags for GPIO API

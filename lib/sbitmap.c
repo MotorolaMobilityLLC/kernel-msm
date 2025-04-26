@@ -100,24 +100,28 @@ static inline void update_alloc_hint_after_get(struct sbitmap *sb,
  *
  * Return: Returns the spinlock corresponding to index.
  */
-static spinlock_t *sbitmap_spinlock(struct sbitmap_word *map,
-		unsigned int map_nr, unsigned int index)
+static spinlock_t *sbitmap_spinlock(struct sbitmap *sb, unsigned int index)
 {
-	spinlock_t *base_lock = (spinlock_t *)(&map[map_nr - index]);
+	const unsigned int max_map_nr = *(unsigned int *)&sb->map[-1];
+	spinlock_t *const base_lock = (spinlock_t *)
+		round_up((uintptr_t)&sb->map[max_map_nr],
+			 __alignof__(spinlock_t));
 
-	BUG_ON(((unsigned long)base_lock % __alignof__(spinlock_t)));
+	WARN_ON_ONCE(index < 0 || index >= sb->map_nr);
+
 	return &base_lock[index];
 }
 
 /*
  * See if we have deferred clears that we can batch move
  */
-static inline bool sbitmap_deferred_clear(struct sbitmap_word *map,
+static inline bool sbitmap_deferred_clear(struct sbitmap *sb,
+		struct sbitmap_word *map,
 		unsigned int depth, unsigned int alloc_hint, bool wrap,
 		unsigned int map_nr, unsigned int index)
 {
 	unsigned long mask, word_mask;
-	spinlock_t *swap_lock = sbitmap_spinlock(map, map_nr, index);
+	spinlock_t *swap_lock = sbitmap_spinlock(sb, index);
 
 	guard(spinlock_irqsave)(swap_lock);
 
@@ -183,13 +187,17 @@ int sbitmap_init_node(struct sbitmap *sb, unsigned int depth, int shift,
 		sb->alloc_hint = NULL;
 	}
 
-	/* Due to 72d04bdcf3f7 ("sbitmap: fix io hung due to race on sbitmap_word
-	 * ::cleared") directly adding spinlock_t swap_1ock to struct sbitmap_word
-	 * in sbitmap.h, KMI was damaged. In order to achieve functionality without
-	 * damaging KMI, we can only apply for a block of memory with a size of
-	 * map_nr * (sizeof (* sb ->map)+sizeof(spinlock_t)) to ensure that each
-	 * struct sbitmap-word receives protection from spinlock.
-	 * The actual memory distribution used is as follows:
+	/*
+	 * Commit 72d04bdcf3f7 ("sbitmap: fix io hung due to race on
+	 * sbitmap_word::cleared") broke the KMI by adding `spinlock_t
+	 * swap_1ock` in struct sbitmap_word in sbitmap.h. Restore the KMI by
+	 * making sb->map larger and by storing the size of the sb->map array
+	 * and the spinlock instances in that array.
+	 *
+	 * The memory layout of sb->map is as follows:
+	 * ----------------------
+	 * struct sbitmap_word[-1] - only the first four bytes are used to store
+	 *	max_map_nr.
 	 * ----------------------
 	 * struct sbitmap_word[0]
 	 * ......................
@@ -199,17 +207,23 @@ int sbitmap_init_node(struct sbitmap *sb, unsigned int depth, int shift,
 	 * .......................
 	 * spinlock_t swap_lock[n]
 	 * ----------------------
-	 *  sbitmap_word[0] corresponds to swap_lock[0], and sbitmap_word[n]
-	 *  corresponds to swap_lock[n], and so on
+	 *
+	 * sbitmap_word[0] corresponds to swap_lock[0], and sbitmap_word[n]
+	 * corresponds to swap_lock[n], and so on.
 	 */
-	sb->map = kvzalloc_node(sb->map_nr * (sizeof(*sb->map) + sizeof(spinlock_t)), flags, node);
+	const size_t map_size = round_up((sb->map_nr + 1) * sizeof(*sb->map),
+					 __alignof__(spinlock_t))
+		+ sb->map_nr * sizeof(spinlock_t);
+	sb->map = kvzalloc_node(map_size, flags, node);
 	if (!sb->map) {
 		free_percpu(sb->alloc_hint);
 		return -ENOMEM;
 	}
 
+	*(unsigned int *)sb->map = sb->map_nr;
+	sb->map++;
 	for (i = 0; i < sb->map_nr; i++) {
-		spinlock_t *swap_lock = sbitmap_spinlock(&sb->map[i], sb->map_nr, i);
+		spinlock_t *swap_lock = sbitmap_spinlock(sb, i);
 
 		spin_lock_init(swap_lock);
 	}
@@ -224,7 +238,7 @@ void sbitmap_resize(struct sbitmap *sb, unsigned int depth)
 	unsigned int i;
 
 	for (i = 0; i < sb->map_nr; i++)
-		sbitmap_deferred_clear(&sb->map[i], 0, 0, 0, sb->map_nr, i);
+		sbitmap_deferred_clear(sb, &sb->map[i], 0, 0, 0, sb->map_nr, i);
 
 	sb->depth = depth;
 	sb->map_nr = DIV_ROUND_UP(sb->depth, bits_per_word);
@@ -265,7 +279,8 @@ static int __sbitmap_get_word(unsigned long *word, unsigned long depth,
 	return nr;
 }
 
-static int sbitmap_find_bit_in_word(struct sbitmap_word *map,
+static int sbitmap_find_bit_in_word(struct sbitmap *sb,
+				    struct sbitmap_word *map,
 				    unsigned int depth,
 				    unsigned int alloc_hint,
 				    bool wrap,
@@ -279,7 +294,7 @@ static int sbitmap_find_bit_in_word(struct sbitmap_word *map,
 					alloc_hint, wrap);
 		if (nr != -1)
 			break;
-		if (!sbitmap_deferred_clear(map, depth, alloc_hint, wrap, map_nr, index))
+		if (!sbitmap_deferred_clear(sb, map, depth, alloc_hint, wrap, map_nr, index))
 			break;
 	} while (1);
 
@@ -296,7 +311,7 @@ static int sbitmap_find_bit(struct sbitmap *sb,
 	int nr = -1;
 
 	for (i = 0; i < sb->map_nr; i++) {
-		nr = sbitmap_find_bit_in_word(&sb->map[index],
+		nr = sbitmap_find_bit_in_word(sb, &sb->map[index],
 					      min_t(unsigned int,
 						    __map_depth(sb, index),
 						    depth),
@@ -602,7 +617,7 @@ unsigned long __sbitmap_queue_get_batch(struct sbitmap_queue *sbq, int nr_tags,
 		unsigned int map_depth = __map_depth(sb, index);
 		unsigned long val;
 
-		sbitmap_deferred_clear(map, 0, 0, 0, sb->map_nr, index);
+		sbitmap_deferred_clear(sb, map, 0, 0, 0, sb->map_nr, index);
 		val = READ_ONCE(map->word);
 		if (val == (1UL << (map_depth - 1)) - 1)
 			goto next;
