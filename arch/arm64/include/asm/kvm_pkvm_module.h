@@ -97,6 +97,10 @@ enum pkvm_psci_notification {
  * @register_host_smc_handler:	@cb is called whenever the host issues an SMC
  *				pKVM couldn't handle. If @cb returns false, the
  *				SMC will be forwarded to EL3.
+ * @register_guest_smc_handler:	@cb is called whenever a guest identified by the
+ *				pkvm_handle issues an SMC which pKVM doesn't
+ *				handle. If @cb returns false, the control is
+ *				given back to the host kernel to handle the exit.
  * @register_default_trap_handler:
  *				@cb is called whenever EL2 traps EL1 and pKVM
  *				has not handled it. If @cb returns false, the
@@ -161,6 +165,14 @@ enum pkvm_psci_notification {
  * @iommu_donate_pages_atomic:	Allocate memory from IOMMU identity pool.
  * @iommu_reclaim_pages_atomic:	Reclaim memory from iommu_donate_pages_atomic()
  * @hyp_smp_processor_id:	Current CPU id
+ * @guest_stage2_pa:		Look up and return the PA (@phys) mapped into
+ *				the specified VM (@handle) at the specified
+ *				intermediate physical address (@ipa). If there
+ *				is no mapping, or if it is a block mapping,
+ *				then -EINVAL will be returned. Note that no
+ *				lock or pin is held on the returned PA; the
+ *				only guarantee is that @handle:@ipa -> @phys
+ *				at some point during the call to this function.
  */
 struct pkvm_module_ops {
 	int (*create_private_mapping)(phys_addr_t phys, size_t size,
@@ -227,8 +239,13 @@ struct pkvm_module_ops {
 	ANDROID_KABI_USE(1, void (*iommu_flush_unmap_cache)(struct kvm_iommu_paddr_cache *cache));
 	ANDROID_KABI_USE(2, int (*host_stage2_enable_lazy_pte)(u64 addr, u64 nr_pages));
 	ANDROID_KABI_USE(3, int (*host_stage2_disable_lazy_pte)(u64 addr, u64 nr_pages));
-	ANDROID_KABI_RESERVE(4);
-	ANDROID_KABI_RESERVE(5);
+	ANDROID_KABI_USE(4, int (*register_guest_smc_handler)(bool (*cb)(
+						     struct arm_smccc_1_2_regs *,
+						     struct arm_smccc_res *res,
+						     pkvm_handle_t handle),
+					  pkvm_handle_t handle));
+	ANDROID_KABI_USE(5, int (*guest_stage2_pa)(pkvm_handle_t handle,
+						   u64 ipa, phys_addr_t *phys));
 	ANDROID_KABI_RESERVE(6);
 	ANDROID_KABI_RESERVE(7);
 	ANDROID_KABI_RESERVE(8);

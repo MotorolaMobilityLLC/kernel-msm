@@ -224,6 +224,7 @@
   kmemdup
   kstrndup
   kstrtobool_from_user
+  kstrtoint
   kthread_create_on_node
   kthread_park
   kthread_should_stop
@@ -297,17 +298,13 @@
   page_pool_alloc_frag
   page_pool_destroy
   page_pool_put_defragged_page
+  param_array_ops
   param_ops_bool
   param_ops_charp
   param_ops_int
   param_ops_uint
   passthru_features_check
   pci_bus_type
-  pci_iomap_range
-  pci_release_region
-  pci_release_selected_regions
-  pci_request_region
-  pci_request_selected_regions
   __per_cpu_offset
   perf_trace_buf_alloc
   perf_trace_run_bpf_submit
@@ -377,7 +374,6 @@
   __serio_register_driver
   __serio_register_port
   serio_unregister_driver
-  set_page_private
   sg_alloc_table
   sg_free_table
   sg_init_one
@@ -405,11 +401,22 @@
   skb_queue_tail
   skb_to_sgvec
   skb_trim
+  snd_card_register
+  snd_ctl_add
+  snd_ctl_new1
+  snd_ctl_notify
+  snd_pcm_format_physical_width
+  snd_pcm_hw_constraint_integer
+  snd_pcm_new
+  snd_pcm_period_elapsed
+  snd_pcm_set_managed_buffer_all
+  snd_pcm_set_ops
   snprintf
   sprintf
   sscanf
   __stack_chk_fail
   strcasecmp
+  strchr
   strcmp
   strcpy
   strlen
@@ -453,7 +460,6 @@
   usb_create_shared_hcd
   usb_deregister
   usb_disabled
-  usb_find_common_endpoints
   usb_free_urb
   usb_get_dev
   usb_hcd_check_unlink_urb
@@ -473,6 +479,7 @@
   usb_unanchor_urb
   __usecs_to_jiffies
   usleep_range_state
+  utf8_data_table
   v4l2_device_register
   v4l2_device_unregister
   v4l2_event_pending
@@ -700,6 +707,8 @@
   pci_enable_device
   pci_read_config_byte
   __pci_register_driver
+  pci_release_region
+  pci_request_region
   pci_unregister_driver
 
 # required by goldfish_battery.ko
@@ -747,6 +756,7 @@
   unregister_candev
   usb_control_msg_recv
   usb_control_msg_send
+  usb_find_common_endpoints
 
 # required by hci_vhci.ko
   _copy_from_iter
@@ -1044,6 +1054,7 @@
   dma_sync_sg_for_cpu
   __sg_page_iter_next
   __sg_page_iter_start
+  _totalram_pages
   vmap
   vunmap
 
@@ -1056,7 +1067,6 @@
 # required by v4l2loopback.ko
   kstrtoull
   mutex_lock_killable
-  param_array_ops
   v4l2_ctrl_handler_free
   v4l2_ctrl_handler_init_class
   v4l2_ctrl_handler_setup
@@ -1085,12 +1095,10 @@
 # required by vhci-hcd.ko
   kernel_sendmsg
   kernel_sock_shutdown
-  kstrtoint
   kstrtoll
   kthread_stop_put
   platform_bus
   sockfd_lookup
-  strchr
   sysfs_create_group
   sysfs_remove_group
   usb_speed_string
@@ -1310,10 +1318,6 @@
   xdp_rxq_info_unreg
   xdp_warn
 
-# required by virtio_pci_legacy_dev.ko
-  pci_iomap
-  pci_iounmap
-
 # required by virtio_pmem.ko
   nvdimm_bus_register
   nvdimm_bus_unregister
@@ -1322,20 +1326,10 @@
 # required by virtio_snd.ko
   snd_card_free
   snd_card_new
-  snd_card_register
-  snd_ctl_add
-  snd_ctl_new1
-  snd_ctl_notify
   snd_jack_new
   snd_jack_report
   snd_pcm_add_chmap_ctls
-  snd_pcm_format_physical_width
-  snd_pcm_hw_constraint_integer
   snd_pcm_lib_ioctl
-  snd_pcm_new
-  snd_pcm_period_elapsed
-  snd_pcm_set_managed_buffer_all
-  snd_pcm_set_ops
   wait_for_completion_interruptible_timeout
 
 # required by virtual-cpufreq.ko
@@ -1480,10 +1474,15 @@
   pci_find_ext_capability
   pci_find_next_capability
   pci_free_irq_vectors
+  pci_iomap
+  pci_iomap_range
+  pci_iounmap
   pci_irq_get_affinity
   pci_irq_vector
   pci_read_config_dword
   pci_read_config_word
+  pci_release_selected_regions
+  pci_request_selected_regions
   pci_set_master
   pci_vfs_assigned
   pipe_lock
@@ -1497,6 +1496,7 @@
   set_capacity_and_notify
   set_disk_ro
   __SetPageMovable
+  set_page_private
   sg_alloc_table_chained
   sg_free_table_chained
   si_mem_available

@@ -749,99 +749,6 @@ void f2fs_update_inode(struct inode *inode, struct page *node_page)
 #endif
 }
 
-static void f2fs_sanity_check_nat(struct f2fs_sb_info *sbi, pgoff_t nid)
-{
-	struct page *page;
-	struct node_info cni = { 0 }, jni = { 0 };
-	struct f2fs_nat_block *nat_blk;
-	struct f2fs_nat_entry ne;
-	nid_t start_nid;
-	struct f2fs_io_info fio = {
-		.sbi = sbi,
-		.type = NODE,
-		.op = REQ_OP_READ,
-		.op_flags = 0,
-		.encrypted_page = NULL,
-	};
-	int err;
-	int ret;
-
-	if (likely(!sbi->sanity_check))
-		return;
-
-	if (!is_sbi_flag_set(sbi, SBI_CP_DISABLED))
-		return;
-
-	/* nat entry */
-	ret = f2fs_get_nat_entry(sbi, &cni, &jni, nid);
-	if (ret) {
-		if (ret & NAT_JOURNAL_ENTRY)
-			f2fs_err(sbi, "nat entry in journal: [%u,%u,%u,%u,%u]",
-				jni.nid, jni.ino, jni.blk_addr, jni.version, jni.flag);
-		if (ret & NAT_CACHED_ENTRY)
-			f2fs_err(sbi, "nat entry in cache: [%u,%u,%u,%u,%u]",
-				cni.nid, cni.ino, cni.blk_addr, cni.version, cni.flag);
-	} else {
-		f2fs_err(sbi, "nat entry is not in cache&journal");
-	}
-
-	/* previous node block */
-	page = f2fs_get_prev_nat_page(sbi, nid);
-	if (IS_ERR(page))
-		return;
-	nat_blk = (struct f2fs_nat_block *)page_address(page);
-	start_nid = START_NID(nid);
-	ne = nat_blk->entries[nid - start_nid];
-	node_info_from_raw_nat(&cni, &ne);
-	ClearPageUptodate(page);
-	f2fs_put_page(page, 1);
-
-	f2fs_err(sbi, "previous node info: [%u,%u,%u,%u,%u]",
-			cni.nid, cni.ino, cni.blk_addr, cni.version, cni.flag);
-
-	if (cni.blk_addr == NULL_ADDR || cni.blk_addr == NEW_ADDR)
-		return;
-
-	page = f2fs_grab_cache_page(NODE_MAPPING(sbi), nid, false);
-	if (!page)
-		return;
-
-	fio.page = page;
-	fio.new_blkaddr = fio.old_blkaddr = cni.blk_addr;
-
-	err = f2fs_submit_page_bio(&fio);
-	if (err) {
-		f2fs_err(sbi, "f2fs_submit_page_bio fail err:%d", err);
-		goto out;
-	}
-
-	lock_page(page);
-
-	if (unlikely(page->mapping != NODE_MAPPING(sbi))) {
-		f2fs_err(sbi, "mapping dismatch");
-		goto out;
-	}
-
-	if (unlikely(!PageUptodate(page))) {
-		f2fs_err(sbi, "page is not uptodate");
-		goto out;
-	}
-
-	if (!f2fs_inode_chksum_verify(sbi, page)) {
-		f2fs_err(sbi, "f2fs_inode_chksum_verify fail");
-		goto out;
-	}
-
-	f2fs_err(sbi, "previous node block, nid:%lu, "
-		"node_footer[nid:%u,ino:%u,ofs:%u,cpver:%llu,blkaddr:%u]",
-			nid, nid_of_node(page), ino_of_node(page),
-			ofs_of_node(page), cpver_of_node(page),
-			next_blkaddr_of_node(page));
-out:
-	ClearPageUptodate(page);
-	f2fs_put_page(page, 1);
-}
-
 void f2fs_update_inode_page(struct inode *inode)
 {
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
@@ -859,9 +766,6 @@ retry:
 		if (err == -ENOMEM || ++count <= DEFAULT_RETRY_IO_COUNT)
 			goto retry;
 		f2fs_stop_checkpoint(sbi, false, STOP_CP_REASON_UPDATE_INODE);
-		f2fs_err(sbi, "fail to get node page, ino:%lu, err: %d", inode->i_ino, err);
-		if (err == -EFSCORRUPTED)
-			f2fs_sanity_check_nat(sbi, inode->i_ino);
 		return;
 	}
 	f2fs_update_inode(inode, node_page);

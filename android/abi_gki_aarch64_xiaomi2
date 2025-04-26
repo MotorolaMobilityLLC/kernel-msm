@@ -1415,6 +1415,7 @@
   of_find_node_by_name
   of_find_node_opts_by_path
   of_find_property
+  of_find_gpio
   of_fwnode_ops
   of_get_child_by_name
   of_get_compatible_child
