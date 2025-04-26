@@ -915,7 +915,7 @@ static void mem_buf_vmperm_gh_notifier(enum gh_mem_notifier_tag tag, unsigned lo
 	/* Acquire refcount */
 	vmperm = vmperm_lookup(msg->mem_handle);
 	if (!vmperm) {
-		pr_err("%s: No vmperm for handle %d\n", __func__, msg->mem_handle);
+		pr_debug("%s: No vmperm for handle %d\n", __func__, msg->mem_handle);
 		return;
 	}
 
