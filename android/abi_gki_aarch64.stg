@@ -411987,6 +411987,15 @@ elf_symbol {
   full_name: "usb_check_bulk_endpoints"
 }
 elf_symbol {
+  id: 0xcf4d7b06
+  name: "usb_check_int_endpoints"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x18bb04b2
+  type_id: 0xf38427c4
+  full_name: "usb_check_int_endpoints"
+}
+elf_symbol {
   id: 0x23a5ab99
   name: "usb_choose_configuration"
   is_defined: true
@@ -426159,6 +426168,7 @@ interface {
   symbol_id: 0x3d66dcb8
   symbol_id: 0x1f68a496
   symbol_id: 0x12289dad
+  symbol_id: 0xcf4d7b06
   symbol_id: 0x23a5ab99
   symbol_id: 0x2a589f64
   symbol_id: 0x7da41bc7

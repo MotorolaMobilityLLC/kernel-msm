@@ -3229,6 +3229,7 @@
   usb_autopm_put_interface
   usb_autopm_put_interface_async
   usb_check_bulk_endpoints
+  usb_check_int_endpoints
   usb_clear_halt
   usb_composite_probe
   usb_composite_unregister
