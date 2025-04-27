@@ -37,6 +37,8 @@
  __tracepoint_rpm_resume
  __traceiter_rpm_return_int
  __tracepoint_rpm_return_int
+ __traceiter_android_vh_count_workingset_refault
+ __tracepoint_android_vh_count_workingset_refault
  binder_alloc_copy_from_buffer
  kfree
  __kmalloc
