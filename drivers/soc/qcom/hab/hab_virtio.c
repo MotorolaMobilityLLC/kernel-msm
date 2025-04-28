@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include <linux/module.h>
 #include <linux/virtio.h>
@@ -25,6 +25,9 @@
 #define HAB_VIRTIO_DEVICE_ID_VNW	96
 #define HAB_VIRTIO_DEVICE_ID_EXT	97
 #define HAB_VIRTIO_DEVICE_ID_GPCE	98
+#define HAB_VIRTIO_DEVICE_ID_SOCCP	99
+#define HAB_VIRTIO_DEVICE_ID_DPRX	100
+#define HAB_VIRTIO_DEVICE_ID_EVA	101
 
 /* all probed virtio_hab stored in this list */
 static struct list_head vhab_list = LIST_HEAD_INIT(vhab_list);
@@ -46,6 +49,9 @@ static struct virtio_device_tbl {
 	{ MM_VNW_1, HAB_VIRTIO_DEVICE_ID_VNW, NULL },
 	{ MM_EXT_1, HAB_VIRTIO_DEVICE_ID_EXT, NULL },
 	{ MM_GPCE_1, HAB_VIRTIO_DEVICE_ID_GPCE, NULL },
+	{ MM_SOCCP_1, HAB_VIRTIO_DEVICE_ID_SOCCP, NULL },
+	{ MM_DPRX_1, HAB_VIRTIO_DEVICE_ID_DPRX, NULL },
+	{ MM_EVA_1, HAB_VIRTIO_DEVICE_ID_EVA, NULL },
 };
 
 enum pool_type_t {
@@ -798,6 +804,18 @@ static int virthab_probe(struct virtio_device *vdev)
 		mmid_start = MM_GPCE_1;
 		mmid_range = MM_GPCE_END - MM_GPCE_START - 1;
 		virthab_store_vdev(MM_GPCE_1, vdev);
+	} else if (vdev->id.device == HAB_VIRTIO_DEVICE_ID_SOCCP) {
+		mmid_start = MM_SOCCP_1;
+		mmid_range = MM_SOCCP_END - MM_SOCCP_START - 1;
+		virthab_store_vdev(MM_SOCCP_1, vdev);
+	} else if (vdev->id.device == HAB_VIRTIO_DEVICE_ID_DPRX) {
+		mmid_start = MM_DPRX_1;
+		mmid_range = MM_DPRX_END - MM_DPRX_START - 1;
+		virthab_store_vdev(MM_DPRX_1, vdev);
+	} else if (vdev->id.device == HAB_VIRTIO_DEVICE_ID_EVA) {
+		mmid_start = MM_EVA_1;
+		mmid_range = MM_EVA_END - MM_EVA_START - 1;
+		virthab_store_vdev(MM_EVA_1, vdev);
 	} else {
 		pr_err("unknown virtio device is detected %d\n",
 			vdev->id.device);
@@ -919,6 +937,9 @@ static struct virtio_device_id id_table[] = {
 	{ HAB_VIRTIO_DEVICE_ID_VNW, VIRTIO_DEV_ANY_ID }, /* virtio vnw */
 	{ HAB_VIRTIO_DEVICE_ID_EXT, VIRTIO_DEV_ANY_ID }, /* virtio external */
 	{ HAB_VIRTIO_DEVICE_ID_GPCE, VIRTIO_DEV_ANY_ID }, /* virtio gpce */
+	{ HAB_VIRTIO_DEVICE_ID_SOCCP, VIRTIO_DEV_ANY_ID }, /* virtio soccp */
+	{ HAB_VIRTIO_DEVICE_ID_DPRX, VIRTIO_DEV_ANY_ID }, /* virtio dprx */
+	{ HAB_VIRTIO_DEVICE_ID_EVA, VIRTIO_DEV_ANY_ID }, /* virtio eva */
 	{ 0 },
 };
 

@@ -190,6 +190,15 @@ struct vhost_hab_config {
 		case 16:\
 			__mptr = "hab-gpce";\
 			break;\
+		case 17:\
+			__mptr = "hab-soccp";\
+			break;\
+		case 18:\
+			__mptr = "hab-dprx";\
+			break;\
+		case 19:\
+			__mptr = "hab-eva";\
+			break;\
 		default:\
 			__mptr = NULL;\
 		} \

@@ -58,6 +58,10 @@ static struct hab_device hab_devices[] = {
 	HAB_DEVICE_CNSTR(DEVICE_EXT2_NAME, MM_EXT_2, 29),
 	HAB_DEVICE_CNSTR(DEVICE_EXT3_NAME, MM_EXT_3, 30),
 	HAB_DEVICE_CNSTR(DEVICE_GPCE1_NAME, MM_GPCE_1, 31),
+	HAB_DEVICE_CNSTR(DEVICE_SOCCP1_NAME, MM_SOCCP_1, 32),
+	HAB_DEVICE_CNSTR(DEVICE_DPRX1_NAME, MM_DPRX_1, 33),
+	HAB_DEVICE_CNSTR(DEVICE_DPRX2_NAME, MM_DPRX_2, 34),
+	HAB_DEVICE_CNSTR(DEVICE_EVA1_NAME, MM_EVA_1, 35),
 };
 
 struct hab_driver hab_driver = {
@@ -1056,6 +1060,15 @@ static int hab_generate_pchan(struct local_vmid *settings, int i, int j)
 		break;
 	case MM_GPCE_START/100:
 		ret = hab_generate_pchan_group(settings, i, j, MM_GPCE_START, MM_GPCE_END);
+		break;
+	case MM_SOCCP_START/100:
+		ret = hab_generate_pchan_group(settings, i, j, MM_SOCCP_START, MM_SOCCP_END);
+		break;
+	case MM_DPRX_START/100:
+		ret = hab_generate_pchan_group(settings, i, j, MM_DPRX_START, MM_DPRX_END);
+		break;
+	case MM_EVA_START/100:
+		ret = hab_generate_pchan_group(settings, i, j, MM_EVA_START, MM_EVA_END);
 		break;
 	default:
 		pr_err("failed to find mmid %d, i %d, j %d\n",

@@ -88,7 +88,20 @@
 #define	MM_GPCE_1 1601
 #define	MM_GPCE_END 1602
 
-#define	MM_ID_MAX 1603
+#define	MM_SOCCP_START 1700
+#define	MM_SOCCP_1 1701
+#define	MM_SOCCP_END 1702
+
+#define	MM_DPRX_START 1800
+#define	MM_DPRX_1 1801
+#define	MM_DPRX_2 1802
+#define	MM_DPRX_END 1803
+
+#define	MM_EVA_START 1900
+#define	MM_EVA_1 1901
+#define	MM_EVA_END 1902
+
+#define	MM_ID_MAX	1903
 
 #define VIRQ_MIN   1000
 
