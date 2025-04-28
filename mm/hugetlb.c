@@ -4695,7 +4695,7 @@ static struct ctl_table hugetlb_table[] = {
 	{ }
 };
 
-static void hugetlb_sysctl_init(void)
+static void __init hugetlb_sysctl_init(void)
 {
 	register_sysctl_init("vm", hugetlb_table);
 }
