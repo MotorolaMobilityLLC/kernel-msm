@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/platform_device.h>
@@ -57,11 +57,20 @@
 #define LLCC_DISP_WB     53
 #define LLCC_DISP_1      54
 #define LLCC_SAIL        55
+#define LLCC_AENPU       45
+#define LLCC_VIEYE       57
+#define LLCC_VIDPTH      58
+#define LLCC_GPUMV       59
+#define LLCC_EVALFT      60
+#define LLCC_EVARGHT     61
+#define LLCC_EVAGAIN     62
+#define LLCC_VIPTH       63
 #define LLCC_VIDVSP      64
 #define LLCC_DISLFT      65
 #define LLCC_DISRGHT     66
 #define LLCC_EVCSLFT     67
 #define LLCC_EVCSRGHT    68
+#define LLCC_SPAD        69
 #define LLCC_EVA_3DR     69
 
 /**
