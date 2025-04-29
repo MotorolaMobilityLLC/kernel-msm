@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -92,7 +92,6 @@ struct uaudio_dev {
 	unsigned int card_num;
 	unsigned int usb_core_id;
 	atomic_t in_use;
-	struct kref kref;
 	wait_queue_head_t disconnect_wq;
 
 	/* xhci sideband */
@@ -514,6 +513,7 @@ static int prepare_qmi_response(struct snd_usb_substream *subs,
 	struct sg_table xfer_buf_sgt;
 	struct page *pg;
 	bool dma_coherent;
+	struct snd_usb_audio *chip;
 
 	iface = usb_ifnum_to_if(subs->dev, subs->cur_audiofmt->iface);
 	if (!iface) {
@@ -824,8 +824,9 @@ skip_sync:
 
 	sg_free_table(&xfer_buf_sgt);
 
-	if (!atomic_read(&uadev[card_num].in_use)) {
-		kref_init(&uadev[card_num].kref);
+	chip = uadev[card_num].chip;
+
+	if (atomic_read(&uadev[card_num].in_use) == 1) {
 		init_waitqueue_head(&uadev[card_num].disconnect_wq);
 		uadev[card_num].num_intf =
 			subs->dev->config->desc.bNumInterfaces;
@@ -835,10 +836,9 @@ skip_sync:
 			ret = -ENOMEM;
 			goto unmap_sync;
 		}
+		mutex_lock(&chip->mutex);
 		uadev[card_num].udev = subs->dev;
-		atomic_set(&uadev[card_num].in_use, 1);
-	} else {
-		kref_get(&uadev[card_num].kref);
+		mutex_unlock(&chip->mutex);
 	}
 
 	uadev[card_num].card_num = card_num;
@@ -1039,15 +1039,13 @@ done:
 	if (dev->sb)
 		xhci_sideband_unregister(dev->sb);
 
-	mutex_unlock(&chip->mutex);
 	uadev[card_num].chip = NULL;
 	uadev[card_num].sb = NULL;
+	mutex_unlock(&chip->mutex);
 }
 
-static void uaudio_dev_release(struct kref *kref)
+static void uaudio_dev_release(struct uaudio_dev *dev)
 {
-	struct uaudio_dev *dev = container_of(kref, struct uaudio_dev, kref);
-
 	uaudio_dbg("for dev %pK\n", dev);
 
 	uaudio_event_ring_cleanup_free(dev);
@@ -1307,6 +1305,70 @@ put_suspend:
 	return ret;
 }
 
+static int check_valid_request(struct qmi_uaudio_stream_req_msg_v01 *req_msg,
+					int *info_idx)
+{
+	struct snd_usb_substream *subs;
+	struct snd_usb_audio *chip;
+	u8 pcm_card_num, pcm_dev_num, direction;
+
+	direction = req_msg->usb_token & SND_PCM_STREAM_DIRECTION;
+	pcm_dev_num = (req_msg->usb_token & SND_PCM_DEV_NUM_MASK) >> 8;
+	pcm_card_num = (req_msg->usb_token & SND_PCM_CARD_NUM_MASK) >> 16;
+
+	uaudio_info("card#:%d dev#:%d dir:%d en:%d fmt:%d rate:%d #ch:%d\n",
+			pcm_card_num, pcm_dev_num, direction, req_msg->enable,
+			req_msg->audio_format, req_msg->bit_rate,
+			req_msg->number_of_ch);
+
+	if (pcm_card_num >= SNDRV_CARDS) {
+		uaudio_err("invalid card # %u", pcm_card_num);
+		return -EINVAL;
+	}
+
+	if (req_msg->audio_format > USB_QMI_PCM_FORMAT_U32_BE) {
+		uaudio_err("unsupported pcm format received %d\n",
+				req_msg->audio_format);
+		return -EINVAL;
+	}
+
+	subs = find_substream(pcm_card_num, pcm_dev_num, direction);
+
+	if (!subs) {
+		uaudio_err("invalid substream\n");
+		return -EFAULT;
+	}
+
+	chip = uadev[pcm_card_num].chip;
+	if (!subs || !chip || atomic_read(&chip->shutdown)) {
+		uaudio_err("can't find substream for card# %u, dev# %u dir%u\n",
+				pcm_card_num, pcm_dev_num, direction);
+		return -ENODEV;
+	}
+
+	*info_idx = info_idx_from_ifnum(pcm_card_num, subs->cur_audiofmt ?
+			subs->cur_audiofmt->iface : -1, req_msg->enable);
+
+	if (atomic_read(&chip->shutdown) || !subs->stream || !subs->stream->pcm
+			|| !subs->stream->chip) {
+		uaudio_err("chip or sub not available: shutdown:%d stream:%p\n",
+				atomic_read(&chip->shutdown), subs->stream);
+
+		if (subs->stream)
+			uaudio_err("pcm:%p chip:%p\n", subs->stream->pcm, subs->stream->chip);
+
+		return -ENODEV;
+	}
+
+	if (req_msg->enable && (*info_idx < 0)) {
+		uaudio_err("interface# %d already in use card# %d\n",
+				subs->cur_audiofmt->iface, pcm_card_num);
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
 static void handle_uaudio_stream_req(struct qmi_handle *handle,
 			struct sockaddr_qrtr *sq,
 			struct qmi_txn *txn,
@@ -1314,12 +1376,12 @@ static void handle_uaudio_stream_req(struct qmi_handle *handle,
 {
 	struct qmi_uaudio_stream_req_msg_v01 *req_msg;
 	struct qmi_uaudio_stream_resp_msg_v01 resp = {{0}, 0};
-	struct snd_usb_substream *subs;
+	struct snd_usb_substream *subs = NULL;
 	struct uaudio_qmi_svc *svc = uaudio_svc;
 	struct intf_info *info;
 	struct usb_host_endpoint *ep;
 	ktime_t t_request_recvd = ktime_get();
-	struct snd_usb_audio *chip;
+	struct snd_usb_audio *chip = NULL;
 
 	u8 pcm_card_num, pcm_dev_num, direction;
 	int info_idx = -EINVAL, datainterval = -EINVAL, ret = 0;
@@ -1343,62 +1405,12 @@ static void handle_uaudio_stream_req(struct qmi_handle *handle,
 	pcm_dev_num = (req_msg->usb_token & SND_PCM_DEV_NUM_MASK) >> 8;
 	pcm_card_num = (req_msg->usb_token & SND_PCM_CARD_NUM_MASK) >> 16;
 
-	uaudio_info("card#:%d dev#:%d dir:%d en:%d fmt:%d rate:%d #ch:%d\n",
-			pcm_card_num, pcm_dev_num, direction, req_msg->enable,
-			req_msg->audio_format, req_msg->bit_rate,
-			req_msg->number_of_ch);
-
-	if (pcm_card_num >= SNDRV_CARDS) {
-		uaudio_err("invalid card # %u", pcm_card_num);
-		ret = -EINVAL;
-		goto response;
-	}
-
-	if (req_msg->audio_format > USB_QMI_PCM_FORMAT_U32_BE) {
-		uaudio_err("unsupported pcm format received %d\n",
-				req_msg->audio_format);
-		ret = -EINVAL;
-		goto response;
-	}
-
 	subs = find_substream(pcm_card_num, pcm_dev_num, direction);
-
-	if (!subs) {
-		uaudio_err("invalid substream\n");
-		ret = -EINVAL;
-		goto response;
-	}
-
 	chip = uadev[pcm_card_num].chip;
-	if (!subs || !chip || atomic_read(&chip->shutdown)) {
-		uaudio_err("can't find substream for card# %u, dev# %u dir%u\n",
-				pcm_card_num, pcm_dev_num, direction);
-		ret = -ENODEV;
+
+	ret = check_valid_request(req_msg, &info_idx);
+	if (ret)
 		goto response;
-	}
-
-	info_idx = info_idx_from_ifnum(pcm_card_num, subs->cur_audiofmt ?
-			subs->cur_audiofmt->iface : -1, req_msg->enable);
-	if (atomic_read(&chip->shutdown) || !subs->stream || !subs->stream->pcm
-			|| !subs->stream->chip) {
-		uaudio_err("chip or sub not available: shutdown:%d stream:%p\n",
-				atomic_read(&chip->shutdown), subs->stream);
-
-		if (subs->stream)
-			uaudio_err("pcm:%p chip:%p\n", subs->stream->pcm, subs->stream->chip);
-
-		ret = -ENODEV;
-		goto response;
-	}
-
-	if (req_msg->enable) {
-		if (info_idx < 0) {
-			uaudio_err("interface# %d already in use card# %d\n",
-					subs->cur_audiofmt->iface, pcm_card_num);
-			ret = -EBUSY;
-			goto response;
-		}
-	}
 
 	if (req_msg->service_interval_valid) {
 		ret = get_data_interval_from_si(subs,
@@ -1416,6 +1428,10 @@ static void handle_uaudio_stream_req(struct qmi_handle *handle,
 	uadev[pcm_card_num].ctrl_intf = chip->ctrl_intf;
 
 	if (req_msg->enable) {
+		mutex_lock(&chip->mutex);
+		atomic_inc(&uadev[pcm_card_num].in_use);
+		mutex_unlock(&chip->mutex);
+
 		ret = enable_audio_stream(subs,
 				map_pcm_format(req_msg->audio_format),
 				req_msg->number_of_ch, req_msg->bit_rate,
@@ -1423,6 +1439,16 @@ static void handle_uaudio_stream_req(struct qmi_handle *handle,
 		if (!ret)
 			ret = prepare_qmi_response(subs, req_msg, &resp,
 					info_idx);
+		else
+			uaudio_dbg("enable_audio_stream failed %d\n", ret);
+
+		if (ret) {
+			mutex_lock(&chip->mutex);
+			uaudio_dbg("enable process failed %d\n", ret);
+			atomic_dec(&uadev[pcm_card_num].in_use);
+			mutex_unlock(&chip->mutex);
+		}
+
 	} else {
 		info = &uadev[pcm_card_num].info[info_idx];
 		if (info->data_ep_pipe) {
@@ -1465,9 +1491,8 @@ response:
 			uaudio_dbg("release resources: intf# %d card# %d\n",
 					info->intf_num, pcm_card_num);
 		}
-		if (atomic_read(&uadev[pcm_card_num].in_use))
-			kref_put(&uadev[pcm_card_num].kref,
-					uaudio_dev_release);
+		if (atomic_dec_and_test(&uadev[pcm_card_num].in_use))
+			uaudio_dev_release(&uadev[pcm_card_num]);
 		mutex_unlock(&chip->mutex);
 	}
 
