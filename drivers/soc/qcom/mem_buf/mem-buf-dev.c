@@ -58,6 +58,8 @@ int mem_buf_assign_mem(u32 op, struct sg_table *sgt,
 	if (!sgt || !arg->nr_acl_entries || !arg->vmids || !arg->perms)
 		return -EINVAL;
 
+	arg->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
+
 	ret = mem_buf_hyp_assign_table(sgt, src_vmid, ARRAY_SIZE(src_vmid), arg->vmids, arg->perms,
 					arg->nr_acl_entries);
 	if (ret)
