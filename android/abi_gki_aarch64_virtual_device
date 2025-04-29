@@ -1234,6 +1234,14 @@
   memparse
   register_virtio_device
   synchronize_irq
+  __traceiter_rwmmio_post_read
+  __traceiter_rwmmio_post_write
+  __traceiter_rwmmio_read
+  __traceiter_rwmmio_write
+  __tracepoint_rwmmio_post_read
+  __tracepoint_rwmmio_post_write
+  __tracepoint_rwmmio_read
+  __tracepoint_rwmmio_write
   unregister_virtio_device
   virtio_config_changed
   virtio_device_freeze
