@@ -604,6 +604,7 @@ static const struct soc_id soc_id[] = {
 	{ 645, "QCM_PINEAPPLE" },
 	{ 646, "QCS_PINEAPPLE" },
 	{ 702, "QCS8625_PINEAPPLE" },
+	{ 712, "VOLCANOP" },
 };
 
 static struct attribute *msm_custom_socinfo_attrs[MAX_SOCINFO_ATTRS];
