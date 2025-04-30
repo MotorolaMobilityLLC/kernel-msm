@@ -24639,6 +24639,11 @@ pointer_reference {
   pointee_type_id: 0xe5b47ef3
 }
 pointer_reference {
+  id: 0x340055b2
+  kind: POINTER
+  pointee_type_id: 0xfa41b054
+}
+pointer_reference {
   id: 0x34016e82
   kind: POINTER
   pointee_type_id: 0xfa455c97
@@ -26752,6 +26757,11 @@ pointer_reference {
   id: 0x380a78f0
   kind: POINTER
   pointee_type_id: 0xca69055f
+}
+pointer_reference {
+  id: 0x380af085
+  kind: POINTER
+  pointee_type_id: 0xca6b248b
 }
 pointer_reference {
   id: 0x380c33d1
@@ -35939,6 +35949,11 @@ qualified {
   qualified_type_id: 0x98e32fbd
 }
 qualified {
+  id: 0xfa41b054
+  qualifier: CONST
+  qualified_type_id: 0x994177db
+}
+qualified {
   id: 0xfa455c97
   qualifier: CONST
   qualified_type_id: 0x9952c4d4
@@ -41973,6 +41988,29 @@ member {
   name: "FramesWithExcessiveDeferral"
   type_id: 0x92233392
   offset: 1024
+}
+member {
+  id: 0x9583c91c
+  name: "HB0"
+  type_id: 0x295c7202
+}
+member {
+  id: 0xd444664c
+  name: "HB1"
+  type_id: 0x295c7202
+  offset: 8
+}
+member {
+  id: 0x1603fa52
+  name: "HB2"
+  type_id: 0x295c7202
+  offset: 16
+}
+member {
+  id: 0x56c4b67f
+  name: "HB3"
+  type_id: 0x295c7202
+  offset: 24
 }
 member {
   id: 0xc31a401f
@@ -73028,6 +73066,12 @@ member {
   name: "daylight"
   type_id: 0x295c7202
   offset: 112
+}
+member {
+  id: 0xd75b166e
+  name: "db"
+  type_id: 0x5e9b9471
+  offset: 32
 }
 member {
   id: 0xf540eeb1
@@ -176292,6 +176336,11 @@ member {
   offset: 10176
 }
 member {
+  id: 0x0fed75b2
+  name: "sdp_header"
+  type_id: 0x90206a5a
+}
+member {
   id: 0x682990f8
   name: "sdp_max"
   type_id: 0x4585663f
@@ -230242,6 +230291,28 @@ struct_union {
     member_id: 0x02ce5044
     member_id: 0xb8f1e8f7
     member_id: 0x24d1edc6
+  }
+}
+struct_union {
+  id: 0xca6b248b
+  kind: STRUCT
+  name: "dp_sdp"
+  definition {
+    bytesize: 36
+    member_id: 0x0fed75b2
+    member_id: 0xd75b166e
+  }
+}
+struct_union {
+  id: 0x90206a5a
+  kind: STRUCT
+  name: "dp_sdp_header"
+  definition {
+    bytesize: 4
+    member_id: 0x9583c91c
+    member_id: 0xd444664c
+    member_id: 0x1603fa52
+    member_id: 0x56c4b67f
   }
 }
 struct_union {
@@ -301795,6 +301866,13 @@ function {
   return_type_id: 0x48b5725f
   parameter_id: 0x25653b02
   parameter_id: 0x35d17e4b
+}
+function {
+  id: 0x191b8833
+  return_type_id: 0xd5cc9c9a
+  parameter_id: 0x340055b2
+  parameter_id: 0x380af085
+  parameter_id: 0x295c7202
 }
 function {
   id: 0x191d871c
@@ -378872,6 +378950,15 @@ elf_symbol {
   full_name: "hdmi_audio_infoframe_pack"
 }
 elf_symbol {
+  id: 0x6392ceb7
+  name: "hdmi_audio_infoframe_pack_for_dp"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x7e0b255f
+  type_id: 0x191b8833
+  full_name: "hdmi_audio_infoframe_pack_for_dp"
+}
+elf_symbol {
   id: 0x0e1d2fa4
   name: "hdmi_avi_infoframe_check"
   is_defined: true
@@ -422488,6 +422575,7 @@ interface {
   symbol_id: 0x3163ad8e
   symbol_id: 0x78d85567
   symbol_id: 0xcd9a2048
+  symbol_id: 0x6392ceb7
   symbol_id: 0x0e1d2fa4
   symbol_id: 0x306e3b3d
   symbol_id: 0x684435da

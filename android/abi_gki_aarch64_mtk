@@ -1155,6 +1155,7 @@
   handle_sysrq
   have_governor_per_policy
   hci_cmd_sync_status
+  hdmi_audio_infoframe_pack_for_dp
   hex2bin
   hex_asc
   hex_asc_upper
