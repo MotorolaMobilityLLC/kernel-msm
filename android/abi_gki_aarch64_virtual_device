@@ -28,6 +28,7 @@
   blk_queue_physical_block_size
   blk_queue_write_cache
   blk_status_to_errno
+  bpf_redirect_info
   bpf_trace_run1
   bpf_trace_run2
   bpf_trace_run3
