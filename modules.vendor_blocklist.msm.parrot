@@ -66,3 +66,4 @@ blocklist xc5000
 blocklist goodix_fod_mmi.ko
 blocklist rbs_fod_mmi.ko
 blocklist watchdogtest
+blocklist fpc1020_mmi
