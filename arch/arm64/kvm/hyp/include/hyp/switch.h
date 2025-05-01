@@ -193,7 +193,27 @@ static void kvm_hyp_handle_fpsimd_host(struct kvm_vcpu *vcpu)
 	}
 }
 
-static void __deactivate_fpsimd_traps(struct kvm_vcpu *vcpu);
+static void __deactivate_fpsimd_traps(struct kvm_vcpu *vcpu)
+{
+	if (has_vhe()) {
+		u64 reg = CPACR_EL1_FPEN_EL0EN | CPACR_EL1_FPEN_EL1EN;
+
+		if (vcpu_has_sve(vcpu))
+			reg |= CPACR_EL1_ZEN_EL0EN | CPACR_EL1_ZEN_EL1EN;
+
+		sysreg_clear_set(cpacr_el1, 0, reg);
+
+	} else {
+		u64 reg = CPTR_EL2_TFP;
+
+		if (vcpu_has_sve(vcpu) ||
+		    (is_protected_kvm_enabled() && system_supports_sve())) {
+			reg |= CPTR_EL2_TZ;
+		}
+
+		sysreg_clear_set(cptr_el2, reg, 0);
+	}
+}
 
 /*
  * We trap the first access to the FP/SIMD to save the host context and
