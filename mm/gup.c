@@ -232,7 +232,7 @@ bool __must_check try_grab_page(struct page *page, unsigned int flags)
 		 * and it is used in a *lot* of places.
 		 */
 		if (is_zero_page(page))
-			return 0;
+			return true;
 
 		/*
 		 * Similar to try_grab_folio(): be sure to *also*
