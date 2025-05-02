@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -927,13 +927,23 @@ static const struct clk_rpmh_desc clk_rpmh_volcano = {
 	.num_clks = ARRAY_SIZE(volcano_rpmh_clocks),
 };
 
+DEFINE_CLK_RPMH_ARC(seraph, xo_pad, xo_pad_ao, "xo.lvl", 0x03, 1);
+DEFINE_CLK_RPMH_FIXED(seraph, bi_tcxo, bi_tcxo_ao, xo_pad, xo_pad_ao, 2);
+DEFINE_CLK_RPMH_VRM_OPT(seraph, c1a_e0, c1a_e0_ao, "C1A_E0", 2);
+DEFINE_CLK_RPMH_VRM_OPT(seraph, c6a_e0, c6a_e0_ao, "C6A_E0", 1);
+DEFINE_CLK_RPMH_VRM_OPT(seraph, c7a_e0, c7a_e0_ao, "C7A_E0", 2);
+
 static struct clk_hw *seraph_rpmh_clocks[] = {
-	[RPMH_CXO_PAD_CLK]	= &pineapple_xo_pad.hw,
-	[RPMH_CXO_PAD_CLK_A]	= &pineapple_xo_pad_ao.hw,
-	[RPMH_CXO_CLK]		= &pineapple_bi_tcxo.hw,
-	[RPMH_CXO_CLK_A]	= &pineapple_bi_tcxo_ao.hw,
-	[RPMH_RF_CLK1]		= &pineapple_rf_clk1.hw,
-	[RPMH_RF_CLK1_A]	= &pineapple_rf_clk1_ao.hw,
+	[RPMH_CXO_PAD_CLK]	= &seraph_xo_pad.hw,
+	[RPMH_CXO_PAD_CLK_A]	= &seraph_xo_pad_ao.hw,
+	[RPMH_CXO_CLK]		= &seraph_bi_tcxo.hw,
+	[RPMH_CXO_CLK_A]	= &seraph_bi_tcxo_ao.hw,
+	[RPMH_RF_CLK1]		= &seraph_c1a_e0.hw,
+	[RPMH_RF_CLK1_A]	= &seraph_c1a_e0_ao.hw,
+	[RPMH_LN_BB_CLK1]	= &seraph_c6a_e0.hw,
+	[RPMH_LN_BB_CLK1_A]	= &seraph_c6a_e0_ao.hw,
+	[RPMH_DIV_CLK1]		= &seraph_c7a_e0.hw,
+	[RPMH_DIV_CLK1_A]	= &seraph_c7a_e0_ao.hw,
 	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
 };
 
