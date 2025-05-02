@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * PCIe ECAM root host controller driver
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
@@ -504,12 +504,41 @@ static struct qcom_msi *qcom_msi_init(struct device *dev)
 
 static int qcom_pcie_ecam_suspend_noirq(struct device *dev)
 {
-	return pm_runtime_put_sync(dev);
+	int ret;
+
+	/*
+	 * Due to usage of single power domain with GenPd framework, there is
+	 * additional +1 usage count is seen. That will dpm_suspend() will remove
+	 * its -1 and suspend device i.e. performing D3cold with it. Hence remove
+	 * this driver based +1 count, and return success with positive value from
+	 * pm_runtime_put_sync().
+	 */
+	ret = pm_runtime_put_sync(dev);
+	if (ret < 0)
+		dev_err(dev, "fail to suspend pcie controller: %d\n", ret);
+
+	return 0;
 }
 
 static int qcom_pcie_ecam_resume_noirq(struct device *dev)
 {
-	return pm_runtime_get_sync(dev);
+	struct qcom_msi *msi = (struct qcom_msi *)dev_get_drvdata(dev);
+	int ret;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0)
+		dev_err(dev, "fail to resume pcie controller: %d\n", ret);
+
+	if (msi)
+		qcom_msi_config(msi->msi_domain);
+
+	/*
+	 * Return success as core suspend framework based dpm_start() has already
+	 * performed pm_runtime_get_sync() with GenPD device here which would cause
+	 * driver based pm_runtime_get_sync() returning positive number, and will
+	 * till return success here.
+	 */
+	return 0;
 }
 
 static int qcom_pcie_ecam_probe(struct platform_device *pdev)
@@ -541,6 +570,7 @@ static int qcom_pcie_ecam_probe(struct platform_device *pdev)
 		pm_runtime_put_sync(dev);
 	}
 
+	dev_set_drvdata(&pdev->dev, msi);
 	return ret;
 }
 
