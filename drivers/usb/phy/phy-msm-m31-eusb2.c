@@ -204,7 +204,6 @@ struct m31_eusb2_phy {
 
 	struct regulator	*vdd;
 	struct regulator	*vdda12;
-	struct regulator	*vdd_refgen;
 	int			vdd_levels[3]; /* none, low, high */
 
 	bool			clocks_enabled;
@@ -293,30 +292,10 @@ static int msm_m31_eusb2_phy_power(struct m31_eusb2_phy *phy, bool on)
 	if (!on)
 		goto clear_eud_det;
 
-	ret = regulator_set_load(phy->vdd_refgen, USB_HSPHY_VDD_HPM_LOAD);
-	if (ret < 0) {
-		dev_err(phy->phy.dev, "Unable to set HPM of vdd_refgen:%d\n", ret);
-		goto err_vdd;
-	}
-
-	ret = regulator_set_voltage(phy->vdd_refgen, phy->vdd_levels[1],
-				    phy->vdd_levels[2]);
-	if (ret) {
-		dev_err(phy->phy.dev,
-			"Unable to set voltage for hsusb vdd_refgen\n");
-		goto put_vdd_refgen_lpm;
-	}
-
-	ret = regulator_enable(phy->vdd_refgen);
-	if (ret) {
-		dev_err(phy->phy.dev, "Unable to enable VDD refgen\n");
-		goto unconfig_vdd_refgen;
-	}
-
 	ret = regulator_set_load(phy->vdd, USB_HSPHY_VDD_HPM_LOAD);
 	if (ret < 0) {
 		dev_err(phy->phy.dev, "Unable to set HPM of vdd:%d\n", ret);
-		goto disable_vdd_refgen;
+		return ret;
 	}
 
 	ret = regulator_set_voltage(phy->vdd, phy->vdd_levels[1],
@@ -403,27 +382,6 @@ put_vdd_lpm:
 	if (!phy->power_enabled)
 		return -EINVAL;
 
-disable_vdd_refgen:
-	ret = regulator_disable(phy->vdd_refgen);
-	if (ret)
-		dev_err(phy->phy.dev, "Unable to disable vdd_refgen:%d\n", ret);
-
-unconfig_vdd_refgen:
-	ret = regulator_set_voltage(phy->vdd_refgen, phy->vdd_levels[0],
-				    phy->vdd_levels[2]);
-	if (ret)
-		dev_err(phy->phy.dev,
-			"unable to set voltage for hsusb vdd_refgen\n");
-
-put_vdd_refgen_lpm:
-	ret = regulator_set_load(phy->vdd_refgen, 0);
-	if (ret < 0)
-		dev_err(phy->phy.dev, "Unable to set LPM of vdd_refgen\n");
-
-	/* case handling when regulator turning on failed */
-	if (!phy->power_enabled)
-		return -EINVAL;
-err_vdd:
 	phy->power_enabled = false;
 	dev_dbg(phy->phy.dev, "eusb2_PHY's regulators are turned OFF.\n");
 	return ret;
@@ -824,13 +782,6 @@ static int msm_m31_eusb2_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(phy->vdda12)) {
 		dev_err(dev, "unable to get vdda12 supply\n");
 		ret = PTR_ERR(phy->vdda12);
-		goto err_ret;
-	}
-
-	phy->vdd_refgen = devm_regulator_get(dev, "vdd_refgen");
-	if (IS_ERR(phy->vdd_refgen)) {
-		dev_err(dev, "unable to get vdd_refgen supply\n");
-		ret = PTR_ERR(phy->vdd_refgen);
 		goto err_ret;
 	}
 
