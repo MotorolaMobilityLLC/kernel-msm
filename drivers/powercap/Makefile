@@ -11,3 +11,4 @@ qti_epm_hardware-y	+= qti_epm_hw.o qti_epm_interface.o
 obj-$(CONFIG_QCOM_POWER_TELEMETRY) += qcom_power_telemetry.o
 qcom_power_telemetry-y	+= qti_power_telemetry.o qti_power_telemetry_interface.o
 obj-$(CONFIG_QCOM_POWER_TELEMETRY_FRAMEWORK) += qptf.o
+obj-$(CONFIG_QCOM_POWER_TELEMETRY_HW_V2) += qti_power_telemetry_v2.o
