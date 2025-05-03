@@ -30,6 +30,7 @@
 #include <asm/fixmap.h>
 #include <asm/paravirt.h>
 #include <asm/asm-prototypes.h>
+#include <asm/cfi.h>
 
 int __read_mostly alternatives_patched;
 
@@ -1629,6 +1630,8 @@ static noinline void __init alt_reloc_selftest(void)
 
 void __init alternative_instructions(void)
 {
+	u64 ibt;
+
 	int3_selftest();
 
 	/*
@@ -1666,6 +1669,9 @@ void __init alternative_instructions(void)
 	 */
 	paravirt_set_cap();
 
+	/* Keep CET-IBT disabled until caller/callee are patched */
+	ibt = ibt_save(/*disable*/ true);
+
 	/*
 	 * First patch paravirt functions, such that we overwrite the indirect
 	 * call with the direct call.
@@ -1698,6 +1704,8 @@ void __init alternative_instructions(void)
 	 * Seal all functions that do not have their address taken.
 	 */
 	apply_seal_endbr(__ibt_endbr_seal, __ibt_endbr_seal_end);
+
+	ibt_restore(ibt);
 
 #ifdef CONFIG_SMP
 	/* Patch to UP if other cpus not imminent. */
