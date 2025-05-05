@@ -86,6 +86,8 @@ def define_seraph():
         "drivers/power/reset/qcom-pon.ko",
         "drivers/power/reset/qcom-reboot-reason.ko",
         "drivers/power/reset/reboot-mode.ko",
+        "drivers/powercap/qptf.ko",
+        "drivers/powercap/qti_power_telemetry_v2.ko",
         "drivers/pwm/pwm-qcom.ko",
         "drivers/pwm/pwm-qti-lpg.ko",
         "drivers/regulator/debug-regulator.ko",
