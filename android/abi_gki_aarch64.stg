@@ -335581,6 +335581,13 @@ function {
   parameter_id: 0x3283ded6
 }
 function {
+  id: 0x9eb38da8
+  return_type_id: 0x6720d32f
+  parameter_id: 0x0ab9fa4c
+  parameter_id: 0x6720d32f
+  parameter_id: 0x064d6086
+}
+function {
   id: 0x9eb3dea3
   return_type_id: 0x6720d32f
   parameter_id: 0x0fabaf3b
@@ -344382,6 +344389,15 @@ elf_symbol {
   crc: 0xaf73026c
   type_id: 0x9e215925
   full_name: "__hwspin_lock_timeout"
+}
+elf_symbol {
+  id: 0xac885058
+  name: "__hwspin_trylock"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xe4d4ab7e
+  type_id: 0x9eb38da8
+  full_name: "__hwspin_trylock"
 }
 elf_symbol {
   id: 0x09a111a4
@@ -418736,6 +418752,7 @@ interface {
   symbol_id: 0x58de7795
   symbol_id: 0x7874d435
   symbol_id: 0xc1db2428
+  symbol_id: 0xac885058
   symbol_id: 0x09a111a4
   symbol_id: 0x9ff710d8
   symbol_id: 0xee9e2392
