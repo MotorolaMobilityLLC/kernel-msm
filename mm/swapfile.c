@@ -2204,6 +2204,13 @@ out:
 	return ret;
 }
 
+int unuse_swap_pte(struct vm_area_struct *vma, pmd_t *pmd,
+		unsigned long addr, swp_entry_t entry, struct folio *folio)
+{
+	return unuse_pte(vma, pmd, addr, entry, folio);
+}
+EXPORT_SYMBOL_GPL(unuse_swap_pte);
+
 static int unuse_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
 			unsigned long addr, unsigned long end,
 			unsigned int type)
