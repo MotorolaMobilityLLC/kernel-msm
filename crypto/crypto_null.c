@@ -17,7 +17,11 @@
 #include <crypto/internal/skcipher.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#ifdef __GENKSYMS__ // CRC fix for e307c54ac819 ("crypto: null - Use spin lock instead of mutex")
+#include <linux/mm.h>
+#else
 #include <linux/spinlock.h>
+#endif
 #include <linux/string.h>
 
 static DEFINE_SPINLOCK(crypto_default_null_skcipher_lock);
