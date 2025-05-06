@@ -121,6 +121,7 @@ def define_seraph():
         "drivers/soc/qcom/mem_buf/mem_buf.ko",
         "drivers/soc/qcom/mem_buf/mem_buf_dev.ko",
         "drivers/soc/qcom/mem_buf/mem_buf_msgq.ko",
+        "drivers/soc/qcom/memory_dump_v2.ko",
         "drivers/soc/qcom/minidump.ko",
         "drivers/soc/qcom/pdr_interface.ko",
         "drivers/soc/qcom/qcom_aoss.ko",
