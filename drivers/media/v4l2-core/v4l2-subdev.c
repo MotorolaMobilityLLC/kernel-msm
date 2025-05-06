@@ -363,8 +363,12 @@ static int call_s_stream(struct v4l2_subdev *sd, int enable)
 	 * The .s_stream() operation must never be called to start or stop an
 	 * already started or stopped subdev. Catch offenders but don't return
 	 * an error yet to avoid regressions.
+	 *
+	 * As .s_stream() is mutually exclusive with the .enable_streams() and
+	 * .disable_streams() operation, we can use the enabled_streams field
+	 * to store the subdev streaming state.
 	 */
-	if (WARN_ON(sd->s_stream_enabled == !!enable))
+	if (WARN_ON(!!sd->enabled_streams == !!enable))
 		return 0;
 
 	ret = sd->ops->video->s_stream(sd, enable);
@@ -375,7 +379,7 @@ static int call_s_stream(struct v4l2_subdev *sd, int enable)
 	}
 
 	if (!ret) {
-		sd->s_stream_enabled = enable;
+		sd->enabled_streams = enable ? BIT(0) : 0;
 
 #if IS_REACHABLE(CONFIG_LEDS_CLASS)
 		if (!IS_ERR_OR_NULL(sd->privacy_led)) {
