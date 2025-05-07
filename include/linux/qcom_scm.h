@@ -174,6 +174,8 @@ extern int qcom_scm_get_llcc_missrate(phys_addr_t in_buf, size_t in_buf_size,
 extern int qcom_scm_get_llcc_occupancy(phys_addr_t in_buf, size_t in_buf_size,
 				phys_addr_t out_buf, size_t out_buf_size);
 extern int qcom_scm_assign_dump_table_region(bool is_assign, phys_addr_t  addr, size_t size);
+extern int qcom_scm_memory_lat_profiler(phys_addr_t in_buf, size_t in_buf_size,
+				phys_addr_t out_buf, size_t out_buf_size);
 
 extern int qcom_scm_tz_blsp_modify_owner(int food, u64 subsystem, int *out);
 
@@ -324,6 +326,5 @@ extern int qcom_scm_lmh_dcvsh(u32 payload_fn, u32 payload_reg, u32 payload_val,
 			      u64 limit_node, u32 node_id, u64 version);
 extern int qcom_scm_lmh_profile_change(u32 profile_id);
 extern bool qcom_scm_lmh_dcvsh_available(void);
-
 extern int qcom_scm_prefetch_tgt_ctrl(bool en);
 #endif

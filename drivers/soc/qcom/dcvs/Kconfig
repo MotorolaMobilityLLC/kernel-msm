@@ -64,6 +64,17 @@ config QCOM_BWPROF
 	  at regular intervals, providing the userspace clients with a detailed
 	  view of the current state of the system.
 
+config QCOM_BUS_LAT
+	tristate "QCOM BUS_latency Driver"
+	depends on ARCH_QCOM
+	default n
+	help
+	  This enables the QCOM Bus latency driver which exposes bus latency stats
+	  to userspace clients at modest time intervals for the intention of
+	  profiling. The purpose of the driver is to enable the monitoring of the
+	  memory latency at regular intervals, providing the userspace clients with
+	  a detailed view of the current state of the system.
+
 config QCOM_LLCC_MISS
 	tristate "Qualcomm Technologies Inc. LLCC_MISS_STATS Driver"
 	depends on ARCH_QCOM && QCOM_BUS_PROF
