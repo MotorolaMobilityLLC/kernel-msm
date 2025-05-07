@@ -113,6 +113,7 @@ def define_seraph():
         "drivers/soc/qcom/crypto-qti.ko",
         "drivers/soc/qcom/dcc_v2.ko",
         "drivers/soc/qcom/debug_symbol.ko",
+        "drivers/soc/qcom/dmesg_dumper.ko",
         "drivers/soc/qcom/eud.ko",
         "drivers/soc/qcom/gh_tlmm_vm_mem_access.ko",
         "drivers/soc/qcom/gic_intr_routing.ko",
