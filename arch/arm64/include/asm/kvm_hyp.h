@@ -121,6 +121,9 @@ void __noreturn __host_enter(struct kvm_cpu_context *host_ctxt);
 #ifdef __KVM_NVHE_HYPERVISOR__
 struct user_fpsimd_state *get_host_fpsimd_state(struct kvm_vcpu *vcpu);
 struct kvm_host_sve_state *get_host_sve_state(struct kvm_vcpu *vcpu);
+#else
+#define get_host_fpsimd_state(vcpu) (vcpu)->arch.host_fpsimd_state
+#define get_host_sve_state(vcpu) NULL
 #endif
 
 extern u64 kvm_nvhe_sym(id_aa64pfr0_el1_sys_val);
