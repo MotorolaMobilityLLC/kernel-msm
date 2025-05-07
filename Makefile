@@ -1239,6 +1239,7 @@ endif
 
 # ---------------------------------------------------------------------------
 # Devicetree files
+ifndef CONFIG_ARCH_MXR
 ifeq ($(KBUILD_EXTMOD),)
 ifneq ($(wildcard $(srctree)/arch/$(SRCARCH)/boot/dts/),)
 dtstree := arch/$(SRCARCH)/boot/dts
@@ -1291,6 +1292,7 @@ PHONY += dt_binding_check
 dt_binding_check: scripts_dtc
 	$(Q)$(MAKE) $(build)=Documentation/devicetree/bindings
 
+endif
 
 ifeq ($(KBUILD_EXTMOD),)
 
