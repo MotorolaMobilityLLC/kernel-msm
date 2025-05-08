@@ -387042,6 +387042,15 @@ elf_symbol {
   full_name: "drm_atomic_helper_swap_state"
 }
 elf_symbol {
+  id: 0x09621b81
+  name: "drm_atomic_helper_unprepare_planes"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x1cfc8680
+  type_id: 0x1edd7ece
+  full_name: "drm_atomic_helper_unprepare_planes"
+}
+elf_symbol {
   id: 0xace15cad
   name: "drm_atomic_helper_update_legacy_modeset_state"
   is_defined: true
@@ -438842,6 +438851,7 @@ interface {
   symbol_id: 0x5f99d405
   symbol_id: 0x308067a6
   symbol_id: 0xe375001c
+  symbol_id: 0x09621b81
   symbol_id: 0xace15cad
   symbol_id: 0x38dc8db4
   symbol_id: 0xf8c5a501
