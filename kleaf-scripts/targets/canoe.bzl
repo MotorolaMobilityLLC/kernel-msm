@@ -3,6 +3,8 @@ load(":configs/canoe_consolidate.bzl", "canoe_consolidate_config")
 load(":configs/canoe_perf.bzl", "canoe_perf_config")
 load(":configs/canoe_tuivm.bzl", "canoe_tuivm_config")
 load(":configs/canoe_tuivm_debug.bzl", "canoe_tuivm_debug_config")
+load(":configs/ext_config/moto_perf_config.bzl", "moto_perf_config")
+load(":configs/ext_config/moto_consolidate_config.bzl", "moto_consolidate_config")
 load(":kleaf-scripts/android_build.bzl", "define_typical_android_build")
 load(":kleaf-scripts/image_opts.bzl", "boot_image_opts")
 load(":kleaf-scripts/vm_build.bzl", "define_typical_vm_build")
@@ -51,10 +53,13 @@ def define_canoe():
                 board_bootconfig_extras = board_bootconfig_extras,
             )
 
+    build_perf_config = canoe_perf_config | moto_perf_config
+    build_consolidate_config = canoe_consolidate_config | moto_consolidate_config
+
     define_typical_android_build(
         name = "canoe",
-        consolidate_config = canoe_consolidate_config,
-        perf_config = canoe_perf_config,
+        consolidate_config = build_consolidate_config,
+        perf_config = build_perf_config,
         consolidate_build_img_opts = consolidate_build_img_opts,
         perf_build_img_opts = perf_build_img_opts,
         consolidate_kwargs = {
