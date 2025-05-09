@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -69,6 +69,7 @@ struct bcl_peripheral_data {
 	int			last_val;
 	struct mutex		state_trans_lock;
 	bool			irq_enabled;
+	bool			irq_freed;
 	enum bcl_dev_type	type;
 	struct thermal_zone_device_ops ops;
 	struct thermal_zone_device *tz_dev;

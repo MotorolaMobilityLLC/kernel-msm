@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __HAB_H
 #define __HAB_H
@@ -104,13 +104,15 @@ enum hab_payload_type {
 #define HABCFG_BE_TRUE         1
 
 #define HABCFG_GET_VMID(_local_cfg_, _vmid_) \
-	((settings)->vmid_mmid_list[_vmid_].vmid)
+	((_local_cfg_)->vmid_mmid_list[_vmid_].vmid)
 #define HABCFG_GET_MMID(_local_cfg_, _vmid_, _mmid_) \
-	((settings)->vmid_mmid_list[_vmid_].mmid[_mmid_])
+	((_local_cfg_)->vmid_mmid_list[_vmid_].mmid[_mmid_])
 #define HABCFG_GET_BE(_local_cfg_, _vmid_, _mmid_) \
-	((settings)->vmid_mmid_list[_vmid_].is_listener[_mmid_])
+	((_local_cfg_)->vmid_mmid_list[_vmid_].is_listener[_mmid_])
 #define HABCFG_GET_KERNEL(_local_cfg_, _vmid_, _mmid_) \
-	((settings)->vmid_mmid_list[_vmid_].kernel_only[_mmid_])
+	((_local_cfg_)->vmid_mmid_list[_vmid_].kernel_only[_mmid_])
+#define HABCFG_GET_DMA_COHERENT(_local_cfg_, _vmid_, _mmid_grp_index_) \
+	((_local_cfg_)->vmid_mmid_list[_vmid_].dma_coherent[_mmid_grp_index_])
 
 struct hab_header {
 	uint32_t id_type;
@@ -336,9 +338,12 @@ struct uhab_context {
 	int kernel;
 	int owner;
 	/*
-	 * only used for user-space hab client
+	 * For user-space hab client
 	 * if created through /dev/hab-* node, mmid_grp_index = MMID / 100
 	 * if created through /dev/hab node, mmid_grp_index = 0
+	 *
+	 * For kernel hab client
+	 * mmid_grp_index is always 0 as only one single kctx is shared with clients in kernel
 	 */
 	int mmid_grp_index;
 
@@ -354,6 +359,7 @@ struct vmid_mmid_desc {
 	int mmid[HABCFG_MMID_AREA_MAX+1]; /* selected or not */
 	int is_listener[HABCFG_MMID_AREA_MAX+1]; /* yes or no */
 	int kernel_only[HABCFG_MMID_AREA_MAX+1]; /* yes or no */
+	bool dma_coherent[HABCFG_MMID_AREA_MAX+1];
 };
 
 struct local_vmid {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2015 Srinivas Kandagatla <srinivas.kandagatla@linaro.org>
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -202,6 +202,37 @@ static const struct nvmem_keepout niobe_qfprom_keepout[] = {
 static const struct qfprom_soc_compatible_data niobe_qfprom = {
 	.keepout = niobe_qfprom_keepout,
 	.nkeepout = ARRAY_SIZE(niobe_qfprom_keepout)
+};
+
+static const struct nvmem_keepout seraph_qfprom_keepout[] = {
+	{.start = 0x20, .end = 0x24},
+	{.start = 0x28, .end = 0x30},
+	{.start = 0x34, .end = 0x40},
+	{.start = 0x58, .end = 0x60},
+	{.start = 0x68, .end = 0x70},
+	{.start = 0x78, .end = 0x80},
+	{.start = 0x90, .end = 0x100},
+	{.start = 0x150, .end = 0x200},
+	{.start = 0x238, .end = 0x300},
+	{.start = 0x328, .end = 0x400},
+	{.start = 0x4a8, .end = 0x500},
+	{.start = 0x550, .end = 0x600},
+	{.start = 0x608, .end = 0x610},
+	{.start = 0x618, .end = 0x630},
+	{.start = 0x638, .end = 0x700},
+	{.start = 0x738, .end = 0x73c},
+	{.start = 0x748, .end = 0x770},
+	{.start = 0x8a0, .end = 0x910},
+	{.start = 0x918, .end = 0xa00},
+	{.start = 0xa50, .end = 0xb00},
+	{.start = 0xb04, .end = 0xb08},
+	{.start = 0xb0c, .end = 0xb10},
+	{.start = 0xde0, .end = 0x1000},
+};
+
+static const struct qfprom_soc_compatible_data seraph_qfprom = {
+	.keepout = seraph_qfprom_keepout,
+	.nkeepout = ARRAY_SIZE(seraph_qfprom_keepout)
 };
 
 static const struct nvmem_keepout pineapple_qfprom_keepout[] = {

@@ -2437,7 +2437,7 @@ static const struct adsp_data seraph_cdsp_resource = {
 	.uses_elf64 = true,
 	.has_aggre2_clk = false,
 	.auto_boot = false,
-	.hyp_assign_mem = true,
+	.hyp_assign_mem = false,
 	.ssr_name = "cdsp",
 	.sysmon_name = "cdsp",
 	.qmp_name = "cdsp",
@@ -2966,6 +2966,17 @@ static const struct adsp_data niobe_soccp_resource = {
 	.auto_boot = true,
 };
 
+static const struct adsp_data seraph_soccp_resource = {
+	.crash_reason_smem = 656,
+	.firmware_name = "soccp.mbn",
+	.pas_id = 51,
+	.ssr_name = "soccp",
+	.sysmon_name = "soccp",
+	.check_status = true,
+	.early_boot = true,
+	.auto_boot = true,
+};
+
 static const struct adsp_data monaco_auto_gpdsp_resource = {
 	.crash_reason_smem = 640,
 	.firmware_name = "gpdsp0.mdt",
@@ -3087,6 +3098,7 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,pitti-adsp-pas", .data = &pitti_adsp_resource},
 	{ .compatible = "qcom,pitti-modem-pas", .data = &pitti_mpss_resource},
 	{ .compatible = "qcom,niobe-soccp-pas", .data = &niobe_soccp_resource},
+	{ .compatible = "qcom,seraph-soccp-pas", .data = &seraph_soccp_resource},
 	{ .compatible = "qcom,volcano-wpss-pas", .data = &volcano_wpss_resource},
 	{ .compatible = "qcom,volcano-adsp-pas", .data = &volcano_adsp_resource},
 	{ .compatible = "qcom,volcano-modem-pas", .data = &volcano_mpss_resource},

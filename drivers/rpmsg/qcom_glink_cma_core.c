@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/circ_buf.h>
 #include <linux/delay.h>
@@ -18,9 +18,13 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/rpmsg/qcom_glink.h>
+#include <linux/ipc_logging.h>
 
 #include "qcom_glink_native.h"
 #include "qcom_glink_cma.h"
+
+#define GLINK_CMA_DEBUG_LOG(ctxt, fmt, ...)	\
+		ipc_log_string(ctxt, "%s: %d" fmt "\n", __func__, __LINE__, ##__VA_ARGS__)
 
 #define FIFO_FULL_RESERVE	8
 #define FIFO_ALIGNMENT		8
@@ -68,12 +72,14 @@ struct glink_cma_pipe {
  * @config: configuration setting for this transport.
  * @rx_pipe: RX CMA GLINK fifo specific info.
  * @tx_pipe: TX CMA GLINK fifo specific info.
+ * @glink_cma_ilc: IPC logging context reference.
  */
 struct glink_cma_dev {
 	struct device dev;
 	struct glink_cma_config *config;
 	struct glink_cma_pipe rx_pipe;
 	struct glink_cma_pipe tx_pipe;
+	void *glink_cma_ilc;
 };
 #define to_glink_cma_pipe(p) container_of(p, struct glink_cma_pipe, native)
 
@@ -218,6 +224,7 @@ static void glink_cma_native_init(struct glink_cma_dev *gdev)
 	rx_native->avail = glink_cma_rx_avail;
 	rx_native->peak = glink_cma_rx_peek;
 	rx_native->advance = glink_cma_rx_advance;
+	GLINK_CMA_DEBUG_LOG(gdev->glink_cma_ilc, "success");
 }
 
 static int glink_cma_fifo_init(struct glink_cma_dev *gdev)
@@ -251,13 +258,14 @@ static int glink_cma_fifo_init(struct glink_cma_dev *gdev)
 	*tx_pipe->head = 0;
 	*rx_pipe->tail = 0;
 
+	GLINK_CMA_DEBUG_LOG(gdev->glink_cma_ilc, "success");
 	return 0;
 }
 
 static void qcom_glink_cma_release(struct device *dev)
 {
 	struct glink_cma_dev *gdev = dev_get_drvdata(dev);
-
+	GLINK_CMA_DEBUG_LOG(gdev->glink_cma_ilc, "");
 	kfree(gdev);
 }
 
@@ -285,15 +293,19 @@ struct qcom_glink *qcom_glink_cma_register(struct device *parent, struct device_
 	if (rc) {
 		pr_err("failed to register glink edge\n");
 		put_device(dev);
+		kfree(gdev);
 		return ERR_PTR(rc);
 	}
 
+	gdev->glink_cma_ilc = ipc_log_context_create(2, "glink_cma", 0);
 	dev_set_drvdata(dev, gdev);
 	gdev->config = config;
 
 	rc = glink_cma_fifo_init(gdev);
-	if (rc)
+	if (rc) {
+		kfree(gdev);
 		return ERR_PTR(rc);
+	}
 
 	glink_cma_native_init(gdev);
 
@@ -308,9 +320,12 @@ struct qcom_glink *qcom_glink_cma_register(struct device *parent, struct device_
 	if (rc)
 		goto err_put_dev;
 
+	GLINK_CMA_DEBUG_LOG(gdev->glink_cma_ilc, "success");
 	return glink;
 err_put_dev:
+	GLINK_CMA_DEBUG_LOG(gdev->glink_cma_ilc, "Exit error %d", rc);
 	device_unregister(dev);
+	kfree(gdev);
 
 	return ERR_PTR(rc);
 }

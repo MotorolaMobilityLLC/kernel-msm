@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define DRIVER_NAME "msm_sharedmem"
@@ -14,6 +14,7 @@
 #include <linux/of.h>
 #include <linux/dma-mapping.h>
 #include <linux/qcom_scm.h>
+#include <linux/of_reserved_mem.h>
 
 #include <soc/qcom/secure_buffer.h>
 
@@ -119,6 +120,8 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct uio_info *info = NULL;
 	struct resource *clnt_res = NULL;
+	struct device_node *mem_node;
+	struct reserved_mem *rmem;
 	u32 client_id = ((u32)~0U);
 	u32 shared_mem_size = 0;
 	u32 shared_mem_tot_sz = 0;
@@ -157,6 +160,30 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 	if (shared_mem_size == 0) {
 		pr_err("Shared memory size is zero\n");
 		return -EINVAL;
+	}
+
+	/*
+	 * Use the reserved memory if it is defined for this device else
+	 * allocate from normal CMA poll.
+	 */
+	mem_node = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
+	if (mem_node) {
+		rmem = of_reserved_mem_lookup(mem_node);
+		of_node_put(mem_node);
+
+		if (!rmem) {
+			pr_err("failed to acquire memory region\n");
+			return -EINVAL;
+		}
+
+		ret = of_reserved_mem_device_init(&pdev->dev);
+		if (ret) {
+			pr_err("failed to init. memory region to dev:%d\n", ret);
+			return ret;
+		}
+
+		shared_mem_pyhsical = rmem->base;
+		pr_info("Allocated memory from shared DMA poll\n");
 	}
 
 	if (shared_mem_pyhsical == 0) {

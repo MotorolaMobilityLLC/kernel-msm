@@ -1206,6 +1206,7 @@ struct msm_pcie_dev_t {
 	bool enumerated;
 	struct work_struct handle_wake_work;
 	struct work_struct handle_sbr_work;
+	struct work_struct disable_resource;
 	struct mutex recovery_lock;
 	spinlock_t irq_lock;
 	struct mutex aspm_lock;
@@ -7651,6 +7652,9 @@ static void msm_pcie_handle_linkdown(struct msm_pcie_dev_t *dev)
 		panic("User has chosen to panic on linkdown\n");
 
 	msm_pcie_notify_client(dev, MSM_PCIE_EVENT_LINKDOWN);
+
+	if (!msm_pcie_keep_resources_on)
+		queue_work(mpcie_wq, &dev->disable_resource);
 }
 
 static irqreturn_t handle_linkdown_irq(int irq, void *data)
@@ -7697,10 +7701,13 @@ static irqreturn_t handle_global_irq(int irq, void *data)
 		goto done;
 	}
 
-	/* Not handling the interrupts when we are in drv suspend */
+	/*
+	 * Not handling the interrupts when the resources are not
+	 * initialized or when we are in drv suspend.
+	 */
 	if (!dev->cfg_access) {
 		PCIE_DBG2(dev,
-			"PCIe: RC%d is currently in drv suspend.\n",
+			"PCIe: RC%d: Either in drv suspend or res init not done\n",
 			dev->rc_idx);
 		goto done;
 	}
@@ -10080,6 +10087,13 @@ static void msm_pcie_drv_enable_pc(struct work_struct *w)
 	msm_pcie_drv_send_rpmsg(pcie_dev, &pcie_dev->drv_info->drv_enable_pc);
 }
 
+static void msm_pcie_disable_resource(struct work_struct *work)
+{
+	struct msm_pcie_dev_t *pcie_dev = container_of(work, struct msm_pcie_dev_t,
+						disable_resource);
+	msm_pcie_disable(pcie_dev);
+}
+
 static void msm_pcie_drv_connect_worker(struct work_struct *work)
 {
 	struct pcie_drv_sta *pcie_drv = container_of(work, struct pcie_drv_sta,
@@ -10237,7 +10251,7 @@ static int __init pcie_init(void)
 				rc_name, i);
 		spin_lock_init(&msm_pcie_dev[i].cfg_lock);
 		spin_lock_init(&msm_pcie_dev[i].evt_reg_list_lock);
-		msm_pcie_dev[i].cfg_access = true;
+		msm_pcie_dev[i].cfg_access = false;
 		mutex_init(&msm_pcie_dev[i].enumerate_lock);
 		mutex_init(&msm_pcie_dev[i].setup_lock);
 		mutex_init(&msm_pcie_dev[i].recovery_lock);
@@ -10250,6 +10264,8 @@ static int __init pcie_init(void)
 				msm_pcie_drv_disable_pc);
 		INIT_WORK(&msm_pcie_dev[i].drv_enable_pc_work,
 				msm_pcie_drv_enable_pc);
+		INIT_WORK(&msm_pcie_dev[i].disable_resource,
+				msm_pcie_disable_resource);
 		INIT_LIST_HEAD(&msm_pcie_dev[i].enum_ep_list);
 		INIT_LIST_HEAD(&msm_pcie_dev[i].susp_ep_list);
 		INIT_LIST_HEAD(&msm_pcie_dev[i].event_reg_list);

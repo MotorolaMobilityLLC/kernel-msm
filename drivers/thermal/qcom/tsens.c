@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  * Copyright (c) 2019, 2020, Linaro Ltd.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -1100,7 +1100,25 @@ static int __maybe_unused tsens_resume(struct device *dev)
 	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(tsens_pm_ops, tsens_suspend, tsens_resume);
+static int __maybe_unused tsens_freeze(struct device *dev)
+{
+	struct tsens_priv *priv = dev_get_drvdata(dev);
+
+	if (priv->ops && priv->ops->freeze)
+		return priv->ops->freeze(priv);
+
+	return 0;
+}
+
+static int __maybe_unused tsens_restore(struct device *dev)
+{
+	struct tsens_priv *priv = dev_get_drvdata(dev);
+
+	if (priv->ops && priv->ops->restore)
+		return priv->ops->restore(priv);
+
+	return 0;
+}
 
 static const struct of_device_id tsens_table[] = {
 	{
@@ -1242,6 +1260,39 @@ int tsens_v2_tsens_resume(struct tsens_priv *priv)
 
 	if (pm_suspend_target_state == PM_SUSPEND_MEM)
 		tsens_reinit(priv);
+
+	if (priv->uplow_irq > 0) {
+		enable_irq(priv->uplow_irq);
+		enable_irq_wake(priv->uplow_irq);
+	}
+
+	if (priv->feat->crit_int && priv->crit_irq > 0) {
+		enable_irq(priv->crit_irq);
+		enable_irq_wake(priv->crit_irq);
+	}
+
+	return 0;
+}
+
+int tsens_v2_tsens_freeze(struct tsens_priv *priv)
+{
+
+	if (priv->uplow_irq > 0) {
+		disable_irq_nosync(priv->uplow_irq);
+		disable_irq_wake(priv->uplow_irq);
+	}
+
+	if (priv->feat->crit_int && priv->crit_irq > 0) {
+		disable_irq_nosync(priv->crit_irq);
+		disable_irq_wake(priv->crit_irq);
+	}
+
+	return 0;
+}
+
+int tsens_v2_tsens_restore(struct tsens_priv *priv)
+{
+	tsens_reinit(priv);
 
 	if (priv->uplow_irq > 0) {
 		enable_irq(priv->uplow_irq);
@@ -1504,6 +1555,13 @@ static int tsens_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+static const struct dev_pm_ops tsens_pm_ops = {
+	.freeze = tsens_freeze,
+	.restore = tsens_restore,
+	.suspend = tsens_suspend,
+	.resume = tsens_resume,
+};
 
 static struct platform_driver tsens_driver = {
 	.probe = tsens_probe,

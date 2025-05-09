@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022,2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"io-pgtable-fast: " fmt
@@ -128,7 +128,14 @@
 
 #define PTE_SH_IDX(pte) (pte & AV8L_FAST_PTE_SH_MASK)
 
-#define iopte_pmd_offset(pmds, base, iova) (pmds + ((iova - base) >> 12))
+#define iopte_pmd_offset(pmds, base, iova) \
+({ \
+	typeof(iova) __iova = (iova); \
+	typeof(base) __base = (base); \
+	typeof(pmds) __pmds = (pmds); \
+	(__iova < __base) ? ERR_PTR(-EINVAL) : \
+	__pmds + ((__iova - __base) >> AV8L_FAST_PAGE_SHIFT); \
+})
 
 static inline dma_addr_t av8l_dma_addr(void *addr)
 {
@@ -202,6 +209,12 @@ void av8l_fast_clear_stale_ptes(struct io_pgtable_ops *ops, u64 base,
 	struct io_pgtable *iop = iof_pgtable_ops_to_pgtable(ops);
 	av8l_fast_iopte *pmdp = iopte_pmd_offset(data->pmds, data->base, base);
 
+	if (IS_ERR(pmdp)) {
+		pr_err("Invalid iova : 0x%lx, as it is less than base : 0x%llx\n",
+				iova, data->base);
+		return;
+	}
+
 	for (i = base >> AV8L_FAST_PAGE_SHIFT;
 			i <= (end >> AV8L_FAST_PAGE_SHIFT); ++i) {
 		if (!(*pmdp & AV8L_FAST_PTE_VALID)) {
@@ -253,6 +266,12 @@ static int av8l_fast_map(struct io_pgtable_ops *ops, unsigned long iova,
 	unsigned long i, nptes = size >> AV8L_FAST_PAGE_SHIFT;
 	av8l_fast_iopte pte;
 
+	if (IS_ERR(ptep)) {
+		pr_err("Invalid iova : 0x%lx, as it is less than base : 0x%llx\n",
+				iova, data->base);
+		return -EINVAL;
+	}
+
 	pte = av8l_fast_prot_to_pte(data, prot);
 	paddr &= AV8L_FAST_PTE_ADDR_MASK;
 	for (i = 0; i < nptes; i++, paddr += SZ_4K) {
@@ -297,6 +316,12 @@ __av8l_fast_unmap(struct io_pgtable_ops *ops, unsigned long iova,
 	ptep = iopte_pmd_offset(data->pmds, data->base, iova);
 	nptes = size >> AV8L_FAST_PAGE_SHIFT;
 
+	if (IS_ERR(ptep)) {
+		pr_err("Invalid iova : 0x%lx, as it is less than base : 0x%llx\n",
+				iova, data->base);
+		return 0;
+	}
+
 	memset(ptep, val, sizeof(*ptep) * nptes);
 	av8l_clean_range(&iop->cfg, ptep, ptep + nptes);
 	if (!allow_stale_tlb)
@@ -306,10 +331,10 @@ __av8l_fast_unmap(struct io_pgtable_ops *ops, unsigned long iova,
 }
 
 /* caller must take care of tlb cache maintenance */
-void av8l_fast_unmap_public(struct io_pgtable_ops *ops, unsigned long iova,
+size_t av8l_fast_unmap_public(struct io_pgtable_ops *ops, unsigned long iova,
 				size_t size)
 {
-	__av8l_fast_unmap(ops, iova, size, true);
+	return __av8l_fast_unmap(ops, iova, size, true);
 }
 
 static size_t av8l_fast_unmap(struct io_pgtable_ops *ops, unsigned long iova,
@@ -401,6 +426,12 @@ static bool av8l_fast_iova_coherent(struct io_pgtable_ops *ops,
 {
 	struct av8l_fast_io_pgtable *data = iof_pgtable_ops_to_data(ops);
 	av8l_fast_iopte *ptep = iopte_pmd_offset(data->pmds, data->base, iova);
+
+	if (IS_ERR(ptep)) {
+		pr_err("Invalid iova : 0x%lx, as it is less than base : 0x%llx\n",
+				iova, data->base);
+		return false;
+	}
 
 	return ((PTE_MAIR_IDX(*ptep) == AV8L_FAST_MAIR_ATTR_IDX_CACHE) &&
 		((PTE_SH_IDX(*ptep) == AV8L_FAST_PTE_SH_OS) ||
