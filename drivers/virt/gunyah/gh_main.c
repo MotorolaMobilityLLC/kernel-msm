@@ -146,6 +146,7 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 	case GH_RM_VM_STATUS_EXITED:
 	case GH_RM_VM_STATUS_RUNNING:
 	case GH_RM_VM_STATUS_READY:
+		gh_notify_clients(vm, GH_VM_EXITED);
 		ret = gh_rm_unpopulate_hyp_res(vmid, vm->fw_name);
 		if (ret)
 			pr_warn("Failed to unpopulate hyp resources: %d\n", ret);
