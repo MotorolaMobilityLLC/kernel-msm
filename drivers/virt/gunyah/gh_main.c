@@ -99,6 +99,14 @@ static void gh_notif_vm_exited(struct gh_vm *vm,
 
 	mutex_lock(&vm->vm_lock);
 	vm->exit_type = vm_exited->exit_type;
+	switch (vm_exited->exit_type) {
+	case GH_RM_VM_EXIT_TYPE_WDT_BITE:
+	case GH_RM_VM_EXIT_TYPE_HYP_ERROR:
+	case GH_RM_VM_EXIT_TYPE_ASYNC_EXT_ABORT:
+		gh_notify_clients(vm, GH_VM_CRASH);
+		break;
+	}
+
 	vm->status.vm_status = GH_RM_VM_STATUS_EXITED;
 	gh_wakeup_all_vcpus(vm->vmid);
 	wake_up_interruptible(&vm->vm_status_wait);
