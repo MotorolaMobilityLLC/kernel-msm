@@ -3178,6 +3178,8 @@ retry_find:
 		}
 	}
 
+	trace_android_vh_filemap_fault_pre_page_locked(page);
+
 	if (!lock_page_maybe_drop_mmap(vmf, page, &fpin))
 		goto out_retry;
 
@@ -3428,6 +3430,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 		continue;
 unlock:
 		unlock_page(head);
+		trace_android_vh_filemap_page_mapped(head);
 		put_page(head);
 	} while ((head = next_map_page(mapping, &xas, end_pgoff)) != NULL);
 	pte_unmap_unlock(vmf->pte, vmf->ptl);
