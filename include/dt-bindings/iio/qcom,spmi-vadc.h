@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 /*
  * Copyright (c) 2012-2014,2018-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022,2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _DT_BINDINGS_QCOM_SPMI_VADC_H
@@ -398,6 +398,8 @@
 #define ADC5_GEN4_AMUX2_GPIO			0x0b
 #define ADC5_GEN4_AMUX3_GPIO			0x0c
 #define ADC5_GEN4_AMUX4_GPIO			0x0d
+#define ADC5_GEN4_ATEST1			0x1b
+#define ADC5_GEN4_ATEST2			0x1c
 
 /* 10k pull-up */
 #define ADC5_GEN4_AMUX1_THM_10K_PU		0x24
