@@ -201,7 +201,8 @@ static void kvm_hyp_handle_fpsimd_host(struct kvm_vcpu *vcpu)
 		struct kvm_host_sve_state *sve_state = get_host_sve_state(vcpu);
 
 		sve_state->zcr_el1 = read_sysreg_el1(SYS_ZCR);
-		pkvm_set_max_sve_vq();
+		sve_cond_update_zcr_vq(sve_vq_from_vl(kvm_host_sve_max_vl) - 1,
+				       SYS_ZCR_EL2);
 		__sve_save_state(sve_state->sve_regs +
 					 sve_ffr_offset(kvm_host_sve_max_vl),
 				 &sve_state->fpsr);

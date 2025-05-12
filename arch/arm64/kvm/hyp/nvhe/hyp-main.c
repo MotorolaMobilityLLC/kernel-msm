@@ -696,7 +696,8 @@ static void fpsimd_host_restore(void)
 			struct kvm_host_sve_state *sve_state = get_host_sve_state(vcpu);
 
 			write_sysreg_el1(sve_state->zcr_el1, SYS_ZCR);
-			pkvm_set_max_sve_vq();
+			sve_cond_update_zcr_vq(sve_vq_from_vl(kvm_host_sve_max_vl) - 1,
+					       SYS_ZCR_EL2);
 			__sve_restore_state(sve_state->sve_regs +
 					    sve_ffr_offset(kvm_host_sve_max_vl),
 					    &sve_state->fpsr);
