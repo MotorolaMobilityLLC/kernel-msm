@@ -504,8 +504,13 @@ void folio_add_lru(struct folio *folio)
 
 	/* see the comment in lru_gen_add_folio() */
 	if (lru_gen_enabled() && !folio_test_unevictable(folio) &&
-	    lru_gen_in_fault() && !(current->flags & PF_MEMALLOC))
-		folio_set_active(folio);
+	    lru_gen_in_fault() && !(current->flags & PF_MEMALLOC)) {
+		bool bypass = false;
+
+		trace_android_vh_folio_add_lru_folio_activate(folio, &bypass);
+		if (!bypass)
+			folio_set_active(folio);
+	}
 
 	folio_get(folio);
 	local_lock(&cpu_fbatches.lock);
