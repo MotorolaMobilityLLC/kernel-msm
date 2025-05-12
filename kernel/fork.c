@@ -1402,6 +1402,7 @@ void mmput(struct mm_struct *mm)
 
 	if (atomic_dec_and_test(&mm->mm_users)) {
 		trace_android_vh_mmput(NULL);
+		trace_android_vh_mmput_mm(mm);
 		__mmput(mm);
 	}
 }
