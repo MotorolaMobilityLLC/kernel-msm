@@ -6958,6 +6958,11 @@ int msm_pcie_enumerate(u32 rc_idx)
 	struct resource_entry *bus;
 	LIST_HEAD(res);
 
+	if (!dev) {
+		pr_err("PCIe: RC%d: has not been successfully probed yet\n", rc_idx);
+		return -EPROBE_DEFER;
+	}
+
 	mutex_lock(&dev->enumerate_lock);
 
 	PCIE_DBG(dev, "Enumerate RC%d\n", rc_idx);
@@ -9806,11 +9811,8 @@ int msm_pcie_set_target_link_speed(u32 rc_idx, u32 target_link_speed,
 	}
 
 	pcie_dev = msm_pcie_dev[rc_idx];
-
-	if (!pcie_dev->drv_ready) {
-		PCIE_DBG(pcie_dev,
-			"PCIe: RC%d: has not been successfully probed yet\n",
-			pcie_dev->rc_idx);
+	if (!pcie_dev || !pcie_dev->drv_ready) {
+		pr_err("PCIe: RC(%d) has not been successfully probed yet\n", rc_idx);
 		return -EPROBE_DEFER;
 	}
 
