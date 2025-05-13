@@ -25,6 +25,42 @@ config CCI_DEBUG_INTF
 	help
 	  This is enabling cci debug tool.
 
+config MOT_DRV_OIS_EARLY_UPGRADE_FW
+	default n
+	bool "enable OIS upgrade FW early"
+	help
+	  This is enabling OIS upgrade fw early.
+
+config MOT_DRV_OIS_AF_USE_SAME_IC
+	default n
+	bool "enable OIS and AF use same IC"
+	help
+	  This is enabling OIS and AF use same IC.
+
+config MOT_DRV_OIS_DRIVER
+	default n
+	bool "enable OIS driver"
+	help
+	  This is enabling OIS driver.
+
+config MOT_DRV_OIS_AFTER_SALES_SERVICE
+	default n
+	bool "enable OIS_AFTER_SALES_SERVICE"
+	help
+	  This is enabling OIS_AFTER_SALES_SERVICE.
+
+config MOT_DRV_OIS_AF_DRIFT
+	default n
+	bool "enable AF Drift"
+	help
+	  This is enabling AF DRIFT.
+
+config MOT_DRV_DONGWONG_OIS_AF_DRIFT
+	default n
+	bool "enable DONGWONG AF Drift"
+	help
+	  This is enabling DONGWONG AF DRIFT.
+
 config SPS
 	tristate "SPS support"
 	select GENERIC_ALLOCATOR
