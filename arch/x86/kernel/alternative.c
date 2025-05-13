@@ -129,6 +129,7 @@ const unsigned char * const x86_nops[ASM_NOP_MAX+1] =
 
 #ifdef CONFIG_MITIGATION_ITS
 
+#ifdef CONFIG_MODULES
 static struct module *its_mod;
 static void *its_page;
 static unsigned int its_offset;
@@ -244,7 +245,16 @@ static void *its_allocate_thunk(int reg)
 	return thunk;
 }
 
-#endif
+#else /* CONFIG_MODULES */
+
+static void *its_allocate_thunk(int reg)
+{
+	return NULL;
+}
+
+#endif /* CONFIG_MODULES */
+
+#endif /* CONFIG_MITIGATION_ITS */
 
 /*
  * Fill the buffer with a single effective instruction of size @len.
