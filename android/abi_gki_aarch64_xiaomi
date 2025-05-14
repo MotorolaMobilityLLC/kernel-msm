@@ -515,6 +515,11 @@ reclaim_pages
 #required by mi_iod_debug.ko
 page_swap_info
 
+# required by pte preread
+read_swap_cache_async
+unuse_swap_pte
+vfs_fadvise
+
 # required by launch_boost driver
 __traceiter_android_vh_filemap_read
 __tracepoint_android_vh_filemap_read
