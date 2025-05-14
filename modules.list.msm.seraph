@@ -61,7 +61,6 @@ qcom_aoss.ko
 qcom-ipcc.ko
 qcom_ipc_logging.ko
 qcom_wdt_core.ko
-gh_virt_wdt.ko
 qcom-cpufreq-hw.ko
 clk-rpmh.ko
 sched-walt.ko
@@ -84,3 +83,4 @@ qcom_cpu_vendor_hooks.ko
 qcom-dload-mode.ko
 llcc-qcom.ko
 kryo_arm64_edac.ko
+qcom_soc_wdt.ko
