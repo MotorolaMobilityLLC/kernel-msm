@@ -33,6 +33,8 @@ def define_seraph():
         "drivers/edac/kryo_arm64_edac.ko",
         "drivers/edac/qcom_edac.ko",
         "drivers/firmware/qcom-scm.ko",
+        "drivers/firmware/qcom/si_core/mem_object.ko",
+        "drivers/firmware/qcom/si_core/si_core_module.ko",
         "drivers/hwspinlock/qcom_hwspinlock.ko",
         "drivers/hwtracing/coresight/coresight.ko",
         "drivers/hwtracing/coresight/coresight-csr.ko",
