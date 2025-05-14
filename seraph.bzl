@@ -32,6 +32,7 @@ def define_seraph():
         "drivers/dma/qcom/msm_gpi.ko",
         "drivers/edac/kryo_arm64_edac.ko",
         "drivers/edac/qcom_edac.ko",
+        "drivers/extcon/extcon-qcom-spmi-misc.ko",
         "drivers/firmware/qcom-scm.ko",
         "drivers/firmware/qcom/si_core/mem_object.ko",
         "drivers/firmware/qcom/si_core/si_core_module.ko",
