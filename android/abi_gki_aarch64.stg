@@ -345747,6 +345747,13 @@ function {
   parameter_id: 0x6d7f5ff6
 }
 function {
+  id: 0x9d90f040
+  return_type_id: 0x6720d32f
+  parameter_id: 0x045d9eb9
+  parameter_id: 0x4585663f
+  parameter_id: 0x4585663f
+}
+function {
   id: 0x9d917bd1
   return_type_id: 0x6720d32f
   parameter_id: 0x0cf3d8fe
@@ -378007,6 +378014,15 @@ elf_symbol {
   crc: 0xa531471e
   type_id: 0x9d80e32f
   full_name: "clk_save_context"
+}
+elf_symbol {
+  id: 0x7a8f92d4
+  name: "clk_set_duty_cycle"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x665e92a0
+  type_id: 0x9d90f040
+  full_name: "clk_set_duty_cycle"
 }
 elf_symbol {
   id: 0xb8a759f7
@@ -437953,6 +437969,7 @@ interface {
   symbol_id: 0xffe637ce
   symbol_id: 0xd84adb21
   symbol_id: 0xed719736
+  symbol_id: 0x7a8f92d4
   symbol_id: 0xb8a759f7
   symbol_id: 0xa7901a1d
   symbol_id: 0x2b1e3d59

@@ -13,6 +13,7 @@
   blk_stat_enable_accounting
   __brelse
   class_find_device
+  clk_set_duty_cycle
   cpufreq_unregister_notifier
   crypto_register_alg
   crypto_unregister_alg
