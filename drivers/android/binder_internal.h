@@ -158,6 +158,10 @@ struct binder_work {
 		BINDER_WORK_DEAD_BINDER,
 		BINDER_WORK_DEAD_BINDER_AND_CLEAR,
 		BINDER_WORK_CLEAR_DEATH_NOTIFICATION,
+#ifndef __GENKSYMS__
+		BINDER_WORK_FROZEN_BINDER,
+		BINDER_WORK_CLEAR_FREEZE_NOTIFICATION,
+#endif
 	} type;
 };
 
@@ -279,6 +283,14 @@ struct binder_ref_death {
 	binder_uintptr_t cookie;
 };
 
+struct binder_ref_freeze {
+	struct binder_work work;
+	binder_uintptr_t cookie;
+	bool is_frozen:1;
+	bool sent:1;
+	bool resend:1;
+};
+
 /**
  * struct binder_ref_data - binder_ref counts and id
  * @debug_id:        unique ID for the ref
@@ -311,6 +323,8 @@ struct binder_ref_data {
  *               @node indicates the node must be freed
  * @death:       pointer to death notification (ref_death) if requested
  *               (protected by @node->lock)
+ * @freeze:      pointer to freeze notification (ref_freeze) if requested
+ *               (protected by @node->lock)
  *
  * Structure to track references from procA to target node (on procB). This
  * structure is unsafe to access without holding @proc->outer_lock.
@@ -327,6 +341,7 @@ struct binder_ref {
 	struct binder_proc *proc;
 	struct binder_node *node;
 	struct binder_ref_death *death;
+	struct binder_ref_freeze *freeze;
 };
 
 /**
@@ -457,6 +472,8 @@ struct binder_proc {
  * @cred                  struct cred associated with the `struct file`
  *                        in binder_open()
  *                        (invariant after initialized)
+ * @delivered_freeze:     list of delivered freeze notification
+ *                        (protected by @inner_lock)
  *
  * Extended binder_proc -- needed to add the "cred" field without
  * changing the KMI for binder_proc.
@@ -464,6 +481,7 @@ struct binder_proc {
 struct binder_proc_ext {
 	struct binder_proc proc;
 	const struct cred *cred;
+	struct list_head delivered_freeze;
 };
 
 static inline const struct cred *binder_get_cred(struct binder_proc *proc)
@@ -472,6 +490,12 @@ static inline const struct cred *binder_get_cred(struct binder_proc *proc)
 
 	eproc = container_of(proc, struct binder_proc_ext, proc);
 	return eproc->cred;
+}
+
+static inline
+struct binder_proc_ext *proc_wrapper(struct binder_proc *proc)
+{
+	return container_of(proc, struct binder_proc_ext, proc);
 }
 
 /**

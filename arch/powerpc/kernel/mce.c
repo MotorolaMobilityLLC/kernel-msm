@@ -594,8 +594,15 @@ long notrace machine_check_early(struct pt_regs *regs)
 	u8 ftrace_enabled = this_cpu_get_ftrace_enabled();
 
 	this_cpu_set_ftrace_enabled(0);
-	/* Do not use nmi_enter/exit for pseries hpte guest */
-	if (radix_enabled() || !firmware_has_feature(FW_FEATURE_LPAR))
+	/*
+	 * Do not use nmi_enter/exit for pseries hpte guest
+	 *
+	 * Likewise, do not use it in real mode if percpu first chunk is not
+	 * embedded. With CONFIG_NEED_PER_CPU_PAGE_FIRST_CHUNK enabled there
+	 * are chances where percpu allocation can come from vmalloc area.
+	 */
+	if ((radix_enabled() || !firmware_has_feature(FW_FEATURE_LPAR)) &&
+	    !percpu_first_chunk_is_paged)
 		nmi_enter();
 
 	hv_nmi_check_nonrecoverable(regs);
@@ -606,7 +613,8 @@ long notrace machine_check_early(struct pt_regs *regs)
 	if (ppc_md.machine_check_early)
 		handled = ppc_md.machine_check_early(regs);
 
-	if (radix_enabled() || !firmware_has_feature(FW_FEATURE_LPAR))
+	if ((radix_enabled() || !firmware_has_feature(FW_FEATURE_LPAR)) &&
+	    !percpu_first_chunk_is_paged)
 		nmi_exit();
 
 	this_cpu_set_ftrace_enabled(ftrace_enabled);

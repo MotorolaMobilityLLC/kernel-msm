@@ -1965,6 +1965,7 @@ int vmbus_add_channel_kobj(struct hv_device *dev, struct vmbus_channel *channel)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(vmbus_device_unregister);
 
 /*
  * vmbus_remove_channel_attr_group - remove the channel's attribute group

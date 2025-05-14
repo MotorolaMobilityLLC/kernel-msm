@@ -34,6 +34,7 @@
   bpf_trace_run4
   bpf_trace_run5
   bpf_trace_run6
+  blk_mq_quiesce_queue_nowait
   bt_err
   bt_info
   bt_warn

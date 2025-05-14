@@ -628,7 +628,6 @@
 		};
 		pins_rts {
 			pinmux = <PINMUX_GPIO47__FUNC_URTS1>;
-			output-enable;
 		};
 		pins_cts {
 			pinmux = <PINMUX_GPIO46__FUNC_UCTS1>;
@@ -647,7 +646,6 @@
 		};
 		pins_rts {
 			pinmux = <PINMUX_GPIO47__FUNC_URTS1>;
-			output-enable;
 		};
 		pins_cts {
 			pinmux = <PINMUX_GPIO46__FUNC_UCTS1>;

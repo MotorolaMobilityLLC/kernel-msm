@@ -685,7 +685,7 @@ static u32 dsi_get_pclk_rate(struct msm_dsi_host *msm_host, bool is_dual_dsi)
 	struct drm_display_mode *mode = msm_host->mode;
 	u32 pclk_rate;
 
-	pclk_rate = mode->clock * 1000;
+	pclk_rate = mode->clock * 1000u;
 
 	/*
 	 * For dual DSI mode, the current DRM mode has the complete width of the

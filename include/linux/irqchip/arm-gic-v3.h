@@ -723,6 +723,9 @@ static inline bool gic_enable_sre(void)
 }
 
 void gic_resume(void);
+void gic_dist_init(void);
+void gic_cpu_init(void);
+void gic_dist_wait_for_rwp(void);
 
 #endif
 

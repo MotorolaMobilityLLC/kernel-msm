@@ -910,7 +910,7 @@ int btrfs_update_reloc_root(struct btrfs_trans_handle *trans,
 	btrfs_grab_root(reloc_root);
 
 	/* root->reloc_root will stay until current relocation finished */
-	if (fs_info->reloc_ctl->merge_reloc_tree &&
+	if (fs_info->reloc_ctl && fs_info->reloc_ctl->merge_reloc_tree &&
 	    btrfs_root_refs(root_item) == 0) {
 		set_bit(BTRFS_ROOT_DEAD_RELOC_TREE, &root->state);
 		/*
@@ -1214,7 +1214,6 @@ again:
 	btrfs_node_key_to_cpu(path->nodes[lowest_level], &key, slot);
 
 	eb = btrfs_lock_root_node(dest);
-	btrfs_set_lock_blocking_write(eb);
 	level = btrfs_header_level(eb);
 
 	if (level < lowest_level) {
@@ -1228,7 +1227,6 @@ again:
 				      BTRFS_NESTING_COW);
 		BUG_ON(ret);
 	}
-	btrfs_set_lock_blocking_write(eb);
 
 	if (next_key) {
 		next_key->objectid = (u64)-1;
@@ -1297,7 +1295,6 @@ again:
 						      BTRFS_NESTING_COW);
 				BUG_ON(ret);
 			}
-			btrfs_set_lock_blocking_write(eb);
 
 			btrfs_tree_unlock(parent);
 			free_extent_buffer(parent);
@@ -2327,7 +2324,6 @@ static int do_relocation(struct btrfs_trans_handle *trans,
 			goto next;
 		}
 		btrfs_tree_lock(eb);
-		btrfs_set_lock_blocking_write(eb);
 
 		if (!node->eb) {
 			ret = btrfs_cow_block(trans, root, eb, upper->eb,

@@ -51,10 +51,14 @@ msm_gem_shrinker_count(struct shrinker *shrinker, struct shrink_control *sc)
 	if (!msm_gem_shrinker_lock(dev, &unlock))
 		return 0;
 
+	mutex_lock(&priv->mm_lock);
+
 	list_for_each_entry(msm_obj, &priv->inactive_list, mm_list) {
 		if (is_purgeable(msm_obj))
 			count += msm_obj->base.size >> PAGE_SHIFT;
 	}
+
+	mutex_unlock(&priv->mm_lock);
 
 	if (unlock)
 		mutex_unlock(&dev->struct_mutex);
@@ -75,6 +79,8 @@ msm_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
 	if (!msm_gem_shrinker_lock(dev, &unlock))
 		return SHRINK_STOP;
 
+	mutex_lock(&priv->mm_lock);
+
 	list_for_each_entry(msm_obj, &priv->inactive_list, mm_list) {
 		if (freed >= sc->nr_to_scan)
 			break;
@@ -83,6 +89,8 @@ msm_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
 			freed += msm_obj->base.size >> PAGE_SHIFT;
 		}
 	}
+
+	mutex_unlock(&priv->mm_lock);
 
 	if (unlock)
 		mutex_unlock(&dev->struct_mutex);
@@ -106,6 +114,8 @@ msm_gem_shrinker_vmap(struct notifier_block *nb, unsigned long event, void *ptr)
 	if (!msm_gem_shrinker_lock(dev, &unlock))
 		return NOTIFY_DONE;
 
+	mutex_lock(&priv->mm_lock);
+
 	list_for_each_entry(msm_obj, &priv->inactive_list, mm_list) {
 		if (is_vunmapable(msm_obj)) {
 			msm_gem_vunmap(&msm_obj->base, OBJ_LOCK_SHRINKER);
@@ -117,6 +127,8 @@ msm_gem_shrinker_vmap(struct notifier_block *nb, unsigned long event, void *ptr)
 				break;
 		}
 	}
+
+	mutex_unlock(&priv->mm_lock);
 
 	if (unlock)
 		mutex_unlock(&dev->struct_mutex);

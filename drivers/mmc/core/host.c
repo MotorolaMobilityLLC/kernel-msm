@@ -115,13 +115,12 @@ void mmc_retune_enable(struct mmc_host *host)
 
 /*
  * Pause re-tuning for a small set of operations.  The pause begins after the
- * next command and after first doing re-tuning.
+ * next command.
  */
 void mmc_retune_pause(struct mmc_host *host)
 {
 	if (!host->retune_paused) {
 		host->retune_paused = 1;
-		mmc_retune_needed(host);
 		mmc_retune_hold(host);
 	}
 }
@@ -525,12 +524,12 @@ struct mmc_host *devm_mmc_alloc_host(struct device *dev, int extra)
 
 	dr = devres_alloc(devm_mmc_host_release, sizeof(*dr), GFP_KERNEL);
 	if (!dr)
-		return ERR_PTR(-ENOMEM);
+		return NULL;
 
 	host = mmc_alloc_host(extra, dev);
-	if (IS_ERR(host)) {
+	if (!host) {
 		devres_free(dr);
-		return host;
+		return NULL;
 	}
 
 	*dr = host;

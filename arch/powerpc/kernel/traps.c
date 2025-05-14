@@ -835,8 +835,14 @@ void machine_check_exception(struct pt_regs *regs)
 	 * This is silly. The BOOK3S_64 should just call a different function
 	 * rather than expecting semantics to magically change. Something
 	 * like 'non_nmi_machine_check_exception()', perhaps?
+	 *
+	 * Do not use nmi_enter/exit in real mode if percpu first chunk is
+	 * not embedded. With CONFIG_NEED_PER_CPU_PAGE_FIRST_CHUNK enabled
+	 * there are chances where percpu allocation can come from
+	 * vmalloc area.
 	 */
-	const bool nmi = !IS_ENABLED(CONFIG_PPC_BOOK3S_64);
+	const bool nmi = !IS_ENABLED(CONFIG_PPC_BOOK3S_64) &&
+			 !percpu_first_chunk_is_paged;
 
 	if (nmi) nmi_enter();
 

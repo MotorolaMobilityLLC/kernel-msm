@@ -5477,6 +5477,7 @@ static int load_video_binaries(struct ia_css_pipe *pipe)
 		mycs->yuv_scaler_binary = kzalloc(cas_scaler_descr.num_stage *
 						  sizeof(struct ia_css_binary), GFP_KERNEL);
 		if (!mycs->yuv_scaler_binary) {
+			mycs->num_yuv_scaler = 0;
 			err = -ENOMEM;
 			return err;
 		}

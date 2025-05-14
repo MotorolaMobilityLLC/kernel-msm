@@ -50,6 +50,7 @@ void pmd_clear_bad(pmd_t *pmd)
 	pmd_ERROR(*pmd);
 	pmd_clear(pmd);
 }
+EXPORT_SYMBOL_GPL(pmd_clear_bad);
 
 #ifndef __HAVE_ARCH_PTEP_SET_ACCESS_FLAGS
 /*

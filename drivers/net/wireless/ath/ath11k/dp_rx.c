@@ -274,6 +274,28 @@ static void ath11k_dp_service_mon_ring(struct timer_list *t)
 		  msecs_to_jiffies(ATH11K_MON_TIMER_INTERVAL));
 }
 
+static int ath11k_dp_purge_mon_ring(struct ath11k_base *ab)
+{
+	int i, reaped = 0;
+	unsigned long timeout = jiffies + msecs_to_jiffies(DP_MON_PURGE_TIMEOUT_MS);
+
+	do {
+		for (i = 0; i < ab->hw_params.num_rxmda_per_pdev; i++)
+			reaped += ath11k_dp_rx_process_mon_rings(ab, i,
+								 NULL,
+								 DP_MON_SERVICE_BUDGET);
+
+		/* nothing more to reap */
+		if (reaped < DP_MON_SERVICE_BUDGET)
+			return 0;
+
+	} while (time_before(jiffies, timeout));
+
+	ath11k_warn(ab, "dp mon ring purge timeout");
+
+	return -ETIMEDOUT;
+}
+
 /* Returns number of Rx buffers replenished */
 int ath11k_dp_rxbufs_replenish(struct ath11k_base *ab, int mac_id,
 			       struct dp_rxdma_ring *rx_ring,
@@ -1830,8 +1852,7 @@ static void ath11k_dp_rx_h_csum_offload(struct sk_buff *msdu)
 			  CHECKSUM_NONE : CHECKSUM_UNNECESSARY;
 }
 
-static int ath11k_dp_rx_crypto_mic_len(struct ath11k *ar,
-				       enum hal_encrypt_type enctype)
+int ath11k_dp_rx_crypto_mic_len(struct ath11k *ar, enum hal_encrypt_type enctype)
 {
 	switch (enctype) {
 	case HAL_ENCRYPT_TYPE_OPEN:
@@ -2600,7 +2621,7 @@ try_again:
 		if (push_reason !=
 		    HAL_REO_DEST_RING_PUSH_REASON_ROUTING_INSTRUCTION) {
 			dev_kfree_skb_any(msdu);
-			ab->soc_stats.hal_reo_error[dp->reo_dst_ring[ring_id].ring_id]++;
+			ab->soc_stats.hal_reo_error[ring_id]++;
 			continue;
 		}
 
@@ -5063,5 +5084,31 @@ static int ath11k_dp_mon_link_free(struct ath11k *ar)
 int ath11k_dp_rx_pdev_mon_detach(struct ath11k *ar)
 {
 	ath11k_dp_mon_link_free(ar);
+	return 0;
+}
+
+int ath11k_dp_rx_pktlog_start(struct ath11k_base *ab)
+{
+	/* start reap timer */
+	mod_timer(&ab->mon_reap_timer,
+		  jiffies + msecs_to_jiffies(ATH11K_MON_TIMER_INTERVAL));
+
+	return 0;
+}
+
+int ath11k_dp_rx_pktlog_stop(struct ath11k_base *ab, bool stop_timer)
+{
+	int ret;
+
+	if (stop_timer)
+		del_timer_sync(&ab->mon_reap_timer);
+
+	/* reap all the monitor related rings */
+	ret = ath11k_dp_purge_mon_ring(ab);
+	if (ret) {
+		ath11k_warn(ab, "failed to purge dp mon ring: %d\n", ret);
+		return ret;
+	}
+
 	return 0;
 }

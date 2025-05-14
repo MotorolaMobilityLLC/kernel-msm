@@ -6,6 +6,7 @@
  */
 
 #include <linux/bitops.h>
+#include <linux/clk.h>
 #include <linux/counter.h>
 #include <linux/kernel.h>
 #include <linux/mod_devicetable.h>
@@ -349,6 +350,7 @@ static int ti_eqep_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct ti_eqep_cnt *priv;
 	void __iomem *base;
+	struct clk *clk;
 	int err;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -387,6 +389,10 @@ static int ti_eqep_probe(struct platform_device *pdev)
 	 */
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
+
+	clk = devm_clk_get_enabled(dev, NULL);
+	if (IS_ERR(clk))
+		return dev_err_probe(dev, PTR_ERR(clk), "failed to enable clock\n");
 
 	err = counter_register(&priv->counter);
 	if (err < 0) {

@@ -132,6 +132,8 @@ static inline void cec_msg_init(struct cec_msg *msg,
  * Set the msg destination to the orig initiator and the msg initiator to the
  * orig destination. Note that msg and orig may be the same pointer, in which
  * case the change is done in place.
+ *
+ * It also zeroes the reply, timeout and flags fields.
  */
 static inline void cec_msg_set_reply_to(struct cec_msg *msg,
 					struct cec_msg *orig)
@@ -139,7 +141,9 @@ static inline void cec_msg_set_reply_to(struct cec_msg *msg,
 	/* The destination becomes the initiator and vice versa */
 	msg->msg[0] = (cec_msg_destination(orig) << 4) |
 		      cec_msg_initiator(orig);
-	msg->reply = msg->timeout = 0;
+	msg->reply = 0;
+	msg->timeout = 0;
+	msg->flags = 0;
 }
 
 /* cec_msg flags field */
@@ -396,6 +400,7 @@ struct cec_drm_connector_info {
  * associated with the CEC adapter.
  * @type: connector type (if any)
  * @drm: drm connector info
+ * @raw: array to pad the union
  */
 struct cec_connector_info {
 	__u32 type;
@@ -453,7 +458,7 @@ struct cec_event_lost_msgs {
  * struct cec_event - CEC event structure
  * @ts: the timestamp of when the event was sent.
  * @event: the event.
- * array.
+ * @flags: event flags.
  * @state_change: the event payload for CEC_EVENT_STATE_CHANGE.
  * @lost_msgs: the event payload for CEC_EVENT_LOST_MSGS.
  * @raw: array to pad the union.

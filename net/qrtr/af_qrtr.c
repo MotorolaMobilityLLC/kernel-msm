@@ -822,29 +822,6 @@ int qrtr_peek_pkt_size(const void *data)
 }
 EXPORT_SYMBOL(qrtr_peek_pkt_size);
 
-static void qrtr_alloc_backup(struct work_struct *work)
-{
-	struct sk_buff *skb;
-	int errcode;
-
-	while (skb_queue_len(&qrtr_backup_lo) < QRTR_BACKUP_LO_NUM) {
-		skb = alloc_skb_with_frags(sizeof(struct qrtr_hdr_v1),
-					   QRTR_BACKUP_LO_SIZE, 0, &errcode,
-					   GFP_KERNEL);
-		if (!skb)
-			break;
-		skb_queue_tail(&qrtr_backup_lo, skb);
-	}
-	while (skb_queue_len(&qrtr_backup_hi) < QRTR_BACKUP_HI_NUM) {
-		skb = alloc_skb_with_frags(sizeof(struct qrtr_hdr_v1),
-					   QRTR_BACKUP_HI_SIZE, 0, &errcode,
-					   GFP_KERNEL);
-		if (!skb)
-			break;
-		skb_queue_tail(&qrtr_backup_hi, skb);
-	}
-}
-
 static struct sk_buff *qrtr_get_backup(size_t len)
 {
 	struct sk_buff *skb = NULL;
@@ -858,14 +835,6 @@ static struct sk_buff *qrtr_get_backup(size_t len)
 		queue_work(system_unbound_wq, &qrtr_backup_work);
 
 	return skb;
-}
-
-static void qrtr_backup_init(void)
-{
-	skb_queue_head_init(&qrtr_backup_lo);
-	skb_queue_head_init(&qrtr_backup_hi);
-	INIT_WORK(&qrtr_backup_work, qrtr_alloc_backup);
-	queue_work(system_unbound_wq, &qrtr_backup_work);
 }
 
 static void qrtr_backup_deinit(void)
@@ -2126,16 +2095,19 @@ static int __init qrtr_proto_init(void)
 		return rc;
 
 	rc = sock_register(&qrtr_family);
-	if (rc) {
-		proto_unregister(&qrtr_proto);
-		return rc;
-	}
+	if (rc)
+		goto err_proto;
 
-	qrtr_ns_init();
+	rc = qrtr_ns_init();
+	if (rc)
+		goto err_sock;
 
-	qrtr_backup_init();
-	qrtr_debug_init();
+	return 0;
 
+err_sock:
+	sock_unregister(qrtr_family.family);
+err_proto:
+	proto_unregister(&qrtr_proto);
 	return rc;
 }
 postcore_initcall(qrtr_proto_init);
