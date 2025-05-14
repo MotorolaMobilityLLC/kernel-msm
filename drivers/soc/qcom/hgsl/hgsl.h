@@ -176,6 +176,7 @@ struct qcom_hgsl {
 	struct kobject *clients_sysfs;
 	struct dentry *debugfs;
 	struct dentry *clients_debugfs;
+	struct dentry *debugfs_stat;
 };
 
 /**
@@ -267,6 +268,30 @@ static inline u32 hgsl_hnd2id(u32 dev_hnd)
 		((dev_hnd == GSL_HANDLE_DEV1) ? 1 : 0);
 }
 
+static inline uint32_t get_context_retired_ts(struct hgsl_context *ctxt)
+{
+	unsigned int ts = ctxt->shadow_ts->eop;
+
+	/* ensure read is done before comparison */
+	dma_rmb();
+	return ts;
+}
+
+static inline void set_context_retired_ts(struct hgsl_context *ctxt,
+	unsigned int ts)
+{
+	ctxt->shadow_ts->eop = ts;
+
+	/* ensure update is done before return */
+	dma_wmb();
+}
+
+static inline bool _timestamp_retired(struct hgsl_context *ctxt,
+	unsigned int timestamp)
+{
+	return hgsl_ts32_ge(get_context_retired_ts(ctxt), timestamp);
+}
+
 /**
  * struct hgsl_hsync_timeline - A sync timeline attached under each hgsl context
  * @kref: Refcount to keep the struct alive
@@ -330,6 +355,12 @@ struct hgsl_isync_fence {
 	u64 ts;
 };
 
+struct hgsl_active_wait {
+	struct list_head head;
+	struct hgsl_context *ctxt;
+	unsigned int timestamp;
+};
+
 /* Fence for commands. */
 struct hgsl_hsync_fence *hgsl_hsync_fence_create(
 					struct hgsl_context *context,
@@ -360,5 +391,9 @@ int hgsl_isync_query(struct hgsl_priv *priv, uint32_t timeline_id,
 int hgsl_isync_wait_multiple(struct hgsl_priv *priv, struct hgsl_timeline_wait *param);
 
 void hgsl_retire_common(struct qcom_hgsl *hgsl, u32 dev_hnd);
+
+struct hgsl_context *hgsl_get_context(struct qcom_hgsl *hgsl,
+	uint32_t dev_hnd, uint32_t context_id);
+void hgsl_put_context(struct hgsl_context *ctxt);
 
 #endif /* __HGSL_H_ */

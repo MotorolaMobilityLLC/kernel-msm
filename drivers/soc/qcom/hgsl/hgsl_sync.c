@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/types.h>
@@ -316,8 +316,6 @@ int hgsl_isync_timeline_create(struct hgsl_priv *priv,
 	INIT_LIST_HEAD(&timeline->fence_list);
 	spin_lock_init(&timeline->lock);
 	timeline->priv = priv;
-	snprintf((char *) timeline->name, sizeof(timeline->name),
-					"isync-timeline-%d", *timeline_id);
 	timeline->flags = flags;
 	timeline->last_ts = initial_ts;
 	timeline->is64bits = ((flags & HGSL_ISYNC_64BITS_TIMELINE) != 0);
@@ -328,6 +326,9 @@ int hgsl_isync_timeline_create(struct hgsl_priv *priv,
 	if (idr > 0) {
 		timeline->id = idr;
 		*timeline_id = idr;
+		snprintf((char *) timeline->name, sizeof(timeline->name),
+			"isync-timeline-%d-%s_%d",
+			idr, current->comm, current->pid);
 		ret = 0;
 	}
 	spin_unlock(&hgsl->isync_timeline_lock);
