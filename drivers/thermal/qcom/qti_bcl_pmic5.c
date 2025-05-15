@@ -554,9 +554,79 @@ exit:
 	return ret;
 }
 
+static int bcl_set_vbat(struct thermal_zone_device *tz, int low, int high)
+{
+	int ret = 0, thresh_value, temp, trip_id;
+	int val = 0;
+	struct bcl_peripheral_data *bat_data =
+		(struct bcl_peripheral_data *)tz->devdata;
+
+	pr_debug("bat_data->type = %d, low = %d, high = %d\n", bat_data->type, low, high);
+
+	mutex_lock(&bat_data->state_trans_lock);
+	thresh_value = low;
+
+	if (bat_data->trip_thresh == thresh_value)
+		goto set_trip_exit;
+
+	if (thresh_value == -INT_MAX) {
+		bat_data->trip_thresh = thresh_value;
+		goto set_trip_exit;
+	}
+
+	if (bat_data->irq_num && bat_data->irq_enabled) {
+		disable_irq_nosync(bat_data->irq_num);
+		bat_data->irq_enabled = false;
+	}
+
+	temp = thresh_value;
+
+	switch (bat_data->type) {
+	case BCL_VBAT_LVL0:
+		trip_id = 0;
+		break;
+	case BCL_VBAT_LVL1:
+		trip_id = 1;
+		break;
+	case BCL_VBAT_LVL2:
+		trip_id =2;
+		break;
+	default:
+		trip_id =0;
+		pr_debug("use default configuration. vbat BCL_VBAT_LVL0\n");
+		break;
+	}
+
+	ret = bcl_set_adc_value(bat_data->dev, trip_id, temp, &val);
+	if (ret < 0) {
+		pr_err("Fail to set vbat regs, err: %d\n", ret);
+		goto set_trip_exit;
+	}
+
+	if (bat_data->dev->desc->vbat_zone_enabled) {
+		pr_debug("[%s]: blocking_notifier_call_chain\n", __func__);
+		blocking_notifier_call_chain(&bcl_pmic5_notifier, trip_id, (void *)&temp);
+	}
+
+	pr_debug("[%s]: trip_id: %d, vbat:%d mV, ADC: 0x%x\n", __func__, trip_id, temp, val);
+
+	bat_data->trip_thresh = temp;
+
+	if (bat_data->irq_num && !bat_data->irq_enabled) {
+		enable_irq(bat_data->irq_num);
+		bat_data->irq_enabled = true;
+	}
+
+set_trip_exit:
+	mutex_unlock(&bat_data->state_trans_lock);
+
+	return ret;
+}
+
 static struct thermal_zone_device_ops vbat_tzd_ops = {
 	.get_temp = bcl_read_vbat_tz,
 	.set_trip_temp = bcl_write_vbat_tz,
+	.set_trips = bcl_set_vbat,
 };
 
 static int bcl_get_trend(struct thermal_zone_device *tz, const struct thermal_trip *trips,
@@ -914,6 +984,7 @@ static void bcl_vbat_init(struct platform_device *pdev,
 	int ret;
 
 	mutex_init(&vbat->state_trans_lock);
+	vbat->type = type;
 	vbat->dev = bcl_perph;
 	vbat->irq_num = 0;
 	vbat->irq_enabled = false;
@@ -951,6 +1022,8 @@ static void bcl_probe_vbat(struct platform_device *pdev,
 					struct bcl_device *bcl_perph)
 {
 	bcl_vbat_init(pdev, BCL_VBAT_LVL0, bcl_perph);
+	bcl_vbat_init(pdev, BCL_VBAT_LVL1, bcl_perph);
+	bcl_vbat_init(pdev, BCL_VBAT_LVL2, bcl_perph);
 }
 
 static void bcl_ibat_init(struct platform_device *pdev,
