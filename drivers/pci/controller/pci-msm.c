@@ -6555,16 +6555,18 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 		PCIE_DBG(dev, "RC%d: configure ECAM for bus range:%d\n",
 				dev->rc_idx, num_buses);
 
-		cfg1_ecam_base = cfg0_ecam_base + SZ_1M;
-		cfg1_ecam_limit = cfg1_ecam_base + (SZ_1M * (num_buses - 2)) - 1;
+		if (num_buses > 2) {
+			cfg1_ecam_base = cfg0_ecam_base + SZ_1M;
+			cfg1_ecam_limit = cfg1_ecam_base + (SZ_1M * (num_buses - 2)) - 1;
 
-		/* IATU configuration for bus 1 */
-		msm_pcie_iatu_config_shift(dev, 0, PCIE20_CTRL1_TYPE_CFG0,
+			/* IATU configuration for bus 1 */
+			msm_pcie_iatu_config_shift(dev, 0, PCIE20_CTRL1_TYPE_CFG0,
 					cfg0_ecam_base, cfg0_ecam_limit);
 
-		/* IATU configuration for buses 2-255 */
-		msm_pcie_iatu_config_shift(dev, 1, PCIE20_CTRL1_TYPE_CFG1,
+			/* IATU configuration for buses 2-255 */
+			msm_pcie_iatu_config_shift(dev, 1, PCIE20_CTRL1_TYPE_CFG1,
 					cfg1_ecam_base, cfg1_ecam_limit);
+		}
 
 		msm_pcie_iatu_setup_ecam_blocker(dev);
 	} else {
