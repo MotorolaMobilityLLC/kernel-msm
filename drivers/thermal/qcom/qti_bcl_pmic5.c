@@ -1324,6 +1324,16 @@ static const struct bcl_desc pmih010x_data = {
 	.ibat_thresh_scaling_factor = BCL_IBAT_THRESH_SCALING_REV5_UA,
 };
 
+static const struct bcl_desc pm6150l_data = {
+	.vadc_type = true,
+	.vbat_regs = {
+		[BCLBIG_COMP_VCMP_L0_THR]		= 0x48,
+		[BCLBIG_COMP_VCMP_L1_THR]		= 0x49,
+		[BCLBIG_COMP_VCMP_L2_THR]		= 0x4A,
+	},
+	.vbat_zone_enabled = false,
+};
+
 static const struct bcl_desc pm8550_data = {
 	.vadc_type = false,
 	.vbat_regs = {
@@ -1336,6 +1346,7 @@ static const struct bcl_desc pm8550_data = {
 
 static const struct of_device_id bcl_match[] = {
 	{ .compatible = "qcom,bcl-v5", .data = &pmih010x_data},
+	{ .compatible = "qcom,pm6150l-bcl-v5", .data = &pm6150l_data},
 	{ .compatible = "qcom,pmiv010x-bcl-v5", .data = &pmiv010x_data},
 	{ .compatible = "qcom,pm8550-bcl-v5", .data = &pm8550_data},
 	{ }
