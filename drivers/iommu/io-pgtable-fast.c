@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022,2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt)	"io-pgtable-fast: " fmt
@@ -613,7 +613,10 @@ av8l_fast_alloc_pgtable(struct io_pgtable_cfg *cfg, void *cookie)
 	/* TCR */
 	if (cfg->coherent_walk) {
 		tcr->sh = AV8L_FAST_TCR_SH_IS;
-		tcr->irgn = AV8L_FAST_TCR_RGN_WBWA;
+		if (cfg->quirks & IO_PGTABLE_QUIRK_QCOM_TCR_IRGN_NC)
+			tcr->irgn = AV8L_FAST_TCR_RGN_NC;
+		else
+			tcr->irgn = AV8L_FAST_TCR_RGN_WBWA;
 		tcr->orgn = AV8L_FAST_TCR_RGN_WBWA;
 		if (WARN_ON(cfg->quirks & IO_PGTABLE_QUIRK_ARM_OUTER_WBWA))
 			goto out_free_data;
