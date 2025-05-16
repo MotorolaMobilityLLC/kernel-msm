@@ -754,7 +754,7 @@ static irqreturn_t bcl_handle_irq(int irq, void *data)
 		thermal_zone_device_update(perph_data->tz_dev,
 				THERMAL_TRIP_VIOLATED);
 		end_ts = sched_clock();
-		pr_debug(
+		pr_err(
 		"Irq:%d triggered for bcl type:%s. status:%u ibat=%d vbat=%d\n",
 			irq, bcl_int_names[perph_data->type],
 			irq_status, ibat, vbat);
