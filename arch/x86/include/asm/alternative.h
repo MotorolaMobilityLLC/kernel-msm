@@ -5,6 +5,7 @@
 #include <linux/types.h>
 #include <linux/stringify.h>
 #include <asm/asm.h>
+#include <asm/bug.h>
 
 #define ALTINSTR_FLAG_INV	(1 << 15)
 #define ALT_NOT(feat)		((feat) | ALTINSTR_FLAG_INV)
@@ -84,10 +85,17 @@ struct module;
 extern void its_init_mod(struct module *mod);
 extern void its_fini_mod(struct module *mod);
 extern void its_free_mod(struct module *mod);
+extern u8 *its_static_thunk(int reg);
 #else /* CONFIG_MITIGATION_ITS */
 static inline void its_init_mod(struct module *mod) { }
 static inline void its_fini_mod(struct module *mod) { }
 static inline void its_free_mod(struct module *mod) { }
+static inline u8 *its_static_thunk(int reg)
+{
+	WARN_ONCE(1, "ITS not compiled in");
+
+	return NULL;
+}
 #endif
 
 #ifdef CONFIG_RETHUNK

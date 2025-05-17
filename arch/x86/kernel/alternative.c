@@ -597,6 +597,14 @@ static bool cpu_wants_indirect_its_thunk_at(unsigned long addr, int reg)
 	/* Lower-half of the cacheline? */
 	return !(addr & 0x20);
 }
+
+u8 *its_static_thunk(int reg)
+{
+	u8 *thunk = __x86_indirect_its_thunk_array[reg];
+
+	return thunk;
+}
+
 #endif
 
 /*
