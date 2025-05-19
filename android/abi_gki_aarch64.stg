@@ -43672,6 +43672,11 @@ member {
   offset: 256
 }
 member {
+  id: 0x39d6d358
+  type_id: 0x6875099c
+  offset: 32
+}
+member {
   id: 0x39e9b87f
   type_id: 0x6888b6e5
   offset: 128
@@ -116526,6 +116531,11 @@ member {
   offset: 1216
 }
 member {
+  id: 0xfa946861
+  name: "ipv4_nh"
+  type_id: 0xc9082b19
+}
+member {
   id: 0x3b9e102b
   name: "ipv6"
   type_id: 0x6d7f5ff6
@@ -116593,6 +116603,11 @@ member {
   name: "ipv6_mc_list"
   type_id: 0x12e0cbae
   offset: 704
+}
+member {
+  id: 0xab39140b
+  name: "ipv6_nh"
+  type_id: 0x6d25e07f
 }
 member {
   id: 0x9cf559e0
@@ -119163,6 +119178,12 @@ member {
   name: "keepout"
   type_id: 0x340dea21
   offset: 384
+}
+member {
+  id: 0x632a482d
+  name: "kern_flags"
+  type_id: 0xc9082b19
+  offset: 224
 }
 member {
   id: 0x3afd0e3e
@@ -127558,6 +127579,12 @@ member {
   type_id: 0x04b193cc
 }
 member {
+  id: 0x8df2c9e6
+  name: "map"
+  type_id: 0x04b193cc
+  offset: 128
+}
+member {
   id: 0x8df87907
   name: "map"
   type_id: 0x0e017252
@@ -127791,6 +127818,12 @@ member {
   id: 0x86c79331
   name: "map_id"
   type_id: 0xe62ebf07
+}
+member {
+  id: 0x86e8b50e
+  name: "map_id"
+  type_id: 0xc9082b19
+  offset: 256
 }
 member {
   id: 0xa32be5db
@@ -128087,6 +128120,12 @@ member {
   name: "map_type"
   type_id: 0x6e73208e
   offset: 192
+}
+member {
+  id: 0x2a09386d
+  name: "map_type"
+  type_id: 0x6e73208e
+  offset: 288
 }
 member {
   id: 0x2a261544
@@ -141595,6 +141634,12 @@ member {
   type_id: 0x1f9da9a8
 }
 member {
+  id: 0x713b4511
+  name: "nh"
+  type_id: 0x1e9c55da
+  offset: 320
+}
+member {
   id: 0xdb1c1db1
   name: "nh_all"
   type_id: 0x7db04ce7
@@ -141621,6 +141666,11 @@ member {
   id: 0xb97ecd81
   name: "nh_entry"
   type_id: 0x17b2105b
+}
+member {
+  id: 0xd51ec347
+  name: "nh_family"
+  type_id: 0xc9082b19
 }
 member {
   id: 0x9fb787a3
@@ -199513,6 +199563,11 @@ member {
   type_id: 0x3df0a7d3
 }
 member {
+  id: 0x073a3a88
+  name: "tgt_index"
+  type_id: 0x92233392
+}
+member {
   id: 0xe9c20711
   name: "tgt_qps"
   type_id: 0x80c20070
@@ -199523,6 +199578,12 @@ member {
   name: "tgt_qps_rwsem"
   type_id: 0x28b9ec9a
   offset: 192
+}
+member {
+  id: 0xc9d6516c
+  name: "tgt_value"
+  type_id: 0x18bd6530
+  offset: 64
 }
 member {
   id: 0x141d2755
@@ -226778,6 +226839,15 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x6875099c
+  kind: UNION
+  definition {
+    bytesize: 16
+    member_id: 0xfa946861
+    member_id: 0xab39140b
+  }
+}
+struct_union {
   id: 0x6888b6e5
   kind: UNION
   definition {
@@ -231445,6 +231515,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x1e9c55da
+  kind: STRUCT
+  name: "bpf_nh_params"
+  definition {
+    bytesize: 20
+    member_id: 0xd51ec347
+    member_id: 0x39d6d358
+  }
+}
+struct_union {
   id: 0x3b3bbe3f
   kind: STRUCT
   name: "bpf_offload_dev"
@@ -231638,6 +231718,22 @@ struct_union {
     member_id: 0x3e30dbbc
     member_id: 0x519de530
     member_id: 0x0082372e
+  }
+}
+struct_union {
+  id: 0x212d37a1
+  kind: STRUCT
+  name: "bpf_redirect_info"
+  definition {
+    bytesize: 64
+    member_id: 0x073a3a88
+    member_id: 0xc9d6516c
+    member_id: 0x8df2c9e6
+    member_id: 0x2da184bc
+    member_id: 0x632a482d
+    member_id: 0x86e8b50e
+    member_id: 0x2a09386d
+    member_id: 0x713b4511
   }
 }
 struct_union {
@@ -376344,6 +376440,15 @@ elf_symbol {
   full_name: "bpf_prog_sub"
 }
 elf_symbol {
+  id: 0x56b332ad
+  name: "bpf_redirect_info"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x678abaea
+  type_id: 0x212d37a1
+  full_name: "bpf_redirect_info"
+}
+elf_symbol {
   id: 0x6a712ee1
   name: "bpf_stats_enabled_key"
   is_defined: true
@@ -437891,6 +437996,7 @@ interface {
   symbol_id: 0x6ad917a1
   symbol_id: 0xdeb1861d
   symbol_id: 0x7661d150
+  symbol_id: 0x56b332ad
   symbol_id: 0x6a712ee1
   symbol_id: 0xe594a242
   symbol_id: 0x3afeb397
