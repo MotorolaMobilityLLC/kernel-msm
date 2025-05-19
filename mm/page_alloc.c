@@ -5821,6 +5821,7 @@ static int zone_highsize(struct zone *zone, int batch, int cpu_online)
 static void pageset_update(struct per_cpu_pages *pcp, unsigned long high,
 		unsigned long batch)
 {
+	trace_android_vh_pageset_update(&high, &batch);
 	WRITE_ONCE(pcp->batch, batch);
 	WRITE_ONCE(pcp->high, high);
 }
