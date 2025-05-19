@@ -112,6 +112,8 @@ static const char * const gsl_rpc_func_names[] = {
 	"RPC_COMMAND_RESETSTATUS",
 	"RPC_CONTEXT_QUERY_DBCQ",
 	"RPC_CONTEXT_REGISTER_DBCQ",
+	"RPC_GSLPROFILER_PER_PROC_GPU_BUSY",
+	"RPC_GSLPROFILER_PER_PROC_GPU_PMEM",
 	"RPC_FUNC_LAST" // insert new func BEFORE this line!
 };
 
@@ -2787,3 +2789,173 @@ out:
 	return ret;
 }
 
+int hgsl_hyp_gslprofiler_per_proc_gpu_busy(struct hgsl_hyp_priv_t *priv,
+	struct hgsl_ioctl_gslprofiler_per_proc_gpu_busy_params *hgsl_param,
+	struct gsl_profiler_get_per_proc_gpu_busy_percentage_t *busy)
+{
+	struct gslprofiler_per_proc_gpu_busy_params rpc_params = { 0 };
+	struct hgsl_hab_channel_t *hab_channel = NULL;
+	struct gsl_hab_payload *send_buf = NULL;
+	struct gsl_hab_payload *recv_buf = NULL;
+	int i = 0;
+	int ret = 0;
+	int rval = 0;
+	uint64_t double_tmp = 0; // Convert  uint_64_t to double
+
+	RPC_TRACE();
+	ret = hgsl_hyp_channel_pool_get(priv, hgsl_param->channel_id, &hab_channel);
+	if (ret) {
+		LOGE("Failed to get hab channel %d", ret);
+		goto out;
+	}
+
+	send_buf = &hab_channel->send_buf;
+	recv_buf = &hab_channel->recv_buf;
+
+	if (!hab_channel->wait_retry) {
+		hgsl_rpc_parcel_reset(hab_channel);
+		rpc_params.size              = sizeof(rpc_params);
+		rpc_params.sampling_time     = hgsl_param->sampling_time;
+
+		ret = gsl_rpc_write(send_buf, &rpc_params, sizeof(rpc_params));
+		if (ret) {
+			LOGE("gsl_rpc_write failed, %d", ret);
+			goto out;
+		}
+	}
+
+	ret = gsl_rpc_transact_interrruptible(RPC_GSLPROFILER_PER_PROC_GPU_BUSY, hab_channel);
+	if (ret == -EINTR) {
+		hgsl_param->channel_id = hab_channel->id;
+		return ret;
+	} else if (ret) {
+		LOGE("gsl_rpc_transact_interrruptible failed, %d", ret);
+		goto out;
+	}
+
+	ret = gsl_rpc_read_uint32_l(recv_buf, &busy->process_num);
+	if (ret) {
+		LOGE("gsl_rpc_read_uint32_l failed, %d", ret);
+		goto out;
+	}
+
+	for (i = 0; i < busy->process_num; i++) {
+		ret = gsl_rpc_read_uint32_l(recv_buf, &busy->process_id[i]);
+		if (ret) {
+			LOGE("gsl_rpc_read_uint32_l failed, %d", ret);
+			goto out;
+		}
+		ret = gsl_rpc_read(recv_buf, busy->process_name[i], sizeof(busy->process_name[i]));
+		if (ret) {
+			LOGE("gsl_rpc_read failed, %d", ret);
+			goto out;
+		}
+		ret = gsl_rpc_read_uint64_l(recv_buf, &double_tmp);
+		if (ret) {
+			LOGE("gsl_rpc_read_uint64_l failed, %d", ret);
+			goto out;
+		}
+		memcpy(&busy->busy_percentage[i], &double_tmp, sizeof(double));
+	}
+	ret = gsl_rpc_read_uint64_l(recv_buf, &busy->ts);
+	if (ret) {
+		LOGE("gsl_rpc_read_uint64_l failed, %d", ret);
+		goto out;
+	}
+	ret = gsl_rpc_read_int32_l(recv_buf, &rval);
+	if (ret) {
+		LOGE("gsl_rpc_read_int32_l failed, %d", ret);
+		goto out;
+	}
+
+	ret = rval;
+
+out:
+	hgsl_hyp_channel_pool_put(hab_channel);
+	RPC_TRACE_DONE();
+	return ret;
+}
+
+int hgsl_hyp_gslprofiler_per_proc_gpu_pmem(struct hgsl_hyp_priv_t *priv,
+	struct hgsl_ioctl_gslprofiler_per_proc_gpu_pmem_params *hgsl_param,
+	struct gsl_profiler_get_per_proc_gpu_pmem_usage_t *pmem)
+{
+	struct gslprofiler_per_proc_gpu_pmem_params rpc_params = { 0 };
+	struct hgsl_hab_channel_t *hab_channel = NULL;
+	struct gsl_hab_payload *send_buf = NULL;
+	struct gsl_hab_payload *recv_buf = NULL;
+	int i = 0;
+	int ret = 0;
+	int rval = 0;
+
+	RPC_TRACE();
+	ret = hgsl_hyp_channel_pool_get(priv, hgsl_param->channel_id, &hab_channel);
+	if (ret) {
+		LOGE("Failed to get hab channel %d", ret);
+		goto out;
+	}
+
+	send_buf = &hab_channel->send_buf;
+	recv_buf = &hab_channel->recv_buf;
+
+	if (!hab_channel->wait_retry) {
+		hgsl_rpc_parcel_reset(hab_channel);
+		rpc_params.size              = sizeof(rpc_params);
+		ret = gsl_rpc_write(send_buf, &rpc_params, sizeof(rpc_params));
+		if (ret) {
+			LOGE("gsl_rpc_write failed, %d", ret);
+			goto out;
+		}
+	}
+
+	ret = gsl_rpc_transact_interrruptible(RPC_GSLPROFILER_PER_PROC_GPU_PMEM, hab_channel);
+	if (ret == -EINTR) {
+		hgsl_param->channel_id = hab_channel->id;
+		return ret;
+	} else if (ret) {
+		LOGE("gsl_rpc_transact_interrruptible failed, %d", ret);
+		goto out;
+	}
+
+	ret = gsl_rpc_read_uint32_l(recv_buf, &pmem->process_num);
+	if (ret) {
+		LOGE("gsl_rpc_read_uint32_l failed, %d", ret);
+		goto out;
+	}
+
+	for (i = 0; i < pmem->process_num; i++) {
+		ret = gsl_rpc_read_uint32_l(recv_buf, &pmem->process_id[i]);
+		if (ret) {
+			LOGE("gsl_rpc_read_uint32_l failed, %d", ret);
+			goto out;
+		}
+		ret = gsl_rpc_read(recv_buf, pmem->process_name[i], sizeof(pmem->process_name[i]));
+		if (ret) {
+			LOGE("gsl_rpc_read failed, %d", ret);
+			goto out;
+		}
+		ret = gsl_rpc_read_uint32_l(recv_buf, &pmem->pmem_usage[i]);
+		if (ret) {
+			LOGE("gsl_rpc_read_uint64_l failed, %d", ret);
+			goto out;
+		}
+	}
+	ret = gsl_rpc_read_uint64_l(recv_buf, &pmem->ts);
+	if (ret) {
+		LOGE("gsl_rpc_read_uint64_l failed, %d", ret);
+		goto out;
+	}
+
+	ret = gsl_rpc_read_int32_l(recv_buf, &rval);
+	if (ret) {
+		LOGE("gsl_rpc_read_int32_l failed, %d", ret);
+		goto out;
+	}
+
+	ret = rval;
+
+out:
+	hgsl_hyp_channel_pool_put(hab_channel);
+	RPC_TRACE_DONE();
+	return ret;
+}
