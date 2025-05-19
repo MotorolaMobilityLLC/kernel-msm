@@ -7192,6 +7192,7 @@ static void __setscheduler_prio(struct task_struct *p, int prio)
 		p->sched_class = &fair_sched_class;
 
 	p->prio = prio;
+	trace_android_rvh_setscheduler_prio(p);
 }
 
 #ifdef CONFIG_RT_MUTEXES

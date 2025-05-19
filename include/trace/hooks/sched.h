@@ -84,6 +84,10 @@ DECLARE_RESTRICTED_HOOK(android_rvh_setscheduler,
 	TP_PROTO(struct task_struct *p),
 	TP_ARGS(p), 1);
 
+DECLARE_RESTRICTED_HOOK(android_rvh_setscheduler_prio,
+	TP_PROTO(struct task_struct *p),
+	TP_ARGS(p), 1);
+
 struct sched_group;
 DECLARE_RESTRICTED_HOOK(android_rvh_find_busiest_group,
 	TP_PROTO(struct sched_group *busiest, struct rq *dst_rq, int *out_balance),
