@@ -136,6 +136,10 @@ struct llcc_edac_reg_offset {
 	u32 drp_ecc_db_err_syn0;
 };
 
+struct llcc_uid_slice_pair {
+	uint32_t uid;
+	struct llcc_slice_desc *desc;
+};
 /**
  * llcc_drv_data - Data associated with the llcc driver
  * @regmap: regmap associated with the llcc device
@@ -152,6 +156,8 @@ struct llcc_edac_reg_offset {
  * @ecc_irq: interrupt for llcc cache error detection and reporting
  * @llcc_ver: hardware version (20 for V2.0)
  * @desc: Array pointer of llcc_slice_desc
+ * @uid_slice_lookup: Lookup form UID to slice desc
+ * @sct_initialized: Indicates that SCT is already initialized outside llcc-qcom
  */
 struct llcc_drv_data {
 	struct regmap *regmap;
@@ -169,6 +175,8 @@ struct llcc_drv_data {
 	int llcc_ver;
 	bool cap_based_alloc_and_pwr_collapse;
 	struct llcc_slice_desc *desc;
+	struct llcc_uid_slice_pair *uid_slice_lookup;
+	bool sct_initialized;
 };
 
 /**
