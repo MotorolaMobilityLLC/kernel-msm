@@ -82,6 +82,15 @@ static int dummycon_blank(struct vc_data *vc, int blank, int mode_switch)
 	/* Redraw, so that we get putc(s) for output done while blanked */
 	return 1;
 }
+
+static bool dummycon_switch(struct vc_data *vc)
+{
+	/*
+	 * Redraw, so that we get putc(s) for output done while switched
+	 * away. Informs deferred consoles to take over the display.
+	 */
+	return true;
+}
 #else
 static void dummycon_putc(struct vc_data *vc, int c, int ypos, int xpos) { }
 static void dummycon_putcs(struct vc_data *vc, const unsigned short *s,
@@ -89,6 +98,10 @@ static void dummycon_putcs(struct vc_data *vc, const unsigned short *s,
 static int dummycon_blank(struct vc_data *vc, int blank, int mode_switch)
 {
 	return 0;
+}
+static bool dummycon_switch(struct vc_data *vc)
+{
+	return false;
 }
 #endif
 
@@ -115,11 +128,6 @@ static void dummycon_cursor(struct vc_data *vc, int mode) { }
 static bool dummycon_scroll(struct vc_data *vc, unsigned int top,
 			    unsigned int bottom, enum con_scroll dir,
 			    unsigned int lines)
-{
-	return false;
-}
-
-static bool dummycon_switch(struct vc_data *vc)
 {
 	return false;
 }
