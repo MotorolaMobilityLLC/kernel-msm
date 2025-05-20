@@ -691,11 +691,6 @@ typedef unsigned int sk_buff_data_t;
 typedef unsigned char *sk_buff_data_t;
 #endif
 
-enum skb_tstamp_type {
-	SKB_CLOCK_REALTIME,
-	SKB_CLOCK_MONOTONIC,
-};
-
 /**
  * DOC: Basic sk_buff geometry
  *
@@ -815,8 +810,10 @@ enum skb_tstamp_type {
  *	@dst_pending_confirm: need to confirm neighbour
  *	@decrypted: Decrypted SKB
  *	@slow_gro: state present at GRO time, slower prepare step required
- *	@tstamp_type: When set, skb->tstamp has the
- *		delivery_time clock base of skb->tstamp.
+ *	@mono_delivery_time: When set, skb->tstamp has the
+ *		delivery_time in mono clock base (i.e. EDT).  Otherwise, the
+ *		skb->tstamp has the (rcv) timestamp at ingress and
+ *		delivery_time at egress.
  *	@napi_id: id of the NAPI struct this skb came from
  *	@sender_cpu: (aka @napi_id) source CPU in XPS
  *	@alloc_cpu: CPU which did the skb allocation.
@@ -944,7 +941,7 @@ struct sk_buff {
 	/* private: */
 	__u8			__mono_tc_offset[0];
 	/* public: */
-	__u8			tstamp_type:1;	/* See skb_tstamp_type */
+	__u8			mono_delivery_time:1;	/* See SKB_MONO_DELIVERY_TIME_MASK */
 #ifdef CONFIG_NET_XGRESS
 	__u8			tc_at_ingress:1;	/* See TC_AT_INGRESS_MASK */
 	__u8			tc_skip_classify:1;
@@ -4201,7 +4198,7 @@ static inline void skb_get_new_timestampns(const struct sk_buff *skb,
 static inline void __net_timestamp(struct sk_buff *skb)
 {
 	skb->tstamp = ktime_get_real();
-	skb->tstamp_type = SKB_CLOCK_REALTIME;
+	skb->mono_delivery_time = 0;
 }
 
 static inline ktime_t net_timedelta(ktime_t t)
@@ -4210,33 +4207,10 @@ static inline ktime_t net_timedelta(ktime_t t)
 }
 
 static inline void skb_set_delivery_time(struct sk_buff *skb, ktime_t kt,
-					 u8 tstamp_type)
+					 bool mono)
 {
 	skb->tstamp = kt;
-
-	if (kt)
-		skb->tstamp_type = tstamp_type;
-	else
-		skb->tstamp_type = SKB_CLOCK_REALTIME;
-}
-
-static inline void skb_set_delivery_type_by_clockid(struct sk_buff *skb,
-						    ktime_t kt, clockid_t clockid)
-{
-	u8 tstamp_type = SKB_CLOCK_REALTIME;
-
-	switch (clockid) {
-	case CLOCK_REALTIME:
-		break;
-	case CLOCK_MONOTONIC:
-		tstamp_type = SKB_CLOCK_MONOTONIC;
-		break;
-	default:
-		WARN_ON_ONCE(1);
-		kt = 0;
-	}
-
-	skb_set_delivery_time(skb, kt, tstamp_type);
+	skb->mono_delivery_time = kt && mono;
 }
 
 DECLARE_STATIC_KEY_FALSE(netstamp_needed_key);
@@ -4246,8 +4220,8 @@ DECLARE_STATIC_KEY_FALSE(netstamp_needed_key);
  */
 static inline void skb_clear_delivery_time(struct sk_buff *skb)
 {
-	if (skb->tstamp_type) {
-		skb->tstamp_type = SKB_CLOCK_REALTIME;
+	if (skb->mono_delivery_time) {
+		skb->mono_delivery_time = 0;
 		if (static_branch_unlikely(&netstamp_needed_key))
 			skb->tstamp = ktime_get_real();
 		else
@@ -4257,7 +4231,7 @@ static inline void skb_clear_delivery_time(struct sk_buff *skb)
 
 static inline void skb_clear_tstamp(struct sk_buff *skb)
 {
-	if (skb->tstamp_type)
+	if (skb->mono_delivery_time)
 		return;
 
 	skb->tstamp = 0;
@@ -4265,7 +4239,7 @@ static inline void skb_clear_tstamp(struct sk_buff *skb)
 
 static inline ktime_t skb_tstamp(const struct sk_buff *skb)
 {
-	if (skb->tstamp_type)
+	if (skb->mono_delivery_time)
 		return 0;
 
 	return skb->tstamp;
@@ -4273,7 +4247,7 @@ static inline ktime_t skb_tstamp(const struct sk_buff *skb)
 
 static inline ktime_t skb_tstamp_cond(const struct sk_buff *skb, bool cond)
 {
-	if (skb->tstamp_type != SKB_CLOCK_MONOTONIC && skb->tstamp)
+	if (!skb->mono_delivery_time && skb->tstamp)
 		return skb->tstamp;
 
 	if (static_branch_unlikely(&netstamp_needed_key) || cond)
