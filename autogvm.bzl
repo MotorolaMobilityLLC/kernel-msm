@@ -117,7 +117,6 @@ def define_autogvm():
         "drivers/uio/msm_sharedmem/msm_sharedmem.ko",
         "drivers/usb/dwc3/dwc3-msm.ko",
         "drivers/usb/gadget/function/usb_f_cdev.ko",
-        "drivers/usb/gadget/function/usb_f_diag.ko",
         "drivers/usb/gadget/function/usb_f_qdss.ko",
         "drivers/usb/misc/ehset.ko",
         "drivers/usb/phy/phy-generic.ko",
