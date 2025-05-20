@@ -336,6 +336,7 @@ struct geni_i3c_dev {
 	struct geni_i3c_ver_info ver_info;
 	struct msm_geni_i3c_rsc i3c_rsc;
 	struct device *wrapper_dev;
+	bool is_egpio_present;
 };
 
 struct geni_i3c_i2c_dev_data {
@@ -2424,19 +2425,12 @@ err_cleanup:
 	 *use mutex protected internal put/get sync API. Hence forcefully
 	 *disabling clocks and decrementing usage count.
 	 */
-	disable_irq(gi3c->irq);
-	ret = geni_se_resources_off(&gi3c->se);
-	if (ret)
+	ret = pm_runtime_put_sync(gi3c->se.dev);
+	if (ret < 0) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_se_resources_off failed%d\n", __func__, ret);
-	ret = geni_icc_disable(&gi3c->se);
-	if (ret)
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_icc_disable failed%d\n", __func__, ret);
-	pm_runtime_disable(gi3c->se.dev);
-	pm_runtime_put_noidle(gi3c->se.dev);
-	pm_runtime_set_suspended(gi3c->se.dev);
-	pm_runtime_enable(gi3c->se.dev);
+			"%s: error turning SE resources:%d\n", __func__, ret);
+		return ret;
+	}
 
 	return ret;
 }
@@ -2774,9 +2768,9 @@ static void geni_i3c_enable_ibi_ctrl(struct geni_i3c_dev *gi3c, bool enable)
 	} else {
 		 /* Disable IBI controller */
 
-		/* check if any IBI is enabled, if not then disable IBI ctrl */
+		/* check if any IBI is enabled, if so disable IBI ctrl */
 		val = geni_read_reg(gi3c->ibi.ibi_base, IBI_GPII_IBI_EN);
-		if (!val) {
+		if (val) {
 			gi3c->ibi.err = 0;
 			reinit_completion(&gi3c->ibi.done);
 
@@ -3017,6 +3011,8 @@ static int i3c_geni_rsrcs_init(struct geni_i3c_dev *gi3c,
 	int ret;
 	struct resource *res;
 	struct device *dev = &pdev->dev;
+	struct device_node *np = dev->of_node;
+	struct device_node *pinctrl_np, *config_np;
 
 	/* base register address */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -3104,6 +3100,22 @@ static int i3c_geni_rsrcs_init(struct geni_i3c_dev *gi3c,
 		ret = PTR_ERR(gi3c->i3c_gpio_disable);
 		return ret;
 	}
+
+	pinctrl_np = of_parse_phandle(np, "pinctrl-0", 0);
+	if (!pinctrl_np) {
+		dev_err(dev, "Failed to get pinctrl node\n");
+		return -ENODEV;
+	}
+
+	config_np = of_get_child_by_name(pinctrl_np, "config");
+	if (!config_np) {
+		dev_err(dev, "Failed to find config subnode\n");
+		return -EINVAL;
+	}
+
+	gi3c->is_egpio_present =  of_property_read_bool(config_np, "qcom,apps");
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "egpio: %d\n", gi3c->is_egpio_present);
 
 	return 0;
 }
@@ -3478,15 +3490,6 @@ static int geni_i3c_probe(struct platform_device *pdev)
 			    tx_depth, gi3c->se_mode);
 	}
 
-	ret = geni_se_resources_off(&gi3c->se);
-	if (ret)
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_se_resources_off failed%d\n", __func__, ret);
-	ret = geni_icc_disable(&gi3c->se);
-	if (ret)
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_icc_disable failed%d\n", __func__, ret);
-
 	pm_runtime_set_suspended(gi3c->se.dev);
 	pm_runtime_set_autosuspend_delay(gi3c->se.dev, I3C_AUTO_SUSPEND_DELAY);
 	pm_runtime_use_autosuspend(gi3c->se.dev);
@@ -3647,6 +3650,9 @@ static int geni_i3c_runtime_suspend(struct device *dev)
 		}
 	}
 
+	if (gi3c->is_egpio_present)
+		geni_i3c_enable_ibi_ctrl(gi3c, false);
+
 	ret = geni_se_resources_off(&gi3c->se);
 	if (ret)
 		I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
@@ -3663,7 +3669,7 @@ static int geni_i3c_runtime_suspend(struct device *dev)
 
 static int geni_i3c_runtime_resume(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 	struct geni_i3c_dev *gi3c = dev_get_drvdata(dev);
 
 	ret = geni_icc_enable(&gi3c->se);
@@ -3683,6 +3689,9 @@ static int geni_i3c_runtime_resume(struct device *dev)
 	geni_write_reg(0x7f, gi3c->se.base, GENI_OUTPUT_CTRL);
 	/* Added 10 us delay to settle the write of the register as per HW team recommendation */
 	udelay(10);
+
+	if (gi3c->is_egpio_present)
+		geni_i3c_enable_ibi_ctrl(gi3c, true);
 
 	if (gi3c->se_mode != GENI_GPI_DMA) {
 		enable_irq(gi3c->irq);
