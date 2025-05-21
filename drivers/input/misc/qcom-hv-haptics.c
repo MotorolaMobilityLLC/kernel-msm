@@ -2974,7 +2974,8 @@ static int haptics_load_predefined_effect(struct haptics_chip *chip,
 				return rc;
 
 			pat_sel_mmap = &chip->mmap.pat_sel_mmap[effect->pat_sel];
-			length = pat_sel_mmap->length /
+			//length = pat_sel_mmap->length /
+			length = play->effect->fifo->num_s /
 					chip->mmap.hw_info.pat_mem_play_step;
 			addr = pat_sel_mmap->start_addr / HAP530_MMAP_PAT_LEN_PER_LSB;
 			val[0] = addr & HAP_PTN_PATX_MEM_LEN_LO_MASK;
@@ -4731,6 +4732,7 @@ static int haptics_parse_effect_fifo_data(struct haptics_chip *chip,
 		return rc;
 	}
 
+	effect->t_lra_us = config->t_lra_us;
 	effect->fifo->num_s = tmp;
 	effect->fifo->period_per_s = T_LRA;
 	rc = of_property_read_u32(node, "qcom,wf-fifo-period", &tmp);
