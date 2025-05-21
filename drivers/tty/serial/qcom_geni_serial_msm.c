@@ -1706,10 +1706,12 @@ static int geni_serial_power_state(struct uart_port *uport, bool power_on)
 	struct device *pwr_dev = port->pd_list->pd_devs[DOMAIN_IDX_POWER];
 	int ret;
 
-	if (power_on)
+	if (power_on) {
 		ret = pm_runtime_resume_and_get(pwr_dev);
-	else
+	} else {
+		port->dev_data->geni_serial_set_rate(uport, 300);
 		ret = pm_runtime_put_sync(pwr_dev);
+	}
 
 	if (ret)
 		dev_err(port->se.dev, "failed to switch power state(high=%d) ret=%d\n",
