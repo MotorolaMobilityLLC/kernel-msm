@@ -29,6 +29,9 @@ struct unix_edge;
 struct scm_fp_list {
 	short			count;
 	short			max;
+#ifdef CONFIG_UNIX
+	bool			inflight;
+#endif
 	struct user_struct	*user;
 	struct file		*fp[SCM_MAX_FD];
 #ifndef __GENKSYMS__
