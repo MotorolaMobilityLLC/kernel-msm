@@ -21,6 +21,7 @@
 #include <linux/serial.h>
 #include <linux/serial_core.h>
 #include <linux/slab.h>
+#include <linux/suspend.h>
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
 #include <dt-bindings/interconnect/qcom,icc.h>
@@ -1980,6 +1981,9 @@ static int qcom_geni_serial_sys_resume(struct device *dev)
 	struct qcom_geni_serial_port *port = dev_get_drvdata(dev);
 	struct uart_port *uport = &port->uport;
 	struct qcom_geni_private_data *private_data = uport->private_data;
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		port->setup = false;
 
 	ret = uart_resume_port(private_data->drv, uport);
 	if (uart_console(uport))
