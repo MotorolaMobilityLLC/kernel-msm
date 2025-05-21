@@ -100499,12 +100499,6 @@ member {
   offset: 128
 }
 member {
-  id: 0x805723f7
-  name: "gc_flags"
-  type_id: 0x33756485
-  offset: 8256
-}
-member {
   id: 0x8fd944b0
   name: "gc_interval"
   type_id: 0x6720d32f
@@ -112772,12 +112766,6 @@ member {
   offset: 16320
 }
 member {
-  id: 0x79c0ce48
-  name: "inflight"
-  type_id: 0x33756485
-  offset: 8128
-}
-member {
   id: 0x79f74293
   name: "inflight"
   type_id: 0x04fd619c
@@ -123481,12 +123469,6 @@ member {
   type_id: 0xd3c80119
 }
 member {
-  id: 0x556d5b03
-  name: "link"
-  type_id: 0xd3c80119
-  offset: 8000
-}
-member {
   id: 0x556d5d6f
   name: "link"
   type_id: 0xd3c80119
@@ -125011,6 +124993,12 @@ member {
   type_id: 0xf4933b90
 }
 member {
+  id: 0x2d1fe06a
+  name: "lock"
+  type_id: 0xf313e71a
+  offset: 8000
+}
+member {
   id: 0x2d1fe165
   name: "lock"
   type_id: 0xf313e71a
@@ -125201,12 +125189,6 @@ member {
   name: "lock"
   type_id: 0xf313e71a
   offset: 320
-}
-member {
-  id: 0x2d1feb84
-  name: "lock"
-  type_id: 0xf313e71a
-  offset: 8192
 }
 member {
   id: 0x2d1feb9a
@@ -148618,10 +148600,10 @@ member {
   offset: 896
 }
 member {
-  id: 0x337b4b40
+  id: 0x337b4570
   name: "oob_skb"
   type_id: 0x054f691a
-  offset: 9600
+  offset: 9088
 }
 member {
   id: 0x97510416
@@ -154605,16 +154587,16 @@ member {
   offset: 304
 }
 member {
-  id: 0x6a6786bf
+  id: 0x6a6789c8
   name: "peer_wake"
   type_id: 0x347ff86e
-  offset: 9216
+  offset: 8704
 }
 member {
-  id: 0x337f3f92
+  id: 0x337f3641
   name: "peer_wq"
   type_id: 0x5eee2044
-  offset: 8704
+  offset: 8192
 }
 member {
   id: 0xc29a8766
@@ -180668,10 +180650,10 @@ member {
   type_id: 0xc9082b19
 }
 member {
-  id: 0xac8121db
+  id: 0xac812894
   name: "scm_stat"
   type_id: 0xfa80d3fa
-  offset: 9536
+  offset: 9024
 }
 member {
   id: 0xe94f5bce
@@ -277497,7 +277479,7 @@ struct_union {
   kind: STRUCT
   name: "unix_sock"
   definition {
-    bytesize: 1216
+    bytesize: 1152
     member_id: 0x82ce9da8
     member_id: 0x24257f11
     member_id: 0x77353e9c
@@ -277506,14 +277488,11 @@ struct_union {
     member_id: 0xb794a532
     member_id: 0x5eddc09d
     member_id: 0xe2a2a0b6
-    member_id: 0x556d5b03
-    member_id: 0x79c0ce48
-    member_id: 0x2d1feb84
-    member_id: 0x805723f7
-    member_id: 0x337f3f92
-    member_id: 0x6a6786bf
-    member_id: 0xac8121db
-    member_id: 0x337b4b40
+    member_id: 0x2d1fe06a
+    member_id: 0x337f3641
+    member_id: 0x6a6789c8
+    member_id: 0xac812894
+    member_id: 0x337b4570
   }
 }
 struct_union {
