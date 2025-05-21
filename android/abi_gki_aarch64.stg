@@ -126570,12 +126570,6 @@ member {
   offset: 45416
 }
 member {
-  id: 0x03c71124
-  name: "lowlink"
-  type_id: 0x33756485
-  offset: 512
-}
-member {
   id: 0x8b23da1a
   name: "lowmem_reserve"
   type_id: 0xd6ffa9de
@@ -180404,6 +180398,12 @@ member {
   name: "scc_entry"
   type_id: 0xd3c80119
   offset: 256
+}
+member {
+  id: 0x027dfeed
+  name: "scc_index"
+  type_id: 0x33756485
+  offset: 512
 }
 member {
   id: 0x0ac848fc
@@ -277537,7 +277537,7 @@ struct_union {
     member_id: 0xd741c1b9
     member_id: 0x0fc2a957
     member_id: 0xad0a7aac
-    member_id: 0x03c71124
+    member_id: 0x027dfeed
   }
 }
 struct_union {
