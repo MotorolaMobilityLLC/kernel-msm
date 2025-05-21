@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-# Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 qcom_cpu_vendor_hooks.ko
 qcom_ipc_logging.ko
 ns.ko
@@ -32,6 +32,7 @@ cmd-db.ko
 qcom_soc_wdt.ko
 smem.ko
 qcom_sync_file.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
 gunyah.ko

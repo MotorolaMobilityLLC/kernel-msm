@@ -8,6 +8,7 @@
 
 #include <linux/highmem.h>
 #include <linux/mem-buf-exporter.h>
+#include <linux/gunyah/gh_mem_notifier.h>
 #include "mem-buf-dev.h"
 #include "mem-buf-gh.h"
 #include "mem-buf-ids.h"
@@ -15,8 +16,10 @@
 /*
  * @kref - A refcount for @sgt and @sgt's private data, which
  *	is expected to contain a 'struct mem_buf_vmperm'
+ * @rcu - Usage based off of mm/shrinker.c
  */
 struct mem_buf_vmperm {
+	struct list_head list;
 	u32 flags;
 	int current_vm_perms;
 	u32 mapcount;
@@ -32,7 +35,17 @@ struct mem_buf_vmperm {
 	void *dtor_data;
 	void (*kref_release)(struct kref *kref);
 	struct kref *kref;
+	struct rcu_head rcu;
 };
+
+/*
+ * Xarrays have an internal lock; load/store operations dont't need to
+ * hold vmperm_list_lock.
+ */
+static DEFINE_XARRAY(vmperm_xa);
+static LIST_HEAD(vmperm_list);
+static DEFINE_MUTEX(vmperm_list_lock);
+static void *gh_rm_mem_notifier_cookie;
 
 /*
  * Ensures the vmperm can hold at least nr_acl_entries.
@@ -116,7 +129,8 @@ static void mem_buf_vmperm_set_err(struct mem_buf_vmperm *vmperm)
 static struct mem_buf_vmperm *mem_buf_vmperm_alloc_flags(
 	struct sg_table *sgt, u32 flags,
 	int *vmids, int *perms, u32 nr_acl_entries,
-	void (*release)(struct kref *), struct kref *kref)
+	void (*release)(struct kref *), struct kref *kref,
+	gh_memparcel_handle_t hdl)
 {
 	struct mem_buf_vmperm *vmperm;
 	int ret;
@@ -128,22 +142,41 @@ static struct mem_buf_vmperm *mem_buf_vmperm_alloc_flags(
 	mutex_init(&vmperm->lock);
 	mutex_lock(&vmperm->lock);
 	ret = mem_buf_vmperm_resize(vmperm, nr_acl_entries);
-	if (ret)
+	if (ret) {
+		mutex_unlock(&vmperm->lock);
 		goto err_resize_state;
-
+	}
 	mem_buf_vmperm_update_state(vmperm, vmids, perms,
 					nr_acl_entries);
 	mutex_unlock(&vmperm->lock);
 	vmperm->sgt = sgt;
 	vmperm->flags = flags;
-	vmperm->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
+	vmperm->memparcel_hdl = hdl;
 	vmperm->kref_release = release;
 	vmperm->kref = kref;
 
+	/*
+	 * Hold an additional refcount, which represents the need to call
+	 * mem_buf_vmperm_try_reclaim() on this memparcel_hdl.
+	 * If it succeeds, the refcount is dropped.
+	 */
+	if (hdl != MEM_BUF_MEMPARCEL_INVALID) {
+		if (xa_insert(&vmperm_xa, hdl, vmperm, GFP_KERNEL))
+			goto err_xa;
+
+		kref_get(vmperm->kref);
+	}
+
+	mutex_lock(&vmperm_list_lock);
+	list_add_rcu(&vmperm->list, &vmperm_list);
+	mutex_unlock(&vmperm_list_lock);
+
 	return vmperm;
 
+err_xa:
+	kfree(vmperm->perms);
+	kfree(vmperm->vmids);
 err_resize_state:
-	mutex_unlock(&vmperm->lock);
 	kfree(vmperm);
 	return ERR_PTR(-ENOMEM);
 }
@@ -153,18 +186,8 @@ struct mem_buf_vmperm *mem_buf_vmperm_alloc_accept(struct sg_table *sgt,
 	unsigned int nr_acl_entries, void (*release)(struct kref *),
 	struct kref *kref)
 {
-	struct mem_buf_vmperm *vmperm;
-
-	vmperm = mem_buf_vmperm_alloc_flags(sgt,
-		MEM_BUF_WRAPPER_FLAG_ACCEPT,
-		vmids, perms, nr_acl_entries, release, kref);
-	if (IS_ERR(vmperm))
-		return vmperm;
-
-	vmperm->memparcel_hdl = memparcel_hdl;
-	/* Refcount increase on behalf of gh_rm_mem_accept */
-	kref_get(vmperm->kref);
-	return vmperm;
+	return  mem_buf_vmperm_alloc_flags(sgt, MEM_BUF_WRAPPER_FLAG_ACCEPT,
+		vmids, perms, nr_acl_entries, release, kref, memparcel_hdl);
 }
 EXPORT_SYMBOL(mem_buf_vmperm_alloc_accept);
 
@@ -174,7 +197,8 @@ struct mem_buf_vmperm *mem_buf_vmperm_alloc_staticvm(struct sg_table *sgt,
 {
 	return mem_buf_vmperm_alloc_flags(sgt,
 		MEM_BUF_WRAPPER_FLAG_STATIC_VM,
-		vmids, perms, nr_acl_entries, release, kref);
+		vmids, perms, nr_acl_entries, release, kref,
+		MEM_BUF_MEMPARCEL_INVALID);
 }
 EXPORT_SYMBOL(mem_buf_vmperm_alloc_staticvm);
 
@@ -187,7 +211,8 @@ struct mem_buf_vmperm *mem_buf_vmperm_alloc(struct sg_table *sgt,
 	vmids[0] = current_vmid;
 	perms[0] = PERM_READ | PERM_WRITE | PERM_EXEC;
 	return mem_buf_vmperm_alloc_flags(sgt, 0,
-		vmids, perms, 1, release, kref);
+		vmids, perms, 1, release, kref,
+		MEM_BUF_MEMPARCEL_INVALID);
 }
 EXPORT_SYMBOL(mem_buf_vmperm_alloc);
 
@@ -205,6 +230,7 @@ static int __mem_buf_vmperm_reclaim(struct mem_buf_vmperm *vmperm)
 
 	mem_buf_vmperm_update_state(vmperm, new_vmids, new_perms, 1);
 	vmperm->flags &= ~MEM_BUF_WRAPPER_FLAG_LENDSHARE;
+	xa_erase(&vmperm_xa, vmperm->memparcel_hdl);
 	vmperm->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
 	kref_put(vmperm->kref, vmperm->kref_release);
 	return 0;
@@ -232,10 +258,26 @@ static int mem_buf_vmperm_relinquish(struct mem_buf_vmperm *vmperm)
 	if (ret)
 		return ret;
 
+	ret = gh_rm_mem_notify(vmperm->memparcel_hdl, GH_RM_MEM_NOTIFY_OWNER_RELEASED,
+			GH_MEM_NOTIFIER_TAG_MEM_BUF, NULL);
+	if (ret)
+		pr_err("%s: gh_rm_mem_notify failed\n", __func__);
+
+	xa_erase(&vmperm_xa, vmperm->memparcel_hdl);
 	vmperm->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
 	vmperm->flags &= ~MEM_BUF_WRAPPER_FLAG_ACCEPT;
 	kref_put(vmperm->kref, vmperm->kref_release);
 	return 0;
+}
+
+static void vmperm_rcu_cb(struct rcu_head *head)
+{
+	struct mem_buf_vmperm *vmperm = container_of(head, struct mem_buf_vmperm, rcu);
+
+	kfree(vmperm->perms);
+	kfree(vmperm->vmids);
+	mutex_destroy(&vmperm->lock);
+	kfree(vmperm);
 }
 
 void mem_buf_vmperm_free(struct mem_buf_vmperm *vmperm)
@@ -243,10 +285,11 @@ void mem_buf_vmperm_free(struct mem_buf_vmperm *vmperm)
 	WARN_ON(vmperm->flags & MEM_BUF_WRAPPER_FLAG_LENDSHARE);
 	WARN_ON(vmperm->flags & MEM_BUF_WRAPPER_FLAG_ACCEPT);
 
-	kfree(vmperm->perms);
-	kfree(vmperm->vmids);
-	mutex_destroy(&vmperm->lock);
-	kfree(vmperm);
+	mutex_lock(&vmperm_list_lock);
+	list_del_rcu(&vmperm->list);
+	mutex_unlock(&vmperm_list_lock);
+
+	call_rcu(&vmperm->rcu, vmperm_rcu_cb);
 }
 EXPORT_SYMBOL_GPL(mem_buf_vmperm_free);
 
@@ -480,6 +523,34 @@ static bool validate_lend_mapcount(struct mem_buf_vmperm *vmperm,
 	return false;
 }
 
+/*
+ * Notice - lending to VMs which don't exist yet is allowed, but notifying
+ * vmids that don't exist is not. Since we don't have a good way to
+ * check if a vmid exists (yet), send one notification at a time.
+ */
+static void mem_buf_lend_notify(struct mem_buf_vmperm *vmperm)
+{
+	int ret, i;
+	struct gh_notify_vmid_desc *vmid_desc;
+
+	vmid_desc = kzalloc(struct_size(vmid_desc, vmid_entries, 1),
+				GFP_KERNEL);
+	if (!vmid_desc)
+		return;
+
+	vmid_desc->n_vmid_entries = 1;
+	for (i = 0; i < vmperm->nr_acl_entries; i++) {
+		vmid_desc->vmid_entries[0].vmid = vmperm->vmids[i];
+
+		ret = gh_rm_mem_notify(vmperm->memparcel_hdl, GH_RM_MEM_NOTIFY_RECIPIENT_SHARED,
+				GH_MEM_NOTIFIER_TAG_MEM_BUF, vmid_desc);
+		if (ret)
+			pr_err("%s: gh_rm_mem_notify failed for vmid %d\n",
+				__func__, vmperm->vmids[i]);
+	}
+	kfree(vmid_desc);
+}
+
 static int mem_buf_lend_internal(struct dma_buf *dmabuf,
 			struct mem_buf_lend_kernel_arg *arg,
 			u32 op)
@@ -562,9 +633,18 @@ static int mem_buf_lend_internal(struct dma_buf *dmabuf,
 	vmperm->flags |= MEM_BUF_WRAPPER_FLAG_LENDSHARE;
 	vmperm->memparcel_hdl = arg->memparcel_hdl;
 	kref_get(vmperm->kref);
-
 	mutex_unlock(&vmperm->lock);
+
+	ret = xa_insert(&vmperm_xa, vmperm->memparcel_hdl, vmperm,
+				GFP_KERNEL);
+	if (ret)
+		goto err_xa;
+	mem_buf_lend_notify(vmperm);
+
 	return 0;
+err_xa:
+	mem_buf_vmperm_try_reclaim(vmperm);
+	return ret;
 
 err_assign:
 err_resize:
@@ -767,3 +847,55 @@ int mem_buf_dma_buf_get_memparcel_hdl(struct dma_buf *dmabuf,
 	return 0;
 }
 EXPORT_SYMBOL(mem_buf_dma_buf_get_memparcel_hdl);
+
+/* Find the object with matching memparcel_hdl, and grab a reference */
+static struct mem_buf_vmperm *vmperm_lookup(u32 hdl)
+{
+	struct mem_buf_vmperm *vmperm;
+
+	rcu_read_lock();
+	vmperm = xa_load(&vmperm_xa, hdl);
+	if (vmperm && !kref_get_unless_zero(vmperm->kref))
+		vmperm = NULL;
+	rcu_read_unlock();
+
+	return vmperm;
+}
+
+/*
+ * Treat NOTIF_MEM_RELEASED as a hint. For example, if a buffer is shared
+ * with both TUIVM and OEMVM, then we would only receive 2 MEM_RELEASED
+ * calls if TUIVM and OEMVM both support sending notifications.
+ */
+static void mem_buf_vmperm_gh_notifier(enum gh_mem_notifier_tag tag, unsigned long action,
+					void *data, void *_msg)
+{
+	struct mem_buf_vmperm *vmperm;
+	struct gh_rm_notif_mem_released_payload *msg = _msg;
+
+	if (action != GH_RM_NOTIF_MEM_RELEASED)
+		return;
+
+	/* Acquire refcount */
+	vmperm = vmperm_lookup(msg->mem_handle);
+	if (!vmperm) {
+		pr_err("%s: No vmperm for handle %d\n", __func__, msg->mem_handle);
+		return;
+	}
+
+	mem_buf_vmperm_try_reclaim(vmperm);
+	/* Drop refcount from vmperm_lookup */
+	kref_put(vmperm->kref, vmperm->kref_release);
+}
+
+int mem_buf_dma_buf_init(void)
+{
+	gh_rm_mem_notifier_cookie = gh_mem_notifier_register(GH_MEM_NOTIFIER_TAG_MEM_BUF,
+						mem_buf_vmperm_gh_notifier, NULL);
+	if (IS_ERR(gh_rm_mem_notifier_cookie)) {
+		pr_err("Failed: gh_mem_notifier_register\n");
+		return PTR_ERR(gh_rm_mem_notifier_cookie);
+	}
+
+	return 0;
+}

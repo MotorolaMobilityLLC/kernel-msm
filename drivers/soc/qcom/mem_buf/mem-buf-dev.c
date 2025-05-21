@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/kernel.h>
@@ -103,6 +103,10 @@ static int mem_buf_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	u64 dma_mask = IS_ENABLED(CONFIG_ARM64) ? DMA_BIT_MASK(64) :
 		DMA_BIT_MASK(32);
+
+	ret = mem_buf_dma_buf_init();
+	if (ret)
+		return dev_err_probe(dev, ret, "mem_buf_dma_buf_init failed\n");
 
 	if (of_property_match_string(dev->of_node, "qcom,mem-buf-capabilities",
 				     "supplier") >= 0)
