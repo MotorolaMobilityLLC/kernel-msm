@@ -183,3 +183,11 @@ type 'struct unix_sock' changed
   4 members ('struct socket_wq peer_wq' .. 'struct sk_buff* oob_skb') changed
     offset changed by -512
 
+type 'struct unix_sock' changed
+  member 'struct sk_buff* oob_skb' changed
+    offset changed by 64
+
+type 'struct scm_stat' changed
+  byte size changed from 4 to 16
+  member 'unsigned long nr_unix_fds' was added
+
