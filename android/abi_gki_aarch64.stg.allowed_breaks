@@ -173,3 +173,13 @@ type 'struct unix_vertex' changed
   member 'unsigned long lowlink' was removed
   member 'unsigned long scc_index' was added
 
+type 'struct unix_sock' changed
+  byte size changed from 1216 to 1152
+  member 'struct list_head link' was removed
+  member 'unsigned long inflight' was removed
+  member 'spinlock_t lock' changed
+    offset changed by -192
+  member 'unsigned long gc_flags' was removed
+  4 members ('struct socket_wq peer_wq' .. 'struct sk_buff* oob_skb') changed
+    offset changed by -512
+
