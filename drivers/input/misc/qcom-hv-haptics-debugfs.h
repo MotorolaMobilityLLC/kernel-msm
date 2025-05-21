@@ -221,6 +221,7 @@ static ssize_t fifo_s_dbgfs_read(struct file *fp, char __user *buf, size_t count
 	return rc;
 }
 
+u8 samples_dbg[MMAP_FIFO_LEN_PER_LSB];
 static ssize_t fifo_s_dbgfs_write(struct file *fp,
 		const char __user *buf, size_t count, loff_t *ppos)
 {
@@ -229,7 +230,6 @@ static ssize_t fifo_s_dbgfs_write(struct file *fp,
 	char *str, *kbuf, *token;
 	int rc, i = 0;
 	int val;
-	u8 *samples;
 
 	kbuf = kzalloc(count + 1, GFP_KERNEL);
 	if (!kbuf)
@@ -245,12 +245,6 @@ static ssize_t fifo_s_dbgfs_write(struct file *fp,
 	str[count] = '\0';
 	*ppos += count;
 
-	samples = kcalloc(fifo->num_s, sizeof(*samples), GFP_KERNEL);
-	if (!samples) {
-		rc = -ENOMEM;
-		goto exit;
-	}
-
 	while ((token = strsep(&str, " ")) != NULL) {
 		rc = kstrtoint(token, 0, &val);
 		if (rc < 0) {
@@ -261,13 +255,13 @@ static ssize_t fifo_s_dbgfs_write(struct file *fp,
 		if (val > 0xff)
 			val = 0xff;
 
-		samples[i++] = (u8)val;
-		/* only support fifo pattern no longer than before */
-		if (i >= fifo->num_s)
+		samples_dbg[i++] = (u8)val;
+		if (i >= MMAP_FIFO_LEN_PER_LSB)
 			break;
 	}
 
-	memcpy(fifo->samples, samples, fifo->num_s);
+	fifo->samples = samples_dbg;
+	fifo->num_s = i;
 	fifo->play_length_us = get_fifo_play_length_us(fifo, effect->t_lra_us);
 	if (fifo->play_length_us == -EINVAL) {
 		pr_err("get fifo play length failed\n");
@@ -277,7 +271,6 @@ static ssize_t fifo_s_dbgfs_write(struct file *fp,
 
 	rc = count;
 exit2:
-	kfree(samples);
 exit:
 	kfree(kbuf);
 	return rc;
