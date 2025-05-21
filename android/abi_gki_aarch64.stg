@@ -148466,12 +148466,6 @@ member {
   offset: 288
 }
 member {
-  id: 0x19406067
-  name: "on_stack"
-  type_id: 0x6d7f5ff6
-  offset: 576
-}
-member {
   id: 0x9de8e020
   name: "on_time"
   type_id: 0x92233392
@@ -277537,14 +277531,13 @@ struct_union {
   kind: STRUCT
   name: "unix_vertex"
   definition {
-    bytesize: 80
+    bytesize: 72
     member_id: 0x76197573
     member_id: 0x4d8789fe
     member_id: 0xd741c1b9
     member_id: 0x0fc2a957
     member_id: 0xad0a7aac
     member_id: 0x03c71124
-    member_id: 0x19406067
   }
 }
 struct_union {
