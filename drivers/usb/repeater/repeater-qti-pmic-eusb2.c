@@ -13,6 +13,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/usb/dwc3-msm.h>
 #include <linux/usb/repeater.h>
+#include <linux/mutex.h>
 
 #define EUSB2_3P0_VOL_MIN			3075000 /* uV */
 #define EUSB2_3P0_VOL_MAX			3300000 /* uV */
@@ -118,6 +119,14 @@ struct eusb2_repeater {
 	u32			*host_param_override_seq;
 	u8			param_override_seq_cnt;
 	u8			host_param_override_seq_cnt;
+
+	u32			*user_param_override_seq;
+	u8			user_param_override_seq_cnt;
+	u8			user_param_override_seq_len;
+	u32			*user_host_param_override_seq;
+	u8			user_host_param_override_seq_cnt;
+	u8			user_host_param_override_seq_len;
+	struct mutex		user_param_lock;
 };
 
 /* Perform one or more register read */
@@ -336,12 +345,22 @@ static int eusb2_repeater_init(struct usb_repeater *ur)
 	unsigned int rptr_init_cnt = INIT_MAX_CNT;
 
 	/* override init sequence using devicetree based values */
-	eusb2_repeater_update_seq(er, er->param_override_seq,
-			er->param_override_seq_cnt);
-
 	if (ur->flags & PHY_HOST_MODE)
 		eusb2_repeater_update_seq(er, er->host_param_override_seq,
 				er->host_param_override_seq_cnt);
+	else
+		eusb2_repeater_update_seq(er, er->param_override_seq,
+				er->param_override_seq_cnt);
+
+	/* override init sequence using values from userspace */
+	mutex_lock(&er->user_param_lock);
+	if (ur->flags & PHY_HOST_MODE)
+		eusb2_repeater_update_seq(er, er->user_host_param_override_seq,
+				er->user_host_param_override_seq_cnt);
+	else
+		eusb2_repeater_update_seq(er, er->user_param_override_seq,
+				er->user_param_override_seq_cnt);
+	mutex_unlock(&er->user_param_lock);
 
 	/* override tune params using debugfs based values */
 	if (er->usb2_crossover <= 0x7)
@@ -483,6 +502,272 @@ static int eusb2_repeater_read_overrides(struct device *dev, const char *prop,
 	return 0;
 }
 
+static ssize_t user_param_override_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	int ret = 0;
+	int i = 0;
+	char *argbuf = NULL;
+	u8 param_data = 0;
+	int param_len = 0;
+	char *param_head = NULL;
+	u32 *param_seq = NULL;
+	struct eusb2_repeater *er = dev_get_drvdata(dev);
+
+	if (!er)
+		return -EINVAL;
+
+	argbuf = kstrdup(buf, GFP_KERNEL);
+	if (!argbuf)
+		return -ENOMEM;
+
+	mutex_lock(&er->user_param_lock);
+	if (!strncmp(argbuf, "none", 4)) {
+		er->user_param_override_seq_cnt = 0;
+		dev_info(dev, "Clear user parameters override\n");
+		goto free_buf;
+	}
+
+	/* validate parameters sequence: reg, val, reg, val... */
+	for (i = 0; i < count; i++) {
+		if (argbuf[i] != ' ' &&
+		    argbuf[i] != ',' &&
+		    argbuf[i] != '\0' &&
+		    argbuf[i] != '\n' &&
+		    argbuf[i] != '\r') {
+			if (!param_head) {
+				param_len++;
+				param_head = &argbuf[i];
+			}
+		} else {
+			argbuf[i] = '\0';
+			if (param_head) {
+				ret = kstrtou8(param_head, 0, &param_data);
+				if (ret) {
+					dev_err(dev, "invalid data: %s\n",
+							param_head);
+					goto free_buf;
+				}
+				param_head = NULL;
+			}
+		}
+	}
+	if (param_len <= 0 || (param_len % 2) != 0) {
+		dev_err(dev, "invalid len=%d for %s\n", param_len, buf);
+		ret = -EINVAL;
+		goto free_buf;
+	}
+
+	if (param_len > er->user_param_override_seq_len) {
+		param_seq = devm_kzalloc(dev,
+				param_len * sizeof(*param_seq),
+				GFP_KERNEL);
+		if (!param_seq) {
+			ret = -ENOMEM;
+			goto free_buf;
+		}
+		if (er->user_param_override_seq)
+			devm_kfree(dev, er->user_param_override_seq);
+		er->user_param_override_seq_len = param_len;
+	} else {
+		param_seq = er->user_param_override_seq;
+	}
+
+	dev_info(dev, "Update %d user parameters\n", param_len / 2);
+	param_len = 0;
+	param_head = NULL;
+	for (i = 0; i < count; i++) {
+		if (argbuf[i] != '\0') {
+			if (!param_head) {
+				param_head = &argbuf[i];
+				ret = kstrtou8(param_head, 0, &param_data);
+				if (ret) {
+					dev_err(dev, "invalid data: %s\n",
+							param_head);
+					goto free_buf;
+				}
+				if (param_len > 0 && (param_len % 2) > 0) {
+					dev_info(dev,
+						"update: 0x%02x to 0x%02x\n",
+						param_seq[param_len - 1],
+						param_data);
+				}
+				param_seq[param_len++] = param_data;
+			}
+		} else {
+			if (param_head) {
+				param_head = NULL;
+			}
+		}
+	}
+	er->user_param_override_seq = param_seq;
+	er->user_param_override_seq_cnt = param_len;
+
+free_buf:
+	kfree(argbuf);
+	mutex_unlock(&er->user_param_lock);
+	return ret < 0? ret : count;
+}
+
+static ssize_t user_param_override_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int i = 0, pos = 0;
+	u32 *param_seq = NULL;
+	struct eusb2_repeater *er = dev_get_drvdata(dev);
+
+	if (!er)
+		return -EINVAL;
+
+	mutex_lock(&er->user_param_lock);
+	param_seq = er->user_param_override_seq;
+	for (i = 0; i < er->user_param_override_seq_cnt; i++) {
+		pos += sprintf(buf + pos, "0x%x,", param_seq[i]);
+	}
+	pos += sprintf(buf + pos, "\n");
+	mutex_unlock(&er->user_param_lock);
+
+	return pos;
+}
+static DEVICE_ATTR(user_param_override, 0664,
+		user_param_override_show,
+		user_param_override_store);
+
+static ssize_t user_host_param_override_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	int ret = 0;
+	int i = 0;
+	char *argbuf = NULL;
+	u8 param_data = 0;
+	int param_len = 0;
+	char *param_head = NULL;
+	u32 *param_seq = NULL;
+	struct eusb2_repeater *er = dev_get_drvdata(dev);
+
+	if (!er)
+		return -EINVAL;
+
+	argbuf = kstrdup(buf, GFP_KERNEL);
+	if (!argbuf)
+		return -ENOMEM;
+
+	mutex_lock(&er->user_param_lock);
+	if (!strncmp(argbuf, "none", 4)) {
+		er->user_host_param_override_seq_cnt = 0;
+		dev_info(dev, "Clear user host parameters override\n");
+		goto free_buf;
+	}
+
+	/* validate parameters sequence: reg, val, reg, val... */
+	for (i = 0; i < count; i++) {
+		if (argbuf[i] != ' ' &&
+		    argbuf[i] != ',' &&
+		    argbuf[i] != '\0' &&
+		    argbuf[i] != '\n' &&
+		    argbuf[i] != '\r') {
+			if (!param_head) {
+				param_len++;
+				param_head = &argbuf[i];
+			}
+		} else {
+			argbuf[i] = '\0';
+			if (param_head) {
+				ret = kstrtou8(param_head, 0, &param_data);
+				if (ret) {
+					dev_err(dev, "invalid data: %s\n",
+							param_head);
+					goto free_buf;
+				}
+				param_head = NULL;
+			}
+		}
+	}
+	if (param_len <= 0 || (param_len % 2) != 0) {
+		dev_err(dev, "invalid len=%d for %s\n", param_len, buf);
+		ret = -EINVAL;
+		goto free_buf;
+	}
+
+	if (param_len > er->user_host_param_override_seq_len) {
+		param_seq = devm_kzalloc(dev,
+				param_len * sizeof(*param_seq),
+				GFP_KERNEL);
+		if (!param_seq) {
+			ret = -ENOMEM;
+			goto free_buf;
+		}
+		if (er->user_host_param_override_seq)
+			devm_kfree(dev, er->user_host_param_override_seq);
+		er->user_host_param_override_seq_len = param_len;
+	} else {
+		param_seq = er->user_host_param_override_seq;
+	}
+
+	dev_info(dev, "Update %d user host parameters\n", param_len / 2);
+	param_len = 0;
+	param_head = NULL;
+	for (i = 0; i < count; i++) {
+		if (argbuf[i] != '\0') {
+			if (!param_head) {
+				param_head = &argbuf[i];
+				ret = kstrtou8(param_head, 0, &param_data);
+				if (ret) {
+					dev_err(dev, "invalid data: %s\n",
+							param_head);
+					goto free_buf;
+				}
+				if (param_len > 0 && (param_len % 2) > 0) {
+					dev_info(dev,
+						"update: 0x%02x to 0x%02x\n",
+						param_seq[param_len - 1],
+						param_data);
+				}
+				param_seq[param_len++] = param_data;
+			}
+		} else {
+			if (param_head) {
+				param_head = NULL;
+			}
+		}
+	}
+	er->user_host_param_override_seq = param_seq;
+	er->user_host_param_override_seq_cnt = param_len;
+
+free_buf:
+	kfree(argbuf);
+	mutex_unlock(&er->user_param_lock);
+	return ret < 0? ret : count;
+}
+
+static ssize_t user_host_param_override_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int i = 0, pos = 0;
+	u32 *param_seq = NULL;
+	struct eusb2_repeater *er = dev_get_drvdata(dev);
+
+	if (!er)
+		return -EINVAL;
+
+	mutex_lock(&er->user_param_lock);
+	param_seq = er->user_host_param_override_seq;
+	for (i = 0; i < er->user_host_param_override_seq_cnt; i++) {
+		pos += sprintf(buf + pos, "0x%x,", param_seq[i]);
+	}
+	pos += sprintf(buf + pos, "\n");
+	mutex_unlock(&er->user_param_lock);
+
+	return pos;
+}
+static DEVICE_ATTR(user_host_param_override, 0664,
+		user_host_param_override_show,
+		user_host_param_override_store);
+
 static int eusb2_repeater_probe(struct platform_device *pdev)
 {
 	struct eusb2_repeater *er;
@@ -547,6 +832,19 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 		goto err_probe;
 
 	eusb2_repeater_create_debugfs(er);
+
+	mutex_init(&er->user_param_lock);
+	ret = device_create_file(er->ur.dev,
+			&dev_attr_user_param_override);
+	if (ret) {
+		dev_err(dev, "unable to create user param seq attr\n");
+	}
+
+	ret = device_create_file(er->ur.dev,
+			&dev_attr_user_host_param_override);
+	if (ret) {
+		dev_err(dev, "unable to create user host param seq attr\n");
+	}
 	return 0;
 
 err_probe:
@@ -560,6 +858,10 @@ static void eusb2_repeater_remove(struct platform_device *pdev)
 	if (!er)
 		return;
 
+	device_remove_file(er->ur.dev,
+			&dev_attr_user_param_override);
+	device_remove_file(er->ur.dev,
+			&dev_attr_user_host_param_override);
 	debugfs_remove_recursive(er->root);
 	usb_remove_repeater_dev(&er->ur);
 	eusb2_repeater_power(er, false);
