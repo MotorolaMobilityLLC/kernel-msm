@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -39,6 +39,7 @@ struct gh_sec_vm_dev {
 	struct device *dev;
 	bool system_vm;
 	bool keep_running;
+	bool rebootable;
 	phys_addr_t fw_phys;
 	void *fw_virt;
 	ssize_t fw_size;
@@ -211,6 +212,7 @@ static int gh_vm_loader_sec_load(struct gh_sec_vm_dev *vm_dev,
 			vm_dev->fw_size, vm_dev->system_vm);
 
 	vm->keep_running = vm_dev->keep_running;
+	vm->rebootable = vm_dev->rebootable;
 
 	if (ret) {
 		dev_err(dev, "Failed to provide memory for %s, %d\n",
@@ -511,6 +513,11 @@ static int gh_secure_vm_loader_probe(struct platform_device *pdev)
 		of_property_read_bool(dev->of_node, "qcom,keep-running");
 	if (sec_vm_dev->keep_running)
 		dev_info(dev, "VM with keep running attribute added\n");
+
+	sec_vm_dev->rebootable =
+		of_property_read_bool(dev->of_node, "qcom,rebootable");
+	if (sec_vm_dev->rebootable)
+		dev_info(dev, "VM with rebootable attribute added\n");
 
 	ret = of_property_read_u32(dev->of_node,
 				"qcom,vmid", &sec_vm_dev->vmid);
