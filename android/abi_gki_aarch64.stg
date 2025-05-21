@@ -112159,10 +112159,10 @@ member {
   offset: 64
 }
 member {
-  id: 0xad0a7a1c
+  id: 0xad0a7aac
   name: "index"
   type_id: 0x33756485
-  offset: 320
+  offset: 448
 }
 member {
   id: 0xad0a7d70
@@ -126358,6 +126358,12 @@ member {
   name: "lowlatency_playback"
   type_id: 0x6d7f5ff6
   offset: 45416
+}
+member {
+  id: 0x03c71124
+  name: "lowlink"
+  type_id: 0x33756485
+  offset: 512
 }
 member {
   id: 0x8b23da1a
@@ -148216,6 +148222,12 @@ member {
   offset: 288
 }
 member {
+  id: 0x19406067
+  name: "on_stack"
+  type_id: 0x6d7f5ff6
+  offset: 576
+}
+member {
   id: 0x9de8e020
   name: "on_time"
   type_id: 0x92233392
@@ -150409,10 +150421,10 @@ member {
   offset: 128
 }
 member {
-  id: 0x0fc2a86e
+  id: 0x0fc2a957
   name: "out_degree"
   type_id: 0x33756485
-  offset: 256
+  offset: 384
 }
 member {
   id: 0xbdac191c
@@ -180131,6 +180143,12 @@ member {
   name: "scb"
   type_id: 0x6d7f5ff6
   offset: 40
+}
+member {
+  id: 0xd741c1b9
+  name: "scc_entry"
+  type_id: 0xd3c80119
+  offset: 256
 }
 member {
   id: 0x0ac848fc
@@ -277101,11 +277119,14 @@ struct_union {
   kind: STRUCT
   name: "unix_vertex"
   definition {
-    bytesize: 48
+    bytesize: 80
     member_id: 0x76197573
     member_id: 0x4d8789fe
-    member_id: 0x0fc2a86e
-    member_id: 0xad0a7a1c
+    member_id: 0xd741c1b9
+    member_id: 0x0fc2a957
+    member_id: 0xad0a7aac
+    member_id: 0x03c71124
+    member_id: 0x19406067
   }
 }
 struct_union {

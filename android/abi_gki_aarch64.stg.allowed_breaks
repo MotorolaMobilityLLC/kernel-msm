@@ -152,3 +152,11 @@ type 'struct unix_vertex' changed
   byte size changed from 40 to 48
   member 'unsigned long index' was added
 
+type 'struct unix_vertex' changed
+  byte size changed from 48 to 80
+  member 'struct list_head scc_entry' was added
+  2 members ('unsigned long out_degree' .. 'unsigned long index') changed
+    offset changed by 128
+  member 'unsigned long lowlink' was added
+  member 'bool on_stack' was added
+
