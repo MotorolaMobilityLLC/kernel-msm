@@ -169,3 +169,7 @@ type 'struct unix_vertex' changed
   byte size changed from 80 to 72
   member 'bool on_stack' was removed
 
+type 'struct unix_vertex' changed
+  member 'unsigned long lowlink' was removed
+  member 'unsigned long scc_index' was added
+
