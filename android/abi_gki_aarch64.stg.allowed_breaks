@@ -160,3 +160,8 @@ type 'struct unix_vertex' changed
   member 'unsigned long lowlink' was added
   member 'bool on_stack' was added
 
+type 'struct unix_sock' changed
+  member 'struct sock* listener' was added
+  4 members ('struct list_head link' .. 'unsigned long gc_flags') changed
+    offset changed by 64
+
