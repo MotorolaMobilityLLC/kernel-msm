@@ -3438,7 +3438,7 @@ retry_find:
 		}
 	}
 
-	trace_android_vh_filemap_fault_before_folio_locked(folio);
+	trace_android_vh_filemap_fault_pre_folio_locked(folio);
 
 	if (!lock_folio_maybe_drop_mmap(vmf, folio, &fpin))
 		goto out_retry;
