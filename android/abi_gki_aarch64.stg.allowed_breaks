@@ -144,3 +144,11 @@ type 'struct scm_fp_list' changed
   3 members ('struct list_head vertices' .. 'short count_unix') changed
     offset changed by 64
 
+type 'struct unix_edge' changed
+  byte size changed from 32 to 48
+  member 'struct list_head stack_entry' was added
+
+type 'struct unix_vertex' changed
+  byte size changed from 40 to 48
+  member 'unsigned long index' was added
+
