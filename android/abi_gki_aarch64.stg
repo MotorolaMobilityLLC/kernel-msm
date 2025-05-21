@@ -144591,6 +144591,12 @@ member {
   offset: 21760
 }
 member {
+  id: 0xb206d8fd
+  name: "nr_unix_fds"
+  type_id: 0x33756485
+  offset: 64
+}
+member {
   id: 0xfb6f3a99
   name: "nr_user"
   type_id: 0x6720d32f
@@ -148600,10 +148606,10 @@ member {
   offset: 896
 }
 member {
-  id: 0x337b4570
+  id: 0x337b49fc
   name: "oob_skb"
   type_id: 0x054f691a
-  offset: 9088
+  offset: 9152
 }
 member {
   id: 0x97510416
@@ -267023,8 +267029,9 @@ struct_union {
   kind: STRUCT
   name: "scm_stat"
   definition {
-    bytesize: 4
+    bytesize: 16
     member_id: 0xc7d661bf
+    member_id: 0xb206d8fd
   }
 }
 struct_union {
@@ -277492,7 +277499,7 @@ struct_union {
     member_id: 0x337f3641
     member_id: 0x6a6789c8
     member_id: 0xac812894
-    member_id: 0x337b4570
+    member_id: 0x337b49fc
   }
 }
 struct_union {
