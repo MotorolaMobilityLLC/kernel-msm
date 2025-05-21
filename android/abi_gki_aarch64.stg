@@ -100499,10 +100499,10 @@ member {
   offset: 128
 }
 member {
-  id: 0x80572460
+  id: 0x805723f7
   name: "gc_flags"
   type_id: 0x33756485
-  offset: 8192
+  offset: 8256
 }
 member {
   id: 0x8fd944b0
@@ -112772,10 +112772,10 @@ member {
   offset: 16320
 }
 member {
-  id: 0x79c0c441
+  id: 0x79c0ce48
   name: "inflight"
   type_id: 0x33756485
-  offset: 8064
+  offset: 8128
 }
 member {
   id: 0x79f74293
@@ -123476,15 +123476,15 @@ member {
   offset: 1024
 }
 member {
-  id: 0x556d5327
-  name: "link"
-  type_id: 0xd3c80119
-  offset: 7936
-}
-member {
   id: 0x556d57ec
   name: "link"
   type_id: 0xd3c80119
+}
+member {
+  id: 0x556d5b03
+  name: "link"
+  type_id: 0xd3c80119
+  offset: 8000
 }
 member {
   id: 0x556d5d6f
@@ -124339,6 +124339,12 @@ member {
   offset: 768
 }
 member {
+  id: 0xe2a2a0b6
+  name: "listener"
+  type_id: 0x1d44326e
+  offset: 7936
+}
+member {
   id: 0xe2a2a2d7
   name: "listener"
   type_id: 0x1d44326e
@@ -125017,12 +125023,6 @@ member {
   offset: 32
 }
 member {
-  id: 0x2d1fe1e3
-  name: "lock"
-  type_id: 0xf313e71a
-  offset: 8128
-}
-member {
   id: 0x2d1fe1f3
   name: "lock"
   type_id: 0xf313e71a
@@ -125201,6 +125201,12 @@ member {
   name: "lock"
   type_id: 0xf313e71a
   offset: 320
+}
+member {
+  id: 0x2d1feb84
+  name: "lock"
+  type_id: 0xf313e71a
+  offset: 8192
 }
 member {
   id: 0x2d1feb9a
@@ -277505,10 +277511,11 @@ struct_union {
     member_id: 0xd38b8035
     member_id: 0xb794a532
     member_id: 0x5eddc09d
-    member_id: 0x556d5327
-    member_id: 0x79c0c441
-    member_id: 0x2d1fe1e3
-    member_id: 0x80572460
+    member_id: 0xe2a2a0b6
+    member_id: 0x556d5b03
+    member_id: 0x79c0ce48
+    member_id: 0x2d1feb84
+    member_id: 0x805723f7
     member_id: 0x337f3f92
     member_id: 0x6a6786bf
     member_id: 0xac8121db
