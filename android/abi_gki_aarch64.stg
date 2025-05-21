@@ -112353,6 +112353,12 @@ member {
   offset: 64
 }
 member {
+  id: 0xad0a7a1c
+  name: "index"
+  type_id: 0x33756485
+  offset: 320
+}
+member {
   id: 0xad0a7d70
   name: "index"
   type_id: 0x33756485
@@ -190829,6 +190835,12 @@ member {
   name: "stack_depth"
   type_id: 0xc9082b19
   offset: 224
+}
+member {
+  id: 0xc7b7491e
+  name: "stack_entry"
+  type_id: 0xd3c80119
+  offset: 256
 }
 member {
   id: 0x5775af49
@@ -277455,10 +277467,11 @@ struct_union {
   kind: STRUCT
   name: "unix_edge"
   definition {
-    bytesize: 32
+    bytesize: 48
     member_id: 0x5ba539f6
     member_id: 0x132c9198
     member_id: 0x957e8a2d
+    member_id: 0xc7b7491e
   }
 }
 struct_union {
@@ -277499,10 +277512,11 @@ struct_union {
   kind: STRUCT
   name: "unix_vertex"
   definition {
-    bytesize: 40
+    bytesize: 48
     member_id: 0x76197573
     member_id: 0x4d8789fe
     member_id: 0x0fc2a86e
+    member_id: 0xad0a7a1c
   }
 }
 struct_union {
