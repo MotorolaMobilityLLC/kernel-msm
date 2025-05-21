@@ -20,6 +20,7 @@
 #define MEM_BUF_CAP_DUAL (MEM_BUF_CAP_SUPPLIER | MEM_BUF_CAP_CONSUMER)
 extern unsigned char mem_buf_capability;
 extern struct device *mem_buf_dev;
+extern struct dentry *mem_buf_debugfs_root;
 
 int mem_buf_dma_buf_init(void);
 
