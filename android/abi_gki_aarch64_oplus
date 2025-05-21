@@ -336,6 +336,7 @@
   rtc_read_alarm
   __rtnl_link_register
   __rtnl_link_unregister
+  sbitmap_weight
   sched_clock
   sched_setscheduler_nocheck
   sched_show_task
