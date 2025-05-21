@@ -23,6 +23,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/eom_ioctl.h>
 #include <linux/phy_core.h>
+#include <linux/debugfs.h>
 
 enum core_ldo_levels {
 	CORE_LEVEL_NONE = 0,
@@ -160,6 +161,11 @@ struct msm_ssphy_qmp {
 	int			pd_count;
 	struct eom_phy_device	eom_phy; /* EOM USB Phy */
 	bool			pd_refcnt[MIN_PD];
+
+	/* debugfs entries */
+	struct dentry       *root;
+	struct qmp_reg_val	*qmp_phy_tune_seq;
+	int			qmp_phy_tune_seq_cnt;
 };
 
 static const struct of_device_id msm_usb_id_table[] = {
@@ -494,6 +500,7 @@ static int configure_phy_regs(struct msm_ssphy_qmp *phy)
 {
 	struct qmp_reg_val *reg = phy->qmp_phy_init_seq;
 	int i;
+	struct qmp_reg_val *tune_reg;
 
 	if (!reg) {
 		dev_err(phy->phy.dev, "NULL PHY configuration\n");
@@ -504,6 +511,14 @@ static int configure_phy_regs(struct msm_ssphy_qmp *phy)
 		writel_relaxed(reg->val, phy->base + reg->offset);
 		reg++;
 	}
+
+	for (i = 0; i < phy->qmp_phy_tune_seq_cnt; i++) {
+		tune_reg = &phy->qmp_phy_tune_seq[i];
+		if (((tune_reg->val >> 16) & 0x0FFF) == 0xDEF)
+			continue;
+		writel_relaxed(tune_reg->val, phy->base + tune_reg->offset);
+	}
+
 	return 0;
 }
 
@@ -1291,6 +1306,85 @@ static int msm_ssphy_qmp_parse_init_sequences(struct msm_ssphy_qmp *phy,
 	return 0;
 }
 
+static int msm_ssphy_qmp_tune_reg_show(struct seq_file *s, void *unused)
+{
+	int i;
+	u32 val;
+	struct msm_ssphy_qmp *phy = s->private;
+	struct qmp_reg_val *tune_seq = phy->qmp_phy_tune_seq;
+
+	for (i = 0; i < phy->qmp_phy_tune_seq_cnt; i++) {
+		val = readl_relaxed(phy->base + tune_seq[i].offset);
+		seq_printf(s, "reg[0x%04x] = 0x%08x(0x%08x)\n",
+			tune_seq[i].offset, val, tune_seq[i].val);
+	}
+
+	return 0;
+}
+
+static int msm_ssphy_qmp_tune_reg_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_ssphy_qmp_tune_reg_show, inode->i_private);
+}
+
+static ssize_t msm_ssphy_qmp_tune_reg_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	int i;
+	int ret;
+	char buf[64];
+	struct qmp_reg_val reg;
+	struct seq_file	*s = file->private_data;
+	struct msm_ssphy_qmp *phy = s->private;
+	struct qmp_reg_val *tune_seq = phy->qmp_phy_tune_seq;
+	int seq_cnt = phy->qmp_phy_tune_seq_cnt;
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	ret = sscanf((const char *)buf, "%x, %x", &reg.offset, &reg.val);
+	if (ret != 2) {
+		pr_err("Invalid ssphy tune register seq input\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < seq_cnt; i++) {
+		if (tune_seq[i].offset == reg.offset) {
+			memcpy(&tune_seq[i], &reg, sizeof(reg));
+			return count;
+		}
+	}
+
+	tune_seq = kzalloc(sizeof(reg) * (seq_cnt + 1), GFP_KERNEL);
+	if (!tune_seq)
+		return -ENOMEM;
+
+	if (phy->qmp_phy_tune_seq) {
+		memcpy(tune_seq, phy->qmp_phy_tune_seq, sizeof(reg) * seq_cnt);
+		kfree(phy->qmp_phy_tune_seq);
+	}
+	tune_seq[seq_cnt] = reg;
+	phy->qmp_phy_tune_seq = tune_seq;
+	phy->qmp_phy_tune_seq_cnt = seq_cnt + 1;
+
+	return count;
+}
+
+static const struct file_operations msm_ssphy_qmp_tune_reg_fops = {
+	.open			= msm_ssphy_qmp_tune_reg_open,
+	.write			= msm_ssphy_qmp_tune_reg_write,
+	.read			= seq_read,
+	.llseek			= seq_lseek,
+	.release		= single_release,
+};
+
+static void msm_ssphy_qmp_create_debugfs(struct msm_ssphy_qmp *phy)
+{
+	phy->root = debugfs_create_dir(dev_name(phy->phy.dev), NULL);
+	debugfs_create_file("phy_tune_reg", 0644, phy->root, phy,
+                                &msm_ssphy_qmp_tune_reg_fops);
+}
+
 static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 {
 	struct msm_ssphy_qmp *phy;
@@ -1474,7 +1568,10 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 	ret = usb_add_phy_dev(&phy->phy);
 	if (ret < 0)
 		goto err;
+
+	msm_ssphy_qmp_create_debugfs(phy);
 	return 0;
+
 err:
 	msm_ssphy_modeled_domain_detach(phy);
 	return ret;
@@ -1487,6 +1584,12 @@ static void msm_ssphy_qmp_remove(struct platform_device *pdev)
 	if (!phy)
 		return;
 
+	if (phy->qmp_phy_tune_seq) {
+		kfree(phy->qmp_phy_tune_seq);
+		phy->qmp_phy_tune_seq = NULL;
+		phy->qmp_phy_tune_seq_cnt = 0;
+	}
+	debugfs_remove_recursive(phy->root);
 	usb_remove_phy(&phy->phy);
 	if (phy->fw_managed_pwr) {
 		msm_ssphy_modeled_d0_to_d3(phy);
