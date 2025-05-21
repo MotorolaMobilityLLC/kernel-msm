@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #define pr_fmt(fmt) "mem_buf_vmperm: " fmt
@@ -106,6 +106,7 @@ static void mem_buf_vmperm_set_err(struct mem_buf_vmperm *vmperm)
 	vmperm->flags |= MEM_BUF_WRAPPER_FLAG_ERR;
 }
 
+/* Must be freed via mem_buf_vmperm_free. */
 static struct mem_buf_vmperm *mem_buf_vmperm_alloc_flags(
 	struct sg_table *sgt, u32 flags,
 	int *vmids, int *perms, u32 nr_acl_entries)
@@ -138,7 +139,6 @@ err_resize_state:
 	return ERR_PTR(-ENOMEM);
 }
 
-/* Must be freed via mem_buf_vmperm_release. */
 struct mem_buf_vmperm *mem_buf_vmperm_alloc_accept(struct sg_table *sgt,
 	gh_memparcel_handle_t memparcel_hdl, int *vmids, int *perms,
 	unsigned int nr_acl_entries)
@@ -213,19 +213,48 @@ static int mem_buf_vmperm_relinquish(struct mem_buf_vmperm *vmperm)
 	kvfree(sgl_desc);
 	if (ret)
 		return ret;
-
+	/*
+	 * mem_buf_retrieve_release() uses memunmap_pages() to remove
+	 * this from the linux page tables. This occurs after the
+	 * stage 2 pagetable mapping is removed below.
+	 */
 	ret = mem_buf_unmap_mem_s2(vmperm->memparcel_hdl);
-	return ret;
+	if (ret)
+		return ret;
+
+	vmperm->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
+	vmperm->flags &= ~MEM_BUF_WRAPPER_FLAG_ACCEPT;
+	return 0;
 }
 
-int mem_buf_vmperm_release(struct mem_buf_vmperm *vmperm)
+void mem_buf_vmperm_free(struct mem_buf_vmperm *vmperm)
+{
+	WARN_ON(vmperm->flags & MEM_BUF_WRAPPER_FLAG_LENDSHARE);
+	WARN_ON(vmperm->flags & MEM_BUF_WRAPPER_FLAG_ACCEPT);
+
+	kfree(vmperm->perms);
+	kfree(vmperm->vmids);
+	mutex_destroy(&vmperm->lock);
+	kfree(vmperm);
+}
+EXPORT_SYMBOL_GPL(mem_buf_vmperm_free);
+
+/*
+ * Attempt to return to the default security state. For memory in the
+ * LENDSHARE state, this is full access by the current VM. For memory
+ * in the ACCEPT state, this is no access by the current VM.
+ *
+ * This function can fail; the hypervisor or other system entities
+ * may hold references to memory in a secure state.
+ */
+int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm)
 {
 	int ret = 0;
 
 	if (vmperm->dtor) {
 		ret = vmperm->dtor(vmperm->dtor_data);
 		if (ret)
-			goto exit;
+			return ret;
 	}
 
 	mutex_lock(&vmperm->lock);
@@ -235,14 +264,10 @@ int mem_buf_vmperm_release(struct mem_buf_vmperm *vmperm)
 		ret = mem_buf_vmperm_relinquish(vmperm);
 
 	mutex_unlock(&vmperm->lock);
-exit:
-	kfree(vmperm->perms);
-	kfree(vmperm->vmids);
-	mutex_destroy(&vmperm->lock);
-	kfree(vmperm);
+
 	return ret;
 }
-EXPORT_SYMBOL(mem_buf_vmperm_release);
+EXPORT_SYMBOL_GPL(mem_buf_vmperm_try_reclaim);
 
 int mem_buf_dma_buf_attach(struct dma_buf *dmabuf, struct dma_buf_attachment *attachment)
 {

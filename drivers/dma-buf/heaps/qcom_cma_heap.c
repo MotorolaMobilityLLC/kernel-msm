@@ -7,7 +7,7 @@
  * Copyright (C) 2012, 2019 Linaro Ltd.
  * Author: <benjamin.gaignard@linaro.org> for ST-Ericsson.
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #include <linux/cma.h>
@@ -108,9 +108,9 @@ struct dma_buf *cma_heap_allocate(struct dma_heap *heap,
 		align = cma_heap->max_align;
 
 	helper_buffer = &info->buf;
+
+	qcom_sg_buffer_init(helper_buffer);
 	helper_buffer->heap = heap;
-	INIT_LIST_HEAD(&helper_buffer->attachments);
-	mutex_init(&helper_buffer->lock);
 	helper_buffer->len = size;
 	helper_buffer->uncached = cma_heap->uncached;
 	helper_buffer->free = cma_heap_free;
@@ -187,7 +187,7 @@ struct dma_buf *cma_heap_allocate(struct dma_heap *heap,
 	return dmabuf;
 
 vmperm_release:
-	mem_buf_vmperm_release(helper_buffer->vmperm);
+	mem_buf_vmperm_free(helper_buffer->vmperm);
 free_sgtable:
 	sg_free_table(&helper_buffer->sg_table);
 free_cma:

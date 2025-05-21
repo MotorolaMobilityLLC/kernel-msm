@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #define pr_fmt(fmt) "tui_heap: %s"  fmt, __func__
@@ -296,8 +296,7 @@ static struct dma_buf *tui_heap_allocate(struct dma_heap *dma_heap,
 	}
 
 	/* Initialize the buffer */
-	INIT_LIST_HEAD(&buffer->attachments);
-	mutex_init(&buffer->lock);
+	qcom_sg_buffer_init(buffer);
 	buffer->heap = heap->heap;
 	buffer->len = len;
 	buffer->free = tui_heap_obj_release;
@@ -330,7 +329,7 @@ static struct dma_buf *tui_heap_allocate(struct dma_heap *dma_heap,
 	return dmabuf;
 
 err_export:
-	mem_buf_vmperm_release(buffer->vmperm);
+	mem_buf_vmperm_free(buffer->vmperm);
 err_vmperm_alloc:
 	sg_free_table(table);
 err_sg_alloc_table:

@@ -7,7 +7,7 @@
  *
  * Copyright (C) 2011 Google, Inc.
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #include <linux/dma-mapping.h>
@@ -161,8 +161,7 @@ static struct dma_buf *__carveout_heap_allocate(struct carveout_heap *carveout_h
 		return ERR_PTR(-ENOMEM);
 
 	/* Initialize the buffer */
-	INIT_LIST_HEAD(&buffer->attachments);
-	mutex_init(&buffer->lock);
+	qcom_sg_buffer_init(buffer);
 	buffer->heap = carveout_heap->heap;
 	buffer->len = len;
 	buffer->free = buffer_free;
@@ -200,7 +199,7 @@ static struct dma_buf *__carveout_heap_allocate(struct carveout_heap *carveout_h
 	return dmabuf;
 
 err_free_vmperm:
-	mem_buf_vmperm_release(buffer->vmperm);
+	mem_buf_vmperm_free(buffer->vmperm);
 err_free_carveout:
 	carveout_free(carveout_heap, paddr, len);
 err_free_table:

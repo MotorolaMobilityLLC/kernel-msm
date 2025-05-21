@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  *  Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- *  Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ *  Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #ifndef _MEM_BUF_EXPORTER_H
@@ -64,13 +64,17 @@ struct mem_buf_vmperm *mem_buf_vmperm_alloc_accept(struct sg_table *sgt,
 	unsigned int nr_acl_entries);
 
 /*
- * Performs the expected close step based on whether the dmabuf
- * is of the "STATICVM" "MEMACCEPT" or "DEFAULT" type.
- * Exporters should call this from dma_buf_release. If this function
- * Returns an error, exporters should consider the underlying memory
- * to have undefined permissions.
+ * Attempt to return to the default security state. For memory in the
+ * LENDSHARE state, this is full access by the current VM. For memory
+ * in the ACCEPT state, this is no access by the current VM.
+ *
+ * This function can fail; hypervisor or other system entities
+ * may hold references to memory in a secure state.
  */
-int mem_buf_vmperm_release(struct mem_buf_vmperm *vmperm);
+int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm);
+
+/* kfree the vmperm object */
+void mem_buf_vmperm_free(struct mem_buf_vmperm *vmperm);
 
 /*
  * Pins ths permissions of the dmabuf.
