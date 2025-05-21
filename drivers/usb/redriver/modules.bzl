@@ -22,3 +22,17 @@ def register_modules(registry):
             "drivers/usb/redriver/redriver.c",
         ],
     )
+
+    registry.register(
+        name = "drivers/usb/redriver/ps5169",
+        out = "ps5169.ko",
+        config = "CONFIG_USB_REDRIVER_PS5169",
+        srcs = [
+            # do not sort
+            "drivers/usb/redriver/ps5169.c",
+        ],
+        deps = [
+            # do not sort
+            "drivers/usb/redriver/redriver",
+        ],
+    )
