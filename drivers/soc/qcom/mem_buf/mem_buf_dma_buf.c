@@ -307,8 +307,11 @@ int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm)
 
 	if (vmperm->dtor) {
 		ret = vmperm->dtor(vmperm->dtor_data);
-		if (ret)
+		if (ret) {
+			pr_err_ratelimited("dma-buf destructor %pS failed with %d\n",
+					vmperm->dtor, ret);
 			return ret;
+		}
 	}
 
 	mutex_lock(&vmperm->lock);
@@ -635,11 +638,16 @@ static int mem_buf_lend_internal(struct dma_buf *dmabuf,
 	kref_get(vmperm->kref);
 	mutex_unlock(&vmperm->lock);
 
-	ret = xa_insert(&vmperm_xa, vmperm->memparcel_hdl, vmperm,
-				GFP_KERNEL);
-	if (ret)
-		goto err_xa;
-	mem_buf_lend_notify(vmperm);
+	if (vmperm->memparcel_hdl != MEM_BUF_MEMPARCEL_INVALID) {
+		ret = xa_insert(&vmperm_xa, vmperm->memparcel_hdl, vmperm,
+					GFP_KERNEL);
+		if (ret) {
+			pr_err_ratelimited("xa_insert failed for memparcel %x\n",
+						vmperm->memparcel_hdl);
+			goto err_xa;
+		}
+		mem_buf_lend_notify(vmperm);
+	}
 
 	return 0;
 err_xa:
