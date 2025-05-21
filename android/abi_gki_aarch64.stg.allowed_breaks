@@ -165,3 +165,7 @@ type 'struct unix_sock' changed
   4 members ('struct list_head link' .. 'unsigned long gc_flags') changed
     offset changed by 64
 
+type 'struct unix_vertex' changed
+  byte size changed from 80 to 72
+  member 'bool on_stack' was removed
+
