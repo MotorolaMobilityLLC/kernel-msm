@@ -434,4 +434,5 @@ canoe_perf_config = {
     "CONFIG_ZRAM_MULTI_COMP": "n",
     "CONFIG_ZRAM_WRITEBACK": "n",
     "CONFIG_ZSMALLOC": "m",
+    "CONFIG_USB_REDRIVER_PS5169": "m"
 }
