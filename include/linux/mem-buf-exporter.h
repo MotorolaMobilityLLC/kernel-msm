@@ -39,6 +39,7 @@ mem_buf_dma_buf_export(struct dma_buf_export_info *exp_info,
 #define MEM_BUF_WRAPPER_FLAG_LENDSHARE BIT(1)
 #define MEM_BUF_WRAPPER_FLAG_ACCEPT BIT(2)
 #define MEM_BUF_WRAPPER_FLAG_ERR BIT(3)
+#define MEM_BUF_WRAPPER_FLAG_ZOMBIE BIT(4)
 
 /*
  * A dmabuf owned by the current VM with RWX permissions.
@@ -73,7 +74,8 @@ struct mem_buf_vmperm *mem_buf_vmperm_alloc_accept(struct sg_table *sgt,
  * This function can fail; hypervisor or other system entities
  * may hold references to memory in a secure state.
  */
-int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm);
+int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm,
+				bool from_notifier);
 
 /* kfree the vmperm object */
 void mem_buf_vmperm_free(struct mem_buf_vmperm *vmperm);

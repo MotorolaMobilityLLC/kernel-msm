@@ -306,26 +306,41 @@ EXPORT_SYMBOL_GPL(mem_buf_vmperm_free);
  *
  * This function can fail; the hypervisor or other system entities
  * may hold references to memory in a secure state.
+ *
+ * When called from a gunyah notifier, do nothing unless in 'zombie state'.
+ * A memory-region is considered a 'zombie' if the local dma-buf is closed.
+ *
+ * We won't/can't 'unwind' the destructor if reclaim fails.
  */
-int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm)
+int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm, bool from_notifier)
 {
 	int ret = 0;
+
+	mutex_lock(&vmperm->lock);
+	if (from_notifier && !(vmperm->flags & MEM_BUF_WRAPPER_FLAG_ZOMBIE)) {
+		mutex_unlock(&vmperm->lock);
+		return 0;
+	}
 
 	if (vmperm->dtor) {
 		ret = vmperm->dtor(vmperm->dtor_data);
 		if (ret) {
 			pr_err_ratelimited("dma-buf destructor %pS failed with %d\n",
 					vmperm->dtor, ret);
-			return ret;
+			goto out;
 		}
+		/* Ensure dtor only called once if it succeeds */
+		vmperm->dtor = NULL;
 	}
 
-	mutex_lock(&vmperm->lock);
 	if (vmperm->flags & MEM_BUF_WRAPPER_FLAG_LENDSHARE)
 		ret = __mem_buf_vmperm_reclaim(vmperm);
 	else if (vmperm->flags & MEM_BUF_WRAPPER_FLAG_ACCEPT)
 		ret = mem_buf_vmperm_relinquish(vmperm);
 
+out:
+	if (ret)
+		vmperm->flags |= MEM_BUF_WRAPPER_FLAG_ZOMBIE;
 	mutex_unlock(&vmperm->lock);
 
 	return ret;
@@ -362,8 +377,10 @@ int mem_buf_dma_buf_set_destructor(struct dma_buf *buf,
 	if (IS_ERR(vmperm))
 		return PTR_ERR(vmperm);
 
+	mutex_lock(&vmperm->lock);
 	vmperm->dtor = dtor;
 	vmperm->dtor_data = dtor_data;
+	mutex_unlock(&vmperm->lock);
 
 	return 0;
 }
@@ -657,7 +674,7 @@ static int mem_buf_lend_internal(struct dma_buf *dmabuf,
 
 	return 0;
 err_xa:
-	mem_buf_vmperm_try_reclaim(vmperm);
+	mem_buf_vmperm_try_reclaim(vmperm, false);
 	return ret;
 
 err_assign:
@@ -771,13 +788,16 @@ bool mem_buf_dma_buf_exclusive_owner(struct dma_buf *dmabuf)
 {
 	struct mem_buf_vmperm *vmperm;
 	bool ret = false;
+	u32 flags = MEM_BUF_WRAPPER_FLAG_STATIC_VM |
+		MEM_BUF_WRAPPER_FLAG_LENDSHARE |
+		MEM_BUF_WRAPPER_FLAG_ACCEPT;
 
 	vmperm = to_mem_buf_vmperm(dmabuf);
 	if (WARN_ON(IS_ERR(vmperm)))
 		return false;
 
 	mutex_lock(&vmperm->lock);
-	ret = !vmperm->flags;
+	ret = !(vmperm->flags & flags);
 	mutex_unlock(&vmperm->lock);
 	return ret;
 }
@@ -897,7 +917,7 @@ static void mem_buf_vmperm_gh_notifier(enum gh_mem_notifier_tag tag, unsigned lo
 		return;
 	}
 
-	mem_buf_vmperm_try_reclaim(vmperm);
+	mem_buf_vmperm_try_reclaim(vmperm, true);
 	/* Drop refcount from vmperm_lookup */
 	kref_put(vmperm->kref, vmperm->kref_release);
 }

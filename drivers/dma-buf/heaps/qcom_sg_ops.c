@@ -577,7 +577,7 @@ EXPORT_SYMBOL_GPL(qcom_sg_release);
  */
 static void qcom_sg_exit(struct qcom_sg_buffer *buffer)
 {
-	mem_buf_vmperm_try_reclaim(buffer->vmperm);
+	mem_buf_vmperm_try_reclaim(buffer->vmperm, false);
 
 	msm_dma_buf_freed(buffer);
 	kref_put(&buffer->kref, qcom_sg_release);
