@@ -162,7 +162,8 @@ struct dma_buf *cma_heap_allocate(struct dma_heap *heap,
 
 	sg_set_page(helper_buffer->sg_table.sgl, cma_pages, size, 0);
 
-	helper_buffer->vmperm = mem_buf_vmperm_alloc(&helper_buffer->sg_table);
+	helper_buffer->vmperm = mem_buf_vmperm_alloc(&helper_buffer->sg_table,
+					qcom_sg_release, &helper_buffer->kref);
 	if (IS_ERR(helper_buffer->vmperm))
 		goto free_sgtable;
 

@@ -75,7 +75,7 @@ static struct dma_buf *movable_heap_allocate(struct dma_heap *heap,
 	if (ret)
 		goto free_buffer;
 
-	buffer->vmperm = mem_buf_vmperm_alloc(&buffer->sg_table);
+	buffer->vmperm = mem_buf_vmperm_alloc(&buffer->sg_table, qcom_sg_release, &buffer->kref);
 
 	if (IS_ERR(buffer->vmperm)) {
 		ret = PTR_ERR(buffer->vmperm);

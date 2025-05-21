@@ -48,20 +48,22 @@ mem_buf_dma_buf_export(struct dma_buf_export_info *exp_info,
  * @sgt: Reference to the exporter's internal memory descriptor.
  * Will not be freed by mem_buf_vmperm_free().
  */
-struct mem_buf_vmperm *mem_buf_vmperm_alloc(struct sg_table *sgt);
+struct mem_buf_vmperm *mem_buf_vmperm_alloc(struct sg_table *sgt,
+	void (*release)(struct kref *), struct kref *kref);
 
 /*
  * A dmabuf which permantently belongs to the given VMs & permissions.
  */
 struct mem_buf_vmperm *mem_buf_vmperm_alloc_staticvm(struct sg_table *sgt, int *vmids, int *perms,
-		u32 nr_acl_entries);
+		u32 nr_acl_entries, void (*release)(struct kref *), struct kref *);
 
 /*
  * A dmabuf in the "MEMACCEPT" state.
  */
 struct mem_buf_vmperm *mem_buf_vmperm_alloc_accept(struct sg_table *sgt,
 	gh_memparcel_handle_t memparcel_hdl, int *vmids, int *perms,
-	unsigned int nr_acl_entries);
+	unsigned int nr_acl_entries, void (*release)(struct kref *),
+	struct kref *);
 
 /*
  * Attempt to return to the default security state. For memory in the

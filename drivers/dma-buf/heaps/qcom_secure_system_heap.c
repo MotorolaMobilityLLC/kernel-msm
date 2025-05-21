@@ -568,8 +568,8 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 
 	perms = msm_secure_get_vmid_perms(sys_heap->vmid);
 	vmid = get_secure_vmid(sys_heap->vmid);
-	buffer->vmperm = mem_buf_vmperm_alloc_staticvm(table,
-				&vmid, &perms, 1);
+	buffer->vmperm = mem_buf_vmperm_alloc_staticvm(table, &vmid, &perms,
+				1, qcom_sg_release, &buffer->kref);
 
 	if (IS_ERR(buffer->vmperm)) {
 		ret = PTR_ERR(buffer->vmperm);

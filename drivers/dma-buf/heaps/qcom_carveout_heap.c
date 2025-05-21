@@ -115,7 +115,7 @@ static void carveout_free(struct carveout_heap *carveout_heap,
 
 struct mem_buf_vmperm *
 carveout_setup_vmperm(struct carveout_heap *carveout_heap,
-			struct sg_table *sgt)
+			struct qcom_sg_buffer *buffer)
 {
 	struct secure_carveout_heap *sc_heap;
 	struct mem_buf_vmperm *vmperm;
@@ -124,7 +124,8 @@ carveout_setup_vmperm(struct carveout_heap *carveout_heap,
 	int ret;
 
 	if (!carveout_heap->is_secure) {
-		vmperm = mem_buf_vmperm_alloc(sgt);
+		vmperm = mem_buf_vmperm_alloc(&buffer->sg_table, qcom_sg_release,
+				&buffer->kref);
 		return vmperm;
 	}
 
@@ -136,7 +137,8 @@ carveout_setup_vmperm(struct carveout_heap *carveout_heap,
 	if (ret)
 		return ERR_PTR(ret);
 
-	vmperm = mem_buf_vmperm_alloc_staticvm(sgt, vmids, perms, nr);
+	vmperm = mem_buf_vmperm_alloc_staticvm(&buffer->sg_table, vmids, perms, nr,
+				qcom_sg_release, &buffer->kref);
 	kfree(vmids);
 	kfree(perms);
 
@@ -180,7 +182,7 @@ static struct dma_buf *__carveout_heap_allocate(struct carveout_heap *carveout_h
 
 	sg_set_page(table->sgl, pfn_to_page(PFN_DOWN(paddr)), len, 0);
 
-	buffer->vmperm = carveout_setup_vmperm(carveout_heap, &buffer->sg_table);
+	buffer->vmperm = carveout_setup_vmperm(carveout_heap, buffer);
 	if (IS_ERR(buffer->vmperm))
 		goto err_free_carveout;
 

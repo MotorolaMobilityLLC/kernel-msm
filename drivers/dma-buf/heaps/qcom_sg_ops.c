@@ -559,7 +559,7 @@ void qcom_sg_buffer_init(struct qcom_sg_buffer *buffer)
 EXPORT_SYMBOL_GPL(qcom_sg_buffer_init);
 
 /* Releases memory associated with buffer */
-static void qcom_sg_release(struct kref *kref)
+void qcom_sg_release(struct kref *kref)
 {
 	struct qcom_sg_buffer *buffer;
 
@@ -568,6 +568,7 @@ static void qcom_sg_release(struct kref *kref)
 	if (buffer->free)
 		buffer->free(buffer);
 }
+EXPORT_SYMBOL_GPL(qcom_sg_release);
 
 /*
  * Attempt return to the default security state, and
@@ -576,9 +577,7 @@ static void qcom_sg_release(struct kref *kref)
  */
 static void qcom_sg_exit(struct qcom_sg_buffer *buffer)
 {
-	/* Temporarily bail out on error. */
-	if (mem_buf_vmperm_try_reclaim(buffer->vmperm))
-		return;
+	mem_buf_vmperm_try_reclaim(buffer->vmperm);
 
 	msm_dma_buf_freed(buffer);
 	kref_put(&buffer->kref, qcom_sg_release);

@@ -82,6 +82,8 @@ int qcom_sg_vmap(struct dma_buf *dmabuf, struct iosys_map *map);
 
 void qcom_sg_vunmap(struct dma_buf *dmabuf, struct iosys_map *map);
 
+void qcom_sg_release(struct kref *kref);
+
 void qcom_sg_dmabuf_release(struct dma_buf *dmabuf);
 
 struct mem_buf_vmperm *qcom_sg_lookup_vmperm(struct dma_buf *dmabuf);
