@@ -84,6 +84,7 @@ struct unix_sock {
 	struct mutex		iolock, bindlock;
 	struct sock		*peer;
 	struct unix_vertex	*vertex;
+	struct sock		*listener;
 	struct list_head	link;
 	unsigned long		inflight;
 	spinlock_t		lock;
