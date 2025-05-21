@@ -274,6 +274,7 @@ filegroup(
         "//common:sound/usb/pcm.h",
         "//common:sound/usb/power.h",
         "//common:sound/usb/usbaudio.h",
+        "//common:drivers/pinctrl/qcom/pinctrl-msm.h",
     ],
     visibility = ["//visibility:public"],
 )
