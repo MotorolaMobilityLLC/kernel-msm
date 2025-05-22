@@ -574,6 +574,7 @@ struct bpf_subprog_info {
 	bool tail_call_reachable;
 	bool has_ld_abs;
 	bool is_async_cb;
+	bool changes_pkt_data;
 
 	ANDROID_KABI_RESERVE(1);
 };
