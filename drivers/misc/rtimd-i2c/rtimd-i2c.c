@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 /*
  * File name: rtimd-i2c.c
@@ -24,6 +24,8 @@
 
 #define SYSFS_BWR_DATA_OFFSET		11
 #define SYSFS_BRD_WDATA_OFFSET		16
+
+int rtimd_major_num;
 
 static struct platform_device *rtimd_device;
 static struct class *rtimd_class;
@@ -726,9 +728,11 @@ static int rtimd_probe(struct platform_device *pdev)
 	int ret;
 
 	/* register the driver */
-	if (register_chrdev(RTI_MD_MAJOR_NR, RTI_MD_DEV_NAME, &rtimd_fops)) {
+	rtimd_major_num = register_chrdev(0, RTI_MD_DEV_NAME, &rtimd_fops);
+
+	if (rtimd_major_num < 0) {
 		RMDERR("register_chrdev() failed (Major:%d).\n",
-				RTI_MD_MAJOR_NR);
+				rtimd_major_num);
 		return -EINVAL;
 	}
 
@@ -740,7 +744,7 @@ static int rtimd_probe(struct platform_device *pdev)
 		RMDERR("Unable to create sysfs entries\n");
 
 		/* un-register driver */
-		unregister_chrdev(RTI_MD_MAJOR_NR, RTI_MD_DEV_NAME);
+		unregister_chrdev(rtimd_major_num, RTI_MD_DEV_NAME);
 		return ret;
 	}
 
@@ -757,7 +761,7 @@ static int rtimd_remove(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &dev_attr_rtimd_breg);
 
 	/* un-register driver */
-	unregister_chrdev(RTI_MD_MAJOR_NR, RTI_MD_DEV_NAME);
+	unregister_chrdev(rtimd_major_num, RTI_MD_DEV_NAME);
 
 	return 0;
 }
@@ -805,7 +809,7 @@ static int __init rtimd_dev_init(void)
 
 	/* create the logical device */
 	dev = device_create(rtimd_class, NULL,
-			MKDEV(RTI_MD_MAJOR_NR, RTI_MD_MINOR_NR), NULL,
+			MKDEV(rtimd_major_num, 0), NULL,
 			RTI_MD_DEV_NAME);
 	if (IS_ERR(dev)) {
 		RMDERR("device_create() failed.\n");
@@ -831,7 +835,7 @@ static void __exit rtimd_dev_exit(void)
 	RMDDBG("\n");
 
 	device_destroy(rtimd_class,
-			MKDEV(RTI_MD_MAJOR_NR, RTI_MD_MINOR_NR));
+			MKDEV(rtimd_major_num, 0));
 
 	class_destroy(rtimd_class);
 
