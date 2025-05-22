@@ -1769,13 +1769,49 @@ static int stage2_split_walker(const struct kvm_pgtable_visit_ctx *ctx,
 	return 0;
 }
 
-int kvm_pgtable_stage2_split(struct kvm_pgtable *pgt, u64 addr, u64 size,
-			     struct kvm_mmu_memory_cache *mc)
+static int pkvm_stage2_split_walker(const struct kvm_pgtable_visit_ctx *ctx,
+				    enum kvm_pgtable_walk_flags visit)
 {
+	struct stage2_map_data *data = ctx->arg;
+	struct kvm_pgtable *pgt = data->mmu->pgt;
+	struct kvm_hyp_memcache *mc = data->memcache;
+	enum kvm_pgtable_prot prot;
+	kvm_pte_t pte = ctx->old;
+	kvm_pte_t *childp;
+
+	if (ctx->level == KVM_PGTABLE_MAX_LEVELS - 1)
+		return 0;
+
+	/* We can only split PMD-level blocks */
+	if (!kvm_pte_valid(pte) || ctx->level != KVM_PGTABLE_MAX_LEVELS - 2)
+		return -EINVAL;
+
+	prot = kvm_pgtable_stage2_pte_prot(pte);
+	childp = kvm_pgtable_stage2_create_unlinked(pgt, kvm_pte_to_phys(pte),
+						    ctx->level, prot, mc, true);
+	if (IS_ERR(childp))
+		return PTR_ERR(childp);
+
+	WARN_ON(!stage2_try_break_pte(ctx, data->mmu));
+
+	stage2_make_pte(ctx, kvm_init_table_pte(childp, ctx->mm_ops));
+	dsb(ishst);
+
+	return 0;
+}
+
+int kvm_pgtable_stage2_split(struct kvm_pgtable *pgt, u64 addr, u64 size, void *mc)
+{
+	struct stage2_map_data data = {
+		.mmu		= pgt->mmu,
+		.memcache	= mc,
+	};
 	struct kvm_pgtable_walker walker = {
-		.cb	= stage2_split_walker,
+		.cb	= static_branch_unlikely(&kvm_protected_mode_initialized) ?
+				pkvm_stage2_split_walker : stage2_split_walker,
+		.arg	= static_branch_unlikely(&kvm_protected_mode_initialized) ?
+				&data : mc,
 		.flags	= KVM_PGTABLE_WALK_LEAF,
-		.arg	= mc,
 	};
 
 	return kvm_pgtable_walk(pgt, addr, size, &walker);
