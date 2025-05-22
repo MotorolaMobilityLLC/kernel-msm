@@ -224,7 +224,10 @@ struct kvm_smccc_features {
 };
 
 struct kvm_pinned_page {
-	struct rb_node		node;
+	union {
+		struct rb_node		node;
+		struct list_head	list_node;
+	};
 	struct page		*page;
 	u64			ipa;
 	u64			__subtree_last;
@@ -538,6 +541,7 @@ struct kvm_hyp_req {
 #define KVM_HYP_LAST_REQ	0
 #define KVM_HYP_REQ_TYPE_MEM	1
 #define KVM_HYP_REQ_TYPE_MAP	2
+#define KVM_HYP_REQ_TYPE_SPLIT	3
 	u8 type;
 	union {
 		struct {
@@ -552,6 +556,12 @@ struct kvm_hyp_req {
 			unsigned long	guest_ipa;
 			size_t		size;
 		} map;
+#ifndef __GENKSYMS__
+		struct {
+			unsigned long	guest_ipa;
+			size_t		size;
+		} split;
+#endif
 	};
 };
 
