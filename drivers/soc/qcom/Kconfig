@@ -1313,4 +1313,11 @@ config QTI_HW_KEY_MANAGER_V1
 	 HWKM hardware to perform key operations from the kernel which will
 	 be used for storage encryption.
 
+config MMI_LPM_DBG
+	bool "MMI LPM subsystem sleep checking debug"
+	default n
+	help
+	  Set MMI_LPM_DBG to
+	  Sending relative uevent to trigger dropbox when necessary.
+	  is called lis3lv02d_i2c.
 endmenu

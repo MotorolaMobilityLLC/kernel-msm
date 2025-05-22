@@ -1159,7 +1159,12 @@ static int qcom_stats_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_MMI_LPM_DBG
+	subsystem_stats_debug_on = true;
+#else
 	subsystem_stats_debug_on = false;
+#endif
+
 	b_subsystem_stats = devm_kcalloc(&pdev->dev, ARRAY_SIZE(subsystems),
 					sizeof(struct sleep_stats), GFP_KERNEL);
 	if (!b_subsystem_stats) {
@@ -1249,6 +1254,60 @@ static int qcom_stats_suspend(struct device *dev)
 	return 0;
 }
 
+
+#ifdef CONFIG_MMI_LPM_DBG
+#include <linux/mmi_lpm_dbg.h>
+
+static struct mmi_lpm_dbg_ops *dbg_ops;
+
+int mmi_lpm_dbg_ops_register(struct mmi_lpm_dbg_ops *ops)
+{
+	if (!ops) {
+		pr_err("%s ops error\n", __func__);
+		return -EINVAL;
+	}
+
+	dbg_ops = ops;
+
+	return 0;
+}
+EXPORT_SYMBOL(mmi_lpm_dbg_ops_register);
+
+int mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE type, unsigned long long time)
+{
+	if (!dbg_ops) {
+		pr_err("%s ops error\n", __func__);
+		return -EINVAL;
+	}
+
+	return 	dbg_ops->store_sleep_time(type, time);
+}
+EXPORT_SYMBOL(mmi_lpm_dbg_store_sleep_time);
+
+/* Referance from print_supsystem_sleep_stats() 				*/
+/* Just get integer result. The elements < 1 will not be used for us 	*/
+static int get_supsystem_sleep_stats(int i, struct sleep_stats *stat,
+				const char *name)
+{
+	static uint64_t prev_duration[ARRAY_SIZE(subsystems)];
+	u64 accumulated = stat->accumulated;
+	uint64_t delta_duration;
+
+	/*
+	 * If a subsystem is in sleep when reading the sleep stats adjust
+	 * the accumulated sleep duration to show actual sleep time.
+	 */
+	if (stat->last_entered_at > stat->last_exited_at)
+		accumulated += arch_timer_read_counter()
+			       - stat->last_entered_at;
+
+	delta_duration = accumulated - prev_duration[i];
+	prev_duration[i] = accumulated;
+
+	return 	delta_duration / 19200000L;
+}
+#endif
+
 static int qcom_stats_resume(struct device *dev)
 {
 	struct stats_drvdata *drv = dev_get_drvdata(dev);
@@ -1256,6 +1315,9 @@ static int qcom_stats_resume(struct device *dev)
 	void __iomem *reg = NULL;
 	int i;
 	u32 stats_id = 0;
+#ifdef CONFIG_MMI_LPM_DBG
+	int sleep_time, ap_sleep_time = -1, md_sleep_time = -1, adsp_sleep_cnt = -1;
+#endif
 
 	if (!subsystem_stats_debug_on)
 		return 0;
@@ -1268,6 +1330,19 @@ static int qcom_stats_resume(struct device *dev)
 		if (IS_ERR(tmp))
 			continue;
 		qcom_stats_copy(tmp, a_subsystem_stats + i);
+
+#ifdef CONFIG_MMI_LPM_DBG
+		sleep_time = get_supsystem_sleep_stats(i, tmp,
+				subsystems[i].name);
+
+		pr_info("MMI_LPM %s:%d %d\n", subsystems[i].name, sleep_time, a_subsystem_stats[i].count - b_subsystem_stats[i].count);
+		if ((md_sleep_time < 0) && (strcmp(subsystems[i].name, "modem") == 0))
+			md_sleep_time = sleep_time;
+		else if ((adsp_sleep_cnt < 0) && (strcmp(subsystems[i].name, "adsp") == 0))
+			adsp_sleep_cnt = a_subsystem_stats[i].count;
+		else if ((ap_sleep_time < 0) && (strcmp(subsystems[i].name, "apss") == 0))
+			ap_sleep_time = sleep_time;
+#endif
 	}
 
 	for (i = 0; i < drv->config->num_records; i++, stats_id++) {
@@ -1278,6 +1353,12 @@ static int qcom_stats_resume(struct device *dev)
 	}
 	mutex_unlock(&sleep_stats_mutex);
 
+#ifdef CONFIG_MMI_LPM_DBG
+	/* Should not take complex operations in mutex lock period */
+	mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE_AP, ap_sleep_time);
+	mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE_MD, md_sleep_time);
+	mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE_SCP, adsp_sleep_cnt);
+#endif
 	return 0;
 }
 
