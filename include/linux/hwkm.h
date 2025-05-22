@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __HWKM_H_
@@ -491,6 +491,11 @@ struct hwkm_rsp {
 	};
 };
 
+#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
+bool qti_hwkm_init_required(const struct ice_mmio_data *mmio_data);
+bool qti_hwkm_is_ice_tpkey_set(const struct ice_mmio_data *mmio_data);
+#endif
+
 #if (IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER) || IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER_V1))
 int qti_hwkm_handle_cmd(struct hwkm_cmd *cmd, struct hwkm_rsp *rsp);
 int qti_hwkm_clocks(bool on);
@@ -506,6 +511,14 @@ static inline int qti_hwkm_clocks(bool on)
 	return -EOPNOTSUPP;
 }
 static inline int qti_hwkm_init(const struct ice_mmio_data *mmio_data)
+{
+	return -EOPNOTSUPP;
+}
+static inline bool qti_hwkm_init_required(const struct ice_mmio_data *mmio_data)
+{
+	return -EOPNOTSUPP;
+}
+static inline bool qti_hwkm_is_ice_tpkey_set(const struct ice_mmio_data *mmio_data)
 {
 	return -EOPNOTSUPP;
 }
