@@ -117,3 +117,8 @@ type 'struct kvm_protected_vm' changed
   member 'struct maple_tree pinned_pages' was removed
   member 'union { struct rb_root_cached pinned_pages; struct { struct maple_tree __unused; }; union { }; }' was added
 
+type 'struct kvm_hyp_req' changed
+  member changed from 'union { struct { u8 dest; int nr_pages; int sz_alloc; } mem; struct { unsigned long guest_ipa; size_t size; } map; }' to 'union { struct { u8 dest; int nr_pages; int sz_alloc; } mem; struct { unsigned long guest_ipa; size_t size; } map; struct { unsigned long guest_ipa; size_t size; } split; }'
+    type changed from 'union { struct { u8 dest; int nr_pages; int sz_alloc; } mem; struct { unsigned long guest_ipa; size_t size; } map; }' to 'union { struct { u8 dest; int nr_pages; int sz_alloc; } mem; struct { unsigned long guest_ipa; size_t size; } map; struct { unsigned long guest_ipa; size_t size; } split; }'
+      member 'struct { unsigned long guest_ipa; size_t size; } split' was added
+
