@@ -363,6 +363,11 @@ static int handle_hyp_req_map(struct kvm_vcpu *vcpu,
 	return pkvm_mem_abort_range(vcpu, req->map.guest_ipa, req->map.size);
 }
 
+static int handle_hyp_req_split(struct kvm_vcpu *vcpu, struct kvm_hyp_req *req)
+{
+	return __pkvm_pgtable_stage2_split(vcpu, req->split.guest_ipa, req->split.size);
+}
+
 static int handle_hyp_req(struct kvm_vcpu *vcpu)
 {
 	struct kvm_hyp_req *hyp_req = vcpu->arch.hyp_reqs;
@@ -378,6 +383,9 @@ static int handle_hyp_req(struct kvm_vcpu *vcpu)
 			break;
 		case KVM_HYP_REQ_TYPE_MAP:
 			ret = handle_hyp_req_map(vcpu, hyp_req);
+			break;
+		case KVM_HYP_REQ_TYPE_SPLIT:
+			ret = handle_hyp_req_split(vcpu, hyp_req);
 			break;
 		default:
 			pr_warn("Unknown kvm_hyp_req type: %d\n", hyp_req->type);
