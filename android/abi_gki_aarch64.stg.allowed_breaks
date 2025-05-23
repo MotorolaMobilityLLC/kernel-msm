@@ -113,3 +113,7 @@ type 'struct cgroup_root' changed
 type 'struct xhci_sideband' changed
   was fully defined, is now only declared
 
+type 'struct kvm_protected_vm' changed
+  member 'struct maple_tree pinned_pages' was removed
+  member 'union { struct rb_root_cached pinned_pages; struct { struct maple_tree __unused; }; union { }; }' was added
+
