@@ -132,3 +132,7 @@ type 'struct io_ring_ctx' changed
 1 variable symbol(s) removed
   'struct tracepoint __tracepoint_android_vh_filemap_fault_before_folio_locked'
 
+type 'struct kvm_protected_vm' changed
+  member 'struct maple_tree pinned_pages' was removed
+  member 'union { struct rb_root_cached pinned_pages; struct { struct maple_tree __unused; }; union { }; }' was added
+
