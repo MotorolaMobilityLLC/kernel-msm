@@ -42470,6 +42470,10 @@ member {
   type_id: 0x3d751c99
 }
 member {
+  id: 0x2cd6acbf
+  type_id: 0x3c74c2ee
+}
+member {
   id: 0x2d16b3a0
   type_id: 0x3b74be91
 }
@@ -43413,6 +43417,11 @@ member {
   id: 0x36245558
   type_id: 0x57bf00b8
   offset: 576
+}
+member {
+  id: 0x3643ba2c
+  type_id: 0x56209a0e
+  offset: 256
 }
 member {
   id: 0x36477112
@@ -45546,6 +45555,11 @@ member {
   type_id: 0x914dbfdc
   offset: 242
   bitsize: 14
+}
+member {
+  id: 0x906218d7
+  name: "__unused"
+  type_id: 0xa179a8c5
 }
 member {
   id: 0x9086e58b
@@ -156569,10 +156583,9 @@ member {
   offset: 576
 }
 member {
-  id: 0x03347550
+  id: 0x0345ffe6
   name: "pinned_pages"
-  type_id: 0xa179a8c5
-  offset: 256
+  type_id: 0xd0f3b5bf
 }
 member {
   id: 0x88a7076f
@@ -223875,6 +223888,14 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x3c74c2ee
+  kind: STRUCT
+  definition {
+    bytesize: 16
+    member_id: 0x906218d7
+  }
+}
+struct_union {
   id: 0x3c9f0fa2
   kind: STRUCT
   definition {
@@ -225485,6 +225506,16 @@ struct_union {
     bytesize: 8
     member_id: 0x03399b7b
     member_id: 0xdf160d99
+  }
+}
+struct_union {
+  id: 0x56209a0e
+  kind: UNION
+  definition {
+    bytesize: 16
+    member_id: 0x0345ffe6
+    member_id: 0x2cd6acbf
+    member_id: 0x36752b74
   }
 }
 struct_union {
@@ -253468,7 +253499,7 @@ struct_union {
     bytesize: 64
     member_id: 0xb8f5134f
     member_id: 0x63c436ff
-    member_id: 0x03347550
+    member_id: 0x3643ba2c
     member_id: 0x0f7f629e
     member_id: 0x3a2d39cb
   }
