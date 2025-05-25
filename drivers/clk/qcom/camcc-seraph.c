@@ -3137,7 +3137,6 @@ static int cam_cc_seraph_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	pm_runtime_put_sync(&pdev->dev);
 	dev_info(&pdev->dev, "Registered CAM CC clocks\n");
 
 	return ret;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * PCIe ECAM root host controller driver
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
@@ -504,12 +504,71 @@ static struct qcom_msi *qcom_msi_init(struct device *dev)
 
 static int qcom_pcie_ecam_suspend_noirq(struct device *dev)
 {
-	return pm_runtime_put_sync(dev);
+	int ret;
+
+	/*
+	 * Due to usage of single power domain with GenPd framework, there is
+	 * additional +1 usage count is seen. That will dpm_suspend() will remove
+	 * its -1 and suspend device i.e. performing D3cold with it. Hence remove
+	 * this driver based +1 count, and return success with positive value from
+	 * pm_runtime_put_sync().
+	 */
+	ret = pm_runtime_put_sync(dev);
+	if (ret < 0)
+		dev_err(dev, "fail to suspend pcie controller: %d\n", ret);
+
+	return 0;
 }
 
 static int qcom_pcie_ecam_resume_noirq(struct device *dev)
 {
-	return pm_runtime_get_sync(dev);
+	struct qcom_msi *msi = (struct qcom_msi *)dev_get_drvdata(dev);
+	int ret;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0)
+		dev_err(dev, "fail to resume pcie controller: %d\n", ret);
+
+	if (msi)
+		qcom_msi_config(msi->msi_domain);
+
+	/*
+	 * Return success as core suspend framework based dpm_start() has already
+	 * performed pm_runtime_get_sync() with GenPD device here which would cause
+	 * driver based pm_runtime_get_sync() returning positive number, and will
+	 * till return success here.
+	 */
+	return 0;
+}
+
+static int qcom_pci_ecam_runtime_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int qcom_pci_ecam_runtime_resume(struct device *dev)
+{
+	struct qcom_msi *msi = (struct qcom_msi *)dev_get_drvdata(dev);
+
+	/*
+	 * During suspend msi address gets cleared,
+	 * re-configuring the msi in resume process.
+	 */
+	if (msi)
+		qcom_msi_config(msi->msi_domain);
+
+	return 0;
+}
+
+static void qcom_pcie_ecam_shutdown(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	int ret;
+
+	/* Put PCIe into D3cold to avoid any access while rebooting device */
+	ret = qcom_pcie_ecam_suspend_noirq(dev);
+	if (ret)
+		dev_err(dev, "fail to shutdown pcie controller: %d\n", ret);
 }
 
 static int qcom_pcie_ecam_probe(struct platform_device *pdev)
@@ -541,10 +600,13 @@ static int qcom_pcie_ecam_probe(struct platform_device *pdev)
 		pm_runtime_put_sync(dev);
 	}
 
+	dev_set_drvdata(&pdev->dev, msi);
 	return ret;
 }
 
 static const struct dev_pm_ops qcom_pcie_ecam_pm_ops = {
+	SET_RUNTIME_PM_OPS(qcom_pci_ecam_runtime_suspend,
+				qcom_pci_ecam_runtime_resume, NULL)
 	NOIRQ_SYSTEM_SLEEP_PM_OPS(qcom_pcie_ecam_suspend_noirq,
 				qcom_pcie_ecam_resume_noirq)
 };
@@ -568,6 +630,7 @@ MODULE_DEVICE_TABLE(of, qcom_pcie_ecam_of_match);
 
 static struct platform_driver qcom_pcie_ecam_driver = {
 	.probe	= qcom_pcie_ecam_probe,
+	.shutdown	= qcom_pcie_ecam_shutdown,
 	.driver	= {
 		.name			= "qcom-pcie-ecam-rc",
 		.suppress_bind_attrs	= true,

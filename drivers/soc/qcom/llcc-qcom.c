@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/bitmap.h>
@@ -491,6 +491,29 @@ static const struct llcc_slice_config niobe_data[] = {
 };
 
 static const struct llcc_slice_config neo_xr_data[] =  {
+	{LLCC_CPUSS,     1,  6144, 1, 0, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 1, 0, 0 },
+	{LLCC_VIDSC0,    2,   128, 2, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_AUDIO,     6,  1024, 3, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_CMPT,     10,  1024, 1, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_GPUHTW,   11,     0, 1, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_GPU,      12,  1536, 2, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 1, 0 },
+	{LLCC_MMUHWT,   13,  1024, 1, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 0, 1, 0, 0 },
+	{LLCC_DISP,     16,     0, 1, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_APTCM,    26,  2048, 3, 1,        0x0,  0x3,   1, 0, 1, 1, 0, 0, 0 },
+	{LLCC_WRTCH,    31,   256, 1, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 0, 1, 0, 0 },
+	{LLCC_VIEYE,     7,  7168, 4, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_VIDPTH,    8,  7168, 4, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_GPUMV,     9,  2048, 2, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_EVALFT,   20,  7168, 5, 1, 0x3FFFFFFC,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_EVARGHT,  21,  7168, 5, 1, 0x3FFFFFFC,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_EVAGAIN,  25,  1024, 2, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_AENPU,    30,  3072, 3, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_VIPTH,    29,  1024, 4, 1, 0x3FFFFFFF,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_DISLFT,   17,     0, 1, 1,        0x0,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_DISRGHT,  18,     0, 1, 1,        0x0,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_EVCSLFT,  22,     0, 1, 1,        0x0,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_EVCSRGHT, 23,     0, 1, 1,        0x0,  0x0,   0, 0, 0, 1, 0, 0, 0 },
+	{LLCC_SPAD,     24,  7168, 1, 1,        0x0,  0x0,   0, 0, 0, 1, 0, 0, 0 },
 };
 
 static const struct llcc_slice_config neo_xr_v2_data[] =  {

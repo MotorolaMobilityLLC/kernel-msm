@@ -2,7 +2,7 @@
 /*
  * Crypto HWKM library for storage encryption.
  *
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -20,6 +20,12 @@
 
 #if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
 #define KEYMANAGER_ICE_MAP_SLOT(slot, offset)	((slot * 2) + offset)
+#define HWKM_MAJOR_VERSION_1 1
+#define HWKM_MAJOR_VERSION_2 2
+#define HWKM_MINOR_VERSION_1 1
+/*For targets having HWKM version less than 2.1.0, ICE keyslot 0-9 are reserved*/
+#define SLOT_OFFSET_0 0
+#define SLOT_OFFSET_10 10
 #endif
 
 #if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER_V1)
@@ -281,16 +287,35 @@ static int crypto_qti_program_key_v1(const struct ice_mmio_data *mmio_data,
 }
 #endif
 
+#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
+static void crypto_qti_update_slot_offset(const struct ice_mmio_data *mmio_data)
+{
+	int minor_version = 0, major_version = 0;
+
+	minor_version = qti_hwkm_get_reg_data(mmio_data->ice_hwkm_mmio,
+					QTI_HWKM_ICE_RG_IPCAT_VERSION,
+					HWKM_VERSION_MINOR_REV,
+					HWKM_VERSION_MINOR_REV_MASK, ICE_SLAVE);
+
+	major_version = qti_hwkm_get_reg_data(mmio_data->ice_hwkm_mmio,
+					QTI_HWKM_ICE_RG_IPCAT_VERSION,
+					HWKM_VERSION_MAJOR_REV,
+					HWKM_VERSION_MAJOR_REV_MASK, ICE_SLAVE);
+
+	pr_debug("HWKM minor version is %d.\n", minor_version);
+	pr_debug("HWKM major version is %d.\n", major_version);
+	if (major_version == HWKM_MAJOR_VERSION_1)
+		offset = SLOT_OFFSET_10;
+	else if (major_version == HWKM_MAJOR_VERSION_2)
+		offset = (minor_version < HWKM_MINOR_VERSION_1) ? SLOT_OFFSET_10 : SLOT_OFFSET_0;
+}
+#endif
 
 int crypto_qti_program_key(const struct ice_mmio_data *mmio_data,
 			   const struct blk_crypto_key *key, unsigned int slot,
 			   unsigned int data_unit_mask, int capid, int storage_type)
 {
 	int err = 0;
-#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
-	int minor_version = 0, major_version = 0;
-#endif
-
 	union crypto_cfg cfg;
 
 	if ((key->size) <= RAW_SECRET_SIZE) {
@@ -307,22 +332,7 @@ int crypto_qti_program_key(const struct ice_mmio_data *mmio_data,
 		qti_hwkm_init_done = true;
 		offset = 0;
 #if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
-		minor_version = qti_hwkm_get_reg_data(mmio_data->ice_hwkm_mmio,
-						QTI_HWKM_ICE_RG_IPCAT_VERSION,
-						HWKM_VERSION_MINOR_REV,
-						HWKM_VERSION_MINOR_REV_MASK, ICE_SLAVE);
-
-		major_version = qti_hwkm_get_reg_data(mmio_data->ice_hwkm_mmio,
-						QTI_HWKM_ICE_RG_IPCAT_VERSION,
-						HWKM_VERSION_MAJOR_REV,
-						HWKM_VERSION_MAJOR_REV_MASK, ICE_SLAVE);
-
-		pr_debug("HWKM minor version is %d.\n", minor_version);
-		pr_debug("HWKM major version is %d.\n", major_version);
-		if (major_version == 1)
-			offset = 10;
-		else if (major_version == 2)
-			offset = (minor_version < 1) ? 10 : 0;
+		crypto_qti_update_slot_offset(mmio_data);
 #endif
 	}
 
@@ -536,6 +546,10 @@ int crypto_qti_derive_raw_secret_platform(const struct ice_mmio_data *mmio_data,
 			return -EINVAL;
 		}
 		qti_hwkm_init_done = true;
+		offset = 0;
+#if IS_ENABLED(CONFIG_QTI_HW_KEY_MANAGER)
+		crypto_qti_update_slot_offset(mmio_data);
+#endif
 	}
 
 	/*

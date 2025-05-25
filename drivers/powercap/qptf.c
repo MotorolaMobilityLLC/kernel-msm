@@ -363,6 +363,7 @@ static void destroy_qptm(struct qptm *qptm)
 	mutex_lock(&qptm_list_lock);
 	list_del(&qptm->node);
 	mutex_unlock(&qptm_list_lock);
+
 	mutex_lock(&qptm->lock);
 	list_for_each_entry_safe(pos, aux, &qptm->pz_list, qnode) {
 		list_del(&pos->qnode);
@@ -399,7 +400,7 @@ static struct qptm *create_qptm(struct device *dev, struct device_node *np)
 {
 	struct qptm *qptm;
 	struct of_phandle_args powerzone_spec;
-	int idx = 0, count, ret;
+	int idx = 0, count, ret, pz_list_count = 0;
 	struct powerzone *pos;
 	bool found = false;
 
@@ -453,6 +454,7 @@ static struct qptm *create_qptm(struct device *dev, struct device_node *np)
 			if (!pos->attached) {
 				mutex_lock(&qptm->lock);
 				list_add(&pos->qnode, &qptm->pz_list);
+				pz_list_count++;
 				mutex_unlock(&qptm->lock);
 				pos->attached = true;
 			}
@@ -465,7 +467,7 @@ static struct qptm *create_qptm(struct device *dev, struct device_node *np)
 		}
 	}
 
-	if (count != list_count_nodes(&qptm->pz_list))
+	if (count != pz_list_count)
 		return qptm;
 
 	for (idx = 0; idx < qh->count; idx++) {
@@ -574,6 +576,7 @@ static struct qptm *qptm_setup_virtual(struct qptm_node *hierarchy,
 	qptm->np = hierarchy->np;
 	mutex_init(&qptm->lock);
 	INIT_LIST_HEAD(&qptm->pz_list);
+
 	mutex_lock(&qptm_list_lock);
 	list_add(&qptm->node, &qptm_list);
 	mutex_unlock(&qptm_list_lock);
@@ -687,6 +690,7 @@ static int qptm_create_root_node(void)
 	qh->root->np = NULL;
 	mutex_init(&qh->root->lock);
 	INIT_LIST_HEAD(&qh->root->pz_list);
+
 	mutex_lock(&qptm_list_lock);
 	list_add(&qh->root->node, &qptm_list);
 	mutex_unlock(&qptm_list_lock);
