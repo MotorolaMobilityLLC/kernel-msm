@@ -182,7 +182,7 @@ config USB_DWC3_QCOM_MP
 	tristate "Qualcomm Platform"
 	depends on ARCH_QCOM || COMPILE_TEST
 	depends on EXTCON || !EXTCON
-	depends on (OF || ACPI)
+	depends on OF
 	help
 	  Some Qualcomm SoCs use DesignWare Core IP for USB2/3
 	  functionality.
