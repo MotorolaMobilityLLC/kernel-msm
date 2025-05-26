@@ -7,8 +7,15 @@ target_name = "autogvm"
 def define_autogvm_lxc():
     _autogvm_lxc_in_tree_modules = [
         # keep sorted
+        "drivers/phy/qualcomm/phy-qcom-qmp-combo.ko",
+        "drivers/phy/qualcomm/phy-qcom-qmp-pcie.ko",
+        "drivers/phy/qualcomm/phy-qcom-qmp-pcie-msm8996.ko",
+        "drivers/phy/qualcomm/phy-qcom-qmp-ufs.ko",
+        "drivers/phy/qualcomm/phy-qcom-qmp-usb.ko",
+        "drivers/phy/qualcomm/phy-qcom-snps-femto-v2.ko",
         "drivers/rpmsg/qcom_glink_cma.ko",
         "drivers/soc/qcom/hgsl/qcom_hgsl.ko",
+        "drivers/usb/dwc3/dwc3-qcom-mp.ko",
     ]
 
     for variant in lxc_variants:
