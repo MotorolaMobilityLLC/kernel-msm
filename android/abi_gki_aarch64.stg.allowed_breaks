@@ -126,3 +126,9 @@ type 'struct io_ring_ctx' changed
   28 members ('struct wait_queue_head poll_wq' .. 'struct page** sqe_pages') changed
     offset changed by -64
 
+1 function symbol(s) removed
+  'int __traceiter_android_vh_filemap_fault_before_folio_locked(void*, struct folio*)'
+
+1 variable symbol(s) removed
+  'struct tracepoint __tracepoint_android_vh_filemap_fault_before_folio_locked'
+

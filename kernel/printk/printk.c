@@ -2303,14 +2303,15 @@ int vprintk_store(int facility, int level,
 	if (dev_info)
 		memcpy(&r.info->dev_info, dev_info, sizeof(r.info->dev_info));
 
+	trace_android_rvh_logbuf(prb, &r);
+	trace_android_vh_logbuf(prb, &r);
+
 	/* A message without a trailing newline can be continued. */
 	if (!(flags & LOG_NEWLINE))
 		prb_commit(&e);
 	else
 		prb_final_commit(&e);
 
-	trace_android_rvh_logbuf(prb, &r);
-	trace_android_vh_logbuf(prb, &r);
 	ret = text_len + trunc_msg_len;
 out:
 	printk_exit_irqrestore(recursion_ptr, irqflags);

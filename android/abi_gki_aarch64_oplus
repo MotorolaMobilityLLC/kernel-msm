@@ -332,6 +332,10 @@
   __traceiter_android_vh_should_skip_zone
   __traceiter_android_vh_update_unmapped_area_info
   __traceiter_android_vh_reuse_whole_anon_folio
+  __tracepoint_android_vh_folio_add_lru_folio_activate
+  __tracepoint_android_vh_filemap_fault_pre_folio_locked
+  __tracepoint_android_vh_filemap_folio_mapped
+  __tracepoint_android_vh_folio_remove_rmap_ptes
   __traceiter_block_bio_queue
   __traceiter_block_getrq
   __traceiter_block_rq_complete
@@ -497,6 +501,10 @@
   __tracepoint_android_vh_should_skip_zone
   __tracepoint_android_vh_update_unmapped_area_info
   __tracepoint_android_vh_reuse_whole_anon_folio
+  __traceiter_android_vh_folio_add_lru_folio_activate
+  __traceiter_android_vh_filemap_fault_pre_folio_locked
+  __traceiter_android_vh_filemap_folio_mapped
+  __traceiter_android_vh_folio_remove_rmap_ptes
   __tracepoint_block_bio_queue
   __tracepoint_block_getrq
   __tracepoint_block_rq_complete
