@@ -760,7 +760,7 @@ static void ffa_notification_info_get(void)
 			  }, &ret);
 
 		if (ret.a0 != FFA_FN_NATIVE(SUCCESS) && ret.a0 != FFA_SUCCESS) {
-			if (ret.a2 != FFA_RET_NO_DATA)
+			if ((s32)ret.a2 != FFA_RET_NO_DATA)
 				pr_err("Notification Info fetch failed: 0x%lx (0x%lx)",
 				       ret.a0, ret.a2);
 			return;
@@ -796,7 +796,7 @@ static void ffa_notification_info_get(void)
 			}
 
 			/* Per vCPU Notification */
-			for (idx = 0; idx < ids_count[list]; idx++) {
+			for (idx = 1; idx < ids_count[list]; idx++) {
 				if (ids_processed >= max_ids - 1)
 					break;
 

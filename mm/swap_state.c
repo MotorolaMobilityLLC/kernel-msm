@@ -549,6 +549,8 @@ struct page *read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 	return retpage;
 }
 
+EXPORT_SYMBOL_GPL(read_swap_cache_async);
+
 static unsigned int __swapin_nr_pages(unsigned long prev_offset,
 				      unsigned long offset,
 				      int hits,
