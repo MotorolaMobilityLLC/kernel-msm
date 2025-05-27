@@ -13,6 +13,8 @@
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/pm.h>
+#include <linux/suspend.h>
 
 #include "icc-rpmh.h"
 #include "qnoc-qos.h"
@@ -2190,6 +2192,21 @@ static int qnoc_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static int qnoc_seraph_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct qcom_icc_provider *qp = platform_get_drvdata(pdev);
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return qcom_icc_rpmh_configure_qos(qp);
+
+	return 0;
+}
+
+static const struct dev_pm_ops qnoc_seraph_pm_ops = {
+	.resume = qnoc_seraph_resume,
+};
+
 static const struct of_device_id qnoc_of_match[] = {
 	{ .compatible = "qcom,seraph-clk_virt",
 	  .data = &seraph_clk_virt},
@@ -2225,6 +2242,7 @@ static struct platform_driver qnoc_driver = {
 	.driver = {
 		.name = "qnoc-seraph",
 		.of_match_table = qnoc_of_match,
+		.pm = &qnoc_seraph_pm_ops,
 		.sync_state = qcom_icc_rpmh_sync_state,
 	},
 };
