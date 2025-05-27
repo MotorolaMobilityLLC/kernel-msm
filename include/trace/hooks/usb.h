@@ -31,6 +31,10 @@ DECLARE_HOOK(android_vh_usb_new_device_added,
 	TP_PROTO(struct usb_device *udev, int *err),
 	TP_ARGS(udev, err));
 
+DECLARE_HOOK(android_vh_xhci_full_reset_on_remove,
+	TP_PROTO(bool *full_reset),
+	TP_ARGS(full_reset));
+
 #endif /*  _TRACE_HOOK_USB_H */
 /*  This part must be outside protection */
 #include <trace/define_trace.h>
