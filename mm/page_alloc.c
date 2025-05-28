@@ -1380,15 +1380,18 @@ static void free_pcppages_bulk(struct zone *zone, int count,
 	spin_unlock_irqrestore(&zone->lock, flags);
 }
 
-static void free_one_page(struct zone *zone, struct page *page,
-			  unsigned long pfn, unsigned int order,
-			  fpi_t fpi_flags)
+static void free_one_page(struct zone *zone,
+				struct page *page, unsigned long pfn,
+				unsigned int order,
+				int migratetype, fpi_t fpi_flags)
 {
 	unsigned long flags;
-	int migratetype;
 
 	spin_lock_irqsave(&zone->lock, flags);
-	migratetype = get_pfnblock_migratetype(page, pfn);
+	if (unlikely(has_isolate_pageblock(zone) ||
+		is_migrate_isolate(migratetype))) {
+		migratetype = get_pfnblock_migratetype(page, pfn);
+	}
 	__free_one_page(page, pfn, zone, order, migratetype, fpi_flags);
 	spin_unlock_irqrestore(&zone->lock, flags);
 }
@@ -1416,15 +1419,17 @@ skip_prepare:
 			fpi_flags, &skip_free_pages_ok);
 	if (skip_free_pages_ok)
 		return;
-
-	spin_lock_irqsave(&zone->lock, flags);
+	/*
+	 * Calling get_pfnblock_migratetype() without spin_lock_irqsave() here
+	 * is used to avoid calling get_pfnblock_migratetype() under the lock.
+	 * This will reduce the lock holding time.
+	 */
 	migratetype = get_pfnblock_migratetype(page, pfn);
 	trace_android_vh_free_unref_page_bypass(page, order, migratetype, &skip_free_unref_page);
-	if (skip_free_unref_page) {
-		spin_unlock_irqrestore(&zone->lock, flags);
+	if (skip_free_unref_page)
 		return;
-	}
 
+	spin_lock_irqsave(&zone->lock, flags);
 	if (unlikely(has_isolate_pageblock(zone) ||
 		is_migrate_isolate(migratetype))) {
 		migratetype = get_pfnblock_migratetype(page, pfn);
@@ -2640,7 +2645,7 @@ void free_unref_page(struct page *page, unsigned int order)
 	struct per_cpu_pages *pcp;
 	struct zone *zone;
 	unsigned long pfn = page_to_pfn(page);
-	int migratetype;
+	int migratetype, pcpmigratetype;
 	bool skip_free_unref_page = false;
 
 	if (!free_pages_prepare(page, order, FPI_NONE))
@@ -2654,29 +2659,29 @@ void free_unref_page(struct page *page, unsigned int order)
 	 * get those areas back if necessary. Otherwise, we may have to free
 	 * excessively into the page allocator
 	 */
-	migratetype = get_pfnblock_migratetype(page, pfn);
+	migratetype = pcpmigratetype = get_pfnblock_migratetype(page, pfn);
 	trace_android_vh_free_unref_page_bypass(page, order, migratetype, &skip_free_unref_page);
 	if (skip_free_unref_page)
 		return;
 	if (unlikely(migratetype > MIGRATE_RECLAIMABLE)) {
 		if (unlikely(is_migrate_isolate(migratetype))) {
-			free_one_page(page_zone(page), page, pfn, order,  FPI_NONE);
+			free_one_page(page_zone(page), page, pfn, order, migratetype, FPI_NONE);
 			return;
 		}
 #ifdef CONFIG_CMA
 		if (!cma_has_pcplist() || migratetype != MIGRATE_CMA)
 #endif
-			migratetype = MIGRATE_MOVABLE;
+			pcpmigratetype = MIGRATE_MOVABLE;
 	}
 
 	zone = page_zone(page);
 	pcp_trylock_prepare(UP_flags);
 	pcp = pcp_spin_trylock(zone->per_cpu_pageset);
 	if (pcp) {
-		free_unref_page_commit(zone, pcp, page, migratetype, order);
+		free_unref_page_commit(zone, pcp, page, pcpmigratetype, order);
 		pcp_spin_unlock(pcp);
 	} else {
-		free_one_page(zone, page, pfn, order,  FPI_NONE);
+		free_one_page(zone, page, pfn, order, migratetype, FPI_NONE);
 	}
 	pcp_trylock_finish(UP_flags);
 }
@@ -2709,7 +2714,7 @@ void free_unref_page_list(struct list_head *list)
 		migratetype = get_pfnblock_migratetype(page, pfn);
 		if (unlikely(is_migrate_isolate(migratetype))) {
 			list_del(&page->lru);
-			free_one_page(page_zone(page), page, pfn, 0, FPI_NONE);
+			free_one_page(page_zone(page), page, pfn, 0, migratetype, FPI_NONE);
 			continue;
 		}
 	}
@@ -2736,16 +2741,6 @@ void free_unref_page_list(struct list_head *list)
 				pcp_trylock_finish(UP_flags);
 			}
 
-			/*
-			 * Free isolated pages directly to the
-			 * allocator, see comment in free_unref_page.
-			 */
-			if (is_migrate_isolate(migratetype)) {
-				free_one_page(zone, page, page_to_pfn(page),
-					      0,  FPI_NONE);
-				continue;
- 			}
-
 			batch_count = 0;
 
 			/*
@@ -2757,7 +2752,7 @@ void free_unref_page_list(struct list_head *list)
 			if (unlikely(!pcp)) {
 				pcp_trylock_finish(UP_flags);
 				free_one_page(zone, page, pfn,
-					      0, FPI_NONE);
+					      0, migratetype, FPI_NONE);
 				locked_zone = NULL;
 				continue;
 			}
@@ -7009,14 +7004,13 @@ bool take_page_off_buddy(struct page *page)
 bool put_page_back_buddy(struct page *page)
 {
 	struct zone *zone = page_zone(page);
+	unsigned long pfn = page_to_pfn(page);
 	unsigned long flags;
+	int migratetype = get_pfnblock_migratetype(page, pfn);
 	bool ret = false;
 
 	spin_lock_irqsave(&zone->lock, flags);
 	if (put_page_testzero(page)) {
-		unsigned long pfn = page_to_pfn(page);
-		int migratetype = get_pfnblock_migratetype(page, pfn);
-
 		ClearPageHWPoisonTakenOff(page);
 		__free_one_page(page, pfn, zone, 0, migratetype, FPI_NONE);
 		if (TestClearPageHWPoison(page)) {
