@@ -1845,15 +1845,9 @@ int move_freepages_block(struct zone *zone, struct page *page,
 	start_pfn = pageblock_start_pfn(pfn);
 	end_pfn = pageblock_end_pfn(pfn) - 1;
 
-	/*
-	 * The caller only has the lock for @zone, don't touch ranges
-	 * that straddle into other zones. While we could move part of
-	 * the range that's inside the zone, this call is usually
-	 * accompanied by other operations such as migratetype updates
-	 * which also should be locked.
-	 */
+	/* Do not cross zone boundaries */
 	if (!zone_spans_pfn(zone, start_pfn))
-		return 0;
+		start_pfn = pfn;
 	if (!zone_spans_pfn(zone, end_pfn))
 		return 0;
 
