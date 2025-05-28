@@ -3757,22 +3757,24 @@ static inline bool page_is_guard(struct page *page)
 	return PageGuard(page);
 }
 
-bool __set_page_guard(struct zone *zone, struct page *page, unsigned int order);
+bool __set_page_guard(struct zone *zone, struct page *page, unsigned int order,
+		      int migratetype);
 static inline bool set_page_guard(struct zone *zone, struct page *page,
-				  unsigned int order)
+				  unsigned int order, int migratetype)
 {
 	if (!debug_guardpage_enabled())
 		return false;
-	return __set_page_guard(zone, page, order);
+	return __set_page_guard(zone, page, order, migratetype);
 }
 
-void __clear_page_guard(struct zone *zone, struct page *page, unsigned int order);
+void __clear_page_guard(struct zone *zone, struct page *page, unsigned int order,
+			int migratetype);
 static inline void clear_page_guard(struct zone *zone, struct page *page,
-				    unsigned int order)
+				    unsigned int order, int migratetype)
 {
 	if (!debug_guardpage_enabled())
 		return;
-	__clear_page_guard(zone, page, order);
+	__clear_page_guard(zone, page, order, migratetype);
 }
 
 #else	/* CONFIG_DEBUG_PAGEALLOC */
@@ -3782,9 +3784,9 @@ static inline unsigned int debug_guardpage_minorder(void) { return 0; }
 static inline bool debug_guardpage_enabled(void) { return false; }
 static inline bool page_is_guard(struct page *page) { return false; }
 static inline bool set_page_guard(struct zone *zone, struct page *page,
-			unsigned int order) { return false; }
+			unsigned int order, int migratetype) { return false; }
 static inline void clear_page_guard(struct zone *zone, struct page *page,
-				unsigned int order) {}
+				unsigned int order, int migratetype) {}
 #endif	/* CONFIG_DEBUG_PAGEALLOC */
 
 #ifdef __HAVE_ARCH_GATE_AREA
