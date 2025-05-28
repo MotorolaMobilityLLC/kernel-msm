@@ -2630,7 +2630,7 @@ static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
 		reinit_completion(&gi3c->ibi.done);
 
 		cmd = ((dev->info.dyn_addr & I3C_SLAVE_MASK)
-			<< I3C_SLAVE_ADDR_SHIFT) | I3C_SLAVE_RW | STALL;
+			<< I3C_SLAVE_ADDR_SHIFT) | I3C_SLAVE_RW;
 		cmd |= ((payload_len << NUM_OF_MDB_SHIFT) & IBI_NUM_OF_MDB_MSK);
 		geni_write_reg(cmd, gi3c->ibi.ibi_base, IBI_CMD(0));
 
