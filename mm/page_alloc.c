@@ -323,8 +323,6 @@ const char * const migratetype_names[MIGRATE_TYPES] = {
 #endif
 };
 
-unsigned long free_highatomics[MAX_NR_ZONES] = {0};
-
 int min_free_kbytes = 1024;
 int user_min_free_kbytes = -1;
 static int watermark_boost_factor __read_mostly = 15000;
@@ -761,8 +759,6 @@ compaction_capture(struct capture_control *capc, struct page *page,
 static inline void account_freepages(struct zone *zone, int nr_pages,
 				     int migratetype)
 {
-	lockdep_assert_held(&zone->lock);
-
 	if (is_migrate_isolate(migratetype))
 		return;
 
@@ -770,9 +766,6 @@ static inline void account_freepages(struct zone *zone, int nr_pages,
 
 	if (is_migrate_cma(migratetype))
 		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES, nr_pages);
-	else if (is_migrate_highatomic(migratetype))
-		WRITE_ONCE(free_highatomics[zone_idx(zone)],
-			   free_highatomics[zone_idx(zone)] + nr_pages);
 }
 
 /* Used for pages not on another list */
@@ -3214,10 +3207,11 @@ static inline long __zone_watermark_unusable_free(struct zone *z,
 
 	/*
 	 * If the caller does not have rights to reserves below the min
-	 * watermark then subtract the free pages reserved for highatomic.
+	 * watermark then subtract the high-atomic reserves. This will
+	 * over-estimate the size of the atomic reserve but it avoids a search.
 	 */
 	if (likely(!(alloc_flags & ALLOC_RESERVES)))
-		unusable_free += READ_ONCE(free_highatomics[zone_idx(z)]);
+		unusable_free += z->nr_reserved_highatomic;
 
 #ifdef CONFIG_CMA
 	/* If allocation can't use CMA areas don't use free CMA pages */
