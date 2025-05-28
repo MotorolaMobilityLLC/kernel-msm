@@ -137,6 +137,7 @@ fail_ws:
 	gh_rm_unregister_notifier(&rm_nb);
 fail_init:
 	input_unregister_device(gh_vm_poff_input);
+	return ret;
 fail_register:
 	input_free_device(gh_vm_poff_input);
 	return ret;
@@ -221,7 +222,6 @@ static void gh_guest_pops_exit_poff(void)
 	gh_rm_unregister_notifier(&rm_nb);
 
 	input_unregister_device(gh_vm_poff_input);
-	input_free_device(gh_vm_poff_input);
 }
 
 int gh_guest_pops_init(void)
