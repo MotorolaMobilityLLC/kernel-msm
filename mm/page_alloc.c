@@ -2802,8 +2802,20 @@ void free_unref_page_list(struct list_head *list)
 
 	/* Prepare pages for freeing */
 	list_for_each_entry_safe(page, next, list, lru) {
+		unsigned long pfn = page_to_pfn(page);
 		if (!free_pages_prepare(page, 0, FPI_NONE)) {
 			list_del(&page->lru);
+			continue;
+		}
+
+		/*
+		 * Free isolated pages directly to the allocator, see
+		 * comment in free_unref_page.
+		 */
+		migratetype = get_pfnblock_migratetype(page, pfn);
+		if (unlikely(is_migrate_isolate(migratetype))) {
+			list_del(&page->lru);
+			free_one_page(page_zone(page), page, pfn, 0, FPI_NONE);
 			continue;
 		}
 	}
@@ -2824,13 +2836,10 @@ void free_unref_page_list(struct list_head *list)
 		 * excessive lock hold times when freeing a large list of
 		 * pages.
 		 */
-		if (zone != locked_zone || batch_count == SWAP_CLUSTER_MAX ||
-		    is_migrate_isolate(migratetype)) {
+		if (zone != locked_zone || batch_count == SWAP_CLUSTER_MAX) {
 			if (pcp) {
 				pcp_spin_unlock(pcp);
 				pcp_trylock_finish(UP_flags);
-				locked_zone = NULL;
-				pcp = NULL;
 			}
 
 			/*
