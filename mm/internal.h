@@ -470,7 +470,7 @@ pmd_t *mm_find_pmd(struct mm_struct *mm, unsigned long address);
 #define K(x) ((x) << (PAGE_SHIFT-10))
 
 extern char * const zone_names[MAX_NR_ZONES];
-extern unsigned long free_highatomics[MAX_NR_ZONES];
+extern unsigned long nr_free_highatomic[MAX_NR_ZONES];
 
 /* perform sanity checks on struct pages being allocated or freed */
 DECLARE_STATIC_KEY_MAYBE(CONFIG_DEBUG_VM, check_pages_enabled);
