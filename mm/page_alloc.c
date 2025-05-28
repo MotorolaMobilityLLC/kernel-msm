@@ -324,6 +324,8 @@ const char * const migratetype_names[MIGRATE_TYPES] = {
 #endif
 };
 
+unsigned long nr_free_highatomic[MAX_NR_ZONES] = {0};
+
 int min_free_kbytes = 1024;
 int user_min_free_kbytes = -1;
 static int watermark_boost_factor __read_mostly = 15000;
@@ -770,8 +772,8 @@ static inline void account_freepages(struct zone *zone, int nr_pages,
 	if (is_migrate_cma(migratetype))
 		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES, nr_pages);
 	else if (is_migrate_highatomic(migratetype))
-		WRITE_ONCE(zone->nr_free_highatomic,
-			   zone->nr_free_highatomic + nr_pages);
+		WRITE_ONCE(nr_free_highatomic[zone_idx(zone)],
+			   nr_free_highatomic[zone_idx(zone)] + nr_pages);
 }
 
 /* Used for pages not on another list */
@@ -3232,7 +3234,7 @@ static inline long __zone_watermark_unusable_free(struct zone *z,
 	 * watermark then subtract the free pages reserved for highatomic.
 	 */
 	if (likely(!(alloc_flags & ALLOC_RESERVES)))
-		unusable_free += READ_ONCE(z->nr_free_highatomic);
+		unusable_free += READ_ONCE(nr_free_highatomic[zone_idx(z)]);
 
 #ifdef CONFIG_CMA
 	/* If allocation can't use CMA areas don't use free CMA pages */
