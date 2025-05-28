@@ -792,8 +792,10 @@ static void gh_vm_check_peer(struct device *dev, struct device_node *rm_root)
 	uuid_t vm_guid;
 
 	peers_cnt = of_property_count_strings(rm_root, "qcom,peers");
-	if (!peers_cnt)
+	if (peers_cnt < 0) {
+		dev_info(dev, "No qcom,peers found\n");
 		return;
+	}
 
 	peers_array = kcalloc(peers_cnt, sizeof(char *), GFP_KERNEL);
 	if (!peers_array) {
