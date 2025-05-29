@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 /*
  * File name: rtimd-i2c.h
@@ -59,10 +59,6 @@
 
 /* device file name */
 #define RTI_MD_DEV_NAME		"rtimd-i2c"
-
-/* device number */
-#define RTI_MD_MAJOR_NR         240	  /* MAJOR No. */
-#define RTI_MD_MINOR_NR         200       /* MINOR No. */
 
 #define MAX_RTIMD_REG_DATA_SIZE		PAGE_SIZE /* 4KB Kernel page size */
 
