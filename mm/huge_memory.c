@@ -581,8 +581,6 @@ DEFINE_MTHP_STAT_ATTR(swpout_fallback, MTHP_STAT_SWPOUT_FALLBACK);
 DEFINE_MTHP_STAT_ATTR(split, MTHP_STAT_SPLIT);
 DEFINE_MTHP_STAT_ATTR(split_failed, MTHP_STAT_SPLIT_FAILED);
 DEFINE_MTHP_STAT_ATTR(split_deferred, MTHP_STAT_SPLIT_DEFERRED);
-DEFINE_MTHP_STAT_ATTR(nr_anon, MTHP_STAT_NR_ANON);
-DEFINE_MTHP_STAT_ATTR(nr_anon_partially_mapped, MTHP_STAT_NR_ANON_PARTIALLY_MAPPED);
 
 static struct attribute *stats_attrs[] = {
 	&anon_fault_alloc_attr.attr,
@@ -593,8 +591,6 @@ static struct attribute *stats_attrs[] = {
 	&split_attr.attr,
 	&split_failed_attr.attr,
 	&split_deferred_attr.attr,
-	&nr_anon_attr.attr,
-	&nr_anon_partially_mapped_attr.attr,
 	NULL,
 };
 
@@ -3407,7 +3403,6 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 	bool is_anon = folio_test_anon(folio);
 	struct address_space *mapping = NULL;
 	struct anon_vma *anon_vma = NULL;
-	int order = folio_order(folio);
 	int extra_pins, ret;
 	pgoff_t end;
 	bool is_hzp;
@@ -3525,11 +3520,8 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 	if (folio_order(folio) > 1 &&
 	    !list_empty(&folio->_deferred_list)) {
 		ds_queue->split_queue_len--;
-		if (folio_test_partially_mapped(folio)) {
+		if (folio_test_partially_mapped(folio))
 			__folio_clear_partially_mapped(folio);
-			mod_mthp_stat(folio_order(folio),
-			MTHP_STAT_NR_ANON_PARTIALLY_MAPPED, -1);
-		}
 		/*
 		* Reinitialize page_deferred_list after removing the
 		* page from the split_queue, otherwise a subsequent
@@ -3553,10 +3545,6 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 		}
 	}
 
-	if (is_anon) {
-		mod_mthp_stat(order, MTHP_STAT_NR_ANON, -1);
-		mod_mthp_stat(0, MTHP_STAT_NR_ANON, 1);
-	}
 	__split_huge_page(page, list, end);
 	if (ret) {
 fail:
@@ -3617,11 +3605,8 @@ bool __folio_unqueue_deferred_split(struct folio *folio)
 	spin_lock_irqsave(&ds_queue->split_queue_lock, flags);
 	if (!list_empty(&folio->_deferred_list)) {
 		ds_queue->split_queue_len--;
-		if (folio_test_partially_mapped(folio)) {
+		if (folio_test_partially_mapped(folio))
 			__folio_clear_partially_mapped(folio);
-			mod_mthp_stat(folio_order(folio),
-				      MTHP_STAT_NR_ANON_PARTIALLY_MAPPED, -1);
-		}
 		list_del_init(&folio->_deferred_list);
 		unqueued = true;
 	}
@@ -3666,7 +3651,6 @@ void deferred_split_folio(struct folio *folio, bool partially_mapped)
 			if (folio_test_pmd_mappable(folio))
 				count_vm_event(THP_DEFERRED_SPLIT_PAGE);
 			count_mthp_stat(folio_order(folio), MTHP_STAT_SPLIT_DEFERRED);
-			mod_mthp_stat(folio_order(folio), MTHP_STAT_NR_ANON_PARTIALLY_MAPPED, 1);
 
 		}
 	} else {
@@ -3758,11 +3742,8 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,
 			list_move(&folio->_deferred_list, &list);
 		} else {
 			/* We lost race with folio_put() */
-			if (folio_test_partially_mapped(folio)) {
+			if (folio_test_partially_mapped(folio))
 				__folio_clear_partially_mapped(folio);
-				mod_mthp_stat(folio_order(folio),
-					      MTHP_STAT_NR_ANON_PARTIALLY_MAPPED, -1);
-			}
 			list_del_init(&folio->_deferred_list);
 			ds_queue->split_queue_len--;
 		}
@@ -3784,8 +3765,6 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,
 			goto next;
 		if (!split_folio(folio)) {
 			did_split = true;
-			if (underused)
-				count_vm_event(THP_UNDERUSED_SPLIT_PAGE);
 			split++;
 		}
 		folio_unlock(folio);
