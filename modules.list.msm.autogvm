@@ -38,3 +38,4 @@ qcom-spmi-pmic.ko
 pinctrl-spmi-gpio.ko
 pinctrl-spmi-mpp.ko
 rtc-pm8xxx.ko
+scmi_pm_domain.ko
