@@ -5,7 +5,7 @@
  * Copyright (C) 2016 Linaro Ltd
  * Copyright (C) 2014 Sony Mobile Communications AB
  * Copyright (c) 2012-2013, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/clk.h>
@@ -931,6 +931,7 @@ static int rproc_find_status_register(struct qcom_adsp *adsp)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_QCOM_Q6V5_PAS_SOCCP_V1)
 static bool rproc_poll_handover(struct qcom_adsp *adsp)
 {
 	unsigned int retry_num = 50;
@@ -1081,6 +1082,7 @@ soccp_out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(rproc_set_state);
+#endif
 
 static int rproc_panic_handler(struct notifier_block *this,
 			      unsigned long event, void *ptr)
@@ -1090,22 +1092,24 @@ static int rproc_panic_handler(struct notifier_block *this,
 
 	if (!adsp)
 		return NOTIFY_DONE;
-	/* wake up SOCCP during panic to run error handlers on SOCCP */
-	dev_info(adsp->dev, "waking SOCCP from panic path\n");
-	ret = qcom_smem_state_update_bits(adsp->wake_state,
-				    SOCCP_STATE_MASK,
-				    BIT(adsp->wake_bit));
-	if (ret) {
-		dev_err(adsp->dev, "failed to update smem bits for D3 to D0\n");
-		goto done;
-	}
-	ret = rproc_config_check_atomic(adsp, SOCCP_D0, adsp->tcsr_addr);
-	if (ret)
-		dev_err(adsp->dev, "failed to change to D0\n");
+	if (adsp->check_status) {
+		/* wake up SOCCP during panic to run error handlers on SOCCP */
+		dev_info(adsp->dev, "waking SOCCP from panic path\n");
+		ret = qcom_smem_state_update_bits(adsp->wake_state,
+						SOCCP_STATE_MASK,
+						BIT(adsp->wake_bit));
+		if (ret) {
+			dev_err(adsp->dev, "failed to update smem bits for D3 to D0\n");
+			goto done;
+		}
+		ret = rproc_config_check_atomic(adsp, SOCCP_D0, adsp->tcsr_addr);
+		if (ret)
+			dev_err(adsp->dev, "failed to change to D0\n");
 
-	ret = rproc_config_check_atomic(adsp, SPARE_REG_SOCCP_D0, adsp->spare_reg_addr);
-	if (ret)
-		dev_err(adsp->dev, "failed to change to D0\n");
+		ret = rproc_config_check_atomic(adsp, SPARE_REG_SOCCP_D0, adsp->spare_reg_addr);
+		if (ret)
+			dev_err(adsp->dev, "failed to change to D0\n");
+	}
 done:
 	return NOTIFY_DONE;
 }
