@@ -41,6 +41,13 @@ config PORTOV_DTB
 	help
 		Only include Motorola Portov device specific device tree
 
+config MUMBA_DTB
+	depends on MMI_DEVICE_DTBS
+	default n
+	bool "Motorola Mobility Mumba Device DTBs"
+	help
+		Only include Motorola Mumba device specific device tree
+
 config PARO_DTB
 	depends on MMI_DEVICE_DTBS
 	default n
