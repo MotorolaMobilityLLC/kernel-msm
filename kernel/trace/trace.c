@@ -9545,14 +9545,16 @@ static int trace_array_create_dir(struct trace_array *tr)
 static struct trace_array *
 trace_array_create_systems(const char *name, const char *systems)
 {
+	struct trace_array_ext *tr_ext;
 	struct trace_array *tr;
 	int ret;
 
 	ret = -ENOMEM;
-	tr = kzalloc(sizeof(*tr), GFP_KERNEL);
-	if (!tr)
+	tr_ext = kzalloc(sizeof(*tr_ext), GFP_KERNEL);
+	if (!tr_ext)
 		return ERR_PTR(ret);
 
+	tr = &tr_ext->trace_array;
 	tr->name = kstrdup(name, GFP_KERNEL);
 	if (!tr->name)
 		goto out_free_tr;
@@ -9564,8 +9566,8 @@ trace_array_create_systems(const char *name, const char *systems)
 		goto out_free_tr;
 
 	if (systems) {
-		tr->system_names = kstrdup_const(systems, GFP_KERNEL);
-		if (!tr->system_names)
+		tr_ext->system_names = kstrdup_const(systems, GFP_KERNEL);
+		if (!tr_ext->system_names)
 			goto out_free_tr;
 	}
 
@@ -9612,9 +9614,9 @@ trace_array_create_systems(const char *name, const char *systems)
 	free_trace_buffers(tr);
 	free_cpumask_var(tr->pipe_cpumask);
 	free_cpumask_var(tr->tracing_cpumask);
-	kfree_const(tr->system_names);
+	kfree_const(tr_ext->system_names);
 	kfree(tr->name);
-	kfree(tr);
+	kfree(tr_ext);
 
 	return ERR_PTR(ret);
 }
@@ -9646,8 +9648,14 @@ out_unlock:
 	return ret;
 }
 
+struct trace_array *trace_array_get_by_name(const char *name)
+{
+	return trace_array_get_by_name_ext(name, NULL);
+}
+EXPORT_SYMBOL_GPL(trace_array_get_by_name);
+
 /**
- * trace_array_get_by_name - Create/Lookup a trace array, given its name.
+ * trace_array_get_by_name_ext - Create/Lookup a trace array, given its name.
  * @name: The name of the trace array to be looked up/created.
  * @systems: A list of systems to create event directories for (NULL for all)
  *
@@ -9663,7 +9671,8 @@ out_unlock:
  * trace_array_put() is called, user space can not delete it.
  *
  */
-struct trace_array *trace_array_get_by_name(const char *name, const char *systems)
+struct trace_array *trace_array_get_by_name_ext(const char *name,
+						const char *systems)
 {
 	struct trace_array *tr;
 
@@ -9687,11 +9696,14 @@ out_unlock:
 	mutex_unlock(&event_mutex);
 	return tr;
 }
-EXPORT_SYMBOL_GPL(trace_array_get_by_name);
+EXPORT_SYMBOL_GPL(trace_array_get_by_name_ext);
 
 static int __remove_instance(struct trace_array *tr)
 {
 	int i;
+	struct trace_array_ext *tr_ext = container_of(tr,
+						      struct trace_array_ext,
+						      trace_array);
 
 	/* Reference counter for a newly created trace array = 1. */
 	if (tr->ref > 1 || (tr->current_trace && tr->trace_ref))
@@ -9722,9 +9734,9 @@ static int __remove_instance(struct trace_array *tr)
 
 	free_cpumask_var(tr->pipe_cpumask);
 	free_cpumask_var(tr->tracing_cpumask);
-	kfree_const(tr->system_names);
+	kfree_const(tr_ext->system_names);
 	kfree(tr->name);
-	kfree(tr);
+	kfree(tr_ext);
 
 	return 0;
 }
@@ -10527,7 +10539,7 @@ __init static void enable_instances(void)
 		if (IS_ENABLED(CONFIG_TRACER_MAX_TRACE))
 			do_allocate_snapshot(tok);
 
-		tr = trace_array_get_by_name(tok, NULL);
+		tr = trace_array_get_by_name(tok);
 		if (!tr) {
 			pr_warn("Failed to create instance buffer %s\n", curr_str);
 			continue;
