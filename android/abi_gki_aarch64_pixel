@@ -2621,6 +2621,7 @@
   touch_softlockup_watchdog
   trace_array_destroy
   trace_array_get_by_name
+  trace_array_get_by_name_ext
   trace_array_put
   trace_array_set_clr_event
   trace_event_buffer_commit
