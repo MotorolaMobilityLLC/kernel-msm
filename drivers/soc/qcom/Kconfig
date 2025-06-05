@@ -19,6 +19,11 @@ config VANTG_DTB
     help
         Only include Motorola Leap device specific device tree.
 
+config CCI_DEBUG_INTF
+	default n
+	bool "enable cci debug"
+	help
+	  This is enabling cci debug tool.
 
 config SPS
 	tristate "SPS support"
