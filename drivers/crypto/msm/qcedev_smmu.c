@@ -324,10 +324,6 @@ int qcedev_check_and_map_buffer(void *handle,
 		mapped_size = binfo->ion_buf.mapped_buf_size;
 		atomic_inc(&binfo->ref_count);
 
-		/* Add buffer mapping information to regd buffer list */
-		mutex_lock(&qce_hndl->registeredbufs.lock);
-		list_add_tail(&binfo->list, &qce_hndl->registeredbufs.list);
-		mutex_unlock(&qce_hndl->registeredbufs.lock);
 	}
 
 	/* Make sure the offset is within the mapped range */
@@ -339,6 +335,13 @@ int qcedev_check_and_map_buffer(void *handle,
 		goto unmap;
 	}
 
+	if (!found) {
+		/* Add buffer mapping information to regd buffer list */
+		mutex_lock(&qce_hndl->registeredbufs.lock);
+		list_add_tail(&binfo->list, &qce_hndl->registeredbufs.list);
+		mutex_unlock(&qce_hndl->registeredbufs.lock);
+	}
+
 	/* return the mapped virtual address adjusted by offset */
 	*vaddr += offset;
 
@@ -347,9 +350,6 @@ int qcedev_check_and_map_buffer(void *handle,
 unmap:
 	if (!found) {
 		qcedev_unmap_buffer(handle, mem_client, binfo);
-		mutex_lock(&qce_hndl->registeredbufs.lock);
-		list_del(&binfo->list);
-		mutex_unlock(&qce_hndl->registeredbufs.lock);
 	}
 
 error:
