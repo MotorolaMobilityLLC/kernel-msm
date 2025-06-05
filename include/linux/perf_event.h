@@ -937,13 +937,7 @@ struct perf_output_handle {
 	struct perf_buffer		*rb;
 	unsigned long			wakeup;
 	unsigned long			size;
-	union {
-		u64			flags;		/* perf_output*() */
-		u64			aux_flags;	/* perf_aux_output*() */
-		struct {
-			u64		skip_read : 1;
-		};
-	};
+	u64				aux_flags;
 	union {
 		void			*addr;
 		unsigned long		head;

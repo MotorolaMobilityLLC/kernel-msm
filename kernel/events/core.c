@@ -1180,12 +1180,6 @@ static void perf_event_ctx_deactivate(struct perf_event_context *ctx)
 	list_del_init(&ctx->active_ctx_list);
 }
 
-static inline void perf_pmu_read(struct perf_event *event)
-{
-	if (event->state == PERF_EVENT_STATE_ACTIVE)
-		event->pmu->read(event);
-}
-
 static void get_ctx(struct perf_event_context *ctx)
 {
 	refcount_inc(&ctx->refcount);
@@ -3395,7 +3389,8 @@ static void __perf_event_sync_stat(struct perf_event *event,
 	 * we know the event must be on the current CPU, therefore we
 	 * don't need to use it.
 	 */
-	perf_pmu_read(event);
+	if (event->state == PERF_EVENT_STATE_ACTIVE)
+		event->pmu->read(event);
 
 	perf_event_update_time(event);
 
@@ -4449,8 +4444,15 @@ static void __perf_event_read(void *info)
 
 	pmu->read(event);
 
-	for_each_sibling_event(sub, event)
-		perf_pmu_read(sub);
+	for_each_sibling_event(sub, event) {
+		if (sub->state == PERF_EVENT_STATE_ACTIVE) {
+			/*
+			 * Use sibling's PMU rather than @event's since
+			 * sibling could be on different (eg: software) PMU.
+			 */
+			sub->pmu->read(sub);
+		}
+	}
 
 	data->ret = pmu->commit_txn(pmu);
 
@@ -7050,8 +7052,9 @@ static void perf_output_read_group(struct perf_output_handle *handle,
 	if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
 		values[n++] = running;
 
-	if ((leader != event) && !handle->skip_read)
-		perf_pmu_read(leader);
+	if ((leader != event) &&
+	    (leader->state == PERF_EVENT_STATE_ACTIVE))
+		leader->pmu->read(leader);
 
 	values[n++] = perf_event_count(leader);
 	if (read_format & PERF_FORMAT_ID)
@@ -7064,8 +7067,9 @@ static void perf_output_read_group(struct perf_output_handle *handle,
 	for_each_sibling_event(sub, leader) {
 		n = 0;
 
-		if ((sub != event) && !handle->skip_read)
-			perf_pmu_read(sub);
+		if ((sub != event) &&
+		    (sub->state == PERF_EVENT_STATE_ACTIVE))
+			sub->pmu->read(sub);
 
 		values[n++] = perf_event_count(sub);
 		if (read_format & PERF_FORMAT_ID)
@@ -7119,9 +7123,6 @@ void perf_output_sample(struct perf_output_handle *handle,
 			struct perf_event *event)
 {
 	u64 sample_type = data->type;
-
-	if (data->sample_flags & PERF_SAMPLE_READ)
-		handle->skip_read = 1;
 
 	perf_output_put(handle, *header);
 
