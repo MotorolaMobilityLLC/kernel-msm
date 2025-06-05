@@ -122,3 +122,6 @@ type 'struct kvm_hyp_req' changed
     type changed from 'union { struct { u8 dest; int nr_pages; int sz_alloc; } mem; struct { unsigned long guest_ipa; size_t size; } map; }' to 'union { struct { u8 dest; int nr_pages; int sz_alloc; } mem; struct { unsigned long guest_ipa; size_t size; } map; struct { unsigned long guest_ipa; size_t size; } split; }'
       member 'struct { unsigned long guest_ipa; size_t size; } split' was added
 
+type 'struct scm_fp_list' changed
+  byte size changed from 2040 to 2048
+  member 'short count_unix' was added
