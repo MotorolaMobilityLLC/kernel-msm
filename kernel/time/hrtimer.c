@@ -114,7 +114,7 @@ DEFINE_PER_CPU(struct hrtimer_cpu_base, hrtimer_bases) =
 			.clockid = CLOCK_TAI,
 			.get_time = &ktime_get_clocktai,
 		},
-	}
+	},
 };
 
 DEFINE_PER_CPU(call_single_data_t, hrtimer_base_csd) =
@@ -205,11 +205,9 @@ struct hrtimer_clock_base *lock_hrtimer_base(const struct hrtimer *timer,
  *
  * Called with cpu_base->lock of target cpu held.
  */
-static bool
-hrtimer_suitable_target(struct hrtimer *timer,
-			struct hrtimer_clock_base *new_base,
-			struct hrtimer_cpu_base *new_cpu_base,
-			struct hrtimer_cpu_base *this_cpu_base)
+static bool hrtimer_suitable_target(struct hrtimer *timer, struct hrtimer_clock_base *new_base,
+				    struct hrtimer_cpu_base *new_cpu_base,
+				    struct hrtimer_cpu_base *this_cpu_base)
 {
 	ktime_t expires;
 
@@ -234,9 +232,7 @@ hrtimer_suitable_target(struct hrtimer *timer,
 	return expires >= new_base->cpu_base->expires_next;
 }
 
-static inline
-struct hrtimer_cpu_base *get_target_base(struct hrtimer_cpu_base *base,
-					 int pinned)
+static inline struct hrtimer_cpu_base *get_target_base(struct hrtimer_cpu_base *base, int pinned)
 {
 	if (!hrtimer_base_is_online(base)) {
 		int cpu = cpumask_any_and(cpu_online_mask, housekeeping_cpumask(HK_TYPE_TIMER));
@@ -304,8 +300,7 @@ again:
 		}
 		WRITE_ONCE(timer->base, new_base);
 	} else {
-		if (!hrtimer_suitable_target(timer, new_base, new_cpu_base,
-					     this_cpu_base)) {
+		if (!hrtimer_suitable_target(timer, new_base,  new_cpu_base, this_cpu_base)) {
 			new_cpu_base = this_cpu_base;
 			goto again;
 		}
@@ -1302,9 +1297,19 @@ static int __hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 
 	first = enqueue_hrtimer(timer, new_base, mode);
 	if (!force_local) {
+		/*
+		 * If the current CPU base is online, then the timer is
+		 * never queued on a remote CPU if it would be the first
+		 * expiring timer there.
+		 */
 		if (hrtimer_base_is_online(this_cpu_base))
 			return first;
 
+		/*
+		 * Timer was enqueued remote because the current base is
+		 * already offline. If the timer is the first to expire,
+		 * kick the remote CPU to reprogram the clock event.
+		 */
 		if (first) {
 			struct hrtimer_cpu_base *new_cpu_base = new_base->cpu_base;
 			call_single_data_t *csd = per_cpu_ptr(&hrtimer_base_csd, new_cpu_base->cpu);
