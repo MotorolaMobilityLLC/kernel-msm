@@ -71070,6 +71070,12 @@ member {
   type_id: 0x0484940b
 }
 member {
+  id: 0x11d6bf1f
+  name: "count_unix"
+  type_id: 0xb0312d5a
+  offset: 16320
+}
+member {
   id: 0x20014498
   name: "counter"
   type_id: 0x2e0f9112
@@ -266808,11 +266814,12 @@ struct_union {
   kind: STRUCT
   name: "scm_fp_list"
   definition {
-    bytesize: 2040
+    bytesize: 2048
     member_id: 0x65956ee9
     member_id: 0x97463852
     member_id: 0x042a2402
     member_id: 0x5449f846
+    member_id: 0x11d6bf1f
   }
 }
 struct_union {
