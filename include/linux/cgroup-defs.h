@@ -41,6 +41,24 @@ struct poll_table_struct;
 
 /* define the enumeration of all cgroup subsystems */
 #define SUBSYS(_x) _x ## _cgrp_id,
+
+#define CSS_COUNTERS_SIZE (CGROUP_SUBSYS_COUNT * sizeof(atomic_t))
+
+/*
+ * This should just use max(), but max() doesn't work in struct definitions.
+ *
+ * Originally, the space was reserved for per cgroup subsystem counters, where each counter was
+ * the size of an atomic_t variable. However, it was later reused to fit a struct rcu_head
+ * which is why the calculation considers the size of struct rcu_head.
+ *
+ * This macro is provided to ANDROID_BACKPORT_USE_ARRAY() which needs to reserve at least
+ * enough memory to accommodate struct rcu_head. However, if we only reserve CSS_COUNTERS_SIZE,
+ * that may not be enough space on kernels with a small amount of cgroup subsystems enabled. So,
+ * we take the max between the two values to use in ANDROID_BACKPORT_USE_ARRAY().
+ */
+#define CGROUP_ROOT_BACKPORT_PADDING_SIZE \
+	(CSS_COUNTERS_SIZE > sizeof(struct rcu_head) ? CSS_COUNTERS_SIZE : sizeof(struct rcu_head))
+
 enum cgroup_subsys_id {
 #include <linux/cgroup_subsys.h>
 	CGROUP_SUBSYS_COUNT,
@@ -585,8 +603,12 @@ struct cgroup_root {
 	/* The name for this hierarchy - may be empty */
 	char name[MAX_CGROUP_ROOT_NAMELEN];
 
-	ANDROID_BACKPORT_USE_ARRAY(1, CGROUP_SUBSYS_COUNT * sizeof(atomic_t),
-				   struct rcu_head rcu);
+	/* Use the original calculation to preserve the CRC value for the ABI. */
+#ifndef __GENKSYMS__
+	ANDROID_BACKPORT_USE_ARRAY(1, CGROUP_ROOT_BACKPORT_PADDING_SIZE, struct rcu_head rcu);
+#else
+	ANDROID_BACKPORT_USE_ARRAY(1, CGROUP_SUBSYS_COUNT * sizeof(atomic_t), struct rcu_head rcu);
+#endif
 };
 
 /*
