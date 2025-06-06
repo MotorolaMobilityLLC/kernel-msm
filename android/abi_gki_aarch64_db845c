@@ -1710,6 +1710,7 @@
 
 # required by pinctrl-msm.ko
   device_property_read_u16_array
+  devm_register_sys_off_handler
   gpiochip_line_is_valid
   gpiochip_lock_as_irq
   gpiochip_unlock_as_irq
