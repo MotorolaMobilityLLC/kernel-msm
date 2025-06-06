@@ -334328,6 +334328,11 @@ function {
   parameter_id: 0x2cacacc0
 }
 function {
+  id: 0x98764c5c
+  return_type_id: 0x6720d32f
+  parameter_id: 0x17dabdcd
+}
+function {
   id: 0x98773f07
   return_type_id: 0x6720d32f
   parameter_id: 0x1582ab06
@@ -417677,6 +417682,15 @@ elf_symbol {
   full_name: "scsi_host_alloc"
 }
 elf_symbol {
+  id: 0xfaba855b
+  name: "scsi_host_busy"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x9665b881
+  type_id: 0x98764c5c
+  full_name: "scsi_host_busy"
+}
+elf_symbol {
   id: 0x022517f0
   name: "scsi_host_lookup"
   is_defined: true
@@ -442929,6 +442943,7 @@ interface {
   symbol_id: 0xb77321e1
   symbol_id: 0x8ef5c221
   symbol_id: 0x32b196e0
+  symbol_id: 0xfaba855b
   symbol_id: 0x022517f0
   symbol_id: 0x4d8a452e
   symbol_id: 0x7509c737
