@@ -2954,6 +2954,7 @@
 					       spec_store_bypass_disable=off [X86,PPC]
 					       spectre_v2_user=off [X86]
 					       ssbd=force-off [ARM64]
+					       nospectre_bhb [ARM64]
 					       tsx_async_abort=off [X86]
 
 				Exceptions:
@@ -3366,6 +3367,10 @@
 			the Spectre variant 2 (indirect branch prediction)
 			vulnerability. System may allow data leaks with this
 			option.
+
+	nospectre_bhb   [ARM64] Disable all mitigations for Spectre-BHB (branch
+			history injection) vulnerability. System may allow data leaks
+			with this option.
 
 	nospec_store_bypass_disable
 			[HW] Disable all mitigations for the Speculative Store Bypass vulnerability
