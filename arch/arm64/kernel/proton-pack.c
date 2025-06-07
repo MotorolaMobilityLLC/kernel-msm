@@ -1059,6 +1059,8 @@ static void kvm_setup_bhb_slot(const char *hyp_vecs_start)
 static void kvm_setup_bhb_slot(const char *hyp_vecs_start) { }
 #endif /* CONFIG_KVM */
 
+static bool spectre_bhb_fw_mitigated;
+
 void spectre_bhb_enable_mitigation(const struct arm64_cpu_capabilities *entry)
 {
 	enum mitigation_state fw_state, state = SPECTRE_VULNERABLE;
@@ -1103,10 +1105,16 @@ void spectre_bhb_enable_mitigation(const struct arm64_cpu_capabilities *entry)
 			this_cpu_set_vectors(EL1_VECTOR_BHB_FW);
 
 			state = SPECTRE_MITIGATED;
+			spectre_bhb_fw_mitigated = true;
 		}
 	}
 
 	update_mitigation_state(&spectre_bhb_state, state);
+}
+
+bool is_spectre_bhb_fw_mitigated(void)
+{
+	return spectre_bhb_fw_mitigated;
 }
 
 /* Patched to correct the immediate */
