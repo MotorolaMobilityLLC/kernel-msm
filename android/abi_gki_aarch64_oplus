@@ -574,6 +574,10 @@
   __traceiter_android_rvh_kswapd_shrink_node
   __traceiter_android_rvh_perform_reclaim
   __traceiter_android_vh_si_mem_available_adjust
+  __traceiter_android_vh_lru_cache_add_page_activate
+  __traceiter_android_vh_filemap_fault_pre_page_locked
+  __traceiter_android_vh_filemap_page_mapped
+  __traceiter_android_vh_zap_pte_range_page_remove_rmap
   __tracepoint_android_rvh_check_preempt_wakeup_ignore
   __tracepoint_android_rvh_do_serror
   __tracepoint_android_rvh_pick_next_entity
@@ -733,6 +737,10 @@
   __tracepoint_android_rvh_kswapd_shrink_node
   __tracepoint_android_rvh_perform_reclaim
   __tracepoint_android_vh_si_mem_available_adjust
+  __tracepoint_android_vh_lru_cache_add_page_activate
+  __tracepoint_android_vh_filemap_fault_pre_page_locked
+  __tracepoint_android_vh_filemap_page_mapped
+  __tracepoint_android_vh_zap_pte_range_page_remove_rmap
   try_to_free_mem_cgroup_pages
   __ubsan_handle_cfi_check_fail_abort
   unlock_page
