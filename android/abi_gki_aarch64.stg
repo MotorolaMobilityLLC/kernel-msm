@@ -23439,6 +23439,11 @@ pointer_reference {
   pointee_type_id: 0xefdda716
 }
 pointer_reference {
+  id: 0x316c7444
+  kind: POINTER
+  pointee_type_id: 0xeff1378d
+}
+pointer_reference {
   id: 0x316cc8eb
   kind: POINTER
   pointee_type_id: 0xeff3c532
@@ -35372,6 +35377,11 @@ qualified {
   id: 0xefcb4746
   qualifier: CONST
   qualified_type_id: 0xcf6aab90
+}
+qualified {
+  id: 0xeff1378d
+  qualifier: CONST
+  qualified_type_id: 0xcf8368bd
 }
 qualified {
   id: 0xeff3c532
@@ -52434,6 +52444,12 @@ member {
   name: "avail"
   type_id: 0x14fb0ab0
   offset: 576
+}
+member {
+  id: 0xe1383385
+  name: "avail"
+  type_id: 0x14fb0ab0
+  offset: 128
 }
 member {
   id: 0xe19ce3ba
@@ -75122,6 +75138,12 @@ member {
   id: 0x87c662ae
   name: "desc"
   type_id: 0x1c4f6f14
+}
+member {
+  id: 0x87ca6452
+  name: "desc"
+  type_id: 0x104d72c1
+  offset: 64
 }
 member {
   id: 0x87ca6bab
@@ -204643,6 +204665,12 @@ member {
   offset: 640
 }
 member {
+  id: 0x8b87889f
+  name: "used"
+  type_id: 0x399f63b7
+  offset: 192
+}
+member {
   id: 0x8b8d6727
   name: "used"
   type_id: 0x33756485
@@ -274210,6 +274238,18 @@ struct_union {
   }
 }
 struct_union {
+  id: 0xcf8368bd
+  kind: STRUCT
+  name: "vring"
+  definition {
+    bytesize: 32
+    member_id: 0x1c73cad3
+    member_id: 0x87ca6452
+    member_id: 0xe1383385
+    member_id: 0x8b87889f
+  }
+}
+struct_union {
   id: 0xdf09be6b
   kind: STRUCT
   name: "vring_avail"
@@ -338421,6 +338461,11 @@ function {
   return_type_id: 0x06835e9c
   parameter_id: 0x06835e9c
   parameter_id: 0x33756485
+}
+function {
+  id: 0xbd098825
+  return_type_id: 0x316c7444
+  parameter_id: 0x31fa879c
 }
 function {
   id: 0xbd324cd3
@@ -415770,6 +415815,15 @@ elf_symbol {
   full_name: "virtqueue_get_used_addr"
 }
 elf_symbol {
+  id: 0xa3699271
+  name: "virtqueue_get_vring"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x89e54a5c
+  type_id: 0xbd098825
+  full_name: "virtqueue_get_vring"
+}
+elf_symbol {
   id: 0x40994c4b
   name: "virtqueue_get_vring_size"
   is_defined: true
@@ -426012,6 +426066,7 @@ interface {
   symbol_id: 0x97472a76
   symbol_id: 0x18b1b4af
   symbol_id: 0x6baf8fe0
+  symbol_id: 0xa3699271
   symbol_id: 0x40994c4b
   symbol_id: 0xc310fa7c
   symbol_id: 0xbadb7e4b
