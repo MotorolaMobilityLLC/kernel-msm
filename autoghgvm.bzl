@@ -86,6 +86,7 @@ def define_autoghgvm():
         "net/core/failover.ko",
         "net/qrtr/qrtr.ko",
         "net/qrtr/qrtr-mhi.ko",
+        "net/qrtr/qrtr-smd.ko",
         "net/sched/cls_flower.ko",
         "net/sched/sch_cbs.ko",
         "net/sched/sch_etf.ko",
