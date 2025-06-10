@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (c) 2024-2025 Motorola, Inc. All rights reserved.
+
+#modules.vendor_blocklist.msm.canoe.moto
+#blocklist 8250_of
