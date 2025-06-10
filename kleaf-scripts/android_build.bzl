@@ -21,6 +21,7 @@ load(":kleaf-scripts/msm_dtc.bzl", "define_dtc_dist")
 load(":kleaf-scripts/techpack_modules.bzl", "define_techpack_modules")
 load(":qcom_libraries.bzl", "library_registry")
 load(":qcom_modules.bzl", "registry")
+load(":moto_product.bzl", "mmi_product_name")
 
 def define_common_android_rules():
     write_file(
@@ -87,6 +88,23 @@ def define_single_android_build(
         implicit_config_fragment,
         config_path = config_path,
         library_names = library_names,
+    )
+
+    hermetic_genrule(
+        name = "{}_vendor_blocklist_generated".format(stem),
+        srcs = native.glob([
+                "modules-lists/modules.vendor_blocklist.msm.{}".format(name),
+                "modules-lists/modules.vendor_blocklist.msm.{}.moto".format(name),
+                "modules-lists/modules.vendor_blocklist.msm.{}.moto.{}".format(name, mmi_product_name),
+        ]),
+        outs = ["modules.vendor_blocklist.msm.{}".format(stem)],
+        cmd = """
+          touch "$@"
+          for file in $(SRCS);do
+            echo "" >> "$@"
+            cat $$file >> "$@"
+          done
+        """
     )
 
     hermetic_genrule(
@@ -172,7 +190,7 @@ def define_single_android_build(
         modules_list = "modules-lists/modules.list.msm.{}".format(name),
         vendor_dlkm_modules_list = ":{}_vendor_dlkm_modules_list_generated".format(stem),
         system_dlkm_modules_blocklist = "modules-lists/modules.systemdlkm_blocklist.msm.{}".format(name),
-        vendor_dlkm_modules_blocklist = "modules-lists/modules.vendor_blocklist.msm.{}".format(name),
+        vendor_dlkm_modules_blocklist = ":{}_vendor_blocklist_generated".format(stem),
         vendor_ramdisk_binaries = get_vendor_ramdisk_binaries(stem),
         deps = [
             "modules-lists/modules.list.msm.{}".format(name),
