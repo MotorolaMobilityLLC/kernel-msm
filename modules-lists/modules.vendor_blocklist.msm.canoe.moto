@@ -3,4 +3,3 @@
 
 #modules.vendor_blocklist.msm.canoe.moto
 #blocklist 8250_of
-blocklist watchdogtest
