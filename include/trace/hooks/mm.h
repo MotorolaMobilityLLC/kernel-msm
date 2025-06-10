@@ -596,6 +596,9 @@ DECLARE_HOOK(android_vh_folio_remove_rmap_ptes,
 DECLARE_HOOK(android_vh_pageset_update,
 	TP_PROTO(unsigned long *high, unsigned long *batch),
 	TP_ARGS(high, batch));
+DECLARE_HOOK(android_vh_mempool_alloc_skip_wait,
+	TP_PROTO(gfp_t *gfp_flags, bool *skip_wait),
+	TP_ARGS(gfp_flags, skip_wait));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
