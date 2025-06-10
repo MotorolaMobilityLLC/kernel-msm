@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #include <linux/anon_inodes.h>
@@ -43,6 +43,7 @@ static LIST_HEAD(mem_buf_xfer_mem_list);
  * @work: work structure for dispatching the message processing to a worker
  * thread, so as to not block the message queue receiving thread.
  */
+
 struct mem_buf_rmt_msg {
 	void *msg;
 	size_t msg_size;
@@ -1164,8 +1165,7 @@ struct dma_buf *mem_buf_retrieve(struct mem_buf_retrieve_kernel_arg *arg)
 	buffer->sg_table = *sgt;
 	kfree(sgt);
 
-	INIT_LIST_HEAD(&buffer->attachments);
-	mutex_init(&buffer->lock);
+	qcom_sg_buffer_init(buffer);
 	buffer->heap = NULL;
 	buffer->len = mem_buf_get_sgl_buf_size(sgl_desc);
 	buffer->uncached = false;
@@ -1173,7 +1173,9 @@ struct dma_buf *mem_buf_retrieve(struct mem_buf_retrieve_kernel_arg *arg)
 	buffer->vmperm = mem_buf_vmperm_alloc_accept(&buffer->sg_table,
 						     arg->memparcel_hdl,
 						     arg->vmids, arg->perms,
-						     arg->nr_acl_entries);
+						     arg->nr_acl_entries,
+						     qcom_sg_release,
+						     &buffer->kref);
 
 	exp_info.size = buffer->len;
 	exp_info.flags = arg->fd_flags;

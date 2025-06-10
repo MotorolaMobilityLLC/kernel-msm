@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #define pr_fmt(fmt) "mem_buf_vmperm: " fmt
@@ -12,6 +12,10 @@
 #include "mem-buf-gh.h"
 #include "mem-buf-ids.h"
 
+/*
+ * @kref - A refcount for @sgt and @sgt's private data, which
+ *	is expected to contain a 'struct mem_buf_vmperm'
+ */
 struct mem_buf_vmperm {
 	u32 flags;
 	int current_vm_perms;
@@ -26,6 +30,8 @@ struct mem_buf_vmperm {
 	struct mutex lock;
 	mem_buf_dma_buf_destructor dtor;
 	void *dtor_data;
+	void (*kref_release)(struct kref *kref);
+	struct kref *kref;
 };
 
 /*
@@ -102,13 +108,15 @@ static void mem_buf_vmperm_update_state(struct mem_buf_vmperm *vmperm, int *vmid
  */
 static void mem_buf_vmperm_set_err(struct mem_buf_vmperm *vmperm)
 {
-	get_dma_buf(vmperm->dmabuf);
+	kref_get(vmperm->kref);
 	vmperm->flags |= MEM_BUF_WRAPPER_FLAG_ERR;
 }
 
+/* Must be freed via mem_buf_vmperm_free. */
 static struct mem_buf_vmperm *mem_buf_vmperm_alloc_flags(
 	struct sg_table *sgt, u32 flags,
-	int *vmids, int *perms, u32 nr_acl_entries)
+	int *vmids, int *perms, u32 nr_acl_entries,
+	void (*release)(struct kref *), struct kref *kref)
 {
 	struct mem_buf_vmperm *vmperm;
 	int ret;
@@ -129,6 +137,8 @@ static struct mem_buf_vmperm *mem_buf_vmperm_alloc_flags(
 	vmperm->sgt = sgt;
 	vmperm->flags = flags;
 	vmperm->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
+	vmperm->kref_release = release;
+	vmperm->kref = kref;
 
 	return vmperm;
 
@@ -138,34 +148,38 @@ err_resize_state:
 	return ERR_PTR(-ENOMEM);
 }
 
-/* Must be freed via mem_buf_vmperm_release. */
 struct mem_buf_vmperm *mem_buf_vmperm_alloc_accept(struct sg_table *sgt,
 	gh_memparcel_handle_t memparcel_hdl, int *vmids, int *perms,
-	unsigned int nr_acl_entries)
+	unsigned int nr_acl_entries, void (*release)(struct kref *),
+	struct kref *kref)
 {
 	struct mem_buf_vmperm *vmperm;
 
 	vmperm = mem_buf_vmperm_alloc_flags(sgt,
 		MEM_BUF_WRAPPER_FLAG_ACCEPT,
-		vmids, perms, nr_acl_entries);
+		vmids, perms, nr_acl_entries, release, kref);
 	if (IS_ERR(vmperm))
 		return vmperm;
 
 	vmperm->memparcel_hdl = memparcel_hdl;
+	/* Refcount increase on behalf of gh_rm_mem_accept */
+	kref_get(vmperm->kref);
 	return vmperm;
 }
 EXPORT_SYMBOL(mem_buf_vmperm_alloc_accept);
 
 struct mem_buf_vmperm *mem_buf_vmperm_alloc_staticvm(struct sg_table *sgt,
-	int *vmids, int *perms, u32 nr_acl_entries)
+	int *vmids, int *perms, u32 nr_acl_entries,
+	void (*release)(struct kref *), struct kref *kref)
 {
 	return mem_buf_vmperm_alloc_flags(sgt,
 		MEM_BUF_WRAPPER_FLAG_STATIC_VM,
-		vmids, perms, nr_acl_entries);
+		vmids, perms, nr_acl_entries, release, kref);
 }
 EXPORT_SYMBOL(mem_buf_vmperm_alloc_staticvm);
 
-struct mem_buf_vmperm *mem_buf_vmperm_alloc(struct sg_table *sgt)
+struct mem_buf_vmperm *mem_buf_vmperm_alloc(struct sg_table *sgt,
+	void (*release)(struct kref *), struct kref *kref)
 {
 	int vmids[1];
 	int perms[1];
@@ -173,12 +187,11 @@ struct mem_buf_vmperm *mem_buf_vmperm_alloc(struct sg_table *sgt)
 	vmids[0] = current_vmid;
 	perms[0] = PERM_READ | PERM_WRITE | PERM_EXEC;
 	return mem_buf_vmperm_alloc_flags(sgt, 0,
-		vmids, perms, 1);
+		vmids, perms, 1, release, kref);
 }
 EXPORT_SYMBOL(mem_buf_vmperm_alloc);
 
-static int __mem_buf_vmperm_reclaim(struct mem_buf_vmperm *vmperm,
-				    bool leak_memory_on_reclaim_fail)
+static int __mem_buf_vmperm_reclaim(struct mem_buf_vmperm *vmperm)
 {
 	int ret;
 	int new_vmids[] = {current_vmid};
@@ -187,16 +200,13 @@ static int __mem_buf_vmperm_reclaim(struct mem_buf_vmperm *vmperm,
 	ret = mem_buf_unassign_mem(vmperm->sgt, vmperm->vmids,
 				   vmperm->nr_acl_entries,
 				   vmperm->memparcel_hdl);
-	if (ret) {
-		pr_err_ratelimited("Reclaim failed\n");
-		if (leak_memory_on_reclaim_fail)
-			mem_buf_vmperm_set_err(vmperm);
+	if (ret)
 		return ret;
-	}
 
 	mem_buf_vmperm_update_state(vmperm, new_vmids, new_perms, 1);
 	vmperm->flags &= ~MEM_BUF_WRAPPER_FLAG_LENDSHARE;
 	vmperm->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
+	kref_put(vmperm->kref, vmperm->kref_release);
 	return 0;
 }
 
@@ -213,36 +223,62 @@ static int mem_buf_vmperm_relinquish(struct mem_buf_vmperm *vmperm)
 	kvfree(sgl_desc);
 	if (ret)
 		return ret;
-
+	/*
+	 * mem_buf_retrieve_release() uses memunmap_pages() to remove
+	 * this from the linux page tables. This occurs after the
+	 * stage 2 pagetable mapping is removed below.
+	 */
 	ret = mem_buf_unmap_mem_s2(vmperm->memparcel_hdl);
-	return ret;
+	if (ret)
+		return ret;
+
+	vmperm->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
+	vmperm->flags &= ~MEM_BUF_WRAPPER_FLAG_ACCEPT;
+	kref_put(vmperm->kref, vmperm->kref_release);
+	return 0;
 }
 
-int mem_buf_vmperm_release(struct mem_buf_vmperm *vmperm)
+void mem_buf_vmperm_free(struct mem_buf_vmperm *vmperm)
+{
+	WARN_ON(vmperm->flags & MEM_BUF_WRAPPER_FLAG_LENDSHARE);
+	WARN_ON(vmperm->flags & MEM_BUF_WRAPPER_FLAG_ACCEPT);
+
+	kfree(vmperm->perms);
+	kfree(vmperm->vmids);
+	mutex_destroy(&vmperm->lock);
+	kfree(vmperm);
+}
+EXPORT_SYMBOL_GPL(mem_buf_vmperm_free);
+
+/*
+ * Attempt to return to the default security state. For memory in the
+ * LENDSHARE state, this is full access by the current VM. For memory
+ * in the ACCEPT state, this is no access by the current VM.
+ *
+ * This function can fail; the hypervisor or other system entities
+ * may hold references to memory in a secure state.
+ */
+int mem_buf_vmperm_try_reclaim(struct mem_buf_vmperm *vmperm)
 {
 	int ret = 0;
 
 	if (vmperm->dtor) {
 		ret = vmperm->dtor(vmperm->dtor_data);
 		if (ret)
-			goto exit;
+			return ret;
 	}
 
 	mutex_lock(&vmperm->lock);
 	if (vmperm->flags & MEM_BUF_WRAPPER_FLAG_LENDSHARE)
-		ret = __mem_buf_vmperm_reclaim(vmperm, true);
+		ret = __mem_buf_vmperm_reclaim(vmperm);
 	else if (vmperm->flags & MEM_BUF_WRAPPER_FLAG_ACCEPT)
 		ret = mem_buf_vmperm_relinquish(vmperm);
 
 	mutex_unlock(&vmperm->lock);
-exit:
-	kfree(vmperm->perms);
-	kfree(vmperm->vmids);
-	mutex_destroy(&vmperm->lock);
-	kfree(vmperm);
+
 	return ret;
 }
-EXPORT_SYMBOL(mem_buf_vmperm_release);
+EXPORT_SYMBOL_GPL(mem_buf_vmperm_try_reclaim);
 
 int mem_buf_dma_buf_attach(struct dma_buf *dmabuf, struct dma_buf_attachment *attachment)
 {
@@ -525,6 +561,7 @@ static int mem_buf_lend_internal(struct dma_buf *dmabuf,
 			arg->nr_acl_entries);
 	vmperm->flags |= MEM_BUF_WRAPPER_FLAG_LENDSHARE;
 	vmperm->memparcel_hdl = arg->memparcel_hdl;
+	kref_get(vmperm->kref);
 
 	mutex_unlock(&vmperm->lock);
 	return 0;
@@ -630,7 +667,7 @@ int mem_buf_reclaim(struct dma_buf *dmabuf)
 		return -EINVAL;
 	}
 
-	ret = __mem_buf_vmperm_reclaim(vmperm, false);
+	ret = __mem_buf_vmperm_reclaim(vmperm);
 	mutex_unlock(&vmperm->lock);
 	return ret;
 }

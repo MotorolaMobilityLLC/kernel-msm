@@ -41,7 +41,7 @@
  *	Andrew F. Davis <afd@ti.com>
  *
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. All rights reserved.
  */
 
 #include <linux/dma-buf.h>
@@ -511,8 +511,7 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 
 	sys_heap = dma_heap_get_drvdata(heap);
 
-	INIT_LIST_HEAD(&buffer->attachments);
-	mutex_init(&buffer->lock);
+	qcom_sg_buffer_init(buffer);
 	buffer->heap = heap;
 	buffer->len = len;
 	buffer->uncached = true;
@@ -569,8 +568,8 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 
 	perms = msm_secure_get_vmid_perms(sys_heap->vmid);
 	vmid = get_secure_vmid(sys_heap->vmid);
-	buffer->vmperm = mem_buf_vmperm_alloc_staticvm(table,
-				&vmid, &perms, 1);
+	buffer->vmperm = mem_buf_vmperm_alloc_staticvm(table, &vmid, &perms,
+				1, qcom_sg_release, &buffer->kref);
 
 	if (IS_ERR(buffer->vmperm)) {
 		ret = PTR_ERR(buffer->vmperm);
@@ -595,7 +594,7 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 	return dmabuf;
 
 vmperm_release:
-	mem_buf_vmperm_release(buffer->vmperm);
+	mem_buf_vmperm_free(buffer->vmperm);
 
 hyp_unassign:
 	/* We check PagePrivate() below to see if we've reclaimed a particular page */
