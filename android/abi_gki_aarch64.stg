@@ -363032,6 +363032,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_meminfo_proc_show"
 }
 elf_symbol {
+  id: 0xe02fe9e3
+  name: "__traceiter_android_vh_mempool_alloc_skip_wait"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xabe64979
+  type_id: 0x9b702fa1
+  full_name: "__traceiter_android_vh_mempool_alloc_skip_wait"
+}
+elf_symbol {
   id: 0x105350cb
   name: "__traceiter_android_vh_mglru_should_abort_scan"
   is_defined: true
@@ -370104,6 +370113,15 @@ elf_symbol {
   crc: 0xf7c503be
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_meminfo_proc_show"
+}
+elf_symbol {
+  id: 0x5e49798d
+  name: "__tracepoint_android_vh_mempool_alloc_skip_wait"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x2317dfbe
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_mempool_alloc_skip_wait"
 }
 elf_symbol {
   id: 0xca4f3601
@@ -436880,6 +436898,7 @@ interface {
   symbol_id: 0x3431d426
   symbol_id: 0x8c174a7d
   symbol_id: 0xea8ce2b0
+  symbol_id: 0xe02fe9e3
   symbol_id: 0x105350cb
   symbol_id: 0x83742db6
   symbol_id: 0xf8413699
@@ -437666,6 +437685,7 @@ interface {
   symbol_id: 0xac62c748
   symbol_id: 0xa2bd1edf
   symbol_id: 0xa5b4e5b2
+  symbol_id: 0x5e49798d
   symbol_id: 0xca4f3601
   symbol_id: 0x420ef2d0
   symbol_id: 0xb32b3b17
