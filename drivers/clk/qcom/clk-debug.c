@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016, 2019-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #include <linux/clk.h>
 #include <linux/export.h>
@@ -232,6 +232,8 @@ static int clk_find_and_set_parent(struct clk_hw *mux, struct clk_hw *clk)
 			continue;
 
 		parent = clk_hw_get_parent_by_index(mux, i);
+		if (!parent)
+			return -EINVAL;
 
 		if (!clk_find_and_set_parent(parent, clk))
 			return clk_set_parent(mux->clk, parent->clk);
