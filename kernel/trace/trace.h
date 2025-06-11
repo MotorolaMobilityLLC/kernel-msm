@@ -425,6 +425,7 @@ extern struct list_head ftrace_trace_arrays;
 
 extern struct mutex trace_types_lock;
 
+extern const char *trace_array_get_system_names(struct trace_array *tr);
 extern int trace_array_get(struct trace_array *tr);
 extern int tracing_check_open_get_tr(struct trace_array *tr);
 extern struct trace_array *trace_array_find(const char *instance);

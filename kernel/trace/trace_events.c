@@ -3070,11 +3070,8 @@ trace_create_new_event(struct trace_event_call *call,
 	struct trace_pid_list *pid_list;
 	struct trace_event_file *file;
 	unsigned int first;
-	struct trace_array_ext *tr_ext = container_of(tr,
-						      struct trace_array_ext,
-						      trace_array);
 
-	if (!event_in_systems(call, tr_ext->system_names))
+	if (!event_in_systems(call, trace_array_get_system_names(tr)))
 		return NULL;
 
 	file = kmem_cache_alloc(file_cachep, GFP_TRACE);
