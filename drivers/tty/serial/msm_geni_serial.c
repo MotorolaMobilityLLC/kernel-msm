@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitmap.h>
@@ -4414,12 +4414,6 @@ static int msm_geni_serial_port_setup(struct uart_port *uport)
 	set_rfr_wm(msm_port);
 	geni_write_reg(rxstale, uport->membase, SE_UART_RX_STALE_CNT);
 
-	if (msm_port->one_wire_uart.enable) {
-		ret = msm_geni_one_wire_uart_config(uport);
-		if (ret)
-			goto exit_portsetup;
-	}
-
 	if (msm_port->gsi_mode) {
 		msm_port->xfer_mode = GENI_GPI_DMA;
 	} else if (!uart_console(uport)) {
@@ -4456,6 +4450,12 @@ static int msm_geni_serial_port_setup(struct uart_port *uport)
 		msm_geni_serial_enable_interrupts(uport);
 		geni_se_config_packing(&msm_port->se, 8, 1, false, true, false);
 		geni_se_config_packing(&msm_port->se, 8, 4, false, false, true);
+	}
+
+	if (msm_port->one_wire_uart.enable) {
+		ret = msm_geni_one_wire_uart_config(uport);
+		if (ret)
+			goto exit_portsetup;
 	}
 
 	geni_se_init(&msm_port->se, msm_port->rx_wm, msm_port->rx_rfr);
