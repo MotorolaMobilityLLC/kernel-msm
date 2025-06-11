@@ -35,6 +35,7 @@
   have_governor_per_policy
   i2c_smbus_read_word_data
   i2c_smbus_write_word_data
+  __icmp_send
   iio_channel_get
   iio_channel_release
   iio_get_channel_type
@@ -126,6 +127,7 @@
   tcf_exts_dump_stats
   tcf_exts_validate
   tcf_queue_work
+  tcp_cong_avoid_ai
   __traceiter_android_rvh_post_init_entity_util_avg
   __traceiter_android_rvh_rtmutex_force_update
   __traceiter_android_vh_account_process_tick_gran

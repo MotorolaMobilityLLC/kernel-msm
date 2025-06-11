@@ -25,6 +25,7 @@ bt_procfs_init
 bt_sock_alloc
 bt_sock_ioctl
 bt_sock_link
+bt_sock_linked
 bt_sock_poll
 bt_sock_reclassify_lock
 bt_sock_recvmsg
@@ -96,7 +97,12 @@ h4_recv_buf
 hci_alloc_dev_priv
 hci_cmd_sync
 hci_cmd_sync_cancel
+hci_cmd_sync_cancel_entry
+hci_cmd_sync_dequeue
+hci_cmd_sync_dequeue_once
+hci_cmd_sync_lookup_entry
 hci_cmd_sync_queue
+hci_cmd_sync_queue_once
 hci_cmd_sync_status
 hci_cmd_sync_submit
 hci_conn_check_secure

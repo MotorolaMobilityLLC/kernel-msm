@@ -3764,6 +3764,9 @@ static int sd_resume_common(struct device *dev)
 	if (!sdkp)	/* E.g.: runtime resume at the start of sd_probe() */
 		return 0;
 
+	if (!sdkp->device->manage_start_stop)
+		return 0;
+
 	sd_printk(KERN_NOTICE, sdkp, "Starting disk\n");
 	ret = sd_start_stop_device(sdkp, 1);
 

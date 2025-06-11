@@ -3431,6 +3431,7 @@ struct swap_info_struct *page_swap_info(struct page *page)
 	swp_entry_t entry = { .val = page_private(page) };
 	return swp_swap_info(entry);
 }
+EXPORT_SYMBOL_GPL(page_swap_info);
 
 /*
  * out-of-line methods to avoid include hell.
