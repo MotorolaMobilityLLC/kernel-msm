@@ -9648,6 +9648,17 @@ out_unlock:
 	return ret;
 }
 
+const char *trace_array_get_system_names(struct trace_array *tr)
+{
+	struct trace_array_ext *tr_ext;
+
+	if (tr == &global_trace)
+		return NULL;
+
+	tr_ext = container_of(tr, struct trace_array_ext, trace_array);
+	return tr_ext->system_names;
+}
+
 struct trace_array *trace_array_get_by_name(const char *name)
 {
 	return trace_array_get_by_name_ext(name, NULL);
