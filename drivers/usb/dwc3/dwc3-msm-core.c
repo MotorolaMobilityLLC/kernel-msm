@@ -4969,6 +4969,7 @@ skip_update:
 	if (mdwc->resume_pending) {
 		pm_runtime_resume(mdwc->dev);
 		mdwc->resume_pending = false;
+		dev_info(mdwc->dev, "%s: set resume_pending to false\n", __func__);
 	}
 
 	if (atomic_read(&mdwc->pm_suspended)) {
@@ -5048,7 +5049,7 @@ static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 {
 	struct dwc3_msm *mdwc = data;
 
-	dev_dbg(mdwc->dev, "%s received %d\n", __func__, irq);
+	dev_info(mdwc->dev, "%s received %d\n", __func__, irq);
 	/*
 	 * When in Low Power Mode, can't read PWR_EVNT_IRQ_STAT_REG to acertain
 	 * which interrupts have been triggered, as the clocks are disabled.
@@ -5058,8 +5059,13 @@ static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 	 */
 	if (atomic_read(&mdwc->in_lpm)) {
 		/* set this to call dwc3_msm_resume() */
+		dev_info(mdwc->dev, "%s resume_pending=%d, set resume_pending\n", __func__, mdwc->resume_pending);
 		mdwc->resume_pending = true;
 		return IRQ_WAKE_THREAD;
+	} else {
+		/* don't set this to call dwc3_msm_resume()when exit LPM */
+		dev_info(mdwc->dev, "%s resume_pending=%d, clean resume_pending\n", __func__, mdwc->resume_pending);
+		mdwc->resume_pending = false;
 	}
 
 	dwc3_pwr_event_handler(mdwc);
