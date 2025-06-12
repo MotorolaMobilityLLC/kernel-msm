@@ -58,11 +58,6 @@
 #include "drivers/usb/host/xhci.h"
 #include "debug-ipc.h"
 
-#undef dev_dbg
-#undef pr_debug
-#define dev_dbg dev_info
-#define pr_debug pr_info
-
 #define NUM_LOG_PAGES   12
 
 /* dload specific suppot */
