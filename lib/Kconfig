@@ -692,4 +692,5 @@ config GENERIC_LIB_UCMPDI2
 
 config PLDMFW
 	bool
+	select CRC32
 	default n
