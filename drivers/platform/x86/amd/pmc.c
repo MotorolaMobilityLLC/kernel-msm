@@ -834,6 +834,10 @@ static int __maybe_unused amd_pmc_suspend_handler(struct device *dev)
 {
 	struct amd_pmc_dev *pdev = dev_get_drvdata(dev);
 
+	/*
+	* Must be called only from the same set of dev_pm_ops handlers
+	* as i8042_pm_suspend() is called: currently just from .suspend.
+	*/
 	if (pdev->cpu_id == AMD_CPU_ID_CZN) {
 		int rc = amd_pmc_czn_wa_irq1(pdev);
 
@@ -846,7 +850,9 @@ static int __maybe_unused amd_pmc_suspend_handler(struct device *dev)
 	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(amd_pmc_pm, amd_pmc_suspend_handler, NULL);
+static const struct dev_pm_ops amd_pmc_pm = {
+	.suspend = amd_pmc_suspend_handler,
+};
 
 #endif
 
