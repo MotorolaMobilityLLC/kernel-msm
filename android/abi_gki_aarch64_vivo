@@ -370,6 +370,18 @@
   __traceiter_android_rvh_update_thermal_stats
   __traceiter_android_rvh_util_est_update
   __traceiter_android_rvh_wake_up_new_task
+  __traceiter_android_rvh_tcp_sendmsg
+  __traceiter_android_rvh_tcp_recvmsg
+  __traceiter_android_rvh_udp_sendmsg
+  __traceiter_android_rvh_udp_recvmsg
+  __traceiter_android_rvh_udpv6_sendmsg
+  __traceiter_android_rvh_udpv6_recvmsg
+  __traceiter_android_rvh_tcp_select_window
+  __traceiter_android_rvh_inet_sock_create
+  __traceiter_android_rvh_inet_sock_release
+  __traceiter_android_vh_tcp_rtt_estimator
+  __traceiter_android_vh_udp_enqueue_schedule_skb
+  __traceiter_android_vh_build_skb_around
   __traceiter_android_vh_audio_usb_offload_connect
   __traceiter_android_vh_binder_restore_priority
   __traceiter_android_vh_binder_set_priority
@@ -567,6 +579,18 @@
   __tracepoint_android_rvh_update_thermal_stats
   __tracepoint_android_rvh_util_est_update
   __tracepoint_android_rvh_wake_up_new_task
+  __tracepoint_android_rvh_tcp_sendmsg
+  __tracepoint_android_rvh_tcp_recvmsg
+  __tracepoint_android_rvh_udp_sendmsg
+  __tracepoint_android_rvh_udp_recvmsg
+  __tracepoint_android_rvh_udpv6_sendmsg
+  __tracepoint_android_rvh_udpv6_recvmsg
+  __tracepoint_android_rvh_tcp_select_window
+  __tracepoint_android_rvh_inet_sock_create
+  __tracepoint_android_rvh_inet_sock_release
+  __tracepoint_android_vh_tcp_rtt_estimator
+  __tracepoint_android_vh_udp_enqueue_schedule_skb
+  __tracepoint_android_vh_build_skb_around
   __tracepoint_android_vh_audio_usb_offload_connect
   __tracepoint_android_vh_binder_restore_priority
   __tracepoint_android_vh_binder_set_priority
