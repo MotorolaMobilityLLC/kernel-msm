@@ -43,6 +43,12 @@ config MOT_DRV_OIS_DRIVER
 	help
 	  This is enabling OIS driver.
 
+config MOT_DRV_OIS_DW9784_DRIVER
+        default n
+        bool "enable OIS dw9784 driver"
+        help
+          This is enabling OIS dw9784 driver.
+
 config MOT_DRV_OIS_AFTER_SALES_SERVICE
 	default n
 	bool "enable OIS_AFTER_SALES_SERVICE"
