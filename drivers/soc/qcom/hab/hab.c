@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
 
@@ -54,7 +54,9 @@ static struct hab_device hab_devices[] = {
 	HAB_DEVICE_CNSTR(DEVICE_XVM3_NAME, MM_XVM_3, 26),
 	HAB_DEVICE_CNSTR(DEVICE_VNW1_NAME, MM_VNW_1, 27),
 	HAB_DEVICE_CNSTR(DEVICE_EXT1_NAME, MM_EXT_1, 28),
-	HAB_DEVICE_CNSTR(DEVICE_GPCE1_NAME, MM_GPCE_1, 29),
+	HAB_DEVICE_CNSTR(DEVICE_EXT2_NAME, MM_EXT_2, 29),
+	HAB_DEVICE_CNSTR(DEVICE_EXT3_NAME, MM_EXT_3, 30),
+	HAB_DEVICE_CNSTR(DEVICE_GPCE1_NAME, MM_GPCE_1, 31),
 };
 
 struct hab_driver hab_driver = {
