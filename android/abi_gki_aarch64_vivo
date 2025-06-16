@@ -377,6 +377,7 @@
   __traceiter_android_rvh_udpv6_sendmsg
   __traceiter_android_rvh_udpv6_recvmsg
   __traceiter_android_rvh_tcp_select_window
+  __traceiter_android_rvh_tcp_rcv_spurious_retrans
   __traceiter_android_rvh_inet_sock_create
   __traceiter_android_rvh_inet_sock_release
   __traceiter_android_vh_tcp_rtt_estimator
@@ -586,6 +587,7 @@
   __tracepoint_android_rvh_udpv6_sendmsg
   __tracepoint_android_rvh_udpv6_recvmsg
   __tracepoint_android_rvh_tcp_select_window
+  __tracepoint_android_rvh_tcp_rcv_spurious_retrans
   __tracepoint_android_rvh_inet_sock_create
   __tracepoint_android_rvh_inet_sock_release
   __tracepoint_android_vh_tcp_rtt_estimator
