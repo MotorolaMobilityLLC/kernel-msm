@@ -50,6 +50,7 @@ obj-$(CONFIG_QCOM_TLMM_VM_IRQCHIP) += qcom_tlmm_vm_irqchip.o
 obj-$(CONFIG_QCOM_APR) += apr.o
 obj-$(CONFIG_QCOM_EUD) += eud.o
 obj-$(CONFIG_QCOM_LLCC) += llcc-qcom.o
+obj-$(CONFIG_QCOM_LLCC_DEBUG) += llcc_perf_debug.o
 obj-$(CONFIG_QCOM_MEMORY_DUMP_V2) += memory_dump_v2.o
 obj-$(CONFIG_QCOM_LLCC_PERFMON) += llcc_perfmon.o
 obj-$(CONFIG_QCOM_RPMHPD) += rpmhpd.o
