@@ -3,6 +3,11 @@
 #ifndef __QCOM_Q6V5_H__
 #define __QCOM_Q6V5_H__
 
+#ifndef SUPPORT_MOT_FEATURES
+/*add macro definitions for reference in the qcom_q6v5.c file*/
+#define SUPPORT_MOT_FEATURES
+#endif
+
 #include <linux/kernel.h>
 #include <linux/completion.h>
 #include <linux/soc/qcom/qcom_aoss.h>

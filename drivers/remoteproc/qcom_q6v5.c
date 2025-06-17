@@ -27,6 +27,14 @@
 #define Q6V5_LOAD_STATE_MSG_LEN	64
 #define Q6V5_PANIC_DELAY_MS	200
 
+
+#ifdef SUPPORT_MOT_FEATURES
+/*add this modification to obtain ssr reason*/
+static char qcom_ssr_reason[256];
+static char *ssr_reason = qcom_ssr_reason;
+module_param(ssr_reason, charp, S_IRUGO);
+#endif
+
 static int q6v5_load_state_toggle(struct qcom_q6v5 *q6v5, bool enable)
 {
 	int ret;
@@ -197,6 +205,13 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 	q6v5->running = false;
 
 	trace_rproc_qcom_event(dev_name(q6v5->dev), "q6v5_wdog", msg);
+
+#ifdef SUPPORT_MOT_FEATURES
+/*add this modification to obtain ssr reason, since the previous 'strlcpy' is unavailable,
+change to 'strscpy'*/
+	memset(qcom_ssr_reason, 0, sizeof(qcom_ssr_reason));
+	strscpy(qcom_ssr_reason, msg, min((size_t)len, (size_t)sizeof(qcom_ssr_reason)));
+#endif
 	if (q6v5->ssr_subdev)
 		qcom_notify_early_ssr_clients(q6v5->ssr_subdev);
 
@@ -234,6 +249,13 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 		qcom_q6v5_conditional_recovery(q6v5, msg);
 	} else
 		dev_err(q6v5->dev, "fatal error without message\n");
+
+#ifdef SUPPORT_MOT_FEATURES
+/*add this modification to obtain ssr reason, since the previous 'strlcpy' is unavailable,
+change to 'strscpy'*/
+	memset(qcom_ssr_reason, 0, sizeof(qcom_ssr_reason));
+	strscpy(qcom_ssr_reason, msg, min((size_t)len, (size_t)sizeof(qcom_ssr_reason)));
+#endif
 
 	if (q6v5->crash_stack) {
 		msg = qcom_smem_get(q6v5->smem_host_id, q6v5->crash_stack, &len);
