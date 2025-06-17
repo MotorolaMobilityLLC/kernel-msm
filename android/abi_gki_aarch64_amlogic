@@ -1027,6 +1027,10 @@
   hex2bin
   hex_asc
   hex_dump_to_buffer
+  hid_debug
+  hid_hw_start
+  hid_hw_stop
+  hidinput_calc_abs_res
   __hid_register_driver
   hid_unregister_driver
   high_memory
@@ -2138,6 +2142,8 @@
   smpboot_register_percpu_thread
   smp_call_function
   smp_call_function_single
+  snd_card_disconnect
+  snd_card_free_when_closed
   snd_card_ref
   snd_card_register
   snd_card_rw_proc_new
@@ -2189,6 +2195,7 @@
   snd_soc_dai_set_tdm_slot
   snd_soc_dapm_get_enum_double
   snd_soc_dapm_put_enum_double
+  snd_soc_get_dai_name
   snd_soc_get_volsw
   snd_soc_get_volsw_range
   snd_soc_info_enum_double
@@ -2203,6 +2210,7 @@
   snd_soc_of_parse_audio_simple_widgets
   snd_soc_of_parse_card_name
   snd_soc_of_parse_tdm_slot
+  snd_soc_of_put_dai_link_codecs
   snd_soc_pm_ops
   snd_soc_put_volsw
   snd_soc_put_volsw_range
@@ -2217,6 +2225,9 @@
   snd_timer_stop
   snprintf
   __sock_create
+  sock_kfree_s
+  sock_kmalloc
+  sock_kzfree_s
   sock_release
   sock_wfree
   sort
@@ -2224,6 +2235,7 @@
   __spi_alloc_controller
   spi_alloc_device
   spi_busnum_to_master
+  spi_bus_type
   spi_controller_resume
   spi_controller_suspend
   spi_finalize_current_message

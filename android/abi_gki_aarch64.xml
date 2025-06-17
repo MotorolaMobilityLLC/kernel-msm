@@ -6336,6 +6336,9 @@
       <elf-symbol name='sock_i_ino' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xc4b440f5'/>
       <elf-symbol name='sock_i_uid' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x835202fb'/>
       <elf-symbol name='sock_init_data' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x1edbf285'/>
+      <elf-symbol name='sock_kfree_s' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xccedc3e7'/>
+      <elf-symbol name='sock_kmalloc' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xb73c5ea7'/>
+      <elf-symbol name='sock_kzfree_s' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x36bf3a4d'/>
       <elf-symbol name='sock_no_accept' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xd34e98b5'/>
       <elf-symbol name='sock_no_bind' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xa53dc7b6'/>
       <elf-symbol name='sock_no_connect' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x6b3f1b3d'/>
@@ -165964,6 +165967,24 @@
         <parameter type-id='f772df6d' name='sk' filepath='net/core/sock.c' line='3254' column='1'/>
         <return type-id='48b5725f'/>
       </function-decl>
+      <function-decl name='sock_kfree_s' mangled-name='sock_kfree_s' filepath='net/core/sock.c' line='2463' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sock_kfree_s'>
+        <parameter type-id='f772df6d' name='sk' filepath='net/core/sock.c' line='2463' column='1'/>
+        <parameter type-id='eaa32e2f' name='mem' filepath='net/core/sock.c' line='2463' column='1'/>
+        <parameter type-id='95e97e5e' name='size' filepath='net/core/sock.c' line='2463' column='1'/>
+        <return type-id='48b5725f'/>
+      </function-decl>
+      <function-decl name='sock_kmalloc' mangled-name='sock_kmalloc' filepath='net/core/sock.c' line='2427' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sock_kmalloc'>
+        <parameter type-id='f772df6d' name='sk' filepath='net/core/sock.c' line='2427' column='1'/>
+        <parameter type-id='95e97e5e' name='size' filepath='net/core/sock.c' line='2427' column='1'/>
+        <parameter type-id='3eb7c31c' name='priority' filepath='net/core/sock.c' line='2427' column='1'/>
+        <return type-id='eaa32e2f'/>
+      </function-decl>
+      <function-decl name='sock_kzfree_s' mangled-name='sock_kzfree_s' filepath='net/core/sock.c' line='2469' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sock_kzfree_s'>
+        <parameter type-id='f772df6d' name='sk' filepath='net/core/sock.c' line='2469' column='1'/>
+        <parameter type-id='eaa32e2f' name='mem' filepath='net/core/sock.c' line='2469' column='1'/>
+        <parameter type-id='95e97e5e' name='size' filepath='net/core/sock.c' line='2469' column='1'/>
+        <return type-id='48b5725f'/>
+      </function-decl>
       <function-decl name='sock_no_accept' mangled-name='sock_no_accept' filepath='net/core/sock.c' line='2962' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sock_no_accept'>
         <parameter type-id='13103032' name='sock' filepath='net/core/sock.c' line='2962' column='1'/>
         <parameter type-id='13103032' name='newsock' filepath='net/core/sock.c' line='2962' column='1'/>
@@ -172805,6 +172826,7 @@
     </abi-instr>
   </abi-corpus>
 </abi-corpus-group>
+
 <!--
      libabigail: abidw: 2.1.0SOONG BUILD NUMBER PLACEHOLDER
 -->
