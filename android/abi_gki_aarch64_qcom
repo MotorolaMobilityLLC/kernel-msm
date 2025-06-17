@@ -2206,6 +2206,7 @@
   of_get_next_child
   of_get_next_parent
   of_get_parent
+  of_get_pci_domain_nr
   of_get_phy_mode
   of_get_property
   of_get_regulator_init_data
@@ -2320,6 +2321,7 @@
   pcie_capability_clear_and_set_word
   pcie_capability_read_dword
   pcie_capability_read_word
+  pci_ecam_create
   pci_ecam_map_bus
   pci_enable_device
   pci_enable_pcie_error_reporting
