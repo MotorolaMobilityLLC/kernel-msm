@@ -2089,6 +2089,7 @@
       <elf-symbol name='devm_clk_bulk_get_all' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x239c4a55'/>
       <elf-symbol name='devm_clk_bulk_get_optional' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xcda62a71'/>
       <elf-symbol name='devm_clk_get' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xe220ecdd'/>
+      <elf-symbol name='devm_clk_get_enabled' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x842f910a'/>
       <elf-symbol name='devm_clk_get_optional' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xec66894d'/>
       <elf-symbol name='devm_clk_get_optional_enabled' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x141011a9'/>
       <elf-symbol name='devm_clk_hw_register' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x2d9d647a'/>
@@ -143829,6 +143830,11 @@
       <function-decl name='devm_clk_get' mangled-name='devm_clk_get' filepath='drivers/clk/clk-devres.c' line='63' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='devm_clk_get'>
         <parameter type-id='fa0b179b' name='dev' filepath='drivers/clk/clk-devres.c' line='63' column='1'/>
         <parameter type-id='80f4b756' name='id' filepath='drivers/clk/clk-devres.c' line='63' column='1'/>
+        <return type-id='7d0bc0eb'/>
+      </function-decl>
+      <function-decl name='devm_clk_get_enabled' mangled-name='devm_clk_get_enabled' filepath='drivers/clk/clk-devres.c' line='75' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='devm_clk_get_enabled'>
+        <parameter type-id='fa0b179b' name='dev' filepath='drivers/clk/clk-devres.c' line='75' column='1'/>
+        <parameter type-id='80f4b756' name='id' filepath='drivers/clk/clk-devres.c' line='75' column='1'/>
         <return type-id='7d0bc0eb'/>
       </function-decl>
       <function-decl name='devm_clk_get_optional' mangled-name='devm_clk_get_optional' filepath='drivers/clk/clk-devres.c' line='82' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='devm_clk_get_optional'>
