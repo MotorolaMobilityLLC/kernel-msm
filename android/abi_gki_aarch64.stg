@@ -71070,10 +71070,10 @@ member {
   type_id: 0x0484940b
 }
 member {
-  id: 0x11d6bf1f
+  id: 0x11d6b697
   name: "count_unix"
   type_id: 0xb0312d5a
-  offset: 16320
+  offset: 16448
 }
 member {
   id: 0x20014498
@@ -212533,6 +212533,12 @@ member {
   offset: 16
 }
 member {
+  id: 0x7b11d7cc
+  name: "vertices"
+  type_id: 0xd3c80119
+  offset: 16320
+}
+member {
   id: 0x444fc004
   name: "vet_description"
   type_id: 0x2e110a3d
@@ -266814,12 +266820,13 @@ struct_union {
   kind: STRUCT
   name: "scm_fp_list"
   definition {
-    bytesize: 2048
+    bytesize: 2064
     member_id: 0x65956ee9
     member_id: 0x97463852
     member_id: 0x042a2402
     member_id: 0x5449f846
-    member_id: 0x11d6bf1f
+    member_id: 0x7b11d7cc
+    member_id: 0x11d6b697
   }
 }
 struct_union {
