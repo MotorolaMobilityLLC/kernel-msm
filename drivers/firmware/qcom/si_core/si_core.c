@@ -143,22 +143,18 @@ static struct si_object *qtee__get_si_object(unsigned int object_id)
 	 * The RCU is mostly here (1) if QTEE violate this rule, and (2) for output
 	 * object where QTEE did not issue an appropriate RETAIN.
 	 */
-	XA_STATE(xas, &xa_si_objects, object_id);
 	struct si_object *object;
 
 	rcu_read_lock();
-	do {
-		object = xas_load(&xas);
-		if (xa_is_zero(object)) {
-			/* So that do not retry for 'XA_ZERO_ENTRY'. */
-			object = NULL;
-		}
-
-	} while (xas_retry(&xas, object));
-
-	if (!get_si_object(object))
+	object = xa_load(&xa_si_objects, object_id);
+	if (xa_is_zero(object)) {
+		/* So that do not retry for 'XA_ZERO_ENTRY'. */
 		object = NULL;
-
+	} else {
+		/* Check if the object is valid or not */
+		if (!get_si_object(object))
+			object = NULL;
+	}
 	rcu_read_unlock();
 
 	return object;

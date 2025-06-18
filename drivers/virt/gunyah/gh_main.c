@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -66,13 +66,28 @@ static void gh_notif_vm_status(struct gh_vm *vm,
 		return;
 
 	/* Wake up the waiters only if there's a change in any of the states */
-	if (status->vm_status != vm->status.vm_status &&
-	   (status->vm_status == GH_RM_VM_STATUS_RESET ||
-	   status->vm_status == GH_RM_VM_STATUS_READY)) {
-		pr_info("VM: %d status %d complete\n", vm->vmid,
+	if (status->vm_status != vm->status.vm_status) {
+		switch (status->vm_status) {
+		case GH_RM_VM_STATUS_RESET:
+		case GH_RM_VM_STATUS_READY:
+			pr_info("VM: %d status %d complete\n", vm->vmid,
 							status->vm_status);
-		vm->status.vm_status = status->vm_status;
-		wake_up_interruptible(&vm->vm_status_wait);
+			vm->status.vm_status = status->vm_status;
+			wake_up(&vm->vm_status_wait);
+			break;
+		case GH_RM_VM_STATUS_RESET_FAILED:
+			pr_err("VM %d RESET failed with status %d\n",
+					vm->vmid, status->vm_status);
+			/*
+			 * Forcibly set the vm_status to RESET so that
+			 * the VM can be destroyed and the next start
+			 * of the VM will be unsuccessful and userspace
+			 * can make the right decision.
+			 */
+			vm->status.vm_status = GH_RM_VM_STATUS_RESET;
+			wake_up(&vm->vm_status_wait);
+			break;
+		}
 	}
 }
 
@@ -84,6 +99,14 @@ static void gh_notif_vm_exited(struct gh_vm *vm,
 
 	mutex_lock(&vm->vm_lock);
 	vm->exit_type = vm_exited->exit_type;
+	switch (vm_exited->exit_type) {
+	case GH_RM_VM_EXIT_TYPE_WDT_BITE:
+	case GH_RM_VM_EXIT_TYPE_HYP_ERROR:
+	case GH_RM_VM_EXIT_TYPE_ASYNC_EXT_ABORT:
+		gh_notify_clients(vm, GH_VM_CRASH);
+		break;
+	}
+
 	vm->status.vm_status = GH_RM_VM_STATUS_EXITED;
 	gh_wakeup_all_vcpus(vm->vmid);
 	wake_up_interruptible(&vm->vm_status_wait);
@@ -131,6 +154,7 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 	case GH_RM_VM_STATUS_EXITED:
 	case GH_RM_VM_STATUS_RUNNING:
 	case GH_RM_VM_STATUS_READY:
+		gh_notify_clients(vm, GH_VM_EXITED);
 		ret = gh_rm_unpopulate_hyp_res(vmid, vm->fw_name);
 		if (ret)
 			pr_warn("Failed to unpopulate hyp resources: %d\n", ret);

@@ -2976,8 +2976,6 @@ static int qcom_ethqos_remove(struct platform_device *pdev)
 
 	ret = stmmac_pltfr_remove(pdev);
 
-	if (ethqos->rgmii_clk)
-		clk_disable_unprepare(ethqos->rgmii_clk);
 	if (priv->plat->has_gmac4 && ethqos->phyaux_clk)
 		clk_disable_unprepare(ethqos->phyaux_clk);
 	if (priv->plat->has_gmac4 && ethqos->sgmiref_clk)

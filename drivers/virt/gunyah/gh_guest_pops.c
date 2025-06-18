@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -10,11 +11,15 @@
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/notifier.h>
+#include <linux/pm_wakeup.h>
+#include <linux/reboot.h>
 
 #include <linux/gunyah/gh_rm_drv.h>
 
 #define GH_GUEST_POPS_POFF_BUTTON_HOLD_SHUTDOWN_DELAY_MS	1000
 #define GH_GUEST_POPS_POFF_BUTTON_HOLD_RESTART_DELAY_MS		500
+
+#define GH_GUEST_POPS_POFF_TIMEOUT_MS 5000
 
 static struct input_dev *gh_vm_poff_input;
 static struct notifier_block rm_nb;
@@ -24,9 +29,13 @@ static struct kobj_type gh_guest_kobj_type = {
 };
 static struct kobject gh_guest_kobj;
 
+static struct wakeup_source *ws;
+
 static int gh_guest_pops_handle_stop_shutdown(u32 stop_reason)
 {
 	/* Emulate a KEY_POWER event to notify user-space of a shutdown */
+	__pm_stay_awake(ws);
+
 	pr_info("Sending KEY_POWER event\n");
 
 	input_report_key(gh_vm_poff_input, KEY_POWER, 1);
@@ -43,6 +52,24 @@ static int gh_guest_pops_handle_stop_shutdown(u32 stop_reason)
 
 	input_report_key(gh_vm_poff_input, KEY_POWER, 0);
 	input_sync(gh_vm_poff_input);
+
+	/*
+	 * VM should shutdown of reboot in normal case
+	 * if not kernel shutdown or reboot will trigger after timeout
+	 */
+
+	msleep(GH_GUEST_POPS_POFF_TIMEOUT_MS);
+	pr_err("POPS VM shutdown timeout, trigger kernel shutdown!\n");
+	switch (stop_reason) {
+	case GH_VM_STOP_SHUTDOWN:
+		kernel_power_off();
+		break;
+	case GH_VM_STOP_RESTART:
+		kernel_restart(NULL);
+		break;
+	}
+
+	__pm_relax(ws);
 
 	return 0;
 }
@@ -98,8 +125,16 @@ static int __init gh_guest_pops_init_poff(void)
 	if (ret)
 		goto fail_init;
 
+	ws = wakeup_source_register(NULL, "gh_guest_pops_ws");
+	if (!ws) {
+		ret = -ENOMEM;
+		goto fail_ws;
+	}
+
 	return 0;
 
+fail_ws:
+	gh_rm_unregister_notifier(&rm_nb);
 fail_init:
 	input_unregister_device(gh_vm_poff_input);
 fail_register:
