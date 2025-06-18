@@ -80,6 +80,8 @@ extern void apply_returns(s32 *start, s32 *end);
 
 struct module;
 
+extern u8 *its_static_thunk(int reg);
+
 #ifdef CONFIG_MITIGATION_ITS
 extern void its_init_mod(struct module *mod);
 extern void its_fini_mod(struct module *mod);
