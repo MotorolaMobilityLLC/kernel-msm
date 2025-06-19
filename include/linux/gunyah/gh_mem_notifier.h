@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __GH_MEM_NOTIFIER_H
@@ -23,6 +23,7 @@ enum gh_mem_notifier_tag {
 	GH_MEM_NOTIFIER_TAG_EVA,
 	GH_MEM_NOTIFIER_TAG_CAM_BASE,
 	GH_MEM_NOTIFIER_TAG_CAM_MAX = GH_MEM_NOTIFIER_TAG_CAM_BASE + 49,
+	GH_MEM_NOTIFIER_TAG_MEM_BUF,
 	GH_MEM_NOTIFIER_TAG_MAX
 };
 

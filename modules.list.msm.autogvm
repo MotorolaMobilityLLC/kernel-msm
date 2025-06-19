@@ -11,6 +11,7 @@ mem_buf_dev.ko
 mem_buf_msgq.ko
 qcom_dma_heaps.ko
 rename_devices.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
 virtio_clk_lemans.ko

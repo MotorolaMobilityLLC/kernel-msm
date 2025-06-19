@@ -18,6 +18,7 @@ qcom_iommu_util.ko
 qcom-dload-mode.ko
 minidump.ko
 qcom_dma_heaps.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
 qcom-scm.ko

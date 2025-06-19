@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-# Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 
 gh_arm_drv.ko
 qcom-scm.ko
@@ -10,6 +10,7 @@ virtio_mmio.ko
 virtio_blk.ko
 msm_hab.ko
 rename_devices.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_dbl.ko
 gh_rm_drv.ko
