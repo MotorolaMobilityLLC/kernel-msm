@@ -132,3 +132,9 @@ type 'struct scm_fp_list' changed
   member 'short count_unix' changed
     offset changed by 128
 
+type 'struct scm_fp_list' changed
+  byte size changed from 2064 to 2072
+  member 'struct unix_edge* edges' was added
+  member 'short count_unix' changed
+    offset changed by 64
+
