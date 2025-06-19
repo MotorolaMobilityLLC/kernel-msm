@@ -1258,31 +1258,13 @@ static int qcom_stats_suspend(struct device *dev)
 #ifdef CONFIG_MMI_LPM_DBG
 #include <linux/mmi_lpm_dbg.h>
 
-static struct mmi_lpm_dbg_ops *dbg_ops;
+static RAW_NOTIFIER_HEAD(subsystem_sleep_state);
 
-int mmi_lpm_dbg_ops_register(struct mmi_lpm_dbg_ops *ops)
+int mmi_lpm_dbg_register_notifier(struct notifier_block *nb)
 {
-	if (!ops) {
-		pr_err("%s ops error\n", __func__);
-		return -EINVAL;
-	}
-
-	dbg_ops = ops;
-
-	return 0;
+	return raw_notifier_chain_register(&subsystem_sleep_state, nb);
 }
-EXPORT_SYMBOL(mmi_lpm_dbg_ops_register);
-
-int mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE type, unsigned long long time)
-{
-	if (!dbg_ops) {
-		pr_err("%s ops error\n", __func__);
-		return -EINVAL;
-	}
-
-	return 	dbg_ops->store_sleep_time(type, time);
-}
-EXPORT_SYMBOL(mmi_lpm_dbg_store_sleep_time);
+EXPORT_SYMBOL(mmi_lpm_dbg_register_notifier);
 
 /* Referance from print_supsystem_sleep_stats() 				*/
 /* Just get integer result. The elements < 1 will not be used for us 	*/
@@ -1335,13 +1317,18 @@ static int qcom_stats_resume(struct device *dev)
 		sleep_time = get_supsystem_sleep_stats(i, tmp,
 				subsystems[i].name);
 
-		pr_info("MMI_LPM %s:%d %d\n", subsystems[i].name, sleep_time, a_subsystem_stats[i].count - b_subsystem_stats[i].count);
-		if ((md_sleep_time < 0) && (strcmp(subsystems[i].name, "modem") == 0))
+		pr_info("MMI_LPM %s:%d\n", subsystems[i].name, sleep_time);
+		/* If xx_sleep_time is set, then we will not run strcmp to limit calculation */
+		if ((md_sleep_time < 0) && (strcmp(subsystems[i].name, "modem") == 0)) {
 			md_sleep_time = sleep_time;
-		else if ((adsp_sleep_cnt < 0) && (strcmp(subsystems[i].name, "adsp") == 0))
+			raw_notifier_call_chain(&subsystem_sleep_state, SLEEP_TIME_TYPE_MD, &md_sleep_time);
+		} else if ((adsp_sleep_cnt < 0) && (strcmp(subsystems[i].name, "adsp") == 0)) {
 			adsp_sleep_cnt = a_subsystem_stats[i].count;
-		else if ((ap_sleep_time < 0) && (strcmp(subsystems[i].name, "apss") == 0))
+			raw_notifier_call_chain(&subsystem_sleep_state, SLEEP_TIME_TYPE_SCP, &adsp_sleep_cnt);
+		} else if ((ap_sleep_time < 0) && (strcmp(subsystems[i].name, "apss") == 0)) {
 			ap_sleep_time = sleep_time;
+			raw_notifier_call_chain(&subsystem_sleep_state, SLEEP_TIME_TYPE_AP, &ap_sleep_time);
+		}
 #endif
 	}
 
@@ -1353,12 +1340,6 @@ static int qcom_stats_resume(struct device *dev)
 	}
 	mutex_unlock(&sleep_stats_mutex);
 
-#ifdef CONFIG_MMI_LPM_DBG
-	/* Should not take complex operations in mutex lock period */
-	mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE_AP, ap_sleep_time);
-	mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE_MD, md_sleep_time);
-	mmi_lpm_dbg_store_sleep_time(SLEEP_TIME_TYPE_SCP, adsp_sleep_cnt);
-#endif
 	return 0;
 }
 
