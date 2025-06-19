@@ -29,14 +29,12 @@ struct unix_edge;
 struct scm_fp_list {
 	short			count;
 	short			max;
-#ifdef CONFIG_UNIX
-	struct unix_edge        *edges;
-#endif
 	struct user_struct	*user;
 	struct file		*fp[SCM_MAX_FD];
 #ifndef __GENKSYMS__
 #ifdef CONFIG_UNIX
 	struct list_head	vertices;
+	struct unix_edge        *edges;
 #endif
 	short			count_unix;
 #endif
