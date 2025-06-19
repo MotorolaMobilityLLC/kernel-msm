@@ -76379,6 +76379,12 @@ member {
   offset: 3200
 }
 member {
+  id: 0x3bde3edb
+  name: "dead"
+  type_id: 0x6d7f5ff6
+  offset: 16328
+}
+member {
   id: 0x6491a5c4
   name: "dead"
   type_id: 0x295c7202
@@ -267019,6 +267025,7 @@ struct_union {
     member_id: 0x042a2402
     member_id: 0x5449f846
     member_id: 0x799ec517
+    member_id: 0x3bde3edb
     member_id: 0x7b11d1cc
     member_id: 0x76d74733
     member_id: 0x11d6bda9
