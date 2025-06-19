@@ -138,3 +138,9 @@ type 'struct scm_fp_list' changed
   member 'short count_unix' changed
     offset changed by 64
 
+type 'struct scm_fp_list' changed
+  byte size changed from 2072 to 2080
+  member 'bool inflight' was added
+  3 members ('struct list_head vertices' .. 'short count_unix') changed
+    offset changed by 64
+
