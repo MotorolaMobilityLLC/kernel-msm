@@ -71111,10 +71111,10 @@ member {
   type_id: 0x0484940b
 }
 member {
-  id: 0x11d6ba75
+  id: 0x11d6bda9
   name: "count_unix"
   type_id: 0xb0312d5a
-  offset: 16512
+  offset: 16576
 }
 member {
   id: 0x20014498
@@ -86203,10 +86203,10 @@ member {
   offset: 1728
 }
 member {
-  id: 0x76d74bd1
+  id: 0x76d74733
   name: "edges"
   type_id: 0x1df3293f
-  offset: 16448
+  offset: 16512
 }
 member {
   id: 0x31c31f3f
@@ -112758,6 +112758,12 @@ member {
   name: "inexact_bins"
   type_id: 0xd3c80119
   offset: 2752
+}
+member {
+  id: 0x799ec517
+  name: "inflight"
+  type_id: 0x6d7f5ff6
+  offset: 16320
 }
 member {
   id: 0x79c0c441
@@ -212702,10 +212708,10 @@ member {
   offset: 16
 }
 member {
-  id: 0x7b11d7cc
+  id: 0x7b11d1cc
   name: "vertices"
   type_id: 0xd3c80119
-  offset: 16320
+  offset: 16384
 }
 member {
   id: 0x444fc004
@@ -266989,14 +266995,15 @@ struct_union {
   kind: STRUCT
   name: "scm_fp_list"
   definition {
-    bytesize: 2072
+    bytesize: 2080
     member_id: 0x65956ee9
     member_id: 0x97463852
     member_id: 0x042a2402
     member_id: 0x5449f846
-    member_id: 0x7b11d7cc
-    member_id: 0x76d74bd1
-    member_id: 0x11d6ba75
+    member_id: 0x799ec517
+    member_id: 0x7b11d1cc
+    member_id: 0x76d74733
+    member_id: 0x11d6bda9
   }
 }
 struct_union {
