@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/clk.h>
@@ -3509,16 +3509,29 @@ static int geni_i3c_probe(struct platform_device *pdev)
 			    tx_depth, gi3c->se_mode);
 	}
 
-	pm_runtime_set_suspended(gi3c->se.dev);
-	pm_runtime_set_autosuspend_delay(gi3c->se.dev, I3C_AUTO_SUSPEND_DELAY);
-	pm_runtime_use_autosuspend(gi3c->se.dev);
-	pm_runtime_enable(gi3c->se.dev);
-
 	geni_ios = geni_read_reg(gi3c->se.base, SE_GENI_IOS);
 	if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
 		I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
 		"%s: IO lines:0x%x, Ensure bus power up\n", __func__, geni_ios);
 	}
+
+	/* For egpio case, ibi controller is enabled/disabled in runtime resume/suspend */
+	if (gi3c->is_egpio_present)
+		geni_i3c_enable_ibi_ctrl(gi3c, false);
+
+	ret = geni_se_resources_off(&gi3c->se);
+	if (ret)
+		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
+			    "geni_se_resources_off failed %d\n", ret);
+	ret = geni_icc_disable(&gi3c->se);
+	if (ret)
+		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
+			    "geni_icc_disable failed %d\n", ret);
+
+	pm_runtime_set_suspended(gi3c->se.dev);
+	pm_runtime_set_autosuspend_delay(gi3c->se.dev, I3C_AUTO_SUSPEND_DELAY);
+	pm_runtime_use_autosuspend(gi3c->se.dev);
+	pm_runtime_enable(gi3c->se.dev);
 
 	ret = i3c_master_register(&gi3c->ctrlr, &pdev->dev,
 		&geni_i3c_master_ops, false);
