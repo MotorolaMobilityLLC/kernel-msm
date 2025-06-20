@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, KBUILD_MODNAME
@@ -811,7 +811,7 @@ int sysmon_stats_query_power_residency(enum dsp_id_t dsp_id,
 		if (!IS_ERR_OR_NULL(g_sysmon_stats.sysmon_power_stats_cdsp)) {
 			ptr = g_sysmon_stats.sysmon_power_stats_cdsp;
 			size = (((ptr->powerstats.version) >> 16) & 0xFFF) + sizeof(u32);
-			if (!copy_powerstats(&smem_sysmon_power_stats_l, dsp_id))
+			if (copy_powerstats(&smem_sysmon_power_stats_l, dsp_id))
 				return -ENOKEY;
 
 			if (g_sysmon_stats.sleep_stats_cdsp) {
@@ -831,7 +831,7 @@ int sysmon_stats_query_power_residency(enum dsp_id_t dsp_id,
 		if (!IS_ERR_OR_NULL(g_sysmon_stats.sysmon_power_stats_slpi)) {
 			ptr = g_sysmon_stats.sysmon_power_stats_slpi;
 			size = (((ptr->powerstats.version) >> 16) & 0xFFF) + sizeof(u32);
-			if (!copy_powerstats(&smem_sysmon_power_stats_l, dsp_id))
+			if (copy_powerstats(&smem_sysmon_power_stats_l, dsp_id))
 				return -ENOKEY;
 			if (g_sysmon_stats.sleep_stats_slpi) {
 				lpm_accumulated = g_sysmon_stats.sleep_stats_slpi->accumulated;
@@ -1162,7 +1162,6 @@ static int master_adsp_stats_show(struct seq_file *s, void *d)
 	u64 lpm_accumulated = 0;
 	u32 q6_load;
 	u8 ver = 0;
-	struct sysmon_smem_power_stats_extended *ptr = NULL;
 	struct sysmon_smem_power_stats sysmon_power_stats = { 0 };
 
 	if (!g_sysmon_stats.smem_init_adsp)
@@ -1234,42 +1233,38 @@ static int master_adsp_stats_show(struct seq_file *s, void *d)
 	}
 
 	if (g_sysmon_stats.sysmon_power_stats_adsp) {
-		if (copy_powerstats(&sysmon_power_stats, ADSP))
-			return -ENOKEY;
-		ptr = g_sysmon_stats.sysmon_power_stats_adsp;
-		ver = (ptr->powerstats.version) & 0xFF;
 
-		ret = add_delta_time(ver, lpi_accumulated,
-				lpm_accumulated, &sysmon_power_stats, ADSP);
+		ret = sysmon_stats_query_power_residency(ADSP, &sysmon_power_stats);
 
-		if (ret != 0)
-			seq_puts(s, "\nWarning: Power Stats are might be Invalid\n");
-
-		seq_puts(s, "\nPower Stats:\n\n");
-		for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
-			if (sysmon_power_stats.clk_arr[j]) {
-				if (ver >= 2) {
-					seq_printf(s, "%u : Core Clock(KHz) : %u \tActive Time(sec) : %u \tLPI time(sec) : %u\n",
-						j,
-						sysmon_power_stats.clk_arr[j],
-						sysmon_power_stats.active_time[j],
-						sysmon_power_stats.island_time[j]);
-				} else {
-					seq_printf(s, "%u : Core Clock(KHz): %u \tActive Time(sec): %u\n",
-						j,
-						sysmon_power_stats.clk_arr[j],
-						sysmon_power_stats.active_time[j]);
+		if (ret) {
+			seq_printf(s, "\nPower Stats Read failed : %d\n", ret);
+		} else {
+			seq_puts(s, "\nPower Stats:\n\n");
+			for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+				if (sysmon_power_stats.clk_arr[j]) {
+					if (ver >= 2) {
+						seq_printf(s, "%u : Core Clock(KHz) : %u \tActive Time(sec) : %u \tLPI time(sec) : %u\n",
+							j,
+							sysmon_power_stats.clk_arr[j],
+							sysmon_power_stats.active_time[j],
+							sysmon_power_stats.island_time[j]);
+					} else {
+						seq_printf(s, "%u : Core Clock(KHz): %u \tActive Time(sec): %u\n",
+							j,
+							sysmon_power_stats.clk_arr[j],
+							sysmon_power_stats.active_time[j]);
+					}
 				}
 			}
-		}
 
-		seq_printf(s, "Power collapse time(sec) = %u\n",
-			sysmon_power_stats.pc_time);
-		seq_printf(s, "Total LPI time(sec) = %u\n",
-			sysmon_power_stats.lpi_time);
-		if (ver >= 2)
-			seq_printf(s, "Current core clock(KHz) = %u\n",
-				sysmon_power_stats.current_clk);
+			seq_printf(s, "Power collapse time(sec) = %u\n",
+				sysmon_power_stats.pc_time);
+			seq_printf(s, "Total LPI time(sec) = %u\n",
+				sysmon_power_stats.lpi_time);
+			if (ver >= 2)
+				seq_printf(s, "Current core clock(KHz) = %u\n",
+					sysmon_power_stats.current_clk);
+		}
 	}
 
 	if (g_sysmon_stats.q6_avg_load_adsp) {
@@ -1289,7 +1284,6 @@ static int master_cdsp_stats_show(struct seq_file *s, void *d)
 	u32 q6_load;
 	u64 lpm_accumulated = 0;
 	u8 ver = 0;
-	struct sysmon_smem_power_stats_extended *ptr = NULL;
 	struct sysmon_smem_power_stats sysmon_power_stats = { 0 };
 
 	if (!g_sysmon_stats.smem_init_cdsp)
@@ -1346,36 +1340,30 @@ static int master_cdsp_stats_show(struct seq_file *s, void *d)
 	}
 
 	if (g_sysmon_stats.sysmon_power_stats_cdsp) {
-		if (copy_powerstats(&sysmon_power_stats, CDSP))
-			return -ENOKEY;
-		ptr = g_sysmon_stats.sysmon_power_stats_cdsp;
-		ver = (ptr->powerstats.version) & 0xFF;
-		ret = add_delta_time(ver, 0, lpm_accumulated, &sysmon_power_stats, CDSP);
 
-		if (ret)
-			seq_puts(s, "\nWarning: Power Stats might be Invalid\n");
+		ret = sysmon_stats_query_power_residency(CDSP, &sysmon_power_stats);
 
-		seq_puts(s, "\nPower Stats:\n\n");
-		for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
-			if (sysmon_power_stats.clk_arr[j])
-				seq_printf(s, "%u : Core Clock(KHz) : %u \tActive Time(sec) : %u\n",
-					j,
-					sysmon_power_stats.clk_arr[j],
-					sysmon_power_stats.active_time[j]);
+		if (ret) {
+			seq_printf(s, "\nPower Stats Read failed : %d\n", ret);
+		} else {
+			seq_puts(s, "\nPower Stats:\n\n");
+			for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+				if (sysmon_power_stats.clk_arr[j])
+					seq_printf(s, "%u : Core Clock(KHz) : %u \tActive Time(sec) : %u\n",
+						j,
+						sysmon_power_stats.clk_arr[j],
+						sysmon_power_stats.active_time[j]);
+			}
+
+			seq_printf(s, "Power collapse time(sec) = %u\n",
+				sysmon_power_stats.pc_time);
+			seq_printf(s, "Total LPI time(sec) = %u\n",
+				sysmon_power_stats.lpi_time);
+
+			if (ver >= 2)
+				seq_printf(s, "Current core clock(KHz) = %u\n",
+					sysmon_power_stats.current_clk);
 		}
-
-		seq_printf(s, "Power collapse time(sec) = %u\n",
-			sysmon_power_stats.pc_time);
-		seq_printf(s, "Total LPI time(sec) = %u\n",
-			sysmon_power_stats.lpi_time);
-
-		if (ver >= 2)
-			seq_printf(s, "Current core clock(KHz) = %u\n",
-				sysmon_power_stats.current_clk);
-
-		if (ret)
-			return ret;
-
 	}
 
 	if (g_sysmon_stats.q6_avg_load_cdsp) {
