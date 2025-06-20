@@ -2215,9 +2215,6 @@ EXPORT_PER_CPU_SYMBOL(__stack_chk_guard);
 
 #endif	/* CONFIG_X86_64 */
 
-/*
- * Clear all 6 debug registers:
- */
 static void initialize_debug_regs(void)
 {
 	/* Control register first -- to make sure everything is disabled. */
