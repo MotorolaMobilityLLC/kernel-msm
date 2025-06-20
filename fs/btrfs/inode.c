@@ -4856,7 +4856,6 @@ static int btrfs_rmdir(struct inode *dir, struct dentry *dentry)
 	struct btrfs_fs_info *fs_info = BTRFS_I(inode)->root->fs_info;
 	int err = 0;
 	struct btrfs_trans_handle *trans;
-	u64 last_unlink_trans;
 	struct fscrypt_name fname;
 
 	if (inode->i_size > BTRFS_EMPTY_DIR_SIZE)
@@ -4891,8 +4890,6 @@ static int btrfs_rmdir(struct inode *dir, struct dentry *dentry)
 	if (err)
 		goto out;
 
-	last_unlink_trans = BTRFS_I(inode)->last_unlink_trans;
-
 	/* now the directory is empty */
 	err = btrfs_unlink_inode(trans, BTRFS_I(dir), BTRFS_I(d_inode(dentry)),
 				 &fname.disk_name);
@@ -4909,8 +4906,8 @@ static int btrfs_rmdir(struct inode *dir, struct dentry *dentry)
 		 * 5) mkdir foo
 		 * 6) fsync foo or some file inside foo
 		 */
-		if (last_unlink_trans >= trans->transid)
-			BTRFS_I(dir)->last_unlink_trans = last_unlink_trans;
+		if (BTRFS_I(inode)->last_unlink_trans >= trans->transid)
+			btrfs_record_snapshot_destroy(trans, BTRFS_I(dir));
 	}
 out:
 	btrfs_end_transaction(trans);
