@@ -167,6 +167,15 @@ config QCOM_PIL_INFO
 config QCOM_RPROC_COMMON
 	tristate "Qualcomm Technologies, Inc. Remote Proc Common Framework"
 
+config QCOM_Q6V5_PAS_SOCCP_V1
+	bool "SOCCP V1"
+	depends on QCOM_Q6V5_PAS
+	help
+	  Support to enable power state transition control of SoC Control Processor
+	  V1 via an API which can be used by clients to vote for the subsystem to
+	  be either in active or dormant states.
+	  If unsure say N.
+
 config QCOM_Q6V5_COMMON
 	tristate
 	depends on ARCH_QCOM
