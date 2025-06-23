@@ -702,16 +702,13 @@ static int init_pkvm_hyp_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu,
 	if (ret)
 		goto done;
 
-	ret = pkvm_vcpu_init_psci(hyp_vcpu);
-	if (ret)
-		goto done;
-
 	if (test_bit(KVM_ARM_VCPU_SVE, hyp_vcpu->vcpu.arch.features)) {
 		ret = init_pkvm_hyp_vcpu_sve(hyp_vcpu, host_vcpu);
 		if (ret)
 			goto done;
 	}
 
+	WARN_ON(pkvm_vcpu_init_psci(hyp_vcpu));
 	pkvm_vcpu_init_traps(hyp_vcpu);
 	kvm_reset_pvm_sys_regs(&hyp_vcpu->vcpu);
 done:
