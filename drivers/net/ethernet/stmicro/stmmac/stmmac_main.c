@@ -4697,7 +4697,13 @@ static void stmmac_hw_ts_insert(struct stmmac_priv *priv, struct stmmac_tx_queue
 	if (!priv->plat->insert_ts_pktid)
 		return;
 
-	p = &tx_q->dma_entx[tx_q->cur_tx].basic;
+	if (priv->extend_desc)
+		p = &tx_q->dma_etx[tx_q->cur_tx].basic;
+	else if (tx_q->tbs & STMMAC_TBS_AVAIL)
+		p = &tx_q->dma_entx[tx_q->cur_tx].basic;
+	else
+		p = &tx_q->dma_tx[tx_q->cur_tx];
+
 	tx_q->pid = (tx_q->pid + 1) % STMMAC_MAX_PID;
 
 	/*this condition will be hit when 1023%1023 is 0*/
