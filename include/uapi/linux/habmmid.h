@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef HABMMID_H
 #define HABMMID_H
@@ -87,5 +87,17 @@
 #define	MM_GPCE_END 1602
 
 #define	MM_ID_MAX 1603
+
+#define VIRQ_MIN   1000
+
+#define VIRQ_AUD   1001
+#define VIRQ_CAM   2001
+#define VIRQ_DISP1 3001
+#define VIRQ_DISP2 3002
+#define VIRQ_GFX   4001
+#define VIRQ_VID   5001
+#define VIRQ_MISC  6001
+
+#define VIRQ_MAX   8001
 
 #endif /* HABMMID_H */
