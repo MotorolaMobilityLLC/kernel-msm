@@ -515,6 +515,7 @@ config QSEECOM_PROXY
 
 config QCOM_SMCI_PROXY
 	tristate "To enable smci proxy driver for kernel client"
+	depends on !QCOM_SI_CORE
 	help
 	 smci proxy driver serves the kernel clients by providing
 	 required ops via call back functions with a minimal framework.
