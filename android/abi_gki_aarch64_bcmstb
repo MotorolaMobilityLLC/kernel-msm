@@ -147,6 +147,7 @@
   dma_map_sg_attrs
   dma_set_coherent_mask
   dma_set_mask
+  dma_sync_single_for_device
   dma_unmap_page_attrs
   dma_unmap_sg_attrs
   do_trace_netlink_extack
@@ -188,9 +189,12 @@
   get_net_ns_by_fd
   get_net_ns_by_pid
   get_random_bytes
+  get_zeroed_page
   gic_nonsecure_priorities
   gpiochip_add_data_with_key
   gpiochip_find
+  gpiochip_generic_free
+  gpiochip_generic_request
   gpiochip_get_data
   gpiochip_remove
   gpiod_get_value_cansleep
@@ -353,8 +357,8 @@
   nr_cpu_ids
   ns_capable
   of_address_to_resource
-  of_alias_get_id
   of_clk_get_by_name
+  of_count_phandle_with_args
   of_device_get_match_data
   of_device_is_available
   of_device_is_big_endian
@@ -402,6 +406,7 @@
   phy_ethtool_nway_reset
   phy_ethtool_set_eee
   phy_ethtool_set_link_ksettings
+  phy_ethtool_set_wol
   phy_exit
   phy_init
   phy_init_eee
@@ -413,13 +418,13 @@
   phy_start
   phy_stop
   phy_trigger_machine
+  platform_device_put
   platform_device_register_full
   platform_device_unregister
   __platform_driver_probe
   __platform_driver_register
   platform_driver_unregister
   platform_get_irq
-  platform_get_irq_byname
   platform_get_irq_byname_optional
   platform_get_irq_optional
   platform_get_resource
@@ -490,6 +495,7 @@
   register_pernet_device
   register_pernet_subsys
   register_pm_notifier
+  register_reboot_notifier
   register_syscore_ops
   regulator_bulk_disable
   regulator_bulk_enable
@@ -660,6 +666,7 @@
   unregister_pernet_device
   unregister_pernet_subsys
   unregister_pm_notifier
+  unregister_reboot_notifier
   up_read
   up_write
   usb_alloc_urb
@@ -742,18 +749,6 @@
   vlan_vid_add
   vlan_vid_del
 
-# required by 8250_bcm7271.ko
-  serial8250_do_set_termios
-  serial8250_do_shutdown
-  serial8250_do_startup
-  serial8250_get_port
-  serial8250_handle_irq
-  serial8250_register_8250_port
-  serial8250_resume_port
-  serial8250_suspend_port
-  serial8250_unregister_port
-  uart_write_wakeup
-
 # required by ahci_brcm.ko
   phy_calibrate
 
@@ -807,6 +802,9 @@
 # required by bcm7038_wdt.ko
   devm_watchdog_register_device
 
+# required by bcm74110-rng.ko
+  devm_hwrng_register
+
 # required by bcm7xxx.ko
   genphy_restart_aneg
 
@@ -816,7 +814,6 @@
   dma_pool_create
   dma_pool_destroy
   dma_pool_free
-  of_count_phandle_with_args
   usb_add_gadget_udc
   usb_del_gadget_udc
   usb_ep_set_maxpacket_limit
@@ -889,6 +886,21 @@
 # required by brcmstb_gisb.ko
   __sw_hweight64
 
+# required by brcmstb_iommu.ko
+  devm_get_free_pages
+  iommu_device_register
+  iommu_device_sysfs_add
+  iommu_device_sysfs_remove
+  iommu_device_unlink
+  iommu_device_unregister
+  iommu_fwspec_init
+  iommu_group_alloc
+  iommu_group_put
+  iommu_group_ref_get
+  pci_device_group
+  pci_find_host_bridge
+  platform_get_irq_byname
+
 # required by brcmstb_memc.ko
   of_match_device
 
@@ -897,9 +909,6 @@
   genphy_c37_config_aneg
   genphy_c37_read_status
   genphy_suspend
-
-# required by btbcm.ko
-  efi
 
 # required by btsdio.ko
   sdio_claim_host
@@ -1065,13 +1074,13 @@
   netif_schedule_queue
   netif_set_real_num_rx_queues
   netif_set_real_num_tx_queues
+  of_alias_get_id
   of_get_compatible_child
   of_phy_find_device
   phy_attach
   phy_connect_direct
   phy_ethtool_ksettings_get
   phy_ethtool_ksettings_set
-  phy_ethtool_set_wol
   phy_get_pause
   phy_init_hw
   phy_resume
@@ -1083,7 +1092,6 @@
   platform_device_add_data
   platform_device_add_resources
   platform_device_alloc
-  platform_device_put
   softnet_data
 
 # required by gpio-brcmstb.ko
@@ -1353,6 +1361,7 @@
   scsi_remove_device
   scsi_remove_host
   scsi_rescan_device
+  scsi_resume_device
   scsi_schedule_eh
   scsi_sense_desc_find
   scsi_set_sense_field_pointer
@@ -1409,10 +1418,12 @@
   bitmap_find_free_region
   bitmap_release_region
   devm_pci_alloc_host_bridge
+  devm_phy_optional_get
   irq_chip_ack_parent
   irq_domain_get_irq_data
   irq_domain_set_info
   of_pci_get_max_link_speed
+  of_property_read_variable_u16_array
   of_property_read_variable_u64_array
   pcie_link_speed
   pci_generic_config_read
@@ -1436,6 +1447,12 @@
 # required by phy-brcm-sata.ko
   of_phy_simple_xlate
 
+# required by phy-brcm-pcie.ko
+  __copy_overflow
+  debugfs_initialized
+  regmap_read
+  strsep
+
 # required by phy-brcm-usb-dvr.ko
   brcmstb_get_family_id
   brcmstb_get_product_id
@@ -1449,8 +1466,6 @@
   gpiochip_disable_irq
   gpiochip_enable_irq
   gpiochip_generic_config
-  gpiochip_generic_free
-  gpiochip_generic_request
   gpiochip_irq_relres
   gpiochip_irq_reqres
   of_pinctrl_get
@@ -1527,6 +1542,9 @@
   usb_set_configuration
   work_busy
 
+# required by reboot_data_save.ko
+  ktime_get_real_ts64
+
 # required by rfcomm.ko
   kthread_should_stop
   kthread_stop
@@ -1543,11 +1561,9 @@
 # required by rtc-brcmstb-waketimer.ko
   devm_rtc_allocate_device
   __devm_rtc_register_device
-  register_reboot_notifier
   rtc_time64_to_tm
   rtc_tm_to_time64
   rtc_update_irq
-  unregister_reboot_notifier
 
 # required by rtl8150.ko
   usb_control_msg_send
@@ -1602,7 +1618,6 @@
   dma_get_slave_caps
   dma_release_channel
   dma_request_chan
-  dma_sync_single_for_device
   empty_zero_page
   gpiochip_request_own_desc
   __of_get_address
@@ -1697,7 +1712,6 @@
   device_find_child_by_name
   device_for_each_child
   _find_first_zero_bit
-  get_zeroed_page
   rtnl_configure_link
   rtnl_create_link
 
@@ -1752,6 +1766,12 @@
 
 # required by nexusmem.ko
   restore_online_page_callback
+  __alloc_pages_bulk
+  __rt_mutex_init
+  rt_mutex_lock
+  rt_mutex_trylock
+  rt_mutex_unlock
+  rt_mutex_lock_interruptible
 
 # required by nexus.ko
   recalc_sigpending
@@ -1759,3 +1779,11 @@
 # required by bstm.ko
   phys_mem_access_prot
   generic_access_phys
+
+# required by bcm_astra.ko
+  strnlen_user
+  tty_buffer_set_limit
+  tty_buffer_request_room
+
+# required by bcm_athena.ko
+  __read_overflow2_field

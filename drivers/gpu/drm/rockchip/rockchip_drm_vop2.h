@@ -27,11 +27,6 @@ enum win_dly_mode {
 	VOP2_DLY_MODE_MAX,
 };
 
-struct vop_rect {
-	int width;
-	int height;
-};
-
 enum vop2_scale_up_mode {
 	VOP2_SCALE_UP_NRST_NBOR,
 	VOP2_SCALE_UP_BIL,
@@ -423,6 +418,7 @@ enum dst_factor_mode {
 #define VOP2_COLOR_KEY_MASK				BIT(31)
 
 #define RK3568_OVL_CTRL__LAYERSEL_REGDONE_IMD		BIT(28)
+#define RK3568_OVL_CTRL__YUV_MODE(vp)			BIT(vp)
 
 #define RK3568_VP_BG_MIX_CTRL__BG_DLY			GENMASK(31, 24)
 

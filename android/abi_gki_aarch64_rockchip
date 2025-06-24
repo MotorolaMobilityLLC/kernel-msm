@@ -200,6 +200,7 @@
   devm_clk_bulk_get
   devm_clk_bulk_get_all
   devm_clk_get
+  devm_clk_get_enabled
   devm_clk_get_optional
   devm_clk_hw_register
   devm_clk_register
@@ -252,6 +253,7 @@
   __devm_regmap_init_i2c
   __devm_regmap_init_mmio_clk
   devm_regulator_bulk_get
+  devm_regulator_bulk_get_enable
   devm_regulator_get
   devm_regulator_get_optional
   devm_regulator_register
@@ -1975,6 +1977,7 @@
   scsi_remove_device
   scsi_remove_host
   scsi_rescan_device
+  scsi_resume_device
   scsi_schedule_eh
   scsi_sense_desc_find
   scsi_set_sense_field_pointer
@@ -2102,6 +2105,7 @@
 # required by pcie-dw-rockchip.ko
   device_release_driver
   dw_pcie_find_ext_capability
+  dw_pcie_host_deinit
   dw_pcie_host_init
   dw_pcie_link_up
   dw_pcie_read
@@ -2118,6 +2122,7 @@
   devm_pci_remap_cfg_resource
   jiffies_to_usecs
   of_pci_get_max_link_speed
+  of_pci_get_slot_power_limit
   pci_host_probe
   pci_remove_root_bus
   pci_stop_root_bus
@@ -2456,7 +2461,10 @@
   devm_of_phy_get_by_index
   driver_find_device
   drm_aperture_remove_conflicting_framebuffers
+  drm_atomic_add_encoder_bridges
+  drm_atomic_bridge_chain_check
   drm_atomic_commit
+  drm_atomic_get_bridge_state
   drm_atomic_get_plane_state
   drm_atomic_helper_check
   drm_atomic_helper_check_plane_state
@@ -2490,6 +2498,7 @@
   __drm_atomic_state_free
   drm_bridge_chain_mode_set
   drm_bridge_get_edid
+  drm_bridge_is_panel
   drm_connector_list_update
   drm_crtc_cleanup
   drm_crtc_enable_color_mgmt
@@ -2513,6 +2522,7 @@
   drm_flip_work_init
   drm_flip_work_queue
   drm_format_info
+  drm_format_info_bpp
   drm_format_info_min_pitch
   drm_framebuffer_cleanup
   drm_framebuffer_init
@@ -2535,7 +2545,9 @@
   drm_kms_helper_poll_init
   drm_mm_init
   drm_mm_insert_node_in_range
+  drmm_of_get_bridge
   drmm_mode_config_init
+  drmm_panel_bridge_add
   drm_mm_print
   drm_mm_remove_node
   drm_mm_reserve_node
@@ -2559,6 +2571,7 @@
   drm_mode_validate_ycbcr420
   drm_of_crtc_port_mask
   drm_of_encoder_active_endpoint
+  drm_panel_bridge_set_orientation
   drm_plane_cleanup
   drm_plane_create_alpha_property
   drm_plane_create_blend_mode_property
@@ -3023,3 +3036,22 @@
 # required by wlan_mt7663_usb.ko
   usb_anchor_empty
   usb_reset_endpoint
+
+# required by dw_hdmi_qp.ko
+  drm_edid_alloc
+  drm_edid_read_ddc
+  drm_edid_raw
+  drm_edid_connector_update
+
+# required by 8250_dw.ko
+  serial8250_em485_supported
+  serial8250_em485_start_tx
+  serial8250_em485_stop_tx
+  serial8250_em485_config
+  serial8250_do_set_divisor
+  serial8250_do_set_ldisc
+  serial8250_update_uartclk
+  serial8250_clear_and_reinit_fifos
+
+# required by pl2303.ko
+  tty_termios_hw_change

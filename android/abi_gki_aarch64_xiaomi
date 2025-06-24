@@ -116,6 +116,10 @@
   __tracepoint_android_rvh_check_preempt_tick
   __tracepoint_android_rvh_dequeue_entity
   __tracepoint_android_rvh_enqueue_entity
+  __traceiter_android_vh_alloc_flags_cma_adjust
+  __traceiter_android_vh_rmqueue_cma_fallback
+  __tracepoint_android_vh_alloc_flags_cma_adjust
+  __tracepoint_android_vh_rmqueue_cma_fallback
   console_printk
   __traceiter_android_vh_binder_transaction_init
   __tracepoint_android_vh_binder_transaction_init
@@ -344,6 +348,21 @@
 #required by zram.ko
   bioset_init
   bioset_exit
+  bio_crypt_set_ctx
+  blk_crypto_evict_key
+  blk_crypto_init_key
+  blk_crypto_start_using_key
+  mem_cgroup_move_account
+  cgroup_rm_cftypes
+  __traceiter_android_vh_mem_cgroup_charge
+  __traceiter_android_vh_filemap_add_folio
+  __traceiter_android_vh_shrink_node
+  __tracepoint_android_vh_mem_cgroup_charge
+  __tracepoint_android_vh_filemap_add_folio
+  __tracepoint_android_vh_shrink_node
+  __alloc_pages_bulk
+  __xa_cmpxchg
+  lookup_user_key
 
 #required by mi_asap.ko
   __traceiter_android_vh_read_pages
@@ -372,6 +391,17 @@
   pci_select_bars
   pci_sriov_set_totalvfs
   pci_num_vf
+
+# required by shrink memory module
+  shrink_slab
+
+# required by mi_mem_engine.ko
+  __traceiter_android_vh_tune_swappiness
+  __tracepoint_android_vh_tune_swappiness
+  __traceiter_android_vh_do_shrink_slab_ex
+  __tracepoint_android_vh_do_shrink_slab_ex
+  __traceiter_android_vh_shrink_slab_bypass
+  __tracepoint_android_vh_shrink_slab_bypass
 
 #required by cifs.ko
   add_swap_extent
@@ -458,3 +488,39 @@
   __d_lookup_unhash_wake
   __fs_parse
   __filemap_get_folio
+
+#required by mem_reclaim_ctl.ko
+__traceiter_android_vh_page_should_be_protected
+__tracepoint_android_vh_page_should_be_protected
+__traceiter_android_vh_page_referenced_check_bypass
+__tracepoint_android_vh_page_referenced_check_bypass
+__page_mapcount
+folio_mapcount
+__traceiter_android_vh_folio_referenced_check_bypass
+__tracepoint_android_vh_folio_referenced_check_bypass
+
+#required by mi_async_reclaim.ko
+__traceiter_android_vh_handle_trylock_failed_folio
+__tracepoint_android_vh_handle_trylock_failed_folio
+__traceiter_android_vh_folio_trylock_set
+__tracepoint_android_vh_folio_trylock_set
+__traceiter_android_vh_folio_trylock_clear
+__tracepoint_android_vh_folio_trylock_clear
+__traceiter_android_vh_get_folio_trylock_result
+__tracepoint_android_vh_get_folio_trylock_result
+__traceiter_android_vh_do_folio_trylock
+__tracepoint_android_vh_do_folio_trylock
+reclaim_pages
+
+#required by mi_iod_debug.ko
+page_swap_info
+
+# required by launch_boost driver
+__traceiter_android_vh_filemap_read
+__tracepoint_android_vh_filemap_read
+__traceiter_android_vh_filemap_map_pages_range
+__tracepoint_android_vh_filemap_map_pages_range
+
+#required by rtase.ko
+proc_get_parent_data
+netdev_stats_to_stats64

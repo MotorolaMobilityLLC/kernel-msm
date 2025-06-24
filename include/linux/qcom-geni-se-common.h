@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _LINUX_QCOM_GENI_SE_COMMON
@@ -12,6 +12,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/sched/clock.h>
 #include <linux/ipc_logging.h>
+#include <linux/soc/qcom/geni-se.h>
 
 #ifdef CONFIG_ARM64
 #define GENI_SE_DMA_PTR_L(ptr) ((u32)ptr)
@@ -55,9 +56,18 @@ if (print) { \
 #define I2C_CORE2X_VOTE	50000
 #define I3C_CORE2X_VOTE	50000
 #define APPS_PROC_TO_QUP_VOTE	140000
-/* SE_DMA_GENERAL_CFG */
-#define SE_DMA_DEBUG_REG0		(0xE40)
 
+/* COMMON SE REGISTERS */
+#define GENI_GENERAL_CFG		(0x10)
+#define GENI_CLK_CTRL_RO		(0x60)
+#define GENI_FW_MULTILOCK_MSA_RO	(0x74)
+
+/* SE_DMA_GENERAL_CFG */
+#define DMA_IF_EN_RO			(0xe20)
+#define SE_GSI_EVENT_EN			(0xe18)
+#define SE_IRQ_EN			(0xe1c)
+#define DMA_GENERAL_CFG			(0xe30)
+#define SE_DMA_DEBUG_REG0		(0xE40)
 #define SE_DMA_TX_PTR_L			(0xC30)
 #define SE_DMA_TX_PTR_H			(0xC34)
 #define SE_DMA_TX_ATTR			(0xC38)
@@ -71,7 +81,6 @@ if (print) { \
 #define SE_DMA_RX_ATTR			(0xD38)
 #define SE_DMA_RX_LEN			(0xD3C)
 #define SE_DMA_RX_IRQ_EN                (0xD48)
-#define SE_DMA_RX_LEN_IN                (0xD54)
 
 #define SE_DMA_TX_IRQ_EN_SET	(0xC4C)
 #define SE_DMA_TX_IRQ_EN_CLR	(0xC50)
@@ -126,7 +135,72 @@ if (print) { \
 #define IO_MACRO_IO2_SEL	BIT(5)
 #define IO_MACRO_IO0_SEL_BIT	BIT(0)
 
-/**
+/* Notifier block Structure */
+struct ssc_qup_nb {
+	struct notifier_block nb;
+	/*Notifier block pointer to next notifier block structure*/
+	void *next;
+};
+
+/*
+ * struct ssc_qup_ssr - GENI Serial Engine SSC qup SSR Structure.
+ * @is_ssr_down:	To check SE status.
+ * @subsys_name:	Subsystem name for ssr registration.
+ * @active_list_head:	List Head of all client in SSC QUPv3.
+ */
+struct ssc_qup_ssr {
+	struct ssc_qup_nb ssc_qup_nb;
+	struct list_head active_list_head;
+	const char *subsys_name;
+	bool is_ssr_down;
+};
+
+/*
+ * struct se_rsc_ssr - GENI Resource SSR Structure.
+ * @active_list:	List of SSC qup SE clients.
+ * @force_suspend:	Function pointer for Subsystem shutdown case.
+ * @force_resume:	Function pointer for Subsystem restart case.
+ */
+struct se_rsc_ssr {
+	struct list_head active_list;
+	void (*force_suspend)(struct device *ctrl_dev);
+	void (*force_resume)(struct device *ctrl_dev);
+	bool ssr_enable;
+};
+
+/*
+ * geni_se_ssc_device - GENI SSC QUP driver Structure.
+ * @dev:		Pointer to SSC driver device structure.
+ * @wrapper_dev:	Pointer to SSC QUP wrapper dev struct.
+ * @ssr:		SSC QUP SSR Structure.
+ * @ssc_clks:		Pointer to clock data structure.
+ * @is_ssc_clk_enabled:	To maintain clock is enable/disable.
+ * @log_ctx:		Pointer to IPC log structure.
+ */
+struct geni_se_ssc_device {
+	struct device *dev;
+	struct device *wrapper_dev; /* QUP driver handler */
+	struct ssc_qup_ssr ssr;
+	struct clk_bulk_data *ssc_clks;
+	atomic_t is_ssc_clk_enabled;
+	void *log_ctx;
+};
+
+/*
+ * geni_se_rsc - GENI SE Resource Structure.
+ * @ctrl_dev:	 Pointer to protocol driver struct.
+ * @ssc_dev:	 Pointer to SSC QUP driver struct
+ * @se_rsc:	 Pointer to SE resource struct.
+ * @rsc_ssr:	 Pointer to SE SSR struct.
+ */
+struct geni_se_rsc {
+	struct device *ctrl_dev;
+	struct geni_se_ssc_device *ssc_dev;
+	struct geni_se *se_rsc;
+	struct se_rsc_ssr rsc_ssr;
+};
+
+/*
  * struct kpi_time - Help to capture KPI information
  * @len: length of the request
  * @time_stamp: Time stamp of the request
@@ -139,8 +213,20 @@ struct kpi_time {
 	unsigned long long time_stamp;
 };
 
+#if IS_ENABLED(CONFIG_QCOM_GENI_SE_SSC)
+
+struct geni_se_ssc_device *get_se_ssc_dev(void);
+void geni_se_ssc_clk_enable(struct geni_se_rsc *rsc, bool enable);
+
+#else
+
+static inline void geni_se_ssc_clk_enable(struct geni_se_rsc *rsc, bool enable)
+{ }
+
+#endif
+
 static inline int geni_se_common_resources_init(struct geni_se *se, u32 geni_to_core,
-			 u32 cpu_to_geni, u32 geni_to_ddr)
+						u32 cpu_to_geni, u32 geni_to_ddr)
 {
 	int ret;
 
@@ -153,6 +239,36 @@ static inline int geni_se_common_resources_init(struct geni_se *se, u32 geni_to_
 	se->icc_paths[GENI_TO_DDR].avg_bw = geni_to_ddr;
 
 	return ret;
+}
+
+static inline int geni_se_common_rsc_init(struct geni_se_rsc *rsc, u32 geni_to_core,
+					  u32 cpu_to_geni, u32 geni_to_ddr)
+{
+	if (!rsc || !rsc->se_rsc)
+		return -EINVAL;
+
+	if (rsc->rsc_ssr.ssr_enable) {
+#if IS_ENABLED(CONFIG_QCOM_GENI_SE_SSC)
+		struct geni_se_ssc_device *dev = get_se_ssc_dev();
+
+		if (!dev) {
+			dev_err(rsc->ctrl_dev, "%s: SSC QUP is not enabled\n",
+				__func__);
+		} else {
+			rsc->ssc_dev = dev;
+			if (dev->ssr.subsys_name) {
+				INIT_LIST_HEAD(&rsc->rsc_ssr.active_list);
+				list_add(&rsc->rsc_ssr.active_list,
+					 &dev->ssr.active_list_head);
+			} else {
+				dev_err(rsc->ctrl_dev, "%s: SSR subsystem is not enabled\n",
+					__func__);
+			}
+		}
+#endif
+	}
+	return geni_se_common_resources_init(rsc->se_rsc, geni_to_core,
+					     cpu_to_geni, geni_to_ddr);
 }
 
 static inline int geni_se_common_get_proto(void __iomem *base)

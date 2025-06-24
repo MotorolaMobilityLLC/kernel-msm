@@ -218,7 +218,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
 
 	if (dst_server != src_server) {
 		spin_lock(&src_server->nfs_client->cl_lock);
-		list_add_tail(&copy->src_copies, &src_server->ss_copies);
+		list_add_tail(&copy->src_copies, &src_server->ss_src_copies);
 		spin_unlock(&src_server->nfs_client->cl_lock);
 	}
 
@@ -551,7 +551,7 @@ static int nfs42_do_offload_cancel_async(struct file *dst,
 		.rpc_message = &msg,
 		.callback_ops = &nfs42_offload_cancel_ops,
 		.workqueue = nfsiod_workqueue,
-		.flags = RPC_TASK_ASYNC,
+		.flags = RPC_TASK_ASYNC | RPC_TASK_MOVEABLE,
 	};
 	int status;
 

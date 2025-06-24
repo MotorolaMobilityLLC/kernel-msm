@@ -16,6 +16,7 @@
 #include <linux/dax.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <trace/hooks/mm.h>
 
 /*
  *		Double CLOCK lists
@@ -195,7 +196,7 @@ static void *pack_shadow(int memcgid, pg_data_t *pgdat, unsigned long eviction,
 	return xa_mk_value(eviction);
 }
 
-static void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
+void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
 			  unsigned long *evictionp, bool *workingsetp)
 {
 	unsigned long entry = xa_to_value(shadow);
@@ -214,6 +215,7 @@ static void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
 	*evictionp = entry;
 	*workingsetp = workingset;
 }
+EXPORT_SYMBOL_GPL(unpack_shadow);
 
 #ifdef CONFIG_LRU_GEN
 
@@ -399,6 +401,8 @@ void workingset_refault(struct folio *folio, void *shadow)
 	bool workingset;
 	int memcgid;
 	long nr;
+
+	trace_android_vh_count_workingset_refault(folio);
 
 	if (lru_gen_enabled()) {
 		lru_gen_refault(folio, shadow);

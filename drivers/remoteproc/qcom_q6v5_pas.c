@@ -5,7 +5,7 @@
  * Copyright (C) 2016 Linaro Ltd
  * Copyright (C) 2014 Sony Mobile Communications AB
  * Copyright (c) 2012-2013, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -47,10 +47,11 @@
 #define PIL_TZ_PEAK_BW	UINT_MAX
 
 #define ADSP_DECRYPT_SHUTDOWN_DELAY_MS	100
+#define RPROC_HANDOVER_POLL_DELAY_MS	1
 
 static struct icc_path *scm_perf_client;
 static int scm_pas_bw_count;
-static DEFINE_MUTEX(scm_pas_bw_mutex);
+static DEFINE_MUTEX(q6v5_pas_mutex);
 bool timeout_disabled;
 static bool global_sync_mem_setup;
 static bool recovery_set_cb;
@@ -59,6 +60,7 @@ static bool recovery_set_cb;
 
 #define SOCCP_SLEEP_US  100
 #define SOCCP_TIMEOUT_US  10000
+#define SOCCP_STATE_MASK 0x600
 #define SOCCP_D0  0x2
 #define SOCCP_D1  0x4
 #define SOCCP_D3  0x8
@@ -319,7 +321,7 @@ static int scm_pas_enable_bw(void)
 	if (IS_ERR(scm_perf_client))
 		return -EINVAL;
 
-	mutex_lock(&scm_pas_bw_mutex);
+	mutex_lock(&q6v5_pas_mutex);
 	if (!scm_pas_bw_count) {
 		ret = icc_set_bw(scm_perf_client, PIL_TZ_AVG_BW,
 						PIL_TZ_PEAK_BW);
@@ -328,14 +330,14 @@ static int scm_pas_enable_bw(void)
 	}
 
 	scm_pas_bw_count++;
-	mutex_unlock(&scm_pas_bw_mutex);
+	mutex_unlock(&q6v5_pas_mutex);
 	return ret;
 
 err_bus:
 	pr_err("scm-pas: Bandwidth request failed (%d)\n", ret);
 	icc_set_bw(scm_perf_client, 0, 0);
 
-	mutex_unlock(&scm_pas_bw_mutex);
+	mutex_unlock(&q6v5_pas_mutex);
 	return ret;
 }
 
@@ -344,10 +346,10 @@ static void scm_pas_disable_bw(void)
 	if (IS_ERR(scm_perf_client))
 		return;
 
-	mutex_lock(&scm_pas_bw_mutex);
+	mutex_lock(&q6v5_pas_mutex);
 	if (scm_pas_bw_count-- == 1)
 		icc_set_bw(scm_perf_client, 0, 0);
-	mutex_unlock(&scm_pas_bw_mutex);
+	mutex_unlock(&q6v5_pas_mutex);
 }
 
 static void adsp_add_coredump_segments(struct qcom_adsp *adsp, const struct firmware *fw)
@@ -673,6 +675,9 @@ static int adsp_start(struct rproc *rproc)
 
 	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_start", "enter");
 
+	if (adsp->check_status)
+		adsp->current_users = 0;
+
 	qcom_q6v5_prepare(&adsp->q6v5);
 
 	if (is_mss_ssr_hyp_assign_en(adsp)) {
@@ -718,8 +723,8 @@ static int adsp_start(struct rproc *rproc)
 	if (adsp->dtb_pas_id || adsp->dtb_fw_name) {
 		ret = qcom_scm_pas_auth_and_reset(adsp->dtb_pas_id);
 		if (ret)
-			panic("Panicking, auth and reset failed for remoteproc %s dtb\n",
-				 rproc->name);
+			panic("Panicking, auth and reset failed for remoteproc %s dtb ret=%d\n",
+				rproc->name, ret);
 	}
 
 	trace_rproc_qcom_event(dev_name(adsp->dev), "Q6_firmware_loading", "enter");
@@ -740,7 +745,8 @@ static int adsp_start(struct rproc *rproc)
 
 	ret = qcom_scm_pas_auth_and_reset(adsp->pas_id);
 	if (ret)
-		panic("Panicking, auth and reset failed for remoteproc %s\n", rproc->name);
+		panic("Panicking, auth and reset failed for remoteproc %s ret=%d\n",
+				rproc->name, ret);
 	trace_rproc_qcom_event(dev_name(adsp->dev), "Q6_auth_reset", "exit");
 
 	/* if needed, signal Q6 to continute booting */
@@ -806,6 +812,15 @@ exit:
 	return ret;
 }
 
+static irqreturn_t soccp_running_ack(int irq, void *data)
+{
+	struct qcom_q6v5 *q6v5 = data;
+
+	complete(&q6v5->running_ack);
+
+	return IRQ_HANDLED;
+}
+
 /**
  * rproc_config_check() - Check back the config register
  * @state: new state of the rproc
@@ -822,7 +837,7 @@ static int rproc_config_check(struct qcom_adsp *adsp, u32 state)
 {
 	u32 val;
 
-	return readx_poll_timeout(readl, adsp->config_addr, val,
+	return readx_poll_timeout_atomic(readl, adsp->config_addr, val,
 				val == state, SOCCP_SLEEP_US, SOCCP_TIMEOUT_US);
 }
 
@@ -867,6 +882,17 @@ static int rproc_find_status_register(struct qcom_adsp *adsp)
 	return 0;
 }
 
+static bool rproc_poll_handover(struct qcom_adsp *adsp)
+{
+	unsigned int retry_num = 50;
+
+	do {
+		msleep(RPROC_HANDOVER_POLL_DELAY_MS);
+	} while (!adsp->q6v5.handover_issued && --retry_num);
+
+	return adsp->q6v5.handover_issued;
+}
+
 /**
  * rproc_set_state() - Request the SOCCP to change state
  * @state: 1 to set state to RUNNING (D3 to D0)
@@ -881,15 +907,23 @@ int rproc_set_state(struct rproc *rproc, bool state)
 {
 	int ret = 0;
 	int users;
-	struct qcom_adsp *adsp = (struct qcom_adsp *)rproc->priv;
+	struct qcom_adsp *adsp;
 
-	if (!rproc || !adsp) {
+	if (!rproc || !rproc->priv) {
 		pr_err("no rproc or adsp\n");
 		return -EINVAL;
 	}
-	if (rproc->state != RPROC_RUNNING) {
+
+	adsp = (struct qcom_adsp *)rproc->priv;
+	if (!adsp->q6v5.running) {
 		dev_err(adsp->dev, "rproc is not running\n");
 		return -EINVAL;
+	} else if (!adsp->q6v5.handover_issued) {
+		dev_err(adsp->dev, "rproc is running but handover is not received\n");
+		if (!rproc_poll_handover(adsp)) {
+			dev_err(adsp->dev, "retry for handover timedout\n");
+			return -EINVAL;
+		}
 	}
 
 	mutex_lock(&adsp->adsp_lock);
@@ -901,7 +935,6 @@ int rproc_set_state(struct rproc *rproc, bool state)
 			goto soccp_out;
 		}
 
-		adsp->current_users = 1;
 		ret = enable_regulators(adsp);
 		if (ret) {
 			dev_err(adsp->dev, "failed to enable regulators\n");
@@ -914,8 +947,10 @@ int rproc_set_state(struct rproc *rproc, bool state)
 			goto soccp_out;
 		}
 
+		reinit_completion(&(adsp->q6v5.running_ack));
+
 		ret = qcom_smem_state_update_bits(adsp->wake_state,
-					    BIT(adsp->wake_bit),
+					    SOCCP_STATE_MASK,
 					    BIT(adsp->wake_bit));
 		if (ret) {
 			dev_err(adsp->dev, "failed to update smem bits for D3 to D0\n");
@@ -923,23 +958,42 @@ int rproc_set_state(struct rproc *rproc, bool state)
 		}
 
 		ret = rproc_config_check(adsp, SOCCP_D0);
-	} else {
-		adsp->current_users--;
-		if (adsp->current_users == 0) {
+		if (ret) {
+			dev_err(adsp->dev, "failed to change from D3 to D0\n");
+			goto soccp_out;
+		}
 
+		ret = wait_for_completion_timeout(&adsp->q6v5.running_ack, msecs_to_jiffies(5));
+		if (!ret) {
+			dev_err(adsp->dev, "failed to get ack for state change from D3 to D0\n");
+			ret = -ETIMEDOUT;
+			goto soccp_out;
+		} else
+			ret = 0;
+
+		adsp->current_users = 1;
+	} else {
+		if (users > 1) {
+			adsp->current_users--;
+			ret = 0;
+			goto soccp_out;
+		} else if (users == 1) {
 			ret = qcom_smem_state_update_bits(adsp->sleep_state,
-						    BIT(adsp->sleep_bit),
-						    BIT(adsp->sleep_bit));
+					    SOCCP_STATE_MASK,
+					    BIT(adsp->sleep_bit));
 			if (ret) {
 				dev_err(adsp->dev, "failed to update smem bits for D0 to D3\n");
 				goto soccp_out;
 			}
 
 			ret = rproc_config_check(adsp, SOCCP_D3);
-			if (ret)
+			if (ret) {
 				dev_err(adsp->dev, "failed to change from D0 to D3\n");
+				goto soccp_out;
+			}
 			disable_regulators(adsp);
 			clk_disable_unprepare(adsp->xo);
+			adsp->current_users = 0;
 		}
 	}
 
@@ -956,14 +1010,21 @@ static int rproc_panic_handler(struct notifier_block *this,
 	struct qcom_adsp *adsp = container_of(this, struct qcom_adsp, panic_blk);
 	int ret;
 
+	if (!adsp)
+		return NOTIFY_DONE;
 	/* wake up SOCCP during panic to run error handlers on SOCCP */
 	dev_info(adsp->dev, "waking SOCCP from panic path\n");
-	ret = rproc_set_state(adsp->rproc, true);
+	ret = qcom_smem_state_update_bits(adsp->wake_state,
+				    SOCCP_STATE_MASK,
+				    BIT(adsp->wake_bit));
+	if (ret) {
+		dev_err(adsp->dev, "failed to update smem bits for D3 to D0\n");
+		goto done;
+	}
+	ret = rproc_config_check(adsp, SOCCP_D0);
 	if (ret)
-		dev_err(adsp->dev, "state did not changed during panic\n");
-	else
-		dev_info(adsp->dev, "subsystem woke-up done from panic path\n");
-
+		dev_err(adsp->dev, "failed to change to D0\n");
+done:
 	return NOTIFY_DONE;
 }
 
@@ -993,15 +1054,6 @@ static int adsp_stop(struct rproc *rproc)
 	int ret;
 
 	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_stop", "enter");
-
-	if (adsp->check_status) {
-		dev_info(adsp->dev, "wakeup: waking subsystem from shutdown path\n");
-		ret = rproc_set_state(rproc, true);
-		if (ret) {
-			dev_err(adsp->dev, "wakeup: state did not changed during shutdown\n");
-			return ret;
-		}
-	}
 
 	ret = qcom_q6v5_request_stop(&adsp->q6v5, adsp->sysmon);
 	if (ret == -ETIMEDOUT)
@@ -1038,13 +1090,6 @@ static int adsp_stop(struct rproc *rproc)
 		ret = mpss_dsm_hyp_assign_control(adsp, false);
 		if (ret)
 			dev_err(adsp->dev, "failed to reclaim mpss dsm mem\n");
-	}
-
-	if (adsp->check_status) {
-		dev_info(adsp->dev, "sleep: subsystem sleep from shutdown path\n");
-		ret = rproc_set_state(rproc, false);
-		if (ret)
-			dev_err(adsp->dev, "sleep: state did not changed during shutdown\n");
 	}
 
 	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_stop", "exit");
@@ -1643,13 +1688,26 @@ static int adsp_probe(struct platform_device *pdev)
 			goto detach_proxy_pds;
 		}
 
+		adsp->q6v5.active_state_ack_irq = platform_get_irq_byname(pdev, "wake-ack");
+		if (adsp->q6v5.active_state_ack_irq < 0) {
+			dev_err(&pdev->dev, "failed to acquire readyack irq\n");
+			goto detach_proxy_pds;
+		}
+
+		ret = devm_request_threaded_irq(&pdev->dev, adsp->q6v5.active_state_ack_irq,
+						NULL, soccp_running_ack,
+						IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+						"qcom_q6v5_pas", &adsp->q6v5);
+		if (ret) {
+			dev_err(&pdev->dev, "failed to acquire ready ack IRQ\n");
+			goto detach_proxy_pds;
+		}
+
 		mutex_init(&adsp->adsp_lock);
 
+		init_completion(&(adsp->q6v5.running_ack));
 		adsp->current_users = 0;
 
-		adsp->panic_blk.priority = INT_MAX - 1;
-		adsp->panic_blk.notifier_call = rproc_panic_handler;
-		atomic_notifier_chain_register(&panic_notifier_list, &adsp->panic_blk);
 	}
 
 	qcom_q6v5_register_ssr_subdev(&adsp->q6v5, &adsp->ssr_subdev.subdev);
@@ -1683,14 +1741,23 @@ static int adsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto destroy_minidump_dev;
 
+	mutex_lock(&q6v5_pas_mutex);
 	if (!recovery_set_cb) {
 		ret = register_trace_android_vh_rproc_recovery_set(android_vh_rproc_recovery_set,
 											NULL);
 		if (ret) {
 			dev_err(&pdev->dev, "Unable to register with rproc_recovery_set trace hook\n");
+			mutex_unlock(&q6v5_pas_mutex);
 			goto remove_rproc;
 		}
 		recovery_set_cb = true;
+	}
+	mutex_unlock(&q6v5_pas_mutex);
+
+	if (adsp->check_status) {
+		adsp->panic_blk.priority = INT_MAX - 1;
+		adsp->panic_blk.notifier_call = rproc_panic_handler;
+		atomic_notifier_chain_register(&panic_notifier_list, &adsp->panic_blk);
 	}
 
 	return 0;
@@ -1735,6 +1802,8 @@ static int adsp_remove(struct platform_device *pdev)
 	qcom_remove_sysmon_subdev(adsp->sysmon);
 	qcom_remove_smd_subdev(adsp->rproc, &adsp->smd_subdev);
 	qcom_remove_ssr_subdev(adsp->rproc, &adsp->ssr_subdev);
+	if (adsp->check_status)
+		atomic_notifier_chain_unregister(&panic_notifier_list, &adsp->panic_blk);
 	adsp_pds_detach(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
 	device_init_wakeup(adsp->dev, false);
 	rproc_free(adsp->rproc);
@@ -1898,6 +1967,22 @@ static const struct adsp_data niobe_adsp_resource = {
 };
 
 static const struct adsp_data cliffs_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.dtb_firmware_name = "adsp_dtb.mdt",
+	.pas_id = 1,
+	.dtb_pas_id = 0x24,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data volcano_adsp_resource = {
 	.crash_reason_smem = 423,
 	.firmware_name = "adsp.mdt",
 	.dtb_firmware_name = "adsp_dtb.mdt",
@@ -2156,6 +2241,51 @@ static const struct adsp_data cliffs_cdsp_resource = {
 	.ssctl_id = 0x17,
 };
 
+static const struct adsp_data volcano_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.dtb_firmware_name = "cdsp_dtb.mdt",
+	.pas_id = 18,
+	.dtb_pas_id = 0x25,
+	.minidump_id = 7,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
+static const struct adsp_data anorak_adsp_resource = {
+	.crash_reason_smem = 423,
+	.firmware_name = "adsp.mdt",
+	.pas_id = 1,
+	.minidump_id = 5,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.ssr_name = "lpass",
+	.sysmon_name = "adsp",
+	.qmp_name = "adsp",
+	.ssctl_id = 0x14,
+};
+
+static const struct adsp_data anorak_cdsp_resource = {
+	.crash_reason_smem = 601,
+	.firmware_name = "cdsp.mdt",
+	.pas_id = 18,
+	.minidump_id = 7,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
+	.hyp_assign_mem = true,
+	.ssr_name = "cdsp",
+	.sysmon_name = "cdsp",
+	.qmp_name = "cdsp",
+	.ssctl_id = 0x17,
+};
+
 static const struct adsp_data khaje_cdsp_resource = {
 	.crash_reason_smem = 601,
 	.firmware_name = "cdsp.mdt",
@@ -2281,6 +2411,23 @@ static const struct adsp_data cliffs_mpss_resource = {
 	.has_aggre2_clk = false,
 	.auto_boot = false,
 	.ssr_hyp_assign_mem = true,
+	.ssr_name = "mpss",
+	.sysmon_name = "modem",
+	.qmp_name = "modem",
+	.ssctl_id = 0x12,
+	.dma_phys_below_32b = true,
+	.both_dumps = true,
+};
+
+static const struct adsp_data volcano_mpss_resource = {
+	.crash_reason_smem = 421,
+	.firmware_name = "modem.mdt",
+	.pas_id = 4,
+	.free_after_auth_reset = true,
+	.minidump_id = 3,
+	.uses_elf64 = true,
+	.has_aggre2_clk = false,
+	.auto_boot = false,
 	.ssr_name = "mpss",
 	.sysmon_name = "modem",
 	.qmp_name = "modem",
@@ -2557,7 +2704,7 @@ static const struct adsp_data monaco_auto_cdsp_resource = {
 	.sysmon_name = "cdsp",
 	.qmp_name = "cdsp",
 	.ssctl_id = 0x17,
-	.minidump_id = 19,
+	.minidump_id = 7,
 };
 
 static const struct adsp_data niobe_soccp_resource = {
@@ -2567,6 +2714,7 @@ static const struct adsp_data niobe_soccp_resource = {
 	.ssr_name = "soccp",
 	.sysmon_name = "soccp",
 	.check_status = true,
+	.auto_boot = true,
 };
 
 static const struct adsp_data monaco_auto_gpdsp_resource = {
@@ -2596,6 +2744,18 @@ static const struct adsp_data cliffs_wpss_resource = {
 };
 
 static const struct adsp_data pitti_wpss_resource = {
+	.crash_reason_smem = 626,
+	.firmware_name = "wpss.mdt",
+	.pas_id = 6,
+	.minidump_id = 4,
+	.uses_elf64 = true,
+	.ssr_name = "wpss",
+	.sysmon_name = "wpss",
+	.qmp_name = "wpss",
+	.ssctl_id = 0x19,
+};
+
+static const struct adsp_data volcano_wpss_resource = {
 	.crash_reason_smem = 626,
 	.firmware_name = "wpss.mdt",
 	.pas_id = 6,
@@ -2676,6 +2836,12 @@ static const struct of_device_id adsp_of_match[] = {
 	{ .compatible = "qcom,pitti-adsp-pas", .data = &pitti_adsp_resource},
 	{ .compatible = "qcom,pitti-modem-pas", .data = &pitti_mpss_resource},
 	{ .compatible = "qcom,niobe-soccp-pas", .data = &niobe_soccp_resource},
+	{ .compatible = "qcom,volcano-wpss-pas", .data = &volcano_wpss_resource},
+	{ .compatible = "qcom,volcano-adsp-pas", .data = &volcano_adsp_resource},
+	{ .compatible = "qcom,volcano-modem-pas", .data = &volcano_mpss_resource},
+	{ .compatible = "qcom,volcano-cdsp-pas", .data = &volcano_cdsp_resource},
+	{ .compatible = "qcom,anorak-adsp-pas", .data = &anorak_adsp_resource},
+	{ .compatible = "qcom,anorak-cdsp-pas", .data = &anorak_cdsp_resource},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adsp_of_match);
