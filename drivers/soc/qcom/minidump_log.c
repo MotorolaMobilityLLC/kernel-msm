@@ -681,6 +681,14 @@ static void md_register_trace_buf(void)
 	smp_mb();
 	WRITE_ONCE(md_ftrace_buf_addr, buffer_start);
 }
+#else
+#include <trace/hooks/ftrace_dump.h>
+
+static void md_trace_oops_enter(void *unused, bool *enter_check)
+{
+	pr_err("Skip, do not need add ftrace mini dump");
+	*enter_check = true;
+}
 #endif
 
 #ifdef CONFIG_QCOM_MINIDUMP_PANIC_DUMP
@@ -1634,6 +1642,9 @@ int msm_minidump_log_init(void)
 #endif
 #ifdef CONFIG_QCOM_MINIDUMP_FTRACE
 	md_register_trace_buf();
+#else
+	register_trace_android_vh_ftrace_oops_enter(md_trace_oops_enter,
+							 NULL);
 #endif
 	register_cpufreq_log();
 #ifdef CONFIG_QCOM_MINIDUMP_PANIC_DUMP
