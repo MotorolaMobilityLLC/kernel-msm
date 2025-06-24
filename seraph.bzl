@@ -205,7 +205,6 @@ def define_seraph():
         "drivers/virt/gunyah/gunyah_qcom.ko",
         "kernel/sched/walt/sched-walt.ko",
         "kernel/trace/qcom_ipc_logging.ko",
-        "net/mac80211/mac80211.ko",
         "net/qrtr/qrtr.ko",
         "net/qrtr/qrtr-gunyah.ko",
         "net/qrtr/qrtr-mhi.ko",
