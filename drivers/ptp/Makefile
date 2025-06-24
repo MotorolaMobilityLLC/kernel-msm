@@ -19,3 +19,4 @@ obj-$(CONFIG_PTP_1588_CLOCK_IDT82P33)	+= ptp_idt82p33.o
 obj-$(CONFIG_PTP_1588_CLOCK_VMW)	+= ptp_vmw.o
 obj-$(CONFIG_PTP_1588_CLOCK_OCP)	+= ptp_ocp.o
 obj-$(CONFIG_PTP_QCOM_CLOCK_TSC)        += ptp_qcom_tsc.o
+obj-$(CONFIG_PTP_QCOM_CLOCK_TSC_VM)     += ptp_qcom_tsc_vm.o
