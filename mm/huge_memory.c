@@ -70,6 +70,7 @@ unsigned long transparent_hugepage_flags __read_mostly =
 	(1<<TRANSPARENT_HUGEPAGE_USE_ZERO_PAGE_FLAG);
 
 static struct shrinker deferred_split_shrinker;
+static bool split_underused_thp = true;
 
 static atomic_t huge_zero_refcount;
 struct page *huge_zero_page __read_mostly;
@@ -423,6 +424,27 @@ static ssize_t hpage_pmd_size_show(struct kobject *kobj,
 static struct kobj_attribute hpage_pmd_size_attr =
 	__ATTR_RO(hpage_pmd_size);
 
+static ssize_t split_underused_thp_show(struct kobject *kobj,
+			    struct kobj_attribute *attr, char *buf)
+{
+	return sysfs_emit(buf, "%d\n", split_underused_thp);
+}
+
+static ssize_t split_underused_thp_store(struct kobject *kobj,
+			     struct kobj_attribute *attr,
+			     const char *buf, size_t count)
+{
+	int err = kstrtobool(buf, &split_underused_thp);
+
+	if (err < 0)
+		return err;
+
+	return count;
+}
+
+static struct kobj_attribute split_underused_thp_attr = __ATTR(
+	shrink_underused, 0644, split_underused_thp_show, split_underused_thp_store);
+
 static struct attribute *hugepage_attr[] = {
 	&enabled_attr.attr,
 	&defrag_attr.attr,
@@ -431,6 +453,7 @@ static struct attribute *hugepage_attr[] = {
 #ifdef CONFIG_SHMEM
 	&shmem_enabled_attr.attr,
 #endif
+	&split_underused_thp_attr.attr,
 	NULL,
 };
 
@@ -1046,6 +1069,7 @@ static vm_fault_t __do_huge_pmd_anonymous_page(struct vm_fault *vmf,
 		update_mmu_cache_pmd(vma, vmf->address, vmf->pmd);
 		add_mm_counter(vma->vm_mm, MM_ANONPAGES, HPAGE_PMD_NR);
 		mm_inc_nr_ptes(vma->vm_mm);
+		deferred_split_folio(folio, false);
 		spin_unlock(vmf->ptl);
 		count_vm_event(THP_FAULT_ALLOC);
 		count_mthp_stat(HPAGE_PMD_ORDER, MTHP_STAT_ANON_FAULT_ALLOC);
@@ -2953,7 +2977,7 @@ bool unmap_huge_pmd_locked(struct vm_area_struct *vma, unsigned long addr,
 	return __discard_anon_folio_pmd_locked(vma, addr, pmdp, folio);
 }
 
-static void remap_page(struct folio *folio, unsigned long nr)
+static void remap_page(struct folio *folio, unsigned long nr, int flags)
 {
 	int i = 0;
 
@@ -2961,7 +2985,7 @@ static void remap_page(struct folio *folio, unsigned long nr)
 	if (!folio_test_anon(folio))
 		return;
 	for (;;) {
-		remove_migration_ptes(folio, folio, true);
+		remove_migration_ptes(folio, folio, RMP_LOCKED | flags);
 		i += folio_nr_pages(folio);
 		if (i >= nr)
 			break;
@@ -3314,7 +3338,7 @@ static void __split_huge_page(struct page *page, struct list_head *list,
 
 	if (nr_dropped)
 		shmem_uncharge(head->mapping->host, nr_dropped);
-	remap_page(folio, nr);
+	remap_page(folio, nr, PageAnon(head) ? RMP_USE_SHARED_ZEROPAGE : 0);
 
 	for (i = 0; i < nr; i++) {
 		struct page *subpage = folio_dst_page(folio, i);
@@ -3376,8 +3400,9 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 	struct folio *folio = page_folio(page);
 	struct deferred_split *ds_queue = get_deferred_split_queue(folio);
 	XA_STATE(xas, &folio->mapping->i_pages, folio->index);
-	struct anon_vma *anon_vma = NULL;
+	bool is_anon = folio_test_anon(folio);
 	struct address_space *mapping = NULL;
+	struct anon_vma *anon_vma = NULL;
 	int extra_pins, ret;
 	pgoff_t end;
 	bool is_hzp;
@@ -3394,7 +3419,7 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 	if (folio_test_writeback(folio))
 		return -EBUSY;
 
-	if (folio_test_anon(folio)) {
+	if (is_anon) {
 		/*
 		 * The caller does not necessarily hold an mmap_lock that would
 		 * prevent the anon_vma disappearing so we first we take a
@@ -3495,6 +3520,14 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 	if (folio_order(folio) > 1 &&
 	    !list_empty(&folio->_deferred_list)) {
 		ds_queue->split_queue_len--;
+		if (folio_test_partially_mapped(folio))
+			__folio_clear_partially_mapped(folio);
+		/*
+		* Reinitialize page_deferred_list after removing the
+		* page from the split_queue, otherwise a subsequent
+		* split will see list corruption when checking the
+		* page_deferred_list.
+		*/
 		list_del_init(&folio->_deferred_list);
 	}
 	spin_unlock(&ds_queue->split_queue_lock);
@@ -3522,7 +3555,7 @@ unfreeze:
 		folio_ref_unfreeze(folio, 1 + extra_pins);
 remap:
 		free_dst_pages(folio);
-		remap_page(folio, folio_nr_pages(folio));
+		remap_page(folio, folio_nr_pages(folio), 0);
 	}
 
 out_unlock:
@@ -3572,6 +3605,8 @@ bool __folio_unqueue_deferred_split(struct folio *folio)
 	spin_lock_irqsave(&ds_queue->split_queue_lock, flags);
 	if (!list_empty(&folio->_deferred_list)) {
 		ds_queue->split_queue_len--;
+		if (folio_test_partially_mapped(folio))
+			__folio_clear_partially_mapped(folio);
 		list_del_init(&folio->_deferred_list);
 		unqueued = true;
 	}
@@ -3580,7 +3615,8 @@ bool __folio_unqueue_deferred_split(struct folio *folio)
 	return unqueued;	/* useful for debug warnings */
 }
 
-void deferred_split_folio(struct folio *folio)
+/* partially_mapped=false won't clear PG_partially_mapped folio flag */
+void deferred_split_folio(struct folio *folio, bool partially_mapped)
 {
 	struct deferred_split *ds_queue = get_deferred_split_queue(folio);
 #ifdef CONFIG_MEMCG
@@ -3595,6 +3631,9 @@ void deferred_split_folio(struct folio *folio)
 	if (folio_order(folio) <= 1)
 		return;
 
+	if (!partially_mapped && !split_underused_thp)
+		return;
+
 	/*
 	 * Exclude swapcache: originally to avoid a corrupt deferred split
 	 * queue. Nowadays that is fully prevented by mem_cgroup_swapout();
@@ -3605,13 +3644,20 @@ void deferred_split_folio(struct folio *folio)
 	if (folio_test_swapcache(folio))
 		return;
 
-	if (!list_empty(&folio->_deferred_list))
-		return;
-
 	spin_lock_irqsave(&ds_queue->split_queue_lock, flags);
+	if (partially_mapped) {
+		if (!folio_test_partially_mapped(folio)) {
+			__folio_set_partially_mapped(folio);
+			if (folio_test_pmd_mappable(folio))
+				count_vm_event(THP_DEFERRED_SPLIT_PAGE);
+			count_mthp_stat(folio_order(folio), MTHP_STAT_SPLIT_DEFERRED);
+
+		}
+	} else {
+		/* partially mapped folios cannot become non-partially mapped */
+		VM_WARN_ON_FOLIO(folio_test_partially_mapped(folio), folio);
+	}
 	if (list_empty(&folio->_deferred_list)) {
-		count_vm_event(THP_DEFERRED_SPLIT_PAGE);
-		count_mthp_stat(folio_order(folio), MTHP_STAT_SPLIT_DEFERRED);
 		list_add_tail(&folio->_deferred_list, &ds_queue->split_queue);
 		ds_queue->split_queue_len++;
 #ifdef CONFIG_MEMCG
@@ -3640,6 +3686,39 @@ static unsigned long deferred_split_count(struct shrinker *shrink,
 	return READ_ONCE(ds_queue->split_queue_len);
 }
 
+static bool thp_underused(struct folio *folio)
+{
+	int num_zero_pages = 0, num_filled_pages = 0;
+	void *kaddr;
+	int i;
+
+	if (khugepaged_max_ptes_none == HPAGE_PMD_NR - 1)
+		return false;
+
+	for (i = 0; i < folio_nr_pages(folio); i++) {
+		kaddr = kmap_local_folio(folio, i * PAGE_SIZE);
+		if (!memchr_inv(kaddr, 0, PAGE_SIZE)) {
+			num_zero_pages++;
+			if (num_zero_pages > khugepaged_max_ptes_none) {
+				kunmap_local(kaddr);
+				return true;
+			}
+		} else {
+			/*
+			 * Another path for early exit once the number
+			 * of non-zero filled pages exceeds threshold.
+			 */
+			num_filled_pages++;
+			if (num_filled_pages >= HPAGE_PMD_NR - khugepaged_max_ptes_none) {
+				kunmap_local(kaddr);
+				return false;
+			}
+		}
+		kunmap_local(kaddr);
+	}
+	return false;
+}
+
 static unsigned long deferred_split_scan(struct shrinker *shrink,
 		struct shrink_control *sc)
 {
@@ -3647,8 +3726,8 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,
 	struct deferred_split *ds_queue = &pgdata->deferred_split_queue;
 	unsigned long flags;
 	LIST_HEAD(list);
-	struct folio *folio, *next;
-	int split = 0;
+	struct folio *folio, *next, *prev = NULL;
+	int split = 0, removed = 0;
 
 #ifdef CONFIG_MEMCG
 	if (sc->memcg)
@@ -3663,6 +3742,8 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,
 			list_move(&folio->_deferred_list, &list);
 		} else {
 			/* We lost race with folio_put() */
+			if (folio_test_partially_mapped(folio))
+				__folio_clear_partially_mapped(folio);
 			list_del_init(&folio->_deferred_list);
 			ds_queue->split_queue_len--;
 		}
@@ -3672,19 +3753,54 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,
 	spin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);
 
 	list_for_each_entry_safe(folio, next, &list, _deferred_list) {
+		bool did_split = false;
+		bool underused = false;
+
+		if (!folio_test_partially_mapped(folio)) {
+			underused = thp_underused(folio);
+			if (!underused)
+				goto next;
+		}
 		if (!folio_trylock(folio))
 			goto next;
-		/* split_huge_page() removes page from list on success */
-		if (!split_folio(folio))
+		if (!split_folio(folio)) {
+			did_split = true;
 			split++;
+		}
 		folio_unlock(folio);
 next:
-		folio_put(folio);
+		/*
+		 * split_folio() removes folio from list on success.
+		 * Only add back to the queue if folio is partially mapped.
+		 * If thp_underused returns false, or if split_folio fails
+		 * in the case it was underused, then consider it used and
+		 * don't add it back to split_queue.
+		 */
+		if (did_split) {
+			; /* folio already removed from list */
+		} else if (!folio_test_partially_mapped(folio)) {
+			list_del_init(&folio->_deferred_list);
+			removed++;
+		} else {
+			/*
+			 * That unlocked list_del_init() above would be unsafe,
+			 * unless its folio is separated from any earlier folios
+			 * left on the list (which may be concurrently unqueued)
+			 * by one safe folio with refcount still raised.
+			 */
+			swap(folio, prev);
+		}
+		if (folio)
+			folio_put(folio);
 	}
 
 	spin_lock_irqsave(&ds_queue->split_queue_lock, flags);
 	list_splice_tail(&list, &ds_queue->split_queue);
+	ds_queue->split_queue_len -= removed;
 	spin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);
+
+	if (prev)
+		folio_put(prev);
 
 	/*
 	 * Stop shrinker if we didn't split any page, but the queue is empty.

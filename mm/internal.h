@@ -470,7 +470,7 @@ pmd_t *mm_find_pmd(struct mm_struct *mm, unsigned long address);
 #define K(x) ((x) << (PAGE_SHIFT-10))
 
 extern char * const zone_names[MAX_NR_ZONES];
-extern unsigned long free_highatomics[MAX_NR_ZONES];
+extern unsigned long nr_free_highatomic[MAX_NR_ZONES];
 
 /* perform sanity checks on struct pages being allocated or freed */
 DECLARE_STATIC_KEY_MAYBE(CONFIG_DEBUG_VM, check_pages_enabled);
@@ -721,8 +721,9 @@ extern void post_alloc_hook(struct page *page, unsigned int order,
 					gfp_t gfp_flags);
 extern int user_min_free_kbytes;
 
-extern void free_unref_page(struct page *page, unsigned int order);
-extern void free_unref_page_list(struct list_head *list);
+void free_unref_page(struct page *page, unsigned int order);
+void free_unref_folios(struct folio_batch *fbatch);
+void free_unref_page_list(struct list_head *list);
 
 extern void zone_pcp_reset(struct zone *zone);
 extern void zone_pcp_disable(struct zone *zone);

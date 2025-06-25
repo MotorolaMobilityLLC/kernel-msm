@@ -412,6 +412,11 @@ struct trace_array {
 	struct trace_func_repeats	__percpu *last_func_repeats;
 };
 
+struct trace_array_ext {
+	const char		*system_names;
+	struct trace_array	trace_array;
+};
+
 enum {
 	TRACE_ARRAY_FL_GLOBAL	= (1 << 0)
 };
@@ -420,6 +425,7 @@ extern struct list_head ftrace_trace_arrays;
 
 extern struct mutex trace_types_lock;
 
+extern const char *trace_array_get_system_names(struct trace_array *tr);
 extern int trace_array_get(struct trace_array *tr);
 extern int tracing_check_open_get_tr(struct trace_array *tr);
 extern struct trace_array *trace_array_find(const char *instance);

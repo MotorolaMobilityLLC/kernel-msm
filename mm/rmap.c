@@ -1599,8 +1599,8 @@ static __always_inline void __folio_remove_rmap(struct folio *folio,
 		 * Check partially_mapped first to ensure it is a large folio.
 		 */
 		if (folio_test_anon(folio) && partially_mapped &&
-		    list_empty(&folio->_deferred_list))
-			deferred_split_folio(folio);
+		    !folio_test_partially_mapped(folio))
+			deferred_split_folio(folio, true);
 	}
 
 	/*
