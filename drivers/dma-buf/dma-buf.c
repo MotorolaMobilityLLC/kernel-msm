@@ -162,9 +162,121 @@ static struct file_system_type dma_buf_fs_type = {
 	.kill_sb = kill_anon_super,
 };
 
+static struct task_dma_buf_record *find_task_dmabuf_record(
+		struct task_struct *task, struct dma_buf *dmabuf)
+{
+	struct task_dma_buf_record *rec;
+
+	lockdep_assert_held(&task->dmabuf_info->lock);
+
+	list_for_each_entry(rec, &task->dmabuf_info->dmabufs, node)
+		if (dmabuf == rec->dmabuf)
+			return rec;
+
+	return NULL;
+}
+
+static int new_task_dmabuf_record(struct task_struct *task, struct dma_buf *dmabuf)
+{
+	struct task_dma_buf_record *rec;
+
+	lockdep_assert_held(&task->dmabuf_info->lock);
+
+	rec = kmalloc(sizeof(*rec), GFP_KERNEL);
+	if (!rec)
+		return -ENOMEM;
+
+	task->dmabuf_info->rss += dmabuf->size;
+	rec->dmabuf = dmabuf;
+	rec->refcnt = 1;
+	list_add(&rec->node, &task->dmabuf_info->dmabufs);
+
+	return 0;
+}
+
+/**
+ * dma_buf_account_task - Account a dmabuf to a task
+ * @dmabuf:	[in]	pointer to dma_buf
+ * @task:	[in]	pointer to task_struct
+ *
+ * When a process obtains a dmabuf file descriptor, or maps a dmabuf, this
+ * function attributes the provided @dmabuf to the @task. The first time @dmabuf
+ * is attributed to @task, the buffer's size is added to the @task's dmabuf RSS.
+ *
+ * Return:
+ * * 0 on success
+ * * A negative error code upon error
+ */
+int dma_buf_account_task(struct dma_buf *dmabuf, struct task_struct *task)
+{
+	struct task_dma_buf_record *rec;
+	int ret = 0;
+
+	if (!dmabuf || !task)
+		return -EINVAL;
+
+	if (!task->dmabuf_info) {
+	    pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+	    return -ENOMEM;
+	}
+
+	spin_lock(&task->dmabuf_info->lock);
+	rec = find_task_dmabuf_record(task, dmabuf);
+	if (!rec)
+		ret = new_task_dmabuf_record(task, dmabuf);
+	else
+		++rec->refcnt;
+	spin_unlock(&task->dmabuf_info->lock);
+
+	return ret;
+}
+
+/**
+ * dma_buf_unaccount_task - Unaccount a dmabuf from a task
+ * @dmabuf:	[in]	pointer to dma_buf
+ * @task:	[in]	pointer to task_struct
+ *
+ * When a process closes a dmabuf file descriptor, or unmaps a dmabuf, this
+ * function removes the provided @dmabuf attribution from the @task. When all
+ * references to @dmabuf are removed from @task, the buffer's size is removed
+ * from the task's dmabuf RSS.
+ *
+ * Return:
+ * * 0 on success
+ * * A negative error code upon error
+ */
+void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_struct *task)
+{
+	struct task_dma_buf_record *rec;
+
+	if (!dmabuf || !task)
+		return;
+
+	if (!task->dmabuf_info) {
+	    pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+	    return;
+	}
+
+	spin_lock(&task->dmabuf_info->lock);
+	rec = find_task_dmabuf_record(task, dmabuf);
+	if (!rec) { /* Failed fd_install? */
+		pr_err("dmabuf not found in task list\n");
+		goto err;
+	}
+
+	if (--rec->refcnt == 0) {
+		list_del(&rec->node);
+		kfree(rec);
+		task->dmabuf_info->rss -= dmabuf->size;
+	}
+err:
+	spin_unlock(&task->dmabuf_info->lock);
+}
+
 static int dma_buf_mmap_internal(struct file *file, struct vm_area_struct *vma)
 {
 	struct dma_buf *dmabuf;
+	int ret;
 
 	if (!is_dma_buf_file(file))
 		return -EINVAL;
@@ -180,7 +292,15 @@ static int dma_buf_mmap_internal(struct file *file, struct vm_area_struct *vma)
 	    dmabuf->size >> PAGE_SHIFT)
 		return -EINVAL;
 
-	return dmabuf->ops->mmap(dmabuf, vma);
+	ret = dma_buf_account_task(dmabuf, current);
+	if (ret)
+		return ret;
+
+	ret = dmabuf->ops->mmap(dmabuf, vma);
+	if (ret)
+		dma_buf_unaccount_task(dmabuf, current);
+
+	return ret;
 }
 
 static loff_t dma_buf_llseek(struct file *file, loff_t offset, int whence)
@@ -557,6 +677,12 @@ static void dma_buf_show_fdinfo(struct seq_file *m, struct file *file)
 	spin_unlock(&dmabuf->name_lock);
 }
 
+static int dma_buf_flush(struct file *file, fl_owner_t id)
+{
+	dma_buf_unaccount_task(file->private_data, current);
+	return 0;
+}
+
 static const struct file_operations dma_buf_fops = {
 	.release	= dma_buf_file_release,
 	.mmap		= dma_buf_mmap_internal,
@@ -565,6 +691,7 @@ static const struct file_operations dma_buf_fops = {
 	.unlocked_ioctl	= dma_buf_ioctl,
 	.compat_ioctl	= compat_ptr_ioctl,
 	.show_fdinfo	= dma_buf_show_fdinfo,
+	.flush		= dma_buf_flush,
 };
 
 /*
@@ -1555,6 +1682,8 @@ EXPORT_SYMBOL_GPL(dma_buf_end_cpu_access_partial);
 int dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma,
 		 unsigned long pgoff)
 {
+	int ret;
+
 	if (WARN_ON(!dmabuf || !vma))
 		return -EINVAL;
 
@@ -1575,7 +1704,15 @@ int dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma,
 	vma_set_file(vma, dmabuf->file);
 	vma->vm_pgoff = pgoff;
 
-	return dmabuf->ops->mmap(dmabuf, vma);
+	ret = dma_buf_account_task(dmabuf, current);
+	if (ret)
+		return ret;
+
+	ret = dmabuf->ops->mmap(dmabuf, vma);
+	if (ret)
+		dma_buf_unaccount_task(dmabuf, current);
+
+	return ret;
 }
 EXPORT_SYMBOL_NS_GPL(dma_buf_mmap, DMA_BUF);
 

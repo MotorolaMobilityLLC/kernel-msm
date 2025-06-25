@@ -101,6 +101,7 @@
 #include <linux/iommu.h>
 #include <linux/tick.h>
 #include <linux/cpufreq_times.h>
+#include <linux/dma-buf.h>
 
 #include <asm/pgalloc.h>
 #include <linux/uaccess.h>
@@ -994,12 +995,32 @@ static inline void put_signal_struct(struct signal_struct *sig)
 		free_signal_struct(sig);
 }
 
+static void put_dmabuf_info(struct task_struct *tsk)
+{
+	if (!tsk->dmabuf_info) {
+		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+		return;
+	}
+
+	if (!refcount_dec_and_test(&tsk->dmabuf_info->refcnt))
+		return;
+
+	if (READ_ONCE(tsk->dmabuf_info->rss))
+		pr_err("%s destroying task with non-zero dmabuf rss\n", __func__);
+
+	if (!list_empty(&tsk->dmabuf_info->dmabufs))
+		pr_err("%s destroying task with non-empty dmabuf list\n", __func__);
+
+	kfree(tsk->dmabuf_info);
+}
+
 void __put_task_struct(struct task_struct *tsk)
 {
 	WARN_ON(!tsk->exit_state);
 	WARN_ON(refcount_read(&tsk->usage));
 	WARN_ON(tsk == current);
 
+	put_dmabuf_info(tsk);
 	io_uring_free(tsk);
 	cgroup_free(tsk);
 	task_numa_free(tsk, true);
@@ -2268,6 +2289,58 @@ static void rv_task_fork(struct task_struct *p)
 #define rv_task_fork(p) do {} while (0)
 #endif
 
+static int copy_dmabuf_info(u64 clone_flags, struct task_struct *p)
+{
+	struct task_dma_buf_record *rec, *copy;
+
+	if (current->dmabuf_info && (clone_flags & (CLONE_VM | CLONE_FILES))
+						== (CLONE_VM | CLONE_FILES)) {
+		/*
+		 * Both MM and FD references to dmabufs are shared with the parent, so
+		 * we can share a RSS counter with the parent.
+		 */
+		refcount_inc(&current->dmabuf_info->refcnt);
+		p->dmabuf_info = current->dmabuf_info;
+		return 0;
+	}
+
+	p->dmabuf_info = kmalloc(sizeof(*p->dmabuf_info), GFP_KERNEL);
+	if (!p->dmabuf_info)
+		return -ENOMEM;
+
+	refcount_set(&p->dmabuf_info->refcnt, 1);
+	spin_lock_init(&p->dmabuf_info->lock);
+	INIT_LIST_HEAD(&p->dmabuf_info->dmabufs);
+	if (current->dmabuf_info) {
+		spin_lock(&current->dmabuf_info->lock);
+		p->dmabuf_info->rss = current->dmabuf_info->rss;
+		list_for_each_entry(rec, &current->dmabuf_info->dmabufs, node) {
+			copy = kmalloc(sizeof(*copy), GFP_KERNEL);
+			if (!copy) {
+				spin_unlock(&current->dmabuf_info->lock);
+				goto err_list_copy;
+			}
+
+			copy->dmabuf = rec->dmabuf;
+			copy->refcnt = rec->refcnt;
+			list_add(&copy->node, &p->dmabuf_info->dmabufs);
+		}
+		spin_unlock(&current->dmabuf_info->lock);
+	} else {
+		p->dmabuf_info->rss = 0;
+	}
+
+	return 0;
+
+err_list_copy:
+	list_for_each_entry_safe(rec, copy, &p->dmabuf_info->dmabufs, node) {
+		list_del(&rec->node);
+		kfree(rec);
+	}
+	kfree(p->dmabuf_info);
+	return -ENOMEM;
+}
+
 /*
  * This creates a new process as a copy of the old one,
  * but does not actually start it yet.
@@ -2509,14 +2582,18 @@ __latent_entropy struct task_struct *copy_process(
 	p->bpf_ctx = NULL;
 #endif
 
-	/* Perform scheduler related setup. Assign this task to a CPU. */
-	retval = sched_fork(clone_flags, p);
+	retval = copy_dmabuf_info(clone_flags, p);
 	if (retval)
 		goto bad_fork_cleanup_policy;
 
+	/* Perform scheduler related setup. Assign this task to a CPU. */
+	retval = sched_fork(clone_flags, p);
+	if (retval)
+		goto bad_fork_cleanup_dmabuf;
+
 	retval = perf_event_init_task(p, clone_flags);
 	if (retval)
-		goto bad_fork_cleanup_policy;
+		goto bad_fork_cleanup_dmabuf;
 	retval = audit_alloc(p);
 	if (retval)
 		goto bad_fork_cleanup_perf;
@@ -2819,6 +2896,8 @@ bad_fork_cleanup_audit:
 	audit_free(p);
 bad_fork_cleanup_perf:
 	perf_event_free_task(p);
+bad_fork_cleanup_dmabuf:
+	put_dmabuf_info(p);
 bad_fork_cleanup_policy:
 	lockdep_free_task(p);
 #ifdef CONFIG_NUMA
