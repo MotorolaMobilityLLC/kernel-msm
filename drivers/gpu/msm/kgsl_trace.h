@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2011-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #if !defined(_KGSL_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
@@ -19,6 +19,12 @@
 #include "kgsl.h"
 #include "kgsl_drawobj.h"
 #include "kgsl_sharedmem.h"
+
+#define KGSL_TRACE_GPU_FREQ(freq, gpu_id) \
+	do { \
+		trace_gpu_frequency(freq, gpu_id); \
+		trace_kgsl_gpu_frequency(freq, gpu_id); \
+	} while (0)
 
 #define show_memtype(type) \
 	__print_symbolic(type, \
@@ -316,7 +322,7 @@ TRACE_EVENT(kgsl_pwrlevel,
 /*
  * Tracepoint for kgsl gpu_frequency
  */
-TRACE_EVENT(gpu_frequency,
+TRACE_EVENT(kgsl_gpu_frequency,
 	TP_PROTO(unsigned int gpu_freq, unsigned int gpu_id),
 	TP_ARGS(gpu_freq, gpu_id),
 	TP_STRUCT__entry(
