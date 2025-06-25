@@ -50,6 +50,7 @@
 #include <linux/writeback.h>
 #include <linux/cpu.h>
 #include <linux/cpuset.h>
+#include <linux/memcontrol.h>
 #include <linux/cgroup.h>
 #include <linux/efi.h>
 #include <linux/tick.h>
@@ -1062,6 +1063,7 @@ void start_kernel(void)
 	proc_root_init();
 	nsfs_init();
 	cpuset_init();
+	mem_cgroup_init();
 	cgroup_init();
 	taskstats_init_early();
 	delayacct_init();

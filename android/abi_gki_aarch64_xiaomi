@@ -23,6 +23,8 @@
   __tracepoint_android_vh_tune_swappiness
   __traceiter_android_vh_do_shrink_slab_ex
   __tracepoint_android_vh_do_shrink_slab_ex
+  __traceiter_android_vh_migration_target_bypass
+  __tracepoint_android_vh_migration_target_bypass
 
 # required by lz4 decompress module
   __tracepoint_android_vh_lz4_decompress_bypass

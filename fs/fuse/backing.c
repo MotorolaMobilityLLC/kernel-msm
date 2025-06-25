@@ -799,6 +799,10 @@ int fuse_file_read_iter_initialize(
 		.size = to->count,
 	};
 
+	fri->frio = (struct fuse_read_iter_out) {
+		.ret = fri->fri.size,
+	};
+
 	/* TODO we can't assume 'to' is a kvec */
 	/* TODO we also can't assume the vector has only one component */
 	*fa = (struct fuse_bpf_args) {
@@ -833,6 +837,11 @@ int fuse_file_read_iter_backing(struct fuse_bpf_args *fa,
 	if (!iov_iter_count(to))
 		return 0;
 
+	if ((iocb->ki_flags & IOCB_DIRECT) &&
+	    (!ff->backing_file->f_mapping->a_ops ||
+	     !ff->backing_file->f_mapping->a_ops->direct_IO))
+		return -EINVAL;
+
 	/* TODO This just plain ignores any change to fuse_read_in */
 	if (is_sync_kiocb(iocb)) {
 		ret = vfs_iter_read(ff->backing_file, to, &iocb->ki_pos,
@@ -855,13 +864,14 @@ int fuse_file_read_iter_backing(struct fuse_bpf_args *fa,
 			fuse_bpf_aio_cleanup_handler(aio_req);
 	}
 
+	frio->ret = ret;
+
 	/* TODO Need to point value at the buffer for post-modification */
 
 out:
 	fuse_file_accessed(file, ff->backing_file);
 
-	frio->ret = ret;
-	return ret < 0 ? ret : 0;
+	return ret;
 }
 
 void *fuse_file_read_iter_finalize(struct fuse_bpf_args *fa,
