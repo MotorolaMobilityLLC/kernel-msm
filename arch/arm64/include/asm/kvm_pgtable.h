@@ -862,8 +862,7 @@ int kvm_pgtable_stage2_flush(struct kvm_pgtable *pgt, u64 addr, u64 size);
  * kvm_pgtable_stage2_split() is best effort: it tries to break as many
  * blocks in the input range as allowed by @mc_capacity.
  */
-int kvm_pgtable_stage2_split(struct kvm_pgtable *pgt, u64 addr, u64 size,
-			     struct kvm_mmu_memory_cache *mc);
+int kvm_pgtable_stage2_split(struct kvm_pgtable *pgt, u64 addr, u64 size, void *mc);
 
 /**
  * kvm_pgtable_walk() - Walk a page-table.

@@ -33,6 +33,7 @@
 #include <linux/sysctl.h>
 #include <linux/cpu.h>
 #include <linux/cpuset.h>
+#include <linux/pagevec.h>
 #include <linux/memory_hotplug.h>
 #include <linux/nodemask.h>
 #include <linux/vmstat.h>
@@ -323,7 +324,7 @@ const char * const migratetype_names[MIGRATE_TYPES] = {
 #endif
 };
 
-unsigned long free_highatomics[MAX_NR_ZONES] = {0};
+unsigned long nr_free_highatomic[MAX_NR_ZONES] = {0};
 
 int min_free_kbytes = 1024;
 int user_min_free_kbytes = -1;
@@ -770,8 +771,8 @@ static inline void account_freepages(struct zone *zone, int nr_pages,
 	if (is_migrate_cma(migratetype))
 		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES, nr_pages);
 	else if (is_migrate_highatomic(migratetype))
-		WRITE_ONCE(free_highatomics[zone_idx(zone)],
-			   free_highatomics[zone_idx(zone)] + nr_pages);
+		WRITE_ONCE(nr_free_highatomic[zone_idx(zone)],
+			   nr_free_highatomic[zone_idx(zone)] + nr_pages);
 }
 
 /* Used for pages not on another list */
@@ -921,7 +922,6 @@ static inline void __free_one_page(struct page *page,
 	VM_BUG_ON_PAGE(page->flags & check_flags, page);
 
 	VM_BUG_ON(migratetype == -1);
-
 	VM_BUG_ON_PAGE(pfn & ((1 << order) - 1), page);
 	VM_BUG_ON_PAGE(bad_range(zone, page), page);
 
@@ -1237,6 +1237,7 @@ static __always_inline bool free_pages_prepare(struct page *page,
 				}
 			}
 			(page + i)->flags &= ~PAGE_FLAGS_CHECK_AT_PREP;
+			trace_android_vh_mm_free_page(page + i);
 		}
 	}
 	if (PageMappingFlags(page))
@@ -1252,6 +1253,7 @@ static __always_inline bool free_pages_prepare(struct page *page,
 
 	page_cpupid_reset_last(page);
 	page->flags &= ~PAGE_FLAGS_CHECK_AT_PREP;
+	trace_android_vh_mm_free_page(page);
 	reset_page_owner(page, order);
 	free_page_pinner(page, order);
 	page_table_check_free(page, order);
@@ -1372,7 +1374,6 @@ static void free_one_page(struct zone *zone, struct page *page,
 static void __free_pages_ok(struct page *page, unsigned int order,
 			    fpi_t fpi_flags)
 {
-	unsigned long flags;
 	int migratetype;
 	unsigned long pfn = page_to_pfn(page);
 	struct zone *zone = page_zone(page);
@@ -1392,21 +1393,17 @@ skip_prepare:
 			fpi_flags, &skip_free_pages_ok);
 	if (skip_free_pages_ok)
 		return;
-
-	spin_lock_irqsave(&zone->lock, flags);
+	/*
+	 * Calling get_pfnblock_migratetype() without spin_lock_irqsave() here
+	 * is used to avoid calling get_pfnblock_migratetype() under the lock.
+	 * This will reduce the lock holding time.
+	 */
 	migratetype = get_pfnblock_migratetype(page, pfn);
 	trace_android_vh_free_unref_page_bypass(page, order, migratetype, &skip_free_unref_page);
-	if (skip_free_unref_page) {
-		spin_unlock_irqrestore(&zone->lock, flags);
+	if (skip_free_unref_page)
 		return;
-	}
 
-	if (unlikely(has_isolate_pageblock(zone) ||
-		is_migrate_isolate(migratetype))) {
-		migratetype = get_pfnblock_migratetype(page, pfn);
-	}
-	__free_one_page(page, pfn, zone, order, migratetype, fpi_flags);
-	spin_unlock_irqrestore(&zone->lock, flags);
+	free_one_page(zone, page, pfn, order, fpi_flags);
 
 	__count_vm_events(PGFREE, 1 << order);
 }
@@ -2249,8 +2246,8 @@ static bool unreserve_highatomic_pageblock(const struct alloc_context *ac,
 	struct zone *zone;
 	struct page *page;
 	int order;
-	int ret;
 	bool skip_unreserve_highatomic = false;
+	int ret;
 
 	for_each_zone_zonelist_nodemask(zone, z, zonelist, ac->highest_zoneidx,
 								ac->nodemask) {
@@ -2765,7 +2762,7 @@ void free_unref_page(struct page *page, unsigned int order)
 		return;
 	if (unlikely(migratetype > MIGRATE_RECLAIMABLE)) {
 		if (unlikely(is_migrate_isolate(migratetype))) {
-			free_one_page(page_zone(page), page, pfn, order,  FPI_NONE);
+			free_one_page(page_zone(page), page, pfn, order, FPI_NONE);
 			return;
 		}
 #ifdef CONFIG_CMA
@@ -2781,64 +2778,65 @@ void free_unref_page(struct page *page, unsigned int order)
 		free_unref_page_commit(zone, pcp, page, migratetype, order);
 		pcp_spin_unlock(pcp);
 	} else {
-		free_one_page(zone, page, pfn, order,  FPI_NONE);
+		free_one_page(zone, page, pfn, order, FPI_NONE);
 	}
 	pcp_trylock_finish(UP_flags);
 }
 
 /*
- * Free a list of 0-order pages
+ * Free a batch of folios
  */
-void free_unref_page_list(struct list_head *list)
+void free_unref_folios(struct folio_batch *folios)
 {
 	unsigned long __maybe_unused UP_flags;
-	struct page *page, *next;
 	struct per_cpu_pages *pcp = NULL;
 	struct zone *locked_zone = NULL;
-	int batch_count = 0;
-	int migratetype;
-	bool skip_free = false;
+	int i, j;
 
-	/* Prepare pages for freeing */
-	list_for_each_entry_safe(page, next, list, lru) {
-		unsigned long pfn = page_to_pfn(page);
-		if (!free_pages_prepare(page, 0, FPI_NONE)) {
-			list_del(&page->lru);
+	/* Prepare folios for freeing */
+	for (i = 0, j = 0; i < folios->nr; i++) {
+		struct folio *folio = folios->folios[i];
+		unsigned long pfn = folio_pfn(folio);
+		unsigned int order = folio_order(folio);
+
+		if (order > 0 && folio_test_large_rmappable(folio))
+			folio_unqueue_deferred_split(folio);
+		if (!free_pages_prepare(&folio->page, order, FPI_NONE))
 			continue;
-		}
-
 		/*
-		 * Free isolated pages directly to the allocator, see
-		 * comment in free_unref_page.
+		 * Free orders not handled on the PCP directly to the
+		 * allocator.
 		 */
-		migratetype = get_pfnblock_migratetype(page, pfn);
-		if (unlikely(is_migrate_isolate(migratetype))) {
-			list_del(&page->lru);
-			free_one_page(page_zone(page), page, pfn, 0, FPI_NONE);
+		if (!pcp_allowed_order(order)) {
+			free_one_page(folio_zone(folio), &folio->page,
+				      pfn, order, FPI_NONE);
 			continue;
 		}
+		folio->private = (void *)(unsigned long)order;
+		if (j != i)
+			folios->folios[j] = folio;
+		j++;
 	}
+	folios->nr = j;
 
-	trace_android_vh_free_unref_page_list_bypass(list, &skip_free);
-	if (skip_free)
-		return;
+	for (i = 0; i < folios->nr; i++) {
+		struct folio *folio = folios->folios[i];
+		struct zone *zone = folio_zone(folio);
+		unsigned long pfn = folio_pfn(folio);
+		unsigned int order = (unsigned long)folio->private;
+		int migratetype;
 
-	list_for_each_entry_safe(page, next, list, lru) {
-		struct zone *zone = page_zone(page);
-		unsigned long pfn = page_to_pfn(page);
+		folio->private = NULL;
+		migratetype = get_pfnblock_migratetype(&folio->page, pfn);
 
-		list_del(&page->lru);
-		migratetype = get_pfnblock_migratetype(page, pfn);
-
-		/*
-		 * Either different zone requiring a different pcp lock or
-		 * excessive lock hold times when freeing a large list of
-		 * pages.
-		 */
-		if (zone != locked_zone || batch_count == SWAP_CLUSTER_MAX) {
+		/* Different zone requires a different pcp lock */
+		if (zone != locked_zone ||
+		    is_migrate_isolate(migratetype)) {
 			if (pcp) {
 				pcp_spin_unlock(pcp);
 				pcp_trylock_finish(UP_flags);
+				locked_zone = NULL;
+				pcp = NULL;
 			}
 
 			/*
@@ -2846,24 +2844,21 @@ void free_unref_page_list(struct list_head *list)
 			 * allocator, see comment in free_unref_page.
 			 */
 			if (is_migrate_isolate(migratetype)) {
-				free_one_page(zone, page, page_to_pfn(page),
-					      0,  FPI_NONE);
+				free_one_page(zone, &folio->page, pfn,
+					      order, FPI_NONE);
 				continue;
- 			}
-
-			batch_count = 0;
+			}
 
 			/*
-			 * trylock is necessary as pages may be getting freed
+			 * trylock is necessary as folios may be getting freed
 			 * from IRQ or SoftIRQ context after an IO completion.
 			 */
 			pcp_trylock_prepare(UP_flags);
 			pcp = pcp_spin_trylock(zone->per_cpu_pageset);
 			if (unlikely(!pcp)) {
 				pcp_trylock_finish(UP_flags);
-				free_one_page(zone, page, pfn,
-					      0, FPI_NONE);
-				locked_zone = NULL;
+				free_one_page(zone, &folio->page, pfn,
+					      order, FPI_NONE);
 				continue;
 			}
 			locked_zone = zone;
@@ -2880,15 +2875,39 @@ void free_unref_page_list(struct list_head *list)
 				migratetype = MIGRATE_MOVABLE;
 		}
 
-		trace_mm_page_free_batched(page);
-		free_unref_page_commit(zone, pcp, page, migratetype, 0);
-		batch_count++;
+		trace_mm_page_free_batched(&folio->page);
+		free_unref_page_commit(zone, pcp, &folio->page, migratetype,
+				order);
 	}
 
 	if (pcp) {
 		pcp_spin_unlock(pcp);
 		pcp_trylock_finish(UP_flags);
 	}
+	folio_batch_reinit(folios);
+}
+
+void free_unref_page_list(struct list_head *list)
+{
+	struct folio_batch fbatch;
+	bool skip_free = false;
+
+	trace_android_vh_free_unref_page_list_bypass(list, &skip_free);
+	if (skip_free)
+		return;
+
+	folio_batch_init(&fbatch);
+	while (!list_empty(list)) {
+		struct folio *folio = list_first_entry(list, struct folio, lru);
+
+		list_del(&folio->lru);
+		if (folio_batch_add(&fbatch, folio) > 0)
+			continue;
+		free_unref_folios(&fbatch);
+	}
+
+	if (fbatch.nr)
+		free_unref_folios(&fbatch);
 }
 
 /*
@@ -3216,7 +3235,7 @@ static inline long __zone_watermark_unusable_free(struct zone *z,
 	 * watermark then subtract the free pages reserved for highatomic.
 	 */
 	if (likely(!(alloc_flags & ALLOC_RESERVES)))
-		unusable_free += READ_ONCE(free_highatomics[zone_idx(z)]);
+		unusable_free += READ_ONCE(nr_free_highatomic[zone_idx(z)]);
 
 #ifdef CONFIG_CMA
 	/* If allocation can't use CMA areas don't use free CMA pages */

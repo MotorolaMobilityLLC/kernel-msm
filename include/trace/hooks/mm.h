@@ -431,6 +431,9 @@ DECLARE_HOOK(android_vh_add_lazyfree_bypass,
 DECLARE_HOOK(android_vh_do_async_mmap_readahead,
 	TP_PROTO(struct vm_fault *vmf, struct folio *folio, bool *skip),
 	TP_ARGS(vmf, folio, skip));
+DECLARE_HOOK(android_vh_mm_free_page,
+	TP_PROTO(struct page *page),
+	TP_ARGS(page));
 
 DECLARE_HOOK(android_vh_cma_debug_show_areas,
 	TP_PROTO(bool *show),
@@ -596,6 +599,9 @@ DECLARE_HOOK(android_vh_folio_remove_rmap_ptes,
 DECLARE_HOOK(android_vh_pageset_update,
 	TP_PROTO(unsigned long *high, unsigned long *batch),
 	TP_ARGS(high, batch));
+DECLARE_HOOK(android_vh_mempool_alloc_skip_wait,
+	TP_PROTO(gfp_t *gfp_flags, bool *skip_wait),
+	TP_ARGS(gfp_flags, skip_wait));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
