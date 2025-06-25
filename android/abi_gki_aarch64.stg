@@ -359431,6 +359431,24 @@ elf_symbol {
   full_name: "__traceiter_android_rvh_alloc_and_link_pwqs"
 }
 elf_symbol {
+  id: 0xc0fd1a1f
+  name: "__traceiter_android_rvh_alloc_pages_adjust_wmark"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x6a18478a
+  type_id: 0x9870a448
+  full_name: "__traceiter_android_rvh_alloc_pages_adjust_wmark"
+}
+elf_symbol {
+  id: 0x6eed3175
+  name: "__traceiter_android_rvh_alloc_pages_reset_wmark"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x414d4c97
+  type_id: 0x9870a59a
+  full_name: "__traceiter_android_rvh_alloc_pages_reset_wmark"
+}
+elf_symbol {
   id: 0xef79dd4d
   name: "__traceiter_android_rvh_alloc_workqueue"
   is_defined: true
@@ -366521,6 +366539,24 @@ elf_symbol {
   crc: 0x500a976a
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_rvh_alloc_and_link_pwqs"
+}
+elf_symbol {
+  id: 0x89ff3495
+  name: "__tracepoint_android_rvh_alloc_pages_adjust_wmark"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xc63d662f
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_alloc_pages_adjust_wmark"
+}
+elf_symbol {
+  id: 0xab6e1e0f
+  name: "__tracepoint_android_rvh_alloc_pages_reset_wmark"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xdbce1a35
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_alloc_pages_reset_wmark"
 }
 elf_symbol {
   id: 0x0b219d2b
@@ -436771,6 +436807,8 @@ interface {
   symbol_id: 0xb42422d5
   symbol_id: 0xb3d70eab
   symbol_id: 0x9ca1a40f
+  symbol_id: 0xc0fd1a1f
+  symbol_id: 0x6eed3175
   symbol_id: 0xef79dd4d
   symbol_id: 0x0b48afa1
   symbol_id: 0xa927338c
@@ -437559,6 +437597,8 @@ interface {
   symbol_id: 0x4b7a8fd7
   symbol_id: 0xcd36f539
   symbol_id: 0x33f0c37d
+  symbol_id: 0x89ff3495
+  symbol_id: 0xab6e1e0f
   symbol_id: 0x0b219d2b
   symbol_id: 0x748c1fd7
   symbol_id: 0xcb42202e
