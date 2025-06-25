@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-//Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -1255,7 +1255,7 @@ static void  mhi_parse_state(char *buf, int *nbytes, uint32_t info)
 	}
 }
 
-static int mhi_state_uevent(const struct device *dev, struct kobj_uevent_env *env)
+static int mhi_state_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	int rc, nbytes = 0;
 	uint32_t info = 0, i;
@@ -2319,7 +2319,7 @@ int mhi_uci_init(void)
 	}
 
 	uci_log(UCI_DBG_INFO, "Creating class\n");
-	uci_ctxt.mhi_uci_class = class_create(DEVICE_NAME);
+	uci_ctxt.mhi_uci_class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (IS_ERR(uci_ctxt.mhi_uci_class)) {
 		uci_log(UCI_DBG_ERROR,
 			"Failed to instantiate class, ret 0x%lx\n", r);
