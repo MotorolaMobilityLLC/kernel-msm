@@ -32,6 +32,12 @@ config CCI_DEBUG_INTF
 	help
 	  This is enabling cci debug tool.
 
+config MOT_DRV_AF_NOISE_ELIMINATION
+	default n
+	bool "enable af noise elimination"
+	help
+	  This is enabling af noise elimination.
+
 config MOT_DRV_OIS_EARLY_UPGRADE_FW
 	default n
 	bool "enable OIS upgrade FW early"
@@ -55,6 +61,12 @@ config MOT_DRV_OIS_DW9784_DRIVER
         bool "enable OIS dw9784 driver"
         help
           This is enabling OIS dw9784 driver.
+
+config MOT_DRV_OIS_SEM1218S_DRIVER
+        default n
+        bool "enable OIS SEM1218S driver"
+        help
+          This is enabling OIS SEM1218S driver.
 
 config MOT_DRV_OIS_AFTER_SALES_SERVICE
 	default n
