@@ -659,8 +659,8 @@ struct task_dma_buf_record {
 };
 
 /**
- * struct task_dma_buf_info - Holds a RSS counter, and a list of dmabufs for all
- * tasks that share both mm_struct and files_struct.
+ * struct task_dma_buf_info - Holds RSS and RSS HWM counters, and a list of
+ * dmabufs for all tasks that share both mm_struct and files_struct.
  *
  * @rss: The sum of all dmabuf memory referenced by the tasks via memory
  *       mappings or file descriptors in bytes. Buffers referenced more than
@@ -668,12 +668,15 @@ struct task_dma_buf_record {
  *       of both mmaps and FDs) only cause the buffer to be accounted to the
  *       process once. Partial mappings cause the full size of the buffer to be
  *       accounted, regardless of the size of the mapping.
+ * @rss_hwm: The maximum value of @rss over the lifetime of this struct. (Unless,
+ *           reset by userspace.)
  * @refcnt: The number of tasks sharing this struct.
  * @lock: Lock protecting writes for @rss, and reads/writes for @dmabufs.
  * @dmabufs: List of all dmabufs referenced by the tasks.
  */
 struct task_dma_buf_info {
 	s64 rss;
+	s64 rss_hwm;
 	refcount_t refcnt;
 	spinlock_t lock;
 	struct list_head dmabufs;
