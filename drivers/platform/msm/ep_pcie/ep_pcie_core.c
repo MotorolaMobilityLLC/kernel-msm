@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 /*
  * MSM PCIe endpoint core driver.
  */
@@ -4563,7 +4563,7 @@ static int ep_pcie_probe(struct platform_device *pdev)
 	ep_pcie_dev.use_iatu_msi = of_property_read_bool((&pdev->dev)->of_node,
 				"qcom,pcie-use-iatu-msi");
 	EP_PCIE_DBG(&ep_pcie_dev,
-		"PCIe V%d: pcie edma is %s enabled\n",
+		"PCIe V%d: pcie use-iatu-msi is %s enabled\n",
 		ep_pcie_dev.rev, ep_pcie_dev.use_iatu_msi ? "" : "not");
 
 	ret = of_property_read_u32((&pdev->dev)->of_node,
@@ -4753,6 +4753,8 @@ static struct platform_driver ep_pcie_driver = {
 	},
 };
 
+/* TODO: Support these with module_params */
+#ifndef MODULE
 static int __init ep_pcie_hot_reset(char *str)
 {
 	if (!strcmp(str, "disable_hot_reset"))
@@ -4779,6 +4781,7 @@ static int __init ep_pcie_l1_disable(char *str)
 	return 0;
 }
 early_param("ep_pcie_l1_cfg", ep_pcie_l1_disable);
+#endif
 
 static int __init ep_pcie_init(void)
 {
