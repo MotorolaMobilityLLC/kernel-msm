@@ -3962,7 +3962,7 @@ static struct folio *__alloc_swap_folio(struct vm_fault *vmf)
 	struct folio *folio;
 	swp_entry_t entry;
 
-	folio = vma_alloc_folio(GFP_HIGHUSER_MOVABLE, 0, vma,
+	folio = vma_alloc_folio(GFP_HIGHUSER_MOVABLE|__GFP_CMA, 0, vma,
 				vmf->address, false);
 	if (!folio)
 		return NULL;
