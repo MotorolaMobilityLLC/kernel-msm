@@ -461,43 +461,6 @@ static inline unsigned int dwmac_qcom_get_vlan_ucp(unsigned char  *buf)
 		 | buf[QTAG_UCP_FIELD_OFFSET + 1]);
 }
 
-u16 dwmac_qcom_select_queue(struct net_device *dev,
-			    struct sk_buff *skb,
-			    struct net_device *sb_dev)
-{
-	u16 txqueue_select = ALL_OTHER_TRAFFIC_TX_CHANNEL;
-	unsigned int eth_type, priority;
-	int gso = skb_shinfo(skb)->gso_type;
-
-	if (skb && skb->priority) {
-		if (gso & (SKB_GSO_TCPV4 | SKB_GSO_TCPV6 | SKB_GSO_UDP_L4))
-			return 0;
-		else
-			return netdev_pick_tx(dev, skb, NULL) % dev->real_num_tx_queues;
-	}
-
-	/* Retrieve ETH type */
-	eth_type = dwmac_qcom_get_eth_type(skb->data);
-
-	if (eth_type == ETH_P_TSN) {
-		/* Read VLAN priority field from skb->data */
-		priority = dwmac_qcom_get_vlan_ucp(skb->data);
-
-		priority >>= VLAN_TAG_UCP_SHIFT;
-		if (priority == CLASS_A_TRAFFIC_UCP)
-			txqueue_select = CLASS_A_TRAFFIC_TX_CHANNEL;
-		else if (priority == CLASS_B_TRAFFIC_UCP)
-			txqueue_select = CLASS_B_TRAFFIC_TX_CHANNEL;
-		else
-			txqueue_select = ALL_OTHER_TX_TRAFFIC_IPA_DISABLED;
-	} else {
-		/* VLAN tagged IP packet or any other non vlan packets (PTP)*/
-		txqueue_select = ALL_OTHER_TX_TRAFFIC_IPA_DISABLED;
-	}
-
-	ETHQOSDBG("tx_queue %d\n", txqueue_select);
-	return txqueue_select;
-}
 
 static int rgmii_readl(struct qcom_ethqos *ethqos, unsigned int offset)
 {
@@ -2715,7 +2678,6 @@ static int qcom_ethqos_probe(struct platform_device *pdev)
 	plat_dat->fix_mac_speed = ethqos_fix_mac_speed;
 	plat_dat->serdes_loopback = qcom_serdes_loopback;
 	plat_dat->dump_debug_regs = rgmii_dump;
-	plat_dat->tx_select_queue = dwmac_qcom_select_queue;
 	plat_dat->has_gmac4 = 1;
 	plat_dat->early_eth = ethqos->early_eth_enabled;
 	if (!ethqos->use_domains &&

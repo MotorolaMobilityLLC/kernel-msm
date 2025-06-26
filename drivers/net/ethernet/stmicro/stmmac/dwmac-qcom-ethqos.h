@@ -156,10 +156,6 @@ int ethqos_init_gpio(struct qcom_ethqos *ethqos);
 void ethqos_free_gpios(struct qcom_ethqos *ethqos);
 void *qcom_ethqos_get_priv(struct qcom_ethqos *ethqos);
 
-u16 dwmac_qcom_select_queue(struct net_device *dev,
-			    struct sk_buff *skb,
-			    struct net_device *sb_dev);
-
 #define QTAG_VLAN_ETH_TYPE_OFFSET 16
 #define QTAG_UCP_FIELD_OFFSET 14
 #define QTAG_ETH_TYPE_OFFSET 12
