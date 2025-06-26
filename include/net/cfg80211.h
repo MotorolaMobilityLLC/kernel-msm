@@ -1546,6 +1546,21 @@ struct link_station_del_parameters {
 };
 
 /**
+ * struct cfg80211_ttlm_params: TID to link mapping parameters
+ *
+ * Used for setting a TID to link mapping.
+ *
+ * @dlink: Downlink TID to link mapping, as defined in section 9.4.2.314
+ *     (TID-To-Link Mapping element) in Draft P802.11be_D4.0.
+ * @ulink: Uplink TID to link mapping, as defined in section 9.4.2.314
+ *     (TID-To-Link Mapping element) in Draft P802.11be_D4.0.
+ */
+struct cfg80211_ttlm_params {
+	u16 dlink[8];
+	u16 ulink[8];
+};
+
+/**
  * struct station_parameters - station parameters
  *
  * Used to change and create a new station.
@@ -4372,6 +4387,8 @@ struct mgmt_frame_regs {
  * @add_link_station: Add a link to a station.
  * @mod_link_station: Modify a link of a station.
  * @del_link_station: Remove a link of a station.
+ *
+ * @set_ttlm: set the TID to link mapping.
  */
 struct cfg80211_ops {
 	int	(*suspend)(struct wiphy *wiphy, struct cfg80211_wowlan *wow);
@@ -4725,6 +4742,8 @@ struct cfg80211_ops {
 				    struct link_station_parameters *params);
 	int	(*del_link_station)(struct wiphy *wiphy, struct net_device *dev,
 				    struct link_station_del_parameters *params);
+	int	(*set_ttlm)(struct wiphy *wiphy, struct net_device *dev,
+			    struct cfg80211_ttlm_params *params);
 
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
