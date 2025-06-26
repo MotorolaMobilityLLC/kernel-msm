@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2022, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <asm/unistd.h>
@@ -4024,6 +4024,8 @@ static int hgsl_resume(struct device *dev)
 	struct qcom_hgsl *hgsl = platform_get_drvdata(pdev);
 	struct hgsl_tcsr *tcsr = NULL;
 	int tcsr_idx = 0;
+	struct hgsl_gmugos *gmugos;
+	int i, j;
 
 	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
 		for (tcsr_idx = 0; tcsr_idx < HGSL_TCSR_NUM; tcsr_idx++) {
@@ -4033,6 +4035,16 @@ static int hgsl_resume(struct device *dev)
 					GLB_DB_DEST_TS_RETIRE_IRQ_MASK, true);
 			}
 		}
+
+		mutex_lock(&hgsl->mutex);
+		for (i = 0; i < HGSL_DEVICE_NUM; i++) {
+			gmugos = &hgsl->gmugos[i];
+			for (j = 0; j < HGSL_GMUGOS_IRQ_NUM; j++)
+				hgsl_gmugos_irq_enable(&gmugos->irq[j],
+					GMUGOS_IRQ_MASK);
+		}
+		mutex_unlock(&hgsl->mutex);
+
 		/*
 		 * There could be a scenario when GVM submit some work to GMU
 		 * just before going to suspend, in this case, the GMU will
@@ -4139,10 +4151,8 @@ static int qcom_hgsl_remove(struct platform_device *pdev)
 	mutex_lock(&hgsl->mutex);
 	for (i = 0; i < HGSL_DEVICE_NUM; i++) {
 		gmugos = &hgsl->gmugos[i];
-		for (j = 0; j < HGSL_GMUGOS_IRQ_NUM; j++) {
-			hgsl_gmugos_irq_disable(&gmugos->irq[j], GMUGOS_IRQ_MASK);
+		for (j = 0; j < HGSL_GMUGOS_IRQ_NUM; j++)
 			hgsl_gmugos_irq_free(&gmugos->irq[j]);
-		}
 	}
 	mutex_unlock(&hgsl->mutex);
 
