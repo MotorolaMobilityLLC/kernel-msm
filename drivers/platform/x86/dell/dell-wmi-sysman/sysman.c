@@ -605,7 +605,7 @@ err_release_attributes_data:
 	release_attributes_data();
 
 err_destroy_classdev:
-	device_destroy(fw_attr_class, MKDEV(0, 0));
+	device_unregister(wmi_priv.class_dev);
 
 err_unregister_class:
 	fw_attributes_class_put();
@@ -622,7 +622,7 @@ err_exit_bios_attr_set_interface:
 static void __exit sysman_exit(void)
 {
 	release_attributes_data();
-	device_destroy(fw_attr_class, MKDEV(0, 0));
+	device_unregister(wmi_priv.class_dev);
 	fw_attributes_class_put();
 	exit_bios_attr_set_interface();
 	exit_bios_attr_pass_interface();
