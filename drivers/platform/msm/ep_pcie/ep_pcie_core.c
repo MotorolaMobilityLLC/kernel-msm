@@ -1881,11 +1881,12 @@ static void ep_pcie_enumeration_complete(struct ep_pcie_dev_t *dev)
 		goto done;
 	}
 
+	dev->enumerated = true;
+
 	spin_unlock_irqrestore(&dev->isr_lock, irqsave_flags);
 	qcom_edma_init(&dev->pdev->dev);
 	spin_lock_irqsave(&dev->isr_lock, irqsave_flags);
 
-	dev->enumerated = true;
 	dev->link_status = EP_PCIE_LINK_ENABLED;
 
 	if (dev->gpio[EP_PCIE_GPIO_MDM2AP].num) {
