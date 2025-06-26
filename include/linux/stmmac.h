@@ -297,8 +297,6 @@ struct plat_stmmacenet_data {
 	bool rx_clk_runs_in_lpi;
 	int has_xgmac;
 	struct phylink_pcs *qcom_pcs;
-	unsigned int (*get_plat_tx_coal_frames)
-		(struct sk_buff *skb);
 	u16 (*tx_select_queue)
 		(struct net_device *dev, struct sk_buff *skb,
 			struct net_device *sb_dev);
@@ -323,10 +321,7 @@ struct plat_stmmacenet_data {
 	struct emac_emb_smmu_cb_ctx stmmac_emb_smmu_ctx;
 	bool phy_intr_en_extn_stm;
 	int has_c22_mdio_probe_capability;
-	int (*handle_prv_ioctl)(struct net_device *dev, struct ifreq *ifr,
-		int cmd);
 	void (*request_phy_wol)(void *plat);
-	int (*init_pps)(void *priv);
 	bool pcs_v3;
 	bool pcs_v4;
 	void (*phy_irq_enable)(void *priv);
