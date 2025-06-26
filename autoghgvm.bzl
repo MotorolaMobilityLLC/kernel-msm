@@ -23,6 +23,7 @@ def define_autoghgvm():
         "drivers/iommu/iommu-logger.ko",
         "drivers/iommu/qcom_iommu_debug.ko",
         "drivers/iommu/qcom_iommu_util.ko",
+        "drivers/irqchip/qcom-pdc.ko",
         "drivers/mailbox/qcom-ipcc.ko",
         "drivers/net/ethernet/stmicro/stmmac/dwmac-generic.ko",
         "drivers/net/ethernet/stmicro/stmmac/dwmac-ipq806x.ko",
