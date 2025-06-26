@@ -80,7 +80,9 @@
 
 #define	MM_EXT_START 1500
 #define	MM_EXT_1 1501
-#define	MM_EXT_END 1502
+#define	MM_EXT_2 1502
+#define	MM_EXT_3 1503
+#define	MM_EXT_END 1504
 
 #define	MM_GPCE_START 1600
 #define	MM_GPCE_1 1601
