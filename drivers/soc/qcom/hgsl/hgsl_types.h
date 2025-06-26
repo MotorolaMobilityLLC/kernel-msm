@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2006-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __HGSL_TYPES_H
@@ -117,8 +117,11 @@ enum gsl_deviceid_t {
 	GSL_DEVICE_UNUSED = -1,	/* gcc compiler warning fix, unsigned->signed */
 	GSL_DEVICE_ANY    = 0,
 	GSL_DEVICE_3D     = 1,
-	GSL_DEVICE_0      = 2,
-	GSL_DEVICE_1      = 3,
+	GSL_DEVICE_2DVG   = 2,
+	GSL_DEVICE_2DVG_1 = 3,
+	GSL_DEVICE_0      = 4,
+	GSL_DEVICE_1      = 5,
+	GSL_DEVICE_MAX    = 5,
 
 	GSL_DEVICE_FOOBAR = 0x7FFFFFFF
 };
