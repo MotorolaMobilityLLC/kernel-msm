@@ -113,7 +113,7 @@ static struct ep_pcie_clk_info_t
 
 static struct ep_pcie_clk_info_t
 	ep_pcie_pipe_clk_info[EP_PCIE_MAX_PIPE_CLK] = {
-	{NULL, "pcie_pipe_clk", 62500000, true},
+	{NULL, "pcie_pipe_clk", 0, true},
 };
 
 static struct ep_pcie_reset_info_t
@@ -1581,10 +1581,13 @@ static int ep_pcie_get_resources(struct ep_pcie_dev_t *dev,
 		ret = of_property_read_u32_array(
 			(&pdev->dev)->of_node,
 			"max-clock-frequency-hz", clkfreq, cnt);
-		if (ret)
+		if (ret) {
 			EP_PCIE_DBG2(dev,
 				"PCIe V%d: cannot get max-clock-frequency-hz property from DT:%d\n",
 				dev->rev, ret);
+			kfree(clkfreq);
+			clkfreq = NULL;
+		}
 	}
 
 	for (i = 0; i < EP_PCIE_MAX_VREG; i++) {
@@ -1707,12 +1710,10 @@ static int ep_pcie_get_resources(struct ep_pcie_dev_t *dev,
 				clk_info->hdl = NULL;
 			}
 		} else {
-			if (clkfreq != NULL) {
-				clk_info->freq = clkfreq[i +
-					EP_PCIE_MAX_PIPE_CLK];
-				EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
+			if (clkfreq != NULL)
+				clk_info->freq = clkfreq[i + EP_PCIE_MAX_PIPE_CLK];
+			EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
 					clk_info->name, clk_info->freq);
-			}
 		}
 	}
 
@@ -1734,11 +1735,10 @@ static int ep_pcie_get_resources(struct ep_pcie_dev_t *dev,
 				clk_info->hdl = NULL;
 			}
 		} else {
-			if (clkfreq != NULL) {
+			if (clkfreq != NULL)
 				clk_info->freq = clkfreq[i];
-				EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
+			EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
 					clk_info->name, clk_info->freq);
-			}
 		}
 	}
 
