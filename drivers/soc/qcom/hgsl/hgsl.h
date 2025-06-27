@@ -134,7 +134,6 @@ struct qcom_hgsl {
 	struct device *class_dev;
 
 	/* registers mapping */
-	struct reg reg_ver;
 	struct reg reg_dbidx;
 
 	struct doorbell_queue dbq[MAX_DB_QUEUE];
