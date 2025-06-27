@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/device.h>
@@ -1495,6 +1495,17 @@ static int q2spi_abort_command(struct q2spi_geni *q2spi, struct q2spi_request q2
 	Q2SPI_DBG_1(q2spi, "%s cmd:%d addr:%d flow_id:%d data_len:%d\n",
 		    __func__, q2spi_req.cmd, q2spi_req.addr,
 		    q2spi_req.flow_id, q2spi_req.data_len);
+
+	if (q2spi_req.flow_id < Q2SPI_START_TID_ID || q2spi_req.flow_id > Q2SPI_END_TID_ID) {
+		Q2SPI_ERROR(q2spi, "%s Err Invalid tid:%d\n", __func__, q2spi_req.flow_id);
+		return -EINVAL;
+	}
+
+	if (q2spi_req.data_len > 0) {
+		Q2SPI_ERROR(q2spi, "%s Invalid data_len:%d\n", __func__, q2spi_req.data_len);
+		return -EINVAL;
+	}
+
 	q2spi_pkt = q2spi_alloc_q2spi_pkt(q2spi, __LINE__);
 	if (!q2spi_pkt)
 		return -ENOMEM;
@@ -1530,6 +1541,17 @@ static int q2spi_soft_reset(struct q2spi_geni *q2spi, struct q2spi_request q2spi
 	Q2SPI_DBG_1(q2spi, "%s cmd:%d addr:%d flow_id:%d data_len:%d\n",
 		    __func__, q2spi_req.cmd, q2spi_req.addr,
 		    q2spi_req.flow_id, q2spi_req.data_len);
+
+	if (q2spi_req.flow_id < Q2SPI_START_TID_ID || q2spi_req.flow_id > Q2SPI_END_TID_ID) {
+		Q2SPI_ERROR(q2spi, "%s Err Invalid tid:%d\n", __func__, q2spi_req.flow_id);
+		return -EINVAL;
+	}
+
+	if (q2spi_req.data_len > 0) {
+		Q2SPI_ERROR(q2spi, "%s Invalid data_len:%d\n", __func__, q2spi_req.data_len);
+		return -EINVAL;
+	}
+
 	q2spi_pkt = q2spi_alloc_q2spi_pkt(q2spi, __LINE__);
 	if (!q2spi_pkt)
 		return -ENOMEM;
