@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/*Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.*/
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 #ifndef	_DWMAC_QCOM_ETHQOS_H
 #define	_DWMAC_QCOM_ETHQOS_H
 
@@ -113,7 +113,7 @@ struct ethqos_emac_por {
 };
 
 struct ethqos_emac_driver_data {
-	struct ethqos_emac_por *por;
+	const struct ethqos_emac_por *por;
 	unsigned int num_por;
 	struct dwxgmac_addrs dwxgmac_addrs;
 	u32 dma_addr_width;
