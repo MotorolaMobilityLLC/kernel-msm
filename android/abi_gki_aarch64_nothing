@@ -74,6 +74,7 @@
   fs_param_is_string
   fs_param_is_u32
   __fs_parse
+  fs_umode_to_dtype
   generic_block_bmap
   generic_fh_to_dentry
   generic_fh_to_parent
