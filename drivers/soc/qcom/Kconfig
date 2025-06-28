@@ -1306,4 +1306,24 @@ config QCOM_SC_TCM_MEM
 	  PAGE_SIZE bytes.
 
           If not sure, say N.
+
+config QCOM_HIB_SEC_KEY
+	tristate "SOC supports Qcom Hib Secure Key"
+	depends on HIBERNATION
+	help
+	  SOC supports Qcom Secure Kernel Key
+	  Enable support for Qualcomm Secure Kernel Key feature.
+	  Used for secure key handling during hibernation resume.
+	  Requires hibernation to be enabled in the kernel.
+	  If not sure, say N.
+
+config QCOM_KERNEL_BASED_RESTORE
+	tristate "Denotes Kernel based restore"
+	depends on HIBERNATION
+	help
+	  Select if qcom chipsets are equipped with Kernel based restore.
+	  Kernel assists in restoring system state after hibernation.
+	  Requires hibernation support in the kernel.
+	  If not sure, say N.
+
 endmenu
