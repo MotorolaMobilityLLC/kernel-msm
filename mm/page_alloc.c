@@ -4438,8 +4438,15 @@ restart:
 	if (alloc_flags & ALLOC_KSWAPD)
 		wake_all_kswapds(order, gfp_mask, ac);
 
-	if (can_direct_reclaim && !direct_reclaim_retries && !(current->flags & PF_MEMALLOC))
+	if (can_direct_reclaim && !direct_reclaim_retries && !(current->flags & PF_MEMALLOC)) {
+		/*
+		 * The trace_android_vh_alloc_pages_adjust_wmark() has been deprecated
+		 * because it cannot be used in a CPU offline or non-atomic context,
+		 * please use trace_android_rvh_alloc_pages_adjust_wmark().
+		 */
 		trace_android_vh_alloc_pages_adjust_wmark(gfp_mask, order, &alloc_flags);
+		trace_android_rvh_alloc_pages_adjust_wmark(gfp_mask, order, &alloc_flags);
+	}
 
 	/*
 	 * The adjusted alloc_flags might result in immediate success, so try
@@ -4587,7 +4594,14 @@ retry:
 			     !(gfp_mask & __GFP_RETRY_MAYFAIL)))
 		goto nopage;
 
+	/*
+	 * The trace_android_vh_alloc_pages_reset_wmark() has been deprecated
+	 * because it cannot be used in a CPU offline or non-atomic context,
+	 * please use trace_android_rvh_alloc_pages_reset_wmark().
+	 */
 	trace_android_vh_alloc_pages_reset_wmark(gfp_mask, order,
+		&alloc_flags, &did_some_progress, &no_progress_loops, direct_reclaim_retries);
+	trace_android_rvh_alloc_pages_reset_wmark(gfp_mask, order,
 		&alloc_flags, &did_some_progress, &no_progress_loops, direct_reclaim_retries);
 
 	if (should_reclaim_retry(gfp_mask, order, ac, alloc_flags,
