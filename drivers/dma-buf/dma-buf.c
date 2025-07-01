@@ -27,6 +27,10 @@
 #include <linux/mm.h>
 #include <linux/mount.h>
 #include <linux/pseudo_fs.h>
+
+#ifndef __GENKSYMS__
+#include <trace/events/kmem.h>
+#endif
 #include <trace/hooks/dmabuf.h>
 
 #include <uapi/linux/dma-buf.h>
@@ -308,6 +312,7 @@ static void add_task_dmabuf_record(struct task_dma_buf_info *dmabuf_info,
 	lockdep_assert_held(&dmabuf_info->lock);
 
 	dmabuf_info->rss += dmabuf->size;
+	trace_dmabuf_rss_stat(dmabuf_info->rss, dmabuf->size, dmabuf);
 	/*
 	 * dmabuf_info->lock protects against concurrent writers, so no
 	 * worries about stale rss_hwm between the read and write, and we don't
@@ -401,6 +406,7 @@ void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_struct *task)
 		free_task_dmabuf_record(rec);
 		dmabuf_info->dmabuf_count--;
 		dmabuf_info->rss -= dmabuf->size;
+		trace_dmabuf_rss_stat(dmabuf_info->rss, -dmabuf->size, dmabuf);
 		atomic64_dec(&get_dmabuf_ext(dmabuf)->nr_task_refs);
 	}
 	spin_unlock(&dmabuf_info->lock);
