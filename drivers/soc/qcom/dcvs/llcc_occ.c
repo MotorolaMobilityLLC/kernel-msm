@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/debugfs.h>
@@ -19,6 +19,7 @@
 
 #define SAMPLE_MS	10
 #define DDR_OUT_BUF_MAGIC	(0xDD4)
+#define DEFAULT_MAX_MASTERS 3
 
 enum cmd {
 	LLCC_OCC_START_PROFILING = 1,
@@ -43,10 +44,12 @@ enum llcc_occ_masters {
 	CPU = 0,
 	GPU,
 	NSP,
-	MAX_MASTER,
+	PCIE,
+	MAX_MASTERS,
 };
 
-static char *master_names[MAX_MASTER] = {"CPU", "GPU", "NSP"};
+static u32 max_masters = DEFAULT_MAX_MASTERS;
+static char *master_names[MAX_MASTERS] = {"CPU", "GPU", "NSP", "PCIE"};
 
 struct llcc_occ_start_req {
 	u32		cmd_id;
@@ -83,7 +86,7 @@ struct llcc_cmd_buf {
 } __packed;
 
 struct llcc_occ_data {
-	struct	llcc_occ_buf	master_buf[MAX_MASTER];
+	struct	llcc_occ_buf	master_buf[MAX_MASTERS];
 	enum	error		err;
 	u16			magic;
 	u64			qtime;
@@ -114,7 +117,7 @@ struct master_data {
 	char			buf[PAGE_SIZE];
 };
 
-static struct master_data mdata[MAX_MASTER];
+static struct master_data mdata[MAX_MASTERS];
 static struct dentry *llcc_occ_dir;
 static struct llcc_occ_dev_data *llcc_occ;
 
@@ -132,7 +135,7 @@ static ssize_t get_last_samples(struct file *file, char __user *user_buf,
 	}
 
 	master_name = file->private_data;
-	for (m_idx = 0; m_idx < MAX_MASTER ; m_idx++) {
+	for (m_idx = 0; m_idx < max_masters ; m_idx++) {
 		if (!strcasecmp(master_names[m_idx], master_name))
 			break;
 	}
@@ -268,14 +271,14 @@ static int set_mon_enabled(void *data, u64 val)
 	int i, ret = 0;
 
 	mutex_lock(&llcc_occ->lock);
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
 	if (enable == (llcc_occ->active_masters & BIT(i)))
 		goto unlock;
 	count = hweight32(llcc_occ->active_masters);
-	if (count >= MAX_MASTER && enable) {
+	if (count >= max_masters && enable) {
 		pr_err("Max masters already enabled\n");
 		ret = -EINVAL;
 		goto unlock;
@@ -300,7 +303,7 @@ static int get_mon_enabled(void *data, u64 *val)
 
 	mutex_lock(&llcc_occ->lock);
 
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
@@ -360,9 +363,9 @@ static void llcc_occ_update_work(struct work_struct *work)
 	}
 
 	mutex_lock(&llcc_occ->lock);
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		m = llcc_occ->data->master_buf[i].master_id;
-		if (m >= MAX_MASTER)
+		if (m >= max_masters)
 			continue;
 		mdata[m].occ_data[mdata[m].curr_idx].ts = llcc_occ->data->qtime;
 		mdata[m].occ_data[mdata[m].curr_idx].max_cap =
@@ -373,7 +376,7 @@ static void llcc_occ_update_work(struct work_struct *work)
 		mdata[m].curr_idx = (mdata[m].curr_idx + 1) % llcc_occ->max_samples;
 	}
 
-	for (i = 0; i < MAX_MASTER ; i++) {
+	for (i = 0; i < max_masters ; i++) {
 		enable = (llcc_occ->active_masters & BIT(i));
 		if (enable)
 			trace_llcc_occupancy_last_sample(llcc_occ->data->qtime, i,
@@ -408,7 +411,7 @@ static int llcc_occ_create_fs_entries(void)
 		return PTR_ERR(llcc_occ_dir);
 	}
 
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		master_dir = debugfs_create_dir(master_names[i], llcc_occ_dir);
 		if (IS_ERR(master_dir)) {
 			pr_err("Debugfs directory creation failed for %s\n", master_names[i]);
@@ -442,21 +445,48 @@ error_cleanup:
 
 static int __init qcom_llcc_occ_init(void)
 {
-	int ret, i, j;
+	int i, j, ret = 0;
+	u32 temp;
+	struct device_node *np;
 
 	llcc_occ =  kzalloc(sizeof(*llcc_occ), GFP_KERNEL);
+
 	if (!llcc_occ)
 		return -ENOMEM;
 
 	llcc_occ->data = kzalloc(sizeof(*llcc_occ->data), GFP_KERNEL);
+
 	if (!llcc_occ->data) {
 		kfree(llcc_occ);
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < MAX_MASTER; i++)
+	np = of_find_node_by_path("/soc/qcom-dcvs-prof");
+
+	if (!np) {
+		pr_info("llcc_occ: Device node not found, defaulting max_masters to %u\n",
+				max_masters);
+	} else {
+		if (of_property_read_u32(np, "max_masters", &temp)) {
+			pr_info("llcc_occ: Failed to read max_masters, defaulting max_masters to %u\n",
+					max_masters);
+		} else {
+			if (temp > 4 || temp < 1) {
+				pr_err("llcc_occ: Invalid max_masters value initialized %u (must be 1-4)\n",
+						temp);
+				of_node_put(np);
+				goto err;
+			}
+			max_masters = temp;
+		}
+		of_node_put(np);
+	}
+
+	for (i = 0; i < max_masters; i++)
 		llcc_occ->available_masters |= BIT(i);
+
 	ret =  llcc_occ_create_fs_entries();
+
 	if (ret < 0)
 		goto err;
 	/*
@@ -466,7 +496,8 @@ static int __init qcom_llcc_occ_init(void)
 	 */
 	llcc_occ->size_of_line = sizeof(struct occ_sample) * 2 + 2;
 	llcc_occ->max_samples = PAGE_SIZE / llcc_occ->size_of_line;
-	for (i = 0; i < MAX_MASTER; i++) {
+
+	for (i = 0; i < max_masters; i++) {
 		mdata[i].occ_data = kcalloc(llcc_occ->max_samples,
 				sizeof(struct occ_sample), GFP_KERNEL);
 		if (!mdata[i].occ_data) {
