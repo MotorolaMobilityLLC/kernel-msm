@@ -1919,4 +1919,9 @@ static inline void get_entry_instr(enum trace_type type) {}
 static inline void update_instruction_data(enum trace_type type) {}
 #endif
 
+#if IS_ENABLED(CONFIG_SCHED_WALT_MIDPOINT)
+extern void midpoint_init(void);
+#else
+static inline void midpoint_init(void) {}
+#endif
 #endif /* _WALT_H */

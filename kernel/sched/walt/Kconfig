@@ -56,4 +56,10 @@ config SCHED_WALT_NR_CPUS
 	  This feature allows the configuration of the number of CPUs
 	  in the system that need to be managed by WALT.
 
+config SCHED_WALT_MIDPOINT
+	tristate "sched walt midpoint"
+	depends on SCHED_WALT
+	help
+	  This feature will have a midpoint frequency voted qos request
+	  in fmin and fmax.
 endmenu

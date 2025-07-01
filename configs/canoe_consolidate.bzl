@@ -27,4 +27,5 @@ canoe_consolidate_config = {
     "CONFIG_TORTURE_TEST": "m",
     "CONFIG_UFS_DBG": "y",
     "CONFIG_USB_LINK_LAYER_TEST": "m",
+    "CONFIG_SCHED_WALT_MIDPOINT": "m",
 }

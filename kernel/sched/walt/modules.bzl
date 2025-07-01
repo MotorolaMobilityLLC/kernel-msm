@@ -44,6 +44,7 @@ def register_modules(registry):
             "kernel/sched/walt/smart_freq.c",
             "kernel/sched/walt/walt_storage_lb.c",
             "kernel/sched/walt/mvp_locking.c",
+            "kernel/sched/walt/midpoint.c",
             "kernel/sched/walt/perf_trace_counters.h",
             "kernel/sched/walt/trace.h",
             "kernel/sched/walt/walt.h",
@@ -56,20 +57,15 @@ def register_modules(registry):
                     "kernel/sched/walt/sysctl_walt_stats.c",
                 ],
             },
+            "CONFIG_SCHED_WALT_MIDPOINT": {
+                True: [
+                    "kernel/sched/walt/midpoint.c",
+                ],
+            },
         },
         deps = [
             # do not sort
             "drivers/soc/qcom/socinfo",
             "drivers/soc/qcom/smem",
-        ],
-    )
-
-    registry.register(
-        name = "kernel/sched/walt/midpoint",
-        out = "midpoint.ko",
-        config = "m",
-        srcs = [
-            # do not sort
-            "kernel/sched/walt/midpoint.c",
         ],
     )
