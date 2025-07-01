@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/debugfs.h>
@@ -21,6 +21,7 @@
 
 #define SAMPLE_MS	10
 #define MAGIC (0x01CB)
+#define DEFAULT_MAX_MASTERS 3
 
 #ifndef UINT32_C
 #define UINT32_C(x) ((uint32_t)(x))
@@ -33,13 +34,6 @@ enum cmd {
 	MEM_LAT_LAST_ID = 0x7FFFFFFF
 };
 
-#define CPU_BIT_SHIFT 0
-#define GPU_BIT_SHIFT 1
-#define NSP_BIT_SHIFT 2
-
-#define CPU_PROFILING_ENABLED	BIT(CPU_BIT_SHIFT)
-#define GPU_PROFILING_ENABLED	BIT(GPU_BIT_SHIFT)
-#define NSP_PROFILING_ENABLED	BIT(NPU_BIT_SHIFT)
 #define MEM_LATENCY_FEATURE_ID 2106
 
 enum error {
@@ -59,14 +53,15 @@ enum bus_lat_masters {
 	CPU = 0,
 	GPU,
 	NSP,
-	MAX_MASTER,
+	PCIE,
+	MAX_MASTERS,
 };
 
 struct mem_lat_data {
 	u64	qtime;
 	enum	error	err;
 	u16	magic;
-	u32	histbin[MAX_MASTER][8];
+	u32	histbin[MAX_MASTERS][8];
 } __packed;
 
 
@@ -126,12 +121,13 @@ struct bus_lat_dev_data {
 	u32			available_masters;
 	struct mutex		lock;
 	struct mem_lat_data	*data;
-	struct master_data	mdata[MAX_MASTER];
+	struct master_data	mdata[MAX_MASTERS];
 };
 
 static struct dentry *bus_lat_dir;
-static char *master_names[MAX_MASTER] = {"CPU", "GPU", "NSP"};
+static char *master_names[MAX_MASTERS] = {"CPU", "GPU", "NSP", "PCIE"};
 static struct bus_lat_dev_data *bus_lat;
+static u32 max_masters = DEFAULT_MAX_MASTERS;
 
 static ssize_t get_last_samples(struct file *file, char __user *user_buf,
 			     size_t count, loff_t *ppos)
@@ -146,7 +142,7 @@ static ssize_t get_last_samples(struct file *file, char __user *user_buf,
 	}
 
 	master_name = file->private_data;
-	for (m_idx = 0; m_idx < MAX_MASTER; m_idx++) {
+	for (m_idx = 0; m_idx < max_masters; m_idx++) {
 		if (!strcasecmp(master_names[m_idx], master_name))
 			break;
 	}
@@ -324,7 +320,7 @@ static int set_mon_enabled(void *data, u64 val)
 
 	mutex_lock(&bus_lat->lock);
 
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
@@ -334,7 +330,7 @@ static int set_mon_enabled(void *data, u64 val)
 
 	count = hweight32(bus_lat->active_masters);
 
-	if (count >= MAX_MASTER && enable) {
+	if (count >= max_masters && enable) {
 		pr_err("Max masters already enabled\n");
 		ret = -EINVAL;
 		goto unlock;
@@ -368,7 +364,7 @@ static int get_mon_enabled(void *data, u64 *val)
 
 	mutex_lock(&bus_lat->lock);
 
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
@@ -435,7 +431,7 @@ static void bus_lat_update_work(struct work_struct *work)
 	 * For all the max masters update the unread samples and populate in
 	 * the memory latency profiling data structure.
 	 */
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		bus_lat->mdata[i].lat_data[bus_lat->mdata[i].curr_idx].ts = bus_lat->data->qtime;
 		for (j = 0; j < 8; j++)
 			bus_lat->mdata[i].lat_data[bus_lat->mdata[i].curr_idx].histbin[j]
@@ -446,7 +442,7 @@ static void bus_lat_update_work(struct work_struct *work)
 					(bus_lat->mdata[i].curr_idx + 1) % bus_lat->max_samples;
 	}
 
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		if (!(bus_lat->active_masters & BIT(i)))
 			continue;
 		trace_memory_lat_last_sample(bus_lat->data->qtime, i,
@@ -481,7 +477,7 @@ static int bus_lat_create_fs_entries(void)
 		return PTR_ERR(bus_lat_dir);
 	}
 
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		master_dir = debugfs_create_dir(master_names[i], bus_lat_dir);
 		if (IS_ERR(master_dir)) {
 			pr_err("Debugfs directory creation failed for %s\n", master_names[i]);
@@ -515,6 +511,8 @@ cleanup:
 static int __init qcom_bus_lat_init(void)
 {
 	int i, j, ret = 0;
+	struct device_node *np;
+	u32 temp;
 
 	bus_lat =  kzalloc(sizeof(*bus_lat), GFP_KERNEL);
 
@@ -527,7 +525,28 @@ static int __init qcom_bus_lat_init(void)
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < MAX_MASTER; i++)
+	np = of_find_node_by_path("/soc/qcom-dcvs-prof");
+
+	if (!np) {
+		pr_debug("mem_lat_prof: Device node not found, defaulting max_masters to %u\n",
+				max_masters);
+	} else {
+		if (of_property_read_u32(np, "max_masters", &temp)) {
+			pr_debug("mem_lat_prof: Failed to read max_masters, defaulting max_masters to %u\n",
+				max_masters);
+		} else {
+			if (temp > MAX_MASTERS || temp < 1) {
+				pr_err("mem_lat_prof: Invalid max_masters value initialized %u (must be 1-%d)\n",
+						temp, MAX_MASTERS);
+				of_node_put(np);
+				goto err;
+			}
+			max_masters = temp;
+		}
+		of_node_put(np);
+	}
+
+	for (i = 0; i < max_masters; i++)
 		bus_lat->available_masters |= BIT(i);
 
 	ret =  bus_lat_create_fs_entries();
@@ -541,7 +560,7 @@ static int __init qcom_bus_lat_init(void)
 	bus_lat->size_of_line = sizeof(struct lat_sample) * 2 + 9;
 	bus_lat->max_samples = PAGE_SIZE / bus_lat->size_of_line;
 
-	for (i = 0; i < MAX_MASTER ; i++) {
+	for (i = 0; i < max_masters; i++) {
 		bus_lat->mdata[i].lat_data = kcalloc(bus_lat->max_samples,
 				sizeof(struct lat_sample), GFP_KERNEL);
 		if (!bus_lat->mdata[i].lat_data) {
