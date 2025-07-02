@@ -482,7 +482,10 @@ static bool tcp_stream_is_readable(struct sock *sk, int target)
 {
 	if (tcp_epollin_ready(sk, target))
 		return true;
-	return sk_is_readable(sk);
+
+	if (sk->sk_prot->stream_memory_read)
+		return sk->sk_prot->stream_memory_read(sk);
+	return false;
 }
 
 /*
