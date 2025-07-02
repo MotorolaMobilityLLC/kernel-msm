@@ -7114,7 +7114,7 @@ pte_t *huge_pmd_share(struct mm_struct *mm, struct vm_area_struct *vma,
 			spte = huge_pte_offset(svma->vm_mm, saddr,
 					       vma_mmu_pagesize(svma));
 			if (spte) {
-				atomic_inc(&virt_to_page(spte)->pt_share_count);
+				get_page(virt_to_page(spte));
 				break;
 			}
 		}
@@ -7129,7 +7129,7 @@ pte_t *huge_pmd_share(struct mm_struct *mm, struct vm_area_struct *vma,
 				(pmd_t *)((unsigned long)spte & PAGE_MASK));
 		mm_inc_nr_pmds(mm);
 	} else {
-		atomic_dec(&virt_to_page(spte)->pt_share_count);
+		put_page(virt_to_page(spte));
 	}
 	spin_unlock(ptl);
 out:
@@ -7141,6 +7141,10 @@ out:
 /*
  * unmap huge page backed by shared pte.
  *
+ * Hugetlb pte page is ref counted at the time of mapping.  If pte is shared
+ * indicated by page_count > 1, unmap is achieved by clearing pud and
+ * decrementing the ref count. If count == 1, the pte page is not shared.
+ *
  * Called with page table lock held.
  *
  * returns: 1 successfully unmapped a shared pte page
@@ -7149,20 +7153,18 @@ out:
 int huge_pmd_unshare(struct mm_struct *mm, struct vm_area_struct *vma,
 					unsigned long addr, pte_t *ptep)
 {
-	unsigned long sz = huge_page_size(hstate_vma(vma));
 	pgd_t *pgd = pgd_offset(mm, addr);
 	p4d_t *p4d = p4d_offset(pgd, addr);
 	pud_t *pud = pud_offset(p4d, addr);
 
 	i_mmap_assert_write_locked(vma->vm_file->f_mapping);
 	hugetlb_vma_assert_locked(vma);
-	if (sz != PMD_SIZE)
-		return 0;
-	if (!atomic_read(&virt_to_page(ptep)->pt_share_count))
+	BUG_ON(page_count(virt_to_page(ptep)) == 0);
+	if (page_count(virt_to_page(ptep)) == 1)
 		return 0;
 
 	pud_clear(pud);
-	atomic_dec(&virt_to_page(ptep)->pt_share_count);
+	put_page(virt_to_page(ptep));
 	mm_dec_nr_pmds(mm);
 	return 1;
 }
