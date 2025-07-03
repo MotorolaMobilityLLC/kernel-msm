@@ -535,6 +535,11 @@ struct dma_buf {
 	} *sysfs_entry;
 #endif
 
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
+};
+
+struct dma_buf_ext {
 	/**
 	 * @num_unique_refs:
 	 *
@@ -542,9 +547,17 @@ struct dma_buf {
 	 */
 	atomic64_t num_unique_refs;
 
-	ANDROID_KABI_RESERVE(1);
-	ANDROID_KABI_RESERVE(2);
+	/*
+	 * dma_buf can have a reservation object after it, so keep this member
+	 * at the end of this structure.
+	 */
+	struct dma_buf dmabuf;
 };
+
+static inline struct dma_buf_ext *get_dmabuf_ext(struct dma_buf *dmabuf)
+{
+	return container_of(dmabuf, struct dma_buf_ext, dmabuf);
+}
 
 /**
  * struct dma_buf_attach_ops - importer operations for an attachment
