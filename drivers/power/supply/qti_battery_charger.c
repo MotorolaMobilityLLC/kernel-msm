@@ -2013,6 +2013,7 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 		goto release_fw;
 	}
 
+	wls_fw_updating = true;
 	version = wireless_fw_version_get(bcdev, fw->data, force);
 
 	pr_err("FW size: %zu version: %#x\n", fw->size, version);
@@ -2030,7 +2031,6 @@ static int wireless_fw_update(struct battery_chg_dev *bcdev, bool force)
 
 	/* Wait for IDT to be setup by charger firmware */
 	msleep(WLS_FW_PREPARE_TIME_MS);
-	wls_fw_updating = true;
 
 	reinit_completion(&bcdev->fw_update_ack);
 	rc = wireless_fw_send_firmware(bcdev, fw);
@@ -2195,6 +2195,9 @@ static ssize_t wireless_fw_force_update_store(const struct class *c,
 	if (kstrtobool(buf, &val) || !val)
 		return -EINVAL;
 
+	if (wls_fw_updating)
+		return -EBUSY;
+
 	rc = wireless_fw_update(bcdev, true);
 	if (rc < 0)
 		return rc;
@@ -2214,6 +2217,9 @@ static ssize_t wireless_fw_update_store(const struct class *c,
 
 	if (kstrtobool(buf, &val) || !val)
 		return -EINVAL;
+
+	if (wls_fw_updating)
+		return -EBUSY;
 
 	do{
 		rc = wireless_fw_update(bcdev, false);
