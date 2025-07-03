@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 /*
  * MSM PCIe endpoint core driver.
  */
@@ -113,7 +113,7 @@ static struct ep_pcie_clk_info_t
 
 static struct ep_pcie_clk_info_t
 	ep_pcie_pipe_clk_info[EP_PCIE_MAX_PIPE_CLK] = {
-	{NULL, "pcie_pipe_clk", 62500000, true},
+	{NULL, "pcie_pipe_clk", 0, true},
 };
 
 static struct ep_pcie_reset_info_t
@@ -1581,10 +1581,13 @@ static int ep_pcie_get_resources(struct ep_pcie_dev_t *dev,
 		ret = of_property_read_u32_array(
 			(&pdev->dev)->of_node,
 			"max-clock-frequency-hz", clkfreq, cnt);
-		if (ret)
+		if (ret) {
 			EP_PCIE_DBG2(dev,
 				"PCIe V%d: cannot get max-clock-frequency-hz property from DT:%d\n",
 				dev->rev, ret);
+			kfree(clkfreq);
+			clkfreq = NULL;
+		}
 	}
 
 	for (i = 0; i < EP_PCIE_MAX_VREG; i++) {
@@ -1707,12 +1710,10 @@ static int ep_pcie_get_resources(struct ep_pcie_dev_t *dev,
 				clk_info->hdl = NULL;
 			}
 		} else {
-			if (clkfreq != NULL) {
-				clk_info->freq = clkfreq[i +
-					EP_PCIE_MAX_PIPE_CLK];
-				EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
+			if (clkfreq != NULL)
+				clk_info->freq = clkfreq[i + EP_PCIE_MAX_PIPE_CLK];
+			EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
 					clk_info->name, clk_info->freq);
-			}
 		}
 	}
 
@@ -1734,11 +1735,10 @@ static int ep_pcie_get_resources(struct ep_pcie_dev_t *dev,
 				clk_info->hdl = NULL;
 			}
 		} else {
-			if (clkfreq != NULL) {
+			if (clkfreq != NULL)
 				clk_info->freq = clkfreq[i];
-				EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
+			EP_PCIE_DBG(dev, "Freq of Clock %s is:%d\n",
 					clk_info->name, clk_info->freq);
-			}
 		}
 	}
 
@@ -4563,7 +4563,7 @@ static int ep_pcie_probe(struct platform_device *pdev)
 	ep_pcie_dev.use_iatu_msi = of_property_read_bool((&pdev->dev)->of_node,
 				"qcom,pcie-use-iatu-msi");
 	EP_PCIE_DBG(&ep_pcie_dev,
-		"PCIe V%d: pcie edma is %s enabled\n",
+		"PCIe V%d: pcie use-iatu-msi is %s enabled\n",
 		ep_pcie_dev.rev, ep_pcie_dev.use_iatu_msi ? "" : "not");
 
 	ret = of_property_read_u32((&pdev->dev)->of_node,
@@ -4753,6 +4753,8 @@ static struct platform_driver ep_pcie_driver = {
 	},
 };
 
+/* TODO: Support these with module_params */
+#ifndef MODULE
 static int __init ep_pcie_hot_reset(char *str)
 {
 	if (!strcmp(str, "disable_hot_reset"))
@@ -4779,6 +4781,7 @@ static int __init ep_pcie_l1_disable(char *str)
 	return 0;
 }
 early_param("ep_pcie_l1_cfg", ep_pcie_l1_disable);
+#endif
 
 static int __init ep_pcie_init(void)
 {
