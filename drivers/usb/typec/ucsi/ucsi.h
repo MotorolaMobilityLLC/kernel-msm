@@ -298,7 +298,7 @@ struct ucsi_debugfs_entry {
 		u64 low;
 		u64 high;
 	} response;
-	int status;
+	u32 status;
 	struct dentry *dentry;
 };
 
