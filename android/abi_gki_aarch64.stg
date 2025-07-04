@@ -321954,6 +321954,13 @@ function {
   parameter_id: 0x4585663f
 }
 function {
+  id: 0x5e21336c
+  return_type_id: 0x2170d06d
+  parameter_id: 0x0a134144
+  parameter_id: 0x33756485
+  parameter_id: 0xae60496e
+}
+function {
   id: 0x5e29431a
   return_type_id: 0x295c7202
   parameter_id: 0x358ff5b7
@@ -434552,6 +434559,15 @@ elf_symbol {
   full_name: "vm_node_stat"
 }
 elf_symbol {
+  id: 0x4e194253
+  name: "vm_normal_folio_pmd"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xa737dbaa
+  type_id: 0x5e21336c
+  full_name: "vm_normal_folio_pmd"
+}
+elf_symbol {
   id: 0x2570ceae
   name: "vm_normal_page"
   is_defined: true
@@ -445161,6 +445177,7 @@ interface {
   symbol_id: 0xdc09fb10
   symbol_id: 0x5849ff8e
   symbol_id: 0xaf85c216
+  symbol_id: 0x4e194253
   symbol_id: 0x2570ceae
   symbol_id: 0xacc76406
   symbol_id: 0xef2c49d1
