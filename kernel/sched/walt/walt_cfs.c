@@ -1514,11 +1514,11 @@ static void walt_cfs_check_preempt_wakeup(void *unused, struct rq *rq, struct ta
 	walt_cfs_account_mvp_runtime(rq, c);
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	if (likely(moto_sched_enabled))
-		resched = (wrq->mvp_tasks.next != &wts_c->mvp_list) && (wrq->mvp_tasks.next == &wts_p->mvp_list); // Moto wangwang: fix preemption issue.
+		resched = (skip_mvp != wrq->skip_mvp) || ((wrq->mvp_tasks.next != &wts_c->mvp_list) && (wrq->mvp_tasks.next == &wts_p->mvp_list)); // Moto wangwang: fix preemption issue.;
 	else
-		resched = (wrq->mvp_tasks.next != &wts_c->mvp_list);
+		resched = (skip_mvp != wrq->skip_mvp) || (wrq->mvp_tasks.next != &wts_c->mvp_list);
 #else
-	resched = (wrq->mvp_tasks.next != &wts_c->mvp_list);
+	resched = (skip_mvp != wrq->skip_mvp) || (wrq->mvp_tasks.next != &wts_c->mvp_list);
 #endif
 
 	/*
@@ -1581,9 +1581,6 @@ static void walt_cfs_replace_next_task_fair(void *unused, struct rq *rq, struct 
 
 	/* RQ is in MVP throttled state*/
 	if (wrq->skip_mvp)
-		return;
-	/* We don't have MVP tasks queued */
-	if (list_empty(&wrq->mvp_tasks))
 		return;
 
 	if (list_empty(&wrq->mvp_tasks)) {
