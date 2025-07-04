@@ -361786,6 +361786,15 @@ elf_symbol {
   full_name: "class_for_each_device"
 }
 elf_symbol {
+  id: 0x0a0b1270
+  name: "class_interface_register"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x240af7ce
+  type_id: 0x9d725f0c
+  full_name: "class_interface_register"
+}
+elf_symbol {
   id: 0xb29100f2
   name: "class_interface_unregister"
   is_defined: true
@@ -421307,6 +421316,7 @@ interface {
   symbol_id: 0x37cd3bf4
   symbol_id: 0xe062f201
   symbol_id: 0x9f11f727
+  symbol_id: 0x0a0b1270
   symbol_id: 0xb29100f2
   symbol_id: 0xef9eb644
   symbol_id: 0xf91cb171
