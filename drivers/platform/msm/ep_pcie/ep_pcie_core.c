@@ -1880,7 +1880,13 @@ static void ep_pcie_enumeration_complete(struct ep_pcie_dev_t *dev)
 				dev->rev);
 		goto done;
 	}
+
 	dev->enumerated = true;
+
+	spin_unlock_irqrestore(&dev->isr_lock, irqsave_flags);
+	qcom_edma_init(&dev->pdev->dev);
+	spin_lock_irqsave(&dev->isr_lock, irqsave_flags);
+
 	dev->link_status = EP_PCIE_LINK_ENABLED;
 
 	if (dev->gpio[EP_PCIE_GPIO_MDM2AP].num) {
@@ -4619,7 +4625,6 @@ static int ep_pcie_probe(struct platform_device *pdev)
 		EP_PCIE_ERR(&ep_pcie_dev,
 			"PCIe V%d: failed to init GPIO\n",
 			ep_pcie_dev.rev);
-		ep_pcie_release_resources(&ep_pcie_dev);
 		goto gpio_failure;
 	}
 
@@ -4628,8 +4633,6 @@ static int ep_pcie_probe(struct platform_device *pdev)
 		EP_PCIE_ERR(&ep_pcie_dev,
 			"PCIe V%d: failed to init IRQ\n",
 			ep_pcie_dev.rev);
-		ep_pcie_release_resources(&ep_pcie_dev);
-		ep_pcie_gpio_deinit(&ep_pcie_dev);
 		goto irq_failure;
 	}
 
@@ -4667,7 +4670,6 @@ static int ep_pcie_probe(struct platform_device *pdev)
 	atomic_notifier_chain_register(&panic_notifier_list,
 				       &ep_pcie_core_panic_notifier);
 
-	qcom_edma_init(&pdev->dev);
 
 	if (!ep_pcie_dev.perst_enum)
 		enable_irq(ep_pcie_dev.irq[EP_PCIE_INT_GLOBAL].num);
