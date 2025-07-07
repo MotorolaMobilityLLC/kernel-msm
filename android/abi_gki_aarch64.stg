@@ -393189,6 +393189,15 @@ elf_symbol {
   full_name: "folio_clear_dirty_for_io"
 }
 elf_symbol {
+  id: 0x1ac8aa52
+  name: "folio_deactivate"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x7abc9b3a
+  type_id: 0x18c46588
+  full_name: "folio_deactivate"
+}
+elf_symbol {
   id: 0xf83588d6
   name: "folio_end_private_2"
   is_defined: true
@@ -393214,6 +393223,15 @@ elf_symbol {
   crc: 0x9fe3eca5
   type_id: 0x637004ab
   full_name: "folio_mapping"
+}
+elf_symbol {
+  id: 0xd2e101fd
+  name: "folio_mark_accessed"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x74311ee4
+  type_id: 0x18c46588
+  full_name: "folio_mark_accessed"
 }
 elf_symbol {
   id: 0xcef0ca54
@@ -440717,9 +440735,11 @@ interface {
   symbol_id: 0x3c7c2553
   symbol_id: 0x06c58be7
   symbol_id: 0xab55569c
+  symbol_id: 0x1ac8aa52
   symbol_id: 0xf83588d6
   symbol_id: 0xa1c5bd8d
   symbol_id: 0x159a69a3
+  symbol_id: 0xd2e101fd
   symbol_id: 0xcef0ca54
   symbol_id: 0x39840ab2
   symbol_id: 0xc05a6c7d
