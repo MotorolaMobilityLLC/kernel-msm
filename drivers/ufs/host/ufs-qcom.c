@@ -4001,6 +4001,9 @@ static void ufs_qcom_exit(struct ufs_hba *hba)
 	ufs_qcom_disable_lane_clks(host);
 	ufs_qcom_phy_power_off(hba);
 	phy_exit(host->generic_phy);
+	if (msm_minidump_enabled())
+		atomic_notifier_chain_unregister(&panic_notifier_list,
+				 &host->ufs_qcom_panic_nb);
 }
 
 static int ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(struct ufs_hba *hba,
