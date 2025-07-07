@@ -183,7 +183,6 @@ def define_seraph():
         "drivers/tty/hvc/hvc_gunyah.ko",
         "drivers/tty/serial/msm_geni_serial.ko",
         "drivers/usb/dwc3/dwc3-msm.ko",
-        "drivers/usb/gadget/function/usb_f_ccid.ko",
         "drivers/usb/gadget/function/usb_f_cdev.ko",
         "drivers/usb/gadget/function/usb_f_gsi.ko",
         "drivers/usb/gadget/function/usb_f_qdss.ko",
