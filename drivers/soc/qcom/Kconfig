@@ -26,6 +26,13 @@ config MONA_DTB
 	help
 		Only include Motorola MOna device specific device tree
 
+config LAMY_DTB
+        depends on MMI_DEVICE_DTBS
+        default n
+        bool "Motorola Mobility Lamy Device DTBs"
+        help
+                Only include Motorola Lamy device specific device tree
+
 
 config MONAI_DTB
 	depends on MMI_DEVICE_DTBS
