@@ -197,6 +197,10 @@
   __tracepoint_android_rvh_dequeue_task_fair
   __tracepoint_android_rvh_entity_tick
 
+# required by mi_damon.ko
+  folio_deactivate
+  folio_mark_accessed
+
 #required by cpq.ko
   elv_rb_former_request
   elv_rb_latter_request
