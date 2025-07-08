@@ -364,6 +364,7 @@
   drm_connector_attach_encoder
   drm_connector_cleanup
   drm_connector_has_possible_encoder
+  drm_connector_helper_hpd_irq_event
   drm_connector_init
   drm_connector_init_with_ddc
   drm_connector_list_iter_begin

@@ -341539,6 +341539,11 @@ function {
   parameter_id: 0x6d7f5ff6
 }
 function {
+  id: 0xf2c9329f
+  return_type_id: 0x6d7f5ff6
+  parameter_id: 0x31b5a66f
+}
+function {
   id: 0xf2d19814
   return_type_id: 0x26e55184
   parameter_id: 0x3e10b518
@@ -371572,6 +371577,15 @@ elf_symbol {
   crc: 0x2e4b4a64
   type_id: 0xf272e262
   full_name: "drm_connector_has_possible_encoder"
+}
+elf_symbol {
+  id: 0x141e61cb
+  name: "drm_connector_helper_hpd_irq_event"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xe398945d
+  type_id: 0xf2c9329f
+  full_name: "drm_connector_helper_hpd_irq_event"
 }
 elf_symbol {
   id: 0x70b7d94b
@@ -422402,6 +422416,7 @@ interface {
   symbol_id: 0xf01aa08a
   symbol_id: 0x7fe4fd87
   symbol_id: 0xf8bd92c8
+  symbol_id: 0x141e61cb
   symbol_id: 0x70b7d94b
   symbol_id: 0x3b6d3ed0
   symbol_id: 0xcda9ec73
