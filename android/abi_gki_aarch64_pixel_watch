@@ -288,6 +288,7 @@
   delayed_work_timer_fn
   destroy_workqueue
   dev_addr_mod
+  _dev_alert
   dev_alloc_name
   __dev_change_net_namespace
   dev_close
@@ -869,6 +870,7 @@
   gpiod_get_raw_value
   gpiod_get_raw_value_cansleep
   gpiod_get_value
+  gpiod_is_active_low
   gpiod_set_raw_value
   gpiod_set_value
   gpiod_set_value_cansleep
@@ -2091,6 +2093,7 @@
   tick_nohz_get_sleep_length
   timer_delete
   timer_delete_sync
+  timer_shutdown_sync
   topology_clear_scale_freq_source
   topology_update_done
   topology_update_thermal_pressure
@@ -2171,6 +2174,10 @@
   __traceiter_mmap_lock_acquire_returned
   __traceiter_mmap_lock_released
   __traceiter_mmap_lock_start_locking
+  __traceiter_rwmmio_post_read
+  __traceiter_rwmmio_post_write
+  __traceiter_rwmmio_read
+  __traceiter_rwmmio_write
   __traceiter_sched_overutilized_tp
   __traceiter_sched_switch
   __traceiter_sk_data_ready
@@ -2246,6 +2253,10 @@
   tracepoint_probe_register
   tracepoint_probe_register_prio
   tracepoint_probe_unregister
+  __tracepoint_rwmmio_post_read
+  __tracepoint_rwmmio_post_write
+  __tracepoint_rwmmio_read
+  __tracepoint_rwmmio_write
   __tracepoint_sched_overutilized_tp
   __tracepoint_sched_switch
   __tracepoint_sk_data_ready
