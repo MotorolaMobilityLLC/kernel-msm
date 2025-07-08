@@ -3397,6 +3397,39 @@ static const struct file_operations proc_dmabuf_rss_hwm_operations = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+
+static int proc_dmabuf_pss_show(struct seq_file *m, struct pid_namespace *ns,
+		     struct pid *pid, struct task_struct *task)
+{
+	struct task_dma_buf_record *rec;
+	u64 pss = 0;
+
+	if (!task->dmabuf_info) {
+		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+		return -ENOMEM;
+	}
+
+	if (!(task->flags & PF_KTHREAD)) {
+		spin_lock(&task->dmabuf_info->lock);
+		list_for_each_entry(rec, &task->dmabuf_info->dmabufs, node) {
+			s64 refs = atomic64_read(&rec->dmabuf->num_unique_refs);
+
+			if (refs <= 0) {
+				pr_err("dmabuf has <= refs %lld\n", refs);
+				continue;
+			}
+
+			pss += rec->dmabuf->size / (size_t)refs;
+		}
+		spin_unlock(&task->dmabuf_info->lock);
+
+		seq_printf(m, "%llu\n", pss);
+	} else {
+		seq_puts(m, "0\n");
+	}
+
+	return 0;
+}
 #endif
 
 /*
@@ -3525,6 +3558,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	ONE("dmabuf_rss", S_IRUGO, proc_dmabuf_rss_show),
 	REG("dmabuf_rss_hwm", S_IRUGO|S_IWUSR, proc_dmabuf_rss_hwm_operations),
+	ONE("dmabuf_pss", S_IRUGO, proc_dmabuf_pss_show),
 #endif
 };
 
