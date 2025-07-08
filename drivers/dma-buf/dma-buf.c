@@ -115,6 +115,9 @@ static void dma_buf_release(struct dentry *dentry)
 	if (dmabuf->resv == (struct dma_resv *)&dmabuf[1])
 		dma_resv_fini(dmabuf->resv);
 
+	if (atomic64_read(&dmabuf->nr_task_refs))
+		pr_alert("destroying dmabuf with non-zero task refs\n");
+
 	WARN_ON(!list_empty(&dmabuf->attachments));
 	module_put(dmabuf->owner);
 	kfree(dmabuf->name);
@@ -311,6 +314,7 @@ static void add_task_dmabuf_record(struct task_dma_buf_info *dmabuf_info,
 	if (dmabuf_info->rss > dmabuf_info->rss_hwm)
 		dmabuf_info->rss_hwm = dmabuf_info->rss;
 	trace_dmabuf_rss_stat(dmabuf_info->rss, dmabuf->size, dmabuf);
+	atomic64_inc(&dmabuf->nr_task_refs);
 }
 
 /**
@@ -379,6 +383,7 @@ void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_struct *task)
 			dmabuf_info->dmabuf_count--;
 			dmabuf_info->rss -= dmabuf->size;
 			trace_dmabuf_rss_stat(dmabuf_info->rss, -dmabuf->size, dmabuf);
+			atomic64_dec(&dmabuf->nr_task_refs);
 		} else {
 			rec = NULL;
 		}
@@ -450,6 +455,7 @@ retry:
 		to_rec->dmabuf = from_rec->dmabuf;
 		to_rec->refcnt = from_rec->refcnt;
 		list_add(&to_rec->node, &to->dmabufs);
+		atomic64_inc(&to_rec->dmabuf->nr_task_refs);
 	}
 	to->dmabuf_count = from->dmabuf_count;
 	to->rss = from->rss;
@@ -1127,6 +1133,8 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 	} else {
 		dmabuf->resv = resv;
 	}
+
+	atomic64_set(&dmabuf->nr_task_refs, 0);
 
 	file->private_data = dmabuf;
 	file->f_path.dentry->d_fsdata = dmabuf;

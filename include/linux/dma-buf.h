@@ -23,6 +23,7 @@
 #include <linux/dma-fence.h>
 #include <linux/wait.h>
 #include <linux/android_kabi.h>
+#include <linux/atomic.h>
 
 struct device;
 struct dma_buf;
@@ -530,6 +531,13 @@ struct dma_buf {
 		struct dma_buf *dmabuf;
 	} *sysfs_entry;
 #endif
+
+	/**
+	 * @nr_task_refs:
+	 *
+	 * The number of tasks that reference this buffer. For calculating PSS.
+	 */
+	atomic64_t nr_task_refs;
 
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
