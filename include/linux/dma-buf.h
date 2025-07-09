@@ -24,9 +24,6 @@
 #include <linux/wait.h>
 #include <linux/workqueue.h>
 #include <linux/android_kabi.h>
-#ifndef __GENKSYMS__
-#include <linux/refcount.h>
-#endif
 
 struct device;
 struct dma_buf;
@@ -643,43 +640,6 @@ struct dma_buf_export_info {
 };
 
 /**
- * struct task_dma_buf_record - Holds the number of (VMA and FD) references to a
- * dmabuf by a collection of tasks that share both mm_struct and files_struct.
- * This is the list entry type for @task_dma_buf_info dmabufs list.
- *
- * @node: Stores the list this record is on.
- * @dmabuf: The dmabuf this record is for.
- * @refcnt: The number of VMAs and FDs that reference @dmabuf by the tasks that
- *          share this record.
- */
-struct task_dma_buf_record {
-	struct list_head node;
-	struct dma_buf *dmabuf;
-	unsigned long refcnt;
-};
-
-/**
- * struct task_dma_buf_info - Holds a RSS counter, and a list of dmabufs for all
- * tasks that share both mm_struct and files_struct.
- *
- * @rss: The sum of all dmabuf memory referenced by the tasks via memory
- *       mappings or file descriptors in bytes. Buffers referenced more than
- *       once by the process (multiple mmaps, multiple FDs, or any combination
- *       of both mmaps and FDs) only cause the buffer to be accounted to the
- *       process once. Partial mappings cause the full size of the buffer to be
- *       accounted, regardless of the size of the mapping.
- * @refcnt: The number of tasks sharing this struct.
- * @lock: Lock protecting writes for @rss, and reads/writes for @dmabufs.
- * @dmabufs: List of all dmabufs referenced by the tasks.
- */
-struct task_dma_buf_info {
-	s64 rss;
-	refcount_t refcnt;
-	spinlock_t lock;
-	struct list_head dmabufs;
-};
-
-/**
  * DEFINE_DMA_BUF_EXPORT_INFO - helper macro for exporters
  * @name: export-info name
  *
@@ -781,7 +741,4 @@ int dma_buf_vmap_unlocked(struct dma_buf *dmabuf, struct iosys_map *map);
 void dma_buf_vunmap_unlocked(struct dma_buf *dmabuf, struct iosys_map *map);
 long dma_buf_set_name(struct dma_buf *dmabuf, const char *name);
 int dma_buf_get_flags(struct dma_buf *dmabuf, unsigned long *flags);
-
-int dma_buf_account_task(struct dma_buf *dmabuf, struct task_struct *task);
-void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_struct *task);
 #endif /* __DMA_BUF_H__ */
