@@ -3321,82 +3321,6 @@ static int proc_dmabuf_rss_show(struct seq_file *m, struct pid_namespace *ns,
 
 	return 0;
 }
-
-static int proc_dmabuf_rss_hwm_show(struct seq_file *m, void *v)
-{
-	struct inode *inode = m->private;
-	struct task_struct *task;
-	int ret = 0;
-
-	task = get_proc_task(inode);
-	if (!task)
-		return -ESRCH;
-
-	if (!task->dmabuf_info) {
-		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	if (!(task->flags & PF_KTHREAD))
-		seq_printf(m, "%lld\n", READ_ONCE(task->dmabuf_info->rss_hwm));
-	else
-		seq_puts(m, "0\n");
-
-out:
-	put_task_struct(task);
-
-	return ret;
-}
-
-static int proc_dmabuf_rss_hwm_open(struct inode *inode, struct file *filp)
-{
-	return single_open(filp, proc_dmabuf_rss_hwm_show, inode);
-}
-
-static ssize_t
-proc_dmabuf_rss_hwm_write(struct file *file, const char __user *buf,
-			  size_t count, loff_t *offset)
-{
-	struct inode *inode = file_inode(file);
-	struct task_struct *task;
-	unsigned long long val;
-	int ret;
-
-	ret = kstrtoull_from_user(buf, count, 10, &val);
-	if (ret)
-		return ret;
-
-	if (val != 0)
-		return -EINVAL;
-
-	task = get_proc_task(inode);
-	if (!task)
-		return -ESRCH;
-
-	if (!task->dmabuf_info) {
-		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	spin_lock(&task->dmabuf_info->lock);
-	task->dmabuf_info->rss_hwm = task->dmabuf_info->rss;
-	spin_unlock(&task->dmabuf_info->lock);
-
-out:
-	put_task_struct(task);
-
-	return ret < 0 ? ret : count;
-}
-
-static const struct file_operations proc_dmabuf_rss_hwm_operations = {
-	.open		= proc_dmabuf_rss_hwm_open,
-	.write		= proc_dmabuf_rss_hwm_write,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
 #endif
 
 /*
@@ -3524,7 +3448,6 @@ static const struct pid_entry tgid_base_stuff[] = {
 #endif
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	ONE("dmabuf_rss", S_IRUGO, proc_dmabuf_rss_show),
-	REG("dmabuf_rss_hwm", S_IRUGO|S_IWUSR, proc_dmabuf_rss_hwm_operations),
 #endif
 };
 
