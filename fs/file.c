@@ -20,7 +20,6 @@
 #include <linux/spinlock.h>
 #include <linux/rcupdate.h>
 #include <linux/close_range.h>
-#include <linux/dma-buf.h>
 #include <net/sock.h>
 
 #include "internal.h"
@@ -593,9 +592,6 @@ void fd_install(unsigned int fd, struct file *file)
 {
 	struct files_struct *files = current->files;
 	struct fdtable *fdt;
-
-	if (is_dma_buf_file(file) && dma_buf_account_task(file->private_data, current))
-		pr_err("FD dmabuf accounting failed\n");
 
 	rcu_read_lock_sched();
 
