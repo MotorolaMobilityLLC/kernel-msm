@@ -3309,27 +3309,21 @@ static int proc_stack_depth(struct seq_file *m, struct pid_namespace *ns,
 static int proc_dmabuf_rss_show(struct seq_file *m, struct pid_namespace *ns,
 		     struct pid *pid, struct task_struct *task)
 {
-	struct task_dma_buf_info *dmabuf_info = get_task_dma_buf_info(task);
+	if (!task->dmabuf_info) {
+		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+		return -ENOMEM;
+	}
 
-	if (!dmabuf_info) {
+	if (!(task->flags & PF_KTHREAD))
+		seq_printf(m, "%lld\n", READ_ONCE(task->dmabuf_info->rss));
+	else
 		seq_puts(m, "0\n");
-		return 0;
-	}
-
-	if (IS_ERR(dmabuf_info)) {
-		pr_err("%s dmabuf accounting record is missing, error %ld\n",
-			__func__, PTR_ERR(dmabuf_info));
-		return PTR_ERR(dmabuf_info);
-	}
-
-	seq_printf(m, "%lld\n", READ_ONCE(dmabuf_info->rss));
 
 	return 0;
 }
 
 static int proc_dmabuf_rss_hwm_show(struct seq_file *m, void *v)
 {
-	struct task_dma_buf_info *dmabuf_info;
 	struct inode *inode = m->private;
 	struct task_struct *task;
 	int ret = 0;
@@ -3338,20 +3332,16 @@ static int proc_dmabuf_rss_hwm_show(struct seq_file *m, void *v)
 	if (!task)
 		return -ESRCH;
 
-	dmabuf_info = get_task_dma_buf_info(task);
-	if (!dmabuf_info) {
+	if (!task->dmabuf_info) {
+		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	if (!(task->flags & PF_KTHREAD))
+		seq_printf(m, "%lld\n", READ_ONCE(task->dmabuf_info->rss_hwm));
+	else
 		seq_puts(m, "0\n");
-		goto out;
-	}
-
-	if (IS_ERR(dmabuf_info)) {
-		pr_err("%s dmabuf accounting record is missing, error %ld\n",
-			__func__, PTR_ERR(dmabuf_info));
-		ret = PTR_ERR(dmabuf_info);
-		goto out;
-	}
-
-	seq_printf(m, "%lld\n", READ_ONCE(dmabuf_info->rss_hwm));
 
 out:
 	put_task_struct(task);
@@ -3368,7 +3358,6 @@ static ssize_t
 proc_dmabuf_rss_hwm_write(struct file *file, const char __user *buf,
 			  size_t count, loff_t *offset)
 {
-	struct task_dma_buf_info *dmabuf_info;
 	struct inode *inode = file_inode(file);
 	struct task_struct *task;
 	unsigned long long val;
@@ -3385,22 +3374,15 @@ proc_dmabuf_rss_hwm_write(struct file *file, const char __user *buf,
 	if (!task)
 		return -ESRCH;
 
-	dmabuf_info = get_task_dma_buf_info(task);
-	if (!dmabuf_info) {
-		ret = -EINVAL;
+	if (!task->dmabuf_info) {
+		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+		ret = -ENOMEM;
 		goto out;
 	}
 
-	if (IS_ERR(dmabuf_info)) {
-		pr_err("%s dmabuf accounting record is missing, error %ld\n",
-			__func__, PTR_ERR(dmabuf_info));
-		ret = PTR_ERR(dmabuf_info);
-		goto out;
-	}
-
-	spin_lock(&dmabuf_info->lock);
-	dmabuf_info->rss_hwm = dmabuf_info->rss;
-	spin_unlock(&dmabuf_info->lock);
+	spin_lock(&task->dmabuf_info->lock);
+	task->dmabuf_info->rss_hwm = task->dmabuf_info->rss;
+	spin_unlock(&task->dmabuf_info->lock);
 
 out:
 	put_task_struct(task);
@@ -3419,36 +3401,32 @@ static const struct file_operations proc_dmabuf_rss_hwm_operations = {
 static int proc_dmabuf_pss_show(struct seq_file *m, struct pid_namespace *ns,
 		     struct pid *pid, struct task_struct *task)
 {
-	struct task_dma_buf_info *dmabuf_info;
 	struct task_dma_buf_record *rec;
 	u64 pss = 0;
 
-	dmabuf_info = get_task_dma_buf_info(task);
-	if (!dmabuf_info) {
-		seq_puts(m, "0\n");
-		return 0;
+	if (!task->dmabuf_info) {
+		pr_err("%s dmabuf accounting record was not allocated\n", __func__);
+		return -ENOMEM;
 	}
 
-	if (IS_ERR(dmabuf_info)) {
-		pr_err("%s dmabuf accounting record is missing, error %ld\n",
-			__func__, PTR_ERR(dmabuf_info));
-		return PTR_ERR(dmabuf_info);
-	}
+	if (!(task->flags & PF_KTHREAD)) {
+		spin_lock(&task->dmabuf_info->lock);
+		list_for_each_entry(rec, &task->dmabuf_info->dmabufs, node) {
+			s64 refs = atomic64_read(&rec->dmabuf->num_unique_refs);
 
-	spin_lock(&dmabuf_info->lock);
-	list_for_each_entry(rec, &dmabuf_info->dmabufs, node) {
-		s64 refs = atomic64_read(&rec->dmabuf->num_unique_refs);
+			if (refs <= 0) {
+				pr_err("dmabuf has <= refs %lld\n", refs);
+				continue;
+			}
 
-		if (refs <= 0) {
-			pr_err("dmabuf has <= refs %lld\n", refs);
-			continue;
+			pss += rec->dmabuf->size / (size_t)refs;
 		}
+		spin_unlock(&task->dmabuf_info->lock);
 
-		pss += rec->dmabuf->size / (size_t)refs;
+		seq_printf(m, "%llu\n", pss);
+	} else {
+		seq_puts(m, "0\n");
 	}
-	spin_unlock(&dmabuf_info->lock);
-
-	seq_printf(m, "%llu\n", pss);
 
 	return 0;
 }
