@@ -329006,6 +329006,12 @@ function {
   parameter_id: 0xf435685e
 }
 function {
+  id: 0x9294d8c1
+  return_type_id: 0x6720d32f
+  parameter_id: 0x3c01aef6
+  parameter_id: 0x051414e1
+}
+function {
   id: 0x92956fd0
   return_type_id: 0x6720d32f
   parameter_id: 0x3c952c30
@@ -422738,6 +422744,15 @@ elf_symbol {
   full_name: "snd_soc_get_dai_id"
 }
 elf_symbol {
+  id: 0x4086fab0
+  name: "snd_soc_get_dai_name"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x347721f4
+  type_id: 0x9294d8c1
+  full_name: "snd_soc_get_dai_name"
+}
+elf_symbol {
   id: 0xa64c7fe5
   name: "snd_soc_get_dai_via_args"
   is_defined: true
@@ -443980,6 +443995,7 @@ interface {
   symbol_id: 0x7918ef41
   symbol_id: 0x97843792
   symbol_id: 0x54622a57
+  symbol_id: 0x4086fab0
   symbol_id: 0xa64c7fe5
   symbol_id: 0x5eb2e502
   symbol_id: 0x33a917a0
