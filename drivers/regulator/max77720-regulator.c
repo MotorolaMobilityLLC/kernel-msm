@@ -1,8 +1,9 @@
+// SPDX-License-Identifier:  GPL-2.0-only
 /*
  * MAX77720 voltage regulator Driver
  *
  * Copyright (c) 2024 Analog Devices, Inc.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * MAX77720 PMIC Linux Driver is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as published by
@@ -16,7 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License along with
  * MAX77720 PMIC Linux Driver. If not, see http://www.gnu.org/licenses/.
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/i2c.h>
@@ -470,6 +470,21 @@ static int max77720_init_regulator(struct max77720_data *pdata,
 		dev_err(pdata->dev, "MAX77720_SUB_C not supported %s\n", __func__);
 	break;
 	default:
+		dev_dbg(pdata->dev, "MAX77720_SUB_E function [%s] version: %d\n", __func__,
+			(rval & MAX77720_MASK_GPIO_CFG));
+		pdata->regulator_desc = max77720_low_regulators_desc;
+		config.init_data = of_get_regulator_init_data(pdata->dev,
+				pdata->dev->of_node,
+				&max77720_low_regulators_desc);
+		pdata->regulator
+			= devm_regulator_register(pdata->dev,
+				&max77720_low_regulators_desc, &config);
+#if IS_ENABLED(CONFIG_REGULATOR_DEBUG_CONTROL)
+		ret = devm_regulator_debug_register(pdata->dev, pdata->regulator);
+		if (ret)
+			dev_err(pdata->dev,
+				"failed to register debug regulator for bob rc=%d\n", ret);
+#endif
 		dev_err(pdata->dev, "MAX77720_default function %s\n", __func__);
 	break;
 	}
@@ -496,6 +511,7 @@ static int max77720_regulator_probe(struct i2c_client *client,
 	if (!pdata)
 		return -ENOMEM;
 
+	pdata_global = pdata;
 	i2c_set_clientdata(client, pdata);
 	pdata->dev = dev;
 
@@ -555,7 +571,6 @@ static int max77720_regulator_probe(struct i2c_client *client,
 		}
 	}
 
-	pdata_global = pdata;
 
 	return 0;
 
