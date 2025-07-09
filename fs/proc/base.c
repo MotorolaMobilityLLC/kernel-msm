@@ -3437,7 +3437,7 @@ static int proc_dmabuf_pss_show(struct seq_file *m, struct pid_namespace *ns,
 
 	spin_lock(&dmabuf_info->lock);
 	list_for_each_entry(rec, &dmabuf_info->dmabufs, node) {
-		s64 refs = atomic64_read(&get_dmabuf_ext(rec->dmabuf)->num_unique_refs);
+		s64 refs = atomic64_read(&rec->dmabuf->num_unique_refs);
 
 		if (refs <= 0) {
 			pr_err("dmabuf has <= refs %lld\n", refs);
