@@ -2378,6 +2378,34 @@ static irqreturn_t iqs7211_irq(int irq, void *context)
 	return iqs7211_report(iqs7211) ? IRQ_NONE : IRQ_HANDLED;
 }
 
+static ssize_t iqs7211_ati_status_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct iqs7211_private *iqs7211 = dev_get_drvdata(dev);
+	const struct iqs7211_dev_desc *dev_desc = iqs7211->dev_desc;
+	int error;
+	__le16 val_buf;
+	int value;
+
+	if (!dev_desc->suspend || device_may_wakeup(dev))
+		return 0;
+
+	disable_irq(gpiod_to_irq(iqs7211->irq_gpio));
+
+	/*info flags register to get ati error status*/
+	error = iqs7211_read_burst(iqs7211, dev_desc->sys_stat +
+			dev_desc->info_offs, &val_buf, sizeof(val_buf));
+
+	enable_irq(gpiod_to_irq(iqs7211->irq_gpio));
+
+	if (error)
+		return -EFAULT;
+	value = (le16_to_cpu(val_buf) & 0x08) >> 3;
+	return scnprintf(buf, PAGE_SIZE, "%d\n", value);
+}
+
+static DEVICE_ATTR_RO(iqs7211_ati_status);
+
 static int iqs7211_suspend(struct device *dev)
 {
 	struct iqs7211_private *iqs7211 = dev_get_drvdata(dev);
@@ -2567,6 +2595,8 @@ static int iqs7211_probe(struct i2c_client *client,
 	error = iqs7211_init_device(iqs7211);
 	if (error)
 		return error;
+
+	device_create_file(&client->dev, &dev_attr_iqs7211_ati_status);
 
 	irq = gpiod_to_irq(iqs7211->irq_gpio);
 	if (irq < 0)
