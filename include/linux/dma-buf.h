@@ -25,7 +25,6 @@
 #include <linux/workqueue.h>
 #include <linux/android_kabi.h>
 #ifndef __GENKSYMS__
-#include <linux/atomic.h>
 #include <linux/refcount.h>
 #endif
 
@@ -534,13 +533,6 @@ struct dma_buf {
 		struct dma_buf *dmabuf;
 	} *sysfs_entry;
 #endif
-
-	/**
-	 * @num_unique_refs:
-	 *
-	 * The number of tasks that reference this buffer. For calculating PSS.
-	 */
-	atomic64_t num_unique_refs;
 
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
