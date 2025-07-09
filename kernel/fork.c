@@ -2314,7 +2314,6 @@ static int copy_dmabuf_info(u64 clone_flags, struct task_struct *p)
 	if (current->dmabuf_info) {
 		spin_lock(&current->dmabuf_info->lock);
 		p->dmabuf_info->rss = current->dmabuf_info->rss;
-		p->dmabuf_info->rss_hwm = current->dmabuf_info->rss;
 		list_for_each_entry(rec, &current->dmabuf_info->dmabufs, node) {
 			copy = kmalloc(sizeof(*copy), GFP_KERNEL);
 			if (!copy) {
@@ -2329,7 +2328,6 @@ static int copy_dmabuf_info(u64 clone_flags, struct task_struct *p)
 		spin_unlock(&current->dmabuf_info->lock);
 	} else {
 		p->dmabuf_info->rss = 0;
-		p->dmabuf_info->rss_hwm = 0;
 	}
 
 	return 0;
