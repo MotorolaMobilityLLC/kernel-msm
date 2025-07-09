@@ -1003,7 +1003,6 @@ struct task_struct {
 	int __user			*clear_child_tid;
 
 	/* PF_KTHREAD | PF_IO_WORKER */
-	/* Otherwise used as task_dma_buf_info pointer */
 	void				*worker_private;
 
 	u64				utime;
@@ -1518,6 +1517,9 @@ struct task_struct {
 	 */
 	struct callback_head		l1d_flush_kill;
 #endif
+
+	struct task_dma_buf_info *dmabuf_info;
+
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);

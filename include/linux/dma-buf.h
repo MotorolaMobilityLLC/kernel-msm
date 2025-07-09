@@ -690,28 +690,6 @@ struct task_dma_buf_info {
 	struct list_head dmabufs;
 };
 
-static inline bool task_has_dma_buf_info(struct task_struct *task)
-{
-	return (task->flags & (PF_KTHREAD | PF_IO_WORKER)) == 0;
-}
-
-extern struct task_struct init_task;
-
-static inline
-struct task_dma_buf_info *get_task_dma_buf_info(struct task_struct *task)
-{
-	if (!task)
-		return ERR_PTR(-EINVAL);
-
-	if (!task_has_dma_buf_info(task))
-		return NULL;
-
-	if (!task->worker_private)
-		return ERR_PTR(-ENOMEM);
-
-	return (struct task_dma_buf_info *)task->worker_private;
-}
-
 /**
  * DEFINE_DMA_BUF_EXPORT_INFO - helper macro for exporters
  * @name: export-info name
