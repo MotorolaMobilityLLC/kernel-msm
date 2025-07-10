@@ -288,6 +288,8 @@ static int io_poll_check_events(struct io_kiocb *req, bool *locked)
 				return IOU_POLL_REISSUE;
 			}
 		}
+		if (unlikely(req->cqe.res & EPOLLERR))
+			req_set_fail(req);
 		if (req->apoll_events & EPOLLONESHOT)
 			return IOU_POLL_DONE;
 		if (io_is_uring_fops(req->file))
@@ -305,6 +307,8 @@ static int io_poll_check_events(struct io_kiocb *req, bool *locked)
 			}
 		} else {
 			int ret = io_poll_issue(req, locked);
+			io_kbuf_recycle(req, 0);
+
 			if (ret == IOU_STOP_MULTISHOT)
 				return IOU_POLL_REMOVE_POLL_USE_RES;
 			if (ret < 0)

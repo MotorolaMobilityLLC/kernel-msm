@@ -13,6 +13,10 @@ DECLARE_HOOK(android_vh_printk_hotplug,
 	TP_PROTO(int *flag),
 	TP_ARGS(flag));
 
+DECLARE_HOOK(android_vh_vprintk_store,
+	TP_PROTO(u64 time, char *m, size_t len),
+	TP_ARGS(time, m, len));
+
 #endif /* _TRACE_HOOK_PRINTK_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

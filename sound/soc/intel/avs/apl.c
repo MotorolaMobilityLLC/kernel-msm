@@ -112,7 +112,7 @@ static int apl_coredump(struct avs_dev *adev, union avs_notify_msg *msg)
 	struct apl_log_buffer_layout layout;
 	void __iomem *addr, *buf;
 	size_t dump_size;
-	u16 offset = 0;
+	u32 offset = 0;
 	u8 *dump, *pos;
 
 	dump_size = AVS_FW_REGS_SIZE + msg->ext.coredump.stack_dump_size;

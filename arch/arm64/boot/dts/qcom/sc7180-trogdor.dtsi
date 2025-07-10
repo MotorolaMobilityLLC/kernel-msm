@@ -20,9 +20,6 @@
 / {
 	thermal-zones {
 		charger_thermal: charger-thermal {
-			polling-delay-passive = <0>;
-			polling-delay = <0>;
-
 			thermal-sensors = <&pm6150_adc_tm 0>;
 
 			trips {
@@ -777,6 +774,10 @@ hp_i2c: &i2c9 {
 	};
 };
 
+&lpasscc {
+	status = "okay";
+};
+
 &lpass_cpu {
 	status = "okay";
 
@@ -802,7 +803,7 @@ hp_i2c: &i2c9 {
 	};
 };
 
-&mdp {
+&lpass_hm {
 	status = "okay";
 };
 

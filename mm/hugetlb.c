@@ -5581,8 +5581,10 @@ retry_avoidcopy:
 	 * owner and can reuse this page.
 	 */
 	if (page_mapcount(old_page) == 1 && PageAnon(old_page)) {
-		if (!PageAnonExclusive(old_page))
+		if (!PageAnonExclusive(old_page)) {
 			page_move_anon_rmap(old_page, vma);
+			SetPageAnonExclusive(old_page);
+		}
 		if (likely(!unshare))
 			set_huge_ptep_writable(vma, haddr, ptep);
 
