@@ -12,6 +12,10 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/string.h>
+#ifdef CONFIG_MOT_PON_LOG
+#include <linux/seq_file.h>
+#include <linux/proc_fs.h>
+#endif
 
 /* SDAM NVMEM register offsets: */
 #define REG_SDAM_COUNT		0x45
@@ -230,6 +234,14 @@ static bool pmic_pon_event_is_secondary_fault(u8 event)
 	return event >= PMIC_PON_EVENT_PMIC_FAULT_MIN &&
 			event <= PMIC_PON_EVENT_PMIC_FAULT_MAX;
 }
+
+#ifdef CONFIG_MOT_PON_LOG
+
+#define PON_LOG_BUF_SIZE  500
+static u16	pon_log_buf_idx = 0;
+static char	pon_log_buf[PON_LOG_BUF_SIZE];
+static struct proc_dir_entry *procfs_file;
+#endif
 
 static bool pmic_pon_entry_is_important(const struct pmic_pon_log_entry *entry)
 {
@@ -496,10 +508,18 @@ static int pmic_pon_log_parse_entry(const struct pmic_pon_log_entry *entry,
 		break;
 	}
 
-	if (is_important)
+	if (is_important) {
 		pr_info("PMIC PON log: %s\n", buf);
-	else
+#ifdef CONFIG_MOT_PON_LOG
+		if (pon_log_buf_idx < PON_LOG_BUF_SIZE) {
+			int written = scnprintf(pon_log_buf + pon_log_buf_idx, PON_LOG_BUF_SIZE - pon_log_buf_idx, "%s\n", buf);
+			pon_log_buf_idx += written;
+		}
+#endif
+	}
+	else {
 		pr_debug("PMIC PON log: %s\n", buf);
+	}
 
 	if (entry->state < ARRAY_SIZE(pmic_pon_state_label))
 		ipc_log_string(ipc_log, "State=%s; %s\n",
@@ -672,6 +692,24 @@ static void pmic_pon_log_fault_panic(struct pmic_pon_log_dev *pon_dev)
 	}
 }
 
+#ifdef CONFIG_MOT_PON_LOG
+static int pmic_pon_log_seq_show(struct seq_file *f, void *ptr)
+{
+	seq_printf(f, "%s", pon_log_buf);
+	return 0;
+}
+
+static int pmic_pon_log_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pmic_pon_log_seq_show, inode->i_private);
+}
+
+static const struct proc_ops pmic_pon_log_operations = {
+	.proc_open		= pmic_pon_log_open,
+	.proc_read		= seq_read,
+};
+#endif
+
 static int pmic_pon_log_probe(struct platform_device *pdev)
 {
 	struct pmic_pon_log_dev *pon_dev;
@@ -747,6 +785,12 @@ static int pmic_pon_log_probe(struct platform_device *pdev)
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,pmic-fault-panic"))
 		pmic_pon_log_fault_panic(pon_dev);
 
+#ifdef CONFIG_MOT_PON_LOG
+	/* Create the procfs file at /proc/driver/mot_pon_log */
+	procfs_file = proc_create("driver/mot_pon_log",
+		0440, NULL, &pmic_pon_log_operations);
+#endif
+
 	return ret;
 }
 
@@ -755,6 +799,12 @@ static void pmic_pon_log_remove(struct platform_device *pdev)
 	struct pmic_pon_log_dev *pon_dev = platform_get_drvdata(pdev);
 
 	ipc_log_context_destroy(pon_dev->ipc_log);
+
+#ifdef CONFIG_MOT_PON_LOG
+	if (procfs_file)
+		remove_proc_entry("driver/mot_pon_log", NULL);
+#endif
+
 }
 
 static const struct of_device_id pmic_pon_log_of_match[] = {
