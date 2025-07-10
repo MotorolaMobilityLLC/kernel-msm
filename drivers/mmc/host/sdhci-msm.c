@@ -5685,7 +5685,7 @@ static __maybe_unused int sdhci_msm_runtime_suspend(struct device *dev)
 skip_qos:
 	sdhci_msm_registers_save(host);
 	/* Drop the performance vote */
-	dev_pm_opp_set_rate(dev, 400000);
+	dev_pm_opp_set_rate(dev, 0);
 	clk_bulk_disable_unprepare(ARRAY_SIZE(msm_host->bulk_clks),
 			msm_host->bulk_clks);
 
@@ -5719,10 +5719,7 @@ static __maybe_unused int sdhci_msm_runtime_resume(struct device *dev)
 	if (msm_host->restore_dll_config && msm_host->clk_rate)
 		sdhci_msm_restore_sdr_dll_config(host);
 
-	if (msm_host->clk_rate)
-		dev_pm_opp_set_rate(dev, msm_host->clk_rate);
-	else
-		dev_pm_opp_set_rate(dev, 400000);
+	dev_pm_opp_set_rate(dev, msm_host->clk_rate);
 
 	if (!qos_req)
 		goto skip_qos;
