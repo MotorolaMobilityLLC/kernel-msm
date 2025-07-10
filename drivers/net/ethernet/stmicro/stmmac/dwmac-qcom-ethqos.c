@@ -2513,30 +2513,30 @@ static void qcom_ethqos_hdma_cfg(struct plat_stmmacenet_data *plat)
 
 	plat->dma_cfg->tx_pdma_custom_map = true;
 	plat->dma_cfg->tx_pdma_map[0] = 0;
-	plat->dma_cfg->tx_pdma_map[1] = 0;
-	plat->dma_cfg->tx_pdma_map[2] = 0;
-	plat->dma_cfg->tx_pdma_map[3] = 0;
-	plat->dma_cfg->tx_pdma_map[4] = 5;
+	plat->dma_cfg->tx_pdma_map[1] = 1;
+	plat->dma_cfg->tx_pdma_map[2] = 2;
+	plat->dma_cfg->tx_pdma_map[3] = 3;
+	plat->dma_cfg->tx_pdma_map[4] = 4;
 	plat->dma_cfg->tx_pdma_map[5] = 5;
 	plat->dma_cfg->tx_pdma_map[6] = 5;
-	plat->dma_cfg->tx_pdma_map[7] = 2;
-	plat->dma_cfg->tx_pdma_map[8] = 3;
-	plat->dma_cfg->tx_pdma_map[9] = 4;
-	plat->dma_cfg->tx_pdma_map[10] = 6;
+	plat->dma_cfg->tx_pdma_map[7] = 5;
+	plat->dma_cfg->tx_pdma_map[8] = 6;
+	plat->dma_cfg->tx_pdma_map[9] = 6;
+	plat->dma_cfg->tx_pdma_map[10] = 7;
 	plat->dma_cfg->tx_pdma_map[11] = 7;
 
 	plat->dma_cfg->rx_pdma_custom_map = true;
 	plat->dma_cfg->rx_pdma_map[0] = 0;
-	plat->dma_cfg->rx_pdma_map[1] = 0;
-	plat->dma_cfg->rx_pdma_map[2] = 0;
-	plat->dma_cfg->rx_pdma_map[3] = 0;
-	plat->dma_cfg->rx_pdma_map[4] = 5;
+	plat->dma_cfg->rx_pdma_map[1] = 1;
+	plat->dma_cfg->rx_pdma_map[2] = 2;
+	plat->dma_cfg->rx_pdma_map[3] = 3;
+	plat->dma_cfg->rx_pdma_map[4] = 4;
 	plat->dma_cfg->rx_pdma_map[5] = 5;
 	plat->dma_cfg->rx_pdma_map[6] = 5;
-	plat->dma_cfg->rx_pdma_map[7] = 2;
-	plat->dma_cfg->rx_pdma_map[8] = 3;
-	plat->dma_cfg->rx_pdma_map[9] = 4;
-	plat->dma_cfg->rx_pdma_map[10] = 6;
+	plat->dma_cfg->rx_pdma_map[7] = 5;
+	plat->dma_cfg->rx_pdma_map[8] = 6;
+	plat->dma_cfg->rx_pdma_map[9] = 6;
+	plat->dma_cfg->rx_pdma_map[10] = 7;
 	plat->dma_cfg->rx_pdma_map[11] = 7;
 }
 
