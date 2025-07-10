@@ -210,7 +210,6 @@ def define_seraph():
         "net/qrtr/qrtr-mhi.ko",
         "net/qrtr/qrtr-smd.ko",
         "net/wireless/cfg80211.ko",
-        "sound/usb/snd-usb-audio-qmi.ko",
     ]
 
     _seraph_consolidate_in_tree_modules = _seraph_in_tree_modules + [
