@@ -540,7 +540,7 @@ static int avs_dai_fe_hw_free(struct snd_pcm_substream *substream, struct snd_so
 	if (ret < 0)
 		dev_dbg(dai->dev, "Failed to free pages!\n");
 
-	return ret;
+	return 0;
 }
 
 static int avs_dai_fe_prepare(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)

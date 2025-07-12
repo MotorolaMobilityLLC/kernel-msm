@@ -75,6 +75,7 @@
 #include <trace/hooks/usb.h>
 #include <trace/hooks/sound.h>
 #include <trace/hooks/fuse.h>
+#include <trace/events/android_vendor_lmk.h>
 
 /*
  * Export tracepoints that act as a bare tracehook (ie: have no trace event
@@ -309,6 +310,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmap_region);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_try_to_unmap_one);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_shrink_slab_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_do_shrink_slab);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_do_shrink_slab_ex);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_get_page_wmark);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_add_new_anon_rmap);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_psci_tos_resident_on);
@@ -383,6 +385,8 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_compaction_try_to_compact_pages_exit);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_alloc_pages_direct_reclaim_enter);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_alloc_pages_direct_reclaim_exit);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_alloc_pages_may_oom_exit);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_vmscan_kswapd_wake);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_vmscan_kswapd_done);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_vmscan_kswapd_done);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_compaction_begin);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_compaction_end);
@@ -422,6 +426,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_delayacct_compact_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_delayacct_compact_end);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_delayacct_wpcopy_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_delayacct_wpcopy_end);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_io_statistics);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_usb_dev_suspend);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_usb_dev_resume);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_sound_usb_support_cpu_suspend);
@@ -467,3 +472,6 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmc_blk_reset);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmc_attach_sd);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_sdhci_get_cd);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmc_gpio_cd_irqt);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_trigger_vendor_lmk_kill);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_filemap_map_pages_range);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_referenced_check_bypass);

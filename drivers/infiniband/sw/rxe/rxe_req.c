@@ -643,13 +643,15 @@ int rxe_requester(void *arg)
 
 	if (unlikely(qp->req.state == QP_STATE_ERROR)) {
 		wqe = req_next_wqe(qp);
-		if (wqe)
+		if (wqe) {
 			/*
 			 * Generate an error completion for error qp state
 			 */
+			wqe->status = IB_WC_WR_FLUSH_ERR;
 			goto err;
-		else
+		} else {
 			goto exit;
+		}
 	}
 
 	if (unlikely(qp->req.state == QP_STATE_RESET)) {

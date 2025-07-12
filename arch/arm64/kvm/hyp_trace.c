@@ -979,6 +979,9 @@ int init_hyp_tracefs(void)
 	if (!is_protected_kvm_enabled())
 		return 0;
 
+	for_each_possible_cpu(cpu)
+		mutex_init(&per_cpu(hyp_trace_reader_lock, cpu));
+
 	root_dir = tracefs_create_dir(TRACEFS_DIR, NULL);
 	if (!root_dir) {
 		pr_err("Failed to create tracefs "TRACEFS_DIR"/\n");

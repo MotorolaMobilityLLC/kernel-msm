@@ -11,6 +11,7 @@
  __tracepoint_android_vh_should_continue_reclaim
  __tracepoint_android_vh_tune_fault_around_bytes
  __tracepoint_android_vh_should_memcg_bypass
+ __tracepoint_android_vh_io_statistics
  __traceiter_android_vh_get_page_wmark
  __traceiter_android_vh_page_add_new_anon_rmap
  __traceiter_android_vh_do_shrink_slab
@@ -27,6 +28,15 @@
  __traceiter_android_vh_should_continue_reclaim
  __traceiter_android_vh_tune_fault_around_bytes
  __traceiter_android_vh_should_memcg_bypass
+ __traceiter_android_vh_io_statistics
+ __traceiter_rpm_idle
+ __tracepoint_rpm_idle
+ __traceiter_rpm_suspend
+ __tracepoint_rpm_suspend
+ __traceiter_rpm_resume
+ __tracepoint_rpm_resume
+ __traceiter_rpm_return_int
+ __tracepoint_rpm_return_int
  binder_alloc_copy_from_buffer
  kfree
  __kmalloc

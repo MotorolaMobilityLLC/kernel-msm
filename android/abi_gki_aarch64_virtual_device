@@ -473,6 +473,7 @@
   usb_create_shared_hcd
   usb_deregister
   usb_disabled
+  usb_find_common_endpoints
   usb_free_urb
   usb_get_dev
   usb_hcd_check_unlink_urb
@@ -1200,6 +1201,7 @@
   blk_mq_free_tag_set
   blk_mq_map_queues
   blk_mq_quiesce_queue
+  blk_mq_quiesce_queue_nowait
   blk_mq_requeue_request
   blk_mq_start_request
   blk_mq_start_stopped_hw_queues

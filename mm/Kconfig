@@ -1143,6 +1143,17 @@ config IO_MAPPING
 config ARCH_HAS_IOREMAP_PHYS_HOOKS
 	bool
 
+config MEMFD_ASHMEM_SHIM
+	bool "Memfd ashmem ioctl compatibility support"
+	depends on MEMFD_CREATE
+	help
+	  This provides compatibility support for ashmem ioctl commands against
+	  memfd file descriptors. This is useful for compatibility on Android
+	  for older applications that may use ashmem's ioctl commands on the
+	  now memfds passed to them.
+
+	  Unless you are running Android, say N.
+
 config SECRETMEM
 	def_bool ARCH_HAS_SET_DIRECT_MAP && !EMBEDDED
 

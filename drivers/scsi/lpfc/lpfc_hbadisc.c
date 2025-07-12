@@ -177,7 +177,8 @@ lpfc_dev_loss_tmo_callbk(struct fc_rport *rport)
 	/* Don't schedule a worker thread event if the vport is going down.
 	 * The teardown process cleans up the node via lpfc_drop_node.
 	 */
-	if (vport->load_flag & FC_UNLOADING) {
+	if ((vport->load_flag & FC_UNLOADING) ||
+	    !(phba->hba_flag & HBA_SETUP)) {
 		((struct lpfc_rport_data *)rport->dd_data)->pnode = NULL;
 		ndlp->rport = NULL;
 

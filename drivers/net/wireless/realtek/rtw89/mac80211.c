@@ -105,7 +105,9 @@ static int rtw89_ops_add_interface(struct ieee80211_hw *hw,
 
 	mutex_lock(&rtwdev->mutex);
 	rtwvif->rtwdev = rtwdev;
-	list_add_tail(&rtwvif->list, &rtwdev->rtwvifs_list);
+	if (!rtw89_rtwvif_in_list(rtwdev, rtwvif))
+		list_add_tail(&rtwvif->list, &rtwdev->rtwvifs_list);
+
 	INIT_WORK(&rtwvif->update_beacon_work, rtw89_core_update_beacon_work);
 	rtw89_leave_ps_mode(rtwdev);
 

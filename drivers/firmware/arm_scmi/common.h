@@ -231,20 +231,44 @@ extern const struct scmi_desc scmi_optee_desc;
 void scmi_rx_callback(struct scmi_chan_info *cinfo, u32 msg_hdr, void *priv);
 void scmi_free_channel(struct scmi_chan_info *cinfo, struct idr *idr, int id);
 
+/* Used for compactness and signature validation of the function pointers being
+ * passed.
+ */
+typedef void (*shmem_copy_toio_t)(void __iomem *to, const void *from,
+				  size_t count);
+typedef void (*shmem_copy_fromio_t)(void *to, const void __iomem *from,
+				    size_t count);
+
+/**
+ * struct scmi_shmem_io_ops  - I/O operations to read from/write to
+ * Shared Memory
+ *
+ * @toio: Copy data to the shared memory area
+ * @fromio: Copy data from the shared memory area
+ */
+struct scmi_shmem_io_ops {
+	shmem_copy_fromio_t fromio;
+	shmem_copy_toio_t toio;
+};
+
 /* shmem related declarations */
 struct scmi_shared_mem;
 
 void shmem_tx_prepare(struct scmi_shared_mem __iomem *shmem,
-		      struct scmi_xfer *xfer, struct scmi_chan_info *cinfo);
+		      struct scmi_xfer *xfer, struct scmi_chan_info *cinfo,
+		      shmem_copy_toio_t toio);
 u32 shmem_read_header(struct scmi_shared_mem __iomem *shmem);
 void shmem_fetch_response(struct scmi_shared_mem __iomem *shmem,
-			  struct scmi_xfer *xfer);
+			  struct scmi_xfer *xfer,
+			  shmem_copy_fromio_t fromio);
 void shmem_fetch_notification(struct scmi_shared_mem __iomem *shmem,
-			      size_t max_len, struct scmi_xfer *xfer);
+			      size_t max_len, struct scmi_xfer *xfer,
+			      shmem_copy_fromio_t fromio);
 void shmem_clear_channel(struct scmi_shared_mem __iomem *shmem);
 bool shmem_poll_done(struct scmi_shared_mem __iomem *shmem,
 		     struct scmi_xfer *xfer);
 bool shmem_channel_free(struct scmi_shared_mem __iomem *shmem);
+struct scmi_shmem_io_ops *shmem_get_io_ops(struct device_node *shmem);
 
 /* declarations for message passing transports */
 struct scmi_msg_payld;

@@ -23,6 +23,7 @@
  * @cinfo: SCMI channel info
  * @shmem: Transmit/Receive shared memory area
  * @chan_lock: Lock that prevents multiple xfers from being queued
+ * @io_ops: Transport specific I/O operations
  */
 struct scmi_mailbox {
 	struct mbox_client cl;
@@ -30,6 +31,7 @@ struct scmi_mailbox {
 	struct scmi_chan_info *cinfo;
 	struct scmi_shared_mem __iomem *shmem;
 	struct mutex chan_lock;
+	struct scmi_shmem_io_ops *io_ops;
 };
 
 #define client_to_scmi_mailbox(c) container_of(c, struct scmi_mailbox, cl)
@@ -38,7 +40,8 @@ static void tx_prepare(struct mbox_client *cl, void *m)
 {
 	struct scmi_mailbox *smbox = client_to_scmi_mailbox(cl);
 
-	shmem_tx_prepare(smbox->shmem, m, smbox->cinfo);
+	shmem_tx_prepare(smbox->shmem, m, smbox->cinfo,
+			 smbox->io_ops->toio);
 }
 
 static void rx_callback(struct mbox_client *cl, void *m)
@@ -147,6 +150,7 @@ static int mailbox_chan_setup(struct scmi_chan_info *cinfo, struct device *dev,
 	cl->rx_callback = rx_callback;
 	cl->tx_block = false;
 	cl->knows_txdone = tx;
+	smbox->io_ops = shmem_get_io_ops(shmem);
 
 	smbox->chan = mbox_request_channel(cl, tx ? 0 : 1);
 	if (IS_ERR(smbox->chan)) {
@@ -222,7 +226,7 @@ static void mailbox_fetch_response(struct scmi_chan_info *cinfo,
 {
 	struct scmi_mailbox *smbox = cinfo->transport_info;
 
-	shmem_fetch_response(smbox->shmem, xfer);
+	shmem_fetch_response(smbox->shmem, xfer, smbox->io_ops->fromio);
 }
 
 static void mailbox_fetch_notification(struct scmi_chan_info *cinfo,
@@ -230,7 +234,8 @@ static void mailbox_fetch_notification(struct scmi_chan_info *cinfo,
 {
 	struct scmi_mailbox *smbox = cinfo->transport_info;
 
-	shmem_fetch_notification(smbox->shmem, max_len, xfer);
+	shmem_fetch_notification(smbox->shmem, max_len, xfer,
+				 smbox->io_ops->fromio);
 }
 
 static void mailbox_clear_channel(struct scmi_chan_info *cinfo)

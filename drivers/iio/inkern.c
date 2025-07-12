@@ -276,7 +276,7 @@ struct iio_channel *fwnode_iio_channel_get_by_name(struct fwnode_handle *fwnode,
 			return ERR_PTR(-ENODEV);
 		}
 
-		chan = __fwnode_iio_channel_get_by_name(fwnode, name);
+		chan = __fwnode_iio_channel_get_by_name(parent, name);
 		if (!IS_ERR(chan) || PTR_ERR(chan) != -ENODEV) {
 			fwnode_handle_put(parent);
  			return chan;
@@ -513,7 +513,7 @@ struct iio_channel *iio_channel_get_all(struct device *dev)
 	return chans;
 
 error_free_chans:
-	for (i = 0; i < nummaps; i++)
+	for (i = 0; i < mapind; i++)
 		iio_device_put(chans[i].indio_dev);
 	kfree(chans);
 error_ret:

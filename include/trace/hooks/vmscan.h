@@ -21,6 +21,10 @@ DECLARE_HOOK(android_vh_shrink_slab_bypass,
 DECLARE_HOOK(android_vh_do_shrink_slab,
 	TP_PROTO(struct shrinker *shrinker, long *freeable),
 	TP_ARGS(shrinker, freeable));
+DECLARE_HOOK(android_vh_do_shrink_slab_ex,
+	TP_PROTO(struct shrink_control *shrinkctl, struct shrinker *shrinker,
+	        long *freeable, int priority),
+	TP_ARGS(shrinkctl, shrinker, freeable, priority));
 DECLARE_HOOK(android_vh_shrink_node_memcgs,
 	TP_PROTO(struct mem_cgroup *memcg, bool *skip),
 	TP_ARGS(memcg, skip));
@@ -53,6 +57,13 @@ DECLARE_HOOK(android_vh_vmscan_kswapd_done,
 	TP_PROTO(int node_id, unsigned int highest_zoneidx, unsigned int alloc_order,
 	        unsigned int reclaim_order),
 	TP_ARGS(node_id, highest_zoneidx, alloc_order, reclaim_order));
+DECLARE_RESTRICTED_HOOK(android_rvh_vmscan_kswapd_wake,
+	TP_PROTO(int node_id, unsigned int highest_zoneidx, unsigned int alloc_order),
+	TP_ARGS(node_id, highest_zoneidx, alloc_order), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_vmscan_kswapd_done,
+	TP_PROTO(int node_id, unsigned int highest_zoneidx, unsigned int alloc_order,
+			unsigned int reclaim_order),
+	TP_ARGS(node_id, highest_zoneidx, alloc_order, reclaim_order), 1);
 DECLARE_HOOK(android_vh_handle_trylock_failed_folio,
 	TP_PROTO(struct list_head *folio_list),
 	TP_ARGS(folio_list));
@@ -72,6 +83,9 @@ DECLARE_HOOK(android_vh_do_folio_trylock,
 DECLARE_HOOK(android_vh_page_referenced_check_bypass,
 	TP_PROTO(struct folio *folio, unsigned long nr_to_scan, int lru, bool *bypass),
 	TP_ARGS(folio, nr_to_scan, lru, bypass));
+DECLARE_HOOK(android_vh_folio_referenced_check_bypass,
+	TP_PROTO(struct folio *folio, s8 priority, unsigned long nr_to_scan, int lru, bool *bypass),
+	TP_ARGS(folio, priority, nr_to_scan, lru, bypass));
 DECLARE_HOOK(android_vh_should_memcg_bypass,
 	TP_PROTO(struct mem_cgroup *memcg, int priority, bool *bypass),
 	TP_ARGS(memcg, priority, bypass));
