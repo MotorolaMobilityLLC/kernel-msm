@@ -20,7 +20,6 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
-#include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include <linux/sched/clock.h>
 #include <linux/iopoll.h>
@@ -324,8 +323,7 @@ static inline void ufshcd_add_delay_before_dme_cmd(struct ufs_hba *hba);
 static int ufshcd_host_reset_and_restore(struct ufs_hba *hba);
 static void ufshcd_resume_clkscaling(struct ufs_hba *hba);
 static void ufshcd_suspend_clkscaling(struct ufs_hba *hba);
-static int ufshcd_scale_clks(struct ufs_hba *hba, unsigned long freq,
-			     bool scale_up);
+static int ufshcd_scale_clks(struct ufs_hba *hba, bool scale_up);
 static irqreturn_t ufshcd_intr(int irq, void *__hba);
 static int ufshcd_change_power_mode(struct ufs_hba *hba,
 			     struct ufs_pa_layer_attr *pwr_mode);
@@ -1116,32 +1114,14 @@ out:
 	return ret;
 }
 
-static int ufshcd_opp_set_rate(struct ufs_hba *hba, unsigned long freq)
-{
-	struct dev_pm_opp *opp;
-	int ret;
-
-	opp = dev_pm_opp_find_freq_floor_indexed(hba->dev,
-						 &freq, 0);
-	if (IS_ERR(opp))
-		return PTR_ERR(opp);
-
-	ret = dev_pm_opp_set_opp(hba->dev, opp);
-	dev_pm_opp_put(opp);
-
-	return ret;
-}
-
 /**
  * ufshcd_scale_clks - scale up or scale down UFS controller clocks
  * @hba: per adapter instance
- * @freq: frequency to scale
  * @scale_up: True if scaling up and false if scaling down
  *
  * Return: 0 if successful; < 0 upon failure.
  */
-static int ufshcd_scale_clks(struct ufs_hba *hba, unsigned long freq,
-			     bool scale_up)
+static int ufshcd_scale_clks(struct ufs_hba *hba, bool scale_up)
 {
 	int ret = 0;
 	ktime_t start = ktime_get();
@@ -1150,21 +1130,13 @@ static int ufshcd_scale_clks(struct ufs_hba *hba, unsigned long freq,
 	if (ret)
 		goto out;
 
-	if (hba->use_pm_opp)
-		ret = ufshcd_opp_set_rate(hba, freq);
-	else
-		ret = ufshcd_set_clk_freq(hba, scale_up);
+	ret = ufshcd_set_clk_freq(hba, scale_up);
 	if (ret)
 		goto out;
 
 	ret = ufshcd_vops_clk_scale_notify(hba, scale_up, POST_CHANGE);
-	if (ret) {
-		if (hba->use_pm_opp)
-			ufshcd_opp_set_rate(hba,
-					    hba->devfreq->previous_freq);
-		else
-			ufshcd_set_clk_freq(hba, !scale_up);
-	}
+	if (ret)
+		ufshcd_set_clk_freq(hba, !scale_up);
 
 out:
 	trace_ufshcd_profile_clk_scaling(dev_name(hba->dev),
@@ -1176,22 +1148,18 @@ out:
 /**
  * ufshcd_is_devfreq_scaling_required - check if scaling is required or not
  * @hba: per adapter instance
- * @freq: frequency to scale
  * @scale_up: True if scaling up and false if scaling down
  *
  * Return: true if scaling is required, false otherwise.
  */
 static bool ufshcd_is_devfreq_scaling_required(struct ufs_hba *hba,
-					       unsigned long freq, bool scale_up)
+					       bool scale_up)
 {
 	struct ufs_clk_info *clki;
 	struct list_head *head = &hba->clk_list_head;
 
 	if (list_empty(head))
 		return false;
-
-	if (hba->use_pm_opp)
-		return freq != hba->clk_scaling.target_freq;
 
 	list_for_each_entry(clki, head, list) {
 		if (!IS_ERR_OR_NULL(clki->clk)) {
@@ -1391,14 +1359,12 @@ static void ufshcd_clock_scaling_unprepare(struct ufs_hba *hba, int err, bool sc
 /**
  * ufshcd_devfreq_scale - scale up/down UFS clocks and gear
  * @hba: per adapter instance
- * @freq: frequency to scale
  * @scale_up: True for scaling up and false for scalin down
  *
  * Return: 0 for success; -EBUSY if scaling can't happen at this time; non-zero
  * for any other errors.
  */
-static int ufshcd_devfreq_scale(struct ufs_hba *hba, unsigned long freq,
-				bool scale_up)
+static int ufshcd_devfreq_scale(struct ufs_hba *hba, bool scale_up)
 {
 	int ret = 0;
 
@@ -1413,7 +1379,7 @@ static int ufshcd_devfreq_scale(struct ufs_hba *hba, unsigned long freq,
 			goto out_unprepare;
 	}
 
-	ret = ufshcd_scale_clks(hba, freq, scale_up);
+	ret = ufshcd_scale_clks(hba, scale_up);
 	if (ret) {
 		if (!scale_up)
 			ufshcd_scale_gear(hba, true);
@@ -1424,8 +1390,7 @@ static int ufshcd_devfreq_scale(struct ufs_hba *hba, unsigned long freq,
 	if (scale_up) {
 		ret = ufshcd_scale_gear(hba, true);
 		if (ret) {
-			ufshcd_scale_clks(hba, hba->devfreq->previous_freq,
-					  false);
+			ufshcd_scale_clks(hba, false);
 			goto out_unprepare;
 		}
 	}
@@ -1484,22 +1449,9 @@ static int ufshcd_devfreq_target(struct device *dev,
 	if (!ufshcd_is_clkscaling_supported(hba))
 		return -EINVAL;
 
-	if (hba->use_pm_opp) {
-		struct dev_pm_opp *opp;
-
-		/* Get the recommended frequency from OPP framework */
-		opp = devfreq_recommended_opp(dev, freq, flags);
-		if (IS_ERR(opp))
-			return PTR_ERR(opp);
-
-		dev_pm_opp_put(opp);
-	} else {
-		/* Override with the closest supported frequency */
-		clki = list_first_entry(&hba->clk_list_head, struct ufs_clk_info,
-					list);
-		*freq =	(unsigned long) clk_round_rate(clki->clk, *freq);
-	}
-
+	clki = list_first_entry(&hba->clk_list_head, struct ufs_clk_info, list);
+	/* Override with the closest supported frequency */
+	*freq = (unsigned long) clk_round_rate(clki->clk, *freq);
 	spin_lock_irqsave(hba->host->host_lock, irq_flags);
 	if (ufshcd_eh_in_progress(hba)) {
 		spin_unlock_irqrestore(hba->host->host_lock, irq_flags);
@@ -1521,17 +1473,12 @@ static int ufshcd_devfreq_target(struct device *dev,
 		goto out;
 	}
 
-	/* Decide based on the target or rounded-off frequency and update */
-	if (hba->use_pm_opp)
-		scale_up = *freq > hba->clk_scaling.target_freq;
-	else
-		scale_up = *freq == clki->max_freq;
-
-	if (!hba->use_pm_opp && !scale_up)
+	/* Decide based on the rounded-off frequency and update */
+	scale_up = *freq == clki->max_freq;
+	if (!scale_up)
 		*freq = clki->min_freq;
-
 	/* Update the frequency */
-	if (!ufshcd_is_devfreq_scaling_required(hba, *freq, scale_up)) {
+	if (!ufshcd_is_devfreq_scaling_required(hba, scale_up)) {
 		spin_unlock_irqrestore(hba->host->host_lock, irq_flags);
 		ret = 0;
 		goto out; /* no state change required */
@@ -1539,9 +1486,7 @@ static int ufshcd_devfreq_target(struct device *dev,
 	spin_unlock_irqrestore(hba->host->host_lock, irq_flags);
 
 	start = ktime_get();
-	ret = ufshcd_devfreq_scale(hba, *freq, scale_up);
-	if (!ret)
-		hba->clk_scaling.target_freq = *freq;
+	ret = ufshcd_devfreq_scale(hba, scale_up);
 
 	trace_ufshcd_profile_clk_scaling(dev_name(hba->dev),
 		(scale_up ? "up" : "down"),
@@ -1562,6 +1507,8 @@ static int ufshcd_devfreq_get_dev_status(struct device *dev,
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_clk_scaling *scaling = &hba->clk_scaling;
 	unsigned long flags;
+	struct list_head *clk_list = &hba->clk_list_head;
+	struct ufs_clk_info *clki;
 	ktime_t curr_t;
 
 	if (!ufshcd_is_clkscaling_supported(hba))
@@ -1574,24 +1521,17 @@ static int ufshcd_devfreq_get_dev_status(struct device *dev,
 	if (!scaling->window_start_t)
 		goto start_window;
 
+	clki = list_first_entry(clk_list, struct ufs_clk_info, list);
 	/*
 	 * If current frequency is 0, then the ondemand governor considers
 	 * there's no initial frequency set. And it always requests to set
 	 * to max. frequency.
 	 */
-	if (hba->use_pm_opp) {
-		stat->current_frequency = hba->clk_scaling.target_freq;
-	} else {
-		struct list_head *clk_list = &hba->clk_list_head;
-		struct ufs_clk_info *clki;
-
-		clki = list_first_entry(clk_list, struct ufs_clk_info, list);
-		stat->current_frequency = clki->curr_freq;
-	}
-
+	stat->current_frequency = clki->curr_freq;
 	if (scaling->is_busy_started)
 		scaling->tot_busy_t += ktime_us_delta(curr_t,
 				scaling->busy_start_t);
+
 	stat->total_time = ktime_us_delta(curr_t, scaling->window_start_t);
 	stat->busy_time = scaling->tot_busy_t;
 start_window:
@@ -1620,11 +1560,9 @@ static int ufshcd_devfreq_init(struct ufs_hba *hba)
 	if (list_empty(clk_list))
 		return 0;
 
-	if (!hba->use_pm_opp) {
-		clki = list_first_entry(clk_list, struct ufs_clk_info, list);
-		dev_pm_opp_add(hba->dev, clki->min_freq, 0);
-		dev_pm_opp_add(hba->dev, clki->max_freq, 0);
-	}
+	clki = list_first_entry(clk_list, struct ufs_clk_info, list);
+	dev_pm_opp_add(hba->dev, clki->min_freq, 0);
+	dev_pm_opp_add(hba->dev, clki->max_freq, 0);
 
 	ufshcd_vops_config_scaling_param(hba, &hba->vps->devfreq_profile,
 					 &hba->vps->ondemand_data);
@@ -1636,10 +1574,8 @@ static int ufshcd_devfreq_init(struct ufs_hba *hba)
 		ret = PTR_ERR(devfreq);
 		dev_err(hba->dev, "Unable to register with devfreq %d\n", ret);
 
-		if (!hba->use_pm_opp) {
-			dev_pm_opp_remove(hba->dev, clki->min_freq);
-			dev_pm_opp_remove(hba->dev, clki->max_freq);
-		}
+		dev_pm_opp_remove(hba->dev, clki->min_freq);
+		dev_pm_opp_remove(hba->dev, clki->max_freq);
 		return ret;
 	}
 
@@ -1651,6 +1587,7 @@ static int ufshcd_devfreq_init(struct ufs_hba *hba)
 static void ufshcd_devfreq_remove(struct ufs_hba *hba)
 {
 	struct list_head *clk_list = &hba->clk_list_head;
+	struct ufs_clk_info *clki;
 
 	if (!hba->devfreq)
 		return;
@@ -1658,13 +1595,9 @@ static void ufshcd_devfreq_remove(struct ufs_hba *hba)
 	devfreq_remove_device(hba->devfreq);
 	hba->devfreq = NULL;
 
-	if (!hba->use_pm_opp) {
-		struct ufs_clk_info *clki;
-
-		clki = list_first_entry(clk_list, struct ufs_clk_info, list);
-		dev_pm_opp_remove(hba->dev, clki->min_freq);
-		dev_pm_opp_remove(hba->dev, clki->max_freq);
-	}
+	clki = list_first_entry(clk_list, struct ufs_clk_info, list);
+	dev_pm_opp_remove(hba->dev, clki->min_freq);
+	dev_pm_opp_remove(hba->dev, clki->max_freq);
 }
 
 static void ufshcd_suspend_clkscaling(struct ufs_hba *hba)
@@ -1740,7 +1673,7 @@ static ssize_t ufshcd_clkscale_enable_store(struct device *dev,
 		ufshcd_resume_clkscaling(hba);
 	} else {
 		ufshcd_suspend_clkscaling(hba);
-		err = ufshcd_devfreq_scale(hba, ULONG_MAX, true);
+		err = ufshcd_devfreq_scale(hba, true);
 		if (err)
 			dev_err(hba->dev, "%s: failed to scale clocks up %d\n",
 					__func__, err);
@@ -7839,7 +7772,7 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 	hba->silence_err_logs = false;
 
 	/* scale up clocks to max frequency before full reinitialization */
-	ufshcd_scale_clks(hba, ULONG_MAX, true);
+	ufshcd_scale_clks(hba, true);
 
 	err = ufshcd_hba_enable(hba);
 
@@ -9449,17 +9382,6 @@ static int ufshcd_init_clocks(struct ufs_hba *hba)
 		dev_dbg(dev, "%s: clk: %s, rate: %lu\n", __func__,
 				clki->name, clk_get_rate(clki->clk));
 	}
-
-	/* Set Max. frequency for all clocks */
-	if (hba->use_pm_opp) {
-		ret = ufshcd_opp_set_rate(hba, ULONG_MAX);
-		if (ret) {
-			dev_err(hba->dev, "%s: failed to set OPP: %d", __func__,
-				ret);
-			goto out;
-		}
-	}
-
 out:
 	return ret;
 }
