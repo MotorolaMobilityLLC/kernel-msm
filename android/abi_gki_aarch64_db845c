@@ -269,6 +269,7 @@
   flush_work
   __flush_workqueue
   fortify_panic
+  fput
   free_io_pgtable_ops
   free_irq
   fwnode_handle_put
