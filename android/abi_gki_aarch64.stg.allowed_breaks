@@ -213,3 +213,7 @@ type 'struct scm_stat' changed
 type 'struct scm_fp_list' changed
   member 'bool dead' was added
 
+type 'struct kvm_iommu_ops' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { int(* iotlb_sync_map)(struct kvm_hyp_iommu_domain*, unsigned long, size_t); struct { u64 android_kabi_reserved1; }; union { }; }' was added
+

@@ -825,3 +825,28 @@ int kvm_iommu_snapshot_host_stage2(struct kvm_hyp_iommu_domain *domain)
 
 	return ret;
 }
+
+int kvm_iommu_iotlb_sync_map(pkvm_handle_t domain_id,
+			     unsigned long iova, size_t size)
+{
+	struct kvm_hyp_iommu_domain *domain;
+	int ret;
+
+	if (!kvm_iommu_ops || !kvm_iommu_ops->iotlb_sync_map)
+		return -ENODEV;
+
+	if (!size || (iova + size < iova))
+		return -EINVAL;
+
+	if (domain_id == KVM_IOMMU_DOMAIN_IDMAP_ID)
+		return -EINVAL;
+
+	domain = handle_to_domain(domain_id);
+
+	if (!domain || domain_get(domain))
+		return -EINVAL;
+
+	ret = kvm_iommu_ops->iotlb_sync_map(domain, iova, size);
+	domain_put(domain);
+	return ret;
+}
