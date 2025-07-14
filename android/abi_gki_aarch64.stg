@@ -22744,6 +22744,11 @@ pointer_reference {
   pointee_type_id: 0x977bcf07
 }
 pointer_reference {
+  id: 0x2f4f676a
+  kind: POINTER
+  pointee_type_id: 0x977d7b37
+}
+pointer_reference {
   id: 0x2f4f9f95
   kind: POINTER
   pointee_type_id: 0x977e98cb
@@ -43797,6 +43802,11 @@ member {
 member {
   id: 0x3a3e9211
   type_id: 0x67d43857
+}
+member {
+  id: 0x3a6f0eb6
+  type_id: 0x66926050
+  offset: 896
 }
 member {
   id: 0x3a7ed482
@@ -116147,6 +116157,11 @@ member {
   name: "iotlb_sync"
   type_id: 0x0c55d62d
   offset: 512
+}
+member {
+  id: 0xc185c03f
+  name: "iotlb_sync_map"
+  type_id: 0x2f4f676a
 }
 member {
   id: 0xc1a6eb7e
@@ -227173,6 +227188,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x66926050
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0xc185c03f
+    member_id: 0x27000c61
+    member_id: 0x36752b74
+  }
+}
+struct_union {
   id: 0x66d53bfd
   kind: UNION
   definition {
@@ -253676,7 +253701,7 @@ struct_union {
     member_id: 0xa60fc2c2
     member_id: 0xd12a0a5e
     member_id: 0x80f5a8ec
-    member_id: 0x2d081f94
+    member_id: 0x3a6f0eb6
     member_id: 0x63760151
     member_id: 0xac894e49
     member_id: 0xe0f6393d
@@ -333805,6 +333830,13 @@ function {
   return_type_id: 0x6720d32f
   parameter_id: 0x2bc93f35
   parameter_id: 0x0258f96e
+}
+function {
+  id: 0x977d7b37
+  return_type_id: 0x6720d32f
+  parameter_id: 0x28350343
+  parameter_id: 0x33756485
+  parameter_id: 0xf435685e
 }
 function {
   id: 0x977e98cb
