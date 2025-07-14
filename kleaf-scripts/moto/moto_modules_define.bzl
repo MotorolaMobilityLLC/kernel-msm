@@ -38,6 +38,7 @@ def moto_ddk_module(
                 module_all_deps.append("{}:{}_{}/{}".format(dep_package, build_target, build_variant, dep_target_name))
             else:
                 module_all_deps.append("{}:{}_{}_{}".format(dep_package, build_target, build_variant, dep_target_name))
+    module_all_deps.append("//soc-repo:{}_{}_config".format(build_target, build_variant,))
 
     ddk_module(
         name = module_name,
