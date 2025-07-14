@@ -297,6 +297,8 @@ struct plat_stmmacenet_data {
 	bool rx_clk_runs_in_lpi;
 	int has_xgmac;
 	struct phylink_pcs *qcom_pcs;
+	unsigned int (*get_plat_tx_coal_frames)
+		(struct sk_buff *skb);
 	u16 (*tx_select_queue)
 		(struct net_device *dev, struct sk_buff *skb,
 			struct net_device *sb_dev);
