@@ -183,7 +183,7 @@ ddk_uapi_headers_cc_library(
 
 hermetic_genrule(
     name = "kconfig.msm.generated",
-    srcs = glob(["**/Kconfig*"]),
+    srcs = glob(["**/Kconfig*"]) + ["//motorola/kernel/modules:moto_kconfigs_group"],
     outs = ["Kconfig.ext"],
     cmd = "KCONFIG_EXT_PREFIX=soc-repo/ $(location flatten_kconfig.sh) $(location Kconfig.msm) >$@",
     tools = ["flatten_kconfig.sh"],

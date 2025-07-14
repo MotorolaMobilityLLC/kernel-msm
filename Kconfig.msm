@@ -145,3 +145,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/block/zram/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)kernel/power/Kconfig"
 
 endmenu
+
+source "motorola/kernel/modules/Kconfig.moto"
