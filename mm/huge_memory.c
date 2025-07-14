@@ -3121,6 +3121,12 @@ static void reset_src_folio(struct folio *src)
 
 static bool lru_add_dst(struct lruvec *lruvec, struct folio *src, struct folio *dst)
 {
+	bool added = false;
+
+	trace_android_vh_mm_customize_lru_add_dst(lruvec, src, dst, &added);
+	if (added)
+		return true;
+
 	if (folio_can_split(src))
 		return false;
 
