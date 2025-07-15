@@ -713,6 +713,7 @@ struct folio *vm_normal_folio_pmd(struct vm_area_struct *vma,
 		return page_folio(page);
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(vm_normal_folio_pmd);
 #endif
 
 static void restore_exclusive_pte(struct vm_area_struct *vma,
