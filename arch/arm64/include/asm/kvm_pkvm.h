@@ -593,7 +593,7 @@ static inline unsigned long host_s2_pgtable_pages(void)
  * Maximum number of consitutents allowed in a descriptor. This number is
  * arbitrary, see comment below on SG_MAX_SEGMENTS in hyp_ffa_proxy_pages().
  */
-#define KVM_FFA_MAX_NR_CONSTITUENTS	4096
+#define KVM_FFA_MAX_NR_CONSTITUENTS	12288
 
 static inline unsigned long hyp_ffa_proxy_pages(void)
 {

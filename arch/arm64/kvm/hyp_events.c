@@ -250,7 +250,10 @@ bool hyp_trace_init_event_early(void)
 }
 
 static struct dentry *event_tracefs;
-static unsigned int last_event_id;
+// Event IDs should be positive integers, hence starting from 1 here.
+// NOTE: this introduces ID clash between hypervisor events and kernel events.
+// For now this doesn't seem to cause problems, but we should fix it...
+static unsigned int last_event_id = 1;
 
 struct hyp_event_table {
 	struct hyp_event	*start;

@@ -1025,6 +1025,7 @@ ddk_headers(
     name = "all_headers_allowlist_aarch64",
     hdrs = [
         "drivers/dma-buf/heaps/deferred-free-helper.h",
+        "drivers/dma/dmaengine.h",
         "drivers/extcon/extcon.h",
         "drivers/pci/controller/dwc/pcie-designware.h",
         "drivers/thermal/thermal_core.h",
@@ -1046,6 +1047,7 @@ ddk_headers(
         "arch/arm64/include",
         "arch/arm64/include/uapi",
         "drivers/dma-buf",
+        "drivers/dma",
         "drivers/extcon",
         "drivers/pci/controller/dwc",
         "drivers/thermal",
