@@ -10,9 +10,9 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/io.h>
 #include <asm/vas.h>
 #include <uapi/asm/vas-api.h>
-#include "vas.h"
 
 /*
  * The driver creates the device node that can be used as follows:
@@ -159,6 +159,15 @@ static int coproc_mmap(struct file *fp, struct vm_area_struct *vma)
 	if ((vma->vm_end - vma->vm_start) > PAGE_SIZE) {
 		pr_debug("%s(): size 0x%zx, PAGE_SIZE 0x%zx\n", __func__,
 				(vma->vm_end - vma->vm_start), PAGE_SIZE);
+		return -EINVAL;
+	}
+
+	/*
+	 * Map complete page to the paste address. So the user
+	 * space should pass 0ULL to the offset parameter.
+	 */
+	if (vma->vm_pgoff) {
+		pr_debug("Page offset unsupported to map paste address\n");
 		return -EINVAL;
 	}
 
