@@ -2537,8 +2537,14 @@ static inline void dec_valid_block_count(struct f2fs_sb_info *sbi,
 	blkcnt_t sectors = count << F2FS_LOG_SECTORS_PER_BLOCK;
 
 	spin_lock(&sbi->stat_lock);
-	f2fs_bug_on(sbi, sbi->total_valid_block_count < (block_t) count);
-	sbi->total_valid_block_count -= (block_t)count;
+	if (unlikely(sbi->total_valid_block_count < count)) {
+		f2fs_warn(sbi, "Inconsistent total_valid_block_count:%u, ino:%lu, count:%u",
+			  sbi->total_valid_block_count, inode->i_ino, count);
+		sbi->total_valid_block_count = 0;
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+	} else {
+		sbi->total_valid_block_count -= count;
+	}
 	if (sbi->reserved_blocks &&
 		sbi->current_reserved_blocks < sbi->reserved_blocks)
 		sbi->current_reserved_blocks = min(sbi->reserved_blocks,
@@ -3516,6 +3522,11 @@ static inline void *f2fs_kvzalloc(struct f2fs_sb_info *sbi,
 					size_t size, gfp_t flags)
 {
 	return f2fs_kvmalloc(sbi, size, flags | __GFP_ZERO);
+}
+
+static inline void *f2fs_vmalloc(size_t size)
+{
+	return vmalloc(size);
 }
 
 static inline int get_extra_isize(struct inode *inode)

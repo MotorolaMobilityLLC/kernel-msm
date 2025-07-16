@@ -167,6 +167,9 @@ SYM_FUNC_START(__svm_vcpu_run)
 #endif
 	mov VCPU_RDI(%_ASM_DI), %_ASM_DI
 
+	/* Clobbers EFLAGS.ZF */
+	VM_CLEAR_CPU_BUFFERS
+
 	/* Enter guest mode */
 	sti
 
@@ -333,6 +336,9 @@ SYM_FUNC_START(__svm_sev_es_vcpu_run)
 	/* Get svm->current_vmcb->pa into RAX. */
 	mov SVM_current_vmcb(%_ASM_DI), %_ASM_AX
 	mov KVM_VMCB_pa(%_ASM_AX), %_ASM_AX
+
+	/* Clobbers EFLAGS.ZF */
+	VM_CLEAR_CPU_BUFFERS
 
 	/* Enter guest mode */
 	sti
