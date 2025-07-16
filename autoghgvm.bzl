@@ -44,6 +44,7 @@ def define_autoghgvm():
         "drivers/pinctrl/qcom/pinctrl-monaco_auto.ko",
         "drivers/pinctrl/qcom/pinctrl-msm.ko",
         "drivers/pinctrl/qcom/pinctrl-sa8797p.ko",
+        "drivers/ptp/ptp_qcom_tsc_vm.ko",
         "drivers/remoteproc/qcom_sysmon.ko",
         "drivers/remoteproc/rproc_qcom_common.ko",
         "drivers/rpmsg/qcom_glink.ko",
