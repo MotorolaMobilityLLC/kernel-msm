@@ -2335,6 +2335,7 @@ static bool try_to_migrate_one(struct folio *folio, struct vm_area_struct *vma,
 				set_src_usage(subpage, SRC_PAGE_MAPPED);
 			trace_set_migration_pte(address, pte_val(swp_pte),
 						compound_order(&folio->page));
+			trace_android_vh_mm_migrate_one_page(subpage, vma->vm_flags);
 			/*
 			 * No need to invalidate here it will synchronize on
 			 * against the special swap migration pte.

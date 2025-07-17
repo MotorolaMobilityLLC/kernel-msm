@@ -719,6 +719,22 @@ DECLARE_HOOK(android_vh_folios_put_refs_direct_free_extent,
 DECLARE_HOOK(android_vh_free_pages_and_swap_cache,
 	TP_PROTO(struct folio *folio),
 	TP_ARGS(folio));
+DECLARE_HOOK(android_vh_mm_customize_longterm_pinnable,
+	TP_PROTO(struct folio *folio, bool *is_longterm_pinnable),
+	TP_ARGS(folio, is_longterm_pinnable));
+DECLARE_HOOK(android_vh_mm_migrate_one_page,
+	TP_PROTO(struct page *page, const vm_flags_t vm_flags),
+	TP_ARGS(page, vm_flags));
+DECLARE_HOOK(android_vh_mm_remove_migration_pte_bypass,
+	TP_PROTO(struct folio *dst, struct vm_area_struct *vma, unsigned long addr,
+		 struct folio *src, bool *bypass),
+	TP_ARGS(dst, vma, addr, src, bypass));
+DECLARE_HOOK(android_vh_mm_split_huge_page_bypass,
+	TP_PROTO(struct page *page, struct list_head *list, int *ret, bool *bypass),
+	TP_ARGS(page, list, ret, bypass));
+DECLARE_HOOK(android_vh_mm_try_split_folio_bypass,
+	TP_PROTO(struct folio *folio, bool *bypass),
+	TP_ARGS(folio, bypass));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

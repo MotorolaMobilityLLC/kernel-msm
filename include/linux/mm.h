@@ -2038,8 +2038,17 @@ static inline bool is_zero_folio(const struct folio *folio)
 
 /* MIGRATE_CMA and ZONE_MOVABLE do not allow pin folios */
 #ifdef CONFIG_MIGRATION
+extern void _trace_android_vh_mm_customize_longterm_pinnable(struct folio *folio,
+		bool *is_longterm_pinnable);
+
 static inline bool folio_is_longterm_pinnable(struct folio *folio)
 {
+	bool is_longterm_pinnable = false;
+
+	_trace_android_vh_mm_customize_longterm_pinnable(folio, &is_longterm_pinnable);
+	if (is_longterm_pinnable)
+		return true;
+
 #ifdef CONFIG_CMA
 	int mt = folio_migratetype(folio);
 
