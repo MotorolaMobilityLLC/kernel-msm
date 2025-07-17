@@ -59,10 +59,9 @@ virtio_transport_alloc_skb(struct virtio_vsock_pkt_info *info,
 	const size_t skb_len = VIRTIO_VSOCK_SKB_HEADROOM + len;
 	struct virtio_vsock_hdr *hdr;
 	struct sk_buff *skb;
-	void *payload;
 	int err;
 
-	skb = virtio_vsock_alloc_linear_skb(skb_len, GFP_KERNEL);
+	skb = virtio_vsock_alloc_skb(skb_len, GFP_KERNEL);
 	if (!skb)
 		return NULL;
 
@@ -79,8 +78,8 @@ virtio_transport_alloc_skb(struct virtio_vsock_pkt_info *info,
 	hdr->fwd_cnt	= cpu_to_le32(0);
 
 	if (info->msg && len > 0) {
-		payload = skb_put(skb, len);
-		err = memcpy_from_msg(payload, info->msg, len);
+		virtio_vsock_skb_put(skb, len);
+		err = skb_copy_datagram_from_iter(skb, 0, &info->msg->msg_iter, len);
 		if (err)
 			goto out;
 
