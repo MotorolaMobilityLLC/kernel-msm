@@ -401,6 +401,17 @@ void unpin_user_pages(struct page **pages, unsigned long npages)
 EXPORT_SYMBOL(unpin_user_pages);
 
 /*
+ * trace_android_vh_mm_customize_longterm_pinnable is called in include/linux/mm.h
+ * by including include/trace/hooks/mm.h, which will result to build-err.
+ * So we create func: _trace_android_vh_mm_customize_longterm_pinnable.
+ */
+void _trace_android_vh_mm_customize_longterm_pinnable(struct folio *folio,
+		bool *is_longterm_pinnable)
+{
+	trace_android_vh_mm_customize_longterm_pinnable(folio, is_longterm_pinnable);
+}
+
+/*
  * Set the MMF_HAS_PINNED if not set yet; after set it'll be there for the mm's
  * lifecycle.  Avoid setting the bit unless necessary, or it might cause write
  * cache bouncing on large SMP machines for concurrent pinned gups.
