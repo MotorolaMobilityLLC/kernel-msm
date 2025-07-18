@@ -2184,6 +2184,11 @@ pointer_reference {
   pointee_type_id: 0x34996851
 }
 pointer_reference {
+  id: 0x07bc18d4
+  kind: POINTER
+  pointee_type_id: 0x34b085cc
+}
+pointer_reference {
   id: 0x07bd3565
   kind: POINTER
   pointee_type_id: 0x34b43309
@@ -274584,6 +274589,17 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x34b085cc
+  kind: STRUCT
+  name: "vsock_tap"
+  definition {
+    bytesize: 32
+    member_id: 0xce0b4469
+    member_id: 0x965f12df
+    member_id: 0x7c00e690
+  }
+}
+struct_union {
   id: 0x19d71054
   kind: STRUCT
   name: "vsock_transport"
@@ -304038,6 +304054,13 @@ function {
   parameter_id: 0x914dbfdc
 }
 function {
+  id: 0x1c823c8e
+  return_type_id: 0x48b5725f
+  parameter_id: 0x32a623d7
+  parameter_id: 0x2e18f543
+  parameter_id: 0x2e18f543
+}
+function {
   id: 0x1c8280d3
   return_type_id: 0x48b5725f
   parameter_id: 0x36194830
@@ -331708,6 +331731,11 @@ function {
   parameter_id: 0x3132887a
   parameter_id: 0xc9082b19
   parameter_id: 0x1eb28e53
+}
+function {
+  id: 0x9c6fe51a
+  return_type_id: 0x6720d32f
+  parameter_id: 0x07bc18d4
 }
 function {
   id: 0x9c7112c7
@@ -365644,6 +365672,15 @@ elf_symbol {
   crc: 0x1aa37d86
   type_id: 0x13488e67
   full_name: "dev_load"
+}
+elf_symbol {
+  id: 0xa052b9b3
+  name: "dev_lstats_read"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x71a18158
+  type_id: 0x1c823c8e
+  full_name: "dev_lstats_read"
 }
 elf_symbol {
   id: 0x9a2dbfca
@@ -417621,6 +417658,15 @@ elf_symbol {
   full_name: "vsnprintf"
 }
 elf_symbol {
+  id: 0xbad4c4e9
+  name: "vsock_add_tap"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x8a043e64
+  type_id: 0x9c6fe51a
+  full_name: "vsock_add_tap"
+}
+elf_symbol {
   id: 0x24b72fe8
   name: "vsock_addr_bound"
   is_defined: true
@@ -417709,6 +417755,15 @@ elf_symbol {
   crc: 0xa4eb6031
   type_id: 0x139ca744
   full_name: "vsock_for_each_connected_socket"
+}
+elf_symbol {
+  id: 0x5ebc8c37
+  name: "vsock_remove_tap"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x6ded7ee1
+  type_id: 0x9c6fe51a
+  full_name: "vsock_remove_tap"
 }
 elf_symbol {
   id: 0x0db9531c
@@ -421768,6 +421823,7 @@ interface {
   symbol_id: 0x8abf96ef
   symbol_id: 0xc7ab95e4
   symbol_id: 0x33035bf6
+  symbol_id: 0xa052b9b3
   symbol_id: 0x9a2dbfca
   symbol_id: 0xafae816a
   symbol_id: 0x47c790a6
@@ -427541,6 +427597,7 @@ interface {
   symbol_id: 0xea7fc751
   symbol_id: 0xd574e01b
   symbol_id: 0x9af4ba91
+  symbol_id: 0xbad4c4e9
   symbol_id: 0x24b72fe8
   symbol_id: 0x74552293
   symbol_id: 0x79291ebd
@@ -427551,6 +427608,7 @@ interface {
   symbol_id: 0x584cd956
   symbol_id: 0x5af22a06
   symbol_id: 0x3d09e223
+  symbol_id: 0x5ebc8c37
   symbol_id: 0x0db9531c
   symbol_id: 0xf29d7680
   symbol_id: 0xbd4af188

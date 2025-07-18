@@ -471,6 +471,7 @@
   devlink_register
   devlink_unregister
   dev_load
+  dev_lstats_read
   devm_add_action
   devm_alloc_etherdev_mqs
   __devm_alloc_percpu
@@ -3511,10 +3512,12 @@
   vsock_addr_init
   vsock_addr_unbind
   vsock_addr_validate
+  vsock_add_tap
   vsock_core_register
   vsock_core_unregister
   vsock_deliver_tap
   vsock_for_each_connected_socket
+  vsock_remove_tap
   vsprintf
   vunmap
   vzalloc
