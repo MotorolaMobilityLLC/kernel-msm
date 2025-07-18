@@ -106,7 +106,9 @@ const struct vmbus_device vmbus_devs[] = {
 	},
 
 	/* File copy */
-	{ .dev_type = HV_FCOPY,
+	/* fcopy always uses 16KB ring buffer size and is working well for last many years */
+	{ .pref_ring_size = 0x4000,
+	  .dev_type = HV_FCOPY,
 	  HV_FCOPY_GUID,
 	  .perf_device = false,
 	},
@@ -123,11 +125,18 @@ const struct vmbus_device vmbus_devs[] = {
 	  .perf_device = false,
 	},
 
-	/* Unknown GUID */
-	{ .dev_type = HV_UNKNOWN,
+	/*
+	 * Unknown GUID
+	 * 64 KB ring buffer + 4 KB header should be sufficient size for any Hyper-V device apart
+	 * from HV_NIC and HV_SCSI. This case avoid the fallback for unknown devices to allocate
+	 * much bigger (2 MB) of ring size.
+	 */
+	{ .pref_ring_size = 0x11000,
+	  .dev_type = HV_UNKNOWN,
 	  .perf_device = false,
 	},
 };
+EXPORT_SYMBOL_GPL(vmbus_devs);
 
 static const struct {
 	guid_t guid;
@@ -429,7 +438,7 @@ void hv_process_channel_removal(struct vmbus_channel *channel)
 	 * init_vp_index() can (re-)use the CPU.
 	 */
 	if (hv_is_perf_channel(channel))
-		hv_clear_alloced_cpu(channel->target_cpu);
+		hv_clear_allocated_cpu(channel->target_cpu);
 
 	/*
 	 * Upon suspend, an in-use hv_sock channel is marked as "rescinded" and
@@ -579,6 +588,17 @@ static void vmbus_process_offer(struct vmbus_channel *newchannel)
 	 */
 	mutex_lock(&vmbus_connection.channel_mutex);
 
+	list_for_each_entry(channel, &vmbus_connection.chn_list, listentry) {
+		if (guid_equal(&channel->offermsg.offer.if_type,
+			       &newchannel->offermsg.offer.if_type) &&
+		    guid_equal(&channel->offermsg.offer.if_instance,
+			       &newchannel->offermsg.offer.if_instance)) {
+			fnew = false;
+			newchannel->primary_channel = channel;
+			break;
+		}
+	}
+
 	init_vp_index(newchannel);
 
 	/* Remember the channels that should be cleaned up upon suspend. */
@@ -590,16 +610,6 @@ static void vmbus_process_offer(struct vmbus_channel *newchannel)
 	 * we can release the potentially racing rescind thread.
 	 */
 	atomic_dec(&vmbus_connection.offer_in_progress);
-
-	list_for_each_entry(channel, &vmbus_connection.chn_list, listentry) {
-		if (guid_equal(&channel->offermsg.offer.if_type,
-			       &newchannel->offermsg.offer.if_type) &&
-		    guid_equal(&channel->offermsg.offer.if_instance,
-			       &newchannel->offermsg.offer.if_instance)) {
-			fnew = false;
-			break;
-		}
-	}
 
 	if (fnew) {
 		list_add_tail(&newchannel->listentry,
@@ -622,7 +632,6 @@ static void vmbus_process_offer(struct vmbus_channel *newchannel)
 		/*
 		 * Process the sub-channel.
 		 */
-		newchannel->primary_channel = channel;
 		list_add_tail(&newchannel->sc_list, &channel->sc_list);
 	}
 
@@ -659,6 +668,30 @@ static void vmbus_process_offer(struct vmbus_channel *newchannel)
 }
 
 /*
+ * Check if CPUs used by other channels of the same device.
+ * It should only be called by init_vp_index().
+ */
+static bool hv_cpuself_used(u32 cpu, struct vmbus_channel *chn)
+{
+	struct vmbus_channel *primary = chn->primary_channel;
+	struct vmbus_channel *sc;
+
+	lockdep_assert_held(&vmbus_connection.channel_mutex);
+
+	if (!primary)
+		return false;
+
+	if (primary->target_cpu == cpu)
+		return true;
+
+	list_for_each_entry(sc, &primary->sc_list, sc_list)
+		if (sc != chn && sc->target_cpu == cpu)
+			return true;
+
+	return false;
+}
+
+/*
  * We use this state to statically distribute the channel interrupt load.
  */
 static int next_numa_node_id;
@@ -677,8 +710,9 @@ static int next_numa_node_id;
 static void init_vp_index(struct vmbus_channel *channel)
 {
 	bool perf_chn = hv_is_perf_channel(channel);
+	u32 i, ncpu = num_online_cpus();
 	cpumask_var_t available_mask;
-	struct cpumask *alloced_mask;
+	struct cpumask *allocated_mask;
 	u32 target_cpu;
 	int numa_node;
 
@@ -695,35 +729,42 @@ static void init_vp_index(struct vmbus_channel *channel)
 		 */
 		channel->target_cpu = VMBUS_CONNECT_CPU;
 		if (perf_chn)
-			hv_set_alloced_cpu(VMBUS_CONNECT_CPU);
+			hv_set_allocated_cpu(VMBUS_CONNECT_CPU);
 		return;
 	}
 
-	while (true) {
-		numa_node = next_numa_node_id++;
-		if (numa_node == nr_node_ids) {
-			next_numa_node_id = 0;
-			continue;
+	for (i = 1; i <= ncpu + 1; i++) {
+		while (true) {
+			numa_node = next_numa_node_id++;
+			if (numa_node == nr_node_ids) {
+				next_numa_node_id = 0;
+				continue;
+			}
+			if (cpumask_empty(cpumask_of_node(numa_node)))
+				continue;
+			break;
 		}
-		if (cpumask_empty(cpumask_of_node(numa_node)))
-			continue;
-		break;
+		allocated_mask = &hv_context.hv_numa_map[numa_node];
+
+		if (cpumask_weight(allocated_mask) ==
+		    cpumask_weight(cpumask_of_node(numa_node))) {
+			/*
+			 * We have cycled through all the CPUs in the node;
+			 * reset the allocated map.
+			 */
+			cpumask_clear(allocated_mask);
+		}
+
+		cpumask_xor(available_mask, allocated_mask,
+			    cpumask_of_node(numa_node));
+
+		target_cpu = cpumask_first(available_mask);
+		cpumask_set_cpu(target_cpu, allocated_mask);
+
+		if (channel->offermsg.offer.sub_channel_index >= ncpu ||
+		    i > ncpu || !hv_cpuself_used(target_cpu, channel))
+			break;
 	}
-	alloced_mask = &hv_context.hv_numa_map[numa_node];
-
-	if (cpumask_weight(alloced_mask) ==
-	    cpumask_weight(cpumask_of_node(numa_node))) {
-		/*
-		 * We have cycled through all the CPUs in the node;
-		 * reset the alloced map.
-		 */
-		cpumask_clear(alloced_mask);
-	}
-
-	cpumask_xor(available_mask, alloced_mask, cpumask_of_node(numa_node));
-
-	target_cpu = cpumask_first(available_mask);
-	cpumask_set_cpu(target_cpu, alloced_mask);
 
 	channel->target_cpu = target_cpu;
 
