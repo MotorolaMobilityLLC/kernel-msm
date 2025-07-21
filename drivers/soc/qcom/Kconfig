@@ -74,6 +74,12 @@ config MOT_DRV_OIS_AFTER_SALES_SERVICE
 	help
 	  This is enabling OIS_AFTER_SALES_SERVICE.
 
+config MOT_SENSOR_PRE_POWERUP
+	default n
+	bool "enable camera sensor pre powerup"
+	help
+	  This is enabling camera sensor pre powerup feature.
+
 config MOT_DRV_OIS_AF_DRIFT
 	default n
 	bool "enable AF Drift"
