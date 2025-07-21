@@ -3470,6 +3470,7 @@
   videomode_from_timing
   __video_register_device
   video_unregister_device
+  virtio_transport_max_vsock_pkt_buf_size
   virtqueue_add_inbuf
   virtqueue_add_outbuf
   virtqueue_detach_unused_buf

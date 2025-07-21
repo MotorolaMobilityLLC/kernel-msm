@@ -416784,6 +416784,15 @@ elf_symbol {
   full_name: "virtio_transport_free_pkt"
 }
 elf_symbol {
+  id: 0xa9249a9a
+  name: "virtio_transport_max_vsock_pkt_buf_size"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x1ba079d8
+  type_id: 0xac0d3a85
+  full_name: "virtio_transport_max_vsock_pkt_buf_size"
+}
+elf_symbol {
   id: 0xb7aee2c5
   name: "virtio_transport_notify_buffer_size"
   is_defined: true
@@ -427439,6 +427448,7 @@ interface {
   symbol_id: 0xd9e10c59
   symbol_id: 0x8a8da7f1
   symbol_id: 0x2af74799
+  symbol_id: 0xa9249a9a
   symbol_id: 0xb7aee2c5
   symbol_id: 0xfef2e182
   symbol_id: 0x91ee0115
