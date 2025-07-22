@@ -47,6 +47,7 @@
 #include <linux/pkeys.h>
 #include <linux/oom.h>
 #include <linux/sched/mm.h>
+#include <linux/dma-buf.h>
 
 #include <linux/uaccess.h>
 #include <asm/cacheflush.h>
@@ -141,8 +142,11 @@ static void remove_vma(struct vm_area_struct *vma, bool unreachable)
 {
 	might_sleep();
 	vma_close(vma);
-	if (vma->vm_file)
+	if (vma->vm_file) {
+		if (is_dma_buf_file(vma->vm_file))
+			dma_buf_unaccount_task(vma->vm_file->private_data, current);
 		fput(vma->vm_file);
+	}
 	mpol_put(vma_policy(vma));
 	if (unreachable)
 		__vm_area_free(vma);
@@ -2447,8 +2451,16 @@ int __split_vma(struct mm_struct *mm, struct vm_area_struct *vma,
 	if (err)
 		goto out_free_mpol;
 
-	if (new->vm_file)
+	if (new->vm_file) {
 		get_file(new->vm_file);
+		if (is_dma_buf_file(new->vm_file)) {
+			int acct_err = dma_buf_account_task(new->vm_file->private_data,
+							    current);
+			if (acct_err)
+				pr_err("failed to account dmabuf, err %d\n",
+				       acct_err);
+		}
+	}
 
 	if (new->vm_ops && new->vm_ops->open)
 		new->vm_ops->open(new);
