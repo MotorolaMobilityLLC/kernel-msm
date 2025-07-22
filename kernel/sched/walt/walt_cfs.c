@@ -408,20 +408,20 @@ static void walt_find_best_target(struct sched_domain *sd,
 
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 			// Moto huangzq2: skip long exec mvp tasks like top app or kswapd.
-			if (likely(moto_sched_enabled) && wrq->num_mvp_tasks > 0) {
-				struct walt_task_struct *rq_wts = list_first_entry(&wrq->mvp_tasks, struct walt_task_struct, mvp_list);
-				if (rq_wts != NULL && (rq_wts->mvp_prio == UX_PRIO_TOPAPP || rq_wts->mvp_prio == UX_PRIO_KSWAPD)) {
-					continue;
+			if (likely(moto_sched_enabled)) {
+				if (wrq->num_mvp_tasks > 0) {
+					struct walt_task_struct *rq_wts = list_first_entry(&wrq->mvp_tasks, struct walt_task_struct, mvp_list);
+					if (rq_wts != NULL && (rq_wts->mvp_prio == UX_PRIO_TOPAPP || rq_wts->mvp_prio == UX_PRIO_KSWAPD)) {
+						continue;
+				    }
 				}
-
-				// select the target with the least mvp tasks.
-				// same mvp tasks but prev_cpu, also select it.
-				if (wrq->num_mvp_tasks < mvp_min_tasks
-					|| (wrq->num_mvp_tasks == mvp_min_tasks && i == prev_cpu)) {
-					mvp_min_tasks = wrq->num_mvp_tasks;
-					least_mvp_cpu = i;
+				if (wrq->num_mvp_tasks < mvp_min_tasks // least mvp tasks, select it.
+							|| (wrq->num_mvp_tasks == mvp_min_tasks && i == prev_cpu)) {
+				    mvp_min_tasks = wrq->num_mvp_tasks;
+				    least_mvp_cpu = i;
 				}
-				/* continue; */
+				if (wrq->num_mvp_tasks > 0)
+				    continue;
 			}
 #endif
 
