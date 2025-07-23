@@ -363,6 +363,9 @@ int __pkvm_guest_relinquish_to_host(struct pkvm_hyp_vcpu *vcpu,
 			hyp_poison_page(data.pa);
 			psci_mem_protect_dec(1);
 		}
+
+		if (pkvm_ipa_range_has_pvmfw(vm, ipa, ipa + PAGE_SIZE))
+			vm->kvm.arch.pkvm.pvmfw_load_addr = PVMFW_INVALID_LOAD_ADDR;
 	}
 
 	guest_unlock_component(vm);
