@@ -1,0 +1,16 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+
+string_flag(
+    name = "qtisocrepo",
+    build_setting_default = "false",
+)
+
+config_setting(
+    name = "qtisocrepo_false",
+    flag_values = {":qtisocrepo": "false"},
+)
+
+config_setting(
+    name = "qtisocrepo_true",
+    flag_values = {":qtisocrepo": "true"},
+)
