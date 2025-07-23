@@ -338,7 +338,6 @@ struct geni_i3c_dev {
 	struct geni_i3c_ver_info ver_info;
 	struct msm_geni_i3c_rsc i3c_rsc;
 	struct device *wrapper_dev;
-	bool is_egpio_present;
 	bool is_i2c_xfer; /* i2c transfer flag */
 };
 
@@ -3345,8 +3344,6 @@ static int i3c_geni_rsrcs_init(struct geni_i3c_dev *gi3c,
 	int ret;
 	struct resource *res;
 	struct device *dev = &pdev->dev;
-	struct device_node *np = dev->of_node;
-	struct device_node *pinctrl_np, *config_np;
 
 	/* base register address */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -3434,22 +3431,6 @@ static int i3c_geni_rsrcs_init(struct geni_i3c_dev *gi3c,
 		ret = PTR_ERR(gi3c->i3c_gpio_disable);
 		return ret;
 	}
-
-	pinctrl_np = of_parse_phandle(np, "pinctrl-0", 0);
-	if (!pinctrl_np) {
-		dev_err(dev, "Failed to get pinctrl node\n");
-		return -ENODEV;
-	}
-
-	config_np = of_get_child_by_name(pinctrl_np, "config");
-	if (!config_np) {
-		dev_err(dev, "Failed to find config subnode\n");
-		return -EINVAL;
-	}
-
-	gi3c->is_egpio_present =  of_property_read_bool(config_np, "qcom,apps");
-	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
-		    "egpio: %d\n", gi3c->is_egpio_present);
 
 	return 0;
 }
@@ -3833,10 +3814,6 @@ static int geni_i3c_probe(struct platform_device *pdev)
 		"%s: IO lines:0x%x, Ensure bus power up\n", __func__, geni_ios);
 	}
 
-	/* For egpio case, ibi controller is enabled/disabled in runtime resume/suspend */
-	if (gi3c->is_egpio_present)
-		geni_i3c_enable_ibi_ctrl(gi3c, false);
-
 	ret = geni_se_resources_off(&gi3c->se);
 	if (ret)
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
@@ -4015,9 +3992,6 @@ static int geni_i3c_runtime_suspend(struct device *dev)
 		}
 	}
 
-	if (gi3c->is_egpio_present)
-		geni_i3c_enable_ibi_ctrl(gi3c, false);
-
 	ret = geni_se_resources_off(&gi3c->se);
 	if (ret)
 		I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
@@ -4060,9 +4034,6 @@ static int geni_i3c_runtime_resume(struct device *dev)
 	geni_write_reg(0x7f, gi3c->se.base, GENI_OUTPUT_CTRL);
 	/* Added 10 us delay to settle the write of the register as per HW team recommendation */
 	udelay(10);
-
-	if (gi3c->is_egpio_present)
-		geni_i3c_enable_ibi_ctrl(gi3c, true);
 
 	if (gi3c->se_mode != GENI_GPI_DMA) {
 		enable_irq(gi3c->irq);
