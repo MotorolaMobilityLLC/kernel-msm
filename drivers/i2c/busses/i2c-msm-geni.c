@@ -2692,14 +2692,21 @@ static int geni_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 			    "IO lines in bad state, Power the slave\n");
 		if (gi2c->se_mode == FIFO_SE_DMA) {
 			gi2c->err = -EBUSY;
-			ret = geni_i2c_bus_recovery(gi2c);
-			if (ret)
-				I2C_LOG_ERR(gi2c->ipcl, true, gi2c->dev,
-					    "%s:Bus Recovery failed\n", __func__);
-			gi2c->err = 0;
+			if (gi2c->bus_recovery_enable) {
+				ret = geni_i2c_bus_recovery(gi2c);
+				if (ret)
+					GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
+						    "%s:Bus Recovery failed\n", __func__);
+				gi2c->err = 0;
+			} else {
+				GENI_SE_DBG(gi2c->ipcl, false, gi2c->dev,
+					    "Bus Recovery not enabled\n");
+				ret = -ENXIO;
+			}
 		} else {
 			I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
 				    "Bus Recovery not supported for GSI\n");
+			ret = -ENXIO;
 		}
 
 		if (gi2c->se_mode == GSI_ONLY || ret) {
