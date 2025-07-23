@@ -79,6 +79,20 @@ config SCSI_UFS_QCOM
 	  Select this if you have UFS controller on QCOM chipset.
 	  If unsure, say N.
 
+config SCSI_UFS_QCOM_SCMI
+	tristate "QCOM specific hooks to UFS controller platform driver with SCMI support"
+	depends on SCSI_UFSHCD_PLATFORM && ARCH_QCOM
+	depends on !SCSI_UFS_QCOM && SCSI_UFS_QCOM != m
+	select QCOM_SCM if SCSI_UFS_CRYPTO
+	help
+	  This selects the QCOM specific additions with SCMI support
+	  to UFSHCD platform driver. UFS host on QCOM needs some vendor
+	  specific configuration before accessing the hardware which
+	  includes vendor specific registers.
+
+	  Select this if you have UFS controller on QCOM chipset.
+	  If unsure, say N.
+
 config SCSI_UFS_CRYPTO_QTI
 	tristate "Vendor specific UFS crypto engine support"
 	depends on SCSI_UFS_CRYPTO
