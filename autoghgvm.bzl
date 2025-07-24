@@ -69,6 +69,8 @@ def define_autoghgvm():
         "drivers/tty/hvc/hvc_gunyah.ko",
         "drivers/tty/serial/qcom_geni_serial_msm.ko",
         "drivers/usb/dwc3/dwc3-msm.ko",
+        "drivers/usb/misc/ehset.ko",
+        "drivers/usb/misc/lvstest.ko",
         "drivers/usb/phy/phy-generic.ko",
         "drivers/usb/phy/phy-msm-snps-eusb2.ko",
         "drivers/usb/phy/phy-msm-snps-hs.ko",
