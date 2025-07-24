@@ -120,6 +120,16 @@ if (dev) \
 
 #define MIN_NUM_MSGS_FOR_MULTI_DESC_MODE	4
 #define BOOT_MARKER_SIZE	50
+#define SCL_SDA_MASK		3
+
+enum i2c_line_state {
+	I2C_SCL_LOW_SDA_LOW   = 0x0,
+	I2C_SCL_LOW_SDA_HIGH  = 0x1,
+	I2C_SCL_HIGH_SDA_LOW  = 0x2,
+	I2C_SCL_HIGH_SDA_HIGH = 0x3
+};
+
+#define IS_I2C_BUS_IDLE(geni_ios) (((geni_ios) & SCL_SDA_MASK) == I2C_SCL_HIGH_SDA_HIGH)
 
 /* FTRACE Logging */
 void i2c_trace_log(struct device *dev, const char *fmt, ...)
@@ -682,9 +692,8 @@ static bool geni_i2c_is_bus_recovery_required(struct geni_i2c_dev *gi2c)
 	 * BIT 1 is clk status. SE_GENI_IOS register set when CLK/SDA line
 	 * is pulled high.
 	 */
-	return (((geni_ios & 1) == 0) && (gi2c->err == -EPROTO ||
-					  gi2c->err == -EBUSY ||
-					  gi2c->err == -ETIMEDOUT));
+	return (((geni_ios & SCL_SDA_MASK) == I2C_SCL_HIGH_SDA_LOW) &&
+		(gi2c->err == -EPROTO || gi2c->err == -EBUSY  || gi2c->err == -ETIMEDOUT));
 }
 
 /**
@@ -778,7 +787,7 @@ static int do_pending_cancel(struct geni_i2c_dev *gi2c)
 		return 0;
 
 	geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-	if ((geni_ios & 0x3) != 0x3) {
+	if (!IS_I2C_BUS_IDLE(geni_ios)) {
 		/* Try to restore IOS with FORCE_DEFAULT */
 		GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
 			    "%s: IOS:0x%x, bad state\n", __func__, geni_ios);
@@ -786,7 +795,7 @@ static int do_pending_cancel(struct geni_i2c_dev *gi2c)
 		geni_write_reg(FORCE_DEFAULT,
 			       gi2c->base, GENI_FORCE_DEFAULT_REG);
 		geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-		if ((geni_ios & 0x3) != 0x3) {
+		if (!IS_I2C_BUS_IDLE(geni_ios)) {
 			GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
 				    "%s: IOS:0x%x, Fix from Slave side\n",
 				    __func__, geni_ios);
@@ -1739,7 +1748,7 @@ static int geni_i2c_stop_on_bus(struct geni_i2c_dev *gi2c)
 	int ret, time_left = 0;
 
 	geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-	if (!gi2c->is_shared && ((geni_ios & 0x3) != 0x3)) {
+	if (!gi2c->is_shared && !IS_I2C_BUS_IDLE(geni_ios)) {
 		/* Try to restore IO lines with I2C_STOP_ON_BUS */
 		I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
 			    "%s: IOS:0x%x, try I2C_STOP_ON_BUS\n", __func__, geni_ios);
@@ -1770,7 +1779,7 @@ static int geni_i2c_stop_on_bus(struct geni_i2c_dev *gi2c)
 		}
 
 		geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-		if ((geni_ios & 0x3) != 0x3) {
+		if (!IS_I2C_BUS_IDLE(geni_ios)) {
 			I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
 				    "%s: IOS:0x%x, I2C lines in bad state\n",
 				    __func__, geni_ios);
@@ -2291,7 +2300,7 @@ static int geni_i2c_gsi_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 
 			/* WAR: Set flag to mark cancel pending if IOS stuck */
 			geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-			if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
+			if (!IS_I2C_BUS_IDLE(geni_ios)) {
 				I2C_LOG_ERR(gi2c->ipcl, false, gi2c->dev,
 					    "%s: IO lines not in good state\n",
 					    __func__);
@@ -2505,7 +2514,7 @@ static int geni_i2c_execute_xfer(struct geni_i2c_dev *gi2c,
 
 			/* WAR: Set flag to mark cancel pending if IOS bad */
 			geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-			if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
+			if (!IS_I2C_BUS_IDLE(geni_ios)) {
 				I2C_LOG_DBG(gi2c->ipcl, true, gi2c->dev,
 					"%s: IO lines not good: 0x%x\n",
 					__func__, geni_ios);
@@ -2530,7 +2539,7 @@ static int geni_i2c_execute_xfer(struct geni_i2c_dev *gi2c,
 			if (gi2c->is_i2c_rtl_based) {
 				/* WAR: Set flag to mark cancel pending if IOS bad */
 				geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-				if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
+				if (!IS_I2C_BUS_IDLE(geni_ios)) {
 					I2C_LOG_DBG(gi2c->ipcl, true, gi2c->dev,
 						    "%s: IO lines not in good state\n",
 						    __func__);
@@ -2606,6 +2615,37 @@ geni_i2c_execute_xfer_exit:
 	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
 		    "%s Time took for %d xfers = %llu nsecs\n",
 		    __func__, num, (sched_clock() - start_time_xfer));
+	return ret;
+}
+
+/**
+ * i2c_initiate_bus_recovery() - Initiates I2C bus recovery when SCL is high but SDA is low.
+ * @gi2c: Pointer to the I2C device structure.
+ *
+ * Return: 0 on success OR respective error code value for failure.
+ */
+static int i2c_initiate_bus_recovery(struct geni_i2c_dev *gi2c)
+{
+	int ret = 0;
+	u32 geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
+
+	if ((geni_ios & SCL_SDA_MASK) != I2C_SCL_HIGH_SDA_LOW)
+		return 0;
+
+	gi2c->err = -EBUSY;
+	if (!gi2c->bus_recovery_enable) {
+		GENI_SE_ERR(gi2c->ipcl, false, gi2c->dev, "Bus Recovery not enabled\n");
+		return -ENXIO;
+	}
+
+	ret = geni_i2c_bus_recovery(gi2c);
+	if (ret) {
+		GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev, "%s:Bus Recovery failed\n", __func__);
+		return ret;
+	}
+
+	gi2c->err = 0;
+
 	return ret;
 }
 
@@ -2687,22 +2727,13 @@ static int geni_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	}
 
 	geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
-	if (!gi2c->is_shared && ((geni_ios & 0x3) != 0x3)) {//SCL:b'1, SDA:b'0
+	if (!gi2c->is_shared && !IS_I2C_BUS_IDLE(geni_ios)) {
 		I2C_LOG_ERR(gi2c->ipcl, false, gi2c->dev,
-			    "IO lines in bad state, Power the slave\n");
+			    "IO lines in bad state, Power the slave: geni_ios:%d\n",
+			    geni_ios);
 		if (gi2c->se_mode == FIFO_SE_DMA) {
-			gi2c->err = -EBUSY;
-			if (gi2c->bus_recovery_enable) {
-				ret = geni_i2c_bus_recovery(gi2c);
-				if (ret)
-					GENI_SE_ERR(gi2c->ipcl, true, gi2c->dev,
-						    "%s:Bus Recovery failed\n", __func__);
-				gi2c->err = 0;
-			} else {
-				GENI_SE_DBG(gi2c->ipcl, false, gi2c->dev,
-					    "Bus Recovery not enabled\n");
-				ret = -ENXIO;
-			}
+			/* Initiate bus recovery only in Non-GSI mode  */
+			ret = i2c_initiate_bus_recovery(gi2c);
 		} else {
 			I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
 				    "Bus Recovery not supported for GSI\n");
@@ -2717,7 +2748,7 @@ static int geni_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 			}
 			mutex_unlock(&gi2c->i2c_ssr.ssr_lock);
 			atomic_set(&gi2c->is_xfer_in_progress, 0);
-			return -ENXIO;
+			return ret;
 		}
 	}
 
