@@ -224,6 +224,8 @@ void free_si_object(struct si_object *object);
 
 int init_si_object_user(struct si_object *object, enum si_object_type ot,
 	struct si_object_operations *ops, const char *fmt, ...);
+struct si_object *init_si_mem_object(phys_addr_t paddr, size_t size,
+	void (*release)(void *), void *private);
 
 int get_si_object(struct si_object *object);
 void put_si_object(struct si_object *object);
