@@ -1910,6 +1910,10 @@ static void ufs_qcom_device_reset_ctrl(struct ufs_hba *hba, bool asserted)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+    ufsf_reset_host(ufs_host_get_ufsf(hba));
+#endif
+
 	/* reset gpio is optional */
 	if (!host->device_reset)
 		return;
@@ -1948,8 +1952,12 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err = 0;
 
-	if (status == PRE_CHANGE)
+	if (status == PRE_CHANGE) {
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+        ufsf_suspend(ufs_host_get_ufsf(hba), pm_op == UFS_SYSTEM_PM);
+#endif
 		return 0;
+	}
 
 	/*
 	 * If UniPro link is not active or OFF, PHY ref_clk, main PHY
@@ -2048,6 +2056,11 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err;
+
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+    struct ufsf_feature *ufsf = ufs_host_get_ufsf(hba);
+	schedule_work(&ufsf->resume_work);
+#endif
 
 	if (host->vddp_ref_clk && (hba->rpm_lvl > UFS_PM_LVL_3 ||
 				   hba->spm_lvl > UFS_PM_LVL_3))
@@ -4121,6 +4134,10 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		dev_warn(dev, "%s: failed to configure the testbus %d\n",
 				__func__, err);
 
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+    ufsf_set_init(hba);
+#endif
+
 	ufs_qcom_init_sysfs(hba);
 	ufs_qcom_init_bus_vote_sysfs(host);
 
@@ -4593,8 +4610,12 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 	bool ber_th_exceeded = false;
 	bool disable_ber = true;
 
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+	ufsf_event_notify(hba, evt, *(u32 *)data);
+#endif
+
 	switch (evt) {
-	case UFS_EVT_PA_ERR:
+		case UFS_EVT_PA_ERR:
 		if (disable_ber) {
 			dev_err(hba->dev, "%s: BER is disabled.\n", __func__);
 			return;
@@ -5547,6 +5568,16 @@ static unsigned long ufs_qcom_opp_freq_to_clk_freq(struct ufs_hba *hba,
 	return clk_freq;
 }
 
+#ifdef CONFIG_UFSFEATURE
+static void ufs_qcom_config_scsi_dev(struct scsi_device *sdev)
+{
+	struct ufs_hba *hba = shost_priv(sdev->host);
+	struct ufsf_feature *ufsf = ufs_host_get_ufsf(hba);
+
+	ufsf_slave_configure(ufsf, sdev);
+}
+#endif
+
 static u32 ufs_qcom_freq_to_gear_speed(struct ufs_hba *hba, unsigned long freq)
 {
 	u32 gear = 0;
@@ -5614,6 +5645,9 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 	.get_outstanding_cqs	= ufs_qcom_get_outstanding_cqs,
 	.config_esi		= ufs_qcom_config_esi,
 	.freq_to_gear_speed	= ufs_qcom_freq_to_gear_speed,
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+	.config_scsi_dev	= ufs_qcom_config_scsi_dev,
+#endif
 };
 
 /**
@@ -6417,6 +6451,10 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 	if (err)
 		return dev_err_probe(dev, err, "ufshcd_pltfrm_init() failed\n");
 
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+	ufs_samsung_register_hooks();
+	ufs_host_exception_event_hook(platform_get_drvdata(pdev));
+#endif
 	ufs_qcom_register_hooks();
 	return err;
 }
@@ -6454,6 +6492,10 @@ static void ufs_qcom_remove(struct platform_device *pdev)
 	if (msm_minidump_enabled())
 		atomic_notifier_chain_unregister(&panic_notifier_list,
 				&host->ufs_qcom_panic_nb);
+
+#if IS_ENABLED(CONFIG_UFSFEATURE)
+	ufsf_remove(ufs_host_get_ufsf(hba));
+#endif
 
 	ufshcd_remove(hba);
 	platform_device_msi_free_irqs_all(hba->dev);
