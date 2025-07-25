@@ -8,6 +8,18 @@ def register_modules(registry):
             "drivers/ufs/host/ufs-qcom.h",
             "drivers/ufs/host/ufshcd-crypto-qti.c",
         ],
+        conditional_srcs = {
+             "CONFIG_UFSFEATURE": {
+                 True: [
+                        "drivers/ufs/host/vendor/ufsfeature.h",
+                 ],
+             },
+             "CONFIG_UFS_JEDEC_HID":{
+                True: [
+                        "drivers/ufs/host/vendor/ufs-jedec-hid.h",
+                ],
+             },
+        },
         deps = [
             # do not sort
             "drivers/soc/qcom/qcom_ice",
@@ -29,6 +41,22 @@ def register_modules(registry):
             "drivers/ufs/host/ufs-qcom.c",
             "drivers/ufs/host/ufs-qcom.h",
         ],
+        conditional_srcs = {
+             "CONFIG_UFSFEATURE": {
+                 True: [
+                    "drivers/ufs/host/vendor/ufsfeature.c",
+                    "drivers/ufs/host/vendor/ufsfeature.h",
+                    "drivers/ufs/host/vendor/ufsfeature-mimic.c",
+                    "drivers/ufs/host/vendor/ufsfeature-trace.h",
+                 ],
+             },
+             "CONFIG_UFS_JEDEC_HID":{
+                True: [
+                    "drivers/ufs/host/vendor/ufs-jedec-hid.c",
+                    "drivers/ufs/host/vendor/ufs-jedec-hid.h",
+                ],
+             },
+        },
         deps = [
             # do not sort
             "drivers/ufs/host/ufshcd-crypto-qti",
