@@ -330724,6 +330724,13 @@ function {
   parameter_id: 0x14cbb87c
 }
 function {
+  id: 0x9bdde64f
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x1d19a9d5
+  parameter_id: 0x18ea2d6b
+}
+function {
   id: 0x9bddee2d
   return_type_id: 0x6720d32f
   parameter_id: 0x18ea6ae3
@@ -346736,6 +346743,15 @@ elf_symbol {
   full_name: "__traceiter_android_rvh_cpuset_fork"
 }
 elf_symbol {
+  id: 0x2941af77
+  name: "__traceiter_android_rvh_create_worker"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x7d4f14d9
+  type_id: 0x9bdde64f
+  full_name: "__traceiter_android_rvh_create_worker"
+}
+elf_symbol {
   id: 0x44c5f919
   name: "__traceiter_android_rvh_ctl_dirty_rate"
   is_defined: true
@@ -352017,6 +352033,15 @@ elf_symbol {
   crc: 0xa0966112
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_rvh_cpuset_fork"
+}
+elf_symbol {
+  id: 0x2a923aa1
+  name: "__tracepoint_android_rvh_create_worker"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x7b0ee9c0
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_create_worker"
 }
 elf_symbol {
   id: 0xd9e47a83
@@ -419841,6 +419866,7 @@ interface {
   symbol_id: 0x4053abff
   symbol_id: 0x1baec33d
   symbol_id: 0x1a7f4cf6
+  symbol_id: 0x2941af77
   symbol_id: 0x44c5f919
   symbol_id: 0x737a17d9
   symbol_id: 0x6f247fd5
@@ -420428,6 +420454,7 @@ interface {
   symbol_id: 0x05576f29
   symbol_id: 0x9f779ef7
   symbol_id: 0xc53e6388
+  symbol_id: 0x2a923aa1
   symbol_id: 0xd9e47a83
   symbol_id: 0x3f13b1fb
   symbol_id: 0xb61c901f
