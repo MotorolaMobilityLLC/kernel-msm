@@ -5,3 +5,4 @@
 #blocklist 8250_of
 blocklist watchdogtest
 blocklist moto_pm_vh
+blocklist goodix_fod_mmi
