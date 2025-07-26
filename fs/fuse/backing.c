@@ -406,23 +406,26 @@ int fuse_lseek_backing(struct fuse_bpf_args *fa, struct file *file, loff_t offse
 	struct file *backing_file = fuse_file->backing_file;
 	loff_t ret;
 
-	/* TODO: Handle changing of the file handle */
 	if (offset == 0) {
 		if (whence == SEEK_CUR) {
 			flo->offset = file->f_pos;
-			return flo->offset;
+			return 0;
 		}
 
 		if (whence == SEEK_SET) {
 			flo->offset = vfs_setpos(file, 0, 0);
-			return flo->offset;
+			return 0;
 		}
 	}
 
 	inode_lock(file->f_inode);
 	backing_file->f_pos = file->f_pos;
 	ret = vfs_llseek(backing_file, fli->offset, fli->whence);
-	flo->offset = ret;
+
+	if (!IS_ERR(ERR_PTR(ret))) {
+		flo->offset = ret;
+		ret = 0;
+	}
 	inode_unlock(file->f_inode);
 	return ret;
 }
@@ -2363,8 +2366,11 @@ static bool filldir(struct dir_context *ctx, const char *name, int namelen,
 	return true;
 }
 
-static int parse_dirfile(char *buf, size_t nbytes, struct dir_context *ctx)
+static int parse_dirfile(char *buf, size_t nbytes, struct dir_context *ctx,
+		loff_t next_offset)
 {
+	char *buffstart = buf;
+
 	while (nbytes >= FUSE_NAME_OFFSET) {
 		struct fuse_dirent *dirent = (struct fuse_dirent *) buf;
 		size_t reclen = FUSE_DIRENT_SIZE(dirent);
@@ -2378,12 +2384,18 @@ static int parse_dirfile(char *buf, size_t nbytes, struct dir_context *ctx)
 
 		ctx->pos = dirent->off;
 		if (!dir_emit(ctx, dirent->name, dirent->namelen, dirent->ino,
-				dirent->type))
-			break;
+				dirent->type)) {
+			// If we can't make any progress, user buffer is too small
+			if (buf == buffstart)
+				return -EINVAL;
+			else
+				return 0;
+		}
 
 		buf += reclen;
 		nbytes -= reclen;
 	}
+	ctx->pos = next_offset;
 
 	return 0;
 }
@@ -2430,13 +2442,12 @@ void *fuse_readdir_finalize(struct fuse_bpf_args *fa,
 	struct file *backing_dir = ff->backing_file;
 	int err = 0;
 
-	err = parse_dirfile(fa->out_args[1].value, fa->out_args[1].size, ctx);
+	err = parse_dirfile(fa->out_args[1].value, fa->out_args[1].size, ctx, fro->offset);
 	*force_again = !!fro->again;
 	if (*force_again && !*allow_force)
 		err = -EINVAL;
 
-	ctx->pos = fro->offset;
-	backing_dir->f_pos = fro->offset;
+	backing_dir->f_pos = ctx->pos;
 
 	free_page((unsigned long) fa->out_args[1].value);
 	return ERR_PTR(err);

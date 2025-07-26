@@ -5,19 +5,22 @@ optimize kernel builds for specific architectures and kernel versions.
 
 ## kernel.afdo
 
-kernel.afdo is an AArch64 kernel profile collected on kernel version 6.6.82 (
-SHA b62ea68f41a901d5f07f48bd6f1d3a117d801411, build server ID 13287877) using Pixel 6.
+kernel.afdo is an AArch64 kernel profile collected on kernel version 6.6.92 (
+SHA fe630a04152399fa0646fa16cabae8dee2901a20, build server ID P100391429) using Pixel 6.
 
 ### Performance improvements
 
-| Benchmark             | Improvement |
-| --------------------- | ----------- |
-| Boot time             | 2.2%        |
-| Cold App launch time  | 2.7%        |
-| Binder-rpc            | 4.4%        |
-| Binder-addints        | 14.1%       |
-| Hwbinder              | 17.0%       |
-| Bionic (syscall_mmap) | 1.6%        |
+| Benchmark             | Improvement                                                              |
+| --------------------- | ------------------------------------------------------------------------ |
+| Boot time             | 1.5%                                                                     |
+| Cold App launch time  | 3.3% ((Only for two apps, most app launch tests are broken b/432087996)) |
+| Binder-rpc            | 4.4%                                                                     |
+| Binder-addints        | 15.4%                                                                    |
+| Hwbinder              | 15.2%                                                                    |
+| Bionic (syscall_mmap) | 5.6%                                                                     |
+| Bionic (pthread)      | 1.9%                                                                     |
+| Bionic (stdio)        | 5.4%                                                                     |
+| Bionic (all)          | 2.9%                                                                     |
 
 Benchmark results were tested on Pixel 6.
 
