@@ -1574,6 +1574,17 @@ static void handle___pkvm_host_iommu_iova_to_phys(struct kvm_cpu_context *host_c
 	hyp_reqs_smccc_encode(ret, host_ctxt, this_cpu_ptr(&host_hyp_reqs));
 }
 
+static void handle___pkvm_host_iommu_iotlb_sync_map(struct kvm_cpu_context *host_ctxt)
+{
+	unsigned long ret;
+	DECLARE_REG(pkvm_handle_t, domain, host_ctxt, 1);
+	DECLARE_REG(unsigned long, iova, host_ctxt, 2);
+	DECLARE_REG(size_t, size, host_ctxt, 3);
+
+	ret = kvm_iommu_iotlb_sync_map(domain, iova, size);
+	hyp_reqs_smccc_encode(ret, host_ctxt, this_cpu_ptr(&host_hyp_reqs));
+}
+
 static void handle___pkvm_iommu_init(struct kvm_cpu_context *host_ctxt)
 {
 	DECLARE_REG(struct kvm_iommu_ops *, ops, host_ctxt, 1);
@@ -1671,6 +1682,7 @@ static const hcall_t host_hcall[] = {
 	HANDLE_FUNC(__pkvm_host_iommu_iova_to_phys),
 	HANDLE_FUNC(__pkvm_host_hvc_pd),
 	HANDLE_FUNC(__pkvm_stage2_snapshot),
+	HANDLE_FUNC(__pkvm_host_iommu_iotlb_sync_map),
 };
 
 static void handle_host_hcall(struct kvm_cpu_context *host_ctxt)
