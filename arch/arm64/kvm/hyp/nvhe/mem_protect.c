@@ -316,7 +316,6 @@ static int relinquish_walker(u64 addr, u64 end, u32 level, kvm_pte_t *ptep,
 	kvm_pte_t pte = *ptep;
 	struct relinquish_data *data = arg;
 	enum pkvm_page_state state;
-	phys_addr_t phys;
 
 	if (!kvm_pte_valid(pte))
 		return 0;
@@ -325,13 +324,7 @@ static int relinquish_walker(u64 addr, u64 end, u32 level, kvm_pte_t *ptep,
 	if (state != data->expected_state)
 		return -EPERM;
 
-	phys = kvm_pte_to_phys(pte);
-	if (state == PKVM_PAGE_OWNED) {
-		hyp_poison_page(phys);
-		psci_mem_protect_dec(1);
-	}
-
-	data->pa = phys;
+	data->pa = kvm_pte_to_phys(pte);
 
 	return 0;
 }
@@ -366,6 +359,10 @@ int __pkvm_guest_relinquish_to_host(struct pkvm_hyp_vcpu *vcpu,
 	if (!ret && data.pa) {
 		WARN_ON(host_stage2_set_owner_locked(data.pa, PAGE_SIZE, PKVM_ID_HOST));
 		WARN_ON(kvm_pgtable_stage2_unmap(&vm->pgt, ipa, PAGE_SIZE));
+		if (pkvm_hyp_vcpu_is_protected(vcpu)) {
+			hyp_poison_page(data.pa);
+			psci_mem_protect_dec(1);
+		}
 	}
 
 	guest_unlock_component(vm);
