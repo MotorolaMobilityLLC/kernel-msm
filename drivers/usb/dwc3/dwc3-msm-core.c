@@ -6609,12 +6609,14 @@ static int vbus_regulator_get(struct dwc3_msm *mdwc)
 	 */
 	mdwc->vbus_reg = devm_regulator_get_optional(mdwc->dev,
 						"vbus_dwc3");
-	if (IS_ERR(mdwc->vbus_reg) &&
-			PTR_ERR(mdwc->vbus_reg) == -EPROBE_DEFER) {
-		/* regulators may not be ready, so retry again later */
-		mdwc->vbus_reg = NULL;
+	if (!IS_ERR(mdwc->vbus_reg))
+		return 0;
+
+	/* regulators may not be ready, so retry again later */
+	if (PTR_ERR(mdwc->vbus_reg) == -EPROBE_DEFER)
 		return -EPROBE_DEFER;
-	}
+
+	mdwc->vbus_reg = NULL;
 
 	return 0;
 }
