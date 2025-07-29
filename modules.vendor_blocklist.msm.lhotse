@@ -1,0 +1,5 @@
+#moto vendor_blocklist
+
+blocklist qm35_spi
+blocklist watchdogtest
+blocklist moto_pm_vh
