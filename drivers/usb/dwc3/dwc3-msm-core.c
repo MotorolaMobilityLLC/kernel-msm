@@ -6868,6 +6868,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (mdwc->pm_qos_latency)
 		cpu_latency_qos_add_request(&mdwc->pm_qos_req_dma,
 					    PM_QOS_DEFAULT_VALUE);
+	if (of_property_read_bool(node,
+					"qcom,force-adb-enable")) {
+		dev_err(mdwc->dev, "%s: force usb start device mode\n", __func__);
+		dwc3_start_stop_device(mdwc, true);
+	}
 
 	return 0;
 
