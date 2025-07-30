@@ -1196,9 +1196,14 @@
   hid_add_device
   hid_allocate_device
   hid_destroy_device
+  hid_field_extract
   hid_ignore
   hid_input_report
+  hid_is_usb
   hid_parse_report
+  hid_register_report
+  hid_report_raw_event
+  hid_validate_values
   housekeeping_cpumask
   housekeeping_overridden
   housekeeping_test_cpu
@@ -1322,6 +1327,7 @@
   input_alloc_absinfo
   input_allocate_device
   input_close_device
+  input_enable_softrepeat
   input_event
   input_free_device
   input_mt_destroy_slots
@@ -2215,6 +2221,7 @@
   power_supply_get_drvdata
   power_supply_get_property
   power_supply_is_system_supplied
+  power_supply_powers
   power_supply_put
   power_supply_register
   power_supply_reg_notifier
