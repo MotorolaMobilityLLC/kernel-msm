@@ -1093,6 +1093,7 @@
   platform_device_add_resources
   platform_device_alloc
   softnet_data
+  netdev_sw_irq_coalesce_default_on
 
 # required by gpio-brcmstb.ko
   bgpio_init
