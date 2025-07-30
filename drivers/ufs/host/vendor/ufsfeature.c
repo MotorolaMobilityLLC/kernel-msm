@@ -44,15 +44,15 @@
 #include <linux/string.h>
 
 const struct ufsf_offset ufsf_idn[] = {
-	[DESC_IDN_DEVICE] = { 0xF0 },
+	[DESC_IDN_DEVICE] = { 0x00 }, // for micron and samsung
 	[DESC_IDN_DEVICE_3_1] = { 0x00 },
-	[DESC_IDN_GEOMETRY] = { 0xF7 },
+	[DESC_IDN_GEOMETRY] = { 0x07 }, // for micron and samsung
 	[DESC_IDN_GEOMETRY_3_1] = { 0x07 },
 };
 
 const struct ufsf_offset ufsf_desc[] = {
 	/* Device Descriptor */
-	[DESC_DEVICE_MAX_SIZE] = { 0xFF },
+	[DESC_DEVICE_MAX_SIZE] = { 0x65 }, //for micron and samsung
 	[DESC_DEVICE_MAX_SIZE_3_1] = { 0x65 },
 	/* Configuration Descriptor */
 	[DESC_CONFIGURAION_MAX_SIZE] =	{ 0xE6 },
@@ -61,7 +61,7 @@ const struct ufsf_offset ufsf_desc[] = {
 	[DESC_UNIT_MAX_SIZE] = { 0x2D },
 	[DESC_UNIT_MAX_SIZE_3_1] = { 0x2D },
 	/* Geometry Descriptor */
-	[GEOMETRY_MAX_SIZE] = { 0xFF },
+	[GEOMETRY_MAX_SIZE] = { 0x5E }, //for micron and samsung
 	[GEOMETRY_MAX_SIZE_3_1] = { 0x5E },
 };
 
@@ -126,11 +126,11 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf, u8 selector)
 		  desc_buf[DEVICE_DESC_PARAM_EX_FEAT_SUP+2],
 		  desc_buf[DEVICE_DESC_PARAM_EX_FEAT_SUP+3]);
 
-	if (!selector) {
-		INFO_MSG("samsung extend=0x%.2x_%.2x",
-				desc_buf[DEVICE_DESC_PARAM_SAMSUNG_SUP+2],
-				desc_buf[DEVICE_DESC_PARAM_SAMSUNG_SUP+3]);
-	}
+	// if (!selector) {
+	// 	INFO_MSG("samsung extend=0x%.2x_%.2x",
+	// 			desc_buf[DEVICE_DESC_PARAM_SAMSUNG_SUP+2],
+	// 			desc_buf[DEVICE_DESC_PARAM_SAMSUNG_SUP+3]);
+	// }
 
 	INFO_MSG("One Driver Feature Version : (%.6X%s)", UFSFEATURE_DD_VER,
 		 UFSFEATURE_DD_VER_POST);
@@ -241,12 +241,12 @@ void ufsf_device_check(struct ufs_hba *hba)
 {
 	struct ufsf_feature *ufsf = ufs_host_get_ufsf(hba);
 	int lun;
-	u32 status;
+	u32 status = 0;
 
 	ufsf_init_ufs_ver_info(hba);
 
-	ufshcd_query_attr(ufsf->hba, UPIU_QUERY_OPCODE_READ_ATTR,
-			  QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS, 0, 0, &status);
+	// ufshcd_query_attr(ufsf->hba, UPIU_QUERY_OPCODE_READ_ATTR,
+	// 		  QUERY_ATTR_IDN_SUP_VENDOR_OPTIONS, 0, 0, &status);
 	INFO_MSG("UFS FEATURE SELECTOR Dev %d - D/D %d", status,
 		 ufsf->samsung_sel);
 
