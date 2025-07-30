@@ -33,7 +33,6 @@ struct vlan_info {
 	struct vlan_group	grp;
 	struct list_head	vid_list;
 	unsigned int		nr_vids;
-	bool			auto_vid0;
 	struct rcu_head		rcu;
 };
 
