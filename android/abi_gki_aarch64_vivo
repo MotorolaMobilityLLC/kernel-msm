@@ -413,6 +413,8 @@
   __traceiter_android_vh_ftrace_oops_enter
   __traceiter_android_vh_ftrace_oops_exit
   __traceiter_android_vh_ftrace_size_check
+  __traceiter_android_vh_free_unref_page_list_bypass
+  __traceiter_android_rvh_try_alloc_pages_gfp
   __traceiter_android_vh_fuse_request_end
   __traceiter_android_vh_ignore_dmabuf_vmap_bounds
   __traceiter_android_vh_ipi_stop
@@ -624,6 +626,8 @@
   __tracepoint_android_vh_ftrace_oops_enter
   __tracepoint_android_vh_ftrace_oops_exit
   __tracepoint_android_vh_ftrace_size_check
+  __tracepoint_android_vh_free_unref_page_list_bypass
+  __tracepoint_android_rvh_try_alloc_pages_gfp
   __tracepoint_android_vh_fuse_request_end
   __tracepoint_android_vh_ignore_dmabuf_vmap_bounds
   __tracepoint_android_vh_ipi_stop
