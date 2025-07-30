@@ -728,6 +728,46 @@ static ssize_t ufshid_sysfs_store_execute(struct ufshid_dev *hid,
 	return count;
 }
 
+static ssize_t ufshid_sysfs_show_trigger(struct ufshid_dev *hid, char *buf)
+{
+	INFO_MSG("[Analyze & Execute] hid_trigger %d", hid->hid_trigger);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hid->hid_trigger);
+}
+
+static ssize_t ufshid_sysfs_store_trigger(struct ufshid_dev *hid,
+					  const char *buf, size_t count)
+{
+	unsigned long val;
+	ssize_t ret;
+
+	if (kstrtoul(buf, 0, &val))
+		return -EINVAL;
+
+	if (val != 0 && val != 1 && val != 2)
+		return -EINVAL;
+
+	INFO_MSG("HID operation %lu", val);
+
+	if (val == hid->hid_trigger)
+		return count;
+
+	if (val == 0) {
+		INFO_MSG("HID stop HID operation!");
+		ret = ufshid_trigger_off(hid);
+	} else if (val == 1) {
+		INFO_MSG("HID trigger analyze!");
+		ret = ufshid_trigger_on(hid, HID_OP_ANALYZE);
+	} else {
+		INFO_MSG("HID trigger execute!");
+		ret = ufshid_trigger_on(hid, HID_OP_EXECUTE);
+	}
+	if (ret)
+		return ret;
+
+	return count;
+}
+
 static ssize_t ufshid_sysfs_show_trigger_interval(struct ufshid_dev *hid,
 						  char *buf)
 {
@@ -970,7 +1010,7 @@ static ssize_t ufshid_sysfs_store_auto_hibern8_enable(struct ufshid_dev *hid,
 static struct ufshid_sysfs_entry ufshid_sysfs_entries[] = {
 	define_sysfs_ro(progress_ratio),
 	define_sysfs_ro(available_size),
-
+	define_sysfs_rw(trigger),
 	define_sysfs_rw(execute),
 	define_sysfs_rw(trigger_interval),
 	define_sysfs_rw(analyze),
