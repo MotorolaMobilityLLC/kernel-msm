@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitmap.h>
@@ -251,6 +251,11 @@ static u32 llcc_offsets_v41[] = {
 	0x200000,
 	0x400000,
 	0x600000
+};
+
+static u32 llcc_offsets_v51[] = {
+	0x0,
+	0x400000,
 };
 
 enum {
@@ -1500,6 +1505,8 @@ static int qcom_llcc_probe(struct platform_device *pdev)
 	if (of_property_match_string(dev->of_node,
 				"compatible", "qcom,llcc-v51") >= 0) {
 		drv_data->llcc_ver = 51;
+		drv_data->offsets = llcc_offsets_v51;
+		drv_data->num_banks = ARRAY_SIZE(llcc_offsets_v51);
 	} else if (of_property_match_string(dev->of_node,
 				"compatible", "qcom,llcc-v50") >= 0) {
 		drv_data->llcc_ver = 50;
