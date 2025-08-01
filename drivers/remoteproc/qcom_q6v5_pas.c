@@ -3005,10 +3005,13 @@ static const struct adsp_data niobe_soccp_resource = {
 static const struct adsp_data seraph_soccp_resource = {
 	.crash_reason_smem = 656,
 	.firmware_name = "soccp.mbn",
+	.dtb_firmware_name = "soccp_dtb.mbn",
 	.pas_id = 51,
+	.dtb_pas_id = 0x41,
+	.minidump_id = 24,
+	.uses_elf64 = true,
 	.ssr_name = "soccp",
 	.sysmon_name = "soccp",
-	.check_status = true,
 	.early_boot = true,
 	.auto_boot = true,
 };
