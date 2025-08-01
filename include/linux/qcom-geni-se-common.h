@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _LINUX_QCOM_GENI_SE_COMMON
@@ -68,6 +68,7 @@ if (print) { \
 #define SE_IRQ_EN			(0xe1c)
 #define DMA_GENERAL_CFG			(0xe30)
 #define SE_DMA_DEBUG_REG0		(0xE40)
+
 #define SE_DMA_TX_PTR_L			(0xC30)
 #define SE_DMA_TX_PTR_H			(0xC34)
 #define SE_DMA_TX_ATTR			(0xC38)

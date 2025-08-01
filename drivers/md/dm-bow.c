@@ -1140,14 +1140,15 @@ static int dm_bow_map(struct dm_target *ti, struct bio *bio)
 				ret = add_trim(bc, bio);
 			else if (bio_data_dir(bio) == WRITE)
 				ret = remove_trim(bc, bio);
+			/* else pass-through */
 		} else if (state == CHECKPOINT) {
 			if (bio->bi_iter.bi_sector == 0)
 				ret = handle_sector0(bc, bio);
 			else if (bio_data_dir(bio) == WRITE)
 				ret = queue_write(bc, bio);
-		} else {
-			/* pass-through */
+			/* else pass-through */
 		}
+		/* else pass-through */
 		mutex_unlock(&bc->ranges_lock);
 	}
 
@@ -1268,7 +1269,7 @@ int dm_bow_prepare_ioctl(struct dm_target *ti, struct block_device **bdev)
 
 	*bdev = dev->bdev;
 	/* Only pass ioctls through if the device sizes match exactly. */
-	return ti->len != i_size_read(dev->bdev->bd_inode) >> SECTOR_SHIFT;
+	return ti->len != bdev_nr_sectors(dev->bdev);
 }
 
 static int dm_bow_iterate_devices(struct dm_target *ti,
