@@ -2519,7 +2519,7 @@ static void qcom_ethqos_hdma_cfg(struct plat_stmmacenet_data *plat)
 	plat->dma_cfg->tx_pdma_map[4] = 4;
 	plat->dma_cfg->tx_pdma_map[5] = 5;
 	plat->dma_cfg->tx_pdma_map[6] = 5;
-	plat->dma_cfg->tx_pdma_map[7] = 5;
+	plat->dma_cfg->tx_pdma_map[7] = 6;
 	plat->dma_cfg->tx_pdma_map[8] = 6;
 	plat->dma_cfg->tx_pdma_map[9] = 6;
 	plat->dma_cfg->tx_pdma_map[10] = 7;
@@ -2533,7 +2533,7 @@ static void qcom_ethqos_hdma_cfg(struct plat_stmmacenet_data *plat)
 	plat->dma_cfg->rx_pdma_map[4] = 4;
 	plat->dma_cfg->rx_pdma_map[5] = 5;
 	plat->dma_cfg->rx_pdma_map[6] = 5;
-	plat->dma_cfg->rx_pdma_map[7] = 5;
+	plat->dma_cfg->rx_pdma_map[7] = 6;
 	plat->dma_cfg->rx_pdma_map[8] = 6;
 	plat->dma_cfg->rx_pdma_map[9] = 6;
 	plat->dma_cfg->rx_pdma_map[10] = 7;
