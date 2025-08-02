@@ -375,6 +375,7 @@ struct gsi_tre_queue {
 	u32 msg_cnt;
 	u32 unmap_msg_cnt;
 	u32 freed_msg_cnt;
+	bool is_multi_descriptor;
 	dma_addr_t dma_buf[GSI_MAX_NUM_TRE_MSGS];
 	void *virt_buf[GSI_MAX_NUM_TRE_MSGS];
 	u32 len[GSI_MAX_NUM_TRE_MSGS];

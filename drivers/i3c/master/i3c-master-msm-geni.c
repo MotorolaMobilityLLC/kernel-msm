@@ -220,6 +220,16 @@
 #define MAX_I3C_SE		2
 #define I3C_START_ADDR		8
 
+/* I3C OD mode frequency config values */
+enum geni_i3c_od_mode {
+	I2C_MAX_STANDARD_MODE,
+	I2C_MAX_FAST_MODE,
+	I2C_MAX_FAST_MODE_PLUS,
+	I2C_MAX_TURBO_MODE,
+	I2C_MAX_HIGH_SPEED,
+	I2C_MAX_ULTRA_FAST_MODE,
+};
+
 /* For multi descriptor, gsi irq will generate for every 64 tre's */
 #define NUM_I3C_TRE_MSGS_PER_INTR (64)
 
@@ -315,6 +325,7 @@ struct geni_i3c_dev {
 	int i3c_kpi;
 	struct completion done;
 	struct mutex lock;
+	struct mutex i3c_ibi_lock; /* ibi master request lock */
 	struct gsi_common gsi;
 	dma_addr_t rx_phy;
 	bool gsi_err;
@@ -327,6 +338,7 @@ struct geni_i3c_dev {
 	enum i3c_trans_dir cur_rnw;
 	int cur_len;
 	int cur_idx;
+	int num_xfers;
 	unsigned long newaddrslots[(I3C_ADDR_MASK + 1) / BITS_PER_LONG];
 	const struct geni_i3c_clk_fld *clk_fld;
 	const struct geni_i3c_clk_fld *clk_od_fld;
@@ -338,6 +350,7 @@ struct geni_i3c_dev {
 	struct geni_i3c_ver_info ver_info;
 	struct msm_geni_i3c_rsc i3c_rsc;
 	struct device *wrapper_dev;
+	bool is_shared;
 	bool is_i2c_xfer; /* i2c transfer flag */
 };
 
@@ -900,6 +913,62 @@ static void gi3c_gsi_rx_cb(void *ptr)
 }
 
 /*
+ * i3c_setup_lock_tre() - setup lock tre
+ *
+ * @gi3c: i3c master device handle
+ *
+ * Return: None
+ */
+static void i3c_setup_lock_tre(struct geni_i3c_dev *gi3c)
+{
+	struct msm_gpi_tre *lock_t = &gi3c->gsi.tx.tre.lock_t;
+	bool gsi_bei = false;
+
+	/* lock: chain bit set */
+	lock_t->dword[0] = MSM_GPI_LOCK_TRE_DWORD0;
+	lock_t->dword[1] = MSM_GPI_LOCK_TRE_DWORD1;
+	lock_t->dword[2] = MSM_GPI_LOCK_TRE_DWORD2;
+
+	if (gi3c->gsi.tx.tre_queue.is_multi_descriptor)
+		gsi_bei = true;
+
+	/* For shared se queueing all the TRE's combinedly with chain bit(lock,config,go,dma).
+	 * For other usecases bei bit is set to get complete irq.
+	 */
+	if (gi3c->is_shared)
+		lock_t->dword[3] = MSM_GPI_LOCK_TRE_DWORD3(0, gsi_bei, 0, 0, 1);
+	else
+		lock_t->dword[3] = MSM_GPI_LOCK_TRE_DWORD3(0, gsi_bei, 0, 1, 0);
+
+	gi3c->gsi.tx.tre.flags |= LOCK_TRE_SET;
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "%s: dword[0]:0x%x dword[1]:0x%x dword[2]:0x%x dword[3]:0x%x\n", __func__,
+		    lock_t->dword[0], lock_t->dword[1], lock_t->dword[2], lock_t->dword[3]);
+}
+
+/*
+ * i3c_setup_unlock_tre() - setup unlock tre
+ *
+ * @gi3c: i3c master device handle
+ *
+ * Return: None
+ */
+static void i3c_setup_unlock_tre(struct geni_i3c_dev *gi3c)
+{
+	struct msm_gpi_tre *unlock_t = &gi3c->gsi.tx.tre.unlock_t;
+
+	/* unlock tre: ieob set */
+	unlock_t->dword[0] = MSM_GPI_UNLOCK_TRE_DWORD0;
+	unlock_t->dword[1] = MSM_GPI_UNLOCK_TRE_DWORD1;
+	unlock_t->dword[2] = MSM_GPI_UNLOCK_TRE_DWORD2;
+	unlock_t->dword[3] = MSM_GPI_UNLOCK_TRE_DWORD3(0, 0, 0, 1, 0);
+	gi3c->gsi.tx.tre.flags |= UNLOCK_TRE_SET;
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "%s: dword[0]:0x%x dword[1]:0x%x dword[2]:0x%x dword[3]:0x%x\n", __func__,
+		    unlock_t->dword[0], unlock_t->dword[1], unlock_t->dword[2], unlock_t->dword[3]);
+}
+
+/*
  * i3c_setup_cfg0_tre() - Populates gsi config tre parameters
  *
  * @gi3c: i3c master device handle
@@ -994,7 +1063,16 @@ static void i3c_setup_go_tre(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 	go_t->dword[1] = MSM_GPI_I3C_GO_TRE_DWORD1(use_7e << 0 | nack_ibi << 1 | cont_mode << 2);
 	if (gi3c->cur_rnw == READ_TRANSACTION) {
 		go_t->dword[2] = MSM_GPI_I3C_GO_TRE_DWORD2(cur_len);
-		go_t->dword[3] = MSM_GPI_I3C_GO_TRE_DWORD3(1, 0, 0, 1, 0);
+		/*
+		 * For Rx Go TRE: Set ieob always for non-shared SE.
+		 * For last message shared SE case unlock TRE is followed by
+		 * rx go TRE with ieob mask. So for shared SE don't set ieob
+		 * for last transfer, unlock_TRE will take care ieob mask.
+		 */
+		if (!gi3c->is_shared || (gi3c->is_shared && idx != gi3c->num_xfers - 1))
+			go_t->dword[3] = MSM_GPI_I2C_GO_TRE_DWORD3(1, 0, 0, 1, 0);
+		else
+			go_t->dword[3] = MSM_GPI_I2C_GO_TRE_DWORD3(1, 0, 0, 0, 0);
 	} else {
 		/* For Tx Go tre: ieob is not set, chain bit is set */
 		go_t->dword[2] = MSM_GPI_I3C_GO_TRE_DWORD2(cur_len);
@@ -1071,6 +1149,7 @@ static void i3c_setup_tx_tre(struct geni_i3c_dev *gi3c, int tx_idx, bool gsi_bei
 	struct msm_gpi_tre *tx_t = &gi3c->gsi.tx.tre.dma_t;
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	u32 cur_len = 0;
+	bool chain_bit = false;
 	int xfer_tx_idx = tx_idx % GSI_MAX_NUM_TRE_MSGS;
 
 	if (multi_tre_tx_xfer)
@@ -1084,12 +1163,24 @@ static void i3c_setup_tx_tre(struct geni_i3c_dev *gi3c, int tx_idx, bool gsi_bei
 		geni_i3c_fill_immediate_dma_data((u8 *)&tx_t->dword[0],
 						 (u8 *)tx_tre_q->virt_buf[xfer_tx_idx], cur_len);
 		tx_t->dword[2] = MSM_GPI_DMA_IMMEDIATE_TRE_DWORD2(cur_len);
-		tx_t->dword[3] = MSM_GPI_DMA_IMMEDIATE_TRE_DWORD3(0, gsi_bei, 1, 0, 0);
+		/*
+		 * For Tx: unlock TRE is send for last transfer.
+		 * so set chain bit for last transfer DMA TRE.
+		 */
+		if (gi3c->is_shared && tx_idx == gi3c->num_xfers - 1)
+			chain_bit = true;
+		tx_t->dword[3] = MSM_GPI_DMA_IMMEDIATE_TRE_DWORD3(0, gsi_bei, 1, 0, chain_bit);
 	} else {
 		tx_t->dword[0] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD0(tx_tre_q->dma_buf[xfer_tx_idx]);
 		tx_t->dword[1] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD1(tx_tre_q->dma_buf[xfer_tx_idx]);
 		tx_t->dword[2] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD2(cur_len);
-		tx_t->dword[3] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD3(0, gsi_bei, 1, 0, 0);
+		/*
+		 * For Tx: unlock TRE is send for last transfer.
+		 * so set chain bit for last transfer DMA TRE.
+		 */
+		if (gi3c->is_shared && tx_idx == gi3c->num_xfers - 1)
+			chain_bit = true;
+		tx_t->dword[3] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD3(0, gsi_bei, 1, 0, chain_bit);
 	}
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
 		    "%s: dword[0]:0x%x dword[1]:0x%x dword[2]:0x%x dword[3]:0x%x tx_idx:%d gsi_bei:%d\n",
@@ -1132,12 +1223,11 @@ static int geni_i3c_err_prep_sg(struct geni_i3c_dev *gi3c)
  *
  * @gi3c: i3c master device handle
  * @xfer: i3c tx transfer parameters pointer
- * @num_xfers: total number of tx transfers
  *
  * Return: 0 on success, error code on failure
  */
 static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
-				    struct geni_i3c_xfer_params *xfer, int num_xfers)
+				    struct geni_i3c_xfer_params *xfer)
 {
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	bool tx_chan = true, skip_callbacks = false;
@@ -1146,7 +1236,7 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 
 	I3C_LOG_DBG(gi3c->ipcl, true, gi3c->se.dev,
 		    "%s Enter num_xfer=%d idx=%d len=%d\n", __func__,
-		    num_xfers, xfer->tx_idx, tx_tre_q->len[xfer_tx_idx]);
+		    gi3c->num_xfers, xfer->tx_idx, tx_tre_q->len[xfer_tx_idx]);
 
 	gi3c->err = 0;
 	gi3c->gsi_err = false;
@@ -1159,10 +1249,26 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 	}
 
 	xfer->gsi_bei = false;
-	if (((xfer->tx_idx + 1) % NUM_I3C_TRE_MSGS_PER_INTR) && (xfer->tx_idx != num_xfers - 1)) {
+	if (((xfer->tx_idx + 1) % NUM_I3C_TRE_MSGS_PER_INTR) &&
+	    (xfer->tx_idx != gi3c->num_xfers - 1)) {
 		xfer->gsi_bei = true;
 		skip_callbacks = true;
 	}
+
+	/* Set BEI = true, indicating no interrupt expected for all
+	 * transfers except last transfers.
+	 * For shared SE case last submitted TRE is unlock TRE, hence continue
+	 * to have BEI = TRUE for DMA TX TRE. BEI = 0, is taken care by
+	 * setup_unlock_tre().
+	 */
+	if (gi3c->is_shared && xfer->tx_idx == gi3c->num_xfers - 1) {
+		xfer->gsi_bei = true;
+		skip_callbacks = false;
+	}
+
+	/* For shared SE, apply lock tre before the first message */
+	if (gi3c->is_shared && xfer->tx_idx == 0)
+		i3c_setup_lock_tre(gi3c);
 
 	/* Send cfg tre when cfg not sent already */
 	if (!gi3c->cfg_sent) {
@@ -1190,6 +1296,10 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 		gi3c->gsi.tx.tre.flags |= DMA_TRE_SET;
 	}
 
+	/* For shared SE, apply un_lock tre at the end of last message */
+	if (gi3c->is_shared && (xfer->tx_idx == gi3c->num_xfers - 1))
+		i3c_setup_unlock_tre(gi3c);
+
 	tre_cnt = gsi_common_fill_tre_buf(&gi3c->gsi, tx_chan);
 	gi3c->gsi.tx.tre_queue.msg_cnt++;
 	ret = gsi_common_prep_desc_and_submit(&gi3c->gsi, tre_cnt, tx_chan, skip_callbacks);
@@ -1201,12 +1311,12 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 	if (!gi3c->cfg_sent)
 		gi3c->cfg_sent = true;
 
-	if ((xfer->tx_idx != num_xfers - 1) &&
+	if ((xfer->tx_idx != gi3c->num_xfers - 1) &&
 	    (gi3c->gsi.tx.tre_queue.msg_cnt <
 	     GSI_MAX_NUM_TRE_MSGS + gi3c->gsi.tx.tre_queue.freed_msg_cnt))
 		return 0;
 
-	time_remaining = gsi_common_tx_tre_optimization(&gi3c->gsi, num_xfers,
+	time_remaining = gsi_common_tx_tre_optimization(&gi3c->gsi, gi3c->num_xfers,
 							NUM_I3C_TRE_MSGS_PER_INTR,
 							msecs_to_jiffies(XFER_TIMEOUT),
 							gi3c->wrapper_dev);
@@ -1219,11 +1329,11 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 	}
 	I3C_LOG_DBG(gi3c->ipcl, true, gi3c->se.dev,
 		    "%s Completed xfer->tx_idx=%d num_xfers=%d gsi_bei=%d\n",
-		    __func__, xfer->tx_idx, num_xfers, xfer->gsi_bei);
+		    __func__, xfer->tx_idx, gi3c->num_xfers, xfer->gsi_bei);
 geni_i3c_err_prep:
 	geni_i3c_err_prep_sg(gi3c);
 	if (gi3c->err) {
-		gsi_common_tre_process(&gi3c->gsi, num_xfers, NUM_I3C_TRE_MSGS_PER_INTR,
+		gsi_common_tre_process(&gi3c->gsi, gi3c->num_xfers, NUM_I3C_TRE_MSGS_PER_INTR,
 				       gi3c->wrapper_dev);
 		ret = (gi3c->err == -EBUSY) ? I3C_ERROR_M2 : gi3c->err;
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
@@ -1261,13 +1371,17 @@ static int geni_i3c_gsi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_pa
 	gi3c->gsi.tx.tre.flags = 0;
 	reinit_completion(&gi3c->done);
 
+	/* For shared SE, apply lock tre before the first message */
+	if (gi3c->is_shared && xfer->tx_idx == 0)
+		i3c_setup_lock_tre(gi3c);
+
 	/* Send cfg tre when cfg not sent already */
 	if (!gi3c->cfg_sent) {
 		i3c_setup_cfg0_tre(gi3c, xfer, 0, false, false);
 		gi3c->gsi.tx.tre.flags |= CONFIG_TRE_SET;
 	}
 
-	i3c_setup_go_tre(gi3c, xfer, 0, false, false);
+	i3c_setup_go_tre(gi3c, xfer, xfer->tx_idx, false, false);
 	gi3c->gsi.tx.tre.flags |= GO_TRE_SET;
 
 	if (gi3c->cur_len) {
@@ -1283,6 +1397,10 @@ static int geni_i3c_gsi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_pa
 		i3c_setup_tx_tre(gi3c, 0, false, false);
 		gi3c->gsi.tx.tre.flags |= DMA_TRE_SET;
 	}
+
+	/* For shared SE, apply un_lock tre at the end of last message */
+	if (gi3c->is_shared && (xfer->tx_idx == gi3c->num_xfers - 1))
+		i3c_setup_unlock_tre(gi3c);
 
 	tre_cnt = gsi_common_fill_tre_buf(&gi3c->gsi, tx_chan);
 	ret = gsi_common_prep_desc_and_submit(&gi3c->gsi,  tre_cnt, tx_chan, false);
@@ -1348,13 +1466,17 @@ static int geni_i3c_gsi_read(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 	gi3c->gsi.rx.tre.flags = 0;
 	reinit_completion(&gi3c->done);
 
+	/* For shared SE, apply lock tre before the first message */
+	if (gi3c->is_shared && xfer->tx_idx == 0)
+		i3c_setup_lock_tre(gi3c);
+
 	/* Send cfg tre only once */
 	if (!gi3c->cfg_sent) {
 		i3c_setup_cfg0_tre(gi3c, xfer, 0, false, false);
 		gi3c->gsi.tx.tre.flags |= CONFIG_TRE_SET;
 	}
 
-	i3c_setup_go_tre(gi3c, xfer, 0, false, false);
+	i3c_setup_go_tre(gi3c, xfer, xfer->tx_idx, false, false);
 	gi3c->gsi.tx.tre.flags |= GO_TRE_SET;
 
 	if (gi3c->cur_len) {
@@ -1370,6 +1492,11 @@ static int geni_i3c_gsi_read(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 
 	i3c_setup_rx_tre(gi3c);
 	gi3c->gsi.rx.tre.flags |= DMA_TRE_SET;
+
+	/* For shared SE, apply un_lock tre at the end of last message */
+	if (gi3c->is_shared && (xfer->tx_idx == gi3c->num_xfers - 1))
+		i3c_setup_unlock_tre(gi3c);
+
 	tre_cnt = gsi_common_fill_tre_buf(&gi3c->gsi, !tx_chan);
 	ret = gsi_common_prep_desc_and_submit(&gi3c->gsi, tre_cnt, !tx_chan, false);
 	if (ret < 0) {
@@ -1683,61 +1810,54 @@ static void geni_i3c_hotjoin(struct work_struct *work)
 			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
-static void geni_i3c_handle_received_ibi(struct geni_i3c_dev *gi3c)
+static void geni_i3c_handle_received_ibi(struct geni_i3c_dev *gi3c, u8 slot_index)
 {
 	struct geni_i3c_i2c_dev_data *data;
 	struct i3c_ibi_slot *slot;
-	struct i3c_dev_desc *dev = gi3c->ibi.slots[0];
-	u32 val, i;
-
-	val = readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_STATUS(0));
+	struct i3c_dev_desc *dev = gi3c->ibi.slots[slot_index];
 
 	if (!dev || !dev->ibi) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "Invalid IBI device\n");
-		goto no_free_slot;
+		return;
 	}
 
 	data = i3c_dev_get_master_data(dev);
 	slot = i3c_generic_ibi_get_free_slot(data->ibi_pool);
 	if (!slot) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "no free slot\n");
-		goto no_free_slot;
+		return;
 	}
 
-	for (i = 0; i < gi3c->ibi.num_slots; i++) {
-		if (!(val & (1u << i)))
-			continue;
 
-		gi3c->ibi.data.info.info =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_INFO_ENTRY(0, i));
-		gi3c->ibi.data.ts =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_TS_LSB_ENTRY(0, i));
-		gi3c->ibi.data.payload =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_DATA_ENTRY_REG0(0, i));
+	gi3c->ibi.data.info.info =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_INFO_ENTRY(0, slot_index));
+	gi3c->ibi.data.ts =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_TS_LSB_ENTRY(0, slot_index));
+	gi3c->ibi.data.payload =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_DATA_ENTRY_REG0(0, slot_index));
 
-		if (slot->data)
-			memcpy(slot->data, &gi3c->ibi.data.payload, dev->ibi->max_payload_len);
+	if (slot->data)
+		memcpy(slot->data, &gi3c->ibi.data.payload, dev->ibi->max_payload_len);
 
-		slot->len = min_t(unsigned int, gi3c->ibi.data.info.fields.num_bytes,
-				  dev->ibi->max_payload_len);
+	slot->len = min_t(unsigned int, gi3c->ibi.data.info.fields.num_bytes,
+			  dev->ibi->max_payload_len);
 
-		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
-			    "IBI: info: 0x%x, ts: 0x%x, Data: 0x%x\n",
-			    gi3c->ibi.data.info.info, gi3c->ibi.data.ts, gi3c->ibi.data.payload);
-	}
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "IBI: info: 0x%x, ts: 0x%x, Data: 0x%x slot_id: 0x%x\n",
+		    gi3c->ibi.data.info.info, gi3c->ibi.data.ts, gi3c->ibi.data.payload,
+		    slot_index);
 
 	i3c_master_queue_ibi(dev, slot);
-no_free_slot:
-	writel_relaxed(val, gi3c->ibi.ibi_base + IBI_RCVD_IBI_CLR(0));
 }
 
 static irqreturn_t geni_i3c_ibi_irq(int irq, void *dev)
 {
 	struct geni_i3c_dev *gi3c = dev;
 	unsigned long flags;
-	u32 m_stat = 0, m_stat_mask = 0;
+	u32 m_stat = 0, m_stat_mask = 0, val = 0, rcvd_ibi_status = 0;
 	bool cmd_done = false;
 	unsigned long long start_time;
+	u8 slot_index = 0;
 
 	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
 					     gi3c->i3c_kpi);
@@ -1771,8 +1891,19 @@ static irqreturn_t geni_i3c_ibi_irq(int irq, void *dev)
 		if (m_stat & SE_I3C_IBI_ERR)
 			gi3c->ibi.err = m_stat;
 
-		if (m_stat & IBI_RECEIVED)
-			geni_i3c_handle_received_ibi(gi3c);
+		if (m_stat & IBI_RECEIVED) {
+			rcvd_ibi_status = readl_relaxed(gi3c->ibi.ibi_base
+							+ IBI_RCVD_IBI_STATUS(0));
+			val = rcvd_ibi_status;
+			/* Handle multiple IBI interrupts/entries if any */
+			while (val) {
+				if (val & 0x1)
+					geni_i3c_handle_received_ibi(gi3c, slot_index);
+				slot_index++;
+				val >>= 1;
+			}
+			writel_relaxed(rcvd_ibi_status, gi3c->ibi.ibi_base + IBI_RCVD_IBI_CLR(0));
+		}
 
 		if (m_stat & COMMAND_DONE)
 			cmd_done = true;
@@ -1928,13 +2059,12 @@ static void i3c_geni_runtime_put_mutex_unlock(struct geni_i3c_dev *gi3c)
  * @gi3c: i3c master device handle
  * @xfer: i3c tx transfer parameters pointer
  * @priv_xfers: priv xfers handle
- * @num_xfers: number of xfers
  *
  * Return: 0 on success, error code on failure
  */
 static int
 i3c_geni_gsi_multi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_params *xfer,
-			 struct i3c_priv_xfer *priv_xfers, int num_xfers)
+			 struct i3c_priv_xfer *priv_xfers)
 {
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	int xfer_tx_idx = xfer->tx_idx % GSI_MAX_NUM_TRE_MSGS;
@@ -1942,7 +2072,7 @@ i3c_geni_gsi_multi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_params 
 	gi3c->cur_rnw = WRITE_TRANSACTION;
 	tx_tre_q->virt_buf[xfer_tx_idx] = (u8 *)priv_xfers[xfer->tx_idx].data.out;
 	tx_tre_q->len[xfer_tx_idx] = priv_xfers[xfer->tx_idx].len;
-	return geni_i3c_gsi_multi_write(gi3c, xfer, num_xfers);
+	return geni_i3c_gsi_multi_write(gi3c, xfer);
 }
 
 /*
@@ -2007,7 +2137,7 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 {
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	struct geni_i3c_xfer_params xfer;
-	bool use_7e = true, stall = false, multi_tre_wr_xfer = false;
+	bool use_7e = true, stall = false;
 	int i, ret = 0;
 	unsigned long long start_time = sched_clock();
 
@@ -2016,11 +2146,15 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 		 * Do multi tre xfer write only when there are
 		 * consecutive write transactions greater than four
 		 */
-		multi_tre_wr_xfer = true;
+		tx_tre_q->is_multi_descriptor = true;
 		for (i = 0; i < num_xfers; i++)
 			if (xfers[i].rnw)
-				multi_tre_wr_xfer = false;
+				tx_tre_q->is_multi_descriptor = false;
 	}
+
+#if IS_ENABLED(CONFIG_MSM_GPI_DMA)
+	gpi_update_multi_desc_flag(gi3c->gsi.tx.ch, tx_tre_q->is_multi_descriptor, gi3c->num_xfers);
+#endif
 
 	tx_tre_q->unmap_msg_cnt = 0;
 	atomic_set(&tx_tre_q->irq_cnt, 0);
@@ -2049,8 +2183,8 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 							    xfers[i].len);
 		} else {
 			xfer.m_cmd = I3C_PRIVATE_WRITE;
-			if (multi_tre_wr_xfer)
-				ret = i3c_geni_gsi_multi_write(gi3c, &xfer, xfers, num_xfers);
+			if (tx_tre_q->is_multi_descriptor)
+				ret = i3c_geni_gsi_multi_write(gi3c, &xfer, xfers);
 			else
 				ret = i3c_geni_execute_write_command(gi3c, &xfer,
 								     (u8 *)xfers[i].data.out,
@@ -2064,6 +2198,16 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s Time took for %d xfers = %llu nsecs\n",
 		    __func__, num_xfers, (sched_clock() - start_time));
 	geni_i3c_gsi_stop_on_bus(gi3c);
+
+#if IS_ENABLED(CONFIG_MSM_GPI_DMA)
+	gpi_update_multi_desc_flag(gi3c->gsi.tx.ch, false, 0);
+#endif
+
+	/* For shared SE, other EE overwrites config TRE.
+	 * Send config TRE for every transfer.
+	 */
+	if (gi3c->is_shared)
+		gi3c->cfg_sent = false;
 	return ret;
 }
 
@@ -2149,6 +2293,8 @@ geni_i3c_master_priv_xfers(struct i3c_dev_desc *dev, struct i3c_priv_xfer *xfers
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
 			    "%s:IO lines:0x%x not in good state\n", __func__, geni_ios);
 
+	gi3c->num_xfers = num_xfers;
+
 	ret = qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
 	if (ret) {
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
@@ -2168,6 +2314,7 @@ geni_i3c_master_priv_xfers(struct i3c_dev_desc *dev, struct i3c_priv_xfer *xfers
 	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
 			       gi3c->i3c_kpi, start_time, 0, 0);
 
+	gi3c->num_xfers = 0;
 	return ret;
 }
 
@@ -2216,11 +2363,13 @@ static int geni_i3c_master_i2c_xfers(struct i2c_dev_desc *dev, const struct i2c_
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "i2c xfer:num:%d, msgs:len:%d,flg:%d\n",
 		    num, msgs[0].len, msgs[0].flags);
 
+	gi3c->num_xfers = num;
 	for (i = 0; i < num; i++) {
 		xfer.m_cmd    = (msgs[i].flags & I2C_M_RD) ? I2C_READ : I2C_WRITE;
 		xfer.m_param  = (i < (num - 1)) ? STOP_STRETCH : 0;
 		xfer.m_param |= ((msgs[i].addr & I3C_ADDR_MASK) << SLV_ADDR_SHFT);
 		xfer.mode     = msgs[i].len > 32 ? GENI_SE_DMA : GENI_SE_FIFO;
+		xfer.tx_idx = i;
 		if (msgs[i].flags & I2C_M_RD)
 			ret = i3c_geni_execute_read_command(gi3c, &xfer, msgs[i].buf, msgs[i].len);
 		else
@@ -2236,6 +2385,8 @@ static int geni_i3c_master_i2c_xfers(struct i2c_dev_desc *dev, const struct i2c_
 
 	gi3c->cfg_sent = false;
 	gi3c->is_i2c_xfer = false;
+
+	gi3c->num_xfers = 0;
 
 	i3c_geni_runtime_put_mutex_unlock(gi3c);
 
@@ -2481,6 +2632,9 @@ static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct 
 		return ret;
 	}
 
+	/* every ccc command treated as one xfer */
+	gi3c->num_xfers = cmd->ndests;
+
 	for (i = 0; i < cmd->ndests; i++) {
 		int stall = (i < (cmd->ndests - 1)) ||
 			(cmd->id == I3C_CCC_ENTDAA);
@@ -2489,6 +2643,8 @@ static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct 
 		xfer.m_param  = (stall ? STOP_STRETCH : 0);
 		xfer.m_param |= (cmd->id << CCC_HDR_CMD_SHFT);
 		xfer.m_param |= IBI_NACK_TBL_CTRL;
+		xfer.tx_idx = i;
+
 		if (cmd->id & I3C_CCC_DIRECT) {
 			xfer.m_param |= ((cmd->dests[i].addr & I3C_ADDR_MASK)
 					<< SLV_ADDR_SHFT);
@@ -2531,6 +2687,7 @@ static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct 
 			geni_i3c_perform_daa(gi3c);
 	}
 
+	gi3c->num_xfers = 0;
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "i3c ccc: txn ret:%d\n", ret);
 
 	i3c_geni_runtime_put_mutex_unlock(gi3c);
@@ -2680,6 +2837,32 @@ static int geni_i3c_master_do_daa(struct i3c_master_controller *m)
 	return geni_i3c_master_entdaa_locked(gi3c);
 }
 
+/*
+ * geni_i3c_config_od_mode_freq() - configure od mode frequency
+ *
+ * @gi3c: i3c master device handle
+ * @od_freq: open drain frequency value
+ *
+ * Return: None
+ */
+static void geni_i3c_config_od_mode_freq(struct geni_i3c_dev *gi3c, unsigned long od_freq)
+{
+	u32 od_val = 0;
+
+	/* Config ibi open drain mode frequency based on i2c OD frequency.
+	 * OD_MODE to ensure it is within valid range
+	 * (0: standard (100KHz), 1: fast (400KHz), 2: fast-plus (1MHz)).
+	 */
+	if (od_freq == I2C_MAX_FAST_MODE_PLUS_FREQ)
+		od_val = I2C_MAX_FAST_MODE_PLUS;
+	else if (od_freq == I2C_MAX_FAST_MODE_FREQ)
+		od_val = I2C_MAX_FAST_MODE;
+	else
+		od_val = I2C_MAX_STANDARD_MODE;
+
+	geni_write_reg(od_val, gi3c->ibi.ibi_base, IBI_SCL_OD_TYPE);
+}
+
 static int geni_i3c_master_bus_init(struct i3c_master_controller *m)
 {
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
@@ -2716,6 +2899,9 @@ static int geni_i3c_master_bus_init(struct i3c_master_controller *m)
 			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
 		return ret;
 	}
+
+	/* configure i3c OD mode frequency */
+	geni_i3c_config_od_mode_freq(gi3c, bus->scl_rate.i2c);
 
 	/* Get an address for the master. */
 	ret = i3c_master_get_free_addr(m, 0);
@@ -2794,8 +2980,6 @@ static bool geni_i3c_master_supports_ccc_cmd
 	case I3C_CCC_SETMRL(false):
 	fallthrough;
 	case I3C_CCC_DEFSLVS:
-	fallthrough;
-	case I3C_CCC_ENTHDR(0):
 	fallthrough;
 	case I3C_CCC_SETDASA:
 	fallthrough;
@@ -2893,16 +3077,13 @@ static void qcom_geni_i3c_ibi_conf(struct geni_i3c_dev *gi3c)
 		}
 	}
 
-	/* set the configuration for 100Khz OD speed */
-	geni_write_reg(0x5FD74322, gi3c->ibi.ibi_base, IBI_SCL_PP_TIMING_CONFIG);
-
 	geni_i3c_enable_ibi_ctrl(gi3c, true);
 	geni_i3c_enable_ibi_irq(gi3c, true);
 	gi3c->ibi.is_init = true;
 }
 
-static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
-	const struct i3c_ibi_setup *req)
+static int geni_i3c_request_ibi(struct i3c_dev_desc *dev,
+				const struct i3c_ibi_setup *req)
 {
 	struct i3c_master_controller *m = i3c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
@@ -2975,6 +3156,20 @@ static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
 			       gi3c->i3c_kpi, start_time, 0, 0);
 
 	return -ENOSPC;
+}
+
+static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
+				       const struct i3c_ibi_setup *req)
+{
+	struct i3c_master_controller *m = i3c_dev_get_master(dev);
+	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	int ret;
+
+	mutex_lock(&gi3c->i3c_ibi_lock);
+	ret = geni_i3c_request_ibi(dev, req);
+	mutex_unlock(&gi3c->i3c_ibi_lock);
+
+	return ret;
 }
 
 static int qcom_deallocate_ibi_table_entry(struct geni_i3c_dev *gi3c)
@@ -3559,7 +3754,6 @@ static int i3c_ibi_rsrcs_init(struct geni_i3c_dev *gi3c,
 	}
 
 	qcom_geni_i3c_ibi_conf(gi3c);
-
 	return 0;
 }
 
@@ -3736,6 +3930,7 @@ static int geni_i3c_probe(struct platform_device *pdev)
 
 	init_completion(&gi3c->done);
 	mutex_init(&gi3c->lock);
+	mutex_init(&gi3c->i3c_ibi_lock);
 	spin_lock_init(&gi3c->spinlock);
 	platform_set_drvdata(pdev, gi3c);
 
@@ -3778,6 +3973,11 @@ static int geni_i3c_probe(struct platform_device *pdev)
 
 	gi3c->i3c_rsc.proto = GENI_SE_I3C;
 
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,shared")) {
+		gi3c->is_shared = true;
+		dev_info(&pdev->dev, "SE being used by two EEs.\n");
+	}
+
 	se_mode = geni_read_reg(gi3c->se.base, GENI_IF_DISABLE_RO);
 	if (se_mode) {
 		ret = geni_i3c_gsi_se_init(gi3c);
@@ -3799,6 +3999,8 @@ static int geni_i3c_probe(struct platform_device *pdev)
 		writel(FORCE_DEFAULT, gi3c->se.base + GENI_FORCE_DEFAULT_REG);
 		writel(0x7f, gi3c->se.base + GENI_OUTPUT_CTRL);
 	} else {
+		/* shared SE is not allowed for non GSI Mode. */
+		gi3c->is_shared = false;
 		tx_depth = geni_se_get_tx_fifo_depth(&gi3c->se);
 		gi3c->tx_wm = tx_depth - 1;
 		geni_se_init(&gi3c->se, gi3c->tx_wm, tx_depth);
@@ -3839,7 +4041,7 @@ static int geni_i3c_probe(struct platform_device *pdev)
 		ret = 0;
 	}
 	I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
-		"I3C bus freq:%ld, I2C bus fres:%ld\n",
+		"I3C bus freq:%ld, I2C bus freq:%ld\n",
 		gi3c->ctrlr.bus.scl_rate.i3c,  gi3c->ctrlr.bus.scl_rate.i2c);
 
 	if (gi3c->se_mode == GENI_GPI_DMA) {
@@ -3861,7 +4063,7 @@ static int geni_i3c_probe(struct platform_device *pdev)
 	}
 
 	INIT_WORK(&gi3c->hj_wd, geni_i3c_hotjoin);
-	gi3c->hj_wq = alloc_workqueue("%s", 0, 0, dev_name(gi3c->se.dev));
+	gi3c->hj_wq = alloc_workqueue("%s", WQ_UNBOUND | WQ_HIGHPRI, 1, dev_name(gi3c->se.dev));
 	geni_i3c_enable_hotjoin_irq(gi3c, true);
 	device_create_file(gi3c->se.dev, &dev_attr_capture_kpi);
 
