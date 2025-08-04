@@ -837,6 +837,7 @@
   drm_display_mode_from_videomode
   drm_display_mode_to_videomode
   drm_edid_duplicate
+  drm_edid_free
   drm_edid_get_monitor_name
   drm_edid_to_sad
   drm_encoder_cleanup
