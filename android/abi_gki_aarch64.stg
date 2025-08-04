@@ -378631,6 +378631,15 @@ elf_symbol {
   full_name: "cec_unregister_adapter"
 }
 elf_symbol {
+  id: 0x4d06ba53
+  name: "cgroup_add_dfl_cftypes"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4a841d8b
+  type_id: 0x9f4f3809
+  full_name: "cgroup_add_dfl_cftypes"
+}
+elf_symbol {
   id: 0x3c85cae0
   name: "cgroup_add_legacy_cftypes"
   is_defined: true
@@ -439889,6 +439898,7 @@ interface {
   symbol_id: 0xc4e53e95
   symbol_id: 0xba1a33c8
   symbol_id: 0xe2dc88d9
+  symbol_id: 0x4d06ba53
   symbol_id: 0x3c85cae0
   symbol_id: 0x4ce62869
   symbol_id: 0xd7e100b7
