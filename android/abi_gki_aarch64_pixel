@@ -2695,6 +2695,7 @@
   __traceiter_android_vh_binder_set_priority
   __traceiter_android_vh_calculate_totalreserve_pages
   __traceiter_android_vh_check_new_page
+  __traceiter_android_vh_chk_task
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
   __traceiter_android_vh_dump_throttled_rt_tasks
@@ -2713,6 +2714,7 @@
   __traceiter_android_vh_post_alloc_hook
   __traceiter_android_vh_prio_inheritance
   __traceiter_android_vh_prio_restore
+  __traceiter_android_vh_put_task
   __traceiter_android_vh_resume_end
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_scheduler_tick
@@ -2772,6 +2774,7 @@
   __traceiter_softirq_entry
   __traceiter_softirq_exit
   __traceiter_suspend_resume
+  __traceiter_task_newtask
   __traceiter_workqueue_execute_end
   __traceiter_workqueue_execute_start
   trace_output_call
@@ -2837,6 +2840,7 @@
   __tracepoint_android_vh_binder_set_priority
   __tracepoint_android_vh_calculate_totalreserve_pages
   __tracepoint_android_vh_check_new_page
+  __tracepoint_android_vh_chk_task
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
   __tracepoint_android_vh_dump_throttled_rt_tasks
@@ -2855,6 +2859,7 @@
   __tracepoint_android_vh_post_alloc_hook
   __tracepoint_android_vh_prio_inheritance
   __tracepoint_android_vh_prio_restore
+  __tracepoint_android_vh_put_task
   __tracepoint_android_vh_resume_end
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_scheduler_tick
@@ -2916,6 +2921,7 @@
   __tracepoint_softirq_entry
   __tracepoint_softirq_exit
   __tracepoint_suspend_resume
+  __tracepoint_task_newtask
   __tracepoint_workqueue_execute_end
   __tracepoint_workqueue_execute_start
   trace_print_array_seq
