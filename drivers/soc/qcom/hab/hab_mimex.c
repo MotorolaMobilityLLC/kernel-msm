@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
 #include "hab_grantable.h"
@@ -583,7 +583,6 @@ int hab_mem_import(struct uhab_context *ctx,
 	}
 
 	export->import_index = param->index;
-	export->kva = kernel ? (void *)param->kva : NULL;
 	exp_super->import_state = EXP_DESC_IMPORTED;
 
 err_imp:
@@ -616,6 +615,7 @@ int hab_mem_unimport(struct uhab_context *ctx,
 	struct export_desc *exp = NULL;
 	struct export_desc_super *exp_super = NULL, key = {0};
 	struct virtual_channel *vchan;
+	long fcnt_idle;
 
 	if (!ctx || !param)
 		return -EINVAL;
@@ -626,6 +626,11 @@ int hab_mem_unimport(struct uhab_context *ctx,
 			hab_vchan_put(vchan);
 		return -ENODEV;
 	}
+
+	if ((kernel == 1) || (param->flags & HABMM_UNIMP_FLAGS_FD_ALREADY_CLOSED))
+		fcnt_idle = 1;
+	else
+		fcnt_idle = 2;
 
 	key.exp.export_id = param->exportid;
 	key.exp.pchan = vchan->pchan;
@@ -648,10 +653,10 @@ int hab_mem_unimport(struct uhab_context *ctx,
 		pr_err("exp id %u unavailable on vc %x\n", param->exportid, vchan->id);
 	} else {
 		exp = &exp_super->exp;
-		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, kernel);
+		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, fcnt_idle);
 		if (ret) {
 			pr_err("unmap fail id:%d pcnt:%d vcid:%d\n",
-			exp->export_id, exp->payload_count, exp->vcid_remote);
+				exp->export_id, exp->payload_count, exp->vcid_remote);
 		}
 		param->kva = (uint64_t)exp->kva;
 		if (vchan->pchan->mem_proto == 1)
