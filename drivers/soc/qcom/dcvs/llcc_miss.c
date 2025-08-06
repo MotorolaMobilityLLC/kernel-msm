@@ -268,23 +268,31 @@ static int set_mon_enabled(void *data, u64 val)
 	u32 count, enable = val ? 1 : 0;
 
 	mutex_lock(&llcc_miss->lock);
+
 	for (i = 0; i < max_masters; i++) {
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
-	if (enable == (llcc_miss->active_masters & BIT(i)))
+
+	if (enable == !!(llcc_miss->active_masters & BIT(i)))
 		goto unlock;
+
 	count = hweight32(llcc_miss->active_masters);
+
 	if (count >= MAX_CONCURRENT_MASTERS && enable) {
 		pr_err("Max masters already enabled\n");
 		ret = -EINVAL;
 		goto unlock;
 	}
 	mutex_unlock(&llcc_miss->lock);
+
 	if (count)
 		stop_memory_miss_stats();
+
 	mutex_lock(&llcc_miss->lock);
+
 	llcc_miss->active_masters = (llcc_miss->active_masters ^ BIT(i));
+
 	if (llcc_miss->active_masters)
 		start_memory_miss_stats();
 
