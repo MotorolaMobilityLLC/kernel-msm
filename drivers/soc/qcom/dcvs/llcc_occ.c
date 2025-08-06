@@ -275,19 +275,27 @@ static int set_mon_enabled(void *data, u64 val)
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
-	if (enable == (llcc_occ->active_masters & BIT(i)))
+
+	if (enable == !!(llcc_occ->active_masters & BIT(i)))
 		goto unlock;
+
 	count = hweight32(llcc_occ->active_masters);
+
 	if (count >= max_masters && enable) {
 		pr_err("Max masters already enabled\n");
 		ret = -EINVAL;
 		goto unlock;
 	}
+
 	mutex_unlock(&llcc_occ->lock);
+
 	if (count)
 		stop_memory_occ_stats();
+
 	mutex_lock(&llcc_occ->lock);
+
 	llcc_occ->active_masters = (llcc_occ->active_masters ^ BIT(i));
+
 	if (llcc_occ->active_masters)
 		start_memory_occ_stats();
 unlock:
@@ -307,10 +315,12 @@ static int get_mon_enabled(void *data, u64 *val)
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
+
 	if (llcc_occ->active_masters & BIT(i))
 		*val = 1;
 	else
 		*val = 0;
+
 	mutex_unlock(&llcc_occ->lock);
 
 	return 0;
