@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2010-2011, 2020-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2014, Sony Mobile Communications Inc.
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -314,7 +314,7 @@ static int pm8941_pwrkey_suspend(struct device *dev)
 {
 	struct pm8941_pwrkey *pwrkey = dev_get_drvdata(dev);
 
-	if (pm_suspend_via_firmware())
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
 		return pm8941_pwrkey_freeze(dev);
 
 	if (device_may_wakeup(dev))
@@ -327,7 +327,7 @@ static int pm8941_pwrkey_resume(struct device *dev)
 {
 	struct pm8941_pwrkey *pwrkey = dev_get_drvdata(dev);
 
-	if (pm_suspend_via_firmware())
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
 		return pm8941_pwrkey_restore(dev);
 
 	if (device_may_wakeup(dev))

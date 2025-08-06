@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/*
- * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/delay.h>
@@ -52,7 +51,7 @@ static const char * const to_dsp_str[DSP_MAX] = {
 	[CDSP1] = "cdsp1",
 	[CDSP2] = "cdsp2",
 	[CDSP3] = "cdsp3",
-	[ADSP0] = "adsp0",
+	[ADSP0] = "adsp",
 	[ADSP1] = "adsp1",
 	[ADSP2] = "adsp2",
 };

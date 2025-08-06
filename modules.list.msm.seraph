@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-# Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 qcom-scm.ko
 qcom-pdc.ko
 pinctrl-msm.ko
@@ -61,7 +61,6 @@ qcom_aoss.ko
 qcom-ipcc.ko
 qcom_ipc_logging.ko
 qcom_wdt_core.ko
-gh_virt_wdt.ko
 qcom-cpufreq-hw.ko
 clk-rpmh.ko
 sched-walt.ko
@@ -71,6 +70,7 @@ hwkm.ko
 gh_arm_drv.ko
 gh_cpusys_vm_mem_access.ko
 gh_dbl.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
 gunyah.ko
@@ -84,3 +84,4 @@ qcom_cpu_vendor_hooks.ko
 qcom-dload-mode.ko
 llcc-qcom.ko
 kryo_arm64_edac.ko
+qcom_soc_wdt.ko

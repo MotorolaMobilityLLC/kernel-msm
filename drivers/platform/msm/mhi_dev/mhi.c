@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-//Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
-
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 /*
  * MSM MHI device core driver.
  */
@@ -755,6 +754,7 @@ static int mhi_trigger_msi_edma(struct mhi_dev_ring *ring, u32 idx, struct event
 		}
 	}
 
+	dmaengine_submit(descriptor);
 	dma_async_issue_pending(mhi->mhi_hw_ctx->tx_dma_chan);
 
 	spin_unlock_irqrestore(&mhi->msi_lock, flags);
@@ -1387,6 +1387,7 @@ void mhi_dev_read_from_host_edma(struct mhi_dev *mhi, struct mhi_addr *transfer)
 	}
 	descriptor->callback_param = &read_from_host;
 	descriptor->callback = mhi_dev_edma_sync_cb;
+	dmaengine_submit(descriptor);
 	dma_async_issue_pending(mhi->mhi_hw_ctx->rx_dma_chan);
 
 	if (!wait_for_completion_timeout
@@ -1470,6 +1471,7 @@ void mhi_dev_write_to_host_edma(struct mhi_dev *mhi, struct mhi_addr *transfer,
 		}
 		descriptor->callback_param = ereq;
 		descriptor->callback = cb_func;
+		dmaengine_submit(descriptor);
 		dma_async_issue_pending(mhi->mhi_hw_ctx->tx_dma_chan);
 	} else if (tr_type == MHI_DEV_DMA_SYNC) {
 		reinit_completion(&write_to_host);
@@ -1505,6 +1507,7 @@ void mhi_dev_write_to_host_edma(struct mhi_dev *mhi, struct mhi_addr *transfer,
 
 		descriptor->callback_param = &write_to_host;
 		descriptor->callback = mhi_dev_edma_sync_cb;
+		dmaengine_submit(descriptor);
 		dma_async_issue_pending(mhi_hw_ctx->tx_dma_chan);
 		if (!wait_for_completion_timeout
 			(&write_to_host, msecs_to_jiffies(1000)))
@@ -1565,6 +1568,7 @@ int mhi_transfer_host_to_device_edma(void *dev, uint64_t host_pa, uint32_t len,
 		}
 		descriptor->callback_param = &transfer_host_to_device;
 		descriptor->callback = mhi_dev_edma_sync_cb;
+		dmaengine_submit(descriptor);
 		dma_async_issue_pending(mhi->mhi_hw_ctx->rx_dma_chan);
 		if (!wait_for_completion_timeout
 			(&transfer_host_to_device, msecs_to_jiffies(1000))) {
@@ -1617,6 +1621,7 @@ int mhi_transfer_host_to_device_edma(void *dev, uint64_t host_pa, uint32_t len,
 		descriptor->callback_param = mreq;
 		descriptor->callback =
 			mhi_dev_transfer_completion_cb;
+		dmaengine_submit(descriptor);
 		dma_async_issue_pending(mhi->mhi_hw_ctx->rx_dma_chan);
 	}
 
@@ -1677,6 +1682,7 @@ int mhi_transfer_device_to_host_edma(uint64_t host_addr, void *dev,
 		}
 		descriptor->callback_param = &transfer_device_to_host;
 		descriptor->callback = mhi_dev_edma_sync_cb;
+		dmaengine_submit(descriptor);
 		dma_async_issue_pending(mhi->mhi_hw_ctx->tx_dma_chan);
 
 		if (!wait_for_completion_timeout
@@ -1726,6 +1732,7 @@ int mhi_transfer_device_to_host_edma(uint64_t host_addr, void *dev,
 		}
 		descriptor->callback_param = req;
 		descriptor->callback = mhi_dev_transfer_completion_cb;
+		dmaengine_submit(descriptor);
 
 		dma_async_issue_pending(mhi->mhi_hw_ctx->tx_dma_chan);
 

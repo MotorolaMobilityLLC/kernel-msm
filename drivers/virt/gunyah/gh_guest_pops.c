@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -106,7 +106,7 @@ static int gh_guest_pops_rm_notifer_fn(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
-static int __init gh_guest_pops_init_poff(void)
+static int gh_guest_pops_init_poff(void)
 {
 	int ret;
 
@@ -137,6 +137,7 @@ fail_ws:
 	gh_rm_unregister_notifier(&rm_nb);
 fail_init:
 	input_unregister_device(gh_vm_poff_input);
+	return ret;
 fail_register:
 	input_free_device(gh_vm_poff_input);
 	return ret;
@@ -221,10 +222,9 @@ static void gh_guest_pops_exit_poff(void)
 	gh_rm_unregister_notifier(&rm_nb);
 
 	input_unregister_device(gh_vm_poff_input);
-	input_free_device(gh_vm_poff_input);
 }
 
-static int __init gh_guest_pops_init(void)
+int gh_guest_pops_init(void)
 {
 	int ret;
 
@@ -250,13 +250,11 @@ static int __init gh_guest_pops_init(void)
 
 	return 0;
 }
-module_init(gh_guest_pops_init);
 
-static void __exit gh_guest_pops_exit(void)
+void gh_guest_pops_remove(void)
 {
 	gh_guest_pops_exit_poff();
 	gh_guest_sysfs_cleanup();
 }
-module_exit(gh_guest_pops_exit);
 
 MODULE_LICENSE("GPL");

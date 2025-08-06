@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2022, Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/acpi.h>
@@ -1377,6 +1377,11 @@ static int ufs_qcom_link_startup_notify(struct ufs_hba *hba,
 				strcmp(android_boot_dev, dev_name(dev)))
 			return -ENODEV;
 
+		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_AVAILTXDATALANES),
+			       hba->lanes_per_direction);
+		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_AVAILRXDATALANES),
+			       hba->lanes_per_direction);
+
 		if (ufs_qcom_cfg_timers(hba, UFS_PWM_G1, SLOWAUTO_MODE,
 					0, true)) {
 			dev_err(hba->dev, "%s: ufs_qcom_cfg_timers() failed\n",
@@ -2321,8 +2326,8 @@ struct ufs_qcom_dev_params ufs_qcom_cap;
 		ufs_qcom_cap.pwm_tx_gear = host->limit_tx_pwm_gear;
 		ufs_qcom_cap.pwm_rx_gear = host->limit_rx_pwm_gear;
 
-		ufs_qcom_cap.tx_lanes = UFS_QCOM_LIMIT_NUM_LANES_TX;
-		ufs_qcom_cap.rx_lanes = UFS_QCOM_LIMIT_NUM_LANES_RX;
+		ufs_qcom_cap.tx_lanes = hba->lanes_per_direction;
+		ufs_qcom_cap.rx_lanes = hba->lanes_per_direction;
 
 		ufs_qcom_cap.rx_pwr_pwm = UFS_QCOM_LIMIT_RX_PWR_PWM;
 		ufs_qcom_cap.tx_pwr_pwm = UFS_QCOM_LIMIT_TX_PWR_PWM;
@@ -2499,7 +2504,7 @@ ufshcd_is_valid_pm_lvl(enum ufs_pm_level lvl)
 	return lvl >= 0 && lvl < UFS_PM_LVL_MAX;
 }
 
-static void ufshcd_parse_pm_levels(struct ufs_hba *hba)
+static void ufs_qcom_parse_pm_levels(struct ufs_hba *hba)
 {
 	struct device *dev = hba->dev;
 	struct device_node *np = dev->of_node;
@@ -2509,16 +2514,15 @@ static void ufshcd_parse_pm_levels(struct ufs_hba *hba)
 	if (!np)
 		return;
 
-	if (host->is_dt_pm_level_read)
-		return;
-
 	if (!of_property_read_u32(np, "rpm-level", &rpm_lvl) &&
 		ufshcd_is_valid_pm_lvl(rpm_lvl))
 		hba->rpm_lvl = rpm_lvl;
 	if (!of_property_read_u32(np, "spm-level", &spm_lvl) &&
 		ufshcd_is_valid_pm_lvl(spm_lvl))
 		hba->spm_lvl = spm_lvl;
-	host->is_dt_pm_level_read = true;
+	if (of_property_read_bool(np, "set-ds-spm-level"))
+		host->set_ds_spm_level = true;
+
 }
 
 static void ufs_qcom_override_pa_tx_hsg1_sync_len(struct ufs_hba *hba)
@@ -2560,8 +2564,6 @@ static int ufs_qcom_apply_dev_quirks(struct ufs_hba *hba)
 
 	if (hba->dev_quirks & UFS_DEVICE_QUIRK_PA_TX_HSG1_SYNC_LENGTH)
 		ufs_qcom_override_pa_tx_hsg1_sync_len(hba);
-
-	ufshcd_parse_pm_levels(hba);
 
 	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_MICRON)
 		hba->dev_quirks |= UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM;
@@ -3237,25 +3239,6 @@ static void ufs_qcom_parse_irq_affinity(struct ufs_hba *hba)
 		host->irq_affinity_support = true;
 }
 
-static void ufs_qcom_parse_pm_level(struct ufs_hba *hba)
-{
-	struct device *dev = hba->dev;
-	struct device_node *np = dev->of_node;
-	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
-
-	if (np) {
-		if (of_property_read_u32(np, "rpm-level",
-					 &hba->rpm_lvl))
-			hba->rpm_lvl = -1;
-		if (of_property_read_u32(np, "spm-level",
-					 &hba->spm_lvl))
-			hba->spm_lvl = -1;
-
-		if (of_property_read_bool(np, "set-ds-spm-level"))
-			host->set_ds_spm_level = true;
-	}
-}
-
 /* Returns the max mitigation level supported */
 static int ufs_qcom_get_max_therm_state(struct thermal_cooling_device *tcd,
 				  unsigned long *data)
@@ -3903,7 +3886,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	if (err)
 		goto out_disable_parent_vreg;
 
-	ufs_qcom_parse_pm_level(hba);
+	ufs_qcom_parse_pm_levels(hba);
 	ufs_qcom_parse_g4_workaround_flag(host);
 	ufs_qcom_parse_lpm(host);
 	if (host->disable_lpm)
@@ -4018,6 +4001,9 @@ static void ufs_qcom_exit(struct ufs_hba *hba)
 	ufs_qcom_disable_lane_clks(host);
 	ufs_qcom_phy_power_off(hba);
 	phy_exit(host->generic_phy);
+	if (msm_minidump_enabled())
+		atomic_notifier_chain_unregister(&panic_notifier_list,
+				 &host->ufs_qcom_panic_nb);
 }
 
 static int ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(struct ufs_hba *hba,

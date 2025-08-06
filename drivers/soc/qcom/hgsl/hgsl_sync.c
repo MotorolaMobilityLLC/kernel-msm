@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/types.h>
@@ -77,8 +77,10 @@ struct hgsl_hsync_fence *hgsl_hsync_fence_create(
 	}
 
 	fence->timeline = timeline;
+	INIT_LIST_HEAD(&fence->child_list);
 	spin_lock_irqsave(&timeline->lock, flags);
-	list_add_tail(&fence->child_list, &timeline->fence_list);
+	if (!dma_fence_is_signaled_locked(&fence->fence))
+		list_add_tail(&fence->child_list, &timeline->fence_list);
 	spin_unlock_irqrestore(&timeline->lock, flags);
 
 	return fence;
@@ -213,7 +215,8 @@ static void hgsl_hsync_fence_release(struct dma_fence *base)
 
 	if (timeline) {
 		spin_lock(&timeline->lock);
-		list_del_init(&fence->child_list);
+		if (!list_empty(&fence->child_list))
+			list_del_init(&fence->child_list);
 		spin_unlock(&timeline->lock);
 		hgsl_hsync_timeline_put(timeline);
 	}
@@ -316,8 +319,6 @@ int hgsl_isync_timeline_create(struct hgsl_priv *priv,
 	INIT_LIST_HEAD(&timeline->fence_list);
 	spin_lock_init(&timeline->lock);
 	timeline->priv = priv;
-	snprintf((char *) timeline->name, sizeof(timeline->name),
-					"isync-timeline-%d", *timeline_id);
 	timeline->flags = flags;
 	timeline->last_ts = initial_ts;
 	timeline->is64bits = ((flags & HGSL_ISYNC_64BITS_TIMELINE) != 0);
@@ -328,6 +329,9 @@ int hgsl_isync_timeline_create(struct hgsl_priv *priv,
 	if (idr > 0) {
 		timeline->id = idr;
 		*timeline_id = idr;
+		snprintf((char *) timeline->name, sizeof(timeline->name),
+			"isync-timeline-%d-%s_%d",
+			idr, current->comm, current->pid);
 		ret = 0;
 	}
 	spin_unlock(&hgsl->isync_timeline_lock);
@@ -390,8 +394,10 @@ int hgsl_isync_fence_create(struct hgsl_priv *priv, uint32_t timeline_id,
 	fd_install(*fence_fd, sync_file->file);
 
 	fence->timeline = timeline;
+	INIT_LIST_HEAD(&fence->child_list);
 	spin_lock_irqsave(&timeline->lock, flags);
-	list_add_tail(&fence->child_list, &timeline->fence_list);
+	if (!dma_fence_is_signaled_locked(&fence->fence))
+		list_add_tail(&fence->child_list, &timeline->fence_list);
 	spin_unlock_irqrestore(&timeline->lock, flags);
 
 out_fence:
@@ -787,7 +793,8 @@ static void hgsl_isync_fence_release(struct dma_fence *base)
 
 	if (timeline) {
 		spin_lock_irqsave(&timeline->lock, flags);
-		list_del_init(&fence->child_list);
+		if (!list_empty(&fence->child_list))
+			list_del_init(&fence->child_list);
 		spin_unlock_irqrestore(&timeline->lock, flags);
 
 		dma_fence_signal(base);

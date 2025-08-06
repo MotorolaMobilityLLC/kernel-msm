@@ -213,7 +213,6 @@ struct stmmac_priv {
 	u32 tx_coal_frames[MTL_MAX_TX_QUEUES];
 	u32 tx_coal_timer[MTL_MAX_TX_QUEUES];
 	u32 rx_coal_frames[MTL_MAX_TX_QUEUES];
-	bool tx_coal_timer_disable;
 
 	int hwts_tx_en;
 	bool tx_path_in_lpi_mode;

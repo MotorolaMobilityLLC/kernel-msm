@@ -179,7 +179,6 @@ config GH_PROXY_SCHED
 
 config GH_GUEST_POPS
 	tristate "Gunyah Guest Power-Operations driver"
-	depends on GH_RM_DRV
 	help
 	The driver runs on guest VMs and is majorly responsible for coordinating
 	  the guest's power operations. This includes, setting the VM's status,

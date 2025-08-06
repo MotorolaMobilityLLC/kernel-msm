@@ -84,6 +84,7 @@ def define_niobe():
         "drivers/mfd/qcom-spmi-pmic.ko",
         "drivers/misc/kxrctrl/aphost.ko",
         "drivers/misc/smci_proxy.ko",
+        "drivers/misc/vd628x/vd628x_spi.ko",
         "drivers/mmc/host/cqhci.ko",
         "drivers/mmc/host/sdhci-msm.ko",
         "drivers/nvme/host/sdexpress.ko",

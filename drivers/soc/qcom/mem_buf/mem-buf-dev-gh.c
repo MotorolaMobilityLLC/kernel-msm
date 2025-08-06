@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -368,7 +368,6 @@ int mem_buf_assign_mem_gunyah(u32 op, struct sg_table *sgt,
 	struct gh_sgl_desc *gh_sgl;
 	struct gh_acl_desc *gh_acl;
 
-	arg->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
 	ret = mem_buf_vm_uses_gunyah(arg->vmids, arg->nr_acl_entries);
 	if (ret <= 0)
 		return ret;

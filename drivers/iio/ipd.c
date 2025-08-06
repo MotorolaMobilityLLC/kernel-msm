@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier:  GPL-2.0-only
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/iio/consumer.h>
@@ -98,6 +98,7 @@ void ipd_update_step_motor(struct ipd_data *ipd, int m)
 			break;
 		udelay(ipd->half_period[m]);
 	}
+	gpio_set_value_cansleep(ipd->nen_pin[m], IPD_GPIO_HIGH);
 	dev_dbg(ipd->dev, "%s halfPeriod :%d step_num :%d\n",
 		__func__, ipd->half_period[m], ipd->step_num[m]);
 	msleep(VOLTAGE_SETTLING_TIME);
@@ -536,8 +537,10 @@ static ssize_t max_steps_store(struct device *dev,
 	}
 
 	mutex_lock(&ipd->mlock[m]);
-	if (val > 0)
+	if (val > 0) {
 		ipd->max_steps[m] = val;
+		ipd->counter[m] = (val / 2);
+	}
 
 	mutex_unlock(&ipd->mlock[m]);
 

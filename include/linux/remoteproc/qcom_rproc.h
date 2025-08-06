@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ *  Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __QCOM_RPROC_H__
@@ -31,16 +31,23 @@ struct qcom_ssr_notify_data {
 	bool crashed;
 };
 
-#if IS_ENABLED(CONFIG_QCOM_Q6V5_PAS)
+#if IS_ENABLED(CONFIG_QCOM_Q6V5_PAS_SOCCP_V1)
 
 int rproc_set_state(struct rproc *rproc, bool state);
-int qcom_rproc_set_dtb_firmware(struct rproc *rproc, const char *dtb_fw_name);
 
 #else
+
 static inline int rproc_set_state(struct rproc *rproc, bool state)
 {
 	return 0;
 }
+#endif
+
+#if IS_ENABLED(CONFIG_QCOM_Q6V5_PAS)
+
+int qcom_rproc_set_dtb_firmware(struct rproc *rproc, const char *dtb_fw_name);
+
+#else
 
 static inline int qcom_rproc_set_dtb_firmware(struct rproc *rproc, const char *dtb_fw_name)
 {

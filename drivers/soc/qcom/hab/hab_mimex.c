@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include "hab.h"
 #include "hab_grantable.h"
@@ -352,11 +352,17 @@ int hab_mem_export(struct uhab_context *ctx,
 	int page_count;
 	int compressed = 0;
 
-	if (!ctx || !param || !param->sizebytes
-		|| ((param->sizebytes % PAGE_SIZE) != 0)
-		|| (!param->buffer && !(HABMM_EXPIMP_FLAGS_FD & param->flags))
-		)
+	if (!ctx || !param || !param->sizebytes ||
+	    ((param->sizebytes % PAGE_SIZE) != 0) ||
+	    (!param->buffer && !(HABMM_EXPIMP_FLAGS_FD & param->flags))) {
+		if (!ctx || !param)
+			pr_err("invalid parameter! ctx is %pK, param is %pK\n", ctx, param);
+		else
+			pr_err("invalid parameter! vcid 0x%x, exp_sz %u, buff 0x%llx, flag %u\n",
+				param->vcid, param->sizebytes, param->buffer, param->flags);
+
 		return -EINVAL;
+	}
 
 	param->exportid = 0;
 	vchan = hab_get_vchan_fromvcid(param->vcid, ctx, 0);

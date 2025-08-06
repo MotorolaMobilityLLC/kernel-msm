@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2018, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
-#include "hab.h"
 #include <linux/of.h>
+#include "hab.h"
+#include "hab_virq.h"
+
+struct local_virq virqsettings = {0};
 
 /*
  * set valid mmid value in tbl to show this is valid entry. All inputs here are
@@ -84,7 +87,7 @@ static int hab_parse_dt(struct local_vmid *settings)
 	struct device_node *hab_node = NULL;
 	struct device_node *mmid_grp_node = NULL;
 	const char *role = NULL;
-	int tmp = -1, vmids_num;
+	int tmp = -1, vmids_num, count = 0;
 	u32 vmids[16];
 	int32_t grp_start_id, be;
 	int kernel_only;
@@ -107,6 +110,27 @@ static int hab_parse_dt(struct local_vmid *settings)
 
 	pr_debug("local vmid = %d\n", tmp);
 	settings->self = tmp;
+
+	if (of_find_property(hab_node, HAB_VIRQ_NODE, NULL)) {
+		count = of_property_count_elems_of_size(hab_node, HAB_VIRQ_NODE,
+				sizeof(u32));
+		if (count == 0)
+			pr_err("No virt-irq are specified for %s\n", HAB_VIRQ_NODE);
+		else if (count > HAB_VIRTIRQ_MAX)
+			pr_err("The number of virq exceed limitation set %d for %s\n",
+					HAB_VIRTIRQ_MAX, HAB_VIRQ_NODE);
+
+		result = of_property_read_u32_array(hab_node, HAB_VIRQ_NODE,
+				virqsettings.label, count);
+		if (result != 0)
+			pr_err("error %d getting virq resource for %s\n", result,
+					HAB_VIRQ_NODE);
+	}
+
+	virqsettings.cnt_virq = count;
+
+	for (int i = 0 ; i < count ; i++)
+		pr_debug("virq-label is %d\n", virqsettings.label[i]);
 
 	for_each_child_of_node(hab_node, mmid_grp_node) {
 		/* read the group starting id */

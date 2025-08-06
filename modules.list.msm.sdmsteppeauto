@@ -51,6 +51,7 @@ clk-qcom.ko
 clk-dummy.ko
 gdsc-regulator.ko
 gcc-sm6150.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
 icc-bcm-voter.ko

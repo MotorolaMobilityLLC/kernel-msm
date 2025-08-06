@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -95,8 +94,11 @@
 
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
-#define USB3_PORTSC		(0x420)
-#define USB3_PORTPMSC_20	(0x424)
+#define USB3_PORTSC_BASE	(0x400)
+#define USB3_PORTPMSC_20_BASE	(0x404)
+#define CAPLENGTH_MASK		(0xff)
+#define USB3_PORTSC(d, n)	(USB3_PORTSC_BASE + (d)->cap_length + (n*0x10))
+#define USB3_PORTPMSC(d)	(USB3_PORTPMSC_20_BASE + (d)->cap_length)
 
 /**
  *  USB QSCRATCH Hardware registers
@@ -129,6 +131,9 @@
 
 #define SS_PHY_CTRL_REG		(QSCRATCH_REG_OFFSET + 0x30)
 #define LANE0_PWR_PRESENT	BIT(24)
+
+#define USB_STS_REG		(QSCRATCH_REG_OFFSET + 0xF8)
+#define USB_UTMI_SUSPEND_N	BIT(4)
 
 /* USB DBM Hardware registers */
 #define DBM_REG_OFFSET		0xF8000
@@ -667,6 +672,8 @@ struct dwc3_msm {
 	bool			fw_managed_pwr;
 	int			pd_count;
 	struct device		**pd_devs;
+
+	u32			cap_length;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -1118,7 +1125,7 @@ static bool dwc3_msm_is_ss_rhport_connected(struct dwc3_msm *mdwc)
 	num_ports = HCS_MAX_PORTS(reg);
 
 	for (i = 0; i < num_ports; i++) {
-		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC + i*0x10);
+		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC(mdwc, i));
 		if ((reg & PORT_CONNECT) && DEV_SUPERSPEED_ANY(reg))
 			return true;
 	}
@@ -1135,7 +1142,7 @@ static bool dwc3_msm_is_host_superspeed(struct dwc3_msm *mdwc)
 	num_ports = HCS_MAX_PORTS(reg);
 
 	for (i = 0; i < num_ports; i++) {
-		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC + i*0x10);
+		reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC(mdwc, i));
 		if ((reg & PORT_PE) && DEV_SUPERSPEED_ANY(reg))
 			return true;
 	}
@@ -2439,6 +2446,29 @@ static void gsi_configure_ep(struct usb_ep *ep, struct usb_gsi_request *request)
 		dwc3_msm_write_reg(mdwc->base, DWC3_DALEPENA, reg);
 	}
 
+	/* Transfer resource already allocated for EP */
+	if (dep->flags & DWC3_EP_RESOURCE_ALLOCATED)
+		return;
+
+	/*
+	 * Issue set xfer resource here, as DWC3 gadget modified the sequence
+	 * of commands done during dwc3_gadget_start_config().  Previously,
+	 * when dwc3_gadget_start_config() was called, the set xfer resource
+	 * command was issued for every EP.
+	 *    commit b311048c174d("usb: dwc3: gadget: Rewrite endpoint
+	 *                         allocation flow"
+	 *
+	 * The commit adjusts the sequence to issue set xfer resource on every
+	 * ep enable call instead.  Add this operation to the GSI ep enable call.
+	 */
+	memset(&params, 0x00, sizeof(params));
+
+	params.param0 = DWC3_DEPXFERCFG_NUM_XFER_RES(1);
+
+	dwc3_core_send_gadget_ep_cmd(dep, DWC3_DEPCMD_SETTRANSFRESOURCE,
+			&params);
+
+	dep->flags |= DWC3_EP_RESOURCE_ALLOCATED;
 }
 
 /**
@@ -3741,6 +3771,7 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc, bool ignore_p3_state)
 {
 	unsigned long timeout;
 	u32 reg = 0;
+	int ret = 0;
 
 	if (!mdwc->in_host_mode && !mdwc->in_device_mode)
 		return 0;
@@ -3756,6 +3787,13 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc, bool ignore_p3_state)
 			return -EBUSY;
 		}
 	}
+
+	/* Read QSCRATCH USB status register to get utmi suspend status from the controller*/
+	reg = dwc3_msm_read_reg(mdwc->base, USB_STS_REG);
+
+	/* HSPHY is in L2, return from here */
+	if (!(reg & USB_UTMI_SUSPEND_N))
+		return 0;
 
 	/* Clear previous L2 events */
 	dwc3_msm_write_reg(mdwc->base, PWR_EVNT_IRQ_STAT_REG,
@@ -3773,14 +3811,16 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc, bool ignore_p3_state)
 		if (reg & PWR_EVNT_LPM_IN_L2_MASK)
 			break;
 	}
-	if (!(reg & PWR_EVNT_LPM_IN_L2_MASK))
+	if (!(reg & PWR_EVNT_LPM_IN_L2_MASK)) {
 		dev_err(mdwc->dev, "could not transition HS PHY to L2\n");
+		ret = -EBUSY;
+	}
 
 	/* Clear L2 event bit */
 	dwc3_msm_write_reg(mdwc->base, PWR_EVNT_IRQ_STAT_REG,
 		PWR_EVNT_LPM_IN_L2_MASK);
 
-	return 0;
+	return mdwc->in_host_mode ? ret : 0;
 }
 
 static void dwc3_set_phy_speed_flags(struct dwc3_msm *mdwc)
@@ -3799,8 +3839,7 @@ static void dwc3_set_phy_speed_flags(struct dwc3_msm *mdwc)
 		reg = dwc3_msm_read_reg(mdwc->base, USB3_HCSPARAMS1);
 		num_ports = HCS_MAX_PORTS(reg);
 		for (i = 0; i < num_ports; i++) {
-			reg = dwc3_msm_read_reg(mdwc->base,
-					USB3_PORTSC + i*0x10);
+			reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTSC(mdwc, i));
 			if ((reg & PORT_CONNECT) && !(reg & PORT_CSC)) {
 				if (DEV_HIGHSPEED(reg) || DEV_FULLSPEED(reg))
 					mdwc->hs_phy->flags |= PHY_HSFS_MODE;
@@ -3921,7 +3960,7 @@ static void configure_usb_wakeup_interrupts(struct dwc3_msm *mdwc, bool enable)
 		else
 			configure_usb_wakeup_interrupt(mdwc,
 				&mdwc->wakeup_irq[DM_HS_PHY_IRQ],
-				IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_LEVEL_LOW, enable);
+				IRQ_TYPE_LEVEL_LOW, enable);
 
 	} else if (mdwc->hs_phy->flags & PHY_HSFS_MODE) {
 		/*
@@ -3937,7 +3976,7 @@ static void configure_usb_wakeup_interrupts(struct dwc3_msm *mdwc, bool enable)
 		else
 			configure_usb_wakeup_interrupt(mdwc,
 				&mdwc->wakeup_irq[DP_HS_PHY_IRQ],
-				IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_LEVEL_LOW, enable);
+				IRQ_TYPE_LEVEL_LOW, enable);
 
 	} else {
 		/* When in host mode, with no device connected, set the HS
@@ -3949,15 +3988,13 @@ static void configure_usb_wakeup_interrupts(struct dwc3_msm *mdwc, bool enable)
 			&mdwc->wakeup_irq[DP_HS_PHY_IRQ],
 			mdwc->in_host_mode && !(mdwc->use_pwr_event_for_wakeup
 			& PWR_EVENT_HS_WAKEUP) ?
-			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING |
-			IRQ_TYPE_LEVEL_HIGH, true);
+			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING, true);
 
 		configure_usb_wakeup_interrupt(mdwc,
 			&mdwc->wakeup_irq[DM_HS_PHY_IRQ],
 			mdwc->in_host_mode && !(mdwc->use_pwr_event_for_wakeup
 			& PWR_EVENT_HS_WAKEUP) ?
-			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING |
-			IRQ_TYPE_LEVEL_HIGH, true);
+			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING, true);
 	}
 
 	configure_usb_wakeup_interrupt(mdwc,
@@ -5541,11 +5578,11 @@ static ssize_t xhci_test_store(struct device *dev,
 
 	pm_runtime_resume(&dwc->xhci->dev);
 	pm_runtime_forbid(&dwc->xhci->dev);
-	reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTPMSC_20);
+	reg = dwc3_msm_read_reg(mdwc->base, USB3_PORTPMSC(mdwc));
 	dev_info(dev, "USB PORTPMSC val:%x\n", reg);
 	reg |= USB_TEST_PACKET << PORT_TEST_MODE_SHIFT;
 	dev_info(dev, "writing %x to USB PORTPMSC\n", reg);
-	dwc3_msm_write_reg(mdwc->base, USB3_PORTPMSC_20, reg);
+	dwc3_msm_write_reg(mdwc->base, USB3_PORTPMSC(mdwc), reg);
 	return count;
 }
 static DEVICE_ATTR_WO(xhci_test);
@@ -6049,6 +6086,8 @@ static int dwc3_msm_core_init(struct dwc3_msm *mdwc)
 
 	if (mdwc->dwc3)
 		return 0;
+
+	mdwc->cap_length = dwc3_msm_read_reg(mdwc->base, 0) & CAPLENGTH_MASK;
 
 	ret = usb_phy_init(mdwc->hs_phy);
 	if (ret) {
@@ -6560,7 +6599,7 @@ err:
 }
 
 
-static void vbus_regulator_get(struct dwc3_msm *mdwc)
+static int vbus_regulator_get(struct dwc3_msm *mdwc)
 {
 	/*
 	 * The vbus_reg pointer could have multiple values
@@ -6570,13 +6609,16 @@ static void vbus_regulator_get(struct dwc3_msm *mdwc)
 	 */
 	mdwc->vbus_reg = devm_regulator_get_optional(mdwc->dev,
 						"vbus_dwc3");
-	if (IS_ERR(mdwc->vbus_reg)) {
-		dev_err(mdwc->dev, "Unable to get vbus regulator err: %d\n",
-							PTR_ERR(mdwc->vbus_reg));
-		mdwc->vbus_reg = NULL;
-		return;
-	}
+	if (!IS_ERR(mdwc->vbus_reg))
+		return 0;
 
+	/* regulators may not be ready, so retry again later */
+	if (PTR_ERR(mdwc->vbus_reg) == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+
+	mdwc->vbus_reg = NULL;
+
+	return 0;
 }
 
 static int dwc3_msm_probe(struct platform_device *pdev)
@@ -6669,7 +6711,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		device_property_read_bool(mdwc->dev, "qcom,disable-wakeup");
 	device_init_wakeup(mdwc->dev, !disable_wakeup);
 
-	vbus_regulator_get(mdwc);
+	ret = vbus_regulator_get(mdwc);
+	if (ret < 0)
+		goto err;
 
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);
@@ -7216,7 +7260,7 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
 		ret = vbus_regulator_toggle(mdwc, true);
 		if (ret) {
-			dev_err(mdwc->dev, "unable to enable vbus_reg\n");
+			dev_err(mdwc->dev, "Failed to enable vbus, ret %d\n", ret);
 			return ret;
 		}
 		mdwc->hs_phy->flags |= PHY_HOST_MODE;
@@ -7879,9 +7923,6 @@ static void dwc3_host_complete(struct device *dev)
 {
 	int ret = 0;
 
-	if (strcmp(dev_driver_string(dev->parent), "msm-dwc3") != 0)
-		return;
-
 	if (dev->power.direct_complete) {
 		ret = pm_runtime_resume(dev);
 		if (ret < 0) {
@@ -7893,9 +7934,6 @@ static void dwc3_host_complete(struct device *dev)
 
 static int dwc3_host_prepare(struct device *dev)
 {
-	if (strcmp(dev_driver_string(dev->parent), "msm-dwc3") != 0)
-		return 0;
-
 	/*
 	 * It is recommended to use the PM prepare callback to handle situations
 	 * where the device is already runtime suspended, in order to avoid

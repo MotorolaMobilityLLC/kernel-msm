@@ -99,8 +99,8 @@
 #define MAX77720_MASK_GPIO_CFG			(0x07)
 #define MAX77720_MASK_VOUT			(0x7F)
 
-#define MAX77720_VOUT_MIN_UV			11000000
-#define MAX77720_VOUT_STEP_UV			20000
+#define MAX77720_VOUT_MIN_UV			17010000
+#define MAX77720_VOUT_STEP_UV			15000
 
 #define MAX77720_AD_DISABLE			0
 
@@ -363,11 +363,23 @@ static unsigned int max77720_get_mode(struct regulator_dev *rdev)
 	return ret;
 }
 
+static int max77720_enable(struct regulator_dev *rdev)
+{
+	int ret;
+	struct max77720_data *pdata = rdev_get_drvdata(rdev);
+
+	ret = regulator_enable_regmap(rdev);
+	if (ret < 0)
+		dev_dbg(pdata->dev, "[non-fatal] max77720 regulator enable failed\n");
+
+	return 0;
+}
+
 static const struct regulator_ops max77720_ibb_ops = {
 	.list_voltage = regulator_list_voltage_linear,
 	.get_voltage_sel = max77720_get_voltage_sel,
 	.set_voltage_sel = max77720_set_voltage_sel,
-	.enable = regulator_enable_regmap,
+	.enable = max77720_enable,
 	.disable = regulator_disable_regmap,
 	.is_enabled = regulator_is_enabled_regmap,
 	.get_status = max77720_get_status,
@@ -384,7 +396,7 @@ static const struct regulator_ops max77720_base_ibb_ops = {
 };
 
 static const struct regulator_desc max77720_low_regulators_desc = {
-	.name = "max77720",
+	.name = "max77720_tof",
 	.id = MAX77720_ID_VOUT,
 	.ops = &max77720_ibb_ops,
 	.type = REGULATOR_VOLTAGE,
@@ -571,7 +583,7 @@ MODULE_DEVICE_TABLE(i2c, max77720_regulator_id);
 
 static struct i2c_driver max77720_regulator_driver = {
 	.driver = {
-		.name = "max77720",
+		.name = "max77720_tof",
 		.of_match_table = of_match_ptr(max77720_of_match),
 	},
 	.probe = max77720_regulator_probe,

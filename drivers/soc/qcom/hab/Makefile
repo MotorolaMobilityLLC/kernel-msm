@@ -11,6 +11,7 @@ msm_hab-objs = \
 	hab_mimex.o \
 	hab_pipe.o \
 	hab_parser.o \
+	hab_virq.o \
 	hab_stat.o
 
 # Common code in Linux
@@ -30,6 +31,7 @@ msm_hab-objs += \
 else
 ifdef CONFIG_MSM_VIRTIO_HAB
 msm_hab-objs += hab_virtio.o
+msm_hab-$(CONFIG_MSM_VIRQ_HAB) += hab_virq_hgy.o
 else
 ifdef CONFIG_MSM_VHOST_HAB
 ccflags-y += -I$(srctree)/drivers/vhost

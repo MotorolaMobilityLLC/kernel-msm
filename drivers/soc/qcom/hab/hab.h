@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __HAB_H
 #define __HAB_H
@@ -66,7 +66,13 @@ enum hab_payload_type {
 #define DEVICE_XVM3_NAME "hab_xvm3"
 #define DEVICE_VNW1_NAME "hab_vnw1"
 #define DEVICE_EXT1_NAME "hab_ext1"
+#define DEVICE_EXT2_NAME "hab_ext2"
+#define DEVICE_EXT3_NAME "hab_ext3"
 #define DEVICE_GPCE1_NAME "hab_gpce1"
+#define DEVICE_SOCCP1_NAME "hab_soccp1"
+#define DEVICE_DPRX1_NAME "hab_dprx1"
+#define DEVICE_DPRX2_NAME "hab_dprx2"
+#define DEVICE_EVA1_NAME "hab_eva1"
 
 #define HABCFG_MMID_NUM        26
 #define HAB_MMID_ALL_AREA      0
@@ -304,6 +310,20 @@ struct hab_device {
 	int openq_cnt;
 };
 
+struct virq_uhab_context {
+	struct list_head node; /* managed by the driver */
+	struct kref refcount;
+
+	/* keeps track of virq setup per context */
+	struct list_head virq;
+	int virq_total;
+
+	rwlock_t ctx_lock;
+
+	int kernel;
+	int owner;
+};
+
 struct uhab_context {
 	struct list_head node; /* managed by the driver */
 	struct kref refcount;
@@ -377,9 +397,13 @@ struct hab_driver {
 	int ndevices;
 	struct hab_device *devp;
 	struct uhab_context *kctx;
+	struct virq_uhab_context *kvirq_ctx;
 
 	struct list_head uctx_list;
 	int ctx_cnt;
+	struct list_head virq_uctx_list;
+	int virq_ctx_cnt;
+
 	spinlock_t drvlock;
 
 	struct list_head imp_list;
@@ -725,6 +749,7 @@ int hab_stat_show_vchan(struct hab_driver *drv, char *buf, int sz);
 int hab_stat_show_ctx(struct hab_driver *drv, char *buf, int sz);
 int hab_stat_show_expimp(struct hab_driver *drv, int pid, char *buf, int sz);
 int hab_stat_show_reclaim(struct hab_driver *drv, char *buf, int sz);
+int hab_stat_show_virq(struct hab_driver *drv, char *buf, int sz);
 int hab_stat_init_sub(struct hab_driver *drv);
 int hab_stat_deinit_sub(struct hab_driver *drv);
 

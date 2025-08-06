@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2006-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __HGSL_TYPES_H
@@ -86,6 +86,12 @@
 #define GSL_CONTEXT_FLAG_CLIENT_GENERATED_TS  0x80000000
 
 /****************************************************************************/
+/* GSLProfiler                                                              */
+/****************************************************************************/
+#define GSL_PROFILER_MAX_NUM_PROCESSES 512
+#define GSL_PROFILER_MAX_PROCESS_NAME_LENGTH 96
+
+/****************************************************************************/
 /* other                                                                    */
 /****************************************************************************/
 #define GSL_TIMEOUT_NONE                      0
@@ -111,8 +117,11 @@ enum gsl_deviceid_t {
 	GSL_DEVICE_UNUSED = -1,	/* gcc compiler warning fix, unsigned->signed */
 	GSL_DEVICE_ANY    = 0,
 	GSL_DEVICE_3D     = 1,
-	GSL_DEVICE_0      = 2,
-	GSL_DEVICE_1      = 3,
+	GSL_DEVICE_2DVG   = 2,
+	GSL_DEVICE_2DVG_1 = 3,
+	GSL_DEVICE_0      = 4,
+	GSL_DEVICE_1      = 5,
+	GSL_DEVICE_MAX    = 5,
 
 	GSL_DEVICE_FOOBAR = 0x7FFFFFFF
 };
@@ -232,4 +241,32 @@ enum gsl_systemtime_usage_t {
 	GSL_SYSTEMTIME_CL_PROFILING	= 0x1,
 };
 
+/****************************************************************************/
+/* GSLProfiler                                                              */
+/****************************************************************************/
+struct gsl_profiler_get_per_proc_gpu_busy_percentage_t {
+	/* Total number of active processes */
+	unsigned int        process_num;
+	/* Holds the process id of active processes */
+	unsigned int        process_id[GSL_PROFILER_MAX_NUM_PROCESSES];
+	/* Holds the names of active processes */
+	char process_name[GSL_PROFILER_MAX_NUM_PROCESSES][GSL_PROFILER_MAX_PROCESS_NAME_LENGTH];
+	/* Holds the percentage busy-ness of GPU */
+	double              busy_percentage[GSL_PROFILER_MAX_NUM_PROCESSES];
+	/* A specific timestamp that holds end time of the period of calculation */
+	unsigned long long  ts;
+};
+
+struct gsl_profiler_get_per_proc_gpu_pmem_usage_t {
+	/* Total number of active processes */
+	unsigned int        process_num;
+	/* Holds the process id of active processes */
+	unsigned int        process_id[GSL_PROFILER_MAX_NUM_PROCESSES];
+	/* Holds the names of active processes */
+	char process_name[GSL_PROFILER_MAX_NUM_PROCESSES][GSL_PROFILER_MAX_PROCESS_NAME_LENGTH];
+	/* Holds the GPU PMEM usage in bytes */
+	unsigned int        pmem_usage[GSL_PROFILER_MAX_NUM_PROCESSES];
+	/* A specific timestamp that holds the time the data are retrieved */
+	unsigned long long  ts;
+};
 #endif	/* __HGSL_TYPES_H */

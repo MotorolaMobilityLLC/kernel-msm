@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/platform_device.h>
@@ -9,69 +9,124 @@
 #ifndef __LLCC_QCOM__
 #define __LLCC_QCOM__
 
-#define LLCC_CPUSS       1
-#define LLCC_VIDSC0      2
-#define LLCC_VIDSC1      3
-#define LLCC_ROTATOR     4
-#define LLCC_VOICE       5
-#define LLCC_AUDIO       6
-#define LLCC_MDMHPGRW    7
-#define LLCC_MDM         8
-#define LLCC_MDMHW       9
-#define LLCC_CMPT        10
-#define LLCC_GPUHTW      11
-#define LLCC_GPU         12
-#define LLCC_MMUHWT      13
-#define LLCC_CMPTDMA     15
-#define LLCC_DISP        16
-#define LLCC_VIDFW       17
-#define LLCC_CAMFW       18
-#define LLCC_MDMHPFX     20
-#define LLCC_MDMPNG      21
-#define LLCC_AUDHW       22
-#define LLCC_NPU         23
-#define LLCC_WLNHW       24
-#define LLCC_PIMEM       25
-#define LLCC_ECC         26
-#define LLCC_CVP         28
-#define LLCC_MDMVPE      29
-#define LLCC_APTCM       30
-#define LLCC_WRTCH       31
-#define LLCC_CVPFW       32
-#define LLCC_CPUSS1      33
-#define LLCC_CAMEXP0     34
-#define LLCC_CPUMTE      35
-#define LLCC_CPUHWT      36
-#define LLCC_MDMCLAD2    37
-#define LLCC_CAMEXP1     38
-#define LLCC_CMPTHCP     39
-#define LLCC_LCPDARE     40
-#define LLCC_AENPU       45
-#define LLCC_ISLAND1     46
-#define LLCC_ISLAND2     47
-#define LLCC_ISLAND3     48
-#define LLCC_ISLAND4     49
-#define LLCC_CAMEXP2     50
-#define LLCC_CAMEXP3     51
-#define LLCC_CAMEXP4     52
-#define LLCC_DISP_WB     53
-#define LLCC_DISP_1      54
-#define LLCC_SAIL        55
-#define LLCC_AENPU       45
-#define LLCC_VIEYE       57
-#define LLCC_VIDPTH      58
-#define LLCC_GPUMV       59
-#define LLCC_EVALFT      60
-#define LLCC_EVARGHT     61
-#define LLCC_EVAGAIN     62
-#define LLCC_VIPTH       63
-#define LLCC_VIDVSP      64
-#define LLCC_DISLFT      65
-#define LLCC_DISRGHT     66
-#define LLCC_EVCSLFT     67
-#define LLCC_EVCSRGHT    68
-#define LLCC_SPAD        69
-#define LLCC_EVA_3DR     69
+#define LLCC_CPUSS             1
+#define LLCC_VIDSC0            2
+#define LLCC_VIDSC1            3
+#define LLCC_ROTATOR           4
+#define LLCC_VOICE             5
+#define LLCC_AUDIO             6
+#define LLCC_MDMHPGRW          7
+#define LLCC_MDM               8
+#define LLCC_MDMHW             9
+#define LLCC_CMPT              10
+#define LLCC_GPUHTW            11
+#define LLCC_GPU               12
+#define LLCC_MMUHWT            13
+#define LLCC_CMPTDMA           15
+#define LLCC_DISP              16
+#define LLCC_VIDFW             17
+#define LLCC_CAMFW             18
+#define LLCC_MDMHPFX           20
+#define LLCC_MDMPNG            21
+#define LLCC_AUDHW             22
+#define LLCC_NPU               23
+#define LLCC_WLNHW             24
+#define LLCC_PIMEM             25
+#define LLCC_ECC               26
+#define LLCC_CVP               28
+#define LLCC_MDMVPE            29
+#define LLCC_APTCM             30
+#define LLCC_WRTCH             31
+#define LLCC_CVPFW             32
+#define LLCC_CPUSS1            33
+#define LLCC_CAMEXP0           34
+#define LLCC_CPUMTE            35
+#define LLCC_CPUHWT            36
+#define LLCC_MDMCLAD2          37
+#define LLCC_CAMEXP1           38
+#define LLCC_CMPTHCP           39
+#define LLCC_LCPDARE           40
+#define LLCC_AENPU             45
+#define LLCC_ISLAND1           46
+#define LLCC_ISLAND2           47
+#define LLCC_ISLAND3           48
+#define LLCC_ISLAND4           49
+#define LLCC_CAMEXP2           50
+#define LLCC_CAMEXP3           51
+#define LLCC_CAMEXP4           52
+#define LLCC_DISP_WB           53
+#define LLCC_DISP_1            54
+#define LLCC_SAIL              55
+#define LLCC_GDSP              56
+#define LLCC_AENPU             45
+#define LLCC_VIEYE             57
+#define LLCC_VIDPTH            58
+#define LLCC_GPUMV             59
+#define LLCC_EVALFT            60
+#define LLCC_EVARGHT           61
+#define LLCC_EVAGAIN           62
+#define LLCC_VIPTH             63
+#define LLCC_VIDVSP            64
+#define LLCC_DISLFT            65
+#define LLCC_DISRGHT           66
+#define LLCC_EVCSLFT           67
+#define LLCC_EVCSRGHT          68
+#define LLCC_SPAD              69
+#define LLCC_EVA_3DR           69
+#define LLCC_VIDDEC            70
+#define LLCC_CAMOFE            71
+#define LLCC_CAMRTIP           72
+#define LLCC_CAMSRTIP          73
+#define LLCC_CAMRTRF           74
+#define LLCC_CAMSRTRF          75
+#define LLCC_NW_DESC           76
+#define LLCC_NW_DATA           77
+#define LLCC_CUST_CORE         78
+#define LLCC_APPS_SEC          79
+#define LLCC_GPU_LITTLE        80
+#define LLCC_OOBM_NS           81
+#define LLCC_OOBM_S            82
+#define LLCC_VIDEO_APV         83
+#define LLCC_DCP               86
+#define LLCC_COMPUTE1          87
+#define LLCC_PCIE              99
+#define LLCC_GPU_LAYERS        256
+#define LLCC_GPU_TEMP_DATA     257
+#define LLCC_VIDSC_LAYER0      258
+#define LLCC_VIDSC_LAYER1      259
+#define LLCC_VIDSC_LAYER2      260
+#define LLCC_VIDSC_LAYER3      261
+#define LLCC_VIDSC_LAYER4      262
+#define LLCC_VIDSC_LAYER5      263
+#define LLCC_VIDSC_LAYER6      264
+#define LLCC_VIDSC_LAYER7      265
+#define LLCC_CSC_LAYER0        266
+#define LLCC_CSC_LAYER1        267
+#define LLCC_CSC_LAYER2        268
+#define LLCC_CSC_LAYER3        269
+#define LLCC_CSC_LAYER4        270
+#define LLCC_CSC_LAYER5        271
+#define LLCC_CSC_LAYER6        272
+#define LLCC_CSC_LAYER7        273
+#define LLCC_CSC_LAYER8        274
+#define LLCC_CSC_LAYER9        275
+#define LLCC_CSC_LAYER10       276
+#define LLCC_CSC_LAYER11       277
+#define LLCC_CSC_LAYER12       278
+#define LLCC_CSC_LAYER13       279
+#define LLCC_CSC_LAYER14       280
+#define LLCC_CSC_LAYER15       281
+#define LLCC_GCX_TO_DPU_LEFT   282
+#define LLCC_GCX_TO_DPU_RIGHT  283
+#define LLCC_VIDSC_DEPTH0      284
+#define LLCC_VIDSC_DEPTH1      285
+#define LLCC_TCM_WIFI          286
+#define LLCC_TCM_CAM           287
+#define LLCC_TCM_OEM           288
+#define LLCC_CAM_TF_BUFFER     289
+#define LLCC_CAM_IPE_BUFFER    290
+#define LLCC_CAM_META_ADVANCED 291
+#define LLCC_CAM_IPE_CSC       292
 
 /**
  * llcc_slice_desc - Cache slice descriptor
@@ -136,6 +191,10 @@ struct llcc_edac_reg_offset {
 	u32 drp_ecc_db_err_syn0;
 };
 
+struct llcc_uid_slice_pair {
+	uint32_t uid;
+	struct llcc_slice_desc *desc;
+};
 /**
  * llcc_drv_data - Data associated with the llcc driver
  * @regmap: regmap associated with the llcc device
@@ -152,6 +211,8 @@ struct llcc_edac_reg_offset {
  * @ecc_irq: interrupt for llcc cache error detection and reporting
  * @llcc_ver: hardware version (20 for V2.0)
  * @desc: Array pointer of llcc_slice_desc
+ * @uid_slice_lookup: Lookup form UID to slice desc
+ * @sct_initialized: Indicates that SCT is already initialized outside llcc-qcom
  */
 struct llcc_drv_data {
 	struct regmap *regmap;
@@ -169,6 +230,8 @@ struct llcc_drv_data {
 	int llcc_ver;
 	bool cap_based_alloc_and_pwr_collapse;
 	struct llcc_slice_desc *desc;
+	struct llcc_uid_slice_pair *uid_slice_lookup;
+	bool sct_initialized;
 };
 
 /**

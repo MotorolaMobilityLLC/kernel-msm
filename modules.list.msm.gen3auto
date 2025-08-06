@@ -46,6 +46,7 @@ clk-dummy.ko
 gdsc-regulator.ko
 gcc-sm8150.ko
 gcc-sc8180x.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
 camcc-sc8180x.ko

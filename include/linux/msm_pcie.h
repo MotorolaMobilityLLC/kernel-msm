@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #ifndef __MSM_PCIE_H
 #define __MSM_PCIE_H
@@ -92,8 +92,10 @@ int msm_pcie_set_target_link_speed(u32 rc_idx, u32 target_link_speed,
  *
  * This function gives PCIe clients the control to allow the link to re-enter
  * L1. Should only be used after msm_pcie_prevent_l1 has been called.
+ *
+ * Return 0 on success, negative value on error
  */
-void msm_pcie_allow_l1(struct pci_dev *pci_dev);
+int msm_pcie_allow_l1(struct pci_dev *pci_dev);
 
 /**
  * msm_pcie_prevent_l1 - keeps PCIe link out of L1
@@ -260,8 +262,9 @@ static inline int msm_pcie_set_target_link_speed(u32 rc_idx,
 	return -ENODEV;
 }
 
-static inline void msm_pcie_allow_l1(struct pci_dev *pci_dev)
+static inline int msm_pcie_allow_l1(struct pci_dev *pci_dev)
 {
+	return -ENODEV;
 }
 
 static inline int msm_pcie_prevent_l1(struct pci_dev *pci_dev)

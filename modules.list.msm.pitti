@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-# Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 
 qcom_wdt_core.ko
 gh_virt_wdt.ko
@@ -52,6 +52,7 @@ mem-hooks.ko
 mem_buf_dev.ko
 mem_buf.ko
 qcom_dma_heaps.ko
+gh_mem_notifier.ko
 qcom-pmu-lib.ko
 qcom-dcvs.ko
 dcc_v2.ko

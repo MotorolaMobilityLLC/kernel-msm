@@ -8,7 +8,9 @@ def define_neo_la():
     _neo_in_tree_modules = [
         # keep sorted
         "drivers/base/regmap/qti-regmap-debugfs.ko",
+        "drivers/bus/mhi/controllers/mhi_cntrl_qcom.ko",
         "drivers/bus/mhi/devices/mhi_dev_dtr.ko",
+        "drivers/bus/mhi/devices/mhi_dev_netdev.ko",
         "drivers/bus/mhi/devices/mhi_dev_uci.ko",
         "drivers/bus/mhi/host/mhi.ko",
         "drivers/char/rdbg.ko",
@@ -85,6 +87,9 @@ def define_neo_la():
         "drivers/pinctrl/qcom/pinctrl-neo.ko",
         "drivers/pinctrl/qcom/pinctrl-spmi-gpio.ko",
         "drivers/pinctrl/qcom/pinctrl-spmi-mpp.ko",
+        "drivers/platform/msm/ep_pcie/ep_pcie_drv.ko",
+        "drivers/platform/msm/mhi_dev/mhi_dev_drv.ko",
+        "drivers/platform/msm/mhi_dev/mhi_dev_net.ko",
         "drivers/power/reset/qcom-dload-mode.ko",
         "drivers/power/reset/qcom-pon.ko",
         "drivers/power/reset/qcom-reboot-reason.ko",

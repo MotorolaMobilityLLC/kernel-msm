@@ -11,10 +11,9 @@ mem_buf_dev.ko
 mem_buf_msgq.ko
 qcom_dma_heaps.ko
 rename_devices.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
-boot_stats.ko
-bootmarker_proxy.ko
 virtio_clk_lemans.ko
 virtio_clk_direwolf.ko
 virtio_clk_sa8195p.ko
@@ -40,3 +39,4 @@ qcom-spmi-pmic.ko
 pinctrl-spmi-gpio.ko
 pinctrl-spmi-mpp.ko
 rtc-pm8xxx.ko
+scmi_pm_domain.ko

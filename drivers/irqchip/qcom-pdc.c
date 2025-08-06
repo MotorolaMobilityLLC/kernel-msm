@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/err.h>
@@ -401,7 +401,7 @@ static int qcom_pdc_init(struct device_node *node, struct device_node *parent)
 	major_ver >>= MAJOR_VER_SHIFT;
 	minor_ver = version & (MINOR_VER_MASK << MINOR_VER_SHIFT);
 	minor_ver >>= MINOR_VER_SHIFT;
-	if (major_ver >= 3 && minor_ver > 1)
+	if (major_ver >= 3)
 		enable_in_cfg = true;
 	else
 		enable_in_cfg = false;

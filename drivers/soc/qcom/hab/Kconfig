@@ -41,3 +41,12 @@ config MSM_VHOST_HAB
 	  The plugin running on host OS relies on
 	  vhost framework to transport HAB messages
 	  and communicate with guest OS.
+
+config MSM_VIRQ_HAB
+	bool "Enable hab virtualIRQ for hypervisor"
+	depends on MSM_HAB
+	help
+	  hab plugin for Hypervisor Doorbell.
+	  This plugin relies on hypervisor supported doorbell feature
+	  to do data sharing with the host OS. It is required by multimedia
+	  devices for the virtualization support.

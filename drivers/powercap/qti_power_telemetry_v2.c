@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt)	"qpt_hw: %s: " fmt, __func__
@@ -32,7 +32,8 @@
 #define QPT_CH_ENABLE_MASK_1		BIT(3)
 #define QPT_SID_MASK			GENMASK(4, 0)
 #define QPT_DATA_BYTE_SIZE		5
-#define QPT_ADC_SF_MULTIPLIER		GENMASK(2, 0)
+#define QPT_ADC_SF_MASK			GENMASK(2, 0)
+#define QPT_DEFAULT_SF			6400L
 #define QPT_DATA_SF_BASE		400L
 
 #define QPT_GET_CMLTV_POWER_UW_FROM_ADC(qpt, adc)	(adc * qpt->adc_scaling_factor)
@@ -101,9 +102,12 @@ static u32 get_data_update_rate_from_config(uint8_t timer_lb, uint8_t timer_ub,
 	return (timer * max_count  * 1000 / hz);
 }
 
-static u32 get_scaling_factor_from_config(uint8_t config)
+static u32 get_scaling_factor_from_config(uint8_t config, uint8_t config2)
 {
-	u32 mltplr = config & QPT_ADC_SF_MULTIPLIER;
+	u32 mltplr = config & QPT_ADC_SF_MASK;
+
+	if (config2)
+		return QPT_DEFAULT_SF;
 
 	return (QPT_DATA_SF_BASE * (1 << mltplr));
 }
@@ -160,7 +164,8 @@ static int qti_qpt_sync_common_telemetry_config(struct qpt_priv *qpt)
 				config_sdam[CONFIG_SDAM_TELEMETRY_CONFIG1]);
 	qpt->bob_tperiod = qpt->data_update_sampling / qpt->bob_max_count;
 	qpt->adc_scaling_factor = get_scaling_factor_from_config(
-					config_sdam[CONFIG_SDAM_TELEMETRY_CONFIG0]);
+					config_sdam[CONFIG_SDAM_TELEMETRY_CONFIG0],
+					config_sdam[CONFIG_SDAM_SPARE]);
 	qpt->config_sdam_data = config_sdam;
 	QPT_DBG_EVENT(qpt, "ready_cnt:%d bob count:%d b_tperiod:%d tperiod:%d",
 			qpt->ready_max_count, qpt->bob_max_count, qpt->bob_tperiod,

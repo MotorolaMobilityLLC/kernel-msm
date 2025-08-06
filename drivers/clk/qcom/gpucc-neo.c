@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021, 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021, 2024, 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -14,6 +14,7 @@
 
 #include "clk-alpha-pll.h"
 #include "clk-branch.h"
+#include "clk-pm.h"
 #include "clk-rcg.h"
 #include "common.h"
 #include "reset.h"
@@ -40,7 +41,7 @@ static const struct pll_vco lucid_ole_vco[] = {
 };
 
 /* 470MHz Configuration */
-static const struct alpha_pll_config gpu_cc_pll0_config = {
+static struct alpha_pll_config gpu_cc_pll0_config = {
 	.l = 0x18,
 	.cal_l = 0x44,
 	.alpha = 0x7AAA,
@@ -60,6 +61,7 @@ static struct clk_alpha_pll gpu_cc_pll0 = {
 	.vco_table = lucid_ole_vco,
 	.num_vco = ARRAY_SIZE(lucid_ole_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE],
+	.config = &gpu_cc_pll0_config,
 	.clkr = {
 		.hw.init = &(struct clk_init_data){
 			.name = "gpu_cc_pll0",
@@ -82,7 +84,7 @@ static struct clk_alpha_pll gpu_cc_pll0 = {
 };
 
 /* 440MHz Configuration */
-static const struct alpha_pll_config gpu_cc_pll1_config = {
+static struct alpha_pll_config gpu_cc_pll1_config = {
 	.l = 0x16,
 	.cal_l = 0x44,
 	.alpha = 0xEAAA,
@@ -102,6 +104,7 @@ static struct clk_alpha_pll gpu_cc_pll1 = {
 	.vco_table = lucid_ole_vco,
 	.num_vco = ARRAY_SIZE(lucid_ole_vco),
 	.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE],
+	.config = &gpu_cc_pll1_config,
 	.clkr = {
 		.hw.init = &(struct clk_init_data){
 			.name = "gpu_cc_pll1",
@@ -455,6 +458,13 @@ static struct clk_regmap *gpu_cc_neo_clocks[] = {
 	[GPU_CC_SLEEP_CLK] = &gpu_cc_sleep_clk.clkr,
 };
 
+/*
+ * gpu_cc_demet_clk
+ */
+static struct critical_clk_offset critical_clk_list[] = {
+	{ .offset = 0x0900C, .mask = BIT(0) },
+};
+
 static const struct regmap_config gpu_cc_neo_regmap_config = {
 	.reg_bits = 32,
 	.reg_stride = 4,
@@ -463,12 +473,14 @@ static const struct regmap_config gpu_cc_neo_regmap_config = {
 	.fast_io = true,
 };
 
-static const struct qcom_cc_desc gpu_cc_neo_desc = {
+static struct qcom_cc_desc gpu_cc_neo_desc = {
 	.config = &gpu_cc_neo_regmap_config,
 	.clks = gpu_cc_neo_clocks,
 	.num_clks = ARRAY_SIZE(gpu_cc_neo_clocks),
 	.clk_regulators = gpu_cc_neo_regulators,
 	.num_clk_regulators = ARRAY_SIZE(gpu_cc_neo_regulators),
+	.critical_clk_en = critical_clk_list,
+	.num_critical_clk = ARRAY_SIZE(critical_clk_list),
 };
 
 static const struct of_device_id gpu_cc_neo_match_table[] = {
@@ -486,13 +498,14 @@ static int gpu_cc_neo_probe(struct platform_device *pdev)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	ret = register_qcom_clks_pm(pdev, false, &gpu_cc_neo_desc);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register for pm ops\n");
+
 	clk_lucid_ole_pll_configure(&gpu_cc_pll0, regmap, &gpu_cc_pll0_config);
 	clk_lucid_ole_pll_configure(&gpu_cc_pll1, regmap, &gpu_cc_pll1_config);
 
-	/*Keep the clock always-ON
-	 * gpu_cc_demet_clk
-	 */
-	regmap_update_bits(regmap, 0x0900C, BIT(0), BIT(0));
+	clk_restore_critical_clocks(&pdev->dev);
 
 	ret = qcom_cc_really_probe(pdev, &gpu_cc_neo_desc, regmap);
 	if (ret) {
