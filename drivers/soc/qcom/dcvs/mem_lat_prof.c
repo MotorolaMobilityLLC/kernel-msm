@@ -325,7 +325,7 @@ static int set_mon_enabled(void *data, u64 val)
 			break;
 	}
 
-	if (enable == (bus_lat->active_masters & BIT(i)))
+	if (enable == !!(bus_lat->active_masters & BIT(i)))
 		goto unlock;
 
 	count = hweight32(bus_lat->active_masters);
