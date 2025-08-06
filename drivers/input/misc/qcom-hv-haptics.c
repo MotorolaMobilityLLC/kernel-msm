@@ -880,6 +880,9 @@ enum {
 #define RICHTAP_MMAP_PAGE_ORDER   2
 #define RICHTAP_MMAP_BUF_SUM    16
 
+#define RICHTAP_PRGM_INIT_SIZE			1280
+#define RICHTAP_PRGM_RELOAD_SIZE		2560
+
 #pragma pack(4)
 struct mmap_buf_format {
 	uint8_t status;
@@ -4643,8 +4646,17 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 			goto unlock;
 		}
 
+		if (!chip->play.effect)
+			goto unlock;
+
+		fifo = chip->play.effect->fifo;
+		if (!fifo || !fifo->samples) {
+			dev_err(chip->dev, "no FIFO samples available\n");
+			goto unlock;
+		}
+
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
-		if (atomic_read(&chip->richtap_mode)) {
+		if (atomic_read(&chip->richtap_mode) && status->samples_written == fifo->num_s) {
 			num_rt = (int16_t)haptics_get_available_fifo_memory(chip);
 			if (num_rt == get_max_fifo_samples(chip)) {
 				dev_info(chip->dev, "aac richtap fifo stopped, wait next vibrator %d\n",
@@ -4657,6 +4669,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				goto unlock;
 			}
 			num_rt -= (num_rt % HAP_PTN_FIFO_DIN_NUM); // qcom chip issue
+			num_rt = num_rt > RICHTAP_PRGM_RELOAD_SIZE ? RICHTAP_PRGM_RELOAD_SIZE : num_rt;
 
 			do {
 				if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
@@ -4720,15 +4733,6 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 		}
 #endif	//CONFIG_RICHTAP_FOR_PMIC_ENABLE
 
-		if (!chip->play.effect)
-			goto unlock;
-
-		fifo = chip->play.effect->fifo;
-		if (!fifo || !fifo->samples) {
-			dev_err(chip->dev, "no FIFO samples available\n");
-			goto unlock;
-		}
-
 		samples_left = fifo->num_s - status->samples_written;
 		num = haptics_get_available_fifo_memory(chip);
 		if (num < 0)
@@ -4757,8 +4761,10 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 		trace_qcom_haptics_fifo_prgm_status(fifo->num_s, status->samples_written, num);
 		if (status->samples_written == fifo->num_s) {
 			dev_dbg(chip->dev, "FIFO programming is done\n");
+#ifndef CONFIG_RICHTAP_FOR_PMIC_ENABLE
 			atomic_set(&chip->play.fifo_status.written_done, 1);
 			haptics_set_fifo_empty_threshold(chip, 0);
+#endif	//CONFIG_RICHTAP_FOR_PMIC_ENABLE
 		}
 	}
 
@@ -6932,7 +6938,7 @@ static int richtap_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 		return available;
 
 	num = min_t(u32, available, num);
-	num = min_t(u32, num, FIFO_PRGM_INIT_SIZE);
+	num = min_t(u32, num, RICHTAP_PRGM_INIT_SIZE);
 	/* Keep the FIFO programming 4-byte aligned if FIFO refilling is needed */
 	if ((num < fifo->num_s) && (num % HAP_PTN_FIFO_DIN_NUM))
 		num = round_down(num, HAP_PTN_FIFO_DIN_NUM);
@@ -6948,8 +6954,7 @@ static int richtap_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 	status->samples_written = num;
 	trace_qcom_haptics_fifo_prgm_status(fifo->num_s, status->samples_written, num);
 
-	fifo_thresh = 480; //480 * 40us
-
+	fifo_thresh = chip->config.fifo_empty_thresh;
 
 	/*
 	 * Set FIFO empty threshold here. FIFO empty IRQ will
@@ -6976,8 +6981,11 @@ static void richtap_erase_work_proc(struct work_struct *work)
 
 	while (count--) {
 		rc = haptics_get_fifo_fill_status(chip, &fill);
-		if ((rc < 0) || (atomic_read(&chip->play.fifo_status.is_busy) == 0))
+		if ((rc < 0) || (atomic_read(&chip->play.fifo_status.is_busy) == 0)) {
+			dev_info(chip->dev, "richtap erase work return %d\n", fill);
+			haptics_runtime_autosuspend_put(chip);
 			return;
+		}
 		if (fill < 24)
 			break;
 		fill /= 24; //24k play_rate_hz
@@ -6993,6 +7001,7 @@ static void richtap_erase_work_proc(struct work_struct *work)
 	haptics_stop_fifo_play(chip);
 	atomic_set(&chip->richtap_mode, false);
 	haptics_runtime_autosuspend_put(chip);
+	dev_info(chip->dev, "richtap erase work done\n");
 	mutex_unlock(&chip->play.lock);
 }
 
@@ -7102,6 +7111,8 @@ static void richtap_work_proc(struct work_struct *work)
 
 	uint32_t count = 100, tmp_len = 0, retry_count = 30;
 	int ret;
+	int max_fill_len = get_max_fifo_samples(chip) > RICHTAP_PRGM_INIT_SIZE ?
+		RICHTAP_PRGM_INIT_SIZE : get_max_fifo_samples(chip);
 
 	cancel_work_sync(&chip->richtap_erase_work);
 	richtap_rc_clk_disable(chip);
@@ -7133,13 +7144,14 @@ static void richtap_work_proc(struct work_struct *work)
 	chip->pos = 0;
 	count = 0;
 	chip->current_buf = chip->start_buf;
+
 	do {
 		if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
-			if ((tmp_len + chip->current_buf->length) > get_max_fifo_samples(chip)) {
+			if ((tmp_len + chip->current_buf->length) > max_fill_len) {
 				memcpy(&chip->rtp_ptr[tmp_len], chip->current_buf->data,
-						(get_max_fifo_samples(chip) - tmp_len));
-				chip->pos = get_max_fifo_samples(chip) - tmp_len;
-				tmp_len = get_max_fifo_samples(chip);
+						(max_fill_len - tmp_len));
+				chip->pos = max_fill_len - tmp_len;
+				tmp_len = max_fill_len;
 				dev_info(chip->dev, "first full\n");
 			} else {
 				memcpy(&chip->rtp_ptr[tmp_len], chip->current_buf->data,
@@ -7149,6 +7161,7 @@ static void richtap_work_proc(struct work_struct *work)
 				chip->current_buf->length = 0;
 				chip->pos = 0;
 				chip->current_buf = chip->current_buf->kernel_next;
+				break;
 			}
 		} else if (chip->current_buf->status == MMAP_BUF_DATA_FINISHED) {
 			break;
@@ -7156,10 +7169,14 @@ static void richtap_work_proc(struct work_struct *work)
 			usleep_range(1000, 1001);
 			dev_err(chip->dev, "wait for data\n");
 		}
-	} while (tmp_len < get_max_fifo_samples(chip) && count++ < retry_count);
+	} while (tmp_len < max_fill_len && count++ < retry_count);
 
 	dev_info(chip->dev, "tmp_len %d, retry %d, max_fifo %d\n",
-			tmp_len, count, get_max_fifo_samples(chip));
+			tmp_len, count, max_fill_len);
+	if (0 == tmp_len) {
+		dev_err(chip->dev, "aac RichTap no data to load\n");
+		goto auto_suspend;
+	}
 	ret = richtap_load_data(chip, chip->rtp_ptr, tmp_len);
 	if (ret < 0) {
 		dev_err(chip->dev, "aac RichTap Upload FIFO data fail: %d\n", ret);
@@ -7274,6 +7291,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		schedule_work(&chip->richtap_erase_work);
 		break;
 	case RICHTAP_OFF_MODE:
+		haptics_runtime_autosuspend_put(chip);
 		break;
 	case RICHTAP_GET_F0:
 		ret = richtap_get_lra_frequency_hz(chip, &tmp);
@@ -7309,6 +7327,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		haptics_stop_fifo_play(chip);
 		atomic_set(&chip->richtap_mode, false);
 		mutex_unlock(&chip->play.lock);
+		haptics_runtime_autosuspend_put(chip);
 		break;
 	case RICHTAP_F0_UPDATE:
 		break;
