@@ -540,7 +540,6 @@ static void gsi_ncm_notify_complete(struct usb_ep *ep, struct usb_request *req)
 	spin_unlock(&gsi->c_port.lock);
 }
 
-
 /*
  * Callback for when network interface is up and userspace is ready
  * to answer DHCP requests or remote wakeup.
@@ -2318,7 +2317,6 @@ static void gsi_ctrl_send_response_complete(struct usb_ep *ep,
 	gsi_ctrl_send_notification(gsi);
 }
 
-
 static int
 gsi_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 {
@@ -2719,9 +2717,9 @@ static int gsi_handle_data_alt(struct f_gsi *gsi, struct usb_function *f,
 	gsi->d_port.net_ready_trigger = false;
 
 	if (gsi->prot_id == IPA_USB_RNDIS ||
-		gsi->prot_id == IPA_USB_RMNET ||
-		gsi->prot_id == IPA_USB_DIAG ||
-		gsi->prot_id == IPA_USB_NCM) {
+	gsi->prot_id == IPA_USB_RMNET ||
+	gsi->prot_id == IPA_USB_DIAG ||
+	gsi->prot_id == IPA_USB_NCM) {
 		if (gsi->d_port.in_ep && !gsi->d_port.in_ep->driver_data)
 			*alt = 1;
 		else
@@ -2762,7 +2760,7 @@ static int gsi_handle_data_alt(struct f_gsi *gsi, struct usb_function *f,
 		gsi->d_port.cdc_filter = DEFAULT_FILTER;
 
 	if (gsi->prot_id == IPA_USB_NCM &&
-		(!gsi->d_port.in_ep || !gsi->d_port.out_ep)) {
+	(!gsi->d_port.in_ep || !gsi->d_port.out_ep)) {
 		if (config_ep_by_speed(cdev->gadget, f, gsi->d_port.in_ep) ||
 			config_ep_by_speed(cdev->gadget, f, gsi->d_port.out_ep)) {
 			gsi->d_port.in_ep->desc = NULL;
@@ -2779,8 +2777,8 @@ static int gsi_handle_data_alt(struct f_gsi *gsi, struct usb_function *f,
 	}
 
 	if (*alt == 0 && ((gsi->d_port.in_ep &&
-		!gsi->d_port.in_ep->driver_data) ||
-		(gsi->d_port.out_ep && !gsi->d_port.out_ep->driver_data))) {
+	!gsi->d_port.in_ep->driver_data) ||
+	(gsi->d_port.out_ep && !gsi->d_port.out_ep->driver_data))) {
 		post_event(&gsi->d_port, EVT_DISCONNECTED);
 		queue_delayed_work(gsi->d_port.ipa_usb_wq,
 		&gsi->d_port.usb_ipa_w, 0);
