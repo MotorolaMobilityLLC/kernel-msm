@@ -99,6 +99,7 @@ int mdiobus_unregister_device(struct mdio_device *mdiodev)
 	if (mdiodev->bus->mdio_map[mdiodev->addr] != mdiodev)
 		return -EINVAL;
 
+	gpiod_put(mdiodev->reset_gpio);
 	reset_control_put(mdiodev->reset_ctrl);
 
 	mdiodev->bus->mdio_map[mdiodev->addr] = NULL;
@@ -774,9 +775,6 @@ void mdiobus_unregister(struct mii_bus *bus)
 		mdiodev = bus->mdio_map[i];
 		if (!mdiodev)
 			continue;
-
-		if (mdiodev->reset_gpio)
-			gpiod_put(mdiodev->reset_gpio);
 
 		mdiodev->device_remove(mdiodev);
 		mdiodev->device_free(mdiodev);
