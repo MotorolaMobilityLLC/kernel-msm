@@ -662,11 +662,18 @@ static int init_pkvm_hyp_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu,
 {
 	int ret = 0;
 	u32 mp_state;
+	struct kvm_hyp_req *hyp_reqs;
 
 	if (hyp_pin_shared_mem(host_vcpu, host_vcpu + 1))
 		return -EBUSY;
 
-	hyp_vcpu->vcpu.arch.hyp_reqs = kern_hyp_va(host_vcpu->arch.hyp_reqs);
+	hyp_reqs = READ_ONCE(host_vcpu->arch.hyp_reqs);
+	if (!PAGE_ALIGNED(hyp_reqs)) {
+		hyp_unpin_shared_mem(host_vcpu, host_vcpu + 1);
+		return -EINVAL;
+	}
+
+	hyp_vcpu->vcpu.arch.hyp_reqs = kern_hyp_va(hyp_reqs);
 	if (hyp_pin_shared_mem(hyp_vcpu->vcpu.arch.hyp_reqs,
 			       hyp_vcpu->vcpu.arch.hyp_reqs + 1)) {
 		hyp_unpin_shared_mem(host_vcpu, host_vcpu + 1);
