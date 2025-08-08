@@ -18,6 +18,8 @@
 #include <trace/hooks/gunyah.h>
 #include "gh_vcpu_mgr.h"
 
+#include <soc/qcom/socinfo.h>
+
 #define CREATE_TRACE_POINTS
 #include "gh_vcpu_mgr_trace.h"
 
@@ -47,6 +49,10 @@ static bool oemvm_keep_running = true;
 static struct gh_proxy_vm *gh_vms;
 static bool init_done;
 static DEFINE_MUTEX(gh_vm_mutex);
+
+#define MAX_VMID	QCOM_SCM_VMID_GH_RM
+static bool vcpu_is_affined[MAX_VMID][CONFIG_NR_CPUS];
+static bool is_alor = false;
 
 static inline bool is_vm_supports_proxy(gh_vmid_t gh_vmid)
 {
@@ -230,6 +236,8 @@ static void gh_cleanup_proxy_vcpu(struct gh_proxy_vcpu *vcpu, struct gh_proxy_vm
 {
 	lockdep_assert_held(&gh_vm_mutex);
 
+	if (is_alor)
+		vcpu_is_affined[vcpu->vm->id][vcpu->idx] = false;
 	wakeup_source_unregister(vcpu->ws);
 	xa_erase(&vm->vcpus, vcpu->idx);
 	vm->vcpu_count--;
@@ -363,13 +371,35 @@ int gh_poll_vcpu_run(gh_vmid_t vmid)
 }
 EXPORT_SYMBOL_GPL(gh_poll_vcpu_run);
 
+/* setting the affinity for each QTVM vCPU threads */
+static void set_vcpu_affinity(u16 vmid, u32 vcpu_id)
+{
+	struct cpumask vcpu_mask= { CPU_BITS_NONE };
+
+	if (vcpu_id >= CONFIG_NR_CPUS)
+		return;
+
+	/* already affined, nothing to do */
+	if (vcpu_is_affined[vmid][vcpu_id])
+		return;
+
+	/* affine each vcpu threads to silver cores 0-5 */
+	bitmap_set(cpumask_bits(&vcpu_mask), 0, 6);
+	set_cpus_allowed_ptr(current, &vcpu_mask);
+
+	vcpu_is_affined[vmid][vcpu_id] = true;
+}
+
 static void android_rvh_gh_before_vcpu_run(void *unused, u16 vmid, u32 vcpu_id)
 {
 	struct gh_proxy_vcpu *vcpu;
 	struct gh_proxy_vm *vm;
 
-	if (vmid > QCOM_SCM_MAX_MANAGED_VMID)
+	if (vmid > QCOM_SCM_MAX_MANAGED_VMID) {
+		if (is_alor)
+			set_vcpu_affinity(vmid, vcpu_id);
 		return;
+	}
 
 	preempt_disable();
 	vm = gh_get_vm(vmid);
@@ -379,6 +409,10 @@ static void android_rvh_gh_before_vcpu_run(void *unused, u16 vmid, u32 vcpu_id)
 	vcpu = xa_load(&vm->vcpus, vcpu_id);
 	if (!vcpu)
 		return;
+
+	/* WA to set the affinity for each QTVM vCPU threads */
+	if (is_alor)
+		set_vcpu_affinity(vmid, vcpu_id);
 
 	/* Call into Gunyah to run vcpu. */
 	__pm_stay_awake(vcpu->ws);
@@ -502,6 +536,13 @@ static int __maybe_unused gh_vcpu_kthread(void *data)
 	enum gunyah_error gunyah_error = GUNYAH_ERROR_OK;
 	int ret = 0;
 
+	if (is_alor) {
+		struct cpumask vcpu_mask= { CPU_BITS_NONE };
+
+		bitmap_set(cpumask_bits(&vcpu_mask), 0, 6);
+		set_cpus_allowed_ptr(current, &vcpu_mask);
+	}
+
 	set_freezable();
 
 	while (!kthread_should_stop() && !ret) {
@@ -589,6 +630,8 @@ static void android_rvh_gh_before_vcpu_release(void *unused, u16 vmid,
 
 	if (!is_vm_supports_proxy(vmid)) {
 		pr_debug("VM %d is not managed by Gunyah vCPU manager vendor module\n", vmid);
+		if (is_alor)
+			vcpu_is_affined[vmid][vcpu_id] = false;
 		return;
 	}
 
@@ -602,6 +645,10 @@ static void android_rvh_gh_before_vcpu_release(void *unused, u16 vmid,
 	proxy_vcpu = xa_load(&vm->vcpus, vcpu_id);
 	if (!proxy_vcpu)
 		return;
+
+	if (is_alor)
+		vcpu_is_affined[vmid][vcpu_id] = false;
+
 	/* Do not need to create kthread if VM is shutdown */
 	if (vcpu->vcpu_run->immediate_exit ||
 	    vcpu->state == GUNYAH_VCPU_RUN_STATE_SYSTEM_DOWN)
@@ -613,8 +660,7 @@ static void android_rvh_gh_before_vcpu_release(void *unused, u16 vmid,
 	proxy_vcpu->gunyah_vcpu = vcpu;
 
 	proxy_vcpu->vcpu_thread = kthread_run(gh_vcpu_kthread, proxy_vcpu,
-					      "vm%d_vcpu%d_kthread", vmid,
-					      vcpu_id);
+				"vm%d_vcpu%d_kthread", vmid, vcpu_id);
 	if (IS_ERR(proxy_vcpu->vcpu_thread)) {
 		proxy_vcpu->vcpu_thread = NULL;
 		proxy_vcpu->gunyah_vcpu = NULL;
@@ -670,6 +716,9 @@ int gh_vcpu_mgr_init(void)
 	gh_init_vms();
 	gh_register_hooks();
 	init_done = true;
+
+	is_alor = (strcmp(socinfo_get_id_string(), "ALOR") == 0);
+
 	return 0;
 
 free_gh_vms:

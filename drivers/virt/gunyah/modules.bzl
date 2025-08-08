@@ -271,6 +271,7 @@ def register_modules(registry):
             "drivers/firmware/qcom/qcom-scm",
             "drivers/virt/gunyah/gh_rm_drv",
             "arch/arm64/gunyah/gh_arm_drv",
+            "drivers/soc/qcom/socinfo",
         ],
     )
 
