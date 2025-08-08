@@ -693,7 +693,7 @@ int osnoise_set_tracing_thresh(struct osnoise_context *context, long long tracin
 
 	retval = osnoise_write_ll_config("tracing_thresh", tracing_thresh);
 	if (retval < 0)
-		return -1;
+		return -2;
 
 	context->tracing_thresh = tracing_thresh;
 
