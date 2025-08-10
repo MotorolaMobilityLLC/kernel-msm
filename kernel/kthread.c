@@ -27,6 +27,7 @@
 #include <linux/ptrace.h>
 #include <linux/uaccess.h>
 #include <linux/numa.h>
+#include <linux/dma-buf.h>
 #include <linux/sched/isolation.h>
 #include <trace/events/sched.h>
 
@@ -63,6 +64,7 @@ struct kthread {
 #endif
 	/* To store the full name if task comm is truncated. */
 	char *full_name;
+	struct task_dma_buf_info *dmabuf_info;
 };
 
 enum KTHREAD_BITS {
@@ -142,6 +144,15 @@ void free_kthread_struct(struct task_struct *k)
 	WARN_ON_ONCE(kthread->blkcg_css);
 #endif
 	k->worker_private = NULL;
+	/*
+	 * By now put_dmabuf_info() should have released the reference and
+	 * reset this field.
+	 */
+	if (unlikely(kthread->dmabuf_info)) {
+		pr_alert("dmabuf information for task %d was not released\n",
+			 task_pid_nr(k));
+		kfree(kthread->dmabuf_info);
+	}
 	kfree(kthread->full_name);
 	kfree(kthread);
 }
@@ -610,6 +621,22 @@ bool kthread_is_per_cpu(struct task_struct *p)
 		return false;
 
 	return test_bit(KTHREAD_IS_PER_CPU, &kthread->flags);
+}
+
+struct task_dma_buf_info *get_kthread_dmabuf_info(struct task_struct *tsk)
+{
+	struct kthread *kthread = to_kthread(tsk);
+
+	return kthread ? kthread->dmabuf_info : NULL;
+}
+
+void set_kthread_dmabuf_info(struct task_struct *tsk,
+			     struct task_dma_buf_info *dmabuf_info)
+{
+	struct kthread *kthread = to_kthread(tsk);
+
+	if (kthread)
+		kthread->dmabuf_info = dmabuf_info;
 }
 
 /**
