@@ -365,6 +365,8 @@ struct ath11k_vif {
 	struct ieee80211_chanctx_conf chanctx;
 	struct ath11k_arp_ns_offload arp_ns_offload;
 	struct ath11k_rekey_data rekey_data;
+	u32 num_stations;
+	bool reinstall_group_keys;
 
 #ifdef CONFIG_ATH11K_DEBUGFS
 	struct dentry *debugfs_twt;
