@@ -1342,7 +1342,7 @@ static int adsp_attach(struct rproc *rproc)
 			if (ret) {
 				dev_err(adsp->dev, "request_firmware failed during attach: %d\n",
 					ret);
-				if (ret == -ENOENT)
+				if ((ret == -ENOENT) || (ret == -ETIMEDOUT))
 					ret = 0;
 
 				return ret;
