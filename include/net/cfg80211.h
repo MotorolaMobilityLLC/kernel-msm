@@ -2587,7 +2587,7 @@ struct cfg80211_scan_request {
 	ANDROID_KABI_RESERVE(1);
 
 	/* keep last */
-	struct ieee80211_channel *channels[] __counted_by(n_channels);
+	struct ieee80211_channel *channels[];
 };
 
 static inline void get_random_mask_addr(u8 *buf, const u8 *addr, const u8 *mask)
