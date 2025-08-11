@@ -99,6 +99,18 @@ config MOT_DRV_DONGWOON_OIS_AF_DRIFT
 	help
 	  This is enabling DONGWOON AF DRIFT for calidata in ois flash.
 
+config CAM_SENSOR_PROBE_DEBUG
+	default n
+	bool "enable camera sensor probe debug"
+	help
+	  This is enabling camera sensor probe debug feature.
+
+config MOT_DRV_PROBE_SUB_DEVICE
+	default n
+	bool "enable PROBE SUB DEVICE"
+	help
+	  This is enabling PROBE SUB DEVICE.
+
 config SPS
 	tristate "SPS support"
 	select GENERIC_ALLOCATOR
