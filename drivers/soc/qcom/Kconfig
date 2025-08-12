@@ -19,6 +19,13 @@ config VANTG_DTB
     help
         Only include Motorola Leap device specific device tree.
 
+config VANTAGE_DTB
+    depends on MMI_DEVICE_DTBS
+    default n
+    bool "Motorola Mobility Vantage Device DTB"
+    help
+        Only include Motorola Vantage device specific device tree.
+
 config BLANC_DTB
     depends on MMI_DEVICE_DTBS
     default n
