@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #define pr_fmt(x) "virtio_minidump: " x
 
@@ -229,48 +229,68 @@ static void minidump_work(struct work_struct *work)
 
 static int virtio_add_region(const struct md_region *entry)
 {
-	struct md_request *vm_work;
-
-	/* alloc an entry for workqueue, need free in work */
-	vm_work = kzalloc(sizeof(*vm_work), GFP_ATOMIC);
-	if (!vm_work)
-		return -ENOMEM;
-	vm_work->entry = *entry;
-	vm_work->minidump_cmd = MINIDUMP_ADD;
-	INIT_WORK(&vm_work->work, minidump_work);
-	queue_work(minidump_wq, &vm_work->work);
+	/*
+	 * In some case, client will register their region when panic happen,
+	 * workqueue may no change to execute. Though in RCU context will has
+	 * WARNING but it can registered success at last without workqueue.
+	 * So that add this branch to register without workqueue as much as
+	 * possible. Same with remove/update.
+	 * We will recommend and ask client to register their region as early
+	 * as possible because in most case the memory region's address and
+	 * size has already known after boot up. Workqueue cannot confirm all
+	 * those region be registered when panic happen.
+	 */
+	if (oops_in_progress)
+		md_virtio_add_work((struct md_region *)entry);
+	else {
+		struct md_request *vm_work;
+		/* alloc an entry for workqueue, need free in work */
+		vm_work = kzalloc(sizeof(*vm_work), GFP_ATOMIC);
+		if (!vm_work)
+			return -ENOMEM;
+		vm_work->entry = *entry;
+		vm_work->minidump_cmd = MINIDUMP_ADD;
+		INIT_WORK(&vm_work->work, minidump_work);
+		queue_work(minidump_wq, &vm_work->work);
+	}
 
 	return 0;
 }
 
 static int virtio_remove_region(const struct md_region *entry)
 {
-	struct md_request *vm_work;
-
-	/* alloc an entry for workqueue, need free in work */
-	vm_work = kzalloc(sizeof(*vm_work), GFP_ATOMIC);
-	if (!vm_work)
-		return -ENOMEM;
-	vm_work->entry = *entry;
-	vm_work->minidump_cmd = MINIDUMP_REMOVE;
-	INIT_WORK(&vm_work->work, minidump_work);
-	queue_work(minidump_wq, &vm_work->work);
+	if (oops_in_progress)
+		md_virtio_remove_work((struct md_region *)entry);
+	else {
+		struct md_request *vm_work;
+		/* alloc an entry for workqueue, need free in work */
+		vm_work = kzalloc(sizeof(*vm_work), GFP_ATOMIC);
+		if (!vm_work)
+			return -ENOMEM;
+		vm_work->entry = *entry;
+		vm_work->minidump_cmd = MINIDUMP_REMOVE;
+		INIT_WORK(&vm_work->work, minidump_work);
+		queue_work(minidump_wq, &vm_work->work);
+	}
 
 	return 0;
 }
 
 static int virtio_update_region(const struct md_region *entry)
 {
-	struct md_request *vm_work;
-
-	/* alloc an entry for workqueue, need free in work */
-	vm_work = kzalloc(sizeof(*vm_work), GFP_ATOMIC);
-	if (!vm_work)
-		return -ENOMEM;
-	vm_work->entry = *entry;
-	vm_work->minidump_cmd = MINIDUMP_UPDATE;
-	INIT_WORK(&vm_work->work, minidump_work);
-	queue_work(minidump_wq, &vm_work->work);
+	if (oops_in_progress)
+		md_virtio_update_work((struct md_region *)entry);
+	else {
+		struct md_request *vm_work;
+		/* alloc an entry for workqueue, need free in work */
+		vm_work = kzalloc(sizeof(*vm_work), GFP_ATOMIC);
+		if (!vm_work)
+			return -ENOMEM;
+		vm_work->entry = *entry;
+		vm_work->minidump_cmd = MINIDUMP_UPDATE;
+		INIT_WORK(&vm_work->work, minidump_work);
+		queue_work(minidump_wq, &vm_work->work);
+	}
 
 	return 0;
 }
