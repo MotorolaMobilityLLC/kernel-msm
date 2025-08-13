@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/clk.h>
@@ -1154,7 +1154,8 @@ static int setup_gsi_xfer(struct spi_transfer *xfer,
 	}
 
 	cs |= spi_slv->chip_select;
-	if (!xfer->cs_change) {
+
+	if (!spi->cs_gpiods && !xfer->cs_change) {
 		if (!list_is_last(&xfer->transfer_list,
 					&spi->cur_msg->transfers))
 			go_flags |= FRAGMENTATION;
@@ -1858,7 +1859,7 @@ static int setup_fifo_xfer(struct spi_transfer *xfer,
 		trans_len = (xfer->len / bytes_per_word) & TRANS_LEN_MSK;
 	}
 
-	if (!xfer->cs_change) {
+	if (!spi->cs_gpiods && !xfer->cs_change) {
 		if (!list_is_last(&xfer->transfer_list,
 					&spi->cur_msg->transfers))
 			m_param |= FRAGMENTATION;
@@ -2661,6 +2662,7 @@ static int spi_geni_probe(struct platform_device *pdev)
 	spi->unprepare_transfer_hardware
 			= spi_geni_unprepare_transfer_hardware;
 	spi->auto_runtime_pm = false;
+	spi->use_gpio_descriptors = true;
 
 	init_completion(&geni_mas->xfer_done);
 	init_completion(&geni_mas->tx_cb);
