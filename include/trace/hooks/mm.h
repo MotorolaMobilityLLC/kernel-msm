@@ -333,6 +333,15 @@ DECLARE_HOOK(android_vh_pageset_update,
 DECLARE_HOOK(android_vh_mempool_alloc_skip_wait,
 	TP_PROTO(gfp_t *gfp_flags, bool *skip_wait),
 	TP_ARGS(gfp_flags, skip_wait));
+DECLARE_HOOK(android_vh_nr_pcp_alloc,
+	TP_PROTO(struct per_cpu_pages *pcp, struct zone *zone,
+		unsigned long __percpu **pad, unsigned int order, int *batch),
+	TP_ARGS(pcp, zone, pad, order, batch));
+DECLARE_HOOK(android_vh_pcp_alloc_factor_adjust,
+	TP_PROTO(struct zone *zone, unsigned long __percpu *pad,
+		struct per_cpu_pages *pcp, struct page *page, int migratetype,
+		unsigned int order),
+	TP_ARGS(zone, pad, pcp, page, migratetype, order));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
