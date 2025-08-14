@@ -208,6 +208,7 @@ def define_seraph():
         "drivers/virt/gunyah/gh_rm_drv.ko",
         "drivers/virt/gunyah/gunyah_loader.ko",
         "drivers/virt/gunyah/gunyah_qcom.ko",
+        "kernel/msm_sysstats.ko",
         "kernel/sched/walt/sched-walt.ko",
         "kernel/trace/qcom_ipc_logging.ko",
         "net/qrtr/qrtr.ko",
