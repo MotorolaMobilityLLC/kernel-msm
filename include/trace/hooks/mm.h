@@ -649,6 +649,15 @@ DECLARE_HOOK(android_vh_mm_customize_lru_add_dst,
 DECLARE_HOOK(android_vh_oom_reaper_delay_bypass,
 	TP_PROTO(struct task_struct *tsk, bool *bypass),
 	TP_ARGS(tsk, bypass));
+DECLARE_HOOK(android_vh_nr_pcp_alloc,
+	TP_PROTO(struct per_cpu_pages *pcp, struct zone *zone,
+		unsigned long __percpu **pad, unsigned int order, int *batch),
+	TP_ARGS(pcp, zone, pad, order, batch));
+DECLARE_HOOK(android_vh_pcp_alloc_factor_adjust,
+	TP_PROTO(struct zone *zone, unsigned long __percpu *pad,
+		struct per_cpu_pages *pcp, struct page *page, int migratetype,
+		unsigned int order),
+	TP_ARGS(zone, pad, pcp, page, migratetype, order));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
