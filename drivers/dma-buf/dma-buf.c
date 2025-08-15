@@ -401,21 +401,15 @@ void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_struct *task)
 
 	spin_lock(&dmabuf_info->lock);
 	rec = find_task_dmabuf_record(dmabuf_info, dmabuf);
-	if (rec) {
-		if (--rec->refcnt == 0) {
-			list_del(&rec->node);
-			dmabuf_info->dmabuf_count--;
-			dmabuf_info->rss -= dmabuf->size;
-			trace_dmabuf_rss_stat(dmabuf_info->rss, -dmabuf->size,
-					      dmabuf);
-			atomic64_dec(&get_dmabuf_ext(dmabuf)->nr_task_refs);
-		} else {
-			rec = NULL;
-		}
+	if (rec && --rec->refcnt == 0) {
+		list_del(&rec->node);
+		free_task_dmabuf_record(rec);
+		dmabuf_info->dmabuf_count--;
+		dmabuf_info->rss -= dmabuf->size;
+		trace_dmabuf_rss_stat(dmabuf_info->rss, -dmabuf->size, dmabuf);
+		atomic64_dec(&get_dmabuf_ext(dmabuf)->nr_task_refs);
 	}
 	spin_unlock(&dmabuf_info->lock);
-	if (rec)
-		free_task_dmabuf_record(rec);
 }
 
 int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
