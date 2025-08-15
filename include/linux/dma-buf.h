@@ -657,28 +657,6 @@ struct task_dma_buf_record {
 };
 
 /**
- * struct task_dma_buf_info - Holds a RSS counter, and a list of dmabufs for all
- * tasks that share both mm_struct and files_struct.
- *
- * @rss: The sum of all dmabuf memory referenced by the tasks via memory
- *       mappings or file descriptors in bytes. Buffers referenced more than
- *       once by the process (multiple mmaps, multiple FDs, or any combination
- *       of both mmaps and FDs) only cause the buffer to be accounted to the
- *       process once. Partial mappings cause the full size of the buffer to be
- *       accounted, regardless of the size of the mapping.
- * @refcnt: The number of tasks sharing this struct.
- * @lock: Lock protecting writes for @rss, and reads/writes for @dmabufs.
- * @dmabufs: List of all dmabufs referenced by the tasks.
- */
-struct task_dma_buf_info {
-	unsigned int rss;
-	refcount_t refcnt;
-	spinlock_t lock;
-	struct list_head dmabufs;
-	size_t dmabuf_count;
-};
-
-/**
  * DEFINE_DMA_BUF_EXPORT_INFO - helper macro for exporters
  * @name: export-info name
  *
@@ -730,6 +708,7 @@ dma_buf_attachment_is_dynamic(struct dma_buf_attachment *attach)
 	return !!attach->importer_ops;
 }
 
+int is_dma_buf_file(struct file *file);
 int dma_buf_get_each(int (*callback)(const struct dma_buf *dmabuf,
 		     void *private), void *private);
 struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf,
@@ -777,26 +756,4 @@ int dma_buf_vmap(struct dma_buf *dmabuf, struct iosys_map *map);
 void dma_buf_vunmap(struct dma_buf *dmabuf, struct iosys_map *map);
 long dma_buf_set_name(struct dma_buf *dmabuf, const char *name);
 int dma_buf_get_flags(struct dma_buf *dmabuf, unsigned long *flags);
-
-#ifdef CONFIG_DMA_SHARED_BUFFER
-
-int is_dma_buf_file(struct file *file);
-int dma_buf_account_task(struct dma_buf *dmabuf, struct task_struct *task);
-void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_struct *task);
-int copy_dmabuf_info(u64 clone_flags, struct task_struct *task);
-void put_dmabuf_info(struct task_struct *task);
-
-#else /* CONFIG_DMA_SHARED_BUFFER */
-
-static inline int is_dma_buf_file(struct file *file) { return 0; }
-static inline int dma_buf_account_task(struct dma_buf *dmabuf,
-				       struct task_struct *task) { return 0; }
-static inline void dma_buf_unaccount_task(struct dma_buf *dmabuf,
-					  struct task_struct *task) {}
-static inline int copy_dmabuf_info(u64 clone_flags,
-				   struct task_struct *task) { return 0; }
-static inline void put_dmabuf_info(struct task_struct *task) {}
-
-#endif /* CONFIG_DMA_SHARED_BUFFER */
-
 #endif /* __DMA_BUF_H__ */
