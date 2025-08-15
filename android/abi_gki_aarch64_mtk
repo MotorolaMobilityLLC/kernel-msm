@@ -1784,6 +1784,8 @@
   net_selftest_get_strings
   nf_conntrack_destroy
   nf_register_net_hooks
+  nf_sk_lookup_slow_v4
+  nf_sk_lookup_slow_v6
   nf_unregister_net_hooks
   nla_find
   nla_memcpy
