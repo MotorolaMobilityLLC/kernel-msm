@@ -24,7 +24,6 @@
 #include <linux/wait.h>
 #include <linux/workqueue.h>
 #include <linux/android_kabi.h>
-#include <linux/kthread.h>
 #ifndef __GENKSYMS__
 #include <linux/atomic.h>
 #include <linux/refcount.h>
@@ -691,43 +690,6 @@ struct task_dma_buf_info {
 	struct list_head dmabufs;
 	size_t dmabuf_count;
 };
-
-static inline bool task_has_dma_buf_info(struct task_struct *task)
-{
-	/* init_task is the only kthread with its worker_private set to NULL */
-	return task != &init_task && (task->flags & PF_IO_WORKER) == 0;
-}
-
-static inline void set_task_dma_buf_info(struct task_struct *task,
-					 struct task_dma_buf_info *dmabuf_info)
-{
-	/* This should never happen unless this function is used incorrectly */
-	if (WARN_ON(!task_has_dma_buf_info(task)))
-		return;
-
-	if (task->flags & PF_KTHREAD)
-		set_kthread_dmabuf_info(task, dmabuf_info);
-	else
-		task->worker_private = dmabuf_info;
-}
-
-static inline
-struct task_dma_buf_info *get_task_dma_buf_info(struct task_struct *task)
-{
-	if (!task)
-		return ERR_PTR(-EINVAL);
-
-	if (!task_has_dma_buf_info(task))
-		return NULL;
-
-	if (!task->worker_private)
-		return ERR_PTR(-ENOMEM);
-
-	if (task->flags & PF_KTHREAD)
-		return get_kthread_dmabuf_info(task) ? : ERR_PTR(-ENOMEM);
-
-	return (struct task_dma_buf_info *)task->worker_private;
-}
 
 /**
  * DEFINE_DMA_BUF_EXPORT_INFO - helper macro for exporters
