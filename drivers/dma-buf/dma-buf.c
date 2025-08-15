@@ -241,7 +241,7 @@ static struct task_dma_buf_record *alloc_task_dmabuf_record(void)
 	struct task_dma_buf_record_preload *preload;
 	struct task_dma_buf_record *rec = NULL;
 
-	lockdep_assert_held(this_cpu_ptr(&dmabuf_rec_reloads.lock));
+	lockdep_assert_held(&dmabuf_rec_reloads.lock);
 	preload = this_cpu_ptr(&dmabuf_rec_reloads);
 	if (preload->size > 0) {
 		rec = list_first_entry(&preload->list, typeof(*rec), node);
@@ -273,7 +273,7 @@ static void trim_task_dmabuf_records_locked(void)
 {
 	struct task_dma_buf_record_preload *preload;
 
-	lockdep_assert_held(this_cpu_ptr(&dmabuf_rec_reloads.lock));
+	lockdep_assert_held(&dmabuf_rec_reloads.lock);
 	preload = this_cpu_ptr(&dmabuf_rec_reloads);
 	while (preload->size > MAX_PCP_POOL_SIZE) {
 		struct task_dma_buf_record *rec;
