@@ -245,7 +245,6 @@ static void io_worker_exit(struct io_worker *worker)
 	worker->flags = 0;
 	preempt_disable();
 	current->flags &= ~PF_IO_WORKER;
-	current->worker_private = NULL;
 	preempt_enable();
 
 	kfree_rcu(worker, rcu);
