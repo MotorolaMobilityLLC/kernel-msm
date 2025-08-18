@@ -939,6 +939,9 @@ static int of_changeset_add_prop_helper(struct of_changeset *ocs,
 		kfree(new_pp);
 	}
 
+	new_pp->next = np->deadprops;
+	np->deadprops = new_pp;
+
 	return ret;
 }
 
