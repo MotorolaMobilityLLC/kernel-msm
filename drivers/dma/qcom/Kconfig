@@ -73,3 +73,23 @@ config QCOM_HIDMA
 	  (user to kernel, kernel to kernel, etc.).  It only supports
 	  memcpy interface. The core is not intended for general
 	  purpose slave DMA.
+
+config QCOM_PCI_EDMA
+	tristate "Qualcomm Technologies Inc PCIe eDMA support"
+	select DMA_ENGINE
+	help
+	  Enable support for the QCOM PCIe eDMA. This DMA is part of QCOM
+	  PCIe controller that provides DMA capabilities for clients.
+	  By using PCIe eDMA driver, clients can use a standardized
+	  interface that is protocol independent to transfer data between DDR
+	  and peripheral.
+
+config QCOM_PCI_EDMA_DEBUG
+	bool "Qualcomm Technologies Inc PCIe eDMA debug support"
+	depends on QCOM_PCI_EDMA
+	help
+	  This option enables detailed debug logging for the Qualcomm PCIe eDMA
+	  (Enhanced DMA) driver. When enabled, the driver will output verbose logs
+	  related to eDMA channel operations, including initialization,
+	  data transfers, and error conditions. This can be useful for developers
+	  when diagnosing issues or verifying driver behavior.
