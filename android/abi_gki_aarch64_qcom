@@ -4125,6 +4125,8 @@
   vmalloc_to_page
   vmalloc_to_pfn
   vmap
+  __vmap_pages_range_noflush
+  vmap_pages_range_noflush
   vmemdup_user
   vmf_insert_mixed
   vmf_insert_pfn
