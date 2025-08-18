@@ -437211,6 +437211,15 @@ elf_symbol {
   full_name: "zlib_inflate"
 }
 elf_symbol {
+  id: 0x84c3c252
+  name: "zlib_inflateEnd"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x107e5878
+  type_id: 0x814b86be
+  full_name: "zlib_inflateEnd"
+}
+elf_symbol {
   id: 0xf6eda681
   name: "zlib_inflateIncomp"
   is_defined: true
@@ -446420,6 +446429,7 @@ interface {
   symbol_id: 0xf158bd25
   symbol_id: 0xee403ebb
   symbol_id: 0x52ed8956
+  symbol_id: 0x84c3c252
   symbol_id: 0xf6eda681
   symbol_id: 0xd7745fba
   symbol_id: 0xd9789392
