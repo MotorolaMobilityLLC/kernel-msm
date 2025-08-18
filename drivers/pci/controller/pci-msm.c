@@ -10218,7 +10218,7 @@ static void msm_pcie_drv_connect_notify_all(struct work_struct *work)
 	struct pcie_drv_sta *pcie_drv = container_of(work, struct pcie_drv_sta,
 						     drv_connect_notify_all);
 	struct msm_pcie_drv_info *drv_info;
-	struct msm_pcie_dev_t *pcie_itr, *pcie_dev;
+	struct msm_pcie_dev_t *pcie_itr, *pcie_dev = NULL;
 	int i;
 
 	/* rpmsg probe hasn't happened yet */
@@ -10254,7 +10254,7 @@ static void msm_pcie_drv_connect_notify_all(struct work_struct *work)
 		mutex_unlock(&pcie_itr->drv_pc_lock);
 	}
 
-	if (!pcie_drv->notifier) {
+	if (!pcie_drv->notifier && pcie_dev) {
 		pcie_drv->notifier = qcom_register_early_ssr_notifier(pcie_dev->drv_name,
 						&pcie_drv->nb);
 		if (IS_ERR(pcie_drv->notifier)) {
