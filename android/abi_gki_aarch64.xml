@@ -663,6 +663,7 @@
       <elf-symbol name='__traceiter_android_vh_record_rwsem_reader_owned' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x5c144caf'/>
       <elf-symbol name='__traceiter_android_vh_remove_vmalloc_stack' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xcbd56ed4'/>
       <elf-symbol name='__traceiter_android_vh_revert_creds' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xd5c61c41'/>
+      <elf-symbol name='__traceiter_android_vh_reweight_entity' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x2994ce37'/>
       <elf-symbol name='__traceiter_android_vh_rmqueue' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x48f52d6c'/>
       <elf-symbol name='__traceiter_android_vh_rmqueue_bulk_bypass' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x9d555273'/>
       <elf-symbol name='__traceiter_android_vh_rproc_recovery' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x91abb8e'/>
@@ -687,6 +688,7 @@
       <elf-symbol name='__traceiter_android_vh_rwsem_write_wait_start' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x1c7a8b6c'/>
       <elf-symbol name='__traceiter_android_vh_save_track_hash' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x9bc3dfb7'/>
       <elf-symbol name='__traceiter_android_vh_save_vmalloc_stack' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xdf510618'/>
+      <elf-symbol name='__traceiter_android_vh_sched_move_task' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x1c902ef3'/>
       <elf-symbol name='__traceiter_android_vh_sched_pelt_multiplier' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xb77c8f2d'/>
       <elf-symbol name='__traceiter_android_vh_sched_setaffinity_early' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x3a5239a6'/>
       <elf-symbol name='__traceiter_android_vh_sched_show_task' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xeb77bfc8'/>
@@ -1563,6 +1565,9 @@
       <elf-symbol name='crypto_unregister_templates' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xdabc6bb5'/>
       <elf-symbol name='css_next_child' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xc84ca822'/>
       <elf-symbol name='css_next_descendant_pre' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xa073b9e2'/>
+      <elf-symbol name='css_task_iter_end' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xce18755e'/>
+      <elf-symbol name='css_task_iter_next' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xdc8bd0d6'/>
+      <elf-symbol name='css_task_iter_start' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x48f803f6'/>
       <elf-symbol name='csum_ipv6_magic' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x4d65cbd5'/>
       <elf-symbol name='csum_partial' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xe113bbbc'/>
       <elf-symbol name='csum_tcpudp_nofold' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xd25bc5d4'/>
@@ -6865,6 +6870,7 @@
       <elf-symbol name='__tracepoint_android_vh_record_rwsem_reader_owned' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x57231ddc'/>
       <elf-symbol name='__tracepoint_android_vh_remove_vmalloc_stack' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x1f5d8a1'/>
       <elf-symbol name='__tracepoint_android_vh_revert_creds' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xbedc98e0'/>
+      <elf-symbol name='__tracepoint_android_vh_reweight_entity' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xf4fe96eb'/>
       <elf-symbol name='__tracepoint_android_vh_rmqueue' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xa8c074b9'/>
       <elf-symbol name='__tracepoint_android_vh_rmqueue_bulk_bypass' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x975eb8dc'/>
       <elf-symbol name='__tracepoint_android_vh_rproc_recovery' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xe1337b04'/>
@@ -6889,6 +6895,7 @@
       <elf-symbol name='__tracepoint_android_vh_rwsem_write_wait_start' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x18bed6ed'/>
       <elf-symbol name='__tracepoint_android_vh_save_track_hash' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x2c772ac0'/>
       <elf-symbol name='__tracepoint_android_vh_save_vmalloc_stack' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x36909fb9'/>
+      <elf-symbol name='__tracepoint_android_vh_sched_move_task' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x1de00481'/>
       <elf-symbol name='__tracepoint_android_vh_sched_pelt_multiplier' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x8363715e'/>
       <elf-symbol name='__tracepoint_android_vh_sched_setaffinity_early' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xcec91b82'/>
       <elf-symbol name='__tracepoint_android_vh_sched_show_task' size='72' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xd3537ff4'/>
@@ -7087,6 +7094,7 @@
       <elf-symbol name='contig_page_data' size='5696' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xa714dd23'/>
       <elf-symbol name='cpu_all_bits' size='8' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xd994ecee'/>
       <elf-symbol name='cpu_bit_bitmap' size='520' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x62ad2053'/>
+      <elf-symbol name='cpu_cgrp_subsys' size='240' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xf16637d7'/>
       <elf-symbol name='cpu_hwcap_keys' size='1216' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xec2fc692'/>
       <elf-symbol name='cpu_hwcaps' size='16' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x8b9f70c7'/>
       <elf-symbol name='cpu_irqtime' size='24' type='object-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x54023c4e'/>
@@ -9197,6 +9205,47 @@
         </data-member>
         <data-member access='public' layout-offset-in-bits='384'>
           <var-decl name='flags' type-id='7359adad' visibility='default' filepath='include/linux/clk-provider.h' line='307' column='1'/>
+        </data-member>
+      </class-decl>
+      <class-decl name='css_task_iter' size-in-bits='896' is-struct='yes' visibility='default' filepath='include/linux/cgroup.h' line='53' column='1' id='0668a92b'>
+        <data-member access='public' layout-offset-in-bits='0'>
+          <var-decl name='ss' type-id='dc91d125' visibility='default' filepath='include/linux/cgroup.h' line='54' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='64'>
+          <var-decl name='flags' type-id='f0981eeb' visibility='default' filepath='include/linux/cgroup.h' line='55' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='128'>
+          <var-decl name='cset_pos' type-id='e84b031a' visibility='default' filepath='include/linux/cgroup.h' line='57' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='192'>
+          <var-decl name='cset_head' type-id='e84b031a' visibility='default' filepath='include/linux/cgroup.h' line='58' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='256'>
+          <var-decl name='tcset_pos' type-id='e84b031a' visibility='default' filepath='include/linux/cgroup.h' line='60' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='320'>
+          <var-decl name='tcset_head' type-id='e84b031a' visibility='default' filepath='include/linux/cgroup.h' line='61' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='384'>
+          <var-decl name='task_pos' type-id='e84b031a' visibility='default' filepath='include/linux/cgroup.h' line='63' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='448'>
+          <var-decl name='cur_tasks_head' type-id='e84b031a' visibility='default' filepath='include/linux/cgroup.h' line='65' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='512'>
+          <var-decl name='cur_cset' type-id='85d57723' visibility='default' filepath='include/linux/cgroup.h' line='66' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='576'>
+          <var-decl name='cur_dcset' type-id='85d57723' visibility='default' filepath='include/linux/cgroup.h' line='67' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='640'>
+          <var-decl name='cur_task' type-id='f23e2572' visibility='default' filepath='include/linux/cgroup.h' line='68' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='704'>
+          <var-decl name='iters_node' type-id='72f469ec' visibility='default' filepath='include/linux/cgroup.h' line='69' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='832'>
+          <var-decl name='android_kabi_reserved1' type-id='91ce1af9' visibility='default' filepath='include/linux/cgroup.h' line='71' column='1'/>
         </data-member>
       </class-decl>
       <function-type size-in-bits='64' id='066ca455'>
@@ -21875,6 +21924,7 @@
         <return type-id='95e97e5e'/>
       </function-type>
       <pointer-type-def type-id='99c97f55' size-in-bits='64' id='258e7e75'/>
+      <pointer-type-def type-id='0668a92b' size-in-bits='64' id='258fbdbb'/>
       <typedef-decl name='umode_t' type-id='8efea9e5' filepath='include/linux/types.h' line='19' column='1' id='2594b00f'/>
       <pointer-type-def type-id='d3581737' size-in-bits='64' id='25b0d1cf'/>
       <pointer-type-def type-id='6ae96bbe' size-in-bits='64' id='25b56694'/>
@@ -45159,7 +45209,23 @@
         </data-member>
       </class-decl>
       <pointer-type-def type-id='538b7809' size-in-bits='64' id='5f0d472d'/>
-      <class-decl name='fsverity_operations' is-struct='yes' visibility='default' is-declaration-only='yes' id='5f0d764c'/>
+      <class-decl name='fsverity_operations' size-in-bits='320' is-struct='yes' visibility='default' filepath='include/linux/fsverity.h' line='18' column='1' id='5f0d764c'>
+        <data-member access='public' layout-offset-in-bits='0'>
+          <var-decl name='begin_enable_verity' type-id='4da4101d' visibility='default' filepath='include/linux/fsverity.h' line='33' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='64'>
+          <var-decl name='end_enable_verity' type-id='f3a5c46a' visibility='default' filepath='include/linux/fsverity.h' line='55' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='128'>
+          <var-decl name='get_verity_descriptor' type-id='c60354f3' visibility='default' filepath='include/linux/fsverity.h' line='72' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='192'>
+          <var-decl name='read_merkle_tree_page' type-id='68b31938' visibility='default' filepath='include/linux/fsverity.h' line='93' column='1'/>
+        </data-member>
+        <data-member access='public' layout-offset-in-bits='256'>
+          <var-decl name='write_merkle_tree_block' type-id='c748f227' visibility='default' filepath='include/linux/fsverity.h' line='110' column='1'/>
+        </data-member>
+      </class-decl>
       <pointer-type-def type-id='0caa7082' size-in-bits='64' id='5f29549c'/>
       <class-decl name='configfs_attribute' size-in-bits='320' is-struct='yes' visibility='default' filepath='include/linux/configfs.h' line='117' column='1' id='5f2e9b8f'>
         <data-member access='public' layout-offset-in-bits='0'>
@@ -49561,6 +49627,7 @@
         <parameter type-id='5d6479ae'/>
         <return type-id='95e97e5e'/>
       </function-type>
+      <pointer-type-def type-id='e151e1f6' size-in-bits='64' id='68b31938'/>
       <class-decl name='module_layout' size-in-bits='640' is-struct='yes' visibility='default' filepath='include/linux/module.h' line='327' column='1' id='68b3d9a8'>
         <data-member access='public' layout-offset-in-bits='0'>
           <var-decl name='base' type-id='eaa32e2f' visibility='default' filepath='include/linux/module.h' line='329' column='1'/>
@@ -54545,6 +54612,13 @@
         <parameter type-id='8582e5ec'/>
         <parameter type-id='4db02c58'/>
         <return type-id='c91d1bf1'/>
+      </function-type>
+      <function-type size-in-bits='64' id='74fec388'>
+        <parameter type-id='77e79a4b'/>
+        <parameter type-id='eaa32e2f'/>
+        <parameter type-id='b59d7dce'/>
+        <parameter type-id='91ce1af9'/>
+        <return type-id='95e97e5e'/>
       </function-type>
       <function-type size-in-bits='64' id='7506f11b'>
         <parameter type-id='b7c1d7d5'/>
@@ -67240,6 +67314,13 @@
       <typedef-decl name='u64' type-id='d3130597' filepath='include/asm-generic/int-ll64.h' line='23' column='1' id='91ce1af9'/>
       <pointer-type-def type-id='d7c60ba9' size-in-bits='64' id='91d0de51'/>
       <pointer-type-def type-id='d0fea0bb' size-in-bits='64' id='91d6c443'/>
+      <function-type size-in-bits='64' id='91dc7ea3'>
+        <parameter type-id='7e666abe'/>
+        <parameter type-id='eaa32e2f'/>
+        <parameter type-id='91ce1af9'/>
+        <parameter type-id='95e97e5e'/>
+        <return type-id='95e97e5e'/>
+      </function-type>
       <function-type size-in-bits='64' id='91de15a8'>
         <parameter type-id='7e666abe'/>
         <parameter type-id='cd1b45ab'/>
@@ -92192,6 +92273,7 @@
         </data-member>
       </class-decl>
       <pointer-type-def type-id='e9ec35ef' size-in-bits='64' id='c7432356'/>
+      <pointer-type-def type-id='91dc7ea3' size-in-bits='64' id='c748f227'/>
       <union-decl name='__anonymous_union__' size-in-bits='4096' is-anonymous='yes' visibility='default' filepath='include/uapi/sound/asound.h' line='1054' column='1' id='c74bfd7b'>
         <data-member access='public'>
           <var-decl name='value' type-id='1fd26250' visibility='default' filepath='include/uapi/sound/asound.h' line='1055' column='1'/>
@@ -103977,6 +104059,12 @@
           <var-decl name='first' type-id='08cbad52' visibility='default' filepath='include/linux/types.h' line='184' column='1'/>
         </data-member>
       </class-decl>
+      <function-type size-in-bits='64' id='e151e1f6'>
+        <parameter type-id='7e666abe'/>
+        <parameter type-id='7359adad'/>
+        <parameter type-id='7359adad'/>
+        <return type-id='02f11ed4'/>
+      </function-type>
       <pointer-type-def type-id='20b17040' size-in-bits='64' id='e153f6de'/>
       <pointer-type-def type-id='4d94804e' size-in-bits='64' id='e15671b8'/>
       <pointer-type-def type-id='59aa7dba' size-in-bits='64' id='e15aece4'/>
@@ -112285,6 +112373,7 @@
           <var-decl name='memsw' type-id='635c3685' visibility='default' filepath='include/linux/memcontrol.h' line='222' column='1'/>
         </data-member>
       </union-decl>
+      <pointer-type-def type-id='74fec388' size-in-bits='64' id='f3a5c46a'/>
       <class-decl name='rc_scancode_filter' size-in-bits='64' is-struct='yes' visibility='default' filepath='include/media/rc-core.h' line='38' column='1' id='f3a6417e'>
         <data-member access='public' layout-offset-in-bits='0'>
           <var-decl name='data' type-id='19c2251e' visibility='default' filepath='include/media/rc-core.h' line='39' column='1'/>
@@ -117386,9 +117475,9 @@
       </function-type>
       <pointer-type-def type-id='46f53066' size-in-bits='64' id='fffb07a4'/>
       <qualified-type-def type-id='55efd1a3' const='yes' id='fffdaf52'/>
-      <var-decl name='GKI_struct_gic_chip_data' type-id='d3100295' mangled-name='GKI_struct_gic_chip_data' visibility='default' filepath='drivers/android/vendor_hooks.c' line='564' column='1' elf-symbol-id='GKI_struct_gic_chip_data'/>
+      <var-decl name='GKI_struct_gic_chip_data' type-id='d3100295' mangled-name='GKI_struct_gic_chip_data' visibility='default' filepath='drivers/android/vendor_hooks.c' line='569' column='1' elf-symbol-id='GKI_struct_gic_chip_data'/>
       <var-decl name='GKI_struct_selinux_state' type-id='4ae52763' mangled-name='GKI_struct_selinux_state' visibility='default' filepath='security/selinux/vendor_hooks.c' line='21' column='1' elf-symbol-id='GKI_struct_selinux_state'/>
-      <var-decl name='GKI_struct_swap_slots_cache' type-id='30eaa112' mangled-name='GKI_struct_swap_slots_cache' visibility='default' filepath='drivers/android/vendor_hooks.c' line='569' column='1' elf-symbol-id='GKI_struct_swap_slots_cache'/>
+      <var-decl name='GKI_struct_swap_slots_cache' type-id='30eaa112' mangled-name='GKI_struct_swap_slots_cache' visibility='default' filepath='drivers/android/vendor_hooks.c' line='574' column='1' elf-symbol-id='GKI_struct_swap_slots_cache'/>
       <function-decl name='PDE_DATA' mangled-name='PDE_DATA' filepath='fs/proc/generic.c' line='810' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='PDE_DATA'>
         <parameter type-id='c5a4eb7f' name='inode' filepath='fs/proc/generic.c' line='810' column='1'/>
         <return type-id='eaa32e2f'/>
@@ -121465,6 +121554,11 @@
         <parameter type-id='bc33861a' name='old' filepath='include/trace/hooks/creds.h' line='35' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
+      <function-decl name='__traceiter_android_vh_reweight_entity' mangled-name='__traceiter_android_vh_reweight_entity' filepath='include/trace/hooks/sched.h' line='406' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='__traceiter_android_vh_reweight_entity'>
+        <parameter type-id='eaa32e2f' name='__data' filepath='include/trace/hooks/sched.h' line='406' column='1'/>
+        <parameter type-id='ff2b3d10' name='se' filepath='include/trace/hooks/sched.h' line='406' column='1'/>
+        <return type-id='95e97e5e'/>
+      </function-decl>
       <function-decl name='__traceiter_android_vh_rmqueue' mangled-name='__traceiter_android_vh_rmqueue' filepath='include/trace/hooks/mm.h' line='65' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='__traceiter_android_vh_rmqueue'>
         <parameter type-id='eaa32e2f' name='__data' filepath='include/trace/hooks/mm.h' line='65' column='1'/>
         <parameter type-id='0a0aff97' name='preferred_zone' filepath='include/trace/hooks/mm.h' line='65' column='1'/>
@@ -121601,6 +121695,11 @@
         <parameter type-id='eaa32e2f' name='__data' filepath='include/trace/hooks/mm.h' line='117' column='1'/>
         <parameter type-id='7359adad' name='flags' filepath='include/trace/hooks/mm.h' line='117' column='1'/>
         <parameter type-id='d295dab2' name='vm' filepath='include/trace/hooks/mm.h' line='117' column='1'/>
+        <return type-id='95e97e5e'/>
+      </function-decl>
+      <function-decl name='__traceiter_android_vh_sched_move_task' mangled-name='__traceiter_android_vh_sched_move_task' filepath='include/trace/hooks/sched.h' line='411' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='__traceiter_android_vh_sched_move_task'>
+        <parameter type-id='eaa32e2f' name='__data' filepath='include/trace/hooks/sched.h' line='411' column='1'/>
+        <parameter type-id='f23e2572' name='tsk' filepath='include/trace/hooks/sched.h' line='411' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='__traceiter_android_vh_sched_pelt_multiplier' mangled-name='__traceiter_android_vh_sched_pelt_multiplier' filepath='include/trace/hooks/sched.h' line='402' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='__traceiter_android_vh_sched_pelt_multiplier'>
@@ -123015,6 +123114,7 @@
       <var-decl name='__tracepoint_android_vh_record_rwsem_reader_owned' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_record_rwsem_reader_owned' visibility='default' filepath='include/trace/hooks/rwsem.h' line='52' column='1' elf-symbol-id='__tracepoint_android_vh_record_rwsem_reader_owned'/>
       <var-decl name='__tracepoint_android_vh_remove_vmalloc_stack' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_remove_vmalloc_stack' visibility='default' filepath='include/trace/hooks/mm.h' line='335' column='1' elf-symbol-id='__tracepoint_android_vh_remove_vmalloc_stack'/>
       <var-decl name='__tracepoint_android_vh_revert_creds' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_revert_creds' visibility='default' filepath='include/trace/hooks/creds.h' line='35' column='1' elf-symbol-id='__tracepoint_android_vh_revert_creds'/>
+      <var-decl name='__tracepoint_android_vh_reweight_entity' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_reweight_entity' visibility='default' filepath='include/trace/hooks/sched.h' line='406' column='1' elf-symbol-id='__tracepoint_android_vh_reweight_entity'/>
       <var-decl name='__tracepoint_android_vh_rmqueue' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_rmqueue' visibility='default' filepath='include/trace/hooks/mm.h' line='65' column='1' elf-symbol-id='__tracepoint_android_vh_rmqueue'/>
       <var-decl name='__tracepoint_android_vh_rmqueue_bulk_bypass' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_rmqueue_bulk_bypass' visibility='default' filepath='include/trace/hooks/mm.h' line='212' column='1' elf-symbol-id='__tracepoint_android_vh_rmqueue_bulk_bypass'/>
       <var-decl name='__tracepoint_android_vh_rproc_recovery' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_rproc_recovery' visibility='default' filepath='include/trace/hooks/remoteproc.h' line='21' column='1' elf-symbol-id='__tracepoint_android_vh_rproc_recovery'/>
@@ -123039,6 +123139,7 @@
       <var-decl name='__tracepoint_android_vh_rwsem_write_wait_start' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_rwsem_write_wait_start' visibility='default' filepath='include/trace/hooks/dtask.h' line='58' column='1' elf-symbol-id='__tracepoint_android_vh_rwsem_write_wait_start'/>
       <var-decl name='__tracepoint_android_vh_save_track_hash' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_save_track_hash' visibility='default' filepath='include/trace/hooks/mm.h' line='123' column='1' elf-symbol-id='__tracepoint_android_vh_save_track_hash'/>
       <var-decl name='__tracepoint_android_vh_save_vmalloc_stack' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_save_vmalloc_stack' visibility='default' filepath='include/trace/hooks/mm.h' line='117' column='1' elf-symbol-id='__tracepoint_android_vh_save_vmalloc_stack'/>
+      <var-decl name='__tracepoint_android_vh_sched_move_task' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_sched_move_task' visibility='default' filepath='include/trace/hooks/sched.h' line='411' column='1' elf-symbol-id='__tracepoint_android_vh_sched_move_task'/>
       <var-decl name='__tracepoint_android_vh_sched_pelt_multiplier' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_sched_pelt_multiplier' visibility='default' filepath='include/trace/hooks/sched.h' line='402' column='1' elf-symbol-id='__tracepoint_android_vh_sched_pelt_multiplier'/>
       <var-decl name='__tracepoint_android_vh_sched_setaffinity_early' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_sched_setaffinity_early' visibility='default' filepath='include/trace/hooks/sched.h' line='332' column='1' elf-symbol-id='__tracepoint_android_vh_sched_setaffinity_early'/>
       <var-decl name='__tracepoint_android_vh_sched_show_task' type-id='4ca0c298' mangled-name='__tracepoint_android_vh_sched_show_task' visibility='default' filepath='include/trace/hooks/dtask.h' line='74' column='1' elf-symbol-id='__tracepoint_android_vh_sched_show_task'/>
@@ -126153,6 +126254,7 @@
       </function-decl>
       <var-decl name='cpu_all_bits' type-id='afe549fd' mangled-name='cpu_all_bits' visibility='default' filepath='kernel/cpu.c' line='2804' column='1' elf-symbol-id='cpu_all_bits'/>
       <var-decl name='cpu_bit_bitmap' type-id='f959706c' mangled-name='cpu_bit_bitmap' visibility='default' filepath='kernel/cpu.c' line='2793' column='1' elf-symbol-id='cpu_bit_bitmap'/>
+      <var-decl name='cpu_cgrp_subsys' type-id='1d115fd5' mangled-name='cpu_cgrp_subsys' visibility='default' filepath='kernel/sched/core.c' line='8877' column='1' elf-symbol-id='cpu_cgrp_subsys'/>
       <function-decl name='cpu_have_feature' mangled-name='cpu_have_feature' filepath='arch/arm64/kernel/cpufeature.c' line='2950' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='cpu_have_feature'>
         <parameter type-id='f0981eeb' name='num' filepath='arch/arm64/kernel/cpufeature.c' line='2950' column='1'/>
         <return type-id='b50a4934'/>
@@ -126959,6 +127061,20 @@
         <parameter type-id='cfff5953' name='pos' filepath='kernel/cgroup/cgroup.c' line='4398' column='1'/>
         <parameter type-id='cfff5953' name='root' filepath='kernel/cgroup/cgroup.c' line='4399' column='1'/>
         <return type-id='cfff5953'/>
+      </function-decl>
+      <function-decl name='css_task_iter_end' mangled-name='css_task_iter_end' filepath='kernel/cgroup/cgroup.c' line='4786' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='css_task_iter_end'>
+        <parameter type-id='258fbdbb' name='it' filepath='kernel/cgroup/cgroup.c' line='4786' column='1'/>
+        <return type-id='48b5725f'/>
+      </function-decl>
+      <function-decl name='css_task_iter_next' mangled-name='css_task_iter_next' filepath='kernel/cgroup/cgroup.c' line='4754' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='css_task_iter_next'>
+        <parameter type-id='258fbdbb' name='it' filepath='kernel/cgroup/cgroup.c' line='4754' column='1'/>
+        <return type-id='f23e2572'/>
+      </function-decl>
+      <function-decl name='css_task_iter_start' mangled-name='css_task_iter_start' filepath='kernel/cgroup/cgroup.c' line='4723' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='css_task_iter_start'>
+        <parameter type-id='cfff5953' name='css' filepath='kernel/cgroup/cgroup.c' line='4723' column='1'/>
+        <parameter type-id='f0981eeb' name='flags' filepath='kernel/cgroup/cgroup.c' line='4723' column='1'/>
+        <parameter type-id='258fbdbb' name='it' filepath='kernel/cgroup/cgroup.c' line='4724' column='1'/>
+        <return type-id='48b5725f'/>
       </function-decl>
       <function-decl name='csum_ipv6_magic' mangled-name='csum_ipv6_magic' filepath='arch/arm64/lib/csum.c' line='132' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='csum_ipv6_magic'>
         <parameter type-id='fea9c20b' name='saddr' filepath='arch/arm64/lib/csum.c' line='132' column='1'/>
@@ -142792,20 +142908,20 @@
         <parameter type-id='9b25216e' name='w' filepath='kernel/exit.c' line='281' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='rdev_get_dev' mangled-name='rdev_get_dev' filepath='drivers/regulator/core.c' line='5686' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_dev'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5686' column='1'/>
+      <function-decl name='rdev_get_dev' mangled-name='rdev_get_dev' filepath='drivers/regulator/core.c' line='5696' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_dev'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5696' column='1'/>
         <return type-id='fa0b179b'/>
       </function-decl>
-      <function-decl name='rdev_get_drvdata' mangled-name='rdev_get_drvdata' filepath='drivers/regulator/core.c' line='5646' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_drvdata'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5646' column='1'/>
+      <function-decl name='rdev_get_drvdata' mangled-name='rdev_get_drvdata' filepath='drivers/regulator/core.c' line='5656' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_drvdata'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5656' column='1'/>
         <return type-id='eaa32e2f'/>
       </function-decl>
-      <function-decl name='rdev_get_id' mangled-name='rdev_get_id' filepath='drivers/regulator/core.c' line='5680' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_id'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5680' column='1'/>
+      <function-decl name='rdev_get_id' mangled-name='rdev_get_id' filepath='drivers/regulator/core.c' line='5690' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_id'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5690' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='rdev_get_regmap' mangled-name='rdev_get_regmap' filepath='drivers/regulator/core.c' line='5692' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_regmap'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5692' column='1'/>
+      <function-decl name='rdev_get_regmap' mangled-name='rdev_get_regmap' filepath='drivers/regulator/core.c' line='5702' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='rdev_get_regmap'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5702' column='1'/>
         <return type-id='29af9a71'/>
       </function-decl>
       <function-decl name='read_cache_page' mangled-name='read_cache_page' filepath='mm/filemap.c' line='3297' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='read_cache_page'>
@@ -143184,29 +143300,29 @@
         <parameter type-id='f0981eeb' name='val' filepath='drivers/base/regmap/regmap.c' line='1960' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_allow_bypass' mangled-name='regulator_allow_bypass' filepath='drivers/regulator/core.c' line='4591' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_allow_bypass'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4591' column='1'/>
-        <parameter type-id='b50a4934' name='enable' filepath='drivers/regulator/core.c' line='4591' column='1'/>
+      <function-decl name='regulator_allow_bypass' mangled-name='regulator_allow_bypass' filepath='drivers/regulator/core.c' line='4601' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_allow_bypass'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4601' column='1'/>
+        <parameter type-id='b50a4934' name='enable' filepath='drivers/regulator/core.c' line='4601' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_bulk_disable' mangled-name='regulator_bulk_disable' filepath='drivers/regulator/core.c' line='4799' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_bulk_disable'>
-        <parameter type-id='95e97e5e' name='num_consumers' filepath='drivers/regulator/core.c' line='4799' column='1'/>
-        <parameter type-id='776946b4' name='consumers' filepath='drivers/regulator/core.c' line='4800' column='1'/>
+      <function-decl name='regulator_bulk_disable' mangled-name='regulator_bulk_disable' filepath='drivers/regulator/core.c' line='4809' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_bulk_disable'>
+        <parameter type-id='95e97e5e' name='num_consumers' filepath='drivers/regulator/core.c' line='4809' column='1'/>
+        <parameter type-id='776946b4' name='consumers' filepath='drivers/regulator/core.c' line='4810' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_bulk_enable' mangled-name='regulator_bulk_enable' filepath='drivers/regulator/core.c' line='4750' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_bulk_enable'>
-        <parameter type-id='95e97e5e' name='num_consumers' filepath='drivers/regulator/core.c' line='4750' column='1'/>
-        <parameter type-id='776946b4' name='consumers' filepath='drivers/regulator/core.c' line='4751' column='1'/>
+      <function-decl name='regulator_bulk_enable' mangled-name='regulator_bulk_enable' filepath='drivers/regulator/core.c' line='4760' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_bulk_enable'>
+        <parameter type-id='95e97e5e' name='num_consumers' filepath='drivers/regulator/core.c' line='4760' column='1'/>
+        <parameter type-id='776946b4' name='consumers' filepath='drivers/regulator/core.c' line='4761' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_bulk_get' mangled-name='regulator_bulk_get' filepath='drivers/regulator/core.c' line='4695' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_bulk_get'>
-        <parameter type-id='fa0b179b' name='dev' filepath='drivers/regulator/core.c' line='4695' column='1'/>
-        <parameter type-id='95e97e5e' name='num_consumers' filepath='drivers/regulator/core.c' line='4695' column='1'/>
-        <parameter type-id='776946b4' name='consumers' filepath='drivers/regulator/core.c' line='4696' column='1'/>
+      <function-decl name='regulator_bulk_get' mangled-name='regulator_bulk_get' filepath='drivers/regulator/core.c' line='4705' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_bulk_get'>
+        <parameter type-id='fa0b179b' name='dev' filepath='drivers/regulator/core.c' line='4705' column='1'/>
+        <parameter type-id='95e97e5e' name='num_consumers' filepath='drivers/regulator/core.c' line='4705' column='1'/>
+        <parameter type-id='776946b4' name='consumers' filepath='drivers/regulator/core.c' line='4706' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_count_voltages' mangled-name='regulator_count_voltages' filepath='drivers/regulator/core.c' line='3155' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_count_voltages'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3155' column='1'/>
+      <function-decl name='regulator_count_voltages' mangled-name='regulator_count_voltages' filepath='drivers/regulator/core.c' line='3165' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_count_voltages'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3165' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_desc_list_voltage_linear_range' mangled-name='regulator_desc_list_voltage_linear_range' filepath='drivers/regulator/helpers.c' line='597' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_desc_list_voltage_linear_range'>
@@ -143214,34 +143330,34 @@
         <parameter type-id='f0981eeb' name='selector' filepath='drivers/regulator/helpers.c' line='598' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_disable' mangled-name='regulator_disable' filepath='drivers/regulator/core.c' line='2925' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_disable'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2925' column='1'/>
+      <function-decl name='regulator_disable' mangled-name='regulator_disable' filepath='drivers/regulator/core.c' line='2935' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_disable'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2935' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_disable_deferred' mangled-name='regulator_disable_deferred' filepath='drivers/regulator/core.c' line='3056' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_disable_deferred'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3056' column='1'/>
-        <parameter type-id='95e97e5e' name='ms' filepath='drivers/regulator/core.c' line='3056' column='1'/>
+      <function-decl name='regulator_disable_deferred' mangled-name='regulator_disable_deferred' filepath='drivers/regulator/core.c' line='3066' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_disable_deferred'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3066' column='1'/>
+        <parameter type-id='95e97e5e' name='ms' filepath='drivers/regulator/core.c' line='3066' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_disable_regmap' mangled-name='regulator_disable_regmap' filepath='drivers/regulator/helpers.c' line='85' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_disable_regmap'>
         <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/helpers.c' line='85' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_enable' mangled-name='regulator_enable' filepath='drivers/regulator/core.c' line='2812' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_enable'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2812' column='1'/>
+      <function-decl name='regulator_enable' mangled-name='regulator_enable' filepath='drivers/regulator/core.c' line='2822' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_enable'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2822' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_enable_regmap' mangled-name='regulator_enable_regmap' filepath='drivers/regulator/helpers.c' line='59' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_enable_regmap'>
         <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/helpers.c' line='59' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_force_disable' mangled-name='regulator_force_disable' filepath='drivers/regulator/core.c' line='2974' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_force_disable'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2974' column='1'/>
+      <function-decl name='regulator_force_disable' mangled-name='regulator_force_disable' filepath='drivers/regulator/core.c' line='2984' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_force_disable'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2984' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_get' mangled-name='regulator_get' filepath='drivers/regulator/core.c' line='2156' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get'>
-        <parameter type-id='fa0b179b' name='dev' filepath='drivers/regulator/core.c' line='2156' column='1'/>
-        <parameter type-id='80f4b756' name='id' filepath='drivers/regulator/core.c' line='2156' column='1'/>
+      <function-decl name='regulator_get' mangled-name='regulator_get' filepath='drivers/regulator/core.c' line='2166' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get'>
+        <parameter type-id='fa0b179b' name='dev' filepath='drivers/regulator/core.c' line='2166' column='1'/>
+        <parameter type-id='80f4b756' name='id' filepath='drivers/regulator/core.c' line='2166' column='1'/>
         <return type-id='850c13f6'/>
       </function-decl>
       <function-decl name='regulator_get_bypass_regmap' mangled-name='regulator_get_bypass_regmap' filepath='drivers/regulator/helpers.c' line='722' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_bypass_regmap'>
@@ -143249,60 +143365,60 @@
         <parameter type-id='d8e6b335' name='enable' filepath='drivers/regulator/helpers.c' line='722' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_get_current_limit' mangled-name='regulator_get_current_limit' filepath='drivers/regulator/core.c' line='4409' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_current_limit'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4409' column='1'/>
+      <function-decl name='regulator_get_current_limit' mangled-name='regulator_get_current_limit' filepath='drivers/regulator/core.c' line='4419' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_current_limit'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4419' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_get_current_limit_regmap' mangled-name='regulator_get_current_limit_regmap' filepath='drivers/regulator/helpers.c' line='827' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_current_limit_regmap'>
         <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/helpers.c' line='827' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_get_drvdata' mangled-name='regulator_get_drvdata' filepath='drivers/regulator/core.c' line='5659' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_drvdata'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='5659' column='1'/>
+      <function-decl name='regulator_get_drvdata' mangled-name='regulator_get_drvdata' filepath='drivers/regulator/core.c' line='5669' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_drvdata'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='5669' column='1'/>
         <return type-id='eaa32e2f'/>
       </function-decl>
-      <function-decl name='regulator_get_linear_step' mangled-name='regulator_get_linear_step' filepath='drivers/regulator/core.c' line='3264' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_linear_step'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3264' column='1'/>
+      <function-decl name='regulator_get_linear_step' mangled-name='regulator_get_linear_step' filepath='drivers/regulator/core.c' line='3274' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_linear_step'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3274' column='1'/>
         <return type-id='f0981eeb'/>
       </function-decl>
-      <function-decl name='regulator_get_mode' mangled-name='regulator_get_mode' filepath='drivers/regulator/core.c' line='4487' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_mode'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4487' column='1'/>
+      <function-decl name='regulator_get_mode' mangled-name='regulator_get_mode' filepath='drivers/regulator/core.c' line='4497' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_mode'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4497' column='1'/>
         <return type-id='f0981eeb'/>
       </function-decl>
-      <function-decl name='regulator_get_optional' mangled-name='regulator_get_optional' filepath='drivers/regulator/core.c' line='2209' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_optional'>
-        <parameter type-id='fa0b179b' name='dev' filepath='drivers/regulator/core.c' line='2209' column='1'/>
-        <parameter type-id='80f4b756' name='id' filepath='drivers/regulator/core.c' line='2209' column='1'/>
+      <function-decl name='regulator_get_optional' mangled-name='regulator_get_optional' filepath='drivers/regulator/core.c' line='2219' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_optional'>
+        <parameter type-id='fa0b179b' name='dev' filepath='drivers/regulator/core.c' line='2219' column='1'/>
+        <parameter type-id='80f4b756' name='id' filepath='drivers/regulator/core.c' line='2219' column='1'/>
         <return type-id='850c13f6'/>
       </function-decl>
-      <function-decl name='regulator_get_voltage' mangled-name='regulator_get_voltage' filepath='drivers/regulator/core.c' line='4325' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_voltage'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4325' column='1'/>
+      <function-decl name='regulator_get_voltage' mangled-name='regulator_get_voltage' filepath='drivers/regulator/core.c' line='4335' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_voltage'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4335' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_get_voltage_rdev' mangled-name='regulator_get_voltage_rdev' filepath='drivers/regulator/core.c' line='4270' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_voltage_rdev'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4270' column='1'/>
+      <function-decl name='regulator_get_voltage_rdev' mangled-name='regulator_get_voltage_rdev' filepath='drivers/regulator/core.c' line='4280' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_voltage_rdev'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4280' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_get_voltage_sel_regmap' mangled-name='regulator_get_voltage_sel_regmap' filepath='drivers/regulator/helpers.c' line='235' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_get_voltage_sel_regmap'>
         <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/helpers.c' line='235' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_is_enabled' mangled-name='regulator_is_enabled' filepath='drivers/regulator/core.c' line='3132' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_is_enabled'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3132' column='1'/>
+      <function-decl name='regulator_is_enabled' mangled-name='regulator_is_enabled' filepath='drivers/regulator/core.c' line='3142' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_is_enabled'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3142' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_is_enabled_regmap' mangled-name='regulator_is_enabled_regmap' filepath='drivers/regulator/helpers.c' line='27' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_is_enabled_regmap'>
         <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/helpers.c' line='27' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_is_supported_voltage' mangled-name='regulator_is_supported_voltage' filepath='drivers/regulator/core.c' line='3281' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_is_supported_voltage'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3281' column='1'/>
-        <parameter type-id='95e97e5e' name='min_uV' filepath='drivers/regulator/core.c' line='3282' column='1'/>
-        <parameter type-id='95e97e5e' name='max_uV' filepath='drivers/regulator/core.c' line='3282' column='1'/>
+      <function-decl name='regulator_is_supported_voltage' mangled-name='regulator_is_supported_voltage' filepath='drivers/regulator/core.c' line='3291' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_is_supported_voltage'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3291' column='1'/>
+        <parameter type-id='95e97e5e' name='min_uV' filepath='drivers/regulator/core.c' line='3292' column='1'/>
+        <parameter type-id='95e97e5e' name='max_uV' filepath='drivers/regulator/core.c' line='3292' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_list_voltage' mangled-name='regulator_list_voltage' filepath='drivers/regulator/core.c' line='3179' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_list_voltage'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3179' column='1'/>
-        <parameter type-id='f0981eeb' name='selector' filepath='drivers/regulator/core.c' line='3179' column='1'/>
+      <function-decl name='regulator_list_voltage' mangled-name='regulator_list_voltage' filepath='drivers/regulator/core.c' line='3189' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_list_voltage'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='3189' column='1'/>
+        <parameter type-id='f0981eeb' name='selector' filepath='drivers/regulator/core.c' line='3189' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_list_voltage_linear' mangled-name='regulator_list_voltage_linear' filepath='drivers/regulator/helpers.c' line='521' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_list_voltage_linear'>
@@ -143344,24 +143460,24 @@
         <parameter type-id='95e97e5e' name='max_uV' filepath='drivers/regulator/helpers.c' line='408' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_notifier_call_chain' mangled-name='regulator_notifier_call_chain' filepath='drivers/regulator/core.c' line='4889' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_notifier_call_chain'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4889' column='1'/>
-        <parameter type-id='7359adad' name='event' filepath='drivers/regulator/core.c' line='4890' column='1'/>
-        <parameter type-id='eaa32e2f' name='data' filepath='drivers/regulator/core.c' line='4890' column='1'/>
+      <function-decl name='regulator_notifier_call_chain' mangled-name='regulator_notifier_call_chain' filepath='drivers/regulator/core.c' line='4899' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_notifier_call_chain'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4899' column='1'/>
+        <parameter type-id='7359adad' name='event' filepath='drivers/regulator/core.c' line='4900' column='1'/>
+        <parameter type-id='eaa32e2f' name='data' filepath='drivers/regulator/core.c' line='4900' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_put' mangled-name='regulator_put' filepath='drivers/regulator/core.c' line='2269' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_put'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2269' column='1'/>
+      <function-decl name='regulator_put' mangled-name='regulator_put' filepath='drivers/regulator/core.c' line='2279' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_put'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='2279' column='1'/>
         <return type-id='48b5725f'/>
       </function-decl>
-      <function-decl name='regulator_register' mangled-name='regulator_register' filepath='drivers/regulator/core.c' line='5281' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_register'>
-        <parameter type-id='5629bd41' name='regulator_desc' filepath='drivers/regulator/core.c' line='5281' column='1'/>
-        <parameter type-id='661ccd0c' name='cfg' filepath='drivers/regulator/core.c' line='5282' column='1'/>
+      <function-decl name='regulator_register' mangled-name='regulator_register' filepath='drivers/regulator/core.c' line='5291' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_register'>
+        <parameter type-id='5629bd41' name='regulator_desc' filepath='drivers/regulator/core.c' line='5291' column='1'/>
+        <parameter type-id='661ccd0c' name='cfg' filepath='drivers/regulator/core.c' line='5292' column='1'/>
         <return type-id='43c38462'/>
       </function-decl>
-      <function-decl name='regulator_register_notifier' mangled-name='regulator_register_notifier' filepath='drivers/regulator/core.c' line='4648' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_register_notifier'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4648' column='1'/>
-        <parameter type-id='d504f73d' name='nb' filepath='drivers/regulator/core.c' line='4649' column='1'/>
+      <function-decl name='regulator_register_notifier' mangled-name='regulator_register_notifier' filepath='drivers/regulator/core.c' line='4658' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_register_notifier'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4658' column='1'/>
+        <parameter type-id='d504f73d' name='nb' filepath='drivers/regulator/core.c' line='4659' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_set_active_discharge_regmap' mangled-name='regulator_set_active_discharge_regmap' filepath='drivers/regulator/helpers.c' line='748' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_active_discharge_regmap'>
@@ -143374,10 +143490,10 @@
         <parameter type-id='b50a4934' name='enable' filepath='drivers/regulator/helpers.c' line='663' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_set_current_limit' mangled-name='regulator_set_current_limit' filepath='drivers/regulator/core.c' line='4354' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_current_limit'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4354' column='1'/>
-        <parameter type-id='95e97e5e' name='min_uA' filepath='drivers/regulator/core.c' line='4355' column='1'/>
-        <parameter type-id='95e97e5e' name='max_uA' filepath='drivers/regulator/core.c' line='4355' column='1'/>
+      <function-decl name='regulator_set_current_limit' mangled-name='regulator_set_current_limit' filepath='drivers/regulator/core.c' line='4364' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_current_limit'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4364' column='1'/>
+        <parameter type-id='95e97e5e' name='min_uA' filepath='drivers/regulator/core.c' line='4365' column='1'/>
+        <parameter type-id='95e97e5e' name='max_uA' filepath='drivers/regulator/core.c' line='4365' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_set_current_limit_regmap' mangled-name='regulator_set_current_limit_regmap' filepath='drivers/regulator/helpers.c' line='775' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_current_limit_regmap'>
@@ -143386,24 +143502,24 @@
         <parameter type-id='95e97e5e' name='max_uA' filepath='drivers/regulator/helpers.c' line='776' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_set_load' mangled-name='regulator_set_load' filepath='drivers/regulator/core.c' line='4560' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_load'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4560' column='1'/>
-        <parameter type-id='95e97e5e' name='uA_load' filepath='drivers/regulator/core.c' line='4560' column='1'/>
+      <function-decl name='regulator_set_load' mangled-name='regulator_set_load' filepath='drivers/regulator/core.c' line='4570' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_load'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4570' column='1'/>
+        <parameter type-id='95e97e5e' name='uA_load' filepath='drivers/regulator/core.c' line='4570' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_set_mode' mangled-name='regulator_set_mode' filepath='drivers/regulator/core.c' line='4426' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_mode'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4426' column='1'/>
-        <parameter type-id='f0981eeb' name='mode' filepath='drivers/regulator/core.c' line='4426' column='1'/>
+      <function-decl name='regulator_set_mode' mangled-name='regulator_set_mode' filepath='drivers/regulator/core.c' line='4436' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_mode'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4436' column='1'/>
+        <parameter type-id='f0981eeb' name='mode' filepath='drivers/regulator/core.c' line='4436' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_set_pull_down_regmap' mangled-name='regulator_set_pull_down_regmap' filepath='drivers/regulator/helpers.c' line='703' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_pull_down_regmap'>
         <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/helpers.c' line='703' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_set_voltage' mangled-name='regulator_set_voltage' filepath='drivers/regulator/core.c' line='4040' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_voltage'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4040' column='1'/>
-        <parameter type-id='95e97e5e' name='min_uV' filepath='drivers/regulator/core.c' line='4040' column='1'/>
-        <parameter type-id='95e97e5e' name='max_uV' filepath='drivers/regulator/core.c' line='4040' column='1'/>
+      <function-decl name='regulator_set_voltage' mangled-name='regulator_set_voltage' filepath='drivers/regulator/core.c' line='4050' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_voltage'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4050' column='1'/>
+        <parameter type-id='95e97e5e' name='min_uV' filepath='drivers/regulator/core.c' line='4050' column='1'/>
+        <parameter type-id='95e97e5e' name='max_uV' filepath='drivers/regulator/core.c' line='4050' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='regulator_set_voltage_sel_regmap' mangled-name='regulator_set_voltage_sel_regmap' filepath='drivers/regulator/helpers.c' line='261' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_voltage_sel_regmap'>
@@ -143411,34 +143527,34 @@
         <parameter type-id='f0981eeb' name='sel' filepath='drivers/regulator/helpers.c' line='261' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_set_voltage_time' mangled-name='regulator_set_voltage_time' filepath='drivers/regulator/core.c' line='4150' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_voltage_time'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4150' column='1'/>
-        <parameter type-id='95e97e5e' name='old_uV' filepath='drivers/regulator/core.c' line='4151' column='1'/>
-        <parameter type-id='95e97e5e' name='new_uV' filepath='drivers/regulator/core.c' line='4151' column='1'/>
+      <function-decl name='regulator_set_voltage_time' mangled-name='regulator_set_voltage_time' filepath='drivers/regulator/core.c' line='4160' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_voltage_time'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4160' column='1'/>
+        <parameter type-id='95e97e5e' name='old_uV' filepath='drivers/regulator/core.c' line='4161' column='1'/>
+        <parameter type-id='95e97e5e' name='new_uV' filepath='drivers/regulator/core.c' line='4161' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_set_voltage_time_sel' mangled-name='regulator_set_voltage_time_sel' filepath='drivers/regulator/core.c' line='4201' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_voltage_time_sel'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4201' column='1'/>
-        <parameter type-id='f0981eeb' name='old_selector' filepath='drivers/regulator/core.c' line='4202' column='1'/>
-        <parameter type-id='f0981eeb' name='new_selector' filepath='drivers/regulator/core.c' line='4203' column='1'/>
+      <function-decl name='regulator_set_voltage_time_sel' mangled-name='regulator_set_voltage_time_sel' filepath='drivers/regulator/core.c' line='4211' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_set_voltage_time_sel'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4211' column='1'/>
+        <parameter type-id='f0981eeb' name='old_selector' filepath='drivers/regulator/core.c' line='4212' column='1'/>
+        <parameter type-id='f0981eeb' name='new_selector' filepath='drivers/regulator/core.c' line='4213' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_suspend_enable' mangled-name='regulator_suspend_enable' filepath='drivers/regulator/core.c' line='4073' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_suspend_enable'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4073' column='1'/>
-        <parameter type-id='e884daa5' name='state' filepath='drivers/regulator/core.c' line='4074' column='1'/>
+      <function-decl name='regulator_suspend_enable' mangled-name='regulator_suspend_enable' filepath='drivers/regulator/core.c' line='4083' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_suspend_enable'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='4083' column='1'/>
+        <parameter type-id='e884daa5' name='state' filepath='drivers/regulator/core.c' line='4084' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_sync_voltage' mangled-name='regulator_sync_voltage' filepath='drivers/regulator/core.c' line='4230' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_sync_voltage'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4230' column='1'/>
+      <function-decl name='regulator_sync_voltage' mangled-name='regulator_sync_voltage' filepath='drivers/regulator/core.c' line='4240' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_sync_voltage'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4240' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='regulator_unregister' mangled-name='regulator_unregister' filepath='drivers/regulator/core.c' line='5524' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_unregister'>
-        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5524' column='1'/>
+      <function-decl name='regulator_unregister' mangled-name='regulator_unregister' filepath='drivers/regulator/core.c' line='5534' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_unregister'>
+        <parameter type-id='43c38462' name='rdev' filepath='drivers/regulator/core.c' line='5534' column='1'/>
         <return type-id='48b5725f'/>
       </function-decl>
-      <function-decl name='regulator_unregister_notifier' mangled-name='regulator_unregister_notifier' filepath='drivers/regulator/core.c' line='4663' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_unregister_notifier'>
-        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4663' column='1'/>
-        <parameter type-id='d504f73d' name='nb' filepath='drivers/regulator/core.c' line='4664' column='1'/>
+      <function-decl name='regulator_unregister_notifier' mangled-name='regulator_unregister_notifier' filepath='drivers/regulator/core.c' line='4673' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='regulator_unregister_notifier'>
+        <parameter type-id='850c13f6' name='regulator' filepath='drivers/regulator/core.c' line='4673' column='1'/>
+        <parameter type-id='d504f73d' name='nb' filepath='drivers/regulator/core.c' line='4674' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <function-decl name='release_firmware' mangled-name='release_firmware' filepath='drivers/base/firmware_loader/main.c' line='1081' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='release_firmware'>
@@ -144264,38 +144380,38 @@
         <parameter type-id='f23e2572' name='p' filepath='kernel/sched/core.c' line='6715' column='1'/>
         <return type-id='48b5725f'/>
       </function-decl>
-      <function-decl name='sched_trace_cfs_rq_avg' mangled-name='sched_trace_cfs_rq_avg' filepath='kernel/sched/fair.c' line='11697' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_cfs_rq_avg'>
-        <parameter type-id='a6892387' name='cfs_rq' filepath='kernel/sched/fair.c' line='11697' column='1'/>
+      <function-decl name='sched_trace_cfs_rq_avg' mangled-name='sched_trace_cfs_rq_avg' filepath='kernel/sched/fair.c' line='11698' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_cfs_rq_avg'>
+        <parameter type-id='a6892387' name='cfs_rq' filepath='kernel/sched/fair.c' line='11698' column='1'/>
         <return type-id='847e6fee'/>
       </function-decl>
-      <function-decl name='sched_trace_cfs_rq_cpu' mangled-name='sched_trace_cfs_rq_cpu' filepath='kernel/sched/fair.c' line='11721' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_cfs_rq_cpu'>
-        <parameter type-id='a6892387' name='cfs_rq' filepath='kernel/sched/fair.c' line='11721' column='1'/>
+      <function-decl name='sched_trace_cfs_rq_cpu' mangled-name='sched_trace_cfs_rq_cpu' filepath='kernel/sched/fair.c' line='11722' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_cfs_rq_cpu'>
+        <parameter type-id='a6892387' name='cfs_rq' filepath='kernel/sched/fair.c' line='11722' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
-      <function-decl name='sched_trace_cfs_rq_path' mangled-name='sched_trace_cfs_rq_path' filepath='kernel/sched/fair.c' line='11707' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_cfs_rq_path'>
-        <parameter type-id='a6892387' name='cfs_rq' filepath='kernel/sched/fair.c' line='11707' column='1'/>
-        <parameter type-id='26a90f95' name='str' filepath='kernel/sched/fair.c' line='11707' column='1'/>
-        <parameter type-id='95e97e5e' name='len' filepath='kernel/sched/fair.c' line='11707' column='1'/>
+      <function-decl name='sched_trace_cfs_rq_path' mangled-name='sched_trace_cfs_rq_path' filepath='kernel/sched/fair.c' line='11708' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_cfs_rq_path'>
+        <parameter type-id='a6892387' name='cfs_rq' filepath='kernel/sched/fair.c' line='11708' column='1'/>
+        <parameter type-id='26a90f95' name='str' filepath='kernel/sched/fair.c' line='11708' column='1'/>
+        <parameter type-id='95e97e5e' name='len' filepath='kernel/sched/fair.c' line='11708' column='1'/>
         <return type-id='26a90f95'/>
       </function-decl>
-      <function-decl name='sched_trace_rd_span' mangled-name='sched_trace_rd_span' filepath='kernel/sched/fair.c' line='11775' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rd_span'>
-        <parameter type-id='c13bca88' name='rd' filepath='kernel/sched/fair.c' line='11775' column='1'/>
+      <function-decl name='sched_trace_rd_span' mangled-name='sched_trace_rd_span' filepath='kernel/sched/fair.c' line='11776' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rd_span'>
+        <parameter type-id='c13bca88' name='rd' filepath='kernel/sched/fair.c' line='11776' column='1'/>
         <return type-id='5f8a1ac4'/>
       </function-decl>
-      <function-decl name='sched_trace_rq_avg_dl' mangled-name='sched_trace_rq_avg_dl' filepath='kernel/sched/fair.c' line='11737' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_avg_dl'>
-        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11737' column='1'/>
+      <function-decl name='sched_trace_rq_avg_dl' mangled-name='sched_trace_rq_avg_dl' filepath='kernel/sched/fair.c' line='11738' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_avg_dl'>
+        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11738' column='1'/>
         <return type-id='847e6fee'/>
       </function-decl>
-      <function-decl name='sched_trace_rq_avg_irq' mangled-name='sched_trace_rq_avg_irq' filepath='kernel/sched/fair.c' line='11747' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_avg_irq'>
-        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11747' column='1'/>
+      <function-decl name='sched_trace_rq_avg_irq' mangled-name='sched_trace_rq_avg_irq' filepath='kernel/sched/fair.c' line='11748' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_avg_irq'>
+        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11748' column='1'/>
         <return type-id='847e6fee'/>
       </function-decl>
-      <function-decl name='sched_trace_rq_avg_rt' mangled-name='sched_trace_rq_avg_rt' filepath='kernel/sched/fair.c' line='11727' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_avg_rt'>
-        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11727' column='1'/>
+      <function-decl name='sched_trace_rq_avg_rt' mangled-name='sched_trace_rq_avg_rt' filepath='kernel/sched/fair.c' line='11728' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_avg_rt'>
+        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11728' column='1'/>
         <return type-id='847e6fee'/>
       </function-decl>
-      <function-decl name='sched_trace_rq_cpu' mangled-name='sched_trace_rq_cpu' filepath='kernel/sched/fair.c' line='11757' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_cpu'>
-        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11757' column='1'/>
+      <function-decl name='sched_trace_rq_cpu' mangled-name='sched_trace_rq_cpu' filepath='kernel/sched/fair.c' line='11758' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='sched_trace_rq_cpu'>
+        <parameter type-id='6ed6b432' name='rq' filepath='kernel/sched/fair.c' line='11758' column='1'/>
         <return type-id='95e97e5e'/>
       </function-decl>
       <var-decl name='sched_uclamp_used' type-id='237c0d27' mangled-name='sched_uclamp_used' visibility='default' filepath='kernel/sched/core.c' line='967' column='1' elf-symbol-id='sched_uclamp_used'/>
@@ -148872,9 +148988,9 @@
         <parameter type-id='a5263fbd' name='desc' filepath='drivers/usb/typec/class.c' line='864' column='1'/>
         <return type-id='33ca4bbb'/>
       </function-decl>
-      <function-decl name='typec_register_port' mangled-name='typec_register_port' filepath='drivers/usb/typec/class.c' line='2056' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='typec_register_port'>
-        <parameter type-id='fa0b179b' name='parent' filepath='drivers/usb/typec/class.c' line='2056' column='1'/>
-        <parameter type-id='287e28ea' name='cap' filepath='drivers/usb/typec/class.c' line='2057' column='1'/>
+      <function-decl name='typec_register_port' mangled-name='typec_register_port' filepath='drivers/usb/typec/class.c' line='2057' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='typec_register_port'>
+        <parameter type-id='fa0b179b' name='parent' filepath='drivers/usb/typec/class.c' line='2057' column='1'/>
+        <parameter type-id='287e28ea' name='cap' filepath='drivers/usb/typec/class.c' line='2058' column='1'/>
         <return type-id='b977ca56'/>
       </function-decl>
       <function-decl name='typec_set_data_role' mangled-name='typec_set_data_role' filepath='drivers/usb/typec/class.c' line='1696' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='typec_set_data_role'>
@@ -148923,8 +149039,8 @@
         <parameter type-id='33ca4bbb' name='partner' filepath='drivers/usb/typec/class.c' line='911' column='1'/>
         <return type-id='48b5725f'/>
       </function-decl>
-      <function-decl name='typec_unregister_port' mangled-name='typec_unregister_port' filepath='drivers/usb/typec/class.c' line='2158' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='typec_unregister_port'>
-        <parameter type-id='b977ca56' name='port' filepath='drivers/usb/typec/class.c' line='2158' column='1'/>
+      <function-decl name='typec_unregister_port' mangled-name='typec_unregister_port' filepath='drivers/usb/typec/class.c' line='2159' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='typec_unregister_port'>
+        <parameter type-id='b977ca56' name='port' filepath='drivers/usb/typec/class.c' line='2159' column='1'/>
         <return type-id='48b5725f'/>
       </function-decl>
       <function-decl name='uart_add_one_port' mangled-name='uart_add_one_port' filepath='drivers/tty/serial/serial_core.c' line='2937' column='1' visibility='default' binding='global' size-in-bits='64' elf-symbol-id='uart_add_one_port'>

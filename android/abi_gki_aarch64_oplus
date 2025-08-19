@@ -2318,6 +2318,10 @@
   sched_setscheduler
   sched_setscheduler_nocheck
   sched_show_task
+  cpu_cgrp_subsys
+  css_task_iter_end
+  css_task_iter_next
+  css_task_iter_start
   sched_trace_rd_span
   sched_uclamp_used
   schedule
@@ -2712,6 +2716,8 @@
   __traceiter_android_rvh_dequeue_task_fair
   __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_enqueue_task_fair
+  __traceiter_android_vh_sched_move_task
+  __traceiter_android_vh_reweight_entity
   __traceiter_android_rvh_find_busiest_group
   __traceiter_android_rvh_find_busiest_queue
   __traceiter_android_rvh_find_energy_efficient_cpu
@@ -2990,6 +2996,8 @@
   __tracepoint_android_rvh_dequeue_task_fair
   __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_enqueue_task_fair
+  __tracepoint_android_vh_sched_move_task
+  __tracepoint_android_vh_reweight_entity
   __tracepoint_android_rvh_find_busiest_group
   __tracepoint_android_rvh_find_busiest_queue
   __tracepoint_android_rvh_find_energy_efficient_cpu
