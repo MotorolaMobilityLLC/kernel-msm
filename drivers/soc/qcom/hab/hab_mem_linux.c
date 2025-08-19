@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
 #include <linux/fdtable.h>
@@ -29,6 +29,11 @@ enum hab_page_list_type {
 	HAB_PAGE_LIST_EXPORT_USER
 };
 
+enum unimp_msg_sent_timing {
+	UNIMP_CALL = 0x0, /* unimport msg sent when imp_hyp_unmap return success */
+	PGLIST_DESTROY    /* unimport msg sent when dma-buf file release is triggered */
+};
+
 struct pages_list {
 	struct list_head list;
 	struct page **pages;
@@ -39,6 +44,7 @@ struct pages_list {
 	int32_t vcid;
 	struct physical_channel *pchan;
 	uint32_t type;
+	enum unimp_msg_sent_timing unimp_timing;
 	struct kref refcount;
 };
 
@@ -150,8 +156,10 @@ static void pages_list_remove(struct pages_list *pglist)
 static void pages_list_destroy(struct kref *refcount)
 {
 	int i = 0;
+	int ret;
 	struct pages_list *pglist = container_of(refcount,
 				struct pages_list, refcount);
+	struct hab_header header = HAB_HEADER_INITIALIZER;
 
 	if (pglist->vmapping) {
 		vunmap(pglist->vmapping);
@@ -166,9 +174,22 @@ static void pages_list_destroy(struct kref *refcount)
 			put_page(pglist->pages[i]);
 	}
 
+	if (pglist->unimp_timing == PGLIST_DESTROY) {
+		HAB_HEADER_SET_TYPE(header, HAB_PAYLOAD_TYPE_UNIMPORT);
+		HAB_HEADER_SET_SIZE(header, sizeof(uint32_t));
+		HAB_HEADER_SET_ID(header, HAB_VCID_UNIMPORT);
+		HAB_HEADER_SET_SESSION_ID(header, HAB_SESSIONID_UNIMPORT);
+		ret = physical_channel_send(pglist->pchan, &header, &pglist->export_id,
+				HABMM_SOCKET_SEND_FLAGS_NON_BLOCKING);
+		if (ret)
+			pr_err("unimp msg sent fail %d, vcid %x, expid %d, pg nr %ld\n",
+				ret, pglist->vcid, pglist->export_id, pglist->npages);
+		else
+			pr_debug("unimp msg sent, expid %d, vcid %x, pg nr %ld\n",
+				pglist->export_id, pglist->vcid, pglist->npages);
+	}
 
 	vfree(pglist->pages);
-
 	kfree(pglist);
 }
 
@@ -202,6 +223,19 @@ static struct pages_list *pages_list_lookup(
 	spin_unlock_bh(&hab_driver.imp_lock);
 
 	return NULL;
+}
+
+void habmem_defer_unimp_sent(struct export_desc *export)
+{
+	struct dma_buf *dmabuf;
+	struct pages_list *pglist;
+
+	dmabuf = (struct dma_buf *)export->kva;
+	pglist = (struct pages_list *)dmabuf->priv;
+	pglist->unimp_timing = PGLIST_DESTROY;
+
+	/* decrease the file counter added by hab import from user space */
+	dma_buf_put(dmabuf);
 }
 
 static int match_file(const void *p, struct file *file, unsigned int fd)
@@ -997,6 +1031,53 @@ buffer_ready:
 	return dmabuf;
 }
 
+/*
+ * dma_buf is created here during hab import.
+ * Below are the typical lifecycles of the dma_buf file.
+ *
+ * From khab:
+ *
+ * - [HAB driver] initialized in habmem_imp_hyp_map (1) -----------------------------|
+ * - [HAB client] usage in kernel by HAB client, ex. smmu map (1 -> 2) -----------|  |
+ * - [HAB client] usage finish, ex. smmu unmap (2 -> 1) --------------------------|  |
+ * - [HAB driver] habmm_unimport called from HAB client                              |
+ * - [HAB driver] dma_buf_put in habmem_imp_hyp_unmap (1 -> 0) ----------------------|
+ *
+ * or
+ *
+ * - [HAB driver] initialized in habmem_imp_hyp_map (1) -----------------------------|
+ * - [HAB client] alloc fd for the dma-buf file                                      |
+ * - [HAB client] increase dma-buf file count (1 -> 2) ---------------------------|  |
+ * - [HAB client] share it to user space                                          |  |
+ * - [HAB client] im/explicitly close fd via close or process gone (2 -> 1) ------|  |
+ * - [HAB driver] habmm_unimport called from HAB client                              |
+ * - [HAB driver] dma_buf_put in habmem_imp_hyp_unmap (1 -> 0) ----------------------|
+ *
+ * From uhab:
+ *
+ * - [HAB driver] initialized in habmem_imp_hyp_map (1) =============================|
+ * - [HAB driver] alloc fd                                                           |
+ * - [HAB driver] increase the file count in habmem_imp_hyp_map (1 -> 2) ---------|  |
+ * - [uhab]       return fd to HAB client                                         |  |
+ * - [HAB client] usage in user space, ex. mmap (2 -> 3) ----------------------|  |  |
+ * - [HAB client] usage finish, ex. munmap (3 -> 2) ---------------------------|  |  |
+ * - [HAB driver] habmm_unimport called from HAB client                           |  |
+ * - [HAB driver] dma_buf_put in habmem_imp_hyp_unmap (2 -> 1) ======================|
+ * - [uhab]       close fd (1 -> 0) ----------------------------------------------|
+ *
+ * or
+ *
+ * - [HAB driver] initialized in habmem_imp_hyp_map (1) =============================|
+ * - [HAB driver] alloc fd                                                           |
+ * - [HAB driver] increase the file count in habmem_imp_hyp_map (1 -> 2) ---------|  |
+ * - [uhab]       return fd to HAB client                                         |  |
+ * - [HAB client] usage in user space, ex. mmap (2 -> 3) -------------------------|  |
+ * - [HAB client] process exit/crash/get killed without unimp and munmap          |  |
+ * - [kernel]     cleanup process resource(close fd, unmap) (3 -> 1) -------------|  |
+ * - [HAB driver] hab_ctx_free to cleanup resources                                  |
+ * - [HAB driver] dma_buf_put in habmem_imp_hyp_unmap (1 -> 0) ======================|
+ *
+ */
 int habmem_imp_hyp_map(void *imp_ctx, struct hab_import *param,
 		struct export_desc *exp, int kernel)
 {
@@ -1018,35 +1099,77 @@ int habmem_imp_hyp_map(void *imp_ctx, struct hab_import *param,
 			return -EINVAL;
 		}
 		param->kva = (uint64_t)fd;
+		/*
+		 * Additionally increase the count by one if import request is from user space.
+		 * Because HAB driver allocates a fd for the client. Without the additional file
+		 * count, once the dma-buf is exposed to user space through fd, there will be a
+		 * chance that the file count can be decreased via fd closure or kernel cleanup
+		 * due to process crash/exits.
+		 *
+		 * This decreasing will trigger dma-buf release.
+		 *
+		 * To ensure the dma-buf is still available for further usage in HAB driver,
+		 * ex. busy check during unimport, HAB driver always increases the count by one in
+		 * this case.
+		 *
+		 * Meanwhile, increasing the file count by one is not applicable to the khab
+		 * scenario. Because it cannot prevent use-after-free from happening if HAB
+		 * client in kernel violates the HAB AoU, ex.
+		 * 1. misuse the dma_buf_put()
+		 * 2. alloc fd and share it to user space while not increasing the file count
+		 * the dma-buf may be reclaimed before the last dma_buf_put() in HAB driver which is
+		 * the expected last one to decrease the file cnt from 1 to 0.
+		 *
+		 * TODO: Once the weak semantic of hab unimport is supported, HAB driver will not
+		 * access the dma-buf after import except in dma-buf release callback.
+		 * Thus, the below get_file can be removed.
+		 */
+		get_file(dma_buf->file);
 	}
+	exp->kva = dma_buf;
+
 	return 0;
 }
 
-int habmm_imp_hyp_unmap(void *imp_ctx, struct export_desc *exp, int kernel)
+int habmm_imp_hyp_unmap(void *imp_ctx, struct export_desc *exp, long fcnt_idle)
 {
 	int ret = 0;
 	struct dma_buf *buf;
+	long cnt;
 
-	/* dma_buf is the only supported format in khab */
-	if (kernel) {
-		buf = (struct dma_buf *)exp->kva;
+	buf = (struct dma_buf *)exp->kva;
+	if (buf == NULL)
+		ret = -EINVAL;
+	else {
 		/*
-		 * mmap/sharing fd would increase the file refcnt.
-		 * A file with its refcnt value higher than 1 indicates that there
-		 * is still memory usage alive out there.
-		 * In current design, HAB unimport invoker should ensure the memory
-		 * is not used anymore. Thus, HAB driver is the last one to decrease
-		 * refcnt from 1 to 0 which will trigger dma-buf free, then notify
-		 * the remote OS that the buf is not needed by the local OS.
-		 */
-		if (file_count(buf->file) > 1) {
+		* mmap/sharing fd would increase the file count.
+		* A file with its count value higher than expected indicates that the
+		* memory is still in use out there.
+		* In the current design, strong unimport semantic, HAB unimport invoker should
+		* ensure the memory is not in use anymore before calling unimport.
+		*
+		* Thus, HAB driver can check the memory in use status by reading the dma-buf file
+		* count. Meanwhile, HAB driver/uhab is the last one to decrease count from 1 to 0.
+		* HAB driver then can notify the remote OS that the buf is not needed by the local
+		* OS. The unimport message is sent immediately, rather than waiting for the dma-buf
+		* file release, if the current function returned successfully.
+		* It ensures all of the unimport actions are finished as early as possible because
+		* the file release callback is usually deferred.
+		*/
+		cnt = file_count(buf->file);
+		if (cnt > fcnt_idle) {
 			ret = -EBUSY;
-			pr_err("the buf (exp id %d) still in use on %x, refcnt %d\n",
-				exp->export_id, exp->vchan->id, file_count(buf->file));
+			pr_err("the buf (exp id %u) still in use on %x, refcnt %ld, expect %d\n",
+				exp->export_id, exp->vcid_local, cnt, fcnt_idle);
+		} else if (cnt < fcnt_idle) {
+			ret = -ENOENT;
+			pr_err("the dmabuf (exp id %u) cnt is invalid %ld, expect %d, vcid %X\n",
+			    exp->export_id, cnt, fcnt_idle, exp->vcid_local);
 		} else {
-			dma_buf_put((struct dma_buf *)exp->kva);
+			exp->kva = NULL;
+			dma_buf_put(buf);
 			pr_debug("dmabuf put for exp id %d on %x\n",
-			    exp->export_id, exp->vchan->id);
+				exp->export_id, exp->vcid_local);
 		}
 	}
 
