@@ -154,7 +154,7 @@ def define_neo_le():
         "drivers/soc/qcom/qcom_wdt_core.ko",
         "drivers/soc/qcom/qmi_helpers.ko",
         "drivers/soc/qcom/rq_stats.ko",
-        "drivers/soc/qcom/secure_buffer.c",
+        "drivers/soc/qcom/secure_buffer.ko",
         "drivers/soc/qcom/smem.ko",
         "drivers/soc/qcom/smp2p.ko",
         "drivers/soc/qcom/smp2p_sleepstate.ko",
