@@ -2922,7 +2922,7 @@ static int load_module(struct load_info *info, const char __user *uargs,
 
 	module_allocated = true;
 
-	audit_log_kern_module(info->name);
+	audit_log_kern_module(mod->name);
 
 	/* Reserve our place in the list. */
 	err = add_unformed_module(mod);
@@ -3080,10 +3080,8 @@ static int load_module(struct load_info *info, const char __user *uargs,
 	 * failures once the proper module was allocated and
 	 * before that.
 	 */
-	if (!module_allocated) {
-		audit_log_kern_module(info->name ? info->name : "?");
+	if (!module_allocated)
 		mod_stat_bump_becoming(info, flags);
-	}
 	free_copy(info, flags);
 	return err;
 }
