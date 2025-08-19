@@ -165,6 +165,13 @@ static void __page_state_change(unsigned long paddr, enum psc_op op)
 	 */
 	if (op == SNP_PAGE_STATE_PRIVATE && pvalidate(paddr, RMP_PG_SIZE_4K, 1))
 		sev_es_terminate(SEV_TERM_SET_LINUX, GHCB_TERM_PVALIDATE);
+
+	/*
+	 * If validating memory (making it private) and affected by the
+	 * cache-coherency vulnerability, perform the cache eviction mitigation.
+	 */
+	if (op == SNP_PAGE_STATE_PRIVATE && !has_cpuflag(X86_FEATURE_COHERENCY_SFW_NO))
+		sev_evict_cache((void *)paddr, 1);
 }
 
 void snp_set_page_private(unsigned long paddr)
