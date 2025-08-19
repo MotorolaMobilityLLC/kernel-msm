@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <uapi/linux/sched/types.h>
@@ -368,6 +368,7 @@ static void kgsl_destroy_ion(struct kgsl_memdesc *memdesc)
 	}
 
 	memdesc->sgt = NULL;
+	entry->priv_data = NULL;
 }
 
 static const struct kgsl_memdesc_ops kgsl_dmabuf_ops = {
