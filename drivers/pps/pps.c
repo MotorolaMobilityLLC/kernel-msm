@@ -41,9 +41,6 @@ static __poll_t pps_cdev_poll(struct file *file, poll_table *wait)
 
 	poll_wait(file, &pps->queue, wait);
 
-	if (pps->last_fetched_ev == pps->last_ev)
-		return 0;
-
 	return EPOLLIN | EPOLLRDNORM;
 }
 
@@ -189,10 +186,8 @@ static long pps_cdev_ioctl(struct file *file,
 		if (err)
 			return err;
 
-		/* Return the fetched timestamp and save last fetched event  */
+		/* Return the fetched timestamp */
 		spin_lock_irq(&pps->lock);
-
-		pps->last_fetched_ev = pps->last_ev;
 
 		fdata.info.assert_sequence = pps->assert_sequence;
 		fdata.info.clear_sequence = pps->clear_sequence;
@@ -277,10 +272,8 @@ static long pps_cdev_compat_ioctl(struct file *file,
 		if (err)
 			return err;
 
-		/* Return the fetched timestamp and save last fetched event  */
+		/* Return the fetched timestamp */
 		spin_lock_irq(&pps->lock);
-
-		pps->last_fetched_ev = pps->last_ev;
 
 		compat.info.assert_sequence = pps->assert_sequence;
 		compat.info.clear_sequence = pps->clear_sequence;
