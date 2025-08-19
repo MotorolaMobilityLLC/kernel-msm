@@ -2719,7 +2719,7 @@ int btrfs_get_next_valid_item(struct btrfs_root *root, struct btrfs_key *key,
  *
  */
 static void fixup_low_keys(struct btrfs_trans_handle *trans,
-			   struct btrfs_path *path,
+			   const struct btrfs_path *path,
 			   struct btrfs_disk_key *key, int level)
 {
 	int i;
@@ -2749,7 +2749,7 @@ static void fixup_low_keys(struct btrfs_trans_handle *trans,
  * that the new key won't break the order
  */
 void btrfs_set_item_key_safe(struct btrfs_trans_handle *trans,
-			     struct btrfs_path *path,
+			     const struct btrfs_path *path,
 			     const struct btrfs_key *new_key)
 {
 	struct btrfs_fs_info *fs_info = trans->fs_info;
@@ -2815,8 +2815,8 @@ void btrfs_set_item_key_safe(struct btrfs_trans_handle *trans,
  * is correct, we only need to bother the last key of @left and the first
  * key of @right.
  */
-static bool check_sibling_keys(struct extent_buffer *left,
-			       struct extent_buffer *right)
+static bool check_sibling_keys(const struct extent_buffer *left,
+			       const struct extent_buffer *right)
 {
 	struct btrfs_key left_last;
 	struct btrfs_key right_first;
@@ -3085,7 +3085,7 @@ static noinline int insert_new_root(struct btrfs_trans_handle *trans,
  * blocknr is the block the key points to.
  */
 static int insert_ptr(struct btrfs_trans_handle *trans,
-		      struct btrfs_path *path,
+		      const struct btrfs_path *path,
 		      struct btrfs_disk_key *key, u64 bytenr,
 		      int slot, int level)
 {
@@ -4176,7 +4176,7 @@ int btrfs_split_item(struct btrfs_trans_handle *trans,
  * the front.
  */
 void btrfs_truncate_item(struct btrfs_trans_handle *trans,
-			 struct btrfs_path *path, u32 new_size, int from_end)
+			 const struct btrfs_path *path, u32 new_size, int from_end)
 {
 	int slot;
 	struct extent_buffer *leaf;
@@ -4268,7 +4268,7 @@ void btrfs_truncate_item(struct btrfs_trans_handle *trans,
  * make the item pointed to by the path bigger, data_size is the added size.
  */
 void btrfs_extend_item(struct btrfs_trans_handle *trans,
-		       struct btrfs_path *path, u32 data_size)
+		       const struct btrfs_path *path, u32 data_size)
 {
 	int slot;
 	struct extent_buffer *leaf;
