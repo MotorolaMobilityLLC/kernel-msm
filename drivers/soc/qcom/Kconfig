@@ -99,6 +99,12 @@ config MOT_DRV_DONGWOON_OIS_AF_DRIFT
 	help
 	  This is enabling DONGWOON AF DRIFT for calidata in ois flash.
 
+config MOT_DRV_OIS_DEINIT
+        default n
+        bool "enable OIS deinit"
+        help
+          This is enabling OIS deinit gyro aux when camera close.
+
 config CAM_SENSOR_PROBE_DEBUG
 	default n
 	bool "enable camera sensor probe debug"
