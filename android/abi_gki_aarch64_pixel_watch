@@ -407,6 +407,7 @@
   devm_power_supply_register
   devm_pwm_get
   devm_qcom_smem_state_get
+  devm_register_sys_off_handler
   devm_regmap_add_irq_chip
   devm_regmap_del_irq_chip
   devm_regmap_field_alloc
