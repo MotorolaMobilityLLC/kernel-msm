@@ -257,6 +257,21 @@ int32_t habmm_socket_recvfrom(int32_t handle, void *dst_buff,
 #define HABMM_EXP_MEM_TYPE_DMA 0x00000001
 
 /*
+ * Exporting loopback memory type.
+ *
+ * Loopback memory refers to memory originally exported from a remote HAB,
+ * imported locally, and then re-exported back to the same remote HAB.
+ *
+ * This flag must be used in combination with one of the following:
+ *   - HABMM_EXPIMP_FLAGS_FD
+ *   - HABMM_EXPIMP_FLAGS_DMABUF
+ *
+ * Only memory handles are supported for loopback export. Virtual addresses
+ * without an associated dma-buf or pmem handle are not supported.
+ */
+#define HABMM_EXP_MEM_TYPE_LOOPBACK 0x00000002U
+
+/*
  * this flag is used for export from dma_buf fd or import to dma_buf fd
  */
 #define HABMM_EXPIMP_FLAGS_FD     0x00010000

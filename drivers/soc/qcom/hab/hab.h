@@ -26,6 +26,7 @@ enum hab_payload_type {
 	HAB_PAYLOAD_TYPE_IMPORT_ACK,
 	HAB_PAYLOAD_TYPE_IMPORT_ACK_FAIL,
 	HAB_PAYLOAD_TYPE_UNIMPORT,
+	HAB_PAYLOAD_TYPE_IMPORT_LOOPBACK_ACK,
 	HAB_PAYLOAD_TYPE_MAX,
 };
 #define LOOPBACK_DOM 0xFF
@@ -536,6 +537,7 @@ struct export_desc_super {
 	void *platform_data;
 	unsigned long offset;
 	unsigned int payload_size; /* size of the compressed pfn structure */
+	bool is_loopback;
 
 	enum exp_desc_state import_state;
 	enum export_state exp_state;
