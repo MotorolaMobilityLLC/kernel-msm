@@ -180,8 +180,31 @@ static inline bool linker_ctx(void)
 
 	vma = lock_vma_under_rcu(mm, instruction_pointer(regs));
 
-	/* Current execution context, the VMA must be present */
-	BUG_ON(!vma);
+	/*
+	 * lock_vma_under_rcu() is a try-lock that can fail if the
+	 * VMA is already locked for modification.
+	 *
+	 * Fallback to finding the vma under mmap read lock.
+	 */
+	if (!vma) {
+		mmap_read_lock(mm);
+
+		vma = find_vma(mm, instruction_pointer(regs));
+
+		/* Current execution context, the VMA must be present */
+		BUG_ON(!vma);
+
+		/*
+		 * We cannot use vma_start_read() as it may fail due to
+		 * false locked (see comment in vma_start_read()). We
+		 * can avoid that by directly locking vm_lock under
+		 * mmap_lock, which guarantees that nobody can lock the
+		 * vma for write (vma_start_write()) under us.
+		 */
+		down_read(&vma->vm_lock->lock);
+
+		mmap_read_unlock(mm);
+	}
 
 	file = vma->vm_file;
 	if (!file)
