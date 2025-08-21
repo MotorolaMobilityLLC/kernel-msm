@@ -326,7 +326,7 @@ static inline int ufshcd_rpm_get_sync(struct ufs_hba *hba)
 
 static inline int ufshcd_rpm_get_if_active(struct ufs_hba *hba)
 {
-	return pm_runtime_get_if_active(&hba->ufs_device_wlun->sdev_gendev, true);
+	return pm_runtime_get_if_active(&hba->ufs_device_wlun->sdev_gendev);
 }
 
 static inline int ufshcd_rpm_put_sync(struct ufs_hba *hba)
