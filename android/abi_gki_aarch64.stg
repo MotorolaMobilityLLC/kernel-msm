@@ -339314,6 +339314,13 @@ function {
   parameter_id: 0x2b16c036
 }
 function {
+  id: 0x9b047f13
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x29082583
+  parameter_id: 0x3f979b84
+}
+function {
   id: 0x9b04b788
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -363879,6 +363886,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_f2fs_restore_priority"
 }
 elf_symbol {
+  id: 0x150ea575
+  name: "__traceiter_android_vh_fas_gpu_qos_update_tracer"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xfff672c9
+  type_id: 0x9b047f13
+  full_name: "__traceiter_android_vh_fas_gpu_qos_update_tracer"
+}
+elf_symbol {
   id: 0x93a4717b
   name: "__traceiter_android_vh_file_is_tiny_bypass"
   is_defined: true
@@ -371176,6 +371192,15 @@ elf_symbol {
   crc: 0x16bd98df
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_f2fs_restore_priority"
+}
+elf_symbol {
+  id: 0x2b59c1a7
+  name: "__tracepoint_android_vh_fas_gpu_qos_update_tracer"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x3ee1cd20
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_fas_gpu_qos_update_tracer"
 }
 elf_symbol {
   id: 0x50a83025
@@ -439721,6 +439746,7 @@ interface {
   symbol_id: 0xcb0a2c01
   symbol_id: 0x377d134d
   symbol_id: 0x905272e6
+  symbol_id: 0x150ea575
   symbol_id: 0x93a4717b
   symbol_id: 0x6091a763
   symbol_id: 0x19fc04e0
@@ -440532,6 +440558,7 @@ interface {
   symbol_id: 0x34b6590b
   symbol_id: 0x26d15e93
   symbol_id: 0xbf5d713c
+  symbol_id: 0x2b59c1a7
   symbol_id: 0x50a83025
   symbol_id: 0x0c03d499
   symbol_id: 0x197d6be2
