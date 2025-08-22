@@ -407,6 +407,7 @@
   __traceiter_android_vh_do_wake_up_sync
   __traceiter_android_vh_do_wp_page
   __traceiter_android_vh_dump_throttled_rt_tasks
+  __traceiter_android_vh_fas_gpu_qos_update_tracer
   __traceiter_android_vh_free_task
   __traceiter_android_vh_ftrace_dump_buffer
   __traceiter_android_vh_ftrace_format_check
@@ -621,6 +622,7 @@
   __tracepoint_android_vh_do_wake_up_sync
   __tracepoint_android_vh_do_wp_page
   __tracepoint_android_vh_dump_throttled_rt_tasks
+  __tracepoint_android_vh_fas_gpu_qos_update_tracer
   __tracepoint_android_vh_free_task
   __tracepoint_android_vh_ftrace_dump_buffer
   __tracepoint_android_vh_ftrace_format_check
