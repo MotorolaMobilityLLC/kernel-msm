@@ -154,6 +154,7 @@ static __always_inline bool str_has_suffix(const char *str, const char *suffix)
 	return !strncmp(str + str_len - suffix_len, suffix, suffix_len);
 }
 
+#ifdef CONFIG_PER_VMA_LOCK
 /*
  * The dynamic linker, or interpreter, operates within the process context
  * of the binary that necessitated dynamic linking.
@@ -236,6 +237,11 @@ out:
 	return false;
 }
 
+#else /* CONFIG_PER_VMA_LOCK */
+
+static inline bool linker_ctx(void) { return false; }
+
+#endif /* CONFIG_PER_VMA_LOCK */
 /*
  * Saves the number of padding pages for an ELF segment mapping
  * in vm_flags.
