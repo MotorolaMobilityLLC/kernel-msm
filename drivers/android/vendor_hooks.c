@@ -500,3 +500,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_pageset_update);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mempool_alloc_skip_wait);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_try_alloc_pages_gfp);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_create_worker);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_fas_gpu_qos_update_tracer);
