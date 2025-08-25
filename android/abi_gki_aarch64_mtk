@@ -52,6 +52,7 @@
   atomic_notifier_call_chain
   atomic_notifier_chain_register
   atomic_notifier_chain_unregister
+  __audit_inode_child
   autoremove_wake_function
   available_idle_cpu
   balance_push_callback
@@ -332,6 +333,7 @@
   ct_idle_enter
   ct_idle_exit
   _ctype
+  d_alloc
   dapm_clock_event
   dapm_kcontrol_get_value
   dapm_regulator_event
@@ -638,6 +640,7 @@
   dev_uc_sync
   dev_uc_unsync
   _dev_warn
+  dget_parent
   disable_irq
   disable_irq_nosync
   disable_percpu_irq
@@ -1005,6 +1008,7 @@
   for_each_kernel_tracepoint
   fortify_panic
   fput
+  __fput_sync
   fqdir_exit
   fqdir_init
   frame_vector_create
@@ -1109,6 +1113,7 @@
   __get_task_comm
   get_task_cred
   get_task_mm
+  get_tree_keyed
   get_unused_fd_flags
   get_user_ifreq
   get_user_pages
@@ -1150,6 +1155,8 @@
   gpio_to_desc
   gre_add_protocol
   gre_del_protocol
+  groups_alloc
+  groups_sort
   handle_edge_irq
   handle_fasteoi_irq
   handle_level_irq
@@ -1329,6 +1336,7 @@
   ip_route_output_flow
   __ip_select_ident
   ip_send_check
+  ip_sock_set_pktinfo
   __ipv6_addr_type
   ipv6_dev_find
   ipv6_ext_hdr
@@ -1387,6 +1395,7 @@
   kernel_bind
   kernel_connect
   kernel_cpustat
+  kernel_getpeername
   kernel_kobj
   kernel_listen
   kernel_param_lock
@@ -1394,6 +1403,7 @@
   kernel_power_off
   kernel_restart
   kernel_sendmsg
+  kernel_sendpage
   kernel_sigaction
   kernel_sock_shutdown
   kernfs_find_and_get_ns
@@ -1469,6 +1479,7 @@
   kthread_cancel_work_sync
   kthread_create_on_node
   kthread_create_worker
+  kthread_data
   kthread_delayed_work_timer_fn
   kthread_destroy_worker
   kthread_flush_work
@@ -1585,6 +1596,8 @@
   memmove
   memory_read_from_buffer
   memparse
+  mempool_kfree
+  mempool_kmalloc
   memremap
   memscan
   mem_section
@@ -1687,6 +1700,7 @@
   netdev_pick_tx
   netdev_printk
   netdev_rss_key_fill
+  netdev_rx_csum_fault
   netdev_set_default_ethtool_ops
   netdev_update_features
   netdev_upper_dev_link
@@ -2527,9 +2541,12 @@
   simple_attr_read
   simple_attr_release
   simple_attr_write
+  simple_dentry_operations
   simple_open
   simple_read_from_buffer
+  simple_rmdir
   simple_strtoul
+  simple_unlink
   simple_write_to_buffer
   single_open
   single_open_size
@@ -2541,6 +2558,7 @@
   skb_clone_sk
   skb_complete_wifi_ack
   skb_copy
+  skb_copy_and_csum_bits
   skb_copy_bits
   skb_copy_datagram_iter
   skb_copy_expand
@@ -2560,6 +2578,7 @@
   skb_queue_tail
   skb_realloc_headroom
   skb_recv_datagram
+  __skb_recv_udp
   skb_scrub_packet
   skb_set_owner_w
   skb_split
@@ -2569,6 +2588,7 @@
   skb_tstamp_tx
   skb_unlink
   sk_capable
+  sk_clear_memalloc
   sk_common_release
   sk_error_report
   sk_filter_trim_cap
@@ -2645,6 +2665,7 @@
   snprintf
   soc_device_register
   soc_device_unregister
+  sock_alloc_file
   sock_alloc_send_pskb
   sock_cmsg_send
   sock_common_getsockopt
@@ -2668,6 +2689,7 @@
   sock_no_connect
   sock_no_getname
   sock_no_ioctl
+  sock_no_linger
   sock_no_listen
   sock_no_mmap
   sock_no_recvmsg
@@ -2685,6 +2707,8 @@
   sock_register
   sock_release
   sock_rfree
+  sock_set_keepalive
+  sock_set_reuseport
   __sock_tx_timestamp
   sock_unregister
   sock_wmalloc
@@ -2735,6 +2759,7 @@
   strcspn
   stream_open
   strim
+  string_escape_mem
   strlcat
   strlcpy
   strlen
@@ -2771,10 +2796,12 @@
   syscon_regmap_lookup_by_phandle
   syscon_regmap_lookup_by_phandle_optional
   sysctl_vals
+  sysctl_vfs_cache_pressure
   sysfs_create_bin_file
   sysfs_create_file_ns
   sysfs_create_group
   sysfs_create_link
+  sysfs_create_link_nowarn
   sysfs_emit
   __sysfs_match_string
   sysfs_merge_group
@@ -2807,6 +2834,10 @@
   __task_pid_nr_ns
   __task_rq_lock
   task_rq_lock
+  tcp_sock_set_keepcnt
+  tcp_sock_set_keepidle
+  tcp_sock_set_keepintvl
+  tcp_sock_set_user_timeout
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_pressure
