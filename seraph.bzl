@@ -83,6 +83,7 @@ def define_seraph():
         "drivers/nvmem/nvmem_qcom-spmi-sdam.ko",
         "drivers/nvmem/nvmem_qfprom.ko",
         "drivers/pci/controller/pci-msm-drv.ko",
+        "drivers/perf/dwc_pcie_pmu.ko",
         "drivers/perf/qcom_llcc_pmu.ko",
         "drivers/pinctrl/qcom/pinctrl-msm.ko",
         "drivers/pinctrl/qcom/pinctrl-seraph.ko",

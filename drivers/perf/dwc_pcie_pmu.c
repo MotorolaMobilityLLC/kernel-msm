@@ -106,10 +106,25 @@ struct dwc_pcie_vendor_id {
 };
 
 static const struct dwc_pcie_vendor_id dwc_pcie_vendor_ids[] = {
-	{.vendor_id = PCI_VENDOR_ID_ALIBABA },
 	{.vendor_id = PCI_VENDOR_ID_QCOM },
 	{} /* terminator */
 };
+
+
+static __always_inline
+unsigned int dwc_cpumask_any_and_but(const struct cpumask *mask1,
+					const struct cpumask *mask2,
+					unsigned int cpu)
+{
+	unsigned int i;
+
+	cpumask_check(cpu);
+	i = cpumask_first_and(mask1, mask2);
+	if (i != cpu)
+		return i;
+
+	return cpumask_next_and(cpu, mask1, mask2);
+}
 
 static ssize_t cpumask_show(struct device *dev,
 					 struct device_attribute *attr,
@@ -188,6 +203,19 @@ static ssize_t dwc_pcie_event_show(struct device *dev,
 	DWC_PCIE_EVENT_ATTR(_name, DWC_PCIE_TIME_BASE_EVENT, _eventid, 0)
 #define DWC_PCIE_PMU_LANE_EVENT_ATTR(_name, _eventid)			\
 	DWC_PCIE_EVENT_ATTR(_name, DWC_PCIE_LANE_EVENT, _eventid, 0)
+
+
+void pci_clear_and_set_config_dword(const struct pci_dev *dev, int pos,
+					u32 clear, u32 set)
+{
+	u32 val;
+
+	pci_read_config_dword(dev, pos, &val);
+	val &= ~clear;
+	val |= set;
+	pci_write_config_dword(dev, pos, val);
+}
+
 
 static struct attribute *dwc_pcie_pmu_time_event_attrs[] = {
 	/* Group #0 */
@@ -522,7 +550,7 @@ static void dwc_pcie_unregister_pmu(void *data)
 static bool dwc_pcie_match_des_cap(struct pci_dev *pdev)
 {
 	const struct dwc_pcie_vendor_id *vid;
-	u16 vsec;
+	u16 vsec = 0;
 	u32 val;
 
 	if (!pci_is_pcie(pdev) || !(pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT))
@@ -634,7 +662,6 @@ static int dwc_pcie_pmu_probe(struct platform_device *plat_dev)
 	pcie_pmu->on_cpu = -1;
 	pcie_pmu->pmu = (struct pmu){
 		.name		= name,
-		.parent		= &pdev->dev,
 		.module		= THIS_MODULE,
 		.attr_groups	= dwc_pcie_attr_groups,
 		.capabilities	= PERF_PMU_CAP_NO_EXCLUDE,
@@ -703,7 +730,7 @@ static int dwc_pcie_pmu_offline_cpu(unsigned int cpu, struct hlist_node *cpuhp_n
 	pdev = pcie_pmu->pdev;
 	node = dev_to_node(&pdev->dev);
 
-	target = cpumask_any_and_but(cpumask_of_node(node), cpu_online_mask, cpu);
+	target = dwc_cpumask_any_and_but(cpumask_of_node(node), cpu_online_mask, cpu);
 	if (target >= nr_cpu_ids)
 		target = cpumask_any_but(cpu_online_mask, cpu);
 
