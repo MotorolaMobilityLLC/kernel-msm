@@ -33,7 +33,9 @@
 #include <uapi/linux/dma-buf.h>
 #include <uapi/linux/magic.h>
 
+#ifndef __GENKSYMS__
 #include <trace/events/kmem.h>
+#endif
 #include <trace/hooks/dmabuf.h>
 
 #include "dma-buf-sysfs-stats.h"
