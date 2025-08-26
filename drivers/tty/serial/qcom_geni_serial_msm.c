@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
-// Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
 
 /* Disable MMIO tracing to prevent excessive logging of unwanted MMIO traces */
 #define __DISABLE_TRACE_MMIO__
@@ -835,14 +837,14 @@ static void qcom_geni_serial_handle_rx_dma(struct uart_port *uport, bool drop)
 	if (!port->rx_dma_addr)
 		return;
 
-	geni_se_rx_dma_unprep(&port->se, port->rx_dma_addr, DMA_RX_BUF_SIZE);
-	port->rx_dma_addr = 0;
-
 	rx_in = readl(uport->membase + SE_DMA_RX_LEN_IN);
 	if (!rx_in) {
 		dev_warn(uport->dev, "serial engine reports 0 RX bytes in!\n");
 		return;
 	}
+
+	geni_se_rx_dma_unprep(&port->se, port->rx_dma_addr, DMA_RX_BUF_SIZE);
+	port->rx_dma_addr = 0;
 
 	if (!drop)
 		handle_rx_uart(uport, rx_in, drop);
