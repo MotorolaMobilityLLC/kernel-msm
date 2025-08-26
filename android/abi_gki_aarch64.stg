@@ -43626,6 +43626,11 @@ member {
   offset: 1408
 }
 member {
+  id: 0x366394f0
+  type_id: 0x56a024aa
+  offset: 1920
+}
+member {
   id: 0x36707abc
   type_id: 0x56efb9c6
   offset: 192
@@ -144873,6 +144878,11 @@ member {
   offset: 1056
 }
 member {
+  id: 0x014cd3d7
+  name: "nr_task_refs"
+  type_id: 0x1f4573ef
+}
+member {
   id: 0xe321d910
   name: "nr_tasks"
   type_id: 0x6720d32f
@@ -226371,6 +226381,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x56a024aa
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0x014cd3d7
+    member_id: 0x27000c61
+    member_id: 0x36752b74
+  }
+}
+struct_union {
   id: 0x56efb9c6
   kind: UNION
   definition {
@@ -237716,7 +237736,7 @@ struct_union {
     member_id: 0xb265164c
     member_id: 0xaf33fcbc
     member_id: 0x5f2a8271
-    member_id: 0x2d0814ec
+    member_id: 0x366394f0
     member_id: 0x63760b26
   }
 }
