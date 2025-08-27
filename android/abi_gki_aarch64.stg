@@ -8964,6 +8964,11 @@ pointer_reference {
   pointee_type_id: 0x61859821
 }
 pointer_reference {
+  id: 0x12f234f7
+  kind: POINTER
+  pointee_type_id: 0x61883543
+}
+pointer_reference {
   id: 0x13012dce
   kind: POINTER
   pointee_type_id: 0x664451a4
@@ -43530,6 +43535,11 @@ member {
   offset: 768
 }
 member {
+  id: 0x355c1a4d
+  type_id: 0x5a5e007a
+  offset: 28608
+}
+member {
   id: 0x355c619d
   type_id: 0x5a5fd068
   offset: 96
@@ -50525,12 +50535,6 @@ member {
   name: "android_kabi_reserved1"
   type_id: 0x92233392
   offset: 1280
-}
-member {
-  id: 0x2d081365
-  name: "android_kabi_reserved1"
-  type_id: 0x92233392
-  offset: 28608
 }
 member {
   id: 0x2d081368
@@ -83386,10 +83390,27 @@ member {
   offset: 768
 }
 member {
+  id: 0x082d878d
+  name: "dmabuf_count"
+  type_id: 0x4585663f
+  offset: 320
+}
+member {
+  id: 0x32b44094
+  name: "dmabuf_info"
+  type_id: 0x12f234f7
+}
+member {
   id: 0x810e204c
   name: "dmabufs"
   type_id: 0xeb923a9b
   offset: 384
+}
+member {
+  id: 0x8136732c
+  name: "dmabufs"
+  type_id: 0xd3c80119
+  offset: 192
 }
 member {
   id: 0x065bb89a
@@ -169941,6 +169962,12 @@ member {
   type_id: 0x1f4573ef
 }
 member {
+  id: 0xb7dcf16e
+  name: "refcnt"
+  type_id: 0xa722c13e
+  offset: 128
+}
+member {
   id: 0xb7dcf1d9
   name: "refcnt"
   type_id: 0xa722c13e
@@ -176927,6 +176954,11 @@ member {
   offset: 160
 }
 member {
+  id: 0x10789eb1
+  name: "rss"
+  type_id: 0x33756485
+}
+member {
   id: 0x10ad0965
   name: "rss"
   type_id: 0xe6e2b0f1
@@ -176941,6 +176973,12 @@ member {
   id: 0xf6190409
   name: "rss_context"
   type_id: 0xe62ebf07
+}
+member {
+  id: 0x027688eb
+  name: "rss_hwm"
+  type_id: 0x33756485
+  offset: 64
 }
 member {
   id: 0x9625f4bd
@@ -226458,6 +226496,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x5a5e007a
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0x32b44094
+    member_id: 0x27000c61
+    member_id: 0x36752b74
+  }
+}
+struct_union {
   id: 0x5a5fd068
   kind: UNION
   definition {
@@ -273712,6 +273760,20 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x61883543
+  kind: STRUCT
+  name: "task_dma_buf_info"
+  definition {
+    bytesize: 48
+    member_id: 0x10789eb1
+    member_id: 0x027688eb
+    member_id: 0xb7dcf16e
+    member_id: 0x2d1fe165
+    member_id: 0x8136732c
+    member_id: 0x082d878d
+  }
+}
+struct_union {
   id: 0x84d533ac
   kind: STRUCT
   name: "task_group"
@@ -273970,7 +274032,7 @@ struct_union {
     member_id: 0xedf50eb4
     member_id: 0xd666c042
     member_id: 0x9a3ad2fc
-    member_id: 0x2d081365
+    member_id: 0x355c1a4d
     member_id: 0x63760904
     member_id: 0xac894e01
     member_id: 0xe0f6361e
