@@ -59,5 +59,7 @@ blocklist vmw_vsock_virtio_transport
 blocklist vmw_vsock_virtio_transport_common
 blocklist vsock
 blocklist vsock_diag
+blocklist rbs_fod_mmi
+blocklist goodix_fod_mmi
 blocklist xc4000
 blocklist xc5000
