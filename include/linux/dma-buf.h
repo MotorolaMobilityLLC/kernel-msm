@@ -641,6 +641,19 @@ struct dma_buf_export_info {
 };
 
 /**
+ * struct task_dma_buf_record and struct task_dma_buf_info will NEVER be exposed
+ * to vendor modules, except possibly via an opaque pointer. Their definitions
+ * can therefore be hidden from MODVERSIONS CRC machinery, allowing arbitrary
+ * future changes.
+ */
+#ifdef __GENKSYMS__
+
+struct task_dma_buf_record;
+struct task_dma_buf_info;
+
+#else
+
+/**
  * struct task_dma_buf_record - Holds the number of (VMA and FD) references to a
  * dmabuf by a collection of tasks that share both mm_struct and files_struct.
  * This is the list entry type for @task_dma_buf_info dmabufs list.
@@ -681,6 +694,8 @@ struct task_dma_buf_info {
 	struct list_head dmabufs;
 	unsigned int dmabuf_count;
 };
+
+#endif
 
 /**
  * DEFINE_DMA_BUF_EXPORT_INFO - helper macro for exporters
