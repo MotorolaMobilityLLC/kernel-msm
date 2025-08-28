@@ -547,6 +547,7 @@ int pkvm_create_stack(phys_addr_t phys, unsigned long *haddr)
 	return ret;
 }
 
+/* Note: The caller has to use a local copy of the arg */
 void *admit_host_page(void *arg, unsigned long order)
 {
 	phys_addr_t p;
@@ -605,12 +606,19 @@ int refill_hyp_pool(struct hyp_pool *pool, struct kvm_hyp_memcache *host_mc)
 {
 	unsigned long order;
 	void *p;
+	struct kvm_hyp_memcache tmp = *host_mc;
+	u64 nr_pages;
 
-	while (host_mc->nr_pages) {
-		order = FIELD_GET(~PAGE_MASK, host_mc->head);
-		p = admit_host_page(host_mc, order);
+	while (tmp.nr_pages) {
+		order = FIELD_GET(~PAGE_MASK, tmp.head);
+		if (check_shl_overflow(1UL, order, &nr_pages))
+			return -EINVAL;
+
+		p = admit_host_page(&tmp, order);
 		if (!p)
 			return -EINVAL;
+		*host_mc = tmp;
+
 		hyp_virt_to_page(p)->order = order;
 		hyp_set_page_refcounted(hyp_virt_to_page(p));
 		hyp_put_page(pool, p);
