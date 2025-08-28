@@ -3,25 +3,95 @@
  * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
-#include <linux/init.h>
 #include <linux/kernel.h>
-#include <linux/module.h>
 #include <linux/cpufreq.h>
+#include <linux/pm_qos.h>
+#include <linux/of.h>
 
-static int midpoint_freq = 1700000;
+#define NO_TIMEOUT -1U
+#define MIDPOINT_DEFAULT_QOS_TIMEOUT_MS 100000U
+static int midpoint_freq = 5000000;
+static int qos_timeout_ms = MIDPOINT_DEFAULT_QOS_TIMEOUT_MS;
 
-static void cpufreq_gov_midpoint_limits(struct cpufreq_policy *policy)
-{
-	__cpufreq_driver_target(policy, midpoint_freq, CPUFREQ_RELATION_L);
+module_param(midpoint_freq, int, 0400);
+module_param(qos_timeout_ms, int, 0400);
+
+static DEFINE_PER_CPU(struct freq_qos_request, qos_max_req);
+static DEFINE_PER_CPU(struct freq_qos_request, qos_min_req);
+static struct delayed_work qos_remove_work;
+
+static void midpoint_qos_remove(void) {
+	struct freq_qos_request *req;
+	int cpu;
+
+	for_each_possible_cpu(cpu) {
+		req = &per_cpu(qos_min_req, cpu);
+		freq_qos_remove_request(req);
+		req = &per_cpu(qos_max_req, cpu);
+		freq_qos_remove_request(req);
+	}
+
+	pr_info("Removed midpoint min qos.\n");
 }
 
-static struct cpufreq_governor cpufreq_gov_midpoint = {
-	.name		= "midpoint",
-	.owner		= THIS_MODULE,
-	.flags		= CPUFREQ_GOV_STRICT_TARGET,
-	.limits		= cpufreq_gov_midpoint_limits,
-};
+static void midpoint_qos_remove_work(struct work_struct *work)
+{
+	midpoint_qos_remove();
+}
 
-cpufreq_governor_init(cpufreq_gov_midpoint);
-cpufreq_governor_exit(cpufreq_gov_midpoint);
-MODULE_LICENSE("GPL");
+void midpoint_init(void)
+{
+	struct cpufreq_policy *policy;
+	struct freq_qos_request *req;
+	int cpu, ret;
+
+	for_each_possible_cpu(cpu) {
+		policy = cpufreq_cpu_get(cpu);
+
+		if (!policy) {
+			pr_err("%s: cpufreq policy not found for cpu%d\n", __func__, cpu);
+			return;
+		}
+
+		/*Only allow setting if governor is powersave */
+		if (!policy->governor || (strcmp(policy->governor->name, "powersave"))) {
+			pr_err("%s: exiting as governor is %s\n", __func__,
+					policy->governor ? "NULL" : policy->governor->name);
+			return;
+		}
+
+		req = &per_cpu(qos_max_req, cpu);
+		ret = freq_qos_add_request(&policy->constraints, req,
+						FREQ_QOS_MAX, midpoint_freq);
+
+		if (ret < 0) {
+			cpufreq_cpu_put(policy);
+			goto out;
+		}
+
+		req = &per_cpu(qos_min_req, cpu);
+		ret = freq_qos_add_request(&policy->constraints, req,
+						FREQ_QOS_MIN, midpoint_freq);
+		cpufreq_cpu_put(policy);
+		if (ret < 0)
+			goto out;
+	}
+
+	if (qos_timeout_ms != NO_TIMEOUT) {
+		INIT_DELAYED_WORK(&qos_remove_work, midpoint_qos_remove_work);
+		schedule_delayed_work(&qos_remove_work, msecs_to_jiffies(qos_timeout_ms));
+	}
+
+	pr_info("Added midpoint qos with freq=%d qos_timeout_ms=%d.\n", midpoint_freq, qos_timeout_ms);
+	return;
+
+out:
+	midpoint_qos_remove();
+
+	if (ret < 0) {
+		pr_err("%s: Failed to add freq constraint (%d) on cpu=%d\n",
+						__func__, ret, cpu);
+		return;
+	}
+}
+

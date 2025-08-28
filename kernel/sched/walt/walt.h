@@ -1573,4 +1573,9 @@ extern unsigned int sysctl_pipeline_pin_thres_low_pct;
 extern unsigned int sysctl_pipeline_pin_thres_high_pct;
 DECLARE_PER_CPU(unsigned int, walt_yield_to_sleep);
 extern unsigned int walt_sched_yield_counter;
+#if IS_ENABLED(CONFIG_SCHED_WALT_MIDPOINT)
+extern void midpoint_init(void);
+#else
+static inline void midpoint_init(void) {}
+#endif
 #endif /* _WALT_H */

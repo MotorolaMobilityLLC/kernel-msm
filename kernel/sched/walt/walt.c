@@ -5598,6 +5598,7 @@ static void walt_init(struct work_struct *work)
 	}
 
 	walt_update_cluster_topology();
+	midpoint_init();
 	walt_remove_cpufreq_efficiencies_available();
 	walt_config();
 	walt_init_cycle_counter();

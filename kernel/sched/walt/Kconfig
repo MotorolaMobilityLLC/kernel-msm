@@ -39,6 +39,14 @@ config SCHED_CONSERVATIVE_BOOST_LPM_BIAS
 	  will not enter low power mode for a hysteresis time period,
 	  which can be configured from userspace.
 
+config SCHED_WALT_MIDPOINT
+	bool "sched walt midpoint"
+	depends on SCHED_WALT
+	default n
+	help
+	  This feature will have a midpoint frequency voted qos request
+	  in fmin and fmax.
+
 config SCHED_MOTO_UNFAIR
 	tristate "Enable moto unfair scheduler"
 	depends on SCHED_WALT
