@@ -239,3 +239,9 @@ type 'struct dma_buf' changed
   member 'u64 android_kabi_reserved1' was removed
   member 'union { atomic64_t nr_task_refs; struct { u64 android_kabi_reserved1; }; union { }; }' was added
 
+type 'struct xt_match' changed
+  member 'bool has_compat_metadata' was added
+
+type 'struct xt_target' changed
+  member 'bool has_compat_metadata' was added
+
