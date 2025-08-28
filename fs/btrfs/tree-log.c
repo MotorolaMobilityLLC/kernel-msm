@@ -2493,14 +2493,12 @@ static int replay_one_buffer(struct btrfs_root *log, struct extent_buffer *eb,
 	int i;
 	int ret;
 
+	if (level != 0)
+		return 0;
+
 	ret = btrfs_read_extent_buffer(eb, &check);
 	if (ret)
 		return ret;
-
-	level = btrfs_header_level(eb);
-
-	if (level != 0)
-		return 0;
 
 	path = btrfs_alloc_path();
 	if (!path)
