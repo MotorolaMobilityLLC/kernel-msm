@@ -378,6 +378,9 @@
   devfreq_recommended_opp
   devfreq_register_opp_notifier
   devfreq_remove_device
+  devfreq_remove_governor
+  devfreq_resume_device
+  devfreq_suspend_device
   devfreq_unregister_opp_notifier
   devfreq_update_interval
   __dev_fwnode
@@ -2664,6 +2667,7 @@
   __traceiter_android_rvh_select_task_rq_fair
   __traceiter_android_rvh_select_task_rq_rt
   __traceiter_android_rvh_set_cpus_allowed_by_task
+  __traceiter_android_rvh_set_cpus_allowed_ptr
   __traceiter_android_rvh_set_iowait
   __traceiter_android_rvh_setscheduler
   __traceiter_android_rvh_setscheduler_prio
@@ -2698,6 +2702,7 @@
   __traceiter_android_vh_early_resume_begin
   __traceiter_android_vh_enable_thermal_genl_check
   __traceiter_android_vh_ep_create_wakeup_source
+  __traceiter_android_vh_exit_check
   __traceiter_android_vh_filemap_get_folio
   __traceiter_android_vh_free_one_page_flag_check
   __traceiter_android_vh_free_pages_prepare_init
@@ -2804,6 +2809,7 @@
   __tracepoint_android_rvh_select_task_rq_fair
   __tracepoint_android_rvh_select_task_rq_rt
   __tracepoint_android_rvh_set_cpus_allowed_by_task
+  __tracepoint_android_rvh_set_cpus_allowed_ptr
   __tracepoint_android_rvh_set_iowait
   __tracepoint_android_rvh_setscheduler
   __tracepoint_android_rvh_setscheduler_prio
@@ -2838,6 +2844,7 @@
   __tracepoint_android_vh_early_resume_begin
   __tracepoint_android_vh_enable_thermal_genl_check
   __tracepoint_android_vh_ep_create_wakeup_source
+  __tracepoint_android_vh_exit_check
   __tracepoint_android_vh_filemap_get_folio
   __tracepoint_android_vh_free_one_page_flag_check
   __tracepoint_android_vh_free_pages_prepare_init
