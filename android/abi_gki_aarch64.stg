@@ -3479,6 +3479,11 @@ pointer_reference {
   pointee_type_id: 0x1a5de19e
 }
 pointer_reference {
+  id: 0x0c080ab3
+  kind: POINTER
+  pointee_type_id: 0x1a60cc51
+}
+pointer_reference {
   id: 0x0c08e6c9
   kind: POINTER
   pointee_type_id: 0x1a637dbb
@@ -48967,6 +48972,12 @@ member {
   offset: 32
 }
 member {
+  id: 0x9f97e4f3
+  name: "advertising"
+  type_id: 0xe62ebf07
+  offset: 64
+}
+member {
   id: 0x69f9ba62
   name: "advertising_eee"
   type_id: 0x607419c2
@@ -55315,6 +55326,12 @@ member {
   name: "autoneg"
   type_id: 0xe62ebf07
   offset: 32
+}
+member {
+  id: 0xbed54502
+  name: "autoneg"
+  type_id: 0xb3e7bac9
+  offset: 144
 }
 member {
   id: 0xbed548e9
@@ -85805,6 +85822,12 @@ member {
   type_id: 0xe3222f5b
 }
 member {
+  id: 0x703907cc
+  name: "duplex"
+  type_id: 0xb3e7bac9
+  offset: 112
+}
+member {
   id: 0x70390fe0
   name: "duplex"
   type_id: 0xb3e7bac9
@@ -89545,10 +89568,22 @@ member {
   type_id: 0xe0ea9a24
 }
 member {
+  id: 0xca94b2d4
+  name: "eth_tp_mdix"
+  type_id: 0xb3e7bac9
+  offset: 240
+}
+member {
   id: 0xca94b363
   name: "eth_tp_mdix"
   type_id: 0xb3e7bac9
   offset: 104
+}
+member {
+  id: 0x8530641a
+  name: "eth_tp_mdix_ctrl"
+  type_id: 0xb3e7bac9
+  offset: 248
 }
 member {
   id: 0x8530689b
@@ -126885,6 +126920,12 @@ member {
   offset: 96
 }
 member {
+  id: 0x6279847e
+  name: "lp_advertising"
+  type_id: 0xe62ebf07
+  offset: 256
+}
+member {
   id: 0x62ffd7b1
   name: "lp_advertising"
   type_id: 0x607419c2
@@ -132275,6 +132316,18 @@ member {
   offset: 4800
 }
 member {
+  id: 0x51858165
+  name: "maxrxpkt"
+  type_id: 0xe62ebf07
+  offset: 192
+}
+member {
+  id: 0x349eb14e
+  name: "maxtxpkt"
+  type_id: 0xe62ebf07
+  offset: 160
+}
+member {
   id: 0x32c64e99
   name: "maxtype"
   type_id: 0x4585663f
@@ -132840,6 +132893,12 @@ member {
   name: "mdio_read"
   type_id: 0x2ebb318f
   offset: 256
+}
+member {
+  id: 0xe2b8933a
+  name: "mdio_support"
+  type_id: 0xb3e7bac9
+  offset: 152
 }
 member {
   id: 0xe2b8944e
@@ -156192,6 +156251,12 @@ member {
   offset: 64
 }
 member {
+  id: 0xcc9165e4
+  name: "phy_address"
+  type_id: 0xb3e7bac9
+  offset: 128
+}
+member {
   id: 0xcc9168ba
   name: "phy_address"
   type_id: 0xb3e7bac9
@@ -159012,6 +159077,12 @@ member {
   name: "port"
   type_id: 0xb3e7bac9
   offset: 72
+}
+member {
+  id: 0x4848fa31
+  name: "port"
+  type_id: 0xb3e7bac9
+  offset: 120
 }
 member {
   id: 0x488e9071
@@ -189783,6 +189854,12 @@ member {
   offset: 832
 }
 member {
+  id: 0xa002871a
+  name: "speed"
+  type_id: 0xe8034002
+  offset: 96
+}
+member {
   id: 0xa00cae5d
   name: "speed"
   type_id: 0xe62ebf07
@@ -189857,6 +189934,12 @@ member {
   id: 0xa0fc6342
   name: "speed"
   type_id: 0x16ee9b34
+}
+member {
+  id: 0x93cedaae
+  name: "speed_hi"
+  type_id: 0xe8034002
+  offset: 224
 }
 member {
   id: 0x5ba71926
@@ -203064,6 +203147,12 @@ member {
   name: "transceiver"
   type_id: 0xb3e7bac9
   offset: 128
+}
+member {
+  id: 0x555e8335
+  name: "transceiver"
+  type_id: 0xb3e7bac9
+  offset: 136
 }
 member {
   id: 0x625eae55
@@ -241761,6 +241850,31 @@ struct_union {
     member_id: 0xd4d17de9
     member_id: 0xbccd0941
     member_id: 0x26f5c78d
+  }
+}
+struct_union {
+  id: 0x1a60cc51
+  kind: STRUCT
+  name: "ethtool_cmd"
+  definition {
+    bytesize: 44
+    member_id: 0x1af6f030
+    member_id: 0x878d4469
+    member_id: 0x9f97e4f3
+    member_id: 0xa002871a
+    member_id: 0x703907cc
+    member_id: 0x4848fa31
+    member_id: 0xcc9165e4
+    member_id: 0x555e8335
+    member_id: 0xbed54502
+    member_id: 0xe2b8933a
+    member_id: 0x349eb14e
+    member_id: 0x51858165
+    member_id: 0x93cedaae
+    member_id: 0xca94b2d4
+    member_id: 0x8530641a
+    member_id: 0x6279847e
+    member_id: 0xd4368a4c
   }
 }
 struct_union {
@@ -309882,6 +309996,12 @@ function {
   parameter_id: 0x228954ca
 }
 function {
+  id: 0x142e3633
+  return_type_id: 0x48b5725f
+  parameter_id: 0x12191e2a
+  parameter_id: 0x0c080ab3
+}
+function {
   id: 0x142e61fd
   return_type_id: 0x48b5725f
   parameter_id: 0x104d069a
@@ -353543,6 +353663,13 @@ function {
   id: 0xcb57dc24
   return_type_id: 0x4585663f
   parameter_id: 0x126add1c
+  parameter_id: 0x4585663f
+}
+function {
+  id: 0xcb5a4db0
+  return_type_id: 0x4585663f
+  parameter_id: 0x12191e2a
+  parameter_id: 0x4585663f
   parameter_id: 0x4585663f
 }
 function {
@@ -406248,6 +406375,15 @@ elf_symbol {
   full_name: "migrate_swap"
 }
 elf_symbol {
+  id: 0x68c3a63b
+  name: "mii_check_media"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xe310a431
+  type_id: 0xcb5a4db0
+  full_name: "mii_check_media"
+}
+elf_symbol {
   id: 0x399512e2
   name: "mii_ethtool_get_link_ksettings"
   is_defined: true
@@ -406255,6 +406391,15 @@ elf_symbol {
   crc: 0x70ae59eb
   type_id: 0x147ac3d5
   full_name: "mii_ethtool_get_link_ksettings"
+}
+elf_symbol {
+  id: 0xbc90165b
+  name: "mii_ethtool_gset"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xda85aa4d
+  type_id: 0x142e3633
+  full_name: "mii_ethtool_gset"
 }
 elf_symbol {
   id: 0x69f7fc4b
@@ -433105,6 +433250,24 @@ elf_symbol {
   full_name: "usbnet_get_endpoints"
 }
 elf_symbol {
+  id: 0x4f4e9353
+  name: "usbnet_get_link"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x29647872
+  type_id: 0x4951a397
+  full_name: "usbnet_get_link"
+}
+elf_symbol {
+  id: 0x3f51a906
+  name: "usbnet_get_link_ksettings_mii"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x542790f2
+  type_id: 0x914dbe16
+  full_name: "usbnet_get_link_ksettings_mii"
+}
+elf_symbol {
   id: 0x6515c416
   name: "usbnet_get_msglevel"
   is_defined: true
@@ -433112,6 +433275,15 @@ elf_symbol {
   crc: 0x6756e0bd
   type_id: 0x4951a397
   full_name: "usbnet_get_msglevel"
+}
+elf_symbol {
+  id: 0x6c854cb3
+  name: "usbnet_nway_reset"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x00a6ee95
+  type_id: 0x91296bda
+  full_name: "usbnet_nway_reset"
 }
 elf_symbol {
   id: 0xcd021e80
@@ -433157,6 +433329,15 @@ elf_symbol {
   crc: 0x93351aba
   type_id: 0x95c144d5
   full_name: "usbnet_resume"
+}
+elf_symbol {
+  id: 0x6e3c0f91
+  name: "usbnet_set_link_ksettings_mii"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x3548ee6f
+  type_id: 0x91cc9f9b
+  full_name: "usbnet_set_link_ksettings_mii"
 }
 elf_symbol {
   id: 0x99cb2edf
@@ -443799,7 +443980,9 @@ interface {
   symbol_id: 0x1c9ded63
   symbol_id: 0x89c6398f
   symbol_id: 0xbad16ab3
+  symbol_id: 0x68c3a63b
   symbol_id: 0x399512e2
+  symbol_id: 0xbc90165b
   symbol_id: 0x69f7fc4b
   symbol_id: 0x1579ecd2
   symbol_id: 0xe4572a81
@@ -446781,12 +446964,16 @@ interface {
   symbol_id: 0x580c56b8
   symbol_id: 0x8f0c866d
   symbol_id: 0x52816b1c
+  symbol_id: 0x4f4e9353
+  symbol_id: 0x3f51a906
   symbol_id: 0x6515c416
+  symbol_id: 0x6c854cb3
   symbol_id: 0xcd021e80
   symbol_id: 0x147e4ad2
   symbol_id: 0x167360fc
   symbol_id: 0x69b1070f
   symbol_id: 0x3be16591
+  symbol_id: 0x6e3c0f91
   symbol_id: 0x99cb2edf
   symbol_id: 0x2325cd65
   symbol_id: 0x9cf79f8d
