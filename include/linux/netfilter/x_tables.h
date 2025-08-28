@@ -167,7 +167,13 @@ struct xt_match {
 
 	/* Called when entry of this type deleted. */
 	void (*destroy)(const struct xt_mtdtor_param *);
-#ifdef CONFIG_NETFILTER_XTABLES_COMPAT
+	/*
+	 * ANDROID: Adding these fields to this structure breaks the KMI, so do not allow them to
+	 * be added within this structure.
+	 *
+	 * Instead, see struct compat_xt_match_ext and its usage below.
+	 */
+#ifdef CONFIG_BROKEN
 	/* Called when userspace align differs from kernel space one */
 	void (*compat_from_user)(void *dst, const void *src);
 	int (*compat_to_user)(void __user *dst, const void *src);
@@ -178,7 +184,13 @@ struct xt_match {
 	const char *table;
 	unsigned int matchsize;
 	unsigned int usersize;
-#ifdef CONFIG_NETFILTER_XTABLES_COMPAT
+	/*
+	 * ANDROID: Adding this field to this structure breaks the KMI, so do not allow it to be
+	 * added within this structure.
+	 *
+	 * Instead, see struct compat_xt_match_ext and its usage below.
+	 */
+#ifdef CONFIG_BROKEN
 	unsigned int compatsize;
 #endif
 	unsigned int hooks;
@@ -217,7 +229,13 @@ struct xt_target {
 
 	/* Called when entry of this type deleted. */
 	void (*destroy)(const struct xt_tgdtor_param *);
-#ifdef CONFIG_NETFILTER_XTABLES_COMPAT
+	/*
+	 * ANDROID: Adding these fields to this structure breaks the KMI, so do not allow them to
+	 * be added within this structure.
+	 *
+	 * Instead, see struct compat_xt_target_ext and its usage below.
+	 */
+#ifdef CONFIG_BROKEN
 	/* Called when userspace align differs from kernel space one */
 	void (*compat_from_user)(void *dst, const void *src);
 	int (*compat_to_user)(void __user *dst, const void *src);
@@ -228,7 +246,13 @@ struct xt_target {
 	const char *table;
 	unsigned int targetsize;
 	unsigned int usersize;
-#ifdef CONFIG_NETFILTER_XTABLES_COMPAT
+	/*
+	 * ANDROID: Adding this field to this structure breaks the KMI, so do not allow it to be
+	 * added within this structure.
+	 *
+	 * Instead, see struct compat_xt_target_ext and its usage below.
+	 */
+#ifdef CONFIG_BROKEN
 	unsigned int compatsize;
 #endif
 	unsigned int hooks;
@@ -489,9 +513,6 @@ static inline field_type get_xt_match_##field(const struct xt_match *match)		\
 {											\
 	struct compat_xt_match_ext *match_ext;						\
 											\
-	if (match->field && (match->field != default_value))				\
-		return match->field;							\
-											\
 	if (match->has_compat_metadata) {						\
 		match_ext = container_of(match, struct compat_xt_match_ext, match);	\
 		return match_ext->field;						\
@@ -512,9 +533,6 @@ struct compat_xt_target_ext {
 static inline field_type get_xt_target_##field(const struct xt_target *target)		\
 {											\
 	struct compat_xt_target_ext *target_ext;					\
-											\
-	if (target->field && (target->field != default_value))				\
-		return target->field;							\
 											\
 	if (target->has_compat_metadata) {						\
 		target_ext = container_of(target, struct compat_xt_target_ext, target);	\
