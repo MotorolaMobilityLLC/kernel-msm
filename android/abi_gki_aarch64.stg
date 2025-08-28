@@ -104965,6 +104965,12 @@ member {
   bitsize: 1
 }
 member {
+  id: 0x3d367244
+  name: "has_compat_metadata"
+  type_id: 0x6d7f5ff6
+  offset: 368
+}
+member {
   id: 0x0f2de2c4
   name: "has_conns"
   type_id: 0x4585663f
@@ -286361,6 +286367,7 @@ struct_union {
     member_id: 0x7c00ef52
     member_id: 0x0dfb76d6
     member_id: 0x94a26ac4
+    member_id: 0x3d367244
     member_id: 0xe615f34c
     member_id: 0x67e96e72
     member_id: 0xa4fb8ecb
@@ -286410,6 +286417,7 @@ struct_union {
     member_id: 0x7c00ef52
     member_id: 0x0dfb76d6
     member_id: 0x94a26ac4
+    member_id: 0x3d367244
     member_id: 0xb39b94b9
     member_id: 0x67e9cc00
     member_id: 0xa4fb3edf
