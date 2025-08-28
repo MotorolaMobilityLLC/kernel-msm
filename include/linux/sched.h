@@ -1548,10 +1548,8 @@ struct task_struct {
 	union rv_task_monitor		rv[RV_PER_TASK_MONITORS];
 #endif
 
-	struct task_dma_buf_info *dmabuf_info;
-
 	ANDROID_KABI_USE(1, unsigned int saved_state);
-	ANDROID_KABI_RESERVE(2);
+	ANDROID_KABI_USE(2, struct task_dma_buf_info *dmabuf_info);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
 	ANDROID_KABI_RESERVE(5);
