@@ -3346,7 +3346,7 @@ static void __split_huge_page(struct page *page, struct list_head *list,
 
 	if (nr_dropped)
 		shmem_uncharge(head->mapping->host, nr_dropped);
-	remap_page(folio, nr, (can_split && PageAnon(head)) ? RMP_USE_SHARED_ZEROPAGE : 0);
+	remap_page(folio, nr, PageAnon(head) ? RMP_USE_SHARED_ZEROPAGE : 0);
 
 	for (i = 0; i < nr; i++) {
 		struct page *subpage = folio_dst_page(folio, i);
