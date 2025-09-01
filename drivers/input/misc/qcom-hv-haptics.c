@@ -3450,6 +3450,7 @@ static int haptics_runtime_resume_get(struct haptics_chip *chip)
 	if (!is_haptics_runtime_pm_enabled(chip))
 		return 0;
 
+	haptics_module_enable(chip, true);
 	return pm_runtime_resume_and_get(chip->dev);
 }
 
