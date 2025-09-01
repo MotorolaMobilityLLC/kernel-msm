@@ -161,8 +161,8 @@ static void __hyp_put_page(struct hyp_pool *pool, struct hyp_page *p)
 
 	if (hyp_page_ref_dec_and_test(p)) {
 		hyp_spin_lock(&pool->lock);
+		free_pages = pool->free_pages + (1ULL << p->order);
 		__hyp_attach_page(pool, p);
-		free_pages = pool->free_pages + (1 << p->order);
 		WRITE_ONCE(pool->free_pages, free_pages);
 		hyp_spin_unlock(&pool->lock);
 	}
@@ -219,7 +219,7 @@ void *hyp_alloc_pages(struct hyp_pool *pool, u8 order)
 
 	hyp_set_page_refcounted(p);
 
-	free_pages = pool->free_pages - (1 << p->order);
+	free_pages = pool->free_pages - (1ULL << p->order);
 	WRITE_ONCE(pool->free_pages, free_pages);
 	hyp_spin_unlock(&pool->lock);
 
