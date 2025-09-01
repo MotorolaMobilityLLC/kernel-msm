@@ -24,11 +24,8 @@
 #include <linux/wait.h>
 #include <linux/workqueue.h>
 #include <linux/android_kabi.h>
-#include <linux/kthread.h>
-#ifndef __GENKSYMS__
-#include <linux/atomic.h>
 #include <linux/refcount.h>
-#endif
+#include <linux/atomic.h>
 
 struct device;
 struct dma_buf;
@@ -536,29 +533,15 @@ struct dma_buf {
 	} *sysfs_entry;
 #endif
 
-	ANDROID_KABI_RESERVE(1);
-	ANDROID_KABI_RESERVE(2);
-};
-
-struct dma_buf_ext {
 	/**
 	 * @nr_task_refs:
 	 *
 	 * The number of tasks that reference this buffer. For calculating PSS.
 	 */
-	atomic64_t nr_task_refs;
+	ANDROID_KABI_USE(1, atomic64_t nr_task_refs);
 
-	/*
-	 * dma_buf can have a reservation object after it, so keep this member
-	 * at the end of this structure.
-	 */
-	struct dma_buf dmabuf;
+	ANDROID_KABI_RESERVE(2);
 };
-
-static inline struct dma_buf_ext *get_dmabuf_ext(struct dma_buf *dmabuf)
-{
-	return container_of(dmabuf, struct dma_buf_ext, dmabuf);
-}
 
 /**
  * struct dma_buf_attach_ops - importer operations for an attachment
@@ -665,6 +648,19 @@ struct dma_buf_export_info {
 };
 
 /**
+ * struct task_dma_buf_record and struct task_dma_buf_info will NEVER be exposed
+ * to vendor modules, except possibly via an opaque pointer. Their definitions
+ * can therefore be hidden from MODVERSIONS CRC machinery, allowing arbitrary
+ * future changes.
+ */
+#ifdef __GENKSYMS__
+
+struct task_dma_buf_record;
+struct task_dma_buf_info;
+
+#else
+
+/**
  * struct task_dma_buf_record - Holds the number of (VMA and FD) references to a
  * dmabuf by a collection of tasks that share both mm_struct and files_struct.
  * This is the list entry type for @task_dma_buf_info dmabufs list.
@@ -682,65 +678,31 @@ struct task_dma_buf_record {
 
 /**
  * struct task_dma_buf_info - Holds RSS and RSS HWM counters, and a list of
- * dmabufs for all tasks that share both mm_struct and files_struct.
+ * dmabufs for alltasks that share both mm_struct and files_struct.
  *
- * @rss: The sum of all dmabuf memory referenced by the tasks via memory
+ * @rss: The sum of all dmabuf memory referenced by the task(s) via memory
  *       mappings or file descriptors in bytes. Buffers referenced more than
  *       once by the process (multiple mmaps, multiple FDs, or any combination
  *       of both mmaps and FDs) only cause the buffer to be accounted to the
  *       process once. Partial mappings cause the full size of the buffer to be
  *       accounted, regardless of the size of the mapping.
- * @rss_hwm: The maximum value of @rss over the lifetime of this struct. (Unless,
+ * @rss_hwm: The maximum value of @rss over the lifetime of this struct. (Unless
  *           reset by userspace.)
  * @refcnt: The number of tasks sharing this struct.
- * @lock: Lock protecting writes for @rss, and reads/writes for @dmabufs.
- * @dmabufs: List of all dmabufs referenced by the tasks.
+ * @lock: Lock protecting @rss, @dmabufs, and @dmabuf_count.
+ * @dmabufs: List of all dmabufs referenced by the task(s).
+ * @dmabuf_count: The number of elements on the @dmabufs list.
  */
 struct task_dma_buf_info {
-	unsigned int rss;
-	unsigned int rss_hwm;
+	unsigned long rss;
+	unsigned long rss_hwm;
 	refcount_t refcnt;
 	spinlock_t lock;
 	struct list_head dmabufs;
-	size_t dmabuf_count;
+	unsigned int dmabuf_count;
 };
 
-static inline bool task_has_dma_buf_info(struct task_struct *task)
-{
-	/* init_task is the only kthread with its worker_private set to NULL */
-	return task != &init_task && (task->flags & PF_IO_WORKER) == 0;
-}
-
-static inline void set_task_dma_buf_info(struct task_struct *task,
-					 struct task_dma_buf_info *dmabuf_info)
-{
-	/* This should never happen unless this function is used incorrectly */
-	if (WARN_ON(!task_has_dma_buf_info(task)))
-		return;
-
-	if (task->flags & PF_KTHREAD)
-		set_kthread_dmabuf_info(task, dmabuf_info);
-	else
-		task->worker_private = dmabuf_info;
-}
-
-static inline
-struct task_dma_buf_info *get_task_dma_buf_info(struct task_struct *task)
-{
-	if (!task)
-		return ERR_PTR(-EINVAL);
-
-	if (!task_has_dma_buf_info(task))
-		return NULL;
-
-	if (!task->worker_private)
-		return ERR_PTR(-ENOMEM);
-
-	if (task->flags & PF_KTHREAD)
-		return get_kthread_dmabuf_info(task) ? : ERR_PTR(-ENOMEM);
-
-	return (struct task_dma_buf_info *)task->worker_private;
-}
+#endif
 
 /**
  * DEFINE_DMA_BUF_EXPORT_INFO - helper macro for exporters
@@ -843,6 +805,8 @@ int dma_buf_vmap_unlocked(struct dma_buf *dmabuf, struct iosys_map *map);
 void dma_buf_vunmap_unlocked(struct dma_buf *dmabuf, struct iosys_map *map);
 long dma_buf_set_name(struct dma_buf *dmabuf, const char *name);
 int dma_buf_get_flags(struct dma_buf *dmabuf, unsigned long *flags);
+struct dma_buf *dma_buf_iter_begin(void);
+struct dma_buf *dma_buf_iter_next(struct dma_buf *dmbuf);
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
 
