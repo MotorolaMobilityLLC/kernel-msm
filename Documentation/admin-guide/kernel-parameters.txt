@@ -2655,6 +2655,11 @@
 			(enabled). Disable by KVM if hardware lacks support
 			for NPT.
 
+	kvm-arm.hyp_lm_size_mb=
+			[KVM,ARM,EARLY] Maximum amount of contiguous memory mappable in
+			the pKVM hypervisor linear map, in MB. Any attempt to map more
+			memory than this into pKVM stage-1 at run-time may be fatal.
+
 	kvm-arm.mode=
 			[KVM,ARM] Select one of KVM/arm64's modes of operation.
 

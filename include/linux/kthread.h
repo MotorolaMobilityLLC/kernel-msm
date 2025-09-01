@@ -39,11 +39,6 @@ bool set_kthread_struct(struct task_struct *p);
 void kthread_set_per_cpu(struct task_struct *k, int cpu);
 bool kthread_is_per_cpu(struct task_struct *k);
 
-struct task_dma_buf_info;
-struct task_dma_buf_info *get_kthread_dmabuf_info(struct task_struct *tsk);
-void set_kthread_dmabuf_info(struct task_struct *tsk,
-			     struct task_dma_buf_info *dmabuf_info);
-
 /**
  * kthread_run - create and wake a thread.
  * @threadfn: the function to run until signal_pending(current).

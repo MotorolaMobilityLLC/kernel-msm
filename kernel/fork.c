@@ -453,7 +453,7 @@ struct kmem_cache *files_cachep;
 struct kmem_cache *fs_cachep;
 
 /* SLAB cache for vm_area_struct structures */
-struct kmem_cache *vm_area_cachep;
+static struct kmem_cache *vm_area_cachep;
 
 /* SLAB cache for mm_struct structures (tsk->mm) */
 static struct kmem_cache *mm_cachep;
@@ -1197,6 +1197,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	tsk->task_frag.page = NULL;
 	tsk->wake_q.next = NULL;
 	tsk->worker_private = NULL;
+	tsk->dmabuf_info = NULL;
 
 	kcov_task_init(tsk);
 	kmsan_task_create(tsk);
@@ -2511,20 +2512,14 @@ __latent_entropy struct task_struct *copy_process(
 	p->bpf_ctx = NULL;
 #endif
 
-	retval = copy_dmabuf_info(clone_flags, p);
-	if (retval) {
-		pr_err("failed to copy dmabuf accounting info, err %d\n", retval);
-		goto bad_fork_cleanup_policy;
-	}
-
 	/* Perform scheduler related setup. Assign this task to a CPU. */
 	retval = sched_fork(clone_flags, p);
 	if (retval)
-		goto bad_fork_cleanup_dmabuf;
+		goto bad_fork_cleanup_policy;
 
 	retval = perf_event_init_task(p, clone_flags);
 	if (retval)
-		goto bad_fork_cleanup_dmabuf;
+		goto bad_fork_cleanup_policy;
 	retval = audit_alloc(p);
 	if (retval)
 		goto bad_fork_cleanup_perf;
@@ -2637,6 +2632,12 @@ __latent_entropy struct task_struct *copy_process(
 	p->rethooks.first = NULL;
 #endif
 
+	retval = copy_dmabuf_info(clone_flags, p);
+	if (retval) {
+		pr_err("failed to copy dmabuf accounting info, err %d\n", retval);
+		goto bad_fork_put_pidfd;
+	}
+
 	/*
 	 * Ensure that the cgroup subsystem policies allow the new process to be
 	 * forked. It should be noted that the new process's css_set can be changed
@@ -2645,7 +2646,7 @@ __latent_entropy struct task_struct *copy_process(
 	 */
 	retval = cgroup_can_fork(p, args);
 	if (retval)
-		goto bad_fork_put_pidfd;
+		goto bad_fork_cleanup_dmabuf;
 
 	/*
 	 * Now that the cgroups are pinned, re-clone the parent cgroup and put
@@ -2790,6 +2791,8 @@ bad_fork_cancel_cgroup:
 	spin_unlock(&current->sighand->siglock);
 	write_unlock_irq(&tasklist_lock);
 	cgroup_cancel_fork(p, args);
+bad_fork_cleanup_dmabuf:
+	put_dmabuf_info(p);
 bad_fork_put_pidfd:
 	if (clone_flags & CLONE_PIDFD) {
 		fput(pidfile);
@@ -2827,8 +2830,6 @@ bad_fork_cleanup_audit:
 	audit_free(p);
 bad_fork_cleanup_perf:
 	perf_event_free_task(p);
-bad_fork_cleanup_dmabuf:
-	put_dmabuf_info(p);
 bad_fork_cleanup_policy:
 	lockdep_free_task(p);
 #ifdef CONFIG_NUMA
