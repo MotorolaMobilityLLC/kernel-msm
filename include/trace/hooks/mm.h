@@ -443,6 +443,18 @@ DECLARE_HOOK(android_vh_do_async_mmap_readahead,
 DECLARE_HOOK(android_vh_mm_free_page,
 	TP_PROTO(struct page *page),
 	TP_ARGS(page));
+DECLARE_HOOK(android_vh_page_cache_ra_unbounded,
+	TP_PROTO(struct address_space *mapping, struct folio *folio, u64 *data),
+	TP_ARGS(mapping, folio, data));
+DECLARE_HOOK(android_vh_force_page_cache_ra,
+	TP_PROTO(struct address_space *mapping, u64 *data),
+	TP_ARGS(mapping, data));
+DECLARE_HOOK(android_vh_filemap_fault_folio_locked,
+	TP_PROTO(struct inode *inode, struct folio *folio, pgoff_t index),
+	TP_ARGS(inode, folio, index));
+DECLARE_HOOK(android_vh_filemap_read_end,
+	TP_PROTO(struct inode *inode, struct folio **folios, unsigned int nr),
+	TP_ARGS(inode, folios, nr));
 
 DECLARE_HOOK(android_vh_cma_debug_show_areas,
 	TP_PROTO(bool *show),
