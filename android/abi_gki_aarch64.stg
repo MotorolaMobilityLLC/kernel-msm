@@ -386582,6 +386582,15 @@ elf_symbol {
   full_name: "devm_power_supply_register"
 }
 elf_symbol {
+  id: 0xd4544d3c
+  name: "devm_power_supply_register_no_ws"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xfc1c846e
+  type_id: 0x3bb8868a
+  full_name: "devm_power_supply_register_no_ws"
+}
+elf_symbol {
   id: 0x36be1a91
   name: "devm_pwm_get"
   is_defined: true
@@ -441847,6 +441856,7 @@ interface {
   symbol_id: 0xce4b7f5f
   symbol_id: 0x3600a769
   symbol_id: 0x7880f04e
+  symbol_id: 0xd4544d3c
   symbol_id: 0x36be1a91
   symbol_id: 0x46d775bd
   symbol_id: 0xeeb338c3
