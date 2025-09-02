@@ -7,6 +7,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/soc/qcom/smem.h>
+#include <linux/seq_buf.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/soc/qcom/sysmon_subsystem_stats.h>
@@ -1278,8 +1279,622 @@ static int master_cdsp_stats_show(struct seq_file *s, void *d)
 
 DEFINE_SHOW_ATTRIBUTE(master_cdsp_stats);
 
+/*
+    Dump adsp/cdsp stats by /sys/kernel/dsp_stats.
+    NOTE: the node size of sysfs PAGESIZE.
+*/
+static struct kset *moto_dsp_stats;
+
+static int sysfs_adsp_stats_show(struct seq_buf *s)
+{
+	int i = 0, j = 0, ret = 0;
+	u64 lpi_accumulated = 0;
+	u64 lpm_accumulated = 0;
+	u32 q6_load;
+	u8 ver = 0;
+	struct sysmon_smem_power_stats_extended *ptr = NULL, sysmon_power_stats = { 0 };
+
+	if (!g_sysmon_stats.smem_init_adsp)
+		sysmon_smem_init_adsp();
+
+	if (g_sysmon_stats.sysmon_event_stats_adsp) {
+		seq_buf_printf(s, "\nsysMon stats:\n\n");
+		seq_buf_printf(s, "Core clock(KHz): %d\n",
+				g_sysmon_stats.sysmon_event_stats_adsp->QDSP6_clk);
+		seq_buf_printf(s, "Ab vote(Bytes): %llu\n",
+				(((u64)g_sysmon_stats.sysmon_event_stats_adsp->Ab_vote_msb << 32) |
+					   g_sysmon_stats.sysmon_event_stats_adsp->Ab_vote_lsb));
+		seq_buf_printf(s, "Ib vote(Bytes): %llu\n",
+				(((u64)g_sysmon_stats.sysmon_event_stats_adsp->Ib_vote_msb << 32) |
+					   g_sysmon_stats.sysmon_event_stats_adsp->Ib_vote_lsb));
+		seq_buf_printf(s, "Sleep latency(usec): %u\n",
+				g_sysmon_stats.sysmon_event_stats_adsp->Sleep_latency > 0 ?
+				g_sysmon_stats.sysmon_event_stats_adsp->Sleep_latency : U32_MAX);
+	}
+
+	if (g_sysmon_stats.dsppm_stats_adsp) {
+		seq_buf_printf(s, "\nDSPPM stats:\n");
+		seq_buf_printf(s, "Version: %u\n", g_sysmon_stats.dsppm_stats_adsp->version);
+		seq_buf_printf(s, "Sleep latency(usec): %u\n",
+					g_sysmon_stats.dsppm_stats_adsp->latency_us ?
+					g_sysmon_stats.dsppm_stats_adsp->latency_us : U32_MAX);
+		seq_buf_printf(s, "Timestamp: %u\n", g_sysmon_stats.dsppm_stats_adsp->timestamp);
+
+		for (; i < DSPPMSTATS_NUMPD; i++) {
+			seq_buf_printf(s, "Pid: %d, Num active clients: %d\n",
+						g_sysmon_stats.dsppm_stats_adsp->pd[i].pid,
+						g_sysmon_stats.dsppm_stats_adsp->pd[i].num_active);
+		}
+	}
+
+	if (g_sysmon_stats.sleep_stats_adsp) {
+		lpm_accumulated = g_sysmon_stats.sleep_stats_adsp->accumulated;
+
+		if (g_sysmon_stats.sleep_stats_adsp->last_entered_at >
+					g_sysmon_stats.sleep_stats_adsp->last_exited_at)
+			lpm_accumulated += arch_timer_read_counter() -
+						g_sysmon_stats.sleep_stats_adsp->last_entered_at;
+
+		seq_buf_printf(s, "\nLPM stats:\n");
+		seq_buf_printf(s, "Count = %u\n", g_sysmon_stats.sleep_stats_adsp->count);
+		seq_buf_printf(s, "Last Entered At = %llu\n",
+			g_sysmon_stats.sleep_stats_adsp->last_entered_at);
+		seq_buf_printf(s, "Last Exited At = %llu\n",
+			g_sysmon_stats.sleep_stats_adsp->last_exited_at);
+		seq_buf_printf(s, "Accumulated Duration = %llu\n", lpm_accumulated);
+	}
+
+	if (g_sysmon_stats.sleep_lpi_adsp) {
+		lpi_accumulated = g_sysmon_stats.sleep_lpi_adsp->accumulated;
+
+		if (g_sysmon_stats.sleep_lpi_adsp->last_entered_at >
+					g_sysmon_stats.sleep_lpi_adsp->last_exited_at)
+			lpi_accumulated += arch_timer_read_counter() -
+					g_sysmon_stats.sleep_lpi_adsp->last_entered_at;
+
+		seq_buf_printf(s, "\nLPI stats:\n");
+		seq_buf_printf(s, "Count = %u\n", g_sysmon_stats.sleep_lpi_adsp->count);
+		seq_buf_printf(s, "Last Entered At = %llu\n",
+			g_sysmon_stats.sleep_lpi_adsp->last_entered_at);
+		seq_buf_printf(s, "Last Exited At = %llu\n",
+			g_sysmon_stats.sleep_lpi_adsp->last_exited_at);
+		seq_buf_printf(s, "Accumulated Duration = %llu\n",
+			lpi_accumulated);
+	}
+
+	if (g_sysmon_stats.sysmon_power_stats_adsp) {
+		memcpy(&sysmon_power_stats, g_sysmon_stats.sysmon_power_stats_adsp,
+				sizeof(struct sysmon_smem_power_stats_extended));
+		ptr = g_sysmon_stats.sysmon_power_stats_adsp;
+		ver = (ptr->powerstats.version) & 0xFF;
+
+		ret = add_delta_time(ver, lpi_accumulated,
+				lpm_accumulated, &sysmon_power_stats);
+
+		if (ret != 0)
+			seq_buf_printf(s, "\nWarning: Power Stats are might be Invalid\n");
+
+		seq_buf_printf(s, "\nPower Stats:\n");
+		for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+			if (sysmon_power_stats.powerstats.clk_arr[j]) {
+				if (ver >= 2) {
+					seq_buf_printf(s, "%u : Core Clock(KHz) : %u \tActive Time(sec) : %u \tLPI time(sec) : %u\n",
+						j,
+						sysmon_power_stats.powerstats.clk_arr[j],
+						sysmon_power_stats.powerstats.active_time[j],
+						sysmon_power_stats.powerstats.island_time[j]);
+				} else {
+					seq_buf_printf(s, "%u : Core Clock(KHz): %u \tActive Time(sec): %u\n",
+						j,
+						sysmon_power_stats.powerstats.clk_arr[j],
+						sysmon_power_stats.powerstats.active_time[j]);
+				}
+			}
+		}
+
+		seq_buf_printf(s, "Power collapse time(sec) = %u\n",
+			sysmon_power_stats.powerstats.pc_time);
+		seq_buf_printf(s, "Total LPI time(sec) = %u\n",
+			sysmon_power_stats.powerstats.lpi_time);
+		if (ver >= 2)
+			seq_buf_printf(s, "Current core clock(KHz) = %u\n",
+				sysmon_power_stats.powerstats.current_clk);
+	}
+
+	if (g_sysmon_stats.q6_avg_load_adsp) {
+		seq_buf_printf(s, "\nQ6 load:\n");
+		q6_load = sysmon_read_q6_load(ADSP);
+		seq_buf_printf(s, "Average Q6 load in KCPS = %u\n", q6_load);
+	}
+
+	return 0;
+}
+
+static int sysfs_cdsp_stats_show(struct seq_buf *s)
+{
+	int i = 0, j = 0, ret = 0;
+	u32 hmx_util, hvx_util;
+	u32 q6_load;
+	u64 lpm_accumulated = 0;
+	u8 ver = 0;
+	struct sysmon_smem_power_stats_extended *ptr = NULL, sysmon_power_stats = { 0 };
+
+	if (!g_sysmon_stats.smem_init_cdsp)
+		sysmon_smem_init_cdsp();
+
+	if (g_sysmon_stats.sysmon_event_stats_cdsp) {
+		seq_buf_printf(s, "\nsysMon stats:\n\n");
+		seq_buf_printf(s, "Core clock(KHz): %d\n",
+				g_sysmon_stats.sysmon_event_stats_cdsp->QDSP6_clk);
+		seq_buf_printf(s, "Ab vote(Bytes): %llu\n",
+				(((u64)g_sysmon_stats.sysmon_event_stats_cdsp->Ab_vote_msb << 32) |
+					   g_sysmon_stats.sysmon_event_stats_cdsp->Ab_vote_lsb));
+		seq_buf_printf(s, "Ib vote(Bytes): %llu\n",
+				(((u64)g_sysmon_stats.sysmon_event_stats_cdsp->Ib_vote_msb << 32) |
+					   g_sysmon_stats.sysmon_event_stats_cdsp->Ib_vote_lsb));
+		seq_buf_printf(s, "Sleep latency(usec): %u\n",
+				g_sysmon_stats.sysmon_event_stats_cdsp->Sleep_latency > 0 ?
+				g_sysmon_stats.sysmon_event_stats_cdsp->Sleep_latency : U32_MAX);
+	}
+
+	if (g_sysmon_stats.dsppm_stats_cdsp) {
+		seq_buf_printf(s, "\nDSPPM stats:\n");
+		seq_buf_printf(s, "Version: %u\n",
+			g_sysmon_stats.dsppm_stats_cdsp->version);
+		seq_buf_printf(s, "Sleep latency(usec): %u\n",
+			g_sysmon_stats.dsppm_stats_cdsp->latency_us ?
+			g_sysmon_stats.dsppm_stats_cdsp->latency_us : U32_MAX);
+		seq_buf_printf(s, "Timestamp: %u\n",
+			g_sysmon_stats.dsppm_stats_cdsp->timestamp);
+
+		for (; i < DSPPMSTATS_NUMPD; i++) {
+			seq_buf_printf(s, "Pid: %d, Num active clients: %d\n",
+						g_sysmon_stats.dsppm_stats_cdsp->pd[i].pid,
+						g_sysmon_stats.dsppm_stats_cdsp->pd[i].num_active);
+		}
+	}
+
+	if (g_sysmon_stats.sleep_stats_cdsp) {
+		lpm_accumulated = g_sysmon_stats.sleep_stats_cdsp->accumulated;
+
+		if (g_sysmon_stats.sleep_stats_cdsp->last_entered_at >
+					g_sysmon_stats.sleep_stats_cdsp->last_exited_at)
+			lpm_accumulated += arch_timer_read_counter() -
+						g_sysmon_stats.sleep_stats_cdsp->last_entered_at;
+
+		seq_buf_printf(s, "\nLPM stats:\n");
+		seq_buf_printf(s, "Count = %u\n",
+			g_sysmon_stats.sleep_stats_cdsp->count);
+		seq_buf_printf(s, "Last Entered At = %llu\n",
+			g_sysmon_stats.sleep_stats_cdsp->last_entered_at);
+		seq_buf_printf(s, "Last Exited At = %llu\n",
+			g_sysmon_stats.sleep_stats_cdsp->last_exited_at);
+		seq_buf_printf(s, "Accumulated Duration = %llu\n", lpm_accumulated);
+	}
+
+	if (g_sysmon_stats.sysmon_power_stats_cdsp) {
+		memcpy(&sysmon_power_stats, g_sysmon_stats.sysmon_power_stats_cdsp,
+				sizeof(struct sysmon_smem_power_stats_extended));
+		ptr = g_sysmon_stats.sysmon_power_stats_cdsp;
+		ver = (ptr->powerstats.version) & 0xFF;
+		ret = add_delta_time(ver, 0, lpm_accumulated, &sysmon_power_stats);
+
+		if (ret)
+			seq_buf_printf(s, "\nWarning: Power Stats might be Invalid\n");
+
+		seq_buf_printf(s, "\nPower Stats:\n");
+		for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+			if (sysmon_power_stats.powerstats.clk_arr[j])
+				seq_buf_printf(s, "%u : Core Clock(KHz) : %u \tActive Time(sec) : %u\n",
+					j,
+					sysmon_power_stats.powerstats.clk_arr[j],
+					sysmon_power_stats.powerstats.active_time[j]);
+		}
+		seq_buf_printf(s, "Power collapse time(sec) = %u\n",
+			sysmon_power_stats.powerstats.pc_time);
+		seq_buf_printf(s, "Total LPI time(sec) = %u\n",
+			sysmon_power_stats.powerstats.lpi_time);
+
+		if (ver >= 2)
+			seq_buf_printf(s, "Current core clock(KHz) = %u\n",
+				sysmon_power_stats.powerstats.current_clk);
+
+		if (ret)
+			return ret;
+
+	}
+
+	if (g_sysmon_stats.q6_avg_load_cdsp) {
+		seq_buf_printf(s, "\nQ6 load:\n");
+		q6_load = sysmon_read_q6_load(CDSP);
+		seq_buf_printf(s, "Average Q6 load in KCPS = %u\n", q6_load);
+	}
+
+	ret = sysmon_stats_query_hmx_utlization(&hmx_util);
+
+	if (ret) {
+		seq_buf_printf(s, "\nHMX stats not available, error code: %d\n", ret);
+	} else {
+		seq_buf_printf(s, "\nHMX stats:\n");
+		seq_buf_printf(s, "HMX utilization in percentage = %u\n", hmx_util);
+	}
+
+	ret = sysmon_stats_query_hvx_utlization(&hvx_util);
+
+	if (ret) {
+		seq_buf_printf(s, "\nHVX stats not available, error code: %d\n", ret);
+	} else {
+		seq_buf_printf(s, "\nHVX Stats:\n");
+		seq_buf_printf(s, "HVX utilization in percentage = %u\n", hvx_util);
+	}
+
+	return 0;
+}
+
+static ssize_t show_adsp_stats(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	struct seq_buf sbuf;
+
+	seq_buf_init(&sbuf, buf, PAGE_SIZE);
+	sysfs_adsp_stats_show(&sbuf);
+
+	return seq_buf_used(&sbuf);
+}
+
+static ssize_t show_adsp_clk(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	int clk = 0;
+	struct sysmon_smem_q6_event_stats events;
+
+	if (!sysmon_stats_query_q6_votes(ADSP, &events)) {
+		clk = events.QDSP6_clk;
+	}
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", clk);
+}
+
+//Output format: "[{ActiveTime, LPI Time}, ...], current_clk, sleep_latency"
+static ssize_t show_clk_stats(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	u8 ver = 0;
+	int j, ret = 0, first_clk = 0;
+	u64 lpi_accumulated = 0;
+	u64 lpm_accumulated = 0;
+	struct seq_buf s;
+	struct sysmon_smem_power_stats_extended *ptr = NULL, sysmon_power_stats = { 0 };
+
+	seq_buf_init(&s, buf, PAGE_SIZE);
+
+	if (!g_sysmon_stats.smem_init_adsp)
+		sysmon_smem_init_adsp();
+
+	if (g_sysmon_stats.sleep_lpi_adsp) {
+		lpi_accumulated = g_sysmon_stats.sleep_lpi_adsp->accumulated;
+
+		if (g_sysmon_stats.sleep_lpi_adsp->last_entered_at >
+					g_sysmon_stats.sleep_lpi_adsp->last_exited_at)
+			lpi_accumulated += arch_timer_read_counter() -
+					g_sysmon_stats.sleep_lpi_adsp->last_entered_at;
+	}
+	if (g_sysmon_stats.sleep_stats_adsp) {
+		lpm_accumulated = g_sysmon_stats.sleep_stats_adsp->accumulated;
+
+		if (g_sysmon_stats.sleep_stats_adsp->last_entered_at >
+					g_sysmon_stats.sleep_stats_adsp->last_exited_at)
+			lpm_accumulated += arch_timer_read_counter() -
+						g_sysmon_stats.sleep_stats_adsp->last_entered_at;
+	}
+
+	if (g_sysmon_stats.sysmon_power_stats_adsp) {
+		memcpy(&sysmon_power_stats, g_sysmon_stats.sysmon_power_stats_adsp,
+				sizeof(struct sysmon_smem_power_stats_extended));
+		ptr = g_sysmon_stats.sysmon_power_stats_adsp;
+		ver = (ptr->powerstats.version) & 0xFF;
+
+		ret = add_delta_time(ver, lpi_accumulated,
+				lpm_accumulated, &sysmon_power_stats);
+		if (ret != 0)
+			seq_buf_printf(&s, "(?), ");
+
+		for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+			if (sysmon_power_stats.powerstats.clk_arr[j]) {
+				first_clk = j;
+				break;
+			}
+		}
+
+		seq_buf_printf(&s, "[");
+		for (j = first_clk; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+			if (sysmon_power_stats.powerstats.clk_arr[j]) {
+				if (ver >= 2) {
+					if (first_clk == j) {
+						seq_buf_printf(&s, "{%u, %u}",
+							sysmon_power_stats.powerstats.active_time[j],
+							sysmon_power_stats.powerstats.island_time[j]);
+					} else {
+						seq_buf_printf(&s, ", {%u, %u}",
+							sysmon_power_stats.powerstats.active_time[j],
+							sysmon_power_stats.powerstats.island_time[j]);
+					}
+				} else {
+					if (first_clk == j) {
+						seq_buf_printf(&s, "%u",
+							sysmon_power_stats.powerstats.active_time[j]);
+					} else {
+						seq_buf_printf(&s, ", %u",
+							sysmon_power_stats.powerstats.active_time[j]);
+					}
+				}
+			}
+		}
+		seq_buf_printf(&s, "]");
+	}
+
+	if (g_sysmon_stats.sysmon_event_stats_adsp) {
+		seq_buf_printf(&s, ", %10d", g_sysmon_stats.sysmon_event_stats_adsp->QDSP6_clk);
+		seq_buf_printf(&s, ", %10u", g_sysmon_stats.sysmon_event_stats_adsp->Sleep_latency > 0 ?
+				g_sysmon_stats.sysmon_event_stats_adsp->Sleep_latency : U32_MAX);
+	}
+	seq_buf_printf(&s, "\n");
+
+	return seq_buf_used(&s);
+}
+
+static struct kobj_attribute adsp_stats_attr =
+	__ATTR(adsp_stats, 0444, show_adsp_stats, NULL);
+static struct kobj_attribute adsp_clk_attr =
+	__ATTR(clk, 0444, show_adsp_clk, NULL);
+static struct kobj_attribute clk_stats_attr =
+	__ATTR(clk_stats, 0444, show_clk_stats, NULL);
+
+static struct attribute *adsp_stats_attrs[] = {
+	&adsp_stats_attr.attr,
+	&adsp_clk_attr.attr,
+	&clk_stats_attr.attr,
+	NULL,
+};
+
+static struct attribute_group adsp_stats_attr_group = {
+	.attrs = adsp_stats_attrs,
+};
+
+static ssize_t show_cdsp_stats(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	struct seq_buf sbuf;
+
+	seq_buf_init(&sbuf, buf, PAGE_SIZE);
+	sysfs_cdsp_stats_show(&sbuf);
+
+	return seq_buf_used(&sbuf);
+}
+
+static ssize_t show_hvx_clk(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+    int clk = 0;
+    struct sysmon_smem_q6_event_stats events;
+
+    if (!sysmon_stats_query_q6_votes(CDSP, &events)) {
+        clk = events.QDSP6_clk;
+    }
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", clk);
+}
+
+static ssize_t show_hvx_util(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+    u32 util = 0;
+
+    sysmon_stats_query_hvx_utlization(&util);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", util);
+}
+
+//Format: "[ActiveTime, ...], current_clk, sleep_latency, hmx power, hmx clk"
+static ssize_t show_hvxclk_in_time(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	int j = 0, ret = 0, first_clk = 0;
+	u8 ver = 0;
+	u64 lpm_accumulated = 0;
+	struct seq_buf s;
+	struct sysmon_smem_power_stats_extended *ptr = NULL, sysmon_power_stats = { 0 };
+
+	seq_buf_init(&s, buf, PAGE_SIZE);
+
+	if (!g_sysmon_stats.smem_init_cdsp)
+		sysmon_smem_init_cdsp();
+
+	if (g_sysmon_stats.sleep_stats_cdsp) {
+		lpm_accumulated = g_sysmon_stats.sleep_stats_cdsp->accumulated;
+
+		if (g_sysmon_stats.sleep_stats_cdsp->last_entered_at >
+					g_sysmon_stats.sleep_stats_cdsp->last_exited_at)
+			lpm_accumulated += arch_timer_read_counter() -
+						g_sysmon_stats.sleep_stats_cdsp->last_entered_at;
+	}
+
+	if (g_sysmon_stats.sysmon_power_stats_cdsp) {
+		memcpy(&sysmon_power_stats, g_sysmon_stats.sysmon_power_stats_cdsp,
+				sizeof(struct sysmon_smem_power_stats_extended));
+		ptr = g_sysmon_stats.sysmon_power_stats_cdsp;
+		ver = (ptr->powerstats.version) & 0xFF;
+
+		ret = add_delta_time(ver, 0, lpm_accumulated, &sysmon_power_stats);
+		if (ret)
+			seq_buf_printf(&s, "(?), ");
+
+		for (j = 0; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+			if (sysmon_power_stats.powerstats.clk_arr[j]) {
+				first_clk = j;
+				break;
+			}
+		}
+
+		seq_buf_printf(&s, "[");
+		for (j = first_clk; j < SYSMON_POWER_STATS_MAX_CLK_LEVELS; j++) {
+			if (sysmon_power_stats.powerstats.clk_arr[j]) {
+				if (j == first_clk) {
+					seq_buf_printf(&s, "%u",
+					sysmon_power_stats.powerstats.active_time[j]);
+				} else {
+					seq_buf_printf(&s, ", %u",
+					sysmon_power_stats.powerstats.active_time[j]);
+				}
+			}
+		}
+		seq_buf_printf(&s, "]");
+	}
+
+	if (g_sysmon_stats.sysmon_event_stats_cdsp) {
+		seq_buf_printf(&s, ", %10d",
+				g_sysmon_stats.sysmon_event_stats_cdsp->QDSP6_clk);
+
+		seq_buf_printf(&s, ", %10u",
+			g_sysmon_stats.sysmon_event_stats_cdsp->Sleep_latency > 0  ?
+			g_sysmon_stats.sysmon_event_stats_cdsp->Sleep_latency : U32_MAX);
+	}
+
+	seq_buf_printf(&s, "\n");
+
+	return seq_buf_used(&s);
+}
+
+#if 0
+static ssize_t show_hmx_clk(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+    int clk = 0;
+    struct sysmon_smem_q6_event_stats events;
+
+    if (!sysmon_stats_query_q6_votes(CDSP, &events)) {
+        //clk = events.HMX_clk > 0 ? events.HMX_clk : 0;
+    }
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", clk);
+}
+#endif
+
+static ssize_t show_hmx_util(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+    u32 util = 0;
+
+    sysmon_stats_query_hmx_utlization(&util);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", util);
+}
+
+#if 0
+static ssize_t show_hmx_power(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+    int power = 0;
+    struct sysmon_smem_q6_event_stats events;
+
+    if (!sysmon_stats_query_q6_votes(CDSP, &events)) {
+        power = events.HMX_Power_state > 0 ? events.HMX_Power_state : 0;
+    }
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", power);
+}
+#endif
+
+static struct kobj_attribute cdsp_stats_attr =
+	__ATTR(cdsp_stats, 0444, show_cdsp_stats, NULL);
+static struct kobj_attribute cdsp_hvx_clk_attr =
+	__ATTR(hvx_clk, 0444, show_hvx_clk, NULL);
+static struct kobj_attribute cdsp_hvx_util_attr =
+	__ATTR(hvx_util, 0444, show_hvx_util, NULL);
+static struct kobj_attribute cdsp_hvxclk_in_time_attr =
+	__ATTR(clk_stats, 0444, show_hvxclk_in_time, NULL);
+//static struct kobj_attribute cdsp_hmx_clk_attr =
+	//__ATTR(hmx_clk, 0444, show_hmx_clk, NULL);
+static struct kobj_attribute cdsp_hmx_util_attr =
+	__ATTR(hmx_util, 0444, show_hmx_util, NULL);
+//static struct kobj_attribute cdsp_hmx_power_attr =
+	//__ATTR(hmx_power, 0444, show_hmx_power, NULL);
+
+static struct attribute *cdsp_stats_attrs[] = {
+	&cdsp_stats_attr.attr,
+	&cdsp_hvx_clk_attr.attr,
+	&cdsp_hvx_util_attr.attr,
+	&cdsp_hvxclk_in_time_attr.attr,
+	//&cdsp_hmx_clk_attr.attr,
+	&cdsp_hmx_util_attr.attr,
+	//&cdsp_hmx_power_attr.attr,
+	NULL,
+};
+
+static struct attribute_group cdsp_stats_attr_group = {
+	.attrs = cdsp_stats_attrs,
+};
+
+static int sysfs_kernel_dsp_stats_init(void)
+{
+	int ret = 0;
+    struct kset *adsp_kset, *cdsp_kset;
+	struct kobject *module_kobj, *adsp_kobj, *cdsp_kobj;
+
+	moto_dsp_stats = kset_create_and_add("dsp_stats", NULL, kernel_kobj);
+	if (!moto_dsp_stats) {
+		pr_err("moto_dsp_stats: memory is not enough\n");
+		ret = -ENOMEM;
+        goto failed;
+	}
+
+	module_kobj = &moto_dsp_stats->kobj;
+
+	adsp_kset = kset_create_and_add("adsp", NULL, module_kobj);
+	if (!adsp_kset) {
+		pr_err("adsp_stats: memory is not enough\n");
+		ret = -ENOMEM;
+        goto adsp_failed;
+	}
+    adsp_kobj = &adsp_kset->kobj;
+
+	cdsp_kset = kset_create_and_add("cdsp", NULL, module_kobj);
+	if (!cdsp_kset) {
+		pr_err("cdsp_stats: memory is not enough\n");
+		ret = -ENOMEM;
+        goto cdsp_failed;
+	}
+    cdsp_kobj = &cdsp_kset->kobj;
+
+	ret = sysfs_create_group(adsp_kobj, &adsp_stats_attr_group);
+	if (ret) {
+		pr_err("adsp_stats: Failed to create adsp sysfs\n");
+		goto dsp_failed;
+	}
+
+	ret = sysfs_create_group(cdsp_kobj, &cdsp_stats_attr_group);
+	if (ret) {
+		pr_err("cdsp_stats: Failed to create cdsp sysfs\n");
+		goto adsp_grp_failed;
+	}
+
+    return 0;
+
+adsp_grp_failed:
+    sysfs_remove_group(adsp_kobj, &adsp_stats_attr_group);
+dsp_failed:
+    kset_unregister(cdsp_kset);
+cdsp_failed:
+    kset_unregister(adsp_kset);
+adsp_failed:
+    kset_unregister(moto_dsp_stats);
+failed:
+    return ret;
+}
+
 static int  __init sysmon_stats_init(void)
 {
+	sysfs_kernel_dsp_stats_init();
 
 	g_sysmon_stats.debugfs_dir = debugfs_create_dir("sysmon_subsystem_stats", NULL);
 
