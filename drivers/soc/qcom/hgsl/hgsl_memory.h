@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef HGSL_MEMORY_INCLUDED
@@ -49,6 +49,11 @@ enum gsl_user_mem_type_t {
 	GSL_USER_MEM_TYPE_ION          = 0x00000003
 };
 
+struct hgsl_cache_flags {
+	bool default_iocoherency;
+	bool writecombine_enable;
+};
+
 struct hgsl_mem_node {
 	struct rb_node             mem_rb_node;
 	struct gsl_memdesc_t       memdesc;
@@ -66,7 +71,7 @@ struct hgsl_mem_node {
 	void                      *vmapping;
 	uint32_t                  vmap_count;
 	uint32_t                  flags;
-	bool                      default_iocoherency;
+	struct hgsl_cache_flags   cache_flags;
 	char                      metainfo[HGSL_MEM_META_MAX_SIZE];
 };
 
@@ -80,7 +85,7 @@ int hgsl_mem_cache_op(struct device *dev, struct hgsl_mem_node *mem_node,
 
 void hgsl_put_sgt(struct hgsl_mem_node *mem_node, bool internal);
 
-void *hgsl_mem_node_zalloc(bool iocoherency);
+void *hgsl_mem_node_zalloc(struct hgsl_cache_flags cache_flags);
 
 int hgsl_mem_add_node(struct rb_root *rb_root,
 		struct hgsl_mem_node *mem_node);
