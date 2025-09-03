@@ -451,6 +451,7 @@
   __traceiter_android_vh_swapmem_gather_finish
   __traceiter_android_vh_swapmem_gather_init
   __traceiter_android_vh_sysrq_crash
+  __traceiter_android_vh_throttle_direct_reclaim_bypass
   __traceiter_android_vh_timer_calc_index
   __traceiter_android_vh_try_to_freeze_todo
   __traceiter_android_vh_try_to_freeze_todo_unfrozen
@@ -661,6 +662,7 @@
   __tracepoint_android_vh_show_resume_epoch_val
   __tracepoint_android_vh_show_suspend_epoch_val
   __tracepoint_android_vh_sysrq_crash
+  __tracepoint_android_vh_throttle_direct_reclaim_bypass
   __tracepoint_android_vh_timer_calc_index
   __tracepoint_android_vh_try_to_unmap_one
   __tracepoint_android_vh_try_to_freeze_todo

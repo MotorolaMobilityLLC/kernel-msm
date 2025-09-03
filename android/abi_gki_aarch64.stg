@@ -351443,6 +351443,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_thermal_unregister"
 }
 elf_symbol {
+  id: 0xa00355c9
+  name: "__traceiter_android_vh_throttle_direct_reclaim_bypass"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x83afa317
+  type_id: 0x9be885da
+  full_name: "__traceiter_android_vh_throttle_direct_reclaim_bypass"
+}
+elf_symbol {
   id: 0xfeff2e7f
   name: "__traceiter_android_vh_timer_calc_index"
   is_defined: true
@@ -356778,6 +356787,15 @@ elf_symbol {
   crc: 0x5ba0a594
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_thermal_unregister"
+}
+elf_symbol {
+  id: 0xd292bd77
+  name: "__tracepoint_android_vh_throttle_direct_reclaim_bypass"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xef18bb03
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_throttle_direct_reclaim_bypass"
 }
 elf_symbol {
   id: 0x69721329
@@ -421808,6 +421826,7 @@ interface {
   symbol_id: 0x6befbf23
   symbol_id: 0x226cc38b
   symbol_id: 0xeecc1529
+  symbol_id: 0xa00355c9
   symbol_id: 0xfeff2e7f
   symbol_id: 0x641d703d
   symbol_id: 0xeac5f4dd
@@ -422401,6 +422420,7 @@ interface {
   symbol_id: 0x6f25dd05
   symbol_id: 0xa5c71571
   symbol_id: 0xfa3284c7
+  symbol_id: 0xd292bd77
   symbol_id: 0x69721329
   symbol_id: 0x2df766e3
   symbol_id: 0x0896a337
