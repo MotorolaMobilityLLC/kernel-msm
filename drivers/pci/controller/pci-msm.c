@@ -6853,14 +6853,6 @@ static void msm_pcie_disable(struct msm_pcie_dev_t *dev)
 	/* Enable override for fal10_veto logic to assert Qactive signal.*/
 	msm_pcie_write_mask(dev->parf + PCIE20_PARF_CFG_BITS_3, 0, BIT(0));
 
-	/* Use CESTA to turn off the resources */
-	if (dev->pcie_sm) {
-		ret = msm_pcie_cesta_map_apply(dev, D3COLD_STATE);
-		if (ret)
-			PCIE_ERR(dev, "Failed to move to D3 cold state %d\n",
-									ret);
-	}
-
 	/* Assert, De-assert the pipe reset */
 	msm_pcie_pipe_reset(dev);
 
@@ -6872,6 +6864,14 @@ static void msm_pcie_disable(struct msm_pcie_dev_t *dev)
 
 	/* ensure that changes propagated to the hardware */
 	wmb();
+
+	/* Use CESTA to turn off the resources */
+	if (dev->pcie_sm) {
+		ret = msm_pcie_cesta_map_apply(dev, D3COLD_STATE);
+		if (ret)
+			PCIE_ERR(dev, "Failed to move to D3 cold state %d\n",
+									ret);
+	}
 
 	msm_pcie_clk_deinit(dev);
 	msm_pcie_gdsc_deinit(dev);
