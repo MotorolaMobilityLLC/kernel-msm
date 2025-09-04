@@ -114949,6 +114949,12 @@ member {
   offset: 296
 }
 member {
+  id: 0x085b3bc9
+  name: "internal_flags"
+  type_id: 0x4585663f
+  offset: 1184
+}
+member {
   id: 0x589ca94a
   name: "internal_idx"
   type_id: 0x6720d32f
@@ -239561,6 +239567,7 @@ struct_union {
     member_id: 0x2d0fa9fb
     member_id: 0x25732f5e
     member_id: 0x6d30506c
+    member_id: 0x085b3bc9
     member_id: 0x1b7ec983
     member_id: 0x75d72bf4
   }

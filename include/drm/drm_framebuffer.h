@@ -192,10 +192,6 @@ struct drm_framebuffer {
 	 */
 	int flags;
 	/**
-	 * @internal_flags: Framebuffer flags like DRM_FRAMEBUFFER_HAS_HANDLE_REF.
-	 */
-	unsigned int internal_flags;
-	/**
 	 * @hot_x: X coordinate of the cursor hotspot. Used by the legacy cursor
 	 * IOCTL when the driver supports cursor through a DRM_PLANE_TYPE_CURSOR
 	 * universal plane.
@@ -207,6 +203,12 @@ struct drm_framebuffer {
 	 * universal plane.
 	 */
 	int hot_y;
+#ifndef __GENKSYMS__  //Placing this in a hole in the structure
+	/**
+	 * @internal_flags: Framebuffer flags like DRM_FRAMEBUFFER_HAS_HANDLE_REF.
+	 */
+	unsigned int internal_flags;
+#endif
 	/**
 	 * @filp_head: Placed on &drm_file.fbs, protected by &drm_file.fbs_lock.
 	 */
