@@ -244,6 +244,20 @@ static void qrtr_port_put(struct qrtr_sock *ipc);
 static int qrtr_parse_header(struct qrtr_cb *cb, size_t *hdrlen, unsigned int *size,
 			     const void *data);
 
+static int wakeup_source = 0;
+int get_qrtr_wakeup_source(void)
+{
+	int ret = wakeup_source;
+	wakeup_source = 0;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(get_qrtr_wakeup_source);
+static void set_qrtr_wakeup_source(int src_node, int src_port)
+{
+	wakeup_source = src_node << 16 | src_port;
+}
+
 void qrtr_print_wakeup_reason(const void *data)
 {
 	struct qrtr_cb cb;
@@ -260,6 +274,7 @@ void qrtr_print_wakeup_reason(const void *data)
 
 	size = (sizeof(preview) > size) ? size : sizeof(preview);
 	memcpy(&preview, data + hdrlen, size);
+	set_qrtr_wakeup_source(cb.src_node, cb.src_port);
 
 	pr_info("%s: src[0x%x:0x%x] dst[0x%x:0x%x] [%08x %08x] service[0x%x]\n",
 		__func__,
