@@ -234,6 +234,20 @@ static struct qrtr_sock *qrtr_port_lookup(int port);
 static void qrtr_port_put(struct qrtr_sock *ipc);
 static void qrtr_handle_del_proc(struct qrtr_node *node, struct sk_buff *skb);
 
+static int wakeup_source = 0;
+int get_qrtr_wakeup_source(void)
+{
+	int ret = wakeup_source;
+	wakeup_source = 0;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(get_qrtr_wakeup_source);
+static void set_qrtr_wakeup_source(int src_node, int src_port)
+{
+	wakeup_source = src_node << 16 | src_port;
+}
+
 static void qrtr_log_tx_msg(struct qrtr_node *node, struct qrtr_hdr_v1 *hdr,
 			    struct sk_buff *skb)
 {
@@ -376,6 +390,7 @@ void qrtr_print_wakeup_reason(const void *data)
 
 	size = (sizeof(preview) > size) ? size : sizeof(preview);
 	memcpy(&preview, data + hdrlen, size);
+	set_qrtr_wakeup_source(cb.src_node, cb.src_port);
 
 	pr_info("%s: src[0x%x:0x%x] dst[0x%x:0x%x] [%08x %08x] service[0x%x]\n",
 		__func__,
