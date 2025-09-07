@@ -3020,12 +3020,8 @@ static const struct dmi_system_id bridge_d3_blacklist[] = {
  * pci_bridge_d3_possible - Is it possible to put the bridge into D3
  * @bridge: Bridge to check
  *
- * Currently we only allow D3 for some PCIe ports and for Thunderbolt.
- *
- * Return: Whether it is possible to move the bridge to D3.
- *
- * The return value is guaranteed to be constant across the entire lifetime
- * of the bridge, including its hot-removal.
+ * This function checks if it is possible to move the bridge to D3.
+ * Currently we only allow D3 for recent enough PCIe ports and Thunderbolt.
  */
 bool pci_bridge_d3_possible(struct pci_dev *bridge)
 {
