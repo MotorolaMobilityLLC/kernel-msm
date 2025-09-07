@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/cache.h>
@@ -171,7 +171,7 @@ module_param_array(key_modules, charp, &n_modump, 0644);
 #endif	/* CONFIG_MODULES */
 #endif
 
-#define FREQ_LOG_MAX	10
+#define FREQ_LOG_IDX_MASK	0xF
 
 static int register_stack_entry(struct md_region *ksp_entry, u64 sp, u64 size)
 {
@@ -1382,8 +1382,8 @@ struct freq_log {
 };
 
 struct freq_hist {
-	uint32_t idx;
-	struct freq_log log[FREQ_LOG_MAX];
+	atomic_t idx;
+	struct freq_log log[FREQ_LOG_IDX_MASK + 1];
 };
 
 static int max_cluster;
@@ -1399,10 +1399,9 @@ static void log_cpu_freq(void *unused,
 
 	if (cluster > max_cluster)
 		return;
-	index = cpuclk_log[cluster].idx;
+	index = atomic_fetch_inc(&cpuclk_log[cluster].idx) & FREQ_LOG_IDX_MASK;
 	cpuclk_log[cluster].log[index].ktime = sched_clock();
 	cpuclk_log[cluster].log[index].freq = *target_freq;
-	cpuclk_log[cluster].idx = (index + 1) % FREQ_LOG_MAX;
 }
 
 static void register_cpufreq_log(void)
