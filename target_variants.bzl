@@ -45,6 +45,7 @@ le_32_variants = [
 
 le_64_targets = [
     # keep sorted
+    "neo-le",
     "pineapple-le",
 ]
 

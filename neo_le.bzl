@@ -8,7 +8,6 @@ def define_neo_le():
     _neo_in_tree_modules = [
         # keep sorted
         "drivers/base/regmap/qti-regmap-debugfs.ko",
-        "drivers/base/regmap/regmap-spmi.ko",
         "drivers/bus/mhi/controllers/mhi_cntrl_qcom.ko",
         "drivers/bus/mhi/devices/mhi_dev_dtr.ko",
         "drivers/bus/mhi/devices/mhi_dev_netdev.ko",
@@ -65,7 +64,6 @@ def define_neo_le():
         "drivers/interconnect/qcom/icc-bcm-voter.ko",
         "drivers/interconnect/qcom/icc-debug.ko",
         "drivers/interconnect/qcom/icc-rpmh.ko",
-        "drivers/interconnect/qcom/interconnect_qcom.ko",
         "drivers/interconnect/qcom/qnoc-neo.ko",
         "drivers/interconnect/qcom/qnoc-qos.ko",
         "drivers/iommu/arm/arm-smmu/arm_smmu.ko",
@@ -73,7 +71,6 @@ def define_neo_le():
         "drivers/iommu/msm_dma_iommu_mapping.ko",
         "drivers/iommu/qcom_iommu_debug.ko",
         "drivers/iommu/qcom_iommu_util.ko",
-        "drivers/irqchip/msm_show_resume_irq.ko",
         "drivers/irqchip/qcom-pdc.ko",
         "drivers/leds/leds-aw2016.ko",
         "drivers/mailbox/msm_qmp.ko",
@@ -83,7 +80,6 @@ def define_neo_le():
         "drivers/misc/qseecom_proxy.ko",
         "drivers/mmc/host/cqhci.ko",
         "drivers/mmc/host/sdhci-msm.ko",
-        "drivers/mmc/host/sdhci-msm-scaling.ko",
         "drivers/nvmem/nvmem_qcom-spmi-sdam.ko",
         "drivers/nvmem/nvmem_qfprom.ko",
         "drivers/pci/controller/pci-msm-drv.ko",
@@ -147,6 +143,7 @@ def define_neo_le():
         "drivers/soc/qcom/qcom_cpu_vendor_hooks.ko",
         "drivers/soc/qcom/qcom_cpuss_sleep_stats.ko",
         "drivers/soc/qcom/qcom_hib.ko",
+        "drivers/soc/qcom/qcom_logbuf_boot_log.ko",
         "drivers/soc/qcom/qcom_logbuf_vendor_hooks.ko",
         "drivers/soc/qcom/qcom_ramdump.ko",
         "drivers/soc/qcom/qcom_rpmh.ko",
@@ -201,6 +198,9 @@ def define_neo_le():
 
     _neo_debug_in_tree_modules = _neo_in_tree_modules + [
         # keep sorted
+        "drivers/hwtracing/coresight/coresight-etm4x.ko",
+        "drivers/misc/lkdtm/lkdtm.ko",
+        "kernel/sched/walt/sched-walt-debug.ko",
     ]
 
     kernel_vendor_cmdline_extras = [
@@ -223,7 +223,7 @@ def define_neo_le():
             in_tree_module_list = mod_list,
             target_variants = le_64_variants,
             boot_image_opts = boot_image_opts(
-                boot_image_header_version = 4,
+                boot_image_header_version = 3,
                 base_address = 0x80000000,
                 page_size = 4096,
             ),
