@@ -251,7 +251,7 @@ struct qcom_hgsl {
 	struct idr isync_timeline_idr;
 	spinlock_t isync_timeline_lock;
 	atomic64_t total_mem_size;
-	bool default_iocoherency;
+	struct hgsl_cache_flags cache_flags;
 
 	/* Debug nodes */
 	struct kobject sysfs;
