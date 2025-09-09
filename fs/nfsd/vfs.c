@@ -1970,11 +1970,9 @@ out_nfserr:
 			err = nfserr_file_open;
 		else
 			err = nfserr_acces;
-	} else {
-		err = nfserrno(host_err);
 	}
 out:
-	return err;
+	return err != nfs_ok ? err : nfserrno(host_err);
 out_unlock:
 	inode_unlock(dirp);
 	goto out_drop_write;
