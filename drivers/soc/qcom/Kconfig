@@ -105,6 +105,16 @@ config MOT_DRV_OIS_DEINIT
         help
           This is enabling OIS deinit gyro aux when camera close.
 
+config MOT_STABILITY_FIXES
+	default n
+	bool "enable stability fixes"
+	help
+	  This is enabling Motorola stability fixes of issues.
+	  Workarounds of errors reported by Tscancode.
+	  Potential null pointer dereferences.
+	  Array out-of-bounds access.
+	  Other issues reported by static analysis.
+
 config CAM_SENSOR_PROBE_DEBUG
 	default n
 	bool "enable camera sensor probe debug"
