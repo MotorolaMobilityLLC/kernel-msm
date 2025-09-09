@@ -23744,6 +23744,11 @@ pointer_reference {
   pointee_type_id: 0xe2529298
 }
 pointer_reference {
+  id: 0x3206a113
+  kind: POINTER
+  pointee_type_id: 0xe25a62d2
+}
+pointer_reference {
   id: 0x320871e3
   kind: POINTER
   pointee_type_id: 0xe2612112
@@ -34662,6 +34667,11 @@ qualified {
   id: 0xe2529298
   qualifier: CONST
   qualified_type_id: 0xf90dfce8
+}
+qualified {
+  id: 0xe25a62d2
+  qualifier: CONST
+  qualified_type_id: 0xf92e3dc3
 }
 qualified {
   id: 0xe28bb7e5
@@ -313984,6 +313994,12 @@ function {
   parameter_id: 0xa52a0930
 }
 function {
+  id: 0x90175ef3
+  return_type_id: 0x6720d32f
+  parameter_id: 0x3206a113
+  parameter_id: 0x4585663f
+}
+function {
   id: 0x9017f3f4
   return_type_id: 0x6720d32f
   parameter_id: 0x391f15ea
@@ -396247,6 +396263,15 @@ elf_symbol {
   full_name: "pinctrl_register"
 }
 elf_symbol {
+  id: 0xa425fc80
+  name: "pinctrl_register_mappings"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x7ad1ded1
+  type_id: 0x90175ef3
+  full_name: "pinctrl_register_mappings"
+}
+elf_symbol {
   id: 0xba770aa5
   name: "pinctrl_remove_gpio_range"
   is_defined: true
@@ -426182,6 +426207,7 @@ interface {
   symbol_id: 0xd1503081
   symbol_id: 0x689f5b8d
   symbol_id: 0x287a4dba
+  symbol_id: 0xa425fc80
   symbol_id: 0xba770aa5
   symbol_id: 0x7c38f5dc
   symbol_id: 0x0c39a57f
