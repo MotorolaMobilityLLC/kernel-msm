@@ -2348,7 +2348,6 @@ static void gsi_free_trbs(struct usb_ep *ep, struct usb_gsi_request *req)
 	sg_free_table(&req->sgt_data_buff);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,134)
 static int gsi_set_xfer_resource(struct dwc3_ep *dep)
 {
 	struct dwc3_gadget_ep_cmd_params params;
@@ -2369,7 +2368,6 @@ static int gsi_set_xfer_resource(struct dwc3_ep *dep)
 	dep->flags |= DWC3_EP_RESOURCE_ALLOCATED;
 	return 0;
 }
-#endif
 
 /**
  * Configures GSI EPs. For GSI EPs we need to set interrupter numbers.
@@ -2388,9 +2386,7 @@ static void gsi_configure_ep(struct usb_ep *ep, struct usb_gsi_request *request)
 	int n = request->ep_intr_num - 1;
 	u32 reg;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,134)
 	gsi_set_xfer_resource(dep);
-#endif
 	/* setup dummy doorbell as IPA connection isn't setup yet */
 	dwc3_msm_write_reg(mdwc->base, GSI_DBL_ADDR_H(mdwc->gsi_reg, n),
 			upper_32_bits(mdwc->dummy_gsi_db_dma));
