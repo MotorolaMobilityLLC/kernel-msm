@@ -31,6 +31,7 @@ static inline int qcom_secure_carveout_heap_restore(void) { return 0; }
 #if defined(CONFIG_QCOM_DMABUF_HEAPS_CARVEOUT) && defined(CONFIG_QCOM_DMABUF_HEAPS_SC_TCM)
 int qcom_sc_tcm_carveout_heap_create(struct platform_heap *heap_data);
 extern void *sc_tcm_mem_alloc(u64 len);
+extern void sc_tcm_mem_free(void *ptr, u64 len);
 #else
 static inline int qcom_sc_tcm_carveout_heap_create(struct platform_heap *heap_data)
 {
