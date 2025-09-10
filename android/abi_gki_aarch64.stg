@@ -2614,6 +2614,11 @@ pointer_reference {
   pointee_type_id: 0x0e39f770
 }
 pointer_reference {
+  id: 0x091f52f7
+  kind: POINTER
+  pointee_type_id: 0x0e3dad42
+}
+pointer_reference {
   id: 0x092632cb
   kind: POINTER
   pointee_type_id: 0x0ed82db2
@@ -234307,6 +234312,11 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x0e3dad42
+  kind: STRUCT
+  name: "class_compat"
+}
+struct_union {
   id: 0x48a13124
   kind: STRUCT
   name: "class_datum"
@@ -323238,6 +323248,11 @@ function {
   parameter_id: 0x0bb4e60f
 }
 function {
+  id: 0x6424be43
+  return_type_id: 0x091f52f7
+  parameter_id: 0x3e10b518
+}
+function {
   id: 0x643d13df
   return_type_id: 0x054f691a
   parameter_id: 0x32a623d7
@@ -379588,6 +379603,15 @@ elf_symbol {
   full_name: "check_zeroed_user"
 }
 elf_symbol {
+  id: 0x61d03c8a
+  name: "class_compat_register"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x32c3cb4e
+  type_id: 0x6424be43
+  full_name: "class_compat_register"
+}
+elf_symbol {
   id: 0xb5759473
   name: "class_create"
   is_defined: true
@@ -407342,6 +407366,15 @@ elf_symbol {
   crc: 0xbb305a91
   type_id: 0x9d19aa55
   full_name: "mmc_select_timing"
+}
+elf_symbol {
+  id: 0xfd26acf1
+  name: "mmc_send_abort_tuning"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x40d95903
+  type_id: 0x9322918f
+  full_name: "mmc_send_abort_tuning"
 }
 elf_symbol {
   id: 0xfb31b7b7
@@ -441086,6 +441119,7 @@ interface {
   symbol_id: 0xb86aeda2
   symbol_id: 0x91718d34
   symbol_id: 0x65e5fa26
+  symbol_id: 0x61d03c8a
   symbol_id: 0xb5759473
   symbol_id: 0x2a71a0e1
   symbol_id: 0x4a8d54b6
@@ -444162,6 +444196,7 @@ interface {
   symbol_id: 0x0399dc23
   symbol_id: 0x10fd9f55
   symbol_id: 0xd0f0d35f
+  symbol_id: 0xfd26acf1
   symbol_id: 0xfb31b7b7
   symbol_id: 0xfe0604fe
   symbol_id: 0x0654cb12
