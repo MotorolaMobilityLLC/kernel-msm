@@ -384021,6 +384021,15 @@ elf_symbol {
   full_name: "dev_pm_opp_find_freq_ceil"
 }
 elf_symbol {
+  id: 0xb411a3b0
+  name: "dev_pm_opp_find_freq_ceil_indexed"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xdf032798
+  type_id: 0x81ecc373
+  full_name: "dev_pm_opp_find_freq_ceil_indexed"
+}
+elf_symbol {
   id: 0x56a85a70
   name: "dev_pm_opp_find_freq_exact"
   is_defined: true
@@ -384037,6 +384046,15 @@ elf_symbol {
   crc: 0x3e643055
   type_id: 0x81de8179
   full_name: "dev_pm_opp_find_freq_floor"
+}
+elf_symbol {
+  id: 0xfb909691
+  name: "dev_pm_opp_find_freq_floor_indexed"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x1bbba20c
+  type_id: 0x81ecc373
+  full_name: "dev_pm_opp_find_freq_floor_indexed"
 }
 elf_symbol {
   id: 0xdb13d287
@@ -441609,8 +441627,10 @@ interface {
   symbol_id: 0x489dfd09
   symbol_id: 0x4059d2bb
   symbol_id: 0x22bf9346
+  symbol_id: 0xb411a3b0
   symbol_id: 0x56a85a70
   symbol_id: 0x15de010f
+  symbol_id: 0xfb909691
   symbol_id: 0xdb13d287
   symbol_id: 0xd301890a
   symbol_id: 0x87f90d23
