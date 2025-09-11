@@ -594,6 +594,7 @@ int qcom_sc_tcm_carveout_heap_create(struct platform_heap *heap_data)
 	return 0;
 
 destroy_heap:
+	sc_tcm_mem_free(phys_to_virt(heap_data->base), heap_data->size);
 	carveout_heap_destroy(&sc_tcm_heap->carveout_heap);
 err:
 	kfree(sc_tcm_heap);
